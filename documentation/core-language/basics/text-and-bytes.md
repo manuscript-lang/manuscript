@@ -9,7 +9,7 @@ weight = 4
 
 ## String literals
 
-A literal is delimited by `"` and fits on one source line, interpolations included. Raw newlines and control characters U+0000 to U+001F are rejected; other Unicode appears directly. [Multi-line and raw literals](#multi-line-and-raw-literals) span lines. There are no single-quoted or byte literals.
+A literal is delimited by `"` and fits on one source line, interpolations included. Raw newlines and control characters U+0000 to U+001F are rejected; other Unicode appears directly. [Raw and multi-line literals](#multi-line-and-raw-literals) skip escapes or span lines. There are no single-quoted or byte literals.
 
 | Escape | Value |
 | --- | --- |
@@ -33,6 +33,8 @@ symbol := "\u{1F642}"
 ## Multi-line and raw literals
 
 `"""` opens text that spans lines. The opening quotes end their line, the closing quotes stand alone on a later line, and the closing line's indentation is removed from every line, so the text can be indented with the code around it. The line break after the opening quotes and the one before the closing line are not part of the value. A blank line may be shorter than the indentation; any other line indented less than the closing quotes is an error. Escapes and `{expression}` interpolation work as in `"..."` (an interpolated expression still stays on one line), and `"` needs no escape. The text cannot contain `"""` at all.
+
+`r"..."` is one-line raw text: every character is literal up to the first `"`, so there are no escapes and no interpolation, and it cannot contain a quote. Use it for regular expressions and Windows paths: `digits := r"\d+"`. Control characters (tabs included) are rejected as in `"..."`; use `r"""` for text with quotes.
 
 `r"""` opens raw text with the same layout where every character is literal: no escapes, no interpolation, braces and backslashes included. Use it for JSON, regular expressions, and fixtures.
 
@@ -74,7 +76,7 @@ fn text[T](value: T) String:
 
 test "string conversion":
     count := 3
-    convert: fn() String = count.to_string
+    convert: fn() String := count.to_string
     _direct := count.to_string()
     _bound := convert()
     _embedded := "{count}"
@@ -148,7 +150,7 @@ test "explicit byte conversion":
         return panic("check failed")
     if not ("é".to_bytes().decode_utf8() == "é"):
         return panic("check failed")
-    invalid: String? = none
+    invalid: String? := none
     if not (Bytes([255]).decode_utf8() == invalid):
         return panic("check failed")
     if not ("-007".parse_int() == -7):

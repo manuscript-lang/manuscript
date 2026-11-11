@@ -74,10 +74,10 @@ test "authenticated encryption detects wrong associated data":
 		(try open(key, nonce, encrypted, "header".to_bytes())), "secret".to_bytes()
 	)
 
-	failed: Bytes! = error(Error("cryptography: authentication failed", kind: "EAUTH"))
+	failed: Bytes! := error(Error("cryptography: authentication failed", kind: "EAUTH"))
 	try expect_equal(open(key, nonce, encrypted, "changed".to_bytes()), failed)
 
-	invalid: Bytes! = error(Error("cryptography: invalid input", kind: "EINVAL"))
+	invalid: Bytes! := error(Error("cryptography: invalid input", kind: "EINVAL"))
 	try expect_equal(
 		seal("short".to_bytes(), nonce, "".to_bytes(), "".to_bytes()), invalid
 	)
@@ -126,7 +126,7 @@ test "key derivation supports PBKDF2 and HKDF across hashes":
 		"3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf34007208d5b887185865"
 	)
 
-	invalid: Bytes! = error(Error("cryptography: invalid input", kind: "EINVAL"))
+	invalid: Bytes! := error(Error("cryptography: invalid input", kind: "EINVAL"))
 	try expect_equal(
 		HashAlgorithm.Sha256.hkdf(secret, salt, info, 255 * 32 + 1), invalid
 	)
@@ -168,7 +168,7 @@ test "AES CTR and CBC round trip":
 	try expect_equal(boxed.length(), 32)
 	try expect_equal(try aes_cbc_decrypt(key, iv, boxed), message)
 
-	bad: Bytes! = error(Error("cryptography: invalid input", kind: "EINVAL"))
+	bad: Bytes! := error(Error("cryptography: invalid input", kind: "EINVAL"))
 	try expect_equal(aes_cbc_decrypt(key, "short".to_bytes(), boxed), bad)
 
 test "ECDSA signs and ECDH agrees":

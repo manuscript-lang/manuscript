@@ -244,7 +244,7 @@ test "in-process reads retain the unread body after a bounded chunk":
 	try expect_equal(body_of(response), "a|bc|true")
 
 fn read_sizes(var exchange: HttpExchange, params: RouteParams) Unit!:
-	limit: Int? = if params.get_or("mode", "") == "default": none else: 100000
+	limit: Int? := if params.get_or("mode", "") == "default": none else: 100000
 	first := try exchange.read(limit)
 	second := try exchange.read(limit)
 	end := try exchange.read(limit)

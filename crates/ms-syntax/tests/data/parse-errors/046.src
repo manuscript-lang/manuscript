@@ -49,7 +49,7 @@ test "struct records with mixed field types":
     )
 
 test "struct records as keys and defaults":
-    set: Set[Point] = Set[Point]()
+    set: Set[Point] := Set[Point]()
     set.add(Point(1, 1))
     set.add(Point(1, 1))
     set.add(Point(2, 1))

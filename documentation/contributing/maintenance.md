@@ -35,7 +35,7 @@ Contracts: syntax, standard signatures, CLI flags and statuses, diagnostic codes
 
 1. Update `.msversion`, which the CLI, build identity, and book read, and keep `extensions/vscode/package.json` at the same version; `make repo-check` fails when they disagree.
 2. Run `make verify-full`, extension packaging, and review the six-target distribution workflow.
-3. Merge, then tag `v<version>`. Tagging publishes only after all six binaries pass standalone verification. Review the generated release notes.
+3. Merge, then tag `v<version>`. Tagging publishes only after all six binaries pass standalone verification, including an exact copy of the repository `LICENSE` in each archive. Review the generated release notes.
 
 A version update creates no tag. Documentation archives are separate preserved sites; a dropdown entry creates none.
 

@@ -12,12 +12,13 @@
 //! - [`effects`], [`stdlib`], [`hints`], [`editor`]: focused queries.
 
 pub mod types {
+    pub use crate::stdlib::constructor_signature;
     pub use crate::types::{
         BindingRef, Builtin, Definition, EXTERN_ERROR_CODE, EXTERN_ERROR_MESSAGE, Kind, Method,
         MethodRef, Name, Native, Operation, Param, Subst, Sym, SymKind, SymRef, Ty, bool_, case_of,
-        cases, constructor_signature, contract_mutates, fields, float_bits, function, int_bits,
-        int_range, invalid_ty, is_close_result, n, primitive, same, same_opt, show, sub,
-        substitution, unify, variable_set,
+        cases, contract_mutates, fields, float_bits, function, int_bits, int_range, invalid_ty,
+        is_close_result, n, primitive, same, same_opt, show, sub, substitution, unify,
+        variable_set,
     };
 }
 
@@ -32,8 +33,9 @@ pub mod hir {
 pub mod ownership {
     pub use crate::ownership::{
         Access, BindingFact, BindingFlags, BorrowKind, Class, Classifier, Fact, NodeFacts,
-        OwnedBorrow, ParamMode, native_method_argument_modes,
+        OwnedBorrow, OwnershipFacts, ParamMode, native_method_argument_modes,
     };
+    pub use crate::std_ops::{collection_mutation, discards_entries, is_text_builder};
 }
 
 pub mod syntax {
@@ -47,7 +49,6 @@ pub mod checker {
 pub mod effects {
     pub use crate::effect_directives::matches;
     pub use crate::effect_reach::Violation;
-    pub use crate::effects::{collection_mutation, discards_entries, is_text_builder};
 }
 
 pub mod stdlib {

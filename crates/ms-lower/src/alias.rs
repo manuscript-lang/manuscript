@@ -76,7 +76,11 @@ impl<'a> FnLower<'a> {
                     && self.syms.str(name) == "get"
                     && args.is_empty()
                     && matches!(&left.kind, ExprKind::Call { .. })
-                    && self.cx.getters.get(&(self.hir.data.file, e.id)).is_none()
+                    && !self
+                        .cx
+                        .ownership
+                        .getter_borrows
+                        .contains_key(&(self.hir.data.file, e.id))
                 {
                     let (alias, found) = self.alias_accessor(left, None)?;
                     let (ok, bad) = (self.b.new_block(), self.b.new_block());
@@ -88,7 +92,13 @@ impl<'a> FnLower<'a> {
                     self.b.switch_to(ok);
                     return Ok(alias);
                 }
-                let Some(fields) = self.cx.getters.get(&(self.hir.data.file, e.id)).cloned() else {
+                let Some(fields) = self
+                    .cx
+                    .ownership
+                    .getter_borrows
+                    .get(&(self.hir.data.file, e.id))
+                    .cloned()
+                else {
                     return Err(Error::new(
                         "a mutable borrow needs a field or element of a variable",
                     ));

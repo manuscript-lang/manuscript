@@ -9,8 +9,8 @@ import Duration, parse_timestamp from "@std/time.ms"
 fn via(f: fn(Float) Float, x: Float) Float: f(x)
 
 fn main() Unit:
-    to_text: fn() String = 7.to_string
-    d: Duration = 2.seconds()
+    to_text: fn() String := 7.to_string
+    d: Duration := 2.seconds()
     _t := parse_timestamp("2020-01-02T03:04:05Z")
     _r := stdout().write(
         "{to_text()} {via(sqrt, 4.0)} {max(left: 1, right: 2)} {d.to_milliseconds()}\n"

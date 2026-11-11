@@ -13,9 +13,9 @@ fn propagated() Int!Failure:
 	return ok(try failure())
 
 test "prelude cases and optional methods need no imports":
-	inferred: Int? = 3
-	absent: Int? = none
-	qualified: Int? = 5
+	inferred: Int? := 3
+	absent: Int? := none
+	qualified: Int? := 5
 	try expect_false(inferred.is_none() or absent.is_some())
 	try expect_false(inferred.get() != 3 or qualified.get() != 5)
 	try expect_false(

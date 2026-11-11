@@ -33,7 +33,7 @@ fn nested_loop() Int:
 		if panic("stop"): break
 
 fn callback() Int:
-	f: fn() Int = fn() Int:
+	f: fn() Int := fn() Int:
 		while true:
 			if panic("stop"): break
 	return f()

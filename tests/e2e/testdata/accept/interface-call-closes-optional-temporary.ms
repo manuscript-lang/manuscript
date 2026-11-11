@@ -30,6 +30,6 @@ test "interface reader closes intact temporary wrapper":
 	path := "{directory.path()}/log"
 	try write_file(path, "").wait()
 
-	reader: Observer = Reader(1)
+	reader: Observer := Reader(1)
 	try expect_equal(reader.observe(Resource(1, path.clone())), true)
 	try expect_equal(try log_text(path), "1,")

@@ -4,5 +4,5 @@
 import Bytes from "@std/bytes.ms"
 
 fn extract(data: Bytes) List[UInt8]:
-    _bound: fn() List[UInt8] = data.values
+    _bound: fn() List[UInt8] := data.values
     return data.values()

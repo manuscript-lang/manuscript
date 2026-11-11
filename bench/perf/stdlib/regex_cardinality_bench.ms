@@ -73,7 +73,7 @@ bench "regex.cardinality.whole.over_limit":
 
 	fn work() Result[Unit, Error]:
 		out := re.captures_all(text, 1)
-		expected: Result[List[List[String]], Error] = error(
+		expected: Result[List[List[String]], Error] := error(
 			Error("regular expression: limit exceeded", kind: "EOVERFLOW")
 		)
 		try expect_equal(out, expected)

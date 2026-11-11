@@ -6,5 +6,5 @@ fn crash(cause: Error) Int:
     return 1 / "".byte_length()
 
 export fn main() Int:
-    value: Int!Error = error(Error("expected failure"))
+    value: Int!Error := error(Error("expected failure"))
     return value.get_or_else(crash)

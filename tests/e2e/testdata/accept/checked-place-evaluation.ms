@@ -101,7 +101,7 @@ impl Change for Adder:
 		value += amount
 
 test "a contract var argument retains its changing index":
-	change: Change = Adder()
+	change: Change := Adder()
 	var values = [1, 20]
 	var calls = 0
 	change.apply(var values[next(var calls)], 5)
@@ -109,7 +109,7 @@ test "a contract var argument retains its changing index":
 	try expect_equal(values, [6, 20])
 
 test "a function value var argument retains its changing index":
-	change: fn(var Int, Int) Unit = bump
+	change: fn(var Int, Int) Unit := bump
 	var values = [1, 20]
 	var calls = 0
 	change(var values[next(var calls)], 5)

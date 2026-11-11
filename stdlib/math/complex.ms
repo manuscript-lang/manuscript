@@ -113,7 +113,7 @@ impl Complex:
 
 	// Returns the quotient. Dividing by zero follows Float rules and gives infinities or NaN, never a fault.
 	// The divisor is scaled by its larger part to avoid overflow in the intermediate squares.
-	// Finite operands whose parts are near the Float range limits are first scaled by exact powers of two so the quotient keeps its precision.
+	// Finite operands whose parts are near the Float range limits are first scaled by exact powers of two so the quotient keeps its precision; a numerator is only scaled enough to stay in range, so its smaller part survives.
 	fn divide(other: Complex) Complex:
 		sn := self.re.abs().max(self.im.abs())
 		sd := other.re.abs().max(other.im.abs())
@@ -128,7 +128,13 @@ impl Complex:
 				or sn > 0.0 and sn < 3.054936363499605e-151
 			)
 		):
-			numerator_exponent := frexp(sn).exponent
+			// Only pull the numerator back into range when it is extreme, and keep its larger part near 2^900:
+			// scaling it down to 1 would underflow a much smaller part that the quotient still needs.
+			exponent := frexp(sn).exponent
+			var numerator_exponent = 0
+			if exponent > 900: numerator_exponent = exponent - 900
+			if exponent < -900: numerator_exponent = exponent + 900
+
 			divisor_exponent := frexp(sd).exponent
 			quotient := smith_divide(
 				Complex(

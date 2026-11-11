@@ -6,7 +6,7 @@ fn text[T](value: T) String:
 
 test "string conversion":
     count := 3
-    convert: fn() String = count.to_string
+    convert: fn() String := count.to_string
     _direct := count.to_string()
     _bound := convert()
     _embedded := "{count}"

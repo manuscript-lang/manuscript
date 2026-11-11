@@ -41,13 +41,13 @@ Decimal literals need `import Decimal from "@std/math/decimal.ms"`. Integer lite
 
 ```manuscript
 fn literals() Unit:
-    smallest: Int = -9223372036854775808
-    exponent: Float = 1e3
-    mask: Int = 0xFF_00
-    flags: Int = 0b1010_0101
-    precise: Decimal = 1e3d
+    smallest: Int := -9223372036854775808
+    exponent: Float := 1e3
+    mask: Int := 0xFF_00
+    flags: Int := 0b1010_0101
+    precise: Decimal := 1e3d
     // Rejected: an Int token does not become Float from context.
-    mismatch: Float = 1
+    mismatch: Float := 1
 ```
 
 ## Sized numbers
@@ -56,9 +56,9 @@ fn literals() Unit:
 
 ```manuscript
 fn sized() Unit:
-    a: Int8 = 100
-    wide: Int32 = 2000000000
-    ratio: Float32 = 0.1
+    a: Int8 := 100
+    wide: Int32 := 2000000000
+    ratio: Float32 := 0.1
     // Faults: 200 does not fit Int8.
     b := a + a
     // Rejected: operand types differ.

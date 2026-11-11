@@ -30,3 +30,14 @@ test "rational powers retain zero and unit controls":
 
 		expected := if exponent % 2 == 0: "1" else: "-1"
 		try expect_equal((try rat_of_int(-1).pow(exponent)).format(), expected)
+
+test "rational powers accept the minimum Int exponent for unit and zero bases":
+	least := -9223372036854775807 - 1
+	try expect_equal((try rat_of_int(1).pow(least)).format(), "1")
+	try expect_equal((try rat_of_int(-1).pow(least)).format(), "1")
+	try expect_equal((try rat_of_int(-1).pow(least + 1)).format(), "-1")
+	try expect_equal((try expect_error(rat_of_int(0).pow(least))).kind, "EINVAL")
+	try expect_equal((try expect_error(rat_of_int(2).pow(least))).kind, "EOVERFLOW")
+	try expect_equal(
+		(try expect_error(rat_of_int(2).pow(9223372036854775807))).kind, "EOVERFLOW"
+	)

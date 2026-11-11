@@ -5,9 +5,9 @@ import (
 )
 
 test "hex preflight preserves byte lengths and error precedence":
-	invalid: Bytes! = error(Error("encoding: invalid data", kind: "EBADMSG"))
-	negative: Bytes! = error(Error("encoding: invalid input", kind: "EINVAL"))
-	limited: Bytes! = error(Error("encoding: limit exceeded", kind: "EOVERFLOW"))
+	invalid: Bytes! := error(Error("encoding: invalid data", kind: "EBADMSG"))
+	negative: Bytes! := error(Error("encoding: invalid input", kind: "EINVAL"))
+	limited: Bytes! := error(Error("encoding: limit exceeded", kind: "EOVERFLOW"))
 	for text in ["", "a", "aaa", "zz", "é", "éa"]:
 		try expect_equal(hex_decode(text, -1), negative)
 	for text in ["aaa", "zz", "é", "éa"]:
@@ -27,13 +27,13 @@ test "hex limits and round trips preserve actual nested byte views":
 	try expect_equal(text, "000f107f80")
 	try expect_equal(hex_decode(text, 5), ok(Bytes([0, 15, 16, 127, 128])))
 
-	limited: Bytes! = error(Error("encoding: limit exceeded", kind: "EOVERFLOW"))
+	limited: Bytes! := error(Error("encoding: limit exceeded", kind: "EOVERFLOW"))
 	try expect_equal(hex_decode(text, 4), limited)
 
 test "hex rejects large over budget and odd inputs before digit validation":
 	text := "00".repeat(524288).get()
-	limited: Bytes! = error(Error("encoding: limit exceeded", kind: "EOVERFLOW"))
-	invalid: Bytes! = error(Error("encoding: invalid data", kind: "EBADMSG"))
+	limited: Bytes! := error(Error("encoding: limit exceeded", kind: "EOVERFLOW"))
+	invalid: Bytes! := error(Error("encoding: invalid data", kind: "EBADMSG"))
 	try expect_equal(hex_decode(text, 0), limited)
 	try expect_equal(hex_decode(text + "z", 524287), limited)
 	try expect_equal(hex_decode(text + "z", 524288), invalid)

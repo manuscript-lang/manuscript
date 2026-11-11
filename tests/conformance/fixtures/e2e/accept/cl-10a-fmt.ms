@@ -26,8 +26,8 @@ fn compare[T: Equal](box: Box[T], other: T) Bool:
 test "generic implementations":
     number := Box[Int](7)
     text := Box[String]("hello")
-    number_view: ReadValue[Int] = number
-    text_view: ReadValue[String] = text
+    number_view: ReadValue[Int] := number
+    text_view: ReadValue[String] := text
     try expect_equal(number_view.get(), 7)
     try expect_equal(text_view.get(), "hello")
     try expect_false(not (compare(number, 7)))

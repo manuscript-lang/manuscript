@@ -12,7 +12,7 @@ impl Closeable for Door:
         print("closed {self.name}")
 
 fn nested(n: String) Door??:
-    inner: Door? = Door(n)
+    inner: Door? := Door(n)
     return inner
 
 fn main() Unit:

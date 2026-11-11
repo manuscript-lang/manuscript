@@ -79,7 +79,7 @@ test "distinct copies nested values into independent output storage":
 	try expect_equal(result[0], [0, 99])
 
 test "distinct preserves owned strings, empty and small lists":
-	empty: List[String] = []
+	empty: List[String] := []
 	try expect_equal(empty.distinct(), [])
 	try expect_equal(["b", "a", "b"].distinct(), ["b", "a"])
 

@@ -82,13 +82,13 @@ test "list methods mutate explicit clones and remain typed":
 	alias := original.clone()
 	original.get(index: -1) | try expect_equal(1)
 
-	absent: Int? = none
+	absent: Int? := none
 	original.get(index: -9223372036854775808, default: -1) | try expect_equal(-1)
 	original.get(index: 9223372036854775807, default: -1) | try expect_equal(-1)
 	original.first() | try expect_equal(3)
 	original.last() | try expect_equal(1)
 
-	empty: List[Int] = []
+	empty: List[Int] := []
 	empty.first() | try expect_equal(absent)
 	empty.last() | try expect_equal(absent)
 	(empty.is_empty()) | try expect_true
@@ -276,7 +276,7 @@ test "string methods use Unicode scalars":
 	"é🙂é".get(index: -1) | try expect_equal("é")
 	"é🙂é".scalar_at(index: 1) | try expect_equal(128578)
 
-	_missing: String? = none
+	_missing: String? := none
 	"".get(index: 0, default: "?") | try expect_equal("?")
 	"é".get(index: -9223372036854775808, default: "?") | try expect_equal("?")
 	"é🙂é".index_of(value: "🙂") | try expect_equal(1)
@@ -284,7 +284,7 @@ test "string methods use Unicode scalars":
 	"é🙂é".last_index_of(value: "") | try expect_equal(3)
 	"é🙂é".index_of(value: "") | try expect_equal(0)
 
-	absent: Int? = none
+	absent: Int? := none
 	"é🙂é".index_of(value: "z") | try expect_equal(absent)
 	"é🙂é".last_index_of(value: "z") | try expect_equal(absent)
 	"é🙂é".slice(start: -2, end: 3).get() | try expect_equal("🙂é")
@@ -316,7 +316,7 @@ test "bytes have analogous immutable operations":
 	data := Bytes([1, 2, 3, 2])
 	data.get(index: -1) | try expect_equal(2)
 
-	missing: Int? = none
+	missing: Int? := none
 	data.get(index: -9223372036854775808, default: 255) | try expect_equal(255)
 	(data.contains(value: Bytes([2, 3]))) | try expect_true
 	data.index_of(value: Bytes([2])) | try expect_equal(1)
@@ -340,10 +340,12 @@ test "growth limits and invalid inputs return values":
 	"x".pad_start(target_length: -1, padding: " ") | try expect_equal("x")
 	"x".pad_end(target_length: 4, padding: "") | try expect_equal("x")
 
-	list_limit: List[Int]! = error(
+	list_limit: List[Int]! := error(
 		Error("collection: limit exceeded", kind: "EOVERFLOW")
 	)
-	list_invalid: List[Int]! = error(Error("collection: invalid input", kind: "EINVAL"))
+	list_invalid: List[Int]! := error(
+		Error("collection: invalid input", kind: "EINVAL")
+	)
 	range_by(start: 0, end: 4, step: 1, options: RangeOptions(max_items: 3)) | try expect_equal(
 		list_limit
 	)
@@ -428,14 +430,14 @@ test "normalization, empty separators, and precision formatting":
 
 	"é🙂".split(separator: "", max_parts: 8) | try expect_equal(["é", "🙂"])
 
-	empty_texts: List[String] = []
+	empty_texts: List[String] := []
 	"".split(separator: "", max_parts: 8) | try expect_equal(empty_texts)
 	"é🙂".replace_first(old: "", new: "-") | try expect_equal("-é🙂")
 	"".replace_first(old: "", new: "-") | try expect_equal("-")
 	"é".concat(other: "🙂") | try expect_equal("é🙂")
 
-	invalid: String! = error(Error("string: invalid input", kind: "EINVAL"))
-	limit: String! = error(Error("string: limit exceeded", kind: "EOVERFLOW"))
+	invalid: String! := error(Error("string: invalid input", kind: "EINVAL"))
+	limit: String! := error(Error("string: limit exceeded", kind: "EOVERFLOW"))
 	"é".normalize(form: "invalid", max_bytes: 8) | try expect_equal(invalid)
 	"é".normalize(form: "NFD", max_bytes: 2) | try expect_equal(limit)
 

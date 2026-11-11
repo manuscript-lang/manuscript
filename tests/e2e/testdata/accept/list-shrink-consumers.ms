@@ -3,7 +3,7 @@ import expect_equal, expect_false, expect_true from "@std/test/test.ms"
 type Visits:
 	count: Int
 
-fn mutate[T](var values: List[T], mode: String, fill: List[T]) Unit:
+fn mutate[T: Clonable](var values: List[T], mode: String, fill: List[T]) Unit:
 	if mode == "remove":
 		values.remove(0)
 	if mode == "splice":
@@ -15,7 +15,7 @@ fn mutate[T](var values: List[T], mode: String, fill: List[T]) Unit:
 		values.splice(start: 0, delete_count: 0, replacement: fill.clone())
 		values.splice(start: 0, delete_count: 0, replacement: fill)
 
-fn step[T](
+fn step[T: Clonable](
 	var seen: List[T], var visits: Visits, var values: List[T], value: T, mode: String,
 	fill: List[T]
 ) Unit:
@@ -47,7 +47,7 @@ fn observe[T: Clonable](
 	visits.count | try expect_equal(3)
 	return ok(seen)
 
-fn remaining[T](mode: String, items: List[T], fill: List[T]) List[T]:
+fn remaining[T: Clonable](mode: String, items: List[T], fill: List[T]) List[T]:
 	var out = items
 	if mode == "remove": out.remove(0)
 	if mode == "splice": out.splice(
@@ -152,10 +152,10 @@ fn score(value: Choice) Int:
 test "alternative consumers retain tags and payloads after shrink":
 	for callback in [false, true]:
 		for mode in ["remove", "splice", "clear", "clear_append"]:
-			first: Choice = number(1)
-			second: Choice = label("bb")
-			last: Choice = number(3)
-			fill: List[Choice] = [label("replacement")]
+			first: Choice := number(1)
+			second: Choice := label("bb")
+			last: Choice := number(3)
+			fill: List[Choice] := [label("replacement")]
 			var values = [first.clone(), second.clone(), last.clone()]
 			want := remaining(mode, values.clone(), fill.clone())
 			seen := (try observe(var values, mode, fill, callback))

@@ -10,9 +10,9 @@ fn _hidden(_value: Int) Int: _value
 fn numbered(_0: Int, _1: Int) Int: _0 + _1
 
 export fn main() Int:
-    transform: fn(Int) Int = identity
-    combine: fn(String, String) String = join
-    keep: fn(Int) Int = _hidden
+    transform: fn(Int) Int := identity
+    combine: fn(String, String) String := join
+    keep: fn(Int) Int := _hidden
     text := combine(first: "a", second: "b")
     other := combine("a")
     direct := _hidden(other: 1)

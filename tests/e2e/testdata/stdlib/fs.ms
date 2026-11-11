@@ -139,12 +139,12 @@ test "file handles positional I/O stream adapters and closed errors":
 	contents | try expect_equal("aXYd".to_bytes())
 	try handle.close()
 
-	closed: Bytes! = error(Error("filesystem: resource is closed", kind: "EBADF"))
+	closed: Bytes! := error(Error("filesystem: resource is closed", kind: "EBADF"))
 	handle.read_at(offset: 0, max_bytes: 1) | try expect_equal(closed)
 	try handle.close()
 
 test "empty paths are rejected instead of resolving to the working directory":
-	invalid: Unit! = error(cause: Error("filesystem: invalid input", kind: "EINVAL"))
+	invalid: Unit! := error(cause: Error("filesystem: invalid input", kind: "EINVAL"))
 	remove(path: "", recursive: true) | try expect_equal(invalid)
 	create_directory(path: "", recursive: true) | try expect_equal(invalid)
 	write_file(path: "", data: "x", replace: true).wait() | try expect_equal(invalid)

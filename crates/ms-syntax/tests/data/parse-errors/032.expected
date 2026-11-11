@@ -1,1 +1,1 @@
-error parse 5:5:102 "'let' was removed; bind with 'x := value' (or 'x: Type = value'), destructure with '[a, b] := value', and use 'var x = value' for a mutable binding"
+error parse 5:5:102 "'let' was removed; bind with 'x := value' (or 'x: Type := value'), destructure with '[a, b] := value', and use 'var x = value' for a mutable binding"

@@ -159,7 +159,7 @@ fn use_increment(operation: Increment) Int:
 offset := Offset(2)
 result := use_increment(offset)
 again := offset.delta
-kept: Increment = offset.clone()
+kept: Increment := offset.clone()
 ```
 
 An interface is never constructed: `Increment(value: offset)` is rejected, so annotate the binding (`view: Increment = offset`) when no interface is otherwise expected. Generic inference does not convert: a type variable bound to `Offset` does not match `Increment` ([matching](generics.md#inference-from-arguments)).
@@ -172,7 +172,7 @@ A contract type satisfies its own exact generic bound without an `impl`: `Conver
 
 ```manuscript
 fn invoke[T: Increment](operation: T) Int:
-    view: Increment = operation
+    view: Increment := operation
     return view.apply(1)
 
 from_concrete := invoke(offset)

@@ -20,7 +20,7 @@ test "unary signs preserve sized literal context":
 	try expect_equal(add(1).to_int(), 2)
 	try expect_equal(rounded().to_float64(), 1.0000001192092896)
 
-	values: List[Int8] = [+ 1, + 2]
+	values: List[Int8] := [+ 1, + 2]
 	try expect_true(values == [+ 1, + 2])
 
 fn negative_minimum() Int8: -(-128)

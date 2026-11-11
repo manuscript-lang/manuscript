@@ -123,7 +123,7 @@ export fn cosh(value: Float) Float:
 	return msstd_math_cosh(value)
 
 // Euler's number, the base of natural logarithms.
-export e: Float = 2.718281828459045
+export e: Float := 2.718281828459045
 
 // Returns e raised to `value`.
 export fn exp(value: Float) Float:
@@ -224,7 +224,7 @@ export fn min[T: Comparable](left: T, right: T) T:
 	return left
 
 // Π, the ratio of a circle's circumference to its diameter.
-export pi: Float = 3.141592653589793
+export pi: Float := 3.141592653589793
 
 // Returns `base` raised to `exponent`.
 export fn pow(base: Float, exponent: Float) Float:
@@ -295,35 +295,35 @@ export fn is_safe_integer(value: Float) Bool:
 	return msstd_math_is_safe_integer(value)
 
 // Positive infinity, the Float that exceeds every finite value; negate it for negative infinity.
-export infinity: Float = 1.0 / 0.0
+export infinity: Float := 1.0 / 0.0
 // NaN, the Float that is not equal to itself under IEEE rules; use `is_nan()` to detect it.
-export nan: Float = 0.0 / 0.0
+export nan: Float := 0.0 / 0.0
 // The difference between 1.0 and the next larger Float.
-export epsilon: Float = 2.220446049250313e-16
+export epsilon: Float := 2.220446049250313e-16
 // The largest finite Float.
-export max_float: Float = 1.7976931348623157e+308
+export max_float: Float := 1.7976931348623157e+308
 // The smallest positive Float, a subnormal value.
-export min_float: Float = 5e-324
+export min_float: Float := 5e-324
 // The largest Int, 2^63 - 1.
-export max_int: Int = 9223372036854775807
+export max_int: Int := 9223372036854775807
 // The smallest Int, -2^63.
-export min_int: Int = -9223372036854775807 - 1
+export min_int: Int := -9223372036854775807 - 1
 // 2^53 - 1, the largest integer every smaller integer of which a Float represents exactly.
-export max_safe_integer: Int = 9007199254740991
+export max_safe_integer: Int := 9007199254740991
 // The smallest integer every larger integer of which a Float represents exactly, -(2^53 - 1).
-export min_safe_integer: Int = -9007199254740991
+export min_safe_integer: Int := -9007199254740991
 // The natural logarithm of 2.
-export ln2: Float = 0.6931471805599453
+export ln2: Float := 0.6931471805599453
 // The natural logarithm of 10.
-export ln10: Float = 2.302585092994046
+export ln10: Float := 2.302585092994046
 // The base-2 logarithm of e.
-export log2e: Float = 1.4426950408889634
+export log2e: Float := 1.4426950408889634
 // The base-10 logarithm of e.
-export log10e: Float = 0.43429448190325176
+export log10e: Float := 0.43429448190325176
 // The square root of 2.
-export sqrt2: Float = 1.4142135623730951
+export sqrt2: Float := 1.4142135623730951
 // The square root of 1/2.
-export sqrt_half: Float = 0.7071067811865476
+export sqrt_half: Float := 0.7071067811865476
 
 // Parses a decimal floating-point number using Manuscript's numeric syntax, plus `NaN`, `Infinity`, `+Infinity` and `-Infinity`.
 export fn parse_float(text: String) Float!:
@@ -761,7 +761,7 @@ fn bigint_mod_sqrt(value: BigInt, modulus: BigInt) BigInt?!:
 	if target.sign() < 0:
 		target += modulus
 
-	absent: BigInt? = none
+	absent: BigInt? := none
 	if target.sign() == 0: return ok(bigint_zero())
 
 	minus_one := modulus - one

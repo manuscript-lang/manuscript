@@ -19,9 +19,9 @@ fn run[R](v: Visitor[R], n: Int) R:
 
 test "one receiver implements two applications of a generic contract":
 	d := Doubler(k: 3)
-	as_int: Visitor[Int] = d
-	as_string: Visitor[String] = d
-	a: Int = run(as_int, 5)
-	b: String = run(as_string, 5)
+	as_int: Visitor[Int] := d
+	as_string: Visitor[String] := d
+	a: Int := run(as_int, 5)
+	b: String := run(as_string, 5)
 	try expect_equal(a, 15)
 	try expect_equal(b, "<5>")

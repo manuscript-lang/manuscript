@@ -6,7 +6,7 @@ type Point:
     x: Int
     y: Int
 
-type Box[T]:
+type Box[T: Clonable]:
     items: List[T]
 
 impl Point:
@@ -18,7 +18,7 @@ impl Box[T]:
         var xs = self.items.clone()
         xs.append(item)
 
-        b: Self = Box[T](items: xs)
+        b: Self := Box[T](items: xs)
         return b
 
     fn pair(other: Self) List[Self]:

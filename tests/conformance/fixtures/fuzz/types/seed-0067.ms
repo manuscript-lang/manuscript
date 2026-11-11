@@ -25,7 +25,7 @@ fn collatz(start: Int) Int:
 export fn main() Int:
     say("collatz(1662) = {collatz(1662)}")
 
-    bad: Bool = 1
+    bad: Bool := 1
     l1 := [1, 2, 3].take(0)
     say("l1 = {l1} len {l1.length()}")
 

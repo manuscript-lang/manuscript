@@ -35,7 +35,7 @@ export fn first_lookup() String:
 	return values.filter(fn k, v: true) | lookup(Key(5, "different"), "absent")
 
 export fn first_failure(cause: Cause) String!:
-	value: Int! = error(describe(cause))
+	value: Int! := error(describe(cause))
 	return value.map(fn n: n.to_string()).and_then(fn text: ok(text))
 
 export fn first_queries() Bool:
@@ -50,7 +50,7 @@ export fn first_queries() Bool:
 	)
 
 export fn first_converted(cause: Cause) Int!:
-	missing: Int? = none
+	missing: Int? := none
 	return convert(missing, fn() Error: describe(cause))
 
 export fn first_folded(cause: Cause) Error:

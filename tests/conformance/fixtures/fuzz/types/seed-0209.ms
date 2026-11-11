@@ -15,7 +15,7 @@ export fn main() Int:
     i2 := (i1 - 31)
     say("i2 = {i2}")
 
-    bad: String = 5
+    bad: String := 5
     i3 := (-i1)
     say("i3 = {i3}")
 

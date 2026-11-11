@@ -119,27 +119,8 @@ pub struct Program {
     pub diagnostics: Vec<Diagnostic>,
     /// Identities handed out while checking.
     pub serial: usize,
-    /// The name expressions that move a closed resource binding, by binding.
-    pub close_moves: Rc<HashMap<usize, HashSet<NodeId>>>,
-    /// Every move of a whole binding, by binding: the nodes that take its value.
-    pub moves: Rc<HashMap<usize, HashSet<NodeId>>>,
-    /// Resource fields moved out of an owned binding, by binding and member node.
-    pub resource_moves: Rc<HashMap<usize, HashMap<NodeId, Vec<Name>>>>,
-    /// Calls bound with `var` as a mutable borrow of a field path of their argument, by module
-    /// file and node, with the fields. Filled together with `borrows`.
-    pub getter_borrows: Rc<HashMap<(Name, NodeId), Vec<Name>>>,
-    /// Lending calls whose result the caller owns, by module file and call node.
-    pub owned_borrows: Rc<HashMap<(Name, NodeId), crate::ownership::OwnedBorrow>>,
-    /// Captures a non-escaping lambda only reads, by module file, lambda node and binding
-    /// identity. Filled together with `borrows`.
-    pub borrowed_captures: Rc<HashSet<(Name, NodeId, usize)>>,
-    /// Parameters each callable moving_params (moves, stores or returns), by module file and node, for
-    /// lowering. Filled together with `borrows`; only callables with a consumed parameter appear.
-    pub moving_params: Rc<std::collections::HashMap<(Name, NodeId), Vec<bool>>>,
-    /// Boolean per-node ownership facts in a dense table (`ownership::NodeFacts`).
-    pub node_facts: Rc<crate::ownership::NodeFacts>,
-    /// Boolean per-binding ownership facts keyed by session identity (`ownership::BindingFlags`).
-    pub binding_facts: Rc<crate::ownership::BindingFlags>,
+    /// Ownership facts, filled by the ownership stage after the check succeeds.
+    pub ownership: Rc<crate::ownership::OwnershipFacts>,
 }
 
 /// A body-check result retained from an inference probe.
@@ -170,6 +151,9 @@ pub struct DeferredTypeDefault {
     pub resolved: Ty,
     /// The defaulted variable; its bounds, resolved after defaults, must hold for the default.
     pub variable: Ty,
+    /// The declaration's variables. `resolved` captured them before their bounds were
+    /// resolved, so the check re-reads each one's complete bounds.
+    pub variables: Vec<Ty>,
     /// Where to report.
     pub pos: Pos,
     /// File of the declaring module.
@@ -669,8 +653,8 @@ impl Checker {
         );
     }
 
-    /// Declaration passes for one module, in order.
-    pub(crate) fn check_module(&mut self, module: &ModRef) {
+    /// Starts a module: fresh symbol table seeded with the primitive types and the standard prelude.
+    fn begin_module(&mut self, module: &ModRef) {
         self.module = Some(module.clone());
         self.names = Rc::new(RefCell::new(HashMap::new()));
         self.p.symbols.insert(module.file, self.names.clone());
@@ -691,6 +675,11 @@ impl Checker {
             self.names.borrow_mut().insert(nm, s);
         }
         self.add_standard_prelude();
+    }
+
+    /// Declaration passes for one module, in order.
+    pub(crate) fn check_module(&mut self, module: &ModRef) {
+        self.begin_module(module);
         self.import_symbols(module);
         self.declare_symbols(module);
         self.declare_type_variables(module);
@@ -720,26 +709,7 @@ impl Checker {
     /// symbols before any module imports, resolves signatures or checks bodies.
     fn check_group(&mut self, group: &[ModRef]) {
         for module in group {
-            self.module = Some(module.clone());
-            self.names = Rc::new(RefCell::new(HashMap::new()));
-            self.p.symbols.insert(module.file, self.names.clone());
-            self.scope = Scope::new(None);
-            for name in PRIMITIVE_NAMES {
-                let nm = n(name);
-                let s = Rc::new(Sym {
-                    name: nm,
-                    id: n(primitive_id(name)),
-                    kind: SymKind::Type,
-                    module: n(""),
-                    native: Native::Source,
-                    export: true,
-                    ty: RefCell::new(Some(primitive(primitive_id(name)))),
-                    variables: RefCell::new(Vec::new()),
-                    decl: None,
-                });
-                self.names.borrow_mut().insert(nm, s);
-            }
-            self.add_standard_prelude();
+            self.begin_module(module);
             self.declare_symbols(module);
         }
         for module in group {
@@ -1135,6 +1105,7 @@ impl Checker {
             self.deferred_type_defaults.push(DeferredTypeDefault {
                 resolved: resolved.clone(),
                 variable: vars[index].clone(),
+                variables: vars[..index].to_vec(),
                 pos: default.pos,
                 module: self.m(),
             });
@@ -1148,13 +1119,15 @@ impl Checker {
         let old_module = self.module.clone();
         for check in std::mem::take(&mut self.deferred_type_defaults) {
             self.module = Some(check.module);
-            self.well_formed(&check.resolved, check.pos, &mut HashSet::new());
-            let bindings = Subst::from([(check.variable.id, check.resolved.clone())]);
+            let current: Subst = check.variables.iter().map(|v| (v.id, v.clone())).collect();
+            let resolved = sub(&check.resolved, &current);
+            self.well_formed(&resolved, check.pos, &mut HashSet::new());
+            let bindings = Subst::from([(check.variable.id, resolved.clone())]);
             for bound in check.variable.bounds() {
                 let bound = sub(&bound, &bindings);
-                if !self.satisfies(&check.resolved, &bound) {
+                if !self.satisfies(&resolved, &bound) {
                     let message = self.unsatisfied_message(
-                        &check.resolved,
+                        &resolved,
                         &bound,
                         "choose a default that already implements it",
                     );

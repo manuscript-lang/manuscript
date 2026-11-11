@@ -106,7 +106,7 @@ test "set names mutate in place keep order and no-op membership":
 	optional.add(9)
 	optional.remove(7)
 
-	expected_values: List[Int?] = [9]
+	expected_values: List[Int?] := [9]
 	try expect_equal(optional.values(), expected_values)
 
 interface FirstReplacement:
@@ -143,7 +143,7 @@ test "explicit views and bound views preserve native mutation":
 	set_view.add(5)
 	try expect_equal(set_view.values(), [3, 4, 5])
 
-	text_view: FirstReplacement = TextAdapter("aaaa")
+	text_view: FirstReplacement := TextAdapter("aaaa")
 	view_first := text_view.replace_first
 	try expect_false(
 		text_view.replace_first("a", "b") != "baaa" or view_first(
@@ -168,10 +168,12 @@ test "regex replace_all preserves literal text and exact output budgets":
 	try expect_equal((try all(replacement: "$1", "aa")), "$1$1")
 	try expect_equal((try pattern.replace_all("aa", "é", 4)), "éé")
 
-	limited: String! = error(
+	limited: String! := error(
 		Error("regular expression: limit exceeded", kind: "EOVERFLOW")
 	)
-	invalid: String! = error(Error("regular expression: invalid input", kind: "EINVAL"))
+	invalid: String! := error(
+		Error("regular expression: invalid input", kind: "EINVAL")
+	)
 	try expect_equal(pattern.replace_all("aa", "é", 3), limited)
 	try expect_equal(all("a", "", -1), invalid)
 	try expect_equal((try all("a", "", 0)), "")
@@ -183,7 +185,7 @@ test "regex replace_all preserves literal text and exact output budgets":
 	empty := try compile("")
 	try expect_equal((try empty.replace_all("é🙂", "x")), "xéx🙂x")
 
-	view: RegexReplacement = RegexAdapter(pattern)
+	view: RegexReplacement := RegexAdapter(pattern)
 	view_all := view.replace_all
 	try expect_false(
 		(
@@ -270,7 +272,7 @@ test "list reversal names distinguish receiver mutation and shallow copies":
 test "byte reversal names copy across direct bound and view calls":
 	data := Bytes([0, 1, 255])
 	reversed := data.reversed
-	view: ByteCopy = ByteAdapter(data.clone())
+	view: ByteCopy := ByteAdapter(data.clone())
 	view_reversed := view.reversed
 	try expect_false(
 		(data.reversed() != Bytes([255, 1, 0]) or reversed() != data.reversed())

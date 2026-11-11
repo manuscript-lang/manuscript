@@ -28,7 +28,7 @@ export fn main() Int:
     b2 := false
     say("b2 = {b2}")
 
-    bad: Int = "text"
+    bad: Int := "text"
     f3 := 530.812
     say("f3 = {f3}")
 

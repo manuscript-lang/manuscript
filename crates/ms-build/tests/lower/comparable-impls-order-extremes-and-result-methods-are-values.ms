@@ -14,6 +14,6 @@ impl Comparable for Version:
 fn main() Unit:
     a := Version(1)
     b := Version(2)
-    c: Result[Int, Error] = ok(1)
+    c: Result[Int, Error] := ok(1)
     e := c.is_ok
     _r := stdout().write("{max(a, b).major} {e}\n")

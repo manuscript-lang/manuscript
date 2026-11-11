@@ -30,7 +30,7 @@ export fn main() Int:
         return 3
 
     // Stored positions move at the last use or take a clone.
-    s: Shape = q.clone()
+    s: Shape := q.clone()
     h := Holder(s: q.clone())
     if s.label() + h.s.label() != "sqsq":
         return 4

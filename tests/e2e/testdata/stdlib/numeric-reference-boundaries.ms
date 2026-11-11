@@ -91,7 +91,7 @@ fn big_of_word(word: UInt64) BigInt:
 	return from_int(low) + from_int(max_int) + from_int(1)
 
 test "multiply_wide matches the exact 128-bit product":
-	words: List[UInt64] = [
+	words: List[UInt64] := [
 		0, 1, 2, 4294967295, 4294967296, 9223372036854775807, 9223372036854775808,
 		18446744073709551615
 	]

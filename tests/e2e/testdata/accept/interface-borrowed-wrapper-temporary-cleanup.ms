@@ -85,7 +85,7 @@ test "interface borrows intact temporary wrappers in written order":
 	path := "{directory.path()}/log"
 	try write_file(path, "").wait()
 
-	reader: Observer = Reader(1)
+	reader: Observer := Reader(1)
 	try expect_equal(reader.observe(Resource(1, path.clone()), present(path, 2)), true)
 	try expect_equal(try log_text(path), "2,1,")
 	try expect_equal(
@@ -103,7 +103,7 @@ test "interface arguments retain cleanup through later try and faults":
 	path := "{directory.path()}/log"
 	try write_file(path, "").wait()
 
-	reader: Observer = Reader(1)
+	reader: Observer := Reader(1)
 	try expect_equal(later_error(reader, path).is_error(), true)
 	try later_success(reader, path)
 
@@ -115,7 +115,7 @@ test "interface callee errors faults and new owners preserve cleanup":
 	path := "{directory.path()}/log"
 	try write_file(path, "").wait()
 
-	reader: Observer = Reader(1)
+	reader: Observer := Reader(1)
 	try expect_equal(reader.reject(present(path, 20)).is_error(), true)
 
 	_fault := try expect_fault(fn: reader.broken(present(path, 21)))
@@ -127,7 +127,7 @@ test "interface resource var arguments preserve their owners":
 	path := "{directory.path()}/log"
 	try write_file(path, "").wait()
 
-	reader: Observer = Reader(1)
+	reader: Observer := Reader(1)
 	var named = Resource(30, path.clone())
 	reader.change(var named)
 	try expect_equal(named.id, 31)
@@ -138,7 +138,7 @@ test "interface failed temporary close leaves older owner registered":
 	path := "{directory.path()}/log"
 	try write_file(path, "").wait()
 
-	reader: Observer = Reader(1)
+	reader: Observer := Reader(1)
 	_fault := try expect_fault(fn: failed_close(reader, path))
 	try expect_equal(try log_text(path), "98,99,")
 
@@ -154,7 +154,7 @@ test "interface var fault retains the caller cleanup":
 	path := "{directory.path()}/log"
 	try write_file(path, "").wait()
 
-	reader: Observer = Reader(1)
+	reader: Observer := Reader(1)
 	_fault := try expect_fault(fn: named_var_fault(reader, path))
 	try expect_equal(try log_text(path), "60,")
 
@@ -163,7 +163,7 @@ test "interface Result temporaries and loop conditions keep cleanup bounded":
 	path := "{directory.path()}/log"
 	try write_file(path, "").wait()
 
-	reader: Observer = Reader(1)
+	reader: Observer := Reader(1)
 	try expect_equal(reader.result(wrapped_result(path)), true)
 	try expect_equal(reader.result(error("absent")), false)
 

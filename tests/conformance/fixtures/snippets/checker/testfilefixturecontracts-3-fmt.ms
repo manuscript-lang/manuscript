@@ -10,4 +10,4 @@ fn make_fixture() State:
 
 test "closure captures fixture":
     read := fn() Int: fixture.value
-    value: Int = read()
+    value: Int := read()

@@ -4,7 +4,7 @@ import (
 )
 
 test "byte search preserves offsets across scanner boundaries":
-	needles: List[UInt8] = [0, 1, 128, 255]
+	needles: List[UInt8] := [0, 1, 128, 255]
 
 	for value in needles:
 		for size in [0, 1, 7, 8, 15, 16, 31, 32, 33, 63, 64, 65, 127, 128, 129]:

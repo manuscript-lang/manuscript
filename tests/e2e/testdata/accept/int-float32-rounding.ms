@@ -51,9 +51,9 @@ test "constant integer to Float32 rounds directly":
 	)
 
 test "smaller integer conversions preserve their value":
-	small: Int8 = -128
-	medium: Int16 = 32767
-	large: Int32 = 2147483647
+	small: Int8 := -128
+	medium: Int16 := 32767
+	large: Int32 := 2147483647
 	try expect_equal(small.to_float32().to_float(), -128.0)
 	try expect_equal(medium.to_float32().to_float(), 32767.0)
 	try expect_equal(large.to_float32().to_float(), 2147483648.0)
@@ -85,5 +85,5 @@ test "unsigned integer to Float32 rounds once at binary32 midpoints":
 		try expect_equal(bound().to_float(), item.expected)
 
 test "constant unsigned integer to Float32 rounds directly":
-	input: UInt64 = 9223372586610589697
+	input: UInt64 := 9223372586610589697
 	try expect_equal(input.to_float32().to_float(), 9223373136366403584.0)

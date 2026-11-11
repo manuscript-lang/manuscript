@@ -6,5 +6,5 @@ fn crash(value: Int) Int:
     return 1 / value
 
 export fn main() Int:
-    value: Int!Error = ok(0)
+    value: Int!Error := ok(0)
     return value.map(crash).get()

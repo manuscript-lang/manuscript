@@ -42,5 +42,5 @@ export fn main() Int:
     i6 := i3
     say("i6 = {i6}")
 
-    bad: Bool = 1
+    bad: Bool := 1
     return 0

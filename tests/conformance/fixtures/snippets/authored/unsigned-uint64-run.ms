@@ -11,9 +11,9 @@ fn mix(h: UInt64, b: UInt64) UInt64:
     return (h * 31 + b) % 18446744073709551557
 
 fn main() Unit:
-    max: UInt64 = 18446744073709551615
-    half: UInt64 = 9223372036854775808
-    one: UInt64 = 1
+    max: UInt64 := 18446744073709551615
+    half: UInt64 := 9223372036854775808
+    one: UInt64 := 1
     _ := stdout().write("{max} {half} {one}\n")
     _ := stdout().write(
         "{max > half} {half > one} {one < max} {max >= max} {half <= one} {max == max}\n"
@@ -27,10 +27,10 @@ fn main() Unit:
     _ := stdout().write(
         "{max.to_float()} {half.to_decimal()} {max.to_int()} {one.to_int()} {max.to_uint32()} {one.to_uint8()}\n"
     )
-    l: List[UInt64] = [max, 5, half, 0]
+    l: List[UInt64] := [max, 5, half, 0]
     _ := stdout().write("{l.sorted()} {l.sorted().reversed()}\n")
     s := Stamp(id: max, tag: 7)
-    big: Int = 5
+    big: Int := 5
     _ := stdout().write("{s.id} {s.tag} {big.to_uint64()} {(-big).to_uint64()}\n")
     var h: UInt64 = 7
     for i in 0..10:

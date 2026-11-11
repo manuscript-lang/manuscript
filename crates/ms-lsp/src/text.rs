@@ -334,6 +334,13 @@ pub(crate) fn multiline_string_spans(source: &str) -> Option<Vec<LiteralSpan>> {
             let span = literal_span(bytes, at);
             at = span.end;
             spans.push(span);
+        } else if bytes[at..].starts_with(b"r\"") {
+            // One-line raw text: no escapes, ends at the first quote or line.
+            at += 2;
+            while at < bytes.len() && !matches!(bytes[at], b'"' | b'\n') {
+                at += 1;
+            }
+            at = (at + 1).min(bytes.len());
         } else if identifier(bytes[at]) {
             while at < bytes.len() && identifier(bytes[at]) {
                 at += 1;

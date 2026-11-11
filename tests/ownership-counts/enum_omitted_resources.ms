@@ -116,7 +116,7 @@ fn generic() Unit:
 	print("generic {code}")
 
 fn empty() Unit:
-	value: Choice = Empty
+	value: Choice := Empty
 
 	code := match value:
 		Full(_, _, _, code): code

@@ -28,7 +28,7 @@ test "a fault inside a promise ends only that promise":
 	fine.wait() | try expect_ok | try expect_equal(7)
 
 fn fault_at(index: Int) Int!:
-	empty: List[Int] = []
+	empty: List[Int] := []
 	return ok(empty[index])
 
 // Faults on different scheduler threads leave their guards at the same moment. They once shared one message

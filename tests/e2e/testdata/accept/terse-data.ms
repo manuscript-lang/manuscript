@@ -23,7 +23,7 @@ test "map literals and positional identifier arguments":
 	right := 8
 	try expect_equal(first(left, right), 4)
 
-	stored: fn(Int, Int) Int = subtract
+	stored: fn(Int, Int) Int := subtract
 	try expect_equal(stored(amount, deduction), 7)
 
 	var values = {"a": 1, "b": 2, "a": 3}
@@ -32,13 +32,13 @@ test "map literals and positional identifier arguments":
 	keys := values.keys()
 	try expect_false(keys.get(0) != "a" or keys.get(1) != "b")
 
-	empty: Map[String, Int] = {}
+	empty: Map[String, Int] := {}
 	try expect_false((not empty.is_empty() or size({}) != 0 or optional_size({}) != 0))
 
-	nested: Map[String, Map[String, Int]] = {"a": {}, "b": {"c": 1}}
+	nested: Map[String, Map[String, Int]] := {"a": {}, "b": {"c": 1}}
 	try expect_equal(nested["b"]["c"], 1)
 
-	optional: Map[String, Int?] = {"a": none, "b": 2}
+	optional: Map[String, Int?] := {"a": none, "b": 2}
 	try expect_false(not optional["a"].is_none())
 
 	key := "c"

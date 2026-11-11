@@ -30,7 +30,7 @@ test "a scalar collection lend leaves its owner alive":
 	)
 
 fn owned_result() Unit:
-	value: Marker!Int = ok(Marker(3))
+	value: Marker!Int := ok(Marker(3))
 	_id := value.get().id
 
 fn scalar_optional() Marker?: Marker(4)

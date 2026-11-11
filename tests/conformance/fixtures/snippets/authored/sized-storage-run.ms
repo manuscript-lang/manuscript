@@ -42,9 +42,9 @@ fn main() Unit:
         st.add((i % 7).to_int8().get(0))
 
     _ := stdout().write("{st.length()} {st.contains(3)} {st.contains(9)}\n")
-    k: Int8 = -4
-    f: Float32 = 1.25
-    cl: fn(Int) Int = fn x: (x.to_int8().get(0) + k).to_int64()
+    k: Int8 := -4
+    f: Float32 := 1.25
+    cl: fn(Int) Int := fn x: (x.to_int8().get(0) + k).to_int64()
     _ := stdout().write("{cl(10)} {f * 2.0 + 0.5}\n")
     var cells: List[Cell] = []
     for i in 0..5:
@@ -56,9 +56,9 @@ fn main() Unit:
     _ := stdout().write(
         "{kind(Num(v: 5, s: 2.5))} {kind(Word(t: "ab", k: 3))} {kind(End)}\n"
     )
-    opts: List[Int8?] = [3, none, -1]
+    opts: List[Int8?] := [3, none, -1]
     _ := stdout().write("{opts} {opts[0] == opts[2]}\n")
-    ints: List[Int8] = [5, 3, -9, 1]
+    ints: List[Int8] := [5, 3, -9, 1]
     _ := stdout().write(
         "{ints.sorted(fn a, b: a.compare(b))} {ints.map(fn x: x + 1)} {ints.fold(0, fn a, x: a + x.to_int64())}\n"
     )

@@ -18,5 +18,5 @@ export fn main() Int:
     i3 := (((11 * (-49)) + (-4)) + (((-624328) / (-1)) + ((-1) + 386484)))
     say("i3 = {i3}")
 
-    bad: String = 5
+    bad: String := 5
     return 0

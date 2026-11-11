@@ -117,7 +117,7 @@ ImportNames   = Name, { ",", Name } ;
 Declaration   = [ "export" ], (TypeDeclaration | EnumDeclaration | InterfaceDeclaration | FunctionDeclaration
               | ConstantDeclaration | ExternDeclaration)
               | Implementation | TestDeclaration | BenchDeclaration ;
-ConstantDeclaration = Name, ( ":=", Expression | ":", Type, "=", Expression ), NEWLINE ;
+ConstantDeclaration = Name, ( ":=", Expression | ":", Type, ":=", Expression ), NEWLINE ;
 
 TypeDeclaration = [ "opaque" ], "type", Name, [ TypeParameters ], ":",
                   ("...", NEWLINE | NEWLINE, INDENT, RecordBody, DEDENT) ;
@@ -186,7 +186,7 @@ SimpleStatement = Binding | Assignment | CompoundAssignment | ReturnStatement | 
 Binding       = ImmutableBinding | "var", ( VarEntry
               | "(", NEWLINE, { VarEntry, NEWLINE }, ")" ) ;
 ImmutableBinding = ( Name | PositionalPattern | RecordPattern ), ":=", Expression
-              | Name, ":", Type, "=", Expression ;
+              | Name, ":", Type, ":=", Expression ;
 VarEntry      = (Name, [ ":", Type ] | PositionalPattern | RecordPattern), "=", Expression ;
 Assignment    = AssignmentTarget, "=", Expression ;
 AssignmentTarget = Name, { ".", Name | "[", Expression, "]" } ;

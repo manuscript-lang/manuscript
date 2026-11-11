@@ -40,7 +40,7 @@ test "method calls on concrete receivers":
 	try expect_equal(Shape.Square(3).bump(2), 6)
 
 test "one call site sees different receiver types":
-	counters: List[Counter] = [Counter(1), Counter(2), Counter(3)]
+	counters: List[Counter] := [Counter(1), Counter(2), Counter(3)]
 	var total = 0
 	for counter in counters:
 		total += guarded(counter, 10)

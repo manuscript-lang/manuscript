@@ -28,5 +28,5 @@ fn exercise() Int:
     partial := source.choose[Int](1, 2)
     inferred := source.choose(1, "x")
     fallback := source.fallback()
-    output: String? = source.output()
+    output: String? := source.output()
     return first + explicit + partial + inferred + fallback + output.get("").length() + from_bound(source)

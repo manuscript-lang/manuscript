@@ -4,6 +4,7 @@
 
 Cancellation, cleanup, resources, networking, promises, test helpers.
 
+- [The terminal keeps Rust to raw mode, text reads and writes; decoding lives in Manuscript](the-terminal-is-one-rust-core-with-per-os-backends-and-manuscript-escape-sequences.md): decoder, resize, escape sequences in `cli/terminal.ms`; the module sits in an import cycle, so no string or collections imports.
 - [Image codecs are pure Manuscript and allocate only after validating the header](image-codecs-are-pure-manuscript-and-allocate-after-validating.md): `@std/image` PNG/JPEG/BMP/PPM with fuzzing; limits optional, sizes checked before allocation; pitfalls found.
 - [BigInt power estimates do not prove a result fits](bigint-power-estimates-do-not-prove-a-result-fits.md): a lower bit-length bound rejects some oversized powers, but the computed result still needs its exact size checked.
 

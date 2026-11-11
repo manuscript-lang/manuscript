@@ -26,13 +26,13 @@ test "testing assertions":
 	try expect_close(1.01, 1.0, 0.02)
 	"Manuscript" | try expect_contains("script")
 
-	present: Int? = 7
-	absent: Int? = none
+	present: Int? := 7
+	absent: Int? := none
 	((present | try expect_some)) | try expect_equal(7)
 	absent | try expect_none
 
-	success: Int!Error = ok(9)
-	failure: Int!Error = error(Error("bad"))
+	success: Int!Error := ok(9)
+	failure: Int!Error := error(Error("bad"))
 	((success | try expect_ok)) | try expect_equal(9)
 	((failure | try expect_error)) | try expect_equal(Error("bad"))
 

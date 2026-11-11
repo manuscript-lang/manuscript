@@ -42,23 +42,23 @@ fn propagate(result: Int!) Int!:
 
 test "Optional lazy fallbacks preserve nested absence and payload identity":
 	create := fn() Int?: 42
-	present: Int? = 0
-	missing: Int? = none
+	present: Int? := 0
+	missing: Int? := none
 	try expect_equal(present.or_else(create).get(), 0)
 	try expect_equal(missing.or_else(create).get(), 42)
 
-	nested: Int?? = missing
+	nested: Int?? := missing
 	try expect_false(nested.is_none() or nested.get().is_some())
 
 test "Result propagation and Error views preserve concrete causes":
-	failed: Int! = error(Error("JSON: invalid data", kind: "EBADMSG"))
+	failed: Int! := error(Error("JSON: invalid data", kind: "EBADMSG"))
 	try expect_equal(propagate(failed), failed)
 
-	success: Int! = ok(3)
-	expected: Int! = ok(4)
+	success: Int! := ok(3)
+	expected: Int! := ok(4)
 	try expect_equal(propagate(success), expected)
 
-	view: Error = Error("JSON: invalid data", kind: "EBADMSG")
+	view: Error := Error("JSON: invalid data", kind: "EBADMSG")
 	try expect_not_equal(view.message.byte_length(), 0)
 	try expect_equal(view.kind, "EBADMSG")
 

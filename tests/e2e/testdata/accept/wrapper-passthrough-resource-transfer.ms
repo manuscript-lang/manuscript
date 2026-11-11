@@ -45,13 +45,13 @@ test "native wrapper passthrough transfers resources without duplicating owners"
 	try expect_equal(events, "1,2,3,4,")
 
 fn recover_resource_error(log: String) Unit!:
-	original: Int!Marker = error(Marker(5, log))
+	original: Int!Marker := error(Marker(5, log))
 	recovered := original.or_else(fn cause: ok(cause.id))
 	try expect_equal(original.is_error(), true)
 	try expect_equal(recovered.get(), 5)
 
 fn bound_resource_error(log: String) Unit!:
-	original: Int!Marker = error(Marker(6, log))
+	original: Int!Marker := error(Marker(6, log))
 	recover := original.or_else
 	first := recover(fn cause: ok(cause.id))
 	second := recover(fn cause: ok(cause.id + 1))
@@ -113,7 +113,7 @@ fn borrowed_error_callback(fail: Bool) (fn(Marker) Int!Marker)!:
 	return ok(fn cause: ok(cause.id))
 
 fn borrowed_error_before_try(id: Int, log: String, fail: Bool) Unit!:
-	original: Int!Marker = error(Marker(id, log))
+	original: Int!Marker := error(Marker(id, log))
 	recovered := original.or_else(try borrowed_error_callback(fail))
 	try expect_equal(original.is_error(), true)
 	try expect_equal(recovered.get(), id)

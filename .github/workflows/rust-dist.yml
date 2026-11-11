@@ -3,8 +3,8 @@ name: Rust distributions
 # Builds the Rust `ms` (with the ms-native runtime embedded) natively on a runner of each of
 # the six release targets, packages it, and runs the packaged binary on a hello project.
 # release.yml calls this workflow on a version tag and publishes its archives; there every
-# target gates. Pull requests build, test, package and smoke-test the same six platforms in
-# the `rust` jobs of cicd.yml.
+# target gates. Scheduled runs on main cover the same six platforms in the `rust` jobs
+# of cicd.yml; pull requests cover Linux.
 
 on:
   workflow_call:
@@ -77,6 +77,7 @@ jobs:
             tar -xzf "dist/$name.tar.gz" -C "extracted distribution"
             ms="extracted distribution/$name/ms"
           fi
+          cmp LICENSE "extracted distribution/$name/LICENSE"
           "$ms" --version
           cd "extracted distribution/$name/examples/hello"
           bin="../../$(basename "$ms")"

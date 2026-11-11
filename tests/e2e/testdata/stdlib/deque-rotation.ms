@@ -34,9 +34,9 @@ test "negative rotation keeps optional values and nested contents":
 	q.push_back([3])
 	q.rotate(-1)
 
-	last: List[Int]? = [3]
-	first: List[Int]? = [1, 2]
-	absent: List[Int]? = none
+	last: List[Int]? := [3]
+	first: List[Int]? := [1, 2]
+	absent: List[Int]? := none
 	try expect_equal(q.pop_front(), last)
 	try expect_equal(q.pop_front(), first)
 	try expect_equal(q.pop_front(), absent)
@@ -66,9 +66,9 @@ test "positive near-whole rotation preserves optional nested payloads":
 	q.push_back([3])
 	q.rotate(2)
 
-	last: List[Int]? = [3]
-	first: List[Int]? = [1, 2]
-	absent: List[Int]? = none
+	last: List[Int]? := [3]
+	first: List[Int]? := [1, 2]
+	absent: List[Int]? := none
 	try expect_equal(q.pop_front(), last)
 	try expect_equal(q.pop_front(), first)
 	try expect_equal(q.pop_front(), absent)

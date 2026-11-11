@@ -330,3 +330,15 @@ test "inverse sine keeps large imaginary parts finite and conjugate-symmetric":
 			z.multiply(complex(-1.0, 0.0)).asin(), z.asin().multiply(complex(-1.0, 0.0))
 		)
 	)
+
+test "complex divide keeps a small part beside a part near the Float limit":
+	z := complex(1.0e308, 1.0e-100)
+	try expect_equal(z.divide(complex(1.0, 0.0)), z)
+
+	swapped := complex(1.0e-100, 1.0e308)
+	try expect_equal(swapped.divide(complex(1.0, 0.0)), swapped)
+	try expect_equal(
+		complex(-1.0e308, 1.0e-100).divide(complex(1.0, 0.0)),
+		complex(-1.0e308, 1.0e-100)
+	)
+	try expect_equal(z.divide(complex(2.0, 0.0)), complex(5.0e307, 5.0e-101))

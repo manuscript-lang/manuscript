@@ -53,7 +53,7 @@ test "concrete implementation defaults and interface defaults stay distinct":
 	concrete := service.run
 	try expect_equal((try concrete("fake", [])).stdout, service.input)
 
-	commands: Commands = service
+	commands: Commands := service
 	viewed := commands.run
 	try expect_equal((try viewed("fake", [])).stdout.length(), 0)
 
@@ -87,7 +87,7 @@ test "CSV defaults are fresh and explicit options retain their meaning":
 	typed := forward(stringify)
 	try expect_equal((try typed([["a", "b"]], second, none)), "a,b\n")
 
-	limited: List[List[String]]! = error(
+	limited: List[List[String]]! := error(
 		Error("CSV: limit exceeded", kind: "EOVERFLOW")
 	)
 	try expect_false(
@@ -97,7 +97,7 @@ test "CSV defaults are fresh and explicit options retain their meaning":
 		)
 	)
 
-	invalid: String! = error(Error("CSV: invalid input", kind: "EINVAL"))
+	invalid: String! := error(Error("CSV: invalid input", kind: "EINVAL"))
 	try expect_equal(stringify([["a"]], CsvOptions("")), invalid)
 
 test "Base64 defaults support stored functions and explicit alphabets":
@@ -114,7 +114,7 @@ test "Base64 defaults support stored functions and explicit alphabets":
 	copied := base64_encode
 	try expect_equal(copied(bytes), "/w==")
 
-	typed: fn(Bytes, Bool, Bool) String = encode
+	typed: fn(Bytes, Bool, Bool) String := encode
 	try expect_equal(typed(bytes, false, true), "/w==")
 	try expect_false(
 		(
@@ -126,10 +126,10 @@ test "Base64 defaults support stored functions and explicit alphabets":
 	decode := base64_decode
 	try expect_equal((try decode("/w==", max_bytes: 1)), bytes)
 
-	invalid: Bytes! = error(Error("encoding: invalid data", kind: "EBADMSG"))
+	invalid: Bytes! := error(Error("encoding: invalid data", kind: "EBADMSG"))
 	try expect_equal(base64_decode("_w=="), invalid)
 
-	limited: Bytes! = error(Error("encoding: limit exceeded", kind: "EOVERFLOW"))
+	limited: Bytes! := error(Error("encoding: limit exceeded", kind: "EOVERFLOW"))
 	try expect_equal(base64_decode("/w==", max_bytes: 0), limited)
 
 test "Commands defaults cross concrete bound view and generic boundaries":
@@ -138,7 +138,7 @@ test "Commands defaults cross concrete bound view and generic boundaries":
 	try expect_equal((try bound("fake", [])).stdout.length(), 0)
 	try expect_equal((try capture.run("fake", [])).stdout.length(), 0)
 
-	view: Commands = Capture("x".to_bytes())
+	view: Commands := Capture("x".to_bytes())
 	viewed := view.run
 	try expect_equal((try viewed("fake", [])).stdout.length(), 0)
 	try expect_equal((try generic_run(Capture("x".to_bytes()))).length(), 0)
@@ -155,6 +155,6 @@ test "Commands defaults cross concrete bound view and generic boundaries":
 		42
 	)
 
-	invalid: CommandOutput! = error(Error("process: invalid input", kind: "EINVAL"))
+	invalid: CommandOutput! := error(Error("process: invalid input", kind: "EINVAL"))
 	native := run
 	try expect_equal(native("", []).wait(), invalid)

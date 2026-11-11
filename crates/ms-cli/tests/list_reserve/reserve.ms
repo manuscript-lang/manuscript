@@ -9,7 +9,7 @@ export fn main() Int:
     negative := List[String](reserve: -5)
     if not negative.is_empty(): return 3
 
-    absent: Int? = none
+    absent: Int? := none
     if List[Int](reserve: absent).length() != 0: return 4
 
     return 0

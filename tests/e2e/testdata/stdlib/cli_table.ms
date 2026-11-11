@@ -46,7 +46,7 @@ test "table renders empty tables and zero column rows":
 	try expect_equal(none.render(), "\n")
 
 test "table add rejects wrong cell counts and controls":
-	malformed: Unit! = error(
+	malformed: Unit! := error(
 		Error("table: row has 1 cells, expected 2", kind: "EBADMSG")
 	)
 	var table = Table(columns: [Align.Left, Align.Right])

@@ -10,7 +10,7 @@ test "explicit byte conversion":
     if not ("é".to_bytes().decode_utf8() == "é"):
         return panic("check failed")
 
-    invalid: String? = none
+    invalid: String? := none
     if not (Bytes([255]).decode_utf8() == invalid):
         return panic("check failed")
     if not ("-007".parse_int() == -7):

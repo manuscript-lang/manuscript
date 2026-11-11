@@ -8,7 +8,7 @@ fn people() List[Person]:
 	return [Person("ann", 30), Person("bob", 17), Person("cy", 30), Person("di", 17)]
 
 test "any and all stop early and handle empty lists":
-	empty: List[Int] = []
+	empty: List[Int] := []
 	try expect_false(empty.any(fn(x: Int) Bool: true))
 	try expect_true(empty.all(fn(x: Int) Bool: false))
 
@@ -43,7 +43,7 @@ test "set and map any and all":
 	try expect_true(map.all(fn(k: String, v: Int) Bool: v > 0))
 
 test "max_by and min_by pick the first of ties and call key once per element":
-	empty: List[Person] = []
+	empty: List[Person] := []
 	try expect_true(empty.max_by(fn(p: Person) Int: p.age).is_none())
 	try expect_true(empty.min_by(fn(p: Person) Int: p.age).is_none())
 

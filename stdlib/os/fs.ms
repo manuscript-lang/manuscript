@@ -827,7 +827,7 @@ fn temporary_name(path: String, stamp: String) String:
 		if slash + 1 > split: split = slash + 1
 
 	directory := path.slice(0, split).get("")
-	name := path.slice(split, path.byte_length()).get("")
+	name := path.drop(split)
 	return "{directory}.{name.take(32)}.{stamp}.tmp"
 
 fn replace_atomically(link: String, data: Bytes) Unit!:
@@ -871,11 +871,15 @@ fn finish_atomic(
 		if permissions := mode: prepared = out.chmod(permissions)
 
 	synced := if prepared.is_error(): prepared else: out.sync()
-	_closed := out.close()
+	closed := out.close()
 
 	if synced.is_error():
 		_removed := remove(temporary)
 		return synced
+
+	if closed.is_error():
+		_removed := remove(temporary)
+		return closed
 
 	moved := rename(temporary, path)
 	if moved.is_error():

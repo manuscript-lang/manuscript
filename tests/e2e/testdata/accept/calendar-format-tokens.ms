@@ -21,7 +21,7 @@ test "calendar format keeps token boundaries and literal text":
 		"日付 2024 年 03 月 10 日 🕰 12:30:15"
 	)
 
-	bad_zone: String! = error(Error("time: invalid input", kind: "EINVAL"))
+	bad_zone: String! := error(Error("time: invalid input", kind: "EINVAL"))
 	try expect_equal(moment.format("", "Nowhere/City"), bad_zone)
 	try expect_equal(moment.format("literal", "Nowhere/City"), bad_zone)
 

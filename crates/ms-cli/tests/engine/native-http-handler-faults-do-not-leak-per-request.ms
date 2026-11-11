@@ -3,7 +3,7 @@ import serve from "@std/net/net.ms"
 import stdout from "@std/io/io.ms"
 
 fn handle(request: HttpRequest) HttpResponse:
-    xs: List[Int] = []
+    xs: List[Int] := []
     i := request.path.length()
     return HttpResponse(200, headers(), "{xs[i]}".to_bytes())
 

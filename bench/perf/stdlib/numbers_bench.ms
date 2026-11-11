@@ -33,7 +33,7 @@ bench "bigint.multiply_100_digits":
 	try measure(20000, work)
 
 bench "decimal.add_round":
-	rate: Decimal = 1.12345d
+	rate: Decimal := 1.12345d
 
 	fn work() Result[Unit, Error]:
 		var n = 0

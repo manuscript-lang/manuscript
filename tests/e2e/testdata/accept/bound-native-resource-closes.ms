@@ -67,6 +67,6 @@ test "a method value over a borrowed scalar resource leaves the close to its own
 	try remove(log)
 
 fn borrow_then_check(id: Int, log: String) Unit!:
-	result: Int!Tag = error(Tag(id))
+	result: Int!Tag := error(Tag(id))
 	try expect_equal(borrowed_status(result), true)
 	try expect_equal(read_file(log.clone()).wait().is_error(), true)

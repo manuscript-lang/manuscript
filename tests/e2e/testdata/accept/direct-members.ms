@@ -19,7 +19,7 @@ test "list members match generic dispatch":
 	try expect_false(not values.contains(2))
 	try expect_false(values.contains(3))
 
-	points: List[Point] = [Point(1, 2)]
+	points: List[Point] := [Point(1, 2)]
 	try expect_false(not points.contains(Point(1, 2)))
 	try expect_false(not contains_generic(points, Point(1, 2)))
 

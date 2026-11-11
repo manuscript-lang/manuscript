@@ -1,5 +1,7 @@
 node_modules/**
 extension.js
+build.js
+notices.js
 package-lock.json
 **/*.test.js
 

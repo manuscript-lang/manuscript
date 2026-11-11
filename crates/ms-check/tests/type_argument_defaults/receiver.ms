@@ -21,15 +21,15 @@ fn exercise() Int:
     nested := box.nested()
     own := box.own()
     copies := box.copies()
-    ints: List[Int] = read
-    lists: List[List[Int]] = nested
-    more_ints: List[Int] = own
-    boxes: List[Box[Int]] = copies
+    ints: List[Int] := read
+    lists: List[List[Int]] := nested
+    more_ints: List[Int] := own
+    boxes: List[Box[Int]] := copies
     return ints.length() + lists.length() + more_ints.length() + boxes.length()
 
 fn from_bound[S: Reader[Int]](source: S) Int:
     values := source.read()
-    ints: List[Int] = values
+    ints: List[Int] := values
     return ints.length()
 
 fn alternate_receivers() Int:
@@ -38,7 +38,7 @@ fn alternate_receivers() Int:
     first := int_box.own()
     second := text_box.own()
     again := int_box.own()
-    ints: List[Int] = first
-    strings: List[String] = second
-    more_ints: List[Int] = again
+    ints: List[Int] := first
+    strings: List[String] := second
+    more_ints: List[Int] := again
     return ints.length() + strings.length() + more_ints.length() + from_bound(int_box)

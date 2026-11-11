@@ -33,21 +33,21 @@ fn describe(value: String!String) String:
 	return "{grow(value)}"
 
 test "a borrowing result reads and drops only the cases it owns":
-	good: String!String = ok(heap("ok", 1))
-	bad: String!String = error(heap("bad", 2))
+	good: String!String := ok(heap("ok", 1))
+	bad: String!String := error(heap("bad", 2))
 	by_match(good) | try expect_equal(heap("ok", 1).length() + 1)
 	by_match(bad) | try expect_equal(heap("bad", 2).length())
 	by_binding(good) | try expect_equal(heap("ok", 1).length() + 1)
 	by_binding(bad) | try expect_equal(heap("bad", 2).length())
 
 test "try relays a borrowed error and takes an owned ok payload":
-	good: String!String = ok(heap("ok", 3))
-	bad: String!String = error(heap("bad", 4))
+	good: String!String := ok(heap("ok", 3))
+	bad: String!String := error(heap("bad", 4))
 	relay(good).get() | try expect_equal(heap("ok", 3) + "xy")
 	relay(bad).err() | try expect_equal(heap("bad", 4))
 	pass_on(good).get() | try expect_equal(heap("ok", 3) + "x")
 	pass_on(bad).err() | try expect_equal(heap("bad", 4))
 
 test "a borrowing result is passed to a reader as an ordinary Result":
-	bad: String!String = error(heap("bad", 5))
+	bad: String!String := error(heap("bad", 5))
 	describe(bad) | try expect_equal("error({heap("bad", 5)})")

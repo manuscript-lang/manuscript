@@ -139,7 +139,7 @@ The operand types, not the expected result type, select the operator row.
 - Two Never operands cannot select a numeric, ordering, or equality row; unary signs and `try` need an independently known operand.
 - `not`, `and`, and `or` take Bool, so Never is fine.
 
-The result keeps the row's type: `1 + panic(message: "stop")` is Int; `1 == panic(message: "stop")` is Bool. `instant - panic(...)` is rejected (Duration or Instant?), as is `x: Int = -panic(message: "stop")`.
+The result keeps the row's type: `1 + panic(message: "stop")` is Int; `1 == panic(message: "stop")` is Bool. `instant - panic(...)` is rejected (Duration or Instant?), as is `x: Int := -panic(message: "stop")`.
 
 See [compatibility](../types/compatibility.md) and [error propagation](../errors/propagation.md) for Never in calls, returns, and `try`.
 

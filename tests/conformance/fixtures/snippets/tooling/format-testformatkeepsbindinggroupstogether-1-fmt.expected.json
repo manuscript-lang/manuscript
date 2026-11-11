@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn helper() Int: 1\n\nA := 1\nB: Int = A + 1\n\nfn main() Unit:\n\tx := 1\n\tvar (\n\t\t_a = 10\n\t\tb = fn(y: Int) Int:\n\t\t\treturn y + 1\n\t)\n\tc := 11\n\t_d := \"Hi\"\n\t_a += x + b(c)\n"
+    "fmt": "fn helper() Int: 1\n\nA := 1\nB: Int := A + 1\n\nfn main() Unit:\n\tx := 1\n\tvar (\n\t\t_a = 10\n\t\tb = fn(y: Int) Int:\n\t\t\treturn y + 1\n\t)\n\tc := 11\n\t_d := \"Hi\"\n\t_a += x + b(c)\n"
   }
 }

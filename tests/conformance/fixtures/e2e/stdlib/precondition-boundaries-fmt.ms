@@ -50,7 +50,7 @@ test "radix formatting retains inclusive boundaries and parse errors":
         (big.to_string_radix(2) != "100011" or big.to_string_radix(36) != "z")
     )
 
-    invalid: Int! = error(
+    invalid: Int! := error(
         Error("number: invalid input", kind: "EINVAL")
     )
     try expect_equal(parse_int("1", 1), invalid)

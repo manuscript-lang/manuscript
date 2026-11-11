@@ -4,13 +4,28 @@ extern crate std;
 
 use super::*;
 use ms_rt as _; // links the msrt_* runtime symbols
-use rustix::fd::{AsFd, OwnedFd};
+use ms_rt_abi::STATUS_OK;
+use rustix::event::{PollFd, PollFlags, poll};
+use rustix::fd::{AsFd, BorrowedFd, OwnedFd};
 use rustix::fs::{Mode, OFlags};
+use rustix::io::{read, write};
 use rustix::pty::{OpenptFlags, grantpt, openpt, ptsname, unlockpt};
+use rustix::termios::tcgetattr;
 use rustix::termios::{LocalModes, Winsize, tcsetwinsize};
+use rustix::time::Timespec;
 use std::boxed::Box;
 use std::sync::Mutex;
 use std::vec::Vec;
+
+/// The status a command ended with.
+fn readable_now(fd: BorrowedFd<'_>) -> bool {
+    let mut fds = [PollFd::new(&fd, PollFlags::IN)];
+    let zero = Timespec {
+        tv_sec: 0,
+        tv_nsec: 0,
+    };
+    poll(&mut fds, Some(&zero)).is_ok_and(|n| n > 0)
+}
 
 /// The status a command ended with.
 fn code(r: Result<(), Failure>) -> u8 {
@@ -80,112 +95,83 @@ fn window(rows: u16, columns: u16) -> Winsize {
     }
 }
 
-fn open(pty: &Pty, alternate: bool) -> Raw {
-    Raw::open(pty.fd(), pty.fd(), alternate).expect("raw terminal")
+fn attach(pty: &Pty) -> Result<Raw, Failure> {
+    let (input, output) = (pty.fd(), pty.fd());
+    Raw::attach(|| Term::open(input, output))
 }
 
-fn next(raw: &Raw, timeout_ms: Option<i64>) -> (u8, Option<Event>) {
-    let mut current = None;
-    let status = raw.next_event(timeout_ms.map(|ms| ms * NS_PER_MS), &mut current);
-    (status, current)
-}
-
-fn release(h: Raw) {
-    drop(h);
-}
-
-fn key(name: &str) -> Event {
-    Event::Key {
-        name: name.as_bytes().to_vec(),
-        ctrl: false,
-        alt: false,
-        shift: false,
-    }
+fn read_text(raw: &Raw, timeout_ms: i64) -> (u8, String) {
+    let mut text = String::new();
+    let status = raw.read(timeout_ms < 50, &mut text);
+    (status, text)
 }
 
 #[test]
-fn raw_mode_decodes_input_and_restores_settings() {
+fn raw_mode_reads_text_and_restores_settings() {
     let _turn = TURN.lock().unwrap_or_else(|e| e.into_inner());
     let pty = Pty::new();
     let before = pty.local_modes();
     assert!(before.contains(LocalModes::ICANON));
-    let h = open(&pty, false);
-    let raw = &h;
+    let raw = attach(&pty).expect("raw terminal");
     assert!(
         !pty.local_modes()
             .intersects(LocalModes::ICANON | LocalModes::ECHO | LocalModes::ISIG)
     );
-    pty.type_text(b"hi\x1b[A");
-    assert_eq!(
-        next(raw, Some(500)),
-        (STATUS_OK, Some(Event::Text(b"hi".to_vec())))
-    );
-    assert_eq!(next(raw, Some(500)), (STATUS_OK, Some(key("up"))));
-    assert_eq!(next(raw, Some(0)).0, STATUS_NONE);
-    assert_eq!(next(raw, Some(20)).0, STATUS_NONE);
+    pty.type_text("h\u{e9}\x1b[A".as_bytes());
+    assert_eq!(read_text(&raw, 500), (STATUS_OK, "h\u{e9}\x1b[A".into()));
+    assert_eq!(read_text(&raw, 0).0, STATUS_NONE);
+    raw.set_restore(b"bye");
     raw.close();
     raw.close();
     // macOS raises PENDIN while it retypes input queued across a mode change.
     let settled = |m: LocalModes| m.difference(LocalModes::PENDIN);
     assert_eq!(settled(pty.local_modes()), settled(before));
-    assert_eq!(next(raw, None).0, STATUS_CLOSED);
+    assert_eq!(pty.output(), b"bye".to_vec());
+    assert_eq!(read_text(&raw, 10).0, STATUS_CLOSED);
     assert_eq!(raw.size(), Err(STATUS_CLOSED));
-    assert_eq!(code(raw.move_cursor(0, 0)), STATUS_CLOSED);
-    release(h);
+    assert_eq!(code(raw.command(b"x")), STATUS_CLOSED);
 }
 
 #[test]
-fn a_lone_escape_becomes_the_escape_key() {
+fn a_scalar_split_across_reads_arrives_whole_and_bad_bytes_are_replaced() {
     let _turn = TURN.lock().unwrap_or_else(|e| e.into_inner());
     let pty = Pty::new();
-    let h = open(&pty, false);
-    let raw = &h;
-    pty.type_text(b"\x1b");
-    assert_eq!(next(raw, Some(1000)), (STATUS_OK, Some(key("escape"))));
-    release(h);
-}
-
-#[test]
-fn cursor_and_screen_commands_write_escape_sequences() {
-    let _turn = TURN.lock().unwrap_or_else(|e| e.into_inner());
-    let pty = Pty::new();
-    let h = open(&pty, true);
-    let raw = &h;
-    assert_eq!(code(raw.move_cursor(2, 9)), STATUS_OK);
-    assert_eq!(code(raw.move_cursor(-1, 0)), STATUS_INVALID_INPUT);
-    assert_eq!(code(raw.move_cursor(0, 70_000)), STATUS_INVALID_INPUT);
-    assert_eq!(code(raw.show_cursor(false)), STATUS_OK);
-    for region in 0..4 {
-        assert_eq!(code(raw.erase(region)), STATUS_OK);
-    }
-    assert_eq!(raw.size(), Ok((80, 24)));
+    let raw = attach(&pty).expect("raw terminal");
+    pty.type_text(&[0xe2, 0x82]);
+    assert_eq!(read_text(&raw, 50).0, STATUS_NONE);
+    pty.type_text(&[0xac, 0xff, b'a']);
     assert_eq!(
-        pty.output(),
-        b"\x1b[?1049h\x1b[3;10H\x1b[?25l\x1b[2J\x1b[2K\x1b[K\x1b[1K".to_vec()
+        read_text(&raw, 500),
+        (STATUS_OK, "\u{20ac}\u{fffd}a".into())
     );
-    // Dropping the last reference restores the terminal like `close`.
-    release(h);
-    assert_eq!(pty.output(), b"\x1b[?25h\x1b[?1049l".to_vec());
 }
 
 #[test]
-fn one_raw_terminal_at_a_time_and_resize_events() {
+fn commands_write_text_and_the_registered_restore_text_runs_on_drop() {
     let _turn = TURN.lock().unwrap_or_else(|e| e.into_inner());
     let pty = Pty::new();
-    let h = open(&pty, false);
+    let raw = attach(&pty).expect("raw terminal");
+    assert_eq!(code(raw.command(b"\x1b[3;10H")), STATUS_OK);
+    assert_eq!(raw.size(), Ok((80, 24)));
+    raw.set_restore(b"\x1b[?25h");
+    assert_eq!(pty.output(), b"\x1b[3;10H".to_vec());
+    drop(raw);
+    assert_eq!(pty.output(), b"\x1b[?25h".to_vec());
+}
+
+#[test]
+fn one_raw_terminal_at_a_time_and_a_resized_window_reports_its_size() {
+    let _turn = TURN.lock().unwrap_or_else(|e| e.into_inner());
+    let pty = Pty::new();
+    let raw = attach(&pty).expect("raw terminal");
     assert_eq!(
-        Raw::open(pty.fd(), pty.fd(), false).err().map(|f| f.status),
+        attach(&pty).err().map(|f| f.status),
         Some(ms_rt_abi::STATUS_BUSY)
     );
-    let raw = &h;
     tcsetwinsize(&pty.master, window(30, 100)).expect("set size");
-    let resize = Event::Resize {
-        columns: 100,
-        rows: 30,
-    };
-    assert_eq!(next(raw, Some(1000)), (STATUS_OK, Some(resize)));
-    release(h);
-    release(open(&pty, false));
+    assert_eq!(raw.size(), Ok((100, 30)));
+    drop(raw);
+    drop(attach(&pty).expect("reopened"));
 }
 
 #[test]
@@ -197,7 +183,7 @@ fn redirected_streams_are_not_terminals() {
         Box::leak(Box::new(write_end)),
     );
     assert_eq!(
-        Raw::open(read_end.as_fd(), write_end.as_fd(), false)
+        Raw::attach(|| Term::open(read_end.as_fd(), write_end.as_fd()))
             .err()
             .map(|f| f.status),
         Some(STATUS_NOT_TERMINAL)

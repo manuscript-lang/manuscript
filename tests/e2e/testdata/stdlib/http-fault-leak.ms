@@ -12,7 +12,7 @@ import (
 
 fn faulting(var exchange: HttpExchange) Unit!:
 	big := "x".repeat(1000000).get("")
-	xs: List[Int] = []
+	xs: List[Int] := []
 	n := xs[big.length()]
 	if big.length() + n > 5: return ok(unit)
 

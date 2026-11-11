@@ -23,10 +23,10 @@ fn exercise() Int:
 	nested := box.nested()
 	own := box.own()
 	copies := box.copies()
-	ints: List[Int] = read
-	lists: List[List[Int]] = nested
-	more_ints: List[Int] = own
-	boxes: List[Box[Int]] = copies
+	ints: List[Int] := read
+	lists: List[List[Int]] := nested
+	more_ints: List[Int] := own
+	boxes: List[Box[Int]] := copies
 	return ints.length() + lists.length() + more_ints.length() + boxes.length()
 
 test "method type defaults specialize receiver parameters and Self":
@@ -34,7 +34,7 @@ test "method type defaults specialize receiver parameters and Self":
 
 	box := Box(7)
 	bound := box.own[String]
-	values: List[String] = bound()
+	values: List[String] := bound()
 	values.length() | try expect_equal(0)
 
 interface Mark:
@@ -72,17 +72,17 @@ fn recursive_default[T: Relation[T] = Value]() List[T]: return []
 
 test "type defaults validate local and recursive interface implementations":
 	values := default_value()
-	typed: List[Value] = values
+	typed: List[Value] := values
 	typed.length() | try expect_equal(0)
 
 	related := recursive_default()
-	recursive: List[Value] = related
+	recursive: List[Value] := related
 	recursive.length() | try expect_equal(0)
 	read(Value(7)) | try expect_equal(7)
 
 fn from_bound[S: Reader[Int]](source: S) Int:
 	values := source.read()
-	ints: List[Int] = values
+	ints: List[Int] := values
 	return ints.length()
 
 fn alternate_receivers() Int:
@@ -91,9 +91,9 @@ fn alternate_receivers() Int:
 	first := int_box.own()
 	second := text_box.own()
 	again := int_box.own()
-	ints: List[Int] = first
-	strings: List[String] = second
-	more_ints: List[Int] = again
+	ints: List[Int] := first
+	strings: List[String] := second
+	more_ints: List[Int] := again
 	return ints.length() + strings.length() + more_ints.length() + from_bound(int_box)
 
 test "receiver defaults stay independent and work through generic bounds":

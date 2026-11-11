@@ -40,8 +40,8 @@ fn mix(seed: UInt64) UInt64:
     return h
 
 fn main() Unit:
-    top: UInt64 = 18446744073709551615
-    near: UInt64 = 9223372036854775806
+    top: UInt64 := 18446744073709551615
+    near: UInt64 := 9223372036854775806
     _ := stdout().write(
         "{count(near, near + 4)} {count(top - 3, top)} {countdown(5)}\n"
     )

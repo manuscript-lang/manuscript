@@ -57,7 +57,7 @@ test "wide Map merge preserves order and owns values after the source drops":
 
 test "primitive Map merge preserves overwrite and empty-source behavior":
 	var target: Map[Int, Int] = {2: 99, -1: -1}
-	source: Map[Int, Int] = {0: 0, 1: 1, 2: 2}
+	source: Map[Int, Int] := {0: 0, 1: 1, 2: 2}
 	target.merge(source.clone())
 
 	empty := Map[Int, Int]()

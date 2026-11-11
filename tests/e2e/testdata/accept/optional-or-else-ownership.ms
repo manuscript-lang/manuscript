@@ -46,7 +46,7 @@ test "or_else copies a borrowed List Optional at its declared boundary":
 
 test "or_else invokes a missing fallback once and skips a present fallback":
 	var fallback = Fallback(0)
-	missing: String? = none
+	missing: String? := none
 	recovered := missing.or_else(fn: fallback.create())
 	try expect_equal(recovered.get(), "fallback 1")
 
@@ -55,7 +55,7 @@ test "or_else invokes a missing fallback once and skips a present fallback":
 	try expect_equal(fallback.calls, 1)
 
 test "or_else permits a fallback that stays absent":
-	missing: String? = none
+	missing: String? := none
 	kept := missing.or_else(fn: none)
 	try expect_equal(kept, none)
 

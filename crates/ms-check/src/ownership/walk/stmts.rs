@@ -634,9 +634,9 @@ impl Walker<'_> {
         // entry would leak. Source-defined methods with the same names keep their own semantics.
         if let Some((m, _)) = self.method_value_parts(e)
             && m.native != Native::Source
-            && crate::effects::collection_mutation(self.syms, &m)
+            && crate::std_ops::collection_mutation(self.syms, &m)
             && m.name()
-                .is_some_and(|n| crate::effects::discards_entries(self.syms.str(n)))
+                .is_some_and(|n| crate::std_ops::discards_entries(self.syms.str(n)))
             // An operation that also stores its argument was rejected above, with that reason.
             && !native_method_argument_modes(self.syms, &m).contains(&ParamMode::Move)
         {

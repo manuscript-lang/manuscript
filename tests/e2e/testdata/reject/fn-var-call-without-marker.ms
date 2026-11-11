@@ -3,7 +3,7 @@ fn push_one(var values: List[Int]) Unit:
 
 export fn main() Int:
 	var values: List[Int] = []
-	change: fn(var List[Int]) Unit = push_one
+	change: fn(var List[Int]) Unit := push_one
 
 	// The function type changes its parameter, so the call must say so.
 	change(values)

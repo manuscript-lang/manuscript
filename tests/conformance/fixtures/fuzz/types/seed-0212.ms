@@ -28,6 +28,6 @@ export fn main() Int:
         acc3 += i * 7
     say("acc3 = {acc3}")
 
-    bad: Bool = 1
+    bad: Bool := 1
     say("gcd(2021, 3909) = {gcd(2021, 3909)}")
     return 0

@@ -1,5 +1,5 @@
 //! A resource closed at scope end whose type can report a failure only through a
-//! separate method (`MSL114`): `close` cannot return an error, so a failed write
+//! separate method (`MSL114`): scope-end close does not run that method, so its failure
 //! surfaces only if the binding is flushed first.
 
 use super::{Finding, finding, module_file};
@@ -11,8 +11,9 @@ use ms_syntax::ast::*;
 use ms_syntax::visit::Visitor;
 use std::collections::{HashMap, HashSet};
 
-/// Zero-argument methods that return a `Result` and make earlier writes durable.
-const FINISHERS: [&str; 3] = ["flush", "sync", "commit"];
+/// Zero-argument methods that return a `Result` and complete earlier writes. `sync` is absent: a
+/// file's writes already reach the OS, and an `fsync` is a durability choice, not a pending flush.
+const FINISHERS: [&str; 2] = ["flush", "commit"];
 
 pub(super) fn lint(
     syms: ms_syntax::Names,
@@ -22,7 +23,7 @@ pub(super) fn lint(
 ) {
     let mut scan = Scan {
         module,
-        moves: &program.close_moves,
+        moves: &program.ownership.close_moves,
         owned: Vec::new(),
         finished: HashSet::new(),
         kept: HashSet::new(),
@@ -31,9 +32,10 @@ pub(super) fn lint(
     let file = module_file(syms, module);
     for (uid, name, pos, ty) in scan.owned {
         // A binding every path moves is left alone: the new owner reports the close.
-        let kept = !program.close_moves.contains_key(&uid) || scan.kept.contains(&uid);
+        let kept = !program.ownership.close_moves.contains_key(&uid) || scan.kept.contains(&uid);
         if scan.finished.contains(&uid)
             || !program
+                .ownership
                 .binding_facts
                 .has(uid, ms_check::api::ownership::BindingFact::ImplicitClose)
             || !kept
@@ -46,7 +48,7 @@ pub(super) fn lint(
         findings.push(finding(
             "MSL114",
             format!(
-                "`{name_t}` is closed when its scope ends, and unflushed data is lost if that fails; call `try {name_t}.{method_t}()` before the scope ends to see the failure"
+                "`{name_t}` is closed when its scope ends, which does not run `{method_t}`; call `try {name_t}.{method_t}()` before the scope ends to handle its failure"
             , name_t = syms.str(name), method_t = syms.str(method)),
             &file,
             pos,

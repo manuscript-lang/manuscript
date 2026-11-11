@@ -15,5 +15,5 @@ export fn main() Int:
     l2 := [1, 2, 3].take(0)
     say("l2 = {l2} len {l2.length()}")
 
-    bad: Int = "text"
+    bad: Int := "text"
     return 0

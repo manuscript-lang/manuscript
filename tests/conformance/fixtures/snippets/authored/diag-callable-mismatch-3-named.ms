@@ -4,4 +4,4 @@
 fn source(value: Int) String: "text"
 
 fn exercise() Unit:
-    callback: fn(Int) Int = source
+    callback: fn(Int) Int := source

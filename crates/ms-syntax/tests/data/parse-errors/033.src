@@ -2,7 +2,7 @@ import expect_equal from "@std/test/test.ms"
 
 test "receiver before index":
     var values = [.7]
-    index: Int? = 0
+    index: Int? := 0
     result := values.get(
         match index:
             i:

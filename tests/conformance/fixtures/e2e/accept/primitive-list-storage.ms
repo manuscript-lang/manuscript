@@ -3,11 +3,11 @@
 // conform: origin=tests/e2e/testdata/accept/primitive-list-storage.ms
 import expect_equal, expect_false, fail from "@std/test/test.ms"
 
-fn append_value[T](var values: List[T], value: T) List[T]:
+fn append_value[T: Clonable](var values: List[T], value: T) List[T]:
     values.append(value)
     return values.clone()
 
-fn forwarded[T](values: List[T]) List[T]:
+fn forwarded[T: Clonable](values: List[T]) List[T]:
     return values.clone()
 
 type Lists:
@@ -16,7 +16,7 @@ type Lists:
 test "primitive storage retains generic record Optional and independent copies":
     var values = [9223372036854775807, -9223372036854775808]
     var record = Lists(values.clone())
-    wrapped: List[Int]? = values.clone()
+    wrapped: List[Int]? := values.clone()
     for i in 0..4096:
         append_value(var record.values, i)
     values.append(17)
@@ -30,7 +30,7 @@ test "primitive storage retains generic record Optional and independent copies":
     values.set(0, 42)
     try expect_equal(copy[0], 9223372036854775807)
 
-    nested: List[Int?] = [7, none]
+    nested: List[Int?] := [7, none]
     try expect_false(not (nested[0].get() == 7 and nested[1].is_none()))
 
 test "Float Bool and String preserve mutation traversal and width":

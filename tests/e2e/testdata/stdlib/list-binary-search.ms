@@ -60,12 +60,12 @@ test "binary search handles full-width extrema and sized numbers":
 	for target in [minimum, minimum + 1, -1, 0, 1, maximum - 1, maximum]:
 		try check_search(values, target)
 
-	narrow: List[Int8] = [-128, -1, 0, 127]
-	target: Int8 = -1
+	narrow: List[Int8] := [-128, -1, 0, 127]
+	target: Int8 := -1
 	try check_search(narrow, target)
 
-	unsigned: List[UInt64] = [0, 9223372036854775808, 18446744073709551615]
-	large: UInt64 = 18446744073709551615
+	unsigned: List[UInt64] := [0, 9223372036854775808, 18446744073709551615]
+	large: UInt64 := 18446744073709551615
 	try check_search(unsigned, large)
 	try check_search(["", "apple", "apple", "pear"], "apple")
 	try check_search(["", "apple", "pear"], "fig")
@@ -100,8 +100,8 @@ test "binary search matches sorted Float ordering including NaN and signed zero"
 	try expect_equal([0.0, infinity].binary_search(nan).index, 2)
 	try expect_true(not [0.0, infinity].binary_search(nan).found)
 
-	narrow: List[Float32] = [0.0, 1.0, nan.to_float32().get()]
-	narrow_nan: Float32 = nan.to_float32().get()
+	narrow: List[Float32] := [0.0, 1.0, nan.to_float32().get()]
+	narrow_nan: Float32 := nan.to_float32().get()
 	try check_search(narrow, narrow_nan)
 
 fn count(path: String) Int:

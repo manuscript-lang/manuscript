@@ -35,13 +35,13 @@ fn consume[T: ReadValue[Int]](source: T) Int:
 test "contract views and callbacks":
 	box := Box[Int](7)
 	first := make_view(box)
-	identity: ReadValue[Int] = forward_view(box.clone())
-	copied: ReadValue[Int] = forward_view(box)
+	identity: ReadValue[Int] := forward_view(box.clone())
+	copied: ReadValue[Int] := forward_view(box)
 	holder := ReaderHolder(identity)
-	_readers: List[ReadValue[Int]] = [forward_view(box.clone())]
-	_optional: ReadValue[Int]? = forward_view(box)
+	_readers: List[ReadValue[Int]] := [forward_view(box.clone())]
+	_optional: ReadValue[Int]? := forward_view(box)
 	callback := CallbackReader(seven)
-	callback_view: ReadValue[Int] = callback
+	callback_view: ReadValue[Int] := callback
 	try expect_equal(first.get(), 7)
 	try expect_equal(copied.get(), 7)
 	try expect_equal(callback_view.get(), 7)

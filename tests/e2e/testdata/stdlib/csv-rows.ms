@@ -96,7 +96,7 @@ test "options apply":
 	)
 
 test "empty CSV streams reject invalid options":
-	invalid: List[List[String]]! = error(Error("CSV: invalid input", kind: "EINVAL"))
+	invalid: List[List[String]]! := error(Error("CSV: invalid input", kind: "EINVAL"))
 
 	for options in [
 		CsvOptions(delimiter: ""), CsvOptions(delimiter: "::"),
@@ -111,7 +111,7 @@ test "empty CSV streams reject invalid options":
 			empty_chunks | csv_rows(options.clone()) | collect(none), invalid
 		)
 
-	no_rows: List[List[String]] = []
+	no_rows: List[List[String]] := []
 	try expect_equal(try read_rows("", 1), no_rows)
 	try expect_equal(
 		try read_rows("", 1, CsvOptions(delimiter: ";", line_ending: "\r\n")), no_rows

@@ -41,8 +41,9 @@ export opaque type Histogram:
 	counts: List[Int]
 	// Observations recorded since creation or the last reset.
 	total: Int
-	// Exact sum of every observation.
+	// Exact sum of every observation, as `sum_wraps` times 2^63 plus `sum`.
 	sum: Int
+	sum_wraps: Int
 	// Smallest observation; meaningful only when `total` is above zero.
 	low: Int
 	// Largest observation; meaningful only when `total` is above zero.
@@ -58,7 +59,14 @@ impl Histogram:
 		if self.total == 0 or value < self.low: self.low = value
 		if value > self.high: self.high = value
 		self.total += 1
-		self.sum += value
+
+		room := 9223372036854775807 - value
+
+		if self.sum <= room:
+			self.sum += value
+		else:
+			self.sum -= room + 1
+			self.sum_wraps += 1
 
 	// Adds one duration as nanoseconds. A negative duration faults like `record`.
 	var fn record_duration(elapsed: Duration) Unit:
@@ -92,7 +100,8 @@ impl Histogram:
 	fn mean() Float:
 		if self.total == 0: return 0.0
 
-		return self.sum.to_float() / self.total.to_float()
+		sum := self.sum_wraps.to_float() * 9223372036854775808.0 + self.sum.to_float()
+		return sum / self.total.to_float()
 
 	// Value at or below which `p` percent of observations fall, for `p` in 0.0 through 100.0; none when empty.
 	// The answer is the top of the matching bucket, never above `maximum`. A `p` outside the range faults.
@@ -118,9 +127,10 @@ impl Histogram:
 		self.counts = zeros()
 		self.total = 0
 		self.sum = 0
+		self.sum_wraps = 0
 		self.low = 0
 		self.high = 0
 
 // Creates an empty histogram.
 export fn histogram() Histogram:
-	return Histogram(zeros(), 0, 0, 0, 0)
+	return Histogram(zeros(), 0, 0, 0, 0, 0)

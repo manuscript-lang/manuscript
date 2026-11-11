@@ -43,7 +43,7 @@ fn lifecycle_and_diagnostics() {
     let broken = ws.uri("broken.ms");
     s.open(
         &broken,
-        "fn broken() Int:\n    x: String = 1\n    return missing\n",
+        "fn broken() Int:\n    x: String := 1\n    return missing\n",
         1,
     );
     let syntax = ws.uri("syntax.ms");
@@ -536,7 +536,7 @@ fn broken_documents() {
     let ws = Workspace::new("broken");
     let mut s = Script::initialize(&ws.root.to_string_lossy(), true);
     let sources = [
-        "fn broken() Int:\n    x: String = 1\n    return missing\n",
+        "fn broken() Int:\n    x: String := 1\n    return missing\n",
         "fn (:\nfn ok() Int:\n    return 1\n",
         "type T:\n    a: Int\nfn f() T:\n    return T(a: \n",
         "fn f(a: Int) Int:\n  return a\n",
@@ -660,7 +660,7 @@ fn none_references_cover_written_case_tokens_beyond_snapshot_limit() {
         ("core.ms", 2),
         ("data/encoding.ms", 1),
         ("io/io.ms", 7),
-        ("cli/terminal.ms", 2),
+        ("cli/terminal.ms", 7),
         ("internal/random.ms", 1),
         ("main.ms", 1),
         ("math/decimal.ms", 1),

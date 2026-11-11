@@ -15,11 +15,11 @@ fn keep(var xs: List[Reportable], e: Reportable) Unit:
     xs.append(e)
 
 fn store_local(cause: Cause) List[Reportable]:
-    e: Reportable = cause
+    e: Reportable := cause
     return [e]  // error: cannot move `e` out: it is borrowed, not owned (a borrow)
 
 fn change_held(var cause: Cause) Reportable:
-    e: Reportable = cause
+    e: Reportable := cause
     cause.code = 2  // error: cannot change `cause.code` while `e` borrows it (binding of a view of it, at 22:5)
     return e
 
@@ -36,13 +36,13 @@ fn caller_change() String:
     return e.message()
 
 fn rebound_still_used(cause: Cause) Reportable:
-    e: Reportable = cause
+    e: Reportable := cause
     e2 := e
     message := e.message()
     return e2  // error: cannot move `e2` out: it is borrowed, not owned (a borrow)
 
 fn rebound_alias_still_used(cause: Cause) Reportable:
-    e: Reportable = cause
+    e: Reportable := cause
     e2 := e
     message := e.message()
     return relay(e2)  // error: `relay` returns a reference into `e`, which this position would keep

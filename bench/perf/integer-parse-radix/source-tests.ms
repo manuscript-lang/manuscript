@@ -15,8 +15,8 @@ test "integer radix parsing preserves signed boundaries in every base":
 		try expect_equal((try parse_int("-0000", radix)), 0)
 
 test "integer radix syntax errors take precedence after overflow":
-	overflow: Int! = error(Error("number: value out of range", kind: "ERANGE"))
-	invalid: Int! = error(Error("number: invalid data", kind: "EBADMSG"))
+	overflow: Int! := error(Error("number: value out of range", kind: "ERANGE"))
+	invalid: Int! := error(Error("number: invalid data", kind: "EBADMSG"))
 
 	for text in [
 		"9223372036854775808", "-9223372036854775809", "18446744073709551616",

@@ -27,7 +27,7 @@ fn take(x: Shape?) Int:
 
 fn main() Unit:
     h := Holder(Sq(4))
-    t: Shape? = Sq(5)
+    t: Shape? := Sq(5)
     var v: Shape? = none
     v = Sq(6)
     (

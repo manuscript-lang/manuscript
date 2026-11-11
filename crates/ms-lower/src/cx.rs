@@ -378,10 +378,6 @@ pub struct Cx {
     pub syms: ms_check::api::Names,
     /// The session whose standard library the program was checked against.
     pub session: Rc<ms_check::Session>,
-    /// Boolean ownership facts per node (returners, view wraps, bound borrows, view moves, borrowed matches).
-    pub node_facts: Rc<ms_check::api::ownership::NodeFacts>,
-    /// Boolean ownership facts per binding (borrows, closes, conditional moves).
-    pub binding_facts: Rc<ms_check::api::ownership::BindingFlags>,
     /// Lowering sites that copied a borrow into an owning position, with the producer op.
     pub copy_gaps: Vec<String>,
     /// Module queries by file.
@@ -424,29 +420,9 @@ pub struct Cx {
     pub mutated: std::collections::HashSet<crate::mutation::ParamKey>,
     /// The `make_fixture` factory and hooks type of each module with tests.
     pub fixtures: HashMap<Name, ms_check::TestFixture>,
-    /// The name expressions that move a closed resource binding, by binding: the scope-end close
-    /// runs only on the paths that never reach one.
-    pub close_moves: Rc<HashMap<usize, std::collections::HashSet<ms_check::api::ast::NodeId>>>,
-    /// Every move of a whole binding, by binding: the name expressions (or lambdas) that take
-    /// its value out of the local.
-    pub moves: Rc<HashMap<usize, std::collections::HashSet<ms_check::api::ast::NodeId>>>,
-    /// Resource fields moved out of an owned binding, by binding and member node.
-    pub resource_moves:
-        Rc<HashMap<usize, HashMap<ms_check::api::ast::NodeId, Vec<ms_check::api::types::Name>>>>,
-    /// Captures a non-escaping lambda only reads: the closure points at them instead of copying.
-    pub borrowed_captures: Rc<std::collections::HashSet<(Name, ms_check::api::ast::NodeId, usize)>>,
-    /// Parameters each callable moving_params, by module file and node.
-    pub moving_params: Rc<HashMap<(Name, ms_check::api::ast::NodeId), Vec<bool>>>,
-    /// Calls bound as a mutable borrow of a field path of their argument, by module file and node.
-    pub getters: Rc<HashMap<(Name, ms_check::api::ast::NodeId), Vec<Name>>>,
-    /// Lending calls whose result the caller owns because an argument is a temporary: the
-    /// result is copied out before the temporary is dropped.
-    pub owned_borrows: Rc<
-        std::collections::HashMap<
-            (Name, ms_check::api::ast::NodeId),
-            ms_check::api::ownership::OwnedBorrow,
-        >,
-    >,
+    /// What the ownership stage decided: moves, borrows, getters, captures, per-node and per-binding
+    /// facts. Lowering reads these and decides none of them again.
+    pub ownership: Rc<ms_check::api::ownership::OwnershipFacts>,
     /// Which types are resources, for the closers of records and collections that hold them.
     pub classes: ms_check::api::ownership::Classifier,
 }
@@ -469,12 +445,12 @@ impl Cx {
 
     /// The binding is a `var` borrow: it lowers as a path into its origin.
     pub fn exclusive(&self, uid: usize) -> bool {
-        self.binding_facts.borrow(uid) == Some(BorrowKind::Exclusive)
+        self.ownership.binding_facts.borrow(uid) == Some(BorrowKind::Exclusive)
     }
 
     /// The binding is a `let` borrow of a place: it may point into its origin instead of copying.
     pub fn shared(&self, uid: usize) -> bool {
-        self.binding_facts.borrow(uid) == Some(BorrowKind::Shared)
+        self.ownership.binding_facts.borrow(uid) == Some(BorrowKind::Shared)
     }
 
     /// Indexes every module of the program.
@@ -487,7 +463,7 @@ impl Cx {
             }
             mods.insert(m.data.file, Rc::new(m));
         }
-        let mutated = crate::mutation::infer_mutated(syms, &mods, &callables);
+        let mutated = crate::mutation::infer_mutated(&callables);
         let native_ops = crate::nativerec::NativeOps::new(syms, program, &callables);
         let extended = program
             .methods
@@ -498,8 +474,6 @@ impl Cx {
         Cx {
             syms: program.syms,
             session: program.session.clone(),
-            node_facts: program.node_facts.clone(),
-            binding_facts: program.binding_facts.clone(),
             copy_gaps: Vec::new(),
             extended,
             scope_names: Vec::new(),
@@ -521,13 +495,7 @@ impl Cx {
             method_index: MethodIndex::new(&program.methods),
             methods: program.methods.clone(),
             fixtures: program.test_fixtures.clone(),
-            close_moves: program.close_moves.clone(),
-            moves: program.moves.clone(),
-            resource_moves: program.resource_moves.clone(),
-            borrowed_captures: program.borrowed_captures.clone(),
-            moving_params: program.moving_params.clone(),
-            getters: program.getter_borrows.clone(),
-            owned_borrows: program.owned_borrows.clone(),
+            ownership: program.ownership.clone(),
             classes: ms_check::api::ownership::Classifier::new(program),
         }
     }
@@ -786,7 +754,7 @@ impl Cx {
             return Ok(m.types.native(native, args));
         }
         // Bytes is a growable byte buffer; the text and byte builders are owned values over one.
-        if t.is(Builtin::Bytes) || ms_check::api::effects::is_text_builder(self.syms, t) {
+        if t.is(Builtin::Bytes) || ms_check::api::ownership::is_text_builder(self.syms, t) {
             return Ok(MTy::BYTES);
         }
         // `Decimal` is plain data in the runtime's `repr(C)` layout (`ms_rt::decimal::Dec`).
@@ -817,7 +785,7 @@ impl Cx {
         id: ms_check::api::ast::NodeId,
         fact: ms_check::api::ownership::Fact,
     ) -> bool {
-        self.node_facts.has(file, id, fact)
+        self.ownership.node_facts.has(file, id, fact)
     }
 }
 

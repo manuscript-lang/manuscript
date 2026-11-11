@@ -20,5 +20,5 @@ test "implementation variables inside function signatures":
     box := Box(render)
     try expect_equal(box.apply(3), "3")
 
-    operation: Apply[String] = box
+    operation: Apply[String] := box
     try expect_equal(operation.apply(4), "4")

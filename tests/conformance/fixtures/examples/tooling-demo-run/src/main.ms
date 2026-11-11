@@ -11,7 +11,7 @@ type Package:
 export fn main() Int:
     package := Package("Manuscript", 42)
     values := [10, 20, 30]
-    optional: Int? = 5
+    optional: Int? := 5
 
     if value := optional:
         if value != 5:

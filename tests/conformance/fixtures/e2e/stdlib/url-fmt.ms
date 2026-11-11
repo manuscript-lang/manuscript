@@ -19,12 +19,12 @@ test "URL query retains duplicate keys empty values and spaces":
     try expect_false(entries.length() != 4 or entries.get(3).value != "hello world")
     try expect_equal(format_query(entries), "a=1&a=2&empty=&space=hello+world")
 
-    limited: List[QueryEntry]! = error(
+    limited: List[QueryEntry]! := error(
         Error("URL: limit exceeded", kind: "EOVERFLOW")
     )
     try expect_equal(parse_query("a=1&b=2", 1), limited)
 
-    invalid: String! = error(
+    invalid: String! := error(
         Error("URL: invalid data", kind: "EBADMSG")
     )
     try expect_equal(decode_component("%zz"), invalid)
@@ -38,7 +38,7 @@ test "URL query skips empty segments":
 
 test "URL format rejects queries that would not round trip":
     base := try parse("http://h/p")
-    invalid: String! = error(
+    invalid: String! := error(
         Error("URL: invalid input", kind: "EINVAL")
     )
 
@@ -56,7 +56,7 @@ test "URL format rejects queries that would not round trip":
     try expect_equal((try format(good)), "http://h/p?a=%41&b")
 
 test "URL parse rejects malformed hosts and queries and keeps an empty authority":
-    invalid: Url! = error(
+    invalid: Url! := error(
         Error("URL: invalid data", kind: "EBADMSG")
     )
     for text in ["http://host:80:80/", "http://h/p?q=a b", "http://h/p?q=%zz"]:
@@ -67,10 +67,10 @@ test "URL parse rejects malformed hosts and queries and keeps an empty authority
     try expect_equal((empty | try format | try parse), empty)
 
 test "URL format and resolve reject invalid schemes and hostless relative paths":
-    invalid_text: String! = error(
+    invalid_text: String! := error(
         Error("URL: invalid input", kind: "EINVAL")
     )
-    invalid_url: Url! = error(
+    invalid_url: Url! := error(
         Error("URL: invalid input", kind: "EINVAL")
     )
 

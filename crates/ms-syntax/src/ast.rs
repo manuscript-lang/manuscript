@@ -700,7 +700,7 @@ pub enum AssignTarget {
 /// Statement variants.
 #[derive(Debug, Clone)]
 pub enum StmtKind {
-    /// `pattern := value`, `name: Type = value`, or `var` binding.
+    /// `pattern := value`, `name: Type := value`, or `var` binding.
     Bind {
         /// `var` rather than an immutable `:=` binding.
         mutable: bool,

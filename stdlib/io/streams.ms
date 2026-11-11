@@ -124,8 +124,8 @@ impl Source[T] for ListSource[T]:
 	var fn close() Unit!:
 		return ok(unit)
 
-// A stream that yields the items of `items` in order and then ends.
-export fn from_list[T](items: List[T]) ReadStream[T]:
+// A stream that yields copies of the items of `items` in order and then ends; the items must be Clonable, since a resource has one owner and cannot be copied (move it into a custom Source instead).
+export fn from_list[T: Clonable](items: List[T]) ReadStream[T]:
 	var reversed = items.clone()
 	reversed.reverse()
 	return ReadStream[T](ListSource[T](reversed))

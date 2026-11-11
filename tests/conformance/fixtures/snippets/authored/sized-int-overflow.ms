@@ -4,7 +4,7 @@
 import stdout from "@std/io/io.ms"
 
 fn main() Unit:
-    a: Int8 = 100
+    a: Int8 := 100
     _ := stdout().write("before\n")
     b := a + a
     _ := stdout().write("{b}\n")

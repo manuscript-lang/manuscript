@@ -21,7 +21,7 @@ export fn main() Int:
     i4 := (39 / (((-38) - (-6)) - (-46)))
     say("i4 = {i4}")
 
-    bad: String = 5
+    bad: String := 5
     l5 := [(-5), (-6), 18, (-14)]
     say("l5 = {l5} len {l5.length()}")
 

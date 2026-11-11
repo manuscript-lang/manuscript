@@ -1,9 +1,9 @@
-//! Which parameters a function changes.
+//! Which parameters a function changes, and which locals a body changes.
 //!
-//! A parameter is changed when the body assigns through it, uses a collection mutator on it,
-//! or passes it to a function that changes the matching parameter. The caller of such a
-//! function sees the change in its own argument: the callee hands the updated value back and
-//! the call site stores it into the argument's place, the same way a `var` parameter works.
+//! A parameter is changed when it is declared `var`; the caller sees the change in its own
+//! argument: the callee hands the updated value back and the call site stores it into the
+//! argument's place. Local changes (assignment through a name, a collection mutator, a call that
+//! changes a parameter) decide which locals live in memory slots.
 
 use ms_check::api::ast::*;
 use ms_check::api::hir::{Body, Callable, ModuleHir, Resolution};
@@ -289,7 +289,7 @@ impl Visitor for Mutations<'_> {
         match &view.target {
             Resolution::Method(m) if m.native != ct::Native::Source => {
                 if let ExprKind::Member { left, .. } = &c.kind
-                    && ms_check::api::effects::collection_mutation(syms, m)
+                    && ms_check::api::ownership::collection_mutation(syms, m)
                 {
                     self.roots.extend(place_root(syms, self.hir, left));
                 }
@@ -351,11 +351,6 @@ fn scan<'h>(syms: ms_check::api::Names, hir: &'h ModuleHir, body: Body<'_>) -> M
     v
 }
 
-/// Whether a parameter of this type is shared by reference in the source semantics.
-fn by_reference(kind: Kind) -> bool {
-    matches!(kind, Kind::Record | Kind::Alternative | Kind::Native)
-}
-
 /// The position of the callee parameter an edge feeds.
 fn target_position(callables: &HashMap<FnKey, Rc<Callable>>, edge: &Edge) -> Option<usize> {
     let callee = callables.get(&edge.callee)?;
@@ -379,7 +374,9 @@ pub(crate) fn method_changes_receiver(
     match (&m.decl, m.native) {
         (Some(d), ct::Native::Contract) => d.method().is_some_and(|x| x.mutating),
         (_, ct::Native::Contract) => false,
-        (_, native) if native.is_bodiless() => ms_check::api::effects::collection_mutation(syms, m),
+        (_, native) if native.is_bodiless() => {
+            ms_check::api::ownership::collection_mutation(syms, m)
+        }
         (Some(d), _) => mutated.contains(&((m.module, d.id()), 0)),
         _ => false,
     }
@@ -464,66 +461,22 @@ pub(crate) fn mutated_locals(
     roots
 }
 
-/// The parameters (receiver first) every source function changes: declared `var`, or changed
-/// by the body of a reference-shared type.
-pub(crate) fn infer_mutated(
-    syms: ms_check::api::Names,
-    mods: &HashMap<Name, Rc<ModuleHir>>,
-    callables: &HashMap<FnKey, Rc<Callable>>,
-) -> HashSet<ParamKey> {
+/// The parameters (receiver first) every source function changes: those it declares `var`. The
+/// checker rejects a change through any other parameter, so no body scan is needed (over the
+/// whole conformance corpus the earlier inference added nothing to this set).
+pub(crate) fn infer_mutated(callables: &HashMap<FnKey, Rc<Callable>>) -> HashSet<ParamKey> {
     let mut mutated = HashSet::new();
-    // (function, position) -> the (callee, callee position) it passes the parameter to.
-    let mut feeds: Vec<(ParamKey, ParamKey)> = Vec::new();
     for (key, c) in callables {
-        let bindings: Vec<&ms_check::api::types::BindingRef> =
-            c.self_binding.iter().chain(c.parameters.iter()).collect();
-        if bindings.is_empty() {
-            continue;
-        }
         let has_self = c.self_binding.is_some();
-        for (i, b) in bindings.iter().enumerate() {
-            let declared = if has_self && i == 0 {
-                c.func.method().is_some_and(|m| m.mutating)
-            } else {
-                b.mutable
-            };
-            if declared {
-                mutated.insert((*key, i));
-            }
+        if has_self && c.func.method().is_some_and(|m| m.mutating) {
+            mutated.insert((*key, 0));
         }
-        let Some(hir) = mods.get(&c.module.file) else {
-            continue;
-        };
-        let m = scan(syms, hir, c.body());
-        for (i, b) in bindings.iter().enumerate() {
-            if !by_reference(b.ty.kind) {
-                continue;
-            }
-            if m.roots.contains(&b.uid) {
-                mutated.insert((*key, i));
-            }
-        }
-        for e in &m.edges {
-            let Some(i) = bindings.iter().position(|b| b.uid == e.root) else {
-                continue;
-            };
-            if !by_reference(bindings[i].ty.kind) {
-                continue;
-            }
-            if let Some(q) = target_position(callables, e) {
-                feeds.push(((*key, i), (e.callee, q)));
+        let base = usize::from(has_self);
+        for (i, b) in c.parameters.iter().enumerate() {
+            if b.mutable {
+                mutated.insert((*key, base + i));
             }
         }
     }
-    loop {
-        let before = mutated.len();
-        for (from, to) in &feeds {
-            if mutated.contains(to) {
-                mutated.insert(*from);
-            }
-        }
-        if mutated.len() == before {
-            return mutated;
-        }
-    }
+    mutated
 }

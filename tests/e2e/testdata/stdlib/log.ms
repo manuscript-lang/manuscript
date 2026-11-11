@@ -103,7 +103,7 @@ test "levels filter methods and function values":
 	try logger.fatal("filtered")
 	try expect_equal((try written(path)), before)
 
-	invalid: Unit! = error(Error("logging: invalid input", kind: "EINVAL"))
+	invalid: Unit! := error(Error("logging: invalid input", kind: "EINVAL"))
 	try expect_equal(logger.log(LogLevel.Silent, "invalid"), invalid)
 
 type Service:
@@ -139,7 +139,7 @@ test "limits and unencodable values reject before writing":
 	try expect_equal((try written(path)), line)
 
 	before := try written(path)
-	limited: Unit! = error(Error("logging: limit exceeded", kind: "EOVERFLOW"))
+	limited: Unit! := error(Error("logging: limit exceeded", kind: "EOVERFLOW"))
 	try expect_equal(logger.info("xx"), limited)
 
 	zero := try create(
@@ -162,7 +162,7 @@ test "limits and unencodable values reject before writing":
 		try file_transport(path.clone()), LoggerOptions(timestamp: false)
 	)
 	bad := JsonValue.NumberValue("NaN")
-	invalid_data: Unit! = error(Error("logging: invalid data", kind: "EBADMSG"))
+	invalid_data: Unit! := error(Error("logging: invalid data", kind: "EBADMSG"))
 	try expect_equal(unlimited.info("bad", bad), invalid_data)
 	try expect_equal((try written(path)), before)
 
@@ -172,7 +172,7 @@ test "closing a logger twice keeps reporting Closed":
 	try logger.close()
 	try logger.close()
 
-	closed: Unit! = error(Error("logging: resource is closed", kind: "EBADF"))
+	closed: Unit! := error(Error("logging: resource is closed", kind: "EBADF"))
 	try expect_equal(logger.info("closed"), closed)
 	try expect_equal(logger.flush(), closed)
 
@@ -273,7 +273,7 @@ test "unencodable fields are rejected and fields keep their shape under data":
 	path := "{directory.path()}/out.ndjson"
 	file := try open(path, OpenMode.Write, OpenOptions(permissions: 420))
 	logger := try create(handle_transport(file), LoggerOptions(timestamp: false))
-	invalid: Unit! = error(Error("logging: invalid data", kind: "EBADMSG"))
+	invalid: Unit! := error(Error("logging: invalid data", kind: "EBADMSG"))
 	nan := JsonValue.NumberValue("NaN")
 	try expect_equal(logger.info("m", nan), invalid)
 	try expect_false(logger.child(nan).is_ok())
@@ -392,7 +392,7 @@ test "the time field is a millisecond count and the size limit counts the newlin
 			timestamp: false, max_bytes: plain.to_bytes().length() - 1
 		)
 	)
-	limited: Unit! = error(Error("logging: limit exceeded", kind: "EOVERFLOW"))
+	limited: Unit! := error(Error("logging: limit exceeded", kind: "EOVERFLOW"))
 	try expect_equal(tight.info("ab"), limited)
 	try expect_equal(recorded(quiet.clone()), plain)
 

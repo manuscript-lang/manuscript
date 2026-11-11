@@ -43,7 +43,7 @@ test "record defaults and explicit overrides":
     changed := Data(number: 0)
     ((changed.number != 0 or changed.values.get(0) != 0 or changed.callback() != 0)) | try expect_false
 
-    calls: List[Int] = []
+    calls: List[Int] := []
     explicit := Explicit(calls: calls.clone(), nothing: unit, option: none)
     calls.is_empty() | try expect_true
     (explicit.option.is_none()) | try expect_true
@@ -96,5 +96,5 @@ test "ordinary empty declarations and interface omission":
     no_op()
 
     _marker := Marker()
-    view: ReadWithDefault = Reader()
+    view: ReadWithDefault := Reader()
     (view.get() != 5 or view.get(fallback: 7) != 7) | try expect_false

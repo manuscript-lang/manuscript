@@ -161,7 +161,7 @@ pub const RULES: &[Rule] = &[
         code: "MSL117",
         family: "Integer literal interpolated into text",
         severity: Severity::Warning,
-        repair: "write `\\{4\\}` for literal braces such as a regex quantifier, or put the pattern in `r\"\"\"` raw text; delete the braces to write the number",
+        repair: "write `\\{4\\}` for literal braces such as a regex quantifier, or put the pattern in `r\"...\"` raw text; delete the braces to write the number",
     },
     Rule {
         code: "MSL118",

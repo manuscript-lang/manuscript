@@ -15,7 +15,7 @@ impl Hashable for Folded:
 	fn hash() Int:
 		return 1
 
-fn replace_first[T](var xs: List[T], value: T) List[T]:
+fn replace_first[T: Clonable](var xs: List[T], value: T) List[T]:
 	xs.set(index: 0, value: value)
 	return xs.clone()
 
@@ -91,7 +91,7 @@ test "size and shape methods as values":
 	(set_is_empty() == false) | try expect_true
 
 test "sorted as a value":
-	view: ListCopies[Int] = [3, 1, 2]
+	view: ListCopies[Int] := [3, 1, 2]
 	sort := view.sorted
 	ordered := sort(compare: fn a, b: a - b)
 	(ordered.get(index: 0) == 1) | try expect_true
@@ -167,7 +167,7 @@ test "native calls pass as Equal":
 	("a".to_bytes().equals("a".to_bytes())) | try expect_true
 
 test "native contract methods through an interface value":
-	view: ListCopies[Int] = [3, 1, 2]
+	view: ListCopies[Int] := [3, 1, 2]
 	(view.take(2).length() == 2) | try expect_true
 	(view.reversed().get(index: 0) == 2) | try expect_true
 	(view.clone().length() == 3) | try expect_true

@@ -28,7 +28,7 @@ fn returns_early(dir: String, early: Bool) Int:
 
 fn propagates(dir: String) Int!Error:
 	r := Resource(dir, 3)
-	failed: Int!Error = error(Error("boom"))
+	failed: Int!Error := error(Error("boom"))
 	v := try failed
 	return ok(v + r.id)
 

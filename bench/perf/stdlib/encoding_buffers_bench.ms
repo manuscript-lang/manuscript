@@ -116,7 +116,7 @@ fn decode85(
 
 fn zero_budget85() Unit!:
 	text := ascii85_encode(sample(4096))
-	expected: Bytes! = error(Error("encoding: limit exceeded", kind: "EOVERFLOW"))
+	expected: Bytes! := error(Error("encoding: limit exceeded", kind: "EOVERFLOW"))
 
 	fn work() Unit!:
 		try expect_equal(ascii85_decode(text, 0), expected)
@@ -126,8 +126,8 @@ fn zero_budget85() Unit!:
 
 fn whitespace85(bounded: Bool) Unit!:
 	text := try " \t\r\n".repeat(16384)
-	limit: Int? = if bounded: 0 else: none
-	expected: Bytes! = ok(Bytes([]))
+	limit: Int? := if bounded: 0 else: none
+	expected: Bytes! := ok(Bytes([]))
 
 	fn work() Unit!:
 		try expect_equal(ascii85_decode(text, limit), expected)

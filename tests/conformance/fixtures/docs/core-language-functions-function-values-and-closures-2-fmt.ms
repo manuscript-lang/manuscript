@@ -6,7 +6,7 @@ fn subtract_one(amount: Int) Int:
 
 fn adapt() Unit:
     // Rejected: amount and value are different function-type labels.
-    invalid: fn(Int) Int = subtract_one
+    invalid: fn(Int) Int := subtract_one
     renamed := fn(value: Int) Int:
         return subtract_one(amount: value)
     result := apply(value: 3, transform: renamed)

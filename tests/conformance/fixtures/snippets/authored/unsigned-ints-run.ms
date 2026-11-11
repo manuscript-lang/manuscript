@@ -15,18 +15,18 @@ fn total(values: List[UInt8]) UInt8:
     return sum
 
 fn main() Unit:
-    low: UInt8 = 0
-    high: UInt8 = 255
-    mid: UInt16 = 65535
-    wide: UInt32 = 4000000000
+    low: UInt8 := 0
+    high: UInt8 := 255
+    mid: UInt16 := 65535
+    wide: UInt32 := 4000000000
     _ := stdout().write("{low} {high} {mid} {wide}\n")
     p := Pixel(r: 250, g: 60000, x: 3000000000)
     _ := stdout().write("{p.r} {p.g} {p.x}\n")
-    l: List[UInt8] = [200, 1, 255, 3]
+    l: List[UInt8] := [200, 1, 255, 3]
     _ := stdout().write("{l.sorted()} {total([100, 20, 7])}\n")
     _ := stdout().write("{high / 2} {high % 10} {low < high} {wide > 3000000000}\n")
-    opt: UInt8? = 255
-    big: Int = 300
+    opt: UInt8? := 255
+    big: Int := 300
     _ := stdout().write(
         "{opt.get(0)} {big.to_uint8()} {big.to_uint16()} {wide.to_int32()} {wide.to_int64()}\n"
     )

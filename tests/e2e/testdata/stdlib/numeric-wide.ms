@@ -31,9 +31,9 @@ fn big_word(value: UInt64) BigInt:
 	return parse(value.to_string_radix(10), 10).get()
 
 test "carry and borrow operate on unsigned words and chain across limbs":
-	largest: UInt64 = 18446744073709551615
-	zero: UInt64 = 0
-	one: UInt64 = 1
+	largest: UInt64 := 18446744073709551615
+	zero: UInt64 := 0
+	one: UInt64 := 1
 	low := add_with_carry(largest, one)
 	try expect_equal(low.sum, zero)
 	try expect_true(low.carry)
@@ -55,7 +55,7 @@ test "carry and borrow operate on unsigned words and chain across limbs":
 	try expect_equal(subtract_with_borrow(zero, largest, true).difference, zero)
 
 test "word arithmetic matches exact BigInt references at all width boundaries":
-	values: List[UInt64] = [
+	values: List[UInt64] := [
 		0, 1, 4294967295, 4294967296, 9223372036854775808, 18446744073709551615
 	]
 	radix := try from_int(1).shift_left(64)
@@ -96,13 +96,15 @@ test "word arithmetic matches exact BigInt references at all width boundaries":
 				try expect_equal(division.remainder, 0)
 
 test "wide division distinguishes invalid divisor and quotient overflow":
-	largest: UInt64 = 18446744073709551615
+	largest: UInt64 := 18446744073709551615
 	division := try divide_wide(2, largest, 3)
 	try expect_equal(division.quotient, largest)
 	try expect_equal(division.remainder, 2)
 
-	invalid: WordDivision! = error(Error("number: invalid input", kind: "EINVAL"))
-	overflow: WordDivision! = error(Error("number: value out of range", kind: "ERANGE"))
+	invalid: WordDivision! := error(Error("number: invalid input", kind: "EINVAL"))
+	overflow: WordDivision! := error(
+		Error("number: value out of range", kind: "ERANGE")
+	)
 	try expect_equal(divide_wide(0, 0, 0), invalid)
 	try expect_equal(divide_wide(largest, largest, 0), invalid)
 	try expect_equal(divide_wide(3, 0, 3), overflow)
@@ -110,7 +112,7 @@ test "wide division distinguishes invalid divisor and quotient overflow":
 	try expect_equal((try remainder_wide(3, 5, 3)), 2)
 	try expect_equal((try remainder_wide(largest, largest, largest)), 0)
 
-	invalid_remainder: UInt64! = error(Error("number: invalid input", kind: "EINVAL"))
+	invalid_remainder: UInt64! := error(Error("number: invalid input", kind: "EINVAL"))
 	try expect_equal(remainder_wide(largest, largest, 0), invalid_remainder)
 
 test "binary float decomposition round trips normals subnormals and signed zero":
@@ -206,7 +208,7 @@ test "modular inverse distinguishes absence invalid modulus and the unit modulus
 			from_int(1)
 		) | try expect_ok | try expect_some | try expect_equal(from_int(0))
 
-	invalid: BigInt?! = error(Error("big integer: invalid input", kind: "EINVAL"))
+	invalid: BigInt?! := error(Error("big integer: invalid input", kind: "EINVAL"))
 	try expect_equal(from_int(2).inverse_mod(from_int(0)), invalid)
 	try expect_equal(from_int(2).inverse_mod(from_int(-7)), invalid)
 

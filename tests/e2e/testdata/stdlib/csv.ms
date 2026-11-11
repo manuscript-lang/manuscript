@@ -13,10 +13,10 @@ test "CSV retains single empty fields and distinguishes empty rows":
 			try expect_equal(text, expected)
 			try expect_equal((try parse(text, options)), rows)
 
-			empty_rows: List[List[String]] = [[], []]
+			empty_rows: List[List[String]] := [[], []]
 			try expect_equal((try stringify(empty_rows, options)), "{ending}{ending}")
 
-			no_rows: List[List[String]] = []
+			no_rows: List[List[String]] := []
 			try expect_equal((try parse("{ending}{ending}", options)), no_rows)
 			try expect_false(
 				(
@@ -39,12 +39,12 @@ test "CSV quoted empty fields respect exact row cell and byte budgets":
 		bytes := text.byte_length()
 		try expect_equal((try stringify(rows, options, bytes)), text)
 
-		limited_text: String! = error(Error("CSV: limit exceeded", kind: "EOVERFLOW"))
+		limited_text: String! := error(Error("CSV: limit exceeded", kind: "EOVERFLOW"))
 		try expect_equal(stringify(rows, options, bytes - 1), limited_text)
 		try expect_equal(stringify([[""]], options, 0), limited_text)
 		try expect_equal((try parse(text, CsvOptions(",", ending.clone(), 3, 3))), rows)
 
-		limited_rows: List[List[String]]! = error(
+		limited_rows: List[List[String]]! := error(
 			Error("CSV: limit exceeded", kind: "EOVERFLOW")
 		)
 		try expect_equal(parse(text, CsvOptions(",", ending.clone(), 2)), limited_rows)
@@ -116,13 +116,13 @@ test "CSV rejects malformed records invalid options and limits":
 	for text in ["\"\"x\n", "x\"\"\n", "\"\"\"\n"]:
 		try expect_true(parse(text, options).is_error())
 
-	limited: List[List[String]]! = error(
+	limited: List[List[String]]! := error(
 		Error("CSV: limit exceeded", kind: "EOVERFLOW")
 	)
 	try expect_equal(parse("a,b\n", CsvOptions(max_cells: 1)), limited)
 	try expect_equal(parse("a\nb\n", CsvOptions(max_rows: 1)), limited)
 
-	invalid: String! = error(Error("CSV: invalid input", kind: "EINVAL"))
+	invalid: String! := error(Error("CSV: invalid input", kind: "EINVAL"))
 	try expect_equal(stringify([["a"]], CsvOptions("::", "\n")), invalid)
 
 test "CSV quoted fields preserve zero one and many escaped quotes":

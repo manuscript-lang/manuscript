@@ -188,9 +188,16 @@ impl BigRat:
 	// Returns the exact power. A negative exponent returns the reciprocal power, so zero with a negative exponent returns EINVAL.
 	// A numerator or denominator power above 16777216 bits returns EOVERFLOW.
 	fn pow(exponent: Int) BigRat!:
-		count := exponent.abs()
-		top := try self.num.pow(count)
-		bottom := try self.den.pow(count)
+		// `abs` faults on the minimum Int, so take its magnitude as `max + 1` powers.
+		extra := exponent == -9223372036854775807 - 1
+		count := if extra: 9223372036854775807 else: exponent.abs()
+		var top = try self.num.pow(count)
+		var bottom = try self.den.pow(count)
+
+		if extra:
+			top *= self.num
+			bottom *= self.den
+
 		if exponent >= 0: return ok(BigRat(num: top, den: bottom))
 
 		return rat(bottom, top)
@@ -252,7 +259,7 @@ impl BigRat:
 		return "{self.num.to_string_radix(10)}/{self.den.to_string_radix(10)}"
 
 // The largest supported precision in bits.
-export max_big_float_precision: Int = 1000000
+export max_big_float_precision: Int := 1000000
 
 /*
 An arbitrary-precision binary floating-point number, `mantissa * 2^exponent`, whose mantissa holds at most `precision` bits.
@@ -311,7 +318,7 @@ export fn parse_big_float(text: String, precision: Int) BigFloat!:
 		return error(Error("bigfloat: invalid data", kind: "EBADMSG"))
 	if value := parse_rat(text): return ok(big_float_of_rat(value, bits))
 
-	too_large: BigRat! = error(Error("bigrat: limit exceeded", kind: "EOVERFLOW"))
+	too_large: BigRat! := error(Error("bigrat: limit exceeded", kind: "EOVERFLOW"))
 	if parse_rat(text) == too_large:
 		return error(Error("bigfloat: limit exceeded", kind: "EOVERFLOW"))
 

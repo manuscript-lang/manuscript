@@ -27,9 +27,9 @@ A generic bound grants properties, not subtyping. Type positions use [ordinary n
 fn identity(value: Int) Int:
     return value
 
-exact: fn(Int) Int = identity
+exact: fn(Int) Int := identity
 // Rejected: the result type differs.
-wrong: fn(Int) String = identity
+wrong: fn(Int) String := identity
 ```
 
 An expected `T?` accepts a plain `T`, wrapped as the present case, in arguments, constructor fields, enum payloads, annotated bindings, assignments, returns, defaults, and collection elements ([optional values](optionals.md#passing-optional-arguments)). It wraps one layer and never changes a numeric type.
@@ -45,9 +45,9 @@ type Input:
     names: List[String?]
 
 input := Input([none, "Ada"])
-nested: List[List[Int]] = [[], [1]]
-success: Result[Int, Error] = ok(1)
-failure: Result[Int, Error] = error(Error("unavailable"))
+nested: List[List[Int]] := [[], [1]]
+success: Result[Int, Error] := ok(1)
+failure: Result[Int, Error] := error(Error("unavailable"))
 // Rejected: the result error type cannot be inferred from ok's payload.
 incomplete := ok(1)
 ```
@@ -67,12 +67,12 @@ Operators and `try` normally require operands to determine their own types first
 
 ```manuscript
 fn known() Result[Int, Error]:
-    number: Int = try Result[Int, Error].ok(1)
+    number: Int := try Result[Int, Error].ok(1)
     return ok(number)
 
 fn unknown() Result[Int, Error]:
     // Rejected: the try operand's error type is undetermined.
-    number: Int = try ok(1)
+    number: Int := try ok(1)
     return ok(number)
 ```
 

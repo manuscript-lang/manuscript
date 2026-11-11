@@ -17,7 +17,7 @@ fn defaulted[T](fallback: T, supplied: T, equal: fn(T, T) Bool) Bool:
 	choose := fn(value: T = fallback) Bool: equal(value, fallback)
 	omitted := choose()
 	supplied_result := choose(supplied)
-	required: fn(T) Bool = choose
+	required: fn(T) Bool := choose
 	return omitted and supplied_result and required(supplied)
 
 fn same_optional(left: Int?, right: Int?) Bool:
@@ -46,7 +46,7 @@ impl Defaults:
 	fn optional(value: Int? = self.base) Int: value.get(-1)
 
 test "generic callbacks preserve Optional inputs and present zero":
-	values: List[Int?] = [none, 0, 4]
+	values: List[Int?] := [none, 0, 4]
 	try expect_true(every(values, fn value: value.is_none() or value.get() >= 0))
 	try expect_false(every(values, fn value: value.is_none()))
 	try expect_true(
@@ -57,11 +57,11 @@ test "generic callbacks preserve Optional inputs and present zero":
 	)
 
 test "generic callbacks preserve both layers of nested Optional inputs":
-	absent: Int?? = none
-	inner_absent: Int? = none
-	present_absent: Int?? = inner_absent
-	inner_zero: Int? = 0
-	present_zero: Int?? = inner_zero
+	absent: Int?? := none
+	inner_absent: Int? := none
+	present_absent: Int?? := inner_absent
+	inner_zero: Int? := 0
+	present_zero: Int?? := inner_zero
 	try expect_true(every([absent], fn value: value.is_none()))
 	try expect_true(
 		every(
@@ -75,8 +75,8 @@ test "generic callbacks preserve both layers of nested Optional inputs":
 	)
 
 test "generic callbacks keep Optional inputs through nested closures":
-	value: Int? = none
-	zero: Int? = 0
+	value: Int? := none
+	zero: Int? := 0
 	try expect_true(nested(value, fn item: item.is_none()))
 	try expect_true(nested(zero, fn item: item.is_some() and item.get() == 0))
 
@@ -84,8 +84,8 @@ test "generic closure defaults and explicit callable arguments keep their behavi
 	try expect_true(defaulted(7, 7, fn left, right: left == right))
 	try expect_true(defaulted("seven", "seven", fn left, right: left == right))
 
-	present: Int? = 7
-	absent: Int? = none
+	present: Int? := 7
+	absent: Int? := none
 	try expect_true(defaulted(present, present, same_optional))
 	try expect_true(defaulted(absent, absent, same_optional))
 
@@ -95,7 +95,7 @@ test "Optional closure defaults distinguish omitted and explicitly absent values
 	try expect_equal(choose(none), -1)
 	try expect_equal(choose(0), 0)
 
-	required: fn(Int?) Int = choose
+	required: fn(Int?) Int := choose
 	try expect_equal(required(none), -1)
 
 test "named and bound Optional defaults distinguish omitted and absent arguments":
@@ -103,7 +103,7 @@ test "named and bound Optional defaults distinguish omitted and absent arguments
 	try expect_equal(named(), 7)
 	try expect_equal(named(none), -1)
 
-	typed: fn(Int?) Int = named
+	typed: fn(Int?) Int := named
 	try expect_equal(typed(none), -1)
 
 	defaults := Defaults(9)
@@ -118,7 +118,7 @@ test "implicit Optional lambda defaults remain callable through inferred and exp
 	try expect_true(implicit(none))
 	try expect_false(implicit(0))
 
-	required: fn(Int?) Bool = implicit
+	required: fn(Int?) Bool := implicit
 	try expect_true(required(none))
 
 test "bound native Optional arguments stay required after explicit function typing":
@@ -127,13 +127,13 @@ test "bound native Optional arguments stay required after explicit function typi
 	try expect_equal(get(0), 3)
 	try expect_equal(get(9, 7), 7)
 
-	required: fn(Int, Int?) Int = get
+	required: fn(Int, Int?) Int := get
 	try expect_equal(required(1, none), 4)
 	try expect_equal(required(9, 0), 0)
 
 test "generic native folds accept Optional accumulators without omission wrappers":
 	values := {"one": 1, "two": 2}
-	initial: Int? = none
+	initial: Int? := none
 	sum := values.fold_right(initial, fn acc, key, value: acc.get(0) + value)
 	try expect_equal(sum.get(), 3)
 
@@ -150,7 +150,7 @@ test "generic native folds accept Optional accumulators without omission wrapper
 	try expect_equal(bound_set_sum.get(), 3)
 
 test "bound generic native defaults preserve concrete and Optional payload types":
-	missing: Int? = none
+	missing: Int? := none
 	text := missing.ok_or[String]
 	try expect_equal(text("absent").err(), "absent")
 
@@ -158,14 +158,14 @@ test "bound generic native defaults preserve concrete and Optional payload types
 	try expect_equal(number(0).err(), 0)
 
 	nested := missing.ok_or[Int?]
-	absent: Int? = none
+	absent: Int? := none
 	try expect_true(nested(absent).err().is_none())
 
-	present: Int? = 0
+	present: Int? := 0
 	try expect_equal(nested(present).err().get(), 0)
 
 test "bound Error defaults distinguish omission from explicit none":
-	missing: Int? = none
+	missing: Int? := none
 	direct := missing.ok_or()
 	try expect_true(direct.err().message.contains("generic-optional-callbacks.ms:"))
 
@@ -194,13 +194,13 @@ test "bound Error defaults distinguish omission from explicit none":
 	try expect_true(direct_fault.contains("Optional.get() on none"))
 	try expect_true(bound_fault.contains("Optional.get() on none"))
 
-	present: Int? = 0
+	present: Int? := 0
 	keep := present.ok_or[Error]
 	try expect_equal(keep().get(), 0)
 	try expect_equal(keep(none).get(), 0)
 	try expect_equal(bound_missing(present).get(), 0)
 	try expect_equal(nested_bound_missing(present).get(), 0)
 
-	text: String? = "present"
+	text: String? := "present"
 	try expect_equal(bound_missing(text).get(), "present")
 	try expect_equal(nested_bound_missing(text).get(), "present")

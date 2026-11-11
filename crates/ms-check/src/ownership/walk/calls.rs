@@ -218,6 +218,17 @@ impl Walker<'_> {
                     format!("`{text}` holds a function value, which owns its captures and has one owner, so it cannot be cloned; move it, or build the value again"),
                 );
             }
+            if self.cx.m.info(e).native_str(self.syms) == "clone"
+                && let Some(param) = unbounded_parameter(&self.cx.m.ty(r))
+                && !self.cx.classes.clonable(self.syms, &self.cx.m.ty(r))
+            {
+                let text = self.expr_text(r);
+                let param_t = param.display(self.syms);
+                self.error(
+                    e.pos,
+                    format!("`{text}` holds `{param_t}`, which may be a resource with one owner, so it cannot be cloned; bound it with `{param_t}: Clonable` or move the value"),
+                );
+            }
             let mut mode = modes.receiver.unwrap_or(ParamMode::Borrow);
             // A value with one owner taken out of a receiver that holds it (`o.get(default)` of
             // a resource, or of a native without a `clone`) is the receiver's one owner handing

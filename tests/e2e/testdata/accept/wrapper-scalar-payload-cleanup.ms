@@ -40,7 +40,7 @@ fn transformed_error() Unit:
 	_mapped := failure().map_error(fn item: item.id)
 
 fn transformed_then() Unit:
-	_mapped: Int!Int = success().and_then(fn item: ok(item.id))
+	_mapped: Int!Int := success().and_then(fn item: ok(item.id))
 
 test "scalar retained wrapper branches retain their cleanup duty":
 	(try expect_fault(optional_cause)) | try expect_contains(

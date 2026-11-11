@@ -19,5 +19,5 @@ fn read(x: Numbered) Int:
 
 fn f() Int:
     d := Door(1)
-    v: Numbered = d  // error: is the resource `Door`
+    v: Numbered := d  // error: is the resource `Door`
     return read(v)

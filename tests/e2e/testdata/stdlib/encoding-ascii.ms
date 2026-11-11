@@ -21,7 +21,7 @@ test "ASCII decoding preserves every seven-bit byte including NUL":
 	try expect_equal(try ascii_decode("a\u{0}b\u{7f}".to_bytes()), "a\u{0}b\u{7f}")
 
 test "ASCII decoding rejects every high byte at either end":
-	expected: String! = error(Error("encoding: invalid data", kind: "EBADMSG"))
+	expected: String! := error(Error("encoding: invalid data", kind: "EBADMSG"))
 	prefix := "ASCII\u{0}".to_bytes()
 
 	for byte in 128..256:
@@ -31,7 +31,7 @@ test "ASCII decoding rejects every high byte at either end":
 		try expect_equal(ascii_decode(prefix.concat(invalid)), expected)
 
 test "ASCII decoding rejects valid non-ASCII UTF-8":
-	expected: String! = error(Error("encoding: invalid data", kind: "EBADMSG"))
+	expected: String! := error(Error("encoding: invalid data", kind: "EBADMSG"))
 	for text in ["é", "🙂", "\u{80}", "Aé", "éA", "a\u{301}"]:
 		try expect_equal(ascii_decode(text.to_bytes()), expected)
 
@@ -39,12 +39,12 @@ test "ASCII decoding preserves large offset views and rejects high byte tails":
 	expected := try "Az09 \n\u{0}\u{7f}".repeat(4096)
 	padded := ("é" + expected + "é").to_bytes()
 	data := try padded.slice(2, 2 + expected.byte_length())
-	decode: fn(Bytes) String! = ascii_decode
+	decode: fn(Bytes) String! := ascii_decode
 	try expect_equal(try decode(data), expected)
 	try expect_equal(try decode(data), data.decode_utf8().get())
 	try expect_equal(data.length(), expected.byte_length())
 
-	invalid: String! = error(Error("encoding: invalid data", kind: "EBADMSG"))
+	invalid: String! := error(Error("encoding: invalid data", kind: "EBADMSG"))
 	high := Bytes([128])
 	try expect_equal(decode(high.concat(data)), invalid)
 	try expect_equal(decode(data.concat(high)), invalid)

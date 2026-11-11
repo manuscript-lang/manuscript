@@ -11,7 +11,7 @@ fn roll(i: Int) Int!Error: ok(i)
 
 fn count(values: List[String]) Int: values.length()
 
-fn update[K: Hashable, V](var values: Map[K, V], key: K, value: V) Map[K, V]:
+fn update[K: Hashable, V: Clonable](var values: Map[K, V], key: K, value: V) Map[K, V]:
 	values.add(key, value)
 	return values.clone()
 
@@ -33,7 +33,7 @@ test "issue 187 programs need no collection imports":
 	points.add(Point(1, 2), 7)
 	try expect_equal(points[Point(1, 2)], 7)
 
-	nested: List[Map[String, List[Int]]] = [{}, {"a": []}]
+	nested: List[Map[String, List[Int]]] := [{}, {"a": []}]
 	try expect_equal(nested[1]["a"].length(), 0)
 
 test "map add retains clones and insertion order":
