@@ -1537,7 +1537,7 @@ impl Checker {
             let old = self.scope.clone();
             self.scope = self.variable_scope(&s.variables());
             self.declared_refs_bounds(d.decl());
-            if s.kind == SymKind::Fn {
+            if s.kind == SymKind::Fn || s.kind == SymKind::Alias {
                 self.check_declared(&s.ty(self.syms), d.pos(), s.export);
             } else {
                 let t = s.ty(self.syms);

@@ -227,6 +227,8 @@ pub struct Checker {
     pub(crate) test_function: usize,
     pub(crate) rejected_names: HashSet<Name>,
     pub(crate) unknown_type: bool,
+    /// Aliases whose target is being resolved, to reject a cycle.
+    pub(crate) resolving_aliases: HashSet<Name>,
     pub(crate) unresolved_constructors: HashSet<Pos>,
     /// Failed-bound messages reported while resolving written types, so the later
     /// declaration well-formedness pass does not restate them at the declaration.
@@ -286,6 +288,7 @@ impl Checker {
             test_function: 0,
             rejected_names: HashSet::new(),
             unknown_type: false,
+            resolving_aliases: HashSet::new(),
             unresolved_constructors: HashSet::new(),
             reported_bounds: HashSet::new(),
             in_declaration_checks: false,
@@ -685,6 +688,7 @@ impl Checker {
         self.declare_type_variables(module);
         self.resolve_declaration_defaults(module);
         self.resolve_declaration_bounds(module);
+        self.resolve_aliases(module);
         self.resolve_signatures(module);
         self.check_constant_cycles(module);
         for d in &module.decls {
@@ -727,6 +731,10 @@ impl Checker {
         for module in group {
             self.enter_module(module);
             self.resolve_declaration_bounds(module);
+        }
+        for module in group {
+            self.enter_module(module);
+            self.resolve_aliases(module);
         }
         for module in group {
             self.enter_module(module);
@@ -921,6 +929,7 @@ impl Checker {
                 DeclKind::Interface(_) => Some(Kind::Contract),
                 _ => None,
             };
+            let is_alias = matches!(d.decl().kind, DeclKind::Alias(_));
             // An `extern fn` calls the native symbol named after it.
             let native = match &d.decl().kind {
                 DeclKind::Fn(f) if f.external => Native::Extern {
@@ -934,6 +943,8 @@ impl Checker {
                 id,
                 kind: if kind.is_some() {
                     SymKind::Type
+                } else if is_alias {
+                    SymKind::Alias
                 } else {
                     SymKind::Fn
                 },
@@ -1010,6 +1021,77 @@ impl Checker {
             self.resolve_type_bounds(d.type_params(), &vars);
             self.scope = old;
         }
+    }
+
+    /// Resolves every alias target of the module, after type variables and bounds exist.
+    fn resolve_aliases(&mut self, module: &ModRef) {
+        for d in &module.decls {
+            if let Some(s) = self.own_symbol(d).filter(|s| s.kind == SymKind::Alias) {
+                self.alias_target(&s);
+            }
+        }
+    }
+
+    /// The type an alias names, over the alias's own variables; resolved once, on first use.
+    fn alias_target(&mut self, s: &SymRef) -> Ty {
+        if let Some(t) = s.ty_opt() {
+            return t;
+        }
+        let Some(decl) = s.decl.clone() else {
+            return invalid();
+        };
+        let same_module = self.module.as_ref().is_some_and(|m| m.file == s.module);
+        if !same_module {
+            return invalid();
+        }
+        if !self.resolving_aliases.insert(s.id) {
+            self.res_error(
+                decl.pos(),
+                format!(
+                    "type alias {} refers to itself; an alias names another type, so break the cycle with a record or enum",
+                    self.syms.str(s.name)
+                ),
+            );
+            return invalid();
+        }
+        let scope = self.variable_scope(&s.variables());
+        let old = std::mem::replace(&mut self.scope, scope);
+        let target = self.resolve(decl.alias_target());
+        self.scope = old;
+        self.resolving_aliases.remove(&s.id);
+        *s.ty.borrow_mut() = Some(target.clone());
+        target
+    }
+
+    /// A written use of an alias: its target with the written arguments substituted.
+    fn resolve_alias_use(&mut self, t: &TypeRef, s: &SymRef, args: &[TypeRef]) -> Ty {
+        let target = self.alias_target(s);
+        let vars = s.variables();
+        let mut written: Vec<Ty> = args.iter().map(|a| self.resolve(Some(a))).collect();
+        let required = required_type_arguments(&vars);
+        if written.len() < vars.len() && written.len() >= required {
+            written = with_default_arguments(&vars, &written);
+        }
+        if written.len() != vars.len() {
+            let name = self.syms.str(s.name).to_string();
+            self.type_error(
+                t.pos,
+                format!(
+                    "alias {name} takes {} type arguments, found {}; write {}",
+                    vars.len(),
+                    written.len(),
+                    crate::hints::type_sketch(&name, vars.len())
+                ),
+            );
+            return invalid();
+        }
+        let mut bindings = Subst::new();
+        for (v, a) in vars.iter().zip(written) {
+            bindings.insert(v.id, a);
+        }
+        let r = sub(&target, &bindings);
+        self.m().facts_mut().type_refs.insert(t.id, r.clone());
+        r
     }
 
     fn resolve_declaration_defaults(&mut self, module: &ModRef) {
@@ -1155,6 +1237,9 @@ impl Checker {
             let Some(s) = self.own_symbol(d) else {
                 continue;
             };
+            if s.kind == SymKind::Alias {
+                continue;
+            }
             let old = self.scope.clone();
             self.scope = self.variable_scope(&s.variables());
             if d.is_constant() {
@@ -1469,6 +1554,11 @@ impl Checker {
                         , name_t = self.syms.str(name)),
                     );
                     return invalid();
+                }
+                if self.scope.typ(name).is_none()
+                    && let Some(s) = self.sym(name).filter(|s| s.kind == SymKind::Alias)
+                {
+                    return self.resolve_alias_use(t, &s, args);
                 }
                 let base: Ty = if let Some(v) = self.scope.typ(name) {
                     v

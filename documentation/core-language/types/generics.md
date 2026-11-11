@@ -64,7 +64,7 @@ inferred := identity(1)
 
 - Parameter names are unique; an application supplies one argument each, except trailing [defaults](#default-type-arguments).
 - Types, enums, interfaces, and named functions may be generic. Anonymous functions cannot declare parameters. Contract operations and methods may declare their own ([generic operations](contracts.md#generic-operations)), and a receiver names the type's parameters ([generic receivers](contracts.md#generic-receivers)).
-- Higher-kinded parameters, type aliases, and variadic parameters are unsupported.
+- Higher-kinded parameters and variadic parameters are unsupported. A [type alias](named-types.md#aliases) may take parameters.
 - Applications are invariant: `Box[Int]` is not `Box[Float]`.
 - A generic function used as a value must be specialized: `identity[Int]`.
 

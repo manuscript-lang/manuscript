@@ -247,3 +247,24 @@ Opaque controls visibility: an opaque value can still be cloned when its fields 
 A type owns the resources moved into its fields and closes the fields it still owns when its scope ends. Moving a field out transfers that cleanup duty to the new owner. Such a type is not clonable. See [aggregate cleanup](../cleanup/closeable.md#types-and-collections-close-what-they-hold).
 
 Use [enums](alternatives.md) for a choice among cases and `interface` for [operation contracts](contracts.md).
+
+## Aliases
+
+`type Name = Type` gives another name to a type expression. An alias is not a new type: it and its target are interchangeable everywhere, and it has no constructor or methods of its own. Use a record when the type must be distinct.
+
+```manuscript
+type Rows = List[Int]
+type Handler = fn(Int) Int
+type Maybe[T] = T?
+
+fn total(rows: Rows) Int:
+    return rows.fold(0, fn sum, x: sum + x)
+
+numbers: List[Int] := [1, 2, 3]
+sum := total(numbers)
+```
+
+- The target is any type expression, including function types, `T?`, `T!E` and applications such as `List[Row]`.
+- An alias may take type parameters, written like a record's: `type Pairs[A: Hashable, B] = List[Map[A, B]]`. Every parameter is supplied, or defaulted, where the alias is used. Bounds apply to the expansion.
+- An alias may name one declared later in the module; a cycle (`type A = B` with `type B = A`) is rejected.
+- An exported alias must not expose a private type, like any exported signature.

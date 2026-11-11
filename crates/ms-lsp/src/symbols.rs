@@ -65,6 +65,7 @@ impl Outline<'_> {
         match &decl.kind {
             DeclKind::Record(_) => kind = CLASS,
             DeclKind::Alternative(_) => kind = ENUM,
+            DeclKind::Alias(_) => kind = CLASS,
             DeclKind::Interface(_) => kind = INTERFACE,
             DeclKind::Impl(i) => {
                 kind = CLASS;

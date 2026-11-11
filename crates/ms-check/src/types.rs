@@ -677,6 +677,8 @@ pub enum SymKind {
     Type,
     /// A function (including constants and native functions).
     Fn,
+    /// `type Name = Type`: its `ty` is the aliased type over the alias's own variables.
+    Alias,
 }
 
 /// What a declaration binds to: a source body, a contract operation, or a bodiless native.

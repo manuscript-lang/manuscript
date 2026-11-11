@@ -64,6 +64,7 @@ impl DeclRef {
             DeclKind::Const(c) => c.name,
             DeclKind::Record(r) => r.name,
             DeclKind::Alternative(a) => a.name,
+            DeclKind::Alias(a) => a.name,
             DeclKind::Interface(i) => i.name,
             DeclKind::Impl(_) | DeclKind::Test(_) => n(""),
         }
@@ -75,8 +76,17 @@ impl DeclRef {
             DeclKind::Fn(f) => &f.type_params,
             DeclKind::Record(r) => &r.type_params,
             DeclKind::Alternative(a) => &a.type_params,
+            DeclKind::Alias(a) => &a.type_params,
             DeclKind::Interface(i) => &i.type_params,
             _ => &[],
+        }
+    }
+
+    /// The aliased type expression of a `type Name = Type` declaration.
+    pub fn alias_target(&self) -> Option<&TypeRef> {
+        match &self.0.decl.kind {
+            DeclKind::Alias(a) => Some(&a.target),
+            _ => None,
         }
     }
 

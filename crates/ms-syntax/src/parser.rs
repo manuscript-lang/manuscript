@@ -1441,6 +1441,22 @@ impl<'a> Parser<'a> {
         let name_tok = self.need(Tok::Name)?;
         let name = self.sym(name_tok);
         let type_params = self.type_params()?;
+        if token.kind == Tok::Type && self.take(Tok::Assign) {
+            let target = self.typ()?;
+            self.end()?;
+            let id = self.id();
+            return Ok(Decl {
+                id,
+                pos: token.pos,
+                export: false,
+                synthetic: false,
+                kind: DeclKind::Alias(AliasDecl {
+                    name,
+                    type_params,
+                    target,
+                }),
+            });
+        }
         self.need(Tok::Colon)?;
         if token.kind == Tok::Interface && self.take(Tok::Ellipsis) {
             // `interface Name: ...` declares a property with no operations, like `Data`.

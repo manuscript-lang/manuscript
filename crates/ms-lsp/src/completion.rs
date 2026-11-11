@@ -739,6 +739,7 @@ fn decl_name(syms: ms_syntax::Names, decl: &ms_syntax::ast::Decl) -> String {
         DeclKind::Const(c) => syms.str(c.name).to_string(),
         DeclKind::Record(r) => syms.str(r.name).to_string(),
         DeclKind::Alternative(a) => syms.str(a.name).to_string(),
+        DeclKind::Alias(a) => syms.str(a.name).to_string(),
         DeclKind::Interface(i) => syms.str(i.name).to_string(),
         DeclKind::Test(t) => t.name.to_string(),
         DeclKind::Impl(_) => String::new(),

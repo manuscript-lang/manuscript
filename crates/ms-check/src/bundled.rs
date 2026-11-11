@@ -19,7 +19,10 @@ pub fn decl_has_body(d: &Decl) -> bool {
         DeclKind::Const(_) => true,
         DeclKind::Test(t) => !t.body.is_empty(),
         DeclKind::Impl(i) => i.methods.iter().any(|m| !m.func.body.is_empty()),
-        DeclKind::Record(_) | DeclKind::Alternative(_) | DeclKind::Interface(_) => false,
+        DeclKind::Record(_)
+        | DeclKind::Alternative(_)
+        | DeclKind::Alias(_)
+        | DeclKind::Interface(_) => false,
     }
 }
 
