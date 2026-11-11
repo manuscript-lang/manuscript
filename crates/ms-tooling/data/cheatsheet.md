@@ -29,7 +29,7 @@ fn main() Unit:
         print("{keep} {long.length()}")
 ```
 
-- Commands: `ms search_symbol <words>`; `ms verify` (check, fmt, lint, test); `ms review`.
+- Commands: `ms search_symbol <words>`; `ms verify`; `ms review`.
 - Effects: pure unless `// ms: allow_effect std.fs.*`.
 - Be terse: `print(x)` (no import); `if c: return x`, no `else` after `return`; `any all count sum map filter fold`; `m.get_or(k, d)`; infer closure types.
 - `Unit`/`Unit!` fns need no final `return`; `main` may be `Int?!` or `Int` status. `test "name":` runs under `ms test` (`fail("why")?`, `@std/test/test.ms`), `bench "name":` under `ms bench`.
@@ -40,9 +40,9 @@ fn main() Unit:
 - Types: `Int Float Bool String Unit`, no implicit casts. `"{expr}"` interpolates, `\{` `\}` escape; `r"\d+"`, `r"""` raw. `unit`.
 - Control: `if`/`else if`/`else`, `while c:`, `for i in 0..n:` (excludes `n`; steps `range_by`, `@std/collections/collections.ms`), `break`, `continue`. `if` is a statement; the expression is `if c: a else: b`.
 - Functions: `fn f(a: Int, b: Int = 1) Int:` (no `->`; `Unit` if none), called `f(1, b: 2)`; generics `fn f[T](x: T) T`; closures `fn x: x + 1`, typed `fn(x: Int) Int: x + 1`; types `fn(Int) Int`.
-- Collections: `[1, 2]`, `xs[i] = v`, `List[T](reserve: n)`, `xs.slice(a, b)` is a `Result`; `Map[K, V]()` (`m[k] = v`, `m.add(k, v)`, `m.get(k)` is optional), `Set[T]()` mutate in place; `for e in m.entries():`, `if var n = m.get(k): n += 1`; `contains`, `split`.
+- Collections: `[1, 2]`, `xs[i] = v`, `List[T](reserve: n)`, `xs.slice(a, b)` is a `Result`; `Map[K, V]()` (`m[k] = v`, `m.add(k, v)`, `m.get(k)` is optional), `Set[T]()` mutate in place; `for e in m.entries():`, `if var n = m.get(k): n += 1`.
 - Records: `type T:` fields (`tag: String = "x"`), `T(a: 1)` or `T(1)`; `enum Choice:` variants `A`, `B(x: Int)`; no `case` keyword. Methods in `impl T:` (`var fn` mutates `self`); `interface I:` contracts, `impl I for T:` conversions.
-- `T?` (Optional): values convert (no `some`); `none` is absent; unwrap with `if x := v:` or `.get(d)`; `a?.b`.
+- `T?` (Optional): values convert (no `some`); `none` is absent; unwrap with `if x := v:` or `.get(d)`; `a?.b`; `?` rejects one; `v.map(f)` with a Result `f` drops the error.
 - `match v:` only on your own types: `Case(x):`, `_:`, exhaustive. Never match `Result`/`Optional` or nest `match`.
 - Errors: `T!E` (`Result[T, E]`) is `ok(v)` / `error(e)`; E needs no interface. Bare `T!` selects `Error`, whose implementations have `.message()`. `r?` gives the value or returns a compatible error; `if x := r:` handles success.
 - Faults (`panic`, failed `get()`) abort, not a `Result`.
