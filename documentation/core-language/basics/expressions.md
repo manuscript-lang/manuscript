@@ -13,7 +13,7 @@ Rows are ordered from highest to lowest precedence.
 
 | Form | Associativity and restriction |
 | --- | --- |
-| Member access `.`, type application or list indexing `[...]`, call `(...)` | Left to right; brackets specialize declarations or index lists |
+| Member access `.`, type application or list indexing `[...]`, call `(...)`, propagation `?` | Left to right; brackets specialize declarations or index lists |
 | Prefix `+`, `-`, `try` | Right to left |
 | `*`, `/`, `%` | Left to right |
 | `+`, `-` | Left to right |
@@ -28,7 +28,7 @@ Rows are ordered from highest to lowest precedence.
 ```ebnf
 Expression    = Pipe ;
 Pipe          = OrExpression, { "|", PipeStep } ;
-PipeStep      = [ "try" ], ( Name, { ".", Name }, [ CallArguments ] | Postfix-from-dot ) | "try" ;
+PipeStep      = [ "try" ], ( Name, { ".", Name }, [ CallArguments ] [ "?" ] | Postfix-from-dot ) | "try" ;
 OrExpression  = AndExpression, { "or", AndExpression } ;
 AndExpression = NotExpression, { "and", NotExpression } ;
 NotExpression = "not", NotExpression | Comparison ;
@@ -37,7 +37,7 @@ Range         = Sum, [ "..", Sum ] ;
 Sum           = Product, { ("+" | "-"), Product } ;
 Product       = Prefix, { ("*" | "/" | "%"), Prefix } ;
 Prefix        = ("+" | "-" | "try"), Prefix | Postfix ;
-Postfix       = Primary, { ".", Name | TypeArguments | "[", Expression, "]" | CallArguments } ;
+Postfix       = Primary, { ".", Name | TypeArguments | "[", Expression, "]" | CallArguments | "?" } ;
 CallArguments = "(", [ Argument, { ",", Argument }, [ "," ] ], ")" ;
 Argument      = [ Name, ":" ], [ "var" ], Expression ;
 Primary       = IntLiteral | FloatLiteral | DecimalLiteral | StringLiteral

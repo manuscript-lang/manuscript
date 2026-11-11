@@ -15,6 +15,36 @@ fn discounted_label(price: Decimal, percent: Decimal) Result[String, DiscountErr
     return ok("Discounted price: {value}")
 ```
 
+## Postfix `?`
+
+`expression?` is `try expression`: it unwraps `ok` and returns the error from the enclosing function. It reads after the call, so nested calls and pipe steps need no leading keyword. Save this complete test as `postfix_test.ms` and run `ms test postfix_test.ms`:
+
+<!-- manuscript-example: {"mode":"test"} -->
+```manuscript
+import expect_equal from "@std/test/test.ms"
+
+fn prepare() Unit!: ok(unit)
+
+fn double(value: Int) Int!: ok(value * 2)
+
+fn ready() Int!:
+    prepare()?
+    return ok(5 | double?)
+
+test "postfix question mark":
+    expect_equal(ready()?, 10)?
+```
+
+```text
+RUN postfix_test.ms::postfix question mark
+PASS postfix_test.ms::postfix question mark
+1 tests, 0 failed
+```
+
+- `?` applies to a Result only. An Optional is rejected: unwrap it with `if x := v:` or `v.get(default)`.
+- `a?.b` with no space is optional chaining, so `load()?.name` chains on an Optional. To propagate a Result before a member, write `(load()?).name` or bind first.
+- `?` does not repeat: `f()??` is rejected. After an index, `m[k]?` is the in-place borrow in an `if var` head.
+
 ## Success and failure paths
 
 On `ok`, `value` holds the `Decimal`. On `error`, the function returns that error immediately. Success types may differ (decimal versus text); the error type is forwarded unchanged.

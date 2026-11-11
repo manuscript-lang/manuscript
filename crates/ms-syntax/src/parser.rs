@@ -622,7 +622,7 @@ impl<'a> Parser<'a> {
                 "; there is no inline conditional expression 'a if c else b': write 'if c: a else: b', or use an if statement"
             }
             Tok::Question => {
-                "; '?' is not a postfix unwrap, '??' or 'c ? a : b': unwrap an Optional with 'if x := v:' or give it a default with 'v.get(default)', chain with 'a?.b', and write a conditional as 'if c: a else: b'"
+                "; '?' after a Result call propagates its error, and is not '??' or 'c ? a : b': unwrap an Optional with 'if x := v:' or give it a default with 'v.get(default)', chain with 'a?.b', and write a conditional as 'if c: a else: b'"
             }
             Tok::Comma => {
                 "; commas separate items only inside (), [] or {}: put each field, case, or statement on its own line"
@@ -2543,6 +2543,17 @@ impl<'a> Parser<'a> {
                 },
             );
         }
+        if !tried && self.kind() == Tok::Question {
+            let question = self.peek();
+            self.at += 1;
+            step = self.mk(
+                question.pos,
+                ExprKind::Unary {
+                    op: UnaryOp::Try,
+                    operand: Box::new(step),
+                },
+            );
+        }
         if tried {
             step = self.mk(
                 try_tok.pos,
@@ -2815,6 +2826,25 @@ impl<'a> Parser<'a> {
                 self.at += 1;
                 let pos = e.pos;
                 e = self.mk(pos, ExprKind::Probe(Box::new(e)));
+            } else if self.kind() == Tok::Question {
+                // `call()?` is `try call()`; one per value keeps a line readable.
+                let question = self.peek();
+                self.at += 1;
+                if self.kind() == Tok::Dot && self.peek().pos.offset == question.end.offset {
+                    return self.fail(question, "write '?.' with no space before it, as in a?.b; to propagate a Result error before a member, write '(call()?).member'");
+                }
+                if self.kind() == Tok::Question {
+                    let second = self.peek();
+                    return self.fail(second, "'??' is not an operator and '?' cannot repeat: unwrap an Optional with 'if x := v:' or give it a default with 'v.get(default)', or bind a Result to a name before the next '?'");
+                }
+                let pos = e.pos;
+                e = self.mk(
+                    pos,
+                    ExprKind::Unary {
+                        op: UnaryOp::Try,
+                        operand: Box::new(e),
+                    },
+                );
             } else {
                 break;
             }
