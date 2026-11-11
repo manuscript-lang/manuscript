@@ -55,15 +55,15 @@ type Held[T]:
 	items: List[T]
 	held: Bool
 
-fn hold[T](slot: Int) Held[T]:
-	return Held[T](slot: slot, items: [take_slot[T](slot)], held: true)
-
 impl Closeable for Held[T]:
 	var fn close() Unit!:
 		if self.held:
 			self.held = false
 			if value := self.items.pop():
 				put_slot(self.slot, value)
+
+fn hold[T](slot: Int) Held[T]:
+	return Held[T](slot: slot, items: [take_slot[T](slot)], held: true)
 
 // The values a matched pattern captured, by name.
 export type RouteParams:
@@ -222,6 +222,27 @@ impl Router:
 		return fn(var exchange: HttpExchange): dispatch(
 			self.routes, self.middleware, self.groups, var exchange
 		)
+
+impl Router:
+	// Runs `request` through the router without a socket and returns the response it produced.
+	// A handler error is returned as is; the server would answer it with a 500. A handler that
+	// sends nothing answers 204.
+	fn call(request: HttpRequest) HttpResponse!:
+		state := new_slot(
+			TestState(
+				status: 0, sent: false, complete: false, closed: false, head: headers(),
+				body: BytesBuilder(), unread: request.body.clone()
+			)
+		)
+		var exchange: HttpExchange = TestExchange(
+			request: request.clone(), state: state
+		)
+		ran := dispatch(self.routes, self.middleware, self.groups, var exchange)
+		outcome := finished(state)
+		release_slot(state)
+		if ran.is_error(): return error(ran.err().clone())
+
+		return outcome
 
 // Adds a route unless one with the same method and shape exists.
 fn insert(var routes: List[Route], route: Route) Unit!:
@@ -505,27 +526,6 @@ fn allow_text(methods: List[String]) String:
 	all.append("OPTIONS")
 	return all.distinct().sorted().join(", ")
 
-impl Router:
-	// Runs `request` through the router without a socket and returns the response it produced.
-	// A handler error is returned as is; the server would answer it with a 500. A handler that
-	// sends nothing answers 204.
-	fn call(request: HttpRequest) HttpResponse!:
-		state := new_slot(
-			TestState(
-				status: 0, sent: false, complete: false, closed: false, head: headers(),
-				body: BytesBuilder(), unread: request.body.clone()
-			)
-		)
-		var exchange: HttpExchange = TestExchange(
-			request: request.clone(), state: state
-		)
-		ran := dispatch(self.routes, self.middleware, self.groups, var exchange)
-		outcome := finished(state)
-		release_slot(state)
-		if ran.is_error(): return error(ran.err().clone())
-
-		return outcome
-
 // What an in-process handler has sent so far.
 type TestState:
 	status: Int
@@ -539,18 +539,6 @@ type TestState:
 type TestExchange:
 	request: HttpRequest
 	state: Int
-
-fn finished(state: Int) HttpResponse!:
-	var guard = hold[TestState](state)
-	if not guard.items[0].sent:
-		return ok(HttpResponse(status: 204, headers: headers(), body: "".to_bytes()))
-
-	return ok(
-		HttpResponse(
-			status: guard.items[0].status, headers: guard.items[0].head.clone(),
-			body: guard.items[0].body.drain()
-		)
-	)
 
 impl HttpExchange for TestExchange:
 	var fn close() Unit:
@@ -655,6 +643,18 @@ impl HttpExchange for TestExchange:
 
 		guard.items[0].body.append_bytes(data)
 
+fn finished(state: Int) HttpResponse!:
+	var guard = hold[TestState](state)
+	if not guard.items[0].sent:
+		return ok(HttpResponse(status: 204, headers: headers(), body: "".to_bytes()))
+
+	return ok(
+		HttpResponse(
+			status: guard.items[0].status, headers: guard.items[0].head.clone(),
+			body: guard.items[0].body.drain()
+		)
+	)
+
 // Whether a response with this status may carry a body.
 fn has_body(status: Int) Bool:
 	return status >= 200 and status != 204 and status != 304
@@ -670,39 +670,6 @@ type Tap:
 	extra: HttpHeaders
 	request: HttpHeaders
 	state: Int?
-
-// `state` is a slot counting what is sent, which the caller made and reads afterwards.
-fn new_tap(
-	inner: HttpExchange,
-	extra: HttpHeaders,
-	request: HttpHeaders,
-	state: Int? = none
-) Tap:
-	return Tap(inner: inner, extra: extra, request: request, state: state)
-
-// Replaces `exchange` with one whose `headers()` reports `request` and everything else passes through.
-// Middleware uses it to hand later layers changed request headers, since a received header set is a copy.
-export fn with_request_headers(var exchange: HttpExchange, request: HttpHeaders) Unit:
-	exchange = new_tap(exchange, headers(), request)
-
-fn counted(slot: Int?, status: Int, bytes: Int) Unit:
-	if state := slot:
-		var guard = hold[TapState](state)
-		if status != 0: guard.items[0].status = status
-		guard.items[0].bytes += bytes
-
-fn snapshot(state: Int) TapState:
-	var guard = hold[TapState](state)
-	return TapState(status: guard.items[0].status, bytes: guard.items[0].bytes)
-
-// `sent` plus the `extra` headers it does not already have.
-fn with_extra(sent: HttpHeaders, extra: HttpHeaders) HttpHeaders:
-	var all = sent.clone()
-	for name in extra.names():
-		if not all.contains(name):
-			for value in extra.values(name):
-				all.append(name, value).get(unit)
-	return all
 
 impl Tap:
 	// The body bytes the exchange transmits: none for HEAD or a status that forbids a body.
@@ -765,6 +732,39 @@ impl HttpExchange for Tap:
 	var fn write_bytes(data: Bytes) Unit!:
 		try self.inner.write_bytes(data)
 		counted(self.state, 0, self.sent_length(self.status_so_far(), data.length()))
+
+// `state` is a slot counting what is sent, which the caller made and reads afterwards.
+fn new_tap(
+	inner: HttpExchange,
+	extra: HttpHeaders,
+	request: HttpHeaders,
+	state: Int? = none
+) Tap:
+	return Tap(inner: inner, extra: extra, request: request, state: state)
+
+// Replaces `exchange` with one whose `headers()` reports `request` and everything else passes through.
+// Middleware uses it to hand later layers changed request headers, since a received header set is a copy.
+export fn with_request_headers(var exchange: HttpExchange, request: HttpHeaders) Unit:
+	exchange = new_tap(exchange, headers(), request)
+
+fn counted(slot: Int?, status: Int, bytes: Int) Unit:
+	if state := slot:
+		var guard = hold[TapState](state)
+		if status != 0: guard.items[0].status = status
+		guard.items[0].bytes += bytes
+
+fn snapshot(state: Int) TapState:
+	var guard = hold[TapState](state)
+	return TapState(status: guard.items[0].status, bytes: guard.items[0].bytes)
+
+// `sent` plus the `extra` headers it does not already have.
+fn with_extra(sent: HttpHeaders, extra: HttpHeaders) HttpHeaders:
+	var all = sent.clone()
+	for name in extra.names():
+		if not all.contains(name):
+			for value in extra.values(name):
+				all.append(name, value).get(unit)
+	return all
 
 // Middleware that gives every request an id: the request's own `X-Request-Id` when it is 1 to 128
 // printable ASCII characters, otherwise a new UUID. The id is set on the request headers the wrapped exchange reports, where

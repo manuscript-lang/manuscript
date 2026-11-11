@@ -45,6 +45,37 @@ export opaque type Promise[T]:
 	// The runtime slot of this promise: a generation and an index, never reused while this id is live.
 	id: Int
 
+impl Promise[T]:
+	// Waits for the result and moves it out. Errors: the operation's own error; `EIO` (a fault inside, with its
+	// report in `details["report"]`); `ECANCELED`; `EBADF` (an earlier wait already took the result); `ETIMEDOUT` once the promise's
+	// `timeout` option has passed, which also cancelled the work.
+	fn wait() T!:
+		code := msrt_promise_wait(self.id, -1)
+		if code == 0: return taken_result[T](self.id)
+
+		return error(failure(self.id, code))
+
+	// Applies `options` to a promise made elsewhere (`read_file`, `fetch`, `sleep`, `exec`) and returns it, so
+	// `read_file(path).with(options: PromiseOptions(timeout: 5.seconds())).wait()` bounds the read. The timeout counts from now.
+	// A provided cancel signal replaces the previous signal.
+	fn with(options: PromiseOptions = PromiseOptions()) Promise[T]:
+		limit(self.id, options)
+		return self
+
+	// Asks the work to stop at its next wait; `wait` then reports `ECANCELED`. It returns at once, and dropping the promise
+	// joins the work. A finished promise is unchanged.
+	fn cancel() Unit:
+		msrt_promise_cancel(self.id)
+
+	// Whether the work has finished, however it ended. It never waits.
+	fn done() Bool:
+		return msrt_promise_done(self.id)
+
+impl Closeable for Promise[T]:
+	// Dropping a promise ends it: unfinished work is cancelled and waited for, and a result nobody took is dropped.
+	var fn close() Unit!:
+		msrt_promise_drop(self.id)
+
 // What bounds a promise, fixed when it is made: `timeout` counts from construction and is enforced whether or not anyone
 // waits; when it passes the work is cancelled and `wait` reports `ETIMEDOUT`. A negative timeout is no time at all.
 export type PromiseOptions:
@@ -60,15 +91,6 @@ export opaque type Cancel:
 	// The runtime slot of this switch: a generation and an index.
 	id: Int
 
-// A new switch that has not fired.
-export fn cancel_switch() Cancel:
-	return Cancel(id: msrt_cancel_new())
-
-// A copyable handle to a `Cancel`, passed in `PromiseOptions`. Once its `Cancel` fires it reads as cancelled for good, even after the `Cancel` is closed or dropped; a `Cancel` that never fired reads as not cancelled once it is gone.
-export opaque type Signal:
-	// The slot of the `Cancel` it belongs to; a freed slot never matches.
-	id: Int
-
 impl Cancel:
 	// A handle for `PromiseOptions(cancel: ...)`; make as many as you need.
 	fn signal() Signal:
@@ -82,6 +104,15 @@ impl Closeable for Cancel:
 	// Frees the switch. Promises made with its signals keep running; they just cannot be cancelled by it any more.
 	var fn close() Unit!:
 		msrt_cancel_free(self.id)
+
+// A new switch that has not fired.
+export fn cancel_switch() Cancel:
+	return Cancel(id: msrt_cancel_new())
+
+// A copyable handle to a `Cancel`, passed in `PromiseOptions`. Once its `Cancel` fires it reads as cancelled for good, even after the `Cancel` is closed or dropped; a `Cancel` that never fired reads as not cancelled once it is gone.
+export opaque type Signal:
+	// The slot of the `Cancel` it belongs to; a freed slot never matches.
+	id: Int
 
 impl Signal:
 	// Whether the switch has fired, for work that loops without waiting.
@@ -143,37 +174,6 @@ fn failure(id: Int, code: Int) Error:
 	if code == 1: return taken_error(id)
 
 	return outcome(id, code)
-
-impl Promise[T]:
-	// Waits for the result and moves it out. Errors: the operation's own error; `EIO` (a fault inside, with its
-	// report in `details["report"]`); `ECANCELED`; `EBADF` (an earlier wait already took the result); `ETIMEDOUT` once the promise's
-	// `timeout` option has passed, which also cancelled the work.
-	fn wait() T!:
-		code := msrt_promise_wait(self.id, -1)
-		if code == 0: return taken_result[T](self.id)
-
-		return error(failure(self.id, code))
-
-	// Applies `options` to a promise made elsewhere (`read_file`, `fetch`, `sleep`, `exec`) and returns it, so
-	// `read_file(path).with(options: PromiseOptions(timeout: 5.seconds())).wait()` bounds the read. The timeout counts from now.
-	// A provided cancel signal replaces the previous signal.
-	fn with(options: PromiseOptions = PromiseOptions()) Promise[T]:
-		limit(self.id, options)
-		return self
-
-	// Asks the work to stop at its next wait; `wait` then reports `ECANCELED`. It returns at once, and dropping the promise
-	// joins the work. A finished promise is unchanged.
-	fn cancel() Unit:
-		msrt_promise_cancel(self.id)
-
-	// Whether the work has finished, however it ended. It never waits.
-	fn done() Bool:
-		return msrt_promise_done(self.id)
-
-impl Closeable for Promise[T]:
-	// Dropping a promise ends it: unfinished work is cancelled and waited for, and a result nobody took is dropped.
-	var fn close() Unit!:
-		msrt_promise_drop(self.id)
 
 // Stores how `entry` ended in the promise `id`.
 export fn complete[U](id: Int, result: U!) Unit:

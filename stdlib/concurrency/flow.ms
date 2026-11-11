@@ -97,17 +97,6 @@ export type RateLimiter:
 	// Internal state: the reading up to which refills are counted.
 	stamp: Instant
 
-// A rate limiter that allows `count` uses per second with room for `burst` at once; it starts full. `count` and `burst` must be at least 1.
-export fn rate_limiter(count: Int, burst: Int) RateLimiter:
-	if count < 1 or burst < 1:
-		panic(
-			"rate_limiter: count and burst must be at least 1, found {count} and {burst}"
-		)
-	return RateLimiter(
-		burst: burst, interval: seconds(1).divide(count), tokens: burst,
-		stamp: monotonic()
-	)
-
 impl RateLimiter:
 	// Adds the tokens earned since the last refill.
 	var fn refill() Unit:
@@ -138,6 +127,17 @@ impl RateLimiter:
 			sleep(ready.difference(monotonic()).max(Duration(nanos: 1))).wait().get(
 				unit
 			)
+
+// A rate limiter that allows `count` uses per second with room for `burst` at once; it starts full. `count` and `burst` must be at least 1.
+export fn rate_limiter(count: Int, burst: Int) RateLimiter:
+	if count < 1 or burst < 1:
+		panic(
+			"rate_limiter: count and burst must be at least 1, found {count} and {burst}"
+		)
+	return RateLimiter(
+		burst: burst, interval: seconds(1).divide(count), tokens: burst,
+		stamp: monotonic()
+	)
 
 // Why a circuit breaker call produced no result.
 export enum CircuitError[E]:

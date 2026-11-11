@@ -25,13 +25,6 @@ export type Address:
 	// The `local@domain` address without angle brackets.
 	address: String
 
-// A parsed message: header fields and the body after the first blank line.
-export type Message:
-	// Header block with folded lines joined.
-	headers: Headers
-	// Body text exactly as written after the blank line, with line endings kept.
-	body: String
-
 impl Address:
 	// Formats as `Name <addr>` (quoting the name when it has specials) or the bare address when unnamed.
 	fn to_text() String:
@@ -44,6 +37,13 @@ impl Address:
 			return "\"{escaped}\" <{self.address}>"
 
 		return "{self.name} <{self.address}>"
+
+// A parsed message: header fields and the body after the first blank line.
+export type Message:
+	// Header block with folded lines joined.
+	headers: Headers
+	// Body text exactly as written after the blank line, with line endings kept.
+	body: String
 
 // Parses one mailbox: `addr`, `<addr>`, `Name <addr>` or `"Quoted, Name" <addr>`. Encoded words in
 // the name are decoded. Comments are not supported.
