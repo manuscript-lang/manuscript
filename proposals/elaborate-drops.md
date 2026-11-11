@@ -4,11 +4,11 @@
 
 - Problem: `ms-lower` places every scope-end and early-exit drop while it generates code, and tracks "this path already emitted the drop" itself (`closed_on_path` 22 uses, `scope_done`, `rest_closers`, `hidden_closers`). The MIR verifier then proves exactly-once ownership after the fact. Each new construct that moves or closes a value must repeat the bookkeeping.
 - Change: lowering emits a Raw phase of MIR with scope markers and no scope-end drops; one `elaborate` pass places them from move-state dataflow; the existing verifier runs on its output.
-- Decision requested: build stage 0 (a prototype of the hardest case) and stage 1; resources stay in lowering unless stage 0 shows glue can carry them.
+- Decision requested: build stage 0 (prototype of the failed close) and stage 1; if resources cannot move into the pass, stop after stage 1.
 
 ## Status
 
-Proposal, 2026-11-11, checked at `832ea3d3`. Owner direction: "having a separate pass will keep future bugs out, don't over index on existing code, we're setting things up for future". Skeptic review (2026-11-11) found the first draft under-evidenced; this version narrows scope to memory values and adds a prototype gate. Step 5 option (ii) of `compiler-stage-layering.md`; a checker drop plan was rejected there (the set is emission state, partly per-instance).
+Proposal, 2026-11-11, checked at `832ea3d3`. Owner direction: "having a separate pass will keep future bugs out, don't over index on existing code, we're setting things up for future". A skeptic review found the first draft under-evidenced; a second review (Fable) chose the design below: one pass owning all scope-exit cleanup, resources included. Step 5 option (ii) of `compiler-stage-layering.md`; a checker drop plan was rejected there (the set is emission state, partly per-instance).
 
 ## Problem
 
@@ -20,11 +20,11 @@ Proposal, 2026-11-11, checked at `832ea3d3`. Owner direction: "having a separate
 ## Design
 
 - **Raw phase.** `Module.phase: Raw | Elaborated`. Raw MIR may leave an owned value live at `ret` and at edges out of a scope; the verifier's end-state rule is checked only on Elaborated MIR. Raw still checks types, dominance, and "no value consumed twice".
-- **Markers.** `scope.begin S`, `scope.end S`, and `own v, S` (value `v`, owned, belongs to scope `S`). Early exits (`return`, `break`, `continue`, `try`) are plain edges; the pass finds the scopes they leave from the marker nesting. Markers are zero-cost and removed by `elaborate`.
-- **`elaborate`.** Forward dataflow over owned values: states `Live | Moved | MaybeMoved`. At each edge leaving a scope it inserts, in reverse `own` order: nothing for `Moved`, `Drop` for `Live`, `DropIf` on a flag it also introduces for `MaybeMoved`. Drop flags stop being a lowering choice.
-- **Scope of the first version: memory values.** Resources keep lowering's closers, the runtime cleanup stack (`hold_resource_temp`, `msrt_cleanup_*`, `closer.flag`) and failed-close returns (`close.rs:1485-1700`), because a scope-end close is control flow that re-enters `emit_return` with pending state, and registration happens at the owner's definition, not at the drop. They move to the pass only if stage 0 shows a glue signature that carries `pending_return` and the outer drops.
-- **Dataflow domain.** Locals are builder variables, some in memory slots (`Local.slot`), some `T?` boxes (`Local.opt`, a move leaves `none`), some guarded by `held`/`closer.flag`. The pass tracks per-owner state `Live | Moved | MaybeMoved` where a move is the op that consumes the value (`take`, `put`, `opt_unbox`, consuming operand positions from `arg_modes`); slots and opt boxes are tracked as one owner each. State that depends on runtime flags (`split`, `hidden_closers`, entry flags) is out of scope.
-- **Cancellation.** `unwind.rs` keeps cancellation release and consumes the elaborated drops.
+- **Markers.** `scope.begin S`, `scope.end S`, and `own p, S, policy`: `p` is an owner place (a builder variable or slot, not an SSA value, because locals are reassigned and `T?`-boxed). `policy` is the only checker input: `Drop | Close{Propagate | Discard | Fault}`, from facts lowering already reads (`CloseHandled`, `closer.explicit`, `close.rs:1430-1460`). Early exits (`return`, `break`, `continue`, `try`) are plain edges; the pass finds the scopes they leave from the marker nesting. Markers are removed by `elaborate`.
+- **Move state, only in the pass.** Per owner `Live | Moved | MaybeMoved`, computed from consuming ops (`arg_modes`, `take`, `put`, `opt_unbox`); drop flags are born here. `ownership/moved.rs` then has no lowering consumer and goes, so the fact has one producer.
+- **Fallible close as an exit edge.** The documented rule (`closeable.md:72-77`) is first error wins over the scopes an exit leaves: per exit the pass emits `r = close p; outcome = outcome.is_error ? outcome : r`. A failed close at fallthrough branches to a return edge the pass elaborates for the outer scopes, with the closed owner `Moved`. This removes the re-entrant `emit_return`, the `closed_on_path` snapshot and `returning_close_error`. No glue function: glue carrying `pending_return` would hide control flow from the verifier.
+- **Cleanup stack.** The pass emits `cleanup.push` at `own` and the discard at the elaborated close or move for `Close` owners, replacing the hand pairing in `close.rs:390-420` and `1485-1510`. Merging this with `unwind.rs` liveness registration comes last, if at all.
+- **Not changed: infallible implicit close.** Users would silently lose close errors, and `scopes.md:51` and `closeable.md:72` promise the opposite. If stage 0 fails, the fallback is "implicit close failure always faults", never "discard"; that is user-visible and needs the owner.
 - **Interaction.** `lastuse`/`copyelim` run after `elaborate` and stay optimizations. The verifier runs on Raw (partial) and on Elaborated (full) output in debug builds.
 
 ## Components touched
@@ -45,14 +45,16 @@ Proposal, 2026-11-11, checked at `832ea3d3`. Owner direction: "having a separate
 
 ## Stages
 
-0. **Prototype.** Elaborate one hard case end to end on a copy: a named memory local and a payload-taking match arm with an early `return` and a later `try` (the `matching.rs:234-365` shape). Stop if it needs a marker that says "partially moved" per arm decided by lowering; that means lowering still decides moves and only half the bookkeeping moves.
-1. **Shadow, test-only.** Lowering emits markers beside today's drops; `elaborate` runs on a copy; a test compares its drops with lowering's per exit over the corpus. Differences are classified into a fixed list before comparing (flag-guarded, resource, partial move, order only); stop if more than 5% of exits fall outside the first category plus order-only.
-2. **Named locals without glue** (memory values): lowering stops emitting their scope-end drops. Gate: conformance, `tests/ownership-counts`, resource and close matrices unchanged.
-3. **Temporaries and `pending_return`.** Same gate.
-4. **Resources via glue**, only if stage 0 allows it; otherwise they stay and the ledger keeps its resource-only identifiers. Gate: matrices, cancel-sweep, leak-check, copy-check zero. `cancel-sweep` also gates stage 2, because `unwind.rs` registers by liveness and must see the same shape.
+0. **Prototype on hand-written Raw MIR:** (a) a payload-taking match arm with an early `return` (the `matching.rs:234-365` shape); (b) two nested resources, a failed close at fallthrough plus a failed close under a pending domain error (`close_error_precedence.ms`). Stop if the precedence test needs per-path state from lowering or a per-arm "partially moved" marker.
+1. **Shadow, test-only.** Oracle: the verifier on elaborated output plus the close and resource matrices; a drop diff is triage only, and any unexplained difference is a finding.
+2. **Named memory locals.**
+3. **Named resources.** `closed_on_path` and `scope_done` reach zero here (29 references today). Kill criterion: if resources cannot move, stop after stage 1.
+4. **Temporaries** (`resource_temps`), then cleanup-stack unification.
+Gates each stage: conformance, `tests/ownership-counts`, resource and close matrices, `cancel-sweep`, `leak-check`, copy-check zero; compile time within 2%.
 
-Thresholds, set before measuring: the memory-value uses of `closed_on_path` and `scope_done` reach 0 by stage 3 (the resource ones by stage 4 or never); `ms build` time on `bench/perf` compile cases regresses by at most 2%; emitted MIR size does not grow on the corpus; no row of any matrix changes.
+Thresholds, set before measuring: `closed_on_path`, `scope_done`, `rest_closers`, `hidden_closers` reach 0 by stage 3; `ms build` time on `bench/perf` compile cases regresses by at most 2%; emitted MIR size does not grow on the corpus; no row of any matrix changes.
 
 ## Open questions
 
-- Do per-scope drop flags stay runtime values, or does `elaborate` prefer cloning the exit path? Recommendation: flags first, measure.
+- Unverified: the early scrutinee drop in a match arm (`matching.rs:337-347`) and `list_iters` rest release (`func.rs:1363-1375`) may need their own scope markers to keep close order; `Split` per-field flags (`OWNERSHIP.md:28`) may need field-level owners; `defer_close_failures` (`close.rs:~1537`) is a second failure convention `policy` must cover; whether `unwind.rs` covers plain faults.
+- Drop flags stay runtime values first; measure before cloning exit paths.
