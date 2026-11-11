@@ -32,11 +32,12 @@
 //! moved `Close` owner, and a flagged owner returned directly; each is an error.
 
 use crate::ir::*;
-use crate::types::{AltId, Std, Ty};
+use crate::types::{AltId, Std, Ty, TyKind};
 use crate::verify::{arg_modes, is_raw};
 use std::collections::{HashMap, HashSet};
 
 const DISCARD: &str = "msrt_cleanup_discard";
+const CANCEL: &str = "msrt_cleanup_cancel";
 const SHIELD_ENTER: &str = "msrt_shield_enter";
 const SHIELD_EXIT: &str = "msrt_shield_exit";
 
@@ -88,6 +89,7 @@ pub fn run(m: &mut Module) -> Result<(), String> {
             .any(|i| matches!((i.op, i.imm), (Op::ScopeOwn, Imm::Scope(_, k)) if k >= 1))
     });
     let discard = closes.then(|| runtime(m, DISCARD, &[Ty::INT], ExternRole::CleanupDiscard));
+    let cancel = closes.then(|| runtime(m, CANCEL, &[Ty::INT], ExternRole::None));
     let shield = closes.then(|| {
         (
             runtime(m, SHIELD_ENTER, &[], ExternRole::None),
@@ -100,7 +102,7 @@ pub fn run(m: &mut Module) -> Result<(), String> {
         }
         let stand_in = Func::new("", Vec::new(), Ty::UNIT);
         let mut f = std::mem::replace(&mut m.funcs[fi], stand_in);
-        let out = function(m, &mut f, close, discard, shield);
+        let out = function(m, &mut f, close, discard, cancel, shield);
         m.funcs[fi] = f;
         out.map_err(|e| format!("{}: {e}", m.funcs[fi].name))?;
     }
@@ -186,7 +188,15 @@ struct Ctx {
     parents: HashMap<i64, i64>,
     close: Option<FuncId>,
     discard: Option<ExtId>,
+    /// Turns a cleanup entry into a no-op without popping the newer ones (a slot owner moved
+    /// out of mid-scope).
+    cancel: Option<ExtId>,
     shield: Option<(ExtId, ExtId)>,
+}
+
+/// Whether `v` owns a memory slot (`scope.own S K p`, K >= 2): the owner is the slot's address.
+fn is_slot_owner(cx: &Ctx, f: &Func, v: Value) -> bool {
+    f.ty(v) == Ty::PTR && cx.tags.get(&v).is_some_and(|t| t.1 >= 2)
 }
 
 fn marker_of(inst: &Inst) -> Option<Marker> {
@@ -248,7 +258,23 @@ fn consume_args(
 /// The move state after `inst`.
 fn apply(m: &Module, f: &Func, cx: &Ctx, st: &mut State, inst: &Inst) -> Result<(), String> {
     if inst.op == Op::ScopeDisown {
-        st.remove(inst.args[0]);
+        let v = inst.args[0];
+        // A memory slot owner whose value moved out stays tracked: its entry is cancelled and
+        // the scope end closes nothing for it on this path.
+        if is_slot_owner(cx, f, v) {
+            return match st.get(v) {
+                Some(St::Live) => {
+                    st.set(v, St::Moved);
+                    Ok(())
+                }
+                Some(St::Moved) | None => Ok(()),
+                Some(_) => Err(format!(
+                    "slot owner %{} moved out of in an unsupported state",
+                    v.0
+                )),
+            };
+        }
+        st.remove(v);
         return Ok(());
     }
     // A disowned view that moves into another local is owned again by that local's scope.
@@ -335,6 +361,7 @@ fn function(
     f: &mut Func,
     close: Option<FuncId>,
     discard: Option<ExtId>,
+    cancel: Option<ExtId>,
     shield: Option<(ExtId, ExtId)>,
 ) -> Result<(), String> {
     let mut cx = Ctx {
@@ -343,6 +370,7 @@ fn function(
         parents: HashMap::new(),
         close,
         discard,
+        cancel,
         shield,
     };
     for b in &f.blocks {
@@ -534,6 +562,18 @@ impl Em<'_> {
         }
     }
 
+    /// Cancels the cleanup entry of a slot owner whose value moved out, and clears its flag:
+    /// newer entries stay, and the scope end discards this one.
+    fn cancel(&mut self, at: usize, v: Value) {
+        if let (Some(h), Some(c)) = (self.handles.get(&v).copied(), self.cx.cancel) {
+            self.push(at, Op::CallRt, &[h], Imm::Ext(c), Some(Ty::UNIT));
+        }
+        if self.flagged.contains(&v) {
+            let off = self.bconst(at, false);
+            self.flags.insert(v, off);
+        }
+    }
+
     /// Emits one block from its entry state; the rest of the function follows from it.
     fn block(
         &mut self,
@@ -556,7 +596,12 @@ impl Em<'_> {
         }
         for mut inst in old.insts {
             if inst.op == Op::ScopeDisown {
+                let v = inst.args[0];
+                let was = st.get(v);
                 apply(self.m, self.f, self.cx, &mut st, &inst)?;
+                if is_slot_owner(self.cx, self.f, v) && was == Some(St::Live) {
+                    self.cancel(cur, v);
+                }
                 continue;
             }
             match marker_of(&inst) {
@@ -566,6 +611,10 @@ impl Em<'_> {
                     apply(self.m, self.f, self.cx, &mut st, &inst)?;
                     if self.cx.tags[&v].1 >= 1 {
                         self.register(cur, v)?;
+                    }
+                    if self.flagged.contains(&v) && is_slot_owner(self.cx, self.f, v) {
+                        let held = self.bconst(cur, true);
+                        self.flags.insert(v, held);
                     }
                     continue;
                 }
@@ -865,26 +914,31 @@ impl Em<'_> {
     ) -> Result<usize, String> {
         match s {
             St::Live => {
-                self.close_infallible(at, v)?;
-                if self.f.ty(v) != Ty::PTR {
-                    self.push(at, Op::Drop, &[v], Imm::None, None);
+                if self.f.ty(v) == Ty::PTR {
+                    self.close_slot(at, v)?;
                     return Ok(at);
                 }
-                // A memory slot owner holds its value in memory, and its close function (an
-                // in-slot cleanup entry, `slot_close`) takes the address: what the close leaves
-                // in the slot is taken out and dropped.
-                let close = self.closer(v)?;
-                if let Some(ty) = self.m.funcs[close.index()].slot_close {
-                    let left = self
-                        .push(at, Op::Take, &[v], Imm::Ty(ty), Some(ty))
-                        .expect("taken");
-                    self.push(at, Op::Drop, &[left], Imm::None, None);
-                }
+                self.close_infallible(at, v)?;
+                self.push(at, Op::Drop, &[v], Imm::None, None);
                 Ok(at)
             }
             St::Part(..) => Err("a partially moved closing owner".into()),
             St::Moved | St::Maybe if self.f.ty(v) == Ty::PTR => {
-                Err("a memory slot owner that is moved out of".into())
+                // The flag says whether the value is still in the slot. The cancelled entry (or
+                // the live one) leaves the stack either way.
+                let flag = flag.ok_or("a moved slot owner without a drop flag")?;
+                let (yes, no, join) = (self.f.new_block(), self.f.new_block(), self.f.new_block());
+                self.f.blocks[at].term = Term::CondBr {
+                    cond: flag,
+                    then: Target::to(yes),
+                    els: Target::to(no),
+                };
+                // The close discards the live entry itself; the cancelled one leaves here.
+                self.close_slot(yes.index(), v)?;
+                self.f.blocks[yes.index()].term = Term::Br(Target::to(join));
+                self.discard(no.index(), v);
+                self.f.blocks[no.index()].term = Term::Br(Target::to(join));
+                Ok(join.index())
             }
             St::Moved => {
                 let flag = flag.ok_or("a moved owner without a drop flag")?;
@@ -907,31 +961,11 @@ impl Em<'_> {
         }
     }
 
-    /// Cleans up a memory-slot owner whose close returns a `Result` (`rc` runs it): shielded, on
-    /// the path that still holds it. The first failing close is the outcome (the `Result` it
-    /// returned, owned); later results are dropped.
-    fn cleanup_fallible(
-        &mut self,
-        at: usize,
-        v: Value,
-        s: St,
-        rc: FuncId,
-        outcome: Option<Value>,
-    ) -> Result<(usize, Option<Value>), String> {
-        if s != St::Live {
-            return Err("a memory slot owner with a fallible close that is moved out of".into());
-        }
-        let (enter, exit) = self
-            .cx
-            .shield
-            .ok_or("a closing owner needs the shield calls")?;
-        let rty = self.m.funcs[rc.index()].ret;
-        self.discard(at, v);
-        self.push(at, Op::CallRt, &[], Imm::Ext(enter), Some(Ty::UNIT));
-        let r = self
-            .push(at, Op::Call, &[v], Imm::Func(rc), Some(rty))
-            .expect("close result");
-        self.push(at, Op::CallRt, &[], Imm::Ext(exit), Some(Ty::UNIT));
+    /// Closes the infallible memory slot owner `v` that still holds its value, shielded: its
+    /// close function (an in-slot cleanup entry, `slot_close`) takes the address, and what the
+    /// close leaves in the slot is taken out and dropped.
+    fn close_slot(&mut self, at: usize, v: Value) -> Result<(), String> {
+        self.close_infallible(at, v)?;
         let close = self.closer(v)?;
         if let Some(ty) = self.m.funcs[close.index()].slot_close {
             let left = self
@@ -939,6 +973,61 @@ impl Em<'_> {
                 .expect("taken");
             self.push(at, Op::Drop, &[left], Imm::None, None);
         }
+        Ok(())
+    }
+
+    /// Cleans up a memory-slot owner whose close returns a `Result` (`rc` runs it): shielded, on
+    /// the path that still holds it. The first failing close is the outcome (the `Result` it
+    /// returned, owned); later results are dropped.
+    fn cleanup_fallible(
+        &mut self,
+        mut at: usize,
+        v: Value,
+        s: St,
+        rc: FuncId,
+        outcome: Option<Value>,
+    ) -> Result<(usize, Option<Value>), String> {
+        if matches!(s, St::Part(..)) {
+            return Err("a partially moved slot owner".into());
+        }
+        let rty = self.m.funcs[rc.index()].ret;
+        let r = if s == St::Live {
+            self.discard(at, v);
+            self.close_result(at, v, rc)?
+        } else {
+            // Moved out of on some path: the flag says whether the value is still in the slot.
+            // A path that moved it closes nothing and adds the success result.
+            let flag = self
+                .flags
+                .get(&v)
+                .copied()
+                .ok_or("a moved slot owner without a drop flag")?;
+            let (yes, no, join) = (self.f.new_block(), self.f.new_block(), self.f.new_block());
+            self.f.blocks[at].term = Term::CondBr {
+                cond: flag,
+                then: Target::to(yes),
+                els: Target::to(no),
+            };
+            self.discard(yes.index(), v);
+            self.discard(no.index(), v);
+            let closed = self.close_result(yes.index(), v, rc)?;
+            self.f.blocks[yes.index()].term = Term::Br(Target {
+                block: join,
+                args: vec![closed],
+            });
+            let none = self.ok_unit(no.index(), rty)?;
+            self.f.blocks[no.index()].term = Term::Br(Target {
+                block: join,
+                args: vec![none],
+            });
+            let p = self.f.new_value(rty);
+            self.f.blocks[join.index()].params.push(BlockParam {
+                value: p,
+                mode: Mode::Move,
+            });
+            at = join.index();
+            p
+        };
         let Some(first) = outcome else {
             return Ok((at, Some(r)));
         };
@@ -966,6 +1055,51 @@ impl Em<'_> {
             mode: Mode::Move,
         });
         Ok((join.index(), Some(p)))
+    }
+
+    /// Runs the fallible close `rc` of the slot owner `v` shielded and releases what it leaves
+    /// in the slot. Returns the close's `Result`.
+    fn close_result(&mut self, at: usize, v: Value, rc: FuncId) -> Result<Value, String> {
+        let (enter, exit) = self
+            .cx
+            .shield
+            .ok_or("a closing owner needs the shield calls")?;
+        let rty = self.m.funcs[rc.index()].ret;
+        self.push(at, Op::CallRt, &[], Imm::Ext(enter), Some(Ty::UNIT));
+        let r = self
+            .push(at, Op::Call, &[v], Imm::Func(rc), Some(rty))
+            .expect("close result");
+        self.push(at, Op::CallRt, &[], Imm::Ext(exit), Some(Ty::UNIT));
+        let close = self.closer(v)?;
+        if let Some(ty) = self.m.funcs[close.index()].slot_close {
+            let left = self
+                .push(at, Op::Take, &[v], Imm::Ty(ty), Some(ty))
+                .expect("taken");
+            self.push(at, Op::Drop, &[left], Imm::None, None);
+        }
+        Ok(r)
+    }
+
+    /// The success of the `Result` type `rty` (its `ok` payload is `unit`).
+    fn ok_unit(&mut self, at: usize, rty: Ty) -> Result<Value, String> {
+        let TyKind::Alt(a) = self.m.types.kind(rty).clone() else {
+            return Err("a fallible close returns a Result".into());
+        };
+        if self.m.alts[a.index()].cases[Std::OK].fields[0].1 != Ty::UNIT {
+            return Err("a moved slot owner whose close succeeds with a value".into());
+        }
+        let unit = self
+            .push(at, Op::UnitConst, &[], Imm::None, Some(Ty::UNIT))
+            .expect("unit");
+        Ok(self
+            .push(
+                at,
+                Op::AltNew,
+                &[unit],
+                Imm::Case(a, Std::OK as u32),
+                Some(rty),
+            )
+            .expect("ok"))
     }
 
     /// Drops `v` when its type holds anything to release.
@@ -1035,6 +1169,10 @@ impl Em<'_> {
         for (v, s) in owners {
             st.remove(v);
             if s == St::Moved && !self.flagged.contains(&v) {
+                // A slot owner's cancelled entry leaves the stack now.
+                if is_slot_owner(self.cx, self.f, v) {
+                    self.discard(at, v);
+                }
                 continue;
             }
             (at, outcome) = self.cleanup_one(at, v, s, outcome)?;

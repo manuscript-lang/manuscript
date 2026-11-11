@@ -112,6 +112,9 @@ pub(crate) struct FnLower<'a> {
     pub raw_owners: bool,
     /// Locals whose drop is left to `elaborate`.
     pub raw_owned: std::collections::HashSet<usize>,
+    /// Resources in memory the elaborate pass closes: the slot address and how the value closes.
+    /// A move of the value disowns the slot.
+    pub raw_slots: HashMap<usize, (Value, crate::close::CloseKind)>,
     /// Bindings closed at scope end and how each is closed when its scope is left.
     pub closers: HashMap<usize, crate::close::Closer>,
     /// Loops that own their elements: how an element closes, the list and the loop index, by
@@ -639,6 +642,7 @@ impl<'a> FnLower<'a> {
             next_scope: 1,
             raw_owners: true,
             raw_owned: std::collections::HashSet::new(),
+            raw_slots: HashMap::new(),
             closers: HashMap::new(),
             rest_closers: HashMap::new(),
             hidden_closers: HashMap::new(),
@@ -1450,6 +1454,8 @@ impl<'a> FnLower<'a> {
     /// A Raw-owned local's value moved on without an op that consumes it: it is no longer the
     /// scope's to drop on this path.
     pub fn disown_raw(&mut self, uid: usize, v: Value) {
+        // A resource in memory is owned by its slot: the slot is what leaves the scope.
+        let v = self.raw_slots.get(&uid).map_or(v, |(slot, _)| *slot);
         if self.raw_owned.contains(&uid) {
             self.b
                 .emit(Op::ScopeDisown, &[v], ms_mir::ir::Imm::None, None);

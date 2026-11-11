@@ -48,6 +48,10 @@ fn elaborate_and_run_text(body: &str) -> (i64, String, String) {
         out.push_str("~\n");
         Ok(ms_mir::interp::Val::Unit)
     });
+    it.register("msrt_cleanup_cancel", |out, _| {
+        out.push_str("x\n");
+        Ok(ms_mir::interp::Val::Unit)
+    });
     for name in ["msrt_shield_enter", "msrt_shield_exit"] {
         it.register(name, |_, _| Ok(ms_mir::interp::Val::Unit));
     }
@@ -460,6 +464,50 @@ b0:
     );
     assert_eq!(out, "~\n7\n", "{text}");
     assert!(text.contains("msrt_shield_enter"), "{text}");
+}
+
+/// A slot owner whose value moves out on one branch: that path cancels its entry and closes
+/// nothing, the other closes it in place; the entry leaves the stack at the scope end either way.
+#[test]
+fn a_conditionally_moved_slot_owner_closes_only_where_it_still_holds_the_value() {
+    for (cond, want) in [(1, "x\n~\n"), (0, "~\n7\n")] {
+        let (_, out, text) = elaborate_and_run_text(&format!(
+            r#"fn @shut(%p: ptr) -> unit {{
+b0:
+  %r: list<int> = load list<int> %p
+  %z: int = iconst 0
+  %id: int = list.get %r, %z
+  %u: unit = call.rt @msrt_print_int (%id)
+  ret %u
+}}
+fn @main() -> int {{
+b0:
+  scope.begin 1 0
+  %n: int = iconst 7
+  %a: list<int> = call @mk (%n)
+  %s: ptr = slot list<int>
+  put %s, %a
+  scope.own 1 4 %s
+  %k: int = iconst {cond}
+  %one: int = iconst 1
+  %c: bool = icmp.eq %k, %one
+  br_if %c, b1(), b2()
+b1():
+  %t: list<int> = take list<int> %s
+  scope.disown %s
+  drop %t
+  br b3()
+b2():
+  br b3()
+b3():
+  scope.end 1 0
+  %r: int = iconst 0
+  ret %r
+}}
+"#
+        ));
+        assert_eq!(out, want, "cond {cond}\n{text}");
+    }
 }
 
 /// A memory-slot owner whose close returns a `Result`: the close runs shielded, its error becomes
