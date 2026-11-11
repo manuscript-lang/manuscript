@@ -22,4 +22,5 @@ mod recovery_blanking;
 mod recovery_comments;
 mod recovery_declarations;
 mod recovery_diagnostics;
+mod receiver_methods;
 mod type_suffix;
