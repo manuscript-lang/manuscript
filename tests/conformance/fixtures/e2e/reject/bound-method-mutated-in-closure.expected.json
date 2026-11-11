@@ -1,0 +1,38 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "cannot change `values` while `any_of` borrows it (method value, at 9:22); finish using `any_of` before this, or give `any_of` its own value by converting a clone of the concrete value",
+        "position": {
+          "file": "bound-method-mutated-in-closure.ms",
+          "line": 15,
+          "column": 13,
+          "offset": 482
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "cannot change `values` while `any_of` borrows it (method value, at 9:22); finish using `any_of` before this, or give `any_of` its own value by converting a clone of the concrete value",
+        "position": {
+          "file": "bound-method-mutated-in-closure.ms",
+          "line": 12,
+          "column": 9,
+          "offset": 442
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/bound-method-mutated-in-closure.ms:15:13: type: cannot change `values` while `any_of` borrows it (method value, at 9:22); finish using `any_of` before this, or give `any_of` its own value by converting a clone of the concrete value\n    |\n 15 |             values.remove(\"a\")\n    |                      ^\n<DIR>/bound-method-mutated-in-closure.ms:12:9: type: cannot change `values` while `any_of` borrows it (method value, at 9:22); finish using `any_of` before this, or give `any_of` its own value by converting a clone of the concrete value\n    |\n 12 |         fn key,\n    |               ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

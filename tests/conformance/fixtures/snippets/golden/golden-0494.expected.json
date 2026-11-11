@@ -1,0 +1,33 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "'try' was replaced by a postfix '?': write f(x)? instead of try f(x), and x | step? instead of x | try step",
+        "position": {
+          "file": "golden-0494.ms",
+          "line": 5,
+          "column": 10,
+          "offset": 93
+        },
+        "end": {
+          "file": "golden-0494.ms",
+          "line": 5,
+          "column": 13,
+          "offset": 96
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0494.ms:5:10: parse: 'try' was replaced by a postfix '?': write f(x)? instead of try f(x), and x | step? instead of x | try step\n   |\n 5 |     x += try 3\n   |          ^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

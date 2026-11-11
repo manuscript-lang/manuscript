@@ -1,0 +1,80 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "list-distinct.ms::generic distinct method values copy nested elements independently",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "list-distinct.ms::hash collisions keep the first representative and copy nested payloads",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "list-distinct.ms::distinct keeps first-seen order above the hashing threshold",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "list-distinct.ms::set algebra preserves collision order and first representatives",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "list-distinct.ms::distinct copies nested values into independent output storage",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "list-distinct.ms::distinct preserves owned strings, empty and small lists",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 6,
+        "selected": 6,
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN list-distinct.ms::generic distinct method values copy nested elements independently\nPASS list-distinct.ms::generic distinct method values copy nested elements independently\nRUN list-distinct.ms::hash collisions keep the first representative and copy nested payloads\nPASS list-distinct.ms::hash collisions keep the first representative and copy nested payloads\nRUN list-distinct.ms::distinct keeps first-seen order above the hashing threshold\nPASS list-distinct.ms::distinct keeps first-seen order above the hashing threshold\nRUN list-distinct.ms::set algebra preserves collision order and first representatives\nPASS list-distinct.ms::set algebra preserves collision order and first representatives\nRUN list-distinct.ms::distinct copies nested values into independent output storage\nPASS list-distinct.ms::distinct copies nested values into independent output storage\nRUN list-distinct.ms::distinct preserves owned strings, empty and small lists\nPASS list-distinct.ms::distinct preserves owned strings, empty and small lists\n6 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

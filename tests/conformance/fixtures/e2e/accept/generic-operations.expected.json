@@ -1,0 +1,70 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "generic-operations.ms::an interface operation takes type parameters of its own",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "generic-operations.ms::a bounded type parameter calls a generic operation",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "generic-operations.ms::an inherent method takes type parameters of its own",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "generic-operations.ms::List max_by and min_by are source methods",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 4,
+        "selected": 4,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN generic-operations.ms::an interface operation takes type parameters of its own\nPASS generic-operations.ms::an interface operation takes type parameters of its own\nRUN generic-operations.ms::a bounded type parameter calls a generic operation\nPASS generic-operations.ms::a bounded type parameter calls a generic operation\nRUN generic-operations.ms::an inherent method takes type parameters of its own\nPASS generic-operations.ms::an inherent method takes type parameters of its own\nRUN generic-operations.ms::List max_by and min_by are source methods\nPASS generic-operations.ms::List max_by and min_by are source methods\n4 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

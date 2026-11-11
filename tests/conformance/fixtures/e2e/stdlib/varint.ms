@@ -1,0 +1,297 @@
+// conform: tags=testing,tier-stdlib
+// conform: phase=test
+import (
+	Bytes, BytesBuilder from "@std/bytes.ms",
+	expect_equal, expect_true from "@std/test/test.ms",
+)
+
+fn unsigned(value: UInt64) Bytes:
+	var out = BytesBuilder()
+	out.append_uvarint(value)
+	return out.build()
+
+fn signed(value: Int) Bytes:
+	var out = BytesBuilder()
+	out.append_varint(value)
+	return out.build()
+
+fn expect_varint_error(data: Bytes, at: Int, expected: Error) Unit!:
+	unsigned_result := data.uvarint(at)
+	expect_true(unsigned_result.is_error())?
+	expect_equal(unsigned_result.err(), expected)?
+
+	signed_result := data.varint(at)
+	expect_true(signed_result.is_error())?
+	expect_equal(signed_result.err(), expected)?
+
+test "unsigned varints have base-128 wire encodings":
+	expect_equal(unsigned(0), Bytes([0]))?
+	expect_equal(unsigned(1), Bytes([1]))?
+	expect_equal(unsigned(127), Bytes([127]))?
+	expect_equal(unsigned(128), Bytes([128, 1]))?
+	expect_equal(unsigned(255), Bytes([255, 1]))?
+	expect_equal(unsigned(300), Bytes([172, 2]))?
+	expect_equal(unsigned(16383), Bytes([255, 127]))?
+	expect_equal(unsigned(16384), Bytes([128, 128, 1]))?
+	expect_equal(
+		unsigned(18446744073709551615),
+		Bytes([255, 255, 255, 255, 255, 255, 255, 255, 255, 1]),
+	)?
+
+test "signed varints use zigzag including both extrema":
+	expect_equal(signed(0), Bytes([0]))?
+	expect_equal(signed(-1), Bytes([1]))?
+	expect_equal(signed(1), Bytes([2]))?
+	expect_equal(signed(-2), Bytes([3]))?
+	expect_equal(signed(63), Bytes([126]))?
+	expect_equal(signed(-64), Bytes([127]))?
+	expect_equal(signed(64), Bytes([128, 1]))?
+	expect_equal(signed(-65), Bytes([129, 1]))?
+	expect_equal(
+		signed(9223372036854775807),
+		Bytes([254, 255, 255, 255, 255, 255, 255, 255, 255, 1]),
+	)?
+	expect_equal(
+		signed(-9223372036854775808),
+		Bytes([255, 255, 255, 255, 255, 255, 255, 255, 255, 1]),
+	)?
+
+test "unsigned varints round trip every length and group boundary":
+	values: List[UInt64] := [
+		0, 1, 126, 127, 128, 129, 255, 300, 16383, 16384, 2097151, 2097152, 268435455,
+		268435456, 34359738367, 34359738368, 4398046511103, 4398046511104,
+		562949953421311, 562949953421312, 72057594037927935, 72057594037927936,
+		9223372036854775807, 9223372036854775808, 18446744073709551615
+	]
+
+	for value in values:
+		data := unsigned(value)
+		decoded := data.uvarint(0)?
+		expect_equal(decoded.value, value)?
+		expect_equal(decoded.next_offset, data.length())?
+
+	var value: UInt64 = 1
+
+	for bit in 0..64:
+		expect_equal((unsigned(value).uvarint(0)?).value, value)?
+		expect_equal((unsigned(value - 1).uvarint(0)?).value, value - 1)?
+		if value < 9223372036854775808:
+			value *= 2
+
+test "signed varints round trip common values and extrema":
+	for value in [
+		-9223372036854775808,
+		-9223372036854775807,
+		-65536,
+		-16384,
+		-128,
+		-65,
+		-64,
+		-1,
+		0,
+		1,
+		63,
+		64,
+		127,
+		128,
+		16384,
+		65536,
+		9223372036854775807,
+	]:
+		data := signed(value)
+		decoded := data.varint(0)?
+		expect_equal(decoded.value, value)?
+		expect_equal(decoded.next_offset, data.length())?
+
+	for value in - 512..513:
+		expect_equal((signed(value).varint(0)?).value, value)?
+
+test "varint offsets chain through trailing bytes and slices":
+	var out = BytesBuilder()
+	out.append(99)
+	out.append_uvarint(300)
+	out.append_varint(-65)
+	out.append_uvarint(18446744073709551615)
+	out.append(77)
+
+	data := out.build()
+	first := data.uvarint(1)?
+	expect_equal(first.value, 300)?
+	expect_equal(first.next_offset, 3)?
+
+	second := data.varint(first.next_offset)?
+	expect_equal(second.value, -65)?
+	expect_equal(second.next_offset, 5)?
+
+	third := data.uvarint(second.next_offset)?
+	expect_equal(third.value, 18446744073709551615)?
+	expect_equal(third.next_offset, 15)?
+	expect_equal(data.get(third.next_offset), 77)?
+
+	view := data.slice(1, 15)?
+	view_first := view.uvarint(0)?
+	expect_equal(view_first.value, 300)?
+	expect_equal(view_first.next_offset, 2)?
+
+	view_second := view.varint(view_first.next_offset)?
+	expect_equal(view_second.value, -65)?
+	expect_equal(view_second.next_offset, 4)?
+	expect_equal((view.uvarint(view_second.next_offset)?).next_offset, view.length())?
+
+test "each proper prefix of a minimal multibyte varint is incomplete":
+	values: List[UInt64] := [
+		128, 16384, 2097152, 268435456, 34359738368, 4398046511104, 562949953421312,
+		72057594037927936, 9223372036854775808, 18446744073709551615
+	]
+
+	for value in values:
+		data := unsigned(value)
+		for end in 0..data.length():
+			expect_varint_error(
+				data.slice(0, end)?,
+				0,
+				Error("binary: incomplete varint", kind: "EBADMSG"),
+			)?
+
+		prefixed := Bytes([99]).concat(data)
+		for end in 1..prefixed.length():
+			expect_varint_error(
+				prefixed.slice(0, end)?,
+				1,
+				Error("binary: incomplete varint", kind: "EBADMSG"),
+			)?
+
+test "varint offset errors are distinct from missing input":
+	data := Bytes([0, 1])
+	for at in [-9223372036854775808, -1, 3, 9223372036854775807]:
+		expect_varint_error(
+			data,
+			at,
+			Error("binary: invalid varint offset", kind: "ERANGE"),
+		)?
+	expect_varint_error(
+		data,
+		data.length(),
+		Error("binary: incomplete varint", kind: "EBADMSG"),
+	)?
+	expect_varint_error(
+		Bytes([]),
+		0,
+		Error("binary: incomplete varint", kind: "EBADMSG"),
+	)?
+
+test "the tenth byte can only be zero or one":
+	prefix := Bytes([128, 128, 128, 128, 128, 128, 128, 128, 128])
+
+	for byte in 2..256:
+		data := prefix.concat(Bytes([byte.to_uint8().get(0)]))
+		expect_varint_error(
+			data,
+			0,
+			Error("binary: varint overflows 64 bits", kind: "ERANGE"),
+		)?
+		expect_varint_error(
+			data.concat(Bytes([0])),
+			0,
+			Error("binary: varint overflows 64 bits", kind: "ERANGE"),
+		)?
+
+	for byte in 0..2:
+		decoded := prefix.concat(Bytes([byte.to_uint8().get(0)])).uvarint(0)?
+		expected: UInt64 := if byte == 0: 0 else: 9223372036854775808
+		expect_equal(decoded.value, expected)?
+		expect_equal(decoded.next_offset, 10)?
+
+test "continuation-only data stops at the representation bound":
+	var out = BytesBuilder()
+
+	for length in 0..10:
+		prefix := out.drain()
+		expect_varint_error(
+			prefix,
+			0,
+			Error("binary: incomplete varint", kind: "EBADMSG"),
+		)?
+		out.append_bytes(prefix)
+		out.append(128)
+
+	ten := out.build()
+	expect_varint_error(
+		ten,
+		0,
+		Error("binary: varint overflows 64 bits", kind: "ERANGE"),
+	)?
+	expect_varint_error(
+		ten.concat(Bytes([0])),
+		0,
+		Error("binary: varint overflows 64 bits", kind: "ERANGE"),
+	)?
+
+test "nonminimal encodings are accepted and preserve the next offset":
+	zero := Bytes([128, 0, 255]).uvarint(0)?
+	expect_equal(zero.value, 0)?
+	expect_equal(zero.next_offset, 2)?
+
+	negative := Bytes([129, 128, 0, 255]).varint(0)?
+	expect_equal(negative.value, -1)?
+	expect_equal(negative.next_offset, 3)?
+
+test "unsigned fixed-width codecs cover the entire UInt64 range":
+	values: List[UInt64] := [
+		0, 1, 255, 256, 4294967295, 4294967296, 9223372036854775807,
+		9223372036854775808, 18446744073709551615
+	]
+
+	for value in values:
+		var out = BytesBuilder()
+		out.append(99)
+		out.append_uint64_le(value)
+		out.append_uint64_be(value)
+		out.append(77)
+
+		data := out.build()
+		expect_equal(data.uint64_le(1)?, value)?
+		expect_equal(data.uint64_be(9)?, value)?
+
+		view := data.slice(1, 17)?
+		expect_equal(view.uint64_le(0)?, value)?
+		expect_equal(view.uint64_be(8)?, value)?
+
+	var out = BytesBuilder()
+	out.append_uint64_le(18364758544493064720)
+	out.append_uint64_be(18364758544493064720)
+	expect_equal(
+		out.build(),
+		Bytes(
+			[
+				16, 50, 84, 118, 152, 186, 220, 254, 254, 220, 186, 152, 118, 84, 50, 16
+			]
+		),
+	)?
+
+test "unsigned fixed-width reads reject missing bytes and extreme offsets":
+	expected: UInt64! := error(Error("binary: out of range", kind: "ERANGE"))
+	data := Bytes([0, 0, 0, 0, 0, 0, 0, 0])
+
+	for at in [-9223372036854775808, -1, 1, 8, 9223372036854775807]:
+		expect_equal(data.uint64_le(at), expected)?
+		expect_equal(data.uint64_be(at), expected)?
+
+	for end in 0..8:
+		short := data.slice(0, end)?
+		expect_equal(short.uint64_le(0), expected)?
+		expect_equal(short.uint64_be(0), expected)?
+
+test "varint diagnostics describe the error without echoing input":
+	expect_equal(
+		Error("binary: invalid varint offset", kind: "ERANGE").message,
+		"binary: invalid varint offset",
+	)?
+	expect_equal(
+		Error("binary: incomplete varint", kind: "EBADMSG").message,
+		"binary: incomplete varint",
+	)?
+	expect_equal(
+		Error("binary: varint overflows 64 bits", kind: "ERANGE").message,
+		"binary: varint overflows 64 bits",
+	)?

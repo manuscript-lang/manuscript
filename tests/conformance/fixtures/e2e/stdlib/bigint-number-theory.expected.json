@@ -1,0 +1,85 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "bigint-number-theory.ms::factorial and binomial are exact",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "bigint-number-theory.ms::factorial and binomial reject negative inputs",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "bigint-number-theory.ms::probable primes",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "bigint-number-theory.ms::modular square roots",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "bigint-number-theory.ms::large nonresidue modulus has a complete primality certificate",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "bigint-number-theory.ms::modular square root searches beyond a thousand quadratic residues",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "bigint-number-theory.ms::modular square root rejects a composite witnessed during search",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 7,
+        "selected": 7,
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN bigint-number-theory.ms::factorial and binomial are exact\nPASS bigint-number-theory.ms::factorial and binomial are exact\nRUN bigint-number-theory.ms::factorial and binomial reject negative inputs\nPASS bigint-number-theory.ms::factorial and binomial reject negative inputs\nRUN bigint-number-theory.ms::probable primes\nPASS bigint-number-theory.ms::probable primes\nRUN bigint-number-theory.ms::modular square roots\nPASS bigint-number-theory.ms::modular square roots\nRUN bigint-number-theory.ms::large nonresidue modulus has a complete primality certificate\nPASS bigint-number-theory.ms::large nonresidue modulus has a complete primality certificate\nRUN bigint-number-theory.ms::modular square root searches beyond a thousand quadratic residues\nPASS bigint-number-theory.ms::modular square root searches beyond a thousand quadratic residues\nRUN bigint-number-theory.ms::modular square root rejects a composite witnessed during search\nPASS bigint-number-theory.ms::modular square root rejects a composite witnessed during search\n7 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

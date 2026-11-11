@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3001",
+        "phase": "type",
+        "message": "expected Result[List[Int], CollectionError], found Result[List[Int], Error] (in the return value)",
+        "position": {
+          "file": "golden-0466.ms",
+          "line": 5,
+          "column": 50,
+          "offset": 139
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0466.ms:5:50: type: expected Result[List[Int], CollectionError], found Result[List[Int], Error] (in the return value)\n   |\n 5 | fn get() Result[List[Int], CollectionError]: [1].slice(0, 1)\n   |                                                  ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

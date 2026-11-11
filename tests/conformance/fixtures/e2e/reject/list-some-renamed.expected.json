@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown or ambiguous member some on List[Int]; some(predicate) is now any(predicate)",
+        "position": {
+          "file": "list-some-renamed.ms",
+          "line": 5,
+          "column": 11,
+          "offset": 105
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/list-some-renamed.ms:5:11: resolution: unknown or ambiguous member some on List[Int]; some(predicate) is now any(predicate)\n   |\n 5 |     if xs.some(fn(x: Int) Bool: x > 2): return 1\n   |              ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

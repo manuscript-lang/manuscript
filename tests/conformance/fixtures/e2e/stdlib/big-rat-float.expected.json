@@ -1,0 +1,100 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "big-rat-float.ms::rationals stay in lowest terms and compare with ==",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "big-rat-float.ms::rational errors and decimal parsing",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "big-rat-float.ms::rational rounding power and formatting",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "big-rat-float.ms::rationals convert exactly from and to floats",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "big-rat-float.ms::big floats round once at their precision",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "big-rat-float.ms::big floats add, subtract and compare across magnitudes",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "big-rat-float.ms::big float errors",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "big-rat-float.ms::decimal text rejects a sign anywhere but the front of the digits and the exponent",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "big-rat-float.ms::big floats compare across a huge exponent gap",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "big-rat-float.ms::to_float rounds once, onto the subnormal grid",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 10,
+        "selected": 10,
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN big-rat-float.ms::rationals stay in lowest terms and compare with ==\nPASS big-rat-float.ms::rationals stay in lowest terms and compare with ==\nRUN big-rat-float.ms::rational errors and decimal parsing\nPASS big-rat-float.ms::rational errors and decimal parsing\nRUN big-rat-float.ms::rational rounding power and formatting\nPASS big-rat-float.ms::rational rounding power and formatting\nRUN big-rat-float.ms::rationals convert exactly from and to floats\nPASS big-rat-float.ms::rationals convert exactly from and to floats\nRUN big-rat-float.ms::big floats round once at their precision\nPASS big-rat-float.ms::big floats round once at their precision\nRUN big-rat-float.ms::big floats add, subtract and compare across magnitudes\nPASS big-rat-float.ms::big floats add, subtract and compare across magnitudes\nRUN big-rat-float.ms::big float errors\nPASS big-rat-float.ms::big float errors\nRUN big-rat-float.ms::decimal text rejects a sign anywhere but the front of the digits and the exponent\nPASS big-rat-float.ms::decimal text rejects a sign anywhere but the front of the digits and the exponent\nRUN big-rat-float.ms::big floats compare across a huge exponent gap\nPASS big-rat-float.ms::big floats compare across a huge exponent gap\nRUN big-rat-float.ms::to_float rounds once, onto the subnormal grid\nPASS big-rat-float.ms::to_float rounds once, onto the subnormal grid\n10 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

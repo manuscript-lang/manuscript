@@ -15,5 +15,5 @@ A slot pointer a closure captures by reference (`closure.cap` of type `ptr`) is 
 A field moved out of a value taken from the caller's slot and refilled (`self.pending.pop()` before a park) yields the same value again, so the `rec.fill` / `list.fill` result stays the caller's (#3130). Before, cancelling `fs.watch` mid-read dropped the watcher twice (BTreeMap panic, or a segfault in the allocator later). Fixtures: `fs-watch-cancel.ms`, `leaves_a_record_refilled_after_a_field_move_to_the_caller` in `crates/ms-mir/tests/unwind.rs`.
 
 Apply when: changing the unwind pass, inlining of mutable methods, or slot-held cleanup entries.
-Evidence: [lifecycle fixture](../../tests/e2e/testdata/accept/promise-fault-scope-close-unwind.ms), [MIR controls](../../crates/ms-mir/tests/unwind.rs).
+Evidence: [lifecycle fixture](../../tests/conformance/fixtures/e2e/accept/promise-fault-scope-close-unwind.ms), [MIR controls](../../crates/ms-mir/tests/unwind.rs).
 Verify: run the fixture in Debug under valgrind or a counting runtime, and dispatch the full platform matrix.

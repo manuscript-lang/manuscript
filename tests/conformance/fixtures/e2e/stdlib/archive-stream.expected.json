@@ -1,0 +1,115 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "archive-stream.ms::compression streams round trip all formats under every chunk size",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "archive-stream.ms::decompressed streams preserve lines across decoder output batches",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "archive-stream.ms::decompression budget, garbage and level are errors",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "archive-stream.ms::tar entries match unpack under every chunk size",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "archive-stream.ms::tar entries enforce limits and report truncation",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "archive-stream.ms::tar entries refuse an oversized member from its header",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "archive-stream.ms::tar entries reject a base-256 size that overflows as invalid",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "archive-stream.ms::decompressed streams reject bytes after the payload as decompress does",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "archive-stream.ms::tar entries reject duplicate and conflicting paths as unpack does",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "archive-stream.ms::tar entries accept distinct paths and sibling directories",
+          "status": "passed"
+        },
+        {
+          "index": 10,
+          "name": "archive-stream.ms::tar entries frame members by a PAX size override as unpack does",
+          "status": "passed"
+        },
+        {
+          "index": 11,
+          "name": "archive-stream.ms::gzip rejects reserved flags in whole and fragmented member headers",
+          "status": "passed"
+        },
+        {
+          "index": 12,
+          "name": "archive-stream.ms::tar entries and unpack agree on corrupted and truncated archives",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 13,
+        "selected": 13,
+        "passed": 13,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN archive-stream.ms::compression streams round trip all formats under every chunk size\nPASS archive-stream.ms::compression streams round trip all formats under every chunk size\nRUN archive-stream.ms::decompressed streams preserve lines across decoder output batches\nPASS archive-stream.ms::decompressed streams preserve lines across decoder output batches\nRUN archive-stream.ms::decompression budget, garbage and level are errors\nPASS archive-stream.ms::decompression budget, garbage and level are errors\nRUN archive-stream.ms::tar entries match unpack under every chunk size\nPASS archive-stream.ms::tar entries match unpack under every chunk size\nRUN archive-stream.ms::tar entries enforce limits and report truncation\nPASS archive-stream.ms::tar entries enforce limits and report truncation\nRUN archive-stream.ms::tar entries refuse an oversized member from its header\nPASS archive-stream.ms::tar entries refuse an oversized member from its header\nRUN archive-stream.ms::tar entries reject a base-256 size that overflows as invalid\nPASS archive-stream.ms::tar entries reject a base-256 size that overflows as invalid\nRUN archive-stream.ms::decompressed streams reject bytes after the payload as decompress does\nPASS archive-stream.ms::decompressed streams reject bytes after the payload as decompress does\nRUN archive-stream.ms::tar entries reject duplicate and conflicting paths as unpack does\nPASS archive-stream.ms::tar entries reject duplicate and conflicting paths as unpack does\nRUN archive-stream.ms::tar entries accept distinct paths and sibling directories\nPASS archive-stream.ms::tar entries accept distinct paths and sibling directories\nRUN archive-stream.ms::tar entries frame members by a PAX size override as unpack does\nPASS archive-stream.ms::tar entries frame members by a PAX size override as unpack does\nRUN archive-stream.ms::gzip rejects reserved flags in whole and fragmented member headers\nPASS archive-stream.ms::gzip rejects reserved flags in whole and fragmented member headers\nRUN archive-stream.ms::tar entries and unpack agree on corrupted and truncated archives\nPASS archive-stream.ms::tar entries and unpack agree on corrupted and truncated archives\n13 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

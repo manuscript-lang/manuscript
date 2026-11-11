@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "concrete type pattern requires exactly one receiver binding; write 'Type(name):' or 'Type(_):'",
+        "position": {
+          "file": "contract-lowercase-bare-pattern.ms",
+          "line": 13,
+          "column": 9,
+          "offset": 177
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/contract-lowercase-bare-pattern.ms:13:9: type: concrete type pattern requires exactly one receiver binding; write 'Type(name):' or 'Type(_):'\n    |\n 13 |         item: return 0\n    |               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

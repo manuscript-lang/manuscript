@@ -6,5 +6,5 @@ Decision: `List.entries()` (`ListEntry` with `index`, `value`) covers the "walk 
 
 
 Apply when: adding List methods that return records or nested lists.
-Evidence: `tests/e2e/testdata/stdlib/list-structural-ops.ms`, `snippets/list-{chunks,windows}-zero-fault`.
-Verify: `ms test tests/e2e/testdata/stdlib/list-structural-ops.ms`; `make stdlib-bench BENCHFILTER=list.` shows zip 2, chunks 7, windows 70, partition 9 ns per element.
+Evidence: `tests/conformance/fixtures/e2e/stdlib/list-structural-ops.ms`, `snippets/list-{chunks,windows}-zero-fault`.
+Verify: `ms test tests/conformance/fixtures/e2e/stdlib/list-structural-ops.ms`; `make stdlib-bench BENCHFILTER=list.` shows zip 2, chunks 7, windows 70, partition 9 ns per element.

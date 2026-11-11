@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS1002",
+        "phase": "parse",
+        "message": "a suite must begin exactly four spaces after its header; the header is at 0 spaces, so indent this line to 4",
+        "position": {
+          "file": "golden-0783.ms",
+          "line": 4,
+          "column": 9,
+          "offset": 78
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0783.ms:4:9: parse: a suite must begin exactly four spaces after its header; the header is at 0 spaces, so indent this line to 4\n   |\n 4 |         return\n   |         ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

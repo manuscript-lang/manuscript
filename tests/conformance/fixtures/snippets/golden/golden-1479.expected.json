@@ -1,0 +1,83 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2002",
+        "phase": "resolution",
+        "message": "module does not export filesystem; @std/os/fs.ms exports: CloneMode, CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileKind, FileSystemInfo, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/os/fs.ms\"'",
+        "position": {
+          "file": "golden-1479.ms",
+          "line": 3,
+          "column": 8,
+          "offset": 60
+        },
+        "end": {
+          "file": "golden-1479.ms",
+          "line": 3,
+          "column": 18,
+          "offset": 70
+        }
+      },
+      {
+        "code": "MS2002",
+        "phase": "resolution",
+        "message": "module does not export FileSystemError; @std/os/fs.ms exports: CloneMode, CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileKind, FileSystemInfo, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/os/fs.ms\"'",
+        "position": {
+          "file": "golden-1479.ms",
+          "line": 3,
+          "column": 20,
+          "offset": 72
+        },
+        "end": {
+          "file": "golden-1479.ms",
+          "line": 3,
+          "column": 35,
+          "offset": 87
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding filesystem; host handle getters were removed: import the operation itself, e.g. read_file from \"@std/os/fs.ms\", connect from \"@std/net/net.ms\", run from \"@std/os/process.ms\", now from \"@std/time.ms\"",
+        "position": {
+          "file": "golden-1479.ms",
+          "line": 6,
+          "column": 11,
+          "offset": 142
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type FileSystemError; declare it with 'type FileSystemError:' / 'enum FileSystemError:' / 'interface FileSystemError:', declare it as a type parameter, or import it",
+        "position": {
+          "file": "golden-1479.ms",
+          "line": 7,
+          "column": 27,
+          "offset": 181
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding FileSystemError; declare it with 'FileSystemError := ...' before use, define 'fn FileSystemError(...) T:', or import it from a module",
+        "position": {
+          "file": "golden-1479.ms",
+          "line": 7,
+          "column": 53,
+          "offset": 207
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-1479.ms:3:8: resolution: module does not export filesystem; @std/os/fs.ms exports: CloneMode, CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileKind, FileSystemInfo, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/os/fs.ms\"'\n   |\n 3 | import filesystem, FileSystemError from \"@std/os/fs.ms\"\n   |        ^^^^^^^^^^\n<DIR>/golden-1479.ms:3:20: resolution: module does not export FileSystemError; @std/os/fs.ms exports: CloneMode, CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileKind, FileSystemInfo, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/os/fs.ms\"'\n   |\n 3 | import filesystem, FileSystemError from \"@std/os/fs.ms\"\n   |                    ^^^^^^^^^^^^^^^\n<DIR>/golden-1479.ms:6:11: resolution: unknown binding filesystem; host handle getters were removed: import the operation itself, e.g. read_file from \"@std/os/fs.ms\", connect from \"@std/net/net.ms\", run from \"@std/os/process.ms\", now from \"@std/time.ms\"\n   |\n 6 |     fs := filesystem()\n   |           ^\n<DIR>/golden-1479.ms:7:27: resolution: unknown type FileSystemError; declare it with 'type FileSystemError:' / 'enum FileSystemError:' / 'interface FileSystemError:', declare it as a type parameter, or import it\n   |\n 7 |     invalid: Result[Unit, FileSystemError] := error(FileSystemError.InvalidInput)\n   |                           ^\n<DIR>/golden-1479.ms:7:53: resolution: unknown binding FileSystemError; declare it with 'FileSystemError := ...' before use, define 'fn FileSystemError(...) T:', or import it from a module\n   |\n 7 |     invalid: Result[Unit, FileSystemError] := error(FileSystemError.InvalidInput)\n   |                                                     ^\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

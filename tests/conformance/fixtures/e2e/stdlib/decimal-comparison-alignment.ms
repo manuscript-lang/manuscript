@@ -1,0 +1,23 @@
+// conform: tags=testing,tier-stdlib
+// conform: phase=test
+import (
+	Decimal from "@std/math/decimal.ms",
+	expect_equal from "@std/test/test.ms",
+)
+
+test "decimal comparison aligns every significant digit without losing signs":
+	base: Decimal := 1e33d
+	var step: Decimal = 1e33d
+
+	for digits in 0..34:
+		larger := base + step
+		expect_equal(larger.compare(base), 1)?
+		expect_equal(base.compare(larger), -1)?
+		expect_equal((-larger).compare(-base), -1)?
+		expect_equal((-base).compare(-larger), 1)?
+		step /= 10d
+
+	expect_equal(9.999999999999999999999999999999999e6144d.compare(1e6144d), 1)?
+	expect_equal((-9.999999999999999999999999999999999e6144d).compare(-1e6144d), -1)?
+	expect_equal(1e-6176d.compare(2e-6176d), -1)?
+	expect_equal((-1e-6176d).compare(-2e-6176d), 1)?

@@ -1,0 +1,68 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "cannot change `value.val`: parameter `value` is not declared var; write `var value: <Type>` in the signature and pass `var` at every call",
+        "position": {
+          "file": "golden-1271.ms",
+          "line": 7,
+          "column": 15,
+          "offset": 143
+        },
+        "fix": {
+          "position": {
+            "file": "golden-1271.ms",
+            "line": 5,
+            "column": 9,
+            "offset": 84
+          },
+          "end": {
+            "file": "golden-1271.ms",
+            "line": 5,
+            "column": 9,
+            "offset": 84
+          },
+          "replacement": "var "
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "cannot change `value`: parameter `value` is not declared var; write `var value: <Type>` in the signature and pass `var` at every call",
+        "position": {
+          "file": "golden-1271.ms",
+          "line": 6,
+          "column": 17,
+          "offset": 118
+        },
+        "fix": {
+          "position": {
+            "file": "golden-1271.ms",
+            "line": 5,
+            "column": 9,
+            "offset": 84
+          },
+          "end": {
+            "file": "golden-1271.ms",
+            "line": 5,
+            "column": 9,
+            "offset": 84
+          },
+          "replacement": "var "
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-1271.ms:7:15: type: cannot change `value.val`: parameter `value` is not declared var; write `var value: <Type>` in the signature and pass `var` at every call\n   |\n 7 |         value.val = value.val + 1\n   |               ^\n<DIR>/golden-1271.ms:6:17: type: cannot change `value`: parameter `value` is not declared var; write `var value: <Type>` in the signature and pass `var` at every call\n   |\n 6 |     callback := fn() Unit:\n   |                 ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

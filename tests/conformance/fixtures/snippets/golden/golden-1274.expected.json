@@ -1,0 +1,44 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2002",
+        "phase": "resolution",
+        "message": "module does not export JsonError; @std/data/json.ms exports: JsonEncode, JsonOptions, JsonValue, StringifyOptions, json_reader, json_writer, parse, stringify; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/data/json.ms\"'",
+        "position": {
+          "file": "golden-1274.ms",
+          "line": 3,
+          "column": 8,
+          "offset": 60
+        },
+        "end": {
+          "file": "golden-1274.ms",
+          "line": 3,
+          "column": 17,
+          "offset": 69
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "match requires an alternative, contract view, Int, String or Bool, found Error; match on a type with cases, or use if/else",
+        "position": {
+          "file": "golden-1274.ms",
+          "line": 5,
+          "column": 5,
+          "offset": 133
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-1274.ms:3:8: resolution: module does not export JsonError; @std/data/json.ms exports: JsonEncode, JsonOptions, JsonValue, StringifyOptions, json_reader, json_writer, parse, stringify; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/data/json.ms\"'\n   |\n 3 | import JsonError from \"@std/data/json.ms\"\n   |        ^^^^^^^^^\n<DIR>/golden-1274.ms:5:5: type: match requires an alternative, contract view, Int, String or Bool, found Error; match on a type with cases, or use if/else\n   |\n 5 |     match cause:\n   |     ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

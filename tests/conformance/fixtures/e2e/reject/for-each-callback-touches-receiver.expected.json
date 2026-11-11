@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "the receiver `xs` of `for_each` is changed in place but overlaps the closure at 5:17; a changed value cannot also be read or changed through another operand, so pass distinct variables or clone one first",
+        "position": {
+          "file": "for-each-callback-touches-receiver.ms",
+          "line": 5,
+          "column": 8,
+          "offset": 96
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/for-each-callback-touches-receiver.ms:5:8: type: the receiver `xs` of `for_each` is changed in place but overlaps the closure at 5:17; a changed value cannot also be read or changed through another operand, so pass distinct variables or clone one first\n   |\n 5 |     xs.for_each(fn var n: xs.append(n))\n   |           ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

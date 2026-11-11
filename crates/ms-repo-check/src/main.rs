@@ -1,7 +1,6 @@
 //! `repo-check`: repository invariants that no compiler or test run enforces.
 //! Run from the repository root; exits nonzero listing every violation.
 
-mod fixture_twins;
 mod impl_adjacency;
 mod inline_source;
 mod internal_externs;
@@ -65,7 +64,6 @@ fn run(syms: ms_syntax::Names) -> ExitCode {
     issues.extend(unsafe_boundary::check(&files));
     issues.extend(inline_source::check(&files));
     issues.extend(portability::check(&files));
-    issues.extend(fixture_twins::check(&files));
     issues.extend(stream_names::check(syms, &files));
     issues.extend(impl_adjacency::check(syms, &files));
     issues.extend(internal_externs::check(&files));
@@ -75,7 +73,7 @@ fn run(syms: ms_syntax::Names) -> ExitCode {
     issues.extend(thread_affinity::check(&files));
     if issues.is_empty() {
         println!(
-            "Nested matches, formatting, stdlib syntax, release pins, triggers, unsafe boundary, inline sources, portability, fixture twins, stream names, impl adjacency, internal externs, optional defaults, crate layering, checker stage layering, and thread affinity agree."
+            "Nested matches, formatting, stdlib syntax, release pins, triggers, unsafe boundary, inline sources, portability, stream names, impl adjacency, internal externs, optional defaults, crate layering, checker stage layering, and thread affinity agree."
         );
         return ExitCode::SUCCESS;
     }

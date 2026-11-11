@@ -1,0 +1,160 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "complex.ms::complex arithmetic",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "complex.ms::complex polar form and elementary functions",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "complex.ms::complex division by zero follows float rules",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "complex.ms::complex exp keeps a zero imaginary part when the radius overflows",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "complex.ms::complex exp keeps finite components when the radius overflows",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "complex.ms::complex exp preserves tiny phase components after radius overflow",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "complex.ms::complex exp retains overflow and nonfinite controls",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "complex.ms::complex trig keeps finite components after hyperbolic overflow",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "complex.ms::complex trig keeps subnormal phases beyond a half exponential",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "complex.ms::complex trig range fallback retains signed zeros and nonfinite controls",
+          "status": "passed"
+        },
+        {
+          "index": 10,
+          "name": "complex.ms::complex sqrt stays finite when the magnitude overflows",
+          "status": "passed"
+        },
+        {
+          "index": 11,
+          "name": "complex.ms::complex trig keeps exact zeros and finite limits when parts overflow",
+          "status": "passed"
+        },
+        {
+          "index": 12,
+          "name": "complex.ms::complex divide keeps a finite quotient when the operands are near the Float limits",
+          "status": "passed"
+        },
+        {
+          "index": 13,
+          "name": "complex.ms::complex log is finite when the magnitude overflows",
+          "status": "passed"
+        },
+        {
+          "index": 14,
+          "name": "complex.ms::complex sqrt keeps a finite root for a subnormal input",
+          "status": "passed"
+        },
+        {
+          "index": 15,
+          "name": "complex.ms::complex tangent preserves huge finite phases",
+          "status": "passed"
+        },
+        {
+          "index": 16,
+          "name": "complex.ms::complex tangent handles the largest finite phase",
+          "status": "passed"
+        },
+        {
+          "index": 17,
+          "name": "complex.ms::complex inverse tangent preserves small imaginary components",
+          "status": "passed"
+        },
+        {
+          "index": 18,
+          "name": "complex.ms::complex inverse tangent retains subnormal components",
+          "status": "passed"
+        },
+        {
+          "index": 19,
+          "name": "complex.ms::complex inverse tangent preserves poles and ordinary controls",
+          "status": "passed"
+        },
+        {
+          "index": 20,
+          "name": "complex.ms::inverse sine keeps large imaginary parts finite and conjugate-symmetric",
+          "status": "passed"
+        },
+        {
+          "index": 21,
+          "name": "complex.ms::complex divide keeps a small part beside a part near the Float limit",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 22,
+        "selected": 22,
+        "passed": 22,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN complex.ms::complex arithmetic\nPASS complex.ms::complex arithmetic\nRUN complex.ms::complex polar form and elementary functions\nPASS complex.ms::complex polar form and elementary functions\nRUN complex.ms::complex division by zero follows float rules\nPASS complex.ms::complex division by zero follows float rules\nRUN complex.ms::complex exp keeps a zero imaginary part when the radius overflows\nPASS complex.ms::complex exp keeps a zero imaginary part when the radius overflows\nRUN complex.ms::complex exp keeps finite components when the radius overflows\nPASS complex.ms::complex exp keeps finite components when the radius overflows\nRUN complex.ms::complex exp preserves tiny phase components after radius overflow\nPASS complex.ms::complex exp preserves tiny phase components after radius overflow\nRUN complex.ms::complex exp retains overflow and nonfinite controls\nPASS complex.ms::complex exp retains overflow and nonfinite controls\nRUN complex.ms::complex trig keeps finite components after hyperbolic overflow\nPASS complex.ms::complex trig keeps finite components after hyperbolic overflow\nRUN complex.ms::complex trig keeps subnormal phases beyond a half exponential\nPASS complex.ms::complex trig keeps subnormal phases beyond a half exponential\nRUN complex.ms::complex trig range fallback retains signed zeros and nonfinite controls\nPASS complex.ms::complex trig range fallback retains signed zeros and nonfinite controls\nRUN complex.ms::complex sqrt stays finite when the magnitude overflows\nPASS complex.ms::complex sqrt stays finite when the magnitude overflows\nRUN complex.ms::complex trig keeps exact zeros and finite limits when parts overflow\nPASS complex.ms::complex trig keeps exact zeros and finite limits when parts overflow\nRUN complex.ms::complex divide keeps a finite quotient when the operands are near the Float limits\nPASS complex.ms::complex divide keeps a finite quotient when the operands are near the Float limits\nRUN complex.ms::complex log is finite when the magnitude overflows\nPASS complex.ms::complex log is finite when the magnitude overflows\nRUN complex.ms::complex sqrt keeps a finite root for a subnormal input\nPASS complex.ms::complex sqrt keeps a finite root for a subnormal input\nRUN complex.ms::complex tangent preserves huge finite phases\nPASS complex.ms::complex tangent preserves huge finite phases\nRUN complex.ms::complex tangent handles the largest finite phase\nPASS complex.ms::complex tangent handles the largest finite phase\nRUN complex.ms::complex inverse tangent preserves small imaginary components\nPASS complex.ms::complex inverse tangent preserves small imaginary components\nRUN complex.ms::complex inverse tangent retains subnormal components\nPASS complex.ms::complex inverse tangent retains subnormal components\nRUN complex.ms::complex inverse tangent preserves poles and ordinary controls\nPASS complex.ms::complex inverse tangent preserves poles and ordinary controls\nRUN complex.ms::inverse sine keeps large imaginary parts finite and conjugate-symmetric\nPASS complex.ms::inverse sine keeps large imaginary parts finite and conjugate-symmetric\nRUN complex.ms::complex divide keeps a small part beside a part near the Float limit\nPASS complex.ms::complex divide keeps a small part beside a part near the Float limit\n22 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

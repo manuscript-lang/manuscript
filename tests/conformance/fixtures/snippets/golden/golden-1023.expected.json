@@ -1,0 +1,50 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2002",
+        "phase": "resolution",
+        "message": "module does not export network; did you mean 'Network'?",
+        "position": {
+          "file": "golden-1023.ms",
+          "line": 3,
+          "column": 8,
+          "offset": 60
+        },
+        "end": {
+          "file": "golden-1023.ms",
+          "line": 3,
+          "column": 15,
+          "offset": 67
+        }
+      },
+      {
+        "code": "MS2002",
+        "phase": "resolution",
+        "message": "unknown standard module @std/faults.ms",
+        "position": {
+          "file": "golden-1023.ms",
+          "line": 5,
+          "column": 8,
+          "offset": 161
+        },
+        "end": {
+          "file": "golden-1023.ms",
+          "line": 5,
+          "column": 13,
+          "offset": 166
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-1023.ms:3:8: resolution: module does not export network; did you mean 'Network'?\n   |\n 3 | import network from \"@std/net/net.ms\"\n   |        ^^^^^^^\n<DIR>/golden-1023.ms:5:8: resolution: unknown standard module @std/faults.ms\n   |\n 5 | import panic from \"@std/faults.ms\"\n   |        ^^^^^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

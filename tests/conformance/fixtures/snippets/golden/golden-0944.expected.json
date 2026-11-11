@@ -1,0 +1,33 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "expected an expression, found 'return'; write a value, name, call, or literal here",
+        "position": {
+          "file": "golden-0944.ms",
+          "line": 3,
+          "column": 21,
+          "offset": 73
+        },
+        "end": {
+          "file": "golden-0944.ms",
+          "line": 3,
+          "column": 27,
+          "offset": 79
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0944.ms:3:21: parse: expected an expression, found 'return'; write a value, name, call, or literal here\n   |\n 3 | fn f() Unit: return return\n   |                     ^^^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

@@ -1,0 +1,100 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "implicit-close-parts.ms::a record closes its fields, last declared first",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "implicit-close-parts.ms::a list closes its elements, last first",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "implicit-close-parts.ms::a map closes its values, last inserted first",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "implicit-close-parts.ms::nested records and lists close depth first, last first",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "implicit-close-parts.ms::an optional closes the resource it holds",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "implicit-close-parts.ms::an empty optional closes nothing",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "implicit-close-parts.ms::an alternative closes the fields of the case it holds",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "implicit-close-parts.ms::a type's own close runs before the resources it holds",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "implicit-close-parts.ms::an early return closes the parts",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "implicit-close-parts.ms::a record handed to the caller is not closed by the callee",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 10,
+        "selected": 10,
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN implicit-close-parts.ms::a record closes its fields, last declared first\nPASS implicit-close-parts.ms::a record closes its fields, last declared first\nRUN implicit-close-parts.ms::a list closes its elements, last first\nPASS implicit-close-parts.ms::a list closes its elements, last first\nRUN implicit-close-parts.ms::a map closes its values, last inserted first\nPASS implicit-close-parts.ms::a map closes its values, last inserted first\nRUN implicit-close-parts.ms::nested records and lists close depth first, last first\nPASS implicit-close-parts.ms::nested records and lists close depth first, last first\nRUN implicit-close-parts.ms::an optional closes the resource it holds\nPASS implicit-close-parts.ms::an optional closes the resource it holds\nRUN implicit-close-parts.ms::an empty optional closes nothing\nPASS implicit-close-parts.ms::an empty optional closes nothing\nRUN implicit-close-parts.ms::an alternative closes the fields of the case it holds\nPASS implicit-close-parts.ms::an alternative closes the fields of the case it holds\nRUN implicit-close-parts.ms::a type's own close runs before the resources it holds\nPASS implicit-close-parts.ms::a type's own close runs before the resources it holds\nRUN implicit-close-parts.ms::an early return closes the parts\nPASS implicit-close-parts.ms::an early return closes the parts\nRUN implicit-close-parts.ms::a record handed to the caller is not closed by the callee\nPASS implicit-close-parts.ms::a record handed to the caller is not closed by the callee\n10 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

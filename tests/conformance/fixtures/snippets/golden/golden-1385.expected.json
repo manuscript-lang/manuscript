@@ -1,0 +1,38 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "unmatched closing delimiter ')'; remove it or add the matching opener before it",
+        "position": {
+          "file": "golden-1385.ms",
+          "line": 3,
+          "column": 1,
+          "offset": 53
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "unterminated delimiter '{' opened at line 5:25; add the matching '}' before the end of the file",
+        "position": {
+          "file": "golden-1385.ms",
+          "line": 9,
+          "column": 1,
+          "offset": 154
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-1385.ms:3:1: parse: unmatched closing delimiter ')'; remove it or add the matching opener before it\n   |\n 3 | )\n   | ^\n<DIR>/golden-1385.ms:9:1: parse: unterminated delimiter '{' opened at line 5:25; add the matching '}' before the end of the file\n   |\n 9 | \n   | ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

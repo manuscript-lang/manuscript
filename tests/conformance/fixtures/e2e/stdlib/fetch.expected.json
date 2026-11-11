@@ -1,0 +1,100 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "fetch.ms::fetch returns a buffered text response",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "fetch.ms::fetch posts text and JSON bodies with default content types",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "fetch.ms::fetch decodes JSON",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "fetch.ms::fetch follows redirects unless max_redirects is 0",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "fetch.ms::fetch does not restore Content-Type after a redirect drops its body",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "fetch.ms::error statuses are ordinary responses and check_status rejects them",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "fetch.ms::fetch enforces max_response_bytes",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "fetch.ms::fetch times out a slow response",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "fetch.ms::Fetcher.stream returns the body incrementally and reuses the client",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "fetch.ms::a closed Fetcher returns Closed",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 10,
+        "selected": 10,
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN fetch.ms::fetch returns a buffered text response\nPASS fetch.ms::fetch returns a buffered text response\nRUN fetch.ms::fetch posts text and JSON bodies with default content types\nPASS fetch.ms::fetch posts text and JSON bodies with default content types\nRUN fetch.ms::fetch decodes JSON\nPASS fetch.ms::fetch decodes JSON\nRUN fetch.ms::fetch follows redirects unless max_redirects is 0\nPASS fetch.ms::fetch follows redirects unless max_redirects is 0\nRUN fetch.ms::fetch does not restore Content-Type after a redirect drops its body\nPASS fetch.ms::fetch does not restore Content-Type after a redirect drops its body\nRUN fetch.ms::error statuses are ordinary responses and check_status rejects them\nPASS fetch.ms::error statuses are ordinary responses and check_status rejects them\nRUN fetch.ms::fetch enforces max_response_bytes\nPASS fetch.ms::fetch enforces max_response_bytes\nRUN fetch.ms::fetch times out a slow response\nPASS fetch.ms::fetch times out a slow response\nRUN fetch.ms::Fetcher.stream returns the body incrementally and reuses the client\nPASS fetch.ms::Fetcher.stream returns the body incrementally and reuses the client\nRUN fetch.ms::a closed Fetcher returns Closed\nPASS fetch.ms::a closed Fetcher returns Closed\n10 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

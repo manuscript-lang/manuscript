@@ -1,0 +1,125 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "close-in-place.ms::an explicit close followed by the scope end closes once",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "close-in-place.ms::a holder's part closes in place at the scope end",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "close-in-place.ms::an optional payload closes in place",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "close-in-place.ms::list elements close in place, last first",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "close-in-place.ms::a case field closes in place",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "close-in-place.ms::a closure's capture closes when the closure is dropped",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "close-in-place.ms::a part a record pattern binds closes at the scope end",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "close-in-place.ms::a list pattern closes the elements it binds and the ones it drops",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "close-in-place.ms::a resource a method on another resource returns closes at the scope end",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "close-in-place.ms::a resource payload a method on another resource returns closes with its branch",
+          "status": "passed"
+        },
+        {
+          "index": 10,
+          "name": "close-in-place.ms::map values close in place",
+          "status": "passed"
+        },
+        {
+          "index": 11,
+          "name": "close-in-place.ms::a fault closes a holder's part from the cleanup stack",
+          "status": "passed"
+        },
+        {
+          "index": 12,
+          "name": "close-in-place.ms::a fault closes a plain binding from the cleanup stack",
+          "status": "passed"
+        },
+        {
+          "index": 13,
+          "name": "close-in-place.ms::a reassigned binding closes the replaced value then the final one",
+          "status": "passed"
+        },
+        {
+          "index": 14,
+          "name": "close-in-place.ms::a binding kept to the end closes once",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 15,
+        "selected": 15,
+        "passed": 15,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN close-in-place.ms::an explicit close followed by the scope end closes once\nPASS close-in-place.ms::an explicit close followed by the scope end closes once\nRUN close-in-place.ms::a holder's part closes in place at the scope end\nPASS close-in-place.ms::a holder's part closes in place at the scope end\nRUN close-in-place.ms::an optional payload closes in place\nPASS close-in-place.ms::an optional payload closes in place\nRUN close-in-place.ms::list elements close in place, last first\nPASS close-in-place.ms::list elements close in place, last first\nRUN close-in-place.ms::a case field closes in place\nPASS close-in-place.ms::a case field closes in place\nRUN close-in-place.ms::a closure's capture closes when the closure is dropped\nPASS close-in-place.ms::a closure's capture closes when the closure is dropped\nRUN close-in-place.ms::a part a record pattern binds closes at the scope end\nPASS close-in-place.ms::a part a record pattern binds closes at the scope end\nRUN close-in-place.ms::a list pattern closes the elements it binds and the ones it drops\nPASS close-in-place.ms::a list pattern closes the elements it binds and the ones it drops\nRUN close-in-place.ms::a resource a method on another resource returns closes at the scope end\nPASS close-in-place.ms::a resource a method on another resource returns closes at the scope end\nRUN close-in-place.ms::a resource payload a method on another resource returns closes with its branch\nPASS close-in-place.ms::a resource payload a method on another resource returns closes with its branch\nRUN close-in-place.ms::map values close in place\nPASS close-in-place.ms::map values close in place\nRUN close-in-place.ms::a fault closes a holder's part from the cleanup stack\nPASS close-in-place.ms::a fault closes a holder's part from the cleanup stack\nRUN close-in-place.ms::a fault closes a plain binding from the cleanup stack\nPASS close-in-place.ms::a fault closes a plain binding from the cleanup stack\nRUN close-in-place.ms::a reassigned binding closes the replaced value then the final one\nPASS close-in-place.ms::a reassigned binding closes the replaced value then the final one\nRUN close-in-place.ms::a binding kept to the end closes once\nPASS close-in-place.ms::a binding kept to the end closes once\n15 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

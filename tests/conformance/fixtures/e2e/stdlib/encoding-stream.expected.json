@@ -1,0 +1,90 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "encoding-stream.ms::base64 encoding matches the whole-value function under every chunk size",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "encoding-stream.ms::base64 decoding matches under every text piece size",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "encoding-stream.ms::base64 decoding rejects malformed text and truncated groups",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "encoding-stream.ms::base64 decoding rejects data after padding at every chunk boundary",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "encoding-stream.ms::base64 decoding permits empty chunks after terminal padding",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "encoding-stream.ms::base64 terminal padding survives a rejected read",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "encoding-stream.ms::hex steps round trip under every chunk size",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "encoding-stream.ms::hex decoding rejects an odd tail",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 8,
+        "selected": 8,
+        "passed": 8,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN encoding-stream.ms::base64 encoding matches the whole-value function under every chunk size\nPASS encoding-stream.ms::base64 encoding matches the whole-value function under every chunk size\nRUN encoding-stream.ms::base64 decoding matches under every text piece size\nPASS encoding-stream.ms::base64 decoding matches under every text piece size\nRUN encoding-stream.ms::base64 decoding rejects malformed text and truncated groups\nPASS encoding-stream.ms::base64 decoding rejects malformed text and truncated groups\nRUN encoding-stream.ms::base64 decoding rejects data after padding at every chunk boundary\nPASS encoding-stream.ms::base64 decoding rejects data after padding at every chunk boundary\nRUN encoding-stream.ms::base64 decoding permits empty chunks after terminal padding\nPASS encoding-stream.ms::base64 decoding permits empty chunks after terminal padding\nRUN encoding-stream.ms::base64 terminal padding survives a rejected read\nPASS encoding-stream.ms::base64 terminal padding survives a rejected read\nRUN encoding-stream.ms::hex steps round trip under every chunk size\nPASS encoding-stream.ms::hex steps round trip under every chunk size\nRUN encoding-stream.ms::hex decoding rejects an odd tail\nPASS encoding-stream.ms::hex decoding rejects an odd tail\n8 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

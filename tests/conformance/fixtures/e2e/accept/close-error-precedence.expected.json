@@ -1,0 +1,205 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "close-error-precedence.ms::a pending body error survives all scope close errors",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "close-error-precedence.ms::a successful body returns the first close error",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "close-error-precedence.ms::a try error survives all scope close errors",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "close-error-precedence.ms::a pending borrowed error retains the caller's fields",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "close-error-precedence.ms::an explicitly handled close error is not returned again",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "close-error-precedence.ms::an error inside a successful payload does not suppress a close error",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "close-error-precedence.ms::a scope exited by break still returns its close error",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "close-error-precedence.ms::a close error still faults when the function cannot return Error",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "close-error-precedence.ms::a borrowed success survives a successful close through forwarding",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "close-error-precedence.ms::a close error replaces borrowed success and leaves its source valid",
+          "status": "passed"
+        },
+        {
+          "index": 10,
+          "name": "close-error-precedence.ms::a forwarded borrowed error is preserved across a failing close",
+          "status": "passed"
+        },
+        {
+          "index": 11,
+          "name": "close-error-precedence.ms::generic errors retain their fields across a failing close",
+          "status": "passed"
+        },
+        {
+          "index": 12,
+          "name": "close-error-precedence.ms::a pending custom error survives an incompatible close error",
+          "status": "passed"
+        },
+        {
+          "index": 13,
+          "name": "close-error-precedence.ms::a pending borrowed custom error retains the caller value",
+          "status": "passed"
+        },
+        {
+          "index": 14,
+          "name": "close-error-precedence.ms::an incompatible close error still faults after pending success",
+          "status": "passed"
+        },
+        {
+          "index": 15,
+          "name": "close-error-precedence.ms::an earlier inner close error wins before the body selects its error",
+          "status": "passed"
+        },
+        {
+          "index": 16,
+          "name": "close-error-precedence.ms::a consumed parameter closes on its retained path before borrowed success",
+          "status": "passed"
+        },
+        {
+          "index": 17,
+          "name": "close-error-precedence.ms::whole Result forwarding preserves the body error and caller source",
+          "status": "passed"
+        },
+        {
+          "index": 18,
+          "name": "close-error-precedence.ms::whole Result forwarding returns the first close error after success",
+          "status": "passed"
+        },
+        {
+          "index": 19,
+          "name": "close-error-precedence.ms::holder cleanup does not withdraw a generic whole Result borrow",
+          "status": "passed"
+        },
+        {
+          "index": 20,
+          "name": "close-error-precedence.ms::overlapping borrowed errors normalize without copying borrowed success",
+          "status": "passed"
+        },
+        {
+          "index": 21,
+          "name": "close-error-precedence.ms::a holder with its own close still preserves a generic Result borrow",
+          "status": "passed"
+        },
+        {
+          "index": 22,
+          "name": "close-error-precedence.ms::a generic propagating closer consumes its whole Result without a forbidden copy",
+          "status": "passed"
+        },
+        {
+          "index": 23,
+          "name": "close-error-precedence.ms::a generic resource error stays owned and closes exactly once",
+          "status": "passed"
+        },
+        {
+          "index": 24,
+          "name": "close-error-precedence.ms::a moved resource no longer contributes an outer close error",
+          "status": "passed"
+        },
+        {
+          "index": 25,
+          "name": "close-error-precedence.ms::a handled close does not withdraw a whole Result borrow",
+          "status": "passed"
+        },
+        {
+          "index": 26,
+          "name": "close-error-precedence.ms::an uncalled closure cannot contribute an outer close error",
+          "status": "passed"
+        },
+        {
+          "index": 27,
+          "name": "close-error-precedence.ms::handled replacement lifetimes preserve whole Result borrowing",
+          "status": "passed"
+        },
+        {
+          "index": 28,
+          "name": "close-error-precedence.ms::a captured resource contributes no outer close error",
+          "status": "passed"
+        },
+        {
+          "index": 29,
+          "name": "close-error-precedence.ms::an unhandled final replacement still propagates its close error",
+          "status": "passed"
+        },
+        {
+          "index": 30,
+          "name": "close-error-precedence.ms::a try exit before replacement still closes the old resource",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 31,
+        "selected": 31,
+        "passed": 31,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN close-error-precedence.ms::a pending body error survives all scope close errors\nPASS close-error-precedence.ms::a pending body error survives all scope close errors\nRUN close-error-precedence.ms::a successful body returns the first close error\nPASS close-error-precedence.ms::a successful body returns the first close error\nRUN close-error-precedence.ms::a try error survives all scope close errors\nPASS close-error-precedence.ms::a try error survives all scope close errors\nRUN close-error-precedence.ms::a pending borrowed error retains the caller's fields\nPASS close-error-precedence.ms::a pending borrowed error retains the caller's fields\nRUN close-error-precedence.ms::an explicitly handled close error is not returned again\nPASS close-error-precedence.ms::an explicitly handled close error is not returned again\nRUN close-error-precedence.ms::an error inside a successful payload does not suppress a close error\nPASS close-error-precedence.ms::an error inside a successful payload does not suppress a close error\nRUN close-error-precedence.ms::a scope exited by break still returns its close error\nPASS close-error-precedence.ms::a scope exited by break still returns its close error\nRUN close-error-precedence.ms::a close error still faults when the function cannot return Error\nPASS close-error-precedence.ms::a close error still faults when the function cannot return Error\nRUN close-error-precedence.ms::a borrowed success survives a successful close through forwarding\nPASS close-error-precedence.ms::a borrowed success survives a successful close through forwarding\nRUN close-error-precedence.ms::a close error replaces borrowed success and leaves its source valid\nPASS close-error-precedence.ms::a close error replaces borrowed success and leaves its source valid\nRUN close-error-precedence.ms::a forwarded borrowed error is preserved across a failing close\nPASS close-error-precedence.ms::a forwarded borrowed error is preserved across a failing close\nRUN close-error-precedence.ms::generic errors retain their fields across a failing close\nPASS close-error-precedence.ms::generic errors retain their fields across a failing close\nRUN close-error-precedence.ms::a pending custom error survives an incompatible close error\nPASS close-error-precedence.ms::a pending custom error survives an incompatible close error\nRUN close-error-precedence.ms::a pending borrowed custom error retains the caller value\nPASS close-error-precedence.ms::a pending borrowed custom error retains the caller value\nRUN close-error-precedence.ms::an incompatible close error still faults after pending success\nPASS close-error-precedence.ms::an incompatible close error still faults after pending success\nRUN close-error-precedence.ms::an earlier inner close error wins before the body selects its error\nPASS close-error-precedence.ms::an earlier inner close error wins before the body selects its error\nRUN close-error-precedence.ms::a consumed parameter closes on its retained path before borrowed success\nPASS close-error-precedence.ms::a consumed parameter closes on its retained path before borrowed success\nRUN close-error-precedence.ms::whole Result forwarding preserves the body error and caller source\nPASS close-error-precedence.ms::whole Result forwarding preserves the body error and caller source\nRUN close-error-precedence.ms::whole Result forwarding returns the first close error after success\nPASS close-error-precedence.ms::whole Result forwarding returns the first close error after success\nRUN close-error-precedence.ms::holder cleanup does not withdraw a generic whole Result borrow\nPASS close-error-precedence.ms::holder cleanup does not withdraw a generic whole Result borrow\nRUN close-error-precedence.ms::overlapping borrowed errors normalize without copying borrowed success\nPASS close-error-precedence.ms::overlapping borrowed errors normalize without copying borrowed success\nRUN close-error-precedence.ms::a holder with its own close still preserves a generic Result borrow\nPASS close-error-precedence.ms::a holder with its own close still preserves a generic Result borrow\nRUN close-error-precedence.ms::a generic propagating closer consumes its whole Result without a forbidden copy\nPASS close-error-precedence.ms::a generic propagating closer consumes its whole Result without a forbidden copy\nRUN close-error-precedence.ms::a generic resource error stays owned and closes exactly once\nPASS close-error-precedence.ms::a generic resource error stays owned and closes exactly once\nRUN close-error-precedence.ms::a moved resource no longer contributes an outer close error\nPASS close-error-precedence.ms::a moved resource no longer contributes an outer close error\nRUN close-error-precedence.ms::a handled close does not withdraw a whole Result borrow\nPASS close-error-precedence.ms::a handled close does not withdraw a whole Result borrow\nRUN close-error-precedence.ms::an uncalled closure cannot contribute an outer close error\nPASS close-error-precedence.ms::an uncalled closure cannot contribute an outer close error\nRUN close-error-precedence.ms::handled replacement lifetimes preserve whole Result borrowing\nPASS close-error-precedence.ms::handled replacement lifetimes preserve whole Result borrowing\nRUN close-error-precedence.ms::a captured resource contributes no outer close error\nPASS close-error-precedence.ms::a captured resource contributes no outer close error\nRUN close-error-precedence.ms::an unhandled final replacement still propagates its close error\nPASS close-error-precedence.ms::an unhandled final replacement still propagates its close error\nRUN close-error-precedence.ms::a try exit before replacement still closes the old resource\nPASS close-error-precedence.ms::a try exit before replacement still closes the old resource\n31 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

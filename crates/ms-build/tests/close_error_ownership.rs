@@ -8,7 +8,7 @@ fn close_errors_preserve_owned_identity_and_disjoint_borrowing() {
     let syms = ms_syntax::Names::global();
     let path = concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../tests/e2e/testdata/accept/close-error-precedence.ms"
+        "/../../tests/conformance/fixtures/e2e/accept/close-error-precedence.ms"
     );
     let loaded = check_graph(
         syms,

@@ -1,0 +1,76 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS1002",
+        "phase": "parse",
+        "message": "unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with it",
+        "position": {
+          "file": "golden-1388.ms",
+          "line": 3,
+          "column": 5,
+          "offset": 54
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "'func' is not a Manuscript declaration keyword; declare a function as 'fn name(a: Int) Int:' with the result type after the parameters",
+        "position": {
+          "file": "golden-1388.ms",
+          "line": 8,
+          "column": 1,
+          "offset": 226
+        },
+        "end": {
+          "file": "golden-1388.ms",
+          "line": 8,
+          "column": 5,
+          "offset": 230
+        },
+        "fix": {
+          "position": {
+            "file": "golden-1388.ms",
+            "line": 8,
+            "column": 1,
+            "offset": 226
+          },
+          "end": {
+            "file": "golden-1388.ms",
+            "line": 8,
+            "column": 5,
+            "offset": 230
+          },
+          "replacement": "fn"
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "expected ':', found name 'int'; block headers (fn, if, else, for, while, match, type, enum, impl, test) end with ':' before their indented body",
+        "position": {
+          "file": "golden-1388.ms",
+          "line": 11,
+          "column": 15,
+          "offset": 369
+        },
+        "end": {
+          "file": "golden-1388.ms",
+          "line": 11,
+          "column": 18,
+          "offset": 372
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-1388.ms:3:5: parse: unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with it\n   |\n 3 |     needRefresh       bool\n   |        ^\n<DIR>/golden-1388.ms:8:1: parse: 'func' is not a Manuscript declaration keyword; declare a function as 'fn name(a: Int) Int:' with the result type after the parameters\n   |\n 8 | func (s *commonState) WaitForInput() { s.inputReaders.Wait() }\n   | ^^^^\n<DIR>/golden-1388.ms:11:15: parse: expected ':', found name 'int'; block headers (fn, if, else, for, while, match, type, enum, impl, test) end with ':' before their indented body\n    |\n 11 | type TabStyle int\n    |               ^^^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

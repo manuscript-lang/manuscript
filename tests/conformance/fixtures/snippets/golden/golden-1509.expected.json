@@ -1,0 +1,82 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding Shape; declare it with 'Shape := ...' before use, define 'fn Shape(...) T:', or import it from a module",
+        "position": {
+          "file": "golden-1509.ms",
+          "line": 4,
+          "column": 16,
+          "offset": 90
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding Shape; declare it with 'Shape := ...' before use, define 'fn Shape(...) T:', or import it from a module",
+        "position": {
+          "file": "golden-1509.ms",
+          "line": 4,
+          "column": 42,
+          "offset": 116
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding Shape; declare it with 'Shape := ...' before use, define 'fn Shape(...) T:', or import it from a module",
+        "position": {
+          "file": "golden-1509.ms",
+          "line": 4,
+          "column": 69,
+          "offset": 143
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding area; declare it with 'area := ...' before use, define 'fn area(...) T:', or import it from a module",
+        "position": {
+          "file": "golden-1509.ms",
+          "line": 5,
+          "column": 8,
+          "offset": 177
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding area; declare it with 'area := ...' before use, define 'fn area(...) T:', or import it from a module",
+        "position": {
+          "file": "golden-1509.ms",
+          "line": 6,
+          "column": 8,
+          "offset": 237
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding area; declare it with 'area := ...' before use, define 'fn area(...) T:', or import it from a module",
+        "position": {
+          "file": "golden-1509.ms",
+          "line": 7,
+          "column": 8,
+          "offset": 297
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-1509.ms:4:16: resolution: unknown binding Shape; declare it with 'Shape := ...' before use, define 'fn Shape(...) T:', or import it from a module\n   |\n 4 |     shapes := [Shape.Square(3037000499), Shape.Square(-3037000499), Shape.Circle(-3037000499)]\n   |                ^\n<DIR>/golden-1509.ms:4:42: resolution: unknown binding Shape; declare it with 'Shape := ...' before use, define 'fn Shape(...) T:', or import it from a module\n   |\n 4 |     shapes := [Shape.Square(3037000499), Shape.Square(-3037000499), Shape.Circle(-3037000499)]\n   |                                          ^\n<DIR>/golden-1509.ms:4:69: resolution: unknown binding Shape; declare it with 'Shape := ...' before use, define 'fn Shape(...) T:', or import it from a module\n   |\n 4 |     shapes := [Shape.Square(3037000499), Shape.Square(-3037000499), Shape.Circle(-3037000499)]\n   |                                                                     ^\n<DIR>/golden-1509.ms:5:8: resolution: unknown binding area; declare it with 'area := ...' before use, define 'fn area(...) T:', or import it from a module\n   |\n 5 |     if area(shapes.get(0)) != 9223372030926249001: return 1\n   |        ^\n<DIR>/golden-1509.ms:6:8: resolution: unknown binding area; declare it with 'area := ...' before use, define 'fn area(...) T:', or import it from a module\n   |\n 6 |     if area(shapes.get(1)) != 9223372030926249001: return 2\n   |        ^\n<DIR>/golden-1509.ms:7:8: resolution: unknown binding area; declare it with 'area := ...' before use, define 'fn area(...) T:', or import it from a module\n   |\n 7 |     if area(shapes.get(2)) != -9111001497: return 3\n   |        ^\n6 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

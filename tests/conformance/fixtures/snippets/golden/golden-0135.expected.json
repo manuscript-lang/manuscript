@@ -1,0 +1,50 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2002",
+        "phase": "resolution",
+        "message": "module does not export filesystem; @std/os/fs.ms exports: CloneMode, CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileKind, FileSystemInfo, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/os/fs.ms\"'",
+        "position": {
+          "file": "golden-0135.ms",
+          "line": 3,
+          "column": 8,
+          "offset": 60
+        },
+        "end": {
+          "file": "golden-0135.ms",
+          "line": 3,
+          "column": 18,
+          "offset": 70
+        }
+      },
+      {
+        "code": "MS2002",
+        "phase": "resolution",
+        "message": "module does not export FileSystemError; @std/os/fs.ms exports: CloneMode, CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileKind, FileSystemInfo, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/os/fs.ms\"'",
+        "position": {
+          "file": "golden-0135.ms",
+          "line": 3,
+          "column": 20,
+          "offset": 72
+        },
+        "end": {
+          "file": "golden-0135.ms",
+          "line": 3,
+          "column": 35,
+          "offset": 87
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0135.ms:3:8: resolution: module does not export filesystem; @std/os/fs.ms exports: CloneMode, CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileKind, FileSystemInfo, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/os/fs.ms\"'\n   |\n 3 | import filesystem, FileSystemError from \"@std/os/fs.ms\"\n   |        ^^^^^^^^^^\n<DIR>/golden-0135.ms:3:20: resolution: module does not export FileSystemError; @std/os/fs.ms exports: CloneMode, CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileKind, FileSystemInfo, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/os/fs.ms\"'\n   |\n 3 | import filesystem, FileSystemError from \"@std/os/fs.ms\"\n   |                    ^^^^^^^^^^^^^^^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

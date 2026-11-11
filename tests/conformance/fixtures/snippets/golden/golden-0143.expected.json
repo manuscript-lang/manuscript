@@ -1,0 +1,38 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type JsonError; declare it with 'type JsonError:' / 'enum JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it",
+        "position": {
+          "file": "golden-0143.ms",
+          "line": 3,
+          "column": 12,
+          "offset": 64
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding JsonError; declare it with 'JsonError := ...' before use, define 'fn JsonError(...) T:', or import it from a module",
+        "position": {
+          "file": "golden-0143.ms",
+          "line": 4,
+          "column": 12,
+          "offset": 86
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0143.ms:3:12: resolution: unknown type JsonError; declare it with 'type JsonError:' / 'enum JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it\n   |\n 3 | fn wrong() JsonError:\n   |            ^\n<DIR>/golden-0143.ms:4:12: resolution: unknown binding JsonError; declare it with 'JsonError := ...' before use, define 'fn JsonError(...) T:', or import it from a module\n   |\n 4 |     return JsonError.PermissionDenied\n   |            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "this method takes a callback that can change the receiver's elements, so it cannot be used as a value; call it, or write a closure",
+        "position": {
+          "file": "for-each-method-value-changes.ms",
+          "line": 5,
+          "column": 16,
+          "offset": 104
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/for-each-method-value-changes.ms:5:16: type: this method takes a callback that can change the receiver's elements, so it cannot be used as a value; call it, or write a closure\n   |\n 5 |     each := xs.for_each\n   |                   ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

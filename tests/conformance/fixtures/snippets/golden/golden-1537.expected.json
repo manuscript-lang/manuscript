@@ -1,0 +1,71 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "too many positional arguments; every parameter is already supplied, so remove this argument",
+        "position": {
+          "file": "golden-1537.ms",
+          "line": 4,
+          "column": 27,
+          "offset": 103
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown or ambiguous member replace_n on String; did you mean 'replace' or 'replace_first'?",
+        "position": {
+          "file": "golden-1537.ms",
+          "line": 6,
+          "column": 9,
+          "offset": 141
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown or ambiguous member replace_n on String; did you mean 'replace' or 'replace_first'?",
+        "position": {
+          "file": "golden-1537.ms",
+          "line": 8,
+          "column": 20,
+          "offset": 207
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown or ambiguous member replace_n on String; did you mean 'replace' or 'replace_first'?",
+        "position": {
+          "file": "golden-1537.ms",
+          "line": 11,
+          "column": 8,
+          "offset": 273
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown or ambiguous member replace_n on String; did you mean 'replace' or 'replace_first'?",
+        "position": {
+          "file": "golden-1537.ms",
+          "line": 13,
+          "column": 23,
+          "offset": 336
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-1537.ms:4:27: type: too many positional arguments; every parameter is already supplied, so remove this argument\n   |\n 4 |     \"a\".replace(\"a\", \"b\", -1)\n   |                           ^\n<DIR>/golden-1537.ms:6:9: resolution: unknown or ambiguous member replace_n on String; did you mean 'replace' or 'replace_first'?\n   |\n 6 |     \"a\".replace_n(\"a\", \"b\", -1)\n   |         ^\n<DIR>/golden-1537.ms:8:20: resolution: unknown or ambiguous member replace_n on String; did you mean 'replace' or 'replace_first'?\n   |\n 8 |     replace := \"a\".replace_n\n   |                    ^\n<DIR>/golden-1537.ms:11:8: resolution: unknown or ambiguous member replace_n on String; did you mean 'replace' or 'replace_first'?\n    |\n 11 |     \"\".replace_n(\"\", \"b\", -1)\n    |        ^\n<DIR>/golden-1537.ms:13:23: resolution: unknown or ambiguous member replace_n on String; did you mean 'replace' or 'replace_first'?\n    |\n 13 |     _unchanged := \"a\".replace_n(\"a\", \"b\", 0)\n    |                       ^\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

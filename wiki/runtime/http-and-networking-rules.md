@@ -22,7 +22,7 @@ Verified: source Map keys use exact equality, while HTTP field names fold ASCII 
 
 
 Apply when: changing HTTP adapters, repeated fields, or header representation bridges.
-Evidence: [called source checks](../../tests/e2e/testdata/stdlib/http-headers.ms), [header contracts](../../stdlib/net/http.ms).
+Evidence: [called source checks](../../tests/conformance/fixtures/e2e/stdlib/http-headers.ms), [header contracts](../../stdlib/net/http.ms).
 Verify: both insertion orders retain every duplicate/cookie; host maps with noncanonical keys lose no values. Keep buffered raw-byte acceptance, streaming/client UTF-8 rejection, transport framing validation and domain errors distinct.
 
 Repeated `Content-Encoding` fields are one ordered coding list. The client only
@@ -41,7 +41,7 @@ automatic Referer on every hop so carrying headers forward cannot leak a prior o
 
 
 Apply when: changing redirect policy or outgoing request header propagation.
-Evidence: [loopback redirect regressions](../../crates/ms-std-net/src/http/client.rs), [called fetch chain regression](../../tests/e2e/testdata/stdlib/fetch.ms).
+Evidence: [loopback redirect regressions](../../crates/ms-std-net/src/http/client.rs), [called fetch chain regression](../../tests/conformance/fixtures/e2e/stdlib/fetch.ms).
 Verify: a cross-origin redirect followed by a same-origin redirect sends no original credentials; a 302 then 307 sends neither a body nor its original entity headers; automatic Referer stays local.
 
 ## Transfer coding validation also covers close-delimited responses
@@ -61,7 +61,7 @@ Check the deadline during read retries as well as the reactor's timeout sweep.
 
 
 Apply when: changing HTTP rejection responses or connection retirement.
-Evidence: [rejection drain and socket regressions](../../crates/ms-std-net/src/http/server.rs), [source header-cap regression](../../tests/e2e/testdata/stdlib/http-limits.ms).
+Evidence: [rejection drain and socket regressions](../../crates/ms-std-net/src/http/server.rs), [source header-cap regression](../../tests/conformance/fixtures/e2e/stdlib/http-limits.ms).
 Verify: a 2 MB header upload receives the complete 431 response without a reset; a peer that keeps its write half open cannot retain the rejected connection indefinitely.
 
 ## Networking completeness includes interruption and shutdown
@@ -72,5 +72,5 @@ Decision: the networking request explicitly required finishing networking rather
 Restriction checks must intersect listening permission as well as host and CIDR filters across every ancestor. Checking only the immediate `Policy.listen` lets a child restore a capability denied by its parent. The regression `child_cannot_restore_parent_listening_permission` covers TCP/UDP denial, deeper descendants, resolver-derived children, and allowed/address-filtered controls; run it before treating this correction as validated.
 
 Apply when: adding native network APIs or declaring a networking change complete.
-Evidence: [architecture](../../documentation/contributing/architecture.md), [networking project](../../tests/e2e/testdata/projects/networking), [network fixture](../../tests/e2e/testdata/stdlib/net.ms).
+Evidence: [architecture](../../documentation/contributing/architecture.md), [networking project](../../tests/conformance/fixtures/e2e/projects/networking), [network fixture](../../tests/conformance/fixtures/e2e/stdlib/net.ms).
 Verify: run relevant cases for blocked I/O cancellation, concurrent close, bounded input/output, and shutdown joining. Check the actual request's protocol scope; retain implementation limits explicitly when a path remains uncooperative.

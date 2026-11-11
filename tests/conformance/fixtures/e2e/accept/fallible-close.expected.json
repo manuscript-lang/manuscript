@@ -1,0 +1,85 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "fallible-close.ms::a clean close leaves the result alone",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "fallible-close.ms::a failed scope-end close becomes the function's error",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "fallible-close.ms::the later binding closes first and its error is the one returned",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "fallible-close.ms::an explicit close consumes the binding",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "fallible-close.ms::leaving a loop with break closes and returns the error",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "fallible-close.ms::a function that cannot return an error faults on a failed close",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "fallible-close.ms::a holder closing a part faults on a failed close",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 7,
+        "selected": 7,
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN fallible-close.ms::a clean close leaves the result alone\nPASS fallible-close.ms::a clean close leaves the result alone\nRUN fallible-close.ms::a failed scope-end close becomes the function's error\nPASS fallible-close.ms::a failed scope-end close becomes the function's error\nRUN fallible-close.ms::the later binding closes first and its error is the one returned\nPASS fallible-close.ms::the later binding closes first and its error is the one returned\nRUN fallible-close.ms::an explicit close consumes the binding\nPASS fallible-close.ms::an explicit close consumes the binding\nRUN fallible-close.ms::leaving a loop with break closes and returns the error\nPASS fallible-close.ms::leaving a loop with break closes and returns the error\nRUN fallible-close.ms::a function that cannot return an error faults on a failed close\nPASS fallible-close.ms::a function that cannot return an error faults on a failed close\nRUN fallible-close.ms::a holder closing a part faults on a failed close\nPASS fallible-close.ms::a holder closing a part faults on a failed close\n7 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

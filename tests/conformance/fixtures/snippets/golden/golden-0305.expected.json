@@ -1,0 +1,38 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type Missing; declare it with 'type Missing:' / 'enum Missing:' / 'interface Missing:', declare it as a type parameter, or import it",
+        "position": {
+          "file": "golden-0305.ms",
+          "line": 3,
+          "column": 18,
+          "offset": 70
+        }
+      },
+      {
+        "code": "MS3080",
+        "phase": "type",
+        "message": "cannot infer type argument T for empty; write empty[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter",
+        "position": {
+          "file": "golden-0305.ms",
+          "line": 6,
+          "column": 14,
+          "offset": 145
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0305.ms:3:18: resolution: unknown type Missing; declare it with 'type Missing:' / 'enum Missing:' / 'interface Missing:', declare it as a type parameter, or import it\n   |\n 3 | fn broken(value: Missing) Unit: return\n   |                  ^\n<DIR>/golden-0305.ms:6:14: type: cannot infer type argument T for empty; write empty[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter\n   |\n 6 |     value := empty()\n   |              ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

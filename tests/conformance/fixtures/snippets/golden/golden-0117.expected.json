@@ -1,0 +1,122 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2002",
+        "phase": "resolution",
+        "message": "unknown standard module @std/faults.ms",
+        "position": {
+          "file": "golden-0117.ms",
+          "line": 3,
+          "column": 8,
+          "offset": 60
+        },
+        "end": {
+          "file": "golden-0117.ms",
+          "line": 3,
+          "column": 13,
+          "offset": 65
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding panic; add: import panic from \"@std/core.ms\"",
+        "position": {
+          "file": "golden-0117.ms",
+          "line": 9,
+          "column": 9,
+          "offset": 175
+        },
+        "fix": {
+          "position": {
+            "file": "golden-0117.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "golden-0117.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import panic from \"@std/core.ms\"\n"
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)",
+        "position": {
+          "file": "golden-0117.ms",
+          "line": 5,
+          "column": 1,
+          "offset": 89
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding panic; add: import panic from \"@std/core.ms\"",
+        "position": {
+          "file": "golden-0117.ms",
+          "line": 13,
+          "column": 16,
+          "offset": 277
+        },
+        "fix": {
+          "position": {
+            "file": "golden-0117.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "golden-0117.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import panic from \"@std/core.ms\"\n"
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding panic; add: import panic from \"@std/core.ms\"",
+        "position": {
+          "file": "golden-0117.ms",
+          "line": 17,
+          "column": 16,
+          "offset": 371
+        },
+        "fix": {
+          "position": {
+            "file": "golden-0117.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "golden-0117.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import panic from \"@std/core.ms\"\n"
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0117.ms:3:8: resolution: unknown standard module @std/faults.ms\n   |\n 3 | import panic from \"@std/faults.ms\"\n   |        ^^^^^\n<DIR>/golden-0117.ms:9:9: resolution: unknown binding panic; add: import panic from \"@std/core.ms\"\n   |\n 9 |         panic(\"positive value required\")\n   |         ^\n<DIR>/golden-0117.ms:5:1: type: reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)\n   |\n 5 | fn positive(value: Int) Int:\n   | ^\n<DIR>/golden-0117.ms:13:16: resolution: unknown binding panic; add: import panic from \"@std/core.ms\"\n    |\n 13 |         return panic(\"check failed\")\n    |                ^\n<DIR>/golden-0117.ms:17:16: resolution: unknown binding panic; add: import panic from \"@std/core.ms\"\n    |\n 17 |         return panic(\"check failed\")\n    |                ^\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

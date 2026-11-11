@@ -1,0 +1,110 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "cli.ms::nested command resolves path and typed options",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "cli.ms::run rejects paths outside this command root",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "cli.ms::flags take values in every spelling and persistent flags work on both sides",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "cli.ms::optional and rest arguments",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "cli.ms::usage errors name the problem",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "cli.ms::help is generated for groups, leaves and the help word",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "cli.ms::float flags reject NaN and infinities",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "cli.ms::schema mistakes are reported before parsing",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "cli.ms::handlers receive the decoded options record",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "cli.ms::optional, rest and dashed names decode into record fields",
+          "status": "passed"
+        },
+        {
+          "index": 10,
+          "name": "cli.ms::a record that does not match the schema is reported when the handler runs",
+          "status": "passed"
+        },
+        {
+          "index": 11,
+          "name": "cli.ms::help rows without text carry no trailing spaces",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 12,
+        "selected": 12,
+        "passed": 12,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN cli.ms::nested command resolves path and typed options\nPASS cli.ms::nested command resolves path and typed options\nRUN cli.ms::run rejects paths outside this command root\nPASS cli.ms::run rejects paths outside this command root\nRUN cli.ms::flags take values in every spelling and persistent flags work on both sides\nPASS cli.ms::flags take values in every spelling and persistent flags work on both sides\nRUN cli.ms::optional and rest arguments\nPASS cli.ms::optional and rest arguments\nRUN cli.ms::usage errors name the problem\nPASS cli.ms::usage errors name the problem\nRUN cli.ms::help is generated for groups, leaves and the help word\nPASS cli.ms::help is generated for groups, leaves and the help word\nRUN cli.ms::float flags reject NaN and infinities\nPASS cli.ms::float flags reject NaN and infinities\nRUN cli.ms::schema mistakes are reported before parsing\nPASS cli.ms::schema mistakes are reported before parsing\nRUN cli.ms::handlers receive the decoded options record\nPASS cli.ms::handlers receive the decoded options record\nRUN cli.ms::optional, rest and dashed names decode into record fields\nPASS cli.ms::optional, rest and dashed names decode into record fields\nRUN cli.ms::a record that does not match the schema is reported when the handler runs\nPASS cli.ms::a record that does not match the schema is reported when the handler runs\nRUN cli.ms::help rows without text carry no trailing spaces\nPASS cli.ms::help rows without text carry no trailing spaces\n12 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

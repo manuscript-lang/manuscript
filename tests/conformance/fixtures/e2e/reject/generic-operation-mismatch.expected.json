@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3001",
+        "phase": "type",
+        "message": "expected Picker, found Bag (in the return value); Picker declares an operation with type parameters of its own, so it bounds a type parameter (`fn f[T: Picker](x: T)`) but cannot type a value",
+        "position": {
+          "file": "generic-operation-mismatch.ms",
+          "line": 13,
+          "column": 12,
+          "offset": 246
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/generic-operation-mismatch.ms:13:12: type: expected Picker, found Bag (in the return value); Picker declares an operation with type parameters of its own, so it bounds a type parameter (`fn f[T: Picker](x: T)`) but cannot type a value\n    |\n 13 |     return Bag([1])\n    |               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

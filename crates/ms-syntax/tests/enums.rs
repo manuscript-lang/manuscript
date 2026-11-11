@@ -135,7 +135,7 @@ fn case_is_not_a_reserved_word() {
     assert!(
         ms_syntax::parser::parse(
             &file,
-            include_str!("../../../tests/e2e/testdata/accept/case-identifier.ms")
+            include_str!("../../../tests/conformance/fixtures/e2e/accept/case-identifier.ms")
         )
         .is_ok()
     );

@@ -1,0 +1,105 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "list-reshape.ms::retain keeps matching elements in order",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "list-reshape.ms::compact collapses runs only",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "list-reshape.ms::rotate wraps in both directions",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "list-reshape.ms::is_sorted and is_sorted_by",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "list-reshape.ms::sorted_by_key is stable",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "list-reshape.ms::repeated copies the list",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "list-reshape.ms::extend appends copies and leaves the argument",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "list-reshape.ms::retain on Map and Set",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "list-reshape.ms::Deque rotate turns the ring",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "list-reshape.ms::repeated empty lists return without traversing the count",
+          "status": "passed"
+        },
+        {
+          "index": 10,
+          "name": "list-reshape.ms::repeated nested lists remain independent copies",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 11,
+        "selected": 11,
+        "passed": 11,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN list-reshape.ms::retain keeps matching elements in order\nPASS list-reshape.ms::retain keeps matching elements in order\nRUN list-reshape.ms::compact collapses runs only\nPASS list-reshape.ms::compact collapses runs only\nRUN list-reshape.ms::rotate wraps in both directions\nPASS list-reshape.ms::rotate wraps in both directions\nRUN list-reshape.ms::is_sorted and is_sorted_by\nPASS list-reshape.ms::is_sorted and is_sorted_by\nRUN list-reshape.ms::sorted_by_key is stable\nPASS list-reshape.ms::sorted_by_key is stable\nRUN list-reshape.ms::repeated copies the list\nPASS list-reshape.ms::repeated copies the list\nRUN list-reshape.ms::extend appends copies and leaves the argument\nPASS list-reshape.ms::extend appends copies and leaves the argument\nRUN list-reshape.ms::retain on Map and Set\nPASS list-reshape.ms::retain on Map and Set\nRUN list-reshape.ms::Deque rotate turns the ring\nPASS list-reshape.ms::Deque rotate turns the ring\nRUN list-reshape.ms::repeated empty lists return without traversing the count\nPASS list-reshape.ms::repeated empty lists return without traversing the count\nRUN list-reshape.ms::repeated nested lists remain independent copies\nPASS list-reshape.ms::repeated nested lists remain independent copies\n11 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

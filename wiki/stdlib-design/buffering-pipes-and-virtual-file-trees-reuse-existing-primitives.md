@@ -6,5 +6,5 @@ Decision (Go-parity sweep, capability not API): line and delimiter reading is `l
 Decision (2026-11-02): `embed` is an `ms.toml` `[embed]` table, not a built-in. The driver generates a module whose `files()` returns a `MemoryTree` (base64 literals); the build cache stamps the directory and its files because it never hashes source ([proposal](../../proposals/embed.md)).
 
 Apply when: adding stream wrappers, test file systems, or Go `io`/`bufio`/`io/fs` equivalents.
-Evidence: [streams.ms](../../stdlib/io/streams.ms), [tree.ms](../../stdlib/os/tree.ms), [tests](../../tests/e2e/testdata/stdlib/tree.ms).
-Verify: `ms test tests/e2e/testdata/stdlib/{streams,tree}.ms`.
+Evidence: [streams.ms](../../stdlib/io/streams.ms), [tree.ms](../../stdlib/os/tree.ms), [tests](../../tests/conformance/fixtures/e2e/stdlib/tree.ms).
+Verify: `ms test tests/conformance/fixtures/e2e/stdlib/{streams,tree}.ms`.

@@ -1,0 +1,50 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it",
+        "position": {
+          "file": "golden-1430.ms",
+          "line": 6,
+          "column": 1,
+          "offset": 139
+        },
+        "end": {
+          "file": "golden-1430.ms",
+          "line": 6,
+          "column": 5,
+          "offset": 143
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it",
+        "position": {
+          "file": "golden-1430.ms",
+          "line": 14,
+          "column": 1,
+          "offset": 342
+        },
+        "end": {
+          "file": "golden-1430.ms",
+          "line": 14,
+          "column": 5,
+          "offset": 346
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-1430.ms:6:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n   |\n 6 | impl Closeable for AggregateResource:\n   | ^^^^\n<DIR>/golden-1430.ms:14:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n    |\n 14 | impl AggregateCounter for AggregateCell:\n    | ^^^^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}
