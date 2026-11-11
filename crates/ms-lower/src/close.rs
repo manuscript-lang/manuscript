@@ -3,9 +3,10 @@
 
 use crate::Error;
 use crate::cx::HelperKey;
-use crate::func::FnLower;
+use crate::func::{FnLower, RawSlot};
 use crate::text::runtime_fn;
 use ms_check::api::ast::*;
+use ms_check::api::ownership::BindingFact;
 use ms_check::api::types as ct;
 use ms_check::api::types::Builtin;
 use ms_mir::builder::FuncBuilder;
@@ -815,14 +816,30 @@ impl FnLower<'_> {
             || own
                 .binding_facts
                 .has(uid, ms_check::api::ownership::BindingFact::ConditionalMove);
+        let by_hand = own.binding_facts.has(uid, BindingFact::ExplicitClose)
+            || own.binding_facts.has(uid, BindingFact::CloseHandled);
         owned
             && !self.dead
-            && !binding.mutable
+            && !(binding.mutable && moves)
             && self.scope_closes_nothing()
-            && !own
-                .binding_facts
-                .has(uid, ms_check::api::ownership::BindingFact::ExplicitClose)
             && (!moves || self.close_succeeds_with_unit(kind))
+            && (!by_hand || (!moves && self.close_succeeds_with_unit(kind)))
+    }
+
+    /// Tells the pass the program closed (`closed`) or refilled the value in the raw slot.
+    fn mark_raw_closed(&mut self, raw: &RawSlot, closed: bool) {
+        let imm = Imm::Int(i64::from(closed));
+        self.b.emit(Op::ScopeMark, &[raw.slot], imm, None);
+    }
+
+    /// The assignment stored a fresh value in the raw slot: the program has not closed it.
+    pub(crate) fn reset_raw_closed(&mut self, uid: usize, raw: &RawSlot) {
+        let handled = (self.cx.ownership.binding_facts).has(uid, BindingFact::CloseHandled);
+        if let (Some(explicit), false) = (raw.explicit, handled) {
+            let no = self.b.bconst(false);
+            self.b.def_var(explicit, no);
+            self.mark_raw_closed(raw, false);
+        }
     }
 
     pub(crate) fn bind_closing_kind(
@@ -873,7 +890,24 @@ impl FnLower<'_> {
                 scope.retain(|u| *u != binding.uid);
             }
             self.own_raw_kind(binding.uid, ptr, thunk.index() as u32 + 2);
-            self.raw_slots.insert(binding.uid, (ptr, kind));
+            let facts = &self.cx.ownership.binding_facts;
+            let handled = facts.has(binding.uid, BindingFact::CloseHandled);
+            let explicit = facts.has(binding.uid, BindingFact::ExplicitClose).then(|| {
+                let explicit = self.b.declare_var(MTy::BOOL, Mode::Borrow);
+                let no = self.b.bconst(false);
+                self.b.def_var(explicit, no);
+                explicit
+            });
+            let raw = RawSlot {
+                slot: ptr,
+                kind,
+                explicit,
+            };
+            if handled {
+                // Every lifetime handles its result: the scope end's close drops it.
+                self.mark_raw_closed(&raw, true);
+            }
+            self.raw_slots.insert(binding.uid, raw);
             return Ok(());
         }
         let thunk = self.close_thunk(&kind, ty, slot.is_some());
@@ -1469,8 +1503,20 @@ impl FnLower<'_> {
     /// and hands back what the close leaves for the caller to drop. The binding's cleanup entry
     /// stays: it closes whatever the binding holds when its scope ends.
     fn close_replaced(&mut self, closer: &Closer, old: Value, ty: MTy) -> Value {
+        self.close_replaced_kind(&closer.kind, closer.explicit, old, ty)
+    }
+
+    /// `close_replaced` for a close `kind` and the flag that says the program already closed
+    /// the value.
+    pub(crate) fn close_replaced_kind(
+        &mut self,
+        kind: &CloseKind,
+        explicit: Option<ms_mir::builder::Var>,
+        old: Value,
+        ty: MTy,
+    ) -> Value {
         let _ = self.call_runtime("msrt_shield_enter", &[], MTy::UNIT);
-        let out = if let Some(explicit) = closer.explicit {
+        let out = if let Some(explicit) = explicit {
             // The program already closed `old` and handled the result: closing it again
             // releases what is left, and its result is dropped.
             let out = self.owned_var(ty);
@@ -1480,19 +1526,19 @@ impl FnLower<'_> {
             self.b.seal_block(again);
             self.b.seal_block(first);
             self.b.switch_to(again);
-            let (v, r) = close_owned_result(&mut self.b, &closer.kind, old, ty);
+            let (v, r) = close_owned_result(&mut self.b, kind, old, ty);
             self.drop_value(r);
             self.b.def_var(out, v);
             self.b.br(join, &[]);
             self.b.switch_to(first);
-            let v = close_owned(&mut self.b, &closer.kind, old, ty);
+            let v = close_owned(&mut self.b, kind, old, ty);
             self.b.def_var(out, v);
             self.b.br(join, &[]);
             self.b.seal_block(join);
             self.b.switch_to(join);
             self.b.use_var(out)
         } else {
-            close_owned(&mut self.b, &closer.kind, old, ty)
+            close_owned(&mut self.b, kind, old, ty)
         };
         let _ = self.call_runtime("msrt_shield_exit", &[], MTy::UNIT);
         out
@@ -1579,12 +1625,12 @@ impl FnLower<'_> {
     /// The function that closes a value of the closing binding `uid` held by a closure built at
     /// `e`, when `e` moves the binding into its environment.
     pub(crate) fn capture_closer(&mut self, uid: usize, e: &Expr, ty: MTy) -> Option<FuncId> {
-        if let Some((_, kind)) = self.raw_slots.get(&uid).cloned() {
+        if let Some(raw) = self.raw_slots.get(&uid).cloned() {
             let moves = self.cx.ownership.close_moves.get(&uid)?;
             if self.dead || !moves.contains(&e.id) {
                 return None;
             }
-            return Some(self.close_thunk(&kind, ty, true));
+            return Some(self.close_thunk(&raw.kind, ty, true));
         }
         let closer = self.closers.get(&uid).cloned()?;
         closer.flag?;
@@ -1599,7 +1645,7 @@ impl FnLower<'_> {
     /// A move of the closing binding `uid` at the name expression `e`: the new owner closes the
     /// value, so neither the cleanup entry nor the scope end does.
     pub(crate) fn moved_closer(&mut self, uid: usize, e: &Expr) {
-        if let Some((slot, _)) = self.raw_slots.get(&uid).cloned() {
+        if let Some(RawSlot { slot, .. }) = self.raw_slots.get(&uid).cloned() {
             let moved = self
                 .cx
                 .ownership
@@ -1686,12 +1732,20 @@ impl FnLower<'_> {
         let ms_check::api::hir::Resolution::Local(b) = self.hir.resolution(recv) else {
             return;
         };
-        let Some(explicit) = self.closers.get(&b.uid).and_then(|c| c.explicit) else {
-            return;
-        };
         if self.dead {
             return;
         }
+        if let Some(raw) = self.raw_slots.get(&b.uid).cloned() {
+            if let Some(explicit) = raw.explicit {
+                let yes = self.b.bconst(true);
+                self.b.def_var(explicit, yes);
+            }
+            self.mark_raw_closed(&raw, true);
+            return;
+        }
+        let Some(explicit) = self.closers.get(&b.uid).and_then(|c| c.explicit) else {
+            return;
+        };
         let yes = self.b.bconst(true);
         self.b.def_var(explicit, yes);
     }
