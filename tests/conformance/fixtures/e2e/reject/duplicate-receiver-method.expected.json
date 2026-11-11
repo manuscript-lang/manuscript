@@ -1,0 +1,49 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "duplicate operation f; rename or remove one of them",
+        "position": {
+          "file": "duplicate-receiver-method.ms",
+          "line": 9,
+          "column": 6,
+          "offset": 106
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "duplicate implementation operation f; define each operation once per impl",
+        "position": {
+          "file": "duplicate-receiver-method.ms",
+          "line": 9,
+          "column": 6,
+          "offset": 106
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "ambiguous member f on T; more than one implementation provides it",
+        "position": {
+          "file": "duplicate-receiver-method.ms",
+          "line": 13,
+          "column": 16,
+          "offset": 154
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/duplicate-receiver-method.ms:9:6: type: duplicate operation f; rename or remove one of them\n   |\n 9 | fn T.f() Int:\n   |      ^\n<DIR>/duplicate-receiver-method.ms:9:6: type: duplicate implementation operation f; define each operation once per impl\n   |\n 9 | fn T.f() Int:\n   |      ^\n<DIR>/duplicate-receiver-method.ms:13:16: resolution: ambiguous member f on T; more than one implementation provides it\n    |\n 13 |     print(T(1).f())\n    |                   ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

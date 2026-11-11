@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "mismatched closing delimiter ')'; the '[' opened at line 4:18 needs ']'",
+        "position": {
+          "file": "golden-0788.ms",
+          "line": 4,
+          "column": 20,
+          "offset": 89
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0788.ms:4:20: parse: mismatched closing delimiter ')'; the '[' opened at line 4:18 needs ']'\n   |\n 4 |     other(value: [1)\n   |                    ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

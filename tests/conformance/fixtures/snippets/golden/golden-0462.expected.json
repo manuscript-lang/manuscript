@@ -1,0 +1,38 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type CollectionError; declare it with 'type CollectionError:' / 'enum CollectionError:' / 'interface CollectionError:', declare it as a type parameter, or import it",
+        "position": {
+          "file": "golden-0462.ms",
+          "line": 6,
+          "column": 15,
+          "offset": 129
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding CollectionError; declare it with 'CollectionError := ...' before use, define 'fn CollectionError(...) T:', or import it from a module",
+        "position": {
+          "file": "golden-0462.ms",
+          "line": 6,
+          "column": 32,
+          "offset": 146
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0462.ms:6:15: resolution: unknown type CollectionError; declare it with 'type CollectionError:' / 'enum CollectionError:' / 'interface CollectionError:', declare it as a type parameter, or import it\n   |\n 6 | fn standard() CollectionError: CollectionError.OutOfRange\n   |               ^\n<DIR>/golden-0462.ms:6:32: resolution: unknown binding CollectionError; declare it with 'CollectionError := ...' before use, define 'fn CollectionError(...) T:', or import it from a module\n   |\n 6 | fn standard() CollectionError: CollectionError.OutOfRange\n   |                                ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

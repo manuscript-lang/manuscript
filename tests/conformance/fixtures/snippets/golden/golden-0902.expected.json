@@ -1,0 +1,33 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "expected end of statement, found ','; commas separate items only inside (), [] or {}: put each field, case, or statement on its own line",
+        "position": {
+          "file": "golden-0902.ms",
+          "line": 4,
+          "column": 13,
+          "offset": 77
+        },
+        "end": {
+          "file": "golden-0902.ms",
+          "line": 4,
+          "column": 14,
+          "offset": 78
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0902.ms:4:13: parse: expected end of statement, found ','; commas separate items only inside (), [] or {}: put each field, case, or statement on its own line\n   |\n 4 |     return 1,\n   |             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

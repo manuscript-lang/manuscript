@@ -1,0 +1,120 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "config.ms::dotenv reads names, quotes, comments and export",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "config.ms::dotenv ends a bare value only at a hash that starts it or follows a space",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "config.ms::dotenv keeps spaces and tabs inside a multiline quoted value",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "config.ms::dotenv later duplicates replace earlier values",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "config.ms::dotenv accepts empty text and a byte-order mark",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "config.ms::dotenv rejects malformed lines with their line number",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "config.ms::ini reads sections, both separators, comments and quotes",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "config.ms::ini rejects malformed lines",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "config.ms::dotenv multi-line quotes stay linear",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "config.ms::ini detects comments before trimming empty assignment values",
+          "status": "passed"
+        },
+        {
+          "index": 10,
+          "name": "config.ms::ini preserves literal markers and quoted whitespace",
+          "status": "passed"
+        },
+        {
+          "index": 11,
+          "name": "config.ms::dotenv keeps CRLF inside a quoted value and accepts CRLF records",
+          "status": "passed"
+        },
+        {
+          "index": 12,
+          "name": "config.ms::INI comments follow quoted values",
+          "status": "passed"
+        },
+        {
+          "index": 13,
+          "name": "config.ms::INI comments after quotes may contain the quote and ignore tab-only markers",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 14,
+        "selected": 14,
+        "passed": 14,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN config.ms::dotenv reads names, quotes, comments and export\nPASS config.ms::dotenv reads names, quotes, comments and export\nRUN config.ms::dotenv ends a bare value only at a hash that starts it or follows a space\nPASS config.ms::dotenv ends a bare value only at a hash that starts it or follows a space\nRUN config.ms::dotenv keeps spaces and tabs inside a multiline quoted value\nPASS config.ms::dotenv keeps spaces and tabs inside a multiline quoted value\nRUN config.ms::dotenv later duplicates replace earlier values\nPASS config.ms::dotenv later duplicates replace earlier values\nRUN config.ms::dotenv accepts empty text and a byte-order mark\nPASS config.ms::dotenv accepts empty text and a byte-order mark\nRUN config.ms::dotenv rejects malformed lines with their line number\nPASS config.ms::dotenv rejects malformed lines with their line number\nRUN config.ms::ini reads sections, both separators, comments and quotes\nPASS config.ms::ini reads sections, both separators, comments and quotes\nRUN config.ms::ini rejects malformed lines\nPASS config.ms::ini rejects malformed lines\nRUN config.ms::dotenv multi-line quotes stay linear\nPASS config.ms::dotenv multi-line quotes stay linear\nRUN config.ms::ini detects comments before trimming empty assignment values\nPASS config.ms::ini detects comments before trimming empty assignment values\nRUN config.ms::ini preserves literal markers and quoted whitespace\nPASS config.ms::ini preserves literal markers and quoted whitespace\nRUN config.ms::dotenv keeps CRLF inside a quoted value and accepts CRLF records\nPASS config.ms::dotenv keeps CRLF inside a quoted value and accepts CRLF records\nRUN config.ms::INI comments follow quoted values\nPASS config.ms::INI comments follow quoted values\nRUN config.ms::INI comments after quotes may contain the quote and ignore tab-only markers\nPASS config.ms::INI comments after quotes may contain the quote and ignore tab-only markers\n14 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

@@ -12,5 +12,5 @@ Constraints found while writing it:
 - The embedded stdlib is baked into `ms`; after adding a module run `cargo build --release -p ms-cli` before `ms test` sees it.
 
 Apply when: adding resilience helpers, or moving them to another module.
-Verify: `ms test tests/e2e/testdata/stdlib/flow.ms`.
+Verify: `ms test tests/conformance/fixtures/e2e/stdlib/flow.ms`.
 Streams compose with backpressure in `@std/io/streams.ms`, so no Node-style `pipeline` was added.

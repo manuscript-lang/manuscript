@@ -1,0 +1,135 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "log.ms::logger writes typed escaped records and protects metadata",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "log.ms::non-object values are written under data",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "log.ms::levels filter methods and function values",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "log.ms::child bindings snapshot values and merge without mutating inputs",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "log.ms::limits and unencodable values reject before writing",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "log.ms::closing a logger twice keeps reporting Closed",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "log.ms::file transport appends and flushes with scoped cleanup",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "log.ms::stdout transport accepts records and leaves stdout open",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "log.ms::source transports receive complete records and close through their contract",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "log.ms::a logger scope closes its transport and a dropped child closes only its own",
+          "status": "passed"
+        },
+        {
+          "index": 10,
+          "name": "log.ms::unencodable fields are rejected and fields keep their shape under data",
+          "status": "passed"
+        },
+        {
+          "index": 11,
+          "name": "log.ms::loggers on several threads never interleave a record",
+          "status": "passed"
+        },
+        {
+          "index": 12,
+          "name": "log.ms::messages are escaped and fields keep their shape under data",
+          "status": "passed"
+        },
+        {
+          "index": 13,
+          "name": "log.ms::child context merges per child and the newer value wins",
+          "status": "passed"
+        },
+        {
+          "index": 14,
+          "name": "log.ms::the time field is a millisecond count and the size limit counts the newline",
+          "status": "passed"
+        },
+        {
+          "index": 15,
+          "name": "log.ms::rotating transport moves a full file aside and keeps a bounded number of generations",
+          "status": "passed"
+        },
+        {
+          "index": 16,
+          "name": "log.ms::rotating transport rejects invalid sizes",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 17,
+        "selected": 17,
+        "passed": 17,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN log.ms::logger writes typed escaped records and protects metadata\nPASS log.ms::logger writes typed escaped records and protects metadata\nRUN log.ms::non-object values are written under data\nPASS log.ms::non-object values are written under data\nRUN log.ms::levels filter methods and function values\nPASS log.ms::levels filter methods and function values\nRUN log.ms::child bindings snapshot values and merge without mutating inputs\nPASS log.ms::child bindings snapshot values and merge without mutating inputs\nRUN log.ms::limits and unencodable values reject before writing\nPASS log.ms::limits and unencodable values reject before writing\nRUN log.ms::closing a logger twice keeps reporting Closed\nPASS log.ms::closing a logger twice keeps reporting Closed\nRUN log.ms::file transport appends and flushes with scoped cleanup\nPASS log.ms::file transport appends and flushes with scoped cleanup\nRUN log.ms::stdout transport accepts records and leaves stdout open\n{\"level\":30,\"msg\":\"stdout log\"}\nPASS log.ms::stdout transport accepts records and leaves stdout open\nRUN log.ms::source transports receive complete records and close through their contract\nPASS log.ms::source transports receive complete records and close through their contract\nRUN log.ms::a logger scope closes its transport and a dropped child closes only its own\nPASS log.ms::a logger scope closes its transport and a dropped child closes only its own\nRUN log.ms::unencodable fields are rejected and fields keep their shape under data\nPASS log.ms::unencodable fields are rejected and fields keep their shape under data\nRUN log.ms::loggers on several threads never interleave a record\nPASS log.ms::loggers on several threads never interleave a record\nRUN log.ms::messages are escaped and fields keep their shape under data\nPASS log.ms::messages are escaped and fields keep their shape under data\nRUN log.ms::child context merges per child and the newer value wins\nPASS log.ms::child context merges per child and the newer value wins\nRUN log.ms::the time field is a millisecond count and the size limit counts the newline\nPASS log.ms::the time field is a millisecond count and the size limit counts the newline\nRUN log.ms::rotating transport moves a full file aside and keeps a bounded number of generations\nPASS log.ms::rotating transport moves a full file aside and keeps a bounded number of generations\nRUN log.ms::rotating transport rejects invalid sizes\nPASS log.ms::rotating transport rejects invalid sizes\n17 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

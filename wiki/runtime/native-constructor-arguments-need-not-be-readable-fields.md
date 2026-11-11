@@ -6,5 +6,5 @@ Verified: `Bytes(values: List[Int])` has a dedicated constructor rule; declaring
 
 
 Apply when: describing native schemas or replacing bogus native fields with operations.
-Evidence: [byte declarations](../../stdlib/bytes.ms), [called extraction and constructor regressions](../../tests/e2e/testdata/stdlib/string-bytes.ms).
+Evidence: [byte declarations](../../stdlib/bytes.ms), [called extraction and constructor regressions](../../tests/conformance/fixtures/e2e/stdlib/string-bytes.ms).
 Verify: named and positional Bytes construction and direct, stored, and free extraction calls execute; mutating the input or extracted list leaves Bytes unchanged. Editor signature help retains the required values List; generated metadata lists `values` as an operation, with no data field.

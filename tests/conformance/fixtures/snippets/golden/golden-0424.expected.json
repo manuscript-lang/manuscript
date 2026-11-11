@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "unterminated delimiter '[' opened at line 4:25; add the matching ']' before the end of the file",
+        "position": {
+          "file": "golden-0424.ms",
+          "line": 4,
+          "column": 26,
+          "offset": 94
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0424.ms:4:26: parse: unterminated delimiter '[' opened at line 4:25; add the matching ']' before the end of the file\n   |\n 4 |     values: List[Int] = [\n   |                          ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

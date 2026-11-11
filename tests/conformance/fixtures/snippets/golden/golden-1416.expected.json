@@ -1,0 +1,103 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2002",
+        "phase": "resolution",
+        "message": "module does not export arguments; another standard module exports it, so replace this import with: import arguments from \"@std/os/env.ms\"",
+        "position": {
+          "file": "golden-1416.ms",
+          "line": 3,
+          "column": 8,
+          "offset": 60
+        },
+        "end": {
+          "file": "golden-1416.ms",
+          "line": 3,
+          "column": 17,
+          "offset": 69
+        }
+      },
+      {
+        "code": "MS3004",
+        "phase": "type",
+        "message": "unknown argument data; parameters of write: value",
+        "position": {
+          "file": "golden-1416.ms",
+          "line": 8,
+          "column": 20,
+          "offset": 235
+        }
+      },
+      {
+        "code": "MS3003",
+        "phase": "type",
+        "message": "missing argument value: String in call to write; add 'value: <String>'",
+        "position": {
+          "file": "golden-1416.ms",
+          "line": 8,
+          "column": 14,
+          "offset": 229
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding arguments; add: import arguments from \"@std/os/env.ms\"",
+        "position": {
+          "file": "golden-1416.ms",
+          "line": 11,
+          "column": 13,
+          "offset": 301
+        },
+        "fix": {
+          "position": {
+            "file": "golden-1416.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "golden-1416.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import arguments from \"@std/os/env.ms\"\n"
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "cause.message is not a function (it has type String); only functions and methods can be called, so remove the (...) or call a function instead",
+        "position": {
+          "file": "golden-1416.ms",
+          "line": 22,
+          "column": 47,
+          "offset": 587
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "this statement discards Result[Unit, Error], so a failure would be lost; write a trailing '?' to propagate it, 'if value := x' or 'match' to handle it, or '_ := ...' to drop it on purpose",
+        "position": {
+          "file": "golden-1416.ms",
+          "line": 29,
+          "column": 5,
+          "offset": 697
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-1416.ms:3:8: resolution: module does not export arguments; another standard module exports it, so replace this import with: import arguments from \"@std/os/env.ms\"\n   |\n 3 | import arguments from \"@std/os/process.ms\"\n   |        ^^^^^^^^^\n<DIR>/golden-1416.ms:8:20: type: unknown argument data; parameters of write: value\n   |\n 8 |     stdout().write(data: \"{text}\\n\")?\n   |                    ^\n<DIR>/golden-1416.ms:8:14: type: missing argument value: String in call to write; add 'value: <String>'\n   |\n 8 |     stdout().write(data: \"{text}\\n\")?\n   |              ^\n<DIR>/golden-1416.ms:11:13: resolution: unknown binding arguments; add: import arguments from \"@std/os/env.ms\"\n    |\n 11 |     args := arguments()\n    |             ^\n<DIR>/golden-1416.ms:22:47: type: cause.message is not a function (it has type String); only functions and methods can be called, so remove the (...) or call a function instead\n    |\n 22 |             written := stderr().write(\"{cause.message()}\\n\")\n    |                                               ^\n<DIR>/golden-1416.ms:29:5: type: this statement discards Result[Unit, Error], so a failure would be lost; write a trailing '?' to propagate it, 'if value := x' or 'match' to handle it, or '_ := ...' to drop it on purpose\n    |\n 29 |     write_line(\"unselected\")\n    |     ^\n6 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

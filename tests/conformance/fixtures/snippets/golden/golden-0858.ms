@@ -1,0 +1,6 @@
+// conform: tags=diagnostics
+// conform: phase=check
+type Empty: ...
+fn empty() Unit: ...
+fn kept() Int:
+    return 3

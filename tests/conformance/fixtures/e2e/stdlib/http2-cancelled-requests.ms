@@ -1,0 +1,65 @@
+// conform: tags=testing,tier-io
+// conform: phase=test
+import (
+	PromiseOptions from "@std/concurrency/promise.ms",
+	FetchOptions, FetcherOptions, fetcher from "@std/net/fetch.ms",
+	HttpExchange, HttpServerOptions, reply, text from "@std/net/http.ms",
+	serve from "@std/net/net.ms",
+	TlsOptions from "@std/net/tls.ms",
+	memory_usage from "@std/os/system.ms",
+	expect_equal, expect_ok from "@std/test/test.ms",
+	sleep from "@std/time.ms",
+
+	certificate, private_key from "./support/certificates.ms",
+)
+
+fn handler(var exchange: HttpExchange) Unit!:
+	if exchange.path() == "/hang":
+		sleep(30.seconds()).wait()?
+		return ok(unit)
+
+	return reply(var exchange, text(200, "ok"))
+
+test "requests cancelled on a shared HTTP/2 connection release their streams":
+	server_tls := TlsOptions(
+		certificate_pem: certificate(),
+		private_key_pem: private_key(),
+		alpn: ["h2", "http/1.1"],
+	)
+	client_tls := TlsOptions(roots_pem: certificate(), alpn: ["h2", "http/1.1"])
+	server := (
+		serve(
+			address: "127.0.0.1:0",
+			handler: handler,
+			options: HttpServerOptions(tls: server_tls),
+		) | expect_ok?
+	)
+	client := fetcher(FetcherOptions(tls: client_tls)) | expect_ok?
+	base := "https://{server.address()}"
+	first := client.fetch("{base}/ok", FetchOptions(timeout: none)).wait() | expect_ok?
+	first.head.protocol | expect_equal("HTTP/2.0")?
+
+	// Each cancelled request used to stay open on the connection, so the peer's stream
+	// limit filled and later requests failed.
+	for i in 0..400:
+		_ := client.fetch("{base}/hang", FetchOptions(timeout: none)).with(
+			options: PromiseOptions(timeout: 5.milliseconds())
+		).wait()
+
+	after := (
+		client.fetch("{base}/ok", FetchOptions(timeout: 5.seconds())).wait()
+		| expect_ok?
+	)
+	(after.text() | expect_ok? | expect_equal("ok")?)
+
+	before := (memory_usage() | expect_ok?).heap_used
+	for i in 0..1000:
+		_ := client.fetch("{base}/hang", FetchOptions(timeout: none)).with(
+			options: PromiseOptions(timeout: 5.milliseconds())
+		).wait()
+
+	// A cancelled stream's queue and headers leaked about 600 bytes each.
+	grown := (memory_usage() | expect_ok?).heap_used - before
+	if grown > 1000 * 64: return error(
+		Error("heap grew {grown} bytes over 1000 cancelled requests")
+	)

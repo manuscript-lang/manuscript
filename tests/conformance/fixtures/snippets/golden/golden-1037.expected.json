@@ -1,0 +1,42 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "cannot change `state.count`: parameter `state` is not declared var; write `var state: <Type>` in the signature and pass `var` at every call",
+        "position": {
+          "file": "golden-1037.ms",
+          "line": 6,
+          "column": 11,
+          "offset": 122
+        },
+        "fix": {
+          "position": {
+            "file": "golden-1037.ms",
+            "line": 5,
+            "column": 14,
+            "offset": 93
+          },
+          "end": {
+            "file": "golden-1037.ms",
+            "line": 5,
+            "column": 14,
+            "offset": 93
+          },
+          "replacement": "var "
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-1037.ms:6:11: type: cannot change `state.count`: parameter `state` is not declared var; write `var state: <Type>` in the signature and pass `var` at every call\n   |\n 6 |     state.count = state.count + 1\n   |           ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

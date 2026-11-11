@@ -1,0 +1,70 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "big-rat-power-limits.ms::rational powers preserve numerator and denominator size errors",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "big-rat-power-limits.ms::rational powers retain exact ordinary results",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "big-rat-power-limits.ms::rational powers retain zero and unit controls",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "big-rat-power-limits.ms::rational powers accept the minimum Int exponent for unit and zero bases",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 4,
+        "selected": 4,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN big-rat-power-limits.ms::rational powers preserve numerator and denominator size errors\nPASS big-rat-power-limits.ms::rational powers preserve numerator and denominator size errors\nRUN big-rat-power-limits.ms::rational powers retain exact ordinary results\nPASS big-rat-power-limits.ms::rational powers retain exact ordinary results\nRUN big-rat-power-limits.ms::rational powers retain zero and unit controls\nPASS big-rat-power-limits.ms::rational powers retain zero and unit controls\nRUN big-rat-power-limits.ms::rational powers accept the minimum Int exponent for unit and zero bases\nPASS big-rat-power-limits.ms::rational powers accept the minimum Int exponent for unit and zero bases\n4 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

@@ -1,8 +1,11 @@
-import approve, Approved, Mode, safe from "./gate.ms"
-import parse, stringify from "@std/data/json.ms"
+import (
+	parse, stringify from "@std/data/json.ms",
+
+	Approved, Mode, approve, safe from "./gate.ms",
+)
 
 fn Approved.extra() Int:
-    return 1
+	return 1
 
 fn main() Unit:
-    return
+	return

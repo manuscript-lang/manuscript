@@ -1,0 +1,265 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "expected a module declaration or import, found name 'diff'; top level holds only import, constants (NAME := value), fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn",
+        "position": {
+          "file": "golden-1029.ms",
+          "line": 3,
+          "column": 1,
+          "offset": 53
+        },
+        "end": {
+          "file": "golden-1029.ms",
+          "line": 3,
+          "column": 5,
+          "offset": 57
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "expected a module declaration or import, found name 'index'; top level holds only import, constants (NAME := value), fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn",
+        "position": {
+          "file": "golden-1029.ms",
+          "line": 4,
+          "column": 1,
+          "offset": 86
+        },
+        "end": {
+          "file": "golden-1029.ms",
+          "line": 4,
+          "column": 6,
+          "offset": 91
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "expected a module declaration or import, found '-'; top level holds only import, constants (NAME := value), fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn",
+        "position": {
+          "file": "golden-1029.ms",
+          "line": 5,
+          "column": 1,
+          "offset": 108
+        },
+        "end": {
+          "file": "golden-1029.ms",
+          "line": 5,
+          "column": 2,
+          "offset": 109
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "expected a module declaration or import, found '+'; top level holds only import, constants (NAME := value), fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn",
+        "position": {
+          "file": "golden-1029.ms",
+          "line": 6,
+          "column": 1,
+          "offset": 123
+        },
+        "end": {
+          "file": "golden-1029.ms",
+          "line": 6,
+          "column": 2,
+          "offset": 124
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "unexpected source character '@'; this character is not part of Manuscript's syntax outside text",
+        "position": {
+          "file": "golden-1029.ms",
+          "line": 7,
+          "column": 1,
+          "offset": 138
+        },
+        "end": {
+          "file": "golden-1029.ms",
+          "line": 7,
+          "column": 2,
+          "offset": 139
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "expected a module declaration or import, found '-'; top level holds only import, constants (NAME := value), fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn",
+        "position": {
+          "file": "golden-1029.ms",
+          "line": 9,
+          "column": 1,
+          "offset": 169
+        },
+        "end": {
+          "file": "golden-1029.ms",
+          "line": 9,
+          "column": 2,
+          "offset": 170
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "expected a module declaration or import, found '+'; top level holds only import, constants (NAME := value), fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn",
+        "position": {
+          "file": "golden-1029.ms",
+          "line": 10,
+          "column": 1,
+          "offset": 183
+        },
+        "end": {
+          "file": "golden-1029.ms",
+          "line": 10,
+          "column": 2,
+          "offset": 184
+        }
+      },
+      {
+        "code": "MS1002",
+        "phase": "parse",
+        "message": "indentation must be a multiple of four spaces, found 1; use 0 or 4",
+        "position": {
+          "file": "golden-1029.ms",
+          "line": 13,
+          "column": 2,
+          "offset": 212
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "expected a module declaration or import, found name 'diff'; top level holds only import, constants (NAME := value), fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn",
+        "position": {
+          "file": "golden-1029.ms",
+          "line": 14,
+          "column": 1,
+          "offset": 226
+        },
+        "end": {
+          "file": "golden-1029.ms",
+          "line": 14,
+          "column": 5,
+          "offset": 230
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "expected a module declaration or import, found name 'new'; top level holds only import, constants (NAME := value), fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn",
+        "position": {
+          "file": "golden-1029.ms",
+          "line": 15,
+          "column": 1,
+          "offset": 255
+        },
+        "end": {
+          "file": "golden-1029.ms",
+          "line": 15,
+          "column": 4,
+          "offset": 258
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "expected a module declaration or import, found '-'; top level holds only import, constants (NAME := value), fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn",
+        "position": {
+          "file": "golden-1029.ms",
+          "line": 16,
+          "column": 1,
+          "offset": 276
+        },
+        "end": {
+          "file": "golden-1029.ms",
+          "line": 16,
+          "column": 2,
+          "offset": 277
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "expected a module declaration or import, found '+'; top level holds only import, constants (NAME := value), fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn",
+        "position": {
+          "file": "golden-1029.ms",
+          "line": 17,
+          "column": 1,
+          "offset": 290
+        },
+        "end": {
+          "file": "golden-1029.ms",
+          "line": 17,
+          "column": 2,
+          "offset": 291
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "unexpected source character '@'; this character is not part of Manuscript's syntax outside text",
+        "position": {
+          "file": "golden-1029.ms",
+          "line": 18,
+          "column": 1,
+          "offset": 303
+        },
+        "end": {
+          "file": "golden-1029.ms",
+          "line": 18,
+          "column": 2,
+          "offset": 304
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "expected a module declaration or import, found '+'; top level holds only import, constants (NAME := value), fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn",
+        "position": {
+          "file": "golden-1029.ms",
+          "line": 19,
+          "column": 1,
+          "offset": 319
+        },
+        "end": {
+          "file": "golden-1029.ms",
+          "line": 19,
+          "column": 2,
+          "offset": 320
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "expected a module declaration or import, found '+'; top level holds only import, constants (NAME := value), fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn",
+        "position": {
+          "file": "golden-1029.ms",
+          "line": 20,
+          "column": 1,
+          "offset": 332
+        },
+        "end": {
+          "file": "golden-1029.ms",
+          "line": 20,
+          "column": 2,
+          "offset": 333
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-1029.ms:3:1: parse: expected a module declaration or import, found name 'diff'; top level holds only import, constants (NAME := value), fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn\n   |\n 3 | diff --git a/src/a.ms b/src/a.ms\n   | ^^^^\n<DIR>/golden-1029.ms:4:1: parse: expected a module declaration or import, found name 'index'; top level holds only import, constants (NAME := value), fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn\n   |\n 4 | index 111..222 100644\n   | ^^^^^\n<DIR>/golden-1029.ms:5:1: parse: expected a module declaration or import, found '-'; top level holds only import, constants (NAME := value), fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn\n   |\n 5 | --- a/src/a.ms\n   | ^\n<DIR>/golden-1029.ms:6:1: parse: expected a module declaration or import, found '+'; top level holds only import, constants (NAME := value), fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn\n   |\n 6 | +++ b/src/a.ms\n   | ^\n<DIR>/golden-1029.ms:7:1: parse: unexpected source character '@'; this character is not part of Manuscript's syntax outside text\n   |\n 7 | @@ -1,4 +1,5 @@\n   | ^\n<DIR>/golden-1029.ms:9:1: parse: expected a module declaration or import, found '-'; top level holds only import, constants (NAME := value), fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn\n   |\n 9 | -    return 1\n   | ^\n<DIR>/golden-1029.ms:10:1: parse: expected a module declaration or import, found '+'; top level holds only import, constants (NAME := value), fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn\n    |\n 10 | +    x := 1\n    | ^\n<DIR>/golden-1029.ms:13:2: parse: indentation must be a multiple of four spaces, found 1; use 0 or 4\n    |\n 13 |  fn two() Int:\n    |  ^\n<DIR>/golden-1029.ms:14:1: parse: expected a module declaration or import, found name 'diff'; top level holds only import, constants (NAME := value), fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn\n    |\n 14 | diff --git a/new.ms b/new.ms\n    | ^^^^\n<DIR>/golden-1029.ms:15:1: parse: expected a module declaration or import, found name 'new'; top level holds only import, constants (NAME := value), fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn\n    |\n 15 | new file mode 100644\n    | ^^^\n<DIR>/golden-1029.ms:16:1: parse: expected a module declaration or import, found '-'; top level holds only import, constants (NAME := value), fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn\n    |\n 16 | --- /dev/null\n    | ^\n<DIR>/golden-1029.ms:17:1: parse: expected a module declaration or import, found '+'; top level holds only import, constants (NAME := value), fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn\n    |\n 17 | +++ b/new.ms\n    | ^\n<DIR>/golden-1029.ms:18:1: parse: unexpected source character '@'; this character is not part of Manuscript's syntax outside text\n    |\n 18 | @@ -0,0 +1,2 @@\n    | ^\n<DIR>/golden-1029.ms:19:1: parse: expected a module declaration or import, found '+'; top level holds only import, constants (NAME := value), fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn\n    |\n 19 | +fn n() Int:\n    | ^\n<DIR>/golden-1029.ms:20:1: parse: expected a module declaration or import, found '+'; top level holds only import, constants (NAME := value), fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn\n    |\n 20 | +    return 0\n    | ^\n15 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

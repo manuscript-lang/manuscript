@@ -1,0 +1,49 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3004",
+        "phase": "type",
+        "message": "unknown argument data; parameters of write: value",
+        "position": {
+          "file": "golden-0171.ms",
+          "line": 6,
+          "column": 20,
+          "offset": 169
+        }
+      },
+      {
+        "code": "MS3003",
+        "phase": "type",
+        "message": "missing argument value: String in call to write; add 'value: <String>'",
+        "position": {
+          "file": "golden-0171.ms",
+          "line": 6,
+          "column": 14,
+          "offset": 163
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "this statement discards Result[Unit, Error], so a failure would be lost; write a trailing '?' to propagate it, 'if value := x' or 'match' to handle it, or '_ := ...' to drop it on purpose",
+        "position": {
+          "file": "golden-0171.ms",
+          "line": 6,
+          "column": 5,
+          "offset": 154
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0171.ms:6:20: type: unknown argument data; parameters of write: value\n   |\n 6 |     stdout().write(data: \"ready\\n\")\n   |                    ^\n<DIR>/golden-0171.ms:6:14: type: missing argument value: String in call to write; add 'value: <String>'\n   |\n 6 |     stdout().write(data: \"ready\\n\")\n   |              ^\n<DIR>/golden-0171.ms:6:5: type: this statement discards Result[Unit, Error], so a failure would be lost; write a trailing '?' to propagate it, 'if value := x' or 'match' to handle it, or '_ := ...' to drop it on purpose\n   |\n 6 |     stdout().write(data: \"ready\\n\")\n   |     ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

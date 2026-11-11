@@ -13,5 +13,5 @@ Follow-on rules from the same change:
 
 Apply when: adding a host-backed operation, a constant, or a module.
 Evidence: [proposal](../../proposals/stdlib-host-types.md), [fs.ms](../../stdlib/os/fs.ms), [internal natives](../../stdlib/internal/math.ms).
-Verify: `ms search_symbol filesystem` finds no exported getter; `ms check` on `filesystem()` prints the removed-getter hint; `ms test tests/e2e/testdata/stdlib/fs-defaults.ms`.
+Verify: `ms search_symbol filesystem` finds no exported getter; `ms check` on `filesystem()` prints the removed-getter hint; `ms test tests/conformance/fixtures/e2e/stdlib/fs-defaults.ms`.
 - `os/process.ms` is split by seam (2026-11-05): `os/process.ms` (`run`, `spawn`, `Subprocess`, signals, priority, identity, `ProcessInfo`), `os/env.ms` (environment, working directory, `arguments`, `which`, `home_directory`) and `os/system.ms` (`Os`, `SystemInfo`, `cpus`, `metrics`, memory, uptime). `run` and `spawn` take `options: RunOptions`/`SpawnOptions` (three parameters in total is the threshold). A record-returning native crosses as one `abi_record!` (or a `RecList`), never as a getter per field; its `Out` struct name must be unique across crates, because lowering recognizes `InfoOut` by name for `FileInfo`.

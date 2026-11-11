@@ -1,0 +1,49 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding incoming_request_payload; declare it with 'incoming_request_payload := ...' before use, define 'fn incoming_request_payload(...) T:', or import it from a module",
+        "position": {
+          "file": "golden-1084.ms",
+          "line": 5,
+          "column": 9,
+          "offset": 92
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding legacy_separator; declare it with 'legacy_separator := ...' before use, define 'fn legacy_separator(...) T:', or import it from a module",
+        "position": {
+          "file": "golden-1084.ms",
+          "line": 7,
+          "column": 23,
+          "offset": 171
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding current_separator; declare it with 'current_separator := ...' before use, define 'fn current_separator(...) T:', or import it from a module",
+        "position": {
+          "file": "golden-1084.ms",
+          "line": 7,
+          "column": 46,
+          "offset": 194
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-1084.ms:5:9: resolution: unknown binding incoming_request_payload; declare it with 'incoming_request_payload := ...' before use, define 'fn incoming_request_payload(...) T:', or import it from a module\n   |\n 5 |         incoming_request_payload\n   |         ^\n<DIR>/golden-1084.ms:7:23: resolution: unknown binding legacy_separator; declare it with 'legacy_separator := ...' before use, define 'fn legacy_separator(...) T:', or import it from a module\n   |\n 7 |         .replace(old: legacy_separator, new: current_separator)\n   |                       ^\n<DIR>/golden-1084.ms:7:46: resolution: unknown binding current_separator; declare it with 'current_separator := ...' before use, define 'fn current_separator(...) T:', or import it from a module\n   |\n 7 |         .replace(old: legacy_separator, new: current_separator)\n   |                                              ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

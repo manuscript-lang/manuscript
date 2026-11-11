@@ -1,0 +1,89 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2002",
+        "phase": "resolution",
+        "message": "module does not export files; @std/io/io.ms exports: DescriptorSink, DescriptorSource, Pipe, ReadStream, Sink, Source, StdStream, Transform, WriteStream, pipe, redirect_to_null, stderr, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/io/io.ms\"'",
+        "position": {
+          "file": "golden-1515.ms",
+          "line": 3,
+          "column": 8,
+          "offset": 60
+        },
+        "end": {
+          "file": "golden-1515.ms",
+          "line": 3,
+          "column": 13,
+          "offset": 65
+        }
+      },
+      {
+        "code": "MS2002",
+        "phase": "resolution",
+        "message": "module does not export File; did you mean 'Pipe'?",
+        "position": {
+          "file": "golden-1515.ms",
+          "line": 4,
+          "column": 8,
+          "offset": 94
+        },
+        "end": {
+          "file": "golden-1515.ms",
+          "line": 4,
+          "column": 12,
+          "offset": 98
+        }
+      },
+      {
+        "code": "MS2002",
+        "phase": "resolution",
+        "message": "module does not export IoError; @std/io/io.ms exports: DescriptorSink, DescriptorSource, Pipe, ReadStream, Sink, Source, StdStream, Transform, WriteStream, pipe, redirect_to_null, stderr, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/io/io.ms\"'",
+        "position": {
+          "file": "golden-1515.ms",
+          "line": 5,
+          "column": 8,
+          "offset": 127
+        },
+        "end": {
+          "file": "golden-1515.ms",
+          "line": 5,
+          "column": 15,
+          "offset": 134
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type File; declare it with 'type File:' / 'enum File:' / 'interface File:', declare it as a type parameter, or import it",
+        "position": {
+          "file": "golden-1515.ms",
+          "line": 7,
+          "column": 11,
+          "offset": 179
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding files; host handle getters were removed: import the operation itself, e.g. read_file from \"@std/os/fs.ms\", connect from \"@std/net/net.ms\", run from \"@std/os/process.ms\", now from \"@std/time.ms\"",
+        "position": {
+          "file": "golden-1515.ms",
+          "line": 10,
+          "column": 15,
+          "offset": 238
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-1515.ms:3:8: resolution: module does not export files; @std/io/io.ms exports: DescriptorSink, DescriptorSource, Pipe, ReadStream, Sink, Source, StdStream, Transform, WriteStream, pipe, redirect_to_null, stderr, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/io/io.ms\"'\n   |\n 3 | import files from \"@std/io/io.ms\"\n   |        ^^^^^\n<DIR>/golden-1515.ms:4:8: resolution: module does not export File; did you mean 'Pipe'?\n   |\n 4 | import File from \"@std/io/io.ms\"\n   |        ^^^^\n<DIR>/golden-1515.ms:5:8: resolution: module does not export IoError; @std/io/io.ms exports: DescriptorSink, DescriptorSource, Pipe, ReadStream, Sink, Source, StdStream, Transform, WriteStream, pipe, redirect_to_null, stderr, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/io/io.ms\"'\n   |\n 5 | import IoError from \"@std/io/io.ms\"\n   |        ^^^^^^^\n<DIR>/golden-1515.ms:7:11: resolution: unknown type File; declare it with 'type File:' / 'enum File:' / 'interface File:', declare it as a type parameter, or import it\n   |\n 7 |     file: File\n   |           ^\n<DIR>/golden-1515.ms:10:15: resolution: unknown binding files; host handle getters were removed: import the operation itself, e.g. read_file from \"@std/os/fs.ms\", connect from \"@std/net/net.ms\", run from \"@std/os/process.ms\", now from \"@std/time.ms\"\n    |\n 10 |     opened := files().open(\"data.txt\")\n    |               ^\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

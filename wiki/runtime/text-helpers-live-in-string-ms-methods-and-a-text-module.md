@@ -2,7 +2,7 @@
 
 # Text helpers: String methods in `.ms`, conversions in `@std/text.ms`
 
-Verified: Go text-parity sweep (workstream 1); tests `tests/e2e/testdata/stdlib/string-text.ms`, `text.ms`, `unicode-categories.ms`.
+Verified: Go text-parity sweep (workstream 1); tests `tests/conformance/fixtures/e2e/stdlib/string-text.ms`, `text.ms`, `unicode-categories.ms`.
 
 - Whole-string helpers (`fields_by`, `equal_fold`, `count`, `trim_chars`, `contains_any`, `index_any`, `split_after`, `title`, `capitalize`, `map_chars`, `find_char`, `replace_each`) are plain `.ms` methods in `stdlib/string.ms`, no import needed. `fields` and scalar predicates already exist (`@std/unicode.ms`, `@std/data/utf8.ms`); a parallel PR landed them, so re-run `ms search_symbol` right before building.
 - `@std/text.ms` holds `parse_bool`, `quote`, `quote_ascii`, `unquote`. Go's `FormatFloat` is `Float.to_fixed`/`to_exponential`/`to_precision`.
@@ -15,4 +15,4 @@ Verified: Go text-parity sweep (workstream 1); tests `tests/e2e/testdata/stdlib/
 - Regex template caps check each borrowed literal/capture before appending it; expanding first can copy 128 MiB for a zero-byte cap (#3289). Capped expansion is differential-tested against upstream syntax, including Unicode names, unfinished braces and braced `${+1}`; uncapped calls keep the upstream expander. The cap bounds output bytes, not all matching allocations or String capacity.
 - Regex syntax errors can annotate both an original flag/name and its invalid duplicate. Report the later annotation's column; adjacent duplicate flags merge into one caret run (`(?ii)`), while a multi-character name uses the start of its final run. `regex.ms` tests both and duplicates on later lines.
 
-Apply when: adding text or scalar helpers. Verify: `ms test tests/e2e/testdata/stdlib/text.ms`.
+Apply when: adding text or scalar helpers. Verify: `ms test tests/conformance/fixtures/e2e/stdlib/text.ms`.

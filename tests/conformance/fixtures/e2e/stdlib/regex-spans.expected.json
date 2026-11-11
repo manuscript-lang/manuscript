@@ -1,0 +1,80 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "regex-spans.ms::match spans use UTF8 byte offsets and existing empty adjacency",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "regex-spans.ms::capture spans distinguish no match absent groups and empty captures",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "regex-spans.ms::capture rows clear absent groups and retain all group indices",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "regex-spans.ms::span budgets cover whole and unmatched capture slots",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "regex-spans.ms::span methods support bound calls and preserve anchor context",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "regex-spans.ms::span results remain bounded for dense matches",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 6,
+        "selected": 6,
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN regex-spans.ms::match spans use UTF8 byte offsets and existing empty adjacency\nPASS regex-spans.ms::match spans use UTF8 byte offsets and existing empty adjacency\nRUN regex-spans.ms::capture spans distinguish no match absent groups and empty captures\nPASS regex-spans.ms::capture spans distinguish no match absent groups and empty captures\nRUN regex-spans.ms::capture rows clear absent groups and retain all group indices\nPASS regex-spans.ms::capture rows clear absent groups and retain all group indices\nRUN regex-spans.ms::span budgets cover whole and unmatched capture slots\nPASS regex-spans.ms::span budgets cover whole and unmatched capture slots\nRUN regex-spans.ms::span methods support bound calls and preserve anchor context\nPASS regex-spans.ms::span methods support bound calls and preserve anchor context\nRUN regex-spans.ms::span results remain bounded for dense matches\nPASS regex-spans.ms::span results remain bounded for dense matches\n6 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

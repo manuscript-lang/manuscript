@@ -1,0 +1,33 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "'pass' is not a keyword; write 'unit' for an empty block or match arm",
+        "position": {
+          "file": "golden-0893.ms",
+          "line": 5,
+          "column": 9,
+          "offset": 95
+        },
+        "end": {
+          "file": "golden-0893.ms",
+          "line": 5,
+          "column": 13,
+          "offset": 99
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0893.ms:5:9: parse: 'pass' is not a keyword; write 'unit' for an empty block or match arm\n   |\n 5 |         pass\n   |         ^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3004",
+        "phase": "type",
+        "message": "unknown argument value; parameters of Error: details, kind, message",
+        "position": {
+          "file": "golden-0151.ms",
+          "line": 6,
+          "column": 18,
+          "offset": 137
+        }
+      },
+      {
+        "code": "MS3003",
+        "phase": "type",
+        "message": "missing argument message: String in call to Error; add 'message: <String>'",
+        "position": {
+          "file": "golden-0151.ms",
+          "line": 6,
+          "column": 12,
+          "offset": 131
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0151.ms:6:18: type: unknown argument value; parameters of Error: details, kind, message\n   |\n 6 |     return Error(value: value)\n   |                  ^\n<DIR>/golden-0151.ms:6:12: type: missing argument message: String in call to Error; add 'message: <String>'\n   |\n 6 |     return Error(value: value)\n   |            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

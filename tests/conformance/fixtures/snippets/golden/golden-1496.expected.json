@@ -1,0 +1,42 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3060",
+        "phase": "type",
+        "message": "cannot change `values`: `values` is an immutable binding, immutable including its contents; declare it `var values` to change it",
+        "position": {
+          "file": "golden-1496.ms",
+          "line": 5,
+          "column": 5,
+          "offset": 100
+        },
+        "fix": {
+          "position": {
+            "file": "golden-1496.ms",
+            "line": 4,
+            "column": 5,
+            "offset": 79
+          },
+          "end": {
+            "file": "golden-1496.ms",
+            "line": 4,
+            "column": 14,
+            "offset": 88
+          },
+          "replacement": "var values ="
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-1496.ms:5:5: type: cannot change `values`: `values` is an immutable binding, immutable including its contents; declare it `var values` to change it\n   |\n 5 |     values.insert(3, 9)\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

@@ -1,0 +1,75 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "non-escaping-closures-borrow-captures.ms::closure stored by a call keeps what it captured",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "non-escaping-closures-borrow-captures.ms::non-escaping closure reads its capture",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "non-escaping-closures-borrow-captures.ms::closure made in a loop sees each iteration",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "non-escaping-closures-borrow-captures.ms::closure passes a captured var on without copying",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "non-escaping-closures-borrow-captures.ms::escaping closure keeps its own value",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 5,
+        "selected": 5,
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN non-escaping-closures-borrow-captures.ms::closure stored by a call keeps what it captured\nPASS non-escaping-closures-borrow-captures.ms::closure stored by a call keeps what it captured\nRUN non-escaping-closures-borrow-captures.ms::non-escaping closure reads its capture\nPASS non-escaping-closures-borrow-captures.ms::non-escaping closure reads its capture\nRUN non-escaping-closures-borrow-captures.ms::closure made in a loop sees each iteration\nPASS non-escaping-closures-borrow-captures.ms::closure made in a loop sees each iteration\nRUN non-escaping-closures-borrow-captures.ms::closure passes a captured var on without copying\nPASS non-escaping-closures-borrow-captures.ms::closure passes a captured var on without copying\nRUN non-escaping-closures-borrow-captures.ms::escaping closure keeps its own value\nPASS non-escaping-closures-borrow-captures.ms::escaping closure keeps its own value\n5 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

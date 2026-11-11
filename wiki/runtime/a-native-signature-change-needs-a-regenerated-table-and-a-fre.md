@@ -8,7 +8,7 @@ A default that an implementation inherits from a bundled interface must be one `
 
 The table spells types as `type_name` shows them with paths dropped (`*const ObjCell<NetH>`), and lowering tests a few spellings by name (`*const ObjCell<`, `*mut Handle<`, `*const Timestamp`, `*mut InfoOut`, `...Wire`, `*const u8`); renaming such a type changes marshalling, so grep `rtcall.rs` and `natiface.rs` first.
 
-Payload-free alternatives occupy one `i64` case index even inside a list ([layout](../../crates/ms-clif/src/layout.rs)). A bulk native can borrow that list directly: converting every alignment to an integer first would allocate before the table formatter checks its budgets. Keep the declared element type and verify every case in a [compiled call](../../tests/e2e/testdata/stdlib/table.ms).
+Payload-free alternatives occupy one `i64` case index even inside a list ([layout](../../crates/ms-clif/src/layout.rs)). A bulk native can borrow that list directly: converting every alignment to an integer first would allocate before the table formatter checks its budgets. Keep the declared element type and verify every case in a [compiled call](../../tests/conformance/fixtures/e2e/stdlib/table.ms).
 
 The public `format(rows, ...)` borrows the caller's matrix directly. A single-field owner adds no invariant or reusable state; the compiled fixture formats the same rows twice and then reads and mutates them without cloning the matrix.
 
@@ -19,5 +19,5 @@ actually compiles, and probe the new behavior through the resulting archive.
 A successful Cargo exit alone does not prove a copied cache is current.
 
 Apply when: changing the parameters of any `ms-std-*` or `ms-rt` export.
-Evidence: [table](../../crates/ms-lower/rt_symbols.txt), [Stdio default](../../crates/ms-lower/src/call.rs), [called source check](../../tests/e2e/testdata/stdlib/host.ms).
+Evidence: [table](../../crates/ms-lower/rt_symbols.txt), [Stdio default](../../crates/ms-lower/src/call.rs), [called source check](../../tests/conformance/fixtures/e2e/stdlib/host.ms).
 Verify: run `cargo xtask symbols`, `make runtime` and rebuild `ms-cli`, then run a compiled program that calls the native, not only crate tests; `runtime_symbol_catalogue_matches_archive` checks names, not parameters.

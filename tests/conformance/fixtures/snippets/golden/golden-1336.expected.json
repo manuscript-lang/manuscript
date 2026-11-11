@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "Item has no member value; a type name is followed only by an enum case",
+        "position": {
+          "file": "golden-1336.ms",
+          "line": 7,
+          "column": 27,
+          "offset": 148
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-1336.ms:7:27: resolution: Item has no member value; a type name is followed only by an enum case\n   |\n 7 |         item: return Item.value\n   |                           ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

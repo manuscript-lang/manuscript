@@ -1,0 +1,59 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2002",
+        "phase": "resolution",
+        "message": "unknown standard module @std/compress.ms; did you mean '@std/math/complex.ms'?",
+        "position": {
+          "file": "golden-0458.ms",
+          "line": 3,
+          "column": 8,
+          "offset": 60
+        },
+        "end": {
+          "file": "golden-0458.ms",
+          "line": 3,
+          "column": 25,
+          "offset": 77
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding CompressionFormat; add: import CompressionFormat from \"@std/io/archive.ms\"",
+        "position": {
+          "file": "golden-0458.ms",
+          "line": 5,
+          "column": 15,
+          "offset": 133
+        },
+        "fix": {
+          "position": {
+            "file": "golden-0458.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "golden-0458.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import CompressionFormat from \"@std/io/archive.ms\"\n"
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0458.ms:3:8: resolution: unknown standard module @std/compress.ms; did you mean '@std/math/complex.ms'?\n   |\n 3 | import CompressionFormat from \"@std/compress.ms\"\n   |        ^^^^^^^^^^^^^^^^^\n<DIR>/golden-0458.ms:5:15: resolution: unknown binding CompressionFormat; add: import CompressionFormat from \"@std/io/archive.ms\"\n   |\n 5 |     format := CompressionFormat.GZip\n   |               ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

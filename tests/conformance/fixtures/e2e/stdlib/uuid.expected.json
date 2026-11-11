@@ -1,0 +1,85 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "uuid.ms::uuid_v5 matches reference vectors",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "uuid.ms::uuid_v5 accepts an uppercase namespace and rejects malformed ones",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "uuid.ms::uuid_version reads the version of valid text only",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "uuid.ms::uuid_v7 is a version-7 uuid that sorts by creation time",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "uuid.ms::ulid has 26 Crockford characters and sorts by creation time",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "uuid.ms::ulid starts with the current time in milliseconds",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "uuid.ms::token is URL-safe base64 of the requested size",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 7,
+        "selected": 7,
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN uuid.ms::uuid_v5 matches reference vectors\nPASS uuid.ms::uuid_v5 matches reference vectors\nRUN uuid.ms::uuid_v5 accepts an uppercase namespace and rejects malformed ones\nPASS uuid.ms::uuid_v5 accepts an uppercase namespace and rejects malformed ones\nRUN uuid.ms::uuid_version reads the version of valid text only\nPASS uuid.ms::uuid_version reads the version of valid text only\nRUN uuid.ms::uuid_v7 is a version-7 uuid that sorts by creation time\nPASS uuid.ms::uuid_v7 is a version-7 uuid that sorts by creation time\nRUN uuid.ms::ulid has 26 Crockford characters and sorts by creation time\nPASS uuid.ms::ulid has 26 Crockford characters and sorts by creation time\nRUN uuid.ms::ulid starts with the current time in milliseconds\nPASS uuid.ms::ulid starts with the current time in milliseconds\nRUN uuid.ms::token is URL-safe base64 of the requested size\nPASS uuid.ms::token is URL-safe base64 of the requested size\n7 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type value; declare it with 'type value:' / 'enum value:' / 'interface value:', declare it as a type parameter, or import it",
+        "position": {
+          "file": "golden-0949.ms",
+          "line": 3,
+          "column": 20,
+          "offset": 72
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0949.ms:3:20: resolution: unknown type value; declare it with 'type value:' / 'enum value:' / 'interface value:', declare it as a type parameter, or import it\n   |\n 3 | fn f(transform: fn(value) Int) Unit: return\n   |                    ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

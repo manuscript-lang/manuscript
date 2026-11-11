@@ -1,0 +1,120 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "net.ms::IP parsing CIDR normalization and containment",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "net.ms::TCP loopback writes reads half close and EOF",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "net.ms::a read cancelled by its timeout leaves the stream closable",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "net.ms::a promise that accepts on a listener runs where the listener lives",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "net.ms::closing the input leaves the output open and closing both ends the connection",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "net.ms::host names resolve whatever their case",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "net.ms::an empty Unix socket path is invalid input",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "net.ms::UDP loopback preserves datagram data and sender",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "net.ms::network restriction denies admission and close rejects acquisitions",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "net.ms::typed addresses preserve normalization and reject zones",
+          "status": "passed"
+        },
+        {
+          "index": 10,
+          "name": "net.ms::a promise accepts on a listener it owns",
+          "status": "passed"
+        },
+        {
+          "index": 11,
+          "name": "net.ms::a promise reads a connection it owns",
+          "status": "passed"
+        },
+        {
+          "index": 12,
+          "name": "net.ms::resolve returns typed DNS records from the configured resolver",
+          "status": "passed"
+        },
+        {
+          "index": 13,
+          "name": "net.ms::an empty host listens on every interface, with or without IPv6",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 14,
+        "selected": 14,
+        "passed": 14,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN net.ms::IP parsing CIDR normalization and containment\nPASS net.ms::IP parsing CIDR normalization and containment\nRUN net.ms::TCP loopback writes reads half close and EOF\nPASS net.ms::TCP loopback writes reads half close and EOF\nRUN net.ms::a read cancelled by its timeout leaves the stream closable\nPASS net.ms::a read cancelled by its timeout leaves the stream closable\nRUN net.ms::a promise that accepts on a listener runs where the listener lives\nPASS net.ms::a promise that accepts on a listener runs where the listener lives\nRUN net.ms::closing the input leaves the output open and closing both ends the connection\nPASS net.ms::closing the input leaves the output open and closing both ends the connection\nRUN net.ms::host names resolve whatever their case\nPASS net.ms::host names resolve whatever their case\nRUN net.ms::an empty Unix socket path is invalid input\nPASS net.ms::an empty Unix socket path is invalid input\nRUN net.ms::UDP loopback preserves datagram data and sender\nPASS net.ms::UDP loopback preserves datagram data and sender\nRUN net.ms::network restriction denies admission and close rejects acquisitions\nPASS net.ms::network restriction denies admission and close rejects acquisitions\nRUN net.ms::typed addresses preserve normalization and reject zones\nPASS net.ms::typed addresses preserve normalization and reject zones\nRUN net.ms::a promise accepts on a listener it owns\nPASS net.ms::a promise accepts on a listener it owns\nRUN net.ms::a promise reads a connection it owns\nPASS net.ms::a promise reads a connection it owns\nRUN net.ms::resolve returns typed DNS records from the configured resolver\nPASS net.ms::resolve returns typed DNS records from the configured resolver\nRUN net.ms::an empty host listens on every interface, with or without IPv6\nPASS net.ms::an empty host listens on every interface, with or without IPv6\n14 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2002",
+        "phase": "resolution",
+        "message": "module does not export clock; @std/time.ms exports: Calendar, Deadline, Duration, Instant, Timestamp, deadline_after, from_calendar, hours, local_zone, microseconds, milliseconds, minutes, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/time.ms\"'",
+        "position": {
+          "file": "golden-1452.ms",
+          "line": 4,
+          "column": 8,
+          "offset": 95
+        },
+        "end": {
+          "file": "golden-1452.ms",
+          "line": 4,
+          "column": 13,
+          "offset": 100
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding clock; host handle getters were removed: import the operation itself, e.g. read_file from \"@std/os/fs.ms\", connect from \"@std/net/net.ms\", run from \"@std/os/process.ms\", now from \"@std/time.ms\"",
+        "position": {
+          "file": "golden-1452.ms",
+          "line": 8,
+          "column": 12,
+          "offset": 193
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "this statement discards Result[Unit, Error], so a failure would be lost; write a trailing '?' to propagate it, 'if value := x' or 'match' to handle it, or '_ := ...' to drop it on purpose",
+        "position": {
+          "file": "golden-1452.ms",
+          "line": 11,
+          "column": 5,
+          "offset": 243
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-1452.ms:4:8: resolution: module does not export clock; @std/time.ms exports: Calendar, Deadline, Duration, Instant, Timestamp, deadline_after, from_calendar, hours, local_zone, microseconds, milliseconds, minutes, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/time.ms\"'\n   |\n 4 | import clock from \"@std/time.ms\"\n   |        ^^^^^\n<DIR>/golden-1452.ms:8:12: resolution: unknown binding clock; host handle getters were removed: import the operation itself, e.g. read_file from \"@std/os/fs.ms\", connect from \"@std/net/net.ms\", run from \"@std/os/process.ms\", now from \"@std/time.ms\"\n   |\n 8 |     return clock().now()\n   |            ^\n<DIR>/golden-1452.ms:11:5: type: this statement discards Result[Unit, Error], so a failure would be lost; write a trailing '?' to propagate it, 'if value := x' or 'match' to handle it, or '_ := ...' to drop it on purpose\n    |\n 11 |     stdout().close()\n    |     ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

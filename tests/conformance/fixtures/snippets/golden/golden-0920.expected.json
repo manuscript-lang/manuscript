@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS1002",
+        "phase": "parse",
+        "message": "an outer delimiter cannot close inside a function suite; close the bracket on the line where the function body ends, or dedent the body",
+        "position": {
+          "file": "golden-0920.ms",
+          "line": 6,
+          "column": 9,
+          "offset": 123
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0920.ms:6:9: parse: an outer delimiter cannot close inside a function suite; close the bracket on the line where the function body ends, or dedent the body\n   |\n 6 |         )\n   |         ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "'?' requires the same error type; this function returns Result[Int, Error] but the operand fails with Int, so change the return error type or translate the error with map_error",
+        "position": {
+          "file": "golden-0764.ms",
+          "line": 5,
+          "column": 5,
+          "offset": 127
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0764.ms:5:5: type: '?' requires the same error type; this function returns Result[Int, Error] but the operand fails with Int, so change the return error type or translate the error with map_error\n   |\n 5 |     operation()?\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

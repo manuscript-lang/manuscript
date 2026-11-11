@@ -1,0 +1,85 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "json-accessors.ms::JSON accessors read nested objects without copying subtrees",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "json-accessors.ms::JSON at indexes arrays from either end",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "json-accessors.ms::JSON borrowed list and map views match the tree",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "json-accessors.ms::JSON accessors return none for the wrong type",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "json-accessors.ms::JSON as_int rejects fractions exponents and overflow",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "json-accessors.ms::JSON is_null distinguishes null from absent and other values",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "json-accessors.ms::JSON get_in reads a chain of members in place",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 7,
+        "selected": 7,
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN json-accessors.ms::JSON accessors read nested objects without copying subtrees\nPASS json-accessors.ms::JSON accessors read nested objects without copying subtrees\nRUN json-accessors.ms::JSON at indexes arrays from either end\nPASS json-accessors.ms::JSON at indexes arrays from either end\nRUN json-accessors.ms::JSON borrowed list and map views match the tree\nPASS json-accessors.ms::JSON borrowed list and map views match the tree\nRUN json-accessors.ms::JSON accessors return none for the wrong type\nPASS json-accessors.ms::JSON accessors return none for the wrong type\nRUN json-accessors.ms::JSON as_int rejects fractions exponents and overflow\nPASS json-accessors.ms::JSON as_int rejects fractions exponents and overflow\nRUN json-accessors.ms::JSON is_null distinguishes null from absent and other values\nPASS json-accessors.ms::JSON is_null distinguishes null from absent and other values\nRUN json-accessors.ms::JSON get_in reads a chain of members in place\nPASS json-accessors.ms::JSON get_in reads a chain of members in place\n7 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

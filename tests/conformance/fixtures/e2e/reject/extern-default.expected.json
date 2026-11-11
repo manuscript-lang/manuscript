@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "extern parameter value cannot have a default; the native symbol takes every argument",
+        "position": {
+          "file": "extern-default.ms",
+          "line": 3,
+          "column": 16,
+          "offset": 74
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/extern-default.ms:3:16: type: extern parameter value cannot have a default; the native symbol takes every argument\n   |\n 3 | extern fn labs(value: Int = 1) Int\n   |                ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

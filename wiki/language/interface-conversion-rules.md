@@ -26,7 +26,7 @@ Verified (adversarial review, 41 programs under valgrind): a view local handed o
 Verified (bug bash, 2026-11-01): an interface value has no `.clone()` (an interface such as `Reportable` offers only its declared operations), so a remedy that says `e.clone()` is a dead end and its machine fix breaks the build. Ownership diagnostics for interface and function values (`no_clone` in `walk.rs`) say to use the value in place or convert a clone of the concrete value. Probed ~60 adversarial programs under valgrind (Debug and Release) over wrapped lends, view locals, conditionals, closures, tasks and resources; the checker held.
 
 Apply when: changing interface conversion, `fit_ty`, borrow-returning view function, the vtable layout, `copyelim`/`lastuse` on owned results, or adding `var fn` to a stdlib interface (its conversions start copying again; say so in the PR).
-Evidence: [OWNERSHIP.md](../../crates/ms-check/OWNERSHIP.md), [DESIGN.md](../../crates/DESIGN.md), [interface_views](../../crates/ms-check/tests/ownership/accept/interface_views.ms), [interface_view_held](../../crates/ms-check/tests/ownership/reject/interface_view_held.ms), [e2e interface-views](../../tests/e2e/testdata/accept/interface-views.ms).
+Evidence: [OWNERSHIP.md](../../crates/ms-check/OWNERSHIP.md), [DESIGN.md](../../crates/DESIGN.md), [interface_views](../../crates/ms-check/tests/ownership/accept/interface_views.ms), [interface_view_held](../../crates/ms-check/tests/ownership/reject/interface_view_held.ms), [e2e interface-views](../../tests/conformance/fixtures/e2e/accept/interface-views.ms).
 Verify: `fn first_error(cause: Cause) Reportable: return cause` compiles with no copy and `first_error(c).message()` after `c.code = 5` sees 5; `e: Reportable = cause; return [e]` is rejected with a `.clone()` remedy; `make leak-check` passes with `io-generic-streams.ms` swept.
 
 ## A type's own methods satisfy an interface by shape
@@ -41,4 +41,4 @@ Lessons:
 - One method per name also removed: two applications of one generic interface on one type (`Visitor[Int]` and `Visitor[String]`), a field and a method of one name, and per-module extensions with their module-scoped `Equal`/`Hashable` (the `core_parity`, `map_add_scope`, `map_remove`, `preferred_names`, `set_operand_hash`, `interface_views` and `local_extensions` e2e projects were deleted with them).
 - `make e2e` runs `target/debug/ms`; rebuild it (`cargo build -p ms-cli`) before trusting a result, or a stale binary reports failures that are gone.
 
-Evidence: `tests/e2e/testdata/stdlib/shape-interfaces.ms`, `stream-close-once.ms`, `reject/shape-interface-mismatch.ms`, `reject/duplicate-receiver-method.ms`, [proposals/receiver-methods.md](../../proposals/receiver-methods.md).
+Evidence: `tests/conformance/fixtures/e2e/stdlib/shape-interfaces.ms`, `stream-close-once.ms`, `reject/shape-interface-mismatch.ms`, `reject/duplicate-receiver-method.ms`, [proposals/receiver-methods.md](../../proposals/receiver-methods.md).

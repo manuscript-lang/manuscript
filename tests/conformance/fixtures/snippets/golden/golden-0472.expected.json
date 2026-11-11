@@ -1,0 +1,38 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type MissingValue; declare it with 'type MissingValue:' / 'enum MissingValue:' / 'interface MissingValue:', declare it as a type parameter, or import it",
+        "position": {
+          "file": "golden-0472.ms",
+          "line": 6,
+          "column": 15,
+          "offset": 138
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding MissingValue; declare it with 'MissingValue := ...' before use, define 'fn MissingValue(...) T:', or import it from a module",
+        "position": {
+          "file": "golden-0472.ms",
+          "line": 6,
+          "column": 29,
+          "offset": 152
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0472.ms:6:15: resolution: unknown type MissingValue; declare it with 'type MissingValue:' / 'enum MissingValue:' / 'interface MissingValue:', declare it as a type parameter, or import it\n   |\n 6 | fn standard() MissingValue: MissingValue.Missing(\"location\")\n   |               ^\n<DIR>/golden-0472.ms:6:29: resolution: unknown binding MissingValue; declare it with 'MissingValue := ...' before use, define 'fn MissingValue(...) T:', or import it from a module\n   |\n 6 | fn standard() MissingValue: MissingValue.Missing(\"location\")\n   |                             ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

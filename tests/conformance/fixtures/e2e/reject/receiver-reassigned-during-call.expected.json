@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "argument `this value` of `subtract` is changed in place but overlaps the receiver `receiver`; a changed value cannot also be read or changed through another operand, so pass distinct variables or clone one first",
+        "position": {
+          "file": "receiver-reassigned-during-call.ms",
+          "line": 18,
+          "column": 21,
+          "offset": 429
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/receiver-reassigned-during-call.ms:18:21: type: argument `this value` of `subtract` is changed in place but overlaps the receiver `receiver`; a changed value cannot also be read or changed through another operand, so pass distinct variables or clone one first\n    |\n 18 |     return receiver.subtract(\n    |                        ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

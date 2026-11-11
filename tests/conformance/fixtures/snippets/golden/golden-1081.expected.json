@@ -1,0 +1,60 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding initial_account_balance; declare it with 'initial_account_balance := ...' before use, define 'fn initial_account_balance(...) T:', or import it from a module",
+        "position": {
+          "file": "golden-1081.ms",
+          "line": 4,
+          "column": 12,
+          "offset": 79
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding pending_deposit_total; declare it with 'pending_deposit_total := ...' before use, define 'fn pending_deposit_total(...) T:', or import it from a module",
+        "position": {
+          "file": "golden-1081.ms",
+          "line": 4,
+          "column": 38,
+          "offset": 105
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding applicable_exchange_rate; declare it with 'applicable_exchange_rate := ...' before use, define 'fn applicable_exchange_rate(...) T:', or import it from a module",
+        "position": {
+          "file": "golden-1081.ms",
+          "line": 4,
+          "column": 62,
+          "offset": 129
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding pending_withdrawal_total; declare it with 'pending_withdrawal_total := ...' before use, define 'fn pending_withdrawal_total(...) T:', or import it from a module",
+        "position": {
+          "file": "golden-1081.ms",
+          "line": 4,
+          "column": 89,
+          "offset": 156
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-1081.ms:4:12: resolution: unknown binding initial_account_balance; declare it with 'initial_account_balance := ...' before use, define 'fn initial_account_balance(...) T:', or import it from a module\n   |\n 4 |     return initial_account_balance + pending_deposit_total * applicable_exchange_rate - pending_withdrawal_total\n   |            ^\n<DIR>/golden-1081.ms:4:38: resolution: unknown binding pending_deposit_total; declare it with 'pending_deposit_total := ...' before use, define 'fn pending_deposit_total(...) T:', or import it from a module\n   |\n 4 |     return initial_account_balance + pending_deposit_total * applicable_exchange_rate - pending_withdrawal_total\n   |                                      ^\n<DIR>/golden-1081.ms:4:62: resolution: unknown binding applicable_exchange_rate; declare it with 'applicable_exchange_rate := ...' before use, define 'fn applicable_exchange_rate(...) T:', or import it from a module\n   |\n 4 |     return initial_account_balance + pending_deposit_total * applicable_exchange_rate - pending_withdrawal_total\n   |                                                              ^\n<DIR>/golden-1081.ms:4:89: resolution: unknown binding pending_withdrawal_total; declare it with 'pending_withdrawal_total := ...' before use, define 'fn pending_withdrawal_total(...) T:', or import it from a module\n   |\n 4 |     return initial_account_balance + pending_deposit_total * applicable_exchange_rate - pending_withdrawal_total\n   |                                                                                         ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

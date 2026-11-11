@@ -8,7 +8,7 @@ use std::path::Path;
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
-const SERVER: &str = include_str!("../../../tests/e2e/testdata/waits/stdin-server.source");
+const SERVER: &str = include_str!("programs/stdin-server.source");
 
 fn get(conn: &mut TcpStream, path: &str) {
     write!(conn, "GET {path} HTTP/1.1\r\nHost: t\r\n\r\n").unwrap();

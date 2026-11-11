@@ -1,0 +1,80 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "nested-place-index-order.ms::nested field assignment evaluates indices left to right",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "nested-place-index-order.ms::three nested indices run in written order",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "nested-place-index-order.ms::an indexed receiver runs before the arguments of a changing method",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "nested-place-index-order.ms::a var element argument evaluates its index once",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "nested-place-index-order.ms::several var element arguments evaluate each index once",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "nested-place-index-order.ms::a var field of an indexed element evaluates its index once",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 6,
+        "selected": 6,
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN nested-place-index-order.ms::nested field assignment evaluates indices left to right\nPASS nested-place-index-order.ms::nested field assignment evaluates indices left to right\nRUN nested-place-index-order.ms::three nested indices run in written order\nPASS nested-place-index-order.ms::three nested indices run in written order\nRUN nested-place-index-order.ms::an indexed receiver runs before the arguments of a changing method\nPASS nested-place-index-order.ms::an indexed receiver runs before the arguments of a changing method\nRUN nested-place-index-order.ms::a var element argument evaluates its index once\nPASS nested-place-index-order.ms::a var element argument evaluates its index once\nRUN nested-place-index-order.ms::several var element arguments evaluate each index once\nPASS nested-place-index-order.ms::several var element arguments evaluate each index once\nRUN nested-place-index-order.ms::a var field of an indexed element evaluates its index once\nPASS nested-place-index-order.ms::a var field of an indexed element evaluates its index once\n6 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

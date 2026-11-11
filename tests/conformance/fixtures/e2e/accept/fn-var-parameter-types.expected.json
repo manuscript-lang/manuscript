@@ -1,0 +1,90 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "fn-var-parameter-types.ms::a named function with a var parameter is a function value",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "fn-var-parameter-types.ms::a lambda declares a var parameter",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "fn-var-parameter-types.ms::a var parameter of a scalar type changes the caller's variable",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "fn-var-parameter-types.ms::a var parameter passes through a function parameter",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "fn-var-parameter-types.ms::a var parameter changes a field in place",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "fn-var-parameter-types.ms::a function value in a field takes a var argument",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "fn-var-parameter-types.ms::a var parameter is passed on through another function value",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "fn-var-parameter-types.ms::a var parameter of a one-owner value is not copied",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 8,
+        "selected": 8,
+        "passed": 8,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN fn-var-parameter-types.ms::a named function with a var parameter is a function value\nPASS fn-var-parameter-types.ms::a named function with a var parameter is a function value\nRUN fn-var-parameter-types.ms::a lambda declares a var parameter\nPASS fn-var-parameter-types.ms::a lambda declares a var parameter\nRUN fn-var-parameter-types.ms::a var parameter of a scalar type changes the caller's variable\nPASS fn-var-parameter-types.ms::a var parameter of a scalar type changes the caller's variable\nRUN fn-var-parameter-types.ms::a var parameter passes through a function parameter\nPASS fn-var-parameter-types.ms::a var parameter passes through a function parameter\nRUN fn-var-parameter-types.ms::a var parameter changes a field in place\nPASS fn-var-parameter-types.ms::a var parameter changes a field in place\nRUN fn-var-parameter-types.ms::a function value in a field takes a var argument\nPASS fn-var-parameter-types.ms::a function value in a field takes a var argument\nRUN fn-var-parameter-types.ms::a var parameter is passed on through another function value\nPASS fn-var-parameter-types.ms::a var parameter is passed on through another function value\nRUN fn-var-parameter-types.ms::a var parameter of a one-owner value is not copied\nPASS fn-var-parameter-types.ms::a var parameter of a one-owner value is not copied\n8 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

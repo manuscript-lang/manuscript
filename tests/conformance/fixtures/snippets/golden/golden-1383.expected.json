@@ -1,0 +1,50 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "expected an expression, found '%'; write a value, name, call, or literal here",
+        "position": {
+          "file": "golden-1383.ms",
+          "line": 23,
+          "column": 31,
+          "offset": 990
+        },
+        "end": {
+          "file": "golden-1383.ms",
+          "line": 23,
+          "column": 32,
+          "offset": 991
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "expected an expression, found 'else'; 'else' continues an 'if' block: put it on its own line at the same indentation as that 'if', directly after the if body",
+        "position": {
+          "file": "golden-1383.ms",
+          "line": 25,
+          "column": 5,
+          "offset": 1129
+        },
+        "end": {
+          "file": "golden-1383.ms",
+          "line": 25,
+          "column": 9,
+          "offset": 1133
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-1383.ms:23:31: parse: expected an expression, found '%'; write a value, name, call, or literal here\n    |\n 23 |     if output := run(program: %q, arguments: [\"--version\"]):\n    |                               ^\n<DIR>/golden-1383.ms:25:5: parse: expected an expression, found 'else'; 'else' continues an 'if' block: put it on its own line at the same indentation as that 'if', directly after the if body\n    |\n 25 |     else:\n    |     ^^^^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

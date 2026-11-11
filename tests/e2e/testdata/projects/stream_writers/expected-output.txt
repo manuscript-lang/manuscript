@@ -1,8 +1,0 @@
-{"x":1,"label":"a \"quoted\" label"}
-{"x":2,"label":"é😀"}
-id;name
-1;"needs;quote"
-2;"multi
-line"
-1=one
-2=two

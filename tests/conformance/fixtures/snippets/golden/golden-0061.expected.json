@@ -1,0 +1,33 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "every fn declares its result type after the parameter list, e.g. fn f() Unit:",
+        "position": {
+          "file": "golden-0061.ms",
+          "line": 3,
+          "column": 10,
+          "offset": 62
+        },
+        "end": {
+          "file": "golden-0061.ms",
+          "line": 3,
+          "column": 11,
+          "offset": 63
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0061.ms:3:10: parse: every fn declares its result type after the parameter list, e.g. fn f() Unit:\n   |\n 3 | fn main():\n   |          ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

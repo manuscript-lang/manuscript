@@ -1,0 +1,33 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "expected a name, found '|'",
+        "position": {
+          "file": "golden-1171.ms",
+          "line": 5,
+          "column": 59,
+          "offset": 162
+        },
+        "end": {
+          "file": "golden-1171.ms",
+          "line": 5,
+          "column": 60,
+          "offset": 163
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-1171.ms:5:59: parse: expected a name, found '|'\n   |\n 5 | fn compare[T: Compare[T]](first: T, second: T) Int: first.|\n   |                                                           ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

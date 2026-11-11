@@ -1,0 +1,110 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "list-incoming-resource-transfer.ms::named and computed bad bounds close incoming before existing",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "list-incoming-resource-transfer.ms::successful direct and computed transfers close each owner once",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "list-incoming-resource-transfer.ms::later named operand faults and try exits preserve incoming owner",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "list-incoming-resource-transfer.ms::failed old close preserves pending incoming owner",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "list-incoming-resource-transfer.ms::field and closure-slot receivers retain cleanup on fault",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "list-incoming-resource-transfer.ms::implicit optional payload and outgoing replacement survive cleanup faults",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "list-incoming-resource-transfer.ms::repeated successful transfers retire only their own cleanup",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "list-incoming-resource-transfer.ms::faulting captured close during detached old drop preserves new list owner",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "list-incoming-resource-transfer.ms::old capture drop fault observes updated field indexed slot and computed receivers",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "list-incoming-resource-transfer.ms::valid negative end and named owner transfers preserve single close",
+          "status": "passed"
+        },
+        {
+          "index": 10,
+          "name": "list-incoming-resource-transfer.ms::final bounds use receiver after later operand mutation",
+          "status": "passed"
+        },
+        {
+          "index": 11,
+          "name": "list-incoming-resource-transfer.ms::computed receiver closes when payload absent or construction faults",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 12,
+        "selected": 12,
+        "passed": 12,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN list-incoming-resource-transfer.ms::named and computed bad bounds close incoming before existing\nPASS list-incoming-resource-transfer.ms::named and computed bad bounds close incoming before existing\nRUN list-incoming-resource-transfer.ms::successful direct and computed transfers close each owner once\nPASS list-incoming-resource-transfer.ms::successful direct and computed transfers close each owner once\nRUN list-incoming-resource-transfer.ms::later named operand faults and try exits preserve incoming owner\nPASS list-incoming-resource-transfer.ms::later named operand faults and try exits preserve incoming owner\nRUN list-incoming-resource-transfer.ms::failed old close preserves pending incoming owner\nPASS list-incoming-resource-transfer.ms::failed old close preserves pending incoming owner\nRUN list-incoming-resource-transfer.ms::field and closure-slot receivers retain cleanup on fault\nPASS list-incoming-resource-transfer.ms::field and closure-slot receivers retain cleanup on fault\nRUN list-incoming-resource-transfer.ms::implicit optional payload and outgoing replacement survive cleanup faults\nPASS list-incoming-resource-transfer.ms::implicit optional payload and outgoing replacement survive cleanup faults\nRUN list-incoming-resource-transfer.ms::repeated successful transfers retire only their own cleanup\nPASS list-incoming-resource-transfer.ms::repeated successful transfers retire only their own cleanup\nRUN list-incoming-resource-transfer.ms::faulting captured close during detached old drop preserves new list owner\nPASS list-incoming-resource-transfer.ms::faulting captured close during detached old drop preserves new list owner\nRUN list-incoming-resource-transfer.ms::old capture drop fault observes updated field indexed slot and computed receivers\nPASS list-incoming-resource-transfer.ms::old capture drop fault observes updated field indexed slot and computed receivers\nRUN list-incoming-resource-transfer.ms::valid negative end and named owner transfers preserve single close\nPASS list-incoming-resource-transfer.ms::valid negative end and named owner transfers preserve single close\nRUN list-incoming-resource-transfer.ms::final bounds use receiver after later operand mutation\nPASS list-incoming-resource-transfer.ms::final bounds use receiver after later operand mutation\nRUN list-incoming-resource-transfer.ms::computed receiver closes when payload absent or construction faults\nPASS list-incoming-resource-transfer.ms::computed receiver closes when payload absent or construction faults\n12 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

@@ -1,0 +1,98 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2002",
+        "phase": "resolution",
+        "message": "module does not export network; did you mean 'Network'?",
+        "position": {
+          "file": "golden-0003.ms",
+          "line": 3,
+          "column": 8,
+          "offset": 60
+        },
+        "end": {
+          "file": "golden-0003.ms",
+          "line": 3,
+          "column": 15,
+          "offset": 67
+        }
+      },
+      {
+        "code": "MS2002",
+        "phase": "resolution",
+        "message": "unknown standard module @std/faults.ms",
+        "position": {
+          "file": "golden-0003.ms",
+          "line": 5,
+          "column": 8,
+          "offset": 142
+        },
+        "end": {
+          "file": "golden-0003.ms",
+          "line": 5,
+          "column": 13,
+          "offset": 147
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding network; host handle getters were removed: import the operation itself, e.g. read_file from \"@std/os/fs.ms\", connect from \"@std/net/net.ms\", run from \"@std/os/process.ms\", now from \"@std/time.ms\"",
+        "position": {
+          "file": "golden-0003.ms",
+          "line": 8,
+          "column": 16,
+          "offset": 230
+        }
+      },
+      {
+        "code": "MS3080",
+        "phase": "type",
+        "message": "cannot infer callback parameter request; provide a type or a known function context",
+        "position": {
+          "file": "golden-0003.ms",
+          "line": 8,
+          "column": 68,
+          "offset": 282
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding panic; add: import panic from \"@std/core.ms\"",
+        "position": {
+          "file": "golden-0003.ms",
+          "line": 10,
+          "column": 16,
+          "offset": 357
+        },
+        "fix": {
+          "position": {
+            "file": "golden-0003.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "golden-0003.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import panic from \"@std/core.ms\"\n"
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0003.ms:3:8: resolution: module does not export network; did you mean 'Network'?\n   |\n 3 | import network from \"@std/net/net.ms\"\n   |        ^^^^^^^\n<DIR>/golden-0003.ms:5:8: resolution: unknown standard module @std/faults.ms\n   |\n 5 | import panic from \"@std/faults.ms\"\n   |        ^^^^^\n<DIR>/golden-0003.ms:8:16: resolution: unknown binding network; host handle getters were removed: import the operation itself, e.g. read_file from \"@std/os/fs.ms\", connect from \"@std/net/net.ms\", run from \"@std/os/process.ms\", now from \"@std/time.ms\"\n   |\n 8 |     _server := network().serve(address: \"127.0.0.1:0\", handler: fn(request) HttpResponse:\n   |                ^\n<DIR>/golden-0003.ms:8:68: type: cannot infer callback parameter request; provide a type or a known function context\n   |\n 8 |     _server := network().serve(address: \"127.0.0.1:0\", handler: fn(request) HttpResponse:\n   |                                                                    ^\n<DIR>/golden-0003.ms:10:16: resolution: unknown binding panic; add: import panic from \"@std/core.ms\"\n    |\n 10 |         return panic(\"unreached\")\n    |                ^\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

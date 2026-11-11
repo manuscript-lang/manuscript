@@ -1,0 +1,85 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "function-value-wrapper-temporary-cleanup.ms::lambda and source function aliases close temporary wrappers once",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "function-value-wrapper-temporary-cleanup.ms::function arguments remain protected through later try and faults",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "function-value-wrapper-temporary-cleanup.ms::function dispatch errors and faults retain temporary cleanup",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "function-value-wrapper-temporary-cleanup.ms::function default adapters retain caller resource ownership",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "function-value-wrapper-temporary-cleanup.ms::function failed temporary close retains older caller owner",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "function-value-wrapper-temporary-cleanup.ms::function Result and loop condition temporaries close each time",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "function-value-wrapper-temporary-cleanup.ms::function Optional transport from a named payload remains a borrow",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 7,
+        "selected": 7,
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN function-value-wrapper-temporary-cleanup.ms::lambda and source function aliases close temporary wrappers once\nPASS function-value-wrapper-temporary-cleanup.ms::lambda and source function aliases close temporary wrappers once\nRUN function-value-wrapper-temporary-cleanup.ms::function arguments remain protected through later try and faults\nPASS function-value-wrapper-temporary-cleanup.ms::function arguments remain protected through later try and faults\nRUN function-value-wrapper-temporary-cleanup.ms::function dispatch errors and faults retain temporary cleanup\nPASS function-value-wrapper-temporary-cleanup.ms::function dispatch errors and faults retain temporary cleanup\nRUN function-value-wrapper-temporary-cleanup.ms::function default adapters retain caller resource ownership\nPASS function-value-wrapper-temporary-cleanup.ms::function default adapters retain caller resource ownership\nRUN function-value-wrapper-temporary-cleanup.ms::function failed temporary close retains older caller owner\nPASS function-value-wrapper-temporary-cleanup.ms::function failed temporary close retains older caller owner\nRUN function-value-wrapper-temporary-cleanup.ms::function Result and loop condition temporaries close each time\nPASS function-value-wrapper-temporary-cleanup.ms::function Result and loop condition temporaries close each time\nRUN function-value-wrapper-temporary-cleanup.ms::function Optional transport from a named payload remains a borrow\nPASS function-value-wrapper-temporary-cleanup.ms::function Optional transport from a named payload remains a borrow\n7 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}
