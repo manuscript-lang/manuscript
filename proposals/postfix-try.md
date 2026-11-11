@@ -69,8 +69,7 @@ check(n)?
 
 ## Stages
 
-1. Parser, formatter, checker, docs, fixtures: `?` works and `try` still parses.
-2. Mechanical migration of every `.ms` file, doc and diagnostic from `try` to `?` with `ms fmt`-style tooling, then remove the `try` keyword and its diagnostics.
+Both stages landed together: `?` added, every source migrated by a parser-driven rewrite, `try` removed.
 
 ## Open questions
 
