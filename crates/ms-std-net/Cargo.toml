@@ -20,6 +20,8 @@ rustls-native-certs = "0.8"
 x509-parser = { version = "0.18", features = ["verify"] }
 httparse = "1"
 flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
+# `std` turns on the runtime-detected SIMD CRC-32 that flate2 uses for the gzip trailer.
+crc32fast = { version = "1", default-features = false, features = ["std"] }
 psl = "2"
 ring = "0.17"
 
