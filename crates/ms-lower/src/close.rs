@@ -672,9 +672,16 @@ impl FnLower<'_> {
     fn fallible_close_ok(&mut self, kind: &CloseKind, uid: usize) -> bool {
         // The error exit returns at once, so no cleanup that lowering still runs may be pending:
         // every enclosing scope holds nothing else to drop or close.
-        let nothing_else = self.scopes.iter().all(|s| s.iter().all(|u| *u == uid));
+        // A local the pass owns at its exits needs no close: the error exit releases the owned
+        // values still live, as it does for any return.
+        let nothing_else = self
+            .scopes
+            .iter()
+            .all(|s| s.iter().all(|u| *u == uid || self.raw_vars.contains_key(u)));
+        // The temporaries the pass owns are in its scopes' chains already.
+        let temps_empty = self.temps.iter().all(|t| self.pass_temps.contains_key(t));
         nothing_else
-            && self.temps.is_empty()
+            && temps_empty
             && self.close_result_ty(kind).is_some()
             && !self.b.func_mut().ret_borrowed
             && !self.b.func_mut().ret_view
