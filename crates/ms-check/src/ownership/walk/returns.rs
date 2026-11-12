@@ -970,9 +970,11 @@ impl Walker<'_> {
             // element, which would free what the receiver still holds.
             ("slice", 2) => {
                 recv.is(Builtin::List)
-                    && recv.args.first().and_then(|a| a.builtin).is_some_and(|b| {
-                        b.is_int() || b.is_float() || b == Builtin::Bool
-                    })
+                    && recv
+                        .args
+                        .first()
+                        .and_then(|a| a.builtin)
+                        .is_some_and(|b| b.is_int() || b.is_float() || b == Builtin::Bool)
             }
             _ => false,
         };
