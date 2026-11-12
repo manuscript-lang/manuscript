@@ -842,12 +842,15 @@ impl Em<'_, '_> {
             .emit(Op::ListAddrU, &[list, i], Imm::None, Some(Ty::PTR))
             .expect("addr")
     }
-    /// The element at `list[i]`, which is not bounds-checked.
-    fn ld(&mut self, list: Value, i: Value) -> Value {
-        let p = self.at(list, i);
+    fn load_at(&mut self, p: Value) -> Value {
         self.b
             .emit(Op::Load, &[p], Imm::Ty(self.elem), Some(self.elem))
             .expect("load")
+    }
+    /// The element at `list[i]`, which is not bounds-checked.
+    fn ld(&mut self, list: Value, i: Value) -> Value {
+        let p = self.at(list, i);
+        self.load_at(p)
     }
     fn st(&mut self, list: Value, i: Value, v: Value) {
         let p = self.at(list, i);
@@ -1138,11 +1141,14 @@ fn build_run_merge(m: &mut Module, g: FuncId, elem: Ty, name: &str, params: Vec<
         e.brk_if(l_done, exit);
         let r_done = e.cmp(Cc::Ge, r, hi);
         e.brk_if(r_done, exit);
-        let xr = e.ld(items, r);
-        let xl = e.ld(buf, l);
+        let (pr, pl) = (e.at(items, r), e.at(buf, l));
+        let xr = e.load_at(pr);
+        let xl = e.load_at(pl);
         let take_r = e.less(env, xr, xl);
         let o = e.get(ov);
-        let x = e.b.select(take_r, xr, xl);
+        // Select the address: an element that owns data cannot be selected as a value.
+        let from = e.b.select(take_r, pr, pl);
+        let x = e.load_at(from);
         e.st(items, o, x);
         let tr = e.b2i(take_r);
         let r1 = e.add(r, tr);
@@ -1190,12 +1196,14 @@ fn build_run_merge(m: &mut Module, g: FuncId, elem: Ty, name: &str, params: Vec<
         let r_done = e.cmp(Cc::Le, r, mid);
         e.brk_if(r_done, exit);
         let r1 = e.add_k(r, -1);
-        let xr = e.ld(buf, r1);
-        let xl = e.ld(items, l);
+        let (pr, pl) = (e.at(buf, r1), e.at(items, l));
+        let xr = e.load_at(pr);
+        let xl = e.load_at(pl);
         let take_l = e.less(env, xr, xl);
         let o = e.get(ov);
         let o1 = e.add_k(o, -1);
-        let x = e.b.select(take_l, xl, xr);
+        let from = e.b.select(take_l, pl, pr);
+        let x = e.load_at(from);
         e.st(items, o1, x);
         let tl = e.b2i(take_l);
         let one = e.int(1);
