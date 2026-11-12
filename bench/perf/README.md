@@ -24,6 +24,8 @@ How fast Manuscript is, compared with hand-written Go and Rust, Node's JSON, and
 
 Latest refresh with Go and Rust comparisons for the docs: [`results-2026-11-05.md`](results-2026-11-05.md).
 
+Latest generated-code gaps against Rust: [`codegen-2026-11-12.md`](codegen-2026-11-12.md).
+
 Latest kernels against C with bounds checks: [`results-2026-11-09.md`](results-2026-11-09.md).
 
 Latest `for_each` check: [`for-each-var-2026-11-06.md`](for-each-var-2026-11-06.md).

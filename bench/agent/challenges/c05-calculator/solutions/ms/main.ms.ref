@@ -21,7 +21,7 @@ fn atom(var p: Parser) Int!:
         return ok(v)
     if c != 40: return error(Error("syntax"))
     p.pos += 1
-    v := try expr(var p)
+    v := expr(var p)?
     if peek(var p) != 41: return error(Error("syntax"))
     p.pos += 1
     return ok(v)
@@ -29,14 +29,14 @@ fn atom(var p: Parser) Int!:
 fn unary(var p: Parser) Int!:
     if peek(var p) != 45: return atom(var p)
     p.pos += 1
-    return ok(-(try unary(var p)))
+    return ok(-(unary(var p)?))
 
 fn term(var p: Parser) Int!:
-    var v = try unary(var p)
+    var v = unary(var p)?
     while peek(var p) == 42 or peek(var p) == 47:
         op := peek(var p)
         p.pos += 1
-        r := try unary(var p)
+        r := unary(var p)?
         if op == 42: v *= r
         else if r == 0:
             p.div_zero = true
@@ -45,11 +45,11 @@ fn term(var p: Parser) Int!:
     return ok(v)
 
 fn expr(var p: Parser) Int!:
-    var v = try term(var p)
+    var v = term(var p)?
     while peek(var p) == 43 or peek(var p) == 45:
         op := peek(var p)
         p.pos += 1
-        r := try term(var p)
+        r := term(var p)?
         v += if op == 43: r else: -r
     return ok(v)
 

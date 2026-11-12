@@ -413,7 +413,7 @@ impl<'m> FuncBuilder<'m> {
     }
     /// `list.get` (negative indexes count from the end).
     pub fn list_get(&mut self, l: Value, i: Value) -> Value {
-        let e = self.m.list_elem(self.ty(l)).expect("list operand");
+        let e = self.m.seq_elem(self.ty(l)).expect("list operand");
         self.val(Op::ListGet, &[l, i], Imm::None, e)
     }
     /// `list.set`.
