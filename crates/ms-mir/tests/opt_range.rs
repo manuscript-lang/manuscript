@@ -115,6 +115,14 @@ fn a_ring_index_under_a_short_circuit_guard_is_unchecked() {
 }
 
 #[test]
+fn a_counted_push_loop_makes_its_counter_the_length() {
+    let (b, a) = optimized("counted_push.mir");
+    assert_eq!(count(&b, "list.get"), 1);
+    assert_eq!(count(&a, "list.get.u"), 1, "{}", print_module(&a));
+    assert_eq!(exec(&b), exec(&a));
+}
+
+#[test]
 fn list_access_in_bounds_becomes_unchecked() {
     let (b, a) = optimized("list_walk.mir");
     assert_eq!(count(&b, "list.get"), 1);
