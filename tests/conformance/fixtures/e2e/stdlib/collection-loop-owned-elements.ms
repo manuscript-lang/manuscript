@@ -19,7 +19,8 @@ fn collect_entries(
 fn capture_keys(source: Map[String, Int]) List[fn() String]:
 	var out = List[fn() String]()
 	for key in source.keys():
-		out.append(fn: key.clone())
+		owned := key.clone()
+		out.append(fn: owned.clone())
 	return out
 
 test "map values move from their owned traversal result":

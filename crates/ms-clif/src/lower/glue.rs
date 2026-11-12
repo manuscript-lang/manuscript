@@ -298,7 +298,10 @@ impl<'a, 'm> Lower<'a, 'm> {
         let m = self.g.m;
         match m.types.kind(ty).clone() {
             TyKind::Bytes | TyKind::List(_) => {
-                self.drop_list_from(ty, vs[0], vs[1], None);
+                // A view (`cap == 0`, from `slice` of a lent list) borrows its elements: there
+                // is nothing to drop or free.
+                let owned = self.b.ins().icmp_imm_s(IntCC::NotEqual, vs[2], 0);
+                self.if_then(owned, |s| s.drop_list_from(ty, vs[0], vs[1], None));
             }
             TyKind::Obj(..) => {
                 // Map and Set are owned `MapVal`s the runtime knows how to drop.
