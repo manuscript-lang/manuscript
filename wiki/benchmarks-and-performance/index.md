@@ -40,3 +40,4 @@ Perf and agent benchmarks, profiling.
 - [A busy queue must not poll descriptors on every task switch](a-busy-queue-must-not-poll-descriptors-on-every-task-switch.md): poll every 32 switches; compare servers on one CPU by user and system time per request.
 - [Fewer allocations need wall time, not just counts](fewer-allocations-need-wall-time-not-just-counts.md): a counted split cut allocations 22% and instructions 6% but cost 7% wall; inline short strings never allocate on clone.
 - [Path resolution builders must preserve clean separators](path-resolution-builders-must-preserve-clean-separators.md): avoid growing-prefix copies without sending ordinary clean paths through dirty normalization; retain small/A/A and invalid-input controls.
+- [CRC table input terms are independent of the register](crc-table-input-terms-are-independent-of-the-register.md): combine input-only terms before the rolling-state chain, verify native assembly and tiny/tail/seed controls.

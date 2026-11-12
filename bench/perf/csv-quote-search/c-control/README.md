@@ -1,0 +1,13 @@
+# Isolated allocating C CSV control
+
+`cc -O3 -Wall -Wextra -Werror -o probe driver.c` builds the C executable. `python run.py` checks the generated ASCII cases against existing baseline and candidate Manuscript apps and C. `python run.py --time` pins CPU4, calibrates equal per-case iteration counts until the fastest implementation takes at least 100 ms, and records seven alternating triples. Do not run timing concurrently with other benchmark jobs.
+
+All executables load input and expected output before timing, warm up for max(count/10,1) calls, stringify exactly one row `[field, "tail"]`, verify the complete output (or error kind and message) on every call, and consume the same output-length checksum. File I/O and row setup are excluded. CSV work, allocations/frees, equality verification and checksum are timed.
+
+C intentionally supports ASCII input only and fails on non-ASCII input. It preserves quote triggers, exact backslash-dot, ASCII trim whitespace, delimiter restrictions, LF/CRLF normalization, and negative limit / invalid delimiter / output budget error precedence for supported calls. Like the MS probe, any ending argument except `crlf` selects LF, so this harness cannot test invalid line-ending options. Error kinds and messages are compared; details are not compared. It is not a CSV parser or complete public API conformance test.
+
+C uses `memchr` for the four quote-trigger searches. It allocates unquoted fields at exact length (one byte for the empty allocation) and copies them with `memcpy`; quoted fields use a conservative checked `2*n+3` capacity and a byte loop for escaping and CRLF normalization. It then allocates the final output to its exact size. This differs from Manuscript StringBuilder, List, runtime representations, and replacement intermediates. C searches bytes using libc and can inline functions; UTF-8 and general rows are outside scope. Ratios describe these complete implementations on this harness, not compiler quality or an algorithm-matched language overhead. The C implementation is a comparison reference, not a proposed stdlib patch.
+
+Portable paths: pass `--baseline /path/to/baseline --candidate /path/to/candidate --c-binary /path/to/c-control --out /path/to/results --cpu 4`. Without flags the runner uses its adjacent scratch executables and writes beside itself. The CPU flag applies only to timed runs. `--time` measures; the default mode validates outputs.
+
+The contextual C timing set is deliberately six cases: empty, one, ordinary, comma (quoted), ascii1024, and ascii65536. Other generated cases participate in correctness only. The separate Manuscript matrix covers further quote positions, Unicode and errors.
