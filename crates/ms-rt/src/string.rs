@@ -553,7 +553,15 @@ pub fn rfind(hay: &[u8], needle: &[u8]) -> Option<usize> {
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_contains(a: *const StrVal, v: *const StrVal) -> u8 {
     // SAFETY: caller passes live strings.
-    unsafe { find(bytes(a), bytes(v)).is_some() as u8 }
+    unsafe {
+        let (hay, needle) = (bytes(a), bytes(v));
+        // A character class test (`"#.SE".contains(c)`): a short haystack and one byte needs no
+        // word tricks, just a short scan.
+        if let ([b], true) = (needle, hay.len() <= 16) {
+            return hay.contains(b) as u8;
+        }
+        find(hay, needle).is_some() as u8
+    }
 }
 
 #[unsafe(no_mangle)]
@@ -2609,6 +2617,29 @@ mod tests {
                 let want = if n.len() > h.len() { None } else { naive(h, n) };
                 assert_eq!(find(h, n), want, "find {n:?} in {h:?}");
                 assert_eq!(Needle::new(n).find(h), want, "needle {n:?} in {h:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn contains_a_byte_in_a_short_string() {
+        let _g = crate::testutil::lock();
+        // SAFETY: the strings are live for the whole test.
+        unsafe {
+            for (hay, needle, want) in [
+                ("#.SE", "S", 1),
+                ("#.SE", "x", 0),
+                ("", "x", 0),
+                ("abcdefghijklmnop", "p", 1),
+                ("abcdefghijklmnopq", "q", 1),
+                ("é", "\u{a9}", 0),
+            ] {
+                let (h, n) = (from_bytes(hay.as_bytes()), from_bytes(needle.as_bytes()));
+                assert_eq!(
+                    msrt_string_contains(&h, &n),
+                    want,
+                    "{hay:?} contains {needle:?}"
+                );
             }
         }
     }

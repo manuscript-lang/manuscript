@@ -102,3 +102,26 @@ Other cases that read 2x or worse against that baseline on 2026-11-07 and reprod
 - Peak RSS (`VmHWM`, ~3 MB stdin) of the ten workloads, ms / Go / Rust in MB: c03 3.0/6.1/5.0, c05 3.0/5.9/2.1, c09 3.0/6.4/4.1, c13 3.2/7.0/9.8, c14 3.0/22.5/2.2, c16 28.0/18.9/27.3, c18 3.1/6.9/16.4, c25 9.2/11.5/5.9, c36 14.8/6.7/10.9, c44 3.2/26.3/12.7. The largest ratio is c36 at 2.2x Go (14.8 MB).
 - Scaling probe (each operation at n, 4n and 16n): append, `sorted`, `Set`, `Map[Int, Int]`, `Map[String, Int]`, `split`/`join`, `replace`, string `+=`, indexing a built string and `json.parse` stay near-linear (`Map[String, Int]` at 1.6M keys 652 ms, 6.8x for 4x the keys from cache misses). `List.insert(0, x)` and `List.remove(0)` are O(n) memmoves, 10.7 s for 320k operations, as in Go and Rust; `Deque` is the queue.
 - 108 MB, 2M-line word count (split, `Map[String, Int]`): 0.78 s in ms against 1.35 s for Go.
+
+## 2026-11-12, reference fixes and `contains` on short strings
+
+Revision `0d723018` plus this change, Release LLVM build, min of 5, shared 4 vCPU Xeon @ 2.10GHz, Go 1.24, rustc stable.
+
+- The suite no longer built: `c05-calculator` still used `try`. Ported to postfix `?`.
+- `c18-cron-next-runs` read 11.2 s against Rust's 0.75 s. Not a compiler regression: the Manuscript reference kept scanning all 3001 days after `count` runs were found, where the Rust and Go references stop at `count`. The reference now returns at `count` (785 ms, 1.07x Rust).
+- `String.contains` with a one-byte needle in a string of at most 16 bytes (`"#.SE".contains(c)`) scans directly instead of going through `find`. `c16` under callgrind (600 KB input): 83.0M to 64.5M instructions; wall 112 to 104 ms.
+
+| program | ms ms | go ms | rust ms | ms/go | ms/rust |
+|---|---:|---:|---:|---:|---:|
+| c03-csv-group-sum | 75.8 | 40.5 | 29.0 | 1.87x | 2.62x |
+| c05-calculator | 71.7 | 49.0 | 131.3 | 1.46x | 0.55x |
+| c09-ciphers | 48.3 | 53.1 | 36.0 | 0.91x | 1.34x |
+| c13-inventory-orders | 265.2 | 259.5 | 141.6 | 1.02x | 1.87x |
+| c14-dp-suite | 736.8 | 1404.7 | 452.8 | 0.52x | 1.63x |
+| c16-maze-bfs | 104.2 | 37.5 | 30.4 | 2.77x | 3.42x |
+| c18-cron-next-runs | 785.5 | 1016.5 | 731.6 | 0.77x | 1.07x |
+| c25-log-analyzer | 29.7 | 54.1 | 21.2 | 0.55x | 1.40x |
+| c36-bank-ledger | 110.4 | 110.8 | 61.7 | 1.00x | 1.79x |
+| c44-unified-diff | 18.0 | 83.6 | 13.8 | 0.22x | 1.31x |
+
+Remaining gaps, in order: `c16` (the Manuscript reference holds the grid as `List[List[String]]` of one-character strings, 16 bytes a cell and a `chars()` allocation per line, against Rust's `Vec<char>`; the rest of `contains` is about 40 instructions of inline-string decoding), `c03` (`split` and `find`), `c13`, `c36`, `c14`. `c44` is 3 ms in the 2026-11-07 table and 18 ms now; unexplained, to investigate.
