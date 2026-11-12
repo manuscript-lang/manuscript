@@ -140,6 +140,14 @@ impl IntoAbi for String {
         new_string(&self)
     }
 }
+// A string already built for the language, handed over as a result: lets a native build it from
+// a borrow instead of cloning the text into a `String` first.
+impl IntoAbi for Str {
+    type Raw = StrVal;
+    fn into_raw(self) -> StrVal {
+        self.0
+    }
+}
 
 impl AbiType for &[u8] {
     type Raw = *const VecVal;

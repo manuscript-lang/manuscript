@@ -708,10 +708,10 @@ fn response_head(
     sniff_from: &[u8],
 ) -> Vec<Header> {
     let mut out = vec![hv(":status", status.to_string())];
-    let mut sorted: Vec<(String, &Vec<Vec<u8>>)> = handler
+    let mut sorted: Vec<(String, &[Vec<u8>])> = handler
         .entries()
         .iter()
-        .map(|e| (e.name.to_ascii_lowercase(), &e.values))
+        .map(|e| (e.name.to_ascii_lowercase(), &*e.values))
         .collect();
     sorted.sort_by(|a, b| a.0.cmp(&b.0));
     let (mut has_type, mut has_date) = (false, false);

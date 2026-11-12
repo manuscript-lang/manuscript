@@ -13,7 +13,46 @@ pub type Shared = Rc<RefCell<Headers>>;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Entry {
     pub name: String,
-    pub values: Vec<Vec<u8>>,
+    pub values: Values,
+}
+
+/// The values of one name in arrival order. Nearly every name has one, which then needs no
+/// list of its own.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Values {
+    One(Vec<u8>),
+    Many(Vec<Vec<u8>>),
+}
+
+impl Values {
+    fn push(&mut self, value: Vec<u8>) {
+        match self {
+            Values::Many(all) => all.push(value),
+            Values::One(first) => {
+                *self = Values::Many(vec![std::mem::take(first), value]);
+            }
+        }
+    }
+}
+
+impl std::ops::Deref for Values {
+    type Target = [Vec<u8>];
+
+    fn deref(&self) -> &[Vec<u8>] {
+        match self {
+            Values::One(value) => std::slice::from_ref(value),
+            Values::Many(all) => all,
+        }
+    }
+}
+
+impl<'a> IntoIterator for &'a Values {
+    type Item = &'a Vec<u8>;
+    type IntoIter = std::slice::Iter<'a, Vec<u8>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -102,7 +141,7 @@ impl Headers {
             Some(i) => Arc::make_mut(&mut self.entries)[i].values.push(value),
             None => Arc::make_mut(&mut self.entries).push(Entry {
                 name: name.to_string(),
-                values: vec![value],
+                values: Values::One(value),
             }),
         }
     }
@@ -117,8 +156,7 @@ impl Headers {
     }
 
     pub fn values(&self, name: &str) -> Option<&[Vec<u8>]> {
-        self.position(name)
-            .map(|i| self.entries[i].values.as_slice())
+        self.position(name).map(|i| &*self.entries[i].values)
     }
 
     /// The first value of `name`, if any.
@@ -155,7 +193,7 @@ impl Headers {
     /// Replaces every value of `name` with `value`.
     pub fn set(&mut self, name: &str, value: Vec<u8>) {
         match self.position(name) {
-            Some(i) => Arc::make_mut(&mut self.entries)[i].values = vec![value],
+            Some(i) => Arc::make_mut(&mut self.entries)[i].values = Values::One(value),
             None => self.add(name, value),
         }
     }
@@ -171,7 +209,7 @@ impl Headers {
                 Some(e) => e.values.push(value),
                 None => entries.push(Entry {
                     name: key,
-                    values: vec![value],
+                    values: Values::One(value),
                 }),
             }
         }

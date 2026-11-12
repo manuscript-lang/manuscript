@@ -318,3 +318,11 @@ This change: a finished task hands its cleanup and guard buffers to the next one
 ## 2026-11-12, one core: cleanup registrations that grow
 
 `serve_buffered` calls `method()`, `path()`, `query()`, `headers()` and `protocol()` through the `HttpExchange` interface, each a cancellation point, with one more owned value live each time. The `unwind` pass opened a new window per call and registered every live value again: 18 `msrt_cleanup_push` per `/health` request. A value born inside an open window now gets a push of its own and the window's single discard pops them all (not across a `msrt_cleanup_discard`, which can pop below the window). Callgrind, same tree before and after: 14,301 to 13,614 instructions per request (−4.8%).
+
+## 2026-11-12, one core: instructions per request against hyper
+
+Callgrind, `/health`, 64-connection load for 8 s, exact request counts, release builds: hyper (two tokio workers, the `bench/perf/web/rust` server) 6,733 instructions per request; Manuscript 15,217 before this series and 13,606 after #3700 and #3728. Hyper does half the work, so no single cut closes the gap; the remaining cost is spread over about 23 allocations, one promise and one task per request, and the conversions between the server's Rust state and the language's values.
+
+This change: a runtime task started with `start_native` (the server's request and reactor tasks) skips the stack walk that records where a promise was started, since its starter's frames are runtime code with no source line (1.5%, plus one allocation); a header name with a single value keeps it inline instead of in a one-element list (`Headers::Values`, one allocation per header); `HttpExchange.protocol()` returns its static text without a `String` copy. 13,606 to 13,065 instructions per request (−4.0%).
+
+Next change: `HttpExchange.method()`, `path()` and `query()` build the language string straight from the exchange state (`Str::new`, an `IntoAbi` for `Str`) instead of cloning a `String` that the native boundary copies again: 13,065 to 12,687 instructions per request (−2.9%). A thread-id change for `Bound` (replacing `thread::current().id()`, which clones an `Arc`) measured 0 instructions and was dropped.
