@@ -98,4 +98,4 @@ Same machine; Release LLVM build; callgrind instruction totals. `grid.ms` is LCS
 | wall | 132 ms | 68 ms | 73 ms |
 
 - `self.left?.insert(key)` took the record, unboxed the child into a slot, called, boxed it again with a new allocation and refilled the field. The payload of a recursive `Optional` is already in memory, in the box, so a `var` call now gets the box's address (`opt.addr`, `alias_payload_addr` in `crates/ms-lower/src/alias.rs`) and changes the child where it lies. Only a boxed optional has such an address; an inline payload keeps the take and put-back.
-- Remaining gap to C (34M instructions): the per-level `load Node` of the whole record, depth counters and the `is_none` test before the call.
+- The remaining 34M instructions against C are not analysed.
