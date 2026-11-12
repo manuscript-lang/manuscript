@@ -30,10 +30,6 @@ use crate::ir::*;
 use crate::types::Ty;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
-/// Where `expect_fault` begins. Windows runs the operation in this process (Unix forks a child that
-/// exits), so a fault inside it leaves by a jump like a cancelled task and needs the same cleanups.
-const TRAP_BEGIN: &str = "msrt_trap_begin";
-
 /// Rewrites `m` so cancellation releases owned locals; returns whether anything changed.
 pub fn run(m: &mut Module) -> bool {
     if !starts_tasks(m) {
@@ -111,9 +107,7 @@ struct Cx {
 }
 
 fn starts_tasks(m: &Module) -> bool {
-    m.externs
-        .iter()
-        .any(|e| e.role == ExternRole::SpawnsTask || e.name == TRAP_BEGIN)
+    m.externs.iter().any(|e| e.role == ExternRole::SpawnsTask)
 }
 
 fn leaf_extern(m: &Module, e: ExtId) -> bool {

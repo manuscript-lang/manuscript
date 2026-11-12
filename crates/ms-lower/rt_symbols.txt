@@ -356,9 +356,6 @@ msrt_token_new(flags: u32) -> u64
 msrt_token_park(id: u64, timeout_ns: i64, value_out: *mut u64) -> u32
 msrt_token_post(id: u64, value: u64)
 msrt_token_post_remote(id: u64, value: u64)
-msrt_trap_begin() -> u8 @domain=trap
-msrt_trap_end() -> ! @domain=trap
-msrt_trap_wait(out: *mut StrVal) -> u8 @domain=trap
 msrt_uint_compare(a: i64, b: i64) -> i64 @domain=number
 msrt_uint_div(a: i64, b: i64) -> i64 @domain=number
 msrt_uint_rem(a: i64, b: i64) -> i64 @domain=number
