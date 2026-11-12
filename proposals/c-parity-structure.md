@@ -81,7 +81,7 @@ Measured after the tracks above were started ([second pass](../bench/perf/struct
 | --- | --- | --- | --- | --- |
 | 4 | Exit frees every owned value | 25 to 33 ms of a 168 to 218 ms build-then-exit program | `main` skips drops of plain memory at process exit; resources still close | S |
 | 5 | Nested element writes move the row out and back | LCS over `List[List[Int]]`: 30 instructions per cell against 12 | write through the place's address; tell LLVM an element store leaves list headers unchanged, so row loads and bounds checks hoist | M |
-| 6 | A file call inside concurrent work hops to a pool thread | `pargroup` 2.3x C; 4,707 `futex` and 1,505 `epoll_wait` calls for 2,000 files | keep the pool hop, which parks the task until the disk answers, but first try the read without blocking (Linux `preadv2` with `RWF_NOWAIT`): a cached read finishes on the task's thread, an uncached one still parks | M |
+| 6 | A file call inside concurrent work hops to a pool thread | `pargroup` 2.3x C; 4,707 `futex` and 1,505 `epoll_wait` calls for 2,000 files | keep the pool hop, which parks the task until the disk answers, and make it cheaper on every platform (one wake per file call, not three); where the OS can answer a cached read without blocking, try that first (Linux `preadv2` with `RWF_NOWAIT`, Windows overlapped `ReadFile` completing at once; macOS has no such call and keeps the hop) | M |
 | 7 | Stack check per recursive call | 5 of 20.7 instructions per `fib` call, two dependent loads | keep the limit one load away, or check once per recursion cycle | S |
 | 9 | A character is a `String` | tokenizer with `text.get(i) == "+"`: 11.5x C; 1.4x in compiled code once it works on code points | the compiler keeps a one-scalar `String` (`get`, a `chars()` element, a one-character literal) as its code point, so comparisons are integer compares; it becomes a `String` only where it is stored or passed | M |
 | 10 | Containers written in `.ms` cannot leave a slot empty | `Deque` stores `List[T?]` and calls `msrt_list_replace` per pop: 80 instructions per push and pop, BFS 4.9x C | one internal `@std` storage primitive with take and put by index, for `Deque`, `Queue`, `PriorityQueue` and the containers track 1 moves to source | S to M |
@@ -89,6 +89,7 @@ Measured after the tracks above were started ([second pass](../bench/perf/struct
 
 - 8 is the safety floor, not a defect: a flag tested once per loop pass was measured and gains nothing, and C with the same checks is 1.07x to 2.9x plain C on the kernels. Build it last.
 - 9 replaces the four-byte text cell noted below for code that reads characters; grids that store them still pay 16 bytes a cell.
+- Platforms: every number here is Linux x86-64. Tracks 1 to 3 and items 5, 8, 9 and 10 change the compiler and `.ms` library, so they apply on macOS and Windows alike; items 4, 6 and 7 touch OS-specific runtime code and each needs its before/after run on all three before it is called done.
 - Measured at or ahead of C, so not pursued: `Result` and `?`, interface dispatch, `print`, `String +=`, `parse_int`, process start.
 
 ## Components touched
