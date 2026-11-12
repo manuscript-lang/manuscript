@@ -22,6 +22,8 @@ pub const BASE_THRESHOLD: usize = 60;
 pub const SINGLE_CALLER_BONUS: usize = 25;
 /// Extra allowance per constant argument.
 pub const CONST_ARG_BONUS: usize = 5;
+/// Largest self-recursive function unrolled once into itself (see [`self_unroll_source`]).
+pub const SELF_UNROLL_MAX_SIZE: usize = 40;
 /// Cap on growth of one caller, as a multiple of its original size plus [`GROWTH_SLACK`].
 pub const GROWTH_FACTOR: usize = 4;
 /// Fixed growth allowance per caller.
@@ -38,9 +40,11 @@ pub fn run(m: &mut Module) -> bool {
     let mut changed = specialize_sort_thunks(m);
     changed |= super::sortgen::run(m);
     changed |= specialize_closure_args(m);
+    // A recursive cycle keeps one check; the unchecked functions on it then inline like any other.
+    changed |= strip_depth(m, true);
     changed |= inline_calls(m);
     changed |= inline_closures(m);
-    changed |= strip_depth(m);
+    changed |= strip_depth(m, false);
     changed |= remove_dead(m);
     changed
 }
@@ -197,6 +201,40 @@ fn sccs(adj: &[Vec<usize>]) -> Vec<Vec<usize>> {
     out
 }
 
+/// The nodes that keep their recursion check: every cycle of `adj` passes through one of them, so
+/// the stack stays bounded by one check per cycle plus the longest acyclic chain between checks.
+/// These are the targets of the depth-first back edges (a cycle always closes with one), found
+/// from `entry` first so a recursion is checked where it is entered from outside.
+fn cycle_breakers(adj: &[Vec<usize>], entry: Option<usize>) -> Vec<bool> {
+    // 0 unvisited, 1 on the DFS stack, 2 done.
+    let mut state = vec![0u8; adj.len()];
+    let mut out = vec![false; adj.len()];
+    for root in entry.into_iter().chain(0..adj.len()) {
+        if state[root] != 0 {
+            continue;
+        }
+        state[root] = 1;
+        let mut stack = vec![(root, 0usize)];
+        while let Some(&mut (v, ref mut next)) = stack.last_mut() {
+            let Some(&w) = adj[v].get(*next) else {
+                state[v] = 2;
+                stack.pop();
+                continue;
+            };
+            *next += 1;
+            match state[w] {
+                0 => {
+                    state[w] = 1;
+                    stack.push((w, 0));
+                }
+                1 => out[w] = true,
+                _ => {}
+            }
+        }
+    }
+    out
+}
+
 /// Per node: whether it lies on a cycle of `adj`.
 fn cyclic(adj: &[Vec<usize>]) -> Vec<bool> {
     let mut out = vec![false; adj.len()];
@@ -280,7 +318,46 @@ fn const_values(blocks: &[BlockData]) -> impl Iterator<Item = Value> + '_ {
         .filter_map(|i| i.res)
 }
 
+/// The body of a small directly self-recursive function, to be copied into its own recursive
+/// calls once: each copy runs without a call, a frame or a recursion check of its own, and the
+/// calls inside it are the function's own entries, so the check still runs once per frame
+/// of the original size. `fib` makes half the calls. The function then takes `Never`, so the
+/// unrolling happens once however often the pass runs.
+fn self_unroll_source(m: &Module, fi: usize) -> Option<Func> {
+    let f = &m.funcs[fi];
+    if f.inline != InlineHint::Auto || !matches!(f.kind, FuncKind::Normal) {
+        return None;
+    }
+    let calls = f
+        .blocks
+        .iter()
+        .flat_map(|b| b.insts.iter())
+        .filter(|i| i.op == Op::Call && i.imm == Imm::Func(FuncId(fi as u32)))
+        .count();
+    (calls > 0 && calls <= 2 && f.inst_count() <= SELF_UNROLL_MAX_SIZE).then(|| f.clone())
+}
+
+/// Whether the function opens with its recursion check.
+fn has_check(f: &Func) -> bool {
+    f.blocks[0]
+        .insts
+        .first()
+        .is_some_and(|i| i.op == Op::DepthEnter)
+}
+
 fn inline_into(m: &mut Module, fi: usize, cyc: &[bool], sites: &[usize]) -> bool {
+    let mut changed = inline_sites(m, fi, cyc, sites, false);
+    // Inlining a sibling on the cycle can leave the function directly self-recursive and small.
+    if m.funcs[fi].inline == InlineHint::Auto && self_unroll_source(m, fi).is_some() {
+        changed |= inline_sites(m, fi, cyc, sites, true);
+    }
+    changed
+}
+
+/// Inlines the call sites of `fi` its heuristics choose; with `only_self`, only its own calls
+/// (the unrolling).
+fn inline_sites(m: &mut Module, fi: usize, cyc: &[bool], sites: &[usize], only_self: bool) -> bool {
+    let unroll = self_unroll_source(m, fi);
     let budget = m.funcs[fi].inst_count() * GROWTH_FACTOR + GROWTH_SLACK;
     let mut consts: ValueSet = const_values(&m.funcs[fi].blocks).collect();
     let mut grown = 0usize;
@@ -299,7 +376,19 @@ fn inline_into(m: &mut Module, fi: usize, cyc: &[bool], sites: &[usize]) -> bool
             };
             let gi = g.index();
             let callee = &m.funcs[gi];
-            if gi == fi || cyc[gi] || !matches!(callee.kind, FuncKind::Normal) {
+            if gi == fi && unroll.is_some() {
+                picks.push((ii, gi));
+                continue;
+            }
+            if only_self {
+                continue;
+            }
+            // A callee on a cycle inlines once its check is gone: every cycle through it still
+            // passes a checked function, which never inlines.
+            if gi == fi
+                || (cyc[gi] && has_check(callee))
+                || !matches!(callee.kind, FuncKind::Normal)
+            {
                 continue;
             }
             let size = callee.inst_count();
@@ -324,7 +413,10 @@ fn inline_into(m: &mut Module, fi: usize, cyc: &[bool], sites: &[usize]) -> bool
             }
         }
         for (ii, gi) in picks.into_iter().rev() {
-            let callee = m.funcs[gi].clone();
+            let callee = match (&unroll, gi == fi) {
+                (Some(orig), true) => orig.clone(),
+                _ => m.funcs[gi].clone(),
+            };
             let ret_own = m.needs_drop(callee.ret) && !callee.ret_borrowed;
             let cont = inline_at(&mut m.funcs[fi], bi, ii, &callee, ret_own);
             // Only the call definition is replaced; existing constants keep their IDs when
@@ -332,6 +424,9 @@ fn inline_into(m: &mut Module, fi: usize, cyc: &[bool], sites: &[usize]) -> bool
             consts.extend(const_values(&m.funcs[fi].blocks[cont + 1..]));
             changed = true;
         }
+    }
+    if unroll.is_some() && changed {
+        m.funcs[fi].inline = InlineHint::Never;
     }
     changed
 }
@@ -959,10 +1054,13 @@ fn specialized_callee(m: &Module, callee: FuncId, g: FuncId, i: usize) -> Func {
     f
 }
 
-/// Removes depth accounting from functions that cannot be part of a recursive cycle.
-/// Indirect calls (closures, interfaces, runtime callbacks) may reach any closure or
-/// method function, so they are edges to all of them.
-fn strip_depth(m: &mut Module) -> bool {
+/// Removes depth accounting from every function that does not need it to bound the stack: a
+/// function on no cycle, or on a cycle that another function already checks. Indirect calls
+/// (closures, interfaces, runtime callbacks) may reach any closure or method function, so they
+/// are edges to all of them. Runs after the last inlining: an inlined body drops its check, so
+/// merging an unchecked function into a checked one is fine but the reverse would leave a cycle
+/// with none.
+fn strip_depth(m: &mut Module, early: bool) -> bool {
     let indirect_targets: Vec<usize> = m
         .funcs
         .iter()
@@ -989,10 +1087,12 @@ fn strip_depth(m: &mut Module) -> bool {
             v
         })
         .collect();
+    let checked = cycle_breakers(&adj, m.entry.map(|e| e.index()));
     let cyc = cyclic(&adj);
     let mut changed = false;
     for (i, f) in m.funcs.iter_mut().enumerate() {
-        if cyc[i] {
+        // Before inlining, acyclic functions keep their check so their size is unchanged.
+        if checked[i] || (early && !cyc[i]) {
             continue;
         }
         for b in &mut f.blocks {

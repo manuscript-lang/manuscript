@@ -1,0 +1,30 @@
+module "counted_push"
+entry @main
+fn @main() -> int {
+b0:
+  %n: int = iconst 5
+  %z: int = iconst 0
+  %one: int = iconst 1
+  %e: list<int> = list.lit
+  br build(%z, %e)
+build(%i: int, %l: move list<int>):
+  %c: bool = icmp.lt %i, %n
+  br_if %c, push(), read0()
+push:
+  %l2: list<int> = list.push %l, %i
+  %i2: int = iadd.chk %i, %one
+  br build(%i2, %l2)
+read0:
+  br read(%z, %z, %l)
+read(%j: int, %acc: int, %m: move list<int>):
+  %c2: bool = icmp.lt %j, %n
+  br_if %c2, body(), done()
+body:
+  %x: int = list.get %m, %j
+  %j2: int = iadd %j, %one
+  %acc2: int = iadd %acc, %x
+  br read(%j2, %acc2, %m)
+done:
+  drop %m
+  ret %acc
+}

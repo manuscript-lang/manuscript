@@ -150,7 +150,8 @@ impl Headers {
     /// Received headers as handlers see them: canonical names, sorted
     /// by name, values in arrival order.
     pub fn from_received(fields: impl IntoIterator<Item = (String, Vec<u8>)>) -> Headers {
-        let mut entries: Vec<Entry> = Vec::new();
+        let fields = fields.into_iter();
+        let mut entries: Vec<Entry> = Vec::with_capacity(fields.size_hint().0);
         for (name, value) in fields {
             let key = canonical_owned(name);
             match entries.iter_mut().find(|e| e.name == key) {

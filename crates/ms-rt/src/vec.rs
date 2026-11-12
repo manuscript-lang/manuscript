@@ -1973,68 +1973,13 @@ pub unsafe extern "C-unwind" fn msrt_bytes_read_word(
 
 // ---- StringBuilder (bytes) ----
 
+pub(crate) use ms_rt_hot::copy_short;
+
+/// What the program's inlined `msrt_strbuilder_append` (in `ms-rt-hot`) calls when the text does
+/// not fit the builder's spare room.
 #[unsafe(no_mangle)]
 // ms: leaf
-pub unsafe extern "C-unwind" fn msrt_strbuilder_append(b: *mut VecVal, s: *const StrVal) {
-    // SAFETY: caller contract.
-    unsafe {
-        // One byte (a character or punctuation) is the common append and needs no call:
-        // this path keeps no registers live across a call, so it has no frame.
-        let v = &mut *b;
-        let n = (*s).len();
-        if n == 1 && v.len < v.cap {
-            *v.ptr.add(v.len) = *string::bytes(s).as_ptr();
-            v.len += 1;
-            return;
-        }
-        // Text that fits is copied in place: a short word as overlapping word moves, longer
-        // text with a single `memcpy`. Only a full buffer reaches the growth path.
-        if v.cap - v.len >= n {
-            let src = string::bytes(s).as_ptr();
-            let dst = v.ptr.add(v.len);
-            // The length moves first so that the copy is the last thing the function does: a
-            // long copy is then a tail call to `memcpy`, and the function needs no frame.
-            v.len += n;
-            if n <= 16 {
-                copy_short(src, dst, n);
-            } else {
-                core::ptr::copy_nonoverlapping(src, dst, n);
-            }
-            return;
-        }
-        append_slow(b, s);
-    }
-}
-
-/// Copies `n <= 16` bytes with at most two overlapping loads and stores, so the compiler cannot
-/// turn it into a vector loop or a `memcpy` call. The ranges must not overlap.
-#[inline(always)]
-pub(crate) unsafe fn copy_short(src: *const u8, dst: *mut u8, n: usize) {
-    // SAFETY: caller guarantees `n` readable and writable bytes; each access stays within them.
-    unsafe {
-        if n >= 8 {
-            let head = src.cast::<u64>().read_unaligned();
-            let tail = src.add(n - 8).cast::<u64>().read_unaligned();
-            dst.cast::<u64>().write_unaligned(head);
-            dst.add(n - 8).cast::<u64>().write_unaligned(tail);
-        } else if n >= 4 {
-            let head = src.cast::<u32>().read_unaligned();
-            let tail = src.add(n - 4).cast::<u32>().read_unaligned();
-            dst.cast::<u32>().write_unaligned(head);
-            dst.add(n - 4).cast::<u32>().write_unaligned(tail);
-        } else if n > 0 {
-            let first = *src;
-            let mid = *src.add(n / 2);
-            let last = *src.add(n - 1);
-            *dst = first;
-            *dst.add(n / 2) = mid;
-            *dst.add(n - 1) = last;
-        }
-    }
-}
-
-#[inline(never)]
-unsafe fn append_slow(b: *mut VecVal, s: *const StrVal) {
+pub unsafe extern "C-unwind" fn msrt_strbuilder_append_slow(b: *mut VecVal, s: *const StrVal) {
     // SAFETY: caller contract.
     unsafe {
         let data = string::bytes(s);

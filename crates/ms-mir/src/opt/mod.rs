@@ -69,6 +69,8 @@ pub fn optimize(m: &mut Module, level: Level, verify: bool) {
         });
         bytetake::run(m);
         copyelim::run_takes(m);
+        // After the early drops: a long function keeps the ones it moved up.
+        crate::exit_drops::run(m);
         return;
     }
     let check = |m: &Module, pass: &str| {
@@ -114,6 +116,8 @@ pub fn optimize(m: &mut Module, level: Level, verify: bool) {
             break;
         }
     }
+    crate::exit_drops::run(m);
+    check(m, "exit_drops");
     reserve::run(m);
     check(m, "reserve");
     lastuse::run(m);
