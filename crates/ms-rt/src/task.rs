@@ -258,6 +258,8 @@ struct Sched {
     /// `fd_waiters[fd]` holds the handles of the tasks waiting on `fd`, oldest first.
     fd_waiters: Vec<Vec<u64>>,
     fd_waiting: usize,
+    /// Task switches since the last non-blocking descriptor poll.
+    switches_since_poll: u32,
     epfd: i32,
     /// Idle stacks (base, length) kept for reuse; a stack is reused only for the same length.
     pool: Vec<(usize, usize)>,
@@ -317,6 +319,7 @@ crate::isolate_static! {
     kill_limit: MIN_TIMER_LIMIT,
     fd_waiters: Vec::new(),
     fd_waiting: 0,
+    switches_since_poll: 0,
     epfd: -1,
     pool: Vec::new(),
     pool_clean: 0,

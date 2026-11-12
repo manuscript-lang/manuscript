@@ -620,7 +620,7 @@ impl FnLower<'_> {
             // The operand's `ok` payload is a borrow of the arguments it was called with: it
             // stays where it is, and the operand (which owns nothing else here) is dropped with
             // the statement.
-            self.temps.push(cur);
+            self.pend_temp(cur);
             return Ok(Val {
                 v: payload,
                 own: false,

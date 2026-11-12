@@ -69,8 +69,45 @@ pub fn clean(path: &str) -> String {
     out
 }
 
+/// The common origin-form target that needs no decoding or cleaning: one pass over the bytes and
+/// one allocation per field. `None` sends the target down the general path.
+fn parse_plain(target: &str) -> Option<Target> {
+    let b = target.as_bytes();
+    if b.first() != Some(&b'/') {
+        return None;
+    }
+    let mut query_at = b.len();
+    let mut prev = 0u8;
+    for (i, &c) in b.iter().enumerate() {
+        if c < 0x21 || c == 0x7f || c == b'%' || c == b'#' {
+            return None;
+        }
+        if c == b'?' {
+            query_at = i;
+            break;
+        }
+        // An empty or dot segment would need cleaning.
+        if prev == b'/' && (c == b'/' || c == b'.') {
+            return None;
+        }
+        prev = c;
+    }
+    let query = target.get(query_at + 1..).unwrap_or("");
+    if query.bytes().any(|c| c < 0x21 || c == 0x7f || c == b'#') {
+        return None;
+    }
+    Some(Target {
+        path: target[..query_at].to_string(),
+        query: query.to_string(),
+        host: None,
+    })
+}
+
 /// Splits and normalizes the target of a request line.
 pub fn parse(target: &str) -> Result<Target, BadTarget> {
+    if let Some(fast) = parse_plain(target) {
+        return Ok(fast);
+    }
     if target.bytes().any(|b| b < 0x20 || b == 0x7f || b == b' ') {
         return Err(BadTarget("Bad Request"));
     }
@@ -156,5 +193,12 @@ mod tests {
         assert_eq!(parse("http://h").unwrap().path, "/");
         assert_eq!(parse("/dir/").unwrap().path, "/dir/");
         assert_eq!(parse("/é").unwrap().path, "/é");
+        let t = parse("/user/42?n=1").unwrap();
+        assert_eq!((t.path.as_str(), t.query.as_str()), ("/user/42", "n=1"));
+        assert_eq!(parse("/a//b").unwrap().path, "/a/b");
+        assert_eq!(parse("/a/./b").unwrap().path, "/a/b");
+        assert_eq!(parse("/a?x#y").unwrap().query, "x");
+        assert_eq!(parse("/a?x y"), Err(BadTarget("Bad Request")));
+        assert_eq!(parse("/").unwrap().path, "/");
     }
 }
