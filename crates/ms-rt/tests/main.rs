@@ -4,4 +4,3 @@
 mod distinct_guard;
 mod sort_guard;
 mod task_deadlock;
-mod trap_isolation;

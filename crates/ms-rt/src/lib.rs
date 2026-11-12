@@ -58,11 +58,6 @@ pub mod sys;
 #[path = "sys_windows.rs"]
 pub mod sys;
 pub mod task;
-#[cfg(not(windows))]
-pub mod trap;
-#[cfg(windows)]
-#[path = "trap_windows.rs"]
-pub mod trap;
 pub mod tree;
 pub mod utf8;
 pub mod vec;
