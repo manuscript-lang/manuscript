@@ -539,58 +539,18 @@ pub unsafe extern "C-unwind" fn msrt_float_to_float32(v: f64, out: *mut f32) -> 
     1
 }
 
-/// `Float.compare`: a total order in which `-0.0 == 0.0` and NaN is equal to itself and sorts last.
+/// `UInt64./` by zero: the fault. The division itself is `ms-rt-hot`'s.
 #[unsafe(no_mangle)]
 // ms: leaf
-pub extern "C-unwind" fn msrt_float_compare(a: f64, b: f64) -> i64 {
-    if a.is_nan() || b.is_nan() {
-        return a.is_nan() as i64 - b.is_nan() as i64;
-    }
-    (a > b) as i64 - (a < b) as i64
+pub extern "C-unwind" fn msrt_uint_div_slow(_a: i64, _b: i64) -> i64 {
+    crate::fault::msrt_fault_div_zero()
 }
 
-/// `Int.compare`.
+/// `UInt64.%` by zero: the fault.
 #[unsafe(no_mangle)]
 // ms: leaf
-pub extern "C-unwind" fn msrt_int_compare(a: i64, b: i64) -> i64 {
-    (a > b) as i64 - (a < b) as i64
-}
-
-/// `UInt64.compare`: the operands are bit patterns.
-#[unsafe(no_mangle)]
-pub extern "C-unwind" fn msrt_uint_compare(a: i64, b: i64) -> i64 {
-    let (a, b) = (a as u64, b as u64);
-    (a > b) as i64 - (a < b) as i64
-}
-
-/// `UInt64./`.
-#[unsafe(no_mangle)]
-pub extern "C-unwind" fn msrt_uint_div(a: i64, b: i64) -> i64 {
-    if b == 0 {
-        crate::fault::msrt_fault_div_zero();
-    }
-    ((a as u64) / (b as u64)) as i64
-}
-
-/// `UInt64.%`.
-#[unsafe(no_mangle)]
-pub extern "C-unwind" fn msrt_uint_rem(a: i64, b: i64) -> i64 {
-    if b == 0 {
-        crate::fault::msrt_fault_rem_zero();
-    }
-    ((a as u64) % (b as u64)) as i64
-}
-
-/// `UInt64.to_float`.
-#[unsafe(no_mangle)]
-pub extern "C-unwind" fn msrt_uint_to_float(v: i64) -> f64 {
-    v as u64 as f64
-}
-
-/// `UInt64.to_float32`: round once to binary32, then widen for the runtime ABI.
-#[unsafe(no_mangle)]
-pub extern "C-unwind" fn msrt_uint_to_float32(v: i64) -> f64 {
-    f64::from(v as u64 as f32)
+pub extern "C-unwind" fn msrt_uint_rem_slow(_a: i64, _b: i64) -> i64 {
+    crate::fault::msrt_fault_rem_zero()
 }
 
 /// `UInt64` in decimal digits.
@@ -637,11 +597,11 @@ mod tests {
     #[test]
     fn uint64_helpers() {
         let big = u64::MAX as i64;
-        assert_eq!(msrt_uint_compare(big, 1), 1);
-        assert_eq!(msrt_uint_compare(1, big), -1);
-        assert_eq!(msrt_uint_div(big, 2) as u64, u64::MAX / 2);
-        assert_eq!(msrt_uint_rem(big, 10), 5);
-        assert_eq!(msrt_uint_to_float(big), u64::MAX as f64);
+        assert_eq!(ms_rt_hot::msrt_uint_compare(big, 1), 1);
+        assert_eq!(ms_rt_hot::msrt_uint_compare(1, big), -1);
+        assert_eq!(ms_rt_hot::msrt_uint_div(big, 2) as u64, u64::MAX / 2);
+        assert_eq!(ms_rt_hot::msrt_uint_rem(big, 10), 5);
+        assert_eq!(ms_rt_hot::msrt_uint_to_float(big), u64::MAX as f64);
         let mut tmp = [0u8; 20];
         assert_eq!(format_u64(u64::MAX, &mut tmp), b"18446744073709551615");
         let mut out = Vec::new();
@@ -664,7 +624,11 @@ mod tests {
             (u64::MAX, 18_446_744_073_709_551_616.0),
         ];
         for (input, expected) in cases {
-            assert_eq!(msrt_uint_to_float32(input as i64), expected, "{input}");
+            assert_eq!(
+                ms_rt_hot::msrt_uint_to_float32(input as i64),
+                expected,
+                "{input}"
+            );
         }
     }
 
@@ -968,12 +932,12 @@ mod tests {
             assert_eq!(msrt_float_truncate_to_int(9223372036854775808.0, &mut n), 0);
             assert_eq!(msrt_float_truncate_to_int(f64::NAN, &mut n), 0);
         }
-        assert_eq!(msrt_float_compare(f64::NAN, 1.0), 1);
-        assert_eq!(msrt_float_compare(1.0, f64::NAN), -1);
-        assert_eq!(msrt_float_compare(f64::NAN, f64::NAN), 0);
-        assert_eq!(msrt_float_compare(-0.0, 0.0), 0);
-        assert_eq!(msrt_float_compare(2.0, 1.0), 1);
-        assert_eq!(msrt_int_compare(1, 2), -1);
+        assert_eq!(ms_rt_hot::msrt_float_compare(f64::NAN, 1.0), 1);
+        assert_eq!(ms_rt_hot::msrt_float_compare(1.0, f64::NAN), -1);
+        assert_eq!(ms_rt_hot::msrt_float_compare(f64::NAN, f64::NAN), 0);
+        assert_eq!(ms_rt_hot::msrt_float_compare(-0.0, 0.0), 0);
+        assert_eq!(ms_rt_hot::msrt_float_compare(2.0, 1.0), 1);
+        assert_eq!(ms_rt_hot::msrt_int_compare(1, 2), -1);
         let mut m = crate::string::NO_STR;
         // SAFETY: `m` is writable.
         unsafe { msrt_numbers_error_message(STATUS_OUT_OF_RANGE, &mut m) };

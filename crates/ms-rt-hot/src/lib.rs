@@ -947,3 +947,344 @@ pub unsafe extern "C-unwind" fn msrt_strbuilder_append(b: usize, s: usize) {
         msrt_strbuilder_append_slow(b, s);
     }
 }
+
+// ---------------------------------------------------------------------------
+// Lists and bytes
+// ---------------------------------------------------------------------------
+
+unsafe extern "C-unwind" {
+    /// The general lookup: an index outside the list (the default or the fault).
+    fn msrt_list_at_slow(v: usize, d: usize, index: i64, default: usize) -> usize;
+    /// `get` for an element that is not an 8-byte scalar, or an index outside the list.
+    fn msrt_list_get_slow(v: usize, d: usize, index: i64, default: usize, out: usize);
+    /// `first` for an element that is not an 8-byte scalar.
+    fn msrt_list_first_slow(v: usize, d: usize, out: usize) -> u8;
+    /// `last` for an element that is not an 8-byte scalar.
+    fn msrt_list_last_slow(v: usize, d: usize, out: usize) -> u8;
+    /// `Bytes.get` for an index outside the bytes (the default or the fault).
+    fn msrt_bytes_get_slow(b: usize, index: i64, has_default: u8, default: i64) -> i64;
+    /// `Bytes.view` for bounds outside the bytes (the fault).
+    fn msrt_bytes_view_slow(b: usize, start: i64, end: i64, out: usize);
+    /// `Bytes.index_of_byte` for a hit beyond the first 17 bytes after `start`.
+    fn msrt_bytes_index_of_byte_slow(b: usize, value: i64, start: i64, out: usize) -> u8;
+}
+
+/// Whether the slot type is an 8-byte `Int`, `Float` or `Bool`, which copies as one word.
+///
+/// # Safety
+/// `d` must be a live descriptor.
+#[inline(always)]
+unsafe fn word_slot(d: *const TypeDesc) -> bool {
+    // SAFETY: caller contract.
+    unsafe { (*d).kind <= ms_rt_abi::KIND_BOOL && (*d).size == 8 }
+}
+
+#[inline(always)]
+fn relative(len: usize, index: i64) -> i64 {
+    if index < 0 { len as i64 + index } else { index }
+}
+
+/// C view: `msrt_list_at(v: *const VecVal, d: ElemDesc, index: i64, default: *const u8) -> *const u8`
+///
+/// The element's address; an index outside the list is the runtime's (the default or the fault).
+#[unsafe(no_mangle)]
+// ms: leaf domain=collection
+pub unsafe extern "C-unwind" fn msrt_list_at(
+    v: usize,
+    d: usize,
+    index: i64,
+    default: usize,
+) -> usize {
+    // SAFETY: caller passes a live list and its element descriptor.
+    unsafe {
+        let v = &*(v as *const VecVal);
+        let i = relative(v.len, index);
+        if i >= 0 && (i as usize) < v.len {
+            return v.ptr as usize + i as usize * (*(d as *const TypeDesc)).size as usize;
+        }
+        msrt_list_at_slow(v as *const VecVal as usize, d, index, default)
+    }
+}
+
+/// C view: `msrt_list_get(v: *const VecVal, d: ElemDesc, index: i64, default: *const u8, out: *mut u8)`
+///
+/// `get` of an `Int`, `Float` or `Bool` element inside the list is one word load; every other
+/// element type (copies may allocate) and every other index is the runtime's.
+#[unsafe(no_mangle)]
+// ms: leaf domain=collection
+pub unsafe extern "C-unwind" fn msrt_list_get(
+    v: usize,
+    d: usize,
+    index: i64,
+    default: usize,
+    out: usize,
+) {
+    // SAFETY: caller passes a live list, its element descriptor and a writable `out`.
+    unsafe {
+        let list = &*(v as *const VecVal);
+        let i = relative(list.len, index);
+        if word_slot(d as *const TypeDesc) && i >= 0 && (i as usize) < list.len {
+            *(out as *mut u64) = *(list.ptr as *const u64).add(i as usize);
+            return;
+        }
+        msrt_list_get_slow(v, d, index, default, out)
+    }
+}
+
+/// C view: `msrt_list_first(v: *const VecVal, d: ElemDesc, out: *mut u8) -> u8`
+#[unsafe(no_mangle)]
+// ms: leaf domain=collection
+pub unsafe extern "C-unwind" fn msrt_list_first(v: usize, d: usize, out: usize) -> u8 {
+    // SAFETY: caller passes a live list, its element descriptor and a writable `out`.
+    unsafe {
+        let list = &*(v as *const VecVal);
+        if !word_slot(d as *const TypeDesc) {
+            return msrt_list_first_slow(v, d, out);
+        }
+        if list.len == 0 {
+            return 0;
+        }
+        *(out as *mut u64) = *(list.ptr as *const u64);
+        1
+    }
+}
+
+/// C view: `msrt_list_last(v: *const VecVal, d: ElemDesc, out: *mut u8) -> u8`
+#[unsafe(no_mangle)]
+// ms: leaf domain=collection
+pub unsafe extern "C-unwind" fn msrt_list_last(v: usize, d: usize, out: usize) -> u8 {
+    // SAFETY: caller passes a live list, its element descriptor and a writable `out`.
+    unsafe {
+        let list = &*(v as *const VecVal);
+        if !word_slot(d as *const TypeDesc) {
+            return msrt_list_last_slow(v, d, out);
+        }
+        if list.len == 0 {
+            return 0;
+        }
+        *(out as *mut u64) = *(list.ptr as *const u64).add(list.len - 1);
+        1
+    }
+}
+
+#[inline(always)]
+unsafe fn bslice<'a>(b: usize) -> &'a [u8] {
+    // SAFETY: caller passes a live bytes value.
+    unsafe {
+        let b = &*(b as *const VecVal);
+        if b.len == 0 {
+            &[]
+        } else {
+            core::slice::from_raw_parts(b.ptr, b.len)
+        }
+    }
+}
+
+/// C view: `msrt_bytes_starts_with(b: *const VecVal, v: *const VecVal) -> u8`
+#[unsafe(no_mangle)]
+// ms: leaf pure domain=binary
+pub unsafe extern "C-unwind" fn msrt_bytes_starts_with(b: usize, v: usize) -> u8 {
+    // SAFETY: caller passes live bytes.
+    unsafe { bslice(b).starts_with(bslice(v)) as u8 }
+}
+
+/// C view: `msrt_bytes_ends_with(b: *const VecVal, v: *const VecVal) -> u8`
+#[unsafe(no_mangle)]
+// ms: leaf pure domain=binary
+pub unsafe extern "C-unwind" fn msrt_bytes_ends_with(b: usize, v: usize) -> u8 {
+    // SAFETY: caller passes live bytes.
+    unsafe { bslice(b).ends_with(bslice(v)) as u8 }
+}
+
+/// C view: `msrt_bytes_get(b: *const VecVal, index: i64, has_default: HasRaw, default: i64) -> i64`
+///
+/// `Bytes.get` inside the bytes is one byte load; an index outside is the runtime's.
+#[unsafe(no_mangle)]
+// ms: leaf domain=binary
+pub unsafe extern "C-unwind" fn msrt_bytes_get(
+    b: usize,
+    index: i64,
+    has_default: u8,
+    default: i64,
+) -> i64 {
+    // SAFETY: caller passes live bytes.
+    unsafe {
+        let s = bslice(b);
+        let i = relative(s.len(), index);
+        if i >= 0 && (i as usize) < s.len() {
+            return s[i as usize] as i64;
+        }
+        msrt_bytes_get_slow(b, index, has_default, default)
+    }
+}
+
+/// C view: `msrt_bytes_view(b: *const VecVal, start: i64, end: i64, out: *mut VecVal)`
+///
+/// A view whose bounds are inside the receiver is three words (`cap == 0` marks a view); bounds
+/// outside it fault in the runtime.
+#[unsafe(no_mangle)]
+// ms: leaf domain=binary
+pub unsafe extern "C-unwind" fn msrt_bytes_view(b: usize, start: i64, end: i64, out: usize) {
+    // SAFETY: caller passes live bytes and a writable `out`; the result borrows `b`.
+    unsafe {
+        let s = bslice(b);
+        let (a, e) = (relative(s.len(), start), relative(s.len(), end));
+        if a < 0 || e < a || e > s.len() as i64 {
+            return msrt_bytes_view_slow(b, start, end, out);
+        }
+        *(out as *mut VecVal) = if a == e {
+            VecVal {
+                ptr: core::ptr::null_mut(),
+                len: 0,
+                cap: 0,
+            }
+        } else {
+            VecVal {
+                ptr: s.as_ptr().add(a as usize) as *mut u8,
+                len: (e - a) as usize,
+                cap: 0,
+            }
+        };
+    }
+}
+
+/// C view: `msrt_bytes_index_of_byte(b: *const VecVal, value: i64, start: i64, out: *mut i64) -> u8`
+///
+/// A byte within 17 bytes of `start` (the next field of a record) is found by the caller; a byte
+/// further on is the runtime's `memchr`.
+#[unsafe(no_mangle)]
+// ms: leaf domain=binary
+pub unsafe extern "C-unwind" fn msrt_bytes_index_of_byte(
+    b: usize,
+    value: i64,
+    start: i64,
+    out: usize,
+) -> u8 {
+    // SAFETY: caller passes live bytes and a writable `out`.
+    unsafe {
+        let s = bslice(b);
+        let from = start.max(0) as usize;
+        if !(0..=255).contains(&value) || from >= s.len() {
+            return 0;
+        }
+        let tail = &s[from..];
+        if tail[0] as i64 == value {
+            *(out as *mut i64) = from as i64;
+            return 1;
+        }
+        let (near, rest) = tail[1..].split_at((tail.len() - 1).min(16));
+        if let Some(i) = memchr_short(value as u8, near) {
+            *(out as *mut i64) = (from + 1 + i) as i64;
+            return 1;
+        }
+        if rest.is_empty() {
+            return 0;
+        }
+        msrt_bytes_index_of_byte_slow(b, value, start, out)
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Numbers
+// ---------------------------------------------------------------------------
+
+unsafe extern "C-unwind" {
+    /// A zero divisor: the runtime's fault.
+    fn msrt_uint_div_slow(a: i64, b: i64) -> i64;
+    fn msrt_uint_rem_slow(a: i64, b: i64) -> i64;
+}
+
+/// `Float.compare`: a total order in which `-0.0 == 0.0` and NaN is equal to itself and sorts last.
+#[unsafe(no_mangle)]
+// ms: leaf pure domain=number
+pub extern "C-unwind" fn msrt_float_compare(a: f64, b: f64) -> i64 {
+    if a.is_nan() || b.is_nan() {
+        return a.is_nan() as i64 - b.is_nan() as i64;
+    }
+    (a > b) as i64 - (a < b) as i64
+}
+
+/// `Int.compare`.
+#[unsafe(no_mangle)]
+// ms: leaf pure domain=number
+pub extern "C-unwind" fn msrt_int_compare(a: i64, b: i64) -> i64 {
+    (a > b) as i64 - (a < b) as i64
+}
+
+/// `UInt64.compare`: the operands are bit patterns.
+#[unsafe(no_mangle)]
+// ms: leaf domain=number
+pub extern "C-unwind" fn msrt_uint_compare(a: i64, b: i64) -> i64 {
+    let (a, b) = (a as u64, b as u64);
+    (a > b) as i64 - (a < b) as i64
+}
+
+/// `UInt64./`; a zero divisor faults in the runtime.
+#[unsafe(no_mangle)]
+// ms: leaf domain=number
+pub extern "C-unwind" fn msrt_uint_div(a: i64, b: i64) -> i64 {
+    if b == 0 {
+        // SAFETY: the runtime faults and does not return.
+        return unsafe { msrt_uint_div_slow(a, b) };
+    }
+    ((a as u64) / (b as u64)) as i64
+}
+
+/// `UInt64.%`; a zero divisor faults in the runtime.
+#[unsafe(no_mangle)]
+// ms: leaf domain=number
+pub extern "C-unwind" fn msrt_uint_rem(a: i64, b: i64) -> i64 {
+    if b == 0 {
+        // SAFETY: the runtime faults and does not return.
+        return unsafe { msrt_uint_rem_slow(a, b) };
+    }
+    ((a as u64) % (b as u64)) as i64
+}
+
+/// `UInt64.to_float`.
+#[unsafe(no_mangle)]
+// ms: leaf pure domain=number
+pub extern "C-unwind" fn msrt_uint_to_float(v: i64) -> f64 {
+    v as u64 as f64
+}
+
+/// `UInt64.to_float32`: round once to binary32, then widen for the runtime ABI.
+#[unsafe(no_mangle)]
+// ms: leaf pure domain=number
+pub extern "C-unwind" fn msrt_uint_to_float32(v: i64) -> f64 {
+    f64::from(v as u64 as f32)
+}
+
+/// C view: `msrt_string_char_width(s: *const StrVal, at: i64) -> i64`
+///
+/// Byte width of the character at byte `at`: 1 for an ASCII byte, the decoder's answer otherwise.
+#[unsafe(no_mangle)]
+// ms: leaf pure domain=string
+pub unsafe extern "C-unwind" fn msrt_string_char_width(s: usize, at: i64) -> i64 {
+    // SAFETY: caller passes a live string and an offset inside it.
+    unsafe {
+        if bytes(s as *const StrVal)[at as usize] < 0x80 {
+            return 1;
+        }
+        msrt_string_char_width_slow(s, at)
+    }
+}
+
+/// C view: `msrt_string_scalar_at_byte(s: *const StrVal, at: i64) -> i64`
+#[unsafe(no_mangle)]
+// ms: leaf pure domain=string
+pub unsafe extern "C-unwind" fn msrt_string_scalar_at_byte(s: usize, at: i64) -> i64 {
+    // SAFETY: caller passes a live string and an offset inside it.
+    unsafe {
+        let b = bytes(s as *const StrVal)[at as usize];
+        if b < 0x80 {
+            return b as i64;
+        }
+        msrt_string_scalar_at_byte_slow(s, at)
+    }
+}
+
+unsafe extern "C-unwind" {
+    fn msrt_string_char_width_slow(s: usize, at: i64) -> i64;
+    fn msrt_string_scalar_at_byte_slow(s: usize, at: i64) -> i64;
+}
