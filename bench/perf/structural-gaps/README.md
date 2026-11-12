@@ -297,3 +297,17 @@ The Int case is now below the single `stats.update(...)` form (305M). A lookup i
 
 - `self.left?.insert(key)` took the record, unboxed the child into a slot, called, boxed it again with a new allocation and refilled the field. The payload of a recursive `Optional` is already in memory, in the box, so a `var` call now gets the box's address (`opt.addr`, `alias_payload_addr` in `crates/ms-lower/src/alias.rs`) and changes the child where it lies. Only a boxed optional has such an address; an inline payload keeps the take and put-back.
 - Re-measured at `d9f67581` against a standalone C twin (`gcc -O2`, `tree.c` with the same generator, depth and a free of the tree): 99.5M against 101.0M instructions, 70 against 72 ms. The C twin frees the tree (about 23M) and `tree.ms` does not. About 14M of the 99.5M is the `msrt_alloc`, `alloc_slow` and `alloc_large` layers, which appear only under callgrind (glibc replaces the release allocator). Generated code is within about 4M of C: the descent loop is 5 instructions a level as in C, `depth` is 6.1M against 2.9M (stack and overflow checks), and the tail of `insert` calls the drop glue on a child just tested to be none (about 8 instructions an insert). The earlier 151M and 117M figures (the latter was `mixed.ms` case c with its free) are superseded; there is no codegen gap left to close here.
+
+## 2026-11-12, enum tree re-measured against a checked twin
+
+Same machine and Release LLVM build as `main` at `6dd056b2`; callgrind instruction totals and wall time of five runs. `enum_tree.ms` is `keyed.ms` case b alone; `c/enum_tree.c` (`gcc -O2`) is its twin with the same generator, depth and tree free, and with trapping `+`, `*` and negation as Manuscript's `Int` has.
+
+| | ms | c (checked) | c (unchecked) |
+| --- | ---: | ---: | ---: |
+| instructions | 565.6M | 360.7M | 357.6M |
+| `evaluate` / `ev` | 220.3M | 156.7M | 153.6M |
+| wall | 61 to 65 ms | 78 to 96 ms | 77 to 96 ms |
+
+- The sixth-pass figures (570M against 224M, 70 against 42 ms) do not reproduce: the twin in `c/keyed.c` runs 357.6M instructions and 77 to 96 ms here. Against a like-for-like twin the Manuscript program is ahead in wall time.
+- The instruction gap is the allocator layers (`alloc_large`, `alloc_slow`, `free_large`, `malloc_usable_size`, about 108M), which appear only under callgrind, and `evaluate` (63M more than `ev`): a stack check, a frame pointer and a tag range test per call. The tag test is two compares because the match default is a trap, not `unreachable`; making it unreachable saves about 2 of 28 instructions per call and turns a corrupted tag into undefined behavior, so it is not done. The stack check is item 7 above.
+- No codegen gap is left to close for this shape.
