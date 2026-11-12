@@ -187,9 +187,87 @@ fn read_limited(fd: sys::Fd, max: i64, cancellable: bool) -> Result<Vec<u8>, Fai
     }
 }
 
+/// How a cache-only read of a whole file ended.
+#[cfg(target_os = "linux")]
+enum Cached {
+    Hit(Vec<u8>),
+    /// The kernel said the call would wait for the disk or network (`EAGAIN`): a blocking read.
+    Cold,
+    /// Not decidable here (old kernel, file system without support, directory, size over the
+    /// limit or a file that grew): the generic path decides.
+    Unknown,
+}
+
+/// Reads a whole regular file on this thread when the kernel can serve it without waiting: the
+/// path is in the dentry cache and the bytes are in the page cache (Linux `openat2(RESOLVE_CACHED)`
+/// and `preadv2(RWF_NOWAIT)`).
+#[cfg(target_os = "linux")]
+fn read_cached(path: &[u8], max: i64) -> Cached {
+    let Some(p) = CPath::new(path) else {
+        return Cached::Unknown;
+    };
+    let fd = match sys::open_cached(&p) {
+        Ok(fd) => fd,
+        Err(e) => return cold_if_again(e),
+    };
+    drop(p);
+    let out = read_cached_fd(fd, max);
+    let _ = sys::close(fd);
+    out
+}
+
+#[cfg(target_os = "linux")]
+fn cold_if_again(e: Errno) -> Cached {
+    if e == libc::EAGAIN {
+        Cached::Cold
+    } else {
+        Cached::Unknown
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn read_cached_fd(fd: sys::Fd, max: i64) -> Cached {
+    let Some(st) = sys::fstat(fd).ok().filter(|st| st.is_regular()) else {
+        return Cached::Unknown;
+    };
+    if st.size > max.min(1 << 28) {
+        return Cached::Unknown;
+    }
+    // One byte past the size shows the end; a file that fills it has grown, so is left to the pool.
+    let mut out = alloc::vec![0u8; st.size as usize + 1];
+    let mut filled = 0;
+    loop {
+        match sys::read_nowait(fd, &mut out[filled..]) {
+            Err(e) => return cold_if_again(e),
+            Ok(0) => {
+                out.truncate(filled);
+                return Cached::Hit(out);
+            }
+            Ok(n) => filled += n,
+        }
+        if filled == out.len() {
+            return Cached::Unknown;
+        }
+    }
+}
+
 pub fn read_file(path: &[u8], max: i64) -> Res<Vec<u8>> {
+    // A cache hit never waits. A cold file does, so it parks the task on the pool even when every
+    // other task is parked too (a post from another thread would otherwise wait out the read).
+    #[cfg(all(target_os = "linux", not(test)))]
+    let cold = if ms_rt::glue::pool::on_pool_thread() {
+        false
+    } else {
+        match read_cached(path, max) {
+            Cached::Hit(bytes) => return Ok(bytes),
+            Cached::Cold => !ms_rt::glue::pool::single_task(),
+            Cached::Unknown => false,
+        }
+    };
+    #[cfg(all(not(target_os = "linux"), not(test)))]
+    let cold = false;
     #[cfg(not(test))]
-    if !ms_rt::glue::pool::alone() {
+    if cold || !ms_rt::glue::pool::alone() {
         let ran =
             ms_rt::glue::pool::run_shielded(Lane::General, (path.to_vec(), max), &[], read_job)
                 .map_err(|_| Fail::failed("cancelled"))?;
@@ -789,6 +867,34 @@ mod tests {
 
     fn sub(dir: &[u8], name: &str) -> Vec<u8> {
         path::join(dir, name.as_bytes())
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn a_cached_read_returns_the_file_or_defers() {
+        let root = scratch("cached");
+        create_directory(&root, true).unwrap();
+        let f = sub(&root, "f.txt");
+        write_file(&f, b"hello", false).unwrap();
+        // The file was just written, so it is cached; a file system or kernel without the calls
+        // answers Unknown, and the bytes are never wrong.
+        match read_cached(&f, 100) {
+            Cached::Hit(bytes) => assert_eq!(bytes, b"hello"),
+            Cached::Unknown => {}
+            Cached::Cold => panic!("a just-written file is not cold"),
+        }
+        assert!(
+            !matches!(read_cached(&f, 4), Cached::Hit(_)),
+            "over the limit"
+        );
+        assert!(
+            !matches!(read_cached(&root, 100), Cached::Hit(_)),
+            "a directory"
+        );
+        assert!(!matches!(
+            read_cached(&sub(&root, "none"), 100),
+            Cached::Hit(_)
+        ));
     }
 
     #[cfg(unix)]

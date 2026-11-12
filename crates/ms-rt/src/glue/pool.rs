@@ -175,7 +175,13 @@ pub fn threads() -> usize {
 /// it runs inline and a command-line program starts no thread.
 pub fn alone() -> bool {
     // SAFETY: reads the scheduler's task count on the runtime thread.
-    unsafe { msrt_task_count() <= 1 || msrt_task_others_stalled() }
+    single_task() || unsafe { msrt_task_others_stalled() }
+}
+
+/// Whether the program has exactly one task, so even a call known to block overlaps with nothing.
+pub fn single_task() -> bool {
+    // SAFETY: reads the scheduler's task count on the runtime thread.
+    unsafe { msrt_task_count() <= 1 }
 }
 
 fn dns_cap() -> usize {

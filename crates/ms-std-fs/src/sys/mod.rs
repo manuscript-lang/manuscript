@@ -25,6 +25,9 @@ mod windows;
 pub use unix::wait_ready;
 #[cfg(unix)]
 pub use unix::{access, chmod_link, clone_file, pipe_cloexec, set_errno, statfs};
+#[cfg(unix)]
+#[cfg(target_os = "linux")]
+pub use unix::{open_cached, read_nowait};
 #[cfg(windows)]
 pub use windows::{is_output, statfs, wait_ready};
 

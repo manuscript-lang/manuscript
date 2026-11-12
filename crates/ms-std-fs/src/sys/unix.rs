@@ -19,6 +19,56 @@ fn retry<T: Copy + PartialOrd + Default>(mut call: impl FnMut() -> T) -> Result<
     }
 }
 
+/// Linux `openat2(2)` with `RESOLVE_CACHED`: opens `path` read-only only when every component is
+/// already in the dentry cache, so the call never waits on a disk or a network. Any error,
+/// `EAGAIN` for a cold path or `ENOSYS` on an old kernel included, means "use the pool".
+#[cfg(target_os = "linux")]
+pub fn open_cached(path: &CPath) -> Result<super::Fd, Errno> {
+    // `libc::open_how` is non-exhaustive, so the three-word kernel layout is spelled out.
+    #[repr(C)]
+    struct OpenHow {
+        flags: u64,
+        mode: u64,
+        resolve: u64,
+    }
+    let how = OpenHow {
+        flags: (libc::O_RDONLY | libc::O_CLOEXEC) as u64,
+        mode: 0,
+        resolve: libc::RESOLVE_CACHED,
+    };
+    // SAFETY: `path` is NUL terminated and `how` is a valid `open_how` of the size passed.
+    let fd = unsafe {
+        libc::syscall(
+            libc::SYS_openat2,
+            libc::AT_FDCWD,
+            path.as_ptr(),
+            &how,
+            core::mem::size_of::<OpenHow>(),
+        )
+    };
+    if fd < 0 {
+        return Err(super::errno());
+    }
+    Ok(fd as super::Fd)
+}
+
+/// Linux `preadv2(2)` with `RWF_NOWAIT` at the current offset: reads only what the page cache
+/// holds. `EAGAIN` means the data is not cached and `EOPNOTSUPP` that the file system cannot tell;
+/// both send the caller to the pool.
+#[cfg(target_os = "linux")]
+pub fn read_nowait(fd: super::Fd, buf: &mut [u8]) -> Result<usize, Errno> {
+    let iov = libc::iovec {
+        iov_base: buf.as_mut_ptr().cast(),
+        iov_len: buf.len(),
+    };
+    // SAFETY: one iovec over `buf`, which outlives the call; offset -1 uses the file position.
+    let n = unsafe { libc::preadv2(fd, &iov, 1, -1, libc::RWF_NOWAIT) };
+    if n < 0 {
+        return Err(super::errno());
+    }
+    Ok(n as usize)
+}
+
 pub fn set_errno(value: Errno) {
     #[cfg(any(target_os = "linux", target_os = "android"))]
     // SAFETY: `__errno_location` returns the calling thread's errno slot.
