@@ -1117,16 +1117,19 @@ fn emit_header(var writer: Writer, header: String) Unit:
 	writer.out.append("\n")
 	writer.started = true
 
+fn all_tables(values: List[TomlValue]) Bool:
+	for item in values:
+		match item:
+			TableValue(_): unit
+			_: return false
+
+	return true
+
 fn section_kind(value: TomlValue) Int:
 	match value:
 		TableValue(_): return 1
 		ArrayValue(elements):
-			if (
-				not elements.is_empty()
-				and table_items(
-					elements.clone()
-				).length() == elements.length()
-			): return 2
+			if not elements.is_empty() and all_tables(elements): return 2
 			return 0
 		_: return 0
 
