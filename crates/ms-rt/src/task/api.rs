@@ -10,6 +10,9 @@ pub(super) unsafe fn after_switch() {
     unsafe { reap() };
 }
 
+/// Task switches between non-blocking descriptor polls.
+const POLL_EVERY: u32 = 32;
+
 /// Runs the next runnable task; returns when the calling task is scheduled again.
 /// The caller has already set its state (Ready and queued, Waiting, or Done).
 pub(super) unsafe fn switch_away() {
@@ -28,7 +31,12 @@ pub(super) unsafe fn switch_away() {
         if !s.kills.is_empty() || !s.timers.is_empty() || crate::promise::has_timers() {
             expire_timers(clock_ns());
         }
-        if s.fd_waiting != 0 {
+        // A poll is a system call, so a busy queue polls once per POLL_EVERY switches (a server
+        // handling a batch of requests would otherwise poll once per request); an empty queue
+        // blocks in `reactor_wait`, which polls.
+        s.switches_since_poll += 1;
+        if s.fd_waiting != 0 && s.switches_since_poll >= POLL_EVERY {
+            s.switches_since_poll = 0;
             poll_ready(0);
         }
         loop {
@@ -455,7 +463,7 @@ pub unsafe extern "C-unwind" fn msrt_task_count() -> usize {
 }
 
 /// Whether no other task could run while the current one blocks its thread: each is parked on a
-/// token with no deadline and not on a descriptor, so nothing but a post wakes it. A program that
+/// token or a join with no deadline and not on a descriptor, so nothing but a post wakes it. A program that
 /// waits for one promise at a time is in this state, and a blocking call then gains nothing from
 /// a pool thread. A post from another thread is noticed when the call returns. Answers false past
 /// a handful of tasks, so the check stays a few loads.
@@ -477,8 +485,12 @@ pub unsafe extern "C-unwind" fn msrt_task_others_stalled() -> bool {
             let t = &*t;
             let stalled = match t.state {
                 State::Done => true,
+                // Parked on a token, or joining another task (no token, descriptor or timer): only
+                // a post or the joined task's end wakes it, and that task is looked at itself.
                 State::Waiting => {
-                    t.wait_token != 0 && t.deadline == NO_DEADLINE && t.kill_at == NO_DEADLINE
+                    t.deadline == NO_DEADLINE
+                        && t.kill_at == NO_DEADLINE
+                        && (t.wait_token != 0 || (t.wait_fd < 0 && t.wait_events == 0))
                 }
                 _ => false,
             };
