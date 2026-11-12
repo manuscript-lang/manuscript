@@ -154,7 +154,7 @@ impl<'a> FnLower<'a> {
                 Ok((self.b.list_set(first, at[1], got[0]), None))
             }
             "replace" => {
-                // The element moves out through a slot and the new value moves in; nothing is copied.
+                // The element moves out in line and the new value moves in; nothing is copied or dropped.
                 let idx = self.borrow(args[0].val);
                 // Checked before the incoming element is stored, so a fault leaves it registered.
                 let n = self.b.list_len(old);
@@ -164,19 +164,12 @@ impl<'a> FnLower<'a> {
                 let r = self.b.select(neg, shifted, idx);
                 self.check_index(4, idx, r, n, false);
                 let v = self.element_value(&args[1]);
-                let list = self.put_slot(old);
-                let incoming = self.put_slot(v);
-                let outgoing = self
-                    .b
-                    .emit(Op::Slot, &[], ms_mir::ir::Imm::Ty(elem), Some(MTy::PTR))
-                    .expect("slot");
-                self.call_runtime(
-                    "msrt_list_replace",
-                    &[list, d, idx, incoming, outgoing],
-                    MTy::UNIT,
-                )?;
-                let new = self.take_slot(list, lt);
-                let old_element = self.take_slot(outgoing, elem);
+                let (old_element, moved) = self.list_elem_at(old, r)?;
+                let new = if moved {
+                    self.b.list_fill(old, r, v)
+                } else {
+                    self.b.list_set(old, r, v)
+                };
                 Ok((
                     new,
                     Some(Val {

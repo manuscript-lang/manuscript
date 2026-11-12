@@ -10,6 +10,16 @@ accounting: the producers retain their existing nonzero-total observability
 guards, but do not emit per-operation checksums to prove equivalent results.
 The dated measurements below predate this accounting validation.
 
+## 2026-11-12 (Deque and Queue slot moves)
+
+Revision: this branch on top of `b6717db6`; callgrind on 1M iterations of two `push_back` and one `pop_front` on a `Deque[Int]`, then a drain (3M pushes and pops).
+
+| Measure | Before | After |
+| --- | ---: | ---: |
+| Instructions | 418M | 159M |
+
+`List.replace` lowers to an in-line move-out and refill (`list.get` then `move.out` then `list.fill`, or `list.set` for an element that needs no drop) instead of a call to `msrt_list_replace`, so `pop_front`, `pop_back` and `Queue.dequeue` no longer leave the compiled code (68M runtime instructions and 110M in `pop_front` before). `Deque.grow` appended `none` slots and then rotated the ring with `List.rotate`, which swaps through `msrt_list_swap` (71M); it now moves only the run from `start` to the end once, with `replace` and `set`. Not done: `List.swap` of an element wider than a scalar still calls the runtime.
+
 ## 2026-10-27 (PriorityQueue sift-down, second pass)
 
 Revision: this branch on top of `b2a6f03f`; callgrind on 100k enqueue and dequeue, `run.sh 7` twice.
