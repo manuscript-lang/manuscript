@@ -125,3 +125,5 @@ For standard APIs (intrinsic/native members, design), read [declaration ownershi
   mixed arrays stay inline. Classification needs only a predicate, not copied
   table payloads. Keep exact output/order and byte-limit controls when changing
   this decision (`toml.ms`, `bench/perf/toml-classification/`).
+
+- Fixed-width UInt64 readers retain their own `binary: out of range` preflight; other fixed-width readers report native `binary: value out of range`. Reusing `unsigned_word` after one full-width read must preserve that guard and every bit of the unsigned upper half. Keep the full-range, nested-view, short-input and extreme-offset cases in `varint.ms`; see the [binary-word measurements](../../bench/perf/binary-words/README.md).
