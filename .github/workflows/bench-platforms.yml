@@ -73,4 +73,4 @@ jobs:
           mkdir -p /tmp/h && cd /tmp/h
           "$GITHUB_WORKSPACE/target/release/ms" build "$GITHUB_WORKSPACE/examples/hello/ms.toml" -o hello --build-type Release
           ./hello || true
-          lldb -b -o run -o bt -o "register read" -o "image list" -- ./hello 2>&1 | head -120
+          lldb -b -k "thread backtrace all" -k "thread list" -k "register read sp" -o run -- ./hello 2>&1 | head -160
