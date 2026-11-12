@@ -410,7 +410,7 @@ impl<'a> FnLower<'a> {
             self.finish_place(recv_expr);
             return Ok(done);
         }
-        let borrowed = self.borrowed_update_key(view, recv_expr, name)?;
+        let borrowed = self.borrowed_update_key(view, m, recv_expr, name)?;
         let mut args = self.native_args_borrowing(view, protect_list, borrowed)?;
         if self.dead {
             self.finish_place(recv_expr);
