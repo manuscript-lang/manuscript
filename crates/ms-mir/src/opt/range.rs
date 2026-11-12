@@ -267,6 +267,66 @@ fn length_origins(m: &Module, f: &Func) -> Vec<Value> {
             total += 1;
         }
     }
+    // Slot memory: a pointer parameter or `slot` that is only loaded from, taken from and
+    // stored into as a whole record is one variable. Every record loaded from it shares its
+    // list fields' origins, which are the join of the field origins of the records stored.
+    let mut slots: HashSet<Value> = f.blocks[0].params.iter().map(|p| p.value).collect();
+    let mut loaded_from: HashMap<Value, Value> = HashMap::new();
+    let mut candidates: HashSet<Value> = HashSet::new();
+    for b in &f.blocks {
+        for i in &b.insts {
+            if let (Op::Slot, Some(r)) = (i.op, i.res) {
+                slots.insert(r);
+            }
+        }
+    }
+    for b in &f.blocks {
+        for i in &b.insts {
+            if let (Op::Load | Op::Take, Some(r)) = (i.op, i.res)
+                && slots.contains(&i.args[0])
+                && !list_fields(r).is_empty()
+            {
+                candidates.insert(i.args[0]);
+                loaded_from.insert(r, i.args[0]);
+            }
+        }
+    }
+    let mut escaped: HashSet<Value> = HashSet::new();
+    for b in &f.blocks {
+        let returns = matches!(b.term, Term::Ret(_));
+        for (ii, i) in b.insts.iter().enumerate() {
+            let whole = matches!(i.op, Op::Load | Op::Take | Op::Put | Op::Store);
+            for (n, a) in i.args.iter().enumerate() {
+                if !candidates.contains(a) || (whole && n == 0) {
+                    continue;
+                }
+                // A call that ends the function may rewrite the slot: nothing reads it after.
+                let last = i.op == Op::Call
+                    && returns
+                    && b.insts[ii + 1..].iter().all(|j| !j.args.contains(a));
+                if !last {
+                    escaped.insert(*a);
+                }
+            }
+        }
+        b.term.for_each_use(&mut |v: Value| {
+            if candidates.contains(&v) {
+                escaped.insert(v);
+            }
+        });
+    }
+    candidates.retain(|p| !escaped.contains(p));
+    for (&r, p) in &loaded_from {
+        if !candidates.contains(p) {
+            continue;
+        }
+        for k in list_fields(r) {
+            pair.entry((*p, k)).or_insert_with(|| {
+                total += 1;
+                total - 1
+            });
+        }
+    }
     let mut facts = vec![Origin::Unknown; total];
     let mut users = vec![Vec::new(); total];
     let mut work = Vec::new();
@@ -281,6 +341,10 @@ fn length_origins(m: &Module, f: &Func) -> Vec<Value> {
             flows[p.value.index()] = true;
         }
     }
+    for p in &candidates {
+        flows[p.index()] = true;
+    }
+    let mut first_slot_read: HashMap<(Value, u32), Value> = HashMap::new();
     for p in &f.blocks[0].params {
         if is_list(p.value) {
             facts[p.value.index()] = Origin::One(p.value);
@@ -289,8 +353,30 @@ fn length_origins(m: &Module, f: &Func) -> Vec<Value> {
     }
     for b in &f.blocks {
         for i in &b.insts {
+            if matches!(i.op, Op::Put | Op::Store) && candidates.contains(&i.args[0]) {
+                for k in list_fields(i.args[1]) {
+                    if let (Some(&to), Some(&from)) =
+                        (pair.get(&(i.args[0], k)), pair.get(&(i.args[1], k)))
+                    {
+                        edge(&mut users, from, to);
+                    }
+                }
+                continue;
+            }
             let Some(r) = i.res else { continue };
             match i.op {
+                Op::Load | Op::Take
+                    if loaded_from.get(&r).is_some_and(|p| candidates.contains(p)) =>
+                {
+                    flows[r.index()] = true;
+                    let p = loaded_from[&r];
+                    for k in list_fields(r) {
+                        if let (Some(&from), Some(&to)) = (pair.get(&(p, k)), pair.get(&(r, k))) {
+                            edge(&mut users, from, to);
+                        }
+                    }
+                    continue;
+                }
                 Op::RecNew => {
                     flows[r.index()] = true;
                     let Imm::Rec(rid) = i.imm else { continue };
@@ -334,6 +420,9 @@ fn length_origins(m: &Module, f: &Func) -> Vec<Value> {
                 Op::RecGet if is_list(r) => {
                     let Imm::Field(_, k) = i.imm else { continue };
                     first_field_read.entry((i.args[0], k)).or_insert(r);
+                    if let Some(&p) = loaded_from.get(&i.args[0]) {
+                        first_slot_read.entry((p, k)).or_insert(r);
+                    }
                     if let Some(&from) = pair.get(&(i.args[0], k)) {
                         edge(&mut users, from, r.index());
                     }
@@ -375,6 +464,20 @@ fn length_origins(m: &Module, f: &Func) -> Vec<Value> {
                 }
             }
         });
+    }
+    // A pointer parameter's contents start every list field at its first read.
+    for p in &f.blocks[0].params {
+        if !candidates.contains(&p.value) {
+            continue;
+        }
+        for (&(q, k), &node) in &pair {
+            if q == p.value
+                && let Some(&r) = first_slot_read.get(&(q, k))
+            {
+                facts[node] = Origin::One(r);
+                work.push(node);
+            }
+        }
     }
     // Record values nothing flows into start every list field at its first read, or at the record
     // itself when the field is never read (a value no list shares an origin with).
