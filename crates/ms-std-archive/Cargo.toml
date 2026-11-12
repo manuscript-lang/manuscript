@@ -8,6 +8,7 @@ autotests = false
 
 [dependencies]
 miniz_oxide = { version = "0.9", default-features = false, features = ["with-alloc"] }
+ms-inflate = { path = "../ms-inflate" }
 ms-rt-abi = { path = "../ms-rt-abi" }
 ms-rt = { path = "../ms-rt" }
 ms-std-core = { path = "../ms-std-core" }

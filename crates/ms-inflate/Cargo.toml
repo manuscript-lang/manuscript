@@ -1,0 +1,12 @@
+[package]
+name = "ms-inflate"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+description = "Raw deflate decoding shared by the HTTP client, the archive module and the streams"
+
+[dev-dependencies]
+flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
+
+[lints]
+workspace = true

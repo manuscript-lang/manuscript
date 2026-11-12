@@ -9,10 +9,7 @@ use miniz_oxide::deflate::core::{
     CompressorOxide, TDEFLFlush, TDEFLStatus, compress as deflate_step,
     create_comp_flags_from_zip_params,
 };
-use miniz_oxide::inflate::TINFLStatus;
-use miniz_oxide::inflate::core::{
-    DecompressorOxide, TINFL_LZ_DICT_SIZE, decompress, inflate_flags,
-};
+use ms_inflate::Inflater;
 use ms_rt::ffi::Fail;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -101,38 +98,18 @@ pub fn encode(data: &[u8], format: Format, level: u8) -> Vec<u8> {
 /// Inflates one raw deflate stream from the start of `input`, producing at most `room` bytes.
 /// Returns the output and the number of input bytes the stream occupied.
 pub fn inflate(input: &[u8], room: usize) -> Result<(Vec<u8>, usize), Fail> {
-    let limit = room.saturating_add(1);
-    let mut out: Vec<u8> =
-        alloc::vec![0; input.len().saturating_mul(4).clamp(1024, 1 << 20).min(limit)];
-    let mut state = DecompressorOxide::new();
-    let (mut in_pos, mut out_pos) = (0usize, 0usize);
-    loop {
-        let (status, used, made) = decompress(
-            &mut state,
-            &input[in_pos..],
-            &mut out,
-            out_pos,
-            inflate_flags::TINFL_FLAG_USING_NON_WRAPPING_OUTPUT_BUF,
-        );
-        in_pos += used;
-        out_pos += made;
-        match status {
-            TINFLStatus::Done => {
-                if out_pos > room {
-                    return Err(Fail::LimitExceeded);
-                }
-                out.truncate(out_pos);
-                return Ok((out, in_pos));
-            }
-            TINFLStatus::HasMoreOutput => {
-                if out.len() >= limit {
-                    return Err(Fail::LimitExceeded);
-                }
-                let grown = out.len().saturating_mul(2).min(limit);
-                out.resize(grown, 0);
-            }
-            _ => return Err(Fail::InvalidData),
-        }
+    let mut out = Vec::new();
+    match Inflater::new(0).push(input, false, &mut out, room) {
+        Ok((used, true)) => Ok((out, used)),
+        Err(e) => Err(inflate_fail(e)),
+        Ok(_) => Err(Fail::InvalidData),
+    }
+}
+
+fn inflate_fail(e: ms_inflate::Fail) -> Fail {
+    match e {
+        ms_inflate::Fail::Limit => Fail::LimitExceeded,
+        ms_inflate::Fail::Invalid | ms_inflate::Fail::Truncated => Fail::InvalidData,
     }
 }
 
@@ -166,8 +143,8 @@ pub fn decompress_bytes(
 // output each one completes. Malformed data is `InvalidData`, exceeding `max_bytes` is `LimitExceeded`, and an
 // out-of-range level is `InvalidInput`.
 
-/// Output room per inflate call, beyond the history window.
-const WINDOW_ROOM: usize = 1 << 16;
+/// How much output a later match can reach back to.
+const HISTORY: usize = 1 << 15;
 
 enum Header {
     Need,
@@ -239,11 +216,10 @@ pub struct Decoder {
     phase: Phase,
     /// Gzip members completed so far.
     members: usize,
-    inflate: Box<DecompressorOxide>,
-    /// The last `hist` output bytes followed by room for the next call's output. Inflating into a
-    /// non-wrapping buffer makes a distance that reaches before the start of the output an error.
+    inflate: Inflater,
+    /// The last `HISTORY` bytes of output, which the inflater appends to and matches copy from. A
+    /// distance that reaches before its start is an error.
     window: Vec<u8>,
-    hist: usize,
     /// Running check of the current payload: CRC-32 (gzip) or Adler-32 (zlib).
     check: u32,
     size: u32,
@@ -266,9 +242,8 @@ impl Decoder {
                 Phase::Header
             },
             members: 0,
-            inflate: Box::new(DecompressorOxide::new()),
-            window: alloc::vec![0; TINFL_LZ_DICT_SIZE + WINDOW_ROOM],
-            hist: 0,
+            inflate: Inflater::new(0),
+            window: Vec::new(),
             check: 0,
             size: 0,
             failed: None,
@@ -339,54 +314,45 @@ impl Decoder {
                         }
                     }
                     self.size = 0;
-                    *self.inflate = DecompressorOxide::new();
-                    self.hist = 0;
+                    self.inflate = Inflater::new(0);
+                    self.window.clear();
                     self.phase = Phase::Body;
                 }
                 Phase::Body => {
-                    let mut flags = inflate_flags::TINFL_FLAG_USING_NON_WRAPPING_OUTPUT_BUF;
-                    if !self.eof {
-                        flags |= inflate_flags::TINFL_FLAG_HAS_MORE_INPUT;
-                    }
-                    let (status, used, made) = decompress(
-                        &mut self.inflate,
-                        &self.input[self.start..],
-                        &mut self.window[..],
-                        self.hist,
-                        flags,
-                    );
+                    let before = self.window.len();
+                    // Output may reach `max` in total; one byte past it fails.
+                    let room = usize::try_from(self.max.saturating_sub(self.total).max(0))
+                        .unwrap_or(usize::MAX);
+                    let (used, done) = self
+                        .inflate
+                        .push(
+                            &self.input[self.start..],
+                            !self.eof,
+                            &mut self.window,
+                            before.saturating_add(room),
+                        )
+                        .map_err(inflate_fail)?;
                     self.start += used;
-                    let produced = &self.window[self.hist..self.hist + made];
+                    let produced = &self.window[before..];
                     match self.format {
                         Format::Gzip => self.check = crc32(self.check, produced),
                         Format::Zlib => self.check = adler32_update(self.check, produced),
                         Format::Deflate => {}
                     }
-                    self.size = self.size.wrapping_add(made as u32);
-                    self.total = self.total.saturating_add(made as i64);
-                    if made > 0 && self.total > self.max {
-                        return Err(Fail::LimitExceeded);
-                    }
+                    self.size = self.size.wrapping_add(produced.len() as u32);
+                    self.total = self.total.saturating_add(produced.len() as i64);
                     out.extend_from_slice(produced);
-                    let end = self.hist + made;
-                    if end > TINFL_LZ_DICT_SIZE {
-                        self.window.copy_within(end - TINFL_LZ_DICT_SIZE..end, 0);
-                        self.hist = TINFL_LZ_DICT_SIZE;
+                    if self.window.len() > HISTORY {
+                        self.window.drain(..self.window.len() - HISTORY);
+                    }
+                    if !done {
+                        return self.need_input();
+                    }
+                    self.phase = if self.format == Format::Deflate {
+                        Phase::Done
                     } else {
-                        self.hist = end;
-                    }
-                    match status {
-                        TINFLStatus::Done => {
-                            self.phase = if self.format == Format::Deflate {
-                                Phase::Done
-                            } else {
-                                Phase::Trailer
-                            };
-                        }
-                        TINFLStatus::NeedsMoreInput if made == 0 => return self.need_input(),
-                        TINFLStatus::NeedsMoreInput | TINFLStatus::HasMoreOutput => {}
-                        _ => return Err(Fail::InvalidData),
-                    }
+                        Phase::Trailer
+                    };
                 }
                 Phase::Trailer => {
                     let n = if self.format == Format::Gzip { 8 } else { 4 };
