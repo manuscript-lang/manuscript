@@ -1,6 +1,11 @@
 import (
 	Bytes from "@std/bytes.ms",
-	Promise, complete, deferred, owned_task, promise from "@std/concurrency/promise.ms",
+	Promise,
+	PromiseOptions,
+	complete,
+	deferred,
+	owned_task,
+	promise from "@std/concurrency/promise.ms",
 	Closeable, Writable from "@std/core.ms",
 	Pipe, ReadStream, Sink, Source, WriteStream, pipe from "@std/io/io.ms",
 	ClientResponse,
@@ -565,7 +570,7 @@ export fn restrict(
 // answered with 503, an oversized header block with 431, and a handler fault with 500.
 // An address that cannot be bound returns EIO. Returns EINVAL for invalid options
 // (`cores` below 1 included). Close the server, or drop it, to stop it.
-// `serve` binds a plain TCP listener and runs the accept loop as a promise. Each accepted connection becomes a promise of its own, which the runtime places on the least busy thread, where it stays; HTTP/1.1, HTTP/2 and the TLS handshake of `options.tls` run there. `handler` is built once and only read by every thread. `options.cores` limits the runtime to that many threads (none: every core).
+// `serve` binds a plain TCP listener and runs the accept loop as a promise. It starts one worker per core (`options.cores`), each placed on the least loaded thread, and deals each accepted connection to the next worker, which keeps it; HTTP/1.1, HTTP/2 and the TLS handshake of `options.tls` run there. `handler` is built once and only read by every thread. `options.cores` limits the runtime to that many threads (none: every core).
 // A handler is cancelled when its request times out or its client disconnects (an
 // HTTP/1 connection closes or an HTTP/2 stream is reset): its waits end and its
 // resource cleanup runs. A client that half-closes its end after sending the request
@@ -647,7 +652,12 @@ fn accept_loop(listening: ServingHandle, count: Int) Unit!:
 			serving: msstd_http_serving_share(listening.serving),
 			listener: false,
 		)
-		accepting.workers.append(promise(fn: serve_worker(mine, queue)))
+		accepting.workers.append(
+			promise(
+				fn: serve_worker(mine, queue),
+				options: PromiseOptions(spread: true)
+			)
+		)
 		i += 1
 
 	var next = 0
