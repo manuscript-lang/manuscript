@@ -237,6 +237,16 @@ impl<'a> FnLower<'a> {
             self.aliases.insert(b.uid, alias);
             return Ok(());
         }
+        if let PatternKind::Name(_) = pattern.kind
+            && let Some(b) = self.hir.pattern_binding(pattern)
+            && self.scalar_eligible(&b)
+            && let Some(code) = self.get_scalar(value)?
+        {
+            if !self.dead {
+                self.scalar_locals.insert(b.uid, code.v);
+            }
+            return Ok(());
+        }
         let mark = self.temps.len();
         if let Some((b, shape)) = self.borrowable(Some(pattern), value)? {
             // A lexical borrow of the container (the checker rejects changing it while the
@@ -1434,6 +1444,9 @@ impl<'a> FnLower<'a> {
         untouched: bool,
         body: &[Stmt],
     ) -> Result<(), Error> {
+        // A character the body only compares with literals stays its code point.
+        let compared = !scalars && self.scalar_eligible(loop_var);
+        let scalars = scalars || compared;
         let item = if scalars { MTy::INT } else { MTy::STR };
         // Scan borrowed text in place only when the body cannot change its source.
         // Unlike plain-list iteration, chars()/scalar_values() promise a fresh snapshot.
@@ -1549,6 +1562,8 @@ impl<'a> FnLower<'a> {
             && !self.cx.ownership.moves.contains_key(&loop_var.uid)
         {
             self.bind_borrow_of(loop_var, ch);
+        } else if compared {
+            self.scalar_locals.insert(loop_var.uid, ch);
         } else if scalars {
             self.bind_local(loop_var, Val { v: ch, own: false });
         } else {

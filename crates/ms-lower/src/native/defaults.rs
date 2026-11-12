@@ -107,6 +107,17 @@ impl<'a> FnLower<'a> {
         view: &CallView<'_>,
         protect_list_elements: bool,
     ) -> Result<Vec<NArg>, Error> {
+        self.native_args_borrowing(view, protect_list_elements, None)
+    }
+
+    /// `native_args_protected`, with the argument at `borrowed.0` read in place from `borrowed.1`
+    /// (the receiver of its `.clone()`) instead of copied: the callee only borrows it.
+    pub(super) fn native_args_borrowing(
+        &mut self,
+        view: &CallView<'_>,
+        protect_list_elements: bool,
+        borrowed: Option<(usize, &Expr)>,
+    ) -> Result<Vec<NArg>, Error> {
         let mut out = Vec::new();
         let mut read_at = Vec::new();
         let mut held = Vec::new();
@@ -115,15 +126,22 @@ impl<'a> FnLower<'a> {
             // A native takes a reading function for a `var` function parameter as written.
             let reader = matches!(&view.target, Resolution::Method(m) if m.native != ct::Native::Source)
                 && self.hir.info(a.expr).function_source.is_some();
+            let source = borrowed.filter(|b| b.0 == n).map_or(a.expr, |b| b.1);
             let val = if reader {
                 self.expr_unfit(a.expr)?
             } else {
-                self.expr(a.expr)?
+                self.expr(source)?
             };
             if self.dead {
                 break;
             }
             let mut val = val;
+            if !std::ptr::eq(source, a.expr) {
+                val = Val {
+                    v: self.borrow(val),
+                    own: false,
+                };
+            }
             let mut wrapped = a.wrap_optional.is_some();
             if protect_list_elements && val.own {
                 let ty = a.wrap_optional.clone().unwrap_or_else(|| self.ety(a.expr));
@@ -137,7 +155,7 @@ impl<'a> FnLower<'a> {
                     val = Val { v: key, own: false };
                 }
             }
-            read_at.push((a.expr, at));
+            read_at.push((source, at));
             let later_try = view.arguments[n + 1..]
                 .iter()
                 .any(|l| crate::mutation::has_try(l.expr));

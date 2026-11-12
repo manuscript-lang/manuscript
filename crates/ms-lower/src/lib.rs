@@ -38,6 +38,7 @@ mod native;
 mod nativerec;
 mod rtcall;
 mod runner;
+mod scalar;
 mod scope;
 mod stdnative;
 mod stmt;
