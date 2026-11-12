@@ -273,6 +273,18 @@ One probe remains per round besides the `contains` (the first statement's, after
 | with probe reuse | 87 to 105 ms | 778M |
 
 The earlier run of this case was 281 to 349 ms with seven lookups a pass; C is 22 to 33 ms. What is left is two probes a round at about 95 to 125 instructions each, from `value_ptr_k` deriving the slot layout from the descriptors on every call; caching the layout in the map header is the next step. Linux, same build and machine as above.
+## 2026-11-12, map entry across a `contains` join
+
+`if not m.contains(k): m[k] = v` joins a path that found `k` and a path that inserted it, so the probe after the join could not reuse anything and a round cost two probes. `map_probes` now moves that probe into the join's predecessors: the predecessor that ran `contains` passes the address in a new block parameter (the `contains` becomes the probe plus a null test), and the one that inserted probes at its end. The `update` form was already one probe per round.
+
+| `Map[String, Stat]`, 20 names, `contains`, insert, two `stats[name].field += v`, 2M rounds (callgrind Ir, wall min of 3) | Ir | wall |
+| --- | ---: | ---: |
+| before | 729.8M | 69 ms |
+| after | 399.1M | 45 ms |
+| `stats.update(name, ..)` for comparison | 397.1M | 46 ms |
+
+A probe is still about 130 instructions for a `String` key (slot layout from descriptors about 20, string unpack and hash about 45, prologue and spills about 20); the layout cache and the other `Map` and `Set` shapes are next. Linux, same build and machine as above.
+
 ## 2026-11-12: var calls through boxed optional fields
 
 `tree.ms` is `mixed.ms` case c on its own: 200k inserts into a binary tree whose links are `Node?`, through `fn var Node.insert`. Same machine; callgrind instructions, allocations from memcheck, min-of-7 wall time.

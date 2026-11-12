@@ -1153,6 +1153,31 @@ fn is_map_probe(m: &Module, i: &Inst) -> bool {
     )
 }
 
+/// A `msrt_map_contains` variant and the probe that finds the same entry.
+fn contains_probe(m: &Module, i: &Inst) -> Option<ExtId> {
+    let (Op::CallRt, Imm::Ext(e)) = (i.op, i.imm) else {
+        return None;
+    };
+    let probe = match m.externs[e.index()].name.as_str() {
+        "msrt_map_contains" => "msrt_map_get_ptr",
+        "msrt_map_contains_w8" => "msrt_map_get_ptr_w8",
+        "msrt_map_contains_sw8" => "msrt_map_get_ptr_sw8",
+        _ => return None,
+    };
+    m.externs
+        .iter()
+        .position(|d| d.name == probe)
+        .map(|k| ExtId(k as u32))
+}
+
+/// What a probe table knows about an entry: the address a probe returned, or a `contains` that
+/// can be rewritten into a probe when a later block wants the address.
+#[derive(Clone, Copy)]
+enum Known {
+    Addr(Value),
+    Contains(usize, usize),
+}
+
 /// A probe of the same map for the same key, with nothing between that can change the map's
 /// layout, finds the same entry: the later call reuses the earlier address. `stats[k].a += 1;
 /// stats[k].b += 1` then looks `k` up once. The key reaches the runtime through a stack slot
@@ -1160,13 +1185,29 @@ fn is_map_probe(m: &Module, i: &Inst) -> bool {
 /// block into its only successor (a fault branch or an `if` arm) and is dropped at a join
 /// or loop header, and at any instruction that calls out, drops, clones or allocates: those
 /// are the ways a map is inserted into, removed from or moved.
+///
+/// A join whose first action is a probe takes the entry across it. When some predecessor
+/// already knows the entry, every predecessor passes the address in a new block parameter
+/// (one that does not know it probes at its end, where the join would have) and the join's probe
+/// is dropped: `if not m.contains(k): m[k] = v` followed by `m[k].f += 1` finds `k` once on the
+/// present path and once after the insert, instead of twice and once. A `contains` that
+/// supplies the address becomes the probe plus a null test.
 fn map_probes(m: &Module, f: &mut Func) -> bool {
     type Probe = (ExtId, Value, Value, Value, Value);
+    struct Forward {
+        join: usize,
+        param: Value,
+        // `(predecessor, value passed)`
+        args: Vec<(usize, Value)>,
+        appended: Vec<(usize, Vec<Inst>)>,
+    }
     let preds = f.predecessors();
-    let mut ends: Vec<Option<HashMap<Probe, Value>>> = vec![None; f.blocks.len()];
+    let mut ends: Vec<Option<HashMap<Probe, Known>>> = vec![None; f.blocks.len()];
     let mut subst: ValueMap<Value> = ValueMap::new();
     let mut removed: HashSet<(usize, usize)> = HashSet::new();
     let mut slots_dropped: Vec<Value> = Vec::new();
+    let mut forwards: Vec<Forward> = Vec::new();
+    let mut converted: HashMap<(usize, usize), (ExtId, Value, Value)> = HashMap::new();
     for b in f.rpo() {
         let bi = b.index();
         let mut table = match preds[bi].as_slice() {
@@ -1174,36 +1215,106 @@ fn map_probes(m: &Module, f: &mut Func) -> bool {
             _ => HashMap::new(),
         };
         let mut stored: HashMap<Value, Value> = HashMap::new();
-        for (ii, inst) in f.blocks[bi].insts.iter().enumerate() {
+        // Only slot and key setup precedes the first probe, so it can move to the predecessors.
+        let mut setup_only = true;
+        for ii in 0..f.blocks[bi].insts.len() {
+            let inst = &f.blocks[bi].insts[ii];
             if is_map_probe(m, inst) && inst.args.len() == 4 {
                 let Imm::Ext(e) = inst.imm else { continue };
-                let a: Vec<Value> = inst.args.iter().map(|v| resolve(&subst, *v)).collect();
-                if let (Some(&k), Some(r)) = (stored.get(&a[3]), inst.res) {
-                    let key = (e, a[0], a[1], a[2], k);
-                    match table.get(&key) {
-                        Some(&prev) => {
-                            subst.insert(r, prev);
-                            removed.insert((bi, ii));
-                            slots_dropped.push(a[3]);
-                        }
-                        None => {
-                            table.insert(key, r);
+                let (res, args) = (inst.res, inst.args.clone());
+                let a: Vec<Value> = args.iter().map(|v| resolve(&subst, *v)).collect();
+                let can_forward = setup_only && preds[bi].len() > 1;
+                setup_only = false;
+                let (Some(&k), Some(r)) = (stored.get(&a[3]), res) else {
+                    continue;
+                };
+                let key = (e, a[0], a[1], a[2], k);
+                match table.get(&key) {
+                    Some(&Known::Addr(prev)) => {
+                        subst.insert(r, prev);
+                        removed.insert((bi, ii));
+                        slots_dropped.push(a[3]);
+                    }
+                    _ => {
+                        let fwd = if can_forward {
+                            plan_forward(f, &preds, &ends, &subst, bi, ii, e, &a, k)
+                        } else {
+                            None
+                        };
+                        match fwd {
+                            Some((appended, pred_args)) => {
+                                let param = f.new_value(Ty::PTR);
+                                let mut args = Vec::new();
+                                for (p, known) in pred_args {
+                                    let v = match known {
+                                        Known::Addr(v) => v,
+                                        Known::Contains(cb, ci) => {
+                                            if let Some(&(_, q, _)) = converted.get(&(cb, ci)) {
+                                                q
+                                            } else {
+                                                let q = f.new_value(Ty::PTR);
+                                                let n = f.new_value(Ty::BOOL);
+                                                converted.insert((cb, ci), (e, q, n));
+                                                q
+                                            }
+                                        }
+                                    };
+                                    args.push((p, v));
+                                }
+                                let mut tails = Vec::new();
+                                for (p, insts, res) in appended {
+                                    args.push((p, res));
+                                    tails.push((p, insts));
+                                }
+                                subst.insert(r, param);
+                                removed.insert((bi, ii));
+                                slots_dropped.push(a[3]);
+                                table.insert(key, Known::Addr(param));
+                                forwards.push(Forward {
+                                    join: bi,
+                                    param,
+                                    args,
+                                    appended: tails,
+                                });
+                            }
+                            None => {
+                                table.insert(key, Known::Addr(r));
+                            }
                         }
                     }
                 }
                 continue;
             }
+            if let Some(ext) = contains_probe(m, inst)
+                && inst.args.len() == 4
+            {
+                let args: Vec<Value> = inst.args.iter().map(|v| resolve(&subst, *v)).collect();
+                setup_only = false;
+                if let Some(&k) = stored.get(&args[3]) {
+                    table
+                        .entry((ext, args[0], args[1], args[2], k))
+                        .or_insert(Known::Contains(bi, ii));
+                }
+                continue;
+            }
             match inst.op {
                 Op::Store | Op::Put | Op::Take => {
+                    if inst.op != Op::Store {
+                        setup_only = false;
+                    }
                     stored.remove(&inst.args[0]);
                     if inst.op == Op::Store {
-                        stored.insert(inst.args[0], resolve(&subst, inst.args[1]));
+                        let v = resolve(&subst, inst.args[1]);
+                        stored.insert(inst.args[0], v);
                     }
                 }
-                _ => {
-                    let e = inst.op.info().effects;
+                op => {
+                    let e = op.info().effects;
+                    if !matches!(op, Op::Slot | Op::TypeDesc) && !e.is_pure() {
+                        setup_only = false;
+                    }
                     // A record update drops the field it replaces, never a map being probed.
-                    if (e.io || e.ownership || e.alloc) && inst.op != Op::RecSet {
+                    if (e.io || e.ownership || e.alloc) && op != Op::RecSet {
                         table.clear();
                         stored.clear();
                     }
@@ -1221,17 +1332,169 @@ fn map_probes(m: &Module, f: &mut Func) -> bool {
         .into_iter()
         .filter(|s| uses[s.index()] == 2)
         .collect();
+    for fw in forwards {
+        f.blocks[fw.join].params.push(BlockParam {
+            value: fw.param,
+            mode: Mode::Borrow,
+        });
+        for (p, insts) in fw.appended {
+            f.blocks[p].insts.extend(insts);
+        }
+        for (p, v) in fw.args {
+            f.blocks[p].term.for_each_target_mut(|t| {
+                if t.block.index() == fw.join {
+                    t.args.push(v);
+                }
+            });
+        }
+    }
     for (bi, blk) in f.blocks.iter_mut().enumerate() {
-        let mut ii = 0;
-        blk.insts.retain(|i| {
-            ii += 1;
+        let old = std::mem::take(&mut blk.insts);
+        for (ii, i) in old.into_iter().enumerate() {
+            if let Some(&(ext, q, n)) = converted.get(&(bi, ii)) {
+                // `contains` becomes the probe, a null test and its negation.
+                let res = i.res;
+                let loc = i.loc;
+                blk.insts.push(Inst {
+                    op: Op::CallRt,
+                    args: i.args.clone(),
+                    imm: Imm::Ext(ext),
+                    res: Some(q),
+                    loc,
+                });
+                blk.insts.push(Inst {
+                    op: Op::PtrIsNull,
+                    args: vec![q],
+                    imm: Imm::None,
+                    res: Some(n),
+                    loc,
+                });
+                blk.insts.push(Inst {
+                    op: Op::Not,
+                    args: vec![n],
+                    imm: Imm::None,
+                    res,
+                    loc,
+                });
+                continue;
+            }
             let slot_store = i.op == Op::Store && dead_slots.contains(&i.args[0]);
             let slot_def = i.op == Op::Slot && i.res.is_some_and(|r| dead_slots.contains(&r));
-            !removed.contains(&(bi, ii - 1)) && !slot_store && !slot_def
-        });
+            if !removed.contains(&(bi, ii)) && !slot_store && !slot_def {
+                blk.insts.push(i);
+            }
+        }
     }
     apply_subst(f, &subst);
     true
+}
+
+/// The part of [`map_probes`] that decides whether the probe at `(join, at)` can move into the
+/// join's predecessors: the instructions to append to those that do not know the entry (each
+/// with the value its probe defines) and the known entry of those that do. `None` when no
+/// predecessor knows it or the shape is not one the move handles: every predecessor must end in
+/// an unconditional branch to the join, all processed already (so the join is no loop header), and
+/// the key, descriptors and map must be defined outside the join (or be the join's parameter for
+/// the map).
+#[allow(clippy::too_many_arguments, clippy::type_complexity)]
+fn plan_forward(
+    f: &mut Func,
+    preds: &[Vec<Block>],
+    ends: &[Option<HashMap<(ExtId, Value, Value, Value, Value), Known>>],
+    subst: &ValueMap<Value>,
+    join: usize,
+    at: usize,
+    e: ExtId,
+    a: &[Value],
+    k: Value,
+) -> Option<(Vec<(usize, Vec<Inst>, Value)>, Vec<(usize, Known)>)> {
+    let jb = &f.blocks[join];
+    let local: HashSet<Value> = jb
+        .params
+        .iter()
+        .map(|p| p.value)
+        .chain(jb.insts[..at].iter().filter_map(|i| i.res))
+        .collect();
+    if [a[1], a[2], k].iter().any(|v| local.contains(v)) {
+        return None;
+    }
+    let map_param = jb.params.iter().position(|p| p.value == a[0]);
+    if map_param.is_none() && local.contains(&a[0]) {
+        return None;
+    }
+    let slot = jb.insts[at].args[3];
+    let slot_inst = jb.insts[..at]
+        .iter()
+        .find(|i| i.op == Op::Slot && i.res == Some(slot))?
+        .clone();
+    let store = jb.insts[..at]
+        .iter()
+        .find(|i| i.op == Op::Store && i.args[0] == slot)?
+        .clone();
+    let probe = jb.insts[at].clone();
+    let mut known = Vec::new();
+    let mut missing = Vec::new();
+    for p in &preds[join] {
+        let pi = p.index();
+        let table = ends[pi].as_ref()?;
+        // The arguments this predecessor passes to the join: one edge per target it has there.
+        let mut edges: Vec<Vec<Value>> = Vec::new();
+        f.blocks[pi].term.for_each_target(|t| {
+            if t.block.index() == join {
+                edges.push(t.args.clone());
+            }
+        });
+        if edges.is_empty() || edges.iter().any(|t| t.len() != jb.params.len()) {
+            return None;
+        }
+        let map = match map_param {
+            Some(i) => {
+                let m = resolve(subst, edges[0][i]);
+                if edges.iter().any(|t| resolve(subst, t[i]) != m) {
+                    return None;
+                }
+                m
+            }
+            None => a[0],
+        };
+        match table.get(&(e, map, a[1], a[2], k)) {
+            Some(&hit) => known.push((pi, hit)),
+            None => {
+                // The probe is appended after the last instruction, which only a block that
+                // branches straight to the join can do.
+                if !matches!(f.blocks[pi].term, Term::Br(_)) {
+                    return None;
+                }
+                missing.push((pi, map));
+            }
+        }
+    }
+    if known.is_empty() {
+        return None;
+    }
+    let mut appended = Vec::new();
+    for (pi, map) in missing {
+        let ty = f.ty(slot);
+        let s = f.new_value(ty);
+        let res = f.new_value(Ty::PTR);
+        let insts = vec![
+            Inst {
+                res: Some(s),
+                ..slot_inst.clone()
+            },
+            Inst {
+                args: vec![s, k],
+                ..store.clone()
+            },
+            Inst {
+                args: vec![map, a[1], a[2], s],
+                res: Some(res),
+                ..probe.clone()
+            },
+        ];
+        appended.push((pi, insts, res));
+    }
+    Some((appended, known))
 }
 
 // ---- in-place mutators -----------------------------------------------------
