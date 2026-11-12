@@ -467,22 +467,18 @@ fn trait_fact(receiver: &Ty, contract: Option<Ty>, clone_decl: bool) -> MethodRe
 #[test]
 fn declaration_facts_preserve_resource_priority_and_argument_clonability() {
     let syms = ms_syntax::Names::global();
-    let copy = declared_type(Kind::Contract, "Copy", "@std/Copy", vec![]);
     let close = declared_type(Kind::Contract, "Closeable", "@std/Closeable", vec![]);
     let both = declared_type(Kind::Native, "Both", "test/Both", vec![]);
-    let copied = declared_type(Kind::Native, "Copied", "test/Copied", vec![]);
+    let copied = declared_type(Kind::Native, "Decimal", "@std/Decimal", vec![]);
     let clone_only = declared_type(Kind::Native, "CloneOnly", "test/CloneOnly", vec![]);
     for reversed in [false, true] {
-        let mut facts = vec![
-            trait_fact(&both, Some(copy.clone()), false),
-            trait_fact(&both, Some(close.clone()), false),
-        ];
+        let mut facts = vec![trait_fact(&both, Some(close.clone()), false)];
         if reversed {
             facts.reverse();
         }
         facts.extend([
             trait_fact(&both, None, true),
-            trait_fact(&copied, Some(copy.clone()), false),
+            trait_fact(&copied, None, false),
             trait_fact(&clone_only, None, true),
         ]);
         let program = Program {
@@ -514,20 +510,18 @@ fn declaration_facts_preserve_resource_priority_and_argument_clonability() {
 #[test]
 fn declaration_facts_keep_qualified_ids_nominal_rules_and_collection_overrides() {
     let syms = ms_syntax::Names::global();
-    let copy = declared_type(Kind::Contract, "Copy", "@std/Copy", vec![]);
     let close = declared_type(Kind::Contract, "Closeable", "@std/Closeable", vec![]);
     let foreign = declared_type(Kind::Contract, "Closeable", "foreign/Closeable", vec![]);
-    let record = declared_type(Kind::Record, "Same", "first/Same", vec![]);
-    let first = declared_type(Kind::Native, "Same", "first/Same", vec![]);
+    let record = declared_type(Kind::Record, "Decimal", "@std/Decimal", vec![]);
+    let first = declared_type(Kind::Native, "Decimal", "@std/Decimal", vec![]);
     let second = declared_type(Kind::Native, "Same", "second/Same", vec![]);
     let list = declared_type(Kind::Native, "List", "@std/List", vec![close.clone()]);
     let map = declared_type(Kind::Native, "Map", "@std/Map", vec![int(), int()]);
     let mut program = Program {
         methods: vec![
-            trait_fact(&record, Some(copy.clone()), false),
+            trait_fact(&record, None, false),
+            trait_fact(&first, None, false),
             trait_fact(&second, Some(foreign), false),
-            trait_fact(&list, Some(copy.clone()), false),
-            trait_fact(&map, Some(copy), false),
         ],
         ..Program::default()
     };
@@ -538,15 +532,13 @@ fn declaration_facts_keep_qualified_ids_nominal_rules_and_collection_overrides()
     assert_eq!(prior.class(syms, &first), Class::Copy);
     assert_eq!(prior.class(syms, &second), Class::Move);
     assert!(!prior.closes_itself(&second));
-    assert_eq!(prior.class(syms, &list), Class::Copy);
-    assert!(!prior.clonable(syms, &list));
-    assert_eq!(prior.class(syms, &map), Class::Copy);
-    assert!(prior.clonable(syms, &map));
+    assert_eq!(prior.class(syms, &list), Class::Resource);
+    assert_eq!(prior.class(syms, &map), Class::Move);
     program.methods.push(trait_fact(&map, Some(close), false));
     let current = Classifier::new(&program);
     assert_eq!(current.class(syms, &map), Class::Resource);
     assert!(!current.clonable(syms, &map));
-    assert_eq!(prior.class(syms, &map), Class::Copy);
+    assert_eq!(prior.class(syms, &map), Class::Move);
 }
 
 #[test]
@@ -681,19 +673,17 @@ fn named_native_clone_facts_keep_name_kind_and_result_guards() {
 fn native_collection_walk_keeps_declared_priority_and_argument_selection() {
     let syms = ms_syntax::Names::global();
     let resource = declared_type(Kind::Contract, "Closeable", "@std/Closeable", vec![]);
-    let copy = declared_type(Kind::Contract, "Copy", "@std/Copy", vec![]);
     let both = declared_type(Kind::Native, "Both", "test/LoopBoth", vec![]);
     let owned_copy = declared_type(
         Kind::Native,
-        "Plain",
-        "test/LoopCopy",
+        "Decimal",
+        "@std/Decimal",
         vec![resource.clone()],
     );
     let p = Program {
         methods: vec![
-            trait_fact(&both, Some(copy.clone()), false),
             trait_fact(&both, Some(resource.clone()), false),
-            trait_fact(&owned_copy, Some(copy.clone()), false),
+            trait_fact(&owned_copy, None, false),
         ],
         ..Program::default()
     };
@@ -730,19 +720,14 @@ fn native_collection_walk_keeps_declared_priority_and_argument_selection() {
     ] {
         assert_eq!(classes.class(syms, &list(probe)), Class::Move);
     }
-    for (receiver, wrapper) in [
-        (list(resource.clone()), map(int(), int())),
-        (map(int(), resource.clone()), list(int())),
-    ] {
-        let p = Program {
-            methods: vec![trait_fact(&receiver, Some(copy.clone()), false)],
-            ..Program::default()
-        };
-        let classes = Classifier::new(&p);
-        assert_eq!(classes.class(syms, &receiver), Class::Copy);
-        let mut held = (*wrapper).clone();
-        let at = if held.is(Builtin::List) { 0 } else { 1 };
-        held.args[at] = receiver;
-        assert_eq!(classes.class(syms, &Rc::new(held)), Class::Move);
+    let plain = declared_type(Kind::Native, "Decimal", "@std/Decimal", vec![]);
+    let p = Program {
+        methods: vec![trait_fact(&plain, None, false)],
+        ..Program::default()
+    };
+    let classes = Classifier::new(&p);
+    assert_eq!(classes.class(syms, &plain), Class::Copy);
+    for wrapper in [list(plain.clone()), map(int(), plain.clone())] {
+        assert_eq!(classes.class(syms, &wrapper), Class::Move);
     }
 }

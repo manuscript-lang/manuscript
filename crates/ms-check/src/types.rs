@@ -181,8 +181,6 @@ pub enum Builtin {
     Equal,
     /// `Data`.
     Data,
-    /// `Copy`.
-    Copy,
     /// `Clonable`.
     Clonable,
     /// `Iterator`.
@@ -310,7 +308,6 @@ impl Builtin {
             "Comparable" => Some(Builtin::Comparable),
             "Equal" => Some(Builtin::Equal),
             "Data" => Some(Builtin::Data),
-            "Copy" => Some(Builtin::Copy),
             "Clonable" => Some(Builtin::Clonable),
             "Iterator" => Some(Builtin::Iterator),
             "Iterable" => Some(Builtin::Iterable),

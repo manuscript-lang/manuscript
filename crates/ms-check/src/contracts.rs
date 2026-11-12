@@ -1018,7 +1018,7 @@ impl Checker {
         if t.kind == Kind::Native {
             // A native owns storage the runtime cannot duplicate blindly: it is cloned only
             // through the `clone` it declares (`List`, `Bytes`, `BigInt`), unless it is plain
-            // words (`impl Copy`). `ownership::Classifier::clonable` applies the same rule.
+            // words (`Decimal`). `ownership::Classifier::clonable` applies the same rule.
             return (self.copy_native(t) || self.declares_clone(t))
                 && t.args
                     .iter()
@@ -1032,14 +1032,9 @@ impl Checker {
         true
     }
 
-    /// Whether the native `t` declares `impl Copy`: its values are plain words.
+    /// Whether the native `t` is plain words (`Decimal`), like the primitives.
     fn copy_native(&self, t: &Ty) -> bool {
-        self.p.methods.iter().any(|m| {
-            m.receiver.id == t.id
-                && m.contract
-                    .as_ref()
-                    .is_some_and(|c| c.is_std(self.syms, "Copy"))
-        })
+        t.is(Builtin::Decimal)
     }
 
     /// Whether the native `t` declares an infallible `clone` of its own, as an operation of its
