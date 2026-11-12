@@ -57,6 +57,27 @@ fn drop_capture(label: String) Unit:
 fn temporary_list(label: String) Unit:
 	_old := [Door(label.clone(), false)].replace(0, Door(label, true))
 
+type Shelf:
+	slot: Holder?
+
+enum Choice:
+	Held(door: Holder, note: String)
+	Empty
+
+fn shelf_close(label: String) Unit:
+	shelf := Shelf(Holder(label, true))
+	_ := shelf.slot
+
+fn choice_close(label: String) Unit:
+	choice := Choice.Held(Holder(label.clone(), true), "{label} and a note")
+	_ := choice
+
+fn optional_close_during_fault(label: String) Unit:
+	var held: Holder? = Holder(label, true)
+	panic("body fault")
+
+	_ := held
+
 fn faults(work: fn() Unit) Bool:
 	return local_promise(fn: ok(work())).wait().is_error()
 
@@ -80,3 +101,18 @@ test "replacing a list element whose capture close faults keeps the new owner":
 
 test "a temporary list whose element close faults releases the list":
 	expect_true(faults(fn: temporary_list("a temporary label that needs a heap block")))?
+
+test "a faulting close of an optional payload releases it":
+	expect_true(faults(fn: shelf_close("a shelf label that needs a heap block")))?
+
+test "a faulting close of an alternative case releases its other fields":
+	expect_true(faults(fn: choice_close("a choice label that needs a heap block")))?
+
+test "a faulting optional close during a pending fault releases the payload":
+	expect_true(
+		faults(
+			fn: optional_close_during_fault(
+				"an optional label that needs a heap block"
+			)
+		)
+	)?
