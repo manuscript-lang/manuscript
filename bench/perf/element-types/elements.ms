@@ -287,6 +287,57 @@ fn generic_stack() Int:
 
 	return t
 
+// 15. Map with enum-payload values: insert, look up, match.
+fn map_enums() Int:
+	var m: Map[Int, Shape] = {}
+
+	for i in 0..200000:
+		k := i % 3
+
+		if k == 0: m[i] = Shape.Circle(i % 10)
+		else if k == 1: m[i] = Shape.Rect(i % 7, i % 5)
+		else: m[i] = Shape.Dot
+
+	var t = 0
+
+	for r in 0..5:
+		for i in 0..200000:
+			s := m.get(i)
+
+			if s.is_some():
+				match s.get():
+					Circle(rad): t += 3 * rad * rad
+					Rect(w, h): t += w * h
+					Dot: t += 1
+
+	return t
+
+// 16. String and Optional chains: split, trim, parse, accumulate in a Map.
+fn string_chains() Int:
+	var lines: List[String] = []
+	for i in 0..200000:
+		lines.append("  key{i % 500} = {i % 97}  ")
+
+	var m: Map[String, Int] = {}
+	var bad = 0
+
+	for r in 0..3:
+		for line in lines:
+			parts := line.split("=")
+
+			if parts.length() != 2:
+				bad += 1
+				continue
+
+			key := parts[0].trim()
+			v := parts[1].trim().parse_int().get(0)
+			m.update(key, 0, fn n: n + v)
+
+	var t = bad
+	for e in m.entries():
+		t += e.value
+	return t
+
 fn main() Unit:
 	t0 := monotonic().tick
 	a := list_records()
@@ -344,3 +395,11 @@ fn main() Unit:
 	o := generic_stack()
 	t14 := monotonic().tick
 	print("generic-stack {us(t13, t14)} {o}")
+
+	p := map_enums()
+	t15 := monotonic().tick
+	print("map-enums {us(t14, t15)} {p}")
+
+	q := string_chains()
+	t16 := monotonic().tick
+	print("string-chains {us(t15, t16)} {q}")

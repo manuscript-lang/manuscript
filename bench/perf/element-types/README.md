@@ -27,6 +27,8 @@ Release LLVM `ms`, shared 4 vCPU VM, min of 5, microseconds. Record names are 32
 | records-of-lists | 20,582 | 59,187 | 0.35 |
 | nested-generics | 32,776 | 55,383 | 0.59 |
 | generic-stack | 14,686 | 53,470 | 0.27 |
+| map-enums | 39,012 | 52,990 | 0.74 |
+| string-chains | 50,611 | 78,510 | 0.64 |
 
 ### Change: a user `hash()` is mixed before it indexes the table
 
@@ -38,7 +40,9 @@ Release LLVM `ms`, shared 4 vCPU VM, min of 5, microseconds. Record names are 32
 
 ### Open gaps
 
-- `result-records` (2.9x): a `Result[Event, Error]` whose error arm builds an `Error` value on 10% of calls.
+- `result-records` is dominated by building an `Error` (a record with a message, an optional kind and a details map, 88 bytes boxed) on 10% of calls against Rust's `Err(String)`; the success path alone is 1.4 ns per call. It is not a codegen gap.
+- Found while writing `string-chains`: a `String` conditionally moved into `Map.update(key, 0, fn ...)` fails to build ([#3706](https://github.com/manuscript-lang/manuscript/issues/3706)); the case moves it unconditionally.
+
 - `optional-records` (1.5x), `pq-records` (1.2x, owned by the heap thread), `sort-records` (1.7x: the remaining cost is the merge sort against driftsort and a deep clone of the result).
 
 ### Tried and not kept
