@@ -344,3 +344,16 @@ test "elements with many attributes keep their order and reject duplicates at an
 	expect_true(parse(text + " a39=\"x\"/>").is_error())?
 	expect_true(parse(text + " a40=\"x\"/>").is_ok())?
 	expect_true(parse("<root a=\"1\" b=\"2\" a=\"3\"/>").is_error())?
+
+test "delimiter scans preserve empty spans Unicode and partial terminators":
+	expect_equal(parse("<a><![CDATA[]]></a>").get().text(), "")?
+	expect_equal(parse("<?p?><a k=''/>").get().attribute("k").get(), "")?
+
+	text := "é日]]x?y".repeat(1000).get()
+	doc := parse("<a><![CDATA[{text}]]></a>").get()
+	expect_equal(doc.text(), text)?
+
+	attribute := parse("<a k='{text}'/>").get()
+	expect_equal(attribute.attribute("k").get(), text)?
+	for source in ["<a><!--x--", "<a><![CDATA[]]", "<a k='x", "<?p x?"]:
+		expect_equal(parse(source).err().kind, "EBADMSG")?
