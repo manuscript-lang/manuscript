@@ -44,7 +44,8 @@ impl FnLower<'_> {
     fn user_order(&mut self, concrete: &ct::Ty, a: Value, b: Value) -> Result<Value, Error> {
         let key = self.cx.tys.shape(concrete);
         let tys = &mut self.cx.tys;
-        let compare = |m: &ct::MethodRef| m.name().is_some_and(|n| self.syms.str(n) == "compare");
+        let compare_name = self.cx.session.sole_operation("@std/core.ms", "Comparable");
+        let compare = |m: &ct::MethodRef| m.name().is_some() && m.name() == compare_name;
         let im = self
             .cx
             .methods
