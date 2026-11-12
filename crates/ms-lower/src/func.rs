@@ -122,6 +122,9 @@ pub(crate) struct FnLower<'a> {
     /// Reassigned locals of a scope that nothing moves: no marker until a path leaves the scope,
     /// where the value the variable holds then is registered (see `drop_scope_locals`).
     pub raw_vars: HashMap<usize, ms_mir::builder::Var>,
+    /// Reassigned locals every path moves, with the index of their scope: each value the
+    /// variable gets is owned there (`local_put`) and disowned when it leaves (`local_take`).
+    pub tracked_vars: HashMap<ms_mir::builder::Var, usize>,
     /// Resources in memory the elaborate pass closes: the slot address and how the value closes.
     /// A move of the value disowns the slot.
     pub raw_slots: HashMap<usize, RawSlot>,
@@ -670,6 +673,7 @@ impl<'a> FnLower<'a> {
             raw_owners: true,
             raw_owned: std::collections::HashSet::new(),
             raw_vars: HashMap::new(),
+            tracked_vars: HashMap::new(),
             raw_slots: HashMap::new(),
             closers: HashMap::new(),
             rest_closers: HashMap::new(),
@@ -1196,6 +1200,28 @@ impl<'a> FnLower<'a> {
             // Every path moves it: the move moving_params the local, and the scope drops nothing.
             self.must_move.insert(uid);
         }
+        if moved
+            && !conditional
+            && self.raw_owners
+            && !self.dead
+            && !self.slotted.contains(&uid)
+            && !self.redefined.contains(&uid)
+        {
+            // The pass owns each value the variable holds, so an exit before the move releases it.
+            self.locals.insert(
+                uid,
+                Local {
+                    var,
+                    ty,
+                    slot: None,
+                    opt: false,
+                },
+            );
+            self.tracked_vars.insert(var, self.scope_marks.len() - 1);
+            let v = self.b.use_var(var);
+            self.own_raw_value(v, 0);
+            return;
+        }
         // A conditional move empties the local on its path only. In a variable, the local holds
         // `ty?` and a move leaves `none`; in memory (a closure shares it, or a boxed optional
         // would allocate), the slot keeps its stale bits and a flag says whether they are held.
@@ -1392,7 +1418,14 @@ impl<'a> FnLower<'a> {
                 let held = self.b.use_var(l.var);
                 self.b.opt_unbox(held)
             }
-            None => self.b.use_var(l.var),
+            None => {
+                let v = self.b.use_var(l.var);
+                if self.tracked_vars.contains_key(&l.var) && !self.dead {
+                    self.b
+                        .emit(Op::ScopeDisown, &[v], ms_mir::ir::Imm::None, None);
+                }
+                v
+            }
         }
     }
 
@@ -1404,7 +1437,14 @@ impl<'a> FnLower<'a> {
                 let some = self.b.opt_some(v);
                 self.b.def_var(l.var, some);
             }
-            None => self.b.def_var(l.var, v),
+            None => {
+                self.b.def_var(l.var, v);
+                if let Some(i) = self.tracked_vars.get(&l.var).copied()
+                    && !self.dead
+                {
+                    self.own_raw_value_in(i, v, 0);
+                }
+            }
         }
     }
 
