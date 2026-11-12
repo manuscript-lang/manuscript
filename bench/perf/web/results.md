@@ -295,3 +295,16 @@ Changes: `switch_away` called a non-blocking `epoll_wait` on every task switch w
 
 Still 1.4x behind C, all of it user time (3.1–3.7 µs against 0.5 µs). Callgrind with a small allocator reservation (the [wiki note](../../../wiki/benchmarks-and-performance/callgrind-needs-a-smaller-allocator-reservation.md)): 16k instructions per request, about 30 allocations (14% of instructions in `__rust_alloc` and `__rust_dealloc`), 18 `msrt_cleanup_push` calls per request (6%), one promise and one task per request, and three `String` clones for method, path and query. Those are the next cuts.
 
+## 2026-11-12, serving workers on every thread
+
+With `MS_THREADS=2` the server ran on one core. `serve` makes one worker promise per core, but a promise started beside a native stream pinned to its thread (the serving handle) runs on that thread, so every worker started in the accept loop stayed there; the second thread never ran one. `/top?n=10` measured 21.2k req/s at one thread and 22.8k at two (the 2026-11-03 table above showed 2.3x), and the thread list showed one busy thread. `PromiseOptions(spread: true)` (`msrt_promise_start_spread`) places a promise on the least loaded thread and starts a thread when the limit allows, ignoring the pin; `serve` uses it for its workers.
+
+Server on CPUs 0-1, load generator on CPUs 2-3, 64 keep-alive connections, 4 s, shared 4-CPU Linux VM (±10%), one round each:
+
+| Threads | `/health` req/s before | after | `/top?n=10` req/s before | after |
+| ---: | ---: | ---: | ---: | ---: |
+| 1 | 127k | 128k | 24.7k | 21.2k |
+| 2 | 131k | 208k | 22.8k | 45.4k |
+
+C (epoll, two threads) reaches 190k here, where the Go load generator saturates, so two Manuscript threads are now at the load generator's limit on `/health`.
+

@@ -18,6 +18,9 @@ export extern fn msrt_promise_start(id: Int, work: fn() Unit) Unit
 // As `msrt_promise_start`, but always on the calling thread.
 export extern fn msrt_promise_start_here(id: Int, work: fn() Unit) Unit
 
+// As `msrt_promise_start`, but on the least loaded thread.
+export extern fn msrt_promise_start_spread(id: Int, work: fn() Unit) Unit
+
 export extern fn msrt_promise_wait(id: Int, timeout_ns: Int) Int
 
 // Limits the promise: once `timeout_ns` has passed from now without a result it is
