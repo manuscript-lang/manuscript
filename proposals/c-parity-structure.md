@@ -3,7 +3,7 @@
 ## Summary
 
 - Problem: compiled loops are near C, but ordinary text and collection code is 1.6x to 3.3x C. The time is in native calls LLVM cannot see into, in the fresh list and copies the standard API shapes force, and in fast paths that exist only for one exact source shape.
-- Change: three tracks ranked by measured gain, with the cheap measured parts staged first, then seven smaller opportunities from later passes. No new syntax or type. Two later ideas are noted, not proposed.
+- Change: three tracks ranked by measured gain, with the cheap measured parts staged first, then eight smaller opportunities from later passes. No new syntax or type. Two later ideas are noted, not proposed.
 - Decision requested: approve the order and answer the open question on track 2. Nothing is implemented here; each stage ships with its own implementation PR.
 
 ## Status
@@ -38,7 +38,7 @@ Proposal, 2026-11-12, checked against `fff26e41`. Evidence: [`bench/perf/structu
 ### 1. Library algorithms as inlinable code
 
 - Rule: an operation that neither allocates nor touches runtime state is `.ms` source over inline `Bytes` and `List` reads, or an `ms-rt-hot` function when it needs SIMD (`memchr`). Collections then specialize per element type instead of dispatching on `TypeDesc`.
-- First family: `split`, `lines`, `fields_by`, `find`, `contains`, `scalar_at`, `view`. A `for` over `split` becomes a plain loop over `memchr` results; the lookahead fields go with it.
+- First family: `split`, `lines`, `fields_by`, `find`, `contains`, `scalar_at`, `view`, and `String` `length`, `starts_with` and `==` (24 to 37 instructions a call; a word scan is 2.3x C). A `for` over `split` becomes a plain loop over `memchr` results; the lookahead fields go with it.
 - Each method moves only with a before/after run and a compile-time check. `Map` goes last.
 
 ### 2. Derived results borrow or take their receiver
@@ -85,12 +85,12 @@ Measured after the tracks above were started ([second pass](../bench/perf/struct
 | 7 | Stack check per recursive call | 5 of 20.7 instructions per `fib` call, two dependent loads | keep the limit one load away, or check once per recursion cycle | S |
 | 9 | A character is a `String` | tokenizer with `text.get(i) == "+"`: 11.5x C; 1.4x in compiled code once it works on code points | the compiler keeps a one-scalar `String` (`get`, a `chars()` element, a one-character literal) as its code point, so comparisons are integer compares; it becomes a `String` only where it is stored or passed | M |
 | 10 | Containers written in `.ms` cannot leave a slot empty | `Deque` stores `List[T?]` and calls `msrt_list_replace` per pop: 80 instructions per push and pop, BFS 4.9x C | one internal `@std` storage primitive with take and put by index, for `Deque`, `Queue`, `PriorityQueue` and the containers track 1 moves to source | S to M |
+| 11 | A change through a boxed optional field reboxes the payload | 200k tree inserts through `self.left?.insert(key)`: 4.3M allocations, 15x C's instructions | pass the box's interior address to the `var` call, as item 5 does for list rows | S to M |
 | 8 | Checked `Int` loops do not vectorize | 2.7x to 3.5x unchecked C on an accumulate loop; equal to C with trapping adds | a vector body that tests overflow before storing and replays the block in scalar code to fault exactly | L |
 
 - 8 is the safety floor, not a defect: a flag tested once per loop pass was measured and gains nothing, and C with the same checks is 1.07x to 2.9x plain C on the kernels. Build it last.
 - 9 replaces the four-byte text cell noted below for code that reads characters; grids that store them still pay 16 bytes a cell.
 - Platforms: every number here is Linux x86-64. Tracks 1 to 3 and items 5, 8, 9 and 10 change the compiler and `.ms` library, so they apply on macOS and Windows alike; items 4, 6 and 7 touch OS-specific runtime code, so each fix is written for all three platforms; measuring on Linux is enough.
-- Measured at or ahead of C, so not pursued: `Result` and `?`, interface dispatch, `print`, `String +=`, `parse_int`, process start.
 
 ## Components touched
 

@@ -113,3 +113,21 @@ Same build and machine; callgrind instructions and min-of-3 wall time, C twins i
 - c and d: 8 and 5 more instructions a call than a C function pointer (vtable load, receiver adjust), hidden by the call itself in wall time.
 - `intmap`: 60 instructions a map operation in two opaque runtime calls against 17 for an open-addressing table in C; equal in wall time here because the division in the generator dominates. Covered by track 1 ("`Map` goes last").
 - Also at or ahead of C: optional results `Int?` from a called function (560M against 1,170M for an out-parameter in C), building 300k interpolated lines and `join` (279M against 426M for `snprintf`).
+
+## 2026-11-12, fifth pass: floats, sorting, trees, promises, string lists
+
+Same build and machine; `mixed.ms` runs six cases, each measured alone (callgrind instructions, min-of-3 wall time). Case d has no C twin.
+
+| case | ms | c | wall ms / c |
+| --- | ---: | ---: | --- |
+| a: `List[Float]` update and sum, 30M elements each | 125M | 155M | 34 / 33 ms |
+| b: `sort` 200k records by a field with a closure, 5 times | 1,201M | 1,987M (`qsort`) | 104 / 250 ms |
+| c: 200k inserts into a binary tree of `Node?` links through a `var` method | 1,808M | 117M | 112 / 73 ms |
+| d: 100k promises of 200 loop steps each, `wait_all` in batches of 5,000 | 1,165M | | 146 ms |
+| e: scan a `List[String]`: `w == "w42"`, `w.starts_with("w49")`, `w.length()`, 4M words | 485M | 225M | 68 / 29 ms |
+| f: `filter`, `map` then `fold`, `contains`, `index_of` over 1M `Int`, 20 times | 767M | 514M | 145 / 114 ms |
+
+- c: 4,329,208 allocations for 200,000 nodes. `self.left?.insert(key)` lowers to take the record, `opt.unbox` the child into a stack slot, call, `opt.some` (a new box) and put it back: one allocation, one free and a copy of the node at every level of every insert. It is the boxed-payload form of the `grid` row write-back above. Wall time hides most of it behind cache misses at this size.
+- e: `starts_with` is 37 instructions a call, `length` 24 and `==` reaches `memcmp` through a call, all opaque to LLVM; the compiled loop is a quarter of the total.
+- d: about 8,200 instructions and 9 allocations a promise beyond its own work (task record, stack switch, frame capture for fault reports, result cell). No C twin; a thread per task would be far slower, so this is a note, not a gap.
+- a, b, f: at or ahead of C. The `Float` loops vectorize, since they carry no overflow check.
