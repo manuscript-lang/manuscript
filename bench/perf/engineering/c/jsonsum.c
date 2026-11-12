@@ -87,7 +87,7 @@ int main(void) {
     }
     printf("records: %lld\nactive: %lld\nname bytes: %lld\n", (long long)records, (long long)active, (long long)name_bytes);
     Entry *pp = malloc(scores.used * sizeof(Entry)); size_t k = 0;
-    for (size_t i = 0; i < scores.cap; i++) if (scores.slots[i].key) { pp[k] = scores.slots[i]; pp[k].count = pp[k].sum; k++; }
+    for (size_t i = 0; i < scores.used; i++) if (scores.slots[i].key) { pp[k] = scores.slots[i]; pp[k].count = pp[k].sum; k++; }
     qsort(pp, k, sizeof(Entry), by_count_then_key);
     for (int i = 0; i < 5; i++) printf("%.*s %lld\n", (int)pp[i].len, pp[i].key, (long long)pp[i].count);
     // tags by name ascending
