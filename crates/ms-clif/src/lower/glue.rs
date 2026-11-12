@@ -58,8 +58,8 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let out = self.glue_copy(ty, &params);
                 self.b.ins().return_(&out);
             }
-            Glue::ClosureDrop(f) => {
-                // Drops the captures then frees the object.
+            Glue::ClosureDrop(f) | Glue::ClosureDropFramed(f) => {
+                // Drops the captures then frees the object (a framed one lives in a stack slot).
                 let obj = params[0];
                 let caps = self.closure_captures(f);
                 let closers = self.g.m.funcs[f as usize].capture_closers.clone();
@@ -80,7 +80,9 @@ impl<'a, 'm> Lower<'a, 'm> {
                         self.drop_value(c, &vs);
                     }
                 }
-                self.free(obj);
+                if matches!(kind, Glue::ClosureDrop(_)) {
+                    self.free(obj);
+                }
                 self.b.ins().return_(&[]);
             }
             Glue::ClosureDropFrom(f, from) => {
@@ -121,10 +123,15 @@ impl<'a, 'm> Lower<'a, 'm> {
                     copies.push(self.clone_value(*cty, &vs));
                 }
                 let obj = self.alloc(total);
-                for at in [0, 8, CLOSURE_CODE] {
+                // The drop entry is the heap one even when `src` lives in a frame.
+                for at in [0, CLOSURE_CODE] {
                     let word = self.b.ins().load(types::I64, flags(), src, at);
                     self.b.ins().store(flags(), word, obj, at);
                 }
+                let drop = self.g.glue(Glue::ClosureDrop(f), Ty::UNIT);
+                let dr = self.fref(drop);
+                let da = self.b.ins().func_addr(types::I64, dr);
+                self.b.ins().store(flags(), da, obj, 8);
                 for ((off, leaves), vs) in layouts.iter().zip(&copies) {
                     self.store_leaves(obj, *off, leaves, vs);
                 }
