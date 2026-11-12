@@ -187,3 +187,29 @@ test('unindented comments do not end an enum declaration scope', () => {
     ['enum', 'k'], ['E', 'nc'], ['ready', 'nc'], ['pending', 'nc'], ['finished', 'nc'], ['work', 'nf'],
   ]);
 });
+
+const source = fs.readFileSync(path.join(__dirname, '../../website/assets/manuscript-highlight.js'), 'utf8');
+// Expose the private preparation helper without booting a page or simulating a DOM.
+const exportsForTest = {exports:{}};
+assert.ok(source.includes('module.exports = { tokenize };'));
+new Function('module', source.replace('module.exports = { tokenize };', 'module.exports = { tokenize, prepareTokenizer };'))(exportsForTest);
+const {prepareTokenizer} = exportsForTest.exports;
+
+test('prepared grammar preserves tokens without carrying lexical state between fences', () => {
+  const prepared = prepareTokenizer(grammar);
+  const inputs = ['"unterminated', 'fn main() Unit:\n    print("{1}")\n', 'é😀\r\n', '', '/* open', 'enum E:\n    item(value: Int)\n', 'x := 1\n'];
+  for (const input of [...inputs, ...inputs.toReversed()]) {
+    const actual = prepared(input);
+    assert.deepEqual(actual, tokenize(input));
+    assert.equal(actual.map(t => t.text).join(''), input);
+  }
+});
+
+test('preparing a different grammar cannot replace a prepared grammar', () => {
+  const make = name => ({patterns:[{match:'x',name}],repository:{}});
+  const first = prepareTokenizer(make('keyword.control'));
+  const second = prepareTokenizer(make('string.quoted'));
+  assert.deepEqual(first('x'), [{text:'x',kind:'k'}]);
+  assert.deepEqual(second('x'), [{text:'x',kind:'s'}]);
+  assert.deepEqual(first('x'), [{text:'x',kind:'k'}]);
+});

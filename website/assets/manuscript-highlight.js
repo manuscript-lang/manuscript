@@ -16,7 +16,7 @@
     return '';
   }
 
-  function tokenize(source, grammar) {
+  function prepareTokenizer(grammar) {
     const cache = new Map();
     const captures = scopes => Object.entries(scopes || {}).map(([group, { name }]) => [Number(group), tokenClass(name)]);
     function patterns(rules) {
@@ -37,7 +37,16 @@
       });
       return compiled;
     }
-    const stack = [{ patterns: patterns(grammar.patterns), kind: '' }];
+    const rootPatterns = patterns(grammar.patterns);
+    return source => tokenizePatterns(source, rootPatterns);
+  }
+
+  function tokenize(source, grammar) {
+    return prepareTokenizer(grammar)(source);
+  }
+
+  function tokenizePatterns(source, rootPatterns) {
+    const stack = [{ patterns: rootPatterns, kind: '' }];
     const tokens = [];
     let cursor = 0;
     const add = (text, kind = '') => {
@@ -92,9 +101,11 @@
   }
 
   if (typeof document !== 'undefined') {
-    document.querySelectorAll('.docs-code[data-language="manuscript"] pre code, .docs-code[data-language="ms"] pre code').forEach(code => {
+    const blocks = document.querySelectorAll('.docs-code[data-language="manuscript"] pre code, .docs-code[data-language="ms"] pre code');
+    const tokenizeBlock = blocks.length ? prepareTokenizer(manuscriptGrammar) : null;
+    blocks.forEach(code => {
       const fragment = document.createDocumentFragment();
-      tokenize(code.textContent, manuscriptGrammar).forEach(({ text, kind }) => {
+      tokenizeBlock(code.textContent).forEach(({ text, kind }) => {
         if (!kind) fragment.append(document.createTextNode(text));
         else {
           const span = document.createElement('span');
