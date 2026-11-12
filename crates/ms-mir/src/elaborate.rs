@@ -404,6 +404,26 @@ fn merge(old: &State, new: &State) -> Result<State, String> {
     Ok(out)
 }
 
+/// Whether `v` is disowned in block `b` or in the blocks that lead to it without a join.
+fn disowned_before(f: &Func, preds: &[Vec<Block>], b: usize, v: Value) -> bool {
+    let mut cur = b;
+    let mut seen = HashSet::new();
+    while seen.insert(cur) {
+        if f.blocks[cur]
+            .insts
+            .iter()
+            .any(|i| i.op == Op::ScopeDisown && i.args[0] == v)
+        {
+            return true;
+        }
+        match preds[cur].as_slice() {
+            [only] => cur = only.index(),
+            _ => return false,
+        }
+    }
+    false
+}
+
 fn function(
     m: &Module,
     f: &mut Func,
@@ -442,16 +462,15 @@ fn function(
         }
     }
     // A value that flows through a moving block parameter keeps its scope.
+    let preds = f.predecessors();
     loop {
         let mut changed = false;
-        for b in &f.blocks {
+        for (bi, b) in f.blocks.iter().enumerate() {
             b.term.for_each_target(|t| {
                 for (a, p) in t.args.iter().zip(&f.blocks[t.block.index()].params) {
                     // A disowned value left its scope: the parameter it feeds is the new owner's.
-                    let disowned = b
-                        .insts
-                        .iter()
-                        .any(|i| i.op == Op::ScopeDisown && i.args[0] == *a);
+                    // The disown may sit in a block this one follows without a join.
+                    let disowned = disowned_before(f, &preds, bi, *a);
                     if p.mode == Mode::Move
                         && !disowned
                         && let Some(tag) = cx.tags.get(a).copied()

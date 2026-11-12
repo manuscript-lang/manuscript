@@ -457,9 +457,20 @@ impl FnLower<'_> {
     /// Closes an owned temporary that is a resource; the value after the close.
     fn close_temp(&mut self, v: Value) -> Value {
         let mt = self.b.ty(v);
-        let Some(ty) = self.cx.source_tys.get(mt.0 as usize).cloned() else {
+        let Some(kind) = self.temp_closer(mt) else {
             return v;
         };
+        close_owned(&mut self.b, &kind, v, mt)
+    }
+
+    /// Whether the temporary `v` closes before it drops.
+    pub(crate) fn is_resource_temp(&mut self, v: Value) -> bool {
+        let mt = self.b.ty(v);
+        self.temp_closer(mt).is_some()
+    }
+
+    fn temp_closer(&mut self, mt: MTy) -> Option<CloseKind> {
+        let ty = self.cx.source_tys.get(mt.0 as usize).cloned()?;
         // A resource, or a record or list holding one (only read in place: the checker rejects
         // moving a resource part out of a computed value). A wrapper (`Result`, `Optional`) may
         // have had its payload moved out already, so it closes only when it is itself one.
@@ -467,12 +478,9 @@ impl FnLower<'_> {
             || (self.closeable_method(&ty).is_none()
                 && (ty.is(Builtin::Optional) || ty.is(Builtin::Result)))
         {
-            return v;
+            return None;
         }
-        let Ok(Some(kind)) = self.part_closer(&ty) else {
-            return v;
-        };
-        close_owned(&mut self.b, &kind, v, mt)
+        self.part_closer(&ty).ok().flatten()
     }
 
     /// The close operation of a value of the MIR type `ty` holding a resource, if it is one.

@@ -690,3 +690,41 @@ fn a_fallible_slot_close_returns_its_error_through_the_close_exit() {
         assert_eq!(it.stdout(), want, "{text}");
     }
 }
+
+#[test]
+fn a_value_disowned_before_a_loop_back_edge_does_not_make_the_parameter_an_owner() {
+    // `%w` leaves its scope in b2 and reaches the back edge through b3: the loop parameter
+    // `%v` is lowering's own, so its explicit drop is the only one.
+    let (r, _) = elaborate_and_run(
+        r#"
+fn @main() -> int {
+b0:
+  %z: int = iconst 0
+  %a: list<int> = call @mk (%z)
+  br b1(%z, %a)
+b1(%i: int, %v: move list<int>):
+  %n: int = iconst 2
+  %c: bool = icmp.lt %i, %n
+  br_if %c, b2(), b4()
+b2():
+  %id: int = iconst 7
+  %w: list<int> = call @mk (%id)
+  scope.begin 0 0
+  scope.own 0 0 %w
+  scope.disown %w
+  drop %v
+  scope.end 0 0
+  br b3()
+b3():
+  %one: int = iconst 1
+  %j: int = iadd %i, %one
+  br b1(%j, %w)
+b4():
+  drop %v
+  %r: int = iconst 0
+  ret %r
+}
+"#,
+    );
+    assert_eq!(r, 0);
+}

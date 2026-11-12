@@ -421,12 +421,12 @@ impl<'a> FnLower<'a> {
             // A `try` in a later key or value may return early: the map and key built so far
             // stay registered as temporaries until then.
             if early {
-                self.temps.push(acc);
+                self.pend_temp(acc);
             }
             let k = self.expr(&en.key)?;
             let k = if self.dead { k.v } else { self.owned(k) };
             if early && !self.dead {
-                self.temps.push(k);
+                self.pend_temp(k);
             }
             let v = self.expr(&en.value)?;
             if early {
