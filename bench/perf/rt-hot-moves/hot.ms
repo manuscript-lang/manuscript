@@ -37,6 +37,7 @@ fn main() Unit:
 	var xs = List[Int]()
 	for i in 0..1000:
 		xs.append(i)
+
 	b := "abcdefghij".repeat(100).get().to_bytes()
 	t0 := monotonic().tick
 	s1 := sum_get(xs, 20000)

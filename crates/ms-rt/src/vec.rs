@@ -285,7 +285,7 @@ pub unsafe extern "C-unwind" fn msrt_list_reserve(v: *mut VecVal, d: ElemDesc, e
 /// is returned when out of range.
 #[unsafe(no_mangle)]
 // ms: leaf
-pub unsafe extern "C-unwind" fn msrt_list_at_slow(
+pub unsafe extern "C-unwind" fn msrt_list_at(
     v: *const VecVal,
     d: ElemDesc,
     index: i64,
@@ -308,7 +308,7 @@ pub unsafe extern "C-unwind" fn msrt_list_at_slow(
 /// `get`: copies the element (or the default) into `out`.
 #[unsafe(no_mangle)]
 // ms: leaf
-pub unsafe extern "C-unwind" fn msrt_list_get_slow(
+pub unsafe extern "C-unwind" fn msrt_list_get(
     v: *const VecVal,
     d: ElemDesc,
     index: i64,
@@ -317,18 +317,14 @@ pub unsafe extern "C-unwind" fn msrt_list_get_slow(
 ) {
     // SAFETY: caller contract.
     unsafe {
-        let p = msrt_list_at_slow(v, d, index, default);
+        let p = msrt_list_at(v, d, index, default);
         slot_copy(&*d, p, out);
     }
 }
 
 #[unsafe(no_mangle)]
 // ms: leaf
-pub unsafe extern "C-unwind" fn msrt_list_first_slow(
-    v: *const VecVal,
-    d: ElemDesc,
-    out: *mut u8,
-) -> u8 {
+pub unsafe extern "C-unwind" fn msrt_list_first(v: *const VecVal, d: ElemDesc, out: *mut u8) -> u8 {
     // SAFETY: caller contract.
     unsafe {
         if (*v).len == 0 {
@@ -341,11 +337,7 @@ pub unsafe extern "C-unwind" fn msrt_list_first_slow(
 
 #[unsafe(no_mangle)]
 // ms: leaf
-pub unsafe extern "C-unwind" fn msrt_list_last_slow(
-    v: *const VecVal,
-    d: ElemDesc,
-    out: *mut u8,
-) -> u8 {
+pub unsafe extern "C-unwind" fn msrt_list_last(v: *const VecVal, d: ElemDesc, out: *mut u8) -> u8 {
     // SAFETY: caller contract.
     unsafe {
         let v = &*v;
@@ -1595,7 +1587,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_index_of(
 /// `index_of_byte(value, start)`: first offset at or after `start` holding `value`.
 #[unsafe(no_mangle)]
 // ms: leaf domain=binary
-pub unsafe extern "C-unwind" fn msrt_bytes_index_of_byte_slow(
+pub unsafe extern "C-unwind" fn msrt_bytes_index_of_byte(
     b: *const VecVal,
     value: i64,
     start: i64,
@@ -1652,7 +1644,21 @@ pub unsafe extern "C-unwind" fn msrt_bytes_last_index_of(
 
 #[unsafe(no_mangle)]
 // ms: leaf domain=binary
-pub unsafe extern "C-unwind" fn msrt_bytes_get_slow(
+pub unsafe extern "C-unwind" fn msrt_bytes_starts_with(b: *const VecVal, v: *const VecVal) -> u8 {
+    // SAFETY: caller contract.
+    unsafe { bslice(b).starts_with(bslice(v)) as u8 }
+}
+
+#[unsafe(no_mangle)]
+// ms: leaf domain=binary
+pub unsafe extern "C-unwind" fn msrt_bytes_ends_with(b: *const VecVal, v: *const VecVal) -> u8 {
+    // SAFETY: caller contract.
+    unsafe { bslice(b).ends_with(bslice(v)) as u8 }
+}
+
+#[unsafe(no_mangle)]
+// ms: leaf domain=binary
+pub unsafe extern "C-unwind" fn msrt_bytes_get(
     b: *const VecVal,
     index: i64,
     has_default: HasRaw,
@@ -1697,7 +1703,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_slice(
 /// receiver faults.
 #[unsafe(no_mangle)]
 // ms: leaf domain=binary
-pub unsafe extern "C-unwind" fn msrt_bytes_view_slow(
+pub unsafe extern "C-unwind" fn msrt_bytes_view(
     b: *const VecVal,
     start: i64,
     end: i64,
@@ -2520,7 +2526,7 @@ mod tests {
             assert_eq!(msrt_list_slice(&v, d, 3, 1, &mut s), STATUS_OUT_OF_RANGE);
             testutil::assert_fault(
                 "index 9 out of range for length 4; pass a default: get(index:, default: ...)",
-                || msrt_list_at_slow(&v, d, 9, core::ptr::null()),
+                || msrt_list_at(&v, d, 9, core::ptr::null()),
             );
             testutil::assert_fault(
                 "List.remove: index must be between -4 and 3 (negative indexes count from the end), found 7",

@@ -1,6 +1,6 @@
-# Runtime fast paths moved to `ms-rt-hot`
+# Inline `first` and `last`
 
-Evidence for moving list `at`/`get`/`first`/`last`, `Bytes` `get`/`view`/`starts_with`/`ends_with`/`index_of_byte`, the integer and float compares and `UInt64` division into `ms-rt-hot` (see `crates/DESIGN.md`, "Where a new function goes").
+Evidence for emitting `List.first()` and `last()` inline from MIR (`ms-lower/src/native/list.rs`) instead of calling the runtime or `ms-rt-hot`; see `proposals/retire-ms-rt-hot.md`.
 
 ```sh
 ms build --build-type Release bench/perf/rt-hot-moves/hot.ms -o /tmp/hot && /tmp/hot
@@ -8,13 +8,12 @@ ms build --build-type Release bench/perf/rt-hot-moves/hot.ms -o /tmp/hot && /tmp
 
 ## 2026-11-12: Linux x86_64
 
-`faced39c` against the same plus this change, Release LLVM `ms`, 4 vCPU shared VM, minimum of 6 runs, microseconds.
+Release LLVM `ms`, 4 vCPU shared VM, minimum of 6 runs, microseconds, `first()` + `last()` 5M calls on a 1000-element `List[Int]`.
 
-| case | before | after |
-| --- | ---: | ---: |
-| `first()` + `last()`, 5M calls | 17,731 | 10,684 |
-| `index_of_byte` hit 7 bytes ahead, 980 x 2000 | 8,751 | 5,439 |
-| `List.get(i, 0)`, 20M reads | 7,662 | 7,668 |
-| `Bytes.get(i, 0)`, 20M reads | 7,533 | 7,549 |
+| version | time |
+| --- | ---: |
+| runtime call (`faced39c`) | 17,731 |
+| runtime function in `ms-rt-hot` (an earlier draft of #3730) | 10,845 |
+| inline from MIR | 2,660 |
 
-`get` on both was already inlined by lowering in this loop shape, so it does not move.
+The other cases in `hot.ms` (`List.get`, `Bytes.get`, `Bytes.index_of_byte`) are not changed by this work; `index_of_byte` measured 8,751 against 5,439 us when moved into `ms-rt-hot`, which the compiler does not yet match (it needs a loop; see the proposal).
