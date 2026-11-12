@@ -20,7 +20,7 @@
   },
   "notes": [
     "Final samples.json and aa.json timing runs have no concurrent builds.",
-    "Initial aa.json overlapped rebuild and is excluded.",
+    "Initial local aa.json overlapped a rebuild and is not committed; committed aa.json is the later clean local aa-clean.json run.",
     "No perf or valgrind executable available.",
     "No C parity claim."
   ],
