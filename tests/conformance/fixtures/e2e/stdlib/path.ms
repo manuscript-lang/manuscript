@@ -34,3 +34,36 @@ test "glob matching rejects NUL in the path as it does in the pattern":
     invalid: Bool! := error(Error("path: invalid input", kind: "EINVAL"))
     expect_equal(posix().matches_glob("a\u{0}b", "*"), invalid)?
     expect_equal(posix().matches_glob("ab", "*\u{0}"), invalid)?
+
+test "POSIX resolution preserves resets separators and all input validation":
+	paths := posix()
+	expect_equal((paths.resolve("/base/", ["a", "", "b/"])?), "/base/a/b")?
+	expect_equal((paths.resolve("/base", ["a", "//root///", ".", "../é🙂", ""])?), "/é🙂")?
+	expect_equal(
+		(paths.resolve("/", ["", "////", "../", "", "é🙂//", "..", "a/"])?),
+		"/a",
+	)?
+	expect_equal((paths.resolve("//", [])?), "/")?
+	expect_equal((paths.resolve("/base/", ["", "", ""])?), "/base")?
+	expect_equal((paths.resolve("/base/", ["/reset/", "", ""])?), "/reset")?
+	expect_equal((paths.resolve("/base", ["a\\b"])?), "/base/a\\b")?
+
+	invalid: String! := error(Error("path: invalid input", kind: "EINVAL"))
+	expect_equal(paths.resolve("relative", ["/absolute"]), invalid)?
+	expect_equal(paths.resolve("/bad\u{0}", ["/absolute"]), invalid)?
+	expect_equal(paths.resolve("/base", ["bad\u{0}", "/absolute"]), invalid)?
+	expect_equal(paths.resolve("/base", ["/absolute", "bad\u{0}"]), invalid)?
+
+test "POSIX resolution handles long relative tails and absolute resets":
+	paths := posix()
+	var parts: List[String] = []
+	for unused in 0..512:
+		parts.append("segment")
+	expect_equal((paths.resolve("/base/", parts)?), "/base/{parts.join("/")}")?
+	parts.append("/reset/")
+	expect_equal((paths.resolve("/base/", parts)?), "/reset")?
+
+	var parents: List[String] = []
+	for unused in 0..512:
+		parents.append("a/..")
+	expect_equal((paths.resolve("/base/", parents)?), "/base")?

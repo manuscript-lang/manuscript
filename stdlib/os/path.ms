@@ -14,6 +14,7 @@ name := basename(config)
 import (
 	Bytes, BytesBuilder from "@std/bytes.ms",
 	Os, os from "@std/os/system.ms",
+	StringBuilder from "@std/string.ms",
 
 	msstd_path_matches_glob from "@std/internal/path.ms",
 )
@@ -488,13 +489,36 @@ fn resolve_inner(windows: Bool, base: String, parts: List[String]) String?:
 
 		value = "{device}/{tail}"
 	else:
-		value = base.clone()
+		// Only the last absolute part and its following tails survive resolution.
+		var start = parts.length()
+		var has_tail = false
 
-		for part in parts:
-			if is_absolute_in(false, part):
-				value = part.clone()
-			else if not part.is_empty():
-				value = "{trim_end_slashes(value)}/{part}"
+		while start > 0:
+			part := parts[start - 1]
+			if is_absolute_in(false, part): break
+
+			if not part.is_empty(): has_tail = true
+			start -= 1
+
+		anchor := if start == 0: base else: parts[start - 1]
+
+		if not has_tail:
+			value = anchor.clone()
+		else:
+			var out = StringBuilder()
+			out.append(anchor)
+
+			var separated = anchor.ends_with("/")
+
+			for at in start..parts.length():
+				part := parts[at]
+				if part.is_empty(): continue
+
+				if not separated: out.append("/")
+				out.append(part)
+				separated = part.ends_with("/")
+
+			value = out.build()
 
 	var normalized = normalize_in(windows, value)
 	if normalized != native(windows, root_in(windows, normalized)):
