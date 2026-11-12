@@ -91,7 +91,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let caps = self.closure_captures(f);
                 self.if_then(on, |s| {
                     for (k, (c, off, leaves)) in caps.iter().enumerate() {
-                        if k as u32 > from && s.g.m.needs_drop(*c) {
+                        if k as u32 >= from && s.g.m.needs_drop(*c) {
                             let vs = s.load_leaves(obj, *off, leaves);
                             s.drop_value(*c, &vs);
                         }
