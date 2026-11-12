@@ -1224,6 +1224,11 @@ impl<'a> FnLower<'a> {
                 opt,
             },
         );
+        if opt && self.raw_owners && !self.dead {
+            // The held optional is `none` once a path moved the value out: owning it at each
+            // exit drops what is still there.
+            self.raw_vars.insert(uid, var);
+        }
         self.slotify(uid);
         if !self.needs_drop(ty) {
             return;
