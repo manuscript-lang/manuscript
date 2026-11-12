@@ -1,15 +1,13 @@
-# Stdlib bodies that lend: `List.first`/`last` in Manuscript
+# Stdlib bodies that borrow: `List.first`/`last` in Manuscript
 
 ## Status
 
-Not pursued (2026-11-12). The skeptical review found the central claim unproven (a body that returns `none` beside `self.get(0)` is the checker's withdrawn "mixed returns" case, `returns.rs:153-160`, not the `return m.get(k)` shape the evidence cites), and that lowering already falls back for boxed optionals (`borrow_shape.rs:77`, `native/list.rs`), so a new `opt.view_at` is not needed. The gain over the merged Rust path is about 0.3 ms (2.3 against 2.6 ms) and `borrowed_shape` still matches `first`/`last` by name, so little Rust would go away. Functions that return scalars have no lending problem and can move to `.ms` directly; see `proposals/retire-ms-rt-hot.md`. Original draft:
-
-Draft. Requested by Chinmay (2026-11-12): move the fast-path functions to Manuscript with no language change; "trading Rust code for more Rust code doesn't make sense"; the direct LLVM emitter is not happening, so there is nothing to wait for. Prerequisite for group A of `proposals/retire-ms-rt-hot.md`.
+Implemented (2026-11-12). Chinmay required one rule for every type: a method that returns part of its receiver borrows, whether its body is native or Manuscript. A body that returns `none` beside `self.get(i)` already borrowed in the checker (`none` does not cancel a borrow). The remaining gap was lowering for a boxed optional (a type that contains itself): such an instance now returns an owned copy and the caller drops it, so no new MIR operation. `List.first`/`last` are plain stdlib bodies; the name entries in `native_borrow_receiver`, `borrow_shape.rs`, `native/method.rs` and `msrt_list_first`/`last` are deleted. `first()`+`last()` over 5M calls: 2.3 to 2.6 ms, against 2.66 ms for the Rust special case it replaces. The umbrella design is `proposals/borrowed-parts.md` (other thread); `split`, `lines`, `chars`, `keys`, `values`, `view`, `slice` stay as they are until Chinmay chooses. The original draft follows (it used "lend"; the project says "borrow").
 
 ## Summary
 
-- Problem: the checker and lowering decide which natives lend a borrow of their receiver from a Rust name list (`ms-check/src/ownership/walk/returns.rs` `native_borrow_receiver`; `ms-lower/src/borrow_shape.rs`). A stdlib `.ms` body is not on the list, so `fn List[T].first() T?:` returns an owned value and breaks the contract.
-- Change: derive "lends" from the declaration instead of the name, so a stdlib body that returns a borrow of its receiver is treated like the native, then port `first` and `last`.
+- Problem: the checker and lowering decide which natives borrow a borrow of their receiver from a Rust name list (`ms-check/src/ownership/walk/returns.rs` `native_borrow_receiver`; `ms-lower/src/borrow_shape.rs`). A stdlib `.ms` body is not on the list, so `fn List[T].first() T?:` returns an owned value and breaks the contract.
+- Change: derive "borrows" from the declaration instead of the name, so a stdlib body that returns a borrow of its receiver is treated like the native, then port `first` and `last`.
 - Decision requested: the boxed-optional rule (Design, last bullet).
 
 ## Evidence
@@ -20,7 +18,7 @@ Draft. Requested by Chinmay (2026-11-12): move the fast-path functions to Manusc
 
 ## Design
 
-- No language, grammar or stdlib API change. The checker's existing borrow-returning inference decides that `first`/`last` return a borrow of the receiver, because every return path is `none` or `self.get(i)`, itself a lend. `native_borrow_receiver` keeps only the natives that stay native (`get`, `view`, `split`, `lines`, `chars`, `keys`, `values`, `slice`) until they are ported the same way, one at a time.
+- No language, grammar or stdlib API change. The checker's existing borrow-returning inference decides that `first`/`last` return a borrow of the receiver, because every return path is `none` or `self.get(i)`, itself a borrow. `native_borrow_receiver` keeps only the natives that stay native (`get`, `view`, `split`, `lines`, `chars`, `keys`, `values`, `slice`) until they are ported the same way, one at a time.
 - `ms-lower` reads the same fact for `borrowed_shape` instead of matching `first`/`last` by name; the in-place `Shape::First`/`Last` path becomes the inlined body.
 - Boxed optional (a type that contains itself, `type Node: next: Node?`): `opt.view` is rejected today because the optional is a pointer to a heap block and a loaded value carries no address. Proposed: add an `opt.view_at` operation that takes an element address and builds the pointer form, implemented in `ms-clif` and the MIR interpreter, and lift the verifier rule for it. Alternative: copy the payload in lowering when `T` is boxed and `Clonable` (no new op; recursive types that hold a resource still need the call-site fallback to the native).
 

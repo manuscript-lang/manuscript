@@ -16,10 +16,14 @@ export type List[T]:
 fn List[T].get(index: Int, default: T?) T: ...
 
 // Returns the first element, or none when the list is empty.
-fn List[T].first() T?: ...
+fn List[T].first() T?:
+	if self.is_empty(): return none
+	return self.get(0)
 
 // Returns the last element, or none when the list is empty.
-fn List[T].last() T?: ...
+fn List[T].last() T?:
+	if self.is_empty(): return none
+	return self.get(-1)
 
 // Reports whether the list has no elements.
 fn List[T].is_empty() Bool: ...
