@@ -61,6 +61,29 @@ pub unsafe extern "C-unwind" fn msrt_string_eq(a: usize, b: usize) -> u8 {
     unsafe { equal(a as *const StrVal, b as *const StrVal) as u8 }
 }
 
+unsafe extern "C-unwind" {
+    /// The general substring search, in the runtime archive.
+    fn msrt_string_contains_long(a: usize, v: usize) -> u8;
+}
+
+/// C view: `msrt_string_contains(a: *const StrVal, v: *const StrVal) -> u8`
+///
+/// A one-byte needle in a short text is a scan the caller inlines (`"+-*/".contains(op)`); every
+/// other search calls the runtime.
+#[unsafe(no_mangle)]
+// ms: leaf pure domain=string
+pub unsafe extern "C-unwind" fn msrt_string_contains(a: usize, v: usize) -> u8 {
+    // SAFETY: caller passes live strings.
+    unsafe {
+        let hay = bytes(a as *const StrVal);
+        match bytes(v as *const StrVal) {
+            [] => 1,
+            [c] if hay.len() < 32 => hay.contains(c) as u8,
+            _ => msrt_string_contains_long(a, v),
+        }
+    }
+}
+
 /// C view: `msrt_string_compare(a: *const StrVal, b: *const StrVal) -> i64`
 #[unsafe(no_mangle)]
 // ms: leaf pure
