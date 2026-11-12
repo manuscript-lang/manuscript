@@ -493,6 +493,10 @@ impl<'a> FnLower<'a> {
         // The only changed parameter is a field or list element of an owned variable: the callee
         // takes it out of its place and puts it back, instead of working on a copy.
         let mut in_place: Option<(usize, Expr, MTy)> = None;
+        // Two or more changed parameters that are distinct fields of one owned local: the local
+        // is taken once, each field moves into its own slot, and all refill after the call.
+        let fields_of = self.var_fields_of_one_local(&vars, &args.places);
+        let mut field_args: Vec<(usize, Expr, MTy)> = Vec::new();
         for (i, a) in args.slots.into_iter().flatten().enumerate() {
             // An intact borrowed argument keeps its original registration and acquisition
             // order. Only a consuming/changed parameter takes its value out of that slot.
@@ -546,6 +550,17 @@ impl<'a> FnLower<'a> {
                 continue;
             }
             let ty = self.ty_of(a.v);
+            if fields_of.is_some() {
+                let place = args.places.get(i).cloned().flatten();
+                let Some(place) = place.filter(|_| !a.own) else {
+                    return Err(Error::new(
+                        "a changed field argument is not a borrowed place",
+                    ));
+                };
+                vals.push(a.v);
+                field_args.push((i, place, ty));
+                continue;
+            }
             // A variable that lives in memory (a closure shares it) is passed by its own slot:
             // the callee changes it in place, so nothing is copied in or written back.
             if !a.own
@@ -594,7 +609,9 @@ impl<'a> FnLower<'a> {
             vals.push(slot);
         }
         self.at(e.pos);
-        let v = if let Some((i, place, ty)) = in_place {
+        let v = if let Some(binding) = fields_of {
+            self.call_with_fields_taken(&binding, fid, &mut vals, &field_args)?
+        } else if let Some((i, place, ty)) = in_place {
             let mut result = None;
             self.place_update(&place, &mut |s, old| {
                 let slot =
@@ -747,6 +764,87 @@ impl<'a> FnLower<'a> {
             .map(|i| ms_mir::types::AltId(i as u32))
             .unwrap_or(a);
         (id, self.b.m.types.alt(id))
+    }
+
+    /// The local when every changed parameter (at least two) is a different field of that one
+    /// owned local (`f(var self.a, var self.b)`): the checker already rejects overlapping places.
+    fn var_fields_of_one_local(
+        &mut self,
+        vars: &[usize],
+        places: &[Option<Expr>],
+    ) -> Option<ct::BindingRef> {
+        if vars.len() < 2 {
+            return None;
+        }
+        let mut root: Option<ct::BindingRef> = None;
+        let mut names = Vec::new();
+        for &i in vars {
+            let place = places.get(i)?.as_ref()?;
+            let ExprKind::Member { left, name, .. } = &place.kind else {
+                return None;
+            };
+            if !matches!(left.kind, ExprKind::Name(_)) || names.contains(name) {
+                return None;
+            }
+            let Resolution::Local(b) = self.hir.resolution(left) else {
+                return None;
+            };
+            if root.as_ref().is_some_and(|r| r.uid != b.uid) || self.aliases.contains_key(&b.uid) {
+                return None;
+            }
+            names.push(*name);
+            root = Some(b.clone());
+        }
+        let root = root?;
+        self.place_is_owned(places[vars[0]].as_ref()?)
+            .then_some(root)
+    }
+
+    /// Calls `fid` with each field in `fields` moved out of its local into a slot (already the
+    /// argument at its position in `vals`) and moved back after the call.
+    fn call_with_fields_taken(
+        &mut self,
+        binding: &ct::BindingRef,
+        fid: ms_mir::ir::FuncId,
+        vals: &mut [Value],
+        fields: &[(usize, Expr, MTy)],
+    ) -> Result<Value, Error> {
+        let l = self.local(binding)?;
+        let mut root = self.local_take(&l);
+        let TyKind::Rec(rid) = self.b.m.types.kind(self.ty_of(root)).clone() else {
+            return Err(Error::new("field arguments of a non-record"));
+        };
+        let mut held = Vec::new();
+        for (i, place, ty) in fields {
+            let ExprKind::Member { name, .. } = &place.kind else {
+                unreachable!("checked by var_fields_of_one_local")
+            };
+            let idx = self.b.m.records[rid.index()]
+                .fields
+                .iter()
+                .position(|f| f.0 == self.syms.str(name))
+                .ok_or_else(|| Error::new("no such field"))? as u32;
+            let cur = self.b.rec_get(rid, idx, root);
+            let (own, moved) = self.take_projection(cur);
+            let slot = self
+                .b
+                .emit(Op::Slot, &[], ms_mir::ir::Imm::Ty(*ty), Some(MTy::PTR))
+                .expect("slot");
+            self.move_into(slot, own);
+            vals[*i] = slot;
+            held.push((idx, moved, slot, *ty));
+        }
+        let result = self.b.call(fid, vals);
+        for (idx, moved, slot, ty) in held {
+            let new = self.move_out(slot, ty);
+            root = if moved {
+                self.b.rec_fill(rid, idx, root, new)
+            } else {
+                self.b.rec_set(rid, idx, root, new)
+            };
+        }
+        self.local_put(&l, root);
+        Ok(result)
     }
 
     /// Moves a changed argument into a slot the callee takes from and puts back into, and
