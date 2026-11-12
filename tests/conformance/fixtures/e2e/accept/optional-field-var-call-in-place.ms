@@ -1,4 +1,4 @@
-// conform: tags=testing,optionals,mutation,tier-core
+// conform: tags=testing,optional,mutation,tier-core
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
