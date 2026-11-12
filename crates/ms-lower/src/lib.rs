@@ -25,6 +25,7 @@ mod fixture;
 mod fsinfo;
 mod fswalk;
 mod func;
+mod fuse;
 mod httpserve;
 mod iface;
 mod iterate;
