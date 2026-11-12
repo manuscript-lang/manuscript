@@ -152,3 +152,27 @@ Same build and machine; `keyed.ms` runs six cases, each measured alone, C twins 
 - e: `contains` and `replace` build a `memmem` searcher for the needle on every call (126 instructions before the scan starts), and `trim`, `replace` and `upper` each allocate a result.
 - b: 1.42x in `evaluate` as noted above; the rest is allocator calls, which callgrind overstates because the runtime's allocator is replaced by glibc's under valgrind.
 - c: at C.
+
+## 2026-11-12, seventh and eighth pass: containers in use, scalar and bit code
+
+Same build and machine; six cases each in `containers.ms` and `scalar.ms`, measured alone, C twins in `c/`.
+
+| case | ms | c | wall ms / c |
+| --- | ---: | ---: | --- |
+| containers a: `Map[String, Stat]`, `contains`, then two `stats[name].field += v`, 2M rounds | 2,453M | 252M | 281 to 349 / 22 to 33 ms |
+| containers b: iterate `entries()`, `keys()` with `m[k]`, `values()` of a 200k map, 20 times | 723M | 211M | 114 / 77 ms |
+| containers c: `out += fields.join(",")` for 300k four-field rows | 833M | 395M | 58 / 34 ms |
+| containers d: `remove(0)`, `insert(1000, v)`, `pop()`, `prepend(v)` on a 2,000-element list | 10,124M | 3,664M | 107 / 60 ms |
+| containers e: a user `Matrix` type with `at` and `put` methods, 200 x 200 multiply | 268M | 100M | 22 / 23 ms |
+| containers f: a user generic `Stack[T]` over a `List[T]` field, 20M pushes | 534M | 554M | 67 / 79 ms |
+| scalar a: FNV hash over `Bytes` with `bit_xor` and `wrapping_multiply`, 21M bytes | 127M | 79M | 33 / 33 ms |
+| scalar b: xorshift with `shift_left`, `shift_right_unsigned`, 50M rounds | 650M | 600M | 113 / 113 ms |
+| scalar c: arithmetic over a `List[UInt8]`, 30M elements | 337M | 218M | 34 / 30 ms |
+| scalar d: `any`, `find_index`, `all` with closures over 100k `Int`, 300 times | 183M | 119M | 27 / 14 ms |
+| scalar e: `match` on a `String` with six literal arms, 20M calls | 1,084M | 2,690M (`strcmp` chain) | 80 / 328 ms |
+| scalar f: a closure that changes two captured variables, 30M calls | 420M | 480M | 141 / 144 ms |
+
+- containers a: the `Map[Int, Stat]` case of the sixth pass with `String` keys. One pass makes a `contains` and six `msrt_map_get_ptr` calls, about 125 instructions each (hash, compare, layout); C makes one probe. 70% of the program is `value_ptr_k::<StrKey>`.
+- containers d: `prepend` lowers to `msrt_list_take`, `msrt_list_drop_n`, a list literal and two `msrt_list_concat` calls, so it builds three lists and copies every element twice though the documentation says in place; `insert` and `remove` shift in place.
+- containers b and c: the lookup cost again (b), and one list and one `String` allocated per row (c).
+- User-defined types, generics over a list field, bit and wrapping operations, narrow integers and capturing closures are at C. `scalar d` is inlined; the gap is the checked scan against a vectorized C loop.
