@@ -131,6 +131,8 @@ struct Pool {
     /// Idle threads already signalled for a queued job but not yet awake.
     wakes: usize,
     dns_running: usize,
+    /// Threads blocked on [`FINISHED`] in a shielded wait that cannot park.
+    finish_waiters: usize,
     /// Admission permits out.
     permits: usize,
     /// Tokens of callers parked in [`admit`], oldest first; grown only by the runtime thread.
@@ -148,6 +150,7 @@ static POOL: Mutex<Pool> = Mutex::new(Pool {
     idle: 0,
     wakes: 0,
     dns_running: 0,
+    finish_waiters: 0,
     permits: 0,
     waiters: VecDeque::new(),
 });
@@ -224,7 +227,7 @@ fn submit<I: Send + Sync + 'static, O: Send + 'static>(
         drop: drop_job::<I, O>,
         lane,
     };
-    let start = {
+    let (wake, start) = {
         let mut pool = lock();
         pool.queue.push_back(ptr);
         // An idle thread already signalled for an earlier job will not take this one too.
@@ -236,9 +239,13 @@ fn submit<I: Send + Sync + 'static, O: Send + 'static>(
         if start {
             pool.threads += 1;
         }
-        start
+        (wake, start)
     };
-    READY.notify_one();
+    // A busy thread takes the job when it finishes its own, and a new thread finds it queued, so
+    // only a sleeping one needs the system call.
+    if wake {
+        READY.notify_one();
+    }
     if start && !spawn_thread() {
         let orphaned = {
             let mut pool = lock();
@@ -439,7 +446,9 @@ pub fn run_shielded<I: Send + Sync + 'static, O: Send + 'static>(
         // A pending stop ends every park at once: block the thread until the job is done.
         let mut pool = lock();
         while state(&pool, ptr) != State::Done {
+            pool.finish_waiters += 1;
             pool = FINISHED.wait(pool).unwrap_or_else(|e| e.into_inner());
+            pool.finish_waiters -= 1;
         }
     }
     // SAFETY: the job is done: the park ended with its post, or the loop above saw it.
@@ -502,15 +511,48 @@ pub fn on_pool_thread() -> bool {
     ON_POOL.with(|on| on.get())
 }
 
-/// The body of a pool thread.
+/// The body of a pool thread. The lock that marks a job done also takes the next one, so a
+/// busy pool takes the lock once per job, and a system call only to post the waiter.
 fn work() -> ! {
     ON_POOL.with(|on| on.set(true));
+    let mut done: Option<Ptr> = None;
     loop {
+        let mut post = None;
+        let mut announce = false;
         let ptr = {
             let mut pool = lock();
+            if let Some(ptr) = done.take() {
+                if ptr.lane == Lane::Dns {
+                    pool.dns_running -= 1;
+                    // A DNS job may have waited for this one's slot.
+                    announce = pool.idle > pool.wakes && !pool.queue.is_empty();
+                    if announce {
+                        pool.wakes += 1;
+                    }
+                }
+                // SAFETY: state and token are written and read under the lock.
+                unsafe { (*ptr.head).state = State::Done };
+                if let Some(at) = pool.abandoned.iter().position(|&h| h == ptr.head) {
+                    pool.abandoned.swap_remove(at);
+                    pool.finished.push(ptr);
+                } else {
+                    // SAFETY: as above.
+                    post = Some(unsafe { (*ptr.head).token });
+                }
+                if pool.finish_waiters > 0 {
+                    FINISHED.notify_all();
+                }
+            }
             loop {
                 if let Some(p) = pool.next() {
                     break p;
+                }
+                if let Some(token) = post.take() {
+                    // Post with the lock released, then look again: a job may have been queued.
+                    drop(pool);
+                    msrt_token_post_remote(token, 1);
+                    pool = lock();
+                    continue;
                 }
                 pool.idle += 1;
                 pool = READY.wait(pool).unwrap_or_else(|e| e.into_inner());
@@ -518,32 +560,15 @@ fn work() -> ! {
                 pool.wakes = pool.wakes.saturating_sub(1);
             }
         };
-        // SAFETY: this thread runs the job until it marks it done.
-        unsafe { (ptr.run)(ptr.head) };
-        let post = {
-            let mut pool = lock();
-            if ptr.lane == Lane::Dns {
-                pool.dns_running -= 1;
-            }
-            // SAFETY: state and token are written and read under the lock.
-            unsafe { (*ptr.head).state = State::Done };
-            if let Some(at) = pool.abandoned.iter().position(|&h| h == ptr.head) {
-                pool.abandoned.swap_remove(at);
-                pool.finished.push(ptr);
-                None
-            } else {
-                // SAFETY: as above.
-                Some(unsafe { (*ptr.head).token })
-            }
-        };
-        FINISHED.notify_all();
-        if ptr.lane == Lane::Dns {
-            // A DNS job may have waited for this one's slot.
+        if announce {
             READY.notify_one();
         }
         if let Some(token) = post {
             msrt_token_post_remote(token, 1);
         }
+        // SAFETY: this thread runs the job until it marks it done.
+        unsafe { (ptr.run)(ptr.head) };
+        done = Some(ptr);
     }
 }
 
