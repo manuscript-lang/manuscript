@@ -17,8 +17,8 @@ fn var Rng.next(limit: Int) Int:
 fn save(dir: String, name: String, text: String) Unit:
 	write_file("{dir}/{name}", text, replace: true).wait().get()
 
-fn logs(n: Int) String:
-	var r = Rng(1)
+fn logs(n: Int, seed: Int) String:
+	var r = Rng(seed)
 	levels := ["DEBUG", "INFO", "INFO", "INFO", "WARN", "ERROR"]
 	methods := ["GET", "GET", "GET", "POST", "PUT", "DELETE"]
 	statuses := ["200", "200", "200", "200", "201", "301", "304", "404", "500", "503"]
@@ -92,6 +92,14 @@ fn records(n: Int) String:
 		b.append("name{r.next(100000)} {r.next(1000000)}\n")
 	return b.build()
 
+// A tree of 20 directories with 100 log files each, 200 lines per file at scale 1.
+fn tree(dir: String, scale: Int) Unit:
+	for d in 0..20:
+		sub := "{dir}/tree/d{d}"
+		create_directory(sub, recursive: true).get()
+		for f in 0..100 * scale:
+			save(sub, "f{f}.log", logs(200, 100 + d * 1000 + f))
+
 fn main() Int:
 	args := arguments()
 	if args.length() < 1: return 2
@@ -99,9 +107,10 @@ fn main() Int:
 	scale := if args.length() > 1: args[1].parse_int().get(1) else: 1
 	dir := args[0].clone()
 	create_directory(dir, recursive: true).get()
-	save(dir, "access.log", logs(400000 * scale))
+	save(dir, "access.log", logs(400000 * scale, 1))
 	save(dir, "orders.csv", csv(500000 * scale))
 	save(dir, "records.json", json(200000 * scale))
 	save(dir, "words.txt", words(400000 * scale))
 	save(dir, "records.txt", records(1000000 * scale))
+	tree(dir, scale)
 	return 0
