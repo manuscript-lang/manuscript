@@ -1,5 +1,6 @@
 // Hand-written epoll HTTP/1.1 server: the C ceiling for the web benchmark.
-// server <port> <data-dir> [threads]  (data-dir is ignored; it matches the other servers' argv). One epoll loop per thread, SO_REUSEPORT listeners, level-triggered
+// server <port> <data-dir> [threads]; data-dir is ignored and only matches the other servers'
+// argv. One epoll loop per thread, SO_REUSEPORT listeners, level-triggered
 // reads, one read and one write per request. Serves /health and /user/<id> like ms/ and go/.
 #define _GNU_SOURCE
 #include <arpa/inet.h>
@@ -87,9 +88,9 @@ static void *run(void *arg) {
 }
 
 int main(int argc, char **argv) {
-	if (argc < 2) { fprintf(stderr, "usage: server <port> <data-dir> [threads]  (data-dir is ignored; it matches the other servers' argv)\n"); return 2; }
+	if (argc < 3) { fprintf(stderr, "usage: server <port> <data-dir> [threads]  (data-dir is ignored; it matches the other servers' argv)\n"); return 2; }
 	port = atoi(argv[1]);
-	int threads = argc > 2 ? atoi(argv[2]) : 2;
+	int threads = argc > 3 ? atoi(argv[3]) : 2;
 	pthread_t t;
 	for (int i = 1; i < threads; i++) pthread_create(&t, NULL, run, NULL);
 	run(NULL);
