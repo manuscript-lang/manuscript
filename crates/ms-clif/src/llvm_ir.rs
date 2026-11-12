@@ -1160,7 +1160,7 @@ impl<'a> Tr<'a> {
                         .map(|v| format!("i64 {}", self.op(*v)))
                         .collect();
                     let p = self.def(format!(
-                        "call noalias ptr @\"{name}\"({}) nomerge",
+                        "call noalias align 16 ptr @\"{name}\"({}) nomerge",
                         args.join(", ")
                     ));
                     let result = self.f.dfg.first_result(inst);
@@ -1254,7 +1254,7 @@ impl<'a> Tr<'a> {
             ""
         };
         let ret = if returns_fresh_block(&name) {
-            "noalias ptr".to_string()
+            "noalias align 16 ptr".to_string()
         } else {
             ret_ty(&sig.returns)
         };
