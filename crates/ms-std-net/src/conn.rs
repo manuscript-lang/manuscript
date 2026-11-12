@@ -135,10 +135,11 @@ impl Io for Plain {
         self.sock.as_sock()
     }
 
-    /// Linux's TCP receive copies until the buffer is full or the queue is empty, and
-    /// edge-triggered epoll raises a new edge for any later arrival.
+    /// Linux's and macOS's TCP receive copy until the buffer is full or the queue is empty, and
+    /// edge-triggered epoll and kqueue (`EV_CLEAR`) raise a new edge for any later arrival.
+    /// Windows readiness is one-shot: only a read that would block re-arms the socket.
     fn short_read_drains(&self) -> bool {
-        cfg!(target_os = "linux")
+        cfg!(any(target_os = "linux", target_os = "macos"))
     }
 
     fn read(&self, buf: &mut [u8]) -> Step {

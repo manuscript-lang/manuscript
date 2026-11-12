@@ -103,6 +103,21 @@ Same machine as the section above; before is the stack-check change, after adds 
 - The MIR inliner copies the body of a small (at most 40 instructions) directly self-recursive function with at most two self calls into those calls once. A copy runs without a call, a frame-pointer setup or a recursion check; the calls inside it enter the function as before, so the check still runs once per physical frame. `fib` makes half the calls. The function is then marked `Never`, so the pass unrolls it once however often it runs.
 - Fault reports are unchanged: the frame walk spends one step per logical frame, so the runaway-recursion report still ends at 999,996 repeats. Repeated frames are compared by text, since an inlined copy names its function by another table offset.
 
+## 2026-11-12, one stack check per recursive cycle
+
+Same machine and Release LLVM build; callgrind instruction totals. `mutual.ms` is the call tree of `fib(32)` written as two functions (`count` calls `pair` calls `count`); the second program is mutual `is_even`/`is_odd` over 3,000 inputs plus a Collatz walk through two helpers (not committed).
+
+| program | before | after |
+| --- | ---: | ---: |
+| `mutual.ms` | 130.76M | 103.24M (-21%) |
+| even/odd and Collatz | 144.26M | 120.28M (-17%) |
+| `recursion.ms` (`fib(32)`, one function) | 98.37M | unchanged |
+
+- A function on a call cycle kept its recursion check. Now only the targets of the depth-first back edges keep it (`cycle_breakers`); every cycle closes with a back edge, so every cycle still passes a check and the stack is bounded as before, by one check per cycle plus the longest acyclic chain between checks. The graph still counts an indirect call as an edge to every closure and method, so this is conservative.
+- The unchecked functions on a cycle then inline like any other function (`has_check`): every cycle through them still contains a checked function, and a checked function is never inlined. A function that becomes small and directly self-recursive by inlining its sibling is unrolled once as well.
+- Before, LLVM happened to merge `count` into `pair` and unroll one level of that; after, MIR does the merge, so the result no longer depends on LLVM's choice.
+- Runaway mutual recursion still reports the alternating `ping`/`pong` frames.
+
 ## 2026-11-12: borrowed key in `Map.update`, and a counted `split` that did not pay
 
 `3d4d48b1`, same machine, `logstats` on 35,000 lines of the generated log (callgrind instructions, memcheck allocation counts) and on 22 MB (min of 25, ms).
@@ -269,3 +284,16 @@ The earlier run of this case was 281 to 349 ms with seven lookups a pass; C is 2
 | `containers.ms` case a, `Map[String, Stat]` (callgrind Ir) | 778M | 415M |
 
 The Int case is now below the single `stats.update(...)` form (305M). A lookup is still about 80 instructions on a hit; its cost is spread over hashing, the string tag decode, the probe loop and the frame, not one hot spot, so no further single change is planned.
+
+## 2026-11-12: var calls through boxed optional fields
+
+`tree.ms` is `mixed.ms` case c on its own: 200k inserts into a binary tree whose links are `Node?`, through `fn var Node.insert`. Same machine; callgrind instructions, allocations from memcheck, min-of-7 wall time.
+
+| | before | after | c |
+| --- | ---: | ---: | ---: |
+| instructions | 1,808M | 151M | 117M |
+| allocations | 4,329,208 | 200,015 | 200,000 |
+| wall | 132 ms | 68 ms | 73 ms |
+
+- `self.left?.insert(key)` took the record, unboxed the child into a slot, called, boxed it again with a new allocation and refilled the field. The payload of a recursive `Optional` is already in memory, in the box, so a `var` call now gets the box's address (`opt.addr`, `alias_payload_addr` in `crates/ms-lower/src/alias.rs`) and changes the child where it lies. Only a boxed optional has such an address; an inline payload keeps the take and put-back.
+- The remaining 34M instructions against C are not analysed.

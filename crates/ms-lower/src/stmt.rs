@@ -1782,7 +1782,7 @@ impl<'a> FnLower<'a> {
                 .find(|(_, l)| l.var == var && l.slot.is_none())
                 .map(|(uid, _)| *uid)
         {
-            self.own_hidden(uid);
+            self.own_hidden(uid, None);
         }
         let (header, body_b, step, exit) = (
             self.b.new_block(),
