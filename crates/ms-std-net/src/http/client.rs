@@ -6,6 +6,7 @@ use super::cookies::Jar;
 use super::h1::{self, BodyDecoder, Decoded, Framing, Parsed, ResponseHead};
 use super::h2client::{self, H2Stream, OpenErr, Poll, PumpErr, Session};
 use super::headers::{self, Headers, Shared};
+use super::inflate::{self, Inflater};
 use super::url::Url;
 use crate::conn::Connection;
 use crate::error::{HttpErr, IoErr};
@@ -1381,6 +1382,10 @@ struct BodyState {
     decoder: BodyDecoder,
     keep_alive: bool,
     gzip: Option<MultiGzDecoder<Sink>>,
+    /// The buffered-read decoder that replaces `gzip` for a body no read has started.
+    fast_gzip: Option<Inflater>,
+    /// A streaming read has fed `gzip`, so the body cannot switch decoders.
+    gz_touched: bool,
     /// Compressed bytes not yet fed to the decoder.
     gz_in: Vec<u8>,
     /// Decoded bytes not yet delivered.
@@ -1426,6 +1431,8 @@ impl BodyState {
                     room: 0,
                 })
             }),
+            fast_gzip: None,
+            gz_touched: false,
             gz_in: Vec::new(),
             ready: Vec::new(),
             ready_pos: 0,
@@ -1549,6 +1556,54 @@ impl BodyState {
         }
     }
 
+    /// Switches an untouched gzip body to the decoder that appends to the buffered result.
+    fn use_fast_gzip(&mut self) {
+        if self.gzip.is_some() && !self.gz_touched && self.gz_in.is_empty() && self.ready.is_empty()
+        {
+            self.gzip = None;
+            self.fast_gzip = Some(Inflater::new());
+        }
+    }
+
+    /// One step of the buffered gzip decoder: appends to `out` what the next compressed input
+    /// decodes to. Returns once the stream ended or some output was produced.
+    fn gz_fast_step(&mut self, deadline: Deadline, out: &mut Vec<u8>) -> Result<(), IoErr> {
+        let before = out.len();
+        let limit = before.saturating_add(usize::try_from(self.remaining).unwrap_or(usize::MAX));
+        loop {
+            let more = match self.next_raw(deadline, READ_BUF)? {
+                Some(chunk) if self.gz_in.is_empty() => {
+                    self.gz_in = chunk;
+                    true
+                }
+                Some(chunk) => {
+                    self.gz_in.extend_from_slice(&chunk);
+                    true
+                }
+                None => false,
+            };
+            let inflater = self.fast_gzip.as_mut().expect("buffered gzip state");
+            let pushed = inflater.push(&self.gz_in, more, out, limit);
+            let (used, done) = pushed.map_err(|f| match f {
+                inflate::Fail::Limit => IoErr::Failed("response body limit exceeded".into()),
+                inflate::Fail::Truncated => {
+                    IoErr::Failed("connection closed before the exchange completed".into())
+                }
+                inflate::Fail::Invalid => IoErr::Failed("gzip: corrupt input".into()),
+            })?;
+            self.gz_in.drain(..used);
+            let grew = (out.len() - before) as u64;
+            self.remaining -= grew.min(self.remaining);
+            if done {
+                self.fast_gzip = None;
+                return Ok(());
+            }
+            if grew > 0 {
+                return Ok(());
+            }
+        }
+    }
+
     /// One step of gzip decoding: feeds the decoder the next compressed bytes (or finishes it at the
     /// end of the input) and appends what it produced to `target`, failing once `room` more bytes
     /// would be produced. `false` once the decoder has finished.
@@ -1558,6 +1613,7 @@ impl BodyState {
         target: &mut Vec<u8>,
         room: usize,
     ) -> Result<bool, IoErr> {
+        self.gz_touched = true;
         if self.gz_in.is_empty() {
             match self.next_raw(deadline, READ_BUF)? {
                 Some(chunk) => self.gz_in = chunk,
@@ -1792,6 +1848,7 @@ impl ResponseBody {
         };
         let state = held.state.as_mut().expect("state");
         let mut out: Vec<u8> = Vec::new();
+        state.use_fast_gzip();
         loop {
             if state.ready_pos < state.ready.len() {
                 let n = state.ready.len() - state.ready_pos;
@@ -1809,7 +1866,11 @@ impl ResponseBody {
                 state.ready_pos = 0;
             }
             // A decompressor still holds output after the last compressed byte arrived.
-            if state.done && state.gzip.is_none() && state.gz_in.is_empty() {
+            if state.done
+                && state.gzip.is_none()
+                && state.fast_gzip.is_none()
+                && state.gz_in.is_empty()
+            {
                 break;
             }
             if let Err(e) = self.fill_direct(state, &mut out) {
@@ -1837,6 +1898,9 @@ impl ResponseBody {
     fn fill_direct(&self, state: &mut BodyState, out: &mut Vec<u8>) -> Result<(), IoErr> {
         if self.deadline.expired() {
             return Err(IoErr::Failed("context deadline exceeded".into()));
+        }
+        if state.fast_gzip.is_some() {
+            return state.gz_fast_step(self.deadline, out);
         }
         let plain = state.gzip.is_none()
             && !state.done

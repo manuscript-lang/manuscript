@@ -6,6 +6,7 @@ pub mod exchange;
 pub mod h1;
 pub mod h2client;
 pub mod headers;
+pub mod inflate;
 pub mod server;
 pub mod sniff;
 pub mod target;
