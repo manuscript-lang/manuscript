@@ -458,6 +458,7 @@ pub(crate) unsafe fn isolate_trap_child() {
         (*SECONDARY.ptr()).clear();
     }
     crate::desc::eq_truncate(0);
+    crate::glue::pool::reset_after_fork();
 }
 
 /// Exchanges `c` with the live per-task state.
