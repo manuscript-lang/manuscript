@@ -126,7 +126,7 @@ fn measure_server(
 		p.server_cpus.clone(),
 		["{p.w}/{name}/server", "{port}", data.clone()],
 	)
-	if name == "ms": argv.append(ms_threads.clone())
+	if name == "ms" or name == "c": argv.append(ms_threads.clone())
 
 	var server = background(argv, "/dev/null")?
 
@@ -135,9 +135,19 @@ fn measure_server(
 		return invalid("{name} did not start")
 
 	pid := first_pid("^{p.w}/{name}/server")
-	for path in ["/health", "/user/42", "/top?n=10"]:
+
+	// The C server is the ceiling for the two tiny endpoints; it has no /top or /io.
+	paths := if name == "c": ["/health", "/user/42"] else: [
+		"/health", "/user/42", "/top?n=10"
+	]
+	for path in paths:
 		for round in 0..2:
 			say("{name} {path} {load(p, port, ["64", "{seconds}", path.clone()])}")
+
+	if name == "c":
+		say("{name} threads {threads(pid.clone())} rss_kb {rss_kb(pid.clone())}")
+		server.close().get(unit)
+		return ok(unit)
 
 	if name != "rust":
 		for round in 0..2:
@@ -217,7 +227,7 @@ fn measure_server(
 	return ok(unit)
 
 fn prepare_run(here: String, w: String) List[String]!:
-	for dir in ["go", "ms", "load"]:
+	for dir in ["go", "ms", "load", "c"]:
 		copy("{here}/{dir}", "{w}/{dir}", CopyOptions(recursive: true, replace: true)).get()
 	create_directory("{w}/rust", recursive: true).get()
 	write_text("{w}/rust/Cargo.toml", read_text("{here}/rust/Cargo.toml"))
@@ -240,6 +250,14 @@ fn prepare_run(here: String, w: String) List[String]!:
 		)
 		_ := must("cargo build", ran)?
 		names = ["ms", "go", "rust"]
+
+	if capture("cc", ["--version"]).code == 0:
+		ran := capture(
+			"cc",
+			["-O2", "-pthread", "-o", "{w}/c/server", "{w}/c/server.c"],
+		)
+		_ := must("cc", ran)?
+		names = names.concat(["c"])
 
 	build_ms("{w}/ms", "{w}/ms/server")?
 	return ok(names)

@@ -3,6 +3,7 @@
 use crate::error::HttpErr;
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::sync::Arc;
 
 /// A headers collection shared between handles (`HttpHeaders` values alias).
 pub type Shared = Rc<RefCell<Headers>>;
@@ -17,7 +18,8 @@ pub struct Entry {
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Headers {
-    entries: Vec<Entry>,
+    /// Shared until written, so handing the received headers to a handler copies nothing.
+    entries: Arc<Vec<Entry>>,
 }
 
 /// Token characters of RFC 9110.
@@ -84,8 +86,8 @@ impl Headers {
     /// Adds a value under `name` without validating it.
     pub fn add(&mut self, name: &str, value: Vec<u8>) {
         match self.position(name) {
-            Some(i) => self.entries[i].values.push(value),
-            None => self.entries.push(Entry {
+            Some(i) => Arc::make_mut(&mut self.entries)[i].values.push(value),
+            None => Arc::make_mut(&mut self.entries).push(Entry {
                 name: name.to_string(),
                 values: vec![value],
             }),
@@ -130,7 +132,7 @@ impl Headers {
     pub fn remove(&mut self, name: &str) -> bool {
         match self.position(name) {
             Some(i) => {
-                self.entries.remove(i);
+                Arc::make_mut(&mut self.entries).remove(i);
                 true
             }
             None => false,
@@ -140,7 +142,7 @@ impl Headers {
     /// Replaces every value of `name` with `value`.
     pub fn set(&mut self, name: &str, value: Vec<u8>) {
         match self.position(name) {
-            Some(i) => self.entries[i].values = vec![value],
+            Some(i) => Arc::make_mut(&mut self.entries)[i].values = vec![value],
             None => self.add(name, value),
         }
     }
@@ -148,20 +150,21 @@ impl Headers {
     /// Received headers as handlers see them: canonical names, sorted
     /// by name, values in arrival order.
     pub fn from_received(fields: impl IntoIterator<Item = (String, Vec<u8>)>) -> Headers {
-        let mut sorted: Vec<(String, Vec<Vec<u8>>)> = Vec::new();
+        let fields = fields.into_iter();
+        let mut entries: Vec<Entry> = Vec::with_capacity(fields.size_hint().0);
         for (name, value) in fields {
             let key = canonical_owned(name);
-            match sorted.iter_mut().find(|(k, _)| *k == key) {
-                Some((_, values)) => values.push(value),
-                None => sorted.push((key, vec![value])),
+            match entries.iter_mut().find(|e| e.name == key) {
+                Some(e) => e.values.push(value),
+                None => entries.push(Entry {
+                    name: key,
+                    values: vec![value],
+                }),
             }
         }
-        sorted.sort_by(|a, b| a.0.cmp(&b.0));
+        entries.sort_by(|a, b| a.name.cmp(&b.name));
         Headers {
-            entries: sorted
-                .into_iter()
-                .map(|(name, values)| Entry { name, values })
-                .collect(),
+            entries: Arc::new(entries),
         }
     }
 

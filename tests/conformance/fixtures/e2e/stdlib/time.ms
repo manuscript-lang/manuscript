@@ -101,6 +101,28 @@ test "format renders tokens and from_calendar round trips":
 	back := from_calendar(2024, 3, 10, 8, 30, 15, 250000000, "America/New_York")?
 	expect_equal(back, moment)?
 
+test "format preserves Unicode literals and empty patterns across calendar edges":
+	moment := parse_timestamp("2024-02-29T23:59:59.123456789Z")?
+	expect_equal((moment.format("", "UTC")?), "")?
+	expect_equal((moment.format("日本語 🗓", "UTC")?), "日本語 🗓")?
+	expect_equal(
+		(moment.format("YYYY年MM月DD日 HH:mm:ss zone 🗓", "America/New_York")?),
+		"2024年02月29日 18:59:59 EST 🗓",
+	)?
+
+	first := parse_timestamp("0001-01-01T00:00:00Z")?
+	last := parse_timestamp("9999-12-31T23:59:59Z")?
+	expect_equal((first.format("YYYY-MM-DD", "-23:59")?), "0000-12-31")?
+	expect_equal((last.format("YYYY-MM-DD", "+23:59")?), "10000-01-01")?
+
+	invalid: String! := error(Error("time: invalid input", kind: "EINVAL"))
+	expect_equal(moment.format("", "Nowhere/Land"), invalid)?
+
+	// Raw fields retain signed minimum-width formatting, without truncating wide
+	// values.
+	raw := Timestamp(-62198755200, -9223372036854775807 - 1)
+	expect_equal((raw.format("YYYY SSS", "UTC")?), "-001 -9223372036854")?
+
 test "calendar rejects unknown zones and impossible dates":
 	bad_zone: Timestamp! := error(Error("time: invalid input", kind: "EINVAL"))
 	expect_equal(from_calendar(2024, 1, 1, 0, 0, 0, 0, "Nowhere/Land"), bad_zone)?

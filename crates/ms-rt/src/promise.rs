@@ -1193,7 +1193,20 @@ pub(crate) fn has_timers() -> bool {
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_promise_start(id: i64, work: *mut ms_rt_abi::Closure) {
     // SAFETY: forwarded contract.
-    unsafe { start_on(id, work, false) }
+    unsafe { start_on(id, work, Mode::Anywhere) }
+}
+
+/// Starts `work` as the task of promise `id` on the least loaded thread, starting one when the limit allows. For
+/// long-lived work that should spread over the cores (one serving worker per core) rather than
+/// queue behind its creator. Otherwise as `msrt_promise_start`.
+///
+/// # Safety
+/// `work` is a live closure object.
+// ms: keeps:work spawns
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_promise_start_spread(id: i64, work: *mut ms_rt_abi::Closure) {
+    // SAFETY: forwarded contract.
+    unsafe { start_on(id, work, Mode::Spread) }
 }
 
 /// Starts `work` as the task of promise `id`, on the calling thread and never elsewhere. For an I/O operation run as a
@@ -1206,15 +1219,26 @@ pub unsafe extern "C-unwind" fn msrt_promise_start(id: i64, work: *mut ms_rt_abi
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_promise_start_here(id: i64, work: *mut ms_rt_abi::Closure) {
     // SAFETY: forwarded contract.
-    unsafe { start_on(id, work, true) }
+    unsafe { start_on(id, work, Mode::Here) }
 }
 
-/// Starts `work` as the task of promise `id`, on this thread when `here` or when a live native
-/// stream is pinned to it, else where the runtime picks.
+/// Starts `work` as the task of promise `id` where `mode` says, on this thread when a live native
+/// stream is pinned to it.
 ///
 /// # Safety
 /// `work` is a live closure object.
-unsafe fn start_on(id: i64, work: *mut ms_rt_abi::Closure, here: bool) {
+/// Where a promise's task starts.
+#[derive(Clone, Copy, PartialEq)]
+enum Mode {
+    /// Queued here; an idle thread takes it once it has aged, else the creator runs it.
+    Anywhere,
+    /// On the calling thread.
+    Here,
+    /// On the least loaded thread.
+    Spread,
+}
+
+unsafe fn start_on(id: i64, work: *mut ms_rt_abi::Closure, mode: Mode) {
     let i = find(id);
     let t = table();
     if t.closure[i] != 0 || t.thread[i] != NOT_STARTED {
@@ -1231,8 +1255,16 @@ unsafe fn start_on(id: i64, work: *mut ms_rt_abi::Closure, here: bool) {
         closure: work as usize,
         at: crate::sys::monotonic_ns(),
     };
-    if here || sched::current() == sched::NONE || sched::pinned_here() {
+    // A spread promise is placed on purpose, so a stream pinned to this thread does not hold it here.
+    if mode == Mode::Here
+        || sched::current() == sched::NONE
+        || (mode == Mode::Anywhere && sched::pinned_here())
+    {
         execute(start);
+    } else if mode == Mode::Spread {
+        if let Some(start) = sched::submit_spread(start) {
+            execute(start);
+        }
     } else {
         sched::submit(start);
     }
@@ -1350,7 +1382,7 @@ pub unsafe fn start_native(entry: unsafe extern "C-unwind" fn(*mut u8), arg: *mu
         (*n).closure.code = native_code as *const u8;
         (*n).entry = entry;
         (*n).arg = arg;
-        start_on(id, n.cast(), true);
+        start_on(id, n.cast(), Mode::Here);
     }
     id
 }
@@ -2422,6 +2454,40 @@ mod tests {
             threads.insert(take_int(id));
         }
         assert_eq!(threads.len(), 1, "ran on {threads:?}");
+        for id in ids {
+            msrt_promise_drop(id);
+        }
+        drop(pin);
+        sched::shutdown();
+        task::teardown();
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn spread_promises_land_on_distinct_threads_even_beside_a_pinned_stream() {
+        let _g = lock();
+        sched::msrt_runtime_set_threads(4);
+        sched::warm(4);
+        // A pinned stream keeps ordinary promises here; a spread one is placed on purpose.
+        let pin = sched::Pin::new();
+        pin.touch();
+        let ids: Vec<i64> = (0..3).map(|_| msrt_promise_new()).collect();
+        for &id in &ids {
+            // SAFETY: the closure is handed to the promise, which drops it when its task ended.
+            unsafe {
+                let size = size_of::<Closure>() + 8;
+                let closure = crate::obj::new_obj(size, None, drop_closure).cast::<Closure>();
+                (*closure).code = spin_thread as *const u8;
+                closure.add(1).cast::<i64>().write(id);
+                msrt_promise_start_spread(id, closure);
+            }
+        }
+        let mut threads = std::collections::BTreeSet::new();
+        for &id in &ids {
+            assert_eq!(msrt_promise_wait(id, -1), OK);
+            threads.insert(take_int(id));
+        }
+        assert!(threads.len() >= 2, "ran on {threads:?}");
         for id in ids {
             msrt_promise_drop(id);
         }

@@ -182,13 +182,15 @@ fn ascii_char(b: u8) -> StrVal {
 }
 
 /// New string from bytes (owned, rc 1). Short ASCII and empty results are the shared statics.
+#[inline(always)]
 pub fn from_bytes(data: &[u8]) -> StrVal {
     match data.len() {
         0 => return empty(),
         1 if data[0] < 0x80 => return ascii_char(data[0]),
+        2..=STR_INLINE_MAX => return StrVal::inline(data),
         _ => {}
     }
-    owned_copy(data)
+    heap_copy(data)
 }
 
 /// The bytes of a string of at most 16 bytes as little-endian bits.
@@ -241,6 +243,17 @@ pub unsafe extern "C-unwind" fn msrt_string_from_bytes(
 // Scalar shape and indexing
 // ---------------------------------------------------------------------------
 
+/// Whether `s` is known to be ASCII without scanning heap bytes: flagged, or inline with clear
+/// high bits (an inline string has no flag, but its bits are one register test).
+///
+/// # Safety
+/// `s` must be live.
+#[inline(always)]
+unsafe fn known_ascii(s: *const StrVal) -> bool {
+    // SAFETY: `s` live.
+    unsafe { (*s).flagged_ascii() || ((*s).is_inline() && is_ascii(&*s)) }
+}
+
 /// Scalar count: the byte length for a string flagged ASCII (or inline ASCII), else counted on
 /// each call. Strings built by copy, concatenation and append carry the flag.
 ///
@@ -250,7 +263,7 @@ pub unsafe extern "C-unwind" fn msrt_string_from_bytes(
 pub unsafe fn scalar_count(s: *const StrVal) -> usize {
     // SAFETY: `s` live.
     unsafe {
-        if (*s).flagged_ascii() || ((*s).is_inline() && is_ascii(&*s)) {
+        if known_ascii(s) {
             return (*s).len();
         }
         utf8::count(bytes(s))
@@ -296,14 +309,7 @@ unsafe fn walk_sub_scalars(s: *const StrVal, a: usize, b: usize) -> Option<StrVa
 
 #[unsafe(no_mangle)]
 // ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_length(s: *const StrVal) -> i64 {
-    // SAFETY: caller passes a live string.
-    unsafe { scalar_count(s) as i64 }
-}
-
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_scalar_length(s: *const StrVal) -> i64 {
+pub unsafe extern "C-unwind" fn msrt_string_scalar_count_slow(s: *const StrVal) -> i64 {
     // SAFETY: caller passes a live string.
     unsafe { scalar_count(s) as i64 }
 }
@@ -381,12 +387,26 @@ unsafe fn string_get(
 /// `String.scalar_at(index, default)`.
 #[unsafe(no_mangle)]
 // ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_scalar_at(
+pub unsafe extern "C-unwind" fn msrt_string_scalar_at_slow(
     s: *const StrVal,
     index: i64,
     has_default: HasRaw,
     default: i64,
 ) -> i64 {
+    // SAFETY: caller passes a live string.
+    unsafe {
+        // All-ASCII text: a scalar index is a byte index.
+        if (*s).flagged_ascii()
+            && let Some(&byte) = usize::try_from(index).ok().and_then(|i| bytes(s).get(i))
+        {
+            return i64::from(byte);
+        }
+        scalar_at_slow(s, index, has_default.is_set(), default)
+    }
+}
+
+#[inline(never)]
+unsafe fn scalar_at_slow(s: *const StrVal, index: i64, has_default: bool, default: i64) -> i64 {
     // SAFETY: caller passes a live string.
     unsafe {
         let text = bytes(s);
@@ -405,7 +425,7 @@ pub unsafe extern "C-unwind" fn msrt_string_scalar_at(
             })
         };
         let Some(off) = off else {
-            if !has_default.is_set() {
+            if !has_default {
                 fault::msrt_index_fault(index, scalar_count(s) as i64);
             }
             return default;
@@ -433,7 +453,7 @@ pub fn find(hay: &[u8], needle: &[u8]) -> Option<usize> {
     if needle.len() == 1 && hay.len() < SHORT_HAY {
         return memchr_short(needle[0], hay);
     }
-    if hay.len() < SHORT_HAY {
+    if hay.len() < SHORT_HAY || (needle.len() > 1 && hay.len() < MEDIUM_HAY) {
         return find_short(hay, needle);
     }
     if needle.len() == 1 {
@@ -452,6 +472,9 @@ pub fn find(hay: &[u8], needle: &[u8]) -> Option<usize> {
 )]
 enum Needle<'a> {
     Byte(u8),
+    /// A needle of two or more bytes in a text shorter than [`MEDIUM_HAY`]: scanned directly, so no
+    /// `memmem` searcher is built for it.
+    Short(&'a [u8]),
     Bytes(memchr::memmem::Finder<'a>),
 }
 
@@ -461,6 +484,15 @@ impl<'a> Needle<'a> {
             [b] => Needle::Byte(*b),
             _ => Needle::Bytes(memchr::memmem::Finder::new(needle)),
         }
+    }
+
+    /// A searcher for `needle` over haystacks of at most `text_len` bytes: building a `memmem`
+    /// searcher costs more than scanning a short text.
+    fn for_text(needle: &'a [u8], text_len: usize) -> Self {
+        if needle.len() > 1 && text_len < MEDIUM_HAY {
+            return Needle::Short(needle);
+        }
+        Self::new(needle)
     }
 
     /// Matches in text are usually a few bytes apart (words, fields), where the vector
@@ -476,6 +508,7 @@ impl<'a> Needle<'a> {
                 }
                 memchr(*b, &hay[NEAR..]).map(|i| i + NEAR)
             }
+            Needle::Short(n) => find_short(hay, n),
             Needle::Bytes(f) if hay.len() < SHORT_HAY => find_short(hay, f.needle()),
             Needle::Bytes(f) => {
                 // A match starting before `NEAR` ends inside this window.
@@ -494,43 +527,14 @@ const NEAR: usize = 16;
 
 /// Haystacks shorter than this are scanned byte by byte: the vector searchers' setup costs more
 /// than the scan.
-const SHORT_HAY: usize = 32;
+const SHORT_HAY: usize = ms_rt_hot::SHORT_HAY;
 
-/// `find` for a short haystack and a non-empty needle.
-#[inline]
-fn find_short(hay: &[u8], needle: &[u8]) -> Option<usize> {
-    let (&first, rest) = needle.split_first()?;
-    let last = hay.len().checked_sub(needle.len())?;
-    let mut i = 0;
-    while i <= last {
-        i += memchr_short(first, &hay[i..=last])?;
-        if hay[i + 1..i + needle.len()] == *rest {
-            return Some(i);
-        }
-        i += 1;
-    }
-    None
-}
+/// Haystacks shorter than this (a line of a log or a record) are also scanned directly for a
+/// needle of two or more bytes: building a `memmem` searcher per call costs several times the
+/// scan of so few bytes, and the work is bounded by the haystack length times the needle length.
+const MEDIUM_HAY: usize = ms_rt_hot::MEDIUM_HAY;
 
-/// `memchr` for a short haystack: eight bytes per step, testing each word for a byte equal to
-/// `c` with the zero-byte trick.
-#[inline]
-pub(super) fn memchr_short(c: u8, hay: &[u8]) -> Option<usize> {
-    const LO: u64 = 0x0101_0101_0101_0101;
-    const HI: u64 = 0x8080_8080_8080_8080;
-    let pat = LO * c as u64;
-    let (chunks, rest) = hay.as_chunks::<8>();
-    let mut at = 0;
-    for w in chunks {
-        let x = u64::from_le_bytes(*w) ^ pat;
-        let hit = x.wrapping_sub(LO) & !x & HI;
-        if hit != 0 {
-            return Some(at + hit.trailing_zeros() as usize / 8);
-        }
-        at += 8;
-    }
-    rest.iter().position(|&b| b == c).map(|p| at + p)
-}
+pub(super) use ms_rt_hot::{find_short, memchr_short};
 
 /// First index of `c` in `hay` (the `memchr` crate picks SSE2, AVX2 or NEON at run time).
 #[inline]
@@ -549,25 +553,23 @@ pub fn rfind(hay: &[u8], needle: &[u8]) -> Option<usize> {
     memchr::memmem::rfind(hay, needle)
 }
 
+/// The search behind `msrt_string_contains` (`ms-rt-hot`) for every case it does not inline.
 #[unsafe(no_mangle)]
 // ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_contains(a: *const StrVal, v: *const StrVal) -> u8 {
+pub unsafe extern "C-unwind" fn msrt_string_contains_long(
+    a: *const StrVal,
+    v: *const StrVal,
+) -> u8 {
     // SAFETY: caller passes live strings.
-    unsafe { find(bytes(a), bytes(v)).is_some() as u8 }
-}
-
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_starts_with(a: *const StrVal, v: *const StrVal) -> u8 {
-    // SAFETY: caller passes live strings.
-    unsafe { bytes(a).starts_with(bytes(v)) as u8 }
-}
-
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_ends_with(a: *const StrVal, v: *const StrVal) -> u8 {
-    // SAFETY: caller passes live strings.
-    unsafe { bytes(a).ends_with(bytes(v)) as u8 }
+    unsafe {
+        let (hay, needle) = (bytes(a), bytes(v));
+        // A character class test (`"#.SE".contains(c)`): a short haystack and one byte needs no
+        // word tricks, just a short scan.
+        if let ([b], true) = (needle, hay.len() <= 16) {
+            return hay.contains(b) as u8;
+        }
+        find(hay, needle).is_some() as u8
+    }
 }
 
 /// The scalar index of byte offset `at` in `text`, the bytes of `s`: a string flagged ASCII needs no
@@ -601,7 +603,7 @@ pub unsafe extern "C-unwind" fn msrt_string_count(a: *const StrVal, v: *const St
 /// Int? result: present flag, value through `out`.
 #[unsafe(no_mangle)]
 // ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_index_of(
+pub unsafe extern "C-unwind" fn msrt_string_index_of_long(
     a: *const StrVal,
     v: *const StrVal,
     out: *mut i64,
@@ -1236,7 +1238,7 @@ unsafe fn fill_repeated(dst: *mut u8, pattern: &[u8], len: usize) {
 fn count_matches(text: &[u8], old: &[u8]) -> usize {
     let mut n = 0;
     let mut i = 0;
-    let f = Needle::new(old);
+    let f = Needle::for_text(old, text.len());
     while let Some(p) = f.find(&text[i..]) {
         n += 1;
         i += p + old.len();
@@ -1363,7 +1365,7 @@ fn fill_replaced(text: &[u8], old: &[u8], new: &[u8], matches: usize) -> StrVal 
     unsafe {
         let mut dst = out.ptr_word;
         let mut i = 0;
-        let f = Needle::new(old);
+        let f = Needle::for_text(old, text.len());
         for _ in 0..matches {
             let p = f.find(&text[i..]).unwrap_or(0);
             copy_bytes(dst, text[i..].as_ptr(), p);
@@ -1434,7 +1436,7 @@ unsafe fn replace_shrinking(s: *const StrVal, old: &[u8], new: &[u8]) -> StrVal 
     // at most `text.len()` of them, since every replacement is no longer than the match it replaces.
     unsafe {
         let text = bytes(s);
-        let f = Needle::new(old);
+        let f = Needle::for_text(old, text.len());
         let Some(first) = f.find(text) else {
             // Nothing to replace: share the unchanged input.
             return cloned(&*s);
@@ -1535,18 +1537,35 @@ unsafe fn pad(
         }
         let total = total as usize;
         let pad_len = total - text.len();
-        let mut b = Vec::<u8>::with_capacity(total);
-        let dst = b.as_mut_ptr();
-        let pad_dst = if atstart { dst } else { dst.add(text.len()) };
-        if atstart {
-            core::ptr::copy_nonoverlapping(text.as_ptr(), dst.add(pad_len), text.len());
-        } else {
-            core::ptr::copy_nonoverlapping(text.as_ptr(), dst, text.len());
+        // The result is written where it lives: a short one on the stack and then inline, a long
+        // one straight into its allocation, with no temporary buffer.
+        let write = |dst: *mut u8| {
+            let pad_dst = if atstart { dst } else { dst.add(text.len()) };
+            if atstart {
+                core::ptr::copy_nonoverlapping(text.as_ptr(), dst.add(pad_len), text.len());
+            } else {
+                core::ptr::copy_nonoverlapping(text.as_ptr(), dst, text.len());
+            }
+            fill_repeated(pad_dst, padb, cycles * padb.len());
+            core::ptr::copy_nonoverlapping(
+                padb.as_ptr(),
+                pad_dst.add(cycles * padb.len()),
+                prefix_end,
+            );
+        };
+        if total <= STR_INLINE_MAX {
+            let mut buf = [0u8; STR_INLINE_MAX];
+            write(buf.as_mut_ptr());
+            return StrVal::inline(&buf[..total]).write_to(out);
         }
-        fill_repeated(pad_dst, padb, cycles * padb.len());
-        core::ptr::copy_nonoverlapping(padb.as_ptr(), pad_dst.add(cycles * padb.len()), prefix_end);
-        b.set_len(total);
-        from_buf(b).write_to(out)
+        let r = alloc_str(total);
+        write(r.ptr_word);
+        (if is_ascii(&*s) && is_ascii(&*padding) {
+            r.with_ascii()
+        } else {
+            r
+        })
+        .write_to(out)
     }
 }
 
@@ -1588,7 +1607,7 @@ pub unsafe extern "C-unwind" fn msrt_string_slice_scalars(
 ) -> u8 {
     // SAFETY: caller passes a live string and a writable out.
     unsafe {
-        if start >= 0 && end >= start && !(*s).flagged_ascii() {
+        if start >= 0 && end >= start && !known_ascii(s) {
             return match walk_sub_scalars(s, start as usize, end as usize) {
                 Some(r) => {
                     *out = r;
@@ -1621,7 +1640,7 @@ unsafe fn offset_after(s: *const StrVal, count: usize) -> usize {
     // SAFETY: `s` live.
     unsafe {
         let text = bytes(s);
-        if (*s).flagged_ascii() {
+        if known_ascii(s) {
             return count.min(text.len());
         }
         utf8::advance(text, 0, count).unwrap_or(text.len())
@@ -1674,7 +1693,7 @@ pub unsafe extern "C-unwind" fn msrt_string_slice(
 ) -> u8 {
     // SAFETY: caller passes a live string and a writable out.
     unsafe {
-        if start >= 0 && end >= start && !(*s).flagged_ascii() {
+        if start >= 0 && end >= start && !known_ascii(s) {
             return match walk_sub_scalars(s, start as usize, end as usize) {
                 Some(r) => {
                     *out = r;
@@ -1683,7 +1702,7 @@ pub unsafe extern "C-unwind" fn msrt_string_slice(
                 None => STATUS_OUT_OF_RANGE,
             };
         }
-        if (start < 0 || end < 0) && !(*s).flagged_ascii() {
+        if (start < 0 || end < 0) && !known_ascii(s) {
             // A bound from the end walks back from the end, one from the start walks forward; offsets
             // grow with scalar positions, so `a <= b` is the same check on bytes.
             let text = bytes(s);
@@ -1747,7 +1766,7 @@ unsafe fn scalar_range(s: *const StrVal, start: i64, end: i64) -> Option<(usize,
 /// neither changed nor dropped (the borrow check guarantees that).
 #[unsafe(no_mangle)]
 // ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_view(
+pub unsafe extern "C-unwind" fn msrt_string_view_slow(
     s: *const StrVal,
     start: i64,
     end: i64,
@@ -1991,8 +2010,9 @@ unsafe fn split_into(
             return;
         }
         let mut start = 0;
+        let needle = Needle::for_text(sepb, text.len());
         while v.len < limit {
-            match find(&text[start..], sepb) {
+            match needle.find(&text[start..]) {
                 Some(p) => {
                     push_str(&mut v, piece(&text[start..start + p]));
                     start += p + sepb.len();
@@ -2300,22 +2320,6 @@ pub unsafe extern "C-unwind" fn msrt_string_to_bytes(s: *const StrVal, out: *mut
     }
 }
 
-/// `String.parse_int()`: present flag, value through `out`.
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_parse_int(s: *const StrVal, out: *mut i64) -> u8 {
-    // SAFETY: caller passes a live string and a writable out.
-    unsafe {
-        match crate::num::parse_int_decimal(bytes(s)) {
-            Some(v) => {
-                *out = v;
-                1
-            }
-            None => 0,
-        }
-    }
-}
-
 /// `String.parse_float()`: present flag, value through `out`; the `Result` form is `math.parse_float`.
 #[unsafe(no_mangle)]
 // ms: leaf
@@ -2609,6 +2613,60 @@ mod tests {
                 let want = if n.len() > h.len() { None } else { naive(h, n) };
                 assert_eq!(find(h, n), want, "find {n:?} in {h:?}");
                 assert_eq!(Needle::new(n).find(h), want, "needle {n:?} in {h:?}");
+                assert_eq!(
+                    Needle::for_text(n, h.len()).find(h),
+                    want,
+                    "for_text needle {n:?} in {h:?}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn slicing_inline_ascii_and_non_ascii_by_scalars() {
+        let _g = crate::testutil::lock();
+        // SAFETY: the strings are live for the whole test.
+        unsafe {
+            for (text, a, b, want) in [
+                ("Rent,133.47", 5, 11, Some("133.47")),
+                ("Rent,133.47", 0, 11, Some("Rent,133.47")),
+                ("Rent,133.47", 5, 12, None),
+                ("café,1", 3, 4, Some("é")),
+                ("café,1", 4, 6, Some(",1")),
+            ] {
+                let s = from_bytes(text.as_bytes());
+                let mut out = empty();
+                let status = msrt_string_slice_scalars(&s, a, b, &mut out);
+                match want {
+                    Some(w) => {
+                        assert_eq!(status, STATUS_OK, "{text:?}[{a}..{b}]");
+                        assert_eq!(bytes(&out), w.as_bytes());
+                    }
+                    None => assert_eq!(status, STATUS_OUT_OF_RANGE),
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn contains_a_byte_in_a_short_string() {
+        let _g = crate::testutil::lock();
+        // SAFETY: the strings are live for the whole test.
+        unsafe {
+            for (hay, needle, want) in [
+                ("#.SE", "S", 1),
+                ("#.SE", "x", 0),
+                ("", "x", 0),
+                ("abcdefghijklmnop", "p", 1),
+                ("abcdefghijklmnopq", "q", 1),
+                ("é", "\u{a9}", 0),
+            ] {
+                let (h, n) = (from_bytes(hay.as_bytes()), from_bytes(needle.as_bytes()));
+                assert_eq!(
+                    msrt_string_contains_long(&h, &n),
+                    want,
+                    "{hay:?} contains {needle:?}"
+                );
             }
         }
     }
@@ -2857,8 +2915,8 @@ mod tests {
             seed
         };
         for _ in 0..4000 {
-            let hay_len = (next() % 90) as usize;
-            let needle_len = (next() % 6) as usize;
+            let hay_len = (next() % 300) as usize;
+            let needle_len = (next() % if next() % 2 == 0 { 6 } else { 40 }) as usize;
             let hay: Vec<u8> = (0..hay_len).map(|_| b'a' + (next() % 3) as u8).collect();
             let needle: Vec<u8> = (0..needle_len).map(|_| b'a' + (next() % 3) as u8).collect();
             let naive = if needle.is_empty() {
@@ -2999,11 +3057,11 @@ mod tests {
         let _g = testutil::lock();
         unsafe {
             let s = st("héllo");
-            assert_eq!(msrt_string_length(s), 5);
+            assert_eq!(ms_rt_hot::msrt_string_length(s as usize), 5);
             assert_eq!(crate::testutil::hot::msrt_string_byte_length(s), 6);
             assert_eq!(ret(|o| msrt_string_get(s, 1, HasRaw(0), st(""), o)), "é");
             assert_eq!(ret(|o| msrt_string_get(s, -1, HasRaw(0), st(""), o)), "o");
-            assert_eq!(msrt_string_scalar_at(s, 1, HasRaw(0), 0), 0xE9);
+            assert_eq!(ms_rt_hot::msrt_string_scalar_at(s as usize, 1, 0, 0), 0xE9);
             testutil::assert_fault(
                 "index 9 out of range for length 5; pass a default: get(index:, default: ...)",
                 || {

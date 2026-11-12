@@ -99,17 +99,20 @@ impl FnLower<'_> {
             let ty = self.b.var_ty(sv);
             let uid = self.adopt_hidden(sv, ty);
             let cty = ms_check::api::types::sub(&self.hir.ty(scrutinee), &self.subst);
-            if let Some(kind) = self.part_closer(&cty)? {
-                self.hidden_closers.insert(uid, kind);
-                self.note_closer();
-            }
-            let parts = matches!(kind, TyKind::Alt(_) | TyKind::Opt(_))
-                && arms
-                    .iter()
-                    .any(|arm| self.hir.arm(arm).bindings.iter().any(|b| b.is_some()));
-            if parts {
-                self.slotted.insert(uid);
-                self.slotify(uid);
+            let closer = self.part_closer(&cty)?;
+            if !self.own_hidden(uid, closer.as_ref()) {
+                if let Some(kind) = closer {
+                    self.hidden_closers.insert(uid, kind);
+                    self.note_closer();
+                }
+                let parts = matches!(kind, TyKind::Alt(_) | TyKind::Opt(_))
+                    && arms
+                        .iter()
+                        .any(|arm| self.hir.arm(arm).bindings.iter().any(|b| b.is_some()));
+                if parts {
+                    self.slotted.insert(uid);
+                    self.slotify(uid);
+                }
             }
             owned_uid = Some(uid);
         }
@@ -250,6 +253,8 @@ impl FnLower<'_> {
             if let (Some(uid), true, Some(k)) = (owned_uid, takes, case) {
                 let l = self.locals[&uid];
                 let cur = self.local_take(&l);
+                // The pass stops owning the scrutinee: its parts are taken out below.
+                self.disown_raw(uid, cur);
                 self.take_payloads(&kind, *k, cur, &facts.bindings)?;
                 self.closed_on_path.insert(uid);
             }
@@ -337,7 +342,9 @@ impl FnLower<'_> {
                 }
             }
             self.flush_temps(mark);
-            if let (Some(uid), false, false) = (owned_uid, takes, self.dead) {
+            if let (Some(uid), false, false) = (owned_uid, takes, self.dead)
+                && !self.raw_owned.contains(&uid)
+            {
                 // This arm left the scrutinee whole: it goes with the arm.
                 let l = self.locals[&uid];
                 let mut v = self.local_take(&l);
@@ -620,7 +627,7 @@ impl FnLower<'_> {
             // The operand's `ok` payload is a borrow of the arguments it was called with: it
             // stays where it is, and the operand (which owns nothing else here) is dropped with
             // the statement.
-            self.temps.push(cur);
+            self.pend_temp(cur);
             return Ok(Val {
                 v: payload,
                 own: false,

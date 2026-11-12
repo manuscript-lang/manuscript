@@ -175,7 +175,7 @@ static int64_t tasks_mode(void) {
     for (int i = 0; i < 6; i++) if (order[i] != want[i]) return 13;
     // I/O wakeup
     order_n = 0;
-    int fds[2];
+    static int fds[2];  // other tasks read it, and this task's stack may be hibernated
     if (pipe2(fds, O_NONBLOCK)) return 14;
     uint64_t r = msrt_task_spawn(reader, fds, 0, 0);
     uint64_t w = msrt_task_spawn(writer, fds, 0, 0);
@@ -183,7 +183,7 @@ static int64_t tasks_mode(void) {
     if (order_n != 2 || order[0] != 50 || order[1] != 100) return 15;
     // wait timeout
     order_n = 0;
-    int fds2[2];
+    static int fds2[2];
     if (pipe2(fds2, O_NONBLOCK)) return 16;
     uint64_t t = msrt_task_spawn(timeout_waiter, fds2, 0, 0);
     msrt_task_join(t, 0);

@@ -1545,7 +1545,10 @@ impl BodyState {
             return Ok(());
         }
         loop {
+            // The delivered buffer's capacity goes back to the decoder, so output does not regrow
+            // from empty at every step.
             let mut decoded = std::mem::take(&mut self.ready);
+            decoded.clear();
             let room = self.room();
             let more = self.gz_step(deadline, &mut decoded, room);
             self.ready = decoded;

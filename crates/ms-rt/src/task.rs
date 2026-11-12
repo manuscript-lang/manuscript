@@ -258,6 +258,8 @@ struct Sched {
     /// `fd_waiters[fd]` holds the handles of the tasks waiting on `fd`, oldest first.
     fd_waiters: Vec<Vec<u64>>,
     fd_waiting: usize,
+    /// Task switches since the last non-blocking descriptor poll.
+    switches_since_poll: u32,
     epfd: i32,
     /// Idle stacks (base, length) kept for reuse; a stack is reused only for the same length.
     pool: Vec<(usize, usize)>,
@@ -317,6 +319,7 @@ crate::isolate_static! {
     kill_limit: MIN_TIMER_LIMIT,
     fd_waiters: Vec::new(),
     fd_waiting: 0,
+    switches_since_poll: 0,
     epfd: -1,
     pool: Vec::new(),
     pool_clean: 0,
@@ -785,18 +788,53 @@ fn region_cell(sp: usize) -> *mut *mut fault::Hdr {
     ((sp & !(REGION - 1)) + REGION - 16) as *mut *mut fault::Hdr
 }
 
-/// Points the region of `t`'s stack at `t`'s block, so code running on it finds its block.
+/// The word of the region holding `sp` that holds the running stack segment's recursion limit,
+/// one load from the masked stack pointer (see `ms_rt_abi::symbols::STACK_LIMIT_CELL`).
+fn region_limit_cell(sp: usize) -> *mut usize {
+    ((sp & !(REGION - 1)) + REGION - 8) as *mut usize
+}
+
+/// Points the region of `t`'s stack at `t`'s block and recursion limit, so code running on it
+/// finds them. Each segment of the task has its own limit; the one it runs on is `hdr.limit`.
 unsafe fn publish_region(t: *mut Task) {
     // SAFETY: `t` is live and has a stack; the cell page is committed on first use.
     unsafe {
         if (*t).stack.is_null() {
             return;
         }
-        region_cell((*t).stack as usize).write(&mut (*t).hdr);
         // Returning into a lower segment runs code there too.
-        for k in 0..(*t).seg {
-            region_cell(*(*t).segs.as_ptr().add(k)).write(&mut (*t).hdr);
+        for k in 0..=(*t).seg {
+            let base = if k == 0 {
+                (*t).stack as usize
+            } else {
+                *(*t).segs.as_ptr().add(k - 1)
+            };
+            region_cell(base).write(&mut (*t).hdr);
+            let limit = if k == (*t).seg {
+                (*t).hdr.limit
+            } else {
+                let (lo, top, _) = segment_bounds(t, k);
+                fault::stack_limit(lo, top)
+            };
+            region_limit_cell(base).write(limit);
         }
+    }
+}
+
+/// Copies the running task's recursion limit to the cell of the stack segment it is on. Called
+/// after `hdr.limit` changes or the segment does.
+pub(crate) fn publish_limit() {
+    // SAFETY: single threaded scheduler; the task's stack and segments are live.
+    unsafe {
+        let cur = ensure_init();
+        if (*cur).stack.is_null() {
+            return;
+        }
+        let base = match (*cur).seg {
+            0 => (*cur).stack as usize,
+            k => *(*cur).segs.as_ptr().add(k - 1),
+        };
+        region_limit_cell(base).write((*cur).hdr.limit);
     }
 }
 
@@ -855,6 +893,7 @@ pub unsafe extern "C-unwind" fn msrt_task_grow(
         region_cell(base).write(&mut (*cur).hdr);
         let limit = (*cur).hdr.limit;
         (*cur).hdr.limit = fault::stack_limit(lo, top);
+        region_limit_cell(base).write((*cur).hdr.limit);
         fault::set_segment_state((lo, top, chain));
         (*cur).seg = k;
         (*cur).left.push(0);
@@ -882,6 +921,7 @@ pub unsafe extern "C-unwind" fn msrt_task_grow(
         (*cur).seg = k - 1;
         (*cur).left.pop();
         (*cur).hdr.limit = limit;
+        publish_limit();
         fault::set_segment_state(prev);
     }
 }

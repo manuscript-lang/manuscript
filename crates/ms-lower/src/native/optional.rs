@@ -610,10 +610,11 @@ impl<'a> FnLower<'a> {
             );
             return Ok((new, result));
         }
-        // Swapping scalars is two loads and two stores; other elements move through the runtime without a copy.
-        let scalar_swap = name == "swap"
-            && matches!(self.b.m.types.kind(self.ty_of(old)), TyKind::List(e) if self.b.m.types.is_scalar(*e));
-        let runtime_only = !scalar_swap
+        // Swapping elements that need no drop (scalars, optional scalars, plain records) is two
+        // loads and two stores; the rest move through the runtime without a copy.
+        let plain_swap = name == "swap"
+            && matches!(self.b.m.types.kind(self.ty_of(old)), TyKind::List(e) if !self.needs_drop(*e));
+        let runtime_only = !plain_swap
             && !matches!(
                 name,
                 "append"

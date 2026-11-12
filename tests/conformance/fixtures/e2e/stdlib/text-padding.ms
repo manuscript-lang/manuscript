@@ -18,6 +18,20 @@ test "repeated fills keep pattern and scalar boundaries":
 	expect_equal("!".pad_start(10, "ab"), "ababababa!")?
 	expect_equal("!".pad_end(6, "é🙂"), "!é🙂é🙂é")?
 
+test "a padded result past the inline size keeps its text and length":
+	long_start := "name".pad_start(40, "-=")
+	expect_equal(long_start, "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=name")?
+	expect_equal(long_start.length(), 40)?
+
+	long_end := "name".pad_end(30, " ")
+	expect_equal(long_end, "name" + " ".repeat(26).get())?
+	expect_equal(long_end.length(), 30)?
+
+	wide := "é".pad_start(30, "🙂")
+	expect_equal(wide, "🙂".repeat(29).get() + "é")?
+	expect_equal(wide.length(), 30)?
+	expect_equal(wide.get(29), "é")?
+
 test "a short target, negative target or empty padding leaves the text unchanged":
 	expect_equal("abc".pad_start(2, "-"), "abc")?
 	expect_equal("abc".pad_end(3, "-"), "abc")?

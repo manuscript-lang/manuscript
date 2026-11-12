@@ -1411,7 +1411,7 @@ fn lower_default_thunk(
                 s.default_argument(&callee, i, &job.subst, &mut earlier, recv, None)
             })?;
             // A `try` in a later default returns early: the holder must drop on that path too.
-            fl.temps.push(held);
+            fl.pend_temp(held);
             holders.push(held);
             val
         });
@@ -2233,7 +2233,7 @@ impl FnLower<'_> {
             self.b.emit(Op::Store, &[slot, x.v], Imm::None, None);
             // The adapter reads the value in place, so it stays alive to the end of the statement.
             if x.own {
-                self.temps.push(x.v);
+                self.pend_temp(x.v);
             }
             slot
         } else {

@@ -31,6 +31,11 @@ pub(crate) struct ResourceTemp {
 }
 
 impl CloseKind {
+    /// Whether a value held in a variable can be closed as it is.
+    pub(crate) fn in_value(&self) -> bool {
+        !self.writes_back()
+    }
+
     /// Whether the close changes the value it closes, so it needs the value's own storage.
     fn writes_back(&self) -> bool {
         matches!(
@@ -457,9 +462,20 @@ impl FnLower<'_> {
     /// Closes an owned temporary that is a resource; the value after the close.
     fn close_temp(&mut self, v: Value) -> Value {
         let mt = self.b.ty(v);
-        let Some(ty) = self.cx.source_tys.get(mt.0 as usize).cloned() else {
+        let Some(kind) = self.temp_closer(mt) else {
             return v;
         };
+        close_owned(&mut self.b, &kind, v, mt)
+    }
+
+    /// Whether the temporary `v` closes before it drops.
+    pub(crate) fn is_resource_temp(&mut self, v: Value) -> bool {
+        let mt = self.b.ty(v);
+        self.temp_closer(mt).is_some()
+    }
+
+    fn temp_closer(&mut self, mt: MTy) -> Option<CloseKind> {
+        let ty = self.cx.source_tys.get(mt.0 as usize).cloned()?;
         // A resource, or a record or list holding one (only read in place: the checker rejects
         // moving a resource part out of a computed value). A wrapper (`Result`, `Optional`) may
         // have had its payload moved out already, so it closes only when it is itself one.
@@ -467,12 +483,9 @@ impl FnLower<'_> {
             || (self.closeable_method(&ty).is_none()
                 && (ty.is(Builtin::Optional) || ty.is(Builtin::Result)))
         {
-            return v;
+            return None;
         }
-        let Ok(Some(kind)) = self.part_closer(&ty) else {
-            return v;
-        };
-        close_owned(&mut self.b, &kind, v, mt)
+        self.part_closer(&ty).ok().flatten()
     }
 
     /// The close operation of a value of the MIR type `ty` holding a resource, if it is one.
@@ -664,13 +677,24 @@ impl FnLower<'_> {
     fn fallible_close_ok(&mut self, kind: &CloseKind, uid: usize) -> bool {
         // The error exit returns at once, so no cleanup that lowering still runs may be pending:
         // every enclosing scope holds nothing else to drop or close.
-        let nothing_else = self.scopes.iter().all(|s| s.iter().all(|u| *u == uid));
+        // A local the pass owns at its exits needs no close: the error exit releases the owned
+        // values still live, as it does for any return.
+        let nothing_else = self
+            .scopes
+            .iter()
+            .all(|s| s.iter().all(|u| *u == uid || self.raw_vars.contains_key(u)));
+        // The temporaries the pass owns are in its scopes' chains already.
+        let temps_empty = self.temps.iter().all(|t| self.pass_temps.contains_key(t));
         nothing_else
-            && self.temps.is_empty()
+            && temps_empty
             && self.close_result_ty(kind).is_some()
             && !self.b.func_mut().ret_borrowed
             && !self.b.func_mut().ret_view
-            && self.var_slots.is_empty()
+            // A `var` parameter that left its slot is put back by `emit_return` only.
+            && self
+                .var_slots
+                .iter()
+                .all(|v| self.locals.get(&v.uid).is_some_and(|l| l.slot == Some(v.ptr)))
             && self.default_frames.is_empty()
             && self.fixture.is_none()
     }
@@ -822,7 +846,7 @@ impl FnLower<'_> {
             && !self.dead
             && self.scope_closes_nothing()
             && (!moves || self.close_succeeds_with_unit(kind))
-            && (!by_hand || (!moves && self.close_succeeds_with_unit(kind)))
+            && (!by_hand || self.close_succeeds_with_unit(kind))
     }
 
     /// Tells the pass the program closed (`closed`) or refilled the value in the raw slot.

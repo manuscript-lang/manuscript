@@ -170,11 +170,38 @@ fn Image.rotate90() Image:
 
 // Rotates a half turn.
 fn Image.rotate180() Image:
-	return self.flip_horizontal().flip_vertical()
+	n := color_channels(self.mode)
+	if not rotation_shape(self, n): return self.flip_horizontal().flip_vertical()
+
+	var out = List[UInt8](reserve: self.pixels.length())
+
+	for y in 0..self.height:
+		for x in 0..self.width:
+			at := ((self.height - 1 - y) * self.width + self.width - 1 - x) * n
+			for c in 0..n:
+				out.append(self.pixels[at + c])
+
+	return Image(self.width, self.height, self.mode, out)
 
 // Rotates three quarter turns clockwise (one counter-clockwise).
 fn Image.rotate270() Image:
-	return self.rotate90().rotate180()
+	n := color_channels(self.mode)
+	if not rotation_shape(self, n): return (
+		self
+		.rotate90()
+		.flip_horizontal()
+		.flip_vertical()
+	)
+
+	var out = List[UInt8](reserve: self.pixels.length())
+
+	for y in 0..self.width:
+		for x in 0..self.height:
+			at := (x * self.width + self.width - 1 - y) * n
+			for c in 0..n:
+				out.append(self.pixels[at + c])
+
+	return Image(self.height, self.width, self.mode, out)
 
 // Converts to `target`: gray from RGB uses Rec. 601 luma, gray expands by
 // repeating, missing alpha is opaque, and dropping alpha keeps the stored color (no
@@ -263,6 +290,15 @@ fn Image.resize(
 						)
 
 	return ok(Image(width, height, self.mode, out))
+
+// Public fields permit malformed images. Keep their original composed behavior,
+// including overflow checks on empty shapes, without multiplying unchecked sizes.
+fn rotation_shape(image: Image, channels: Int) Bool:
+	if image.width < 1 or image.height < 1: return false
+	if image.pixels.length() % channels != 0: return false
+
+	pixels := image.pixels.length() / channels
+	return pixels % image.height == 0 and pixels / image.height == image.width
 
 // One RGBA sample, each channel 0 to 255.
 export type Rgba:

@@ -602,6 +602,52 @@ b3():
     }
 }
 
+/// A slot owner the program closes by hand on one branch and moves out of on the other: the
+/// join carries a drop flag and a closed flag, and only the hand-closed path closes it again.
+#[test]
+fn a_slot_owner_closed_by_hand_on_one_path_and_moved_on_another_is_released_once() {
+    for (cond, want) in [(1, "7\n~\n7\n"), (0, "x\n~\n")] {
+        let (_, out, text) = elaborate_and_run_text(&format!(
+            r#"fn @shut(%p: ptr) -> unit {{
+b0:
+  %r: list<int> = load list<int> %p
+  %z: int = iconst 0
+  %id: int = list.get %r, %z
+  %u: unit = call.rt @msrt_print_int (%id)
+  ret %u
+}}
+fn @main() -> int {{
+b0:
+  scope.begin 1 0
+  %n: int = iconst 7
+  %a: list<int> = call @mk (%n)
+  %s: ptr = slot list<int>
+  put %s, %a
+  scope.own 1 4 %s
+  %k: int = iconst {cond}
+  %one: int = iconst 1
+  %c: bool = icmp.eq %k, %one
+  br_if %c, b1(), b2()
+b1():
+  %u: unit = call @shut (%s)
+  scope.mark 1 %s
+  br b3()
+b2():
+  %t: list<int> = take list<int> %s
+  scope.disown %s
+  drop %t
+  br b3()
+b3():
+  scope.end 1 0
+  %r: int = iconst 0
+  ret %r
+}}
+"#
+        ));
+        assert_eq!(out, want, "cond {cond}\n{text}");
+    }
+}
+
 /// A memory-slot owner whose close returns a `Result`: the close runs shielded, its error becomes
 /// the function's return value through the function's close exit, and a close that succeeds
 /// leaves the normal return alone.
@@ -688,5 +734,82 @@ fn a_fallible_slot_close_returns_its_error_through_the_close_exit() {
         it.run_entry().unwrap_or_else(|f| panic!("{f}"));
         let want = format!("{code}\n{tag}\n");
         assert_eq!(it.stdout(), want, "{text}");
+    }
+}
+
+#[test]
+fn a_value_disowned_before_a_loop_back_edge_does_not_make_the_parameter_an_owner() {
+    // `%w` leaves its scope in b2 and reaches the back edge through b3: the loop parameter
+    // `%v` is lowering's own, so its explicit drop is the only one.
+    let (r, _) = elaborate_and_run(
+        r#"
+fn @main() -> int {
+b0:
+  %z: int = iconst 0
+  %a: list<int> = call @mk (%z)
+  br b1(%z, %a)
+b1(%i: int, %v: move list<int>):
+  %n: int = iconst 2
+  %c: bool = icmp.lt %i, %n
+  br_if %c, b2(), b4()
+b2():
+  %id: int = iconst 7
+  %w: list<int> = call @mk (%id)
+  scope.begin 0 0
+  scope.own 0 0 %w
+  scope.disown %w
+  drop %v
+  scope.end 0 0
+  br b3()
+b3():
+  %one: int = iconst 1
+  %j: int = iadd %i, %one
+  br b1(%j, %w)
+b4():
+  drop %v
+  %r: int = iconst 0
+  ret %r
+}
+"#,
+    );
+    assert_eq!(r, 0);
+}
+
+#[test]
+fn an_owner_disowned_before_its_consuming_call_is_not_released_on_a_later_exit() {
+    // b1 moves `%a` into `@close` and may return at once; b2 only reads it. The exit in b1
+    // must not release it again, and the join releases it only on the b2 path.
+    for (arg, want) in [(0, "7\n"), (1, "")] {
+        let (r, out) = elaborate_and_run(&format!(
+            r#"
+fn @main() -> int {{
+b0:
+  %id: int = iconst 7
+  %a: list<int> = call @mk (%id)
+  scope.begin 0 0
+  scope.own 0 0 %a
+  %z: int = iconst {arg}
+  %zero: int = iconst 0
+  %c: bool = icmp.eq %z, %zero
+  br_if %c, b1(), b2()
+b1():
+  scope.disown %a
+  %x: int = call @close (%a)
+  %early: bool = icmp.eq %x, %id
+  br_if %early, b3(), b5()
+b2():
+  %n: int = list.len %a
+  br b5()
+b3():
+  scope.end 0 0
+  ret %x
+b5():
+  scope.end 0 0
+  %r: int = iconst 0
+  ret %r
+}}
+"#
+        ));
+        assert_eq!((r, out.as_str()), (if arg == 0 { 7 } else { 0 }, want));
     }
 }

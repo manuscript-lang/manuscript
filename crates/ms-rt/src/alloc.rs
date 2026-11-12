@@ -16,13 +16,17 @@
 //! per-size free lists so growing and rebuilding big lists does not map and unmap memory
 //! (musl's malloc does a `mmap`/`munmap` pair for every block above a few KiB).
 use crate::sys;
+use core::cell::UnsafeCell;
 use core::ptr::null_mut;
+use core::sync::atomic::AtomicBool;
 use core::sync::atomic::{AtomicPtr, AtomicUsize, Ordering};
-use std::sync::{Mutex, Once};
+use std::sync::Once;
 
 pub const MAX_SMALL: usize = 2048;
 const PAGE_SHIFT: usize = 16;
 const PAGE_SIZE: usize = 1 << PAGE_SHIFT;
+/// Bytes at the start of each heap reservation that stay on small pages (see `ensure_region`).
+const HUGE_AFTER: usize = 4 << 20;
 /// Address space reserved for the small-block pages of the whole process.
 const PAGES_SIZE: usize = if cfg!(miri) { 64 << 20 } else { 256 << 30 };
 const NUM_PAGES: usize = PAGES_SIZE >> PAGE_SHIFT;
@@ -70,13 +74,67 @@ struct Shared {
 // SAFETY: the lists link blocks that no thread uses; the lock guards the lists.
 unsafe impl Send for Shared {}
 
-static SHARED: std::sync::Mutex<Shared> = std::sync::Mutex::new(Shared {
+/// A lock that never allocates. `std::sync::Mutex` boxes its `pthread_mutex_t` on first use on
+/// macOS, so a mutex taken inside the global allocator calls the allocator again, forever. The
+/// critical sections here are a few loads and stores, so a spin with a yield is enough.
+struct Lock<T> {
+    held: AtomicBool,
+    value: UnsafeCell<T>,
+}
+
+// SAFETY: `held` serializes every access to `value`.
+unsafe impl<T: Send> Sync for Lock<T> {}
+
+struct Guard<'a, T>(&'a Lock<T>);
+
+impl<T> Lock<T> {
+    const fn new(value: T) -> Self {
+        Lock {
+            held: AtomicBool::new(false),
+            value: UnsafeCell::new(value),
+        }
+    }
+
+    fn lock(&self) -> Guard<'_, T> {
+        while self
+            .held
+            .compare_exchange_weak(false, true, Ordering::Acquire, Ordering::Relaxed)
+            .is_err()
+        {
+            std::thread::yield_now();
+        }
+        Guard(self)
+    }
+}
+
+impl<T> core::ops::Deref for Guard<'_, T> {
+    type Target = T;
+    fn deref(&self) -> &T {
+        // SAFETY: the guard holds the lock.
+        unsafe { &*self.0.value.get() }
+    }
+}
+
+impl<T> core::ops::DerefMut for Guard<'_, T> {
+    fn deref_mut(&mut self) -> &mut T {
+        // SAFETY: the guard holds the lock.
+        unsafe { &mut *self.0.value.get() }
+    }
+}
+
+impl<T> Drop for Guard<'_, T> {
+    fn drop(&mut self) {
+        self.0.held.store(false, Ordering::Release);
+    }
+}
+
+static SHARED: Lock<Shared> = Lock::new(Shared {
     free: [null_mut(); NUM_LARGE],
     cached: 0,
 });
 
-fn shared() -> std::sync::MutexGuard<'static, Shared> {
-    SHARED.lock().unwrap_or_else(|e| e.into_inner())
+fn shared() -> Guard<'static, Shared> {
+    SHARED.lock()
 }
 
 /// A cached block with at least `size` usable bytes for a thread without an arena, or null.
@@ -230,7 +288,7 @@ static REGION: Once = Once::new();
 static NEXT_PAGE: AtomicUsize = AtomicUsize::new(0);
 /// Bytes of the page reservation made usable (everything on Unix, grown in steps on Windows).
 static COMMITTED: AtomicUsize = AtomicUsize::new(0);
-static COMMIT_LOCK: Mutex<()> = Mutex::new(());
+static COMMIT_LOCK: Lock<()> = Lock::new(());
 /// Next growth chunk not taken.
 static NEXT_CHUNK: AtomicUsize = AtomicUsize::new(0);
 /// Length of the block living in each growth chunk, 0 when the chunk is free. Any thread frees a
@@ -241,7 +299,7 @@ static REMOTE: [AtomicPtr<u8>; MAX_HEAPS] = [const { AtomicPtr::new(null_mut()) 
 /// Heaps handed out so far.
 static HEAP_COUNT: AtomicUsize = AtomicUsize::new(0);
 /// Heaps whose thread ended, with their free lists and partly used pages.
-static IDLE: Mutex<Vec<State>> = Mutex::new(Vec::new());
+static IDLE: Lock<Vec<State>> = Lock::new(Vec::new());
 
 /// Maps the reservation once; false when the system refuses (everything then uses it directly).
 #[cold]
@@ -256,6 +314,13 @@ fn ensure_region() -> bool {
         if !sys::commit(table, NUM_PAGES * 4) {
             return;
         }
+        // Huge pages only past the first few MiB: the kernel clears a whole 2 MiB page on the first
+        // touch, which costs a short program about 0.35 ms at startup for memory it never uses.
+        sys::prefer_huge_pages(pages.wrapping_add(HUGE_AFTER), PAGES_SIZE - HUGE_AFTER);
+        sys::prefer_huge_pages(
+            grow.wrapping_add(HUGE_AFTER),
+            GROW_SIZE * GROW_CHUNKS - HUGE_AFTER,
+        );
         TABLE.store(table.cast(), Ordering::Relaxed);
         GROW_BASE.store(grow as usize, Ordering::Relaxed);
         // Published last: a reader that sees `BASE` sees the rest.
@@ -272,7 +337,7 @@ pub fn claim_heap() {
     if s.heap != NO_HEAP || !ensure_region() {
         return;
     }
-    let idle = IDLE.lock().unwrap_or_else(|e| e.into_inner()).pop();
+    let idle = IDLE.lock().pop();
     if let Some(adopted) = idle {
         *s = adopted;
         return;
@@ -313,7 +378,7 @@ pub fn release_heap() {
     }
     // This thread has no heap from here on, so growing the list below allocates from the system.
     let saved = core::mem::replace(s, State::new());
-    IDLE.lock().unwrap_or_else(|e| e.into_inner()).push(saved);
+    IDLE.lock().push(saved);
 }
 
 /// Whether the calling thread has a heap.
@@ -347,7 +412,6 @@ fn grow_base(chunk: usize) -> usize {
 }
 
 /// Whether `p` lies in this heap's reservation (small pages or a growth chunk).
-#[cfg(target_os = "linux")]
 #[inline(always)]
 fn owns(p: *mut u8) -> bool {
     page_word(p).is_some() || grow_chunk_of(p).is_some()
@@ -396,7 +460,7 @@ fn refill(s: &mut State, class: usize) -> *mut u8 {
     let base = BASE.load(Ordering::Relaxed);
     let used = (page + 1) * PAGE_SIZE;
     if used > COMMITTED.load(Ordering::Acquire) {
-        let _g = COMMIT_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let _g = COMMIT_LOCK.lock();
         let committed = COMMITTED.load(Ordering::Relaxed);
         if used > committed {
             let chunk = COMMIT_STEP
@@ -957,6 +1021,34 @@ pub fn live_by_size() -> Vec<(usize, isize)> {
         .collect()
 }
 
+/// The live counts at one point (`stats` builds): what a faulting operation that keeps running
+/// in this process leaves behind is forgotten against it, as a forked child's heap dies with it.
+#[cfg(feature = "stats")]
+pub struct LiveMark {
+    all: isize,
+    buckets: [isize; NUM_CLASSES + 1],
+}
+
+/// Records the live counts now.
+#[cfg(feature = "stats")]
+pub fn live_mark() -> LiveMark {
+    LiveMark {
+        all: LIVE_ALL.load(Ordering::Relaxed),
+        buckets: core::array::from_fn(|i| LIVE_BUCKETS[i].load(Ordering::Relaxed)),
+    }
+}
+
+/// Drops the net change in the live counts since `mark` from the counts.
+#[cfg(feature = "stats")]
+pub fn live_forget_since(mark: &LiveMark) {
+    let net = LIVE_ALL.load(Ordering::Relaxed) - mark.all;
+    LIVE_ALL.fetch_sub(net, Ordering::Relaxed);
+    for (i, was) in mark.buckets.iter().enumerate() {
+        let net = LIVE_BUCKETS[i].load(Ordering::Relaxed) - was;
+        LIVE_BUCKETS[i].fetch_sub(net, Ordering::Relaxed);
+    }
+}
+
 #[cfg(any(test, feature = "stats"))]
 fn live_add(s: &mut State, delta: isize) {
     s.live += delta;
@@ -1293,20 +1385,70 @@ mod tests {
     }
 }
 
-/// Rust's global allocator for compiled programs (installed by `ms-native` on Linux).
+/// Rust's global allocator for compiled programs (installed by `ms-native` on every platform).
 ///
 /// The standard-library natives (`Vec`, `String`, `HashMap` inside `ms-std-*`) then share the
 /// runtime's size-class allocator instead of libc's, which is several times slower per call. Only
 /// threads that claimed a heap (isolates) allocate from it; every other thread uses the system
 /// allocator. A block any thread frees is routed to its page's owner.
-#[cfg(target_os = "linux")]
 pub struct StdHeap;
 
-#[cfg(target_os = "linux")]
+/// The system allocator behind [`StdHeap`]. The runtime's large blocks come from the C library's
+/// `malloc` and return to its `free`, so a block must come from the same place on every platform.
+/// Rust's `System` is `malloc` on Unix but `HeapAlloc` on Windows, so Windows uses the C library
+/// directly for alignments it serves.
+#[cfg(not(windows))]
+use std::alloc::System as SysHeap;
+
+#[cfg(windows)]
+struct SysHeap;
+
+#[cfg(windows)]
+// SAFETY: C library `malloc`, `calloc`, `realloc` and `free` serve alignments up to 16; larger
+// ones stay with `System`, and every call routes by the layout's alignment, so a block is
+// released by the allocator that produced it.
+unsafe impl core::alloc::GlobalAlloc for SysHeap {
+    unsafe fn alloc(&self, l: core::alloc::Layout) -> *mut u8 {
+        if l.align() <= 16 {
+            // SAFETY: forwarded.
+            unsafe { sys::malloc(l.size()).cast() }
+        } else {
+            // SAFETY: forwarded.
+            unsafe { std::alloc::System.alloc(l) }
+        }
+    }
+    unsafe fn alloc_zeroed(&self, l: core::alloc::Layout) -> *mut u8 {
+        if l.align() <= 16 {
+            // SAFETY: forwarded.
+            unsafe { sys::calloc(1, l.size()).cast() }
+        } else {
+            // SAFETY: forwarded.
+            unsafe { std::alloc::System.alloc_zeroed(l) }
+        }
+    }
+    unsafe fn dealloc(&self, p: *mut u8, l: core::alloc::Layout) {
+        if l.align() <= 16 {
+            // SAFETY: forwarded.
+            unsafe { sys::free(p.cast()) }
+        } else {
+            // SAFETY: forwarded.
+            unsafe { std::alloc::System.dealloc(p, l) }
+        }
+    }
+    unsafe fn realloc(&self, p: *mut u8, l: core::alloc::Layout, n: usize) -> *mut u8 {
+        if l.align() <= 16 {
+            // SAFETY: forwarded.
+            unsafe { sys::realloc(p.cast(), n).cast() }
+        } else {
+            // SAFETY: forwarded.
+            unsafe { std::alloc::System.realloc(p, l, n) }
+        }
+    }
+}
+
 mod std_heap {
-    use super::{LARGE_MAX, MAX_SMALL, StdHeap, has_heap, owns};
+    use super::{LARGE_MAX, MAX_SMALL, StdHeap, SysHeap as System, has_heap, owns};
     use core::alloc::{GlobalAlloc, Layout};
-    use std::alloc::System;
 
     /// Whether the heap may serve `layout` on this thread. Counting builds keep the standard
     /// library out of the heap so leak checks see only program allocations. Blocks outlive the
@@ -1439,7 +1581,7 @@ mod std_heap {
 /// Counters of Rust's own heap (`Vec`, `Box`, `Rc` in the `ms-std-*` natives), which counting
 /// builds keep apart from the runtime's blocks. A cancelled task that leaves such a value on a
 /// skipped frame shows up as a live count above the uncancelled run (`make cancel-sweep`).
-#[cfg(all(target_os = "linux", feature = "stats"))]
+#[cfg(feature = "stats")]
 pub(crate) mod rust_heap {
     use core::sync::atomic::{AtomicIsize, Ordering};
 
@@ -1460,5 +1602,5 @@ pub(crate) mod rust_heap {
     }
 }
 
-#[cfg(all(target_os = "linux", feature = "stats"))]
+#[cfg(feature = "stats")]
 pub use rust_heap::live as rust_heap_live;

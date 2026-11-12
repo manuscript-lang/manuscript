@@ -2,6 +2,7 @@
 use crate::global::Process;
 #[allow(unused_imports)]
 use crate::sys;
+use core::cell::Cell;
 use core::fmt;
 use core::sync::atomic::{AtomicU8, Ordering};
 use ms_rt_abi::record::{self, FaultKind, Record};
@@ -665,11 +666,19 @@ const FRAME_RECORD_SCAN: usize = 4096;
 /// contiguous generated caller chain. Stop at native/glue boundaries rather
 /// than reconstructing a partial native register context.
 #[cfg(windows)]
-unsafe fn walk_fault_frames(_fp: usize, anchor: usize, t: &Tables, f: impl FnMut(usize) -> bool) {
+unsafe fn walk_fault_frames(
+    _fp: usize,
+    anchor: usize,
+    t: &Tables,
+    steps: &Cell<usize>,
+    f: impl FnMut(usize) -> bool,
+) {
     let Some((pc, sp, fp, remaining)) = sys::source_frame(anchor, |pc| find_func(t, pc).is_some())
     else {
         return;
     };
+    // The native prefix spends the logical budget as the Unix walker's skipped frames do.
+    steps.set(steps.get().min(remaining));
     let (lo, hi) = sys::stack_limits();
     // Generated code does not keep its frame register pointing at its own frame record: Cranelift
     // points `rbp` into a frame by an amount that differs per function, a capture unwinds through
@@ -795,7 +804,13 @@ unsafe fn walk_source_frames(
 }
 
 #[cfg(not(windows))]
-unsafe fn walk_fault_frames(fp: usize, _anchor: usize, _t: &Tables, f: impl FnMut(usize) -> bool) {
+unsafe fn walk_fault_frames(
+    fp: usize,
+    _anchor: usize,
+    _t: &Tables,
+    _steps: &Cell<usize>,
+    f: impl FnMut(usize) -> bool,
+) {
     // SAFETY: forwarded live frame-pointer chain.
     unsafe { walk_frames(fp, f) }
 }
@@ -873,7 +888,8 @@ pub unsafe fn address_ordered_tables(t: *const Tables) -> *const Tables {
 /// Return addresses of the calling frames, innermost first, for a later [`describe_started`].
 #[inline(never)]
 pub fn capture_frames() -> Vec<usize> {
-    let mut out = Vec::new();
+    // Typical depth; growing from empty reallocates three times per promise started.
+    let mut out = Vec::with_capacity(16);
     // SAFETY: tables pointer is set once at start.
     let t = unsafe { *TABLES.ptr() };
     if t.is_null() {
@@ -886,6 +902,7 @@ pub fn capture_frames() -> Vec<usize> {
             frame_pointer(),
             capture_frames as *const () as usize,
             &*t,
+            &Cell::new(MAX_STACK_WALK_FRAMES),
             |ret| {
                 out.push(ret);
                 out.len() < 2 * MAX_FAULT_FRAMES
@@ -898,7 +915,7 @@ pub fn capture_frames() -> Vec<usize> {
 /// The source frames of `captured`, the return addresses a task was started from.
 #[cfg(not(test))]
 fn started_frames(captured: &[usize]) -> Frames {
-    collect_with(|_, visit| {
+    collect_with(|_, visit, _| {
         for &ret in captured {
             if !visit(ret) {
                 break;
@@ -910,13 +927,15 @@ fn started_frames(captured: &[usize]) -> Frames {
 /// The source frames found from `fp`.
 fn collect_frames(fp: usize) -> Frames {
     // SAFETY: `fp` comes from `frame_pointer()` of the faulting thread.
-    collect_with(|t, visit| unsafe {
-        walk_fault_frames(fp, fault_vec as *const () as usize, t, visit)
+    collect_with(|t, visit, steps| unsafe {
+        walk_fault_frames(fp, fault_vec as *const () as usize, t, steps, visit)
     })
 }
 
 /// The source frames `drive` visits, innermost first.
-fn collect_with(drive: impl FnOnce(&Tables, &mut dyn FnMut(usize) -> bool)) -> Frames {
+fn collect_with(
+    drive: impl FnOnce(&Tables, &mut dyn FnMut(usize) -> bool, &Cell<usize>),
+) -> Frames {
     let mut frames = Frames::default();
     // SAFETY: tables pointer is set once at start.
     let t = unsafe { *TABLES.ptr() };
@@ -925,64 +944,80 @@ fn collect_with(drive: impl FnOnce(&Tables, &mut dyn FnMut(usize) -> bool)) -> F
     }
     // SAFETY: non-null table installed by `msrt_start`.
     let t = unsafe { &*t };
-    let mut last = (u32::MAX, 0u32, u32::MAX);
     let mut innermost = true;
-    drive(t, &mut |ret| {
-        let Some(func) = find_func(t, ret) else {
-            return true;
-        };
-        let (mut line, mut file, mut scope) = find_line(t, func, ret);
-        // The frame that raised the fault may sit in a call without a position of its own;
-        // it takes the nearest earlier line.
-        if line == 0 && innermost {
-            (line, file, scope) = find_line_before(t, func, ret);
-        }
-        innermost = false;
-        // Compiler-generated glue (function-value thunks) has no source position.
-        if line == 0 {
-            return true;
-        }
-        // Frames of inlined callees, innermost first, then the physical function.
-        let mut name = func.name_off;
-        loop {
-            let next = scope_entry(t, scope);
-            if let Some(sc) = &next {
-                name = sc.name_off;
-                if sc.file_off != u32::MAX {
-                    file = sc.file_off;
-                }
+    // The walk is bounded by logical frames, so inlining a callee into its caller does not
+    // change how deep a report reaches: each inlined frame spends a step like a physical one.
+    let steps = Cell::new(MAX_STACK_WALK_FRAMES);
+    drive(
+        t,
+        &mut |ret| {
+            let Some(func) = find_func(t, ret) else {
+                steps.set(steps.get().saturating_sub(1));
+                return steps.get() > 0;
+            };
+            let (mut line, mut file, mut scope) = find_line(t, func, ret);
+            // The frame that raised the fault may sit in a call without a position of its own;
+            // it takes the nearest earlier line.
+            if line == 0 && innermost {
+                (line, file, scope) = find_line_before(t, func, ret);
             }
+            innermost = false;
+            // Compiler-generated glue (function-value thunks) has no source position.
             if line == 0 {
-                // A thunk inlined into its caller has no position of its own.
-            } else if (file, line, name) == last {
-                if let Some(frame) = frames.list.last_mut() {
-                    frame.repeated += 1;
-                }
-            } else {
-                if frames.list.len() == MAX_FAULT_FRAMES {
-                    frames.truncated = true;
+                steps.set(steps.get().saturating_sub(1));
+                return steps.get() > 0;
+            }
+            // Frames of inlined callees, innermost first, then the physical function.
+            let mut name = func.name_off;
+            loop {
+                if steps.get() == 0 {
                     return false;
                 }
-                frames.list.push(record::Frame {
-                    file: String::from_utf8_lossy(cstr(t, file)).into_owned(),
-                    line,
-                    function: String::from_utf8_lossy(cstr(t, name)).into_owned(),
-                    repeated: 0,
-                });
-                last = (file, line, name);
+                steps.set(steps.get() - 1);
+                let next = scope_entry(t, scope);
+                if let Some(sc) = &next {
+                    name = sc.name_off;
+                    if sc.file_off != u32::MAX {
+                        file = sc.file_off;
+                    }
+                }
+                if line == 0 {
+                    // A thunk inlined into its caller has no position of its own.
+                } else if frames.list.last().is_some_and(|f| {
+                    // By text: an inlined copy of a function names itself by another table offset.
+                    f.line == line
+                        && f.function.as_bytes() == cstr(t, name)
+                        && f.file.as_bytes() == cstr(t, file)
+                }) {
+                    if let Some(frame) = frames.list.last_mut() {
+                        frame.repeated += 1;
+                    }
+                } else {
+                    if frames.list.len() == MAX_FAULT_FRAMES {
+                        frames.truncated = true;
+                        return false;
+                    }
+                    frames.list.push(record::Frame {
+                        file: String::from_utf8_lossy(cstr(t, file)).into_owned(),
+                        line,
+                        function: String::from_utf8_lossy(cstr(t, name)).into_owned(),
+                        repeated: 0,
+                    });
+                }
+                let Some(sc) = next else { break };
+                line = sc.call_line;
+                scope = sc.parent;
+                // A wrapper without a position of its own has no frame once its callee is shown.
+                if line == 0 && scope == 0 {
+                    break;
+                }
+                name = func.name_off;
+                file = func.file_off;
             }
-            let Some(sc) = next else { break };
-            line = sc.call_line;
-            scope = sc.parent;
-            // A wrapper without a position of its own has no frame once its callee is shown.
-            if line == 0 && scope == 0 {
-                break;
-            }
-            name = func.name_off;
-            file = func.file_off;
-        }
-        true
-    });
+            true
+        },
+        &steps,
+    );
     frames
 }
 
@@ -1318,6 +1353,7 @@ pub extern "C-unwind" fn msrt_fault_depth() -> ! {
         } else {
             lo + STACK_CLEANUP_RESERVE
         };
+        crate::task::publish_limit();
     }
     fault_kind(
         FaultKind::StackOverflow,
@@ -1681,6 +1717,7 @@ fn guard_exit(status: u8, message: Vec<u8>) -> ! {
         #[cfg(windows)]
         let teb = crate::task::segment_teb(f.seg);
         crate::task::restore_segment(f.seg);
+        crate::task::publish_limit();
         SHIELD.set(f.shield);
         cancel_flag().store(
             if f.shield == 0 {
@@ -1984,6 +2021,7 @@ pub unsafe extern "C-unwind" fn msrt_guard_call(
                     *FAULTING.ptr() = false;
                     (*cur_hdr()).limit = limit;
                     crate::task::restore_segment(seg);
+                    crate::task::publish_limit();
                     if p.0.starts_with("cancelled ") {
                         return GUARD_CANCELLED;
                     }
@@ -2101,6 +2139,8 @@ mod tests {
             ms_rt_abi::symbols::ISOLATE_HDR_GUARDED as usize,
         );
         assert_eq!(core::mem::size_of::<Hdr>(), 16);
+        // The region's last 16 bytes: the block's address, then the limit (`STACK_LIMIT_CELL`).
+        assert_eq!(ms_rt_abi::symbols::STACK_LIMIT_CELL, 8);
     }
 
     #[test]

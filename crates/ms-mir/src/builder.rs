@@ -413,7 +413,7 @@ impl<'m> FuncBuilder<'m> {
     }
     /// `list.get` (negative indexes count from the end).
     pub fn list_get(&mut self, l: Value, i: Value) -> Value {
-        let e = self.m.list_elem(self.ty(l)).expect("list operand");
+        let e = self.m.seq_elem(self.ty(l)).expect("list operand");
         self.val(Op::ListGet, &[l, i], Imm::None, e)
     }
     /// `list.set`.
@@ -474,6 +474,10 @@ impl<'m> FuncBuilder<'m> {
     pub fn opt_get(&mut self, o: Value) -> Value {
         let t = self.m.opt_inner(self.ty(o)).expect("optional operand");
         self.val(Op::OptGet, &[o], Imm::None, t)
+    }
+    /// `opt.addr`: the address of the payload of a present boxed optional, which stays in place.
+    pub fn opt_addr(&mut self, o: Value) -> Value {
+        self.val(Op::OptAddr, &[o], Imm::None, Ty::PTR)
     }
     /// `opt.unbox`: moves the payload out of an owned present optional, which it moving_params.
     pub fn opt_unbox(&mut self, o: Value) -> Value {

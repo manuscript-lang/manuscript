@@ -26,6 +26,9 @@ pub(crate) type VarArgument = (usize, Value, MTy, Option<usize>);
 
 impl<'a> FnLower<'a> {
     pub fn call_expr(&mut self, e: &Expr) -> Result<Val, Error> {
+        if let Some(v) = self.scalar_parse_int(e)? {
+            return Ok(v);
+        }
         let saved = self.scope_override;
         self.scope_override = self.call_evidence(e);
         let out = self.call_expr_in_scope(e);
@@ -564,6 +567,17 @@ impl<'a> FnLower<'a> {
                 vals.push(slot);
                 continue;
             }
+            if !a.own
+                && let Some(at) = args
+                    .places
+                    .get(i)
+                    .cloned()
+                    .flatten()
+                    .and_then(|p| self.alias_payload_addr(&p))
+            {
+                vals.push(at);
+                continue;
+            }
             if vars.len() == 1
                 && !a.own
                 && let Some(place) = args.places.get(i).cloned().flatten()
@@ -749,6 +763,11 @@ impl<'a> FnLower<'a> {
     ) -> Value {
         let ty = self.ty_of(a.v);
         if !a.own
+            && let Some(at) = place.and_then(|p| self.alias_payload_addr(p))
+        {
+            return at;
+        }
+        if !a.own
             && let Some(slot) = place
                 .filter(|p| matches!(p.kind, ExprKind::Name(_)))
                 .and_then(|p| match self.hir.resolution(p) {
@@ -870,6 +889,9 @@ impl<'a> FnLower<'a> {
         let recv_expr = self
             .receiver_expr(e)
             .ok_or_else(|| Error::new("method call without receiver"))?;
+        if let Some(v) = self.fused_chain(e, m, recv_expr)? {
+            return Ok(v);
+        }
         let native = match m.native {
             ct::Native::Source => return self.source_method_call(e, view, m, recv_expr),
             ct::Native::Contract => return self.contract_call(e, view, m, recv_expr),
@@ -886,6 +908,9 @@ impl<'a> FnLower<'a> {
             return self.mutator_call(e, view, m, recv_expr, &method);
         }
         if let Some(v) = self.map_get_chain(e, view, recv_expr, &method)? {
+            return Ok(v);
+        }
+        if let Some(v) = self.const_map_method(recv_expr, view, &method)? {
             return Ok(v);
         }
         let recv = self.expr(recv_expr)?;

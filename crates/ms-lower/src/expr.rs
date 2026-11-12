@@ -108,7 +108,7 @@ impl<'a> FnLower<'a> {
                         .any(|o| self.syms.str(o.name) == "close")
                 });
                 let x = if x.own && !hands_on && self.is_resource(self.ty_of(x.v)) {
-                    self.temps.push(x.v);
+                    self.pend_temp(x.v);
                     Val { v: x.v, own: false }
                 } else {
                     x
@@ -331,7 +331,7 @@ impl<'a> FnLower<'a> {
             let o = self.owned(x);
             if self.needs_drop(self.ty_of(o)) && items[n + 1..].iter().any(crate::mutation::has_try)
             {
-                self.temps.push(o);
+                self.pend_temp(o);
                 pending.push(o);
             }
             vals.push(o);
@@ -558,7 +558,7 @@ impl<'a> FnLower<'a> {
         if obj.own && self.is_resource(self.ty_of(obj.v)) {
             // A resource is read in place and closed whole with the statement's temporaries:
             // copying the part out would make a second owner of it.
-            self.temps.push(obj.v);
+            self.pend_temp(obj.v);
             return Ok(Val { v: f, own: false });
         }
         if obj.own {
@@ -629,13 +629,11 @@ impl<'a> FnLower<'a> {
         }
         // An owned list stays a temporary while the index runs, so a `try` inside it releases it.
         if l.own {
-            self.temps.push(l.v);
+            self.pend_temp(l.v);
         }
         let i = self.expr(index);
-        if l.own
-            && let Some(at) = self.temps.iter().rposition(|t| *t == l.v)
-        {
-            self.temps.remove(at);
+        if l.own {
+            self.unhold_temp(l.v);
         }
         let i = i?;
         if self.dead {
@@ -648,13 +646,13 @@ impl<'a> FnLower<'a> {
                 if l.own && self.is_resource(lt) {
                     // A list of resources is read in place and closed whole with the statement's
                     // temporaries: copying the element out would make a second owner of it.
-                    self.temps.push(l.v);
+                    self.pend_temp(l.v);
                     return Ok(Val { v: got, own: false });
                 }
                 if l.own && self.needs_drop(self.ty_of(got)) {
                     // The element is read in place and the list drops with the statement's
                     // temporaries: a consumer that keeps the element is the one that copies it.
-                    self.temps.push(l.v);
+                    self.pend_temp(l.v);
                     self.boundary_reads.insert(got);
                     return Ok(Val { v: got, own: false });
                 }
@@ -669,11 +667,8 @@ impl<'a> FnLower<'a> {
                 Ok(Val { v: got, own: false })
             }
             TyKind::Bytes => {
-                let no_default = self.b.bconst(false);
-                let zero = self.b.iconst(0);
                 self.at(e.pos);
-                let got =
-                    self.call_runtime("msrt_bytes_get", &[l.v, i.v, no_default, zero], MTy::UINT8)?;
+                let got = self.b.list_get(l.v, i.v);
                 if l.own {
                     self.drop_value(l.v);
                 }
@@ -734,6 +729,9 @@ impl<'a> FnLower<'a> {
             BinaryOp::And | BinaryOp::Or => return self.short_circuit(op, left, right),
             _ => {}
         }
+        if let Some(v) = self.scalar_compare(e)? {
+            return Ok(v);
+        }
         let at = self.b.current();
         let l = self.expr(left)?;
         let l = if crate::mutation::has_try(right) {
@@ -793,7 +791,13 @@ impl<'a> FnLower<'a> {
         v
     }
 
-    fn arithmetic(&mut self, op: BinaryOp, t: MTy, l: Val, r: Val) -> Result<Value, Error> {
+    pub(crate) fn arithmetic(
+        &mut self,
+        op: BinaryOp,
+        t: MTy,
+        l: Val,
+        r: Val,
+    ) -> Result<Value, Error> {
         if t == MTy::UINT64 {
             let sym = match op {
                 BinaryOp::Add => return Ok(self.b.binop(Op::UAddChk, l.v, r.v)),

@@ -315,6 +315,14 @@ impl<'a, 'm> Lower<'a, 'm> {
                     payload
                 }
             }
+            Op::OptAddr => {
+                // The payload of a boxed optional lies at the box; no other layout has an address.
+                assert!(
+                    self.opt_boxed(f.ty(inst.args[0])),
+                    "opt.addr of an optional that is not boxed"
+                );
+                self.a(inst, 0)
+            }
             Op::OptUnbox => {
                 // Moves the payload out of a some: the box (if any) is freed, the payload lives on.
                 let ty = f.ty(inst.args[0]);
@@ -363,6 +371,30 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let w = self.b.ins().band_imm_s(w, 0xff);
                 self.b.ins().jump(join, &[BlockArg::Value(w)]);
                 self.b.switch_to_block(mem);
+                let at = self.b.ins().iadd(s[0], i);
+                let byte = self.b.ins().load(types::I8, flags(), at, 0);
+                let byte = self.b.ins().uextend(types::I64, byte);
+                self.b.ins().jump(join, &[BlockArg::Value(byte)]);
+                self.b.switch_to_block(join);
+                vec![self.b.block_params(join)[0]]
+            }
+            Op::StrAsciiAt => {
+                // The byte at a scalar index when the string is flagged all ASCII and the index
+                // is in range, else -1 (the caller then takes the general path).
+                let (s, i) = (self.a(inst, 0), self.a(inst, 1)[0]);
+                let flag = self.b.ins().ushr_imm_u(s[1], 61);
+                let flag = self.b.ins().band_imm_s(flag, 3);
+                let ascii = self.b.ins().icmp_imm_s(IntCC::Equal, flag, 1);
+                let len = self.b.ins().band_imm_s(s[1], STR_LEN_MASK as i64);
+                let below = self.b.ins().icmp(IntCC::UnsignedLessThan, i, len);
+                let ok = self.b.ins().band(ascii, below);
+                let (load, join) = (self.b.create_block(), self.b.create_block());
+                self.b.append_block_param(join, types::I64);
+                let miss = self.iconst(-1);
+                self.b
+                    .ins()
+                    .brif(ok, load, &[], join, &[BlockArg::Value(miss)]);
+                self.b.switch_to_block(load);
                 let at = self.b.ins().iadd(s[0], i);
                 let byte = self.b.ins().load(types::I8, flags(), at, 0);
                 let byte = self.b.ins().uextend(types::I64, byte);

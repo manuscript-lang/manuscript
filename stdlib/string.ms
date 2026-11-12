@@ -185,6 +185,27 @@ SCAN_WINDOW := 32
 // empty items.
 fn String.fields_by(is_separator: fn(String) Bool) List[String]:
 	var out = List[String]()
+
+	// ASCII text: a scalar index is a byte offset, so each field is one copy of its run
+	// instead of a builder per field.
+	if self.length() == self.scalar_length():
+		var start = -1
+		var i = 0
+
+		for c in self.chars():
+			if is_separator(c):
+				if start >= 0:
+					out.append(self.view(start, i).clone())
+					start = -1
+			else if start < 0:
+				start = i
+
+			i += 1
+
+		if start >= 0:
+			out.append(self.view(start, i).clone())
+		return out
+
 	var current = StringBuilder()
 	var open = false
 

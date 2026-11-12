@@ -4,8 +4,13 @@
 
 Perf and agent benchmarks, profiling.
 
+- [Hot string and set fast paths live in `ms-rt-hot` with a slow twin](hot-string-fast-paths-live-in-ms-rt-hot-with-a-slow-twin.md): fast case inlined, rare case calls `*_slow`; test ASCII by flag or inline bits; `Set[Int]` fixed layout; build `memmem` only for long text.
 - [Numeric parsing needs invalid-input performance controls](numeric-parsing-needs-invalid-input-performance-controls.md): valid-input gains can hide overflow and malformed-input regressions; preserve error precedence and equivalent Rust validation.
 
+- [`var` record parameters stay in the caller's slot](var-record-parameters-stay-in-the-callers-slot.md): wide-record methods no longer move every field out and back per call; `Bytes` reads inline (`Lines.next` 147 to 75 instructions per line).
+- [Constant list tables iterated in a loop are built once](constant-list-tables-in-loops-are-built-once.md): `for d in [[1, 0], [-1, 0], ...]` inside a loop no longer allocates per pass (248 to 20 ms for 5M passes).
+- [`map`/`filter` chains over numbers run as one loop](map-filter-chains-over-numbers-run-as-one-loop.md): filter/map/sum over reading lambdas build only the final result (163 to 78 ms on 2M elements).
+- [Small literal maps are searched, not built](small-literal-maps-are-searched-not-built.md): lookups on a literal of up to 12 constants compare keys directly (85 to 4 ns per call).
 - [A win needs a baseline comparison, not just a smaller number](a-win-needs-a-baseline-comparison-not-just-a-smaller-number.md): keep the raw hand-written baseline (the C controls in `bench/perf/kernels/c`) and distinguish logical work elimination from faster execution…
 - [Benchmarks are a profiling guide, not a gate](benchmarks-are-a-profiling-guide-not-a-gate.md): results are only comparable on one machine and revision; record the commit and machine with the table, as the result files do.
 - [Compare instruction counts first; a low-IPC gap points at libc](compare-instruction-counts-first-a-low-ipc-gap-points-at-lib.md): wall-clock on a shared VM moves by 2x between runs, so compare `valgrind --tool=callgrind` instruction counts of one kernel built in Manuscr…
@@ -31,3 +36,6 @@ Perf and agent benchmarks, profiling.
 - [URL parent resolution truncates existing prefixes](url-parent-resolution-truncates-existing-prefixes.md): avoid quadratic prefix copies while preserving root and slash semantics; measure ordinary relative-reference controls.
 - [Deque rotation uses the shorter signed remainder](deque-rotation-uses-the-shorter-signed-remainder.md): normalize both directions without negating Int.min; retain partial-ring and unit-step controls.
 - [Diff context windows need only new flags](diff-context-windows-need-only-new-flags.md): mark each Boolean once while preserving overlapping hunk windows and ordinary diff controls.
+- [Image rotations preserve malformed shapes](image-rotations-preserve-malformed-shapes.md): copy valid pixels in one pass, preserve channel order and malformed-input behavior, and measure tiny-image controls without asymmetric dispatch.
+- [A busy queue must not poll descriptors on every task switch](a-busy-queue-must-not-poll-descriptors-on-every-task-switch.md): poll every 32 switches; compare servers on one CPU by user and system time per request.
+- [Fewer allocations need wall time, not just counts](fewer-allocations-need-wall-time-not-just-counts.md): a counted split cut allocations 22% and instructions 6% but cost 7% wall; inline short strings never allocate on clone.

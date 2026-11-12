@@ -94,6 +94,10 @@ For standard APIs (intrinsic/native members, design), read [declaration ownershi
 - Tests do not sleep to order events. A handler or task under test announces readiness (a stdout line, a promise, a file) and the test waits on that; a sleep stays only where elapsed time is the behavior (timers, cooldowns, deadlines, polling an OS facility with no wait primitive such as `flock`).
 - Calendar-to-timestamp conversion must resolve the actual local fields through the timezone's civil offset API. Fixed +/-one-day probes miss short POSIX DST intervals (#3454). Inspect Jiff's raw ambiguous offset and choose the pre-transition offset in gaps/folds; constructing its narrower Timestamp would reject supported year-9999 fields. `short_dst.rs` isolates TZ in a child process, while core tests cover range limits, date-line jumps and half-hour overlaps.
 - Timestamp fields can be constructed directly, so `shift` must still normalize raw nanoseconds and seconds outside the calendar range when the result fits. An overflowing nanos-plus-duration sum can also produce a valid timestamp. Keep the wide-integer differential oracle and called raw-field cases in `time.ms` when changing arithmetic; performance controls belong in `bench/perf/time-shift/`.
+- Timestamp format token widths are minimums, including the sign: raw negative years
+  and wide nanosecond fields must not be truncated. Keep the integer-format oracle,
+  extended-year/zone comparisons and public raw-field assertion when optimizing
+  numeric tokens (`core_time.rs`, `stdlib/time.ms` conformance fixture).
 - Ticker overruns must retain the original period grid, not replace a deadline with the current clock reading. Advance by the remaining part of a period and drop whole missed periods without multiplying a tick count. `sync-timers-errors.ms` checks exact timestamp alignment and skipped intervals without tight elapsed-time upper bounds (#3330).
 - Deque rotation reduces signed counts before choosing moves. Small negative
   turns use back-to-front moves; near-whole negative turns keep the shorter
@@ -116,3 +120,8 @@ For standard APIs (intrinsic/native members, design), read [declaration ownershi
 - Weighted selection normalizes finite nonnegative weights by their largest entry when the raw total overflows or is subnormal. Reuse the validated normal total and preserve its direct selection loop. Raw sums can overflow, and raw subnormal draw points round equal weights into unequal bins. Keep secure and seeded selection on the same scale, exclude zero weights, and use fixed-seed comparisons across huge/subnormal and ordinary equivalent ratios (`random-weight-ranges.ms`, #3348). Do not multiply by a reciprocal: a minimum-subnormal scale has an infinite reciprocal.
 
 - HTTP response metadata is copied: `ClientResponse.metadata` clones its head and `RawResponse.metadata` clones native headers, including after close. Do not describe either accessor as borrowing or aliasing. `reference-contracts.ms` checks independent metadata mutation without an extra caller-side clone.
+
+- TOML serialization classifies a nonempty all-table array as a section; empty and
+  mixed arrays stay inline. Classification needs only a predicate, not copied
+  table payloads. Keep exact output/order and byte-limit controls when changing
+  this decision (`toml.ms`, `bench/perf/toml-classification/`).

@@ -10,6 +10,9 @@ pub(super) unsafe fn after_switch() {
     unsafe { reap() };
 }
 
+/// Task switches between non-blocking descriptor polls.
+const POLL_EVERY: u32 = 32;
+
 /// Runs the next runnable task; returns when the calling task is scheduled again.
 /// The caller has already set its state (Ready and queued, Waiting, or Done).
 pub(super) unsafe fn switch_away() {
@@ -28,7 +31,12 @@ pub(super) unsafe fn switch_away() {
         if !s.kills.is_empty() || !s.timers.is_empty() || crate::promise::has_timers() {
             expire_timers(clock_ns());
         }
-        if s.fd_waiting != 0 {
+        // A poll is a system call, so a busy queue polls once per POLL_EVERY switches (a server
+        // handling a batch of requests would otherwise poll once per request); an empty queue
+        // blocks in `reactor_wait`, which polls.
+        s.switches_since_poll += 1;
+        if s.fd_waiting != 0 && s.switches_since_poll >= POLL_EVERY {
+            s.switches_since_poll = 0;
             poll_ready(0);
         }
         loop {

@@ -23,7 +23,7 @@ use crate::rt;
 use crate::sys::{AsSock, Borrowed, Ev, Poller};
 use crate::tls::{Handshake, TlsIo};
 use std::cell::{Cell, RefCell};
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, VecDeque};
 use std::rc::{Rc, Weak};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -244,8 +244,8 @@ impl Reactor {
         self.poller.delete(sock);
     }
 
-    /// The value of the `Date` header, refreshed once per second.
-    pub(super) fn date_text(&self) -> String {
+    /// Runs `f` on the value of the `Date` header, refreshed once per second.
+    fn with_date<R>(&self, f: impl FnOnce(&str) -> R) -> R {
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map_or(0, |d| d.as_secs() as i64);
@@ -253,12 +253,22 @@ impl Reactor {
         if cached.0 != now || cached.1.is_empty() {
             *cached = (now, h1::http_date(now));
         }
-        cached.1.clone()
+        f(&cached.1)
+    }
+
+    /// The value of the `Date` header.
+    pub(super) fn date_text(&self) -> String {
+        self.with_date(str::to_owned)
+    }
+
+    /// Appends the `Date: ...\r\n` header line without copying the cached value.
+    pub(super) fn date_line(&self, out: &mut Vec<u8>) {
+        self.with_date(|d| h1::header_line(out, "Date", d.as_bytes()));
     }
 
     /// Whether the running task is a request task of `server`.
     pub fn in_handler_of(&self, server: &Server) -> bool {
-        server.tasks.borrow().contains(&rt::current_task())
+        server.tasks.borrow().contains_key(&rt::current_task())
     }
 
     /// Whether the running task is a request task of any server.
@@ -268,7 +278,7 @@ impl Reactor {
             s.borrow()
                 .values()
                 .filter_map(Weak::upgrade)
-                .any(|s| s.tasks.borrow().contains(&task))
+                .any(|s| s.tasks.borrow().contains_key(&task))
         })
     }
 
@@ -276,7 +286,7 @@ impl Reactor {
     pub fn in_handler_of_network(&self, network: &Network) -> bool {
         SERVERS.with(|s| {
             s.borrow().values().filter_map(Weak::upgrade).any(|s| {
-                s.owner.is_within(network) && s.tasks.borrow().contains(&rt::current_task())
+                s.owner.is_within(network) && s.tasks.borrow().contains_key(&rt::current_task())
             })
         })
     }
@@ -397,7 +407,7 @@ unsafe extern "C-unwind" fn request_task(arg: *mut u8) {
         rt::stop_shield();
     }
     let task = rt::current_task();
-    server.tasks.borrow_mut().insert(task);
+    server.tasks.borrow_mut().insert(task, ());
     server.dispatch_conn(&conn, &Reactor::get());
     server.tasks.borrow_mut().remove(&task);
     if shield {
@@ -609,7 +619,7 @@ pub struct Server {
     /// cancels the ones still running.
     handlers: RefCell<Handlers>,
     /// Tasks of the requests running now, to tell a handler's own calls from others.
-    tasks: RefCell<HashSet<u64>>,
+    tasks: RefCell<IdMap<u64, ()>>,
 }
 
 struct ServerSt {
@@ -690,7 +700,7 @@ impl Server {
             }),
             token,
             handlers: RefCell::new(Handlers::default()),
-            tasks: RefCell::new(HashSet::new()),
+            tasks: RefCell::new(IdMap::default()),
         });
         reactor
             .targets
@@ -851,7 +861,7 @@ impl Server {
             rt::post(id);
         }
         SERVERS.with(|s| s.borrow_mut().remove(&self.id));
-        if !self.tasks.borrow().contains(&rt::current_task()) {
+        if !self.tasks.borrow().contains_key(&rt::current_task()) {
             // What outlived the grace period is cancelled; its connections are closed already.
             let handlers = std::mem::take(&mut *self.handlers.borrow_mut());
             let live = handlers.ids.iter().copied().filter(|&id| id != 0);
@@ -1275,7 +1285,7 @@ impl Server {
         h1::status_line(&mut out, status);
         h1::header_line(&mut out, "Content-Type", b"text/plain; charset=utf-8");
         h1::header_line(&mut out, "X-Content-Type-Options", b"nosniff");
-        h1::header_line(&mut out, "Date", reactor.date_text().as_bytes());
+        reactor.date_line(&mut out);
         h1::header_line(
             &mut out,
             "Content-Length",
@@ -1626,7 +1636,7 @@ pub(super) fn error_bytes(
     h1::status_line(out, status);
     h1::header_line(out, "Content-Type", b"text/plain; charset=utf-8");
     h1::header_line(out, "X-Content-Type-Options", b"nosniff");
-    h1::header_line(out, "Date", reactor.date_text().as_bytes());
+    reactor.date_line(out);
     h1::header_line(out, "Content-Length", body.len().to_string().as_bytes());
     if close {
         h1::header_line(out, "Connection", b"close");
