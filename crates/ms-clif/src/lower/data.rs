@@ -228,7 +228,9 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let lt = f.ty(inst.args[0]);
                 let l = self.a(inst, 0);
                 let from = self.a(inst, 1)[0];
-                self.drop_list_from(lt, l[0], l[1], Some(from));
+                // A view (`cap == 0`, from `slice` of a lent list) owns nothing to release.
+                let owned = self.b.ins().icmp_imm_s(IntCC::NotEqual, l[2], 0);
+                self.if_then(owned, |s| s.drop_list_from(lt, l[0], l[1], Some(from)));
                 vec![]
             }
             _ => unreachable!("lists is only called for its own ops"),
