@@ -1470,6 +1470,26 @@ impl<'a> FnLower<'a> {
         var
     }
 
+    /// Hands the hidden value of `uid` (a held scrutinee or loop iterable that nothing closes
+    /// or takes apart) to the elaborate pass, which drops it where the scope ends.
+    pub fn own_hidden(&mut self, uid: usize) {
+        let l = self.locals[&uid];
+        if !(self.raw_owners
+            && !self.dead
+            && l.slot.is_none()
+            && self.needs_drop(l.ty)
+            && !self.slotted.contains(&uid)
+            && self.b.var_is_single(l.var))
+        {
+            return;
+        }
+        if let Some(scope) = self.scopes.last_mut() {
+            scope.retain(|u| *u != uid);
+        }
+        let v = self.b.use_var(l.var);
+        self.own_raw(uid, v);
+    }
+
     /// Makes the innermost scope drop `var`, so a `return` or `break` leaving it releases it too.
     pub fn adopt_hidden(&mut self, var: ms_mir::builder::Var, ty: MTy) -> usize {
         let uid = usize::MAX - self.locals.len();
