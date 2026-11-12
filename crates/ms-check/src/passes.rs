@@ -211,6 +211,51 @@ const BUILTIN_SCALARS: [&str; 13] = [
     "Float32", "Bool", "String",
 ];
 
+/// Replaces each inherent `impl` whose receiver names a type set declared in the module
+/// (`type Ordered = Int | Float`, `fn Ordered.min(...)`) with one `impl` per member, so a
+/// method written once over a set exists on every member. Each copy has fresh node ids.
+/// Removed once blanket generic methods land (#3604).
+fn expand_set_receivers(decls: &[Decl], next_id: &mut u32) -> Vec<Decl> {
+    let sets: HashMap<Name, &[TypeRef]> = decls
+        .iter()
+        .filter_map(|d| match &d.kind {
+            DeclKind::Alias(a) if a.type_params.is_empty() && a.targets.len() > 1 => {
+                Some((a.name, a.targets.as_slice()))
+            }
+            _ => None,
+        })
+        .collect();
+    let mut out = Vec::with_capacity(decls.len());
+    for d in decls {
+        let members = match &d.kind {
+            DeclKind::Impl(imp) if imp.contract.is_none() => match &imp.receiver.kind {
+                TypeKind::Named { name, args } if args.is_empty() => sets.get(name),
+                _ => None,
+            },
+            _ => None,
+        };
+        let Some(members) = members else {
+            out.push(d.clone());
+            continue;
+        };
+        for member in *members {
+            let mut copy = d.clone();
+            let DeclKind::Impl(c) = &mut copy.kind else {
+                continue;
+            };
+            c.receiver = member.clone();
+            c.receiver.id = NodeId(*next_id);
+            copy.id = NodeId(*next_id + 1);
+            *next_id += 2;
+            for m in &mut c.methods {
+                ms_syntax::renumber::renumber_method(m, next_id);
+            }
+            out.push(copy);
+        }
+    }
+    out
+}
+
 pub fn desugar_inherent_impls(
     syms: ms_syntax::Names,
     module: &Module,
@@ -232,7 +277,8 @@ pub fn desugar_inherent_impls(
     }
     let mut first: HashMap<(Name, String), usize> = HashMap::new();
     let mut out: Vec<Decl> = Vec::new();
-    for d in &module.decls {
+    let expanded = expand_set_receivers(&module.decls, &mut next_id);
+    for d in &expanded {
         let DeclKind::Impl(imp) = &d.kind else {
             out.push(d.clone());
             out.extend(marker_decls(module, d, &mut next_id));
