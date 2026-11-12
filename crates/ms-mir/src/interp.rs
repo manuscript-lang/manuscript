@@ -278,6 +278,8 @@ impl<'m> Interp<'m> {
         it.register("msrt_print_float", print);
         it.register("msrt_print_bool", print);
         it.register("msrt_print_str", print);
+        // The oracle frees at exit, so a leak shows as a drop count that differs.
+        it.register("msrt_exit_frees", |_, _| Ok(Val::Bool(true)));
         it
     }
 
@@ -620,8 +622,10 @@ impl<'m> Interp<'m> {
             | Op::OptGet
             | Op::OptUnwrap
             | Op::OptUnbox
+            | Op::OptAddr
             | Op::StrLen
             | Op::StrByte
+            | Op::StrAsciiAt
             | Op::StrAscii => self.optionals_and_strings(f, regs, inst),
             Op::ClosureNew
             | Op::ClosureCap

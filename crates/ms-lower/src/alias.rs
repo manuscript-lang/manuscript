@@ -221,6 +221,28 @@ impl<'a> FnLower<'a> {
         }
     }
 
+    /// The address of the payload `place` names, when `place` is a borrow of a boxed optional's
+    /// payload (`c?.f()` on `left: Node?`): the box is the payload's storage, so a callee that
+    /// changes it writes there, and nothing is unboxed, copied back or reboxed.
+    pub(crate) fn alias_payload_addr(&mut self, place: &Expr) -> Option<Value> {
+        if !matches!(place.kind, ExprKind::Name(_)) {
+            return None;
+        }
+        let Resolution::Local(b) = self.hir.resolution(place) else {
+            return None;
+        };
+        let mut a = self.aliases.get(&b.uid)?.clone();
+        if !matches!(a.steps.pop(), Some(AStep::Some)) {
+            return None;
+        }
+        let held = self.alias_read(&a).ok()?.v;
+        let inner = self.b.m.opt_inner(self.ty_of(held))?;
+        if !ms_mir::ir::Boxing::default().opt(self.b.m, inner) {
+            return None;
+        }
+        Some(self.b.opt_addr(held))
+    }
+
     /// The current value of a borrowed place, as a borrow.
     pub(crate) fn alias_read(&mut self, a: &Alias) -> Result<Val, Error> {
         let mut cur = self.read_local(&a.root)?.v;

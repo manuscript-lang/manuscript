@@ -154,7 +154,7 @@ impl<'a> FnLower<'a> {
                 Ok((self.b.list_set(first, at[1], got[0]), None))
             }
             "replace" => {
-                // The element moves out through a slot and the new value moves in; nothing is copied.
+                // The element moves out in line and the new value moves in; nothing is copied or dropped.
                 let idx = self.borrow(args[0].val);
                 // Checked before the incoming element is stored, so a fault leaves it registered.
                 let n = self.b.list_len(old);
@@ -164,19 +164,12 @@ impl<'a> FnLower<'a> {
                 let r = self.b.select(neg, shifted, idx);
                 self.check_index(4, idx, r, n, false);
                 let v = self.element_value(&args[1]);
-                let list = self.put_slot(old);
-                let incoming = self.put_slot(v);
-                let outgoing = self
-                    .b
-                    .emit(Op::Slot, &[], ms_mir::ir::Imm::Ty(elem), Some(MTy::PTR))
-                    .expect("slot");
-                self.call_runtime(
-                    "msrt_list_replace",
-                    &[list, d, idx, incoming, outgoing],
-                    MTy::UNIT,
-                )?;
-                let new = self.take_slot(list, lt);
-                let old_element = self.take_slot(outgoing, elem);
+                let (old_element, moved) = self.list_elem_at(old, r)?;
+                let new = if moved {
+                    self.b.list_fill(old, r, v)
+                } else {
+                    self.b.list_set(old, r, v)
+                };
                 Ok((
                     new,
                     Some(Val {
@@ -205,27 +198,19 @@ impl<'a> FnLower<'a> {
                         item.is_some(),
                     );
                 }
-                let head = self.call_runtime("msrt_list_take", &[old, d, i], lt)?;
-                let skip = if item.is_some() {
-                    i
-                } else {
-                    let one = self.b.iconst(1);
-                    self.b.binop(Op::IAdd, i, one)
-                };
-                let tail = self.call_runtime("msrt_list_drop_n", &[old, d, skip], lt)?;
-                let mut mid = head;
-                if let Some(x) = item {
+                // Shifts the tail in place; the runtime consumes the incoming slot or drops the removed one.
+                let incoming = item.map(|x| {
                     let xo = self.element_value(x);
-                    let lit = self.b.list_lit(elem, &[xo]);
-                    mid = self.call_runtime("msrt_list_concat", &[head, lit, d], lt)?;
-                    self.drop_value(head);
-                    self.drop_value(lit);
-                }
-                let out = self.call_runtime("msrt_list_concat", &[mid, tail, d], lt)?;
-                self.drop_value(mid);
-                self.drop_value(tail);
-                self.drop_value(old);
-                Ok((out, None))
+                    self.put_slot(xo)
+                });
+                let list = self.put_slot(old);
+                match incoming {
+                    Some(incoming) => {
+                        self.call_runtime("msrt_list_insert", &[list, d, idx, incoming], MTy::UNIT)?
+                    }
+                    None => self.call_runtime("msrt_list_remove", &[list, d, idx], MTy::UNIT)?,
+                };
+                Ok((self.take_slot(list, lt), None))
             }
             "pop" => {
                 let optty = self.b.m.types.opt(elem);

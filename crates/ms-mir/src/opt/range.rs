@@ -121,6 +121,17 @@ impl Itv {
     }
 }
 
+fn cmp_holds(cc: Cc, a: i64, b: i64) -> bool {
+    match cc {
+        Cc::Lt => a < b,
+        Cc::Le => a <= b,
+        Cc::Gt => a > b,
+        Cc::Ge => a >= b,
+        Cc::Eq => a == b,
+        Cc::Ne => a != b,
+    }
+}
+
 fn fits(lo: i128, hi: i128) -> bool {
     lo >= i64::MIN as i128 && hi <= i64::MAX as i128
 }
@@ -256,6 +267,66 @@ fn length_origins(m: &Module, f: &Func) -> Vec<Value> {
             total += 1;
         }
     }
+    // Slot memory: a pointer parameter or `slot` that is only loaded from, taken from and
+    // stored into as a whole record is one variable. Every record loaded from it shares its
+    // list fields' origins, which are the join of the field origins of the records stored.
+    let mut slots: HashSet<Value> = f.blocks[0].params.iter().map(|p| p.value).collect();
+    let mut loaded_from: HashMap<Value, Value> = HashMap::new();
+    let mut candidates: HashSet<Value> = HashSet::new();
+    for b in &f.blocks {
+        for i in &b.insts {
+            if let (Op::Slot, Some(r)) = (i.op, i.res) {
+                slots.insert(r);
+            }
+        }
+    }
+    for b in &f.blocks {
+        for i in &b.insts {
+            if let (Op::Load | Op::Take, Some(r)) = (i.op, i.res)
+                && slots.contains(&i.args[0])
+                && !list_fields(r).is_empty()
+            {
+                candidates.insert(i.args[0]);
+                loaded_from.insert(r, i.args[0]);
+            }
+        }
+    }
+    let mut escaped: HashSet<Value> = HashSet::new();
+    for b in &f.blocks {
+        let returns = matches!(b.term, Term::Ret(_));
+        for (ii, i) in b.insts.iter().enumerate() {
+            let whole = matches!(i.op, Op::Load | Op::Take | Op::Put | Op::Store);
+            for (n, a) in i.args.iter().enumerate() {
+                if !candidates.contains(a) || (whole && n == 0) {
+                    continue;
+                }
+                // A call that ends the function may rewrite the slot: nothing reads it after.
+                let last = i.op == Op::Call
+                    && returns
+                    && b.insts[ii + 1..].iter().all(|j| !j.args.contains(a));
+                if !last {
+                    escaped.insert(*a);
+                }
+            }
+        }
+        b.term.for_each_use(&mut |v: Value| {
+            if candidates.contains(&v) {
+                escaped.insert(v);
+            }
+        });
+    }
+    candidates.retain(|p| !escaped.contains(p));
+    for (&r, p) in &loaded_from {
+        if !candidates.contains(p) {
+            continue;
+        }
+        for k in list_fields(r) {
+            pair.entry((*p, k)).or_insert_with(|| {
+                total += 1;
+                total - 1
+            });
+        }
+    }
     let mut facts = vec![Origin::Unknown; total];
     let mut users = vec![Vec::new(); total];
     let mut work = Vec::new();
@@ -270,6 +341,10 @@ fn length_origins(m: &Module, f: &Func) -> Vec<Value> {
             flows[p.value.index()] = true;
         }
     }
+    for p in &candidates {
+        flows[p.index()] = true;
+    }
+    let mut first_slot_read: HashMap<(Value, u32), Value> = HashMap::new();
     for p in &f.blocks[0].params {
         if is_list(p.value) {
             facts[p.value.index()] = Origin::One(p.value);
@@ -278,8 +353,30 @@ fn length_origins(m: &Module, f: &Func) -> Vec<Value> {
     }
     for b in &f.blocks {
         for i in &b.insts {
+            if matches!(i.op, Op::Put | Op::Store) && candidates.contains(&i.args[0]) {
+                for k in list_fields(i.args[1]) {
+                    if let (Some(&to), Some(&from)) =
+                        (pair.get(&(i.args[0], k)), pair.get(&(i.args[1], k)))
+                    {
+                        edge(&mut users, from, to);
+                    }
+                }
+                continue;
+            }
             let Some(r) = i.res else { continue };
             match i.op {
+                Op::Load | Op::Take
+                    if loaded_from.get(&r).is_some_and(|p| candidates.contains(p)) =>
+                {
+                    flows[r.index()] = true;
+                    let p = loaded_from[&r];
+                    for k in list_fields(r) {
+                        if let (Some(&from), Some(&to)) = (pair.get(&(p, k)), pair.get(&(r, k))) {
+                            edge(&mut users, from, to);
+                        }
+                    }
+                    continue;
+                }
                 Op::RecNew => {
                     flows[r.index()] = true;
                     let Imm::Rec(rid) = i.imm else { continue };
@@ -323,6 +420,9 @@ fn length_origins(m: &Module, f: &Func) -> Vec<Value> {
                 Op::RecGet if is_list(r) => {
                     let Imm::Field(_, k) = i.imm else { continue };
                     first_field_read.entry((i.args[0], k)).or_insert(r);
+                    if let Some(&p) = loaded_from.get(&i.args[0]) {
+                        first_slot_read.entry((p, k)).or_insert(r);
+                    }
                     if let Some(&from) = pair.get(&(i.args[0], k)) {
                         edge(&mut users, from, r.index());
                     }
@@ -364,6 +464,20 @@ fn length_origins(m: &Module, f: &Func) -> Vec<Value> {
                 }
             }
         });
+    }
+    // A pointer parameter's contents start every list field at its first read.
+    for p in &f.blocks[0].params {
+        if !candidates.contains(&p.value) {
+            continue;
+        }
+        for (&(q, k), &node) in &pair {
+            if q == p.value
+                && let Some(&r) = first_slot_read.get(&(q, k))
+            {
+                facts[node] = Origin::One(r);
+                work.push(node);
+            }
+        }
     }
     // Record values nothing flows into start every list field at its first read, or at the record
     // itself when the field is never read (a value no list shares an origin with).
@@ -493,6 +607,113 @@ pub fn run(m: &mut Module) -> bool {
     changed
 }
 
+/// A block parameter that only ever receives one other value (or itself, around a loop) is
+/// that value: a list threaded unchanged through a loop keeps the origin of the list it
+/// started as, even when that list's own origin is mixed.
+fn alias_loop_lists(m: &Module, f: &Func, lengths: &mut [Value]) {
+    let mut source: HashMap<Value, Option<Value>> = HashMap::new();
+    let mut note = |t: &Target| {
+        let params = &f.blocks[t.block.index()].params;
+        for (p, &a) in params.iter().zip(&t.args) {
+            if a == p.value
+                || f.ty(a) != f.ty(p.value)
+                || !matches!(m.types.kind(f.ty(a)), TyKind::List(_))
+            {
+                continue;
+            }
+            source
+                .entry(p.value)
+                .and_modify(|s| {
+                    if *s != Some(a) {
+                        *s = None;
+                    }
+                })
+                .or_insert(Some(a));
+        }
+    };
+    for b in &f.blocks {
+        match &b.term {
+            Term::Br(t) => note(t),
+            Term::CondBr { then, els, .. } => {
+                note(then);
+                note(els);
+            }
+            Term::Switch { cases, default, .. } => {
+                cases.iter().for_each(|(_, t)| note(t));
+                note(default);
+            }
+            _ => {}
+        }
+    }
+    // Only lists matter; `lengths` is the identity for everything else.
+    for _ in 0..8 {
+        let mut changed = false;
+        for (&p, &s) in &source {
+            let Some(a) = s else { continue };
+            if lengths[p.index()] == p
+                && lengths[a.index()] != p
+                && lengths[p.index()] != lengths[a.index()]
+            {
+                lengths[p.index()] = lengths[a.index()];
+                changed = true;
+            }
+        }
+        if !changed {
+            break;
+        }
+    }
+}
+
+/// A loop that starts with an empty list and a counter at zero and pushes one element while
+/// adding one to the counter keeps the counter equal to the list's length: the counter parameter
+/// takes the list parameter's length origin.
+fn counted_lists(
+    m: &Module,
+    f: &Func,
+    defs: &[Option<(usize, usize)>],
+    incoming: &[Vec<(usize, Edge, Vec<Value>)>],
+    lengths: &[Value],
+    lenof: &mut LenOf,
+) {
+    let def = |v: Value| defs[v.index()].map(|(b, i)| &f.blocks[b].insts[i]);
+    let konst = |v: Value| match def(v).map(|d| (d.op, d.imm)) {
+        Some((Op::IConst, Imm::Int(c))) => Some(c),
+        _ => None,
+    };
+    for (bi, blk) in f.blocks.iter().enumerate().skip(1) {
+        if incoming[bi].is_empty() {
+            continue;
+        }
+        for (li, l) in blk.params.iter().enumerate() {
+            if !matches!(m.types.kind(f.ty(l.value)), TyKind::List(_)) {
+                continue;
+            }
+            for (ci, c) in blk.params.iter().enumerate() {
+                if f.ty(c.value) != Ty::INT {
+                    continue;
+                }
+                let paired = incoming[bi].iter().all(|(_, _, args)| {
+                    let (al, ac) = (args[li], args[ci]);
+                    let fresh = def(al).is_some_and(|d| {
+                        d.op == Op::ListNew || (d.op == Op::ListLit && d.args.is_empty())
+                    }) && konst(ac) == Some(0);
+                    let step = def(al)
+                        .is_some_and(|d| d.op == Op::ListPush && d.args[0] == l.value)
+                        && def(ac).is_some_and(|d| {
+                            matches!(d.op, Op::IAdd | Op::IAddChk)
+                                && d.args[0] == c.value
+                                && konst(d.args[1]) == Some(1)
+                        });
+                    fresh || step
+                });
+                if paired {
+                    lenof.insert(c.value, lengths[l.value.index()]);
+                }
+            }
+        }
+    }
+}
+
 /// `UInt64` values are tracked as the unsigned range they provably lie in when it stays within
 /// `0..=i64::MAX`; any interval that dips below zero stands for "every `u64`" (see [`unsigned`]).
 fn tracked(ty: Ty) -> bool {
@@ -516,7 +737,8 @@ fn type_top(ty: Ty) -> Itv {
 impl<'a> Fa<'a> {
     fn new(m: &'a Module, f: &'a Func) -> Self {
         let n = f.blocks.len();
-        let lengths = length_origins(m, f);
+        let mut lengths = length_origins(m, f);
+        alias_loop_lists(m, f, &mut lengths);
         let byte_lists = byte_lists(m, f);
         let mut defs = vec![None; f.values.len()];
         let mut lenof = LenOf(vec![None; f.values.len()]);
@@ -561,7 +783,12 @@ impl<'a> Fa<'a> {
         for (pos, b) in rpo.iter().enumerate() {
             rpo_pos[b.index()] = pos as u32;
         }
-        let class = |v: Value| lenof.get(&v).map_or(v.index(), |o: &Value| o.index());
+        counted_lists(m, f, &defs, &incoming, &lengths, &mut lenof);
+        let class = |v: Value| {
+            lenof
+                .get(&v)
+                .map_or(lengths[v.index()].index(), |o: &Value| o.index())
+        };
         let mut last_read = vec![0u32; f.values.len()];
         for &b in &rpo {
             let pos = rpo_pos[b.index()];
@@ -602,7 +829,9 @@ impl<'a> Fa<'a> {
     }
 
     fn class(&self, v: Value) -> usize {
-        self.lenof.get(&v).map_or(v.index(), |o| o.index())
+        self.lenof
+            .get(&v)
+            .map_or(self.lengths[v.index()].index(), |o| o.index())
     }
 
     /// Drops what `env` knows about values that no block from `bi` on reads.
@@ -753,8 +982,33 @@ impl<'a> Fa<'a> {
         self.prune(&mut env, bi);
         if let [(p, kind, _)] = self.incoming[bi].as_slice() {
             self.apply_edge(&mut env, *p, *kind);
+        } else if let Some((p, kind)) = self.entry_edge(bi) {
+            self.apply_edge(&mut env, p, kind);
         }
         env
+    }
+
+    /// The single edge that enters the loop headed by `bi` from outside, when every other
+    /// incoming edge comes from inside it. Every path to the header runs through that edge
+    /// first, and values are immutable, so what it refines about earlier values holds in
+    /// the whole loop.
+    fn entry_edge(&self, bi: usize) -> Option<(usize, Edge)> {
+        let inside = |mut b: usize| {
+            while b != bi && b != 0 {
+                b = self.idom[b];
+            }
+            b == bi
+        };
+        let mut entry = None;
+        for (p, kind, _) in &self.incoming[bi] {
+            if inside(*p) {
+                continue;
+            }
+            if entry.replace((*p, *kind)).is_some() {
+                return None;
+            }
+        }
+        entry
     }
 
     fn edge_env(&self, p: usize, kind: Edge) -> Env {
@@ -774,15 +1028,82 @@ impl<'a> Fa<'a> {
         }
     }
 
+    /// A Boolean block parameter (the merge of a short-circuit `and`/`or`) that is `truth`
+    /// only on one forward incoming edge: that edge's facts hold.
+    fn refine_param(&self, cond: Value, truth: bool, env: &mut Env) -> bool {
+        let Some((bi, pi)) = self.param_of[cond.index()] else {
+            return false;
+        };
+        let incoming = &self.incoming[bi];
+        if incoming.is_empty()
+            || incoming
+                .iter()
+                .any(|(p, ..)| self.rpo_pos[*p] >= self.rpo_pos[bi])
+        {
+            return true;
+        }
+        let possible = |arg: Value| match self.def_inst(arg).map(|d| (d.op, d.imm)) {
+            Some((Op::BConst, Imm::Bool(b))) => b == truth,
+            _ => true,
+        };
+        let mut viable = incoming.iter().filter(|(_, _, args)| possible(args[pi]));
+        if let (Some((pred, kind, args)), None) = (viable.next(), viable.next()) {
+            let mut e = self.edge_env(*pred, *kind);
+            self.refine_cond(args[pi], truth, &mut e);
+            for (v, itv) in e.itv {
+                env.narrow(v, itv.lo as i128, itv.hi as i128);
+            }
+            for r in e.rels {
+                if !env.rels.contains(&r) {
+                    env.rels.push(r);
+                }
+            }
+        }
+        true
+    }
+
     fn refine_cond(&self, cond: Value, truth: bool, env: &mut Env) {
+        if self.refine_param(cond, truth, env) {
+            return;
+        }
         let Some(inst) = self.def_inst(cond) else {
             return;
         };
         match inst.op {
             Op::ICmp => {
                 let Imm::Cc(cc) = inst.imm else { return };
+                if let Some(k) = self.constant(inst.args[1]) {
+                    self.refine_select(inst.args[0], cc, k, truth, env, 4);
+                }
                 let cc = if truth { cc } else { cc.negated() };
                 self.refine_cmp(cc, inst.args[0], inst.args[1], env);
+            }
+            // `a or b` and `a and b` lower to a select with a constant arm.
+            Op::Select => {
+                let (c, x, y) = (inst.args[0], inst.args[1], inst.args[2]);
+                let bconst = |v: Value| match self.def_inst(v).map(|d| (d.op, d.imm)) {
+                    Some((Op::BConst, Imm::Bool(b))) => Some(b),
+                    _ => None,
+                };
+                match (bconst(x), bconst(y), truth) {
+                    (Some(true), _, false) => {
+                        self.refine_cond(c, false, env);
+                        self.refine_cond(y, false, env);
+                    }
+                    (_, Some(false), true) => {
+                        self.refine_cond(c, true, env);
+                        self.refine_cond(x, true, env);
+                    }
+                    (Some(false), _, true) => {
+                        self.refine_cond(c, false, env);
+                        self.refine_cond(y, true, env);
+                    }
+                    (_, Some(true), false) => {
+                        self.refine_cond(c, true, env);
+                        self.refine_cond(x, false, env);
+                    }
+                    _ => {}
+                }
             }
             Op::UICmp => {
                 let Imm::Cc(cc) = inst.imm else { return };
@@ -799,6 +1120,41 @@ impl<'a> Fa<'a> {
                 self.refine_cond(inst.args[1], false, env);
             }
             _ => {}
+        }
+    }
+
+    /// Whether the select tree `v` can yield a value `r` with `(r cc k) == truth`.
+    fn arm_can(&self, v: Value, cc: Cc, k: i64, truth: bool, depth: u32) -> bool {
+        if let Some(c) = self.constant(v) {
+            return cmp_holds(cc, c, k) == truth;
+        }
+        match self.def_inst(v) {
+            Some(d) if d.op == Op::Select && depth > 0 => {
+                self.arm_can(d.args[1], cc, k, truth, depth - 1)
+                    || self.arm_can(d.args[2], cc, k, truth, depth - 1)
+            }
+            _ => true,
+        }
+    }
+
+    /// `v cc k` is `truth` where `v` selects between constants (the three-way compare of
+    /// `min`/`max`/`compare`): a condition whose arm cannot satisfy it is known to be false.
+    fn refine_select(&self, v: Value, cc: Cc, k: i64, truth: bool, env: &mut Env, depth: u32) {
+        let Some(d) = self.def_inst(v) else { return };
+        if d.op != Op::Select || depth == 0 {
+            return;
+        }
+        let (c, x, y) = (d.args[0], d.args[1], d.args[2]);
+        let (cx, cy) = (
+            self.arm_can(x, cc, k, truth, 3),
+            self.arm_can(y, cc, k, truth, 3),
+        );
+        if cx && !cy {
+            self.refine_cond(c, true, env);
+            self.refine_select(x, cc, k, truth, env, depth - 1);
+        } else if cy && !cx {
+            self.refine_cond(c, false, env);
+            self.refine_select(y, cc, k, truth, env, depth - 1);
         }
     }
 
@@ -899,11 +1255,32 @@ impl<'a> Fa<'a> {
         }
     }
 
+    /// The interval of the amount `a` adds to or subtracts from `p`, when `a` is `p + q` or
+    /// `p - q` with `q` a value whose range is known (a widened byte, a bounded index).
+    fn step_range(&self, a: Value, p: Value, env: &Env) -> Option<Itv> {
+        let i = self.def_inst(a)?;
+        let (q, neg) = match i.op {
+            Op::IAdd | Op::IAddChk if i.args[0] == p => (i.args[1], false),
+            Op::IAdd | Op::IAddChk if i.args[1] == p => (i.args[0], false),
+            Op::ISub | Op::ISubChk if i.args[0] == p => (i.args[1], true),
+            _ => return None,
+        };
+        let q = self.get(q, env)?;
+        if neg {
+            Some(Itv {
+                lo: q.hi.checked_neg()?,
+                hi: q.lo.checked_neg()?,
+            })
+        } else {
+            Some(q)
+        }
+    }
+
     fn param_itv(&self, bi: usize, pi: usize) -> Option<Itv> {
         let p = self.f.blocks[bi].params[pi].value;
         let mut acc: Option<Itv> = None;
         let mut others: Option<Itv> = None;
-        let (mut ups, mut downs, mut counter_ok) = (0, 0, true);
+        let (mut ups, mut downs, mut mixed, mut counter_ok) = (0, 0, 0, true);
         for (pred, kind, args) in &self.incoming[bi] {
             let a = args[pi];
             let env = self.edge_env(*pred, *kind);
@@ -914,12 +1291,22 @@ impl<'a> Fa<'a> {
             if a == p {
                 continue;
             }
-            match self.step_of(a, p) {
-                Some(s) if s != 0 && s.unsigned_abs() <= COUNTER_STEP_MAX as u64 => {
-                    if s > 0 {
+            let step = self
+                .step_of(a, p)
+                .map(Itv::point)
+                .or_else(|| self.step_range(a, p, &env));
+            match step {
+                Some(s)
+                    if (s.lo, s.hi) != (0, 0)
+                        && s.lo.unsigned_abs() <= COUNTER_STEP_MAX as u64
+                        && s.hi.unsigned_abs() <= COUNTER_STEP_MAX as u64 =>
+                {
+                    if s.lo >= 0 {
                         ups += 1;
-                    } else {
+                    } else if s.hi <= 0 {
                         downs += 1;
+                    } else {
+                        mixed += 1;
                     }
                 }
                 Some(_) => counter_ok = false,
@@ -933,10 +1320,15 @@ impl<'a> Fa<'a> {
         }
         if ASSUME_BOUNDED_COUNTERS
             && counter_ok
-            && (ups == 0) != (downs == 0)
+            && ups + downs + mixed > 0
             && let (Some(o), Some(a)) = (others, acc)
         {
-            let bound = if ups > 0 {
+            let bound = if mixed > 0 || (ups > 0 && downs > 0) {
+                Itv {
+                    lo: i64::MIN / 2,
+                    hi: i64::MAX / 2,
+                }
+            } else if ups > 0 {
                 Itv {
                     lo: o.lo,
                     hi: i64::MAX / 2,
@@ -988,6 +1380,7 @@ impl<'a> Fa<'a> {
             | Op::ListGetNn
             | Op::ListGetU
             | Op::StrLen
+            | Op::Conv
             | Op::AltTag => self.other_ops(inst, env, ty, top),
             _ => Some(top),
         }
@@ -1197,6 +1590,14 @@ impl<'a> Fa<'a> {
             Op::ListGet | Op::ListGetNn | Op::ListGetU if self.byte_lists[inst.args[0].index()] => {
                 Itv { lo: 0, hi: 255 }
             }
+            // A narrow integer widened to `Int` keeps the range of its type.
+            Op::Conv if _ty == Ty::INT => match self.m.types.int_range(self.f.ty(inst.args[0])) {
+                Some((lo, hi)) if lo >= i64::MIN.into() && hi <= i64::MAX.into() => Itv {
+                    lo: lo as i64,
+                    hi: hi as i64,
+                },
+                _ => top,
+            },
             Op::StrLen => Itv { lo: 0, hi: LEN_MAX },
             Op::AltTag => match self.m.types.kind(self.f.ty(inst.args[0])) {
                 TyKind::Alt(a) => {

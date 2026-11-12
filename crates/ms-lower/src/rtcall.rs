@@ -287,6 +287,14 @@ impl FnLower<'_> {
         let TyKind::Obj(n, a) = self.b.m.types.kind(map) else {
             return None;
         };
+        // `Set[Int]` has fixed 16-byte slots (hash, key): `contains` and `add` skip descriptors.
+        if *n == Native::Set && a.len() == 1 && a[0] == MTy::INT {
+            return match sym {
+                "msrt_map_contains" => Some("msrt_set_contains_w"),
+                "msrt_set_add_copy" => Some("msrt_set_add_copy_w"),
+                _ => None,
+            };
+        }
         if *n != Native::Map || a.len() != 2 {
             return None;
         }

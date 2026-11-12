@@ -143,8 +143,9 @@ impl InstCheck<'_, '_> {
             | Op::OptIsSome
             | Op::OptGet
             | Op::OptUnwrap
-            | Op::OptUnbox => self.optionals(),
-            Op::StrLen | Op::StrByte | Op::StrAscii => self.strings(),
+            | Op::OptUnbox
+            | Op::OptAddr => self.optionals(),
+            Op::StrLen | Op::StrByte | Op::StrAscii | Op::StrAsciiAt => self.strings(),
             Op::ClosureNew
             | Op::ClosureCap
             | Op::ClosureCapAddr
@@ -774,6 +775,13 @@ impl InstCheck<'_, '_> {
                     "yields the payload type",
                 )
             }
+            Op::OptAddr => {
+                self.arity(1)?;
+                self.want(
+                    self.m.opt_inner(self.t(0)).is_some() && self.res == Some(Ty::PTR),
+                    "opt.addr takes a present optional and yields a ptr to its payload",
+                )
+            }
             _ => unreachable!("optionals is only called for its own ops"),
         }
     }
@@ -793,6 +801,13 @@ impl InstCheck<'_, '_> {
                 self.want(
                     self.t(0) == Ty::STR && self.t(1) == Ty::INT && self.res == Some(Ty::INT),
                     "str.byte takes a string and a byte offset and yields int",
+                )
+            }
+            Op::StrAsciiAt => {
+                self.arity(2)?;
+                self.want(
+                    self.t(0) == Ty::STR && self.t(1) == Ty::INT && self.res == Some(Ty::INT),
+                    "str.ascii_at takes a string and a scalar index and yields int",
                 )
             }
             Op::StrAscii => {

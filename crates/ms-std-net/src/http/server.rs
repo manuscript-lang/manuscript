@@ -244,8 +244,8 @@ impl Reactor {
         self.poller.delete(sock);
     }
 
-    /// The value of the `Date` header, refreshed once per second.
-    pub(super) fn date_text(&self) -> String {
+    /// Runs `f` on the value of the `Date` header, refreshed once per second.
+    fn with_date<R>(&self, f: impl FnOnce(&str) -> R) -> R {
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map_or(0, |d| d.as_secs() as i64);
@@ -253,7 +253,17 @@ impl Reactor {
         if cached.0 != now || cached.1.is_empty() {
             *cached = (now, h1::http_date(now));
         }
-        cached.1.clone()
+        f(&cached.1)
+    }
+
+    /// The value of the `Date` header.
+    pub(super) fn date_text(&self) -> String {
+        self.with_date(str::to_owned)
+    }
+
+    /// Appends the `Date: ...\r\n` header line without copying the cached value.
+    pub(super) fn date_line(&self, out: &mut Vec<u8>) {
+        self.with_date(|d| h1::header_line(out, "Date", d.as_bytes()));
     }
 
     /// Whether the running task is a request task of `server`.
@@ -1275,7 +1285,7 @@ impl Server {
         h1::status_line(&mut out, status);
         h1::header_line(&mut out, "Content-Type", b"text/plain; charset=utf-8");
         h1::header_line(&mut out, "X-Content-Type-Options", b"nosniff");
-        h1::header_line(&mut out, "Date", reactor.date_text().as_bytes());
+        reactor.date_line(&mut out);
         h1::header_line(
             &mut out,
             "Content-Length",
@@ -1626,7 +1636,7 @@ pub(super) fn error_bytes(
     h1::status_line(out, status);
     h1::header_line(out, "Content-Type", b"text/plain; charset=utf-8");
     h1::header_line(out, "X-Content-Type-Options", b"nosniff");
-    h1::header_line(out, "Date", reactor.date_text().as_bytes());
+    reactor.date_line(out);
     h1::header_line(out, "Content-Length", body.len().to_string().as_bytes());
     if close {
         h1::header_line(out, "Connection", b"close");
