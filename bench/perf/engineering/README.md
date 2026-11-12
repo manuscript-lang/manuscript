@@ -54,3 +54,7 @@ Min of 7, same machine, all ten tasks:
 | jsonsum | 185 | 239 | 294 | 0.77x | 0.63x |
 | dedupe | 334 | 319 | 374 | 1.05x | 0.89x |
 | report | 225 | 184 | 174 | 1.22x | 1.29x |
+
+## 2026-11-12: file reads in worker threads stay inline
+
+`pargroup` (2,000 files, `map_concurrent` over 4 workers) sent every `read_file` on a worker thread to the blocking pool: `strace -c -f` showed 4,698 `futex` and 1,505 `epoll_wait` calls. `msrt_task_others_stalled` decided that a thread with other tasks must keep running them, but a worker thread's flow task only joins its root task (no token, descriptor or timer), so it was never counted as stalled. A task that is waiting only on a join now counts as stalled, so the read runs inline when nothing else on the thread could run. Min of 15 on the shared 4-CPU VM: 48 ms before, 37 ms after (C 20 ms); `futex` calls 4,698 to 13, `epoll_wait` 1,505 to 6. The rest of the gap to C is the per-line `split` and parse work, not the file calls.

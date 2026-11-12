@@ -289,6 +289,21 @@ pub fn map_anon(len: usize) -> *mut u8 {
     }
 }
 
+/// Asks Linux to back a heap reservation with huge pages where it can: a program that builds
+/// megabytes of cells takes a page fault per 4 KiB otherwise.
+#[cfg(all(target_os = "linux", not(miri)))]
+pub fn prefer_huge_pages(p: *mut u8, len: usize) {
+    unsafe extern "C" {
+        fn madvise(addr: *mut c_void, len: size_t, advice: c_int) -> c_int;
+    }
+    const MADV_HUGEPAGE: c_int = 14;
+    // SAFETY: advice only; `p..p+len` is a mapping of this process.
+    unsafe { madvise(p.cast(), len, MADV_HUGEPAGE) };
+}
+
+#[cfg(not(all(target_os = "linux", not(miri))))]
+pub fn prefer_huge_pages(_p: *mut u8, _len: usize) {}
+
 /// Reserves `len` bytes of address space aligned to `len` (a power of two), holding stacks: no
 /// huge pages, so a touched stack page costs one page and not two megabytes. Null on failure.
 pub fn map_region(len: usize) -> *mut u8 {
