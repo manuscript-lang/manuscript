@@ -16,6 +16,7 @@ How fast Manuscript is, compared with hand-written Go and Rust, Node's JSON, and
 | [`csv-streams/`](csv-streams) | fragmented CSV record scaling, whole-chunk and malformed-input controls | see the [protocol](csv-streams/README.md) | [2026-11-10](csv-streams/README.md) |
 | [`json/`](json) | `@std/json` parse and stringify against Node (V8) on twitter, canada and citm_catalog | `ms run bench/tools/json_bench.ms` | [`json/results.md`](json/results.md) |
 | [`streams/`](streams) | stream pipelines (`map`, `lines`, `collect`) against the loops they replace, ns per item | see the [page](streams/README.md) | [`streams/README.md`](streams/README.md) |
+| [`bigint-gcd/`](bigint-gcd) | public BigInt GCD with boundary, sign and one-step controls | see the [protocol](bigint-gcd/README.md) | [2026-11-12](bigint-gcd/README.md#2026-11-12) |
 | [`iface/`](iface) | ns per interface call: local, returned and passed values against a direct loop | see the [page](iface/README.md) | [`iface/README.md`](iface/README.md) |
 | [`web/`](web) | the same HTTP server on Manuscript's standard library and Go's `net/http`: throughput, latency, memory, system calls, idle connections, file and DNS handlers | `sh bench/perf/web/run.sh 5` | [`web/results.md`](web/results.md) |
 | [`tasks/`](tasks) | resident memory and page tables per parked promise task at 100k and 1M, spawn and cancel time | `ms run bench/perf/tasks/main.ms -- 1000000 sleep` | [`tasks/README.md`](tasks/README.md) |

@@ -1,0 +1,57 @@
+{
+  "base_revision": "979f7617494c4bc78fa6ed349cfb87012a671a57",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "rust": "1.99.1",
+  "num_bigint": "0.5.1",
+  "affinity": 0,
+  "measurement": "LLVM Release public GCD; internal timer; independent expected integers; first pair discarded",
+  "original_pairs": 11,
+  "confirmation_pairs": 21,
+  "aa_pairs": 21,
+  "hashes": {
+    "crates/ms-std-bigint/src/lib.rs": "7b60f9c76365315fbcb95ee6c5c16ac359a3b86d4823d6cf750d55f54d618c80",
+    "bench/tools/bigint_gcd.ms": "23e3a4be0280ccc4234120c2a26b725ad6e46c2055cd1dfccb85754a13a9b805",
+    "bench/perf/bigint-gcd/main.ms": "bf6f432d55e918348c9b9472f9429471e408d06d267c7f759ac0722a51423598",
+    "bench/perf/bigint-gcd/cases.tsv": "2974282a91e805dfe78aed766283f9a17b5edef19bf4b48cba43be391e55035c",
+    ".artifacts/gcd-structural/final-baseline-gcd": "21d888266734913094f89ed6fa2d7695eadb114371b9b90250efce8deeffd153",
+    ".artifacts/gcd-structural/final-candidate-gcd": "ee5425afbef024c0dd637774f8e17b1bb1fa88efd2b9a52da734a5e9afd7b5f8",
+    ".artifacts/gcd-structural/rebased-baseline-ms": "5d60d3b07b6d5179510121bda272bafbc3bdf292841f8f6f615e453494cb9bf2",
+    "target/release/ms": "1bcfeee9da41d95fdfed214089d224ac9dc3578464e191424e3e96c74172329b"
+  },
+  "manifests": {
+    "baseline": {
+      "format": 1,
+      "version": "0.1.0",
+      "backend": "llvm",
+      "build_type": "Release"
+    },
+    "candidate": {
+      "format": 1,
+      "version": "0.1.0",
+      "backend": "llvm",
+      "build_type": "Release"
+    }
+  },
+  "checks": {
+    "native_nextest": "40 passed; 0 skipped",
+    "bigint_conformance": "7 fixtures passed",
+    "workspace_fmt": "passed",
+    "workspace_clippy_all_targets_deny_warnings": "passed",
+    "repo_check": "passed",
+    "conformance_lint": "passed",
+    "benchmark_source_check": "passed",
+    "driver_unknown_case": "exit1 as expected",
+    "benchmark_missing_arguments": "exit2 as expected",
+    "independent_review": "review_gcd: 344 processes /688 complete results against Python math.gcd; final source and binary hashes independently checked"
+  },
+  "pending": [
+    "full workspace nextest",
+    "full conformance corpus",
+    "exact-head required CI; prohibited run/job diagnostics not requested"
+  ],
+  "limits": [
+    "shared-host interference cannot be excluded",
+    "no perf/valgrind instruction counts",
+    "combined buffer reuse and scalar-tail attribution; no full GMP-gap attribution"
+  ]
+}

@@ -38,9 +38,30 @@ const MAX_BITS: i64 = 1 << 24;
 
 /// Greatest common divisor of the magnitudes (never negative; `gcd(0, 0)` is 0).
 fn gcd(a: &BigInt, b: &BigInt) -> BigInt {
-    let (mut a, mut b) = (a.magnitude().clone(), b.magnitude().clone());
-    while b.bits() != 0 {
-        let r = &a % &b;
+    let (a, b) = (a.magnitude(), b.magnitude());
+    let (a, b) = match a.cmp(b) {
+        core::cmp::Ordering::Equal => return BigInt::from(a.clone()),
+        core::cmp::Ordering::Less => (b, a),
+        core::cmp::Ordering::Greater => (a, b),
+    };
+    if b.is_zero() {
+        return BigInt::from(a.clone());
+    }
+    let (mut a, mut b) = (a.clone(), b.clone());
+    while !b.is_zero() {
+        if let Some(mut divisor) = b.to_u64() {
+            // The remainder is strictly below this nonzero u64 divisor.
+            let mut remainder = (&a % &b).to_u64().expect("remainder fits divisor");
+            while remainder != 0 {
+                let next = divisor % remainder;
+                divisor = remainder;
+                remainder = next;
+            }
+            return BigInt::from(divisor);
+        }
+        // Division can reuse the discarded dividend's storage. The divisor
+        // remains an operand in the next Euclidean step, so retain its value.
+        let r = a % b.clone();
         a = core::mem::replace(&mut b, r);
     }
     BigInt::from(a)
@@ -531,6 +552,38 @@ mod tests {
             for text in [b"".as_slice(), b"0", b"+-1", b"1_0"] {
                 assert_eq!(parse(text, radix, None), Err(STATUS_INVALID_INPUT));
                 assert_eq!(parse(text, radix, Some(-1)), Err(STATUS_INVALID_INPUT));
+            }
+        }
+    }
+
+    #[test]
+    fn gcd_and_lcm_preserve_magnitude_and_machine_limb_boundaries() {
+        let zero = BigInt::zero();
+        assert_eq!(gcd(&zero, &zero), zero);
+        for bits in [32usize, 64] {
+            let boundary = BigInt::one() << bits;
+            for divisor in [&boundary - 1u32, boundary.clone(), &boundary + 1u32] {
+                let dividend = &divisor * 2u32 + 1u32;
+                assert_eq!(gcd(&dividend, &divisor), BigInt::one());
+                assert_eq!(gcd(&divisor, &dividend), BigInt::one());
+            }
+        }
+        for bits in [31usize, 32, 63, 64, 65, 127, 128, 2048] {
+            let consecutive = (BigInt::one() << bits) + 1u32;
+            let a = &consecutive * 37u32;
+            let b = (&consecutive + 1u32) * 37u32;
+            let expected_lcm = &consecutive * (&consecutive + 1u32) * 37u32;
+            for a in [a.clone(), -&a] {
+                assert_eq!(gcd(&a, &zero), a.abs());
+                assert_eq!(gcd(&zero, &a), a.abs());
+                assert_eq!(gcd(&a, &a), a.abs());
+                assert_eq!(gcd(&a, &-&a), a.abs());
+                assert_eq!(lcm(&a, &zero), zero);
+                for b in [b.clone(), -&b] {
+                    assert_eq!(gcd(&a, &b), BigInt::from(37));
+                    assert_eq!(gcd(&b, &a), BigInt::from(37));
+                    assert_eq!(lcm(&a, &b), expected_lcm);
+                }
             }
         }
     }
