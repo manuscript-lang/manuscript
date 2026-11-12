@@ -11,7 +11,7 @@ use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext, Switch};
 use cranelift_module::{DataId, FuncId, Module as _};
 use ms_mir::ir::{Cc, ExternRole, FaultKind, Func, Imm, Inst, Op, Target, Term};
 use ms_mir::types::{Ty, TyKind};
-use ms_rt_abi::symbols::{ISOLATE_HDR_CANCEL, ISOLATE_HDR_GUARDED, STACK_REGION};
+use ms_rt_abi::symbols::{ISOLATE_HDR_CANCEL, ISOLATE_HDR_GUARDED, STACK_LIMIT_CELL, STACK_REGION};
 use ms_rt_abi::{
     ASCII_CHAR_STRIDE, STR_ASCII, STR_INLINE, STR_INLINE_LEN_SHIFT, STR_LEN_MASK, STR_LEN_OFFSET,
     STR_PTR_OFFSET, STR_STATIC, VEC_CAP_OFFSET, VEC_LEN_OFFSET, VEC_PTR_OFFSET,
@@ -476,9 +476,16 @@ impl<'a, 'm> Lower<'a, 'm> {
     /// and returns that run's results. The check is the first thing the function does, so the
     /// parameters are still the caller's values (`ms_mir::verify`).
     fn depth_enter(&mut self) {
-        let hdr = self.task_hdr();
-        let limit = self.b.ins().load(types::I64, flags(), hdr, 0);
+        // The limit sits in the region beside the block's address: one load from the masked
+        // stack pointer.
         let sp = self.b.ins().get_stack_pointer(types::I64);
+        let base = self.b.ins().band_imm_s(sp, !(STACK_REGION - 1));
+        let limit = self.b.ins().load(
+            types::I64,
+            flags(),
+            base,
+            (STACK_REGION - STACK_LIMIT_CELL) as i32,
+        );
         let over = self.b.ins().icmp(IntCC::UnsignedLessThan, sp, limit);
         let grow = self.b.create_block();
         let cont = self.b.create_block();
