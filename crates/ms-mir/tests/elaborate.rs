@@ -727,4 +727,40 @@ b4():
 "#,
     );
     assert_eq!(r, 0);
+fn an_owner_disowned_before_its_consuming_call_is_not_released_on_a_later_exit() {
+    // b1 moves `%a` into `@close` and may return at once; b2 only reads it. The exit in b1
+    // must not release it again, and the join releases it only on the b2 path.
+    for (arg, want) in [(0, "7\n"), (1, "")] {
+        let (r, out) = elaborate_and_run(&format!(
+            r#"
+fn @main() -> int {{
+b0:
+  %id: int = iconst 7
+  %a: list<int> = call @mk (%id)
+  scope.begin 0 0
+  scope.own 0 0 %a
+  %z: int = iconst {arg}
+  %zero: int = iconst 0
+  %c: bool = icmp.eq %z, %zero
+  br_if %c, b1(), b2()
+b1():
+  scope.disown %a
+  %x: int = call @close (%a)
+  %early: bool = icmp.eq %x, %id
+  br_if %early, b3(), b5()
+b2():
+  %n: int = list.len %a
+  br b5()
+b3():
+  scope.end 0 0
+  ret %x
+b5():
+  scope.end 0 0
+  %r: int = iconst 0
+  ret %r
+}}
+"#
+        ));
+        assert_eq!((r, out.as_str()), (if arg == 0 { 7 } else { 0 }, want));
+    }
 }
