@@ -24,6 +24,14 @@ pub(crate) struct Args {
 /// the variable it was taken from (refilled after the call), if any.
 pub(crate) type VarArgument = (usize, Value, MTy, Option<usize>);
 
+/// The variable whose fields a call changes, its value with those fields moved out, and per
+/// field: record, index, slot, type and whether the field was moved out (refilled afterwards).
+type JointFields = (
+    crate::func::Local,
+    Value,
+    Vec<(ms_mir::types::RecId, u32, Value, MTy, bool)>,
+);
+
 impl<'a> FnLower<'a> {
     pub fn call_expr(&mut self, e: &Expr) -> Result<Val, Error> {
         if let Some(v) = self.scalar_parse_int(e)? {
@@ -284,6 +292,89 @@ impl<'a> FnLower<'a> {
         })
     }
 
+    /// The owned local that every changed parameter of a call names a distinct field of
+    /// (`f(var self.a, var self.b)`), when there are several and each is `local.field`.
+    fn joint_var_root(
+        &mut self,
+        vars: &[usize],
+        places: &[Option<Expr>],
+    ) -> Option<crate::func::Local> {
+        if vars.len() < 2 {
+            return None;
+        }
+        let mut root = None;
+        let mut fields = Vec::new();
+        for i in vars {
+            let place = places.get(*i)?.as_ref()?;
+            let ExprKind::Member { left, name, .. } = &place.kind else {
+                return None;
+            };
+            if !matches!(left.kind, ExprKind::Name(_)) || fields.contains(name) {
+                return None;
+            }
+            let ms_check::api::hir::Resolution::Local(b) = self.hir.resolution(left) else {
+                return None;
+            };
+            if self.aliases.contains_key(&b.uid) || root.is_some_and(|uid| uid != b.uid) {
+                return None;
+            }
+            root = Some(b.uid);
+            fields.push(*name);
+            if !self.is_place(place) || !self.place_is_owned(place) {
+                return None;
+            }
+        }
+        self.locals.get(&root?).copied()
+    }
+
+    /// Moves each changed field out of the owned variable into a slot the callee takes from
+    /// and puts back into. Returns the variable and, per field, its slot and how to refill it.
+    fn take_joint_fields(
+        &mut self,
+        root: crate::func::Local,
+        fields: &[(usize, Expr, MTy)],
+        vals: &mut [Value],
+    ) -> Result<JointFields, Error> {
+        let obj = self.local_take(&root);
+        let mut taken = Vec::new();
+        for (i, place, ty) in fields {
+            let ExprKind::Member { name, .. } = &place.kind else {
+                unreachable!("joint_var_root admits only fields")
+            };
+            let TyKind::Rec(rid) = self.b.m.types.kind(self.ty_of(obj)).clone() else {
+                return Err(Error::new("field mutation on a non-record"));
+            };
+            let idx = self.b.m.records[rid.index()]
+                .fields
+                .iter()
+                .position(|f| f.0 == self.syms.str(name))
+                .ok_or_else(|| Error::new("no such field"))? as u32;
+            let cur = self.b.rec_get(rid, idx, obj);
+            let (own, moved) = self.take_projection(cur);
+            let slot = self
+                .b
+                .emit(Op::Slot, &[], ms_mir::ir::Imm::Ty(*ty), Some(MTy::PTR))
+                .expect("slot");
+            self.move_into(slot, own);
+            vals[*i] = slot;
+            taken.push((rid, idx, slot, *ty, moved));
+        }
+        Ok((root, obj, taken))
+    }
+
+    /// After the call: each field's final value moves back into the variable.
+    fn put_joint_fields(&mut self, (root, mut obj, taken): JointFields) {
+        for (rid, idx, slot, ty, moved) in taken {
+            let new = self.move_out(slot, ty);
+            obj = if moved {
+                self.b.rec_fill(rid, idx, obj, new)
+            } else {
+                self.b.rec_set(rid, idx, obj, new)
+            };
+        }
+        self.local_put(&root, obj);
+    }
+
     /// Whether a place permits writeback: an owned local or shared mutable storage.
     /// A read-only borrow (a parameter of a default frame) takes no update.
     fn place_is_owned(&mut self, place: &Expr) -> bool {
@@ -493,6 +584,10 @@ impl<'a> FnLower<'a> {
         // The only changed parameter is a field or list element of an owned variable: the callee
         // takes it out of its place and puts it back, instead of working on a copy.
         let mut in_place: Option<(usize, Expr, MTy)> = None;
+        // Several changed parameters that are distinct fields of one owned variable: each field
+        // moves out of the variable, and the callee's results move back into it.
+        let joint_root = self.joint_var_root(&vars, &args.places);
+        let mut joint: Vec<(usize, Expr, MTy)> = Vec::new();
         for (i, a) in args.slots.into_iter().flatten().enumerate() {
             // An intact borrowed argument keeps its original registration and acquisition
             // order. Only a consuming/changed parameter takes its value out of that slot.
@@ -589,11 +684,25 @@ impl<'a> FnLower<'a> {
                 in_place = Some((i, place, ty));
                 continue;
             }
+            if joint_root.is_some()
+                && !a.own
+                && let Some(place) = args.places.get(i).cloned().flatten()
+            {
+                vals.push(a.v);
+                joint.push((i, place, ty));
+                continue;
+            }
             let place = args.places.get(i).cloned().flatten();
             let slot = self.var_argument(e, i, a, place.as_ref(), &mut slots_out);
             vals.push(slot);
         }
         self.at(e.pos);
+        let joint_slots = match joint_root {
+            Some(root) if !joint.is_empty() => {
+                Some(self.take_joint_fields(root, &joint, &mut vals)?)
+            }
+            _ => None,
+        };
         let v = if let Some((i, place, ty)) = in_place {
             let mut result = None;
             self.place_update(&place, &mut |s, old| {
@@ -609,6 +718,9 @@ impl<'a> FnLower<'a> {
         } else {
             self.b.call(fid, &vals)
         };
+        if let Some(taken) = joint_slots {
+            self.put_joint_fields(taken);
+        }
         self.restore_var_arguments(slots_out, |p| args.places.get(p).cloned().flatten())?;
         if self.b.m.funcs[fid.index()].ret_borrowed {
             // A borrow-returning callee: the result points into the arguments. When one of them is a
