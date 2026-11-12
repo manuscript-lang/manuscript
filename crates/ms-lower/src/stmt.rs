@@ -1615,6 +1615,7 @@ impl<'a> FnLower<'a> {
         self.push_scope();
         self.hoist_literals(body)?;
         let mut list_var = None;
+        let mut cursor: Option<(Value, ms_mir::types::RecId, MTy)> = None;
         let (start, len) = match self.range_bounds(iter)? {
             Some(bounds) => bounds,
             None => {
@@ -1712,20 +1713,43 @@ impl<'a> FnLower<'a> {
                 let TyKind::List(_) = self.b.m.types.kind(ity).clone() else {
                     return Err(Error::new("for over this type is not supported yet"));
                 };
-                let var = if !it.own {
-                    // The checker holds the iterable's source origins for the entire loop,
-                    // even when its scalar elements need no shared binding. Preserve the
-                    // lowered borrow, including results of source functions and methods.
-                    let ty = self.ty_of(it.v);
-                    let var = self.b.declare_var(ty, ms_mir::ir::Mode::Borrow);
-                    self.b.def_var(var, it.v);
-                    var
+                let elem_drops = self
+                    .b
+                    .m
+                    .list_elem(ity)
+                    .is_some_and(|e| self.b.m.needs_drop(e));
+                if it.own && elem_drops && self.raw_owners {
+                    // A list the loop owns lives in a cursor in memory: the list and the index of
+                    // the first element the loop has not taken. The pass releases the rest of the
+                    // list from the cursor wherever the loop ends.
+                    let (rec, rty) = self.list_cursor(ity);
+                    let slot = self
+                        .b
+                        .emit(Op::Slot, &[], Imm::Ty(rty), Some(MTy::PTR))
+                        .expect("slot");
+                    let list = self.owned(it);
+                    let zero = self.b.iconst(0);
+                    let held = self.b.rec_new(rec, &[list, zero]);
+                    self.b.emit(Op::Put, &[slot, held], Imm::None, None);
+                    cursor = Some((slot, rec, ity));
+                    let list = self.cursor_list(slot, rec, ity);
+                    (self.b.iconst(0), self.b.list_len(list))
                 } else {
-                    self.bind_hidden_iterable(it)
-                };
-                list_var = Some(var);
-                let list = self.b.use_var(var);
-                (self.b.iconst(0), self.b.list_len(list))
+                    let var = if !it.own {
+                        // The checker holds the iterable's source origins for the entire loop,
+                        // even when its scalar elements need no shared binding. Preserve the
+                        // lowered borrow, including results of source functions and methods.
+                        let ty = self.ty_of(it.v);
+                        let var = self.b.declare_var(ty, ms_mir::ir::Mode::Borrow);
+                        self.b.def_var(var, it.v);
+                        var
+                    } else {
+                        self.bind_hidden_iterable(it)
+                    };
+                    list_var = Some(var);
+                    let list = self.b.use_var(var);
+                    (self.b.iconst(0), self.b.list_len(list))
+                }
             }
         };
         if self.dead {
@@ -1735,7 +1759,7 @@ impl<'a> FnLower<'a> {
         let one = self.b.iconst(1);
         let idx = self.b.declare_var(MTy::INT, ms_mir::ir::Mode::Borrow);
         self.b.def_var(idx, start);
-        let closing = if list_var.is_some()
+        let closing = if (list_var.is_some() || cursor.is_some())
             && self.cx.ownership.binding_facts.has(
                 loop_var.uid,
                 ms_check::api::ownership::BindingFact::ImplicitClose,
@@ -1758,16 +1782,21 @@ impl<'a> FnLower<'a> {
         // A list the loop owns hands each element to the loop variable, which drops (and
         // closes) it at the end of the iteration unless the body moves it on; leaving the loop
         // releases the elements it never reached with the list.
-        let moving = list_var.is_some_and(|var| {
-            let ty = self.b.var_ty(var);
-            self.b.var_mode(var) == ms_mir::ir::Mode::Move
-                && self
-                    .b
-                    .m
-                    .list_elem(ty)
-                    .is_some_and(|e| self.b.m.needs_drop(e))
-        });
-        if let (true, Some(var)) = (moving, list_var) {
+        if let Some((slot, _, lty)) = cursor {
+            let thunk = self.list_tail_thunk(lty, closing.as_ref());
+            self.own_raw_value(slot, thunk.index() as u32 + 2);
+        }
+        let moving = cursor.is_some()
+            || list_var.is_some_and(|var| {
+                let ty = self.b.var_ty(var);
+                self.b.var_mode(var) == ms_mir::ir::Mode::Move
+                    && self
+                        .b
+                        .m
+                        .list_elem(ty)
+                        .is_some_and(|e| self.b.m.needs_drop(e))
+            });
+        if let (true, Some(var), None) = (moving, list_var, cursor) {
             let uid = self
                 .locals
                 .iter()
@@ -1809,6 +1838,22 @@ impl<'a> FnLower<'a> {
         self.push_scope();
         let i = self.b.use_var(idx);
         let e = match list_var {
+            _ if cursor.is_some() => {
+                let (slot, rec, lty) = cursor.expect("cursor");
+                // The cursor moves past the element before it is taken, so that leaving the loop
+                // anywhere after releases only what comes after.
+                let next = self
+                    .b
+                    .emit(Op::IAdd, &[i, one], Imm::None, Some(MTy::INT))
+                    .expect("add");
+                let at = self
+                    .b
+                    .emit(Op::PtrField, &[slot], Imm::Field(rec, 1), Some(MTy::PTR))
+                    .expect("field");
+                self.b.emit(Op::Store, &[at, next], Imm::None, None);
+                let list = self.cursor_list(slot, rec, lty);
+                self.b.list_take(list, i)
+            }
             Some(var) if moving => {
                 let list = self.b.use_var(var);
                 self.b.list_take(list, i)

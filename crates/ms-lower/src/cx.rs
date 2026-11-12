@@ -85,6 +85,9 @@ pub enum HelperKey {
         in_slot: bool,
     },
     Thunk(FuncId),
+    /// The close of a loop's cursor over an owned list of the given type, closing the elements it
+    /// never reached with the given close, when there is one.
+    ListTail(MTy, Option<crate::close::CloseKind>),
     /// How a failed scope-end close becomes the return of a function of the given type: the
     /// close's `Result` type, the function's return type, and whether a pending return is held.
     CloseExit(MTy, MTy, bool),
@@ -402,6 +405,9 @@ pub struct Cx {
     pub opaque_tys: Column<()>,
     /// Helper functions (formatting, equality, ...) by key.
     pub helpers: HashMap<HelperKey, FuncId>,
+    /// The record a loop over an owned list keeps in memory (the list and the next index) by
+    /// list type.
+    pub list_cursors: HashMap<MTy, (ms_mir::types::RecId, MTy)>,
     /// Interface implementation tables built by lowering.
     pub vtables: HashMap<VtableKey, ms_mir::ir::VtableId>,
     /// The checker type of every lowered interface.
@@ -494,6 +500,7 @@ impl Cx {
             queue: Vec::new(),
             opaque_tys: Default::default(),
             helpers: HashMap::new(),
+            list_cursors: HashMap::new(),
             vtables: HashMap::new(),
             contracts: HashMap::new(),
             method_index: MethodIndex::new(&program.methods),

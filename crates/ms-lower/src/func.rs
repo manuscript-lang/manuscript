@@ -1634,7 +1634,7 @@ impl<'a> FnLower<'a> {
     }
 
     /// `scope.own` of `v` in the innermost scope, beginning the enclosing scopes first.
-    fn own_raw_value(&mut self, v: Value, kind: u32) -> u32 {
+    pub(crate) fn own_raw_value(&mut self, v: Value, kind: u32) -> u32 {
         let i = self.scope_marks.len() - 1;
         self.own_raw_value_in(i, v, kind)
     }
