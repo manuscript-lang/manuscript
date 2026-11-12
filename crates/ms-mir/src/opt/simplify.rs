@@ -64,6 +64,7 @@ fn simplify_func(m: &Module, f: &mut Func) -> bool {
         c |= put_takes(f);
         c |= branches(f);
         c |= cse(m, f);
+        c |= map_probes(m, f);
         c |= dce(m, f);
         if !c {
             break;
@@ -1133,6 +1134,100 @@ fn cse(m: &Module, f: &mut Func) -> bool {
         blk.insts.retain(|_| {
             ii += 1;
             !dead[b][ii - 1]
+        });
+    }
+    apply_subst(f, &subst);
+    true
+}
+
+// ---- repeated map probes ---------------------------------------------------
+
+/// The runtime lookups that return the address of a map entry (or null).
+fn is_map_probe(m: &Module, i: &Inst) -> bool {
+    let (Op::CallRt, Imm::Ext(e)) = (i.op, i.imm) else {
+        return false;
+    };
+    matches!(
+        m.externs[e.index()].name.as_str(),
+        "msrt_map_get_ptr" | "msrt_map_get_ptr_w8" | "msrt_map_get_ptr_sw8"
+    )
+}
+
+/// A probe of the same map for the same key, with nothing between that can change the map's
+/// layout, finds the same entry: the later call reuses the earlier address. `stats[k].a += 1;
+/// stats[k].b += 1` then looks `k` up once. The key reaches the runtime through a stack slot
+/// filled just before the call, so the key is the value stored there. The table follows a
+/// block into its only successor (a fault branch or an `if` arm) and is dropped at a join
+/// or loop header, and at any instruction that calls out, drops, clones or allocates: those
+/// are the ways a map is inserted into, removed from or moved.
+fn map_probes(m: &Module, f: &mut Func) -> bool {
+    type Probe = (ExtId, Value, Value, Value, Value);
+    let preds = f.predecessors();
+    let mut ends: Vec<Option<HashMap<Probe, Value>>> = vec![None; f.blocks.len()];
+    let mut subst: ValueMap<Value> = ValueMap::new();
+    let mut removed: HashSet<(usize, usize)> = HashSet::new();
+    let mut slots_dropped: Vec<Value> = Vec::new();
+    for b in f.rpo() {
+        let bi = b.index();
+        let mut table = match preds[bi].as_slice() {
+            [p] if p.index() != bi => ends[p.index()].clone().unwrap_or_default(),
+            _ => HashMap::new(),
+        };
+        let mut stored: HashMap<Value, Value> = HashMap::new();
+        for (ii, inst) in f.blocks[bi].insts.iter().enumerate() {
+            if is_map_probe(m, inst) && inst.args.len() == 4 {
+                let Imm::Ext(e) = inst.imm else { continue };
+                let a: Vec<Value> = inst.args.iter().map(|v| resolve(&subst, *v)).collect();
+                if let (Some(&k), Some(r)) = (stored.get(&a[3]), inst.res) {
+                    let key = (e, a[0], a[1], a[2], k);
+                    match table.get(&key) {
+                        Some(&prev) => {
+                            subst.insert(r, prev);
+                            removed.insert((bi, ii));
+                            slots_dropped.push(a[3]);
+                        }
+                        None => {
+                            table.insert(key, r);
+                        }
+                    }
+                }
+                continue;
+            }
+            match inst.op {
+                Op::Store | Op::Put | Op::Take => {
+                    stored.remove(&inst.args[0]);
+                    if inst.op == Op::Store {
+                        stored.insert(inst.args[0], resolve(&subst, inst.args[1]));
+                    }
+                }
+                _ => {
+                    let e = inst.op.info().effects;
+                    // A record update drops the field it replaces, never a map being probed.
+                    if (e.io || e.ownership || e.alloc) && inst.op != Op::RecSet {
+                        table.clear();
+                        stored.clear();
+                    }
+                }
+            }
+        }
+        ends[bi] = Some(table);
+    }
+    if removed.is_empty() {
+        return false;
+    }
+    // The key slot of a removed probe is only filled and never read again: drop both.
+    let uses = f.use_counts();
+    let dead_slots: HashSet<Value> = slots_dropped
+        .into_iter()
+        .filter(|s| uses[s.index()] == 2)
+        .collect();
+    for (bi, blk) in f.blocks.iter_mut().enumerate() {
+        let mut ii = 0;
+        blk.insts.retain(|i| {
+            ii += 1;
+            let slot_store = i.op == Op::Store && dead_slots.contains(&i.args[0]);
+            let slot_def = i.op == Op::Slot && i.res.is_some_and(|r| dead_slots.contains(&r));
+            !removed.contains(&(bi, ii - 1)) && !slot_store && !slot_def
         });
     }
     apply_subst(f, &subst);

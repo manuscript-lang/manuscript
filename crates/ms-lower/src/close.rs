@@ -31,6 +31,11 @@ pub(crate) struct ResourceTemp {
 }
 
 impl CloseKind {
+    /// Whether a value held in a variable can be closed as it is.
+    pub(crate) fn in_value(&self) -> bool {
+        !self.writes_back()
+    }
+
     /// Whether the close changes the value it closes, so it needs the value's own storage.
     fn writes_back(&self) -> bool {
         matches!(

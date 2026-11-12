@@ -161,7 +161,14 @@ impl Fa<'_> {
         if let Some(i) = self.get(v, env) {
             let floor = match goal {
                 Goal::Val(t) => self.get(t, env).map(|g| g.lo as i128),
-                Goal::Len(_) => Some(0),
+                Goal::Len(_) => Some(
+                    env.itv
+                        .iter()
+                        .filter(|(l, _)| self.goal_matches(**l, goal))
+                        .map(|(_, g)| g.lo.max(0) as i128)
+                        .max()
+                        .unwrap_or(0),
+                ),
             };
             if floor.is_some_and(|f| i.hi as i128 <= f + d) {
                 return true;
@@ -185,7 +192,8 @@ impl Fa<'_> {
         {
             assumed.push((v, goal, d));
             let all = self.incoming[bi].iter().all(|(pred, kind, args)| {
-                let edge = self.edge_env(*pred, *kind);
+                let mut edge = self.edge_env(*pred, *kind);
+                self.carry_goal_facts(goal, bi, env, &mut edge);
                 self.prove_le(args[pi], goal, d, &edge, assumed, fuel)
             });
             assumed.pop();
@@ -235,6 +243,28 @@ impl Fa<'_> {
                 self.prove_scaled(def, goal, d, env)
             }
             _ => false,
+        }
+    }
+
+    /// Copies what `env` knows about the goal's value into an incoming-edge environment of
+    /// block `bi`. The value is defined above `bi`, so it is the same on every iteration:
+    /// a lower bound that holds at the use holds on the edge that fed the use.
+    fn carry_goal_facts(&self, goal: Goal, bi: usize, env: &Env, edge: &mut Env) {
+        for (&v, i) in &env.itv {
+            if !self.goal_matches(v, goal) {
+                continue;
+            }
+            let def_block = match (self.defs[v.index()], self.param_of[v.index()]) {
+                (Some((b, _)), _) | (None, Some((b, _))) => b,
+                _ => continue,
+            };
+            let mut b = bi;
+            while b != def_block && b != 0 {
+                b = self.idom[b];
+            }
+            if b == def_block {
+                edge.narrow(v, i.lo as i128, i.hi as i128);
+            }
         }
     }
 

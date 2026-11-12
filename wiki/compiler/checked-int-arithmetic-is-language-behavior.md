@@ -4,6 +4,8 @@
 
 Decision: `Int` arithmetic faults on overflow ([design contract](../../crates/DESIGN.md)). An optimizer may remove a check only with a proof that covers the whole result range (a literal divisor, an identity operand, a guarded counter step); unknown `+`, `-`, and `*` stay checked. Evaluate both operands even when the result is constant so effectful calls are preserved.
 
+Measured 2026-11-12: speculating (vector overflow flag per chunk, scalar replay) loses to the scalar checked loop, and LLVM 23 vectorizes neither `with.overflow` reductions nor early-exit loops with stores. The lever is removing the check: the range pass treats an accumulator whose addends lie in `[-2^16, 2^16]` (a widened `UInt8`/`Int8`/`Int16`/`UInt16`, or a bounded value) as a bounded counter, so a byte sum is 5x faster ([proposal](../../proposals/checked-int-loops.md), [fixture](../../tests/conformance/fixtures/e2e/accept/narrow-sums-keep-values.ms)).
+
 Apply when: adding overflow-check elimination, bounds narrowing, or constant folding.
 Evidence: [overflow faults](../../tests/conformance/fixtures/e2e/accept/numeric-faults.ms), [bounded arithmetic](../../tests/conformance/fixtures/e2e/accept/bounded-int-arithmetic.ms), [counter step](../../tests/conformance/fixtures/e2e/accept/counter-steps-keep-overflow-faults.ms), [int identities](../../tests/conformance/fixtures/e2e/accept/int-identities.ms).
 Evidence: [interpreter](../../crates/ms-mir/src/interp.rs), [native lowering](../../crates/ms-clif/src/lower.rs), [simplifier boundary regressions](../../crates/ms-mir/tests/opt_simplify.rs).
