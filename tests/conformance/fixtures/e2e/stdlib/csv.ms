@@ -166,3 +166,53 @@ test "CSV escaped fields preserve malformed closing quote locations":
 		parse("\"é\"\"日\"x").err().message,
 		"CSV 1:7: expected a delimiter or line end after the closing quote",
 	)?
+
+test "CSV quote scanning preserves Unicode and exact backslash dot":
+	for field in ["é日😀", "x\\.", "\\.x", "\\", ".", "a b", "x "]:
+		expect_equal((stringify([[field.clone(), "tail"]])?), "{field},tail\n")?
+	for field in ["\\.", " x", " x", "\tx", " x", "a,b", "a\"b"]:
+		expect_equal(
+			(stringify([[field.clone(), "tail"]])?),
+			"\"{field.replace("\"", "\"\"")}\",tail\n",
+		)?
+
+	for delimiter in [";", "\t", "|", "\\", "."]:
+		for ending in ["\n", "\r\n"]:
+			options := CsvOptions(delimiter.clone(), ending.clone())
+			field := "a{delimiter}日"
+			text := "\"{field}\"{delimiter}tail{ending}"
+			expect_equal(
+				(
+					stringify(
+						[[field.clone(), "tail"]],
+						options,
+						text.byte_length(),
+					)?
+				),
+				text,
+			)?
+
+			failure: String! := error(Error("CSV: limit exceeded", kind: "EOVERFLOW"))
+			expect_equal(
+				stringify(
+					[[field.clone(), "tail"]],
+					options,
+					text.byte_length() - 1,
+				),
+				failure,
+			)?
+
+test "CSV stringify retains invalid option and negative budget errors":
+	invalid: String! := error(Error("CSV: invalid input", kind: "EINVAL"))
+	for delimiter in ["", "::", "é", "\"", "\r", "\n"]:
+		expect_equal(stringify([["a"]], CsvOptions(delimiter.clone())), invalid)?
+	for ending in ["", "\r", "x"]:
+		expect_equal(
+			stringify([["a"]], CsvOptions(line_ending: ending.clone())),
+			invalid,
+		)?
+	expect_equal(stringify([["a"]], max_bytes: -1), invalid)?
+	expect_equal(stringify([["a"]], CsvOptions("::", "x"), -1), invalid)?
+
+	no_rows: List[List[String]] := []
+	expect_equal((stringify(no_rows, max_bytes: 0)?), "")?

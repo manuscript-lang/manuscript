@@ -37,3 +37,28 @@ test "a removed key is gone after an update":
 	m[1].count += 1
 	m.remove(1)
 	m.contains(1) | expect_equal(false)?
+
+test "contains then update takes the present and absent paths with string keys":
+	var seen: Map[String, Stat] = {}
+	for i in 0..2000:
+		name := "user-{i % 300}"
+		if not seen.contains(name): seen[name.clone()] = Stat(0, 0)
+		seen[name].count += 1
+		seen[name].sum += i
+	var count = 0
+	var sum = 0
+	for e in seen.entries():
+		count += e.value.count
+		sum += e.value.sum
+	seen.length() | expect_equal(300)?
+	count | expect_equal(2000)?
+	sum | expect_equal(1999000)?
+
+test "contains guarding an update of a different key":
+	var m: Map[Int, Stat] = {}
+	m[1] = Stat(1, 1)
+	for i in 0..50:
+		if not m.contains(i): m[i] = Stat(0, 0)
+		m[1].count += 1
+	m[1].count | expect_equal(51)?
+	m.length() | expect_equal(50)?

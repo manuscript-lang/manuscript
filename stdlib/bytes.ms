@@ -388,17 +388,11 @@ fn unsigned_word(raw: Int) UInt64:
 	if raw >= 0: return raw.to_uint64().get(0)
 	return (raw + 9223372036854775807 + 1).to_uint64().get(0) + 9223372036854775808
 
-// Reads two unsigned halves so the top bit never passes through a signed conversion.
+// Reads the full word and preserves its unsigned upper half.
 fn read_uint64(data: Bytes, at: Int, little: Bool) UInt64!:
 	if at < 0 or at > data.length() - 8:
 		return error(Error("binary: out of range", kind: "ERANGE"))
-
-	first := msrt_bytes_read_word(data, at, 4, little)?
-	second := msrt_bytes_read_word(data, at + 4, 4, little)?
-	if little:
-		return ok(second.to_uint64().get(0) * 4294967296 + first.to_uint64().get(0))
-
-	return ok(first.to_uint64().get(0) * 4294967296 + second.to_uint64().get(0))
+	return ok(unsigned_word(msrt_bytes_read_word(data, at, 8, little)?))
 
 fn put_uint64(var out: BytesBuilder, value: UInt64, little: Bool) Unit:
 	high := (value / 4294967296).to_int().get(0)
