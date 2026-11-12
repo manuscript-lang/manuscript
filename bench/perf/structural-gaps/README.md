@@ -161,4 +161,4 @@ Same build and machine; `keyed.ms` runs six cases, each measured alone, C twins 
 | --- | ---: | ---: |
 | `contains` + `stats[k].count += 1`, `.sum += v`, max update, 2M rounds | 1,671M | 521M |
 
-Remaining probes per round: the `contains`, the first statement's read and write (one after the fault check on the read, because the read precedes a branch the write shares), and the max arm. Linux, same build and machine as above.
+Three probes remain per round (one per statement) where there were nine: each statement's block starts after a call or join in the lowered code, so the table restarts there. Linux, same build and machine as above.
