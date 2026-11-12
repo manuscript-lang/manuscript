@@ -325,6 +325,46 @@ pub(crate) fn submit(start: Start) {
     }
 }
 
+/// Places `start` on the least loaded thread instead of queueing it here to age: for long-lived
+/// work, such as one worker per core, where the creator parks right after making them and would
+/// otherwise start every one itself. Starts one more thread when the limit allows and every started
+/// thread already has work. Answers `Some(start)` when the calling thread is the one to run it.
+pub(crate) fn submit_spread(start: Start) -> Option<Start> {
+    let me = current();
+    if me == NONE {
+        return Some(start);
+    }
+    let load = |t: usize| {
+        SLOTS[t].live.load(Ordering::SeqCst) as usize
+            + SLOTS[t].pending.load(Ordering::SeqCst) as usize
+    };
+    let started = STARTED.load(Ordering::Acquire);
+    let (mut target, mut best) = (me, load(me));
+    for t in (0..started).filter(|&t| t != me) {
+        if load(t) < best {
+            (target, best) = (t, load(t));
+        }
+    }
+    if best > 0 && started < limit() {
+        ensure_started(started);
+        target = started;
+    }
+    if target == me {
+        return Some(start);
+    }
+    {
+        let mut mail = lock(&SLOTS[target].mail);
+        // Already aged, so any idle thread may take it if the target is busy.
+        mail.pending.push_back(Start {
+            at: crate::sys::monotonic_ns() - BEAT_NS,
+            ..start
+        });
+        publish(&SLOTS[target], &mail);
+    }
+    wake(target);
+    None
+}
+
 /// Removes the promise `id` if it has not started; answers whether it did. A promise is only
 /// ever queued on its creator's thread, and only its creator asks, so only that queue is looked
 /// at. A waiter usually wants either the one it just made (newest) or, waiting in creation order,
