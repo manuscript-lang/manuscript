@@ -114,11 +114,6 @@ fn verify_decls(m: &Module, errs: &mut Vec<VerifyError>) {
     }
 }
 
-/// Verifies one function.
-pub fn verify_func_with(m: &Module, f: &Func, opts: VerifyOptions) -> Result<(), Vec<VerifyError>> {
-    verify_func_in(m, f, opts, &drop_table(m))
-}
-
 /// [`Module::needs_drop`] of every type, indexed by [`Ty`].
 fn drop_table(m: &Module) -> Vec<bool> {
     (0..m.types.len() as u32)

@@ -725,14 +725,6 @@ impl Native {
     pub fn text(self, syms: ms_syntax::Names) -> &'static str {
         self.builtin().map_or("", |b| syms.str(b))
     }
-
-    /// The runtime symbol of an extern.
-    pub fn extern_symbol(self) -> Option<Name> {
-        match self {
-            Native::Extern { symbol, .. } => Some(symbol),
-            _ => None,
-        }
-    }
 }
 
 /// A module-level symbol.
