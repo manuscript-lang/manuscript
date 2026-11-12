@@ -20,7 +20,7 @@
       {
         "code": "MS3004",
         "phase": "type",
-        "message": "unknown argument compare; parameters of PriorityQueue: capacity, heap, next_order, orders",
+        "message": "unknown argument compare; parameters of PriorityQueue: capacity, heap, next_order",
         "position": {
           "file": "testdiagnosticsstatecauseandfix-31.ms",
           "line": 8,
@@ -84,7 +84,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testdiagnosticsstatecauseandfix-31.ms:7:13: type: cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the binding\n   |\n 7 |     var q = PriorityQueue(\n   |             ^\n<DIR>/testdiagnosticsstatecauseandfix-31.ms:8:9: type: unknown argument compare; parameters of PriorityQueue: capacity, heap, next_order, orders\n   |\n 8 |         compare: fn(left: HttpMethod, right: HttpMethod) Int: return 0\n   |         ^\n<DIR>/testdiagnosticsstatecauseandfix-31.ms:8:27: resolution: unknown type HttpMethod; add: import HttpMethod from \"@std/net/http.ms\"\n   |\n 8 |         compare: fn(left: HttpMethod, right: HttpMethod) Int: return 0\n   |                           ^\n<DIR>/testdiagnosticsstatecauseandfix-31.ms:8:46: resolution: unknown type HttpMethod; add: import HttpMethod from \"@std/net/http.ms\"\n   |\n 8 |         compare: fn(left: HttpMethod, right: HttpMethod) Int: return 0\n   |                                              ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testdiagnosticsstatecauseandfix-31.ms:7:13: type: cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the binding\n   |\n 7 |     var q = PriorityQueue(\n   |             ^\n<DIR>/testdiagnosticsstatecauseandfix-31.ms:8:9: type: unknown argument compare; parameters of PriorityQueue: capacity, heap, next_order\n   |\n 8 |         compare: fn(left: HttpMethod, right: HttpMethod) Int: return 0\n   |         ^\n<DIR>/testdiagnosticsstatecauseandfix-31.ms:8:27: resolution: unknown type HttpMethod; add: import HttpMethod from \"@std/net/http.ms\"\n   |\n 8 |         compare: fn(left: HttpMethod, right: HttpMethod) Int: return 0\n   |                           ^\n<DIR>/testdiagnosticsstatecauseandfix-31.ms:8:46: resolution: unknown type HttpMethod; add: import HttpMethod from \"@std/net/http.ms\"\n   |\n 8 |         compare: fn(left: HttpMethod, right: HttpMethod) Int: return 0\n   |                                              ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }
