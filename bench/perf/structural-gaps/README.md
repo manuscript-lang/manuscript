@@ -279,9 +279,9 @@ The earlier run of this case was 281 to 349 ms with seven lookups a pass; C is 2
 
 | | before | after | c |
 | --- | ---: | ---: | ---: |
-| instructions | 1,808M | 151M | 117M |
+| instructions | 1,808M | 99.5M (`d9f67581`) | 101.0M |
 | allocations | 4,329,208 | 200,015 | 200,000 |
-| wall | 132 ms | 68 ms | 73 ms |
+| wall | 132 ms | 70 ms | 72 ms |
 
 - `self.left?.insert(key)` took the record, unboxed the child into a slot, called, boxed it again with a new allocation and refilled the field. The payload of a recursive `Optional` is already in memory, in the box, so a `var` call now gets the box's address (`opt.addr`, `alias_payload_addr` in `crates/ms-lower/src/alias.rs`) and changes the child where it lies. Only a boxed optional has such an address; an inline payload keeps the take and put-back.
-- The remaining 34M instructions against C are not analysed.
+- Re-measured at `d9f67581` against a standalone C twin (`gcc -O2`, `tree.c` with the same generator, depth and a free of the tree): 99.5M against 101.0M instructions, 70 against 72 ms. The C twin frees the tree (about 23M) and `tree.ms` does not. About 14M of the 99.5M is the `msrt_alloc`, `alloc_slow` and `alloc_large` layers, which appear only under callgrind (glibc replaces the release allocator). Generated code is within about 4M of C: the descent loop is 5 instructions a level as in C, `depth` is 6.1M against 2.9M (stack and overflow checks), and the tail of `insert` calls the drop glue on a child just tested to be none (about 8 instructions an insert). The earlier 151M and 117M figures (the latter was `mixed.ms` case c with its free) are superseded; there is no codegen gap left to close here.
