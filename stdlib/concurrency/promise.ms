@@ -83,6 +83,18 @@ fn Promise[T].done() Bool:
 fn var Promise[T].close() Unit!:
 	msrt_promise_drop(self.id)
 
+// Which thread runs a promise's work.
+export enum Placement:
+	// A thread the runtime picks: queued on the calling thread for an idle one to take.
+	Any
+	// The least loaded thread at once, starting a thread when the limit allows. For
+	// long-lived work that should use every core, such as one serving worker per core.
+	Spread
+	// A task on the calling thread. For work that uses values bound to this thread (a
+	// network handle, a connection, a socket) and only waits (on a file, a socket, a
+	// child process): work that computes blocks its thread.
+	Here
+
 // What bounds a promise, fixed when it is made: `timeout` counts from construction and
 // is enforced whether or not anyone waits; when it passes the work is cancelled and
 // `wait` reports `ETIMEDOUT`. A negative timeout is no time at all.
@@ -93,11 +105,8 @@ export type PromiseOptions:
 	// `ECANCELED`. Applying a signal to an existing promise replaces its previous
 	// signal; none leaves it unchanged.
 	cancel: Signal? = none
-	// Place the work on the least loaded thread at once, starting a thread when the
-	// limit allows, instead of queueing it on the calling thread for an idle one to
-	// take. For long-lived work that should use every core, such as one serving worker
-	// per core.
-	spread: Bool = false
+	// Which thread runs the work.
+	placement: Placement = Placement.Any
 
 // One switch that cancels every promise made with its `signal()`. `cancel()` never
 // waits; the work stops at its next wait and `wait` reports `ECANCELED`. Dropping the
@@ -201,52 +210,27 @@ export fn complete[U](id: Int, result: U!) Unit:
 		error(cause):
 			msrt_promise_put(id, cause, 1)
 
-// Runs `entry` on a thread the runtime picks and returns its promise. The promise reads
-// what `entry` captures, so the values it reads must outlive it and cannot change while
-// it lives; nothing the entry captures can be changed from inside it. A fault inside
-// ends only this promise: `wait` reports it as `EIO`.
+// Runs `entry` as a promise and returns it. The closure follows the capture rules: a
+// promise that is returned or kept owns what `entry` captures (bind a `.clone()` first
+// to keep a value), and one that stays in the function reads its captures in place, so
+// they must outlive it and cannot change while it lives. A fault inside ends only this
+// promise: `wait` reports it as `EIO`. `options.placement` picks the thread.
 export fn promise[U](
 	entry: fn() U!,
 	options: PromiseOptions = PromiseOptions()
 ) Promise[U]:
 	id := msrt_promise_new()
 
-	if options.spread:
-		msrt_promise_start_spread(id, fn: complete(id, entry()))
-	else:
-		msrt_promise_start(id, fn: complete(id, entry()))
+	match options.placement:
+		Placement.Any:
+			msrt_promise_start(id, fn: complete(id, entry()))
+		Placement.Spread:
+			msrt_promise_start_spread(id, fn: complete(id, entry()))
+		Placement.Here:
+			msrt_promise_start_here(id, fn: complete(id, entry()))
 
 	limit(id, options)
 	return Promise[U](id: id)
-
-// Like `promise`, but the entry runs as a task on the calling thread, so it may use
-// values that belong to that thread (a network handle, a connection, a socket) which
-// `promise` would fault on if it ran elsewhere. It reads what `entry` captures the same
-// way, so wait for it before those values change or go out of scope. The entry should
-// only wait (on a file, a socket, a child process): a task that computes blocks its
-// thread.
-export fn local_promise[U](
-	entry: fn() U!,
-	options: PromiseOptions = PromiseOptions()
-) Promise[U]:
-	id := msrt_promise_new()
-	msrt_promise_start_here(id, fn: complete(id, entry()))
-	limit(id, options)
-	return Promise[U](id: id)
-
-// Runs `work` as a promise that owns everything it captured, so it borrows nothing from
-// the caller and may outlive the caller's values. Bind owned copies first
-// (`owned := path.clone()`) and capture those. It is for operations that only wait (on
-// a file, a socket, a child process), so its task stays on the calling thread.
-export fn owned_task[U](work: fn() U!) Promise[U]:
-	id := msrt_promise_new()
-	msrt_promise_start_here(id, owned_task_job[U](id, work))
-	return Promise[U](id: id)
-
-// The entry of an owning task: a closure that owns `work`, since a closure that is
-// returned owns its captures.
-fn owned_task_job[U](id: Int, work: fn() U!) fn() Unit:
-	return fn: complete(id, work())
 
 // Waits for every promise and returns the results in order. The first promise to fail,
 // in time rather than list order, ends the wait: the promises still running are

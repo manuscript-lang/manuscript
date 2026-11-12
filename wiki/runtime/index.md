@@ -55,5 +55,5 @@ Cancellation, cleanup, resources, networking, promises, test helpers.
 - [XML comments validate content at every parser site](xml-comments-validate-content-at-every-parser-site.md)
 
 - [Template numbers preserve exact JSON values](template-numbers-preserve-exact-json-values.md): compare normalized coefficients and decimal orders without Float rounding or expanding exponents.
-- [A pinned stream keeps every promise on its thread, so workers must spread](a-pinned-stream-keeps-every-promise-on-its-thread-so-workers-must-spread.md): use `PromiseOptions(spread: true)` for per-core workers; check `top -H` for one busy thread.
+- [A pinned stream keeps every promise on its thread, so workers must spread](a-pinned-stream-keeps-every-promise-on-its-thread-so-workers-must-spread.md): use `PromiseOptions(placement: Placement.Spread)` for per-core workers; check `top -H` for one busy thread.
 - [Perf paths need a macOS and Windows equivalent](perf-paths-need-a-macos-and-windows-equivalent.md): the native standard library's global allocator was Linux-only; fixes are cross-platform, measuring may be Linux.

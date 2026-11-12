@@ -1,7 +1,7 @@
 // conform: tags=testing,scope-cleanup,faults
 // conform: phase=test
 import (
-	local_promise from "@std/concurrency/promise.ms",
+	Placement, PromiseOptions, promise from "@std/concurrency/promise.ms",
 	panic from "@std/core.ms",
 	expect_true from "@std/test/test.ms",
 	nanoseconds, sleep from "@std/time.ms",
@@ -79,7 +79,7 @@ fn optional_close_during_fault(label: String) Unit:
 	_ := held
 
 fn faults(work: fn() Unit) Bool:
-	return local_promise(fn: ok(work())).wait().is_error()
+	return promise(fn: ok(work()), options: PromiseOptions(placement: Placement.Here)).wait().is_error()
 
 test "a fault in close on a normal return releases the value":
 	expect_true(faults(fn: hold_then_break("a holder label that needs a heap block")))?
