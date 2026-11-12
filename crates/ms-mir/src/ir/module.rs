@@ -383,7 +383,7 @@ impl Module {
             Op::Call if matches!(inst.imm, Imm::Func(g) if self.funcs[g.index()].ret_view) => true,
             Op::CallRt
                 if matches!(inst.imm, Imm::Ext(e)
-                    if self.externs[e.index()].role == ExternRole::StringSplitView) =>
+                    if self.externs[e.index()].role == ExternRole::ViewResult) =>
             {
                 true
             }

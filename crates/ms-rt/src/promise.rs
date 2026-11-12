@@ -1355,6 +1355,13 @@ struct Native {
     arg: *mut u8,
 }
 
+/// Whether `closure` is the work of [`start_native`]: a runtime task, started from runtime frames
+/// that name no source line, so a fault report gains nothing from walking its starter's stack.
+pub(crate) fn is_native_work(closure: *const ms_rt_abi::Closure) -> bool {
+    // SAFETY: a live closure object.
+    unsafe { (*closure).code == native_code as *const u8 }
+}
+
 unsafe extern "C-unwind" fn native_code(closure: *mut ms_rt_abi::Closure) {
     // SAFETY: the task runs the `Native` that `start_native` built, which stays live meanwhile.
     unsafe {

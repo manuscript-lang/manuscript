@@ -439,7 +439,10 @@ impl Walker<'_> {
         // `String.view` and `Bytes.view` borrow their receiver: a position that would keep the view
         // needs an owner, so it takes a `.clone()` of the view. A temporary receiver is copied out.
         if d == Demand::Move
-            && matches!(name.as_str(), "view" | "split" | "lines" | "chars")
+            && matches!(
+                name.as_str(),
+                "view" | "split" | "lines" | "chars" | "keys" | "values" | "slice"
+            )
             && let Some(source) = self.native_borrow_receiver(e)
             && self.is_place(source)
         {
@@ -447,6 +450,30 @@ impl Walker<'_> {
                 e.pos,
                 format!(
                     "`{name}` borrows `{}`, which this position would keep; store `.{CLONE}()` of it, or use it in place",
+                    self.expr_text(source)
+                ),
+            );
+        }
+        // `xs.slice(a, b).get()`: the payload is the lent slice, so keeping it needs a `.clone()`.
+        if d == Demand::Move
+            && name == "get"
+            && args.is_empty()
+            && let Some(inner) = receiver_expr
+            && let ExprKind::Call {
+                callee: inner_callee,
+                ..
+            } = &inner.kind
+            && let ExprKind::Member {
+                name: inner_name, ..
+            } = &inner_callee.kind
+            && self.syms.str(inner_name) == "slice"
+            && let Some(source) = self.native_borrow_receiver(inner)
+            && self.is_place(source)
+        {
+            self.error(
+                e.pos,
+                format!(
+                    "`slice` borrows `{}`, which this position would keep; store `.{CLONE}()` of it, or use it in place",
                     self.expr_text(source)
                 ),
             );

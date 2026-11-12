@@ -20,15 +20,11 @@ impl<'a, 'm> Lower<'a, 'm> {
                 };
                 let ty = f.ty(inst.args[0]);
                 let (_, at, w) = self.fields_of(ty)[i as usize];
-                match self.rec_block(ty) {
-                    Some(block) => {
-                        let lay = mem_layout(&block);
-                        let p = self.a(inst, 0)[0];
-                        (at..at + w)
-                            .map(|k| self.load_leaf(block[k], p, lay.offsets[k] as i32))
-                            .collect()
-                    }
-                    None => self.a(inst, 0)[at..at + w].to_vec(),
+                if self.rec_block(ty).is_some() {
+                    let p = self.a(inst, 0)[0];
+                    self.rec_load_field(ty, p, i as usize)
+                } else {
+                    self.a(inst, 0)[at..at + w].to_vec()
                 }
             }
             Op::RecSet | Op::RecFill => {
@@ -48,7 +44,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                 // The old value is consumed by the set: an indirect record moves its fields into a
                 // fresh block and frees the old one, so no block is ever written in place.
                 if self.rec_block(ty).is_some() {
-                    self.free(held[0]);
+                    self.rec_free_block(ty, held[0]);
                 }
                 self.rec_pack(ty, obj)
             }
@@ -109,15 +105,14 @@ impl<'a, 'm> Lower<'a, 'm> {
                 };
                 let ty = f.ty(inst.args[0]);
                 let held = self.a(inst, 0);
-                let v = self.rec_expand(ty, &held);
-                // Drop the fields that were not moved out, then free the block of an indirect record.
+                if self.rec_block(ty).is_some() {
+                    self.rec_release(ty, held[0], mask as u64);
+                    return vec![];
+                }
                 for (k, (fty, at, w)) in self.fields_of(ty).into_iter().enumerate() {
                     if mask >> k & 1 == 0 {
-                        self.drop_value(fty, &v[at..at + w]);
+                        self.drop_value(fty, &held[at..at + w]);
                     }
-                }
-                if self.rec_block(ty).is_some() {
-                    self.free(held[0]);
                 }
                 vec![]
             }
@@ -233,7 +228,9 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let lt = f.ty(inst.args[0]);
                 let l = self.a(inst, 0);
                 let from = self.a(inst, 1)[0];
-                self.drop_list_from(lt, l[0], l[1], Some(from));
+                // A view (`cap == 0`, from `slice` of a lent list) owns nothing to release.
+                let owned = self.b.ins().icmp_imm_s(IntCC::NotEqual, l[2], 0);
+                self.if_then(owned, |s| s.drop_list_from(lt, l[0], l[1], Some(from)));
                 vec![]
             }
             _ => unreachable!("lists is only called for its own ops"),

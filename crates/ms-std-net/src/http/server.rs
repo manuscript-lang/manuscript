@@ -1650,10 +1650,10 @@ pub(super) fn body_allowed(status: i64) -> bool {
 
 /// Appends handler headers with canonical names, sorted.
 pub(super) fn append_handler_headers(out: &mut Vec<u8>, headers: &Headers) -> (bool, bool) {
-    let mut sorted: Vec<(String, &Vec<Vec<u8>>)> = headers
+    let mut sorted: Vec<(String, &[Vec<u8>])> = headers
         .entries()
         .iter()
-        .map(|e| (headers::canonical(&e.name), &e.values))
+        .map(|e| (headers::canonical(&e.name), &*e.values))
         .collect();
     sorted.sort_by(|a, b| a.0.cmp(&b.0));
     let (mut has_type, mut has_date) = (false, false);

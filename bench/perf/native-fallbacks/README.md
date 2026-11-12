@@ -31,10 +31,10 @@ Scratch buffers are read buffers in `ms-std-fs` and `ms-std-net`; they hold I/O 
 | --- | ---: | ---: | ---: |
 | `index_of_byte`, 1 MB, byte loop | 12 | 347 | 29x |
 | same, 32-byte blocks (after this change) | 12 | 31 | 2.6x |
-| same, 8 bytes at a time through `int64_le` | 12 | 903 | 75x |
+| same, 8 bytes at a time through `int64_le` | 12 | 172 (903 before the inline load) | 14x |
 | `==` of two 1 MB strings, byte loop (x20) | 765 | 7,425 | 9.7x |
 | same, 32-byte blocks (after this change) | 765 | 732 | 0.96x |
-| same, through `int64_le` | 765 | 36,834 | 48x |
+| same, through `int64_le` | 765 | 4,916 (36,834 before the inline load) | 6.4x |
 | `index_of` of a 7-byte absent needle in 1 MB | 53 | 1,418 | 27x |
 | `crc32` of 1 MB, table loop | 524 | 5,211 | 9.9x |
 | sort 1M `Int`, merge sort | 20,205 | 178,424 | 8.8x |
@@ -45,7 +45,7 @@ The flat table has no growth and no deletion, so its win bounds what a `Map[Int,
 ## Causes
 
 1. **A fixed-size block of reads was checked.** `a[i + j]` under `i + 32 <= len` and `j < 32` kept its bounds check, because the relation was recorded on `i + 32`, not on `i`. A checked read has two exits, so LLVM cannot vectorize the block. The range pass now derives `x <= b - c` from `x + c <= b` (`prove_le`); the block loops are unchecked and vectorize (memchr 730 to 31 us, equality 1,027 to 36 us per scan, native 12 and 44).
-2. **No inline word load.** `Bytes.int64_le` returns a `Result` through `msrt_bytes_read_word`, so a SWAR scan costs a call per word and is slower than the byte loop. Needed for hashing, UTF-8 validation, base64, CRC slicing and inflate.
+2. **No inline word load.** `Bytes.int64_le` called `msrt_bytes_read_word` in the archive, so a SWAR scan cost a call per word and was slower than the byte loop. The function now lives in `ms-rt-hot` (its status return is an `i64`, matching the declaration generated code makes, which is what lets LLVM inline it), and a read with a constant width is one compare and one load: SWAR memchr 903 to 172 us, SWAR equality 36,834 to 4,916 us. Every `int16`/`int32`/`int64`/`uint*` reader in `@std/bytes.ms` gets the same gain (binary formats, codecs, hashing, UTF-8 validation).
 3. **No bulk store.** A `.ms` twin cannot produce bytes without `BytesBuilder` or a per-element `append`, so every copying primitive stays native until a buffer has an inline unchecked store after one reserve.
 4. **No SIMD below the block pattern.** Native `memchr` uses wider vectors than the baseline `x86-64` target gives LLVM (2.6x left), and CRC-32 uses carry-less multiply (9.9x for table code). These two stay native: `memchr`, `memcmp`, `memcpy` and CRC are libc-sized primitives.
 5. **No specialization of `Map`/`Set` per key type.** The runtime derives slot layout from descriptors on each call; a flat table indexed by the key's hash is 3.5x faster in the counting loop.
@@ -54,7 +54,7 @@ The flat table has no growth and no deletion, so its win bounds what a `Map[Int,
 ## Plan, in order
 
 1. Window relation in the range pass (this change). Unlocks vectorized byte loops in `.ms`; next, move `bytes_eq`/`memcmp`-style equality and short-needle scans onto it and delete the Rust twin where the instruction count matches.
-2. Inline fixed-width loads (`int32_le`, `int64_le`, and unaligned reads) as a MIR op with the same range proofs.
+2. Inline fixed-width loads (done in this branch). Left: the `Result` wrapper still builds an error on the cold path in each caller.
 3. A byte buffer type with an inline store, so copy, concat, slice, `BytesBuilder` and the codecs can be `.ms`.
 4. `Map`/`Set` specialization per key type in `.ms`, starting with `Int` and `String` keys.
 5. Inflate and base64 in `.ms` after 2 and 3; measure on `bench/perf/codecs` before deleting the Rust.

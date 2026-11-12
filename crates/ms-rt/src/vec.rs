@@ -62,7 +62,8 @@ pub unsafe fn drop_list(v: *mut VecVal, d: &TypeDesc) {
     // SAFETY: caller contract.
     unsafe {
         let v = &mut *v;
-        if v.ptr.is_null() {
+        if v.ptr.is_null() || v.cap == 0 {
+            // Empty, or a view (`cap == 0`) that borrows its elements.
             return;
         }
         if !needs_no_drop(d) {
@@ -828,6 +829,38 @@ pub unsafe extern "C-unwind" fn msrt_list_slice(
             cap: (e - s) as usize,
         };
         copy_list(&view, &*d, out);
+        STATUS_OK
+    }
+}
+
+/// `slice(start, end)` of a list the caller keeps unchanged while the result is used: the result
+/// borrows the elements in place (`cap == 0`, never freed or dropped), so nothing is copied.
+/// Status protocol and bounds as `msrt_list_slice`.
+#[unsafe(no_mangle)]
+// ms: leaf
+pub unsafe extern "C-unwind" fn msrt_list_slice_view(
+    v: *const VecVal,
+    d: ElemDesc,
+    start: i64,
+    end: i64,
+    out: *mut VecVal,
+) -> u8 {
+    // SAFETY: caller contract; the result borrows `v`.
+    unsafe {
+        let n = (*v).len;
+        let (s, e) = (relative(n, start), relative(n, end));
+        if s < 0 || e < s || e > n as i64 {
+            return STATUS_OUT_OF_RANGE;
+        }
+        *out = if s == e {
+            EMPTY
+        } else {
+            VecVal {
+                ptr: elem(&*v, &*d, s as usize),
+                len: (e - s) as usize,
+                cap: 0,
+            }
+        };
         STATUS_OK
     }
 }
@@ -2035,38 +2068,6 @@ pub unsafe extern "C-unwind" fn msrt_bytes_extend(b: *mut VecVal, values: *const
 }
 
 // ---- Bytes fixed-width codecs ----
-
-/// `msrt_bytes_read_word(data, at, width, little)`: the `width` bytes (1, 2, 4 or 8) at `at` as an unsigned
-/// number, or all eight bytes as the `i64` with that bit pattern. `@std/bytes.ms` builds every
-/// `Bytes.int32_le(at)` style read on it. Missing bytes are `STATUS_OUT_OF_RANGE`.
-#[unsafe(no_mangle)]
-// ms: leaf domain=binary
-pub unsafe extern "C-unwind" fn msrt_bytes_read_word(
-    b: *const VecVal,
-    at: i64,
-    width: i64,
-    little: u8,
-    out: *mut i64,
-) -> u8 {
-    // SAFETY: caller contract.
-    unsafe {
-        let s = bslice(b);
-        let n = width as usize;
-        let Some(raw) = usize::try_from(at)
-            .ok()
-            .and_then(|start| s.get(start..start.checked_add(n)?))
-        else {
-            return STATUS_OUT_OF_RANGE;
-        };
-        let mut word = [0u8; 8];
-        word[..n].copy_from_slice(raw);
-        if little == 0 {
-            word[..n].reverse();
-        }
-        out.write(i64::from_le_bytes(word));
-        STATUS_OK
-    }
-}
 
 // ---- StringBuilder (bytes) ----
 

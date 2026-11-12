@@ -108,6 +108,35 @@ impl<'a> FnLower<'a> {
             e.id,
             ms_check::api::ownership::Fact::BorrowedRead,
         );
+        if lent && !recv.own {
+            // The checker lends the result (used in place while the receiver stays unchanged):
+            // string keys and values, and the elements of a slice, are views of the receiver.
+            let rty = self.ty_of(recv.v);
+            let name = native.rsplit('/').next().unwrap_or(native);
+            match (self.b.m.types.kind(rty), name) {
+                (TyKind::Obj(Native::Map, _), "keys" | "values") => {
+                    let sym = if name == "keys" {
+                        "msrt_map_keys_view"
+                    } else {
+                        "msrt_map_values_view"
+                    };
+                    let result = self.emty(e)?;
+                    return self.rt_method(sym, recv, &[], &[], result);
+                }
+                (TyKind::List(elem), "slice") if !self.b.m.needs_drop(*elem) => {
+                    let result = self.emty(e)?;
+                    // The list is a `cap == 0` view: dropping it frees and drops nothing.
+                    return self.rt_method(
+                        "msrt_list_slice_view",
+                        recv,
+                        &m.ty.params,
+                        &args,
+                        result,
+                    );
+                }
+                _ => {}
+            }
+        }
         if str_recv
             && native == "split"
             && (lent

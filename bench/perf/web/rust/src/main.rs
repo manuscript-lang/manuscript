@@ -69,7 +69,9 @@ async fn handle(req: Request<Incoming>) -> Result<Response<Full<Bytes>>, Infalli
 
 fn main() {
     let port = std::env::args().nth(1).expect("port");
-    let rt = tokio::runtime::Builder::new_multi_thread().worker_threads(2).enable_all().build().unwrap();
+    // server <port> <data-dir> [threads], like the other servers.
+    let threads = std::env::args().nth(3).and_then(|n| n.parse().ok()).unwrap_or(2);
+    let rt = tokio::runtime::Builder::new_multi_thread().worker_threads(threads).enable_all().build().unwrap();
     rt.block_on(async move {
         let listener = TcpListener::bind(format!("127.0.0.1:{port}")).await.unwrap();
         loop {

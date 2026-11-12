@@ -54,7 +54,7 @@ type MapAdapter:
 fn var MapAdapter.remove(key: Int) Unit:
     self.values.remove(key)
 
-fn MapAdapter.keys() List[Int]: self.values.keys()
+fn MapAdapter.keys() List[Int]: self.values.keys().clone()
 
 test "Map explicit and bound interface views remove through the adapter":
     var values = Map[Int, String]()

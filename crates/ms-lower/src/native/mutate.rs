@@ -134,7 +134,19 @@ impl<'a> FnLower<'a> {
                 let r = self.b.select(neg, shifted, i);
                 self.check_index(2, i, r, n, false);
                 let v = self.element_value(&args[1]);
-                Ok((self.b.list_set(old, i, v), None))
+                if !self.b.m.needs_drop(elem) {
+                    return Ok((self.b.list_set(old, i, v), None));
+                }
+                // Dropping the old element can run a capture close that faults: move it out and
+                // the new one in first, so the list stays an owned value the unwinder releases.
+                let (old_element, moved) = self.list_elem_at(old, r)?;
+                let new = if moved {
+                    self.b.list_fill(old, r, v)
+                } else {
+                    self.b.list_set(old, r, v)
+                };
+                self.drop_value(old_element);
+                Ok((new, None))
             }
             "swap" => {
                 let n = self.b.list_len(old);
