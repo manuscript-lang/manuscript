@@ -245,7 +245,19 @@ unsafe fn find_slot<K: KeyOps>(
     }
     // SAFETY: caller contract.
     unsafe {
-        let l = layout(kd, vd);
+        // Key dispatch already established the word size/alignment. Sets have no value
+        // descriptor, so their slot layout is fixed without reading the key descriptor again.
+        let l = if K::WORD_KEY && vd.is_none() {
+            Layout {
+                koff: 8,
+                voff: 16,
+                stride: 16,
+                ksize: 8,
+                vsize: 0,
+            }
+        } else {
+            layout(kd, vd)
+        };
         match find::<K>(m, kd, &l, key, hash_key::<K>(kd, key)) {
             Some(i) => slot(m, &l, i),
             None => core::ptr::null_mut(),
@@ -1559,6 +1571,68 @@ mod tests {
     use super::*;
     use crate::desc::{msrt_desc_int, msrt_desc_string};
     use crate::string::{self, from_bytes};
+
+    #[test]
+    fn int_set_membership_keeps_collisions_holes_and_order() {
+        let _g = testutil::lock();
+        // SAFETY: all slots and queries are live i64 values of the Int descriptor.
+        unsafe {
+            let kd = &msrt_desc_int;
+            let before = alloc::live_blocks();
+            let mut m = empty();
+            // Ninety-six keys share one bucket in the final 256-entry index.
+            let mut keys: Vec<i64> = (0..100_000i64)
+                .filter(|key| {
+                    let h = string::hash_int(*key as u64) | LIVE;
+                    (h ^ (h >> 32)) & 255 == 0
+                })
+                .take(96)
+                .collect();
+            assert_eq!(keys.len(), 96);
+            keys.extend([i64::MIN, -1, i64::MAX]);
+            let check = |m: &MapVal, live: &[i64]| {
+                for key in keys.iter().chain([-2i64, -3, -4].iter()) {
+                    let actual =
+                        msrt_map_contains(m, kd, core::ptr::null(), (key as *const i64).cast())
+                            != 0;
+                    assert_eq!(actual, live.contains(key), "query {key}");
+                }
+                let mut order = Vec::new();
+                each_key(m, kd, |p| order.push(*p.cast::<i64>()));
+                assert_eq!(order, live);
+            };
+            check(&m, &[]);
+            for key in &keys {
+                let mut value = *key;
+                insert(
+                    &mut m,
+                    kd,
+                    None,
+                    (&raw mut value).cast(),
+                    core::ptr::null_mut(),
+                );
+            }
+            check(&m, &keys);
+            for (i, key) in keys.iter().take(60).enumerate() {
+                assert!(remove(&mut m, kd, None, (key as *const i64).cast()));
+                // Check both tombstones and the compaction triggered by a majority of holes.
+                check(&m, &keys[i + 1..]);
+            }
+            msrt_map_clear(&mut m, kd, core::ptr::null());
+            check(&m, &[]);
+            let mut key = i64::MIN;
+            insert(
+                &mut m,
+                kd,
+                None,
+                (&raw mut key).cast(),
+                core::ptr::null_mut(),
+            );
+            check(&m, &[i64::MIN]);
+            drop_map(&mut m, kd, None);
+            assert_eq!(alloc::live_blocks(), before);
+        }
+    }
 
     fn merge_plain_desc(size: u32) -> TypeDesc {
         TypeDesc {
