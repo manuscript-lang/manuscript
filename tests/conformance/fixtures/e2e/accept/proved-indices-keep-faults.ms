@@ -71,3 +71,37 @@ fn largest(values: List[Int]) Int:
 test "an argmax index stays inside the list":
 	expect_equal(largest([3, 9, 2, 9]), 9)?
 	expect_equal(largest([7]), 7)?
+
+fn built_then_read(n: Int) Int:
+	var values: List[Int] = []
+
+	for i in 0..n:
+		values.append(i * 2)
+
+	var total = 0
+
+	for i in 0..n:
+		total += values[i]
+
+	return total
+
+fn filtered_then_read(n: Int) Int:
+	var values: List[Int] = []
+
+	for i in 0..n:
+		if i % 2 == 0:
+			values.append(i)
+
+	var total = 0
+
+	for i in 0..values.length():
+		total += values[i]
+
+	return total
+
+test "a list built by a counted loop is read by the same count":
+	expect_equal(built_then_read(5), 20)?
+	expect_equal(built_then_read(0), 0)?
+
+test "a list built by a conditional push is read by its own length":
+	expect_equal(filtered_then_read(7), 12)?
