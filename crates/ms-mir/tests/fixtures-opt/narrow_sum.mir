@@ -1,0 +1,25 @@
+module "narrow_sum"
+entry @main
+fn @main() -> int {
+b0:
+  %a: uint8 = iconst 200
+  %b: uint8 = iconst 255
+  %c: uint8 = iconst 7
+  %l: list<uint8> = list.lit %a, %b, %c
+  %z: int = iconst 0
+  br loop(%z, %z, %l)
+loop(%i: int, %acc: int, %l1: move list<uint8>):
+  %n: int = list.len %l1
+  %cond: bool = icmp.lt %i, %n
+  br_if %cond, body(), done()
+body:
+  %x: uint8 = list.get %l1, %i
+  %w: int = conv %x
+  %one: int = iconst 1
+  %i1: int = iadd.chk %i, %one
+  %acc2: int = iadd.chk %acc, %w
+  br loop(%i1, %acc2, %l1)
+done:
+  drop %l1
+  ret %acc
+}

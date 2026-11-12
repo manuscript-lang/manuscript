@@ -602,6 +602,52 @@ b3():
     }
 }
 
+/// A slot owner the program closes by hand on one branch and moves out of on the other: the
+/// join carries a drop flag and a closed flag, and only the hand-closed path closes it again.
+#[test]
+fn a_slot_owner_closed_by_hand_on_one_path_and_moved_on_another_is_released_once() {
+    for (cond, want) in [(1, "7\n~\n7\n"), (0, "x\n~\n")] {
+        let (_, out, text) = elaborate_and_run_text(&format!(
+            r#"fn @shut(%p: ptr) -> unit {{
+b0:
+  %r: list<int> = load list<int> %p
+  %z: int = iconst 0
+  %id: int = list.get %r, %z
+  %u: unit = call.rt @msrt_print_int (%id)
+  ret %u
+}}
+fn @main() -> int {{
+b0:
+  scope.begin 1 0
+  %n: int = iconst 7
+  %a: list<int> = call @mk (%n)
+  %s: ptr = slot list<int>
+  put %s, %a
+  scope.own 1 4 %s
+  %k: int = iconst {cond}
+  %one: int = iconst 1
+  %c: bool = icmp.eq %k, %one
+  br_if %c, b1(), b2()
+b1():
+  %u: unit = call @shut (%s)
+  scope.mark 1 %s
+  br b3()
+b2():
+  %t: list<int> = take list<int> %s
+  scope.disown %s
+  drop %t
+  br b3()
+b3():
+  scope.end 1 0
+  %r: int = iconst 0
+  ret %r
+}}
+"#
+        ));
+        assert_eq!(out, want, "cond {cond}\n{text}");
+    }
+}
+
 /// A memory-slot owner whose close returns a `Result`: the close runs shielded, its error becomes
 /// the function's return value through the function's close exit, and a close that succeeds
 /// leaves the normal return alone.
