@@ -28,19 +28,29 @@
           "index": 3,
           "name": "path.ms::glob matching rejects NUL in the path as it does in the pattern",
           "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "path.ms::POSIX resolution preserves resets separators and all input validation",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "path.ms::POSIX resolution handles long relative tails and absolute resets",
+          "status": "passed"
         }
       ],
       "summary": {
-        "available": 4,
-        "selected": 4,
-        "passed": 4,
+        "available": 6,
+        "selected": 6,
+        "passed": 6,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN path.ms::POSIX paths normalize resolve parse and match without host access\nPASS path.ms::POSIX paths normalize resolve parse and match without host access\nRUN path.ms::Windows paths use explicit dialect on every platform\nPASS path.ms::Windows paths use explicit dialect on every platform\nRUN path.ms::module dirname and basename_without follow the host dialect\nPASS path.ms::module dirname and basename_without follow the host dialect\nRUN path.ms::glob matching rejects NUL in the path as it does in the pattern\nPASS path.ms::glob matching rejects NUL in the path as it does in the pattern\n4 tests, 0 failed\n",
+      "stdout": "RUN path.ms::POSIX paths normalize resolve parse and match without host access\nPASS path.ms::POSIX paths normalize resolve parse and match without host access\nRUN path.ms::Windows paths use explicit dialect on every platform\nPASS path.ms::Windows paths use explicit dialect on every platform\nRUN path.ms::module dirname and basename_without follow the host dialect\nPASS path.ms::module dirname and basename_without follow the host dialect\nRUN path.ms::glob matching rejects NUL in the path as it does in the pattern\nPASS path.ms::glob matching rejects NUL in the path as it does in the pattern\nRUN path.ms::POSIX resolution preserves resets separators and all input validation\nPASS path.ms::POSIX resolution preserves resets separators and all input validation\nRUN path.ms::POSIX resolution handles long relative tails and absolute resets\nPASS path.ms::POSIX resolution handles long relative tails and absolute resets\n6 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [
