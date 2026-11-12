@@ -25,6 +25,8 @@ use std::sync::Once;
 pub const MAX_SMALL: usize = 2048;
 const PAGE_SHIFT: usize = 16;
 const PAGE_SIZE: usize = 1 << PAGE_SHIFT;
+/// Bytes at the start of each heap reservation that stay on small pages (see `ensure_region`).
+const HUGE_AFTER: usize = 4 << 20;
 /// Address space reserved for the small-block pages of the whole process.
 const PAGES_SIZE: usize = if cfg!(miri) { 64 << 20 } else { 256 << 30 };
 const NUM_PAGES: usize = PAGES_SIZE >> PAGE_SHIFT;
@@ -312,8 +314,13 @@ fn ensure_region() -> bool {
         if !sys::commit(table, NUM_PAGES * 4) {
             return;
         }
-        sys::prefer_huge_pages(pages, PAGES_SIZE);
-        sys::prefer_huge_pages(grow, GROW_SIZE * GROW_CHUNKS);
+        // Huge pages only past the first few MiB: the kernel clears a whole 2 MiB page on the first
+        // touch, which costs a short program about 0.35 ms at startup for memory it never uses.
+        sys::prefer_huge_pages(pages.wrapping_add(HUGE_AFTER), PAGES_SIZE - HUGE_AFTER);
+        sys::prefer_huge_pages(
+            grow.wrapping_add(HUGE_AFTER),
+            GROW_SIZE * GROW_CHUNKS - HUGE_AFTER,
+        );
         TABLE.store(table.cast(), Ordering::Relaxed);
         GROW_BASE.store(grow as usize, Ordering::Relaxed);
         // Published last: a reader that sees `BASE` sees the rest.

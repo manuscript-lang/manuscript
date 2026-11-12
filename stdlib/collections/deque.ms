@@ -18,20 +18,29 @@ export type Deque[T]:
 fn Deque[T].is_empty() Bool:
 	return self.size == 0
 
-// Doubles the ring buffer, unwrapping values so the front lands at index 0.
+// Doubles the ring buffer. The full buffer holds the values from `start` to the end,
+// then those before `start`; moving the first run to the end of the larger buffer keeps
+// that order and moves each value once.
 fn var Deque[T].grow() Unit:
 	capacity := self.slots.length()
 	var next = capacity * 2
 	if next == 0:
 		next = 4
 
-	if self.start != 0:
-		// Growth moves every value, including resource owners; slices would copy.
-		self.slots.rotate(self.start)
-		self.start = 0
-
+	shift := next - capacity
 	for slot in capacity..next:
 		self.slots.append(none)
+
+	// Growth moves every value, including resource owners; slices would copy.
+	var at = capacity - 1
+
+	while at >= self.start:
+		moved := self.slots.replace(at, none)
+		self.slots.set(at + shift, moved)
+		at -= 1
+
+	if capacity > 0:
+		self.start += shift
 
 // Returns the ring-buffer index of the value `offset` places after the front;
 // `offset` is at most the capacity.

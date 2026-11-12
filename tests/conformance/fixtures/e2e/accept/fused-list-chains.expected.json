@@ -1,0 +1,75 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "fused-list-chains.ms::filter, map and sum agree with the stages run one at a time",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "fused-list-chains.ms::chains that build a list",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "fused-list-chains.ms::empty and fully filtered inputs",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "fused-list-chains.ms::floats and captured values",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "fused-list-chains.ms::a lambda that calls a function runs the stages one at a time",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 5,
+        "selected": 5,
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN fused-list-chains.ms::filter, map and sum agree with the stages run one at a time\nPASS fused-list-chains.ms::filter, map and sum agree with the stages run one at a time\nRUN fused-list-chains.ms::chains that build a list\nPASS fused-list-chains.ms::chains that build a list\nRUN fused-list-chains.ms::empty and fully filtered inputs\nPASS fused-list-chains.ms::empty and fully filtered inputs\nRUN fused-list-chains.ms::floats and captured values\nPASS fused-list-chains.ms::floats and captured values\nRUN fused-list-chains.ms::a lambda that calls a function runs the stages one at a time\nPASS fused-list-chains.ms::a lambda that calls a function runs the stages one at a time\n5 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

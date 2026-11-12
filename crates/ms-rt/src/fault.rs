@@ -1319,6 +1319,7 @@ pub extern "C-unwind" fn msrt_fault_depth() -> ! {
         } else {
             lo + STACK_CLEANUP_RESERVE
         };
+        crate::task::publish_limit();
     }
     fault_kind(
         FaultKind::StackOverflow,
@@ -1682,6 +1683,7 @@ fn guard_exit(status: u8, message: Vec<u8>) -> ! {
         #[cfg(windows)]
         let teb = crate::task::segment_teb(f.seg);
         crate::task::restore_segment(f.seg);
+        crate::task::publish_limit();
         SHIELD.set(f.shield);
         cancel_flag().store(
             if f.shield == 0 {
@@ -1985,6 +1987,7 @@ pub unsafe extern "C-unwind" fn msrt_guard_call(
                     *FAULTING.ptr() = false;
                     (*cur_hdr()).limit = limit;
                     crate::task::restore_segment(seg);
+                    crate::task::publish_limit();
                     if p.0.starts_with("cancelled ") {
                         return GUARD_CANCELLED;
                     }
@@ -2102,6 +2105,8 @@ mod tests {
             ms_rt_abi::symbols::ISOLATE_HDR_GUARDED as usize,
         );
         assert_eq!(core::mem::size_of::<Hdr>(), 16);
+        // The region's last 16 bytes: the block's address, then the limit (`STACK_LIMIT_CELL`).
+        assert_eq!(ms_rt_abi::symbols::STACK_LIMIT_CELL, 8);
     }
 
     #[test]
