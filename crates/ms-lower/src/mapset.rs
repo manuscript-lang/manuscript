@@ -127,17 +127,17 @@ impl<'a> FnLower<'a> {
     pub(crate) fn borrowed_update_key<'e>(
         &mut self,
         view: &CallView<'e>,
+        m: &ct::MethodRef,
         recv_expr: &Expr,
         name: &str,
     ) -> Result<Option<(usize, &'e Expr)>, Error> {
-        if name != "update" || view.arguments.len() != 3 {
+        if name != "update" || view.arguments.len() != 3 || m.ty.params.len() != 3 {
             return Ok(None);
         }
-        let Some(at) = view
-            .arguments
-            .iter()
-            .position(|a| self.syms.str(a.slot.name) == "key")
-        else {
+        // The key is the first declared parameter, found by its declared slot, so renaming it in
+        // the standard declaration or writing the arguments in another order changes nothing.
+        let key_slot = m.ty.params[0].name;
+        let Some(at) = view.arguments.iter().position(|a| a.slot.name == key_slot) else {
             return Ok(None);
         };
         let key = &view.arguments[at];
