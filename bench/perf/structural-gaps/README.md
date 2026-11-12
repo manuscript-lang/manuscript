@@ -258,3 +258,14 @@ One probe remains per round besides the `contains` (the first statement's, after
 | with probe reuse | 87 to 105 ms | 778M |
 
 The earlier run of this case was 281 to 349 ms with seven lookups a pass; C is 22 to 33 ms. What is left is two probes a round at about 95 to 125 instructions each, from `value_ptr_k` deriving the slot layout from the descriptors on every call; caching the layout in the map header is the next step. Linux, same build and machine as above.
+
+## 2026-11-12, contains then update (stacked on map entry reuse)
+
+`fuse_contains` in `simplify`: a join whose first probe reads a map that arrives as a block parameter takes the entry address from its predecessors instead, when one of them holds an earlier probe or `contains` of the same key (a `contains` becomes the equivalent probe); the other predecessor, normally the insert path, probes before it branches. The common present-key path then probes once per round.
+
+| case | before | after |
+| --- | ---: | ---: |
+| `keyed.ms` case a, `Map[Int, Stat]` (callgrind Ir) | 521M | 281M |
+| `containers.ms` case a, `Map[String, Stat]` (callgrind Ir) | 778M | 415M |
+
+The Int case is now below the single `stats.update(...)` form (305M). A lookup is still about 80 instructions on a hit; its cost is spread over hashing, the string tag decode, the probe loop and the frame, not one hot spot, so no further single change is planned.
