@@ -19,6 +19,8 @@ rustls = { version = "0.23", default-features = false, features = ["std", "ring"
 rustls-native-certs = "0.8"
 x509-parser = { version = "0.18", features = ["verify"] }
 httparse = "1"
+# flate2 builds crc32fast without `std`, which drops the CPU-detected CRC32 and costs ~15% of a gzip body.
+crc32fast = { version = "1", default-features = false, features = ["std"] }
 flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
 psl = "2"
 ring = "0.17"
