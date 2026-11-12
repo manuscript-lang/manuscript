@@ -1,0 +1,5798 @@
+[
+  {
+    "case": "empty",
+    "variant": "baseline",
+    "pair": 0,
+    "ns": 124480761,
+    "checksum": 6291362,
+    "count": 898766,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/empty.in",
+      "/workspace/scratch/csv-quotes/current-main/empty.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "898766"
+    ]
+  },
+  {
+    "case": "empty",
+    "variant": "candidate",
+    "pair": 0,
+    "ns": 112635239,
+    "checksum": 6291362,
+    "count": 898766,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/empty.in",
+      "/workspace/scratch/csv-quotes/current-main/empty.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "898766"
+    ]
+  },
+  {
+    "case": "one",
+    "variant": "baseline",
+    "pair": 0,
+    "ns": 120673768,
+    "checksum": 6651544,
+    "count": 831443,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/one.in",
+      "/workspace/scratch/csv-quotes/current-main/one.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "831443"
+    ]
+  },
+  {
+    "case": "one",
+    "variant": "candidate",
+    "pair": 0,
+    "ns": 113266312,
+    "checksum": 6651544,
+    "count": 831443,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/one.in",
+      "/workspace/scratch/csv-quotes/current-main/one.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "831443"
+    ]
+  },
+  {
+    "case": "ordinary",
+    "variant": "baseline",
+    "pair": 0,
+    "ns": 114972435,
+    "checksum": 11909772,
+    "count": 661654,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/ordinary.in",
+      "/workspace/scratch/csv-quotes/current-main/ordinary.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "661654"
+    ]
+  },
+  {
+    "case": "ordinary",
+    "variant": "candidate",
+    "pair": 0,
+    "ns": 116114859,
+    "checksum": 11909772,
+    "count": 661654,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/ordinary.in",
+      "/workspace/scratch/csv-quotes/current-main/ordinary.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "661654"
+    ]
+  },
+  {
+    "case": "comma",
+    "variant": "baseline",
+    "pair": 0,
+    "ns": 115801997,
+    "checksum": 10890540,
+    "count": 544527,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/comma.in",
+      "/workspace/scratch/csv-quotes/current-main/comma.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "544527"
+    ]
+  },
+  {
+    "case": "comma",
+    "variant": "candidate",
+    "pair": 0,
+    "ns": 112697813,
+    "checksum": 10890540,
+    "count": 544527,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/comma.in",
+      "/workspace/scratch/csv-quotes/current-main/comma.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "544527"
+    ]
+  },
+  {
+    "case": "quote",
+    "variant": "baseline",
+    "pair": 0,
+    "ns": 128580566,
+    "checksum": 11458314,
+    "count": 545634,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/quote.in",
+      "/workspace/scratch/csv-quotes/current-main/quote.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "545634"
+    ]
+  },
+  {
+    "case": "quote",
+    "variant": "candidate",
+    "pair": 0,
+    "ns": 111683483,
+    "checksum": 11458314,
+    "count": 545634,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/quote.in",
+      "/workspace/scratch/csv-quotes/current-main/quote.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "545634"
+    ]
+  },
+  {
+    "case": "newline",
+    "variant": "baseline",
+    "pair": 0,
+    "ns": 124342052,
+    "checksum": 12178404,
+    "count": 579924,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/newline.in",
+      "/workspace/scratch/csv-quotes/current-main/newline.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "579924"
+    ]
+  },
+  {
+    "case": "newline",
+    "variant": "candidate",
+    "pair": 0,
+    "ns": 110675502,
+    "checksum": 12178404,
+    "count": 579924,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/newline.in",
+      "/workspace/scratch/csv-quotes/current-main/newline.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "579924"
+    ]
+  },
+  {
+    "case": "space",
+    "variant": "baseline",
+    "pair": 0,
+    "ns": 117393468,
+    "checksum": 8891040,
+    "count": 592736,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/space.in",
+      "/workspace/scratch/csv-quotes/current-main/space.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "592736"
+    ]
+  },
+  {
+    "case": "space",
+    "variant": "candidate",
+    "pair": 0,
+    "ns": 138568786,
+    "checksum": 8891040,
+    "count": 592736,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/space.in",
+      "/workspace/scratch/csv-quotes/current-main/space.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "592736"
+    ]
+  },
+  {
+    "case": "unicode",
+    "variant": "baseline",
+    "pair": 0,
+    "ns": 120275016,
+    "checksum": 10169872,
+    "count": 635617,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "635617"
+    ]
+  },
+  {
+    "case": "unicode",
+    "variant": "candidate",
+    "pair": 0,
+    "ns": 113498762,
+    "checksum": 10169872,
+    "count": 635617,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "635617"
+    ]
+  },
+  {
+    "case": "unicode-space",
+    "variant": "baseline",
+    "pair": 0,
+    "ns": 122099937,
+    "checksum": 8328504,
+    "count": 489912,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode-space.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode-space.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "489912"
+    ]
+  },
+  {
+    "case": "unicode-space",
+    "variant": "candidate",
+    "pair": 0,
+    "ns": 113936442,
+    "checksum": 8328504,
+    "count": 489912,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode-space.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode-space.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "489912"
+    ]
+  },
+  {
+    "case": "dot",
+    "variant": "baseline",
+    "pair": 0,
+    "ns": 115991533,
+    "checksum": 6806547,
+    "count": 618777,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/dot.in",
+      "/workspace/scratch/csv-quotes/current-main/dot.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "618777"
+    ]
+  },
+  {
+    "case": "dot",
+    "variant": "candidate",
+    "pair": 0,
+    "ns": 112987540,
+    "checksum": 6806547,
+    "count": 618777,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/dot.in",
+      "/workspace/scratch/csv-quotes/current-main/dot.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "618777"
+    ]
+  },
+  {
+    "case": "ascii-1024",
+    "variant": "baseline",
+    "pair": 0,
+    "ns": 323528933,
+    "checksum": 334927567,
+    "count": 324857,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/ascii-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/ascii-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "324857"
+    ]
+  },
+  {
+    "case": "ascii-1024",
+    "variant": "candidate",
+    "pair": 0,
+    "ns": 115731321,
+    "checksum": 334927567,
+    "count": 324857,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/ascii-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/ascii-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "324857"
+    ]
+  },
+  {
+    "case": "unicode-1024",
+    "variant": "baseline",
+    "pair": 0,
+    "ns": 1567459512,
+    "checksum": 641093985,
+    "count": 208215,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "208215"
+    ]
+  },
+  {
+    "case": "unicode-1024",
+    "variant": "candidate",
+    "pair": 0,
+    "ns": 115716849,
+    "checksum": 641093985,
+    "count": 208215,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "208215"
+    ]
+  },
+  {
+    "case": "early-comma-1024",
+    "variant": "baseline",
+    "pair": 0,
+    "ns": 167685105,
+    "checksum": 267157682,
+    "count": 258373,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "258373"
+    ]
+  },
+  {
+    "case": "early-comma-1024",
+    "variant": "candidate",
+    "pair": 0,
+    "ns": 106281933,
+    "checksum": 267157682,
+    "count": 258373,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "258373"
+    ]
+  },
+  {
+    "case": "late-comma-1024",
+    "variant": "baseline",
+    "pair": 0,
+    "ns": 324944259,
+    "checksum": 277197822,
+    "count": 268083,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "268083"
+    ]
+  },
+  {
+    "case": "late-comma-1024",
+    "variant": "candidate",
+    "pair": 0,
+    "ns": 121722891,
+    "checksum": 277197822,
+    "count": 268083,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "268083"
+    ]
+  },
+  {
+    "case": "ascii-65536",
+    "variant": "baseline",
+    "pair": 0,
+    "ns": 494735202,
+    "checksum": 590280258,
+    "count": 9006,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/ascii-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/ascii-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "9006"
+    ]
+  },
+  {
+    "case": "ascii-65536",
+    "variant": "candidate",
+    "pair": 0,
+    "ns": 111263810,
+    "checksum": 590280258,
+    "count": 9006,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/ascii-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/ascii-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "9006"
+    ]
+  },
+  {
+    "case": "unicode-65536",
+    "variant": "baseline",
+    "pair": 0,
+    "ns": 1606183574,
+    "checksum": 675962370,
+    "count": 3438,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "3438"
+    ]
+  },
+  {
+    "case": "unicode-65536",
+    "variant": "candidate",
+    "pair": 0,
+    "ns": 107015099,
+    "checksum": 675962370,
+    "count": 3438,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "3438"
+    ]
+  },
+  {
+    "case": "early-comma-65536",
+    "variant": "baseline",
+    "pair": 0,
+    "ns": 218776730,
+    "checksum": 497952962,
+    "count": 7597,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "7597"
+    ]
+  },
+  {
+    "case": "early-comma-65536",
+    "variant": "candidate",
+    "pair": 0,
+    "ns": 107605429,
+    "checksum": 497952962,
+    "count": 7597,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "7597"
+    ]
+  },
+  {
+    "case": "late-comma-65536",
+    "variant": "baseline",
+    "pair": 0,
+    "ns": 541833441,
+    "checksum": 510472248,
+    "count": 7788,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "7788"
+    ]
+  },
+  {
+    "case": "late-comma-65536",
+    "variant": "candidate",
+    "pair": 0,
+    "ns": 119362340,
+    "checksum": 510472248,
+    "count": 7788,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "7788"
+    ]
+  },
+  {
+    "case": "semicolon",
+    "variant": "baseline",
+    "pair": 0,
+    "ns": 144186628,
+    "checksum": 11179420,
+    "count": 558971,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/semicolon.in",
+      "/workspace/scratch/csv-quotes/current-main/semicolon.out",
+      ";",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "558971"
+    ]
+  },
+  {
+    "case": "semicolon",
+    "variant": "candidate",
+    "pair": 0,
+    "ns": 115887148,
+    "checksum": 11179420,
+    "count": 558971,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/semicolon.in",
+      "/workspace/scratch/csv-quotes/current-main/semicolon.out",
+      ";",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "558971"
+    ]
+  },
+  {
+    "case": "crlf",
+    "variant": "baseline",
+    "pair": 0,
+    "ns": 114097047,
+    "checksum": 8306430,
+    "count": 377565,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/crlf.in",
+      "/workspace/scratch/csv-quotes/current-main/crlf.out",
+      ",",
+      "crlf",
+      "OK",
+      "9223372036854775807",
+      "377565"
+    ]
+  },
+  {
+    "case": "crlf",
+    "variant": "candidate",
+    "pair": 0,
+    "ns": 105633908,
+    "checksum": 8306430,
+    "count": 377565,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/crlf.in",
+      "/workspace/scratch/csv-quotes/current-main/crlf.out",
+      ",",
+      "crlf",
+      "OK",
+      "9223372036854775807",
+      "377565"
+    ]
+  },
+  {
+    "case": "limit",
+    "variant": "baseline",
+    "pair": 0,
+    "ns": 130360816,
+    "checksum": 866892,
+    "count": 866892,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/limit.in",
+      "/workspace/scratch/csv-quotes/current-main/limit.out",
+      ",",
+      "lf",
+      "EOVERFLOW",
+      "1",
+      "866892"
+    ]
+  },
+  {
+    "case": "limit",
+    "variant": "candidate",
+    "pair": 0,
+    "ns": 116092538,
+    "checksum": 866892,
+    "count": 866892,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/limit.in",
+      "/workspace/scratch/csv-quotes/current-main/limit.out",
+      ",",
+      "lf",
+      "EOVERFLOW",
+      "1",
+      "866892"
+    ]
+  },
+  {
+    "case": "negative",
+    "variant": "baseline",
+    "pair": 0,
+    "ns": 105592814,
+    "checksum": 5780346,
+    "count": 5780346,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/negative.in",
+      "/workspace/scratch/csv-quotes/current-main/negative.out",
+      ",",
+      "lf",
+      "EINVAL",
+      "-1",
+      "5780346"
+    ]
+  },
+  {
+    "case": "negative",
+    "variant": "candidate",
+    "pair": 0,
+    "ns": 107936641,
+    "checksum": 5780346,
+    "count": 5780346,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/negative.in",
+      "/workspace/scratch/csv-quotes/current-main/negative.out",
+      ",",
+      "lf",
+      "EINVAL",
+      "-1",
+      "5780346"
+    ]
+  },
+  {
+    "case": "invalid-delimiter",
+    "variant": "baseline",
+    "pair": 0,
+    "ns": 119870791,
+    "checksum": 3017832,
+    "count": 3017832,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/invalid-delimiter.in",
+      "/workspace/scratch/csv-quotes/current-main/invalid-delimiter.out",
+      "\u00e9",
+      "lf",
+      "EINVAL",
+      "9223372036854775807",
+      "3017832"
+    ]
+  },
+  {
+    "case": "invalid-delimiter",
+    "variant": "candidate",
+    "pair": 0,
+    "ns": 117127161,
+    "checksum": 3017832,
+    "count": 3017832,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/invalid-delimiter.in",
+      "/workspace/scratch/csv-quotes/current-main/invalid-delimiter.out",
+      "\u00e9",
+      "lf",
+      "EINVAL",
+      "9223372036854775807",
+      "3017832"
+    ]
+  },
+  {
+    "case": "empty",
+    "variant": "candidate",
+    "pair": 1,
+    "ns": 113071310,
+    "checksum": 6291362,
+    "count": 898766,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/empty.in",
+      "/workspace/scratch/csv-quotes/current-main/empty.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "898766"
+    ]
+  },
+  {
+    "case": "empty",
+    "variant": "baseline",
+    "pair": 1,
+    "ns": 126344691,
+    "checksum": 6291362,
+    "count": 898766,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/empty.in",
+      "/workspace/scratch/csv-quotes/current-main/empty.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "898766"
+    ]
+  },
+  {
+    "case": "one",
+    "variant": "candidate",
+    "pair": 1,
+    "ns": 114162386,
+    "checksum": 6651544,
+    "count": 831443,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/one.in",
+      "/workspace/scratch/csv-quotes/current-main/one.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "831443"
+    ]
+  },
+  {
+    "case": "one",
+    "variant": "baseline",
+    "pair": 1,
+    "ns": 129139700,
+    "checksum": 6651544,
+    "count": 831443,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/one.in",
+      "/workspace/scratch/csv-quotes/current-main/one.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "831443"
+    ]
+  },
+  {
+    "case": "ordinary",
+    "variant": "candidate",
+    "pair": 1,
+    "ns": 116796742,
+    "checksum": 11909772,
+    "count": 661654,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/ordinary.in",
+      "/workspace/scratch/csv-quotes/current-main/ordinary.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "661654"
+    ]
+  },
+  {
+    "case": "ordinary",
+    "variant": "baseline",
+    "pair": 1,
+    "ns": 118313372,
+    "checksum": 11909772,
+    "count": 661654,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/ordinary.in",
+      "/workspace/scratch/csv-quotes/current-main/ordinary.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "661654"
+    ]
+  },
+  {
+    "case": "comma",
+    "variant": "candidate",
+    "pair": 1,
+    "ns": 116111438,
+    "checksum": 10890540,
+    "count": 544527,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/comma.in",
+      "/workspace/scratch/csv-quotes/current-main/comma.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "544527"
+    ]
+  },
+  {
+    "case": "comma",
+    "variant": "baseline",
+    "pair": 1,
+    "ns": 118753626,
+    "checksum": 10890540,
+    "count": 544527,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/comma.in",
+      "/workspace/scratch/csv-quotes/current-main/comma.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "544527"
+    ]
+  },
+  {
+    "case": "quote",
+    "variant": "candidate",
+    "pair": 1,
+    "ns": 112146885,
+    "checksum": 11458314,
+    "count": 545634,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/quote.in",
+      "/workspace/scratch/csv-quotes/current-main/quote.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "545634"
+    ]
+  },
+  {
+    "case": "quote",
+    "variant": "baseline",
+    "pair": 1,
+    "ns": 127875743,
+    "checksum": 11458314,
+    "count": 545634,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/quote.in",
+      "/workspace/scratch/csv-quotes/current-main/quote.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "545634"
+    ]
+  },
+  {
+    "case": "newline",
+    "variant": "candidate",
+    "pair": 1,
+    "ns": 113025081,
+    "checksum": 12178404,
+    "count": 579924,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/newline.in",
+      "/workspace/scratch/csv-quotes/current-main/newline.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "579924"
+    ]
+  },
+  {
+    "case": "newline",
+    "variant": "baseline",
+    "pair": 1,
+    "ns": 126369279,
+    "checksum": 12178404,
+    "count": 579924,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/newline.in",
+      "/workspace/scratch/csv-quotes/current-main/newline.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "579924"
+    ]
+  },
+  {
+    "case": "space",
+    "variant": "candidate",
+    "pair": 1,
+    "ns": 117467855,
+    "checksum": 8891040,
+    "count": 592736,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/space.in",
+      "/workspace/scratch/csv-quotes/current-main/space.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "592736"
+    ]
+  },
+  {
+    "case": "space",
+    "variant": "baseline",
+    "pair": 1,
+    "ns": 116677673,
+    "checksum": 8891040,
+    "count": 592736,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/space.in",
+      "/workspace/scratch/csv-quotes/current-main/space.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "592736"
+    ]
+  },
+  {
+    "case": "unicode",
+    "variant": "candidate",
+    "pair": 1,
+    "ns": 114114134,
+    "checksum": 10169872,
+    "count": 635617,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "635617"
+    ]
+  },
+  {
+    "case": "unicode",
+    "variant": "baseline",
+    "pair": 1,
+    "ns": 127069585,
+    "checksum": 10169872,
+    "count": 635617,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "635617"
+    ]
+  },
+  {
+    "case": "unicode-space",
+    "variant": "candidate",
+    "pair": 1,
+    "ns": 127305161,
+    "checksum": 8328504,
+    "count": 489912,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode-space.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode-space.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "489912"
+    ]
+  },
+  {
+    "case": "unicode-space",
+    "variant": "baseline",
+    "pair": 1,
+    "ns": 129807016,
+    "checksum": 8328504,
+    "count": 489912,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode-space.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode-space.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "489912"
+    ]
+  },
+  {
+    "case": "dot",
+    "variant": "candidate",
+    "pair": 1,
+    "ns": 118789129,
+    "checksum": 6806547,
+    "count": 618777,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/dot.in",
+      "/workspace/scratch/csv-quotes/current-main/dot.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "618777"
+    ]
+  },
+  {
+    "case": "dot",
+    "variant": "baseline",
+    "pair": 1,
+    "ns": 122178234,
+    "checksum": 6806547,
+    "count": 618777,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/dot.in",
+      "/workspace/scratch/csv-quotes/current-main/dot.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "618777"
+    ]
+  },
+  {
+    "case": "ascii-1024",
+    "variant": "candidate",
+    "pair": 1,
+    "ns": 120436234,
+    "checksum": 334927567,
+    "count": 324857,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/ascii-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/ascii-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "324857"
+    ]
+  },
+  {
+    "case": "ascii-1024",
+    "variant": "baseline",
+    "pair": 1,
+    "ns": 329345027,
+    "checksum": 334927567,
+    "count": 324857,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/ascii-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/ascii-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "324857"
+    ]
+  },
+  {
+    "case": "unicode-1024",
+    "variant": "candidate",
+    "pair": 1,
+    "ns": 117231348,
+    "checksum": 641093985,
+    "count": 208215,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "208215"
+    ]
+  },
+  {
+    "case": "unicode-1024",
+    "variant": "baseline",
+    "pair": 1,
+    "ns": 1597944801,
+    "checksum": 641093985,
+    "count": 208215,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "208215"
+    ]
+  },
+  {
+    "case": "early-comma-1024",
+    "variant": "candidate",
+    "pair": 1,
+    "ns": 123213448,
+    "checksum": 267157682,
+    "count": 258373,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "258373"
+    ]
+  },
+  {
+    "case": "early-comma-1024",
+    "variant": "baseline",
+    "pair": 1,
+    "ns": 172348474,
+    "checksum": 267157682,
+    "count": 258373,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "258373"
+    ]
+  },
+  {
+    "case": "late-comma-1024",
+    "variant": "candidate",
+    "pair": 1,
+    "ns": 115970359,
+    "checksum": 277197822,
+    "count": 268083,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "268083"
+    ]
+  },
+  {
+    "case": "late-comma-1024",
+    "variant": "baseline",
+    "pair": 1,
+    "ns": 344697889,
+    "checksum": 277197822,
+    "count": 268083,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "268083"
+    ]
+  },
+  {
+    "case": "ascii-65536",
+    "variant": "candidate",
+    "pair": 1,
+    "ns": 115799441,
+    "checksum": 590280258,
+    "count": 9006,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/ascii-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/ascii-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "9006"
+    ]
+  },
+  {
+    "case": "ascii-65536",
+    "variant": "baseline",
+    "pair": 1,
+    "ns": 529519889,
+    "checksum": 590280258,
+    "count": 9006,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/ascii-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/ascii-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "9006"
+    ]
+  },
+  {
+    "case": "unicode-65536",
+    "variant": "candidate",
+    "pair": 1,
+    "ns": 129282470,
+    "checksum": 675962370,
+    "count": 3438,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "3438"
+    ]
+  },
+  {
+    "case": "unicode-65536",
+    "variant": "baseline",
+    "pair": 1,
+    "ns": 1655072298,
+    "checksum": 675962370,
+    "count": 3438,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "3438"
+    ]
+  },
+  {
+    "case": "early-comma-65536",
+    "variant": "candidate",
+    "pair": 1,
+    "ns": 110613438,
+    "checksum": 497952962,
+    "count": 7597,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "7597"
+    ]
+  },
+  {
+    "case": "early-comma-65536",
+    "variant": "baseline",
+    "pair": 1,
+    "ns": 295144195,
+    "checksum": 497952962,
+    "count": 7597,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "7597"
+    ]
+  },
+  {
+    "case": "late-comma-65536",
+    "variant": "candidate",
+    "pair": 1,
+    "ns": 111627829,
+    "checksum": 510472248,
+    "count": 7788,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "7788"
+    ]
+  },
+  {
+    "case": "late-comma-65536",
+    "variant": "baseline",
+    "pair": 1,
+    "ns": 515222569,
+    "checksum": 510472248,
+    "count": 7788,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "7788"
+    ]
+  },
+  {
+    "case": "semicolon",
+    "variant": "candidate",
+    "pair": 1,
+    "ns": 115552952,
+    "checksum": 11179420,
+    "count": 558971,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/semicolon.in",
+      "/workspace/scratch/csv-quotes/current-main/semicolon.out",
+      ";",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "558971"
+    ]
+  },
+  {
+    "case": "semicolon",
+    "variant": "baseline",
+    "pair": 1,
+    "ns": 120982667,
+    "checksum": 11179420,
+    "count": 558971,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/semicolon.in",
+      "/workspace/scratch/csv-quotes/current-main/semicolon.out",
+      ";",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "558971"
+    ]
+  },
+  {
+    "case": "crlf",
+    "variant": "candidate",
+    "pair": 1,
+    "ns": 107727333,
+    "checksum": 8306430,
+    "count": 377565,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/crlf.in",
+      "/workspace/scratch/csv-quotes/current-main/crlf.out",
+      ",",
+      "crlf",
+      "OK",
+      "9223372036854775807",
+      "377565"
+    ]
+  },
+  {
+    "case": "crlf",
+    "variant": "baseline",
+    "pair": 1,
+    "ns": 126560464,
+    "checksum": 8306430,
+    "count": 377565,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/crlf.in",
+      "/workspace/scratch/csv-quotes/current-main/crlf.out",
+      ",",
+      "crlf",
+      "OK",
+      "9223372036854775807",
+      "377565"
+    ]
+  },
+  {
+    "case": "limit",
+    "variant": "candidate",
+    "pair": 1,
+    "ns": 120841814,
+    "checksum": 866892,
+    "count": 866892,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/limit.in",
+      "/workspace/scratch/csv-quotes/current-main/limit.out",
+      ",",
+      "lf",
+      "EOVERFLOW",
+      "1",
+      "866892"
+    ]
+  },
+  {
+    "case": "limit",
+    "variant": "baseline",
+    "pair": 1,
+    "ns": 134928843,
+    "checksum": 866892,
+    "count": 866892,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/limit.in",
+      "/workspace/scratch/csv-quotes/current-main/limit.out",
+      ",",
+      "lf",
+      "EOVERFLOW",
+      "1",
+      "866892"
+    ]
+  },
+  {
+    "case": "negative",
+    "variant": "candidate",
+    "pair": 1,
+    "ns": 115405751,
+    "checksum": 5780346,
+    "count": 5780346,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/negative.in",
+      "/workspace/scratch/csv-quotes/current-main/negative.out",
+      ",",
+      "lf",
+      "EINVAL",
+      "-1",
+      "5780346"
+    ]
+  },
+  {
+    "case": "negative",
+    "variant": "baseline",
+    "pair": 1,
+    "ns": 115842840,
+    "checksum": 5780346,
+    "count": 5780346,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/negative.in",
+      "/workspace/scratch/csv-quotes/current-main/negative.out",
+      ",",
+      "lf",
+      "EINVAL",
+      "-1",
+      "5780346"
+    ]
+  },
+  {
+    "case": "invalid-delimiter",
+    "variant": "candidate",
+    "pair": 1,
+    "ns": 111570762,
+    "checksum": 3017832,
+    "count": 3017832,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/invalid-delimiter.in",
+      "/workspace/scratch/csv-quotes/current-main/invalid-delimiter.out",
+      "\u00e9",
+      "lf",
+      "EINVAL",
+      "9223372036854775807",
+      "3017832"
+    ]
+  },
+  {
+    "case": "invalid-delimiter",
+    "variant": "baseline",
+    "pair": 1,
+    "ns": 118828385,
+    "checksum": 3017832,
+    "count": 3017832,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/invalid-delimiter.in",
+      "/workspace/scratch/csv-quotes/current-main/invalid-delimiter.out",
+      "\u00e9",
+      "lf",
+      "EINVAL",
+      "9223372036854775807",
+      "3017832"
+    ]
+  },
+  {
+    "case": "empty",
+    "variant": "baseline",
+    "pair": 2,
+    "ns": 149702708,
+    "checksum": 6291362,
+    "count": 898766,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/empty.in",
+      "/workspace/scratch/csv-quotes/current-main/empty.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "898766"
+    ]
+  },
+  {
+    "case": "empty",
+    "variant": "candidate",
+    "pair": 2,
+    "ns": 118095950,
+    "checksum": 6291362,
+    "count": 898766,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/empty.in",
+      "/workspace/scratch/csv-quotes/current-main/empty.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "898766"
+    ]
+  },
+  {
+    "case": "one",
+    "variant": "baseline",
+    "pair": 2,
+    "ns": 124910954,
+    "checksum": 6651544,
+    "count": 831443,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/one.in",
+      "/workspace/scratch/csv-quotes/current-main/one.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "831443"
+    ]
+  },
+  {
+    "case": "one",
+    "variant": "candidate",
+    "pair": 2,
+    "ns": 121240936,
+    "checksum": 6651544,
+    "count": 831443,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/one.in",
+      "/workspace/scratch/csv-quotes/current-main/one.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "831443"
+    ]
+  },
+  {
+    "case": "ordinary",
+    "variant": "baseline",
+    "pair": 2,
+    "ns": 121771226,
+    "checksum": 11909772,
+    "count": 661654,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/ordinary.in",
+      "/workspace/scratch/csv-quotes/current-main/ordinary.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "661654"
+    ]
+  },
+  {
+    "case": "ordinary",
+    "variant": "candidate",
+    "pair": 2,
+    "ns": 122961422,
+    "checksum": 11909772,
+    "count": 661654,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/ordinary.in",
+      "/workspace/scratch/csv-quotes/current-main/ordinary.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "661654"
+    ]
+  },
+  {
+    "case": "comma",
+    "variant": "baseline",
+    "pair": 2,
+    "ns": 118430525,
+    "checksum": 10890540,
+    "count": 544527,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/comma.in",
+      "/workspace/scratch/csv-quotes/current-main/comma.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "544527"
+    ]
+  },
+  {
+    "case": "comma",
+    "variant": "candidate",
+    "pair": 2,
+    "ns": 113516078,
+    "checksum": 10890540,
+    "count": 544527,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/comma.in",
+      "/workspace/scratch/csv-quotes/current-main/comma.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "544527"
+    ]
+  },
+  {
+    "case": "quote",
+    "variant": "baseline",
+    "pair": 2,
+    "ns": 128220259,
+    "checksum": 11458314,
+    "count": 545634,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/quote.in",
+      "/workspace/scratch/csv-quotes/current-main/quote.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "545634"
+    ]
+  },
+  {
+    "case": "quote",
+    "variant": "candidate",
+    "pair": 2,
+    "ns": 112022043,
+    "checksum": 11458314,
+    "count": 545634,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/quote.in",
+      "/workspace/scratch/csv-quotes/current-main/quote.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "545634"
+    ]
+  },
+  {
+    "case": "newline",
+    "variant": "baseline",
+    "pair": 2,
+    "ns": 126773270,
+    "checksum": 12178404,
+    "count": 579924,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/newline.in",
+      "/workspace/scratch/csv-quotes/current-main/newline.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "579924"
+    ]
+  },
+  {
+    "case": "newline",
+    "variant": "candidate",
+    "pair": 2,
+    "ns": 111979653,
+    "checksum": 12178404,
+    "count": 579924,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/newline.in",
+      "/workspace/scratch/csv-quotes/current-main/newline.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "579924"
+    ]
+  },
+  {
+    "case": "space",
+    "variant": "baseline",
+    "pair": 2,
+    "ns": 121320948,
+    "checksum": 8891040,
+    "count": 592736,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/space.in",
+      "/workspace/scratch/csv-quotes/current-main/space.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "592736"
+    ]
+  },
+  {
+    "case": "space",
+    "variant": "candidate",
+    "pair": 2,
+    "ns": 117971205,
+    "checksum": 8891040,
+    "count": 592736,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/space.in",
+      "/workspace/scratch/csv-quotes/current-main/space.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "592736"
+    ]
+  },
+  {
+    "case": "unicode",
+    "variant": "baseline",
+    "pair": 2,
+    "ns": 125455397,
+    "checksum": 10169872,
+    "count": 635617,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "635617"
+    ]
+  },
+  {
+    "case": "unicode",
+    "variant": "candidate",
+    "pair": 2,
+    "ns": 116487195,
+    "checksum": 10169872,
+    "count": 635617,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "635617"
+    ]
+  },
+  {
+    "case": "unicode-space",
+    "variant": "baseline",
+    "pair": 2,
+    "ns": 159089046,
+    "checksum": 8328504,
+    "count": 489912,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode-space.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode-space.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "489912"
+    ]
+  },
+  {
+    "case": "unicode-space",
+    "variant": "candidate",
+    "pair": 2,
+    "ns": 118446130,
+    "checksum": 8328504,
+    "count": 489912,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode-space.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode-space.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "489912"
+    ]
+  },
+  {
+    "case": "dot",
+    "variant": "baseline",
+    "pair": 2,
+    "ns": 118196795,
+    "checksum": 6806547,
+    "count": 618777,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/dot.in",
+      "/workspace/scratch/csv-quotes/current-main/dot.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "618777"
+    ]
+  },
+  {
+    "case": "dot",
+    "variant": "candidate",
+    "pair": 2,
+    "ns": 118269824,
+    "checksum": 6806547,
+    "count": 618777,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/dot.in",
+      "/workspace/scratch/csv-quotes/current-main/dot.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "618777"
+    ]
+  },
+  {
+    "case": "ascii-1024",
+    "variant": "baseline",
+    "pair": 2,
+    "ns": 325519148,
+    "checksum": 334927567,
+    "count": 324857,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/ascii-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/ascii-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "324857"
+    ]
+  },
+  {
+    "case": "ascii-1024",
+    "variant": "candidate",
+    "pair": 2,
+    "ns": 119386500,
+    "checksum": 334927567,
+    "count": 324857,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/ascii-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/ascii-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "324857"
+    ]
+  },
+  {
+    "case": "unicode-1024",
+    "variant": "baseline",
+    "pair": 2,
+    "ns": 1551722220,
+    "checksum": 641093985,
+    "count": 208215,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "208215"
+    ]
+  },
+  {
+    "case": "unicode-1024",
+    "variant": "candidate",
+    "pair": 2,
+    "ns": 118698632,
+    "checksum": 641093985,
+    "count": 208215,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "208215"
+    ]
+  },
+  {
+    "case": "early-comma-1024",
+    "variant": "baseline",
+    "pair": 2,
+    "ns": 160033491,
+    "checksum": 267157682,
+    "count": 258373,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "258373"
+    ]
+  },
+  {
+    "case": "early-comma-1024",
+    "variant": "candidate",
+    "pair": 2,
+    "ns": 108634486,
+    "checksum": 267157682,
+    "count": 258373,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "258373"
+    ]
+  },
+  {
+    "case": "late-comma-1024",
+    "variant": "baseline",
+    "pair": 2,
+    "ns": 328720700,
+    "checksum": 277197822,
+    "count": 268083,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "268083"
+    ]
+  },
+  {
+    "case": "late-comma-1024",
+    "variant": "candidate",
+    "pair": 2,
+    "ns": 114548240,
+    "checksum": 277197822,
+    "count": 268083,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "268083"
+    ]
+  },
+  {
+    "case": "ascii-65536",
+    "variant": "baseline",
+    "pair": 2,
+    "ns": 500872707,
+    "checksum": 590280258,
+    "count": 9006,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/ascii-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/ascii-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "9006"
+    ]
+  },
+  {
+    "case": "ascii-65536",
+    "variant": "candidate",
+    "pair": 2,
+    "ns": 114420698,
+    "checksum": 590280258,
+    "count": 9006,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/ascii-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/ascii-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "9006"
+    ]
+  },
+  {
+    "case": "unicode-65536",
+    "variant": "baseline",
+    "pair": 2,
+    "ns": 1635351130,
+    "checksum": 675962370,
+    "count": 3438,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "3438"
+    ]
+  },
+  {
+    "case": "unicode-65536",
+    "variant": "candidate",
+    "pair": 2,
+    "ns": 118188523,
+    "checksum": 675962370,
+    "count": 3438,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "3438"
+    ]
+  },
+  {
+    "case": "early-comma-65536",
+    "variant": "baseline",
+    "pair": 2,
+    "ns": 222890957,
+    "checksum": 497952962,
+    "count": 7597,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "7597"
+    ]
+  },
+  {
+    "case": "early-comma-65536",
+    "variant": "candidate",
+    "pair": 2,
+    "ns": 109075432,
+    "checksum": 497952962,
+    "count": 7597,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "7597"
+    ]
+  },
+  {
+    "case": "late-comma-65536",
+    "variant": "baseline",
+    "pair": 2,
+    "ns": 525369881,
+    "checksum": 510472248,
+    "count": 7788,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "7788"
+    ]
+  },
+  {
+    "case": "late-comma-65536",
+    "variant": "candidate",
+    "pair": 2,
+    "ns": 118018766,
+    "checksum": 510472248,
+    "count": 7788,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "7788"
+    ]
+  },
+  {
+    "case": "semicolon",
+    "variant": "baseline",
+    "pair": 2,
+    "ns": 126298239,
+    "checksum": 11179420,
+    "count": 558971,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/semicolon.in",
+      "/workspace/scratch/csv-quotes/current-main/semicolon.out",
+      ";",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "558971"
+    ]
+  },
+  {
+    "case": "semicolon",
+    "variant": "candidate",
+    "pair": 2,
+    "ns": 116903443,
+    "checksum": 11179420,
+    "count": 558971,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/semicolon.in",
+      "/workspace/scratch/csv-quotes/current-main/semicolon.out",
+      ";",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "558971"
+    ]
+  },
+  {
+    "case": "crlf",
+    "variant": "baseline",
+    "pair": 2,
+    "ns": 113816886,
+    "checksum": 8306430,
+    "count": 377565,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/crlf.in",
+      "/workspace/scratch/csv-quotes/current-main/crlf.out",
+      ",",
+      "crlf",
+      "OK",
+      "9223372036854775807",
+      "377565"
+    ]
+  },
+  {
+    "case": "crlf",
+    "variant": "candidate",
+    "pair": 2,
+    "ns": 104681451,
+    "checksum": 8306430,
+    "count": 377565,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/crlf.in",
+      "/workspace/scratch/csv-quotes/current-main/crlf.out",
+      ",",
+      "crlf",
+      "OK",
+      "9223372036854775807",
+      "377565"
+    ]
+  },
+  {
+    "case": "limit",
+    "variant": "baseline",
+    "pair": 2,
+    "ns": 128499780,
+    "checksum": 866892,
+    "count": 866892,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/limit.in",
+      "/workspace/scratch/csv-quotes/current-main/limit.out",
+      ",",
+      "lf",
+      "EOVERFLOW",
+      "1",
+      "866892"
+    ]
+  },
+  {
+    "case": "limit",
+    "variant": "candidate",
+    "pair": 2,
+    "ns": 115588639,
+    "checksum": 866892,
+    "count": 866892,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/limit.in",
+      "/workspace/scratch/csv-quotes/current-main/limit.out",
+      ",",
+      "lf",
+      "EOVERFLOW",
+      "1",
+      "866892"
+    ]
+  },
+  {
+    "case": "negative",
+    "variant": "baseline",
+    "pair": 2,
+    "ns": 104927743,
+    "checksum": 5780346,
+    "count": 5780346,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/negative.in",
+      "/workspace/scratch/csv-quotes/current-main/negative.out",
+      ",",
+      "lf",
+      "EINVAL",
+      "-1",
+      "5780346"
+    ]
+  },
+  {
+    "case": "negative",
+    "variant": "candidate",
+    "pair": 2,
+    "ns": 109197997,
+    "checksum": 5780346,
+    "count": 5780346,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/negative.in",
+      "/workspace/scratch/csv-quotes/current-main/negative.out",
+      ",",
+      "lf",
+      "EINVAL",
+      "-1",
+      "5780346"
+    ]
+  },
+  {
+    "case": "invalid-delimiter",
+    "variant": "baseline",
+    "pair": 2,
+    "ns": 128073617,
+    "checksum": 3017832,
+    "count": 3017832,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/invalid-delimiter.in",
+      "/workspace/scratch/csv-quotes/current-main/invalid-delimiter.out",
+      "\u00e9",
+      "lf",
+      "EINVAL",
+      "9223372036854775807",
+      "3017832"
+    ]
+  },
+  {
+    "case": "invalid-delimiter",
+    "variant": "candidate",
+    "pair": 2,
+    "ns": 106759457,
+    "checksum": 3017832,
+    "count": 3017832,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/invalid-delimiter.in",
+      "/workspace/scratch/csv-quotes/current-main/invalid-delimiter.out",
+      "\u00e9",
+      "lf",
+      "EINVAL",
+      "9223372036854775807",
+      "3017832"
+    ]
+  },
+  {
+    "case": "empty",
+    "variant": "candidate",
+    "pair": 3,
+    "ns": 113678818,
+    "checksum": 6291362,
+    "count": 898766,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/empty.in",
+      "/workspace/scratch/csv-quotes/current-main/empty.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "898766"
+    ]
+  },
+  {
+    "case": "empty",
+    "variant": "baseline",
+    "pair": 3,
+    "ns": 123983737,
+    "checksum": 6291362,
+    "count": 898766,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/empty.in",
+      "/workspace/scratch/csv-quotes/current-main/empty.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "898766"
+    ]
+  },
+  {
+    "case": "one",
+    "variant": "candidate",
+    "pair": 3,
+    "ns": 115099250,
+    "checksum": 6651544,
+    "count": 831443,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/one.in",
+      "/workspace/scratch/csv-quotes/current-main/one.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "831443"
+    ]
+  },
+  {
+    "case": "one",
+    "variant": "baseline",
+    "pair": 3,
+    "ns": 122650926,
+    "checksum": 6651544,
+    "count": 831443,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/one.in",
+      "/workspace/scratch/csv-quotes/current-main/one.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "831443"
+    ]
+  },
+  {
+    "case": "ordinary",
+    "variant": "candidate",
+    "pair": 3,
+    "ns": 114607129,
+    "checksum": 11909772,
+    "count": 661654,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/ordinary.in",
+      "/workspace/scratch/csv-quotes/current-main/ordinary.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "661654"
+    ]
+  },
+  {
+    "case": "ordinary",
+    "variant": "baseline",
+    "pair": 3,
+    "ns": 116188145,
+    "checksum": 11909772,
+    "count": 661654,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/ordinary.in",
+      "/workspace/scratch/csv-quotes/current-main/ordinary.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "661654"
+    ]
+  },
+  {
+    "case": "comma",
+    "variant": "candidate",
+    "pair": 3,
+    "ns": 115843244,
+    "checksum": 10890540,
+    "count": 544527,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/comma.in",
+      "/workspace/scratch/csv-quotes/current-main/comma.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "544527"
+    ]
+  },
+  {
+    "case": "comma",
+    "variant": "baseline",
+    "pair": 3,
+    "ns": 115852608,
+    "checksum": 10890540,
+    "count": 544527,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/comma.in",
+      "/workspace/scratch/csv-quotes/current-main/comma.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "544527"
+    ]
+  },
+  {
+    "case": "quote",
+    "variant": "candidate",
+    "pair": 3,
+    "ns": 109514825,
+    "checksum": 11458314,
+    "count": 545634,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/quote.in",
+      "/workspace/scratch/csv-quotes/current-main/quote.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "545634"
+    ]
+  },
+  {
+    "case": "quote",
+    "variant": "baseline",
+    "pair": 3,
+    "ns": 124921521,
+    "checksum": 11458314,
+    "count": 545634,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/quote.in",
+      "/workspace/scratch/csv-quotes/current-main/quote.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "545634"
+    ]
+  },
+  {
+    "case": "newline",
+    "variant": "candidate",
+    "pair": 3,
+    "ns": 111011623,
+    "checksum": 12178404,
+    "count": 579924,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/newline.in",
+      "/workspace/scratch/csv-quotes/current-main/newline.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "579924"
+    ]
+  },
+  {
+    "case": "newline",
+    "variant": "baseline",
+    "pair": 3,
+    "ns": 124498965,
+    "checksum": 12178404,
+    "count": 579924,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/newline.in",
+      "/workspace/scratch/csv-quotes/current-main/newline.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "579924"
+    ]
+  },
+  {
+    "case": "space",
+    "variant": "candidate",
+    "pair": 3,
+    "ns": 114312364,
+    "checksum": 8891040,
+    "count": 592736,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/space.in",
+      "/workspace/scratch/csv-quotes/current-main/space.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "592736"
+    ]
+  },
+  {
+    "case": "space",
+    "variant": "baseline",
+    "pair": 3,
+    "ns": 115920331,
+    "checksum": 8891040,
+    "count": 592736,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/space.in",
+      "/workspace/scratch/csv-quotes/current-main/space.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "592736"
+    ]
+  },
+  {
+    "case": "unicode",
+    "variant": "candidate",
+    "pair": 3,
+    "ns": 112484968,
+    "checksum": 10169872,
+    "count": 635617,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "635617"
+    ]
+  },
+  {
+    "case": "unicode",
+    "variant": "baseline",
+    "pair": 3,
+    "ns": 120738180,
+    "checksum": 10169872,
+    "count": 635617,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "635617"
+    ]
+  },
+  {
+    "case": "unicode-space",
+    "variant": "candidate",
+    "pair": 3,
+    "ns": 115078601,
+    "checksum": 8328504,
+    "count": 489912,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode-space.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode-space.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "489912"
+    ]
+  },
+  {
+    "case": "unicode-space",
+    "variant": "baseline",
+    "pair": 3,
+    "ns": 123234167,
+    "checksum": 8328504,
+    "count": 489912,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode-space.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode-space.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "489912"
+    ]
+  },
+  {
+    "case": "dot",
+    "variant": "candidate",
+    "pair": 3,
+    "ns": 113525446,
+    "checksum": 6806547,
+    "count": 618777,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/dot.in",
+      "/workspace/scratch/csv-quotes/current-main/dot.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "618777"
+    ]
+  },
+  {
+    "case": "dot",
+    "variant": "baseline",
+    "pair": 3,
+    "ns": 114694170,
+    "checksum": 6806547,
+    "count": 618777,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/dot.in",
+      "/workspace/scratch/csv-quotes/current-main/dot.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "618777"
+    ]
+  },
+  {
+    "case": "ascii-1024",
+    "variant": "candidate",
+    "pair": 3,
+    "ns": 115157580,
+    "checksum": 334927567,
+    "count": 324857,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/ascii-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/ascii-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "324857"
+    ]
+  },
+  {
+    "case": "ascii-1024",
+    "variant": "baseline",
+    "pair": 3,
+    "ns": 323909453,
+    "checksum": 334927567,
+    "count": 324857,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/ascii-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/ascii-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "324857"
+    ]
+  },
+  {
+    "case": "unicode-1024",
+    "variant": "candidate",
+    "pair": 3,
+    "ns": 115597583,
+    "checksum": 641093985,
+    "count": 208215,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "208215"
+    ]
+  },
+  {
+    "case": "unicode-1024",
+    "variant": "baseline",
+    "pair": 3,
+    "ns": 1594875365,
+    "checksum": 641093985,
+    "count": 208215,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "208215"
+    ]
+  },
+  {
+    "case": "early-comma-1024",
+    "variant": "candidate",
+    "pair": 3,
+    "ns": 137172868,
+    "checksum": 267157682,
+    "count": 258373,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "258373"
+    ]
+  },
+  {
+    "case": "early-comma-1024",
+    "variant": "baseline",
+    "pair": 3,
+    "ns": 170001072,
+    "checksum": 267157682,
+    "count": 258373,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "258373"
+    ]
+  },
+  {
+    "case": "late-comma-1024",
+    "variant": "candidate",
+    "pair": 3,
+    "ns": 137612943,
+    "checksum": 277197822,
+    "count": 268083,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "268083"
+    ]
+  },
+  {
+    "case": "late-comma-1024",
+    "variant": "baseline",
+    "pair": 3,
+    "ns": 335702297,
+    "checksum": 277197822,
+    "count": 268083,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "268083"
+    ]
+  },
+  {
+    "case": "ascii-65536",
+    "variant": "candidate",
+    "pair": 3,
+    "ns": 118930052,
+    "checksum": 590280258,
+    "count": 9006,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/ascii-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/ascii-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "9006"
+    ]
+  },
+  {
+    "case": "ascii-65536",
+    "variant": "baseline",
+    "pair": 3,
+    "ns": 515707154,
+    "checksum": 590280258,
+    "count": 9006,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/ascii-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/ascii-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "9006"
+    ]
+  },
+  {
+    "case": "unicode-65536",
+    "variant": "candidate",
+    "pair": 3,
+    "ns": 109905024,
+    "checksum": 675962370,
+    "count": 3438,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "3438"
+    ]
+  },
+  {
+    "case": "unicode-65536",
+    "variant": "baseline",
+    "pair": 3,
+    "ns": 1676810585,
+    "checksum": 675962370,
+    "count": 3438,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "3438"
+    ]
+  },
+  {
+    "case": "early-comma-65536",
+    "variant": "candidate",
+    "pair": 3,
+    "ns": 109172989,
+    "checksum": 497952962,
+    "count": 7597,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "7597"
+    ]
+  },
+  {
+    "case": "early-comma-65536",
+    "variant": "baseline",
+    "pair": 3,
+    "ns": 227309194,
+    "checksum": 497952962,
+    "count": 7597,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "7597"
+    ]
+  },
+  {
+    "case": "late-comma-65536",
+    "variant": "candidate",
+    "pair": 3,
+    "ns": 115474808,
+    "checksum": 510472248,
+    "count": 7788,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "7788"
+    ]
+  },
+  {
+    "case": "late-comma-65536",
+    "variant": "baseline",
+    "pair": 3,
+    "ns": 517092974,
+    "checksum": 510472248,
+    "count": 7788,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "7788"
+    ]
+  },
+  {
+    "case": "semicolon",
+    "variant": "candidate",
+    "pair": 3,
+    "ns": 119414055,
+    "checksum": 11179420,
+    "count": 558971,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/semicolon.in",
+      "/workspace/scratch/csv-quotes/current-main/semicolon.out",
+      ";",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "558971"
+    ]
+  },
+  {
+    "case": "semicolon",
+    "variant": "baseline",
+    "pair": 3,
+    "ns": 119175456,
+    "checksum": 11179420,
+    "count": 558971,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/semicolon.in",
+      "/workspace/scratch/csv-quotes/current-main/semicolon.out",
+      ";",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "558971"
+    ]
+  },
+  {
+    "case": "crlf",
+    "variant": "candidate",
+    "pair": 3,
+    "ns": 106967695,
+    "checksum": 8306430,
+    "count": 377565,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/crlf.in",
+      "/workspace/scratch/csv-quotes/current-main/crlf.out",
+      ",",
+      "crlf",
+      "OK",
+      "9223372036854775807",
+      "377565"
+    ]
+  },
+  {
+    "case": "crlf",
+    "variant": "baseline",
+    "pair": 3,
+    "ns": 112706114,
+    "checksum": 8306430,
+    "count": 377565,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/crlf.in",
+      "/workspace/scratch/csv-quotes/current-main/crlf.out",
+      ",",
+      "crlf",
+      "OK",
+      "9223372036854775807",
+      "377565"
+    ]
+  },
+  {
+    "case": "limit",
+    "variant": "candidate",
+    "pair": 3,
+    "ns": 111849171,
+    "checksum": 866892,
+    "count": 866892,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/limit.in",
+      "/workspace/scratch/csv-quotes/current-main/limit.out",
+      ",",
+      "lf",
+      "EOVERFLOW",
+      "1",
+      "866892"
+    ]
+  },
+  {
+    "case": "limit",
+    "variant": "baseline",
+    "pair": 3,
+    "ns": 123725582,
+    "checksum": 866892,
+    "count": 866892,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/limit.in",
+      "/workspace/scratch/csv-quotes/current-main/limit.out",
+      ",",
+      "lf",
+      "EOVERFLOW",
+      "1",
+      "866892"
+    ]
+  },
+  {
+    "case": "negative",
+    "variant": "candidate",
+    "pair": 3,
+    "ns": 105035888,
+    "checksum": 5780346,
+    "count": 5780346,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/negative.in",
+      "/workspace/scratch/csv-quotes/current-main/negative.out",
+      ",",
+      "lf",
+      "EINVAL",
+      "-1",
+      "5780346"
+    ]
+  },
+  {
+    "case": "negative",
+    "variant": "baseline",
+    "pair": 3,
+    "ns": 104471057,
+    "checksum": 5780346,
+    "count": 5780346,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/negative.in",
+      "/workspace/scratch/csv-quotes/current-main/negative.out",
+      ",",
+      "lf",
+      "EINVAL",
+      "-1",
+      "5780346"
+    ]
+  },
+  {
+    "case": "invalid-delimiter",
+    "variant": "candidate",
+    "pair": 3,
+    "ns": 105606981,
+    "checksum": 3017832,
+    "count": 3017832,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/invalid-delimiter.in",
+      "/workspace/scratch/csv-quotes/current-main/invalid-delimiter.out",
+      "\u00e9",
+      "lf",
+      "EINVAL",
+      "9223372036854775807",
+      "3017832"
+    ]
+  },
+  {
+    "case": "invalid-delimiter",
+    "variant": "baseline",
+    "pair": 3,
+    "ns": 113080509,
+    "checksum": 3017832,
+    "count": 3017832,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/invalid-delimiter.in",
+      "/workspace/scratch/csv-quotes/current-main/invalid-delimiter.out",
+      "\u00e9",
+      "lf",
+      "EINVAL",
+      "9223372036854775807",
+      "3017832"
+    ]
+  },
+  {
+    "case": "empty",
+    "variant": "baseline",
+    "pair": 4,
+    "ns": 122835409,
+    "checksum": 6291362,
+    "count": 898766,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/empty.in",
+      "/workspace/scratch/csv-quotes/current-main/empty.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "898766"
+    ]
+  },
+  {
+    "case": "empty",
+    "variant": "candidate",
+    "pair": 4,
+    "ns": 112208032,
+    "checksum": 6291362,
+    "count": 898766,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/empty.in",
+      "/workspace/scratch/csv-quotes/current-main/empty.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "898766"
+    ]
+  },
+  {
+    "case": "one",
+    "variant": "baseline",
+    "pair": 4,
+    "ns": 123981388,
+    "checksum": 6651544,
+    "count": 831443,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/one.in",
+      "/workspace/scratch/csv-quotes/current-main/one.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "831443"
+    ]
+  },
+  {
+    "case": "one",
+    "variant": "candidate",
+    "pair": 4,
+    "ns": 116453528,
+    "checksum": 6651544,
+    "count": 831443,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/one.in",
+      "/workspace/scratch/csv-quotes/current-main/one.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "831443"
+    ]
+  },
+  {
+    "case": "ordinary",
+    "variant": "baseline",
+    "pair": 4,
+    "ns": 119307625,
+    "checksum": 11909772,
+    "count": 661654,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/ordinary.in",
+      "/workspace/scratch/csv-quotes/current-main/ordinary.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "661654"
+    ]
+  },
+  {
+    "case": "ordinary",
+    "variant": "candidate",
+    "pair": 4,
+    "ns": 114673351,
+    "checksum": 11909772,
+    "count": 661654,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/ordinary.in",
+      "/workspace/scratch/csv-quotes/current-main/ordinary.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "661654"
+    ]
+  },
+  {
+    "case": "comma",
+    "variant": "baseline",
+    "pair": 4,
+    "ns": 116162069,
+    "checksum": 10890540,
+    "count": 544527,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/comma.in",
+      "/workspace/scratch/csv-quotes/current-main/comma.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "544527"
+    ]
+  },
+  {
+    "case": "comma",
+    "variant": "candidate",
+    "pair": 4,
+    "ns": 139057108,
+    "checksum": 10890540,
+    "count": 544527,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/comma.in",
+      "/workspace/scratch/csv-quotes/current-main/comma.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "544527"
+    ]
+  },
+  {
+    "case": "quote",
+    "variant": "baseline",
+    "pair": 4,
+    "ns": 125684868,
+    "checksum": 11458314,
+    "count": 545634,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/quote.in",
+      "/workspace/scratch/csv-quotes/current-main/quote.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "545634"
+    ]
+  },
+  {
+    "case": "quote",
+    "variant": "candidate",
+    "pair": 4,
+    "ns": 113233118,
+    "checksum": 11458314,
+    "count": 545634,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/quote.in",
+      "/workspace/scratch/csv-quotes/current-main/quote.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "545634"
+    ]
+  },
+  {
+    "case": "newline",
+    "variant": "baseline",
+    "pair": 4,
+    "ns": 126532938,
+    "checksum": 12178404,
+    "count": 579924,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/newline.in",
+      "/workspace/scratch/csv-quotes/current-main/newline.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "579924"
+    ]
+  },
+  {
+    "case": "newline",
+    "variant": "candidate",
+    "pair": 4,
+    "ns": 113311817,
+    "checksum": 12178404,
+    "count": 579924,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/newline.in",
+      "/workspace/scratch/csv-quotes/current-main/newline.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "579924"
+    ]
+  },
+  {
+    "case": "space",
+    "variant": "baseline",
+    "pair": 4,
+    "ns": 113393630,
+    "checksum": 8891040,
+    "count": 592736,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/space.in",
+      "/workspace/scratch/csv-quotes/current-main/space.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "592736"
+    ]
+  },
+  {
+    "case": "space",
+    "variant": "candidate",
+    "pair": 4,
+    "ns": 113915608,
+    "checksum": 8891040,
+    "count": 592736,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/space.in",
+      "/workspace/scratch/csv-quotes/current-main/space.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "592736"
+    ]
+  },
+  {
+    "case": "unicode",
+    "variant": "baseline",
+    "pair": 4,
+    "ns": 122304107,
+    "checksum": 10169872,
+    "count": 635617,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "635617"
+    ]
+  },
+  {
+    "case": "unicode",
+    "variant": "candidate",
+    "pair": 4,
+    "ns": 111097144,
+    "checksum": 10169872,
+    "count": 635617,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "635617"
+    ]
+  },
+  {
+    "case": "unicode-space",
+    "variant": "baseline",
+    "pair": 4,
+    "ns": 123609747,
+    "checksum": 8328504,
+    "count": 489912,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode-space.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode-space.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "489912"
+    ]
+  },
+  {
+    "case": "unicode-space",
+    "variant": "candidate",
+    "pair": 4,
+    "ns": 115533109,
+    "checksum": 8328504,
+    "count": 489912,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode-space.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode-space.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "489912"
+    ]
+  },
+  {
+    "case": "dot",
+    "variant": "baseline",
+    "pair": 4,
+    "ns": 120642510,
+    "checksum": 6806547,
+    "count": 618777,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/dot.in",
+      "/workspace/scratch/csv-quotes/current-main/dot.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "618777"
+    ]
+  },
+  {
+    "case": "dot",
+    "variant": "candidate",
+    "pair": 4,
+    "ns": 112685903,
+    "checksum": 6806547,
+    "count": 618777,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/dot.in",
+      "/workspace/scratch/csv-quotes/current-main/dot.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "618777"
+    ]
+  },
+  {
+    "case": "ascii-1024",
+    "variant": "baseline",
+    "pair": 4,
+    "ns": 325425876,
+    "checksum": 334927567,
+    "count": 324857,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/ascii-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/ascii-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "324857"
+    ]
+  },
+  {
+    "case": "ascii-1024",
+    "variant": "candidate",
+    "pair": 4,
+    "ns": 116458455,
+    "checksum": 334927567,
+    "count": 324857,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/ascii-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/ascii-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "324857"
+    ]
+  },
+  {
+    "case": "unicode-1024",
+    "variant": "baseline",
+    "pair": 4,
+    "ns": 1567834194,
+    "checksum": 641093985,
+    "count": 208215,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "208215"
+    ]
+  },
+  {
+    "case": "unicode-1024",
+    "variant": "candidate",
+    "pair": 4,
+    "ns": 125873082,
+    "checksum": 641093985,
+    "count": 208215,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "208215"
+    ]
+  },
+  {
+    "case": "early-comma-1024",
+    "variant": "baseline",
+    "pair": 4,
+    "ns": 171167712,
+    "checksum": 267157682,
+    "count": 258373,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "258373"
+    ]
+  },
+  {
+    "case": "early-comma-1024",
+    "variant": "candidate",
+    "pair": 4,
+    "ns": 120198930,
+    "checksum": 267157682,
+    "count": 258373,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "258373"
+    ]
+  },
+  {
+    "case": "late-comma-1024",
+    "variant": "baseline",
+    "pair": 4,
+    "ns": 336098788,
+    "checksum": 277197822,
+    "count": 268083,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "268083"
+    ]
+  },
+  {
+    "case": "late-comma-1024",
+    "variant": "candidate",
+    "pair": 4,
+    "ns": 123635093,
+    "checksum": 277197822,
+    "count": 268083,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "268083"
+    ]
+  },
+  {
+    "case": "ascii-65536",
+    "variant": "baseline",
+    "pair": 4,
+    "ns": 510029024,
+    "checksum": 590280258,
+    "count": 9006,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/ascii-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/ascii-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "9006"
+    ]
+  },
+  {
+    "case": "ascii-65536",
+    "variant": "candidate",
+    "pair": 4,
+    "ns": 113568795,
+    "checksum": 590280258,
+    "count": 9006,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/ascii-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/ascii-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "9006"
+    ]
+  },
+  {
+    "case": "unicode-65536",
+    "variant": "baseline",
+    "pair": 4,
+    "ns": 1707931659,
+    "checksum": 675962370,
+    "count": 3438,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "3438"
+    ]
+  },
+  {
+    "case": "unicode-65536",
+    "variant": "candidate",
+    "pair": 4,
+    "ns": 112417117,
+    "checksum": 675962370,
+    "count": 3438,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "3438"
+    ]
+  },
+  {
+    "case": "early-comma-65536",
+    "variant": "baseline",
+    "pair": 4,
+    "ns": 220348254,
+    "checksum": 497952962,
+    "count": 7597,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "7597"
+    ]
+  },
+  {
+    "case": "early-comma-65536",
+    "variant": "candidate",
+    "pair": 4,
+    "ns": 106819608,
+    "checksum": 497952962,
+    "count": 7597,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "7597"
+    ]
+  },
+  {
+    "case": "late-comma-65536",
+    "variant": "baseline",
+    "pair": 4,
+    "ns": 625050244,
+    "checksum": 510472248,
+    "count": 7788,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "7788"
+    ]
+  },
+  {
+    "case": "late-comma-65536",
+    "variant": "candidate",
+    "pair": 4,
+    "ns": 112592584,
+    "checksum": 510472248,
+    "count": 7788,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "7788"
+    ]
+  },
+  {
+    "case": "semicolon",
+    "variant": "baseline",
+    "pair": 4,
+    "ns": 118237834,
+    "checksum": 11179420,
+    "count": 558971,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/semicolon.in",
+      "/workspace/scratch/csv-quotes/current-main/semicolon.out",
+      ";",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "558971"
+    ]
+  },
+  {
+    "case": "semicolon",
+    "variant": "candidate",
+    "pair": 4,
+    "ns": 112773726,
+    "checksum": 11179420,
+    "count": 558971,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/semicolon.in",
+      "/workspace/scratch/csv-quotes/current-main/semicolon.out",
+      ";",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "558971"
+    ]
+  },
+  {
+    "case": "crlf",
+    "variant": "baseline",
+    "pair": 4,
+    "ns": 112863562,
+    "checksum": 8306430,
+    "count": 377565,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/crlf.in",
+      "/workspace/scratch/csv-quotes/current-main/crlf.out",
+      ",",
+      "crlf",
+      "OK",
+      "9223372036854775807",
+      "377565"
+    ]
+  },
+  {
+    "case": "crlf",
+    "variant": "candidate",
+    "pair": 4,
+    "ns": 104452604,
+    "checksum": 8306430,
+    "count": 377565,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/crlf.in",
+      "/workspace/scratch/csv-quotes/current-main/crlf.out",
+      ",",
+      "crlf",
+      "OK",
+      "9223372036854775807",
+      "377565"
+    ]
+  },
+  {
+    "case": "limit",
+    "variant": "baseline",
+    "pair": 4,
+    "ns": 130836683,
+    "checksum": 866892,
+    "count": 866892,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/limit.in",
+      "/workspace/scratch/csv-quotes/current-main/limit.out",
+      ",",
+      "lf",
+      "EOVERFLOW",
+      "1",
+      "866892"
+    ]
+  },
+  {
+    "case": "limit",
+    "variant": "candidate",
+    "pair": 4,
+    "ns": 114153809,
+    "checksum": 866892,
+    "count": 866892,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/limit.in",
+      "/workspace/scratch/csv-quotes/current-main/limit.out",
+      ",",
+      "lf",
+      "EOVERFLOW",
+      "1",
+      "866892"
+    ]
+  },
+  {
+    "case": "negative",
+    "variant": "baseline",
+    "pair": 4,
+    "ns": 107830214,
+    "checksum": 5780346,
+    "count": 5780346,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/negative.in",
+      "/workspace/scratch/csv-quotes/current-main/negative.out",
+      ",",
+      "lf",
+      "EINVAL",
+      "-1",
+      "5780346"
+    ]
+  },
+  {
+    "case": "negative",
+    "variant": "candidate",
+    "pair": 4,
+    "ns": 106472433,
+    "checksum": 5780346,
+    "count": 5780346,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/negative.in",
+      "/workspace/scratch/csv-quotes/current-main/negative.out",
+      ",",
+      "lf",
+      "EINVAL",
+      "-1",
+      "5780346"
+    ]
+  },
+  {
+    "case": "invalid-delimiter",
+    "variant": "baseline",
+    "pair": 4,
+    "ns": 114332210,
+    "checksum": 3017832,
+    "count": 3017832,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/invalid-delimiter.in",
+      "/workspace/scratch/csv-quotes/current-main/invalid-delimiter.out",
+      "\u00e9",
+      "lf",
+      "EINVAL",
+      "9223372036854775807",
+      "3017832"
+    ]
+  },
+  {
+    "case": "invalid-delimiter",
+    "variant": "candidate",
+    "pair": 4,
+    "ns": 105096137,
+    "checksum": 3017832,
+    "count": 3017832,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/invalid-delimiter.in",
+      "/workspace/scratch/csv-quotes/current-main/invalid-delimiter.out",
+      "\u00e9",
+      "lf",
+      "EINVAL",
+      "9223372036854775807",
+      "3017832"
+    ]
+  },
+  {
+    "case": "empty",
+    "variant": "candidate",
+    "pair": 5,
+    "ns": 113400532,
+    "checksum": 6291362,
+    "count": 898766,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/empty.in",
+      "/workspace/scratch/csv-quotes/current-main/empty.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "898766"
+    ]
+  },
+  {
+    "case": "empty",
+    "variant": "baseline",
+    "pair": 5,
+    "ns": 121564085,
+    "checksum": 6291362,
+    "count": 898766,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/empty.in",
+      "/workspace/scratch/csv-quotes/current-main/empty.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "898766"
+    ]
+  },
+  {
+    "case": "one",
+    "variant": "candidate",
+    "pair": 5,
+    "ns": 113428535,
+    "checksum": 6651544,
+    "count": 831443,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/one.in",
+      "/workspace/scratch/csv-quotes/current-main/one.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "831443"
+    ]
+  },
+  {
+    "case": "one",
+    "variant": "baseline",
+    "pair": 5,
+    "ns": 122185194,
+    "checksum": 6651544,
+    "count": 831443,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/one.in",
+      "/workspace/scratch/csv-quotes/current-main/one.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "831443"
+    ]
+  },
+  {
+    "case": "ordinary",
+    "variant": "candidate",
+    "pair": 5,
+    "ns": 114635968,
+    "checksum": 11909772,
+    "count": 661654,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/ordinary.in",
+      "/workspace/scratch/csv-quotes/current-main/ordinary.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "661654"
+    ]
+  },
+  {
+    "case": "ordinary",
+    "variant": "baseline",
+    "pair": 5,
+    "ns": 116154630,
+    "checksum": 11909772,
+    "count": 661654,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/ordinary.in",
+      "/workspace/scratch/csv-quotes/current-main/ordinary.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "661654"
+    ]
+  },
+  {
+    "case": "comma",
+    "variant": "candidate",
+    "pair": 5,
+    "ns": 109020570,
+    "checksum": 10890540,
+    "count": 544527,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/comma.in",
+      "/workspace/scratch/csv-quotes/current-main/comma.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "544527"
+    ]
+  },
+  {
+    "case": "comma",
+    "variant": "baseline",
+    "pair": 5,
+    "ns": 115907224,
+    "checksum": 10890540,
+    "count": 544527,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/comma.in",
+      "/workspace/scratch/csv-quotes/current-main/comma.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "544527"
+    ]
+  },
+  {
+    "case": "quote",
+    "variant": "candidate",
+    "pair": 5,
+    "ns": 111443348,
+    "checksum": 11458314,
+    "count": 545634,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/quote.in",
+      "/workspace/scratch/csv-quotes/current-main/quote.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "545634"
+    ]
+  },
+  {
+    "case": "quote",
+    "variant": "baseline",
+    "pair": 5,
+    "ns": 123131746,
+    "checksum": 11458314,
+    "count": 545634,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/quote.in",
+      "/workspace/scratch/csv-quotes/current-main/quote.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "545634"
+    ]
+  },
+  {
+    "case": "newline",
+    "variant": "candidate",
+    "pair": 5,
+    "ns": 111757804,
+    "checksum": 12178404,
+    "count": 579924,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/newline.in",
+      "/workspace/scratch/csv-quotes/current-main/newline.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "579924"
+    ]
+  },
+  {
+    "case": "newline",
+    "variant": "baseline",
+    "pair": 5,
+    "ns": 124763238,
+    "checksum": 12178404,
+    "count": 579924,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/newline.in",
+      "/workspace/scratch/csv-quotes/current-main/newline.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "579924"
+    ]
+  },
+  {
+    "case": "space",
+    "variant": "candidate",
+    "pair": 5,
+    "ns": 114297586,
+    "checksum": 8891040,
+    "count": 592736,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/space.in",
+      "/workspace/scratch/csv-quotes/current-main/space.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "592736"
+    ]
+  },
+  {
+    "case": "space",
+    "variant": "baseline",
+    "pair": 5,
+    "ns": 113639061,
+    "checksum": 8891040,
+    "count": 592736,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/space.in",
+      "/workspace/scratch/csv-quotes/current-main/space.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "592736"
+    ]
+  },
+  {
+    "case": "unicode",
+    "variant": "candidate",
+    "pair": 5,
+    "ns": 110548628,
+    "checksum": 10169872,
+    "count": 635617,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "635617"
+    ]
+  },
+  {
+    "case": "unicode",
+    "variant": "baseline",
+    "pair": 5,
+    "ns": 139587535,
+    "checksum": 10169872,
+    "count": 635617,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "635617"
+    ]
+  },
+  {
+    "case": "unicode-space",
+    "variant": "candidate",
+    "pair": 5,
+    "ns": 114634815,
+    "checksum": 8328504,
+    "count": 489912,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode-space.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode-space.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "489912"
+    ]
+  },
+  {
+    "case": "unicode-space",
+    "variant": "baseline",
+    "pair": 5,
+    "ns": 124710698,
+    "checksum": 8328504,
+    "count": 489912,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode-space.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode-space.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "489912"
+    ]
+  },
+  {
+    "case": "dot",
+    "variant": "candidate",
+    "pair": 5,
+    "ns": 114589185,
+    "checksum": 6806547,
+    "count": 618777,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/dot.in",
+      "/workspace/scratch/csv-quotes/current-main/dot.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "618777"
+    ]
+  },
+  {
+    "case": "dot",
+    "variant": "baseline",
+    "pair": 5,
+    "ns": 117495791,
+    "checksum": 6806547,
+    "count": 618777,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/dot.in",
+      "/workspace/scratch/csv-quotes/current-main/dot.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "618777"
+    ]
+  },
+  {
+    "case": "ascii-1024",
+    "variant": "candidate",
+    "pair": 5,
+    "ns": 116773201,
+    "checksum": 334927567,
+    "count": 324857,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/ascii-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/ascii-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "324857"
+    ]
+  },
+  {
+    "case": "ascii-1024",
+    "variant": "baseline",
+    "pair": 5,
+    "ns": 325273000,
+    "checksum": 334927567,
+    "count": 324857,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/ascii-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/ascii-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "324857"
+    ]
+  },
+  {
+    "case": "unicode-1024",
+    "variant": "candidate",
+    "pair": 5,
+    "ns": 122103544,
+    "checksum": 641093985,
+    "count": 208215,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "208215"
+    ]
+  },
+  {
+    "case": "unicode-1024",
+    "variant": "baseline",
+    "pair": 5,
+    "ns": 1567044222,
+    "checksum": 641093985,
+    "count": 208215,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "208215"
+    ]
+  },
+  {
+    "case": "early-comma-1024",
+    "variant": "candidate",
+    "pair": 5,
+    "ns": 117628267,
+    "checksum": 267157682,
+    "count": 258373,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "258373"
+    ]
+  },
+  {
+    "case": "early-comma-1024",
+    "variant": "baseline",
+    "pair": 5,
+    "ns": 160156214,
+    "checksum": 267157682,
+    "count": 258373,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "258373"
+    ]
+  },
+  {
+    "case": "late-comma-1024",
+    "variant": "candidate",
+    "pair": 5,
+    "ns": 123629132,
+    "checksum": 277197822,
+    "count": 268083,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "268083"
+    ]
+  },
+  {
+    "case": "late-comma-1024",
+    "variant": "baseline",
+    "pair": 5,
+    "ns": 326096366,
+    "checksum": 277197822,
+    "count": 268083,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "268083"
+    ]
+  },
+  {
+    "case": "ascii-65536",
+    "variant": "candidate",
+    "pair": 5,
+    "ns": 113098702,
+    "checksum": 590280258,
+    "count": 9006,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/ascii-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/ascii-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "9006"
+    ]
+  },
+  {
+    "case": "ascii-65536",
+    "variant": "baseline",
+    "pair": 5,
+    "ns": 527385972,
+    "checksum": 590280258,
+    "count": 9006,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/ascii-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/ascii-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "9006"
+    ]
+  },
+  {
+    "case": "unicode-65536",
+    "variant": "candidate",
+    "pair": 5,
+    "ns": 111320428,
+    "checksum": 675962370,
+    "count": 3438,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "3438"
+    ]
+  },
+  {
+    "case": "unicode-65536",
+    "variant": "baseline",
+    "pair": 5,
+    "ns": 1629129419,
+    "checksum": 675962370,
+    "count": 3438,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "3438"
+    ]
+  },
+  {
+    "case": "early-comma-65536",
+    "variant": "candidate",
+    "pair": 5,
+    "ns": 107742490,
+    "checksum": 497952962,
+    "count": 7597,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "7597"
+    ]
+  },
+  {
+    "case": "early-comma-65536",
+    "variant": "baseline",
+    "pair": 5,
+    "ns": 247809397,
+    "checksum": 497952962,
+    "count": 7597,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "7597"
+    ]
+  },
+  {
+    "case": "late-comma-65536",
+    "variant": "candidate",
+    "pair": 5,
+    "ns": 113099513,
+    "checksum": 510472248,
+    "count": 7788,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "7788"
+    ]
+  },
+  {
+    "case": "late-comma-65536",
+    "variant": "baseline",
+    "pair": 5,
+    "ns": 519003492,
+    "checksum": 510472248,
+    "count": 7788,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "7788"
+    ]
+  },
+  {
+    "case": "semicolon",
+    "variant": "candidate",
+    "pair": 5,
+    "ns": 112190211,
+    "checksum": 11179420,
+    "count": 558971,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/semicolon.in",
+      "/workspace/scratch/csv-quotes/current-main/semicolon.out",
+      ";",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "558971"
+    ]
+  },
+  {
+    "case": "semicolon",
+    "variant": "baseline",
+    "pair": 5,
+    "ns": 115990885,
+    "checksum": 11179420,
+    "count": 558971,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/semicolon.in",
+      "/workspace/scratch/csv-quotes/current-main/semicolon.out",
+      ";",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "558971"
+    ]
+  },
+  {
+    "case": "crlf",
+    "variant": "candidate",
+    "pair": 5,
+    "ns": 104494587,
+    "checksum": 8306430,
+    "count": 377565,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/crlf.in",
+      "/workspace/scratch/csv-quotes/current-main/crlf.out",
+      ",",
+      "crlf",
+      "OK",
+      "9223372036854775807",
+      "377565"
+    ]
+  },
+  {
+    "case": "crlf",
+    "variant": "baseline",
+    "pair": 5,
+    "ns": 118757121,
+    "checksum": 8306430,
+    "count": 377565,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/crlf.in",
+      "/workspace/scratch/csv-quotes/current-main/crlf.out",
+      ",",
+      "crlf",
+      "OK",
+      "9223372036854775807",
+      "377565"
+    ]
+  },
+  {
+    "case": "limit",
+    "variant": "candidate",
+    "pair": 5,
+    "ns": 115781821,
+    "checksum": 866892,
+    "count": 866892,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/limit.in",
+      "/workspace/scratch/csv-quotes/current-main/limit.out",
+      ",",
+      "lf",
+      "EOVERFLOW",
+      "1",
+      "866892"
+    ]
+  },
+  {
+    "case": "limit",
+    "variant": "baseline",
+    "pair": 5,
+    "ns": 126473005,
+    "checksum": 866892,
+    "count": 866892,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/limit.in",
+      "/workspace/scratch/csv-quotes/current-main/limit.out",
+      ",",
+      "lf",
+      "EOVERFLOW",
+      "1",
+      "866892"
+    ]
+  },
+  {
+    "case": "negative",
+    "variant": "candidate",
+    "pair": 5,
+    "ns": 105507567,
+    "checksum": 5780346,
+    "count": 5780346,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/negative.in",
+      "/workspace/scratch/csv-quotes/current-main/negative.out",
+      ",",
+      "lf",
+      "EINVAL",
+      "-1",
+      "5780346"
+    ]
+  },
+  {
+    "case": "negative",
+    "variant": "baseline",
+    "pair": 5,
+    "ns": 108086729,
+    "checksum": 5780346,
+    "count": 5780346,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/negative.in",
+      "/workspace/scratch/csv-quotes/current-main/negative.out",
+      ",",
+      "lf",
+      "EINVAL",
+      "-1",
+      "5780346"
+    ]
+  },
+  {
+    "case": "invalid-delimiter",
+    "variant": "candidate",
+    "pair": 5,
+    "ns": 106908450,
+    "checksum": 3017832,
+    "count": 3017832,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/invalid-delimiter.in",
+      "/workspace/scratch/csv-quotes/current-main/invalid-delimiter.out",
+      "\u00e9",
+      "lf",
+      "EINVAL",
+      "9223372036854775807",
+      "3017832"
+    ]
+  },
+  {
+    "case": "invalid-delimiter",
+    "variant": "baseline",
+    "pair": 5,
+    "ns": 115991638,
+    "checksum": 3017832,
+    "count": 3017832,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/invalid-delimiter.in",
+      "/workspace/scratch/csv-quotes/current-main/invalid-delimiter.out",
+      "\u00e9",
+      "lf",
+      "EINVAL",
+      "9223372036854775807",
+      "3017832"
+    ]
+  },
+  {
+    "case": "empty",
+    "variant": "baseline",
+    "pair": 6,
+    "ns": 162390696,
+    "checksum": 6291362,
+    "count": 898766,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/empty.in",
+      "/workspace/scratch/csv-quotes/current-main/empty.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "898766"
+    ]
+  },
+  {
+    "case": "empty",
+    "variant": "candidate",
+    "pair": 6,
+    "ns": 116764794,
+    "checksum": 6291362,
+    "count": 898766,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/empty.in",
+      "/workspace/scratch/csv-quotes/current-main/empty.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "898766"
+    ]
+  },
+  {
+    "case": "one",
+    "variant": "baseline",
+    "pair": 6,
+    "ns": 121492969,
+    "checksum": 6651544,
+    "count": 831443,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/one.in",
+      "/workspace/scratch/csv-quotes/current-main/one.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "831443"
+    ]
+  },
+  {
+    "case": "one",
+    "variant": "candidate",
+    "pair": 6,
+    "ns": 114765567,
+    "checksum": 6651544,
+    "count": 831443,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/one.in",
+      "/workspace/scratch/csv-quotes/current-main/one.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "831443"
+    ]
+  },
+  {
+    "case": "ordinary",
+    "variant": "baseline",
+    "pair": 6,
+    "ns": 116182406,
+    "checksum": 11909772,
+    "count": 661654,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/ordinary.in",
+      "/workspace/scratch/csv-quotes/current-main/ordinary.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "661654"
+    ]
+  },
+  {
+    "case": "ordinary",
+    "variant": "candidate",
+    "pair": 6,
+    "ns": 114820621,
+    "checksum": 11909772,
+    "count": 661654,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/ordinary.in",
+      "/workspace/scratch/csv-quotes/current-main/ordinary.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "661654"
+    ]
+  },
+  {
+    "case": "comma",
+    "variant": "baseline",
+    "pair": 6,
+    "ns": 117111415,
+    "checksum": 10890540,
+    "count": 544527,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/comma.in",
+      "/workspace/scratch/csv-quotes/current-main/comma.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "544527"
+    ]
+  },
+  {
+    "case": "comma",
+    "variant": "candidate",
+    "pair": 6,
+    "ns": 115951285,
+    "checksum": 10890540,
+    "count": 544527,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/comma.in",
+      "/workspace/scratch/csv-quotes/current-main/comma.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "544527"
+    ]
+  },
+  {
+    "case": "quote",
+    "variant": "baseline",
+    "pair": 6,
+    "ns": 134059677,
+    "checksum": 11458314,
+    "count": 545634,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/quote.in",
+      "/workspace/scratch/csv-quotes/current-main/quote.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "545634"
+    ]
+  },
+  {
+    "case": "quote",
+    "variant": "candidate",
+    "pair": 6,
+    "ns": 114404589,
+    "checksum": 11458314,
+    "count": 545634,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/quote.in",
+      "/workspace/scratch/csv-quotes/current-main/quote.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "545634"
+    ]
+  },
+  {
+    "case": "newline",
+    "variant": "baseline",
+    "pair": 6,
+    "ns": 129888271,
+    "checksum": 12178404,
+    "count": 579924,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/newline.in",
+      "/workspace/scratch/csv-quotes/current-main/newline.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "579924"
+    ]
+  },
+  {
+    "case": "newline",
+    "variant": "candidate",
+    "pair": 6,
+    "ns": 116009050,
+    "checksum": 12178404,
+    "count": 579924,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/newline.in",
+      "/workspace/scratch/csv-quotes/current-main/newline.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "579924"
+    ]
+  },
+  {
+    "case": "space",
+    "variant": "baseline",
+    "pair": 6,
+    "ns": 117186338,
+    "checksum": 8891040,
+    "count": 592736,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/space.in",
+      "/workspace/scratch/csv-quotes/current-main/space.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "592736"
+    ]
+  },
+  {
+    "case": "space",
+    "variant": "candidate",
+    "pair": 6,
+    "ns": 117375518,
+    "checksum": 8891040,
+    "count": 592736,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/space.in",
+      "/workspace/scratch/csv-quotes/current-main/space.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "592736"
+    ]
+  },
+  {
+    "case": "unicode",
+    "variant": "baseline",
+    "pair": 6,
+    "ns": 123063889,
+    "checksum": 10169872,
+    "count": 635617,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "635617"
+    ]
+  },
+  {
+    "case": "unicode",
+    "variant": "candidate",
+    "pair": 6,
+    "ns": 116174920,
+    "checksum": 10169872,
+    "count": 635617,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "635617"
+    ]
+  },
+  {
+    "case": "unicode-space",
+    "variant": "baseline",
+    "pair": 6,
+    "ns": 125427106,
+    "checksum": 8328504,
+    "count": 489912,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode-space.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode-space.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "489912"
+    ]
+  },
+  {
+    "case": "unicode-space",
+    "variant": "candidate",
+    "pair": 6,
+    "ns": 116316685,
+    "checksum": 8328504,
+    "count": 489912,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode-space.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode-space.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "489912"
+    ]
+  },
+  {
+    "case": "dot",
+    "variant": "baseline",
+    "pair": 6,
+    "ns": 133859245,
+    "checksum": 6806547,
+    "count": 618777,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/dot.in",
+      "/workspace/scratch/csv-quotes/current-main/dot.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "618777"
+    ]
+  },
+  {
+    "case": "dot",
+    "variant": "candidate",
+    "pair": 6,
+    "ns": 116292568,
+    "checksum": 6806547,
+    "count": 618777,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/dot.in",
+      "/workspace/scratch/csv-quotes/current-main/dot.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "618777"
+    ]
+  },
+  {
+    "case": "ascii-1024",
+    "variant": "baseline",
+    "pair": 6,
+    "ns": 333795190,
+    "checksum": 334927567,
+    "count": 324857,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/ascii-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/ascii-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "324857"
+    ]
+  },
+  {
+    "case": "ascii-1024",
+    "variant": "candidate",
+    "pair": 6,
+    "ns": 132702038,
+    "checksum": 334927567,
+    "count": 324857,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/ascii-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/ascii-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "324857"
+    ]
+  },
+  {
+    "case": "unicode-1024",
+    "variant": "baseline",
+    "pair": 6,
+    "ns": 1611561782,
+    "checksum": 641093985,
+    "count": 208215,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "208215"
+    ]
+  },
+  {
+    "case": "unicode-1024",
+    "variant": "candidate",
+    "pair": 6,
+    "ns": 125085731,
+    "checksum": 641093985,
+    "count": 208215,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "208215"
+    ]
+  },
+  {
+    "case": "early-comma-1024",
+    "variant": "baseline",
+    "pair": 6,
+    "ns": 161869985,
+    "checksum": 267157682,
+    "count": 258373,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "258373"
+    ]
+  },
+  {
+    "case": "early-comma-1024",
+    "variant": "candidate",
+    "pair": 6,
+    "ns": 119461172,
+    "checksum": 267157682,
+    "count": 258373,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "258373"
+    ]
+  },
+  {
+    "case": "late-comma-1024",
+    "variant": "baseline",
+    "pair": 6,
+    "ns": 335287712,
+    "checksum": 277197822,
+    "count": 268083,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "268083"
+    ]
+  },
+  {
+    "case": "late-comma-1024",
+    "variant": "candidate",
+    "pair": 6,
+    "ns": 122479537,
+    "checksum": 277197822,
+    "count": 268083,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-1024.in",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-1024.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "268083"
+    ]
+  },
+  {
+    "case": "ascii-65536",
+    "variant": "baseline",
+    "pair": 6,
+    "ns": 514328767,
+    "checksum": 590280258,
+    "count": 9006,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/ascii-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/ascii-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "9006"
+    ]
+  },
+  {
+    "case": "ascii-65536",
+    "variant": "candidate",
+    "pair": 6,
+    "ns": 124786770,
+    "checksum": 590280258,
+    "count": 9006,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/ascii-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/ascii-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "9006"
+    ]
+  },
+  {
+    "case": "unicode-65536",
+    "variant": "baseline",
+    "pair": 6,
+    "ns": 1668823166,
+    "checksum": 675962370,
+    "count": 3438,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "3438"
+    ]
+  },
+  {
+    "case": "unicode-65536",
+    "variant": "candidate",
+    "pair": 6,
+    "ns": 111215345,
+    "checksum": 675962370,
+    "count": 3438,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/unicode-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/unicode-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "3438"
+    ]
+  },
+  {
+    "case": "early-comma-65536",
+    "variant": "baseline",
+    "pair": 6,
+    "ns": 220761232,
+    "checksum": 497952962,
+    "count": 7597,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "7597"
+    ]
+  },
+  {
+    "case": "early-comma-65536",
+    "variant": "candidate",
+    "pair": 6,
+    "ns": 106761368,
+    "checksum": 497952962,
+    "count": 7597,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/early-comma-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "7597"
+    ]
+  },
+  {
+    "case": "late-comma-65536",
+    "variant": "baseline",
+    "pair": 6,
+    "ns": 531038922,
+    "checksum": 510472248,
+    "count": 7788,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "7788"
+    ]
+  },
+  {
+    "case": "late-comma-65536",
+    "variant": "candidate",
+    "pair": 6,
+    "ns": 122040275,
+    "checksum": 510472248,
+    "count": 7788,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-65536.in",
+      "/workspace/scratch/csv-quotes/current-main/late-comma-65536.out",
+      ",",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "7788"
+    ]
+  },
+  {
+    "case": "semicolon",
+    "variant": "baseline",
+    "pair": 6,
+    "ns": 124306456,
+    "checksum": 11179420,
+    "count": 558971,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/semicolon.in",
+      "/workspace/scratch/csv-quotes/current-main/semicolon.out",
+      ";",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "558971"
+    ]
+  },
+  {
+    "case": "semicolon",
+    "variant": "candidate",
+    "pair": 6,
+    "ns": 115343871,
+    "checksum": 11179420,
+    "count": 558971,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/semicolon.in",
+      "/workspace/scratch/csv-quotes/current-main/semicolon.out",
+      ";",
+      "lf",
+      "OK",
+      "9223372036854775807",
+      "558971"
+    ]
+  },
+  {
+    "case": "crlf",
+    "variant": "baseline",
+    "pair": 6,
+    "ns": 117111879,
+    "checksum": 8306430,
+    "count": 377565,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/crlf.in",
+      "/workspace/scratch/csv-quotes/current-main/crlf.out",
+      ",",
+      "crlf",
+      "OK",
+      "9223372036854775807",
+      "377565"
+    ]
+  },
+  {
+    "case": "crlf",
+    "variant": "candidate",
+    "pair": 6,
+    "ns": 113119083,
+    "checksum": 8306430,
+    "count": 377565,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/crlf.in",
+      "/workspace/scratch/csv-quotes/current-main/crlf.out",
+      ",",
+      "crlf",
+      "OK",
+      "9223372036854775807",
+      "377565"
+    ]
+  },
+  {
+    "case": "limit",
+    "variant": "baseline",
+    "pair": 6,
+    "ns": 127482208,
+    "checksum": 866892,
+    "count": 866892,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/limit.in",
+      "/workspace/scratch/csv-quotes/current-main/limit.out",
+      ",",
+      "lf",
+      "EOVERFLOW",
+      "1",
+      "866892"
+    ]
+  },
+  {
+    "case": "limit",
+    "variant": "candidate",
+    "pair": 6,
+    "ns": 118593744,
+    "checksum": 866892,
+    "count": 866892,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/limit.in",
+      "/workspace/scratch/csv-quotes/current-main/limit.out",
+      ",",
+      "lf",
+      "EOVERFLOW",
+      "1",
+      "866892"
+    ]
+  },
+  {
+    "case": "negative",
+    "variant": "baseline",
+    "pair": 6,
+    "ns": 110976258,
+    "checksum": 5780346,
+    "count": 5780346,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/negative.in",
+      "/workspace/scratch/csv-quotes/current-main/negative.out",
+      ",",
+      "lf",
+      "EINVAL",
+      "-1",
+      "5780346"
+    ]
+  },
+  {
+    "case": "negative",
+    "variant": "candidate",
+    "pair": 6,
+    "ns": 108488564,
+    "checksum": 5780346,
+    "count": 5780346,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/negative.in",
+      "/workspace/scratch/csv-quotes/current-main/negative.out",
+      ",",
+      "lf",
+      "EINVAL",
+      "-1",
+      "5780346"
+    ]
+  },
+  {
+    "case": "invalid-delimiter",
+    "variant": "baseline",
+    "pair": 6,
+    "ns": 115021594,
+    "checksum": 3017832,
+    "count": 3017832,
+    "command": [
+      "/workspace/scratch/csv-quotes/baseline/probe",
+      "/workspace/scratch/csv-quotes/current-main/invalid-delimiter.in",
+      "/workspace/scratch/csv-quotes/current-main/invalid-delimiter.out",
+      "\u00e9",
+      "lf",
+      "EINVAL",
+      "9223372036854775807",
+      "3017832"
+    ]
+  },
+  {
+    "case": "invalid-delimiter",
+    "variant": "candidate",
+    "pair": 6,
+    "ns": 108654235,
+    "checksum": 3017832,
+    "count": 3017832,
+    "command": [
+      "/workspace/scratch/csv-quotes/candidate/probe",
+      "/workspace/scratch/csv-quotes/current-main/invalid-delimiter.in",
+      "/workspace/scratch/csv-quotes/current-main/invalid-delimiter.out",
+      "\u00e9",
+      "lf",
+      "EINVAL",
+      "9223372036854775807",
+      "3017832"
+    ]
+  }
+]
