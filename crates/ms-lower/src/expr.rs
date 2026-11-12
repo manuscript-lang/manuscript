@@ -729,6 +729,9 @@ impl<'a> FnLower<'a> {
             BinaryOp::And | BinaryOp::Or => return self.short_circuit(op, left, right),
             _ => {}
         }
+        if let Some(v) = self.scalar_compare(e)? {
+            return Ok(v);
+        }
         let at = self.b.current();
         let l = self.expr(left)?;
         let l = if crate::mutation::has_try(right) {
