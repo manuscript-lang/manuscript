@@ -53,3 +53,27 @@ test "a name that is also used as a String stays a String":
 test "chars elements compared and kept":
 	not_a("aéb") | expect_equal(2)?
 	keep("abcb") | expect_equal(["b", "b"])?
+
+fn digits(text: String) Int:
+	var n = 0
+	var i = 0
+
+	while i < text.length():
+		c := text.get(i)
+		n = n * 10 + c.parse_int().get(0)
+		i += 1
+
+	return n
+
+fn both(text: String) Int:
+	c := text.get(0)
+	if c == "7": return c.parse_int().get(-1) + c.length()
+
+	return -1
+
+test "parse_int of a one-character string":
+	digits("4096") | expect_equal(4096)?
+	digits("1a2") | expect_equal(102)?
+	digits("é+") | expect_equal(0)?
+	both("7") | expect_equal(8)?
+	"x5".get(1).parse_int() | expect_equal(5)?

@@ -23,19 +23,24 @@
           "index": 2,
           "name": "scalar-string-compare.ms::chars elements compared and kept",
           "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "scalar-string-compare.ms::parse_int of a one-character string",
+          "status": "passed"
         }
       ],
       "summary": {
-        "available": 3,
-        "selected": 3,
-        "passed": 3,
+        "available": 4,
+        "selected": 4,
+        "passed": 4,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN scalar-string-compare.ms::get compared with one-character literals\nPASS scalar-string-compare.ms::get compared with one-character literals\nRUN scalar-string-compare.ms::a name that is also used as a String stays a String\nPASS scalar-string-compare.ms::a name that is also used as a String stays a String\nRUN scalar-string-compare.ms::chars elements compared and kept\nPASS scalar-string-compare.ms::chars elements compared and kept\n3 tests, 0 failed\n",
+      "stdout": "RUN scalar-string-compare.ms::get compared with one-character literals\nPASS scalar-string-compare.ms::get compared with one-character literals\nRUN scalar-string-compare.ms::a name that is also used as a String stays a String\nPASS scalar-string-compare.ms::a name that is also used as a String stays a String\nRUN scalar-string-compare.ms::chars elements compared and kept\nPASS scalar-string-compare.ms::chars elements compared and kept\nRUN scalar-string-compare.ms::parse_int of a one-character string\nPASS scalar-string-compare.ms::parse_int of a one-character string\n4 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [
