@@ -917,6 +917,8 @@ pub enum ExternRole {
     CleanupDiscard,
     /// `bytes.append(bytes, byte)`.
     BytesAppend,
+    /// `bytes.decode_utf8(bytes, out)`; the `bytetake` pass may make it a take.
+    BytesDecodeUtf8,
     /// Starts a task that can be cancelled.
     SpawnsTask,
 }
@@ -941,6 +943,7 @@ impl ExternRole {
         (ExternRole::StringEq, "string_eq"),
         (ExternRole::CleanupDiscard, "cleanup_discard"),
         (ExternRole::BytesAppend, "bytes_append"),
+        (ExternRole::BytesDecodeUtf8, "bytes_decode_utf8"),
         (ExternRole::SpawnsTask, "spawns_task"),
     ];
 

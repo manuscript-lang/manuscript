@@ -16,6 +16,7 @@
 
 use crate::ir::{Module, Op};
 
+pub mod bytetake;
 pub mod copyelim;
 pub mod ifconv;
 pub mod inline;
@@ -66,6 +67,7 @@ pub fn optimize(m: &mut Module, level: Level, verify: bool) {
                     .iter()
                     .any(|b| b.insts.iter().any(|i| i.op == Op::AltGet))
         });
+        bytetake::run(m);
         copyelim::run_takes(m);
         return;
     }
@@ -116,6 +118,8 @@ pub fn optimize(m: &mut Module, level: Level, verify: bool) {
     check(m, "reserve");
     lastuse::run(m);
     check(m, "lastuse");
+    bytetake::run(m);
+    check(m, "bytetake");
     copyelim::run_takes(m);
     check(m, "copyelim takes");
     simplify::run(m);
