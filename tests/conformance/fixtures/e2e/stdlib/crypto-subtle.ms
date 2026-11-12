@@ -2,7 +2,7 @@
 // conform: phase=test
 import (
 	Bytes from "@std/bytes.ms",
-	constant_time_less_or_equal, constant_time_select, xor_bytes from "@std/crypto.ms",
+	constant_time_less_or_equal, constant_time_select, xor_bytes from "@std/crypto/crypto.ms",
 	expect_equal, expect_true from "@std/test/test.ms",
 )
 

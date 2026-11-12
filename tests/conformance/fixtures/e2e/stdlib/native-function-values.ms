@@ -3,7 +3,7 @@
 import (
 	Bytes from "@std/bytes.ms",
 	map_from_entries from "@std/collections/collections.ms",
-	sha256, sha512 from "@std/crypto.ms",
+	sha256, sha512 from "@std/crypto/crypto.ms",
 	parse from "@std/data/html.ms",
 	uuid_v4 from "@std/data/uuid.ms",
 	stderr, stdout from "@std/io/io.ms",

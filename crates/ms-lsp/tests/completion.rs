@@ -167,8 +167,8 @@ fn checksum_imports_preserve_numeric_fuzzy_completions() {
             (
                 "sha384",
                 3,
-                "fn(Bytes) Bytes — @std/crypto.ms",
-                Some("@std/crypto.ms"),
+                "fn(Bytes) Bytes — @std/crypto/crypto.ms",
+                Some("@std/crypto/crypto.ms"),
                 Some("${1:data}"),
             ),
             (

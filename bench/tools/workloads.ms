@@ -6,7 +6,7 @@
 // Usage: ms run bench/tools/workloads.ms [-- repeats]; MS picks the compiler;
 // BENCH_OUTPUT keeps the evidence directory.
 import (
-	sha256 from "@std/crypto.ms",
+	sha256 from "@std/crypto/crypto.ms",
 	hex_encode from "@std/data/encoding.ms",
 	JsonValue, parse from "@std/data/json.ms",
 	arguments from "@std/os/env.ms",
