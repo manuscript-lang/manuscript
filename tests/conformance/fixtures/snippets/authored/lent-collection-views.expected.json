@@ -4,7 +4,7 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "exit_code": 0,
-    "stdout": "12\n21\nfalse\n[2, 3, 4]\n0\n[alpha is a longer string than inline, beta is a longer string than inline too]\n321\n44\n321\n[100, 200]\n3\n[[1, 0], [0, 200], [200, 4]]\n",
+    "stdout": "12\n21\nfalse\n[2, 3, 4]\n0\n[alpha is a longer string than inline, beta is a longer string than inline too]\n321\n44\n321\n[100, 200]\n3\n[[1, 0], [0, 200], [200, 4]]\n32\n31\nfirst row is longer than inline\n",
     "stderr": ""
   }
 }

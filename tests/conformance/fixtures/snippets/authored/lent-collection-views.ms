@@ -55,4 +55,9 @@ export fn main() Int:
 		windows.append(xs.slice(i, i + 2).get().clone())
 	xs.set(0, -1)
 	print(windows)
+	rows := "first row is longer than inline\nsecond row is longer than inline\nthird row is longer than inline".split("\n")
+	for row in rows.slice(1, rows.length()).get():
+		if row == "": continue
+		print(row.length())
+	print(rows[0])
 	return 0
