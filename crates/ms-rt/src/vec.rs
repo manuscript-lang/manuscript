@@ -2036,38 +2036,6 @@ pub unsafe extern "C-unwind" fn msrt_bytes_extend(b: *mut VecVal, values: *const
 
 // ---- Bytes fixed-width codecs ----
 
-/// `msrt_bytes_read_word(data, at, width, little)`: the `width` bytes (1, 2, 4 or 8) at `at` as an unsigned
-/// number, or all eight bytes as the `i64` with that bit pattern. `@std/bytes.ms` builds every
-/// `Bytes.int32_le(at)` style read on it. Missing bytes are `STATUS_OUT_OF_RANGE`.
-#[unsafe(no_mangle)]
-// ms: leaf domain=binary
-pub unsafe extern "C-unwind" fn msrt_bytes_read_word(
-    b: *const VecVal,
-    at: i64,
-    width: i64,
-    little: u8,
-    out: *mut i64,
-) -> u8 {
-    // SAFETY: caller contract.
-    unsafe {
-        let s = bslice(b);
-        let n = width as usize;
-        let Some(raw) = usize::try_from(at)
-            .ok()
-            .and_then(|start| s.get(start..start.checked_add(n)?))
-        else {
-            return STATUS_OUT_OF_RANGE;
-        };
-        let mut word = [0u8; 8];
-        word[..n].copy_from_slice(raw);
-        if little == 0 {
-            word[..n].reverse();
-        }
-        out.write(i64::from_le_bytes(word));
-        STATUS_OK
-    }
-}
-
 // ---- StringBuilder (bytes) ----
 
 pub(crate) use ms_rt_hot::copy_short;
