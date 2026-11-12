@@ -123,7 +123,7 @@ impl<'a> FnLower<'a> {
                     let result = self.emty(e)?;
                     return self.rt_method(sym, recv, &[], &[], result);
                 }
-                (TyKind::List(_), "slice") => {
+                (TyKind::List(elem), "slice") if !self.b.m.needs_drop(*elem) => {
                     let result = self.emty(e)?;
                     // The list is a `cap == 0` view: dropping it frees and drops nothing.
                     return self.rt_method(

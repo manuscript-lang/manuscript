@@ -123,7 +123,7 @@ A collection loop or non-escaping callback borrows the receiver for the traversa
 
 ### Choosing a copy or an update {#naming-and-migration}
 
-Mutating methods such as `append`, `set`, `add` and `reverse` update a `var` receiver. Transforms such as `concat`, `filter`, `sorted` and `reversed` return independent results. `slice` on a List and `keys()` and `values()` on a Map lend instead: the result is used in place while the receiver stays unchanged, and keeping it (storing, returning, a `var` binding, an escaping closure) needs `.clone()`, as `xs.slice(1, 3).get().clone()` does. For bytes, `slice` copies and `view(start, end)` borrows a range; see [half-open slices](../basics/text-and-bytes.md#half-open-slices).
+Mutating methods such as `append`, `set`, `add` and `reverse` update a `var` receiver. Transforms such as `concat`, `filter`, `sorted` and `reversed` return independent results. `slice` on a List of numbers or `Bool`s and `keys()` and `values()` on a Map lend instead: the result is used in place while the receiver stays unchanged, and keeping it (storing, returning, a `var` binding, an escaping closure) needs `.clone()`, as `xs.slice(1, 3).get().clone()` does. For bytes, `slice` copies and `view(start, end)` borrows a range; see [half-open slices](../basics/text-and-bytes.md#half-open-slices).
 
 Use `Queue` from `@std/collections/queue.ms` for first-in, first-out work (`enqueue`, `dequeue`, `peek`); `dequeue` is O(1). Use `Deque` when adding or removing at both ends. Both are owned values: declare them with `var` to mutate and use `.clone()` for an independent copy.
 
