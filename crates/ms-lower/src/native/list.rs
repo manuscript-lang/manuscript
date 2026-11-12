@@ -809,9 +809,10 @@ impl<'a> FnLower<'a> {
         Ok(())
     }
 
-    /// `xs.set(i, v)` on a list variable that lives in memory (a closure shares it): the element
-    /// is written where it lies. Taking the list out of its slot and putting the unchanged header
-    /// back would store ptr, len and cap again after every write.
+    /// `xs.set(i, v)` where the list stays in place: a list variable that lives in memory (a
+    /// closure shares it) or an element of one (`dp[i][j] = v`). The element is written where it
+    /// lies: taking the list out of its place and putting the unchanged header back would store
+    /// ptr, len and cap again after every write.
     pub(super) fn slot_list_set(
         &mut self,
         recv_expr: &Expr,
@@ -824,20 +825,37 @@ impl<'a> FnLower<'a> {
         {
             return Ok(None);
         }
-        let ExprKind::Name(_) = &recv_expr.kind else {
+        let elem_place = crate::mutation::index_parts(self.syms, &self.hir, recv_expr).is_some();
+        let list = if elem_place {
+            // The row is a borrowed read of the owner's element; only its elements change.
+            let row = self.read_place(recv_expr)?;
+            if self.dead {
+                return Ok(None);
+            }
+            let list = self.borrow(row);
+            if self.b.m.list_elem(self.ty_of(list)).is_none() {
+                return Ok(None);
+            }
+            list
+        } else {
+            let ExprKind::Name(_) = &recv_expr.kind else {
+                return Ok(None);
+            };
+            let Resolution::Local(binding) = self.hir.resolution(recv_expr) else {
+                return Ok(None);
+            };
+            if self.aliases.contains_key(&binding.uid) {
+                return Ok(None);
+            }
+            let l = self.local(&binding)?;
+            if l.slot.is_none() || !matches!(self.b.m.types.kind(l.ty), TyKind::List(_)) {
+                return Ok(None);
+            }
+            self.read_local(&binding)?.v
+        };
+        let Some(elem) = self.b.m.list_elem(self.ty_of(list)) else {
             return Ok(None);
         };
-        let Resolution::Local(binding) = self.hir.resolution(recv_expr) else {
-            return Ok(None);
-        };
-        if self.aliases.contains_key(&binding.uid) {
-            return Ok(None);
-        }
-        let l = self.local(&binding)?;
-        let (Some(_), TyKind::List(elem)) = (l.slot, self.b.m.types.kind(l.ty).clone()) else {
-            return Ok(None);
-        };
-        let list = self.read_local(&binding)?.v;
         let i = self.borrow(args[0].val);
         let n = self.b.list_len(list);
         let zero = self.b.iconst(0);
@@ -848,12 +866,7 @@ impl<'a> FnLower<'a> {
         let v = self.element_value(&args[1]);
         let at = self
             .b
-            .emit(
-                Op::ListAddrU,
-                &[list, r],
-                ms_mir::ir::Imm::None,
-                Some(MTy::PTR),
-            )
+            .emit(Op::ListAddrU, &[list, r], Imm::None, Some(MTy::PTR))
             .expect("list.addr.u");
         if self.needs_drop(elem) {
             let old = self
