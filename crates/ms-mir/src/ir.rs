@@ -917,6 +917,9 @@ pub enum ExternRole {
     CleanupDiscard,
     /// `bytes.append(bytes, byte)`.
     BytesAppend,
+    /// `string.split_view(s, sep, ..)`: a list whose pieces borrow `s`, so passes never move
+    /// it into an owning position or turn a copy of it into a move.
+    StringSplitView,
     /// `bytes.decode_utf8(bytes, out)`; the `bytetake` pass may make it a take.
     BytesDecodeUtf8,
     /// Starts a task that can be cancelled.
@@ -944,6 +947,7 @@ impl ExternRole {
         (ExternRole::CleanupDiscard, "cleanup_discard"),
         (ExternRole::BytesAppend, "bytes_append"),
         (ExternRole::BytesDecodeUtf8, "bytes_decode_utf8"),
+        (ExternRole::StringSplitView, "string_split_view"),
         (ExternRole::SpawnsTask, "spawns_task"),
     ];
 

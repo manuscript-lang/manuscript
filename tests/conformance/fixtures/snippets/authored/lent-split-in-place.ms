@@ -19,7 +19,13 @@ fn longest(text: String) String:
 			best = p.clone()
 	return best
 
+// The pieces are views of `rest`, which dies when the function returns: the clone must own them.
+fn components(text: String) List[String]:
+	rest := text.cut_prefix("/").get(text)
+	return rest.split("/").clone()
+
 export fn main() Int:
+	print(components("/alpha/beta/gamma/delta/epsilon/zeta/eta/theta"))
 	print(latency("alpha beta gamma"))
 	print(keep("a b c").fields.length())
 	print(longest("x,yyyy,zz,wwwwwwwwwwwwwwwwwwwwwwwwwwww"))

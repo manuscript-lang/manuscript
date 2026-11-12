@@ -154,6 +154,7 @@ pub(crate) fn extern_role(sym: &str) -> ms_mir::ir::ExternRole {
         "msrt_cleanup_discard" | "msrt_cleanup_remove" => R::CleanupDiscard,
         "msrt_bytes_append" => R::BytesAppend,
         "msrt_bytes_decode_utf8" => R::BytesDecodeUtf8,
+        "msrt_string_split_view" => R::StringSplitView,
         s if rt_flags(s).spawns => R::SpawnsTask,
         _ => R::None,
     }
