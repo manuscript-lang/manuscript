@@ -2,7 +2,11 @@
 
 The encoding change builds hexadecimal ASCII in reserved byte-list batches of at most 16KiB, converts each batch, and appends it to the result. Padded Base64 reuses the existing unpadded encoder and adds only the canonical suffix. Public signatures, alphabets, tails and decoder behavior remain unchanged.
 
-## 2026-11-12 comparison
+## Current-main confirmation
+
+The [current-main follow-up](current-main-2026-11-12/README.md) rebuilds baseline and proposed against main `15e35bc8a`, using identical typed setup helpers that compile normally with all checks enabled. It repeats all 31 cases with seven paired runs, A/A, RSS and correctness controls. All case medians improve. The earlier results below remain historical; their original fixture and source hashes are preserved in the PR history.
+
+## Historical 2026-11-12 comparison
 
 Baseline main: `0ff39fa82b0df7239b9ba8157c03d64ce165d541`. Actual public library calls compiled with Manuscript 0.1.0 LLVM Release on an AMD EPYC 9V74 Linux x86_64 VM. The proposed stdlib source hash and application executable identities are in [metadata](results-2026-11-12/metadata.json).
 
