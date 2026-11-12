@@ -4,6 +4,7 @@
 
 Perf and agent benchmarks, profiling.
 
+- [User `hash()` values are mixed before they index a table](user-hash-values-are-mixed-before-indexing.md): identity-like hashes of small-int records clustered under linear probing (562 to 103 ms for 1M `Set[Pt]` operations).
 - [Hot string and set fast paths live in `ms-rt-hot` with a slow twin](hot-string-fast-paths-live-in-ms-rt-hot-with-a-slow-twin.md): fast case inlined, rare case calls `*_slow`; test ASCII by flag or inline bits; `Set[Int]` fixed layout; build `memmem` only for long text.
 - [Numeric parsing needs invalid-input performance controls](numeric-parsing-needs-invalid-input-performance-controls.md): valid-input gains can hide overflow and malformed-input regressions; preserve error precedence and equivalent Rust validation.
 
