@@ -3,17 +3,11 @@
 
 mod impl_adjacency;
 mod inline_source;
-mod internal_externs;
-mod layering;
 mod licenses;
 mod nested;
 mod optional_defaults;
-mod portability;
-mod release;
 mod stages;
 mod stream_names;
-mod thread_affinity;
-mod unsafe_boundary;
 
 use ms_syntax::parser::parse;
 use std::path::Path;
@@ -59,21 +53,14 @@ fn run(syms: ms_syntax::Names) -> ExitCode {
     issues.extend(standard_syntax());
     issues.extend(nested::check(&files));
     issues.extend(format_drift(&files));
-    issues.extend(release::extension_version());
-    issues.extend(release::workflow_triggers());
-    issues.extend(unsafe_boundary::check(&files));
     issues.extend(inline_source::check(&files));
-    issues.extend(portability::check(&files));
     issues.extend(stream_names::check(syms, &files));
     issues.extend(impl_adjacency::check(syms, &files));
-    issues.extend(internal_externs::check(&files));
     issues.extend(optional_defaults::check(syms, &files));
-    issues.extend(layering::check(&files));
     issues.extend(stages::check(&files));
-    issues.extend(thread_affinity::check(&files));
     if issues.is_empty() {
         println!(
-            "Nested matches, formatting, stdlib syntax, release pins, triggers, unsafe boundary, inline sources, portability, stream names, impl adjacency, internal externs, optional defaults, crate layering, checker stage layering, and thread affinity agree."
+            "Nested matches, formatting, stdlib syntax, inline sources, stream names, impl adjacency, optional defaults and checker stage layering agree."
         );
         return ExitCode::SUCCESS;
     }

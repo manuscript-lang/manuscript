@@ -1,6 +1,6 @@
 //! Language-stage layering inside `ms-check`: which module may name which.
 //!
-//! Crates are layered by `layering.rs`; this is the same rule for the stages the checker holds.
+//! Crates are layered by `layering` in `tools/repo_check.ms`; this is the same rule for the stages the checker holds.
 //! Every top-level module has a stage, and a module may name only its own stage or a lower one
 //! (`proposals/compiler-stage-layering.md`). A reference to a higher stage is a back-edge: a later
 //! stage reached into by an earlier one. Today's back-edges are listed in `BACK_EDGES`; the list

@@ -39,9 +39,12 @@ check: runtime
 fmt:
 	cargo fmt --all
 
-# Nested matches, .ms formatting, stdlib syntax, release pins, workflow triggers, Rust unsafe allow-list.
-repo-check:
+# Rules that parse Manuscript (nested matches, formatting, stdlib syntax, stages) run in the
+# ms-repo-check binary; text rules (release pins, triggers, unsafe boundary, thread affinity,
+# portability, layering, internal externs) run in tools/repo_check.ms.
+repo-check: build
 	cargo run --release --locked -q -p ms-repo-check
+	$(MS) run tools/repo_check.ms
 
 workflow-check:
 	node --test tests/workflows/*.test.cjs
