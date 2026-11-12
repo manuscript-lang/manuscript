@@ -504,6 +504,113 @@ pub fn run(m: &mut Module) -> bool {
     changed
 }
 
+/// A block parameter that only ever receives one other value (or itself, around a loop) is
+/// that value: a list threaded unchanged through a loop keeps the origin of the list it
+/// started as, even when that list's own origin is mixed.
+fn alias_loop_lists(m: &Module, f: &Func, lengths: &mut [Value]) {
+    let mut source: HashMap<Value, Option<Value>> = HashMap::new();
+    let mut note = |t: &Target| {
+        let params = &f.blocks[t.block.index()].params;
+        for (p, &a) in params.iter().zip(&t.args) {
+            if a == p.value
+                || f.ty(a) != f.ty(p.value)
+                || !matches!(m.types.kind(f.ty(a)), TyKind::List(_))
+            {
+                continue;
+            }
+            source
+                .entry(p.value)
+                .and_modify(|s| {
+                    if *s != Some(a) {
+                        *s = None;
+                    }
+                })
+                .or_insert(Some(a));
+        }
+    };
+    for b in &f.blocks {
+        match &b.term {
+            Term::Br(t) => note(t),
+            Term::CondBr { then, els, .. } => {
+                note(then);
+                note(els);
+            }
+            Term::Switch { cases, default, .. } => {
+                cases.iter().for_each(|(_, t)| note(t));
+                note(default);
+            }
+            _ => {}
+        }
+    }
+    // Only lists matter; `lengths` is the identity for everything else.
+    for _ in 0..8 {
+        let mut changed = false;
+        for (&p, &s) in &source {
+            let Some(a) = s else { continue };
+            if lengths[p.index()] == p
+                && lengths[a.index()] != p
+                && lengths[p.index()] != lengths[a.index()]
+            {
+                lengths[p.index()] = lengths[a.index()];
+                changed = true;
+            }
+        }
+        if !changed {
+            break;
+        }
+    }
+}
+
+/// A loop that starts with an empty list and a counter at zero and pushes one element while
+/// adding one to the counter keeps the counter equal to the list's length: the counter parameter
+/// takes the list parameter's length origin.
+fn counted_lists(
+    m: &Module,
+    f: &Func,
+    defs: &[Option<(usize, usize)>],
+    incoming: &[Vec<(usize, Edge, Vec<Value>)>],
+    lengths: &[Value],
+    lenof: &mut LenOf,
+) {
+    let def = |v: Value| defs[v.index()].map(|(b, i)| &f.blocks[b].insts[i]);
+    let konst = |v: Value| match def(v).map(|d| (d.op, d.imm)) {
+        Some((Op::IConst, Imm::Int(c))) => Some(c),
+        _ => None,
+    };
+    for (bi, blk) in f.blocks.iter().enumerate().skip(1) {
+        if incoming[bi].is_empty() {
+            continue;
+        }
+        for (li, l) in blk.params.iter().enumerate() {
+            if !matches!(m.types.kind(f.ty(l.value)), TyKind::List(_)) {
+                continue;
+            }
+            for (ci, c) in blk.params.iter().enumerate() {
+                if f.ty(c.value) != Ty::INT {
+                    continue;
+                }
+                let paired = incoming[bi].iter().all(|(_, _, args)| {
+                    let (al, ac) = (args[li], args[ci]);
+                    let fresh = def(al).is_some_and(|d| {
+                        d.op == Op::ListNew || (d.op == Op::ListLit && d.args.is_empty())
+                    }) && konst(ac) == Some(0);
+                    let step = def(al)
+                        .is_some_and(|d| d.op == Op::ListPush && d.args[0] == l.value)
+                        && def(ac).is_some_and(|d| {
+                            matches!(d.op, Op::IAdd | Op::IAddChk)
+                                && d.args[0] == c.value
+                                && konst(d.args[1]) == Some(1)
+                        });
+                    fresh || step
+                });
+                if paired {
+                    lenof.insert(c.value, lengths[l.value.index()]);
+                }
+            }
+        }
+    }
+}
+
 /// `UInt64` values are tracked as the unsigned range they provably lie in when it stays within
 /// `0..=i64::MAX`; any interval that dips below zero stands for "every `u64`" (see [`unsigned`]).
 fn tracked(ty: Ty) -> bool {
@@ -527,7 +634,8 @@ fn type_top(ty: Ty) -> Itv {
 impl<'a> Fa<'a> {
     fn new(m: &'a Module, f: &'a Func) -> Self {
         let n = f.blocks.len();
-        let lengths = length_origins(m, f);
+        let mut lengths = length_origins(m, f);
+        alias_loop_lists(m, f, &mut lengths);
         let byte_lists = byte_lists(m, f);
         let mut defs = vec![None; f.values.len()];
         let mut lenof = LenOf(vec![None; f.values.len()]);
@@ -572,7 +680,12 @@ impl<'a> Fa<'a> {
         for (pos, b) in rpo.iter().enumerate() {
             rpo_pos[b.index()] = pos as u32;
         }
-        let class = |v: Value| lenof.get(&v).map_or(v.index(), |o: &Value| o.index());
+        counted_lists(m, f, &defs, &incoming, &lengths, &mut lenof);
+        let class = |v: Value| {
+            lenof
+                .get(&v)
+                .map_or(lengths[v.index()].index(), |o: &Value| o.index())
+        };
         let mut last_read = vec![0u32; f.values.len()];
         for &b in &rpo {
             let pos = rpo_pos[b.index()];
@@ -613,7 +726,9 @@ impl<'a> Fa<'a> {
     }
 
     fn class(&self, v: Value) -> usize {
-        self.lenof.get(&v).map_or(v.index(), |o| o.index())
+        self.lenof
+            .get(&v)
+            .map_or(self.lengths[v.index()].index(), |o| o.index())
     }
 
     /// Drops what `env` knows about values that no block from `bi` on reads.
@@ -764,8 +879,33 @@ impl<'a> Fa<'a> {
         self.prune(&mut env, bi);
         if let [(p, kind, _)] = self.incoming[bi].as_slice() {
             self.apply_edge(&mut env, *p, *kind);
+        } else if let Some((p, kind)) = self.entry_edge(bi) {
+            self.apply_edge(&mut env, p, kind);
         }
         env
+    }
+
+    /// The single edge that enters the loop headed by `bi` from outside, when every other
+    /// incoming edge comes from inside it. Every path to the header runs through that edge
+    /// first, and values are immutable, so what it refines about earlier values holds in
+    /// the whole loop.
+    fn entry_edge(&self, bi: usize) -> Option<(usize, Edge)> {
+        let inside = |mut b: usize| {
+            while b != bi && b != 0 {
+                b = self.idom[b];
+            }
+            b == bi
+        };
+        let mut entry = None;
+        for (p, kind, _) in &self.incoming[bi] {
+            if inside(*p) {
+                continue;
+            }
+            if entry.replace((*p, *kind)).is_some() {
+                return None;
+            }
+        }
+        entry
     }
 
     fn edge_env(&self, p: usize, kind: Edge) -> Env {
