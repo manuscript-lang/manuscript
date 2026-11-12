@@ -1449,27 +1449,27 @@ impl Checker {
         } else {
             None
         };
-        if let Some(property) = derivable.filter(|_| result.is_empty()) {
-            if self.property(receiver, property, None) {
-                let contract = self.session.standard(property.name(), vec![]);
-                let mut operation = contract
-                    .def
-                    .as_ref()
-                    .map(|d| d.operations.borrow()[0].clone())
-                    .expect("operation");
-                operation.ty = sub(&operation.ty, &self_binding(self.syms, &contract, receiver));
-                return vec![Rc::new(Method {
-                    id: n(""),
-                    module: n(""),
-                    local: false,
-                    receiver: receiver.clone(),
-                    contract: Some(contract.clone()),
-                    ty: operation.ty,
-                    variables: Vec::new(),
-                    decl: stdlib::standard_method_declaration(&contract, name),
-                    native: Native::Builtin(name),
-                })];
-            }
+        if let Some(property) = derivable.filter(|_| result.is_empty())
+            && self.property(receiver, property, None)
+        {
+            let contract = self.session.standard(property.name(), vec![]);
+            let mut operation = contract
+                .def
+                .as_ref()
+                .map(|d| d.operations.borrow()[0].clone())
+                .expect("operation");
+            operation.ty = sub(&operation.ty, &self_binding(self.syms, &contract, receiver));
+            return vec![Rc::new(Method {
+                id: n(""),
+                module: n(""),
+                local: false,
+                receiver: receiver.clone(),
+                contract: Some(contract.clone()),
+                ty: operation.ty,
+                variables: Vec::new(),
+                decl: stdlib::standard_method_declaration(&contract, name),
+                native: Native::Builtin(name),
+            })];
         }
         result
     }
