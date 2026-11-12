@@ -10,7 +10,7 @@ use crate::Error;
 use crate::func::{FnLower, Val};
 use ms_check::api::ast::*;
 use ms_check::api::hir::Resolution;
-use ms_mir::ir::{Cc, Value};
+use ms_mir::ir::{Cc, Op, Value};
 use ms_mir::types::Ty as MTy;
 use std::collections::HashSet;
 
@@ -64,6 +64,17 @@ fn compare_parts(e: &Expr) -> Option<(&Expr, Cc, i64)> {
     literal_scalar(left).map(|c| (&**right, swapped(cc), c))
 }
 
+/// The receiver of `x.parse_int()`.
+fn parse_int_receiver(syms: ms_check::api::Names, e: &Expr) -> Option<&Expr> {
+    let ExprKind::Call { callee, args } = &e.kind else {
+        return None;
+    };
+    let ExprKind::Member { left, name } = &callee.kind else {
+        return None;
+    };
+    (args.is_empty() && syms.str(name) == "parse_int").then_some(&**left)
+}
+
 /// Locals of a body that some use needs as a `String`: a use other than a comparison with a
 /// one-character literal, or one inside a closure.
 pub(crate) fn string_uses(fl: &FnLower<'_>, body: &[Stmt]) -> HashSet<usize> {
@@ -76,6 +87,9 @@ pub(crate) fn string_uses(fl: &FnLower<'_>, body: &[Stmt]) -> HashSet<usize> {
         fn expr(&mut self, e: &Expr) {
             if let Some((operand, _, _)) = compare_parts(e) {
                 self.compared.insert(operand);
+            }
+            if let Some(recv) = parse_int_receiver(self.fl.syms, e) {
+                self.compared.insert(recv);
             }
             match &e.kind {
                 ExprKind::Name(_) if !self.compared.contains(&std::ptr::from_ref(e)) => {
@@ -157,18 +171,8 @@ impl FnLower<'_> {
         let Some((operand, cc, c)) = compare_parts(e) else {
             return Ok(None);
         };
-        let code = match &operand.kind {
-            ExprKind::Name(_) => match self.hir.resolution(operand) {
-                Resolution::Local(b) => match self.scalar_locals.get(&b.uid) {
-                    Some(v) => Val { v: *v, own: false },
-                    None => return Ok(None),
-                },
-                _ => return Ok(None),
-            },
-            _ => match self.get_scalar(operand)? {
-                Some(v) => v,
-                None => return Ok(None),
-            },
+        let Some(code) = self.scalar_operand(operand)? else {
+            return Ok(None);
         };
         if self.dead {
             return Ok(Some(code));
@@ -176,5 +180,50 @@ impl FnLower<'_> {
         let lit: Value = self.b.iconst(c);
         let out = self.b.icmp(cc, code.v, lit);
         Ok(Some(self.val(out, true)))
+    }
+
+    /// The code point of a `get` call or of a local kept as one.
+    fn scalar_operand(&mut self, operand: &Expr) -> Result<Option<Val>, Error> {
+        if let ExprKind::Name(_) = &operand.kind {
+            let Resolution::Local(b) = self.hir.resolution(operand) else {
+                return Ok(None);
+            };
+            return Ok(self
+                .scalar_locals
+                .get(&b.uid)
+                .map(|v| Val { v: *v, own: false }));
+        }
+        self.get_scalar(operand)
+    }
+
+    /// `c.parse_int()` of a one-scalar string: its digit value, or none.
+    pub(crate) fn scalar_parse_int(&mut self, e: &Expr) -> Result<Option<Val>, Error> {
+        let Some(operand) = parse_int_receiver(self.syms, e) else {
+            return Ok(None);
+        };
+        let Some(code) = self.scalar_operand(operand)? else {
+            return Ok(None);
+        };
+        if self.dead {
+            return Ok(Some(code));
+        }
+        let (zero, nine) = (self.b.iconst(48), self.b.iconst(57));
+        let (lo, hi) = (
+            self.b.icmp(Cc::Ge, code.v, zero),
+            self.b.icmp(Cc::Le, code.v, nine),
+        );
+        let digit = self.b.binop(Op::And, lo, hi);
+        let opt = self.emty(e)?;
+        let out = self.two_ways(
+            digit,
+            opt,
+            &mut |s| {
+                let base = s.b.iconst(48);
+                let d = s.b.binop(Op::ISub, code.v, base);
+                Ok(Some(s.b.opt_some(d)))
+            },
+            &mut |s| Ok(Some(s.b.opt_none(opt))),
+        )?;
+        Ok(Some(out))
     }
 }
