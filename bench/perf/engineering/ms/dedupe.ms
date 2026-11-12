@@ -15,7 +15,7 @@ fn main() Unit:
 		total += 1
 		lines.update(line.clone(), 0, fn v: v + 1)
 
-		name := line.split(" ", 2)[0]
+		name := line.split(" ", 2)[0].clone()
 		names.update(name.clone(), 0, fn v: v + 1)
 
 	var most = ""

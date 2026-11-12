@@ -917,6 +917,12 @@ pub enum ExternRole {
     CleanupDiscard,
     /// `bytes.append(bytes, byte)`.
     BytesAppend,
+    /// `string.split_view(s, sep, ..)`: a list whose pieces borrow `s`, so passes never move
+    /// it into an owning position or turn a copy of it into a move.
+    StringSplitView,
+    /// A runtime function with a `<name>_take` twin (`// ms: takes_self`); the `bytetake` pass
+    /// calls the twin when the first argument is an owned value that dies at the call.
+    TakesDying,
     /// Starts a task that can be cancelled.
     SpawnsTask,
 }
@@ -941,6 +947,8 @@ impl ExternRole {
         (ExternRole::StringEq, "string_eq"),
         (ExternRole::CleanupDiscard, "cleanup_discard"),
         (ExternRole::BytesAppend, "bytes_append"),
+        (ExternRole::TakesDying, "takes_dying"),
+        (ExternRole::StringSplitView, "string_split_view"),
         (ExternRole::SpawnsTask, "spawns_task"),
     ];
 

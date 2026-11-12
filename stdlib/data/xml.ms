@@ -647,7 +647,7 @@ export fn parse(text: String, max_depth: Int = 1000) XmlNode!:
 		"\r",
 		"\n",
 	) else: text.clone()
-	var reader = Reader(chars: normalized.chars(), at: 0, max_depth: max_depth)
+	var reader = Reader(chars: normalized.chars().clone(), at: 0, max_depth: max_depth)
 	if reader.peek() == "\u{feff}": reader.at += 1
 	reader.skip_misc(declaration_allowed: true, doctype_allowed: true)?
 

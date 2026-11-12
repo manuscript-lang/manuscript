@@ -14,7 +14,7 @@ fn keep(text: String) List[String]:
 fn first_long(text: String) String:
     for p in text.split(","):
         if p.length() > 3:
-            return p
+            return p.clone()
     return "none"
 
 fn count(text: String) Int:

@@ -50,14 +50,16 @@ interface StringOperations:
 	fn length() Int
 	// Reports whether the text contains no scalars.
 	fn is_empty() Bool
-	// Returns a fresh list with one String for each Unicode scalar, in order.
+	// Returns a list with one String for each Unicode scalar, in order. The result
+	// borrows the receiver: use it in place, or `.clone()` it to keep it.
 	fn chars() List[String]
 	// Reverses Unicode scalar order; combining sequences/graphemes may change.
 	fn reverse() String
 	// Returns -1, 0 or 1 in lexical scalar order, without locale or normalization.
 	fn compare(other: String) Int
 	// Splits LF and CRLF lines, preserving interior empty lines and standalone CR.
-	// Omits a final extra empty item; empty text returns a fresh empty list.
+	// Omits a final extra empty item; empty text returns an empty list. The result
+	// borrows the receiver: use it in place, or `.clone()` it to keep it.
 	fn lines() List[String]
 	// Normalizes using exactly NFC, NFD, NFKC, or NFKD (case-sensitive); max_bytes
 	// optionally bounds UTF-8 output. Invalid forms or negative budgets return EINVAL;
@@ -100,7 +102,8 @@ interface StringOperations:
 	fn drop(count: Int) String
 	// Splits exact separators, truncating parts to a supplied nonnegative cap; zero
 	// returns [], negatives fault. Empty text with a nonempty separator yields [""]; an
-	// empty separator splits into scalars.
+	// empty separator splits into scalars. The pieces borrow the receiver: use them in
+	// place, or `.clone()` the result to keep it.
 	fn split(separator: String, max_parts: Int?) List[String]
 	// Tests whether the receiver begins with this exact prefix.
 	fn starts_with(prefix: String) Bool

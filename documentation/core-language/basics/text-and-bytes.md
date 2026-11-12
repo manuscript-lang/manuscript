@@ -93,11 +93,11 @@ There is no `text[index]` or slice syntax: scalar position is not a constant-tim
 - `get`, `scalar_at`, `index_of`, `last_index_of`, `slice`, and `slice_scalars` use scalar indexes. `get(index, default:)` returns a one-scalar String; `scalar_at(index, default:)` its code point as an Int. Negative indexes count from the end; out of range gives the default, or a fault without one.
 - Searches return the first or last scalar index or `none`. An empty search matches at 0 (`index_of`) or `scalar_length()` (`last_index_of`).
 - `length()` and `scalar_length()` count scalars; `is_empty()` tests for zero.
-- `chars()` returns a fresh `List[String]`; `scalar_values()` returns code points.
+- `chars()` returns a `List[String]` that borrows the receiver, like `split` and `lines`; `scalar_values()` returns code points.
 - `reverse()` reverses scalars without normalization: `"e\u{301}".reverse()` is `"\u{301}e"`.
 - `compare(other:)` returns `-1`, `0`, or `1` by scalar order, case-sensitive, a prefix first: `"Z".compare("a")` is `-1`; `"é".compare("e\u{301}")` is `1`.
 - `lines()` splits at LF or CRLF, drops those terminators, keeps interior empty lines and lone CRs, and adds no item for a final newline: `"a\r\nb\n".lines()` is `["a", "b"]`, `"\n\n".lines()` is `["", ""]`, `"a\r".lines()` is `["a\r"]`.
-- `lines()` and `chars()` return fresh mutable lists on every call.
+- `split`, `lines` and `chars` lend their receiver: the result is used in place while the receiver stays unchanged, and keeping it (storing, returning, a `var` binding, an escaping closure) needs `.clone()`, as `Row(line.split(" ").clone())` does. A loop variable over a lent result borrows its piece, so `out.append(piece.clone())` keeps it.
 
 ### Half-open slices
 

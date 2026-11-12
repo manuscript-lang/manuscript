@@ -1818,7 +1818,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_from_values(values: *const VecVal, ou
 
 /// `decode_utf8`: presence flag (0 when the bytes are not valid UTF-8), the string through `out`.
 #[unsafe(no_mangle)]
-// ms: leaf domain=binary
+// ms: leaf fresh takes_self domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_decode_utf8(b: *const VecVal, out: *mut StrVal) -> u8 {
     // SAFETY: caller contract.
     unsafe {
@@ -1831,10 +1831,55 @@ pub unsafe extern "C-unwind" fn msrt_bytes_decode_utf8(b: *const VecVal, out: *m
     }
 }
 
+/// `decode_utf8` of a `Bytes` that dies at the call (the optimizer rewrites a call whose receiver
+/// drops right after it): the string reuses the buffer instead of copying it, and an invalid or
+/// short input frees it. Same presence flag and `out` as `msrt_bytes_decode_utf8`.
+///
+/// # Safety
+/// `b` holds an owned `Bytes` that the callee takes; `out` is writable.
+#[unsafe(no_mangle)]
+// ms: leaf domain=binary
+pub unsafe extern "C-unwind" fn msrt_bytes_decode_utf8_take(
+    b: *mut VecVal,
+    out: *mut StrVal,
+) -> u8 {
+    // SAFETY: caller contract.
+    unsafe {
+        let v = &*b;
+        let s = bslice(b);
+        let ascii = s.is_ascii();
+        // A view (`cap == 0`) borrows its bytes, so there is no buffer to free or reuse.
+        let release = |v: &VecVal| {
+            if v.cap != 0 {
+                alloc::free(v.ptr);
+            }
+        };
+        if !ascii && core::str::from_utf8(s).is_err() {
+            release(v);
+            return 0;
+        }
+        if v.cap == 0 || v.len <= STR_INLINE_MAX {
+            out.write(from_bytes(s));
+            release(v);
+            return 1;
+        }
+        // The string is the same allocation plus a NUL terminator.
+        let ptr = if v.cap > v.len {
+            v.ptr
+        } else {
+            alloc::realloc(v.ptr, v.len + 1)
+        };
+        *ptr.add(v.len) = 0;
+        let r = StrVal::owned(ptr, v.len);
+        out.write(if ascii { r.with_ascii() } else { r });
+        1
+    }
+}
+
 /// `decode_utf8_range(start, end)`: like `decode_utf8` over `[start, end)` without copying the range
 /// first; bounds outside `0 <= start <= end <= length()` fault.
 #[unsafe(no_mangle)]
-// ms: leaf domain=binary
+// ms: leaf fresh domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_decode_utf8_range(
     b: *const VecVal,
     start: i64,

@@ -6,6 +6,7 @@ mod elaborate;
 mod exit_drops;
 mod intern;
 mod interp;
+mod opt_bytetake;
 mod opt_copyelim;
 mod opt_ifconv;
 mod opt_inline;

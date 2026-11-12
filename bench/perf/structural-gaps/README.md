@@ -132,6 +132,17 @@ A borrowed value converted to an interface (`total(sq)` for `fn total(x: Shape)`
 
 Closure captures: a closure passed to a call and not stored already allocates nothing (1,000 calls of `apply(fn x: x + k, i)`: 13 allocations in total). A closure stored in a list must escape the frame, so its environment stays on the heap; no change.
 
+## 2026-11-12: stage 1, `decode_utf8` takes a dying `Bytes`
+
+Same machine and `ms` build as above, before and after the change (`bytetake` pass, `msrt_bytes_decode_utf8_take`). Callgrind and memcheck on the 2 MB input, wall time is the minimum of 5 on the 22 MB input.
+
+| task | instructions before | after | allocated bytes before | after | wall before | after |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| grep | 23.28M | 22.76M | 6,299,139 | 4,202,043 | 56 ms | 39 ms |
+| logstats | 112.45M | 111.83M | 15,248,255 | 13,151,115 | 98 ms | 88 ms |
+
+The saved work is the 2 MB copy of the input and its page faults, which callgrind counts as few instructions, so the wall time is the measure. Allocation counts are unchanged (the buffer is reused, not removed).
+
 ## 2026-11-12: inlinable string scans (track 1, first step)
 
 Same machine and build type as above (Release LLVM `ms`; callgrind instructions on the first 30,000 lines of each input, outputs compared byte for byte with the baseline build).
@@ -296,6 +307,29 @@ The Int case is now below the single `stats.update(...)` form (305M). A lookup i
 | wall | 132 ms | 70 ms | 72 ms |
 
 - `self.left?.insert(key)` took the record, unboxed the child into a slot, called, boxed it again with a new allocation and refilled the field. The payload of a recursive `Optional` is already in memory, in the box, so a `var` call now gets the box's address (`opt.addr`, `alias_payload_addr` in `crates/ms-lower/src/alias.rs`) and changes the child where it lies. Only a boxed optional has such an address; an inline payload keeps the take and put-back.
+- The remaining 34M instructions against C are not analysed.
+
+## 2026-11-12: string edits take a dying receiver (track 2 take, text edits)
+
+Case e of `keyed.ms` (`trim`, `replace`, `upper`, `contains` on 300k lines), before and after the `takes_self` twins for `trim`, `trim_start`, `trim_end`, `upper`, `lower` and `replace` (same machine; callgrind for instructions, minimum of 6 runs for wall time). Here `trim` already lends a view, so the owned copy made for `replace` and the `replace` result are the two receivers that die at a call.
+
+| case | instructions before | after | wall before | after | C |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| e: text edits, 300k lines | 954M | 554M | 39 ms | 28 ms | 334M, 31 ms |
+
+Not done in this step: `sorted`, `reversed` and `filter` takes (no measured gap, and `sortgen` already copies the list itself), and lending `Map.values`, `keys`, `entries` and `List.slice`. A lent `values` or `keys` list still has to be a contiguous list, so only string payloads can be views (`msrt_map_values_view` exists); a lent `slice` needs a list view (a `cap == 0` list), which every list drop path in both backends must skip.
+
+## 2026-11-12: string hot paths from the agent challenges (`scalar_values().all`, `slice`)
+
+c03 `csv-group-sum` reference solution on 25,000 generated lines (callgrind, same machine; before is the build without these two changes and without the string-edit takes).
+
+| change | c03 instructions |
+| --- | ---: |
+| before | 127.3M |
+| `s.scalar_values().all/any/count(f)` with a reading lambda runs as one decoding loop (no list of scalars) | 110.9M |
+| `slice` takes an ASCII path for strings of at most 256 bytes that carry no ASCII flag (a byte scan instead of walking scalars: 190 to about 120 instructions a call on 20-byte text) | 107.5M |
+
+Reference Rust is 44.0M on this challenge at 400 KB per the heap-parity thread; what is left in c03 is malloc and free (about 35M under callgrind's glibc allocator), `split_view` at 106 instructions a piece, `Needle::find`, and the copy a no-match `replace` makes of a borrowed line.
 - Re-measured at `d9f67581` against a standalone C twin (`gcc -O2`, `tree.c` with the same generator, depth and a free of the tree): 99.5M against 101.0M instructions, 70 against 72 ms. The C twin frees the tree (about 23M) and `tree.ms` does not. About 14M of the 99.5M is the `msrt_alloc`, `alloc_slow` and `alloc_large` layers, which appear only under callgrind (glibc replaces the release allocator). Generated code is within about 4M of C: the descent loop is 5 instructions a level as in C, `depth` is 6.1M against 2.9M (stack and overflow checks), and the tail of `insert` calls the drop glue on a child just tested to be none (about 8 instructions an insert). The earlier 151M and 117M figures (the latter was `mixed.ms` case c with its free) are superseded; there is no codegen gap left to close here.
 
 ## 2026-11-12, enum tree re-measured against a checked twin

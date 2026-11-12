@@ -341,16 +341,18 @@ fn family(m: &Module, f: &Func, ix: &Index, v: Value) -> ValueSet {
             match i.op {
                 Op::Drop | Op::Clone => {}
                 Op::Call | Op::CallInd | Op::CallRt | Op::CallMethod => {
+                    // A fresh result, through the return value or an out-pointer, points into
+                    // no borrowed argument, so it does not extend the family (a concat chain
+                    // would otherwise keep every intermediate alive until the end of the scope).
+                    let fresh = matches!(i.imm, Imm::Ext(e) if m.externs[e.index()].fresh);
                     // Out-pointers may receive views.
-                    for a in &i.args {
-                        if ix.slots[a.index()] {
-                            add(*a, &mut fam);
+                    if !fresh {
+                        for a in &i.args {
+                            if ix.slots[a.index()] {
+                                add(*a, &mut fam);
+                            }
                         }
                     }
-                    // A fresh result points into no borrowed argument, so it does not
-                    // extend the family (a concat chain would otherwise keep every
-                    // intermediate alive until the end of the scope).
-                    let fresh = matches!(i.imm, Imm::Ext(e) if m.externs[e.index()].fresh);
                     // A borrow-returning function's result is a borrow of its arguments.
                     let borrowed = (m.result_mode(f, i) == Some(Mode::Borrow)
                         && matches!(i.op, Op::Call | Op::CallMethod))

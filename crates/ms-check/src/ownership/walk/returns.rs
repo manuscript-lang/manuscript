@@ -964,6 +964,7 @@ impl Walker<'_> {
             ("get", 0) => recv.is(Builtin::Optional) || recv.is(Builtin::Result),
             ("first" | "last", 0) => recv.is(Builtin::List),
             ("view", 2) => recv.is(Builtin::Bytes) || recv.is_string(),
+            ("split", 1 | 2) | ("lines", 0) | ("chars", 0) => recv.is_string(),
             _ => false,
         };
         // `get()` on the last use of an owned local hands its payload over instead of borrowing it.

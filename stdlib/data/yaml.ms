@@ -1242,7 +1242,7 @@ fn inline_value(var context: Context, text: String, depth: Int, line: Int, colum
 		context.index += 1
 
 	var flow = Flow(
-		chars: joined.split(""),
+		chars: joined.split("").clone(),
 		codes: joined.scalar_values(),
 		pos: 0,
 		line: line,
@@ -1429,7 +1429,7 @@ fn block_value(
 
 	if lead == 38:
 		var flow = Flow(
-			chars: remainder.split(""),
+			chars: remainder.split("").clone(),
 			codes: [],
 			pos: 1,
 			line: start_line,
@@ -1828,7 +1828,7 @@ fn block(var context: Context, base: Int, depth: Int, scalar_base: Int) YamlValu
 
 			if quoted_key:
 				var flow = Flow(
-					chars: name.split(""),
+					chars: name.split("").clone(),
 					codes: [],
 					pos: 0,
 					line: source_line(context, context.index),
@@ -1984,7 +1984,7 @@ export fn parse(text: String, options: YamlOptions = YamlOptions()) YamlValue!:
 			)
 
 	var context = Context(
-		lines: normalized.split("\n"),
+		lines: normalized.split("\n").clone(),
 		final_break: normalized.ends_with("\n"),
 		index: 0,
 		max_depth: options.max_depth,
