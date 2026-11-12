@@ -288,6 +288,56 @@ impl Module {
         }
     }
 
+    /// Whether dropping a value of `ty` only returns memory: strings, bytes, lists, maps, sets,
+    /// big integers, optionals, records and alternatives made of such. A closure, an interface
+    /// value or an opaque runtime handle may own a file or a connection, so it is not plain.
+    pub fn drops_plain_memory(&self, ty: Ty) -> bool {
+        self.drops_plain_in(ty, &mut Vec::new())
+    }
+
+    fn drops_plain_in(&self, ty: Ty, seen: &mut Vec<Ty>) -> bool {
+        use crate::types::Native;
+        if seen.contains(&ty) {
+            return true;
+        }
+        match self.types.kind(ty) {
+            TyKind::Fn(..) | TyKind::Iface(_) => false,
+            TyKind::Obj(Native::Map | Native::Set | Native::BigInt, args) => {
+                seen.push(ty);
+                let out = args.iter().all(|a| self.drops_plain_in(*a, seen));
+                seen.pop();
+                out
+            }
+            TyKind::Obj(..) => false,
+            TyKind::List(inner) | TyKind::Opt(inner) => {
+                seen.push(ty);
+                let out = self.drops_plain_in(*inner, seen);
+                seen.pop();
+                out
+            }
+            TyKind::Rec(r) => {
+                seen.push(ty);
+                let out = self.records[r.index()]
+                    .fields
+                    .iter()
+                    .all(|f| self.drops_plain_in(f.1, seen));
+                seen.pop();
+                out
+            }
+            TyKind::Alt(a) => {
+                seen.push(ty);
+                let def = &self.alts[a.index()];
+                let out = def
+                    .cases
+                    .iter()
+                    .all(|c| c.fields.iter().all(|f| self.drops_plain_in(f.1, seen)));
+                seen.pop();
+                out
+            }
+            _ => true,
+        }
+    }
+
     /// The ownership mode of the result of `inst` in `f`, if it is an owned value.
     pub fn result_mode(&self, f: &Func, inst: &Inst) -> Option<Mode> {
         let res = inst.res?;

@@ -1422,6 +1422,48 @@ pub unsafe extern "C-unwind" fn msrt_set_add_copy(m: *mut MapVal, kd: KeyDesc, k
     unsafe { add_copy::<true>(&mut *m, &*kd, key) }
 }
 
+/// `Set.add` for an `Int` element: the layout is fixed (hash word, key), so the call site skips
+/// descriptor dispatch. A set stamped with its module's key behaviour keeps the general path.
+#[unsafe(no_mangle)]
+// ms: leaf domain=set
+pub unsafe extern "C-unwind" fn msrt_set_add_copy_w(m: *mut MapVal, kd: KeyDesc, key: *const u8) {
+    // SAFETY: caller contract; `key` is a live `Int` slot.
+    unsafe {
+        if !(*m).desc.is_null() {
+            return msrt_set_add_copy(m, kd, key);
+        }
+        if !ms_rt_hot::find_set_w(&*m, key).is_null() {
+            return;
+        }
+        let m = &mut *m;
+        let l = Layout {
+            koff: 8,
+            voff: 16,
+            stride: 16,
+            ksize: 8,
+            vsize: 0,
+        };
+        let h = hash_key::<IntKey>(&crate::desc::msrt_desc_string, key);
+        if m.used == m.cap {
+            grow(m, &l);
+        }
+        let p = slot(m, &l, m.used);
+        *(p as *mut u64) = h;
+        copy_slot(key, p.add(8), 8);
+        let mut pos = (h as usize ^ (h >> 32) as usize) & m.mask;
+        loop {
+            let e = *index_of(m).add(pos);
+            if e == 0 || e == REMOVED {
+                break;
+            }
+            pos = (pos + 1) & m.mask;
+        }
+        *index_of(m).add(pos) = entry(h, m.used);
+        m.used += 1;
+        m.len += 1;
+    }
+}
+
 #[unsafe(no_mangle)]
 // ms: leaf domain=set
 pub unsafe extern "C-unwind" fn msrt_set_union(

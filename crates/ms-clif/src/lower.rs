@@ -11,7 +11,7 @@ use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext, Switch};
 use cranelift_module::{DataId, FuncId, Module as _};
 use ms_mir::ir::{Cc, ExternRole, FaultKind, Func, Imm, Inst, Op, Target, Term};
 use ms_mir::types::{Ty, TyKind};
-use ms_rt_abi::symbols::{ISOLATE_HDR_CANCEL, ISOLATE_HDR_GUARDED, STACK_REGION};
+use ms_rt_abi::symbols::{ISOLATE_HDR_CANCEL, ISOLATE_HDR_GUARDED, STACK_LIMIT_CELL, STACK_REGION};
 use ms_rt_abi::{
     ASCII_CHAR_STRIDE, STR_ASCII, STR_INLINE, STR_INLINE_LEN_SHIFT, STR_LEN_MASK, STR_LEN_OFFSET,
     STR_PTR_OFFSET, STR_STATIC, VEC_CAP_OFFSET, VEC_LEN_OFFSET, VEC_PTR_OFFSET,
@@ -40,6 +40,10 @@ pub const REGION_SCALAR_ELEM: u32 = 1;
 /// Alias region of a list element that is a list or string header, the words of which a scalar
 /// store never overwrites.
 pub const REGION_HEADER_ELEM: u32 = 2;
+/// Bit set on an element access whose index is known to be below the list's length (a bounds
+/// check, or a proof the optimizer already acted on). The LLVM translation addresses such an
+/// access with a non-wrapping, in-bounds offset. It is only a marker for that translation.
+pub const REGION_IN_BOUNDS: u32 = 4;
 
 /// Where a wide value (`Map`, `Set`: seven words) also lives in memory, so calls take its
 /// address instead of spilling a copy. A home on a block parameter holds for the rest of the
@@ -89,7 +93,7 @@ pub struct Lower<'a, 'm> {
     region: Option<ir::AliasRegion>,
     /// Element type behind each pointer made by `list.addr`, so a `load` or `store` through it
     /// carries the element's alias region.
-    elem_ptrs: HashMap<Value, Ty>,
+    elem_ptrs: HashMap<Value, (Ty, Op)>,
 }
 
 fn bargs(vs: &[Value]) -> Vec<BlockArg> {
@@ -405,7 +409,7 @@ impl<'a, 'm> Lower<'a, 'm> {
     /// Only the LLVM emitter reads the regions, as TBAA tags. A Cranelift alias region means
     /// disjoint from every other access, untagged ones included, so a tagged store that no
     /// tagged load observes would be dead code there: Cranelift output stays untagged.
-    fn elem_region(&mut self, elem: Ty) -> Option<ir::AliasRegion> {
+    fn elem_region(&mut self, elem: Ty, in_bounds: bool) -> Option<ir::AliasRegion> {
         self.g.llvm.as_ref()?;
         let id = match self.g.m.types.kind(elem) {
             TyKind::Bool
@@ -420,8 +424,11 @@ impl<'a, 'm> Lower<'a, 'm> {
             | TyKind::UInt32
             | TyKind::UInt64 => REGION_SCALAR_ELEM,
             TyKind::List(_) | TyKind::Str | TyKind::Bytes => REGION_HEADER_ELEM,
-            _ => return None,
-        };
+            _ => 0,
+        } | if in_bounds { REGION_IN_BOUNDS } else { 0 };
+        if id == 0 {
+            return None;
+        }
         Some(self.b.func.dfg.alias_regions.insert(ir::AliasRegionData {
             user_id: id,
             description: "list element".into(),
@@ -429,8 +436,10 @@ impl<'a, 'm> Lower<'a, 'm> {
     }
 
     /// Runs `access` with the alias region of list elements of type `elem`.
-    fn in_elem_region<R>(&mut self, elem: Ty, access: impl FnOnce(&mut Self) -> R) -> R {
-        self.region = self.elem_region(elem);
+    fn in_elem_region<R>(&mut self, elem: Ty, mode: Op, access: impl FnOnce(&mut Self) -> R) -> R {
+        // Without checks only a proven index is known to be in bounds.
+        let in_bounds = self.g.opts.checks || matches!(mode, Op::ListGetU | Op::ListSetU);
+        self.region = self.elem_region(elem, in_bounds);
         let out = access(self);
         self.region = None;
         out
@@ -476,9 +485,16 @@ impl<'a, 'm> Lower<'a, 'm> {
     /// and returns that run's results. The check is the first thing the function does, so the
     /// parameters are still the caller's values (`ms_mir::verify`).
     fn depth_enter(&mut self) {
-        let hdr = self.task_hdr();
-        let limit = self.b.ins().load(types::I64, flags(), hdr, 0);
+        // The limit sits in the region beside the block's address: one load from the masked
+        // stack pointer.
         let sp = self.b.ins().get_stack_pointer(types::I64);
+        let base = self.b.ins().band_imm_s(sp, !(STACK_REGION - 1));
+        let limit = self.b.ins().load(
+            types::I64,
+            flags(),
+            base,
+            (STACK_REGION - STACK_LIMIT_CELL) as i32,
+        );
         let over = self.b.ins().icmp(IntCC::UnsignedLessThan, sp, limit);
         let grow = self.b.create_block();
         let cont = self.b.create_block();
@@ -1138,8 +1154,9 @@ impl<'a, 'm> Lower<'a, 'm> {
             | Op::OptIsSome
             | Op::OptGet
             | Op::OptUnwrap
-            | Op::OptUnbox => self.optionals(f, inst),
-            Op::StrByte | Op::StrAscii | Op::StrLen => self.strings(inst),
+            | Op::OptUnbox
+            | Op::OptAddr => self.optionals(f, inst),
+            Op::StrByte | Op::StrAscii | Op::StrAsciiAt | Op::StrLen => self.strings(inst),
             Op::ClosureNew
             | Op::ClosureCap
             | Op::ClosureCapAddr

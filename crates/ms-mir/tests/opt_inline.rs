@@ -145,9 +145,11 @@ fn owned_and_borrowed_params_keep_ownership_linear() {
 }
 
 #[test]
-fn recursive_functions_are_not_inlined() {
+fn a_self_recursive_function_is_unrolled_once_into_itself() {
     let m = inlined(include_str!("fixtures-opt/recursion.mir"));
-    assert_eq!(calls_to(&m, "fib"), 3, "{}", print_module(&m));
+    // `main`'s call, and the two calls in each of the two copies of the body in `fib`; the
+    // copies carry no recursion check of their own.
+    assert_eq!(calls_to(&m, "fib"), 5, "{}", print_module(&m));
     assert!(has_func(&m, "fib"));
     assert_eq!(count_op(&m, "fib", Op::DepthEnter), 1);
     assert_eq!(count_op(&m, "fib", Op::DepthLeave), 2);
@@ -155,12 +157,17 @@ fn recursive_functions_are_not_inlined() {
 }
 
 #[test]
-fn mutually_recursive_functions_are_not_inlined() {
+fn a_mutual_cycle_keeps_one_check_and_inlines_the_other_function() {
     let m = inlined(include_str!("fixtures-opt/mutual.mir"));
-    assert_eq!(calls_to(&m, "even"), 2);
-    assert_eq!(calls_to(&m, "odd"), 1);
-    assert_eq!(count_op(&m, "even", Op::DepthEnter), 1);
-    assert_eq!(count_op(&m, "odd", Op::DepthEnter), 1);
+    // The checked function is the one entered from `main`; the other one is inlined into it.
+    assert!(has_func(&m, "even"));
+    assert!(!has_func(&m, "odd"), "{}", print_module(&m));
+    assert_eq!(
+        count_op(&m, "even", Op::DepthEnter),
+        1,
+        "{}",
+        print_module(&m)
+    );
     assert_eq!(outcome(&m).0, Ok(1));
 }
 
