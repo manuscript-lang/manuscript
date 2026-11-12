@@ -244,6 +244,8 @@ pub(crate) struct FnLower<'a> {
     /// The iterable of the `for` being lowered when it may walk a map or set in place: the
     /// `entries()`, `values()` or `keys()` call that would otherwise build a list.
     pub map_walk_for: Option<*const ms_check::api::ast::Expr>,
+    /// Constant list literals built before the outermost loop that iterates them, by node.
+    pub hoisted: HashMap<ms_check::api::NodeId, ms_mir::builder::Var>,
     /// Which part of each entry the in-place walk yields, set when `map_walk_for` was taken.
     pub map_walk: Option<crate::stmt::Walk>,
     /// The `split` call of a `let` whose list the rest of the block only reads in place.
@@ -712,6 +714,7 @@ impl<'a> FnLower<'a> {
             stable_reads: HashSet::new(),
             keys_view_for: None,
             map_walk_for: None,
+            hoisted: HashMap::new(),
             map_walk: None,
             split_view_for: None,
             discard: None,

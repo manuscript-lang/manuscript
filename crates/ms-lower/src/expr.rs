@@ -791,7 +791,13 @@ impl<'a> FnLower<'a> {
         v
     }
 
-    fn arithmetic(&mut self, op: BinaryOp, t: MTy, l: Val, r: Val) -> Result<Value, Error> {
+    pub(crate) fn arithmetic(
+        &mut self,
+        op: BinaryOp,
+        t: MTy,
+        l: Val,
+        r: Val,
+    ) -> Result<Value, Error> {
         if t == MTy::UINT64 {
             let sym = match op {
                 BinaryOp::Add => return Ok(self.b.binop(Op::UAddChk, l.v, r.v)),
