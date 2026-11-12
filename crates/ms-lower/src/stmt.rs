@@ -490,6 +490,13 @@ impl<'a> FnLower<'a> {
                     self.local_put(&l, new);
                     return Ok(());
                 }
+                if let Some(raw) = self.raw_slots.get(&b.uid).cloned() {
+                    // The pass closes what the slot holds before the store and the new value at
+                    // the scope end.
+                    self.refill_raw(b.uid, &raw);
+                    self.refill_local(b.uid, &l, new);
+                    return Ok(());
+                }
                 // Whether the local still holds a value: a move may have emptied it.
                 let was_held = self
                     .held
@@ -501,10 +508,6 @@ impl<'a> FnLower<'a> {
                 // A registered resource closes the value it replaces; the scope closes the new one.
                 if let Some(closer) = self.closers.get(&b.uid).cloned() {
                     old = self.assign_closing(b.uid, &closer, old, l.ty)?;
-                } else if let Some(raw) = self.raw_slots.get(&b.uid).cloned() {
-                    // The pass closes the new value at the scope end; the old one closes now.
-                    old = self.close_replaced_kind(&raw.kind, raw.explicit, old, l.ty);
-                    self.reset_raw_closed(b.uid, &raw);
                 } else if self.var_slots.iter().any(|v| v.uid == b.uid) {
                     // A `var` parameter holds the caller's value, which the caller closes at
                     // the end, but a value this assignment replaces is the callee's to close.

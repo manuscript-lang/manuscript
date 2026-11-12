@@ -291,9 +291,15 @@ fn apply(m: &Module, f: &Func, cx: &Ctx, st: &mut State, inst: &Inst) -> Result<
             Imm::Int(1) => St::Closed,
             _ => St::Live,
         };
+        let refill = inst.imm == Imm::Int(2);
         return match st.get(v) {
             Some(St::Live | St::Closed | St::MaybeClosed) => {
                 st.set(v, next);
+                Ok(())
+            }
+            // A refill stores a new value in a slot whose value moved out.
+            Some(St::Moved | St::Maybe) if refill => {
+                st.set(v, St::Live);
                 Ok(())
             }
             None => Ok(()),
@@ -469,24 +475,42 @@ fn function(
             }
         }
     }
+    // A slot owner refilled after a move registers a new cleanup entry, so the entry a later move
+    // cancels travels in a block parameter under a key of its own.
+    let refilled: Vec<Value> = f
+        .blocks
+        .iter()
+        .flat_map(|b| &b.insts)
+        .filter(|i| i.op == Op::ScopeMark && i.imm == Imm::Int(2))
+        .map(|i| i.args[0])
+        .collect();
+    let mut hkeys: HashMap<Value, Value> = HashMap::new();
+    for v in refilled {
+        hkeys.entry(v).or_insert_with(|| f.new_value(Ty::INT));
+    }
     // The flag parameters of every block: one per flagged owner that is live on entry.
     let mut fparams: Vec<Vec<(Value, Value)>> = vec![Vec::new(); f.blocks.len()];
     for b in &order {
         let Some(e) = &entry[b.index()] else { continue };
         for (v, t) in e.iter() {
-            let key = if flagged.contains(v) {
-                *v
-            } else if *t == St::MaybeClosed {
-                ckeys[v]
-            } else {
-                continue;
-            };
-            let p = f.new_value(Ty::BOOL);
-            f.blocks[b.index()].params.push(BlockParam {
-                value: p,
-                mode: Mode::Borrow,
-            });
-            fparams[b.index()].push((key, p));
+            let mut keys = Vec::new();
+            if flagged.contains(v) {
+                keys.push((*v, Ty::BOOL));
+            }
+            if *t == St::MaybeClosed {
+                keys.push((ckeys[v], Ty::BOOL));
+            }
+            if let Some(h) = hkeys.get(v) {
+                keys.push((*h, Ty::INT));
+            }
+            for (key, ty) in keys {
+                let p = f.new_value(ty);
+                f.blocks[b.index()].params.push(BlockParam {
+                    value: p,
+                    mode: Mode::Borrow,
+                });
+                fparams[b.index()].push((key, p));
+            }
         }
     }
     let counts_depth = f
@@ -499,6 +523,7 @@ fn function(
         cx: &cx,
         flagged,
         ckeys,
+        hkeys,
         flags: HashMap::new(),
         handles: HashMap::new(),
         pending: None,
@@ -574,6 +599,8 @@ struct Em<'a> {
     flagged: HashSet<Value>,
     /// The key of the closed-by-hand flag of each owner that has one.
     ckeys: HashMap<Value, Value>,
+    /// The key of the live cleanup entry of each owner that can be refilled.
+    hkeys: HashMap<Value, Value>,
     /// The current flag value of each flagged owner (reset per block).
     flags: HashMap<Value, Value>,
     /// The `cleanup.push` handle of each closing owner.
@@ -618,7 +645,13 @@ impl Em<'_> {
     /// Cancels the cleanup entry of a slot owner whose value moved out, and clears its flag:
     /// newer entries stay, and the scope end discards this one.
     fn cancel(&mut self, at: usize, v: Value) {
-        if let (Some(h), Some(c)) = (self.handles.get(&v).copied(), self.cx.cancel) {
+        let live = self
+            .hkeys
+            .get(&v)
+            .and_then(|k| self.flags.get(k))
+            .or_else(|| self.handles.get(&v))
+            .copied();
+        if let (Some(h), Some(c)) = (live, self.cx.cancel) {
             self.push(at, Op::CallRt, &[h], Imm::Ext(c), Some(Ty::UNIT));
         }
         if self.flagged.contains(&v) {
@@ -671,6 +704,17 @@ impl Em<'_> {
                 }
                 continue;
             }
+            if inst.op == Op::ScopeMark && inst.imm == Imm::Int(2) {
+                let v = inst.args[0];
+                let was = st.get(v);
+                apply(self.m, self.f, self.cx, &mut st, &inst)?;
+                cur = self.refill(cur, v, was)?;
+                if let Some(key) = self.ckeys.get(&v).copied() {
+                    let open = self.bconst(cur, false);
+                    self.flags.insert(key, open);
+                }
+                continue;
+            }
             if inst.op == Op::ScopeMark {
                 apply(self.m, self.f, self.cx, &mut st, &inst)?;
                 if let Some(key) = self.ckeys.get(&inst.args[0]).copied() {
@@ -694,6 +738,9 @@ impl Em<'_> {
                     if let Some(key) = self.ckeys.get(&v).copied() {
                         let open = self.bconst(cur, false);
                         self.flags.insert(key, open);
+                    }
+                    if let (Some(key), Some(h)) = (self.hkeys.get(&v), self.handles.get(&v)) {
+                        self.flags.insert(*key, *h);
                     }
                     continue;
                 }
@@ -780,6 +827,106 @@ impl Em<'_> {
         }
     }
 
+    /// The program is about to store a new value in the slot owner `v` (`scope.mark 2`): what it
+    /// still holds is closed shielded (the replaced value), and a slot whose value moved out
+    /// registers a fresh cleanup entry for the value stored next. Returns the block to continue in.
+    fn refill(&mut self, at: usize, v: Value, was: Option<St>) -> Result<usize, String> {
+        let flag = self.flags.get(&v).copied();
+        let key = self.hkeys.get(&v).copied();
+        let held = |me: &mut Self, at: usize| me.close_replaced(at, v);
+        match was {
+            Some(St::Moved) => {
+                self.reregister(at, v, key)?;
+                self.set_held(at, v);
+                Ok(at)
+            }
+            Some(St::Maybe) => {
+                let flag = flag.ok_or("a moved slot owner without a drop flag")?;
+                let (yes, no, join) = (self.f.new_block(), self.f.new_block(), self.f.new_block());
+                self.f.blocks[at].term = Term::CondBr {
+                    cond: flag,
+                    then: Target::to(yes),
+                    els: Target::to(no),
+                };
+                held(self, yes.index())?;
+                let kept = key.and_then(|k| self.flags.get(&k).copied());
+                self.f.blocks[yes.index()].term = Term::Br(Target {
+                    block: join,
+                    args: kept.into_iter().collect(),
+                });
+                let fresh = self.reregister(no.index(), v, key)?;
+                self.f.blocks[no.index()].term = Term::Br(Target {
+                    block: join,
+                    args: fresh.into_iter().collect(),
+                });
+                if let Some(key) = key {
+                    let p = self.f.new_value(Ty::INT);
+                    self.f.blocks[join.index()].params.push(BlockParam {
+                        value: p,
+                        mode: Mode::Borrow,
+                    });
+                    self.flags.insert(key, p);
+                }
+                self.set_held(join.index(), v);
+                Ok(join.index())
+            }
+            _ => {
+                held(self, at)?;
+                Ok(at)
+            }
+        }
+    }
+
+    /// Closes what the slot owner `v` holds, shielded, and releases what the close leaves; its
+    /// cleanup entry stays for the value stored next.
+    fn close_replaced(&mut self, at: usize, v: Value) -> Result<(), String> {
+        let close = self.closer(v)?;
+        if let Some(rc) = self.m.funcs[close.index()].slot_result {
+            let r = self.close_result(at, v, rc)?;
+            self.drop_owned(at, r);
+            return Ok(());
+        }
+        let (enter, exit) = self
+            .cx
+            .shield
+            .ok_or("a closing owner needs the shield calls")?;
+        self.push(at, Op::CallRt, &[], Imm::Ext(enter), Some(Ty::UNIT));
+        self.push(at, Op::Call, &[v], Imm::Func(close), Some(Ty::UNIT));
+        self.push(at, Op::CallRt, &[], Imm::Ext(exit), Some(Ty::UNIT));
+        if let Some(ty) = self.m.funcs[close.index()].slot_close {
+            let left = self
+                .push(at, Op::Take, &[v], Imm::Ty(ty), Some(ty))
+                .expect("taken");
+            self.push(at, Op::Drop, &[left], Imm::None, None);
+        }
+        Ok(())
+    }
+
+    /// Registers a new cleanup entry for the refilled slot owner `v` and returns its handle.
+    fn reregister(
+        &mut self,
+        at: usize,
+        v: Value,
+        key: Option<Value>,
+    ) -> Result<Option<Value>, String> {
+        let close = self.closer(v)?;
+        let h = self
+            .push(at, Op::CleanupPush, &[v], Imm::Func(close), Some(Ty::INT))
+            .expect("handle");
+        if let Some(k) = key {
+            self.flags.insert(k, h);
+        }
+        Ok(key.map(|_| h))
+    }
+
+    /// The refilled owner holds a value again.
+    fn set_held(&mut self, at: usize, v: Value) {
+        if self.flagged.contains(&v) {
+            let t = self.bconst(at, true);
+            self.flags.insert(v, t);
+        }
+    }
+
     fn register(&mut self, at: usize, v: Value) -> Result<(), String> {
         let close = self.closer(v)?;
         let h = self
@@ -849,10 +996,15 @@ impl Em<'_> {
             let flag = if moved.contains(owner) && self.flagged.contains(owner) {
                 self.bconst(at, false)
             } else {
-                *self
-                    .flags
-                    .get(owner)
-                    .ok_or_else(|| format!("no drop flag for %{}", owner.0))?
+                match self.flags.get(owner) {
+                    Some(f) => *f,
+                    None => {
+                        // The entry of an owner that no path has refilled yet is its first.
+                        let first = self.hkeys.iter().find(|(_, k)| *k == owner);
+                        let h = first.and_then(|(o, _)| self.handles.get(o));
+                        *h.ok_or_else(|| format!("no drop flag for %{}", owner.0))?
+                    }
+                }
             };
             sink.push(flag);
         }

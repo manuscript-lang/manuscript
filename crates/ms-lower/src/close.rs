@@ -820,7 +820,6 @@ impl FnLower<'_> {
             || own.binding_facts.has(uid, BindingFact::CloseHandled);
         owned
             && !self.dead
-            && !(binding.mutable && moves)
             && self.scope_closes_nothing()
             && (!moves || self.close_succeeds_with_unit(kind))
             && (!by_hand || (!moves && self.close_succeeds_with_unit(kind)))
@@ -832,13 +831,13 @@ impl FnLower<'_> {
         self.b.emit(Op::ScopeMark, &[raw.slot], imm, None);
     }
 
-    /// The assignment stored a fresh value in the raw slot: the program has not closed it.
-    pub(crate) fn reset_raw_closed(&mut self, uid: usize, raw: &RawSlot) {
-        let handled = (self.cx.ownership.binding_facts).has(uid, BindingFact::CloseHandled);
-        if let (Some(explicit), false) = (raw.explicit, handled) {
-            let no = self.b.bconst(false);
-            self.b.def_var(explicit, no);
-            self.mark_raw_closed(raw, false);
+    /// The assignment to the raw slot `raw` of binding `uid` is next: the pass closes the value
+    /// the slot still holds (a moved one registers a fresh cleanup entry), and the new value has
+    /// not been closed by the program unless every lifetime handles its result.
+    pub(crate) fn refill_raw(&mut self, uid: usize, raw: &RawSlot) {
+        self.b.emit(Op::ScopeMark, &[raw.slot], Imm::Int(2), None);
+        if (self.cx.ownership.binding_facts).has(uid, BindingFact::CloseHandled) {
+            self.mark_raw_closed(raw, true);
         }
     }
 
@@ -892,17 +891,7 @@ impl FnLower<'_> {
             self.own_raw_kind(binding.uid, ptr, thunk.index() as u32 + 2);
             let facts = &self.cx.ownership.binding_facts;
             let handled = facts.has(binding.uid, BindingFact::CloseHandled);
-            let explicit = facts.has(binding.uid, BindingFact::ExplicitClose).then(|| {
-                let explicit = self.b.declare_var(MTy::BOOL, Mode::Borrow);
-                let no = self.b.bconst(false);
-                self.b.def_var(explicit, no);
-                explicit
-            });
-            let raw = RawSlot {
-                slot: ptr,
-                kind,
-                explicit,
-            };
+            let raw = RawSlot { slot: ptr, kind };
             if handled {
                 // Every lifetime handles its result: the scope end's close drops it.
                 self.mark_raw_closed(&raw, true);
@@ -1736,10 +1725,6 @@ impl FnLower<'_> {
             return;
         }
         if let Some(raw) = self.raw_slots.get(&b.uid).cloned() {
-            if let Some(explicit) = raw.explicit {
-                let yes = self.b.bconst(true);
-                self.b.def_var(explicit, yes);
-            }
             self.mark_raw_closed(&raw, true);
             return;
         }

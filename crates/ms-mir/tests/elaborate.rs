@@ -510,6 +510,55 @@ b3():
     }
 }
 
+/// A slot owner whose value moves out on one branch and is then refilled: the path that kept
+/// the value closes it before the store, the path that moved it registers a new entry, and the
+/// scope end closes the new value.
+#[test]
+fn a_refilled_slot_owner_is_closed_again_at_the_scope_end() {
+    for (cond, want) in [(1, "x\n~\n9\n"), (0, "7\n~\n9\n")] {
+        let (_, out, text) = elaborate_and_run_text(&format!(
+            r#"fn @shut(%p: ptr) -> unit {{
+b0:
+  %r: list<int> = load list<int> %p
+  %z: int = iconst 0
+  %id: int = list.get %r, %z
+  %u: unit = call.rt @msrt_print_int (%id)
+  ret %u
+}}
+fn @main() -> int {{
+b0:
+  scope.begin 1 0
+  %n: int = iconst 7
+  %a: list<int> = call @mk (%n)
+  %s: ptr = slot list<int>
+  put %s, %a
+  scope.own 1 4 %s
+  %k: int = iconst {cond}
+  %one: int = iconst 1
+  %c: bool = icmp.eq %k, %one
+  br_if %c, b1(), b2()
+b1():
+  %t: list<int> = take list<int> %s
+  scope.disown %s
+  drop %t
+  br b3()
+b2():
+  br b3()
+b3():
+  scope.mark 2 %s
+  %m: int = iconst 9
+  %b: list<int> = call @mk (%m)
+  put %s, %b
+  scope.end 1 0
+  %r: int = iconst 0
+  ret %r
+}}
+"#
+        ));
+        assert_eq!(out, want, "cond {cond}\n{text}");
+    }
+}
+
 /// A slot owner the program closes by hand on one branch: `scope.mark` records it, the join
 /// carries a flag, and the scope end still releases the owner on both paths.
 #[test]
