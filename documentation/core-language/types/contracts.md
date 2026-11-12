@@ -73,7 +73,7 @@ fn main() Unit:
 
 - A mismatch is not an error until the type is used as the interface; the diagnostic lists the first operation that is missing or differs.
 - A type with `fn var close() Unit!` satisfies `Closeable` and is closed at scope end, so a type that is also a `Source` and a `Sink` closes once. Make such a `close` safe to call again when an owner also closes the value.
-- `Comparable`, `Equal`, `Hashable` and `JsonEncode` are met by an own `compare`, `equals`, `hash` or `to_json` of the exact signature. `Clonable`, `Data` and `Copy` are properties the compiler derives from a type's fields; they are not declared.
+- `Comparable`, `Equal`, `Hashable` and `JsonEncode` are met by an own `compare`, `equals`, `hash` or `to_json` of the exact signature. `Clonable` and `Data` are properties the compiler derives from a type's fields; they are not declared. `Decimal` is plain words like the numeric primitives, so using one never moves it.
 - Operations with type parameters of their own are met by a method that repeats them with the same bounds ([generic operations](#generic-operations)).
 
 ```text

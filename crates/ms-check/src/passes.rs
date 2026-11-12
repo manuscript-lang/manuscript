@@ -134,7 +134,7 @@ fn type_decl_params(d: &Decl) -> Option<(Name, &[TypeParam], bool)> {
     }
 }
 
-/// The property markers (`// ms: data`, `// ms: copy`, `// ms: clonable`) in the comment lines just
+/// The property markers (`// ms: data`, `// ms: clonable`) in the comment lines just
 /// above the declaration at `offset`: a bundled type with no methods of its own declares its
 /// properties there, since a marker has nothing to write as a method.
 fn property_markers(source: &str, offset: u32) -> Vec<&'static str> {
@@ -149,7 +149,7 @@ fn property_markers(source: &str, offset: u32) -> Vec<&'static str> {
         let Some(text) = line.strip_prefix("//") else {
             break;
         };
-        for (word, name) in [("data", "Data"), ("copy", "Copy"), ("clonable", "Clonable")] {
+        for (word, name) in [("data", "Data"), ("clonable", "Clonable")] {
             if text.trim() == format!("ms: {word}") {
                 found.push(name);
             }
@@ -159,7 +159,7 @@ fn property_markers(source: &str, offset: u32) -> Vec<&'static str> {
     found
 }
 
-/// The property-marker implementations (`Data`, `Copy`, `Clonable`) a bundled type declares with
+/// The property-marker implementations (`Data`, `Clonable`) a bundled type declares with
 /// `// ms: data`-style comments above it; each is a body-less implementation of that interface.
 pub(crate) fn marker_decls(module: &Module, d: &Decl, next_id: &mut u32) -> Vec<Decl> {
     let mut out = Vec::new();

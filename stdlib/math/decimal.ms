@@ -1,5 +1,5 @@
 import (
-	Copy, Data, panic from "@std/core.ms",
+	Data, panic from "@std/core.ms",
 
 	msstd_decimal_compare,
 	msstd_decimal_round,
@@ -19,7 +19,6 @@ export enum RoundingMode:
 
 // An exact decimal value. Conversions are explicit because binary floats may round.
 // ms: data
-// ms: copy
 export extern type Decimal
 
 // Returns -1, 0 or 1 as this value is less than, equal to or greater than `other`;

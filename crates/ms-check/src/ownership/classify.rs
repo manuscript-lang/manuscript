@@ -44,7 +44,7 @@ pub enum Class {
 /// Computes value classes from declarations and contained values, reusing exact siblings locally.
 pub struct Classifier {
     closeable: HashSet<Name>,
-    /// Natives declaring `impl Copy`: plain words, so a copy is a bit copy.
+    /// Natives that are plain words (`Decimal`), so a copy is a bit copy.
     copyable: HashSet<Name>,
     /// Natives whose infallible `clone` is implemented in source (`List`, `BigInt`); one declared
     /// as a native operation (`Bytes`, `Set`) is found on the type's definition.
@@ -60,12 +60,11 @@ impl Classifier {
         let mut clonable = HashSet::new();
         let mut clone_name = None;
         for method in &p.methods {
-            if let Some(contract) = &method.contract {
-                if method.closes(syms) {
-                    closeable.insert(method.receiver.id);
-                } else if contract.is(Builtin::Copy) {
-                    copyable.insert(method.receiver.id);
-                }
+            if method.contract.is_some() && method.closes(syms) {
+                closeable.insert(method.receiver.id);
+            }
+            if method.receiver.is(Builtin::Decimal) {
+                copyable.insert(method.receiver.id);
             }
             if method.receiver.kind != Kind::Native {
                 continue;
