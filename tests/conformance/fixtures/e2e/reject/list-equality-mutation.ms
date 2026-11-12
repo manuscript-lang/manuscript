@@ -1,0 +1,81 @@
+// conform: tags=aliasing,closures,control-flow,interfaces,interpolation,lists,match,modules,mutation,records,stdlib-collections,stdlib-testing,strings,testing,tier-stdlib,try-result
+// conform: phase=check
+// The one-owner model rejects a closure that mutates a list while `==` compares it: the
+// closure takes `left`, `right` and `side` with it, `target` only borrows, and a function
+// value cannot be cloned. This used to be a runtime test of retained headers.
+// conform: origin=tests/e2e/testdata/accept/list-equality-mutation.ms
+import fail from "@std/test/test.ms"
+
+type Element:
+    id: Int
+    on_equal: fn() Unit
+
+fn Element.equals(other: Element) Bool:
+    self.on_equal()
+    return self.id == other.id
+
+type Visits:
+    count: Int
+
+fn noop() Unit:
+    return
+
+fn check_equality(side: String, mutation: String) Unit!:
+    var left: List[Element] = []
+    var right: List[Element] = []
+    calls := Visits(0)
+
+    visit := fn:
+        calls.count = calls.count + 1
+        if calls.count != 1:
+            return
+
+        target := if side == "right": right else: left
+        next_action := target[1].on_equal
+
+        if mutation == "shrink" or mutation == "shrink_mismatch":
+            target.splice(0, target.length(), [])
+            return
+
+        if mutation == "append":
+            target.append(Element(7, noop))
+            return
+
+        if mutation == "append_write":
+            target.append(Element(7, noop))
+            target.set(1, Element(77, next_action))
+            return
+
+        if mutation == "grow_write":
+            for index in 0..100:
+                target.append(Element(7, noop))
+            target.set(1, Element(77, next_action))
+            return
+
+        target.set(1, Element(77, next_action))
+
+    for id in [1, 2, 3]:
+        left.append(Element(id, visit))
+        right.append(Element(id, visit))
+
+    if mutation == "shrink_mismatch":
+        right.set(2, Element(99, visit))
+
+    expected := (
+        mutation != "shrink_mismatch"
+        and mutation != "append_write"
+        and mutation != "overwrite"
+    )
+    expected_calls := if mutation == "append_write" or mutation == "overwrite": 2 else: 3
+    same := left == right
+    if same != expected or calls.count != expected_calls: return fail(
+        "{side}/{mutation}: equality {same}/{calls.count}, expected {expected}/{expected_calls}"
+    )
+
+test "element Equal mutating either List retains both captured headers":
+    for side in ["left", "right"]:
+        for mutation in [
+            "shrink", "shrink_mismatch", "append", "append_write", "grow_write",
+            "overwrite"
+        ]:
+            (check_equality(side, mutation)?)
