@@ -622,6 +622,7 @@ impl<'m> Interp<'m> {
             | Op::OptGet
             | Op::OptUnwrap
             | Op::OptUnbox
+            | Op::OptAddr
             | Op::StrLen
             | Op::StrByte
             | Op::StrAsciiAt
