@@ -140,10 +140,18 @@ fn var Reader.expect(literal: String) Unit!:
 // appears.
 fn var Reader.take_until(stop: String) String!:
 	var out = StringBuilder()
+	wanted := stop.chars()
 
 	while not self.done():
-		if self.looking_at(stop):
-			self.at += stop.chars().length()
+		var matches = true
+
+		for k in 0..wanted.length():
+			if self.peek(k) != wanted[k]:
+				matches = false
+				break
+
+		if matches:
+			self.at += wanted.length()
 			return ok(out.build())
 
 		out.append(self.peek())

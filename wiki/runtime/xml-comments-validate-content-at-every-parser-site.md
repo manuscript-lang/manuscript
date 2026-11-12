@@ -21,3 +21,9 @@ A DOCTYPE's public identifier uses XML's restricted ASCII `PubidChar` production
 Escape literal braces in source test data: `"\{", "\}"` supplies two characters, while `"{", "}"` is one interpolation with the legal public-identifier value `", "`. Assert that each forbidden-character fixture has one scalar so this mistake fails at the test data rather than masquerading as a parser defect (#3419).
 
 Serialization inspects child text only to choose indentation. Compact output must skip that scan, and mixed content can stop at its first nonempty text result. Calling `text()` just for this decision allocates a copy of the text. Preserve the predicate's handling of empty text and comments; [the allocation fixture](../../tests/ownership-counts/xml_stringify.ms) catches redundant copies, while the XML tests pin exact compact and indented output. [Paired measurements](../../bench/perf/xml-stringify/README.md) cover wide trees and neighboring cases.
+
+Delimiter scans prepare the stop's scalar list once per scan, not once per input
+scalar. Keep first-match selection and partial delimiters at EOF unchanged;
+`delimiter scans preserve empty spans Unicode and partial terminators` covers
+empty spans, Unicode and malformed endings. Native paired evidence and small
+controls are in [XML delimiter measurements](../../bench/perf/xml-delimiters/README.md).
