@@ -42,6 +42,9 @@ pub(crate) struct RtFlags {
     pub fresh: bool,
     /// Starts a task that runs code of the program (`// ms: spawns`).
     pub spawns: bool,
+    /// Has a `<name>_take` twin that reuses the first argument when it dies at the call
+    /// (`// ms: takes_self`).
+    pub takes_self: bool,
     /// The MIR instruction (`// ms: op=<mnemonic>`) the function is on its arguments.
     pub op: Option<&'static str>,
     /// How its failures name their domain (`//! ms: domain` of its file, or `domain=`).
@@ -59,6 +62,7 @@ pub(crate) fn rt_flags(sym: &str) -> RtFlags {
         reads: bits & 2 != 0,
         fresh: bits & 4 != 0,
         spawns: bits & 16 != 0,
+        takes_self: bits & 32 != 0,
         op: (!op.is_empty()).then_some(op),
         domain: (!domain.is_empty()).then_some(domain),
     }
@@ -153,9 +157,9 @@ pub(crate) fn extern_role(sym: &str) -> ms_mir::ir::ExternRole {
         "msrt_string_eq" => R::StringEq,
         "msrt_cleanup_discard" | "msrt_cleanup_remove" => R::CleanupDiscard,
         "msrt_bytes_append" => R::BytesAppend,
-        "msrt_bytes_decode_utf8" => R::BytesDecodeUtf8,
         "msrt_string_split_view" => R::StringSplitView,
         s if rt_flags(s).spawns => R::SpawnsTask,
+        s if rt_flags(s).takes_self => R::TakesDying,
         _ => R::None,
     }
 }

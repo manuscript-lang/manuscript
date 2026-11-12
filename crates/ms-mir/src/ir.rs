@@ -920,8 +920,9 @@ pub enum ExternRole {
     /// `string.split_view(s, sep, ..)`: a list whose pieces borrow `s`, so passes never move
     /// it into an owning position or turn a copy of it into a move.
     StringSplitView,
-    /// `bytes.decode_utf8(bytes, out)`; the `bytetake` pass may make it a take.
-    BytesDecodeUtf8,
+    /// A runtime function with a `<name>_take` twin (`// ms: takes_self`); the `bytetake` pass
+    /// calls the twin when the first argument is an owned value that dies at the call.
+    TakesDying,
     /// Starts a task that can be cancelled.
     SpawnsTask,
 }
@@ -946,7 +947,7 @@ impl ExternRole {
         (ExternRole::StringEq, "string_eq"),
         (ExternRole::CleanupDiscard, "cleanup_discard"),
         (ExternRole::BytesAppend, "bytes_append"),
-        (ExternRole::BytesDecodeUtf8, "bytes_decode_utf8"),
+        (ExternRole::TakesDying, "takes_dying"),
         (ExternRole::StringSplitView, "string_split_view"),
         (ExternRole::SpawnsTask, "spawns_task"),
     ];

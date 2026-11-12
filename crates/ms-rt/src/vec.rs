@@ -1818,7 +1818,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_from_values(values: *const VecVal, ou
 
 /// `decode_utf8`: presence flag (0 when the bytes are not valid UTF-8), the string through `out`.
 #[unsafe(no_mangle)]
-// ms: leaf fresh domain=binary
+// ms: leaf fresh takes_self domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_decode_utf8(b: *const VecVal, out: *mut StrVal) -> u8 {
     // SAFETY: caller contract.
     unsafe {
