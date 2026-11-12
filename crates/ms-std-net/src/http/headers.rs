@@ -150,22 +150,20 @@ impl Headers {
     /// Received headers as handlers see them: canonical names, sorted
     /// by name, values in arrival order.
     pub fn from_received(fields: impl IntoIterator<Item = (String, Vec<u8>)>) -> Headers {
-        let mut sorted: Vec<(String, Vec<Vec<u8>>)> = Vec::new();
+        let mut entries: Vec<Entry> = Vec::new();
         for (name, value) in fields {
             let key = canonical_owned(name);
-            match sorted.iter_mut().find(|(k, _)| *k == key) {
-                Some((_, values)) => values.push(value),
-                None => sorted.push((key, vec![value])),
+            match entries.iter_mut().find(|e| e.name == key) {
+                Some(e) => e.values.push(value),
+                None => entries.push(Entry {
+                    name: key,
+                    values: vec![value],
+                }),
             }
         }
-        sorted.sort_by(|a, b| a.0.cmp(&b.0));
+        entries.sort_by(|a, b| a.name.cmp(&b.name));
         Headers {
-            entries: Arc::new(
-                sorted
-                    .into_iter()
-                    .map(|(name, values)| Entry { name, values })
-                    .collect(),
-            ),
+            entries: Arc::new(entries),
         }
     }
 

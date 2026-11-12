@@ -873,7 +873,8 @@ pub unsafe fn address_ordered_tables(t: *const Tables) -> *const Tables {
 /// Return addresses of the calling frames, innermost first, for a later [`describe_started`].
 #[inline(never)]
 pub fn capture_frames() -> Vec<usize> {
-    let mut out = Vec::new();
+    // Typical depth; growing from empty reallocates three times per promise started.
+    let mut out = Vec::with_capacity(16);
     // SAFETY: tables pointer is set once at start.
     let t = unsafe { *TABLES.ptr() };
     if t.is_null() {
