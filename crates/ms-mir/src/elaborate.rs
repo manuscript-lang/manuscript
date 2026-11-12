@@ -369,6 +369,10 @@ fn merge(old: &State, new: &State) -> Result<State, String> {
     let mut out = State::default();
     for (v, a) in old.iter() {
         let Some(b) = new.get(*v) else {
+            // Gone on the other path: consumed or disowned there, so moved.
+            if matches!(a, St::Live | St::Maybe) {
+                out.push(*v, St::Maybe);
+            }
             continue;
         };
         out.push(
@@ -391,6 +395,11 @@ fn merge(old: &State, new: &State) -> Result<State, String> {
                 _ => St::Maybe,
             },
         );
+    }
+    for (v, b) in new.iter() {
+        if old.get(*v).is_none() && matches!(b, St::Live | St::Maybe) {
+            out.push(*v, St::Maybe);
+        }
     }
     Ok(out)
 }
@@ -676,6 +685,12 @@ impl Em<'_> {
         };
         let mut st = entry;
         let mut cur = b;
+        let mut insts = old.insts;
+        // The stack check stays the first instruction of the entry block.
+        if insts.first().is_some_and(|i| i.op == Op::DepthEnter) {
+            let first = insts.remove(0);
+            self.f.blocks[cur].insts.push(first);
+        }
         // An owner that is surely open or surely closed by hand here has a constant flag.
         let known: Vec<(Value, bool)> = self
             .ckeys
@@ -694,7 +709,7 @@ impl Em<'_> {
             st.push(p, St::Live);
             self.birth(cur, p);
         }
-        for mut inst in old.insts {
+        for mut inst in insts {
             if inst.op == Op::ScopeDisown {
                 let v = inst.args[0];
                 let was = st.get(v);
@@ -1001,8 +1016,12 @@ impl Em<'_> {
                     None => {
                         // The entry of an owner that no path has refilled yet is its first.
                         let first = self.hkeys.iter().find(|(_, k)| *k == owner);
-                        let h = first.and_then(|(o, _)| self.handles.get(o));
-                        *h.ok_or_else(|| format!("no drop flag for %{}", owner.0))?
+                        match first.and_then(|(o, _)| self.handles.get(o)) {
+                            Some(h) => *h,
+                            // An owner this path no longer holds.
+                            None if self.flagged.contains(owner) => self.bconst(at, false),
+                            None => return Err(format!("no drop flag for %{}", owner.0)),
+                        }
                     }
                 }
             };
