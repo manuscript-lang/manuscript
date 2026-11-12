@@ -405,7 +405,7 @@ impl Exchange {
             h1::status_line(&mut out, st.status as u16);
             let (has_type, has_date) = server::append_handler_headers(&mut out, &st.staged);
             if !has_date {
-                h1::header_line(&mut out, "Date", self.reactor_date().as_bytes());
+                self.reactor.date_line(&mut out);
             }
             let allowed = server::body_allowed(st.status);
             if let Some(n) = content_length
@@ -436,10 +436,6 @@ impl Exchange {
             }
         }
         self.send(&out, deadline)
-    }
-
-    fn reactor_date(&self) -> String {
-        self.reactor.date_text()
     }
 
     /// `HttpExchange.write_bytes(data)`.
@@ -667,7 +663,7 @@ impl Exchange {
             }
         } else if !sent {
             h1::status_line(&mut out, 204);
-            h1::header_line(&mut out, "Date", reactor.date_text().as_bytes());
+            reactor.date_line(&mut out);
             if close {
                 h1::header_line(&mut out, "Connection", b"close");
             }
