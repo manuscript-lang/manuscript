@@ -57,7 +57,8 @@ fn count(m: &Module, f: ms_mir::ir::FuncId, op: Op) -> usize {
 #[test]
 fn plain_memory_drops_wait_on_the_runtime_gate() {
     let (mut m, main) = program(false);
-    exit_drops::run(&mut m, main);
+    m.entry = Some(main);
+    exit_drops::run(&mut m);
     // The list and the string are gated; the handle may own a file, so its drop stays.
     assert_eq!(count(&m, main, Op::DropIf), 2);
     assert_eq!(count(&m, main, Op::Drop), 1);
@@ -67,7 +68,8 @@ fn plain_memory_drops_wait_on_the_runtime_gate() {
 #[test]
 fn a_main_that_is_called_again_keeps_every_drop() {
     let (mut m, main) = program(true);
-    exit_drops::run(&mut m, main);
+    m.entry = Some(main);
+    exit_drops::run(&mut m);
     assert_eq!(count(&m, main, Op::DropIf), 0);
     assert_eq!(count(&m, main, Op::Drop), 3);
 }

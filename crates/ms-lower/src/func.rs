@@ -452,7 +452,6 @@ pub(crate) fn lower_program(
         .ok_or_else(|| Error::new("no main function"))?;
     let main_id = cx.function_for(&mut m, &main, &Subst::new())?;
     drain(syms, &mut cx, &mut m)?;
-    ms_mir::exit_drops::run(&mut m, main_id);
     cx.check_strict_copies()?;
     let entry = if m.funcs[main_id.index()].ret == MTy::INT {
         m.funcs[main_id.index()].linkage = Linkage::Export;
