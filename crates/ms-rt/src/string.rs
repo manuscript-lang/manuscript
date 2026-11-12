@@ -394,7 +394,7 @@ unsafe fn string_get(
 /// `String.scalar_at(index, default)`.
 #[unsafe(no_mangle)]
 // ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_scalar_at(
+pub unsafe extern "C-unwind" fn msrt_string_scalar_at_slow(
     s: *const StrVal,
     index: i64,
     has_default: HasRaw,
@@ -2300,22 +2300,6 @@ pub unsafe extern "C-unwind" fn msrt_string_to_bytes(s: *const StrVal, out: *mut
     }
 }
 
-/// `String.parse_int()`: present flag, value through `out`.
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_parse_int(s: *const StrVal, out: *mut i64) -> u8 {
-    // SAFETY: caller passes a live string and a writable out.
-    unsafe {
-        match crate::num::parse_int_decimal(bytes(s)) {
-            Some(v) => {
-                *out = v;
-                1
-            }
-            None => 0,
-        }
-    }
-}
-
 /// `String.parse_float()`: present flag, value through `out`; the `Result` form is `math.parse_float`.
 #[unsafe(no_mangle)]
 // ms: leaf
@@ -3052,7 +3036,7 @@ mod tests {
             assert_eq!(crate::testutil::hot::msrt_string_byte_length(s), 6);
             assert_eq!(ret(|o| msrt_string_get(s, 1, HasRaw(0), st(""), o)), "é");
             assert_eq!(ret(|o| msrt_string_get(s, -1, HasRaw(0), st(""), o)), "o");
-            assert_eq!(msrt_string_scalar_at(s, 1, HasRaw(0), 0), 0xE9);
+            assert_eq!(ms_rt_hot::msrt_string_scalar_at(s as usize, 1, 0, 0), 0xE9);
             testutil::assert_fault(
                 "index 9 out of range for length 5; pass a default: get(index:, default: ...)",
                 || {

@@ -522,7 +522,12 @@ fn string_ops_match_char_model(seed: u64) {
                 assert_eq!(text(&got), chars[i].to_string());
                 string::release(&got);
                 assert_eq!(
-                    string::msrt_string_scalar_at(s, i as i64 - n as i64, HasRaw(0), 0),
+                    ms_rt_hot::msrt_string_scalar_at(
+                        s as *const _ as usize,
+                        i as i64 - n as i64,
+                        0,
+                        0
+                    ),
                     chars[i] as i64
                 );
             }

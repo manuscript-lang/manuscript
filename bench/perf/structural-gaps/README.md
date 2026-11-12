@@ -74,3 +74,14 @@ Same machine and build type as above (Release LLVM `ms`; callgrind instructions 
 | grep | 19.73M | 19.70M | 0% |
 
 The 40% ceiling on `logstats` is not reached by this step: what is left is `msrt_string_split` and its list and heap pieces (allocation, `memcpy`, `free`), which are the lending and allocation tracks. `grep` is one long-haystack `memmem` search; nothing inlines there.
+
+### Step 2: `parse_int` and `scalar_at`
+
+`String.parse_int` (all of it) and `scalar_at` on an ASCII text with the index inside it moved into `ms-rt-hot`; out-of-range, non-ASCII and long unflagged cases call `msrt_string_scalar_at_slow`.
+
+| task | step 1 | step 2 | total change |
+| --- | ---: | ---: | ---: |
+| logstats | 108.45M | 106.95M | -5.2% |
+| csvgroup | 138.65M | 136.54M | -4.2% |
+| wordfreq | 152.11M | 152.11M | -9.5% |
+| grep | 19.70M | 19.79M | +0.3% (layout noise; no call changed) |

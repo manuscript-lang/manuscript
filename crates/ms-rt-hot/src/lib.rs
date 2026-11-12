@@ -199,6 +199,100 @@ pub unsafe extern "C-unwind" fn msrt_string_view(s: usize, start: i64, end: i64,
     }
 }
 
+/// `String.parse_int`: optional sign, ASCII digits only; overflow is `None`.
+pub fn parse_int_decimal(text: &[u8]) -> Option<i64> {
+    let (neg, digits) = match text.first()? {
+        b'-' => (true, &text[1..]),
+        b'+' => (false, &text[1..]),
+        _ => (false, text),
+    };
+    if digits.is_empty() {
+        return None;
+    }
+    // Up to eighteen digits cannot overflow, so skip the per-digit checks.
+    if digits.len() <= 18 {
+        let mut acc = 0i64;
+        for &c in digits {
+            let d = c.wrapping_sub(b'0');
+            if d > 9 {
+                return None;
+            }
+            acc = acc * 10 + d as i64;
+        }
+        return Some(if neg { -acc } else { acc });
+    }
+    // Longer text is valid only with leading zeros; at most nineteen significant digits can fit, so the
+    // untouched suffix of an overlong input is never scanned.
+    let zeros = digits.iter().take_while(|&&c| c == b'0').count();
+    let significant = &digits[zeros..];
+    if significant.len() > 19 {
+        return None;
+    }
+    let mut acc = 0u64;
+    for &c in significant {
+        let d = c.wrapping_sub(b'0');
+        if d > 9 {
+            return None;
+        }
+        acc = acc * 10 + d as u64;
+    }
+    if neg {
+        0i64.checked_sub_unsigned(acc)
+    } else {
+        i64::try_from(acc).ok()
+    }
+}
+
+/// C view: `msrt_string_parse_int(s: *const StrVal, out: *mut i64) -> u8`
+///
+/// `String.parse_int()`: present flag, value through `out`.
+#[unsafe(no_mangle)]
+// ms: leaf pure domain=string
+pub unsafe extern "C-unwind" fn msrt_string_parse_int(s: usize, out: usize) -> u8 {
+    // SAFETY: caller passes a live string and a writable out.
+    unsafe {
+        match parse_int_decimal(bytes(s as *const StrVal)) {
+            Some(v) => {
+                *(out as *mut i64) = v;
+                1
+            }
+            None => 0,
+        }
+    }
+}
+
+unsafe extern "C-unwind" {
+    /// The general lookup: non-ASCII text, long unflagged text, and an index outside the text
+    /// (the default or a fault).
+    fn msrt_string_scalar_at_slow(s: usize, index: i64, has_default: u8, default: i64) -> i64;
+}
+
+/// C view: `msrt_string_scalar_at(s: *const StrVal, index: i64, has_default: HasRaw, default: i64) -> i64`
+///
+/// `String.scalar_at` of an ASCII text with an index inside it is one byte read by the caller.
+#[unsafe(no_mangle)]
+// ms: leaf pure domain=string
+pub unsafe extern "C-unwind" fn msrt_string_scalar_at(
+    s: usize,
+    index: i64,
+    has_default: u8,
+    default: i64,
+) -> i64 {
+    // SAFETY: caller passes a live string.
+    unsafe {
+        let sv = s as *const StrVal;
+        let text = bytes(sv);
+        let n = text.len() as i64;
+        let at = if index < 0 { n + index } else { index };
+        if (*sv).flagged_ascii() || (text.len() < MEDIUM_HAY && text.is_ascii()) {
+            if let Some(&b) = text.get(at as usize).filter(|_| at >= 0) {
+                return b as i64;
+            }
+        }
+        msrt_string_scalar_at_slow(s, index, has_default, default)
+    }
+}
+
 /// C view: `msrt_string_starts_with(a: *const StrVal, v: *const StrVal) -> u8`
 #[unsafe(no_mangle)]
 // ms: leaf pure domain=string
