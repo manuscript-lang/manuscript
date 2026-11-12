@@ -161,4 +161,10 @@ Same build and machine; `keyed.ms` runs six cases, each measured alone, C twins 
 | --- | ---: | ---: |
 | `contains` + `stats[k].count += 1`, `.sum += v`, max update, 2M rounds | 1,671M | 521M |
 
-Three probes remain per round (one per statement) where there were nine: each statement's block starts after a call or join in the lowered code, so the table restarts there. Linux, same build and machine as above.
+One probe remains per round besides the `contains` (the first statement's, after the join); the other eight are reused. A branch that folds the repeated null checks measured no change on the LLVM backend, which already merges them, so it was not kept.
+
+| `containers.ms` case a (`Map[String, Stat]`, `contains` + two `stats[name].field += v`, 2M rounds) | wall | callgrind Ir |
+| --- | ---: | ---: |
+| with probe reuse | 87 to 105 ms | 778M |
+
+The earlier run of this case was 281 to 349 ms with seven lookups a pass; C is 22 to 33 ms. What is left is two probes a round at about 95 to 125 instructions each, from `value_ptr_k` deriving the slot layout from the descriptors on every call; caching the layout in the map header is the next step. Linux, same build and machine as above.
