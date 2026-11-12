@@ -294,6 +294,23 @@ test "TOML stringify round trips scalars tables and arrays of tables":
 		) | expect_ok? | expect_equal(text)?
 	)
 
+	// Classification must keep empty and mixed arrays inline, including a
+	// non-table after a table prefix. Only nonempty all-table arrays get headers.
+	for control in [
+		"empty = []\n", "early = [1, \{x = 2\}]\n", "late = [\{x = 2\}, 1]\n",
+		"nested = [[\{x = 2\}], [3]]\n", "[[single]]\nx = 2\n", "[[empty_table]]\n",
+		"[[items]]\nname = 'é🙂'\n[items.child]\nx = 2\n[[items]]\nname = 'second'\n"
+	]:
+		value := parse(control)?
+		encoded := stringify(value)?
+		expect_equal(parse(encoded)?, value)?
+		expect_equal(stringify(value, encoded.byte_length())?, encoded)?
+		expect_true(stringify(value, encoded.byte_length() - 1).is_error())?
+
+	expect_equal(stringify(parse("empty = []")?)?, "empty = []\n")?
+	expect_equal(stringify(parse("late = [\{x=2\},1]")?)?, "late = [\{ x = 2 \}, 1]\n")?
+	expect_equal(stringify(parse("[[single]]\nx=2")?)?, "[[single]]\nx = 2\n")?
+
 test "TOML stringify requires a table root and honors max_bytes":
 	wrong: String! := error(Error("invalid TOML input", kind: "EINVAL"))
 	limited: String! := error(Error("TOML limit exceeded", kind: "EOVERFLOW"))
