@@ -297,6 +297,18 @@ A probe is still about 130 instructions for a `String` key (slot layout from des
 
 `msrt_map_add_w8` is 51 instructions a call (103M of `intmap`), the next cost there. Linux, same build and machine.
 
+## 2026-11-12, equivalent C twins for `Map` and `Set`
+
+The map and set C twins did less than `Map` promises: `keyed.c` cases a and f used a table presized for the key count (no growth), a sentinel (`-1` cannot be a key), no insertion order and no removal; `intmap.c` grew but had no order or removal. They now share `c/ordmap.h`: dense entries in insertion order, an index of tag-and-position words, growth (compacting first when over half the entries are holes), `remove`, any `long` key, one `_at` that inserts a zeroed value like `update`. Outputs match the old twins.
+
+| program (callgrind Ir) | old C twin | equivalent C | ms |
+| --- | ---: | ---: | ---: |
+| `keyed.ms` case a (`Map[Int, Stat]`) | 98.4M | 163.0M | 262.7M |
+| `keyed.ms` case f (`Set[Int]`) | 92.1M | 176.0M | 182.8M |
+| `intmap.ms` | 136M | 257.4M | 292.9M |
+
+Against the equivalent C the gaps are 1.6x, 1.04x and 1.14x in instructions; `Set[Int]` wall time is at C (58 to 84 ms against 77 ms, min of 5 on a noisy shared VM). Earlier "gap to C" figures for maps and sets in this file and in `proposals/c-parity-structure.md` compare against the old twins and overstate the gap. The `Map[String, Stat]` twin (`containers.c`) is not in the repository, so that row has no equivalent C yet.
+
 ## 2026-11-12: var calls through boxed optional fields
 
 `tree.ms` is `mixed.ms` case c on its own: 200k inserts into a binary tree whose links are `Node?`, through `fn var Node.insert`. Same machine; callgrind instructions, allocations from memcheck, min-of-7 wall time.
