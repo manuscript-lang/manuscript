@@ -28,7 +28,7 @@ import (
 	sha384,
 	sha512,
 	sign,
-	verify from "@std/crypto.ms",
+	verify from "@std/crypto/crypto.ms",
 	hex_decode, hex_encode from "@std/data/encoding.ms",
 	expect_equal, expect_false, expect_true from "@std/test/test.ms",
 )

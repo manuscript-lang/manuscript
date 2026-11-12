@@ -1,6 +1,6 @@
 // Non-cryptographic hashes and checksums (FNV, CRC-64, a seeded table hash). They
 // spread keys and detect accidental damage; for SHA-2, HMAC and other secure digests,
-// see `@std/crypto.ms`.
+// see `@std/crypto/crypto.ms`.
 import (
 	Bytes from "@std/bytes.ms",
 	ReadStream from "@std/io/io.ms",

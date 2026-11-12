@@ -2,7 +2,7 @@
 // repository root with
 // `ms run bench/tools/<name>.ms [-- arguments]`.
 import (
-	sha256 from "@std/crypto.ms",
+	sha256 from "@std/crypto/crypto.ms",
 	hex_encode from "@std/data/encoding.ms",
 	JsonValue, StringifyOptions, stringify from "@std/data/json.ms",
 	stderr, stdin from "@std/io/io.ms",

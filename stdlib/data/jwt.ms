@@ -8,7 +8,7 @@ import (
 	rsa_sign,
 	rsa_verify,
 	sign,
-	verify from "@std/crypto.ms",
+	verify from "@std/crypto/crypto.ms",
 	base64_decode, base64_encode from "@std/data/encoding.ms",
 	JsonValue, parse, stringify from "@std/data/json.ms",
 	from_int from "@std/math/math.ms",

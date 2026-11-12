@@ -39,7 +39,7 @@ Measured on this checkout (line counts, `grep`):
 | `os/metrics.ms` | `data/histogram.ms` (it is a histogram, not OS metrics) |
 | `net/net.ms` | `net/ip.ms` (IP, CIDR, DNS), `net/url.ms` (`Url`, query, components), `net/tls.ms` (certs), `net/websocket.ms`, `net/net.ms` (TCP/UDP/Unix, `Network`, `serve`) |
 
-Splitting removes the `format`/`parse`/`resolve` collisions (`url.parse`, `path.parse`); each import list names its module. Precedent: `crypto.ms` + `crypto/`.
+Splitting removes the `format`/`parse`/`resolve` collisions (`url.parse`, `path.parse`); each import list names its module. Precedent: `crypto/crypto.ms`.
 
 ### 2. Types instead of stand-ins
 

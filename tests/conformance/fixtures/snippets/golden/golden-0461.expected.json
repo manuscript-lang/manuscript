@@ -14,13 +14,13 @@
           "file": "golden-0461.ms",
           "line": 4,
           "column": 8,
-          "offset": 103
+          "offset": 110
         },
         "end": {
           "file": "golden-0461.ms",
           "line": 4,
           "column": 25,
-          "offset": 120
+          "offset": 127
         }
       },
       {
@@ -31,7 +31,7 @@
           "file": "golden-0461.ms",
           "line": 8,
           "column": 12,
-          "offset": 231
+          "offset": 238
         },
         "fix": {
           "position": {
