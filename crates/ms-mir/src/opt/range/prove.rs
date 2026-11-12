@@ -301,6 +301,56 @@ impl Fa<'_> {
         false
     }
 
+    /// Whether `y * y` was computed without overflow on every path to instruction `ii` of block `bi`.
+    fn square_fits(&self, y: Value, bi: usize, ii: usize) -> bool {
+        let Some(sites) = self.squares.get(&y) else {
+            return false;
+        };
+        sites.iter().any(|&(sb, si)| {
+            if sb == bi {
+                return si < ii;
+            }
+            let mut b = bi;
+            while b != sb && b != 0 {
+                b = self.idom[b];
+            }
+            b == sb
+        })
+    }
+
+    /// The row-major index idiom: with a checked square `n * n`, `x * n` and `x * n + j` for
+    /// `0 <= x, j < n` stay below `n * n`, so they cannot overflow.
+    fn flat_index_fits(&self, inst: &Inst, bi: usize, ii: usize, env: &Env) -> bool {
+        let below = |v: Value, n: Value| {
+            self.get(v, env).is_some_and(|i| i.lo >= 0)
+                && (self.rel_known(v, n, env).0
+                    || self
+                        .get(v, env)
+                        .zip(self.get(n, env))
+                        .is_some_and(|(a, b)| a.hi < b.lo))
+        };
+        let row = |x: Value, n: Value| below(x, n) && self.square_fits(n, bi, ii);
+        let product = |q: Value, j: Option<Value>| {
+            let Some(d) = self.def_inst(q) else {
+                return false;
+            };
+            if !matches!(d.op, Op::IMul | Op::IMulChk) || !self.no_wrap(d, env) {
+                return false;
+            }
+            [(d.args[0], d.args[1]), (d.args[1], d.args[0])]
+                .into_iter()
+                .any(|(x, n)| row(x, n) && j.is_none_or(|j| below(j, n)))
+        };
+        match inst.op {
+            Op::IMulChk => row(inst.args[0], inst.args[1]) || row(inst.args[1], inst.args[0]),
+            Op::IAddChk => {
+                product(inst.args[0], Some(inst.args[1]))
+                    || product(inst.args[1], Some(inst.args[0]))
+            }
+            _ => false,
+        }
+    }
+
     pub(super) fn edits(&self) -> Vec<Edit> {
         let mut out = Vec::new();
         let f = self.f;
@@ -328,7 +378,7 @@ impl Fa<'_> {
                             }
                             _ => corners(|a, b| a * b, x, y),
                         };
-                        if fits(lo, hi) {
+                        if fits(lo, hi) || self.flat_index_fits(inst, bi, ii, env) {
                             let op = match inst.op {
                                 Op::IAddChk => Op::IAdd,
                                 Op::ISubChk => Op::ISub,

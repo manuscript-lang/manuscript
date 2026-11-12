@@ -6,7 +6,7 @@ Pairs of programs with the same algorithm, written the way each language writes 
 |---|---|---:|---:|---:|
 | `hash` open-addressing `Int` table, insert then lookup | 200000 | 14.3M | 13.3M | 1.07x |
 | `sort` insertion blocks plus bottom-up merge | 200000 | 67.1M | 65.2M | 1.03x |
-| `matmul` flat `i64` matrix multiply | 200 | 155.0M | 122.6M | 1.26x |
+| `matmul` flat `i64` matrix multiply | 200 | 130.9M | 122.6M | 1.07x |
 | `lcs` two-row dynamic program | 1500 | 39.3M | 60.1M | 0.65x |
 | heap ([`../heap-parity`](../heap-parity)) | 100000 | 46.0M | 47.1M | 0.98x |
 
@@ -14,7 +14,7 @@ Pairs of programs with the same algorithm, written the way each language writes 
 
 Read from the hot loops with `callgrind --dump-instr=yes`:
 
-- **matmul** (19 against 16 instructions per inner iteration): both languages check the index, but Rust keeps `i * n` and `k * n` in strength-reduced base pointers and drops the overflow check on `base + j`; Manuscript recomputes and checks `base + j` with `jo` for each of `a`, `b` and `c`. The compound update `c[x] = c[x] + ...` already needs one bounds check, and an explicit second check after the `get` is redundant (a successful access implies `x < len`). Dropping it in the range pass was tried and gave no change: LLVM already merged that compare, and the `jo` it left cost the same.
+- **matmul**: was 155.0M (1.26x, 19 against 16 instructions per inner iteration). Rust drops the overflow check on `base + j`; Manuscript checked `i * n` and `i * n + j` for each of `a`, `b` and `c` with `jo`. With the checked square `n * n` already computed for the allocation, `0 <= x, j < n` bounds `x * n + j` by `n * n - 1`, so the range pass now turns those checks into plain `imul`/`iadd` (130.9M). The compound update's second bounds check was already merged by LLVM, and dropping it in the range pass changed nothing. What remains is the checked `x * b[..]` and `+ ...` data arithmetic, which Rust's wrapping release build does not do.
 - **sort**: was 89.0M (1.37x). Every `a[p]`/`a[q]` in the merge loop paid negative-index normalisation (`sar`, `and`, `add`, about 4 instructions) and every store a bounds check, for three reasons found in the range pass: (1) an `iadd`/`imul` that range had proved non-wrapping and turned unchecked was evaluated as a wrapping op afterwards, so `w *= 2` and `q += 1` went to top and lost their lower bound; such results are now recorded in `Func::exact` and keep the interval of their checked twin; (2) a refinement disjoint from an early, still-growing interval was dropped instead of taken, which left an interval below zero in `q`'s cycle for good; (3) the swapped `var` lists are `opt<list>`, which hid their lengths, so lengths now flow through `opt.some`/`opt.get`/`opt.unbox`. What remains are the bounds checks Rust also has.
 - **hash**: was 17.8M (1.34x). `main` itself is 10.3M; the rest was `[x].repeated(n)` (via `filled`), an element-by-element `append(value.clone())` loop of about 6 instructions per element, against Rust's vectorized or zeroed fill. `repeated` is now the native `msrt_list_repeat` (plain elements copy once and double in place) and `filled` calls it: 14.3M. The remaining 1.0M is the allocation and the first-touch of a longer table than Rust's `calloc` path.
 

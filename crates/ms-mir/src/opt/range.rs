@@ -197,6 +197,9 @@ struct Fa<'a> {
     defs: Vec<Option<(usize, usize)>>,
     rpo: Vec<Block>,
     idom: Vec<usize>,
+    /// `y -> positions` of the checked squares `y * y`: each fits in an `i64` on every path
+    /// through it, which bounds `x * y + j` for `x, j < y`.
+    squares: HashMap<Value, Vec<(usize, usize)>>,
     incoming: Vec<Vec<(usize, Edge, Vec<Value>)>>,
     base: Vec<Option<Itv>>,
     envs: Vec<Env>,
@@ -877,12 +880,21 @@ impl<'a> Fa<'a> {
                 base[p.value.index()] = Some(type_top(t));
             }
         }
+        let mut squares: HashMap<Value, Vec<(usize, usize)>> = HashMap::new();
+        for (bi, b) in f.blocks.iter().enumerate() {
+            for (ii, i) in b.insts.iter().enumerate() {
+                if i.op == Op::IMulChk && i.args[0] == i.args[1] {
+                    squares.entry(i.args[0]).or_default().push((bi, ii));
+                }
+            }
+        }
         Fa {
             m,
             f,
             defs,
             rpo,
             idom,
+            squares,
             incoming,
             base,
             envs: vec![Env::default(); n],
