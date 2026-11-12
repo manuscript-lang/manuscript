@@ -17,7 +17,6 @@ export fn timed(program: String, arguments: List[String]) Timed!:
 		program.clone(),
 	].concat(arguments)
 	ran := capture("bash", command)
-
 	stderr := ran.stderr.clone()
 
 	for line in stderr.split("\n"):
