@@ -10,7 +10,7 @@ use crate::Error;
 use crate::func::{FnLower, Val};
 use ms_check::api::ast::*;
 use ms_check::api::hir::Resolution;
-use ms_mir::ir::{Cc, Op, Value};
+use ms_mir::ir::{Cc, Imm, Op, Value};
 use ms_mir::types::Ty as MTy;
 use std::collections::HashSet;
 
@@ -148,13 +148,26 @@ impl FnLower<'_> {
             return Ok(Some(at));
         }
         self.at(e.pos);
-        let (has, zero) = (self.b.bconst(false), self.b.iconst(0));
-        let v = self.call_runtime(
-            "msrt_string_scalar_at",
-            &[text.v, at.v, has, zero],
-            MTy::INT,
-        )?;
-        Ok(Some(Val { v, own: false }))
+        // All-ASCII text reads its byte inline; anything else asks the runtime.
+        let byte = self
+            .b
+            .emit(Op::StrAsciiAt, &[text.v, at.v], Imm::None, Some(MTy::INT))
+            .expect("ascii_at");
+        let zero = self.b.iconst(0);
+        let hit = self.b.icmp(Cc::Ge, byte, zero);
+        let code = self.two_ways(hit, MTy::INT, &mut |_| Ok(Some(byte)), &mut |s| {
+            let (has, zero) = (s.b.bconst(false), s.b.iconst(0));
+            let v = s.call_runtime(
+                "msrt_string_scalar_at",
+                &[text.v, at.v, has, zero],
+                MTy::INT,
+            )?;
+            Ok(Some(v))
+        })?;
+        Ok(Some(Val {
+            v: code.v,
+            own: false,
+        }))
     }
 
     /// Whether the local `uid` may stay a code point: every use compares it.
