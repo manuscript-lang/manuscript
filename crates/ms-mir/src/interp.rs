@@ -278,6 +278,8 @@ impl<'m> Interp<'m> {
         it.register("msrt_print_float", print);
         it.register("msrt_print_bool", print);
         it.register("msrt_print_str", print);
+        // The oracle frees at exit, so a leak shows as a drop count that differs.
+        it.register("msrt_exit_frees", |_, _| Ok(Val::Bool(true)));
         it
     }
 

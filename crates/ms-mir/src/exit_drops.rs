@@ -1,4 +1,4 @@
-//! The `exit_drops` pass: `main` returns to a process that is about to exit, so the drops of
+//! The `exit_drops` pass: the program entry returns to a process that is about to exit, so the drops of
 //! plain memory on its return paths (a map of records, a list of strings) only walk and free
 //! memory the operating system takes back. Each such drop runs only when `msrt_exit_frees`
 //! says so: the counting runtime that `make leak-check` links and `MS_FREE_AT_EXIT=1` (for
@@ -8,34 +8,64 @@
 use crate::ir::*;
 use crate::types::Ty;
 
-/// Gates the exit drops of `main`, unless something calls `main` again: then its return is not
-/// the process exit.
-pub fn run(m: &mut Module, main: FuncId) {
-    let called = m.funcs.iter().any(|f| {
-        f.blocks.iter().any(|b| {
-            b.insts
-                .iter()
-                .any(|i| i.op == Op::Call && i.imm == Imm::Func(main))
-        })
-    });
-    if called {
-        return;
+/// Instructions that may sit between the exit drops and the return.
+fn is_exit_tail(op: Op) -> bool {
+    matches!(
+        op,
+        Op::Drop | Op::DropIf | Op::DepthLeave | Op::IConst | Op::BConst | Op::UnitConst
+    )
+}
+
+/// Gates the exit drops of the entry, and of a `main` it calls once; run after the passes that
+/// need to see every `drop` (`copyelim`, `simplify`) and before `lastuse`. An entry that
+/// something calls again, or a `main` called from anywhere but the entry, is left alone: its
+/// return is not the process exit.
+pub fn run(m: &mut Module) {
+    let Some(entry) = m.entry else { return };
+    let mut calls = vec![Vec::new(); m.funcs.len()];
+    for (fi, f) in m.funcs.iter().enumerate() {
+        for i in f.blocks.iter().flat_map(|b| b.insts.iter()) {
+            if let (Op::Call, Imm::Func(g)) = (i.op, i.imm) {
+                calls[g.index()].push(fi);
+            }
+        }
     }
-    // Per returning block: where its run of exit drops starts, and which of them are plain.
+    let mut targets = Vec::new();
+    if calls[entry.index()].is_empty() {
+        targets.push(entry);
+    }
+    for (gi, g) in m.funcs.iter().enumerate() {
+        if g.name == "main" && gi != entry.index() && calls[gi] == [entry.index()] {
+            targets.push(FuncId(gi as u32));
+        }
+    }
+    let mut gate = None;
+    for fid in targets {
+        gate_returns(m, fid, &mut gate);
+    }
+}
+
+/// Gates the plain drops that end each returning path of `fid`. A path ends in `ret`, or in a
+/// jump to a block that only builds the result and returns (what inlining `main` into the
+/// entry leaves).
+fn gate_returns(m: &mut Module, fid: FuncId, gate: &mut Option<ExtId>) {
+    // Per block: where its run of exit drops starts, and which of them are plain.
     let mut plan: Vec<(usize, usize, Vec<bool>)> = Vec::new();
-    let f = &m.funcs[main.index()];
+    let f = &m.funcs[fid.index()];
     for (bi, b) in f.blocks.iter().enumerate() {
-        if !matches!(b.term, Term::Ret(_)) {
+        let exits = match &b.term {
+            Term::Ret(_) => true,
+            Term::Br(t) => {
+                let c = &f.blocks[t.block.index()];
+                matches!(c.term, Term::Ret(_)) && c.insts.iter().all(|i| is_exit_tail(i.op))
+            }
+            _ => false,
+        };
+        if !exits {
             continue;
         }
         let mut start = b.insts.len();
-        // The drops, the constants a return value is made of, and the depth accounting.
-        while start > 0
-            && matches!(
-                b.insts[start - 1].op,
-                Op::Drop | Op::DropIf | Op::DepthLeave | Op::IConst | Op::BConst | Op::UnitConst
-            )
-        {
+        while start > 0 && is_exit_tail(b.insts[start - 1].op) {
             start -= 1;
         }
         let plain: Vec<bool> = b.insts[start..]
@@ -49,18 +79,20 @@ pub fn run(m: &mut Module, main: FuncId) {
     if plan.is_empty() {
         return;
     }
-    let gate = m.add_extern(ExternDef {
-        name: "msrt_exit_frees".into(),
-        params: Vec::new(),
-        ret: Ty::BOOL,
-        noreturn: false,
-        pure_: false,
-        fresh: false,
-        role: ExternRole::None,
-        leaf: true,
-        reads: false,
+    let gate = *gate.get_or_insert_with(|| {
+        m.add_extern(ExternDef {
+            name: "msrt_exit_frees".into(),
+            params: Vec::new(),
+            ret: Ty::BOOL,
+            noreturn: false,
+            pure_: false,
+            fresh: false,
+            role: ExternRole::None,
+            leaf: true,
+            reads: false,
+        })
     });
-    let f = &mut m.funcs[main.index()];
+    let f = &mut m.funcs[fid.index()];
     for (bi, start, plain) in plan {
         let flag = f.new_value(Ty::BOOL);
         let loc = f.blocks[bi].insts[start].loc;
