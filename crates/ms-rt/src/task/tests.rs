@@ -71,6 +71,33 @@ fn tasks_interleave_sleep_and_join() {
     teardown();
 }
 
+unsafe extern "C-unwind" fn report_stalled(_: *mut u8) {
+    // SAFETY: called from a running task.
+    note(unsafe { msrt_task_others_stalled() } as u8);
+}
+
+/// A task that only joins another has no token, descriptor or timer, but nothing wakes it until the
+/// joined task ends, so a blocking call in that task may run inline; a sleeper beside it may not.
+#[test]
+#[cfg_attr(miri, ignore = "context switches use inline assembly")]
+fn a_joining_task_does_not_make_blocking_calls_hop_to_the_pool() {
+    let _g = lock();
+    teardown();
+    // SAFETY: tests hold the global lock; every handle is joined once.
+    unsafe {
+        *LOG_N.ptr() = 0;
+        let alone = msrt_task_spawn(report_stalled, null_mut(), 0, 0);
+        assert_eq!(msrt_task_join(alone, null_mut()), 0);
+        let nap = msrt_task_spawn(sleeper, core::ptr::without_provenance_mut(30), 0, 0);
+        let asked = msrt_task_spawn(report_stalled, null_mut(), 0, 0);
+        assert_eq!(msrt_task_join(asked, null_mut()), 0);
+        assert_eq!(msrt_task_join(nap, null_mut()), 0);
+        // The sleeper logs its own entry (30) after the second report.
+        assert_eq!(&(&(*LOG.ptr()))[..*LOG_N.ptr()], &[1, 0, 30]);
+    }
+    teardown();
+}
+
 unsafe extern "C-unwind" fn deadlocked_token(arg: *mut u8) {
     // SAFETY: the test owns the live token and deliberately supplies no completion.
     unsafe { msrt_token_park(arg as u64, -1, null_mut()) };

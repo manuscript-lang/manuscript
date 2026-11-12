@@ -410,7 +410,8 @@ impl<'a> FnLower<'a> {
             self.finish_place(recv_expr);
             return Ok(done);
         }
-        let mut args = self.native_args_protected(view, protect_list)?;
+        let borrowed = self.borrowed_update_key(view, recv_expr, name)?;
+        let mut args = self.native_args_borrowing(view, protect_list, borrowed)?;
         if self.dead {
             self.finish_place(recv_expr);
             return Ok(self.dummy(MTy::UNIT));
