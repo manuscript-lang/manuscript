@@ -22,6 +22,8 @@ pub const BASE_THRESHOLD: usize = 60;
 pub const SINGLE_CALLER_BONUS: usize = 25;
 /// Extra allowance per constant argument.
 pub const CONST_ARG_BONUS: usize = 5;
+/// Largest self-recursive function unrolled once into itself (see [`self_unroll_source`]).
+pub const SELF_UNROLL_MAX_SIZE: usize = 40;
 /// Cap on growth of one caller, as a multiple of its original size plus [`GROWTH_SLACK`].
 pub const GROWTH_FACTOR: usize = 4;
 /// Fixed growth allowance per caller.
@@ -280,7 +282,27 @@ fn const_values(blocks: &[BlockData]) -> impl Iterator<Item = Value> + '_ {
         .filter_map(|i| i.res)
 }
 
+/// The body of a small directly self-recursive function, to be copied into its own recursive
+/// calls once: each copy runs without a call, a frame or a recursion check of its own, and the
+/// calls inside it are the function's own entries, so the check still runs once per frame
+/// of the original size. `fib` makes half the calls. The function then takes `Never`, so the
+/// unrolling happens once however often the pass runs.
+fn self_unroll_source(m: &Module, fi: usize) -> Option<Func> {
+    let f = &m.funcs[fi];
+    if f.inline != InlineHint::Auto || !matches!(f.kind, FuncKind::Normal) {
+        return None;
+    }
+    let calls = f
+        .blocks
+        .iter()
+        .flat_map(|b| b.insts.iter())
+        .filter(|i| i.op == Op::Call && i.imm == Imm::Func(FuncId(fi as u32)))
+        .count();
+    (calls > 0 && calls <= 2 && f.inst_count() <= SELF_UNROLL_MAX_SIZE).then(|| f.clone())
+}
+
 fn inline_into(m: &mut Module, fi: usize, cyc: &[bool], sites: &[usize]) -> bool {
+    let unroll = self_unroll_source(m, fi);
     let budget = m.funcs[fi].inst_count() * GROWTH_FACTOR + GROWTH_SLACK;
     let mut consts: ValueSet = const_values(&m.funcs[fi].blocks).collect();
     let mut grown = 0usize;
@@ -299,6 +321,10 @@ fn inline_into(m: &mut Module, fi: usize, cyc: &[bool], sites: &[usize]) -> bool
             };
             let gi = g.index();
             let callee = &m.funcs[gi];
+            if gi == fi && unroll.is_some() {
+                picks.push((ii, gi));
+                continue;
+            }
             if gi == fi || cyc[gi] || !matches!(callee.kind, FuncKind::Normal) {
                 continue;
             }
@@ -324,7 +350,10 @@ fn inline_into(m: &mut Module, fi: usize, cyc: &[bool], sites: &[usize]) -> bool
             }
         }
         for (ii, gi) in picks.into_iter().rev() {
-            let callee = m.funcs[gi].clone();
+            let callee = match (&unroll, gi == fi) {
+                (Some(orig), true) => orig.clone(),
+                _ => m.funcs[gi].clone(),
+            };
             let ret_own = m.needs_drop(callee.ret) && !callee.ret_borrowed;
             let cont = inline_at(&mut m.funcs[fi], bi, ii, &callee, ret_own);
             // Only the call definition is replaced; existing constants keep their IDs when
@@ -332,6 +361,9 @@ fn inline_into(m: &mut Module, fi: usize, cyc: &[bool], sites: &[usize]) -> bool
             consts.extend(const_values(&m.funcs[fi].blocks[cont + 1..]));
             changed = true;
         }
+    }
+    if unroll.is_some() && changed {
+        m.funcs[fi].inline = InlineHint::Never;
     }
     changed
 }
