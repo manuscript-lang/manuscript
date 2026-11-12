@@ -248,8 +248,8 @@ native! {
     }
 
     /// `HttpExchange.protocol()`.
-    fn msstd_http_exchange_protocol(x: ObjRef<ExchH>) -> String {
-        x.protocol().to_string()
+    fn msstd_http_exchange_protocol(x: ObjRef<ExchH>) -> &'static str {
+        x.protocol()
     }
 
     /// `HttpExchange.query()`.

@@ -666,7 +666,9 @@ pub(crate) unsafe fn spawn_promise_task(closure: *mut ms_rt_abi::Closure, promis
         let h = msrt_task_spawn(closure_entry, closure.cast(), 0, 0);
         let t = lookup(h);
         (*t).promise = promise;
-        (*t).started_by = fault::capture_frames();
+        if !crate::promise::is_native_work(closure) {
+            (*t).started_by = fault::capture_frames();
+        }
         h
     }
 }
