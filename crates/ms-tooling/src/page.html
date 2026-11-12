@@ -469,7 +469,7 @@ function route(){
   const opt=(sel)=>sel&&E[sel]?'<option value="'+esc(sel)+'" selected>'+esc(E[sel].name)+'</option>':'';
   let h='<div class="tools"><input id="rf" list="fl" placeholder="from" value="'+(S.from?esc(E[S.from].name):'')+'"> → <input id="rt" list="fl" placeholder="to" value="'+(S.to?esc(E[S.to].name):'')+'"><datalist id="fl"></datalist></div>';
   if(S.from&&S.to){
-    const prev={[S.from]:null},q=[S.from];while(q.length){const u=q.shift();if(u===S.to)break;for(const v of E[u].calls)if(!(v in prev)){prev[v]=u;q.push(v)}}
+    const prev={[S.from]:null},q=[S.from];for(let head=0;head<q.length;head++){const u=q[head];if(u===S.to)break;for(const v of E[u].calls)if(!(v in prev)){prev[v]=u;q.push(v)}}
     if(!(S.to in prev))h+=empty('No call path','These two functions are not connected by calls.');
     else{const p=[];for(let k=S.to;k!==null;k=prev[k])p.unshift(k);
       h+='<div class="route">'+p.map((k,i)=>(i?'<span class="arrow">→</span>':'')+'<span class="step" data-key="'+esc(k)+'">'+esc(E[k].name)+'</span>').join('')+'</div>'}
