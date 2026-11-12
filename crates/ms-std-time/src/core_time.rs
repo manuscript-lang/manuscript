@@ -161,16 +161,16 @@ pub fn compare(left: Ts, other: Ts) -> i64 {
 }
 
 /// A timestamp broken down in a zone.
-pub struct Calendar {
+pub struct Date {
     pub civil: Civil,
     pub offset_seconds: i64,
     pub zone: String,
 }
 
-pub fn calendar(ts: Ts, zone: &str) -> Result<Calendar, u8> {
+pub fn calendar(ts: Ts, zone: &str) -> Result<Date, u8> {
     let z = Zone::load(zone).ok_or(STATUS_INVALID_INPUT)?;
     let (offset, name) = z.at(ts.seconds);
-    Ok(Calendar {
+    Ok(Date {
         civil: civil_of(ts.seconds + offset, ts.nanos),
         offset_seconds: offset,
         zone: name,
@@ -214,7 +214,7 @@ impl TokenText {
     }
 }
 
-fn render_token(index: usize, c: &Calendar, out: &mut TokenText) {
+fn render_token(index: usize, c: &Date, out: &mut TokenText) {
     let v = &c.civil;
     if index == 7 {
         out.bytes[0] = if c.offset_seconds < 0 { b'-' } else { b'+' };
