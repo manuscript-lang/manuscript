@@ -18,9 +18,11 @@ Revision: this branch on top of `b6717db6`; callgrind on 1M iterations of two `p
 | --- | ---: | ---: |
 | Instructions | 418M | 159M |
 
-`List.replace` lowers to an in-line move-out and refill (`list.get` then `move.out` then `list.fill`, or `list.set` for an element that needs no drop) instead of a call to `msrt_list_replace`, so `pop_front`, `pop_back` and `Queue.dequeue` no longer leave the compiled code (68M runtime instructions and 110M in `pop_front` before). `Deque.grow` appended `none` slots and then rotated the ring with `List.rotate`, which swaps through `msrt_list_swap` (71M); it now moves only the run from `start` to the end once, with `replace` and `set`. Not done: `List.swap` of an element wider than a scalar still calls the runtime.
+`List.replace` lowers to an in-line move-out and refill (`list.get` then `move.out` then `list.fill`, or `list.set` for an element that needs no drop) instead of a call to `msrt_list_replace`, so `pop_front`, `pop_back` and `Queue.dequeue` no longer leave the compiled code (68M runtime instructions and 110M in `pop_front` before). `Deque.grow` appended `none` slots and then rotated the ring with `List.rotate`, which swaps through `msrt_list_swap` (71M); it now moves only the run from `start` to the end once, with `replace` and `set`.
 
 `List.prepend`, `insert` and `remove` on an owned list value lowered to `msrt_list_take`, `msrt_list_drop_n`, a list literal and two `msrt_list_concat` calls (three lists, every element copied twice); they now call `msrt_list_insert` and `msrt_list_remove` in place. 20,000 rounds of `remove(0)` and `prepend` on a 2,000-element `List[Int]`: 995M to 354M instructions, the rest being the tail shift itself.
+
+`List.swap` of an element that needs no drop (a plain record, an optional scalar) is two loads and two stores in line like a scalar, not a call to `msrt_list_swap`: 1M swaps of a two-field record, 79.4M to 8.4M instructions. Elements that own heap data still swap through the runtime. Grid BFS plus priority queue, `bench/perf/structural-gaps/queues.ms` on `68b859e5`: 1,380M instructions against C's 603M; the priority queue's `sift_down` and `sift_up` are 71% of it, so the remaining gap is there, not in `Deque`.
 
 ## 2026-10-27 (PriorityQueue sift-down, second pass)
 

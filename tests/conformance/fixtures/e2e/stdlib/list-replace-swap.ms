@@ -57,3 +57,18 @@ test "swap exchanges scalars, counting negative indexes from the end":
 	var flags = [true, false]
 	flags.swap(0, -1)
 	expect_equal(flags, [false, true])?
+
+type Point:
+	x: Int
+	y: Int
+
+test "swap exchanges plain records and optional scalars in line":
+	var points = [Point(x: 1, y: 2), Point(x: 3, y: 4), Point(x: 5, y: 6)]
+	points.swap(0, 2)
+	points.swap(1, 1)
+	points.swap(-2, 0)
+	expect_equal(points, [Point(x: 3, y: 4), Point(x: 5, y: 6), Point(x: 1, y: 2)])?
+	var slots: List[Int?] = [1, none, 3]
+	slots.swap(0, 1)
+	slots.swap(2, 2)
+	expect_equal(slots, [none, 1, 3])?
