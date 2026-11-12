@@ -3,7 +3,7 @@ import (
 	base64_encode from "@std/data/encoding.ms",
 	parse from "@std/data/json.ms",
 	arguments from "@std/os/env.ms",
-	StringBuilder from "@std/string.ms",
+	StringBuilder from "@std/string_builder.ms",
 	monotonic from "@std/time.ms",
 )
 

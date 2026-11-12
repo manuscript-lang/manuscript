@@ -16,7 +16,7 @@ import (
 	arguments, working_directory from "@std/os/env.ms",
 	temporary, write_file from "@std/os/fs.ms",
 	RunOptions, run from "@std/os/process.ms",
-	StringBuilder from "@std/string.ms",
+	StringBuilder from "@std/string_builder.ms",
 	monotonic, seconds from "@std/time.ms",
 
 	env, tool_ms from "./lib.ms",

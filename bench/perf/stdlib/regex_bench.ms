@@ -1,5 +1,5 @@
 import (
-	compile from "@std/string.ms",
+	compile from "@std/regex.ms",
 	keep, measure from "@std/test/bench.ms",
 	expect_equal from "@std/test/test.ms",
 

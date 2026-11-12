@@ -1,4 +1,4 @@
-import StringBuilder from "@std/string.ms"
+import StringBuilder from "@std/string_builder.ms"
 
 // Double-quotes text with JSON-style escapes. Controls below U+0020 use a short JSON
 // escape where available, otherwise \uXXXX. U+007F is always escaped as \uXXXX;

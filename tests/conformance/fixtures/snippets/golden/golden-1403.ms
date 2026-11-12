@@ -1,6 +1,6 @@
 // conform: tags=diagnostics
 // conform: phase=check
-import StringBuilder from "@std/string.ms"
+import StringBuilder from "@std/string_builder.ms"
 fn probe() String:
     b := StringBuilder()
     var i = 0

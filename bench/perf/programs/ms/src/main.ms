@@ -1,7 +1,7 @@
 import (
 	ReadStream, stdin, stdout from "@std/io/io.ms",
 	lines from "@std/io/streams.ms",
-	StringBuilder from "@std/string.ms",
+	StringBuilder from "@std/string_builder.ms",
 	Instant, monotonic from "@std/time.ms",
 )
 

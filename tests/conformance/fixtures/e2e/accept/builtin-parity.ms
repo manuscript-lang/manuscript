@@ -7,7 +7,7 @@ import (
 	map_from_entries,
 	range_by from "@std/collections/collections.ms",
 	from_int from "@std/math/math.ms",
-	compile from "@std/string.ms",
+	compile from "@std/regex.ms",
 	expect_equal, expect_false, expect_true, fail from "@std/test/test.ms",
 )
 

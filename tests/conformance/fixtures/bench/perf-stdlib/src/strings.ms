@@ -1,5 +1,5 @@
 import bench, words from "./harness.ms"
-import StringBuilder from "@std/string.ms"
+import StringBuilder from "@std/string_builder.ms"
 
 export fn bench_string() Unit:
     text := words(2000).join(" ")

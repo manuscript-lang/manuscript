@@ -8,5 +8,5 @@ Verified: canonical declarations, checker rules, conformance, and generated refe
 
 
 Apply when: changing library signatures, bounds/interfaces, queue APIs, grouping, examples, or documentation.
-Evidence: [current declarations](../../stdlib/intrinsics.ms); [compiled Optional methods](../../tests/conformance/fixtures/e2e/accept/optional-methods.ms).
+Evidence: [current declarations](../../stdlib/core/intrinsics.ms); [compiled Optional methods](../../tests/conformance/fixtures/e2e/accept/optional-methods.ms).
 Verify: inspect current declarations and called behavior against the latest direction. Preserve omitted/none/explicit-limit behavior and custom equality/hash coherence. Do not restore removed APIs from older documentation or another branch.

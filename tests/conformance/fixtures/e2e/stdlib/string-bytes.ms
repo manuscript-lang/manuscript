@@ -2,7 +2,8 @@
 // conform: phase=test
 import (
 	Bytes, BytesBuilder, values from "@std/bytes.ms",
-	StringBuilder, from_scalars from "@std/string.ms",
+	StringBuilder from "@std/string_builder.ms",
+	from_scalars from "@std/string.ms",
 	expect_equal, expect_false from "@std/test/test.ms",
 )
 
