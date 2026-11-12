@@ -37,7 +37,7 @@ fn keep(text: String) List[String]:
 	var out: List[String] = []
 	for c in text.chars():
 		if c == "b":
-			out.append(c)
+			out.append(c.clone())
 	return out
 
 test "get compared with one-character literals":
