@@ -99,10 +99,14 @@ impl FnLower<'_> {
             let ty = self.b.var_ty(sv);
             let uid = self.adopt_hidden(sv, ty);
             let cty = ms_check::api::types::sub(&self.hir.ty(scrutinee), &self.subst);
-            if let Some(kind) = self.part_closer(&cty)? {
-                self.hidden_closers.insert(uid, kind);
-                self.note_closer();
-            }
+            let closes = match self.part_closer(&cty)? {
+                Some(kind) => {
+                    self.hidden_closers.insert(uid, kind);
+                    self.note_closer();
+                    true
+                }
+                None => false,
+            };
             let parts = matches!(kind, TyKind::Alt(_) | TyKind::Opt(_))
                 && arms
                     .iter()
@@ -110,6 +114,8 @@ impl FnLower<'_> {
             if parts {
                 self.slotted.insert(uid);
                 self.slotify(uid);
+            } else if !closes {
+                self.own_hidden(uid);
             }
             owned_uid = Some(uid);
         }
@@ -337,7 +343,9 @@ impl FnLower<'_> {
                 }
             }
             self.flush_temps(mark);
-            if let (Some(uid), false, false) = (owned_uid, takes, self.dead) {
+            if let (Some(uid), false, false) = (owned_uid, takes, self.dead)
+                && !self.raw_owned.contains(&uid)
+            {
                 // This arm left the scrutinee whole: it goes with the arm.
                 let l = self.locals[&uid];
                 let mut v = self.local_take(&l);

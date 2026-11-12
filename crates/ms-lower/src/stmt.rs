@@ -1730,6 +1730,14 @@ impl<'a> FnLower<'a> {
                 .map(|(uid, _)| *uid)
                 .ok_or_else(|| Error::new("loop list without a hidden local"))?;
             self.list_iters.insert(uid, idx);
+        } else if let Some(var) = list_var
+            && let Some(uid) = self
+                .locals
+                .iter()
+                .find(|(_, l)| l.var == var && l.slot.is_none())
+                .map(|(uid, _)| *uid)
+        {
+            self.own_hidden(uid);
         }
         let (header, body_b, step, exit) = (
             self.b.new_block(),
