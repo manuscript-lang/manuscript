@@ -673,6 +673,49 @@ pub unsafe extern "C-unwind" fn msrt_map_contains_w8(
     unsafe { !find_w8(&*(m as *const MapVal), key as *const u8).is_null() as u8 }
 }
 
+/// Slot of the `Int` key at `key` in a `Set[Int]` (slots of a hash word and the key, stride 16),
+/// or null: [`find_w8`] without a value.
+#[inline(always)]
+pub unsafe fn find_set_w(m: &MapVal, key: *const u8) -> *const u8 {
+    if m.len == 0 {
+        return core::ptr::null();
+    }
+    // SAFETY: caller contract; index and slots are consistent for a non-empty map.
+    unsafe {
+        let k = *(key as *const u64);
+        let h = hash_int(k) | LIVE;
+        let index = index_of(m);
+        let mut pos = (h as usize ^ (h >> 32) as usize) & m.mask;
+        loop {
+            let e = *index.add(pos);
+            if e == 0 {
+                return core::ptr::null();
+            }
+            if (e ^ h) >> 32 == 0 {
+                let p = m.slots.add((e as u32 - 1) as usize * 16);
+                if *(p.add(8) as *const u64) == k {
+                    return p;
+                }
+            }
+            pos = (pos + 1) & m.mask;
+        }
+    }
+}
+
+/// `contains` for a `Set[Int]`.
+/// C view: `msrt_set_contains_w(m: *const MapVal, kd: KeyDesc, vd: ValDesc, key: *const u8) -> u8`
+#[unsafe(no_mangle)]
+// ms: leaf pure domain=set
+pub unsafe extern "C-unwind" fn msrt_set_contains_w(
+    m: usize,
+    _kd: usize,
+    _vd: usize,
+    key: usize,
+) -> u8 {
+    // SAFETY: caller contract.
+    unsafe { !find_set_w(&*(m as *const MapVal), key as *const u8).is_null() as u8 }
+}
+
 /// `get` for an `Int` key and a plain 8-byte scalar value (`Int` or `Float`).
 /// C view: `msrt_map_get_w8(m: *const MapVal, kd: KeyDesc, vd: ValDesc, key: *const u8, out: *mut u8) -> u8`
 #[unsafe(no_mangle)]

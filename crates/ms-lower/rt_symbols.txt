@@ -218,6 +218,8 @@ msrt_realloc(p: *mut u8, size: usize) -> *mut u8
 msrt_runtime_limit() -> i64
 msrt_runtime_set_threads(n: i64)
 msrt_set_add_copy(m: *mut MapVal, kd: KeyDesc, key: *const u8) @domain=set @leaf
+msrt_set_add_copy_w(m: *mut MapVal, kd: KeyDesc, key: *const u8) @domain=set @leaf
+msrt_set_contains_w(m: *const MapVal, kd: KeyDesc, vd: ValDesc, key: *const u8) -> u8 @domain=set @leaf @pure
 msrt_set_difference(a: *const MapVal, b: *const MapVal, kd: KeyDesc, out: *mut MapVal) @domain=set @leaf
 msrt_set_intersection(a: *const MapVal, b: *const MapVal, kd: KeyDesc, out: *mut MapVal) @domain=set @leaf
 msrt_set_is_disjoint_from(a: *const MapVal, b: *const MapVal, kd: KeyDesc) -> u8 @domain=set @leaf

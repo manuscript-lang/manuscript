@@ -103,3 +103,7 @@ The 40% ceiling on `logstats` is not reached by this step: what is left is `msrt
 ### Step 3: `length` and a shared ASCII check
 
 `String.length` and `scalar_length` moved into `ms-rt-hot` (non-ASCII and long unflagged text call `msrt_string_scalar_count_slow`). The ASCII test is one helper that reads the flag or the bits of an inline string, so the earlier steps stopped scanning bytes for short strings. `mixed.ms` case e (200,000-word scan with `==`, `starts_with`, `length`, 20 passes): 301.7M to 265.1M instructions (-12%). logstats 106.47M, wordfreq 149.62M, csvgroup 136.38M on the 30,000-line inputs.
+
+### Step 4: `Set[Int]` without descriptor dispatch
+
+`Set[Int]` `contains` is an inlined probe over the fixed 16-byte slots (`msrt_set_contains_w`, `ms-rt-hot`), and `add` is `msrt_set_add_copy_w` with the same layout; sets stamped with a module's key behaviour keep the general path. A contains-then-add loop over 2M random keys below 100,000 (`/tmp` program, callgrind instructions): 233.3M to 117.4M (-50%). New fixture `set-int-fixed-layout` covers repeats, extreme keys, growth, removal and reinsertion.
