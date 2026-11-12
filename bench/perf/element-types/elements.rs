@@ -1,9 +1,10 @@
 use std::collections::{BinaryHeap, HashMap, HashSet, VecDeque};
 use std::cmp::Reverse;
+use std::borrow::Cow;
 use std::time::Instant;
 
 #[derive(Clone)]
-struct Event { #[allow(dead_code)] id: i64, kind: i64, name: String, score: i64 }
+struct Event { #[allow(dead_code)] id: i64, kind: i64, name: Cow<'static, str>, score: i64 }
 enum Shape { Circle(i64), Rect(i64, i64), Dot }
 struct Pair<A, B> { first: A, #[allow(dead_code)] second: B }
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
@@ -15,7 +16,7 @@ fn lcg(x: i64) -> i64 { (x * 1103515245 + 12345) % 2147483648 }
 
 fn list_records() -> i64 {
     let mut xs = Vec::new();
-    for i in 0..1000000 { xs.push(Event { id: i, kind: i % 7, name: format!("e{}", i % 100), score: i % 13 }); }
+    for i in 0..1000000 { xs.push(Event { id: i, kind: i % 7, name: Cow::Owned(format!("an-event-name-over-sixteen-bytes-{}", i % 100)), score: i % 13 }); }
     let mut t = 0;
     for _ in 0..5 { for e in &xs { if e.kind == 3 { t += e.score + e.name.len() as i64; } } }
     t
@@ -35,7 +36,7 @@ fn map_records() -> i64 {
     for i in 0..1000000 {
         x = lcg(x);
         let k = x % 50000;
-        m.entry(k).or_insert(Event { id: k, kind: 0, name: "n".into(), score: 0 }).score += i % 5;
+        m.entry(k).or_insert(Event { id: k, kind: 0, name: Cow::Borrowed("an-event-name-over-sixteen-bytes"), score: 0 }).score += i % 5;
     }
     m.values().map(|e| e.score).sum()
 }
@@ -50,7 +51,7 @@ fn find(xs: &[Event], i: i64) -> Option<Event> {
     Some(xs[(i as usize) % xs.len()].clone())
 }
 fn optional_records() -> i64 {
-    let xs: Vec<Event> = (0..1000).map(|i| Event { id: i, kind: i % 7, name: "e".into(), score: i % 13 }).collect();
+    let xs: Vec<Event> = (0..1000).map(|i| Event { id: i, kind: i % 7, name: Cow::Borrowed("an-event-name-over-sixteen-bytes"), score: i % 13 }).collect();
     let mut t = 0;
     for i in 0..5000000 { if let Some(e) = find(&xs, i) { t += e.score; } }
     t
@@ -85,7 +86,7 @@ fn generic_pairs() -> i64 {
 }
 fn make(i: i64) -> Result<Event, String> {
     if i % 10 == 0 { return Err("bad".into()); }
-    Ok(Event { id: i, kind: i % 7, name: "r".into(), score: i % 13 })
+    Ok(Event { id: i, kind: i % 7, name: Cow::Borrowed("an-event-name-over-sixteen-bytes"), score: i % 13 })
 }
 fn results() -> i64 {
     let mut t = 0;
@@ -106,7 +107,7 @@ fn set_records() -> i64 {
 fn sort_records() -> i64 {
     let mut xs = Vec::new();
     let mut x = 1;
-    for i in 0..500000 { x = lcg(x); xs.push(Event { id: i, kind: x % 1000, name: "s".into(), score: i % 13 }); }
+    for i in 0..500000 { x = lcg(x); xs.push(Event { id: i, kind: x % 1000, name: Cow::Borrowed("an-event-name-over-sixteen-bytes"), score: i % 13 }); }
     xs.sort_by(|a, b| a.kind.cmp(&b.kind));
     xs[0].kind + xs[xs.len() - 1].kind + xs[1000].id % 7
 }
@@ -136,7 +137,7 @@ fn generic_stack() -> i64 {
     let mut s: Vec<Event> = Vec::new();
     let mut t = 0;
     for i in 0..2000000 {
-        s.push(Event { id: i, kind: i % 7, name: "g".into(), score: i % 13 });
+        s.push(Event { id: i, kind: i % 7, name: Cow::Borrowed("an-event-name-over-sixteen-bytes"), score: i % 13 });
         if i % 3 == 2 { if let Some(e) = s.pop() { t += e.score; } }
     }
     t
