@@ -206,6 +206,10 @@ pub(crate) struct FnLower<'a> {
     pub converting: Option<*const ms_check::api::ast::Expr>,
     /// The scanned `for` iterable came from `String.scalar_values`: it yields scalar values.
     pub scalars_scan: bool,
+    /// Locals some use needs as a `String` (see `scalar.rs`).
+    pub string_needed: HashSet<usize>,
+    /// Locals kept as the code point of the one-scalar `String` they stand for.
+    pub scalar_locals: HashMap<usize, Value>,
     /// Lowering a function value's thunk: its arguments are borrowed by the language's call
     /// rule, so one a native consumes is copied, and that copy is declared (`owned_arg`).
     pub in_thunk: bool,
@@ -719,6 +723,8 @@ impl<'a> FnLower<'a> {
             chars_iter_for: None,
             converting: None,
             scalars_scan: false,
+            string_needed: HashSet::new(),
+            scalar_locals: HashMap::new(),
             in_thunk: false,
             adapter: false,
             hold_declared: false,
@@ -1897,6 +1903,7 @@ impl<'a> FnLower<'a> {
         let owned_mask = self.variant.owned.then(|| self.cx.owned_mask(c)).flatten();
         if let ms_check::api::hir::Body::Block(stmts) = c.body() {
             self.slotted = crate::closure::slotted_in(self.syms, self, stmts);
+            self.string_needed = crate::scalar::string_uses(self, stmts);
         }
         // Parameters the body changes are the callee's own copies.
         let mutated = match c.body() {
