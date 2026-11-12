@@ -21,3 +21,17 @@ MS=./target/release/ms sh bench/perf/engineering/run.sh 5
 | grep (22 MB, substring per line) | 69 | 32 | 33 | 2.16x | 2.09x |
 
 Largest gaps to close: wordfreq, grep, logstats.
+
+## 2026-11-12, `fields_by` ASCII path and short-haystack search
+
+Same machine and method (min of 7). `String.fields_by` on ASCII text copies each field once from the source instead of building it scalar by scalar (4.8M fields: 534 ms to about 225 ms); `find` scans haystacks of 32 to 127 bytes directly instead of building a `memmem` searcher per call (callgrind on 4 MB of log: 76.6M to 54.3M instructions); the two benchmarks that count keys use `Map.update` (one lookup).
+
+| task | ms | c | rust | ms / c | ms / rust |
+|---|---:|---:|---:|---:|---:|
+| logstats | 103 | 59 | 93 | 1.75x | 1.11x |
+| csvgroup | 202 | 61 | 348 | 3.31x | 0.58x |
+| wordfreq | 381 | 224 | 237 | 1.70x | 1.61x |
+| sortrecords | 386 | 371 | 269 | 1.04x | 1.43x |
+| grep | 62 | 33 | 33 | 1.88x | 1.88x |
+
+Remaining gap on `grep` and `logstats` is the input path (22 MB: `read_all` 14 ms, `decode_utf8` copy 18 ms, `split` 30 ms, against one read and one scan in C).

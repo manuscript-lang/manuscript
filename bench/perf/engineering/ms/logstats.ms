@@ -19,7 +19,7 @@ fn main() Unit:
 
 		cls := f[4].scalar_at(0) - 50
 		classes[cls] += 1
-		paths[f[3].clone()] = paths.get_or(f[3], 0) + 1
+		paths.update(f[3].clone(), 0, fn v: v + 1)
 
 	print("lines: {rows}")
 	print("status: 2xx={classes[0]} 3xx={classes[1]} 4xx={classes[2]} 5xx={classes[3]}")

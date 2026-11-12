@@ -10,7 +10,7 @@ fn main() Unit:
 
 	for word in data.lower().fields_by(fn c: c == " " or c == "." or c == "\n"):
 		total += 1
-		counts[word.clone()] = counts.get_or(word, 0) + 1
+		counts.update(word.clone(), 0, fn v: v + 1)
 
 	print("words: {total}")
 	print("distinct: {counts.length()}")
