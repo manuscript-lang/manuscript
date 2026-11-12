@@ -4,6 +4,8 @@
 
 Requested by Chinmay (2026-11-12): "ideally we don't have this hot crate and just do it in Manuscript", then "make the compiler emit fast code instead". Draft; not implemented. PR #3730 (more `ms-rt-hot` functions) is held as the baseline. This reverses the wiki note of the same day that says to keep moving fast paths into `ms-rt-hot`; the wiki page changes when group A lands.
 
+Constraint (Chinmay, 2026-11-12): no language or grammar change. Everything below is lowering, MIR, stdlib `.ms` in existing syntax and compiler-side hints; a source-level need in group C is an open question for Chinmay, not an assumption.
+
 ## Summary
 
 - Problem: LLVM sees the runtime only as opaque calls, except the 45 pure functions of `ms-rt-hot`, which a separate crate, an xtask IR step and an `llvm-link` step inline. Each new fast path means a Rust function plus a `*_slow` twin.
