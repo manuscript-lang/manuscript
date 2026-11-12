@@ -93,20 +93,67 @@ Same machine and `gcc -O2` twins as the second pass. Before is `main` at `f5b0b6
 
 ## 2026-11-12: borrowed key in `Map.update`, and a counted `split` that did not pay
 
-Same build and machine. `grid.ms`, `accumulate.ms`, `recursion.ms` and `teardown.ms` have C twins in `c/` (`gcc -O2`); instructions are callgrind totals, wall times are five runs.
+`3d4d48b1`, same machine, `logstats` on 35,000 lines of the generated log (callgrind instructions, memcheck allocation counts) and on 22 MB (min of 25, ms).
 
-| program | ms | c | note |
-| --- | ---: | ---: | --- |
-| `grid.ms`: LCS over a 2001 x 2001 `List[List[Int]]` | 146.5M | 79.6M | inner loop 30 instructions per cell against 12 |
-| `accumulate.ms`: `cells[i].hits += 1`, `cells[i].sum += i`, `total += 1`, 400M updates | 583 to 696 ms | 166 to 291 ms | C with trapping adds (`accumulate_checked.c`): 525 to 645 ms |
-| `recursion.ms`: `fib(32)` | 144.9M | 72.4M | 20.7 instructions per call against 10.3 |
-| `teardown.ms`: build a 500k-entry `Map[String, Rec]`, print its length, exit | 168 to 218 ms | | build alone 139 to 187 ms; 25 to 33 ms is freeing at exit |
+- `add` and `add_default` already borrowed a cloned key (`borrowed_key_add`). `update` now does too: `m.update(f[3].clone(), ..)` on a `String`-keyed map reads `f[3]` in place and the runtime copies the key only when the entry is new. Keys of 22 bytes or fewer never allocated, so `logstats` (path keys) does not change: 152,022 allocations before and after, 104 against 105 ms. The change helps keys over 22 bytes (the byte-scan `logstats` copies one per line).
+- Sizing the `split` list once for a one-byte separator (a `memchr` count pass, as the empty separator already does) cut `logstats` from 161,350 to 126,350 allocations (4.6 to 3.6 per line) and instructions from 127.8M to 120.3M, but wall time rose from 103 to 111 ms (min of 25, three runs agree). The extra pass over a 47-byte line costs more than the removed `realloc` saves with the release allocator, so it was not kept. Callgrind allocation rows overstate release cost (see above); judge allocation changes by wall time.
+- The remaining `logstats` allocations are the copies of pieces over 22 bytes that `split` makes and the line itself: track 2 (lend), not stage 1.
 
-- `grid`: each cell reloads both row headers from the outer list, and after the element store writes the row's `{ptr, len, cap}` back (three stores a cell), because `dp[i][j] = v` takes the row out and puts it back and LLVM cannot tell that an `Int` store leaves a list header unchanged. A flat `List[Int]` with `i * w + j` is 132.8M: the bounds and overflow checks are most of the rest.
-- `accumulate`: Manuscript matches C with trapping adds; unchecked C is 2.7x to 3.5x faster because the loop vectorizes. An overflow flag tested once per outer pass does not help (60.3M to 80.3M instructions against 64.3M trapping, 24.3M unchecked, on 4M updates).
-- `recursion`: the stack check is 5 of the instructions per call and two dependent loads (`and`, load the limit's address, compare with the limit). `gcc` also turns the second call into a loop, which is half of the gap.
-- `engineering/pargroup` (2,000 files, 4 workers): 53 to 79 ms against 21 to 37 ms. `strace -c -f`: 4,707 `futex`, 1,505 `epoll_wait` and 1,512 `write` calls where C makes none; each `read_file` inside a worker hands the read to a pool thread and waits to be woken.
-- At or ahead of C, so not opportunities: `Result` and `?` on a hot path (12.5 instructions per call and check), interface dispatch over a `List[Shape]`, `print` of interpolated lines (0.67x `printf`), `String +=` (1.02x), `parse_int` (80 instructions against `strtoll` 145), process start (0.4 ms more).
+## 2026-11-12: interface borrow in the frame
+
+A borrowed value converted to an interface (`total(sq)` for `fn total(x: Shape)`) built a heap box of its leaves per call. When the `iface.borrow` result only reaches calls whose result is not a view of their arguments, and drops, the Cranelift lowering now keeps the leaves in a stack slot and tags the value as owning nothing (tag 2); any other use (return, branch argument, store, view-returning call) keeps the box. Probe (1,000 calls of `total(sq)` in a loop, `/tmp` build, callgrind instructions are for the whole process including startup, memcheck counts allocations): 1,013 to 13 allocations, 666,910 to 350,901 instructions (callgrind uses glibc `malloc`, so the instruction drop overstates release cost). Fixture: `e2e/stdlib/interface-borrow-in-frame`.
+
+Closure captures: a closure passed to a call and not stored already allocates nothing (1,000 calls of `apply(fn x: x + k, i)`: 13 allocations in total). A closure stored in a list must escape the frame, so its environment stays on the heap; no change.
+
+## 2026-11-12: inlinable string scans (track 1, first step)
+
+Same machine and build type as above (Release LLVM `ms`; callgrind instructions on the first 30,000 lines of each input, outputs compared byte for byte with the baseline build).
+
+`String.index_of`, `starts_with`, `ends_with` and `view` moved into `ms-rt-hot`: a search in an ASCII text under 128 bytes and a view of an ASCII text inside its bounds are now code the caller inlines; other cases call the runtime as before (`msrt_string_index_of_long`, `msrt_string_view_slow`, the latter keeps the bounds fault). `split` scans a single-byte separator with one searcher and builds pieces of up to 15 bytes inline without a call.
+
+| task | before | after | change |
+| --- | ---: | ---: | ---: |
+| logstats | 112.86M | 108.45M | -3.9% |
+| wordfreq | 167.99M | 152.11M | -9.5% |
+| csvgroup | 142.51M | 138.65M | -2.7% |
+| grep | 19.73M | 19.70M | 0% |
+
+The 40% ceiling on `logstats` is not reached by this step: what is left is `msrt_string_split` and its list and heap pieces (allocation, `memcpy`, `free`), which are the lending and allocation tracks. `grep` is one long-haystack `memmem` search; nothing inlines there.
+
+### Step 2: `parse_int` and `scalar_at`
+
+`String.parse_int` (all of it) and `scalar_at` on an ASCII text with the index inside it moved into `ms-rt-hot`; out-of-range, non-ASCII and long unflagged cases call `msrt_string_scalar_at_slow`.
+
+| task | step 1 | step 2 | total change |
+| --- | ---: | ---: | ---: |
+| logstats | 108.45M | 106.95M | -5.2% |
+| csvgroup | 138.65M | 136.54M | -4.2% |
+| wordfreq | 152.11M | 152.11M | -9.5% |
+| grep | 19.70M | 19.79M | +0.3% (layout noise; no call changed) |
+
+### Step 3: `length` and a shared ASCII check
+
+`String.length` and `scalar_length` moved into `ms-rt-hot` (non-ASCII and long unflagged text call `msrt_string_scalar_count_slow`). The ASCII test is one helper that reads the flag or the bits of an inline string, so the earlier steps stopped scanning bytes for short strings. `mixed.ms` case e (200,000-word scan with `==`, `starts_with`, `length`, 20 passes): 301.7M to 265.1M instructions (-12%). logstats 106.47M, wordfreq 149.62M, csvgroup 136.38M on the 30,000-line inputs.
+
+### Step 4: `Set[Int]` without descriptor dispatch
+
+`Set[Int]` `contains` is an inlined probe over the fixed 16-byte slots (`msrt_set_contains_w`, `ms-rt-hot`), and `add` is `msrt_set_add_copy_w` with the same layout; sets stamped with a module's key behaviour keep the general path. A contains-then-add loop over 2M random keys below 100,000 (`/tmp` program, callgrind instructions): 233.3M to 117.4M (-50%). New fixture `set-int-fixed-layout` covers repeats, extreme keys, growth, removal and reinsertion.
+
+### Step 5: no `memmem` searcher for short text
+
+`replace`, `split` and `count` with a multi-byte separator or pattern scan a text under 128 bytes directly (`Needle::for_text`) instead of building a `memmem` searcher per call. A 56-byte line with `replace("::", "--")`, `split("::")` and `contains("trace")`, 300,000 times: 1,014.4M to 877.0M instructions (-13.5%).
+## 2026-11-12: nested element writes
+
+Same machine; Release LLVM build; callgrind instruction totals. `grid.ms` is LCS over a 2001 x 2001 `List[List[Int]]`; `c/grid.c` is its C twin (`gcc -O2`).
+
+| program | before | after | c |
+| --- | ---: | ---: | ---: |
+| `grid.ms` | 146.5M | 113.4M | 79.6M |
+
+- `dp[i][j] = v` now lowers to `list.set` on the borrowed row `dp[i]`, written where it lies (`slot_list_set`, `crates/ms-lower/src/native/list.rs`). The row's `{ptr, len, cap}` are no longer taken out and stored back after every element write.
+- List element loads and stores carry an alias region (`crates/ms-clif/src/lower.rs`): scalar elements and list or string headers are different regions. The LLVM emitter writes them as TBAA tags, so an `Int` store no longer forces reloading the previous row's header (about 4M instructions here). Only the LLVM backend gets them: a Cranelift alias region means disjoint from every other access, so tagging there dropped stores (`e2e/stdlib/queues` failed on macOS debug builds).
+- Remaining gap: the bounds checks on `dp[i - 1]`, `dp[i]` and `a[i - 1]` and the current row's header load, which LLVM cannot hoist (they sit behind a data-dependent branch and a list buffer is not known to be dereferenceable). With every runtime check disabled the program is 91.3M, so a perfect range pass could close at most 22M of the 33.8M gap; it cannot prove the row-internal checks. Not pursued.
+- Table build (`[0].repeated(m + 1)` per row) is 26.3M of the 113.4M. A doubling `splice` fill cut that to 20.5M instructions but not the wall time (19.4 ms for the table alone against 22.4 ms for `calloc` in C), so it was not shipped (#3645).
 
 ## 2026-11-12, third pass: character code and library containers
 
