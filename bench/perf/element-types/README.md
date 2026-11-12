@@ -20,7 +20,8 @@ Release LLVM `ms`, shared 4 vCPU VM, min of 5, microseconds. Record names are 32
 | deque-records | 31,628 | 31,500 | 1.00 |
 | pq-records | 76,736 | 63,027 | 1.22 |
 | generic-pairs | 61,630 | 110,503 | 0.56 |
-| result-records | 18,530 | 6,432 | 2.88 |
+| result-records (before the Error change) | 18,530 | 6,432 | 2.88 |
+| result-records | 8,971 | 5,871 | 1.53 |
 | set-records | 128,035 | 133,191 | 0.96 |
 | sort-records (before this change) | 109,000 | 42,000 | 2.5 |
 | sort-records | 86,231 | 49,668 | 1.74 |
@@ -29,6 +30,10 @@ Release LLVM `ms`, shared 4 vCPU VM, min of 5, microseconds. Record names are 32
 | generic-stack | 14,686 | 53,470 | 0.27 |
 | map-enums | 39,012 | 52,990 | 0.74 |
 | string-chains | 50,611 | 78,510 | 0.64 |
+
+### Change: an `Error` is 40 bytes and its `details` header exists only when a detail does
+
+`Error` was 88 bytes: message 16, kind 16 and the seven-word `details` map header inline, and dropping one called the runtime to drop seven zero words. A `Map` or `Set` field of an indirect record is now one nullable pointer to its header, created by the first insert, so an error with a message and kind is a 40-byte block and its drop is a null check. `Error(...)` and `err.details` are unchanged in source. `result-records` 10.9 to 9.0 ms (min of 5 to 9, same machine, same session as the table above; the table's 18.5 ms row came from a noisier run).
 
 ### Change: a user `hash()` is mixed before it indexes the table
 
@@ -40,7 +45,7 @@ Release LLVM `ms`, shared 4 vCPU VM, min of 5, microseconds. Record names are 32
 
 ### Open gaps
 
-- `result-records` is dominated by building an `Error` (a record with a message, an optional kind and a details map, 88 bytes boxed) on 10% of calls against Rust's `Err(String)`; the success path alone is 1.4 ns per call. It is not a codegen gap.
+- `result-records` (1.5x) is the cost of building and dropping an `Error` (40 bytes, one allocation) on 10% of calls against Rust's `Err(String)`; the success path alone is 1.4 ns per call. It is not a codegen gap.
 - Found while writing `string-chains`: a `String` conditionally moved into `Map.update(key, 0, fn ...)` fails to build ([#3706](https://github.com/manuscript-lang/manuscript/issues/3706)); the case moves it unconditionally.
 
 - `optional-records` (1.5x), `pq-records` (1.2x, owned by the heap thread), `sort-records` (1.7x: the remaining cost is the merge sort against driftsort and a deep clone of the result).
