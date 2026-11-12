@@ -1,4 +1,4 @@
-// conform: tags=ownership,maps,closures,control-flow,tier-core,testing
+// conform: tags=maps,closures,control-flow,scope-cleanup,tier-core,testing
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
