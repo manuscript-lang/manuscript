@@ -125,3 +125,5 @@ Revision `0d723018` plus this change, Release LLVM build, min of 5, shared 4 vCP
 | c44-unified-diff | 18.0 | 83.6 | 13.8 | 0.22x | 1.31x |
 
 Remaining gaps, in order: `c16` (the Manuscript reference holds the grid as `List[List[String]]` of one-character strings, 16 bytes a cell and a `chars()` allocation per line, against Rust's `Vec<char>`; the rest of `contains` is about 40 instructions of inline-string decoding), `c03` (`split` and `find`), `c13`, `c36`, `c14`. `c44` is 3 ms in the 2026-11-07 table and 18 ms now; unexplained, to investigate.
+
+Also in this change: scalar slicing of an inline (at most 16 byte) ASCII string took the walking path because only heap strings carry the ASCII flag; `known_ascii` now tests an inline string's bits. `c03` under callgrind (3 MB input): 1,074.8M to 1,045.8M instructions (-2.7%); wall time is inside the noise. The rest of `c03` is spread over `scalar_values().all(...)` list allocations, `split`, `replace` and map inserts; callgrind sends every allocation to glibc `malloc` (see the profiling note above), so allocator rows in these profiles are not the release costs.
