@@ -3,10 +3,10 @@
 pub mod client;
 pub mod cookies;
 pub mod exchange;
+pub mod gunzip;
 pub mod h1;
 pub mod h2client;
 pub mod headers;
-pub mod inflate;
 pub mod server;
 pub mod sniff;
 pub mod target;

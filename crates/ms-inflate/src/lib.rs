@@ -1,20 +1,23 @@
-//! Gzip (RFC 1952) over inflate (RFC 1951) for buffered response bodies.
+//! Raw deflate (RFC 1951) decoding shared by the HTTP client, the archive module and the streams.
 //!
-//! The decoder appends to one output `Vec` that keeps everything decoded so far, so a match is a
+//! Framing (gzip, zlib, zip) and its checksums belong to the caller. The decoder appends to one output `Vec` that keeps everything decoded so far, so a match is a
 //! copy inside that vector and no separate window is kept. Huffman codes decode through flat
 //! `u32` tables: one primary lookup, plus a subtable lookup for the rare long codes. The input is
 //! resumable at symbol boundaries: when a symbol is cut by the end of the available bytes the
 //! decoder rolls back to the start of that symbol and reports how much it consumed, and the caller
 //! offers the unconsumed bytes again with the next chunk.
 
-use crc32fast::Hasher;
+#![no_std]
+extern crate alloc;
+
+use alloc::vec::Vec;
 
 /// Why decoding stopped for good.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Fail {
-    /// The data is not valid gzip.
+    /// The data is not valid deflate.
     Invalid,
-    /// The input ended inside a member.
+    /// The input ended inside the stream.
     Truncated,
     /// The output would exceed the limit.
     Limit,
@@ -250,19 +253,17 @@ impl Bits {
 
 #[derive(Clone, Copy)]
 enum Phase {
-    /// At a member boundary, before the gzip header.
-    Header,
     /// Before a deflate block header.
     Block,
     /// Inside a stored block with `left` bytes to copy.
     Stored { left: usize, last: bool },
     /// Inside a Huffman block.
     Codes { last: bool },
-    /// After the last block, before the 8-byte trailer; the bit buffer is not yet returned.
-    Trailer { unloaded: bool },
+    /// After the last block.
+    Done,
 }
 
-/// A resumable gzip decoder over concatenated members.
+/// A resumable decoder for one raw deflate stream.
 pub struct Inflater {
     phase: Phase,
     bits: Bits,
@@ -270,25 +271,16 @@ pub struct Inflater {
     dist: Vec<u32>,
     /// Whether the current block has any distance codes.
     has_dist: bool,
-    crc: Hasher,
-    /// Output length when the current member began; matches may not reach before it.
-    member_base: usize,
-    /// Output length up to which `crc` has been updated.
-    crc_done: usize,
-    members: usize,
+    /// Output length when the stream began; matches may not reach before it.
+    base: usize,
     more: bool,
 }
 
-impl Default for Inflater {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl Inflater {
-    pub fn new() -> Inflater {
+    /// A decoder whose stream starts at `base` in the output: a match may not reach before it.
+    pub fn new(base: usize) -> Inflater {
         Inflater {
-            phase: Phase::Header,
+            phase: Phase::Block,
             bits: Bits {
                 buf: 0,
                 cnt: 0,
@@ -297,18 +289,15 @@ impl Inflater {
             lit: Vec::new(),
             dist: Vec::new(),
             has_dist: false,
-            crc: Hasher::new(),
-            member_base: 0,
-            crc_done: 0,
-            members: 0,
+            base,
             more: true,
         }
     }
 
     /// Decodes `input`, appending to `out`, which must only grow between calls. `more` says whether
     /// input will follow. Output past `limit` bytes of `out` fails with `Limit`. Returns the bytes of
-    /// `input` consumed (the rest must be offered again first next time) and whether the stream ended
-    /// cleanly: `more` is false and every member is complete.
+    /// `input` consumed (the rest must be offered again first next time) and whether the stream
+    /// ended: the bytes after the final block are not consumed.
     pub fn push(
         &mut self,
         input: &[u8],
@@ -318,12 +307,7 @@ impl Inflater {
     ) -> Result<(usize, bool), Fail> {
         self.more = more;
         self.bits.pos = 0;
-        if self.members == 0 && matches!(self.phase, Phase::Header) {
-            self.member_base = out.len();
-            self.crc_done = out.len();
-        }
         let result = self.run(input, out, limit);
-        self.flush_crc(out);
         self.bits.return_whole_bytes();
         match result {
             Ok(done) => Ok((self.bits.pos, done)),
@@ -333,28 +317,9 @@ impl Inflater {
         }
     }
 
-    fn flush_crc(&mut self, out: &[u8]) {
-        if out.len() > self.crc_done {
-            self.crc.update(&out[self.crc_done..]);
-            self.crc_done = out.len();
-        }
-    }
-
     fn run(&mut self, input: &[u8], out: &mut Vec<u8>, limit: usize) -> Result<bool, Stop> {
         loop {
             match self.phase {
-                Phase::Header => {
-                    let rest = &input[self.bits.pos..];
-                    if rest.is_empty() && !self.more && self.members > 0 {
-                        return Ok(true);
-                    }
-                    let n = gzip_header(rest)?;
-                    self.bits.pos += n;
-                    self.member_base = out.len();
-                    self.crc_done = out.len();
-                    self.crc = Hasher::new();
-                    self.phase = Phase::Block;
-                }
                 Phase::Block => {
                     let snap = self.bits;
                     match self.block_header(input) {
@@ -368,7 +333,7 @@ impl Inflater {
                 Phase::Stored { left, last } => {
                     let left = self.copy_stored(input, out, left, limit)?;
                     self.phase = match (left, last) {
-                        (0, true) => Phase::Trailer { unloaded: false },
+                        (0, true) => Phase::Done,
                         (0, false) => Phase::Block,
                         (left, last) => Phase::Stored { left, last },
                     };
@@ -378,35 +343,15 @@ impl Inflater {
                 }
                 Phase::Codes { last } => {
                     self.codes(input, out, limit)?;
-                    self.phase = if last {
-                        Phase::Trailer { unloaded: false }
-                    } else {
-                        Phase::Block
-                    };
+                    self.phase = if last { Phase::Done } else { Phase::Block };
                 }
-                Phase::Trailer { unloaded } => {
-                    if !unloaded {
-                        // Whole bytes still in the bit buffer belong to the trailer; the bits left
-                        // of the last block's final byte are padding.
-                        self.bits.return_whole_bytes();
-                        self.bits.buf = 0;
-                        self.bits.cnt = 0;
-                        self.phase = Phase::Trailer { unloaded: true };
-                    }
-                    let rest = &input[self.bits.pos..];
-                    if rest.len() < 8 {
-                        return Err(Stop::Need);
-                    }
-                    self.flush_crc(out);
-                    let crc = u32::from_le_bytes([rest[0], rest[1], rest[2], rest[3]]);
-                    let size = u32::from_le_bytes([rest[4], rest[5], rest[6], rest[7]]);
-                    let made = (out.len() - self.member_base) as u32;
-                    if crc != self.crc.clone().finalize() || size != made {
-                        return Err(Fail::Invalid.into());
-                    }
-                    self.bits.pos += 8;
-                    self.members += 1;
-                    self.phase = Phase::Header;
+                Phase::Done => {
+                    // Whole bytes still in the bit buffer follow the stream; the bits left of the
+                    // last block's final byte are padding.
+                    self.bits.return_whole_bytes();
+                    self.bits.buf = 0;
+                    self.bits.cnt = 0;
+                    return Ok(true);
                 }
             }
         }
@@ -550,16 +495,18 @@ impl Inflater {
             mut cnt,
             mut pos,
         } = self.bits;
-        let base = self.member_base;
+        let base = self.base;
         let (lit, dist_table) = (self.lit.as_slice(), self.dist.as_slice());
         // Lets the primary-table lookups below skip their bounds checks.
         assert!(lit.len() >= 1 << LIT_BITS && dist_table.len() >= 1 << DIST_BITS);
         let mut result = Ok(false);
         'window: while pos + 16 <= input.len() && out.len() <= limit {
             let start = out.len();
-            out.resize(start + WINDOW + MAX_MATCH + 16, 0);
+            // Sized to the input at hand, so a small chunk does not zero a large window.
+            let window = ((input.len() - pos) * 16).clamp(4096, WINDOW);
+            out.resize(start + window + MAX_MATCH + 16, 0);
             let dst = out.as_mut_slice();
-            let end = start + WINDOW;
+            let end = start + window;
             let mut w = start;
             while w < end {
                 if pos + 16 > input.len() || w > limit {
@@ -739,7 +686,7 @@ impl Inflater {
             }
             let dist = (d >> 16) as usize + (self.bits.buf & ((1u64 << dextra) - 1)) as usize;
             self.bits.consume(dextra);
-            if dist > out.len() - self.member_base {
+            if dist > out.len() - self.base {
                 return Err(Fail::Invalid.into());
             }
             copy_match(out, dist, length);
@@ -767,60 +714,26 @@ fn copy_match(out: &mut Vec<u8>, dist: usize, len: usize) {
     }
 }
 
-/// Length of the gzip header at the start of `rest`, or `Need` when it is cut short.
-fn gzip_header(rest: &[u8]) -> Result<usize, Stop> {
-    if rest.len() < 10 {
-        // Even a short prefix must look like a header.
-        let magic = [0x1f, 0x8b, 8];
-        if rest.iter().zip(magic).any(|(a, b)| *a != b) {
-            return Err(Fail::Invalid.into());
-        }
-        return Err(Stop::Need);
-    }
-    if rest[0] != 0x1f || rest[1] != 0x8b || rest[2] != 8 || rest[3] & 0xe0 != 0 {
-        return Err(Fail::Invalid.into());
-    }
-    let flags = rest[3];
-    let mut at = 10;
-    if flags & 4 != 0 {
-        let Some(len) = rest.get(at..at + 2) else {
-            return Err(Stop::Need);
-        };
-        at += 2 + u16::from_le_bytes([len[0], len[1]]) as usize;
-    }
-    for flag in [8u8, 16] {
-        if flags & flag != 0 {
-            let Some(end) = rest.get(at..).and_then(|r| r.iter().position(|&b| b == 0)) else {
-                return Err(Stop::Need);
-            };
-            at += end + 1;
-        }
-    }
-    if flags & 2 != 0 {
-        at += 2;
-    }
-    if rest.len() < at {
-        return Err(Stop::Need);
-    }
-    Ok(at)
-}
+#[cfg(test)]
+extern crate std;
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloc::vec;
     use flate2::Compression;
-    use flate2::write::GzEncoder;
+    use flate2::write::DeflateEncoder;
     use std::io::Write;
 
-    fn gzip(data: &[u8], level: u32) -> Vec<u8> {
-        let mut e = GzEncoder::new(Vec::new(), Compression::new(level));
+    fn deflate(data: &[u8], level: u32) -> Vec<u8> {
+        let mut e = DeflateEncoder::new(Vec::new(), Compression::new(level));
         e.write_all(data).unwrap();
         e.finish().unwrap()
     }
 
     /// Decodes `z` in `chunk`-byte pieces, offering unconsumed bytes again each time.
     fn decode(z: &[u8], chunk: usize) -> Result<Vec<u8>, Fail> {
-        let mut inflater = Inflater::new();
+        let mut inflater = Inflater::new(0);
         let mut out = Vec::new();
         let mut pending: Vec<u8> = Vec::new();
         let mut chunks = z.chunks(chunk);
@@ -831,7 +744,6 @@ mod tests {
             let (used, done) = inflater.push(&pending, more, &mut out, usize::MAX)?;
             pending.drain(..used);
             if done {
-                assert!(pending.is_empty());
                 return Ok(out);
             }
             assert!(more, "a finished input must report done");
@@ -873,7 +785,7 @@ mod tests {
         for (i, n) in [0usize, 1, 5, 300, 70_000, 400_000].into_iter().enumerate() {
             let data = sample(n, 7 + i as u64);
             for level in [0, 1, 6, 9] {
-                let z = gzip(&data, level);
+                let z = deflate(&data, level);
                 for chunk in [1usize, 3, 7, 4096, usize::MAX] {
                     if chunk == 1 && z.len() > 100_000 {
                         continue;
@@ -887,50 +799,57 @@ mod tests {
     }
 
     #[test]
-    fn decodes_concatenated_members_and_empty_members() {
-        let z = [gzip(b"hello ", 6), gzip(b"", 6), gzip(b"world", 1)].concat();
-        for chunk in [1usize, 5, 4096] {
-            assert_eq!(decode(&z, chunk).unwrap(), b"hello world");
-        }
+    fn stops_at_the_end_of_the_stream_and_reports_the_bytes_used() {
+        let z = deflate(b"hello hello hello", 6);
+        let mut input = z.clone();
+        input.extend_from_slice(b"TRAILER!");
+        let mut inflater = Inflater::new(0);
+        let mut out = Vec::new();
+        let (used, done) = inflater.push(&input, false, &mut out, usize::MAX).unwrap();
+        assert!(done);
+        assert_eq!(used, z.len());
+        assert_eq!(out, b"hello hello hello");
     }
 
     #[test]
-    fn members_keep_their_own_history() {
-        let first = gzip(&[b'a'; 100], 6);
-        let mut second = gzip(&[b'b'; 40], 6);
-        let z = {
-            let mut v = first.clone();
-            v.append(&mut second);
-            v
-        };
-        assert_eq!(decode(&z, 16).unwrap().len(), 140);
-    }
-
-    #[test]
-    fn rejects_corrupt_truncated_and_trailing_input() {
+    fn rejects_corrupt_and_truncated_input() {
         let data = sample(50_000, 3);
-        let z = gzip(&data, 6);
-        let mut bad_crc = z.clone();
-        let at = bad_crc.len() - 8;
-        bad_crc[at] ^= 1;
-        assert_eq!(decode(&bad_crc, 4096), Err(Fail::Invalid));
-        let mut bad_size = z.clone();
-        let at = bad_size.len() - 1;
-        bad_size[at] ^= 1;
-        assert_eq!(decode(&bad_size, 4096), Err(Fail::Invalid));
+        let z = deflate(&data, 6);
         assert_eq!(decode(&z[..z.len() - 3], 4096), Err(Fail::Truncated));
         assert_eq!(decode(&z[..20], 4096), Err(Fail::Truncated));
-        let mut trailing = z.clone();
-        trailing.extend_from_slice(b"junk");
-        assert_eq!(decode(&trailing, 4096), Err(Fail::Invalid));
-        assert_eq!(decode(b"not gzip at all", 4096), Err(Fail::Invalid));
+        assert_eq!(decode(&[0xff, 0xff, 0xff], 4096), Err(Fail::Invalid));
+    }
+
+    #[test]
+    fn matches_may_not_reach_before_the_base() {
+        // A fixed block that opens with a length-3 match at distance 1, then ends.
+        let mut bits = vec![1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0];
+        bits.extend([0; 7]);
+        let mut z = vec![0u8; bits.len().div_ceil(8)];
+        for (i, b) in bits.iter().enumerate() {
+            z[i / 8] |= b << (i % 8);
+        }
+        let mut out = b"xyz".to_vec();
+        assert_eq!(
+            Inflater::new(out.len()).push(&z, false, &mut out, usize::MAX),
+            Err(Fail::Invalid)
+        );
+        // With the history inside the stream the same match is fine.
+        let mut out = b"xyz".to_vec();
+        assert!(
+            Inflater::new(0)
+                .push(&z, false, &mut out, usize::MAX)
+                .unwrap()
+                .1
+        );
+        assert_eq!(out, b"xyzzzz");
     }
 
     #[test]
     fn corrupted_streams_fail_without_panicking() {
         let data = sample(20_000, 11);
         for level in [0, 1, 6] {
-            let z = gzip(&data, level);
+            let z = deflate(&data, level);
             let mut x = 99u64;
             for _ in 0..300 {
                 x ^= x << 13;
@@ -940,29 +859,26 @@ mod tests {
                 let at = (x as usize) % bad.len();
                 bad[at] ^= 1 << (x % 8);
                 let chunk = [1usize, 7, 4096][(x % 3) as usize];
-                if let Ok(out) = decode(&bad, chunk) {
-                    // A flip the format cannot see (a header flag bit, say) still yields the data.
-                    assert!(out == data);
-                }
+                let _ = decode(&bad, chunk);
             }
         }
     }
 
     #[test]
     fn enforces_the_output_limit() {
-        let z = gzip(&vec![b'a'; 100_000], 6);
-        let mut inflater = Inflater::new();
+        let z = deflate(&vec![b'a'; 100_000], 6);
+        let mut inflater = Inflater::new(0);
         let mut out = Vec::new();
         assert_eq!(
             inflater.push(&z, false, &mut out, 99_999).map(|_| ()),
             Err(Fail::Limit)
         );
-        let mut inflater = Inflater::new();
+        let mut inflater = Inflater::new(0);
         let mut out = Vec::new();
         assert!(inflater.push(&z, false, &mut out, 100_000).unwrap().1);
         assert_eq!(out.len(), 100_000);
-        let stored = gzip(&vec![7u8; 5000], 0);
-        let mut inflater = Inflater::new();
+        let stored = deflate(&vec![7u8; 5000], 0);
+        let mut inflater = Inflater::new(0);
         let mut out = Vec::new();
         assert_eq!(
             inflater.push(&stored, false, &mut out, 4999).map(|_| ()),
@@ -972,9 +888,9 @@ mod tests {
 
     #[test]
     fn appends_after_existing_output() {
-        let z = gzip(b"payload payload payload", 6);
-        let mut inflater = Inflater::new();
+        let z = deflate(b"payload payload payload", 6);
         let mut out = b"prefix:".to_vec();
+        let mut inflater = Inflater::new(out.len());
         let (_, done) = inflater.push(&z, false, &mut out, usize::MAX).unwrap();
         assert!(done);
         assert_eq!(out, b"prefix:payload payload payload");

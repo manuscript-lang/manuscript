@@ -3,10 +3,10 @@
 //! `@std/http`.
 
 use super::cookies::Jar;
+use super::gunzip::{self, Gunzip};
 use super::h1::{self, BodyDecoder, Decoded, Framing, Parsed, ResponseHead};
 use super::h2client::{self, H2Stream, OpenErr, Poll, PumpErr, Session};
 use super::headers::{self, Headers, Shared};
-use super::inflate::{self, Inflater};
 use super::url::Url;
 use crate::conn::Connection;
 use crate::error::{HttpErr, IoErr};
@@ -1383,7 +1383,7 @@ struct BodyState {
     keep_alive: bool,
     gzip: Option<MultiGzDecoder<Sink>>,
     /// The buffered-read decoder that replaces `gzip` for a body no read has started.
-    fast_gzip: Option<Inflater>,
+    fast_gzip: Option<Gunzip>,
     /// A streaming read has fed `gzip`, so the body cannot switch decoders.
     gz_touched: bool,
     /// Compressed bytes not yet fed to the decoder.
@@ -1561,7 +1561,7 @@ impl BodyState {
         if self.gzip.is_some() && !self.gz_touched && self.gz_in.is_empty() && self.ready.is_empty()
         {
             self.gzip = None;
-            self.fast_gzip = Some(Inflater::new());
+            self.fast_gzip = Some(Gunzip::new());
         }
     }
 
@@ -1585,11 +1585,11 @@ impl BodyState {
             let inflater = self.fast_gzip.as_mut().expect("buffered gzip state");
             let pushed = inflater.push(&self.gz_in, more, out, limit);
             let (used, done) = pushed.map_err(|f| match f {
-                inflate::Fail::Limit => IoErr::Failed("response body limit exceeded".into()),
-                inflate::Fail::Truncated => {
+                gunzip::Fail::Limit => IoErr::Failed("response body limit exceeded".into()),
+                gunzip::Fail::Truncated => {
                     IoErr::Failed("connection closed before the exchange completed".into())
                 }
-                inflate::Fail::Invalid => IoErr::Failed("gzip: corrupt input".into()),
+                gunzip::Fail::Invalid => IoErr::Failed("gzip: corrupt input".into()),
             })?;
             self.gz_in.drain(..used);
             let grew = (out.len() - before) as u64;
