@@ -398,7 +398,12 @@ impl<'a, 'm> Lower<'a, 'm> {
 
     /// The alias region for elements of type `elem`, when scalar stores and header words must
     /// not be assumed to overlap: a scalar element never lies where a list or string header does.
+    ///
+    /// Only the LLVM emitter reads the regions, as TBAA tags. A Cranelift alias region means
+    /// disjoint from every other access, untagged ones included, so a tagged store that no
+    /// tagged load observes would be dead code there: Cranelift output stays untagged.
     fn elem_region(&mut self, elem: Ty) -> Option<ir::AliasRegion> {
+        self.g.llvm.as_ref()?;
         let id = match self.g.m.types.kind(elem) {
             TyKind::Bool
             | TyKind::Int
