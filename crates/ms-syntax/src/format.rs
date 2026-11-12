@@ -230,10 +230,11 @@ fn format_lines(file: &Arc<str>, source: &str) -> PResult<String> {
     let output = wrap_comments(output);
     let result = output.join("\n") + "\n";
     let result = format_expression_layout(file, &result)?;
-    if parse(file, &result).is_err() && std::env::var_os("MS_FMT_DEBUG").is_some() {
+    let checked = parse(file, &result);
+    if checked.is_err() && std::env::var_os("MS_FMT_DEBUG").is_some() {
         eprintln!("{result}");
     }
-    parse(file, &result)?;
+    checked?;
     if realigned && result != source {
         return format_lines(file, &result);
     }
