@@ -1,3 +1,5 @@
 # Perf paths need a macOS and Windows equivalent
 
 Verified (2026-11-12): the global allocator that routes the `ms-std-*` natives' `Vec`, `String` and `HashMap` through the runtime's size classes (`alloc::StdHeap`) was installed on Linux only, so macOS and Windows programs paid libc `malloc` on every native allocation. It is now installed everywhere. On Windows Rust's `System` is `HeapAlloc` while the runtime's large blocks are CRT `malloc` blocks freed by CRT `free`, so `StdHeap` falls back to the CRT (`SysHeap`), not `System`, for alignments up to 16. Rule (owner, 2026-11-12): fixes are cross-platform; measuring on Linux is fine. A Linux-only fast path (`madvise(MADV_HUGEPAGE)` in `sys::prefer_huge_pages`, epoll tuning) gets an equivalent or a note on why none exists, and checking macOS and Windows CI before calling it fixed.
+
+Failure mode (macOS CI, 2026-11-12): `std::sync::Mutex` boxes its `pthread_mutex_t` on first use on macOS, so a `Mutex` taken inside `StdHeap` allocated, recursed through `refill`, and died on the stack guard (a bus error in `hello`). Nothing the global allocator reaches may allocate: its locks are the allocation-free `alloc::Lock`.
