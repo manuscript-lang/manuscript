@@ -16,9 +16,11 @@
 //! per-size free lists so growing and rebuilding big lists does not map and unmap memory
 //! (musl's malloc does a `mmap`/`munmap` pair for every block above a few KiB).
 use crate::sys;
+use core::cell::UnsafeCell;
 use core::ptr::null_mut;
+use core::sync::atomic::AtomicBool;
 use core::sync::atomic::{AtomicPtr, AtomicUsize, Ordering};
-use std::sync::{Mutex, Once};
+use std::sync::Once;
 
 pub const MAX_SMALL: usize = 2048;
 const PAGE_SHIFT: usize = 16;
@@ -70,13 +72,67 @@ struct Shared {
 // SAFETY: the lists link blocks that no thread uses; the lock guards the lists.
 unsafe impl Send for Shared {}
 
-static SHARED: std::sync::Mutex<Shared> = std::sync::Mutex::new(Shared {
+/// A lock that never allocates. `std::sync::Mutex` boxes its `pthread_mutex_t` on first use on
+/// macOS, so a mutex taken inside the global allocator calls the allocator again, forever. The
+/// critical sections here are a few loads and stores, so a spin with a yield is enough.
+struct Lock<T> {
+    held: AtomicBool,
+    value: UnsafeCell<T>,
+}
+
+// SAFETY: `held` serializes every access to `value`.
+unsafe impl<T: Send> Sync for Lock<T> {}
+
+struct Guard<'a, T>(&'a Lock<T>);
+
+impl<T> Lock<T> {
+    const fn new(value: T) -> Self {
+        Lock {
+            held: AtomicBool::new(false),
+            value: UnsafeCell::new(value),
+        }
+    }
+
+    fn lock(&self) -> Guard<'_, T> {
+        while self
+            .held
+            .compare_exchange_weak(false, true, Ordering::Acquire, Ordering::Relaxed)
+            .is_err()
+        {
+            std::thread::yield_now();
+        }
+        Guard(self)
+    }
+}
+
+impl<T> core::ops::Deref for Guard<'_, T> {
+    type Target = T;
+    fn deref(&self) -> &T {
+        // SAFETY: the guard holds the lock.
+        unsafe { &*self.0.value.get() }
+    }
+}
+
+impl<T> core::ops::DerefMut for Guard<'_, T> {
+    fn deref_mut(&mut self) -> &mut T {
+        // SAFETY: the guard holds the lock.
+        unsafe { &mut *self.0.value.get() }
+    }
+}
+
+impl<T> Drop for Guard<'_, T> {
+    fn drop(&mut self) {
+        self.0.held.store(false, Ordering::Release);
+    }
+}
+
+static SHARED: Lock<Shared> = Lock::new(Shared {
     free: [null_mut(); NUM_LARGE],
     cached: 0,
 });
 
-fn shared() -> std::sync::MutexGuard<'static, Shared> {
-    SHARED.lock().unwrap_or_else(|e| e.into_inner())
+fn shared() -> Guard<'static, Shared> {
+    SHARED.lock()
 }
 
 /// A cached block with at least `size` usable bytes for a thread without an arena, or null.
@@ -230,7 +286,7 @@ static REGION: Once = Once::new();
 static NEXT_PAGE: AtomicUsize = AtomicUsize::new(0);
 /// Bytes of the page reservation made usable (everything on Unix, grown in steps on Windows).
 static COMMITTED: AtomicUsize = AtomicUsize::new(0);
-static COMMIT_LOCK: Mutex<()> = Mutex::new(());
+static COMMIT_LOCK: Lock<()> = Lock::new(());
 /// Next growth chunk not taken.
 static NEXT_CHUNK: AtomicUsize = AtomicUsize::new(0);
 /// Length of the block living in each growth chunk, 0 when the chunk is free. Any thread frees a
@@ -241,7 +297,7 @@ static REMOTE: [AtomicPtr<u8>; MAX_HEAPS] = [const { AtomicPtr::new(null_mut()) 
 /// Heaps handed out so far.
 static HEAP_COUNT: AtomicUsize = AtomicUsize::new(0);
 /// Heaps whose thread ended, with their free lists and partly used pages.
-static IDLE: Mutex<Vec<State>> = Mutex::new(Vec::new());
+static IDLE: Lock<Vec<State>> = Lock::new(Vec::new());
 
 /// Maps the reservation once; false when the system refuses (everything then uses it directly).
 #[cold]
@@ -274,7 +330,7 @@ pub fn claim_heap() {
     if s.heap != NO_HEAP || !ensure_region() {
         return;
     }
-    let idle = IDLE.lock().unwrap_or_else(|e| e.into_inner()).pop();
+    let idle = IDLE.lock().pop();
     if let Some(adopted) = idle {
         *s = adopted;
         return;
@@ -315,7 +371,7 @@ pub fn release_heap() {
     }
     // This thread has no heap from here on, so growing the list below allocates from the system.
     let saved = core::mem::replace(s, State::new());
-    IDLE.lock().unwrap_or_else(|e| e.into_inner()).push(saved);
+    IDLE.lock().push(saved);
 }
 
 /// Whether the calling thread has a heap.
@@ -397,7 +453,7 @@ fn refill(s: &mut State, class: usize) -> *mut u8 {
     let base = BASE.load(Ordering::Relaxed);
     let used = (page + 1) * PAGE_SIZE;
     if used > COMMITTED.load(Ordering::Acquire) {
-        let _g = COMMIT_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let _g = COMMIT_LOCK.lock();
         let committed = COMMITTED.load(Ordering::Relaxed);
         if used > committed {
             let chunk = COMMIT_STEP

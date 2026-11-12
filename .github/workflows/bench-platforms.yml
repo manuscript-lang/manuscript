@@ -23,7 +23,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - { name: linux-amd64, os: linux, arch: amd64, runner: ubuntu-24.04 }
           - { name: darwin-arm64, os: darwin, arch: arm64, runner: macos-15 }
+          - { name: darwin-amd64, os: darwin, arch: amd64, runner: macos-15-intel }
+          - { name: windows-amd64, os: windows, arch: amd64, runner: windows-2025 }
     defaults:
       run:
         shell: bash
@@ -67,10 +70,23 @@ jobs:
           cargo test --locked -p ms-rt --lib -- alloc:: mem::
       - name: Build the release ms
         run: cargo build --release --locked -p ms-cli
-      - name: Debug hello bus error
-        continue-on-error: true
+      - name: Run bench/perf/strappend
         run: |
-          mkdir -p /tmp/h && cd /tmp/h
-          "$GITHUB_WORKSPACE/target/release/ms" build "$GITHUB_WORKSPACE/examples/hello/ms.toml" -o hello --build-type Release
-          ./hello || true
-          lldb -b -k "thread backtrace all" -k "thread list" -k "register read sp" -o run -- ./hello 2>&1 | head -160
+          ms=target/release/ms
+          if [ "$RUNNER_OS" = Windows ]; then ms="$ms.exe"; fi
+          # Git's `link.exe` shadows MSVC's on the Windows runner, so rustc gets the linker explicitly.
+          export RUSTC_LINKER="${CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER:-}"
+          MS="$PWD/$ms" "$PWD/$ms" run bench/tools/strappend.ms -- 5 | tee strappend-${{ matrix.name }}.txt
+      - name: Run bench/perf/json
+        run: |
+          ms=target/release/ms
+          if [ "$RUNNER_OS" = Windows ]; then ms="$ms.exe"; fi
+          for _ in 1 2 3; do
+            MS="$PWD/$ms" "$PWD/$ms" run bench/tools/json_bench.ms
+          done | tee json-${{ matrix.name }}.txt
+      - uses: actions/upload-artifact@v7
+        with:
+          name: bench-${{ matrix.name }}
+          path: |
+            strappend-${{ matrix.name }}.txt
+            json-${{ matrix.name }}.txt
