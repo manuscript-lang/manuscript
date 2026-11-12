@@ -81,7 +81,7 @@ Measured after the tracks above were started ([second pass](../bench/perf/struct
 | --- | --- | --- | --- | --- |
 | 4 | Exit frees every owned value | 25 to 33 ms of a 168 to 218 ms build-then-exit program | `main` skips drops of plain memory at process exit; resources still close | S |
 | 5 | Nested element writes move the row out and back | LCS over `List[List[Int]]`: 30 instructions per cell against 12 | write through the place's address; tell LLVM an element store leaves list headers unchanged, so row loads and bounds checks hoist | M |
-| 6 | A file call inside concurrent work hops to a pool thread | `pargroup` 2.3x C; 4,707 `futex` and 1,505 `epoll_wait` calls for 2,000 files | run the blocking call inline when another scheduler thread can take the ready tasks | M |
+| 6 | A file call inside concurrent work hops to a pool thread | `pargroup` 2.3x C; 4,707 `futex` and 1,505 `epoll_wait` calls for 2,000 files | keep the pool hop, which parks the task until the disk answers, but first try the read without blocking (Linux `preadv2` with `RWF_NOWAIT`): a cached read finishes on the task's thread, an uncached one still parks | M |
 | 7 | Stack check per recursive call | 5 of 20.7 instructions per `fib` call, two dependent loads | keep the limit one load away, or check once per recursion cycle | S |
 | 8 | Checked `Int` loops do not vectorize | 2.7x to 3.5x unchecked C on an accumulate loop; equal to C with trapping adds | a vector body that tests overflow before storing and replays the block in scalar code to fault exactly | L |
 
