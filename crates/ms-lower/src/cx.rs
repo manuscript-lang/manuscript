@@ -131,7 +131,6 @@ pub enum HelperKey {
     MsFn(MTy),
     WalkThunk(MTy, bool),
     ServeThunk(MTy),
-    TestingTrap(MTy),
 }
 
 /// Identity of a generated interface implementation table.
