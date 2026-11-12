@@ -81,6 +81,10 @@ pub(super) unsafe fn new_task(ctx: Ctx) -> *mut Task {
     t
 }
 
+/// Buffers larger than this, or beyond this many tasks' worth, are freed instead of kept.
+const SPARE_CAPACITY: usize = 256;
+const SPARE_TASKS: usize = 1024;
+
 pub(super) unsafe fn free_task(t: *mut Task) {
     let mut s = sched();
     // SAFETY: `t` is a live record from `new_task`; its slot is cleared before release.
@@ -90,6 +94,11 @@ pub(super) unsafe fn free_task(t: *mut Task) {
         s.free_slots.push(idx);
         if !(*t).frozen.is_null() {
             sys::free((*t).frozen.cast());
+        }
+        // A task's cleanup stack is small and short-lived; the next one starts with these.
+        let spares = (*t).ctx.take_spares();
+        if spares.0.capacity() <= SPARE_CAPACITY && s.spares.len() < SPARE_TASKS {
+            s.spares.push(spares);
         }
         core::ptr::drop_in_place(t);
         alloc::free(t as *mut u8);
