@@ -685,7 +685,11 @@ impl FnLower<'_> {
             && self.close_result_ty(kind).is_some()
             && !self.b.func_mut().ret_borrowed
             && !self.b.func_mut().ret_view
-            && self.var_slots.is_empty()
+            // A `var` parameter that left its slot is put back by `emit_return` only.
+            && self
+                .var_slots
+                .iter()
+                .all(|v| self.locals.get(&v.uid).is_some_and(|l| l.slot == Some(v.ptr)))
             && self.default_frames.is_empty()
             && self.fixture.is_none()
     }
@@ -837,7 +841,7 @@ impl FnLower<'_> {
             && !self.dead
             && self.scope_closes_nothing()
             && (!moves || self.close_succeeds_with_unit(kind))
-            && (!by_hand || (!moves && self.close_succeeds_with_unit(kind)))
+            && (!by_hand || self.close_succeeds_with_unit(kind))
     }
 
     /// Tells the pass the program closed (`closed`) or refilled the value in the raw slot.

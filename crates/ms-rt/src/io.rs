@@ -72,6 +72,12 @@ pub fn flush_stdout() {
 }
 
 pub fn write_stdout(data: &[u8]) {
+    write_stdout_parts(data, b"");
+}
+
+/// Appends `data` and `end` under one lock, so a line written by one thread is never split by
+/// another thread's output.
+pub fn write_stdout_parts(data: &[u8], end: &[u8]) {
     let mut tty = TTY.load(Ordering::Relaxed);
     if tty == 0 {
         // SAFETY: plain libc call.
@@ -84,7 +90,8 @@ pub fn write_stdout(data: &[u8]) {
     }
     let mut out = out();
     out.extend_from_slice(data);
-    if out.len() >= BUF_LIMIT || (tty == 2 && data.contains(&b'\n')) {
+    out.extend_from_slice(end);
+    if out.len() >= BUF_LIMIT || (tty == 2 && (data.contains(&b'\n') || end.contains(&b'\n'))) {
         flush_locked(&mut out);
     }
 }
@@ -98,6 +105,15 @@ pub fn write_stderr(data: &[u8]) {
 pub unsafe extern "C-unwind" fn msrt_io_write_stdout(s: *const StrVal) {
     // SAFETY: caller passes a live string.
     write_stdout(unsafe { crate::string::bytes(s) });
+}
+
+/// `print`: the text and its ending in one locked append.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_io_write_stdout_line(s: *const StrVal, end: *const StrVal) {
+    // SAFETY: caller passes live strings.
+    write_stdout_parts(unsafe { crate::string::bytes(s) }, unsafe {
+        crate::string::bytes(end)
+    });
 }
 
 #[unsafe(no_mangle)]
@@ -172,4 +188,30 @@ pub unsafe extern "C-unwind" fn msrt_io_write_bytes_stderr(v: *const VecVal) {
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_io_flush() {
     flush_stdout();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A line and its ending are one append: threads printing at once never split a line, which
+    /// two separate writes allowed ("startedstarted\n\n").
+    #[test]
+    fn concurrent_lines_are_not_split() {
+        let threads: Vec<_> = (0..4)
+            .map(|_| {
+                std::thread::spawn(|| {
+                    for _ in 0..200 {
+                        write_stdout_parts(b"started", b"\n");
+                    }
+                })
+            })
+            .collect();
+        for t in threads {
+            t.join().unwrap();
+        }
+        let mut out = out();
+        let text = String::from_utf8(core::mem::take(&mut *out)).unwrap();
+        assert_eq!(text, "started\n".repeat(800));
+    }
 }

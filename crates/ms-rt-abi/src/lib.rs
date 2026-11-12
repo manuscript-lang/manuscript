@@ -724,8 +724,9 @@ pub mod symbols {
     /// writes before it switches to the task. Code finds the block as
     /// `*((sp & !(STACK_REGION - 1)) + STACK_REGION - 16)`.
     /// Word 0 (`usize`) of the block is the lowest stack address recursive calls may reach on
-    /// the task's current stack segment (0 = no limit): on entry to a recursive function compare
-    /// the stack pointer against it and, when below, call `msrt_task_grow(shim, block)` with the
+    /// the task's current stack segment (0 = no limit); the region holds a copy at
+    /// [`STACK_LIMIT_CELL`]. On entry to a recursive function compare
+    /// the stack pointer against the copy and, when below, call `msrt_task_grow(shim, block)` with the
     /// function's parameters stored at `block` (one 8-byte cell each, then room for its results)
     /// and return the results it leaves there. The runtime runs `shim(block)` on the task's next
     /// segment, a guarded slot that keeps the frame-pointer chain continuous, and faults with the
@@ -734,6 +735,11 @@ pub mod symbols {
     /// Size and alignment of a stack region: 512 KiB task slots are carved from a region, and
     /// the main task's stack is a region of its own.
     pub const STACK_REGION: i64 = 256 << 20;
+    /// Distance from the end of a stack region to the word that holds the running stack
+    /// segment's recursion limit (the block's word 0, copied there so the check is one load):
+    /// `*((sp & !(STACK_REGION - 1)) + STACK_REGION - STACK_LIMIT_CELL)`. The runtime writes it
+    /// beside the block's address and whenever the limit or the segment changes.
+    pub const STACK_LIMIT_CELL: i64 = 8;
     /// `u8` at this offset of the block: non-zero when a stop request (SIGINT, SIGTERM) is
     /// pending and not shielded.
     pub const ISOLATE_HDR_CANCEL: i64 = 8;

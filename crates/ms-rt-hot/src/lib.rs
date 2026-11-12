@@ -24,7 +24,7 @@
 // Raw views of the runtime's memory, as in `ms-rt`.
 #![allow(unsafe_code)]
 
-use ms_rt_abi::{MapVal, StrVal, TypeDesc};
+use ms_rt_abi::{MapVal, StrVal, TypeDesc, VecVal};
 
 /// Top bit of a slot's hash word: set for a live entry, clear for a removed one.
 pub const LIVE: u64 = 1 << 63;
@@ -41,6 +41,22 @@ pub const LIVE: u64 = 1 << 63;
 pub unsafe fn bytes<'a>(s: *const StrVal) -> &'a [u8] {
     // SAFETY: `ptr..ptr+len` holds the text.
     unsafe { core::slice::from_raw_parts((*s).data(), (*s).len()) }
+}
+
+/// Whether the text is known to be ASCII without a long scan: the flag, the bits of an inline
+/// string, or a check of fewer than [`MEDIUM_HAY`] bytes.
+///
+/// # Safety
+/// `s` must be a live string.
+#[inline(always)]
+unsafe fn short_ascii(s: *const StrVal) -> bool {
+    // SAFETY: caller contract.
+    unsafe {
+        if (*s).is_inline() {
+            return (*s).inline_bits() & 0x8080_8080_8080_8080_8080_8080_8080_8080 == 0;
+        }
+        (*s).flagged_ascii() || ((*s).len() < MEDIUM_HAY && bytes(s).is_ascii())
+    }
 }
 
 /// Content equality.
@@ -82,6 +98,265 @@ pub unsafe extern "C-unwind" fn msrt_string_contains(a: usize, v: usize) -> u8 {
             _ => msrt_string_contains_long(a, v),
         }
     }
+}
+
+/// Haystacks shorter than this are scanned byte by byte: the vector searchers' setup costs more
+/// than the scan.
+pub const SHORT_HAY: usize = 32;
+
+/// Haystacks shorter than this (a line of a log or a record) are also scanned directly for a
+/// needle of two or more bytes: building a `memmem` searcher per call costs several times the
+/// scan of so few bytes.
+pub const MEDIUM_HAY: usize = 128;
+
+/// `find` for a short haystack and a non-empty needle.
+#[inline]
+pub fn find_short(hay: &[u8], needle: &[u8]) -> Option<usize> {
+    let (&first, rest) = needle.split_first()?;
+    let last = hay.len().checked_sub(needle.len())?;
+    let mut i = 0;
+    while i <= last {
+        i += memchr_short(first, &hay[i..=last])?;
+        if hay[i + 1..i + needle.len()] == *rest {
+            return Some(i);
+        }
+        i += 1;
+    }
+    None
+}
+
+/// `memchr` for a short haystack: eight bytes per step, testing each word for a byte equal to
+/// `c` with the zero-byte trick.
+#[inline]
+pub fn memchr_short(c: u8, hay: &[u8]) -> Option<usize> {
+    const LO: u64 = 0x0101_0101_0101_0101;
+    const HI: u64 = 0x8080_8080_8080_8080;
+    let pat = LO * c as u64;
+    let (chunks, rest) = hay.as_chunks::<8>();
+    let mut at = 0;
+    for w in chunks {
+        let x = u64::from_le_bytes(*w) ^ pat;
+        let hit = x.wrapping_sub(LO) & !x & HI;
+        if hit != 0 {
+            return Some(at + hit.trailing_zeros() as usize / 8);
+        }
+        at += 8;
+    }
+    rest.iter().position(|&b| b == c).map(|p| at + p)
+}
+
+unsafe extern "C-unwind" {
+    /// The general search and the scalar index of a match in a non-ASCII text, in the archive.
+    fn msrt_string_index_of_long(a: usize, v: usize, out: usize) -> u8;
+}
+
+/// C view: `msrt_string_index_of(a: *const StrVal, v: *const StrVal, out: *mut i64) -> u8`
+///
+/// A search in an ASCII text of under [`MEDIUM_HAY`] bytes (a line, a record, a field) is a scan
+/// the caller inlines; every other search calls the runtime.
+#[unsafe(no_mangle)]
+// ms: leaf pure domain=string
+pub unsafe extern "C-unwind" fn msrt_string_index_of(a: usize, v: usize, out: usize) -> u8 {
+    // SAFETY: caller passes live strings and a writable out.
+    unsafe {
+        let (sa, sv) = (a as *const StrVal, v as *const StrVal);
+        let (hay, needle) = (bytes(sa), bytes(sv));
+        if hay.len() < MEDIUM_HAY && short_ascii(sa) {
+            let found = match needle {
+                [] => Some(0),
+                [c] => memchr_short(*c, hay),
+                _ => find_short(hay, needle),
+            };
+            return match found {
+                Some(i) => {
+                    *(out as *mut i64) = i as i64;
+                    1
+                }
+                None => 0,
+            };
+        }
+        msrt_string_index_of_long(a, v, out)
+    }
+}
+
+unsafe extern "C-unwind" {
+    /// The general view: non-ASCII text, long unflagged text and out-of-range bounds (a fault).
+    fn msrt_string_view_slow(s: usize, start: i64, end: i64, out: usize);
+}
+
+/// C view: `msrt_string_view(s: *const StrVal, start: i64, end: i64, out: *mut StrVal)`
+///
+/// `String.view` of an ASCII text with bounds inside it is two words computed by the caller: the
+/// scalar bounds are byte offsets, and a short piece is copied inline. Everything else, including
+/// the fault for bounds outside the text, is the runtime's.
+#[unsafe(no_mangle)]
+// ms: leaf pure domain=string
+pub unsafe extern "C-unwind" fn msrt_string_view(s: usize, start: i64, end: i64, out: usize) {
+    // SAFETY: caller passes a live string and a writable `out`.
+    unsafe {
+        let sv = s as *const StrVal;
+        let text = bytes(sv);
+        let n = text.len() as i64;
+        let (a, b) = (
+            if start < 0 { n + start } else { start },
+            if end < 0 { n + end } else { end },
+        );
+        let ascii = short_ascii(sv);
+        if !ascii || a < 0 || b < a || b > n {
+            return msrt_string_view_slow(s, start, end, out);
+        }
+        let piece = &text[a as usize..b as usize];
+        let view = if piece.len() <= ms_rt_abi::STR_INLINE_MAX {
+            StrVal::inline(piece)
+        } else {
+            StrVal::view(piece.as_ptr().cast_mut(), piece.len())
+        };
+        view.write_to(out as *mut StrVal)
+    }
+}
+
+/// `String.parse_int`: optional sign, ASCII digits only; overflow is `None`.
+pub fn parse_int_decimal(text: &[u8]) -> Option<i64> {
+    let (neg, digits) = match text.first()? {
+        b'-' => (true, &text[1..]),
+        b'+' => (false, &text[1..]),
+        _ => (false, text),
+    };
+    if digits.is_empty() {
+        return None;
+    }
+    // Up to eighteen digits cannot overflow, so skip the per-digit checks.
+    if digits.len() <= 18 {
+        let mut acc = 0i64;
+        for &c in digits {
+            let d = c.wrapping_sub(b'0');
+            if d > 9 {
+                return None;
+            }
+            acc = acc * 10 + d as i64;
+        }
+        return Some(if neg { -acc } else { acc });
+    }
+    // Longer text is valid only with leading zeros; at most nineteen significant digits can fit, so the
+    // untouched suffix of an overlong input is never scanned.
+    let zeros = digits.iter().take_while(|&&c| c == b'0').count();
+    let significant = &digits[zeros..];
+    if significant.len() > 19 {
+        return None;
+    }
+    let mut acc = 0u64;
+    for &c in significant {
+        let d = c.wrapping_sub(b'0');
+        if d > 9 {
+            return None;
+        }
+        acc = acc * 10 + d as u64;
+    }
+    if neg {
+        0i64.checked_sub_unsigned(acc)
+    } else {
+        i64::try_from(acc).ok()
+    }
+}
+
+/// C view: `msrt_string_parse_int(s: *const StrVal, out: *mut i64) -> u8`
+///
+/// `String.parse_int()`: present flag, value through `out`.
+#[unsafe(no_mangle)]
+// ms: leaf pure domain=string
+pub unsafe extern "C-unwind" fn msrt_string_parse_int(s: usize, out: usize) -> u8 {
+    // SAFETY: caller passes a live string and a writable out.
+    unsafe {
+        match parse_int_decimal(bytes(s as *const StrVal)) {
+            Some(v) => {
+                *(out as *mut i64) = v;
+                1
+            }
+            None => 0,
+        }
+    }
+}
+
+unsafe extern "C-unwind" {
+    /// The general lookup: non-ASCII text, long unflagged text, and an index outside the text
+    /// (the default or a fault).
+    fn msrt_string_scalar_at_slow(s: usize, index: i64, has_default: u8, default: i64) -> i64;
+}
+
+/// C view: `msrt_string_scalar_at(s: *const StrVal, index: i64, has_default: HasRaw, default: i64) -> i64`
+///
+/// `String.scalar_at` of an ASCII text with an index inside it is one byte read by the caller.
+#[unsafe(no_mangle)]
+// ms: leaf pure domain=string
+pub unsafe extern "C-unwind" fn msrt_string_scalar_at(
+    s: usize,
+    index: i64,
+    has_default: u8,
+    default: i64,
+) -> i64 {
+    // SAFETY: caller passes a live string.
+    unsafe {
+        let sv = s as *const StrVal;
+        let text = bytes(sv);
+        let n = text.len() as i64;
+        let at = if index < 0 { n + index } else { index };
+        let ascii = short_ascii(sv);
+        if let Some(&b) = text.get(at as usize).filter(|_| ascii && at >= 0) {
+            return b as i64;
+        }
+        msrt_string_scalar_at_slow(s, index, has_default, default)
+    }
+}
+
+unsafe extern "C-unwind" {
+    /// The scalar count of text that is not known to be short ASCII, in the archive.
+    fn msrt_string_scalar_count_slow(s: usize) -> i64;
+}
+
+/// Scalar count: the byte length for ASCII text (flagged, or short enough to check here), else
+/// the runtime's count.
+#[inline(always)]
+unsafe fn scalar_count(s: usize) -> i64 {
+    // SAFETY: caller passes a live string.
+    unsafe {
+        let sv = s as *const StrVal;
+        if short_ascii(sv) {
+            return (*sv).len() as i64;
+        }
+        msrt_string_scalar_count_slow(s)
+    }
+}
+
+/// C view: `msrt_string_length(s: *const StrVal) -> i64`
+#[unsafe(no_mangle)]
+// ms: leaf pure domain=string
+pub unsafe extern "C-unwind" fn msrt_string_length(s: usize) -> i64 {
+    // SAFETY: caller passes a live string.
+    unsafe { scalar_count(s) }
+}
+
+/// C view: `msrt_string_scalar_length(s: *const StrVal) -> i64`
+#[unsafe(no_mangle)]
+// ms: leaf pure domain=string
+pub unsafe extern "C-unwind" fn msrt_string_scalar_length(s: usize) -> i64 {
+    // SAFETY: caller passes a live string.
+    unsafe { scalar_count(s) }
+}
+
+/// C view: `msrt_string_starts_with(a: *const StrVal, v: *const StrVal) -> u8`
+#[unsafe(no_mangle)]
+// ms: leaf pure domain=string
+pub unsafe extern "C-unwind" fn msrt_string_starts_with(a: usize, v: usize) -> u8 {
+    // SAFETY: caller passes live strings.
+    unsafe { bytes(a as *const StrVal).starts_with(bytes(v as *const StrVal)) as u8 }
+}
+
+/// C view: `msrt_string_ends_with(a: *const StrVal, v: *const StrVal) -> u8`
+#[unsafe(no_mangle)]
+// ms: leaf pure domain=string
+pub unsafe extern "C-unwind" fn msrt_string_ends_with(a: usize, v: usize) -> u8 {
+    // SAFETY: caller passes live strings.
+    unsafe { bytes(a as *const StrVal).ends_with(bytes(v as *const StrVal)) as u8 }
 }
 
 /// C view: `msrt_string_compare(a: *const StrVal, b: *const StrVal) -> i64`
@@ -398,6 +673,49 @@ pub unsafe extern "C-unwind" fn msrt_map_contains_w8(
     unsafe { !find_w8(&*(m as *const MapVal), key as *const u8).is_null() as u8 }
 }
 
+/// Slot of the `Int` key at `key` in a `Set[Int]` (slots of a hash word and the key, stride 16),
+/// or null: [`find_w8`] without a value.
+#[inline(always)]
+pub unsafe fn find_set_w(m: &MapVal, key: *const u8) -> *const u8 {
+    if m.len == 0 {
+        return core::ptr::null();
+    }
+    // SAFETY: caller contract; index and slots are consistent for a non-empty map.
+    unsafe {
+        let k = *(key as *const u64);
+        let h = hash_int(k) | LIVE;
+        let index = index_of(m);
+        let mut pos = (h as usize ^ (h >> 32) as usize) & m.mask;
+        loop {
+            let e = *index.add(pos);
+            if e == 0 {
+                return core::ptr::null();
+            }
+            if (e ^ h) >> 32 == 0 {
+                let p = m.slots.add((e as u32 - 1) as usize * 16);
+                if *(p.add(8) as *const u64) == k {
+                    return p;
+                }
+            }
+            pos = (pos + 1) & m.mask;
+        }
+    }
+}
+
+/// `contains` for a `Set[Int]`.
+/// C view: `msrt_set_contains_w(m: *const MapVal, kd: KeyDesc, vd: ValDesc, key: *const u8) -> u8`
+#[unsafe(no_mangle)]
+// ms: leaf pure domain=set
+pub unsafe extern "C-unwind" fn msrt_set_contains_w(
+    m: usize,
+    _kd: usize,
+    _vd: usize,
+    key: usize,
+) -> u8 {
+    // SAFETY: caller contract.
+    unsafe { !find_set_w(&*(m as *const MapVal), key as *const u8).is_null() as u8 }
+}
+
 /// `get` for an `Int` key and a plain 8-byte scalar value (`Int` or `Float`).
 /// C view: `msrt_map_get_w8(m: *const MapVal, kd: KeyDesc, vd: ValDesc, key: *const u8, out: *mut u8) -> u8`
 #[unsafe(no_mangle)]
@@ -562,5 +880,70 @@ pub unsafe extern "C-unwind" fn msrt_map_entry_ptrs(
             *(val_out as *mut *const u8) = p.add(l.voff);
         }
         1
+    }
+}
+
+// ---------------------------------------------------------------------------
+// String builders
+// ---------------------------------------------------------------------------
+
+/// Copies `n <= 16` bytes with at most two overlapping loads and stores, so the compiler cannot
+/// turn it into a vector loop or a `memcpy` call. The ranges must not overlap.
+#[inline(always)]
+pub unsafe fn copy_short(src: *const u8, dst: *mut u8, n: usize) {
+    // SAFETY: caller guarantees `n` readable and writable bytes; each access stays within them.
+    unsafe {
+        if n >= 8 {
+            let head = src.cast::<u64>().read_unaligned();
+            let tail = src.add(n - 8).cast::<u64>().read_unaligned();
+            dst.cast::<u64>().write_unaligned(head);
+            dst.add(n - 8).cast::<u64>().write_unaligned(tail);
+        } else if n >= 4 {
+            let head = src.cast::<u32>().read_unaligned();
+            let tail = src.add(n - 4).cast::<u32>().read_unaligned();
+            dst.cast::<u32>().write_unaligned(head);
+            dst.add(n - 4).cast::<u32>().write_unaligned(tail);
+        } else if n > 0 {
+            let first = *src;
+            let mid = *src.add(n / 2);
+            let last = *src.add(n - 1);
+            *dst = first;
+            *dst.add(n / 2) = mid;
+            *dst.add(n - 1) = last;
+        }
+    }
+}
+
+unsafe extern "C-unwind" {
+    /// Growth and the general copy, in the runtime archive.
+    fn msrt_strbuilder_append_slow(b: usize, s: usize);
+}
+
+/// Appends a string to a builder.
+/// C view: `msrt_strbuilder_append(b: *mut VecVal, s: *const StrVal)`
+///
+/// Text that fits the builder's spare room is copied by the caller's own code (one byte, a short
+/// word as overlapping moves, longer text with `memcpy`); a full buffer calls the runtime.
+#[unsafe(no_mangle)]
+// ms: leaf
+pub unsafe extern "C-unwind" fn msrt_strbuilder_append(b: usize, s: usize) {
+    // SAFETY: caller passes a live builder and string.
+    unsafe {
+        let v = &mut *(b as *mut VecVal);
+        let text = bytes(s as *const StrVal);
+        let n = text.len();
+        if v.cap - v.len >= n {
+            let dst = v.ptr.add(v.len);
+            v.len += n;
+            if n == 1 {
+                *dst = text[0];
+            } else if n <= 16 {
+                copy_short(text.as_ptr(), dst, n);
+            } else {
+                core::ptr::copy_nonoverlapping(text.as_ptr(), dst, n);
+            }
+            return;
+        }
+        msrt_strbuilder_append_slow(b, s);
     }
 }

@@ -55,6 +55,6 @@ Min of 7, same machine, all ten tasks:
 | dedupe | 334 | 319 | 374 | 1.05x | 0.89x |
 | report | 225 | 184 | 174 | 1.22x | 1.29x |
 
-## 2026-11-12: file reads in worker threads stay inline
+## 2026-11-12: a joining task does not count as stalled
 
-`pargroup` (2,000 files, `map_concurrent` over 4 workers) sent every `read_file` on a worker thread to the blocking pool: `strace -c -f` showed 4,698 `futex` and 1,505 `epoll_wait` calls. `msrt_task_others_stalled` decided that a thread with other tasks must keep running them, but a worker thread's flow task only joins its root task (no token, descriptor or timer), so it was never counted as stalled. A task that is waiting only on a join now counts as stalled, so the read runs inline when nothing else on the thread could run. Min of 15 on the shared 4-CPU VM: 48 ms before, 37 ms after (C 20 ms); `futex` calls 4,698 to 13, `epoll_wait` 1,505 to 6. The rest of the gap to C is the per-line `split` and parse work, not the file calls.
+An earlier change ran a `read_file` inline when the thread's other tasks only join (`pargroup` 58 to 37 ms). That is reverted: an inline read blocks the whole thread, so on a slow disk, cold cache or network file system a post from another thread waits out the read. With 20 ms per read (an `LD_PRELOAD` shim on `read`), a promise completed on another thread woke its waiter 111 to 135 ms late. File reads go to the pool, which parks the task, and `pargroup` costs its pool hops again (about 4,700 `futex` calls). The older rule, which runs a call inline when every other task is parked on a token with no deadline, is still in place and has the same exposure.
