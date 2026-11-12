@@ -928,6 +928,61 @@ pub unsafe extern "C-unwind" fn msrt_list_concat(
     }
 }
 
+/// `repeated(count)`: the elements of `v` `count` times over, in order (a fresh list).
+/// Plain elements copy once and double in place, so a long fill is a few bulk copies.
+///
+/// # Safety
+/// `v` is a live list of `d`; `out` is uninitialised.
+#[unsafe(no_mangle)]
+// ms: leaf
+pub unsafe extern "C-unwind" fn msrt_list_repeat(
+    v: *const VecVal,
+    d: ElemDesc,
+    count: i64,
+    out: *mut VecVal,
+) {
+    // SAFETY: caller contract.
+    unsafe {
+        let (v, d) = (&*v, &*d);
+        if count < 0 {
+            fault::fault_fmt(format_args!(
+                "List.repeated: count {count} must not be negative"
+            ));
+        }
+        let total = v
+            .len
+            .checked_mul(count as usize)
+            .unwrap_or_else(|| fault::fault_kind(FaultKind::Overflow, b"list size overflow"));
+        if total == 0 {
+            *out = EMPTY;
+            return;
+        }
+        let size = d.size as usize;
+        let bytes = total
+            .checked_mul(size.max(1))
+            .unwrap_or_else(|| fault::fault_kind(FaultKind::Overflow, b"list size overflow"));
+        let ptr = alloc::alloc(bytes);
+        if is_plain(d) {
+            copy_range(d, v.ptr, ptr, v.len);
+            let mut done = v.len;
+            while done < total {
+                let n = done.min(total - done);
+                core::ptr::copy_nonoverlapping(ptr, ptr.add(done * size), n * size);
+                done += n;
+            }
+        } else {
+            for round in 0..count as usize {
+                copy_range(d, v.ptr, ptr.add(round * v.len * size), v.len);
+            }
+        }
+        *out = VecVal {
+            ptr,
+            len: total,
+            cap: total,
+        };
+    }
+}
+
 unsafe fn extend_copy(v: &mut VecVal, d: &TypeDesc, other: &VecVal) {
     // SAFETY: `other` is a distinct live list of `d`.
     unsafe {

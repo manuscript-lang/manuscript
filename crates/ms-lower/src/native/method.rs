@@ -502,6 +502,16 @@ impl<'a> FnLower<'a> {
                 self.result_method(out, name, recv, a, args)
             }
             (TyKind::Alt(a), "is_ok" | "is_error") => self.result_state(name, recv, a),
+            (TyKind::List(_), "repeated") => {
+                let TyKind::List(elem) = self.b.m.types.kind(rty).clone() else {
+                    unreachable!()
+                };
+                let d = self.type_desc(elem);
+                let a = self.borrow(recv);
+                let n = self.borrow(args[0].val);
+                let out = self.call_runtime("msrt_list_repeat", &[a, d, n], rty)?;
+                Ok(Val { v: out, own: true })
+            }
             (TyKind::List(_), "concat") => {
                 let TyKind::List(elem) = self.b.m.types.kind(rty).clone() else {
                     unreachable!()
