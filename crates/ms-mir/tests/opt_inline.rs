@@ -145,9 +145,11 @@ fn owned_and_borrowed_params_keep_ownership_linear() {
 }
 
 #[test]
-fn recursive_functions_are_not_inlined() {
+fn a_self_recursive_function_is_unrolled_once_into_itself() {
     let m = inlined(include_str!("fixtures-opt/recursion.mir"));
-    assert_eq!(calls_to(&m, "fib"), 3, "{}", print_module(&m));
+    // `main`'s call, and the two calls in each of the two copies of the body in `fib`; the
+    // copies carry no recursion check of their own.
+    assert_eq!(calls_to(&m, "fib"), 5, "{}", print_module(&m));
     assert!(has_func(&m, "fib"));
     assert_eq!(count_op(&m, "fib", Op::DepthEnter), 1);
     assert_eq!(count_op(&m, "fib", Op::DepthLeave), 2);
