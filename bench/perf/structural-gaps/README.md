@@ -90,3 +90,15 @@ Same machine and `gcc -O2` twins as the second pass. Before is `main` at `f5b0b6
 
 - Exit drops (opportunity 4): `ms_mir::exit_drops` gates the drops on `main`'s return paths whose type is plain memory (strings, bytes, lists, maps, sets, big integers, optionals, records and alternatives of those) behind `msrt_exit_frees`. A closure, an interface value or a runtime handle is never gated, and the close call of a closeable owner is not a drop, so resources still close in the same order (`e2e/accept/main-exit-closes-resources`). The counting runtime of `make leak-check` and `MS_FREE_AT_EXIT=1` (valgrind) keep the frees: `make leak-check` still reports 0 of 382 leaking. A `main` that something calls again keeps every drop. The wall time drops by about 45 to 70 ms; the build itself is unchanged.
 - Stack check (opportunity 7): the recursion limit of the running stack segment is copied into the region cell beside the task block's address (`STACK_LIMIT_CELL`), so the check is `mov`, `and`, `cmp` against memory, `ja` (4 instructions, one load) instead of the second dependent load through the block (5 instructions). The runtime keeps the cell current when a task is switched in, a segment is added or left, a fault shrinks the limit for cleanups, and a guard unwinds. 1.0 instruction per `fib` call (20.7 to 19.7); the wall time does not move beyond noise, because the removed load hit the cache and the check is not on the critical path of `fib`. Checking once per recursion cycle was not built: a self-recursive function is its own cycle, so `fib` would still check every call.
+
+## 2026-11-12, self-recursive functions unrolled once
+
+Same machine as the section above; before is the stack-check change, after adds the unrolling.
+
+| program | before | after | C |
+| --- | ---: | ---: | ---: |
+| `recursion.ms` (`fib(32)`) instructions | 137.81M | 98.37M (-29%) | 72.4M |
+| `recursion.ms` wall | 19 to 20 ms | 12 to 14 ms | |
+
+- The MIR inliner copies the body of a small (at most 40 instructions) directly self-recursive function with at most two self calls into those calls once. A copy runs without a call, a frame-pointer setup or a recursion check; the calls inside it enter the function as before, so the check still runs once per physical frame. `fib` makes half the calls. The function is then marked `Never`, so the pass unrolls it once however often it runs.
+- Fault reports count logical frames: the runaway-recursion fixture now reports 1,999,992 repeats where it reported 999,996, because the frame walk stops at 1,000,000 physical frames and each now holds two logical ones. Repeated frames are compared by text, since an inlined copy names its function by another table offset.

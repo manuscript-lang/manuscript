@@ -926,7 +926,6 @@ fn collect_with(drive: impl FnOnce(&Tables, &mut dyn FnMut(usize) -> bool)) -> F
     }
     // SAFETY: non-null table installed by `msrt_start`.
     let t = unsafe { &*t };
-    let mut last = (u32::MAX, 0u32, u32::MAX);
     let mut innermost = true;
     drive(t, &mut |ret| {
         let Some(func) = find_func(t, ret) else {
@@ -955,7 +954,12 @@ fn collect_with(drive: impl FnOnce(&Tables, &mut dyn FnMut(usize) -> bool)) -> F
             }
             if line == 0 {
                 // A thunk inlined into its caller has no position of its own.
-            } else if (file, line, name) == last {
+            } else if frames.list.last().is_some_and(|f| {
+                // By text: an inlined copy of a function names itself by another table offset.
+                f.line == line
+                    && f.function.as_bytes() == cstr(t, name)
+                    && f.file.as_bytes() == cstr(t, file)
+            }) {
                 if let Some(frame) = frames.list.last_mut() {
                     frame.repeated += 1;
                 }
@@ -970,7 +974,6 @@ fn collect_with(drive: impl FnOnce(&Tables, &mut dyn FnMut(usize) -> bool)) -> F
                     function: String::from_utf8_lossy(cstr(t, name)).into_owned(),
                     repeated: 0,
                 });
-                last = (file, line, name);
             }
             let Some(sc) = next else { break };
             line = sc.call_line;
