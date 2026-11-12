@@ -315,10 +315,7 @@ pub fn map_anon(len: usize) -> *mut u8 {
     unsafe { VirtualAlloc(core::ptr::null_mut(), len, MEM_RESERVE, PAGE_NOACCESS).cast() }
 }
 
-/// Linux asks for huge pages on the heap reservation (`MADV_HUGEPAGE`). Windows has no advice
-/// call: large pages need `MEM_LARGE_PAGES` when the memory is committed and a privilege that
-/// ordinary users lack, so this does nothing (parity gap tracked in #3646; delete this stub
-/// when the Windows reservation reduces its page faults another way).
+/// Windows has no huge-page advice for the heap reservation; see `sys::prefer_huge_pages`.
 pub fn prefer_huge_pages(_p: *mut u8, _len: usize) {}
 
 /// Reserves `len` bytes of address space aligned to `len` (a power of two), holding stacks.

@@ -119,6 +119,9 @@ pub(crate) struct FnLower<'a> {
     pub raw_owners: bool,
     /// Locals whose drop is left to `elaborate`.
     pub raw_owned: std::collections::HashSet<usize>,
+    /// Reassigned locals of a scope that nothing moves: no marker until a path leaves the scope,
+    /// where the value the variable holds then is registered (see `drop_scope_locals`).
+    pub raw_vars: HashMap<usize, ms_mir::builder::Var>,
     /// Resources in memory the elaborate pass closes: the slot address and how the value closes.
     /// A move of the value disowns the slot.
     pub raw_slots: HashMap<usize, RawSlot>,
@@ -668,6 +671,7 @@ impl<'a> FnLower<'a> {
             next_scope: 1,
             raw_owners: true,
             raw_owned: std::collections::HashSet::new(),
+            raw_vars: HashMap::new(),
             raw_slots: HashMap::new(),
             closers: HashMap::new(),
             rest_closers: HashMap::new(),
@@ -1156,11 +1160,14 @@ impl<'a> FnLower<'a> {
     pub fn own_local(&mut self, uid: usize, var: ms_mir::builder::Var, ty: MTy) {
         // A local of one definition that nothing closes or shares is owned by its scope's Raw
         // cleanup: the elaborate pass tracks its moves, so it needs no flag or optional box.
+        let single = self.b.var_is_single(var) && !self.redefined.contains(&uid);
+        // A reassigned local that nothing moves is owned at each exit instead of at its
+        // declaration: the value it holds is only known there.
+        let reassigned = !single && !self.cx.ownership.moves.contains_key(&uid);
         if self.raw_owners
             && !self.dead
             && self.needs_drop(ty)
-            && self.b.var_is_single(var)
-            && !self.redefined.contains(&uid)
+            && (single || reassigned)
             && !self.slotted.contains(&uid)
         {
             self.locals.insert(
@@ -1172,8 +1179,13 @@ impl<'a> FnLower<'a> {
                     opt: false,
                 },
             );
-            let v = self.b.use_var(var);
-            self.own_raw(uid, v);
+            if single {
+                let v = self.b.use_var(var);
+                self.own_raw(uid, v);
+            } else {
+                self.raw_vars.insert(uid, var);
+                self.scopes.last_mut().expect("scope").push(uid);
+            }
             return;
         }
         let moved = self.needs_drop(ty) && self.cx.ownership.moves.contains_key(&uid);
@@ -1215,6 +1227,11 @@ impl<'a> FnLower<'a> {
                 opt,
             },
         );
+        if opt && self.raw_owners && !self.dead {
+            // The held optional is `none` once a path moved the value out: owning it at each
+            // exit drops what is still there.
+            self.raw_vars.insert(uid, var);
+        }
         self.slotify(uid);
         if !self.needs_drop(ty) {
             return;
@@ -1502,6 +1519,11 @@ impl<'a> FnLower<'a> {
     /// `scope.own` of `v` in the innermost scope, beginning the enclosing scopes first.
     fn own_raw_value(&mut self, v: Value, kind: u32) -> u32 {
         let i = self.scope_marks.len() - 1;
+        self.own_raw_value_in(i, v, kind)
+    }
+
+    /// `scope.own` of `v` in scope `i`.
+    fn own_raw_value_in(&mut self, i: usize, v: Value, kind: u32) -> u32 {
         // The enclosing scopes begin first: an error exit of the pass walks the chain.
         for mark in &mut self.scope_marks {
             if !mark.begun {
@@ -1541,6 +1563,11 @@ impl<'a> FnLower<'a> {
             let uids = self.scopes[i].clone();
             for uid in uids.iter().rev() {
                 if self.closed_on_path.contains(uid) {
+                    continue;
+                }
+                if let Some(var) = self.raw_vars.get(uid).copied() {
+                    let cur = self.b.use_var(var);
+                    self.own_raw_value_in(i, cur, 0);
                     continue;
                 }
                 if let Some((kind, list, idx)) = self.rest_closers.get(uid).cloned() {
