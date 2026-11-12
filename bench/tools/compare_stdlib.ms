@@ -64,7 +64,7 @@ fn run(opts: Map[String, String], repeats: Int, samples: Int) Result[String, Err
 
 			if expected.is_none():
 				expected = parsed.operations.clone()
-				names = parsed.operations.keys()
+				names = parsed.operations.keys().clone()
 
 			var kept = raw.get_or(version, [])
 			kept.append(output.trim() + "\n")
