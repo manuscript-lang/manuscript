@@ -1466,24 +1466,52 @@ impl<'a> FnLower<'a> {
             .declare_var(ty, if owned { Mode::Move } else { Mode::Borrow });
         let v = self.owned(x);
         self.b.def_var(var, v);
+        let uid = self.adopt_hidden(var, ty);
+        self.own_hidden(uid, None, true);
+        var
+    }
+
+    /// `bind_hidden` for a loop iterable, which the loop decides how to release.
+    pub fn bind_hidden_iterable(&mut self, x: Val) -> ms_mir::builder::Var {
+        let ty = self.ty_of(x.v);
+        let owned = self.needs_drop(ty);
+        let var = self
+            .b
+            .declare_var(ty, if owned { Mode::Move } else { Mode::Borrow });
+        let v = self.owned(x);
+        self.b.def_var(var, v);
         self.adopt_hidden(var, ty);
         var
     }
 
     /// Hands the hidden value of `uid` (a held scrutinee or loop iterable) to the elaborate pass,
     /// which closes it with `closer` when there is one and drops it where the scope ends.
-    /// Returns whether the pass owns it now; a value that lives in memory, or whose close changes
+    /// `whole` says nothing takes the value apart, so a value rewritten in place may be owned at
+    /// each exit. Returns whether the pass owns it now; a value that lives in memory, or whose close changes
     /// it, stays with lowering.
-    pub fn own_hidden(&mut self, uid: usize, closer: Option<&crate::close::CloseKind>) -> bool {
+    pub fn own_hidden(
+        &mut self,
+        uid: usize,
+        closer: Option<&crate::close::CloseKind>,
+        whole: bool,
+    ) -> bool {
         let l = self.locals[&uid];
         if !(self.raw_owners
             && !self.dead
             && l.slot.is_none()
             && self.needs_drop(l.ty)
-            && !self.slotted.contains(&uid)
-            && self.b.var_is_single(l.var))
+            && !self.slotted.contains(&uid))
         {
             return false;
+        }
+        if !self.b.var_is_single(l.var) {
+            // A hidden value rewritten in place (the piece of a split loop) is owned at each exit,
+            // where the value it holds is known; nothing takes it apart.
+            if closer.is_some() || !whole {
+                return false;
+            }
+            self.raw_vars.insert(uid, l.var);
+            return true;
         }
         let kind = match closer {
             Some(c) if c.in_value() => self.close_thunk(c, l.ty, false).index() as u32 + 2,
