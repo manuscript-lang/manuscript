@@ -105,6 +105,7 @@ msrt_io_write_bytes_stderr(v: *const VecVal)
 msrt_io_write_bytes_stdout(v: *const VecVal)
 msrt_io_write_stderr(s: *const StrVal)
 msrt_io_write_stdout(s: *const StrVal)
+msrt_io_write_stdout_line(s: *const StrVal, end: *const StrVal)
 msrt_isolate_hdr() -> *mut Hdr
 msrt_list_at(v: *const VecVal, d: ElemDesc, index: i64, default: *const u8) -> *const u8 @domain=collection @leaf
 msrt_list_concat(a: *const VecVal, b: *const VecVal, d: ElemDesc, out: *mut VecVal) @domain=collection @leaf

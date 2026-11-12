@@ -415,7 +415,7 @@ with a 1 GiB stack, validates the exit
 code (`0..=125`, else the Go fault message), flushes stdout and returns the status.
 `msrt_args(out: *mut VecVal)` fills a `List[String]` (argv[1..]).
 
-`msrt_io_write_stdout(s)`, `msrt_io_write_stderr(s)`, `msrt_io_flush()`: stdout is
+`msrt_io_write_stdout(s)`, `msrt_io_write_stdout_line(s, end)` (one locked append, so threads' lines never interleave mid-line), `msrt_io_write_stderr(s)`, `msrt_io_flush()`: stdout is
 buffered (64 KiB) and flushed before any stderr write, on fault, exit and by
 `msrt_io_flush`. `msrt_process_exit(code: i64) -> !` flushes and exits (no cleanup).
 
