@@ -16,7 +16,7 @@ use ms_rt_abi::{
     ASCII_CHAR_STRIDE, STR_ASCII, STR_INLINE, STR_INLINE_LEN_SHIFT, STR_LEN_MASK, STR_LEN_OFFSET,
     STR_PTR_OFFSET, STR_STATIC, VEC_CAP_OFFSET, VEC_LEN_OFFSET, VEC_PTR_OFFSET,
 };
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 type Vs = Vec<Value>;
 
@@ -61,6 +61,8 @@ pub struct Lower<'a, 'm> {
     homes: Vec<Option<Home>>,
     /// Stack slot behind each MIR value that holds a slot address.
     slot_of: HashMap<usize, ir::StackSlot>,
+    /// `iface.borrow` results that only reach calls and drops: their leaves live in a stack slot.
+    framed_ifaces: HashSet<usize>,
     /// Block that defined each MIR `slot` value.
     slot_blk: HashMap<usize, usize>,
     /// MIR values that an already lowered instruction used.
@@ -108,6 +110,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             vals: Vec::new(),
             homes: Vec::new(),
             slot_of: HashMap::new(),
+            framed_ifaces: HashSet::new(),
             slot_blk: HashMap::new(),
             used: Vec::new(),
             str_lits: HashMap::new(),
@@ -733,6 +736,51 @@ impl<'a, 'm> Lower<'a, 'm> {
         )
     }
 
+    /// The `iface.borrow` results of `f` whose only uses are arguments of calls to functions that
+    /// whose result is not a view of their arguments, and drops. Such an interface cannot outlive the
+    /// frame, so its leaves need no heap box.
+    fn framed_iface_borrows(&self, f: &Func) -> HashSet<usize> {
+        let mut framed = HashSet::new();
+        for b in &f.blocks {
+            for i in &b.insts {
+                if i.op == Op::IfaceBorrow
+                    && let Some(r) = i.res
+                {
+                    framed.insert(r.index());
+                }
+            }
+        }
+        if framed.is_empty() {
+            return framed;
+        }
+        for b in &f.blocks {
+            for i in &b.insts {
+                let plain = match i.op {
+                    Op::Drop => true,
+                    Op::Call | Op::CallMethod => !self.g.m.result_views(f, i),
+                    _ => false,
+                };
+                if !plain {
+                    for a in &i.args {
+                        framed.remove(&a.index());
+                    }
+                }
+            }
+            if let Term::Ret(Some(v)) = &b.term {
+                framed.remove(&v.index());
+            }
+            if let Term::CondBr { cond: v, .. } | Term::Switch { value: v, .. } = &b.term {
+                framed.remove(&v.index());
+            }
+            b.term.for_each_target(|t| {
+                for a in &t.args {
+                    framed.remove(&a.index());
+                }
+            });
+        }
+        framed
+    }
+
     pub fn lower_func(&mut self, fi: usize, f: &Func) {
         self.fid = fi as u32;
         let rpo = f.rpo();
@@ -751,6 +799,7 @@ impl<'a, 'm> Lower<'a, 'm> {
         self.used = vec![false; f.values.len()];
         self.lazy = vec![false; f.values.len()];
         self.slot_of.clear();
+        self.framed_ifaces = self.framed_iface_borrows(f);
         self.slot_blk.clear();
         self.pslots.clear();
         for b in &rpo {
