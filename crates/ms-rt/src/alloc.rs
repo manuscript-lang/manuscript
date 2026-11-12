@@ -957,6 +957,34 @@ pub fn live_by_size() -> Vec<(usize, isize)> {
         .collect()
 }
 
+/// The live counts at one point (`stats` builds): what a faulting operation that keeps running
+/// in this process leaves behind is forgotten against it, as a forked child's heap dies with it.
+#[cfg(feature = "stats")]
+pub struct LiveMark {
+    all: isize,
+    buckets: [isize; NUM_CLASSES + 1],
+}
+
+/// Records the live counts now.
+#[cfg(feature = "stats")]
+pub fn live_mark() -> LiveMark {
+    LiveMark {
+        all: LIVE_ALL.load(Ordering::Relaxed),
+        buckets: core::array::from_fn(|i| LIVE_BUCKETS[i].load(Ordering::Relaxed)),
+    }
+}
+
+/// Drops the net change in the live counts since `mark` from the counts.
+#[cfg(feature = "stats")]
+pub fn live_forget_since(mark: &LiveMark) {
+    let net = LIVE_ALL.load(Ordering::Relaxed) - mark.all;
+    LIVE_ALL.fetch_sub(net, Ordering::Relaxed);
+    for (i, was) in mark.buckets.iter().enumerate() {
+        let net = LIVE_BUCKETS[i].load(Ordering::Relaxed) - was;
+        LIVE_BUCKETS[i].fetch_sub(net, Ordering::Relaxed);
+    }
+}
+
 #[cfg(any(test, feature = "stats"))]
 fn live_add(s: &mut State, delta: isize) {
     s.live += delta;
