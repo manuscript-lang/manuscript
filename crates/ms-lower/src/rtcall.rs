@@ -157,7 +157,10 @@ pub(crate) fn extern_role(sym: &str) -> ms_mir::ir::ExternRole {
         "msrt_string_eq" => R::StringEq,
         "msrt_cleanup_discard" | "msrt_cleanup_remove" => R::CleanupDiscard,
         "msrt_bytes_append" => R::BytesAppend,
-        "msrt_string_split_view" => R::StringSplitView,
+        "msrt_string_split_view"
+        | "msrt_map_keys_view"
+        | "msrt_map_values_view"
+        | "msrt_list_slice_view" => R::ViewResult,
         s if rt_flags(s).spawns => R::SpawnsTask,
         s if rt_flags(s).takes_self => R::TakesDying,
         _ => R::None,

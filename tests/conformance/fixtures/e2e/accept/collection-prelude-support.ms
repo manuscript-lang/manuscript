@@ -2,7 +2,7 @@
 // conform: phase=test
 import expect_equal, expect_false, fail from "@std/test/test.ms"
 
-fn slice(values: List[Int]) List[Int]!: values.slice(0, 1)
+fn slice(values: List[Int]) List[Int]!: values.slice(0, 1).clone()
 
 fn list_entries[T: Clonable](values: List[T]) List[ListEntry[T]]: values.entries()
 

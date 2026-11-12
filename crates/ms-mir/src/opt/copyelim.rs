@@ -6,7 +6,7 @@
 //! source cannot change or die before the copy would: a borrowed parameter is neither
 //! mutated nor released by its callee, and neither is anything projected out of one.
 
-use crate::ir::{Func, Imm, Inst, Mode, Module, Op, Value};
+use crate::ir::{ExternRole, Func, Imm, Inst, Mode, Module, Op, Value};
 use crate::types::TyKind;
 use crate::verify::arg_modes;
 
@@ -168,6 +168,21 @@ fn borrows_of(m: &Module, fi: usize) -> Vec<Vec<Value>> {
 fn view_tainted(m: &Module, fi: usize) -> Vec<bool> {
     let f = &m.funcs[fi];
     let mut tainted = vec![false; f.values.len()];
+    // A view returner that answers through a status and an out slot (`list_slice_view`): what is
+    // read back from the slot is the view.
+    for inst in f.blocks.iter().flat_map(|b| &b.insts) {
+        if let (Op::CallRt, Imm::Ext(e)) = (inst.op, inst.imm)
+            && m.externs[e.index()].role == ExternRole::ViewResult
+        {
+            for a in inst
+                .args
+                .iter()
+                .filter(|a| f.ty(**a) == crate::types::Ty::PTR)
+            {
+                tainted[a.index()] = true;
+            }
+        }
+    }
     loop {
         let mut changed = false;
         for b in &f.blocks {
