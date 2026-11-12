@@ -837,7 +837,7 @@ impl FnLower<'_> {
             && !self.dead
             && self.scope_closes_nothing()
             && (!moves || self.close_succeeds_with_unit(kind))
-            && (!by_hand || (!moves && self.close_succeeds_with_unit(kind)))
+            && (!by_hand || self.close_succeeds_with_unit(kind))
     }
 
     /// Tells the pass the program closed (`closed`) or refilled the value in the raw slot.
