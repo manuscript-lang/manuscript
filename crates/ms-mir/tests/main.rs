@@ -3,6 +3,7 @@
 
 mod copies;
 mod elaborate;
+mod exit_drops;
 mod intern;
 mod interp;
 mod opt_copyelim;

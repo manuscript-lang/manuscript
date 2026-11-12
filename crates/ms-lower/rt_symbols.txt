@@ -62,6 +62,7 @@ msrt_cleanup_run(handle: usize) @leaf
 msrt_cpu_level() -> i64 @domain=number
 msrt_eq_enter(a: *const u8, b: *const u8) -> u8 @leaf
 msrt_eq_leave(a: *const u8, b: *const u8) @leaf
+msrt_exit_frees() -> u8 @domain=unwind @leaf
 msrt_fault(msg: *const u8, len: usize) -> !
 msrt_fault_depth() -> ! @leaf
 msrt_fault_destructure(names: i64, elements: i64) -> ! @domain=collection @leaf
@@ -240,8 +241,9 @@ msrt_str_free(ptr: *mut u8) @domain=string @leaf
 msrt_strbuf_finish(buf: *mut StrBuf, out: *mut StrVal) @domain=string @leaf
 msrt_strbuf_new() -> *mut StrBuf @domain=string @leaf
 msrt_strbuf_push(buf: *mut StrBuf, s: *const StrVal) @domain=string @leaf
-msrt_strbuilder_append(b: *mut VecVal, s: *const StrVal) @domain=collection @leaf
+msrt_strbuilder_append(b: *mut VecVal, s: *const StrVal) @domain=map @leaf
 msrt_strbuilder_append_int(b: *mut VecVal, n: i64) @domain=collection @leaf
+msrt_strbuilder_append_slow(b: *mut VecVal, s: *const StrVal) @domain=collection @leaf
 msrt_strbuilder_freeze(b: *mut VecVal, out: *mut StrVal) @domain=collection @leaf
 msrt_streams_buffered(stream: i64) -> i64
 msrt_streams_close(stream: i64)
