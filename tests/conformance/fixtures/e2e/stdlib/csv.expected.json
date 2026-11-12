@@ -48,19 +48,29 @@
           "index": 7,
           "name": "csv.ms::CSV escaped fields preserve malformed closing quote locations",
           "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "csv.ms::CSV quote scanning preserves Unicode and exact backslash dot",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "csv.ms::CSV stringify retains invalid option and negative budget errors",
+          "status": "passed"
         }
       ],
       "summary": {
-        "available": 8,
-        "selected": 8,
-        "passed": 8,
+        "available": 10,
+        "selected": 10,
+        "passed": 10,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN csv.ms::CSV retains single empty fields and distinguishes empty rows\nPASS csv.ms::CSV retains single empty fields and distinguishes empty rows\nRUN csv.ms::CSV quoted empty fields respect exact row cell and byte budgets\nPASS csv.ms::CSV quoted empty fields respect exact row cell and byte budgets\nRUN csv.ms::CSV preserves whitespace and normalizes quoted CRLF\nPASS csv.ms::CSV preserves whitespace and normalizes quoted CRLF\nRUN csv.ms::CSV quotes delimiters multiline cells and line endings\nPASS csv.ms::CSV quotes delimiters multiline cells and line endings\nRUN csv.ms::CSV malformed records name their line and column\nPASS csv.ms::CSV malformed records name their line and column\nRUN csv.ms::CSV rejects malformed records invalid options and limits\nPASS csv.ms::CSV rejects malformed records invalid options and limits\nRUN csv.ms::CSV quoted fields preserve zero one and many escaped quotes\nPASS csv.ms::CSV quoted fields preserve zero one and many escaped quotes\nRUN csv.ms::CSV escaped fields preserve malformed closing quote locations\nPASS csv.ms::CSV escaped fields preserve malformed closing quote locations\n8 tests, 0 failed\n",
+      "stdout": "RUN csv.ms::CSV retains single empty fields and distinguishes empty rows\nPASS csv.ms::CSV retains single empty fields and distinguishes empty rows\nRUN csv.ms::CSV quoted empty fields respect exact row cell and byte budgets\nPASS csv.ms::CSV quoted empty fields respect exact row cell and byte budgets\nRUN csv.ms::CSV preserves whitespace and normalizes quoted CRLF\nPASS csv.ms::CSV preserves whitespace and normalizes quoted CRLF\nRUN csv.ms::CSV quotes delimiters multiline cells and line endings\nPASS csv.ms::CSV quotes delimiters multiline cells and line endings\nRUN csv.ms::CSV malformed records name their line and column\nPASS csv.ms::CSV malformed records name their line and column\nRUN csv.ms::CSV rejects malformed records invalid options and limits\nPASS csv.ms::CSV rejects malformed records invalid options and limits\nRUN csv.ms::CSV quoted fields preserve zero one and many escaped quotes\nPASS csv.ms::CSV quoted fields preserve zero one and many escaped quotes\nRUN csv.ms::CSV escaped fields preserve malformed closing quote locations\nPASS csv.ms::CSV escaped fields preserve malformed closing quote locations\nRUN csv.ms::CSV quote scanning preserves Unicode and exact backslash dot\nPASS csv.ms::CSV quote scanning preserves Unicode and exact backslash dot\nRUN csv.ms::CSV stringify retains invalid option and negative budget errors\nPASS csv.ms::CSV stringify retains invalid option and negative budget errors\n10 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [
