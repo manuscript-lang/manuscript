@@ -1092,8 +1092,70 @@ pub unsafe extern "C-unwind" fn msrt_string_trim_end_view(s: *const StrVal, out:
     unsafe { trim_view(s, false, true, out) }
 }
 
+/// The string over the first `len` bytes of the owned allocation at `ptr`: the same allocation
+/// when it stays on the heap, an inline copy (freeing the buffer) when it fits inline.
+///
+/// # Safety
+/// `ptr` is an owned string allocation of at least `len + 1` bytes.
+unsafe fn finish_owned(ptr: *mut u8, len: usize, ascii: bool) -> StrVal {
+    // SAFETY: caller contract.
+    unsafe {
+        if len <= STR_INLINE_MAX {
+            let r = from_bytes(core::slice::from_raw_parts(ptr, len));
+            free_owned(ptr);
+            return r;
+        }
+        *ptr.add(len) = 0;
+        let r = StrVal::owned(ptr, len);
+        if ascii { r.with_ascii() } else { r }
+    }
+}
+
+/// `trim`, `trim_start` or `trim_end` of a string that dies at the call: the kept bytes move to
+/// the front of the same allocation.
+///
+/// # Safety
+/// `s` is an owned string the callee takes; `out` is writable.
+unsafe fn trimmed_take(s: *mut StrVal, start: bool, end: bool, out: *mut StrVal) {
+    // SAFETY: caller contract.
+    unsafe {
+        if !(*s).owns() {
+            return trimmed(s, start, end).write_to(out);
+        }
+        let (ptr, ascii) = ((*s).ptr_word, (*s).flagged_ascii());
+        let (a, b) = trim_range(bytes(s), start, end);
+        if a > 0 && b > a {
+            core::ptr::copy(ptr.add(a), ptr, b - a);
+        }
+        finish_owned(ptr, b - a, ascii).write_to(out)
+    }
+}
+
+/// `upper` or `lower` of a string that dies at the call: ASCII text maps in place.
+///
+/// # Safety
+/// `s` is an owned string the callee takes; `out` is writable.
+unsafe fn map_case_take(s: *mut StrVal, upper: bool, out: *mut StrVal) {
+    // SAFETY: caller contract.
+    unsafe {
+        if (*s).owns() && is_ascii(&*s) {
+            let (ptr, len) = ((*s).ptr_word, (*s).len());
+            let text = core::slice::from_raw_parts_mut(ptr, len);
+            if upper {
+                text.make_ascii_uppercase();
+            } else {
+                text.make_ascii_lowercase();
+            }
+            return StrVal::owned(ptr, len).with_ascii().write_to(out);
+        }
+        let r = from_buf(map_case(bytes(s), upper));
+        release(&*s);
+        r.write_to(out)
+    }
+}
+
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf fresh takes_self
 pub unsafe extern "C-unwind" fn msrt_string_trim(s: *const StrVal, out: *mut StrVal) {
     // SAFETY: caller passes a writable `out` and live arguments.
     unsafe { (msrt_string_trim_val(s)).write_to(out) }
@@ -1106,7 +1168,7 @@ unsafe fn msrt_string_trim_val(s: *const StrVal) -> StrVal {
 }
 
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf fresh takes_self
 pub unsafe extern "C-unwind" fn msrt_string_trim_start(s: *const StrVal, out: *mut StrVal) {
     // SAFETY: caller passes a writable `out` and live arguments.
     unsafe { (msrt_string_trim_start_val(s)).write_to(out) }
@@ -1119,7 +1181,7 @@ unsafe fn msrt_string_trim_start_val(s: *const StrVal) -> StrVal {
 }
 
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf fresh takes_self
 pub unsafe extern "C-unwind" fn msrt_string_trim_end(s: *const StrVal, out: *mut StrVal) {
     // SAFETY: caller passes a writable `out` and live arguments.
     unsafe { (msrt_string_trim_end_val(s)).write_to(out) }
@@ -1152,7 +1214,7 @@ fn map_case(text: &[u8], upper: bool) -> Vec<u8> {
 }
 
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf fresh takes_self
 pub unsafe extern "C-unwind" fn msrt_string_upper(s: *const StrVal, out: *mut StrVal) {
     // SAFETY: caller passes a writable `out` and live arguments.
     unsafe { (msrt_string_upper_val(s)).write_to(out) }
@@ -1165,7 +1227,7 @@ unsafe fn msrt_string_upper_val(s: *const StrVal) -> StrVal {
 }
 
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf fresh takes_self
 pub unsafe extern "C-unwind" fn msrt_string_lower(s: *const StrVal, out: *mut StrVal) {
     // SAFETY: caller passes a writable `out` and live arguments.
     unsafe { (msrt_string_lower_val(s)).write_to(out) }
@@ -1175,6 +1237,66 @@ pub unsafe extern "C-unwind" fn msrt_string_lower(s: *const StrVal, out: *mut St
 unsafe fn msrt_string_lower_val(s: *const StrVal) -> StrVal {
     // SAFETY: caller passes a live string.
     unsafe { from_buf(map_case(bytes(s), false)) }
+}
+
+/// `trim` of a string that dies at the call (the optimizer rewrites a call whose receiver
+/// drops right after it); same `out` as `msrt_string_trim`.
+///
+/// # Safety
+/// `s` holds an owned string that the callee takes; `out` is writable.
+#[unsafe(no_mangle)]
+// ms: leaf
+pub unsafe extern "C-unwind" fn msrt_string_trim_take(s: *mut StrVal, out: *mut StrVal) {
+    // SAFETY: caller contract.
+    unsafe { trimmed_take(s, true, true, out) }
+}
+
+/// `trim_start` of a string that dies at the call (the optimizer rewrites a call whose receiver
+/// drops right after it); same `out` as `msrt_string_trim_start`.
+///
+/// # Safety
+/// `s` holds an owned string that the callee takes; `out` is writable.
+#[unsafe(no_mangle)]
+// ms: leaf
+pub unsafe extern "C-unwind" fn msrt_string_trim_start_take(s: *mut StrVal, out: *mut StrVal) {
+    // SAFETY: caller contract.
+    unsafe { trimmed_take(s, true, false, out) }
+}
+
+/// `trim_end` of a string that dies at the call (the optimizer rewrites a call whose receiver
+/// drops right after it); same `out` as `msrt_string_trim_end`.
+///
+/// # Safety
+/// `s` holds an owned string that the callee takes; `out` is writable.
+#[unsafe(no_mangle)]
+// ms: leaf
+pub unsafe extern "C-unwind" fn msrt_string_trim_end_take(s: *mut StrVal, out: *mut StrVal) {
+    // SAFETY: caller contract.
+    unsafe { trimmed_take(s, false, true, out) }
+}
+
+/// `upper` of a string that dies at the call (the optimizer rewrites a call whose receiver
+/// drops right after it); same `out` as `msrt_string_upper`.
+///
+/// # Safety
+/// `s` holds an owned string that the callee takes; `out` is writable.
+#[unsafe(no_mangle)]
+// ms: leaf
+pub unsafe extern "C-unwind" fn msrt_string_upper_take(s: *mut StrVal, out: *mut StrVal) {
+    // SAFETY: caller contract.
+    unsafe { map_case_take(s, true, out) }
+}
+
+/// `lower` of a string that dies at the call (the optimizer rewrites a call whose receiver
+/// drops right after it); same `out` as `msrt_string_lower`.
+///
+/// # Safety
+/// `s` holds an owned string that the callee takes; `out` is writable.
+#[unsafe(no_mangle)]
+// ms: leaf
+pub unsafe extern "C-unwind" fn msrt_string_lower_take(s: *mut StrVal, out: *mut StrVal) {
+    // SAFETY: caller contract.
+    unsafe { map_case_take(s, false, out) }
 }
 
 /// `repeat` with `has_max`/`max`; status protocol, ok through `out`.
@@ -1472,7 +1594,7 @@ unsafe fn replace_shrinking(s: *const StrVal, old: &[u8], new: &[u8]) -> StrVal 
 
 /// Replaces every nonoverlapping occurrence; output beyond the string limit faults like `concat`.
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf fresh takes_self
 pub unsafe extern "C-unwind" fn msrt_string_replace(
     s: *const StrVal,
     old: *const StrVal,
@@ -1503,6 +1625,49 @@ pub unsafe extern "C-unwind" fn msrt_string_replace(
             fill_replaced(text, o, n, count)
         };
         r.write_to(out)
+    }
+}
+
+/// `replace` of a string that dies at the call: a replacement no longer than its match is written
+/// over the same allocation, left to right, so the write position never passes the read position.
+/// Other replacements build the result as `replace` does and free the input.
+///
+/// # Safety
+/// `s` holds an owned string that the callee takes; `old`, `new` are live and distinct from `s`;
+/// `out` is writable.
+#[unsafe(no_mangle)]
+// ms: leaf
+pub unsafe extern "C-unwind" fn msrt_string_replace_take(
+    s: *mut StrVal,
+    old: *const StrVal,
+    new: *const StrVal,
+    out: *mut StrVal,
+) {
+    // SAFETY: caller contract.
+    unsafe {
+        let (o, n) = (bytes(old), bytes(new));
+        if !((*s).owns() && !o.is_empty() && n.len() <= o.len()) {
+            msrt_string_replace(s, old, new, out);
+            release(&*s);
+            return;
+        }
+        let (ptr, len) = ((*s).ptr_word, (*s).len());
+        let ascii = (*s).flagged_ascii() && n.is_ascii();
+        let f = Needle::for_text(o, len);
+        let (mut r, mut w) = (0usize, 0usize);
+        while let Some(p) = f.find(core::slice::from_raw_parts(ptr.add(r), len - r)) {
+            core::ptr::copy(ptr.add(r), ptr.add(w), p);
+            w += p;
+            core::ptr::copy_nonoverlapping(n.as_ptr(), ptr.add(w), n.len());
+            w += n.len();
+            r += p + o.len();
+        }
+        if r == 0 {
+            // Nothing to replace: the input is the result.
+            return (*s).alias().write_to(out);
+        }
+        core::ptr::copy(ptr.add(r), ptr.add(w), len - r);
+        finish_owned(ptr, w + len - r, ascii).write_to(out)
     }
 }
 
@@ -2835,6 +3000,70 @@ mod tests {
                         want.as_bytes(),
                         "{count}x{len} by {sep:?}"
                     );
+                }
+            }
+        }
+    }
+
+    /// Every `_take` twin gives exactly what the copying call gives, for inline, heap, non-ASCII
+    /// and static inputs, and results that cross the inline size either way.
+    #[test]
+    fn take_twins_match_the_copying_calls() {
+        let _g = crate::testutil::lock();
+        let texts = [
+            "",
+            " ",
+            "  a  ",
+            "short text",
+            "   a heap string with spaces around it   ",
+            "   héllo wörld, non ascii heap string   ",
+            "ABC def GHI jkl MNO pqr STU vwx",
+            "aaaa bbbb aaaa bbbb aaaa bbbb aaaa",
+        ];
+        let pairs = [
+            ("aaaa", "cc"),
+            ("bbbb", ""),
+            ("a", "a"),
+            ("x", "yy"),
+            ("", "-"),
+            (" ", ""),
+        ];
+        unsafe {
+            for text in texts {
+                let new = || from_bytes(text.as_bytes());
+                let mut out = from_bytes(b"");
+                let mut want = from_bytes(b"");
+                for (take, copy) in [
+                    (
+                        msrt_string_trim_take as unsafe extern "C-unwind" fn(_, _),
+                        msrt_string_trim as unsafe extern "C-unwind" fn(_, _),
+                    ),
+                    (msrt_string_trim_start_take, msrt_string_trim_start),
+                    (msrt_string_trim_end_take, msrt_string_trim_end),
+                    (msrt_string_upper_take, msrt_string_upper),
+                    (msrt_string_lower_take, msrt_string_lower),
+                ] {
+                    let mut s = new();
+                    let src = new();
+                    take(&mut s, &mut out);
+                    copy(&src, &mut want);
+                    assert_eq!(bytes(&out), bytes(&want), "{text:?}");
+                    assert_eq!(out.is_inline(), want.is_inline(), "{text:?}");
+                    release(&out);
+                    release(&want);
+                    release(&src);
+                }
+                for (o, n) in pairs {
+                    let (old, rep) = (from_bytes(o.as_bytes()), from_bytes(n.as_bytes()));
+                    let mut s = new();
+                    let src = new();
+                    msrt_string_replace_take(&mut s, &old, &rep, &mut out);
+                    msrt_string_replace(&src, &old, &rep, &mut want);
+                    assert_eq!(bytes(&out), bytes(&want), "{text:?} {o:?}->{n:?}");
+                    assert_eq!(out.is_inline(), want.is_inline(), "{text:?} {o:?}->{n:?}");
+                    release(&out);
+                    release(&want);
+                    release(&src);
                 }
             }
         }

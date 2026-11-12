@@ -296,3 +296,13 @@ The earlier run of this case was 281 to 349 ms with seven lookups a pass; C is 2
 
 - `self.left?.insert(key)` took the record, unboxed the child into a slot, called, boxed it again with a new allocation and refilled the field. The payload of a recursive `Optional` is already in memory, in the box, so a `var` call now gets the box's address (`opt.addr`, `alias_payload_addr` in `crates/ms-lower/src/alias.rs`) and changes the child where it lies. Only a boxed optional has such an address; an inline payload keeps the take and put-back.
 - The remaining 34M instructions against C are not analysed.
+
+## 2026-11-12: string edits take a dying receiver (track 2 take, text edits)
+
+Case e of `keyed.ms` (`trim`, `replace`, `upper`, `contains` on 300k lines), before and after the `takes_self` twins for `trim`, `trim_start`, `trim_end`, `upper`, `lower` and `replace` (same machine; callgrind for instructions, minimum of 6 runs for wall time). Here `trim` already lends a view, so the owned copy made for `replace` and the `replace` result are the two receivers that die at a call.
+
+| case | instructions before | after | wall before | after | C |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| e: text edits, 300k lines | 954M | 554M | 39 ms | 28 ms | 334M, 31 ms |
+
+Not done in this step: `sorted`, `reversed` and `filter` takes (no measured gap, and `sortgen` already copies the list itself), and lending `Map.values`, `keys`, `entries` and `List.slice`. A lent `values` or `keys` list still has to be a contiguous list, so only string payloads can be views (`msrt_map_values_view` exists); a lent `slice` needs a list view (a `cap == 0` list), which every list drop path in both backends must skip.

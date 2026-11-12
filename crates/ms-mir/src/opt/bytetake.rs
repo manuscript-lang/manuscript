@@ -1,10 +1,10 @@
-//! The `bytetake` pass: `decode_utf8` of a `Bytes` that dies at the call reuses its buffer.
+//! The `bytetake` pass: a derived result of a value that dies at the call reuses its storage.
 //!
-//! `r = bytes_decode_utf8(b, out); ...; drop b` copies the whole buffer into a new string and then
-//! frees it. When `b` is owned and nothing reads it between the call and its drop, the call
-//! becomes `bytes_decode_utf8_take`, which moves `b` in and turns the same allocation into the
-//! string, so the drop disappears. A take of a dying value is a move, so nothing observable
-//! changes.
+//! `r = f(b, .., out); ...; drop b` copies `b` into a new allocation and then frees it. When `b`
+//! is owned and nothing reads it between the call and its drop, and `f` declares a `<f>_take`
+//! twin (`// ms: takes_self`: `decode_utf8`, `trim`, `upper`, `lower`, `replace`), the call
+//! becomes the twin, which moves `b` in and builds the result in the same allocation, so the
+//! drop disappears. A take of a dying value is a move, so nothing observable changes.
 
 use crate::ir::{ExternRole, Imm, Mode, Module, Op};
 use std::collections::HashSet;
@@ -12,7 +12,6 @@ use std::collections::HashSet;
 /// Runs the pass; returns whether any call became a take.
 pub fn run(m: &mut Module) -> bool {
     let mut changed = false;
-    let mut take = None;
     for fi in 0..m.funcs.len() {
         let f = &m.funcs[fi];
         let mut owned = vec![false; f.values.len()];
@@ -32,9 +31,9 @@ pub fn run(m: &mut Module) -> bool {
         for (bi, b) in f.blocks.iter().enumerate() {
             for (ii, inst) in b.insts.iter().enumerate().rev() {
                 if let (Op::CallRt, Imm::Ext(e), Some(&a)) = (inst.op, inst.imm, inst.args.first())
-                    && m.externs[e.index()].role == ExternRole::BytesDecodeUtf8
+                    && m.externs[e.index()].role == ExternRole::TakesDying
                     && owned[a.index()]
-                    && inst.args[1] != a
+                    && inst.args[1..].iter().all(|&o| o != a)
                 {
                     let (nb, j) = next[a.index()];
                     if nb == bi && b.insts[j].op == Op::Drop {
@@ -49,17 +48,19 @@ pub fn run(m: &mut Module) -> bool {
         if sites.is_empty() {
             continue;
         }
-        let ext = *take.get_or_insert_with(|| {
-            let (_, _, e) = sites[0];
-            let mut def = m.externs[e.index()].clone();
-            def.name = "msrt_bytes_decode_utf8_take".to_string();
-            def.params[0].mode = Mode::Move;
-            def.role = ExternRole::None;
-            m.add_extern(def)
-        });
+        let twins: Vec<_> = sites
+            .iter()
+            .map(|&(_, _, e)| {
+                let mut def = m.externs[e.index()].clone();
+                def.name = format!("{}_take", def.name);
+                def.params[0].mode = Mode::Move;
+                def.role = ExternRole::None;
+                m.add_extern(def)
+            })
+            .collect();
         let f = &mut m.funcs[fi];
         let drops: HashSet<(usize, usize)> = sites.iter().map(|&((bi, _), j, _)| (bi, j)).collect();
-        for &((bi, ii), _, _) in &sites {
+        for (&((bi, ii), _, _), &ext) in sites.iter().zip(&twins) {
             f.blocks[bi].insts[ii].imm = Imm::Ext(ext);
         }
         for (bi, blk) in f.blocks.iter_mut().enumerate() {
