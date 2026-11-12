@@ -108,8 +108,10 @@ fn sort_records() -> i64 {
     let mut xs = Vec::new();
     let mut x = 1;
     for i in 0..500000 { x = lcg(x); xs.push(Event { id: i, kind: x % 1000, name: Cow::Borrowed("an-event-name-over-sixteen-bytes"), score: i % 13 }); }
-    xs.sort_by(|a, b| a.kind.cmp(&b.kind));
-    xs[0].kind + xs[xs.len() - 1].kind + xs[1000].id % 7
+    // `sorted` returns a copy, so the equal work is a clone and a sort.
+    let mut ys = xs.clone();
+    ys.sort_by(|a, b| a.kind.cmp(&b.kind));
+    ys[0].kind + ys[ys.len() - 1].kind + ys[1000].id % 7
 }
 
 struct Order { #[allow(dead_code)] id: i64, tags: Vec<String>, lines: Vec<Pair<i64, i64>> }
