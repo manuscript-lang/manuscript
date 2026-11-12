@@ -534,11 +534,134 @@ impl Inflater {
         Ok(left - take)
     }
 
+    /// The bulk of a block, with the bit buffer in locals and the output written by index into a
+    /// zero-extended window of `out`, so a literal is one store and no step checks capacity. While
+    /// 16 input bytes remain, one refill leaves at least 56 bits, enough for a whole
+    /// length/distance pair (48 bits at most), so no step can run out of input and none needs a
+    /// rollback. Returns `true` at the end of the block, `false` when the careful loop must finish
+    /// (input nearly spent or the limit passed).
+    #[inline(never)]
+    fn codes_fast(&mut self, input: &[u8], out: &mut Vec<u8>, limit: usize) -> Result<bool, Stop> {
+        const LIT_MASK: u64 = (1 << LIT_BITS) - 1;
+        const DIST_MASK: u64 = (1 << DIST_BITS) - 1;
+        const WINDOW: usize = 1 << 17;
+        let Bits {
+            mut buf,
+            mut cnt,
+            mut pos,
+        } = self.bits;
+        let base = self.member_base;
+        let (lit, dist_table) = (self.lit.as_slice(), self.dist.as_slice());
+        // Lets the primary-table lookups below skip their bounds checks.
+        assert!(lit.len() >= 1 << LIT_BITS && dist_table.len() >= 1 << DIST_BITS);
+        let mut result = Ok(false);
+        'window: while pos + 16 <= input.len() && out.len() <= limit {
+            let start = out.len();
+            out.resize(start + WINDOW + MAX_MATCH + 16, 0);
+            let dst = out.as_mut_slice();
+            let end = start + WINDOW;
+            let mut w = start;
+            while w < end {
+                if pos + 16 > input.len() || w > limit {
+                    break;
+                }
+                let word = u64::from_le_bytes(input[pos..pos + 8].try_into().expect("eight bytes"));
+                buf |= word << cnt;
+                let take = (63 - cnt) >> 3;
+                pos += take as usize;
+                cnt += take * 8;
+                let mut e = lit[(buf & LIT_MASK) as usize];
+                if e & KIND_MASK == SUB {
+                    e = lit[(e >> 16) as usize
+                        + ((buf >> LIT_BITS) as usize & ((1usize << ((e >> 4) & 15)) - 1))];
+                }
+                let kind = e & KIND_MASK;
+                if kind == BAD {
+                    result = Err(Fail::Invalid.into());
+                    out.truncate(w);
+                    break 'window;
+                }
+                buf >>= e & 15;
+                cnt -= e & 15;
+                if kind == LIT {
+                    dst[w] = (e >> 16) as u8;
+                    w += 1;
+                    for _ in 0..5 {
+                        let mut e = lit[(buf & LIT_MASK) as usize];
+                        if e & KIND_MASK == SUB {
+                            e = lit[(e >> 16) as usize
+                                + ((buf >> LIT_BITS) as usize & ((1usize << ((e >> 4) & 15)) - 1))];
+                        }
+                        if e & KIND_MASK != LIT || cnt < 15 {
+                            break;
+                        }
+                        buf >>= e & 15;
+                        cnt -= e & 15;
+                        dst[w] = (e >> 16) as u8;
+                        w += 1;
+                    }
+                    continue;
+                }
+                if kind == EOB {
+                    out.truncate(w);
+                    result = Ok(true);
+                    break 'window;
+                }
+                let extra = (e >> 4) & 15;
+                let length = (e >> 16) as usize + (buf & ((1u64 << extra) - 1)) as usize;
+                buf >>= extra;
+                cnt -= extra;
+                let mut d = dist_table[(buf & DIST_MASK) as usize];
+                if d & KIND_MASK == SUB {
+                    d = dist_table[(d >> 16) as usize
+                        + ((buf >> DIST_BITS) as usize & ((1usize << ((d >> 4) & 15)) - 1))];
+                }
+                if d & KIND_MASK == BAD || !self.has_dist {
+                    result = Err(Fail::Invalid.into());
+                    out.truncate(w);
+                    break 'window;
+                }
+                buf >>= d & 15;
+                cnt -= d & 15;
+                let dextra = (d >> 4) & 15;
+                let dist = (d >> 16) as usize + (buf & ((1u64 << dextra) - 1)) as usize;
+                buf >>= dextra;
+                cnt -= dextra;
+                if dist > w - base {
+                    result = Err(Fail::Invalid.into());
+                    out.truncate(w);
+                    break 'window;
+                }
+                let from = w - dist;
+                if dist >= 16 && length <= 16 {
+                    // The slack past `w` absorbs the over-copy; the source is entirely behind `w`.
+                    dst.copy_within(from..from + 16, w);
+                } else if dist >= length {
+                    dst.copy_within(from..from + length, w);
+                } else if dist == 1 {
+                    let b = dst[from];
+                    dst[w..w + length].fill(b);
+                } else {
+                    for i in 0..length {
+                        dst[w + i] = dst[from + i];
+                    }
+                }
+                w += length;
+            }
+            out.truncate(w);
+        }
+        self.bits = Bits { buf, cnt, pos };
+        result
+    }
+
     /// Decodes one Huffman block through its end-of-block code.
     fn codes(&mut self, input: &[u8], out: &mut Vec<u8>, limit: usize) -> Result<(), Stop> {
         let lit_mask = (1u64 << LIT_BITS) - 1;
         let dist_mask = (1u64 << DIST_BITS) - 1;
         loop {
+            if self.codes_fast(input, out, limit)? {
+                return Ok(());
+            }
             if out.len() > limit {
                 return Err(Fail::Limit.into());
             }
@@ -562,7 +685,7 @@ impl Inflater {
             if kind == LIT {
                 out.push((e >> 16) as u8);
                 // Up to two more literals from the same refill, while a whole code is buffered.
-                for _ in 0..2 {
+                for _ in 0..5 {
                     if self.bits.cnt < 15 {
                         break;
                     }
