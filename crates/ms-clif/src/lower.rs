@@ -39,6 +39,11 @@ fn flags() -> MemFlagsData {
 /// an access with a non-wrapping, in-bounds offset. It is only a marker for that translation:
 /// Cranelift would treat the region as disjoint from all other memory.
 pub const ELEM_REGION: u32 = 1;
+/// Like [`ELEM_REGION`], for a list whose elements are not numbers or `Bool`s (strings, lists,
+/// records, options). A list buffer holds one element type, so a buffer of numbers never holds
+/// the words of an element of this kind, such as the `{ptr, len, cap}` of an inner list; the
+/// translation uses the split for type-based alias analysis.
+pub const ELEM_AGG_REGION: u32 = 2;
 
 /// Where a wide value (`Map`, `Set`: seven words) also lives in memory, so calls take its
 /// address instead of spilling a copy. A home on a block parameter holds for the rest of the
@@ -365,7 +370,7 @@ impl<'a, 'm> Lower<'a, 'm> {
     }
 
     /// Flags of an access to the list element at an address from `elem_addr`.
-    fn elem_flags(&mut self, mode: Op) -> MemFlagsData {
+    fn elem_flags(&mut self, mode: Op, elem: Ty) -> MemFlagsData {
         // Cranelift reads a region as disjoint from every other one, untagged accesses included
         // (a tagged store no untagged load observes is dead), so only functions LLVM translates
         // carry it.
@@ -374,8 +379,13 @@ impl<'a, 'm> Lower<'a, 'm> {
         {
             return flags();
         }
+        let user_id = if self.g.m.types.is_scalar(elem) {
+            ELEM_REGION
+        } else {
+            ELEM_AGG_REGION
+        };
         let region = self.b.func.dfg.alias_regions.insert(ir::AliasRegionData {
-            user_id: ELEM_REGION,
+            user_id,
             description: "list element".into(),
         });
         flags().with_alias_region(Some(region))

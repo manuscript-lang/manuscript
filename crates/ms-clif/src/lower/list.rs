@@ -98,11 +98,11 @@ impl<'a, 'm> Lower<'a, 'm> {
             Op::ListLen => vec![self.a(inst, 0)[1]],
             Op::ListGet | Op::ListGetNn | Op::ListGetU => {
                 let lt = f.ty(inst.args[0]);
-                let (_, leaves, size) = self.elem_info(lt);
+                let (e, leaves, size) = self.elem_info(lt);
                 let l = self.a(inst, 0);
                 let i = self.a(inst, 1)[0];
                 let at = self.elem_addr(l[0], l[1], i, size, inst.op);
-                let mf = self.elem_flags(inst.op);
+                let mf = self.elem_flags(inst.op, e);
                 self.load_leaves_with(mf, at, 0, &leaves)
             }
             Op::ListSet | Op::ListSetNn | Op::ListSetU | Op::ListFill => {
@@ -112,7 +112,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let i = self.a(inst, 1)[0];
                 let v = self.a(inst, 2);
                 let at = self.elem_addr(l[0], l[1], i, size, inst.op);
-                let mf = self.elem_flags(inst.op);
+                let mf = self.elem_flags(inst.op, e);
                 if inst.op != Op::ListFill && self.g.m.needs_drop(e) {
                     let old = self.load_leaves_with(mf, at, 0, &leaves);
                     self.drop_value(e, &old);
