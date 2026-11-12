@@ -349,7 +349,6 @@ fn grow_base(chunk: usize) -> usize {
 }
 
 /// Whether `p` lies in this heap's reservation (small pages or a growth chunk).
-#[cfg(target_os = "linux")]
 #[inline(always)]
 fn owns(p: *mut u8) -> bool {
     page_word(p).is_some() || grow_chunk_of(p).is_some()
@@ -1323,20 +1322,70 @@ mod tests {
     }
 }
 
-/// Rust's global allocator for compiled programs (installed by `ms-native` on Linux).
+/// Rust's global allocator for compiled programs (installed by `ms-native` on every platform).
 ///
 /// The standard-library natives (`Vec`, `String`, `HashMap` inside `ms-std-*`) then share the
 /// runtime's size-class allocator instead of libc's, which is several times slower per call. Only
 /// threads that claimed a heap (isolates) allocate from it; every other thread uses the system
 /// allocator. A block any thread frees is routed to its page's owner.
-#[cfg(target_os = "linux")]
 pub struct StdHeap;
 
-#[cfg(target_os = "linux")]
+/// The system allocator behind [`StdHeap`]. The runtime's large blocks come from the C library's
+/// `malloc` and return to its `free`, so a block must come from the same place on every platform.
+/// Rust's `System` is `malloc` on Unix but `HeapAlloc` on Windows, so Windows uses the C library
+/// directly for alignments it serves.
+#[cfg(not(windows))]
+use std::alloc::System as SysHeap;
+
+#[cfg(windows)]
+struct SysHeap;
+
+#[cfg(windows)]
+// SAFETY: C library `malloc`, `calloc`, `realloc` and `free` serve alignments up to 16; larger
+// ones stay with `System`, and every call routes by the layout's alignment, so a block is
+// released by the allocator that produced it.
+unsafe impl core::alloc::GlobalAlloc for SysHeap {
+    unsafe fn alloc(&self, l: core::alloc::Layout) -> *mut u8 {
+        if l.align() <= 16 {
+            // SAFETY: forwarded.
+            unsafe { sys::malloc(l.size()).cast() }
+        } else {
+            // SAFETY: forwarded.
+            unsafe { std::alloc::System.alloc(l) }
+        }
+    }
+    unsafe fn alloc_zeroed(&self, l: core::alloc::Layout) -> *mut u8 {
+        if l.align() <= 16 {
+            // SAFETY: forwarded.
+            unsafe { sys::calloc(1, l.size()).cast() }
+        } else {
+            // SAFETY: forwarded.
+            unsafe { std::alloc::System.alloc_zeroed(l) }
+        }
+    }
+    unsafe fn dealloc(&self, p: *mut u8, l: core::alloc::Layout) {
+        if l.align() <= 16 {
+            // SAFETY: forwarded.
+            unsafe { sys::free(p.cast()) }
+        } else {
+            // SAFETY: forwarded.
+            unsafe { std::alloc::System.dealloc(p, l) }
+        }
+    }
+    unsafe fn realloc(&self, p: *mut u8, l: core::alloc::Layout, n: usize) -> *mut u8 {
+        if l.align() <= 16 {
+            // SAFETY: forwarded.
+            unsafe { sys::realloc(p.cast(), n).cast() }
+        } else {
+            // SAFETY: forwarded.
+            unsafe { std::alloc::System.realloc(p, l, n) }
+        }
+    }
+}
+
 mod std_heap {
-    use super::{LARGE_MAX, MAX_SMALL, StdHeap, has_heap, owns};
+    use super::{LARGE_MAX, MAX_SMALL, StdHeap, SysHeap as System, has_heap, owns};
     use core::alloc::{GlobalAlloc, Layout};
-    use std::alloc::System;
 
     /// Whether the heap may serve `layout` on this thread. Counting builds keep the standard
     /// library out of the heap so leak checks see only program allocations. Blocks outlive the
