@@ -50,7 +50,7 @@ int main(void) {
     for (size_t i = 0; i < regions.used; i++) printf("%.*s %lld %lld\n", (int)rr[i].len, rr[i].key, (long long)rr[i].count, (long long)rr[i].sum);
     for (size_t i = 0; i < products.used; i++) products.slots[i].count = 0;
     Entry *pp = malloc(products.used * sizeof(Entry)); size_t k = 0;
-    for (size_t i = 0; i < products.cap; i++) if (products.slots[i].key) { pp[k] = products.slots[i]; pp[k].count = pp[k].sum; k++; }
+    for (size_t i = 0; i < products.used; i++) if (products.slots[i].key) { pp[k] = products.slots[i]; pp[k].count = pp[k].sum; k++; }
     qsort(pp, k, sizeof(Entry), by_count_then_key);
     for (int i = 0; i < 5; i++) printf("%.*s %lld\n", (int)pp[i].len, pp[i].key, (long long)pp[i].count);
     return 0;

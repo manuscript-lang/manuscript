@@ -252,7 +252,10 @@ impl<'a> FnLower<'a> {
         let vd = vd.ok_or_else(|| Error::new("a set has no values"))?;
         let ks = self.borrow_slot(kv);
         self.at(e.pos);
-        let p = self.call_runtime("msrt_map_get_ptr", &[mv, kd, vd, ks], MTy::PTR)?;
+        let probe = self
+            .word_map_symbol("msrt_map_get_ptr", mt)
+            .unwrap_or("msrt_map_get_ptr");
+        let p = self.call_runtime(probe, &[mv, kd, vd, ks], MTy::PTR)?;
         let missing = self
             .b
             .emit(Op::PtrIsNull, &[p], Imm::None, Some(MTy::BOOL))
@@ -345,7 +348,10 @@ impl<'a> FnLower<'a> {
         let vd = vd.ok_or_else(|| Error::new("a set has no values"))?;
         let ks = self.borrow_slot(kv);
         self.at(e.pos);
-        let p = self.call_runtime("msrt_map_get_ptr", &[mv, kd, vd, ks], MTy::PTR)?;
+        let probe = self
+            .word_map_symbol("msrt_map_get_ptr", mt)
+            .unwrap_or("msrt_map_get_ptr");
+        let p = self.call_runtime(probe, &[mv, kd, vd, ks], MTy::PTR)?;
         let missing = self
             .b
             .emit(Op::PtrIsNull, &[p], Imm::None, Some(MTy::BOOL))

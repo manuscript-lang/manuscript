@@ -2,12 +2,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-typedef struct { long k, count, sum, max; char used; } S;
-static long case_a(void) { long cap = 2048; S *tab = calloc(cap, sizeof(S)); long x = 12345;
+#include "ordmap.h"
+typedef struct { long count, sum, max; } S;
+ORDMAP(StatMap, S)
+static long case_a(void) { StatMap m = {0}; long x = 12345;
   for (long i = 0; i < 2000000; i++) { x = (x * 1103515245 + 12345) % 2147483648; long k = x % 1000;
-    unsigned long h = ((unsigned long)k * 0x9E3779B97F4A7C15ul) >> 53; while (tab[h].used && tab[h].k != k) h = (h + 1) & (cap - 1);
-    S *s = &tab[h]; if (!s->used) { s->used = 1; s->k = k; } s->count++; s->sum += i % 100; if (i % 100 > s->max) s->max = i % 100; }
-  long t = 0; for (long i = 0; i < cap; i++) if (tab[i].used) t += tab[i].count + tab[i].sum + tab[i].max; return t; }
+    S *s = StatMap_at(&m, k); s->count++; s->sum += i % 100; if (i % 100 > s->max) s->max = i % 100; }
+  long t = 0; for (size_t i = 0; i < m.used; i++) if (m.slots[i].hash) t += m.slots[i].value.count + m.slots[i].value.sum + m.slots[i].value.max; return t; }
 typedef struct E { int tag; long v; struct E *l, *r; } E;
 static E *mk(int tag, long v, E *l, E *r) { E *e = malloc(sizeof(E)); e->tag = tag; e->v = v; e->l = l; e->r = r; return e; }
 static E *build(long d, long s) { if (d == 0) return mk(0, s % 10, 0, 0); long k = s % 5;
@@ -28,8 +29,9 @@ static long case_e(void) { long t = 0; char line[96], b[128];
   for (long i = 0; i < 300000; i++) { int n = snprintf(line, 96, "  Hello, World number %ld  ", i); char *a = line; while (isspace((unsigned char)*a)) a++, n--; while (n && isspace((unsigned char)a[n - 1])) n--; a[n] = 0;
     char *p = strstr(a, "World"); size_t m = 0; if (p) { memcpy(b, a, p - a); m = p - a; memcpy(b + m, "there", 5); m += 5; strcpy(b + m, p + 5); } else strcpy(b, a);
     for (char *q = b; *q; q++) *q = toupper((unsigned char)*q); if (strstr(b, "THERE")) t += strlen(b); } return t; }
-static long case_f(void) { long cap = 1 << 19; long *tab = malloc(cap * 8); memset(tab, 0xff, cap * 8); long x = 12345, dup = 0, len = 0;
+typedef struct { char unused; } Unit;
+ORDMAP(IntSet, Unit)
+static long case_f(void) { IntSet s = {0}; long x = 12345, dup = 0;
   for (long i = 0; i < 3000000; i++) { x = (x * 1103515245 + 12345) % 2147483648; long k = x % 200000;
-    unsigned long h = ((unsigned long)k * 0x9E3779B97F4A7C15ul) >> 45; while (tab[h] != -1 && tab[h] != k) h = (h + 1) & (cap - 1);
-    if (tab[h] == k) dup++; else { tab[h] = k; len++; } } return dup + len; }
+    size_t before = s.len; IntSet_at(&s, k); if (s.len == before) dup++; } return dup + s.len; }
 int main(void) { printf("%ld %ld %ld %ld %ld %ld\n", case_a(), case_b(), case_c(), case_d(), case_e(), case_f()); return 0; }

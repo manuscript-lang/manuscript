@@ -284,7 +284,6 @@ One probe remains per round besides the `contains` (the first statement's, after
 | with probe reuse | 87 to 105 ms | 778M |
 
 The earlier run of this case was 281 to 349 ms with seven lookups a pass; C is 22 to 33 ms. What is left is two probes a round at about 95 to 125 instructions each, from `value_ptr_k` deriving the slot layout from the descriptors on every call; caching the layout in the map header is the next step. Linux, same build and machine as above.
-
 ## 2026-11-12, contains then update (stacked on map entry reuse)
 
 `fuse_contains` in `simplify`: a join whose first probe reads a map that arrives as a block parameter takes the entry address from its predecessors instead, when one of them holds an earlier probe or `contains` of the same key (a `contains` becomes the equivalent probe); the other predecessor, normally the insert path, probes before it branches. The common present-key path then probes once per round.
@@ -296,6 +295,29 @@ The earlier run of this case was 281 to 349 ms with seven lookups a pass; C is 2
 
 The Int case is now below the single `stats.update(...)` form (305M). A lookup is still about 80 instructions on a hit; its cost is spread over hashing, the string tag decode, the probe loop and the frame, not one hot spot, so no further single change is planned.
 
+## 2026-11-12, word-map `get` and fixed key layouts
+
+`m.get(k)` and `m[k]` called the general `msrt_map_get_ptr` even on `Map[Int, Int]`, where `contains` and `add` already used the inlinable `_w8` probes; they now use `word_map_symbol` too. The general probe also derived the slot layout from both descriptors on every call; for an `Int` or `String` key and a value aligned to at most a word it is now two additions.
+
+| program (callgrind Ir, wall min of 3) | before | after |
+| --- | ---: | ---: |
+| `intmap.ms` (`Map[Int, Int]`, 2M counter updates, 2M `contains`) | 380.7M, 86 ms | 292.9M, 78 ms |
+| `keyed.ms` case a (`Map[Int, Stat]`, with the join fusion above) | 281M | 262.7M |
+| `containers.ms` case a (`Map[String, Stat]`, same) | 415M | 379.1M |
+
+`msrt_map_add_w8` is 51 instructions a call (103M of `intmap`), the next cost there. Linux, same build and machine.
+
+## 2026-11-12, equivalent C twins for `Map` and `Set`
+
+The map and set C twins did less than `Map` promises: `keyed.c` cases a and f used a table presized for the key count (no growth), a sentinel (`-1` cannot be a key), no insertion order and no removal; `intmap.c` grew but had no order or removal. They now share `c/ordmap.h`: dense entries in insertion order, an index of tag-and-position words, growth (compacting first when over half the entries are holes), `remove`, any `long` key, one `_at` that inserts a zeroed value like `update`. Outputs match the old twins.
+
+| program (callgrind Ir) | old C twin | equivalent C | ms |
+| --- | ---: | ---: | ---: |
+| `keyed.ms` case a (`Map[Int, Stat]`) | 98.4M | 163.0M | 262.7M |
+| `keyed.ms` case f (`Set[Int]`) | 92.1M | 176.0M | 182.8M |
+| `intmap.ms` | 136M | 257.4M | 292.9M |
+
+Against the equivalent C the gaps are 1.6x, 1.04x and 1.14x in instructions; `Set[Int]` wall time is at C (58 to 84 ms against 77 ms, min of 5 on a noisy shared VM). Earlier "gap to C" figures for maps and sets in this file and in `proposals/c-parity-structure.md` compare against the old twins and overstate the gap. The `Map[String, Stat]` twin (`containers.c`) is not in the repository, so that row has no equivalent C yet.
 ## 2026-11-12: var calls through boxed optional fields
 
 `tree.ms` is `mixed.ms` case c on its own: 200k inserts into a binary tree whose links are `Node?`, through `fn var Node.insert`. Same machine; callgrind instructions, allocations from memcheck, min-of-7 wall time.

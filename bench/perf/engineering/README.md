@@ -1,6 +1,6 @@
 # Engineering tasks
 
-Everyday programs an engineer writes in an afternoon, in Manuscript, C and Rust, on 15 to 40 MB of generated input: log statistics, CSV group-by, word frequency, sorting records, and substring search. Each program reads stdin and prints a small report; every sample's output must match the C version byte for byte. Rust uses `std` only (no crates), so its CSV parser is hand written; C uses an open-addressing table and `qsort`. Manuscript versions use the standard library idiomatically (`split`, `Map`, `sorted`, `@std/data/csv.ms`).
+Everyday programs an engineer writes in an afternoon, in Manuscript, C and Rust, on 15 to 40 MB of generated input: log statistics, CSV group-by, word frequency, sorting records, and substring search. Each program reads stdin and prints a small report; every sample's output must match the C version byte for byte. Rust uses `std` only (no crates), so its CSV parser is hand written; C uses an insertion-ordered table with owned (copied) keys that grows and compacts like `Map` (`c/common.h`; before 2026-11-12 it borrowed keys and iterated in slot order) and `qsort`. Manuscript versions use the standard library idiomatically (`split`, `Map`, `sorted`, `@std/data/csv.ms`).
 
 ```sh
 MS=./target/release/ms sh bench/perf/engineering/run.sh 5
