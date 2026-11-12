@@ -617,6 +617,15 @@ fn a_record_returned_through_memory_keeps_an_unknown_list_length() {
     assert_eq!(exec(&after), want, "{}", print_module(&after));
 }
 
+/// Two loads of one memory slot read the same list when nothing stores into the slot between them.
+#[test]
+fn loads_of_one_slot_share_a_list_length() {
+    let (b, a) = optimized("slot_loads_share_length.mir");
+    assert_eq!(count(&b, "list.get"), 1);
+    assert_eq!(count(&a, "list.get.u"), 1, "{}", print_module(&a));
+    assert_eq!(exec(&b), exec(&a));
+}
+
 /// `n` list-mapping loops one after another, each over the list the one before built.
 fn loop_chain(n: usize) -> String {
     let mut s = String::from(
