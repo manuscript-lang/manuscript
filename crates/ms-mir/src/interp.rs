@@ -620,6 +620,7 @@ impl<'m> Interp<'m> {
             | Op::OptGet
             | Op::OptUnwrap
             | Op::OptUnbox
+            | Op::OptAddr
             | Op::StrLen
             | Op::StrByte
             | Op::StrAscii => self.optionals_and_strings(f, regs, inst),

@@ -564,6 +564,17 @@ impl<'a> FnLower<'a> {
                 vals.push(slot);
                 continue;
             }
+            if !a.own
+                && let Some(at) = args
+                    .places
+                    .get(i)
+                    .cloned()
+                    .flatten()
+                    .and_then(|p| self.alias_payload_addr(&p))
+            {
+                vals.push(at);
+                continue;
+            }
             if vars.len() == 1
                 && !a.own
                 && let Some(place) = args.places.get(i).cloned().flatten()
@@ -748,6 +759,11 @@ impl<'a> FnLower<'a> {
         slots_out: &mut Vec<VarArgument>,
     ) -> Value {
         let ty = self.ty_of(a.v);
+        if !a.own
+            && let Some(at) = place.and_then(|p| self.alias_payload_addr(p))
+        {
+            return at;
+        }
         if !a.own
             && let Some(slot) = place
                 .filter(|p| matches!(p.kind, ExprKind::Name(_)))

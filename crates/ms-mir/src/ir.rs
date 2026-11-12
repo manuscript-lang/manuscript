@@ -284,7 +284,7 @@ pub enum Op {
     // Lists.
     ListNew, ListLit, ListConst, ListLen, ListGet, ListGetNn, ListGetU, ListTake, ListSet, ListSetNn, ListSetU, ListFill, ListPush, ListDropLast, ListRelease,
     // Optionals.
-    OptSome, OptView, OptNone, OptIsSome, OptGet, OptUnwrap, OptUnbox,
+    OptSome, OptView, OptNone, OptIsSome, OptGet, OptUnwrap, OptUnbox, OptAddr,
     // Strings.
     StrLen, StrByte, StrAscii,
     // Closures and interface views.

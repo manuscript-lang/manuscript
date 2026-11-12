@@ -1138,7 +1138,8 @@ impl<'a, 'm> Lower<'a, 'm> {
             | Op::OptIsSome
             | Op::OptGet
             | Op::OptUnwrap
-            | Op::OptUnbox => self.optionals(f, inst),
+            | Op::OptUnbox
+            | Op::OptAddr => self.optionals(f, inst),
             Op::StrByte | Op::StrAscii | Op::StrLen => self.strings(inst),
             Op::ClosureNew
             | Op::ClosureCap

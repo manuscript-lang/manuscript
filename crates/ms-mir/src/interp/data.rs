@@ -238,6 +238,11 @@ impl Interp<'_> {
                     None => return Err(Raw::internal("opt.get on none")),
                 }
             }
+            Op::OptAddr => {
+                return Err(Raw::internal(
+                    "interior pointers are not supported by the interpreter",
+                ));
+            }
             Op::OptUnbox => {
                 let Val::Opt(Some(v)) = &ops.regs[inst.args[0].index()] else {
                     return Err(Raw::internal("opt.unbox of none"));

@@ -143,7 +143,8 @@ impl InstCheck<'_, '_> {
             | Op::OptIsSome
             | Op::OptGet
             | Op::OptUnwrap
-            | Op::OptUnbox => self.optionals(),
+            | Op::OptUnbox
+            | Op::OptAddr => self.optionals(),
             Op::StrLen | Op::StrByte | Op::StrAscii => self.strings(),
             Op::ClosureNew
             | Op::ClosureCap
@@ -772,6 +773,13 @@ impl InstCheck<'_, '_> {
                     self.m.opt_inner(self.t(0)).is_some()
                         && self.res == self.m.opt_inner(self.t(0)),
                     "yields the payload type",
+                )
+            }
+            Op::OptAddr => {
+                self.arity(1)?;
+                self.want(
+                    self.m.opt_inner(self.t(0)).is_some() && self.res == Some(Ty::PTR),
+                    "opt.addr takes a present optional and yields a ptr to its payload",
                 )
             }
             _ => unreachable!("optionals is only called for its own ops"),
