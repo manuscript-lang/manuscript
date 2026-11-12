@@ -1498,6 +1498,21 @@ impl<'a> FnLower<'a> {
         true
     }
 
+    /// Hands the held scrutinee `uid`, which lives in memory, to the pass to close with `closer`
+    /// (shielded, errors dropped) where its scope ends.
+    pub fn own_hidden_slot(&mut self, uid: usize, closer: &crate::close::CloseKind) -> bool {
+        let l = self.locals[&uid];
+        let (Some(ptr), true) = (l.slot, self.raw_owners && !self.dead) else {
+            return false;
+        };
+        let thunk = self.close_thunk(closer, l.ty, true);
+        if let Some(scope) = self.scopes.last_mut() {
+            scope.retain(|u| *u != uid);
+        }
+        self.own_raw_kind(uid, ptr, thunk.index() as u32 + 2);
+        true
+    }
+
     /// Makes the innermost scope drop `var`, so a `return` or `break` leaving it releases it too.
     pub fn adopt_hidden(&mut self, var: ms_mir::builder::Var, ty: MTy) -> usize {
         let uid = usize::MAX - self.locals.len();
