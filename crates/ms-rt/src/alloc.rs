@@ -256,6 +256,8 @@ fn ensure_region() -> bool {
         if !sys::commit(table, NUM_PAGES * 4) {
             return;
         }
+        sys::prefer_huge_pages(pages, PAGES_SIZE);
+        sys::prefer_huge_pages(grow, GROW_SIZE * GROW_CHUNKS);
         TABLE.store(table.cast(), Ordering::Relaxed);
         GROW_BASE.store(grow as usize, Ordering::Relaxed);
         // Published last: a reader that sees `BASE` sees the rest.

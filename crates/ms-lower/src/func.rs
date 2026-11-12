@@ -119,6 +119,9 @@ pub(crate) struct FnLower<'a> {
     pub raw_owners: bool,
     /// Locals whose drop is left to `elaborate`.
     pub raw_owned: std::collections::HashSet<usize>,
+    /// Reassigned locals of a scope that nothing moves: no marker until a path leaves the scope,
+    /// where the value the variable holds then is registered (see `drop_scope_locals`).
+    pub raw_vars: HashMap<usize, ms_mir::builder::Var>,
     /// Resources in memory the elaborate pass closes: the slot address and how the value closes.
     /// A move of the value disowns the slot.
     pub raw_slots: HashMap<usize, RawSlot>,
@@ -147,6 +150,8 @@ pub(crate) struct FnLower<'a> {
     pub list_iters: HashMap<usize, ms_mir::builder::Var>,
     /// Owned temporaries borrowed by the current statement.
     pub temps: Vec<Value>,
+    /// The pending temporaries `elaborate` also owns (see `pend_temp`).
+    pub pass_temps: std::collections::HashMap<Value, u32>,
     /// The copies of earlier `var` arguments a default being evaluated may change, innermost last.
     pub default_frames: Vec<DefaultFrame>,
     /// Checked place indices retained through the final writeback.
@@ -664,6 +669,7 @@ impl<'a> FnLower<'a> {
             next_scope: 1,
             raw_owners: true,
             raw_owned: std::collections::HashSet::new(),
+            raw_vars: HashMap::new(),
             raw_slots: HashMap::new(),
             closers: HashMap::new(),
             rest_closers: HashMap::new(),
@@ -672,6 +678,7 @@ impl<'a> FnLower<'a> {
             must_move: HashSet::new(),
             list_iters: HashMap::new(),
             temps: Vec::new(),
+            pass_temps: std::collections::HashMap::new(),
             default_frames: Vec::new(),
             prepared_indices: HashMap::new(),
             capture_indices: HashSet::new(),
@@ -943,22 +950,54 @@ impl<'a> FnLower<'a> {
     pub fn borrow(&mut self, x: Val) -> Value {
         let t = self.ty_of(x.v);
         if x.own && self.holds(t) {
-            self.temps.push(x.v);
+            self.pend_temp(x.v);
         }
         x.v
+    }
+
+    /// Registers the owned `v` as a pending temporary. One that needs a plain drop is also
+    /// owned by the innermost scope's Raw cleanup, so a path that leaves the statement early
+    /// (`return`, `break`, an error) drops it in `elaborate`; the statement end drops it itself.
+    pub fn pend_temp(&mut self, v: Value) {
+        self.temps.push(v);
+        if self.needs_drop(self.ty_of(v))
+            && !self.resource_temps.contains_key(&v)
+            && !self.is_resource_temp(v)
+        {
+            let id = self.own_raw_value(v, 0);
+            self.pass_temps.insert(v, id);
+        }
     }
 
     /// Stops treating `v` as a pending temporary once it is consumed.
     pub fn unhold_temp(&mut self, v: Value) {
         if let Some(at) = self.temps.iter().rposition(|t| *t == v) {
             self.temps.remove(at);
+            if !self.temps.contains(&v) && self.pass_temps.remove(&v).is_some() && !self.dead {
+                self.b
+                    .emit(Op::ScopeDisown, &[v], ms_mir::ir::Imm::None, None);
+            }
         }
+    }
+
+    /// Takes the pending temporaries registered after `mark` over from the statement: whoever
+    /// receives them owns them.
+    pub fn take_temps(&mut self, mark: usize) -> Vec<Value> {
+        let taken = self.temps.split_off(mark);
+        for t in &taken {
+            if self.pass_temps.remove(t).is_some() && !self.dead {
+                self.b
+                    .emit(Op::ScopeDisown, &[*t], ms_mir::ir::Imm::None, None);
+            }
+        }
+        taken
     }
 
     /// Drops the owned temporaries registered after `mark`.
     pub fn flush_temps(&mut self, mark: usize) {
         while self.temps.len() > mark {
             let v = self.temps.pop().expect("temp");
+            self.pass_temps.remove(&v);
             if !self.dead {
                 self.drop_temp(v);
             }
@@ -973,7 +1012,10 @@ impl<'a> FnLower<'a> {
         }
         for i in (from..self.temps.len()).rev() {
             let v = self.temps[i];
-            self.drop_temp(v);
+            // The scopes the exit leaves drop the temporaries they own.
+            if !self.pass_temps.contains_key(&v) {
+                self.drop_temp(v);
+            }
         }
     }
 
@@ -1115,11 +1157,14 @@ impl<'a> FnLower<'a> {
     pub fn own_local(&mut self, uid: usize, var: ms_mir::builder::Var, ty: MTy) {
         // A local of one definition that nothing closes or shares is owned by its scope's Raw
         // cleanup: the elaborate pass tracks its moves, so it needs no flag or optional box.
+        let single = self.b.var_is_single(var) && !self.redefined.contains(&uid);
+        // A reassigned local that nothing moves is owned at each exit instead of at its
+        // declaration: the value it holds is only known there.
+        let reassigned = !single && !self.cx.ownership.moves.contains_key(&uid);
         if self.raw_owners
             && !self.dead
             && self.needs_drop(ty)
-            && self.b.var_is_single(var)
-            && !self.redefined.contains(&uid)
+            && (single || reassigned)
             && !self.slotted.contains(&uid)
         {
             self.locals.insert(
@@ -1131,8 +1176,13 @@ impl<'a> FnLower<'a> {
                     opt: false,
                 },
             );
-            let v = self.b.use_var(var);
-            self.own_raw(uid, v);
+            if single {
+                let v = self.b.use_var(var);
+                self.own_raw(uid, v);
+            } else {
+                self.raw_vars.insert(uid, var);
+                self.scopes.last_mut().expect("scope").push(uid);
+            }
             return;
         }
         let moved = self.needs_drop(ty) && self.cx.ownership.moves.contains_key(&uid);
@@ -1174,6 +1224,11 @@ impl<'a> FnLower<'a> {
                 opt,
             },
         );
+        if opt && self.raw_owners && !self.dead {
+            // The held optional is `none` once a path moved the value out: owning it at each
+            // exit drops what is still there.
+            self.raw_vars.insert(uid, var);
+        }
         self.slotify(uid);
         if !self.needs_drop(ty) {
             return;
@@ -1454,7 +1509,18 @@ impl<'a> FnLower<'a> {
 
     /// `own_raw` with the owner's cleanup `kind` (`scope.own S K v`).
     pub fn own_raw_kind(&mut self, uid: usize, v: Value, kind: u32) {
+        self.own_raw_value(v, kind);
+        self.raw_owned.insert(uid);
+    }
+
+    /// `scope.own` of `v` in the innermost scope, beginning the enclosing scopes first.
+    fn own_raw_value(&mut self, v: Value, kind: u32) -> u32 {
         let i = self.scope_marks.len() - 1;
+        self.own_raw_value_in(i, v, kind)
+    }
+
+    /// `scope.own` of `v` in scope `i`.
+    fn own_raw_value_in(&mut self, i: usize, v: Value, kind: u32) -> u32 {
         // The enclosing scopes begin first: an error exit of the pass walks the chain.
         for mark in &mut self.scope_marks {
             if !mark.begun {
@@ -1465,7 +1531,7 @@ impl<'a> FnLower<'a> {
         }
         let imm = ms_mir::ir::Imm::Scope(self.scope_marks[i].id, kind);
         self.b.emit(Op::ScopeOwn, &[v], imm, None);
-        self.raw_owned.insert(uid);
+        self.scope_marks[i].id
     }
 
     /// A Raw-owned local's value moved on without an op that consumes it: it is no longer the
@@ -1494,6 +1560,11 @@ impl<'a> FnLower<'a> {
             let uids = self.scopes[i].clone();
             for uid in uids.iter().rev() {
                 if self.closed_on_path.contains(uid) {
+                    continue;
+                }
+                if let Some(var) = self.raw_vars.get(uid).copied() {
+                    let cur = self.b.use_var(var);
+                    self.own_raw_value_in(i, cur, 0);
                     continue;
                 }
                 if let Some((kind, list, idx)) = self.rest_closers.get(uid).cloned() {
@@ -1534,11 +1605,29 @@ impl<'a> FnLower<'a> {
 
     /// Ends a scope, dropping its locals when control reaches the end.
     pub fn pop_scope(&mut self) {
+        let mut carried = Vec::new();
         if !self.dead {
+            // A temporary of the statement this scope ends inside (a `for` over `f().split(..)`)
+            // outlives the scope: its owner moves to the enclosing one.
+            let id = self.scope_marks.last().map(|m| m.id);
+            carried = self
+                .temps
+                .iter()
+                .copied()
+                .filter(|t| self.pass_temps.get(t).copied() == id)
+                .collect();
+            for t in &carried {
+                self.b
+                    .emit(Op::ScopeDisown, &[*t], ms_mir::ir::Imm::None, None);
+            }
             let d = self.scopes.len() - 1;
             self.drop_scope_locals(d);
         }
         self.discard_scope();
+        for t in carried {
+            let id = self.own_raw_value(t, 0);
+            self.pass_temps.insert(t, id);
+        }
     }
 
     /// Drops the locals of every scope at or above `depth` (for `break`, `continue`, `return`).
@@ -1599,7 +1688,9 @@ impl<'a> FnLower<'a> {
             }
             // The temporaries stay registered: a conditional return leaves the others running.
             for t in self.temps.clone().into_iter().rev() {
-                self.drop_temp(t);
+                if !self.pass_temps.contains_key(&t) {
+                    self.drop_temp(t);
+                }
             }
             self.end_fixture();
         }

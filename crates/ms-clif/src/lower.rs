@@ -16,7 +16,7 @@ use ms_rt_abi::{
     ASCII_CHAR_STRIDE, STR_ASCII, STR_INLINE, STR_INLINE_LEN_SHIFT, STR_LEN_MASK, STR_LEN_OFFSET,
     STR_PTR_OFFSET, STR_STATIC, VEC_CAP_OFFSET, VEC_LEN_OFFSET, VEC_PTR_OFFSET,
 };
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 type Vs = Vec<Value>;
 
@@ -34,16 +34,16 @@ fn flags() -> MemFlagsData {
     MemFlagsData::trusted()
 }
 
-/// Alias region of a list element access whose index is known to be below the list's length (a
-/// bounds check, or a proof the optimizer already acted on). The LLVM translation addresses such
-/// an access with a non-wrapping, in-bounds offset. It is only a marker for that translation:
-/// Cranelift would treat the region as disjoint from all other memory.
-pub const ELEM_REGION: u32 = 1;
-/// Like [`ELEM_REGION`], for a list whose elements are not numbers or `Bool`s (strings, lists,
-/// records, options). A list buffer holds one element type, so a buffer of numbers never holds
-/// the words of an element of this kind, such as the `{ptr, len, cap}` of an inner list; the
-/// translation uses the split for type-based alias analysis.
-pub const ELEM_AGG_REGION: u32 = 2;
+/// Alias region of a list element that is one scalar word (`Int`, `Float`, `Bool`, sized
+/// numbers). The LLVM emitter turns the region id into a TBAA tag (`llvm_ir.rs`).
+pub const REGION_SCALAR_ELEM: u32 = 1;
+/// Alias region of a list element that is a list or string header, the words of which a scalar
+/// store never overwrites.
+pub const REGION_HEADER_ELEM: u32 = 2;
+/// Bit set on an element access whose index is known to be below the list's length (a bounds
+/// check, or a proof the optimizer already acted on). The LLVM translation addresses such an
+/// access with a non-wrapping, in-bounds offset. It is only a marker for that translation.
+pub const REGION_IN_BOUNDS: u32 = 4;
 
 /// Where a wide value (`Map`, `Set`: seven words) also lives in memory, so calls take its
 /// address instead of spilling a copy. A home on a block parameter holds for the rest of the
@@ -65,6 +65,8 @@ pub struct Lower<'a, 'm> {
     homes: Vec<Option<Home>>,
     /// Stack slot behind each MIR value that holds a slot address.
     slot_of: HashMap<usize, ir::StackSlot>,
+    /// `iface.borrow` results that only reach calls and drops: their leaves live in a stack slot.
+    framed_ifaces: HashSet<usize>,
     /// Block that defined each MIR `slot` value.
     slot_blk: HashMap<usize, usize>,
     /// MIR values that an already lowered instruction used.
@@ -87,6 +89,11 @@ pub struct Lower<'a, 'm> {
     pub unsupported: Option<String>,
     /// Slots of statement-scoped temporaries, merged between blocks by `slotshare`.
     temps: Vec<ir::StackSlot>,
+    /// Alias region of the access being lowered, set around a list element load or store.
+    region: Option<ir::AliasRegion>,
+    /// Element type behind each pointer made by `list.addr`, so a `load` or `store` through it
+    /// carries the element's alias region.
+    elem_ptrs: HashMap<Value, (Ty, Op)>,
 }
 
 fn bargs(vs: &[Value]) -> Vec<BlockArg> {
@@ -107,6 +114,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             vals: Vec::new(),
             homes: Vec::new(),
             slot_of: HashMap::new(),
+            framed_ifaces: HashSet::new(),
             slot_blk: HashMap::new(),
             used: Vec::new(),
             str_lits: HashMap::new(),
@@ -118,6 +126,8 @@ impl<'a, 'm> Lower<'a, 'm> {
             blocks: Vec::new(),
             unsupported: None,
             temps: Vec::new(),
+            region: None,
+            elem_ptrs: HashMap::new(),
         }
     }
 
@@ -357,43 +367,18 @@ impl<'a, 'm> Lower<'a, 'm> {
     }
 
     fn load_leaves(&mut self, ptr: Value, base: i64, leaves: &[Leaf]) -> Vs {
-        self.load_leaves_with(flags(), ptr, base, leaves)
-    }
-
-    fn load_leaves_with(&mut self, mf: MemFlagsData, ptr: Value, base: i64, leaves: &[Leaf]) -> Vs {
         let lay = mem_layout(leaves);
         leaves
             .iter()
             .zip(&lay.offsets)
-            .map(|(l, o)| self.load_leaf(mf, *l, ptr, (base + *o as i64) as i32))
+            .map(|(l, o)| self.load_leaf(*l, ptr, (base + *o as i64) as i32))
             .collect()
     }
 
-    /// Flags of an access to the list element at an address from `elem_addr`.
-    fn elem_flags(&mut self, mode: Op, elem: Ty) -> MemFlagsData {
-        // Cranelift reads a region as disjoint from every other one, untagged accesses included
-        // (a tagged store no untagged load observes is dead), so only functions LLVM translates
-        // carry it.
-        if self.g.llvm.is_none()
-            || (!self.g.opts.checks && !matches!(mode, Op::ListGetU | Op::ListSetU))
-        {
-            return flags();
-        }
-        let user_id = if self.g.m.types.is_scalar(elem) {
-            ELEM_REGION
-        } else {
-            ELEM_AGG_REGION
-        };
-        let region = self.b.func.dfg.alias_regions.insert(ir::AliasRegionData {
-            user_id,
-            description: "list element".into(),
-        });
-        flags().with_alias_region(Some(region))
-    }
-
     /// Reads a leaf from memory into its register type, widening a packed number.
-    fn load_leaf(&mut self, mf: MemFlagsData, l: Leaf, ptr: Value, off: i32) -> Value {
-        let v = self.b.ins().load(mem_type(l), mf, ptr, off);
+    fn load_leaf(&mut self, l: Leaf, ptr: Value, off: i32) -> Value {
+        let flags = self.mem_flags();
+        let v = self.b.ins().load(mem_type(l), flags, ptr, off);
         match l {
             Leaf::N8 | Leaf::N16 | Leaf::N32 => self.b.ins().sextend(types::I64, v),
             Leaf::U8 | Leaf::U16 | Leaf::U32 => self.b.ins().uextend(types::I64, v),
@@ -402,31 +387,68 @@ impl<'a, 'm> Lower<'a, 'm> {
     }
 
     /// Writes a leaf's register value to memory, narrowing a packed number.
-    fn store_leaf(&mut self, mf: MemFlagsData, l: Leaf, v: Value, ptr: Value, off: i32) {
+    fn store_leaf(&mut self, l: Leaf, v: Value, ptr: Value, off: i32) {
         let v = match l {
             Leaf::N8 | Leaf::N16 | Leaf::N32 | Leaf::U8 | Leaf::U16 | Leaf::U32 => {
                 self.b.ins().ireduce(mem_type(l), v)
             }
             _ => v,
         };
-        self.b.ins().store(mf, v, ptr, off);
+        let flags = self.mem_flags();
+        self.b.ins().store(flags, v, ptr, off);
+    }
+
+    /// Flags of a leaf access, with the alias region of the list element being accessed.
+    fn mem_flags(&self) -> MemFlagsData {
+        flags().with_alias_region(self.region)
+    }
+
+    /// The alias region for elements of type `elem`, when scalar stores and header words must
+    /// not be assumed to overlap: a scalar element never lies where a list or string header does.
+    ///
+    /// Only the LLVM emitter reads the regions, as TBAA tags. A Cranelift alias region means
+    /// disjoint from every other access, untagged ones included, so a tagged store that no
+    /// tagged load observes would be dead code there: Cranelift output stays untagged.
+    fn elem_region(&mut self, elem: Ty, in_bounds: bool) -> Option<ir::AliasRegion> {
+        self.g.llvm.as_ref()?;
+        let id = match self.g.m.types.kind(elem) {
+            TyKind::Bool
+            | TyKind::Int
+            | TyKind::Float
+            | TyKind::Int8
+            | TyKind::Int16
+            | TyKind::Int32
+            | TyKind::Float32
+            | TyKind::UInt8
+            | TyKind::UInt16
+            | TyKind::UInt32
+            | TyKind::UInt64 => REGION_SCALAR_ELEM,
+            TyKind::List(_) | TyKind::Str | TyKind::Bytes => REGION_HEADER_ELEM,
+            _ => 0,
+        } | if in_bounds { REGION_IN_BOUNDS } else { 0 };
+        if id == 0 {
+            return None;
+        }
+        Some(self.b.func.dfg.alias_regions.insert(ir::AliasRegionData {
+            user_id: id,
+            description: "list element".into(),
+        }))
+    }
+
+    /// Runs `access` with the alias region of list elements of type `elem`.
+    fn in_elem_region<R>(&mut self, elem: Ty, mode: Op, access: impl FnOnce(&mut Self) -> R) -> R {
+        // Without checks only a proven index is known to be in bounds.
+        let in_bounds = self.g.opts.checks || matches!(mode, Op::ListGetU | Op::ListSetU);
+        self.region = self.elem_region(elem, in_bounds);
+        let out = access(self);
+        self.region = None;
+        out
     }
 
     fn store_leaves(&mut self, ptr: Value, base: i64, leaves: &[Leaf], vs: &[Value]) {
-        self.store_leaves_with(flags(), ptr, base, leaves, vs);
-    }
-
-    fn store_leaves_with(
-        &mut self,
-        mf: MemFlagsData,
-        ptr: Value,
-        base: i64,
-        leaves: &[Leaf],
-        vs: &[Value],
-    ) {
         let lay = mem_layout(leaves);
         for ((l, v), o) in leaves.iter().zip(vs).zip(&lay.offsets) {
-            self.store_leaf(mf, *l, *v, ptr, (base + *o as i64) as i32);
+            self.store_leaf(*l, *v, ptr, (base + *o as i64) as i32);
         }
     }
 
@@ -723,6 +745,51 @@ impl<'a, 'm> Lower<'a, 'm> {
         )
     }
 
+    /// The `iface.borrow` results of `f` whose only uses are arguments of calls to functions that
+    /// whose result is not a view of their arguments, and drops. Such an interface cannot outlive the
+    /// frame, so its leaves need no heap box.
+    fn framed_iface_borrows(&self, f: &Func) -> HashSet<usize> {
+        let mut framed = HashSet::new();
+        for b in &f.blocks {
+            for i in &b.insts {
+                if i.op == Op::IfaceBorrow
+                    && let Some(r) = i.res
+                {
+                    framed.insert(r.index());
+                }
+            }
+        }
+        if framed.is_empty() {
+            return framed;
+        }
+        for b in &f.blocks {
+            for i in &b.insts {
+                let plain = match i.op {
+                    Op::Drop => true,
+                    Op::Call | Op::CallMethod => !self.g.m.result_views(f, i),
+                    _ => false,
+                };
+                if !plain {
+                    for a in &i.args {
+                        framed.remove(&a.index());
+                    }
+                }
+            }
+            if let Term::Ret(Some(v)) = &b.term {
+                framed.remove(&v.index());
+            }
+            if let Term::CondBr { cond: v, .. } | Term::Switch { value: v, .. } = &b.term {
+                framed.remove(&v.index());
+            }
+            b.term.for_each_target(|t| {
+                for a in &t.args {
+                    framed.remove(&a.index());
+                }
+            });
+        }
+        framed
+    }
+
     pub fn lower_func(&mut self, fi: usize, f: &Func) {
         self.fid = fi as u32;
         let rpo = f.rpo();
@@ -741,6 +808,7 @@ impl<'a, 'm> Lower<'a, 'm> {
         self.used = vec![false; f.values.len()];
         self.lazy = vec![false; f.values.len()];
         self.slot_of.clear();
+        self.framed_ifaces = self.framed_iface_borrows(f);
         self.slot_blk.clear();
         self.pslots.clear();
         for b in &rpo {

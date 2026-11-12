@@ -271,9 +271,11 @@ impl DebugInfo {
 }
 
 /// Metadata ids fixed by [`LlvmModule::finish`]: compile unit, two module flags, the empty
-/// type list and the subroutine type, then the type-based alias tree (root, number and other
-/// element types, their access tags `!8` and `!9`); file `i` is `FIRST_FILE + i`.
-const FIRST_FILE: usize = 10;
+/// type list and the subroutine type; file `i` is `FIRST_FILE + i`.
+const FIRST_FILE: usize = 5;
+
+/// First metadata id of the TBAA nodes, above any debug-info id a program can reach.
+const TBAA_BASE: usize = 1 << 30;
 
 /// The symbol names `text` mentions as `@"name"`.
 fn referenced(text: &str) -> HashSet<String> {
@@ -498,14 +500,15 @@ fn wide_values(f: &Function) -> HashSet<Value> {
     wide
 }
 
-/// The element region (`crate::lower::ELEM_REGION` or `ELEM_AGG_REGION`) of an access, if tagged.
-fn element_region(f: &Function, flags: ir::MemFlags) -> Option<u32> {
-    let region = f.dfg.mem_flags[flags].alias_region()?;
-    let id = f.dfg.alias_regions[region].user_id;
-    (id == crate::lower::ELEM_REGION || id == crate::lower::ELEM_AGG_REGION).then_some(id)
+/// Whether the access is a list element access the lowering marked in bounds
+/// (`crate::lower::REGION_IN_BOUNDS`).
+fn in_bounds_element(f: &Function, flags: ir::MemFlags) -> bool {
+    f.dfg.mem_flags[flags]
+        .alias_region()
+        .is_some_and(|r| f.dfg.alias_regions[r].user_id & crate::lower::REGION_IN_BOUNDS != 0)
 }
 
-/// The scaled indexes behind element accesses tagged `crate::lower::ELEM_REGION`.
+/// The scaled indexes behind element accesses tagged `crate::lower::REGION_IN_BOUNDS`.
 fn elem_products(f: &Function) -> (HashSet<Value>, HashSet<Value>) {
     let mut products = HashSet::new();
     let mut addrs = HashSet::new();
@@ -520,7 +523,7 @@ fn elem_products(f: &Function) -> (HashSet<Value>, HashSet<Value>) {
             else {
                 continue;
             };
-            if element_region(f, flags).is_none() {
+            if !in_bounds_element(f, flags) {
                 continue;
             }
             let Some(sum) = f.dfg.value_def(arg).inst() else {
@@ -582,7 +585,7 @@ struct Tr<'a> {
     /// `inttoptr base` plus a `getelementptr`, so LLVM's loop analyses see one pointer and an
     /// affine offset instead of an opaque integer-to-pointer cast of the whole sum.
     indexed: HashMap<Value, (Value, Value)>,
-    /// Scaled indexes (`index * size`) of list element accesses (`crate::lower::ELEM_REGION`):
+    /// Scaled indexes (`index * size`) of list element accesses (`crate::lower::REGION_IN_BOUNDS`):
     /// the index is below the list's length, so the product cannot wrap.
     elem_products: HashSet<Value>,
     /// Addresses (`base + scaled index`) of list element accesses: their offsets stay in bounds.
@@ -793,6 +796,19 @@ impl<'a> Tr<'a> {
         self.f.dfg.value_type(v)
     }
 
+    /// `, !tbaa !N` for an access in an alias region: LLVM then knows a scalar element store
+    /// leaves the list and string header words alone, so it hoists their loads out of loops.
+    fn tbaa(&self, flags: cranelift_codegen::ir::MemFlags) -> String {
+        let Some(region) = self.f.dfg.mem_flags[flags].alias_region() else {
+            return String::new();
+        };
+        match self.f.dfg.alias_regions[region].user_id & !crate::lower::REGION_IN_BOUNDS {
+            crate::lower::REGION_SCALAR_ELEM => format!(", !tbaa !{}", TBAA_BASE + 3),
+            crate::lower::REGION_HEADER_ELEM => format!(", !tbaa !{}", TBAA_BASE + 4),
+            _ => String::new(),
+        }
+    }
+
     fn line(&mut self, s: impl AsRef<str>) {
         self.out.push_str("  ");
         self.out.push_str(s.as_ref());
@@ -853,19 +869,9 @@ impl<'a> Tr<'a> {
         self.def(format!("icmp ne {t} {o}, 0"))
     }
 
-    /// Whether the memory flags `mf` mark a list element access.
+    /// Whether the memory flags `mf` mark a list element access in bounds.
     fn is_elem(&self, mf: ir::MemFlags) -> bool {
-        element_region(self.f, mf).is_some()
-    }
-
-    /// The `!tbaa` attachment of an access: list buffers of numbers and of everything else are
-    /// disjoint type classes (see `crate::lower::ELEM_AGG_REGION`).
-    fn tbaa(&self, mf: ir::MemFlags) -> &'static str {
-        match element_region(self.f, mf) {
-            Some(crate::lower::ELEM_REGION) => ", !tbaa !8",
-            Some(_) => ", !tbaa !9",
-            None => "",
-        }
+        in_bounds_element(self.f, mf)
     }
 
     fn ptr(&mut self, v: Value, off: i32) -> String {
@@ -1011,8 +1017,8 @@ impl<'a> Tr<'a> {
                 } else {
                     1
                 };
-                let tbaa = self.tbaa(flags);
-                let r = self.def(format!("load {}, ptr {p}, align {al}{tbaa}", llty(t)));
+                let tag = self.tbaa(flags);
+                let r = self.def(format!("load {}, ptr {p}, align {al}{tag}", llty(t)));
                 self.set(inst, 0, r);
             }
             InstructionData::Store {
@@ -1030,8 +1036,8 @@ impl<'a> Tr<'a> {
                 } else {
                     1
                 };
-                let tbaa = self.tbaa(flags);
-                self.line(format!("store {} {v}, ptr {p}, align {al}{tbaa}", llty(t)));
+                let tag = self.tbaa(flags);
+                self.line(format!("store {} {v}, ptr {p}, align {al}{tag}", llty(t)));
             }
             InstructionData::LoadNoOffset { arg, .. } => {
                 // The only use is the cancellation poll (`atomic_load`).
@@ -1902,8 +1908,15 @@ impl LlvmModule {
         tail.push_str("!1 = !{i32 2, !\"Debug Info Version\", i32 3}\n");
         tail.push_str("!2 = !{i32 7, !\"Dwarf Version\", i32 4}\n");
         tail.push_str("!3 = !{}\n!4 = !DISubroutineType(types: !3)\n");
-        tail.push_str("!5 = !{!\"ms.tbaa\"}\n!6 = !{!\"ms.number\", !5, i64 0}\n!7 = !{!\"ms.other\", !5, i64 0}\n");
-        tail.push_str("!8 = !{!6, !6, i64 0}\n!9 = !{!7, !7, i64 0}\n");
+        let _ = write!(
+            tail,
+            "!{b} = !{{!\"ms.tbaa\"}}\n!{s} = !{{!\"ms.scalar-elem\", !{b}, i64 0}}\n!{h} = !{{!\"ms.header-elem\", !{b}, i64 0}}\n!{ts} = !{{!{s}, !{s}, i64 0}}\n!{th} = !{{!{h}, !{h}, i64 0}}\n",
+            b = TBAA_BASE,
+            s = TBAA_BASE + 1,
+            h = TBAA_BASE + 2,
+            ts = TBAA_BASE + 3,
+            th = TBAA_BASE + 4
+        );
         for (i, f) in self.di.files.iter().enumerate() {
             let name = f.as_deref().unwrap_or("<unknown>");
             let _ = writeln!(
@@ -2614,17 +2627,24 @@ mod tests {
 
     #[test]
     fn a_tagged_element_access_is_in_bounds_and_cannot_wrap() {
+        use crate::lower::{REGION_HEADER_ELEM, REGION_IN_BOUNDS, REGION_SCALAR_ELEM};
         let mut m = LlvmModule::new(vec![Some("elem.ms".into())], ".".into());
-        let f = element_load_flags(Some(crate::lower::ELEM_REGION));
+        let f = element_load_flags(Some(REGION_SCALAR_ELEM | REGION_IN_BOUNDS));
         m.add_function("elem", "elem", (0, 1), &f, &TestSymbols, true);
         let text = m.finish("x86_64-unknown-linux-gnu", &HashSet::new(), false);
         assert!(text.contains("= mul nuw nsw i64 %a1, 4"), "{text}");
-        assert!(text.contains(", !tbaa !8"), "{text}");
+        assert!(
+            text.contains(&format!(", !tbaa !{}", TBAA_BASE + 3)),
+            "{text}"
+        );
         let mut m = LlvmModule::new(vec![Some("elem.ms".into())], ".".into());
-        let f = element_load_flags(Some(crate::lower::ELEM_AGG_REGION));
+        let f = element_load_flags(Some(REGION_HEADER_ELEM | REGION_IN_BOUNDS));
         m.add_function("elem", "elem", (0, 1), &f, &TestSymbols, true);
         let text = m.finish("x86_64-unknown-linux-gnu", &HashSet::new(), false);
-        assert!(text.contains(", !tbaa !9"), "{text}");
+        assert!(
+            text.contains(&format!(", !tbaa !{}", TBAA_BASE + 4)),
+            "{text}"
+        );
         assert!(
             text.contains("getelementptr inbounds nuw i8, ptr %x0, i64 %t"),
             "{text}"
@@ -2633,10 +2653,7 @@ mod tests {
         let mut m = LlvmModule::new(vec![Some("elem.ms".into())], ".".into());
         m.add_function("elem", "elem", (0, 1), &element_load(), &TestSymbols, true);
         let text = m.finish("x86_64-unknown-linux-gnu", &HashSet::new(), false);
-        assert!(
-            !text.contains("nuw") && !text.contains("!tbaa !8,"),
-            "{text}"
-        );
+        assert!(!text.contains("nuw") && !text.contains("!tbaa"), "{text}");
     }
 
     #[test]

@@ -121,6 +121,57 @@ impl<'a> FnLower<'a> {
         Ok(Some(Val { v: u, own: false }))
     }
 
+    /// `m.update(key: k.clone(), initial, change)` on a `String`-keyed map held in a local, with
+    /// `k` a part of a variable that cannot change: `update` only borrows its key (the runtime
+    /// copies it when the entry is new), so the argument is read in place as `(index, k)`.
+    pub(crate) fn borrowed_update_key<'e>(
+        &mut self,
+        view: &CallView<'e>,
+        recv_expr: &Expr,
+        name: &str,
+    ) -> Result<Option<(usize, &'e Expr)>, Error> {
+        if name != "update" || view.arguments.len() != 3 {
+            return Ok(None);
+        }
+        let Some(at) = view
+            .arguments
+            .iter()
+            .position(|a| self.syms.str(a.slot.name) == "key")
+        else {
+            return Ok(None);
+        };
+        let key = &view.arguments[at];
+        if key.wrap_optional.is_some() {
+            return Ok(None);
+        }
+        let Some(inner) = clone_receiver(self.syms, &self.hir, key.expr) else {
+            return Ok(None);
+        };
+        if !self.is_place(recv_expr) || !self.is_place(inner) {
+            return Ok(None);
+        }
+        let base = crate::mutation::place_base(self.syms, &self.hir, inner);
+        let Resolution::Local(binding) = self.hir.resolution(base) else {
+            return Ok(None);
+        };
+        // The key is borrowed until the update, so no other argument may consume its owner.
+        let others_use =
+            view.arguments.iter().enumerate().any(|(i, a)| {
+                i != at && crate::mutation::uses_of(&self.hir, a.expr, binding.uid) != 0
+            });
+        if binding.mutable || others_use {
+            return Ok(None);
+        }
+        let mt = self.emty(recv_expr)?;
+        let TyKind::Obj(n, a) = self.b.m.types.kind(mt).clone() else {
+            return Ok(None);
+        };
+        if n != Native::Map || a.first() != Some(&MTy::STR) {
+            return Ok(None);
+        }
+        Ok(Some((at, inner)))
+    }
+
     /// `m.get(key).get()`, `.get(default)`, `.is_some()` and `.is_none()` read the entry in place:
     /// `get` borrows its result, so the value is copied only when something keeps it (and `get`
     /// with a default copies on a hit). `None` leaves any other shape to the ordinary path.
@@ -436,12 +487,12 @@ impl<'a> FnLower<'a> {
             // A `try` in a later key or value may return early: the map and key built so far
             // stay registered as temporaries until then.
             if early {
-                self.temps.push(acc);
+                self.pend_temp(acc);
             }
             let k = self.expr(&en.key)?;
             let k = if self.dead { k.v } else { self.owned(k) };
             if early && !self.dead {
-                self.temps.push(k);
+                self.pend_temp(k);
             }
             let v = self.expr(&en.value)?;
             if early {

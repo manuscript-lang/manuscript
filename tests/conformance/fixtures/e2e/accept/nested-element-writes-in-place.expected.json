@@ -1,0 +1,75 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "nested-element-writes-in-place.ms::a nested write changes one element and no other",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "nested-element-writes-in-place.ms::a negative index counts from the end of both lists",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "nested-element-writes-in-place.ms::a write into a row that grew later keeps the new length",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "nested-element-writes-in-place.ms::an owned element is dropped and replaced in place",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "nested-element-writes-in-place.ms::three levels and Float rows write through the same way",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 5,
+        "selected": 5,
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN nested-element-writes-in-place.ms::a nested write changes one element and no other\nPASS nested-element-writes-in-place.ms::a nested write changes one element and no other\nRUN nested-element-writes-in-place.ms::a negative index counts from the end of both lists\nPASS nested-element-writes-in-place.ms::a negative index counts from the end of both lists\nRUN nested-element-writes-in-place.ms::a write into a row that grew later keeps the new length\nPASS nested-element-writes-in-place.ms::a write into a row that grew later keeps the new length\nRUN nested-element-writes-in-place.ms::an owned element is dropped and replaced in place\nPASS nested-element-writes-in-place.ms::an owned element is dropped and replaced in place\nRUN nested-element-writes-in-place.ms::three levels and Float rows write through the same way\nPASS nested-element-writes-in-place.ms::three levels and Float rows write through the same way\n5 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}
