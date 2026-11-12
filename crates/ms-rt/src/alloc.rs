@@ -1322,6 +1322,39 @@ mod tests {
         }
     }
 
+    /// The shared large-block lists and the heap-idle list sit behind a spin lock that yields:
+    /// many more threads than cores allocating and freeing large blocks, and claiming and
+    /// releasing heaps, must all finish (no livelock, no lost block).
+    #[test]
+    fn the_spin_lock_survives_more_threads_than_cores() {
+        let _g = lock();
+        let threads = 4 * std::thread::available_parallelism().map_or(4, |n| n.get());
+        let handles: Vec<_> = (0..threads)
+            .map(|t| {
+                std::thread::spawn(move || {
+                    for round in 0..40 {
+                        claim_heap();
+                        for i in 0..200usize {
+                            let size = MAX_SMALL + 1 + (i * 37 + t) % 20_000;
+                            let p = alloc(size);
+                            assert!(!p.is_null());
+                            // SAFETY: `p` has `size` usable bytes; freed once.
+                            unsafe {
+                                p.write(round as u8);
+                                p.add(size - 1).write(i as u8);
+                                free(p);
+                            }
+                        }
+                        release_heap();
+                    }
+                })
+            })
+            .collect();
+        for h in handles {
+            h.join().unwrap();
+        }
+    }
+
     #[test]
     fn every_kind_of_block_frees_and_resizes_on_any_thread() {
         let _g = lock();
