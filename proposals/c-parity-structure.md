@@ -3,7 +3,7 @@
 ## Summary
 
 - Problem: compiled loops are near C, but ordinary text and collection code is 1.6x to 3.3x C. The time is in native calls LLVM cannot see into, in the fresh list and copies the standard API shapes force, and in fast paths that exist only for one exact source shape.
-- Change: three tracks ranked by measured gain, with the cheap measured parts staged first. No new syntax or type. Two later ideas are noted, not proposed.
+- Change: three tracks ranked by measured gain, with the cheap measured parts staged first, then nine smaller opportunities from later passes. No new syntax or type. Two later ideas are noted, not proposed.
 - Decision requested: approve the order and answer the open question on track 2. Nothing is implemented here; each stage ships with its own implementation PR.
 
 ## Status
@@ -38,8 +38,8 @@ Proposal, 2026-11-12, checked against `fff26e41`. Evidence: [`bench/perf/structu
 ### 1. Library algorithms as inlinable code
 
 - Rule: an operation that neither allocates nor touches runtime state is `.ms` source over inline `Bytes` and `List` reads, or an `ms-rt-hot` function when it needs SIMD (`memchr`). Collections then specialize per element type instead of dispatching on `TypeDesc`.
-- First family: `split`, `lines`, `fields_by`, `find`, `contains`, `scalar_at`, `view`. A `for` over `split` becomes a plain loop over `memchr` results; the lookahead fields go with it.
-- Each method moves only with a before/after run and a compile-time check. `Map` goes last.
+- First family: `split`, `lines`, `fields_by`, `find`, `contains`, `scalar_at`, `view`, and `String` `length`, `starts_with` and `==` (24 to 37 instructions a call; a word scan is 2.3x C). A `for` over `split` becomes a plain loop over `memchr` results; the lookahead fields go with it.
+- Each method moves only with a before/after run and a compile-time check. `Map` and `Set` lookups follow the text family, not last: an `Int` key costs 85 to 95 instructions in an opaque call that derives the slot layout from descriptors each time, and `Set[Int]` membership is 5x C in wall time.
 
 ### 2. Derived results borrow or take their receiver
 
@@ -72,6 +72,25 @@ fn keep(line: String) Row:
 
 - A combinator chain as one loop (`filter(..).map(..).sum()` is 3.0x a hand loop): follows track 1, and changes the order closures are called in.
 - A four-byte text cell: `chars()` is 16 bytes a cell and `c16-maze-bfs` is 2.8x Rust on page faults ([codegen page](../bench/perf/codegen-2026-11-12.md)); needs a language decision.
+
+### Second pass: loops, calls, exit and file work
+
+Measured after the tracks above were started ([second pass](../bench/perf/structural-gaps/README.md)); ranked after them.
+
+| # | Opportunity | Measured | Change | Cost |
+| --- | --- | --- | --- | --- |
+| 4 | Exit frees every owned value | 25 to 33 ms of a 168 to 218 ms build-then-exit program | `main` skips drops of plain memory at process exit; resources still close | S |
+| 5 | Nested element writes move the row out and back | LCS over `List[List[Int]]`: 30 instructions per cell against 12 | write through the place's address; tell LLVM an element store leaves list headers unchanged, so row loads and bounds checks hoist | M |
+| 6 | A file call inside concurrent work hops to a pool thread | `pargroup` 2.3x C; 4,707 `futex` and 1,505 `epoll_wait` calls for 2,000 files | keep the pool hop, which parks the task until the disk answers, and make it cheaper on every platform (one wake per file call, not three); where the OS can answer a cached read without blocking, try that first (Linux `preadv2` with `RWF_NOWAIT`, Windows overlapped `ReadFile` completing at once; macOS has no such call and keeps the hop) | M |
+| 7 | Stack check per recursive call | 5 of 20.7 instructions per `fib` call, two dependent loads | keep the limit one load away, or check once per recursion cycle | S |
+| 9 | A character is a `String` | tokenizer with `text.get(i) == "+"`: 11.5x C; 1.4x in compiled code once it works on code points | the compiler keeps a one-scalar `String` (`get`, a `chars()` element, a one-character literal) as its code point, so comparisons are integer compares; it becomes a `String` only where it is stored or passed | M |
+| 10 | Containers written in `.ms` cannot leave a slot empty | `Deque` stores `List[T?]` and calls `msrt_list_replace` per pop: 80 instructions per push and pop, BFS 4.9x C | one internal `@std` storage primitive with take and put by index, for `Deque`, `Queue`, `PriorityQueue` and the containers track 1 moves to source | S to M |
+| 11 | A change through a boxed optional field reboxes the payload | 200k tree inserts through `self.left?.insert(key)`: 4.3M allocations, 15x C's instructions | pass the box's interior address to the `var` call, as item 5 does for list rows | S to M |
+| 12 | Each use of `m[k]` looks the key up again | `stats[k].count += 1` and two more field updates: a `contains` and nine lookups a pass, 1,671M instructions against 305M for one `update` call (C: 74M) | one lookup per compound assignment; reuse the slot address across statements while the map's shape is unchanged | S to M |
+| 8 | Checked `Int` loops do not vectorize | 2.7x to 3.5x unchecked C on an accumulate loop; equal to C with trapping adds | a vector body that tests overflow before storing and replays the block in scalar code to fault exactly | L |
+
+- 8 is the safety floor, not a defect: a flag tested once per loop pass was measured and gains nothing, and C with the same checks is 1.07x to 2.9x plain C on the kernels. Build it last.
+- Platforms: every number here is Linux x86-64. Tracks 1 to 3 and items 5, 8, 9 and 10 change the compiler and `.ms` library, so they apply on macOS and Windows alike; items 4, 6 and 7 touch OS-specific runtime code, so each fix is written for all three platforms; measuring on Linux is enough.
 
 ## Components touched
 
