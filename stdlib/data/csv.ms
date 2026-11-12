@@ -175,7 +175,7 @@ fn var Reader.read_record() List[String]?!:
 		text := self.text_between(self.at, last)
 		self.at = line
 		if line < self.total: self.at = line + 1
-		return ok(text.split(self.delimiter_text))
+		return ok(text.split(self.delimiter_text).clone())
 
 	var row = List[String]()
 

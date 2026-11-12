@@ -32,7 +32,7 @@ test "length and chars use scalars and preserve text boundaries":
 	expect_equal("a\u{0}b".chars(), ["a", "\u{0}", "b"])?
 	expect_false(not ("".chars().is_empty()) or "".length() != 0)?
 
-	var characters = text.chars()
+	var characters = text.chars().clone()
 	second := text.chars()
 	characters.set(0, "changed")
 	characters.append("new")

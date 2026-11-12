@@ -103,13 +103,19 @@ impl<'a> FnLower<'a> {
             let result = self.emty(e)?;
             return self.rt_method(sym, recv, &[], &[], result);
         }
+        let lent = self.cx.fact(
+            self.hir.data.file,
+            e.id,
+            ms_check::api::ownership::Fact::BorrowedRead,
+        );
         if str_recv
             && native == "split"
-            && self.split_view_for == Some(e as *const Expr)
-            && self.stable_place(recv_expr)
+            && (lent
+                || (self.split_view_for == Some(e as *const Expr) && self.stable_place(recv_expr)))
         {
-            // `let parts = text.split(..)` read only in place, over a parameter the body only
-            // reads: the pieces are views of `text`.
+            // A `split` the checker lends (its result is used in place while the receiver
+            // stays unchanged), or `let parts = text.split(..)` read only in place over a
+            // parameter the body only reads: the pieces are views of `text`.
             self.split_view_for = None;
             let result = self.emty(e)?;
             return self.rt_method("msrt_string_split_view", recv, &m.ty.params, &args, result);

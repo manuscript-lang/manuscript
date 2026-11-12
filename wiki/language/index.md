@@ -56,4 +56,5 @@ Note on memory model: on 2026-10-19 the owner adopted value semantics for the Ru
 - [Comments are `//` and `/* */`, and blocks are whole-line](comments-are-slash-slash-and-block-comments-are-whole-line.md): `#` is rejected; `//` for lines, non-nesting whole-line `/* */` blocks, one shared doc extractor, and the fixture-header and offset migration traps.
 - [Source-location constants](source-location-constants.md): `__LINE__` (Int) and `__FILE__` (String) are checker-known names resolved at the use site; unbound-name "contextual" inference must exclude them.
 - [String.view is an explicit borrow; slice stays a copy](string-view-is-an-explicit-borrow-slice-stays-a-copy.md): O(1) substrings are checked borrows like `Bytes.view`, not lowering elision; storing a view needs `.clone()`.
+- [`String.split`, `lines` and `chars` lend their receiver](split-lines-and-chars-lend-their-receiver.md): results borrow under the `view` rules; keeping one needs `.clone()`.
 - [Write terse Manuscript](terse-manuscript-idioms.md): shortest existing form (`print`, `repeated`, `map`/`filter`, `if` expressions, `is_empty`, multi-line strings); conformance fixtures stay frozen.
