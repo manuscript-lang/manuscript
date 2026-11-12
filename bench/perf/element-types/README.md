@@ -24,7 +24,7 @@ Release LLVM `ms`, shared 4 vCPU VM, min of 5, microseconds. Record names are 32
 | result-records | 8,971 | 5,871 | 1.53 |
 | set-records | 128,035 | 133,191 | 0.96 |
 | sort-records (before this change) | 109,000 | 42,000 | 2.5 |
-| sort-records | 86,231 | 49,668 | 1.74 |
+| sort-records | 86,231 | 49,668 | 1.74 (Rust sorts in place, no clone) |
 | records-of-lists | 20,582 | 59,187 | 0.35 |
 | nested-generics | 32,776 | 55,383 | 0.59 |
 | generic-stack | 14,686 | 53,470 | 0.27 |
@@ -43,12 +43,29 @@ Release LLVM `ms`, shared 4 vCPU VM, min of 5, microseconds. Record names are 32
 
 `xs.sorted(fn a, b: a.kind - b.kind)` over records with a `String` field called the runtime merge sort through a comparator pointer, 2.4x Rust at 1M records (250 against 104 ms for the sort alone). Plain records already used a merge sort generated with the program, with the comparator inlined (111 ms). Records that own data now use it too, over two bitwise scratch copies of the slots (`msrt_list_shadow`) that own nothing, so a comparator that faults or is cancelled leaves the original list intact; the sorted slots are cloned into the result at the end. 200k records: 225M to 102M instructions; 1M records: 250 to 155 ms for the sort.
 
+### Change: driftsort replaces the generated merge sort
+
+The generated sort (`sortgen.rs`) is now a driftsort, the algorithm of Rust's `slice::sort`: natural runs (descending ones reversed), unsorted stretches that merge lazily into one, a stable quicksort with an equal-to-ancestor partition (`O(n log k)` for `k` distinct keys), and the old merge sort as the fallback past `2 log2 n` depth. The comparator is still inlined and the scratch still owns nothing. The Rust twin of `sort-records` now clones before sorting, as `sorted` does (the earlier 49,668 us sorted in place).
+
+Callgrind, 200k records with a `String` field, 1000 distinct keys, `sorted` including building the list: 102.5M instructions before, 81.8M after, Rust (`clone` + `sort_by`) 110.1M. In-place `sort`: 103.1M, 82.4M, Rust 105.7M. Wall times for 1M records are in [`sort-shapes`](../sort-shapes/README.md); the owning-record rows there:
+
+| case | before | after | rust | ms / rust |
+| --- | ---: | ---: | ---: | ---: |
+| owned records, 1000 keys, `sorted` | 142,361 | 117,956 | 121,671 | 0.97 |
+| owned records, 1000 keys, `sort` | 142,492 | 122,998 | 93,247 | 1.32 |
+| owned records, distinct keys, `sorted` | 139,667 | 147,804 | 133,937 | 1.10 |
+| plain records, 1000 keys, `sorted` | 75,050 | 46,360 | 61,477 | 0.75 |
+| plain records, distinct keys, `sorted` | 70,428 | 71,837 | 87,835 | 0.82 |
+| plain records, nearly sorted, `sorted` | 60,141 | 55,859 | 67,474 | 0.83 |
+
+`sort-records` above, 500k records: 65,988 us against 57,158 us for Rust's clone and sort (1.15). The in-place gap is the shadow copies and the clone back into the list that keep a faulting comparator safe, not the sort.
+
 ### Open gaps
 
 - `result-records` (1.5x) is the cost of building and dropping an `Error` (40 bytes, one allocation) on 10% of calls against Rust's `Err(String)`; the success path alone is 1.4 ns per call. It is not a codegen gap.
 - Found while writing `string-chains`: a `String` conditionally moved into `Map.update(key, 0, fn ...)` fails to build ([#3706](https://github.com/manuscript-lang/manuscript/issues/3706)); the case moves it unconditionally.
 
-- `optional-records` (1.5x), `pq-records` (1.2x, owned by the heap thread), `sort-records` (1.7x: the remaining cost is the merge sort against driftsort and a deep clone of the result).
+- `optional-records` (1.5x), `pq-records` (1.2x, owned by the heap thread), `sort-records` (1.15x against clone and sort: the remaining cost is the shadow copies and the clone of the result).
 
 ### Tried and not kept
 
