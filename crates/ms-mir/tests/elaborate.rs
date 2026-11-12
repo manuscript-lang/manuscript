@@ -727,6 +727,9 @@ b4():
 "#,
     );
     assert_eq!(r, 0);
+}
+
+#[test]
 fn an_owner_disowned_before_its_consuming_call_is_not_released_on_a_later_exit() {
     // b1 moves `%a` into `@close` and may return at once; b2 only reads it. The exit in b1
     // must not release it again, and the join releases it only on the b2 path.
