@@ -373,7 +373,7 @@ fn shadow_externs(
     };
     let mut shadow = m.externs[e.index()].clone();
     shadow.name = "msrt_list_shadow".to_string();
-    shadow.role = ExternRole::None;
+    shadow.role = ExternRole::RawSlots;
     shadow.params.truncate(2);
     shadow.leaf = true;
     let list = shadow.params[0].ty;
@@ -388,11 +388,15 @@ fn shadow_externs(
         noreturn: false,
         pure_: false,
         fresh: false,
-        role: ExternRole::None,
+        role: ExternRole::RawFree,
         leaf: true,
         reads: false,
     };
-    (m.add_extern(shadow), m.add_extern(free))
+    let (shadow, free) = (m.add_extern(shadow), m.add_extern(free));
+    // A declaration the program already had keeps its role otherwise.
+    m.externs[shadow.index()].role = ExternRole::RawSlots;
+    m.externs[free.index()].role = ExternRole::RawFree;
+    (shadow, free)
 }
 
 /// Rewrites the runtime sort of owning elements. The sort permutes bitwise copies of the slots
@@ -510,6 +514,7 @@ fn build_merge(m: &mut Module, g: FuncId, elem: Ty) -> FuncId {
     let name = format!("sort.mergesort.{}", m.funcs[g.index()].name);
     let id = m.add_func(Func::new(&name, params.clone(), Ty::UNIT));
     let mut b = FuncBuilder::new(m, &name, params, Ty::UNIT);
+    b.func_mut().raw_scratch = true;
     let args = b.params();
     // `buf` is the list the merge reads from and `items` the list it writes.
     let (buf, items, lo, hi, env) = (args[0], args[1], args[2], args[3], args[4]);
@@ -1049,7 +1054,9 @@ fn build_drift(m: &mut Module, g: FuncId, elem: Ty) -> FuncId {
 }
 
 fn start<'m>(m: &'m mut Module, name: &str, params: Vec<Param>, ret: Ty) -> FuncBuilder<'m> {
-    FuncBuilder::new(m, name, params, ret)
+    let mut b = FuncBuilder::new(m, name, params, ret);
+    b.func_mut().raw_scratch = true;
+    b
 }
 
 /// `ins(items, lo, hi, env)`: stable insertion sort of `items[lo..hi]`.

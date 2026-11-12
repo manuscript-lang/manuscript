@@ -71,6 +71,8 @@ pub fn run(m: &mut Module) -> bool {
         closers: HashMap::new(),
         with_closers: HashMap::new(),
         slot_droppers: HashMap::new(),
+        raw_closers: HashMap::new(),
+        raw_values: BTreeSet::new(),
     };
     let mut changed = false;
     for fi in 0..count {
@@ -103,6 +105,9 @@ struct Cx {
     with_closers: HashMap<FuncId, FuncId>,
     /// The cleanup that drops what a slot holds, per type held.
     slot_droppers: HashMap<Ty, FuncId>,
+    raw_closers: HashMap<Ty, FuncId>,
+    /// The values of the function being rewritten that are raw slot copies.
+    raw_values: BTreeSet<u32>,
 }
 
 fn starts_tasks(m: &Module) -> bool {
@@ -198,6 +203,60 @@ fn parks_at(m: &Module, cx: &Cx, inst: &Inst) -> bool {
         (Op::Call, Imm::Func(g)) => cx.parks.get(g.index()).copied().unwrap_or(true),
         _ => false,
     }
+}
+
+/// The values of `f` that are raw slot copies: they own nothing, so an unwind frees their buffer
+/// and leaves the elements to the list they were copied from.
+fn raw_slots(m: &Module, f: &Func) -> BTreeSet<u32> {
+    f.blocks
+        .iter()
+        .flat_map(|b| &b.insts)
+        .filter(|i| {
+            (f.raw_scratch && i.op == Op::ListNew)
+                || matches!((i.op, i.imm), (Op::CallRt, Imm::Ext(e)) if m.externs[e.index()].role == ExternRole::RawSlots)
+        })
+        .filter_map(|i| i.res.map(|r| r.0))
+        .collect()
+}
+
+/// The function that frees the buffer of a raw slot copy while an unwind runs.
+fn raw_closer(m: &mut Module, cx: &mut Cx, ty: Ty) -> FuncId {
+    if let Some(f) = cx.raw_closers.get(&ty) {
+        return *f;
+    }
+    let free = m.add_extern(ExternDef {
+        name: "msrt_list_free_raw".into(),
+        params: vec![Param {
+            ty,
+            mode: Mode::Move,
+        }],
+        ret: Ty::UNIT,
+        noreturn: false,
+        pure_: false,
+        fresh: false,
+        role: ExternRole::RawFree,
+        leaf: true,
+        reads: false,
+    });
+    let mut b = FuncBuilder::new(
+        m,
+        "unwind.free_raw",
+        vec![Param {
+            ty,
+            mode: Mode::Move,
+        }],
+        Ty::UNIT,
+    );
+    b.func_mut().linkage = Linkage::Internal;
+    b.func_mut().unwind_only = true;
+    let v = b.params()[0];
+    b.call_rt(free, &[v]);
+    let u = b.unit();
+    b.ret(Some(u));
+    let f = b.into_func();
+    let id = m.add_func(f);
+    cx.raw_closers.insert(ty, id);
+    id
 }
 
 /// The function that drops its argument when a cancellation is unwinding.
@@ -1118,6 +1177,7 @@ fn function(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
     if !owned_def.iter().any(|o| *o) && cx.cells.is_empty() {
         return false;
     }
+    cx.raw_values = raw_slots(m, f);
     let wrapped = wrap_with_closers(m, cx, f);
     let covered_shields = cover_shielded_slots(m, cx, f);
     let covered_closes = cover_inline_closes(m, cx, f);
@@ -1364,7 +1424,11 @@ fn push_all(
                 loc,
             });
         }
-        let c = closer(m, cx, ty);
+        let c = if cx.raw_values.contains(&v.0) {
+            raw_closer(m, cx, ty)
+        } else {
+            closer(m, cx, ty)
+        };
         let h = f.new_value(Ty::INT);
         out.push(Inst {
             op: Op::CleanupPush,

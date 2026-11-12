@@ -711,6 +711,9 @@ pub struct Func {
     /// A cleanup closer that acts only while a cancellation or fault unwinds a guarded task
     /// (see `unwind`). Registering it is skipped when no guard is open, where it would do nothing.
     pub unwind_only: bool,
+    /// A generated sort helper whose lists hold bitwise copies of another list's slots and own
+    /// nothing: an unwind frees their buffers and never drops their elements (see `unwind`).
+    pub raw_scratch: bool,
     /// A closure function whose environment owns resources: the capture index and the function
     /// that closes it (taking the captured value by borrow), run when the closure is dropped.
     pub capture_closers: Vec<(u32, FuncId)>,
@@ -749,6 +752,7 @@ impl Func {
             scoped: false,
             keeps_scoped: false,
             unwind_only: false,
+            raw_scratch: false,
             capture_closers: Vec::new(),
             slot_close: None,
             slot_result: None,
@@ -907,6 +911,10 @@ pub enum ExternRole {
     IntToString,
     /// `list.sorted(list, comparator)`.
     ListSorted,
+    /// A bitwise copy of a list's slots that owns nothing: a fault must not drop it.
+    RawSlots,
+    /// Releases the buffer of a [`ExternRole::RawSlots`] copy without touching its elements.
+    RawFree,
     /// Integer-list sort with the natural order.
     ListSortInts,
     /// Sort by a difference comparator.
