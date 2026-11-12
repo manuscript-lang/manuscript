@@ -34,6 +34,12 @@ fn flags() -> MemFlagsData {
     MemFlagsData::trusted()
 }
 
+/// Alias region of a list element access whose index is known to be below the list's length (a
+/// bounds check, or a proof the optimizer already acted on). The LLVM translation addresses such
+/// an access with a non-wrapping, in-bounds offset. It is only a marker for that translation:
+/// Cranelift would treat the region as disjoint from all other memory.
+pub const ELEM_REGION: u32 = 1;
+
 /// Where a wide value (`Map`, `Set`: seven words) also lives in memory, so calls take its
 /// address instead of spilling a copy. A home on a block parameter holds for the rest of the
 /// function; any other holds only within the block that created it (`blk`).
@@ -346,17 +352,38 @@ impl<'a, 'm> Lower<'a, 'm> {
     }
 
     fn load_leaves(&mut self, ptr: Value, base: i64, leaves: &[Leaf]) -> Vs {
+        self.load_leaves_with(flags(), ptr, base, leaves)
+    }
+
+    fn load_leaves_with(&mut self, mf: MemFlagsData, ptr: Value, base: i64, leaves: &[Leaf]) -> Vs {
         let lay = mem_layout(leaves);
         leaves
             .iter()
             .zip(&lay.offsets)
-            .map(|(l, o)| self.load_leaf(*l, ptr, (base + *o as i64) as i32))
+            .map(|(l, o)| self.load_leaf(mf, *l, ptr, (base + *o as i64) as i32))
             .collect()
     }
 
+    /// Flags of an access to the list element at an address from `elem_addr`.
+    fn elem_flags(&mut self, mode: Op) -> MemFlagsData {
+        // Cranelift reads a region as disjoint from every other one, untagged accesses included
+        // (a tagged store no untagged load observes is dead), so only functions LLVM translates
+        // carry it.
+        if self.g.llvm.is_none()
+            || (!self.g.opts.checks && !matches!(mode, Op::ListGetU | Op::ListSetU))
+        {
+            return flags();
+        }
+        let region = self.b.func.dfg.alias_regions.insert(ir::AliasRegionData {
+            user_id: ELEM_REGION,
+            description: "list element".into(),
+        });
+        flags().with_alias_region(Some(region))
+    }
+
     /// Reads a leaf from memory into its register type, widening a packed number.
-    fn load_leaf(&mut self, l: Leaf, ptr: Value, off: i32) -> Value {
-        let v = self.b.ins().load(mem_type(l), flags(), ptr, off);
+    fn load_leaf(&mut self, mf: MemFlagsData, l: Leaf, ptr: Value, off: i32) -> Value {
+        let v = self.b.ins().load(mem_type(l), mf, ptr, off);
         match l {
             Leaf::N8 | Leaf::N16 | Leaf::N32 => self.b.ins().sextend(types::I64, v),
             Leaf::U8 | Leaf::U16 | Leaf::U32 => self.b.ins().uextend(types::I64, v),
@@ -365,20 +392,31 @@ impl<'a, 'm> Lower<'a, 'm> {
     }
 
     /// Writes a leaf's register value to memory, narrowing a packed number.
-    fn store_leaf(&mut self, l: Leaf, v: Value, ptr: Value, off: i32) {
+    fn store_leaf(&mut self, mf: MemFlagsData, l: Leaf, v: Value, ptr: Value, off: i32) {
         let v = match l {
             Leaf::N8 | Leaf::N16 | Leaf::N32 | Leaf::U8 | Leaf::U16 | Leaf::U32 => {
                 self.b.ins().ireduce(mem_type(l), v)
             }
             _ => v,
         };
-        self.b.ins().store(flags(), v, ptr, off);
+        self.b.ins().store(mf, v, ptr, off);
     }
 
     fn store_leaves(&mut self, ptr: Value, base: i64, leaves: &[Leaf], vs: &[Value]) {
+        self.store_leaves_with(flags(), ptr, base, leaves, vs);
+    }
+
+    fn store_leaves_with(
+        &mut self,
+        mf: MemFlagsData,
+        ptr: Value,
+        base: i64,
+        leaves: &[Leaf],
+        vs: &[Value],
+    ) {
         let lay = mem_layout(leaves);
         for ((l, v), o) in leaves.iter().zip(vs).zip(&lay.offsets) {
-            self.store_leaf(*l, *v, ptr, (base + *o as i64) as i32);
+            self.store_leaf(mf, *l, *v, ptr, (base + *o as i64) as i32);
         }
     }
 

@@ -37,10 +37,10 @@ pub trait Symbols {
 /// Runtime allocators: each returns a block no other pointer reaches, so the translation declares
 /// the result `noalias ptr` and keeps the pointer for the accesses that follow.
 fn returns_fresh_block(symbol: &str) -> bool {
-    matches!(symbol, "msrt_alloc" | "msrt_alloc_zeroed")
+    matches!(symbol, "msrt_alloc" | "msrt_alloc_zeroed" | "msrt_realloc")
 }
 
-const READS_ONLY: &str = " nounwind willreturn memory(read)";
+const READS_ONLY: &str = " nounwind willreturn nofree nosync memory(read)";
 
 /// An LLVM module under construction.
 pub struct LlvmModule {
@@ -497,6 +497,53 @@ fn wide_values(f: &Function) -> HashSet<Value> {
     wide
 }
 
+/// The scaled indexes behind element accesses tagged `crate::lower::ELEM_REGION`.
+fn elem_products(f: &Function) -> (HashSet<Value>, HashSet<Value>) {
+    let mut products = HashSet::new();
+    let mut addrs = HashSet::new();
+    for block in f.layout.blocks() {
+        for inst in f.layout.block_insts(block) {
+            let (InstructionData::Load { arg, flags, .. }
+            | InstructionData::Store {
+                args: [_, arg],
+                flags,
+                ..
+            }) = f.dfg.insts[inst]
+            else {
+                continue;
+            };
+            let tagged = f.dfg.mem_flags[flags]
+                .alias_region()
+                .is_some_and(|r| f.dfg.alias_regions[r].user_id == crate::lower::ELEM_REGION);
+            if !tagged {
+                continue;
+            }
+            let Some(sum) = f.dfg.value_def(arg).inst() else {
+                continue;
+            };
+            if let InstructionData::Binary {
+                opcode: Opcode::Iadd,
+                args,
+            } = f.dfg.insts[sum]
+            {
+                let product = |v: Value| {
+                    f.dfg.value_def(v).inst().is_some_and(|d| {
+                        matches!(f.dfg.insts[d].opcode(), Opcode::Imul | Opcode::Ishl)
+                    })
+                };
+                // The base is a pointer, never a product, so one product operand is the index.
+                if let [a, b] = args
+                    && product(a) != product(b)
+                {
+                    products.insert(if product(a) { a } else { b });
+                    addrs.insert(arg);
+                }
+            }
+        }
+    }
+    (products, addrs)
+}
+
 struct Tr<'a> {
     f: &'a Function,
     syms: &'a dyn Symbols,
@@ -530,6 +577,16 @@ struct Tr<'a> {
     /// `inttoptr base` plus a `getelementptr`, so LLVM's loop analyses see one pointer and an
     /// affine offset instead of an opaque integer-to-pointer cast of the whole sum.
     indexed: HashMap<Value, (Value, Value)>,
+    /// Scaled indexes (`index * size`) of list element accesses (`crate::lower::ELEM_REGION`):
+    /// the index is below the list's length, so the product cannot wrap.
+    elem_products: HashSet<Value>,
+    /// Addresses (`base + scaled index`) of list element accesses: their offsets stay in bounds.
+    elem_addrs: HashSet<Value>,
+    /// Block parameters carried as `ptr` phis: every value flowing into them is a pointer (or
+    /// null), so LLVM keeps the provenance of the block it came from.
+    ptr_params: HashSet<Value>,
+    /// Entry parameters addressed as memory (see `find_addr_params`).
+    addr_params: HashSet<Value>,
     /// Layout position of each block, and of the block being translated.
     order: HashMap<Block, usize>,
     at: usize,
@@ -570,6 +627,149 @@ impl<'a> Tr<'a> {
                 + self.returns[to..=from].iter().filter(|&&r| r).count();
             exits <= 1
         })
+    }
+
+    /// Whether `v` is a pointer by construction: a fresh block, a stack slot or symbol address, a
+    /// parameter the body addresses memory through, or such a pointer plus an offset.
+    fn is_pointer(&self, v: Value, depth: u32) -> bool {
+        if self.addr_params.contains(&v) {
+            return true;
+        }
+        let Some(inst) = self.f.dfg.value_def(v).inst() else {
+            return false;
+        };
+        match self.f.dfg.insts[inst] {
+            InstructionData::StackAddr { .. } | InstructionData::UnaryGlobalValue { .. } => true,
+            InstructionData::Call { func_ref, .. } => match &self.ext_func(func_ref).name {
+                ExternalName::User(_) => {
+                    returns_fresh_block(&self.name_of(&self.ext_func(func_ref).name))
+                }
+                _ => false,
+            },
+            InstructionData::Binary {
+                opcode: Opcode::Iadd,
+                args: [a, b],
+            } if depth < 32 => self.is_pointer(a, depth + 1) != self.is_pointer(b, depth + 1),
+            _ => false,
+        }
+    }
+
+    /// Whether `v` is the constant zero, which a pointer phi takes as `null`.
+    fn is_null(&self, v: Value) -> bool {
+        self.f.dfg.value_def(v).inst().is_some_and(|i| {
+            matches!(self.f.dfg.insts[i], InstructionData::UnaryImm { imm, .. } if imm.bits() == 0)
+        })
+    }
+
+    /// Entry parameters the body addresses memory through (a load or store address, or the base
+    /// of an element address): each is converted to a `ptr` once, at entry.
+    fn find_addr_params(&self, exclusive: &[usize]) -> HashSet<Value> {
+        let entry = self.f.layout.entry_block().expect("entry block");
+        let params: HashSet<Value> = self
+            .f
+            .dfg
+            .block_params(entry)
+            .iter()
+            .enumerate()
+            .filter(|(i, p)| self.ty(**p) == types::I64 && !exclusive.contains(i))
+            .map(|(_, p)| *p)
+            .collect();
+        let mut found = HashSet::new();
+        for block in self.f.layout.blocks() {
+            for inst in self.f.layout.block_insts(block) {
+                let addr = match self.f.dfg.insts[inst] {
+                    InstructionData::Load { arg, .. } => arg,
+                    InstructionData::Store { args: [_, arg], .. } => arg,
+                    _ => continue,
+                };
+                if params.contains(&addr) {
+                    found.insert(addr);
+                } else if let Some(sum) = self.f.dfg.value_def(addr).inst()
+                    && let InstructionData::Binary {
+                        opcode: Opcode::Iadd,
+                        args: [a, b],
+                    } = self.f.dfg.insts[sum]
+                {
+                    for v in [a, b] {
+                        if params.contains(&v) {
+                            found.insert(v);
+                        }
+                    }
+                }
+            }
+        }
+        found
+    }
+
+    /// The block parameters that can be `ptr` phis: those whose every incoming value is a
+    /// pointer, another such parameter or zero, and at least one comes from a known pointer.
+    fn find_ptr_params(&self) -> HashSet<Value> {
+        let dfg = &self.f.dfg;
+        let pool = &dfg.value_lists;
+        let mut incoming: HashMap<Value, Vec<Value>> = HashMap::new();
+        let mut flow = |bc: ir::BlockCall| {
+            let params = dfg.block_params(bc.block(pool));
+            for (p, a) in params.iter().zip(bc.args(pool)) {
+                if let Some(a) = a.as_value() {
+                    incoming.entry(*p).or_default().push(a);
+                }
+            }
+        };
+        for block in self.f.layout.blocks() {
+            for inst in self.f.layout.block_insts(block) {
+                match dfg.insts[inst] {
+                    InstructionData::Jump { destination, .. } => flow(destination),
+                    InstructionData::Brif { blocks, .. } => blocks.into_iter().for_each(&mut flow),
+                    InstructionData::BranchTable { table, .. } => {
+                        let jt = &dfg.jump_tables[table];
+                        flow(jt.default_block());
+                        jt.as_slice().iter().for_each(|bc| flow(*bc));
+                    }
+                    _ => {}
+                }
+            }
+        }
+        let mut cand: HashSet<Value> = incoming
+            .keys()
+            .copied()
+            .filter(|p| self.ty(*p) == types::I64)
+            .collect();
+        let like = |v: Value, cand: &HashSet<Value>| {
+            cand.contains(&v) || self.is_null(v) || self.is_pointer(v, 0)
+        };
+        loop {
+            let drop: Vec<Value> = cand
+                .iter()
+                .copied()
+                .filter(|p| !incoming[p].iter().all(|a| like(*a, &cand)))
+                .collect();
+            if drop.is_empty() {
+                break;
+            }
+            for p in drop {
+                cand.remove(&p);
+            }
+        }
+        // A counter that starts at zero and adds to itself is not a pointer: keep only the
+        // parameters some known pointer reaches.
+        let mut anchored: HashSet<Value> = HashSet::new();
+        loop {
+            let grown: Vec<Value> = cand
+                .iter()
+                .copied()
+                .filter(|p| !anchored.contains(p))
+                .filter(|p| {
+                    incoming[p]
+                        .iter()
+                        .any(|a| anchored.contains(a) || self.is_pointer(*a, 0))
+                })
+                .collect();
+            if grown.is_empty() {
+                break;
+            }
+            anchored.extend(grown);
+        }
+        anchored
     }
 
     fn t(&mut self) -> String {
@@ -648,7 +848,19 @@ impl<'a> Tr<'a> {
         self.def(format!("icmp ne {t} {o}, 0"))
     }
 
+    /// Whether the memory flags `mf` mark a list element access.
+    fn is_elem(&self, mf: ir::MemFlags) -> bool {
+        self.f.dfg.mem_flags[mf]
+            .alias_region()
+            .is_some_and(|r| self.f.dfg.alias_regions[r].user_id == crate::lower::ELEM_REGION)
+    }
+
     fn ptr(&mut self, v: Value, off: i32) -> String {
+        self.ptr_at(v, off, false)
+    }
+
+    /// The pointer for address `v` plus `off`; `elem` marks an in-bounds list element address.
+    fn ptr_at(&mut self, v: Value, off: i32, elem: bool) -> String {
         if let Some((base, at)) = self.bases.get(&v).cloned() {
             let at = at.wrapping_add(i64::from(off));
             // A symbol's declared type or a parameter says nothing about its size, so only a
@@ -668,7 +880,8 @@ impl<'a> Tr<'a> {
             let (b, s) = (self.op(base), self.op(scaled));
             let bp = self.def(format!("inttoptr i64 {b} to ptr"));
             self.elements[self.at] = true;
-            self.def(format!("getelementptr i8, ptr {bp}, i64 {s}"))
+            let flags = if elem { "inbounds nuw " } else { "" };
+            self.def(format!("getelementptr {flags}i8, ptr {bp}, i64 {s}"))
         } else {
             let o = self.op(v);
             self.def(format!("inttoptr i64 {o} to ptr"))
@@ -694,9 +907,22 @@ impl<'a> Tr<'a> {
                 self.back_edges.push((self.at, to));
             }
         }
+        let params = self.f.dfg.block_params(blk);
         let args: Vec<String> = bc
             .args(pool)
-            .map(|a| self.op(a.as_value().expect("value block arg")))
+            .enumerate()
+            .map(|(i, a)| {
+                let v = a.as_value().expect("value block arg");
+                if params.get(i).is_some_and(|p| self.ptr_params.contains(p)) {
+                    if self.is_null(v) {
+                        "null".to_string()
+                    } else {
+                        self.ptr(v, 0)
+                    }
+                } else {
+                    self.op(v)
+                }
+            })
             .collect();
         if args.is_empty() {
             let from = self.cur.clone();
@@ -765,7 +991,8 @@ impl<'a> Tr<'a> {
                 arg, flags, offset, ..
             } => {
                 let t = dfg.ctrl_typevar(inst);
-                let p = self.ptr(arg, offset.into());
+                let elem = self.is_elem(flags);
+                let p = self.ptr_at(arg, offset.into(), elem);
                 let al = if self.f.dfg.mem_flags[flags].aligned() {
                     t.bytes().max(1)
                 } else {
@@ -781,7 +1008,8 @@ impl<'a> Tr<'a> {
                 ..
             } => {
                 let t = self.ty(args[0]);
-                let p = self.ptr(args[1], offset.into());
+                let elem = self.is_elem(flags);
+                let p = self.ptr_at(args[1], offset.into(), elem);
                 let v = self.op(args[0]);
                 let al = if self.f.dfg.mem_flags[flags].aligned() {
                     t.bytes().max(1)
@@ -910,9 +1138,16 @@ impl<'a> Tr<'a> {
                 let exclusive = self.exclusive.get(&name).cloned().unwrap_or_default();
                 if returns_fresh_block(&name) {
                     // A fresh block: `noalias` tells LLVM nothing else reaches it, and keeping the
-                    // pointer lets later accesses address it without an `inttoptr`.
-                    let size = self.op(vals[0]);
-                    let p = self.def(format!("call noalias ptr @\"{name}\"(i64 {size}) nomerge"));
+                    // pointer lets later accesses address it without an `inttoptr`. `msrt_realloc`
+                    // also takes the block it replaces, which is dead after the call.
+                    let args: Vec<String> = vals
+                        .iter()
+                        .map(|v| format!("i64 {}", self.op(*v)))
+                        .collect();
+                    let p = self.def(format!(
+                        "call noalias ptr @\"{name}\"({}) nomerge",
+                        args.join(", ")
+                    ));
                     let result = self.f.dfg.first_result(inst);
                     self.bases.insert(result, (p.clone(), 0));
                     let i = self.def(format!("ptrtoint ptr {p} to i64"));
@@ -1081,9 +1316,37 @@ impl<'a> Tr<'a> {
                 .zip(b.parse::<i64>().ok().map(i64::wrapping_neg)),
             _ => None,
         };
+        let has_step = step.is_some();
         if let Some(((base, at), c)) = step {
             let known = (base.clone(), at.wrapping_add(c));
             self.bases.insert(self.f.dfg.first_result(inst), known);
+        }
+        if opc == Opcode::Iadd && self.ty(args[0]) == types::I64 && !has_step {
+            // A pointer plus an offset stays a pointer, so LLVM keeps the block it points into.
+            let (b0, b1) = (
+                self.bases.contains_key(&args[0]),
+                self.bases.contains_key(&args[1]),
+            );
+            if b0 != b1 {
+                let (base, index) = if b0 {
+                    (args[0], args[1])
+                } else {
+                    (args[1], args[0])
+                };
+                let res = self.f.dfg.first_result(inst);
+                let at = self.ptr(base, 0);
+                let idx = self.op(index);
+                let flags = if self.elem_addrs.contains(&res) {
+                    "inbounds nuw "
+                } else {
+                    ""
+                };
+                if self.is_product(index) {
+                    self.elements[self.at] = true;
+                }
+                let sum = self.def(format!("getelementptr {flags}i8, ptr {at}, i64 {idx}"));
+                self.bases.insert(res, (sum, 0));
+            }
         }
         if opc == Opcode::Iadd && self.ty(args[0]) == types::I64 && self.is_product(args[1]) {
             let res = self.f.dfg.first_result(inst);
@@ -1095,6 +1358,9 @@ impl<'a> Tr<'a> {
         let rhs = match opc {
             Opcode::Iadd => simple("add"),
             Opcode::Isub => simple("sub"),
+            Opcode::Imul if self.elem_products.contains(&self.f.dfg.first_result(inst)) => {
+                simple("mul nuw nsw")
+            }
             Opcode::Imul => simple("mul"),
             Opcode::Sdiv => simple("sdiv"),
             Opcode::Srem => simple("srem"),
@@ -1278,6 +1544,7 @@ impl LlvmModule {
             metadata_string(name)
         ));
         let none_loc = self.di.push(format!("!DILocation(line: 0, scope: !{sp})"));
+        let (elem_products, elem_addrs) = elem_products(f);
         let mut tr = Tr {
             f,
             syms,
@@ -1296,6 +1563,10 @@ impl LlvmModule {
             sites: self.sites,
             bases: HashMap::new(),
             indexed: HashMap::new(),
+            elem_products,
+            elem_addrs,
+            ptr_params: HashSet::new(),
+            addr_params: HashSet::new(),
             order: blocks.iter().enumerate().map(|(i, b)| (*b, i)).collect(),
             at: 0,
             elements: vec![false; blocks.len()],
@@ -1312,6 +1583,8 @@ impl LlvmModule {
         let mut casts = String::new();
         let all = tr.exclusive;
         let exclusive = all.get(source).map(Vec::as_slice).unwrap_or(&[]);
+        tr.addr_params = tr.find_addr_params(exclusive);
+        tr.ptr_params = tr.find_ptr_params();
         for (i, p) in f.dfg.block_params(entry).iter().enumerate() {
             let t = f.dfg.value_type(*p);
             tr.ops.insert(*p, format!("%a{i}"));
@@ -1321,11 +1594,22 @@ impl LlvmModule {
                 tr.bases.insert(*p, (format!("%x{i}"), 0));
             } else {
                 params.push(format!("{}{} %a{i}", llty(t), attr(t)));
+                if tr.addr_params.contains(p) {
+                    // One conversion for every access, so LLVM sees a single base pointer.
+                    let _ = writeln!(casts, "  %x{i} = inttoptr i64 %a{i} to ptr");
+                    tr.bases.insert(*p, (format!("%x{i}"), 0));
+                }
             }
         }
         for b in &blocks[1..] {
             for (i, p) in f.dfg.block_params(*b).iter().enumerate() {
-                tr.ops.insert(*p, format!("%p{}_{i}", b.as_u32()));
+                let name = format!("%p{}_{i}", b.as_u32());
+                if tr.ptr_params.contains(p) {
+                    tr.ops.insert(*p, format!("{name}.i"));
+                    tr.bases.insert(*p, (name, 0));
+                } else {
+                    tr.ops.insert(*p, name);
+                }
             }
         }
         // Translate each block's instructions; phis are added once every incoming edge is known.
@@ -1358,14 +1642,28 @@ impl LlvmModule {
             let _ = writeln!(text, "{}:", tr.label(*b));
             if *b != entry {
                 let edges = tr.incoming.get(b).map(Vec::as_slice).unwrap_or(&[]);
+                let mut casts_after = String::new();
                 for (i, p) in f.dfg.block_params(*b).iter().enumerate() {
-                    let t = llty(f.dfg.value_type(*p));
+                    let is_ptr = tr.ptr_params.contains(p);
+                    let t = if is_ptr {
+                        "ptr"
+                    } else {
+                        llty(f.dfg.value_type(*p))
+                    };
                     let ins: Vec<String> = edges
                         .iter()
                         .map(|e| format!("[ {}, %{} ]", e.args[i], e.from))
                         .collect();
                     let _ = writeln!(text, "  %p{}_{i} = phi {t} {}", b.as_u32(), ins.join(", "));
+                    if is_ptr {
+                        let _ = writeln!(
+                            casts_after,
+                            "  %p{0}_{i}.i = ptrtoint ptr %p{0}_{i} to i64",
+                            b.as_u32()
+                        );
+                    }
                 }
+                text.push_str(&casts_after);
             }
             text.push_str(code);
         }
@@ -2193,6 +2491,11 @@ mod tests {
 
     /// `fn(base, i) -> f32 { load(base + i * 4) }`.
     fn element_load() -> Function {
+        element_load_flags(false)
+    }
+
+    /// `element_load`, its access tagged as an in-bounds list element when `tagged`.
+    fn element_load_flags(tagged: bool) -> Function {
         let mut sig = Signature::new(CallConv::SystemV);
         sig.params = vec![AbiParam::new(types::I64); 2];
         sig.returns.push(AbiParam::new(types::F32));
@@ -2205,9 +2508,15 @@ mod tests {
         let args = b.block_params(entry).to_vec();
         let off = b.ins().imul_imm_s(args[1], 4);
         let addr = b.ins().iadd(args[0], off);
-        let v = b
-            .ins()
-            .load(types::F32, ir::MemFlagsData::trusted(), addr, 0);
+        let mut flags = ir::MemFlagsData::trusted();
+        if tagged {
+            let region = b.func.dfg.alias_regions.insert(ir::AliasRegionData {
+                user_id: crate::lower::ELEM_REGION,
+                description: "list element".into(),
+            });
+            flags.set_alias_region(Some(region));
+        }
+        let v = b.ins().load(types::F32, flags, addr, 0);
         b.ins().return_(&[v]);
         b.seal_all_blocks();
         b.finalize(cranelift_codegen::isa::TargetFrontendConfig {
@@ -2280,9 +2589,28 @@ mod tests {
         let text = m.finish("x86_64-unknown-linux-gnu", &HashSet::new(), false);
         // LLVM's loop analyses need the base and the scaled index apart; an `inttoptr` of the sum
         // hides the array and stops auto-vectorization of list loops.
-        assert!(text.contains("= inttoptr i64 %a0 to ptr"), "{text}");
-        assert!(text.contains("getelementptr i8, ptr %t"), "{text}");
+        // The parameter is converted once at entry and each access offsets that pointer.
+        assert!(text.contains("%x0 = inttoptr i64 %a0 to ptr"), "{text}");
+        assert!(text.contains("getelementptr i8, ptr %x0, i64 %t"), "{text}");
         assert!(!text.contains("inttoptr i64 %t"), "{text}");
+    }
+
+    #[test]
+    fn a_tagged_element_access_is_in_bounds_and_cannot_wrap() {
+        let mut m = LlvmModule::new(vec![Some("elem.ms".into())], ".".into());
+        let f = element_load_flags(true);
+        m.add_function("elem", "elem", (0, 1), &f, &TestSymbols, true);
+        let text = m.finish("x86_64-unknown-linux-gnu", &HashSet::new(), false);
+        assert!(text.contains("= mul nuw nsw i64 %a1, 4"), "{text}");
+        assert!(
+            text.contains("getelementptr inbounds nuw i8, ptr %x0, i64 %t"),
+            "{text}"
+        );
+        // An untagged address keeps plain wrapping arithmetic.
+        let mut m = LlvmModule::new(vec![Some("elem.ms".into())], ".".into());
+        m.add_function("elem", "elem", (0, 1), &element_load(), &TestSymbols, true);
+        let text = m.finish("x86_64-unknown-linux-gnu", &HashSet::new(), false);
+        assert!(!text.contains("nuw"), "{text}");
     }
 
     #[test]

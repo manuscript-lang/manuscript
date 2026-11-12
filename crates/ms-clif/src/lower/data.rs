@@ -25,7 +25,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                         let lay = mem_layout(&block);
                         let p = self.a(inst, 0)[0];
                         (at..at + w)
-                            .map(|k| self.load_leaf(block[k], p, lay.offsets[k] as i32))
+                            .map(|k| self.load_leaf(flags(), block[k], p, lay.offsets[k] as i32))
                             .collect()
                     }
                     None => self.a(inst, 0)[at..at + w].to_vec(),
