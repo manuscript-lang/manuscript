@@ -43,6 +43,22 @@ pub unsafe fn bytes<'a>(s: *const StrVal) -> &'a [u8] {
     unsafe { core::slice::from_raw_parts((*s).data(), (*s).len()) }
 }
 
+/// Whether the text is known to be ASCII without a long scan: the flag, the bits of an inline
+/// string, or a check of fewer than [`MEDIUM_HAY`] bytes.
+///
+/// # Safety
+/// `s` must be a live string.
+#[inline(always)]
+unsafe fn short_ascii(s: *const StrVal) -> bool {
+    // SAFETY: caller contract.
+    unsafe {
+        if (*s).is_inline() {
+            return (*s).inline_bits() & 0x8080_8080_8080_8080_8080_8080_8080_8080 == 0;
+        }
+        (*s).flagged_ascii() || ((*s).len() < MEDIUM_HAY && bytes(s).is_ascii())
+    }
+}
+
 /// Content equality.
 ///
 /// # Safety
@@ -145,7 +161,7 @@ pub unsafe extern "C-unwind" fn msrt_string_index_of(a: usize, v: usize, out: us
     unsafe {
         let (sa, sv) = (a as *const StrVal, v as *const StrVal);
         let (hay, needle) = (bytes(sa), bytes(sv));
-        if hay.len() < MEDIUM_HAY && hay.is_ascii() {
+        if hay.len() < MEDIUM_HAY && short_ascii(sa) {
             let found = match needle {
                 [] => Some(0),
                 [c] => memchr_short(*c, hay),
@@ -185,7 +201,7 @@ pub unsafe extern "C-unwind" fn msrt_string_view(s: usize, start: i64, end: i64,
             if start < 0 { n + start } else { start },
             if end < 0 { n + end } else { end },
         );
-        let ascii = (*sv).flagged_ascii() || (text.len() < MEDIUM_HAY && text.is_ascii());
+        let ascii = short_ascii(sv);
         if !ascii || a < 0 || b < a || b > n {
             return msrt_string_view_slow(s, start, end, out);
         }
@@ -284,12 +300,47 @@ pub unsafe extern "C-unwind" fn msrt_string_scalar_at(
         let text = bytes(sv);
         let n = text.len() as i64;
         let at = if index < 0 { n + index } else { index };
-        let ascii = (*sv).flagged_ascii() || (text.len() < MEDIUM_HAY && text.is_ascii());
+        let ascii = short_ascii(sv);
         if let Some(&b) = text.get(at as usize).filter(|_| ascii && at >= 0) {
             return b as i64;
         }
         msrt_string_scalar_at_slow(s, index, has_default, default)
     }
+}
+
+unsafe extern "C-unwind" {
+    /// The scalar count of text that is not known to be short ASCII, in the archive.
+    fn msrt_string_scalar_count_slow(s: usize) -> i64;
+}
+
+/// Scalar count: the byte length for ASCII text (flagged, or short enough to check here), else
+/// the runtime's count.
+#[inline(always)]
+unsafe fn scalar_count(s: usize) -> i64 {
+    // SAFETY: caller passes a live string.
+    unsafe {
+        let sv = s as *const StrVal;
+        if short_ascii(sv) {
+            return (*sv).len() as i64;
+        }
+        msrt_string_scalar_count_slow(s)
+    }
+}
+
+/// C view: `msrt_string_length(s: *const StrVal) -> i64`
+#[unsafe(no_mangle)]
+// ms: leaf pure domain=string
+pub unsafe extern "C-unwind" fn msrt_string_length(s: usize) -> i64 {
+    // SAFETY: caller passes a live string.
+    unsafe { scalar_count(s) }
+}
+
+/// C view: `msrt_string_scalar_length(s: *const StrVal) -> i64`
+#[unsafe(no_mangle)]
+// ms: leaf pure domain=string
+pub unsafe extern "C-unwind" fn msrt_string_scalar_length(s: usize) -> i64 {
+    // SAFETY: caller passes a live string.
+    unsafe { scalar_count(s) }
 }
 
 /// C view: `msrt_string_starts_with(a: *const StrVal, v: *const StrVal) -> u8`

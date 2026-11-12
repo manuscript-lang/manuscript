@@ -309,14 +309,7 @@ unsafe fn walk_sub_scalars(s: *const StrVal, a: usize, b: usize) -> Option<StrVa
 
 #[unsafe(no_mangle)]
 // ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_length(s: *const StrVal) -> i64 {
-    // SAFETY: caller passes a live string.
-    unsafe { scalar_count(s) as i64 }
-}
-
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_scalar_length(s: *const StrVal) -> i64 {
+pub unsafe extern "C-unwind" fn msrt_string_scalar_count_slow(s: *const StrVal) -> i64 {
     // SAFETY: caller passes a live string.
     unsafe { scalar_count(s) as i64 }
 }
@@ -3032,7 +3025,7 @@ mod tests {
         let _g = testutil::lock();
         unsafe {
             let s = st("héllo");
-            assert_eq!(msrt_string_length(s), 5);
+            assert_eq!(ms_rt_hot::msrt_string_length(s as usize), 5);
             assert_eq!(crate::testutil::hot::msrt_string_byte_length(s), 6);
             assert_eq!(ret(|o| msrt_string_get(s, 1, HasRaw(0), st(""), o)), "é");
             assert_eq!(ret(|o| msrt_string_get(s, -1, HasRaw(0), st(""), o)), "o");
