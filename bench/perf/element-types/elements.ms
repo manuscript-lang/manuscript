@@ -188,6 +188,68 @@ fn sort_records() Int:
 	ys := xs.sorted(fn a, b: a.kind - b.kind)
 	return ys[0].kind + ys[ys.length() - 1].kind + ys[1000].id % 7
 
+
+type Order:
+	id: Int
+	tags: List[String]
+	lines: List[Pair[Int, Int]]
+
+// 12. Records holding lists: build, move into a list, scan.
+fn records_of_lists() Int:
+	var orders: List[Order] = []
+	for i in 0..200000:
+		var lines: List[Pair[Int, Int]] = []
+		for k in 0..4:
+			lines.append(Pair[Int, Int](k, i % 7))
+		orders.append(Order(i, ["a{i % 3}", "b"], lines))
+	var t = 0
+	for r in 0..5:
+		for o in orders:
+			for l in o.lines:
+				t += l.first * l.second + o.tags.length()
+	return t
+
+// 13. Nested generics: Map[Int, List[Pair[Int, String]]] and List[List[Int]].
+fn nested_generics() Int:
+	var m: Map[Int, List[Pair[Int, String]]] = {}
+	for i in 0..500000:
+		k := i % 2000
+		if not m.contains(k): m[k] = []
+		m[k].append(Pair[Int, String](i, "p"))
+	var grid: List[List[Int]] = []
+	for y in 0..1000:
+		grid.append([0].repeated(1000))
+	var t = 0
+	for e in m.entries():
+		t += e.value.length()
+	for y in 0..1000:
+		for x in 0..1000:
+			grid[y][x] = x * 3 + y
+	for y in 0..1000:
+		for x in 0..1000:
+			t += grid[y][x]
+	return t
+
+// 14. A user generic Stack[T] of records with Optional pops.
+type Stack[T]:
+	items: List[T] = []
+
+fn var Stack[T].push(v: T) Unit:
+	self.items.append(v)
+
+fn var Stack[T].pop() T?:
+	return self.items.pop()
+
+fn generic_stack() Int:
+	var s = Stack[Event]()
+	var t = 0
+	for i in 0..2000000:
+		s.push(Event(i, i % 7, "g", i % 13))
+		if i % 3 == 2:
+			e := s.pop()
+			if e.is_some(): t += e.get().score
+	return t
+
 fn main() Unit:
 	t0 := monotonic().tick
 	a := list_records()
@@ -223,3 +285,12 @@ fn main() Unit:
 	k := sort_records()
 	t11 := monotonic().tick
 	print("sort-records {us(t10, t11)} {k}")
+	l := records_of_lists()
+	t12 := monotonic().tick
+	print("records-of-lists {us(t11, t12)} {l}")
+	n := nested_generics()
+	t13 := monotonic().tick
+	print("nested-generics {us(t12, t13)} {n}")
+	o := generic_stack()
+	t14 := monotonic().tick
+	print("generic-stack {us(t13, t14)} {o}")

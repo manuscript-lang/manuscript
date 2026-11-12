@@ -22,10 +22,18 @@ Release LLVM `ms`, shared 4 vCPU VM, min of 5, microseconds. Rust's default `Has
 | generic-pairs | 45,691 | 99,267 | 0.46 |
 | result-records | 10,306 | 9,228 | 1.12 |
 | set-records | 90,599 | 99,621 | 0.91 |
-| sort-records | 105,576 | 87,655 | 1.20 |
+| sort-records | 107,058 | 93,675 | 1.14 |
+| records-of-lists | 18,906 | 53,487 | 0.35 |
+| nested-generics | 27,579 | 53,442 | 0.52 |
+| generic-stack | 14,513 | 85,519 | 0.17 |
 
 ### Change: a user `hash()` is mixed before it indexes the table
 
 `Set[Pt]` with `fn Pt.hash() Int: self.x * 1000003 + self.y` took 562 to 627 ms for 1M inserts and lookups (min of 3), 6x the rest of the matrix and 2x Rust's SipHash set. The map used the user's value directly, and a hash that is the identity of two small ints makes runs of consecutive values that collide under linear probing. `DynKey::hash` now passes the user value through `hash_int` (one 128-bit multiply): 103 to 139 ms. Strings, `Int` keys and plain-bits records were already mixed.
 
 Remaining gaps are small: `Deque` of records, `PriorityQueue` of records (the `sift_down` cost recorded in `datastructures/results.md`) and `sort_by` of records with a closure comparator, all 1.1 to 1.3x.
+
+### Tried and not kept
+
+- `Deque` of records (1.0 to 1.3x between runs): `grow` is 25M of 84M instructions per 1M pushes, and nothing runs in the runtime; a list range-move primitive would save about 10% wall at most.
+- Sort of 5-word records (1.14 to 1.25x): sorting between the list and its scratch buffer alternately, with no copy back per level, cut instructions 225M to 161M at 200k records but wall time at 1M records stayed within noise (219 to 256 ms against 227 to 326 ms), so it was dropped. The remaining cost is the indirect comparator call and branch misses.

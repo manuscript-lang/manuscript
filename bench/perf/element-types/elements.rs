@@ -111,12 +111,43 @@ fn sort_records() -> i64 {
     xs[0].kind + xs[xs.len() - 1].kind + xs[1000].id % 7
 }
 
+struct Order { #[allow(dead_code)] id: i64, tags: Vec<String>, lines: Vec<Pair<i64, i64>> }
+fn records_of_lists() -> i64 {
+    let mut orders = Vec::new();
+    for i in 0..200000 {
+        let lines = (0..4).map(|k| Pair { first: k, second: i % 7 }).collect();
+        orders.push(Order { id: i, tags: vec![format!("a{}", i % 3), "b".into()], lines });
+    }
+    let mut t = 0;
+    for _ in 0..5 { for o in &orders { for l in &o.lines { t += l.first * l.second + o.tags.len() as i64; } } }
+    t
+}
+fn nested_generics() -> i64 {
+    let mut m: HashMap<i64, Vec<Pair<i64, String>>> = HashMap::new();
+    for i in 0..500000 { m.entry(i % 2000).or_default().push(Pair { first: i, second: "p".into() }); }
+    let mut grid = vec![vec![0i64; 1000]; 1000];
+    let mut t = 0;
+    for v in m.values() { t += v.len() as i64; }
+    for y in 0..1000 { for x in 0..1000 { grid[y][x] = (x * 3 + y) as i64; } }
+    for y in 0..1000 { for x in 0..1000 { t += grid[y][x]; } }
+    t
+}
+fn generic_stack() -> i64 {
+    let mut s: Vec<Event> = Vec::new();
+    let mut t = 0;
+    for i in 0..2000000 {
+        s.push(Event { id: i, kind: i % 7, name: "g".into(), score: i % 13 });
+        if i % 3 == 2 { if let Some(e) = s.pop() { t += e.score; } }
+    }
+    t
+}
+
 fn main() {
-    let cases: [(&str, fn() -> i64); 11] = [
+    let cases: [(&str, fn() -> i64); 14] = [
         ("list-records", list_records), ("list-enums", list_enums), ("map-records", map_records),
         ("map-groups", map_groups), ("optional-records", optional_records), ("deque-records", deque_records),
         ("pq-records", pq_records), ("generic-pairs", generic_pairs), ("result-records", results),
-        ("set-records", set_records), ("sort-records", sort_records),
+        ("set-records", set_records), ("sort-records", sort_records), ("records-of-lists", records_of_lists), ("nested-generics", nested_generics), ("generic-stack", generic_stack),
     ];
     for (name, f) in cases {
         let t = Instant::now();
