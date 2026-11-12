@@ -315,6 +315,14 @@ impl<'a, 'm> Lower<'a, 'm> {
                     payload
                 }
             }
+            Op::OptAddr => {
+                // The payload of a boxed optional lies at the box; no other layout has an address.
+                assert!(
+                    self.opt_boxed(f.ty(inst.args[0])),
+                    "opt.addr of an optional that is not boxed"
+                );
+                self.a(inst, 0)
+            }
             Op::OptUnbox => {
                 // Moves the payload out of a some: the box (if any) is freed, the payload lives on.
                 let ty = f.ty(inst.args[0]);

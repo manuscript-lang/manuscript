@@ -258,3 +258,15 @@ One probe remains per round besides the `contains` (the first statement's, after
 | with probe reuse | 87 to 105 ms | 778M |
 
 The earlier run of this case was 281 to 349 ms with seven lookups a pass; C is 22 to 33 ms. What is left is two probes a round at about 95 to 125 instructions each, from `value_ptr_k` deriving the slot layout from the descriptors on every call; caching the layout in the map header is the next step. Linux, same build and machine as above.
+## 2026-11-12: var calls through boxed optional fields
+
+`tree.ms` is `mixed.ms` case c on its own: 200k inserts into a binary tree whose links are `Node?`, through `fn var Node.insert`. Same machine; callgrind instructions, allocations from memcheck, min-of-7 wall time.
+
+| | before | after | c |
+| --- | ---: | ---: | ---: |
+| instructions | 1,808M | 151M | 117M |
+| allocations | 4,329,208 | 200,015 | 200,000 |
+| wall | 132 ms | 68 ms | 73 ms |
+
+- `self.left?.insert(key)` took the record, unboxed the child into a slot, called, boxed it again with a new allocation and refilled the field. The payload of a recursive `Optional` is already in memory, in the box, so a `var` call now gets the box's address (`opt.addr`, `alias_payload_addr` in `crates/ms-lower/src/alias.rs`) and changes the child where it lies. Only a boxed optional has such an address; an inline payload keeps the take and put-back.
+- The remaining 34M instructions against C are not analysed.
