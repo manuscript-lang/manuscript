@@ -1565,7 +1565,6 @@ impl<'a> FnLower<'a> {
                 if let Some(var) = self.raw_vars.get(uid).copied() {
                     let cur = self.b.use_var(var);
                     self.own_raw_value_in(i, cur, 0);
-                    self.scope_done.push(*uid);
                     continue;
                 }
                 if let Some((kind, list, idx)) = self.rest_closers.get(uid).cloned() {
