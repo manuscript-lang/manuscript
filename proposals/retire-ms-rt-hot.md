@@ -60,6 +60,10 @@ Open: whether `List[T].first()` in `.ms` can express the owned-element copy for 
 - Does MIR have a strided raw load and compare, or does group C need a new operation? (Hypothesis: it needs one.)
 - Is `opt` time acceptable for emitting a probe loop per map type instead of linking one shared copy? Measure before group C.
 
+## Pilot result (2026-11-12)
+
+`List.first`/`last` over a 5M-call loop: 17.8 ms as a runtime call, 10.8 ms through `ms-rt-hot`, 2.6 ms as an inline Rust special case in `ms-lower` (merged in #3730), 2.3 ms as a stdlib `.ms` body. Chinmay prefers `.ms` over more Rust, but the `.ms` body is not a drop-in: the checker treats these natives as borrows of the receiver, a `.ms` body returns an owned value, two `ms-check` tests fail and boxed optionals fail MIR verification. So group A needs one prerequisite first: let a stdlib function return a borrow of its receiver with the same ownership facts as a native (and view a boxed optional), or keep the native declaration and give lowering a general rule instead of per-method cases. That decision is open.
+
 ## Skeptical review (2026-11-12) and what changed
 
 - No measurement yet shows compiler-emitted code beating the hot crate; #3730 only shows inlining helps. So A is a pilot first: `first`/`last` and `Bytes.index_of_byte`, compared against #3730's numbers, and only a win or tie continues.
