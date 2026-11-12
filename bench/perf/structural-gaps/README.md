@@ -285,6 +285,18 @@ The earlier run of this case was 281 to 349 ms with seven lookups a pass; C is 2
 
 A probe is still about 130 instructions for a `String` key (slot layout from descriptors about 20, string unpack and hash about 45, prologue and spills about 20); the layout cache and the other `Map` and `Set` shapes are next. Linux, same build and machine as above.
 
+## 2026-11-12, word-map `get` and fixed key layouts
+
+`m.get(k)` and `m[k]` called the general `msrt_map_get_ptr` even on `Map[Int, Int]`, where `contains` and `add` already used the inlinable `_w8` probes; they now use `word_map_symbol` too. The general probe also derived the slot layout from both descriptors on every call; for an `Int` or `String` key and a value aligned to at most a word it is now two additions.
+
+| program (callgrind Ir, wall min of 3) | before | after |
+| --- | ---: | ---: |
+| `intmap.ms` (`Map[Int, Int]`, 2M counter updates, 2M `contains`) | 380.7M, 86 ms | 292.9M, 78 ms |
+| `keyed.ms` case a (`Map[Int, Stat]`, after the join change) | 274.7M | 262.7M |
+| `Map[String, Stat]` with `contains` (previous section) | 399.1M | 379.1M |
+
+`msrt_map_add_w8` is 51 instructions a call (103M of `intmap`), the next cost there. Linux, same build and machine.
+
 ## 2026-11-12: var calls through boxed optional fields
 
 `tree.ms` is `mixed.ms` case c on its own: 200k inserts into a binary tree whose links are `Node?`, through `fn var Node.insert`. Same machine; callgrind instructions, allocations from memcheck, min-of-7 wall time.
