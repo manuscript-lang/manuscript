@@ -14,6 +14,10 @@ test "string text helpers":
 	"".fields() | expect_equal(List[String]())?
 	"a\u{a0}b".fields() | expect_equal(["a", "b"])?
 	"a1b22c".fields_by(fn c: c >= "0" and c <= "9") | expect_equal(["a", "b", "c"])?
+	"1a22bc3".fields_by(fn c: c >= "0" and c <= "9") | expect_equal(["a", "bc"])?
+	"123".fields_by(fn c: c >= "0" and c <= "9") | expect_equal(List[String]())?
+	"".fields_by(fn c: c == " ") | expect_equal(List[String]())?
+	"é 1éé  x".fields_by(fn c: c == " ") | expect_equal(["é", "1éé", "x"])?
 	"aaa".count("") | expect_equal(4)?
 	"aaaa".count("aa") | expect_equal(2)?
 	"héllo".trim_start_chars("hé") | expect_equal("llo")?

@@ -9,6 +9,7 @@ How fast Manuscript is, compared with hand-written Go and Rust, Node's JSON, and
 | [`llvm-release.md`](llvm-release.md) | LLVM against Cranelift on all 31 benchmarks | see the page | [`llvm-release.md`](llvm-release.md) |
 | [`kernels/`](kernels) | whole numeric and data-structure kernels (sieve, n-body, life, matmul, trees, collatz, Int map) against hand-written Go and Rust | `MS=./target/release/ms GO=go ms run bench/tools/kernels.ms -- kernels 5` | [`kernels/README.md`](kernels/README.md) |
 | [`workloads/`](workloads) | ordinary agent-style programs (parsing, strings, maps, stdin) against Go and Rust on ~3 MB of input, outputs compared | `MS=./target/release/ms ms run bench/tools/workloads.ms -- 3` | [`workloads/results.md`](workloads/results.md) |
+| [`engineering/`](engineering) | everyday tasks (log stats, CSV group-by, word frequency, sort, substring search) against C and Rust on generated input | `MS=./target/release/ms sh bench/perf/engineering/run.sh 5` | [`engineering/README.md`](engineering/README.md) |
 | [`datastructures/`](datastructures) | core List, Map, Set, String, Bytes, PriorityQueue and SortedMap operations against Go and Rust, ns per operation | `MS=./target/release/ms ms run bench/tools/datastructures.ms -- 5` | [`results.md`](datastructures/results.md) |
 | [`codecs/`](codecs) | paired typed JSON Base64 and syntax-error loops with exact output validation | see the [protocol](codecs/README.md) | [2026-10-29](codecs/results-2026-10-29.md) |
 | [`csv/`](csv) | `@std/csv` parse against the Rust `csv` crate on 5000 generated rows | `MS=./target/release/ms ms run bench/tools/cargo_vs_ms.ms -- csv` | [`csv/README.md`](csv/README.md) |
@@ -23,6 +24,8 @@ How fast Manuscript is, compared with hand-written Go and Rust, Node's JSON, and
 | [`wait-all/`](wait-all) | large pending promise fan-in, jitter and immediate-work controls | see the [protocol](wait-all/README.md) | [2026-11-07](wait-all/README.md#2026-11-07) |
 
 Latest refresh with Go and Rust comparisons for the docs: [`results-2026-11-05.md`](results-2026-11-05.md).
+
+Latest generated-code gaps against Rust: [`codegen-2026-11-12.md`](codegen-2026-11-12.md).
 
 Latest kernels against C with bounds checks: [`results-2026-11-09.md`](results-2026-11-09.md).
 

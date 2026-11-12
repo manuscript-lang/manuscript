@@ -363,7 +363,12 @@ impl<'a> FnLower<'a> {
             (TyKind::List(elem), "chunks" | "windows") => {
                 self.list_pieces(name == "chunks", elem, recv, &args, result)
             }
-            (TyKind::List(elem), "get") => {
+            (TyKind::List(_) | TyKind::Bytes, "get") => {
+                let elem = self
+                    .b
+                    .m
+                    .seq_elem(rty)
+                    .ok_or_else(|| Error::new("get on a non-list"))?;
                 // Arguments arrive in written order; the names say which is which.
                 let mut index = None;
                 let mut default = None;

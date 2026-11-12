@@ -667,11 +667,8 @@ impl<'a> FnLower<'a> {
                 Ok(Val { v: got, own: false })
             }
             TyKind::Bytes => {
-                let no_default = self.b.bconst(false);
-                let zero = self.b.iconst(0);
                 self.at(e.pos);
-                let got =
-                    self.call_runtime("msrt_bytes_get", &[l.v, i.v, no_default, zero], MTy::UINT8)?;
+                let got = self.b.list_get(l.v, i.v);
                 if l.own {
                     self.drop_value(l.v);
                 }

@@ -28,19 +28,24 @@
           "index": 3,
           "name": "encoding-base64.ms::Base64 preserves tails across small and batch boundaries",
           "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "encoding-base64.ms::Base64 padding and alphabets preserve nested views",
+          "status": "passed"
         }
       ],
       "summary": {
-        "available": 4,
-        "selected": 4,
-        "passed": 4,
+        "available": 5,
+        "selected": 5,
+        "passed": 5,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN encoding-base64.ms::empty Base64 accepts default and explicit alphabets\nPASS encoding-base64.ms::empty Base64 accepts default and explicit alphabets\nRUN encoding-base64.ms::Base64 after empty retains alphabets and padding tails\nPASS encoding-base64.ms::Base64 after empty retains alphabets and padding tails\nRUN encoding-base64.ms::Base64 encodes every byte and empty views\nPASS encoding-base64.ms::Base64 encodes every byte and empty views\nRUN encoding-base64.ms::Base64 preserves tails across small and batch boundaries\nPASS encoding-base64.ms::Base64 preserves tails across small and batch boundaries\n4 tests, 0 failed\n",
+      "stdout": "RUN encoding-base64.ms::empty Base64 accepts default and explicit alphabets\nPASS encoding-base64.ms::empty Base64 accepts default and explicit alphabets\nRUN encoding-base64.ms::Base64 after empty retains alphabets and padding tails\nPASS encoding-base64.ms::Base64 after empty retains alphabets and padding tails\nRUN encoding-base64.ms::Base64 encodes every byte and empty views\nPASS encoding-base64.ms::Base64 encodes every byte and empty views\nRUN encoding-base64.ms::Base64 preserves tails across small and batch boundaries\nPASS encoding-base64.ms::Base64 preserves tails across small and batch boundaries\nRUN encoding-base64.ms::Base64 padding and alphabets preserve nested views\nPASS encoding-base64.ms::Base64 padding and alphabets preserve nested views\n5 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

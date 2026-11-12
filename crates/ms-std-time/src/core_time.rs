@@ -185,34 +185,58 @@ struct TokenText {
     len: usize,
 }
 
-impl Write for TokenText {
-    fn write_str(&mut self, text: &str) -> core::fmt::Result {
-        let end = self.len + text.len();
-        let dst = self.bytes.get_mut(self.len..end).ok_or(core::fmt::Error)?;
-        dst.copy_from_slice(text.as_bytes());
+impl TokenText {
+    /// Appends a decimal integer with the same sign-aware minimum width as `{:0width$}`.
+    fn push_padded(&mut self, number: i64, width: usize) {
+        let mut digits = [0u8; 20];
+        let mut at = digits.len();
+        let mut magnitude = number.unsigned_abs();
+        loop {
+            at -= 1;
+            digits[at] = b'0' + (magnitude % 10) as u8;
+            magnitude /= 10;
+            if magnitude == 0 {
+                break;
+            }
+        }
+        if number < 0 {
+            self.bytes[self.len] = b'-';
+            self.len += 1;
+        }
+        let padding = width.saturating_sub(digits.len() - at + usize::from(number < 0));
+        for _ in 0..padding {
+            self.bytes[self.len] = b'0';
+            self.len += 1;
+        }
+        let end = self.len + digits.len() - at;
+        self.bytes[self.len..end].copy_from_slice(&digits[at..]);
         self.len = end;
-        Ok(())
     }
 }
 
 fn render_token(index: usize, c: &Calendar, out: &mut TokenText) {
     let v = &c.civil;
-    let result = match index {
-        0 => write!(out, "{:04}", v.year),
-        1 => write!(out, "{:02}", v.month),
-        2 => write!(out, "{:02}", v.day),
-        3 => write!(out, "{:02}", v.hour),
-        4 => write!(out, "{:02}", v.minute),
-        5 => write!(out, "{:02}", v.second),
-        6 => write!(out, "{:03}", v.nanosecond / 1_000_000),
-        7 => {
-            let sign = if c.offset_seconds < 0 { '-' } else { '+' };
-            let abs = c.offset_seconds.abs();
-            write!(out, "{sign}{:02}:{:02}", abs / 3_600, abs % 3_600 / 60)
-        }
+    if index == 7 {
+        out.bytes[0] = if c.offset_seconds < 0 { b'-' } else { b'+' };
+        out.len = 1;
+        let abs = c.offset_seconds.abs();
+        out.push_padded(abs / 3_600, 2);
+        out.bytes[out.len] = b':';
+        out.len += 1;
+        out.push_padded(abs % 3_600 / 60, 2);
+        return;
+    }
+    let (number, width) = match index {
+        0 => (v.year, 4),
+        1 => (v.month, 2),
+        2 => (v.day, 2),
+        3 => (v.hour, 2),
+        4 => (v.minute, 2),
+        5 => (v.second, 2),
+        6 => (v.nanosecond / 1_000_000, 3),
         _ => unreachable!(),
     };
-    result.expect("numeric calendar token fits in 32 bytes");
+    out.push_padded(number, width);
 }
 
 /// `Timestamp.format(pattern, zone)`: at each position the first matching token wins, in this order.
@@ -326,6 +350,77 @@ mod tests {
             i += 1;
         }
         Ok(out)
+    }
+
+    #[test]
+    fn padded_tokens_match_standard_integer_formatting() {
+        let edges = [
+            i64::MIN,
+            i64::MIN + 1,
+            -10_000,
+            -1_000,
+            -100,
+            -10,
+            -1,
+            0,
+            1,
+            9,
+            10,
+            99,
+            100,
+            999,
+            1_000,
+            9_999,
+            10_000,
+            i64::MAX,
+        ];
+        let mut random = 42_u64;
+        for index in 0..4096 {
+            random = random
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1);
+            let number = edges.get(index).copied().unwrap_or(random as i64);
+            for width in [2, 3, 4] {
+                let mut text = TokenText {
+                    bytes: [0; 32],
+                    len: 0,
+                };
+                text.push_padded(number, width);
+                assert_eq!(
+                    &text.bytes[..text.len],
+                    alloc::format!("{number:0width$}").as_bytes(),
+                    "{number}, width {width}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn format_preserves_signed_raw_fields_and_minimum_widths() {
+        for year in [-10_000, -123, -1, 0, 1, 9_999, 10_000] {
+            for nanos in [i64::MIN, -999_000_000, -1, 0, 999_999_999, i64::MAX] {
+                let ts = Ts {
+                    seconds: local_seconds(year, 1, 1, 0, 0, 0),
+                    nanos,
+                };
+                for zone in ["UTC", "+23:59", "-23:59", "-00:01"] {
+                    let pattern = b"YYYY-MM-DD HH:mm:ss.SSS ZZ [zone] YYYYSSS";
+                    assert_eq!(format(ts, pattern, zone), eager_format(ts, pattern, zone));
+                }
+            }
+        }
+        assert_eq!(
+            format(
+                Ts {
+                    seconds: local_seconds(-1, 1, 1, 0, 0, 0),
+                    nanos: i64::MIN
+                },
+                b"YYYY SSS",
+                "UTC"
+            )
+            .unwrap(),
+            b"-001 -9223372036854"
+        );
     }
 
     #[test]

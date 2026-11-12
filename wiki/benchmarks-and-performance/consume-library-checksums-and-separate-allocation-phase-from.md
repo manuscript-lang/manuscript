@@ -11,3 +11,5 @@ Evidence: [isolated RSS helper](../../bench/perf/representative/rss.c), [measure
 Verify: balanced process order, identical tool flags and inputs, no simultaneous CPU work, raw samples plus source and binary hashes, and focused controls for regressions. Identical instructions can vary when relocated across alignment boundaries; preserve assembly and reject arbitrary padding or lucky-placement tuning.
 Verify: `python3 -m unittest discover -s bench/perf -p test_kernel_trials.py` exercises both actual shell runners with controlled producers and requires zero report output on failure.
 Verify: a trivial native program's reported RSS must not merely equal the Python launcher's RSS; retain the original raw measurements when correcting the measurement method.
+
+Codec comparisons distinguish exact-capacity C from growing-buffer C, retain complete output checks, and include empty/tail inputs; faster byte-list construction is not evidence of lower peak memory. See [encoding capacity controls](../../bench/perf/codec-encoding/README.md).

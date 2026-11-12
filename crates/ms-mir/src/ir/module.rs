@@ -185,6 +185,15 @@ impl Module {
         }
     }
 
+    /// The element type of a list, or `uint8` for bytes, which share the list layout.
+    pub fn seq_elem(&self, ty: Ty) -> Option<Ty> {
+        match self.types.kind(ty) {
+            TyKind::List(e) => Some(*e),
+            TyKind::Bytes => Some(Ty::UINT8),
+            _ => None,
+        }
+    }
+
     /// The payload type of an optional type.
     pub fn opt_inner(&self, ty: Ty) -> Option<Ty> {
         match self.types.kind(ty) {

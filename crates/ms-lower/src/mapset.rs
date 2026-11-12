@@ -174,6 +174,9 @@ impl<'a> FnLower<'a> {
         {
             return Ok(None);
         }
+        if let Some(entries) = self.const_literal(map, map_ty) {
+            return self.const_get_chain(view, entries, map_ty, &key.value, name);
+        }
         let mv = self.expr(map)?;
         if self.dead {
             return Ok(Some(mv));
@@ -203,10 +206,22 @@ impl<'a> FnLower<'a> {
             .b
             .emit(Op::PtrIsNull, &[p], Imm::None, Some(MTy::BOOL))
             .expect("is_null");
-        let load = |s: &mut Self| {
+        self.get_chain_tail(name, default, missing, value_ty, &mut |s| {
             s.b.emit(Op::Load, &[p], Imm::Ty(value_ty), Some(value_ty))
                 .expect("load")
-        };
+        })
+    }
+
+    /// The result of `m.get(key)` followed by `.get()`, `.get(default)`, `.is_some()` or
+    /// `.is_none()`, once the probe says whether the key is `missing` and `load` reads the entry.
+    pub(crate) fn get_chain_tail(
+        &mut self,
+        name: &str,
+        default: Option<NArg>,
+        missing: Value,
+        value_ty: MTy,
+        load: &mut dyn FnMut(&mut Self) -> Value,
+    ) -> Result<Option<Val>, Error> {
         match name {
             "is_some" | "is_none" => {
                 let v = if name == "is_none" {
@@ -473,7 +488,7 @@ impl<'a> FnLower<'a> {
 
     /// The packed table of a literal whose keys (`Int` or `String`) and values (`Int`, `Float`,
     /// `Bool` or `String`) are all constants.
-    fn const_map_table(&self, ty: MTy, entries: &[MapEntry]) -> Option<Vec<u8>> {
+    pub(crate) fn const_map_table(&self, ty: MTy, entries: &[MapEntry]) -> Option<Vec<u8>> {
         let TyKind::Obj(_, a) = self.b.m.types.kind(ty) else {
             return None;
         };

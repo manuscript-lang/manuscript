@@ -1540,10 +1540,15 @@ impl BodyState {
             }
             let step = self.gz_in.len().min(4096);
             let room = self.room();
-            let input: Vec<u8> = self.gz_in.drain(..step).collect();
+            // The delivered buffer's capacity goes back to the decoder, so output does not regrow
+            // from empty at every step.
+            let mut reuse = std::mem::take(&mut self.ready);
+            reuse.clear();
             let dec = self.gzip.as_mut().expect("gzip state");
             dec.get_mut().room = room;
-            dec.write_all(&input).map_err(gzip_error)?;
+            dec.get_mut().buf = reuse;
+            dec.write_all(&self.gz_in[..step]).map_err(gzip_error)?;
+            self.gz_in.drain(..step);
             self.ready = std::mem::take(&mut dec.get_mut().buf);
             self.ready_pos = 0;
             if !self.ready.is_empty() {

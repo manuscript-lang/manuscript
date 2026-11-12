@@ -308,7 +308,8 @@ native! {
         zone: &str,
     ) -> Result<String, StatusCode> {
         let text = code(logic::format(ts(value), pattern.as_bytes(), zone))?;
-        Ok(String::from_utf8_lossy(&text).into_owned())
+        Ok(String::from_utf8(text)
+            .unwrap_or_else(|error| String::from_utf8_lossy(error.as_bytes()).into_owned()))
     }
 
     /// `time.from_calendar(year, month, day, hour, minute, second, nanosecond, zone)`.
