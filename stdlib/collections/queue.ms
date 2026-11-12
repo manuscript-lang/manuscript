@@ -121,9 +121,12 @@ The loop runs while the entry has a left child, and the guards on `at` let the c
 */
 fn var PriorityQueue[T].sift_down(start: Int) Unit:
 	size := self.heap.length()
+
 	// `orders` always matches `heap` in length; saying so once lets the compiler drop the
 	// bounds checks on `orders` in every iteration.
-	if self.orders.length() != size: panic("PriorityQueue: orders out of step with heap")
+	if self.orders.length() != size: panic(
+		"PriorityQueue: orders out of step with heap"
+	)
 
 	parents := size / 2
 	var at = start
