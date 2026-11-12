@@ -157,9 +157,9 @@ impl Env {
     fn narrow(&mut self, v: Value, lo: i128, hi: i128) {
         let new = Itv::clamp(lo, hi);
         let cur = self.itv.get(&v).copied().unwrap_or(Itv::TOP);
-        if let Some(m) = cur.meet(new) {
-            self.itv.insert(v, m);
-        }
+        // Disjoint intervals mean the path is dead, or that `cur` is still an early approximation
+        // that will grow: take the refinement, not a stale interval it contradicts.
+        self.itv.insert(v, cur.meet(new).unwrap_or(new));
     }
 }
 
@@ -197,6 +197,9 @@ struct Fa<'a> {
     defs: Vec<Option<(usize, usize)>>,
     rpo: Vec<Block>,
     idom: Vec<usize>,
+    /// `y -> positions` of the checked squares `y * y`: each fits in an `i64` on every path
+    /// through it, which bounds `x * y + j` for `x, j < y`.
+    squares: HashMap<Value, Vec<(usize, usize)>>,
     incoming: Vec<Vec<(usize, Edge, Vec<Value>)>>,
     base: Vec<Option<Itv>>,
     envs: Vec<Env>,
@@ -246,7 +249,12 @@ fn length_origins(m: &Module, f: &Func) -> Vec<Value> {
         Mixed,
     }
     let nv = f.values.len();
-    let is_list = |v: Value| matches!(m.types.kind(f.ty(v)), TyKind::List(_));
+    // An optional list (a `var` list that is moved out and put back) carries its list's length.
+    let is_list = |v: Value| match m.types.kind(f.ty(v)) {
+        TyKind::List(_) => true,
+        TyKind::Opt(inner) => matches!(m.types.kind(*inner), TyKind::List(_)),
+        _ => false,
+    };
     let list_fields = |v: Value| -> Vec<u32> {
         let TyKind::Rec(rid) = m.types.kind(f.ty(v)) else {
             return Vec::new();
@@ -432,12 +440,23 @@ fn length_origins(m: &Module, f: &Func) -> Vec<Value> {
                 }
                 _ => {}
             }
-            if !is_list(r) {
+            // `none` holds no list, so no length to share.
+            if !is_list(r) || i.op == Op::OptNone {
                 continue;
             }
             if matches!(
                 i.op,
-                Op::ListSet | Op::ListSetNn | Op::ListSetU | Op::ListFill | Op::MoveOut | Op::Clone
+                Op::ListSet
+                    | Op::ListSetNn
+                    | Op::ListSetU
+                    | Op::ListFill
+                    | Op::MoveOut
+                    | Op::Clone
+                    | Op::OptSome
+                    | Op::OptView
+                    | Op::OptGet
+                    | Op::OptUnwrap
+                    | Op::OptUnbox
             ) {
                 edge(&mut users, i.args[0].index(), r.index());
             } else {
@@ -626,7 +645,14 @@ pub fn run(m: &mut Module) -> bool {
         let mut terms = false;
         for e in edits {
             match e {
-                Edit::Op(b, i, op) => f.blocks[b].insts[i].op = op,
+                Edit::Op(b, i, op) => {
+                    f.blocks[b].insts[i].op = op;
+                    if matches!(op, Op::IAdd | Op::ISub | Op::IMul | Op::INeg)
+                        && let Some(r) = f.blocks[b].insts[i].res
+                    {
+                        f.exact.insert(r);
+                    }
+                }
                 Edit::Const(b, i, v) => {
                     let inst = &mut f.blocks[b].insts[i];
                     inst.op = Op::BConst;
@@ -854,12 +880,21 @@ impl<'a> Fa<'a> {
                 base[p.value.index()] = Some(type_top(t));
             }
         }
+        let mut squares: HashMap<Value, Vec<(usize, usize)>> = HashMap::new();
+        for (bi, b) in f.blocks.iter().enumerate() {
+            for (ii, i) in b.insts.iter().enumerate() {
+                if i.op == Op::IMulChk && i.args[0] == i.args[1] {
+                    squares.entry(i.args[0]).or_default().push((bi, ii));
+                }
+            }
+        }
         Fa {
             m,
             f,
             defs,
             rpo,
             idom,
+            squares,
             incoming,
             base,
             envs: vec![Env::default(); n],
@@ -1462,6 +1497,7 @@ impl<'a> Fa<'a> {
     /// Constants, additions, multiplications and divisions.
     fn arithmetic(&self, inst: &Inst, env: &Env, _ty: Ty, top: Itv) -> Option<Itv> {
         let arg = |i: usize| self.get(inst.args[i], env);
+        let exact = inst.res.is_some_and(|r| self.f.exact.contains(&r));
         Some(match inst.op {
             Op::IConst => match inst.imm {
                 Imm::Int(v) => Itv::point(v),
@@ -1474,7 +1510,7 @@ impl<'a> Fa<'a> {
             Op::IAdd | Op::IAddChk => {
                 let (x, y) = (arg(0)?, arg(1)?);
                 let (lo, hi) = (x.lo as i128 + y.lo as i128, x.hi as i128 + y.hi as i128);
-                if inst.op == Op::IAddChk {
+                if inst.op == Op::IAddChk || exact {
                     Itv::clamp(lo, hi)
                 } else {
                     Itv::exact(lo, hi)
@@ -1483,7 +1519,7 @@ impl<'a> Fa<'a> {
             Op::ISub | Op::ISubChk => {
                 let (x, y) = (arg(0)?, arg(1)?);
                 let (lo, hi) = (x.lo as i128 - y.hi as i128, x.hi as i128 - y.lo as i128);
-                if inst.op == Op::ISubChk {
+                if inst.op == Op::ISubChk || exact {
                     Itv::clamp(lo, hi)
                 } else {
                     Itv::exact(lo, hi)
@@ -1492,7 +1528,7 @@ impl<'a> Fa<'a> {
             Op::IMul | Op::IMulChk => {
                 let (x, y) = (arg(0)?, arg(1)?);
                 let (lo, hi) = corners(|a, b| a * b, x, y);
-                if inst.op == Op::IMulChk {
+                if inst.op == Op::IMulChk || exact {
                     Itv::clamp(lo, hi)
                 } else {
                     Itv::exact(lo, hi)
@@ -1501,7 +1537,7 @@ impl<'a> Fa<'a> {
             Op::INeg | Op::INegChk => {
                 let x = arg(0)?;
                 let (lo, hi) = (-(x.hi as i128), -(x.lo as i128));
-                if inst.op == Op::INegChk {
+                if inst.op == Op::INegChk || exact {
                     Itv::clamp(lo, hi)
                 } else {
                     Itv::exact(lo, hi)
@@ -1618,7 +1654,12 @@ impl<'a> Fa<'a> {
             Op::Shl => {
                 let (x, y) = (arg(0)?, arg(1)?);
                 if y.is_point() && (0..63).contains(&y.lo) {
-                    Itv::exact((x.lo as i128) << y.lo, (x.hi as i128) << y.lo)
+                    let (lo, hi) = ((x.lo as i128) << y.lo, (x.hi as i128) << y.lo);
+                    if inst.res.is_some_and(|r| self.f.exact.contains(&r)) {
+                        Itv::clamp(lo, hi)
+                    } else {
+                        Itv::exact(lo, hi)
+                    }
                 } else {
                     Itv::TOP
                 }

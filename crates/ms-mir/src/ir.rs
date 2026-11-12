@@ -692,6 +692,11 @@ pub struct Func {
     pub blocks: Vec<BlockData>,
     /// Inlined-callee scopes referenced by [`Loc::scope`].
     pub scopes: Vec<Scope>,
+    /// Results of unchecked `iadd`/`isub`/`imul`/`ineg`/`shl` that the range pass proved cannot wrap:
+    /// the value is the exact mathematical result, so later analysis treats the operation like its
+    /// checked twin instead of as a wrapping one. Values are never reused, so an entry stays true
+    /// as the function is rewritten; code copied into another function does not carry it.
+    pub exact: std::collections::HashSet<Value>,
     /// Indexes of pointer parameters that no other parameter or memory the function reaches
     /// overlaps while it runs (`var` parameters, which the checker keeps exclusive).
     pub noalias: Vec<u32>,
@@ -739,6 +744,7 @@ impl Func {
             values: Vec::new(),
             blocks: vec![BlockData::new()],
             scopes: Vec::new(),
+            exact: Default::default(),
             noalias: Vec::new(),
             scoped: false,
             keeps_scoped: false,
