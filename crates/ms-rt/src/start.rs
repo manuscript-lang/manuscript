@@ -89,6 +89,15 @@ unsafe extern "C-unwind" fn main_task(done: *mut u8) {
     unsafe { crate::task::msrt_token_post(done as usize as u64, 1) };
 }
 
+/// Whether `main` frees the plain memory it still owns when it returns. The process exits next,
+/// so a normal build skips it; the counting build keeps it so a leak shows, and
+/// `MS_FREE_AT_EXIT` keeps it for valgrind.
+#[unsafe(no_mangle)]
+// ms: leaf domain=unwind
+pub extern "C" fn msrt_exit_frees() -> u8 {
+    u8::from(cfg!(feature = "stats") || std::env::var_os("MS_FREE_AT_EXIT").is_some())
+}
+
 /// Runs `main` as the isolate's main task on a stack of its own and returns when it ends.
 ///
 /// # Safety

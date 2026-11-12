@@ -4,6 +4,7 @@
 pub mod builder;
 pub mod copies;
 pub mod elaborate;
+pub mod exit_drops;
 /// The reference interpreter, used by tests as an oracle; compiled only for them.
 #[cfg(feature = "test-support")]
 pub mod interp;
