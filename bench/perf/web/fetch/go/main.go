@@ -1,6 +1,7 @@
 // Fetch benchmark client and file server.
 //
-//	main get <url> <connections> <seconds>   keep-alive GETs; prints requests per second
+//	main get <url> <connections> <seconds>   keep-alive GETs; prints requests per second (a URL
+//	                                         containing "/cookie" keeps a cookie jar)
 //	main serve <port> <dir>                  static file server for the bodies
 package main
 
@@ -10,9 +11,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/cookiejar"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -29,6 +32,9 @@ func main() {
 		var done int64
 		var wg sync.WaitGroup
 		client := &http.Client{Transport: &http.Transport{MaxIdleConnsPerHost: conns}}
+		if strings.Contains(os.Args[2], "/cookie") {
+			client.Jar, _ = cookiejar.New(nil)
+		}
 		end := time.Now().Add(time.Duration(secs) * time.Second)
 		for i := 0; i < conns; i++ {
 			wg.Add(1)
@@ -50,12 +56,20 @@ func main() {
 	}
 }
 
-// framings serves the files in dir as they are, plus "/chunked/<name>" (chunked, 64 KiB flushes,
+// framings serves the files in dir as they are, plus "/redirect" (302 to "/small"), "/cookie" (sets a
+// cookie and answers with the cookies it received), plus "/chunked/<name>" (chunked, 64 KiB flushes,
 // no Content-Length) and "/gzip/<name>" (gzip-compressed with Content-Length).
 func framings(dir string) http.Handler {
 	files := http.FileServer(http.Dir(dir))
 	mux := http.NewServeMux()
 	mux.Handle("/", files)
+	mux.HandleFunc("/redirect", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/small", http.StatusFound)
+	})
+	mux.HandleFunc("/cookie", func(w http.ResponseWriter, r *http.Request) {
+		http.SetCookie(w, &http.Cookie{Name: "session", Value: "abc123", Path: "/"})
+		fmt.Fprint(w, r.Header.Get("Cookie"), "\n")
+	})
 	mux.HandleFunc("/chunked/", func(w http.ResponseWriter, r *http.Request) {
 		data, err := os.ReadFile(filepath.Join(dir, filepath.Base(r.URL.Path)))
 		if err != nil {

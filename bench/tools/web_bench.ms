@@ -325,9 +325,9 @@ fn fetch_all(here: String, seconds: Int) Unit!:
 				"{file} connections={conns} ms threads=2 {cell(p, ["{w}/ms/fetch", url.clone(), conns.clone(), "{seconds}", "2"])}"
 			)
 
-	// Framings of the same 8 MiB: chunked (random) and gzip (compressible text), one
-	// connection.
-	for path in ["chunked/big", "gzip/text"]:
+	// Framings of the same 8 MiB: chunked (random) and gzip (compressible text), then a
+	// redirect hop and a cookie jar round trip on small bodies, one connection.
+	for path in ["chunked/big", "gzip/text", "redirect", "cookie"]:
 		url := "http://127.0.0.1:18950/{path}"
 		go := tail(
 			raised(
