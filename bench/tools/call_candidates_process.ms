@@ -18,7 +18,9 @@ export fn timed(program: String, arguments: List[String]) Timed!:
 	].concat(arguments)
 	ran := capture("bash", command)
 
-	for line in ran.stderr.split("\n"):
+	stderr := ran.stderr.clone()
+
+	for line in stderr.split("\n"):
 		if not line.starts_with("CALL_CPU "): continue
 
 		parts := line.split(" ")
