@@ -64,3 +64,5 @@ The optimized allocating ASCII C control uses `memchr` searches and `memcpy` for
 | ascii65536 | 56673.81 | 13060.25 | 6059.46 |
 
 These separately paired contextual runs confirm the ordinary field is neutral and the large-field gain persists. C remains faster on these six supported inputs; different allocation/layout/call structures prevent interpreting the remaining gap as compiler overhead. C release and ASan/UBSan each pass 520 independent ASCII fixtures alongside both MS apps.
+
+Raw per-run samples, correctness dumps and A/A files from the 2026-11-12 runs are not kept in the tree (#3713); `report.json`, the tables above and `run.py` reproduce them.
