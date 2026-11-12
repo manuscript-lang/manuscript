@@ -3,6 +3,47 @@
 use super::*;
 
 impl<'a, 'm> Lower<'a, 'm> {
+    /// The capture types of closure function `f` with the offset and leaves each has in the object.
+    fn closure_captures(&mut self, f: u32) -> Vec<(Ty, i64, Vec<Leaf>)> {
+        let caps = match &self.g.m.funcs[f as usize].kind {
+            ms_mir::ir::FuncKind::Closure { captures } => captures.clone(),
+            _ => Vec::new(),
+        };
+        let mut off = CLOSURE_CAPTURES as i64;
+        let mut out = Vec::new();
+        for c in caps {
+            let leaves = self.g.lay.leaves(c);
+            let lay = mem_layout(&leaves);
+            off = (off + lay.align as i64 - 1) / lay.align as i64 * lay.align as i64;
+            out.push((c, off, leaves));
+            off += lay.size as i64;
+        }
+        out
+    }
+
+    /// Registers the release of closure object `obj` from capture `k` on while a guarded task
+    /// unwinds; returns the cleanup handle, 0 when no guard is open (its discard is a no-op).
+    fn register_closure_tail(&mut self, f: u32, k: u32, obj: Value) -> Value {
+        let tail = self.g.glue(Glue::ClosureDropFrom(f, k), Ty::UNIT);
+        let hdr = self.task_hdr();
+        let guarded = self
+            .b
+            .ins()
+            .load(types::I8, flags(), hdr, ISOLATE_HDR_GUARDED as i32);
+        let none = self.iconst(0);
+        let push = self.b.create_block();
+        let join = self.b.create_block();
+        self.b.append_block_param(join, types::I64);
+        self.b.ins().brif(guarded, push, &[], join, &[none.into()]);
+        self.b.switch_to_block(push);
+        let r = self.fref(tail);
+        let fa = self.b.ins().func_addr(types::I64, r);
+        let h = self.rt_call("msrt_cleanup_push", &[fa, obj])[0];
+        self.b.ins().jump(join, &[h.into()]);
+        self.b.switch_to_block(join);
+        self.b.block_params(join)[0]
+    }
+
     pub fn lower_glue(&mut self, kind: Glue, ty: Ty) {
         let entry = self.b.create_block();
         self.b.append_block_params_for_function_params(entry);
@@ -20,30 +61,41 @@ impl<'a, 'm> Lower<'a, 'm> {
             Glue::ClosureDrop(f) => {
                 // Drops the captures then frees the object.
                 let obj = params[0];
-                let caps = match &self.g.m.funcs[f as usize].kind {
-                    ms_mir::ir::FuncKind::Closure { captures } => captures.clone(),
-                    _ => Vec::new(),
-                };
+                let caps = self.closure_captures(f);
                 let closers = self.g.m.funcs[f as usize].capture_closers.clone();
-                let mut off = CLOSURE_CAPTURES as i64;
-                for (k, c) in caps.into_iter().enumerate() {
-                    let leaves = self.g.lay.leaves(c);
-                    let lay = mem_layout(&leaves);
-                    off = (off + lay.align as i64 - 1) / lay.align as i64 * lay.align as i64;
+                for (k, (c, off, leaves)) in caps.into_iter().enumerate() {
                     if let Some((_, close)) = closers.iter().find(|(i, _)| *i as usize == k) {
                         // A resource the environment owns is closed in place before it is
                         // released: the closer takes the capture's address.
                         let at = self.b.ins().iadd_imm_s(obj, off);
                         let fid = self.g.funcs[close.index()];
+                        // A close that faults leaves by a jump: while a guarded task unwinds,
+                        // the rest of the object is released from here.
+                        let handle = self.register_closure_tail(f, k as u32, obj);
                         self.call_id(fid, &[at]);
+                        self.rt_call("msrt_cleanup_discard", &[handle]);
                     }
                     if self.g.m.needs_drop(c) {
                         let vs = self.load_leaves(obj, off, &leaves);
                         self.drop_value(c, &vs);
                     }
-                    off += lay.size as i64;
                 }
                 self.free(obj);
+                self.b.ins().return_(&[]);
+            }
+            Glue::ClosureDropFrom(f, from) => {
+                let obj = params[0];
+                let on = self.rt_call("msrt_unwind_drops", &[])[0];
+                let caps = self.closure_captures(f);
+                self.if_then(on, |s| {
+                    for (k, (c, off, leaves)) in caps.iter().enumerate() {
+                        if k as u32 > from && s.g.m.needs_drop(*c) {
+                            let vs = s.load_leaves(obj, *off, leaves);
+                            s.drop_value(*c, &vs);
+                        }
+                    }
+                    s.free(obj);
+                });
                 self.b.ins().return_(&[]);
             }
             Glue::ClosureClone(f) => {
