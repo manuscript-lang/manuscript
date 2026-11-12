@@ -121,6 +121,17 @@ impl Itv {
     }
 }
 
+fn cmp_holds(cc: Cc, a: i64, b: i64) -> bool {
+    match cc {
+        Cc::Lt => a < b,
+        Cc::Le => a <= b,
+        Cc::Gt => a > b,
+        Cc::Ge => a >= b,
+        Cc::Eq => a == b,
+        Cc::Ne => a != b,
+    }
+}
+
 fn fits(lo: i128, hi: i128) -> bool {
     lo >= i64::MIN as i128 && hi <= i64::MAX as i128
 }
@@ -774,15 +785,82 @@ impl<'a> Fa<'a> {
         }
     }
 
+    /// A Boolean block parameter (the merge of a short-circuit `and`/`or`) that is `truth`
+    /// only on one forward incoming edge: that edge's facts hold.
+    fn refine_param(&self, cond: Value, truth: bool, env: &mut Env) -> bool {
+        let Some((bi, pi)) = self.param_of[cond.index()] else {
+            return false;
+        };
+        let incoming = &self.incoming[bi];
+        if incoming.is_empty()
+            || incoming
+                .iter()
+                .any(|(p, ..)| self.rpo_pos[*p] >= self.rpo_pos[bi])
+        {
+            return true;
+        }
+        let possible = |arg: Value| match self.def_inst(arg).map(|d| (d.op, d.imm)) {
+            Some((Op::BConst, Imm::Bool(b))) => b == truth,
+            _ => true,
+        };
+        let mut viable = incoming.iter().filter(|(_, _, args)| possible(args[pi]));
+        if let (Some((pred, kind, args)), None) = (viable.next(), viable.next()) {
+            let mut e = self.edge_env(*pred, *kind);
+            self.refine_cond(args[pi], truth, &mut e);
+            for (v, itv) in e.itv {
+                env.narrow(v, itv.lo as i128, itv.hi as i128);
+            }
+            for r in e.rels {
+                if !env.rels.contains(&r) {
+                    env.rels.push(r);
+                }
+            }
+        }
+        true
+    }
+
     fn refine_cond(&self, cond: Value, truth: bool, env: &mut Env) {
+        if self.refine_param(cond, truth, env) {
+            return;
+        }
         let Some(inst) = self.def_inst(cond) else {
             return;
         };
         match inst.op {
             Op::ICmp => {
                 let Imm::Cc(cc) = inst.imm else { return };
+                if let Some(k) = self.constant(inst.args[1]) {
+                    self.refine_select(inst.args[0], cc, k, truth, env, 4);
+                }
                 let cc = if truth { cc } else { cc.negated() };
                 self.refine_cmp(cc, inst.args[0], inst.args[1], env);
+            }
+            // `a or b` and `a and b` lower to a select with a constant arm.
+            Op::Select => {
+                let (c, x, y) = (inst.args[0], inst.args[1], inst.args[2]);
+                let bconst = |v: Value| match self.def_inst(v).map(|d| (d.op, d.imm)) {
+                    Some((Op::BConst, Imm::Bool(b))) => Some(b),
+                    _ => None,
+                };
+                match (bconst(x), bconst(y), truth) {
+                    (Some(true), _, false) => {
+                        self.refine_cond(c, false, env);
+                        self.refine_cond(y, false, env);
+                    }
+                    (_, Some(false), true) => {
+                        self.refine_cond(c, true, env);
+                        self.refine_cond(x, true, env);
+                    }
+                    (Some(false), _, true) => {
+                        self.refine_cond(c, false, env);
+                        self.refine_cond(y, true, env);
+                    }
+                    (_, Some(true), false) => {
+                        self.refine_cond(c, true, env);
+                        self.refine_cond(x, false, env);
+                    }
+                    _ => {}
+                }
             }
             Op::UICmp => {
                 let Imm::Cc(cc) = inst.imm else { return };
@@ -799,6 +877,41 @@ impl<'a> Fa<'a> {
                 self.refine_cond(inst.args[1], false, env);
             }
             _ => {}
+        }
+    }
+
+    /// Whether the select tree `v` can yield a value `r` with `(r cc k) == truth`.
+    fn arm_can(&self, v: Value, cc: Cc, k: i64, truth: bool, depth: u32) -> bool {
+        if let Some(c) = self.constant(v) {
+            return cmp_holds(cc, c, k) == truth;
+        }
+        match self.def_inst(v) {
+            Some(d) if d.op == Op::Select && depth > 0 => {
+                self.arm_can(d.args[1], cc, k, truth, depth - 1)
+                    || self.arm_can(d.args[2], cc, k, truth, depth - 1)
+            }
+            _ => true,
+        }
+    }
+
+    /// `v cc k` is `truth` where `v` selects between constants (the three-way compare of
+    /// `min`/`max`/`compare`): a condition whose arm cannot satisfy it is known to be false.
+    fn refine_select(&self, v: Value, cc: Cc, k: i64, truth: bool, env: &mut Env, depth: u32) {
+        let Some(d) = self.def_inst(v) else { return };
+        if d.op != Op::Select || depth == 0 {
+            return;
+        }
+        let (c, x, y) = (d.args[0], d.args[1], d.args[2]);
+        let (cx, cy) = (
+            self.arm_can(x, cc, k, truth, 3),
+            self.arm_can(y, cc, k, truth, 3),
+        );
+        if cx && !cy {
+            self.refine_cond(c, true, env);
+            self.refine_select(x, cc, k, truth, env, depth - 1);
+        } else if cy && !cx {
+            self.refine_cond(c, false, env);
+            self.refine_select(y, cc, k, truth, env, depth - 1);
         }
     }
 
@@ -899,11 +1012,32 @@ impl<'a> Fa<'a> {
         }
     }
 
+    /// The interval of the amount `a` adds to or subtracts from `p`, when `a` is `p + q` or
+    /// `p - q` with `q` a value whose range is known (a widened byte, a bounded index).
+    fn step_range(&self, a: Value, p: Value, env: &Env) -> Option<Itv> {
+        let i = self.def_inst(a)?;
+        let (q, neg) = match i.op {
+            Op::IAdd | Op::IAddChk if i.args[0] == p => (i.args[1], false),
+            Op::IAdd | Op::IAddChk if i.args[1] == p => (i.args[0], false),
+            Op::ISub | Op::ISubChk if i.args[0] == p => (i.args[1], true),
+            _ => return None,
+        };
+        let q = self.get(q, env)?;
+        if neg {
+            Some(Itv {
+                lo: q.hi.checked_neg()?,
+                hi: q.lo.checked_neg()?,
+            })
+        } else {
+            Some(q)
+        }
+    }
+
     fn param_itv(&self, bi: usize, pi: usize) -> Option<Itv> {
         let p = self.f.blocks[bi].params[pi].value;
         let mut acc: Option<Itv> = None;
         let mut others: Option<Itv> = None;
-        let (mut ups, mut downs, mut counter_ok) = (0, 0, true);
+        let (mut ups, mut downs, mut mixed, mut counter_ok) = (0, 0, 0, true);
         for (pred, kind, args) in &self.incoming[bi] {
             let a = args[pi];
             let env = self.edge_env(*pred, *kind);
@@ -914,12 +1048,22 @@ impl<'a> Fa<'a> {
             if a == p {
                 continue;
             }
-            match self.step_of(a, p) {
-                Some(s) if s != 0 && s.unsigned_abs() <= COUNTER_STEP_MAX as u64 => {
-                    if s > 0 {
+            let step = self
+                .step_of(a, p)
+                .map(Itv::point)
+                .or_else(|| self.step_range(a, p, &env));
+            match step {
+                Some(s)
+                    if (s.lo, s.hi) != (0, 0)
+                        && s.lo.unsigned_abs() <= COUNTER_STEP_MAX as u64
+                        && s.hi.unsigned_abs() <= COUNTER_STEP_MAX as u64 =>
+                {
+                    if s.lo >= 0 {
                         ups += 1;
-                    } else {
+                    } else if s.hi <= 0 {
                         downs += 1;
+                    } else {
+                        mixed += 1;
                     }
                 }
                 Some(_) => counter_ok = false,
@@ -933,10 +1077,15 @@ impl<'a> Fa<'a> {
         }
         if ASSUME_BOUNDED_COUNTERS
             && counter_ok
-            && (ups == 0) != (downs == 0)
+            && ups + downs + mixed > 0
             && let (Some(o), Some(a)) = (others, acc)
         {
-            let bound = if ups > 0 {
+            let bound = if mixed > 0 || (ups > 0 && downs > 0) {
+                Itv {
+                    lo: i64::MIN / 2,
+                    hi: i64::MAX / 2,
+                }
+            } else if ups > 0 {
                 Itv {
                     lo: o.lo,
                     hi: i64::MAX / 2,
@@ -988,6 +1137,7 @@ impl<'a> Fa<'a> {
             | Op::ListGetNn
             | Op::ListGetU
             | Op::StrLen
+            | Op::Conv
             | Op::AltTag => self.other_ops(inst, env, ty, top),
             _ => Some(top),
         }
@@ -1197,6 +1347,14 @@ impl<'a> Fa<'a> {
             Op::ListGet | Op::ListGetNn | Op::ListGetU if self.byte_lists[inst.args[0].index()] => {
                 Itv { lo: 0, hi: 255 }
             }
+            // A narrow integer widened to `Int` keeps the range of its type.
+            Op::Conv if _ty == Ty::INT => match self.m.types.int_range(self.f.ty(inst.args[0])) {
+                Some((lo, hi)) if lo >= i64::MIN.into() && hi <= i64::MAX.into() => Itv {
+                    lo: lo as i64,
+                    hi: hi as i64,
+                },
+                _ => top,
+            },
             Op::StrLen => Itv { lo: 0, hi: LEN_MAX },
             Op::AltTag => match self.m.types.kind(self.f.ty(inst.args[0])) {
                 TyKind::Alt(a) => {
