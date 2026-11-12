@@ -7,10 +7,9 @@
 //! is deleted by the change that removes the method, and an entry whose method is gone fails the check, so
 //! the list only shrinks.
 
+use crate::stdlib_modules::{allow_list, check_shrinking, parsed};
 use ms_syntax::ast::{DeclKind, Method, Module};
-use ms_syntax::parser::parse;
 use std::collections::BTreeSet;
-use std::sync::Arc;
 
 // `Iterator` is for sequences that never wait, so its `next` is not a stream method.
 const ITERATOR: &str = "Iterator";
@@ -19,46 +18,27 @@ const STREAM_MODULES: [&str; 2] = ["stdlib/io/io.ms", "stdlib/io/streams.ms"];
 const ALLOWED: &str = include_str!("../stream-names-allowed.txt");
 
 pub fn check(syms: ms_syntax::Names, files: &[String]) -> Vec<String> {
-    let allowed: BTreeSet<&str> = ALLOWED
-        .lines()
-        .map(str::trim)
-        .filter(|l| !l.is_empty() && !l.starts_with("//"))
-        .collect();
-    let mut seen = BTreeSet::new();
-    let mut issues = Vec::new();
-    for path in files {
-        if !path.starts_with("stdlib/")
-            || !path.ends_with(".ms")
-            || STREAM_MODULES.contains(&path.as_str())
-        {
-            continue;
-        }
-        let Ok(source) = std::fs::read_to_string(path) else {
-            continue;
-        };
-        let file: Arc<str> = Arc::from(path.as_str());
-        let Ok(module) = parse(&file, &source) else {
-            continue;
-        };
-        for entry in exported_methods(syms, &module) {
-            let key = format!("{path} {entry}");
-            if allowed.contains(key.as_str()) {
-                seen.insert(key);
-            } else {
-                issues.push(format!(
-                    "{path}: exported `{entry}` has a stream-shaped name; return a ReadStream[T] or take a WriteStream[T] instead (see proposals/stream-redesign.md)"
-                ));
-            }
-        }
-    }
-    for entry in allowed {
-        if !seen.contains(entry) {
-            issues.push(format!(
+    let found = parsed(files)
+        .filter(|(p, _)| !STREAM_MODULES.contains(p))
+        .flat_map(|(path, module)| {
+            exported_methods(syms, &module)
+                .into_iter()
+                .map(move |entry| (path.to_string(), entry))
+        });
+    check_shrinking(
+        &allow_list(ALLOWED),
+        found,
+        |path, entry| {
+            format!(
+                "{path}: exported `{entry}` has a stream-shaped name; return a ReadStream[T] or take a WriteStream[T] instead (see proposals/stream-redesign.md)"
+            )
+        },
+        |entry| {
+            format!(
                 "crates/ms-repo-check/stream-names-allowed.txt: `{entry}` no longer exists; delete the line"
-            ));
-        }
-    }
-    issues
+            )
+        },
+    )
 }
 
 /// `Type.method` for each banned method of an exported interface or of an impl on an exported type.

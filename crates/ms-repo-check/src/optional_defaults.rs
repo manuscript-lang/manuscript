@@ -8,43 +8,23 @@
 //! that gives the parameter a default, and an entry whose parameter is gone or already defaulted fails
 //! the check, so the list only shrinks.
 
+use crate::stdlib_modules::{allow_list, check_shrinking, parsed};
 use ms_syntax::ast::{DeclKind, Func};
-use ms_syntax::parser::parse;
 use std::collections::BTreeSet;
-use std::sync::Arc;
 
 const ALLOWED: &str = include_str!("../optional-defaults-allowed.txt");
 
 pub fn check(syms: ms_syntax::Names, files: &[String]) -> Vec<String> {
-    let allowed: BTreeSet<&str> = ALLOWED
-        .lines()
-        .map(str::trim)
-        .filter(|l| !l.is_empty() && !l.starts_with("//"))
-        .collect();
-    let mut seen = BTreeSet::new();
-    let mut issues = Vec::new();
-    for path in files {
-        if !path.starts_with("stdlib/")
-            || !path.ends_with(".ms")
-            || path.starts_with("stdlib/internal/")
-        {
-            continue;
-        }
-        let Ok(source) = std::fs::read_to_string(path) else {
-            continue;
-        };
-        let file: Arc<str> = Arc::from(path.as_str());
-        let Ok(module) = parse(&file, &source) else {
-            continue;
-        };
-        let mut found = Vec::new();
+    let mut found = Vec::new();
+    for (path, module) in parsed(files).filter(|(p, _)| !p.starts_with("stdlib/internal/")) {
+        let mut entries = Vec::new();
         for decl in module.decls.iter().filter(|d| d.export) {
             match &decl.kind {
-                DeclKind::Fn(f) => undefaulted(syms, "", f, &mut found),
+                DeclKind::Fn(f) => undefaulted(syms, "", f, &mut entries),
                 DeclKind::Interface(i) => {
                     let owner = syms.str(i.name).to_string();
                     for m in &i.methods {
-                        undefaulted(syms, &owner, &m.func, &mut found);
+                        undefaulted(syms, &owner, &m.func, &mut entries);
                     }
                 }
                 _ => {}
@@ -66,30 +46,27 @@ pub fn check(syms: ms_syntax::Names, files: &[String]) -> Vec<String> {
                 let owner = i.receiver.name(syms);
                 if exported.contains(owner) {
                     for m in &i.methods {
-                        undefaulted(syms, owner, &m.func, &mut found);
+                        undefaulted(syms, owner, &m.func, &mut entries);
                     }
                 }
             }
         }
-        for entry in found {
-            let key = format!("{path} {entry}");
-            if allowed.contains(key.as_str()) {
-                seen.insert(key);
-            } else {
-                issues.push(format!(
-                    "{path}: `{entry}` is optional or an options record with no default; add `= none` or `= Options()` so callers never pass it explicitly"
-                ));
-            }
-        }
+        found.extend(entries.into_iter().map(|e| (path.to_string(), e)));
     }
-    for entry in allowed {
-        if !seen.contains(entry) {
-            issues.push(format!(
+    check_shrinking(
+        &allow_list(ALLOWED),
+        found,
+        |path, entry| {
+            format!(
+                "{path}: `{entry}` is optional or an options record with no default; add `= none` or `= Options()` so callers never pass it explicitly"
+            )
+        },
+        |entry| {
+            format!(
                 "crates/ms-repo-check/optional-defaults-allowed.txt: `{entry}` no longer needs an exception; delete the line"
-            ));
-        }
-    }
-    issues
+            )
+        },
+    )
 }
 
 /// `owner.function parameter` for each parameter that must have a default and lacks one.
