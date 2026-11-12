@@ -26,41 +26,46 @@
         },
         {
           "index": 3,
-          "name": "text-padding.ms::a short target, negative target or empty padding leaves the text unchanged",
+          "name": "text-padding.ms::a padded result past the inline size keeps its text and length",
           "status": "passed"
         },
         {
           "index": 4,
-          "name": "text-padding.ms::a table row needs no unwrap",
+          "name": "text-padding.ms::a short target, negative target or empty padding leaves the text unchanged",
           "status": "passed"
         },
         {
           "index": 5,
-          "name": "text-padding.ms::padding beyond the string limit faults",
+          "name": "text-padding.ms::a table row needs no unwrap",
           "status": "passed"
         },
         {
           "index": 6,
-          "name": "text-padding.ms::fixed-digit float formatting returns a plain String",
+          "name": "text-padding.ms::padding beyond the string limit faults",
           "status": "passed"
         },
         {
           "index": 7,
+          "name": "text-padding.ms::fixed-digit float formatting returns a plain String",
+          "status": "passed"
+        },
+        {
+          "index": 8,
           "name": "text-padding.ms::a digit count outside the range faults",
           "status": "passed"
         }
       ],
       "summary": {
-        "available": 8,
-        "selected": 8,
-        "passed": 8,
+        "available": 9,
+        "selected": 9,
+        "passed": 9,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN text-padding.ms::padding returns a plain String\nPASS text-padding.ms::padding returns a plain String\nRUN text-padding.ms::padding counts scalars\nPASS text-padding.ms::padding counts scalars\nRUN text-padding.ms::repeated fills keep pattern and scalar boundaries\nPASS text-padding.ms::repeated fills keep pattern and scalar boundaries\nRUN text-padding.ms::a short target, negative target or empty padding leaves the text unchanged\nPASS text-padding.ms::a short target, negative target or empty padding leaves the text unchanged\nRUN text-padding.ms::a table row needs no unwrap\nPASS text-padding.ms::a table row needs no unwrap\nRUN text-padding.ms::padding beyond the string limit faults\nPASS text-padding.ms::padding beyond the string limit faults\nRUN text-padding.ms::fixed-digit float formatting returns a plain String\nPASS text-padding.ms::fixed-digit float formatting returns a plain String\nRUN text-padding.ms::a digit count outside the range faults\nPASS text-padding.ms::a digit count outside the range faults\n8 tests, 0 failed\n",
+      "stdout": "RUN text-padding.ms::padding returns a plain String\nPASS text-padding.ms::padding returns a plain String\nRUN text-padding.ms::padding counts scalars\nPASS text-padding.ms::padding counts scalars\nRUN text-padding.ms::repeated fills keep pattern and scalar boundaries\nPASS text-padding.ms::repeated fills keep pattern and scalar boundaries\nRUN text-padding.ms::a padded result past the inline size keeps its text and length\nPASS text-padding.ms::a padded result past the inline size keeps its text and length\nRUN text-padding.ms::a short target, negative target or empty padding leaves the text unchanged\nPASS text-padding.ms::a short target, negative target or empty padding leaves the text unchanged\nRUN text-padding.ms::a table row needs no unwrap\nPASS text-padding.ms::a table row needs no unwrap\nRUN text-padding.ms::padding beyond the string limit faults\nPASS text-padding.ms::padding beyond the string limit faults\nRUN text-padding.ms::fixed-digit float formatting returns a plain String\nPASS text-padding.ms::fixed-digit float formatting returns a plain String\nRUN text-padding.ms::a digit count outside the range faults\nPASS text-padding.ms::a digit count outside the range faults\n9 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [
