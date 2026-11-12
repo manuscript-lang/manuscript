@@ -128,6 +128,8 @@ struct Pool {
     finished: Vec<Ptr>,
     threads: usize,
     idle: usize,
+    /// Tasks blocked in a shielded wait for a job to finish; only then is `FINISHED` signalled.
+    finish_waiters: usize,
     /// Idle threads already signalled for a queued job but not yet awake.
     wakes: usize,
     dns_running: usize,
@@ -146,6 +148,7 @@ static POOL: Mutex<Pool> = Mutex::new(Pool {
     finished: Vec::new(),
     threads: 0,
     idle: 0,
+    finish_waiters: 0,
     wakes: 0,
     dns_running: 0,
     permits: 0,
@@ -230,7 +233,7 @@ fn submit<I: Send + Sync + 'static, O: Send + 'static>(
         drop: drop_job::<I, O>,
         lane,
     };
-    let start = {
+    let (start, wake) = {
         let mut pool = lock();
         pool.queue.push_back(ptr);
         // An idle thread already signalled for an earlier job will not take this one too.
@@ -242,9 +245,12 @@ fn submit<I: Send + Sync + 'static, O: Send + 'static>(
         if start {
             pool.threads += 1;
         }
-        start
+        (start, wake)
     };
-    READY.notify_one();
+    // A new thread finds the job in the queue itself, and a busy one takes it when it is free.
+    if wake {
+        READY.notify_one();
+    }
     if start && !spawn_thread() {
         let orphaned = {
             let mut pool = lock();
@@ -444,9 +450,11 @@ pub fn run_shielded<I: Send + Sync + 'static, O: Send + 'static>(
     if got & WAIT_CANCELLED != 0 {
         // A pending stop ends every park at once: block the thread until the job is done.
         let mut pool = lock();
+        pool.finish_waiters += 1;
         while state(&pool, ptr) != State::Done {
             pool = FINISHED.wait(pool).unwrap_or_else(|e| e.into_inner());
         }
+        pool.finish_waiters -= 1;
     }
     // SAFETY: the job is done: the park ended with its post, or the loop above saw it.
     let output = unsafe { take(job) }.expect("a finished job holds its output");
@@ -526,7 +534,7 @@ fn work() -> ! {
         };
         // SAFETY: this thread runs the job until it marks it done.
         unsafe { (ptr.run)(ptr.head) };
-        let post = {
+        let (post, signal) = {
             let mut pool = lock();
             if ptr.lane == Lane::Dns {
                 pool.dns_running -= 1;
@@ -536,13 +544,15 @@ fn work() -> ! {
             if let Some(at) = pool.abandoned.iter().position(|&h| h == ptr.head) {
                 pool.abandoned.swap_remove(at);
                 pool.finished.push(ptr);
-                None
+                (None, pool.finish_waiters > 0)
             } else {
                 // SAFETY: as above.
-                Some(unsafe { (*ptr.head).token })
+                (Some(unsafe { (*ptr.head).token }), pool.finish_waiters > 0)
             }
         };
-        FINISHED.notify_all();
+        if signal {
+            FINISHED.notify_all();
+        }
         if ptr.lane == Lane::Dns {
             // A DNS job may have waited for this one's slot.
             READY.notify_one();
