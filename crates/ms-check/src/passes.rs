@@ -214,6 +214,7 @@ const BUILTIN_SCALARS: [&str; 13] = [
 /// Replaces each inherent `impl` whose receiver names a type set declared in the module
 /// (`type Ordered = Int | Float`, `fn Ordered.min(...)`) with one `impl` per member, so a
 /// method written once over a set exists on every member. Each copy has fresh node ids.
+/// Removed once blanket generic methods land (#3604).
 fn expand_set_receivers(decls: &[Decl], next_id: &mut u32) -> Vec<Decl> {
     let sets: HashMap<Name, &[TypeRef]> = decls
         .iter()
