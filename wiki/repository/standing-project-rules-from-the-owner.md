@@ -6,6 +6,7 @@ Decision (Chinmay): these rules apply to every PR and thread. Each line points t
 
 - PRs: open ready for review, never as drafts, with squash auto-merge on; the owner does not review ([create-pr](../../skills/create-pr/SKILL.md#merging)).
 - Platform parity: Linux, macOS and Windows stay at parity. Never skip, gate or no-op a test on a platform without asking the owner ([why Windows needs a dispatch](pr-checks-skip-windows-so-dispatch-the-full-matrix.md)).
+- Stack PRs and cut idle time: start the next slice on the open branch (base it on the previous PR's branch, retarget to `main` when it merges) instead of waiting for gates or CI; a failure found later is fixed on the branch that owns it and merged forward.
 - Workarounds: each gets an issue naming its removal condition, and is deleted once the real fix is on `main`.
 - Manuscript first: behavior goes in stdlib `.ms`; Rust keeps small, general runtime primitives.
 - Dependencies: never add a third-party crate or package without asking the owner. Prefer the Rust standard library, and replace a low-value dependency with in-house code.
