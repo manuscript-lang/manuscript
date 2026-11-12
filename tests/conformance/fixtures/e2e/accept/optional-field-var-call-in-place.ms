@@ -12,11 +12,14 @@ fn var Node.insert(key: Int) Unit:
 		if self.left.is_none():
 			self.left = Node(key, none, none)
 			return
+
 		self.left?.insert(key)
 		return
+
 	if self.right.is_none():
 		self.right = Node(key, none, none)
 		return
+
 	self.right?.insert(key)
 
 fn var Node.rename(delta: Int) Unit:
@@ -24,11 +27,13 @@ fn var Node.rename(delta: Int) Unit:
 
 fn count(node: Node?) Int:
 	if node.is_none(): return 0
+
 	n := node.get()
 	return 1 + count(n.left) + count(n.right)
 
 fn keys(node: Node?, var out: List[Int]) Unit:
 	if node.is_none(): return
+
 	n := node.get()
 	keys(n.left, var out)
 	out.append(n.key)
@@ -39,12 +44,13 @@ type Tag:
 	next: Tag?
 
 fn var Tag.append_label(s: String) Unit:
-	self.label = self.label + s
+	self.label += s
 
 test "inserts through boxed optional fields":
 	var root = Node(50, none, none)
 	for k in [30, 70, 20, 40, 60, 80, 35, 45]:
 		root.insert(k)
+
 	var out: List[Int] = []
 	keys(root, var out)
 	expect_equal(out, [20, 30, 35, 40, 45, 50, 60, 70, 80])?
