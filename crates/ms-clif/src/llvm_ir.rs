@@ -274,6 +274,9 @@ impl DebugInfo {
 /// type list and the subroutine type; file `i` is `FIRST_FILE + i`.
 const FIRST_FILE: usize = 5;
 
+/// First metadata id of the TBAA nodes, above any debug-info id a program can reach.
+const TBAA_BASE: usize = 1 << 30;
+
 /// The symbol names `text` mentions as `@"name"`.
 fn referenced(text: &str) -> HashSet<String> {
     let mut names = HashSet::new();
@@ -588,6 +591,19 @@ impl<'a> Tr<'a> {
         self.f.dfg.value_type(v)
     }
 
+    /// `, !tbaa !N` for an access in an alias region: LLVM then knows a scalar element store
+    /// leaves the list and string header words alone, so it hoists their loads out of loops.
+    fn tbaa(&self, flags: cranelift_codegen::ir::MemFlags) -> String {
+        let Some(region) = self.f.dfg.mem_flags[flags].alias_region() else {
+            return String::new();
+        };
+        match self.f.dfg.alias_regions[region].user_id {
+            crate::lower::REGION_SCALAR_ELEM => format!(", !tbaa !{}", TBAA_BASE + 3),
+            crate::lower::REGION_HEADER_ELEM => format!(", !tbaa !{}", TBAA_BASE + 4),
+            _ => String::new(),
+        }
+    }
+
     fn line(&mut self, s: impl AsRef<str>) {
         self.out.push_str("  ");
         self.out.push_str(s.as_ref());
@@ -771,7 +787,8 @@ impl<'a> Tr<'a> {
                 } else {
                     1
                 };
-                let r = self.def(format!("load {}, ptr {p}, align {al}", llty(t)));
+                let tag = self.tbaa(flags);
+                let r = self.def(format!("load {}, ptr {p}, align {al}{tag}", llty(t)));
                 self.set(inst, 0, r);
             }
             InstructionData::Store {
@@ -788,7 +805,8 @@ impl<'a> Tr<'a> {
                 } else {
                     1
                 };
-                self.line(format!("store {} {v}, ptr {p}, align {al}", llty(t)));
+                let tag = self.tbaa(flags);
+                self.line(format!("store {} {v}, ptr {p}, align {al}{tag}", llty(t)));
             }
             InstructionData::LoadNoOffset { arg, .. } => {
                 // The only use is the cancellation poll (`atomic_load`).
@@ -1589,6 +1607,15 @@ impl LlvmModule {
         tail.push_str("!1 = !{i32 2, !\"Debug Info Version\", i32 3}\n");
         tail.push_str("!2 = !{i32 7, !\"Dwarf Version\", i32 4}\n");
         tail.push_str("!3 = !{}\n!4 = !DISubroutineType(types: !3)\n");
+        let _ = write!(
+            tail,
+            "!{b} = !{{!\"ms.tbaa\"}}\n!{s} = !{{!\"ms.scalar-elem\", !{b}, i64 0}}\n!{h} = !{{!\"ms.header-elem\", !{b}, i64 0}}\n!{ts} = !{{!{s}, !{s}, i64 0}}\n!{th} = !{{!{h}, !{h}, i64 0}}\n",
+            b = TBAA_BASE,
+            s = TBAA_BASE + 1,
+            h = TBAA_BASE + 2,
+            ts = TBAA_BASE + 3,
+            th = TBAA_BASE + 4
+        );
         for (i, f) in self.di.files.iter().enumerate() {
             let name = f.as_deref().unwrap_or("<unknown>");
             let _ = writeln!(

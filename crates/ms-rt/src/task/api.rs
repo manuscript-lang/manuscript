@@ -463,7 +463,7 @@ pub unsafe extern "C-unwind" fn msrt_task_count() -> usize {
 }
 
 /// Whether no other task could run while the current one blocks its thread: each is parked on a
-/// token or a join with no deadline and not on a descriptor, so nothing but a post wakes it. A program that
+/// token with no deadline and not on a descriptor, so nothing but a post wakes it. A program that
 /// waits for one promise at a time is in this state, and a blocking call then gains nothing from
 /// a pool thread. A post from another thread is noticed when the call returns. Answers false past
 /// a handful of tasks, so the check stays a few loads.
@@ -485,12 +485,8 @@ pub unsafe extern "C-unwind" fn msrt_task_others_stalled() -> bool {
             let t = &*t;
             let stalled = match t.state {
                 State::Done => true,
-                // Parked on a token, or joining another task (no token, descriptor or timer): only
-                // a post or the joined task's end wakes it, and that task is looked at itself.
                 State::Waiting => {
-                    t.deadline == NO_DEADLINE
-                        && t.kill_at == NO_DEADLINE
-                        && (t.wait_token != 0 || (t.wait_fd < 0 && t.wait_events == 0))
+                    t.wait_token != 0 && t.deadline == NO_DEADLINE && t.kill_at == NO_DEADLINE
                 }
                 _ => false,
             };
