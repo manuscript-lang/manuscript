@@ -1,0 +1,9 @@
+[Wiki](../index.md) › [Runtime](index.md)
+
+# `main` skips plain frees at exit, and the stack limit lives in the region
+
+Verified (2026-11-12, `bench/perf/structural-gaps`): freeing a 500k-entry map when `main` returns cost 45 to 70 ms of a 211 to 243 ms program. `ms_mir::exit_drops` gates the drops on `main`'s return paths whose type is plain memory behind `msrt_exit_frees`; the counting runtime (`ms-rt/stats`, so `make leak-check`) and `MS_FREE_AT_EXIT=1` keep them. A closure, an interface value or an opaque handle is never gated (`Module::drops_plain_memory`), and a `main` that something calls again keeps every drop. Add a type that closes something to the not-plain side, never to the list of plain ones.
+
+The recursion check reads the limit from the region word beside the task block's address (`STACK_LIMIT_CELL`), one load from the masked stack pointer. Every writer of `Hdr::limit` must follow with `task::publish_limit()` (fault depth reserve, guard exit, segment grow and return); `publish_region` rewrites every segment's cell when a task is switched in, because tasks share a region's slots. A new place that changes the limit without publishing it makes the check use a stale value: too high faults early, too low skips the grow.
+
+Evidence: [`exit_drops.rs`](../../crates/ms-mir/src/exit_drops.rs), [`task.rs`](../../crates/ms-rt/src/task.rs), fixture `e2e/accept/main-exit-closes-resources`.

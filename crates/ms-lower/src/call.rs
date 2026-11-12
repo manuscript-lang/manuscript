@@ -26,6 +26,9 @@ pub(crate) type VarArgument = (usize, Value, MTy, Option<usize>);
 
 impl<'a> FnLower<'a> {
     pub fn call_expr(&mut self, e: &Expr) -> Result<Val, Error> {
+        if let Some(v) = self.scalar_parse_int(e)? {
+            return Ok(v);
+        }
         let saved = self.scope_override;
         self.scope_override = self.call_evidence(e);
         let out = self.call_expr_in_scope(e);
@@ -870,6 +873,9 @@ impl<'a> FnLower<'a> {
         let recv_expr = self
             .receiver_expr(e)
             .ok_or_else(|| Error::new("method call without receiver"))?;
+        if let Some(v) = self.fused_chain(e, m, recv_expr)? {
+            return Ok(v);
+        }
         let native = match m.native {
             ct::Native::Source => return self.source_method_call(e, view, m, recv_expr),
             ct::Native::Contract => return self.contract_call(e, view, m, recv_expr),
