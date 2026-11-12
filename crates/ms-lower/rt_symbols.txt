@@ -119,6 +119,7 @@ msrt_list_extend(v: *mut VecVal, d: ElemDesc, other: *mut VecVal) @domain=collec
 msrt_list_fill(v: *mut VecVal, d: ElemDesc, value: *const u8, start: i64, end: i64) @domain=collection @leaf
 msrt_list_first(v: *const VecVal, d: ElemDesc, out: *mut u8) -> u8 @domain=collection @leaf
 msrt_list_flatten(lists: *const VecVal, d: ElemDesc, out: *mut VecVal) @domain=collection @leaf
+msrt_list_free_raw(v: *mut VecVal) @domain=collection @leaf
 msrt_list_get(v: *const VecVal, d: ElemDesc, index: i64, default: *const u8, out: *mut u8) @domain=collection @leaf
 msrt_list_index_fault(operation: i64, index: i64, len: i64) -> ! @leaf
 msrt_list_index_of(v: *const VecVal, d: ElemDesc, probe: *const u8, out: *mut i64) -> u8 @domain=collection @leaf
@@ -140,6 +141,7 @@ msrt_list_reserve(v: *mut VecVal, d: ElemDesc, extra: i64) @domain=collection @l
 msrt_list_reverse(v: *mut VecVal, d: ElemDesc) @domain=collection @leaf
 msrt_list_reversed(v: *const VecVal, d: ElemDesc, out: *mut VecVal) @domain=collection @leaf
 msrt_list_set(v: *mut VecVal, d: ElemDesc, index: i64, e: *const u8) @domain=collection @leaf
+msrt_list_shadow(v: *const VecVal, d: ElemDesc, out: *mut VecVal) @domain=collection @leaf
 msrt_list_slice(v: *const VecVal, d: ElemDesc, start: i64, end: i64, out: *mut VecVal) -> u8 @domain=collection @leaf
 msrt_list_sort_in_place(v: *mut VecVal, d: ElemDesc, cmp: CmpFn, env: *mut u8) @domain=collection
 msrt_list_sort_ints(v: *mut VecVal, desc: i64) @domain=collection @leaf
