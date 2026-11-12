@@ -2682,7 +2682,7 @@ mod tests {
             ] {
                 let (h, n) = (from_bytes(hay.as_bytes()), from_bytes(needle.as_bytes()));
                 assert_eq!(
-                    msrt_string_contains(&h, &n),
+                    msrt_string_contains_long(&h, &n),
                     want,
                     "{hay:?} contains {needle:?}"
                 );
