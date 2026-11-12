@@ -90,3 +90,29 @@ Same machine and `gcc -O2` twins as the second pass. Before is `main` at `f5b0b6
 
 - Exit drops (opportunity 4): `ms_mir::exit_drops` gates the drops on `main`'s return paths whose type is plain memory (strings, bytes, lists, maps, sets, big integers, optionals, records and alternatives of those) behind `msrt_exit_frees`. A closure, an interface value or a runtime handle is never gated, and the close call of a closeable owner is not a drop, so resources still close in the same order (`e2e/accept/main-exit-closes-resources`). The counting runtime of `make leak-check` and `MS_FREE_AT_EXIT=1` (valgrind) keep the frees: `make leak-check` still reports 0 of 382 leaking. A `main` that something calls again keeps every drop. The wall time drops by about 45 to 70 ms; the build itself is unchanged.
 - Stack check (opportunity 7): the recursion limit of the running stack segment is copied into the region cell beside the task block's address (`STACK_LIMIT_CELL`), so the check is `mov`, `and`, `cmp` against memory, `ja` (4 instructions, one load) instead of the second dependent load through the block (5 instructions). The runtime keeps the cell current when a task is switched in, a segment is added or left, a fault shrinks the limit for cleanups, and a guard unwinds. 1.0 instruction per `fib` call (20.7 to 19.7); the wall time does not move beyond noise, because the removed load hit the cache and the check is not on the critical path of `fib`. Checking once per recursion cycle was not built: a self-recursive function is its own cycle, so `fib` would still check every call.
+## 2026-11-12: borrowed key in `Map.update`, and a counted `split` that did not pay
+
+`3d4d48b1`, same machine, `logstats` on 35,000 lines of the generated log (callgrind instructions, memcheck allocation counts) and on 22 MB (min of 25, ms).
+
+- `add` and `add_default` already borrowed a cloned key (`borrowed_key_add`). `update` now does too: `m.update(f[3].clone(), ..)` on a `String`-keyed map reads `f[3]` in place and the runtime copies the key only when the entry is new. Keys of 22 bytes or fewer never allocated, so `logstats` (path keys) does not change: 152,022 allocations before and after, 104 against 105 ms. The change helps keys over 22 bytes (the byte-scan `logstats` copies one per line).
+- Sizing the `split` list once for a one-byte separator (a `memchr` count pass, as the empty separator already does) cut `logstats` from 161,350 to 126,350 allocations (4.6 to 3.6 per line) and instructions from 127.8M to 120.3M, but wall time rose from 103 to 111 ms (min of 25, three runs agree). The extra pass over a 47-byte line costs more than the removed `realloc` saves with the release allocator, so it was not kept. Callgrind allocation rows overstate release cost (see above); judge allocation changes by wall time.
+- The remaining `logstats` allocations are the copies of pieces over 22 bytes that `split` makes and the line itself: track 2 (lend), not stage 1.
+
+## 2026-11-12: interface borrow in the frame
+
+A borrowed value converted to an interface (`total(sq)` for `fn total(x: Shape)`) built a heap box of its leaves per call. When the `iface.borrow` result only reaches calls whose result is not a view of their arguments, and drops, the Cranelift lowering now keeps the leaves in a stack slot and tags the value as owning nothing (tag 2); any other use (return, branch argument, store, view-returning call) keeps the box. Probe (1,000 calls of `total(sq)` in a loop, `/tmp` build, callgrind instructions are for the whole process including startup, memcheck counts allocations): 1,013 to 13 allocations, 666,910 to 350,901 instructions (callgrind uses glibc `malloc`, so the instruction drop overstates release cost). Fixture: `e2e/stdlib/interface-borrow-in-frame`.
+
+Closure captures: a closure passed to a call and not stored already allocates nothing (1,000 calls of `apply(fn x: x + k, i)`: 13 allocations in total). A closure stored in a list must escape the frame, so its environment stays on the heap; no change.
+
+## 2026-11-12: nested element writes
+
+Same machine; Release LLVM build; callgrind instruction totals. `grid.ms` is LCS over a 2001 x 2001 `List[List[Int]]`; `c/grid.c` is its C twin (`gcc -O2`).
+
+| program | before | after | c |
+| --- | ---: | ---: | ---: |
+| `grid.ms` | 146.5M | 113.4M | 79.6M |
+
+- `dp[i][j] = v` now lowers to `list.set` on the borrowed row `dp[i]`, written where it lies (`slot_list_set`, `crates/ms-lower/src/native/list.rs`). The row's `{ptr, len, cap}` are no longer taken out and stored back after every element write.
+- List element loads and stores carry an alias region (`crates/ms-clif/src/lower.rs`): scalar elements and list or string headers are different regions. The LLVM emitter writes them as TBAA tags, so an `Int` store no longer forces reloading the previous row's header (about 4M instructions here). Only the LLVM backend gets them: a Cranelift alias region means disjoint from every other access, so tagging there dropped stores (`e2e/stdlib/queues` failed on macOS debug builds).
+- Remaining gap: the bounds checks on `dp[i - 1]`, `dp[i]` and `a[i - 1]` and the current row's header load, which LLVM cannot hoist (they sit behind a data-dependent branch and a list buffer is not known to be dereferenceable). With every runtime check disabled the program is 91.3M, so a perfect range pass could close at most 22M of the 33.8M gap; it cannot prove the row-internal checks. Not pursued.
+- Table build (`[0].repeated(m + 1)` per row) is 26.3M of the 113.4M. A doubling `splice` fill cut that to 20.5M instructions but not the wall time (19.4 ms for the table alone against 22.4 ms for `calloc` in C), so it was not shipped (#3645).
