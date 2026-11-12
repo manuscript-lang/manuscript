@@ -1,5 +1,8 @@
-// conform: tags=aliasing,closures,control-flow,formatter,interfaces,interpolation,lists,match,modules,mutation,parser,records,stdlib-collections,stdlib-testing,strings,testing,tier-stdlib,try-result
-// conform: phase=parse
+// conform: tags=aliasing,closures,control-flow,interfaces,interpolation,lists,match,modules,mutation,records,stdlib-collections,stdlib-testing,strings,testing,tier-stdlib,try-result
+// conform: phase=check
+// The one-owner model rejects a closure that mutates a list while `==` compares it: the
+// closure takes `left`, `right` and `side` with it, `target` only borrows, and a function
+// value cannot be cloned. This used to be a runtime test of retained headers.
 // conform: origin=tests/e2e/testdata/accept/list-equality-mutation.ms
 import fail from "@std/test/test.ms"
 

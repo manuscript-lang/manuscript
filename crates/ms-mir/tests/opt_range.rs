@@ -80,9 +80,9 @@ fn interpreter_agrees_before_and_after() {
 fn induction_variable_is_unchecked() {
     let (b, a) = optimized("loop_induction.mir");
     assert_eq!(count(&b, "iadd.chk"), 2);
-    // `i + 1` under `i < 1000`; `acc + i` can still overflow.
-    assert_eq!(count(&a, "iadd.chk"), 1, "{}", print_module(&a));
-    assert_eq!(count(&a, "iadd"), 1);
+    // `i + 1` under `i < 1000`; `acc + i` adds a value below 1000 each pass, a bounded counter.
+    assert_eq!(count(&a, "iadd.chk"), 0, "{}", print_module(&a));
+    assert_eq!(count(&a, "iadd"), 2);
 }
 
 #[test]
@@ -92,6 +92,34 @@ fn bounded_counters_are_unchecked() {
     let (_, a) = optimized("count_down.mir");
     // `i - 1` under `i > 0` is exact; `acc + i` can still overflow.
     assert_eq!(count(&a, "isub.chk"), 0, "{}", print_module(&a));
+}
+
+#[test]
+fn a_sum_of_narrow_values_is_unchecked() {
+    let (b, a) = optimized("narrow_sum.mir");
+    assert_eq!(count(&b, "iadd.chk"), 2);
+    // Each addend is a widened byte, so the accumulator is a bounded counter.
+    assert_eq!(count(&a, "iadd.chk"), 0, "{}", print_module(&a));
+    assert_eq!(exec(&b), exec(&a));
+}
+
+#[test]
+fn a_ring_index_under_a_short_circuit_guard_is_unchecked() {
+    let (b, a) = optimized("ring_index.mir");
+    assert_eq!(count(&b, "list.get"), 1);
+    // `cap == 0 or start < 0` leaves `cap >= 1` and `start >= 0`, so `(start + k) % cap`
+    // is a valid index.
+    assert_eq!(count(&a, "list.get.u"), 1, "{}", print_module(&a));
+    assert_eq!(count(&a, "srem.chk"), 0, "{}", print_module(&a));
+    assert_eq!(exec(&b), exec(&a));
+}
+
+#[test]
+fn a_counted_push_loop_makes_its_counter_the_length() {
+    let (b, a) = optimized("counted_push.mir");
+    assert_eq!(count(&b, "list.get"), 1);
+    assert_eq!(count(&a, "list.get.u"), 1, "{}", print_module(&a));
+    assert_eq!(exec(&b), exec(&a));
 }
 
 #[test]
@@ -587,6 +615,15 @@ fn a_record_returned_through_memory_keeps_an_unknown_list_length() {
     range::run(&mut after);
     verify_module(&after).unwrap_or_else(|e| panic!("{e:?}\n{}", print_module(&after)));
     assert_eq!(exec(&after), want, "{}", print_module(&after));
+}
+
+/// Two loads of one memory slot read the same list when nothing stores into the slot between them.
+#[test]
+fn loads_of_one_slot_share_a_list_length() {
+    let (b, a) = optimized("slot_loads_share_length.mir");
+    assert_eq!(count(&b, "list.get"), 1);
+    assert_eq!(count(&a, "list.get.u"), 1, "{}", print_module(&a));
+    assert_eq!(exec(&b), exec(&a));
 }
 
 /// `n` list-mapping loops one after another, each over the list the one before built.

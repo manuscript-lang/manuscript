@@ -238,6 +238,11 @@ impl Interp<'_> {
                     None => return Err(Raw::internal("opt.get on none")),
                 }
             }
+            Op::OptAddr => {
+                return Err(Raw::internal(
+                    "interior pointers are not supported by the interpreter",
+                ));
+            }
             Op::OptUnbox => {
                 let Val::Opt(Some(v)) = &ops.regs[inst.args[0].index()] else {
                     return Err(Raw::internal("opt.unbox of none"));
@@ -260,6 +265,19 @@ impl Interp<'_> {
                     return Err(Raw::internal("str.byte on &inst.args non-string"));
                 };
                 ops.set(Val::Int(i64::from(s.as_bytes()[*i as usize])));
+            }
+            Op::StrAsciiAt => {
+                let (Val::Str(s), Val::Int(i)) = (
+                    &ops.regs[inst.args[0].index()],
+                    &ops.regs[inst.args[1].index()],
+                ) else {
+                    return Err(Raw::internal("str.ascii_at on non-string"));
+                };
+                let byte = s
+                    .as_bytes()
+                    .get(*i as usize)
+                    .filter(|_| s.is_ascii() && *i >= 0);
+                ops.set(Val::Int(byte.map_or(-1, |b| i64::from(*b))));
             }
             Op::StrAscii => {
                 let Val::Int(b) = &ops.regs[inst.args[0].index()] else {
