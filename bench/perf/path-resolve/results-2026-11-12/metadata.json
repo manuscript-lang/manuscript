@@ -1,0 +1,36 @@
+{
+  "baseline": "ff4ce5edff87e46edf1f1f105bc93cd1b6236217",
+  "cpu": 4,
+  "machine": "Linux x86_64 AMD EPYC 7763",
+  "backend": "llvm",
+  "build_type": "Release",
+  "samples": 21,
+  "environment": {
+    "MS_CPU_LEVEL": null,
+    "MS_BACKEND": null,
+    "MS_THREADS": null,
+    "XDG_CACHE_HOME": null
+  },
+  "binaries": {
+    "base": "7cf0b497d58aa3c649d6cfd69d071636254e63f83c99170227870d3c5e09b38b",
+    "new1": "17cee2442302254d996923181d021524277be9cb6ed2f07d9d9ffbc71408fb08",
+    "new2": "6720875b1d0f2eb385fa9ad2ee0e7d23b1a93d0b233f4429796cc60f50dc5c69",
+    "new3": "2908efabd69d1fe75d6b3a5d27c53d2d264ccb62bc6c039e51afaa6e8e77a3a9"
+  },
+  "notes": [
+    "Final samples.json and aa.json timing runs have no concurrent builds.",
+    "Initial aa.json overlapped rebuild and is excluded.",
+    "No perf or valgrind executable available.",
+    "No C parity claim."
+  ],
+  "artifact_mapping": {
+    "base": "current-main baseline executable",
+    "new1": "rejected redundant-separator byte builder",
+    "new2": "rejected separator-preserving byte builder",
+    "new3": "final StringBuilder candidate",
+    "samples.json": "original local samples3.json: final21pair run",
+    "aa.json": "original local aa-clean.json: clean21pair A/A run",
+    "rejected-redundant-separators.json": "original local samples.json",
+    "rejected-byte-builder.json": "original local samples2.json"
+  }
+}

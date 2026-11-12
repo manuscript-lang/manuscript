@@ -1,0 +1,338 @@
+[
+  {
+    "kind": "plain",
+    "n": 1,
+    "side": "base",
+    "minor_faults": 262,
+    "major_faults": 0,
+    "output": "15069843 1300000"
+  },
+  {
+    "kind": "plain",
+    "n": 1,
+    "side": "new3",
+    "minor_faults": 253,
+    "major_faults": 0,
+    "output": "15591631 1300000"
+  },
+  {
+    "kind": "plain",
+    "n": 1,
+    "side": "new3",
+    "minor_faults": 254,
+    "major_faults": 0,
+    "output": "15717597 1300000"
+  },
+  {
+    "kind": "plain",
+    "n": 1,
+    "side": "base",
+    "minor_faults": 260,
+    "major_faults": 0,
+    "output": "15858602 1300000"
+  },
+  {
+    "kind": "plain",
+    "n": 1,
+    "side": "base",
+    "minor_faults": 259,
+    "major_faults": 0,
+    "output": "14985136 1300000"
+  },
+  {
+    "kind": "plain",
+    "n": 1,
+    "side": "new3",
+    "minor_faults": 254,
+    "major_faults": 0,
+    "output": "15084562 1300000"
+  },
+  {
+    "kind": "plain",
+    "n": 1,
+    "side": "new3",
+    "minor_faults": 254,
+    "major_faults": 0,
+    "output": "15443364 1300000"
+  },
+  {
+    "kind": "plain",
+    "n": 1,
+    "side": "base",
+    "minor_faults": 259,
+    "major_faults": 0,
+    "output": "15374975 1300000"
+  },
+  {
+    "kind": "plain",
+    "n": 1,
+    "side": "base",
+    "minor_faults": 260,
+    "major_faults": 0,
+    "output": "15236236 1300000"
+  },
+  {
+    "kind": "plain",
+    "n": 1,
+    "side": "new3",
+    "minor_faults": 254,
+    "major_faults": 0,
+    "output": "15916860 1300000"
+  },
+  {
+    "kind": "plain",
+    "n": 1,
+    "side": "new3",
+    "minor_faults": 253,
+    "major_faults": 0,
+    "output": "15283945 1300000"
+  },
+  {
+    "kind": "plain",
+    "n": 1,
+    "side": "base",
+    "minor_faults": 259,
+    "major_faults": 0,
+    "output": "16210100 1300000"
+  },
+  {
+    "kind": "plain",
+    "n": 1,
+    "side": "base",
+    "minor_faults": 260,
+    "major_faults": 0,
+    "output": "14872985 1300000"
+  },
+  {
+    "kind": "plain",
+    "n": 1,
+    "side": "new3",
+    "minor_faults": 253,
+    "major_faults": 0,
+    "output": "14523150 1300000"
+  },
+  {
+    "kind": "plain",
+    "n": 4,
+    "side": "base",
+    "minor_faults": 259,
+    "major_faults": 0,
+    "output": "14104597 1480000"
+  },
+  {
+    "kind": "plain",
+    "n": 4,
+    "side": "new3",
+    "minor_faults": 254,
+    "major_faults": 0,
+    "output": "12936078 1480000"
+  },
+  {
+    "kind": "plain",
+    "n": 4,
+    "side": "new3",
+    "minor_faults": 254,
+    "major_faults": 0,
+    "output": "14349765 1480000"
+  },
+  {
+    "kind": "plain",
+    "n": 4,
+    "side": "base",
+    "minor_faults": 260,
+    "major_faults": 0,
+    "output": "13937143 1480000"
+  },
+  {
+    "kind": "plain",
+    "n": 4,
+    "side": "base",
+    "minor_faults": 260,
+    "major_faults": 0,
+    "output": "15013940 1480000"
+  },
+  {
+    "kind": "plain",
+    "n": 4,
+    "side": "new3",
+    "minor_faults": 254,
+    "major_faults": 0,
+    "output": "13327822 1480000"
+  },
+  {
+    "kind": "plain",
+    "n": 4,
+    "side": "new3",
+    "minor_faults": 253,
+    "major_faults": 0,
+    "output": "12984448 1480000"
+  },
+  {
+    "kind": "plain",
+    "n": 4,
+    "side": "base",
+    "minor_faults": 260,
+    "major_faults": 0,
+    "output": "14376915 1480000"
+  },
+  {
+    "kind": "plain",
+    "n": 4,
+    "side": "base",
+    "minor_faults": 260,
+    "major_faults": 0,
+    "output": "14080682 1480000"
+  },
+  {
+    "kind": "plain",
+    "n": 4,
+    "side": "new3",
+    "minor_faults": 254,
+    "major_faults": 0,
+    "output": "12855146 1480000"
+  },
+  {
+    "kind": "plain",
+    "n": 4,
+    "side": "new3",
+    "minor_faults": 253,
+    "major_faults": 0,
+    "output": "13423752 1480000"
+  },
+  {
+    "kind": "plain",
+    "n": 4,
+    "side": "base",
+    "minor_faults": 260,
+    "major_faults": 0,
+    "output": "14317043 1480000"
+  },
+  {
+    "kind": "plain",
+    "n": 4,
+    "side": "base",
+    "minor_faults": 260,
+    "major_faults": 0,
+    "output": "13748089 1480000"
+  },
+  {
+    "kind": "plain",
+    "n": 4,
+    "side": "new3",
+    "minor_faults": 254,
+    "major_faults": 0,
+    "output": "12662926 1480000"
+  },
+  {
+    "kind": "plain",
+    "n": 2048,
+    "side": "base",
+    "minor_faults": 343,
+    "major_faults": 0,
+    "output": "26946398 491670"
+  },
+  {
+    "kind": "plain",
+    "n": 2048,
+    "side": "new3",
+    "minor_faults": 289,
+    "major_faults": 0,
+    "output": "2000847 491670"
+  },
+  {
+    "kind": "plain",
+    "n": 2048,
+    "side": "new3",
+    "minor_faults": 289,
+    "major_faults": 0,
+    "output": "2189891 491670"
+  },
+  {
+    "kind": "plain",
+    "n": 2048,
+    "side": "base",
+    "minor_faults": 343,
+    "major_faults": 0,
+    "output": "30067623 491670"
+  },
+  {
+    "kind": "plain",
+    "n": 2048,
+    "side": "base",
+    "minor_faults": 342,
+    "major_faults": 0,
+    "output": "25468200 491670"
+  },
+  {
+    "kind": "plain",
+    "n": 2048,
+    "side": "new3",
+    "minor_faults": 288,
+    "major_faults": 0,
+    "output": "1984095 491670"
+  },
+  {
+    "kind": "plain",
+    "n": 2048,
+    "side": "new3",
+    "minor_faults": 288,
+    "major_faults": 0,
+    "output": "1963988 491670"
+  },
+  {
+    "kind": "plain",
+    "n": 2048,
+    "side": "base",
+    "minor_faults": 342,
+    "major_faults": 0,
+    "output": "27476631 491670"
+  },
+  {
+    "kind": "plain",
+    "n": 2048,
+    "side": "base",
+    "minor_faults": 343,
+    "major_faults": 0,
+    "output": "26967407 491670"
+  },
+  {
+    "kind": "plain",
+    "n": 2048,
+    "side": "new3",
+    "minor_faults": 289,
+    "major_faults": 0,
+    "output": "2012960 491670"
+  },
+  {
+    "kind": "plain",
+    "n": 2048,
+    "side": "new3",
+    "minor_faults": 289,
+    "major_faults": 0,
+    "output": "2232882 491670"
+  },
+  {
+    "kind": "plain",
+    "n": 2048,
+    "side": "base",
+    "minor_faults": 342,
+    "major_faults": 0,
+    "output": "26731354 491670"
+  },
+  {
+    "kind": "plain",
+    "n": 2048,
+    "side": "base",
+    "minor_faults": 343,
+    "major_faults": 0,
+    "output": "27568432 491670"
+  },
+  {
+    "kind": "plain",
+    "n": 2048,
+    "side": "new3",
+    "minor_faults": 288,
+    "major_faults": 0,
+    "output": "2097689 491670"
+  }
+]
