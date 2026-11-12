@@ -23,7 +23,7 @@ Cost: moving a stdlib method from Rust to Manuscript changes how the checker tre
 3. **A derived result carries its sources.** A result built from parts (`split`, `keys`, a list of slices) is a new container that holds borrows. It carries the origins of its parts (`origin-flow-borrows.md`), freezes them while live, and needs `.clone()` to be kept past them.
 4. **Copies are explicit and never refused.** Keeping a borrow (store in a field, return it from a function that owns its result, capture in an escaping closure) takes `.clone()`. A path that returns a fresh value beside a borrowed part takes `.clone()` on the part. The diagnostic offers the fix. A part moves instead of copying when its owner is a temporary or at its last use.
 5. **Built-ins follow the same rules.** A built-in is a Manuscript body wherever it can be (`List.first`, `last`, `get`, `Map.get`, `Optional.get`). A body-less native states the same fact in its declaration in `stdlib/intrinsics.ms`, read by the same code as a body summary (`ResultBorrow`). Rust holds no name list.
-6. **Lowering picks the representation from the type.** A borrow of a `Copy`-class value is the value. Otherwise it is a pointer (`opt.view`, entry pointer, list index). Where a pointer is impossible (boxed payload) lowering may copy only when the checker's freeze makes the copy unobservable (no resource, a type with `clone`); this is a declared copy, counted by the strict-copy gate. Otherwise the checker rejects the keep with rule 4's fix.
+6. **Only simple types copy implicitly.** The compiler never copies on its own except `Copy`-class values (`Int`, `Bool`, `Float`, enums without payloads). A borrow of anything else is a pointer (`opt.view`, entry pointer, list index), chosen from the type, never from a name. A fallback copy where a pointer is impossible is not allowed: the MIR rule that refuses `opt.view` of a boxed optional must change so the borrow is a pointer to the element (see Open questions).
 
 Cases run against the rules (programs are sketches, not run against a build):
 
@@ -35,7 +35,7 @@ Cases run against the rules (programs are sketches, not run against a build):
 | `names.append(parts[0])` | Rule 4: rejected; write `parts[0].clone()`. |
 | `fn f(x) String: if c: return x.name; return make()` | Rule 4: reject with fix `x.name.clone()`. Unchanged. |
 | `xs.slice(a, b)` of `String` elements | Rule 1 and 3: borrows for any element type, no scalar carve-out. |
-| `Node` list with self-containing `Node?` payload | Rule 6: copy if `Node` is clonable, else keep rejected. |
+| `Node` list with self-containing `Node?` payload | Rule 6: a pointer view, no copy. Needs the MIR change. |
 | `m.get(k).get()` on a temporary map | Rule 4: part moves out of the temporary. |
 
 Before and after: a user `fn Deque.back() T?` and the built-in `List.last()` behave identically. Today the first borrows by body and the second by name, and a `none` path in a body makes the user method copy.
@@ -47,7 +47,7 @@ Before and after: a user `fn Deque.back() T?` and the built-in `List.last()` beh
 | `ms-check` ownership (`returns.rs`, `calls.rs`, `modes.rs`) | Delete `native_borrow_receiver`, `list_get`, `map_get`, `entry_get` and the name lists; read summaries and declarations only; `none` stops withdrawing | `crates/ms-check/tests/ownership/` cases from the table |
 | `stdlib/*.ms`, `stdlib/intrinsics.ms` | Bodies for `first`, `last`, `get`; declarations on body-less natives | stdlib fixtures, `make conform` |
 | `ms-lower` `borrow_shape.rs` | Key on the checker's `borrowed_reads` fact and the resolved symbol; choose shape only | `borrowed-container-reads.ms` |
-| `ms-mir` `verify/types.rs` | Unchanged | `opt_lastuse.rs` |
+| `ms-mir` `verify/types.rs`, `borrow_shape.rs` | Allow `opt.view` of a boxed payload as a pointer to the element; remove the copy fallback | `opt_lastuse.rs`, recursive-node fixture |
 | `documentation/core-language/types/references.md` | Replace the stdlib list with these rules | doc checks |
 
 ## Alternatives considered
@@ -55,8 +55,9 @@ Before and after: a user `fn Deque.back() T?` and the built-in `List.last()` beh
 - Do nothing: every method moved to Manuscript needs a new checker exemption.
 - Share the name list between checker and lowering: one copy fewer, user types still differ from built-ins.
 - Written marker on borrowing methods: contradicts "no marker" and adds syntax.
-- Copy whenever a pointer is hard: fast to build, hides cost, breaks the no-implicit-copies direction.
+- Copy whenever a pointer is hard (today's boxed-optional fallback): hides cost, breaks no implicit copies.
 
 ## Open questions
 
 - Body-less natives (`split`, `lines`, `chars`, `keys`, `values`, `view`, `slice`): declare in `intrinsics.ms` (recommended, smallest) or rewrite over smaller primitives.
+- Boxed payloads: how a view of an element held in a list buffer is represented for a self-containing type. Needs a look at the boxed-optional layout before building.
