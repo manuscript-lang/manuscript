@@ -70,3 +70,19 @@ test "Base64 preserves tails across small and batch boundaries":
 		)
 		expect_equal(base64_encode(data), ("+/8A".repeat(length / 3)?) + tail)?
 		expect_equal(base64_encode(data, true), ("-_8A".repeat(length / 3)?) + url_tail)?
+
+test "Base64 padding and alphabets preserve nested views":
+	storage := Bytes([9, 7, 251, 255, 0, 7, 9])
+	outer := storage.view(1, 6)
+	data := outer.view(1, 4)
+	standard := ["", "+w==", "+/8=", "+/8A"]
+	url := ["", "-w==", "-_8=", "-_8A"]
+	raw := ["", "+w", "+/8", "+/8A"]
+	url_raw := ["", "-w", "-_8", "-_8A"]
+
+	for length in 0..4:
+		part := data.view(0, length)
+		expect_equal(base64_encode(part), standard[length])?
+		expect_equal(base64_encode(part, true), url[length])?
+		expect_equal(base64_encode(part, padded: false), raw[length])?
+		expect_equal(base64_encode(part, true, false), url_raw[length])?

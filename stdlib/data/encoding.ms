@@ -137,19 +137,6 @@ fn base64_digit(byte: Int, url_safe: Bool) Int:
 
 	return -1
 
-// ASCII bytes of the selected Base64 alphabet.
-fn base64_table(url_safe: Bool) List[UInt8]:
-	if url_safe: return (
-		"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
-		.to_bytes()
-		.values()
-	)
-	return (
-		"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
-		.to_bytes()
-		.values()
-	)
-
 // The budget as a count, with no budget as a very large one and a negative budget as
 // -1.
 fn budget(max_bytes: Int?) Int:
@@ -161,40 +148,14 @@ fn budget(max_bytes: Int?) Int:
 // `base64_encode("f".to_bytes(), padded: false)` returns `"Zg"`.
 export fn base64_encode(data: Bytes, url_safe: Bool = false, padded: Bool = true) String:
 	if not padded: return msstd_encoding_base64_encode_unpadded(data, url_safe)
+	if data.is_empty(): return ""
 
-	var out = StringBuilder()
-	var batch = BytesBuilder()
-	table := base64_table(url_safe)
-	bytes := data.values()
-	length := bytes.length()
-	var index = 0
+	text := msstd_encoding_base64_encode_unpadded(data, url_safe)
+	tail := data.length() % 3
+	if tail == 1: return text + "=="
+	if tail == 2: return text + "="
 
-	// Batch at most 16 KiB of ASCII before converting it to text.
-	while index < length:
-		end := if length - index > 12288: index + 12288 else: length
-
-		while index < end:
-			remaining := length - index
-			var second = 0
-			var third = 0
-			if remaining > 1: second = bytes[index + 1].to_int()
-			if remaining > 2: third = bytes[index + 2].to_int()
-
-			value := bytes[index].to_int() * 65536 + second * 256 + third
-			batch.append(table[value / 262144 % 64])
-			batch.append(table[value / 4096 % 64])
-
-			if remaining > 1: batch.append(table[value / 64 % 64])
-			else: batch.append(61)
-
-			if remaining > 2: batch.append(table[value % 64])
-			else: batch.append(61)
-
-			index += 3
-
-		out.append(batch.drain().decode_utf8().get(""))
-
-	return out.build()
+	return text
 
 // Decodes hexadecimal text. `max_bytes` bounds decoded output when supplied.
 export fn hex_decode(text: String, max_bytes: Int?) Bytes!:
@@ -229,15 +190,33 @@ fn hex_digit(byte: Int) Int:
 
 // Encodes each byte as two lowercase hexadecimal digits.
 export fn hex_encode(data: Bytes) String:
-	var out = StringBuilder()
-	digits := "0123456789abcdef".chars()
+	length := data.length()
+	if length == 0: return ""
 
-	for byte in data.values():
-		n := byte.to_int()
-		out.append(digits[n / 16])
-		out.append(digits[n % 16])
+	digits: List[UInt8] := [
+		48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 97, 98, 99, 100, 101, 102
+	]
+	bytes := data.values()
+	var result = StringBuilder()
+	var index = 0
 
-	return out.build()
+	while index < length:
+		// Keep the temporary ASCII output bounded to 16 KiB.
+		end := if length - index > 8192: index + 8192 else: length
+		var out = List[UInt8](reserve: (end - index) * 2)
+
+		for pos in index..end:
+			n := bytes[pos].to_int()
+			out.append(digits[n / 16])
+			out.append(digits[n % 16])
+
+		text := Bytes(out).decode_utf8().get("")
+		if index == 0 and end == length: return text
+
+		result.append(text)
+		index = end
+
+	return result.build()
 
 // Encodes text as UTF-16 code units, little-endian unless `little_endian` is false.
 // No byte order mark is written.
