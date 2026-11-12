@@ -415,7 +415,7 @@ export fn stringify(
 	var out = StringBuilder()
 	var used = 0
 	crlf := options.line_ending == "\r\n"
-	delimiter := options.delimiter.scalar_values()[0]
+	delimiter := options.delimiter.clone()
 
 	for row in rows:
 		var line = ""
@@ -440,22 +440,24 @@ export fn stringify(
 
 	return ok(out.build())
 
-fn needs_quotes(field: String, delimiter: Int) Bool:
-	scalars := field.scalar_values()
-	if scalars.is_empty(): return false
+fn needs_quotes(field: String, delimiter: String) Bool:
+	if field.is_empty(): return false
+	if (
+		field.contains("\"")
+		or field.contains("\r")
+		or field.contains("\n")
+		or field.contains(delimiter)
+	): return true
 
-	for scalar in scalars:
-		if scalar == 34 or scalar == 13 or scalar == 10 or scalar == delimiter: return true
-
-	first := scalars[0]
+	first := field.scalar_at(0)
 	if first <= 32 or first >= 127: return field.get(0).trim() == ""
 
-	return scalars.length() == 2 and first == 92 and scalars[1] == 46
+	return field == "\\."
 
 fn replaced(text: String, old: String, new: String) String:
 	return text.replace(old, new)
 
-fn encode_field(field: String, delimiter: Int, crlf: Bool) String:
+fn encode_field(field: String, delimiter: String, crlf: Bool) String:
 	if not needs_quotes(field, delimiter): return field.clone()
 
 	var quoted = replaced(field, "\"", "\"\"")

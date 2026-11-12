@@ -23,19 +23,29 @@
           "index": 2,
           "name": "map-entry-reuse.ms::a removed key is gone after an update",
           "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "map-entry-reuse.ms::contains then update takes the present and absent paths with string keys",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "map-entry-reuse.ms::contains guarding an update of a different key",
+          "status": "passed"
         }
       ],
       "summary": {
-        "available": 3,
-        "selected": 3,
-        "passed": 3,
+        "available": 5,
+        "selected": 5,
+        "passed": 5,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN map-entry-reuse.ms::repeated entry updates read the current entry\nPASS map-entry-reuse.ms::repeated entry updates read the current entry\nRUN map-entry-reuse.ms::an insert between two lookups of one key does not reuse a stale entry\nPASS map-entry-reuse.ms::an insert between two lookups of one key does not reuse a stale entry\nRUN map-entry-reuse.ms::a removed key is gone after an update\nPASS map-entry-reuse.ms::a removed key is gone after an update\n3 tests, 0 failed\n",
+      "stdout": "RUN map-entry-reuse.ms::repeated entry updates read the current entry\nPASS map-entry-reuse.ms::repeated entry updates read the current entry\nRUN map-entry-reuse.ms::an insert between two lookups of one key does not reuse a stale entry\nPASS map-entry-reuse.ms::an insert between two lookups of one key does not reuse a stale entry\nRUN map-entry-reuse.ms::a removed key is gone after an update\nPASS map-entry-reuse.ms::a removed key is gone after an update\nRUN map-entry-reuse.ms::contains then update takes the present and absent paths with string keys\nPASS map-entry-reuse.ms::contains then update takes the present and absent paths with string keys\nRUN map-entry-reuse.ms::contains guarding an update of a different key\nPASS map-entry-reuse.ms::contains guarding an update of a different key\n5 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

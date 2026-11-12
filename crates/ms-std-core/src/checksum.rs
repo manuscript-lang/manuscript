@@ -42,14 +42,18 @@ pub fn crc32_update(crc: u32, data: &[u8]) -> u32 {
     // Explicit little-endian loads preserve the IEEE recurrence on every host and alignment.
     for block in chunks {
         c ^= u32::from_le_bytes([block[0], block[1], block[2], block[3]]);
-        c = CRC_TABLE[7][(c & 0xff) as usize]
-            ^ CRC_TABLE[6][((c >> 8) & 0xff) as usize]
-            ^ CRC_TABLE[5][((c >> 16) & 0xff) as usize]
-            ^ CRC_TABLE[4][(c >> 24) as usize]
-            ^ CRC_TABLE[3][usize::from(block[4])]
+        // These bytes do not depend on the rolling register. Combine their
+        // contribution before the register-dependent lookups, shortening the
+        // dependency carried from one eight-byte block to the next.
+        let input = CRC_TABLE[3][usize::from(block[4])]
             ^ CRC_TABLE[2][usize::from(block[5])]
             ^ CRC_TABLE[1][usize::from(block[6])]
             ^ CRC_TABLE[0][usize::from(block[7])];
+        c = input
+            ^ CRC_TABLE[7][(c & 0xff) as usize]
+            ^ CRC_TABLE[6][((c >> 8) & 0xff) as usize]
+            ^ CRC_TABLE[5][((c >> 16) & 0xff) as usize]
+            ^ CRC_TABLE[4][(c >> 24) as usize];
     }
     for &b in tail {
         c = CRC_TABLE[0][((c ^ u32::from(b)) & 0xff) as usize] ^ (c >> 8);

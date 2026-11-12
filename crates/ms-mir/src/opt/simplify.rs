@@ -65,6 +65,7 @@ fn simplify_func(m: &Module, f: &mut Func) -> bool {
         c |= branches(f);
         c |= cse(m, f);
         c |= map_probes(m, f);
+        c |= fuse_contains(m, f);
         c |= dce(m, f);
         if !c {
             break;
@@ -1232,6 +1233,282 @@ fn map_probes(m: &Module, f: &mut Func) -> bool {
     }
     apply_subst(f, &subst);
     true
+}
+
+/// What one predecessor of a join passes for the map, and the earlier probe or `contains` of it:
+/// block, instruction index, and whether it is a `contains`.
+#[derive(Clone, Copy)]
+struct PredPlan {
+    block: usize,
+    map: Value,
+    hit: Option<(usize, usize, bool)>,
+}
+
+/// `if not m.contains(k): m[k] = v` followed by `m[k].f += 1` probes twice on the common path:
+/// the test finds the entry, the join's lookup finds it again. When a block with two
+/// predecessors starts with a probe of a map that arrives as a block parameter, and one
+/// predecessor holds an earlier probe or `contains` of its argument for the same key with
+/// nothing in between that can change the map, that predecessor passes the entry address as a
+/// new block parameter instead. A `contains` that feeds an address becomes the equivalent
+/// probe (present is a non-null address); a predecessor with no earlier probe, such as the
+/// insert path, probes before it branches, so no path pays more than before.
+fn fuse_contains(m: &Module, f: &mut Func) -> bool {
+    let name_of = |i: &Inst| -> Option<&str> {
+        match (i.op, i.imm) {
+            (Op::CallRt, Imm::Ext(e)) => Some(m.externs[e.index()].name.as_str()),
+            _ => None,
+        }
+    };
+    let preds = f.predecessors();
+    // The one value stored into each key slot, for slots stored exactly once.
+    let mut slot_key: HashMap<Value, Option<Value>> = HashMap::new();
+    let mut slot_defs: HashMap<Value, Imm> = HashMap::new();
+    let mut typedescs: HashMap<Value, (Imm, Ty)> = HashMap::new();
+    for b in &f.blocks {
+        for i in &b.insts {
+            match (i.op, i.res) {
+                (Op::Slot, Some(r)) => {
+                    slot_defs.insert(r, i.imm);
+                }
+                (Op::TypeDesc, Some(r)) => {
+                    typedescs.insert(r, (i.imm, f.ty(r)));
+                }
+                (Op::Store, _) => {
+                    slot_key
+                        .entry(i.args[0])
+                        .and_modify(|k| *k = None)
+                        .or_insert(Some(i.args[1]));
+                }
+                _ => {}
+            }
+        }
+    }
+    let uses = f.use_counts();
+    let clobbers = |i: &Inst| {
+        let e = i.op.info().effects;
+        (e.io || e.ownership || e.alloc) && i.op != Op::RecSet
+    };
+    for ji in 0..f.blocks.len() {
+        let [p0, p1] = preds[ji].as_slice() else {
+            continue;
+        };
+        if p0.index() == ji || p1.index() == ji {
+            continue;
+        }
+        // The join's first probe, before anything that can change a map.
+        let mut found = None;
+        for (ii, i) in f.blocks[ji].insts.iter().enumerate() {
+            if is_map_probe(m, i) && i.args.len() == 4 {
+                found = Some(ii);
+                break;
+            }
+            if clobbers(i) {
+                break;
+            }
+        }
+        let Some(pi) = found else { continue };
+        let probe = f.blocks[ji].insts[pi].clone();
+        let (Some(res), Some(&Some(key))) = (probe.res, slot_key.get(&probe.args[3])) else {
+            continue;
+        };
+        let Some(pname) = name_of(&probe).map(str::to_owned) else {
+            continue;
+        };
+        let Some(mi) = f.blocks[ji]
+            .params
+            .iter()
+            .position(|p| p.value == probe.args[0])
+        else {
+            continue;
+        };
+        let (Some(&(kd_imm, kd_ty)), Some(&(vd_imm, vd_ty)), Some(&slot_imm)) = (
+            typedescs.get(&probe.args[1]),
+            typedescs.get(&probe.args[2]),
+            slot_defs.get(&probe.args[3]),
+        ) else {
+            continue;
+        };
+        // The key must be defined outside the join, so it is available in each predecessor.
+        let key_local = f.blocks[ji].params.iter().any(|p| p.value == key)
+            || f.blocks[ji].insts.iter().any(|i| i.res == Some(key));
+        if key_local || uses[probe.args[3].index()] != 2 {
+            continue;
+        }
+        let contains_name = pname.replace("get_ptr", "contains");
+        // Per predecessor: the map it passes and an earlier probe (or `contains`) of it.
+        let mut plan: Vec<PredPlan> = Vec::new();
+        for p in [*p0, *p1] {
+            let pb = p.index();
+            let arm = match &f.blocks[pb].term {
+                Term::Br(t) if t.block.index() == ji => Some(t.args.clone()),
+                Term::CondBr { then, els, .. }
+                    if (then.block.index() == ji) != (els.block.index() == ji) =>
+                {
+                    Some(if then.block.index() == ji {
+                        then.args.clone()
+                    } else {
+                        els.args.clone()
+                    })
+                }
+                _ => None,
+            };
+            let Some(a) = arm.and_then(|args| args.get(mi).copied()) else {
+                break;
+            };
+            // Walk back through single-predecessor blocks, newest instruction first.
+            let mut hit = None;
+            let mut cur = pb;
+            'walk: loop {
+                for ii in (0..f.blocks[cur].insts.len()).rev() {
+                    let i = &f.blocks[cur].insts[ii];
+                    if let Some(n) = name_of(i)
+                        && i.args.len() == 4
+                        && i.args[0] == a
+                        && slot_key.get(&i.args[3]) == Some(&Some(key))
+                        && typedescs.get(&i.args[1]).map(|t| t.0) == Some(kd_imm)
+                        && typedescs.get(&i.args[2]).map(|t| t.0) == Some(vd_imm)
+                        && (n == pname || n == contains_name)
+                    {
+                        hit = Some((cur, ii, n == contains_name));
+                        break 'walk;
+                    }
+                    if clobbers(i) {
+                        break 'walk;
+                    }
+                }
+                match preds[cur].as_slice() {
+                    [q] if q.index() != cur && q.index() != ji => cur = q.index(),
+                    _ => break,
+                }
+            }
+            plan.push(PredPlan {
+                block: pb,
+                map: a,
+                hit,
+            });
+        }
+        if plan.len() != 2 || plan.iter().all(|p| p.hit.is_none()) {
+            continue;
+        }
+        // Rewrite. A `contains` becomes a probe whose null test and negation define its old result.
+        let ptr = f.ty(res);
+        let param = f.new_value(ptr);
+        let mut edge_vals = Vec::new();
+        for &PredPlan {
+            block: pb,
+            map: a,
+            hit,
+        } in &plan
+        {
+            match hit {
+                Some((hb, hi, false)) => edge_vals.push(f.blocks[hb].insts[hi].res.expect("probe")),
+                Some((hb, hi, true)) => {
+                    let old = f.blocks[hb].insts[hi].clone();
+                    let old_res = old.res.expect("contains");
+                    let new_ptr = f.new_value(ptr);
+                    let null = f.new_value(f.ty(old_res));
+                    let loc = old.loc;
+                    let Imm::Ext(_) = probe.imm else {
+                        unreachable!()
+                    };
+                    let blk = &mut f.blocks[hb].insts;
+                    blk[hi].imm = probe.imm;
+                    blk[hi].res = Some(new_ptr);
+                    blk.insert(
+                        hi + 1,
+                        Inst {
+                            op: Op::PtrIsNull,
+                            args: vec![new_ptr],
+                            imm: Imm::None,
+                            res: Some(null),
+                            loc,
+                        },
+                    );
+                    blk.insert(
+                        hi + 2,
+                        Inst {
+                            op: Op::Not,
+                            args: vec![null],
+                            imm: Imm::None,
+                            res: Some(old_res),
+                            loc,
+                        },
+                    );
+                    edge_vals.push(new_ptr);
+                }
+                None => {
+                    let loc = probe.loc;
+                    let kd = f.new_value(kd_ty);
+                    let vd = f.new_value(vd_ty);
+                    let slot = f.new_value(f.ty(probe.args[3]));
+                    let got = f.new_value(ptr);
+                    let blk = &mut f.blocks[pb].insts;
+                    for inst in [
+                        Inst {
+                            op: Op::TypeDesc,
+                            args: vec![],
+                            imm: kd_imm,
+                            res: Some(kd),
+                            loc,
+                        },
+                        Inst {
+                            op: Op::TypeDesc,
+                            args: vec![],
+                            imm: vd_imm,
+                            res: Some(vd),
+                            loc,
+                        },
+                        Inst {
+                            op: Op::Slot,
+                            args: vec![],
+                            imm: slot_imm,
+                            res: Some(slot),
+                            loc,
+                        },
+                        Inst {
+                            op: Op::Store,
+                            args: vec![slot, key],
+                            imm: Imm::None,
+                            res: None,
+                            loc,
+                        },
+                        Inst {
+                            op: Op::CallRt,
+                            args: vec![a, kd, vd, slot],
+                            imm: probe.imm,
+                            res: Some(got),
+                            loc,
+                        },
+                    ] {
+                        blk.push(inst);
+                    }
+                    edge_vals.push(got);
+                }
+            }
+        }
+        for (p, v) in plan.iter().zip(edge_vals) {
+            f.blocks[p.block].term.for_each_target_mut(|t| {
+                if t.block.index() == ji {
+                    t.args.push(v);
+                }
+            });
+        }
+        f.blocks[ji].params.push(BlockParam {
+            value: param,
+            mode: Mode::Borrow,
+        });
+        // The join's probe now reads the parameter; its key slot goes with it.
+        let mut subst: ValueMap<Value> = ValueMap::new();
+        subst.insert(res, param);
+        let slot = probe.args[3];
+        f.blocks[ji].insts.retain(|i| {
+            !(i.res == Some(res) || (i.op == Op::Store && i.args[0] == slot) || i.res == Some(slot))
+        });
+        apply_subst(f, &subst);
+        // One join per call: the tables built above are stale.
+        return true;
+    }
+    false
 }
 
 // ---- in-place mutators -----------------------------------------------------
