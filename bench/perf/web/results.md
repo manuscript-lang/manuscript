@@ -263,3 +263,17 @@ Once more than `STACK_POOL` (1,024) request tasks were in flight, every finished
 | Resident memory 3 s after the load | 72 MB | 35 MB |
 
 hyper on the same VM: 76k–82k req/s at 10,000 connections, p50 17–21 ms. Peak memory is higher because 7,000 or so request tasks are alive at once, each with its touched stack pages; before, the same tasks existed but their stacks were remapped each time. This does not change the number of live tasks or the 2-mappings-per-task limit (#2483), which the growable-task work addresses.
+
+## 2026-11-12, gzip response bodies (#3613)
+
+A gzip body spent its time in three places (sampled with `gdb` on one `/gzip/text` client): the inflate itself, copies from regrowing the decoder's output buffer from empty at every 4 KiB input step, and a software CRC32 (`crc32fast::baseline`), because `flate2` builds `crc32fast` without its `std` feature and so never detects the CPU's carry-less multiply. The decoder now reuses the delivered buffer's capacity, and `ms-std-net` enables `crc32fast`'s `std` feature (a feature of the crate already in the lock file, not a new crate).
+
+`bench/perf/web/fetch/ms` against `bench/perf/web/fetch/go`'s `/gzip/text` (8 MiB, about 24 KiB compressed), 1 connection, 3 s, release builds of the same tree before and after, 4 interleaved rounds on a shared 4-CPU Linux VM (±10%). Go's client, same server and run: 469 and 488 req/s.
+
+| Build | req/s |
+| --- | --- |
+| Before | 116, 112, 110, 116 |
+| Buffer reuse only | 153, 143, 150, 143 |
+| Buffer reuse and CRC detection | 224, 237, 228, 236 |
+
+Still 2x behind Go: what remains is miniz_oxide's inflate (a raw, non-wrapping `flate2::Decompress` into a presized buffer decodes this body at about 3.6 GB/s here, but the streaming path cannot use that mode). A faster inflate backend (`zlib-rs`) would be the next lever and is a new dependency.
