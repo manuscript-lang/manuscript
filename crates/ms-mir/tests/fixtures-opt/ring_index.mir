@@ -1,0 +1,32 @@
+module "ring_index"
+entry @main
+fn @main() -> int {
+b0:
+  %a: int = iconst 10
+  %b: int = iconst 20
+  %c: int = iconst 30
+  %l: list<int> = list.lit %a, %b, %c
+  %z: int = iconst 0
+  %start: int = iconst 2
+  %count: int = iconst 7
+  %cap: int = list.len %l
+  %empty: bool = icmp.eq %cap, %z
+  %t: bool = bconst true
+  %neg: bool = icmp.lt %start, %z
+  %skip: bool = select %empty, %t, %neg
+  br_if %skip, done(%z, %l), loop(%z, %z, %l)
+loop(%k: int, %acc: int, %l1: move list<int>):
+  %more: bool = icmp.lt %k, %count
+  br_if %more, body(), done(%acc, %l1)
+body:
+  %p: int = iadd.chk %start, %k
+  %w: int = srem.chk %p, %cap
+  %x: int = list.get %l1, %w
+  %one: int = iconst 1
+  %k1: int = iadd.chk %k, %one
+  %acc2: int = iadd.chk %acc, %x
+  br loop(%k1, %acc2, %l1)
+done(%r: int, %l2: move list<int>):
+  drop %l2
+  ret %r
+}
