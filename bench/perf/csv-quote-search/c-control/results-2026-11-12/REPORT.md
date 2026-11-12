@@ -26,6 +26,6 @@ The final optimized C reference uses libc `memchr` searches and exact unquoted-f
 | ascii1024 | 99.41 | 10.426 | 3.610 |
 | ascii65536 | 6059.46 | 9.353 | 2.155 |
 
-Independent primary-evidence review recomputed all 23 paired medians from `../current-main/samples.json`; every value matched the reported ratio. A/A B/A medians were empty 0.9995, ordinary 0.9898, comma 0.9907, negative 0.9869, ASCII65536 1.0082. Pair ranges are broad (ordinary 0.955–1.275), supporting neutral treatment of small differences and strong gains for the large cases.
+Independent primary-evidence review recomputed all 23 paired medians from `../../results-2026-11-12/samples.json`; every value matched the reported ratio. A/A B/A medians were empty 0.9995, ordinary 0.9898, comma 0.9907, negative 0.9869, ASCII65536 1.0082. Pair ranges are broad (ordinary 0.955–1.275), supporting neutral treatment of small differences and strong gains for the large cases.
 
 Production diff review: validated ASCII delimiter permits equivalent substring search; initial scalar trim and exact backslash-dot behavior remain identical; empty, error ordering, byte budgets, public APIs and CRLF normalization are preserved. Added tests cover relevant Unicode, delimiter, exact-budget and invalid-option behavior. No semantic blocker found. Approval is conditional on the parent completing applicable checks and exact-head CI; this scratch review does not approve an unchecked merge.
