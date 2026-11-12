@@ -187,6 +187,29 @@ impl Fa<'_> {
                 return true;
             }
         }
+        // A relation on `x + c` (`x + c <= b`, the guard of a block of `c` accesses) also bounds
+        // `x`: `x <= b - c`.
+        for &(a, b, strict) in &env.rels {
+            let Some(shifted) = self.def_inst(a) else {
+                continue;
+            };
+            if !matches!(shifted.op, Op::IAdd | Op::IAddChk) || !self.no_wrap(shifted, env) {
+                continue;
+            }
+            let (x, c) = match (
+                self.constant(shifted.args[1]),
+                self.constant(shifted.args[0]),
+            ) {
+                (Some(c), _) => (shifted.args[0], c),
+                (None, Some(c)) => (shifted.args[1], c),
+                _ => continue,
+            };
+            if self.same_value(x, v)
+                && self.prove_le(b, goal, d + strict as i128 + c as i128, env, assumed, fuel)
+            {
+                return true;
+            }
+        }
         if let Some((bi, pi)) = self.param_of[v.index()]
             && !self.incoming[bi].is_empty()
         {

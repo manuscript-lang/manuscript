@@ -136,6 +136,17 @@ fn a_loop_updating_a_joined_list_keeps_its_length_and_a_doubling_index() {
 }
 
 #[test]
+fn a_window_guard_bounds_every_offset_inside_the_window() {
+    let (b, a) = optimized("block_window.mir");
+    assert_eq!(count(&b, "list.get"), 2);
+    // `at + 4 <= len` and `j < 4` give `at + j < len`, so the reads of a fixed-size block
+    // need no check and the inner loop can vectorize.
+    assert_eq!(count(&a, "list.get.u"), 2, "{}", print_module(&a));
+    assert_eq!(count(&a, "list.get"), 0, "{}", print_module(&a));
+    assert_eq!(exec(&b), exec(&a));
+}
+
+#[test]
 fn list_access_in_bounds_becomes_unchecked() {
     let (b, a) = optimized("list_walk.mir");
     assert_eq!(count(&b, "list.get"), 1);
