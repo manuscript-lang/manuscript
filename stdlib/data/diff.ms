@@ -1,6 +1,6 @@
 import (
 	panic from "@std/core.ms",
-	StringBuilder from "@std/string.ms",
+	StringBuilder from "@std/string_builder.ms",
 )
 
 /*

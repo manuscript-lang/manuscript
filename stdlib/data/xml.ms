@@ -1,6 +1,7 @@
 import (
 	parse_int from "@std/math/math.ms",
-	StringBuilder, from_scalars from "@std/string.ms",
+	from_scalars from "@std/string.ms",
+	StringBuilder from "@std/string_builder.ms",
 )
 
 // An element with fewer attributes than this checks duplicate names by scanning them.

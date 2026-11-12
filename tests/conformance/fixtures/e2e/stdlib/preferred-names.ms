@@ -2,7 +2,7 @@
 // conform: phase=test
 import (
 	Bytes from "@std/bytes.ms",
-	Regex, compile from "@std/string.ms",
+	Regex, compile from "@std/regex.ms",
 	expect_equal, expect_false from "@std/test/test.ms",
 )
 

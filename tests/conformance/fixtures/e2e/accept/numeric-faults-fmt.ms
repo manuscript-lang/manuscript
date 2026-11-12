@@ -2,7 +2,7 @@
 // conform: phase=parse
 // conform: origin=tests/e2e/testdata/accept/numeric-faults.ms
 import expect_contains, expect_equal, expect_fault, expect_true from "@std/test/test.ms"
-import StringBuilder from "@std/string.ms"
+import StringBuilder from "@std/string_builder.ms"
 
 fn add(a: Int, b: Int) Int: return a + b
 

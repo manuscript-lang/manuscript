@@ -1,6 +1,6 @@
 import (
 	max from "@std/math/math.ms",
-	StringBuilder from "@std/string.ms",
+	StringBuilder from "@std/string_builder.ms",
 )
 
 // Horizontal placement of a cell within its column's measured display width.

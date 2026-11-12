@@ -1,4 +1,4 @@
-//! C ABI shims for `@std/string.ms`. Symbols are `msstd_regex_<function>`; a compiled `Regex` is a
+//! C ABI shims for `@std/regex.ms`. Symbols are `msstd_regex_<function>`; a compiled `Regex` is a
 //! runtime handle object (`Obj` header + boxed state).
 //! ms: domain regular expression
 
