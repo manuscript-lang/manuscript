@@ -19,6 +19,10 @@ static BUF: Process<[usize; 32]> = Process::new([0; 32]);
 /// Whether the operation faulted, and the report it produced.
 static FAULTED: Process<bool> = Process::new(false);
 static REPORT: Process<Vec<u8>> = Process::new(Vec::new());
+/// The live block counts when the operation began (counting builds): a fault forgets what the
+/// operation left allocated, as the forked child's heap does on Unix.
+#[cfg(feature = "stats")]
+static MARK: Process<Option<crate::alloc::LiveMark>> = Process::new(None);
 
 extern "C" fn prepare() {
     crate::io::flush_stdout();
@@ -26,6 +30,10 @@ extern "C" fn prepare() {
     unsafe {
         *FAULTED.ptr() = false;
         (*REPORT.ptr()).clear();
+        #[cfg(feature = "stats")]
+        {
+            *MARK.ptr() = Some(crate::alloc::live_mark());
+        }
         fault::push_trap_guard((*BUF.ptr()).as_mut_ptr());
     }
 }
@@ -180,6 +188,10 @@ pub(crate) unsafe fn leave(
         *FAULTED.ptr() = faulted;
         if faulted {
             (*REPORT.ptr()).extend_from_slice(&message);
+            #[cfg(feature = "stats")]
+            if let Some(mark) = (*MARK.ptr()).take() {
+                crate::alloc::live_forget_since(&mark);
+            }
         }
         drop(message);
         msrt_trap_restore(buf, 1, teb)
