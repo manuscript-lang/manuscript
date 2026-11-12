@@ -44,6 +44,7 @@ fmt:
 # portability, layering, internal externs) run in tools/repo_check.ms.
 repo-check: build
 	cargo run --release --locked -q -p ms-repo-check
+	$(MS) test tools/repo_check_test.ms
 	$(MS) run tools/repo_check.ms
 
 workflow-check:

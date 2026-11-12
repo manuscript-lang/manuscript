@@ -27,11 +27,11 @@ Implemented 2026-11-12. Direction: move Rust code that Manuscript can do into st
 
 | Component | Change | Test |
 | --- | --- | --- |
-| `tools/repo_check.ms` | new, the moved rules | clean tree passes; probes below each fail |
+| `tools/repo_check.ms` | new, the moved rules | `tools/repo_check_test.ms` (13 tests, ported from the deleted Rust unit tests); clean tree passes |
 | `crates/ms-repo-check` | six modules removed, `main.rs` trimmed | `make repo-check`, clippy |
 | `Makefile`, docs, wiki | wiring and path references | `make repo-check` |
 
-Probes that must fail: `unsafe` in `ms-lower`, an unused internal extern, `Rc` in `ms-std-path`, a wrong extension version, a CRLF file, `aux.txt`, a case-colliding pair, an `ms-lower` to `ms-rt` dependency. All were detected before removal of the Rust rules.
+Manual probes, run before the Rust rules were removed, that were all detected: `unsafe` in `ms-lower`, an unused internal extern, `Rc` in `ms-std-path`, a wrong extension version, a CRLF file, `aux.txt`, a case-colliding pair, an `ms-lower` to `ms-rt` dependency.
 
 ## Alternatives
 

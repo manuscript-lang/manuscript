@@ -56,7 +56,7 @@ fn is_word_char(scalar: Int) Bool:
 	)
 
 // Whether `word` occurs in `text` bounded by non-identifier characters.
-fn contains_word(text: String, word: String) Bool:
+export fn contains_word(text: String, word: String) Bool:
 	var from = 0
 
 	while true:
@@ -126,7 +126,10 @@ fn leading_spaces(line: String) Int:
 // queue's combined commit: the ruleset on `main` requires its `Platform checks` job.
 fn workflow_triggers() List[String]:
 	path := ".github/workflows/cicd.yml"
-	lines := read_text(path).lines()
+	return trigger_issues(path, read_text(path))
+
+export fn trigger_issues(path: String, text: String) List[String]:
+	lines := text.lines()
 	on := block(lines, "on", 0).get([])
 
 	// `pull_request:` may carry an inline value; any child key is a filter.
@@ -146,9 +149,9 @@ fn workflow_triggers() List[String]:
 	var types = List[String]()
 
 	for line in queue:
-		text := line.trim()
-		if text.starts_with("types:") or text.starts_with("- "):
-			types.append(text.replace_first("types:", "").trim())
+		entry := line.trim()
+		if entry.starts_with("types:") or entry.starts_with("- "):
+			types.append(entry.replace_first("types:", "").trim())
 
 	if types == ["[checks_requested]"] or types == ["- checks_requested"]: return []
 
@@ -163,7 +166,7 @@ UNSAFE_ALLOWED := [
 	"bench/perf/binding-flags/main.rs", "bench/perf/binding-flags/storage.rs"
 ]
 
-fn unsafe_allowed(path: String) Bool:
+export fn unsafe_allowed(path: String) Bool:
 	for prefix in UNSAFE_ALLOWED:
 		if prefix.ends_with("/") or prefix.ends_with("-"):
 			if path.starts_with(prefix): return true
@@ -172,7 +175,7 @@ fn unsafe_allowed(path: String) Bool:
 	return false
 
 // The first use of the keyword in code, or a lint attribute lifting the ban.
-fn unsafe_use(source: String) String?:
+export fn unsafe_use(source: String) String?:
 	keyword := "uns" + "afe"
 
 	for lint in ["allow", "forbid"]:
@@ -226,7 +229,7 @@ fn unsafe_boundary(files: List[String]) List[String]:
 // use them; a count may only go down.
 AFFINITY_LIST := "crates/ms-repo-check/thread-affinity-allowed.txt"
 
-fn uses_thread_unsafe(line: String) Bool:
+export fn uses_thread_unsafe(line: String) Bool:
 	code := line.split("//").get(0, "")
 	return (
 		contains_word(code, "Rc")
@@ -283,7 +286,7 @@ fn thread_affinity(files: List[String]) List[String]:
 
 // Every `extern fn` under `stdlib/internal/` is named by another standard-library file:
 // a native nobody imports costs a symbol, an ABI entry and tests for nothing.
-fn extern_names(text: String) List[String]:
+export fn extern_names(text: String) List[String]:
 	var names = List[String]()
 
 	for raw in text.lines():
@@ -353,7 +356,7 @@ fn attributes() List[String]:
 
 // Tracked paths must be creatable and distinct on case-insensitive, reserved-name-aware
 // file systems.
-fn path_names(files: List[String]) List[String]:
+export fn path_names(files: List[String]) List[String]:
 	var issues = List[String]()
 	var folded = Map[String, String]()
 
@@ -452,7 +455,7 @@ fn is_runtime(name: String) Bool:
 		if name.starts_with(prefix): return true
 	return false
 
-fn layering_violation(name: String, dep: String) String?:
+export fn layering_violation(name: String, dep: String) String?:
 	if is_runtime(name):
 		if dep != "ms-decimal" and COMPILER_AND_TOOLS.contains(dep):
 			return "a runtime crate must not depend on a compiler crate"
@@ -463,7 +466,7 @@ fn layering_violation(name: String, dep: String) String?:
 	return none
 
 // Workspace (`ms-*`) crates named in the `[dependencies]` table only.
-fn normal_dependencies(manifest: String) List[String]:
+export fn normal_dependencies(manifest: String) List[String]:
 	var in_table = false
 	var found = List[String]()
 
@@ -482,7 +485,7 @@ fn normal_dependencies(manifest: String) List[String]:
 
 // Editor queries (`editor.rs`) sit on top of the checker; the checker never calls back
 // into them. Only the public `api`, the module list and tests may name the module.
-fn allowed_to_name_editor(path: String) Bool:
+export fn allowed_to_name_editor(path: String) Bool:
 	file := path.split("/").last().get(path)
 	return file == "api.rs" or file == "editor.rs" or file.ends_with("_tests.rs")
 
