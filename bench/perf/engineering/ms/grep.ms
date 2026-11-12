@@ -1,5 +1,7 @@
-import stdin from "@std/io/io.ms"
-import read_all from "@std/io/streams.ms"
+import (
+	stdin from "@std/io/io.ms",
+	read_all from "@std/io/streams.ms",
+)
 
 fn main() Unit:
 	data := read_all(stdin(), none).get().decode_utf8().get("")
