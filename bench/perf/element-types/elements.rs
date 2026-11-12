@@ -143,12 +143,37 @@ fn generic_stack() -> i64 {
     t
 }
 
+fn map_enums() -> i64 {
+    let mut m: HashMap<i64, Shape> = HashMap::new();
+    for i in 0..200000i64 {
+        m.insert(i, match i % 3 { 0 => Shape::Circle(i % 10), 1 => Shape::Rect(i % 7, i % 5), _ => Shape::Dot });
+    }
+    let mut t = 0;
+    for _ in 0..5 { for i in 0..200000i64 { if let Some(s) = m.get(&i) { match s { Shape::Circle(r) => t += 3 * r * r, Shape::Rect(w, h) => t += w * h, Shape::Dot => t += 1 } } } }
+    t
+}
+fn string_chains() -> i64 {
+    let lines: Vec<String> = (0..200000).map(|i| format!("  key{} = {}  ", i % 500, i % 97)).collect();
+    let mut m: HashMap<String, i64> = HashMap::new();
+    let mut bad = 0;
+    for _ in 0..3 {
+        for line in &lines {
+            let parts: Vec<&str> = line.split('=').collect();
+            if parts.len() != 2 { bad += 1; continue; }
+            let key = parts[0].trim();
+            let v = parts[1].trim().parse::<i64>().unwrap_or(0);
+            *m.entry(key.to_string()).or_insert(0) += v;
+        }
+    }
+    bad + m.values().sum::<i64>()
+}
+
 fn main() {
-    let cases: [(&str, fn() -> i64); 14] = [
+    let cases: [(&str, fn() -> i64); 16] = [
         ("list-records", list_records), ("list-enums", list_enums), ("map-records", map_records),
         ("map-groups", map_groups), ("optional-records", optional_records), ("deque-records", deque_records),
         ("pq-records", pq_records), ("generic-pairs", generic_pairs), ("result-records", results),
-        ("set-records", set_records), ("sort-records", sort_records), ("records-of-lists", records_of_lists), ("nested-generics", nested_generics), ("generic-stack", generic_stack),
+        ("set-records", set_records), ("sort-records", sort_records), ("records-of-lists", records_of_lists), ("nested-generics", nested_generics), ("generic-stack", generic_stack), ("map-enums", map_enums), ("string-chains", string_chains),
     ];
     for (name, f) in cases {
         let t = Instant::now();

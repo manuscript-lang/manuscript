@@ -127,7 +127,12 @@ pub fn run(m: &mut Module) -> bool {
                 continue;
             }
             let sort = *made.entry(g).or_insert_with(|| build(m, g, elem));
-            rewrite(&mut m.funcs[fi], bi, ii, sort, elem);
+            if m.needs_drop(elem) {
+                let ext = shadow_externs(m, fi, bi, ii);
+                rewrite_owned(&mut m.funcs[fi], bi, ii, sort, elem, ext);
+            } else {
+                rewrite(&mut m.funcs[fi], bi, ii, sort, elem);
+            }
             changed = true;
         }
     }
@@ -152,9 +157,8 @@ fn word_elem(m: &Module, thunk: FuncId, g: FuncId) -> Option<Ty> {
         && code.params[1].ty == elem
         && code.params[2].ty == elem
         && code.ret == Ty::INT;
-    let plain = elem == Ty::INT
-        || elem == Ty::FLOAT
-        || (matches!(m.types.kind(elem), TyKind::Rec(_)) && !m.needs_drop(elem));
+    let plain =
+        elem == Ty::INT || elem == Ty::FLOAT || matches!(m.types.kind(elem), TyKind::Rec(_));
     (shaped && plain).then_some(elem)
 }
 
@@ -352,6 +356,93 @@ fn rewrite_plain(f: &mut Func, bi: usize, ii: usize, ext: crate::ir::ExtId, desc
     f.blocks[bi]
         .insts
         .splice(ii..=ii, [copy_out, flag_inst, run]);
+}
+
+/// The runtime functions that copy a list's slots bitwise and free that copy, declared from
+/// the sort call at `blocks[bi].insts[ii]`.
+fn shadow_externs(
+    m: &mut Module,
+    fi: usize,
+    bi: usize,
+    ii: usize,
+) -> (crate::ir::ExtId, crate::ir::ExtId) {
+    let call = &m.funcs[fi].blocks[bi].insts[ii];
+    let Imm::Ext(e) = call.imm else {
+        unreachable!("sort call");
+    };
+    let mut shadow = m.externs[e.index()].clone();
+    shadow.name = "msrt_list_shadow".to_string();
+    shadow.role = ExternRole::None;
+    shadow.params.truncate(2);
+    shadow.leaf = true;
+    let list = shadow.params[0].ty;
+    let free = ExternDef {
+        name: "msrt_list_free_raw".to_string(),
+        // The runtime releases the scratch buffer, so the call consumes the owned list value.
+        params: vec![Param {
+            ty: list,
+            mode: Mode::Move,
+        }],
+        ret: Ty::UNIT,
+        noreturn: false,
+        pure_: false,
+        fresh: false,
+        role: ExternRole::None,
+        leaf: true,
+        reads: false,
+    };
+    (m.add_extern(shadow), m.add_extern(free))
+}
+
+/// Rewrites the runtime sort of owning elements. The sort permutes bitwise copies of the slots
+/// (two scratch buffers that own nothing) and only then clones the sorted slots into the result,
+/// so a comparator that exits early never leaves a list with duplicated owners.
+fn rewrite_owned(
+    f: &mut Func,
+    bi: usize,
+    ii: usize,
+    sort: FuncId,
+    elem: Ty,
+    (shadow, free): (crate::ir::ExtId, crate::ir::ExtId),
+) {
+    let call = f.blocks[bi].insts[ii].clone();
+    let (list, desc) = (call.args[0], call.args[1]);
+    let out = call.res.expect("sorted result");
+    let list_ty = f.values[out.index()];
+    let mut insts = Vec::new();
+    let mut emit = |op, args: Vec<Value>, imm, res: Option<Value>| {
+        insts.push(Inst {
+            op,
+            args,
+            imm,
+            res,
+            loc: call.loc,
+        });
+        res
+    };
+    let items = f.new_value(list_ty);
+    let buf = f.new_value(list_ty);
+    emit(Op::CallRt, vec![list, desc], Imm::Ext(shadow), Some(items));
+    emit(Op::CallRt, vec![list, desc], Imm::Ext(shadow), Some(buf));
+    let len = f.new_value(Ty::INT);
+    emit(Op::ListLen, vec![items], Imm::None, Some(len));
+    let zero = f.new_value(Ty::INT);
+    emit(Op::IConst, vec![], Imm::Int(0), Some(zero));
+    let env = f.new_value(Ty::PTR);
+    emit(Op::Slot, vec![], Imm::Ty(elem), Some(env));
+    let unit = f.new_value(Ty::UNIT);
+    emit(
+        Op::Call,
+        vec![buf, items, zero, len, env],
+        Imm::Func(sort),
+        Some(unit),
+    );
+    emit(Op::Clone, vec![items], Imm::None, Some(out));
+    for raw in [items, buf] {
+        let u = f.new_value(Ty::UNIT);
+        emit(Op::CallRt, vec![raw], Imm::Ext(free), Some(u));
+    }
+    f.blocks[bi].insts.splice(ii..=ii, insts);
 }
 
 /// Rewrites the runtime sort at `blocks[bi].insts[ii]` into a copy, a buffer copy and a call.
