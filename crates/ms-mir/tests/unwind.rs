@@ -594,5 +594,10 @@ fn registers_live_temporaries_before_a_noreturn_fault_call() {
     let (m, changed) = rewrite(PANICS_WITH_TEMPS, true);
     assert!(changed);
     // The concat window, then the int and the message both live at the fault call.
-    assert_eq!(count(&m, "main", Op::CleanupPush), 3, "{}", print_module(&m));
+    assert_eq!(
+        count(&m, "main", Op::CleanupPush),
+        3,
+        "{}",
+        print_module(&m)
+    );
 }
