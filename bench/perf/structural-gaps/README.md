@@ -131,3 +131,24 @@ Same build and machine; `mixed.ms` runs six cases, each measured alone (callgrin
 - e: `starts_with` is 37 instructions a call, `length` 24 and `==` reaches `memcmp` through a call, all opaque to LLVM; the compiled loop is a quarter of the total.
 - d: about 8,200 instructions and 9 allocations a promise beyond its own work (task record, stack switch, frame capture for fault reports, result cell). No C twin; a thread per task would be far slower, so this is a note, not a gap.
 - a, b, f: at or ahead of C. The `Float` loops vectorize, since they carry no overflow check.
+
+## 2026-11-12, sixth pass: keyed records, sets, enum trees, slices, text edits
+
+Same build and machine; `keyed.ms` runs six cases, each measured alone, C twins in `c/keyed.c`.
+
+| case | ms | c | wall ms / c |
+| --- | ---: | ---: | --- |
+| a: `Map[Int, Stat]`, `stats[k].count += 1`, `stats[k].sum += v`, max update, 2M rounds | 1,671M | 74M | 103 to 162 / 11 to 16 ms |
+| a as one `stats.update(k, initial, fn ...)` (`keyed_update.ms`) | 305M | 74M | 32 / 11 to 16 ms |
+| b: build and evaluate a recursive `enum` tree, 700k nodes | 570M | 224M | 70 / 42 ms |
+| c: scan a `List[Int?]`, 30M elements | 377M | 346M | 46 / 44 ms |
+| d: sum 20,000 windows through `xs.slice(a, b)` | 126M | 25M | 14 / 5 ms |
+| e: `trim`, `replace`, `upper`, `contains` on 300k lines | 1,052M | 334M | 59 / 31 ms |
+| f: `Set[Int]` `contains` then `add`, 3M rounds | 403M | 82M | 89 / 18 ms |
+
+- a: each `stats[k].field += v` is three `msrt_map_get_ptr` calls (present check, read, write), so one loop pass makes a `contains` and nine lookups where C makes one. A lookup is about 95 instructions (76 in `value_ptr_k`, which derives the slot layout from the type descriptors on every call) against about 15 for an open-addressing probe in C. The single-lookup form is 5.5x fewer instructions and 3x faster.
+- f: `ms_rt::map::contains_key` is 85 instructions a call and 63% of the program. Here the gap shows in wall time (5x), unlike the `intmap` case above where a division in the generator hid it.
+- d: `slice` copies the window (the lend in track 2).
+- e: `contains` and `replace` build a `memmem` searcher for the needle on every call (126 instructions before the scan starts), and `trim`, `replace` and `upper` each allocate a result.
+- b: 1.42x in `evaluate` as noted above; the rest is allocator calls, which callgrind overstates because the runtime's allocator is replaced by glibc's under valgrind.
+- c: at C.
