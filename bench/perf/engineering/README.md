@@ -35,3 +35,22 @@ Same machine and method (min of 7). `String.fields_by` on ASCII text copies each
 | grep | 62 | 33 | 33 | 1.88x | 1.88x |
 
 Remaining gap on `grep` and `logstats` is the input path (22 MB: `read_all` 14 ms, `decode_utf8` copy 18 ms, `split` 30 ms, against one read and one scan in C).
+
+## 2026-11-12, JSON, dedupe and report tasks; `pad` without a temporary buffer
+
+`jsonsum` (20 MB, 200k records): Manuscript parses into a typed `List[Rec]` with `parse[List[Rec]]`; C and Rust build a generic value tree with a hand-written recursive-descent parser (no serde or JSON library is available to `rustc` here), so the comparison is typed parse against tree parse, and a Rust program using serde derive would be faster than the Rust column. `dedupe` counts distinct lines and names in 1M records with maps. `report` formats 1M fixed-width lines (`pad_end`, `pad_start`, interpolation) into one buffer. `pad_start` and `pad_end` wrote into a `Vec`, then copied it into the string (a second allocation past 22 bytes); they now write into the final string directly (callgrind on 3 MB: 453M to 360M instructions; `report` 392 ms to about 270 ms).
+
+Min of 7, same machine, all ten tasks:
+
+| task | ms | c | rust | ms / c | ms / rust |
+|---|---:|---:|---:|---:|---:|
+| logstats | 111 | 62 | 100 | 1.79x | 1.11x |
+| csvgroup | 210 | 63 | 351 | 3.33x | 0.60x |
+| wordfreq | 388 | 229 | 232 | 1.69x | 1.67x |
+| sortrecords | 407 | 399 | 275 | 1.02x | 1.48x |
+| grep | 61 | 33 | 32 | 1.85x | 1.91x |
+| treegrep | 38 | 29 | 26 | 1.31x | 1.46x |
+| pargroup | 45 | 21 | 29 | 2.14x | 1.55x |
+| jsonsum | 185 | 239 | 294 | 0.77x | 0.63x |
+| dedupe | 334 | 319 | 374 | 1.05x | 0.89x |
+| report | 225 | 184 | 174 | 1.22x | 1.29x |

@@ -1559,18 +1559,35 @@ unsafe fn pad(
         }
         let total = total as usize;
         let pad_len = total - text.len();
-        let mut b = Vec::<u8>::with_capacity(total);
-        let dst = b.as_mut_ptr();
-        let pad_dst = if atstart { dst } else { dst.add(text.len()) };
-        if atstart {
-            core::ptr::copy_nonoverlapping(text.as_ptr(), dst.add(pad_len), text.len());
-        } else {
-            core::ptr::copy_nonoverlapping(text.as_ptr(), dst, text.len());
+        // The result is written where it lives: a short one on the stack and then inline, a long
+        // one straight into its allocation, with no temporary buffer.
+        let write = |dst: *mut u8| {
+            let pad_dst = if atstart { dst } else { dst.add(text.len()) };
+            if atstart {
+                core::ptr::copy_nonoverlapping(text.as_ptr(), dst.add(pad_len), text.len());
+            } else {
+                core::ptr::copy_nonoverlapping(text.as_ptr(), dst, text.len());
+            }
+            fill_repeated(pad_dst, padb, cycles * padb.len());
+            core::ptr::copy_nonoverlapping(
+                padb.as_ptr(),
+                pad_dst.add(cycles * padb.len()),
+                prefix_end,
+            );
+        };
+        if total <= STR_INLINE_MAX {
+            let mut buf = [0u8; STR_INLINE_MAX];
+            write(buf.as_mut_ptr());
+            return StrVal::inline(&buf[..total]).write_to(out);
         }
-        fill_repeated(pad_dst, padb, cycles * padb.len());
-        core::ptr::copy_nonoverlapping(padb.as_ptr(), pad_dst.add(cycles * padb.len()), prefix_end);
-        b.set_len(total);
-        from_buf(b).write_to(out)
+        let r = alloc_str(total);
+        write(r.ptr_word);
+        (if is_ascii(&*s) && is_ascii(&*padding) {
+            r.with_ascii()
+        } else {
+            r
+        })
+        .write_to(out)
     }
 }
 

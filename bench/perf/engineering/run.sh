@@ -15,7 +15,7 @@ mkdir -p "$work"
 "$MS" run "$here/gen.ms" -- "$work/input" "$scale"
 CC=${CC:-gcc}
 
-tasks="logstats:access.log csvgroup:orders.csv wordfreq:words.txt sortrecords:records.txt grep:access.log treegrep:tree pargroup:tree"
+tasks="logstats:access.log csvgroup:orders.csv wordfreq:words.txt sortrecords:records.txt grep:access.log treegrep:tree pargroup:tree jsonsum:records.json dedupe:records.txt report:records.txt"
 printf '%-12s %10s %10s %10s %8s %8s\n' task ms c rust ms/c ms/rust
 for t in $tasks; do
   name=${t%%:*}; file=$work/input/${t#*:}
