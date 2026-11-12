@@ -474,7 +474,7 @@ fn merge(
 fn fold_plain(text: String) String:
 	if not text.contains("\n"): return text.clone()
 
-	var result = ""
+	var result = StringBuilder()
 	var blanks = 0
 	var first = true
 
@@ -485,22 +485,23 @@ fn fold_plain(text: String) String:
 			blanks += 1
 			continue
 
-		if first: result = trimmed.clone()
-		else if blanks == 0: result = result.concat(" ").concat(trimmed)
+		if first: result.append(trimmed)
+		else if blanks == 0:
+			result.append(" ")
+			result.append(trimmed)
 		else:
-			var breaks = ""
 			var remaining = blanks
 
 			while remaining > 0:
-				breaks = breaks.concat("\n")
+				result.append("\n")
 				remaining -= 1
 
-			result = result.concat(breaks).concat(trimmed)
+			result.append(trimmed)
 
 		blanks = 0
 		first = false
 
-	return result
+	return result.build()
 
 // Whether the character following a colon ends a plain scalar in this context.
 fn separates_colon(next: Int, delimited: Bool) Bool:
