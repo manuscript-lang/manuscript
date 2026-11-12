@@ -226,6 +226,18 @@ fn scope_of(inst: &Inst) -> i64 {
     }
 }
 
+/// Whether scope `outer` encloses scope `inner`.
+fn is_ancestor(parents: &HashMap<i64, i64>, outer: i64, inner: i64) -> bool {
+    let mut cur = parents.get(&inner).copied();
+    while let Some(s) = cur.filter(|s| *s >= 0) {
+        if s == outer {
+            return true;
+        }
+        cur = parents.get(&s).copied();
+    }
+    false
+}
+
 fn own_params(m: &Module, f: &Func, b: usize) -> Vec<Value> {
     f.blocks[b]
         .params
@@ -459,21 +471,31 @@ fn function(
     };
     for b in &f.blocks {
         for i in &b.insts {
-            match (i.op, i.imm) {
-                (Op::ScopeBegin, Imm::Scope(s, parent)) => {
-                    cx.parents.insert(i64::from(s), i64::from(parent) - 1);
+            if let (Op::ScopeBegin, Imm::Scope(s, parent)) = (i.op, i.imm) {
+                cx.parents.insert(i64::from(s), i64::from(parent) - 1);
+            }
+        }
+    }
+    for b in &f.blocks {
+        for i in &b.insts {
+            if let (Op::ScopeOwn, Imm::Scope(s, kind)) = (i.op, i.imm) {
+                let (s, kind) = (i64::from(s), i64::from(kind));
+                // A value an inner scope owns again (a statement's temporary holding a moved
+                // local) stays the outer scope's: the path that never reaches the inner scope
+                // still holds it there, and the inner scope's end finds it moved.
+                if let Some(&(old, _)) = cx.tags.get(&i.args[0])
+                    && old != s
+                    && is_ancestor(&cx.parents, old, s)
+                {
+                    continue;
                 }
-                (Op::ScopeOwn, Imm::Scope(s, kind)) => {
-                    // A value owned again by a later scope leaves the earlier scope's list.
-                    if let Some((old, _)) =
-                        cx.tags.insert(i.args[0], (i64::from(s), i64::from(kind)))
-                        && let Some(list) = cx.owners.get_mut(&old)
-                    {
-                        list.retain(|v| *v != i.args[0]);
-                    }
-                    cx.owners.entry(i64::from(s)).or_default().push(i.args[0]);
+                // A value owned again by a later scope leaves the earlier scope's list.
+                if let Some((old, _)) = cx.tags.insert(i.args[0], (s, kind))
+                    && let Some(list) = cx.owners.get_mut(&old)
+                {
+                    list.retain(|v| *v != i.args[0]);
                 }
-                _ => {}
+                cx.owners.entry(s).or_default().push(i.args[0]);
             }
         }
     }
