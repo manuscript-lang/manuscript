@@ -1214,7 +1214,11 @@ impl FnLower<'_> {
     fn json_encode_impl(&mut self, t: &ct::Ty) -> Option<Rc<ms_check::api::hir::Callable>> {
         let key = self.cx.tys.shape(t);
         let tys = &mut self.cx.tys;
-        let to_json = |m: &ct::MethodRef| m.name().is_some_and(|n| self.syms.str(n) == "to_json");
+        let to_json_name = self
+            .cx
+            .session
+            .sole_operation("@std/data/json.ms", "JsonEncode");
+        let to_json = |m: &ct::MethodRef| m.name().is_some() && m.name() == to_json_name;
         let m =
             self.cx
                 .methods

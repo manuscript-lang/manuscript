@@ -1206,9 +1206,7 @@ impl<'a> FnLower<'a> {
             // A concrete receiver (a generic instance): call its implementation directly.
             let Some(im) = self.contract_impl(m, &static_ty) else {
                 // Hashing is derived for every hashable type.
-                if m.name().is_some_and(|n| self.syms.str(n) == "hash")
-                    && contract.is(Builtin::Hashable)
-                {
+                if contract.is(Builtin::Hashable) {
                     let recv = self.expr(recv_expr)?;
                     if self.dead {
                         return Ok(recv);
@@ -1216,8 +1214,7 @@ impl<'a> FnLower<'a> {
                     return self.derived_hash(recv);
                 }
                 // Equality is derived for every type that has no implementation of its own.
-                if m.name().is_some_and(|n| self.syms.str(n) == "equals")
-                    && contract.is(Builtin::Equal)
+                if contract.is(Builtin::Equal)
                     && let [other] = view.arguments.as_slice()
                 {
                     let recv = self.expr(recv_expr)?;
@@ -1233,8 +1230,7 @@ impl<'a> FnLower<'a> {
                     return Ok(Val { v, own: false });
                 }
                 // Built-in scalars order themselves against another of their own type.
-                if m.name().is_some_and(|n| self.syms.str(n) == "compare")
-                    && contract.is(Builtin::Comparable)
+                if contract.is(Builtin::Comparable)
                     && let [other] = view.arguments.as_slice()
                 {
                     let recv = self.expr(recv_expr)?;
