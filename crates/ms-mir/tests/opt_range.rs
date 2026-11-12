@@ -115,6 +115,14 @@ fn a_ring_index_under_a_short_circuit_guard_is_unchecked() {
 }
 
 #[test]
+fn a_counted_push_loop_makes_its_counter_the_length() {
+    let (b, a) = optimized("counted_push.mir");
+    assert_eq!(count(&b, "list.get"), 1);
+    assert_eq!(count(&a, "list.get.u"), 1, "{}", print_module(&a));
+    assert_eq!(exec(&b), exec(&a));
+}
+
+#[test]
 fn list_access_in_bounds_becomes_unchecked() {
     let (b, a) = optimized("list_walk.mir");
     assert_eq!(count(&b, "list.get"), 1);
@@ -607,6 +615,15 @@ fn a_record_returned_through_memory_keeps_an_unknown_list_length() {
     range::run(&mut after);
     verify_module(&after).unwrap_or_else(|e| panic!("{e:?}\n{}", print_module(&after)));
     assert_eq!(exec(&after), want, "{}", print_module(&after));
+}
+
+/// Two loads of one memory slot read the same list when nothing stores into the slot between them.
+#[test]
+fn loads_of_one_slot_share_a_list_length() {
+    let (b, a) = optimized("slot_loads_share_length.mir");
+    assert_eq!(count(&b, "list.get"), 1);
+    assert_eq!(count(&a, "list.get.u"), 1, "{}", print_module(&a));
+    assert_eq!(exec(&b), exec(&a));
 }
 
 /// `n` list-mapping loops one after another, each over the list the one before built.
