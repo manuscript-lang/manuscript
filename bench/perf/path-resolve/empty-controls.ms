@@ -1,0 +1,27 @@
+import posix from "@std/os/path.ms"
+import baseline from "./baseline.ms"
+import arguments from "@std/os/env.ms"
+import monotonic from "@std/time.ms"
+fn main() Unit!:
+	args := arguments()
+	n := args[1].parse_int().get()
+	repeats := args[2].parse_int().get()
+	var parts: List[String] = []
+	for unused in 0..n:
+		parts.append("")
+	if args[0] == "base":
+		paths := baseline()
+		measure(fn: paths.resolve("/base/", parts), repeats)?
+	else:
+		paths := posix()
+		measure(fn: paths.resolve("/base/", parts), repeats)?
+
+fn measure(resolve: fn() String!, repeats: Int) Unit!:
+	var checksum = 0
+	start := monotonic()
+	for unused in 0..repeats:
+		result := resolve()?
+		if result != "/base": return error(Error("result"))
+		checksum += result.byte_length()
+	elapsed := monotonic().difference(start).to_nanoseconds()
+	print("{elapsed} {checksum}")

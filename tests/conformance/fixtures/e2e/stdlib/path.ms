@@ -44,6 +44,8 @@ test "POSIX resolution preserves resets separators and all input validation":
 		"/a",
 	)?
 	expect_equal((paths.resolve("//", [])?), "/")?
+	expect_equal((paths.resolve("/base/", ["", "", ""])?), "/base")?
+	expect_equal((paths.resolve("/base/", ["/reset/", "", ""])?), "/reset")?
 	expect_equal((paths.resolve("/base", ["a\\b"])?), "/base/a\\b")?
 
 	invalid: String! := error(Error("path: invalid input", kind: "EINVAL"))

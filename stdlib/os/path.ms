@@ -491,15 +491,18 @@ fn resolve_inner(windows: Bool, base: String, parts: List[String]) String?:
 	else:
 		// Only the last absolute part and its following tails survive resolution.
 		var start = parts.length()
+		var has_tail = false
 
 		while start > 0:
-			if is_absolute_in(false, parts[start - 1]): break
+			part := parts[start - 1]
+			if is_absolute_in(false, part): break
 
+			if not part.is_empty(): has_tail = true
 			start -= 1
 
 		anchor := if start == 0: base else: parts[start - 1]
 
-		if start == parts.length():
+		if not has_tail:
 			value = anchor.clone()
 		else:
 			var out = StringBuilder()
