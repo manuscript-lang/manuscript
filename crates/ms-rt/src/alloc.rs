@@ -25,8 +25,12 @@ use std::sync::Once;
 pub const MAX_SMALL: usize = 2048;
 const PAGE_SHIFT: usize = 16;
 const PAGE_SIZE: usize = 1 << PAGE_SHIFT;
-/// Bytes at the start of each heap reservation that stay on small pages (see `ensure_region`).
-const HUGE_AFTER: usize = 4 << 20;
+/// The huge page size Linux's transparent huge pages use on the supported targets.
+const HUGE_PAGE: usize = 2 << 20;
+/// Bytes at the start of each heap reservation that stay on small pages (see `ensure_region`): the
+/// first touch of a huge page clears all of it, so a short program would pay for memory it never
+/// uses. Two huge pages keep the first allocations small and the advice aligned.
+const HUGE_AFTER: usize = 2 * HUGE_PAGE;
 /// Address space reserved for the small-block pages of the whole process.
 const PAGES_SIZE: usize = if cfg!(miri) { 64 << 20 } else { 256 << 30 };
 const NUM_PAGES: usize = PAGES_SIZE >> PAGE_SHIFT;
