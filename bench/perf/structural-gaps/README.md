@@ -92,3 +92,24 @@ Same build and machine; callgrind instructions, C twins in `c/`.
 - `queues`, heap half: about 1,070M against 524M, but not like for like: `PriorityQueue` keeps FIFO order among equal priorities with a second list.
 - At or ahead of C: `sqrt` and `sin` loops (0.94x), division and modulo loops (0.97x), `sorted()` of 1M `Int` and 200k `String` against `qsort` (0.96x). A tree interpreter over a recursive `enum` is 1.42x in `eval` (stack check and checked arithmetic); small-record arithmetic, a generic `Comparable` scan and an `entries()` loop are 1.39x together.
 - For the cost of the checks alone, the kernels page has C with Manuscript's checks against plain C: 1.07x (`nbody`) to 2.9x (`matmul`).
+
+## 2026-11-12, fourth pass: types, methods, functions and interfaces
+
+Same build and machine; callgrind instructions and min-of-3 wall time, C twins in `c/`. `abstractions.ms` runs six cases; each was measured alone.
+
+| case | ms | c | wall ms / c |
+| --- | ---: | ---: | --- |
+| a: `Vec` methods returning records by value, 20M rounds | 1,400M | 1,420M | 134 / 147 ms |
+| b: `List[Order]` with a nested record and a `List[Line]`, method `total()` | 278M | 294M | 41 / 55 ms |
+| c: interface call over a `List[Shape]` of three types, 10M calls | 300M | 216M | 46 / 50 ms |
+| d: function values from a list and a closure argument, 20M calls | 554M | 447M | 87 / 88 ms |
+| e: generic `largest[T: Comparable]` on `List[Int]`, 20M elements | 240M | 100M | 17 to 30 / 9 ms |
+| f: `var` method writing a nested record field, 30M calls | 390M | 600M | 125 / 132 ms |
+| `records.ms`: field updates through `ps[i].x += ps[i].vx`, 20M | 538M | 471M | 80 / 60 ms |
+| `intmap.ms`: `Map[Int, Int]` count and lookup, 4M operations | 379M | 136M | 69 / 73 ms |
+
+- Records are flat words with no header, methods and generics are specialized and inlined, and a record result comes back in registers or a caller slot: a to f are at C except e.
+- e: the generic is specialized and inlined. Two leftovers make it 12 instructions an element against 5: `xs[best]` keeps its upper check (`best` is always an index already proved), and `compare(a, b) > 0` stays a three-way select instead of `a > b`.
+- c and d: 8 and 5 more instructions a call than a C function pointer (vtable load, receiver adjust), hidden by the call itself in wall time.
+- `intmap`: 60 instructions a map operation in two opaque runtime calls against 17 for an open-addressing table in C; equal in wall time here because the division in the generator dominates. Covered by track 1 ("`Map` goes last").
+- Also at or ahead of C: optional results `Int?` from a called function (560M against 1,170M for an out-parameter in C), building 300k interpolated lines and `join` (279M against 426M for `snprintf`).
