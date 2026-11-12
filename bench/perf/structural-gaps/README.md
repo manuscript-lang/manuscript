@@ -105,6 +105,43 @@ A borrowed value converted to an interface (`total(sq)` for `fn total(x: Shape)`
 
 Closure captures: a closure passed to a call and not stored already allocates nothing (1,000 calls of `apply(fn x: x + k, i)`: 13 allocations in total). A closure stored in a list must escape the frame, so its environment stays on the heap; no change.
 
+## 2026-11-12: inlinable string scans (track 1, first step)
+
+Same machine and build type as above (Release LLVM `ms`; callgrind instructions on the first 30,000 lines of each input, outputs compared byte for byte with the baseline build).
+
+`String.index_of`, `starts_with`, `ends_with` and `view` moved into `ms-rt-hot`: a search in an ASCII text under 128 bytes and a view of an ASCII text inside its bounds are now code the caller inlines; other cases call the runtime as before (`msrt_string_index_of_long`, `msrt_string_view_slow`, the latter keeps the bounds fault). `split` scans a single-byte separator with one searcher and builds pieces of up to 15 bytes inline without a call.
+
+| task | before | after | change |
+| --- | ---: | ---: | ---: |
+| logstats | 112.86M | 108.45M | -3.9% |
+| wordfreq | 167.99M | 152.11M | -9.5% |
+| csvgroup | 142.51M | 138.65M | -2.7% |
+| grep | 19.73M | 19.70M | 0% |
+
+The 40% ceiling on `logstats` is not reached by this step: what is left is `msrt_string_split` and its list and heap pieces (allocation, `memcpy`, `free`), which are the lending and allocation tracks. `grep` is one long-haystack `memmem` search; nothing inlines there.
+
+### Step 2: `parse_int` and `scalar_at`
+
+`String.parse_int` (all of it) and `scalar_at` on an ASCII text with the index inside it moved into `ms-rt-hot`; out-of-range, non-ASCII and long unflagged cases call `msrt_string_scalar_at_slow`.
+
+| task | step 1 | step 2 | total change |
+| --- | ---: | ---: | ---: |
+| logstats | 108.45M | 106.95M | -5.2% |
+| csvgroup | 138.65M | 136.54M | -4.2% |
+| wordfreq | 152.11M | 152.11M | -9.5% |
+| grep | 19.70M | 19.79M | +0.3% (layout noise; no call changed) |
+
+### Step 3: `length` and a shared ASCII check
+
+`String.length` and `scalar_length` moved into `ms-rt-hot` (non-ASCII and long unflagged text call `msrt_string_scalar_count_slow`). The ASCII test is one helper that reads the flag or the bits of an inline string, so the earlier steps stopped scanning bytes for short strings. `mixed.ms` case e (200,000-word scan with `==`, `starts_with`, `length`, 20 passes): 301.7M to 265.1M instructions (-12%). logstats 106.47M, wordfreq 149.62M, csvgroup 136.38M on the 30,000-line inputs.
+
+### Step 4: `Set[Int]` without descriptor dispatch
+
+`Set[Int]` `contains` is an inlined probe over the fixed 16-byte slots (`msrt_set_contains_w`, `ms-rt-hot`), and `add` is `msrt_set_add_copy_w` with the same layout; sets stamped with a module's key behaviour keep the general path. A contains-then-add loop over 2M random keys below 100,000 (`/tmp` program, callgrind instructions): 233.3M to 117.4M (-50%). New fixture `set-int-fixed-layout` covers repeats, extreme keys, growth, removal and reinsertion.
+
+### Step 5: no `memmem` searcher for short text
+
+`replace`, `split` and `count` with a multi-byte separator or pattern scan a text under 128 bytes directly (`Needle::for_text`) instead of building a `memmem` searcher per call. A 56-byte line with `replace("::", "--")`, `split("::")` and `contains("trace")`, 300,000 times: 1,014.4M to 877.0M instructions (-13.5%).
 ## 2026-11-12: nested element writes
 
 Same machine; Release LLVM build; callgrind instruction totals. `grid.ms` is LCS over a 2001 x 2001 `List[List[Int]]`; `c/grid.c` is its C twin (`gcc -O2`).
