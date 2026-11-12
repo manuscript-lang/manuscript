@@ -50,7 +50,7 @@ export fn panic(message: String) Never: ...
 
 // The process-wide output buffer; standard output is flushed at exit
 // (crates/ms-rt/src/io.rs).
-extern fn msrt_io_write_stdout(text: String) Unit
+extern fn msrt_io_write_stdout_line(text: String, end: String) Unit
 
 /*
 Writes `value` as text and `end` (a newline unless given) to standard output; `print(chunk, end: "")` streams text without a newline. Generic printing can show a record structurally; pass `value.to_string()` or an interpolated string for its type-specific formatting.
@@ -64,8 +64,7 @@ print(order)
 */
 // ms: effect std.console.write
 export fn print[T](value: T, end: String = "\n") Unit:
-	msrt_io_write_stdout(value.to_string())
-	msrt_io_write_stdout(end)
+	msrt_io_write_stdout_line(value.to_string(), end)
 
 /*
 Data that a write accepts as either text or raw bytes: `String` and `Bytes` both implement it, so

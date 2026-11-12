@@ -899,11 +899,32 @@ impl<'a> Fa<'a> {
         }
     }
 
+    /// The interval of the amount `a` adds to or subtracts from `p`, when `a` is `p + q` or
+    /// `p - q` with `q` a value whose range is known (a widened byte, a bounded index).
+    fn step_range(&self, a: Value, p: Value, env: &Env) -> Option<Itv> {
+        let i = self.def_inst(a)?;
+        let (q, neg) = match i.op {
+            Op::IAdd | Op::IAddChk if i.args[0] == p => (i.args[1], false),
+            Op::IAdd | Op::IAddChk if i.args[1] == p => (i.args[0], false),
+            Op::ISub | Op::ISubChk if i.args[0] == p => (i.args[1], true),
+            _ => return None,
+        };
+        let q = self.get(q, env)?;
+        if neg {
+            Some(Itv {
+                lo: q.hi.checked_neg()?,
+                hi: q.lo.checked_neg()?,
+            })
+        } else {
+            Some(q)
+        }
+    }
+
     fn param_itv(&self, bi: usize, pi: usize) -> Option<Itv> {
         let p = self.f.blocks[bi].params[pi].value;
         let mut acc: Option<Itv> = None;
         let mut others: Option<Itv> = None;
-        let (mut ups, mut downs, mut counter_ok) = (0, 0, true);
+        let (mut ups, mut downs, mut mixed, mut counter_ok) = (0, 0, 0, true);
         for (pred, kind, args) in &self.incoming[bi] {
             let a = args[pi];
             let env = self.edge_env(*pred, *kind);
@@ -914,12 +935,22 @@ impl<'a> Fa<'a> {
             if a == p {
                 continue;
             }
-            match self.step_of(a, p) {
-                Some(s) if s != 0 && s.unsigned_abs() <= COUNTER_STEP_MAX as u64 => {
-                    if s > 0 {
+            let step = self
+                .step_of(a, p)
+                .map(Itv::point)
+                .or_else(|| self.step_range(a, p, &env));
+            match step {
+                Some(s)
+                    if (s.lo, s.hi) != (0, 0)
+                        && s.lo.unsigned_abs() <= COUNTER_STEP_MAX as u64
+                        && s.hi.unsigned_abs() <= COUNTER_STEP_MAX as u64 =>
+                {
+                    if s.lo >= 0 {
                         ups += 1;
-                    } else {
+                    } else if s.hi <= 0 {
                         downs += 1;
+                    } else {
+                        mixed += 1;
                     }
                 }
                 Some(_) => counter_ok = false,
@@ -933,10 +964,15 @@ impl<'a> Fa<'a> {
         }
         if ASSUME_BOUNDED_COUNTERS
             && counter_ok
-            && (ups == 0) != (downs == 0)
+            && ups + downs + mixed > 0
             && let (Some(o), Some(a)) = (others, acc)
         {
-            let bound = if ups > 0 {
+            let bound = if mixed > 0 || (ups > 0 && downs > 0) {
+                Itv {
+                    lo: i64::MIN / 2,
+                    hi: i64::MAX / 2,
+                }
+            } else if ups > 0 {
                 Itv {
                     lo: o.lo,
                     hi: i64::MAX / 2,
@@ -988,6 +1024,7 @@ impl<'a> Fa<'a> {
             | Op::ListGetNn
             | Op::ListGetU
             | Op::StrLen
+            | Op::Conv
             | Op::AltTag => self.other_ops(inst, env, ty, top),
             _ => Some(top),
         }
@@ -1197,6 +1234,14 @@ impl<'a> Fa<'a> {
             Op::ListGet | Op::ListGetNn | Op::ListGetU if self.byte_lists[inst.args[0].index()] => {
                 Itv { lo: 0, hi: 255 }
             }
+            // A narrow integer widened to `Int` keeps the range of its type.
+            Op::Conv if _ty == Ty::INT => match self.m.types.int_range(self.f.ty(inst.args[0])) {
+                Some((lo, hi)) if lo >= i64::MIN.into() && hi <= i64::MAX.into() => Itv {
+                    lo: lo as i64,
+                    hi: hi as i64,
+                },
+                _ => top,
+            },
             Op::StrLen => Itv { lo: 0, hi: LEN_MAX },
             Op::AltTag => match self.m.types.kind(self.f.ty(inst.args[0])) {
                 TyKind::Alt(a) => {

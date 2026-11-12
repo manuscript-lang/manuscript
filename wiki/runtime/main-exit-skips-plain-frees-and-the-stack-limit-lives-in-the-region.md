@@ -6,4 +6,6 @@ Verified (2026-11-12, `bench/perf/structural-gaps`): freeing a 500k-entry map wh
 
 The recursion check reads the limit from the region word beside the task block's address (`STACK_LIMIT_CELL`), one load from the masked stack pointer. Every writer of `Hdr::limit` must follow with `task::publish_limit()` (fault depth reserve, guard exit, segment grow and return); `publish_region` rewrites every segment's cell when a task is switched in, because tasks share a region's slots. A new place that changes the limit without publishing it makes the check use a stale value: too high faults early, too low skips the grow.
 
+A small directly self-recursive function is unrolled once into itself by the MIR inliner (`self_unroll_source`): the copies have no check or frame, so `fib(32)` fell from 137.8M to 98.4M instructions. Fault frames are compared by text because the copy's scope names its function by another table offset; the report's walk spends one step per logical frame, so inlining never changes how deep a diagnostic reaches.
+
 Evidence: [`exit_drops.rs`](../../crates/ms-mir/src/exit_drops.rs), [`task.rs`](../../crates/ms-rt/src/task.rs), fixture `e2e/accept/main-exit-closes-resources`.
