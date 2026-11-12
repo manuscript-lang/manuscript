@@ -15,3 +15,5 @@ Verify: the dispatched run's Windows and macOS jobs pass; no test was skipped or
 Lesson (2026-11-09): #3227 and #3234 added `ms-lsp` signature-help tests that used `file:///x.ms` documents, which name no real directory on Windows. Tests that analyze a document use `Workspace::uri`, not a literal Unix path.
 
 Verified (2026-11-10): a manual run can cover only one OS, so it must not suppress the scheduled six-platform check for the same commit. Only scheduled and manual `all`/`linux` runs produce the book for Pages. `tests/workflows/cicd.test.cjs` exercises the actual scheduling script and deployment condition.
+
+Lesson (2026-11-12): #3635 added `sys::prefer_huge_pages` to `ms-rt/src/sys.rs` with a non-Linux no-op and broke the Windows build on `main`: Windows compiles `sys_windows.rs` instead of `sys.rs`, so a `cfg` fallback in `sys.rs` never reaches it. A new `sys::` function needs a definition in both files, and a runtime change gets a dispatched Windows run before it merges. Windows has no `madvise` equivalent (large pages need `MEM_LARGE_PAGES` at allocation and a lock-memory privilege), so its version is a documented no-op.
