@@ -341,3 +341,7 @@ The Go load generator saturates near 185k req/s, so the earlier two-CPU comparis
 | `/user/42`, 4 (shared with load) | 245–251 | 363–397 | 245–261 |
 
 Manuscript is about 0.55–0.6x of C at every size and level with hyper at two CPUs; at one CPU it is about 0.85x of hyper. The four-CPU row shares CPUs with the load generator, so it shows the ratio, not scaling. A three-CPU row (one load CPU) was limited by the generator and is not reported.
+
+## 2026-11-12, one core: request tasks without a promise
+
+`start_native` gave every request a promise (table slot, state events, a drop that joins the task) that the server only used to cancel the task and wait for it. The server now spawns each request with `SPAWN_SELF_FREE` (`msrt_task_spawn`): the task frees itself, its fault report is dropped (the handler's own guard already answers 500), and `Server::tasks` holds the handle for `cancel_task` and for the join in `close_inner` (`task_alive`). Removed: the `Handlers` registry, `sweep_handlers`, the per-request promise. Callgrind, same tree before and after, `/health`: 12,695 to 11,780 instructions per request (−7.2%). Proposal: `proposals/http-request-task-recycling.md` (recycled workers were rejected in review).

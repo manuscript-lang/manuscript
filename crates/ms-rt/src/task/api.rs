@@ -125,7 +125,8 @@ pub(super) extern "C" fn task_main() -> ! {
             // A promise's task is never joined: the promise learns of its end by event.
             crate::string::release_opt(&core::mem::replace(&mut (*t).msg, crate::string::NO_STR));
             s.zombie_task = t;
-        } else if (*t).detached {
+        } else if (*t).detached || (*t).self_free {
+            crate::string::release_opt(&core::mem::replace(&mut (*t).msg, crate::string::NO_STR));
             s.zombie_task = t;
         } else if (*t).joiner != 0 {
             let j = lookup((*t).joiner);
@@ -178,6 +179,7 @@ pub unsafe extern "C-unwind" fn msrt_task_spawn(
         (*t).entry = Some(entry);
         (*t).arg = arg;
         (*t).detached = flags & SPAWN_DETACHED != 0;
+        (*t).self_free = flags & SPAWN_SELF_FREE != 0;
         (*t).fatal = flags & SPAWN_FATAL != 0;
         (*t).sp = sp;
         sched().ready.push_back((*t).handle);
@@ -507,6 +509,16 @@ pub unsafe extern "C-unwind" fn msrt_task_others_stalled() -> bool {
             }
         }
         true
+    }
+}
+
+/// Whether task `handle` has not ended yet (a handle that no longer exists has).
+pub fn task_alive(handle: u64) -> bool {
+    // SAFETY: single threaded scheduler.
+    unsafe {
+        ensure_init();
+        let t = lookup(handle);
+        !t.is_null() && (*t).state != State::Done
     }
 }
 

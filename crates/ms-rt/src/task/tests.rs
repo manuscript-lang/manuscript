@@ -71,6 +71,39 @@ fn tasks_interleave_sleep_and_join() {
     teardown();
 }
 
+unsafe extern "C-unwind" fn faulting(_: *mut u8) {
+    crate::fault::fault(b"self-free test fault");
+}
+
+/// A self-freeing task runs, ends and frees itself with no joiner and no promise; a fault in it
+/// ends only that task, and a cancel of an ended one is ignored.
+#[test]
+#[cfg_attr(miri, ignore = "context switches use inline assembly")]
+fn self_free_tasks_end_alone() {
+    let _g = lock();
+    teardown();
+    // SAFETY: tests hold the global lock.
+    unsafe {
+        *LOG_N.ptr() = 0;
+        let a = msrt_task_spawn(
+            counter,
+            core::ptr::without_provenance_mut(1),
+            SPAWN_SELF_FREE,
+            0,
+        );
+        let b = msrt_task_spawn(faulting, null_mut(), SPAWN_SELF_FREE, 0);
+        assert!(task_alive(a) && task_alive(b));
+        while task_alive(a) || task_alive(b) {
+            msrt_task_yield();
+        }
+        assert_eq!(&(&(*LOG.ptr()))[..*LOG_N.ptr()], &[10, 11, 12]);
+        msrt_task_cancel(a);
+        msrt_task_cancel(b);
+        assert_eq!(msrt_task_count(), 1);
+    }
+    teardown();
+}
+
 unsafe extern "C-unwind" fn deadlocked_token(arg: *mut u8) {
     // SAFETY: the test owns the live token and deliberately supplies no completion.
     unsafe { msrt_token_park(arg as u64, -1, null_mut()) };

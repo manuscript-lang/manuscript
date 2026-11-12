@@ -112,6 +112,10 @@ pub const SPAWN_DETACHED: u32 = 1;
 /// `msrt_task_spawn` flag: a fault in the task ends the process (exit 67) as for a detached
 /// task, but the task can still be joined and cancelled.
 pub const SPAWN_FATAL: u32 = 2;
+/// `msrt_task_spawn` flag: nobody joins the task and no promise follows it. A fault or cancel
+/// ends only the task, whose report is dropped; its record is freed when it ends. The owner
+/// that must wait for it tracks it by handle.
+pub const SPAWN_SELF_FREE: u32 = 4;
 
 /// `msrt_token_new` flag: another thread will post the token, so while it is unposted the
 /// scheduler waits for it instead of reporting a deadlock.
@@ -170,6 +174,7 @@ struct Task {
     entry: Option<Entry>,
     arg: *mut u8,
     detached: bool,
+    self_free: bool,
     joiner: u64,
     status: u8,
     msg: StrVal,

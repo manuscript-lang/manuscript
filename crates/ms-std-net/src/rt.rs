@@ -177,29 +177,24 @@ pub fn cancel_task(handle: u64) {
     }
 }
 
+/// Whether task `handle` has not ended yet.
+pub fn task_alive(handle: u64) -> bool {
+    ms_rt::task::task_alive(handle)
+}
+
 /// Forgets a cancel aimed at the running task, which caught it and goes on.
 pub fn acknowledge_cancel() {
     ms_rt::fault::acknowledge_cancel()
 }
 
-/// Starts `entry(arg)` as a promise task on this thread and returns its id. `entry` owns `arg`.
-/// A fault or cancellation in it ends only that promise; [`promise_drop`] releases it.
+/// Starts `entry(arg)` as a task that frees itself when it ends and returns its handle, for the
+/// caller to cancel it by. `entry` owns `arg`. A fault or cancel in it ends only that task.
 ///
 /// # Safety
 /// `arg` must be valid for `entry`, which owns it.
-pub unsafe fn promise_start(entry: unsafe extern "C-unwind" fn(*mut u8), arg: *mut u8) -> i64 {
-    // SAFETY: forwarded contract.
-    unsafe { ms_rt::promise::start_native(entry, arg) }
-}
-
-/// Asks the promise `id` to stop at its next wait.
-pub fn promise_cancel(id: i64) {
-    ms_rt::promise::cancel(id)
-}
-
-/// Cancels the promise `id` if unfinished, joins its task, and frees it.
-pub fn promise_drop(id: i64) {
-    ms_rt::promise::msrt_promise_drop(id)
+pub unsafe fn spawn_self_free(entry: unsafe extern "C-unwind" fn(*mut u8), arg: *mut u8) -> u64 {
+    // SAFETY: `entry` and `arg` follow the task ABI; ownership of `arg` moves to the task.
+    unsafe { msrt_task_spawn(entry, arg, ms_rt::task::SPAWN_SELF_FREE, 0) }
 }
 
 /// A runtime park token (`msrt_token_*`) posted from the runtime thread; freed on drop.

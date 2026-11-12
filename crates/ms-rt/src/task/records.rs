@@ -47,6 +47,7 @@ pub(super) unsafe fn new_task(ctx: Ctx) -> *mut Task {
             entry: None,
             arg: null_mut(),
             detached: false,
+            self_free: false,
             joiner: 0,
             status: 0,
             msg: crate::string::NO_STR,
