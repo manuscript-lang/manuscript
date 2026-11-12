@@ -326,3 +326,18 @@ Callgrind, `/health`, 64-connection load for 8 s, exact request counts, release 
 This change: a runtime task started with `start_native` (the server's request and reactor tasks) skips the stack walk that records where a promise was started, since its starter's frames are runtime code with no source line (1.5%, plus one allocation); a header name with a single value keeps it inline instead of in a one-element list (`Headers::Values`, one allocation per header); `HttpExchange.protocol()` returns its static text without a `String` copy. 13,606 to 13,065 instructions per request (−4.0%).
 
 Next change: `HttpExchange.method()`, `path()` and `query()` build the language string straight from the exchange state (`Str::new`, an `IntoAbi` for `Str`) instead of cloning a `String` that the native boundary copies again: 13,065 to 12,687 instructions per request (−2.9%). A thread-id change for `Bound` (replacing `thread::current().id()`, which clones an `Arc`) measured 0 instructions and was dropped.
+
+## 2026-11-12, multiple CPUs with a C load generator
+
+The Go load generator saturates near 185k req/s, so the earlier two-CPU comparison with C (208k against 190k) measured the generator, not the servers. `load/loadc.c` (epoll, one thread per load CPU, one request in flight per connection) reaches 430k and `multicpu.sh` runs Manuscript, C and hyper (`rust/`, now `server <port> <dir> [threads]`) side by side. Revision `0b727e4a`, 128 keep-alive connections, 4 s, two rounds, shared 4-CPU Linux VM (±10%). Load generator CPU use was 5.3 of 8 CPU-seconds on Manuscript and 7.6 on C, so the two-CPU rows are server bound. Req/s in thousands, both rounds:
+
+| Endpoint, server CPUs (load CPUs) | Manuscript | C | hyper |
+| --- | ---: | ---: | ---: |
+| `/health`, 1 (3) | 99–115 | 179–195 | 125–131 |
+| `/health`, 2 (2) | 209–255 | 368–434 | 230–266 |
+| `/health`, 4 (shared with load) | 234–243 | 367–426 | 235–247 |
+| `/user/42`, 1 (3) | 92–102 | 139–163 | 122–125 |
+| `/user/42`, 2 (2) | 213–226 | 382–395 | 215–217 |
+| `/user/42`, 4 (shared with load) | 245–251 | 363–397 | 245–261 |
+
+Manuscript is about 0.55–0.6x of C at every size and level with hyper at two CPUs; at one CPU it is about 0.85x of hyper. The four-CPU row shares CPUs with the load generator, so it shows the ratio, not scaling. A three-CPU row (one load CPU) was limited by the generator and is not reported.

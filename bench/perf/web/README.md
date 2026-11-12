@@ -1,6 +1,6 @@
 # Web server benchmark
 
-The same HTTP server written with Manuscript's standard library ([`ms/`](ms)), Go's `net/http` ([`go/`](go)) and, when `cargo` is installed, hyper ([`rust/`](rust), two tokio workers; no `/io`), driven by one keep-alive load generator ([`load/`](load)). It measures the runtime's I/O path: the reactor, parking, timers, and, through `/io`, file and DNS calls that the kernel cannot poll.
+The same HTTP server written with Manuscript's standard library ([`ms/`](ms)), Go's `net/http` ([`go/`](go)) and, when `cargo` is installed, hyper ([`rust/`](rust), two tokio workers; no `/io`), driven by one keep-alive load generator ([`load/`](load)). `load/loadc.c` is a C load generator for comparing fast servers on several CPUs (`multicpu.sh`); the Go one saturates near 185k req/s. It measures the runtime's I/O path: the reactor, parking, timers, and, through `/io`, file and DNS calls that the kernel cannot poll.
 
 | Endpoint | Work |
 | --- | --- |
