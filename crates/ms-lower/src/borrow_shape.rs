@@ -8,7 +8,7 @@
 use crate::Error;
 use crate::func::{FnLower, Val};
 use ms_check::api::ast::{Expr, ExprKind};
-use ms_check::api::types::Builtin;
+use ms_check::api::ownership::{NativeBorrow, native_borrow};
 use ms_mir::ir::{Cc, Imm, Mode, Op, Value};
 use ms_mir::types::{Ty as MTy, TyKind};
 
@@ -52,22 +52,22 @@ impl<'a> FnLower<'a> {
             return Ok(None);
         };
         let recv = self.ety(left);
-        let shape = match (self.syms.str(name), args.as_slice()) {
-            ("get", [key]) if recv.is(Builtin::Map) => {
+        let shape = match native_borrow(&recv, self.syms.str(name), args.len()) {
+            Some(NativeBorrow::MapGet) => {
                 // A key the checker converts on the way in (an `Optional` key given a plain
                 // value) takes the ordinary call, which applies the conversion.
                 let map_ty = self.emty(left)?;
                 let TyKind::Obj(_, parts) = self.b.m.types.kind(map_ty).clone() else {
                     return Ok(None);
                 };
-                let key_ty = self.emty(&key.value)?;
+                let key_ty = self.emty(&args[0].value)?;
                 if parts.first() != Some(&key_ty) {
                     return Ok(None);
                 }
                 Shape::MapGet
             }
-            ("first", []) if recv.is(Builtin::List) => Shape::First,
-            ("last", []) if recv.is(Builtin::List) => Shape::Last,
+            Some(NativeBorrow::First) => Shape::First,
+            Some(NativeBorrow::Last) => Shape::Last,
             _ => return Ok(None),
         };
         let result = self.emty(e)?;
