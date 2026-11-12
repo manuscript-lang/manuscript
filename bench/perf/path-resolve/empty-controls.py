@@ -21,7 +21,7 @@ rows = []
 with tempfile.TemporaryDirectory() as directory:
     folder = Path(directory)
     (folder / 'baseline.ms').write_text(source)
-    (folder / 'empty.ms').write_text(Path(__file__).with_name('empty-controls.ms').read_text())
+    (folder / 'empty.ms').write_text(Path(__file__).with_name('empty-controls.ms.in').read_text())
     binary = folder / 'empty'
     subprocess.run([compiler, 'build', str(folder / 'empty.ms'), '--build-type', 'Release', '-o', str(binary)], check=True)
     digest = hashlib.sha256(binary.read_bytes()).hexdigest()
