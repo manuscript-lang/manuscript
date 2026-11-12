@@ -3,7 +3,7 @@
 ## Summary
 
 - Problem: compiled loops are near C, but ordinary text and collection code is 1.6x to 3.3x C. The time is in native calls LLVM cannot see into, in the fresh list and copies the standard API shapes force, and in fast paths that exist only for one exact source shape.
-- Change: three tracks ranked by measured gain, with the cheap measured parts staged first. No new syntax or type. Two later ideas are noted, not proposed.
+- Change: three tracks ranked by measured gain, with the cheap measured parts staged first, then five smaller opportunities from a second pass. No new syntax or type. Two later ideas are noted, not proposed.
 - Decision requested: approve the order and answer the open question on track 2. Nothing is implemented here; each stage ships with its own implementation PR.
 
 ## Status
@@ -72,6 +72,21 @@ fn keep(line: String) Row:
 
 - A combinator chain as one loop (`filter(..).map(..).sum()` is 3.0x a hand loop): follows track 1, and changes the order closures are called in.
 - A four-byte text cell: `chars()` is 16 bytes a cell and `c16-maze-bfs` is 2.8x Rust on page faults ([codegen page](../bench/perf/codegen-2026-11-12.md)); needs a language decision.
+
+### Second pass: loops, calls, exit and file work
+
+Measured after the tracks above were started ([second pass](../bench/perf/structural-gaps/README.md)); ranked after them.
+
+| # | Opportunity | Measured | Change | Cost |
+| --- | --- | --- | --- | --- |
+| 4 | Exit frees every owned value | 25 to 33 ms of a 168 to 218 ms build-then-exit program | `main` skips drops of plain memory at process exit; resources still close | S |
+| 5 | Nested element writes move the row out and back | LCS over `List[List[Int]]`: 30 instructions per cell against 12 | write through the place's address; tell LLVM an element store leaves list headers unchanged, so row loads and bounds checks hoist | M |
+| 6 | A file call inside concurrent work hops to a pool thread | `pargroup` 2.3x C; 4,707 `futex` and 1,505 `epoll_wait` calls for 2,000 files | run the blocking call inline when another scheduler thread can take the ready tasks | M |
+| 7 | Stack check per recursive call | 5 of 20.7 instructions per `fib` call, two dependent loads | keep the limit one load away, or check once per recursion cycle | S |
+| 8 | Checked `Int` loops do not vectorize | 2.7x to 3.5x unchecked C on an accumulate loop; equal to C with trapping adds | a vector body that tests overflow before storing and replays the block in scalar code to fault exactly | L |
+
+- 8 is the safety floor, not a defect: a flag tested once per loop pass was measured and gains nothing. Build it only if arithmetic loops matter more than tracks 1 to 7.
+- Measured at or ahead of C, so not pursued: `Result` and `?`, interface dispatch, `print`, `String +=`, `parse_int`, process start.
 
 ## Components touched
 
