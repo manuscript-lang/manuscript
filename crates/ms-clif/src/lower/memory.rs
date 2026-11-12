@@ -63,7 +63,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                 };
                 let (e, _, _) = self.elem_info(lt);
                 let at = self.elem_addr(l[0], l[1], i, size, mode);
-                self.elem_ptrs.insert(at, e);
+                self.elem_ptrs.insert(at, (e, mode));
                 vec![at]
             }
             Op::PtrIsNull => {
@@ -106,7 +106,9 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let leaves = self.g.lay.leaves(ty);
                 let p = self.a(inst, 0)[0];
                 let out = match self.elem_ptrs.get(&p).copied() {
-                    Some(e) if e == ty => self.in_elem_region(e, |s| s.load_leaves(p, 0, &leaves)),
+                    Some((e, mode)) if e == ty => {
+                        self.in_elem_region(e, mode, |s| s.load_leaves(p, 0, &leaves))
+                    }
                     _ => self.load_leaves(p, 0, &leaves),
                 };
                 if inst.op == Op::Take
@@ -141,8 +143,8 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let leaves = self.g.lay.leaves(ty);
                 let (p, v) = (self.a(inst, 0)[0], self.a(inst, 1));
                 match self.elem_ptrs.get(&p).copied() {
-                    Some(e) if e == ty => {
-                        self.in_elem_region(e, |s| s.store_leaves(p, 0, &leaves, &v));
+                    Some((e, mode)) if e == ty => {
+                        self.in_elem_region(e, mode, |s| s.store_leaves(p, 0, &leaves, &v));
                     }
                     _ => self.store_leaves(p, 0, &leaves, &v),
                 }
