@@ -927,9 +927,13 @@ fn collect_with(drive: impl FnOnce(&Tables, &mut dyn FnMut(usize) -> bool)) -> F
     // SAFETY: non-null table installed by `msrt_start`.
     let t = unsafe { &*t };
     let mut innermost = true;
+    // The walk is bounded by logical frames, so inlining a callee into its caller does not
+    // change how deep a report reaches: each inlined frame spends a step like a physical one.
+    let mut steps = MAX_STACK_WALK_FRAMES;
     drive(t, &mut |ret| {
         let Some(func) = find_func(t, ret) else {
-            return true;
+            steps = steps.saturating_sub(1);
+            return steps > 0;
         };
         let (mut line, mut file, mut scope) = find_line(t, func, ret);
         // The frame that raised the fault may sit in a call without a position of its own;
@@ -940,11 +944,16 @@ fn collect_with(drive: impl FnOnce(&Tables, &mut dyn FnMut(usize) -> bool)) -> F
         innermost = false;
         // Compiler-generated glue (function-value thunks) has no source position.
         if line == 0 {
-            return true;
+            steps = steps.saturating_sub(1);
+            return steps > 0;
         }
         // Frames of inlined callees, innermost first, then the physical function.
         let mut name = func.name_off;
         loop {
+            if steps == 0 {
+                return false;
+            }
+            steps -= 1;
             let next = scope_entry(t, scope);
             if let Some(sc) = &next {
                 name = sc.name_off;

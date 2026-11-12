@@ -101,4 +101,4 @@ Same machine as the section above; before is the stack-check change, after adds 
 | `recursion.ms` wall | 19 to 20 ms | 12 to 14 ms | |
 
 - The MIR inliner copies the body of a small (at most 40 instructions) directly self-recursive function with at most two self calls into those calls once. A copy runs without a call, a frame-pointer setup or a recursion check; the calls inside it enter the function as before, so the check still runs once per physical frame. `fib` makes half the calls. The function is then marked `Never`, so the pass unrolls it once however often it runs.
-- Fault reports count logical frames: the runaway-recursion fixture now reports 1,999,992 repeats where it reported 999,996, because the frame walk stops at 1,000,000 physical frames and each now holds two logical ones. Repeated frames are compared by text, since an inlined copy names its function by another table offset.
+- Fault reports are unchanged: the frame walk spends one step per logical frame, so the runaway-recursion report still ends at 999,996 repeats. Repeated frames are compared by text, since an inlined copy names its function by another table offset.
