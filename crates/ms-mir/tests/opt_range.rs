@@ -104,6 +104,17 @@ fn a_sum_of_narrow_values_is_unchecked() {
 }
 
 #[test]
+fn a_ring_index_under_a_short_circuit_guard_is_unchecked() {
+    let (b, a) = optimized("ring_index.mir");
+    assert_eq!(count(&b, "list.get"), 1);
+    // `cap == 0 or start < 0` leaves `cap >= 1` and `start >= 0`, so `(start + k) % cap`
+    // is a valid index.
+    assert_eq!(count(&a, "list.get.u"), 1, "{}", print_module(&a));
+    assert_eq!(count(&a, "srem.chk"), 0, "{}", print_module(&a));
+    assert_eq!(exec(&b), exec(&a));
+}
+
+#[test]
 fn list_access_in_bounds_becomes_unchecked() {
     let (b, a) = optimized("list_walk.mir");
     assert_eq!(count(&b, "list.get"), 1);
