@@ -400,6 +400,20 @@ pub unsafe extern "C-unwind" fn msrt_string_scalar_at(
 ) -> i64 {
     // SAFETY: caller passes a live string.
     unsafe {
+        // All-ASCII text: a scalar index is a byte index.
+        if (*s).flagged_ascii()
+            && let Some(&byte) = usize::try_from(index).ok().and_then(|i| bytes(s).get(i))
+        {
+            return i64::from(byte);
+        }
+        scalar_at_slow(s, index, has_default.is_set(), default)
+    }
+}
+
+#[inline(never)]
+unsafe fn scalar_at_slow(s: *const StrVal, index: i64, has_default: bool, default: i64) -> i64 {
+    // SAFETY: caller passes a live string.
+    unsafe {
         let text = bytes(s);
         let off = if index >= 0 && !(*s).flagged_ascii() {
             utf8::advance(text, 0, index as usize).filter(|&o| o < text.len())
@@ -416,7 +430,7 @@ pub unsafe extern "C-unwind" fn msrt_string_scalar_at(
             })
         };
         let Some(off) = off else {
-            if !has_default.is_set() {
+            if !has_default {
                 fault::msrt_index_fault(index, scalar_count(s) as i64);
             }
             return default;

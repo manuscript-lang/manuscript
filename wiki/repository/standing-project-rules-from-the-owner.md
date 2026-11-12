@@ -6,7 +6,7 @@ Decision (Chinmay): these rules apply to every PR and thread. Each line points t
 
 - PRs: open ready for review, never as drafts, with squash auto-merge on; the owner does not review ([create-pr](../../skills/create-pr/SKILL.md#merging)).
 - Platform parity: Linux, macOS and Windows stay at parity. Never skip, gate or no-op a test on a platform without asking the owner ([why Windows needs a dispatch](pr-checks-skip-windows-so-dispatch-the-full-matrix.md)).
-- Stack PRs and cut idle time: never wait on CI or a pending merge before starting the next piece. Branch the next change off the open PR's branch, open it with that PR as base, and rebase onto `main` (`git rebase --onto`) once the base merges.
+- Stack PRs and cut idle time: start the next slice on the open branch (base it on the previous PR's branch, retarget to `main` when it merges) instead of waiting for gates or CI; a failure found later is fixed on the branch that owns it and merged forward.
 - Cross-platform fixes: a speed fix should work on every platform, not only Linux epoll: check that a scheduler, reactor or server change has a kqueue (macOS) and IOCP via mio (Windows) path. Measuring on Linux is enough.
 - Workarounds: each gets an issue naming its removal condition, and is deleted once the real fix is on `main`.
 - Manuscript first: behavior goes in stdlib `.ms`; Rust keeps small, general runtime primitives.

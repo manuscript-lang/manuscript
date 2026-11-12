@@ -7,6 +7,8 @@ Perf and agent benchmarks, profiling.
 - [Numeric parsing needs invalid-input performance controls](numeric-parsing-needs-invalid-input-performance-controls.md): valid-input gains can hide overflow and malformed-input regressions; preserve error precedence and equivalent Rust validation.
 
 - [`var` record parameters stay in the caller's slot](var-record-parameters-stay-in-the-callers-slot.md): wide-record methods no longer move every field out and back per call; `Bytes` reads inline (`Lines.next` 147 to 75 instructions per line).
+- [Constant list tables iterated in a loop are built once](constant-list-tables-in-loops-are-built-once.md): `for d in [[1, 0], [-1, 0], ...]` inside a loop no longer allocates per pass (248 to 20 ms for 5M passes).
+- [`map`/`filter` chains over numbers run as one loop](map-filter-chains-over-numbers-run-as-one-loop.md): filter/map/sum over reading lambdas build only the final result (163 to 78 ms on 2M elements).
 - [Small literal maps are searched, not built](small-literal-maps-are-searched-not-built.md): lookups on a literal of up to 12 constants compare keys directly (85 to 4 ns per call).
 - [A win needs a baseline comparison, not just a smaller number](a-win-needs-a-baseline-comparison-not-just-a-smaller-number.md): keep the raw hand-written baseline (the C controls in `bench/perf/kernels/c`) and distinguish logical work elimination from faster execution…
 - [Benchmarks are a profiling guide, not a gate](benchmarks-are-a-profiling-guide-not-a-gate.md): results are only comparable on one machine and revision; record the commit and machine with the table, as the result files do.
@@ -35,3 +37,4 @@ Perf and agent benchmarks, profiling.
 - [Diff context windows need only new flags](diff-context-windows-need-only-new-flags.md): mark each Boolean once while preserving overlapping hunk windows and ordinary diff controls.
 - [Image rotations preserve malformed shapes](image-rotations-preserve-malformed-shapes.md): copy valid pixels in one pass, preserve channel order and malformed-input behavior, and measure tiny-image controls without asymmetric dispatch.
 - [A busy queue must not poll descriptors on every task switch](a-busy-queue-must-not-poll-descriptors-on-every-task-switch.md): poll every 32 switches; compare servers on one CPU by user and system time per request.
+- [Fewer allocations need wall time, not just counts](fewer-allocations-need-wall-time-not-just-counts.md): a counted split cut allocations 22% and instructions 6% but cost 7% wall; inline short strings never allocate on clone.
