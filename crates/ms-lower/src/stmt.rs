@@ -1120,6 +1120,19 @@ impl<'a> FnLower<'a> {
     }
 
     fn while_stmt(&mut self, cond: &Expr, body: &[Stmt]) -> Result<(), Error> {
+        let outermost = self.loops.is_empty();
+        self.push_scope();
+        let r = self
+            .hoist_literals(body)
+            .and_then(|()| self.while_loop(cond, body));
+        if outermost {
+            self.hoisted.clear();
+        }
+        self.pop_scope();
+        r
+    }
+
+    fn while_loop(&mut self, cond: &Expr, body: &[Stmt]) -> Result<(), Error> {
         let (header, body_b, exit) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
         self.b.br(header, &[]);
         self.enter(header);
@@ -1570,12 +1583,22 @@ impl<'a> FnLower<'a> {
     }
 
     fn for_stmt(&mut self, s: &Stmt, iter: &Expr, body: &[Stmt]) -> Result<(), Error> {
+        let outermost = self.loops.is_empty();
+        let r = self.for_loop(s, iter, body);
+        if outermost {
+            self.hoisted.clear();
+        }
+        r
+    }
+
+    fn for_loop(&mut self, s: &Stmt, iter: &Expr, body: &[Stmt]) -> Result<(), Error> {
         let loop_var = self
             .hir
             .stmt(s)
             .loop_binding
             .ok_or_else(|| Error::new("for without loop binding"))?;
         self.push_scope();
+        self.hoist_literals(body)?;
         let mut list_var = None;
         let (start, len) = match self.range_bounds(iter)? {
             Some(bounds) => bounds,
@@ -1603,7 +1626,14 @@ impl<'a> FnLower<'a> {
                 if borrowed {
                     self.keys_view_for = Some(iter as *const Expr);
                 }
-                let it = self.expr(iter);
+                let hoisted = self.hoisted.get(&iter.id).copied().filter(|_| borrowed);
+                let it = match hoisted {
+                    Some(var) => Ok(Val {
+                        v: self.b.use_var(var),
+                        own: false,
+                    }),
+                    None => self.expr(iter),
+                };
                 self.split_iter_for = None;
                 self.chars_iter_for = None;
                 self.keys_view_for = None;
