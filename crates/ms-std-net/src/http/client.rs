@@ -3,6 +3,7 @@
 //! `@std/http`.
 
 use super::cookies::Jar;
+use super::gunzip::{self, Gunzip};
 use super::h1::{self, BodyDecoder, Decoded, Framing, Parsed, ResponseHead};
 use super::h2client::{self, H2Stream, OpenErr, Poll, PumpErr, Session};
 use super::headers::{self, Headers, Shared};
@@ -1360,12 +1361,31 @@ impl Write for Sink {
     }
 }
 
+/// Runs `step` on the decoder with its output appended directly to `target`, within `room` bytes.
+fn decode_into<R>(
+    dec: &mut MultiGzDecoder<Sink>,
+    target: &mut Vec<u8>,
+    room: usize,
+    step: impl FnOnce(&mut MultiGzDecoder<Sink>) -> R,
+) -> R {
+    let sink = dec.get_mut();
+    sink.room = room;
+    std::mem::swap(&mut sink.buf, target);
+    let result = step(dec);
+    std::mem::swap(&mut dec.get_mut().buf, target);
+    result
+}
+
 struct BodyState {
     wire: Option<Wire>,
     key: String,
     decoder: BodyDecoder,
     keep_alive: bool,
     gzip: Option<MultiGzDecoder<Sink>>,
+    /// The buffered-read decoder that replaces `gzip` for a body no read has started.
+    fast_gzip: Option<Gunzip>,
+    /// A streaming read has fed `gzip`, so the body cannot switch decoders.
+    gz_touched: bool,
     /// Compressed bytes not yet fed to the decoder.
     gz_in: Vec<u8>,
     /// Decoded bytes not yet delivered.
@@ -1411,6 +1431,8 @@ impl BodyState {
                     room: 0,
                 })
             }),
+            fast_gzip: None,
+            gz_touched: false,
             gz_in: Vec::new(),
             ready: Vec::new(),
             ready_pos: 0,
@@ -1523,38 +1545,96 @@ impl BodyState {
             return Ok(());
         }
         loop {
-            if self.gz_in.is_empty() {
-                match self.next_raw(deadline, READ_BUF)? {
-                    Some(chunk) => self.gz_in = chunk,
-                    None => {
-                        let room = self.room();
-                        let dec = self.gzip.as_mut().expect("gzip state");
-                        dec.get_mut().room = room;
-                        dec.try_finish().map_err(gzip_error)?;
-                        self.ready = std::mem::take(&mut dec.get_mut().buf);
-                        self.ready_pos = 0;
-                        self.gzip = None;
-                        return Ok(());
-                    }
-                }
-            }
-            let step = self.gz_in.len().min(4096);
-            let room = self.room();
             // The delivered buffer's capacity goes back to the decoder, so output does not regrow
             // from empty at every step.
-            let mut reuse = std::mem::take(&mut self.ready);
-            reuse.clear();
-            let dec = self.gzip.as_mut().expect("gzip state");
-            dec.get_mut().room = room;
-            dec.get_mut().buf = reuse;
-            dec.write_all(&self.gz_in[..step]).map_err(gzip_error)?;
-            self.gz_in.drain(..step);
-            self.ready = std::mem::take(&mut dec.get_mut().buf);
+            let mut decoded = std::mem::take(&mut self.ready);
+            decoded.clear();
+            let room = self.room();
+            let more = self.gz_step(deadline, &mut decoded, room);
+            self.ready = decoded;
             self.ready_pos = 0;
-            if !self.ready.is_empty() {
+            if !more? || !self.ready.is_empty() {
                 return Ok(());
             }
         }
+    }
+
+    /// Switches an untouched gzip body to the decoder that appends to the buffered result.
+    fn use_fast_gzip(&mut self) {
+        if self.gzip.is_some() && !self.gz_touched && self.gz_in.is_empty() && self.ready.is_empty()
+        {
+            self.gzip = None;
+            self.fast_gzip = Some(Gunzip::new());
+        }
+    }
+
+    /// One step of the buffered gzip decoder: appends to `out` what the next compressed input
+    /// decodes to. Returns once the stream ended or some output was produced.
+    fn gz_fast_step(&mut self, deadline: Deadline, out: &mut Vec<u8>) -> Result<(), IoErr> {
+        let before = out.len();
+        let limit = before.saturating_add(usize::try_from(self.remaining).unwrap_or(usize::MAX));
+        loop {
+            let more = match self.next_raw(deadline, READ_BUF)? {
+                Some(chunk) if self.gz_in.is_empty() => {
+                    self.gz_in = chunk;
+                    true
+                }
+                Some(chunk) => {
+                    self.gz_in.extend_from_slice(&chunk);
+                    true
+                }
+                None => false,
+            };
+            let inflater = self.fast_gzip.as_mut().expect("buffered gzip state");
+            let pushed = inflater.push(&self.gz_in, more, out, limit);
+            let (used, done) = pushed.map_err(|f| match f {
+                gunzip::Fail::Limit => IoErr::Failed("response body limit exceeded".into()),
+                gunzip::Fail::Truncated => {
+                    IoErr::Failed("connection closed before the exchange completed".into())
+                }
+                gunzip::Fail::Invalid => IoErr::Failed("gzip: corrupt input".into()),
+            })?;
+            self.gz_in.drain(..used);
+            let grew = (out.len() - before) as u64;
+            self.remaining -= grew.min(self.remaining);
+            if done {
+                self.fast_gzip = None;
+                return Ok(());
+            }
+            if grew > 0 {
+                return Ok(());
+            }
+        }
+    }
+
+    /// One step of gzip decoding: feeds the decoder the next compressed bytes (or finishes it at the
+    /// end of the input) and appends what it produced to `target`, failing once `room` more bytes
+    /// would be produced. `false` once the decoder has finished.
+    fn gz_step(
+        &mut self,
+        deadline: Deadline,
+        target: &mut Vec<u8>,
+        room: usize,
+    ) -> Result<bool, IoErr> {
+        self.gz_touched = true;
+        if self.gz_in.is_empty() {
+            match self.next_raw(deadline, READ_BUF)? {
+                Some(chunk) => self.gz_in = chunk,
+                None => {
+                    let dec = self.gzip.as_mut().expect("gzip state");
+                    let finished = decode_into(dec, target, room, |d| d.try_finish());
+                    finished.map_err(gzip_error)?;
+                    self.gzip = None;
+                    return Ok(false);
+                }
+            }
+        }
+        let step = self.gz_in.len().min(4096);
+        let dec = self.gzip.as_mut().expect("gzip state");
+        let wrote = decode_into(dec, target, room, |d| d.write_all(&self.gz_in[..step]));
+        self.gz_in.drain(..step);
+        wrote.map_err(gzip_error)?;
+        Ok(true)
     }
 
     /// Decoded bytes one more step may add before the budget is exceeded.
@@ -1771,6 +1851,7 @@ impl ResponseBody {
         };
         let state = held.state.as_mut().expect("state");
         let mut out: Vec<u8> = Vec::new();
+        state.use_fast_gzip();
         loop {
             if state.ready_pos < state.ready.len() {
                 let n = state.ready.len() - state.ready_pos;
@@ -1788,7 +1869,11 @@ impl ResponseBody {
                 state.ready_pos = 0;
             }
             // A decompressor still holds output after the last compressed byte arrived.
-            if state.done && state.gzip.is_none() && state.gz_in.is_empty() {
+            if state.done
+                && state.gzip.is_none()
+                && state.fast_gzip.is_none()
+                && state.gz_in.is_empty()
+            {
                 break;
             }
             if let Err(e) = self.fill_direct(state, &mut out) {
@@ -1817,9 +1902,28 @@ impl ResponseBody {
         if self.deadline.expired() {
             return Err(IoErr::Failed("context deadline exceeded".into()));
         }
+        if state.fast_gzip.is_some() {
+            return state.gz_fast_step(self.deadline, out);
+        }
         let plain = state.gzip.is_none()
             && !state.done
             && state.wire.as_ref().is_some_and(|w| w.h2.is_none());
+        if state.gzip.is_some() {
+            // The decoder appends straight to `out`, so decoded bytes are not copied again.
+            let before = out.len();
+            let room = usize::try_from(state.remaining.saturating_add(1)).unwrap_or(usize::MAX);
+            loop {
+                let more = state.gz_step(self.deadline, out, room)?;
+                let grew = (out.len() - before) as u64;
+                if grew > state.remaining {
+                    return Err(IoErr::Failed("response body limit exceeded".into()));
+                }
+                if grew > 0 || !more {
+                    state.remaining -= grew;
+                    return Ok(());
+                }
+            }
+        }
         if !plain {
             return state.produce(self.deadline);
         }
@@ -2392,6 +2496,18 @@ mod tests {
         let mut exact = request("GET", &address, "/gz");
         exact.max_response = 100_000;
         assert_eq!(c.send(exact).unwrap().read_all().unwrap().len(), 100_000);
+
+        // The buffered read decodes straight into its result and keeps the same budget.
+        let mut limited = request("GET", &address, "/gz");
+        limited.max_response = 99_999;
+        assert!(matches!(
+            c.send(limited).unwrap().read_all_bytes(),
+            Err(IoErr::Failed(m)) if m == "response body limit exceeded"
+        ));
+        let mut exact = request("GET", &address, "/gz");
+        exact.max_response = 100_000;
+        let got = c.send(exact).unwrap().read_all_bytes().unwrap();
+        assert!(got == vec![b'a'; 100_000]);
 
         // Without decompression the bytes arrive as sent.
         let (_net, plain) = client(ClientOptions::default());

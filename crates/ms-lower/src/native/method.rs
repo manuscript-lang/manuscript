@@ -103,13 +103,48 @@ impl<'a> FnLower<'a> {
             let result = self.emty(e)?;
             return self.rt_method(sym, recv, &[], &[], result);
         }
+        let lent = self.cx.fact(
+            self.hir.data.file,
+            e.id,
+            ms_check::api::ownership::Fact::BorrowedRead,
+        );
+        if lent && !recv.own {
+            // The checker lends the result (used in place while the receiver stays unchanged):
+            // string keys and values, and the elements of a slice, are views of the receiver.
+            let rty = self.ty_of(recv.v);
+            let name = native.rsplit('/').next().unwrap_or(native);
+            match (self.b.m.types.kind(rty), name) {
+                (TyKind::Obj(Native::Map, _), "keys" | "values") => {
+                    let sym = if name == "keys" {
+                        "msrt_map_keys_view"
+                    } else {
+                        "msrt_map_values_view"
+                    };
+                    let result = self.emty(e)?;
+                    return self.rt_method(sym, recv, &[], &[], result);
+                }
+                (TyKind::List(elem), "slice") if !self.b.m.needs_drop(*elem) => {
+                    let result = self.emty(e)?;
+                    // The list is a `cap == 0` view: dropping it frees and drops nothing.
+                    return self.rt_method(
+                        "msrt_list_slice_view",
+                        recv,
+                        &m.ty.params,
+                        &args,
+                        result,
+                    );
+                }
+                _ => {}
+            }
+        }
         if str_recv
             && native == "split"
-            && self.split_view_for == Some(e as *const Expr)
-            && self.stable_place(recv_expr)
+            && (lent
+                || (self.split_view_for == Some(e as *const Expr) && self.stable_place(recv_expr)))
         {
-            // `let parts = text.split(..)` read only in place, over a parameter the body only
-            // reads: the pieces are views of `text`.
+            // A `split` the checker lends (its result is used in place while the receiver
+            // stays unchanged), or `let parts = text.split(..)` read only in place over a
+            // parameter the body only reads: the pieces are views of `text`.
             self.split_view_for = None;
             let result = self.emty(e)?;
             return self.rt_method("msrt_string_split_view", recv, &m.ty.params, &args, result);
@@ -248,6 +283,11 @@ impl<'a> FnLower<'a> {
                 self.map_get_or(recv, &m.ty.params, &args, result)
             }
             (TyKind::Obj(Native::Map, _), "entries") => self.map_entries(recv_expr, recv, result),
+            (TyKind::List(elem), "first" | "last")
+                if self.list_end_inline(elem, result).is_some() =>
+            {
+                self.list_end(recv, elem, result, name == "last")
+            }
             (TyKind::List(_), "keys") => self.list_keys(recv_expr, recv, result),
             (TyKind::List(_), "entries") => self.list_entries(recv_expr, recv, result),
             (TyKind::List(_) | TyKind::Bytes, "length") => {
@@ -502,6 +542,16 @@ impl<'a> FnLower<'a> {
                 self.result_method(out, name, recv, a, args)
             }
             (TyKind::Alt(a), "is_ok" | "is_error") => self.result_state(name, recv, a),
+            (TyKind::List(_), "repeated") => {
+                let TyKind::List(elem) = self.b.m.types.kind(rty).clone() else {
+                    unreachable!()
+                };
+                let d = self.type_desc(elem);
+                let a = self.borrow(recv);
+                let n = self.borrow(args[0].val);
+                let out = self.call_runtime("msrt_list_repeat", &[a, d, n], rty)?;
+                Ok(Val { v: out, own: true })
+            }
             (TyKind::List(_), "concat") => {
                 let TyKind::List(elem) = self.b.m.types.kind(rty).clone() else {
                     unreachable!()

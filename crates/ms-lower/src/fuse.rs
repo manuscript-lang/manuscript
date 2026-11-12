@@ -14,7 +14,12 @@ use ms_check::api::ast::*;
 use ms_check::api::hir::Resolution;
 use ms_check::api::types as ct;
 use ms_mir::builder::Var;
+use ms_mir::ir::{Cc, Imm, Mode, Op};
 use ms_mir::types::{Ty as MTy, TyKind};
+
+/// The per-scalar step of a fused scan: the scalar in, a flag that stops the scan out.
+type ScalarBody<'b, S> =
+    dyn FnMut(&mut S, ms_mir::ir::Value) -> Result<Option<ms_mir::ir::Value>, Error> + 'b;
 
 #[derive(Clone, Copy, PartialEq)]
 enum Kind {
@@ -120,6 +125,174 @@ impl FnLower<'_> {
         }
         stages.reverse();
         Ok((stages, at))
+    }
+
+    /// `text.scalar_values().all(f)` (also `any` and `count`) with a reading lambda: the callback
+    /// runs on each scalar as the string is decoded, so no list of scalars is built.
+    pub(crate) fn fused_scalar_scan(
+        &mut self,
+        e: &Expr,
+        m: &ct::MethodRef,
+        recv_expr: &Expr,
+    ) -> Result<Option<Val>, Error> {
+        let name = match m.name().map(|n| self.syms.str(n)) {
+            Some(n @ ("all" | "any" | "count")) => n.to_string(),
+            _ => return Ok(None),
+        };
+        if matches!(m.native, ct::Native::Source | ct::Native::Contract) {
+            return Ok(None);
+        }
+        let ExprKind::Call { args, .. } = &e.kind else {
+            return Ok(None);
+        };
+        let [arg] = args.as_slice() else {
+            return Ok(None);
+        };
+        let ExprKind::Lambda(l) = &arg.value.kind else {
+            return Ok(None);
+        };
+        if arg.name.is_some() || arg.mutable || !simple_lambda(l) {
+            return Ok(None);
+        }
+        let ExprKind::Call { callee, args: none } = &recv_expr.kind else {
+            return Ok(None);
+        };
+        let ExprKind::Member {
+            left: text_expr,
+            name: inner,
+        } = &callee.kind
+        else {
+            return Ok(None);
+        };
+        if !none.is_empty() || self.syms.str(inner) != "scalar_values" {
+            return Ok(None);
+        }
+        let Some(Resolution::Method(inner_m)) = self.hir.call(recv_expr).map(|v| v.target) else {
+            return Ok(None);
+        };
+        let text_ty = self.emty(text_expr)?;
+        if inner_m.native == ct::Native::Source
+            || !matches!(self.b.m.types.kind(text_ty), TyKind::Str)
+        {
+            return Ok(None);
+        }
+        let text = self.expr(text_expr)?;
+        if self.dead {
+            return Ok(Some(text));
+        }
+        let f = self.expr(&arg.value)?;
+        if self.dead {
+            return Ok(Some(f));
+        }
+        let (fvar, fhidden) = self.callback_var(f);
+        let hidden = text.own && self.needs_drop(MTy::STR);
+        let tvar = self
+            .b
+            .declare_var(MTy::STR, if hidden { Mode::Move } else { Mode::Borrow });
+        self.b.def_var(tvar, text.v);
+        let counting = name == "count";
+        let any = name == "any";
+        let acc = self
+            .b
+            .declare_var(if counting { MTy::INT } else { MTy::BOOL }, Mode::Borrow);
+        let init = if counting {
+            self.b.iconst(0)
+        } else {
+            self.b.bconst(!any)
+        };
+        self.b.def_var(acc, init);
+        self.each_scalar(tvar, &mut |s, x| {
+            let r = {
+                let f = s.b.use_var(fvar);
+                s.b.call_ind(f, &[x])
+            };
+            let cur = s.b.use_var(acc);
+            if counting {
+                let (one, zero) = (s.b.iconst(1), s.b.iconst(0));
+                let inc = s.b.select(r, one, zero);
+                let next = s.b.binop(Op::IAdd, cur, inc);
+                s.b.def_var(acc, next);
+                return Ok(None);
+            }
+            let hit = if any { r } else { s.b.unop(Op::Not, r) };
+            let t = s.b.bconst(any);
+            let next = s.b.select(hit, t, cur);
+            s.b.def_var(acc, next);
+            Ok(Some(hit))
+        })?;
+        if hidden {
+            let v = self.b.use_var(tvar);
+            self.drop_value(v);
+        }
+        self.release_source(fvar, fhidden);
+        Ok(Some(Val {
+            v: self.b.use_var(acc),
+            own: false,
+        }))
+    }
+
+    /// Runs `body` on each scalar value of the string in `tvar`, ASCII bytes inline and other
+    /// characters decoded by the runtime; the body returns a flag that stops the scan.
+    fn each_scalar(&mut self, tvar: Var, body: &mut ScalarBody<'_, Self>) -> Result<(), Error> {
+        let s = self.b.use_var(tvar);
+        let len = self.call_runtime("msrt_string_byte_length", &[s], MTy::INT)?;
+        let idx = self.b.declare_var(MTy::INT, Mode::Borrow);
+        let zero = self.b.iconst(0);
+        self.b.def_var(idx, zero);
+        let cur = self.b.declare_var(MTy::INT, Mode::Borrow);
+        let (header, scan, fast, slow, join, exit) = (
+            self.b.new_block(),
+            self.b.new_block(),
+            self.b.new_block(),
+            self.b.new_block(),
+            self.b.new_block(),
+            self.b.new_block(),
+        );
+        self.b.br(header, &[]);
+        self.b.switch_to(header);
+        let i = self.b.use_var(idx);
+        let more = self.b.icmp(Cc::Lt, i, len);
+        self.b.br_if(more, scan, &[], exit, &[]);
+        self.b.seal_block(scan);
+        self.b.switch_to(scan);
+        let s = self.b.use_var(tvar);
+        let i = self.b.use_var(idx);
+        let byte = self
+            .b
+            .emit(Op::StrByte, &[s, i], Imm::None, Some(MTy::INT))
+            .expect("byte");
+        let limit = self.b.iconst(128);
+        let ascii = self.b.icmp(Cc::Lt, byte, limit);
+        self.b.br_if(ascii, fast, &[], slow, &[]);
+        self.b.seal_block(fast);
+        self.b.seal_block(slow);
+        self.b.switch_to(fast);
+        let one = self.b.iconst(1);
+        let next = self.b.binop(Op::IAdd, i, one);
+        self.b.def_var(cur, byte);
+        self.b.def_var(idx, next);
+        self.b.br(join, &[]);
+        self.b.switch_to(slow);
+        let s = self.b.use_var(tvar);
+        let i = self.b.use_var(idx);
+        let ch = self.call_runtime("msrt_string_scalar_at_byte", &[s, i], MTy::INT)?;
+        let width = self.call_runtime("msrt_string_char_width", &[s, i], MTy::INT)?;
+        let next = self.b.binop(Op::IAdd, i, width);
+        self.b.def_var(cur, ch);
+        self.b.def_var(idx, next);
+        self.b.br(join, &[]);
+        self.b.seal_block(join);
+        self.b.switch_to(join);
+        let x = self.b.use_var(cur);
+        let stop = body(self, x)?;
+        match stop {
+            Some(flag) => self.b.br_if(flag, exit, &[], header, &[]),
+            None => self.b.br(header, &[]),
+        }
+        self.b.seal_block(header);
+        self.b.seal_block(exit);
+        self.b.switch_to(exit);
+        Ok(())
     }
 
     /// Fuses a chain that ends in this call (`map`, `filter` or `sum`), when it can.

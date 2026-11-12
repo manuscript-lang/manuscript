@@ -92,7 +92,7 @@ fn main() Int:
 				print("leak: {f} ({build}) left {shown} live blocks")
 
 			var have = List[String]()
-			if not counts.is_empty(): have = counts[0].split(" ")
+			if not counts.is_empty(): have = counts[0].split(" ").clone()
 
 			for header in after(source, "// expect-{build}: "):
 				for pair in header.split(" "):

@@ -257,6 +257,12 @@ test "unsigned fixed-width codecs cover the entire UInt64 range":
 		expect_equal(view.uint64_le(0)?, value)?
 		expect_equal(view.uint64_be(8)?, value)?
 
+		outer := data.slice(1, 18)?
+		nested := outer.slice(8, 16)?
+		expect_equal(nested.uint64_be(0)?, value)?
+		nested_range: UInt64! := error(Error("binary: out of range", kind: "ERANGE"))
+		expect_equal(nested.uint64_be(1), nested_range)?
+
 	var out = BytesBuilder()
 	out.append_uint64_le(18364758544493064720)
 	out.append_uint64_be(18364758544493064720)

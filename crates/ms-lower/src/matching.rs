@@ -100,18 +100,20 @@ impl FnLower<'_> {
             let uid = self.adopt_hidden(sv, ty);
             let cty = ms_check::api::types::sub(&self.hir.ty(scrutinee), &self.subst);
             let closer = self.part_closer(&cty)?;
-            if !self.own_hidden(uid, closer.as_ref()) {
-                if let Some(kind) = closer {
-                    self.hidden_closers.insert(uid, kind);
-                    self.note_closer();
-                }
+            if !self.own_hidden(uid, closer.as_ref(), false) {
                 let parts = matches!(kind, TyKind::Alt(_) | TyKind::Opt(_))
                     && arms
                         .iter()
                         .any(|arm| self.hir.arm(arm).bindings.iter().any(|b| b.is_some()));
-                if parts {
+                if parts || closer.is_some() {
                     self.slotted.insert(uid);
                     self.slotify(uid);
+                }
+                if let Some(kind) = closer
+                    && !self.own_hidden_slot(uid, &kind)
+                {
+                    self.hidden_closers.insert(uid, kind);
+                    self.note_closer();
                 }
             }
             owned_uid = Some(uid);
@@ -254,7 +256,11 @@ impl FnLower<'_> {
                 let l = self.locals[&uid];
                 let cur = self.local_take(&l);
                 // The pass stops owning the scrutinee: its parts are taken out below.
-                self.disown_raw(uid, cur);
+                if self.raw_owned.contains(&uid) {
+                    let owner = l.slot.unwrap_or(cur);
+                    self.b
+                        .emit(Op::ScopeDisown, &[owner], ms_mir::ir::Imm::None, None);
+                }
                 self.take_payloads(&kind, *k, cur, &facts.bindings)?;
                 self.closed_on_path.insert(uid);
             }

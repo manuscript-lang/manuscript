@@ -162,7 +162,11 @@ pub unsafe extern "C-unwind" fn msrt_task_spawn(
         };
         let base = alloc_stack(len);
         let (lo, hi, sp) = stack::prepare(base, len);
-        let t = new_task(Ctx::new(lo, hi));
+        let ctx = Ctx::new(lo, hi);
+        let t = match sched().spares.pop() {
+            Some(spares) => new_task(ctx.with_spares(spares)),
+            None => new_task(ctx),
+        };
         (*t).stack = base;
         (*t).stack_len = len;
         let hdr: *mut fault::Hdr = &mut (*t).hdr;
@@ -463,22 +467,24 @@ pub unsafe extern "C-unwind" fn msrt_task_count() -> usize {
 }
 
 /// Whether no other task could run while the current one blocks its thread: each is parked on a
-/// token with no deadline and not on a descriptor, so nothing but a post wakes it. A program that
-/// waits for one promise at a time is in this state, and a blocking call then gains nothing from
-/// a pool thread. A post from another thread is noticed when the call returns. Answers false past
-/// a handful of tasks, so the check stays a few loads.
+/// token with no deadline and not on a descriptor, and the token is posted only from this thread
+/// (a join of a local task), so nothing can wake it before the call returns. A program that
+/// waits for one local task at a time is in this state, and a blocking call then gains nothing
+/// from a pool thread. A task parked on a token another thread may post is not stalled: an
+/// inline call would delay that wake-up by the length of the call. Answers false past a handful
+/// of tasks, so the check stays a few loads.
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_task_others_stalled() -> bool {
     const LOOK: usize = 4;
     // SAFETY: single threaded scheduler.
     unsafe {
         let cur = ensure_init();
-        let s = sched();
+        let mut s = sched();
         if s.live - s.waiting_roots > LOOK {
             return false;
         }
-        for slot in &s.slots {
-            let t = slot.task;
+        for i in 0..s.slots.len() {
+            let t = s.slots[i].task;
             if t.is_null() || t == cur {
                 continue;
             }
@@ -486,7 +492,13 @@ pub unsafe extern "C-unwind" fn msrt_task_others_stalled() -> bool {
             let stalled = match t.state {
                 State::Done => true,
                 State::Waiting => {
-                    t.wait_token != 0 && t.deadline == NO_DEADLINE && t.kill_at == NO_DEADLINE
+                    // A token another thread may post (a pool job, a promise completed
+                    // elsewhere) could wake the task while this thread is blocked, so only a
+                    // token posted from this thread counts.
+                    t.wait_token != 0
+                        && t.deadline == NO_DEADLINE
+                        && t.kill_at == NO_DEADLINE
+                        && token_mut(&mut s, t.wait_token).is_some_and(|k| !k.remote)
                 }
                 _ => false,
             };
@@ -654,7 +666,9 @@ pub(crate) unsafe fn spawn_promise_task(closure: *mut ms_rt_abi::Closure, promis
         let h = msrt_task_spawn(closure_entry, closure.cast(), 0, 0);
         let t = lookup(h);
         (*t).promise = promise;
-        (*t).started_by = fault::capture_frames();
+        if !crate::promise::is_native_work(closure) {
+            (*t).started_by = fault::capture_frames();
+        }
         h
     }
 }

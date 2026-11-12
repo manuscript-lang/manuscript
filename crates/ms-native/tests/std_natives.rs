@@ -5,8 +5,8 @@
     clippy::missing_safety_doc
 )]
 use ms_rt::string::{bytes, from_bytes};
-use ms_rt::trap;
 use ms_rt_abi::{ErrSlot, HasRaw};
+use std::cell::Cell;
 use std::sync::{Mutex, MutexGuard};
 
 static LOCK: Mutex<()> = Mutex::new(());
@@ -16,39 +16,48 @@ fn lock() -> MutexGuard<'static, ()> {
     LOCK.lock().unwrap_or_else(|e| e.into_inner())
 }
 
-/// Runs `operation` in a trap and returns the fault text it raised, or `None` when it returned.
-/// Unix traps in a forked child (the production fault path); Windows has no fork, so the
-/// operation runs in this frame under a setjmp-style guard and `msrt_trap_begin` returns twice.
-#[inline(never)]
-fn fault_of<R>(operation: impl FnOnce() -> R) -> Option<String> {
-    // SAFETY: this frame stays live until `msrt_trap_end` resumes after the call.
-    #[cfg(windows)]
-    let began = unsafe { trap::msrt_trap_begin() };
-    #[cfg(not(windows))]
-    let began = trap::msrt_trap_begin();
-    if began == 0 {
-        operation();
-        trap::msrt_trap_end();
-    }
-    let mut message = ms_rt_abi::StrVal::literal(std::ptr::null_mut(), 0);
-    // SAFETY: the message out pointer is writable and the trap belongs to this thread.
-    let faulted = unsafe { trap::msrt_trap_wait(&mut message) };
-    if faulted == 0 {
-        return None;
-    }
-    // SAFETY: a successful wait transfers a live runtime string to the caller.
-    unsafe {
-        let text = String::from_utf8_lossy(bytes(&message)).into_owned();
-        ms_rt::string::release(&message);
-        Some(text)
-    }
+/// The env var that tells a re-executed test binary which `assert_fault` call to run.
+const FAULT_CALL: &str = "MS_ASSERT_FAULT_CALL";
+/// The process exit status of a runtime fault.
+const EXIT_FAULT: i32 = 67;
+thread_local! {
+    /// Calls to `assert_fault` so far in this test (each test runs on its own thread).
+    static FAULT_CALLS: Cell<usize> = const { Cell::new(0) };
 }
 
-/// Asserts the closure faults with exactly this first line (frames ignored).
+/// Asserts the closure faults with exactly this first line (frames ignored). A fault ends the
+/// process, so the test binary re-runs this test in a new process: that child skips the earlier
+/// `assert_fault` calls, runs this one, and must exit with the fault status and report.
 #[track_caller]
 fn assert_fault<R>(message: &str, operation: impl FnOnce() -> R) {
-    let got = fault_of(operation).expect("expected a fault");
-    assert_eq!(got.lines().next().unwrap_or(""), message);
+    let call = FAULT_CALLS.replace(FAULT_CALLS.get() + 1);
+    if let Ok(target) = std::env::var(FAULT_CALL) {
+        if target.parse() == Ok(call) {
+            operation();
+            std::process::exit(0);
+        }
+        return;
+    }
+    let test = std::thread::current()
+        .name()
+        .expect("test thread name")
+        .to_string();
+    let out = std::process::Command::new(std::env::current_exe().expect("test binary"))
+        .args(["--exact", &test, "--test-threads=1", "--nocapture"])
+        .env(FAULT_CALL, call.to_string())
+        .output()
+        .expect("spawn the test binary");
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert_eq!(
+        out.status.code(),
+        Some(EXIT_FAULT),
+        "expected a fault; stderr:\n{stderr}"
+    );
+    let report = stderr.lines().find(|l| l.contains(message));
+    assert!(
+        report.is_some(),
+        "no report line has {message:?}; stderr:\n{stderr}"
+    );
 }
 use ms_rt_abi::{
     STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_OK, STATUS_OUT_OF_RANGE, StrVal,

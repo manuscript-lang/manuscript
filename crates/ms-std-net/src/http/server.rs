@@ -1409,21 +1409,15 @@ impl Server {
         head: RequestHead,
     ) -> Result<Box<Pending>, (u16, &'static str)> {
         let _ = (conn, reactor);
-        if head.minor == 1
-            && !head
-                .fields
-                .iter()
-                .any(|(n, _)| n.eq_ignore_ascii_case("Host"))
-        {
-            return Err((400, "missing required Host header"));
-        }
-        if head
+        let hosts = head
             .fields
             .iter()
             .filter(|(n, _)| n.eq_ignore_ascii_case("Host"))
-            .count()
-            > 1
-        {
+            .count();
+        if head.minor == 1 && hosts == 0 {
+            return Err((400, "missing required Host header"));
+        }
+        if hosts > 1 {
             return Err((400, "too many Host headers"));
         }
         let framing = h1::request_framing(&head).map_err(|b| (b.status, b.reason))?;
@@ -1431,9 +1425,12 @@ impl Server {
         if target.path == "*" && head.method != "OPTIONS" {
             return Err((400, "asterisk-form target needs OPTIONS"));
         }
-        if !head.fields.iter().all(|(n, v)| {
-            std::str::from_utf8(n.as_bytes()).is_ok() && std::str::from_utf8(v).is_ok()
-        }) {
+        // Names come from httparse as `&str`, so only the values can be invalid UTF-8.
+        if !head
+            .fields
+            .iter()
+            .all(|(_, v)| std::str::from_utf8(v).is_ok())
+        {
             return Err((400, "invalid UTF-8 request"));
         }
         let expect = h1::has_token(&head.fields, "Expect", "100-continue");
@@ -1653,10 +1650,10 @@ pub(super) fn body_allowed(status: i64) -> bool {
 
 /// Appends handler headers with canonical names, sorted.
 pub(super) fn append_handler_headers(out: &mut Vec<u8>, headers: &Headers) -> (bool, bool) {
-    let mut sorted: Vec<(String, &Vec<Vec<u8>>)> = headers
+    let mut sorted: Vec<(String, &[Vec<u8>])> = headers
         .entries()
         .iter()
-        .map(|e| (headers::canonical(&e.name), &e.values))
+        .map(|e| (headers::canonical(&e.name), &*e.values))
         .collect();
     sorted.sort_by(|a, b| a.0.cmp(&b.0));
     let (mut has_type, mut has_date) = (false, false);

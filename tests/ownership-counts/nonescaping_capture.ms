@@ -1,4 +1,4 @@
-// expect-debug: allocs=2 alloc_bytes=56
+// expect-debug: allocs=1 alloc_bytes=24
 // expect-release: allocs=1 alloc_bytes=24
 // A closure that captures a local and is only passed down to a call: Release
 // specializes it away (no environment), Debug keeps one environment allocation. Stack

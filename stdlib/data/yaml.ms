@@ -474,7 +474,7 @@ fn merge(
 fn fold_plain(text: String) String:
 	if not text.contains("\n"): return text.clone()
 
-	var result = ""
+	var result = StringBuilder()
 	var blanks = 0
 	var first = true
 
@@ -485,22 +485,23 @@ fn fold_plain(text: String) String:
 			blanks += 1
 			continue
 
-		if first: result = trimmed.clone()
-		else if blanks == 0: result = result.concat(" ").concat(trimmed)
+		if first: result.append(trimmed)
+		else if blanks == 0:
+			result.append(" ")
+			result.append(trimmed)
 		else:
-			var breaks = ""
 			var remaining = blanks
 
 			while remaining > 0:
-				breaks = breaks.concat("\n")
+				result.append("\n")
 				remaining -= 1
 
-			result = result.concat(breaks).concat(trimmed)
+			result.append(trimmed)
 
 		blanks = 0
 		first = false
 
-	return result
+	return result.build()
 
 // Whether the character following a colon ends a plain scalar in this context.
 fn separates_colon(next: Int, delimited: Bool) Bool:
@@ -1241,7 +1242,7 @@ fn inline_value(var context: Context, text: String, depth: Int, line: Int, colum
 		context.index += 1
 
 	var flow = Flow(
-		chars: joined.split(""),
+		chars: joined.split("").clone(),
 		codes: joined.scalar_values(),
 		pos: 0,
 		line: line,
@@ -1428,7 +1429,7 @@ fn block_value(
 
 	if lead == 38:
 		var flow = Flow(
-			chars: remainder.split(""),
+			chars: remainder.split("").clone(),
 			codes: [],
 			pos: 1,
 			line: start_line,
@@ -1827,7 +1828,7 @@ fn block(var context: Context, base: Int, depth: Int, scalar_base: Int) YamlValu
 
 			if quoted_key:
 				var flow = Flow(
-					chars: name.split(""),
+					chars: name.split("").clone(),
 					codes: [],
 					pos: 0,
 					line: source_line(context, context.index),
@@ -1983,7 +1984,7 @@ export fn parse(text: String, options: YamlOptions = YamlOptions()) YamlValue!:
 			)
 
 	var context = Context(
-		lines: normalized.split("\n"),
+		lines: normalized.split("\n").clone(),
 		final_break: normalized.ends_with("\n"),
 		index: 0,
 		max_depth: options.max_depth,

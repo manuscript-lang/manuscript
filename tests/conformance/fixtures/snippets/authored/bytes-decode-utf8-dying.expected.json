@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "plain ascii text that is longer than the inline size\nunicode é🙂 text that is also past the inline size\nshort\n\ncdefghijklmnopqrstuvwxyz0123\n84\nowned long enough to be a heap string, grown in place!owned long enough to be a heap string, grown in place\n48890\n",
+    "stderr": ""
+  }
+}

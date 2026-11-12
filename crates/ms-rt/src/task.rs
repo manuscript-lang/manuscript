@@ -275,6 +275,8 @@ struct Sched {
     scan: usize,
     zombie_stack: (usize, usize),
     zombie_task: *mut Task,
+    /// Cleanup and guard buffers of finished tasks, for the next spawn.
+    spares: Vec<fault::Spares>,
     live: usize,
     /// Flows of control that only wait for the isolate's main task (not tasks of the program).
     waiting_roots: usize,
@@ -329,6 +331,7 @@ crate::isolate_static! {
     scan: 0,
     zombie_stack: (0, 0),
     zombie_task: null_mut(),
+    spares: Vec::new(),
     live: 0,
     waiting_roots: 0,
     tokens: Vec::new(),

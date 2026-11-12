@@ -81,7 +81,7 @@ export fn parse(text: String) Version!:
 				Error("semver: invalid data", kind: "EBADMSG")
 			)
 
-			prerelease.append(identifier)
+			prerelease.append(identifier.clone())
 
 	var build = List[String]()
 
@@ -91,7 +91,7 @@ export fn parse(text: String) Version!:
 				Error("semver: invalid data", kind: "EBADMSG")
 			)
 
-			build.append(identifier)
+			build.append(identifier.clone())
 
 	if out_of_range: return error(Error("semver: value out of range", kind: "ERANGE"))
 

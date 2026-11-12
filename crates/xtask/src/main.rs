@@ -139,8 +139,9 @@ fn symbols(check: bool) -> Result<String, String> {
          # `@leaf` never reaches a cancellation point, `@pure` only reads memory and cannot fault,\n\
          # `@fresh` returns a value that borrows none of its arguments, `@keeps:<param>` stores that\n\
          # function value, `@takes:<param>` takes ownership of that value, `@spawns` starts a task\n\
-         # running program code, `@op=<mnemonic>` is exactly that MIR instruction on its arguments,\n\
-         # and `@domain=<words>` names its failures' domain.\n",
+         # running program code, `@takes_self` has a `<name>_take` twin that reuses its first\n\
+         # argument when it dies at the call, `@op=<mnemonic>` is exactly that MIR instruction on\n\
+         # its arguments, and `@domain=<words>` names its failures' domain.\n",
     );
     for name in table.keys() {
         let declared = flags
@@ -220,7 +221,7 @@ fn rust_files(dir: &Path, out: &mut Vec<PathBuf>) {
 /// for a function value the runtime stores and drops itself, `takes:<param>` for a value
 /// argument the runtime takes ownership of, `domain=<word>` for how its failures
 /// name their domain when it differs from the file's `//! ms: domain`, `spawns` for a function that starts a
-/// task running code of the program, and `op=<mnemonic>` for a function
+/// task running code of the program, `takes_self` for a function with a `<name>_take` twin that reuses its first argument when it dies at the call, and `op=<mnemonic>` for a function
 /// that is exactly one MIR instruction on its arguments); an unknown flag or a
 /// marker with no function after it is an error.
 fn scan_flags(source: &str) -> Result<Vec<(String, Vec<String>)>, String> {
@@ -231,7 +232,7 @@ fn scan_flags(source: &str) -> Result<Vec<(String, Vec<String>)>, String> {
         if let Some(list) = t.strip_prefix("// ms:") {
             let list: Vec<String> = list.split_whitespace().map(str::to_string).collect();
             if let Some(bad) = list.iter().find(|f| {
-                !["leaf", "pure", "fresh", "spawns"].contains(&f.as_str())
+                !["leaf", "pure", "fresh", "spawns", "takes_self"].contains(&f.as_str())
                     && !f.starts_with("keeps:")
                     && !f.starts_with("takes:")
                     && !f.starts_with("op=")

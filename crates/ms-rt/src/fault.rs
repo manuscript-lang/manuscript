@@ -345,6 +345,9 @@ pub(crate) fn set_live_task_cancel(v: u8) {
     }
 }
 
+/// The cleanup and guard buffers of a task, kept for reuse.
+pub(crate) type Spares = (Vec<(usize, usize)>, Vec<GuardFrame>);
+
 /// The per-task slice of runtime state; `task` swaps it on every context switch.
 pub(crate) struct Ctx {
     cleanups: Vec<(usize, usize)>,
@@ -379,6 +382,23 @@ impl Ctx {
             stack_hi,
             stack_chain: 0,
         }
+    }
+
+    /// Starts with the cleanup and guard buffers of a finished task, so a new task does not
+    /// grow them from empty.
+    pub(crate) fn with_spares(mut self, spares: Spares) -> Ctx {
+        (self.cleanups, self.guards) = spares;
+        self
+    }
+
+    /// The emptied cleanup and guard buffers, for the next task to reuse.
+    pub(crate) fn take_spares(&mut self) -> Spares {
+        self.cleanups.clear();
+        self.guards.clear();
+        (
+            core::mem::take(&mut self.cleanups),
+            core::mem::take(&mut self.guards),
+        )
     }
 
     pub(crate) fn set_cancel(&mut self, v: u8) {
@@ -418,26 +438,6 @@ impl Ctx {
 /// Whether the running task is inside a shielded cleanup action.
 pub(crate) fn live_shielded() -> bool {
     SHIELD.get() > 0
-}
-
-/// Starts an independent fault boundary in an `expect_fault` fork child. Inherited cleanup
-/// actions and guard targets belong to the caller, whose external resources remain live.
-/// Cancellation, shielding and stack limits still describe the running operation.
-///
-/// # Safety
-/// Only call in the fork child before running the asserted operation.
-#[cfg(unix)]
-pub(crate) unsafe fn isolate_trap_child() {
-    // SAFETY: fork gives this child its own copy of the single-threaded runtime state.
-    unsafe {
-        (*CLEANUPS.ptr()).clear();
-        (*GUARDS.ptr()).clear();
-        (*cur_hdr()).guarded.store(0, Ordering::Relaxed);
-        *FAULTING.ptr() = false;
-        *PRIMARY.ptr() = None;
-        (*SECONDARY.ptr()).clear();
-    }
-    crate::desc::eq_truncate(0);
 }
 
 /// Exchanges `c` with the live per-task state.
@@ -1514,17 +1514,6 @@ fn prune_removed_cleanups(stack: &mut Vec<(usize, usize)>) {
     while stack.last().is_some_and(|entry| entry.0 == 0) {
         stack.pop();
     }
-    // Windows trap entry returns once before running its operation. Retiring transient
-    // registrations can lower its saved base; newly pushed operation cleanups must still run.
-    #[cfg(any(windows, test))]
-    // SAFETY: cleanup stacks and guard frames are owned by the currently executing isolate.
-    unsafe {
-        for frame in &mut *GUARDS.ptr() {
-            if frame.trap {
-                frame.cleanups = frame.cleanups.min(stack.len());
-            }
-        }
-    }
 }
 
 /// Permanently retires exactly this action without running it or disturbing newer owners.
@@ -1640,7 +1629,7 @@ const GUARD_CANCELLED: u8 = 2;
 /// State captured on entry to a guarded call, restored when a fault leaves it.
 #[derive(Clone, Copy)]
 #[cfg_attr(test, allow(dead_code))]
-struct GuardFrame {
+pub(crate) struct GuardFrame {
     /// Address of the register save slot owned by the `msrt_guard_call` frame.
     jmp: usize,
     cleanups: usize,
@@ -1649,9 +1638,6 @@ struct GuardFrame {
     seg: usize,
     shield: u32,
     eq_pairs: usize,
-    /// `jmp` is the register buffer of `expect_fault` (Windows) rather than a guard slot.
-    #[cfg_attr(not(windows), allow(dead_code))]
-    trap: bool,
 }
 
 crate::isolate_static! {
@@ -1728,15 +1714,6 @@ fn guard_exit(status: u8, message: Vec<u8>) -> ! {
             Ordering::Relaxed,
         );
         crate::desc::eq_truncate(f.eq_pairs);
-        #[cfg(windows)]
-        if f.trap {
-            crate::trap::leave(
-                f.jmp as *mut usize,
-                status == GUARD_FAULT,
-                message,
-                teb.as_ptr(),
-            )
-        }
         *GUARD_MESSAGE.ptr() = if status == GUARD_FAULT {
             crate::string::from_bytes(&message)
         } else {
@@ -1747,38 +1724,6 @@ fn guard_exit(status: u8, message: Vec<u8>) -> ! {
         guard_jump(f.jmp as *mut usize, status as usize, teb.as_ptr());
         #[cfg(not(windows))]
         guard_jump(f.jmp as *mut usize, status as usize)
-    }
-}
-
-/// Opens a guard frame for `expect_fault`, whose registers are saved in `buf`.
-///
-/// # Safety
-/// Single threaded; paired with [`pop_trap_guard`] or a fault that leaves through it.
-#[cfg(windows)]
-pub(crate) unsafe fn push_trap_guard(buf: *mut usize) {
-    // SAFETY: single threaded runtime state.
-    unsafe {
-        guards_push(GuardFrame {
-            jmp: buf as usize,
-            cleanups: (*CLEANUPS.ptr()).len(),
-            limit: (*cur_hdr()).limit,
-            seg: crate::task::current_segment(),
-            shield: SHIELD.get(),
-            eq_pairs: crate::desc::eq_len(),
-            trap: true,
-        });
-    }
-}
-
-/// Drops the frame opened by [`push_trap_guard`] when the operation ended without a fault.
-///
-/// # Safety
-/// Single threaded.
-#[cfg(windows)]
-pub(crate) unsafe fn pop_trap_guard() {
-    // SAFETY: single threaded runtime state.
-    unsafe {
-        guards_pop();
     }
 }
 
@@ -1989,7 +1934,6 @@ pub unsafe extern "C-unwind" fn msrt_guard_call(
             seg: crate::task::current_segment(),
             shield: SHIELD.get(),
             eq_pairs: crate::desc::eq_len(),
-            trap: false,
         });
         #[cfg(not(test))]
         {
@@ -2291,58 +2235,6 @@ mod tests {
         assert_eq!(count, 1);
     }
 
-    #[cfg(unix)]
-    #[test]
-    fn trap_child_reset_preserves_cancellation_shield_and_stack_state() {
-        let _lock = lock();
-        // Temporarily install an isolated context instead of forking to inspect every field.
-        let mut saved = Ctx::new(0, 0);
-        let signal = PENDING_SIGNAL.swap(15, Ordering::Relaxed);
-        unsafe {
-            swap_ctx(&mut saved);
-            SHIELD.set(2);
-            *TASK_CANCEL.ptr() = 1;
-            cancel_flag().store(0, Ordering::Relaxed);
-            *STACK_LO.ptr() = 100;
-            *STACK_HI.ptr() = 1000;
-            (*cur_hdr()).limit = 200;
-            (*CLEANUPS.ptr()).push((0, 0));
-            guards_push(GuardFrame {
-                jmp: 0,
-                cleanups: 1,
-                limit: 200,
-                seg: 0,
-                shield: 2,
-                eq_pairs: 1,
-                trap: false,
-            });
-            *FAULTING.ptr() = true;
-            *PRIMARY.ptr() = Some(b"inherited".to_vec());
-            (*SECONDARY.ptr()).push(b"secondary".to_vec());
-            crate::desc::swap_eq_pairs(&mut vec![(1, 2)]);
-
-            isolate_trap_child();
-
-            assert!((*CLEANUPS.ptr()).is_empty());
-            assert!((*GUARDS.ptr()).is_empty());
-            assert!(!*FAULTING.ptr());
-            assert!((*PRIMARY.ptr()).is_none());
-            assert!((*SECONDARY.ptr()).is_empty());
-            assert_eq!(crate::desc::eq_len(), 0);
-            assert_eq!(SHIELD.get(), 2);
-            assert_eq!(*TASK_CANCEL.ptr(), 1);
-            assert_eq!(PENDING_SIGNAL.load(Ordering::Relaxed), 15);
-            assert_eq!(cancel_flag().load(Ordering::Relaxed), 0);
-            assert_eq!(*STACK_LO.ptr(), 100);
-            assert_eq!(*STACK_HI.ptr(), 1000);
-            let limit = (*cur_hdr()).limit;
-            assert_eq!(limit, 200);
-
-            PENDING_SIGNAL.store(signal, Ordering::Relaxed);
-            swap_ctx(&mut saved);
-        }
-    }
-
     unsafe extern "C-unwind" fn log_action(arg: *mut u8) {
         // SAFETY: tests hold the lock; LOG has room for 8 entries.
         unsafe {
@@ -2354,50 +2246,6 @@ mod tests {
 
     unsafe extern "C-unwind" fn faulting_action(_arg: *mut u8) {
         fault(b"close failed");
-    }
-
-    #[test]
-    fn trap_cleanup_boundary_tracks_discarded_caller_temporaries() {
-        let _g = lock();
-        reset_for_tests();
-        // SAFETY: serialized runtime state; callbacks only append their numeric argument.
-        unsafe {
-            *LOG_N.ptr() = 0;
-            msrt_cleanup_push(log_action, core::ptr::without_provenance_mut(1));
-            let transient = msrt_cleanup_push(log_action, core::ptr::without_provenance_mut(2));
-            // Windows trap entry snapshots the stack before the generated caller discards
-            // its per-call registrations. No jump is made from this bookkeeping test.
-            guards_push(GuardFrame {
-                jmp: 0,
-                cleanups: (*CLEANUPS.ptr()).len(),
-                limit: (*cur_hdr()).limit,
-                seg: 0,
-                shield: SHIELD.get(),
-                eq_pairs: crate::desc::eq_len(),
-                trap: true,
-            });
-            msrt_cleanup_discard(transient);
-            msrt_cleanup_push(log_action, core::ptr::without_provenance_mut(3));
-        }
-        let message = fault_of(|| fault(b"body fault")).unwrap();
-        // SAFETY: serialized runtime state; pop the synthetic guard before running the parent.
-        let inside = unsafe {
-            let inside = (&*LOG.ptr())[..*LOG_N.ptr()].to_vec();
-            guards_pop();
-            msrt_cleanup_run(1);
-            inside
-        };
-        assert_eq!(message, "body fault");
-        assert_eq!(
-            inside,
-            [3],
-            "run the operation's cleanup, retaining the caller's"
-        );
-        // SAFETY: serialized access to the recorded cleanup order.
-        unsafe {
-            assert_eq!(&(&*LOG.ptr())[..*LOG_N.ptr()], &[3, 1]);
-        }
-        reset_for_tests();
     }
 
     unsafe extern "C-unwind" fn request(data: *mut u8) {
@@ -2536,39 +2384,6 @@ mod tests {
             }
             msrt_cleanup_remove(outer);
             assert!((*CLEANUPS.ptr()).is_empty());
-        }
-    }
-
-    #[test]
-    fn cleanup_remove_clamps_nested_trap_bases_after_tail_retirement() {
-        let _g = lock();
-        reset_for_tests();
-        // SAFETY: manually installed trap frames are removed without jumping to them.
-        unsafe {
-            *LOG_N.ptr() = 0;
-            let outer = msrt_cleanup_push(log_action, core::ptr::without_provenance_mut(1));
-            let retired = msrt_cleanup_push(log_action, core::ptr::without_provenance_mut(2));
-            for _ in 0..2 {
-                guards_push(GuardFrame {
-                    jmp: 0,
-                    cleanups: retired,
-                    limit: 0,
-                    seg: 0,
-                    shield: 0,
-                    eq_pairs: 0,
-                    trap: true,
-                });
-            }
-            msrt_cleanup_remove(retired);
-            assert!((*GUARDS.ptr()).iter().all(|frame| frame.cleanups == outer));
-            msrt_cleanup_push(log_action, core::ptr::without_provenance_mut(3));
-            assert!(run_one_cleanup());
-            assert!(!run_one_cleanup());
-            assert_eq!(&(&*LOG.ptr())[..*LOG_N.ptr()], &[3]);
-            guards_pop();
-            guards_pop();
-            msrt_cleanup_run(outer);
-            assert_eq!(&(&*LOG.ptr())[..*LOG_N.ptr()], &[3, 1]);
         }
     }
 

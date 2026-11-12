@@ -181,8 +181,10 @@ impl KeyOps for BlobKey {
 impl KeyOps for DynKey {
     #[inline(always)]
     unsafe fn hash(kd: &TypeDesc, key: *const u8) -> u64 {
-        // SAFETY: the key slot is live.
-        unsafe { slot_hash(kd, key) }
+        // SAFETY: the key slot is live. A user `hash()` is often the identity of a couple of
+        // small ints (`x * 31 + y`) whose runs of consecutive values would cluster under linear
+        // probing, so the table sees a mixed hash.
+        unsafe { crate::string::hash_int(slot_hash(kd, key)) }
     }
     #[inline(always)]
     unsafe fn eq(kd: &TypeDesc, a: *const u8, b: *const u8) -> bool {

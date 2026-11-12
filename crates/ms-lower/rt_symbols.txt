@@ -4,8 +4,9 @@
 # `@leaf` never reaches a cancellation point, `@pure` only reads memory and cannot fault,
 # `@fresh` returns a value that borrows none of its arguments, `@keeps:<param>` stores that
 # function value, `@takes:<param>` takes ownership of that value, `@spawns` starts a task
-# running program code, `@op=<mnemonic>` is exactly that MIR instruction on its arguments,
-# and `@domain=<words>` names its failures' domain.
+# running program code, `@takes_self` has a `<name>_take` twin that reuses its first
+# argument when it dies at the call, `@op=<mnemonic>` is exactly that MIR instruction on
+# its arguments, and `@domain=<words>` names its failures' domain.
 msrt_alloc(size: usize) -> *mut u8 @leaf
 msrt_alloc_zeroed(size: usize) -> *mut u8 @leaf
 msrt_args(out: *mut VecVal)
@@ -30,8 +31,9 @@ msrt_bytes_append(b: *mut VecVal, value: i64) @domain=binary @leaf
 msrt_bytes_concat(a: *const VecVal, b: *const VecVal, out: *mut VecVal) @domain=binary @leaf
 msrt_bytes_contains(b: *const VecVal, v: *const VecVal) -> u8 @domain=binary @leaf
 msrt_bytes_copy(b: *const VecVal, out: *mut VecVal) @domain=binary @leaf
-msrt_bytes_decode_utf8(b: *const VecVal, out: *mut StrVal) -> u8 @domain=binary @leaf
-msrt_bytes_decode_utf8_range(b: *const VecVal, start: i64, end: i64, out: *mut StrVal) -> u8 @domain=binary @leaf
+msrt_bytes_decode_utf8(b: *const VecVal, out: *mut StrVal) -> u8 @domain=binary @fresh @leaf @takes_self
+msrt_bytes_decode_utf8_range(b: *const VecVal, start: i64, end: i64, out: *mut StrVal) -> u8 @domain=binary @fresh @leaf
+msrt_bytes_decode_utf8_take(b: *mut VecVal, out: *mut StrVal) -> u8 @domain=binary @leaf
 msrt_bytes_drop(b: *mut VecVal) @domain=binary @leaf
 msrt_bytes_ends_with(b: *const VecVal, v: *const VecVal) -> u8 @domain=binary @leaf
 msrt_bytes_extend(b: *mut VecVal, values: *const VecVal) @domain=binary @leaf
@@ -41,7 +43,7 @@ msrt_bytes_index_of(b: *const VecVal, v: *const VecVal, out: *mut i64) -> u8 @do
 msrt_bytes_index_of_byte(b: *const VecVal, value: i64, start: i64, out: *mut i64) -> u8 @domain=binary @leaf
 msrt_bytes_join(parts: *const VecVal, out: *mut VecVal) @domain=binary @leaf
 msrt_bytes_last_index_of(b: *const VecVal, v: *const VecVal, out: *mut i64) -> u8 @domain=binary @leaf
-msrt_bytes_read_word(b: *const VecVal, at: i64, width: i64, little: u8, out: *mut i64) -> u8 @domain=binary @leaf
+msrt_bytes_read_word(b: *const VecVal, at: i64, width: i64, little: u8, out: *mut i64) -> i64 @domain=binary @leaf @pure
 msrt_bytes_reversed(b: *const VecVal, out: *mut VecVal) @domain=binary @leaf
 msrt_bytes_slice(b: *const VecVal, start: i64, end: i64, out: *mut VecVal) -> u8 @domain=binary @leaf
 msrt_bytes_split(b: *const VecVal, sep: *const VecVal, has_max: HasRaw, max: i64, out: *mut VecVal) @domain=binary @leaf
@@ -119,6 +121,7 @@ msrt_list_extend(v: *mut VecVal, d: ElemDesc, other: *mut VecVal) @domain=collec
 msrt_list_fill(v: *mut VecVal, d: ElemDesc, value: *const u8, start: i64, end: i64) @domain=collection @leaf
 msrt_list_first(v: *const VecVal, d: ElemDesc, out: *mut u8) -> u8 @domain=collection @leaf
 msrt_list_flatten(lists: *const VecVal, d: ElemDesc, out: *mut VecVal) @domain=collection @leaf
+msrt_list_free_raw(v: *mut VecVal) @domain=collection @leaf
 msrt_list_get(v: *const VecVal, d: ElemDesc, index: i64, default: *const u8, out: *mut u8) @domain=collection @leaf
 msrt_list_index_fault(operation: i64, index: i64, len: i64) -> ! @leaf
 msrt_list_index_of(v: *const VecVal, d: ElemDesc, probe: *const u8, out: *mut i64) -> u8 @domain=collection @leaf
@@ -135,12 +138,15 @@ msrt_list_push(v: *mut VecVal, d: ElemDesc, e: *const u8) @domain=collection @le
 msrt_list_range(start: i64, end: i64, out: *mut VecVal) @domain=collection @leaf
 msrt_list_range_by(start: i64, end: i64, step: i64, has_max: HasRaw, max: i64, out: *mut VecVal) -> u8 @domain=collection @leaf
 msrt_list_remove(v: *mut VecVal, d: ElemDesc, index: i64) @domain=collection @leaf
+msrt_list_repeat(v: *const VecVal, d: ElemDesc, count: i64, out: *mut VecVal) @domain=collection @leaf
 msrt_list_replace(v: *mut VecVal, d: ElemDesc, index: i64, e: *mut u8, out: *mut u8) @domain=collection @leaf
 msrt_list_reserve(v: *mut VecVal, d: ElemDesc, extra: i64) @domain=collection @leaf
 msrt_list_reverse(v: *mut VecVal, d: ElemDesc) @domain=collection @leaf
 msrt_list_reversed(v: *const VecVal, d: ElemDesc, out: *mut VecVal) @domain=collection @leaf
 msrt_list_set(v: *mut VecVal, d: ElemDesc, index: i64, e: *const u8) @domain=collection @leaf
+msrt_list_shadow(v: *const VecVal, d: ElemDesc, out: *mut VecVal) @domain=collection @leaf
 msrt_list_slice(v: *const VecVal, d: ElemDesc, start: i64, end: i64, out: *mut VecVal) -> u8 @domain=collection @leaf
+msrt_list_slice_view(v: *const VecVal, d: ElemDesc, start: i64, end: i64, out: *mut VecVal) -> u8 @domain=collection @leaf
 msrt_list_sort_in_place(v: *mut VecVal, d: ElemDesc, cmp: CmpFn, env: *mut u8) @domain=collection
 msrt_list_sort_ints(v: *mut VecVal, desc: i64) @domain=collection @leaf
 msrt_list_sorted(v: *const VecVal, d: ElemDesc, cmp: CmpFn, env: *mut u8, out: *mut VecVal) @domain=collection
@@ -290,7 +296,8 @@ msrt_string_is_empty(s: *const StrVal) -> u8 @domain=string @leaf @pure
 msrt_string_last_index_of(a: *const StrVal, v: *const StrVal, out: *mut i64) -> u8 @domain=string @leaf
 msrt_string_length(s: *const StrVal) -> i64 @domain=string @leaf @pure
 msrt_string_lines(s: *const StrVal, out: *mut VecVal) @domain=string @leaf
-msrt_string_lower(s: *const StrVal, out: *mut StrVal) @domain=string @leaf
+msrt_string_lower(s: *const StrVal, out: *mut StrVal) @domain=string @fresh @leaf @takes_self
+msrt_string_lower_take(s: *mut StrVal, out: *mut StrVal) @domain=string @leaf
 msrt_string_normalize(s: *const StrVal, form: *const StrVal, has_max: HasRaw, max: i64, out: *mut StrVal) -> u8 @domain=string @leaf
 msrt_string_normalize_kind(s: *const StrVal, kind: i64, has_max: HasRaw, max: i64, out: *mut StrVal) -> u8 @domain=string @leaf
 msrt_string_pad_end(s: *const StrVal, target: i64, padding: *const StrVal, out: *mut StrVal) @domain=string @leaf
@@ -299,8 +306,9 @@ msrt_string_parse_float(s: *const StrVal, out: *mut f64) -> u8 @domain=string @l
 msrt_string_parse_int(s: *const StrVal, out: *mut i64) -> u8 @domain=string @leaf @pure
 msrt_string_quote(s: *const StrVal, out: *mut StrVal) @domain=string @leaf
 msrt_string_repeat(s: *const StrVal, count: i64, has_max: HasRaw, max: i64, out: *mut StrVal) -> u8 @domain=string @leaf
-msrt_string_replace(s: *const StrVal, old: *const StrVal, new: *const StrVal, out: *mut StrVal) @domain=string @leaf
+msrt_string_replace(s: *const StrVal, old: *const StrVal, new: *const StrVal, out: *mut StrVal) @domain=string @fresh @leaf @takes_self
 msrt_string_replace_first(s: *const StrVal, old: *const StrVal, new: *const StrVal, out: *mut StrVal) @domain=string @leaf
+msrt_string_replace_take(s: *mut StrVal, old: *const StrVal, new: *const StrVal, out: *mut StrVal) @domain=string @leaf
 msrt_string_reverse(a: *const StrVal, out: *mut StrVal) @domain=string @leaf
 msrt_string_scalar_at(s: *const StrVal, index: i64, has_default: HasRaw, default: i64) -> i64 @domain=string @leaf @pure
 msrt_string_scalar_at_byte(s: *const StrVal, at: i64) -> i64 @domain=string @leaf
@@ -316,13 +324,17 @@ msrt_string_split_view(s: *const StrVal, sep: *const StrVal, has_max: HasRaw, ma
 msrt_string_starts_with(a: *const StrVal, v: *const StrVal) -> u8 @domain=string @leaf @pure
 msrt_string_take(s: *const StrVal, count: i64, out: *mut StrVal) @domain=string @leaf
 msrt_string_to_bytes(s: *const StrVal, out: *mut VecVal) @domain=string @leaf
-msrt_string_trim(s: *const StrVal, out: *mut StrVal) @domain=string @leaf
-msrt_string_trim_end(s: *const StrVal, out: *mut StrVal) @domain=string @leaf
+msrt_string_trim(s: *const StrVal, out: *mut StrVal) @domain=string @fresh @leaf @takes_self
+msrt_string_trim_end(s: *const StrVal, out: *mut StrVal) @domain=string @fresh @leaf @takes_self
+msrt_string_trim_end_take(s: *mut StrVal, out: *mut StrVal) @domain=string @leaf
 msrt_string_trim_end_view(s: *const StrVal, out: *mut StrVal) @domain=string @leaf
-msrt_string_trim_start(s: *const StrVal, out: *mut StrVal) @domain=string @leaf
+msrt_string_trim_start(s: *const StrVal, out: *mut StrVal) @domain=string @fresh @leaf @takes_self
+msrt_string_trim_start_take(s: *mut StrVal, out: *mut StrVal) @domain=string @leaf
 msrt_string_trim_start_view(s: *const StrVal, out: *mut StrVal) @domain=string @leaf
+msrt_string_trim_take(s: *mut StrVal, out: *mut StrVal) @domain=string @leaf
 msrt_string_trim_view(s: *const StrVal, out: *mut StrVal) @domain=string @leaf
-msrt_string_upper(s: *const StrVal, out: *mut StrVal) @domain=string @leaf
+msrt_string_upper(s: *const StrVal, out: *mut StrVal) @domain=string @fresh @leaf @takes_self
+msrt_string_upper_take(s: *mut StrVal, out: *mut StrVal) @domain=string @leaf
 msrt_string_view(s: *const StrVal, start: i64, end: i64, out: *mut StrVal) @domain=string @leaf @pure
 msrt_string_view_slow(s: *const StrVal, start: i64, end: i64, out: *mut StrVal) @domain=string @leaf
 msrt_task_cancel(handle: u64) @domain=task
@@ -344,9 +356,6 @@ msrt_token_new(flags: u32) -> u64
 msrt_token_park(id: u64, timeout_ns: i64, value_out: *mut u64) -> u32
 msrt_token_post(id: u64, value: u64)
 msrt_token_post_remote(id: u64, value: u64)
-msrt_trap_begin() -> u8 @domain=trap
-msrt_trap_end() -> ! @domain=trap
-msrt_trap_wait(out: *mut StrVal) -> u8 @domain=trap
 msrt_uint_compare(a: i64, b: i64) -> i64 @domain=number
 msrt_uint_div(a: i64, b: i64) -> i64 @domain=number
 msrt_uint_rem(a: i64, b: i64) -> i64 @domain=number

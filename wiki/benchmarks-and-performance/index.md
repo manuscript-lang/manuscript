@@ -4,6 +4,8 @@
 
 Perf and agent benchmarks, profiling.
 
+- [Sorting records that own data uses the generated sort over bitwise scratch](sorting-owning-records-uses-bitwise-scratch.md): inlined comparator for `String`-holding records, 225M to 102M instructions, then 82M with the driftsort; scratch owns nothing so a comparator fault is safe.
+- [User `hash()` values are mixed before they index a table](user-hash-values-are-mixed-before-indexing.md): identity-like hashes of small-int records clustered under linear probing (562 to 103 ms for 1M `Set[Pt]` operations).
 - [Hot string and set fast paths live in `ms-rt-hot` with a slow twin](hot-string-fast-paths-live-in-ms-rt-hot-with-a-slow-twin.md): fast case inlined, rare case calls `*_slow`; test ASCII by flag or inline bits; `Set[Int]` fixed layout; build `memmem` only for long text.
 - [Numeric parsing needs invalid-input performance controls](numeric-parsing-needs-invalid-input-performance-controls.md): valid-input gains can hide overflow and malformed-input regressions; preserve error precedence and equivalent Rust validation.
 
@@ -13,6 +15,8 @@ Perf and agent benchmarks, profiling.
 - [Small literal maps are searched, not built](small-literal-maps-are-searched-not-built.md): lookups on a literal of up to 12 constants compare keys directly (85 to 4 ns per call).
 - [A win needs a baseline comparison, not just a smaller number](a-win-needs-a-baseline-comparison-not-just-a-smaller-number.md): keep the raw hand-written baseline (the C controls in `bench/perf/kernels/c`) and distinguish logical work elimination from faster execution…
 - [Benchmarks are a profiling guide, not a gate](benchmarks-are-a-profiling-guide-not-a-gate.md): results are only comparable on one machine and revision; record the commit and machine with the table, as the result files do.
+- [A bounds check that stays in a heap loop is a lost range fact](a-bounds-check-that-stays-in-a-heap-loop-is-a-lost-range-fact.md): joined list origins, `shl`, widening to the type bound, and pruned `len - c` relations kept checks Rust does not have (heap 56.0M to 46.0M, Rust 47.1M).
+- [A guard on `x + c` bounds `x`, so fixed-size blocks need no checks](a-guard-on-x-plus-c-bounds-x-so-fixed-blocks-need-no-checks.md): blocked byte scans in `.ms` vectorize once the range pass sees `i + j < len` (memchr 730 to 31 us); inventory of Rust perf fallbacks and the plan to remove them.
 - [Compare instruction counts first; a low-IPC gap points at libc](compare-instruction-counts-first-a-low-ipc-gap-points-at-lib.md): wall-clock on a shared VM moves by 2x between runs, so compare `valgrind --tool=callgrind` instruction counts of one kernel built in Manuscr…
 - [Consume library checksums and separate allocation phase from local cost](consume-library-checksums-and-separate-allocation-phase-from.md): a returned checksum that the harness discards is not evidence that the work stayed observable.
 - [Count page faults before tuning a native that builds big buffers](count-page-faults-before-tuning-a-native-that-builds-big-buf.md): building a parsed JSON document ran 2x slower through `ms` than in a Rust test of the same code, with identical instruction counts.
@@ -39,3 +43,5 @@ Perf and agent benchmarks, profiling.
 - [Image rotations preserve malformed shapes](image-rotations-preserve-malformed-shapes.md): copy valid pixels in one pass, preserve channel order and malformed-input behavior, and measure tiny-image controls without asymmetric dispatch.
 - [A busy queue must not poll descriptors on every task switch](a-busy-queue-must-not-poll-descriptors-on-every-task-switch.md): poll every 32 switches; compare servers on one CPU by user and system time per request.
 - [Fewer allocations need wall time, not just counts](fewer-allocations-need-wall-time-not-just-counts.md): a counted split cut allocations 22% and instructions 6% but cost 7% wall; inline short strings never allocate on clone.
+- [Path resolution builders must preserve clean separators](path-resolution-builders-must-preserve-clean-separators.md): avoid growing-prefix copies without sending ordinary clean paths through dirty normalization; retain small/A/A and invalid-input controls.
+- [CRC table input terms are independent of the register](crc-table-input-terms-are-independent-of-the-register.md): combine input-only terms before the rolling-state chain, verify native assembly and tiny/tail/seed controls.

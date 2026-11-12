@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "[HELLO there, A HEAP STRING PAST THE INLINE SIZE]\n[HÉLLO there, NON ASCII PAST THE INLINE SIZE]\n[SHORT]\n100\nx and x\nno match here, but a string past the inline size\nabcdefghijklmnopqrstu\n-a-b-c- -d-e-f- -g-h-i- -j-k-l- -m-n-o- -p-q-r- -s-t-u-\nας οδυσσευς and more text\nSTRASSE AND MORE TEXT PAST INLINE\nleft only, a heap string past the inline size\nright only, a heap string past the inline size|\n[]\n[52]\ncc ddd cc ddd cc ddd\ngrow the much longer text, a heap string past inline\n22890\n",
+    "stderr": ""
+  }
+}

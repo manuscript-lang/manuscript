@@ -47,8 +47,12 @@ impl Drop for Guard {
 }
 
 fn out() -> Guard {
+    lock(&OUT)
+}
+
+fn lock(target: &'static Out) -> Guard {
     let mut spins = 0u32;
-    while OUT.locked.swap(true, Ordering::Acquire) {
+    while target.locked.swap(true, Ordering::Acquire) {
         spins += 1;
         if spins < 64 {
             core::hint::spin_loop();
@@ -57,7 +61,7 @@ fn out() -> Guard {
             std::thread::yield_now();
         }
     }
-    Guard(&OUT)
+    Guard(target)
 }
 
 fn flush_locked(out: &mut Vec<u8>) {
@@ -88,10 +92,14 @@ pub fn write_stdout_parts(data: &[u8], end: &[u8]) {
         };
         TTY.store(tty, Ordering::Relaxed);
     }
-    let mut out = out();
+    append(&OUT, tty == 2, data, end);
+}
+
+fn append(target: &'static Out, tty: bool, data: &[u8], end: &[u8]) {
+    let mut out = lock(target);
     out.extend_from_slice(data);
     out.extend_from_slice(end);
-    if out.len() >= BUF_LIMIT || (tty == 2 && (data.contains(&b'\n') || end.contains(&b'\n'))) {
+    if out.len() >= BUF_LIMIT || (tty && (data.contains(&b'\n') || end.contains(&b'\n'))) {
         flush_locked(&mut out);
     }
 }
@@ -198,11 +206,16 @@ mod tests {
     /// two separate writes allowed ("startedstarted\n\n").
     #[test]
     fn concurrent_lines_are_not_split() {
+        // Its own buffer: tests that print through `OUT` must not add to or flush it.
+        static LOCAL: Out = Out {
+            locked: AtomicBool::new(false),
+            buf: UnsafeCell::new(Vec::new()),
+        };
         let threads: Vec<_> = (0..4)
             .map(|_| {
                 std::thread::spawn(|| {
                     for _ in 0..200 {
-                        write_stdout_parts(b"started", b"\n");
+                        append(&LOCAL, false, b"started", b"\n");
                     }
                 })
             })
@@ -210,7 +223,7 @@ mod tests {
         for t in threads {
             t.join().unwrap();
         }
-        let mut out = out();
+        let mut out = lock(&LOCAL);
         let text = String::from_utf8(core::mem::take(&mut *out)).unwrap();
         assert_eq!(text, "started\n".repeat(800));
     }

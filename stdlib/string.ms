@@ -284,7 +284,7 @@ fn String.index_any(set: String) Int?:
 // Splits after each separator, keeping it at the end of each piece; an empty
 // separator splits into scalars.
 fn String.split_after(separator: String) List[String]:
-	if separator.is_empty(): return self.chars()
+	if separator.is_empty(): return self.chars().clone()
 
 	var out = List[String]()
 	parts := self.split(separator)
@@ -354,7 +354,7 @@ fn String.replace_each(pairs: Map[String, String]) String:
 	news := pairs.values()
 	var needles = List[List[String]]()
 	for key in pairs.keys():
-		needles.append(key.chars())
+		needles.append(key.chars().clone())
 
 	cs := self.chars()
 	n := cs.length()

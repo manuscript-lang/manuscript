@@ -21,12 +21,32 @@ impl<'a, 'm> Lower<'a, 'm> {
             off += lay.size as i64;
         }
         let total = (off + 7) / 8 * 8;
-        let obj = self.alloc(total);
+        // Only calls borrow it, so the object lives in this frame and nothing is freed.
+        let framed = inst
+            .res
+            .is_some_and(|r| self.framed_closures.contains(&r.index()));
+        let obj = if framed {
+            let slot = self.b.create_sized_stack_slot(StackSlotData::new(
+                StackSlotKind::ExplicitSlot,
+                total as u32,
+                3,
+            ));
+            self.b.ins().stack_addr(types::I64, slot, 0)
+        } else {
+            self.alloc(total)
+        };
         let clone = self.g.glue(Glue::ClosureClone(c.0), Ty::UNIT);
         let cr = self.fref(clone);
         let ca = self.b.ins().func_addr(types::I64, cr);
         self.b.ins().store(flags(), ca, obj, 0);
-        let drop = self.g.glue(Glue::ClosureDrop(c.0), Ty::UNIT);
+        let drop = self.g.glue(
+            if framed {
+                Glue::ClosureDropFramed(c.0)
+            } else {
+                Glue::ClosureDrop(c.0)
+            },
+            Ty::UNIT,
+        );
         let dr = self.fref(drop);
         let da = self.b.ins().func_addr(types::I64, dr);
         self.b.ins().store(flags(), da, obj, 8);

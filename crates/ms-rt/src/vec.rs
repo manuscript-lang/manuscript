@@ -62,7 +62,8 @@ pub unsafe fn drop_list(v: *mut VecVal, d: &TypeDesc) {
     // SAFETY: caller contract.
     unsafe {
         let v = &mut *v;
-        if v.ptr.is_null() {
+        if v.ptr.is_null() || v.cap == 0 {
+            // Empty, or a view (`cap == 0`) that borrows its elements.
             return;
         }
         if !needs_no_drop(d) {
@@ -220,6 +221,48 @@ pub unsafe extern "C-unwind" fn msrt_list_drop(v: *mut VecVal, d: ElemDesc) {
 pub unsafe extern "C-unwind" fn msrt_list_copy(v: *const VecVal, d: ElemDesc, out: *mut VecVal) {
     // SAFETY: caller contract.
     unsafe { copy_list(v, &*d, out) }
+}
+
+/// A bitwise copy of `v` in a fresh buffer that owns nothing: the generated sort permutes its
+/// slots (moves only), so a comparator that exits early leaves the original list intact and at
+/// worst leaks the scratch bytes. Pair with [`msrt_list_free_raw`]; never drop it as a list.
+///
+/// # Safety
+/// `v` is a live list of `d`; `out` is uninitialised.
+#[unsafe(no_mangle)]
+// ms: leaf
+pub unsafe extern "C-unwind" fn msrt_list_shadow(v: *const VecVal, d: ElemDesc, out: *mut VecVal) {
+    // SAFETY: caller contract.
+    unsafe {
+        let s = &*v;
+        if s.len == 0 {
+            *out = EMPTY;
+            return;
+        }
+        let bytes = s.len * (*d).size as usize;
+        let p = alloc::alloc(bytes.max(1));
+        core::ptr::copy_nonoverlapping(s.ptr, p, bytes);
+        *out = VecVal {
+            ptr: p,
+            len: s.len,
+            cap: s.len,
+        };
+    }
+}
+
+/// Frees the buffer of a [`msrt_list_shadow`] without touching its slots.
+///
+/// # Safety
+/// `v` came from `msrt_list_shadow` and is not used again.
+#[unsafe(no_mangle)]
+// ms: leaf
+pub unsafe extern "C-unwind" fn msrt_list_free_raw(v: *mut VecVal) {
+    // SAFETY: caller contract.
+    unsafe {
+        if !(*v).ptr.is_null() {
+            alloc::free((*v).ptr);
+        }
+    }
 }
 
 #[unsafe(no_mangle)]
@@ -790,6 +833,38 @@ pub unsafe extern "C-unwind" fn msrt_list_slice(
     }
 }
 
+/// `slice(start, end)` of a list the caller keeps unchanged while the result is used: the result
+/// borrows the elements in place (`cap == 0`, never freed or dropped), so nothing is copied.
+/// Status protocol and bounds as `msrt_list_slice`.
+#[unsafe(no_mangle)]
+// ms: leaf
+pub unsafe extern "C-unwind" fn msrt_list_slice_view(
+    v: *const VecVal,
+    d: ElemDesc,
+    start: i64,
+    end: i64,
+    out: *mut VecVal,
+) -> u8 {
+    // SAFETY: caller contract; the result borrows `v`.
+    unsafe {
+        let n = (*v).len;
+        let (s, e) = (relative(n, start), relative(n, end));
+        if s < 0 || e < s || e > n as i64 {
+            return STATUS_OUT_OF_RANGE;
+        }
+        *out = if s == e {
+            EMPTY
+        } else {
+            VecVal {
+                ptr: elem(&*v, &*d, s as usize),
+                len: (e - s) as usize,
+                cap: 0,
+            }
+        };
+        STATUS_OK
+    }
+}
+
 fn take_count(name: &str, count: i64, len: usize) -> usize {
     if count < 0 {
         fault::fault_fmt(format_args!(
@@ -925,6 +1000,61 @@ pub unsafe extern "C-unwind" fn msrt_list_concat(
         copy_range(d, a.ptr, ptr, a.len);
         copy_range(d, b.ptr, ptr.add(a.len * size), b.len);
         *out = VecVal { ptr, len, cap };
+    }
+}
+
+/// `repeated(count)`: the elements of `v` `count` times over, in order (a fresh list).
+/// Plain elements copy once and double in place, so a long fill is a few bulk copies.
+///
+/// # Safety
+/// `v` is a live list of `d`; `out` is uninitialised.
+#[unsafe(no_mangle)]
+// ms: leaf
+pub unsafe extern "C-unwind" fn msrt_list_repeat(
+    v: *const VecVal,
+    d: ElemDesc,
+    count: i64,
+    out: *mut VecVal,
+) {
+    // SAFETY: caller contract.
+    unsafe {
+        let (v, d) = (&*v, &*d);
+        if count < 0 {
+            fault::fault_fmt(format_args!(
+                "List.repeated: count {count} must not be negative"
+            ));
+        }
+        let total = v
+            .len
+            .checked_mul(count as usize)
+            .unwrap_or_else(|| fault::fault_kind(FaultKind::Overflow, b"list size overflow"));
+        if total == 0 {
+            *out = EMPTY;
+            return;
+        }
+        let size = d.size as usize;
+        let bytes = total
+            .checked_mul(size.max(1))
+            .unwrap_or_else(|| fault::fault_kind(FaultKind::Overflow, b"list size overflow"));
+        let ptr = alloc::alloc(bytes);
+        if is_plain(d) {
+            copy_range(d, v.ptr, ptr, v.len);
+            let mut done = v.len;
+            while done < total {
+                let n = done.min(total - done);
+                core::ptr::copy_nonoverlapping(ptr, ptr.add(done * size), n * size);
+                done += n;
+            }
+        } else {
+            for round in 0..count as usize {
+                copy_range(d, v.ptr, ptr.add(round * v.len * size), v.len);
+            }
+        }
+        *out = VecVal {
+            ptr,
+            len: total,
+            cap: total,
+        };
     }
 }
 
@@ -1818,7 +1948,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_from_values(values: *const VecVal, ou
 
 /// `decode_utf8`: presence flag (0 when the bytes are not valid UTF-8), the string through `out`.
 #[unsafe(no_mangle)]
-// ms: leaf domain=binary
+// ms: leaf fresh takes_self domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_decode_utf8(b: *const VecVal, out: *mut StrVal) -> u8 {
     // SAFETY: caller contract.
     unsafe {
@@ -1831,10 +1961,55 @@ pub unsafe extern "C-unwind" fn msrt_bytes_decode_utf8(b: *const VecVal, out: *m
     }
 }
 
+/// `decode_utf8` of a `Bytes` that dies at the call (the optimizer rewrites a call whose receiver
+/// drops right after it): the string reuses the buffer instead of copying it, and an invalid or
+/// short input frees it. Same presence flag and `out` as `msrt_bytes_decode_utf8`.
+///
+/// # Safety
+/// `b` holds an owned `Bytes` that the callee takes; `out` is writable.
+#[unsafe(no_mangle)]
+// ms: leaf domain=binary
+pub unsafe extern "C-unwind" fn msrt_bytes_decode_utf8_take(
+    b: *mut VecVal,
+    out: *mut StrVal,
+) -> u8 {
+    // SAFETY: caller contract.
+    unsafe {
+        let v = &*b;
+        let s = bslice(b);
+        let ascii = s.is_ascii();
+        // A view (`cap == 0`) borrows its bytes, so there is no buffer to free or reuse.
+        let release = |v: &VecVal| {
+            if v.cap != 0 {
+                alloc::free(v.ptr);
+            }
+        };
+        if !ascii && core::str::from_utf8(s).is_err() {
+            release(v);
+            return 0;
+        }
+        if v.cap == 0 || v.len <= STR_INLINE_MAX {
+            out.write(from_bytes(s));
+            release(v);
+            return 1;
+        }
+        // The string is the same allocation plus a NUL terminator.
+        let ptr = if v.cap > v.len {
+            v.ptr
+        } else {
+            alloc::realloc(v.ptr, v.len + 1)
+        };
+        *ptr.add(v.len) = 0;
+        let r = StrVal::owned(ptr, v.len);
+        out.write(if ascii { r.with_ascii() } else { r });
+        1
+    }
+}
+
 /// `decode_utf8_range(start, end)`: like `decode_utf8` over `[start, end)` without copying the range
 /// first; bounds outside `0 <= start <= end <= length()` fault.
 #[unsafe(no_mangle)]
-// ms: leaf domain=binary
+// ms: leaf fresh domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_decode_utf8_range(
     b: *const VecVal,
     start: i64,
@@ -1893,38 +2068,6 @@ pub unsafe extern "C-unwind" fn msrt_bytes_extend(b: *mut VecVal, values: *const
 }
 
 // ---- Bytes fixed-width codecs ----
-
-/// `msrt_bytes_read_word(data, at, width, little)`: the `width` bytes (1, 2, 4 or 8) at `at` as an unsigned
-/// number, or all eight bytes as the `i64` with that bit pattern. `@std/bytes.ms` builds every
-/// `Bytes.int32_le(at)` style read on it. Missing bytes are `STATUS_OUT_OF_RANGE`.
-#[unsafe(no_mangle)]
-// ms: leaf domain=binary
-pub unsafe extern "C-unwind" fn msrt_bytes_read_word(
-    b: *const VecVal,
-    at: i64,
-    width: i64,
-    little: u8,
-    out: *mut i64,
-) -> u8 {
-    // SAFETY: caller contract.
-    unsafe {
-        let s = bslice(b);
-        let n = width as usize;
-        let Some(raw) = usize::try_from(at)
-            .ok()
-            .and_then(|start| s.get(start..start.checked_add(n)?))
-        else {
-            return STATUS_OUT_OF_RANGE;
-        };
-        let mut word = [0u8; 8];
-        word[..n].copy_from_slice(raw);
-        if little == 0 {
-            word[..n].reverse();
-        }
-        out.write(i64::from_le_bytes(word));
-        STATUS_OK
-    }
-}
 
 // ---- StringBuilder (bytes) ----
 

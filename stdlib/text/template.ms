@@ -497,7 +497,7 @@ fn var ExprParser.primary() TemplateExpr!Error:
 			self.fail("unexpected operator")
 		)
 
-		return ok(Path(t.text.split(".")))
+		return ok(Path(t.text.split(".").clone()))
 
 	return error(self.fail("expected a value"))
 

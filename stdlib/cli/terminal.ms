@@ -201,7 +201,7 @@ fn code_key(code: Int) TerminalEvent?:
 
 // The first colon-separated sub-parameter of a CSI parameter, as a number.
 fn first_number(part: String) Int:
-	head := part.split(":")[0]
+	head := part.split(":")[0].clone()
 	return head.parse_int().get(0)
 
 // The key a CSI sequence with parameters `params` and final byte `last` reports, if
