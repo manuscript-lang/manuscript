@@ -433,7 +433,7 @@ pub fn find(hay: &[u8], needle: &[u8]) -> Option<usize> {
     if needle.len() == 1 && hay.len() < SHORT_HAY {
         return memchr_short(needle[0], hay);
     }
-    if hay.len() < SHORT_HAY {
+    if hay.len() < SHORT_HAY || (needle.len() > 1 && hay.len() < MEDIUM_HAY) {
         return find_short(hay, needle);
     }
     if needle.len() == 1 {
@@ -495,6 +495,11 @@ const NEAR: usize = 16;
 /// Haystacks shorter than this are scanned byte by byte: the vector searchers' setup costs more
 /// than the scan.
 const SHORT_HAY: usize = 32;
+
+/// Haystacks shorter than this (a line of a log or a record) are also scanned directly for a
+/// needle of two or more bytes: building a `memmem` searcher per call costs several times the
+/// scan of so few bytes, and the work is bounded by the haystack length times the needle length.
+const MEDIUM_HAY: usize = 128;
 
 /// `find` for a short haystack and a non-empty needle.
 #[inline]
@@ -2857,8 +2862,8 @@ mod tests {
             seed
         };
         for _ in 0..4000 {
-            let hay_len = (next() % 90) as usize;
-            let needle_len = (next() % 6) as usize;
+            let hay_len = (next() % 300) as usize;
+            let needle_len = (next() % if next() % 2 == 0 { 6 } else { 40 }) as usize;
             let hay: Vec<u8> = (0..hay_len).map(|_| b'a' + (next() % 3) as u8).collect();
             let needle: Vec<u8> = (0..needle_len).map(|_| b'a' + (next() % 3) as u8).collect();
             let naive = if needle.is_empty() {
