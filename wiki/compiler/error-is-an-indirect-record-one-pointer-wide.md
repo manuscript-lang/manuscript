@@ -18,3 +18,11 @@ Evidence: [proposal](../../proposals/boxed-error-record.md).
 `msrt_map_new` has `ExternRole::MapNew`: code generation emits seven zero words (`ms_rt::map::empty()` is all zero, a unit test pins it), so building an `Error` needs no call or 56 B slot. After that the error-reachable `walk` is 128 B in release, equal to its non-fallible version.
 
 Frames that stay on the stack while a task parks (`switch_away`, `msrt_token_park`, `msrt_promise_wait`, `Promise.wait`) were 208, 320, 256 and 784 B; they are now 96, 96, 112 and 96 B. The Rust ones shrank by marking cold or heavy helpers `#[inline(never)]` (`set_deadline`, `expire_timers`, `poll_ready`, `reactor_wait`, `deliver_remote_posts`, `cancel_all_waiters`, `init_current`): LLVM sizes a frame for the largest inlined path, so any inlined cold path is paid by every parked task. `Promise.wait` builds its errors in one `failure` function for the same reason. Cleanup-entry slots (`msrt_cleanup_push`) are still one per owned temporary and are not shared.
+
+## A collection field in an indirect record is a nullable pointer
+
+An `Error` was 88 B: message 16, kind 16, and the seven-word `details` header inline. An indirect record now stores a `Map` or `Set` field as one pointer (`Layouts::rec_field_boxed`, `rec_block`), so `Error` is 40 B. The pointer is null while the collection is the all-zero empty value (descriptor word also zero, since a stamped empty map keeps its header); the first insert through `PtrField` allocates a zeroed header (`map_header_ensure`). Source stays the same: `Error(msg, kind: k, details: {...})` and `err.details[...]` read and build the field as before, because `RecGet`, `RecNew`, `RecSet` and the glue expand and pack it (`rec_load_field`, `rec_pack`).
+
+Rules: free a record only through `rec_release` (drops what was not moved out, frees non-null headers, then the block) or `rec_free_block` (contents already moved); a plain `free(block)` leaks the header. A place read of `err.details` through `PtrField` allocates the header once, which is harmless but not free; use `RecGet` when only reading.
+
+Measured (2026-11-12): dropping an `Error` with no details is a null check instead of a `msrt_slot_drop` of seven zero words; `result-records` 10.9 to 9.0 ms against Rust 5.9 ([bench](../../bench/perf/element-types/README.md)).

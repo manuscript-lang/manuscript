@@ -221,13 +221,28 @@ impl<'m> Layouts<'m> {
         fields
     }
 
-    /// The leaves of the heap block behind an indirect record: its fields' leaves in order.
+    /// The leaves of the heap block behind an indirect record: its fields' leaves in order, except
+    /// that a `Map` or `Set` field is one pointer to a header block that exists only while the
+    /// collection is not the all-zero empty value (see [`Layouts::rec_field_boxed`]).
     pub fn rec_block(&self, r: ms_mir::types::RecId) -> Vec<Leaf> {
         self.m.records[r.index()]
             .fields
             .iter()
-            .flat_map(|f| self.leaves(f.1))
+            .flat_map(|f| {
+                if self.rec_field_boxed(f.1) {
+                    vec![Leaf::I64]
+                } else {
+                    self.leaves(f.1)
+                }
+            })
             .collect()
+    }
+
+    /// Whether a field of type `fty` inside an indirect record's block holds a nullable pointer
+    /// to its header instead of the header itself. An empty map is seven zero words, so an
+    /// `Error` that carries no details has a block of five words and one allocation.
+    pub fn rec_field_boxed(&self, fty: Ty) -> bool {
+        matches!(self.m.types.kind(fty), TyKind::Obj(n, _) if n.is_map_or_set())
     }
 
     /// The register leaves of `ty`.
