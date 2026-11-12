@@ -41,6 +41,10 @@ pub enum Glue {
     Clone,
     /// Closure object destructor `fn(obj)`; the `Ty` is unused (`Ty::UNIT`) and the key carries the function id.
     ClosureDrop(u32),
+    /// `fn(obj)` that releases a closure object after capture `k` while a fault unwinds out of the
+    /// close of that capture (whose value that close owns): it drops the later captures without
+    /// closing them and frees the object.
+    ClosureDropFrom(u32, u32),
     /// Closure object clone entry `fn(obj) -> obj`, cloning the captures; keyed like `ClosureDrop`.
     ClosureClone(u32),
     /// Heap block destructor of an interface payload `fn(block)`.
@@ -82,6 +86,8 @@ const RT: &[(&str, &str, &str)] = &[
     ("msrt_isolate_hdr", "", "i"),
     ("msrt_cleanup_push", "ii", "i"),
     ("msrt_cleanup_run", "i", ""),
+    ("msrt_cleanup_discard", "i", ""),
+    ("msrt_unwind_drops", "", "b"),
     ("msrt_start", "iiii", "i"),
     ("msrt_string_length", "i", "i"),
     ("msrt_slot_drop", "ii", ""),
@@ -388,6 +394,7 @@ impl<'m> Gen<'m> {
             Glue::Clone => self.sig(&leaves, &leaves),
             Glue::BlockClone | Glue::ClosureClone(_) => self.sig(&[Leaf::I64], &[Leaf::I64]),
             Glue::ClosureDrop(_)
+            | Glue::ClosureDropFrom(..)
             | Glue::BlockDrop
             | Glue::CleanupThunk(_)
             | Glue::GrowShim(_)
@@ -401,6 +408,7 @@ impl<'m> Gen<'m> {
                 Glue::Drop => "drop",
                 Glue::Clone => "clone",
                 Glue::ClosureDrop(_) => "closure_drop",
+                Glue::ClosureDropFrom(..) => "closure_drop_from",
                 Glue::ClosureClone(_) => "closure_clone",
                 Glue::BlockDrop => "block_drop",
                 Glue::BlockClone => "block_clone",

@@ -1158,7 +1158,7 @@ unsafe fn merge_sort(
 
 /// Stable sort in place by a three-way comparator thunk (`< 0` means before).
 #[unsafe(no_mangle)]
-// ms: leaf
+// The comparator is program code that can fault or park, so this is not a leaf.
 pub unsafe extern "C-unwind" fn msrt_list_sort_in_place(
     v: *mut VecVal,
     d: ElemDesc,
@@ -1251,7 +1251,7 @@ pub unsafe extern "C" fn msrt_list_sort_ints(v: *mut VecVal, desc: i64) {
 /// the sign of the integer order, so this is the integer sort. Otherwise the comparator runs as
 /// written, faulting where a subtraction overflows.
 #[unsafe(no_mangle)]
-// ms: leaf
+// The comparator is program code that can fault or park, so this is not a leaf.
 pub unsafe extern "C-unwind" fn msrt_list_sorted_by_difference(
     v: *const VecVal,
     d: ElemDesc,
@@ -1284,7 +1284,7 @@ pub unsafe extern "C-unwind" fn msrt_list_sorted_by_difference(
 }
 
 #[unsafe(no_mangle)]
-// ms: leaf
+// The comparator is program code that can fault or park, so this is not a leaf.
 pub unsafe extern "C-unwind" fn msrt_list_sorted(
     v: *const VecVal,
     d: ElemDesc,

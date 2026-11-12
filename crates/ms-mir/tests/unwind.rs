@@ -573,3 +573,26 @@ b0:
     assert!(!changed, "{}", print_module(&m));
     assert_eq!(count(&m, "next", Op::CleanupPush), 0);
 }
+
+const PANICS_WITH_TEMPS: &str = r#"
+extern @msrt_int_to_string(int) -> str leaf int_to_string
+extern @msrt_string_concat(str, str) -> str fresh leaf string_concat
+extern @msrt_fault_string(str) -> unit noreturn leaf
+fn @main() -> int {
+b0:
+  %0: int = iconst 64
+  %1: str = str "found "
+  %2: str = call.rt @msrt_int_to_string (%0)
+  %3: str = call.rt @msrt_string_concat (%1, %2)
+  %4: unit = call.rt @msrt_fault_string (%3)
+  unreachable
+}
+"#;
+
+#[test]
+fn registers_live_temporaries_before_a_noreturn_fault_call() {
+    let (m, changed) = rewrite(PANICS_WITH_TEMPS, true);
+    assert!(changed);
+    // The concat window, then the int and the message both live at the fault call.
+    assert_eq!(count(&m, "main", Op::CleanupPush), 3, "{}", print_module(&m));
+}
