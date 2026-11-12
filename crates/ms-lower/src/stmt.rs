@@ -1721,7 +1721,7 @@ impl<'a> FnLower<'a> {
                     self.b.def_var(var, it.v);
                     var
                 } else {
-                    self.bind_hidden(it)
+                    self.bind_hidden_iterable(it)
                 };
                 list_var = Some(var);
                 let list = self.b.use_var(var);
@@ -1782,7 +1782,7 @@ impl<'a> FnLower<'a> {
                 .find(|(_, l)| l.var == var && l.slot.is_none())
                 .map(|(uid, _)| *uid)
         {
-            self.own_hidden(uid, None);
+            self.own_hidden(uid, None, false);
         }
         let (header, body_b, step, exit) = (
             self.b.new_block(),
