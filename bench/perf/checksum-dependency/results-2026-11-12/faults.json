@@ -1,0 +1,394 @@
+[
+  {
+    "n": 0,
+    "side": "ms",
+    "minor_faults": 237,
+    "major_faults": 0,
+    "output": "2205271 0 0"
+  },
+  {
+    "n": 0,
+    "side": "new",
+    "minor_faults": 235,
+    "major_faults": 0,
+    "output": "2197056 0 0"
+  },
+  {
+    "n": 0,
+    "side": "new",
+    "minor_faults": 235,
+    "major_faults": 0,
+    "output": "2229086 0 0"
+  },
+  {
+    "n": 0,
+    "side": "ms",
+    "minor_faults": 234,
+    "major_faults": 0,
+    "output": "2204119 0 0"
+  },
+  {
+    "n": 0,
+    "side": "ms",
+    "minor_faults": 235,
+    "major_faults": 0,
+    "output": "2260696 0 0"
+  },
+  {
+    "n": 0,
+    "side": "new",
+    "minor_faults": 235,
+    "major_faults": 0,
+    "output": "2231351 0 0"
+  },
+  {
+    "n": 0,
+    "side": "new",
+    "minor_faults": 235,
+    "major_faults": 0,
+    "output": "2241239 0 0"
+  },
+  {
+    "n": 0,
+    "side": "ms",
+    "minor_faults": 235,
+    "major_faults": 0,
+    "output": "2247100 0 0"
+  },
+  {
+    "n": 0,
+    "side": "ms",
+    "minor_faults": 235,
+    "major_faults": 0,
+    "output": "2209559 0 0"
+  },
+  {
+    "n": 0,
+    "side": "new",
+    "minor_faults": 235,
+    "major_faults": 0,
+    "output": "2211483 0 0"
+  },
+  {
+    "n": 0,
+    "side": "new",
+    "minor_faults": 234,
+    "major_faults": 0,
+    "output": "2936421 0 0"
+  },
+  {
+    "n": 0,
+    "side": "ms",
+    "minor_faults": 234,
+    "major_faults": 0,
+    "output": "2308535 0 0"
+  },
+  {
+    "n": 0,
+    "side": "ms",
+    "minor_faults": 234,
+    "major_faults": 0,
+    "output": "2353590 0 0"
+  },
+  {
+    "n": 0,
+    "side": "new",
+    "minor_faults": 235,
+    "major_faults": 0,
+    "output": "2267277 0 0"
+  },
+  {
+    "n": 8,
+    "side": "ms",
+    "minor_faults": 234,
+    "major_faults": 0,
+    "output": "3878666 3355082727000000 3355082727"
+  },
+  {
+    "n": 8,
+    "side": "new",
+    "minor_faults": 234,
+    "major_faults": 0,
+    "output": "4201051 3355082727000000 3355082727"
+  },
+  {
+    "n": 8,
+    "side": "new",
+    "minor_faults": 235,
+    "major_faults": 0,
+    "output": "4447743 3355082727000000 3355082727"
+  },
+  {
+    "n": 8,
+    "side": "ms",
+    "minor_faults": 234,
+    "major_faults": 0,
+    "output": "3844593 3355082727000000 3355082727"
+  },
+  {
+    "n": 8,
+    "side": "ms",
+    "minor_faults": 235,
+    "major_faults": 0,
+    "output": "3805479 3355082727000000 3355082727"
+  },
+  {
+    "n": 8,
+    "side": "new",
+    "minor_faults": 234,
+    "major_faults": 0,
+    "output": "3801553 3355082727000000 3355082727"
+  },
+  {
+    "n": 8,
+    "side": "new",
+    "minor_faults": 235,
+    "major_faults": 0,
+    "output": "3839693 3355082727000000 3355082727"
+  },
+  {
+    "n": 8,
+    "side": "ms",
+    "minor_faults": 235,
+    "major_faults": 0,
+    "output": "3789159 3355082727000000 3355082727"
+  },
+  {
+    "n": 8,
+    "side": "ms",
+    "minor_faults": 234,
+    "major_faults": 0,
+    "output": "3828121 3355082727000000 3355082727"
+  },
+  {
+    "n": 8,
+    "side": "new",
+    "minor_faults": 235,
+    "major_faults": 0,
+    "output": "3793536 3355082727000000 3355082727"
+  },
+  {
+    "n": 8,
+    "side": "new",
+    "minor_faults": 234,
+    "major_faults": 0,
+    "output": "3822170 3355082727000000 3355082727"
+  },
+  {
+    "n": 8,
+    "side": "ms",
+    "minor_faults": 234,
+    "major_faults": 0,
+    "output": "3801893 3355082727000000 3355082727"
+  },
+  {
+    "n": 8,
+    "side": "ms",
+    "minor_faults": 234,
+    "major_faults": 0,
+    "output": "3809547 3355082727000000 3355082727"
+  },
+  {
+    "n": 8,
+    "side": "new",
+    "minor_faults": 235,
+    "major_faults": 0,
+    "output": "3838190 3355082727000000 3355082727"
+  },
+  {
+    "n": 65536,
+    "side": "ms",
+    "minor_faults": 246,
+    "major_faults": 0,
+    "output": "29840675 161574252924 212039702"
+  },
+  {
+    "n": 65536,
+    "side": "new",
+    "minor_faults": 245,
+    "major_faults": 0,
+    "output": "21962876 161574252924 212039702"
+  },
+  {
+    "n": 65536,
+    "side": "new",
+    "minor_faults": 245,
+    "major_faults": 0,
+    "output": "21975179 161574252924 212039702"
+  },
+  {
+    "n": 65536,
+    "side": "ms",
+    "minor_faults": 246,
+    "major_faults": 0,
+    "output": "29725279 161574252924 212039702"
+  },
+  {
+    "n": 65536,
+    "side": "ms",
+    "minor_faults": 246,
+    "major_faults": 0,
+    "output": "29694531 161574252924 212039702"
+  },
+  {
+    "n": 65536,
+    "side": "new",
+    "minor_faults": 246,
+    "major_faults": 0,
+    "output": "22340073 161574252924 212039702"
+  },
+  {
+    "n": 65536,
+    "side": "new",
+    "minor_faults": 245,
+    "major_faults": 0,
+    "output": "22504942 161574252924 212039702"
+  },
+  {
+    "n": 65536,
+    "side": "ms",
+    "minor_faults": 246,
+    "major_faults": 0,
+    "output": "30055988 161574252924 212039702"
+  },
+  {
+    "n": 65536,
+    "side": "ms",
+    "minor_faults": 245,
+    "major_faults": 0,
+    "output": "29670627 161574252924 212039702"
+  },
+  {
+    "n": 65536,
+    "side": "new",
+    "minor_faults": 246,
+    "major_faults": 0,
+    "output": "22165055 161574252924 212039702"
+  },
+  {
+    "n": 65536,
+    "side": "new",
+    "minor_faults": 246,
+    "major_faults": 0,
+    "output": "21931969 161574252924 212039702"
+  },
+  {
+    "n": 65536,
+    "side": "ms",
+    "minor_faults": 245,
+    "major_faults": 0,
+    "output": "29831458 161574252924 212039702"
+  },
+  {
+    "n": 65536,
+    "side": "ms",
+    "minor_faults": 246,
+    "major_faults": 0,
+    "output": "30411504 161574252924 212039702"
+  },
+  {
+    "n": 65536,
+    "side": "new",
+    "minor_faults": 246,
+    "major_faults": 0,
+    "output": "22234244 161574252924 212039702"
+  },
+  {
+    "n": 1048576,
+    "side": "ms",
+    "minor_faults": 245,
+    "major_faults": 0,
+    "output": "29460202 439472701 9350483"
+  },
+  {
+    "n": 1048576,
+    "side": "new",
+    "minor_faults": 245,
+    "major_faults": 0,
+    "output": "22179934 439472701 9350483"
+  },
+  {
+    "n": 1048576,
+    "side": "new",
+    "minor_faults": 246,
+    "major_faults": 0,
+    "output": "21885331 439472701 9350483"
+  },
+  {
+    "n": 1048576,
+    "side": "ms",
+    "minor_faults": 245,
+    "major_faults": 0,
+    "output": "30038316 439472701 9350483"
+  },
+  {
+    "n": 1048576,
+    "side": "ms",
+    "minor_faults": 246,
+    "major_faults": 0,
+    "output": "29568806 439472701 9350483"
+  },
+  {
+    "n": 1048576,
+    "side": "new",
+    "minor_faults": 245,
+    "major_faults": 0,
+    "output": "21893286 439472701 9350483"
+  },
+  {
+    "n": 1048576,
+    "side": "new",
+    "minor_faults": 246,
+    "major_faults": 0,
+    "output": "21863370 439472701 9350483"
+  },
+  {
+    "n": 1048576,
+    "side": "ms",
+    "minor_faults": 246,
+    "major_faults": 0,
+    "output": "30336975 439472701 9350483"
+  },
+  {
+    "n": 1048576,
+    "side": "ms",
+    "minor_faults": 245,
+    "major_faults": 0,
+    "output": "30227028 439472701 9350483"
+  },
+  {
+    "n": 1048576,
+    "side": "new",
+    "minor_faults": 245,
+    "major_faults": 0,
+    "output": "21959339 439472701 9350483"
+  },
+  {
+    "n": 1048576,
+    "side": "new",
+    "minor_faults": 245,
+    "major_faults": 0,
+    "output": "22108589 439472701 9350483"
+  },
+  {
+    "n": 1048576,
+    "side": "ms",
+    "minor_faults": 245,
+    "major_faults": 0,
+    "output": "29901139 439472701 9350483"
+  },
+  {
+    "n": 1048576,
+    "side": "ms",
+    "minor_faults": 245,
+    "major_faults": 0,
+    "output": "30014891 439472701 9350483"
+  },
+  {
+    "n": 1048576,
+    "side": "new",
+    "minor_faults": 245,
+    "major_faults": 0,
+    "output": "22118979 439472701 9350483"
+  }
+]

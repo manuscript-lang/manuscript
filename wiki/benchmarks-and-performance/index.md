@@ -39,3 +39,4 @@ Perf and agent benchmarks, profiling.
 - [Image rotations preserve malformed shapes](image-rotations-preserve-malformed-shapes.md): copy valid pixels in one pass, preserve channel order and malformed-input behavior, and measure tiny-image controls without asymmetric dispatch.
 - [A busy queue must not poll descriptors on every task switch](a-busy-queue-must-not-poll-descriptors-on-every-task-switch.md): poll every 32 switches; compare servers on one CPU by user and system time per request.
 - [Fewer allocations need wall time, not just counts](fewer-allocations-need-wall-time-not-just-counts.md): a counted split cut allocations 22% and instructions 6% but cost 7% wall; inline short strings never allocate on clone.
+- [CRC table input terms are independent of the register](crc-table-input-terms-are-independent-of-the-register.md): combine input-only terms before the rolling-state chain, verify native assembly and tiny/tail/seed controls.
