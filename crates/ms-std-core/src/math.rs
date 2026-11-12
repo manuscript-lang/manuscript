@@ -182,16 +182,6 @@ native! {
     }
 
     // ms: leaf
-    safe fn msstd_math_reverse_bits(value: i64) -> i64 {
-        value.reverse_bits()
-    }
-
-    // ms: leaf
-    safe fn msstd_math_reverse_bytes(value: i64) -> i64 {
-        value.swap_bytes()
-    }
-
-    // ms: leaf
     safe fn msstd_math_copy_sign(value: f64, sign: f64) -> f64 {
         value.copysign(sign)
     }

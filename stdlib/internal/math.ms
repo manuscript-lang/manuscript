@@ -44,10 +44,6 @@ export extern fn msstd_math_ieee_remainder(left: Float, right: Float) Float
 
 export extern fn msstd_bigint_inverse_mod(value: BigInt, modulus: BigInt) BigInt?
 
-export extern fn msstd_math_reverse_bits(value: Int) Int
-
-export extern fn msstd_math_reverse_bytes(value: Int) Int
-
 export extern fn msstd_math_exp2(value: Float) Float
 
 export extern fn msstd_math_round_to_even(value: Float) Float

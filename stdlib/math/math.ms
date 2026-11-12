@@ -81,8 +81,6 @@ import (
 	msstd_math_pow,
 	msstd_math_remainder,
 	msstd_math_remainder_wide,
-	msstd_math_reverse_bits,
-	msstd_math_reverse_bytes,
 	msstd_math_round,
 	msstd_math_round_to_even,
 	msstd_math_sign_bit,
@@ -413,12 +411,47 @@ export fn trailing_zeros(value: Int) Int:
 // Reverses all 64 bits of the two's-complement pattern; reversing twice returns
 // `value`.
 export fn reverse_bits(value: Int) Int:
-	return msstd_math_reverse_bits(value)
+	x := reverse_bytes(value)
+	nibbles := msrt_bits_bit_or(
+		msrt_bits_bit_and(
+			msrt_bits_shift_right_unsigned(x, 4),
+			0x0F0F0F0F0F0F0F0F,
+		),
+		msrt_bits_shift_left(msrt_bits_bit_and(x, 0x0F0F0F0F0F0F0F0F), 4),
+	)
+	pairs := msrt_bits_bit_or(
+		msrt_bits_bit_and(
+			msrt_bits_shift_right_unsigned(nibbles, 2),
+			0x3333333333333333,
+		),
+		msrt_bits_shift_left(msrt_bits_bit_and(nibbles, 0x3333333333333333), 2),
+	)
+	return msrt_bits_bit_or(
+		msrt_bits_bit_and(
+			msrt_bits_shift_right_unsigned(pairs, 1),
+			0x5555555555555555,
+		),
+		msrt_bits_shift_left(msrt_bits_bit_and(pairs, 0x5555555555555555), 1),
+	)
 
 // Reverses the eight bytes of the 64-bit pattern, keeping bit order within each byte;
 // independent of host byte order.
 export fn reverse_bytes(value: Int) Int:
-	return msstd_math_reverse_bytes(value)
+	bytes := msrt_bits_bit_or(
+		msrt_bits_bit_and(
+			msrt_bits_shift_right_unsigned(value, 8),
+			0x00FF00FF00FF00FF,
+		),
+		msrt_bits_shift_left(msrt_bits_bit_and(value, 0x00FF00FF00FF00FF), 8),
+	)
+	halves := msrt_bits_bit_or(
+		msrt_bits_bit_and(
+			msrt_bits_shift_right_unsigned(bytes, 16),
+			0x0000FFFF0000FFFF,
+		),
+		msrt_bits_shift_left(msrt_bits_bit_and(bytes, 0x0000FFFF0000FFFF), 16),
+	)
+	return msrt_bits_rotate_left(halves, 32)
 
 // The wrapped sum and output carry from `add_with_carry`; `add_with_carry(1, 2).sum` is
 // 3.
