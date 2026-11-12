@@ -12,7 +12,7 @@ import (
 	headers,
 	reply,
 	text from "@std/net/http.ms",
-	NativeWebSocket from "@std/net/websocket.ms",
+	WebSocket from "@std/net/websocket.ms",
 	monotonic from "@std/time.ms",
 
 	msrt_pipe_close_reader,
@@ -637,7 +637,7 @@ fn var TestExchange.upgrade(
 	allowed_origins: List[String],
 	subprotocols: List[String],
 	max_message_bytes: Int?,
-) NativeWebSocket!:
+) WebSocket!:
 	return error(Error("router: WebSocket upgrades need a server", kind: "ENOTSUP"))
 
 fn var TestExchange.write(data: String) Unit!:
@@ -735,7 +735,7 @@ fn var Tap.upgrade(
 	allowed_origins: List[String],
 	subprotocols: List[String],
 	max_message_bytes: Int?,
-) NativeWebSocket!:
+) WebSocket!:
 	return self.inner.upgrade(allowed_origins, subprotocols, max_message_bytes)
 
 fn var Tap.write(data: String) Unit!:

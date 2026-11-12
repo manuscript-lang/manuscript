@@ -42,6 +42,10 @@ enum Shape {
     /// A directory walk with a predicate closure: `glob_entries` (a path and an exclude
     /// predicate) or, with `copy`, a copy (a source, a destination and the copy options).
     Walk { copy: bool },
+    /// A Manuscript function of the same module named by the row's symbol: it takes the handle
+    /// viewed as the interface its first parameter names, then the operation's own arguments,
+    /// and returns the operation's result (`HttpExchange.upgrade` builds its `WebSocket`).
+    Ms,
 }
 
 /// One row of `METHODS`: module, interface, operation, runtime symbol, call shape.
@@ -135,6 +139,13 @@ const METHODS: &[MethodRow] = &[
         "http",
         "HttpExchange",
         "upgrade",
+        "exchange_upgrade",
+        Shape::Ms,
+    ),
+    (
+        "http",
+        "RawExchange",
+        "upgrade",
         "msstd_http_exchange_upgrade",
         Shape::Plain,
     ),
@@ -172,6 +183,8 @@ pub(crate) struct MethodJob {
     params: Vec<MTy>,
     ret: MTy,
     data_ty: MTy,
+    /// The runtime module the interface's handles belong to.
+    module: String,
 }
 
 impl Cx {
@@ -268,6 +281,7 @@ impl Cx {
                     params: s.params.clone(),
                     ret: s.ret,
                     data_ty,
+                    module: module.to_string(),
                 })),
             });
             methods.push(id);
@@ -307,6 +321,9 @@ fn forward(fl: &mut FnLower<'_>, job: &MethodJob, args: &[ms_mir::ir::Value]) ->
         fl.b.unreachable();
         return Ok(());
     };
+    if job.shape == Shape::Ms {
+        return forward_ms(fl, job, sym, args);
+    }
     // The getters of a record result take the handle too when the status call does.
     if job.shape == Shape::Record {
         let lead: Vec<_> = takes_handle(&format!("{sym}_status"))
@@ -350,6 +367,54 @@ fn forward(fl: &mut FnLower<'_>, job: &MethodJob, args: &[ms_mir::ir::Value]) ->
     };
     let r = fit_result(fl, r, job.ret)?;
     fl.emit_return(Some(r));
+    Ok(())
+}
+
+/// `Shape::Ms`: calls the Manuscript function `name` of the interface's module with the handle
+/// viewed as the interface of its first parameter, then the operation's own arguments.
+fn forward_ms(
+    fl: &mut FnLower<'_>,
+    job: &MethodJob,
+    name: &str,
+    args: &[ms_mir::ir::Value],
+) -> Result<(), Error> {
+    let file = fl.syms.intern(&format!("@std/net/{}.ms", job.module));
+    let callable = fl
+        .cx
+        .callables
+        .iter()
+        .find(|((f, _), c)| *f == file && fl.syms.str(c.name) == name)
+        .map(|(_, c)| c.clone())
+        .ok_or_else(|| Error::new(format!("{name} is not declared in the standard library")))?;
+    let fid = fl.instance(&callable, &Default::default())?;
+    let raw = callable
+        .parameters
+        .first()
+        .ok_or_else(|| Error::new(format!("{name} takes no exchange")))?
+        .ty
+        .clone();
+    let raw_ty = fl.cx.lower_ty(fl.b.m, &raw)?;
+    let TyKind::Iface(iface) = fl.b.m.types.kind(raw_ty).clone() else {
+        return Err(Error::new(format!(
+            "{name}: first parameter is not an interface"
+        )));
+    };
+    let hir = fl.hir.clone();
+    let vt = fl
+        .cx
+        .handle_vtable(fl.b.m, &hir, &job.module, &raw, iface)?;
+    let handle = load_handle(fl, job, args);
+    let view = fl.b.iface_borrow(vt, handle, raw_ty);
+    let slot =
+        fl.b.emit(Op::Slot, &[], Imm::Ty(raw_ty), Some(MTy::PTR))
+            .expect("slot");
+    fl.move_into(slot, view);
+    let mut call_args = vec![slot];
+    call_args.extend_from_slice(&args[1..]);
+    let r = fl.b.call(fid, &call_args);
+    let back = fl.move_out(slot, raw_ty);
+    fl.drop_value(back);
+    fl.emit_return(Some(Val { v: r, own: true }));
     Ok(())
 }
 
