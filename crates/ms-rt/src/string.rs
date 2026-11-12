@@ -565,9 +565,13 @@ pub fn rfind(hay: &[u8], needle: &[u8]) -> Option<usize> {
     memchr::memmem::rfind(hay, needle)
 }
 
+/// The search behind `msrt_string_contains` (`ms-rt-hot`) for every case it does not inline.
 #[unsafe(no_mangle)]
 // ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_contains(a: *const StrVal, v: *const StrVal) -> u8 {
+pub unsafe extern "C-unwind" fn msrt_string_contains_long(
+    a: *const StrVal,
+    v: *const StrVal,
+) -> u8 {
     // SAFETY: caller passes live strings.
     unsafe {
         let (hay, needle) = (bytes(a), bytes(v));

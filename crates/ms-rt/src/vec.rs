@@ -89,6 +89,12 @@ unsafe fn copy_range(d: &TypeDesc, src: *const u8, dst: *mut u8, count: usize) {
             if size != 0 {
                 core::ptr::copy_nonoverlapping(src, dst, count * size);
             }
+        } else if d.kind == KIND_STRING {
+            // Short and static strings copy as two words: no call per element.
+            for i in 0..count {
+                let s = &*(src.add(i * size) as *const StrVal);
+                string::cloned(s).write_to(dst.add(i * size) as *mut StrVal);
+            }
         } else {
             for i in 0..count {
                 slot_copy(d, src.add(i * size), dst.add(i * size));
