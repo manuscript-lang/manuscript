@@ -458,6 +458,9 @@ pub fn find(hay: &[u8], needle: &[u8]) -> Option<usize> {
 )]
 enum Needle<'a> {
     Byte(u8),
+    /// A needle of two or more bytes in a text shorter than [`MEDIUM_HAY`]: scanned directly, so no
+    /// `memmem` searcher is built for it.
+    Short(&'a [u8]),
     Bytes(memchr::memmem::Finder<'a>),
 }
 
@@ -467,6 +470,15 @@ impl<'a> Needle<'a> {
             [b] => Needle::Byte(*b),
             _ => Needle::Bytes(memchr::memmem::Finder::new(needle)),
         }
+    }
+
+    /// A searcher for `needle` over haystacks of at most `text_len` bytes: building a `memmem`
+    /// searcher costs more than scanning a short text.
+    fn for_text(needle: &'a [u8], text_len: usize) -> Self {
+        if needle.len() > 1 && text_len < MEDIUM_HAY {
+            return Needle::Short(needle);
+        }
+        Self::new(needle)
     }
 
     /// Matches in text are usually a few bytes apart (words, fields), where the vector
@@ -482,6 +494,7 @@ impl<'a> Needle<'a> {
                 }
                 memchr(*b, &hay[NEAR..]).map(|i| i + NEAR)
             }
+            Needle::Short(n) => find_short(hay, n),
             Needle::Bytes(f) if hay.len() < SHORT_HAY => find_short(hay, f.needle()),
             Needle::Bytes(f) => {
                 // A match starting before `NEAR` ends inside this window.
@@ -1211,7 +1224,7 @@ unsafe fn fill_repeated(dst: *mut u8, pattern: &[u8], len: usize) {
 fn count_matches(text: &[u8], old: &[u8]) -> usize {
     let mut n = 0;
     let mut i = 0;
-    let f = Needle::new(old);
+    let f = Needle::for_text(old, text.len());
     while let Some(p) = f.find(&text[i..]) {
         n += 1;
         i += p + old.len();
@@ -1338,7 +1351,7 @@ fn fill_replaced(text: &[u8], old: &[u8], new: &[u8], matches: usize) -> StrVal 
     unsafe {
         let mut dst = out.ptr_word;
         let mut i = 0;
-        let f = Needle::new(old);
+        let f = Needle::for_text(old, text.len());
         for _ in 0..matches {
             let p = f.find(&text[i..]).unwrap_or(0);
             copy_bytes(dst, text[i..].as_ptr(), p);
@@ -1409,7 +1422,7 @@ unsafe fn replace_shrinking(s: *const StrVal, old: &[u8], new: &[u8]) -> StrVal 
     // at most `text.len()` of them, since every replacement is no longer than the match it replaces.
     unsafe {
         let text = bytes(s);
-        let f = Needle::new(old);
+        let f = Needle::for_text(old, text.len());
         let Some(first) = f.find(text) else {
             // Nothing to replace: share the unchanged input.
             return cloned(&*s);
@@ -1983,7 +1996,7 @@ unsafe fn split_into(
             return;
         }
         let mut start = 0;
-        let needle = Needle::new(sepb);
+        let needle = Needle::for_text(sepb, text.len());
         while v.len < limit {
             match needle.find(&text[start..]) {
                 Some(p) => {
@@ -2586,6 +2599,11 @@ mod tests {
                 let want = if n.len() > h.len() { None } else { naive(h, n) };
                 assert_eq!(find(h, n), want, "find {n:?} in {h:?}");
                 assert_eq!(Needle::new(n).find(h), want, "needle {n:?} in {h:?}");
+                assert_eq!(
+                    Needle::for_text(n, h.len()).find(h),
+                    want,
+                    "for_text needle {n:?} in {h:?}"
+                );
             }
         }
     }

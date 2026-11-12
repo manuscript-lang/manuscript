@@ -107,3 +107,7 @@ The 40% ceiling on `logstats` is not reached by this step: what is left is `msrt
 ### Step 4: `Set[Int]` without descriptor dispatch
 
 `Set[Int]` `contains` is an inlined probe over the fixed 16-byte slots (`msrt_set_contains_w`, `ms-rt-hot`), and `add` is `msrt_set_add_copy_w` with the same layout; sets stamped with a module's key behaviour keep the general path. A contains-then-add loop over 2M random keys below 100,000 (`/tmp` program, callgrind instructions): 233.3M to 117.4M (-50%). New fixture `set-int-fixed-layout` covers repeats, extreme keys, growth, removal and reinsertion.
+
+### Step 5: no `memmem` searcher for short text
+
+`replace`, `split` and `count` with a multi-byte separator or pattern scan a text under 128 bytes directly (`Needle::for_text`) instead of building a `memmem` searcher per call. A 56-byte line with `replace("::", "--")`, `split("::")` and `contains("trace")`, 300,000 times: 1,014.4M to 877.0M instructions (-13.5%).

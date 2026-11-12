@@ -4,6 +4,7 @@
 
 Perf and agent benchmarks, profiling.
 
+- [Hot string and set fast paths live in `ms-rt-hot` with a slow twin](hot-string-fast-paths-live-in-ms-rt-hot-with-a-slow-twin.md): fast case inlined, rare case calls `*_slow`; test ASCII by flag or inline bits; `Set[Int]` fixed layout; build `memmem` only for long text.
 - [Numeric parsing needs invalid-input performance controls](numeric-parsing-needs-invalid-input-performance-controls.md): valid-input gains can hide overflow and malformed-input regressions; preserve error precedence and equivalent Rust validation.
 
 - [`var` record parameters stay in the caller's slot](var-record-parameters-stay-in-the-callers-slot.md): wide-record methods no longer move every field out and back per call; `Bytes` reads inline (`Lines.next` 147 to 75 instructions per line).
