@@ -10,6 +10,8 @@ TBAA has two classes only: element accesses of lists of numbers or `Bool`s (`!8`
 
 Measured (2026-11-12, same machine): none of this moves the kernels or competence suites beyond noise; `chars_1M` shifted 25% with identical optimized IR (code placement). The real vectorization blocker is checked `Int` arithmetic: `sadd.with.overflow` reductions and the cold fault exits are not vectorized by LLVM 23 (`sumi` 0.6 ns per element, a checked `y[i] += x[i] * 3` 0.78, wrapping `saxpy` 0.25).
 
+Tried without effect (2026-11-12): an entry `llvm.assume` with `dereferenceable(ptr, len * size)` for every list parameter left the LCS grid unchanged (33.7 against 35.3 ms, noise); allocator results are declared `align 16`.
+
 Apply when: adding facts to the LLVM translation, or tagging memory accesses in lowering.
 Evidence: [translation](../../crates/ms-clif/src/llvm_ir.rs), [element flags](../../crates/ms-clif/src/lower.rs), `make drift-check`.
 Verify: `ms-conform diff --a target/release/ms --b target/release/ms --env-b MS_BACKEND=cranelift --phase run,test`.
