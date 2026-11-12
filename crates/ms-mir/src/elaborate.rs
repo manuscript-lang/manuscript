@@ -197,6 +197,8 @@ struct Ctx {
     /// out of mid-scope).
     cancel: Option<ExtId>,
     shield: Option<(ExtId, ExtId)>,
+    /// Flagged owners that a `scope.disown` ahead of the consuming op leaves tracked as moved.
+    disown_moves: HashSet<Value>,
 }
 
 /// Whether `v` owns a memory slot (`scope.own S K p`, K >= 2): the owner is the slot's address.
@@ -237,6 +239,8 @@ fn consume_value(cx: &Ctx, st: &mut State, v: Value) -> Result<(), String> {
     match state {
         St::Live if cx.tags.contains_key(&v) => st.set(v, St::Moved),
         St::Live => st.remove(v),
+        // Disowned, then consumed by the op that takes it.
+        St::Moved if cx.disown_moves.contains(&v) => {}
         St::Moved => return Err(format!("%{} is consumed after it was moved", v.0)),
         St::Maybe => return Err(format!("%{} is consumed but moved on some path", v.0)),
         St::Part(..) => return Err(format!("%{} is consumed after a partial move", v.0)),
@@ -282,7 +286,13 @@ fn apply(m: &Module, f: &Func, cx: &Ctx, st: &mut State, inst: &Inst) -> Result<
                 )),
             };
         }
-        st.remove(v);
+        // A flagged owner stays tracked as moved: the op that consumes it after the disown, and
+        // the exits after it, see the flag turn false.
+        if cx.disown_moves.contains(&v) && st.get(v) == Some(St::Live) {
+            st.set(v, St::Moved);
+        } else {
+            st.remove(v);
+        }
         return Ok(());
     }
     if inst.op == Op::ScopeMark {
@@ -337,6 +347,8 @@ fn apply(m: &Module, f: &Func, cx: &Ctx, st: &mut State, inst: &Inst) -> Result<
         let next = match cur {
             St::Live => St::Part(a, c, bit),
             St::Part(pa, pc, mask) if (pa, pc) == (a, c) => St::Part(a, c, mask | bit),
+            // Disowned ahead of the take: the value already left the scope.
+            St::Moved if cx.disown_moves.contains(&inst.args[0]) => St::Moved,
             _ => {
                 return Err(format!(
                     "alt.take on %{} in an unsupported state",
@@ -420,6 +432,7 @@ fn function(
         discard,
         cancel,
         shield,
+        disown_moves: HashSet::new(),
     };
     for b in &f.blocks {
         for i in &b.insts {
@@ -468,12 +481,28 @@ fn function(
         }
     }
     let order = f.rpo();
-    let entry = analyze(m, f, &cx, &order)?;
-    let flagged: HashSet<Value> = entry
+    let mut entry = analyze(m, f, &cx, &order)?;
+    let maybe = |entry: &[Option<State>]| -> HashSet<Value> {
+        entry
+            .iter()
+            .flatten()
+            .flat_map(|s| s.iter().filter(|(_, t)| *t == St::Maybe).map(|(v, _)| *v))
+            .collect()
+    };
+    // A flagged owner that is disowned before the op consuming it needs the moved state, so
+    // the exits after the move do not release it again.
+    let disowned: HashSet<Value> = f
+        .blocks
         .iter()
-        .flatten()
-        .flat_map(|s| s.iter().filter(|(_, t)| *t == St::Maybe).map(|(v, _)| *v))
+        .flat_map(|b| &b.insts)
+        .filter(|i| i.op == Op::ScopeDisown)
+        .map(|i| i.args[0])
         .collect();
+    cx.disown_moves = maybe(&entry).intersection(&disowned).copied().collect();
+    if !cx.disown_moves.is_empty() {
+        entry = analyze(m, f, &cx, &order)?;
+    }
+    let flagged = maybe(&entry);
     // An owner closed by hand on some paths carries a flag too, kept under a key of its own.
     let mut ckeys: HashMap<Value, Value> = HashMap::new();
     for s in entry.iter().flatten() {
