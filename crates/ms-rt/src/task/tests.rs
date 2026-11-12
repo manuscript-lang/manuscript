@@ -1110,3 +1110,41 @@ fn cancelling_a_task_does_not_interrupt_its_shielded_wait() {
     }
     teardown();
 }
+
+/// A task parked on a token only this thread posts leaves the thread free for a blocking call;
+/// one parked on a token another thread may post does not, since an inline call would delay
+/// that wake-up.
+#[test]
+#[cfg_attr(miri, ignore = "context switches use inline assembly")]
+fn others_are_stalled_only_when_no_other_thread_can_wake_them() {
+    let _g = lock();
+    teardown();
+    // SAFETY: tests hold the global lock; every handle is joined once.
+    unsafe {
+        *LOG_N.ptr() = 0;
+        let local = msrt_token_new(0);
+        let waiter = msrt_task_spawn(posted_token, local as *mut u8, 0, 0);
+        msrt_task_yield();
+        assert!(
+            msrt_task_others_stalled(),
+            "a local token cannot be posted elsewhere"
+        );
+        msrt_token_post(local, 42);
+        assert_eq!(msrt_task_join(waiter, null_mut()), 0);
+        msrt_token_free(local);
+
+        let remote = msrt_token_new(TOKEN_REMOTE);
+        let waiter = msrt_task_spawn(posted_token, remote as *mut u8, 0, 0);
+        msrt_task_yield();
+        assert!(
+            !msrt_task_others_stalled(),
+            "a remote token can wake its task at any time"
+        );
+        std::thread::spawn(move || msrt_token_post_remote(remote, 42))
+            .join()
+            .unwrap();
+        assert_eq!(msrt_task_join(waiter, null_mut()), 0);
+        msrt_token_free(remote);
+    }
+    teardown();
+}

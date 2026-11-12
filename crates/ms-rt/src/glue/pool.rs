@@ -181,6 +181,21 @@ pub fn alone() -> bool {
     unsafe { msrt_task_count() <= 1 || msrt_task_others_stalled() }
 }
 
+/// Called in the child of a fork (`expect_fault`): the pool threads of the parent do not exist
+/// here, so the counts that say they do would leave every job submitted from now on queued with
+/// nobody to run it. The child starts its own threads on demand.
+#[cfg(unix)]
+pub fn reset_after_fork() {
+    // The lock is free unless another thread held it at the fork; waiting for it would hang.
+    if let Ok(mut pool) = POOL.try_lock() {
+        pool.threads = 0;
+        pool.idle = 0;
+        pool.wakes = 0;
+        pool.dns_running = 0;
+        pool.finish_waiters = 0;
+    }
+}
+
 fn dns_cap() -> usize {
     (threads() / 2).max(1)
 }
