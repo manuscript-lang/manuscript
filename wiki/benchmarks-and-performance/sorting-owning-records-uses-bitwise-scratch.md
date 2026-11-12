@@ -1,0 +1,5 @@
+# Sorting records that own data uses the generated sort over bitwise scratch
+
+`sorted` with a known capture-free comparator is compiled with the program (`ms-mir/src/opt/sortgen.rs`) so the comparator inlines; the runtime sort pays an indirect call per comparison and was 2.4x Rust on 1M records with a `String` field. Owning records are now sorted by the same generated code over two `msrt_list_shadow` copies (raw bytes, owning nothing) and the sorted slots are cloned into the result, then `msrt_list_free_raw` frees the scratch. A comparator exit (fault, cancellation) therefore leaks only scratch bytes and never leaves a list with duplicated owners; sorting the real list in place would. Do not drop a shadow as a list. In-place `sort` still uses the runtime path. Evidence: `bench/perf/element-types/README.md`, fixture `e2e/accept/sort-owning-records-by-comparator`.
+
+A benchmark with `String::from` per Rust record against Manuscript's static literals is not equal work: borrow the literal (`Cow::Borrowed`) in the Rust twin.

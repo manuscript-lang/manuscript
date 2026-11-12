@@ -222,6 +222,48 @@ pub unsafe extern "C-unwind" fn msrt_list_copy(v: *const VecVal, d: ElemDesc, ou
     unsafe { copy_list(v, &*d, out) }
 }
 
+/// A bitwise copy of `v` in a fresh buffer that owns nothing: the generated sort permutes its
+/// slots (moves only), so a comparator that exits early leaves the original list intact and at
+/// worst leaks the scratch bytes. Pair with [`msrt_list_free_raw`]; never drop it as a list.
+///
+/// # Safety
+/// `v` is a live list of `d`; `out` is uninitialised.
+#[unsafe(no_mangle)]
+// ms: leaf
+pub unsafe extern "C-unwind" fn msrt_list_shadow(v: *const VecVal, d: ElemDesc, out: *mut VecVal) {
+    // SAFETY: caller contract.
+    unsafe {
+        let s = &*v;
+        if s.len == 0 {
+            *out = EMPTY;
+            return;
+        }
+        let bytes = s.len * (*d).size as usize;
+        let p = alloc::alloc(bytes.max(1));
+        core::ptr::copy_nonoverlapping(s.ptr, p, bytes);
+        *out = VecVal {
+            ptr: p,
+            len: s.len,
+            cap: s.len,
+        };
+    }
+}
+
+/// Frees the buffer of a [`msrt_list_shadow`] without touching its slots.
+///
+/// # Safety
+/// `v` came from `msrt_list_shadow` and is not used again.
+#[unsafe(no_mangle)]
+// ms: leaf
+pub unsafe extern "C-unwind" fn msrt_list_free_raw(v: *mut VecVal) {
+    // SAFETY: caller contract.
+    unsafe {
+        if !(*v).ptr.is_null() {
+            alloc::free((*v).ptr);
+        }
+    }
+}
+
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_push(v: *mut VecVal, d: ElemDesc, e: *const u8) {
