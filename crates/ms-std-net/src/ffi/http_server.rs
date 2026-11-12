@@ -238,13 +238,13 @@ native! {
     }
 
     /// `HttpExchange.method()`.
-    fn msstd_http_exchange_method(x: ObjRef<ExchH>) -> String {
-        x.method()
+    fn msstd_http_exchange_method(x: ObjRef<ExchH>) -> out Str {
+        x.method_value()
     }
 
     /// `HttpExchange.path()`.
-    fn msstd_http_exchange_path(x: ObjRef<ExchH>) -> String {
-        x.path()
+    fn msstd_http_exchange_path(x: ObjRef<ExchH>) -> out Str {
+        x.path_value()
     }
 
     /// `HttpExchange.protocol()`.
@@ -253,8 +253,8 @@ native! {
     }
 
     /// `HttpExchange.query()`.
-    fn msstd_http_exchange_query(x: ObjRef<ExchH>) -> String {
-        x.query()
+    fn msstd_http_exchange_query(x: ObjRef<ExchH>) -> out Str {
+        x.query_value()
     }
 
     /// `HttpExchange.read(max)`; the end of the body is `STATUS_NONE`.
