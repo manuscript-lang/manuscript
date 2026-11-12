@@ -89,7 +89,7 @@ Measured after the tracks above were started ([second pass](../bench/perf/struct
 
 - 8 is the safety floor, not a defect: a flag tested once per loop pass was measured and gains nothing, and C with the same checks is 1.07x to 2.9x plain C on the kernels. Build it last.
 - 9 replaces the four-byte text cell noted below for code that reads characters; grids that store them still pay 16 bytes a cell.
-- Platforms: every number here is Linux x86-64. Tracks 1 to 3 and items 5, 8, 9 and 10 change the compiler and `.ms` library, so they apply on macOS and Windows alike; items 4, 6 and 7 touch OS-specific runtime code and each needs its before/after run on all three before it is called done.
+- Platforms: every number here is Linux x86-64. Tracks 1 to 3 and items 5, 8, 9 and 10 change the compiler and `.ms` library, so they apply on macOS and Windows alike; items 4, 6 and 7 touch OS-specific runtime code, so each fix is written for all three platforms; measuring on Linux is enough.
 - Measured at or ahead of C, so not pursued: `Result` and `?`, interface dispatch, `print`, `String +=`, `parse_int`, process start.
 
 ## Components touched
