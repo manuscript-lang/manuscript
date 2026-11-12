@@ -522,6 +522,10 @@ impl<'a> Needle<'a> {
     }
 }
 
+/// Longest string `slice` checks for ASCII by scanning when it carries no flag: the scan costs less
+/// than walking scalars to the bounds.
+const SHORT_SCAN: usize = 256;
+
 /// Bytes scanned as words before a long haystack goes to a vector searcher (below [`SHORT_HAY`]).
 const NEAR: usize = 16;
 
@@ -1858,6 +1862,21 @@ pub unsafe extern "C-unwind" fn msrt_string_slice(
 ) -> u8 {
     // SAFETY: caller passes a live string and a writable out.
     unsafe {
+        // ASCII text with in-range bounds: a scalar index is a byte index.
+        let n = (*s).len();
+        if start >= 0
+            && end >= start
+            && end as u64 <= n as u64
+            && (known_ascii(s) || (n <= SHORT_SCAN && is_ascii(&*s)))
+        {
+            let (a, b) = (start as usize, end as usize);
+            *out = if a == 0 && b == n {
+                cloned(&*s)
+            } else {
+                from_bytes(&bytes(s)[a..b])
+            };
+            return STATUS_OK;
+        }
         if start >= 0 && end >= start && !known_ascii(s) {
             return match walk_sub_scalars(s, start as usize, end as usize) {
                 Some(r) => {

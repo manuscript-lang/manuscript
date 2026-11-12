@@ -892,6 +892,9 @@ impl<'a> FnLower<'a> {
         if let Some(v) = self.fused_chain(e, m, recv_expr)? {
             return Ok(v);
         }
+        if let Some(v) = self.fused_scalar_scan(e, m, recv_expr)? {
+            return Ok(v);
+        }
         let native = match m.native {
             ct::Native::Source => return self.source_method_call(e, view, m, recv_expr),
             ct::Native::Contract => return self.contract_call(e, view, m, recv_expr),
