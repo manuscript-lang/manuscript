@@ -210,13 +210,6 @@ pub struct CallableOwnership {
     pub borrowed_reads: HashSet<NodeId>,
 }
 
-impl CallableOwnership {
-    /// The use of `binding` at `node`.
-    pub fn use_at(&self, node: NodeId, binding: &BindingRef) -> Option<&Use> {
-        self.uses.get(&(node, binding.uid))
-    }
-}
-
 /// The ownership facts lowering and tooling read, in one value: the tables the ownership walk
 /// derives for a whole program, none of them recomputed by a later stage.
 #[derive(Default)]

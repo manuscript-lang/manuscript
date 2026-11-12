@@ -11,6 +11,7 @@ mod optional_defaults;
 mod portability;
 mod release;
 mod stages;
+mod stdlib_modules;
 mod stream_names;
 mod thread_affinity;
 mod unsafe_boundary;
