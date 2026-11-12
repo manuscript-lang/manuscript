@@ -1,0 +1,65 @@
+[
+  {
+    "case": "le-high-1",
+    "variant": "baseline-probe",
+    "returncode": 67,
+    "stderr": "wrong value\n  at probe.ms:867 in work_u64le\n  at probe.ms:916 in launch_u64le\n  at probe.ms:1293 in main\n",
+    "stdout": ""
+  },
+  {
+    "case": "le-high-1",
+    "variant": "probe",
+    "returncode": 67,
+    "stderr": "wrong value\n  at probe.ms:867 in work_u64le\n  at probe.ms:916 in launch_u64le\n  at probe.ms:1293 in main\n",
+    "stdout": ""
+  },
+  {
+    "case": "le-high-1",
+    "variant": "c-control/probe",
+    "returncode": 1,
+    "stderr": "wrong integer\n",
+    "stdout": ""
+  },
+  {
+    "case": "be-low-16",
+    "variant": "baseline-probe",
+    "returncode": 67,
+    "stderr": "wrong value\n  at probe.ms:941 in work_u64be\n  at probe.ms:990 in launch_u64be\n  at probe.ms:1294 in main\n",
+    "stdout": ""
+  },
+  {
+    "case": "be-low-16",
+    "variant": "probe",
+    "returncode": 67,
+    "stderr": "wrong value\n  at probe.ms:941 in work_u64be\n  at probe.ms:990 in launch_u64be\n  at probe.ms:1294 in main\n",
+    "stdout": ""
+  },
+  {
+    "case": "be-low-16",
+    "variant": "c-control/probe",
+    "returncode": 1,
+    "stderr": "wrong integer\n",
+    "stdout": ""
+  },
+  {
+    "case": "le-negative",
+    "variant": "baseline-probe",
+    "returncode": 67,
+    "stderr": "called Result.get() on error: binary: out of range; check is_ok first, or pass a default: get(default: ...)\n  at probe.ms:867 in work_u64le\n  at probe.ms:916 in launch_u64le\n  at probe.ms:1293 in main\n",
+    "stdout": ""
+  },
+  {
+    "case": "le-negative",
+    "variant": "probe",
+    "returncode": 67,
+    "stderr": "called Result.get() on error: binary: out of range; check is_ok first, or pass a default: get(default: ...)\n  at probe.ms:867 in work_u64le\n  at probe.ms:916 in launch_u64le\n  at probe.ms:1293 in main\n",
+    "stdout": ""
+  },
+  {
+    "case": "le-negative",
+    "variant": "c-control/probe",
+    "returncode": 1,
+    "stderr": "wrong range error\n",
+    "stdout": ""
+  }
+]

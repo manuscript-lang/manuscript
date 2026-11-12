@@ -127,3 +127,5 @@ For standard APIs (intrinsic/native members, design), read [declaration ownershi
   this decision (`toml.ms`, `bench/perf/toml-classification/`).
 
 - Fixed-width UInt64 readers retain their own `binary: out of range` preflight; other fixed-width readers report native `binary: value out of range`. Reusing `unsigned_word` after one full-width read must preserve that guard and every bit of the unsigned upper half. Keep the full-range, nested-view, short-input and extreme-offset cases in `varint.ms`; see the [binary-word measurements](../../bench/perf/binary-words/README.md).
+
+- Fixed-width binary decoding may specialize the existing eight-byte runtime path after its checked slice lookup. Keep the other-width fallback, zero extension, endian flag convention, unaligned reads and untouched output on error. Direct endian decoding has measured gains beyond the UInt64 source simplification; preserve neighboring-width and packing controls because added dispatch can regress callers ([evidence](../../bench/perf/binary-word-decode/README.md)).

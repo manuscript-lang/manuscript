@@ -1,0 +1,69 @@
+{
+  "verified_reports": 28,
+  "verified_samples": 588,
+  "aa": [
+    {
+      "case": "be-high-1",
+      "median": 0.9785387856665742,
+      "range": [
+        0.8956402957210364,
+        1.1181410052306473
+      ]
+    },
+    {
+      "case": "be-high-8192",
+      "median": 1.0447451298407522,
+      "range": [
+        0.9716607586820514,
+        1.1397006982129254
+      ]
+    },
+    {
+      "case": "be-negative",
+      "median": 1.0195782991709765,
+      "range": [
+        0.9898684419781311,
+        2.9771342864280625
+      ]
+    },
+    {
+      "case": "unchanged-pack-u32",
+      "median": 0.9854695990938872,
+      "range": [
+        0.6885527184931393,
+        1.0473234691154096
+      ]
+    },
+    {
+      "case": "unchanged-read-u32",
+      "median": 1.0006655426406077,
+      "range": [
+        0.9626975084194057,
+        1.03072417141492
+      ]
+    }
+  ],
+  "decision": "Qualified source/performance approval: initial u16LE/packing slowdowns do not persist; no meaningful observed regression, not proof of zero overhead. Native test draft sound; local tests and exact-head CI remain required.",
+  "bounded_controls": [
+    {
+      "case": "neighbor-u16le",
+      "mode": "ABBA",
+      "verified_ratio": 1.0064672080808383
+    },
+    {
+      "case": "neighbor-u16le",
+      "mode": "AA",
+      "verified_ratio": 0.9930171406153203
+    },
+    {
+      "case": "unchanged-pack-u32",
+      "mode": "ABBA",
+      "verified_ratio": 0.9986782940918748
+    },
+    {
+      "case": "unchanged-pack-u32",
+      "mode": "AA",
+      "verified_ratio": 1.0145208429091046
+    }
+  ]
+}

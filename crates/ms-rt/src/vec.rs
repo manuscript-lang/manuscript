@@ -1916,6 +1916,16 @@ pub unsafe extern "C-unwind" fn msrt_bytes_read_word(
         else {
             return STATUS_OUT_OF_RANGE;
         };
+        if n == 8 {
+            let bytes: [u8; 8] = raw.try_into().expect("checked eight-byte slice");
+            let value = if little == 0 {
+                i64::from_be_bytes(bytes)
+            } else {
+                i64::from_le_bytes(bytes)
+            };
+            out.write(value);
+            return STATUS_OK;
+        }
         let mut word = [0u8; 8];
         word[..n].copy_from_slice(raw);
         if little == 0 {
@@ -2013,6 +2023,53 @@ pub unsafe extern "C-unwind" fn msrt_hash_list(v: *const VecVal, d: ElemDesc) ->
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn read_word_preserves_bits_endian_and_error_output() {
+        let mut data: Vec<u8> = (0..24).map(|i| (i * 37 + 129) as u8).collect();
+        // SAFETY: the borrowed descriptors point into live data; this test only reads them.
+        unsafe {
+            for offset in [0, 1, 3] {
+                let bytes = VecVal {
+                    ptr: data.as_mut_ptr().add(offset),
+                    len: 16,
+                    cap: 0,
+                };
+                for width in 0..=8usize {
+                    for little in [0, 1, 2] {
+                        for at in 0..=16 - width {
+                            let raw = &data[offset + at..offset + at + width];
+                            let mut expected = 0u64;
+                            for (i, &byte) in raw.iter().enumerate() {
+                                let shift = if little == 0 { width - i - 1 } else { i };
+                                expected |= u64::from(byte) << (shift * 8);
+                            }
+                            let mut out = 42;
+                            assert_eq!(
+                                msrt_bytes_read_word(
+                                    &bytes,
+                                    at as i64,
+                                    width as i64,
+                                    little,
+                                    &mut out
+                                ),
+                                STATUS_OK
+                            );
+                            assert_eq!(out as u64, expected);
+                        }
+                        for at in [i64::MIN, -1, (17 - width) as i64, i64::MAX] {
+                            let mut out = 42;
+                            assert_eq!(
+                                msrt_bytes_read_word(&bytes, at, width as i64, little, &mut out),
+                                STATUS_OUT_OF_RANGE
+                            );
+                            assert_eq!(out, 42, "failed reads must not initialize output");
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     #[test]
     fn copy_short_matches_slice_copy() {

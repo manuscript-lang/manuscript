@@ -1,0 +1,20 @@
+{
+  "base": "cd94c6423b6000a881a7772de0ff8739f6a59770",
+  "baseline": "base plus #3682 stdlib patch",
+  "candidate": "same plus runtime.patch",
+  "hashes": {
+    "/workspace/scratch/binary-followup/current-baseline-ms": "58f859d4ac5ef7cdb8f8c9eabc706b9800756110facd7391e19815b5ab6dfbf7",
+    "/workspace/scratch/binary-followup/current-baseline-probe": "e30ed34c00312e8a80a3bbc0e8f1b6f6a748f552226c5f7a23a63be411cf24d0",
+    "/workspace/scratch/binary-followup/runtime-ms": "6da7ed66e70169baa05f7f43257271709a5bb98814f1b759c3d75e6a88ab9aa2",
+    "/workspace/scratch/binary-followup/runtime-probe": "650c48b78c48c4830ce7b1fed83636189d7fca5ef3177db2c4ffe95238df6e7c",
+    "/workspace/scratch/binary-followup/probe.ms": "8902c04fa4ab12876b7607158a4cc7cdc47a2b1672ef4d2eed9aa257f3a29ba7",
+    "/workspace/scratch/binary-followup/runtime.patch": "e4c329958ffcc4f92dbf048d7e71d902a0df852d631e5431691a8b6b3f9f8639",
+    "/workspace/scratch/binary-followup/runtime-focus.py": "4056152664094d93afc486e18ae4e687c0f4b6dfff4161abae99663b848d01c5",
+    "/workspace/scratch/binary-followup/c-control/probe": "b186ed639e15eff8f567d83f67164c4a7b22dafcd0a10aa448651451092cbeb2"
+  },
+  "stdlib_bytes_sha256": "991594211945bb3d60fde3639a155f0446ddf5d95164daa94ee5161b4b9b6d33",
+  "runtime_candidate_sha256": "5068722cda5da0317b84a6814824f31630257c15666202ee2dabd5a721032119",
+  "runtime_baseline_sha256": "56b971920eba9ba776f6c441e19af56c4c010a05fabf360a665924b98ac477fb",
+  "final_runtime_function_sha256": "d0ce199271528698988af1ea3e6d7e50d23060cc1e8bc50cd5edd6d8b0220d42",
+  "final_note": "Production runtime function exactly matches measured candidate. Only native unit test added afterward; sourceworktree merged measured currentmain into unchanged #3682 branch."
+}

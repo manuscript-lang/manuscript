@@ -1,0 +1,21 @@
+diff --git a/crates/ms-rt/src/vec.rs b/crates/ms-rt/src/vec.rs
+index 1c4d29ac6..6b7c749ef 100644
+--- a/crates/ms-rt/src/vec.rs
++++ b/crates/ms-rt/src/vec.rs
+@@ -1916,6 +1916,16 @@ pub unsafe extern "C-unwind" fn msrt_bytes_read_word(
+         else {
+             return STATUS_OUT_OF_RANGE;
+         };
++        if n == 8 {
++            let bytes: [u8; 8] = raw.try_into().expect("checked eight-byte slice");
++            let value = if little == 0 {
++                i64::from_be_bytes(bytes)
++            } else {
++                i64::from_le_bytes(bytes)
++            };
++            out.write(value);
++            return STATUS_OK;
++        }
+         let mut word = [0u8; 8];
+         word[..n].copy_from_slice(raw);
+         if little == 0 {

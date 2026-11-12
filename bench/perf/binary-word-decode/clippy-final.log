@@ -1,0 +1,42 @@
+   Compiling ms-clif v0.0.0 (/workspace/binary-runtime-pr/crates/ms-clif)
+   Compiling ms-cli v0.1.0 (/workspace/binary-runtime-pr/crates/ms-cli)
+    Checking ms-std-process v0.1.0 (/workspace/binary-runtime-pr/crates/ms-std-process)
+    Checking socket2 v0.6.5
+    Checking unicode-width v0.2.3
+    Checking ms-std-crypto v0.1.0 (/workspace/binary-runtime-pr/crates/ms-std-crypto)
+warning: ms-clif@0.0.0: no /workspace/binary-runtime-pr/crates/ms-clif/../../target/ms-native/ms_rt_hot.ll: release builds will not inline runtime helpers (run `cargo xtask runtime`)
+    Checking ms-std-time v0.1.0 (/workspace/binary-runtime-pr/crates/ms-std-time)
+    Checking ms-std-archive v0.1.0 (/workspace/binary-runtime-pr/crates/ms-std-archive)
+    Checking ms-std-regex v0.1.0 (/workspace/binary-runtime-pr/crates/ms-std-regex)
+    Checking ms-std-url v0.1.0 (/workspace/binary-runtime-pr/crates/ms-std-url)
+    Checking ms-std-html v0.1.0 (/workspace/binary-runtime-pr/crates/ms-std-html)
+    Checking ms-std-json v0.1.0 (/workspace/binary-runtime-pr/crates/ms-std-json)
+    Checking ms-build v0.0.0 (/workspace/binary-runtime-pr/crates/ms-build)
+    Checking ms-std-system v0.1.0 (/workspace/binary-runtime-pr/crates/ms-std-system)
+    Checking ms-std-table v0.1.0 (/workspace/binary-runtime-pr/crates/ms-std-table)
+    Checking ms-std-net v0.1.0 (/workspace/binary-runtime-pr/crates/ms-std-net)
+    Checking ms-std-terminal v0.1.0 (/workspace/binary-runtime-pr/crates/ms-std-terminal)
+    Checking ms-std-decimal v0.1.0 (/workspace/binary-runtime-pr/crates/ms-std-decimal)
+    Checking ms-std-bigint v0.1.0 (/workspace/binary-runtime-pr/crates/ms-std-bigint)
+    Checking ms-conform v0.1.0 (/workspace/binary-runtime-pr/crates/ms-conform)
+error: failed to run custom build command for `ms-cli v0.1.0 (/workspace/binary-runtime-pr/crates/ms-cli)`
+
+Caused by:
+  process didn't exit successfully: `/workspace/codec-native-review/target/debug/build/ms-cli-4713a6cc28acdf98/build-script-build` (exit status: 101)
+  --- stdout
+  cargo:rerun-if-changed=/workspace/binary-runtime-pr/crates/ms-cli/../../.msversion
+  cargo:rustc-env=MS_VERSION=0.1.0
+  cargo:rerun-if-env-changed=MS_NATIVE_LIB
+  cargo:rerun-if-changed=/workspace/binary-followup/target/ms-native/libms_native.a
+  cargo:rustc-env=MS_NATIVE_LEN=47349712
+  cargo:rustc-env=MS_NATIVE_ID=a322dda1c8e0fa93-47349712
+  cargo:rerun-if-env-changed=MS_NATIVE_MUSL_LIB
+  cargo:rerun-if-changed=/workspace/binary-runtime-pr/crates/ms-cli/../../target/ms-native/libms_native_musl.a
+
+  --- stderr
+
+  thread 'main' (221319) panicked at crates/ms-cli/build.rs:36:9:
+  cannot read the native runtime /workspace/binary-runtime-pr/crates/ms-cli/../../target/ms-native/libms_native_musl.a: No such file or directory (os error 2)
+  build it first with `cargo xtask runtime` (or `make runtime`), or set MS_NATIVE_MUSL_LIB to a prebuilt libms_native_musl.a
+  note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+warning: build failed, waiting for other jobs to finish...
