@@ -2,8 +2,9 @@ name: Platform benchmarks
 
 # Manual runs only: builds the release `ms` natively on each platform, runs the runtime allocator and
 # memory tests, prints the bench/perf/strappend table (StringBuilder and List growth against Rust) and
-# three rounds of bench/perf/json (against Node and serde_json), so that a runtime change can be
-# checked on Linux, macOS and Windows before and after merging.
+# three rounds of bench/perf/json (against Node and serde_json), the engineering tasks against C,
+# the structural-gap shapes and the c0x-c4x workloads against Go and Rust, so that a runtime change
+# can be checked on Linux, macOS and Windows before and after merging.
 on:
   workflow_dispatch:
 
@@ -84,9 +85,28 @@ jobs:
           for _ in 1 2 3; do
             MS="$PWD/$ms" "$PWD/$ms" run bench/tools/json_bench.ms
           done | tee json-${{ matrix.name }}.txt
+      - name: Run bench/perf/engineering (against C)
+        run: |
+          ms=target/release/ms
+          if [ "$RUNNER_OS" = Windows ]; then ms="$ms.exe"; export CC=clang; fi
+          MS="$PWD/$ms" "$PWD/$ms" run bench/tools/engineering.ms -- 5 | tee engineering-${{ matrix.name }}.txt
+      - name: Run bench/perf/structural-gaps shapes
+        run: |
+          ms=target/release/ms
+          if [ "$RUNNER_OS" = Windows ]; then ms="$ms.exe"; fi
+          "$PWD/$ms" build bench/perf/structural-gaps/shapes.ms -o shapes
+          if [ "$RUNNER_OS" = Windows ]; then ./shapes.exe; else ./shapes; fi | tee shapes-${{ matrix.name }}.txt
+      - name: Run bench/perf/workloads (against Go and Rust)
+        run: |
+          ms=target/release/ms
+          if [ "$RUNNER_OS" = Windows ]; then ms="$ms.exe"; fi
+          MS="$PWD/$ms" "$PWD/$ms" run bench/tools/workloads.ms -- 3 | tee workloads-${{ matrix.name }}.txt
       - uses: actions/upload-artifact@v7
         with:
           name: bench-${{ matrix.name }}
           path: |
             strappend-${{ matrix.name }}.txt
             json-${{ matrix.name }}.txt
+            engineering-${{ matrix.name }}.txt
+            shapes-${{ matrix.name }}.txt
+            workloads-${{ matrix.name }}.txt
