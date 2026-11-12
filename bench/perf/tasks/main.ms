@@ -5,7 +5,7 @@
 // `ms run bench/perf/tasks/main.ms -- 1000000 sleep`. Linux only for the report
 // (it reads /proc/self/status); the tasks themselves are portable.
 import (
-	Promise, owned_task from "@std/concurrency/promise.ms",
+	Placement, Promise, PromiseOptions, promise from "@std/concurrency/promise.ms",
 	arguments from "@std/os/env.ms",
 	read_file from "@std/os/fs.ms",
 	monotonic, seconds, sleep from "@std/time.ms",
@@ -49,11 +49,32 @@ fn main() Unit:
 
 	for i in 0..n:
 		if mode == "sleep":
-			promises.append(owned_task[Int](fn: park_sleep(i)))
+			promises.append(
+				promise(
+					fn: park_sleep(i),
+					options: PromiseOptions(
+						placement: Placement.Here
+					)
+				)
+			)
 		else if mode == "deep":
-			promises.append(owned_task[Int](fn: park_deep(i)))
+			promises.append(
+				promise(
+					fn: park_deep(i),
+					options: PromiseOptions(
+						placement: Placement.Here
+					)
+				)
+			)
 		else:
-			promises.append(owned_task[Int](fn: park_read(i)))
+			promises.append(
+				promise(
+					fn: park_read(i),
+					options: PromiseOptions(
+						placement: Placement.Here
+					)
+				)
+			)
 
 	t1 := monotonic()
 

@@ -2,7 +2,7 @@
 // same loop without a crossing, both on the main task, then a 900k-frame recursion. See
 // README.md.
 import (
-	owned_task from "@std/concurrency/promise.ms",
+	Placement, PromiseOptions, promise from "@std/concurrency/promise.ms",
 	read_file from "@std/os/fs.ms",
 	monotonic from "@std/time.ms",
 )
@@ -24,7 +24,10 @@ fn status(label: String) Unit:
 			print(label + " " + line)
 
 fn in_task(n: Int, rounds: Int) Int:
-	p := owned_task[Int](fn: ok(loop_depth(n, rounds)))
+	p := promise(
+		fn: ok(loop_depth(n, rounds)),
+		options: PromiseOptions(placement: Placement.Here)
+	)
 	return p.wait().get()
 
 fn main() Int:

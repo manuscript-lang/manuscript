@@ -1,6 +1,6 @@
 import (
 	Bytes from "@std/bytes.ms",
-	Promise, owned_task from "@std/concurrency/promise.ms",
+	Placement, Promise, PromiseOptions, promise from "@std/concurrency/promise.ms",
 	Closeable from "@std/core.ms",
 	DescriptorSink,
 	DescriptorSource,
@@ -261,13 +261,13 @@ fn environment_values(environment: Map[String, String]) List[String]:
 	var values = environment.entries().map(fn entry: entry.value.clone())
 	return values
 
-// The work of `run`: a returned closure owns the program, arguments and options.
-fn run_job(
+// The work of `run`.
+fn run_command(
 	program: String,
-	arguments: List[String] = [],
+	arguments: List[String],
 	options: RunOptions,
-) fn() CommandOutput!:
-	return fn: msstd_process_command_run(
+) CommandOutput!:
+	return msstd_process_command_run(
 		program,
 		arguments,
 		options.input,
@@ -289,8 +289,12 @@ export fn run(
 	arguments: List[String] = [],
 	options: RunOptions = RunOptions(),
 ) Promise[CommandOutput]:
-	return owned_task[CommandOutput](
-		run_job(program.clone(), arguments.clone(), options.clone())
+	owned_program := program.clone()
+	owned_arguments := arguments.clone()
+	owned_options := options.clone()
+	return promise(
+		fn: run_command(owned_program, owned_arguments, owned_options),
+		options: PromiseOptions(placement: Placement.Here)
 	)
 
 // Starts `program` directly, without a shell, searching the PATH, and returns a live

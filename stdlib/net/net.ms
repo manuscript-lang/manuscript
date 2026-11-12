@@ -1,10 +1,10 @@
 import (
 	Bytes from "@std/bytes.ms",
+	Placement,
 	Promise,
 	PromiseOptions,
 	complete,
 	deferred,
-	owned_task,
 	promise from "@std/concurrency/promise.ms",
 	Closeable, Writable from "@std/core.ms",
 	Pipe, ReadStream, Sink, Source, WriteStream, pipe from "@std/io/io.ms",
@@ -235,8 +235,10 @@ fn var Listener.close() Unit!:
 // listener the handshake completes before the connection is returned; a failed
 // handshake drops that connection and gives EIO.
 fn Listener.accept(timeout: Duration? = none) Promise[Connection]:
-	return owned_task[Connection](
-		accept_job(msstd_net_listener_share(self.native), timeout)
+	native := msstd_net_listener_share(self.native)
+	return promise(
+		fn: accepted(native, timeout),
+		options: PromiseOptions(placement: Placement.Here)
 	)
 
 // Returns the bound local address as `host:port` text, which reveals the port
@@ -244,10 +246,9 @@ fn Listener.accept(timeout: Duration? = none) Promise[Connection]:
 fn Listener.address() String:
 	return msstd_net_listener_address(self.native)
 
-// The work of `accept`: a returned closure owns its own handle on the listener and the
-// time it waits.
-fn accept_job(native: NativeListener, timeout: Duration?) fn() Connection!:
-	return fn: ok(connection(msstd_net_listener_accept(native, timeout)?))
+// The work of `accept`, on its own handle on the listener.
+fn accepted(native: NativeListener, timeout: Duration?) Connection!:
+	return ok(connection(msstd_net_listener_accept(native, timeout)?))
 
 // The runtime handle behind a `Network`.
 export extern type NativeNetwork
@@ -470,22 +471,23 @@ export fn connect(
 	tls: TlsOptions? = none,
 	timeout: Duration? = none,
 ) Promise[Connection]:
-	return owned_task[Connection](connect_job(address.clone(), tls.clone(), timeout))
+	owned_address := address.clone()
+	owned_tls := tls.clone()
+	return promise(
+		fn: host_network().connect(owned_address, owned_tls, timeout),
+		options: PromiseOptions(placement: Placement.Here)
+	)
 
 // Starts connecting to the Unix domain socket at `path` and returns its promise. Any
 // restricted network gives EACCES because Unix sockets bypass host and CIDR checks, and
 // an empty path gives EINVAL. `timeout` bounds the attempt.
 // ms: effect std.net.connect
 export fn connect_unix(path: String, timeout: Duration? = none) Promise[Connection]:
-	return owned_task[Connection](connect_unix_job(path.clone(), timeout))
-
-// The work of `connect` and `connect_unix`: a returned closure owns its address (or
-// socket path), TLS settings and time.
-fn connect_job(address: String, tls: TlsOptions?, timeout: Duration?) fn() Connection!:
-	return fn: host_network().connect(address, tls, timeout)
-
-fn connect_unix_job(path: String, timeout: Duration?) fn() Connection!:
-	return fn: host_network().connect_unix(path, timeout)
+	owned_path := path.clone()
+	return promise(
+		fn: host_network().connect_unix(owned_path, timeout),
+		options: PromiseOptions(placement: Placement.Here)
+	)
 
 // Creates a reusable HTTP client with connection pooling that dials through this
 // network, so its restrictions and resolver apply to every request and redirect.
@@ -655,7 +657,7 @@ fn accept_loop(listening: ServingHandle, count: Int) Unit!:
 		accepting.workers.append(
 			promise(
 				fn: serve_worker(mine, queue),
-				options: PromiseOptions(spread: true)
+				options: PromiseOptions(placement: Placement.Spread)
 			)
 		)
 		i += 1

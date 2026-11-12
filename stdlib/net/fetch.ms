@@ -2,7 +2,7 @@
 // `@std/data/json.ms`.
 import (
 	Bytes from "@std/bytes.ms",
-	Promise, owned_task from "@std/concurrency/promise.ms",
+	Placement, Promise, PromiseOptions, promise from "@std/concurrency/promise.ms",
 	Closeable, Data from "@std/core.ms",
 	JsonOptions, parse, stringify from "@std/data/json.ms",
 	HttpClient,
@@ -134,12 +134,12 @@ fn Fetcher.fetch(
 	url: String,
 	options: FetchOptions = FetchOptions(),
 ) Promise[FetchResponse]:
-	return owned_task[FetchResponse](
-		send_job(
-			msstd_http_client_share(self.client.native),
-			url.clone(),
-			options.clone(),
-		)
+	native := msstd_http_client_share(self.client.native)
+	owned_url := url.clone()
+	owned_options := options.clone()
+	return promise(
+		fn: sent(native, owned_url, owned_options),
+		options: PromiseOptions(placement: Placement.Here)
 	)
 
 // Sends the request and returns the streaming body. `options.timeout` is a
@@ -251,24 +251,16 @@ export fn fetch(
 	url: String,
 	options: FetchOptions = FetchOptions(),
 ) Promise[FetchResponse]:
-	return owned_task[FetchResponse](fetch_job(url.clone(), options.clone()))
-
-// The work of `fetch`: a returned closure owns the URL and options.
-fn fetch_job(url: String, options: FetchOptions) fn() FetchResponse!:
-	return fn: fetched(url, options)
+	owned_url := url.clone()
+	owned_options := options.clone()
+	return promise(
+		fn: fetched(owned_url, owned_options),
+		options: PromiseOptions(placement: Placement.Here)
+	)
 
 fn fetched(url: String, options: FetchOptions) FetchResponse!:
 	client := fetcher()?
 	return sent(client.client.native, url, options)
-
-// The work of `Fetcher.fetch`: a returned closure owns its handle on the pooled client,
-// the URL and options.
-fn send_job(
-	native: NativeHttpClient,
-	url: String,
-	options: FetchOptions,
-) fn() FetchResponse!:
-	return fn: sent(native, url, options)
 
 // Sends the request on the pooled client behind `native` and buffers the response body.
 fn sent(native: NativeHttpClient, url: String, options: FetchOptions) FetchResponse!:
