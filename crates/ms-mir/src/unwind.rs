@@ -531,7 +531,15 @@ fn analyze(
         let mut open = holes[bi];
         // The values of the window that the latest instruction may still extend.
         let mut reach: Option<Vec<Value>> = None;
+        // Whether the window's registrations may sit below entries another discard popped: an
+        // extra pushed after that would not be popped by the window's own discard.
+        let mut stack_moved = false;
         for (k, inst) in blk.insts.iter().enumerate() {
+            let discards =
+                matches!((inst.op, inst.imm), (Op::CallRt, Imm::Ext(e)) if e == cx.discard);
+            if discards {
+                stack_moved = true;
+            }
             let modes = crate::verify::arg_modes(m, inst);
             let consumed: Vec<u32> = inst
                 .args
@@ -564,14 +572,31 @@ fn analyze(
                 let drops = coverable(&live, closed_by_with, &hoisted[bi]);
                 match (&mut reach, plans[bi].last_mut()) {
                     (Some(set), Some(w)) if *set == drops => w.last = k,
+                    // Values born since the last exit point join the open window with a push
+                    // of their own, so earlier values are not registered again; the window's
+                    // single discard pops them all.
+                    (Some(set), Some(w))
+                        if !stack_moved
+                            && drops.len() > set.len()
+                            && set.iter().all(|v| drops.contains(v)) =>
+                    {
+                        let added: Vec<Value> =
+                            drops.iter().filter(|v| !set.contains(v)).copied().collect();
+                        w.last = k;
+                        w.extras.push((k, added));
+                        *set = drops;
+                    }
                     _ => {
                         reach = None;
+                        // The instruction that opens the window may itself pop entries.
+                        stack_moved = discards;
                         if !drops.is_empty() {
                             reach = Some(drops.clone());
                             plans[bi].push(Window {
                                 first: k,
                                 last: k,
                                 values: drops,
+                                extras: Vec::new(),
                             });
                         }
                     }
@@ -959,6 +984,7 @@ fn function(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
         let mut out: Vec<Inst> = Vec::with_capacity(old.len() + plan.len() * 3);
         let mut next = plan.iter().peekable();
         let mut open_window: Option<(usize, Value, Option<crate::ir::Loc>)> = None;
+        let mut extras: std::slice::Iter<'_, (usize, Vec<Value>)> = [].iter();
         let end_loc = old.last().map(|i| i.loc);
         for (k, inst) in old.into_iter().enumerate() {
             let loc = inst.loc;
@@ -971,6 +997,11 @@ fn function(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
             if let Some(w) = next.next_if(|w| w.first == k) {
                 let first = push_all(m, cx, f, &mut out, &w.values, loc);
                 open_window = Some((w.last, first, Some(loc)));
+                extras = w.extras.iter();
+            }
+            if let Some((_, added)) = extras.as_slice().first().filter(|(at, _)| *at == k) {
+                push_all(m, cx, f, &mut out, added, loc);
+                extras.next();
             }
             out.extend(inst);
             if let Some((last, first, loc)) = open_window
@@ -1126,6 +1157,8 @@ struct Window {
     first: usize,
     last: usize,
     values: Vec<Value>,
+    /// Values registered mid-window, by the instruction they precede, on top of `values`.
+    extras: Vec<(usize, Vec<Value>)>,
 }
 
 /// The live values a registration may cover: a scope close sees its own values undropped, and a
