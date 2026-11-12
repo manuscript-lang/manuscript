@@ -687,7 +687,7 @@ impl InstCheck<'_, '_> {
                 self.arity(2)?;
                 let elem = self
                     .m
-                    .list_elem(self.t(0))
+                    .seq_elem(self.t(0))
                     .ok_or("operand 0 must be a list")?;
                 self.want(
                     self.t(1) == Ty::INT && self.res == Some(elem),

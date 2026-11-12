@@ -611,6 +611,21 @@ impl<'a> FnLower<'a> {
         let var = self
             .b
             .declare_var(ty, if owned { Mode::Move } else { Mode::Borrow });
+        if matches!(self.b.m.types.kind(ty), TyKind::Rec(_)) && !self.slotted.contains(&b.uid) {
+            // A record stays in the caller's slot: field reads and writes touch only the fields
+            // they name, instead of moving every field out at entry and back at each return.
+            self.locals.insert(
+                b.uid,
+                Local {
+                    var,
+                    ty,
+                    slot: Some(v),
+                    opt: false,
+                },
+            );
+            self.var_slots.push(VarSlot { uid: b.uid, ptr: v });
+            return Ok(());
+        }
         let x = self.move_out(v, ty);
         self.b.def_var(var, x);
         self.locals.insert(
@@ -1575,6 +1590,10 @@ impl<'a> FnLower<'a> {
             default_bindings = self.leave_default_frames();
             for slot in self.var_slots.clone() {
                 let l = self.locals[&slot.uid];
+                if l.slot == Some(slot.ptr) {
+                    // Changed in place: nothing to put back.
+                    continue;
+                }
                 let x = self.local_take(&l);
                 self.move_into(slot.ptr, x);
             }

@@ -4,7 +4,7 @@ use super::*;
 
 impl<'a, 'm> Lower<'a, 'm> {
     pub(super) fn elem_info(&self, list_ty: Ty) -> (Ty, Vec<Leaf>, i64) {
-        let e = self.g.m.list_elem(list_ty).unwrap_or(Ty::INT);
+        let e = self.g.m.seq_elem(list_ty).unwrap_or(Ty::INT);
         let leaves = self.g.lay.leaves(e);
         let size = mem_layout(&leaves).size as i64;
         (e, leaves, size)

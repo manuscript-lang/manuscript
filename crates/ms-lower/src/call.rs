@@ -888,6 +888,9 @@ impl<'a> FnLower<'a> {
         if let Some(v) = self.map_get_chain(e, view, recv_expr, &method)? {
             return Ok(v);
         }
+        if let Some(v) = self.const_map_method(recv_expr, view, &method)? {
+            return Ok(v);
+        }
         let recv = self.expr(recv_expr)?;
         if self.dead {
             return Ok(recv);

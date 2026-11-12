@@ -100,7 +100,7 @@ impl<'a> FnLower<'a> {
         {
             return self.map_get_or(recv, &m.ty.params, args, result);
         }
-        if let (TyKind::List(elem), "get") = (self.b.m.types.kind(rty).clone(), name.as_str()) {
+        if let (Some(elem), "get") = (self.b.m.seq_elem(rty), name.as_str()) {
             let find = |want: bool| {
                 args.iter()
                     .find(|a| (self.syms.str(a.name) == "default") == want)
