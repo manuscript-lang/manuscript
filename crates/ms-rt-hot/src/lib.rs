@@ -84,6 +84,137 @@ pub unsafe extern "C-unwind" fn msrt_string_contains(a: usize, v: usize) -> u8 {
     }
 }
 
+/// Haystacks shorter than this are scanned byte by byte: the vector searchers' setup costs more
+/// than the scan.
+pub const SHORT_HAY: usize = 32;
+
+/// Haystacks shorter than this (a line of a log or a record) are also scanned directly for a
+/// needle of two or more bytes: building a `memmem` searcher per call costs several times the
+/// scan of so few bytes.
+pub const MEDIUM_HAY: usize = 128;
+
+/// `find` for a short haystack and a non-empty needle.
+#[inline]
+pub fn find_short(hay: &[u8], needle: &[u8]) -> Option<usize> {
+    let (&first, rest) = needle.split_first()?;
+    let last = hay.len().checked_sub(needle.len())?;
+    let mut i = 0;
+    while i <= last {
+        i += memchr_short(first, &hay[i..=last])?;
+        if hay[i + 1..i + needle.len()] == *rest {
+            return Some(i);
+        }
+        i += 1;
+    }
+    None
+}
+
+/// `memchr` for a short haystack: eight bytes per step, testing each word for a byte equal to
+/// `c` with the zero-byte trick.
+#[inline]
+pub fn memchr_short(c: u8, hay: &[u8]) -> Option<usize> {
+    const LO: u64 = 0x0101_0101_0101_0101;
+    const HI: u64 = 0x8080_8080_8080_8080;
+    let pat = LO * c as u64;
+    let (chunks, rest) = hay.as_chunks::<8>();
+    let mut at = 0;
+    for w in chunks {
+        let x = u64::from_le_bytes(*w) ^ pat;
+        let hit = x.wrapping_sub(LO) & !x & HI;
+        if hit != 0 {
+            return Some(at + hit.trailing_zeros() as usize / 8);
+        }
+        at += 8;
+    }
+    rest.iter().position(|&b| b == c).map(|p| at + p)
+}
+
+unsafe extern "C-unwind" {
+    /// The general search and the scalar index of a match in a non-ASCII text, in the archive.
+    fn msrt_string_index_of_long(a: usize, v: usize, out: usize) -> u8;
+}
+
+/// C view: `msrt_string_index_of(a: *const StrVal, v: *const StrVal, out: *mut i64) -> u8`
+///
+/// A search in an ASCII text of under [`MEDIUM_HAY`] bytes (a line, a record, a field) is a scan
+/// the caller inlines; every other search calls the runtime.
+#[unsafe(no_mangle)]
+// ms: leaf pure domain=string
+pub unsafe extern "C-unwind" fn msrt_string_index_of(a: usize, v: usize, out: usize) -> u8 {
+    // SAFETY: caller passes live strings and a writable out.
+    unsafe {
+        let (sa, sv) = (a as *const StrVal, v as *const StrVal);
+        let (hay, needle) = (bytes(sa), bytes(sv));
+        if hay.len() < MEDIUM_HAY && hay.is_ascii() {
+            let found = match needle {
+                [] => Some(0),
+                [c] => memchr_short(*c, hay),
+                _ => find_short(hay, needle),
+            };
+            return match found {
+                Some(i) => {
+                    *(out as *mut i64) = i as i64;
+                    1
+                }
+                None => 0,
+            };
+        }
+        msrt_string_index_of_long(a, v, out)
+    }
+}
+
+unsafe extern "C-unwind" {
+    /// The general view: non-ASCII text, long unflagged text and out-of-range bounds (a fault).
+    fn msrt_string_view_slow(s: usize, start: i64, end: i64, out: usize);
+}
+
+/// C view: `msrt_string_view(s: *const StrVal, start: i64, end: i64, out: *mut StrVal)`
+///
+/// `String.view` of an ASCII text with bounds inside it is two words computed by the caller: the
+/// scalar bounds are byte offsets, and a short piece is copied inline. Everything else, including
+/// the fault for bounds outside the text, is the runtime's.
+#[unsafe(no_mangle)]
+// ms: leaf pure domain=string
+pub unsafe extern "C-unwind" fn msrt_string_view(s: usize, start: i64, end: i64, out: usize) {
+    // SAFETY: caller passes a live string and a writable `out`.
+    unsafe {
+        let sv = s as *const StrVal;
+        let text = bytes(sv);
+        let n = text.len() as i64;
+        let (a, b) = (
+            if start < 0 { n + start } else { start },
+            if end < 0 { n + end } else { end },
+        );
+        let ascii = (*sv).flagged_ascii() || (text.len() < MEDIUM_HAY && text.is_ascii());
+        if !ascii || a < 0 || b < a || b > n {
+            return msrt_string_view_slow(s, start, end, out);
+        }
+        let piece = &text[a as usize..b as usize];
+        let view = if piece.len() <= ms_rt_abi::STR_INLINE_MAX {
+            StrVal::inline(piece)
+        } else {
+            StrVal::view(piece.as_ptr().cast_mut(), piece.len())
+        };
+        view.write_to(out as *mut StrVal)
+    }
+}
+
+/// C view: `msrt_string_starts_with(a: *const StrVal, v: *const StrVal) -> u8`
+#[unsafe(no_mangle)]
+// ms: leaf pure domain=string
+pub unsafe extern "C-unwind" fn msrt_string_starts_with(a: usize, v: usize) -> u8 {
+    // SAFETY: caller passes live strings.
+    unsafe { bytes(a as *const StrVal).starts_with(bytes(v as *const StrVal)) as u8 }
+}
+
+/// C view: `msrt_string_ends_with(a: *const StrVal, v: *const StrVal) -> u8`
+#[unsafe(no_mangle)]
+// ms: leaf pure domain=string
+pub unsafe extern "C-unwind" fn msrt_string_ends_with(a: usize, v: usize) -> u8 {
+    // SAFETY: caller passes live strings.
+    unsafe { bytes(a as *const StrVal).ends_with(bytes(v as *const StrVal)) as u8 }
+}
+
 /// C view: `msrt_string_compare(a: *const StrVal, b: *const StrVal) -> i64`
 #[unsafe(no_mangle)]
 // ms: leaf pure

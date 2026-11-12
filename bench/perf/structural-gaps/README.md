@@ -59,3 +59,18 @@ Largest native rows: `ms_rt::string::find` 37.8% of `grep`; `msrt_string_split` 
 
 - Building 1M closures that capture one `Int` into a `List[fn(Int) Int]`: 27.7 and 28.4 ms, about 28 ns each.
 - Skeptical review rerun of the `split` row with a borrowed-parameter receiver and `f.get(5)`, 1M calls: `msrt_string_split_view` 69 to 70 ms, `msrt_string_split` 78 to 81 ms, `index_of` and `view` 19 to 20 ms. Lending the pieces is worth 12% to 15%; the list and the per-piece calls are the rest. The view entry is chosen only for a parameter receiver read through `get`, `length` or `is_empty` (`crates/ms-lower/src/native/method.rs:106`, `mutation.rs:214`); `f[5]` takes the copying entry.
+
+## 2026-11-12: inlinable string scans (track 1, first step)
+
+Same machine and build type as above (Release LLVM `ms`; callgrind instructions on the first 30,000 lines of each input, outputs compared byte for byte with the baseline build).
+
+`String.index_of`, `starts_with`, `ends_with` and `view` moved into `ms-rt-hot`: a search in an ASCII text under 128 bytes and a view of an ASCII text inside its bounds are now code the caller inlines; other cases call the runtime as before (`msrt_string_index_of_long`, `msrt_string_view_slow`, the latter keeps the bounds fault). `split` scans a single-byte separator with one searcher and builds pieces of up to 15 bytes inline without a call.
+
+| task | before | after | change |
+| --- | ---: | ---: | ---: |
+| logstats | 112.86M | 108.45M | -3.9% |
+| wordfreq | 167.99M | 152.11M | -9.5% |
+| csvgroup | 142.51M | 138.65M | -2.7% |
+| grep | 19.73M | 19.70M | 0% |
+
+The 40% ceiling on `logstats` is not reached by this step: what is left is `msrt_string_split` and its list and heap pieces (allocation, `memcpy`, `free`), which are the lending and allocation tracks. `grep` is one long-haystack `memmem` search; nothing inlines there.

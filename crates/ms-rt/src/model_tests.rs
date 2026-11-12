@@ -530,7 +530,11 @@ fn string_ops_match_char_model(seed: u64) {
             let nv = new_str(&needle);
             let ns = &nv;
             let mut at = 0i64;
-            let found = string::msrt_string_index_of(s, ns, &mut at) != 0;
+            let found = ms_rt_hot::msrt_string_index_of(
+                s as *const _ as usize,
+                ns as *const _ as usize,
+                &mut at as *mut i64 as usize,
+            ) != 0;
             let want = model
                 .find(&needle)
                 .map(|b| model[..b].chars().count() as i64);
