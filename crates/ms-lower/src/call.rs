@@ -26,6 +26,9 @@ pub(crate) type VarArgument = (usize, Value, MTy, Option<usize>);
 
 impl<'a> FnLower<'a> {
     pub fn call_expr(&mut self, e: &Expr) -> Result<Val, Error> {
+        if let Some(v) = self.scalar_parse_int(e)? {
+            return Ok(v);
+        }
         let saved = self.scope_override;
         self.scope_override = self.call_evidence(e);
         let out = self.call_expr_in_scope(e);
