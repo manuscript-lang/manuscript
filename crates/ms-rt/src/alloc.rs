@@ -1581,7 +1581,7 @@ mod std_heap {
 /// Counters of Rust's own heap (`Vec`, `Box`, `Rc` in the `ms-std-*` natives), which counting
 /// builds keep apart from the runtime's blocks. A cancelled task that leaves such a value on a
 /// skipped frame shows up as a live count above the uncancelled run (`make cancel-sweep`).
-#[cfg(all(target_os = "linux", feature = "stats"))]
+#[cfg(feature = "stats")]
 pub(crate) mod rust_heap {
     use core::sync::atomic::{AtomicIsize, Ordering};
 
@@ -1602,5 +1602,5 @@ pub(crate) mod rust_heap {
     }
 }
 
-#[cfg(all(target_os = "linux", feature = "stats"))]
+#[cfg(feature = "stats")]
 pub use rust_heap::live as rust_heap_live;
