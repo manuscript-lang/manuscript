@@ -76,3 +76,19 @@ Same build and machine. `grid.ms`, `accumulate.ms`, `recursion.ms` and `teardown
 - `recursion`: the stack check is 5 of the instructions per call and two dependent loads (`and`, load the limit's address, compare with the limit). `gcc` also turns the second call into a loop, which is half of the gap.
 - `engineering/pargroup` (2,000 files, 4 workers): 53 to 79 ms against 21 to 37 ms. `strace -c -f`: 4,707 `futex`, 1,505 `epoll_wait` and 1,512 `write` calls where C makes none; each `read_file` inside a worker hands the read to a pool thread and waits to be woken.
 - At or ahead of C, so not opportunities: `Result` and `?` on a hot path (12.5 instructions per call and check), interface dispatch over a `List[Shape]`, `print` of interpolated lines (0.67x `printf`), `String +=` (1.02x), `parse_int` (80 instructions against `strtoll` 145), process start (0.4 ms more).
+
+## 2026-11-12, third pass: character code and library containers
+
+Same build and machine; callgrind instructions, C twins in `c/`.
+
+| program | ms | c | ms / c |
+| --- | ---: | ---: | ---: |
+| `tokens.ms`: tokenizer over 680 KB with `text.get(i)` and `c == "+"` | 173.4M | 15.1M | 11.5x |
+| `tokens_scalars.ms`: the same with `text.scalar_at(i)` and `c == 43` | 107.5M | 15.1M | 7.1x |
+| `queues.ms`: grid BFS over `Deque[Int]`, then 2M `PriorityQueue[Int]` operations | 1,527M | 603M | 2.5x |
+
+- `tokens`: `msrt_string_get` is 59% (about 62 instructions per call) and the compiled comparisons of one-character strings are 28% (72 instructions per input character; `c >= "0"` reaches `memcmp`). With code points, the compiled part falls to 20.9M, 1.4x C; the remaining 83.1M is the `msrt_string_scalar_at` call.
+- `queues`, BFS half: about 380M against C's 78M. `Deque` keeps `slots: List[T?]`, 16 bytes a slot for an `Int`, and `pop_front` calls `msrt_list_replace` to put `none` back: 109M in `deque.ms` and 70M in the runtime call for 2.25M pushes and pops, about 80 instructions a pair against a handful for a ring of plain slots. The caller's own loop is 202M (bounds, overflow and division checks on `seen[p + 1]`, `dist[p]`, `p % w`).
+- `queues`, heap half: about 1,070M against 524M, but not like for like: `PriorityQueue` keeps FIFO order among equal priorities with a second list.
+- At or ahead of C: `sqrt` and `sin` loops (0.94x), division and modulo loops (0.97x), `sorted()` of 1M `Int` and 200k `String` against `qsort` (0.96x). A tree interpreter over a recursive `enum` is 1.42x in `eval` (stack check and checked arithmetic); small-record arithmetic, a generic `Comparable` scan and an `entries()` loop are 1.39x together.
+- For the cost of the checks alone, the kernels page has C with Manuscript's checks against plain C: 1.07x (`nbody`) to 2.9x (`matmul`).
