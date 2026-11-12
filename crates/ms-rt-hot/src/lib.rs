@@ -24,7 +24,7 @@
 // Raw views of the runtime's memory, as in `ms-rt`.
 #![allow(unsafe_code)]
 
-use ms_rt_abi::{MapVal, StrVal, TypeDesc};
+use ms_rt_abi::{MapVal, StrVal, TypeDesc, VecVal};
 
 /// Top bit of a slot's hash word: set for a live entry, clear for a removed one.
 pub const LIVE: u64 = 1 << 63;
@@ -562,5 +562,70 @@ pub unsafe extern "C-unwind" fn msrt_map_entry_ptrs(
             *(val_out as *mut *const u8) = p.add(l.voff);
         }
         1
+    }
+}
+
+// ---------------------------------------------------------------------------
+// String builders
+// ---------------------------------------------------------------------------
+
+/// Copies `n <= 16` bytes with at most two overlapping loads and stores, so the compiler cannot
+/// turn it into a vector loop or a `memcpy` call. The ranges must not overlap.
+#[inline(always)]
+pub unsafe fn copy_short(src: *const u8, dst: *mut u8, n: usize) {
+    // SAFETY: caller guarantees `n` readable and writable bytes; each access stays within them.
+    unsafe {
+        if n >= 8 {
+            let head = src.cast::<u64>().read_unaligned();
+            let tail = src.add(n - 8).cast::<u64>().read_unaligned();
+            dst.cast::<u64>().write_unaligned(head);
+            dst.add(n - 8).cast::<u64>().write_unaligned(tail);
+        } else if n >= 4 {
+            let head = src.cast::<u32>().read_unaligned();
+            let tail = src.add(n - 4).cast::<u32>().read_unaligned();
+            dst.cast::<u32>().write_unaligned(head);
+            dst.add(n - 4).cast::<u32>().write_unaligned(tail);
+        } else if n > 0 {
+            let first = *src;
+            let mid = *src.add(n / 2);
+            let last = *src.add(n - 1);
+            *dst = first;
+            *dst.add(n / 2) = mid;
+            *dst.add(n - 1) = last;
+        }
+    }
+}
+
+unsafe extern "C-unwind" {
+    /// Growth and the general copy, in the runtime archive.
+    fn msrt_strbuilder_append_slow(b: usize, s: usize);
+}
+
+/// Appends a string to a builder.
+/// C view: `msrt_strbuilder_append(b: *mut VecVal, s: *const StrVal)`
+///
+/// Text that fits the builder's spare room is copied by the caller's own code (one byte, a short
+/// word as overlapping moves, longer text with `memcpy`); a full buffer calls the runtime.
+#[unsafe(no_mangle)]
+// ms: leaf
+pub unsafe extern "C-unwind" fn msrt_strbuilder_append(b: usize, s: usize) {
+    // SAFETY: caller passes a live builder and string.
+    unsafe {
+        let v = &mut *(b as *mut VecVal);
+        let text = bytes(s as *const StrVal);
+        let n = text.len();
+        if v.cap - v.len >= n {
+            let dst = v.ptr.add(v.len);
+            v.len += n;
+            if n == 1 {
+                *dst = text[0];
+            } else if n <= 16 {
+                copy_short(text.as_ptr(), dst, n);
+            } else {
+                core::ptr::copy_nonoverlapping(text.as_ptr(), dst, n);
+            }
+            return;
+        }
+        msrt_strbuilder_append_slow(b, s);
     }
 }
