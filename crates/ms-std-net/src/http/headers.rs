@@ -17,7 +17,8 @@ pub struct Entry {
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Headers {
-    entries: Vec<Entry>,
+    /// Shared until written, so handing the received headers to a handler copies nothing.
+    entries: Rc<Vec<Entry>>,
 }
 
 /// Token characters of RFC 9110.
@@ -84,8 +85,8 @@ impl Headers {
     /// Adds a value under `name` without validating it.
     pub fn add(&mut self, name: &str, value: Vec<u8>) {
         match self.position(name) {
-            Some(i) => self.entries[i].values.push(value),
-            None => self.entries.push(Entry {
+            Some(i) => Rc::make_mut(&mut self.entries)[i].values.push(value),
+            None => Rc::make_mut(&mut self.entries).push(Entry {
                 name: name.to_string(),
                 values: vec![value],
             }),
@@ -130,7 +131,7 @@ impl Headers {
     pub fn remove(&mut self, name: &str) -> bool {
         match self.position(name) {
             Some(i) => {
-                self.entries.remove(i);
+                Rc::make_mut(&mut self.entries).remove(i);
                 true
             }
             None => false,
@@ -140,7 +141,7 @@ impl Headers {
     /// Replaces every value of `name` with `value`.
     pub fn set(&mut self, name: &str, value: Vec<u8>) {
         match self.position(name) {
-            Some(i) => self.entries[i].values = vec![value],
+            Some(i) => Rc::make_mut(&mut self.entries)[i].values = vec![value],
             None => self.add(name, value),
         }
     }
@@ -158,10 +159,12 @@ impl Headers {
         }
         sorted.sort_by(|a, b| a.0.cmp(&b.0));
         Headers {
-            entries: sorted
-                .into_iter()
-                .map(|(name, values)| Entry { name, values })
-                .collect(),
+            entries: Rc::new(
+                sorted
+                    .into_iter()
+                    .map(|(name, values)| Entry { name, values })
+                    .collect(),
+            ),
         }
     }
 

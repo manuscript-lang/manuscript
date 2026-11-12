@@ -49,6 +49,8 @@ pub enum Parsed<T> {
 
 /// Most header fields a message may carry before it is refused.
 pub const MAX_FIELDS: usize = 256;
+/// Header slots most requests fit in.
+const SMALL_FIELDS: usize = 32;
 
 fn collect(headers: &[httparse::Header<'_>]) -> Vec<(String, Vec<u8>)> {
     headers
@@ -69,8 +71,23 @@ fn strict_line_endings(head: &[u8]) -> bool {
 
 /// Parses a request head from the front of `buf`.
 pub fn parse_request(buf: &[u8], limit: usize) -> Parsed<RequestHead> {
+    // Initializing room for MAX_FIELDS headers costs 8 KiB of stores per request, so start small.
+    let mut small = [httparse::EMPTY_HEADER; SMALL_FIELDS];
+    match parse_request_in(buf, limit, &mut small) {
+        // A 431 may be too many fields for the small array; the full one decides.
+        Parsed::Bad(bad) if bad.status == 431 => {}
+        parsed => return parsed,
+    }
     let mut storage = [httparse::EMPTY_HEADER; MAX_FIELDS];
-    let mut req = httparse::Request::new(&mut storage);
+    parse_request_in(buf, limit, &mut storage)
+}
+
+fn parse_request_in<'a>(
+    buf: &'a [u8],
+    limit: usize,
+    storage: &mut [httparse::Header<'a>],
+) -> Parsed<RequestHead> {
+    let mut req = httparse::Request::new(storage);
     match req.parse(buf) {
         Ok(httparse::Status::Complete(length)) => {
             if length > limit {
