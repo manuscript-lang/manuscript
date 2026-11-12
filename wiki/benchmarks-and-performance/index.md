@@ -34,3 +34,5 @@ Perf and agent benchmarks, profiling.
 - [Deque rotation uses the shorter signed remainder](deque-rotation-uses-the-shorter-signed-remainder.md): normalize both directions without negating Int.min; retain partial-ring and unit-step controls.
 - [Diff context windows need only new flags](diff-context-windows-need-only-new-flags.md): mark each Boolean once while preserving overlapping hunk windows and ordinary diff controls.
 - [Image rotations preserve malformed shapes](image-rotations-preserve-malformed-shapes.md): copy valid pixels in one pass, preserve channel order and malformed-input behavior, and measure tiny-image controls without asymmetric dispatch.
+- [A busy queue must not poll descriptors on every task switch](a-busy-queue-must-not-poll-descriptors-on-every-task-switch.md): poll every 32 switches; compare servers on one CPU by user and system time per request.
+- [Fewer allocations need wall time, not just counts](fewer-allocations-need-wall-time-not-just-counts.md): a counted split cut allocations 22% and instructions 6% but cost 7% wall; inline short strings never allocate on clone.

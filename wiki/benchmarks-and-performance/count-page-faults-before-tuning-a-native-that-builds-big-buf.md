@@ -7,3 +7,5 @@ Verified (2026-10-24, `bench/perf/json`): building a parsed JSON document ran 2x
 Apply when: a native that allocates blocks of hundreds of KiB per call is slower than the same code run in a Rust test.
 Evidence: [std heap](../../crates/ms-rt/src/alloc.rs), [JSON benchmark](../../bench/perf/json/README.md).
 Verify: `getrusage(RUSAGE_CHILDREN).ru_minflt` for a one-second run of `ms run bench/perf/json/ms.toml -- twitter:doc` stays within a few thousand, not hundreds of thousands.
+
+Verified (2026-11-12, c16-maze-bfs): the heap reservation and grow area are `madvise(MADV_HUGEPAGE)` (`sys::prefer_huge_pages`); minor faults fell 25,200 to 12,000 and wall time 103 to 86 ms, a hello program unchanged. THP is in `madvise` mode on typical hosts, so only advised regions get huge pages; stacks keep `MADV_NOHUGEPAGE`.

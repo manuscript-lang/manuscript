@@ -17,6 +17,7 @@ import (
 	msrt_promise_put,
 	msrt_promise_start,
 	msrt_promise_start_here,
+	msrt_promise_start_spread,
 	msrt_promise_take,
 	msrt_promise_wait,
 	msrt_promise_wait_any from "@std/internal/promises.ms",
@@ -92,6 +93,11 @@ export type PromiseOptions:
 	// `ECANCELED`. Applying a signal to an existing promise replaces its previous
 	// signal; none leaves it unchanged.
 	cancel: Signal? = none
+	// Place the work on the least loaded thread at once, starting a thread when the
+	// limit allows, instead of queueing it on the calling thread for an idle one to
+	// take. For long-lived work that should use every core, such as one serving worker
+	// per core.
+	spread: Bool = false
 
 // One switch that cancels every promise made with its `signal()`. `cancel()` never
 // waits; the work stops at its next wait and `wait` reports `ECANCELED`. Dropping the
@@ -204,7 +210,12 @@ export fn promise[U](
 	options: PromiseOptions = PromiseOptions()
 ) Promise[U]:
 	id := msrt_promise_new()
-	msrt_promise_start(id, fn: complete(id, entry()))
+
+	if options.spread:
+		msrt_promise_start_spread(id, fn: complete(id, entry()))
+	else:
+		msrt_promise_start(id, fn: complete(id, entry()))
+
 	limit(id, options)
 	return Promise[U](id: id)
 

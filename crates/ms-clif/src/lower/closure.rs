@@ -74,12 +74,26 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let ty = f.ty(inst.args[0]);
                 let leaves = self.g.lay.leaves(ty);
                 let size = mem_layout(&leaves).size as i64;
-                let blk = self.alloc(size);
+                let framed = inst
+                    .res
+                    .is_some_and(|r| self.framed_ifaces.contains(&r.index()));
+                // Only calls and drops use it, so the leaves stay in this frame and nothing
+                // is freed (tag 2); otherwise a heap box that is freed with the value (tag 1).
+                let (blk, tag) = if framed {
+                    let slot = self.b.create_sized_stack_slot(StackSlotData::new(
+                        StackSlotKind::ExplicitSlot,
+                        size.max(8) as u32,
+                        3,
+                    ));
+                    (self.b.ins().stack_addr(types::I64, slot, 0), 2)
+                } else {
+                    (self.alloc(size), 1)
+                };
                 let v = self.a(inst, 0);
                 self.store_leaves(blk, 0, &leaves, &v);
                 let id = self.g.vtables[vt.index()];
                 let addr = self.data_addr(id);
-                vec![blk, self.b.ins().bor_imm_s(addr, 1)]
+                vec![blk, self.b.ins().bor_imm_s(addr, tag)]
             }
             Op::IfaceView => {
                 let v = self.a(inst, 0);

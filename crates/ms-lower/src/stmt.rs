@@ -248,7 +248,7 @@ impl<'a> FnLower<'a> {
             if self.dead {
                 return Ok(());
             }
-            for t in self.temps.split_off(mark) {
+            for t in self.take_temps(mark) {
                 self.bind_hidden(Val { v: t, own: true });
             }
             self.bind_borrow_of(&b, opt.v);
@@ -267,7 +267,7 @@ impl<'a> FnLower<'a> {
         {
             // A lexical borrow (the checker rejects changing its source while it lives): the
             // temporaries it points into live as long as the binding does.
-            for t in self.temps.split_off(mark) {
+            for t in self.take_temps(mark) {
                 self.bind_hidden(Val { v: t, own: true });
             }
             self.bind_borrow_of(&b, x.v);
