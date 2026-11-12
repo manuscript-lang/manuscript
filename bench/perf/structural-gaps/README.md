@@ -319,4 +319,15 @@ Case e of `keyed.ms` (`trim`, `replace`, `upper`, `contains` on 300k lines), bef
 
 Not done in this step: `sorted`, `reversed` and `filter` takes (no measured gap, and `sortgen` already copies the list itself), and lending `Map.values`, `keys`, `entries` and `List.slice`. A lent `values` or `keys` list still has to be a contiguous list, so only string payloads can be views (`msrt_map_values_view` exists); a lent `slice` needs a list view (a `cap == 0` list), which every list drop path in both backends must skip.
 
+## 2026-11-12: string hot paths from the agent challenges (`scalar_values().all`, `slice`)
+
+c03 `csv-group-sum` reference solution on 25,000 generated lines (callgrind, same machine; before is the build without these two changes and without the string-edit takes).
+
+| change | c03 instructions |
+| --- | ---: |
+| before | 127.3M |
+| `s.scalar_values().all/any/count(f)` with a reading lambda runs as one decoding loop (no list of scalars) | 110.9M |
+| `slice` takes an ASCII path for strings of at most 256 bytes that carry no ASCII flag (a byte scan instead of walking scalars: 190 to about 120 instructions a call on 20-byte text) | 107.5M |
+
+Reference Rust is 44.0M on this challenge at 400 KB per the heap-parity thread; what is left in c03 is malloc and free (about 35M under callgrind's glibc allocator), `split_view` at 106 instructions a piece, `Needle::find`, and the copy a no-match `replace` makes of a borrowed line.
 - Re-measured at `d9f67581` against a standalone C twin (`gcc -O2`, `tree.c` with the same generator, depth and a free of the tree): 99.5M against 101.0M instructions, 70 against 72 ms. The C twin frees the tree (about 23M) and `tree.ms` does not. About 14M of the 99.5M is the `msrt_alloc`, `alloc_slow` and `alloc_large` layers, which appear only under callgrind (glibc replaces the release allocator). Generated code is within about 4M of C: the descent loop is 5 instructions a level as in C, `depth` is 6.1M against 2.9M (stack and overflow checks), and the tail of `insert` calls the drop glue on a child just tested to be none (about 8 instructions an insert). The earlier 151M and 117M figures (the latter was `mixed.ms` case c with its free) are superseded; there is no codegen gap left to close here.
