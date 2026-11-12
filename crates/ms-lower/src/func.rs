@@ -26,8 +26,6 @@ pub(crate) struct Val {
 pub(crate) struct RawSlot {
     pub slot: Value,
     pub kind: crate::close::CloseKind,
-    /// Whether the program called `close()` on the value in the slot, when it can.
-    pub explicit: Option<ms_mir::builder::Var>,
 }
 
 #[derive(Clone, Copy)]
