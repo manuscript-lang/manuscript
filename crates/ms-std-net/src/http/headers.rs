@@ -16,10 +16,23 @@ pub struct Entry {
     pub values: Vec<Vec<u8>>,
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Headers {
     /// Shared until written, so handing the received headers to a handler copies nothing.
     entries: Arc<Vec<Entry>>,
+}
+
+thread_local! {
+    /// The entries of every empty `Headers` on this thread, so creating one allocates nothing.
+    static EMPTY: Arc<Vec<Entry>> = Arc::new(Vec::new());
+}
+
+impl Default for Headers {
+    fn default() -> Headers {
+        Headers {
+            entries: EMPTY.with(Arc::clone),
+        }
+    }
 }
 
 /// Token characters of RFC 9110.

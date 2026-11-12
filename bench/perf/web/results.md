@@ -308,3 +308,9 @@ Server on CPUs 0-1, load generator on CPUs 2-3, 64 keep-alive connections, 4 s, 
 
 C (epoll, two threads) reaches 190k here, where the Go load generator saturates, so two Manuscript threads are now at the load generator's limit on `/health`.
 
+
+## 2026-11-12, one core: per-request instruction cuts
+
+Revision `76324add` plus this change. A raw exchange handler (`path()` and `send()` only, no `buffered`) measured 135k req/s against 130k for the buffered one, so the single-core gap to C (190k) and hyper (150k) is runtime user time spread across the request path, not the handler API. Callgrind (small allocator reservation, `/health`, exact request count from call counts): 15.2k instructions per request before; allocation and free 14%, `msrt_cleanup_push`/`discard` 6.5% (18 pushes per request from the buffered handler's calls through the `HttpExchange` interface), request parsing about 10%, one promise and one task per request about 8%.
+
+This change: a finished task hands its cleanup and guard buffers to the next one (a new task grew them from empty, three reallocations per request); an empty `Headers` shares one `Arc` instead of allocating; `begin_request` counts `Host` fields once and skips the UTF-8 check of names `httparse` already returns as `&str`. Callgrind: 15.2k to 14.3k instructions per request (−6%). Wall clock on the shared VM moved by about the same amount but is inside the ±10% noise (one pinned core, 64 connections, 6 interleaved rounds: median 129k against 120k req/s).

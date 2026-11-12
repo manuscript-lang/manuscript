@@ -162,7 +162,11 @@ pub unsafe extern "C-unwind" fn msrt_task_spawn(
         };
         let base = alloc_stack(len);
         let (lo, hi, sp) = stack::prepare(base, len);
-        let t = new_task(Ctx::new(lo, hi));
+        let ctx = Ctx::new(lo, hi);
+        let t = match sched().spares.pop() {
+            Some(spares) => new_task(ctx.with_spares(spares)),
+            None => new_task(ctx),
+        };
         (*t).stack = base;
         (*t).stack_len = len;
         let hdr: *mut fault::Hdr = &mut (*t).hdr;

@@ -345,6 +345,9 @@ pub(crate) fn set_live_task_cancel(v: u8) {
     }
 }
 
+/// The cleanup and guard buffers of a task, kept for reuse.
+pub(crate) type Spares = (Vec<(usize, usize)>, Vec<GuardFrame>);
+
 /// The per-task slice of runtime state; `task` swaps it on every context switch.
 pub(crate) struct Ctx {
     cleanups: Vec<(usize, usize)>,
@@ -379,6 +382,23 @@ impl Ctx {
             stack_hi,
             stack_chain: 0,
         }
+    }
+
+    /// Starts with the cleanup and guard buffers of a finished task, so a new task does not
+    /// grow them from empty.
+    pub(crate) fn with_spares(mut self, spares: Spares) -> Ctx {
+        (self.cleanups, self.guards) = spares;
+        self
+    }
+
+    /// The emptied cleanup and guard buffers, for the next task to reuse.
+    pub(crate) fn take_spares(&mut self) -> Spares {
+        self.cleanups.clear();
+        self.guards.clear();
+        (
+            core::mem::take(&mut self.cleanups),
+            core::mem::take(&mut self.guards),
+        )
     }
 
     pub(crate) fn set_cancel(&mut self, v: u8) {
@@ -1640,7 +1660,7 @@ const GUARD_CANCELLED: u8 = 2;
 /// State captured on entry to a guarded call, restored when a fault leaves it.
 #[derive(Clone, Copy)]
 #[cfg_attr(test, allow(dead_code))]
-struct GuardFrame {
+pub(crate) struct GuardFrame {
     /// Address of the register save slot owned by the `msrt_guard_call` frame.
     jmp: usize,
     cleanups: usize,
