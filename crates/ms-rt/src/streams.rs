@@ -244,7 +244,8 @@ fn fail(e: &mut Entry, what: &str, code: i32) {
 }
 
 enum Step {
-    Data(Vec<u8>),
+    /// One chunk, read straight into the block the promise's `Bytes` will own.
+    Data(VecVal),
     End,
     Blocked,
     Failed,
@@ -261,28 +262,57 @@ fn try_read(e: &mut Entry) -> Step {
     if !readable_now(e) {
         return Step::Blocked;
     }
-    let mut buf = vec![0u8; CHUNK];
+    let block = alloc::alloc(CHUNK);
+    // SAFETY: `block` is a fresh allocation of `CHUNK` bytes; `read` initialises the first `n`.
+    let buf = unsafe { core::slice::from_raw_parts_mut(block, CHUNK) };
     loop {
-        match plat::read(e.fd, &mut buf) {
-            Ok(0) => return Step::End,
+        match plat::read(e.fd, buf) {
+            Ok(0) => break,
             Ok(n) => {
-                buf.truncate(n);
-                return Step::Data(buf);
+                // A short read keeps its block when it fills at least half of it, else moves to
+                // an exact one so a trickle of small reads does not pin 64 KiB each.
+                if n >= CHUNK / 2 {
+                    return Step::Data(VecVal {
+                        ptr: block,
+                        len: n,
+                        cap: CHUNK,
+                    });
+                }
+                let mut small = ms_rt_abi::VecVal {
+                    ptr: core::ptr::null_mut(),
+                    len: 0,
+                    cap: 0,
+                };
+                // SAFETY: `small` is writable and `buf[..n]` was just read.
+                unsafe { bytes_from(&buf[..n], &mut small) };
+                // SAFETY: `block` came from `alloc::alloc` and is no longer used.
+                unsafe { alloc::free(block) };
+                return Step::Data(small);
             }
             Err(plat::Fail::Interrupted) => continue,
-            Err(plat::Fail::WouldBlock) => return Step::Blocked,
+            Err(plat::Fail::WouldBlock) => {
+                // SAFETY: as above.
+                unsafe { alloc::free(block) };
+                return Step::Blocked;
+            }
             Err(plat::Fail::Other(code)) => {
+                // SAFETY: as above.
+                unsafe { alloc::free(block) };
                 fail(e, "read", code);
                 return Step::Failed;
             }
         }
     }
+    // SAFETY: as above.
+    unsafe { alloc::free(block) };
+    Step::End
 }
 
-fn finish_data(id: i64, data: &[u8]) {
+/// Hands the chunk to the promise: the `Bytes` value takes the block.
+fn finish_data(id: i64, data: VecVal) {
     let block = alloc::alloc(core::mem::size_of::<VecVal>());
     // SAFETY: `block` is a fresh block for one `Bytes` value, which the promise then owns.
-    unsafe { bytes_from(data, block.cast()) };
+    unsafe { block.cast::<VecVal>().write(data) };
     promise::io_done_block(
         id,
         block as usize,
@@ -313,7 +343,7 @@ fn read_retry(id: i64, stream: usize, bits: u32) -> bool {
         step
     };
     match step {
-        Step::Data(data) => finish_data(id, &data),
+        Step::Data(data) => finish_data(id, data),
         Step::End | Step::Failed => promise::io_done(id),
         Step::Blocked => return false,
     }
@@ -351,7 +381,7 @@ pub extern "C-unwind" fn msrt_streams_read(stream: i64) -> i64 {
         step
     };
     match step {
-        Step::Data(data) => finish_data(id, &data),
+        Step::Data(data) => finish_data(id, data),
         Step::End | Step::Failed => promise::io_done(id),
         Step::Blocked => {
             let fd = fd_of(stream);

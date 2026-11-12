@@ -57,8 +57,11 @@ fn schedule(count: Int, start: List[Int], sets: List[List[Bool]]) List[String]:
         ymd := civil_from_days(day)
         if not sets[3][ymd[1]] or not sets[2][ymd[2]] or not sets[4][(day + 4) % 7]: continue
         for h in 0..24:
+            if not sets[1][h]: continue
             for m in 0..60:
-                if runs.length() < count and sets[1][h] and sets[0][m] and (k > 0 or h * 60 + m > start[1]): runs.append("{ymd[0]}-{pad2(ymd[1])}-{pad2(ymd[2])} {pad2(h)}:{pad2(m)}")
+                if not sets[0][m] or (k == 0 and h * 60 + m <= start[1]): continue
+                runs.append("{ymd[0]}-{pad2(ymd[1])}-{pad2(ymd[2])} {pad2(h)}:{pad2(m)}")
+                if runs.length() == count: return runs
     return runs
 
 fn solve(t: List[String]) String:

@@ -241,6 +241,17 @@ pub unsafe extern "C-unwind" fn msrt_string_from_bytes(
 // Scalar shape and indexing
 // ---------------------------------------------------------------------------
 
+/// Whether `s` is known to be ASCII without scanning heap bytes: flagged, or inline with clear
+/// high bits (an inline string has no flag, but its bits are one register test).
+///
+/// # Safety
+/// `s` must be live.
+#[inline(always)]
+unsafe fn known_ascii(s: *const StrVal) -> bool {
+    // SAFETY: `s` live.
+    unsafe { (*s).flagged_ascii() || ((*s).is_inline() && is_ascii(&*s)) }
+}
+
 /// Scalar count: the byte length for a string flagged ASCII (or inline ASCII), else counted on
 /// each call. Strings built by copy, concatenation and append carry the flag.
 ///
@@ -250,7 +261,7 @@ pub unsafe extern "C-unwind" fn msrt_string_from_bytes(
 pub unsafe fn scalar_count(s: *const StrVal) -> usize {
     // SAFETY: `s` live.
     unsafe {
-        if (*s).flagged_ascii() || ((*s).is_inline() && is_ascii(&*s)) {
+        if known_ascii(s) {
             return (*s).len();
         }
         utf8::count(bytes(s))
@@ -558,7 +569,15 @@ pub fn rfind(hay: &[u8], needle: &[u8]) -> Option<usize> {
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_contains(a: *const StrVal, v: *const StrVal) -> u8 {
     // SAFETY: caller passes live strings.
-    unsafe { find(bytes(a), bytes(v)).is_some() as u8 }
+    unsafe {
+        let (hay, needle) = (bytes(a), bytes(v));
+        // A character class test (`"#.SE".contains(c)`): a short haystack and one byte needs no
+        // word tricks, just a short scan.
+        if let ([b], true) = (needle, hay.len() <= 16) {
+            return hay.contains(b) as u8;
+        }
+        find(hay, needle).is_some() as u8
+    }
 }
 
 #[unsafe(no_mangle)]
@@ -1593,7 +1612,7 @@ pub unsafe extern "C-unwind" fn msrt_string_slice_scalars(
 ) -> u8 {
     // SAFETY: caller passes a live string and a writable out.
     unsafe {
-        if start >= 0 && end >= start && !(*s).flagged_ascii() {
+        if start >= 0 && end >= start && !known_ascii(s) {
             return match walk_sub_scalars(s, start as usize, end as usize) {
                 Some(r) => {
                     *out = r;
@@ -1626,7 +1645,7 @@ unsafe fn offset_after(s: *const StrVal, count: usize) -> usize {
     // SAFETY: `s` live.
     unsafe {
         let text = bytes(s);
-        if (*s).flagged_ascii() {
+        if known_ascii(s) {
             return count.min(text.len());
         }
         utf8::advance(text, 0, count).unwrap_or(text.len())
@@ -1679,7 +1698,7 @@ pub unsafe extern "C-unwind" fn msrt_string_slice(
 ) -> u8 {
     // SAFETY: caller passes a live string and a writable out.
     unsafe {
-        if start >= 0 && end >= start && !(*s).flagged_ascii() {
+        if start >= 0 && end >= start && !known_ascii(s) {
             return match walk_sub_scalars(s, start as usize, end as usize) {
                 Some(r) => {
                     *out = r;
@@ -1688,7 +1707,7 @@ pub unsafe extern "C-unwind" fn msrt_string_slice(
                 None => STATUS_OUT_OF_RANGE,
             };
         }
-        if (start < 0 || end < 0) && !(*s).flagged_ascii() {
+        if (start < 0 || end < 0) && !known_ascii(s) {
             // A bound from the end walks back from the end, one from the start walks forward; offsets
             // grow with scalar positions, so `a <= b` is the same check on bytes.
             let text = bytes(s);
@@ -2614,6 +2633,55 @@ mod tests {
                 let want = if n.len() > h.len() { None } else { naive(h, n) };
                 assert_eq!(find(h, n), want, "find {n:?} in {h:?}");
                 assert_eq!(Needle::new(n).find(h), want, "needle {n:?} in {h:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn slicing_inline_ascii_and_non_ascii_by_scalars() {
+        let _g = crate::testutil::lock();
+        // SAFETY: the strings are live for the whole test.
+        unsafe {
+            for (text, a, b, want) in [
+                ("Rent,133.47", 5, 11, Some("133.47")),
+                ("Rent,133.47", 0, 11, Some("Rent,133.47")),
+                ("Rent,133.47", 5, 12, None),
+                ("café,1", 3, 4, Some("é")),
+                ("café,1", 4, 6, Some(",1")),
+            ] {
+                let s = from_bytes(text.as_bytes());
+                let mut out = empty();
+                let status = msrt_string_slice_scalars(&s, a, b, &mut out);
+                match want {
+                    Some(w) => {
+                        assert_eq!(status, STATUS_OK, "{text:?}[{a}..{b}]");
+                        assert_eq!(bytes(&out), w.as_bytes());
+                    }
+                    None => assert_eq!(status, STATUS_OUT_OF_RANGE),
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn contains_a_byte_in_a_short_string() {
+        let _g = crate::testutil::lock();
+        // SAFETY: the strings are live for the whole test.
+        unsafe {
+            for (hay, needle, want) in [
+                ("#.SE", "S", 1),
+                ("#.SE", "x", 0),
+                ("", "x", 0),
+                ("abcdefghijklmnop", "p", 1),
+                ("abcdefghijklmnopq", "q", 1),
+                ("é", "\u{a9}", 0),
+            ] {
+                let (h, n) = (from_bytes(hay.as_bytes()), from_bytes(needle.as_bytes()));
+                assert_eq!(
+                    msrt_string_contains(&h, &n),
+                    want,
+                    "{hay:?} contains {needle:?}"
+                );
             }
         }
     }
