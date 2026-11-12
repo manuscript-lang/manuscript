@@ -41,6 +41,8 @@ pub enum Glue {
     Clone,
     /// Closure object destructor `fn(obj)`; the `Ty` is unused (`Ty::UNIT`) and the key carries the function id.
     ClosureDrop(u32),
+    /// Like `ClosureDrop` for an object in a stack frame: drops the captures, frees nothing.
+    ClosureDropFramed(u32),
     /// `fn(obj)` that releases a closure object after capture `k` while a fault unwinds out of the
     /// close of that capture (whose value that close owns): it drops the later captures without
     /// closing them and frees the object.
@@ -394,6 +396,7 @@ impl<'m> Gen<'m> {
             Glue::Clone => self.sig(&leaves, &leaves),
             Glue::BlockClone | Glue::ClosureClone(_) => self.sig(&[Leaf::I64], &[Leaf::I64]),
             Glue::ClosureDrop(_)
+            | Glue::ClosureDropFramed(_)
             | Glue::ClosureDropFrom(..)
             | Glue::BlockDrop
             | Glue::CleanupThunk(_)
@@ -408,6 +411,7 @@ impl<'m> Gen<'m> {
                 Glue::Drop => "drop",
                 Glue::Clone => "clone",
                 Glue::ClosureDrop(_) => "closure_drop",
+                Glue::ClosureDropFramed(_) => "closure_drop_framed",
                 Glue::ClosureDropFrom(..) => "closure_drop_from",
                 Glue::ClosureClone(_) => "closure_clone",
                 Glue::BlockDrop => "block_drop",

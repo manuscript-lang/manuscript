@@ -9,7 +9,7 @@ use cranelift_codegen::ir::{
 };
 use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext, Switch};
 use cranelift_module::{DataId, FuncId, Module as _};
-use ms_mir::ir::{Cc, ExternRole, FaultKind, Func, Imm, Inst, Op, Target, Term};
+use ms_mir::ir::{Cc, ExternRole, FaultKind, Func, Imm, Inst, Mode, Op, Target, Term};
 use ms_mir::types::{Ty, TyKind};
 use ms_rt_abi::symbols::{ISOLATE_HDR_CANCEL, ISOLATE_HDR_GUARDED, STACK_LIMIT_CELL, STACK_REGION};
 use ms_rt_abi::{
@@ -67,6 +67,8 @@ pub struct Lower<'a, 'm> {
     slot_of: HashMap<usize, ir::StackSlot>,
     /// `iface.borrow` results that only reach calls and drops: their leaves live in a stack slot.
     framed_ifaces: HashSet<usize>,
+    /// `closure.new` results that only calls borrow and drops release: their objects live in a stack slot.
+    framed_closures: HashSet<usize>,
     /// Block that defined each MIR `slot` value.
     slot_blk: HashMap<usize, usize>,
     /// MIR values that an already lowered instruction used.
@@ -115,6 +117,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             homes: Vec::new(),
             slot_of: HashMap::new(),
             framed_ifaces: HashSet::new(),
+            framed_closures: HashSet::new(),
             slot_blk: HashMap::new(),
             used: Vec::new(),
             str_lits: HashMap::new(),
@@ -797,6 +800,63 @@ impl<'a, 'm> Lower<'a, 'm> {
         framed
     }
 
+    /// The `closure.new` results of `f` that cannot outlive the frame: their only uses are drops,
+    /// being called, and arguments a callee only borrows whose result does not point into them.
+    /// A closure that owns a resource (a capture closer) keeps its heap object, which the
+    /// unwinder releases.
+    fn framed_closure_objects(&self, f: &Func) -> HashSet<usize> {
+        let m = self.g.m;
+        let mut framed = HashSet::new();
+        for b in &f.blocks {
+            for i in &b.insts {
+                if let (Op::ClosureNew, Imm::Func(c), Some(r)) = (i.op, i.imm, i.res)
+                    && m.funcs[c.index()].capture_closers.is_empty()
+                {
+                    framed.insert(r.index());
+                }
+            }
+        }
+        if framed.is_empty() {
+            return framed;
+        }
+        for b in &f.blocks {
+            for i in &b.insts {
+                let borrows = |k: usize| match (i.op, i.imm) {
+                    (Op::Call, Imm::Func(g)) => m.funcs[g.index()]
+                        .params
+                        .get(k)
+                        .is_some_and(|p| p.mode == Mode::Borrow),
+                    (Op::CallRt, Imm::Ext(e)) => m.externs[e.index()]
+                        .params
+                        .get(k)
+                        .is_some_and(|p| p.mode == Mode::Borrow),
+                    (Op::CallInd, _) => k == 0,
+                    _ => false,
+                };
+                let plain_call =
+                    matches!(i.op, Op::Call | Op::CallRt | Op::CallInd) && !m.result_views(f, i);
+                for (k, a) in i.args.iter().enumerate() {
+                    let ok = i.op == Op::Drop || (plain_call && borrows(k));
+                    if !ok {
+                        framed.remove(&a.index());
+                    }
+                }
+            }
+            if let Term::Ret(Some(v)) = &b.term {
+                framed.remove(&v.index());
+            }
+            if let Term::CondBr { cond: v, .. } | Term::Switch { value: v, .. } = &b.term {
+                framed.remove(&v.index());
+            }
+            b.term.for_each_target(|t| {
+                for a in &t.args {
+                    framed.remove(&a.index());
+                }
+            });
+        }
+        framed
+    }
+
     pub fn lower_func(&mut self, fi: usize, f: &Func) {
         self.fid = fi as u32;
         let rpo = f.rpo();
@@ -816,6 +876,7 @@ impl<'a, 'm> Lower<'a, 'm> {
         self.lazy = vec![false; f.values.len()];
         self.slot_of.clear();
         self.framed_ifaces = self.framed_iface_borrows(f);
+        self.framed_closures = self.framed_closure_objects(f);
         self.slot_blk.clear();
         self.pslots.clear();
         for b in &rpo {
