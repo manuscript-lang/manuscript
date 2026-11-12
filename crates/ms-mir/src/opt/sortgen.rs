@@ -378,9 +378,10 @@ fn shadow_externs(
     let list = shadow.params[0].ty;
     let free = ExternDef {
         name: "msrt_list_free_raw".to_string(),
+        // The runtime releases the scratch buffer, so the call consumes the owned list value.
         params: vec![Param {
             ty: list,
-            mode: Mode::Borrow,
+            mode: Mode::Move,
         }],
         ret: Ty::UNIT,
         noreturn: false,
