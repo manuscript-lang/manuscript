@@ -284,10 +284,9 @@ pub unsafe extern "C-unwind" fn msrt_string_scalar_at(
         let text = bytes(sv);
         let n = text.len() as i64;
         let at = if index < 0 { n + index } else { index };
-        if (*sv).flagged_ascii() || (text.len() < MEDIUM_HAY && text.is_ascii()) {
-            if let Some(&b) = text.get(at as usize).filter(|_| at >= 0) {
-                return b as i64;
-            }
+        let ascii = (*sv).flagged_ascii() || (text.len() < MEDIUM_HAY && text.is_ascii());
+        if let Some(&b) = text.get(at as usize).filter(|_| ascii && at >= 0) {
+            return b as i64;
         }
         msrt_string_scalar_at_slow(s, index, has_default, default)
     }
