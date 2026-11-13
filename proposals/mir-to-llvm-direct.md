@@ -63,16 +63,15 @@ MIR -> mir_llvm         -> LLVM IR text -> opt/llc   (release; new)
 - Cost check per stage: IR lines and release build time for the yaml program, recorded in `bench/compile-time/`.
 - Linux, macOS and Windows stay at parity; no gating. Windows and macOS CI is dispatched on the branch before any stage is called done.
 
-## Builder: in-house now, inkwell later (Chinmay, 2026-11-13)
+## Builder: in-house, no inkwell (Chinmay, 2026-11-13)
 
-Chinmay first asked for `inkwell`, then chose an in-house builder for now once it was clear inkwell needs an LLVM 23 development bundle on every platform. `crates/ms-clif/src/llvm_build.rs` is that builder: typed values, checked operand types, required alignment, one named struct type per record with `mem_layout` offsets, one `memcpy` per copy. It prints the same text, so a later switch to inkwell replaces only this file. Checked 2026-11-13 for the later switch:
+Chinmay asked for `inkwell`, then chose the in-house builder, tried the `inkwell` plan once more, and settled on generating LLVM IR text directly: `crates/ms-clif/src/llvm_build.rs` is the builder. Reasons `inkwell` was dropped, measured 2026-11-13:
 
-- `inkwell` 0.11.0 supports LLVM 23 (`llvm23-1`, on `llvm-sys` 231). A scratch program (record `getelementptr`, loads, verify, print) built and ran here against LLVM 23.1.6 from `apt.llvm.org`.
-- It links LLVM at build time: every platform's build of `ms` needs the LLVM 23 headers, libraries and `llvm-config` (`LLVM_SYS_231_PREFIX`). Today the pinned `toolchain/lld.lock` fetches only tool programs (`lld`, `opt`, `llc`) at run time. A development bundle for six platforms has to be built in the `llvm-bundle` repository first, and the new crates (`inkwell`, `llvm-sys` and their dependencies) vendored. Both are outside what one branch of this repository can do.
-- Inkwell does not choose alignment: the scratch load of an `i64` came out `align 4`. The emitter must set the data layout and alignment on every load, store and alloca.
-- Two ways to meet the text pipeline: build the new functions in an in-memory module and print them, or parse the existing text into the module and run LLVM's passes and code generation in-process, which drops `opt`/`llc` and the text round trip. The second changes unit splitting, the fault-table reader and the debug-info numbering, so it is its own stage.
+- It links LLVM into `ms` at build time: every platform's build needs the LLVM 23 headers, static libraries and `llvm-config`. A distribution install lacks some static libraries (Polly), the glibc 2.28 floor needs LLVM built in the manylinux_2_28 container, and Windows has no ready static libraries.
+- Binary size on Linux amd64, stripped: about +4 MB to build IR only, about +54 MB with the optimizer and code generator in process (today's `ms` is 44.5 MB; `opt`, `llc` and `lld` are downloaded separately).
+- It does not choose alignment (a scratch `i64` load came out `align 4`); the in-house builder takes alignment on every access.
 
-Platform parity: the dependency lands only when the development bundle exists for all six platforms; no Linux-only path.
+Revisit only if a goal needs LLVM in process (dropping the downloaded `opt` and `llc`).
 
 ## Open points
 
