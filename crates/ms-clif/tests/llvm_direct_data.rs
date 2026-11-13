@@ -234,7 +234,9 @@ pub fn optionals_and_alternatives_match_cranelift() {
             .lines()
             .find(|l| l.starts_with("define") && l.contains(&format!("@\"{f}#")))
             .unwrap_or_else(|| panic!("no {f} in the IR"));
-        assert!(header.contains("%a0_0"), "{f} was translated: {header}");
+        // Direct code takes a list by borrowed pointer and the other values as leaves.
+        let direct = header.contains("%a0_0") || header.contains("dereferenceable");
+        assert!(direct, "{f} was translated: {header}");
     }
     assert!(ir.contains("switch i64 "), "no switch on the tag");
     assert_eq!((got.code, &got.stdout), (want.code, &want.stdout));

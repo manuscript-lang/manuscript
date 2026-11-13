@@ -187,5 +187,6 @@ pub(super) fn shim(types: &Types, lay: &Layouts, f: &Func, sym: &str, dbg: usize
         body: b.finish(),
         decls: vec![(sym.to_string(), sig.declare(sym, ""))],
         data: Vec::new(),
+        consts: Vec::new(),
     }
 }

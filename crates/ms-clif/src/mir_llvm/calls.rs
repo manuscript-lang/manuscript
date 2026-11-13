@@ -213,7 +213,7 @@ pub(super) fn finish_call(
     {
         // Booleans come back as bytes and, in the leaf convention, pointers as addresses.
         let r = call(b).expect("a result");
-        records::name_leaves(b, r, out);
+        records::name_leaves(b, r, out, native);
     } else if out.len() <= 1 {
         if let [r] = out {
             b.name_next(r);

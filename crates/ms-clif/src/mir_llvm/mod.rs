@@ -56,6 +56,9 @@ pub struct Emitted {
     pub decls: Vec<(String, String)>,
     /// Symbols of the data objects the function addresses.
     pub data: Vec<String>,
+    /// `(symbol, definition)` of the private constants the function addresses (string
+    /// literals). Each unit that names one defines it.
+    pub consts: Vec<(String, String)>,
 }
 
 /// What a function needs from the module before it is emitted: whether checks are on, and the
@@ -605,6 +608,7 @@ pub fn emit(
         body: b.finish(),
         decls: cx.decls,
         data: cx.data,
+        consts: lists::consts(m, f),
     }
 }
 

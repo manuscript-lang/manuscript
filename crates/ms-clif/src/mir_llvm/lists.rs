@@ -5,13 +5,14 @@ use crate::layout::{Layouts, Leaf, mem_layout};
 use crate::llvm_build::{Bin, FnBuilder, Meta, Range, Tbaa, Ty as LTy, Val};
 use ms_mir::ir::{Func, Imm, Inst, Module, Op};
 use ms_mir::types::{Ty, TyKind};
+use ms_rt_abi::STR_STATIC;
 
 pub(super) const AREA: Area = Area {
     handles,
     ty_ok,
     inst_ok,
     splits,
-    pure_op: |op| op == Op::ListLen,
+    pure_op: |op| matches!(op, Op::ListLen | Op::StrLit),
     pre,
     emit,
 };
@@ -26,7 +27,8 @@ fn handles(op: Op) -> bool {
         || list_arg(op).is_some()
         || matches!(
             op,
-            Op::StrByte
+            Op::StrLit
+                | Op::StrByte
                 | Op::StrAsciiAt
                 | Op::StrLen
                 | Op::ListNew
@@ -68,7 +70,7 @@ fn inst_ok(m: &Module, lay: &Layouts, f: &Func, i: &Inst) -> bool {
 
 /// The length is a leaf of the list, and a write hands back the same list: no instruction.
 fn pre(
-    _: &Module,
+    m: &Module,
     _: &Layouts,
     _: &Func,
     inst: &Inst,
@@ -86,6 +88,19 @@ fn pre(
         Op::ListDropLast => {
             let l = &vals[&inst.args[0].index()];
             Some(vec![l[0].clone(), b.reserve(LTy::I64), l[2].clone()])
+        }
+        // The literal's bytes are a module constant: the pointer word is a constant expression
+        // and the length carries the static tag.
+        Op::StrLit => {
+            let Imm::Str(id) = inst.imm else { return None };
+            let len = m.strings[id.0 as usize].len();
+            Some(vec![
+                Val::new(
+                    format!("ptrtoint (ptr @\"ms.lit.{}\" to i64)", id.0),
+                    LTy::I64,
+                ),
+                Val::int((len | STR_STATIC) as i64),
+            ])
         }
         Op::ListLit if inst.args.is_empty() => {
             Some(vec![Val::new("null", LTy::Ptr), Val::int(0), Val::int(0)])
@@ -128,7 +143,7 @@ fn elem_ok(m: &Module, lay: &Layouts, f: &Func, i: &Inst, list: usize) -> bool {
 
 fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     match inst.op {
-        Op::ListLen => {}
+        Op::ListLen | Op::StrLit => {}
         Op::StrByte | Op::StrAsciiAt => str_byte(cx, inst, vals, b),
         Op::ListNew | Op::ListLit | Op::ListPush => list_build(cx, inst, vals, b),
         Op::ListDropLast => {
@@ -244,12 +259,15 @@ fn elem_meta(elem: &TyKind, k: usize) -> Meta {
     meta
 }
 
+/// Bytes in one word of an inline string, which holds its bytes in two words.
+const WORD_BYTES: i64 = 8;
+
 /// `StrByte` and `StrAsciiAt`: the byte at an index of a string. An inline string keeps its
 /// bytes in its two words, little-endian, so the byte is a shift and mask; any other string loads
 /// it from memory. `StrAsciiAt` yields -1 unless the string is flagged ASCII and the index is in
 /// range, and the caller then takes the general path.
 fn str_byte(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
-    use ms_rt_abi::STR_LEN_MASK;
+    use ms_rt_abi::{STR_ASCII, STR_INLINE, STR_LEN_MASK};
     let s = &vals[&inst.args[0].index()];
     let i = vals[&inst.args[1].index()][0].clone();
     let out = vals[&inst.res.expect("string byte result").index()][0].clone();
@@ -264,9 +282,9 @@ fn str_byte(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         b.zext(&byte, LTy::I64)
     };
     if inst.op == Op::StrAsciiAt {
-        let flag = b.bin(Bin::LShr, &s[1], &Val::int(61));
-        let flag = b.bin(Bin::And, &flag, &Val::int(3));
-        let ascii = b.icmp("eq", &flag, &Val::int(1));
+        // Flagged ASCII and not inline: the ASCII bit is set and the inline bit is clear.
+        let flags = b.bin(Bin::And, &s[1], &Val::int((STR_INLINE | STR_ASCII) as i64));
+        let ascii = b.icmp("eq", &flags, &Val::int(STR_ASCII as i64));
         let len = b.bin(Bin::And, &s[1], &Val::int(STR_LEN_MASK as i64));
         let below = b.icmp("ult", &i, &len);
         let ok = b.bin(Bin::And, &ascii, &below);
@@ -279,14 +297,15 @@ fn str_byte(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         b.phi(&out, &[(Val::int(-1), head), (byte, load)]);
         return;
     }
-    let tag = b.bin(Bin::LShr, &s[1], &Val::int(62));
-    let inline = b.icmp("eq", &tag, &Val::int(1));
+    // The top two bits are `01` for an inline string (`STR_INLINE` set, `STR_BORROWED` clear).
+    let tag = b.bin(Bin::And, &s[1], &Val::int((3usize << 62) as i64));
+    let inline = b.icmp("eq", &tag, &Val::int(STR_INLINE as i64));
     let word = format!("w{bb}_{split}");
     b.cond_br(&inline, &word, &load);
     b.label(&word);
-    let high = b.icmp("sge", &i, &Val::int(8));
+    let high = b.icmp("sge", &i, &Val::int(WORD_BYTES));
     let w = b.select(&high, &s[1], &s[0]);
-    let shift = b.bin(Bin::And, &i, &Val::int(7));
+    let shift = b.bin(Bin::And, &i, &Val::int(WORD_BYTES - 1));
     let shift = b.bin(Bin::Shl, &shift, &Val::int(3));
     let w = b.bin(Bin::LShr, &w, &shift);
     let inline_byte = b.bin(Bin::And, &w, &Val::int(0xff));
@@ -483,6 +502,36 @@ fn str_len(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     let addr = b.ptr_to_int(&slot);
     b.name_next(out);
     b.call(&LTy::I64, "", "msrt_string_length", &[(addr, "")]);
+}
+
+/// The module-level constants for the string literals `f` uses: LLVM owns the bytes, so it knows
+/// their size, that they never change, and that no other symbol aliases them.
+pub(super) fn consts(m: &Module, f: &Func) -> Vec<(String, String)> {
+    let mut out: Vec<(String, String)> = Vec::new();
+    for inst in f.blocks.iter().flat_map(|b| &b.insts) {
+        let (Op::StrLit, Imm::Str(id)) = (inst.op, inst.imm) else {
+            continue;
+        };
+        let name = format!("ms.lit.{}", id.0);
+        if out.iter().any(|(n, _)| *n == name) {
+            continue;
+        }
+        let mut text = String::new();
+        let bytes = m.strings[id.0 as usize].as_bytes();
+        for &b in bytes.iter().chain(&[0u8]) {
+            if (0x20..0x7f).contains(&b) && b != b'"' && b != b'\\' {
+                text.push(b as char);
+            } else {
+                text.push_str(&format!("\\{b:02X}"));
+            }
+        }
+        let def = format!(
+            "@\"{name}\" = private unnamed_addr constant [{} x i8] c\"{text}\", align 16",
+            bytes.len() + 1
+        );
+        out.push((name, def));
+    }
+    out
 }
 
 /// Whether an element is made of plain `i64`, `double` and `i8` leaves, which sit in memory

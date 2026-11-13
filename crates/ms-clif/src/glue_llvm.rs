@@ -1051,6 +1051,7 @@ pub fn emit(g: &mut Gen, kind: Glue, ty: Ty, types: &Types, loc: usize) -> Emitt
         attrs: " nounwind".into(),
         decls: native_decls,
         data: Vec::new(),
+        consts: Vec::new(),
         body: native_body,
     }
 }
@@ -1123,6 +1124,7 @@ pub fn thunk(g: &Gen, kind: Glue, ty: Ty, sym: &str, types: &Types, loc: usize) 
         attrs: " nounwind".into(),
         decls,
         data: Vec::new(),
+        consts: Vec::new(),
         body: b.finish(),
     }
 }
