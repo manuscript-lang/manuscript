@@ -88,12 +88,10 @@ fn passes_directly(lay: &Layouts, t: Ty) -> bool {
 
 /// Whether a call of the runtime function `def` is within what this module emits: the types
 /// either pass directly or have a memory shape, no parameter is updated in place, and it is not
-/// a C shim (its narrow results are extended by the caller) or a function the lowering treats as
-/// a guarded or constant case.
-fn extern_ok(m: &Module, lay: &Layouts, def: &ExternDef) -> bool {
+/// a function the lowering treats as a guarded or constant case.
+fn extern_ok(_: &Module, lay: &Layouts, def: &ExternDef) -> bool {
     let crosses = |t: Ty| passes_directly(lay, t) || records::shape_ok(lay, t);
-    !m.c_externs.contains(&def.name)
-        && def.role != ExternRole::MapNew
+    def.role != ExternRole::MapNew
         && def
             .params
             .iter()
@@ -331,12 +329,18 @@ fn call_rt(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder
     let (m, lay) = (cx.m, cx.lay);
     let Imm::Ext(e) = inst.imm else { return };
     let def = &m.externs[e.index()];
+    // A user `extern fn` follows the C ABI, where a sized number is its own type and the callee
+    // trusts the extension attribute; a runtime function takes and returns the leaf convention's
+    // `i64` and `double`.
+    let c_abi = m.c_externs.contains(&def.name);
+    let abi_kind = if c_abi { Abi::Native } else { Abi::Rt };
     let mut args: Vec<(Val, &str)> = Vec::new();
     for (p, a) in def.params.iter().zip(&inst.args) {
         if passes_directly(lay, p.ty) {
-            let abi = records::abi_leaves(b, lay, p.ty, vals, *a, Abi::Rt);
-            for (v, (_, at)) in abi.into_iter().zip(leaves(lay, p.ty)) {
-                args.push((v, at));
+            let abi = records::abi_leaves(b, lay, p.ty, vals, *a, abi_kind);
+            let regs = crate::abi_llvm::regs_of(lay, p.ty);
+            for ((v, (_, at)), r) in abi.into_iter().zip(leaves(lay, p.ty)).zip(regs) {
+                args.push((v, if c_abi { native_attr(r, at) } else { at }));
             }
         } else {
             let slot = records::spill(b, lay, p.ty, vals, *a);
@@ -357,6 +361,9 @@ fn call_rt(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder
     let (ret, attr) = match &slot {
         Some(_) => (LTy::Void, ""),
         None if crate::llvm_ir::returns_fresh_block(&def.name) => (LTy::Ptr, "noalias align 16 "),
+        // A C result has no extension attribute: the callee leaves the bits above a narrow
+        // result undefined, so the held `iN` is the low bits and nothing is trusted.
+        None if c_abi => (native_ret_ty(lay, def.ret), ""),
         None => (call_ret_ty(lay, def.ret, true), ret_attr(lay, def.ret)),
     };
     cx.decls.push((
