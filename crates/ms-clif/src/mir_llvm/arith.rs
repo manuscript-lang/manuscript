@@ -84,10 +84,10 @@ fn pure_op(op: Op) -> bool {
 }
 
 /// Each check splits the block: a signed division checks for zero and for overflow.
-fn splits(op: Op, checks: bool) -> usize {
-    match op {
+fn splits(_: &Layouts, _: &Func, inst: &Inst, checks: bool) -> usize {
+    match inst.op {
         Op::SDivChk if checks => 2,
-        _ => usize::from(checks && checked(op)),
+        op => usize::from(checks && checked(op)),
     }
 }
 

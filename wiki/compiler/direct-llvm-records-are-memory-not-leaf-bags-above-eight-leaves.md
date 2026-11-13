@@ -21,3 +21,9 @@ Apply when: adding ops to the direct emitter, or changing how it passes records 
 - Strings, bytes, lists and records are named struct types in one `Types` per module (`aggregate`); their bodies must be written before the first function that uses them, or `llvm-link` rejects a `getelementptr` as unsized.
 - Checked arithmetic (`iadd.chk` and friends, `sdiv.chk`, `srem.chk`) uses `llvm.*.with.overflow` and `faults::fault_if`, which splits the block (`Area::splits` must count every split). The result takes its reserved name on the last instruction, after the checks. A function that ends in `fault` or contains a checked op is never `memory(none)`.
 - Not done: narrow integers (`Int8` to `UInt32`, a register `i64` but 1 to 4 bytes in memory) need a memory-type story in records and lists before `arith` may accept them.
+
+## Indirect records (`Error`)
+
+- An indirect record is one `ptr` to a heap block named `ms.rec.<Name>.block`: its fields' leaves in order, with a map or set field as one nullable `ptr` to a seven-word header (null is the empty value, exactly as `Layouts::rec_block` and the Cranelift path write it; both paths share live `Error` values, so the layout must not drift). Field reads are typed GEPs plus loads (`records.rs`).
+- Branching inside an instruction (a null header) needs `Area.splits`, which now sees the instruction: `RecNew` splits once per boxed field, a boxed `RecGet` and `PtrField` once.
+- Done: type, `RecNew`, `RecGet`, `PtrField`. `RecSet`, `RecFill` and `RecRelease` still fall back: they need the glue area's `drop_value` for the old fields. `RecNew` and the boxed paths are checked only by reading and by `opt` verify on a hacked build; they cannot run end to end until the maps area and the optionals area (an `Error` is built with `kind: String?` and a `Map`) land, so rerun the `Error` programs under `MS_LLVM_DIRECT=0/1` when they do.
