@@ -283,11 +283,6 @@ impl<'a> FnLower<'a> {
                 self.map_get_or(recv, &m.ty.params, &args, result)
             }
             (TyKind::Obj(Native::Map, _), "entries") => self.map_entries(recv_expr, recv, result),
-            (TyKind::List(elem), "first" | "last")
-                if self.list_end_inline(elem, result).is_some() =>
-            {
-                self.list_end(recv, elem, result, name == "last")
-            }
             (TyKind::List(_), "keys") => self.list_keys(recv_expr, recv, result),
             (TyKind::List(_), "entries") => self.list_entries(recv_expr, recv, result),
             (TyKind::List(_) | TyKind::Bytes, "length") => {

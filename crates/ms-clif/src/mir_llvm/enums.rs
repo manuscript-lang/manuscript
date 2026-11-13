@@ -450,7 +450,12 @@ fn boxed(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder) 
             for (i, (_, idx)) in fields.iter().enumerate() {
                 for (slot, v) in idx.iter().zip(arg(i)) {
                     let at = slot_ptr(b, &block, &p, *slot);
-                    records::store_leaf(b, v, &at);
+                    let mem = if v.ty == LTy::I1 {
+                        LTy::I8
+                    } else {
+                        v.ty.clone()
+                    };
+                    records::store_leaf(b, v, &mem, &at);
                 }
             }
         }

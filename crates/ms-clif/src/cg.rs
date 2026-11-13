@@ -1444,8 +1444,12 @@ fn direct_plan(g: &mut Gen, f: &Func) -> crate::mir_llvm::Plan {
     for bd in &f.blocks {
         for i in &bd.insts {
             match (i.op, i.imm) {
-                (Op::Clone | Op::AltOwn, _) => {
-                    let ty = crate::mir_llvm::cloned_ty(f, i);
+                (Op::Clone | Op::AltOwn | Op::OptUnwrap, _) => {
+                    // `opt.unwrap` clones the payload of its operand.
+                    let ty = match i.op {
+                        Op::OptUnwrap => g.m.opt_inner(f.ty(i.args[0])).expect("an optional"),
+                        _ => crate::mir_llvm::cloned_ty(f, i),
+                    };
                     if own_kind(&g.lay, ty) == OwnKind::Glue && !plan.clone.contains_key(&ty) {
                         let id = g.glue(Glue::Clone, ty);
                         plan.clone.insert(
@@ -1503,6 +1507,11 @@ fn direct_plan(g: &mut Gen, f: &Func) -> crate::mir_llvm::Plan {
                         plan.units
                             .insert((a.index(), c as usize), name.into_owned());
                     }
+                }
+                (Op::GlobalGet | Op::GlobalSet, Imm::Global(gl)) => {
+                    let id = g.globals[gl.index()];
+                    let name = g.module.declarations().get_data_decl(id).linkage_name(id);
+                    plan.globals.insert(gl.index(), name.into_owned());
                 }
                 (Op::IfaceNew | Op::IfaceBorrow | Op::IfaceIs, Imm::Vtable(vt)) => {
                     let id = g.vtables[vt.index()];
@@ -1571,6 +1580,11 @@ fn direct_glue(g: &mut Gen, kind: Glue, ty: Ty) -> bool {
     }
     let id = g.glue[&(kind, ty)];
     let sym = symbol_of(g, id);
+    // Data the glue addresses is declared while the LLVM module still exists: it is exported
+    // only then.
+    if kind == Glue::Drop && matches!(g.m.types.kind(ty), TyKind::Obj(..)) {
+        g.typedesc(ty);
+    }
     let mut llvm = g.llvm.take().expect("checked above");
     let nat = crate::glue_llvm::native(&sym);
     // Glue has no MIR, so no source locations to resolve.

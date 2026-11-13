@@ -12,19 +12,49 @@ use crate::layout::Layouts;
 use crate::llvm_build::Types;
 use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Val};
 use ms_mir::ir::{Func, Inst, Op};
-use ms_rt_abi::symbols::{STACK_LIMIT_CELL, STACK_REGION};
+use ms_rt_abi::symbols::{ISOLATE_HDR_CANCEL, STACK_LIMIT_CELL, STACK_REGION};
 
 pub(super) const AREA: Area = Area {
-    handles: |op| matches!(op, Op::DepthEnter | Op::DepthLeave),
-    splits: |_, _, i, _| usize::from(i.op == Op::DepthEnter),
+    handles: |op| matches!(op, Op::DepthEnter | Op::DepthLeave | Op::Poll),
+    splits: |_, _, i, _| usize::from(matches!(i.op, Op::DepthEnter | Op::Poll)),
     emit,
     ..Area::NONE
 };
 
 fn emit(cx: &mut Cx, inst: &Inst, _: &Vals, b: &mut FnBuilder) {
-    if inst.op == Op::DepthEnter {
-        enter(cx, b);
+    match inst.op {
+        Op::DepthEnter => enter(cx, b),
+        Op::Poll => poll(cx, b),
+        _ => {}
     }
+}
+
+/// The address of the running task's header block: the last word of the stack region.
+pub(super) fn task_hdr(b: &mut FnBuilder) -> Val {
+    let frame = b
+        .call(
+            &LTy::Ptr,
+            "",
+            "llvm.frameaddress.p0",
+            &[(Val::new("0", LTy::I32), "")],
+        )
+        .expect("a pointer");
+    let sp = b.ptr_to_int(&frame);
+    let base = b.bin(Bin::And, &sp, &Val::int(!(STACK_REGION - 1)));
+    let cell = b.bin(Bin::Add, &base, &Val::int(STACK_REGION - 16));
+    let cell = b.int_to_ptr(&cell);
+    b.load(&LTy::I64, &cell, 8)
+}
+
+/// Faults when the running task was cancelled: its flag is a byte in the task's header block,
+/// whose address is the last word of the stack region.
+fn poll(cx: &mut Cx, b: &mut FnBuilder) {
+    let hdr = task_hdr(b);
+    let flag = b.bin(Bin::Add, &hdr, &Val::int(ISOLATE_HDR_CANCEL));
+    let flag = b.int_to_ptr(&flag);
+    let cancelled = b.load_flag(&flag);
+    let on = b.icmp("ne", &cancelled, &Val::byte(0));
+    super::faults::fault_if(cx, b, &on, "msrt_cancelled", &[]);
 }
 
 /// Alignment of a leaf in its 8-byte cell.

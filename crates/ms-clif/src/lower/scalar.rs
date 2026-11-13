@@ -30,10 +30,25 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let Imm::Str(s) = inst.imm else {
                     unreachable!()
                 };
-                let d = self.g.str_lit(s.0);
                 if let Some(r) = inst.res {
                     self.str_lits.insert(r.index(), s.0);
                 }
+                let bytes = self.g.m.strings[s.0 as usize].as_bytes();
+                if bytes.len() <= STR_INLINE_MAX {
+                    // A short literal is an inline string: constant words, no data symbol, and
+                    // comparisons with other short strings decide from the second word.
+                    let bits = bytes
+                        .iter()
+                        .enumerate()
+                        .fold(0u128, |acc, (i, b)| acc | (*b as u128) << (8 * i));
+                    let lo = bits as u64 as i64;
+                    let hi = ((bits >> 64) as u64 as usize
+                        | STR_INLINE
+                        | (bytes.len() << STR_INLINE_LEN_SHIFT))
+                        as i64;
+                    return vec![self.iconst(lo), self.iconst(hi)];
+                }
+                let d = self.g.str_lit(s.0);
                 let base = self.data_addr(d);
                 let ptr = base;
                 let len = self.g.m.strings[s.0 as usize].len() as i64;

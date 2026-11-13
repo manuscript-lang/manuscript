@@ -128,6 +128,7 @@ impl<'a> FnLower<'a> {
             Some(_)
                 if !self.dead
                     && !x.own
+                    && !self.b.m.opt_is_boxed(self.ty_of(x.v))
                     && self.cx.fact(
                         self.hir.data.file,
                         e.id,

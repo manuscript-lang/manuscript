@@ -380,3 +380,16 @@ Same machine and Release LLVM build as `main` at `6dd056b2`; callgrind instructi
 - The sixth-pass figures (570M against 224M, 70 against 42 ms) do not reproduce: the twin in `c/keyed.c` runs 357.6M instructions and 77 to 96 ms here. Against a like-for-like twin the Manuscript program is ahead in wall time.
 - The instruction gap is the allocator layers (`alloc_large`, `alloc_slow`, `free_large`, `malloc_usable_size`, about 108M), which appear only under callgrind, and `evaluate` (63M more than `ev`): a stack check, a frame pointer and a tag range test per call. The tag test is two compares because the match default is a trap, not `unreachable`; making it unreachable saves about 2 of 28 instructions per call and turns a corrupted tag into undefined behavior, so it is not done. The stack check is item 7 above.
 - No codegen gap is left to close for this shape.
+
+## Short string literals as inline constants (2026-11-12)
+
+A literal of 15 bytes or fewer lowered to a static string (a data symbol plus a tagged length). Comparing it with a short string built at run time (an inline string) crossed kinds, so `a == b` decoded both lengths with a three-way tag select before deciding. A literal of 15 bytes or fewer is now an inline string built from two constants, so a comparison with another short string decides from the second word (`string_eq_inline`, same-kind path) and a captured literal no longer loses the literal compare.
+
+Release build at `b4d2b2ae` plus the change, callgrind instructions per element over 1,000 `String` elements (`strs.any(fn s: s == needle)`, `needle := "zzz"`, elements `"s{i}"`):
+
+| case | before | after |
+| --- | ---: | ---: |
+| `strs.any(fn s: s == needle)` | 30.1 | 10.5 |
+| `ps.all(fn p: p.name != needle)` | 30.1 | 10.5 |
+
+`any`, `all` and `find_index` over `Int` lists already compile to a plain loop of 3 to 4 instructions per element (closure inlined, no allocation), at 1.27x scalar `gcc -O2` wall time on 6e9 element visits; no change there. `String.length()` (a scalar count, about 33 instructions on short strings) is unchanged. Fixture: `e2e/stdlib/inline-string-literal-compare`.

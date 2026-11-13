@@ -232,51 +232,6 @@ impl<'a> FnLower<'a> {
         r
     }
 
-    /// Whether `first`/`last` on a list of `elem` is emitted inline: an element copy that is one
-    /// plain load (nothing to clone) and an optional that is not boxed.
-    pub(super) fn list_end_inline(&self, elem: MTy, result: MTy) -> Option<()> {
-        let inner = self.b.m.opt_inner(result)?;
-        (inner == elem && !self.needs_drop(elem) && !self.b.m.opt_is_boxed(inner)).then_some(())
-    }
-
-    /// `xs.first()` / `xs.last()`: the element where the list is not empty, else `None`.
-    pub(super) fn list_end(
-        &mut self,
-        recv: Val,
-        elem: MTy,
-        result: MTy,
-        last: bool,
-    ) -> Result<Val, Error> {
-        let l = self.borrow(recv);
-        let n = self.b.list_len(l);
-        let zero = self.b.iconst(0);
-        let present = self.b.icmp(ms_mir::ir::Cc::Gt, n, zero);
-        let r = self.two_ways_mode(
-            present,
-            result,
-            Mode::Borrow,
-            &mut |s| {
-                let index = if last {
-                    let one = s.b.iconst(1);
-                    s.b.binop(ms_mir::ir::Op::ISub, n, one)
-                } else {
-                    zero
-                };
-                let x =
-                    s.b.emit(
-                        ms_mir::ir::Op::ListGetU,
-                        &[l, index],
-                        ms_mir::ir::Imm::None,
-                        Some(elem),
-                    )
-                    .expect("list.get.u");
-                Ok(Some(s.b.opt_some(x)))
-            },
-            &mut |s| Ok(Some(s.b.opt_none(result))),
-        )?;
-        Ok(r)
-    }
-
     /// The indexes of a list: `0..length`.
     pub(super) fn list_keys(
         &mut self,
