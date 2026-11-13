@@ -891,3 +891,49 @@ pub fn unit_slot_matches_cranelift() {
     assert_eq!((got.code, &got.stdout), (want.code, &want.stdout));
     assert_eq!(got.code, 42);
 }
+
+/// A record holding a record, in memory, behaves like the Cranelift build (the struct shape itself
+/// is pinned by `nested_leaves_are_reached_by_field_indices` in `llvm_build`).
+const NESTED_RECORD: &str = r#"module "d"
+record Pair { a: int8, b: int }
+record Outer { p: Pair, c: int32, d: int, e: int, f: int, g: int, h: int, i: int }
+entry @main
+file 0 "d.ms"
+fn @mk(%p: Pair, %c: int32, %n: int) -> Outer inline(never) !0:1:1 {
+b0:
+  %w: Outer = rec.new Outer %p, %c, %n, %n, %n, %n, %n, %n !0:2:1
+  ret %w
+}
+fn @sum(%w: Outer) -> int inline(never) !0:3:1 {
+b0:
+  %p: Pair = rec.get Outer.p %w !0:4:1
+  %b: int = rec.get Pair.b %p !0:4:1
+  %d: int = rec.get Outer.d %w !0:4:1
+  %s: int = iadd %b, %d !0:4:1
+  ret %s
+}
+fn @main() -> int !0:20:1 {
+b0:
+  %n: int = iconst 7 !0:21:1
+  %o8: opt<int8> = inarrow.opt %n !0:21:1
+  %a: int8 = opt.get %o8 !0:21:1
+  %p: Pair = rec.new Pair %a, %n !0:21:1
+  %oc: opt<int32> = inarrow.opt %n !0:21:1
+  %c: int32 = opt.get %oc !0:21:1
+  %w: Outer = call @mk(%p, %c, %n) !0:22:1
+  %r: int = call @sum(%w) !0:23:1
+  ret %r
+}
+"#;
+
+#[test]
+pub fn nested_record_is_a_struct_of_structs() {
+    let Some(mut opts) = direct() else { return };
+    // Every test that keeps `ms-keep.ll` shares one file in the working directory; this one does
+    // not read it, so it must not overwrite it.
+    opts.build.keep_ll = false;
+    let want = run_native(NESTED_RECORD, "direct_nested_record-cranelift");
+    assert_eq!(want.code, 14, "the Cranelift build disagrees");
+    let got = run_llvm(NESTED_RECORD, &opts, "direct_nested_record");
+    assert_eq!((got.code, &got.stdout), (want.code, &want.stdout));
+}

@@ -286,7 +286,7 @@ fn load_at(
         let to = if tys.len() == 1 {
             at.clone()
         } else {
-            b.field_ptr(whole, at, k)
+            b.leaf_ptr(whole, at, k)
         };
         let align = b.types().size_align(t).1;
         let meta = elem_meta(cx.m.types.kind(elem), k);
@@ -322,7 +322,7 @@ fn store_at(cx: &Cx, b: &mut FnBuilder, elem: Ty, whole: &LTy, at: &Val, vs: &[V
         let to = if tys.len() == 1 {
             at.clone()
         } else {
-            b.field_ptr(whole, at, k)
+            b.leaf_ptr(whole, at, k)
         };
         let v = super::records::to_mem(b, v, t);
         let align = b.types().size_align(t).1;
