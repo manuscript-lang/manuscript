@@ -301,6 +301,8 @@ pub(crate) const TBAA_HEADER_ELEM_NODE: usize = TBAA_BASE + 4;
 pub(crate) const RANGE_BOOL_NODE: usize = TBAA_BASE + 5;
 /// `!range` node of a length: `[0, 2^63)`.
 pub(crate) const RANGE_LEN_NODE: usize = TBAA_BASE + 6;
+/// `!align` node of an 8-byte aligned pointer (a vtable slot).
+pub(crate) const ALIGN8_NODE: usize = TBAA_BASE + 7;
 /// The empty node `!noundef` and `!nonnull` point at.
 pub(crate) const EMPTY_NODE: usize = 3;
 
@@ -1845,6 +1847,7 @@ impl LlvmModule {
              declare void @llvm.memmove.p0.p0.i64(ptr, ptr, i64, i1)\n\
              declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)\n\
              declare ptr @llvm.frameaddress.p0(i32)\n\
+             declare ptr @llvm.ptrmask.p0.i64(ptr, i64) nounwind speculatable willreturn memory(none)\n\
              declare double @llvm.fabs.f64(double)\n\
              declare double @llvm.sqrt.f64(double)\n\
              declare double @llvm.floor.f64(double)\n\
@@ -1898,7 +1901,7 @@ impl LlvmModule {
         );
         let _ = write!(
             tail,
-            "!{RANGE_BOOL_NODE} = !{{i8 0, i8 2}}\n!{RANGE_LEN_NODE} = !{{i64 0, i64 -9223372036854775808}}\n"
+            "!{RANGE_BOOL_NODE} = !{{i8 0, i8 2}}\n!{RANGE_LEN_NODE} = !{{i64 0, i64 -9223372036854775808}}\n!{ALIGN8_NODE} = !{{i64 8}}\n"
         );
         for (i, f) in self.di.files.iter().enumerate() {
             let name = f.as_deref().unwrap_or("<unknown>");

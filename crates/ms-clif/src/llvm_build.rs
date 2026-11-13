@@ -46,6 +46,10 @@ pub struct Meta {
     pub nonnull: bool,
     /// A loaded value is never `undef` or `poison`, `!noundef`.
     pub noundef: bool,
+    /// The memory never changes once the program reads it (a vtable slot), `!invariant.load`.
+    pub invariant: bool,
+    /// A loaded pointer is 8-byte aligned, `!align`.
+    pub align8: bool,
 }
 
 impl Meta {
@@ -78,6 +82,13 @@ impl Meta {
             }
             if self.noundef {
                 let _ = write!(out, ", !noundef !{EMPTY_NODE}");
+            }
+            if self.invariant {
+                let _ = write!(out, ", !invariant.load !{EMPTY_NODE}");
+            }
+            if self.align8 {
+                assert_eq!(*ty, Ty::Ptr, "!align on a load that is not a pointer");
+                let _ = write!(out, ", !align !{}", crate::llvm_ir::ALIGN8_NODE);
             }
         }
         out
@@ -688,6 +699,16 @@ impl<'t> FnBuilder<'t> {
         } else {
             Some(self.def(ret.clone(), head))
         }
+    }
+
+    /// `ptr` with the bits outside `mask` cleared (`llvm.ptrmask`): LLVM keeps track of what the
+    /// pointer points to, which an `inttoptr` of an `and` loses.
+    pub fn ptrmask(&mut self, p: &Val, mask: i64) -> Val {
+        assert_eq!(p.ty, Ty::Ptr);
+        self.def(
+            Ty::Ptr,
+            format!("call ptr @llvm.ptrmask.p0.i64(ptr {}, i64 {mask})", p.text),
+        )
     }
 
     /// Copies `len` bytes from `src` (aligned to `src_align`) to `dst` (aligned to `dst_align`),
