@@ -51,6 +51,10 @@ pub struct BuildOptions {
     pub vectorize: bool,
     /// Emit supported functions straight from MIR instead of translating Cranelift IR.
     pub llvm_direct: bool,
+    /// Tell LLVM the heap functions are an allocator (`MS_HEAP_FACTS=off` turns it off): it then
+    /// deletes blocks nothing reads and pairs frees with allocations. The ownership-count gate
+    /// turns it off so every block the compiler asks for is counted.
+    pub heap_facts: bool,
     /// What a function or glue the direct emitter cannot write does (`MS_LLVM_FALLBACK`).
     pub llvm_fallback: Fallback,
     /// Run LLVM's verifier after every optimizer pass (`opt -verify-each`).
@@ -80,6 +84,7 @@ impl Default for BuildOptions {
             llvm_units: None,
             vectorize: true,
             llvm_direct: false,
+            heap_facts: true,
             llvm_fallback: Fallback::Translate,
             llvm_verify: false,
             keep_ll: false,
