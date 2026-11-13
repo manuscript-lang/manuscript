@@ -101,6 +101,8 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         }
         Op::Clone => clone(cx, inst, vals, &out, b),
         Op::CleanupPush => cleanup_push(cx, inst, vals, &out, b),
+        // Moving a value out is the value itself (see `pre`).
+        Op::MoveOut => {}
         Op::CleanupRun => {
             cx.decls.push(rt_decl("msrt_cleanup_run"));
             let h = vals[&inst.args[0].index()][0].clone();
@@ -214,7 +216,10 @@ fn drop_inst(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     let v = inst.args[usize::from(guarded)];
     let args = &vals[&v.index()];
     let (block, at) = (cx.block, cx.split);
-    cx.split += 1;
+    // Only a string drop and a guarded drop start a block (see `splits`).
+    if guarded || kind == OwnKind::Str {
+        cx.split += 1;
+    }
     let join = block_label(block, cx.split);
     let mut n = 0;
     let mut fresh = |what: &str| {
