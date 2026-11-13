@@ -730,6 +730,66 @@ b0:
     );
 }
 
+/// Clone glue of closures (the entry in the header copies a heap capture), of interface boxes
+/// (the vtable's payload copier), each used after the original is dropped.
+fn clone_glue() {
+    let src = r#"module "d"
+iface Area { area(int) -> int }
+vtable @v_int: Area for int { @area_int }
+entry @main
+file 0 "d.ms"
+fn @area_int(%self: ptr, %k: int) -> int method !0:1:1 {
+b0:
+  %v: int = load int %self !0:2:1
+  %r: int = imul %v, %k !0:3:1
+  ret %r
+}
+fn @body(%env: ptr, %x: int) -> int closure(list<int>, int) !0:3:1 {
+b0:
+  %s: list<int> = closure.cap 0 %env !0:4:1
+  %n: int = closure.cap 1 %env !0:4:1
+  %zero: int = iconst 0 !0:4:1
+  %b: int = list.get %s, %zero !0:5:1
+  %a: int = iadd %x, %n !0:5:1
+  %r: int = iadd %a, %b !0:5:1
+  ret %r
+}
+fn @adder(%s: move list<int>, %n: int) -> fn(int) -> int inline(never) !0:1:1 {
+b0:
+  %c: fn(int) -> int = closure.new @body %s, %n !0:2:1
+  ret %c
+}
+fn @apply(%f: fn(int) -> int, %x: int) -> int inline(never) !0:6:1 {
+b0:
+  %r: int = call.ind (%f, %x) !0:7:1
+  ret %r
+}
+fn @main() -> int !0:20:1 {
+b0:
+  %a0: int = iconst 97 !0:21:1
+  %t: list<int> = list.lit %a0 !0:21:1
+  %k: int = iconst 4 !0:21:1
+  %c: fn(int) -> int = call @adder(%t, %k) !0:22:1
+  %d: fn(int) -> int = clone %c !0:23:1
+  drop %c !0:23:1
+  %x: int = iconst 5 !0:24:1
+  %r: int = call @apply(%d, %x) !0:25:1
+  drop %d !0:25:1
+  %three: int = iconst 3 !0:26:1
+  %s: dyn Area = iface.new @v_int %three !0:27:1
+  %e: dyn Area = clone %s !0:28:1
+  drop %s !0:28:1
+  %five: int = iconst 5 !0:29:1
+  %a: int = call.method Area.area (%e, %five) !0:30:1
+  drop %e !0:30:1
+  %ra: int = iadd %r, %a !0:33:1
+  ret %ra
+}
+"#;
+    // (5 + 4 + 97) + 3 * 5 = 106 + 15
+    check("direct_clone_glue", src, 121, &["adder", "apply"]);
+}
+
 /// One test, not three: each build writes `ms-keep.ll` in the working directory.
 #[test]
 fn direct_lists_and_strings_match_cranelift() {
@@ -743,6 +803,7 @@ fn direct_lists_and_strings_match_cranelift() {
     crate::llvm_direct_data::narrow_integers_match_cranelift();
     crate::llvm_direct_data::narrow_record_fields_match_cranelift();
     crate::llvm_direct_data::memory_payload_matches_cranelift();
+    crate::llvm_direct_data::narrow_sums_fault_like_cranelift();
     closures_and_runtime_calls();
     interfaces();
     checked_arithmetic();
@@ -750,5 +811,6 @@ fn direct_lists_and_strings_match_cranelift() {
     globals_and_poll();
     ascii_string();
     interfaces_and_maps();
+    clone_glue();
     let _ = std::fs::remove_file("ms-keep.ll");
 }

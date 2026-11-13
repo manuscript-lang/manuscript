@@ -284,9 +284,11 @@ impl InstCheck<'_, '_> {
             Op::NarrowChk => {
                 self.arity(1)?;
                 self.want(
-                    matches!(self.m.types.int_bits(self.t(0)), Some(b) if b < 64)
-                        && self.res == Some(self.t(0)),
-                    "narrow.chk takes a sized int and yields the same type",
+                    self.t(0) == Ty::INT
+                        && self
+                            .res
+                            .is_some_and(|r| matches!(self.m.types.int_bits(r), Some(b) if b < 64)),
+                    "narrow.chk takes an Int and yields a sized int",
                 )
             }
             Op::Conv => {
