@@ -9,7 +9,7 @@ use cranelift_codegen::ir::{
 };
 use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext, Switch};
 use cranelift_module::{DataId, FuncId, Module as _};
-use ms_mir::ir::{Cc, ExternRole, FaultKind, Func, Imm, Inst, Mode, Op, Target, Term};
+use ms_mir::ir::{Cc, ExternRole, FaultKind, Func, Imm, Inst, Mode, Module, Op, Target, Term};
 use ms_mir::types::{Ty, TyKind};
 use ms_rt_abi::symbols::{ISOLATE_HDR_CANCEL, ISOLATE_HDR_GUARDED, STACK_LIMIT_CELL, STACK_REGION};
 use ms_rt_abi::{
@@ -755,51 +755,6 @@ impl<'a, 'm> Lower<'a, 'm> {
         )
     }
 
-    /// The `iface.borrow` results of `f` whose only uses are arguments of calls to functions that
-    /// whose result is not a view of their arguments, and drops. Such an interface cannot outlive the
-    /// frame, so its leaves need no heap box.
-    fn framed_iface_borrows(&self, f: &Func) -> HashSet<usize> {
-        let mut framed = HashSet::new();
-        for b in &f.blocks {
-            for i in &b.insts {
-                if i.op == Op::IfaceBorrow
-                    && let Some(r) = i.res
-                {
-                    framed.insert(r.index());
-                }
-            }
-        }
-        if framed.is_empty() {
-            return framed;
-        }
-        for b in &f.blocks {
-            for i in &b.insts {
-                let plain = match i.op {
-                    Op::Drop => true,
-                    Op::Call | Op::CallMethod => !self.g.m.result_views(f, i),
-                    _ => false,
-                };
-                if !plain {
-                    for a in &i.args {
-                        framed.remove(&a.index());
-                    }
-                }
-            }
-            if let Term::Ret(Some(v)) = &b.term {
-                framed.remove(&v.index());
-            }
-            if let Term::CondBr { cond: v, .. } | Term::Switch { value: v, .. } = &b.term {
-                framed.remove(&v.index());
-            }
-            b.term.for_each_target(|t| {
-                for a in &t.args {
-                    framed.remove(&a.index());
-                }
-            });
-        }
-        framed
-    }
-
     /// The `closure.new` results of `f` that cannot outlive the frame (see [`framed_closure_objects`]).
     fn framed_closure_objects(&self, f: &Func) -> HashSet<usize> {
         framed_closure_objects(self.g.m, f)
@@ -823,7 +778,7 @@ impl<'a, 'm> Lower<'a, 'm> {
         self.used = vec![false; f.values.len()];
         self.lazy = vec![false; f.values.len()];
         self.slot_of.clear();
-        self.framed_ifaces = self.framed_iface_borrows(f);
+        self.framed_ifaces = framed_iface_borrows(self.g.m, f);
         self.framed_closures = self.framed_closure_objects(f);
         self.slot_blk.clear();
         self.pslots.clear();
@@ -1343,6 +1298,51 @@ fn c_param(l: Leaf) -> ir::AbiParam {
         ir::ArgumentExtension::Uext => p.uext(),
         ir::ArgumentExtension::None => p,
     }
+}
+
+/// The `iface.borrow` results of `f` whose only uses are arguments of calls to functions that
+/// whose result is not a view of their arguments, and drops. Such an interface cannot outlive the
+/// frame, so its leaves need no heap box.
+pub(crate) fn framed_iface_borrows(m: &Module, f: &Func) -> HashSet<usize> {
+    let mut framed = HashSet::new();
+    for b in &f.blocks {
+        for i in &b.insts {
+            if i.op == Op::IfaceBorrow
+                && let Some(r) = i.res
+            {
+                framed.insert(r.index());
+            }
+        }
+    }
+    if framed.is_empty() {
+        return framed;
+    }
+    for b in &f.blocks {
+        for i in &b.insts {
+            let plain = match i.op {
+                Op::Drop => true,
+                Op::Call | Op::CallMethod => !m.result_views(f, i),
+                _ => false,
+            };
+            if !plain {
+                for a in &i.args {
+                    framed.remove(&a.index());
+                }
+            }
+        }
+        if let Term::Ret(Some(v)) = &b.term {
+            framed.remove(&v.index());
+        }
+        if let Term::CondBr { cond: v, .. } | Term::Switch { value: v, .. } = &b.term {
+            framed.remove(&v.index());
+        }
+        b.term.for_each_target(|t| {
+            for a in &t.args {
+                framed.remove(&a.index());
+            }
+        });
+    }
+    framed
 }
 
 /// The `closure.new` results of `f` that cannot outlive the frame: their only uses are drops,

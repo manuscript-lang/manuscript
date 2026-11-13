@@ -14,7 +14,10 @@ use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Types, Val};
 use ms_mir::ir::{Cc, Func, Imm, Inst, Mode, Module, Op, Target, Term};
 use ms_mir::types::{Ty, TyKind};
 use ms_rt_abi::STR_INLINE;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+
+mod ifaces;
+mod maps;
 
 /// A finished function: pieces of the `define` line, the body, and the callees it declares.
 pub struct Emitted {
@@ -45,6 +48,8 @@ pub struct Plan {
     /// Clone and drop glue symbols of a closure's object, by the closure function and whether its
     /// object is in a frame.
     pub closures: HashMap<(usize, bool), ClosureSyms>,
+    /// Vtable data symbol by MIR vtable index.
+    pub vtable: HashMap<usize, String>,
 }
 
 /// The glue entries a closure object carries in its header.
@@ -68,8 +73,8 @@ fn leaves(lay: &Layouts, ty: Ty) -> Vec<(LTy, &'static str)> {
     lay.leaves(ty).into_iter().map(leaf).collect()
 }
 
-/// Whether this stage handles values of `ty`: scalars, strings and lists (every list is three
-/// leaves, whatever its element).
+/// Whether this stage handles values of `ty`: scalars, strings, lists (every list is three
+/// leaves, whatever its element), interfaces and maps (seven leaves, made only by `map_new`).
 fn supported_ty(lay: &Layouts, ty: Ty) -> bool {
     matches!(
         lay.m.types.kind(ty),
@@ -79,10 +84,11 @@ fn supported_ty(lay: &Layouts, ty: Ty) -> bool {
             | TyKind::Bool
             | TyKind::Ptr
             | TyKind::Fn(..)
+            | TyKind::Iface(_)
             | TyKind::Str
             | TyKind::Bytes
             | TyKind::List(_)
-    )
+    ) || matches!(lay.m.types.kind(ty), TyKind::Obj(n, _) if n.is_map_or_set())
 }
 
 /// The result type: `void` for no leaves, the leaf itself for one, a tuple for several.
@@ -150,6 +156,7 @@ fn supported_op(op: Op) -> bool {
             | Op::TypeDesc
             | Op::Call
     ) || calls::handles(op)
+        || ifaces::handles(op)
 }
 
 /// Whether stage 1 can emit `f`.
@@ -167,7 +174,10 @@ pub fn supports(m: &Module, lay: &Layouts, f: &Func) -> bool {
             return false;
         }
         for i in &bd.insts {
-            if !supported_op(i.op) || i.res.is_some_and(|r| !ty_ok(r)) {
+            if !(supported_op(i.op) || maps::is_map_new(m, i)) || i.res.is_some_and(|r| !ty_ok(r)) {
+                return false;
+            }
+            if ifaces::handles(i.op) && !ifaces::supported(m, lay, f, i) {
                 return false;
             }
             if i.op == Op::Call {
@@ -177,7 +187,7 @@ pub fn supports(m: &Module, lay: &Layouts, f: &Func) -> bool {
                     return false;
                 }
             }
-            if i.op == Op::CallRt {
+            if i.op == Op::CallRt && !maps::is_map_new(m, i) {
                 let Imm::Ext(e) = i.imm else { return false };
                 let def = &m.externs[e.index()];
                 let tys_ok = def.params.iter().all(|p| supported_ty(lay, p.ty))
@@ -257,6 +267,13 @@ pub fn emit(
                 (Op::BConst, Imm::Bool(v)) => vec![Val::byte(v as u8)],
                 // The length is a leaf of the list: no instruction.
                 (Op::ListLen, _) => vec![vals[&inst.args[0].index()][1].clone()],
+                (Op::CallRt, _) if maps::is_map_new(m, inst) => {
+                    vec![Val::int(0); lay.leaves(f.ty(res)).len()]
+                }
+                (Op::IfaceData | Op::IfaceView, _) => {
+                    ifaces::result_vals(inst.op, &vals[&inst.args[0].index()], &mut b)
+                        .expect("an interface op")
+                }
                 // Cloning plain data is the value itself.
                 (Op::Clone, _) if own_kind(lay, f.ty(inst.args[0])) == OwnKind::Identity => {
                     vals[&inst.args[0].index()].clone()
@@ -277,6 +294,7 @@ pub fn emit(
         });
     }
     let mut out = Out::default();
+    let framed = crate::lower::framed_iface_borrows(m, f);
     for bb in &rpo {
         let bd = &f.blocks[bb.index()];
         b.label(&format!("b{}", bb.index()));
@@ -310,6 +328,7 @@ pub fn emit(
                 plan,
                 symbol_of,
                 vals: &vals,
+                framed: &framed,
             };
             inst_text(&cx, inst, &mut out, at, &mut b);
         }
@@ -353,6 +372,8 @@ struct Cx<'a> {
     plan: &'a Plan,
     symbol_of: &'a dyn Fn(usize) -> String,
     vals: &'a Vals,
+    /// `iface.borrow` results that stay in the frame.
+    framed: &'a HashSet<usize>,
 }
 
 /// Callee declarations and data symbols the function uses.
@@ -432,6 +453,7 @@ fn inst_text(cx: &Cx, inst: &Inst, out_sinks: &mut Out, at: Site, b: &mut FnBuil
         plan,
         symbol_of,
         vals,
+        ..
     } = *cx;
     let decls = &mut out_sinks.decls;
     let arg = |i: usize| vals[&inst.args[i].index()][0].clone();
@@ -441,10 +463,14 @@ fn inst_text(cx: &Cx, inst: &Inst, out_sinks: &mut Out, at: Site, b: &mut FnBuil
         .unwrap_or_default();
     if matches!(
         inst.op,
-        Op::IConst | Op::FConst | Op::BConst | Op::UnitConst | Op::ListLen
-    ) || (inst.op == Op::Clone && own_kind(lay, f.ty(inst.args[0])) == OwnKind::Identity)
+        Op::IConst | Op::FConst | Op::BConst | Op::UnitConst | Op::ListLen | Op::IfaceData
+    ) || maps::is_map_new(m, inst)
+        || (inst.op == Op::Clone && own_kind(lay, f.ty(inst.args[0])) == OwnKind::Identity)
     {
         return;
+    }
+    if ifaces::handles(inst.op) {
+        return ifaces::emit(cx, inst, out_sinks, b);
     }
     if calls::handles(inst.op) {
         calls::emit(cx, inst, out_sinks, b);

@@ -453,6 +453,20 @@ impl<'t> FnBuilder<'t> {
         )
     }
 
+    /// A load of memory that never changes (a vtable slot), so LLVM may hoist it past calls.
+    pub fn load_invariant(&mut self, ty: &Ty, ptr: &Val, align: u64) -> Val {
+        assert_eq!(ptr.ty, Ty::Ptr);
+        assert!(align.is_power_of_two());
+        self.def(
+            ty.clone(),
+            format!(
+                "load {}, ptr {}, align {align}, !invariant.load !{{}}",
+                self.ty(ty),
+                ptr.text
+            ),
+        )
+    }
+
     pub fn store(&mut self, val: &Val, ptr: &Val, align: u64) {
         assert_eq!(ptr.ty, Ty::Ptr);
         assert!(align.is_power_of_two());
