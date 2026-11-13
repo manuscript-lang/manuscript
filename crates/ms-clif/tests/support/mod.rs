@@ -53,9 +53,18 @@ pub fn cc() -> Command {
     reason = "test crates sharing this module use different helpers"
 )]
 pub fn link_fixture(object: &Path, runtime: &Path, out: &Path) -> Result<(), ms_clif::Error> {
+    link_objects(object, &[runtime], out)
+}
+
+/// Links `object` with the fixture runtime and any further objects (LLVM units) into `out`.
+#[allow(
+    dead_code,
+    reason = "test crates sharing this module use different helpers"
+)]
+pub fn link_objects(object: &Path, inputs: &[&Path], out: &Path) -> Result<(), ms_clif::Error> {
     static BUILTINS: OnceLock<Option<PathBuf>> = OnceLock::new();
     let builtins = BUILTINS.get_or_init(builtins);
-    let mut inputs = vec![runtime];
+    let mut inputs = inputs.to_vec();
     inputs.extend(builtins.as_deref());
     // The C fixture runtimes define no process entry, so they link static musl, whose startup file does.
     let build = ms_clif::BuildOptions {

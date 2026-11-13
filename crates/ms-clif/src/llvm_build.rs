@@ -559,6 +559,21 @@ impl<'t> FnBuilder<'t> {
         self.line(format!("br i1 {}, label %{then}, label %{els}", cond.text));
     }
 
+    /// `switch` on an integer: each `(constant, block)` pair, and the block for any other value.
+    pub fn switch(&mut self, value: &Val, default: &str, cases: &[(i64, String)]) {
+        assert!(matches!(value.ty, Ty::I8 | Ty::I16 | Ty::I32 | Ty::I64));
+        let ty = self.ty(&value.ty);
+        let arms: Vec<String> = cases
+            .iter()
+            .map(|(k, b)| format!("{ty} {k}, label %{b}"))
+            .collect();
+        self.line(format!(
+            "switch {ty} {}, label %{default} [ {} ]",
+            value.text,
+            arms.join(" ")
+        ));
+    }
+
     pub fn ret(&mut self, v: Option<&Val>) {
         match v {
             Some(v) => self.line(format!("ret {} {}", self.ty(&v.ty), v.text)),

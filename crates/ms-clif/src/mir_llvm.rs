@@ -42,16 +42,133 @@ fn leaves(lay: &Layouts, ty: Ty) -> Vec<(LTy, &'static str)> {
 /// Whether this stage handles values of `ty`: scalars, strings and lists (every list is three
 /// leaves, whatever its element).
 fn supported_ty(lay: &Layouts, ty: Ty) -> bool {
-    matches!(
-        lay.m.types.kind(ty),
+    match lay.m.types.kind(ty) {
         TyKind::Unit
-            | TyKind::Int
-            | TyKind::Float
-            | TyKind::Bool
-            | TyKind::Str
-            | TyKind::Bytes
-            | TyKind::List(_)
-    )
+        | TyKind::Int
+        | TyKind::Float
+        | TyKind::Bool
+        | TyKind::Str
+        | TyKind::Bytes
+        | TyKind::List(_) => true,
+        // A pointer-backed optional needs allocation; a nullable one is one `i64` whatever it holds.
+        TyKind::Opt(inner) => {
+            !lay.opt_is_boxed(*inner) && (lay.opt_is_nullable(*inner) || supported_ty(lay, *inner))
+        }
+        // An alternative that holds itself lives in a heap block; the rest are tag and slots.
+        TyKind::Alt(a) => {
+            !lay.is_boxed(*a)
+                && lay.m.alts[a.index()]
+                    .cases
+                    .iter()
+                    .all(|c| c.fields.iter().all(|f| supported_ty(lay, f.1)))
+        }
+        _ => false,
+    }
+}
+
+/// How an optional that is not behind a pointer is laid out (`layout.rs`).
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum OptRepr {
+    /// `present: i8`, then the payload's leaves.
+    Tagged,
+    /// A nullable pointer or handle: the payload itself, zero for none.
+    Nullable,
+    /// A string's leaves; none is a null pointer with the static tag.
+    Str,
+}
+
+fn opt_repr(lay: &Layouts, opt: Ty) -> OptRepr {
+    let TyKind::Opt(inner) = lay.m.types.kind(opt) else {
+        unreachable!("an optional operand")
+    };
+    if lay.opt_is_nullable(*inner) {
+        OptRepr::Nullable
+    } else if lay.is_str_like(opt) {
+        OptRepr::Str
+    } else {
+        OptRepr::Tagged
+    }
+}
+
+/// The constant zero of a register leaf.
+fn zero(l: Leaf) -> Val {
+    match leaf(l).0 {
+        LTy::F64 => Val::double(0),
+        LTy::I8 => Val::byte(0),
+        _ => Val::int(0),
+    }
+}
+
+/// The values of an operation that only rearranges or names leaves, so it writes no instruction:
+/// optional and alternative construction, tags and payload reads. `None` for any other op.
+fn rearrange(lay: &Layouts, f: &Func, inst: &Inst, vals: &Vals) -> Option<Vec<Val>> {
+    let arg = |i: usize| &vals[&inst.args[i].index()];
+    let res_ty = || f.ty(inst.res.expect("a result"));
+    Some(match (inst.op, inst.imm) {
+        (Op::OptSome | Op::OptView, _) => match opt_repr(lay, res_ty()) {
+            OptRepr::Tagged => std::iter::once(Val::byte(1))
+                .chain(arg(0).iter().cloned())
+                .collect(),
+            _ => arg(0).clone(),
+        },
+        (Op::OptNone, _) => match opt_repr(lay, res_ty()) {
+            OptRepr::Str => vec![Val::int(0), Val::int(ms_rt_abi::STR_STATIC as i64)],
+            _ => lay.leaves(res_ty()).into_iter().map(zero).collect(),
+        },
+        (Op::OptIsSome, _) if opt_repr(lay, f.ty(inst.args[0])) == OptRepr::Tagged => {
+            vec![arg(0)[0].clone()]
+        }
+        (Op::OptGet | Op::OptUnbox, _) => match opt_repr(lay, f.ty(inst.args[0])) {
+            OptRepr::Tagged => arg(0)[1..].to_vec(),
+            _ => arg(0).clone(),
+        },
+        (Op::AltNew | Op::AltView, Imm::Case(a, c)) => {
+            let mut out: Vec<Val> = lay.leaves(res_ty()).into_iter().map(zero).collect();
+            out[0] = Val::int(c as i64);
+            for (i, (_, idx)) in lay.alt_fields(a)[c as usize].iter().enumerate() {
+                for (k, v) in idx.iter().zip(arg(i)) {
+                    out[*k] = v.clone();
+                }
+            }
+            out
+        }
+        (Op::AltPlain, _) => arg(0).clone(),
+        (Op::AltTag, _) => vec![arg(0)[0].clone()],
+        (Op::AltGet | Op::AltTake, Imm::AltField(a, c, i)) => {
+            let (_, idx) = &lay.alt_fields(a)[c as usize][i as usize];
+            idx.iter().map(|k| arg(0)[*k].clone()).collect()
+        }
+        (Op::AltRelease, _) => vec![],
+        (Op::AltUnbox, Imm::AltField(a, c, i)) => {
+            let (_, idx) = &lay.alt_fields(a)[c as usize][i as usize];
+            idx.iter().map(|k| arg(0)[*k].clone()).collect()
+        }
+        _ => return None,
+    })
+}
+
+/// Whether `rearrange` or an instruction below handles this optional or alternative op with
+/// nothing left to drop or allocate.
+fn data_op_ok(m: &Module, lay: &Layouts, inst: &Inst) -> bool {
+    // Payload fields that are neither moved out nor kept would be dropped, which needs glue.
+    let droppable = |a, c, keep: Option<u32>, mask: u32| {
+        lay.alt_fields(a)[c as usize]
+            .iter()
+            .enumerate()
+            .all(|(k, (t, _))| mask >> k & 1 == 1 || keep == Some(k as u32) || !m.needs_drop(*t))
+    };
+    match (inst.op, inst.imm) {
+        (
+            Op::OptSome | Op::OptView | Op::OptNone | Op::OptIsSome | Op::OptGet | Op::OptUnbox,
+            _,
+        )
+        | (Op::AltNew | Op::AltView | Op::AltPlain | Op::AltTag | Op::AltGet | Op::AltTake, _) => {
+            true
+        }
+        (Op::AltRelease, Imm::AltMask(a, c, mask)) => droppable(a, c, None, mask),
+        (Op::AltUnbox, Imm::AltField(a, c, i)) => droppable(a, c, Some(i), 0),
+        _ => false,
+    }
 }
 
 /// The result type: `void` for no leaves, the leaf itself for one, a tuple for several.
@@ -136,7 +253,8 @@ pub fn supports(m: &Module, lay: &Layouts, f: &Func) -> bool {
             return false;
         }
         for i in &bd.insts {
-            if !supported_op(i.op) || i.res.is_some_and(|r| !ty_ok(r)) {
+            let ok = supported_op(i.op) || data_op_ok(m, lay, i);
+            if !ok || i.res.is_some_and(|r| !ty_ok(r)) {
                 return false;
             }
             if i.op == Op::Call {
@@ -153,7 +271,17 @@ pub fn supports(m: &Module, lay: &Layouts, f: &Func) -> bool {
                 then.block != els.block && !is_entry(then) && !is_entry(els)
             }
             Term::Ret(_) | Term::Unreachable => true,
-            Term::Switch { .. } | Term::Fault(_) => false,
+            Term::Switch { cases, default, .. } => {
+                // Two edges into one block are two phi entries and must carry the same values.
+                let targets: Vec<&Target> = cases.iter().map(|c| &c.1).chain([default]).collect();
+                targets.iter().all(|t| !is_entry(t))
+                    && targets.iter().all(|a| {
+                        targets
+                            .iter()
+                            .all(|b| a.block != b.block || a.args == b.args)
+                    })
+            }
+            Term::Fault(_) => false,
         };
         if !ok {
             return false;
@@ -172,13 +300,7 @@ type Vals = HashMap<usize, Vec<Val>>;
 
 /// Emits `f`, which `supports` accepted. `symbol_of` names the function with MIR index `i`;
 /// `loc` is the `DILocation` node every instruction carries.
-pub fn emit(
-    m: &Module,
-    lay: &Layouts,
-    f: &Func,
-    loc: usize,
-    symbol_of: &dyn Fn(usize) -> String,
-) -> Emitted {
+pub fn emit(lay: &Layouts, f: &Func, loc: usize, symbol_of: &dyn Fn(usize) -> String) -> Emitted {
     let types = Types::default();
     let mut b = FnBuilder::new(&types, Some(loc));
     let rpo = f.rpo();
@@ -216,7 +338,10 @@ pub fn emit(
                 (Op::BConst, Imm::Bool(v)) => vec![Val::byte(v as u8)],
                 // The length is a leaf of the list: no instruction.
                 (Op::ListLen, _) => vec![vals[&inst.args[0].index()][1].clone()],
-                _ => reserve_all(&mut b, f.ty(res)),
+                _ => match rearrange(lay, f, inst, &vals) {
+                    Some(v) => v,
+                    None => reserve_all(&mut b, f.ty(res)),
+                },
             };
             vals.insert(res.index(), own);
         }
@@ -250,7 +375,9 @@ pub fn emit(
             }
         }
         for inst in &bd.insts {
-            inst_text(m, lay, inst, symbol_of, &vals, &mut decls, &mut b);
+            if rearrange(lay, f, inst, &vals).is_none() {
+                inst_text(lay, f, inst, symbol_of, &vals, &mut decls, &mut b);
+            }
         }
         match &bd.term {
             Term::Br(t) => b.br(&format!("b{}", t.block.index())),
@@ -261,6 +388,15 @@ pub fn emit(
                     &format!("b{}", then.block.index()),
                     &format!("b{}", els.block.index()),
                 );
+            }
+            Term::Switch {
+                value,
+                cases,
+                default,
+            } => {
+                let label = |t: &Target| format!("b{}", t.block.index());
+                let arms: Vec<(i64, String)> = cases.iter().map(|(k, t)| (*k, label(t))).collect();
+                b.switch(&vals[&value.index()][0], &label(default), &arms);
             }
             Term::Ret(Some(v)) => match vals[&v.index()].as_slice() {
                 [] => b.ret(None),
@@ -312,14 +448,15 @@ fn fcc(cc: Cc) -> &'static str {
 /// Writes one instruction. Each result leaf takes the name reserved for it in `vals`, which a phi
 /// may already use.
 fn inst_text(
-    m: &Module,
     lay: &Layouts,
+    f: &Func,
     inst: &Inst,
     symbol_of: &dyn Fn(usize) -> String,
     vals: &Vals,
     decls: &mut Vec<(String, String)>,
     b: &mut FnBuilder,
 ) {
+    let m = lay.m;
     let arg = |i: usize| vals[&inst.args[i].index()][0].clone();
     let out = inst
         .res
@@ -374,6 +511,22 @@ fn inst_text(
             }
         }
         Op::B2I => drop(b.zext(&arg(0), LTy::I64)),
+        Op::OptIsSome => {
+            // A niche optional is present unless its first leaf is null (a string also has the
+            // static tag: an inline string may have a zero first word, but never that tag).
+            let v = &vals[&inst.args[0].index()];
+            let pending = b.take_name();
+            let any = match opt_repr(lay, f.ty(inst.args[0])) {
+                OptRepr::Str => {
+                    let t = b.bin(Bin::Xor, &v[1], &Val::int(ms_rt_abi::STR_STATIC as i64));
+                    b.bin(Bin::Or, &v[0], &t)
+                }
+                _ => v[0].clone(),
+            };
+            let c = b.icmp("ne", &any, &Val::int(0));
+            b.restore_name(pending);
+            b.zext(&c, LTy::I8);
+        }
         Op::Call => {
             let Imm::Func(c) = inst.imm else { return };
             let callee = &m.funcs[c.index()];
