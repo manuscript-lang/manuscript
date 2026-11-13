@@ -1294,6 +1294,13 @@ fn direct_function(g: &mut Gen, i: usize, f: &Func) -> bool {
         return false;
     }
     let id = g.funcs[i];
+    // A recursive function's stack-depth check runs it again through its grow shim.
+    let shim = f
+        .blocks
+        .iter()
+        .flat_map(|b| &b.insts)
+        .any(|inst| inst.op == ms_mir::ir::Op::DepthEnter)
+        .then(|| g.glue(Glue::GrowShim(i as u32), Ty::UNIT));
     g.add_scopes(f);
     let mut bits = HashMap::new();
     for inst in f.blocks.iter().flat_map(|b| &b.insts) {
@@ -1311,6 +1318,7 @@ fn direct_function(g: &mut Gen, i: usize, f: &Func) -> bool {
     };
     let funcs = &g.funcs;
     let symbol_of = |k: usize| syms.symbol_of(funcs[k]);
+    let grow_shim = shim.map(|s| syms.symbol_of(s));
     let m = g.m;
     let lay = &g.lay;
     let mut llvm = g.llvm.take().expect("checked above");
@@ -1324,7 +1332,7 @@ fn direct_function(g: &mut Gen, i: usize, f: &Func) -> bool {
             syms: &syms,
             bits: &bits,
         },
-        |env| crate::mir_llvm::emit(m, lay, f, checks, env, &symbol_of),
+        |env| crate::mir_llvm::emit(m, lay, f, checks, env, &symbol_of, grow_shim),
     );
     g.llvm = Some(llvm);
     g.llvm_funcs.push(LlvmFn {

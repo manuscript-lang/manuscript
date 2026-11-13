@@ -453,6 +453,37 @@ fn llvm_direct_glue_matches_translation() {
     assert!(direct(&new_ir), "no glue was emitted directly");
 }
 
+/// Builds `tests/llvm/<fixture>` with the release LLVM backend, optionally emitting functions
+/// directly from MIR, and returns what the program prints and the kept IR.
+fn build_fixture(fixture: &str, direct: bool) -> (String, String) {
+    let source = format!("{}/tests/llvm/{fixture}", env!("CARGO_MANIFEST_DIR"));
+    let work = std::env::temp_dir().join(format!(
+        "ms-llvm-{}-{}-{direct}",
+        fixture.trim_end_matches(".ms"),
+        std::process::id()
+    ));
+    std::fs::create_dir_all(&work).unwrap();
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_ms"));
+    cmd.current_dir(&work)
+        .env("MS_BACKEND", "llvm")
+        .env("MS_LLVM_UNITS", "1")
+        .env("MS_KEEP_LL", "1")
+        .args(["build", &source, "-o", "prog"]);
+    if direct {
+        cmd.env("MS_LLVM_DIRECT", "1");
+    }
+    let built = cmd.output().unwrap();
+    assert!(
+        built.status.success(),
+        "{}",
+        String::from_utf8_lossy(&built.stderr)
+    );
+    let out = Command::new(work.join("prog")).output().unwrap();
+    let ir = std::fs::read_to_string(work.join("ms-keep.ll")).unwrap();
+    let _ = std::fs::remove_dir_all(&work);
+    (String::from_utf8_lossy(&out.stdout).into_owned(), ir)
+}
+
 /// Records are emitted straight from MIR as typed memory: a large record is one `alloca` of a struct
 /// of its leaves, copies are `memcpy`, and a field read is an offset and one aligned load. The
 /// program prints the same output with and without `MS_LLVM_DIRECT`.
@@ -463,37 +494,8 @@ fn llvm_direct_records_match_translation() {
     {
         return;
     }
-    let source = format!(
-        "{}/tests/llvm/direct_records.ms",
-        env!("CARGO_MANIFEST_DIR")
-    );
-    let dir = std::env::temp_dir().join(format!("ms-llvm-records-{}", std::process::id()));
-    std::fs::create_dir_all(&dir).unwrap();
-    let run = |direct: bool| {
-        let work = dir.join(if direct { "direct" } else { "old" });
-        std::fs::create_dir_all(&work).unwrap();
-        let mut cmd = Command::new(env!("CARGO_BIN_EXE_ms"));
-        cmd.current_dir(&work)
-            .env("MS_BACKEND", "llvm")
-            .env("MS_LLVM_UNITS", "1")
-            .env("MS_KEEP_LL", "1")
-            .args(["build", &source, "-o", "prog"]);
-        if direct {
-            cmd.env("MS_LLVM_DIRECT", "1");
-        }
-        let built = cmd.output().unwrap();
-        assert!(
-            built.status.success(),
-            "{}",
-            String::from_utf8_lossy(&built.stderr)
-        );
-        let out = Command::new(work.join("prog")).output().unwrap();
-        let ir = std::fs::read_to_string(work.join("ms-keep.ll")).unwrap();
-        (String::from_utf8_lossy(&out.stdout).into_owned(), ir)
-    };
-    let (old_out, _) = run(false);
-    let (new_out, new_ir) = run(true);
-    let _ = std::fs::remove_dir_all(&dir);
+    let (old_out, _) = build_fixture("direct_records.ms", false);
+    let (new_out, new_ir) = build_fixture("direct_records.ms", true);
     assert_eq!(new_out, old_out);
     assert_eq!(
         new_out,
@@ -522,5 +524,31 @@ fn llvm_direct_records_match_translation() {
     assert!(
         new_ir.contains("inlinedAt:"),
         "direct functions lost their inlined-callee locations"
+    );
+}
+
+/// A recursive function has a stack-depth check; the direct emitter writes it too, and a recursion
+/// deeper than one stack segment still completes through the grow shim.
+#[test]
+fn llvm_direct_recursion_grows_the_stack() {
+    if !cfg!(any(target_os = "linux", target_os = "macos"))
+        || !ms_clif::llvm_available(&ms_cli::engine::build_options_from_env())
+    {
+        return;
+    }
+    let (old_out, _) = build_fixture("direct_depth.ms", false);
+    let (new_out, new_ir) = build_fixture("direct_depth.ms", true);
+    assert_eq!(new_out, old_out);
+    assert_eq!(new_out, "5\n1500000\n");
+    assert!(
+        new_ir
+            .lines()
+            .any(|l| l.starts_with("define") && l.contains("@\"alternate")),
+        "the recursive function is missing"
+    );
+    assert!(
+        new_ir.contains("@\"llvm.frameaddress.p0\"(i32 0)")
+            && new_ir.contains("ptrtoint ptr @\"ms.glue"),
+        "no stack-depth check in the direct function"
     );
 }

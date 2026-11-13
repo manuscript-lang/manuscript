@@ -8,5 +8,6 @@ Verified (yaml parse program, 2026-11-13): the Cranelift lowering flattens a rec
 - A block parameter that is a record in memory gets a slot of its own and each edge copies into it; a conditional edge with copies becomes its own block. A swap (an argument that is another parameter's slot) copies aside first. No phi per leaf.
 - Only records whose leaves are `i64`, `f64` or `i8` are handled (a narrow integer is `i64` in registers and smaller in memory), and a record holding a `ptr` field falls back: `ptr` is an LLVM `ptr` inside a function and `i64` across a call.
 - Direct functions must carry the inlining chain per instruction (`DirectEnv::at`), or fault traces and profiles lose the inlined frames.
+- `depth.enter` is the first instruction of a recursive function: it compares `llvm.frameaddress` with the limit cell in the stack region and, below it, reruns the function through its grow shim (`mir_llvm/depth.rs`). It splits the entry block, so `exit_label` counts it.
 
 Apply when: adding ops to the direct emitter, or changing how it passes records across calls.

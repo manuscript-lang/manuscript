@@ -9,6 +9,7 @@
 use crate::layout::{Layouts, Leaf, mem_layout};
 use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Types, Val};
 use crate::llvm_ir::DirectEnv;
+mod depth;
 mod records;
 use ms_mir::ir::{Cc, Func, Imm, Inst, Mode, Module, Op, Target, Term};
 use ms_mir::types::{Ty, TyKind};
@@ -119,6 +120,8 @@ fn supported_op(op: Op) -> bool {
             | Op::ListGet
             | Op::ListGetNn
             | Op::ListGetU
+            | Op::DepthEnter
+            | Op::DepthLeave
             | Op::Call
     ) || records::handles(op)
 }
@@ -209,6 +212,12 @@ struct Cx<'a> {
     /// MIR block being written and the checks it has split off so far.
     block: usize,
     split: usize,
+    /// The entry parameters as they arrive, one per leaf, and the result leaves: what the
+    /// stack-depth check passes to a new stack segment and returns.
+    entry_abi: Vec<Val>,
+    ret_abi: Vec<LTy>,
+    /// Symbol of the function's grow shim, when it has a stack-depth check.
+    grow_shim: Option<String>,
 }
 
 /// Whether `op` ends its block early to branch to a fault when checks are on.
@@ -218,11 +227,11 @@ fn checked(op: Op) -> bool {
 
 /// The label a MIR block ends in: each check splits it, and a successor's phis name that label.
 fn exit_label(f: &Func, checks: bool, bb: usize) -> String {
-    let n = if checks {
-        f.blocks[bb].insts.iter().filter(|i| checked(i.op)).count()
-    } else {
-        0
-    };
+    let n = f.blocks[bb]
+        .insts
+        .iter()
+        .filter(|i| i.op == Op::DepthEnter || (checks && checked(i.op)))
+        .count();
     block_label(bb, n)
 }
 
@@ -246,6 +255,7 @@ pub fn emit(
     checks: bool,
     env: &mut DirectEnv,
     symbol_of: &dyn Fn(usize) -> String,
+    grow_shim: Option<String>,
 ) -> Emitted {
     let types = Types::default();
     let mut b = FnBuilder::new(&types, Some(env.loc));
@@ -255,12 +265,14 @@ pub fn emit(
     let mut vals: Vals = HashMap::new();
     let mut params = Vec::new();
     let mut entry = Vec::new();
+    let mut entry_abi = Vec::new();
     for (i, p) in f.params.iter().enumerate() {
         let mut abi = Vec::new();
         for (j, (t, attr)) in leaves(lay, p.ty).into_iter().enumerate() {
             params.push(format!("{}{attr} %a{i}_{j}", types.text(&t)));
             abi.push(Val::new(format!("%a{i}_{j}"), t));
         }
+        entry_abi.extend(abi.iter().cloned());
         let own = records::bind_param(&mut b, lay, p.ty, abi, &mut entry);
         vals.insert(f.blocks[0].params[i].value.index(), own);
     }
@@ -319,6 +331,9 @@ pub fn emit(
         decls: Vec::new(),
         block: 0,
         split: 0,
+        entry_abi: entry_abi.clone(),
+        ret_abi: depth::ret_abi(lay, f.ret),
+        grow_shim,
     };
     for bb in &rpo {
         let bd = &f.blocks[bb.index()];
@@ -441,6 +456,11 @@ fn inst_text(cx: &mut Cx, inst: &Inst, vals: &mut Vals, b: &mut FnBuilder) {
     if matches!(inst.op, Op::ListGet | Op::ListGetNn | Op::ListGetU) {
         list_get(cx, inst, vals, b);
         return;
+    }
+    match inst.op {
+        Op::DepthEnter => return depth::enter(cx, b),
+        Op::DepthLeave => return,
+        _ => {}
     }
     if records::handles(inst.op) {
         records::inst(b, cx.lay, cx.f, vals, inst, &out);
