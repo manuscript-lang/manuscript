@@ -987,8 +987,9 @@ impl<'a> FnLower<'a> {
         if let Some(at) = self.temps.iter().rposition(|t| *t == v) {
             self.temps.remove(at);
             if !self.temps.contains(&v) && self.pass_temps.remove(&v).is_some() && !self.dead {
+                let (owner, _) = self.temp_owner(v);
                 self.b
-                    .emit(Op::ScopeDisown, &[v], ms_mir::ir::Imm::None, None);
+                    .emit(Op::ScopeDisown, &[owner], ms_mir::ir::Imm::None, None);
             }
         }
     }
@@ -999,8 +1000,9 @@ impl<'a> FnLower<'a> {
         let taken = self.temps.split_off(mark);
         for t in &taken {
             if self.pass_temps.remove(t).is_some() && !self.dead {
+                let (owner, _) = self.temp_owner(*t);
                 self.b
-                    .emit(Op::ScopeDisown, &[*t], ms_mir::ir::Imm::None, None);
+                    .emit(Op::ScopeDisown, &[owner], ms_mir::ir::Imm::None, None);
             }
         }
         taken
@@ -1475,9 +1477,10 @@ impl<'a> FnLower<'a> {
     pub fn bind_hidden_iterable(&mut self, x: Val) -> ms_mir::builder::Var {
         let ty = self.ty_of(x.v);
         let owned = self.needs_drop(ty);
+        // Nothing rewrites the iterable, so it is defined once.
         let var = self
             .b
-            .declare_var(ty, if owned { Mode::Move } else { Mode::Borrow });
+            .declare_single(ty, if owned { Mode::Move } else { Mode::Borrow });
         let v = self.owned(x);
         self.b.def_var(var, v);
         self.adopt_hidden(var, ty);
@@ -1737,15 +1740,17 @@ impl<'a> FnLower<'a> {
                 .filter(|t| self.pass_temps.get(t).copied() == id)
                 .collect();
             for t in &carried {
+                let (owner, _) = self.temp_owner(*t);
                 self.b
-                    .emit(Op::ScopeDisown, &[*t], ms_mir::ir::Imm::None, None);
+                    .emit(Op::ScopeDisown, &[owner], ms_mir::ir::Imm::None, None);
             }
             let d = self.scopes.len() - 1;
             self.drop_scope_locals(d);
         }
         self.discard_scope();
         for t in carried {
-            let id = self.own_raw_value(t, 0);
+            let (owner, kind) = self.temp_owner(t);
+            let id = self.own_raw_value(owner, kind);
             self.pass_temps.insert(t, id);
         }
     }

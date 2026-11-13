@@ -26,7 +26,8 @@ pub(crate) enum CloseKind {
 #[derive(Clone)]
 pub(crate) struct ResourceTemp {
     slot: Value,
-    handle: Value,
+    /// The close function the pass runs on the slot (`scope.own` kind).
+    owner_kind: u32,
     kind: CloseKind,
 }
 
@@ -262,7 +263,7 @@ struct SplitItem {
 /// scope-end close of a binding propagates it, through [`close_at_result`].
 fn close_at(b: &mut FuncBuilder<'_>, kind: &CloseKind, ptr: Value, ty: MTy) {
     let r = close_at_result(b, kind, ptr, ty);
-    close_error_fault(b, r);
+    close_error_fault(b, r, None);
 }
 
 /// Closes the value at `ptr` and records a failed close in `failed` instead of faulting.
@@ -303,7 +304,7 @@ fn close_at_silent(b: &mut FuncBuilder<'_>, kind: &CloseKind, ptr: Value, ty: MT
 /// the caller's to drop. A failed close faults.
 fn close_owned(b: &mut FuncBuilder<'_>, kind: &CloseKind, v: Value, ty: MTy) -> Value {
     let (v, r) = close_owned_result(b, kind, v, ty);
-    close_error_fault(b, r);
+    close_error_fault(b, r, None);
     v
 }
 
@@ -343,7 +344,7 @@ fn close_owned_result(
 }
 
 /// Faults when `r`, the `Result` of a close, is an error; otherwise releases it.
-fn close_error_fault(b: &mut FuncBuilder<'_>, r: Value) {
+fn close_error_fault(b: &mut FuncBuilder<'_>, r: Value, slot: Option<(Value, MTy)>) {
     let rty = b.ty(r);
     let TyKind::Alt(a) = b.m.types.kind(rty).clone() else {
         return;
@@ -359,6 +360,18 @@ fn close_error_fault(b: &mut FuncBuilder<'_>, r: Value) {
     b.seal_block(bad);
     b.seal_block(good);
     b.switch_to(bad);
+    // The fault never returns to the caller that drops what the close leaves behind.
+    if b.m.needs_drop(rty) {
+        b.emit(Op::Drop, &[r], Imm::None, None);
+    }
+    if let Some((ptr, ty)) = slot
+        && b.m.needs_drop(ty)
+    {
+        let left = b
+            .emit(Op::Take, &[ptr], Imm::Ty(ty), Some(ty))
+            .expect("value");
+        b.emit(Op::Drop, &[left], Imm::None, None);
+    }
     let msg = b.str_lit("a resource could not be closed: its close returned an error");
     let ext = crate::text::runtime_fn(b.m, "msrt_fault_string", &[MTy::STR], MTy::UNIT);
     b.call_rt(ext, &[msg]);
@@ -409,19 +422,32 @@ impl FnLower<'_> {
             .emit(Op::Slot, &[], Imm::Ty(ty), Some(MTy::PTR))
             .expect("resource temporary slot");
         self.move_into(slot, v);
-        let thunk = self.close_thunk(&kind, ty, true);
-        let handle = self
-            .b
-            .emit(Op::CleanupPush, &[slot], Imm::Func(thunk), Some(MTy::INT))
-            .expect("resource temporary cleanup");
+        let thunk = self.close_thunk_as(&kind, ty, true, true);
+        let owner_kind = thunk.index() as u32 + 2;
+        let scope = self.own_raw_value(slot, owner_kind);
         let key = self
             .b
             .emit(Op::Load, &[slot], Imm::Ty(ty), Some(ty))
             .expect("resource temporary view");
-        self.resource_temps
-            .insert(key, ResourceTemp { slot, handle, kind });
+        self.resource_temps.insert(
+            key,
+            ResourceTemp {
+                slot,
+                owner_kind,
+                kind,
+            },
+        );
+        self.pass_temps.insert(key, scope);
         self.temps.push(key);
         key
+    }
+
+    /// What the pass owns for the pending temporary `t`, and with which close: a resource's slot,
+    /// or the value itself.
+    pub(crate) fn temp_owner(&self, t: Value) -> (Value, u32) {
+        self.resource_temps
+            .get(&t)
+            .map_or((t, 0), |r| (r.slot, r.owner_kind))
     }
 
     /// The authoritative slot for an intact pending resource.
@@ -431,8 +457,6 @@ impl FnLower<'_> {
 
     /// A leaf operation has consumed the slot on success. Nothing remains to take or drop.
     pub(crate) fn retire_consumed_resource_temp(&mut self, key: Value) {
-        let handle = self.resource_temps[&key].handle;
-        let _ = self.call_runtime("msrt_cleanup_remove", &[handle], MTy::UNIT);
         self.unhold_temp(key);
     }
 
@@ -441,8 +465,10 @@ impl FnLower<'_> {
     /// branch must not change the continuing path, but each runtime path consumes the handle once.
     pub(crate) fn take_resource_temp(&mut self, key: Value) -> (Value, CloseKind) {
         let owner = self.resource_temps[&key].clone();
-        let _ = self.call_runtime("msrt_cleanup_remove", &[owner.handle], MTy::UNIT);
         let v = self.move_out(owner.slot, self.ty_of(key));
+        if !self.dead {
+            self.b.emit(Op::ScopeDisown, &[owner.slot], Imm::None, None);
+        }
         (v, owner.kind)
     }
 
@@ -574,7 +600,7 @@ impl FnLower<'_> {
     pub(crate) fn close_local(&mut self, l: &crate::func::Local, kind: &CloseKind) {
         let _ = self.call_runtime("msrt_shield_enter", &[], MTy::UNIT);
         let r = self.close_local_result(l, kind);
-        close_error_fault(&mut self.b, r);
+        close_error_fault(&mut self.b, r, None);
         let _ = self.call_runtime("msrt_shield_exit", &[], MTy::UNIT);
     }
 
@@ -604,13 +630,13 @@ impl FnLower<'_> {
             return self.alias_update(&a, &[], &mut |s, v| {
                 let ty = s.b.ty(v);
                 let (v, r) = close_owned_result(&mut s.b, &kind, v, ty);
-                close_error_fault(&mut s.b, r);
+                close_error_fault(&mut s.b, r, None);
                 Ok(v)
             });
         }
         let l = self.local(&b)?;
         let r = self.close_local_result(&l, kind);
-        close_error_fault(&mut self.b, r);
+        close_error_fault(&mut self.b, r, None);
         Ok(())
     }
 
@@ -800,7 +826,7 @@ impl FnLower<'_> {
                 b.ret(Some(out));
             }
             None => {
-                close_error_fault(&mut b, e);
+                close_error_fault(&mut b, e, None);
                 b.unreachable();
             }
         }
@@ -1562,17 +1588,33 @@ impl FnLower<'_> {
     }
 
     pub(crate) fn close_thunk(&mut self, kind: &CloseKind, ty: MTy, in_slot: bool) -> FuncId {
-        let key = match kind {
-            CloseKind::Iface(i, k) => HelperKey::CloseIface {
-                iface: i.0,
-                k: *k,
-                in_slot,
-            },
-            CloseKind::Func { fid, writes_back } => HelperKey::CloseFunc {
-                fid: *fid,
-                writes_back: *writes_back,
-                in_slot,
-            },
+        self.close_thunk_as(kind, ty, in_slot, false)
+    }
+
+    /// `close_thunk`; `private` makes a function of its own, one no scope's fallible close turns
+    /// into a returning one: a pending temporary whose close fails faults, as `drop_temp` does.
+    pub(crate) fn close_thunk_as(
+        &mut self,
+        kind: &CloseKind,
+        ty: MTy,
+        in_slot: bool,
+        private: bool,
+    ) -> FuncId {
+        let key = if private {
+            HelperKey::CloseSilent(ty, kind.clone())
+        } else {
+            match kind {
+                CloseKind::Iface(i, k) => HelperKey::CloseIface {
+                    iface: i.0,
+                    k: *k,
+                    in_slot,
+                },
+                CloseKind::Func { fid, writes_back } => HelperKey::CloseFunc {
+                    fid: *fid,
+                    writes_back: *writes_back,
+                    in_slot,
+                },
+            }
         };
         if let Some(f) = self.cx.helpers.get(&key) {
             return *f;
@@ -1593,7 +1635,12 @@ impl FnLower<'_> {
         let v = b.params()[0];
         if in_slot {
             b.func_mut().slot_close = b.m.needs_drop(ty).then_some(ty);
-            close_at_silent(&mut b, kind, v, ty);
+            if private {
+                let r = close_at_result(&mut b, kind, v, ty);
+                close_error_fault(&mut b, r, Some((v, ty)));
+            } else {
+                close_at_silent(&mut b, kind, v, ty);
+            }
         } else {
             let (_, r) = close_owned_result(&mut b, kind, v, ty);
             if b.m.needs_drop(b.ty(r)) {
@@ -2040,7 +2087,7 @@ impl FnLower<'_> {
             _ => None,
         };
         let Some((ra, ret_err)) = returned else {
-            close_error_fault(&mut self.b, r);
+            close_error_fault(&mut self.b, r, None);
             return;
         };
         let tag = self.b.alt_tag(r);
