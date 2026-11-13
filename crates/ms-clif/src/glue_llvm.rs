@@ -110,6 +110,26 @@ pub fn clone_str(
     vs: &[Val],
     out: Option<&[Val]>,
 ) -> Vs {
+    // A literal's length word is a constant whose tag says it is shared: the clone is the
+    // operand. The blocks stay (their labels are planned) but hold no test or copy.
+    let shared_const = vs[1]
+        .text
+        .parse::<i64>()
+        .is_ok_and(|w| matches!((w as u64) >> 62, 1 | 2));
+    if shared_const {
+        b.br(join);
+        b.label(join);
+        return (0..2)
+            .map(|i| {
+                let p = match out {
+                    Some(o) => o[i].clone(),
+                    None => b.reserve(LTy::I64),
+                };
+                b.phi(&p, &[(vs[i].clone(), pre.to_string())]);
+                p
+            })
+            .collect();
+    }
     decls.push((
         "msrt_str_copy".into(),
         "declare void @\"msrt_str_copy\"(i64, i64, i64) nounwind".into(),
