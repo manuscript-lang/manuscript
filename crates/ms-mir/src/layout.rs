@@ -26,8 +26,8 @@
 //! | recursive alternative | `i64` pointer to a heap block `{ tag, payload }` |
 //! | interface | `data, vtable` |
 
-use ms_mir::ir::{Boxing, Module};
-use ms_mir::types::{AltId, Ty, TyKind};
+use crate::ir::{Boxing, Module};
+use crate::types::{AltId, Ty, TyKind};
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -236,7 +236,7 @@ impl<'m> Layouts<'m> {
     /// The leaves of the heap block behind an indirect type: its fields' leaves in order, except
     /// that a `Map` or `Set` field is one pointer to a header block that exists only while the
     /// collection is not the all-zero empty value (see [`Layouts::type_field_boxed`]).
-    pub fn type_block(&self, r: ms_mir::types::TypeId) -> Vec<Leaf> {
+    pub fn type_block(&self, r: crate::types::TypeId) -> Vec<Leaf> {
         self.m.type_defs[r.index()]
             .fields
             .iter()

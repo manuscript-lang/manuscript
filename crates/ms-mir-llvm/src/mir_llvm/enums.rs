@@ -12,9 +12,9 @@
 
 use super::{Area, Cx, Vals, glue, held_leaves, mem_leaves, narrow_leaves, types};
 use crate::glue_llvm::{OwnKind, own_kind};
-use crate::layout::{AltRepr, Layouts, Leaf, mem_layout};
 use crate::llvm_build::{Bin, FnBuilder, Meta, Range, Ty as LTy, Val};
 use ms_mir::ir::{Func, Imm, Inst, Module, Op};
+use ms_mir::layout::{AltRepr, Layouts, Leaf, mem_layout};
 use ms_mir::types::{AltId, Ty, TyKind};
 
 pub(super) const AREA: Area = Area {

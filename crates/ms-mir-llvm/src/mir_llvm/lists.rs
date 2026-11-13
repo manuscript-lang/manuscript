@@ -1,9 +1,9 @@
 //! Strings and lists: the length leaf, element reads and writes, and string bytes.
 
 use super::{Area, Cx, Vals, block_label, held_leaves, mem_leaves};
-use crate::layout::{Layouts, Leaf, mem_layout};
 use crate::llvm_build::{Bin, FnBuilder, Meta, Range, Tbaa, Ty as LTy, Val};
 use ms_mir::ir::{FaultKind, Func, Imm, Inst, Module, Op, Term};
+use ms_mir::layout::{Layouts, Leaf, mem_layout};
 use ms_mir::types::{Ty, TyKind};
 use ms_rt_abi::STR_STATIC;
 

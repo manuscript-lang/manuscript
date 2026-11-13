@@ -1,9 +1,9 @@
 //! Strings that are not lists: the shared one-character ASCII strings.
 
 use super::{Area, Cx, Vals, types};
-use crate::layout::Layouts;
 use crate::llvm_build::{FnBuilder, Ty as LTy, Val};
 use ms_mir::ir::{Func, Inst, Module, Op};
+use ms_mir::layout::Layouts;
 use ms_rt_abi::{ASCII_CHAR_STRIDE, STR_STATIC};
 
 pub(super) const AREA: Area = Area {

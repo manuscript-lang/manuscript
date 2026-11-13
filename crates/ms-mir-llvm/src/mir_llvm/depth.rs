@@ -8,10 +8,10 @@
 
 use super::{Area, Cx, Emitted, Vals, block_label, call_ret_ty, ret_attr};
 use crate::abi_llvm::{Pass, Ret, Signature};
-use crate::layout::Layouts;
 use crate::llvm_build::Types;
 use crate::llvm_build::{FnBuilder, Ty as LTy, Val};
 use ms_mir::ir::{Func, Inst, Op};
+use ms_mir::layout::Layouts;
 use ms_rt_abi::symbols::{ISOLATE_HDR_CANCEL, STACK_LIMIT_CELL, STACK_REGION};
 
 pub(super) const AREA: Area = Area {
@@ -137,7 +137,7 @@ pub(super) fn enter(cx: &mut Cx, b: &mut FnBuilder) {
 
 /// The leaf types a function returns, as they cross a call.
 pub(super) fn ret_abi(
-    lay: &crate::layout::Layouts,
+    lay: &ms_mir::layout::Layouts,
     ret: ms_mir::types::Ty,
     native: bool,
 ) -> Vec<LTy> {

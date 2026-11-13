@@ -17,9 +17,9 @@
 
 use super::{Area, Cx, Vals, held_leaves, mem_leaves, narrow_leaves};
 use crate::glue_llvm::{OwnKind, own_kind};
-use crate::layout::{Layouts, Leaf, mem_layout};
 use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Types, Val};
 use ms_mir::ir::{Func, Imm, Inst, Op, Target, Value};
+use ms_mir::layout::{Layouts, Leaf, mem_layout};
 use ms_mir::types::{Ty, TyKind};
 
 pub(super) const AREA: Area = Area {
@@ -47,7 +47,7 @@ pub(super) struct Shape {
 
 /// The memory type of the leaves of `ty`: a struct named after a type, string or list, else a
 /// literal one; `None` when it has none or a leaf differs in registers and in memory.
-fn shape_leaves(lay: &Layouts, ty: Ty) -> Option<(Vec<LTy>, crate::layout::MemLayout)> {
+fn shape_leaves(lay: &Layouts, ty: Ty) -> Option<(Vec<LTy>, ms_mir::layout::MemLayout)> {
     let raw = lay.leaves(ty);
     if raw.is_empty()
         || raw

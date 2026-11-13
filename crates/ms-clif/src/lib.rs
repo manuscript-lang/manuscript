@@ -7,18 +7,12 @@
 //! payload blocks carry counts. Frame pointers are always kept so the runtime can
 //! walk stacks for fault traces and sampling profiles.
 
-pub mod layout;
+pub use ms_mir::layout;
 pub mod link;
 
-mod abi_llvm;
 mod cg;
 mod dwarf;
-mod glue_llvm;
-mod llvm_build;
-pub mod llvm_ir;
-mod llvm_lifetimes;
 mod llvm_obj;
-mod mir_llvm;
 pub use llvm_obj::available as llvm_available;
 mod options;
 pub use options::{BuildOptions, CopyProbe, RtHot};

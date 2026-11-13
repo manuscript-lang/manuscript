@@ -4,9 +4,9 @@ use super::attrs::pure_attrs;
 use super::types::Abi;
 use super::{Area, Cx, Vals, call_ret_ty, leaves, native_ret_attr, native_ret_ty, ret_attr, types};
 use crate::abi_llvm::{Pass, Reg, Ret, Signature};
-use crate::layout::Layouts;
 use crate::llvm_build::{FnBuilder, Ty as LTy, Types, Val};
 use ms_mir::ir::{ExternDef, ExternRole, Func, Imm, Inst, Mode, Module, Op, Value};
+use ms_mir::layout::Layouts;
 use ms_mir::types::{Ty, TyKind};
 
 pub(super) const AREA: Area = Area {
@@ -214,7 +214,7 @@ pub(super) enum Callee<'a> {
 #[allow(clippy::too_many_arguments)]
 pub(super) fn finish_call(
     b: &mut FnBuilder,
-    lay: &crate::layout::Layouts,
+    lay: &ms_mir::layout::Layouts,
     result: Ty,
     (ret, attr, pure): (&LTy, &str, bool),
     callee: Callee,

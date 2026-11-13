@@ -12,9 +12,9 @@
 
 use super::calls::{Callee, declare_leaf, leaf_call};
 use super::{Area, Cx, Vals, aggregate, types};
-use crate::layout::{Layouts, Leaf, mem_layout};
 use crate::llvm_build::{FnBuilder, Meta, Ty as LTy, Types, Val};
 use ms_mir::ir::{Func, FuncKind, Imm, Inst, Module, Op};
+use ms_mir::layout::{Layouts, Leaf, mem_layout};
 use ms_mir::types::{Ty, TyKind};
 
 pub(super) const AREA: Area = Area {
@@ -198,7 +198,7 @@ fn env(types: &Types, lay: &Layouts, code: &str, captures: &[Ty]) -> Env {
     let mut fields_of = vec![header];
     let mut fields = Vec::new();
     let mut offsets = Vec::new();
-    let mut off = u64::from(crate::cg::CLOSURE_CAPTURES);
+    let mut off = u64::from(crate::CLOSURE_CAPTURES);
     for c in captures {
         let leaves: Vec<Leaf> = lay.leaves(*c);
         let mem = mem_layout(&leaves);

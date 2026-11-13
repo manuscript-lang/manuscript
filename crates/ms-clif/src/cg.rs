@@ -22,15 +22,15 @@ use cranelift_module::{
 use cranelift_object::{ObjectBuilder, ObjectModule};
 use ms_mir::ir::{ExtId, Func, Module};
 use ms_mir::types::{Ty, TyKind};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 /// Offset of `code` in a closure object.
 /// The name prefix of generated glue functions, followed by a serial and the kind.
 pub(crate) const GLUE_PREFIX: &str = "ms.glue.";
 
-pub const CLOSURE_CODE: i32 = 16;
+pub const CLOSURE_CODE: i32 = ms_rt_abi::CLOSURE_CODE_OFFSET as i32;
 /// Offset of the first capture in a closure object.
-pub const CLOSURE_CAPTURES: u32 = 24;
+pub const CLOSURE_CAPTURES: u32 = ms_rt_abi::CLOSURE_CAPTURES_OFFSET as u32;
 
 /// Kinds of generated helper functions.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -184,17 +184,6 @@ pub struct Gen<'m> {
     unit_blocks: HashMap<(ms_mir::types::AltId, usize), DataId>,
     /// The `ms.tables` blob, once emitted.
     pub tables: Option<DataId>,
-    /// Functions translated to LLVM IR instead of being compiled by Cranelift (release builds).
-    pub llvm: Option<crate::llvm_ir::LlvmModule>,
-    /// Source functions defined through [`Gen::llvm`], for the fault and profile tables.
-    pub llvm_funcs: Vec<LlvmFn>,
-    /// Functions and glue the direct emitter could not write, one line each.
-    pub unsupported: Vec<String>,
-    /// Functions that use the native LLVM calling convention, once computed (see
-    /// [`native_functions`]).
-    pub native: Option<HashSet<usize>>,
-    /// Functions the Cranelift object refers to by address.
-    pub pinned: HashSet<FuncId>,
     /// Symbol the LLVM-built code's table addresses are relative to.
     pub anchor: Option<FuncId>,
 }
@@ -209,63 +198,23 @@ pub struct LlvmFn {
 }
 
 impl Gen<'_> {
-    /// Linkage of module-private data and functions: visible to the LLVM object when it is used.
+    /// Linkage of module-private data.
     pub fn private(&self) -> Linkage {
-        if self.llvm.is_some() {
-            Linkage::Export
-        } else {
-            Linkage::Local
-        }
+        Linkage::Local
     }
 
-    /// Declares `f` in a data object built by this compile. The Cranelift object then names it, so
-    /// an LLVM-built `f` must stay a visible symbol.
+    /// Declares `f` in a data object built by this compile.
     pub fn func_in_data(&mut self, f: FuncId, d: &mut DataDescription) -> ir::FuncRef {
-        self.pinned.insert(f);
         self.module.declare_func_in_data(f, d)
     }
 
-    /// Linkage of a function defined in this compile: LLVM-built functions are imported here.
+    /// Linkage of a function defined in this compile.
     pub fn func_linkage(&self, exported: bool) -> Linkage {
-        if self.opts.llvm.is_some() {
-            Linkage::Import
-        } else if exported {
+        if exported {
             Linkage::Export
         } else {
             Linkage::Local
         }
-    }
-}
-
-struct ModuleSymbols<'a>(
-    &'a ObjectModule,
-    &'a [(u32, u32, u32)],
-    &'a [ms_mir::ir::Scope],
-);
-
-/// The linkage symbol of function `id`.
-pub(crate) fn symbol_of(g: &Gen, id: FuncId) -> String {
-    ModuleSymbols(&g.module, &g.locs, &g.scopes).symbol_of(id)
-}
-
-impl ModuleSymbols<'_> {
-    fn symbol_of(&self, id: FuncId) -> String {
-        self.0
-            .declarations()
-            .get_function_decl(id)
-            .linkage_name(id)
-            .into_owned()
-    }
-}
-
-impl crate::llvm_ir::Symbols for ModuleSymbols<'_> {
-    fn loc(&self, bits: u32) -> Option<(u32, u32, u32)> {
-        self.1.get(bits as usize).copied()
-    }
-
-    fn scope(&self, idx: u32) -> Option<(String, u32, u32, u32)> {
-        let sc = self.2.get((idx as usize).checked_sub(1)?)?;
-        Some((sc.name.clone(), sc.file, sc.parent, sc.call_line))
     }
 }
 
@@ -280,7 +229,7 @@ pub struct FuncDbg {
     pub ranges: Vec<(u32, u32, u32, u32)>,
     /// Exact known source spans `(start, end, file, line)`; gaps stay unmapped in DWARF.
     pub dwarf_ranges: Vec<(u32, u32, u32, u32)>,
-    /// Offset of the function from [`crate::llvm_ir::TEXT_ANCHOR`]; zero when Cranelift built it
+    /// Offset of the function from [`ms_mir_llvm::TEXT_ANCHOR`]; zero when Cranelift built it
     /// (its own symbol is the table's target).
     pub text: u64,
     pub reloc: Option<FuncId>,
@@ -706,210 +655,125 @@ fn compile_with_isa(
         tables: None,
         desc_ids: HashMap::new(),
         unit_blocks: HashMap::new(),
-        llvm_funcs: Vec::new(),
-        unsupported: Vec::new(),
-        native: None,
-        pinned: HashSet::new(),
         anchor: None,
-        llvm: opts.llvm.map(|_| {
-            let files = m
-                .files
-                .iter()
-                .map(|p| (!p.is_empty() && !p.contains('\0')).then(|| p.clone()))
-                .collect();
-            let cwd = std::env::current_dir()
-                .map_or_else(|_| ".".into(), |d| d.to_string_lossy().into_owned());
-            let mut module = crate::llvm_ir::LlvmModule::new(files, cwd);
-            module.heap_facts = opts.build.heap_facts;
-            module
-        }),
     };
-    for (i, f) in m.funcs.iter().enumerate() {
-        let sig = g.func_sig(f);
-        let exported =
-            f.linkage == ms_mir::ir::Linkage::Export || m.entry.is_some_and(|e| e.index() == i);
-        let is_entry = m.entry.is_some_and(|e| e.index() == i);
-        let name = if is_entry {
-            "ms_entry".to_string()
-        } else if exported {
-            f.name.clone()
-        } else {
-            format!("{}#{i}", sym_safe(&f.name))
-        };
-        let id = g
-            .module
-            .declare_function(&name, g.func_linkage(exported), &sig)
-            .map_err(|e| e.to_string())?;
-        g.funcs.push(id);
-    }
-    if opts.llvm.is_some() && internalize(g.module.isa().triple()) {
-        let sig = g.module.make_signature();
-        let id = g
-            .module
-            .declare_function(crate::llvm_ir::TEXT_ANCHOR, Linkage::Import, &sig)
-            .map_err(|e| e.to_string())?;
-        g.anchor = Some(id);
-    }
-    for (i, gl) in m.globals.iter().enumerate() {
-        let mem = g.lay.mem(gl.ty);
-        let id = g
-            .module
-            .declare_data(
-                &format!("ms.global.{i}.{}", sym_safe(&gl.name)),
-                g.private(),
-                true,
-                false,
-            )
-            .map_err(|e| e.to_string())?;
-        let mut d = DataDescription::new();
-        d.define_zeroinit(mem.size.max(8) as usize);
-        d.set_align(8);
-        g.module.define_data(id, &d).map_err(|e| e.to_string())?;
-        g.globals.push(id);
-    }
-    // Vtables are defined after functions are declared: slot 0 is the payload block destructor,
-    // the methods follow, then the payload block copier.
-    for (i, vt) in m.vtables.iter().enumerate() {
-        let id = g
-            .module
-            .declare_data(
-                &format!("ms.vtable.{i}.{}", sym_safe(&vt.name)),
-                g.private(),
-                false,
-                false,
-            )
-            .map_err(|e| e.to_string())?;
-        g.vtables.push(id);
-        let drop = g.glue(Glue::BlockDrop, vt.data_ty);
-        let copy = g.glue(Glue::BlockClone, vt.data_ty);
-        let mut d = DataDescription::new();
-        d.define(vec![0u8; 8 * (2 + vt.methods.len())].into_boxed_slice());
-        d.set_align(8);
-        let r = g.func_in_data(drop, &mut d);
-        d.write_function_addr(0, r);
-        // The payload copier follows the methods.
-        let r = g.func_in_data(copy, &mut d);
-        d.write_function_addr(8 * (1 + vt.methods.len()) as u32, r);
-        for (k, mf) in vt.methods.iter().enumerate() {
-            let r = g.func_in_data(g.funcs[mf.index()], &mut d);
-            d.write_function_addr(8 * (1 + k as u32), r);
-        }
-        g.module.define_data(id, &d).map_err(|e| e.to_string())?;
-        // LLVM sees the contents too, so a call through a vtable it can name folds to a direct call.
-        if g.llvm.is_some() {
-            let decls = g.module.declarations();
-            let sym = |f: FuncId| decls.get_function_decl(f).linkage_name(f).into_owned();
-            let mut slots = vec![sym(drop)];
-            slots.extend(vt.methods.iter().map(|mf| sym(g.funcs[mf.index()])));
-            slots.push(sym(copy));
-            let name = decls.get_data_decl(id).linkage_name(id).into_owned();
-            if let Some(llvm) = g.llvm.as_mut() {
-                llvm.set_vtable(name, slots);
-            }
-        }
-    }
     let mut ctx = Context::new();
     let mut fctx = FunctionBuilderContext::new();
-    // Lowering and defining stay on this thread, in function order; Cranelift compiles in between
-    // on the other cores, so no stage waits for a whole batch of the others.
-    std::thread::scope(|scope| -> Result<(), Error> {
-        let mut pipe = Pipeline::start(scope, &worker_isa);
-        let mut temps;
-        for (i, f) in m.funcs.iter().enumerate() {
-            ctx.clear();
-            ctx.func.signature = g.func_sig(f);
-            ctx.func.name = UserFuncName::user(0, g.funcs[i].as_u32());
-            if g.llvm.is_some() {
-                direct_function(&mut g, i, f);
-                continue;
+    let llvm_objects = match opts.llvm {
+        Some(level) => build_llvm(&mut g, level)?,
+        None => {
+            for (i, f) in m.funcs.iter().enumerate() {
+                let sig = g.func_sig(f);
+                let exported = f.linkage == ms_mir::ir::Linkage::Export
+                    || m.entry.is_some_and(|e| e.index() == i);
+                let is_entry = m.entry.is_some_and(|e| e.index() == i);
+                let name = if is_entry {
+                    "ms_entry".to_string()
+                } else if exported {
+                    f.name.clone()
+                } else {
+                    format!("{}#{i}", sym_safe(&f.name))
+                };
+                let id = g
+                    .module
+                    .declare_function(&name, g.func_linkage(exported), &sig)
+                    .map_err(|e| e.to_string())?;
+                g.funcs.push(id);
             }
-            {
-                let mut l = Lower::new(&mut g, &mut ctx.func, &mut fctx);
-                l.lower_func(i, f);
-                if let Some(u) = l.unsupported.clone() {
-                    return Err(Error(format!("{}: unsupported: {u}", f.name)));
+            for (i, gl) in m.globals.iter().enumerate() {
+                let mem = g.lay.mem(gl.ty);
+                let id = g
+                    .module
+                    .declare_data(
+                        &format!("ms.global.{i}.{}", sym_safe(&gl.name)),
+                        g.private(),
+                        true,
+                        false,
+                    )
+                    .map_err(|e| e.to_string())?;
+                let mut d = DataDescription::new();
+                d.define_zeroinit(mem.size.max(8) as usize);
+                d.set_align(8);
+                g.module.define_data(id, &d).map_err(|e| e.to_string())?;
+                g.globals.push(id);
+            }
+            // Vtables are defined after functions are declared: slot 0 is the payload block destructor,
+            // the methods follow, then the payload block copier.
+            for (i, vt) in m.vtables.iter().enumerate() {
+                let id = g
+                    .module
+                    .declare_data(
+                        &format!("ms.vtable.{i}.{}", sym_safe(&vt.name)),
+                        g.private(),
+                        false,
+                        false,
+                    )
+                    .map_err(|e| e.to_string())?;
+                g.vtables.push(id);
+                let drop = g.glue(Glue::BlockDrop, vt.data_ty);
+                let copy = g.glue(Glue::BlockClone, vt.data_ty);
+                let mut d = DataDescription::new();
+                d.define(vec![0u8; 8 * (2 + vt.methods.len())].into_boxed_slice());
+                d.set_align(8);
+                let r = g.func_in_data(drop, &mut d);
+                d.write_function_addr(0, r);
+                // The payload copier follows the methods.
+                let r = g.func_in_data(copy, &mut d);
+                d.write_function_addr(8 * (1 + vt.methods.len()) as u32, r);
+                for (k, mf) in vt.methods.iter().enumerate() {
+                    let r = g.func_in_data(g.funcs[mf.index()], &mut d);
+                    d.write_function_addr(8 * (1 + k as u32), r);
                 }
-                temps = l.finish();
+                g.module.define_data(id, &d).map_err(|e| e.to_string())?;
             }
-            crate::slotshare::share(&mut ctx.func, &temps);
-            let fid = g.funcs[i];
-            prepare(&g, &mut ctx);
-            pipe.submit(&mut g, std::mem::replace(&mut ctx, Context::new()), fid, i)?;
-        }
-        pipe.finish(&mut g)
-    })?;
-    while let Some((kind, ty)) = g.queue.pop() {
-        if g.llvm.is_some() {
-            direct_glue(&mut g, kind, ty);
-            continue;
-        }
-        let temps;
-        let id = g.glue[&(kind, ty)];
-        ctx.clear();
-        let leaves = g.lay.leaves(ty);
-        ctx.func.signature = match kind {
-            Glue::Drop => g.sig(&leaves, &[]),
-            Glue::Clone => g.sig(&leaves, &leaves),
-            Glue::BlockClone | Glue::ClosureClone(_) => g.sig(&[Leaf::I64], &[Leaf::I64]),
-            Glue::SlotCopy => g.sig(&[Leaf::I64, Leaf::I64], &[]),
-            _ => g.sig(&[Leaf::I64], &[]),
-        };
-        ctx.func.name = UserFuncName::user(0, id.as_u32());
-        {
-            let mut l = Lower::new(&mut g, &mut ctx.func, &mut fctx);
-            l.lower_glue(kind, ty);
-            temps = l.finish();
-        }
-        crate::slotshare::share(&mut ctx.func, &temps);
-        define(&mut g, &mut ctx, id, "glue")?;
-    }
-    if !g.unsupported.is_empty() {
-        return Err(Error(format!(
-            "the direct LLVM emitter cannot write:\n{}",
-            g.unsupported.join("\n")
-        )));
-    }
-    let triple = llvm_triple(g.module.isa().triple());
-    let mut llvm_objects = Vec::new();
-    if let Some(llvm) = g.llvm.take() {
-        let syms = ModuleSymbols(&g.module, &g.locs, &g.scopes);
-        let pinned = g.pinned.iter().map(|id| syms.symbol_of(*id)).collect();
-        let units = llvm_units(opts.build.llvm_units, llvm.code_bytes());
-        // Separate objects have no common anchor: every function keeps a symbol.
-        let anchored = g.anchor.is_some() && units == 1 && !llvm.has_unoptimized();
-        if !anchored {
-            g.anchor = None;
-        }
-        let irs = llvm.finish_units(&triple, &pinned, anchored, units);
-        let objects = crate::llvm_obj::compile_all(&irs, opts.llvm.unwrap_or("3"), &opts.build)?;
-        drop(irs);
-        let mut dbg = Vec::new();
-        let mut scopes: Vec<ms_mir::ir::Scope> = Vec::new();
-        for obj in &objects {
-            let t = crate::llvm_tables::read(obj.path(), &g.llvm_funcs, &m.files, anchored)?;
-            // Scope ids count from one within an object.
-            let base = scopes.len() as u32;
-            for mut d in t.dbg {
-                if base != 0 {
-                    for r in &mut d.ranges {
-                        if r.3 != 0 {
-                            r.3 += base;
+            // Lowering and defining stay on this thread, in function order; Cranelift compiles in between
+            // on the other cores, so no stage waits for a whole batch of the others.
+            std::thread::scope(|scope| -> Result<(), Error> {
+                let mut pipe = Pipeline::start(scope, &worker_isa);
+                let mut temps;
+                for (i, f) in m.funcs.iter().enumerate() {
+                    ctx.clear();
+                    ctx.func.signature = g.func_sig(f);
+                    ctx.func.name = UserFuncName::user(0, g.funcs[i].as_u32());
+                    {
+                        let mut l = Lower::new(&mut g, &mut ctx.func, &mut fctx);
+                        l.lower_func(i, f);
+                        if let Some(u) = l.unsupported.clone() {
+                            return Err(Error(format!("{}: unsupported: {u}", f.name)));
                         }
+                        temps = l.finish();
                     }
+                    crate::slotshare::share(&mut ctx.func, &temps);
+                    let fid = g.funcs[i];
+                    prepare(&g, &mut ctx);
+                    pipe.submit(&mut g, std::mem::replace(&mut ctx, Context::new()), fid, i)?;
                 }
-                dbg.push(d);
+                pipe.finish(&mut g)
+            })?;
+            while let Some((kind, ty)) = g.queue.pop() {
+                let temps;
+                let id = g.glue[&(kind, ty)];
+                ctx.clear();
+                let leaves = g.lay.leaves(ty);
+                ctx.func.signature = match kind {
+                    Glue::Drop => g.sig(&leaves, &[]),
+                    Glue::Clone => g.sig(&leaves, &leaves),
+                    Glue::BlockClone | Glue::ClosureClone(_) => g.sig(&[Leaf::I64], &[Leaf::I64]),
+                    Glue::SlotCopy => g.sig(&[Leaf::I64, Leaf::I64], &[]),
+                    _ => g.sig(&[Leaf::I64], &[]),
+                };
+                ctx.func.name = UserFuncName::user(0, id.as_u32());
+                {
+                    let mut l = Lower::new(&mut g, &mut ctx.func, &mut fctx);
+                    l.lower_glue(kind, ty);
+                    temps = l.finish();
+                }
+                crate::slotshare::share(&mut ctx.func, &temps);
+                define(&mut g, &mut ctx, id, "glue")?;
             }
-            scopes.extend(t.scopes.into_iter().map(|mut sc| {
-                if sc.parent != 0 {
-                    sc.parent += base;
-                }
-                sc
-            }));
+            Vec::new()
         }
-        g.dbg = dbg;
-        g.scopes = scopes;
-        llvm_objects = objects;
-    }
+    };
     let tables = if g.m.entry.is_some() {
         Some(emit_tables(&mut g)?)
     } else {
@@ -937,18 +801,75 @@ fn compile_with_isa(
     })
 }
 
-/// Bytes of function text per LLVM unit below which splitting costs more than it saves: each
-/// unit parses the debug metadata and cannot inline functions of another.
-const UNIT_BYTES: usize = 2 << 20;
-
-/// How many objects LLVM compiles the program into: `requested`, else one per core up to the
-/// size that gives each [`UNIT_BYTES`] of code.
-fn llvm_units(requested: Option<usize>, bytes: usize) -> usize {
-    if let Some(n) = requested {
-        return n.max(1);
+/// Release builds: has `ms_mir_llvm` write the program, compiles its modules with LLVM, and sets up
+/// the fault and profile tables for the code they hold.
+fn build_llvm(g: &mut Gen, level: &str) -> Result<Vec<crate::llvm_obj::LlvmObject>, Error> {
+    let triple = g.module.isa().triple().clone();
+    let program = ms_mir_llvm::emit(
+        g.m,
+        &ms_mir_llvm::Options {
+            checks: g.opts.checks,
+            heap_facts: g.opts.build.heap_facts,
+            units: g.opts.build.llvm_units,
+            triple: llvm_triple(&triple),
+            anchor: internalize(&triple),
+        },
+    )
+    .map_err(|e| Error(e.0))?;
+    if program.anchored {
+        let sig = g.module.make_signature();
+        let id = g
+            .module
+            .declare_function(ms_mir_llvm::TEXT_ANCHOR, Linkage::Import, &sig)
+            .map_err(|e| e.to_string())?;
+        g.anchor = Some(id);
     }
-    let cores = std::thread::available_parallelism().map_or(1, usize::from);
-    (bytes / UNIT_BYTES).clamp(1, cores)
+    // The tables name each function by symbol, and keep the order of the functions.
+    let mut funcs = Vec::new();
+    for f in &program.funcs {
+        let sig = match (f.symbol == ms_mir_llvm::ENTRY_SYMBOL, g.m.entry) {
+            (true, Some(entry)) => g.func_sig(&g.m.funcs[entry.index()]),
+            _ => g.module.make_signature(),
+        };
+        let id = g
+            .module
+            .declare_function(&f.symbol, Linkage::Import, &sig)
+            .map_err(|e| e.to_string())?;
+        funcs.push(LlvmFn {
+            id,
+            symbol: f.symbol.clone(),
+            name: f.name.clone(),
+            file: f.file,
+            line: f.line,
+        });
+    }
+    let objects = crate::llvm_obj::compile_all(&program.units, level, &g.opts.build)?;
+    let mut dbg = Vec::new();
+    let mut scopes: Vec<ms_mir::ir::Scope> = Vec::new();
+    for obj in &objects {
+        let t = crate::llvm_tables::read(obj.path(), &funcs, &g.m.files, program.anchored)?;
+        // Scope ids count from one within an object.
+        let base = scopes.len() as u32;
+        for mut d in t.dbg {
+            if base != 0 {
+                for r in &mut d.ranges {
+                    if r.3 != 0 {
+                        r.3 += base;
+                    }
+                }
+            }
+            dbg.push(d);
+        }
+        scopes.extend(t.scopes.into_iter().map(|mut sc| {
+            if sc.parent != 0 {
+                sc.parent += base;
+            }
+            sc
+        }));
+    }
+    g.dbg = dbg;
+    g.scopes = scopes;
+    Ok(objects)
 }
 
 /// The target triple of the LLVM IR. Windows executables link over the mingw-w64 CRT, so the code
@@ -1258,396 +1179,6 @@ impl Pipeline {
     }
 }
 
-/// The functions that take and return values in the native LLVM calling convention
-/// (`abi_llvm`): aggregates by pointer, large results through a hidden pointer. Such a function
-/// has no leaf entry, so every reference to it must be a call from a directly emitted function:
-/// the rest of the program (the runtime, closures, vtables, cleanups, exports and the entry) only
-/// knows the leaf convention. Its stack-growth
-/// shim is written for the native convention too (see [`direct_shim`]).
-fn native_functions(g: &Gen) -> HashSet<usize> {
-    use ms_mir::ir::{FuncKind, Imm, Op};
-    let m = g.m;
-    let n = m.funcs.len();
-    // The code of a closure and the methods of a vtable are called by address: they keep the leaf
-    // convention, though they call native functions.
-    let mut keep: Vec<bool> = m
-        .funcs
-        .iter()
-        .map(|f| matches!(f.kind, FuncKind::Normal))
-        .collect();
-    let mut clear = |k: usize| keep[k] = false;
-    for f in [m.entry.map(|e| e.index())].into_iter().flatten() {
-        clear(f);
-    }
-    for v in &m.vtables {
-        v.methods.iter().for_each(|f| clear(f.index()));
-    }
-    for (_, a, b) in &m.desc_glue {
-        clear(a.index());
-        clear(b.index());
-    }
-    for f in m.funcs.iter() {
-        f.capture_closers.iter().for_each(|(_, c)| clear(c.index()));
-        let others = [
-            f.slot_result,
-            f.close_exit.map(|c| c.0),
-            f.close_exit.map(|c| c.1),
-        ];
-        others.into_iter().flatten().for_each(|c| clear(c.index()));
-        for inst in f.blocks.iter().flat_map(|b| &b.insts) {
-            let Imm::Func(c) = inst.imm else { continue };
-            // Any use but a call from a directly emitted function needs the leaf entry.
-            if inst.op != Op::Call {
-                clear(c.index());
-            }
-        }
-    }
-    let syms = ModuleSymbols(&g.module, &g.locs, &g.scopes);
-    for i in 0..n {
-        let id = g.funcs[i];
-        let exported = g.module.declarations().get_function_decl(id).linkage == Linkage::Import
-            && !syms.symbol_of(id).contains('#')
-            && !g.glue_ids.contains(&id);
-        if exported {
-            clear(i);
-        }
-    }
-    (0..n).filter(|&i| keep[i]).collect()
-}
-
-/// Emits `f` straight from MIR. A function `mir_llvm` cannot write is recorded in
-/// `Gen::unsupported`, and the build fails with all of them once emission is done.
-fn direct_function(g: &mut Gen, i: usize, f: &Func) {
-    if let Some(why) = crate::mir_llvm::unsupported(g.m, &g.lay, f) {
-        return unsupported(g, &f.name, &why);
-    }
-    if g.native.is_none() {
-        g.native = Some(native_functions(g));
-    }
-    let id = g.funcs[i];
-    // A recursive function's stack-depth check runs it again through its grow shim.
-    let shim = f
-        .blocks
-        .iter()
-        .flat_map(|b| &b.insts)
-        .any(|inst| inst.op == ms_mir::ir::Op::DepthEnter)
-        .then(|| g.glue(Glue::GrowShim(i as u32), Ty::UNIT));
-    g.add_scopes(f);
-    let mut bits = HashMap::new();
-    let locs = f
-        .blocks
-        .iter()
-        .flat_map(|b| b.insts.iter().map(|i| i.loc).chain([b.term_loc]));
-    for loc in locs {
-        bits.entry(loc).or_insert_with(|| g.loc_bits(loc));
-    }
-    let syms = ModuleSymbols(&g.module, &g.locs, &g.scopes);
-    let sym = syms.symbol_of(id);
-    let exported = g.module.declarations().get_function_decl(id).linkage == Linkage::Import
-        && !sym.contains('#')
-        && !g.glue_ids.contains(&id);
-    let fn_loc = if f.loc.file != u32::MAX {
-        (f.loc.file, f.loc.line)
-    } else {
-        (0, f.loc.line)
-    };
-    let plan = direct_plan(g, f);
-    let syms = ModuleSymbols(&g.module, &g.locs, &g.scopes);
-    let funcs = &g.funcs;
-    let symbol_of = |k: usize| syms.symbol_of(funcs[k]);
-    let grow_shim = shim.map(|s| syms.symbol_of(s));
-    let m = g.m;
-    let lay = &g.lay;
-    let native = g.native.as_ref().expect("computed above");
-    let mut llvm = g.llvm.take().expect("checked above");
-    llvm.add_direct(
-        &sym,
-        &f.name,
-        fn_loc,
-        exported,
-        crate::llvm_ir::DirectLocs {
-            syms: &syms,
-            bits: &bits,
-        },
-        |env| {
-            let place = crate::mir_llvm::Place {
-                idx: i,
-                grow_shim,
-                native,
-            };
-            crate::mir_llvm::emit(m, lay, place, f, &plan, env, &symbol_of)
-        },
-    );
-    g.llvm = Some(llvm);
-    g.llvm_funcs.push(LlvmFn {
-        id,
-        symbol: sym,
-        name: f.name.clone(),
-        file: f.loc.file,
-        line: f.loc.line,
-    });
-}
-
-/// Records a function or glue the direct emitter cannot write.
-fn unsupported(g: &mut Gen, what: &str, why: &str) {
-    g.unsupported.push(format!("  {what}: {why}"));
-}
-
-/// The glue, descriptors, closures and vtables `f`'s instructions refer to, declared now so that
-/// emission can name them: glue is queued for generation like any other. The frame decisions are
-/// those of the Cranelift lowering.
-fn direct_plan(g: &mut Gen, f: &Func) -> crate::mir_llvm::Plan {
-    use crate::glue_llvm::{OwnKind, own_kind};
-    use ms_mir::ir::{Imm, Op};
-    let mut plan = crate::mir_llvm::Plan {
-        checks: g.opts.checks,
-        framed_closures: crate::lower::framed_closure_objects(g.m, f),
-        framed_ifaces: crate::lower::framed_iface_borrows(g.m, f),
-        ..Default::default()
-    };
-    for bd in &f.blocks {
-        for i in &bd.insts {
-            match (i.op, i.imm) {
-                (Op::Clone | Op::AltOwn | Op::OptUnwrap, _) => {
-                    // `opt.unwrap` clones the payload of its operand.
-                    let ty = match i.op {
-                        Op::OptUnwrap => g.m.opt_inner(f.ty(i.args[0])).expect("an optional"),
-                        _ => crate::mir_llvm::cloned_ty(f, i),
-                    };
-                    if own_kind(&g.lay, ty) == OwnKind::Glue && !plan.clone.contains_key(&ty) {
-                        let id = g.glue(Glue::Clone, ty);
-                        plan.clone.insert(
-                            ty,
-                            crate::glue_llvm::target(g, Glue::Clone, ty, symbol_of(g, id)),
-                        );
-                    }
-                }
-                (Op::Drop | Op::DropIf, _) => {
-                    let ty = f.ty(i.args[usize::from(i.op == Op::DropIf)]);
-                    plan_drop(g, &mut plan, ty);
-                }
-                (Op::AltRelease | Op::AltUnbox | Op::TypeRelease, _) => {
-                    for ty in crate::mir_llvm::released_types(&g.lay, f, i) {
-                        plan_drop(g, &mut plan, ty);
-                    }
-                }
-                (
-                    Op::ListSet | Op::ListSetNn | Op::ListSetU | Op::ListDropLast | Op::ListRelease,
-                    _,
-                ) => {
-                    let elem = g.m.seq_elem(f.ty(i.args[0]));
-                    if let Some(ty) = elem
-                        && own_kind(&g.lay, ty) == OwnKind::Glue
-                        && !plan.drop.contains_key(&ty)
-                    {
-                        let id = g.glue(Glue::Drop, ty);
-                        plan.drop.insert(
-                            ty,
-                            crate::glue_llvm::target(g, Glue::Drop, ty, symbol_of(g, id)),
-                        );
-                    }
-                }
-                (Op::CleanupPush, Imm::Func(c)) => {
-                    let id = g.glue(Glue::CleanupThunk(c.0), Ty::UNIT);
-                    plan.cleanup.insert(c.index(), symbol_of(g, id));
-                }
-                (Op::TypeDesc, Imm::Ty(t)) => {
-                    let id = g.typedesc(t);
-                    let name = g.module.declarations().get_data_decl(id).linkage_name(id);
-                    plan.desc.insert(t, name.into_owned());
-                }
-                (Op::ClosureNew, Imm::Func(c)) => {
-                    let framed = i
-                        .res
-                        .is_some_and(|r| plan.framed_closures.contains(&r.index()));
-                    let clone = g.glue(Glue::ClosureClone(c.0), Ty::UNIT);
-                    let drop = g.glue(
-                        if framed {
-                            Glue::ClosureDropFramed(c.0)
-                        } else {
-                            Glue::ClosureDrop(c.0)
-                        },
-                        Ty::UNIT,
-                    );
-                    let syms = crate::mir_llvm::ClosureSyms {
-                        clone: symbol_of(g, clone),
-                        drop: symbol_of(g, drop),
-                    };
-                    plan.closures.insert((c.index(), framed), syms);
-                }
-                (Op::AltNew | Op::AltView, Imm::Case(a, c)) => {
-                    let ty = f.ty(i.res.expect("an enum result"));
-                    let unit = g.m.alts[a.index()].cases[c as usize].fields.is_empty();
-                    if unit
-                        && g.lay.is_boxed(a)
-                        && let Some(size) = g.lay.boxed_block_size(ty)
-                    {
-                        let id = g.unit_block(a, c as usize, size);
-                        let name = g.module.declarations().get_data_decl(id).linkage_name(id);
-                        plan.units
-                            .insert((a.index(), c as usize), name.into_owned());
-                    }
-                }
-                (Op::GlobalGet | Op::GlobalSet, Imm::Global(gl)) => {
-                    let id = g.globals[gl.index()];
-                    let name = g.module.declarations().get_data_decl(id).linkage_name(id);
-                    plan.globals.insert(gl.index(), name.into_owned());
-                }
-                (Op::IfaceNew | Op::IfaceBorrow | Op::IfaceIs, Imm::Vtable(vt)) => {
-                    let id = g.vtables[vt.index()];
-                    let name = g.module.declarations().get_data_decl(id).linkage_name(id);
-                    plan.vtables.insert(vt.index(), name.into_owned());
-                }
-                _ => {}
-            }
-        }
-    }
-    plan
-}
-
-/// Declares the drop glue of `ty` for the function being planned, when it has some.
-fn plan_drop(g: &mut Gen, plan: &mut crate::mir_llvm::Plan, ty: Ty) {
-    use crate::glue_llvm::{OwnKind, own_kind};
-    if own_kind(&g.lay, ty) == OwnKind::Glue && !plan.drop.contains_key(&ty) {
-        let id = g.glue(Glue::Drop, ty);
-        plan.drop.insert(
-            ty,
-            crate::glue_llvm::target(g, Glue::Drop, ty, symbol_of(g, id)),
-        );
-    }
-}
-
-/// Emits the stack-growth shim of the directly emitted function `f`, in its calling convention.
-fn direct_shim(g: &mut Gen, kind: Glue, ty: Ty, f: usize, native: bool) {
-    let id = g.glue[&(kind, ty)];
-    let sym = symbol_of(g, id);
-    let callee = symbol_of(g, g.funcs[f]);
-    let mut llvm = g
-        .llvm
-        .take()
-        .expect("native functions are emitted directly");
-    let no_bits = HashMap::new();
-    let locs = crate::llvm_ir::DirectLocs {
-        syms: &crate::llvm_ir::NoSymbols,
-        bits: &no_bits,
-    };
-    let (m, lay) = (g.m, &g.lay);
-    llvm.add_direct(&sym, "glue", (0, 0), false, locs, |env| {
-        let shim = if native {
-            crate::mir_llvm::grow_shim
-        } else {
-            crate::mir_llvm::leaf_grow_shim
-        };
-        shim(env.types, lay, &m.funcs[f], &callee, env.loc)
-    });
-    llvm.mark_glue();
-    g.llvm = Some(llvm);
-    g.llvm_funcs.push(LlvmFn {
-        id,
-        symbol: sym,
-        name: "glue".to_string(),
-        file: u32::MAX,
-        line: 0,
-    });
-}
-
-/// Declares the shared blocks of the payloadless cases of boxed enum `ty` while the LLVM module is
-/// still set, so they are exported (`Gen::private`): the clone glue addresses them.
-fn declare_unit_blocks(g: &mut Gen, ty: Ty) {
-    let ms_mir::types::TyKind::Alt(a) = g.m.types.kind(ty).clone() else {
-        return;
-    };
-    let Some(crate::layout::AltRepr::Boxed { block, .. }) = g.lay.shape(ty).alt.clone() else {
-        return;
-    };
-    let size = crate::layout::mem_layout(&block).size as usize;
-    for (c, case) in g.m.alts[a.index()].cases.iter().enumerate() {
-        if case.fields.is_empty() {
-            g.unit_block(a, c, size);
-        }
-    }
-}
-
-/// Emits the closure glue `kind` under its leaf symbol `sym`: the closure header and the runtime
-/// call it through a pointer, so it has no native twin.
-fn direct_closure_glue(g: &mut Gen, kind: Glue, id: FuncId, sym: String) {
-    let mut llvm = g.llvm.take().expect("checked by the caller");
-    let no_bits = HashMap::new();
-    let locs = crate::llvm_ir::DirectLocs {
-        syms: &crate::llvm_ir::NoSymbols,
-        bits: &no_bits,
-    };
-    llvm.add_direct(&sym, "glue", (0, 0), false, locs, |env| {
-        crate::glue_llvm::closure::emit(g, kind, env.types, env.loc)
-    });
-    llvm.mark_glue();
-    g.llvm = Some(llvm);
-    g.llvm_funcs.push(LlvmFn {
-        id,
-        symbol: sym,
-        name: "glue".to_string(),
-        file: u32::MAX,
-        line: 0,
-    });
-}
-
-/// Emits the glue `kind` for `ty` straight to LLVM IR, or records it in `Gen::unsupported`.
-fn direct_glue(g: &mut Gen, kind: Glue, ty: Ty) {
-    if let Glue::GrowShim(f) = kind {
-        let f = f as usize;
-        let native = g.native.as_ref().is_some_and(|n| n.contains(&f));
-        if native || crate::mir_llvm::supports(g.m, &g.lay, &g.m.funcs[f]) {
-            return direct_shim(g, kind, ty, f, native);
-        }
-    }
-    if !crate::glue_llvm::supports(g, kind, ty) {
-        let ty_kind = format!("{:?}", g.m.types.kind(ty));
-        let end = ty_kind.find(['(', ' ', '{']).unwrap_or(ty_kind.len());
-        return unsupported(g, &format!("glue {kind:?}"), &ty_kind[..end]);
-    }
-    let id = g.glue[&(kind, ty)];
-    let sym = symbol_of(g, id);
-    if crate::glue_llvm::closure::is_closure(kind) {
-        return direct_closure_glue(g, kind, id, sym);
-    }
-    if kind == Glue::Clone {
-        declare_unit_blocks(g, ty);
-    }
-    // Data the glue addresses is declared while the LLVM module still exists: it is exported
-    // only then.
-    if matches!(kind, Glue::Drop | Glue::Clone) && matches!(g.m.types.kind(ty), TyKind::Obj(..)) {
-        g.typedesc(ty);
-    }
-    let mut llvm = g.llvm.take().expect("checked above");
-    let nat = crate::glue_llvm::native(&sym);
-    // Glue has no MIR, so no source locations to resolve.
-    let no_bits = HashMap::new();
-    let locs = crate::llvm_ir::DirectLocs {
-        syms: &crate::llvm_ir::NoSymbols,
-        bits: &no_bits,
-    };
-    llvm.add_direct(&nat, "glue", (0, 0), false, locs, |env| {
-        crate::glue_llvm::emit(g, kind, ty, env.types, env.loc)
-    });
-    llvm.mark_glue();
-    let locs = crate::llvm_ir::DirectLocs {
-        syms: &crate::llvm_ir::NoSymbols,
-        bits: &no_bits,
-    };
-    llvm.add_direct(&sym, "glue", (0, 0), false, locs, |env| {
-        crate::glue_llvm::thunk(g, kind, ty, &sym, env.types, env.loc)
-    });
-    llvm.mark_glue();
-    g.llvm = Some(llvm);
-    g.llvm_funcs.push(LlvmFn {
-        id,
-        symbol: nat,
-        name: "glue".to_string(),
-        file: u32::MAX,
-        line: 0,
-    });
-}
-
 /// Runs the passes that precede Cranelift's own compilation.
 fn prepare(g: &Gen, ctx: &mut Context) {
     if windows_arm64(g.module.isa().triple()) {
@@ -1750,6 +1281,16 @@ fn emit_main(
     let Some(entry) = g.m.entry else {
         return Ok(());
     };
+    // The entry function is built by LLVM in release builds: name it by symbol.
+    let entry_id = match g.opts.llvm {
+        Some(_) => {
+            let sig = g.func_sig(&g.m.funcs[entry.index()]);
+            g.module
+                .declare_function(ms_mir_llvm::ENTRY_SYMBOL, Linkage::Import, &sig)
+                .map_err(|e| e.to_string())?
+        }
+        None => g.funcs[entry.index()],
+    };
     let mut sig = g.module.make_signature();
     sig.params.push(AbiParam::new(types::I32));
     sig.params.push(AbiParam::new(types::I64));
@@ -1764,14 +1305,11 @@ fn emit_main(
     let temps;
     {
         let mut l = Lower::new(g, &mut ctx.func, fctx);
-        l.lower_main(entry.index());
+        l.lower_main(entry_id);
         temps = l.finish();
     }
     crate::slotshare::share(&mut ctx.func, &temps);
-    let llvm = g.llvm.take();
-    let r = define(g, ctx, id, "main");
-    g.llvm = llvm;
-    r
+    define(g, ctx, id, "main")
 }
 
 #[cfg(test)]

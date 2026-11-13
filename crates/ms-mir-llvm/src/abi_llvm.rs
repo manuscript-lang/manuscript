@@ -24,9 +24,9 @@
     reason = "the direct emitter adopts this in the types and glue follow-ups; remove then"
 )]
 
-use crate::layout::{Layouts, Leaf, mem_layout};
 use crate::llvm_build::Types;
 use ms_mir::ir::{Mode, Param};
+use ms_mir::layout::{Layouts, Leaf, mem_layout};
 use ms_mir::types::{Ty, TyKind};
 
 /// Values up to this many bytes travel as scalars. A start; change it only by measurement.
