@@ -8,7 +8,7 @@
 
 use crate::layout::{Layouts, Leaf};
 use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Types, Val};
-use ms_mir::ir::{Cc, Func, Imm, Inst, Mode, Module, Op, Target, Term};
+use ms_mir::ir::{Cc, FaultKind, Func, Imm, Inst, Mode, Module, Op, Target, Term};
 use ms_mir::types::{Ty, TyKind};
 use std::collections::HashMap;
 
@@ -153,7 +153,8 @@ pub fn supports(m: &Module, lay: &Layouts, f: &Func) -> bool {
                 then.block != els.block && !is_entry(then) && !is_entry(els)
             }
             Term::Ret(_) | Term::Unreachable => true,
-            Term::Switch { .. } | Term::Fault(_) => false,
+            Term::Fault(k) => fault_entry(*k).is_some(),
+            Term::Switch { .. } => false,
         };
         if !ok {
             return false;
@@ -271,6 +272,17 @@ pub fn emit(
                 }
             },
             Term::Ret(None) => b.ret(None),
+            Term::Fault(k) => {
+                let (name, zeros) = fault_entry(*k).expect("supports checked the kind");
+                let formals = vec!["i64"; zeros].join(", ");
+                decls.push((
+                    name.to_string(),
+                    format!("declare void @\"{name}\"({formals}) cold noreturn"),
+                ));
+                let args: Vec<(Val, &str)> = (0..zeros).map(|_| (Val::int(0), "")).collect();
+                b.call(&LTy::Void, "", name, &args);
+                b.unreachable();
+            }
             _ => b.unreachable(),
         }
     }
@@ -279,6 +291,22 @@ pub fn emit(
         params: params.join(", "),
         body: b.finish(),
         decls,
+    }
+}
+
+/// The runtime entry point of a fault and how many zero `Int` arguments it takes, as the Cranelift
+/// lowering calls it (`fault_term`). `None` for kinds that need data (a message) or are not yet
+/// emitted. The declaration is `cold noreturn`, so LLVM lays the fault out of line and drops
+/// whatever follows it.
+fn fault_entry(k: FaultKind) -> Option<(&'static str, usize)> {
+    match k {
+        FaultKind::IntOverflow => Some(("msrt_fault_int_overflow", 0)),
+        FaultKind::DivByZero => Some(("msrt_fault_div_zero", 0)),
+        FaultKind::IndexOutOfRange => Some(("msrt_index_fault", 2)),
+        FaultKind::NoneUnwrap => Some(("msrt_fault_unwrap_none", 0)),
+        FaultKind::Cancelled => Some(("msrt_cancelled", 0)),
+        FaultKind::CallDepth => Some(("msrt_fault_depth", 0)),
+        FaultKind::Unreachable | FaultKind::Message(_) => None,
     }
 }
 
@@ -409,5 +437,64 @@ fn inst_text(
             }
         }
         _ => unreachable!("supports rejects other ops"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ms_mir::builder::FuncBuilder;
+    use ms_mir::ir::{Mode, Param, StrId};
+
+    /// A function that branches to a fault block: the fault is a call to a `cold noreturn` runtime
+    /// function, then `unreachable`, so LLVM lays it out of line.
+    #[test]
+    fn a_fault_terminator_is_a_noreturn_call_then_unreachable() {
+        let mut m = Module::default();
+        let mut b = FuncBuilder::new(
+            &mut m,
+            "check",
+            vec![Param {
+                ty: Ty::BOOL,
+                mode: Mode::Borrow,
+            }],
+            Ty::INT,
+        );
+        let ok = b.new_block();
+        let bad = b.new_block();
+        let cond = b.params()[0];
+        b.br_if(cond, ok, &[], bad, &[]);
+        b.seal_block(ok);
+        b.seal_block(bad);
+        b.switch_to(bad);
+        b.fault(FaultKind::IndexOutOfRange);
+        b.switch_to(ok);
+        let one = b.iconst(1);
+        b.ret(Some(one));
+        let id = b.finish();
+        let lay = Layouts::new(&m);
+        let f = &m.funcs[id.index()];
+        assert!(supports(&m, &lay, f));
+        let out = emit(&m, &lay, f, 7, &|_| String::new());
+        assert!(
+            out.body.contains(
+                "call void @\"msrt_index_fault\"(i64 0, i64 0), !dbg !7\n  unreachable, !dbg !7"
+            ),
+            "{}",
+            out.body
+        );
+        assert!(out.decls.iter().any(|(n, d)| n == "msrt_index_fault"
+            && d == "declare void @\"msrt_index_fault\"(i64, i64) cold noreturn"));
+    }
+
+    #[test]
+    fn a_message_fault_stays_on_the_translation() {
+        let mut m = Module::default();
+        let mut b = FuncBuilder::new(&mut m, "boom", vec![], Ty::UNIT);
+        b.m.strings.push("boom".into());
+        b.fault(FaultKind::Message(StrId(0)));
+        let id = b.finish();
+        let lay = Layouts::new(&m);
+        assert!(!supports(&m, &lay, &m.funcs[id.index()]));
     }
 }
