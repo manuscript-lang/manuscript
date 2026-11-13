@@ -1599,7 +1599,7 @@ fn direct_glue(g: &mut Gen, kind: Glue, ty: Ty) -> Result<bool, Error> {
     let id = g.glue[&(kind, ty)];
     let sym = symbol_of(g, id);
     if crate::glue_llvm::closure::is_closure(kind) {
-        return direct_closure_glue(g, kind, id, sym);
+        return Ok(direct_closure_glue(g, kind, id, sym));
     }
     // The descriptor a clone names is declared while the LLVM module is still set, so it is
     // exported (`Gen::private`); the emitter below runs with the module taken.
