@@ -482,6 +482,8 @@ pub fn emit(
             b.set_dbg(Some(env.at(inst.loc)));
             inst_text(&mut cx, inst, &vals, &mut b);
         }
+        // A fault names the position of its terminator in the trace.
+        b.set_dbg(Some(env.at(bd.term_loc)));
         match &bd.term {
             Term::Br(t) => {
                 records::copies(&mut b, lay, f, &vals, t);

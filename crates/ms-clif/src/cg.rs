@@ -1371,8 +1371,12 @@ fn direct_function(g: &mut Gen, i: usize, f: &Func) -> bool {
         .then(|| g.glue(Glue::GrowShim(i as u32), Ty::UNIT));
     g.add_scopes(f);
     let mut bits = HashMap::new();
-    for inst in f.blocks.iter().flat_map(|b| &b.insts) {
-        bits.entry(inst.loc).or_insert_with(|| g.loc_bits(inst.loc));
+    let locs = f
+        .blocks
+        .iter()
+        .flat_map(|b| b.insts.iter().map(|i| i.loc).chain([b.term_loc]));
+    for loc in locs {
+        bits.entry(loc).or_insert_with(|| g.loc_bits(loc));
     }
     let syms = ModuleSymbols(&g.module, &g.locs, &g.scopes, &g.m.externs);
     let sym = syms.symbol_of(id);
