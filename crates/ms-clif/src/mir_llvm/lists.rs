@@ -12,7 +12,7 @@ pub(super) const AREA: Area = Area {
     ty_ok,
     inst_ok,
     splits,
-    pure_op: |op| matches!(op, Op::ListLen | Op::StrLit),
+    pure_op: |op| matches!(op, Op::ListLen | Op::StrLit | Op::BytesLit),
     pre,
     emit,
 };
@@ -36,6 +36,10 @@ fn handles(op: Op) -> bool {
                 | Op::ListPush
                 | Op::ListDropLast
                 | Op::ListRelease
+                | Op::BytesLit
+                | Op::ListConst
+                | Op::ListAddr
+                | Op::ListAddrU
         )
 }
 
@@ -43,7 +47,7 @@ fn handles(op: Op) -> bool {
 fn checked(op: Op) -> bool {
     matches!(
         op,
-        Op::ListGet | Op::ListGetNn | Op::ListSet | Op::ListSetNn | Op::ListFill
+        Op::ListGet | Op::ListGetNn | Op::ListSet | Op::ListSetNn | Op::ListFill | Op::ListAddr
     )
 }
 
@@ -59,6 +63,16 @@ fn splits(_: &Layouts, _: &Func, i: &Inst, checks: bool) -> usize {
 }
 
 fn inst_ok(m: &Module, lay: &Layouts, f: &Func, i: &Inst) -> bool {
+    if i.op == Op::ListConst {
+        return i
+            .res
+            .is_some_and(|r| m.seq_elem(f.ty(r)).is_some_and(|e| plain_elem(lay, e)));
+    }
+    if matches!(i.op, Op::ListAddr | Op::ListAddrU) {
+        return m
+            .seq_elem(f.ty(i.args[0]))
+            .is_some_and(|e| plain_elem(lay, e));
+    }
     if matches!(i.op, Op::ListNew | Op::ListLit | Op::ListPush) {
         return build_ok(m, lay, f, i);
     }
@@ -102,6 +116,24 @@ fn pre(
                 Val::int((len | STR_STATIC) as i64),
             ])
         }
+        Op::BytesLit => {
+            let Imm::Int(i) = inst.imm else { return None };
+            let n = m.blobs[i as usize].len() as i64;
+            let ptr = if n == 0 {
+                Val::new("null", LTy::Ptr)
+            } else {
+                Val::new(format!("@\"ms.blob.{i}\""), LTy::Ptr)
+            };
+            Some(vec![ptr, Val::int(n), Val::int(0)])
+        }
+        Op::ListConst => {
+            let Imm::Int(i) = inst.imm else { return None };
+            let n = m.list_consts[i as usize].len() as i64;
+            if n == 0 {
+                return Some(vec![Val::new("null", LTy::Ptr), Val::int(0), Val::int(0)]);
+            }
+            Some(vec![b.reserve(LTy::Ptr), Val::int(n), Val::int(n)])
+        }
         Op::ListLit if inst.args.is_empty() => {
             Some(vec![Val::new("null", LTy::Ptr), Val::int(0), Val::int(0)])
         }
@@ -143,7 +175,7 @@ fn elem_ok(m: &Module, lay: &Layouts, f: &Func, i: &Inst, list: usize) -> bool {
 
 fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     match inst.op {
-        Op::ListLen | Op::StrLit => {}
+        Op::ListLen | Op::StrLit | Op::BytesLit => {}
         Op::StrByte | Op::StrAsciiAt => str_byte(cx, inst, vals, b),
         Op::ListNew | Op::ListLit | Op::ListPush => list_build(cx, inst, vals, b),
         Op::ListDropLast => {
@@ -153,6 +185,7 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
             b.bin(Bin::Add, &len, &Val::int(-1));
         }
         Op::ListRelease => list_release(cx, inst, vals, b),
+        Op::ListConst => list_const(cx, inst, vals, b),
         Op::StrLen => str_len(cx, inst, vals, b),
         _ => list_access(cx, inst, vals, b),
     }
@@ -168,7 +201,10 @@ fn list_access(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     let tys = mem_leaves(cx.lay, elem);
     let held = held_leaves(cx.lay, elem);
     let (ptr, len) = (l[0].clone(), l[1].clone());
-    let wraps = matches!(inst.op, Op::ListGet | Op::ListSet | Op::ListFill);
+    let wraps = matches!(
+        inst.op,
+        Op::ListGet | Op::ListSet | Op::ListFill | Op::ListAddr
+    );
     let idx = if wraps {
         let neg = b.icmp("slt", &i, &Val::int(0));
         let wrapped = b.bin(Bin::Add, &i, &len);
@@ -189,6 +225,12 @@ fn list_access(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         types.size_align(&whole).0,
         u64::from(mem_layout(&cx.lay.leaves(elem)).size)
     );
+    if matches!(inst.op, Op::ListAddr | Op::ListAddrU) {
+        let out = &vals[&inst.res.expect("address result").index()][0];
+        b.name_next(out);
+        b.elem_ptr(&whole, &ptr, &idx);
+        return;
+    }
     let at = b.elem_ptr(&whole, &ptr, &idx);
     let reads = matches!(
         inst.op,
@@ -460,6 +502,26 @@ fn list_build(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     }
 }
 
+/// `ListConst`: a fresh block holding a copy of the constant's elements.
+fn list_const(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
+    let Imm::Int(i) = inst.imm else { return };
+    let out = &vals[&inst.res.expect("list result").index()];
+    let elem =
+        cx.m.seq_elem(cx.f.ty(inst.res.expect("list result")))
+            .expect("a list");
+    let size = i64::from(mem_layout(&cx.lay.leaves(elem)).size);
+    let bytes = Val::int(cx.m.list_consts[i as usize].len() as i64 * size);
+    let p = rt_alloc(
+        cx,
+        b,
+        "msrt_alloc",
+        std::slice::from_ref(&bytes),
+        Some(&out[0]),
+    );
+    let src = Val::new(format!("@\"ms.list.{i}\""), LTy::Ptr);
+    b.memcpy((&p, 16), (&src, 16), &bytes);
+}
+
 /// `ListDropLast` and `ListRelease` for elements that need no drop (`list.droplast 1` follows a
 /// `list.take` of that element, so it drops nothing either).
 fn release_ok(m: &Module, f: &Func, i: &Inst) -> bool {
@@ -506,9 +568,35 @@ fn str_len(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
 
 /// The module-level constants for the string literals `f` uses: LLVM owns the bytes, so it knows
 /// their size, that they never change, and that no other symbol aliases them.
-pub(super) fn consts(m: &Module, f: &Func) -> Vec<(String, String)> {
+pub(super) fn consts(m: &Module, lay: &Layouts, f: &Func) -> Vec<(String, String)> {
     let mut out: Vec<(String, String)> = Vec::new();
     for inst in f.blocks.iter().flat_map(|b| &b.insts) {
+        if let (Op::BytesLit | Op::ListConst, Imm::Int(i)) = (inst.op, inst.imm) {
+            let (name, bytes) = if inst.op == Op::BytesLit {
+                (format!("ms.blob.{i}"), m.blobs[i as usize].clone())
+            } else {
+                let e = m
+                    .seq_elem(f.ty(inst.res.expect("list result")))
+                    .expect("a list");
+                let width = lay.leaves(e)[0].size() as usize;
+                let raw = &m.list_consts[i as usize];
+                (
+                    format!("ms.list.{i}"),
+                    raw.iter()
+                        .flat_map(|v| v.to_le_bytes()[..width].to_vec())
+                        .collect(),
+                )
+            };
+            if !bytes.is_empty() && !out.iter().any(|(n, _)| *n == name) {
+                let text: String = bytes.iter().map(|b| format!("\\{b:02X}")).collect();
+                let def = format!(
+                    "@\"{name}\" = private unnamed_addr constant [{} x i8] c\"{text}\", align 16",
+                    bytes.len()
+                );
+                out.push((name, def));
+            }
+            continue;
+        }
         let (Op::StrLit, Imm::Str(id)) = (inst.op, inst.imm) else {
             continue;
         };

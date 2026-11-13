@@ -608,7 +608,7 @@ pub fn emit(
         body: b.finish(),
         decls: cx.decls,
         data: cx.data,
-        consts: lists::consts(m, f),
+        consts: lists::consts(m, lay, f),
     }
 }
 

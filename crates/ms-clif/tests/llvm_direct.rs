@@ -562,6 +562,37 @@ b0:
     );
 }
 
+fn constants_and_addresses() {
+    let src = r#"module "d"
+entry @main
+file 0 "d.ms"
+blob 0 "0a0b0c"
+consts 0 [5, 6, 7]
+fn @read(%i: int) -> int !0:1:1 {
+b0:
+  %l: list<int> = list.const 0 !0:2:1
+  %p: ptr = list.addr %l, %i !0:3:1
+  %x: int = load int %p !0:3:1
+  %q: ptr = list.addr.u %l, %i !0:4:1
+  %y: int = load int %q !0:4:1
+  %b: bytes = bytes 0 !0:5:1
+  %n: int = list.len %b !0:5:1
+  %xy: int = iadd %x, %y !0:6:1
+  %r: int = iadd %xy, %n !0:6:1
+  drop %l !0:6:1
+  ret %r
+}
+fn @main() -> int !0:10:1 {
+b0:
+  %i: int = iconst 2 !0:11:1
+  %r: int = call @read(%i) !0:12:1
+  ret %r
+}
+"#;
+    // 7 + 7 + 3
+    check("direct_constants", src, 17, &["read"]);
+}
+
 /// One test, not three: each build writes `ms-keep.ll` in the working directory.
 #[test]
 fn direct_lists_and_strings_match_cranelift() {
@@ -571,6 +602,7 @@ fn direct_lists_and_strings_match_cranelift() {
     list_building();
     string_literals();
     list_take_release();
+    constants_and_addresses();
     crate::llvm_direct_data::optionals_and_alternatives_match_cranelift();
     closures_and_runtime_calls();
     interfaces();
