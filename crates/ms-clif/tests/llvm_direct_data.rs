@@ -738,6 +738,81 @@ pub fn enum_clones_match_cranelift() {
     assert_eq!(got.code, 125);
 }
 
+/// An enum whose payload is a record of more than eight leaves: the record's leaves sit in the
+/// enum's slots, as in the Cranelift build, and move to and from the record's memory.
+const MEMORY_PAYLOAD: &str = r#"module "d"
+record Wide { a: int8, b: uint16, c: int32, d: int, e: int, f: int, g: int, h: int, i: int }
+alt Holder { Plain(n: int), Big(w: Wide) }
+entry @main
+file 0 "d.ms"
+fn @mkb(%a: int8, %b: uint16, %c: int32, %n: int) -> Holder inline(never) !0:1:1 {
+b0:
+  %w: Wide = rec.new Wide %a, %b, %c, %n, %n, %n, %n, %n, %n !0:2:1
+  %h: Holder = alt.new Holder.Big %w !0:2:1
+  ret %h
+}
+fn @readb(%h: Holder) -> int inline(never) !0:3:1 {
+b0:
+  %w: Wide = alt.get Holder.Big.w %h !0:4:1
+  %a: int8 = rec.get Wide.a %w !0:4:1
+  %b: uint16 = rec.get Wide.b %w !0:4:1
+  %c: int32 = rec.get Wide.c %w !0:4:1
+  %d: int = rec.get Wide.d %w !0:4:1
+  %zero: int = iconst 0 !0:4:1
+  %one: int = iconst 1 !0:4:1
+  %m8: int8 = iconst -3 !0:4:1
+  %ea: bool = icmp.eq %a, %m8 !0:4:1
+  %hi: uint16 = iconst 60000 !0:4:1
+  %eb: bool = icmp.eq %b, %hi !0:4:1
+  %m32: int32 = iconst -70000 !0:4:1
+  %ec: bool = icmp.eq %c, %m32 !0:4:1
+  %x: int = select %ea, %one, %zero !0:5:1
+  %y: int = select %eb, %one, %zero !0:5:1
+  %z: int = select %ec, %one, %zero !0:5:1
+  %s1: int = iadd %x, %y !0:5:1
+  %s2: int = iadd %s1, %z !0:5:1
+  %s3: int = iadd %s2, %d !0:5:1
+  ret %s3
+}
+fn @main() -> int !0:20:1 {
+b0:
+  %n: int = iconst 7 !0:21:1
+  %o8: opt<int8> = inarrow.opt %n !0:21:1
+  %a: int8 = opt.get %o8 !0:21:1
+  %neg3: int = iconst -3 !0:21:1
+  %on: opt<int8> = inarrow.opt %neg3 !0:21:1
+  %m8: int8 = opt.get %on !0:21:1
+  %big: int = iconst 60000 !0:21:1
+  %ob: opt<uint16> = inarrow.opt %big !0:21:1
+  %b: uint16 = opt.get %ob !0:21:1
+  %m: int = iconst -70000 !0:21:1
+  %oc: opt<int32> = inarrow.opt %m !0:21:1
+  %c: int32 = opt.get %oc !0:21:1
+  %h: Holder = call @mkb(%m8, %b, %c, %n) !0:22:1
+  %r: int = call @readb(%h) !0:23:1
+  ret %r
+}
+"#;
+
+/// Run from `llvm_direct`'s one test (see above).
+pub fn memory_payload_matches_cranelift() {
+    let Some(opts) = direct() else { return };
+    let want = run_native(MEMORY_PAYLOAD, "direct_payload-cranelift");
+    assert_eq!(want.code, 10, "the Cranelift build disagrees");
+    let got = run_llvm(MEMORY_PAYLOAD, &opts, "direct_payload");
+    let ir = std::fs::read_to_string("ms-keep.ll").unwrap();
+    let _ = std::fs::remove_file("ms-keep.ll");
+    for f in ["mkb", "readb"] {
+        let header = ir
+            .lines()
+            .find(|l| l.starts_with("define") && l.contains(&format!("@\"{f}#")))
+            .unwrap_or_else(|| panic!("no {f} in the IR"));
+        let direct = header.contains("%a0_0") || header.contains("dereferenceable");
+        assert!(direct, "{f} was translated: {header}");
+    }
+    assert_eq!((got.code, &got.stdout), (want.code, &want.stdout));
+}
+
 /// An `Int8` sum that leaves the type's range faults like Cranelift, and one inside it does not.
 fn narrow_sum(x: i64, y: i64) -> String {
     format!(
