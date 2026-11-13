@@ -132,8 +132,11 @@ fn finish_call(
         // The result is a record in memory, rebuilt from the call's result.
         let r = call(b).expect("a result");
         records::call_result(b, lay, result, r, out);
-    } else if !native && out.iter().any(|d| d.ty == LTy::Ptr) {
-        // Pointer leaves come back as addresses.
+    } else if out
+        .iter()
+        .any(|d| d.ty == LTy::I1 || (!native && d.ty == LTy::Ptr))
+    {
+        // Booleans come back as bytes and, in the leaf convention, pointers as addresses.
         let r = call(b).expect("a result");
         records::name_leaves(b, r, out);
     } else if out.len() <= 1 {

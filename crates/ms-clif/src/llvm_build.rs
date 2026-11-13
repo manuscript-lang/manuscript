@@ -264,6 +264,11 @@ impl Val {
     pub fn byte(v: u8) -> Val {
         Val::new(v.to_string(), Ty::I8)
     }
+
+    /// An `i1` constant.
+    pub fn bool(v: bool) -> Val {
+        Val::new(if v { "true" } else { "false" }, Ty::I1)
+    }
 }
 
 /// Integer and float binary operations.
@@ -855,6 +860,21 @@ mod tests {
         assert_eq!(t.field_offset(&r, 1), 8);
         assert_eq!(t.field_offset(&r, 2), 16);
         assert_eq!(t.definitions(), "%\"R\" = type { i8, i64, i32 }\n");
+    }
+
+    /// One name is one type module-wide; a name taken by other fields is suffixed.
+    #[test]
+    fn a_named_struct_is_declared_once_and_names_do_not_clash() {
+        let t = Types::default();
+        let a = t.named("ms.list", vec![Ty::Ptr, Ty::I64, Ty::I64]);
+        assert_eq!(a, t.named("ms.list", vec![Ty::Ptr, Ty::I64, Ty::I64]));
+        let b = t.named("ms.list", vec![Ty::I64]);
+        assert_ne!(a, b);
+        assert_eq!(t.text(&b), "%\"ms.list.2\"");
+        assert_eq!(
+            t.definitions(),
+            "%\"ms.list\" = type { ptr, i64, i64 }\n%\"ms.list.2\" = type { i64 }\n"
+        );
     }
 
     #[test]

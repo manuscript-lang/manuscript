@@ -80,9 +80,22 @@ fn leaves(lay: &Layouts, ty: Ty) -> Vec<(LTy, &'static str)> {
 }
 
 /// The types a value of type `ty` is held as inside a function: its leaves, with the pointer
-/// ones as `ptr` (`Layouts::pointer_leaves`). A function in the leaf convention gets and returns
-/// those leaves as `i64` and converts at its entry and returns.
+/// ones as `ptr` (`Layouts::pointer_leaves`) and the boolean ones as `i1` (`Layouts::bool_leaves`).
+/// A function gets and returns a boolean as `i8`, and in the leaf convention a pointer as `i64`,
+/// and converts at its entry and returns; memory holds the `mem_leaves`.
 fn held_leaves(lay: &Layouts, ty: Ty) -> Vec<LTy> {
+    let mut tys = mem_leaves(lay, ty);
+    for (t, is_bool) in tys.iter_mut().zip(lay.bool_leaves(ty)) {
+        if is_bool {
+            *t = LTy::I1;
+        }
+    }
+    tys
+}
+
+/// The types a value of type `ty` has in memory: its leaves, with the pointer ones as `ptr` and a
+/// boolean as the `i8` it is stored as.
+fn mem_leaves(lay: &Layouts, ty: Ty) -> Vec<LTy> {
     let mut tys: Vec<LTy> = lay.leaves(ty).into_iter().map(|l| leaf(l).0).collect();
     for (t, ptr) in tys.iter_mut().zip(lay.pointer_leaves(ty)) {
         if ptr {
@@ -95,7 +108,7 @@ fn held_leaves(lay: &Layouts, ty: Ty) -> Vec<LTy> {
 /// The struct a value of type `ty` has in memory: named for strings, lists and records, so the
 /// module defines each once, else a literal struct of its held leaves.
 pub(crate) fn aggregate(types: &Types, lay: &Layouts, ty: Ty) -> LTy {
-    let fields = held_leaves(lay, ty);
+    let fields = mem_leaves(lay, ty);
     let name = match lay.m.types.kind(ty) {
         TyKind::Str => "ms.str".to_string(),
         TyKind::Bytes => "ms.bytes".to_string(),
@@ -473,7 +486,7 @@ pub fn emit(
                 b.br(&block_label(t.block.index(), 0));
             }
             Term::CondBr { cond, then, els } => {
-                let c = b.icmp("ne", &vals[&cond.index()][0], &Val::byte(0));
+                let c = vals[&cond.index()][0].clone();
                 let from = exit_label(f, checks, bb.index());
                 let to = |k: usize, t: &Target| {
                     if records::has_copies(lay, f, t) {

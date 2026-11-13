@@ -257,25 +257,37 @@ impl<'m> Layouts<'m> {
     /// register leaf is an `i64` for the Cranelift object and the runtime either way; this only
     /// says what the direct LLVM emitter may type as `ptr`.
     pub fn pointer_leaves(&self, ty: Ty) -> Vec<bool> {
+        self.marks(ty, true)
+    }
+
+    /// Which register leaves of `ty` are booleans, one flag per leaf: a `Bool` and the presence
+    /// flag of an optional, both zero or one. The direct LLVM emitter holds them as `i1`.
+    pub fn bool_leaves(&self, ty: Ty) -> Vec<bool> {
+        self.marks(ty, false)
+    }
+
+    /// The leaves that are pointers (`ptr`) or booleans (not `ptr`).
+    fn marks(&self, ty: Ty, ptr: bool) -> Vec<bool> {
         let n = self.width(ty);
-        let one = || vec![true];
+        let one = |yes: bool| vec![yes];
         match self.m.types.kind(ty) {
-            TyKind::Ptr | TyKind::Fn(..) => one(),
-            TyKind::Obj(n, _) if !n.is_map_or_set() => one(),
-            TyKind::Bytes | TyKind::List(_) => vec![true, false, false],
-            TyKind::Rec(r) if self.m.records[r.index()].indirect => one(),
+            TyKind::Bool => one(!ptr),
+            TyKind::Ptr | TyKind::Fn(..) => one(ptr),
+            TyKind::Obj(n, _) if !n.is_map_or_set() => one(ptr),
+            TyKind::Bytes | TyKind::List(_) => vec![ptr, false, false],
+            TyKind::Rec(r) if self.m.records[r.index()].indirect => one(ptr),
             TyKind::Rec(r) => self.m.records[r.index()]
                 .fields
                 .iter()
-                .flat_map(|f| self.pointer_leaves(f.1))
+                .flat_map(|f| self.marks(f.1, ptr))
                 .collect(),
-            TyKind::Opt(inner) if self.opt_is_nullable(*inner) => one(),
+            TyKind::Opt(inner) if self.opt_is_nullable(*inner) => one(ptr),
             TyKind::Opt(inner) if !self.is_str_like(ty) => {
-                let mut flags = vec![false];
-                flags.extend(self.pointer_leaves(*inner));
+                let mut flags = vec![!ptr];
+                flags.extend(self.marks(*inner, ptr));
                 flags
             }
-            TyKind::Alt(a) if self.is_boxed(*a) => one(),
+            TyKind::Alt(a) if self.is_boxed(*a) => one(ptr),
             _ => vec![false; n],
         }
     }
@@ -425,6 +437,7 @@ mod tests {
         let mut m = Module::new("t");
         let list = m.types.list(Ty::INT);
         let opt_list = m.types.opt(list);
+        let opt_bool = m.types.opt(Ty::BOOL);
         let (_, rec) = m.add_record(
             "R",
             vec![
@@ -443,6 +456,13 @@ mod tests {
             vec![true, true, false, false, false]
         );
         assert_eq!(lay.pointer_leaves(Ty::STR), vec![false, false]);
+        for t in [Ty::BOOL, opt_bool, rec] {
+            assert_eq!(lay.bool_leaves(t).len(), lay.width(t), "{t:?}");
+        }
+        assert_eq!(lay.bool_leaves(Ty::BOOL), vec![true]);
+        // Presence flag and value of `Bool?`; no booleans in a list or a string.
+        assert_eq!(lay.bool_leaves(opt_bool), vec![true, true]);
+        assert_eq!(lay.bool_leaves(list), vec![false; 3]);
     }
 
     #[test]
