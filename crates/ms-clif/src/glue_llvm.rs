@@ -115,7 +115,7 @@ pub fn clone_str(
 ) -> Vs {
     decls.push((
         "msrt_str_copy".into(),
-        "declare void @\"msrt_str_copy\"(i64, i64, i64)".into(),
+        "declare void @\"msrt_str_copy\"(i64, i64, i64) nounwind".into(),
     ));
     let tag = b.bin(Bin::LShr, &vs[1], &Val::int(62));
     let tag = b.bin(Bin::Sub, &tag, &Val::int(1));
@@ -573,7 +573,7 @@ impl E<'_, '_, '_> {
     fn declare(&mut self, name: &str, ret: &str, params: &str) {
         self.decls.push((
             name.to_string(),
-            format!("declare {ret} @\"{name}\"({params})"),
+            format!("declare {ret} @\"{name}\"({params}) nounwind"),
         ));
     }
 
@@ -806,7 +806,7 @@ impl E<'_, '_, '_> {
         let np = self.alloc(&bytes);
         let src = self.ptr_of(ptr);
         match elem.filter(|e| m.needs_drop(*e)) {
-            None => self.b.memcpy(&np, &src, &bytes, align),
+            None => self.b.memcpy((&np, align), (&src, align), &bytes),
             Some(e) => {
                 let et = slot_ty(&leaves.expect("element"));
                 self.count(len, |s, i| {
@@ -986,7 +986,7 @@ pub fn emit(g: &mut Gen, kind: Glue, ty: Ty, loc: usize) -> Emitted {
     Emitted {
         ret: sig.ret_text(),
         params: sig.formals(true),
-        attrs: String::new(),
+        attrs: " nounwind".into(),
         decls: native_decls,
         data: Vec::new(),
         body: native_body,
@@ -1059,7 +1059,7 @@ pub fn thunk(g: &Gen, kind: Glue, ty: Ty, sym: &str, loc: usize) -> Emitted {
     Emitted {
         ret: leaf.ret_text(),
         params: leaf.formals(true),
-        attrs: String::new(),
+        attrs: " nounwind".into(),
         decls,
         data: Vec::new(),
         body: b.finish(),

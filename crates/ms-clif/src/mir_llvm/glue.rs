@@ -47,7 +47,10 @@ fn pre(lay: &Layouts, f: &Func, inst: &Inst, vals: &Vals) -> Option<Vec<Val>> {
 
 /// The declaration of a runtime function that takes one address-sized word and returns nothing.
 fn rt_decl(name: &str) -> (String, String) {
-    (name.into(), format!("declare void @\"{name}\"(i64)"))
+    (
+        name.into(),
+        format!("declare void @\"{name}\"(i64) nounwind"),
+    )
 }
 
 fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
@@ -85,7 +88,7 @@ fn clone(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder) 
         OwnKind::Obj => {
             cx.decls.push((
                 "msrt_obj_clone".into(),
-                "declare i64 @\"msrt_obj_clone\"(i64)".into(),
+                "declare i64 @\"msrt_obj_clone\"(i64) nounwind".into(),
             ));
             b.name_next(&out[0]);
             b.call(&LTy::I64, "", "msrt_obj_clone", &[(args[0].clone(), "")]);

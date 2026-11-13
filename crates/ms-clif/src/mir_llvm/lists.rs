@@ -2,7 +2,7 @@
 
 use super::{Area, Cx, Vals, block_label, leaf};
 use crate::layout::{Layouts, Leaf, mem_layout};
-use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Types, Val};
+use crate::llvm_build::{Bin, FnBuilder, Meta, Range, Tbaa, Ty as LTy, Types, Val};
 use ms_mir::ir::{Func, Inst, Module, Op};
 use ms_mir::types::TyKind;
 
@@ -149,13 +149,47 @@ fn list_access(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
             b.field_ptr(&whole, &at, k)
         };
         let align = types.size_align(t).1;
+        let meta = elem_meta(cx.m.types.kind(elem), k);
         if reads {
             b.name_next(&out.expect("list read result")[k]);
-            b.load(t, &to, align);
+            b.load_with(t, &to, align, meta);
         } else {
-            b.store(&vals[&inst.args[2].index()][k], &to, align);
+            b.store_with(&vals[&inst.args[2].index()][k], &to, align, meta);
         }
     }
+}
+
+/// What LLVM may assume about leaf `k` of a list element of kind `elem`. A buffer holds one
+/// element type, so a scalar element never lies where a list or string header does; only element
+/// accesses are tagged, since a record field or inner header is also read through borrowed
+/// pointers that carry no tag. A `Bool` is 0 or 1 and an inner list's length is not negative.
+fn elem_meta(elem: &TyKind, k: usize) -> Meta {
+    let mut meta = Meta::default();
+    match elem {
+        TyKind::Bool => {
+            meta.tbaa = Some(Tbaa::ScalarElem);
+            meta.range = Some(Range::Bool);
+        }
+        TyKind::Int
+        | TyKind::Float
+        | TyKind::Int8
+        | TyKind::Int16
+        | TyKind::Int32
+        | TyKind::Float32
+        | TyKind::UInt8
+        | TyKind::UInt16
+        | TyKind::UInt32
+        | TyKind::UInt64 => meta.tbaa = Some(Tbaa::ScalarElem),
+        TyKind::List(_) | TyKind::Bytes => {
+            meta.tbaa = Some(Tbaa::HeaderElem);
+            if k == 1 {
+                meta.range = Some(Range::Len);
+            }
+        }
+        TyKind::Str => meta.tbaa = Some(Tbaa::HeaderElem),
+        _ => {}
+    }
+    meta
 }
 
 /// `StrByte` and `StrAsciiAt`: the byte at an index of a string. An inline string keeps its

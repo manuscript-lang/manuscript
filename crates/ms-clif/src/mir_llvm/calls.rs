@@ -49,10 +49,19 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
             pure_attrs(m, lay, c.index(), &mut cx.memo).unwrap_or("")
         ),
     ));
+    // A pure callee cannot fault, so its call sites need no fault frame of their own.
+    let pure = pure_attrs(m, lay, c.index(), &mut cx.memo).is_some();
+    let call = |b: &mut FnBuilder| {
+        if pure {
+            b.call_pure(&ret, attr, &sym, &args)
+        } else {
+            b.call(&ret, attr, &sym, &args)
+        }
+    };
     if out.len() <= 1 {
-        b.call(&ret, attr, &sym, &args);
+        call(b);
     } else {
-        let t = b.call(&ret, attr, &sym, &args).expect("a tuple result");
+        let t = call(b).expect("a tuple result");
         for (k, dst) in out.iter().enumerate() {
             b.name_next(dst);
             b.extract(&t, k);
