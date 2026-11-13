@@ -102,6 +102,30 @@ fn read_bounded[T](var source: Source[T], bound: Duration) T?!:
 
 	return got
 
+// Reads a string's scalars one at a time, decoding its UTF-8 bytes where it stands.
+export type ScalarSource:
+	bytes: Bytes
+	at: Int
+
+fn var ScalarSource.next() String?!:
+	if self.at >= self.bytes.length(): return ok(none)
+
+	stop := self.at + scalar_width(self.bytes.get(self.at).to_int())
+	scalar := self.bytes.decode_utf8_range(self.at, stop)
+	self.at = stop
+	return ok(scalar)
+
+fn var ScalarSource.close() Unit!:
+	return ok(unit)
+
+// Bytes in the scalar a lead byte starts.
+fn scalar_width(lead: Int) Int:
+	if lead < 128: return 1
+	if lead < 224: return 2
+	if lead < 240: return 3
+
+	return 4
+
 // A source with nothing left: the one a closed `ReadStream` holds.
 type EndedSource[T]:
 	done: Bool = true
