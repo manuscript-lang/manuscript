@@ -263,7 +263,7 @@ struct SplitItem {
 /// scope-end close of a binding propagates it, through [`close_at_result`].
 fn close_at(b: &mut FuncBuilder<'_>, kind: &CloseKind, ptr: Value, ty: MTy) {
     let r = close_at_result(b, kind, ptr, ty);
-    close_error_fault(b, r);
+    close_error_fault(b, r, None);
 }
 
 /// Closes the value at `ptr` and records a failed close in `failed` instead of faulting.
@@ -304,7 +304,7 @@ fn close_at_silent(b: &mut FuncBuilder<'_>, kind: &CloseKind, ptr: Value, ty: MT
 /// the caller's to drop. A failed close faults.
 fn close_owned(b: &mut FuncBuilder<'_>, kind: &CloseKind, v: Value, ty: MTy) -> Value {
     let (v, r) = close_owned_result(b, kind, v, ty);
-    close_error_fault(b, r);
+    close_error_fault(b, r, None);
     v
 }
 
@@ -344,7 +344,7 @@ fn close_owned_result(
 }
 
 /// Faults when `r`, the `Result` of a close, is an error; otherwise releases it.
-fn close_error_fault(b: &mut FuncBuilder<'_>, r: Value) {
+fn close_error_fault(b: &mut FuncBuilder<'_>, r: Value, slot: Option<(Value, MTy)>) {
     let rty = b.ty(r);
     let TyKind::Alt(a) = b.m.types.kind(rty).clone() else {
         return;
@@ -360,6 +360,18 @@ fn close_error_fault(b: &mut FuncBuilder<'_>, r: Value) {
     b.seal_block(bad);
     b.seal_block(good);
     b.switch_to(bad);
+    // The fault never returns to the caller that drops what the close leaves behind.
+    if b.m.needs_drop(rty) {
+        b.emit(Op::Drop, &[r], Imm::None, None);
+    }
+    if let Some((ptr, ty)) = slot
+        && b.m.needs_drop(ty)
+    {
+        let left = b
+            .emit(Op::Take, &[ptr], Imm::Ty(ty), Some(ty))
+            .expect("value");
+        b.emit(Op::Drop, &[left], Imm::None, None);
+    }
     let msg = b.str_lit("a resource could not be closed: its close returned an error");
     let ext = crate::text::runtime_fn(b.m, "msrt_fault_string", &[MTy::STR], MTy::UNIT);
     b.call_rt(ext, &[msg]);
@@ -588,7 +600,7 @@ impl FnLower<'_> {
     pub(crate) fn close_local(&mut self, l: &crate::func::Local, kind: &CloseKind) {
         let _ = self.call_runtime("msrt_shield_enter", &[], MTy::UNIT);
         let r = self.close_local_result(l, kind);
-        close_error_fault(&mut self.b, r);
+        close_error_fault(&mut self.b, r, None);
         let _ = self.call_runtime("msrt_shield_exit", &[], MTy::UNIT);
     }
 
@@ -618,13 +630,13 @@ impl FnLower<'_> {
             return self.alias_update(&a, &[], &mut |s, v| {
                 let ty = s.b.ty(v);
                 let (v, r) = close_owned_result(&mut s.b, &kind, v, ty);
-                close_error_fault(&mut s.b, r);
+                close_error_fault(&mut s.b, r, None);
                 Ok(v)
             });
         }
         let l = self.local(&b)?;
         let r = self.close_local_result(&l, kind);
-        close_error_fault(&mut self.b, r);
+        close_error_fault(&mut self.b, r, None);
         Ok(())
     }
 
@@ -817,7 +829,7 @@ impl FnLower<'_> {
                 b.ret(Some(out));
             }
             None => {
-                close_error_fault(&mut b, e);
+                close_error_fault(&mut b, e, None);
                 b.unreachable();
             }
         }
@@ -1628,7 +1640,7 @@ impl FnLower<'_> {
             b.func_mut().slot_close = b.m.needs_drop(ty).then_some(ty);
             if private {
                 let r = close_at_result(&mut b, kind, v, ty);
-                close_error_fault(&mut b, r);
+                close_error_fault(&mut b, r, Some((v, ty)));
             } else {
                 close_at_silent(&mut b, kind, v, ty);
             }
@@ -2078,7 +2090,7 @@ impl FnLower<'_> {
             _ => None,
         };
         let Some((ra, ret_err)) = returned else {
-            close_error_fault(&mut self.b, r);
+            close_error_fault(&mut self.b, r, None);
             return;
         };
         let tag = self.b.alt_tag(r);
