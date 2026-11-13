@@ -36,7 +36,9 @@ unsafe fn reserve(v: &mut VecVal, d: &TypeDesc, extra: usize) {
         return;
     }
     let size = d.size as usize;
-    let mut cap = if v.cap == 0 { 4 } else { v.cap * 2 };
+    // A byte buffer (a string builder) starts at one small-text allocation, not four doublings.
+    let first = if size == 1 { 32 } else { 4 };
+    let mut cap = if v.cap == 0 { first } else { v.cap * 2 };
     if cap < need {
         cap = need;
     }

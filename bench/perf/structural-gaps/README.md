@@ -354,6 +354,19 @@ c03 `csv-group-sum` reference solution on 25,000 generated lines (callgrind, sam
 Reference Rust is 44.0M on this challenge at 400 KB per the heap-parity thread; what is left in c03 is malloc and free (about 35M under callgrind's glibc allocator), `split_view` at 106 instructions a piece, `Needle::find`, and the copy a no-match `replace` makes of a borrowed line.
 - Re-measured at `d9f67581` against a standalone C twin (`gcc -O2`, `tree.c` with the same generator, depth and a free of the tree): 99.5M against 101.0M instructions, 70 against 72 ms. The C twin frees the tree (about 23M) and `tree.ms` does not. About 14M of the 99.5M is the `msrt_alloc`, `alloc_slow` and `alloc_large` layers, which appear only under callgrind (glibc replaces the release allocator). Generated code is within about 4M of C: the descent loop is 5 instructions a level as in C, `depth` is 6.1M against 2.9M (stack and overflow checks), and the tail of `insert` calls the drop glue on a child just tested to be none (about 8 instructions an insert). The earlier 151M and 117M figures (the latter was `mixed.ms` case c with its free) are superseded; there is no codegen gap left to close here.
 
+## 2026-11-12: row building with `join`
+
+`join.ms` builds 300k rows with `[...5 strings].join(",")`; `c/join.c` is the `snprintf` and `memcpy` twin (`gcc -O2`). Callgrind totals, same machine as above.
+
+| version | instructions | allocations |
+| --- | ---: | ---: |
+| list of the five parts only (no `join`) | 187M | 300k |
+| `join` before: byte builder grows 4, 8, 16, 32 | 719M | 1.22M |
+| `join` after: a byte builder's first allocation is 32 bytes | 428M | 0.60M |
+| C | 476M | |
+
+`reserve` in `crates/ms-rt/src/vec.rs` gave every vector a first capacity of 4 elements, which for a `StringBuilder` is four bytes: a 25-byte row reallocated three times. Byte buffers now start at 32. The 5-part `join` still costs about 800 instructions a row of which most is allocator work under callgrind's glibc `malloc`.
+
 ## 2026-11-12, enum tree re-measured against a checked twin
 
 Same machine and Release LLVM build as `main` at `6dd056b2`; callgrind instruction totals and wall time of five runs. `enum_tree.ms` is `keyed.ms` case b alone; `c/enum_tree.c` (`gcc -O2`) is its twin with the same generator, depth and tree free, and with trapping `+`, `*` and negation as Manuscript's `Int` has.
