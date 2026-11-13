@@ -3,7 +3,7 @@
 use super::attrs::pure_attrs;
 use super::{Area, Cx, Vals, call_ret_ty, leaves, ret_attr, types};
 use crate::abi_llvm::{Pass, Ret, Signature};
-use crate::layout::Layouts;
+use crate::layout::{Layouts, Leaf};
 use crate::llvm_build::{FnBuilder, Ty as LTy, Types, Val};
 use ms_mir::ir::{ExternDef, ExternRole, Func, Imm, Inst, Mode, Module, Op, Value};
 use ms_mir::types::{Ty, TyKind};
@@ -19,9 +19,7 @@ pub(super) const AREA: Area = Area {
 
 fn inst_ok(m: &Module, lay: &Layouts, _: &Func, inst: &Inst) -> bool {
     match (inst.op, inst.imm) {
-        (Op::CallRt, Imm::Ext(e)) => {
-            is_map_new(m, inst) || extern_ok(m, lay, &m.externs[e.index()])
-        }
+        (Op::CallRt, Imm::Ext(e)) => is_map_new(m, inst) || extern_ok(lay, &m.externs[e.index()]),
         (Op::CallRt, _) => false,
         _ => true,
     }
@@ -84,18 +82,11 @@ fn passes_directly(lay: &Layouts, t: Ty) -> bool {
 }
 
 /// Whether a call of the runtime function `def` is within what this module emits: the types
-/// either pass directly or have a memory shape, no parameter is updated in place, and it is not
-/// a C shim (its narrow results are extended by the caller) or a function the lowering treats as
-/// a guarded or constant case.
-fn extern_ok(m: &Module, lay: &Layouts, def: &ExternDef) -> bool {
+/// either pass directly or have a memory shape, and it is not
+/// a function the lowering treats as a guarded or constant case.
+fn extern_ok(lay: &Layouts, def: &ExternDef) -> bool {
     let crosses = |t: Ty| passes_directly(lay, t) || types::shape_ok(lay, t);
-    !m.c_externs.contains(&def.name)
-        && def.role != ExternRole::MapNew
-        && def
-            .params
-            .iter()
-            .all(|p| p.mode != Mode::Var && crosses(p.ty))
-        && crosses(def.ret)
+    def.role != ExternRole::MapNew && def.params.iter().all(|p| crosses(p.ty)) && crosses(def.ret)
 }
 
 fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
@@ -316,16 +307,96 @@ const OUT: &str = " noalias writeonly";
 /// A call of the runtime function in `inst`: values that pass directly go as leaves, any other as
 /// the address of a copy, and a result that does not pass directly comes back through a hidden last
 /// pointer.
+/// The call of a user's C function `def` with its result in the extended `out`: C leaves the upper
+/// bits of a narrow result undefined, so the result carries no attribute and is extended here.
+fn c_call(cx: &mut Cx, def: &ExternDef, args: &[(Val, &str)], out: &[Val], b: &mut FnBuilder) {
+    let lay = cx.lay;
+    let ret_leaf = lay.leaves(def.ret).first().copied();
+    let ret = match (ret_leaf, out.first()) {
+        (None, _) => LTy::Void,
+        (Some(l), Some(o)) if o.ty == LTy::Ptr => {
+            debug_assert!(l == Leaf::I64);
+            LTy::Ptr
+        }
+        (Some(l), _) => c_leaf(l).0,
+    };
+    let types = b.types();
+    let formals: Vec<String> = args
+        .iter()
+        .map(|(v, a)| format!("{}{a}", types.text(&v.ty)))
+        .collect();
+    cx.decls.push((
+        def.name.clone(),
+        format!(
+            "declare {} @\"{}\"({})",
+            types.text(&ret),
+            def.name,
+            formals.join(", ")
+        ),
+    ));
+    let (Some(l), Some(dst)) = (ret_leaf, out.first()) else {
+        b.call_keep(&ret, "", &def.name, args);
+        return;
+    };
+    if ret == dst.ty {
+        b.name_next(dst);
+        b.call_keep(&ret, "", &def.name, args);
+        return;
+    }
+    let r = b.call_keep(&ret, "", &def.name, args).expect("a result");
+    b.name_next(dst);
+    match (l, &dst.ty) {
+        (Leaf::N8 | Leaf::N16 | Leaf::N32, _) => b.sext(&r, dst.ty.clone()),
+        (Leaf::F32, _) => b.fpext(&r),
+        (_, LTy::I1) => b.trunc(&r, LTy::I1),
+        _ => b.zext(&r, dst.ty.clone()),
+    };
+}
+
+/// A leaf as a C function takes it: sized integers at their own width, extended by the caller,
+/// and a `Float32` as `float`.
+fn c_leaf(l: Leaf) -> (LTy, &'static str) {
+    match l {
+        Leaf::N8 => (LTy::I8, " signext"),
+        Leaf::N16 => (LTy::I16, " signext"),
+        Leaf::N32 => (LTy::I32, " signext"),
+        Leaf::U8 | Leaf::I8 => (LTy::I8, " zeroext"),
+        Leaf::U16 => (LTy::I16, " zeroext"),
+        Leaf::U32 => (LTy::I32, " zeroext"),
+        Leaf::F32 => (LTy::F32, ""),
+        Leaf::F64 => (LTy::F64, ""),
+        Leaf::I64 => (LTy::I64, ""),
+    }
+}
+
+/// The scalar `v`, held as an `i64` or `f64`, as the C type of leaf `l`.
+fn to_c(b: &mut FnBuilder, v: Val, l: Leaf) -> Val {
+    let (ty, _) = c_leaf(l);
+    match (&v.ty, &ty) {
+        (LTy::I64, LTy::I8 | LTy::I16 | LTy::I32) => b.trunc(&v, ty),
+        (LTy::F64, LTy::F32) => b.fptrunc(&v),
+        _ => v,
+    }
+}
+
 fn call_rt(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder) {
     let (m, lay) = (cx.m, cx.lay);
     let Imm::Ext(e) = inst.imm else { return };
     let def = &m.externs[e.index()];
+    let c_shim = m.c_externs.contains(&def.name);
     let mut args: Vec<(Val, &str)> = Vec::new();
     for (p, a) in def.params.iter().zip(&inst.args) {
         if passes_directly(lay, p.ty) {
             let abi = types::abi_leaves(b, lay, p.ty, vals, *a, true);
-            for (v, (_, at)) in abi.into_iter().zip(leaves(lay, p.ty)) {
-                args.push((v, at));
+            for (v, (l, (_, at))) in abi
+                .into_iter()
+                .zip(lay.leaves(p.ty).into_iter().zip(leaves(lay, p.ty)))
+            {
+                if c_shim {
+                    args.push((to_c(b, v, l), c_leaf(l).1));
+                } else {
+                    args.push((v, at));
+                }
             }
         } else {
             let slot = types::spill(b, lay, p.ty, vals, *a);
@@ -336,6 +407,9 @@ fn call_rt(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder
     let slot = (!direct).then(|| types::result_slot(b, lay, def.ret, out));
     if let Some(slot) = &slot {
         args.push((slot.clone(), OUT));
+    }
+    if c_shim && direct {
+        return c_call(cx, def, &args, out, b);
     }
     let attrs = crate::llvm_ir::runtime_attrs(&def.name, def.reads);
     let types = b.types();
