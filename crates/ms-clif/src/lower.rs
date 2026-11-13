@@ -1054,7 +1054,10 @@ impl<'a, 'm> Lower<'a, 'm> {
             | Op::UMulChk
             | Op::INegChk
             | Op::SDivChk
-            | Op::SRemChk => self.checked_integer_ops(f, inst),
+            | Op::SRemChk => {
+                let vs = self.checked_integer_ops(f, inst);
+                self.range_check_sized(f, inst, vs)
+            }
             Op::And
             | Op::Or
             | Op::Xor

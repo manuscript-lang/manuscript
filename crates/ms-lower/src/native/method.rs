@@ -419,6 +419,7 @@ impl<'a> FnLower<'a> {
             }
             (_, "abs" | "sign") if self.b.m.types.is_int(rty) => {
                 let x = self.borrow(recv);
+                let x = self.widened(x);
                 let (zero, minus) = (self.b.iconst(0), self.b.iconst(-1));
                 let neg = self.b.icmp(ms_mir::ir::Cc::Lt, x, zero);
                 if name == "sign" {
@@ -431,8 +432,7 @@ impl<'a> FnLower<'a> {
                 let v = self.b.select(neg, negated, x);
                 // A narrower receiver keeps its type; the range check faults on its minimum.
                 let v = if self.b.m.types.int_bits(result).is_some_and(|b| b < 64) {
-                    let narrow = self.b.conv(v, result);
-                    self.b.narrow_chk(narrow)
+                    self.b.narrow_chk(v, result)
                 } else {
                     v
                 };
