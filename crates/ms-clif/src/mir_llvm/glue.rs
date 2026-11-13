@@ -266,26 +266,35 @@ pub(super) fn clone_leaves(cx: &mut Cx, ty: Ty, args: &[Val], out: &[Val], b: &m
 
 fn drop_inst(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     let guarded = inst.op == Op::DropIf;
-    let ty = cx.f.ty(inst.args[usize::from(guarded)]);
-    let guard = guarded.then(|| vals[&inst.args[0].index()][0].clone());
-    drop_leaves(
-        cx,
-        ty,
-        &vals[&inst.args[usize::from(guarded)].index()],
-        guard,
-        b,
-    );
+    let v = inst.args[usize::from(guarded)];
+    let ty = cx.f.ty(v);
+    let on = guarded.then(|| vals[&inst.args[0].index()][0].clone());
+    drop_value(cx, ty, v, on, vals, b);
 }
 
-/// Drops the held values `args` of a `ty`, when `guard` (an `i1`) holds if there is one.
-pub(super) fn drop_leaves(
+/// Drops the value of type `ty` held as `held` (its leaves), for a payload an alternative releases.
+pub(super) fn drop_held(cx: &mut Cx, ty: Ty, held: Vec<Val>, b: &mut FnBuilder) {
+    let v = Value(0);
+    let vals = Vals::from([(v.index(), held)]);
+    drop_value(cx, ty, v, None, &vals, b);
+}
+
+/// How many blocks dropping a value of type `ty` splits off when unguarded: a string's check.
+pub(super) fn drop_splits(lay: &Layouts, ty: Ty) -> usize {
+    usize::from(own_kind(lay, ty) == OwnKind::Str)
+}
+
+/// Drops the value `v` of type `ty`, only when `on` is true if it is given. `splits` counts the
+/// blocks this starts: one for a guard, one for a string's check.
+pub(super) fn drop_value(
     cx: &mut Cx,
     ty: Ty,
-    args: &[Val],
-    guard: Option<Val>,
+    v: Value,
+    on: Option<Val>,
+    vals: &Vals,
     b: &mut FnBuilder,
 ) {
-    let guarded = guard.is_some();
+    let guarded = on.is_some();
     let kind = own_kind(cx.lay, ty);
     if kind == OwnKind::Identity {
         return;
@@ -299,23 +308,42 @@ pub(super) fn drop_leaves(
         n += 1;
         format!("b{block}.{what}{at}.{n}")
     };
-    if let Some(on) = guard {
+    if let Some(on) = on {
         let then = fresh("t");
         b.cond_br(&on, &then, &join);
         b.label(&then);
     }
-    match kind {
+    let (free, cont) = (fresh("f"), if guarded { fresh("c") } else { join.clone() });
+    drop_core(cx, b, ty, vals, v, &free, &cont);
+    if guarded {
+        b.br(&join);
+        b.label(&join);
+    }
+}
+
+/// Drops the value `v` of `ty`. A string branches: it frees in block `free` and continues in
+/// block `cont`, which this leaves as the current block; any other type is straight-line code.
+fn drop_core(
+    cx: &mut Cx,
+    b: &mut FnBuilder,
+    ty: Ty,
+    vals: &Vals,
+    v: Value,
+    free: &str,
+    cont: &str,
+) {
+    let args = &vals[&v.index()];
+    match own_kind(cx.lay, ty) {
         OwnKind::Str => {
             // Only an owned string (tag `00`) frees anything.
             let owned = b.icmp("ult", &args[1], &Val::int(STR_INLINE as i64));
-            let (free, cont) = (fresh("f"), if guarded { fresh("c") } else { join.clone() });
-            b.cond_br(&owned, &free, &cont);
-            b.label(&free);
+            b.cond_br(&owned, free, cont);
+            b.label(free);
             cx.decls.push(rt_decl("msrt_str_free"));
             let p = word(b, &args[0]);
             b.call(&LTy::Void, "", "msrt_str_free", &[(p, "")]);
-            b.br(&cont);
-            b.label(&cont);
+            b.br(cont);
+            b.label(cont);
         }
         OwnKind::Obj => {
             cx.decls.push(rt_decl("msrt_obj_drop"));
@@ -326,7 +354,7 @@ pub(super) fn drop_leaves(
             let target = cx.plan.drop[&ty].clone();
             match drop_callee(cx.lay, ty, &target, &mut cx.decls) {
                 GlueCall::Memory(n) => {
-                    let p = spill_of(b, cx.lay, ty, args);
+                    let p = spill(b, cx.lay, ty, vals, v);
                     b.call(&LTy::Void, "", &n, &[(p, "")]);
                 }
                 GlueCall::Regs(n) => {
@@ -336,20 +364,23 @@ pub(super) fn drop_leaves(
             }
         }
     }
-    if guarded {
-        b.br(&join);
-        b.label(&join);
-    }
 }
 
-/// Drops the value `v` of type `ty`, only when `on` is true if it is given.
-pub(super) fn drop_value(
+/// Drops a value of `ty` held as `leaves`, as `drop` does. A string needs two blocks: when it
+/// returns `true` the code is in the fresh block `cont` (the caller counts one split), else in the
+/// block it started in.
+pub(super) fn drop_leaves(
     cx: &mut Cx,
-    ty: Ty,
-    v: Value,
-    on: Option<Val>,
-    vals: &Vals,
     b: &mut FnBuilder,
-) {
-    drop_leaves(cx, ty, &vals[&v.index()], on, b);
+    ty: Ty,
+    leaves: &[Val],
+    (free, cont): (&str, &str),
+) -> bool {
+    if own_kind(cx.lay, ty) == OwnKind::Identity {
+        return false;
+    }
+    let v = Value(u32::MAX);
+    let vals: Vals = [(v.index(), leaves.to_vec())].into();
+    drop_core(cx, b, ty, &vals, v, free, cont);
+    own_kind(cx.lay, ty) == OwnKind::Str
 }

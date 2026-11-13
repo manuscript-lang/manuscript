@@ -553,7 +553,7 @@ fn release(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
                 .map(|(j, slot)| convert(b, &own[*slot], &held[j]))
                 .collect()
         };
-        glue::drop_leaves(cx, fty, &leaves, None, b);
+        glue::drop_held(cx, fty, leaves, b);
     }
     if boxed && !lay.alt_fields(a)[c as usize].is_empty() {
         records::declare_heap(cx);

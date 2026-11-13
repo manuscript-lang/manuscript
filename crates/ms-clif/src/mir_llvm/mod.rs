@@ -738,7 +738,7 @@ pub fn emit(
         body: b.finish(),
         decls: cx.decls,
         data: cx.data,
-        consts: lists::consts(m, f),
+        consts: lists::consts(m, lay, f),
     }
 }
 
@@ -753,13 +753,18 @@ pub fn grow_shim(types: &Types, lay: &Layouts, f: &Func, sym: &str, dbg: usize) 
     depth::shim(types, lay, f, sym, dbg)
 }
 
+/// The grow shim of the leaf-convention function `f` called `sym`.
+pub fn leaf_grow_shim(types: &Types, lay: &Layouts, f: &Func, sym: &str, dbg: usize) -> Emitted {
+    depth::leaf_shim(types, lay, f, sym, dbg)
+}
+
 #[cfg(test)]
 mod coverage {
     use super::*;
 
     /// The ops no area lowers yet. An op leaves this list when an area handles it; the scope
     /// markers are not here because `elaborate` removes them before code generation.
-    const UNLOWERED: &[Op] = &[Op::BytesLit, Op::ListConst, Op::ListAddr, Op::ListAddrU];
+    const UNLOWERED: &[Op] = &[];
 
     const MARKERS: &[Op] = &[
         Op::ScopeBegin,
