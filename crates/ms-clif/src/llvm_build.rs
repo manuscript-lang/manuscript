@@ -7,11 +7,6 @@
 //! offsets that match `layout::mem_layout`. The output is the text the pinned `opt` and `llc`
 //! read, so it joins the rest of the release pipeline unchanged.
 
-#![allow(
-    dead_code,
-    reason = "stage 2 (records and memory) uses the rest of the builder"
-)]
-
 use std::cell::RefCell;
 use std::fmt::Write as _;
 
@@ -396,16 +391,6 @@ impl<'t> FnBuilder<'t> {
         self.dbg = dbg;
     }
 
-    /// Takes the pending name back, for a caller that defines helper values first.
-    pub fn take_name(&mut self) -> Option<Val> {
-        self.pending.take()
-    }
-
-    /// Puts a name taken with [`FnBuilder::take_name`] back.
-    pub fn restore_name(&mut self, v: Option<Val>) {
-        self.pending = v;
-    }
-
     /// Starts a block.
     /// The module's struct types.
     pub fn types(&self) -> &'t Types {
@@ -613,21 +598,24 @@ impl<'t> FnBuilder<'t> {
         );
     }
 
-    /// Copies one `ty` from `src` to `dst` (non-overlapping), with its alignment.
-    pub fn copy(&mut self, ty: &Ty, dst: &Val, src: &Val) {
-        let (size, align) = self.types.size_align(ty);
-        assert_eq!((&dst.ty, &src.ty), (&Ty::Ptr, &Ty::Ptr));
-        self.line(format!(
-            "call void @llvm.memcpy.p0.p0.i64(ptr align {align} {}, ptr align {align} {}, i64 {size}, i1 false)",
-            dst.text, src.text
-        ));
+    /// A call to a callee that cannot fault (a runtime helper, an intrinsic); `ret` is `Ty::Void`
+    /// for none. `args` carry their parameter attributes (same length), such as `" zeroext"`.
+    /// LLVM may sink or merge it like any call with the same effects. Use
+    /// [`FnBuilder::call_keep`] for a callee that can fault, and [`FnBuilder::call_pure`] for one
+    /// with no effects at all.
+    pub fn call(
+        &mut self,
+        ret: &Ty,
+        ret_attr: &str,
+        callee: &str,
+        args: &[(Val, &str)],
+    ) -> Option<Val> {
+        self.call_with(ret, ret_attr, callee, args, "")
     }
 
-    /// A call; `ret` is `Ty::Void` for none. `args` carry their parameter attributes in `attrs`
-    /// (same length), such as `" zeroext"`. Calls from distinct source sites are never merged,
-    /// which would lose the caller's fault frame; use [`FnBuilder::call_pure`] for a callee that
-    /// cannot fault.
-    pub fn call(
+    /// A call to a callee that can fault: calls from distinct source sites are never merged,
+    /// which would lose the caller's fault frame in a trace.
+    pub fn call_keep(
         &mut self,
         ret: &Ty,
         ret_attr: &str,
@@ -722,23 +710,6 @@ impl<'t> FnBuilder<'t> {
         ));
     }
 
-    /// A call returning several values as an anonymous struct, split into its parts.
-    pub fn call_multi(&mut self, rets: &[Ty], callee: &str, args: &[(Val, &str)]) -> Vec<Val> {
-        let actuals: Vec<String> = args
-            .iter()
-            .map(|(v, a)| format!("{}{a} {}", self.ty(&v.ty), v.text))
-            .collect();
-        let agg = self.agg(rets);
-        let r = self.def(
-            Ty::Void,
-            format!("call {agg} @\"{callee}\"({})", actuals.join(", ")),
-        );
-        rets.iter()
-            .enumerate()
-            .map(|(i, t)| self.def(t.clone(), format!("extractvalue {agg} {}, {i}", r.text)))
-            .collect()
-    }
-
     /// Returns several values as an anonymous struct.
     pub fn ret_multi(&mut self, vals: &[Val]) {
         let tys: Vec<Ty> = vals.iter().map(|v| v.ty.clone()).collect();
@@ -793,12 +764,6 @@ impl<'t> FnBuilder<'t> {
             "br i1 {}, label %{then}, label %{els}, !prof !{{!\"branch_weights\", i32 {a}, i32 {b}}}",
             cond.text
         ));
-    }
-
-    /// An empty inline asm taking the fault site number `n`: keeps fault sites distinct, so LLVM
-    /// neither merges them (which drops the line of a fault in a trace) nor hoists them.
-    pub fn fault_site(&mut self, n: u32) {
-        self.line(format!("call void asm sideeffect \"\", \"i\"(i32 {n})"));
     }
 
     /// `inttoptr` of a pointer-sized integer leaf.
@@ -971,7 +936,7 @@ mod tests {
         b.label("b0");
         let slot = b.alloca(&r);
         let src = Val::new("%a0", Ty::Ptr);
-        b.copy(&r, &slot, &src);
+        b.memcpy((&slot, 8), (&src, 8), &Val::int(24));
         let f = b.field_ptr(&r, &slot, 2);
         let x = b.load(&Ty::I64, &f, 8);
         b.ret(Some(&x));
