@@ -1873,6 +1873,7 @@ impl LlvmModule {
              declare i64 @llvm.cttz.i64(i64, i1)\n\
              declare i64 @llvm.ctpop.i64(i64)\n",
         );
+        tail.push_str(crate::llvm_lifetimes::DECLARES);
         for op in ["sadd", "ssub", "smul", "uadd", "usub", "umul"] {
             for t in ["i64", "i32", "i8"] {
                 let _ = writeln!(

@@ -893,6 +893,7 @@ impl<'t> FnBuilder<'t> {
             .out
             .split_once('\n')
             .expect("a body starts with a label");
+        let rest = crate::llvm_lifetimes::mark(&self.allocas, rest);
         format!("{first}\n{}{rest}}}\n\n", self.allocas)
     }
 }
