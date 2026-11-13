@@ -593,6 +593,52 @@ b0:
     check("direct_constants", src, 17, &["read"]);
 }
 
+fn element_drops() {
+    let src = r#"module "d"
+entry @main
+file 0 "d.ms"
+fn @nested(%n: int) -> int !0:1:1 {
+b0:
+  %x: int = iconst 1 !0:2:1
+  %a: list<int> = list.lit %x, %x !0:2:1
+  %b: list<int> = list.lit %x !0:2:1
+  %o: list<list<int>> = list.lit %a, %b !0:3:1
+  %z: int = iconst 0 !0:3:1
+  %c: list<int> = list.lit %x !0:4:1
+  %o2: list<list<int>> = list.set %o, %z, %c !0:4:1
+  %o3: list<list<int>> = list.droplast 0 %o2 !0:5:1
+  list.release %o3, %z !0:6:1
+  %seven: int = iconst 7 !0:7:1
+  ret %seven
+}
+fn @strings(%n: int) -> int !0:8:1 {
+b0:
+  %s0: str = str "first string that is longer than inline" !0:9:1
+  %t0: str = str "second" !0:9:1
+  %s: str = clone %s0 !0:9:1
+  %t: str = clone %t0 !0:9:1
+  %l: list<str> = list.lit %s, %t !0:10:1
+  %z: int = iconst 0 !0:10:1
+  %u0: str = str "third" !0:10:1
+  %u: str = clone %u0 !0:10:1
+  %l2: list<str> = list.set %l, %z, %u !0:11:1
+  %l3: list<str> = list.droplast 0 %l2 !0:12:1
+  list.release %l3, %z !0:13:1
+  %five: int = iconst 5 !0:14:1
+  ret %five
+}
+fn @main() -> int !0:20:1 {
+b0:
+  %n: int = iconst 0 !0:20:1
+  %a: int = call @nested(%n) !0:21:1
+  %b: int = call @strings(%n) !0:22:1
+  %r: int = iadd %a, %b !0:23:1
+  ret %r
+}
+"#;
+    check("direct_element_drops", src, 12, &["nested", "strings"]);
+}
+
 /// One test, not three: each build writes `ms-keep.ll` in the working directory.
 #[test]
 fn direct_lists_and_strings_match_cranelift() {
@@ -603,6 +649,7 @@ fn direct_lists_and_strings_match_cranelift() {
     string_literals();
     list_take_release();
     constants_and_addresses();
+    element_drops();
     crate::llvm_direct_data::optionals_and_alternatives_match_cranelift();
     closures_and_runtime_calls();
     interfaces();

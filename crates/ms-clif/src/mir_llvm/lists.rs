@@ -53,10 +53,16 @@ fn checked(op: Op) -> bool {
 
 /// How many times `op` splits its block: a bounds check or a string read that joins branches
 /// starts a new block, and a successor's phis name the label the block ends in.
-fn splits(_: &Layouts, _: &Func, i: &Inst, checks: bool) -> usize {
+fn splits(lay: &Layouts, f: &Func, i: &Inst, checks: bool) -> usize {
     let op = i.op;
+    let drops = || {
+        let e = lay.m.seq_elem(f.ty(i.args[0]));
+        e.map_or(0, |e| super::glue::drop_splits(lay, e))
+    };
     match op {
+        Op::ListSet | Op::ListSetNn | Op::ListSetU => usize::from(checks && checked(op)) + drops(),
         _ if checked(op) => usize::from(checks),
+        Op::ListDropLast if i.imm != Imm::Int(1) => drops(),
         Op::StrByte | Op::StrAsciiAt | Op::ListNew | Op::ListPush | Op::ListRelease => 1,
         _ => 0,
     }
@@ -77,7 +83,7 @@ fn inst_ok(m: &Module, lay: &Layouts, f: &Func, i: &Inst) -> bool {
         return build_ok(m, lay, f, i);
     }
     if matches!(i.op, Op::ListDropLast | Op::ListRelease) {
-        return release_ok(m, f, i);
+        return release_ok(m, lay, f, i);
     }
     list_arg(i.op).is_none_or(|l| elem_ok(m, lay, f, i, l))
 }
@@ -168,7 +174,7 @@ fn elem_ok(m: &Module, lay: &Layouts, f: &Func, i: &Inst, list: usize) -> bool {
         i.op,
         Op::ListGet | Op::ListGetNn | Op::ListGetU | Op::ListTake
     );
-    (!writes || !m.needs_drop(e) && i.args.len() == 3 && f.ty(i.args[2]) == e)
+    (!writes || i.args.len() == 3 && f.ty(i.args[2]) == e)
         && (writes || i.res.is_some_and(|r| f.ty(r) == e))
         && plain_elem(lay, e)
 }
@@ -182,7 +188,12 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
             let out = &vals[&inst.res.expect("list result").index()];
             let len = vals[&inst.args[0].index()][1].clone();
             b.name_next(&out[1]);
-            b.bin(Bin::Add, &len, &Val::int(-1));
+            let last = b.bin(Bin::Add, &len, &Val::int(-1));
+            let elem = cx.m.seq_elem(cx.f.ty(inst.args[0])).expect("a list");
+            if cx.m.needs_drop(elem) && inst.imm != Imm::Int(1) {
+                let ptr = vals[&inst.args[0].index()][0].clone();
+                drop_elem(cx, b, elem, &ptr, &last);
+            }
         }
         Op::ListRelease => list_release(cx, inst, vals, b),
         Op::ListConst => list_const(cx, inst, vals, b),
@@ -237,6 +248,9 @@ fn list_access(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         Op::ListGet | Op::ListGetNn | Op::ListGetU | Op::ListTake
     );
     let out = inst.res.map(|r| &vals[&r.index()]);
+    if matches!(inst.op, Op::ListSet | Op::ListSetNn | Op::ListSetU) && cx.m.needs_drop(elem) {
+        drop_elem(cx, b, elem, &ptr, &idx);
+    }
     for (k, t) in tys.iter().enumerate() {
         let to = if tys.len() == 1 {
             at.clone()
@@ -265,6 +279,45 @@ fn list_access(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
             };
             b.store_with(&v, &to, align, meta);
         }
+    }
+}
+
+/// Loads element `idx` of the block at `ptr` as its held leaves.
+fn load_elem(cx: &Cx, b: &mut FnBuilder, elem: Ty, ptr: &Val, idx: &Val) -> Vec<Val> {
+    let tys = mem_leaves(cx.lay, elem);
+    let held = held_leaves(cx.lay, elem);
+    let whole = match tys.as_slice() {
+        [one] => one.clone(),
+        _ => super::aggregate(b.types(), cx.lay, elem),
+    };
+    let at = b.elem_ptr(&whole, ptr, idx);
+    tys.iter()
+        .enumerate()
+        .map(|(k, t)| {
+            let to = if tys.len() == 1 {
+                at.clone()
+            } else {
+                b.field_ptr(&whole, &at, k)
+            };
+            let align = b.types().size_align(t).1;
+            let v = b.load_with(t, &to, align, elem_meta(cx.m.types.kind(elem), k));
+            if held[k] == LTy::I1 {
+                b.trunc(&v, LTy::I1)
+            } else {
+                v
+            }
+        })
+        .collect()
+}
+
+/// Drops element `idx` of the block at `ptr`. A string element takes one split.
+fn drop_elem(cx: &mut Cx, b: &mut FnBuilder, elem: Ty, ptr: &Val, idx: &Val) {
+    let old = load_elem(cx, b, elem, ptr, idx);
+    let (bb, at) = (cx.block, cx.split);
+    let free = format!("b{bb}.df{at}");
+    let cont = block_label(bb, at + 1);
+    if super::glue::drop_leaves(cx, b, elem, &old, (&free, &cont)) {
+        cx.split += 1;
     }
 }
 
@@ -522,17 +575,17 @@ fn list_const(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     b.memcpy((&p, 16), (&src, 16), &bytes);
 }
 
-/// `ListDropLast` and `ListRelease` for elements that need no drop (`list.droplast 1` follows a
-/// `list.take` of that element, so it drops nothing either).
-fn release_ok(m: &Module, f: &Func, i: &Inst) -> bool {
+/// `ListDropLast` and `ListRelease`; `list.droplast 1` follows a `list.take` of that element, so
+/// it drops nothing.
+fn release_ok(m: &Module, lay: &Layouts, f: &Func, i: &Inst) -> bool {
     let Some(e) = m.seq_elem(f.ty(i.args[0])) else {
         return false;
     };
-    !m.needs_drop(e) || (i.op == Op::ListDropLast && i.imm == Imm::Int(1))
+    !m.needs_drop(e) || (i.op == Op::ListDropLast && i.imm == Imm::Int(1)) || plain_elem(lay, e)
 }
 
-/// `ListRelease`: free the block of an owned list (`cap != 0`; a view owns nothing) that has
-/// one. No element needs a drop, so only the block goes.
+/// `ListRelease`: drop the elements from index `from` on (the ones before it were moved out), then
+/// free the block of an owned list (`cap != 0`; a view owns nothing) that has one.
 fn list_release(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     let l = &vals[&inst.args[0].index()];
     let (bb, split) = (cx.block, cx.split);
@@ -543,11 +596,49 @@ fn list_release(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     let both = b.bin(Bin::And, &owned, &some);
     b.cond_br(&both, &free, &join);
     b.label(&free);
+    let elem = cx.m.seq_elem(cx.f.ty(inst.args[0])).expect("a list");
+    if cx.m.needs_drop(elem) {
+        drop_loop(cx, b, elem, l, &vals[&inst.args[1].index()][0], &free);
+    }
     super::rt::declare(cx, "msrt_free");
     let word = b.ptr_to_int(&l[0]);
     b.call(&LTy::Void, "", "msrt_free", &[(word, "")]);
     b.br(&join);
     b.label(&join);
+}
+
+/// Drops the elements of the list `l` from index `from` (a negative one counts from the start)
+/// to its end, entered from block `entry`, and leaves the code in a fresh block after the loop.
+fn drop_loop(cx: &mut Cx, b: &mut FnBuilder, elem: Ty, l: &[Val], from: &Val, entry: &str) {
+    let bb = cx.block;
+    let at = cx.split;
+    let tag = |s: &str| format!("b{bb}.r{at}{s}");
+    let (head, body, latch, done) = (tag("h"), tag("b"), tag("l"), tag("d"));
+    let neg = b.icmp("slt", from, &Val::int(0));
+    let start = b.select(&neg, &Val::int(0), from);
+    b.br(&head);
+    b.label(&head);
+    let (i, next) = (b.reserve(LTy::I64), b.reserve(LTy::I64));
+    // `i` is the loop variable: `start` on entry, `next` on the back edge.
+    b.phi(
+        &i,
+        &[(start, entry.to_string()), (next.clone(), latch.clone())],
+    );
+    let more = b.icmp("slt", &i, &l[1]);
+    b.cond_br(&more, &body, &done);
+    b.label(&body);
+    let old = load_elem(cx, b, elem, &l[0], &i);
+    let (free, cont) = (tag("f"), latch.clone());
+    super::glue::drop_leaves(cx, b, elem, &old, (&free, &cont));
+    // A string drop ends in `latch`; any other drop is straight-line, so enter it.
+    if super::glue::drop_splits(cx.lay, elem) == 0 {
+        b.br(&latch);
+        b.label(&latch);
+    }
+    b.name_next(&next);
+    b.bin(Bin::Add, &i, &Val::int(1));
+    b.br(&head);
+    b.label(&done);
 }
 
 /// `StrLen`: the scalar count, computed by the runtime from the string's two words in a slot.

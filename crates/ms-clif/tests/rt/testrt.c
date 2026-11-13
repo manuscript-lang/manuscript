@@ -109,6 +109,7 @@ uint8_t *msrt_alloc(size_t n) {
   return p;
 }
 void msrt_free(uint8_t *p) { if (p) { msrt_live_allocs--; free(p); } }
+void msrt_str_free(uint8_t *p) { msrt_free(p); }
 uint8_t *msrt_realloc(uint8_t *p, size_t n) {
   if (!p) return msrt_alloc(n);
   uint8_t *q = realloc(p, n ? n : 1);
