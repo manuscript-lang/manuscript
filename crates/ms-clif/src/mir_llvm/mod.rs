@@ -12,6 +12,7 @@ mod calls;
 mod closures;
 mod depth;
 mod enums;
+mod faults;
 mod glue;
 mod lists;
 mod maps;
@@ -305,7 +306,8 @@ pub fn supports(m: &Module, lay: &Layouts, f: &Func) -> bool {
                 then.block != els.block && !is_entry(then) && !is_entry(els)
             }
             Term::Ret(_) | Term::Unreachable => true,
-            Term::Switch { .. } | Term::Fault(_) => false,
+            Term::Fault(k) => faults::terminator_ok(*k),
+            Term::Switch { .. } => false,
         };
         if !ok {
             return false;
@@ -517,6 +519,8 @@ pub fn emit(
             b.set_dbg(Some(env.at(inst.loc)));
             inst_text(&mut cx, inst, &vals, &mut b);
         }
+        // A fault names the position of its terminator in the trace.
+        b.set_dbg(Some(env.at(bd.term_loc)));
         match &bd.term {
             Term::Br(t) => {
                 records::copies(&mut b, lay, f, &vals, t);
@@ -558,6 +562,7 @@ pub fn emit(
                 }
             }
             Term::Ret(None) => b.ret(None),
+            Term::Fault(k) => faults::terminator(&mut cx, &mut b, *k),
             _ => b.unreachable(),
         }
     }
