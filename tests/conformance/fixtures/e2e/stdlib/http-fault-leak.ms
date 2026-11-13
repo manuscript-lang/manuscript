@@ -44,13 +44,13 @@ test "a fetch cancelled by its timeout releases its read buffer":
 
 	// Warm up the thread's buffers and the connection pool before measuring.
 	for i in 0..20:
-		_ := fetch(url).with(options: PromiseOptions(timeout: 5.milliseconds())).wait()
+		_ := fetch(url).with(options: PromiseOptions(timeout: 1.milliseconds())).wait()
 
 	before := (memory_usage() | expect_ok?).resident
 
 	for i in 0..300:
 		timed_out := fetch(url).with(
-			options: PromiseOptions(timeout: 5.milliseconds())
+			options: PromiseOptions(timeout: 1.milliseconds())
 		).wait()
 		if timed_out.is_ok(): return error(Error("a hanging handler answered"))
 
@@ -62,14 +62,16 @@ test "a fetch cancelled by its timeout releases its read buffer":
 test "a fetch cancelled by its timeout frees the request state its frames own":
 	server := serve(address: "127.0.0.1:0", handler: hanging) | expect_ok?
 	url := "http://{server.address()}/"
+	// One fetch waits long enough for its request to be sent; the rest cancel at once.
+	_ := fetch(url).with(options: PromiseOptions(timeout: 5.milliseconds())).wait()
 	for i in 0..200:
-		_ := fetch(url).with(options: PromiseOptions(timeout: 5.milliseconds())).wait()
+		_ := fetch(url).with(options: PromiseOptions(timeout: 0.milliseconds())).wait()
 
 	before := (memory_usage() | expect_ok?).heap_used
 
 	for i in 0..2000:
 		timed_out := fetch(url).with(
-			options: PromiseOptions(timeout: 5.milliseconds())
+			options: PromiseOptions(timeout: 0.milliseconds())
 		).wait()
 		if timed_out.is_ok(): return error(Error("a hanging handler answered"))
 

@@ -43,7 +43,7 @@ test "requests cancelled on a shared HTTP/2 connection release their streams":
 	// limit filled and later requests failed.
 	for i in 0..400:
 		_ := client.fetch("{base}/hang", FetchOptions(timeout: none)).with(
-			options: PromiseOptions(timeout: 5.milliseconds())
+			options: PromiseOptions(timeout: 1.milliseconds())
 		).wait()
 
 	after := (
@@ -55,7 +55,7 @@ test "requests cancelled on a shared HTTP/2 connection release their streams":
 	before := (memory_usage() | expect_ok?).heap_used
 	for i in 0..1000:
 		_ := client.fetch("{base}/hang", FetchOptions(timeout: none)).with(
-			options: PromiseOptions(timeout: 5.milliseconds())
+			options: PromiseOptions(timeout: 1.milliseconds())
 		).wait()
 
 	// A cancelled stream's queue and headers leaked about 600 bytes each.
