@@ -2,7 +2,7 @@
 //! value's memory shape. Overwriting a global drops the value it held.
 
 use super::glue::drop_value;
-use super::records::{load_value, reserve, shape_ok, store_value};
+use super::types::{load_value, reserve, shape_ok, store_value};
 use super::{Area, Cx, Vals};
 use crate::glue_llvm::{OwnKind, own_kind};
 use crate::layout::Layouts;

@@ -348,7 +348,7 @@ fn move_dead_sources_across_blocks(m: &mut Module, fi: usize) -> bool {
 /// source stays alive. Composite values additionally require a span without writes
 /// that could change or release a projection's owner. String length may cache its
 /// result, but cannot release or replace data. This includes read-only iteration
-/// over a list of records, which otherwise copies every record on every visit.
+/// over a list of types, which otherwise copies every type on every visit.
 fn borrow_local_copies(m: &mut Module, fi: usize) -> bool {
     let f = &m.funcs[fi];
     let mut uses = vec![0u32; f.values.len()];
@@ -410,7 +410,7 @@ fn borrow_local_copies(m: &mut Module, fi: usize) -> bool {
             let is_str = matches!(kind, TyKind::Str);
             let composite = matches!(
                 kind,
-                TyKind::Rec(_) | TyKind::Alt(_) | TyKind::Opt(_) | TyKind::List(_) | TyKind::Bytes
+                TyKind::Type(_) | TyKind::Alt(_) | TyKind::Opt(_) | TyKind::List(_) | TyKind::Bytes
             );
             if !(matches!(kind, TyKind::Fn(..)) || is_str || composite)
                 || alias[v.index()].is_some()
@@ -441,7 +441,7 @@ fn borrow_local_copies(m: &mut Module, fi: usize) -> bool {
             if matches!(kind, TyKind::Fn(..))
                 && field_root(f, &defs, v).is_some_and(|r| consumes(r, bi, i, j))
             {
-                // A closure read out of a record dies with the record.
+                // A closure read out of a type dies with the type.
                 continue;
             }
             let c_uses = at[c.index()]
@@ -661,7 +661,7 @@ fn borrow_str_phis(m: &mut Module, fi: usize) -> bool {
             if edges.is_empty() {
                 continue;
             }
-            // Values the sources depend on: each source and the chain of lists and records it
+            // Values the sources depend on: each source and the chain of lists and types it
             // was read out of.
             let mut chain: Vec<Value> = Vec::new();
             for &(_, _, src) in &edges {
@@ -679,7 +679,7 @@ fn borrow_str_phis(m: &mut Module, fi: usize) -> bool {
                 loop {
                     chain.push(at);
                     match defs[at.index()] {
-                        Some((rb, ri)) if f.blocks[rb].insts[ri].op == Op::RecGet => {
+                        Some((rb, ri)) if f.blocks[rb].insts[ri].op == Op::TypeGet => {
                             at = f.blocks[rb].insts[ri].args[0];
                         }
                         _ => break,
@@ -821,7 +821,7 @@ fn field_root(f: &Func, defs: &[Option<(usize, usize)>], mut v: Value) -> Option
     let mut root = None;
     while let Some((db, di)) = defs[v.index()] {
         let def = &f.blocks[db].insts[di];
-        if def.op != Op::RecGet {
+        if def.op != Op::TypeGet {
             break;
         }
         v = def.args[0];
@@ -1011,20 +1011,20 @@ fn unbox_dead_sources(m: &mut Module, fi: usize) -> bool {
 pub fn run_takes(m: &mut Module) -> bool {
     let mut changed = false;
     for fi in 0..m.funcs.len() {
-        while take_record_fields(m, fi) {
+        while take_type_fields(m, fi) {
             changed = true;
         }
     }
     changed
 }
 
-/// Turns `p = rec.get f v; c = clone p; ...; drop v` into `c = rec.get f v` plus drops of the
-/// other droppable fields of `v`, when `v` is only read through `rec.get`s until its drop. The
-/// field moves out of the dying record instead of being deep-copied and then freed with it, so
-/// `w.inner.clone()` on a record that is dead afterwards costs no allocation. Nothing that can
+/// Turns `p = type.get f v; c = clone p; ...; drop v` into `c = type.get f v` plus drops of the
+/// other droppable fields of `v`, when `v` is only read through `type.get`s until its drop. The
+/// field moves out of the dying type instead of being deep-copied and then freed with it, so
+/// `w.inner.clone()` on a type that is dead afterwards costs no allocation. Nothing that can
 /// fault or unwind may sit between the first load and the drop, so no cleanup sees the field
-/// both moved and still owned by the record.
-fn take_record_fields(m: &mut Module, fi: usize) -> bool {
+/// both moved and still owned by the type.
+fn take_type_fields(m: &mut Module, fi: usize) -> bool {
     let f = &m.funcs[fi];
     let tainted = view_tainted(m, fi);
     let mut uses = vec![0u32; f.values.len()];
@@ -1037,7 +1037,7 @@ fn take_record_fields(m: &mut Module, fi: usize) -> bool {
         b.term.for_each_use(|v| uses[v.index()] += 1);
     }
     let nd: Vec<bool> = f.values.iter().map(|v| m.needs_drop(*v)).collect();
-    // (block, copy index, record drop index, moved field values) of the first site found.
+    // (block, copy index, type drop index, moved field values) of the first site found.
     let mut site = None;
     'find: for (bi, b) in f.blocks.iter().enumerate() {
         let idx = BlockUses::new(&b.insts);
@@ -1046,7 +1046,7 @@ fn take_record_fields(m: &mut Module, fi: usize) -> bool {
             let (Op::Drop, Some(v)) = (drop.op, v) else {
                 continue;
             };
-            let TyKind::Rec(_) = m.types.kind(f.ty(v)) else {
+            let TyKind::Type(_) = m.types.kind(f.ty(v)) else {
                 continue;
             };
             if tainted[v.index()] || idx.after(v, di).next().is_some() {
@@ -1058,7 +1058,7 @@ fn take_record_fields(m: &mut Module, fi: usize) -> bool {
                 if !b.insts[k].args.contains(&v) {
                     continue;
                 }
-                if b.insts[k].op == Op::RecGet {
+                if b.insts[k].op == Op::TypeGet {
                     gets.push(k);
                 } else {
                     ok = false;
@@ -1072,7 +1072,7 @@ fn take_record_fields(m: &mut Module, fi: usize) -> bool {
             // Between the first load and the drop there is nothing that can fault or unwind.
             if b.insts[first..di]
                 .iter()
-                .any(|n| !matches!(n.op, Op::RecGet | Op::Clone))
+                .any(|n| !matches!(n.op, Op::TypeGet | Op::Clone))
             {
                 continue;
             }
@@ -1090,7 +1090,7 @@ fn take_record_fields(m: &mut Module, fi: usize) -> bool {
                     continue;
                 };
                 let fld = field_of(gi);
-                // A field taken once must not also be read through another `rec.get`.
+                // A field taken once must not also be read through another `type.get`.
                 if ci < di && gets.iter().filter(|&&g| field_of(g) == fld).count() == 1 {
                     taken.push((gi, ci, fld));
                 }
@@ -1106,18 +1106,18 @@ fn take_record_fields(m: &mut Module, fi: usize) -> bool {
         return false;
     };
     let f = &mut m.funcs[fi];
-    let Imm::Field(rec, _) = f.blocks[bi].insts[taken[0].0].imm else {
+    let Imm::Field(tval, _) = f.blocks[bi].insts[taken[0].0].imm else {
         return false;
     };
-    // The copy becomes a move out of the dying record; the release drops the other fields.
+    // The copy becomes a move out of the dying type; the release drops the other fields.
     let mut mask = 0u32;
     for &(_, ci, fld) in &taken {
         f.blocks[bi].insts[ci].op = Op::MoveOut;
         mask |= 1 << fld;
     }
     let release = &mut f.blocks[bi].insts[di];
-    release.op = Op::RecRelease;
-    release.imm = Imm::RecMask(rec, mask);
+    release.op = Op::TypeRelease;
+    release.imm = Imm::TypeMask(tval, mask);
     true
 }
 
@@ -1196,7 +1196,7 @@ fn stable_values(f: &Func) -> Vec<bool> {
         for i in &f.blocks[b.index()].insts {
             let projection = matches!(
                 i.op,
-                Op::RecGet | Op::AltGet | Op::OptGet | Op::ListGet | Op::ListGetNn | Op::ListGetU
+                Op::TypeGet | Op::AltGet | Op::OptGet | Op::ListGet | Op::ListGetNn | Op::ListGetU
             );
             if let (true, Some(res)) = (projection, i.res)
                 && stable[i.args[0].index()]

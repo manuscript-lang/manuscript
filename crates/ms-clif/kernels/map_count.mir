@@ -4,7 +4,7 @@ extern @msrt_map_get_ptr(ptr, ptr, ptr, ptr) -> ptr
 extern @msrt_map_add(ptr, ptr, ptr, ptr, ptr)
 extern @msrt_slot_drop(ptr, ptr)
 extern @msrt_print_int(int)
-record MapRaw { slots: int, index: int, len: int, used: int, cap: int, mask: int }
+type MapRaw { slots: int, index: int, len: int, used: int, cap: int, mask: int }
 entry @main
 fn @count(%n: int) -> int {
 b0:

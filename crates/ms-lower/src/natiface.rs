@@ -34,11 +34,11 @@ const HANDLE_MODULE: &[(&str, &str)] = &[
 enum Shape {
     /// One call of the runtime symbol.
     Plain,
-    /// A record result read through the getters of `<symbol>_status` and `<symbol>_<field>`;
+    /// A type result read through the getters of `<symbol>_status` and `<symbol>_<field>`;
     /// the row names the group without the status suffix.
-    Record,
-    /// A list of records read through the getters of the group named by the row's symbol.
-    Records,
+    Type,
+    /// A list of types read through the getters of the group named by the row's symbol.
+    Types,
     /// A directory walk with a predicate closure: `glob_entries` (a path and an exclude
     /// predicate) or, with `copy`, a copy (a source, a destination and the copy options).
     Walk { copy: bool },
@@ -324,18 +324,18 @@ fn forward(fl: &mut FnLower<'_>, job: &MethodJob, args: &[ms_mir::ir::Value]) ->
     if job.shape == Shape::Ms {
         return forward_ms(fl, job, sym, args);
     }
-    // The getters of a record result take the handle too when the status call does.
-    if job.shape == Shape::Record {
+    // The getters of a type result take the handle too when the status call does.
+    if job.shape == Shape::Type {
         let lead: Vec<_> = takes_handle(&format!("{sym}_status"))
             .then(|| load_handle(fl, job, args))
             .into_iter()
             .collect();
-        let r = fl.record_getters(sym, job.ret, &lead)?;
+        let r = fl.type_getters(sym, job.ret, &lead)?;
         fl.emit_return(Some(r));
         return Ok(());
     }
-    if job.shape == Shape::Records {
-        let r = fl.record_list_getters(sym, job.ret)?;
+    if job.shape == Shape::Types {
+        let r = fl.type_list_getters(sym, job.ret)?;
         fl.emit_return(Some(r));
         return Ok(());
     }
@@ -500,16 +500,16 @@ impl FnLower<'_> {
 impl FnLower<'_> {}
 
 impl FnLower<'_> {
-    /// A record (or `Result` of one) built from one runtime getter per field, `<base>_<name>`.
+    /// A type (or `Result` of one) built from one runtime getter per field, `<base>_<name>`.
     /// An optional `<base>_status` call runs first: a nonzero status is the error case. `lead`
     /// are the leading arguments of every call (the handle of a handle method).
-    pub(crate) fn record_getters(
+    pub(crate) fn type_getters(
         &mut self,
         base: &str,
         result: MTy,
         lead: &[ms_mir::ir::Value],
     ) -> Result<Val, Error> {
-        let (alt, rec_ty) = match self.b.m.types.kind(result).clone() {
+        let (alt, type_ty) = match self.b.m.types.kind(result).clone() {
             TyKind::Alt(a) => {
                 let ok = self.ok_case_index(a)?;
                 (
@@ -519,14 +519,14 @@ impl FnLower<'_> {
             }
             _ => (None, result),
         };
-        let TyKind::Rec(rid) = self.b.m.types.kind(rec_ty).clone() else {
-            return Err(Error::new(format!("{base}: not a record result")));
+        let TyKind::Type(rid) = self.b.m.types.kind(type_ty).clone() else {
+            return Err(Error::new(format!("{base}: not a type result")));
         };
         let build = |s: &mut Self| -> Result<ms_mir::ir::Value, Error> {
-            let rec = s.record_from_getters(base, rid, lead)?;
+            let tval = s.type_from_getters(base, rid, lead)?;
             Ok(match alt {
-                Some((a, ok)) => s.b.alt_new(a, ok as u32, &[rec]),
-                None => rec,
+                Some((a, ok)) => s.b.alt_new(a, ok as u32, &[tval]),
+                None => tval,
             })
         };
         let status = format!("{base}_status");
@@ -542,19 +542,19 @@ impl FnLower<'_> {
         })
     }
 
-    /// A `Result` of a list of records read from a runtime snapshot: `<base>_status` takes it,
+    /// A `Result` of a list of types read from a runtime snapshot: `<base>_status` takes it,
     /// `<base>_count` sizes it and each field comes from `<base>_<name>(index)`.
-    pub(crate) fn record_list_getters(&mut self, base: &str, result: MTy) -> Result<Val, Error> {
+    pub(crate) fn type_list_getters(&mut self, base: &str, result: MTy) -> Result<Val, Error> {
         let TyKind::Alt(a) = self.b.m.types.kind(result).clone() else {
             return Err(Error::new(format!("{base}: not a Result")));
         };
         let ok = self.ok_case_index(a)?;
         let list_ty = self.b.m.alts[a.index()].cases[ok].fields[0].1;
-        let TyKind::List(rec_ty) = self.b.m.types.kind(list_ty).clone() else {
+        let TyKind::List(type_ty) = self.b.m.types.kind(list_ty).clone() else {
             return Err(Error::new(format!("{base}: not a list result")));
         };
-        let TyKind::Rec(rid) = self.b.m.types.kind(rec_ty).clone() else {
-            return Err(Error::new(format!("{base}: not a list of records")));
+        let TyKind::Type(rid) = self.b.m.types.kind(type_ty).clone() else {
+            return Err(Error::new(format!("{base}: not a list of types")));
         };
         let status = format!("{base}_status");
         let code = self.status_code(&status, &[])?;
@@ -565,7 +565,7 @@ impl FnLower<'_> {
             result,
             &mut |s| {
                 let n = s.call_runtime(&format!("{base}_count"), &[], MTy::INT)?;
-                let empty = s.b.list_new(rec_ty, n);
+                let empty = s.b.list_new(type_ty, n);
                 let acc = s.b.declare_var(list_ty, Mode::Move);
                 s.b.def_var(acc, empty);
                 let idx = s.b.declare_var(MTy::INT, Mode::Borrow);
@@ -580,9 +580,9 @@ impl FnLower<'_> {
                 s.b.seal_block(body);
                 s.b.switch_to(body);
                 let i = s.b.use_var(idx);
-                let rec = s.record_from_getters(base, rid, &[i])?;
+                let tval = s.type_from_getters(base, rid, &[i])?;
                 let cur = s.b.use_var(acc);
-                let next = s.b.list_push(cur, rec);
+                let next = s.b.list_push(cur, tval);
                 s.b.def_var(acc, next);
                 let one = s.b.iconst(1);
                 let i = s.b.use_var(idx);
@@ -599,25 +599,25 @@ impl FnLower<'_> {
         )
     }
 
-    /// The record `rid` with each field read by the getter `<base>_<field>`, called with `lead`
+    /// The type `rid` with each field read by the getter `<base>_<field>`, called with `lead`
     /// (the item index of a list, or the handle).
-    fn record_from_getters(
+    fn type_from_getters(
         &mut self,
         base: &str,
-        rid: ms_mir::types::RecId,
+        rid: ms_mir::types::TypeId,
         lead: &[ms_mir::ir::Value],
     ) -> Result<ms_mir::ir::Value, Error> {
-        let fields = self.b.m.records[rid.index()].fields.clone();
+        let fields = self.b.m.type_defs[rid.index()].fields.clone();
         let mut values = Vec::new();
         for (name, ty) in &fields {
             let sym = format!("{base}_{name}");
             let v = self.getter_field(&sym, *ty, lead)?;
             values.push(self.owned(v));
         }
-        Ok(self.b.rec_new(rid, &values))
+        Ok(self.b.type_new(rid, &values))
     }
 
-    /// One record field: scalars and strings come straight from the getter, a payload-free enum
+    /// One type field: scalars and strings come straight from the getter, a payload-free enum
     /// from its case index, and a `List[Float]` (the three load averages) from `sym(window)`.
     fn getter_field(
         &mut self,
@@ -641,13 +641,13 @@ impl FnLower<'_> {
                 }
                 Ok(Val { v: list, own: true })
             }
-            TyKind::Rec(rid)
-                if crate::nativerec::native_rec(self.b.m, ty)
-                    == Some(ms_mir::types::NativeRec::Duration) =>
+            TyKind::Type(rid)
+                if crate::nativetype::native_type(self.b.m, ty)
+                    == Some(ms_mir::types::NativeType::Duration) =>
             {
                 let nanos = self.getter_call(sym, MTy::INT, lead)?;
                 Ok(Val {
-                    v: self.b.rec_new(rid, &[nanos]),
+                    v: self.b.type_new(rid, &[nanos]),
                     own: true,
                 })
             }

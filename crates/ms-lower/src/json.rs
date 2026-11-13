@@ -135,7 +135,7 @@ pub(crate) fn build_json(
     Ok(())
 }
 
-/// One field of a record or alternative case, as the JSON rules see it.
+/// One field of a type or alternative case, as the JSON rules see it.
 struct JField {
     name: String,
     ty: ct::Ty,
@@ -526,10 +526,10 @@ impl FnLower<'_> {
                 let fields = jfields(self.syms, &ct::fields(t));
                 self.jexpect_kind(doc, id, KIND_OBJECT)?;
                 let vals = self.jdecode_fields(t, None, &fields, doc, id, strict)?;
-                let TyKind::Rec(r) = self.b.m.types.kind(mt).clone() else {
-                    return Err(Error::new("a record type lowers to a record"));
+                let TyKind::Type(r) = self.b.m.types.kind(mt).clone() else {
+                    return Err(Error::new("a type lowers to a type"));
                 };
-                let v = self.b.rec_new(r, &vals);
+                let v = self.b.type_new(r, &vals);
                 self.jfinish(v);
                 Ok(())
             }
@@ -717,7 +717,7 @@ impl FnLower<'_> {
         Ok(self.b.use_var(out))
     }
 
-    /// The owned field values of the object node `id`, in declaration order. `owner` is the record
+    /// The owned field values of the object node `id`, in declaration order. `owner` is the type
     /// type whose declaration holds the defaults; payload fields of a case have none.
     fn jdecode_fields(
         &mut self,
@@ -1141,12 +1141,12 @@ impl FnLower<'_> {
         match t.kind {
             ct::Kind::Record => {
                 let fields = jfields(self.syms, &ct::fields(t));
-                let TyKind::Rec(r) = self.b.m.types.kind(mt).clone() else {
-                    return Err(Error::new("a record type lowers to a record"));
+                let TyKind::Type(r) = self.b.m.types.kind(mt).clone() else {
+                    return Err(Error::new("a type lowers to a type"));
                 };
                 self.jw("msstd_json_w_begin_object", &[w])?;
                 for (i, f) in fields.iter().enumerate() {
-                    let fv = self.b.rec_get(r, i as u32, value);
+                    let fv = self.b.type_get(r, i as u32, value);
                     self.jencode_member(w, &f.name, &f.ty, fv)?;
                 }
                 self.jw("msstd_json_w_end_object", &[w])?;
@@ -1737,7 +1737,7 @@ impl FnLower<'_> {
         detail: Option<Value>,
     ) -> Result<Value, Error> {
         let et = self.b.m.alts[ra.index()].cases[err].fields[0].1;
-        let TyKind::Rec(er) = self.b.m.types.kind(et).clone() else {
+        let TyKind::Type(er) = self.b.m.types.kind(et).clone() else {
             return Err(Error::new("a JSON failure is an Error"));
         };
         let (_, case, words) = crate::rtcall::status_table("msstd_json_")
@@ -1754,7 +1754,7 @@ impl FnLower<'_> {
                 })
             }
         };
-        let e = self.error_record(er, case, text, None)?;
+        let e = self.error_type(er, case, text, None)?;
         Ok(self.b.alt_new(ra, err as u32, &[e]))
     }
 
@@ -1773,27 +1773,27 @@ impl FnLower<'_> {
         };
         let lv = self.borrow(l);
         if !matches!(self.b.m.types.kind(self.ty_of(lv)), TyKind::Opt(_)) {
-            // Written as the record itself: the optional wrapper is implicit.
+            // Written as the type itself: the optional wrapper is implicit.
             return self.jlimit_fields(lv);
         }
-        // Without a branch: the fields of an absent record are masked out by its presence.
+        // Without a branch: the fields of an absent type are masked out by its presence.
         let has = self.b.opt_is_some(lv);
-        let rec = self.b.opt_get(lv);
-        let mut out = self.jlimit_fields(rec)?;
+        let tval = self.b.opt_get(lv);
+        let mut out = self.jlimit_fields(tval)?;
         for i in 0..3 {
             out[i * 2] = self.b.binop(Op::And, out[i * 2], has);
         }
         Ok(out)
     }
 
-    /// The `(has, value)` pairs of a present `JsonLimits` record.
-    fn jlimit_fields(&mut self, rec: Value) -> Result<Vec<Value>, Error> {
-        let TyKind::Rec(r) = self.b.m.types.kind(self.ty_of(rec)).clone() else {
-            return Err(Error::new("JsonLimits is a record"));
+    /// The `(has, value)` pairs of a present `JsonLimits` type.
+    fn jlimit_fields(&mut self, tval: Value) -> Result<Vec<Value>, Error> {
+        let TyKind::Type(r) = self.b.m.types.kind(self.ty_of(tval)).clone() else {
+            return Err(Error::new("JsonLimits is a type"));
         };
         let mut out = Vec::new();
         for i in 0..3 {
-            let f = self.b.rec_get(r, i, rec);
+            let f = self.b.type_get(r, i, tval);
             let (h, v) = self.flatten_optional(
                 Input {
                     val: Some(Val { v: f, own: false }),

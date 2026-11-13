@@ -20,14 +20,14 @@ impl<'a> FnLower<'a> {
         self.b.unreachable();
     }
 
-    /// Faults for `get()` on an error result. When the error is a record whose first field is a
+    /// Faults for `get()` on an error result. When the error is a type whose first field is a
     /// `String` message (the standard `Error`), the fault names it; any other error type gets the
     /// generic text.
     pub(super) fn fault_result_get(&mut self, alt: ms_mir::types::AltId, r: Value, err: u32) {
         let payload = self.b.m.alts[alt.index()].cases[err as usize].fields[0].1;
         let message_field = match self.b.m.types.kind(payload) {
-            TyKind::Rec(rid) => {
-                let first = self.b.m.records[rid.index()].fields.first();
+            TyKind::Type(rid) => {
+                let first = self.b.m.type_defs[rid.index()].fields.first();
                 first
                     .filter(|f| f.0 == "message" && f.1 == MTy::STR)
                     .map(|_| *rid)
@@ -39,7 +39,7 @@ impl<'a> FnLower<'a> {
             return;
         };
         let e = self.b.alt_get(alt, err, 0, r);
-        let message = self.b.rec_get(rid, 0, e);
+        let message = self.b.type_get(rid, 0, e);
         let head = self.b.str_lit("called Result.get() on error: ");
         let tail = self
             .b
@@ -300,7 +300,7 @@ impl<'a> FnLower<'a> {
         ty: MTy,
         at: ms_check::api::Pos,
     ) -> Result<Val, Error> {
-        let TyKind::Rec(er) = self.b.m.types.kind(ty).clone() else {
+        let TyKind::Type(er) = self.b.m.types.kind(ty).clone() else {
             return Err(Error::new("ok_or without a cause needs Error"));
         };
         let file = &self.b.m.files[self.file as usize];
@@ -312,7 +312,7 @@ impl<'a> FnLower<'a> {
             v: text,
             own: false,
         });
-        let v = self.error_record(er, "ENOENT", text, None)?;
+        let v = self.error_type(er, "ENOENT", text, None)?;
         Ok(Val { v, own: true })
     }
 
@@ -610,7 +610,7 @@ impl<'a> FnLower<'a> {
             );
             return Ok((new, result));
         }
-        // Swapping elements that need no drop (scalars, optional scalars, plain records) is two
+        // Swapping elements that need no drop (scalars, optional scalars, plain types) is two
         // loads and two stores; the rest move through the runtime without a copy.
         let plain_swap = name == "swap"
             && matches!(self.b.m.types.kind(self.ty_of(old)), TyKind::List(e) if !self.needs_drop(*e));

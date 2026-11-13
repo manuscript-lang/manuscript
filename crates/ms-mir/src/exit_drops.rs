@@ -1,5 +1,5 @@
 //! The `exit_drops` pass: the program entry returns to a process that is about to exit, so the drops of
-//! plain memory on its return paths (a map of records, a list of strings) only walk and free
+//! plain memory on its return paths (a map of types, a list of strings) only walk and free
 //! memory the operating system takes back. Each such drop runs only when `msrt_exit_frees`
 //! says so: the counting runtime that `make leak-check` links and `MS_FREE_AT_EXIT=1` (for
 //! valgrind) keep them. Resources still close: a closer is a call, and a closure, an interface

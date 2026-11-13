@@ -2,9 +2,9 @@
 
 # Error is an indirect record, one pointer wide
 
-Measured (2026-11-04): `Error` was 11 words, so every `T!` was 12 words and a fallible recursive `walk` had a 416 B release / 480 B Cranelift-debug frame, against 128 B / 192 B for the same function returning `Int`. `RecordDef.indirect` (set in `ms-lower/src/cx.rs` for `Builtin::Error`) makes the record a pointer to a heap block; after the change the frames are 224 B / 288 B.
+Measured (2026-11-04): `Error` was 11 words, so every `T!` was 12 words and a fallible recursive `walk` had a 416 B release / 480 B Cranelift-debug frame, against 128 B / 192 B for the same function returning `Int`. `TypeDef.indirect` (set in `ms-lower/src/cx.rs` for `Builtin::Error`) makes the record a pointer to a heap block; after the change the frames are 224 B / 288 B.
 
-Rules: `RecSet`/`RecFill` build a fresh block and free the old one, never writing in place, because MIR passes treat record values as SSA values. `RecRelease` and drop glue free the block. Nothing in Rust reads an `Error` layout; the runtime moves it by `TypeDesc` glue. The blank record that `rtcall.rs` builds for a native call with an absent optional record leaks one block if that record is indirect; `Error` is never that argument.
+Rules: `TypeSet`/`TypeFill` build a fresh block and free the old one, never writing in place, because MIR passes treat record values as SSA values. `TypeRelease` and drop glue free the block. Nothing in Rust reads an `Error` layout; the runtime moves it by `TypeDesc` glue. The blank record that `rtcall.rs` builds for a native call with an absent optional record leaks one block if that record is indirect; `Error` is never that argument.
 
 Apply when: adding a record repr, changing `Error` fields, or tracing frame size (`objdump` the `sub rsp` of the function; the stack-slot temporaries and the inlined `Error` construction are the remaining cost).
 Evidence: [proposal](../../proposals/boxed-error-record.md).
@@ -21,8 +21,8 @@ Frames that stay on the stack while a task parks (`switch_away`, `msrt_token_par
 
 ## A collection field in an indirect record is a nullable pointer
 
-An `Error` was 88 B: message 16, kind 16, and the seven-word `details` header inline. An indirect record now stores a `Map` or `Set` field as one pointer (`Layouts::rec_field_boxed`, `rec_block`), so `Error` is 40 B. The pointer is null while the collection is the all-zero empty value (descriptor word also zero, since a stamped empty map keeps its header); the first insert through `PtrField` allocates a zeroed header (`map_header_ensure`). Source stays the same: `Error(msg, kind: k, details: {...})` and `err.details[...]` read and build the field as before, because `RecGet`, `RecNew`, `RecSet` and the glue expand and pack it (`rec_load_field`, `rec_pack`).
+An `Error` was 88 B: message 16, kind 16, and the seven-word `details` header inline. An indirect record now stores a `Map` or `Set` field as one pointer (`Layouts::type_field_boxed`, `type_block`), so `Error` is 40 B. The pointer is null while the collection is the all-zero empty value (descriptor word also zero, since a stamped empty map keeps its header); the first insert through `PtrField` allocates a zeroed header (`map_header_ensure`). Source stays the same: `Error(msg, kind: k, details: {...})` and `err.details[...]` read and build the field as before, because `TypeGet`, `TypeNew`, `TypeSet` and the glue expand and pack it (`type_load_field`, `type_pack`).
 
-Rules: free a record only through `rec_release` (drops what was not moved out, frees non-null headers, then the block) or `rec_free_block` (contents already moved); a plain `free(block)` leaks the header. A place read of `err.details` through `PtrField` allocates the header once, which is harmless but not free; use `RecGet` when only reading.
+Rules: free a record only through `type_release` (drops what was not moved out, frees non-null headers, then the block) or `type_free_block` (contents already moved); a plain `free(block)` leaks the header. A place read of `err.details` through `PtrField` allocates the header once, which is harmless but not free; use `TypeGet` when only reading.
 
 Measured (2026-11-12): dropping an `Error` with no details is a null check instead of a `msrt_slot_drop` of seven zero words; `result-records` 10.9 to 9.0 ms against Rust 5.9 ([bench](../../bench/perf/element-types/README.md)).

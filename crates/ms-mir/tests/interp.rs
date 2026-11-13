@@ -52,19 +52,19 @@ b0:
 }
 
 #[test]
-fn records() {
-    let src = r#"module "rec"
-record P { x: int, y: int }
+fn types() {
+    let src = r#"module "type"
+type P { x: int, y: int }
 entry @main
 fn @main() -> int {
 b0:
   %a: int = iconst 3
   %b: int = iconst 4
-  %p: P = rec.new P %a, %b
+  %p: P = type.new P %a, %b
   %nine: int = iconst 9
-  %q: P = rec.set P.x %p, %nine
-  %x: int = rec.get P.x %q
-  %y: int = rec.get P.y %q
+  %q: P = type.set P.x %p, %nine
+  %x: int = type.get P.x %q
+  %y: int = type.get P.y %q
   %r: int = imul %x, %y
   ret %r
 }

@@ -11,7 +11,7 @@
 //! (1 owns a heap box, 2 borrows one, 0 an owned value).
 
 use super::calls::{Callee, declare_leaf, leaf_call};
-use super::{Area, Cx, Vals, aggregate, records};
+use super::{Area, Cx, Vals, aggregate, types};
 use crate::layout::{Layouts, Leaf, mem_layout};
 use crate::llvm_build::{FnBuilder, Meta, Ty as LTy, Types, Val};
 use ms_mir::ir::{Func, FuncKind, Imm, Inst, Module, Op};
@@ -47,7 +47,7 @@ fn handles(op: Op) -> bool {
 
 /// Whether a value of `ty` has a memory shape or no leaves at all.
 fn storable(lay: &Layouts, ty: Ty) -> bool {
-    lay.width(ty) == 0 || records::shape_ok(lay, ty)
+    lay.width(ty) == 0 || types::shape_ok(lay, ty)
 }
 
 fn inst_ok(m: &Module, lay: &Layouts, f: &Func, inst: &Inst) -> bool {
@@ -176,7 +176,7 @@ fn iface_new(cx: &mut Cx, inst: &Inst, vals: &Vals, vt: usize, out: &[Val], b: &
         (alloc(cx, size, b), 1)
     };
     if cx.lay.width(ty) > 0 {
-        records::store_value(b, cx.lay, ty, vals, inst.args[0], &block);
+        types::store_value(b, cx.lay, ty, vals, inst.args[0], &block);
     }
     b.name_next(&out[0]);
     b.byte_ptr(&block, 0);
@@ -268,7 +268,7 @@ fn closure_new(cx: &mut Cx, inst: &Inst, vals: &Vals, c: usize, out: &[Val], b: 
     for (i, field) in env.fields.iter().enumerate() {
         if let Some(field) = field {
             let p = b.field_ptr(&env.ty, &obj, *field);
-            records::store_value(b, lay, captures[i], vals, inst.args[i], &p);
+            types::store_value(b, lay, captures[i], vals, inst.args[i], &p);
         }
     }
 }
@@ -290,7 +290,7 @@ fn capture(cx: &mut Cx, inst: &Inst, vals: &Vals, i: u32, out: &[Val], b: &mut F
         at(b);
     } else if cx.lay.width(captures[i]) > 0 {
         let p = at(b);
-        records::load_value(b, cx.lay, captures[i], &p, out);
+        types::load_value(b, cx.lay, captures[i], &p, out);
     }
 }
 
