@@ -102,6 +102,33 @@ const BOOL_ATTR: &str = " zeroext range(i8 0, 2)";
 /// `[0, 2^63)`).
 const LEN_ATTR: &str = " range(i64 0, -9223372036854775808)";
 
+/// `range` of the case index of an enum with `n` cases: `[0, n)`. Enums have few cases, so the
+/// text is static; a larger enum carries no range.
+fn tag_attr(n: usize) -> &'static str {
+    const RANGES: [&str; 16] = [
+        " range(i64 0, 1)",
+        " range(i64 0, 2)",
+        " range(i64 0, 3)",
+        " range(i64 0, 4)",
+        " range(i64 0, 5)",
+        " range(i64 0, 6)",
+        " range(i64 0, 7)",
+        " range(i64 0, 8)",
+        " range(i64 0, 9)",
+        " range(i64 0, 10)",
+        " range(i64 0, 11)",
+        " range(i64 0, 12)",
+        " range(i64 0, 13)",
+        " range(i64 0, 14)",
+        " range(i64 0, 15)",
+        " range(i64 0, 16)",
+    ];
+    n.checked_sub(1)
+        .and_then(|i| RANGES.get(i))
+        .copied()
+        .unwrap_or("")
+}
+
 /// The leaves of a value of type `ty`, in calling-convention order, each with its attributes. The
 /// attributes are facts about the value, not the register: `Bool` is 0 or 1 and a list's length
 /// is not negative, which lets LLVM drop checks and fold comparisons. A string's words are a tagged
@@ -112,6 +139,10 @@ fn leaves(lay: &Layouts, ty: Ty) -> Vec<(LTy, &'static str)> {
     match lay.m.types.kind(ty) {
         TyKind::Bool => ls[0].1 = BOOL_ATTR,
         TyKind::Bytes | TyKind::List(_) => ls[1].1 = LEN_ATTR,
+        // An enum held as leaves starts with its case index.
+        TyKind::Alt(a) if !lay.is_boxed(*a) => {
+            ls[0].1 = tag_attr(lay.m.alts[a.index()].cases.len())
+        }
         _ => {}
     }
     ls
@@ -152,6 +183,8 @@ pub(crate) fn aggregate(types: &Types, lay: &Layouts, ty: Ty) -> LTy {
         TyKind::Bytes => "ms.bytes".to_string(),
         TyKind::List(_) => "ms.list".to_string(),
         TyKind::Rec(r) => format!("ms.rec.{}", lay.m.records[r.index()].name),
+        TyKind::Alt(a) if !lay.is_boxed(*a) => format!("ms.enum.{}", lay.m.alts[a.index()].name),
+        TyKind::Opt(_) => format!("ms.opt.{}", ty.index()),
         _ => return LTy::Tuple(fields),
     };
     types.named(&name, fields)
