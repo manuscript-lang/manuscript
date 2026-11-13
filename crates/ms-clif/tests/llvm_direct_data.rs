@@ -510,7 +510,10 @@ b0:
 
 #[test]
 pub fn nested_record_is_a_struct_of_structs() {
-    let Some(opts) = direct() else { return };
+    let Some(mut opts) = direct() else { return };
+    // Every test that keeps `ms-keep.ll` shares one file in the working directory; this one does
+    // not read it, so it must not overwrite it.
+    opts.build.keep_ll = false;
     let want = run_native(NESTED_RECORD, "direct_nested_record-cranelift");
     assert_eq!(want.code, 14, "the Cranelift build disagrees");
     let got = run_llvm(NESTED_RECORD, &opts, "direct_nested_record");
