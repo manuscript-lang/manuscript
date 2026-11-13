@@ -267,6 +267,18 @@ fn drop_inst(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     drop_value(cx, ty, v, on, vals, b);
 }
 
+/// Drops the value of type `ty` held as `held` (its leaves), for a payload an alternative releases.
+pub(super) fn drop_held(cx: &mut Cx, ty: Ty, held: Vec<Val>, b: &mut FnBuilder) {
+    let v = Value(0);
+    let vals = Vals::from([(v.index(), held)]);
+    drop_value(cx, ty, v, None, &vals, b);
+}
+
+/// How many blocks dropping a value of type `ty` splits off when unguarded: a string's check.
+pub(super) fn drop_splits(lay: &Layouts, ty: Ty) -> usize {
+    usize::from(own_kind(lay, ty) == OwnKind::Str)
+}
+
 /// Drops the value `v` of type `ty`, only when `on` is true if it is given. `splits` counts the
 /// blocks this starts: one for a guard, one for a string's check.
 pub(super) fn drop_value(
