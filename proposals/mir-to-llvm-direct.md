@@ -8,6 +8,10 @@
 - Gate (after stage 3): stop unless the yaml IR is at least 2x smaller than the `MS_VECTORIZE=off` baseline (122k lines), its release build is at least 1.5x faster, and no `bench/perf` kernel is slower by more than 15% (the measured layout noise between identical builds is 11%; use interleaved runs). Report the share of functions emitted directly, so fallback functions do not flatter the numbers. Add one compute-heavy program besides yaml.
 - Decision already made: Chinmay, 2026-11-13, "let's translate MIR to LLVM IR directly". This reverses the earlier standing rule against a new direct emitter. Plan source: `architecture/mir-to-llvm-direct-plan-2026-11-12.md`.
 
+## Direction (Chinmay, 2026-11-13)
+
+The LLVM IR is not constrained by Cranelift compatibility: use LLVM's own features (typed structs, `memcpy`, `getelementptr inbounds nuw`, `noalias`/`readonly`/`nocapture`/`dereferenceable` and `nonnull` attributes, `!range`, `!tbaa` and loop metadata, `cold`/`noreturn`, intrinsics) wherever they say more than the scalar leaves do. Cranelift stays the debug backend and the oracle for program behavior (same output and exit code), not a source of ABI or layout rules. While functions fall back one by one, a direct function and a translated one still call each other through the leaf signature; the signature changes (records by pointer, hidden result pointers) land with a thunk at that boundary, or once the translation is deleted.
+
 ## Problem
 
 Measured on `main` (76dd1fbb), linux/amd64, `@std/data/yaml` parse program, `MS_KEEP_LL=1`:
@@ -53,7 +57,7 @@ MIR -> mir_llvm         -> LLVM IR text -> opt/llc   (release; new)
 
 - Do nothing: yaml release builds stay at about 2.9 s and grow with every record field.
 - Fix the translation: drop dead loads, merge adjacent leaf loads into one wide load, skip AVX2 copies of cold functions. Cheap, and it likely removes half the lines. It cannot give LLVM record types, `memcpy` or borrow facts, because the information is gone before the translation sees it. These are cheap and should be tried first as a measured baseline: AVX2 copies off already gives 122k lines, and the gate above is set against that number. They cannot give LLVM record types, `memcpy` or borrow facts.
-- Pass records by pointer only in the new backend: impossible, since both backends call each other through one signature until the old path is deleted.
+- Pass records by pointer only in the new backend: needs a thunk at the boundary with translated functions (they still take leaves) until the translation is deleted; cheaper than constraining the IR to the leaf signature.
 - New crate now: blocked by the dependency direction above.
 
 ## Testing
