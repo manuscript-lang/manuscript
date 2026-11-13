@@ -1010,6 +1010,19 @@ mod tests {
 
     /// One name is one type module-wide; a name taken by other fields is suffixed.
     #[test]
+    fn nested_leaves_are_reached_by_field_indices() {
+        let types = Types::default();
+        let pair = types.named("pair", vec![Ty::I8, Ty::I64]);
+        let outer = types.named("outer", vec![pair.clone(), Ty::I32, Ty::I64]);
+        assert_eq!(types.leaf_count(&outer), 4);
+        assert_eq!(types.leaf_path(&outer, 0), [0, 0]);
+        assert_eq!(types.leaf_path(&outer, 1), [0, 1]);
+        assert_eq!(types.leaf_path(&outer, 2), [1]);
+        assert_eq!(types.leaf_path(&outer, 3), [2]);
+        assert_eq!(types.leaf_offsets(&outer), [0, 8, 16, 24]);
+    }
+
+    #[test]
     fn a_named_struct_is_declared_once_and_names_do_not_clash() {
         let t = Types::default();
         let a = t.named("ms.list", vec![Ty::Ptr, Ty::I64, Ty::I64]);
