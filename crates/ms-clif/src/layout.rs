@@ -257,6 +257,14 @@ impl<'m> Layouts<'m> {
         matches!(self.m.types.kind(fty), TyKind::Obj(n, _) if n.is_map_or_set())
     }
 
+    /// The size in bytes of the heap block of the boxed enum `ty`; `None` for any other type.
+    pub fn boxed_block_size(&self, ty: Ty) -> Option<usize> {
+        match &self.shape(ty).alt {
+            Some(AltRepr::Boxed { block, .. }) => Some(mem_layout(block).size as usize),
+            _ => None,
+        }
+    }
+
     /// The register leaves of `ty`.
     pub fn leaves(&self, ty: Ty) -> Vec<Leaf> {
         self.shape(ty).leaves.clone()

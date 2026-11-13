@@ -4,12 +4,16 @@
 //! or a null `ptr`) and payload slots. Construction, tag reads and payload reads mostly choose
 //! leaves, so they write no instruction. An enum's payload slots are shared between cases, so a
 //! slot is a plain `i64`, `double` or `i8`: a `ptr` or `i1` payload converts at the boundary, one
-//! cast each. `opt.is_some` of a niche optional is one comparison. Types behind a pointer
-//! (self-containing) and payloads that are records in memory stay on the translation.
+//! cast each. `opt.is_some` of a niche optional is one comparison. An enum that contains itself
+//! is one pointer to a heap block (case index first, then the shared payload slots): building it
+//! allocates, reading loads, and taking a payload out frees the block; a case with no payload is
+//! a shared static block that is never freed. Payloads that are records in memory stay on the
+//! translation. Fields a release leaves behind are dropped through the drop glue.
 
-use super::{Area, Cx, Vals, held_leaves, narrow_leaves, records};
-use crate::layout::Layouts;
-use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Val};
+use super::{Area, Cx, Vals, glue, held_leaves, narrow_leaves, records};
+use crate::glue_llvm::{OwnKind, own_kind};
+use crate::layout::{AltRepr, Layouts, Leaf, mem_layout};
+use crate::llvm_build::{Bin, FnBuilder, Meta, Range, Ty as LTy, Val};
 use ms_mir::ir::{Func, Imm, Inst, Module, Op};
 use ms_mir::types::{AltId, Ty, TyKind};
 
@@ -17,21 +21,16 @@ pub(super) const AREA: Area = Area {
     handles,
     ty_ok,
     inst_ok,
-    pure_op,
+    splits,
+    pure_op: |op| handles(op) && op != Op::OptUnwrap,
     pre,
     emit,
-    splits,
 };
 
 /// Any optional or enum travels as its leaves, so it is fine as a value; the ops below reject the
 /// ones that live behind a pointer.
 fn ty_ok(k: &TyKind) -> bool {
     matches!(k, TyKind::Opt(_) | TyKind::Alt(_))
-}
-
-/// Releasing a payload may drop it, which runs glue: those ops touch memory.
-fn pure_op(op: Op) -> bool {
-    handles(op) && !matches!(op, Op::AltRelease | Op::AltUnbox)
 }
 
 fn handles(op: Op) -> bool {
@@ -42,6 +41,8 @@ fn handles(op: Op) -> bool {
             | Op::OptNone
             | Op::OptIsSome
             | Op::OptGet
+            | Op::OptUnwrap
+            | Op::OptAddr
             | Op::OptUnbox
             | Op::AltNew
             | Op::AltView
@@ -82,16 +83,54 @@ fn opt_repr(lay: &Layouts, opt: Ty) -> OptRepr {
 /// record that lives in memory.
 fn plain(lay: &Layouts, ty: Ty) -> bool {
     match lay.m.types.kind(ty) {
-        TyKind::Opt(inner) => !lay.opt_is_boxed(*inner) && plain(lay, *inner),
-        TyKind::Alt(a) => {
-            !lay.is_boxed(*a)
-                && lay.m.alts[a.index()]
-                    .cases
-                    .iter()
-                    .all(|c| c.fields.iter().all(|f| plain(lay, f.1)))
-        }
+        TyKind::Opt(inner) => !lay.opt_is_boxed(*inner) && leafy(lay, *inner),
+        TyKind::Alt(a) => !lay.is_boxed(*a) && fields_leafy(lay, *a, None),
         _ => !records::is_mem(lay, ty),
     }
+}
+
+/// Whether a value of `ty` is held in registers as leaves, where a pointer to a block counts as
+/// one: a payload may be a self-containing enum or optional.
+fn leafy(lay: &Layouts, ty: Ty) -> bool {
+    match lay.m.types.kind(ty) {
+        TyKind::Opt(inner) => lay.opt_is_boxed(*inner) || leafy(lay, *inner),
+        TyKind::Alt(a) => lay.is_boxed(*a) || fields_leafy(lay, *a, None),
+        _ => !records::is_mem(lay, ty),
+    }
+}
+
+/// Whether the payload fields of case `case` of `a` (every case when `None`) are leafy.
+fn fields_leafy(lay: &Layouts, a: AltId, case: Option<u32>) -> bool {
+    lay.m.alts[a.index()]
+        .cases
+        .iter()
+        .enumerate()
+        .filter(|(c, _)| case.is_none_or(|k| k as usize == *c))
+        .all(|(_, c)| c.fields.iter().all(|f| leafy(lay, f.1)))
+}
+
+/// The self-containing enum `ty`, whose value is a pointer to its block.
+fn boxed_alt(lay: &Layouts, ty: Ty) -> Option<AltId> {
+    match lay.m.types.kind(ty) {
+        TyKind::Alt(a) if lay.is_boxed(*a) => Some(*a),
+        _ => None,
+    }
+}
+
+/// The slot kinds of the heap block of the boxed enum `ty`: the case index, then payload slots.
+fn block_of(lay: &Layouts, ty: Ty) -> Vec<Leaf> {
+    match &lay.shape(ty).alt {
+        Some(AltRepr::Boxed { block, .. }) => block.clone(),
+        _ => unreachable!("a boxed enum"),
+    }
+}
+
+/// The slot types this module reads and writes: word, double and byte. A block with narrow or
+/// `Float32` slots stays on the translation.
+fn block_ok(block: &[Leaf]) -> bool {
+    block
+        .iter()
+        .all(|l| matches!(l, Leaf::I64 | Leaf::F64 | Leaf::I8))
 }
 
 /// The constant zero of a held type.
@@ -136,7 +175,43 @@ fn subject(f: &Func, inst: &Inst) -> Ty {
 }
 
 fn inst_ok(_: &Module, lay: &Layouts, f: &Func, inst: &Inst) -> bool {
-    plain(lay, subject(f, inst))
+    // The address of a boxed optional's payload is the optional itself, a nullable pointer.
+    if inst.op == Op::OptAddr {
+        return opt_repr(lay, f.ty(inst.args[0])) == OptRepr::Nullable;
+    }
+    let subject = subject(f, inst);
+    if let Some(a) = boxed_alt(lay, subject) {
+        let case = match inst.imm {
+            Imm::Case(_, c) | Imm::AltField(_, c, _) | Imm::AltMask(_, c, _) => Some(c),
+            _ => None,
+        };
+        return block_ok(&block_of(lay, subject)) && fields_leafy(lay, a, case);
+    }
+    plain(lay, subject)
+}
+
+/// The payload type of the optional `inst` unwraps.
+fn payload_ty(lay: &Layouts, f: &Func, inst: &Inst) -> Ty {
+    match lay.m.types.kind(f.ty(inst.args[0])) {
+        TyKind::Opt(inner) => *inner,
+        _ => unreachable!("an optional operand"),
+    }
+}
+
+/// Whether `inst` writes a check before it, and then the clone of a payload that needs one:
+/// each is a block split.
+fn splits(lay: &Layouts, f: &Func, inst: &Inst, checks: bool) -> usize {
+    if matches!(inst.op, Op::AltRelease | Op::AltUnbox) {
+        return released(lay, inst)
+            .iter()
+            .filter(|(fty, ..)| own_kind(lay, *fty) == OwnKind::Str)
+            .count();
+    }
+    if inst.op != Op::OptUnwrap {
+        return 0;
+    }
+    let clone = own_kind(lay, payload_ty(lay, f, inst)) == OwnKind::Str;
+    usize::from(checks) + usize::from(clone)
 }
 
 /// The leaves a payload read or write moves between a field and the enum's slots: for each
@@ -182,6 +257,10 @@ fn pre(
 ) -> Option<Vec<Val>> {
     let arg = |i: usize| &vals[&inst.args[i].index()];
     let res_ty = || f.ty(inst.res.expect("a result"));
+    // A boxed enum's ops read or write its block; only the pointer itself is free.
+    if inst.op != Op::AltPlain && boxed_alt(lay, subject(f, inst)).is_some() {
+        return None;
+    }
     let mut out = match (inst.op, inst.imm) {
         (Op::OptSome | Op::OptView, _) => match opt_repr(lay, res_ty()) {
             OptRepr::Tagged => std::iter::once(Val::bool(true))
@@ -196,7 +275,11 @@ fn pre(
         (Op::OptIsSome, _) if opt_repr(lay, f.ty(inst.args[0])) == OptRepr::Tagged => {
             vec![arg(0)[0].clone()]
         }
-        (Op::OptGet | Op::OptUnbox, _) => match opt_repr(lay, f.ty(inst.args[0])) {
+        (Op::OptAddr, _) => arg(0).clone(),
+        (Op::OptUnwrap, _) if own_kind(lay, payload_ty(lay, f, inst)) != OwnKind::Identity => {
+            return None;
+        }
+        (Op::OptGet | Op::OptUnwrap | Op::OptUnbox, _) => match opt_repr(lay, f.ty(inst.args[0])) {
             OptRepr::Tagged => arg(0)[1..].to_vec(),
             _ => arg(0).clone(),
         },
@@ -240,19 +323,25 @@ fn pre(
 /// presence of a niche optional, which is present unless its first leaf is null (a string also
 /// has the static tag: an inline string may have a zero first word, but never that tag).
 fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
-    release(cx, inst, vals, b);
+    if inst.op == Op::AltRelease || inst.op == Op::AltUnbox {
+        release(cx, inst, vals, b);
+        return;
+    }
     let Some(res) = inst.res else { return };
     let out = &vals[&res.index()];
+    if inst.op == Op::OptUnwrap {
+        unwrap(cx, inst, vals, out, b);
+        return;
+    }
+    if boxed_alt(cx.lay, subject(cx.f, inst)).is_some() && inst.op != Op::AltPlain {
+        boxed(cx, inst, vals, out, b);
+        return;
+    }
     if inst.op == Op::OptIsSome && opt_repr(cx.lay, cx.f.ty(inst.args[0])) != OptRepr::Tagged {
+        let ty = cx.f.ty(inst.args[0]);
         let v = &vals[&inst.args[0].index()];
-        let any = match opt_repr(cx.lay, cx.f.ty(inst.args[0])) {
-            OptRepr::Str => {
-                let t = b.bin(Bin::Xor, &v[1], &Val::int(ms_rt_abi::STR_STATIC as i64));
-                b.bin(Bin::Or, &v[0], &t)
-            }
-            OptRepr::Nullable => v[0].clone(),
-            OptRepr::Tagged => unreachable!("checked above"),
-        };
+        // The presence test of a niche optional is the instruction itself, named for the result.
+        let any = niche_any(b, cx.lay, ty, v);
         b.name_next(&out[0]);
         b.icmp("ne", &any, &zero(&any.ty));
         return;
@@ -265,52 +354,251 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     }
 }
 
-/// The case, kept field and moved-out mask of an op that drops payload fields.
-fn released(inst: &Inst) -> Option<(AltId, u32, Option<u32>, u32)> {
-    match (inst.op, inst.imm) {
-        (Op::AltRelease, Imm::AltMask(a, c, mask)) => Some((a, c, None, mask)),
-        (Op::AltUnbox, Imm::AltField(a, c, i)) => Some((a, c, Some(i), 0)),
-        _ => None,
-    }
-}
-
-/// The payload fields `released` drops: those that need it and were neither moved out nor kept.
-fn dropped(m: &Module, lay: &Layouts, inst: &Inst) -> Vec<(Ty, Vec<usize>)> {
-    let Some((a, c, keep, mask)) = released(inst) else {
-        return Vec::new();
+/// The fields `inst` (an `alt.release` or `alt.unbox`) drops: those not moved out that own
+/// something, as `(type, field index)`.
+pub(super) fn released(lay: &Layouts, inst: &Inst) -> Vec<(Ty, usize)> {
+    let (a, c, keep, mask) = match inst.imm {
+        Imm::AltMask(a, c, mask) => (a, c, None, mask),
+        Imm::AltField(a, c, i) => (a, c, Some(i as usize), 0),
+        _ => return Vec::new(),
     };
     lay.alt_fields(a)[c as usize]
         .iter()
         .enumerate()
-        .filter(|(k, (t, _))| mask >> k & 1 == 0 && keep != Some(*k as u32) && m.needs_drop(*t))
-        .map(|(_, (t, idx))| (*t, idx.clone()))
+        .filter(|(k, (t, _))| mask >> k & 1 == 0 && keep != Some(*k) && lay.m.needs_drop(*t))
+        .map(|(k, (t, _))| (*t, k))
         .collect()
 }
 
-/// Each dropped field splits once if it is a string (`glue::drop_splits`).
-fn splits(lay: &Layouts, _: &Func, inst: &Inst, _: bool) -> usize {
-    dropped(lay.m, lay, inst)
-        .iter()
-        .map(|(t, _)| super::glue::drop_splits(lay, *t))
-        .sum()
+/// Whether `inst` reads or writes memory: any op on a boxed enum, and a release or unbox that
+/// drops a field. Every other enum op chooses leaves.
+pub(super) fn touches_memory(lay: &Layouts, f: &Func, inst: &Inst) -> bool {
+    handles(inst.op)
+        && (boxed_alt(lay, subject(f, inst)).is_some() || !released(lay, inst).is_empty())
 }
 
-/// Drops the payload fields an `alt.release` or `alt.unbox` does not keep: each field's slots
-/// converted to its held leaves, then the glue drop.
-fn release(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
-    if released(inst).is_none() {
+/// The LLVM type of a payload slot.
+fn slot_ty(l: Leaf) -> LTy {
+    match l {
+        Leaf::F64 => LTy::F64,
+        Leaf::I8 => LTy::I8,
+        _ => LTy::I64,
+    }
+}
+
+/// The address of slot `k` of the block `p`.
+fn slot_ptr(b: &mut FnBuilder, block: &[Leaf], p: &Val, k: usize) -> Val {
+    let at = i64::from(mem_layout(block).offsets[k]);
+    b.elem_ptr(&LTy::I8, p, &Val::int(at))
+}
+
+/// Loads slot `k` as `held`: a word that holds a pointer is loaded as one, a flag is narrowed.
+/// `dst` is the reserved name the result takes, when it has one.
+fn load_slot(
+    b: &mut FnBuilder,
+    block: &[Leaf],
+    p: &Val,
+    k: usize,
+    (held, signed): (&LTy, Option<bool>),
+    dst: Option<&Val>,
+) -> Val {
+    let at = slot_ptr(b, block, p, k);
+    let slot = slot_ty(block[k]);
+    let align = block[k].size() as u64;
+    let name = |b: &mut FnBuilder| {
+        if let Some(d) = dst {
+            b.name_next(d);
+        }
+        let _ = b;
+    };
+    if *held == LTy::Ptr || *held == slot {
+        name(b);
+        return b.load(held, &at, align);
+    }
+    let raw = b.load(&slot, &at, align);
+    name(b);
+    convert(b, &raw, held, signed)
+}
+
+/// The leaves of field `k` of case `c` of `a`, read from the block `p` of a boxed enum of type
+/// `ty`, held as the field's type is.
+fn block_field(
+    b: &mut FnBuilder,
+    lay: &Layouts,
+    ty: Ty,
+    (a, c, k): (AltId, u32, usize),
+    p: &Val,
+    dst: Option<&[Val]>,
+) -> Vec<Val> {
+    let block = block_of(lay, ty);
+    let (fty, idx) = &lay.alt_fields(a)[c as usize][k];
+    let held = held_leaves(lay, *fty);
+    let signs = narrow_leaves(lay, *fty);
+    idx.iter()
+        .enumerate()
+        .map(|(j, slot)| {
+            load_slot(
+                b,
+                &block,
+                p,
+                *slot,
+                (&held[j], signs[j]),
+                dst.map(|d| &d[j]),
+            )
+        })
+        .collect()
+}
+
+/// Ops on a boxed enum: a build allocates and fills the block, a tag or payload read loads from
+/// it, and the block's case index carries its range.
+fn boxed(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder) {
+    let lay = cx.lay;
+    let ty = subject(cx.f, inst);
+    let block = block_of(lay, ty);
+    let arg = |i: usize| &vals[&inst.args[i].index()];
+    match (inst.op, inst.imm) {
+        (Op::AltNew | Op::AltView, Imm::Case(a, c)) => {
+            let fields = &lay.alt_fields(a)[c as usize];
+            if fields.is_empty() {
+                // A case with no payload is one shared static block.
+                let sym = &cx.plan.units[&(a.index(), c as usize)];
+                cx.data.push(sym.clone());
+                let addr = Val::new(format!("@\"{sym}\""), LTy::Ptr);
+                b.name_next(&out[0]);
+                b.elem_ptr(&LTy::I8, &addr, &Val::int(0));
+                return;
+            }
+            let size = mem_layout(&block).size;
+            records::declare_heap(cx);
+            let p = records::alloc(b, size, Some(&out[0]));
+            let tag = slot_ptr(b, &block, &p, 0);
+            b.store(&Val::int(i64::from(c)), &tag, 8);
+            for (i, (fty, idx)) in fields.iter().enumerate() {
+                let signs = narrow_leaves(lay, *fty);
+                for ((slot, v), signed) in idx.iter().zip(arg(i)).zip(signs) {
+                    let at = slot_ptr(b, &block, &p, *slot);
+                    // A narrow integer or `float` fills its whole slot, extended as the value is.
+                    let (mem, v) = match v.ty {
+                        LTy::I1 => (LTy::I8, v.clone()),
+                        LTy::I8 | LTy::I16 | LTy::I32 | LTy::F32 => {
+                            let slot = slot_ty(block[*slot]);
+                            (slot.clone(), convert(b, v, &slot, signed))
+                        }
+                        _ => (v.ty.clone(), v.clone()),
+                    };
+                    records::store_leaf(b, &v, &mem, &at);
+                }
+            }
+        }
+        (Op::AltTag, _) => {
+            let n = lay.m.alts[boxed_alt(lay, ty).expect("boxed").index()]
+                .cases
+                .len();
+            let meta = Meta {
+                range: (1..=crate::llvm_ir::MAX_TAG_RANGE)
+                    .contains(&n)
+                    .then_some(Range::Tag(n)),
+                ..Meta::default()
+            };
+            b.name_next(&out[0]);
+            b.load_with(&LTy::I64, &arg(0)[0], 8, meta);
+        }
+        (Op::AltGet | Op::AltTake, Imm::AltField(a, c, k)) => {
+            block_field(b, lay, ty, (a, c, k as usize), &arg(0)[0], Some(out));
+        }
+        _ => unreachable!("handles lists the ops"),
+    }
+}
+
+/// Whether the niche or tagged optional `v` of type `ty` is present, as an `i1`.
+fn present(b: &mut FnBuilder, lay: &Layouts, ty: Ty, v: &[Val]) -> Val {
+    if opt_repr(lay, ty) == OptRepr::Tagged {
+        return v[0].clone();
+    }
+    let any = niche_any(b, lay, ty, v);
+    b.icmp("ne", &any, &zero(&any.ty))
+}
+
+/// The word of a niche optional that is zero exactly when it is none (a string also has the static
+/// tag: an inline string may have a zero first word, but never that tag).
+fn niche_any(b: &mut FnBuilder, lay: &Layouts, ty: Ty, v: &[Val]) -> Val {
+    match opt_repr(lay, ty) {
+        OptRepr::Str => {
+            let t = b.bin(Bin::Xor, &v[1], &Val::int(ms_rt_abi::STR_STATIC as i64));
+            b.bin(Bin::Or, &v[0], &t)
+        }
+        OptRepr::Nullable => v[0].clone(),
+        OptRepr::Tagged => unreachable!("a tagged optional has a flag"),
+    }
+}
+
+/// `opt.unwrap`: faults on none when checks are on, then yields an owned payload: the leaves
+/// themselves when they own nothing (`pre` chose them), else a clone.
+fn unwrap(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder) {
+    let ty = cx.f.ty(inst.args[0]);
+    let v = &vals[&inst.args[0].index()];
+    if cx.checks {
+        let some = present(b, cx.lay, ty, v);
+        let none = b.icmp("eq", &some, &Val::bool(false));
+        super::faults::fault_if(cx, b, &none, "msrt_fault_unwrap_none", &[]);
+    }
+    let inner = payload_ty(cx.lay, cx.f, inst);
+    if own_kind(cx.lay, inner) == OwnKind::Identity {
         return;
     }
-    let slots = &vals[&inst.args[0].index()];
-    for (t, idx) in dropped(cx.m, cx.lay, inst) {
-        let held = held_leaves(cx.lay, t);
-        let signs = narrow_leaves(cx.lay, t);
-        let leaves = idx
-            .iter()
-            .zip(&held)
-            .zip(signs)
-            .map(|((k, h), s)| convert(b, &slots[*k], h, s))
-            .collect();
-        super::glue::drop_held(cx, t, leaves, b);
+    let payload = match opt_repr(cx.lay, ty) {
+        OptRepr::Tagged => &v[1..],
+        _ => &v[..],
+    };
+    glue::clone_leaves(cx, inner, payload, out, b);
+}
+
+/// `alt.release` and `alt.unbox`: drops the fields of the case that were not moved out, reading
+/// them from the block when the enum is boxed, and frees the block. The result of an unbox is the
+/// field kept.
+fn release(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
+    let lay = cx.lay;
+    let ty = cx.f.ty(inst.args[0]);
+    let own = &vals[&inst.args[0].index()];
+    let (Imm::AltMask(a, c, _) | Imm::AltField(a, c, _)) = inst.imm else {
+        return;
+    };
+    let boxed = boxed_alt(lay, ty).is_some();
+    let kept = match (inst.op, inst.imm) {
+        (Op::AltUnbox, Imm::AltField(_, _, i)) => Some(i as usize),
+        _ => None,
+    };
+    // The kept field is read before anything is dropped or freed.
+    let result = inst.res.map(|r| &vals[&r.index()]);
+    if let (true, Some(i), Some(out)) = (boxed, kept, result) {
+        block_field(b, lay, ty, (a, c, i), &own[0], Some(out));
+    }
+    for (fty, k) in released(lay, inst) {
+        let leaves = if boxed {
+            block_field(b, lay, ty, (a, c, k), &own[0], None)
+        } else {
+            let (_, idx) = &lay.alt_fields(a)[c as usize][k];
+            let held = held_leaves(lay, fty);
+            let signs = narrow_leaves(lay, fty);
+            idx.iter()
+                .enumerate()
+                .map(|(j, slot)| convert(b, &own[*slot], &held[j], signs[j]))
+                .collect()
+        };
+        glue::drop_held(cx, fty, leaves, b);
+    }
+    if boxed && !lay.alt_fields(a)[c as usize].is_empty() {
+        records::declare_heap(cx);
+        let p = b.ptr_to_int(&own[0]);
+        b.call(&LTy::Void, "", "msrt_free", &[(p, "")]);
+    }
+    // An inline unbox: the result leaves are the field's, converted out of their slots.
+    if !boxed && let Some(out) = result {
+        for (i, src, signed) in sources(lay, inst, vals) {
+            if out[i] != src {
+                b.name_next(&out[i]);
+                convert(b, &src, &out[i].ty, signed);
+            }
+        }
     }
 }

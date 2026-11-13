@@ -2,7 +2,7 @@
 //! inline, objects go through the runtime, and the rest call the type's glue.
 
 use super::calls::{Callee, finish_call};
-use super::records::{Abi, abi_leaves, is_mem, load_result, result_slot, spill};
+use super::records::{Abi, abi_leaves_of, is_mem, load_result, result_slot, spill, spill_of};
 use super::{Area, Cx, Vals, block_label, call_ret_ty, leaves, ret_attr};
 use crate::glue_llvm::{GlueCall, OwnKind, clone_callee, clone_str, drop_callee, own_kind};
 use crate::layout::Layouts;
@@ -27,6 +27,7 @@ fn handles(op: Op) -> bool {
     matches!(
         op,
         Op::Clone
+            | Op::AltOwn
             | Op::Drop
             | Op::DropIf
             | Op::MoveOut
@@ -56,12 +57,21 @@ fn unwind_only(m: &Module, i: &Inst) -> bool {
 fn splits(lay: &Layouts, f: &Func, i: &Inst, _: bool) -> usize {
     let split = match i.op {
         Op::CleanupPush => unwind_only(lay.m, i),
-        Op::Clone => own_kind(lay, f.ty(i.args[0])) == OwnKind::Str,
+        Op::Clone | Op::AltOwn => own_kind(lay, cloned_ty(f, i)) == OwnKind::Str,
         Op::Drop => own_kind(lay, f.ty(i.args[0])) == OwnKind::Str,
         Op::DropIf => own_kind(lay, f.ty(i.args[1])) != OwnKind::Identity,
         _ => false,
     };
     usize::from(split)
+}
+
+/// The type a `Clone` or `AltOwn` copies: `alt.own` copies a borrowing alternative as the ordinary
+/// one it produces, which has the same leaves.
+pub(crate) fn cloned_ty(f: &Func, i: &Inst) -> Ty {
+    match i.op {
+        Op::AltOwn => f.ty(i.res.expect("alt.own result")),
+        _ => f.ty(i.args[0]),
+    }
 }
 
 /// Cloning plain data and moving a value out are the value itself.
@@ -75,7 +85,7 @@ fn pre(
 ) -> Option<Vec<Val>> {
     let same = match inst.op {
         Op::MoveOut => true,
-        Op::Clone => own_kind(lay, f.ty(inst.args[0])) == OwnKind::Identity,
+        Op::Clone | Op::AltOwn => own_kind(lay, cloned_ty(f, inst)) == OwnKind::Identity,
         _ => false,
     };
     same.then(|| vals[&inst.args[0].index()].clone())
@@ -105,7 +115,10 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         }
         // The moved value is the operand itself: nothing to write.
         Op::MoveOut => {}
-        Op::Clone => clone(cx, inst, vals, &out, b),
+        Op::Clone | Op::AltOwn => {
+            let ty = cloned_ty(cx.f, inst);
+            clone_leaves(cx, ty, &vals[&inst.args[0].index()], &out, b);
+        }
         Op::CleanupPush => cleanup_push(cx, inst, vals, &out, b),
         Op::CleanupRun => {
             cx.decls.push(rt_decl("msrt_cleanup_run"));
@@ -190,23 +203,16 @@ fn word(b: &mut FnBuilder, v: &Val) -> Val {
 }
 
 /// The leaves of `v` in the leaf convention, each with its attributes.
-fn leaf_args(
-    b: &mut FnBuilder,
-    cx: &Cx,
-    ty: Ty,
-    vals: &Vals,
-    v: Value,
-) -> Vec<(Val, &'static str)> {
-    abi_leaves(b, cx.lay, ty, vals, v, Abi::Leaf)
+fn leaf_args(b: &mut FnBuilder, cx: &Cx, ty: Ty, own: &[Val]) -> Vec<(Val, &'static str)> {
+    abi_leaves_of(b, cx.lay, ty, own, Abi::Leaf)
         .into_iter()
         .zip(leaves(cx.lay, ty))
         .map(|(x, (_, a))| (x, a))
         .collect()
 }
 
-fn clone(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder) {
-    let ty = cx.f.ty(inst.args[0]);
-    let args = &vals[&inst.args[0].index()];
+/// Writes the clone of the held values `args` of a `ty` into `out`.
+pub(super) fn clone_leaves(cx: &mut Cx, ty: Ty, args: &[Val], out: &[Val], b: &mut FnBuilder) {
     match own_kind(cx.lay, ty) {
         // `pre` gave the result the operand's own values.
         OwnKind::Identity => {}
@@ -230,17 +236,16 @@ fn clone(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder) 
             }
         }
         OwnKind::Glue => {
-            let v = inst.args[0];
             let target = cx.plan.clone[&ty].clone();
             match clone_callee(cx.lay, ty, &target, &mut cx.decls) {
                 GlueCall::Memory(n) => {
-                    let src = spill(b, cx.lay, ty, vals, v);
+                    let src = spill_of(b, cx.lay, ty, args);
                     let dst = result_slot(b, cx.lay, ty, out);
                     b.call(&LTy::Void, "", &n, &[(dst.clone(), ""), (src, "")]);
                     load_result(b, cx.lay, ty, &dst, out);
                 }
                 GlueCall::Regs(n) => {
-                    let args = leaf_args(b, cx, ty, vals, v);
+                    let args = leaf_args(b, cx, ty, args);
                     let ret = call_ret_ty(cx.lay, ty, false);
                     let attr = ret_attr(cx.lay, ty);
                     finish_call(
@@ -353,7 +358,7 @@ fn drop_core(
                     b.call(&LTy::Void, "", &n, &[(p, "")]);
                 }
                 GlueCall::Regs(n) => {
-                    let args = leaf_args(b, cx, ty, vals, v);
+                    let args = leaf_args(b, cx, ty, args);
                     b.call(&LTy::Void, "", &n, &args);
                 }
             }

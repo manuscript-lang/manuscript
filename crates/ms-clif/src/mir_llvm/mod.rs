@@ -18,7 +18,7 @@ mod glue;
 mod lists;
 mod maps;
 mod records;
-mod rt;
+pub(crate) mod rt;
 mod strings;
 
 use crate::abi_llvm::{Pass, Reg, Ret, Signature};
@@ -26,6 +26,24 @@ use crate::layout::{Layouts, Leaf};
 use crate::llvm_build::{FnBuilder, Ty as LTy, Types, Val};
 use crate::llvm_ir::DirectEnv;
 use attrs::pure_attrs;
+pub(crate) use glue::cloned_ty;
+
+/// The types of the fields a release (`alt.release`, `alt.unbox`, `rec.release`) drops through
+/// glue: the driver declares their drop glue.
+pub(crate) fn released_types(lay: &Layouts, f: &Func, inst: &Inst) -> Vec<Ty> {
+    match (inst.op, inst.imm) {
+        (Op::AltRelease | Op::AltUnbox, _) => enums::released(lay, inst)
+            .into_iter()
+            .map(|(t, _)| t)
+            .collect(),
+        (Op::RecRelease, Imm::RecMask(_, mask)) if matches!(lay.m.types.kind(f.ty(inst.args[0])), TyKind::Rec(r) if !lay.m.records[r.index()].indirect) => {
+            records::released(lay, f.ty(inst.args[0]), mask)
+                .map(|(t, ..)| t)
+                .collect()
+        }
+        _ => Vec::new(),
+    }
+}
 use ms_mir::ir::{Func, Imm, Inst, Mode, Module, Op, Target, Term};
 use ms_mir::types::{Ty, TyKind};
 use records::Abi;
@@ -87,6 +105,8 @@ pub struct Plan {
     pub closures: HashMap<(usize, bool), ClosureSyms>,
     /// The data symbol of each vtable an instruction names.
     pub vtables: HashMap<usize, String>,
+    /// The shared static block of each payloadless case of a boxed enum, by `(enum, case)`.
+    pub units: HashMap<(usize, usize), String>,
     /// The data symbol of each global an instruction names.
     pub globals: HashMap<usize, String>,
 }
@@ -788,7 +808,7 @@ mod coverage {
 
     /// The ops no area lowers yet. An op leaves this list when an area handles it; the scope
     /// markers are not here because `elaborate` removes them before code generation.
-    const UNLOWERED: &[Op] = &[Op::AltOwn, Op::RecRelease, Op::OptUnwrap, Op::OptAddr];
+    const UNLOWERED: &[Op] = &[];
 
     const MARKERS: &[Op] = &[
         Op::ScopeBegin,

@@ -465,17 +465,7 @@ fn build_ok(m: &Module, lay: &Layouts, f: &Func, i: &Inst) -> bool {
 /// translated path writes for the same symbol.
 fn rt_alloc(cx: &mut Cx, b: &mut FnBuilder, name: &str, args: &[Val], dst: Option<&Val>) -> Val {
     super::rt::declare(cx, name);
-    let words: Vec<Val> = args
-        .iter()
-        .map(|a| {
-            if a.ty == LTy::Ptr {
-                b.ptr_to_int(a)
-            } else {
-                a.clone()
-            }
-        })
-        .collect();
-    let actuals: Vec<(Val, &str)> = words.iter().map(|a| (a.clone(), "")).collect();
+    let actuals: Vec<(Val, &str)> = args.iter().map(|a| (a.clone(), "")).collect();
     if let Some(d) = dst {
         b.name_next(d);
     }
@@ -610,8 +600,7 @@ fn list_release(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         drop_loop(cx, b, elem, l, &vals[&inst.args[1].index()][0], &free);
     }
     super::rt::declare(cx, "msrt_free");
-    let word = b.ptr_to_int(&l[0]);
-    b.call(&LTy::Void, "", "msrt_free", &[(word, "")]);
+    b.call(&LTy::Void, "", "msrt_free", &[(l[0].clone(), "")]);
     b.br(&join);
     b.label(&join);
 }
