@@ -656,7 +656,7 @@ fn none_references_cover_written_case_tokens_beyond_snapshot_limit() {
     // bundled sources shift constantly, so the pin is a count per module, not line numbers.
     // `regex.ms` loads only when imported, and this workspace does not import it.
     let expected = std::collections::BTreeMap::from([
-        ("collections/collections.ms", 6),
+        ("collections/collections.ms", 8),
         ("concurrency/promise.ms", 2),
         ("core.ms", 2),
         ("data/encoding.ms", 1),

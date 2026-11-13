@@ -1504,6 +1504,11 @@ fn direct_plan(g: &mut Gen, f: &Func) -> crate::mir_llvm::Plan {
                             .insert((a.index(), c as usize), name.into_owned());
                     }
                 }
+                (Op::GlobalGet | Op::GlobalSet, Imm::Global(gl)) => {
+                    let id = g.globals[gl.index()];
+                    let name = g.module.declarations().get_data_decl(id).linkage_name(id);
+                    plan.globals.insert(gl.index(), name.into_owned());
+                }
                 (Op::IfaceNew | Op::IfaceBorrow | Op::IfaceIs, Imm::Vtable(vt)) => {
                     let id = g.vtables[vt.index()];
                     let name = g.module.declarations().get_data_decl(id).linkage_name(id);

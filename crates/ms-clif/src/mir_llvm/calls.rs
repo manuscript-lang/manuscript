@@ -11,6 +11,7 @@ use ms_mir::types::{Ty, TyKind};
 pub(super) const AREA: Area = Area {
     handles,
     inst_ok,
+    splits,
     pre,
     emit,
     ..Area::NONE
@@ -24,6 +25,15 @@ fn inst_ok(m: &Module, lay: &Layouts, _: &Func, inst: &Inst) -> bool {
         (Op::CallRt, _) => false,
         _ => true,
     }
+}
+
+/// Discarding a cleanup handle branches: handle 0 is a registration that was skipped.
+fn splits(lay: &Layouts, _: &Func, inst: &Inst, _: bool) -> usize {
+    usize::from(is_discard(lay.m, inst))
+}
+
+fn is_discard(m: &Module, inst: &Inst) -> bool {
+    matches!((inst.op, inst.imm), (Op::CallRt, Imm::Ext(e)) if m.externs[e.index()].role == ExternRole::CleanupDiscard)
 }
 
 /// `map_new` (and `set_new`): an empty map is seven zero words (`ms_rt::map::empty()`, pinned by
@@ -80,7 +90,7 @@ fn passes_directly(lay: &Layouts, t: Ty) -> bool {
 fn extern_ok(m: &Module, lay: &Layouts, def: &ExternDef) -> bool {
     let crosses = |t: Ty| passes_directly(lay, t) || records::shape_ok(lay, t);
     !m.c_externs.contains(&def.name)
-        && !matches!(def.role, ExternRole::MapNew | ExternRole::CleanupDiscard)
+        && def.role != ExternRole::MapNew
         && def
             .params
             .iter()
@@ -95,6 +105,18 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         .map(|r| vals[&r.index()].clone())
         .unwrap_or_default();
     if is_map_new(m, inst) {
+        return;
+    }
+    if is_discard(m, inst) {
+        let on = b.icmp("ne", &vals[&inst.args[0].index()][0], &Val::int(0));
+        let then = format!("c{}_{}", cx.block, cx.split);
+        cx.split += 1;
+        let next = super::block_label(cx.block, cx.split);
+        b.cond_br_likely(&on, &then, &next, false);
+        b.label(&then);
+        call_rt(cx, inst, vals, &out, b);
+        b.br(&next);
+        b.label(&next);
         return;
     }
     if inst.op == Op::CallRt {

@@ -12,10 +12,6 @@ pub enum NativeBorrow {
     ListGet,
     /// `m.get(k)` on a `Map`: an `Optional` view of the entry.
     MapGet,
-    /// `xs.first()`: an `Optional` view of the first element.
-    First,
-    /// `xs.last()`: an `Optional` view of the last element.
-    Last,
     /// `get()` on an `Optional` or `Result`: its payload.
     PayloadGet,
     /// `view`, `split`, `lines`, `chars`, `keys`, `values`, `slice`: a new value whose parts
@@ -30,8 +26,6 @@ pub fn native_borrow(recv: &Ty, name: &str, args: usize) -> Option<NativeBorrow>
         ("get", 1) if recv.is(Builtin::Map) => MapGet,
         ("get", 1) if recv.is(Builtin::List) => ListGet,
         ("get", 0) if recv.is(Builtin::Optional) || recv.is(Builtin::Result) => PayloadGet,
-        ("first", 0) if recv.is(Builtin::List) => First,
-        ("last", 0) if recv.is(Builtin::List) => Last,
         ("view", 2) if recv.is(Builtin::Bytes) || recv.is_string() => Derived,
         ("split", 1 | 2) | ("lines", 0) | ("chars", 0) if recv.is_string() => Derived,
         ("keys" | "values", 0) if recv.is(Builtin::Map) => Derived,

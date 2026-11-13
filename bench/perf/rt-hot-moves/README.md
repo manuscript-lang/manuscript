@@ -15,6 +15,6 @@ Release LLVM `ms`, 4 vCPU shared VM, minimum of 6 runs, microseconds, `first()` 
 | runtime call (`faced39c`) | 17,731 |
 | runtime function in `ms-rt-hot` (an earlier draft of #3730) | 10,845 |
 | Rust special case in `ms-lower` (merged) | 2,660 |
-| stdlib `.ms` body (not a drop-in; see the proposal) | 2,317 |
+| stdlib `.ms` body (landed; the Rust special case is deleted) | 2,334 to 2,594 |
 
 The other cases in `hot.ms` (`List.get`, `Bytes.get`, `Bytes.index_of_byte`) are not changed by this work; `index_of_byte` measured 8,751 against 5,439 us when moved into `ms-rt-hot`, which the compiler does not yet match (it needs a loop; see the proposal).

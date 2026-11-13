@@ -62,11 +62,11 @@ Open: whether `List[T].first()` in `.ms` can express the owned-element copy for 
 
 ## Pilot result (2026-11-12)
 
-`List.first`/`last` over a 5M-call loop: 17.8 ms as a runtime call, 10.8 ms through `ms-rt-hot`, 2.6 ms as an inline Rust special case in `ms-lower` (merged in #3730), 2.3 ms as a stdlib `.ms` body. Chinmay prefers `.ms` over more Rust, but the `.ms` body is not a drop-in: the checker treats these natives as borrows of the receiver, a `.ms` body returns an owned value, two `ms-check` tests fail and boxed optionals fail MIR verification. So group A needs one prerequisite first: let a stdlib function return a borrow of its receiver with the same ownership facts as a native (and view a boxed optional), or keep the native declaration and give lowering a general rule instead of per-method cases. That decision is open.
+`List.first`/`last` over a 5M-call loop: 17.8 ms as a runtime call, 10.8 ms through `ms-rt-hot`, 2.6 ms as an inline Rust special case in `ms-lower` (merged in #3730), 2.3 ms as a stdlib `.ms` body. Chinmay prefers `.ms` over more Rust, but the `.ms` body is not a drop-in: the checker treats these natives as borrows of the receiver, a `.ms` body returns an owned value, two `ms-check` tests fail and boxed optionals fail MIR verification. So group A needs one prerequisite first: a stdlib function that returns part of its receiver borrows like a native (`proposals/borrowing-stdlib-bodies.md`, implemented): `first`/`last` are now plain `.ms`, 2.3 to 2.6 ms.
 
 ## Skeptical review (2026-11-12) and what changed
 
-- No measurement yet shows compiler-emitted code beating the hot crate; #3730 only shows inlining helps. So A is a pilot first: `first`/`last` and `Bytes.index_of_byte`, compared against #3730's numbers, and only a win or tie continues.
+- No measurement yet shows compiler-emitted code beating the hot crate; #3730 only shows inlining helps. So A is a pilot first: `first`/`last` (done, in `.ms`) and `Bytes.index_of_byte`, compared against #3730's numbers, and only a win or tie continues.
 - `first`, `last`, `at` have no MIR op today (`list_get_or` composes `list_get`, `list_len`, `select`); the pilot builds them from those and counts the new ops needed on both backends.
 - Deleting the crate duplicates or re-homes the probe, hash and equal code `ms-rt` shares (`DESIGN.md:54`); group C must show that before D.
 - `runtime-lto-proposal.md` preferred emitting directly (its B) and the project shipped the hot crate instead; the pilot is the test of why B lost. Per-type probe loops lose `--only-needed` sharing, so `opt`/`llc` time is measured at each step, not only before C.
