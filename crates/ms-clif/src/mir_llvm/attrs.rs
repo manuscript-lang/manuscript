@@ -76,3 +76,16 @@ fn pure_terminates(
 fn touches_memory(op: Op) -> bool {
     !AREAS.iter().any(|a| (a.pure_op)(op))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::touches_memory;
+    use ms_mir::ir::Op;
+
+    /// Purity is an allow-list over the areas' `pure_op`s: an op no area names touches memory.
+    #[test]
+    fn only_named_ops_are_register_only() {
+        assert!(!touches_memory(Op::IAdd) && !touches_memory(Op::ListLen));
+        assert!(touches_memory(Op::Clone) && touches_memory(Op::Drop));
+    }
+}

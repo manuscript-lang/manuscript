@@ -48,9 +48,25 @@ fn leaf(l: Leaf) -> (LTy, &'static str) {
     }
 }
 
-/// The leaves of a value of type `ty`, in calling-convention order.
+/// `Bool` is zero or one.
+const BOOL_ATTR: &str = " zeroext range(i8 0, 2)";
+/// A list length counts elements of a buffer, so it is not negative (the range wraps: it is
+/// `[0, 2^63)`).
+const LEN_ATTR: &str = " range(i64 0, -9223372036854775808)";
+
+/// The leaves of a value of type `ty`, in calling-convention order, each with its attributes. The
+/// attributes are facts about the value, not the register: `Bool` is 0 or 1 and a list's length
+/// is not negative, which lets LLVM drop checks and fold comparisons. A string's words are a tagged
+/// encoding, so only lists and bytes carry a length range. Callers and callees both follow the
+/// MIR types, so the facts hold across the Cranelift path too.
 fn leaves(lay: &Layouts, ty: Ty) -> Vec<(LTy, &'static str)> {
-    lay.leaves(ty).into_iter().map(leaf).collect()
+    let mut ls: Vec<_> = lay.leaves(ty).into_iter().map(leaf).collect();
+    match lay.m.types.kind(ty) {
+        TyKind::Bool => ls[0].1 = BOOL_ATTR,
+        TyKind::Bytes | TyKind::List(_) => ls[1].1 = LEN_ATTR,
+        _ => {}
+    }
+    ls
 }
 
 /// Whether this stage handles values of `ty`: some area accepts its kind.
@@ -72,6 +88,7 @@ fn ret_ty(lay: &Layouts, ty: Ty) -> LTy {
 /// The result attribute: only a single `Bool`-like leaf carries one.
 fn ret_attr(lay: &Layouts, ty: Ty) -> &'static str {
     match leaves(lay, ty).as_slice() {
+        [(_, a)] if *a == BOOL_ATTR => "zeroext range(i8 0, 2) ",
         [(_, a)] if !a.is_empty() => "zeroext ",
         _ => "",
     }
