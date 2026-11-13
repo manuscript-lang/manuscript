@@ -92,6 +92,8 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
             b.name_next(&out[0]);
             b.elem_ptr(&LTy::I8, &addr, &Val::int(0));
         }
+        // The moved value is the operand itself: nothing to write.
+        Op::MoveOut => {}
         Op::Clone => clone(cx, inst, vals, &out, b),
         Op::CleanupPush => cleanup_push(cx, inst, vals, &out, b),
         Op::CleanupRun => {
