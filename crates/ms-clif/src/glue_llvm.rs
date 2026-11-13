@@ -670,13 +670,26 @@ impl E<'_, '_, '_> {
             .call(if ret { &LTy::I64 } else { &LTy::Void }, "", name, &a)
     }
 
+    /// Frees the block at `p` (a pointer or its `i64` address); the runtime's `free` takes a pointer so LLVM
+    /// pairs it with the allocation.
     fn free(&mut self, p: &Val) {
-        self.rt("msrt_free", &[p], false);
+        self.declare_heap("msrt_free");
+        let ptr = if p.ty == LTy::Ptr {
+            p.clone()
+        } else {
+            self.b.inttoptr(p)
+        };
+        self.b.call(&LTy::Void, "", "msrt_free", &[(ptr, "")]);
+    }
+
+    fn declare_heap(&mut self, name: &str) {
+        let decl = crate::mir_llvm::rt::heap_decl(name).expect("a heap function");
+        self.decls.push((name.to_string(), decl.to_string()));
     }
 
     /// A fresh block of `size` bytes.
     fn alloc(&mut self, size: &Val) -> Val {
-        self.declare("msrt_alloc", "noalias align 16 ptr", "i64");
+        self.declare_heap("msrt_alloc");
         self.b
             .call(
                 &LTy::Ptr,
@@ -1546,8 +1559,7 @@ pub fn emit(g: &mut Gen, kind: Glue, ty: Ty, types: &Types, loc: usize) -> Emitt
         Glue::BlockDrop => {
             let p = a(0, LTy::Ptr);
             e.drop_at(ty, &p);
-            let addr = e.b.ptrtoint(&p);
-            e.free(&addr);
+            e.free(&p);
             e.b.ret(None);
         }
         Glue::BlockClone => {

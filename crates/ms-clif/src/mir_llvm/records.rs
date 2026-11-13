@@ -671,7 +671,7 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
                     Some(s) => load_leaves(b, s, &own[0], at, n, &[]),
                     None => own[at..at + n].to_vec(),
                 };
-                super::glue::drop_leaves(cx, fty, &leaves, None, b);
+                super::glue::drop_held(cx, fty, leaves, b);
             }
         }
         _ => unreachable!("handles lists the ops"),

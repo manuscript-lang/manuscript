@@ -123,7 +123,7 @@ pub(super) fn enter(cx: &mut Cx, b: &mut FnBuilder) {
             b.load(t, &at, align(t))
         })
         .collect();
-    b.call(&LTy::Void, "", "msrt_free", &[(block_addr, "")]);
+    b.call(&LTy::Void, "", "msrt_free", &[(block.clone(), "")]);
     match results.as_slice() {
         [] => b.ret(None),
         [one] => b.ret(Some(one)),
@@ -157,6 +157,19 @@ pub(super) fn ret_abi(
 /// result pointer if any, then each parameter as scalars or a pointer), calls the function, and
 /// writes the scalar results after them.
 pub(super) fn shim(types: &Types, lay: &Layouts, f: &Func, sym: &str, dbg: usize) -> Emitted {
+    shim_in(types, lay, f, sym, dbg, true)
+}
+
+/// The grow shim of a function in the leaf convention: each parameter leaf is a cell, and the
+/// result leaves follow them.
+pub(super) fn leaf_shim(types: &Types, lay: &Layouts, f: &Func, sym: &str, dbg: usize) -> Emitted {
+    shim_in(types, lay, f, sym, dbg, false)
+}
+
+fn shim_in(types: &Types, lay: &Layouts, f: &Func, sym: &str, dbg: usize, native: bool) -> Emitted {
+    if !native {
+        return leaf_shim_body(types, lay, f, sym, dbg);
+    }
     let sig = Signature::of(types, lay, &f.params, &f.noalias, f.ret);
     let mut b = FnBuilder::new(types, Some(dbg));
     b.label("entry");
@@ -216,6 +229,46 @@ pub(super) fn shim(types: &Types, lay: &Layouts, f: &Func, sym: &str, dbg: usize
         attrs: String::new(),
         body: b.finish(),
         decls: vec![(sym.to_string(), sig.declare(sym, ""))],
+        data: Vec::new(),
+        consts: Vec::new(),
+    }
+}
+
+fn leaf_shim_body(types: &Types, lay: &Layouts, f: &Func, sym: &str, dbg: usize) -> Emitted {
+    let mut b = FnBuilder::new(types, Some(dbg));
+    b.label("entry");
+    let block = b.int_to_ptr(&Val::new("%a0", LTy::I64));
+    let mut cell = 0;
+    let mut args: Vec<(Val, &str)> = Vec::new();
+    for p in &f.params {
+        for (ty, attr) in super::leaves(lay, p.ty) {
+            let at = b.elem_ptr(&LTy::I64, &block, &Val::int(cell));
+            cell += 1;
+            args.push((b.load(&ty, &at, align(&ty)), attr));
+        }
+    }
+    let ret = call_ret_ty(lay, f.ret, false);
+    let result = b.call_keep(&ret, ret_attr(lay, f.ret), sym, &args);
+    if let Some(r) = result {
+        let leaves: Vec<Val> = match &ret {
+            LTy::Tuple(ts) => (0..ts.len()).map(|k| b.extract(&r, k)).collect(),
+            _ => vec![r],
+        };
+        for (j, v) in leaves.iter().enumerate() {
+            let at = b.elem_ptr(&LTy::I64, &block, &Val::int(cell + j as i64));
+            b.store(v, &at, align(&v.ty));
+        }
+    }
+    b.ret(None);
+    Emitted {
+        ret: "void".to_string(),
+        params: "i64 %a0".to_string(),
+        attrs: String::new(),
+        body: b.finish(),
+        decls: vec![(
+            sym.to_string(),
+            super::calls::declare_leaf(types, lay, f, sym, ""),
+        )],
         data: Vec::new(),
         consts: Vec::new(),
     }
