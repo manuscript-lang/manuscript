@@ -27,7 +27,7 @@
 use crate::layout::{Layouts, Leaf, mem_layout};
 use crate::llvm_build::Types;
 use ms_mir::ir::{Mode, Param};
-use ms_mir::types::Ty;
+use ms_mir::types::{Ty, TyKind};
 
 /// Values up to this many bytes travel as scalars. A start; change it only by measurement.
 pub const SCALAR_BYTES: u32 = 16;
@@ -216,6 +216,16 @@ fn reg_formal(r: Reg, name: String) -> Formal {
     Formal { ty, name }
 }
 
+/// A fact about register `j` of a value of type `ty`, beyond its width: `Bool` is 0 or 1 and a
+/// list's or bytes' length is not negative (the range wraps: it is `[0, 2^63)`).
+fn range_attr(lay: &Layouts, ty: Ty, j: usize) -> &'static str {
+    match (lay.m.types.kind(ty), j) {
+        (TyKind::Bool, 0) => " range(i8 0, 2)",
+        (TyKind::Bytes | TyKind::List(_), 1) => " range(i64 0, -9223372036854775808)",
+        _ => "",
+    }
+}
+
 impl Signature {
     /// The signature of a function with these MIR parameters and result.
     pub fn of(types: &Types, lay: &Layouts, params: &[Param], ret_ty: Ty) -> Signature {
@@ -232,7 +242,7 @@ impl Signature {
             }
             Ret::Scalars(r) => match r.as_slice() {
                 [] => "void".to_string(),
-                [Reg::I8] => "zeroext i8".to_string(),
+                [Reg::I8] => format!("zeroext{} i8", range_attr(lay, ret_ty, 0)),
                 [one] => one.llvm().to_string(),
                 many => {
                     let tys: Vec<&str> = many.iter().map(|r| r.llvm()).collect();
@@ -246,7 +256,9 @@ impl Signature {
             match &pass {
                 Pass::Scalars(regs) => {
                     for (j, r) in regs.iter().enumerate() {
-                        formals.push(reg_formal(*r, format!("%a{i}_{j}")));
+                        let mut f = reg_formal(*r, format!("%a{i}_{j}"));
+                        f.ty.push_str(range_attr(lay, p.ty, j));
+                        formals.push(f);
                     }
                 }
                 Pass::Indirect(mode, mem) => formals.push(Formal {
