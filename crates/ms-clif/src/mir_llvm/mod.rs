@@ -197,7 +197,7 @@ struct Area {
     /// Extra conditions on one instruction of an op this area handles.
     inst_ok: fn(&Module, &Layouts, &Func, &Inst) -> bool,
     /// How many blocks the op splits off (its checks only when checks are on).
-    splits: fn(Op, bool) -> usize,
+    splits: fn(&Layouts, &Func, &Inst, bool) -> usize,
     /// Whether the op touches neither memory nor anything a fault could depend on.
     pure_op: fn(Op) -> bool,
     /// The value an instruction is without any code (a constant, a leaf of its operand).
@@ -212,7 +212,7 @@ impl Area {
         handles: |_| false,
         ty_ok: |_| false,
         inst_ok: |_, _, _, _| true,
-        splits: |_, _| 0,
+        splits: |_, _, _, _| 0,
         pure_op: |_| false,
         pre: |_, _, _, _| None,
         emit: |_, _, _, _| unreachable!("an area emits only the ops it handles"),
@@ -318,11 +318,11 @@ struct Cx<'a> {
 }
 
 /// The label a MIR block ends in: each check splits it, and a successor's phis name that label.
-fn exit_label(f: &Func, checks: bool, bb: usize) -> String {
+fn exit_label(lay: &Layouts, f: &Func, checks: bool, bb: usize) -> String {
     let n = f.blocks[bb]
         .insts
         .iter()
-        .map(|i| area_of(i.op).map_or(0, |a| (a.splits)(i.op, checks)))
+        .map(|i| area_of(i.op).map_or(0, |a| (a.splits)(lay, f, i, checks)))
         .sum();
     block_label(bb, n)
 }
@@ -419,7 +419,7 @@ pub fn emit(
         let term = &f.blocks[bb.index()].term;
         let mut k = 0;
         term.for_each_target(|t| {
-            let from = exit_label(f, checks, bb.index());
+            let from = exit_label(lay, f, checks, bb.index());
             let from = if matches!(term, Term::CondBr { .. }) && records::has_copies(lay, f, t) {
                 format!("{from}_e{k}")
             } else {
@@ -487,7 +487,7 @@ pub fn emit(
             }
             Term::CondBr { cond, then, els } => {
                 let c = vals[&cond.index()][0].clone();
-                let from = exit_label(f, checks, bb.index());
+                let from = exit_label(lay, f, checks, bb.index());
                 let to = |k: usize, t: &Target| {
                     if records::has_copies(lay, f, t) {
                         format!("{from}_e{k}")

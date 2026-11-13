@@ -16,7 +16,7 @@ use ms_rt_abi::symbols::{STACK_LIMIT_CELL, STACK_REGION};
 
 pub(super) const AREA: Area = Area {
     handles: |op| matches!(op, Op::DepthEnter | Op::DepthLeave),
-    splits: |op, _| usize::from(op == Op::DepthEnter),
+    splits: |_, _, i, _| usize::from(i.op == Op::DepthEnter),
     emit,
     ..Area::NONE
 };
