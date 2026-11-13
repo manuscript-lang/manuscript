@@ -6,11 +6,12 @@
 //! direct calls between such functions; every other function falls back to the translation. Both
 //! paths use the same leaf calling convention, so they call each other freely.
 
-use crate::glue_llvm::{CloneKind, clone_kind, clone_str};
+use crate::glue_llvm::{OwnKind, clone_str, own_kind};
 use crate::layout::{Layouts, Leaf};
 use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Types, Val};
 use ms_mir::ir::{Cc, Func, Imm, Inst, Mode, Module, Op, Target, Term};
 use ms_mir::types::{Ty, TyKind};
+use ms_rt_abi::STR_INLINE;
 use std::collections::HashMap;
 
 /// A finished function: pieces of the `define` line, the body, and the callees it declares.
@@ -33,6 +34,8 @@ pub struct Emitted {
 pub struct Plan {
     /// `Clone` glue symbol by type, for types cloned by a glue call.
     pub clone: HashMap<Ty, String>,
+    /// `Drop` glue symbol by type, for types dropped by a glue call.
+    pub drop: HashMap<Ty, String>,
     /// Type descriptor symbol by type.
     pub desc: HashMap<Ty, String>,
 }
@@ -128,6 +131,8 @@ fn supported_op(op: Op) -> bool {
             | Op::B2I
             | Op::ListLen
             | Op::Clone
+            | Op::Drop
+            | Op::DropIf
             | Op::TypeDesc
             | Op::Call
     )
@@ -234,7 +239,7 @@ pub fn emit(
                 // The length is a leaf of the list: no instruction.
                 (Op::ListLen, _) => vec![vals[&inst.args[0].index()][1].clone()],
                 // Cloning plain data is the value itself.
-                (Op::Clone, _) if clone_kind(lay, f.ty(inst.args[0])) == CloneKind::Identity => {
+                (Op::Clone, _) if own_kind(lay, f.ty(inst.args[0])) == OwnKind::Identity => {
                     vals[&inst.args[0].index()].clone()
                 }
                 _ => reserve_all(&mut b, f.ty(res)),
@@ -346,17 +351,29 @@ struct Site<'a> {
     inst: usize,
 }
 
+/// Whether `inst` branches inside its MIR block, so that what follows is in another LLVM block:
+/// a string clone, a drop that frees a string conditionally, and a guarded drop.
+fn splits(lay: &Layouts, f: &Func, inst: &Inst) -> bool {
+    match inst.op {
+        Op::Clone => own_kind(lay, f.ty(inst.args[0])) == OwnKind::Str,
+        Op::Drop => own_kind(lay, f.ty(inst.args[0])) == OwnKind::Str,
+        Op::DropIf => own_kind(lay, f.ty(inst.args[1])) != OwnKind::Identity,
+        _ => false,
+    }
+}
+
 /// The label of the LLVM block that ends MIR block `bb`: its own, or the join block of its last
-/// string clone, which splits the block.
+/// splitting instruction.
 fn end_label(lay: &Layouts, f: &Func, bb: usize) -> String {
-    let last = f.blocks[bb]
-        .insts
-        .iter()
-        .rposition(|i| i.op == Op::Clone && clone_kind(lay, f.ty(i.args[0])) == CloneKind::Str);
-    match last {
+    match f.blocks[bb].insts.iter().rposition(|i| splits(lay, f, i)) {
         Some(k) => format!("b{bb}.j{k}"),
         None => format!("b{bb}"),
     }
+}
+
+/// The declaration of a runtime function that takes one address-sized word and returns nothing.
+fn rt_decl(name: &str) -> (String, String) {
+    (name.into(), format!("declare void @\"{name}\"(i64)"))
 }
 
 fn icc(cc: Cc, unsigned: bool) -> &'static str {
@@ -406,7 +423,7 @@ fn inst_text(cx: &Cx, inst: &Inst, out_sinks: &mut Out, at: Site, b: &mut FnBuil
     if matches!(
         inst.op,
         Op::IConst | Op::FConst | Op::BConst | Op::UnitConst | Op::ListLen
-    ) || (inst.op == Op::Clone && clone_kind(lay, f.ty(inst.args[0])) == CloneKind::Identity)
+    ) || (inst.op == Op::Clone && own_kind(lay, f.ty(inst.args[0])) == OwnKind::Identity)
     {
         return;
     }
@@ -464,23 +481,23 @@ fn inst_text(cx: &Cx, inst: &Inst, out_sinks: &mut Out, at: Site, b: &mut FnBuil
             let ty = f.ty(inst.args[0]);
             let ls = leaves(lay, ty);
             let args = &vals[&inst.args[0].index()];
-            match clone_kind(lay, ty) {
-                CloneKind::Identity => {}
-                CloneKind::Str => {
+            match own_kind(lay, ty) {
+                OwnKind::Identity => {}
+                OwnKind::Str => {
                     b.take_name();
                     let join = format!("b{}.j{}", at.block, at.inst);
                     let dup = format!("b{}.d{}", at.block, at.inst);
                     clone_str(b, decls, (at.label, &dup, &join), args, Some(&out));
                     *at.label = join;
                 }
-                CloneKind::Obj => {
+                OwnKind::Obj => {
                     decls.push((
                         "msrt_obj_clone".into(),
                         "declare i64 @\"msrt_obj_clone\"(i64)".into(),
                     ));
                     b.call(&LTy::I64, "", "msrt_obj_clone", &[(args[0].clone(), "")]);
                 }
-                CloneKind::Glue => {
+                OwnKind::Glue => {
                     let sym = &plan.clone[&ty];
                     let ret = ret_ty(lay, ty);
                     let attr = ret_attr(lay, ty);
@@ -512,6 +529,68 @@ fn inst_text(cx: &Cx, inst: &Inst, out_sinks: &mut Out, at: Site, b: &mut FnBuil
                     }
                 }
             }
+        }
+        Op::Drop | Op::DropIf => {
+            let guarded = inst.op == Op::DropIf;
+            let ty = f.ty(inst.args[usize::from(guarded)]);
+            let kind = own_kind(lay, ty);
+            if kind == OwnKind::Identity {
+                return;
+            }
+            let args = &vals[&inst.args[usize::from(guarded)].index()];
+            let join = format!("b{}.j{}", at.block, at.inst);
+            let mut n = 0;
+            let mut fresh = |what: &str| {
+                n += 1;
+                format!("b{}.{what}{}.{n}", at.block, at.inst)
+            };
+            if guarded {
+                let on = b.icmp("ne", &arg(0), &Val::byte(0));
+                let then = fresh("t");
+                b.cond_br(&on, &then, &join);
+                b.label(&then);
+            }
+            match kind {
+                OwnKind::Str => {
+                    // Only an owned string (tag `00`) frees anything.
+                    let owned = b.icmp("ult", &args[1], &Val::int(STR_INLINE as i64));
+                    let (free, cont) =
+                        (fresh("f"), if guarded { fresh("c") } else { join.clone() });
+                    b.cond_br(&owned, &free, &cont);
+                    b.label(&free);
+                    decls.push(rt_decl("msrt_str_free"));
+                    b.call(&LTy::Void, "", "msrt_str_free", &[(args[0].clone(), "")]);
+                    b.br(&cont);
+                    b.label(&cont);
+                }
+                OwnKind::Obj => {
+                    decls.push(rt_decl("msrt_obj_drop"));
+                    b.call(&LTy::Void, "", "msrt_obj_drop", &[(args[0].clone(), "")]);
+                }
+                _ => {
+                    let sym = &plan.drop[&ty];
+                    let ls = leaves(lay, ty);
+                    let call_args: Vec<(Val, &str)> = args
+                        .iter()
+                        .zip(&ls)
+                        .map(|(v, (_, a))| (v.clone(), *a))
+                        .collect();
+                    let formals: Vec<String> = ls
+                        .iter()
+                        .map(|(t, a)| format!("{}{a}", Types::default().text(t)))
+                        .collect();
+                    decls.push((
+                        sym.clone(),
+                        format!("declare void @\"{sym}\"({})", formals.join(", ")),
+                    ));
+                    b.call(&LTy::Void, "", sym, &call_args);
+                }
+            }
+            if guarded {
+                b.br(&join);
+                b.label(&join);
+            }
+            *at.label = join;
         }
         Op::Call => {
             let Imm::Func(c) = inst.imm else { return };

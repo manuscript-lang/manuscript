@@ -1315,7 +1315,7 @@ fn direct_function(g: &mut Gen, i: usize, f: &Func) -> bool {
 /// The glue and descriptors `f`'s instructions refer to, declared now so that emission can name
 /// them: clone glue is queued for generation like any other.
 fn direct_plan(g: &mut Gen, f: &Func) -> crate::mir_llvm::Plan {
-    use crate::glue_llvm::{CloneKind, clone_kind};
+    use crate::glue_llvm::{OwnKind, own_kind};
     use ms_mir::ir::{Imm, Op};
     let mut plan = crate::mir_llvm::Plan::default();
     for bd in &f.blocks {
@@ -1323,9 +1323,16 @@ fn direct_plan(g: &mut Gen, f: &Func) -> crate::mir_llvm::Plan {
             match (i.op, i.imm) {
                 (Op::Clone, _) => {
                     let ty = f.ty(i.args[0]);
-                    if clone_kind(&g.lay, ty) == CloneKind::Glue && !plan.clone.contains_key(&ty) {
+                    if own_kind(&g.lay, ty) == OwnKind::Glue && !plan.clone.contains_key(&ty) {
                         let id = g.glue(Glue::Clone, ty);
                         plan.clone.insert(ty, symbol_of(g, id));
+                    }
+                }
+                (Op::Drop | Op::DropIf, _) => {
+                    let ty = f.ty(i.args[usize::from(i.op == Op::DropIf)]);
+                    if own_kind(&g.lay, ty) == OwnKind::Glue && !plan.drop.contains_key(&ty) {
+                        let id = g.glue(Glue::Drop, ty);
+                        plan.drop.insert(ty, symbol_of(g, id));
                     }
                 }
                 (Op::TypeDesc, Imm::Ty(t)) => {

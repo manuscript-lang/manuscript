@@ -65,16 +65,17 @@ pub fn supports(g: &Gen, kind: Glue, ty: Ty) -> bool {
     }
 }
 
-/// How a value of one type is cloned.
+/// How a value of one type is cloned or dropped.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum CloneKind {
-    /// Plain data: the copy is the value.
+pub enum OwnKind {
+    /// Plain data: the copy is the value and there is nothing to drop.
     Identity,
-    /// A string: static and inline ones copy bitwise, the others through the runtime.
+    /// A string: static and inline ones copy bitwise and own nothing; the others go through
+    /// the runtime.
     Str,
     /// A closure or an object with a clone entry in its header.
     Obj,
-    /// The `Clone` glue function of the type.
+    /// The `Clone` or `Drop` glue function of the type.
     Glue,
 }
 
@@ -89,15 +90,15 @@ pub fn is_obj_like(lay: &Layouts, ty: Ty) -> bool {
     }
 }
 
-pub fn clone_kind(lay: &Layouts, ty: Ty) -> CloneKind {
+pub fn own_kind(lay: &Layouts, ty: Ty) -> OwnKind {
     if !lay.m.needs_drop(ty) {
-        CloneKind::Identity
+        OwnKind::Identity
     } else if lay.is_str_like(ty) {
-        CloneKind::Str
+        OwnKind::Str
     } else if is_obj_like(lay, ty) {
-        CloneKind::Obj
+        OwnKind::Obj
     } else {
-        CloneKind::Glue
+        OwnKind::Glue
     }
 }
 
