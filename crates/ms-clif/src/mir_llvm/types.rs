@@ -255,6 +255,17 @@ fn splits(lay: &Layouts, f: &Func, i: &Inst, _: bool) -> usize {
             .and_then(|r| indirect(lay, f.ty(r)))
             .map_or(0, |r| block_spans(lay, r).iter().filter(|s| s.2).count()),
         (Op::TypeGet | Op::PtrField, Imm::Field(r, k)) => usize::from(field_boxed(lay, r, k)),
+        (Op::TypeSet | Op::TypeFill, Imm::Field(r, k))
+            if indirect(lay, f.ty(i.args[0])).is_some() =>
+        {
+            let fty = lay.m.type_defs[r.index()].fields[k as usize].1;
+            let drops = i.op == Op::TypeSet && own_kind(lay, fty) == OwnKind::Str;
+            if field_boxed(lay, r, k) {
+                2
+            } else {
+                usize::from(drops)
+            }
+        }
         (Op::TypeRelease, Imm::TypeMask(_, mask)) => match indirect(lay, f.ty(i.args[0])) {
             // Each boxed collection field is tested for its header; a string field is a check.
             Some(r) => block_released(lay, r, mask)
@@ -311,7 +322,9 @@ pub(super) fn op_ok(lay: &Layouts, f: &Func, i: &Inst) -> bool {
         }
         (Op::Store | Op::Put, _) => mem_ty(f.ty(i.args[1])) || empty(lay, f.ty(i.args[1])),
         (Op::PtrField | Op::TypeGet, Imm::Field(..)) => true,
-        (Op::TypeSet | Op::TypeFill, Imm::Field(r, _)) => !lay.m.type_defs[r.index()].indirect,
+        (Op::TypeSet | Op::TypeFill, Imm::Field(r, _)) => {
+            !lay.m.type_defs[r.index()].indirect || block_ok(lay, r)
+        }
         (Op::TypeNew, _) => true,
         (
             Op::Slot
@@ -786,6 +799,10 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
                 load_leaves(b, &s, &tval, at, n, &out);
             }
         }
+        Op::TypeSet | Op::TypeFill if indirect(lay, f.ty(inst.args[0])).is_some() => {
+            let Imm::Field(r, i) = inst.imm else { return };
+            type_set(cx, b, r, i as usize, inst, vals, &arg(0)[0], &out[0]);
+        }
         Op::TypeSet | Op::TypeFill => {
             let Imm::Field(_, i) = inst.imm else { return };
             let rty = f.ty(inst.args[0]);
@@ -910,6 +927,63 @@ fn type_new(
             store_leaves(b, &s, &block, at, &words[..n]);
         }
     }
+}
+
+/// `type.set` and `type.fill` of an indirect type: the fields move into a fresh block with field
+/// `i` replaced, then the old block is freed, so no block is written in place. `type.set` drops
+/// the old value first; a boxed collection's old header block is freed either way.
+#[allow(clippy::too_many_arguments)]
+fn type_set(
+    cx: &mut Cx,
+    b: &mut FnBuilder,
+    r: ms_mir::types::TypeId,
+    i: usize,
+    inst: &Inst,
+    vals: &Vals,
+    old: &Val,
+    out: &Val,
+) {
+    declare_heap(cx);
+    let lay = cx.lay;
+    let s = block_shape(b.types(), lay, r);
+    let (at, n, boxed) = block_spans(lay, r)[i];
+    let fty = lay.m.type_defs[r.index()].fields[i].1;
+    let drop_old = inst.op == Op::TypeSet && lay.m.needs_drop(fty);
+    let block = alloc(b, s.size, Some(out));
+    b.copy_bytes(&block, old, s.size as u64, s.align as u64);
+    let words = &vals[&inst.args[1].index()];
+    if boxed {
+        let slot = b.leaf_ptr(&s.st, old, at);
+        let bp = b.load(&LTy::Ptr, &slot, 8);
+        let some = b.icmp("ne", &bp, &NULL());
+        let (_, then, join) = next_split(cx, "s");
+        b.cond_br(&some, &then, &join);
+        b.label(&then);
+        if drop_old {
+            let held = (0..lay.width(fty))
+                .map(|w| {
+                    let at = b.elem_ptr(&LTy::I64, &bp, &Val::int(w as i64));
+                    b.load(&LTy::I64, &at, 8)
+                })
+                .collect();
+            super::glue::drop_held(cx, fty, held, b);
+        }
+        let word = b.ptr_to_int(&bp);
+        b.call(&LTy::Void, "", "msrt_free", &[(word, "")]);
+        b.br(&join);
+        b.label(&join);
+        let header = header_store(cx, b, words);
+        let p = b.leaf_ptr(&s.st, &block, at);
+        b.store(&header, &p, 8);
+    } else {
+        if drop_old {
+            let held = load_leaves(b, &s, old, at, n, &[]);
+            super::glue::drop_held(cx, fty, held, b);
+        }
+        store_leaves(b, &s, &block, at, &words[..n]);
+    }
+    let word = b.ptr_to_int(old);
+    b.call(&LTy::Void, "", "msrt_free", &[(word, "")]);
 }
 
 /// A header block holding `words`, or null when they are the all-zero empty collection (a stamped
