@@ -16,6 +16,6 @@ Apply when: adding facts to the LLVM translation, or tagging memory accesses in 
 Evidence: [translation](../../crates/ms-clif/src/llvm_ir.rs), [element flags](../../crates/ms-clif/src/lower.rs), `make drift-check`.
 Verify: `ms-conform diff --a target/release/ms --b target/release/ms --env-b MS_BACKEND=cranelift --phase run,test`.
 
-## Direct MIR emission (stage 1, 2026-11-13)
+## Direct MIR emission (2026-11-13)
 
-Chinmay approved emitting LLVM IR directly from MIR (reversing the earlier rule against a second emitter); plan in `proposals/mir-to-llvm-direct.md`. Stage 1 is `crates/ms-clif/src/mir_llvm.rs` behind `MS_LLVM_DIRECT=1`: scalar-only functions are emitted from MIR, everything else falls back to the translation, and both share the leaf calling convention. Measured before building it: the yaml program is 19k MIR lines and 183k LLVM lines (122k with `MS_VECTORIZE=off`), yet release build time is 2.9 s either way, so line count alone does not predict compile time; judge each stage by time as well. Write source fixtures so the MIR inliner leaves the function out of line (a long body called twice), or the direct path never runs.
+Chinmay approved emitting LLVM IR directly from MIR (reversing the earlier rule against a second emitter); plan in `proposals/mir-to-llvm-direct.md`. A first attempt (text emitter with an in-house builder, scalar functions, records, lists and glue) was reverted: Chinmay wants the emitter built on `inkwell` from the start, not on a hand-written text builder. Per-CPU AVX2 copies are gone; LLVM does the vectorizing (`MS_VECTORIZE=off` disables it).

@@ -13,7 +13,6 @@ pub fn from_env() -> BuildOptions {
         cranelift_only: text("MS_BACKEND").is_some_and(|b| b == "cranelift"),
         llvm_units: text("MS_LLVM_UNITS").and_then(|v| v.parse().ok()),
         vectorize: !text("MS_VECTORIZE").is_some_and(|v| v == "off" || v == "0"),
-        llvm_direct: var("MS_LLVM_DIRECT").is_some_and(|v| v != "0"),
         keep_ll: var("MS_KEEP_LL").is_some(),
         rt_hot: match var("MS_RT_HOT") {
             None => RtHot::Embedded,

@@ -38,8 +38,6 @@ pub struct BuildOptions {
     pub llvm_units: Option<usize>,
     /// LLVM vectorizes loops (loop and SLP vectorizers).
     pub vectorize: bool,
-    /// Emit supported functions straight from MIR instead of translating Cranelift IR.
-    pub llvm_direct: bool,
     /// Copy the LLVM IR of a release build to `ms-keep.ll`.
     pub keep_ll: bool,
     /// The runtime helper IR linked into release programs.
@@ -64,7 +62,6 @@ impl Default for BuildOptions {
             cranelift_only: false,
             llvm_units: None,
             vectorize: true,
-            llvm_direct: false,
             keep_ll: false,
             rt_hot: RtHot::Embedded,
             llvm_tools: None,

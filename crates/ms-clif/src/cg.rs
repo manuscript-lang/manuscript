@@ -834,9 +834,6 @@ fn compile_with_isa(
             ctx.clear();
             ctx.func.signature = g.func_sig(f);
             ctx.func.name = UserFuncName::user(0, g.funcs[i].as_u32());
-            if direct_function(&mut g, i, f) {
-                continue;
-            }
             {
                 let mut l = Lower::new(&mut g, &mut ctx.func, &mut fctx);
                 l.lower_func(i, f);
@@ -1264,41 +1261,6 @@ impl Pipeline {
             .map_err(|e| Error(format!("{}: {e:?}", f.name)))?;
         finish(g, &mut ctx, id, &f.name, Some(f))
     }
-}
-
-/// Emits `f` straight from MIR when `MS_LLVM_DIRECT` asks for it and `mir_llvm` supports the
-/// function; `false` leaves it to the Cranelift lowering and its translation.
-fn direct_function(g: &mut Gen, i: usize, f: &Func) -> bool {
-    if !g.opts.build.llvm_direct || g.llvm.is_none() || !crate::mir_llvm::supports(g.m, f) {
-        return false;
-    }
-    let id = g.funcs[i];
-    let syms = ModuleSymbols(&g.module, &g.locs, &g.scopes, &g.m.externs);
-    let sym = syms.symbol_of(id);
-    let exported = g.module.declarations().get_function_decl(id).linkage == Linkage::Import
-        && !sym.contains('#')
-        && !g.glue_ids.contains(&id);
-    let fn_loc = if f.loc.file != u32::MAX {
-        (f.loc.file, f.loc.line)
-    } else {
-        (0, f.loc.line)
-    };
-    let funcs = &g.funcs;
-    let symbol_of = |k: usize| syms.symbol_of(funcs[k]);
-    let m = g.m;
-    let mut llvm = g.llvm.take().expect("checked above");
-    llvm.add_direct(&sym, &f.name, fn_loc, exported, |loc| {
-        crate::mir_llvm::emit(m, f, loc, &symbol_of)
-    });
-    g.llvm = Some(llvm);
-    g.llvm_funcs.push(LlvmFn {
-        id,
-        symbol: sym,
-        name: f.name.clone(),
-        file: f.loc.file,
-        line: f.loc.line,
-    });
-    true
 }
 
 /// Runs the passes that precede Cranelift's own compilation. `true` when the function went to

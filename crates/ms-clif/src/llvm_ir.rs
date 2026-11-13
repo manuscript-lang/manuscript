@@ -1414,39 +1414,6 @@ impl LlvmModule {
         });
     }
 
-    /// Adds a function emitted straight from MIR (see `mir_llvm`). `emit` receives the id of the
-    /// function's `DILocation` node, which every call it writes must carry, and returns the
-    /// finished text. The function gets its own subprogram like a translated one.
-    pub(crate) fn add_direct(
-        &mut self,
-        name: &str,
-        display: &str,
-        fn_loc: (u32, u32),
-        public: bool,
-        emit: impl FnOnce(usize) -> crate::mir_llvm::Emitted,
-    ) {
-        let (sp_file, sp_line) = fn_loc;
-        let sp = self.di.meta.len();
-        let file_node = self.di.file_node(sp_file);
-        self.di.meta.push(format!(
-            "distinct !DISubprogram(name: \"{}\", linkageName: \"{}\", scope: !{file_node}, file: !{file_node}, line: {sp_line}, type: !4, scopeLine: {sp_line}, spFlags: DISPFlagDefinition, unit: !0)",
-            metadata_string(display),
-            metadata_string(name)
-        ));
-        let loc = self.di.push(format!("!DILocation(line: 0, scope: !{sp})"));
-        let out = emit(loc);
-        for (callee, decl) in out.decls {
-            self.decls.entry(callee).or_insert(decl);
-        }
-        self.defs.push(Def {
-            name: name.to_string(),
-            public,
-            glue: false,
-            header: format!("{} @\"{name}\"({}) #0 !dbg !{sp} {{\n", out.ret, out.params),
-            body: out.body,
-        });
-    }
-
     /// Marks the function just added as glue.
     pub fn mark_glue(&mut self) {
         if let Some(d) = self.defs.last_mut() {
