@@ -172,6 +172,15 @@ fn boxed_alt(lay: &Layouts, ty: Ty) -> Option<AltId> {
     }
 }
 
+/// The payload type of the self-containing optional `ty`, whose value is a nullable pointer to a
+/// heap block holding the payload's leaves.
+fn boxed_opt(lay: &Layouts, ty: Ty) -> Option<Ty> {
+    match lay.m.types.kind(ty) {
+        TyKind::Opt(inner) if lay.opt_is_boxed(*inner) => Some(*inner),
+        _ => None,
+    }
+}
+
 /// The slot kinds of the heap block of the boxed enum `ty`: the case index, then payload slots.
 fn block_of(lay: &Layouts, ty: Ty) -> Vec<Leaf> {
     match &lay.shape(ty).alt {
@@ -227,6 +236,9 @@ fn inst_ok(_: &Module, lay: &Layouts, f: &Func, inst: &Inst) -> bool {
         return opt_repr(lay, f.ty(inst.args[0])) == OptRepr::Nullable;
     }
     let subject = subject(f, inst);
+    if let Some(inner) = boxed_opt(lay, subject) {
+        return types::shape_ok(lay, inner);
+    }
     if let Some(a) = boxed_alt(lay, subject) {
         let case = match inst.imm {
             Imm::Case(_, c) | Imm::AltField(_, c, _) | Imm::AltMask(_, c, _) => Some(c),
@@ -313,6 +325,14 @@ fn pre(
             && inst.res.is_some_and(|r| types::is_mem(lay, f.ty(r))))
         || (matches!(inst.op, Op::OptGet | Op::OptUnbox)
             && mem_opt(lay, f.ty(inst.args[0])).is_some())
+    {
+        return None;
+    }
+    // A boxed optional's payload is in its block; none and the presence test are the pointer.
+    if matches!(
+        inst.op,
+        Op::OptSome | Op::OptGet | Op::OptUnwrap | Op::OptUnbox
+    ) && boxed_opt(lay, subject(f, inst)).is_some()
     {
         return None;
     }
@@ -410,6 +430,12 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         boxed(cx, inst, vals, out, b);
         return;
     }
+    if matches!(inst.op, Op::OptSome | Op::OptGet | Op::OptUnbox)
+        && boxed_opt(cx.lay, subject(cx.f, inst)).is_some()
+    {
+        boxed_optional(cx, inst, vals, out, b);
+        return;
+    }
     if inst.op == Op::OptIsSome && opt_repr(cx.lay, cx.f.ty(inst.args[0])) != OptRepr::Tagged {
         let ty = cx.f.ty(inst.args[0]);
         let v = &vals[&inst.args[0].index()];
@@ -486,7 +512,9 @@ pub(super) fn released(lay: &Layouts, inst: &Inst) -> Vec<(Ty, usize)> {
 /// drops a field. Every other enum op chooses leaves.
 pub(super) fn touches_memory(lay: &Layouts, f: &Func, inst: &Inst) -> bool {
     handles(inst.op)
-        && (boxed_alt(lay, subject(f, inst)).is_some() || !released(lay, inst).is_empty())
+        && (boxed_alt(lay, subject(f, inst)).is_some()
+            || (inst.op != Op::OptAddr && boxed_opt(lay, subject(f, inst)).is_some())
+            || !released(lay, inst).is_empty())
 }
 
 /// The LLVM type of a payload slot.
@@ -640,7 +668,19 @@ fn unwrap(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder)
         super::faults::fault_if(cx, b, &none, "msrt_fault_unwrap_none", &[]);
     }
     let inner = payload_ty(cx.lay, cx.f, inst);
-    if own_kind(cx.lay, inner) == OwnKind::Identity {
+    let owns = own_kind(cx.lay, inner) != OwnKind::Identity;
+    if boxed_opt(cx.lay, ty).is_some() {
+        // The payload is read from the block: named for the result when nothing is cloned.
+        if owns {
+            let tmp = types::reserve(b, cx.lay, inner);
+            read_payload(b, cx.lay, inner, &v[0], &tmp);
+            glue::clone_leaves(cx, inner, &tmp, out, b);
+        } else {
+            read_payload(b, cx.lay, inner, &v[0], out);
+        }
+        return;
+    }
+    if !owns {
         return;
     }
     let payload = match opt_repr(cx.lay, ty) {
@@ -655,6 +695,35 @@ fn unwrap(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder)
         return;
     }
     glue::clone_leaves(cx, inner, payload, out, b);
+}
+
+/// Defines `out` from the payload of type `inner` in the block `p` of a boxed optional: a record
+/// in memory is copied into a fresh slot, anything else loaded leaf by leaf.
+fn read_payload(b: &mut FnBuilder, lay: &Layouts, inner: Ty, p: &Val, out: &[Val]) {
+    types::load_value(b, lay, inner, p, out);
+}
+
+/// `opt.some`, `opt.get` and `opt.unbox` of a boxed optional: a build allocates the block and
+/// stores the payload, a read loads it, and an unbox then frees the block.
+fn boxed_optional(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder) {
+    let lay = cx.lay;
+    let ty = subject(cx.f, inst);
+    let inner = boxed_opt(lay, ty).expect("a boxed optional");
+    types::declare_heap(cx);
+    if inst.op == Op::OptSome {
+        let size = types::shape(b.types(), lay, inner)
+            .expect("shape_ok checked")
+            .size;
+        let p = types::alloc(b, size, Some(&out[0]));
+        types::store_value(b, lay, inner, vals, inst.args[0], &p);
+        return;
+    }
+    let p = &vals[&inst.args[0].index()][0];
+    read_payload(b, lay, inner, p, out);
+    if inst.op == Op::OptUnbox {
+        let w = b.ptr_to_int(p);
+        b.call(&LTy::Void, "", "msrt_free", &[(w, "")]);
+    }
 }
 
 /// `alt.release` and `alt.unbox`: drops the fields of the case that were not moved out, reading
