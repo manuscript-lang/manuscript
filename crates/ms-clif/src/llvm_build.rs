@@ -623,12 +623,39 @@ impl<'t> FnBuilder<'t> {
         args: &[(Val, &str)],
         fn_attrs: &str,
     ) -> Option<Val> {
+        self.call_to(ret, ret_attr, &format!("@\"{callee}\""), args, fn_attrs)
+    }
+
+    /// An indirect call through the pointer `callee`. It can run any code, so it is never merged.
+    pub fn call_ptr(
+        &mut self,
+        ret: &Ty,
+        ret_attr: &str,
+        callee: &Val,
+        args: &[(Val, &str)],
+    ) -> Option<Val> {
+        assert_eq!(
+            callee.ty,
+            Ty::Ptr,
+            "an indirect call goes through a pointer"
+        );
+        self.call_to(ret, ret_attr, &callee.text, args, " nomerge")
+    }
+
+    fn call_to(
+        &mut self,
+        ret: &Ty,
+        ret_attr: &str,
+        callee: &str,
+        args: &[(Val, &str)],
+        fn_attrs: &str,
+    ) -> Option<Val> {
         let actuals: Vec<String> = args
             .iter()
             .map(|(v, a)| format!("{}{a} {}", self.ty(&v.ty), v.text))
             .collect();
         let head = format!(
-            "call {ret_attr}{} @\"{callee}\"({}){fn_attrs}",
+            "call {ret_attr}{} {callee}({}){fn_attrs}",
             self.ty(ret),
             actuals.join(", ")
         );
@@ -909,5 +936,17 @@ mod tests {
         let mut b = FnBuilder::new(&t, None);
         b.label("b0");
         b.bin(Bin::Add, &Val::int(1), &Val::byte(1));
+    }
+
+    #[test]
+    fn an_indirect_call_goes_through_a_pointer() {
+        let t = Types::default();
+        let mut b = FnBuilder::new(&t, None);
+        b.label("b0");
+        let code = Val::new("%code", Ty::Ptr);
+        let r = b.call_ptr(&Ty::I64, "", &code, &[(Val::int(7), "")]);
+        assert!(r.is_some());
+        let text = b.finish();
+        assert!(text.contains("call i64 %code(i64 7) nomerge"), "{text}");
     }
 }

@@ -51,8 +51,20 @@ impl Symbols for NoSymbols {
 /// Attributes of a call to a function that only reads memory.
 /// Runtime allocators: each returns a block no other pointer reaches, so the translation declares
 /// the result `noalias ptr` and keeps the pointer for the accesses that follow.
-fn returns_fresh_block(symbol: &str) -> bool {
+pub(crate) fn returns_fresh_block(symbol: &str) -> bool {
     matches!(symbol, "msrt_alloc" | "msrt_alloc_zeroed" | "msrt_realloc")
+}
+
+/// The function attributes of the declaration of runtime function `name`: a fault never returns
+/// and is cold, a function that only reads memory says so.
+pub(crate) fn runtime_attrs(name: &str, reads_only: bool) -> &'static str {
+    if fault_function(name) {
+        " cold noreturn"
+    } else if reads_only {
+        READS_ONLY
+    } else {
+        ""
+    }
 }
 
 const READS_ONLY: &str = " nounwind willreturn nofree nosync memory(read)";
@@ -1215,13 +1227,7 @@ impl<'a> Tr<'a> {
         let data = self.ext_func(fr);
         let name = self.name_of(&data.name);
         let sig = &self.f.dfg.signatures[data.signature];
-        let attrs = if fault_function(&name) {
-            " cold noreturn"
-        } else if self.syms.reads_only(&name) {
-            READS_ONLY
-        } else {
-            ""
-        };
+        let attrs = runtime_attrs(&name, self.syms.reads_only(&name));
         let ret = if returns_fresh_block(&name) {
             "noalias align 16 ptr".to_string()
         } else {
@@ -1510,6 +1516,9 @@ impl LlvmModule {
         let out = emit(&mut env);
         for (callee, decl) in out.decls {
             self.decls.entry(callee).or_insert(decl);
+        }
+        for symbol in out.data {
+            self.data.insert(symbol, ());
         }
         self.defs.push(Def {
             name: name.to_string(),

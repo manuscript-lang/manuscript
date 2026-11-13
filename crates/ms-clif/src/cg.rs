@@ -1305,13 +1305,16 @@ fn native_functions(g: &Gen) -> HashSet<usize> {
         .funcs
         .iter()
         .map(|f| {
-            g.opts.build.llvm_direct
-                && g.llvm.is_some()
-                && matches!(f.kind, FuncKind::Normal)
-                && crate::mir_llvm::supports(m, &g.lay, f)
+            g.opts.build.llvm_direct && g.llvm.is_some() && crate::mir_llvm::supports(m, &g.lay, f)
         })
         .collect();
-    let mut keep = direct.clone();
+    // The code of a closure and the methods of a vtable are called by address: they keep the leaf
+    // convention, though they call native functions.
+    let mut keep: Vec<bool> = direct
+        .iter()
+        .zip(&m.funcs)
+        .map(|(d, f)| *d && matches!(f.kind, FuncKind::Normal))
+        .collect();
     let mut clear = |k: usize| keep[k] = false;
     for f in [m.entry.map(|e| e.index())].into_iter().flatten() {
         clear(f);
@@ -1370,6 +1373,7 @@ fn direct_function(g: &mut Gen, i: usize, f: &Func) -> bool {
         .any(|inst| inst.op == ms_mir::ir::Op::DepthEnter)
         .then(|| g.glue(Glue::GrowShim(i as u32), Ty::UNIT));
     g.add_scopes(f);
+    let plan = direct_plan(g, f);
     let mut bits = HashMap::new();
     for inst in f.blocks.iter().flat_map(|b| &b.insts) {
         bits.entry(inst.loc).or_insert_with(|| g.loc_bits(inst.loc));
@@ -1390,6 +1394,7 @@ fn direct_function(g: &mut Gen, i: usize, f: &Func) -> bool {
     let m = g.m;
     let lay = &g.lay;
     let native = g.native.as_ref().expect("computed above");
+    let plan = &plan;
     let mut llvm = g.llvm.take().expect("checked above");
     let checks = g.opts.checks;
     llvm.add_direct(
@@ -1406,6 +1411,7 @@ fn direct_function(g: &mut Gen, i: usize, f: &Func) -> bool {
                 idx: i,
                 grow_shim,
                 native,
+                plan,
             };
             crate::mir_llvm::emit(m, lay, place, f, checks, env, &symbol_of)
         },
@@ -1419,6 +1425,54 @@ fn direct_function(g: &mut Gen, i: usize, f: &Func) -> bool {
         line: f.loc.line,
     });
     true
+}
+
+/// What `f`'s closures and interfaces need from the generator: the frame decisions of the lowering
+/// and the symbols of the glue and vtables its instructions point to, which the generator
+/// declares here because only it can.
+fn direct_plan(g: &mut Gen, f: &Func) -> crate::mir_llvm::Plan {
+    use ms_mir::ir::{Imm, Op};
+    let m = g.m;
+    let mut plan = crate::mir_llvm::Plan {
+        framed_closures: crate::lower::framed_closure_objects(m, f),
+        framed_ifaces: crate::lower::framed_iface_borrows(m, f),
+        ..Default::default()
+    };
+    for inst in f.blocks.iter().flat_map(|b| &b.insts) {
+        match (inst.op, inst.imm) {
+            (Op::ClosureNew, Imm::Func(c)) => {
+                let framed = inst
+                    .res
+                    .is_some_and(|r| plan.framed_closures.contains(&r.index()));
+                let clone = g.glue(Glue::ClosureClone(c.0), Ty::UNIT);
+                let drop = g.glue(
+                    if framed {
+                        Glue::ClosureDropFramed(c.0)
+                    } else {
+                        Glue::ClosureDrop(c.0)
+                    },
+                    Ty::UNIT,
+                );
+                let syms = crate::mir_llvm::ClosureSyms {
+                    clone: symbol_of(g, clone),
+                    drop: symbol_of(g, drop),
+                };
+                plan.closures.insert((c.index(), framed), syms);
+            }
+            (Op::IfaceNew | Op::IfaceBorrow | Op::IfaceIs, Imm::Vtable(vt)) => {
+                let id = g.vtables[vt.index()];
+                let name = g
+                    .module
+                    .declarations()
+                    .get_data_decl(id)
+                    .linkage_name(id)
+                    .into_owned();
+                plan.vtables.insert(vt.index(), name);
+            }
+            _ => {}
+        }
+    }
+    plan
 }
 
 /// Emits the stack-growth shim of the native function `f`.

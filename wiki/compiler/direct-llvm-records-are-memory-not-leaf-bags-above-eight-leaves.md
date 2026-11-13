@@ -18,3 +18,12 @@ Apply when: adding ops to the direct emitter, or changing how it passes records 
 - The shim that grows the stack for a native function passes the pointers through its cells and calls the native symbol (`mir_llvm/depth.rs`); the Cranelift shim only knows leaves.
 - A native function that reads memory through a parameter is never `memory(none)` (`mir_llvm/attrs.rs`).
 - Not done: `ptr` leaves (a pointer is still an `i64` leaf), named struct types (the spill and `sret` types are literal structs), TBAA and range metadata.
+
+## Closures, interfaces and runtime calls (`mir_llvm/closures.rs`, `calls.rs`)
+
+- A closure object is `%ms.env.<code> = { %ms.closure, capture.. }`: the clone, drop and code header, then each capture as its own memory struct, so a capture starts at its own largest alignment like `cg::CLOSURE_CAPTURES` says. Flattening all captures into one struct would misplace a `Bool` followed by an optional.
+- The code of a closure and the methods of a vtable are emitted directly but keep the leaf signature (the runtime and translated code call them by address); they may call native functions.
+- `cg::direct_plan` makes the glue and vtable symbols before emission, since only the generator can declare glue. It also decides which closures and borrowed interface boxes live in the frame; the analyses are shared with the Cranelift lowering (`lower::framed_closure_objects`, `framed_iface_borrows`).
+- A runtime call passes leaves where the value passes directly and the address of a copy otherwise, with a hidden last result pointer. C shims, `MapNew`, `CleanupDiscard` and `var` parameters fall back. A runtime function's `declare` is first-wins across the unit: a call whose types differ from it (`ptr` against `i64`) is legal IR and the same ABI.
+- An area's `emit` also runs for ops its `pre` answered; it must do nothing for them. An interface's two words are `i64` leaves, so `iface.data` is an `inttoptr`.
+- A hand-written MIR test only gets a direct function when the function owns nothing: the verifier wants owned values dropped and drops are not emitted directly yet.

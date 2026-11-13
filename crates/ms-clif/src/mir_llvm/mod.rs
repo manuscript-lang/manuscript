@@ -32,6 +32,27 @@ pub struct Place<'a> {
     pub idx: usize,
     pub grow_shim: Option<String>,
     pub native: &'a HashSet<usize>,
+    pub plan: &'a Plan,
+}
+
+/// The glue a closure object points to.
+pub struct ClosureSyms {
+    pub clone: String,
+    pub drop: String,
+}
+
+/// What the generator decides about one function before it is emitted: which allocations stay in
+/// the frame and the symbols of the glue and vtables its instructions name.
+#[derive(Default)]
+pub struct Plan {
+    /// `closure.new` results that live in a stack slot.
+    pub framed_closures: HashSet<usize>,
+    /// `iface.borrow` results that keep their leaves in a stack slot.
+    pub framed_ifaces: HashSet<usize>,
+    /// The glue of each closure function, by `(function, framed)`.
+    pub closures: HashMap<(usize, bool), ClosureSyms>,
+    /// The data symbol of each vtable an instruction names.
+    pub vtables: HashMap<usize, String>,
 }
 
 /// A finished function: pieces of the `define` line, the body, and the callees it declares.
@@ -46,6 +67,8 @@ pub struct Emitted {
     pub body: String,
     /// `(symbol, declare line)` of each callee.
     pub decls: Vec<(String, String)>,
+    /// Symbols of the external data objects (vtables) the body addresses.
+    pub data: Vec<String>,
 }
 
 /// LLVM type and parameter attribute of one register leaf. `I8` leaves (`Bool`, flags) are
@@ -238,10 +261,7 @@ fn area_of(op: Op) -> Option<&'static Area> {
 
 /// Whether stage 1 can emit `f`.
 pub fn supports(m: &Module, lay: &Layouts, f: &Func) -> bool {
-    if !matches!(f.kind, ms_mir::ir::FuncKind::Normal)
-        || !f.noalias.is_empty()
-        || !signature_ok(lay, &f.params, f.ret)
-    {
+    if !f.noalias.is_empty() || !signature_ok(lay, &f.params, f.ret) {
         return false;
     }
     let ty_ok = |v| supported_ty(lay, f.ty(v));
@@ -303,6 +323,9 @@ struct Cx<'a> {
     memo: HashMap<usize, Option<bool>>,
     /// `(symbol, declare line)` of each callee.
     decls: Vec<(String, String)>,
+    /// Symbols of the external data objects the body addresses.
+    data: Vec<String>,
+    plan: &'a Plan,
     /// MIR block being written and the checks it has split off so far.
     block: usize,
     split: usize,
@@ -348,6 +371,7 @@ pub fn emit(
         idx,
         grow_shim,
         native,
+        plan,
     }: Place,
     f: &Func,
     checks: bool,
@@ -441,6 +465,8 @@ pub fn emit(
         symbol_of,
         memo: HashMap::new(),
         decls: Vec::new(),
+        data: Vec::new(),
+        plan,
         block: 0,
         split: 0,
         entry_abi,
@@ -537,6 +563,7 @@ pub fn emit(
             .to_string(),
         body: b.finish(),
         decls: cx.decls,
+        data: cx.data,
     }
 }
 
