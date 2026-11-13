@@ -174,6 +174,128 @@ fn string_bytes() {
     );
 }
 
+fn closures_and_runtime_calls() {
+    // A closure that escapes (heap object, returned), one that stays in the frame (passed to a
+    // borrowing call), the captures read in the body, a call through the code pointer, and a
+    // runtime call that takes its argument by value.
+    let src = r#"module "d"
+entry @main
+file 0 "d.ms"
+extern @msrt_print_int(int)
+fn @adder(%n: int, %k: int) -> fn(int) -> int inline(never) !0:1:1 {
+b0:
+  %c: fn(int) -> int = closure.new @body %n, %k !0:2:1
+  ret %c
+}
+fn @body(%env: ptr, %x: int) -> int closure(int, int) inline(never) !0:3:1 {
+b0:
+  %n: int = closure.cap 0 %env !0:4:1
+  %k: int = closure.cap 1 %env !0:4:1
+  %a: int = iadd %x, %n !0:5:1
+  %b: int = imul %a, %k !0:5:1
+  ret %b
+}
+fn @apply(%f: fn(int) -> int, %x: int) -> int inline(never) !0:6:1 {
+b0:
+  %r: int = call.ind (%f, %x) !0:7:1
+  ret %r
+}
+fn @main() -> int !0:10:1 {
+b0:
+  %n: int = iconst 3
+  %k: int = iconst 4
+  %c: fn(int) -> int = call @adder(%n, %k) !0:11:1
+  %x: int = iconst 5
+  %r: int = call @apply(%c, %x) !0:12:1
+  drop %c
+  %one: int = iconst 1
+  %two: int = iconst 2
+  %f: fn(int) -> int = closure.new @body %one, %two !0:13:1
+  %s: int = call @apply(%f, %x) !0:14:1
+  drop %f
+  %t: int = iadd %r, %s !0:15:1
+  %u: unit = call.rt @msrt_print_int(%t) !0:16:1
+  ret %t
+}
+"#;
+    // (5 + 3) * 4 + (5 + 1) * 2 = 44
+    check("direct_closures", src, 44, &["adder", "body", "apply"]);
+}
+
+fn interfaces() {
+    // An owned interface box built and returned, and calls through the vtable of a method that
+    // reads the data and takes an argument; `probe` reads the data word and tests the vtable.
+    // `framed` borrows a box that stays in the frame, views it and drops both.
+    let src = r#"module "d"
+entry @main
+file 0 "d.ms"
+iface Scale { scale(int) -> int }
+vtable @v_int: Scale for int { @scale_int }
+extern @msrt_print_int(int)
+fn @scale_int(%self: ptr, %k: int) -> int method inline(never) !0:1:1 {
+b0:
+  %n: int = load int %self !0:2:1
+  %r: int = imul %n, %k !0:2:1
+  ret %r
+}
+fn @use(%s: dyn Scale, %k: int) -> int inline(never) !0:3:1 {
+b0:
+  %r: int = call.method Scale.scale (%s, %k) !0:4:1
+  ret %r
+}
+fn @make(%x: int) -> dyn Scale inline(never) !0:5:1 {
+b0:
+  %s: dyn Scale = iface.new @v_int %x !0:6:1
+  ret %s
+}
+fn @probe(%s: dyn Scale, %k: int) -> int inline(never) !0:7:1 {
+b0:
+  %d: ptr = iface.data %s !0:8:1
+  %n: int = load int %d !0:8:1
+  %m: int = call.method Scale.scale (%s, %k) !0:9:1
+  %is: bool = iface.is @v_int %s !0:10:1
+  %bonus_n: int = iconst 10
+  %zero: int = iconst 0
+  %bonus: int = select %is, %bonus_n, %zero !0:10:1
+  %a: int = iadd %n, %m !0:11:1
+  %r: int = iadd %a, %bonus !0:11:1
+  ret %r
+}
+fn @framed(%y: int, %k: int) -> int inline(never) !0:30:1 {
+b0:
+  %v: dyn Scale = iface.borrow @v_int %y !0:31:1
+  %w: dyn Scale = iface.view %v !0:32:1
+  %r: int = call @use(%w, %k) !0:33:1
+  drop %w
+  drop %v
+  ret %r
+}
+fn @main() -> int !0:20:1 {
+b0:
+  %x: int = iconst 7
+  %three: int = iconst 3
+  %s: dyn Scale = call @make(%x) !0:21:1
+  %a: int = call @use(%s, %three) !0:22:1
+  %p: int = call @probe(%s, %three) !0:23:1
+  drop %s
+  %five: int = iconst 5
+  %two: int = iconst 2
+  %f: int = call @framed(%five, %two) !0:26:1
+  %af: int = iadd %a, %f !0:27:1
+  %t: int = iadd %af, %p !0:24:1
+  %u: unit = call.rt @msrt_print_int(%t) !0:25:1
+  ret %t
+}
+"#;
+    // 7 * 3 + 5 * 2 + (7 + 7 * 3 + 10) = 69
+    check(
+        "direct_interfaces",
+        src,
+        69,
+        &["scale_int", "use", "make", "probe", "framed"],
+    );
+}
+
 /// A function of two integers: `op` on them, returned.
 fn int_program(op: &str, x: i64, y: i64) -> String {
     format!(
@@ -248,6 +370,8 @@ fn direct_lists_and_strings_match_cranelift() {
     a_bad_list_index_faults();
     string_bytes();
     crate::llvm_direct_data::optionals_and_alternatives_match_cranelift();
+    closures_and_runtime_calls();
+    interfaces();
     checked_arithmetic();
     let _ = std::fs::remove_file("ms-keep.ll");
 }

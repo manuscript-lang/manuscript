@@ -1,7 +1,7 @@
 //! Clone, drop, moves, cleanups and type descriptors: plain data is the value, strings are cloned and freed
 //! inline, objects go through the runtime, and the rest call the type's glue.
 
-use super::calls::finish_call;
+use super::calls::{Callee, finish_call};
 use super::records::{abi_leaves, is_mem, load_result, result_slot, spill};
 use super::{Area, Cx, Vals, block_label, call_ret_ty, leaves, ret_attr};
 use crate::glue_llvm::{GlueCall, OwnKind, clone_callee, clone_str, drop_callee, own_kind};
@@ -50,10 +50,11 @@ fn ty_ok(k: &TyKind) -> bool {
 }
 
 /// Whether `inst` branches inside its MIR block, so that what follows is in another LLVM block:
-/// a string clone, a drop that frees a string conditionally, and a guarded drop.
+/// a string clone, and any drop that is not plain data (`drop_inst` takes a split for each).
 fn splits(lay: &Layouts, f: &Func, i: &Inst, _: bool) -> usize {
     let split = match i.op {
-        Op::Clone | Op::Drop => own_kind(lay, f.ty(i.args[0])) == OwnKind::Str,
+        Op::Clone => own_kind(lay, f.ty(i.args[0])) == OwnKind::Str,
+        Op::Drop => own_kind(lay, f.ty(i.args[0])) != OwnKind::Identity,
         Op::DropIf => own_kind(lay, f.ty(i.args[1])) != OwnKind::Identity,
         _ => false,
     };
@@ -99,6 +100,8 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
             b.name_next(&out[0]);
             b.elem_ptr(&LTy::I8, &addr, &Val::int(0));
         }
+        // The moved value is the operand itself: nothing to write.
+        Op::MoveOut => {}
         Op::Clone => clone(cx, inst, vals, &out, b),
         Op::CleanupPush => cleanup_push(cx, inst, vals, &out, b),
         Op::CleanupRun => {
@@ -197,7 +200,16 @@ fn clone(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder) 
                     let args = leaf_args(b, cx, ty, vals, v);
                     let ret = call_ret_ty(cx.lay, ty, false);
                     let attr = ret_attr(cx.lay, ty);
-                    finish_call(b, cx.lay, ty, (&ret, attr, false), &n, &args, out, false);
+                    finish_call(
+                        b,
+                        cx.lay,
+                        ty,
+                        (&ret, attr, false),
+                        Callee::Symbol(&n),
+                        &args,
+                        out,
+                        false,
+                    );
                 }
             }
         }
