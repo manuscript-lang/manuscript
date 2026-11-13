@@ -35,7 +35,8 @@ fn checked(op: Op) -> bool {
 
 /// How many times `op` splits its block: a bounds check or a string read that joins branches
 /// starts a new block, and a successor's phis name the label the block ends in.
-fn splits(op: Op, checks: bool) -> usize {
+fn splits(_: &Layouts, _: &Func, i: &Inst, checks: bool) -> usize {
+    let op = i.op;
     match op {
         _ if checked(op) => usize::from(checks),
         Op::StrByte | Op::StrAsciiAt => 1,
