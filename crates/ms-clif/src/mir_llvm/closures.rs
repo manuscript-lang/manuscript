@@ -16,7 +16,7 @@ use ms_mir::types::{Ty, TyKind};
 
 pub(super) const AREA: Area = Area {
     handles,
-    ty_ok: |k| matches!(k, TyKind::Fn(..)),
+    ty_ok: |k| matches!(k, TyKind::Fn(..) | TyKind::Ptr),
     emit,
     ..Area::NONE
 };

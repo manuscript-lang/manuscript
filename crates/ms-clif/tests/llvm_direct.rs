@@ -174,11 +174,60 @@ fn string_bytes() {
     );
 }
 
+fn closures_and_runtime_calls() {
+    // A closure that escapes (heap object, returned), one that stays in the frame (passed to a
+    // borrowing call), the captures read in the body, a call through the code pointer, and a
+    // runtime call that takes its argument by value.
+    let src = r#"module "d"
+entry @main
+file 0 "d.ms"
+extern @msrt_print_int(int)
+fn @adder(%n: int, %k: int) -> fn(int) -> int inline(never) !0:1:1 {
+b0:
+  %c: fn(int) -> int = closure.new @body %n, %k !0:2:1
+  ret %c
+}
+fn @body(%env: ptr, %x: int) -> int closure(int, int) inline(never) !0:3:1 {
+b0:
+  %n: int = closure.cap 0 %env !0:4:1
+  %k: int = closure.cap 1 %env !0:4:1
+  %a: int = iadd %x, %n !0:5:1
+  %b: int = imul %a, %k !0:5:1
+  ret %b
+}
+fn @apply(%f: fn(int) -> int, %x: int) -> int inline(never) !0:6:1 {
+b0:
+  %r: int = call.ind (%f, %x) !0:7:1
+  ret %r
+}
+fn @main() -> int !0:10:1 {
+b0:
+  %n: int = iconst 3
+  %k: int = iconst 4
+  %c: fn(int) -> int = call @adder(%n, %k) !0:11:1
+  %x: int = iconst 5
+  %r: int = call @apply(%c, %x) !0:12:1
+  drop %c
+  %one: int = iconst 1
+  %two: int = iconst 2
+  %f: fn(int) -> int = closure.new @body %one, %two !0:13:1
+  %s: int = call @apply(%f, %x) !0:14:1
+  drop %f
+  %t: int = iadd %r, %s !0:15:1
+  %u: unit = call.rt @msrt_print_int(%t) !0:16:1
+  ret %t
+}
+"#;
+    // (5 + 3) * 4 + (5 + 1) * 2 = 44
+    check("direct_closures", src, 44, &["adder", "body", "apply"]);
+}
+
 /// One test, not three: each build writes `ms-keep.ll` in the working directory.
 #[test]
 fn direct_lists_and_strings_match_cranelift() {
     list_reads_and_writes();
     a_bad_list_index_faults();
     string_bytes();
+    closures_and_runtime_calls();
     let _ = std::fs::remove_file("ms-keep.ll");
 }
