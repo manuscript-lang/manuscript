@@ -20,7 +20,7 @@ fn runtime_fn(kind: FaultKind) -> Option<(&'static str, usize)> {
 
 /// Whether a `Fault` terminator of this kind is written directly.
 pub(super) fn terminator_ok(kind: FaultKind) -> bool {
-    runtime_fn(kind).is_some()
+    runtime_fn(kind).is_some() || matches!(kind, FaultKind::Message(_))
 }
 
 /// Calls the runtime function `name` (which takes `args` i64 words and never returns) and ends the
@@ -34,6 +34,15 @@ pub(super) fn call(cx: &mut Cx, b: &mut FnBuilder, name: &'static str, args: &[V
 
 /// The body of a `Fault` terminator.
 pub(super) fn terminator(cx: &mut Cx, b: &mut FnBuilder, kind: FaultKind) {
+    if let FaultKind::Message(id) = kind {
+        let at = Val::new(
+            format!("ptrtoint (ptr @\"ms.lit.{}\" to i64)", id.0),
+            LTy::I64,
+        );
+        let len = Val::int(cx.m.strings[id.0 as usize].len() as i64);
+        call(cx, b, "msrt_fault", &[at, len]);
+        return;
+    }
     let (name, words) = runtime_fn(kind).expect("terminator_ok checked the kind");
     call(cx, b, name, &vec![Val::int(0); words]);
 }

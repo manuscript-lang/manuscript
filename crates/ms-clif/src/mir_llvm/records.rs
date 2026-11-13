@@ -181,6 +181,71 @@ pub(super) fn released(
         })
 }
 
+/// The fields of the indirect record `r` that `rec.release` visits: a boxed collection always (its
+/// header block is freed), any other when the mask does not move it out and it owns something;
+/// each with its field index, so that `block_spans` locates it, and whether it is boxed.
+fn block_released(lay: &Layouts, r: ms_mir::types::RecId, mask: u32) -> Vec<(Ty, usize, bool)> {
+    let spans = block_spans(lay, r);
+    lay.m.records[r.index()]
+        .fields
+        .iter()
+        .enumerate()
+        .filter(|(k, f)| spans[*k].2 || (mask >> k & 1 == 0 && lay.m.needs_drop(f.1)))
+        .map(|(k, f)| (f.1, k, spans[k].2))
+        .collect()
+}
+
+/// The types of the fields `rec.release` of a record of type `ty` drops through glue.
+pub(super) fn release_types(lay: &Layouts, ty: Ty, mask: u32) -> Vec<Ty> {
+    match indirect(lay, ty) {
+        Some(r) => block_released(lay, r, mask)
+            .into_iter()
+            .filter(|(fty, k, _)| mask >> k & 1 == 0 && lay.m.needs_drop(*fty))
+            .map(|(fty, ..)| fty)
+            .collect(),
+        None => released(lay, ty, mask).map(|(t, ..)| t).collect(),
+    }
+}
+
+/// `rec.release` of an indirect record: drops the fields the mask keeps, frees the header block of
+/// each collection field and then the record's block.
+fn release_block(cx: &mut Cx, b: &mut FnBuilder, r: ms_mir::types::RecId, mask: u32, p: &Val) {
+    let lay = cx.lay;
+    let s = block_shape(b.types(), lay, r);
+    let spans = block_spans(lay, r);
+    declare_heap(cx);
+    for (fty, k, boxed) in block_released(lay, r, mask) {
+        let (at, n, _) = spans[k];
+        let kept = mask >> k & 1 == 0 && lay.m.needs_drop(fty);
+        if !boxed {
+            let leaves = load_leaves(b, &s, p, at, n, &[]);
+            super::glue::drop_held(cx, fty, leaves, b);
+            continue;
+        }
+        let slot = b.field_ptr(&s.st, p, at);
+        let bp = b.load(&LTy::Ptr, &slot, 8);
+        let some = b.icmp("ne", &bp, &NULL());
+        let (_, then, join) = next_split(cx, "r");
+        b.cond_br(&some, &then, &join);
+        b.label(&then);
+        if kept {
+            let words = (0..lay.width(fty))
+                .map(|w| {
+                    let at = b.elem_ptr(&LTy::I64, &bp, &Val::int(w as i64));
+                    b.load(&LTy::I64, &at, 8)
+                })
+                .collect();
+            super::glue::drop_held(cx, fty, words, b);
+        }
+        let word = b.ptr_to_int(&bp);
+        b.call(&LTy::Void, "", "msrt_free", &[(word, "")]);
+        b.br(&join);
+        b.label(&join);
+    }
+    let word = b.ptr_to_int(p);
+    b.call(&LTy::Void, "", "msrt_free", &[(word, "")]);
+}
+
 /// How many times `inst` splits its block: reading, creating or addressing a boxed collection
 /// field branches on the null header.
 fn splits(lay: &Layouts, f: &Func, i: &Inst, _: bool) -> usize {
@@ -190,9 +255,16 @@ fn splits(lay: &Layouts, f: &Func, i: &Inst, _: bool) -> usize {
             .and_then(|r| indirect(lay, f.ty(r)))
             .map_or(0, |r| block_spans(lay, r).iter().filter(|s| s.2).count()),
         (Op::RecGet | Op::PtrField, Imm::Field(r, k)) => usize::from(field_boxed(lay, r, k)),
-        (Op::RecRelease, Imm::RecMask(_, mask)) => released(lay, f.ty(i.args[0]), mask)
-            .filter(|(fty, ..)| own_kind(lay, *fty) == OwnKind::Str)
-            .count(),
+        (Op::RecRelease, Imm::RecMask(_, mask)) => match indirect(lay, f.ty(i.args[0])) {
+            // Each boxed collection field is tested for its header; a string field is a check.
+            Some(r) => block_released(lay, r, mask)
+                .iter()
+                .map(|(fty, _, boxed)| usize::from(*boxed || own_kind(lay, *fty) == OwnKind::Str))
+                .sum(),
+            None => released(lay, f.ty(i.args[0]), mask)
+                .filter(|(fty, ..)| own_kind(lay, *fty) == OwnKind::Str)
+                .count(),
+        },
         _ => 0,
     }
 }
@@ -241,8 +313,6 @@ pub(super) fn op_ok(lay: &Layouts, f: &Func, i: &Inst) -> bool {
         (Op::PtrField | Op::RecGet, Imm::Field(..)) => true,
         (Op::RecSet | Op::RecFill, Imm::Field(r, _)) => !lay.m.records[r.index()].indirect,
         (Op::RecNew, _) => true,
-        // An indirect record's block is freed too, which stays with the translation.
-        (Op::RecRelease, _) => indirect(lay, f.ty(i.args[0])).is_none(),
         (
             Op::Slot | Op::Load | Op::Take | Op::PtrField | Op::RecGet | Op::RecSet | Op::RecFill,
             _,
@@ -274,6 +344,27 @@ pub(super) fn block_param(b: &mut FnBuilder, lay: &Layouts, ty: Ty) -> Vec<Val> 
 /// address of its slot.
 pub(super) fn reserve(b: &mut FnBuilder, lay: &Layouts, ty: Ty) -> Vec<Val> {
     held(lay, ty).into_iter().map(|t| b.reserve(t)).collect()
+}
+
+/// Loads the leaves of the record of type `ty` in memory at `base` into the reserved `named`
+/// values, one per leaf.
+pub(super) fn load_into_leaves(
+    b: &mut FnBuilder,
+    lay: &Layouts,
+    ty: Ty,
+    base: &Val,
+    named: &[Val],
+) {
+    let s = shape(b.types(), lay, ty).expect("is_mem checked");
+    load_leaves(b, &s, base, 0, s.leaves.len(), named);
+}
+
+/// Defines the reserved pointer `dst` as a new slot for a record of type `ty` in memory and
+/// stores its `leaves` there.
+pub(super) fn store_into_slot(b: &mut FnBuilder, lay: &Layouts, ty: Ty, dst: &Val, leaves: &[Val]) {
+    let s = shape(b.types(), lay, ty).expect("is_mem checked");
+    b.alloca_as(dst, &s.st);
+    store_regs(b, lay, ty, &s.st, dst, leaves);
 }
 
 /// Leaf index and count of field `i` of record type `rty`.
@@ -350,7 +441,7 @@ fn load_leaves(
 ) -> Vec<Val> {
     (at..at + n)
         .map(|k| {
-            let p = b.field_ptr(&s.st, base, k);
+            let p = b.leaf_ptr(&s.st, base, k);
             match named.get(k - at) {
                 Some(v) => load_into(b, v, &s.leaves[k], &p),
                 None => {
@@ -364,7 +455,7 @@ fn load_leaves(
 
 fn store_leaves(b: &mut FnBuilder, s: &Shape, base: &Val, at: usize, leaves: &[Val]) {
     for (k, v) in leaves.iter().enumerate() {
-        let p = b.field_ptr(&s.st, base, at + k);
+        let p = b.leaf_ptr(&s.st, base, at + k);
         store_leaf(b, v, &s.leaves[at + k], &p);
     }
 }
@@ -506,7 +597,7 @@ pub(super) fn emit_entry(b: &mut FnBuilder, lay: &Layouts, entry: Vec<Entry>) {
                 let st = super::aggregate(b.types(), lay, ty);
                 let mem = mem_leaves(lay, ty);
                 for (k, dst) in dsts.iter().enumerate() {
-                    let p = b.field_ptr(&st, &ptr, k);
+                    let p = b.leaf_ptr(&st, &ptr, k);
                     load_into(b, dst, &mem[k], &p);
                 }
             }
@@ -648,7 +739,7 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
             let (at, _) = field_span(lay, rty, i as usize);
             b.name_next(&out[0]);
             match shape(b.types(), lay, rty) {
-                Some(s) => b.field_ptr(&s.st, &arg(0)[0], at),
+                Some(s) => b.leaf_ptr(&s.st, &arg(0)[0], at),
                 None => {
                     let offsets = mem_layout(&lay.leaves(rty)).offsets;
                     b.byte_ptr(&arg(0)[0], offsets[at] as u64)
@@ -683,7 +774,7 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
             if is_mem(lay, f.ty(res)) {
                 // A nested record is the same bytes at an offset; the parent is never written.
                 b.name_next(&out[0]);
-                b.field_ptr(&s.st, &rec, at);
+                b.leaf_ptr(&s.st, &rec, at);
             } else {
                 load_leaves(b, &s, &rec, at, n, &out);
             }
@@ -703,6 +794,10 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
                 return;
             };
             let rty = f.ty(inst.args[0]);
+            if let Some(r) = indirect(lay, rty) {
+                release_block(cx, b, r, mask, &arg(0)[0]);
+                return;
+            }
             let own = arg(0).clone();
             let s = is_mem(lay, rty).then(|| shape(b.types(), lay, rty).expect("is_mem checked"));
             for (fty, at, n) in released(lay, rty, mask) {
@@ -802,7 +897,7 @@ fn rec_new(
         let words = &vals[&a.index()];
         if boxed {
             let header = header_store(cx, b, words);
-            let p = b.field_ptr(&s.st, &block, at);
+            let p = b.leaf_ptr(&s.st, &block, at);
             b.store(&header, &p, 8);
         } else {
             store_leaves(b, &s, &block, at, &words[..n]);
@@ -855,7 +950,7 @@ fn rec_get(
         load_leaves(b, &s, rec, at, n, out);
         return;
     }
-    let p = b.field_ptr(&s.st, rec, at);
+    let p = b.leaf_ptr(&s.st, rec, at);
     let bp = b.load(&LTy::Ptr, &p, 8);
     let some_header = b.icmp("ne", &bp, &NULL());
     let (head, some, join) = next_split(cx, "g");
@@ -898,11 +993,11 @@ fn ptr_field(
     let block = b.load(&LTy::Ptr, at, 8);
     if !boxed {
         b.name_next(out);
-        b.field_ptr(&s.st, &block, k);
+        b.leaf_ptr(&s.st, &block, k);
         return;
     }
     declare_heap(cx);
-    let slot = b.field_ptr(&s.st, &block, k);
+    let slot = b.leaf_ptr(&s.st, &block, k);
     let have = b.load(&LTy::Ptr, &slot, 8);
     let present = b.icmp("ne", &have, &NULL());
     let (head, make, join) = next_split(cx, "m");
@@ -938,7 +1033,7 @@ fn write_field(
     }
     if is_mem(lay, ty) {
         let src = vals[&v.index()][0].clone();
-        let p = b.field_ptr(&s.st, slot, at);
+        let p = b.leaf_ptr(&s.st, slot, at);
         let inner = shape(b.types(), lay, ty).expect("is_mem checked");
         b.copy_bytes(&p, &src, inner.size as u64, inner.align as u64);
     } else {
@@ -1058,7 +1153,7 @@ pub(super) fn spill_of(b: &mut FnBuilder, lay: &Layouts, ty: Ty, own: &[Val]) ->
 fn store_regs(b: &mut FnBuilder, lay: &Layouts, ty: Ty, st: &LTy, base: &Val, leaves: &[Val]) {
     let mem = mem_leaves(lay, ty);
     for (k, v) in leaves.iter().enumerate() {
-        let p = b.field_ptr(st, base, k);
+        let p = b.leaf_ptr(st, base, k);
         store_leaf(b, v, &mem[k], &p);
     }
 }
@@ -1102,7 +1197,7 @@ pub(super) fn load_result(b: &mut FnBuilder, lay: &Layouts, ty: Ty, slot: &Val, 
     let st = super::aggregate(b.types(), lay, ty);
     let mem = mem_leaves(lay, ty);
     for (k, dst) in out.iter().enumerate() {
-        let p = b.field_ptr(&st, slot, k);
+        let p = b.leaf_ptr(&st, slot, k);
         load_into(b, dst, &mem[k], &p);
     }
 }
