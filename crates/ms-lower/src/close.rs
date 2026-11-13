@@ -714,8 +714,6 @@ impl FnLower<'_> {
         nothing_else
             && temps_empty
             && self.close_result_ty(kind).is_some()
-            && !self.b.func_mut().ret_borrowed
-            && !self.b.func_mut().ret_view
             // A `var` parameter that left its slot is put back by `emit_return` only.
             && self
                 .var_slots
@@ -763,7 +761,9 @@ impl FnLower<'_> {
     /// when it is an error (the first error wins).
     fn close_exit(&mut self, rty: MTy, pending: bool) -> FuncId {
         let ret = self.ret_ty;
-        let key = HelperKey::CloseExit(rty, ret, pending);
+        // A function that returns a borrow hands its pending result on without owning it.
+        let borrowed = self.b.func_mut().ret_borrowed;
+        let key = HelperKey::CloseExit(rty, ret, pending, borrowed);
         if let Some(f) = self.cx.helpers.get(&key) {
             return *f;
         }
@@ -774,12 +774,13 @@ impl FnLower<'_> {
         if pending {
             ps.push(Param {
                 ty: ret,
-                mode: Mode::Move,
+                mode: if borrowed { Mode::Borrow } else { Mode::Move },
             });
         }
         let mut b = FuncBuilder::new(self.b.m, "close_exit", ps, ret);
         b.func_mut().linkage = Linkage::Internal;
         b.func_mut().kind = FuncKind::Normal;
+        b.func_mut().ret_borrowed = borrowed && pending;
         let e = b.params()[0];
         if pending {
             let held = b.params()[1];
@@ -800,7 +801,7 @@ impl FnLower<'_> {
                 b.ret(Some(held));
                 b.switch_to(replace);
             }
-            if b.m.needs_drop(ret) {
+            if b.m.needs_drop(ret) && !borrowed {
                 b.emit(Op::Drop, &[held], Imm::None, None);
             }
         }
@@ -808,9 +809,11 @@ impl FnLower<'_> {
             unreachable!("a fallible close returns a Result")
         };
         let err = Std::ERROR;
+        // A function that returns a borrow cannot return the close's own error.
         let returned = match b.m.types.kind(ret).clone() {
             TyKind::Alt(ra)
-                if b.m.alts[ra.index()].std == Std::Result
+                if !(borrowed && pending)
+                    && b.m.alts[ra.index()].std == Std::Result
                     && b.m.alts[ra.index()].cases[err].fields[0].1
                         == b.m.alts[a.index()].cases[err].fields[0].1 =>
             {

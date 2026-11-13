@@ -91,8 +91,9 @@ pub enum HelperKey {
     /// never reached with the given close, when there is one.
     ListTail(MTy, Option<crate::close::CloseKind>),
     /// How a failed scope-end close becomes the return of a function of the given type: the
-    /// close's `Result` type, the function's return type, and whether a pending return is held.
-    CloseExit(MTy, MTy, bool),
+    /// close's `Result` type, the function's return type, whether a pending return is held, and
+    /// whether that return is a borrow the exit must not release.
+    CloseExit(MTy, MTy, bool, bool),
     /// The function that runs a slot close and returns its `Result`.
     CloseResult(FuncId),
     DefaultThunk {
