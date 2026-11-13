@@ -1,7 +1,7 @@
 //! Function attributes proven from MIR: which functions are pure and which always return.
 
 use super::{AREAS, Module, supports};
-use crate::abi_llvm::{Pass, Ret, Signature};
+use crate::abi_llvm::{self, Pass, Ret};
 use crate::layout::Layouts;
 use ms_mir::ir::{Imm, Op};
 use std::collections::{HashMap, HashSet};
@@ -42,9 +42,10 @@ fn pure_terminates(
     let f = &m.funcs[idx];
     // A native function reads its aggregate parameters through pointers: not `memory(none)`.
     let reads_memory = native.contains(&idx) && {
-        let sig = Signature::of(lay, &f.params, f.ret);
-        matches!(sig.result, Ret::Sret(_))
-            || sig.passes.iter().any(|p| matches!(p, Pass::Indirect(..)))
+        matches!(abi_llvm::ret(lay, f.ret), Ret::Sret(_))
+            || f.params
+                .iter()
+                .any(|p| matches!(abi_llvm::classify(lay, p.ty, p.mode), Pass::Indirect(..)))
     };
     let verdict = if !reads_memory && supports(m, lay, f) {
         let rpo = f.rpo();
