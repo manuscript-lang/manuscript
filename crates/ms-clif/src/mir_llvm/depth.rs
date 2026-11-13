@@ -29,9 +29,8 @@ fn emit(cx: &mut Cx, inst: &Inst, _: &Vals, b: &mut FnBuilder) {
     }
 }
 
-/// Faults when the running task was cancelled: its flag is a byte in the task's header block,
-/// whose address is the last word of the stack region.
-fn poll(cx: &mut Cx, b: &mut FnBuilder) {
+/// The address of the running task's header block: the last word of the stack region.
+pub(super) fn task_hdr(b: &mut FnBuilder) -> Val {
     let frame = b
         .call(
             &LTy::Ptr,
@@ -44,7 +43,13 @@ fn poll(cx: &mut Cx, b: &mut FnBuilder) {
     let base = b.bin(Bin::And, &sp, &Val::int(!(STACK_REGION - 1)));
     let cell = b.bin(Bin::Add, &base, &Val::int(STACK_REGION - 16));
     let cell = b.int_to_ptr(&cell);
-    let hdr = b.load(&LTy::I64, &cell, 8);
+    b.load(&LTy::I64, &cell, 8)
+}
+
+/// Faults when the running task was cancelled: its flag is a byte in the task's header block,
+/// whose address is the last word of the stack region.
+fn poll(cx: &mut Cx, b: &mut FnBuilder) {
+    let hdr = task_hdr(b);
     let flag = b.bin(Bin::Add, &hdr, &Val::int(ISOLATE_HDR_CANCEL));
     let flag = b.int_to_ptr(&flag);
     let cancelled = b.load_flag(&flag);
