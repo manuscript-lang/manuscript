@@ -714,16 +714,7 @@ mod coverage {
 
     /// The ops no area lowers yet. An op leaves this list when an area handles it; the scope
     /// markers are not here because `elaborate` removes them before code generation.
-    const UNLOWERED: &[Op] = &[
-        Op::AltOwn,
-        Op::RecRelease,
-        Op::BytesLit,
-        Op::ListConst,
-        Op::ListAddr,
-        Op::ListAddrU,
-        Op::OptUnwrap,
-        Op::OptAddr,
-    ];
+    const UNLOWERED: &[Op] = &[Op::AltOwn, Op::RecRelease, Op::OptUnwrap, Op::OptAddr];
 
     const MARKERS: &[Op] = &[
         Op::ScopeBegin,
