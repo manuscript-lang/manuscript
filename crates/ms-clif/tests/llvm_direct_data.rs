@@ -417,6 +417,13 @@ b0:
   %n: int = iconst 5 !0:12:1
   ret %n
 }
+fn @unwrap_list(%o: opt<list<int>>) -> int !0:60:1 {
+b0:
+  %l: list<int> = opt.unwrap %o !0:61:1
+  %n: int = list.len %l !0:62:1
+  drop %l !0:63:1
+  ret %n
+}
 fn @release_pair(%p: move Pair) -> int !0:40:1 {
 b0:
   %n: int = rec.get Pair.n %p !0:41:1
@@ -438,6 +445,12 @@ b0:
   %os: opt<str> = opt.view %lit !0:32:1
   %b: int = call @unwrap_len(%os) !0:32:1
   %k: int = iconst 3 !0:35:1
+  %i1: int = iconst 1 !0:38:1
+  %i2: int = iconst 2 !0:38:1
+  %lst: list<int> = list.lit %i1, %i2, %k !0:38:1
+  %ol: opt<list<int>> = opt.view %lst !0:38:1
+  %g: int = call @unwrap_list(%ol) !0:38:1
+  drop %lst !0:38:1
   %s1: str = clone %lit !0:35:1
   %s2: str = clone %lit !0:35:1
   %p: Pair = rec.new Pair %s1, %s2, %k !0:35:1
@@ -448,7 +461,8 @@ b0:
   %ab: int = iadd %a, %b !0:34:1
   %ac: int = iadd %ab, %b !0:34:1
   %ad: int = iadd %ac, %d !0:37:1
-  %r: int = iadd %ad, %e !0:37:1
+  %ae: int = iadd %ad, %g !0:37:1
+  %r: int = iadd %ae, %e !0:37:1
   ret %r
 }
 "#;
@@ -460,7 +474,13 @@ pub fn unwrap_and_own_match_cranelift() {
     let got = run_llvm(UNWRAP_PROGRAM, &opts, "direct_unwrap");
     let ir = std::fs::read_to_string("ms-keep.ll").unwrap();
     let _ = std::fs::remove_file("ms-keep.ll");
-    for f in ["unwrap_int", "unwrap_len", "release_pair", "release_big"] {
+    for f in [
+        "unwrap_int",
+        "unwrap_len",
+        "unwrap_list",
+        "release_pair",
+        "release_big",
+    ] {
         let header = ir
             .lines()
             .find(|l| l.starts_with("define") && l.contains(&format!("@\"{f}#")))
@@ -469,7 +489,7 @@ pub fn unwrap_and_own_match_cranelift() {
         assert!(direct, "{f} was translated: {header}");
     }
     assert_eq!((got.code, &got.stdout), (want.code, &want.stdout));
-    assert_eq!(got.code, 37 + 5 + 5 + 3 + 3);
+    assert_eq!(got.code, 37 + 5 + 5 + 3 + 3 + 3);
 }
 
 const BOXED_PROGRAM: &str = r#"module "d"
