@@ -1432,6 +1432,22 @@ fn direct_plan(g: &mut Gen, f: &Func) -> crate::mir_llvm::Plan {
                         );
                     }
                 }
+                (
+                    Op::ListSet | Op::ListSetNn | Op::ListSetU | Op::ListDropLast | Op::ListRelease,
+                    _,
+                ) => {
+                    let elem = g.m.seq_elem(f.ty(i.args[0]));
+                    if let Some(ty) = elem
+                        && own_kind(&g.lay, ty) == OwnKind::Glue
+                        && !plan.drop.contains_key(&ty)
+                    {
+                        let id = g.glue(Glue::Drop, ty);
+                        plan.drop.insert(
+                            ty,
+                            crate::glue_llvm::target(g, Glue::Drop, ty, symbol_of(g, id)),
+                        );
+                    }
+                }
                 (Op::CleanupPush, Imm::Func(c)) => {
                     let id = g.glue(Glue::CleanupThunk(c.0), Ty::UNIT);
                     plan.cleanup.insert(c.index(), symbol_of(g, id));

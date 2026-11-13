@@ -789,6 +789,132 @@ b0:
     check("direct_clone_glue", src, 121, &["adder", "apply"]);
 }
 
+fn constants_and_addresses() {
+    let src = r#"module "d"
+entry @main
+file 0 "d.ms"
+blob 0 "0a0b0c"
+consts 0 [5, 6, 7]
+fn @read(%i: int) -> int !0:1:1 {
+b0:
+  %l: list<int> = list.const 0 !0:2:1
+  %p: ptr = list.addr %l, %i !0:3:1
+  %x: int = load int %p !0:3:1
+  %q: ptr = list.addr.u %l, %i !0:4:1
+  %y: int = load int %q !0:4:1
+  %b: bytes = bytes 0 !0:5:1
+  %n: int = list.len %b !0:5:1
+  %xy: int = iadd %x, %y !0:6:1
+  %r: int = iadd %xy, %n !0:6:1
+  drop %l !0:6:1
+  ret %r
+}
+fn @main() -> int !0:10:1 {
+b0:
+  %i: int = iconst 2 !0:11:1
+  %r: int = call @read(%i) !0:12:1
+  ret %r
+}
+"#;
+    // 7 + 7 + 3
+    check("direct_constants", src, 17, &["read"]);
+}
+
+fn element_drops() {
+    let src = r#"module "d"
+entry @main
+file 0 "d.ms"
+fn @nested(%n: int) -> int !0:1:1 {
+b0:
+  %x: int = iconst 1 !0:2:1
+  %a: list<int> = list.lit %x, %x !0:2:1
+  %b: list<int> = list.lit %x !0:2:1
+  %o: list<list<int>> = list.lit %a, %b !0:3:1
+  %z: int = iconst 0 !0:3:1
+  %c: list<int> = list.lit %x !0:4:1
+  %o2: list<list<int>> = list.set %o, %z, %c !0:4:1
+  %o3: list<list<int>> = list.droplast 0 %o2 !0:5:1
+  list.release %o3, %z !0:6:1
+  %seven: int = iconst 7 !0:7:1
+  ret %seven
+}
+fn @strings(%n: int) -> int !0:8:1 {
+b0:
+  %s0: str = str "first string that is longer than inline" !0:9:1
+  %t0: str = str "second" !0:9:1
+  %s: str = clone %s0 !0:9:1
+  %t: str = clone %t0 !0:9:1
+  %l: list<str> = list.lit %s, %t !0:10:1
+  %z: int = iconst 0 !0:10:1
+  %u0: str = str "third" !0:10:1
+  %u: str = clone %u0 !0:10:1
+  %l2: list<str> = list.set %l, %z, %u !0:11:1
+  %l3: list<str> = list.droplast 0 %l2 !0:12:1
+  list.release %l3, %z !0:13:1
+  %five: int = iconst 5 !0:14:1
+  ret %five
+}
+fn @main() -> int !0:20:1 {
+b0:
+  %n: int = iconst 0 !0:20:1
+  %a: int = call @nested(%n) !0:21:1
+  %b: int = call @strings(%n) !0:22:1
+  %r: int = iadd %a, %b !0:23:1
+  ret %r
+}
+"#;
+    check("direct_element_drops", src, 12, &["nested", "strings"]);
+}
+
+fn record_elements() {
+    let src = r#"module "d"
+entry @main
+file 0 "d.ms"
+record Big { a: int, b: int, c: int, d: int, e: int, f: int, g: int, h: int, i: int, j: int }
+record Wide { a: int, b: int, c: int, d: int, e: int, f: int, g: int, h: int, i: int, s: str }
+fn @bigs(%n: int) -> int !0:1:1 {
+b0:
+  %x: int = iconst 3 !0:2:1
+  %p: Big = rec.new Big %x, %x, %x, %x, %x, %x, %x, %x, %x, %n !0:2:1
+  %q: Big = rec.new Big %n, %x, %x, %x, %x, %x, %x, %x, %x, %x !0:2:1
+  %l: list<Big> = list.lit %p, %q !0:3:1
+  %z: int = iconst 0 !0:3:1
+  %one: int = iconst 1 !0:3:1
+  %r: Big = list.get %l, %one !0:4:1
+  %ra: int = rec.get Big.a %r !0:4:1
+  %t: Big = rec.new Big %x, %x, %x, %x, %x, %x, %x, %x, %x, %x !0:5:1
+  %l2: list<Big> = list.set %l, %z, %t !0:5:1
+  %r2: Big = list.get %l2, %z !0:6:1
+  %rj: int = rec.get Big.j %r2 !0:6:1
+  %s: int = iadd %ra, %rj !0:7:1
+  list.release %l2, %z !0:7:1
+  ret %s
+}
+fn @wides(%n: int) -> int !0:8:1 {
+b0:
+  %x: int = iconst 3 !0:9:1
+  %s0: str = str "a string long enough to live on the heap" !0:9:1
+  %s: str = clone %s0 !0:9:1
+  %w: Wide = rec.new Wide %x, %x, %x, %x, %x, %x, %x, %x, %x, %s !0:9:1
+  %l: list<Wide> = list.lit %w !0:10:1
+  %z: int = iconst 0 !0:10:1
+  list.release %l, %z !0:11:1
+  %r: int = iadd %x, %n !0:11:1
+  ret %r
+}
+fn @main() -> int !0:20:1 {
+b0:
+  %n: int = iconst 4 !0:20:1
+  %a: int = call @bigs(%n) !0:21:1
+  %b: int = call @wides(%n) !0:22:1
+  %r: int = iadd %a, %b !0:23:1
+  ret %r
+}
+"#;
+    // bigs: 4 + 3; wides: 3 + 4
+    check("direct_record_elements", src, 14, &["bigs", "wides"]);
+}
+
 /// One test, not three: each build writes `ms-keep.ll` in the working directory.
 #[test]
 fn direct_lists_and_strings_match_cranelift() {
@@ -798,6 +924,9 @@ fn direct_lists_and_strings_match_cranelift() {
     list_building();
     string_literals();
     list_take_release();
+    constants_and_addresses();
+    element_drops();
+    record_elements();
     crate::llvm_direct_data::optionals_and_alternatives_match_cranelift();
     crate::llvm_direct_data::narrow_integers_match_cranelift();
     crate::llvm_direct_data::narrow_record_fields_match_cranelift();
