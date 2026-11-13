@@ -15,7 +15,7 @@ impl Module {
             name: name.to_string(),
             files: Vec::new(),
             types: TyTable::new(),
-            records: Vec::new(),
+            type_defs: Vec::new(),
             alts: Vec::new(),
             ifaces: Vec::new(),
             vtables: Vec::new(),
@@ -65,16 +65,16 @@ impl Module {
         self.files.len() as u32 - 1
     }
 
-    /// Declares a record and returns its id and type.
-    pub fn add_record(&mut self, name: &str, fields: Vec<(String, Ty)>) -> (RecId, Ty) {
-        self.records.push(RecordDef {
+    /// Declares a type and returns its id and type.
+    pub fn add_type(&mut self, name: &str, fields: Vec<(String, Ty)>) -> (TypeId, Ty) {
+        self.type_defs.push(TypeDef {
             name: name.to_string(),
             fields,
             native: None,
             indirect: false,
         });
-        let id = RecId(self.records.len() as u32 - 1);
-        (id, self.types.rec(id))
+        let id = TypeId(self.type_defs.len() as u32 - 1);
+        (id, self.types.named(id))
     }
 
     /// Declares an alternative and returns its id and type.
@@ -161,12 +161,12 @@ impl Module {
             .map(|i| FuncId(i as u32))
     }
 
-    /// Finds a record by name.
-    pub fn record_by_name(&self, name: &str) -> Option<RecId> {
-        self.records
+    /// Finds a type by name.
+    pub fn type_by_name(&self, name: &str) -> Option<TypeId> {
+        self.type_defs
             .iter()
             .position(|r| r.name == name)
-            .map(|i| RecId(i as u32))
+            .map(|i| TypeId(i as u32))
     }
 
     /// Finds an alternative by name.
@@ -202,11 +202,11 @@ impl Module {
         }
     }
 
-    /// The field types of a record or alternative case, for `rec.new`/`alt.new`.
+    /// The field types of a type or alternative case, for `type.new`/`alt.new`.
     pub fn field_types(&self, imm: Imm) -> Option<Vec<Ty>> {
         match imm {
-            Imm::Rec(r) => Some(
-                self.records
+            Imm::Type(r) => Some(
+                self.type_defs
                     .get(r.index())?
                     .fields
                     .iter()
@@ -235,7 +235,7 @@ impl Module {
     }
 
     /// Whether values of `ty` own resources that must be dropped (strings, lists,
-    /// maps, closures, interfaces, boxed or recursive alternatives, and records,
+    /// maps, closures, interfaces, boxed or recursive alternatives, and types,
     /// alternatives and optionals containing them). Plain data is copied freely.
     pub fn needs_drop(&self, ty: Ty) -> bool {
         self.needs_drop_in(ty, &mut Vec::new())
@@ -257,12 +257,12 @@ impl Module {
             | TyKind::Float32
             | TyKind::Ptr => false,
             TyKind::Opt(inner) => self.needs_drop_in(*inner, seen),
-            TyKind::Rec(r) => {
+            TyKind::Type(r) => {
                 if seen.contains(&ty) {
                     return true;
                 }
                 seen.push(ty);
-                let out = self.records[r.index()]
+                let out = self.type_defs[r.index()]
                     .fields
                     .iter()
                     .any(|f| self.needs_drop_in(f.1, seen));
@@ -289,7 +289,7 @@ impl Module {
     }
 
     /// Whether dropping a value of `ty` only returns memory: strings, bytes, lists, maps, sets,
-    /// big integers, optionals, records and alternatives made of such. A closure, an interface
+    /// big integers, optionals, types and alternatives made of such. A closure, an interface
     /// value or an opaque runtime handle may own a file or a connection, so it is not plain.
     pub fn drops_plain_memory(&self, ty: Ty) -> bool {
         self.drops_plain_in(ty, &mut Vec::new())
@@ -315,9 +315,9 @@ impl Module {
                 seen.pop();
                 out
             }
-            TyKind::Rec(r) => {
+            TyKind::Type(r) => {
                 seen.push(ty);
-                let out = self.records[r.index()]
+                let out = self.type_defs[r.index()]
                     .fields
                     .iter()
                     .all(|f| self.drops_plain_in(f.1, seen));
@@ -345,7 +345,7 @@ impl Module {
             return None;
         }
         Some(match inst.op {
-            Op::RecGet
+            Op::TypeGet
             | Op::AltGet
             | Op::ListGet
             | Op::ListGetNn
@@ -434,7 +434,7 @@ impl Boxing {
 
     fn reaches_by_value(&mut self, m: &Module, from: Ty, target: Ty, seen: &mut Vec<Ty>) -> bool {
         let children: Vec<Ty> = match m.types.kind(from) {
-            TyKind::Rec(r) => m.records[r.index()].fields.iter().map(|f| f.1).collect(),
+            TyKind::Type(r) => m.type_defs[r.index()].fields.iter().map(|f| f.1).collect(),
             TyKind::Alt(a) => m.alts[a.index()]
                 .cases
                 .iter()

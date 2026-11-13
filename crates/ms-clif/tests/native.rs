@@ -999,19 +999,19 @@ fn saved_list_lengths_keep_bounds_faults_after_optimization() {
 }
 
 #[test]
-fn readonly_record_copies_keep_payloads_alive_after_the_owner_is_dropped() {
+fn readonly_type_copies_keep_payloads_alive_after_the_owner_is_dropped() {
     for (source, name) in [
         (
-            include_str!("../../ms-mir/tests/fixtures-opt/record_readonly_copy.mir"),
-            "record-readonly-copy",
+            include_str!("../../ms-mir/tests/fixtures-opt/type_readonly_copy.mir"),
+            "type-readonly-copy",
         ),
         (
-            include_str!("../../ms-mir/tests/fixtures-opt/record_copy_owner_drop.mir"),
-            "record-copy-owner-drop",
+            include_str!("../../ms-mir/tests/fixtures-opt/type_copy_owner_drop.mir"),
+            "type-copy-owner-drop",
         ),
         (
-            include_str!("../../ms-mir/tests/fixtures-opt/record_copy_parent_update.mir"),
-            "record-copy-parent-update",
+            include_str!("../../ms-mir/tests/fixtures-opt/type_copy_parent_update.mir"),
+            "type-copy-parent-update",
         ),
     ] {
         assert_eq!(same(source, name).code, 10);

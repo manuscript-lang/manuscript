@@ -2,7 +2,7 @@
 //!
 //! `serve` takes the handler as one closure object whose code word the server calls:
 //! `code(closure, exchange, err) -> status`. The wrapper closure built
-//! here captures the user's handler and converts between the wire records and the language
+//! here captures the user's handler and converts between the wire types and the language
 //! values. `HttpMethod` crosses as its token text.
 
 use crate::Error;
@@ -169,7 +169,7 @@ impl FnLower<'_> {
         err: ms_mir::ir::Value,
         kinds: &[&str],
     ) -> Result<ms_mir::ir::Value, Error> {
-        let kind = self.b.rec_get(er_of(self, e)?, 1, e);
+        let kind = self.b.type_get(er_of(self, e)?, 1, e);
         let present = self.b.opt_is_some(kind);
         let r = self.two_ways(
             present,
@@ -190,7 +190,7 @@ impl FnLower<'_> {
         err: ms_mir::ir::Value,
     ) -> Result<ms_mir::ir::Value, Error> {
         let er = er_of(self, e)?;
-        let text = self.b.rec_get(er, 0, e);
+        let text = self.b.type_get(er, 0, e);
         let text = self.owned_boundary(Val {
             v: text,
             own: false,
@@ -222,9 +222,9 @@ impl FnLower<'_> {
     }
 }
 
-fn er_of(s: &FnLower<'_>, e: ms_mir::ir::Value) -> Result<ms_mir::types::RecId, Error> {
+fn er_of(s: &FnLower<'_>, e: ms_mir::ir::Value) -> Result<ms_mir::types::TypeId, Error> {
     match s.b.m.types.kind(s.ty_of(e)) {
-        TyKind::Rec(er) => Ok(*er),
+        TyKind::Type(er) => Ok(*er),
         _ => Err(Error::new("a stream method must fail with an Error")),
     }
 }

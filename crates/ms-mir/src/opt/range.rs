@@ -21,7 +21,7 @@
 //! * A conditional edge into a block with a single incoming edge refines the compared
 //!   values (`br_if (icmp.lt a, b)` gives `a < hi(b)` in the taken block). Refinements are
 //!   inherited down the dominator tree, which is sound because values are immutable. The
-//!   same comparisons record relations `a < b` / `a <= b` between SSA values, used to
+//!   same comparisons type relations `a < b` / `a <= b` between SSA values, used to
 //!   prove `i < list.len l` for the *same* list value `l`: list values are immutable SSA
 //!   values threaded through mutators. Element replacement preserves length, including
 //!   through loop parameters whose incoming lists all have the same length origin.
@@ -235,12 +235,12 @@ impl LenOf {
 /// elements flowing with it. Each fact changes at most twice, so this worklist
 /// also handles nested loops without rescanning the function to a fixpoint.
 ///
-/// A list held in a record field is tracked the same way: a node for each list field of each
-/// record value follows `rec.new`, `rec.fill`/`rec.set` (the written field takes the written list,
-/// the other fields keep theirs), copies and block arguments, so reading the field of a record
-/// that was updated in a loop yields lists of one length origin. Records of unknown provenance
+/// A list held in a type field is tracked the same way: a node for each list field of each
+/// type value follows `type.new`, `type.fill`/`type.set` (the written field takes the written list,
+/// the other fields keep theirs), copies and block arguments, so reading the field of a type
+/// that was updated in a loop yields lists of one length origin. Types of unknown provenance
 /// (parameters, loads, call results) start each field at the first read of it, which is why
-/// repeated reads of one record must already be one value (see `simplify::cse`).
+/// repeated reads of one type must already be one value (see `simplify::cse`).
 fn length_origins(m: &Module, f: &Func) -> Vec<Value> {
     #[derive(Clone, Copy, PartialEq, Eq)]
     enum Origin {
@@ -256,10 +256,10 @@ fn length_origins(m: &Module, f: &Func) -> Vec<Value> {
         _ => false,
     };
     let list_fields = |v: Value| -> Vec<u32> {
-        let TyKind::Rec(rid) = m.types.kind(f.ty(v)) else {
+        let TyKind::Type(rid) = m.types.kind(f.ty(v)) else {
             return Vec::new();
         };
-        m.records[rid.0 as usize]
+        m.type_defs[rid.0 as usize]
             .fields
             .iter()
             .enumerate()
@@ -267,7 +267,7 @@ fn length_origins(m: &Module, f: &Func) -> Vec<Value> {
             .map(|(k, _)| k as u32)
             .collect()
     };
-    // One node per list value, then one per list field of each record value.
+    // One node per list value, then one per list field of each type value.
     let mut pair: HashMap<(Value, u32), usize> = HashMap::new();
     let mut total = nv;
     for i in 0..nv {
@@ -278,8 +278,8 @@ fn length_origins(m: &Module, f: &Func) -> Vec<Value> {
         }
     }
     // Slot memory: a pointer parameter or `slot` that is only loaded from, taken from and
-    // stored into as a whole record is one variable. Every record loaded from it shares its
-    // list fields' origins, which are the join of the field origins of the records stored.
+    // stored into as a whole type is one variable. Every type loaded from it shares its
+    // list fields' origins, which are the join of the field origins of the types stored.
     let mut slots: HashSet<Value> = f.blocks[0].params.iter().map(|p| p.value).collect();
     let mut loaded_from: HashMap<Value, Value> = HashMap::new();
     let mut candidates: HashSet<Value> = HashSet::new();
@@ -341,9 +341,9 @@ fn length_origins(m: &Module, f: &Func) -> Vec<Value> {
     let mut users = vec![Vec::new(); total];
     let mut work = Vec::new();
     let mut reads: HashMap<(Value, Value), Value> = HashMap::new();
-    // The first read of each record field, the origin of a field nothing else defines.
+    // The first read of each type field, the origin of a field nothing else defines.
     let mut first_field_read: HashMap<(Value, u32), Value> = HashMap::new();
-    // Record values whose list fields come from other nodes rather than starting fresh.
+    // Type values whose list fields come from other nodes rather than starting fresh.
     let mut flows: Vec<bool> = vec![false; nv];
     let edge = |users: &mut Vec<Vec<usize>>, from: usize, to: usize| users[from].push(to);
     for b in f.blocks.iter().skip(1) {
@@ -387,10 +387,10 @@ fn length_origins(m: &Module, f: &Func) -> Vec<Value> {
                     }
                     continue;
                 }
-                Op::RecNew => {
+                Op::TypeNew => {
                     flows[r.index()] = true;
-                    let Imm::Rec(rid) = i.imm else { continue };
-                    for (k, (_, t)) in m.records[rid.0 as usize].fields.iter().enumerate() {
+                    let Imm::Type(rid) = i.imm else { continue };
+                    for (k, (_, t)) in m.type_defs[rid.0 as usize].fields.iter().enumerate() {
                         if matches!(m.types.kind(*t), TyKind::List(_))
                             && let Some(&to) = pair.get(&(r, k as u32))
                         {
@@ -399,7 +399,7 @@ fn length_origins(m: &Module, f: &Func) -> Vec<Value> {
                     }
                     continue;
                 }
-                Op::RecFill | Op::RecSet => {
+                Op::TypeFill | Op::TypeSet => {
                     flows[r.index()] = true;
                     let Imm::Field(_, written) = i.imm else {
                         continue;
@@ -427,7 +427,7 @@ fn length_origins(m: &Module, f: &Func) -> Vec<Value> {
                     }
                     continue;
                 }
-                Op::RecGet if is_list(r) => {
+                Op::TypeGet if is_list(r) => {
                     let Imm::Field(_, k) = i.imm else { continue };
                     first_field_read.entry((i.args[0], k)).or_insert(r);
                     if let Some(&p) = loaded_from.get(&i.args[0]) {
@@ -500,7 +500,7 @@ fn length_origins(m: &Module, f: &Func) -> Vec<Value> {
             }
         }
     }
-    // Record values nothing flows into start every list field at its first read, or at the record
+    // Type values nothing flows into start every list field at its first read, or at the type
     // itself when the field is never read (a value no list shares an origin with).
     for (&(r, k), &node) in &pair {
         if !flows[r.index()] {

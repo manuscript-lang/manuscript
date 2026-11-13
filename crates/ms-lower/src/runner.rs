@@ -99,14 +99,14 @@ pub(crate) fn build_runner(m: &mut Module, tests: &[FuncId]) -> Result<FuncId, E
         b.seal_block(good);
         b.switch_to(bad);
         let payload = b.alt_get(a, err as u32, 0, r);
-        let TyKind::Rec(er) = b.m.types.kind(b.ty(payload)).clone() else {
+        let TyKind::Type(er) = b.m.types.kind(b.ty(payload)).clone() else {
             return Err(Error::new("a test error must be an Error"));
         };
-        let field = b.rec_get(er, 0, payload);
+        let field = b.type_get(er, 0, payload);
         let message = b
             .emit(Op::Clone, &[field], Imm::None, Some(MTy::STR))
             .expect("copy");
-        let details = b.rec_get(er, 2, payload);
+        let details = b.type_get(er, 2, payload);
         let details_ty = b.ty(details);
         let report = runtime_fn(b.m, "msrt_test_failure", &[MTy::STR, details_ty], MTy::UNIT);
         b.call_rt(report, &[message, details]);
@@ -155,10 +155,10 @@ pub(crate) fn build_main_wrapper(m: &mut Module, user: FuncId) -> Result<Func, E
     b.seal_block(good);
     b.switch_to(bad);
     let payload = b.alt_get(a, err as u32, 0, r);
-    let TyKind::Rec(er) = b.m.types.kind(b.ty(payload)).clone() else {
+    let TyKind::Type(er) = b.m.types.kind(b.ty(payload)).clone() else {
         return Err(Error::new("main's error must be an Error"));
     };
-    let message = b.rec_get(er, 0, payload);
+    let message = b.type_get(er, 0, payload);
     let write = runtime_fn(b.m, "msrt_io_write_stderr", &[MTy::STR], MTy::UNIT);
     for text in ["error: ", "\n"] {
         let lit = b.str_lit(text);

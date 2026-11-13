@@ -1152,7 +1152,7 @@ fn function(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
                     }
                     // Refilling a field moved out of a caller's value yields that same value
                     // again (`self.items.pop()` before a park), so it stays the caller's.
-                    (Op::RecFill | Op::ListFill, Some(r))
+                    (Op::TypeFill | Op::ListFill, Some(r))
                         if from_slot.contains(&i.args[0].0)
                             && caller_values.insert(r.0)
                             && from_slot.insert(r.0) =>
@@ -1351,7 +1351,7 @@ fn only_borrowed_until_put(m: &Module, f: &Func, taken: Value, slot: Value) -> b
                             | Op::Store
                             | Op::Put
                             | Op::CleanupPush
-                            | Op::RecFill
+                            | Op::TypeFill
                             | Op::ListFill
                             | Op::CallInd
                     );
@@ -1466,7 +1466,7 @@ fn hole_states(f: &Func) -> Vec<u32> {
 fn hole_step(open: u32, op: Op) -> u32 {
     match op {
         Op::MoveOut => (open + 1).min(8),
-        Op::RecFill | Op::ListFill => open.saturating_sub(1),
+        Op::TypeFill | Op::ListFill => open.saturating_sub(1),
         _ => open,
     }
 }
@@ -1722,7 +1722,7 @@ fn borrows_slot_param(m: &Module, safe: &[Vec<bool>], f: &Func, k: usize) -> boo
                                 | Op::Store
                                 | Op::Put
                                 | Op::CleanupPush
-                                | Op::RecFill
+                                | Op::TypeFill
                                 | Op::ListFill
                                 | Op::CallInd
                         );

@@ -1,12 +1,12 @@
-//! Interpreter rules for record, alternative, list, optional and string instructions.
+//! Interpreter rules for type, alternative, list, optional and string instructions.
 //!
 //! Each function handles one op family; `Interp::step` routes to it.
 
 use super::*;
 
 impl Interp<'_> {
-    /// Records and alternatives.
-    pub(super) fn records_and_alternatives(
+    /// Types and alternatives.
+    pub(super) fn types_and_alternatives(
         &mut self,
         f: &Func,
         regs: &mut [Val],
@@ -15,29 +15,29 @@ impl Interp<'_> {
         let mut ops = Operands { regs, inst };
         let m = self.m;
         match inst.op {
-            Op::RecNew => {
-                let v = Val::Rec(Rc::new(self.take_args(f, ops.regs, &inst.args)));
+            Op::TypeNew => {
+                let v = Val::Type(Rc::new(self.take_args(f, ops.regs, &inst.args)));
                 ops.set(v)
             }
-            Op::RecGet => {
+            Op::TypeGet => {
                 let Imm::Field(_, i) = inst.imm else {
-                    return Err(Raw::internal("rec.get without field"));
+                    return Err(Raw::internal("type.get without field"));
                 };
-                let Val::Rec(r) = &ops.regs[inst.args[0].index()] else {
-                    return Err(Raw::internal("rec.get on &inst.args non-record"));
+                let Val::Type(r) = &ops.regs[inst.args[0].index()] else {
+                    return Err(Raw::internal("type.get on &inst.args non-type"));
                 };
                 ops.set(r[i as usize].clone());
             }
-            Op::RecSet | Op::RecFill => {
+            Op::TypeSet | Op::TypeFill => {
                 let Imm::Field(_, i) = inst.imm else {
-                    return Err(Raw::internal("rec.set without field"));
+                    return Err(Raw::internal("type.set without field"));
                 };
                 let v = arg(f, ops.regs, inst.args[1], true, m);
-                let Val::Rec(mut r) = arg(f, ops.regs, inst.args[0], true, m) else {
-                    return Err(Raw::internal("rec.set on &inst.args non-record"));
+                let Val::Type(mut r) = arg(f, ops.regs, inst.args[0], true, m) else {
+                    return Err(Raw::internal("type.set on &inst.args non-type"));
                 };
                 Rc::make_mut(&mut r)[i as usize] = v;
-                ops.set(Val::Rec(r));
+                ops.set(Val::Type(r));
             }
             Op::AltNew => {
                 let Imm::Case(_, c) = inst.imm else {
@@ -97,7 +97,7 @@ impl Interp<'_> {
                 }
                 ops.set(p[i as usize].clone());
             }
-            Op::RecRelease => {
+            Op::TypeRelease => {
                 arg(f, ops.regs, inst.args[0], true, m);
             }
             Op::AltRelease => {
@@ -118,7 +118,7 @@ impl Interp<'_> {
                 ops.set(field);
             }
 
-            _ => unreachable!("records_and_alternatives is only called for its own ops"),
+            _ => unreachable!("types_and_alternatives is only called for its own ops"),
         }
         Ok(Flow::Next)
     }

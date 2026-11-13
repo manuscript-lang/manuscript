@@ -40,7 +40,7 @@ fn comparable(m: &Module, t: MTy, visiting: &mut Vec<MTy>) -> bool {
     }
     visiting.push(t);
     let ok = match m.types.kind(t).clone() {
-        TyKind::Rec(r) => m.records[r.index()]
+        TyKind::Type(r) => m.type_defs[r.index()]
             .fields
             .iter()
             .all(|f| comparable(m, f.1, visiting)),
@@ -92,7 +92,7 @@ pub(crate) fn element_eq(
             let ext = runtime_fn(b.m, "msrt_slot_eq", &[MTy::PTR, t, t], MTy::BOOL);
             Ok(b.call_rt(ext, &[d, x, y]))
         }
-        TyKind::Rec(_) | TyKind::Alt(_) | TyKind::Opt(_) | TyKind::List(_) => {
+        TyKind::Type(_) | TyKind::Alt(_) | TyKind::Opt(_) | TyKind::List(_) => {
             let scope = if cx.holds_extension(b.m, t) { scope } else { 0 };
             let f = cx.eq_fn(b.m, t, scope);
             Ok(b.call(f, &[x, y]))
@@ -139,10 +139,10 @@ pub(crate) fn build_eq(
     let no = b.new_block();
     let yes = b.new_block();
     match b.m.types.kind(t).clone() {
-        TyKind::Rec(r) => {
-            let fields = b.m.records[r.index()].fields.clone();
+        TyKind::Type(r) => {
+            let fields = b.m.type_defs[r.index()].fields.clone();
             for (i, (_, ft)) in fields.iter().enumerate() {
-                let (l, rr) = (b.rec_get(r, i as u32, x), b.rec_get(r, i as u32, y));
+                let (l, rr) = (b.type_get(r, i as u32, x), b.type_get(r, i as u32, y));
                 let e = element_eq(cx, &mut b, scope, *ft, l, rr)?;
                 let next = b.new_block();
                 b.br_if(e, next, &[], no, &[]);
@@ -251,7 +251,7 @@ impl Cx {
             return;
         }
         let inner: Vec<MTy> = match m.types.kind(t).clone() {
-            TyKind::Rec(r) => m.records[r.index()].fields.iter().map(|f| f.1).collect(),
+            TyKind::Type(r) => m.type_defs[r.index()].fields.iter().map(|f| f.1).collect(),
             TyKind::Alt(a) => m.alts[a.index()]
                 .cases
                 .iter()
@@ -268,8 +268,8 @@ impl Cx {
         // An optional string is a custom-layout value the runtime cannot hash without it.
         let scalar_opt = matches!(m.types.kind(t), TyKind::Opt(i)
             if m.types.is_int(*i) || m.types.is_float(*i) || *i == MTy::BOOL || *i == MTy::STR || *i == MTy::BYTES
-                || matches!(m.types.kind(*i), TyKind::Rec(_) | TyKind::Alt(_)));
-        if !scalar_opt && !matches!(m.types.kind(t), TyKind::Rec(_) | TyKind::Alt(_)) {
+                || matches!(m.types.kind(*i), TyKind::Type(_) | TyKind::Alt(_)));
+        if !scalar_opt && !matches!(m.types.kind(t), TyKind::Type(_) | TyKind::Alt(_)) {
             return;
         }
         // Types holding interface or function values never compare, so they need no glue.
@@ -290,10 +290,10 @@ impl Cx {
         m.desc_glue.push((t.scoped(scope), eq, hash));
     }
 
-    /// Whether `t` is a record of only `Int`, sized ints and `Bool` without padding, none of its
-    /// records with an `impl Equal` or `impl Hashable`: its bytes alone decide equality.
+    /// Whether `t` is a type of only `Int`, sized ints and `Bool` without padding, none of its
+    /// types with an `impl Equal` or `impl Hashable`: its bytes alone decide equality.
     fn plain_key(&mut self, m: &mut Module, t: MTy, module: ct::Name) -> bool {
-        if !matches!(m.types.kind(t), TyKind::Rec(_)) {
+        if !matches!(m.types.kind(t), TyKind::Type(_)) {
             return false;
         }
         let mut leaves = Vec::new();
@@ -325,8 +325,8 @@ impl Cx {
             TyKind::Int32 | TyKind::UInt32 => 4,
             TyKind::Int16 | TyKind::UInt16 => 2,
             TyKind::Int8 | TyKind::UInt8 | TyKind::Bool => 1,
-            TyKind::Rec(r) => {
-                let fields: Vec<MTy> = m.records[r.index()].fields.iter().map(|f| f.1).collect();
+            TyKind::Type(r) => {
+                let fields: Vec<MTy> = m.type_defs[r.index()].fields.iter().map(|f| f.1).collect();
                 let Some(concrete) = self.source_tys.get(t.0 as usize).cloned() else {
                     return false;
                 };
@@ -372,7 +372,7 @@ impl Cx {
 }
 
 /// `fn(ptr) -> int`: equal values hash equally. Only the leaves that are cheap to reach
-/// contribute (integers, booleans, strings, enum tags and nested records).
+/// contribute (integers, booleans, strings, enum tags and nested types).
 fn hash_adapter(m: &mut Module, t: MTy, user: Option<FuncId>) -> FuncId {
     let p = Param {
         ty: MTy::PTR,
@@ -417,11 +417,15 @@ fn hash_into(b: &mut FuncBuilder<'_>, t: MTy, v: Value, acc: Value) -> Value {
         return combine(b, acc, leaf);
     }
     match b.m.types.kind(t).clone() {
-        TyKind::Rec(r) => {
-            let fields: Vec<MTy> = b.m.records[r.index()].fields.iter().map(|f| f.1).collect();
+        TyKind::Type(r) => {
+            let fields: Vec<MTy> = b.m.type_defs[r.index()]
+                .fields
+                .iter()
+                .map(|f| f.1)
+                .collect();
             let mut acc = acc;
             for (i, ft) in fields.into_iter().enumerate() {
-                let f = b.rec_get(r, i as u32, v);
+                let f = b.type_get(r, i as u32, v);
                 acc = hash_into(b, ft, f, acc);
             }
             acc

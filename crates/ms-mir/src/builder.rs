@@ -300,30 +300,30 @@ impl<'m> FuncBuilder<'m> {
         self.val(Op::Select, &[c, a, b], Imm::None, ty)
     }
 
-    // Records and alternatives.
+    // Types and alternatives.
 
-    /// `rec.new`.
-    pub fn rec_new(&mut self, r: RecId, fields: &[Value]) -> Value {
-        let t = self.m.types.rec(r);
-        self.val(Op::RecNew, fields, Imm::Rec(r), t)
+    /// `type.new`.
+    pub fn type_new(&mut self, r: TypeId, fields: &[Value]) -> Value {
+        let t = self.m.types.named(r);
+        self.val(Op::TypeNew, fields, Imm::Type(r), t)
     }
-    /// `rec.get` by field index.
-    pub fn rec_get(&mut self, r: RecId, field: u32, obj: Value) -> Value {
-        let ty = self.m.records[r.index()].fields[field as usize].1;
-        self.val(Op::RecGet, &[obj], Imm::Field(r, field), ty)
+    /// `type.get` by field index.
+    pub fn type_get(&mut self, r: TypeId, field: u32, obj: Value) -> Value {
+        let ty = self.m.type_defs[r.index()].fields[field as usize].1;
+        self.val(Op::TypeGet, &[obj], Imm::Field(r, field), ty)
     }
-    /// `rec.set` by field index.
-    pub fn rec_set(&mut self, r: RecId, field: u32, obj: Value, v: Value) -> Value {
+    /// `type.set` by field index.
+    pub fn type_set(&mut self, r: TypeId, field: u32, obj: Value, v: Value) -> Value {
         let t = self.ty(obj);
-        self.val(Op::RecSet, &[obj, v], Imm::Field(r, field), t)
+        self.val(Op::TypeSet, &[obj, v], Imm::Field(r, field), t)
     }
-    /// `rec.fill`: like `rec.set`, for a field whose old value was moved out with `move.out`.
-    pub fn rec_fill(&mut self, r: RecId, field: u32, obj: Value, v: Value) -> Value {
+    /// `type.fill`: like `type.set`, for a field whose old value was moved out with `move.out`.
+    pub fn type_fill(&mut self, r: TypeId, field: u32, obj: Value, v: Value) -> Value {
         let t = self.ty(obj);
-        self.val(Op::RecFill, &[obj, v], Imm::Field(r, field), t)
+        self.val(Op::TypeFill, &[obj, v], Imm::Field(r, field), t)
     }
     /// `move.out`: takes ownership of a borrowed projection without copying it. The projected
-    /// slot must be refilled with `rec.fill` or `list.fill` before anything else reads it.
+    /// slot must be refilled with `type.fill` or `list.fill` before anything else reads it.
     pub fn move_out(&mut self, v: Value) -> Value {
         let t = self.ty(v);
         self.val(Op::MoveOut, &[v], Imm::None, t)
