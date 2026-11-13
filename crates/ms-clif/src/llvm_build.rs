@@ -291,6 +291,7 @@ pub enum Bin {
     FMul,
     FDiv,
     LShr,
+    AShr,
     Shl,
     SDiv,
     SRem,
@@ -310,6 +311,7 @@ impl Bin {
             Bin::FMul => "fmul",
             Bin::FDiv => "fdiv",
             Bin::LShr => "lshr",
+            Bin::AShr => "ashr",
             Bin::Shl => "shl",
             Bin::SDiv => "sdiv",
             Bin::SRem => "srem",
@@ -451,6 +453,18 @@ impl<'t> FnBuilder<'t> {
         )
     }
 
+    /// A `double` rounded to `float`.
+    pub fn fptrunc(&mut self, v: &Val) -> Val {
+        assert_eq!(v.ty, Ty::F64);
+        self.def(Ty::F32, format!("fptrunc double {} to float", v.text))
+    }
+
+    /// A `float` widened to `double`.
+    pub fn fpext(&mut self, v: &Val) -> Val {
+        assert_eq!(v.ty, Ty::F32);
+        self.def(Ty::F64, format!("fpext float {} to double", v.text))
+    }
+
     /// A signed `i64` converted to `double`.
     pub fn sitofp(&mut self, v: &Val) -> Val {
         assert_eq!(v.ty, Ty::I64);
@@ -560,6 +574,15 @@ impl<'t> FnBuilder<'t> {
                 ptr.text,
                 meta.text(ty, true)
             ),
+        )
+    }
+
+    /// A relaxed atomic load of a byte, as a flag another thread sets.
+    pub fn load_flag(&mut self, ptr: &Val) -> Val {
+        assert_eq!(ptr.ty, Ty::Ptr);
+        self.def(
+            Ty::I8,
+            format!("load atomic i8, ptr {} monotonic, align 1", ptr.text),
         )
     }
 

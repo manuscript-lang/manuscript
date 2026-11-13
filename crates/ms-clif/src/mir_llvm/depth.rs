@@ -12,19 +12,49 @@ use crate::layout::Layouts;
 use crate::llvm_build::Types;
 use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Val};
 use ms_mir::ir::{Func, Inst, Op};
-use ms_rt_abi::symbols::{STACK_LIMIT_CELL, STACK_REGION};
+use ms_rt_abi::symbols::{ISOLATE_HDR_CANCEL, STACK_LIMIT_CELL, STACK_REGION};
 
 pub(super) const AREA: Area = Area {
-    handles: |op| matches!(op, Op::DepthEnter | Op::DepthLeave),
-    splits: |_, _, i, _| usize::from(i.op == Op::DepthEnter),
+    handles: |op| matches!(op, Op::DepthEnter | Op::DepthLeave | Op::Poll),
+    splits: |_, _, i, _| usize::from(matches!(i.op, Op::DepthEnter | Op::Poll)),
     emit,
     ..Area::NONE
 };
 
 fn emit(cx: &mut Cx, inst: &Inst, _: &Vals, b: &mut FnBuilder) {
-    if inst.op == Op::DepthEnter {
-        enter(cx, b);
+    match inst.op {
+        Op::DepthEnter => enter(cx, b),
+        Op::Poll => poll(cx, b),
+        _ => {}
     }
+}
+
+/// The address of the running task's header block: the last word of the stack region.
+pub(super) fn task_hdr(b: &mut FnBuilder) -> Val {
+    let frame = b
+        .call(
+            &LTy::Ptr,
+            "",
+            "llvm.frameaddress.p0",
+            &[(Val::new("0", LTy::I32), "")],
+        )
+        .expect("a pointer");
+    let sp = b.ptr_to_int(&frame);
+    let base = b.bin(Bin::And, &sp, &Val::int(!(STACK_REGION - 1)));
+    let cell = b.bin(Bin::Add, &base, &Val::int(STACK_REGION - 16));
+    let cell = b.int_to_ptr(&cell);
+    b.load(&LTy::I64, &cell, 8)
+}
+
+/// Faults when the running task was cancelled: its flag is a byte in the task's header block,
+/// whose address is the last word of the stack region.
+fn poll(cx: &mut Cx, b: &mut FnBuilder) {
+    let hdr = task_hdr(b);
+    let flag = b.bin(Bin::Add, &hdr, &Val::int(ISOLATE_HDR_CANCEL));
+    let flag = b.int_to_ptr(&flag);
+    let cancelled = b.load_flag(&flag);
+    let on = b.icmp("ne", &cancelled, &Val::byte(0));
+    super::faults::fault_if(cx, b, &on, "msrt_cancelled", &[]);
 }
 
 /// Alignment of a leaf in its 8-byte cell.
@@ -127,7 +157,20 @@ pub(super) fn ret_abi(
 /// result pointer if any, then each parameter as scalars or a pointer), calls the function, and
 /// writes the scalar results after them.
 pub(super) fn shim(types: &Types, lay: &Layouts, f: &Func, sym: &str, dbg: usize) -> Emitted {
-    let sig = Signature::of(types, lay, &f.params, f.ret);
+    shim_in(types, lay, f, sym, dbg, true)
+}
+
+/// The grow shim of a function in the leaf convention: each parameter leaf is a cell, and the
+/// result leaves follow them.
+pub(super) fn leaf_shim(types: &Types, lay: &Layouts, f: &Func, sym: &str, dbg: usize) -> Emitted {
+    shim_in(types, lay, f, sym, dbg, false)
+}
+
+fn shim_in(types: &Types, lay: &Layouts, f: &Func, sym: &str, dbg: usize, native: bool) -> Emitted {
+    if !native {
+        return leaf_shim_body(types, lay, f, sym, dbg);
+    }
+    let sig = Signature::of(types, lay, &f.params, &f.noalias, f.ret);
     let mut b = FnBuilder::new(types, Some(dbg));
     b.label("entry");
     let block = b.int_to_ptr(&Val::new("%a0", LTy::I64));
@@ -186,6 +229,46 @@ pub(super) fn shim(types: &Types, lay: &Layouts, f: &Func, sym: &str, dbg: usize
         attrs: String::new(),
         body: b.finish(),
         decls: vec![(sym.to_string(), sig.declare(sym, ""))],
+        data: Vec::new(),
+        consts: Vec::new(),
+    }
+}
+
+fn leaf_shim_body(types: &Types, lay: &Layouts, f: &Func, sym: &str, dbg: usize) -> Emitted {
+    let mut b = FnBuilder::new(types, Some(dbg));
+    b.label("entry");
+    let block = b.int_to_ptr(&Val::new("%a0", LTy::I64));
+    let mut cell = 0;
+    let mut args: Vec<(Val, &str)> = Vec::new();
+    for p in &f.params {
+        for (ty, attr) in super::leaves(lay, p.ty) {
+            let at = b.elem_ptr(&LTy::I64, &block, &Val::int(cell));
+            cell += 1;
+            args.push((b.load(&ty, &at, align(&ty)), attr));
+        }
+    }
+    let ret = call_ret_ty(lay, f.ret, false);
+    let result = b.call_keep(&ret, ret_attr(lay, f.ret), sym, &args);
+    if let Some(r) = result {
+        let leaves: Vec<Val> = match &ret {
+            LTy::Tuple(ts) => (0..ts.len()).map(|k| b.extract(&r, k)).collect(),
+            _ => vec![r],
+        };
+        for (j, v) in leaves.iter().enumerate() {
+            let at = b.elem_ptr(&LTy::I64, &block, &Val::int(cell + j as i64));
+            b.store(v, &at, align(&v.ty));
+        }
+    }
+    b.ret(None);
+    Emitted {
+        ret: "void".to_string(),
+        params: "i64 %a0".to_string(),
+        attrs: String::new(),
+        body: b.finish(),
+        decls: vec![(
+            sym.to_string(),
+            super::calls::declare_leaf(types, lay, f, sym, ""),
+        )],
         data: Vec::new(),
         consts: Vec::new(),
     }

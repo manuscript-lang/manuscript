@@ -140,6 +140,21 @@ pub struct TyTable {
 }
 
 impl Ty {
+    /// The range of a sized integer type narrower than 64 bits.
+    pub fn sized_range(self) -> Option<(i64, i64)> {
+        Some(match self {
+            Ty::INT8 => (i8::MIN.into(), i8::MAX.into()),
+            Ty::INT16 => (i16::MIN.into(), i16::MAX.into()),
+            Ty::INT32 => (i32::MIN.into(), i32::MAX.into()),
+            Ty::UINT8 => (0, u8::MAX.into()),
+            Ty::UINT16 => (0, u16::MAX.into()),
+            Ty::UINT32 => (0, u32::MAX.into()),
+            _ => return None,
+        })
+    }
+}
+
+impl Ty {
     /// `Unit`.
     pub const UNIT: Ty = Ty(0);
     /// `Bool`.

@@ -6,11 +6,12 @@ use super::records::{abi_leaves, is_mem, load_result, result_slot, spill};
 use super::{Area, Cx, Vals, block_label, call_ret_ty, leaves, ret_attr};
 use crate::glue_llvm::{GlueCall, OwnKind, clone_callee, clone_str, drop_callee, own_kind};
 use crate::layout::Layouts;
-use crate::llvm_build::{FnBuilder, Ty as LTy, Val};
+use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Val};
 use ms_mir::ir::{Func, Imm, Inst, Module, Op, Value};
 use ms_mir::types::Ty;
 use ms_mir::types::TyKind;
 use ms_rt_abi::STR_INLINE;
+use ms_rt_abi::symbols::ISOLATE_HDR_GUARDED;
 
 pub(super) const AREA: Area = Area {
     handles,
@@ -35,13 +36,8 @@ fn handles(op: Op) -> bool {
     )
 }
 
-/// A cleanup is registered with a copy of its value, which a record in memory would not be, and
-/// only while a guarded task unwinds when it is `unwind_only`; both stay with the translation.
-fn inst_ok(m: &Module, lay: &Layouts, f: &Func, i: &Inst) -> bool {
-    let (Op::CleanupPush, Imm::Func(c)) = (i.op, i.imm) else {
-        return true;
-    };
-    !m.funcs[c.index()].unwind_only && !is_mem(lay, f.ty(i.args[0]))
+fn inst_ok(_: &Module, _: &Layouts, _: &Func, _: &Inst) -> bool {
+    true
 }
 
 /// A type descriptor is a raw address.
@@ -52,8 +48,14 @@ fn ty_ok(k: &TyKind) -> bool {
 /// Whether `inst` branches inside its MIR block, so that what follows is in another LLVM block:
 /// a string clone, a drop of a string, and a guarded drop of anything but plain data. An unguarded
 /// drop of an object or glue is one call and splits nothing.
+/// A closer that only acts while a guarded task unwinds.
+fn unwind_only(m: &Module, i: &Inst) -> bool {
+    matches!(i.imm, Imm::Func(c) if m.funcs[c.index()].unwind_only)
+}
+
 fn splits(lay: &Layouts, f: &Func, i: &Inst, _: bool) -> usize {
     let split = match i.op {
+        Op::CleanupPush => unwind_only(lay.m, i),
         Op::Clone => own_kind(lay, f.ty(i.args[0])) == OwnKind::Str,
         Op::Drop => own_kind(lay, f.ty(i.args[0])) == OwnKind::Str,
         Op::DropIf => own_kind(lay, f.ty(i.args[1])) != OwnKind::Identity,
@@ -116,20 +118,66 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
 
 /// Registers the cleanup `c` for the value: the runtime keeps the address of a copy of its leaves
 /// and the address of the glue thunk that closes it, and hands back the handle `CleanupRun` takes.
+/// A closer that only acts while a guarded task unwinds registers nothing, and hands back handle 0
+/// (which discarding skips), when no guard is open.
 fn cleanup_push(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder) {
     let Imm::Func(c) = inst.imm else { return };
-    let slot = spill(b, cx.lay, cx.f.ty(inst.args[0]), vals, inst.args[0]);
+    let guard = unwind_only(cx.m, inst).then(|| {
+        let hdr = super::depth::task_hdr(b);
+        let at = b.bin(Bin::Add, &hdr, &Val::int(ISOLATE_HDR_GUARDED));
+        let at = b.int_to_ptr(&at);
+        let guarded = b.load(&LTy::I8, &at, 1);
+        let on = b.icmp("ne", &guarded, &Val::byte(0));
+        let (head, then) = (
+            block_label(cx.block, cx.split),
+            format!("u{}_{}", cx.block, cx.split),
+        );
+        cx.split += 1;
+        let join = block_label(cx.block, cx.split);
+        b.cond_br(&on, &then, &join);
+        b.label(&then);
+        (head, then, join)
+    });
+    let ty = cx.f.ty(inst.args[0]);
+    let slot = if is_mem(cx.lay, ty) {
+        // The runtime keeps the address, so it is a copy the record's own slot cannot change.
+        let s = super::records::shape(b.types(), cx.lay, ty).expect("a record has a shape");
+        let copy = b.alloca(&s.st);
+        b.copy_bytes(
+            &copy,
+            &vals[&inst.args[0].index()][0],
+            s.size as u64,
+            s.align as u64,
+        );
+        copy
+    } else {
+        spill(b, cx.lay, ty, vals, inst.args[0])
+    };
     let slot = b.ptr_to_int(&slot);
     let thunk = Val::new(format!("@\"{}\"", cx.plan.cleanup[&c.index()]), LTy::Ptr);
     let thunk = b.ptr_to_int(&thunk);
     super::rt::declare(cx, "msrt_cleanup_push");
-    b.name_next(&out[0]);
-    b.call(
-        &LTy::I64,
-        "",
-        "msrt_cleanup_push",
-        &[(thunk, ""), (slot, "")],
-    );
+    let Some((head, then, join)) = guard else {
+        b.name_next(&out[0]);
+        b.call(
+            &LTy::I64,
+            "",
+            "msrt_cleanup_push",
+            &[(thunk, ""), (slot, "")],
+        );
+        return;
+    };
+    let h = b
+        .call(
+            &LTy::I64,
+            "",
+            "msrt_cleanup_push",
+            &[(thunk, ""), (slot, "")],
+        )
+        .expect("a handle");
+    b.br(&join);
+    b.label(&join);
+    b.phi(&out[0], &[(Val::int(0), head), (h, then)]);
 }
 
 /// A pointer leaf as the address word the runtime takes.
@@ -213,13 +261,39 @@ fn clone(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder) 
 
 fn drop_inst(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     let guarded = inst.op == Op::DropIf;
-    let ty = cx.f.ty(inst.args[usize::from(guarded)]);
+    let v = inst.args[usize::from(guarded)];
+    let ty = cx.f.ty(v);
+    let on = guarded.then(|| vals[&inst.args[0].index()][0].clone());
+    drop_value(cx, ty, v, on, vals, b);
+}
+
+/// Drops the value of type `ty` held as `held` (its leaves), for a payload an alternative releases.
+pub(super) fn drop_held(cx: &mut Cx, ty: Ty, held: Vec<Val>, b: &mut FnBuilder) {
+    let v = Value(0);
+    let vals = Vals::from([(v.index(), held)]);
+    drop_value(cx, ty, v, None, &vals, b);
+}
+
+/// How many blocks dropping a value of type `ty` splits off when unguarded: a string's check.
+pub(super) fn drop_splits(lay: &Layouts, ty: Ty) -> usize {
+    usize::from(own_kind(lay, ty) == OwnKind::Str)
+}
+
+/// Drops the value `v` of type `ty`, only when `on` is true if it is given. `splits` counts the
+/// blocks this starts: one for a guard, one for a string's check.
+pub(super) fn drop_value(
+    cx: &mut Cx,
+    ty: Ty,
+    v: Value,
+    on: Option<Val>,
+    vals: &Vals,
+    b: &mut FnBuilder,
+) {
+    let guarded = on.is_some();
     let kind = own_kind(cx.lay, ty);
     if kind == OwnKind::Identity {
         return;
     }
-    let v = inst.args[usize::from(guarded)];
-    let args = &vals[&v.index()];
     let (block, at) = (cx.block, cx.split);
     // Only a drop that branches starts a new block (`splits` counts the same ones).
     cx.split += usize::from(guarded || kind == OwnKind::Str);
@@ -229,24 +303,42 @@ fn drop_inst(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         n += 1;
         format!("b{block}.{what}{at}.{n}")
     };
-    if guarded {
-        let on = vals[&inst.args[0].index()][0].clone();
+    if let Some(on) = on {
         let then = fresh("t");
         b.cond_br(&on, &then, &join);
         b.label(&then);
     }
-    match kind {
+    let (free, cont) = (fresh("f"), if guarded { fresh("c") } else { join.clone() });
+    drop_core(cx, b, ty, vals, v, &free, &cont);
+    if guarded {
+        b.br(&join);
+        b.label(&join);
+    }
+}
+
+/// Drops the value `v` of `ty`. A string branches: it frees in block `free` and continues in
+/// block `cont`, which this leaves as the current block; any other type is straight-line code.
+fn drop_core(
+    cx: &mut Cx,
+    b: &mut FnBuilder,
+    ty: Ty,
+    vals: &Vals,
+    v: Value,
+    free: &str,
+    cont: &str,
+) {
+    let args = &vals[&v.index()];
+    match own_kind(cx.lay, ty) {
         OwnKind::Str => {
             // Only an owned string (tag `00`) frees anything.
             let owned = b.icmp("ult", &args[1], &Val::int(STR_INLINE as i64));
-            let (free, cont) = (fresh("f"), if guarded { fresh("c") } else { join.clone() });
-            b.cond_br(&owned, &free, &cont);
-            b.label(&free);
+            b.cond_br(&owned, free, cont);
+            b.label(free);
             cx.decls.push(rt_decl("msrt_str_free"));
             let p = word(b, &args[0]);
             b.call(&LTy::Void, "", "msrt_str_free", &[(p, "")]);
-            b.br(&cont);
-            b.label(&cont);
+            b.br(cont);
+            b.label(cont);
         }
         OwnKind::Obj => {
             cx.decls.push(rt_decl("msrt_obj_drop"));
@@ -267,8 +359,23 @@ fn drop_inst(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
             }
         }
     }
-    if guarded {
-        b.br(&join);
-        b.label(&join);
+}
+
+/// Drops a value of `ty` held as `leaves`, as `drop` does. A string needs two blocks: when it
+/// returns `true` the code is in the fresh block `cont` (the caller counts one split), else in the
+/// block it started in.
+pub(super) fn drop_leaves(
+    cx: &mut Cx,
+    b: &mut FnBuilder,
+    ty: Ty,
+    leaves: &[Val],
+    (free, cont): (&str, &str),
+) -> bool {
+    if own_kind(cx.lay, ty) == OwnKind::Identity {
+        return false;
     }
+    let v = Value(u32::MAX);
+    let vals: Vals = [(v.index(), leaves.to_vec())].into();
+    drop_core(cx, b, ty, &vals, v, free, cont);
+    own_kind(cx.lay, ty) == OwnKind::Str
 }

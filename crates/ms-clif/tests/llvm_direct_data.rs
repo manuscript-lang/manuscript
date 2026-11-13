@@ -50,6 +50,7 @@ file 0 "d.ms"
 alt Shape { Circle(r: float), Rect(w: int, h: int), Dot }
 alt Pick { Left(x: int), Right(y: float, z: int) }
 alt Wrap { Flag(on: bool, n: int), Items(l: list<int>) }
+alt Narrow { A(n: int8), B(w: uint16, v: int32) }
 fn @area(%s: Shape) -> int !0:1:1 {
 b0:
   %t: int = alt.tag %s !0:2:1
@@ -165,6 +166,31 @@ b2():
   %len: int = list.len %l !0:59:1
   ret %len
 }
+fn @narrow(%s: Narrow) -> int !0:80:1 {
+b0:
+  %t: int = alt.tag %s !0:81:1
+  %zero: int = iconst 0 !0:81:1
+  %isa: bool = icmp.eq %t, %zero !0:81:1
+  br_if %isa, b1(), b2() !0:81:1
+b1():
+  %n: int8 = alt.get Narrow.A.n %s !0:82:1
+  %three: int8 = iconst 3 !0:82:1
+  %is3: bool = icmp.eq %n, %three !0:82:1
+  %r: int = b2i %is3 !0:82:1
+  ret %r
+b2():
+  %w: uint16 = alt.get Narrow.B.w %s !0:83:1
+  %f: int32 = alt.get Narrow.B.v %s !0:83:1
+  %lim: int32 = iconst 1 !0:83:1
+  %hi: bool = icmp.gt %f, %lim !0:83:1
+  %nine: uint16 = iconst 9 !0:83:1
+  %isw: bool = icmp.eq %w, %nine !0:83:1
+  %both: bool = and %hi, %isw !0:83:1
+  %k: int = b2i %both !0:83:1
+  %ten: int = iconst 10 !0:83:1
+  %r2: int = iadd %k, %ten !0:83:1
+  ret %r2
+}
 fn @main() -> int !0:60:1 {
 b0:
   %z: int = iconst 0 !0:61:1
@@ -213,8 +239,17 @@ b3():
   drop %w1 !0:73:1
   %ll: int = iadd %l1, %l2 !0:73:1
   %u3: int = iadd %u, %ll !0:73:1
+  %n3: int8 = iconst 3 !0:74:1
+  %na: Narrow = alt.new Narrow.A %n3 !0:74:1
+  %w9: uint16 = iconst 9 !0:74:1
+  %h: int32 = iconst 5 !0:74:1
+  %nb: Narrow = alt.new Narrow.B %w9, %h !0:74:1
+  %m1: int = call @narrow(%na) !0:74:1
+  %m2: int = call @narrow(%nb) !0:74:1
+  %mm: int = iadd %m1, %m2 !0:74:1
+  %u4: int = iadd %u3, %mm !0:74:1
   %r1: int = iadd %acc, %pq !0:72:1
-  %r2: int = iadd %r1, %u3 !0:72:1
+  %r2: int = iadd %r1, %u4 !0:72:1
   ret %r2
 }
 "#;
@@ -228,7 +263,7 @@ pub fn optionals_and_alternatives_match_cranelift() {
     let ir = std::fs::read_to_string("ms-keep.ll").unwrap();
     let _ = std::fs::remove_file("ms-keep.ll");
     for f in [
-        "area", "make", "find", "orelse", "present", "unpick", "wrap_len",
+        "area", "make", "find", "orelse", "present", "unpick", "wrap_len", "narrow",
     ] {
         let header = ir
             .lines()
@@ -271,7 +306,7 @@ b0:
   %r: int = select %ok, %one, %zero !0:8:1
   ret %r
 }
-fn @chk(%x: int8) -> int8 inline(never) !0:9:1 {
+fn @chk(%x: int) -> int8 inline(never) !0:9:1 {
 b0:
   %y: int8 = narrow.chk %x !0:10:1
   ret %y
@@ -296,7 +331,7 @@ b0:
   %neg0: bool = icmp.lt %r0, %m8 !0:23:1
   %f0: int = call @fit(%neg) !0:24:1
   %f1: int = call @fit(%big) !0:24:1
-  %c: int8 = call @chk(%n8) !0:24:1
+  %c: int8 = call @chk(%neg) !0:24:1
   %a: int = select %e0, %one, %zero !0:25:1
   %b: int = select %e1, %one, %zero !0:25:1
   %d: int = select %neg0, %one, %zero !0:25:1
@@ -397,4 +432,44 @@ pub fn narrow_record_fields_match_cranelift() {
     }
     assert!(ir.contains("load i16"), "no two byte load");
     assert_eq!((got.code, &got.stdout), (want.code, &want.stdout));
+}
+
+/// An `Int8` sum that leaves the type's range faults like Cranelift, and one inside it does not.
+fn narrow_sum(x: i64, y: i64) -> String {
+    format!(
+        r#"module "d"
+entry @main
+file 0 "d.ms"
+fn @add8(%a: int8, %b: int8) -> int8 inline(never) !0:1:1 {{
+b0:
+  %s: int8 = iadd.chk %a, %b !0:2:1
+  ret %s
+}}
+fn @main() -> int !0:10:1 {{
+b0:
+  %x: int = iconst {x} !0:11:1
+  %y: int = iconst {y} !0:11:1
+  %ox: opt<int8> = inarrow.opt %x !0:11:1
+  %oy: opt<int8> = inarrow.opt %y !0:11:1
+  %a: int8 = opt.get %ox !0:11:1
+  %b: int8 = opt.get %oy !0:11:1
+  %s: int8 = call @add8(%a, %b) !0:12:1
+  %n: int = iconst 1 !0:12:1
+  ret %n
+}}
+"#
+    )
+}
+
+/// Run from `llvm_direct`'s one test (see above).
+pub fn narrow_sums_fault_like_cranelift() {
+    let Some(opts) = direct() else { return };
+    for (name, x, y) in [("fits", 60, 67), ("over", 100, 100), ("under", -100, -100)] {
+        let src = narrow_sum(x, y);
+        let want = run_native(&src, &format!("direct_sum_{name}-cranelift"));
+        let got = run_llvm(&src, &opts, &format!("direct_sum_{name}"));
+        assert_eq!((got.code, &got.stdout), (want.code, &want.stdout), "{name}");
+        assert_eq!(want.code, if name == "fits" { 1 } else { 67 }, "{name}");
+    }
+    let _ = std::fs::remove_file("ms-keep.ll");
 }

@@ -714,8 +714,7 @@ impl<'a> FnLower<'a> {
                 let v = if self.b.m.types.is_float(t) {
                     self.b.unop(Op::FNeg, x.v)
                 } else {
-                    let v = self.b.unop(Op::INegChk, x.v);
-                    self.narrow(v, &self.hir.ty(operand))
+                    self.b.unop(Op::INegChk, x.v)
                 };
                 Ok(Val { v, own: false })
             }
@@ -749,8 +748,7 @@ impl<'a> FnLower<'a> {
         self.at(e.pos);
         let out = match op {
             BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div | BinaryOp::Rem => {
-                let v = self.arithmetic(op, t, l, r)?;
-                self.narrow(v, &self.hir.ty(left))
+                self.arithmetic(op, t, l, r)?
             }
             BinaryOp::Eq | BinaryOp::Ne => {
                 let saved = self.scope_override;
@@ -778,18 +776,14 @@ impl<'a> FnLower<'a> {
         Ok(self.val(out, true))
     }
 
-    /// Brings a 64-bit result back to its sized type: integers fault when out of range,
-    /// binary32 floats round. Default-width and 64-bit types pass through.
-    fn narrow(&mut self, v: Value, t: &ct::Ty) -> Value {
-        // A type parameter narrows as the type it stands for in this instance.
-        let t = &ct::sub(t, &self.subst);
-        if ct::int_bits(t).is_some_and(|bits| bits < 64) {
-            return self.b.narrow_chk(v);
+    /// The 64-bit register of a sized integer; other values pass through.
+    pub(crate) fn widened(&mut self, v: Value) -> Value {
+        let t = self.ty_of(v);
+        if self.b.m.types.int_bits(t).is_some_and(|bits| bits < 64) {
+            self.b.conv(v, MTy::INT)
+        } else {
+            v
         }
-        if ct::float_bits(t) == Some(32) {
-            return self.b.f32_round(v);
-        }
-        v
     }
 
     pub(crate) fn arithmetic(
