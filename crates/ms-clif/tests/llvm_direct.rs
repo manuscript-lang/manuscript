@@ -488,6 +488,108 @@ fn checked_arithmetic() {
     check("direct_fault", &fault_program("div_by_zero"), 67, &["f"]);
 }
 
+/// A function of one integer: `op` on it, returned.
+fn unary_program(op: &str, x: i64) -> String {
+    int_program(op, x, 0).replace("%a, %b !0:2:1", "%a !0:2:1")
+}
+
+/// A function of one float: `op` on it, `42` returned when the result is `want`, else 1.
+fn float_program(op: &str, x: &str, want: &str) -> String {
+    format!(
+        r#"module "d"
+entry @main
+file 0 "d.ms"
+fn @f(%a: float) -> int !0:1:1 {{
+b0:
+  %s: float = {op} %a !0:2:1
+  %k: float = fconst {want} !0:3:1
+  %c: bool = fcmp.eq %s, %k !0:4:1
+  %y: int = iconst 42 !0:5:1
+  %n: int = iconst 1 !0:6:1
+  %r: int = select %c, %y, %n !0:7:1
+  ret %r
+}}
+fn @main() -> int !0:10:1 {{
+b0:
+  %a: float = fconst {x} !0:11:1
+  %r: int = call @f(%a) !0:12:1
+  ret %r
+}}
+"#
+    )
+}
+
+/// Shifts, rotates, bit counts, float functions and an overflow flag.
+fn bit_and_float_operations() {
+    for (name, op, x, y, code) in [
+        ("shl", "shl", 21, 1, 42),
+        ("shl_wrap", "shl", 21, 65, 42),
+        ("sshr", "sshr", 85, 1, 42),
+        ("ushr", "ushr", -1, 58, 63),
+        ("rotl", "rotl", 21, 1, 42),
+        ("rotr", "rotr", 84, 65, 42),
+        ("ovf_add", "iadd.overflow", i64::MAX, 1, 1),
+        ("ovf_mul", "imul.overflow", 6, 7, 0),
+    ] {
+        let src = if op.ends_with("overflow") {
+            overflow_program(op, x, y)
+        } else {
+            int_program(op, x, y)
+        };
+        check(&format!("direct_{name}"), &src, code, &["f"]);
+    }
+    for (name, op, x, code) in [
+        ("clz", "clz", 1 << 21, 42),
+        ("clz_zero", "clz", 0, 64),
+        ("ctz", "ctz", 1 << 42, 42),
+        ("popcnt", "popcnt", -1, 64),
+    ] {
+        check(
+            &format!("direct_{name}"),
+            &unary_program(op, x),
+            code,
+            &["f"],
+        );
+    }
+    for (name, op, x, want) in [
+        ("sqrt", "fsqrt", "1764.0", "42.0"),
+        ("abs", "fabs", "-42.0", "42.0"),
+        ("floor", "ffloor", "42.9", "42.0"),
+        ("ceil", "fceil", "41.1", "42.0"),
+        ("trunc", "ftrunc", "-42.9", "-42.0"),
+    ] {
+        check(
+            &format!("direct_{name}"),
+            &float_program(op, x, want),
+            42,
+            &["f"],
+        );
+    }
+}
+
+/// A function of two integers whose overflow flag is returned as `1` or `0`.
+fn overflow_program(op: &str, x: i64, y: i64) -> String {
+    format!(
+        r#"module "d"
+entry @main
+file 0 "d.ms"
+fn @f(%a: int, %b: int) -> int !0:1:1 {{
+b0:
+  %o: bool = {op} %a, %b !0:2:1
+  %r: int = b2i %o !0:3:1
+  ret %r
+}}
+fn @main() -> int !0:10:1 {{
+b0:
+  %a: int = iconst {x}
+  %b: int = iconst {y}
+  %r: int = call @f(%a, %b) !0:12:1
+  ret %r
+}}
+"#
+    )
+}
+
 /// Interfaces: a box built from an `int` (heap, and a frame slot for a borrow), a method call
 /// through the vtable, a view and a vtable test, and `map.new` as zero words.
 fn interfaces_and_maps() {
@@ -575,6 +677,7 @@ fn direct_lists_and_strings_match_cranelift() {
     closures_and_runtime_calls();
     interfaces();
     checked_arithmetic();
+    bit_and_float_operations();
     interfaces_and_maps();
     let _ = std::fs::remove_file("ms-keep.ll");
 }

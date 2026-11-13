@@ -291,6 +291,7 @@ pub enum Bin {
     FMul,
     FDiv,
     LShr,
+    AShr,
     Shl,
     SDiv,
     SRem,
@@ -310,6 +311,7 @@ impl Bin {
             Bin::FMul => "fmul",
             Bin::FDiv => "fdiv",
             Bin::LShr => "lshr",
+            Bin::AShr => "ashr",
             Bin::Shl => "shl",
             Bin::SDiv => "sdiv",
             Bin::SRem => "srem",
@@ -449,6 +451,18 @@ impl<'t> FnBuilder<'t> {
             Ty::I1,
             format!("fcmp {cc} {} {}, {}", self.ty(&a.ty), a.text, b.text),
         )
+    }
+
+    /// A `double` rounded to `float`.
+    pub fn fptrunc(&mut self, v: &Val) -> Val {
+        assert_eq!(v.ty, Ty::F64);
+        self.def(Ty::F32, format!("fptrunc double {} to float", v.text))
+    }
+
+    /// A `float` widened to `double`.
+    pub fn fpext(&mut self, v: &Val) -> Val {
+        assert_eq!(v.ty, Ty::F32);
+        self.def(Ty::F64, format!("fpext float {} to double", v.text))
     }
 
     /// A signed `i64` converted to `double`.

@@ -644,3 +644,53 @@ fn inst_text(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
 pub fn grow_shim(types: &Types, lay: &Layouts, f: &Func, sym: &str, dbg: usize) -> Emitted {
     depth::shim(types, lay, f, sym, dbg)
 }
+
+#[cfg(test)]
+mod coverage {
+    use super::*;
+
+    /// The ops no area lowers yet. An op leaves this list when an area handles it; the scope
+    /// markers are not here because `elaborate` removes them before code generation.
+    const UNLOWERED: &[Op] = &[
+        Op::NarrowChk,
+        Op::INarrowOpt,
+        Op::AltOwn,
+        Op::RecRelease,
+        Op::BytesLit,
+        Op::ListConst,
+        Op::ListAddr,
+        Op::ListAddrU,
+        Op::StrAscii,
+        Op::OptUnwrap,
+        Op::OptAddr,
+        Op::Poll,
+        Op::GlobalGet,
+        Op::GlobalSet,
+    ];
+
+    const MARKERS: &[Op] = &[
+        Op::ScopeBegin,
+        Op::ScopeOwn,
+        Op::ScopeEnd,
+        Op::ScopeDisown,
+        Op::ScopeMark,
+    ];
+
+    #[test]
+    fn every_op_is_lowered_or_listed() {
+        for &op in Op::ALL {
+            let lowered = area_of(op).is_some();
+            let listed = UNLOWERED.contains(&op);
+            let marker = MARKERS.contains(&op);
+            assert!(
+                marker || lowered != listed,
+                "{op:?}: {}",
+                if lowered {
+                    "lowered, so remove it from UNLOWERED"
+                } else {
+                    "not lowered: implement it or add it to UNLOWERED"
+                }
+            );
+        }
+    }
+}
