@@ -580,13 +580,7 @@ impl<'m> Gen<'m> {
             return *id;
         }
         let leaf = self.lay.leaves(elem)[0];
-        let mut bytes = Vec::with_capacity(self.m.list_consts[i].len() * leaf.size() as usize);
-        for &raw in &self.m.list_consts[i] {
-            match leaf {
-                Leaf::F32 => bytes.extend((f64::from_bits(raw as u64) as f32).to_le_bytes()),
-                _ => bytes.extend(&raw.to_le_bytes()[..leaf.size() as usize]),
-            }
-        }
+        let bytes = leaf.const_bytes(&self.m.list_consts[i]);
         let id = self
             .module
             .declare_data(&format!("ms.list.{i}"), self.private(), false, false)

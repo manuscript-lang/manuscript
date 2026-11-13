@@ -10,7 +10,7 @@
 //! a shared static block that is never freed. Payloads that are types in memory stay on the
 //! translation. Fields a release leaves behind are dropped through the drop glue.
 
-use super::{Area, Cx, Vals, glue, held_leaves, mem_leaves, types};
+use super::{Area, Cx, Vals, glue, held_leaves, mem_leaves, narrow_leaves, types};
 use crate::glue_llvm::{OwnKind, own_kind};
 use crate::layout::{AltRepr, Layouts, Leaf, mem_layout};
 use crate::llvm_build::{Bin, FnBuilder, Meta, Range, Ty as LTy, Val};
@@ -202,20 +202,28 @@ fn zero(t: &LTy) -> Val {
     match t {
         LTy::I1 => Val::bool(false),
         LTy::I8 => Val::byte(0),
+        LTy::I16 | LTy::I32 => Val::new("0", t.clone()),
         LTy::F64 => Val::double(0),
+        LTy::F32 => Val::new("0.0", LTy::F32),
         LTy::Ptr => Val::new("null", LTy::Ptr),
         _ => Val::int(0),
     }
 }
 
-/// `v` as `to`: a payload leaf between the type it is held as and the slot it lives in.
-fn convert(b: &mut FnBuilder, v: &Val, to: &LTy) -> Val {
+/// `v` as `to`: a payload leaf between the type it is held as and the slot it lives in. A narrow
+/// integer fills an `i64` slot extended by its signedness (`signed`) and reads back truncated.
+fn convert(b: &mut FnBuilder, v: &Val, to: &LTy, signed: Option<bool>) -> Val {
     match (&v.ty, to) {
         (a, b_) if a == b_ => v.clone(),
         (LTy::I1, LTy::I8) => b.zext(v, LTy::I8),
         (LTy::I8, LTy::I1) => b.icmp("ne", v, &Val::byte(0)),
         (LTy::Ptr, LTy::I64) => b.ptrtoint(v),
         (LTy::I64, LTy::Ptr) => b.inttoptr(v),
+        (LTy::I8 | LTy::I16 | LTy::I32, LTy::I64) if signed == Some(true) => b.sext(v, LTy::I64),
+        (LTy::I8 | LTy::I16 | LTy::I32, LTy::I64) => b.zext(v, LTy::I64),
+        (LTy::I64, LTy::I8 | LTy::I16 | LTy::I32) => b.trunc(v, to.clone()),
+        (LTy::F32, LTy::F64) => b.fpext(v),
+        (LTy::F64, LTy::F32) => b.fptrunc(v),
         (a, t) => unreachable!("no conversion from {a:?} to {t:?}"),
     }
 }
@@ -279,15 +287,22 @@ fn splits(lay: &Layouts, f: &Func, inst: &Inst, checks: bool) -> usize {
 
 /// The leaves a payload read or write moves between a field and the enum's slots: for each
 /// result leaf (a read) or slot (a write), the slot or field leaf it comes from.
-fn sources(lay: &Layouts, inst: &Inst, vals: &Vals) -> Vec<(usize, Val)> {
+fn sources(lay: &Layouts, inst: &Inst, vals: &Vals) -> Vec<(usize, Val, Option<bool>)> {
     let arg = |i: usize| &vals[&inst.args[i].index()];
     match (inst.op, inst.imm) {
         (Op::AltNew | Op::AltView, Imm::Case(a, c)) => {
             let mut out = Vec::new();
             for (i, (t, idx)) in lay.alt_fields(a)[c as usize].iter().enumerate() {
-                // A type in memory is loaded in `emit`, not moved leaf by leaf.
+                // A record in memory is loaded in `emit`, not moved leaf by leaf.
                 if !types::is_mem(lay, *t) {
-                    out.extend(idx.iter().copied().zip(arg(i).iter().cloned()));
+                    let signs = narrow_leaves(lay, *t);
+                    out.extend(
+                        idx.iter()
+                            .copied()
+                            .zip(arg(i).iter().cloned())
+                            .zip(signs)
+                            .map(|((k, v), s)| (k, v, s)),
+                    );
                 }
             }
             out
@@ -297,9 +312,10 @@ fn sources(lay: &Layouts, inst: &Inst, vals: &Vals) -> Vec<(usize, Val)> {
             if types::is_mem(lay, *t) {
                 return Vec::new();
             }
+            let signs = narrow_leaves(lay, *t);
             idx.iter()
                 .enumerate()
-                .map(|(j, k)| (j, arg(0)[*k].clone()))
+                .map(|(j, k)| (j, arg(0)[*k].clone(), signs[j]))
                 .collect()
         }
         _ => Vec::new(),
@@ -386,7 +402,7 @@ fn pre(
     };
     // Payload leaves: the source itself when its type matches, else a name `emit` defines.
     let held = inst.res.map(|r| held_leaves(lay, f.ty(r)));
-    for (i, src) in sources(lay, inst, vals) {
+    for (i, src, _) in sources(lay, inst, vals) {
         let want = match inst.op {
             Op::AltNew | Op::AltView => src.ty.clone(),
             _ => held.as_ref().expect("a result")[i].clone(),
@@ -445,10 +461,10 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         b.icmp("ne", &any, &zero(&any.ty));
         return;
     }
-    for (i, src) in sources(cx.lay, inst, vals) {
+    for (i, src, signed) in sources(cx.lay, inst, vals) {
         if out[i] != src {
             b.name_next(&out[i]);
-            convert(b, &src, &out[i].ty);
+            convert(b, &src, &out[i].ty, signed);
         }
     }
     memory_payloads(cx, inst, vals, out, b);
@@ -539,7 +555,7 @@ fn load_slot(
     block: &[Leaf],
     p: &Val,
     k: usize,
-    held: &LTy,
+    (held, signed): (&LTy, Option<bool>),
     dst: Option<&Val>,
 ) -> Val {
     let at = slot_ptr(b, block, p, k);
@@ -557,7 +573,7 @@ fn load_slot(
     }
     let raw = b.load(&slot, &at, align);
     name(b);
-    convert(b, &raw, held)
+    convert(b, &raw, held, signed)
 }
 
 /// The leaves of field `k` of case `c` of `a`, read from the block `p` of a boxed enum of type
@@ -573,9 +589,19 @@ fn block_field(
     let block = block_of(lay, ty);
     let (fty, idx) = &lay.alt_fields(a)[c as usize][k];
     let held = held_leaves(lay, *fty);
+    let signs = narrow_leaves(lay, *fty);
     idx.iter()
         .enumerate()
-        .map(|(j, slot)| load_slot(b, &block, p, *slot, &held[j], dst.map(|d| &d[j])))
+        .map(|(j, slot)| {
+            load_slot(
+                b,
+                &block,
+                p,
+                *slot,
+                (&held[j], signs[j]),
+                dst.map(|d| &d[j]),
+            )
+        })
         .collect()
 }
 
@@ -603,15 +629,20 @@ fn boxed(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder) 
             let p = types::alloc(b, size, Some(&out[0]));
             let tag = slot_ptr(b, &block, &p, 0);
             b.store(&Val::int(i64::from(c)), &tag, 8);
-            for (i, (_, idx)) in fields.iter().enumerate() {
-                for (slot, v) in idx.iter().zip(arg(i)) {
+            for (i, (fty, idx)) in fields.iter().enumerate() {
+                let signs = narrow_leaves(lay, *fty);
+                for ((slot, v), signed) in idx.iter().zip(arg(i)).zip(signs) {
                     let at = slot_ptr(b, &block, &p, *slot);
-                    let mem = if v.ty == LTy::I1 {
-                        LTy::I8
-                    } else {
-                        v.ty.clone()
+                    // A narrow integer or `float` fills its whole slot, extended as the value is.
+                    let (mem, v) = match v.ty {
+                        LTy::I1 => (LTy::I8, v.clone()),
+                        LTy::I8 | LTy::I16 | LTy::I32 | LTy::F32 => {
+                            let slot = slot_ty(block[*slot]);
+                            (slot.clone(), convert(b, v, &slot, signed))
+                        }
+                        _ => (v.ty.clone(), v.clone()),
                     };
-                    types::store_leaf(b, v, &mem, &at);
+                    types::store_leaf(b, &v, &mem, &at);
                 }
             }
         }
@@ -752,9 +783,10 @@ fn release(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         } else {
             let (_, idx) = &lay.alt_fields(a)[c as usize][k];
             let held = held_leaves(lay, fty);
+            let signs = narrow_leaves(lay, fty);
             idx.iter()
                 .enumerate()
-                .map(|(j, slot)| convert(b, &own[*slot], &held[j]))
+                .map(|(j, slot)| convert(b, &own[*slot], &held[j], signs[j]))
                 .collect()
         };
         glue::drop_held(cx, fty, leaves, b);
@@ -766,10 +798,10 @@ fn release(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     }
     // An inline unbox: the result leaves are the field's, converted out of their slots.
     if !boxed && let Some(out) = result {
-        for (i, src) in sources(lay, inst, vals) {
+        for (i, src, signed) in sources(lay, inst, vals) {
             if out[i] != src {
                 b.name_next(&out[i]);
-                convert(b, &src, &out[i].ty);
+                convert(b, &src, &out[i].ty, signed);
             }
         }
         memory_payloads(cx, inst, vals, out, b);

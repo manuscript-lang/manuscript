@@ -7,7 +7,7 @@
 //! that run produced. It is the check `Lower::depth_enter` writes for the Cranelift path.
 
 use super::{Area, Cx, Emitted, Vals, block_label, call_ret_ty, ret_attr};
-use crate::abi_llvm::{Pass, Reg, Ret, Signature};
+use crate::abi_llvm::{Pass, Ret, Signature};
 use crate::layout::Layouts;
 use crate::llvm_build::Types;
 use crate::llvm_build::{FnBuilder, Ty as LTy, Val};
@@ -141,7 +141,12 @@ pub(super) fn ret_abi(
     ret: ms_mir::types::Ty,
     native: bool,
 ) -> Vec<LTy> {
-    match call_ret_ty(lay, ret, native) {
+    let ty = if native {
+        super::native_ret_ty(lay, ret)
+    } else {
+        call_ret_ty(lay, ret, false)
+    };
+    match ty {
         LTy::Void => Vec::new(),
         LTy::Tuple(ts) => ts,
         one => vec![one],
@@ -184,13 +189,7 @@ fn shim_in(types: &Types, lay: &Layouts, f: &Func, sym: &str, dbg: usize, native
         match pass {
             Pass::Scalars(regs) => {
                 for r in regs {
-                    let (ty, attr) = match r {
-                        Reg::I8 => (LTy::I8, " zeroext"),
-                        Reg::F64 => (LTy::F64, ""),
-                        Reg::I64 => (LTy::I64, ""),
-                        Reg::Ptr => (LTy::Ptr, ""),
-                    };
-                    args.push((read(&mut b, &ty), attr));
+                    args.push((read(&mut b, &super::reg_ty(*r)), r.extension()));
                 }
             }
             Pass::Indirect(..) => {
@@ -200,8 +199,8 @@ fn shim_in(types: &Types, lay: &Layouts, f: &Func, sym: &str, dbg: usize, native
         }
     }
     let first_result = cell;
-    let ret = call_ret_ty(lay, f.ret, true);
-    let attr = ret_attr(lay, f.ret);
+    let ret = super::native_ret_ty(lay, f.ret);
+    let attr = super::native_ret_attr(lay, f.ret);
     let (ret, attr) = match sig.result {
         Ret::Sret(_) => (LTy::Void, ""),
         Ret::Scalars(_) => (ret, attr),

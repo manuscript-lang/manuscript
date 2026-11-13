@@ -1,6 +1,6 @@
 //! Strings and lists: the length leaf, element reads and writes, and string bytes.
 
-use super::{Area, Cx, Vals, block_label, held_leaves, mem_leaves, signed_leaves};
+use super::{Area, Cx, Vals, block_label, held_leaves, mem_leaves};
 use crate::layout::{Layouts, Leaf, mem_layout};
 use crate::llvm_build::{Bin, FnBuilder, Meta, Range, Tbaa, Ty as LTy, Val};
 use ms_mir::ir::{FaultKind, Func, Imm, Inst, Module, Op, Term};
@@ -280,7 +280,6 @@ fn load_at(
     }
     let tys = mem_leaves(cx.lay, elem);
     let held = held_leaves(cx.lay, elem);
-    let signed = signed_leaves(cx.lay, elem);
     let mut got = Vec::new();
     for (k, t) in tys.iter().enumerate() {
         let to = if tys.len() == 1 {
@@ -303,7 +302,7 @@ fn load_at(
         } else {
             let w = b.load_with(t, &to, align, meta);
             named(b);
-            super::types::widen(b, &w, &held[k], signed[k])
+            super::types::widen(b, &w, &held[k])
         };
         got.push(v);
     }
@@ -668,13 +667,9 @@ pub(super) fn consts(m: &Module, lay: &Layouts, f: &Func) -> Vec<(String, String
                 let e = m
                     .seq_elem(f.ty(inst.res.expect("list result")))
                     .expect("a list");
-                let width = lay.leaves(e)[0].size() as usize;
-                let raw = &m.list_consts[i as usize];
                 (
                     format!("ms.direct.list.{i}"),
-                    raw.iter()
-                        .flat_map(|v| v.to_le_bytes()[..width].to_vec())
-                        .collect(),
+                    lay.leaves(e)[0].const_bytes(&m.list_consts[i as usize]),
                 )
             };
             if !bytes.is_empty() && !out.iter().any(|(n, _)| *n == name) {
@@ -725,8 +720,7 @@ fn str_const(m: &Module, id: u32, out: &mut Vec<(String, String)>) {
 /// integers, or a type held in memory.
 fn plain_elem(lay: &Layouts, e: Ty) -> bool {
     (super::types::is_mem(lay, e) && super::types::shape_ok(lay, e))
-        || lay
-            .leaves(e)
-            .iter()
-            .all(|l| matches!(l, Leaf::I64 | Leaf::F64 | Leaf::I8) || super::types::is_narrow(*l))
+        || lay.leaves(e).iter().all(|l| {
+            matches!(l, Leaf::I64 | Leaf::F64 | Leaf::I8 | Leaf::F32) || super::types::is_narrow(*l)
+        })
 }

@@ -2,7 +2,7 @@
 //! inline, objects go through the runtime, and the rest call the type's glue.
 
 use super::calls::{Callee, finish_call};
-use super::types::{abi_leaves_of, is_mem, load_result, result_slot, spill, spill_of};
+use super::types::{Abi, abi_leaves_of, is_mem, load_result, result_slot, spill, spill_of};
 use super::{Area, Cx, Vals, block_label, call_ret_ty, leaves, ret_attr};
 use crate::glue_llvm::{GlueCall, OwnKind, clone_callee, clone_str, drop_callee, own_kind};
 use crate::layout::Layouts;
@@ -203,7 +203,7 @@ fn word(b: &mut FnBuilder, v: &Val) -> Val {
 
 /// The leaves of `v` in the leaf convention, each with its attributes.
 fn leaf_args(b: &mut FnBuilder, cx: &Cx, ty: Ty, own: &[Val]) -> Vec<(Val, &'static str)> {
-    abi_leaves_of(b, cx.lay, ty, own, false)
+    abi_leaves_of(b, cx.lay, ty, own, Abi::Leaf)
         .into_iter()
         .zip(leaves(cx.lay, ty))
         .map(|(x, (_, a))| (x, a))
