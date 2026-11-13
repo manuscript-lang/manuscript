@@ -1580,6 +1580,11 @@ fn direct_glue(g: &mut Gen, kind: Glue, ty: Ty) -> bool {
     }
     let id = g.glue[&(kind, ty)];
     let sym = symbol_of(g, id);
+    // Data the glue addresses is declared while the LLVM module still exists: it is exported
+    // only then.
+    if kind == Glue::Drop && matches!(g.m.types.kind(ty), TyKind::Obj(..)) {
+        g.typedesc(ty);
+    }
     let mut llvm = g.llvm.take().expect("checked above");
     let nat = crate::glue_llvm::native(&sym);
     // Glue has no MIR, so no source locations to resolve.

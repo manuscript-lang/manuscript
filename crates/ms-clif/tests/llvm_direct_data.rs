@@ -497,6 +497,7 @@ entry @main
 file 0 "d.ms"
 alt Tree { Leaf, Node(l: Tree, v: int, r: Tree), Tag(s: str, n: int) }
 alt Two { A(s: str, n: int), B }
+alt Chain { Nil, Cons(h: str, t: Chain) }
 fn @value(%t: Tree) -> int !0:1:1 {
 b0:
   %k: int = alt.tag %t !0:2:1
@@ -546,6 +547,22 @@ b0:
   %five: int = iconst 5 !0:46:1
   %two: Two = alt.new Two.A %s2, %five !0:46:1
   %e: int = call @release_two(%two) !0:46:1
+  %n1: Chain = alt.new Chain.Nil !0:48:1
+  %h1: str = clone %lit !0:48:1
+  %c1: Chain = alt.new Chain.Cons %h1, %n1 !0:48:1
+  %h2: str = clone %lit !0:48:1
+  %c2: Chain = alt.new Chain.Cons %h2, %c1 !0:48:1
+  drop %c2 !0:48:1
+  %t1: Tree = alt.new Tree.Leaf !0:49:1
+  %t2: Tree = alt.new Tree.Leaf !0:49:1
+  %s3: str = clone %lit !0:49:1
+  %tg: Tree = alt.new Tree.Tag %s3, %four !0:49:1
+  %nd: Tree = alt.new Tree.Node %tg, %nine, %t1 !0:49:1
+  drop %nd !0:49:1
+  drop %t2 !0:49:1
+  %s4: str = clone %lit !0:49:1
+  %tw: Two = alt.new Two.A %s4, %five !0:49:1
+  drop %tw !0:49:1
   %ab: int = iadd %a, %b !0:47:1
   %cd: int = iadd %c, %d !0:47:1
   %abcd: int = iadd %ab, %cd !0:47:1
@@ -571,6 +588,12 @@ pub fn boxed_enums_match_cranelift() {
         assert!(direct, "{f} was translated: {header}");
     }
     assert!(ir.contains("!range"), "the tag load has a range");
+    // Drop glue of enums is written directly: its native entry has a body here.
+    assert!(
+        ir.lines()
+            .any(|l| l.starts_with("define") && l.contains(".n\"(")),
+        "no direct glue"
+    );
     assert_eq!((got.code, &got.stdout), (want.code, &want.stdout));
     assert_eq!(got.code, 9 + 4 + 9 + 4 + 5);
 }
