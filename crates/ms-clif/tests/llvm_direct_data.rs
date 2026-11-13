@@ -822,7 +822,7 @@ entry @main
 file 0 "d.ms"
 fn @mk(%a: int8, %n: int) -> Holder inline(never) !0:1:1 {
 b0:
-  %w: Wide = rec.new Wide %a, %n, %n, %n, %n, %n, %n, %n, %n !0:2:1
+  %w: Wide = type.new Wide %a, %n, %n, %n, %n, %n, %n, %n, %n !0:2:1
   %o: opt<Wide> = opt.some %w !0:2:1
   %h: Holder = alt.new Holder.Maybe %o !0:2:1
   ret %h
