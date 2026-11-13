@@ -127,10 +127,7 @@ fn list_access(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
             &[(i.clone(), ""), (len, "")],
         );
         b.unreachable();
-        cx.decls.push((
-            "msrt_index_fault".into(),
-            "declare void @\"msrt_index_fault\"(i64, i64) cold noreturn".into(),
-        ));
+        super::rt::declare(cx, "msrt_index_fault");
         b.label(&next);
     }
     let types = b.types();

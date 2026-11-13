@@ -56,14 +56,14 @@ pub(crate) fn returns_fresh_block(symbol: &str) -> bool {
 }
 
 /// The function attributes of the declaration of runtime function `name`: a fault never returns
-/// and is cold, a function that only reads memory says so.
+/// and is cold, a function that only reads memory says so. None unwinds.
 pub(crate) fn runtime_attrs(name: &str, reads_only: bool) -> &'static str {
     if fault_function(name) {
-        " cold noreturn"
+        " cold noreturn nounwind"
     } else if reads_only {
         READS_ONLY
     } else {
-        ""
+        " nounwind"
     }
 }
 

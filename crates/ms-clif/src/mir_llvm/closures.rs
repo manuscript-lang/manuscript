@@ -148,10 +148,7 @@ fn vtable(cx: &mut Cx, vt: usize, tag: i64, out: Option<&Val>, b: &mut FnBuilder
 
 /// A fresh heap block of `size` bytes.
 fn alloc(cx: &mut Cx, size: u64, b: &mut FnBuilder) -> Val {
-    cx.decls.push((
-        "msrt_alloc".into(),
-        "declare noalias align 16 ptr @\"msrt_alloc\"(i64)".into(),
-    ));
+    super::rt::declare(cx, "msrt_alloc");
     b.call(
         &LTy::Ptr,
         "noalias align 16 ",
