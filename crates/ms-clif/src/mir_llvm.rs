@@ -155,7 +155,8 @@ fn supported_op(op: Op) -> bool {
             | Op::DropIf
             | Op::TypeDesc
             | Op::Call
-    ) || calls::handles(op)
+    ) || op == Op::PtrIsNull
+        || calls::handles(op)
         || ifaces::handles(op)
 }
 
@@ -519,6 +520,14 @@ fn inst_text(cx: &Cx, inst: &Inst, out_sinks: &mut Out, at: Site, b: &mut FnBuil
             }
         }
         Op::B2I => drop(b.zext(&arg(0), LTy::I64)),
+        // Map lookups return a pointer into the table, or null. The comparison is an `i1`; the
+        // result is its zero-extension, so name only that.
+        Op::PtrIsNull => {
+            let pending = b.take_name();
+            let c = b.icmp("eq", &arg(0), &Val::int(0));
+            b.restore_name(pending);
+            b.zext(&c, LTy::I8);
+        }
         Op::TypeDesc => {
             let Imm::Ty(t) = inst.imm else { return };
             let sym = &plan.desc[&t];

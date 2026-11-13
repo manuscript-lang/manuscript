@@ -32,6 +32,21 @@ b0:
 }
 "#;
 
+    /// A map lookup's null test is one `icmp` against zero, widened to the `Bool` leaf.
+    #[test]
+    fn a_null_test_compares_with_zero() {
+        let m = ms_mir::parse::parse_module(
+            "module \"n\"\nentry @main\nfn @main(%p: ptr) -> bool {\nb0:\n  %r: bool = ptr.is_null %p\n  ret %r\n}\n",
+        )
+        .expect("parse");
+        let lay = Layouts::new(&m);
+        let f = &m.funcs[0];
+        assert!(supports(&m, &lay, f));
+        let out = emit(&m, &lay, f, &Plan::default(), 0, &|i| format!("f{i}"));
+        assert!(out.body.contains("icmp eq i64 %a0_0, 0"), "{}", out.body);
+        assert!(out.body.contains("zext i1"), "{}", out.body);
+    }
+
     /// An empty map is seven zero leaves: no call, and a seven-leaf return.
     #[test]
     fn an_empty_map_is_seven_zero_words() {
