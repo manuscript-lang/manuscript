@@ -6,7 +6,7 @@ use super::types::{Abi, abi_leaves_of, is_mem, load_result, result_slot, spill, 
 use super::{Area, Cx, Vals, block_label, call_ret_ty, leaves, ret_attr};
 use crate::glue_llvm::{GlueCall, OwnKind, clone_callee, clone_str, drop_callee, own_kind};
 use crate::layout::Layouts;
-use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Val};
+use crate::llvm_build::{FnBuilder, Ty as LTy, Val};
 use ms_mir::ir::{Func, Imm, Inst, Module, Op, Value};
 use ms_mir::types::Ty;
 use ms_mir::types::TyKind;
@@ -137,8 +137,7 @@ fn cleanup_push(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBu
     let Imm::Func(c) = inst.imm else { return };
     let guard = unwind_only(cx.m, inst).then(|| {
         let hdr = super::depth::task_hdr(b);
-        let at = b.bin(Bin::Add, &hdr, &Val::int(ISOLATE_HDR_GUARDED));
-        let at = b.int_to_ptr(&at);
+        let at = b.gep_bytes(&hdr, ISOLATE_HDR_GUARDED as u64);
         let guarded = b.load(&LTy::I8, &at, 1);
         let on = b.icmp("ne", &guarded, &Val::byte(0));
         let (head, then) = (

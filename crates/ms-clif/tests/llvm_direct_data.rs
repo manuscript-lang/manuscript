@@ -816,6 +816,91 @@ pub fn memory_payload_matches_cranelift() {
     assert_eq!((got.code, &got.stdout), (want.code, &want.stdout));
 }
 
+/// An optional record of more than eight leaves, one with a string, and an enum whose slots hold
+/// that string where another case holds an integer.
+const MEMORY_OPTIONAL: &str = r#"module "d"
+type Wide { a: int8, b: str, c: int, d: int, e: int, f: int, g: int, h: int, i: int }
+alt Holder { Plain(n: int), Big(w: Wide) }
+entry @main
+file 0 "d.ms"
+fn @mko(%a: int8, %n: int) -> opt<Wide> inline(never) !0:1:1 {
+b0:
+  %lit: str = str "hello" !0:2:1
+  %s: str = clone %lit !0:2:1
+  %w: Wide = type.new Wide %a, %s, %n, %n, %n, %n, %n, %n, %n !0:2:1
+  %o: opt<Wide> = opt.some %w !0:2:1
+  ret %o
+}
+fn @reado(%o: opt<Wide>) -> int inline(never) !0:4:1 {
+b0:
+  %p: bool = opt.is_some %o !0:5:1
+  %zero: int = iconst 0 !0:5:1
+  br_if %p, b1(), b2() !0:5:1
+b1():
+  %w: Wide = opt.get %o !0:6:1
+  %a: int8 = type.get Wide.a %w !0:6:1
+  %c: int = type.get Wide.c %w !0:6:1
+  %x: int = iadd %c, %c !0:6:1
+  ret %x
+b2():
+  ret %zero
+}
+fn @mkh(%a: int8, %n: int) -> Holder inline(never) !0:7:1 {
+b0:
+  %lit: str = str "abc" !0:8:1
+  %s: str = clone %lit !0:8:1
+  %w: Wide = type.new Wide %a, %s, %n, %n, %n, %n, %n, %n, %n !0:8:1
+  %h: Holder = alt.new Holder.Big %w !0:8:1
+  ret %h
+}
+fn @tag(%h: Holder) -> int inline(never) !0:9:1 {
+b0:
+  %t: int = alt.tag %h !0:10:1
+  ret %t
+}
+fn @main() -> int !0:20:1 {
+b0:
+  %n: int = iconst 7 !0:21:1
+  %a: int8 = iconst 1 !0:21:1
+  %o: opt<Wide> = call @mko(%a, %n) !0:22:1
+  %r: int = call @reado(%o) !0:23:1
+  %z: opt<Wide> = opt.none !0:24:1
+  %q: int = call @reado(%z) !0:24:1
+  %h: Holder = call @mkh(%a, %n) !0:25:1
+  %t: int = call @tag(%h) !0:25:1
+  %w: Wide = alt.unbox Holder.Big.w %h !0:25:1
+  %wc: int = type.get Wide.c %w !0:25:1
+  drop %w !0:25:1
+  %u: Wide = opt.unwrap %o !0:25:1
+  %uc: int = type.get Wide.c %u !0:25:1
+  drop %u !0:25:1
+  drop %o !0:25:1
+  %s1: int = iadd %r, %q !0:26:1
+  %s2: int = iadd %s1, %t !0:26:1
+  %s3: int = iadd %s2, %wc !0:26:1
+  %s4: int = iadd %s3, %uc !0:26:1
+  ret %s4
+}
+"#;
+
+/// Run from `llvm_direct`'s one test (see above).
+pub fn memory_optional_matches_cranelift() {
+    let Some(opts) = direct() else { return };
+    let want = run_native(MEMORY_OPTIONAL, "direct_optional-cranelift");
+    let got = run_llvm(MEMORY_OPTIONAL, &opts, "direct_optional");
+    let ir = std::fs::read_to_string("ms-keep.ll").unwrap();
+    let _ = std::fs::remove_file("ms-keep.ll");
+    for f in ["mko", "reado", "mkh", "tag"] {
+        let header = ir
+            .lines()
+            .find(|l| l.starts_with("define") && l.contains(&format!("@\"{f}#")))
+            .unwrap_or_else(|| panic!("no {f} in the IR"));
+        let direct = header.contains("%a0_0") || header.contains("dereferenceable");
+        assert!(direct, "{f} was translated: {header}");
+    }
+    assert_eq!((got.code, &got.stdout), (want.code, &want.stdout));
+}
+
 /// An `Int8` sum that leaves the type's range faults like Cranelift, and one inside it does not.
 fn narrow_sum(x: i64, y: i64) -> String {
     format!(

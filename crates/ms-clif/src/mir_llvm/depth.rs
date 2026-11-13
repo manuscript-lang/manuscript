@@ -10,7 +10,7 @@ use super::{Area, Cx, Emitted, Vals, block_label, call_ret_ty, ret_attr};
 use crate::abi_llvm::{Pass, Ret, Signature};
 use crate::layout::Layouts;
 use crate::llvm_build::Types;
-use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Val};
+use crate::llvm_build::{FnBuilder, Ty as LTy, Val};
 use ms_mir::ir::{Func, Inst, Op};
 use ms_rt_abi::symbols::{ISOLATE_HDR_CANCEL, STACK_LIMIT_CELL, STACK_REGION};
 
@@ -29,8 +29,10 @@ fn emit(cx: &mut Cx, inst: &Inst, _: &Vals, b: &mut FnBuilder) {
     }
 }
 
-/// The address of the running task's header block: the last word of the stack region.
-pub(super) fn task_hdr(b: &mut FnBuilder) -> Val {
+/// The frame address and the stack-region cell `offset` bytes before the region's end: the
+/// region base is the frame address with the low bits masked (`llvm.ptrmask` keeps the pointer's
+/// provenance), so the cell is one `getelementptr` from it.
+fn region_cell(b: &mut FnBuilder, offset: i64) -> (Val, Val) {
     let frame = b
         .call(
             &LTy::Ptr,
@@ -39,19 +41,22 @@ pub(super) fn task_hdr(b: &mut FnBuilder) -> Val {
             &[(Val::new("0", LTy::I32), "")],
         )
         .expect("a pointer");
-    let sp = b.ptr_to_int(&frame);
-    let base = b.bin(Bin::And, &sp, &Val::int(!(STACK_REGION - 1)));
-    let cell = b.bin(Bin::Add, &base, &Val::int(STACK_REGION - 16));
-    let cell = b.int_to_ptr(&cell);
-    b.load(&LTy::I64, &cell, 8)
+    let base = b.ptrmask(&frame, !(STACK_REGION - 1));
+    let cell = b.gep_bytes(&base, (STACK_REGION - offset) as u64);
+    (frame, cell)
+}
+
+/// The address of the running task's header block: the last word of the stack region.
+pub(super) fn task_hdr(b: &mut FnBuilder) -> Val {
+    let (_, cell) = region_cell(b, 16);
+    b.load(&LTy::Ptr, &cell, 8)
 }
 
 /// Faults when the running task was cancelled: its flag is a byte in the task's header block,
 /// whose address is the last word of the stack region.
 fn poll(cx: &mut Cx, b: &mut FnBuilder) {
     let hdr = task_hdr(b);
-    let flag = b.bin(Bin::Add, &hdr, &Val::int(ISOLATE_HDR_CANCEL));
-    let flag = b.int_to_ptr(&flag);
+    let flag = b.gep_bytes(&hdr, ISOLATE_HDR_CANCEL as u64);
     let cancelled = b.load_flag(&flag);
     let on = b.icmp("ne", &cancelled, &Val::byte(0));
     super::faults::fault_if(cx, b, &on, "msrt_cancelled", &[]);
@@ -64,18 +69,8 @@ fn align(t: &LTy) -> u64 {
 
 /// Writes the check; `cx.entry_abi` holds the entry parameters as they arrive.
 pub(super) fn enter(cx: &mut Cx, b: &mut FnBuilder) {
-    let frame = b
-        .call(
-            &LTy::Ptr,
-            "",
-            "llvm.frameaddress.p0",
-            &[(Val::new("0", LTy::I32), "")],
-        )
-        .expect("a pointer");
+    let (frame, cell) = region_cell(b, STACK_LIMIT_CELL);
     let sp = b.ptr_to_int(&frame);
-    let base = b.bin(Bin::And, &sp, &Val::int(!(STACK_REGION - 1)));
-    let cell = b.bin(Bin::Add, &base, &Val::int(STACK_REGION - STACK_LIMIT_CELL));
-    let cell = b.int_to_ptr(&cell);
     let limit = b.load(&LTy::I64, &cell, 8);
     let over = b.icmp("ult", &sp, &limit);
     let grow = format!("d{}_{}", cx.block, cx.split);
