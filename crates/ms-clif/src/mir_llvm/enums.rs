@@ -232,10 +232,6 @@ fn inst_ok(_: &Module, lay: &Layouts, f: &Func, inst: &Inst) -> bool {
         };
         return block_ok(&block_of(lay, subject)) && fields_leafy(lay, subject, a, case);
     }
-    // An unwrap clones the payload, which a record in memory does not support yet.
-    if inst.op == Op::OptUnwrap && mem_opt(lay, f.ty(inst.args[0])).is_some() {
-        return false;
-    }
     // Dropping a record in memory would need its address, which no slot holds.
     plain(lay, subject)
         && released(lay, inst)
@@ -649,6 +645,13 @@ fn unwrap(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder)
         OptRepr::Tagged => &v[1..],
         _ => &v[..],
     };
+    if records::is_mem(cx.lay, inner) {
+        // The clone glue reads a record in memory from its address: spill the leaves first.
+        let at = b.reserve(LTy::Ptr);
+        records::store_into_slot(b, cx.lay, inner, &at, payload);
+        glue::clone_leaves(cx, inner, &[at], out, b);
+        return;
+    }
     glue::clone_leaves(cx, inner, payload, out, b);
 }
 

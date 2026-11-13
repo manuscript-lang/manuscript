@@ -868,11 +868,15 @@ b0:
   %w: Wide = alt.unbox Holder.Big.w %h !0:25:1
   %wc: int = rec.get Wide.c %w !0:25:1
   drop %w !0:25:1
+  %u: Wide = opt.unwrap %o !0:25:1
+  %uc: int = rec.get Wide.c %u !0:25:1
+  drop %u !0:25:1
   drop %o !0:25:1
   %s1: int = iadd %r, %q !0:26:1
   %s2: int = iadd %s1, %t !0:26:1
   %s3: int = iadd %s2, %wc !0:26:1
-  ret %s3
+  %s4: int = iadd %s3, %uc !0:26:1
+  ret %s4
 }
 "#;
 
