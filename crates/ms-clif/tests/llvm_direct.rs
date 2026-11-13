@@ -933,6 +933,7 @@ fn direct_lists_and_strings_match_cranelift() {
     crate::llvm_direct_data::unit_slot_matches_cranelift();
     crate::llvm_direct_data::boxed_enums_match_cranelift();
     crate::llvm_direct_data::boxed_optionals_match_cranelift();
+    crate::llvm_direct_data::boxed_optionals_of_records_in_memory_match_cranelift();
     crate::llvm_direct_data::enum_clones_match_cranelift();
     crate::llvm_direct_data::narrow_integers_match_cranelift();
     crate::llvm_direct_data::narrow_record_fields_match_cranelift();

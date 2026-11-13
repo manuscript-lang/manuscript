@@ -182,7 +182,7 @@ fn inst_ok(_: &Module, lay: &Layouts, f: &Func, inst: &Inst) -> bool {
     }
     let subject = subject(f, inst);
     if let Some(inner) = boxed_opt(lay, subject) {
-        return block_ok(&lay.leaves(inner)) && leafy(lay, inner) && !records::is_mem(lay, inner);
+        return records::shape_ok(lay, inner);
     }
     if let Some(a) = boxed_alt(lay, subject) {
         let case = match inst.imm {
@@ -543,9 +543,12 @@ fn unwrap(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder)
     let owns = own_kind(cx.lay, inner) != OwnKind::Identity;
     if boxed_opt(cx.lay, ty).is_some() {
         // The payload is read from the block: named for the result when nothing is cloned.
-        let leaves = payload_leaves(b, cx.lay, inner, &v[0], (!owns).then_some(out));
         if owns {
-            glue::clone_leaves(cx, inner, &leaves, out, b);
+            let tmp = records::reserve(b, cx.lay, inner);
+            read_payload(b, cx.lay, inner, &v[0], &tmp);
+            glue::clone_leaves(cx, inner, &tmp, out, b);
+        } else {
+            read_payload(b, cx.lay, inner, &v[0], out);
         }
         return;
     }
@@ -559,19 +562,10 @@ fn unwrap(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder)
     glue::clone_leaves(cx, inner, payload, out, b);
 }
 
-/// The leaves of the payload of type `inner` in the block `p` of a boxed optional.
-fn payload_leaves(
-    b: &mut FnBuilder,
-    lay: &Layouts,
-    inner: Ty,
-    p: &Val,
-    dst: Option<&[Val]>,
-) -> Vec<Val> {
-    let block = lay.leaves(inner);
-    let held = held_leaves(lay, inner);
-    (0..block.len())
-        .map(|k| load_slot(b, &block, p, k, &held[k], dst.map(|d| &d[k])))
-        .collect()
+/// Defines `out` from the payload of type `inner` in the block `p` of a boxed optional: a record
+/// in memory is copied into a fresh slot, anything else loaded leaf by leaf.
+fn read_payload(b: &mut FnBuilder, lay: &Layouts, inner: Ty, p: &Val, out: &[Val]) {
+    records::load_value(b, lay, inner, p, out);
 }
 
 /// `opt.some`, `opt.get` and `opt.unbox` of a boxed optional: a build allocates the block and
@@ -580,23 +574,17 @@ fn boxed_optional(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut Fn
     let lay = cx.lay;
     let ty = subject(cx.f, inst);
     let inner = boxed_opt(lay, ty).expect("a boxed optional");
-    let block = lay.leaves(inner);
     records::declare_heap(cx);
     if inst.op == Op::OptSome {
-        let p = records::alloc(b, mem_layout(&block).size, Some(&out[0]));
-        for (k, v) in vals[&inst.args[0].index()].iter().enumerate() {
-            let at = slot_ptr(b, &block, &p, k);
-            let mem = if v.ty == LTy::I1 {
-                LTy::I8
-            } else {
-                v.ty.clone()
-            };
-            records::store_leaf(b, v, &mem, &at);
-        }
+        let size = records::shape(b.types(), lay, inner)
+            .expect("shape_ok checked")
+            .size;
+        let p = records::alloc(b, size, Some(&out[0]));
+        records::store_value(b, lay, inner, vals, inst.args[0], &p);
         return;
     }
     let p = &vals[&inst.args[0].index()][0];
-    payload_leaves(b, lay, inner, p, Some(out));
+    read_payload(b, lay, inner, p, out);
     if inst.op == Op::OptUnbox {
         let w = b.ptr_to_int(p);
         b.call(&LTy::Void, "", "msrt_free", &[(w, "")]);
