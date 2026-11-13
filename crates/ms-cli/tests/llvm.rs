@@ -479,34 +479,3 @@ fn llvm_direct_grow_shim_for_a_leaf_convention_function() {
     let _ = std::fs::remove_dir_all(&dir);
     assert_eq!(String::from_utf8_lossy(&out.stdout), "3000007\n");
 }
-
-/// A recursive method is called by address, so it keeps the leaf convention, and its stack-growth
-/// shim is emitted directly too: nothing about it goes through the translation.
-#[test]
-fn llvm_direct_grow_shim_for_a_leaf_convention_function() {
-    if !cfg!(any(target_os = "linux", target_os = "macos"))
-        || !ms_clif::llvm_available(&ms_cli::engine::build_options_from_env())
-    {
-        return;
-    }
-    let source = format!(
-        "{}/tests/llvm/direct_grow_shim.ms",
-        env!("CARGO_MANIFEST_DIR")
-    );
-    let dir = std::env::temp_dir().join(format!("ms-llvm-grow-{}", std::process::id()));
-    std::fs::create_dir_all(&dir).unwrap();
-    let built = Command::new(env!("CARGO_BIN_EXE_ms"))
-        .current_dir(&dir)
-        .env("MS_BACKEND", "llvm")
-        .env("MS_LLVM_UNITS", "1")
-        .env("MS_LLVM_FALLBACK", "report")
-        .args(["build", &source, "-o", "prog"])
-        .output()
-        .unwrap();
-    let stderr = String::from_utf8_lossy(&built.stderr);
-    assert!(built.status.success(), "{stderr}");
-    assert!(!stderr.contains("GrowShim"), "{stderr}");
-    let out = Command::new(dir.join("prog")).output().unwrap();
-    let _ = std::fs::remove_dir_all(&dir);
-    assert_eq!(String::from_utf8_lossy(&out.stdout), "3000007\n");
-}
