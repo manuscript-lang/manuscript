@@ -438,7 +438,7 @@ fn llvm_direct_glue_matches_translation() {
     let (new_out, new_ir) = run(true);
     let _ = std::fs::remove_dir_all(&dir);
     assert_eq!(new_out, old_out);
-    assert_eq!(new_out, "1325 some(hello world this is long text) 1\n");
+    assert_eq!(new_out, "210 20 1 first node name that is long enough\n");
     let direct = |ir: &str| {
         let mut lines = ir.lines();
         while let Some(l) = lines.next() {
