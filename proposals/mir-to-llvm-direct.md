@@ -63,6 +63,17 @@ MIR -> mir_llvm         -> LLVM IR text -> opt/llc   (release; new)
 - Cost check per stage: IR lines and release build time for the yaml program, recorded in `bench/compile-time/`.
 - Linux, macOS and Windows stay at parity; no gating. Windows and macOS CI is dispatched on the branch before any stage is called done.
 
+## Builder: inkwell (Chinmay, 2026-11-13)
+
+Chinmay asked to build the IR with `inkwell` instead of writing text, and does not expect a hand-written builder to match LLVM's own. Checked 2026-11-13:
+
+- `inkwell` 0.11.0 supports LLVM 23 (`llvm23-1`, on `llvm-sys` 231). A scratch program (record `getelementptr`, loads, verify, print) built and ran here against LLVM 23.1.6 from `apt.llvm.org`.
+- It links LLVM at build time: every platform's build of `ms` needs the LLVM 23 headers, libraries and `llvm-config` (`LLVM_SYS_231_PREFIX`). Today the pinned `toolchain/lld.lock` fetches only tool programs (`lld`, `opt`, `llc`) at run time. A development bundle for six platforms has to be built in the `llvm-bundle` repository first, and the new crates (`inkwell`, `llvm-sys` and their dependencies) vendored. Both are outside what one branch of this repository can do.
+- Inkwell does not choose alignment: the scratch load of an `i64` came out `align 4`. The emitter must set the data layout and alignment on every load, store and alloca.
+- Two ways to meet the text pipeline: build the new functions in an in-memory module and print them, or parse the existing text into the module and run LLVM's passes and code generation in-process, which drops `opt`/`llc` and the text round trip. The second changes unit splitting, the fault-table reader and the debug-info numbering, so it is its own stage.
+
+Platform parity: the dependency lands only when the development bundle exists for all six platforms; no Linux-only path.
+
 ## Open points
 
 - Whether the neutral layout module should be extracted before stage 3.
