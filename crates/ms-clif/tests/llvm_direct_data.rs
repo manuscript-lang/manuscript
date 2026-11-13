@@ -239,5 +239,10 @@ pub fn optionals_and_alternatives_match_cranelift() {
         assert!(direct, "{f} was translated: {header}");
     }
     assert!(ir.contains("switch i64 "), "no switch on the tag");
+    // The three-case enum arrives with a case index known to be 0, 1 or 2.
+    assert!(
+        ir.contains("i64 range(i64 0, 3) %a0_0"),
+        "no range on the tag"
+    );
     assert_eq!((got.code, &got.stdout), (want.code, &want.stdout));
 }
