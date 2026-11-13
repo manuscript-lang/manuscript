@@ -13,6 +13,7 @@ mod closures;
 mod depth;
 mod enums;
 mod faults;
+mod globals;
 mod glue;
 mod lists;
 mod maps;
@@ -84,6 +85,8 @@ pub struct Plan {
     pub closures: HashMap<(usize, bool), ClosureSyms>,
     /// The data symbol of each vtable an instruction names.
     pub vtables: HashMap<usize, String>,
+    /// The data symbol of each global an instruction names.
+    pub globals: HashMap<usize, String>,
 }
 
 /// LLVM type and parameter attribute of one register leaf. `I8` leaves (`Bool`, flags) are
@@ -269,6 +272,7 @@ const AREAS: &[Area] = &[
     records::AREA,
     depth::AREA,
     glue::AREA,
+    globals::AREA,
     enums::AREA,
     maps::AREA,
     closures::AREA,
@@ -663,9 +667,6 @@ mod coverage {
         Op::StrAscii,
         Op::OptUnwrap,
         Op::OptAddr,
-        Op::Poll,
-        Op::GlobalGet,
-        Op::GlobalSet,
     ];
 
     const MARKERS: &[Op] = &[

@@ -567,6 +567,50 @@ fn bit_and_float_operations() {
     }
 }
 
+/// A global written, read back, overwritten, and a cancellation poll between.
+fn globals_and_poll() {
+    let src = r#"module "d"
+global @g: int
+global @s: str
+entry @main
+file 0 "d.ms"
+fn @f(%a: int, %b: int) -> int !0:1:1 {
+b0:
+  global.set @g %a !0:2:1
+  poll !0:3:1
+  %x: int = global.get @g !0:4:1
+  global.set @g %b !0:5:1
+  %y: int = global.get @g !0:6:1
+  %r: int = iadd %x, %y !0:7:1
+  ret %r
+}
+fn @t(%a: int) -> int !0:20:1 {
+b0:
+  %l: str = str "hello world, a long string that is owned" !0:21:1
+  %c: str = clone %l !0:22:1
+  global.set @s %c !0:23:1
+  %d: str = clone %l !0:24:1
+  global.set @s %d !0:25:1
+  %n: int = str.len %l !0:26:1
+  %s: str = global.get @s !0:28:1
+  %m: int = str.len %s !0:29:1
+  %r: int = iadd %n, %m !0:30:1
+  ret %r
+}
+fn @main() -> int !0:10:1 {
+b0:
+  %a: int = iconst 20
+  %b: int = iconst 22
+  %r: int = call @f(%a, %b) !0:12:1
+  %t: int = call @t(%a) !0:13:1
+  %z: int = isub %t, %t !0:14:1
+  %q: int = iadd %r, %z !0:15:1
+  ret %q
+}
+"#;
+    check("direct_globals", src, 42, &["f", "t"]);
+}
+
 /// A function of two integers whose overflow flag is returned as `1` or `0`.
 fn overflow_program(op: &str, x: i64, y: i64) -> String {
     format!(
@@ -678,6 +722,7 @@ fn direct_lists_and_strings_match_cranelift() {
     interfaces();
     checked_arithmetic();
     bit_and_float_operations();
+    globals_and_poll();
     interfaces_and_maps();
     let _ = std::fs::remove_file("ms-keep.ll");
 }

@@ -213,12 +213,27 @@ fn clone(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder) 
 
 fn drop_inst(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     let guarded = inst.op == Op::DropIf;
-    let ty = cx.f.ty(inst.args[usize::from(guarded)]);
+    let v = inst.args[usize::from(guarded)];
+    let ty = cx.f.ty(v);
+    let on = guarded.then(|| vals[&inst.args[0].index()][0].clone());
+    drop_value(cx, ty, v, on, vals, b);
+}
+
+/// Drops the value `v` of type `ty`, only when `on` is true if it is given. `splits` counts the
+/// blocks this starts: one for a guard, one for a string's check.
+pub(super) fn drop_value(
+    cx: &mut Cx,
+    ty: Ty,
+    v: Value,
+    on: Option<Val>,
+    vals: &Vals,
+    b: &mut FnBuilder,
+) {
+    let guarded = on.is_some();
     let kind = own_kind(cx.lay, ty);
     if kind == OwnKind::Identity {
         return;
     }
-    let v = inst.args[usize::from(guarded)];
     let args = &vals[&v.index()];
     let (block, at) = (cx.block, cx.split);
     // Only a drop that branches starts a new block (`splits` counts the same ones).
@@ -229,8 +244,7 @@ fn drop_inst(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         n += 1;
         format!("b{block}.{what}{at}.{n}")
     };
-    if guarded {
-        let on = vals[&inst.args[0].index()][0].clone();
+    if let Some(on) = on {
         let then = fresh("t");
         b.cond_br(&on, &then, &join);
         b.label(&then);

@@ -577,6 +577,15 @@ impl<'t> FnBuilder<'t> {
         )
     }
 
+    /// A relaxed atomic load of a byte, as a flag another thread sets.
+    pub fn load_flag(&mut self, ptr: &Val) -> Val {
+        assert_eq!(ptr.ty, Ty::Ptr);
+        self.def(
+            Ty::I8,
+            format!("load atomic i8, ptr {} monotonic, align 1", ptr.text),
+        )
+    }
+
     pub fn store(&mut self, val: &Val, ptr: &Val, align: u64) {
         self.store_with(val, ptr, align, Meta::default());
     }

@@ -109,6 +109,17 @@ uint8_t *msrt_alloc(size_t n) {
   return p;
 }
 void msrt_free(uint8_t *p) { if (p) { msrt_live_allocs--; free(p); } }
+void msrt_str_free(uint8_t *p) { msrt_free(p); }
+/* The scalar count of the string at s: two words, the second holding the length and the tag in its
+   top bits (see StrVal); an inline string keeps its bytes in the words themselves. */
+int64_t msrt_string_length(const uint64_t *s) {
+  uint64_t t = s[1];
+  const uint8_t *p = (t >> 62) == 1 ? (const uint8_t *)s : (const uint8_t *)s[0];
+  uint64_t n = (t >> 62) == 1 ? (t >> 56) & 15 : t & ((1ULL << 61) - 1);
+  int64_t count = 0;
+  for (uint64_t i = 0; i < n; i++) if ((p[i] & 0xC0) != 0x80) count++;
+  return count;
+}
 uint8_t *msrt_realloc(uint8_t *p, size_t n) {
   if (!p) return msrt_alloc(n);
   uint8_t *q = realloc(p, n ? n : 1);
