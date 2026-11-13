@@ -32,6 +32,8 @@ pub struct Place<'a> {
     pub idx: usize,
     pub grow_shim: Option<String>,
     pub native: &'a HashSet<usize>,
+    /// The data symbol of the static descriptor of each type the function asks for (`TypeDesc`).
+    pub descs: &'a HashMap<Ty, String>,
 }
 
 /// A finished function: pieces of the `define` line, the body, and the callees it declares.
@@ -46,6 +48,9 @@ pub struct Emitted {
     pub body: String,
     /// `(symbol, declare line)` of each callee.
     pub decls: Vec<(String, String)>,
+    /// The data symbols the body refers to (type descriptors), which the module declares
+    /// `external`.
+    pub data: Vec<String>,
 }
 
 /// LLVM type and parameter attribute of one register leaf. `I8` leaves (`Bool`, flags) are
@@ -303,6 +308,10 @@ struct Cx<'a> {
     memo: HashMap<usize, Option<bool>>,
     /// `(symbol, declare line)` of each callee.
     decls: Vec<(String, String)>,
+    /// Data symbols the function refers to.
+    data: Vec<String>,
+    /// Descriptor symbols by type, resolved before emission.
+    descs: &'a HashMap<Ty, String>,
     /// MIR block being written and the checks it has split off so far.
     block: usize,
     split: usize,
@@ -348,6 +357,7 @@ pub fn emit(
         idx,
         grow_shim,
         native,
+        descs,
     }: Place,
     f: &Func,
     checks: bool,
@@ -441,6 +451,8 @@ pub fn emit(
         symbol_of,
         memo: HashMap::new(),
         decls: Vec::new(),
+        data: Vec::new(),
+        descs,
         block: 0,
         split: 0,
         entry_abi,
@@ -537,6 +549,7 @@ pub fn emit(
             .to_string(),
         body: b.finish(),
         decls: cx.decls,
+        data: cx.data,
     }
 }
 

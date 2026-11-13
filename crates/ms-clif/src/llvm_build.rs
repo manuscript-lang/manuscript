@@ -741,6 +741,14 @@ impl<'t> FnBuilder<'t> {
         )
     }
 
+    /// The address of the global `sym`, as a value that can take a name.
+    pub fn addr_of(&mut self, sym: &str) -> Val {
+        self.def(
+            Ty::Ptr,
+            format!("getelementptr inbounds i8, ptr @\"{sym}\", i64 0"),
+        )
+    }
+
     pub fn ptr_to_int(&mut self, v: &Val) -> Val {
         assert_eq!(v.ty, Ty::Ptr);
         self.def(Ty::I64, format!("ptrtoint ptr {} to i64", v.text))

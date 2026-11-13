@@ -1374,6 +1374,17 @@ fn direct_function(g: &mut Gen, i: usize, f: &Func) -> bool {
     for inst in f.blocks.iter().flat_map(|b| &b.insts) {
         bits.entry(inst.loc).or_insert_with(|| g.loc_bits(inst.loc));
     }
+    // The static descriptors the function names, created now so emission only refers to them.
+    let mut descs: HashMap<Ty, String> = HashMap::new();
+    for inst in f.blocks.iter().flat_map(|b| &b.insts) {
+        if let (ms_mir::ir::Op::TypeDesc, ms_mir::ir::Imm::Ty(t)) = (inst.op, inst.imm)
+            && !descs.contains_key(&t)
+        {
+            let id = g.typedesc(t);
+            let name = g.module.declarations().get_data_decl(id).linkage_name(id);
+            descs.insert(t, name.into_owned());
+        }
+    }
     let syms = ModuleSymbols(&g.module, &g.locs, &g.scopes, &g.m.externs);
     let sym = syms.symbol_of(id);
     let exported = g.module.declarations().get_function_decl(id).linkage == Linkage::Import
@@ -1406,6 +1417,7 @@ fn direct_function(g: &mut Gen, i: usize, f: &Func) -> bool {
                 idx: i,
                 grow_shim,
                 native,
+                descs: &descs,
             };
             crate::mir_llvm::emit(m, lay, place, f, checks, env, &symbol_of)
         },
