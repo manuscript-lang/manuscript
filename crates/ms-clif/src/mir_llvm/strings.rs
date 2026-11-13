@@ -1,6 +1,6 @@
 //! Strings that are not lists: the shared one-character ASCII strings.
 
-use super::{Area, Cx, Vals, records};
+use super::{Area, Cx, Vals, types};
 use crate::layout::Layouts;
 use crate::llvm_build::{FnBuilder, Ty as LTy, Val};
 use ms_mir::ir::{Func, Inst, Module, Op};
@@ -23,7 +23,7 @@ fn pre(
     _: &Vals,
     b: &mut FnBuilder,
 ) -> Option<Vec<Val>> {
-    let held = records::held(lay, f.ty(inst.res?));
+    let held = types::held(lay, f.ty(inst.res?));
     Some(vec![
         b.reserve(held[0].clone()),
         Val::int(1 | STR_STATIC as i64),

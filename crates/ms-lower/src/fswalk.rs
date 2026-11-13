@@ -1,4 +1,4 @@
-//! `FileSystem.glob_entries` and `FileSystem.copy`: options records flattened for the runtime and
+//! `FileSystem.glob_entries` and `FileSystem.copy`: options types flattened for the runtime and
 //! caller predicates wrapped in closures the runtime calls with plain arguments.
 
 use crate::Error;
@@ -8,7 +8,7 @@ use crate::native::NArg;
 use ms_check::api::types as ct;
 use ms_mir::builder::FuncBuilder;
 use ms_mir::ir::{FuncKind, Imm, Mode, Op, Param, Value};
-use ms_mir::types::{RecId, Ty as MTy, TyKind};
+use ms_mir::types::{Ty as MTy, TyKind, TypeId};
 
 /// `CopyOptions` booleans and the bit of the runtime's `flags` word each sets.
 const COPY_FLAGS: [(&str, i64); 6] = [
@@ -42,17 +42,17 @@ impl FnLower<'_> {
         };
         let options = arg("options")?;
         let options = self.borrow(options);
-        let TyKind::Rec(rid) = self.b.m.types.kind(self.ty_of(options)).clone() else {
-            return Err(Error::new(format!("{sym}: options is not a record")));
+        let TyKind::Type(rid) = self.b.m.types.kind(self.ty_of(options)).clone() else {
+            return Err(Error::new(format!("{sym}: options is not a type")));
         };
         let mut vals = Vec::new();
         let field = |s: &mut Self, name: &str| -> Result<Value, Error> {
-            let at = s.b.m.records[rid.index()]
+            let at = s.b.m.type_defs[rid.index()]
                 .fields
                 .iter()
                 .position(|(n, _)| n == name)
                 .ok_or_else(|| Error::new(format!("{sym}: options has no {name}")))?;
-            Ok(s.b.rec_get(rid, at as u32, options))
+            Ok(s.b.type_get(rid, at as u32, options))
         };
         let (first, second, filter_name) = if copy {
             ("source", "destination", "filter")
@@ -174,7 +174,7 @@ impl FnLower<'_> {
             return Err(Error::new("a predicate is not a function"));
         };
         let entry = (!copy)
-            .then(|| self.path_entry_records(user_params[0]))
+            .then(|| self.path_entry_types(user_params[0]))
             .transpose()?;
         let mut b = FuncBuilder::new(self.b.m, "walk.predicate", ps, MTy::BOOL);
         b.func_mut().kind = FuncKind::Closure {
@@ -195,10 +195,10 @@ impl FnLower<'_> {
             None => b.call_ind(f, &[p[1], p[2]]),
             Some((pe, de)) => {
                 let (path, name) = (text(&mut b, p[1]), text(&mut b, p[2]));
-                let dir = b.rec_new(de, &[name, p[3], p[4]]);
-                let record = b.rec_new(pe, &[path, dir]);
-                let r = b.call_ind(f, &[record]);
-                b.emit(Op::Drop, &[record], Imm::None, None);
+                let dir = b.type_new(de, &[name, p[3], p[4]]);
+                let entry = b.type_new(pe, &[path, dir]);
+                let r = b.call_ind(f, &[entry]);
+                b.emit(Op::Drop, &[entry], Imm::None, None);
                 r
             }
         };
@@ -209,20 +209,20 @@ impl FnLower<'_> {
         Ok(id)
     }
 
-    /// The `PathEntry` record type and the `DirectoryEntry` nested in it.
-    fn path_entry_records(&self, ty: MTy) -> Result<(RecId, RecId), Error> {
-        let TyKind::Rec(pe) = self.b.m.types.kind(ty).clone() else {
+    /// The `PathEntry` type and the `DirectoryEntry` nested in it.
+    fn path_entry_types(&self, ty: MTy) -> Result<(TypeId, TypeId), Error> {
+        let TyKind::Type(pe) = self.b.m.types.kind(ty).clone() else {
             return Err(Error::new("a glob predicate takes no PathEntry"));
         };
-        let inner = self.b.m.records[pe.index()]
+        let inner = self.b.m.type_defs[pe.index()]
             .fields
             .iter()
             .find(|(n, _)| n == "entry")
             .map(|(_, t)| *t)
             .ok_or_else(|| Error::new("PathEntry has no entry"))?;
         match self.b.m.types.kind(inner) {
-            TyKind::Rec(de) => Ok((pe, *de)),
-            _ => Err(Error::new("PathEntry.entry is not a record")),
+            TyKind::Type(de) => Ok((pe, *de)),
+            _ => Err(Error::new("PathEntry.entry is not a type")),
         }
     }
 }

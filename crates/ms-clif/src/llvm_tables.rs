@@ -5,7 +5,7 @@
 //! with LLVM the code layout is only known after optimization, so the tables are rebuilt from
 //! the DWARF line program and inlined-subroutine DIEs that LLVM emits for the debug metadata
 //! in [`crate::llvm_ir`]. LLVM's own inlining appears as inlined scopes, exactly like the
-//! scopes the MIR inliner records, so fault traces keep every source frame.
+//! scopes the MIR inliner types, so fault traces keep every source frame.
 
 use crate::Error;
 use crate::cg::{FuncDbg, LlvmFn};

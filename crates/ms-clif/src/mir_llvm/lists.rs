@@ -260,9 +260,9 @@ fn elem_whole(types: &crate::llvm_build::Types, lay: &Layouts, elem: Ty) -> LTy 
     }
 }
 
-/// Loads the element at `at`. With `out` each result leaf takes its reserved name and a record
+/// Loads the element at `at`. With `out` each result leaf takes its reserved name and a type
 /// held in memory is copied into a fresh slot; without it the leaves are fresh values and such a
-/// record is the pointer itself (what its drop glue takes).
+/// type is the pointer itself (what its drop glue takes).
 fn load_at(
     cx: &Cx,
     b: &mut FnBuilder,
@@ -271,11 +271,11 @@ fn load_at(
     at: &Val,
     out: Option<&[Val]>,
 ) -> Vec<Val> {
-    if super::records::is_mem(cx.lay, elem) {
+    if super::types::is_mem(cx.lay, elem) {
         let Some(out) = out else {
             return vec![at.clone()];
         };
-        super::records::load_value(b, cx.lay, elem, at, out);
+        super::types::load_value(b, cx.lay, elem, at, out);
         return out.to_vec();
     }
     let tys = mem_leaves(cx.lay, elem);
@@ -302,7 +302,7 @@ fn load_at(
         } else {
             let w = b.load_with(t, &to, align, meta);
             named(b);
-            super::records::widen(b, &w, &held[k])
+            super::types::widen(b, &w, &held[k])
         };
         got.push(v);
     }
@@ -311,7 +311,7 @@ fn load_at(
 
 /// Stores the held leaves `vs` of one element at `at`.
 fn store_at(cx: &Cx, b: &mut FnBuilder, elem: Ty, whole: &LTy, at: &Val, vs: &[Val]) {
-    if super::records::is_mem(cx.lay, elem) {
+    if super::types::is_mem(cx.lay, elem) {
         let (size, align) = b.types().size_align(whole);
         b.copy_bytes(at, &vs[0], size, align);
         return;
@@ -323,13 +323,13 @@ fn store_at(cx: &Cx, b: &mut FnBuilder, elem: Ty, whole: &LTy, at: &Val, vs: &[V
         } else {
             b.leaf_ptr(whole, at, k)
         };
-        let v = super::records::to_mem(b, v, t);
+        let v = super::types::to_mem(b, v, t);
         let align = b.types().size_align(t).1;
         b.store_with(&v, &to, align, elem_meta(cx.m.types.kind(elem), k));
     }
 }
 
-/// Element `idx` of the block at `ptr` as its held leaves (a record in memory as its address).
+/// Element `idx` of the block at `ptr` as its held leaves (a type in memory as its address).
 fn load_elem(cx: &Cx, b: &mut FnBuilder, elem: Ty, ptr: &Val, idx: &Val) -> Vec<Val> {
     let whole = elem_whole(b.types(), cx.lay, elem);
     let at = b.elem_ptr(&whole, ptr, idx);
@@ -349,7 +349,7 @@ fn drop_elem(cx: &mut Cx, b: &mut FnBuilder, elem: Ty, ptr: &Val, idx: &Val) {
 
 /// What LLVM may assume about leaf `k` of a list element of kind `elem`. A buffer holds one
 /// element type, so a scalar element never lies where a list or string header does; only element
-/// accesses are tagged, since a record field or inner header is also read through borrowed
+/// accesses are tagged, since a type field or inner header is also read through borrowed
 /// pointers that carry no tag. A `Bool` is 0 or 1 and an inner list's length is not negative.
 fn elem_meta(elem: &TyKind, k: usize) -> Meta {
     let mut meta = Meta::default();
@@ -721,11 +721,11 @@ fn str_const(m: &Module, id: u32, out: &mut Vec<(String, String)>) {
 }
 
 /// Whether an element can sit in a list block: leaves that are `i64`, `double`, `i8` or narrow
-/// integers, or a record held in memory.
+/// integers, or a type held in memory.
 fn plain_elem(lay: &Layouts, e: Ty) -> bool {
-    (super::records::is_mem(lay, e) && super::records::shape_ok(lay, e))
+    (super::types::is_mem(lay, e) && super::types::shape_ok(lay, e))
         || lay
             .leaves(e)
             .iter()
-            .all(|l| matches!(l, Leaf::I64 | Leaf::F64 | Leaf::I8) || super::records::is_narrow(*l))
+            .all(|l| matches!(l, Leaf::I64 | Leaf::F64 | Leaf::I8) || super::types::is_narrow(*l))
 }

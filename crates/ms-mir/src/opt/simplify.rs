@@ -1108,9 +1108,9 @@ fn cse(m: &Module, f: &mut Func) -> bool {
                 inst.op,
                 Op::IAddChk | Op::ISubChk | Op::IMulChk | Op::INegChk | Op::SDivChk | Op::SRemChk
             );
-            // A field read is a borrowed view of an immutable record value, so repeating it
+            // A field read is a borrowed view of an immutable type value, so repeating it
             // yields the same view even when the field's type owns heap data.
-            let view = inst.op == Op::RecGet;
+            let view = inst.op == Op::TypeGet;
             if !(inst.op.is_numberable() || inst.op == Op::AltTag || checked_int || view)
                 || (m.needs_drop(ty) && !view)
             {
@@ -1220,8 +1220,8 @@ fn map_probes(m: &Module, f: &mut Func) -> bool {
                 }
                 _ => {
                     let e = inst.op.info().effects;
-                    // A record update drops the field it replaces, never a map being probed.
-                    if (e.io || e.ownership || e.alloc) && inst.op != Op::RecSet {
+                    // A type update drops the field it replaces, never a map being probed.
+                    if (e.io || e.ownership || e.alloc) && inst.op != Op::TypeSet {
                         table.clear();
                         stored.clear();
                     }
@@ -1303,7 +1303,7 @@ fn fuse_contains(m: &Module, f: &mut Func) -> bool {
     let uses = f.use_counts();
     let clobbers = |i: &Inst| {
         let e = i.op.info().effects;
-        (e.io || e.ownership || e.alloc) && i.op != Op::RecSet
+        (e.io || e.ownership || e.alloc) && i.op != Op::TypeSet
     };
     for ji in 0..f.blocks.len() {
         let [p0, p1] = preds[ji].as_slice() else {

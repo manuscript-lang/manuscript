@@ -1,18 +1,18 @@
-//! Records, raw memory and `ptr` values in the direct emitter.
+//! Types, raw memory and `ptr` values in the direct emitter.
 //!
-//! A record of at most [`MEM_LEAVES`] leaves is a list of register values like any other value, so
-//! `rec.new`, `rec.get` and `rec.set` only move leaves around and cost nothing. A larger record is
+//! A type of at most [`MEM_LEAVES`] leaves is a list of register values like any other value, so
+//! `type.new`, `type.get` and `type.set` only move leaves around and cost nothing. A larger type is
 //! kept in memory instead: its value is a `ptr` to one immutable `alloca` of a literal struct with
-//! the record's leaves as fields (the offsets are those of `layout::mem_layout`, so they match the
+//! the type's leaves as fields (the offsets are those of `layout::mem_layout`, so they match the
 //! runtime and the Cranelift object). A copy is one `memcpy`, a field read an offset and one
 //! aligned `load`, and LLVM's `sroa` and `memcpyopt` turn that back into registers where it pays
 //! and drop the fields nobody reads. The flat leaf list exists only where the shared calling
 //! convention asks for it: a call, a return and the entry of a function.
 //!
-//! A block parameter of such a record has a slot of its own that each incoming edge copies into,
-//! so a loop that carries a record does not carry a phi per leaf.
+//! A block parameter of such a type has a slot of its own that each incoming edge copies into,
+//! so a loop that carries a type does not carry a phi per leaf.
 //!
-//! Values of type `ptr` are LLVM `ptr` inside a function and `i64` across a call. A record that
+//! Values of type `ptr` are LLVM `ptr` inside a function and `i64` across a call. A type that
 //! holds a `ptr` is not handled (its leaf is an integer here); the function falls back.
 
 use super::{Area, Cx, Vals, held_leaves, mem_leaves, narrow_leaves};
@@ -30,7 +30,7 @@ pub(super) const AREA: Area = Area {
     ..Area::NONE
 };
 
-/// Records with more leaves than this live in memory.
+/// Types with more leaves than this live in memory.
 pub(super) const MEM_LEAVES: usize = 8;
 
 /// The memory shape of a type whose leaves are all `i64`, `f64`, `i8` or `ptr`.
@@ -45,7 +45,7 @@ pub(super) struct Shape {
     pub align: u32,
 }
 
-/// The memory type of the leaves of `ty`: a struct named after a record, string or list, else a
+/// The memory type of the leaves of `ty`: a struct named after a type, string or list, else a
 /// literal one; `None` when it has none or a leaf differs in registers and in memory.
 fn shape_leaves(lay: &Layouts, ty: Ty) -> Option<(Vec<LTy>, crate::layout::MemLayout)> {
     let raw = lay.leaves(ty);
@@ -89,39 +89,39 @@ pub(super) fn shape(types: &Types, lay: &Layouts, ty: Ty) -> Option<Shape> {
     })
 }
 
-fn record(lay: &Layouts, ty: Ty) -> Option<ms_mir::types::RecId> {
+fn named_type(lay: &Layouts, ty: Ty) -> Option<ms_mir::types::TypeId> {
     match lay.m.types.kind(ty) {
-        TyKind::Rec(r) if !lay.m.records[r.index()].indirect => Some(*r),
+        TyKind::Type(r) if !lay.m.type_defs[r.index()].indirect => Some(*r),
         _ => None,
     }
 }
 
-/// The indirect record `ty` (the library's `Error`): its value is one pointer to a heap block.
-fn indirect(lay: &Layouts, ty: Ty) -> Option<ms_mir::types::RecId> {
+/// The indirect type `ty` (the library's `Error`): its value is one pointer to a heap block.
+fn indirect(lay: &Layouts, ty: Ty) -> Option<ms_mir::types::TypeId> {
     match lay.m.types.kind(ty) {
-        TyKind::Rec(r) if lay.m.records[r.index()].indirect => Some(*r),
+        TyKind::Type(r) if lay.m.type_defs[r.index()].indirect => Some(*r),
         _ => None,
     }
 }
 
-/// Whether the block of indirect record `r` is made of plain leaves, none of them a record in
+/// Whether the block of indirect type `r` is made of plain leaves, none of them a type in
 /// memory (whose offsets inside the flat block would differ from its own).
-fn block_ok(lay: &Layouts, r: ms_mir::types::RecId) -> bool {
-    lay.rec_block(r)
+fn block_ok(lay: &Layouts, r: ms_mir::types::TypeId) -> bool {
+    lay.type_block(r)
         .iter()
         .all(|l| matches!(l, Leaf::I64 | Leaf::F64 | Leaf::I8) || is_narrow(*l))
-        && lay.m.records[r.index()]
+        && lay.m.type_defs[r.index()]
             .fields
             .iter()
             .all(|f| !is_mem(lay, f.1))
 }
 
-/// The memory shape of the block behind indirect record `r`: the leaves of its fields in order,
+/// The memory shape of the block behind indirect type `r`: the leaves of its fields in order,
 /// with a map or set field as the one nullable pointer to its header.
-fn block_shape(types: &Types, lay: &Layouts, r: ms_mir::types::RecId) -> Shape {
+fn block_shape(types: &Types, lay: &Layouts, r: ms_mir::types::TypeId) -> Shape {
     let (mut leaves, mut held) = (Vec::new(), Vec::new());
-    for f in &lay.m.records[r.index()].fields {
-        if lay.rec_field_boxed(f.1) {
+    for f in &lay.m.type_defs[r.index()].fields {
+        if lay.type_field_boxed(f.1) {
             leaves.push(LTy::Ptr);
             held.push(LTy::Ptr);
         } else {
@@ -129,8 +129,8 @@ fn block_shape(types: &Types, lay: &Layouts, r: ms_mir::types::RecId) -> Shape {
             held.extend(held_leaves(lay, f.1));
         }
     }
-    let mem = mem_layout(&lay.rec_block(r));
-    let name = format!("ms.rec.{}.block", lay.m.records[r.index()].name);
+    let mem = mem_layout(&lay.type_block(r));
+    let name = format!("ms.type.{}.block", lay.m.type_defs[r.index()].name);
     Shape {
         st: types.named(&name, leaves.clone()),
         leaves,
@@ -141,13 +141,13 @@ fn block_shape(types: &Types, lay: &Layouts, r: ms_mir::types::RecId) -> Shape {
 }
 
 /// Block leaf index, leaf count and whether the field holds a header pointer, per field of `r`.
-fn block_spans(lay: &Layouts, r: ms_mir::types::RecId) -> Vec<(usize, usize, bool)> {
+fn block_spans(lay: &Layouts, r: ms_mir::types::TypeId) -> Vec<(usize, usize, bool)> {
     let mut at = 0;
-    lay.m.records[r.index()]
+    lay.m.type_defs[r.index()]
         .fields
         .iter()
         .map(|f| {
-            let boxed = lay.rec_field_boxed(f.1);
+            let boxed = lay.type_field_boxed(f.1);
             let n = if boxed { 1 } else { lay.width(f.1) };
             at += n;
             (at - n, n, boxed)
@@ -155,22 +155,22 @@ fn block_spans(lay: &Layouts, r: ms_mir::types::RecId) -> Vec<(usize, usize, boo
         .collect()
 }
 
-/// Whether field `i` of `r` is an indirect record's boxed collection.
-fn field_boxed(lay: &Layouts, r: ms_mir::types::RecId, i: u32) -> bool {
-    lay.m.records[r.index()].indirect
-        && lay.rec_field_boxed(lay.m.records[r.index()].fields[i as usize].1)
+/// Whether field `i` of `r` is an indirect type's boxed collection.
+fn field_boxed(lay: &Layouts, r: ms_mir::types::TypeId, i: u32) -> bool {
+    lay.m.type_defs[r.index()].indirect
+        && lay.type_field_boxed(lay.m.type_defs[r.index()].fields[i as usize].1)
 }
 
-/// The fields of the record `ty` that `rec.release` drops: those the mask does not move out and
+/// The fields of the type `ty` that `type.release` drops: those the mask does not move out and
 /// that own something, each with its type and leaf index and count.
 pub(super) fn released(
     lay: &Layouts,
     ty: Ty,
     mask: u32,
 ) -> impl Iterator<Item = (Ty, usize, usize)> {
-    let r = record(lay, ty).expect("a record that is not indirect");
+    let r = named_type(lay, ty).expect("a type that is not indirect");
     let mut at = 0;
-    lay.m.records[r.index()]
+    lay.m.type_defs[r.index()]
         .fields
         .iter()
         .enumerate()
@@ -181,12 +181,12 @@ pub(super) fn released(
         })
 }
 
-/// The fields of the indirect record `r` that `rec.release` visits: a boxed collection always (its
+/// The fields of the indirect type `r` that `type.release` visits: a boxed collection always (its
 /// header block is freed), any other when the mask does not move it out and it owns something;
 /// each with its field index, so that `block_spans` locates it, and whether it is boxed.
-fn block_released(lay: &Layouts, r: ms_mir::types::RecId, mask: u32) -> Vec<(Ty, usize, bool)> {
+fn block_released(lay: &Layouts, r: ms_mir::types::TypeId, mask: u32) -> Vec<(Ty, usize, bool)> {
     let spans = block_spans(lay, r);
-    lay.m.records[r.index()]
+    lay.m.type_defs[r.index()]
         .fields
         .iter()
         .enumerate()
@@ -195,7 +195,7 @@ fn block_released(lay: &Layouts, r: ms_mir::types::RecId, mask: u32) -> Vec<(Ty,
         .collect()
 }
 
-/// The types of the fields `rec.release` of a record of type `ty` drops through glue.
+/// The types of the fields `type.release` of a type of type `ty` drops through glue.
 pub(super) fn release_types(lay: &Layouts, ty: Ty, mask: u32) -> Vec<Ty> {
     match indirect(lay, ty) {
         Some(r) => block_released(lay, r, mask)
@@ -207,9 +207,9 @@ pub(super) fn release_types(lay: &Layouts, ty: Ty, mask: u32) -> Vec<Ty> {
     }
 }
 
-/// `rec.release` of an indirect record: drops the fields the mask keeps, frees the header block of
-/// each collection field and then the record's block.
-fn release_block(cx: &mut Cx, b: &mut FnBuilder, r: ms_mir::types::RecId, mask: u32, p: &Val) {
+/// `type.release` of an indirect type: drops the fields the mask keeps, frees the header block of
+/// each collection field and then the type's block.
+fn release_block(cx: &mut Cx, b: &mut FnBuilder, r: ms_mir::types::TypeId, mask: u32, p: &Val) {
     let lay = cx.lay;
     let s = block_shape(b.types(), lay, r);
     let spans = block_spans(lay, r);
@@ -250,12 +250,12 @@ fn release_block(cx: &mut Cx, b: &mut FnBuilder, r: ms_mir::types::RecId, mask: 
 /// field branches on the null header.
 fn splits(lay: &Layouts, f: &Func, i: &Inst, _: bool) -> usize {
     match (i.op, i.imm) {
-        (Op::RecNew, _) => i
+        (Op::TypeNew, _) => i
             .res
             .and_then(|r| indirect(lay, f.ty(r)))
             .map_or(0, |r| block_spans(lay, r).iter().filter(|s| s.2).count()),
-        (Op::RecGet | Op::PtrField, Imm::Field(r, k)) => usize::from(field_boxed(lay, r, k)),
-        (Op::RecRelease, Imm::RecMask(_, mask)) => match indirect(lay, f.ty(i.args[0])) {
+        (Op::TypeGet | Op::PtrField, Imm::Field(r, k)) => usize::from(field_boxed(lay, r, k)),
+        (Op::TypeRelease, Imm::TypeMask(_, mask)) => match indirect(lay, f.ty(i.args[0])) {
             // Each boxed collection field is tested for its header; a string field is a check.
             Some(r) => block_released(lay, r, mask)
                 .iter()
@@ -271,26 +271,26 @@ fn splits(lay: &Layouts, f: &Func, i: &Inst, _: bool) -> usize {
 
 /// Whether a value of `ty` is held as a pointer to memory.
 pub(super) fn is_mem(lay: &Layouts, ty: Ty) -> bool {
-    record(lay, ty).is_some() && lay.width(ty) > MEM_LEAVES
+    named_type(lay, ty).is_some() && lay.width(ty) > MEM_LEAVES
 }
 
-/// Whether this module handles values of `ty`: `ptr`, and records that are either small or have a
+/// Whether this module handles values of `ty`: `ptr`, and types that are either small or have a
 /// memory shape.
 pub(super) fn ty_ok(lay: &Layouts, ty: Ty) -> bool {
     ty == Ty::PTR
         || indirect(lay, ty).is_some_and(|r| block_ok(lay, r))
-        || (record(lay, ty).is_some() && (lay.width(ty) <= MEM_LEAVES || shape_ok(lay, ty)))
+        || (named_type(lay, ty).is_some() && (lay.width(ty) <= MEM_LEAVES || shape_ok(lay, ty)))
 }
 
 /// The ops this module emits.
 pub(super) fn handles(op: Op) -> bool {
     matches!(
         op,
-        Op::RecNew
-            | Op::RecGet
-            | Op::RecSet
-            | Op::RecFill
-            | Op::RecRelease
+        Op::TypeNew
+            | Op::TypeGet
+            | Op::TypeSet
+            | Op::TypeFill
+            | Op::TypeRelease
             | Op::Slot
             | Op::Load
             | Op::Take
@@ -310,18 +310,24 @@ pub(super) fn op_ok(lay: &Layouts, f: &Func, i: &Inst) -> bool {
             (mem_ty(t) || empty(lay, t)) && i.res.is_some_and(|r| f.ty(r) == t)
         }
         (Op::Store | Op::Put, _) => mem_ty(f.ty(i.args[1])) || empty(lay, f.ty(i.args[1])),
-        (Op::PtrField | Op::RecGet, Imm::Field(..)) => true,
-        (Op::RecSet | Op::RecFill, Imm::Field(r, _)) => !lay.m.records[r.index()].indirect,
-        (Op::RecNew, _) => true,
+        (Op::PtrField | Op::TypeGet, Imm::Field(..)) => true,
+        (Op::TypeSet | Op::TypeFill, Imm::Field(r, _)) => !lay.m.type_defs[r.index()].indirect,
+        (Op::TypeNew, _) => true,
         (
-            Op::Slot | Op::Load | Op::Take | Op::PtrField | Op::RecGet | Op::RecSet | Op::RecFill,
+            Op::Slot
+            | Op::Load
+            | Op::Take
+            | Op::PtrField
+            | Op::TypeGet
+            | Op::TypeSet
+            | Op::TypeFill,
             _,
         ) => false,
         _ => true,
     }
 }
 
-/// The values a MIR value of type `ty` is held as: its leaves, with `ptr` as `ptr`; a record in
+/// The values a MIR value of type `ty` is held as: its leaves, with `ptr` as `ptr`; a type in
 /// memory is one `ptr`.
 pub(super) fn held(lay: &Layouts, ty: Ty) -> Vec<LTy> {
     if is_mem(lay, ty) {
@@ -330,7 +336,7 @@ pub(super) fn held(lay: &Layouts, ty: Ty) -> Vec<LTy> {
     held_leaves(lay, ty)
 }
 
-/// The values of a block parameter: its own reserved names, or for a record in memory a slot that
+/// The values of a block parameter: its own reserved names, or for a type in memory a slot that
 /// each incoming edge copies into.
 pub(super) fn block_param(b: &mut FnBuilder, lay: &Layouts, ty: Ty) -> Vec<Val> {
     if is_mem(lay, ty) {
@@ -340,13 +346,13 @@ pub(super) fn block_param(b: &mut FnBuilder, lay: &Layouts, ty: Ty) -> Vec<Val> 
     reserve(b, lay, ty)
 }
 
-/// Reserves the names a result of type `ty` is held under; a record in memory is one `ptr`, the
+/// Reserves the names a result of type `ty` is held under; a type in memory is one `ptr`, the
 /// address of its slot.
 pub(super) fn reserve(b: &mut FnBuilder, lay: &Layouts, ty: Ty) -> Vec<Val> {
     held(lay, ty).into_iter().map(|t| b.reserve(t)).collect()
 }
 
-/// Loads the leaves of the record of type `ty` in memory at `base` into the reserved `named`
+/// Loads the leaves of the type of type `ty` in memory at `base` into the reserved `named`
 /// values, one per leaf.
 pub(super) fn load_into_leaves(
     b: &mut FnBuilder,
@@ -359,7 +365,7 @@ pub(super) fn load_into_leaves(
     load_leaves(b, &s, base, 0, s.leaves.len(), named);
 }
 
-/// Defines the reserved pointer `dst` as a new slot for a record of type `ty` in memory and
+/// Defines the reserved pointer `dst` as a new slot for a type of type `ty` in memory and
 /// stores its `leaves` there.
 pub(super) fn store_into_slot(b: &mut FnBuilder, lay: &Layouts, ty: Ty, dst: &Val, leaves: &[Val]) {
     let s = shape(b.types(), lay, ty).expect("is_mem checked");
@@ -367,15 +373,15 @@ pub(super) fn store_into_slot(b: &mut FnBuilder, lay: &Layouts, ty: Ty, dst: &Va
     store_regs(b, lay, ty, &s.st, dst, leaves);
 }
 
-/// Leaf index and count of field `i` of record type `rty`.
+/// Leaf index and count of field `i` of type `rty`.
 fn field_span(lay: &Layouts, rty: Ty, i: usize) -> (usize, usize) {
-    let r = record(lay, rty).expect("a record");
-    let fields = &lay.m.records[r.index()].fields;
+    let r = named_type(lay, rty).expect("a type");
+    let fields = &lay.m.type_defs[r.index()].fields;
     let at = fields[..i].iter().map(|f| lay.width(f.1)).sum();
     (at, lay.width(fields[i].1))
 }
 
-/// The leaves of `v` as they cross a call: a record in memory loaded, a boolean as an `i8`, and
+/// The leaves of `v` as they cross a call: a type in memory loaded, a boolean as an `i8`, and
 /// each pointer as itself in the native convention (`native`) or as its address (`i64`) in the
 /// leaf convention.
 pub(super) fn abi_leaves(
@@ -414,7 +420,7 @@ pub(super) fn abi_leaves_of(
         .collect()
 }
 
-/// Loads leaves `at..at + n` of the record at `base`; each takes the matching name of `named`
+/// Loads leaves `at..at + n` of the type at `base`; each takes the matching name of `named`
 /// (a result that phis may already use), or a fresh one.
 fn load_leaves(
     b: &mut FnBuilder,
@@ -520,7 +526,7 @@ pub(super) enum Entry {
     /// A leaf that arrives as another type than it is held as (an address for a pointer, a byte
     /// for a boolean) is converted.
     Conv { held: Val, abi: Val },
-    /// A record in memory arrives as leaves and is stored into its slot.
+    /// A type in memory arrives as leaves and is stored into its slot.
     Mem { slot: Val, abi: Vec<Val>, ty: Ty },
     /// A value passed by pointer (see `abi_llvm`) is loaded into its leaves.
     Load { ptr: Val, dsts: Vec<Val>, ty: Ty },
@@ -589,7 +595,7 @@ pub(super) fn emit_entry(b: &mut FnBuilder, lay: &Layouts, entry: Vec<Entry>) {
     }
 }
 
-/// Whether following `t` copies a record into the slots of the target's parameters.
+/// Whether following `t` copies a type into the slots of the target's parameters.
 pub(super) fn has_copies(lay: &Layouts, f: &Func, t: &Target) -> bool {
     f.blocks[t.block.index()]
         .params
@@ -597,7 +603,7 @@ pub(super) fn has_copies(lay: &Layouts, f: &Func, t: &Target) -> bool {
         .any(|p| is_mem(lay, f.ty(p.value)))
 }
 
-/// Copies the record arguments of `t` into the slots of the target's parameters. An argument that
+/// Copies the type arguments of `t` into the slots of the target's parameters. An argument that
 /// is itself one of those slots (a swap) is copied aside first.
 pub(super) fn copies(b: &mut FnBuilder, lay: &Layouts, f: &Func, vals: &Vals, t: &Target) {
     let params = &f.blocks[t.block.index()].params;
@@ -625,15 +631,15 @@ pub(super) fn copies(b: &mut FnBuilder, lay: &Layouts, f: &Func, vals: &Vals, t:
     }
 }
 
-/// Whether the result of `inst` is bound by [`bind_early`]: a record held as leaves is built, read
+/// Whether the result of `inst` is bound by [`bind_early`]: a type held as leaves is built, read
 /// and replaced by moving leaves around, and a stack slot is an `alloca`.
 fn is_early(lay: &Layouts, f: &Func, inst: &Inst) -> bool {
     match inst.op {
         Op::Slot => true,
-        Op::RecNew => inst
+        Op::TypeNew => inst
             .res
             .is_some_and(|r| !is_mem(lay, f.ty(r)) && indirect(lay, f.ty(r)).is_none()),
-        Op::RecGet | Op::RecSet | Op::RecFill => {
+        Op::TypeGet | Op::TypeSet | Op::TypeFill => {
             let t = f.ty(inst.args[0]);
             !is_mem(lay, t) && indirect(lay, t).is_none()
         }
@@ -641,8 +647,8 @@ fn is_early(lay: &Layouts, f: &Func, inst: &Inst) -> bool {
     }
 }
 
-/// Binds the result of a pure record operation at naming time, when no instruction is needed:
-/// building, reading and replacing a field of a record held as leaves, and a stack slot (its
+/// Binds the result of a pure type operation at naming time, when no instruction is needed:
+/// building, reading and replacing a field of a type held as leaves, and a stack slot (its
 /// `alloca` goes to the entry block anyway). `None` for any other instruction.
 pub(super) fn bind_early(
     b: &mut FnBuilder,
@@ -664,13 +670,13 @@ pub(super) fn bind_early(
                 b.alloca(&LTy::Array(Box::new(LTy::I64), u64::from(words))),
             ])
         }
-        Op::RecNew => Some(
+        Op::TypeNew => Some(
             inst.args
                 .iter()
                 .flat_map(|a| vals[&a.index()].clone())
                 .collect(),
         ),
-        Op::RecGet => {
+        Op::TypeGet => {
             let Imm::Field(_, i) = inst.imm else {
                 return None;
             };
@@ -689,7 +695,7 @@ pub(super) fn bind_early(
     }
 }
 
-/// Writes a record or `ptr` operation that `bind_early` left to an instruction; each result takes
+/// Writes a type or `ptr` operation that `bind_early` left to an instruction; each result takes
 /// the names reserved for it.
 fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     let (lay, f) = (cx.lay, cx.f);
@@ -711,11 +717,7 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         }
         Op::PtrField => {
             let Imm::Field(r, i) = inst.imm else { return };
-            let rty = lay
-                .m
-                .types
-                .find(&TyKind::Rec(r))
-                .expect("record type interned");
+            let rty = lay.m.types.find(&TyKind::Type(r)).expect("type interned");
             if let Some(r) = indirect(lay, rty) {
                 ptr_field(cx, b, r, i as usize, &arg(0)[0], &out[0]);
                 return;
@@ -730,13 +732,13 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
                 }
             };
         }
-        Op::RecNew if indirect(lay, f.ty(inst.res.expect("rec.new result"))).is_some() => {
-            let r = indirect(lay, f.ty(inst.res.expect("rec.new result"))).expect("checked");
-            rec_new(cx, b, r, inst, vals, &out[0]);
+        Op::TypeNew if indirect(lay, f.ty(inst.res.expect("type.new result"))).is_some() => {
+            let r = indirect(lay, f.ty(inst.res.expect("type.new result"))).expect("checked");
+            type_new(cx, b, r, inst, vals, &out[0]);
         }
-        Op::RecNew => {
-            // A record in memory: each field is stored into a fresh slot.
-            let res = inst.res.expect("rec.new result");
+        Op::TypeNew => {
+            // A type in memory: each field is stored into a fresh slot.
+            let res = inst.res.expect("type.new result");
             let s = shape(b.types(), lay, f.ty(res)).expect("is_mem checked");
             b.alloca_as(&out[0], &s.st);
             let mut at = 0;
@@ -744,26 +746,26 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
                 at += write_field(b, lay, f, vals, &s, &out[0], at, *a);
             }
         }
-        Op::RecGet if indirect(lay, f.ty(inst.args[0])).is_some() => {
+        Op::TypeGet if indirect(lay, f.ty(inst.args[0])).is_some() => {
             let Imm::Field(r, i) = inst.imm else { return };
-            rec_get(cx, b, r, i as usize, &arg(0)[0], &out);
+            type_get(cx, b, r, i as usize, &arg(0)[0], &out);
         }
-        Op::RecGet => {
+        Op::TypeGet => {
             let Imm::Field(_, i) = inst.imm else { return };
-            let res = inst.res.expect("rec.get result");
+            let res = inst.res.expect("type.get result");
             let rty = f.ty(inst.args[0]);
             let (at, n) = field_span(lay, rty, i as usize);
             let s = shape(b.types(), lay, rty).expect("is_mem checked");
-            let rec = arg(0)[0].clone();
+            let tval = arg(0)[0].clone();
             if is_mem(lay, f.ty(res)) {
-                // A nested record is the same bytes at an offset; the parent is never written.
+                // A nested type is the same bytes at an offset; the parent is never written.
                 b.name_next(&out[0]);
-                b.leaf_ptr(&s.st, &rec, at);
+                b.leaf_ptr(&s.st, &tval, at);
             } else {
-                load_leaves(b, &s, &rec, at, n, &out);
+                load_leaves(b, &s, &tval, at, n, &out);
             }
         }
-        Op::RecSet | Op::RecFill => {
+        Op::TypeSet | Op::TypeFill => {
             let Imm::Field(_, i) = inst.imm else { return };
             let rty = f.ty(inst.args[0]);
             let (at, _) = field_span(lay, rty, i as usize);
@@ -773,8 +775,8 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
             b.copy_bytes(&out[0], &src, s.size as u64, s.align as u64);
             write_field(b, lay, f, vals, &s, &out[0], at, inst.args[1]);
         }
-        Op::RecRelease => {
-            let Imm::RecMask(_, mask) = inst.imm else {
+        Op::TypeRelease => {
+            let Imm::TypeMask(_, mask) = inst.imm else {
                 return;
             };
             let rty = f.ty(inst.args[0]);
@@ -786,7 +788,7 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
             let s = is_mem(lay, rty).then(|| shape(b.types(), lay, rty).expect("is_mem checked"));
             for (fty, at, n) in released(lay, rty, mask) {
                 let leaves = match &s {
-                    // A field that is itself a record in memory is its address in the parent.
+                    // A field that is itself a type in memory is its address in the parent.
                     Some(s) if is_mem(lay, fty) => vec![b.field_ptr(&s.st, &own[0], at)],
                     Some(s) => load_leaves(b, s, &own[0], at, n, &[]),
                     None => own[at..at + n].to_vec(),
@@ -798,7 +800,7 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     }
 }
 
-/// Defines the held value `out` of type `ty` from the memory at `p`: a record in memory is copied
+/// Defines the held value `out` of type `ty` from the memory at `p`: a type in memory is copied
 /// into a fresh slot, anything else is loaded leaf by leaf.
 pub(super) fn load_value(b: &mut FnBuilder, lay: &Layouts, ty: Ty, p: &Val, out: &[Val]) {
     let s = shape(b.types(), lay, ty).expect("the type has a memory shape");
@@ -861,13 +863,13 @@ fn next_split(cx: &mut Cx, tag: &str) -> (String, String, String) {
     )
 }
 
-/// `rec.new` of an indirect record: one heap block with the field leaves stored at their offsets;
+/// `type.new` of an indirect type: one heap block with the field leaves stored at their offsets;
 /// a map or set that is not the all-zero empty value gets a header block of its own, else the
 /// field is null.
-fn rec_new(
+fn type_new(
     cx: &mut Cx,
     b: &mut FnBuilder,
-    r: ms_mir::types::RecId,
+    r: ms_mir::types::TypeId,
     inst: &Inst,
     vals: &Vals,
     out: &Val,
@@ -917,24 +919,24 @@ fn header_store(cx: &mut Cx, b: &mut FnBuilder, words: &[Val]) -> Val {
     out
 }
 
-/// `rec.get` of an indirect record: the field's leaves loaded from the block; a map or set loads
+/// `type.get` of an indirect type: the field's leaves loaded from the block; a map or set loads
 /// its header through the pointer, or is the all-zero empty value when that is null.
-fn rec_get(
+fn type_get(
     cx: &mut Cx,
     b: &mut FnBuilder,
-    r: ms_mir::types::RecId,
+    r: ms_mir::types::TypeId,
     i: usize,
-    rec: &Val,
+    tval: &Val,
     out: &[Val],
 ) {
     let lay = cx.lay;
     let s = block_shape(b.types(), lay, r);
     let (at, n, boxed) = block_spans(lay, r)[i];
     if !boxed {
-        load_leaves(b, &s, rec, at, n, out);
+        load_leaves(b, &s, tval, at, n, out);
         return;
     }
-    let p = b.leaf_ptr(&s.st, rec, at);
+    let p = b.leaf_ptr(&s.st, tval, at);
     let bp = b.load(&LTy::Ptr, &p, 8);
     let some_header = b.icmp("ne", &bp, &NULL());
     let (head, some, join) = next_split(cx, "g");
@@ -960,13 +962,13 @@ fn rec_get(
     }
 }
 
-/// `ptr.field` of an indirect record: the argument addresses the record's pointer; the result is
+/// `ptr.field` of an indirect type: the argument addresses the type's pointer; the result is
 /// the address of the field in the block, or for a map or set the header block, created empty when
 /// the field is null.
 fn ptr_field(
     cx: &mut Cx,
     b: &mut FnBuilder,
-    r: ms_mir::types::RecId,
+    r: ms_mir::types::TypeId,
     i: usize,
     at: &Val,
     out: &Val,
@@ -998,7 +1000,7 @@ fn ptr_field(
     b.phi(out, &[(have, head), (bp, make)]);
 }
 
-/// Stores MIR value `v` into the record `slot` at leaf `at`; returns the leaves it spans.
+/// Stores MIR value `v` into the type `slot` at leaf `at`; returns the leaves it spans.
 #[allow(clippy::too_many_arguments)]
 fn write_field(
     b: &mut FnBuilder,
@@ -1026,7 +1028,7 @@ fn write_field(
     n
 }
 
-/// Defines the held value of a call result that is a record in memory from the call's own result
+/// Defines the held value of a call result that is a type in memory from the call's own result
 /// `r` (a leaf, or a tuple of several), under the reserved name `out[0]`.
 pub(super) fn call_result(b: &mut FnBuilder, lay: &Layouts, ty: Ty, r: Val, out: &[Val]) {
     let s = shape(b.types(), lay, ty).expect("is_mem checked");
@@ -1108,7 +1110,7 @@ pub(super) fn bind_indirect(
     dsts
 }
 
-/// A pointer to value `v` of type `ty` to pass by pointer: the slot of a record in memory, or a
+/// A pointer to value `v` of type `ty` to pass by pointer: the slot of a type in memory, or a
 /// fresh stack slot holding its leaves.
 pub(super) fn spill(b: &mut FnBuilder, lay: &Layouts, ty: Ty, vals: &Vals, v: Value) -> Val {
     spill_of(b, lay, ty, &vals[&v.index()])
@@ -1153,7 +1155,7 @@ pub(super) fn store_result(
     store_regs(b, lay, ty, &st, sret, &leaves);
 }
 
-/// The slot a call result of type `ty` is written to: the result's own name for a record in
+/// The slot a call result of type `ty` is written to: the result's own name for a type in
 /// memory, else a scratch slot that [`load_result`] reads back.
 pub(super) fn result_slot(b: &mut FnBuilder, lay: &Layouts, ty: Ty, out: &[Val]) -> Val {
     if is_mem(lay, ty) {
