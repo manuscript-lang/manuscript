@@ -1,7 +1,11 @@
 // conform: tags=testing,tier-io
 // conform: phase=test
 import (
-	Promise, owned_task, promise, wait_all from "@std/concurrency/promise.ms",
+	Placement,
+	Promise,
+	PromiseOptions,
+	promise,
+	wait_all from "@std/concurrency/promise.ms",
 	expect_equal, expect_fault, expect_true from "@std/test/test.ms",
 	microseconds, sleep from "@std/time.ms",
 )
@@ -17,14 +21,20 @@ fn forever(n: Int) Int:
 // passes
 // it: this chain is about 28 MB of frames in a release build, 80 MB in a debug build.
 test "a promise task recurses far past its first stack slot":
-	p := owned_task[Int](fn: ok(depth(200000)))
+	p := promise(
+		fn: ok(depth(200000)),
+		options: PromiseOptions(placement: Placement.Here)
+	)
 	expect_equal(p.wait().get(0), 200000)?
 
 // Each call crosses the boundary of the first slot (about 3,200 release frames) and
 // comes back; the task keeps its second segment, so the loop allocates nothing after
 // the first pass.
 test "a loop at a segment boundary runs in bounded time":
-	p := owned_task[Int](fn: ok(loop_at_boundary()))
+	p := promise(
+		fn: ok(loop_at_boundary()),
+		options: PromiseOptions(placement: Placement.Here)
+	)
 	expect_equal(p.wait().get(0), 3300 * 20000)?
 
 fn loop_at_boundary() Int:
@@ -35,13 +45,16 @@ fn loop_at_boundary() Int:
 
 // Growth stops at 256 MiB, the main task's own limit, with the stack overflow report.
 test "a runaway recursion in a task still faults":
-	p := owned_task[Int](fn: ok(forever(0)))
+	p := promise(fn: ok(forever(0)), options: PromiseOptions(placement: Placement.Here))
 	expect_true(p.wait().is_error())?
 
 // A fault deep in a grown stack is caught by a guard opened on the first segment, and
 // the task carries on there.
 test "a fault inside a grown segment unwinds to its guard":
-	p := owned_task[Int](fn: ok(catch_in_task()))
+	p := promise(
+		fn: ok(catch_in_task()),
+		options: PromiseOptions(placement: Placement.Here)
+	)
 	expect_equal(p.wait().get(0), 10000)?
 
 fn catch_in_task() Int:

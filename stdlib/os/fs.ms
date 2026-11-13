@@ -17,7 +17,11 @@ data := read_file("notes.txt").wait()?
 */
 import (
 	Bytes from "@std/bytes.ms",
-	Promise, adopt, owned_task from "@std/concurrency/promise.ms",
+	Placement,
+	Promise,
+	PromiseOptions,
+	adopt,
+	promise from "@std/concurrency/promise.ms",
 	Closeable, Writable from "@std/core.ms",
 	ReadStream, Sink, Source, WriteStream from "@std/io/io.ms",
 	BigInt from "@std/math/math.ms",
@@ -699,12 +703,11 @@ fn invalid_input() Error:
 // for untrusted or large files.
 // ms: effect std.fs.read
 export fn read_file(path: String, max_bytes: Int? = none) Promise[Bytes]:
-	return owned_task[Bytes](read_job(path.clone(), max_bytes))
-
-// The work of `read_file`: a returned closure owns its captures, so the promise borrows
-// nothing.
-fn read_job(path: String, max_bytes: Int?) fn() Bytes!:
-	return fn: msstd_fs_read_file(path, max_bytes)
+	owned := path.clone()
+	return promise(
+		fn: msstd_fs_read_file(owned, max_bytes),
+		options: PromiseOptions(placement: Placement.Here)
+	)
 
 // Returns the target text stored in the symbolic link at `path`, without resolving it.
 // A path that is not a link returns EINVAL.
@@ -751,15 +754,18 @@ export fn temporary_directory(prefix: String) String!:
 export fn write_file(path: String, data: Writable, replace: Bool = false) Promise[Unit]:
 	payload := data.as_bytes()
 	held := msstd_fs_admit(payload.length())
-	return owned_task[Unit](write_job(path.clone(), payload, replace, held))
+	owned := path.clone()
+	return promise(
+		fn: write_held(owned, payload, replace, held),
+		options: PromiseOptions(placement: Placement.Here)
+	)
 
 // The work of `write_file`. The task runs at once, so the slot frees the moment the
 // write ends, not when the promise is dropped: `permit` is a local that closes at the
-// end of the closure.
-fn write_job(path: String, data: Bytes, replace: Bool, held: Bool) fn() Unit!:
-	return fn:
-		permit := WritePermit(held: held)
-		return msstd_fs_write_file(path, data, replace)
+// end of the call.
+fn write_held(path: String, data: Bytes, replace: Bool, held: Bool) Unit!:
+	permit := WritePermit(held: held)
+	return msstd_fs_write_file(path, data, replace)
 
 // Checks access with mode 0..7: existence 0, read 4, write 2, execute 1, or combined
 // bits. Native permissions and Windows access policy still apply.
@@ -774,12 +780,15 @@ export fn access(path: String, mode: Int) Unit!:
 export fn append_file(path: String, data: Writable) Promise[Unit]:
 	payload := data.as_bytes()
 	held := msstd_fs_admit(payload.length())
-	return owned_task[Unit](append_job(path.clone(), payload, held))
+	owned := path.clone()
+	return promise(
+		fn: append_held(owned, payload, held),
+		options: PromiseOptions(placement: Placement.Here)
+	)
 
-fn append_job(path: String, data: Bytes, held: Bool) fn() Unit!:
-	return fn:
-		permit := WritePermit(held: held)
-		return msstd_fs_append_file(path, data)
+fn append_held(path: String, data: Bytes, held: Bool) Unit!:
+	permit := WritePermit(held: held)
+	return msstd_fs_append_file(path, data)
 
 // Changes target permissions with mode 0..4095. `follow_links` True (the default)
 // follows a final symbolic link; False changes the link itself, which returns ENOTSUP
@@ -862,10 +871,11 @@ Example: `write_atomic("config.json", text).wait()`.
 // ms: effect std.fs.write
 export fn write_atomic(path: String, data: Writable) Promise[Unit]:
 	payload := data.as_bytes()
-	return owned_task[Unit](atomic_job(path.clone(), payload))
-
-fn atomic_job(path: String, data: Bytes) fn() Unit!:
-	return fn: replace_atomically(path, data)
+	owned := path.clone()
+	return promise(
+		fn: replace_atomically(owned, payload),
+		options: PromiseOptions(placement: Placement.Here)
+	)
 
 // The file a write to `path` replaces: the target of a symbolic link, so the link
 // stays, else `path`. A link that cannot be resolved (a dangling one) is replaced

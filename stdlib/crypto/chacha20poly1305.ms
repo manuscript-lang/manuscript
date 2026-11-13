@@ -1,6 +1,6 @@
 import (
 	Bytes, BytesBuilder from "@std/bytes.ms",
-	constant_time_equal from "@std/crypto.ms",
+	constant_time_equal from "@std/crypto/crypto.ms",
 	bit_and,
 	bit_not,
 	bit_or,

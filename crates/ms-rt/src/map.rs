@@ -73,6 +73,23 @@ fn layout_k<K: KeyOps>(kd: &TypeDesc, vd: Option<&TypeDesc>) -> Layout {
             vsize: 8,
         };
     }
+    // A word-multiple key and a value aligned to at most a word: the entry is the hash word, the
+    // key, then the value padded to a word (what `layout` computes, without reading the key's
+    // descriptor).
+    if K::KEY_SIZE != 0
+        && let Some(v) = vd
+        && v.align <= 8
+    {
+        let voff = 8 + K::KEY_SIZE;
+        let vsize = v.size as usize;
+        return Layout {
+            koff: 8,
+            voff,
+            stride: (voff + vsize + 7) & !7,
+            ksize: K::KEY_SIZE,
+            vsize,
+        };
+    }
     layout(kd, vd)
 }
 
@@ -90,6 +107,9 @@ trait KeyOps {
     const CHEAP_EQ: bool = false;
     /// True when the key slot is always an 8-byte, 8-aligned word.
     const WORD_KEY: bool = false;
+    /// The size of a key slot that is always a multiple of 8 and 8-aligned (an `Int` word, a
+    /// two-word `String`), or 0 for a key whose layout comes from its descriptor.
+    const KEY_SIZE: usize = 0;
     /// Hash of the key slot (without the `LIVE` bit).
     unsafe fn hash(kd: &TypeDesc, key: *const u8) -> u64;
     /// Equality of two live key slots.
@@ -106,6 +126,7 @@ struct BlobKey;
 impl KeyOps for IntKey {
     const CHEAP_EQ: bool = true;
     const WORD_KEY: bool = true;
+    const KEY_SIZE: usize = 8;
     #[inline(always)]
     unsafe fn hash(_: &TypeDesc, key: *const u8) -> u64 {
         // SAFETY: the key slot holds an `Int`.
@@ -119,6 +140,7 @@ impl KeyOps for IntKey {
 }
 
 impl KeyOps for StrKey {
+    const KEY_SIZE: usize = STR_SIZE;
     #[inline(always)]
     unsafe fn hash(_: &TypeDesc, key: *const u8) -> u64 {
         // SAFETY: the key slot holds a live string.
@@ -159,8 +181,10 @@ impl KeyOps for BlobKey {
 impl KeyOps for DynKey {
     #[inline(always)]
     unsafe fn hash(kd: &TypeDesc, key: *const u8) -> u64 {
-        // SAFETY: the key slot is live.
-        unsafe { slot_hash(kd, key) }
+        // SAFETY: the key slot is live. A user `hash()` is often the identity of a couple of
+        // small ints (`x * 31 + y`) whose runs of consecutive values would cluster under linear
+        // probing, so the table sees a mixed hash.
+        unsafe { crate::string::hash_int(slot_hash(kd, key)) }
     }
     #[inline(always)]
     unsafe fn eq(kd: &TypeDesc, a: *const u8, b: *const u8) -> bool {

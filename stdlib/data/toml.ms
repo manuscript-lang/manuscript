@@ -3,7 +3,9 @@ import (
 	Bytes from "@std/bytes.ms",
 	quote_text from "@std/data/quote.ms",
 	log, parse_float, parse_int, sqrt from "@std/math/math.ms",
-	Regex, StringBuilder, compile, from_scalars from "@std/string.ms",
+	Regex, compile from "@std/regex.ms",
+	from_scalars from "@std/string.ms",
+	StringBuilder from "@std/string_builder.ms",
 )
 
 // A TOML value. Date and time values retain their original TOML text.

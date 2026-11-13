@@ -123,6 +123,30 @@ fn a_counted_push_loop_makes_its_counter_the_length() {
 }
 
 #[test]
+fn a_loop_updating_a_joined_list_keeps_its_length_and_a_doubling_index() {
+    let (b, a) = optimized("list_join_walk.mir");
+    assert_eq!(count(&b, "list.get"), 3);
+    assert_eq!(count(&b, "list.set"), 1);
+    // The list joins two origins, so the loop's list takes the join as its origin; the index
+    // `2 * at + 1` stays non-negative (it widens to a bound it cannot wrap at), and
+    // `at <= len - 2` bounds `at` and `at + 1`.
+    assert_eq!(count(&a, "list.get.u"), 3, "{}", print_module(&a));
+    assert_eq!(count(&a, "list.set.u"), 1, "{}", print_module(&a));
+    assert_eq!(exec(&b), exec(&a));
+}
+
+#[test]
+fn a_window_guard_bounds_every_offset_inside_the_window() {
+    let (b, a) = optimized("block_window.mir");
+    assert_eq!(count(&b, "list.get"), 2);
+    // `at + 4 <= len` and `j < 4` give `at + j < len`, so the reads of a fixed-size block
+    // need no check and the inner loop can vectorize.
+    assert_eq!(count(&a, "list.get.u"), 2, "{}", print_module(&a));
+    assert_eq!(count(&a, "list.get"), 0, "{}", print_module(&a));
+    assert_eq!(exec(&b), exec(&a));
+}
+
+#[test]
 fn list_access_in_bounds_becomes_unchecked() {
     let (b, a) = optimized("list_walk.mir");
     assert_eq!(count(&b, "list.get"), 1);

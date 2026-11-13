@@ -6,7 +6,7 @@ import (
 	ecdsa_generate,
 	public_key,
 	public_key_der,
-	rsa_generate from "@std/crypto.ms",
+	rsa_generate from "@std/crypto/crypto.ms",
 	JsonValue, parse from "@std/data/json.ms",
 	JwtAlgorithm, JwtCheck, sign_token, verify_token from "@std/data/jwt.ms",
 	random_bytes from "@std/random.ms",

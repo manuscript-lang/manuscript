@@ -381,6 +381,12 @@ impl Module {
         match inst.op {
             Op::IfaceBorrow | Op::IfaceView => true,
             Op::Call if matches!(inst.imm, Imm::Func(g) if self.funcs[g.index()].ret_view) => true,
+            Op::CallRt
+                if matches!(inst.imm, Imm::Ext(e)
+                    if self.externs[e.index()].role == ExternRole::ViewResult) =>
+            {
+                true
+            }
             // A borrowing variant (a `Result` that borrows some cases from its arguments and
             // owns the others) points into the arguments the borrowed cases came from.
             Op::AltView | Op::Call | Op::CallInd | Op::CallMethod => inst.res.is_some_and(|r| {

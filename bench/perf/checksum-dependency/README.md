@@ -85,7 +85,7 @@ A/A Adler on one byte varied +2.3%. On the C comparison, baseline MS/C measured
 40.58/29.89 µs at 64 KiB and 645.54/478.59 µs at 1 MiB. The candidate reaches
 29.64 and 485.56 µs in its separate paired baseline run. These are same-algorithm
 observations on this host; the dependency ordering is not a universal hardware
-speed guarantee. The raw page-fault controls retain the entire process counts,
+speed guarantee. The raw page-fault controls (not kept in the tree; rerun `run.py`) retained the entire process counts,
 including untimed input construction; they are not isolated kernel fault counts.
 
 Existing native bitwise-oracle tests cover every alignment, tails, continuation,
@@ -94,3 +94,5 @@ public results. No new correctness tests mirror the regrouped XOR expression.
 The bounded inventory also found FNV-1/FNV-1a 32/64-bit, CRC64 ECMA/ISO and MapHash
 in crypto/hash.ms, and the existing RustCrypto-backed digest APIs in crypto.ms.
 They were left unchanged without a separately qualified measured candidate.
+
+Raw per-run samples, correctness dumps and A/A files from the 2026-11-12 runs are not kept in the tree (#3713); `report.json`, the tables above and `run.py` reproduce them.

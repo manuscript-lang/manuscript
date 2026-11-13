@@ -100,7 +100,7 @@ impl FnLower<'_> {
             let uid = self.adopt_hidden(sv, ty);
             let cty = ms_check::api::types::sub(&self.hir.ty(scrutinee), &self.subst);
             let closer = self.part_closer(&cty)?;
-            if !self.own_hidden(uid, closer.as_ref()) {
+            if !self.own_hidden(uid, closer.as_ref(), false) {
                 let parts = matches!(kind, TyKind::Alt(_) | TyKind::Opt(_))
                     && arms
                         .iter()

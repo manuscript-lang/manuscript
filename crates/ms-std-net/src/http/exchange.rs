@@ -11,6 +11,7 @@ use crate::error::{HttpErr, IoErr, WsErr};
 use crate::wait::{Deadline, Interest, Wait, try_wait_fd};
 use crate::ws::handshake::{self, Rejected};
 use crate::ws::socket::{Config, Role, Socket};
+use ms_rt::ffi::Str;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::Instant;
@@ -144,6 +145,20 @@ impl Exchange {
 
     pub fn query(&self) -> String {
         self.st.borrow().query.clone()
+    }
+
+    // The same three as language strings built straight from the state, with no `String` copy
+    // in between.
+    pub fn method_value(&self) -> Str {
+        Str::new(&self.st.borrow().method)
+    }
+
+    pub fn path_value(&self) -> Str {
+        Str::new(&self.st.borrow().path)
+    }
+
+    pub fn query_value(&self) -> Str {
+        Str::new(&self.st.borrow().query)
     }
 
     pub fn protocol(&self) -> &'static str {

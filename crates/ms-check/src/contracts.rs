@@ -1102,7 +1102,11 @@ impl Checker {
                 && (m.contract.as_ref().is_some_and(|c| {
                     c.is_source_type(self.syms, "@std/data/json.ms", "JsonEncode")
                 }) || (m.is_inherent(self.syms)
-                    && m.name().is_some_and(|n| self.syms.str(n) == "to_json")))
+                    && m.name().is_some()
+                    && m.name()
+                        == self
+                            .session
+                            .sole_operation("@std/data/json.ms", "JsonEncode")))
                 && {
                     let mut s = Subst::new();
                     unify(&m.receiver, t, &variable_set(&m.variables), &mut s)
@@ -1436,32 +1440,36 @@ impl Checker {
             return result;
         }
         let result = self.implemented_methods(receiver, name);
-        if result.is_empty() && (self.syms.str(name) == "equals" || self.syms.str(name) == "hash") {
-            let property = if self.syms.str(name) == "hash" {
-                Property::Hashable
-            } else {
-                Property::Equal
-            };
-            if self.property(receiver, property, None) {
-                let contract = self.session.standard(property.name(), vec![]);
-                let mut operation = contract
-                    .def
-                    .as_ref()
-                    .map(|d| d.operations.borrow()[0].clone())
-                    .expect("operation");
-                operation.ty = sub(&operation.ty, &self_binding(self.syms, &contract, receiver));
-                return vec![Rc::new(Method {
-                    id: n(""),
-                    module: n(""),
-                    local: false,
-                    receiver: receiver.clone(),
-                    contract: Some(contract.clone()),
-                    ty: operation.ty,
-                    variables: Vec::new(),
-                    decl: stdlib::standard_method_declaration(&contract, name),
-                    native: Native::Builtin(name),
-                })];
-            }
+        let derived =
+            |contract: &str| self.session.sole_operation("@std/core.ms", contract) == Some(name);
+        let derivable = if derived("Hashable") {
+            Some(Property::Hashable)
+        } else if derived("Equal") {
+            Some(Property::Equal)
+        } else {
+            None
+        };
+        if let Some(property) = derivable.filter(|_| result.is_empty())
+            && self.property(receiver, property, None)
+        {
+            let contract = self.session.standard(property.name(), vec![]);
+            let mut operation = contract
+                .def
+                .as_ref()
+                .map(|d| d.operations.borrow()[0].clone())
+                .expect("operation");
+            operation.ty = sub(&operation.ty, &self_binding(self.syms, &contract, receiver));
+            return vec![Rc::new(Method {
+                id: n(""),
+                module: n(""),
+                local: false,
+                receiver: receiver.clone(),
+                contract: Some(contract.clone()),
+                ty: operation.ty,
+                variables: Vec::new(),
+                decl: stdlib::standard_method_declaration(&contract, name),
+                native: Native::Builtin(name),
+            })];
         }
         result
     }

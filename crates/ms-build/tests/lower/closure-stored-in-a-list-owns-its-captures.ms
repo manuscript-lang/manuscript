@@ -3,7 +3,7 @@
 // expect-mir: "fn @closure_keeps"
 fn closure_keeps(text: String) Int:
     var fs: List[fn() Int] = []
-    for p in text.split(","):
+    for p in text.split(",").clone():
         fs.append(fn() Int: return p.length())
 
     var t = 0

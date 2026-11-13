@@ -75,15 +75,25 @@ impl<'a, 'm> Lower<'a, 'm> {
                     unreachable!()
                 };
                 let rty = m.types.find(&TyKind::Rec(r)).expect("record type interned");
-                let (_, at, _) = self.fields_of(rty)[i as usize];
-                let block = self.rec_block(rty);
-                let lay = mem_layout(&block.clone().unwrap_or_else(|| self.g.lay.leaves(rty)));
+                let (fty, at, _) = self.fields_of(rty)[i as usize];
+                if let Some(block) = self.rec_block(rty) {
+                    // The argument addresses the record's pointer.
+                    let held = self.a(inst, 0)[0];
+                    let p = self.b.ins().load(types::I64, flags(), held, 0);
+                    let (bk, _) = self.rec_block_fields(rty)[i as usize];
+                    let off = mem_layout(&block).offsets[bk] as i64;
+                    let slot = self.add_imm(p, off);
+                    if self.g.lay.rec_field_boxed(fty) {
+                        return vec![self.map_header_ensure(slot)];
+                    }
+                    return vec![slot];
+                }
+                let lay = mem_layout(&self.g.lay.leaves(rty));
                 let off = lay.offsets.get(at).copied().unwrap_or(0) as i64;
                 // The result is read and written with the field's own layout, so each of its
                 // leaves must sit at the same distance from the field's address as in the field.
                 debug_assert!(
                     {
-                        let fty = m.records[r.index()].fields[i as usize].1;
                         let own = mem_layout(&self.g.lay.leaves(fty));
                         own.offsets
                             .iter()
@@ -92,11 +102,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                     },
                     "field {i} of record {r:?} is laid out differently inside the record"
                 );
-                let mut p = self.a(inst, 0)[0];
-                if block.is_some() {
-                    // The argument addresses the record's pointer.
-                    p = self.b.ins().load(types::I64, flags(), p, 0);
-                }
+                let p = self.a(inst, 0)[0];
                 vec![self.add_imm(p, off)]
             }
             Op::Load | Op::Take => {

@@ -22,7 +22,7 @@ fn dynamic_text() String:
 
 fn initial(words: List[String]) String:
 	for c in first(words).chars():
-		return c
+		return c.clone()
 	return ""
 
 fn failed_scan(words: List[String]) Unit!:
@@ -48,10 +48,10 @@ test "helper and receiver strings support character and scalar scans":
 
 test "helper scans match materialized snapshots while the source changes":
 	var words = [dynamic_text()]
-	expected := first(words).chars()
+	expected := first(words).chars().clone()
 	var actual = List[String]()
 
-	for c in first(words).chars():
+	for c in first(words).chars().clone():
 		words[0] = ""
 		actual.append(c)
 
@@ -73,7 +73,7 @@ test "direct scans snapshot a changed source and retain unchanged fast paths":
 	var text = "aé😀"
 	var output = ""
 
-	for c in text.chars():
+	for c in text.chars().clone():
 		text = ""
 		output += c
 

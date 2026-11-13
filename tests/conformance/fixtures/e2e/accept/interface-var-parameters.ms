@@ -57,7 +57,7 @@ type Words:
 fn var Words.step(value: String, var out: List[String]) Unit!:
 	for word in value.split(" "):
 		self.count += 1
-		out.append(word)
+		out.append(word.clone())
 
 fn var Words.finish(var out: List[String]) Unit!:
 	out.append("{self.count}")

@@ -315,7 +315,8 @@ pub fn map_anon(len: usize) -> *mut u8 {
     unsafe { VirtualAlloc(core::ptr::null_mut(), len, MEM_RESERVE, PAGE_NOACCESS).cast() }
 }
 
-/// Windows has no huge-page advice for the heap reservation; see `sys::prefer_huge_pages`.
+/// Windows has no usable huge-page advice for the heap reservation (`MEM_LARGE_PAGES` needs
+/// `SeLockMemoryPrivilege` and cannot be demand-committed); see `sys::prefer_huge_pages` and #3710.
 pub fn prefer_huge_pages(_p: *mut u8, _len: usize) {}
 
 /// Reserves `len` bytes of address space aligned to `len` (a power of two), holding stacks.

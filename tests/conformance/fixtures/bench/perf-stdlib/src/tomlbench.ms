@@ -1,5 +1,5 @@
 import bench from "./harness.ms"
-import StringBuilder from "@std/string.ms"
+import StringBuilder from "@std/string_builder.ms"
 import parse from "@std/data/toml.ms"
 
 fn toml_doc(count: Int) String:

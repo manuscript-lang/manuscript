@@ -243,7 +243,7 @@ fn Timestamp.clamp(low: Timestamp, high: Timestamp) Timestamp:
 // Breaks this timestamp into calendar fields in a time zone: `"UTC"`, `"Local"`, an
 // IANA name such as `"America/New_York"`, or a fixed offset such as `"+05:30"`. An
 // unknown zone returns EINVAL.
-fn Timestamp.calendar(zone: String) Calendar!:
+fn Timestamp.calendar(zone: String) Date!:
 	return msstd_time_timestamp_calendar(self, zone)
 
 /*
@@ -254,8 +254,8 @@ An unknown zone returns EINVAL.
 fn Timestamp.format(pattern: String, zone: String) String!:
 	return msstd_time_timestamp_format(self, pattern, zone)
 
-// Calendar fields of a timestamp in one time zone.
-export type Calendar:
+// Date and time fields of a timestamp in one time zone.
+export type Date:
 	// The year, 1 through 9999 in UTC and nearby values in other zones.
 	year: Int
 	// The month, 1 (January) through 12.

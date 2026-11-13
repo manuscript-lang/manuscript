@@ -3,7 +3,7 @@ import (
 	PriorityQueue from "@std/collections/queue.ms",
 	SortedMap from "@std/collections/sorted.ms",
 	stdout from "@std/io/io.ms",
-	StringBuilder from "@std/string.ms",
+	StringBuilder from "@std/string_builder.ms",
 	Instant, monotonic from "@std/time.ms",
 )
 

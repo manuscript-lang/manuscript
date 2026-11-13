@@ -432,20 +432,7 @@ fn List[T: Clonable].sorted_by_key[K: Comparable](key: fn(T) K) List[T]:
 // Returns a new list holding the elements `count` times over, in order; zero gives
 // an empty list and a negative `count` faults. Example: `[1, 2].repeated(2)` is
 // `[1, 2, 1, 2]`.
-fn List[T: Clonable].repeated(count: Int) List[T]:
-	if count < 0:
-		panic("List.repeated: count {count} must not be negative")
-	if self.length() == 0: return []
-
-	// One element repeated is a native fill, as fast as `filled`; a native failure
-	// falls through to the loop below.
-	if self.length() == 1:
-		if same := filled(self[0].clone(), count, none): return same
-
-	var out = List[T](reserve: self.length() * count)
-	for _round in 0..count:
-		out.extend(self)
-	return out
+fn List[T: Clonable].repeated(count: Int) List[T]: ...
 
 // Appends a copy of every element of `other`, in order, to this list in place;
 // `other` is unchanged. The argument cannot be the receiver. Example: after
@@ -716,10 +703,7 @@ export fn filled[T: Clonable](value: T, count: Int, max_items: Int?) List[T]!:
 		Error("collection: limit exceeded", kind: "EOVERFLOW")
 	)
 
-	var out = List[T](reserve: count)
-	for _index in 0..count:
-		out.append(value.clone())
-	return ok(out)
+	return ok([value.clone()].repeated(count))
 
 // The largest list a native allocation accepts.
 MAX_LIST_ITEMS := 268435456
@@ -767,7 +751,7 @@ fn reverse_span[T](var items: List[T], start: Int, end: Int) Unit:
 
 import (
 	panic from "@std/core.ms",
-	StringBuilder from "@std/string.ms",
+	StringBuilder from "@std/string_builder.ms",
 
 	msrt_list_distinct,
 	msrt_list_flatten,

@@ -1,0 +1,5 @@
+# User `hash()` values are mixed before they index a table
+
+A record key with `fn T.hash() Int: self.x * 31 + self.y` hands the map near-consecutive hashes, which cluster under linear probing (`Set[Pt]`, 1M operations: 562 ms against 103 ms mixed). `DynKey::hash` in `ms-rt/src/map.rs` applies `hash_int` to every custom hash; built-in key kinds were already mixed. Do not trust a user hash for distribution, and keep a `Set` of small-int-pair records in `bench/perf/element-types`. Evidence: `bench/perf/element-types/README.md`.
+
+Second workload (2026-11-12, audit of #3694): a `Map[Key, Int]` keyed by a record whose `hash` already mixes both fields (200k keys, 5 update rounds and 10 lookup rounds, Release, 5 runs each, shared VM). Without the mix 122 to 166 ms, with it 141 to 192 ms: a few percent to about 10% slower, inside the run-to-run noise. The mix costs two multiplies against a user `hash` call per lookup; it stays because it removes the clustering of identity-like hashes, which is the case that is orders of magnitude worse. A key type with an already-mixed hash has no way to opt out.

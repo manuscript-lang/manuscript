@@ -291,6 +291,12 @@ pub fn map_anon(len: usize) -> *mut u8 {
 
 /// Asks Linux to back a heap reservation with huge pages where it can: a program that builds
 /// megabytes of cells takes a page fault per 4 KiB otherwise.
+///
+/// macOS and Windows have no equivalent for a lazily committed reservation of this size: macOS
+/// superpages (`VM_FLAGS_SUPERPAGE_SIZE_2MB`) exist only on Intel, are wired and physically
+/// contiguous, and cannot back a 256 GiB reservation; Apple Silicon uses 16 KiB base pages. Windows
+/// large pages (`MEM_LARGE_PAGES`) need the `SeLockMemoryPrivilege` right, which a normal user
+/// does not hold, and are not demand-committed. Both stay no-ops (#3710).
 #[cfg(all(target_os = "linux", not(miri)))]
 pub fn prefer_huge_pages(p: *mut u8, len: usize) {
     unsafe extern "C" {

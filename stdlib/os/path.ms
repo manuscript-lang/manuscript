@@ -14,7 +14,7 @@ name := basename(config)
 import (
 	Bytes, BytesBuilder from "@std/bytes.ms",
 	Os, os from "@std/os/system.ms",
-	StringBuilder from "@std/string.ms",
+	StringBuilder from "@std/string_builder.ms",
 
 	msstd_path_matches_glob from "@std/internal/path.ms",
 )
@@ -640,7 +640,7 @@ fn components_after(text: String, root: String) List[String]:
 	rest := text.cut_prefix(root).get(text)
 	if rest.is_empty(): return []
 
-	return rest.split("/", none)
+	return rest.split("/", none).clone()
 
 fn format_in(windows: Bool, parts: PathParts) String:
 	directory := if parts.directory.is_empty(): parts.root else: parts.directory

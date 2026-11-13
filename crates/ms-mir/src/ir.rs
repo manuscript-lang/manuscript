@@ -692,6 +692,11 @@ pub struct Func {
     pub blocks: Vec<BlockData>,
     /// Inlined-callee scopes referenced by [`Loc::scope`].
     pub scopes: Vec<Scope>,
+    /// Results of unchecked `iadd`/`isub`/`imul`/`ineg`/`shl` that the range pass proved cannot wrap:
+    /// the value is the exact mathematical result, so later analysis treats the operation like its
+    /// checked twin instead of as a wrapping one. Values are never reused, so an entry stays true
+    /// as the function is rewritten; code copied into another function does not carry it.
+    pub exact: std::collections::HashSet<Value>,
     /// Indexes of pointer parameters that no other parameter or memory the function reaches
     /// overlaps while it runs (`var` parameters, which the checker keeps exclusive).
     pub noalias: Vec<u32>,
@@ -706,6 +711,9 @@ pub struct Func {
     /// A cleanup closer that acts only while a cancellation or fault unwinds a guarded task
     /// (see `unwind`). Registering it is skipped when no guard is open, where it would do nothing.
     pub unwind_only: bool,
+    /// A generated sort helper whose lists hold bitwise copies of another list's slots and own
+    /// nothing: an unwind frees their buffers and never drops their elements (see `unwind`).
+    pub raw_scratch: bool,
     /// A closure function whose environment owns resources: the capture index and the function
     /// that closes it (taking the captured value by borrow), run when the closure is dropped.
     pub capture_closers: Vec<(u32, FuncId)>,
@@ -739,10 +747,12 @@ impl Func {
             values: Vec::new(),
             blocks: vec![BlockData::new()],
             scopes: Vec::new(),
+            exact: Default::default(),
             noalias: Vec::new(),
             scoped: false,
             keeps_scoped: false,
             unwind_only: false,
+            raw_scratch: false,
             capture_closers: Vec::new(),
             slot_close: None,
             slot_result: None,
@@ -901,6 +911,10 @@ pub enum ExternRole {
     IntToString,
     /// `list.sorted(list, comparator)`.
     ListSorted,
+    /// A bitwise copy of a list's slots that owns nothing: a fault must not drop it.
+    RawSlots,
+    /// Releases the buffer of a [`ExternRole::RawSlots`] copy without touching its elements.
+    RawFree,
     /// Integer-list sort with the natural order.
     ListSortInts,
     /// Sort by a difference comparator.
@@ -917,6 +931,13 @@ pub enum ExternRole {
     CleanupDiscard,
     /// `bytes.append(bytes, byte)`.
     BytesAppend,
+    /// A runtime call whose result borrows its operands (`string_split_view`, `map_keys_view`,
+    /// `map_values_view`, `list_slice_view`): passes never move the result into an owning position
+    /// or turn a copy of it into a move.
+    ViewResult,
+    /// A runtime function with a `<name>_take` twin (`// ms: takes_self`); the `bytetake` pass
+    /// calls the twin when the first argument is an owned value that dies at the call.
+    TakesDying,
     /// Starts a task that can be cancelled.
     SpawnsTask,
 }
@@ -941,6 +962,8 @@ impl ExternRole {
         (ExternRole::StringEq, "string_eq"),
         (ExternRole::CleanupDiscard, "cleanup_discard"),
         (ExternRole::BytesAppend, "bytes_append"),
+        (ExternRole::TakesDying, "takes_dying"),
+        (ExternRole::ViewResult, "view_result"),
         (ExternRole::SpawnsTask, "spawns_task"),
     ];
 

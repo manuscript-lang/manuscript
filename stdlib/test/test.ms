@@ -1,7 +1,8 @@
 import (
+	Placement, PromiseOptions, promise from "@std/concurrency/promise.ms",
 	panic from "@std/core.ms",
 
-	msstd_test_catch_fault, msstd_test_repr from "@std/internal/test.ms",
+	msstd_test_repr from "@std/internal/test.ms",
 )
 
 /*
@@ -44,7 +45,18 @@ export fn repr[T](value: T) String:
 // Runs operation once behind the fault trap and returns the fault message, or none when
 // it returns normally.
 export fn catch_fault(operation: fn() Unit) String?:
-	return msstd_test_catch_fault(operation)
+	result := promise(
+		fn: ok(operation()),
+		options: PromiseOptions(placement: Placement.Here)
+	).wait()
+	if not result.is_error(): return none
+
+	cause := result.err()
+	if cause.kind != "EIO": return none
+
+	line := cause.details["report"].split("\n").get(0).clone()
+	if line.starts_with("\u{1}SKIP\u{1}"): panic(line)
+	return line
 
 // Fails unless actual is True. `site` names the call in the failure and defaults to the
 // caller's position.

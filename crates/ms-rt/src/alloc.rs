@@ -25,8 +25,12 @@ use std::sync::Once;
 pub const MAX_SMALL: usize = 2048;
 const PAGE_SHIFT: usize = 16;
 const PAGE_SIZE: usize = 1 << PAGE_SHIFT;
-/// Bytes at the start of each heap reservation that stay on small pages (see `ensure_region`).
-const HUGE_AFTER: usize = 4 << 20;
+/// The huge page size Linux's transparent huge pages use on the supported targets.
+const HUGE_PAGE: usize = 2 << 20;
+/// Bytes at the start of each heap reservation that stay on small pages (see `ensure_region`): the
+/// first touch of a huge page clears all of it, so a short program would pay for memory it never
+/// uses. Two huge pages keep the first allocations small and the advice aligned.
+const HUGE_AFTER: usize = 2 * HUGE_PAGE;
 /// Address space reserved for the small-block pages of the whole process.
 const PAGES_SIZE: usize = if cfg!(miri) { 64 << 20 } else { 256 << 30 };
 const NUM_PAGES: usize = PAGES_SIZE >> PAGE_SHIFT;
@@ -1021,34 +1025,6 @@ pub fn live_by_size() -> Vec<(usize, isize)> {
         .collect()
 }
 
-/// The live counts at one point (`stats` builds): what a faulting operation that keeps running
-/// in this process leaves behind is forgotten against it, as a forked child's heap dies with it.
-#[cfg(feature = "stats")]
-pub struct LiveMark {
-    all: isize,
-    buckets: [isize; NUM_CLASSES + 1],
-}
-
-/// Records the live counts now.
-#[cfg(feature = "stats")]
-pub fn live_mark() -> LiveMark {
-    LiveMark {
-        all: LIVE_ALL.load(Ordering::Relaxed),
-        buckets: core::array::from_fn(|i| LIVE_BUCKETS[i].load(Ordering::Relaxed)),
-    }
-}
-
-/// Drops the net change in the live counts since `mark` from the counts.
-#[cfg(feature = "stats")]
-pub fn live_forget_since(mark: &LiveMark) {
-    let net = LIVE_ALL.load(Ordering::Relaxed) - mark.all;
-    LIVE_ALL.fetch_sub(net, Ordering::Relaxed);
-    for (i, was) in mark.buckets.iter().enumerate() {
-        let net = LIVE_BUCKETS[i].load(Ordering::Relaxed) - was;
-        LIVE_BUCKETS[i].fetch_sub(net, Ordering::Relaxed);
-    }
-}
-
 #[cfg(any(test, feature = "stats"))]
 fn live_add(s: &mut State, delta: isize) {
     s.live += delta;
@@ -1314,6 +1290,39 @@ mod tests {
                     unsafe { free(p) };
                     gate.wait();
                     release_heap();
+                })
+            })
+            .collect();
+        for h in handles {
+            h.join().unwrap();
+        }
+    }
+
+    /// The shared large-block lists and the heap-idle list sit behind a spin lock that yields:
+    /// many more threads than cores allocating and freeing large blocks, and claiming and
+    /// releasing heaps, must all finish (no livelock, no lost block).
+    #[test]
+    fn the_spin_lock_survives_more_threads_than_cores() {
+        let _g = lock();
+        let threads = 4 * std::thread::available_parallelism().map_or(4, |n| n.get());
+        let handles: Vec<_> = (0..threads)
+            .map(|t| {
+                std::thread::spawn(move || {
+                    for round in 0..40 {
+                        claim_heap();
+                        for i in 0..200usize {
+                            let size = MAX_SMALL + 1 + (i * 37 + t) % 20_000;
+                            let p = alloc(size);
+                            assert!(!p.is_null());
+                            // SAFETY: `p` has `size` usable bytes; freed once.
+                            unsafe {
+                                p.write(round as u8);
+                                p.add(size - 1).write(i as u8);
+                                free(p);
+                            }
+                        }
+                        release_heap();
+                    }
                 })
             })
             .collect();

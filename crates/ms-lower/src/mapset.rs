@@ -127,17 +127,17 @@ impl<'a> FnLower<'a> {
     pub(crate) fn borrowed_update_key<'e>(
         &mut self,
         view: &CallView<'e>,
+        m: &ct::MethodRef,
         recv_expr: &Expr,
         name: &str,
     ) -> Result<Option<(usize, &'e Expr)>, Error> {
-        if name != "update" || view.arguments.len() != 3 {
+        if name != "update" || view.arguments.len() != 3 || m.ty.params.len() != 3 {
             return Ok(None);
         }
-        let Some(at) = view
-            .arguments
-            .iter()
-            .position(|a| self.syms.str(a.slot.name) == "key")
-        else {
+        // The key is the first declared parameter, found by its declared slot, so renaming it in
+        // the standard declaration or writing the arguments in another order changes nothing.
+        let key_slot = m.ty.params[0].name;
+        let Some(at) = view.arguments.iter().position(|a| a.slot.name == key_slot) else {
             return Ok(None);
         };
         let key = &view.arguments[at];
@@ -252,7 +252,10 @@ impl<'a> FnLower<'a> {
         let vd = vd.ok_or_else(|| Error::new("a set has no values"))?;
         let ks = self.borrow_slot(kv);
         self.at(e.pos);
-        let p = self.call_runtime("msrt_map_get_ptr", &[mv, kd, vd, ks], MTy::PTR)?;
+        let probe = self
+            .word_map_symbol("msrt_map_get_ptr", mt)
+            .unwrap_or("msrt_map_get_ptr");
+        let p = self.call_runtime(probe, &[mv, kd, vd, ks], MTy::PTR)?;
         let missing = self
             .b
             .emit(Op::PtrIsNull, &[p], Imm::None, Some(MTy::BOOL))
@@ -345,7 +348,10 @@ impl<'a> FnLower<'a> {
         let vd = vd.ok_or_else(|| Error::new("a set has no values"))?;
         let ks = self.borrow_slot(kv);
         self.at(e.pos);
-        let p = self.call_runtime("msrt_map_get_ptr", &[mv, kd, vd, ks], MTy::PTR)?;
+        let probe = self
+            .word_map_symbol("msrt_map_get_ptr", mt)
+            .unwrap_or("msrt_map_get_ptr");
+        let p = self.call_runtime(probe, &[mv, kd, vd, ks], MTy::PTR)?;
         let missing = self
             .b
             .emit(Op::PtrIsNull, &[p], Imm::None, Some(MTy::BOOL))

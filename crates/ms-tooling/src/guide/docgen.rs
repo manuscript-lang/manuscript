@@ -106,7 +106,9 @@ pub fn site_files(syms: ms_syntax::Names) -> BTreeMap<String, Vec<u8>> {
         let path = source_path.strip_suffix(".ms").unwrap_or(source_path);
         let title = source_path.rsplit('/').next().unwrap_or(source_path);
         let source = if path == "prelude" {
-            "stdlib/core.ms".to_string()
+            "stdlib/core/core.ms".to_string()
+        } else if matches!(source_path, "core.ms" | "intrinsics.ms" | "string.ms") {
+            format!("stdlib/core/{source_path}")
         } else {
             format!("stdlib/{source_path}")
         };

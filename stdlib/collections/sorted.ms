@@ -129,8 +129,8 @@ fn var SortedMap[K, V].add(key: K, value: V) Unit:
 fn var SortedMap[K, V].split(c: Int) Unit:
 	length := self.key_chunks[c].length()
 	half := length / 2
-	tail_keys := self.key_chunks[c].slice(half, length).get()
-	tail_values := self.value_chunks[c].slice(half, length).get()
+	tail_keys := self.key_chunks[c].slice(half, length).get().clone()
+	tail_values := self.value_chunks[c].slice(half, length).get().clone()
 	self.key_chunks[c].splice(half, length - half, [])
 	self.value_chunks[c].splice(half, length - half, [])
 	self.key_chunks.insert(c + 1, tail_keys)

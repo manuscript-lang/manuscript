@@ -2,7 +2,7 @@
 // conform: phase=test
 import (
 	Bytes from "@std/bytes.ms",
-	HashAlgorithm, sha256, sha384, sha512 from "@std/crypto.ms",
+	HashAlgorithm, sha256, sha384, sha512 from "@std/crypto/crypto.ms",
 	ArchiveEntry,
 	ArchiveFormat,
 	ArchiveOptions,

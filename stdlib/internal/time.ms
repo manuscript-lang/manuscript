@@ -1,4 +1,4 @@
-import Calendar, Instant, Timestamp from "@std/time.ms"
+import Date, Instant, Timestamp from "@std/time.ms"
 
 export extern fn msstd_time_duration_add(value: Int, other: Int) Int
 
@@ -43,7 +43,7 @@ export extern fn msstd_time_timestamp_difference(
 
 export extern fn msstd_time_timestamp_compare(value: Timestamp, other: Timestamp) Int
 
-export extern fn msstd_time_timestamp_calendar(value: Timestamp, zone: String) Calendar!
+export extern fn msstd_time_timestamp_calendar(value: Timestamp, zone: String) Date!
 
 export extern fn msstd_time_timestamp_format(
 	value: Timestamp,

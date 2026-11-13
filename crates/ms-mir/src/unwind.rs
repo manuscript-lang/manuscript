@@ -30,10 +30,6 @@ use crate::ir::*;
 use crate::types::Ty;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
-/// Where `expect_fault` begins. Windows runs the operation in this process (Unix forks a child that
-/// exits), so a fault inside it leaves by a jump like a cancelled task and needs the same cleanups.
-const TRAP_BEGIN: &str = "msrt_trap_begin";
-
 /// Rewrites `m` so cancellation releases owned locals; returns whether anything changed.
 pub fn run(m: &mut Module) -> bool {
     if !starts_tasks(m) {
@@ -71,6 +67,8 @@ pub fn run(m: &mut Module) -> bool {
         closers: HashMap::new(),
         with_closers: HashMap::new(),
         slot_droppers: HashMap::new(),
+        raw_closers: HashMap::new(),
+        raw_values: BTreeSet::new(),
     };
     let mut changed = false;
     for fi in 0..count {
@@ -103,12 +101,13 @@ struct Cx {
     with_closers: HashMap<FuncId, FuncId>,
     /// The cleanup that drops what a slot holds, per type held.
     slot_droppers: HashMap<Ty, FuncId>,
+    raw_closers: HashMap<Ty, FuncId>,
+    /// The values of the function being rewritten that are raw slot copies.
+    raw_values: BTreeSet<u32>,
 }
 
 fn starts_tasks(m: &Module) -> bool {
-    m.externs
-        .iter()
-        .any(|e| e.role == ExternRole::SpawnsTask || e.name == TRAP_BEGIN)
+    m.externs.iter().any(|e| e.role == ExternRole::SpawnsTask)
 }
 
 fn leaf_extern(m: &Module, e: ExtId) -> bool {
@@ -198,6 +197,60 @@ fn parks_at(m: &Module, cx: &Cx, inst: &Inst) -> bool {
         (Op::Call, Imm::Func(g)) => cx.parks.get(g.index()).copied().unwrap_or(true),
         _ => false,
     }
+}
+
+/// The values of `f` that are raw slot copies: they own nothing, so an unwind frees their buffer
+/// and leaves the elements to the list they were copied from.
+fn raw_slots(m: &Module, f: &Func) -> BTreeSet<u32> {
+    f.blocks
+        .iter()
+        .flat_map(|b| &b.insts)
+        .filter(|i| {
+            (f.raw_scratch && i.op == Op::ListNew)
+                || matches!((i.op, i.imm), (Op::CallRt, Imm::Ext(e)) if m.externs[e.index()].role == ExternRole::RawSlots)
+        })
+        .filter_map(|i| i.res.map(|r| r.0))
+        .collect()
+}
+
+/// The function that frees the buffer of a raw slot copy while an unwind runs.
+fn raw_closer(m: &mut Module, cx: &mut Cx, ty: Ty) -> FuncId {
+    if let Some(f) = cx.raw_closers.get(&ty) {
+        return *f;
+    }
+    let free = m.add_extern(ExternDef {
+        name: "msrt_list_free_raw".into(),
+        params: vec![Param {
+            ty,
+            mode: Mode::Move,
+        }],
+        ret: Ty::UNIT,
+        noreturn: false,
+        pure_: false,
+        fresh: false,
+        role: ExternRole::RawFree,
+        leaf: true,
+        reads: false,
+    });
+    let mut b = FuncBuilder::new(
+        m,
+        "unwind.free_raw",
+        vec![Param {
+            ty,
+            mode: Mode::Move,
+        }],
+        Ty::UNIT,
+    );
+    b.func_mut().linkage = Linkage::Internal;
+    b.func_mut().unwind_only = true;
+    let v = b.params()[0];
+    b.call_rt(free, &[v]);
+    let u = b.unit();
+    b.ret(Some(u));
+    let f = b.into_func();
+    let id = m.add_func(f);
+    cx.raw_closers.insert(ty, id);
+    id
 }
 
 /// The function that drops its argument when a cancellation is unwinding.
@@ -302,6 +355,9 @@ fn slot_close_value(m: &Module, close: FuncId) -> Option<Ty> {
 /// [`with_closer`] for a slot-held value: runs the thunk, then drops what the slot still holds.
 /// The thunk closes the value in place, so it is still there for this drop.
 fn slot_with_closer(m: &mut Module, cx: &mut Cx, close: FuncId, ty: Ty) -> Option<FuncId> {
+    let dropper = slot_dropper(m, cx, ty);
+    let discard = cx.discard;
+    let covers = !takes_from_slot(m, close, &mut HashMap::new());
     let gate = m.add_extern(ExternDef {
         name: "msrt_unwind_drops".into(),
         params: Vec::new(),
@@ -324,7 +380,16 @@ fn slot_with_closer(m: &mut Module, cx: &mut Cx, close: FuncId, ty: Ty) -> Optio
     );
     b.func_mut().linkage = Linkage::Internal;
     let p = b.params()[0];
+    // A fault inside the close ends this cleanup, so the slot is registered for its duration
+    // unless the close takes parts out of it.
+    let covering = covers.then(|| {
+        b.emit(Op::CleanupPush, &[p], Imm::Func(dropper), Some(Ty::INT))
+            .expect("push")
+    });
     b.call(close, &[p]);
+    if let Some(covering) = covering {
+        b.call_rt(discard, &[covering]);
+    }
     let on = b.call_rt(gate, &[]);
     let held = b.emit(Op::Take, &[p], Imm::Ty(ty), Some(ty)).expect("take");
     b.emit(Op::DropIf, &[on, held], Imm::None, None);
@@ -391,6 +456,155 @@ fn slot_dropper(m: &mut Module, cx: &mut Cx, ty: Ty) -> FuncId {
     let id = m.add_func(f);
     cx.slot_droppers.insert(ty, id);
     id
+}
+
+/// Whether `callee` can take a value out of the slot it is given, or out of a part of it, leaving
+/// a hole that dropping the whole slot would free twice. Only a close that leaves the slot's
+/// value in place can be covered by a drop of that slot.
+fn takes_from_slot(m: &Module, callee: FuncId, memo: &mut HashMap<FuncId, bool>) -> bool {
+    if let Some(r) = memo.get(&callee) {
+        return *r;
+    }
+    // A cycle is assumed to take nothing; the other paths decide.
+    memo.insert(callee, false);
+    let f = &m.funcs[callee.index()];
+    let mut derived: BTreeSet<u32> = f
+        .params
+        .iter()
+        .zip(f.param_values())
+        .filter(|(p, _)| p.ty == Ty::PTR)
+        .map(|(_, v)| v.0)
+        .collect();
+    let mut found = false;
+    for inst in f.blocks.iter().flat_map(|b| &b.insts) {
+        let from_slot = inst.args.iter().any(|a| derived.contains(&a.0));
+        match inst.op {
+            Op::Take if from_slot => found = true,
+            Op::Call if from_slot => match inst.imm {
+                Imm::Func(g) => {
+                    let touches_slot = inst.args.iter().any(|a| derived.contains(&a.0));
+                    found |= touches_slot && takes_from_slot(m, g, memo);
+                }
+                _ => found = true,
+            },
+            Op::CallInd | Op::CallMethod if from_slot => found = true,
+            _ => {}
+        }
+        if let Some(r) = inst.res
+            && inst.args.first().is_some_and(|a| derived.contains(&a.0))
+            && f.ty(r) == Ty::PTR
+        {
+            derived.insert(r.0);
+        }
+    }
+    memo.insert(callee, found);
+    found
+}
+
+/// Covers a slot-held value while a shielded close works on it in place. A fault inside the
+/// close never returns to its caller, and the entry the scope registered for the value is gone
+/// by then, so a drop is registered around the close call.
+fn cover_shielded_slots(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
+    let slots: HashMap<u32, Ty> = f
+        .blocks
+        .iter()
+        .flat_map(|b| &b.insts)
+        .filter_map(|i| match (i.op, i.imm, i.res) {
+            (Op::Slot, Imm::Ty(ty), Some(r)) if m.needs_drop(ty) => Some((r.0, ty)),
+            _ => None,
+        })
+        .collect();
+    if slots.is_empty() {
+        return false;
+    }
+    let ext = |m: &Module, inst: &Inst, name: &str| matches!((inst.op, inst.imm), (Op::CallRt, Imm::Ext(e)) if m.externs[e.index()].name == name);
+    let mut memo = HashMap::new();
+    let mut changed = false;
+    for bi in 0..f.blocks.len() {
+        let mut ii = 0;
+        while ii < f.blocks[bi].insts.len() {
+            if !ext(m, &f.blocks[bi].insts[ii], "msrt_shield_enter") {
+                ii += 1;
+                continue;
+            }
+            let Some(exit) = (ii + 1..f.blocks[bi].insts.len())
+                .find(|&j| ext(m, &f.blocks[bi].insts[j], "msrt_shield_exit"))
+            else {
+                ii += 1;
+                continue;
+            };
+            // The calls inside the window that close a slot in place.
+            let mut calls: Vec<(usize, Value, Ty)> = Vec::new();
+            for (k, inst) in f.blocks[bi]
+                .insts
+                .iter()
+                .enumerate()
+                .take(exit)
+                .skip(ii + 1)
+            {
+                if inst.op != Op::Call {
+                    continue;
+                }
+                if let Some(slot) = inst.args.first()
+                    && let Some(ty) = slots.get(&slot.0)
+                    && let Imm::Func(g) = inst.imm
+                    && !takes_from_slot(m, g, &mut memo)
+                {
+                    calls.push((k, *slot, *ty));
+                }
+            }
+            // A slot with an entry still registered here is covered by that entry.
+            let registered = |slot: Value, upto: usize, f: &Func| {
+                f.blocks
+                    .iter()
+                    .enumerate()
+                    .flat_map(|(b, blk)| blk.insts.iter().enumerate().map(move |(k, i)| (b, k, i)))
+                    .filter(|(_, _, i)| i.op == Op::CleanupPush && i.args.first() == Some(&slot))
+                    .any(|(b, k, push)| {
+                        !(b == bi
+                            && k < upto
+                            && f.blocks[bi].insts[k + 1..upto]
+                                .iter()
+                                .any(|i| i.op == Op::CallRt && i.args.first() == push.res.as_ref()))
+                    })
+            };
+            let mut shift = 0;
+            for (k, slot, ty) in calls {
+                let k = k + shift;
+                if registered(slot, k, f) {
+                    continue;
+                }
+                let loc = f.blocks[bi].insts[k].loc;
+                let dropper = slot_dropper(m, cx, ty);
+                let handle = f.new_value(Ty::INT);
+                let unit = f.new_value(Ty::UNIT);
+                f.blocks[bi].insts.insert(
+                    k + 1,
+                    Inst {
+                        op: Op::CallRt,
+                        args: vec![handle],
+                        imm: Imm::Ext(cx.discard),
+                        res: Some(unit),
+                        loc,
+                    },
+                );
+                f.blocks[bi].insts.insert(
+                    k,
+                    Inst {
+                        op: Op::CleanupPush,
+                        args: vec![slot],
+                        imm: Imm::Func(dropper),
+                        res: Some(handle),
+                        loc,
+                    },
+                );
+                shift += 2;
+                changed = true;
+            }
+            ii = exit + shift + 1;
+        }
+    }
+    changed
 }
 
 /// Keeps a slot-held value covered after its scope close ran inline. Scope end discards the close
@@ -531,7 +745,15 @@ fn analyze(
         let mut open = holes[bi];
         // The values of the window that the latest instruction may still extend.
         let mut reach: Option<Vec<Value>> = None;
+        // Whether the window's registrations may sit below entries another discard popped: an
+        // extra pushed after that would not be popped by the window's own discard.
+        let mut stack_moved = false;
         for (k, inst) in blk.insts.iter().enumerate() {
+            let discards =
+                matches!((inst.op, inst.imm), (Op::CallRt, Imm::Ext(e)) if e == cx.discard);
+            if discards {
+                stack_moved = true;
+            }
             let modes = crate::verify::arg_modes(m, inst);
             let consumed: Vec<u32> = inst
                 .args
@@ -557,6 +779,9 @@ fn analyze(
                 reach = None;
             } else if !live.is_empty()
                 && (exits_at(m, cx, inst)
+                    // Dropping a closure, interface value or handle can run a close that faults.
+                    || (inst.op == Op::Drop
+                        && inst.args.first().is_some_and(|a| !m.drops_plain_memory(f.ty(*a))))
                     || (inst.op == Op::CallRt
                         && k + 1 == blk.insts.len()
                         && matches!(blk.term, Term::Unreachable)))
@@ -564,14 +789,31 @@ fn analyze(
                 let drops = coverable(&live, closed_by_with, &hoisted[bi]);
                 match (&mut reach, plans[bi].last_mut()) {
                     (Some(set), Some(w)) if *set == drops => w.last = k,
+                    // Values born since the last exit point join the open window with a push
+                    // of their own, so earlier values are not registered again; the window's
+                    // single discard pops them all.
+                    (Some(set), Some(w))
+                        if !stack_moved
+                            && drops.len() > set.len()
+                            && set.iter().all(|v| drops.contains(v)) =>
+                    {
+                        let added: Vec<Value> =
+                            drops.iter().filter(|v| !set.contains(v)).copied().collect();
+                        w.last = k;
+                        w.extras.push((k, added));
+                        *set = drops;
+                    }
                     _ => {
                         reach = None;
+                        // The instruction that opens the window may itself pop entries.
+                        stack_moved = discards;
                         if !drops.is_empty() {
                             reach = Some(drops.clone());
                             plans[bi].push(Window {
                                 first: k,
                                 last: k,
                                 values: drops,
+                                extras: Vec::new(),
                             });
                         }
                     }
@@ -929,7 +1171,9 @@ fn function(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
     if !owned_def.iter().any(|o| *o) && cx.cells.is_empty() {
         return false;
     }
+    cx.raw_values = raw_slots(m, f);
     let wrapped = wrap_with_closers(m, cx, f);
+    let covered_shields = cover_shielded_slots(m, cx, f);
     let covered_closes = cover_inline_closes(m, cx, f);
     owned_def.resize(f.values.len(), false);
     // Values an existing cleanup entry (a scope close) uses: it must see them undropped.
@@ -948,7 +1192,7 @@ fn function(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
         ..
     } = analyze(m, cx, f, &owned_def, &closed_by_with, &holes, &hoisted);
     if plans.iter().all(|p| p.is_empty()) && at_fault.iter().all(|v| v.is_empty()) {
-        return wrapped || covered_closes || hoists;
+        return wrapped || covered_shields || covered_closes || hoists;
     }
     for bi in 0..f.blocks.len() {
         let plan = &plans[bi];
@@ -959,6 +1203,7 @@ fn function(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
         let mut out: Vec<Inst> = Vec::with_capacity(old.len() + plan.len() * 3);
         let mut next = plan.iter().peekable();
         let mut open_window: Option<(usize, Value, Option<crate::ir::Loc>)> = None;
+        let mut extras: std::slice::Iter<'_, (usize, Vec<Value>)> = [].iter();
         let end_loc = old.last().map(|i| i.loc);
         for (k, inst) in old.into_iter().enumerate() {
             let loc = inst.loc;
@@ -971,6 +1216,11 @@ fn function(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
             if let Some(w) = next.next_if(|w| w.first == k) {
                 let first = push_all(m, cx, f, &mut out, &w.values, loc);
                 open_window = Some((w.last, first, Some(loc)));
+                extras = w.extras.iter();
+            }
+            if let Some((_, added)) = extras.as_slice().first().filter(|(at, _)| *at == k) {
+                push_all(m, cx, f, &mut out, added, loc);
+                extras.next();
             }
             out.extend(inst);
             if let Some((last, first, loc)) = open_window
@@ -1126,6 +1376,8 @@ struct Window {
     first: usize,
     last: usize,
     values: Vec<Value>,
+    /// Values registered mid-window, by the instruction they precede, on top of `values`.
+    extras: Vec<(usize, Vec<Value>)>,
 }
 
 /// The live values a registration may cover: a scope close sees its own values undropped, and a
@@ -1166,7 +1418,11 @@ fn push_all(
                 loc,
             });
         }
-        let c = closer(m, cx, ty);
+        let c = if cx.raw_values.contains(&v.0) {
+            raw_closer(m, cx, ty)
+        } else {
+            closer(m, cx, ty)
+        };
         let h = f.new_value(Ty::INT);
         out.push(Inst {
             op: Op::CleanupPush,

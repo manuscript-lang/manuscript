@@ -2,7 +2,7 @@
 // oracle/*.ref (built with the local Go toolchain); this file only supplies the inputs.
 // Deterministic; run: ms run bench/agent/gen.ms -- c58
 import (
-	compile from "@std/string.ms",
+	compile from "@std/regex.ms",
 
 	Cases, build_oracle, solve_with, write_cases from "../../lib/gen.ms",
 )

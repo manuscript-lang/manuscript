@@ -1,0 +1,90 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "faulting-close-releases-parts.ms::a fault in close on a normal return releases the value",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "faulting-close-releases-parts.ms::a fault in close during a pending fault releases the value",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "faulting-close-releases-parts.ms::a captured resource whose close faults releases its parts",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "faulting-close-releases-parts.ms::replacing a list element whose capture close faults keeps the new owner",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "faulting-close-releases-parts.ms::a temporary list whose element close faults releases the list",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "faulting-close-releases-parts.ms::a faulting close of an optional payload releases it",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "faulting-close-releases-parts.ms::a faulting close of an alternative case releases its other fields",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "faulting-close-releases-parts.ms::a faulting optional close during a pending fault releases the payload",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 8,
+        "selected": 8,
+        "passed": 8,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN faulting-close-releases-parts.ms::a fault in close on a normal return releases the value\nPASS faulting-close-releases-parts.ms::a fault in close on a normal return releases the value\nRUN faulting-close-releases-parts.ms::a fault in close during a pending fault releases the value\nPASS faulting-close-releases-parts.ms::a fault in close during a pending fault releases the value\nRUN faulting-close-releases-parts.ms::a captured resource whose close faults releases its parts\nPASS faulting-close-releases-parts.ms::a captured resource whose close faults releases its parts\nRUN faulting-close-releases-parts.ms::replacing a list element whose capture close faults keeps the new owner\nPASS faulting-close-releases-parts.ms::replacing a list element whose capture close faults keeps the new owner\nRUN faulting-close-releases-parts.ms::a temporary list whose element close faults releases the list\nPASS faulting-close-releases-parts.ms::a temporary list whose element close faults releases the list\nRUN faulting-close-releases-parts.ms::a faulting close of an optional payload releases it\nPASS faulting-close-releases-parts.ms::a faulting close of an optional payload releases it\nRUN faulting-close-releases-parts.ms::a faulting close of an alternative case releases its other fields\nPASS faulting-close-releases-parts.ms::a faulting close of an alternative case releases its other fields\nRUN faulting-close-releases-parts.ms::a faulting optional close during a pending fault releases the payload\nPASS faulting-close-releases-parts.ms::a faulting optional close during a pending fault releases the payload\n8 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

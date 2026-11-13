@@ -20,7 +20,7 @@ export fn text(var rng: Rng) String:
 
 // Deletes, inserts or replaces one character-sized piece of source text.
 export fn mutate(var rng: Rng, source: String) String:
-	var chars = source.chars()
+	var chars = source.chars().clone()
 	at := next(var rng, chars.length() + 1)
 	kind := next(var rng, 3)
 	if kind != 1 and at < chars.length(): chars.remove(at)

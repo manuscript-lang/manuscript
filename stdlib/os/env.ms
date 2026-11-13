@@ -43,8 +43,8 @@ export fn which(name: String) String?:
 	if env.is_ok():
 		for entry in env.get(Map[String, String]()).entries():
 			key := if windows: entry.key.upper() else: entry.key
-			if key == "PATH": directories = entry.value.split(separator)
-			if key == "PATHEXT" and windows: extensions = entry.value.split(";")
+			if key == "PATH": directories = entry.value.split(separator).clone()
+			if key == "PATHEXT" and windows: extensions = entry.value.split(";").clone()
 
 	if has_path:
 		directories = [""]

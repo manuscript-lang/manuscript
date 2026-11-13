@@ -4,7 +4,7 @@ import (
 	escape from "@std/data/html.ms",
 	JsonValue, parse, stringify from "@std/data/json.ms",
 	WriteStream from "@std/io/io.ms",
-	StringBuilder from "@std/string.ms",
+	StringBuilder from "@std/string_builder.ms",
 )
 
 /*
@@ -497,7 +497,7 @@ fn var ExprParser.primary() TemplateExpr!Error:
 			self.fail("unexpected operator")
 		)
 
-		return ok(Path(t.text.split(".")))
+		return ok(Path(t.text.split(".").clone()))
 
 	return error(self.fail("expected a value"))
 

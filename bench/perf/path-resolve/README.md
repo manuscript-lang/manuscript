@@ -52,8 +52,8 @@ The one-part +2.1% difference is comparable to A/A variation: identical baseline
 executables measured 153.83 and 151.66 ns (-1.4%) in the same protocol; the
 unchanged Windows A/A control differed by +2.6%. These shared-host measurements
 do not establish a one-part speedup. Separate seven-pair process fault checks
-record no major faults; the raw file retains minor faults for small and large
-cases.
+record no major faults; the raw fault file (not kept in the tree) retained minor faults for
+small and large cases.
 
 Rejected experiments: a byte builder that inserted redundant separators measured
 150→313 ns for one part and 351→618 ns for four. Preserving separators narrowed
@@ -86,3 +86,5 @@ for zero parts, 199.97→187.95 for one empty part, 225.09→217.37 for four,
 494.04→477.80 for 32, and 2,582.85→2,503.63 for 256. Raw before/after diagnostic
 samples are retained separately; these include function-value invocation and are
 not interchangeable with the main harness latencies.
+
+Raw per-run samples, correctness dumps and A/A files from the 2026-11-12 runs are not kept in the tree (#3713); `report.json`, the tables above and `run.py` reproduce them.

@@ -1,6 +1,6 @@
 import (
 	YamlValue, parse, stringify from "@std/data/yaml.ms",
-	StringBuilder from "@std/string.ms",
+	StringBuilder from "@std/string_builder.ms",
 	keep, measure from "@std/test/bench.ms",
 )
 

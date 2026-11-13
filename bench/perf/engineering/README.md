@@ -1,6 +1,6 @@
 # Engineering tasks
 
-Everyday programs an engineer writes in an afternoon, in Manuscript, C and Rust, on 15 to 40 MB of generated input: log statistics, CSV group-by, word frequency, sorting records, and substring search. Each program reads stdin and prints a small report; every sample's output must match the C version byte for byte. Rust uses `std` only (no crates), so its CSV parser is hand written; C uses an open-addressing table and `qsort`. Manuscript versions use the standard library idiomatically (`split`, `Map`, `sorted`, `@std/data/csv.ms`).
+Everyday programs an engineer writes in an afternoon, in Manuscript, C and Rust, on 15 to 40 MB of generated input: log statistics, CSV group-by, word frequency, sorting records, and substring search. Each program reads stdin and prints a small report; every sample's output must match the C version byte for byte. Rust uses `std` only (no crates), so its CSV parser is hand written; C uses an insertion-ordered table with owned (copied) keys that grows and compacts like `Map` (`c/common.h`; before 2026-11-12 it borrowed keys and iterated in slot order) and `qsort`. Manuscript versions use the standard library idiomatically (`split`, `Map`, `sorted`, `@std/data/csv.ms`).
 
 ```sh
 MS=./target/release/ms sh bench/perf/engineering/run.sh 5
@@ -58,3 +58,7 @@ Min of 7, same machine, all ten tasks:
 ## 2026-11-12: a joining task does not count as stalled
 
 An earlier change ran a `read_file` inline when the thread's other tasks only join (`pargroup` 58 to 37 ms). That is reverted: an inline read blocks the whole thread, so on a slow disk, cold cache or network file system a post from another thread waits out the read. With 20 ms per read (an `LD_PRELOAD` shim on `read`), a promise completed on another thread woke its waiter 111 to 135 ms late. File reads go to the pool, which parks the task, and `pargroup` costs its pool hops again (about 4,700 `futex` calls). The older rule, which runs a call inline when every other task is parked on a token with no deadline, is still in place and has the same exposure.
+
+## 2026-11-12: only tasks no other thread can wake count as stalled
+
+`msrt_task_others_stalled` no longer counts a task parked on a token another thread may post (a pool job, a promise completed elsewhere): an inline blocking call would delay that wake-up by the length of the call (#3669 measured 111 to 135 ms late with 20 ms reads). A task parked on a token only this thread posts (a local join) still counts, so a program with one local task waiting runs blocking calls inline. `pargroup` (min of 5, shared 4-CPU VM, noisy): 50 to 57 ms before, 62 to 63 ms after; `futex` calls 3,224 to 4,114, `epoll_wait` 1,501 to 2,005. This is the accepted cost of removing the latency exposure. Linux only; not run on macOS or Windows (the check reads scheduler state, not a platform call).

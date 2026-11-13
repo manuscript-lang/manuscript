@@ -58,8 +58,8 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let out = self.glue_copy(ty, &params);
                 self.b.ins().return_(&out);
             }
-            Glue::ClosureDrop(f) => {
-                // Drops the captures then frees the object.
+            Glue::ClosureDrop(f) | Glue::ClosureDropFramed(f) => {
+                // Drops the captures then frees the object (a framed one lives in a stack slot).
                 let obj = params[0];
                 let caps = self.closure_captures(f);
                 let closers = self.g.m.funcs[f as usize].capture_closers.clone();
@@ -80,7 +80,9 @@ impl<'a, 'm> Lower<'a, 'm> {
                         self.drop_value(c, &vs);
                     }
                 }
-                self.free(obj);
+                if matches!(kind, Glue::ClosureDrop(_)) {
+                    self.free(obj);
+                }
                 self.b.ins().return_(&[]);
             }
             Glue::ClosureDropFrom(f, from) => {
@@ -89,7 +91,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let caps = self.closure_captures(f);
                 self.if_then(on, |s| {
                     for (k, (c, off, leaves)) in caps.iter().enumerate() {
-                        if k as u32 > from && s.g.m.needs_drop(*c) {
+                        if k as u32 >= from && s.g.m.needs_drop(*c) {
                             let vs = s.load_leaves(obj, *off, leaves);
                             s.drop_value(*c, &vs);
                         }
@@ -121,10 +123,15 @@ impl<'a, 'm> Lower<'a, 'm> {
                     copies.push(self.clone_value(*cty, &vs));
                 }
                 let obj = self.alloc(total);
-                for at in [0, 8, CLOSURE_CODE] {
+                // The drop entry is the heap one even when `src` lives in a frame.
+                for at in [0, CLOSURE_CODE] {
                     let word = self.b.ins().load(types::I64, flags(), src, at);
                     self.b.ins().store(flags(), word, obj, at);
                 }
+                let drop = self.g.glue(Glue::ClosureDrop(f), Ty::UNIT);
+                let dr = self.fref(drop);
+                let da = self.b.ins().func_addr(types::I64, dr);
+                self.b.ins().store(flags(), da, obj, 8);
                 for ((off, leaves), vs) in layouts.iter().zip(&copies) {
                     self.store_leaves(obj, *off, leaves, vs);
                 }
@@ -228,24 +235,187 @@ impl<'a, 'm> Lower<'a, 'm> {
         }
     }
 
+    /// The block leaf index and width of each field of the indirect record `ty`.
+    pub(super) fn rec_block_fields(&self, ty: Ty) -> Vec<(usize, usize)> {
+        let TyKind::Rec(r) = self.g.m.types.kind(ty) else {
+            return Vec::new();
+        };
+        let mut at = 0;
+        let mut out = Vec::new();
+        for f in &self.g.m.records[r.index()].fields {
+            let n = if self.g.lay.rec_field_boxed(f.1) {
+                1
+            } else {
+                self.g.lay.width(f.1)
+            };
+            out.push((at, n));
+            at += n;
+        }
+        out
+    }
+
+    /// Field `i` of the indirect record whose block is at `p`: its leaves, with a boxed
+    /// collection header read through its pointer (zeros when there is none).
+    pub(super) fn rec_load_field(&mut self, ty: Ty, p: Value, i: usize) -> Vs {
+        let block = self.rec_block(ty).expect("indirect record");
+        let lay = mem_layout(&block);
+        let (bk, n) = self.rec_block_fields(ty)[i];
+        let fty = self.fields_of(ty)[i].0;
+        if self.g.lay.rec_field_boxed(fty) {
+            let bp = self.load_leaf(Leaf::I64, p, lay.offsets[bk] as i32);
+            return self.map_header_load(bp);
+        }
+        (bk..bk + n)
+            .map(|k| self.load_leaf(block[k], p, lay.offsets[k] as i32))
+            .collect()
+    }
+
     /// The field leaves of record `vs`, loaded from its block when it is indirect.
     pub(super) fn rec_expand(&mut self, ty: Ty, vs: &[Value]) -> Vs {
-        match self.rec_block(ty) {
-            Some(block) => self.load_leaves(vs[0], 0, &block),
-            None => vs.to_vec(),
+        if self.rec_block(ty).is_none() {
+            return vs.to_vec();
         }
+        let n = self.fields_of(ty).len();
+        (0..n)
+            .flat_map(|i| self.rec_load_field(ty, vs[0], i))
+            .collect()
     }
 
     /// The register value of a record with field leaves `flat`: a fresh block when indirect.
     pub(super) fn rec_pack(&mut self, ty: Ty, flat: Vs) -> Vs {
-        match self.rec_block(ty) {
-            Some(block) => {
-                let p = self.alloc(mem_layout(&block).size as i64);
-                self.store_leaves(p, 0, &block, &flat);
-                vec![p]
+        let Some(block) = self.rec_block(ty) else {
+            return flat;
+        };
+        let lay = mem_layout(&block);
+        let p = self.alloc(lay.size as i64);
+        let fields = self.fields_of(ty);
+        for (i, (bk, n)) in self.rec_block_fields(ty).into_iter().enumerate() {
+            let (fty, at, w) = fields[i];
+            if self.g.lay.rec_field_boxed(fty) {
+                let bp = self.map_header_store(&flat[at..at + w]);
+                self.store_leaf(Leaf::I64, bp, p, lay.offsets[bk] as i32);
+            } else {
+                for k in 0..n {
+                    self.store_leaf(block[bk + k], flat[at + k], p, lay.offsets[bk + k] as i32);
+                }
             }
-            None => flat,
         }
+        vec![p]
+    }
+
+    /// Frees the block of the indirect record at `p` and the header blocks of its collections.
+    /// The field values were dropped or moved out already.
+    pub(super) fn rec_free_block(&mut self, ty: Ty, p: Value) {
+        let block = self.rec_block(ty).expect("indirect record");
+        let lay = mem_layout(&block);
+        let fields = self.fields_of(ty);
+        for (i, (bk, _)) in self.rec_block_fields(ty).into_iter().enumerate() {
+            if self.g.lay.rec_field_boxed(fields[i].0) {
+                let bp = self.load_leaf(Leaf::I64, p, lay.offsets[bk] as i32);
+                let nn = self.b.ins().icmp_imm_s(IntCC::NotEqual, bp, 0);
+                self.if_then(nn, |s| s.free(bp));
+            }
+        }
+        self.free(p);
+    }
+
+    /// Drops the fields of the indirect record at `p` whose bit in `moved` is clear (the others
+    /// were moved out) and frees its block and its collection headers. A collection that was
+    /// never filled has no header block and costs one null check.
+    pub(super) fn rec_release(&mut self, ty: Ty, p: Value, moved: u64) {
+        let block = self.rec_block(ty).expect("indirect record");
+        let lay = mem_layout(&block);
+        for (i, (fty, _, _)) in self.fields_of(ty).into_iter().enumerate() {
+            let (bk, n) = self.rec_block_fields(ty)[i];
+            let kept = moved >> i & 1 == 0 && self.g.m.needs_drop(fty);
+            if self.g.lay.rec_field_boxed(fty) {
+                let bp = self.load_leaf(Leaf::I64, p, lay.offsets[bk] as i32);
+                let nn = self.b.ins().icmp_imm_s(IntCC::NotEqual, bp, 0);
+                self.if_then(nn, |s| {
+                    if kept {
+                        let words = s.map_header_load(bp);
+                        s.drop_value(fty, &words);
+                    }
+                    s.free(bp);
+                });
+            } else if kept {
+                let v: Vs = (bk..bk + n)
+                    .map(|k| self.load_leaf(block[k], p, lay.offsets[k] as i32))
+                    .collect();
+                self.drop_value(fty, &v);
+            }
+        }
+        self.free(p);
+    }
+
+    /// The seven words of the collection header behind `bp`, or the all-zero empty value.
+    fn map_header_load(&mut self, bp: Value) -> Vs {
+        let words = ms_rt_abi::MAP_SIZE / 8;
+        let (some, none, cont) = (
+            self.b.create_block(),
+            self.b.create_block(),
+            self.b.create_block(),
+        );
+        for _ in 0..words {
+            self.b.append_block_param(cont, types::I64);
+        }
+        self.b.ins().brif(bp, some, &[], none, &[]);
+        self.b.switch_to_block(some);
+        let loaded: Vec<BlockArg> = (0..words)
+            .map(|k| BlockArg::Value(self.load_leaf(Leaf::I64, bp, (k * 8) as i32)))
+            .collect();
+        self.b.ins().jump(cont, &loaded);
+        self.b.switch_to_block(none);
+        let zero = self.iconst(0);
+        let zeros = vec![BlockArg::Value(zero); words];
+        self.b.ins().jump(cont, &zeros);
+        self.b.switch_to_block(cont);
+        self.b.block_params(cont).to_vec()
+    }
+
+    /// The header block of the collection field at `slot`, created empty when the field holds
+    /// null: the address a native call or an in-place update works on.
+    pub(super) fn map_header_ensure(&mut self, slot: Value) -> Value {
+        let (make, cont) = (self.b.create_block(), self.b.create_block());
+        self.b.append_block_param(cont, types::I64);
+        let have = self.load_leaf(Leaf::I64, slot, 0);
+        self.b
+            .ins()
+            .brif(have, cont, &[BlockArg::Value(have)], make, &[]);
+        self.b.switch_to_block(make);
+        let bp = self.alloc(ms_rt_abi::MAP_SIZE as i64);
+        let zero = self.iconst(0);
+        for k in 0..ms_rt_abi::MAP_SIZE / 8 {
+            self.store_leaf(Leaf::I64, zero, bp, (k * 8) as i32);
+        }
+        self.store_leaf(Leaf::I64, bp, slot, 0);
+        self.b.ins().jump(cont, &[BlockArg::Value(bp)]);
+        self.b.switch_to_block(cont);
+        self.b.block_params(cont)[0]
+    }
+
+    /// A header block holding `words`, or null for the all-zero empty collection. A stamped
+    /// empty collection (descriptor word set) keeps its block.
+    fn map_header_store(&mut self, words: &[Value]) -> Value {
+        let (some, none, cont) = (
+            self.b.create_block(),
+            self.b.create_block(),
+            self.b.create_block(),
+        );
+        self.b.append_block_param(cont, types::I64);
+        let used = self.b.ins().bor(words[0], words[words.len() - 1]);
+        self.b.ins().brif(used, some, &[], none, &[]);
+        self.b.switch_to_block(some);
+        let bp = self.alloc(ms_rt_abi::MAP_SIZE as i64);
+        for (k, w) in words.iter().enumerate() {
+            self.store_leaf(Leaf::I64, *w, bp, (k * 8) as i32);
+        }
+        self.b.ins().jump(cont, &[BlockArg::Value(bp)]);
+        self.b.switch_to_block(none);
+        let zero = self.iconst(0);
+        self.b.ins().jump(cont, &[BlockArg::Value(zero)]);
+        self.b.switch_to_block(cont);
+        self.b.block_params(cont)[0]
     }
 
     /// Per-case, per-field `(type, leaf indices into the alt's leaf/block list)`.
@@ -298,7 +468,10 @@ impl<'a, 'm> Lower<'a, 'm> {
         let m = self.g.m;
         match m.types.kind(ty).clone() {
             TyKind::Bytes | TyKind::List(_) => {
-                self.drop_list_from(ty, vs[0], vs[1], None);
+                // A view (`cap == 0`, from `slice` of a lent list) borrows its elements: there
+                // is nothing to drop or free.
+                let owned = self.b.ins().icmp_imm_s(IntCC::NotEqual, vs[2], 0);
+                self.if_then(owned, |s| s.drop_list_from(ty, vs[0], vs[1], None));
             }
             TyKind::Obj(..) => {
                 // Map and Set are owned `MapVal`s the runtime knows how to drop.
@@ -307,15 +480,12 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let d = self.typedesc_addr(ty);
                 self.rt_call("msrt_slot_drop", &[d, slot]);
             }
+            TyKind::Rec(_) if self.rec_block(ty).is_some() => self.rec_release(ty, vs[0], 0),
             TyKind::Rec(_) => {
-                let flat = self.rec_expand(ty, vs);
                 for (fty, at, w) in self.fields_of(ty) {
                     if m.needs_drop(fty) {
-                        self.drop_value(fty, &flat[at..at + w]);
+                        self.drop_value(fty, &vs[at..at + w]);
                     }
-                }
-                if self.rec_block(ty).is_some() {
-                    self.free(vs[0]);
                 }
             }
             TyKind::Opt(inner) if self.g.lay.opt_is_boxed(inner) => {

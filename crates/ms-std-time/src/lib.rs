@@ -41,7 +41,7 @@ abi_record! {
 }
 
 abi_record! {
-    /// `Calendar` fields in declaration order, then the zone name (owned string).
+    /// `Date` fields in declaration order, then the zone name (owned string).
     pub struct CalendarOut {
         pub year: i64,
         pub month: i64,

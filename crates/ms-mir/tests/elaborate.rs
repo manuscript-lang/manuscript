@@ -386,6 +386,51 @@ b0:
     assert_eq!((kept, out.as_str()), (4, ""));
 }
 
+/// A value moved out of its scope on one branch and owned there by an inner scope (a statement's
+/// temporary), which drops it: the other branch still holds it in the outer scope.
+fn reowned(flag: i64) -> String {
+    format!(
+        r#"fn @h(%flag: int) -> int {{
+b0:
+  %zero: int = iconst 0
+  scope.begin 1 0
+  %a: list<int> = call @mk (%flag)
+  scope.own 1 0 %a
+  %c: bool = icmp.eq %flag, %zero
+  br_if %c, take(), keep()
+take:
+  scope.disown %a
+  scope.begin 2 2
+  scope.own 2 0 %a
+  drop %a
+  scope.end 2 0
+  br join()
+keep:
+  br join()
+join:
+  %r: int = iconst 10
+  scope.end 1 0
+  ret %r
+}}
+fn @main() -> int {{
+b0:
+  %x: int = iconst {flag}
+  %r: int = call @h (%x)
+  ret %r
+}}
+"#
+    )
+}
+
+#[test]
+fn a_value_an_inner_scope_owns_again_stays_the_outer_scopes_on_the_other_path() {
+    for flag in [0, 5] {
+        let (r, _, text) = elaborate_and_run_text(&reowned(flag));
+        assert_eq!(r, 10, "{text}");
+        assert!(text.contains("drop.if"), "{text}");
+    }
+}
+
 /// An owner whose close cannot fail names its own function (`scope.own S K v`, K = function
 /// index + 2): the pass closes it shielded and drops what is left, only on the paths that
 /// still hold it.

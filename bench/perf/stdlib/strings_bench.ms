@@ -1,5 +1,5 @@
 import (
-	StringBuilder from "@std/string.ms",
+	StringBuilder from "@std/string_builder.ms",
 	keep, measure from "@std/test/bench.ms",
 
 	words from "./src/harness.ms",

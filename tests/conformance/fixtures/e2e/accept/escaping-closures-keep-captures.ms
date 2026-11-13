@@ -35,7 +35,7 @@ fn c2(text: String) Int:
 	var m: Map[Int, fn() Int] = {}
 	var i = 0
 
-	for p in text.split(","):
+	for p in text.split(",").clone():
 		m[i] = fn() Int: return p.length()
 		i += 1
 
@@ -46,19 +46,19 @@ fn c2(text: String) Int:
 
 fn c3(text: String) Int:
 	var g: fn() Int = fn() Int: 0
-	for p in text.split(","):
+	for p in text.split(",").clone():
 		g = fn() Int: return p.length()
 	return g()
 
 fn c4(text: String) Int:
 	var b = Box(f: fn() Int: 0)
-	for p in text.split(","):
+	for p in text.split(",").clone():
 		b.f = fn() Int: return p.length()
 	return b.f()
 
 fn c5(text: String) Int:
 	var sink = ListSink(fs: [])
-	for p in text.split(","):
+	for p in text.split(",").clone():
 		sink.put(fn() Int: return p.length())
 	return sink.total()
 
@@ -73,7 +73,7 @@ fn c6(text: String) Int:
 fn c7(text: String) Int:
 	var fs: List[fn() Int] = []
 
-	for p in text.split(","):
+	for p in text.split(",").clone():
 		f := fn() Int: return p.length()
 		fs.append(f)
 
@@ -92,7 +92,7 @@ fn c8(text: String) Int:
 
 fn c9(text: String) (fn() Int)?:
 	var r: (fn() Int)? = none
-	for p in text.split(","):
+	for p in text.split(",").clone():
 		r = fn() Int: return p.length()
 	return r
 

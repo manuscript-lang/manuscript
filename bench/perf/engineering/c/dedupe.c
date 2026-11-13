@@ -18,7 +18,7 @@ int main(void) {
         p = nl + 1;
     }
     Entry *best = NULL;
-    for (size_t i = 0; i < lines.cap; i++) {
+    for (size_t i = 0; i < lines.used; i++) {
         Entry *e = &lines.slots[i];
         if (!e->key) continue;
         if (!best || e->count > best->count) { best = e; continue; }

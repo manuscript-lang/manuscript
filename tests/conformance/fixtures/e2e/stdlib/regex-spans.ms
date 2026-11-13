@@ -1,7 +1,7 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
 import (
-	RegexSpan, compile from "@std/string.ms",
+	RegexSpan, compile from "@std/regex.ms",
 	expect_equal,
 	expect_error,
 	expect_none,

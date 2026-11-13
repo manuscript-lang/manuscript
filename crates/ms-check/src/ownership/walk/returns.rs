@@ -944,8 +944,14 @@ impl Walker<'_> {
     }
 
     /// Whether `e` is a native read that lowering borrows in place (`crates/ms-lower/src/borrow_shape.rs`):
-    /// `m.get(key)` on a `Map`, `xs.first()` or `xs.last()` on a `List`, with the receiver written.
+    /// the receiver of a call `native_borrow` names, with the receiver written.
     pub(super) fn native_borrow_receiver<'e>(&self, e: &'e Expr) -> Option<&'e Expr> {
+        self.native_borrow_of(e).map(|(_, recv)| recv)
+    }
+
+    /// The kind of native borrow call `e` is and its receiver. The one place a name decides is
+    /// `native_borrow` (`crates/ms-check/src/ownership/native_borrow.rs`).
+    pub(super) fn native_borrow_of<'e>(&self, e: &'e Expr) -> Option<(NativeBorrow, &'e Expr)> {
         let ExprKind::Call { callee, args } = &e.kind else {
             return None;
         };
@@ -958,19 +964,10 @@ impl Walker<'_> {
         if method.native == Native::Source {
             return None;
         }
-        let recv = self.cx.m.ty(left);
-        let returns_borrow = match (self.syms.str(name), args.len()) {
-            ("get", 1) => recv.is(Builtin::Map) || recv.is(Builtin::List),
-            ("get", 0) => recv.is(Builtin::Optional) || recv.is(Builtin::Result),
-            ("first" | "last", 0) => recv.is(Builtin::List),
-            ("view", 2) => recv.is(Builtin::Bytes) || recv.is_string(),
-            _ => false,
-        };
+        let kind = native_borrow(&self.cx.m.ty(left), self.syms.str(name), args.len())?;
         // `get()` on the last use of an owned local hands its payload over instead of borrowing it.
-        let takes_payload = matches!(self.syms.str(name), "get")
-            && args.is_empty()
-            && self.owned_local_at_last_use(left);
-        (returns_borrow && !takes_payload).then_some(&**left)
+        let takes_payload = kind == NativeBorrow::PayloadGet && self.owned_local_at_last_use(left);
+        (!takes_payload).then_some((kind, &**left))
     }
 
     /// The variable whose `Bytes.view` the call `e` is, when it is returned: a function returns
@@ -996,27 +993,14 @@ impl Walker<'_> {
 
     /// Whether `e` is `xs.get(i)` on a `List`, without a default: the element read in place.
     pub(super) fn list_get(&self, e: &Expr) -> bool {
-        let ExprKind::Call { callee, args } = &e.kind else {
-            return false;
-        };
-        let ExprKind::Member { left, name } = &callee.kind else {
-            return false;
-        };
-        self.syms.str(name) == "get" && args.len() == 1 && self.cx.m.ty(left).is(Builtin::List)
+        self.native_borrow_of(e)
+            .is_some_and(|(k, _)| k == NativeBorrow::ListGet)
     }
 
     /// Whether `e` is `map.get(key)` on a `Map`: an entry read in place.
     pub(super) fn map_get(&self, e: &Expr) -> bool {
-        let ExprKind::Call { callee, args } = &e.kind else {
-            return false;
-        };
-        let ExprKind::Member { left, name } = &callee.kind else {
-            return false;
-        };
-        self.syms.str(name) == "get"
-            && args.len() == 1
-            && self.cx.m.ty(left).is(Builtin::Map)
-            && matches!(self.cx.m.resolution(e), Resolution::Method(m) if m.native != Native::Source)
+        self.native_borrow_of(e)
+            .is_some_and(|(k, _)| k == NativeBorrow::MapGet)
     }
 
     /// `value` is `map.get(key).get()`: the `map.get(key)` call whose payload it reads.

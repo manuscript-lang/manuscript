@@ -1630,6 +1630,22 @@ impl Session {
         with_args(&sym.ty(self.syms), args)
     }
 
+    /// The name of the one operation of the single-operation interface `name` declared in the bundled
+    /// source module `module` (`to_json` for `JsonEncode`), read from its declaration. `None` while
+    /// the module is not loaded: nothing can implement an interface its program never imported.
+    pub fn sole_operation(self: &Rc<Self>, module: &str, name: &str) -> Option<Name> {
+        let sym = self
+            .standard_symbol(name)
+            .filter(|s| self.syms.str(s.module) == module)
+            .or_else(|| self.world(|w| w.source_types.get(&(n(module), n(name))).cloned()))?;
+        let contract = sym.ty(self.syms);
+        let ops = contract.def.as_ref()?.operations.borrow();
+        match ops.as_slice() {
+            [op] => Some(op.name),
+            _ => None,
+        }
+    }
+
     /// `Duration`, `Instant` or `Timestamp`, the records of `@std/time.ms`.
     pub fn time_type(self: &Rc<Self>, name: &str) -> Ty {
         // The module is checked on first use; its records have no fields before that.

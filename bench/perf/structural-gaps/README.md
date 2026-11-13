@@ -132,6 +132,17 @@ A borrowed value converted to an interface (`total(sq)` for `fn total(x: Shape)`
 
 Closure captures: a closure passed to a call and not stored already allocates nothing (1,000 calls of `apply(fn x: x + k, i)`: 13 allocations in total). A closure stored in a list must escape the frame, so its environment stays on the heap; no change.
 
+## 2026-11-12: stage 1, `decode_utf8` takes a dying `Bytes`
+
+Same machine and `ms` build as above, before and after the change (`bytetake` pass, `msrt_bytes_decode_utf8_take`). Callgrind and memcheck on the 2 MB input, wall time is the minimum of 5 on the 22 MB input.
+
+| task | instructions before | after | allocated bytes before | after | wall before | after |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| grep | 23.28M | 22.76M | 6,299,139 | 4,202,043 | 56 ms | 39 ms |
+| logstats | 112.45M | 111.83M | 15,248,255 | 13,151,115 | 98 ms | 88 ms |
+
+The saved work is the 2 MB copy of the input and its page faults, which callgrind counts as few instructions, so the wall time is the measure. Allocation counts are unchanged (the buffer is reused, not removed).
+
 ## 2026-11-12: inlinable string scans (track 1, first step)
 
 Same machine and build type as above (Release LLVM `ms`; callgrind instructions on the first 30,000 lines of each input, outputs compared byte for byte with the baseline build).
@@ -273,7 +284,6 @@ One probe remains per round besides the `contains` (the first statement's, after
 | with probe reuse | 87 to 105 ms | 778M |
 
 The earlier run of this case was 281 to 349 ms with seven lookups a pass; C is 22 to 33 ms. What is left is two probes a round at about 95 to 125 instructions each, from `value_ptr_k` deriving the slot layout from the descriptors on every call; caching the layout in the map header is the next step. Linux, same build and machine as above.
-
 ## 2026-11-12, contains then update (stacked on map entry reuse)
 
 `fuse_contains` in `simplify`: a join whose first probe reads a map that arrives as a block parameter takes the entry address from its predecessors instead, when one of them holds an earlier probe or `contains` of the same key (a `contains` becomes the equivalent probe); the other predecessor, normally the insert path, probes before it branches. The common present-key path then probes once per round.
@@ -285,6 +295,29 @@ The earlier run of this case was 281 to 349 ms with seven lookups a pass; C is 2
 
 The Int case is now below the single `stats.update(...)` form (305M). A lookup is still about 80 instructions on a hit; its cost is spread over hashing, the string tag decode, the probe loop and the frame, not one hot spot, so no further single change is planned.
 
+## 2026-11-12, word-map `get` and fixed key layouts
+
+`m.get(k)` and `m[k]` called the general `msrt_map_get_ptr` even on `Map[Int, Int]`, where `contains` and `add` already used the inlinable `_w8` probes; they now use `word_map_symbol` too. The general probe also derived the slot layout from both descriptors on every call; for an `Int` or `String` key and a value aligned to at most a word it is now two additions.
+
+| program (callgrind Ir, wall min of 3) | before | after |
+| --- | ---: | ---: |
+| `intmap.ms` (`Map[Int, Int]`, 2M counter updates, 2M `contains`) | 380.7M, 86 ms | 292.9M, 78 ms |
+| `keyed.ms` case a (`Map[Int, Stat]`, with the join fusion above) | 281M | 262.7M |
+| `containers.ms` case a (`Map[String, Stat]`, same) | 415M | 379.1M |
+
+`msrt_map_add_w8` is 51 instructions a call (103M of `intmap`), the next cost there. Linux, same build and machine.
+
+## 2026-11-12, equivalent C twins for `Map` and `Set`
+
+The map and set C twins did less than `Map` promises: `keyed.c` cases a and f used a table presized for the key count (no growth), a sentinel (`-1` cannot be a key), no insertion order and no removal; `intmap.c` grew but had no order or removal. They now share `c/ordmap.h`: dense entries in insertion order, an index of tag-and-position words, growth (compacting first when over half the entries are holes), `remove`, any `long` key, one `_at` that inserts a zeroed value like `update`. Outputs match the old twins.
+
+| program (callgrind Ir) | old C twin | equivalent C | ms |
+| --- | ---: | ---: | ---: |
+| `keyed.ms` case a (`Map[Int, Stat]`) | 98.4M | 163.0M | 262.7M |
+| `keyed.ms` case f (`Set[Int]`) | 92.1M | 176.0M | 182.8M |
+| `intmap.ms` | 136M | 257.4M | 292.9M |
+
+Against the equivalent C the gaps are 1.6x, 1.04x and 1.14x in instructions; `Set[Int]` wall time is at C (58 to 84 ms against 77 ms, min of 5 on a noisy shared VM). Earlier "gap to C" figures for maps and sets in this file and in `proposals/c-parity-structure.md` compare against the old twins and overstate the gap. The `Map[String, Stat]` twin (`containers.c`) is not in the repository, so that row has no equivalent C yet.
 ## 2026-11-12: var calls through boxed optional fields
 
 `tree.ms` is `mixed.ms` case c on its own: 200k inserts into a binary tree whose links are `Node?`, through `fn var Node.insert`. Same machine; callgrind instructions, allocations from memcheck, min-of-7 wall time.
@@ -296,6 +329,29 @@ The Int case is now below the single `stats.update(...)` form (305M). A lookup i
 | wall | 132 ms | 70 ms | 72 ms |
 
 - `self.left?.insert(key)` took the record, unboxed the child into a slot, called, boxed it again with a new allocation and refilled the field. The payload of a recursive `Optional` is already in memory, in the box, so a `var` call now gets the box's address (`opt.addr`, `alias_payload_addr` in `crates/ms-lower/src/alias.rs`) and changes the child where it lies. Only a boxed optional has such an address; an inline payload keeps the take and put-back.
+- The remaining 34M instructions against C are not analysed.
+
+## 2026-11-12: string edits take a dying receiver (track 2 take, text edits)
+
+Case e of `keyed.ms` (`trim`, `replace`, `upper`, `contains` on 300k lines), before and after the `takes_self` twins for `trim`, `trim_start`, `trim_end`, `upper`, `lower` and `replace` (same machine; callgrind for instructions, minimum of 6 runs for wall time). Here `trim` already lends a view, so the owned copy made for `replace` and the `replace` result are the two receivers that die at a call.
+
+| case | instructions before | after | wall before | after | C |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| e: text edits, 300k lines | 954M | 554M | 39 ms | 28 ms | 334M, 31 ms |
+
+Not done in this step: `sorted`, `reversed` and `filter` takes (no measured gap, and `sortgen` already copies the list itself), and lending `Map.values`, `keys`, `entries` and `List.slice`. A lent `values` or `keys` list still has to be a contiguous list, so only string payloads can be views (`msrt_map_values_view` exists); a lent `slice` needs a list view (a `cap == 0` list), which every list drop path in both backends must skip.
+
+## 2026-11-12: string hot paths from the agent challenges (`scalar_values().all`, `slice`)
+
+c03 `csv-group-sum` reference solution on 25,000 generated lines (callgrind, same machine; before is the build without these two changes and without the string-edit takes).
+
+| change | c03 instructions |
+| --- | ---: |
+| before | 127.3M |
+| `s.scalar_values().all/any/count(f)` with a reading lambda runs as one decoding loop (no list of scalars) | 110.9M |
+| `slice` takes an ASCII path for strings of at most 256 bytes that carry no ASCII flag (a byte scan instead of walking scalars: 190 to about 120 instructions a call on 20-byte text) | 107.5M |
+
+Reference Rust is 44.0M on this challenge at 400 KB per the heap-parity thread; what is left in c03 is malloc and free (about 35M under callgrind's glibc allocator), `split_view` at 106 instructions a piece, `Needle::find`, and the copy a no-match `replace` makes of a borrowed line.
 - Re-measured at `d9f67581` against a standalone C twin (`gcc -O2`, `tree.c` with the same generator, depth and a free of the tree): 99.5M against 101.0M instructions, 70 against 72 ms. The C twin frees the tree (about 23M) and `tree.ms` does not. About 14M of the 99.5M is the `msrt_alloc`, `alloc_slow` and `alloc_large` layers, which appear only under callgrind (glibc replaces the release allocator). Generated code is within about 4M of C: the descent loop is 5 instructions a level as in C, `depth` is 6.1M against 2.9M (stack and overflow checks), and the tail of `insert` calls the drop glue on a child just tested to be none (about 8 instructions an insert). The earlier 151M and 117M figures (the latter was `mixed.ms` case c with its free) are superseded; there is no codegen gap left to close here.
 
 ## 2026-11-12: row building with `join`
@@ -310,3 +366,17 @@ The Int case is now below the single `stats.update(...)` form (305M). A lookup i
 | C | 476M | |
 
 `reserve` in `crates/ms-rt/src/vec.rs` gave every vector a first capacity of 4 elements, which for a `StringBuilder` is four bytes: a 25-byte row reallocated three times. Byte buffers now start at 32. The 5-part `join` still costs about 800 instructions a row of which most is allocator work under callgrind's glibc `malloc`.
+
+## 2026-11-12, enum tree re-measured against a checked twin
+
+Same machine and Release LLVM build as `main` at `6dd056b2`; callgrind instruction totals and wall time of five runs. `enum_tree.ms` is `keyed.ms` case b alone; `c/enum_tree.c` (`gcc -O2`) is its twin with the same generator, depth and tree free, and with trapping `+`, `*` and negation as Manuscript's `Int` has.
+
+| | ms | c (checked) | c (unchecked) |
+| --- | ---: | ---: | ---: |
+| instructions | 565.6M | 360.7M | 357.6M |
+| `evaluate` / `ev` | 220.3M | 156.7M | 153.6M |
+| wall | 61 to 65 ms | 78 to 96 ms | 77 to 96 ms |
+
+- The sixth-pass figures (570M against 224M, 70 against 42 ms) do not reproduce: the twin in `c/keyed.c` runs 357.6M instructions and 77 to 96 ms here. Against a like-for-like twin the Manuscript program is ahead in wall time.
+- The instruction gap is the allocator layers (`alloc_large`, `alloc_slow`, `free_large`, `malloc_usable_size`, about 108M), which appear only under callgrind, and `evaluate` (63M more than `ev`): a stack check, a frame pointer and a tag range test per call. The tag test is two compares because the match default is a trap, not `unreachable`; making it unreachable saves about 2 of 28 instructions per call and turns a corrupted tag into undefined behavior, so it is not done. The stack check is item 7 above.
+- No codegen gap is left to close for this shape.

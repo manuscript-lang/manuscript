@@ -1,0 +1,65 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "sort-owning-records-by-comparator.ms::sorting records that own strings and lists orders by key and keeps equal keys in input order",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "sort-owning-records-by-comparator.ms::the sorted copy owns its strings and lists independently of the original",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "sort-owning-records-by-comparator.ms::sorting records that own data in place keeps every record",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 3,
+        "selected": 3,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN sort-owning-records-by-comparator.ms::sorting records that own strings and lists orders by key and keeps equal keys in input order\nPASS sort-owning-records-by-comparator.ms::sorting records that own strings and lists orders by key and keeps equal keys in input order\nRUN sort-owning-records-by-comparator.ms::the sorted copy owns its strings and lists independently of the original\nPASS sort-owning-records-by-comparator.ms::the sorted copy owns its strings and lists independently of the original\nRUN sort-owning-records-by-comparator.ms::sorting records that own data in place keeps every record\nPASS sort-owning-records-by-comparator.ms::sorting records that own data in place keeps every record\n3 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

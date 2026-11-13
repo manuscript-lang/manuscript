@@ -3,6 +3,7 @@
 //! Header comments state what the printed MIR must contain:
 //! - `// expect-mir: "text"` appears somewhere;
 //! - `// expect-mir-count: N "text"` appears at least N times;
+//! - `// expect-opt-mir-absent: "text"` does not appear after the optimizer runs (the form that gets compiled);
 //! - `// expect-mir-order: "anchor" "a" "b"` finds `a` then `b` after the first `anchor`.
 
 // Links the msrt_* runtime symbols that the standard-library crates reference.
@@ -29,6 +30,27 @@ fn lower(path: &Path) -> String {
     )
     .expect("lower");
     ms_mir::verify::verify_module(&module).expect("verified MIR");
+    ms_mir::print::print_module(&module)
+}
+
+/// The printed MIR after the optimizer, the form that gets compiled.
+fn optimized(path: &Path) -> String {
+    let syms = ms_syntax::Names::global();
+    let loaded = check_graph(
+        syms,
+        load_file(syms, &path.to_string_lossy(), Default::default()),
+        CheckRequest::default(),
+    );
+    assert!(loaded.success(), "{:?}", loaded.diagnostics);
+    let mut module = lower_program(
+        syms,
+        &loaded.program.expect("program"),
+        &Options {
+            entry: loaded.entry,
+        },
+    )
+    .expect("lower");
+    ms_mir::opt::optimize(&mut module, ms_mir::opt::Level::Speed, true);
     ms_mir::print::print_module(&module)
 }
 
@@ -69,6 +91,28 @@ fn check_expectations(source: &str, mir: &str) -> Vec<String> {
     failures
 }
 
+fn check_optimized(source: &str, file: &Path) -> Vec<String> {
+    let absent: Vec<&str> = source
+        .lines()
+        .take_while(|l| l.starts_with("//"))
+        .filter_map(|l| {
+            l.trim_start_matches('/')
+                .trim()
+                .strip_prefix("expect-opt-mir-absent:")
+        })
+        .map(|rest| quoted(rest)[0])
+        .collect();
+    if absent.is_empty() {
+        return Vec::new();
+    }
+    let mir = optimized(file);
+    absent
+        .into_iter()
+        .filter(|text| mir.contains(text))
+        .map(|text| format!("{text:?} present after optimization"))
+        .collect()
+}
+
 #[test]
 fn fixtures_lower_and_match_their_expectations() {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/lower");
@@ -84,6 +128,9 @@ fn fixtures_lower_and_match_their_expectations() {
         let source = std::fs::read_to_string(file).expect("source");
         let mir = lower(file);
         for failure in check_expectations(&source, &mir) {
+            failed.push(format!("{}: {failure}", file.display()));
+        }
+        for failure in check_optimized(&source, file) {
             failed.push(format!("{}: {failure}", file.display()));
         }
     }

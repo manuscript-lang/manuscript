@@ -308,3 +308,36 @@ Server on CPUs 0-1, load generator on CPUs 2-3, 64 keep-alive connections, 4 s, 
 
 C (epoll, two threads) reaches 190k here, where the Go load generator saturates, so two Manuscript threads are now at the load generator's limit on `/health`.
 
+
+## 2026-11-12, one core: per-request instruction cuts
+
+Revision `76324add` plus this change. A raw exchange handler (`path()` and `send()` only, no `buffered`) measured 135k req/s against 130k for the buffered one, so the single-core gap to C (190k) and hyper (150k) is runtime user time spread across the request path, not the handler API. Callgrind (small allocator reservation, `/health`, exact request count from call counts): 15.2k instructions per request before; allocation and free 14%, `msrt_cleanup_push`/`discard` 6.5% (18 pushes per request from the buffered handler's calls through the `HttpExchange` interface), request parsing about 10%, one promise and one task per request about 8%.
+
+This change: a finished task hands its cleanup and guard buffers to the next one (a new task grew them from empty, three reallocations per request); an empty `Headers` shares one `Arc` instead of allocating; `begin_request` counts `Host` fields once and skips the UTF-8 check of names `httparse` already returns as `&str`. Callgrind: 15.2k to 14.3k instructions per request (−6%). Wall clock on the shared VM moved by about the same amount but is inside the ±10% noise (one pinned core, 64 connections, 6 interleaved rounds: median 129k against 120k req/s).
+
+## 2026-11-12, one core: cleanup registrations that grow
+
+`serve_buffered` calls `method()`, `path()`, `query()`, `headers()` and `protocol()` through the `HttpExchange` interface, each a cancellation point, with one more owned value live each time. The `unwind` pass opened a new window per call and registered every live value again: 18 `msrt_cleanup_push` per `/health` request. A value born inside an open window now gets a push of its own and the window's single discard pops them all (not across a `msrt_cleanup_discard`, which can pop below the window). Callgrind, same tree before and after: 14,301 to 13,614 instructions per request (−4.8%).
+
+## 2026-11-12, one core: instructions per request against hyper
+
+Callgrind, `/health`, 64-connection load for 8 s, exact request counts, release builds: hyper (two tokio workers, the `bench/perf/web/rust` server) 6,733 instructions per request; Manuscript 15,217 before this series and 13,606 after #3700 and #3728. Hyper does half the work, so no single cut closes the gap; the remaining cost is spread over about 23 allocations, one promise and one task per request, and the conversions between the server's Rust state and the language's values.
+
+This change: a runtime task started with `start_native` (the server's request and reactor tasks) skips the stack walk that records where a promise was started, since its starter's frames are runtime code with no source line (1.5%, plus one allocation); a header name with a single value keeps it inline instead of in a one-element list (`Headers::Values`, one allocation per header); `HttpExchange.protocol()` returns its static text without a `String` copy. 13,606 to 13,065 instructions per request (−4.0%).
+
+Next change: `HttpExchange.method()`, `path()` and `query()` build the language string straight from the exchange state (`Str::new`, an `IntoAbi` for `Str`) instead of cloning a `String` that the native boundary copies again: 13,065 to 12,687 instructions per request (−2.9%). A thread-id change for `Bound` (replacing `thread::current().id()`, which clones an `Arc`) measured 0 instructions and was dropped.
+
+## 2026-11-12, multiple CPUs with a C load generator
+
+The Go load generator saturates near 185k req/s, so the earlier two-CPU comparison with C (208k against 190k) measured the generator, not the servers. `load/loadc.c` (epoll, one thread per load CPU, one request in flight per connection) reaches 430k and `multicpu.sh` runs Manuscript, C and hyper (`rust/`, now `server <port> <dir> [threads]`) side by side. Revision `0b727e4a`, 128 keep-alive connections, 4 s, two rounds, shared 4-CPU Linux VM (±10%). Load generator CPU use was 5.3 of 8 CPU-seconds on Manuscript and 7.6 on C, so the two-CPU rows are server bound. Req/s in thousands, both rounds:
+
+| Endpoint, server CPUs (load CPUs) | Manuscript | C | hyper |
+| --- | ---: | ---: | ---: |
+| `/health`, 1 (3) | 99–115 | 179–195 | 125–131 |
+| `/health`, 2 (2) | 209–255 | 368–434 | 230–266 |
+| `/health`, 4 (shared with load) | 234–243 | 367–426 | 235–247 |
+| `/user/42`, 1 (3) | 92–102 | 139–163 | 122–125 |
+| `/user/42`, 2 (2) | 213–226 | 382–395 | 215–217 |
+| `/user/42`, 4 (shared with load) | 245–251 | 363–397 | 245–261 |
+
+Manuscript is about 0.55–0.6x of C at every size and level with hyper at two CPUs; at one CPU it is about 0.85x of hyper. The four-CPU row shares CPUs with the load generator, so it shows the ratio, not scaling. A three-CPU row (one load CPU) was limited by the generator and is not reported.

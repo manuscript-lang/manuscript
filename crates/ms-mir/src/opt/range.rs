@@ -58,6 +58,8 @@ const COUNTER_STEP_MAX: i64 = 1 << 16;
 const COUNTER_INIT_MAX: i64 = 1 << 40;
 const LEN_MAX: i64 = 1 << 47;
 const WIDEN_AFTER: u32 = 3;
+/// The bound a growing interval widens to before the type bound (`2^56`).
+const WIDEN_LIMIT: i64 = 1 << 56;
 const MAX_ROUNDS: usize = 60;
 const NARROW_ROUNDS: usize = 3;
 
@@ -155,9 +157,9 @@ impl Env {
     fn narrow(&mut self, v: Value, lo: i128, hi: i128) {
         let new = Itv::clamp(lo, hi);
         let cur = self.itv.get(&v).copied().unwrap_or(Itv::TOP);
-        if let Some(m) = cur.meet(new) {
-            self.itv.insert(v, m);
-        }
+        // Disjoint intervals mean the path is dead, or that `cur` is still an early approximation
+        // that will grow: take the refinement, not a stale interval it contradicts.
+        self.itv.insert(v, cur.meet(new).unwrap_or(new));
     }
 }
 
@@ -195,6 +197,9 @@ struct Fa<'a> {
     defs: Vec<Option<(usize, usize)>>,
     rpo: Vec<Block>,
     idom: Vec<usize>,
+    /// `y -> positions` of the checked squares `y * y`: each fits in an `i64` on every path
+    /// through it, which bounds `x * y + j` for `x, j < y`.
+    squares: HashMap<Value, Vec<(usize, usize)>>,
     incoming: Vec<Vec<(usize, Edge, Vec<Value>)>>,
     base: Vec<Option<Itv>>,
     envs: Vec<Env>,
@@ -244,7 +249,12 @@ fn length_origins(m: &Module, f: &Func) -> Vec<Value> {
         Mixed,
     }
     let nv = f.values.len();
-    let is_list = |v: Value| matches!(m.types.kind(f.ty(v)), TyKind::List(_));
+    // An optional list (a `var` list that is moved out and put back) carries its list's length.
+    let is_list = |v: Value| match m.types.kind(f.ty(v)) {
+        TyKind::List(_) => true,
+        TyKind::Opt(inner) => matches!(m.types.kind(*inner), TyKind::List(_)),
+        _ => false,
+    };
     let list_fields = |v: Value| -> Vec<u32> {
         let TyKind::Rec(rid) = m.types.kind(f.ty(v)) else {
             return Vec::new();
@@ -430,12 +440,23 @@ fn length_origins(m: &Module, f: &Func) -> Vec<Value> {
                 }
                 _ => {}
             }
-            if !is_list(r) {
+            // `none` holds no list, so no length to share.
+            if !is_list(r) || i.op == Op::OptNone {
                 continue;
             }
             if matches!(
                 i.op,
-                Op::ListSet | Op::ListSetNn | Op::ListSetU | Op::ListFill | Op::MoveOut | Op::Clone
+                Op::ListSet
+                    | Op::ListSetNn
+                    | Op::ListSetU
+                    | Op::ListFill
+                    | Op::MoveOut
+                    | Op::Clone
+                    | Op::OptSome
+                    | Op::OptView
+                    | Op::OptGet
+                    | Op::OptUnwrap
+                    | Op::OptUnbox
             ) {
                 edge(&mut users, i.args[0].index(), r.index());
             } else {
@@ -487,18 +508,61 @@ fn length_origins(m: &Module, f: &Func) -> Vec<Value> {
             work.push(node);
         }
     }
-    while let Some(v) = work.pop() {
-        for &u in &users[v] {
-            let old = facts[u];
-            let new = match (old, facts[v]) {
-                (Origin::Unknown, x) => x,
-                (Origin::One(a), Origin::One(b)) if a == b => old,
-                _ => Origin::Mixed,
-            };
-            if new != old {
-                facts[u] = new;
-                work.push(u);
+    // A block parameter that joins lists of different origins is a fresh origin of its own:
+    // every list derived from it by element replacement has its length. Without this the
+    // join poisons everything downstream (`Mixed`) and a loop that updates the list in place
+    // cannot share an origin with the list it started as. Pinning can expose a further join
+    // downstream, so repeat a few rounds.
+    let params: Vec<usize> = f
+        .blocks
+        .iter()
+        .skip(1)
+        .flat_map(|b| b.params.iter().map(|p| p.value))
+        .filter(|&v| is_list(v))
+        .map(|v| v.index())
+        .collect();
+    let mut sources: Vec<Vec<usize>> = vec![Vec::new(); total];
+    for (v, us) in users.iter().enumerate() {
+        for &u in us {
+            sources[u].push(v);
+        }
+    }
+    let (seeded, seeds) = (facts, work);
+    let mut pinned: HashSet<usize> = HashSet::new();
+    let mut facts = seeded.clone();
+    for round in 0..6 {
+        facts = seeded.clone();
+        let mut work = seeds.clone();
+        for &p in &pinned {
+            facts[p] = Origin::One(Value(p as u32));
+            work.push(p);
+        }
+        while let Some(v) = work.pop() {
+            for &u in &users[v] {
+                if pinned.contains(&u) {
+                    continue;
+                }
+                let old = facts[u];
+                let new = match (old, facts[v]) {
+                    (Origin::Unknown, x) => x,
+                    (Origin::One(a), Origin::One(b)) if a == b => old,
+                    _ => Origin::Mixed,
+                };
+                if new != old {
+                    facts[u] = new;
+                    work.push(u);
+                }
             }
+        }
+        // Pin only a join with a source that is not itself mixed: a parameter that is `Mixed`
+        // merely downstream of a join (a loop that threads the joined list through
+        // element replacement) takes that join's origin once the join is pinned.
+        let before = pinned.len();
+        pinned.extend(params.iter().copied().filter(|&p| {
+            facts[p] == Origin::Mixed && sources[p].iter().any(|&s| facts[s] != Origin::Mixed)
+        }));
+        if round == 5 || pinned.len() == before {
+            break;
         }
     }
     facts
@@ -581,7 +645,14 @@ pub fn run(m: &mut Module) -> bool {
         let mut terms = false;
         for e in edits {
             match e {
-                Edit::Op(b, i, op) => f.blocks[b].insts[i].op = op,
+                Edit::Op(b, i, op) => {
+                    f.blocks[b].insts[i].op = op;
+                    if matches!(op, Op::IAdd | Op::ISub | Op::IMul | Op::INeg)
+                        && let Some(r) = f.blocks[b].insts[i].res
+                    {
+                        f.exact.insert(r);
+                    }
+                }
                 Edit::Const(b, i, v) => {
                     let inst = &mut f.blocks[b].insts[i];
                     inst.op = Op::BConst;
@@ -809,12 +880,21 @@ impl<'a> Fa<'a> {
                 base[p.value.index()] = Some(type_top(t));
             }
         }
+        let mut squares: HashMap<Value, Vec<(usize, usize)>> = HashMap::new();
+        for (bi, b) in f.blocks.iter().enumerate() {
+            for (ii, i) in b.insts.iter().enumerate() {
+                if i.op == Op::IMulChk && i.args[0] == i.args[1] {
+                    squares.entry(i.args[0]).or_default().push((bi, ii));
+                }
+            }
+        }
         Fa {
             m,
             f,
             defs,
             rpo,
             idom,
+            squares,
             incoming,
             base,
             envs: vec![Env::default(); n],
@@ -842,14 +922,24 @@ impl<'a> Fa<'a> {
         // `a < b` serves a proof that reaches `b` from a live value and goes on from there, so it
         // stays when `b` is live or when `b` starts another kept relation. `0 < len` for every
         // earlier version of a list would otherwise outlive the lists.
+        // `b = x - c` (or `x + c`) with `x` live also counts as live: the proof steps through
+        // the offset to `x` (`i <= len - 2` is how a child index is known to be in range).
+        let reach = |v: &Value| {
+            live(v)
+                || self.def_inst(*v).is_some_and(|d| {
+                    matches!(d.op, Op::IAdd | Op::IAddChk | Op::ISub | Op::ISubChk)
+                        && self.constant(d.args[1]).is_some()
+                        && live(&d.args[0])
+                })
+        };
         let starts: HashSet<usize> = env
             .rels
             .iter()
-            .filter(|(_, b, _)| live(b))
+            .filter(|(_, b, _)| reach(b))
             .map(|(a, ..)| self.class(*a))
             .collect();
         env.rels
-            .retain(|(a, b, _)| live(b) || (live(a) && starts.contains(&self.class(*b))));
+            .retain(|(a, b, _)| reach(b) || (live(a) && starts.contains(&self.class(*b))));
     }
 
     fn def_inst(&self, v: Value) -> Option<&'a Inst> {
@@ -968,9 +1058,25 @@ impl<'a> Fa<'a> {
         if *cnt <= WIDEN_AFTER {
             return joined;
         }
+        // A bound that keeps growing jumps to a large threshold that arithmetic on it cannot
+        // wrap (`2 * x + 1`), and only to the type bound if it outgrows that. Jumping straight to
+        // the type bound makes such a step wrap to top, and the other bound is lost with it in a
+        // cycle that narrowing cannot repair.
         Itv {
-            lo: if joined.lo < old.lo { i64::MIN } else { old.lo },
-            hi: if joined.hi > old.hi { i64::MAX } else { old.hi },
+            lo: if joined.lo >= old.lo {
+                old.lo
+            } else if joined.lo >= -WIDEN_LIMIT {
+                -WIDEN_LIMIT
+            } else {
+                i64::MIN
+            },
+            hi: if joined.hi <= old.hi {
+                old.hi
+            } else if joined.hi <= WIDEN_LIMIT {
+                WIDEN_LIMIT
+            } else {
+                i64::MAX
+            },
         }
     }
 
@@ -1371,7 +1477,9 @@ impl<'a> Fa<'a> {
             | Op::SDivChk
             | Op::SRem
             | Op::SRemChk => self.arithmetic(inst, env, ty, top),
-            Op::And | Op::Or | Op::Xor | Op::Not | Op::Sshr => self.bitwise(inst, env, ty, top),
+            Op::And | Op::Or | Op::Xor | Op::Not | Op::Shl | Op::Sshr => {
+                self.bitwise(inst, env, ty, top)
+            }
             Op::ICmp
             | Op::B2I
             | Op::Select
@@ -1389,6 +1497,7 @@ impl<'a> Fa<'a> {
     /// Constants, additions, multiplications and divisions.
     fn arithmetic(&self, inst: &Inst, env: &Env, _ty: Ty, top: Itv) -> Option<Itv> {
         let arg = |i: usize| self.get(inst.args[i], env);
+        let exact = inst.res.is_some_and(|r| self.f.exact.contains(&r));
         Some(match inst.op {
             Op::IConst => match inst.imm {
                 Imm::Int(v) => Itv::point(v),
@@ -1401,7 +1510,7 @@ impl<'a> Fa<'a> {
             Op::IAdd | Op::IAddChk => {
                 let (x, y) = (arg(0)?, arg(1)?);
                 let (lo, hi) = (x.lo as i128 + y.lo as i128, x.hi as i128 + y.hi as i128);
-                if inst.op == Op::IAddChk {
+                if inst.op == Op::IAddChk || exact {
                     Itv::clamp(lo, hi)
                 } else {
                     Itv::exact(lo, hi)
@@ -1410,7 +1519,7 @@ impl<'a> Fa<'a> {
             Op::ISub | Op::ISubChk => {
                 let (x, y) = (arg(0)?, arg(1)?);
                 let (lo, hi) = (x.lo as i128 - y.hi as i128, x.hi as i128 - y.lo as i128);
-                if inst.op == Op::ISubChk {
+                if inst.op == Op::ISubChk || exact {
                     Itv::clamp(lo, hi)
                 } else {
                     Itv::exact(lo, hi)
@@ -1419,7 +1528,7 @@ impl<'a> Fa<'a> {
             Op::IMul | Op::IMulChk => {
                 let (x, y) = (arg(0)?, arg(1)?);
                 let (lo, hi) = corners(|a, b| a * b, x, y);
-                if inst.op == Op::IMulChk {
+                if inst.op == Op::IMulChk || exact {
                     Itv::clamp(lo, hi)
                 } else {
                     Itv::exact(lo, hi)
@@ -1428,7 +1537,7 @@ impl<'a> Fa<'a> {
             Op::INeg | Op::INegChk => {
                 let x = arg(0)?;
                 let (lo, hi) = (-(x.hi as i128), -(x.lo as i128));
-                if inst.op == Op::INegChk {
+                if inst.op == Op::INegChk || exact {
                     Itv::clamp(lo, hi)
                 } else {
                     Itv::exact(lo, hi)
@@ -1538,6 +1647,19 @@ impl<'a> Fa<'a> {
                         (u64::MAX >> m.leading_zeros()) as i64
                     };
                     Itv { lo: 0, hi }
+                } else {
+                    Itv::TOP
+                }
+            }
+            Op::Shl => {
+                let (x, y) = (arg(0)?, arg(1)?);
+                if y.is_point() && (0..63).contains(&y.lo) {
+                    let (lo, hi) = ((x.lo as i128) << y.lo, (x.hi as i128) << y.lo);
+                    if inst.res.is_some_and(|r| self.f.exact.contains(&r)) {
+                        Itv::clamp(lo, hi)
+                    } else {
+                        Itv::exact(lo, hi)
+                    }
                 } else {
                     Itv::TOP
                 }

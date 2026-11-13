@@ -115,7 +115,7 @@ values.append(3)
 // values now contains [1, 2, 3]; copy still contains [1, 2].
 ```
 
-Clones copy nested values too. `map`, `filter`, `slice`, `concat`, `sorted`, `reversed`, and set algebra return independent owned results (Bytes `reversed()` too).
+Clones copy nested values too. `map`, `filter`, `concat`, `sorted`, `reversed`, and set algebra return independent owned results (Bytes `reversed()` too).
 
 List `slice` returns `Result[List[T], Error]` with strict bounds `0 <= start <= end <= length()` after resolving negative bounds from the end; otherwise an `Error` of kind `"ERANGE"`. See the [half-open slice rules](../basics/text-and-bytes.md#half-open-slices).
 
@@ -123,7 +123,7 @@ A collection loop or non-escaping callback borrows the receiver for the traversa
 
 ### Choosing a copy or an update {#naming-and-migration}
 
-Mutating methods such as `append`, `set`, `add` and `reverse` update a `var` receiver. Transforms such as `concat`, `filter`, `sorted` and `reversed` return independent results. For bytes, `slice` copies and `view(start, end)` borrows a range; see [half-open slices](../basics/text-and-bytes.md#half-open-slices).
+Mutating methods such as `append`, `set`, `add` and `reverse` update a `var` receiver. Transforms such as `concat`, `filter`, `sorted` and `reversed` return independent results. `slice` on a List of numbers or `Bool`s and `keys()` and `values()` on a Map lend instead: the result is used in place while the receiver stays unchanged, and keeping it (storing, returning, a `var` binding, an escaping closure) needs `.clone()`, as `xs.slice(1, 3).get().clone()` does. For bytes, `slice` copies and `view(start, end)` borrows a range; see [half-open slices](../basics/text-and-bytes.md#half-open-slices).
 
 Use `Queue` from `@std/collections/queue.ms` for first-in, first-out work (`enqueue`, `dequeue`, `peek`); `dequeue` is O(1). Use `Deque` when adding or removing at both ends. Both are owned values: declare them with `var` to mutate and use `.clone()` for an independent copy.
 
@@ -205,7 +205,8 @@ Map `get`, `contains`, and `add` and Set `contains` and `add` are hash lookups (
 | List `zip(other)` | A new list of `Pair[T, U]` types (`first` from the receiver, `second` from `other`), as long as the shorter list. |
 | List `chunks(size)`, `windows(size)` | Lists of copies of `size` consecutive elements: `chunks` splits (the last may be shorter), `windows` overlaps (a list shorter than `size` gives none). A `size` of zero or less is a fault. |
 | List `partition(predicate)` | A `Partition[T]` type whose `matching` and `rest` lists keep the original order; the predicate runs once per element. |
-| Map `keys()`, `values()`, `entries()` | New lists in insertion order; entries are `MapEntry[K, V]` types with `key` and `value`. |
+| Map `keys()`, `values()` | Lists in insertion order that borrow the Map: use them in place or `.clone()` to keep them. |
+| Map `entries()` | A new list in insertion order of `MapEntry[K, V]` types with `key` and `value`. |
 | Set `values()` | A new list in insertion order. |
 | List/Set `for_each(operation:)` | Calls `operation(value:)` sequentially for each value; returns Unit. |
 | Map `for_each(operation:)` | Calls `operation(key:, value:)` sequentially for each entry; returns Unit. |
