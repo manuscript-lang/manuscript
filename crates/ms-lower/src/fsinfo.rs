@@ -89,11 +89,11 @@ impl FnLower<'_> {
             .expect("slot");
         vals.push(slot);
         self.push_err_slot(sig, &mut vals);
-        let status = self.call_runtime(sym, &vals, MTy::BOOL)?;
-        let code = self
-            .b
-            .emit(Op::B2I, &[status], Imm::None, Some(MTy::INT))
-            .expect("b2i");
+        // The status byte is an integer, as in `extern_result`: the upper bits of the register
+        // are not defined.
+        let raw = self.call_runtime(sym, &vals, MTy::INT)?;
+        let mask = self.b.iconst(0xff);
+        let code = self.b.binop(Op::And, raw, mask);
         let zero = self.b.iconst(0);
         let good = self.b.icmp(Cc::Eq, code, zero);
         let ok = self.ok_case_index(a)?;

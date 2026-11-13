@@ -17,27 +17,14 @@ pub(super) const AREA: Area = Area {
     ..Area::NONE
 };
 
-fn inst_ok(m: &Module, lay: &Layouts, f: &Func, inst: &Inst) -> bool {
+fn inst_ok(m: &Module, lay: &Layouts, _: &Func, inst: &Inst) -> bool {
     match (inst.op, inst.imm) {
         (Op::CallRt, Imm::Ext(e)) => {
-            is_map_new(m, inst)
-                || (extern_ok(m, lay, &m.externs[e.index()]) && !status_code(f, inst))
+            is_map_new(m, inst) || extern_ok(m, lay, &m.externs[e.index()])
         }
         (Op::CallRt, _) => false,
         _ => true,
     }
-}
-
-/// Whether the `Bool` result of `inst` is read as an integer (`b2i`): a runtime function that
-/// returns a status code reports it in that byte, and a boolean held as `i1` keeps only its low bit.
-fn status_code(f: &Func, inst: &Inst) -> bool {
-    inst.res.is_some_and(|r| {
-        f.ty(r) == Ty::BOOL
-            && f.blocks
-                .iter()
-                .flat_map(|b| &b.insts)
-                .any(|i| i.op == Op::B2I && i.args[0] == r)
-    })
 }
 
 /// Discarding a cleanup handle branches: handle 0 is a registration that was skipped.
