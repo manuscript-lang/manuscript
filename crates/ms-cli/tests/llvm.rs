@@ -385,9 +385,13 @@ fn llvm_direct_emission_matches_translation() {
     assert!(direct(&new_ir), "no function was emitted directly");
     // A list parameter is three leaves, and `length` is one of them.
     assert!(
-        new_ir.contains("%a0_0, i64 %a0_1, i64 %a0_2, double %a1_0"),
+        new_ir.contains(
+            "%a0_0, i64 range(i64 0, -9223372036854775808) %a0_1, i64 %a0_2, double %a1_0"
+        ),
         "the list function was not emitted directly"
     );
+    // A `Bool` parameter is zero or one.
+    assert!(new_ir.contains("i8 zeroext range(i8 0, 2) %a2"), "{new_ir}");
     // A pure loop-free function carries what LLVM cannot infer across a unit boundary.
     let grind = new_ir
         .lines()
