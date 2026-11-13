@@ -512,13 +512,10 @@ impl<'a> FnLower<'a> {
                     .held
                     .get(&b.uid)
                     .copied()
-                    .or_else(|| self.closers.get(&b.uid).and_then(|c| c.flag))
                     .map(|flag| self.b.use_var(flag));
                 let mut old = self.local_take(&l);
                 // A registered resource closes the value it replaces; the scope closes the new one.
-                if let Some(closer) = self.closers.get(&b.uid).cloned() {
-                    old = self.assign_closing(b.uid, &closer, old, l.ty)?;
-                } else if self.var_slots.iter().any(|v| v.uid == b.uid) {
+                if self.var_slots.iter().any(|v| v.uid == b.uid) {
                     // A `var` parameter holds the caller's value, which the caller closes at
                     // the end, but a value this assignment replaces is the callee's to close.
                     let ty = ms_check::api::types::sub(&b.ty, &self.subst);
@@ -1763,7 +1760,7 @@ impl<'a> FnLower<'a> {
         let one = self.b.iconst(1);
         let idx = self.b.declare_var(MTy::INT, ms_mir::ir::Mode::Borrow);
         self.b.def_var(idx, start);
-        let closing = if (list_var.is_some() || cursor.is_some())
+        let closing = if cursor.is_some()
             && self.cx.ownership.binding_facts.has(
                 loop_var.uid,
                 ms_check::api::ownership::BindingFact::ImplicitClose,
@@ -1775,14 +1772,6 @@ impl<'a> FnLower<'a> {
         } else {
             None
         };
-        if let (Some(kind), Some(list)) = (&closing, list_var) {
-            // Leaving the loop early (`break`, `return`, `try`) closes the elements it never
-            // reached, after the one in hand.
-            let uid = usize::MAX - self.rest_closers.len() - 1_000_000;
-            self.rest_closers.insert(uid, (kind.clone(), list, idx));
-            self.note_closer();
-            self.scopes.last_mut().expect("scope").push(uid);
-        }
         // A list the loop owns hands each element to the loop variable, which drops (and
         // closes) it at the end of the iteration unless the body moves it on; leaving the loop
         // releases the elements it never reached with the list.
@@ -1790,25 +1779,8 @@ impl<'a> FnLower<'a> {
             let thunk = self.list_tail_thunk(lty, closing.as_ref());
             self.own_raw_value(slot, thunk.index() as u32 + 2);
         }
-        let moving = cursor.is_some()
-            || list_var.is_some_and(|var| {
-                let ty = self.b.var_ty(var);
-                self.b.var_mode(var) == ms_mir::ir::Mode::Move
-                    && self
-                        .b
-                        .m
-                        .list_elem(ty)
-                        .is_some_and(|e| self.b.m.needs_drop(e))
-            });
-        if let (true, Some(var), None) = (moving, list_var, cursor) {
-            let uid = self
-                .locals
-                .iter()
-                .find(|(_, l)| l.var == var && l.slot.is_none())
-                .map(|(uid, _)| *uid)
-                .ok_or_else(|| Error::new("loop list without a hidden local"))?;
-            self.list_iters.insert(uid, idx);
-        } else if let Some(var) = list_var
+        let moving = cursor.is_some();
+        if let Some(var) = list_var
             && let Some(uid) = self
                 .locals
                 .iter()
@@ -1858,10 +1830,6 @@ impl<'a> FnLower<'a> {
                 let list = self.cursor_list(slot, rec, lty);
                 self.b.list_take(list, i)
             }
-            Some(var) if moving => {
-                let list = self.b.use_var(var);
-                self.b.list_take(list, i)
-            }
             Some(var) => {
                 let list = self.b.use_var(var);
                 self.b.list_get(list, i)
@@ -1875,9 +1843,6 @@ impl<'a> FnLower<'a> {
                 }
                 None => self.bind_local(&loop_var, Val { v: e, own: true }),
             }
-        } else if let Some(kind) = closing {
-            // The loop owns its elements: the one in hand closes with the iteration.
-            self.bind_closing_kind(&loop_var, Val { v: e, own: false }, kind)?;
         } else if list_var.is_some() && !loop_var.mutable && !self.slotted.contains(&loop_var.uid) {
             // The loop holds the list and the body cannot change it: the element is a borrow.
             self.bind_borrow_of(&loop_var, e);
@@ -1908,54 +1873,6 @@ impl<'a> FnLower<'a> {
         self.enter(exit);
         self.pop_scope();
         Ok(())
-    }
-
-    /// After a `break` out of a loop that owns its elements, closes the ones it never reached
-    /// (those after index `idx`); a loop that ran to the end has `idx` at the length and closes
-    /// nothing.
-    pub(crate) fn close_rest(
-        &mut self,
-        kind: &crate::close::CloseKind,
-        list: ms_mir::builder::Var,
-        idx: ms_mir::builder::Var,
-    ) {
-        let next = self.b.declare_var(MTy::INT, ms_mir::ir::Mode::Borrow);
-        let at = self.b.use_var(idx);
-        let one = self.b.iconst(1);
-        let first = self
-            .b
-            .emit(Op::IAdd, &[at, one], Imm::None, Some(MTy::INT))
-            .expect("add");
-        self.b.def_var(next, first);
-        let (header, body, done) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
-        self.b.br(header, &[]);
-        self.enter(header);
-        let j = self.b.use_var(next);
-        let l = self.b.use_var(list);
-        let len = self.b.list_len(l);
-        let more = self.b.icmp(Cc::Lt, j, len);
-        self.b.br_if(more, body, &[], done, &[]);
-        self.b.seal_block(body);
-        self.enter(body);
-        let j = self.b.use_var(next);
-        let l = self.b.use_var(list);
-        let elem = self.b.m.list_elem(self.b.ty(l)).expect("a list");
-        let ep = self
-            .b
-            .emit(Op::ListAddrU, &[l, j], Imm::None, Some(MTy::PTR))
-            .expect("element address");
-        self.close_at_shielded(kind, ep, elem);
-        let j = self.b.use_var(next);
-        let one = self.b.iconst(1);
-        let bumped = self
-            .b
-            .emit(Op::IAdd, &[j, one], Imm::None, Some(MTy::INT))
-            .expect("add");
-        self.b.def_var(next, bumped);
-        self.b.br(header, &[]);
-        self.b.seal_block(header);
-        self.b.seal_block(done);
-        self.enter(done);
     }
 }
 

@@ -86,10 +86,10 @@ const BACK_EDGES: &[(&str, &str, &str)] = &[
 /// with a checker-computed plan. `(identifier, uses in crates/ms-lower/src)`: the count may only
 /// shrink, so the mechanism cannot grow while the plan is undecided.
 const LOWERING_LEDGER: &[(&str, usize)] = &[
-    ("closed_on_path", 22),
-    ("scope_done", 7),
-    ("rest_closers", 6),
-    ("hidden_closers", 6),
+    ("closed_on_path", 18),
+    ("scope_done", 0),
+    ("rest_closers", 0),
+    ("hidden_closers", 0),
     ("copy_gaps", 5),
 ];
 
