@@ -325,33 +325,6 @@ pub unsafe extern "C-unwind" fn msrt_list_get(
     }
 }
 
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_list_first(v: *const VecVal, d: ElemDesc, out: *mut u8) -> u8 {
-    // SAFETY: caller contract.
-    unsafe {
-        if (*v).len == 0 {
-            return 0;
-        }
-        slot_copy(&*d, (*v).ptr, out);
-        1
-    }
-}
-
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_list_last(v: *const VecVal, d: ElemDesc, out: *mut u8) -> u8 {
-    // SAFETY: caller contract.
-    unsafe {
-        let v = &*v;
-        if v.len == 0 {
-            return 0;
-        }
-        slot_copy(&*d, elem(v, &*d, v.len - 1), out);
-        1
-    }
-}
-
 /// `index_of`: present flag; index through `out`. `probe` is borrowed.
 #[unsafe(no_mangle)]
 // ms: leaf
