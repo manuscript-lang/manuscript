@@ -233,7 +233,8 @@ fn pre(
 /// presence of a niche optional, which is present unless its first leaf is null (a string also
 /// has the static tag: an inline string may have a zero first word, but never that tag).
 fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
-    let out = &vals[&inst.res.expect("a result").index()];
+    let Some(res) = inst.res else { return };
+    let out = &vals[&res.index()];
     if inst.op == Op::OptIsSome && opt_repr(cx.lay, cx.f.ty(inst.args[0])) != OptRepr::Tagged {
         let v = &vals[&inst.args[0].index()];
         let any = match opt_repr(cx.lay, cx.f.ty(inst.args[0])) {

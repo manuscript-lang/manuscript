@@ -81,7 +81,9 @@ fn elem_ok(m: &Module, lay: &Layouts, f: &Func, i: &Inst, list: usize) -> bool {
         return false;
     };
     let writes = !matches!(i.op, Op::ListGet | Op::ListGetNn | Op::ListGetU);
-    (!writes || !m.needs_drop(e) && i.args.len() == 3 && f.ty(i.args[2]) == e)
+    // A record held in memory is one pointer, not the leaves this loads and stores.
+    !super::records::is_mem(lay, e)
+        && (!writes || !m.needs_drop(e) && i.args.len() == 3 && f.ty(i.args[2]) == e)
         && (writes || i.res.is_some_and(|r| f.ty(r) == e))
         && lay
             .leaves(e)
