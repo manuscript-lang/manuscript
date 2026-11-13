@@ -1,24 +1,16 @@
-// Checks the direct MIR-to-LLVM emitter (`MS_LLVM_DIRECT=1`,
-// proposals/mir-to-llvm-direct.md) against the translation it replaces. Usage: ms run
-// tools/llvm-direct-check.ms -- <mode> [program or ms-conform diff argument...]
+// Release build time, LLVM IR size and kernel times of the LLVM backend against the
+// Cranelift backend. Usage: ms run tools/llvm-direct-check.ms -- report [program...]
 //
-//   diff     the conformance corpus (run and test phases) with the flag off and on, compared
-//            directly; any differing stdout, stderr or exit status fails. `opt` verifies the
-//            module it is given, so a module LLVM rejects fails the build and the fixture
-//            (the per-pass verifier, MS_LLVM_VERIFY=1, is too slow for the corpus: 75 s
-//            against 5 s for one HTTP program, so `report` uses it). CONFORM_SHARD=i/n
-//            splits the run; TIMEOUT_SCALE (default 3) multiplies each fixture's timeout,
-//            because the flag-on side builds cold after the flag-off side warmed the cache
-//            and a debug `ms` compiles slowly; extra arguments go to `ms-conform diff`.
 //   report   for each program (a `.ms` file or `ms.toml`; default: the YAML program and the
-//            bench/perf kernels), a markdown table of release build time, LLVM IR lines, the
-//            share of functions emitted directly, and for the `bench/perf` kernels the time
-//            of each kernel. Output must match; the exit status is 1 when it does not.
-//            One more flag-on build runs with MS_LLVM_VERIFY=1 (untimed). GATE=1 also fails when a kernel
-//            is more than 15% slower.
+//            bench/perf kernels), a markdown table of release build time under both backends,
+//            the LLVM IR lines, the share of functions emitted directly, and for the `bench/perf`
+//            kernels the time of each kernel. Output must match; the exit status is 1 when it
+//            does not. One more LLVM build runs with MS_LLVM_VERIFY=1 (untimed). GATE=1 also
+//            fails when a kernel is more than 15% slower. Output equality over the whole corpus
+//            is `make drift-check`.
 //
-// Hosts that build releases with Cranelift (Windows) ignore the flag, so both sides are
-// identical there and the check still runs. MS picks the compiler (default
+// Hosts that build releases with Cranelift (Windows) have one backend, so both sides
+// are identical there and the check still runs. MS picks the compiler (default
 // target/debug/ms), RUNS the kernel repeats (default 5, interleaved; the minimum is
 // reported).
 import (
@@ -38,39 +30,6 @@ import (
 fn ms_path() String:
 	return env("MS", "target/debug/ms{exe()}")
 
-fn diff(extra: List[String]) Int:
-	var code = run_program("cargo", ["xtask", "runtime"])
-	if code != 0: return code
-
-	code = run_program(
-		"cargo",
-		[
-			"build", "--locked", "-q", "-p", "ms-conform", "--target-dir", "target"
-		],
-	)
-	if code != 0: return code
-
-	ms := ms_path()
-	return run_program(
-		"target/debug/ms-conform{exe()}",
-		[
-			"diff",
-			"--a",
-			ms.clone(),
-			"--b",
-			ms,
-			"--env-b",
-			"MS_LLVM_DIRECT=1",
-			"--phase",
-			"run,test",
-			"--exclude-tag",
-			"aliasing",
-			"--shard",
-			env("CONFORM_SHARD", "0/1"),
-			"--quiet",
-		].concat(extra),
-	)
-
 // One release build: what it took, what it emitted and what the program printed.
 type Built:
 	seconds: Float
@@ -81,10 +40,10 @@ type Built:
 
 // The verifier runs only in its own build: it slows `opt`, and the timed builds must
 // not carry it.
-fn build_env(direct: Bool, verify: Bool) Map[String, String]:
+fn build_env(cranelift: Bool, verify: Bool) Map[String, String]:
 	var vars = Map[String, String]()
 	vars.add("MS_KEEP_LL", "1")
-	if direct: vars.add("MS_LLVM_DIRECT", "1")
+	if cranelift: vars.add("MS_BACKEND", "cranelift")
 	if verify: vars.add("MS_LLVM_VERIFY", "1")
 	return vars
 
@@ -106,9 +65,8 @@ fn kept_ir(dir: String) String:
 
 	return text
 
-// Functions in `ir` and how many hold a value the direct emitter named (`%vN`; the
-// translation names its values `%tN`). A direct function with no value is not counted,
-// so the share is a lower bound.
+// Functions in `ir` and how many hold a value the direct emitter named (`%vN`). A
+// function with no value is not counted, so the share is a lower bound.
 fn count_functions(ir: String) List[Int]:
 	var functions = 0
 	var direct = 0
@@ -128,14 +86,14 @@ fn count_functions(ir: String) List[Int]:
 
 	return [functions, direct]
 
-fn build(source: String, dir: String, direct: Bool, verify: Bool) Built!:
+fn build(source: String, dir: String, cranelift: Bool, verify: Bool) Built!:
 	ms := absolute_ms()?
 	path := canonicalize(source)?
 	started := monotonic()
 	ran := run(
 		ms,
 		["build", path, "-o", "{dir}/prog{exe()}"],
-		RunOptions(cwd: dir.clone(), env: build_env(direct, verify)),
+		RunOptions(cwd: dir.clone(), env: build_env(cranelift, verify)),
 	).wait()?
 	seconds := monotonic().difference(started).to_nanoseconds().to_float() / 1.0e9
 	if ran.exit_code != 0:
@@ -189,7 +147,7 @@ fn checksums(rows: List[List[String]]) String:
 
 fn row(name: String, old: Built, new: Built) String:
 	share := if new.functions == 0: 0.0 else: new.direct.to_float() * 100.0 / new.functions.to_float()
-	return "| {name} | {old.seconds.to_fixed(2)} s | {new.seconds.to_fixed(2)} s | {old.lines} | {new.lines} | {new.direct} of {new.functions} ({share.to_fixed(1)}%) |"
+	return "| {name} | {old.seconds.to_fixed(2)} s | {new.seconds.to_fixed(2)} s | {new.lines} | {new.direct} of {new.functions} ({share.to_fixed(1)}%) |"
 
 fn runs_wanted() Int:
 	return env("RUNS", "5").parse_int().get(5)
@@ -224,8 +182,8 @@ fn kernel_times(old: String, new: String, runs: Int) List[List[String]]!:
 		)
 	)
 
-// Builds `source` both ways and appends its table row; `false` when the two programs
-// print different results.
+// Builds `source` with both backends and appends its table row; `false` when the two
+// programs print different results.
 fn report_program(
 	source: String,
 	kernels: Bool,
@@ -237,12 +195,11 @@ fn report_program(
 	create_directory("{root}/new")?
 	create_directory("{root}/verify")?
 
-	old := build(source, "{root}/old", false, false)?
-	new := build(source, "{root}/new", true, false)?
+	old := build(source, "{root}/old", true, false)?
+	new := build(source, "{root}/new", false, false)?
 
-	// Fails the program when LLVM's verifier rejects any pass's output for the direct
-	// build.
-	_verified := build(source, "{root}/verify", true, true)?
+	// Fails the program when LLVM's verifier rejects any pass's output.
+	_verified := build(source, "{root}/verify", false, true)?
 	lines.append(row(source, old, new))
 
 	var same = true
@@ -267,8 +224,8 @@ fn report_program(
 
 fn report(programs: List[String]) Int:
 	var lines = [
-		"| program | build (old) | build (direct) | IR lines (old) | IR lines (direct) | functions emitted directly |",
-		"| --- | ---: | ---: | ---: | ---: | --- |"
+		"| program | build (Cranelift) | build (LLVM) | IR lines (LLVM) | functions emitted directly |",
+		"| --- | ---: | ---: | ---: | --- |"
 	]
 	var slow = List[String]()
 	var failed = false
@@ -281,7 +238,7 @@ fn report(programs: List[String]) Int:
 			note("{source}: {result.error().map(fn e: e.message).get("failed")}")
 			failed = true
 		else if not result.get(true):
-			note("{source}: the output differs with MS_LLVM_DIRECT=1")
+			note("{source}: the output differs between the LLVM and Cranelift builds")
 			failed = true
 
 	print(lines.join("\n"))
@@ -294,10 +251,8 @@ fn main() Int:
 	args := arguments()
 
 	if args.is_empty():
-		note("usage: ms run tools/llvm-direct-check.ms -- <diff|report> [program...]")
+		note("usage: ms run tools/llvm-direct-check.ms -- report [program...]")
 		return 2
-
-	if args[0] == "diff": return diff(args.slice(1, args.length()).get(List[String]()))
 
 	if args[0] != "report":
 		note("unknown mode {args[0]}")

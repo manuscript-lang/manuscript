@@ -34,17 +34,6 @@ fn flags() -> MemFlagsData {
     MemFlagsData::trusted()
 }
 
-/// Alias region of a list element that is one scalar word (`Int`, `Float`, `Bool`, sized
-/// numbers). The LLVM emitter turns the region id into a TBAA tag (`llvm_ir.rs`).
-pub const REGION_SCALAR_ELEM: u32 = 1;
-/// Alias region of a list element that is a list or string header, the words of which a scalar
-/// store never overwrites.
-pub const REGION_HEADER_ELEM: u32 = 2;
-/// Bit set on an element access whose index is known to be below the list's length (a bounds
-/// check, or a proof the optimizer already acted on). The LLVM translation addresses such an
-/// access with a non-wrapping, in-bounds offset. It is only a marker for that translation.
-pub const REGION_IN_BOUNDS: u32 = 4;
-
 /// Where a wide value (`Map`, `Set`: seven words) also lives in memory, so calls take its
 /// address instead of spilling a copy. A home on a block parameter holds for the rest of the
 /// function; any other holds only within the block that created it (`blk`).
@@ -91,11 +80,6 @@ pub struct Lower<'a, 'm> {
     pub unsupported: Option<String>,
     /// Slots of statement-scoped temporaries, merged between blocks by `slotshare`.
     temps: Vec<ir::StackSlot>,
-    /// Alias region of the access being lowered, set around a list element load or store.
-    region: Option<ir::AliasRegion>,
-    /// Element type behind each pointer made by `list.addr`, so a `load` or `store` through it
-    /// carries the element's alias region.
-    elem_ptrs: HashMap<Value, (Ty, Op)>,
 }
 
 fn bargs(vs: &[Value]) -> Vec<BlockArg> {
@@ -129,8 +113,6 @@ impl<'a, 'm> Lower<'a, 'm> {
             blocks: Vec::new(),
             unsupported: None,
             temps: Vec::new(),
-            region: None,
-            elem_ptrs: HashMap::new(),
         }
     }
 
@@ -403,49 +385,7 @@ impl<'a, 'm> Lower<'a, 'm> {
 
     /// Flags of a leaf access, with the alias region of the list element being accessed.
     fn mem_flags(&self) -> MemFlagsData {
-        flags().with_alias_region(self.region)
-    }
-
-    /// The alias region for elements of type `elem`, when scalar stores and header words must
-    /// not be assumed to overlap: a scalar element never lies where a list or string header does.
-    ///
-    /// Only the LLVM emitter reads the regions, as TBAA tags. A Cranelift alias region means
-    /// disjoint from every other access, untagged ones included, so a tagged store that no
-    /// tagged load observes would be dead code there: Cranelift output stays untagged.
-    fn elem_region(&mut self, elem: Ty, in_bounds: bool) -> Option<ir::AliasRegion> {
-        self.g.llvm.as_ref()?;
-        let id = match self.g.m.types.kind(elem) {
-            TyKind::Bool
-            | TyKind::Int
-            | TyKind::Float
-            | TyKind::Int8
-            | TyKind::Int16
-            | TyKind::Int32
-            | TyKind::Float32
-            | TyKind::UInt8
-            | TyKind::UInt16
-            | TyKind::UInt32
-            | TyKind::UInt64 => REGION_SCALAR_ELEM,
-            TyKind::List(_) | TyKind::Str | TyKind::Bytes => REGION_HEADER_ELEM,
-            _ => 0,
-        } | if in_bounds { REGION_IN_BOUNDS } else { 0 };
-        if id == 0 {
-            return None;
-        }
-        Some(self.b.func.dfg.alias_regions.insert(ir::AliasRegionData {
-            user_id: id,
-            description: "list element".into(),
-        }))
-    }
-
-    /// Runs `access` with the alias region of list elements of type `elem`.
-    fn in_elem_region<R>(&mut self, elem: Ty, mode: Op, access: impl FnOnce(&mut Self) -> R) -> R {
-        // Without checks only a proven index is known to be in bounds.
-        let in_bounds = self.g.opts.checks || matches!(mode, Op::ListGetU | Op::ListSetU);
-        self.region = self.elem_region(elem, in_bounds);
-        let out = access(self);
-        self.region = None;
-        out
+        flags()
     }
 
     fn store_leaves(&mut self, ptr: Value, base: i64, leaves: &[Leaf], vs: &[Value]) {

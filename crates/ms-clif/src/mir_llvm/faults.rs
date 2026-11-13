@@ -4,8 +4,8 @@ use super::Cx;
 use crate::llvm_build::{FnBuilder, Ty as LTy, Val};
 use ms_mir::ir::FaultKind;
 
-/// The runtime function that reports `kind`, with the arguments it takes (`None` when the
-/// direct emitter does not write this fault: a message needs a string literal).
+/// The runtime function that reports `kind`, with the arguments it takes (`None` for a message,
+/// which `terminator` writes, and for `Unreachable`).
 fn runtime_fn(kind: FaultKind) -> Option<(&'static str, usize)> {
     Some(match kind {
         FaultKind::IntOverflow => ("msrt_fault_int_overflow", 0),

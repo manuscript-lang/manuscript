@@ -42,7 +42,7 @@ pub(crate) fn released_types(lay: &Layouts, f: &Func, inst: &Inst) -> Vec<Ty> {
         _ => Vec::new(),
     }
 }
-use ms_mir::ir::{Func, Imm, Inst, Module, Op, Target, Term};
+use ms_mir::ir::{Func, Imm, Inst, Mode, Module, Op, Target, Term};
 use ms_mir::types::{Ty, TyKind};
 use std::collections::{HashMap, HashSet};
 use types::Abi;
@@ -370,6 +370,22 @@ fn signature_ok(lay: &Layouts, params: &[ms_mir::ir::Param], ret: Ty) -> bool {
     supported_ty(lay, ret) && params.iter().all(|p| supported_ty(lay, p.ty))
 }
 
+/// Why a signature is refused: the first result or parameter that is not supported.
+fn signature_problem(
+    m: &Module,
+    lay: &Layouts,
+    params: &[ms_mir::ir::Param],
+    ret: Ty,
+) -> Option<String> {
+    if !supported_ty(lay, ret) {
+        return Some(format!("result {:?}", m.types.kind(ret)));
+    }
+    let p = params
+        .iter()
+        .find(|p| p.mode == Mode::Var || !supported_ty(lay, p.ty))?;
+    Some(format!("parameter {:?} {:?}", p.mode, m.types.kind(p.ty)))
+}
+
 /// An area's `pre` hook: the values an instruction is without any code, naming (not defining)
 /// any it leaves for `emit`.
 type Pre = fn(&Module, &Layouts, &Func, &Inst, &Vals, &mut FnBuilder) -> Option<Vec<Val>>;
@@ -433,8 +449,8 @@ pub fn unsupported(m: &Module, lay: &Layouts, f: &Func) -> Option<String> {
         let end = kind.find(['(', ' ', '{']).unwrap_or(kind.len());
         format!("type {}", &kind[..end])
     };
-    if !signature_ok(lay, &f.params, f.ret) {
-        return Some("signature".into());
+    if let Some(why) = signature_problem(m, lay, &f.params, f.ret) {
+        return Some(format!("signature: {why}"));
     }
     let ty_ok = |v| supported_ty(lay, f.ty(v));
     let rpo = f.rpo();
@@ -494,7 +510,7 @@ pub fn unsupported(m: &Module, lay: &Layouts, f: &Func) -> Option<String> {
             Term::Fault(k) => faults::terminator_ok(*k),
         };
         if !ok {
-            return Some("terminator".into());
+            return Some(format!("terminator {:?}", bd.term));
         }
         bd.term.for_each_target(|t| entry_target |= is_entry(t));
     }

@@ -32,7 +32,6 @@ fn run_llvm(src: &str, opts: &Options, tag: &str) -> Outcome {
 /// Release options that emit supported functions directly; `None` when LLVM is not installed.
 fn direct() -> Option<Options> {
     let build = BuildOptions {
-        llvm_direct: true,
         llvm_units: Some(1),
         keep_ll: true,
         ..BuildOptions::default()

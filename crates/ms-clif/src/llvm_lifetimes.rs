@@ -40,12 +40,10 @@ pub fn mark(allocas: &str, body: &str) -> String {
     let (owner, tainted) = aliases(&slots, &lines);
     let mut starts: HashMap<usize, Vec<&str>> = HashMap::new();
     let mut ends: HashMap<usize, Vec<&str>> = HashMap::new();
-    for slot in slots.iter().filter(|s| !tainted.contains(*s)) {
-        if let Some((first, end)) = confined(slot, &owner, &lines) {
-            starts.entry(first).or_default().push(slot);
-            if let Some(end) = end {
-                ends.entry(end).or_default().push(slot);
-            }
+    for (slot, first, end) in confined(&slots, &tainted, &owner, &lines) {
+        starts.entry(first).or_default().push(slot);
+        if let Some(end) = end {
+            ends.entry(end).or_default().push(slot);
         }
     }
     let mut out = String::with_capacity(body.len() + 128 * starts.len());
@@ -178,55 +176,95 @@ fn classify(line: &str, name: &str) -> Use {
     }
 }
 
-/// The line of the first mention of `slot` and the line before which its lifetime ends (none when
-/// the block ends in `unreachable`), when every mention is in one block and none is unsafe.
-fn confined(
-    slot: &str,
-    owner: &HashMap<&str, &str>,
+/// What one pass over the body learns about a slot.
+#[derive(Default)]
+struct Slot {
+    /// The line and block of the first mention.
+    first: Option<(usize, usize)>,
+    written: bool,
+    /// A mention in another block or an unsafe one: no marker.
+    dead: bool,
+}
+
+/// For each untainted slot whose mentions are all in one block and none unsafe: the line of the
+/// first mention and the line before which its lifetime ends (none when the block ends in
+/// `unreachable`). One pass over `lines`, each line read once.
+fn confined<'a>(
+    slots: &[&'a str],
+    tainted: &HashSet<&str>,
+    owner: &HashMap<&str, &'a str>,
     lines: &[&str],
-) -> Option<(usize, Option<usize>)> {
-    let mine = |n: &str| owner.get(n).copied() == Some(slot);
+) -> Vec<(&'a str, usize, Option<usize>)> {
+    let mut state: HashMap<&str, Slot> = HashMap::new();
     let mut block = 0usize;
-    let mut first: Option<(usize, usize)> = None;
-    let mut written = false;
     for (i, line) in lines.iter().enumerate() {
         if is_label(line) {
             block += 1;
             continue;
         }
-        let uses: Vec<&str> = names(line).filter(|n| mine(n)).collect();
-        if uses.is_empty() {
-            continue;
+        let mut uses: Vec<(&str, &str)> = Vec::new();
+        for n in names(line) {
+            if let Some(slot) = owner.get(n).copied().filter(|s| !tainted.contains(s)) {
+                uses.push((slot, n));
+            }
         }
-        match first {
-            None => first = Some((i, block)),
-            Some((_, b)) if b != block => return None,
-            Some(_) => {}
+        let derives = def(line).map(|(d, op)| (d, DERIVES.contains(&op)));
+        let mut done: Vec<&str> = Vec::new();
+        for &(slot, _) in &uses {
+            if done.contains(&slot) {
+                continue;
+            }
+            done.push(slot);
+            let st = state.entry(slot).or_default();
+            if st.dead {
+                continue;
+            }
+            match st.first {
+                None => st.first = Some((i, block)),
+                Some((_, b)) if b != block => {
+                    st.dead = true;
+                    continue;
+                }
+                Some(_) => {}
+            }
+            let mine = |n: &str| owner.get(n).copied() == Some(slot);
+            if derives.is_some_and(|(d, is)| is && mine(d)) {
+                continue;
+            }
+            let verdicts: Vec<Use> = uses
+                .iter()
+                .filter(|(s, _)| *s == slot)
+                .map(|(_, n)| classify(line, n))
+                .collect();
+            if verdicts.contains(&Use::Escape) {
+                st.dead = true;
+            } else if verdicts.contains(&Use::Read) && !st.written {
+                // The first access sees whatever the slot held on the previous iteration.
+                st.dead = true;
+            } else {
+                st.written |= verdicts.contains(&Use::Write);
+            }
         }
-        if def(line).is_some_and(|(d, op)| mine(d) && DERIVES.contains(&op)) {
-            continue;
-        }
-        let verdicts: Vec<Use> = uses.iter().map(|n| classify(line, n)).collect();
-        if verdicts.contains(&Use::Escape) {
-            return None;
-        }
-        if verdicts.contains(&Use::Read) && !written {
-            // The first access sees whatever the slot held on the previous iteration.
-            return None;
-        }
-        written |= verdicts.contains(&Use::Write);
     }
-    let (start, _) = first?;
-    // The block's last line is its terminator.
-    let mut end = start;
-    for (i, line) in lines.iter().enumerate().skip(start + 1) {
-        if is_label(line) {
-            break;
-        }
-        end = i;
+    // The last line of each block is its terminator.
+    let mut last = vec![0usize; lines.len()];
+    for i in (0..lines.len()).rev() {
+        last[i] = if i + 1 < lines.len() && !is_label(lines[i + 1]) {
+            last[i + 1]
+        } else {
+            i
+        };
     }
-    let unreachable = lines[end].trim_start().starts_with("unreachable");
-    Some((start, (!unreachable).then_some(end)))
+    slots
+        .iter()
+        .filter_map(|slot| {
+            let st = state.get(slot)?;
+            let (start, _) = st.first.filter(|_| !st.dead)?;
+            let end = last[start];
+            let unreachable = lines[end].trim_start().starts_with("unreachable");
+            Some((*slot, start, (!unreachable).then_some(end)))
+        })
+        .collect()
 }
 
 #[cfg(test)]

@@ -1,7 +1,7 @@
 //! Build settings read from the environment, once, when the engine is created. Everything below
 //! the command line receives them as a [`BuildOptions`] value.
 
-use ms_build::{BuildOptions, CopyProbe, Fallback, RtHot};
+use ms_build::{BuildOptions, CopyProbe, RtHot};
 use std::path::PathBuf;
 
 /// The settings the `MS_*` build variables select; unset variables keep the defaults.
@@ -13,13 +13,6 @@ pub fn from_env() -> BuildOptions {
         cranelift_only: text("MS_BACKEND").is_some_and(|b| b == "cranelift"),
         llvm_units: text("MS_LLVM_UNITS").and_then(|v| v.parse().ok()),
         vectorize: !text("MS_VECTORIZE").is_some_and(|v| v == "off" || v == "0"),
-        llvm_fallback: match text("MS_LLVM_FALLBACK").as_deref() {
-            Some("deny") => Fallback::Deny,
-            Some("report") => Fallback::Report,
-            _ => Fallback::Translate,
-        },
-        llvm_direct: var("MS_LLVM_DIRECT").is_some_and(|v| v != "0")
-            || matches!(text("MS_LLVM_FALLBACK").as_deref(), Some("deny" | "report")),
         heap_facts: !text("MS_HEAP_FACTS").is_some_and(|v| v == "off" || v == "0"),
         llvm_verify: var("MS_LLVM_VERIFY").is_some_and(|v| v != "0"),
         keep_ll: var("MS_KEEP_LL").is_some(),

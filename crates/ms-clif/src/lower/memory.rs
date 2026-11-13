@@ -61,10 +61,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                 } else {
                     Op::ListGetU
                 };
-                let (e, _, _) = self.elem_info(lt);
-                let at = self.elem_addr(l[0], l[1], i, size, mode);
-                self.elem_ptrs.insert(at, (e, mode));
-                vec![at]
+                vec![self.elem_addr(l[0], l[1], i, size, mode)]
             }
             Op::PtrIsNull => {
                 let p = self.a(inst, 0)[0];
@@ -111,12 +108,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                 };
                 let leaves = self.g.lay.leaves(ty);
                 let p = self.a(inst, 0)[0];
-                let out = match self.elem_ptrs.get(&p).copied() {
-                    Some((e, mode)) if e == ty => {
-                        self.in_elem_region(e, mode, |s| s.load_leaves(p, 0, &leaves))
-                    }
-                    _ => self.load_leaves(p, 0, &leaves),
-                };
+                let out = self.load_leaves(p, 0, &leaves);
                 if inst.op == Op::Take
                     && self.is_wide(ty)
                     && let Some(r) = inst.res
@@ -148,12 +140,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                 }
                 let leaves = self.g.lay.leaves(ty);
                 let (p, v) = (self.a(inst, 0)[0], self.a(inst, 1));
-                match self.elem_ptrs.get(&p).copied() {
-                    Some((e, mode)) if e == ty => {
-                        self.in_elem_region(e, mode, |s| s.store_leaves(p, 0, &leaves, &v));
-                    }
-                    _ => self.store_leaves(p, 0, &leaves, &v),
-                }
+                self.store_leaves(p, 0, &leaves, &v);
                 vec![]
             }
             _ => unreachable!("memory is only called for its own ops"),
