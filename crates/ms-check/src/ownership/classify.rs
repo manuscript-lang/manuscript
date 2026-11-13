@@ -29,11 +29,11 @@ fn same_instance(a: &Ty, b: &Ty) -> bool {
 /// How values of a type are passed around.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Class {
-    /// Duplicated implicitly: scalars, records of those,
+    /// Duplicated implicitly: scalars, types of those,
     /// and handle types whose identity is shared (native handles).
     Copy,
     /// One owner. Moves at its last use into a moving position; `.clone()`
-    /// duplicates it explicitly. Strings, lists, maps, sets, bytes, records and
+    /// duplicates it explicitly. Strings, lists, maps, sets, bytes, types and
     /// alternatives holding any of those, recursive types, closures,
     /// interface values and unconstrained type parameters.
     Move,
@@ -126,7 +126,7 @@ impl Classifier {
                         .iter()
                         .all(|a| self.clonable_in(syms, a, seen, concrete))
             }
-            Kind::Record | Kind::Alternative => {
+            Kind::Type | Kind::Alternative => {
                 if seen.contains(&t.id) {
                     // The concrete proof conservatively excludes recurring nominal types:
                     // a repeated generic declaration may hide a different payload type.
@@ -186,7 +186,7 @@ impl Classifier {
             Kind::Contract if t.is(Builtin::Closeable) => Class::Resource,
             Kind::Function | Kind::Contract => Class::Move,
             Kind::Native => self.native(syms, t, visiting),
-            Kind::Record | Kind::Alternative => self.nominal(syms, t, visiting),
+            Kind::Type | Kind::Alternative => self.nominal(syms, t, visiting),
         }
     }
 
@@ -270,16 +270,16 @@ impl Classifier {
             parent: visiting,
             depth: depth + 1,
         };
-        // A record is a container of its fields and has one owner whatever they are; an
+        // A type is a container of its fields and has one owner whatever they are; an
         // alternative of primitives is a primitive.
-        let mut class = if t.kind == Kind::Record {
+        let mut class = if t.kind == Kind::Type {
             Class::Move
         } else {
             Class::Copy
         };
         {
             let fs = fields(t);
-            if fs.len() > 1 && matches!(fs[0].ty.kind, Kind::Record | Kind::Alternative) {
+            if fs.len() > 1 && matches!(fs[0].ty.kind, Kind::Type | Kind::Alternative) {
                 // These fields have already been substituted independently. Within
                 // this one frame, an identical child has the same ancestry and depth.
                 class = class.max(self.shared_fields(syms, &fs, &current));
@@ -304,7 +304,7 @@ impl Classifier {
                 }
             }
         }
-        // A recursive alternative or record reached its own id above and
+        // A recursive alternative or type reached its own id above and
         // returned Move, which max propagates.
         class
     }
@@ -339,10 +339,10 @@ mod tests {
             variables: RefCell::new(vec![]),
             decl: None,
         });
-        let def = Definition::new(&sym, Kind::Record);
+        let def = Definition::new(&sym, Kind::Type);
         *def.variables.borrow_mut() = vec![a.clone(), b.clone()];
         *def.fields.borrow_mut() = vec![Param::new(n("left"), a), Param::new(n("right"), b)];
-        let mut ty = Type::new(syms, sym.name, sym.id, Kind::Record);
+        let mut ty = Type::new(syms, sym.name, sym.id, Kind::Type);
         ty.def = Some(def);
         (sym, Rc::new(ty))
     }

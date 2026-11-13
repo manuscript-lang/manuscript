@@ -27,8 +27,8 @@ pub mod watch;
 use alloc::vec::Vec;
 use err::{Fail, Res};
 use ms_rt::ffi::{
-    BytesList, EntryFilter, ErrOut, Has, ObjMut, ObjRef, Object, PairFilter, RecList, StatusCode,
-    Str, Text, TextList, abi_record, native,
+    BytesList, EntryFilter, ErrOut, Has, ObjMut, ObjRef, Object, PairFilter, StatusCode, Str, Text,
+    TextList, TypeList, abi_type, native,
 };
 use ms_rt_abi::{STATUS_FAILED, STATUS_INVALID_INPUT, STATUS_NONE};
 use stream::Stream;
@@ -83,7 +83,7 @@ fn lim(has: bool, v: i64) -> Res<i64> {
     ops::limit(has, v)
 }
 
-abi_record! {
+abi_type! {
     /// Flattened `FileInfo`: a string followed by `i64` words only, so compiled code reads it as a
     /// record. Times are `(seconds, nanoseconds)`; `created_present` says whether the creation time
     /// exists on this host. `kinds` is the `KIND_*` bit set from `ops`; unsigned host counters
@@ -142,7 +142,7 @@ fn info_out(i: ops::Info) -> InfoOut {
     }
 }
 
-abi_record! {
+abi_type! {
     /// One `DirectoryEntry` as compiled code lays the record out: the name, then two flag bytes.
     pub struct EntryOut {
         pub name: Str,
@@ -159,7 +159,7 @@ fn entry_out(name: &[u8], directory: bool, symlink: bool) -> EntryOut {
     }
 }
 
-abi_record! {
+abi_type! {
     /// Flattened filesystem status: type id, block size, blocks, free, available, files, free files.
     pub struct FsOut {
         pub kind: i64,
@@ -172,7 +172,7 @@ abi_record! {
     }
 }
 
-abi_record! {
+abi_type! {
     /// A `Timestamp` at the layout the compiler gives the native time type.
     #[derive(Clone, Copy)]
     pub struct Timestamp {
@@ -181,7 +181,7 @@ abi_record! {
     }
 }
 
-abi_record! {
+abi_type! {
     /// One `FileEvent`: the path, then `rename` or `change`.
     pub struct EventOut {
         pub path: Str,
@@ -189,7 +189,7 @@ abi_record! {
     }
 }
 
-abi_record! {
+abi_type! {
     /// One `PathEntry`: the path, then the nested `DirectoryEntry`'s name and two flag bytes.
     pub struct PathEntryOut {
         pub path: Str,
@@ -238,9 +238,9 @@ native! {
     fn msstd_fs_list(
         path: &str,
         has_limit: Has,
-        limit: i64; err: ErrOut) -> Result<RecList<EntryOut>, StatusCode> {
+        limit: i64; err: ErrOut) -> Result<TypeList<EntryOut>, StatusCode> {
         let entries = fs_status_at(path.as_bytes(), lim(*has_limit, limit).and_then(|m| ops::list(path.as_bytes(), m)), &err)?;
-        Ok(RecList::new(entries.iter().map(|e| entry_out(&e.name, e.directory, e.symlink))))
+        Ok(TypeList::new(entries.iter().map(|e| entry_out(&e.name, e.directory, e.symlink))))
     }
 
     fn msstd_fs_create_directory(path: &str, recursive: bool; err: ErrOut) -> Result<(), StatusCode> {
@@ -527,7 +527,7 @@ native! {
         max_entries: i64,
         has_max_results: Has,
         max_results: i64,
-        filter: Option<EntryFilter>; err: ErrOut) -> Result<RecList<PathEntryOut>, StatusCode> {
+        filter: Option<EntryFilter>; err: ErrOut) -> Result<TypeList<PathEntryOut>, StatusCode> {
         let (max_entries, max_results) = fs_status_at(path.as_bytes(), lim(*has_max_entries, max_entries)
             .and_then(|e| Ok((e, lim(*has_max_results, max_results)?))), &err)?;
         let patterns: Vec<&[u8]> = patterns.iter().map(|p| p.as_bytes()).collect();
@@ -547,7 +547,7 @@ native! {
         let cb: Option<&mut dyn FnMut(&walk::PathEntry) -> bool> =
             if filter.is_some() { Some(&mut call) } else { None };
         let items = fs_status_at(path.as_bytes(), walk::glob_entries(path.as_bytes(), &options, cb), &err)?;
-        Ok(RecList::new(items.iter().map(|e| PathEntryOut {
+        Ok(TypeList::new(items.iter().map(|e| PathEntryOut {
             path: Str::from_bytes(&e.path),
             name: Str::from_bytes(&e.name),
             directory: u8::from(e.directory),
@@ -592,10 +592,10 @@ native! {
     /// Waits for activity and returns the `List[FileEvent]`. `STATUS_CLOSED` after close,
     /// `STATUS_LIMIT_EXCEEDED` on overflow.
     fn msstd_fs_watch_next(
-        h: ObjMut<watch::Watcher>; err: ErrOut) -> Result<RecList<EventOut>, StatusCode> {
+        h: ObjMut<watch::Watcher>; err: ErrOut) -> Result<TypeList<EventOut>, StatusCode> {
         let mut h = h;
         let events = fs_status(h.wait(), &err)?;
-        Ok(RecList::new(events.iter().map(|e| EventOut {
+        Ok(TypeList::new(events.iter().map(|e| EventOut {
             path: Str::from_bytes(&e.path),
             kind: Str::new(if e.rename { "rename" } else { "change" }),
         })))

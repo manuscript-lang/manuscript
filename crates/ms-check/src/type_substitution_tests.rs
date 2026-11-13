@@ -31,7 +31,7 @@ fn signature(children: &[Ty], result: Ty) -> Ty {
 fn concrete_substitution_keeps_nested_types_and_callable_permissions() {
     let syms = ms_syntax::Names::global();
     let callback = signature(&[int(), string()], int());
-    let mut outer = Type::new(syms, n("Box"), n("substitution/Box"), Kind::Record);
+    let mut outer = Type::new(syms, n("Box"), n("substitution/Box"), Kind::Type);
     outer.args = vec![callback];
     let outer = Rc::new(outer);
     for bindings in [Subst::new(), Subst::from([(n("unused"), string())])] {
@@ -124,7 +124,7 @@ fn substitution_walks_a_shared_concrete_subtree_once() {
     let syms = ms_syntax::Names::global();
     let mut node = int();
     for _ in 0..60 {
-        let mut pair = Type::new(syms, n("Pair"), n("substitution/Pair"), Kind::Record);
+        let mut pair = Type::new(syms, n("Pair"), n("substitution/Pair"), Kind::Type);
         pair.args = vec![node.clone(), node];
         node = Rc::new(pair);
     }

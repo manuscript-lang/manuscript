@@ -139,7 +139,7 @@ impl Visitor for Scan<'_> {
         {
             self.effects.insert("read");
         }
-        // Converting a record to an interface hands out its methods: charge the converter.
+        // Converting a type to an interface hands out its methods: charge the converter.
         if let Some(info) = self.info(e)
             && let (Some(source), Some(target)) = (&info.interface_source, &info.ty)
             && let Some(ids) = self.conversions.get(&(target.id, source.id))
@@ -164,7 +164,7 @@ impl Visitor for Scan<'_> {
         // A generic call instantiated at a concrete type hands out that type's interface methods.
         if let Some(info) = self.info(e) {
             for arg in info.type_args.iter().flatten() {
-                if matches!(arg.kind, Kind::Record | Kind::Alternative)
+                if matches!(arg.kind, Kind::Type | Kind::Alternative)
                     && let Some(ids) = self.by_receiver.get(&arg.id)
                 {
                     for id in ids.clone() {
@@ -184,7 +184,7 @@ impl Visitor for Scan<'_> {
             ExprKind::Member { left, .. } => {
                 let receiver_record = self
                     .info(left)
-                    .is_some_and(|r| r.ty.as_ref().is_some_and(|t| t.kind == Kind::Record));
+                    .is_some_and(|r| r.ty.as_ref().is_some_and(|t| t.kind == Kind::Type));
                 if receiver_record && self.info(e).is_some_and(|i| i.method.is_none()) {
                     self.effects.insert("read");
                 }
@@ -246,7 +246,7 @@ impl Checker {
             for d in &module.decls {
                 if !matches!(
                     d.decl().kind,
-                    DeclKind::Fn(_) | DeclKind::Record(_) | DeclKind::Const(_)
+                    DeclKind::Fn(_) | DeclKind::Type(_) | DeclKind::Const(_)
                 ) {
                     continue;
                 }

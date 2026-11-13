@@ -638,7 +638,7 @@ impl<'a> FnLower<'a> {
                     if self.dead {
                         return Ok(x);
                     }
-                    let _ = Kind::Record;
+                    let _ = Kind::Type;
                     if self.ety(e).is(ms_check::api::types::Builtin::Duration) {
                         self.duration_text(x)?
                     } else {

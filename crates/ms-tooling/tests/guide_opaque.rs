@@ -124,7 +124,7 @@ fn promise_pages_search_and_downloads_hide_id_and_keep_methods() {
         );
     }
     let output = page(names, "promise.Promise").unwrap();
-    assert!(output.starts_with("opaque record Promise"));
+    assert!(output.starts_with("opaque type Promise"));
     assert!(!output.contains("id: Int"), "{output}");
     assert!(page(names, "promise.Promise.id").is_err());
     assert!(

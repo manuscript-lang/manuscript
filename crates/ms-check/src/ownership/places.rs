@@ -6,7 +6,7 @@ use std::fmt;
 /// One projection step.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Step {
-    /// A record field.
+    /// A type field.
     Field(Name),
     /// Some element of a collection (an index, a map value, an accessor).
     Element,

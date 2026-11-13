@@ -293,7 +293,7 @@ impl Walker<'_> {
                 }
             }
             PatternKind::List(items) => items.iter().for_each(|i| self.pattern_resources(i, s)),
-            PatternKind::Record(fields) => fields
+            PatternKind::Type(fields) => fields
                 .iter()
                 .for_each(|f| self.pattern_resources(&f.pattern, s)),
         }
@@ -309,7 +309,7 @@ impl Walker<'_> {
             PatternKind::List(items) => items
                 .iter()
                 .for_each(|i| self.pattern_bindings(i, source, role)),
-            PatternKind::Record(fields) => fields
+            PatternKind::Type(fields) => fields
                 .iter()
                 .for_each(|f| self.pattern_bindings(&f.pattern, source, role)),
         }

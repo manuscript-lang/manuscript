@@ -247,16 +247,10 @@ fn diagram_ambiguous_entity_remedies_are_usable() {
     )
     .unwrap();
     for (name, expected) in [
-        ("Box", vec!["main.ms#impl#Box", "main.ms#record#Box"]),
-        (
-            "main.ms::Box",
-            vec!["main.ms#impl#Box", "main.ms#record#Box"],
-        ),
-        ("Item", vec!["main.ms#record#Item", "other.ms#record#Item"]),
-        (
-            "Named",
-            vec!["main.ms#record#Named", "other.ms#record#Named"],
-        ),
+        ("Box", vec!["main.ms#impl#Box", "main.ms#type#Box"]),
+        ("main.ms::Box", vec!["main.ms#impl#Box", "main.ms#type#Box"]),
+        ("Item", vec!["main.ms#type#Item", "other.ms#type#Item"]),
+        ("Named", vec!["main.ms#type#Named", "other.ms#type#Named"]),
     ] {
         let args = [
             "diagram", "main.ms", "--view", "types", "--entity", name, "--json",
@@ -325,14 +319,14 @@ fn diagram_ambiguous_entity_remedies_are_usable() {
             "diagram",
             "main.ms",
             "--entity",
-            "main.ms#record#Missing",
+            "main.ms#type#Missing",
             "--json",
         ],
     );
     assert_eq!(missing.status.code(), Some(2));
     assert!(missing.stdout.is_empty());
     let error = String::from_utf8_lossy(&missing.stderr);
-    assert!(error.contains("no entity named main.ms#record#Missing"));
+    assert!(error.contains("no entity named main.ms#type#Missing"));
     assert!(error.contains("file#kind#name"), "{error}");
     let _ = std::fs::remove_dir_all(dir);
 }
@@ -760,32 +754,32 @@ fn type_relationships_follow_checked_imports_and_generic_scope() {
     type ExpectedSlot<'a> = (&'a str, Option<&'a str>);
     let cases: &[(&str, &[ExpectedSlot])] = &[
         (
-            "main.ms#record#Box",
+            "main.ms#type#Box",
             &[
-                ("items:", Some("a.ms#record#Item")),
-                ("callback:", Some("a.ms#record#Item")),
-                ("maybe:", Some("a.ms#record#Item")),
+                ("items:", Some("a.ms#type#Item")),
+                ("callback:", Some("a.ms#type#Item")),
+                ("maybe:", Some("a.ms#type#Item")),
             ],
         ),
         (
             "Pick",
             &[
                 ("case missing", None),
-                ("case found", Some("a.ms#record#Item")),
+                ("case found", Some("a.ms#type#Item")),
             ],
         ),
         (
             "Reader",
-            &[("read:", Some("a.ms#record#Item")), ("generic:", None)],
+            &[("read:", Some("a.ms#type#Item")), ("generic:", None)],
         ),
         (
             "echo",
             &[
-                ("item:", Some("a.ms#record#Item")),
-                ("returns", Some("a.ms#record#Item")),
+                ("item:", Some("a.ms#type#Item")),
+                ("returns", Some("a.ms#type#Item")),
             ],
         ),
-        ("Box.first", &[("returns", Some("a.ms#record#Item"))]),
+        ("Box.first", &[("returns", Some("a.ms#type#Item"))]),
         ("Generic", &[("value:", None)]),
         ("identity", &[("item:", None), ("returns", None)]),
     ];
@@ -864,7 +858,7 @@ fn shared_default_type_arguments_keep_one_reference_per_declaration() {
         .iter()
         .map(|s| s.get("reference").unwrap().as_str().unwrap())
         .collect();
-    assert_eq!(refs, ["main.ms#record#Pair", "main.ms#record#Item"]);
+    assert_eq!(refs, ["main.ms#type#Pair", "main.ms#type#Item"]);
     let _ = std::fs::remove_dir_all(dir);
 }
 

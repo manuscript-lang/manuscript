@@ -159,9 +159,9 @@ const TABS=['Overview','Calls','Sequence','Types','Behavior','Route'];
 const S={tab:'Overview',sel:null,mod:null,scope:'',cap:40,from:null,to:null,dir:'both'};
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const isType=e=>['record','alternative','interface'].includes(e.kind);
+const isType=e=>['type','alternative','interface'].includes(e.kind);
 const isFn=e=>['fn','method','test','bench'].includes(e.kind);
-const KI={fn:'ƒ',method:'ƒ',record:'T',alternative:'T',interface:'I',constant:'c',test:'✓',bench:'»',impl:'i'};
+const KI={fn:'ƒ',method:'ƒ',type:'T',alternative:'T',interface:'I',constant:'c',test:'✓',bench:'»',impl:'i'};
 const isCheck=e=>e.kind==='test'||e.kind==='bench';
 const KW=new Set('and break continue else enum export extern false fixture fn for if impl import in interface let match not or ref return self test true try type unit var while'.split(' '));
 const TK=/(\/\/.*)|("(?:\\.|[^"\\])*")|(\b\d[\d_.]*[a-zA-Z]*)|([A-Za-z_]\w*)|(\s+|.)/g;
@@ -184,7 +184,7 @@ const dirOf=f=>f.slice(0,f.lastIndexOf('/')+1);
 const fx=e=>e.effects.filter(x=>x!=='unknown');
 const byFile=Object.create(null);for(const e of D.entities)(byFile[e.file]=byFile[e.file]||[]).push(e);
 function sigOf(e){
-  if(!isFn(e)){const kw=e.kind==='interface'?'interface':e.kind==='record'?'type':e.kind==='alternative'?'enum':e.kind;return '<code><span class="tk-kw">'+esc(kw)+'</span> '+esc(e.name)+'</code>'}
+  if(!isFn(e)){const kw=e.kind==='interface'?'interface':e.kind==='type'?'type':e.kind==='alternative'?'enum':e.kind;return '<code><span class="tk-kw">'+esc(kw)+'</span> '+esc(e.name)+'</code>'}
   const ps=e.slots.map(s=>(s.var?'<span class="var">var </span>':'')+esc(s.name)+': '+ownershipSpan(s)).join(', ');
   return '<code>'+esc(e.name)+'('+ps+') '+(e.result?ownershipSpan(e.result):'')+'</code>';
 }
@@ -399,8 +399,8 @@ function calls(){
 }
 function types(){
   const nodes={},edges=[];let n=0;const roots=S.sel&&E[S.sel]?[E[S.sel]]:D.entities.filter(e=>isType(e)&&(!S.mod||e.file===S.mod)).slice(0,30);
-  const seen={};const add=x=>{if(seen[x.key]||n>=40)return;seen[x.key]=1;n++;if(!nodes[x.key])nodes[x.key]={code:1,id:x.key,title:(x.kind==='interface'?'interface ':x.kind==='record'?'type ':x.kind==='alternative'?'enum ':'')+x.name,cls:'cls',kind:'type',
-    lines:x.slots.map(s=>x.kind==='record'?s.name+': '+s.ty:x.kind==='alternative'?s.name+s.ty:'fn '+s.name+s.ty).slice(0,8)};
+  const seen={};const add=x=>{if(seen[x.key]||n>=40)return;seen[x.key]=1;n++;if(!nodes[x.key])nodes[x.key]={code:1,id:x.key,title:(x.kind==='interface'?'interface ':x.kind==='type'?'type ':x.kind==='alternative'?'enum ':'')+x.name,cls:'cls',kind:'type',
+    lines:x.slots.map(s=>x.kind==='type'?s.name+': '+s.ty:x.kind==='alternative'?s.name+s.ty:'fn '+s.name+s.ty).slice(0,8)};
     x.slots.forEach(s=>s.refs.forEach(r=>{const t=E[r];if(t){add(t);if(nodes[r])edges.push({from:x.key,to:r,label:s.name})}}));
     if(x.result)x.result.refs.forEach(r=>{const t=E[r];if(t){add(t);if(nodes[r])edges.push({from:x.key,to:r,label:'returns'})}})};
   roots.forEach(r=>{if(isFn(r)){nodes[r.key]={code:1,id:r.key,title:'fn '+r.name,cls:'cls',lines:r.slots.map(s=>(s.var?'var ':'')+s.name+': '+s.ty)}}add(r)});

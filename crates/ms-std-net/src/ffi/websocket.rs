@@ -8,12 +8,11 @@ use crate::error::WsErr;
 use crate::http::headers::Headers;
 use crate::ws::dial::{self, Dial};
 use ms_rt::ffi::{
-    Bytes, ErrOut, Has, ObjRef, Object, OptInt, Out, StatusCode, Str, StringList, abi_record,
-    native,
+    Bytes, ErrOut, Has, ObjRef, Object, OptInt, Out, StatusCode, Str, StringList, abi_type, native,
 };
 use ms_rt_abi::STATUS_NONE;
 
-abi_record! {
+abi_type! {
     /// `WebSocketOptions` as the compiler lays it out for natives.
     pub struct WebSocketOptionsWire {
         pub max_message_bytes: OptInt,
@@ -29,9 +28,9 @@ abi_record! {
     }
 }
 
-abi_record! {
+abi_type! {
     /// `WebSocketMessage` at its natural layout.
-    pub struct WebSocketMessageRec {
+    pub struct WebSocketMessageType {
         pub data: Bytes,
         pub text: u8,
     }
@@ -165,11 +164,11 @@ native! {
     /// `WebSocket.receive()`; the peer's normal close is `STATUS_NONE`.
     fn msstd_websocket_receive(
         s: ObjRef<SocketH>,
-        out: Out<WebSocketMessageRec>,
+        out: Out<WebSocketMessageType>,
         err: ErrOut,
     ) -> Result<(), StatusCode> {
         match report(s.receive(None), &err)? {
-            Some(m) => out.write(WebSocketMessageRec {
+            Some(m) => out.write(WebSocketMessageType {
                 data: Bytes::new(&m.data),
                 text: u8::from(m.text),
             }),

@@ -894,7 +894,7 @@ impl Checker {
                 continue;
             }
             let name = d.name();
-            if matches!(&d.decl().kind, DeclKind::Record(r) if r.external) {
+            if matches!(&d.decl().kind, DeclKind::Type(r) if r.external) {
                 // An opaque runtime type: the loader registered its canonical symbol.
                 let canonical = self
                     .session
@@ -910,7 +910,7 @@ impl Checker {
             }
             if matches!(
                 d.decl().kind,
-                DeclKind::Record(_) | DeclKind::Alternative(_) | DeclKind::Interface(_)
+                DeclKind::Type(_) | DeclKind::Alternative(_) | DeclKind::Interface(_)
             ) {
                 // A bundled module's exported types were declared when it was registered.
                 let predeclared = self
@@ -927,7 +927,7 @@ impl Checker {
             let id = self.unique("symbol");
             let kind = match &d.decl().kind {
                 DeclKind::Fn(_) | DeclKind::Const(_) => None,
-                DeclKind::Record(_) => Some(Kind::Record),
+                DeclKind::Type(_) => Some(Kind::Type),
                 DeclKind::Alternative(_) => Some(Kind::Alternative),
                 DeclKind::Interface(_) => Some(Kind::Contract),
                 _ => None,
@@ -1051,7 +1051,7 @@ impl Checker {
             self.res_error(
                 decl.pos(),
                 format!(
-                    "type alias {} refers to itself; an alias names another type, so break the cycle with a record or enum",
+                    "type alias {} refers to itself; an alias names another type, so break the cycle with a type or enum",
                     self.syms.str(s.name)
                 ),
             );
@@ -1305,7 +1305,7 @@ impl Checker {
                 *s.ty.borrow_mut() = Some(t);
             } else {
                 let def = s.ty(self.syms).def.clone().expect("def");
-                let fields = self.params(d.record_fields());
+                let fields = self.params(d.type_fields());
                 *def.fields.borrow_mut() = fields;
                 def.clear_cases();
                 let mut seen: HashSet<Name> = HashSet::new();
@@ -1361,7 +1361,7 @@ impl Checker {
 
     fn check_defaults(&mut self, module: &ModRef) {
         for d in &module.decls {
-            if matches!(d.decl().kind, DeclKind::Record(_))
+            if matches!(d.decl().kind, DeclKind::Type(_))
                 && let Some(s) = self.own_symbol(d)
             {
                 self.check_field_defaults(d, &s);
@@ -1905,7 +1905,7 @@ impl Checker {
     }
 
     fn check_field_defaults(&mut self, d: &DeclRef, s: &SymRef) {
-        let fields = d.record_fields();
+        let fields = d.type_fields();
         if !fields.iter().any(|f| f.default.is_some()) {
             return;
         }
@@ -2005,7 +2005,7 @@ impl Checker {
         }
         let result = t.result_ty();
         let hooks = self.session.test_hooks();
-        if !matches!(result.kind, Kind::Record | Kind::Alternative)
+        if !matches!(result.kind, Kind::Type | Kind::Alternative)
             || self.shape_gap_with(&result, &hooks, true).as_deref() != Some("")
         {
             self.type_error(

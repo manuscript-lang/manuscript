@@ -214,7 +214,7 @@ pub(crate) fn typed_method_symbol(
 ) -> Option<String> {
     let sym = recv.symbol()?;
     let external = sym.decl.as_ref().is_some_and(
-        |d| matches!(&d.decl().kind, ms_check::api::ast::DeclKind::Record(r) if r.external),
+        |d| matches!(&d.decl().kind, ms_check::api::ast::DeclKind::Type(r) if r.external),
     );
     if !external || recv.kind != ct::Kind::Native {
         return None;

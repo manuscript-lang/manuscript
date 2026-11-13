@@ -86,7 +86,7 @@ impl Pass<'_> {
                 }
             }
             PatternKind::List(items) => items.iter().for_each(|i| self.define_pattern(i, must)),
-            PatternKind::Record(fields) => fields
+            PatternKind::Type(fields) => fields
                 .iter()
                 .for_each(|f| self.define_pattern(&f.pattern, must)),
         }

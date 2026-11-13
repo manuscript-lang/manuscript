@@ -446,7 +446,7 @@ fn no_clone(t: &Ty) -> Option<&'static str> {
     }
 }
 
-/// `no_clone`, and a record or alternative holding a function value, which `Classifier::clonable`
+/// `no_clone`, and a type or alternative holding a function value, which `Classifier::clonable`
 /// rejects.
 fn clone_blocker(t: &Ty) -> Option<&'static str> {
     no_clone(t).or_else(|| {
@@ -515,12 +515,12 @@ impl Walker<'_> {
     }
 
     /// Whether the scope can close a resource binding of `ty`: it has a close operation, or it
-    /// is a record, alternative or collection that closes the resources it holds.
+    /// is a type, alternative or collection that closes the resources it holds.
     fn closable(&self, s: &Stmt, ty: &Ty) -> bool {
         self.cx.m.stmt(s).cleanup.is_some()
             || matches!(
                 ty.kind,
-                Kind::Record | Kind::Alternative | Kind::Native | Kind::Variable
+                Kind::Type | Kind::Alternative | Kind::Native | Kind::Variable
             )
     }
 
@@ -602,7 +602,7 @@ impl Walker<'_> {
         for b in self.cx.c.parameters.iter() {
             let tracked = self.consumed.contains(&b.uid)
                 && self.cx.classes.class(self.syms, &b.ty) == Class::Resource
-                && matches!(b.ty.kind, Kind::Record | Kind::Alternative | Kind::Native);
+                && matches!(b.ty.kind, Kind::Type | Kind::Alternative | Kind::Native);
             if !tracked {
                 continue;
             }
@@ -1009,7 +1009,7 @@ mod type_query_tests {
     use std::{cell::RefCell, rc::Rc};
 
     fn pair(syms: ms_syntax::Names, left: Ty, right: Ty) -> Ty {
-        let mut t = Type::new(syms, n("Pair"), n("test/Pair"), Kind::Record);
+        let mut t = Type::new(syms, n("Pair"), n("test/Pair"), Kind::Type);
         t.args = vec![left, right];
         Rc::new(t)
     }
@@ -1033,8 +1033,8 @@ mod type_query_tests {
             variables: RefCell::new(vec![]),
             decl: None,
         });
-        let mut t = Type::new(syms, sym.name, sym.id, Kind::Record);
-        t.def = Some(Definition::new(&sym, Kind::Record));
+        let mut t = Type::new(syms, sym.name, sym.id, Kind::Type);
+        t.def = Some(Definition::new(&sym, Kind::Type));
         (Rc::new(t), sym)
     }
 

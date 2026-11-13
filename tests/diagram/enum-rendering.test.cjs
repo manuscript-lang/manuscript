@@ -28,7 +28,7 @@ test('case remains an ordinary identifier and quoted keywords stay quoted', () =
 
 test('enum signatures preserve escaping and other declaration spellings', () => {
   const {sigOf} = purePage(empty);
-  for (const [kind, spelling] of [['alternative', 'enum'], ['record', 'type'], ['interface', 'interface']]) {
+  for (const [kind, spelling] of [['alternative', 'enum'], ['type', 'type'], ['interface', 'interface']]) {
     assert.equal(sigOf({kind, name: 'Choice<T&"'}), `<code><span class="tk-kw">${spelling}</span> Choice&lt;T&amp;&quot;</code>`);
   }
   assert.equal(sigOf({kind: 'fn', name: 'case', slots: [{name: 'value', ty: 'String', var: false, ownership: 'borrow'}], result: {ty: 'Int', ownership: 'owned'}}), '<code>case(value: <span class="brw" data-ownership="borrow" title="borrow">String</span>) <span class="own" data-ownership="owned" title="owned">Int</span></code>');

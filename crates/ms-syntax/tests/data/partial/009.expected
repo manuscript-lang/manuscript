@@ -1,6 +1,6 @@
 diag parse 9:1:126 end=9:5:130 fix=- "'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it"
 import 1:1:0 1:8:7 "expect_equal" "@std/test/test.ms"
 (decl 3:1:46 interface "Increment" false false 0:0:0 false [] [] [] [(decl 4:8:74 fn "apply" false false 0:0:0 false [] [] [] [] [(param 4:14:80 "value" (type 4:21:87 "Int" [] [] nil) nil) ] (type 4:26:92 "Int" [] [] nil) nil nil []) ] [] nil nil nil [])
-(decl 6:1:97 record "Offset" false false 0:0:0 false [] [(param 7:5:114 "delta" (type 7:12:121 "Int" [] [] nil) nil) ] [] [] [] nil nil nil [])
+(decl 6:1:97 type "Offset" false false 0:0:0 false [] [(param 7:5:114 "delta" (type 7:12:121 "Int" [] [] nil) nil) ] [] [] [] nil nil nil [])
 omitted []
 recovered []

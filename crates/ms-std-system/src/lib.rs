@@ -19,11 +19,11 @@ mod inventory;
 
 use alloc::vec::Vec;
 use inventory::{Cpu, Interface, Metrics};
-use ms_rt::ffi::{ErrOut, Failure, IntMap, RecList, StatusCode, Str, Text, abi_record, native};
+use ms_rt::ffi::{ErrOut, Failure, IntMap, StatusCode, Str, Text, TypeList, abi_type, native};
 use ms_rt_abi::STATUS_UNSUPPORTED;
 use ms_std_process::control;
 
-abi_record! {
+abi_type! {
     /// `SystemInfo`: `os`, `architecture`, `cpu_count`.
     pub struct SystemInfoOut {
         pub os: Str,
@@ -32,7 +32,7 @@ abi_record! {
     }
 }
 
-abi_record! {
+abi_type! {
     /// `UserInfo`: `username`, `uid`, `gid`, `home`, `shell`.
     pub struct UserInfoOut {
         pub username: Str,
@@ -43,7 +43,7 @@ abi_record! {
     }
 }
 
-abi_record! {
+abi_type! {
     /// `NetworkInterface`; `family` is the case index of `IpFamily`.
     pub struct InterfaceOut {
         pub name: Str,
@@ -56,7 +56,7 @@ abi_record! {
     }
 }
 
-abi_record! {
+abi_type! {
     /// `CpuInfo`.
     pub struct CpuOut {
         pub model: Str,
@@ -69,7 +69,7 @@ abi_record! {
     }
 }
 
-abi_record! {
+abi_type! {
     /// `MetricsSnapshot`: the fields of `SystemMetrics` with the uptime in nanoseconds and the
     /// three load averages flattened.
     pub struct MetricsOut {
@@ -206,14 +206,14 @@ native! {
         })
     }
 
-    fn msstd_system_network_interfaces(; err: ErrOut) -> Result<RecList<InterfaceOut>, StatusCode> {
+    fn msstd_system_network_interfaces(; err: ErrOut) -> Result<TypeList<InterfaceOut>, StatusCode> {
         let all = inventory::interfaces().map_err(|f| err.fail(f))?;
-        Ok(RecList::new(all.iter().map(interface_out)))
+        Ok(TypeList::new(all.iter().map(interface_out)))
     }
 
-    fn msstd_system_cpus(; err: ErrOut) -> Result<RecList<CpuOut>, StatusCode> {
+    fn msstd_system_cpus(; err: ErrOut) -> Result<TypeList<CpuOut>, StatusCode> {
         let all = inventory::cpus().map_err(|f| err.fail(f))?;
-        Ok(RecList::new(all.iter().map(cpu_out)))
+        Ok(TypeList::new(all.iter().map(cpu_out)))
     }
 
     fn msstd_system_metrics(; err: ErrOut) -> Result<MetricsOut, StatusCode> {
