@@ -36,10 +36,8 @@ pub(crate) fn released_types(lay: &Layouts, f: &Func, inst: &Inst) -> Vec<Ty> {
             .into_iter()
             .map(|(t, _)| t)
             .collect(),
-        (Op::RecRelease, Imm::RecMask(_, mask)) if matches!(lay.m.types.kind(f.ty(inst.args[0])), TyKind::Rec(r) if !lay.m.records[r.index()].indirect) => {
-            records::released(lay, f.ty(inst.args[0]), mask)
-                .map(|(t, ..)| t)
-                .collect()
+        (Op::RecRelease, Imm::RecMask(_, mask)) => {
+            records::release_types(lay, f.ty(inst.args[0]), mask)
         }
         _ => Vec::new(),
     }
