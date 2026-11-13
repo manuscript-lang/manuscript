@@ -279,12 +279,15 @@ fn elem_meta(elem: &TyKind, k: usize) -> Meta {
     meta
 }
 
+/// Bytes in one word of an inline string, which holds its bytes in two words.
+const WORD_BYTES: i64 = 8;
+
 /// `StrByte` and `StrAsciiAt`: the byte at an index of a string. An inline string keeps its
 /// bytes in its two words, little-endian, so the byte is a shift and mask; any other string loads
 /// it from memory. `StrAsciiAt` yields -1 unless the string is flagged ASCII and the index is in
 /// range, and the caller then takes the general path.
 fn str_byte(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
-    use ms_rt_abi::STR_LEN_MASK;
+    use ms_rt_abi::{STR_ASCII, STR_INLINE, STR_LEN_MASK};
     let s = &vals[&inst.args[0].index()];
     let i = vals[&inst.args[1].index()][0].clone();
     let out = vals[&inst.res.expect("string byte result").index()][0].clone();
@@ -299,9 +302,9 @@ fn str_byte(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         b.zext(&byte, LTy::I64)
     };
     if inst.op == Op::StrAsciiAt {
-        let flag = b.bin(Bin::LShr, &s[1], &Val::int(61));
-        let flag = b.bin(Bin::And, &flag, &Val::int(3));
-        let ascii = b.icmp("eq", &flag, &Val::int(1));
+        // Flagged ASCII and not inline: the ASCII bit is set and the inline bit is clear.
+        let flags = b.bin(Bin::And, &s[1], &Val::int((STR_INLINE | STR_ASCII) as i64));
+        let ascii = b.icmp("eq", &flags, &Val::int(STR_ASCII as i64));
         let len = b.bin(Bin::And, &s[1], &Val::int(STR_LEN_MASK as i64));
         let below = b.icmp("ult", &i, &len);
         let ok = b.bin(Bin::And, &ascii, &below);
@@ -314,14 +317,15 @@ fn str_byte(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         b.phi(&out, &[(Val::int(-1), head), (byte, load)]);
         return;
     }
-    let tag = b.bin(Bin::LShr, &s[1], &Val::int(62));
-    let inline = b.icmp("eq", &tag, &Val::int(1));
+    // The top two bits are `01` for an inline string (`STR_INLINE` set, `STR_BORROWED` clear).
+    let tag = b.bin(Bin::And, &s[1], &Val::int((3usize << 62) as i64));
+    let inline = b.icmp("eq", &tag, &Val::int(STR_INLINE as i64));
     let word = format!("w{bb}_{split}");
     b.cond_br(&inline, &word, &load);
     b.label(&word);
-    let high = b.icmp("sge", &i, &Val::int(8));
+    let high = b.icmp("sge", &i, &Val::int(WORD_BYTES));
     let w = b.select(&high, &s[1], &s[0]);
-    let shift = b.bin(Bin::And, &i, &Val::int(7));
+    let shift = b.bin(Bin::And, &i, &Val::int(WORD_BYTES - 1));
     let shift = b.bin(Bin::Shl, &shift, &Val::int(3));
     let w = b.bin(Bin::LShr, &w, &shift);
     let inline_byte = b.bin(Bin::And, &w, &Val::int(0xff));
