@@ -756,10 +756,14 @@ impl Em<'_> {
         let old = std::mem::take(&mut self.f.blocks[b]);
         self.f.blocks[b].params = old.params;
         self.flags = fparams[b].iter().copied().collect();
-        self.pending = match &old.term {
+        // The value the block returns is pending for a close only once it exists: one the block
+        // defines is not pending for a scope that ends before that (a loop's, say).
+        let returned = match &old.term {
             Term::Ret(Some(v)) => Some(*v),
             _ => None,
         };
+        let defined_here = |v: &Value| old.insts.iter().any(|i| i.res == Some(*v));
+        self.pending = returned.filter(|v| !defined_here(v));
         let mut st = entry;
         let mut cur = b;
         let mut insts = old.insts;
@@ -850,6 +854,9 @@ impl Em<'_> {
                 }
             }
             apply(self.m, self.f, self.cx, &mut st, &inst).map_err(|e| e.to_string())?;
+            if inst.res.is_some() && inst.res == returned {
+                self.pending = returned;
+            }
             let res = inst.res.filter(|r| {
                 self.m.result_mode(self.f, &inst) == Some(Mode::Move)
                     && self.m.needs_drop(self.f.ty(*r))
