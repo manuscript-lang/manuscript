@@ -271,7 +271,7 @@ b0:
   %r: int = select %ok, %one, %zero !0:8:1
   ret %r
 }
-fn @chk(%x: int8) -> int8 inline(never) !0:9:1 {
+fn @chk(%x: int) -> int8 inline(never) !0:9:1 {
 b0:
   %y: int8 = narrow.chk %x !0:10:1
   ret %y
@@ -296,7 +296,7 @@ b0:
   %neg0: bool = icmp.lt %r0, %m8 !0:23:1
   %f0: int = call @fit(%neg) !0:24:1
   %f1: int = call @fit(%big) !0:24:1
-  %c: int8 = call @chk(%n8) !0:24:1
+  %c: int8 = call @chk(%neg) !0:24:1
   %a: int = select %e0, %one, %zero !0:25:1
   %b: int = select %e1, %one, %zero !0:25:1
   %d: int = select %neg0, %one, %zero !0:25:1
@@ -397,4 +397,44 @@ pub fn narrow_record_fields_match_cranelift() {
     }
     assert!(ir.contains("load i16"), "no two byte load");
     assert_eq!((got.code, &got.stdout), (want.code, &want.stdout));
+}
+
+/// An `Int8` sum that leaves the type's range faults like Cranelift, and one inside it does not.
+fn narrow_sum(x: i64, y: i64) -> String {
+    format!(
+        r#"module "d"
+entry @main
+file 0 "d.ms"
+fn @add8(%a: int8, %b: int8) -> int8 inline(never) !0:1:1 {{
+b0:
+  %s: int8 = iadd.chk %a, %b !0:2:1
+  ret %s
+}}
+fn @main() -> int !0:10:1 {{
+b0:
+  %x: int = iconst {x} !0:11:1
+  %y: int = iconst {y} !0:11:1
+  %ox: opt<int8> = inarrow.opt %x !0:11:1
+  %oy: opt<int8> = inarrow.opt %y !0:11:1
+  %a: int8 = opt.get %ox !0:11:1
+  %b: int8 = opt.get %oy !0:11:1
+  %s: int8 = call @add8(%a, %b) !0:12:1
+  %n: int = iconst 1 !0:12:1
+  ret %n
+}}
+"#
+    )
+}
+
+/// Run from `llvm_direct`'s one test (see above).
+pub fn narrow_sums_fault_like_cranelift() {
+    let Some(opts) = direct() else { return };
+    for (name, x, y) in [("fits", 60, 67), ("over", 100, 100), ("under", -100, -100)] {
+        let src = narrow_sum(x, y);
+        let want = run_native(&src, &format!("direct_sum_{name}-cranelift"));
+        let got = run_llvm(&src, &opts, &format!("direct_sum_{name}"));
+        assert_eq!((got.code, &got.stdout), (want.code, &want.stdout), "{name}");
+        assert_eq!(want.code, if name == "fits" { 1 } else { 67 }, "{name}");
+    }
+    let _ = std::fs::remove_file("ms-keep.ll");
 }
