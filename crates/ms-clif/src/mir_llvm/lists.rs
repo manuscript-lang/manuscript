@@ -317,11 +317,7 @@ fn build_ok(m: &Module, lay: &Layouts, f: &Func, i: &Inst) -> bool {
 /// `i64` words, like every other runtime call, so the declaration agrees with the one the
 /// translated path writes for the same symbol.
 fn rt_alloc(cx: &mut Cx, b: &mut FnBuilder, name: &str, args: &[Val], dst: Option<&Val>) -> Val {
-    let params = vec!["i64"; args.len()].join(", ");
-    cx.decls.push((
-        name.to_string(),
-        format!("declare noalias align 16 ptr @\"{name}\"({params})"),
-    ));
+    super::rt::declare(cx, name);
     let words: Vec<Val> = args
         .iter()
         .map(|a| {
@@ -459,10 +455,7 @@ fn list_release(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     let both = b.bin(Bin::And, &owned, &some);
     b.cond_br(&both, &free, &join);
     b.label(&free);
-    cx.decls.push((
-        "msrt_free".into(),
-        "declare void @\"msrt_free\"(i64)".into(),
-    ));
+    super::rt::declare(cx, "msrt_free");
     let word = b.ptr_to_int(&l[0]);
     b.call(&LTy::Void, "", "msrt_free", &[(word, "")]);
     b.br(&join);
@@ -479,10 +472,7 @@ fn str_len(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         let at = b.field_ptr(&pair, &slot, k);
         b.store(w, &at, 8);
     }
-    cx.decls.push((
-        "msrt_string_length".into(),
-        "declare i64 @\"msrt_string_length\"(i64)".into(),
-    ));
+    super::rt::declare(cx, "msrt_string_length");
     let addr = b.ptr_to_int(&slot);
     b.name_next(out);
     b.call(&LTy::I64, "", "msrt_string_length", &[(addr, "")]);
