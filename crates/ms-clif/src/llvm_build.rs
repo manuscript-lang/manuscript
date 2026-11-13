@@ -186,6 +186,8 @@ pub enum Bin {
     FMul,
     FDiv,
     LShr,
+    SDiv,
+    SRem,
 }
 
 impl Bin {
@@ -202,6 +204,8 @@ impl Bin {
             Bin::FMul => "fmul",
             Bin::FDiv => "fdiv",
             Bin::LShr => "lshr",
+            Bin::SDiv => "sdiv",
+            Bin::SRem => "srem",
         }
     }
 
@@ -568,6 +572,46 @@ impl<'t> FnBuilder<'t> {
 
     pub fn unreachable(&mut self) {
         self.line("unreachable".into());
+    }
+
+    /// `switch` on an integer: `cases` are `(value, block)`.
+    pub fn switch(&mut self, v: &Val, default: &str, cases: &[(i64, String)]) {
+        let t = self.ty(&v.ty);
+        let arms: Vec<String> = cases
+            .iter()
+            .map(|(k, b)| format!("{t} {k}, label %{b}"))
+            .collect();
+        self.line(format!(
+            "switch {t} {}, label %{default} [ {} ]",
+            v.text,
+            arms.join(" ")
+        ));
+    }
+
+    /// `a op b` on `Int` with LLVM's overflow intrinsic: the wrapped result and the overflow flag.
+    /// `op` is `Add`, `Sub` or `Mul`; the result takes the pending name. The intrinsic is
+    /// `declare { i64, i1 } @"llvm.s<op>.with.overflow.i64"(i64, i64)`.
+    pub fn overflow(&mut self, op: Bin, a: &Val, b: &Val) -> (Val, Val) {
+        assert_eq!((&a.ty, &b.ty), (&Ty::I64, &Ty::I64));
+        let intrinsic = match op {
+            Bin::Add => "llvm.sadd.with.overflow.i64",
+            Bin::Sub => "llvm.ssub.with.overflow.i64",
+            Bin::Mul => "llvm.smul.with.overflow.i64",
+            _ => panic!("no overflow intrinsic for {}", op.name()),
+        };
+        let pending = self.pending.take();
+        let agg = self.agg(&[Ty::I64, Ty::I1]);
+        let r = self.def(
+            Ty::Void,
+            format!(
+                "call {agg} @\"{intrinsic}\"(i64 {}, i64 {})",
+                a.text, b.text
+            ),
+        );
+        self.pending = pending;
+        let v = self.def(Ty::I64, format!("extractvalue {agg} {}, 0", r.text));
+        let o = self.def(Ty::I1, format!("extractvalue {agg} {}, 1", r.text));
+        (v, o)
     }
 
     /// A tuple of `vals`, for a function that returns several leaves.

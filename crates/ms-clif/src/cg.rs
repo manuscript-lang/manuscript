@@ -1295,9 +1295,10 @@ fn direct_function(g: &mut Gen, i: usize, f: &Func) -> bool {
     let symbol_of = |k: usize| syms.symbol_of(funcs[k]);
     let m = g.m;
     let lay = &g.lay;
+    let checks = g.opts.checks;
     let mut llvm = g.llvm.take().expect("checked above");
     llvm.add_direct(&sym, &f.name, fn_loc, exported, |loc| {
-        crate::mir_llvm::emit(m, lay, f, loc, &symbol_of)
+        crate::mir_llvm::emit(m, lay, f, loc, checks, &symbol_of)
     });
     g.llvm = Some(llvm);
     g.llvm_funcs.push(LlvmFn {

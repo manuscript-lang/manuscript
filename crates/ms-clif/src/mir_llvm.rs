@@ -113,6 +113,12 @@ fn supported_op(op: Op) -> bool {
             | Op::Select
             | Op::B2I
             | Op::ListLen
+            | Op::IAddChk
+            | Op::ISubChk
+            | Op::IMulChk
+            | Op::INegChk
+            | Op::SDivChk
+            | Op::SRemChk
             | Op::Call
     )
 }
@@ -154,7 +160,23 @@ pub fn supports(m: &Module, lay: &Layouts, f: &Func) -> bool {
             }
             Term::Ret(_) | Term::Unreachable => true,
             Term::Fault(k) => fault_entry(*k).is_some(),
-            Term::Switch { .. } => false,
+            Term::Switch {
+                value,
+                cases,
+                default,
+            } => {
+                // One edge per successor block: a phi then needs one entry per predecessor.
+                let mut seen: Vec<usize> = vec![default.block.index()];
+                let distinct = cases.iter().all(|(_, t)| {
+                    let new = !seen.contains(&t.block.index());
+                    seen.push(t.block.index());
+                    new
+                });
+                distinct
+                    && leaves(lay, f.ty(*value)).len() == 1
+                    && !is_entry(default)
+                    && cases.iter().all(|(_, t)| !is_entry(t))
+            }
         };
         if !ok {
             return false;
@@ -178,6 +200,7 @@ pub fn emit(
     lay: &Layouts,
     f: &Func,
     loc: usize,
+    checks: bool,
     symbol_of: &dyn Fn(usize) -> String,
 ) -> Emitted {
     let types = Types::default();
@@ -232,10 +255,24 @@ pub fn emit(
                 .push((bb.index(), t.args.clone()))
         });
     }
+    // A check splits its block: the fault goes to a block of its own, and the rest of the block
+    // continues under `b<N>.<k>`. A phi names the block an edge leaves from, the last one.
+    let last_label = |bb: usize| -> String {
+        let n: usize = f.blocks[bb]
+            .insts
+            .iter()
+            .map(|i| if checks { check_splits(i.op) } else { 0 })
+            .sum();
+        seg_label(bb, n)
+    };
     let mut decls = Vec::new();
     for bb in &rpo {
         let bd = &f.blocks[bb.index()];
         b.label(&format!("b{}", bb.index()));
+        let mut seg = Seg {
+            block: bb.index(),
+            n: 0,
+        };
         if bb.index() != 0 {
             for (j, p) in bd.params.iter().enumerate() {
                 for (k, dst) in vals[&p.value.index()].iter().enumerate() {
@@ -244,14 +281,21 @@ pub fn emit(
                         .map(Vec::as_slice)
                         .unwrap_or(&[])
                         .iter()
-                        .map(|(from, args)| (vals[&args[j].index()][k].clone(), format!("b{from}")))
+                        .map(|(from, args)| (vals[&args[j].index()][k].clone(), last_label(*from)))
                         .collect();
                     b.phi(dst, &edges);
                 }
             }
         }
         for inst in &bd.insts {
-            inst_text(m, lay, inst, symbol_of, &vals, &mut decls, &mut b);
+            let env = Env {
+                m,
+                lay,
+                symbol_of,
+                vals: &vals,
+                checks,
+            };
+            inst_text(env, inst, &mut decls, &mut b, &mut seg);
         }
         match &bd.term {
             Term::Br(t) => b.br(&format!("b{}", t.block.index())),
@@ -272,6 +316,21 @@ pub fn emit(
                 }
             },
             Term::Ret(None) => b.ret(None),
+            Term::Switch {
+                value,
+                cases,
+                default,
+            } => {
+                let cases: Vec<(i64, String)> = cases
+                    .iter()
+                    .map(|(k, t)| (*k, format!("b{}", t.block.index())))
+                    .collect();
+                b.switch(
+                    &vals[&value.index()][0],
+                    &format!("b{}", default.block.index()),
+                    &cases,
+                );
+            }
             Term::Fault(k) => {
                 let (name, zeros) = fault_entry(*k).expect("supports checked the kind");
                 let formals = vec!["i64"; zeros].join(", ");
@@ -292,6 +351,59 @@ pub fn emit(
         body: b.finish(),
         decls,
     }
+}
+
+/// Where a block's check blocks stand: the MIR block and how many checks came before.
+struct Seg {
+    block: usize,
+    n: usize,
+}
+
+/// The label of the `n`th piece of MIR block `bb`; the first is the block's own label.
+fn seg_label(bb: usize, n: usize) -> String {
+    if n == 0 {
+        format!("b{bb}")
+    } else {
+        format!("b{bb}.{n}")
+    }
+}
+
+/// How many blocks an op's checks split its block into.
+fn check_splits(op: Op) -> usize {
+    match op {
+        Op::IAddChk | Op::ISubChk | Op::IMulChk | Op::INegChk | Op::SRemChk => 1,
+        Op::SDivChk => 2,
+        _ => 0,
+    }
+}
+
+/// Branches to a block of its own that calls the fault `name` with `args` when `cond` holds, and
+/// continues in a new piece of the current block. The fault call is `noreturn`, so LLVM treats the
+/// branch as unlikely.
+fn fault_if(
+    b: &mut FnBuilder,
+    decls: &mut Vec<(String, String)>,
+    seg: &mut Seg,
+    cond: &Val,
+    name: &str,
+    args: &[Val],
+) {
+    let formals = vec!["i64"; args.len()].join(", ");
+    decls.push((
+        name.to_string(),
+        format!("declare void @\"{name}\"({formals}) cold noreturn"),
+    ));
+    let (fault, next) = (
+        format!("b{}.f{}", seg.block, seg.n),
+        seg_label(seg.block, seg.n + 1),
+    );
+    b.cond_br(cond, &fault, &next);
+    b.label(&fault);
+    let args: Vec<(Val, &str)> = args.iter().map(|a| (a.clone(), "")).collect();
+    b.call(&LTy::Void, "", name, &args);
+    b.unreachable();
+    b.label(&next);
+    seg.n += 1;
 }
 
 /// The runtime entry point of a fault and how many zero `Int` arguments it takes, as the Cranelift
@@ -337,17 +449,32 @@ fn fcc(cc: Cc) -> &'static str {
     }
 }
 
+/// What the instructions of one function share.
+#[derive(Clone, Copy)]
+struct Env<'a> {
+    m: &'a Module,
+    lay: &'a Layouts<'a>,
+    symbol_of: &'a dyn Fn(usize) -> String,
+    vals: &'a Vals,
+    checks: bool,
+}
+
 /// Writes one instruction. Each result leaf takes the name reserved for it in `vals`, which a phi
 /// may already use.
 fn inst_text(
-    m: &Module,
-    lay: &Layouts,
+    env: Env,
     inst: &Inst,
-    symbol_of: &dyn Fn(usize) -> String,
-    vals: &Vals,
     decls: &mut Vec<(String, String)>,
     b: &mut FnBuilder,
+    seg: &mut Seg,
 ) {
+    let Env {
+        m,
+        lay,
+        symbol_of,
+        vals,
+        checks,
+    } = env;
     let arg = |i: usize| vals[&inst.args[i].index()][0].clone();
     let out = inst
         .res
@@ -375,6 +502,69 @@ fn inst_text(
         Op::FMul => drop(b.bin(Bin::FMul, &arg(0), &arg(1))),
         Op::FDiv => drop(b.bin(Bin::FDiv, &arg(0), &arg(1))),
         Op::INeg => drop(b.bin(Bin::Sub, &Val::int(0), &arg(0))),
+        Op::IAddChk | Op::ISubChk | Op::IMulChk | Op::INegChk if !checks => {
+            let (op, x, y) = match inst.op {
+                Op::IAddChk => (Bin::Add, arg(0), arg(1)),
+                Op::ISubChk => (Bin::Sub, arg(0), arg(1)),
+                Op::IMulChk => (Bin::Mul, arg(0), arg(1)),
+                _ => (Bin::Sub, Val::int(0), arg(0)),
+            };
+            drop(b.bin(op, &x, &y));
+        }
+        Op::IAddChk | Op::ISubChk | Op::IMulChk | Op::INegChk => {
+            let (op, x, y) = match inst.op {
+                Op::IAddChk => (Bin::Add, arg(0), arg(1)),
+                Op::ISubChk => (Bin::Sub, arg(0), arg(1)),
+                Op::IMulChk => (Bin::Mul, arg(0), arg(1)),
+                _ => (Bin::Sub, Val::int(0), arg(0)),
+            };
+            let intrinsic = match op {
+                Bin::Add => "llvm.sadd.with.overflow.i64",
+                Bin::Sub => "llvm.ssub.with.overflow.i64",
+                _ => "llvm.smul.with.overflow.i64",
+            };
+            decls.push((
+                intrinsic.to_string(),
+                format!("declare {{ i64, i1 }} @\"{intrinsic}\"(i64, i64)"),
+            ));
+            let (_, of) = b.overflow(op, &x, &y);
+            fault_if(b, decls, seg, &of, "msrt_fault_int_overflow", &[]);
+        }
+        Op::SDivChk => {
+            let (x, y) = (arg(0), arg(1));
+            if checks {
+                let name = b.take_name();
+                let zero = b.icmp("eq", &y, &Val::int(0));
+                fault_if(b, decls, seg, &zero, "msrt_fault_div_zero", &[]);
+                let m1 = b.icmp("eq", &y, &Val::int(-1));
+                let mn = b.icmp("eq", &x, &Val::int(i64::MIN));
+                let both = b.bin(Bin::And, &m1, &mn);
+                fault_if(
+                    b,
+                    decls,
+                    seg,
+                    &both,
+                    "msrt_fault_div_overflow",
+                    &[x.clone(), y.clone()],
+                );
+                b.restore_name(name);
+            }
+            drop(b.bin(Bin::SDiv, &x, &y));
+        }
+        Op::SRemChk => {
+            let (x, y) = (arg(0), arg(1));
+            let name = b.take_name();
+            if checks {
+                let zero = b.icmp("eq", &y, &Val::int(0));
+                fault_if(b, decls, seg, &zero, "msrt_fault_rem_zero", &[]);
+            }
+            // `INT_MIN % -1` is undefined in LLVM; the result is 0, as in the Cranelift lowering.
+            let m1 = b.icmp("eq", &y, &Val::int(-1));
+            let safe = b.select(&m1, &Val::int(1), &y);
+            let r = b.bin(Bin::SRem, &x, &safe);
+            b.restore_name(name);
+            drop(b.select(&m1, &Val::int(0), &r));
+        }
         Op::FNeg => drop(b.fneg(&arg(0))),
         Op::Not => drop(b.bin(Bin::Xor, &arg(0), &Val::byte(1))),
         Op::ICmp | Op::UICmp | Op::FCmp => {
@@ -475,7 +665,7 @@ mod tests {
         let lay = Layouts::new(&m);
         let f = &m.funcs[id.index()];
         assert!(supports(&m, &lay, f));
-        let out = emit(&m, &lay, f, 7, &|_| String::new());
+        let out = emit(&m, &lay, f, 7, true, &|_| String::new());
         assert!(
             out.body.contains(
                 "call void @\"msrt_index_fault\"(i64 0, i64 0), !dbg !7\n  unreachable, !dbg !7"
@@ -485,6 +675,105 @@ mod tests {
         );
         assert!(out.decls.iter().any(|(n, d)| n == "msrt_index_fault"
             && d == "declare void @\"msrt_index_fault\"(i64, i64) cold noreturn"));
+    }
+
+    /// `a + b`, `a / b` and `a % b` with checks: each check branches to a fault block and the rest
+    /// of the block continues in `b0.<k>`; a phi on the join names the last piece.
+    #[test]
+    fn checked_arithmetic_splits_the_block_at_each_check() {
+        let mut m = Module::default();
+        let int = Param {
+            ty: Ty::INT,
+            mode: Mode::Borrow,
+        };
+        let mut b = FuncBuilder::new(&mut m, "arith", vec![int, int], Ty::INT);
+        let (x, y) = (b.params()[0], b.params()[1]);
+        let sum = b.binop(Op::IAddChk, x, y);
+        let quo = b.binop(Op::SDivChk, sum, y);
+        let rem = b.binop(Op::SRemChk, quo, y);
+        let join = b.new_block();
+        let r = b.add_block_param(join, Ty::INT, Mode::Move);
+        b.br(join, &[rem]);
+        b.seal_block(join);
+        b.switch_to(join);
+        b.ret(Some(r));
+        let id = b.finish();
+        let lay = Layouts::new(&m);
+        let f = &m.funcs[id.index()];
+        assert!(supports(&m, &lay, f));
+        let out = emit(&m, &lay, f, 7, true, &|_| String::new());
+        let t = &out.body;
+        assert!(t.contains("%v1 = extractvalue { i64, i1 }"), "{t}");
+        assert!(
+            t.contains("call { i64, i1 } @\"llvm.sadd.with.overflow.i64\"(i64 %a0_0, i64 %a1_0)"),
+            "{t}"
+        );
+        // add (1 check), sdiv (2), srem (1): four pieces after the first.
+        for label in [
+            "b0.f0:", "b0.1:", "b0.f1:", "b0.2:", "b0.f2:", "b0.3:", "b0.f3:", "b0.4:",
+        ] {
+            assert!(t.contains(label), "{label} in {t}");
+        }
+        // The phi's edge leaves from the last piece.
+        assert!(t.contains("[ %v") && t.contains(", %b0.4 ]"), "{t}");
+        assert!(
+            t.contains("call void @\"msrt_fault_div_overflow\"(i64 %v"),
+            "{t}"
+        );
+        assert!(out.decls.iter().any(|(n, _)| n == "msrt_fault_rem_zero"));
+    }
+
+    /// Without checks the same ops are plain wrapping arithmetic and `sdiv` in one block.
+    #[test]
+    fn unchecked_arithmetic_stays_in_one_block() {
+        let mut m = Module::default();
+        let int = Param {
+            ty: Ty::INT,
+            mode: Mode::Borrow,
+        };
+        let mut b = FuncBuilder::new(&mut m, "arith", vec![int, int], Ty::INT);
+        let (x, y) = (b.params()[0], b.params()[1]);
+        let sum = b.binop(Op::IAddChk, x, y);
+        let quo = b.binop(Op::SDivChk, sum, y);
+        b.ret(Some(quo));
+        let id = b.finish();
+        let lay = Layouts::new(&m);
+        let out = emit(&m, &lay, &m.funcs[id.index()], 7, false, &|_| String::new());
+        assert!(out.body.contains("add i64 %a0_0, %a1_0"), "{}", out.body);
+        assert!(out.body.contains("sdiv i64"), "{}", out.body);
+        assert!(!out.body.contains(".f0"), "{}", out.body);
+    }
+
+    /// A switch lists each case once; two cases to one block fall back to the translation.
+    #[test]
+    fn a_switch_is_emitted_when_every_edge_has_its_own_block() {
+        let mut m = Module::default();
+        let int = Param {
+            ty: Ty::INT,
+            mode: Mode::Borrow,
+        };
+        let mut b = FuncBuilder::new(&mut m, "pick", vec![int], Ty::INT);
+        let n = b.params()[0];
+        let (one, two, other) = (b.new_block(), b.new_block(), b.new_block());
+        b.switch(n, &[(1, one), (2, two)], other);
+        for blk in [one, two, other] {
+            b.seal_block(blk);
+            b.switch_to(blk);
+            let k = b.iconst(blk.index() as i64);
+            b.ret(Some(k));
+        }
+        let id = b.finish();
+        let lay = Layouts::new(&m);
+        let f = &m.funcs[id.index()];
+        assert!(supports(&m, &lay, f));
+        let out = emit(&m, &lay, f, 7, true, &|_| String::new());
+        assert!(
+            out.body.contains(
+                "switch i64 %a0_0, label %b3 [ i64 1, label %b1 i64 2, label %b2 ], !dbg !7"
+            ),
+            "{}",
+            out.body
+        );
     }
 
     #[test]
