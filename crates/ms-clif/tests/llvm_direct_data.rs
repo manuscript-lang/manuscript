@@ -359,7 +359,10 @@ pub fn narrow_integers_match_cranelift() {
         let direct = header.contains("%a0_0") || header.contains("dereferenceable");
         assert!(direct, "{f} was translated: {header}");
     }
-    assert!(ir.contains("sext i8 "), "no sign extension of a byte");
+    assert!(
+        ir.contains("i8 signext %a0_0"),
+        "a byte did not cross a call as a signed `i8`"
+    );
     assert_eq!((got.code, &got.stdout), (want.code, &want.stdout));
 }
 
@@ -1039,6 +1042,48 @@ pub fn narrow_unsigned_matches_cranelift() {
     assert_eq!((got.code, &got.stdout), (want.code, &want.stdout));
 }
 
+/// `Float32` is a real `float`: it adds, rounds, converts, sits in a record and an optional, and
+/// crosses a call between directly emitted functions as a `float`.
+const FLOAT32: &str = r#"module "d"
+type Pair { a: float32, b: float32 }
+entry @main
+file 0 "d.ms"
+fn @add32(%a: float32, %b: float32) -> float32 inline(never) !0:1:1 {
+b0:
+  %s: float32 = fadd %a, %b !0:2:1
+  %r: float32 = f32.round %s !0:2:1
+  ret %r
+}
+fn @pair(%a: float32, %b: float32) -> Pair inline(never) !0:3:1 {
+b0:
+  %p: Pair = type.new Pair %a, %b !0:4:1
+  ret %p
+}
+fn @main() -> int !0:10:1 {
+b0:
+  %x: float32 = fconst 0.1 !0:11:1
+  %s: float32 = call @add32(%x, %x) !0:11:1
+  %p: Pair = call @pair(%s, %x) !0:12:1
+  %pa: float32 = type.get Pair.a %p !0:12:1
+  %o: opt<float32> = opt.some %pa !0:13:1
+  %g: float32 = opt.get %o !0:13:1
+  %d: float = conv %g !0:14:1
+  %want: float = fconst 0.20000000298023224 !0:14:1
+  %e0: bool = fcmp.eq %d, %want !0:14:1
+  %n: int = iconst 16777217 !0:15:1
+  %i: float32 = i2f %n !0:15:1
+  %w: float = conv %i !0:15:1
+  %m: float = fconst 16777216.0 !0:15:1
+  %e1: bool = fcmp.eq %w, %m !0:15:1
+  %one: int = iconst 1 !0:16:1
+  %zero: int = iconst 0 !0:16:1
+  %a: int = select %e0, %one, %zero !0:16:1
+  %b: int = select %e1, %one, %zero !0:16:1
+  %r: int = iadd %a, %b !0:16:1
+  ret %r
+}
+"#;
+
 /// A slot of `unit` (a result that holds nothing) is still an address that is written and read.
 const UNIT_SLOT_PROGRAM: &str = r#"module "d"
 entry @main
@@ -1059,6 +1104,22 @@ b0:
   ret %r
 }
 "#;
+
+/// Run from `llvm_direct`'s one test (see above).
+pub fn float32_matches_cranelift() {
+    let Some(opts) = direct() else { return };
+    let want = run_native(FLOAT32, "direct_float32-cranelift");
+    assert_eq!(want.code, 2, "the Cranelift build disagrees");
+    let got = run_llvm(FLOAT32, &opts, "direct_float32");
+    let ir = std::fs::read_to_string("ms-keep.ll").unwrap();
+    let _ = std::fs::remove_file("ms-keep.ll");
+    assert!(ir.contains("fadd float "), "no float addition");
+    assert!(
+        ir.contains("float %a0_0"),
+        "a float did not cross a call as `float`"
+    );
+    assert_eq!((got.code, &got.stdout), (want.code, &want.stdout));
+}
 
 pub fn unit_slot_matches_cranelift() {
     let Some(opts) = direct() else { return };

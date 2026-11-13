@@ -1,9 +1,10 @@
 //! Direct calls between functions emitted from MIR.
 
 use super::attrs::pure_attrs;
-use super::{Area, Cx, Vals, call_ret_ty, leaves, ret_attr, types};
-use crate::abi_llvm::{Pass, Ret, Signature};
-use crate::layout::{Layouts, Leaf};
+use super::types::Abi;
+use super::{Area, Cx, Vals, call_ret_ty, leaves, native_ret_attr, native_ret_ty, ret_attr, types};
+use crate::abi_llvm::{Pass, Reg, Ret, Signature};
+use crate::layout::Layouts;
 use crate::llvm_build::{FnBuilder, Ty as LTy, Types, Val};
 use ms_mir::ir::{ExternDef, ExternRole, Func, Imm, Inst, Mode, Module, Op, Value};
 use ms_mir::types::{Ty, TyKind};
@@ -129,9 +130,12 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         for ((p, a), pass) in callee.params.iter().zip(&inst.args).zip(&sig.passes) {
             match pass {
                 Pass::Scalars(_) => {
-                    let abi = types::abi_leaves(b, lay, p.ty, vals, *a, true);
-                    for (v, (_, at)) in abi.into_iter().zip(leaves(lay, p.ty)) {
-                        args.push((v, at));
+                    let abi = types::abi_leaves(b, lay, p.ty, vals, *a, Abi::Native);
+                    let Pass::Scalars(regs) = pass else {
+                        unreachable!()
+                    };
+                    for ((v, (_, at)), r) in abi.into_iter().zip(leaves(lay, p.ty)).zip(regs) {
+                        args.push((v, native_attr(*r, at)));
                     }
                 }
                 Pass::Indirect(..) => args.push((types::spill(b, lay, p.ty, vals, *a), "")),
@@ -140,12 +144,12 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         cx.decls.push((sym.clone(), sig.declare(&sym, attrs)));
         let ret = match &slot {
             Some(_) => LTy::Void,
-            None => call_ret_ty(lay, callee.ret, true),
+            None => native_ret_ty(lay, callee.ret),
         };
         let attr = if slot.is_some() {
             ""
         } else {
-            ret_attr(lay, callee.ret)
+            native_ret_attr(lay, callee.ret)
         };
         match &slot {
             Some(slot) => {
@@ -167,7 +171,7 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     }
     let mut args: Vec<(Val, &str)> = Vec::new();
     for (p, a) in callee.params.iter().zip(&inst.args) {
-        let abi = types::abi_leaves(b, lay, p.ty, vals, *a, false);
+        let abi = types::abi_leaves(b, lay, p.ty, vals, *a, Abi::Leaf);
         for (v, (_, at)) in abi.into_iter().zip(leaves(lay, p.ty)) {
             args.push((v, at));
         }
@@ -188,6 +192,14 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         &out,
         false,
     );
+}
+
+/// The attribute of an argument in the native convention: a sized integer carries its extension.
+fn native_attr(r: Reg, leaf_attr: &'static str) -> &'static str {
+    match (r, r.extension()) {
+        (Reg::I8, _) | (_, "") => leaf_attr,
+        (_, ext) => ext,
+    }
 }
 
 /// The function a call goes to.
@@ -276,7 +288,7 @@ pub(super) fn leaf_call(
 ) {
     let mut actuals = vec![(first, "")];
     for (p, a) in params.iter().zip(args) {
-        let abi = types::abi_leaves(b, lay, *p, vals, *a, false);
+        let abi = types::abi_leaves(b, lay, *p, vals, *a, Abi::Leaf);
         for (v, (_, at)) in abi.into_iter().zip(leaves(lay, *p)) {
             actuals.push((v, at));
         }
@@ -304,96 +316,22 @@ const OUT: &str = " noalias writeonly";
 /// A call of the runtime function in `inst`: values that pass directly go as leaves, any other as
 /// the address of a copy, and a result that does not pass directly comes back through a hidden last
 /// pointer.
-/// The call of a user's C function `def` with its result in the extended `out`: C leaves the upper
-/// bits of a narrow result undefined, so the result carries no attribute and is extended here.
-fn c_call(cx: &mut Cx, def: &ExternDef, args: &[(Val, &str)], out: &[Val], b: &mut FnBuilder) {
-    let lay = cx.lay;
-    let ret_leaf = lay.leaves(def.ret).first().copied();
-    let ret = match (ret_leaf, out.first()) {
-        (None, _) => LTy::Void,
-        (Some(l), Some(o)) if o.ty == LTy::Ptr => {
-            debug_assert!(l == Leaf::I64);
-            LTy::Ptr
-        }
-        (Some(l), _) => c_leaf(l).0,
-    };
-    let types = b.types();
-    let formals: Vec<String> = args
-        .iter()
-        .map(|(v, a)| format!("{}{a}", types.text(&v.ty)))
-        .collect();
-    cx.decls.push((
-        def.name.clone(),
-        format!(
-            "declare {} @\"{}\"({})",
-            types.text(&ret),
-            def.name,
-            formals.join(", ")
-        ),
-    ));
-    let (Some(l), Some(dst)) = (ret_leaf, out.first()) else {
-        b.call_keep(&ret, "", &def.name, args);
-        return;
-    };
-    if ret == dst.ty {
-        b.name_next(dst);
-        b.call_keep(&ret, "", &def.name, args);
-        return;
-    }
-    let r = b.call_keep(&ret, "", &def.name, args).expect("a result");
-    b.name_next(dst);
-    match (l, &dst.ty) {
-        (Leaf::N8 | Leaf::N16 | Leaf::N32, _) => b.sext(&r, dst.ty.clone()),
-        (Leaf::F32, _) => b.fpext(&r),
-        (_, LTy::I1) => b.trunc(&r, LTy::I1),
-        _ => b.zext(&r, dst.ty.clone()),
-    };
-}
-
-/// A leaf as a C function takes it: sized integers at their own width, extended by the caller,
-/// and a `Float32` as `float`.
-fn c_leaf(l: Leaf) -> (LTy, &'static str) {
-    match l {
-        Leaf::N8 => (LTy::I8, " signext"),
-        Leaf::N16 => (LTy::I16, " signext"),
-        Leaf::N32 => (LTy::I32, " signext"),
-        Leaf::U8 | Leaf::I8 => (LTy::I8, " zeroext"),
-        Leaf::U16 => (LTy::I16, " zeroext"),
-        Leaf::U32 => (LTy::I32, " zeroext"),
-        Leaf::F32 => (LTy::F32, ""),
-        Leaf::F64 => (LTy::F64, ""),
-        Leaf::I64 => (LTy::I64, ""),
-    }
-}
-
-/// The scalar `v`, held as an `i64` or `f64`, as the C type of leaf `l`.
-fn to_c(b: &mut FnBuilder, v: Val, l: Leaf) -> Val {
-    let (ty, _) = c_leaf(l);
-    match (&v.ty, &ty) {
-        (LTy::I64, LTy::I8 | LTy::I16 | LTy::I32) => b.trunc(&v, ty),
-        (LTy::F64, LTy::F32) => b.fptrunc(&v),
-        _ => v,
-    }
-}
-
 fn call_rt(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder) {
     let (m, lay) = (cx.m, cx.lay);
     let Imm::Ext(e) = inst.imm else { return };
     let def = &m.externs[e.index()];
-    let c_shim = m.c_externs.contains(&def.name);
+    // A user `extern fn` follows the C ABI, where a sized number is its own type and the callee
+    // trusts the extension attribute; a runtime function takes and returns the leaf convention's
+    // `i64` and `double`.
+    let c_abi = m.c_externs.contains(&def.name);
+    let abi_kind = if c_abi { Abi::Native } else { Abi::Rt };
     let mut args: Vec<(Val, &str)> = Vec::new();
     for (p, a) in def.params.iter().zip(&inst.args) {
         if passes_directly(lay, p.ty) {
-            let abi = types::abi_leaves(b, lay, p.ty, vals, *a, true);
-            for (v, (l, (_, at))) in abi
-                .into_iter()
-                .zip(lay.leaves(p.ty).into_iter().zip(leaves(lay, p.ty)))
-            {
-                if c_shim {
-                    args.push((to_c(b, v, l), c_leaf(l).1));
-                } else {
-                    args.push((v, at));
-                }
+            let abi = types::abi_leaves(b, lay, p.ty, vals, *a, abi_kind);
+            let regs = crate::abi_llvm::regs_of(lay, p.ty);
+            for ((v, (_, at)), r) in abi.into_iter().zip(leaves(lay, p.ty)).zip(regs) {
+                args.push((v, if c_abi { native_attr(r, at) } else { at }));
             }
         } else {
             let slot = types::spill(b, lay, p.ty, vals, *a);
@@ -405,9 +343,6 @@ fn call_rt(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder
     if let Some(slot) = &slot {
         args.push((slot.clone(), OUT));
     }
-    if c_shim && direct {
-        return c_call(cx, def, &args, out, b);
-    }
     let attrs = crate::llvm_ir::runtime_attrs(&def.name, def.reads);
     let types = b.types();
     let formals: Vec<String> = args
@@ -417,6 +352,9 @@ fn call_rt(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder
     let (ret, attr) = match &slot {
         Some(_) => (LTy::Void, ""),
         None if crate::llvm_ir::returns_fresh_block(&def.name) => (LTy::Ptr, "noalias align 16 "),
+        // A C result has no extension attribute: the callee leaves the bits above a narrow
+        // result undefined, so the held `iN` is the low bits and nothing is trusted.
+        None if c_abi => (native_ret_ty(lay, def.ret), ""),
         None => (call_ret_ty(lay, def.ret, true), ret_attr(lay, def.ret)),
     };
     cx.decls.push((

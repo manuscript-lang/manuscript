@@ -204,6 +204,7 @@ fn zero(t: &LTy) -> Val {
         LTy::I8 => Val::byte(0),
         LTy::I16 | LTy::I32 => Val::new("0", t.clone()),
         LTy::F64 => Val::double(0),
+        LTy::F32 => Val::new("0.0", LTy::F32),
         LTy::Ptr => Val::new("null", LTy::Ptr),
         _ => Val::int(0),
     }
@@ -221,6 +222,8 @@ fn convert(b: &mut FnBuilder, v: &Val, to: &LTy, signed: Option<bool>) -> Val {
         (LTy::I8 | LTy::I16 | LTy::I32, LTy::I64) if signed == Some(true) => b.sext(v, LTy::I64),
         (LTy::I8 | LTy::I16 | LTy::I32, LTy::I64) => b.zext(v, LTy::I64),
         (LTy::I64, LTy::I8 | LTy::I16 | LTy::I32) => b.trunc(v, to.clone()),
+        (LTy::F32, LTy::F64) => b.fpext(v),
+        (LTy::F64, LTy::F32) => b.fptrunc(v),
         (a, t) => unreachable!("no conversion from {a:?} to {t:?}"),
     }
 }
@@ -630,10 +633,10 @@ fn boxed(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder) 
                 let signs = narrow_leaves(lay, *fty);
                 for ((slot, v), signed) in idx.iter().zip(arg(i)).zip(signs) {
                     let at = slot_ptr(b, &block, &p, *slot);
-                    // A narrow integer fills its whole slot, extended as the value is.
+                    // A narrow integer or `float` fills its whole slot, extended as the value is.
                     let (mem, v) = match v.ty {
                         LTy::I1 => (LTy::I8, v.clone()),
-                        LTy::I8 | LTy::I16 | LTy::I32 => {
+                        LTy::I8 | LTy::I16 | LTy::I32 | LTy::F32 => {
                             let slot = slot_ty(block[*slot]);
                             (slot.clone(), convert(b, v, &slot, signed))
                         }

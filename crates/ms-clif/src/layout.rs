@@ -66,6 +66,18 @@ impl Leaf {
             _ => 8,
         }
     }
+
+    /// The memory bytes of the constant list elements `raw` of this leaf: each element's low
+    /// `size()` bytes, except a `Float32`, which is held as `f64` bits and stored as a binary32.
+    pub fn const_bytes(self, raw: &[i64]) -> Vec<u8> {
+        let width = self.size() as usize;
+        raw.iter()
+            .flat_map(|&v| match self {
+                Leaf::F32 => (f64::from_bits(v as u64) as f32).to_le_bytes().to_vec(),
+                _ => v.to_le_bytes()[..width].to_vec(),
+            })
+            .collect()
+    }
 }
 
 /// How an alternative is represented.

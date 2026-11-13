@@ -52,7 +52,7 @@ fn shape_leaves(lay: &Layouts, ty: Ty) -> Option<(Vec<LTy>, crate::layout::MemLa
     if raw.is_empty()
         || raw
             .iter()
-            .any(|l| !matches!(l, Leaf::I64 | Leaf::F64 | Leaf::I8) && !is_narrow(*l))
+            .any(|l| !matches!(l, Leaf::I64 | Leaf::F64 | Leaf::I8 | Leaf::F32) && !is_narrow(*l))
     {
         return None;
     }
@@ -109,7 +109,7 @@ fn indirect(lay: &Layouts, ty: Ty) -> Option<ms_mir::types::TypeId> {
 fn block_ok(lay: &Layouts, r: ms_mir::types::TypeId) -> bool {
     lay.type_block(r)
         .iter()
-        .all(|l| matches!(l, Leaf::I64 | Leaf::F64 | Leaf::I8) || is_narrow(*l))
+        .all(|l| matches!(l, Leaf::I64 | Leaf::F64 | Leaf::I8 | Leaf::F32) || is_narrow(*l))
         && lay.m.type_defs[r.index()]
             .fields
             .iter()
@@ -381,7 +381,20 @@ fn field_span(lay: &Layouts, rty: Ty, i: usize) -> (usize, usize) {
     (at, lay.width(fields[i].1))
 }
 
-/// The leaves of `v` as they cross a call: a type in memory loaded, a boolean as an `i8`, and
+/// The convention the leaves of a call cross in.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum Abi {
+    /// The leaf convention Cranelift shares: each pointer an `i64`, each sized integer an `i64`
+    /// and each `Float32` a `double`.
+    Leaf,
+    /// The C convention of a runtime function: pointers stay `ptr`, but sized integers and
+    /// `Float32` are still widened.
+    Rt,
+    /// Directly emitted functions (`abi_llvm::Signature`): every leaf is the type it is held as.
+    Native,
+}
+
+/// The leaves of `v` as they cross a call: a record in memory loaded, a boolean as an `i8`, and
 /// each pointer as itself in the native convention (`native`) or as its address (`i64`) in the
 /// leaf convention.
 pub(super) fn abi_leaves(
@@ -390,9 +403,9 @@ pub(super) fn abi_leaves(
     ty: Ty,
     vals: &Vals,
     v: Value,
-    native: bool,
+    abi: Abi,
 ) -> Vec<Val> {
-    abi_leaves_of(b, lay, ty, &vals[&v.index()], native)
+    abi_leaves_of(b, lay, ty, &vals[&v.index()], abi)
 }
 
 /// [`abi_leaves`] of the held values `own` of a `ty`.
@@ -401,7 +414,7 @@ pub(super) fn abi_leaves_of(
     lay: &Layouts,
     ty: Ty,
     own: &[Val],
-    native: bool,
+    abi: Abi,
 ) -> Vec<Val> {
     let leaves = if is_mem(lay, ty) {
         let s = shape(b.types(), lay, ty).expect("is_mem checked");
@@ -414,7 +427,9 @@ pub(super) fn abi_leaves_of(
         .into_iter()
         .enumerate()
         .map(|(k, l)| match l.ty {
-            LTy::Ptr if !native => b.ptr_to_int(&l),
+            LTy::Ptr if abi == Abi::Leaf => b.ptr_to_int(&l),
+            LTy::I1 => b.zext(&l, LTy::I8),
+            _ if abi == Abi::Native => l,
             _ => to_abi(b, &l, narrow[k]),
         })
         .collect()
@@ -458,12 +473,14 @@ pub(super) fn store_leaf(b: &mut FnBuilder, v: &Val, mem: &LTy, p: &Val) {
     b.store(&v, p, align(mem));
 }
 
-/// A held value as its memory type `mem`: an `i1` as the byte, an `i64` register of the leaf
-/// convention as a narrow integer, and a pointer or word in a slot of the other kind.
+/// A value as its memory type `mem`: an `i1` as the byte, an `i64` register of the leaf
+/// convention as a narrow integer, a `double` of it as a `float`, and a pointer or word in a slot
+/// of the other kind.
 pub(super) fn to_mem(b: &mut FnBuilder, v: &Val, mem: &LTy) -> Val {
     match (&v.ty, mem) {
         (LTy::I1, _) => b.zext(v, LTy::I8),
         (LTy::I64, LTy::I8 | LTy::I16 | LTy::I32) => b.trunc(v, mem.clone()),
+        (LTy::F64, LTy::F32) => b.fptrunc(v),
         (LTy::I64, LTy::Ptr) => b.inttoptr(v),
         (LTy::Ptr, LTy::I64) => b.ptrtoint(v),
         _ => v.clone(),
@@ -498,6 +515,7 @@ pub(super) fn widen(b: &mut FnBuilder, w: &Val, held: &LTy) -> Val {
 pub(super) fn to_abi(b: &mut FnBuilder, v: &Val, narrow: Option<bool>) -> Val {
     match (&v.ty, narrow) {
         (LTy::I1, _) => b.zext(v, LTy::I8),
+        (LTy::F32, _) => b.fpext(v),
         (LTy::I64, _) => v.clone(),
         (_, Some(true)) => b.sext(v, LTy::I64),
         (_, Some(false)) => b.zext(v, LTy::I64),
@@ -510,7 +528,10 @@ pub(super) fn to_abi(b: &mut FnBuilder, v: &Val, narrow: Option<bool>) -> Val {
 fn arrives_converted(held: &LTy, abi: &LTy) -> bool {
     matches!(
         (held, abi),
-        (LTy::Ptr, LTy::I64) | (LTy::I1, LTy::I8) | (LTy::I8 | LTy::I16 | LTy::I32, LTy::I64)
+        (LTy::Ptr, LTy::I64)
+            | (LTy::I1, LTy::I8)
+            | (LTy::I8 | LTy::I16 | LTy::I32, LTy::I64)
+            | (LTy::F32, LTy::F64)
     )
 }
 
@@ -519,7 +540,7 @@ fn align(t: &LTy) -> u64 {
     match t {
         LTy::I1 | LTy::I8 => 1,
         LTy::I16 => 2,
-        LTy::I32 => 4,
+        LTy::I32 | LTy::F32 => 4,
         _ => 8,
     }
 }
@@ -577,11 +598,7 @@ pub(super) fn emit_entry(b: &mut FnBuilder, lay: &Layouts, entry: Vec<Entry>) {
         match e {
             Entry::Conv { held, abi } => {
                 b.name_next(&held);
-                if held.ty == LTy::Ptr {
-                    b.int_to_ptr(&abi);
-                } else {
-                    b.trunc(&abi, held.ty.clone());
-                }
+                from_abi(b, &abi, &held.ty);
             }
             Entry::Mem { slot, abi, ty } => {
                 let s = shape(b.types(), lay, ty).expect("is_mem checked");
@@ -1063,11 +1080,18 @@ pub(super) fn name_leaves(b: &mut FnBuilder, r: Val, out: &[Val], _native: bool)
             b.extract(&r, k)
         };
         b.name_next(dst);
-        match (&dst.ty, same) {
-            (_, true) => unreachable!("a single leaf that matches needs no conversion"),
-            (LTy::Ptr, _) => drop(b.int_to_ptr(&word)),
-            (t, _) => drop(b.trunc(&word, t.clone())),
-        }
+        assert!(!same, "a single leaf that matches needs no conversion");
+        from_abi(b, &word, &dst.ty);
+    }
+}
+
+/// A leaf that arrived in the leaf convention as the type it is held as: an address as a `ptr`, a
+/// `double` as a `float`, an `i64` or byte as the narrower integer.
+fn from_abi(b: &mut FnBuilder, v: &Val, held: &LTy) -> Val {
+    match held {
+        LTy::Ptr => b.int_to_ptr(v),
+        LTy::F32 => b.fptrunc(v),
+        _ => b.trunc(v, held.clone()),
     }
 }
 
@@ -1081,7 +1105,8 @@ fn ret_leaf_types(ret: &LTy, n: usize) -> Vec<LTy> {
 }
 
 /// Whether a leaf of a call result is held as another type than it comes back as: a boolean as a
-/// byte, a pointer as an address in the leaf convention, a narrow integer as an `i64`.
+/// byte, a pointer as an address in the leaf convention, a narrow integer as an `i64`, a
+/// `Float32` as a `double`.
 pub(super) fn ret_needs_conversion(ret: &LTy, out: &[Val]) -> bool {
     ret_leaf_types(ret, out.len())
         .iter()
@@ -1125,7 +1150,7 @@ pub(super) fn spill_of(b: &mut FnBuilder, lay: &Layouts, ty: Ty, own: &[Val]) ->
     if is_mem(lay, ty) {
         return own[0].clone();
     }
-    let leaves = abi_leaves_of(b, lay, ty, own, true);
+    let leaves = abi_leaves_of(b, lay, ty, own, Abi::Native);
     let st = super::aggregate(b.types(), lay, ty);
     let slot = b.alloca(&st);
     store_regs(b, lay, ty, &st, &slot, &leaves);
@@ -1154,7 +1179,7 @@ pub(super) fn store_result(
         b.copy_bytes(sret, &vals[&v.index()][0], s.size as u64, s.align as u64);
         return;
     }
-    let leaves = abi_leaves(b, lay, ty, vals, v, true);
+    let leaves = abi_leaves(b, lay, ty, vals, v, Abi::Native);
     let st = super::aggregate(b.types(), lay, ty);
     store_regs(b, lay, ty, &st, sret, &leaves);
 }
