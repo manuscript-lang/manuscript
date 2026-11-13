@@ -127,11 +127,3 @@ fn builtins() -> Option<PathBuf> {
     );
     Some(if done { stripped } else { rlib })
 }
-
-/// Held while a test builds with `keep_ll`: every build writes `ms-keep.ll` in the working
-/// directory, so two such tests running together would read each other's IR.
-#[allow(
-    dead_code,
-    reason = "test crates sharing this module use different helpers"
-)]
-pub static KEPT_IR: std::sync::Mutex<()> = std::sync::Mutex::new(());

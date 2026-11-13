@@ -177,9 +177,9 @@ fn string_bytes() {
 /// One test, not three: each build writes `ms-keep.ll` in the working directory.
 #[test]
 fn direct_lists_and_strings_match_cranelift() {
-    let _kept = support::KEPT_IR.lock().unwrap_or_else(|e| e.into_inner());
     list_reads_and_writes();
     a_bad_list_index_faults();
     string_bytes();
+    crate::llvm_direct_data::optionals_and_alternatives_match_cranelift();
     let _ = std::fs::remove_file("ms-keep.ll");
 }
