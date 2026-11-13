@@ -392,12 +392,15 @@ impl Cx {
         let mut f = ms_mir::ir::Func::new(&name, params, ret);
         // The checker keeps a `var` argument from overlapping any other argument.
         f.noalias = vars.iter().map(|&i| i as u32).collect();
-        // The checker found every result a reference into the arguments.
+        // The checker found every result a reference into the arguments. An optional that holds
+        // its payload in a heap block cannot be a view (`opt.view` of a boxed optional), so that
+        // instance returns a copy the caller owns; the checker still treats the call as a borrow,
+        // which a copy of an unchanged value cannot be told apart from.
         f.ret_borrowed = self.fact(
             c.module.file,
             c.id(),
             ms_check::api::ownership::Fact::ReturnsBorrow,
-        );
+        ) && !m.opt_inner(ret).is_some_and(|inner| m.opt_is_boxed(inner));
         // The checker found the result an interface view of the arguments: owned, dropped by
         // the caller, held as a borrow of the arguments while it lives.
         f.ret_view = self.fact(
@@ -767,7 +770,7 @@ impl<'a> FnLower<'a> {
     }
 
     /// The declared result type (without the `var` parameters a function hands back).
-    /// Whether this function returns a borrowing variant: some cases of its `Result` lend from the
+    /// Whether this function returns a borrowing variant: some cases of its `Result` borrow from the
     /// arguments and the others are owned.
     pub fn ret_borrowing(&self) -> bool {
         matches!(self.b.m.types.kind(self.ret_ty),
@@ -1822,7 +1825,7 @@ impl<'a> FnLower<'a> {
         }
     }
 
-    /// A forwarded Result may lend a case this function must own (an implicit close can
+    /// A forwarded Result may borrow a case this function must own (an implicit close can
     /// return a fresh Error). Move owned cases and copy only newly-owned borrowed payloads.
     fn result_return(&mut self, x: Val) -> Val {
         if self.b.func_mut().ret_borrowed {

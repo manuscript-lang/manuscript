@@ -1,6 +1,6 @@
 //! Strings and lists: the length leaf, element reads and writes, and string bytes.
 
-use super::{Area, Cx, Vals, block_label, held_leaves, mem_leaves};
+use super::{Area, Cx, Vals, block_label, held_leaves, mem_leaves, signed_leaves};
 use crate::layout::{Layouts, Leaf, mem_layout};
 use crate::llvm_build::{Bin, FnBuilder, Meta, Range, Tbaa, Ty as LTy, Val};
 use ms_mir::ir::{Func, Imm, Inst, Module, Op};
@@ -251,25 +251,9 @@ fn list_access(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     }
 }
 
-/// The types the leaves of an element have in memory: those of the registers, except that a
-/// narrow integer or `Float32` is as narrow as it is stored.
-fn elem_mem_tys(lay: &Layouts, elem: Ty) -> Vec<LTy> {
-    let mut tys = mem_leaves(lay, elem);
-    for (t, l) in tys.iter_mut().zip(lay.leaves(elem)) {
-        match l {
-            Leaf::N8 | Leaf::U8 => *t = LTy::I8,
-            Leaf::N16 | Leaf::U16 => *t = LTy::I16,
-            Leaf::N32 | Leaf::U32 => *t = LTy::I32,
-            Leaf::F32 => *t = LTy::F32,
-            _ => {}
-        }
-    }
-    tys
-}
-
 /// The LLVM type of one element in a list block.
 fn elem_whole(types: &crate::llvm_build::Types, lay: &Layouts, elem: Ty) -> LTy {
-    let tys = elem_mem_tys(lay, elem);
+    let tys = mem_leaves(lay, elem);
     match tys.as_slice() {
         [one] => one.clone(),
         _ => super::aggregate(types, lay, elem),
@@ -294,9 +278,9 @@ fn load_at(
         super::records::load_value(b, cx.lay, elem, at, out);
         return out.to_vec();
     }
-    let tys = elem_mem_tys(cx.lay, elem);
+    let tys = mem_leaves(cx.lay, elem);
     let held = held_leaves(cx.lay, elem);
-    let leaves = cx.lay.leaves(elem);
+    let signed = signed_leaves(cx.lay, elem);
     let mut got = Vec::new();
     for (k, t) in tys.iter().enumerate() {
         let to = if tys.len() == 1 {
@@ -312,32 +296,14 @@ fn load_at(
                 b.name_next(d);
             }
         };
-        let v = match leaves[k] {
-            Leaf::N8 | Leaf::N16 | Leaf::N32 => {
-                let w = b.load_with(t, &to, align, meta);
-                named(b);
-                b.sext(&w, LTy::I64)
-            }
-            Leaf::U8 | Leaf::U16 | Leaf::U32 => {
-                let w = b.load_with(t, &to, align, meta);
-                named(b);
-                b.zext(&w, LTy::I64)
-            }
-            Leaf::F32 => {
-                let w = b.load_with(t, &to, align, meta);
-                named(b);
-                b.fpext(&w)
-            }
-            // A boolean element is a byte in memory.
-            _ if held[k] == LTy::I1 => {
-                let w = b.load_with(t, &to, align, meta);
-                named(b);
-                b.trunc(&w, LTy::I1)
-            }
-            _ => {
-                named(b);
-                b.load_with(t, &to, align, meta)
-            }
+        // A boolean is a byte in memory and a narrow integer its own width.
+        let v = if *t == held[k] {
+            named(b);
+            b.load_with(t, &to, align, meta)
+        } else {
+            let w = b.load_with(t, &to, align, meta);
+            named(b);
+            super::records::widen(b, &w, &held[k], signed[k])
         };
         got.push(v);
     }
@@ -351,22 +317,14 @@ fn store_at(cx: &Cx, b: &mut FnBuilder, elem: Ty, whole: &LTy, at: &Val, vs: &[V
         b.copy_bytes(at, &vs[0], size, align);
         return;
     }
-    let tys = elem_mem_tys(cx.lay, elem);
-    let leaves = cx.lay.leaves(elem);
+    let tys = mem_leaves(cx.lay, elem);
     for (k, (t, v)) in tys.iter().zip(vs).enumerate() {
         let to = if tys.len() == 1 {
             at.clone()
         } else {
             b.field_ptr(whole, at, k)
         };
-        let v = match leaves[k] {
-            Leaf::N8 | Leaf::N16 | Leaf::N32 | Leaf::U8 | Leaf::U16 | Leaf::U32 => {
-                b.trunc(v, t.clone())
-            }
-            Leaf::F32 => b.fptrunc(v),
-            _ if v.ty == LTy::I1 => b.zext(v, LTy::I8),
-            _ => v.clone(),
-        };
+        let v = super::records::to_mem(b, v, t);
         let align = b.types().size_align(t).1;
         b.store_with(&v, &to, align, elem_meta(cx.m.types.kind(elem), k));
     }
@@ -726,13 +684,7 @@ pub(super) fn consts(m: &Module, lay: &Layouts, f: &Func) -> Vec<(String, String
                 (
                     format!("ms.direct.list.{i}"),
                     raw.iter()
-                        .flat_map(|v| {
-                            if lay.leaves(e)[0] == Leaf::F32 {
-                                (f64::from_bits(*v as u64) as f32).to_le_bytes().to_vec()
-                            } else {
-                                v.to_le_bytes()[..width].to_vec()
-                            }
-                        })
+                        .flat_map(|v| v.to_le_bytes()[..width].to_vec())
                         .collect(),
                 )
             };
@@ -771,17 +723,12 @@ pub(super) fn consts(m: &Module, lay: &Layouts, f: &Func) -> Vec<(String, String
     out
 }
 
-/// Whether an element can sit in a list block: leaves that are `i64`, `double`, `i8` or a single
-/// narrow integer or `Float32`, which are as wide in memory as they are narrow, or a record held
-/// in memory.
+/// Whether an element can sit in a list block: leaves that are `i64`, `double`, `i8` or narrow
+/// integers, or a record held in memory.
 fn plain_elem(lay: &Layouts, e: Ty) -> bool {
-    let leaves = lay.leaves(e);
     (super::records::is_mem(lay, e) && super::records::shape_ok(lay, e))
-        || leaves
+        || lay
+            .leaves(e)
             .iter()
-            .all(|l| matches!(l, Leaf::I64 | Leaf::F64 | Leaf::I8))
-        || matches!(
-            leaves.as_slice(),
-            [Leaf::N8 | Leaf::N16 | Leaf::N32 | Leaf::U8 | Leaf::U16 | Leaf::U32 | Leaf::F32]
-        )
+            .all(|l| matches!(l, Leaf::I64 | Leaf::F64 | Leaf::I8) || super::records::is_narrow(*l))
 }

@@ -118,7 +118,6 @@ msrt_list_drop(v: *mut VecVal, d: ElemDesc) @domain=collection @leaf
 msrt_list_drop_n(v: *const VecVal, d: ElemDesc, count: i64, out: *mut VecVal) @domain=collection @leaf
 msrt_list_extend(v: *mut VecVal, d: ElemDesc, other: *mut VecVal) @domain=collection @leaf
 msrt_list_fill(v: *mut VecVal, d: ElemDesc, value: *const u8, start: i64, end: i64) @domain=collection @leaf
-msrt_list_first(v: *const VecVal, d: ElemDesc, out: *mut u8) -> u8 @domain=collection @leaf
 msrt_list_flatten(lists: *const VecVal, d: ElemDesc, out: *mut VecVal) @domain=collection @leaf
 msrt_list_free_raw(v: *mut VecVal) @domain=collection @leaf
 msrt_list_get(v: *const VecVal, d: ElemDesc, index: i64, default: *const u8, out: *mut u8) @domain=collection @leaf
@@ -127,7 +126,6 @@ msrt_list_index_of(v: *const VecVal, d: ElemDesc, probe: *const u8, out: *mut i6
 msrt_list_insert(v: *mut VecVal, d: ElemDesc, index: i64, e: *const u8) @domain=collection @leaf
 msrt_list_insert_copy(v: *mut VecVal, d: ElemDesc, index: i64, e: *const u8) @domain=collection @leaf
 msrt_list_keys(v: *const VecVal, out: *mut VecVal) @domain=collection @leaf
-msrt_list_last(v: *const VecVal, d: ElemDesc, out: *mut u8) -> u8 @domain=collection @leaf
 msrt_list_last_index_of(v: *const VecVal, d: ElemDesc, probe: *const u8, out: *mut i64) -> u8 @domain=collection @leaf
 msrt_list_new(out: *mut VecVal) @domain=collection @leaf
 msrt_list_pieces(v: *const VecVal, d: ElemDesc, od: *const TypeDesc, size: i64, step: i64, short_last: u8, out: *mut VecVal) @domain=collection @leaf

@@ -34,8 +34,9 @@ fn unique_receiver_cannot_be_kept_beside_passthrough_result() {
         let got = diagnostics(body);
         assert!(!got.is_empty(), "unique receiver accepted: {body}");
         assert!(
-            got.iter()
-                .any(|d| d.contains("cannot") || d.contains("would take")),
+            got.iter().any(|d| d.contains("cannot")
+                || d.contains("would take")
+                || d.contains("would keep")),
             "{got:?}"
         );
     }
@@ -87,8 +88,9 @@ fn preserved_payloads_cannot_be_duplicated() {
     ] {
         let got = diagnostics(body);
         assert!(
-            got.iter()
-                .any(|d| d.contains("cannot") || d.contains("would take")),
+            got.iter().any(|d| d.contains("cannot")
+                || d.contains("would take")
+                || d.contains("would keep")),
             "{body}: {got:?}"
         );
     }

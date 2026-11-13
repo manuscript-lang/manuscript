@@ -475,18 +475,6 @@ impl<'t> FnBuilder<'t> {
         self.def(to, rhs)
     }
 
-    /// A `float` widened to `double`.
-    pub fn fpext(&mut self, v: &Val) -> Val {
-        assert_eq!(v.ty, Ty::F32);
-        self.def(Ty::F64, format!("fpext float {} to double", v.text))
-    }
-
-    /// A `double` narrowed to `float`.
-    pub fn fptrunc(&mut self, v: &Val) -> Val {
-        assert_eq!(v.ty, Ty::F64);
-        self.def(Ty::F32, format!("fptrunc double {} to float", v.text))
-    }
-
     /// An `i64` address as a `ptr`.
     pub fn inttoptr(&mut self, v: &Val) -> Val {
         assert_eq!(v.ty, Ty::I64);
