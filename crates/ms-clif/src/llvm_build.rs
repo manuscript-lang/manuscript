@@ -239,6 +239,62 @@ impl Types {
         panic!("field {idx} out of range")
     }
 
+    /// How many scalar leaves `ty` holds: a struct's are those of its fields in order.
+    pub fn leaf_count(&self, ty: &Ty) -> usize {
+        match ty {
+            Ty::Struct(_) | Ty::Tuple(_) => {
+                self.fields_of(ty).iter().map(|f| self.leaf_count(f)).sum()
+            }
+            _ => 1,
+        }
+    }
+
+    /// The field indices that reach scalar leaf `leaf` of `ty`, outermost first.
+    pub fn leaf_path(&self, ty: &Ty, mut leaf: usize) -> Vec<usize> {
+        let mut path = Vec::new();
+        let mut cur = ty.clone();
+        while matches!(cur, Ty::Struct(_) | Ty::Tuple(_)) {
+            let fields = self.fields_of(&cur);
+            let (k, f, rest) = fields
+                .iter()
+                .enumerate()
+                .scan(leaf, |left, (k, f)| {
+                    let n = self.leaf_count(f);
+                    let hit = *left < n;
+                    let rest = *left;
+                    *left = left.saturating_sub(n);
+                    Some((k, f, hit.then_some(rest)))
+                })
+                .find_map(|(k, f, r)| r.map(|r| (k, f, r)))
+                .expect("leaf out of range");
+            path.push(k);
+            leaf = rest;
+            cur = f.clone();
+        }
+        path
+    }
+
+    /// Byte offset of each scalar leaf of `ty` under LLVM's layout rules.
+    pub fn leaf_offsets(&self, ty: &Ty) -> Vec<u64> {
+        let mut out = Vec::new();
+        self.collect_offsets(ty, 0, &mut out);
+        out
+    }
+
+    fn collect_offsets(&self, ty: &Ty, base: u64, out: &mut Vec<u64>) {
+        if !matches!(ty, Ty::Struct(_) | Ty::Tuple(_)) {
+            out.push(base);
+            return;
+        }
+        let mut off = 0u64;
+        for f in &self.fields_of(ty) {
+            let (s, a) = self.size_align(f);
+            off = off.div_ceil(a) * a;
+            self.collect_offsets(f, base + off, out);
+            off += s;
+        }
+    }
+
     fn field(&self, ty: &Ty, idx: usize) -> Ty {
         self.fields_of(ty)[idx].clone()
     }
@@ -536,6 +592,22 @@ impl<'t> FnBuilder<'t> {
             Ty::Ptr,
             format!(
                 "getelementptr inbounds {}, ptr {}, i32 0, i32 {idx}",
+                self.ty(ty),
+                base.text
+            ),
+        )
+    }
+
+    /// `ptr` to scalar leaf `leaf` of a struct of type `ty` at `base`, reached through the
+    /// struct's nested fields by field index: one `getelementptr` with a path of indices.
+    pub fn leaf_ptr(&mut self, ty: &Ty, base: &Val, leaf: usize) -> Val {
+        assert_eq!(base.ty, Ty::Ptr);
+        let path = self.types.leaf_path(ty, leaf);
+        let idx: String = path.iter().map(|k| format!(", i32 {k}")).collect();
+        self.def(
+            Ty::Ptr,
+            format!(
+                "getelementptr inbounds {}, ptr {}, i32 0{idx}",
                 self.ty(ty),
                 base.text
             ),

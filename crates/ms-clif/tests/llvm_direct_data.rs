@@ -398,3 +398,52 @@ pub fn narrow_record_fields_match_cranelift() {
     assert!(ir.contains("load i16"), "no two byte load");
     assert_eq!((got.code, &got.stdout), (want.code, &want.stdout));
 }
+
+/// A record in memory is a struct of its fields: a record field is a nested struct reached by field
+/// indices, not a run of leaf slots.
+const NESTED_RECORD: &str = r#"module "d"
+record Pair { a: int8, b: int }
+record Outer { p: Pair, c: int32, d: int, e: int, f: int, g: int, h: int, i: int }
+entry @main
+file 0 "d.ms"
+fn @mk(%p: Pair, %c: int32, %n: int) -> Outer inline(never) !0:1:1 {
+b0:
+  %w: Outer = rec.new Outer %p, %c, %n, %n, %n, %n, %n, %n !0:2:1
+  ret %w
+}
+fn @sum(%w: Outer) -> int inline(never) !0:3:1 {
+b0:
+  %p: Pair = rec.get Outer.p %w !0:4:1
+  %b: int = rec.get Pair.b %p !0:4:1
+  %d: int = rec.get Outer.d %w !0:4:1
+  %s: int = iadd %b, %d !0:4:1
+  ret %s
+}
+fn @main() -> int !0:20:1 {
+b0:
+  %n: int = iconst 7 !0:21:1
+  %o8: opt<int8> = inarrow.opt %n !0:21:1
+  %a: int8 = opt.get %o8 !0:21:1
+  %p: Pair = rec.new Pair %a, %n !0:21:1
+  %oc: opt<int32> = inarrow.opt %n !0:21:1
+  %c: int32 = opt.get %oc !0:21:1
+  %w: Outer = call @mk(%p, %c, %n) !0:22:1
+  %r: int = call @sum(%w) !0:23:1
+  ret %r
+}
+"#;
+
+#[test]
+pub fn nested_record_is_a_struct_of_structs() {
+    let Some(opts) = direct() else { return };
+    let want = run_native(NESTED_RECORD, "direct_nested_record-cranelift");
+    assert_eq!(want.code, 14, "the Cranelift build disagrees");
+    let got = run_llvm(NESTED_RECORD, &opts, "direct_nested_record");
+    let ir = std::fs::read_to_string("ms-keep.ll").unwrap();
+    let _ = std::fs::remove_file("ms-keep.ll");
+    assert!(
+        ir.contains("%\"ms.rec.Outer\" = type { %\"ms.rec.Pair\", i32, i64"),
+        "{ir}"
+    );
+    assert_eq!((got.code, &got.stdout), (want.code, &want.stdout));
+}
