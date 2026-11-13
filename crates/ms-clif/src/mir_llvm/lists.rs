@@ -3,7 +3,7 @@
 use super::{Area, Cx, Vals, block_label, held_leaves, mem_leaves, signed_leaves};
 use crate::layout::{Layouts, Leaf, mem_layout};
 use crate::llvm_build::{Bin, FnBuilder, Meta, Range, Tbaa, Ty as LTy, Val};
-use ms_mir::ir::{Func, Imm, Inst, Module, Op};
+use ms_mir::ir::{FaultKind, Func, Imm, Inst, Module, Op, Term};
 use ms_mir::types::{Ty, TyKind};
 use ms_rt_abi::STR_STATIC;
 
@@ -687,29 +687,38 @@ pub(super) fn consts(m: &Module, lay: &Layouts, f: &Func) -> Vec<(String, String
             }
             continue;
         }
-        let (Op::StrLit, Imm::Str(id)) = (inst.op, inst.imm) else {
-            continue;
-        };
-        let name = format!("ms.lit.{}", id.0);
-        if out.iter().any(|(n, _)| *n == name) {
-            continue;
+        if let (Op::StrLit, Imm::Str(id)) = (inst.op, inst.imm) {
+            string_const(m, id.0, &mut out);
         }
-        let mut text = String::new();
-        let bytes = m.strings[id.0 as usize].as_bytes();
-        for &b in bytes.iter().chain(&[0u8]) {
-            if (0x20..0x7f).contains(&b) && b != b'"' && b != b'\\' {
-                text.push(b as char);
-            } else {
-                text.push_str(&format!("\\{b:02X}"));
-            }
+    }
+    for bd in &f.blocks {
+        if let Term::Fault(FaultKind::Message(id)) = bd.term {
+            string_const(m, id.0, &mut out);
         }
-        let def = format!(
-            "@\"{name}\" = private unnamed_addr constant [{} x i8] c\"{text}\", align 16",
-            bytes.len() + 1
-        );
-        out.push((name, def));
     }
     out
+}
+
+/// Adds the constant for string literal `id` unless `out` has it.
+fn string_const(m: &Module, id: u32, out: &mut Vec<(String, String)>) {
+    let name = format!("ms.lit.{id}");
+    if out.iter().any(|(n, _)| *n == name) {
+        return;
+    }
+    let mut text = String::new();
+    let bytes = m.strings[id as usize].as_bytes();
+    for &b in bytes.iter().chain(&[0u8]) {
+        if (0x20..0x7f).contains(&b) && b != b'"' && b != b'\\' {
+            text.push(b as char);
+        } else {
+            text.push_str(&format!("\\{b:02X}"));
+        }
+    }
+    let def = format!(
+        "@\"{name}\" = private unnamed_addr constant [{} x i8] c\"{text}\", align 16",
+        bytes.len() + 1
+    );
+    out.push((name, def));
 }
 
 /// Whether an element can sit in a list block: leaves that are `i64`, `double`, `i8` or narrow

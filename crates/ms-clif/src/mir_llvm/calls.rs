@@ -3,7 +3,7 @@
 use super::attrs::pure_attrs;
 use super::{Area, Cx, Vals, call_ret_ty, leaves, records, ret_attr};
 use crate::abi_llvm::{Pass, Ret, Signature};
-use crate::layout::Layouts;
+use crate::layout::{Layouts, Leaf};
 use crate::llvm_build::{FnBuilder, Ty as LTy, Types, Val};
 use ms_mir::ir::{ExternDef, ExternRole, Func, Imm, Inst, Mode, Module, Op, Value};
 use ms_mir::types::{Ty, TyKind};
@@ -89,7 +89,14 @@ fn passes_directly(lay: &Layouts, t: Ty) -> bool {
 /// a guarded or constant case.
 fn extern_ok(m: &Module, lay: &Layouts, def: &ExternDef) -> bool {
     let crosses = |t: Ty| passes_directly(lay, t) || records::shape_ok(lay, t);
-    !m.c_externs.contains(&def.name)
+    // A C extern (a user's `extern fn`) follows the C convention, which matches the runtime's
+    // only for `i64` and `double` leaves; sized numbers and `Float32` need their C widths.
+    let c_ok = |t: Ty| {
+        lay.leaves(t)
+            .iter()
+            .all(|l| matches!(l, Leaf::I64 | Leaf::F64))
+    };
+    (!m.c_externs.contains(&def.name) || def.params.iter().all(|p| c_ok(p.ty)) && c_ok(def.ret))
         && def.role != ExternRole::MapNew
         && def
             .params

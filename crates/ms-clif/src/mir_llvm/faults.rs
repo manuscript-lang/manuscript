@@ -4,8 +4,8 @@ use super::Cx;
 use crate::llvm_build::{FnBuilder, Ty as LTy, Val};
 use ms_mir::ir::FaultKind;
 
-/// The runtime function that reports `kind`, with the arguments it takes (`None` when the
-/// direct emitter does not write this fault: a message needs a string literal).
+/// The runtime function that reports `kind`, with the arguments it takes (`None` for a message,
+/// which `terminator` writes, and for `Unreachable`).
 fn runtime_fn(kind: FaultKind) -> Option<(&'static str, usize)> {
     Some(match kind {
         FaultKind::IntOverflow => ("msrt_fault_int_overflow", 0),
@@ -20,7 +20,7 @@ fn runtime_fn(kind: FaultKind) -> Option<(&'static str, usize)> {
 
 /// Whether a `Fault` terminator of this kind is written directly.
 pub(super) fn terminator_ok(kind: FaultKind) -> bool {
-    runtime_fn(kind).is_some()
+    matches!(kind, FaultKind::Message(_)) || runtime_fn(kind).is_some()
 }
 
 /// Calls the runtime function `name` (which takes `args` i64 words and never returns) and ends the
@@ -34,6 +34,15 @@ pub(super) fn call(cx: &mut Cx, b: &mut FnBuilder, name: &'static str, args: &[V
 
 /// The body of a `Fault` terminator.
 pub(super) fn terminator(cx: &mut Cx, b: &mut FnBuilder, kind: FaultKind) {
+    // A message fault passes the literal's address and length (`lists::consts` defines the bytes).
+    if let FaultKind::Message(id) = kind {
+        let ptr = Val::new(
+            format!("ptrtoint (ptr @\"ms.lit.{}\" to i64)", id.0),
+            LTy::I64,
+        );
+        let len = Val::int(cx.m.strings[id.index()].len() as i64);
+        return call(cx, b, "msrt_fault", &[ptr, len]);
+    }
     let (name, words) = runtime_fn(kind).expect("terminator_ok checked the kind");
     call(cx, b, name, &vec![Val::int(0); words]);
 }
