@@ -832,11 +832,11 @@ pub(super) fn call_result(b: &mut FnBuilder, lay: &Layouts, ty: Ty, r: Val, out:
 
 /// Defines the held values `out` of a result that came back in the leaf convention, as the call's
 /// own result `r` (one leaf, or a tuple of several): a boolean comes back as a byte and a pointer
-/// (in the leaf convention) as an address, and each is converted; every other leaf is the call's
+/// (in the leaf convention, not the native one) as an address, and each is converted; every other leaf is the call's
 /// result itself under its reserved name.
-pub(super) fn name_leaves(b: &mut FnBuilder, r: Val, out: &[Val]) {
+pub(super) fn name_leaves(b: &mut FnBuilder, r: Val, out: &[Val], native: bool) {
     for (k, dst) in out.iter().enumerate() {
-        let converted = matches!(dst.ty, LTy::I1 | LTy::Ptr);
+        let converted = dst.ty == LTy::I1 || (!native && dst.ty == LTy::Ptr);
         let word = if out.len() == 1 {
             r.clone()
         } else if converted {
