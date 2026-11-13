@@ -11,22 +11,27 @@ use super::{Area, Cx, Vals, held_leaves, narrow_leaves, records};
 use crate::layout::Layouts;
 use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Val};
 use ms_mir::ir::{Func, Imm, Inst, Module, Op};
-use ms_mir::types::{Ty, TyKind};
+use ms_mir::types::{AltId, Ty, TyKind};
 
 pub(super) const AREA: Area = Area {
     handles,
     ty_ok,
     inst_ok,
-    pure_op: handles,
+    pure_op,
     pre,
     emit,
-    ..Area::NONE
+    splits,
 };
 
 /// Any optional or enum travels as its leaves, so it is fine as a value; the ops below reject the
 /// ones that live behind a pointer.
 fn ty_ok(k: &TyKind) -> bool {
     matches!(k, TyKind::Opt(_) | TyKind::Alt(_))
+}
+
+/// Releasing a payload may drop it, which runs glue: those ops touch memory.
+fn pure_op(op: Op) -> bool {
+    handles(op) && !matches!(op, Op::AltRelease | Op::AltUnbox)
 }
 
 fn handles(op: Op) -> bool {
@@ -127,22 +132,8 @@ fn subject(f: &Func, inst: &Inst) -> Ty {
     }
 }
 
-fn inst_ok(m: &Module, lay: &Layouts, f: &Func, inst: &Inst) -> bool {
-    if !plain(lay, subject(f, inst)) {
-        return false;
-    }
-    // Payload fields that are neither moved out nor kept would be dropped, which needs glue.
-    let droppable = |a, c, keep: Option<u32>, mask: u32| {
-        lay.alt_fields(a)[c as usize]
-            .iter()
-            .enumerate()
-            .all(|(k, (t, _))| mask >> k & 1 == 1 || keep == Some(k as u32) || !m.needs_drop(*t))
-    };
-    match (inst.op, inst.imm) {
-        (Op::AltRelease, Imm::AltMask(a, c, mask)) => droppable(a, c, None, mask),
-        (Op::AltUnbox, Imm::AltField(a, c, i)) => droppable(a, c, Some(i), 0),
-        _ => true,
-    }
+fn inst_ok(_: &Module, lay: &Layouts, f: &Func, inst: &Inst) -> bool {
+    plain(lay, subject(f, inst))
 }
 
 /// The leaves a payload read or write moves between a field and the enum's slots: for each
@@ -246,6 +237,7 @@ fn pre(
 /// presence of a niche optional, which is present unless its first leaf is null (a string also
 /// has the static tag: an inline string may have a zero first word, but never that tag).
 fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
+    release(cx, inst, vals, b);
     let Some(res) = inst.res else { return };
     let out = &vals[&res.index()];
     if inst.op == Op::OptIsSome && opt_repr(cx.lay, cx.f.ty(inst.args[0])) != OptRepr::Tagged {
@@ -267,5 +259,55 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
             b.name_next(&out[i]);
             convert(b, &src, &out[i].ty, signed);
         }
+    }
+}
+
+/// The case, kept field and moved-out mask of an op that drops payload fields.
+fn released(inst: &Inst) -> Option<(AltId, u32, Option<u32>, u32)> {
+    match (inst.op, inst.imm) {
+        (Op::AltRelease, Imm::AltMask(a, c, mask)) => Some((a, c, None, mask)),
+        (Op::AltUnbox, Imm::AltField(a, c, i)) => Some((a, c, Some(i), 0)),
+        _ => None,
+    }
+}
+
+/// The payload fields `released` drops: those that need it and were neither moved out nor kept.
+fn dropped(m: &Module, lay: &Layouts, inst: &Inst) -> Vec<(Ty, Vec<usize>)> {
+    let Some((a, c, keep, mask)) = released(inst) else {
+        return Vec::new();
+    };
+    lay.alt_fields(a)[c as usize]
+        .iter()
+        .enumerate()
+        .filter(|(k, (t, _))| mask >> k & 1 == 0 && keep != Some(*k as u32) && m.needs_drop(*t))
+        .map(|(_, (t, idx))| (*t, idx.clone()))
+        .collect()
+}
+
+/// Each dropped field splits once if it is a string (`glue::drop_splits`).
+fn splits(lay: &Layouts, _: &Func, inst: &Inst, _: bool) -> usize {
+    dropped(lay.m, lay, inst)
+        .iter()
+        .map(|(t, _)| super::glue::drop_splits(lay, *t))
+        .sum()
+}
+
+/// Drops the payload fields an `alt.release` or `alt.unbox` does not keep: each field's slots
+/// converted to its held leaves, then the glue drop.
+fn release(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
+    if released(inst).is_none() {
+        return;
+    }
+    let slots = &vals[&inst.args[0].index()];
+    for (t, idx) in dropped(cx.m, cx.lay, inst) {
+        let held = held_leaves(cx.lay, t);
+        let signs = narrow_leaves(cx.lay, t);
+        let leaves = idx
+            .iter()
+            .zip(&held)
+            .zip(signs)
+            .map(|((k, h), s)| convert(b, &slots[*k], h, s))
+            .collect();
+        super::glue::drop_held(cx, t, leaves, b);
     }
 }

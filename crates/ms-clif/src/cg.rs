@@ -3,7 +3,7 @@
 
 use crate::layout::{Layouts, Leaf};
 use crate::lower::Lower;
-use crate::{Error, Options};
+use crate::{Error, Fallback, Options};
 use cranelift_codegen::Context;
 use cranelift_codegen::ir::{self, AbiParam, Signature, UserFuncName, types};
 use ms_mir::types::Native;
@@ -856,7 +856,7 @@ fn compile_with_isa(
             ctx.clear();
             ctx.func.signature = g.func_sig(f);
             ctx.func.name = UserFuncName::user(0, g.funcs[i].as_u32());
-            if direct_function(&mut g, i, f) {
+            if direct_function(&mut g, i, f)? {
                 continue;
             }
             {
@@ -877,7 +877,7 @@ fn compile_with_isa(
         pipe.finish(&mut g)
     })?;
     while let Some((kind, ty)) = g.queue.pop() {
-        if direct_glue(&mut g, kind, ty) {
+        if direct_glue(&mut g, kind, ty)? {
             continue;
         }
         let temps;
@@ -1357,9 +1357,12 @@ fn native_functions(g: &Gen) -> HashSet<usize> {
 
 /// Emits `f` straight from MIR when `MS_LLVM_DIRECT` asks for it and `mir_llvm` supports the
 /// function; `false` leaves it to the Cranelift lowering and its translation.
-fn direct_function(g: &mut Gen, i: usize, f: &Func) -> bool {
-    if !g.opts.build.llvm_direct || g.llvm.is_none() || !crate::mir_llvm::supports(g.m, &g.lay, f) {
-        return false;
+fn direct_function(g: &mut Gen, i: usize, f: &Func) -> Result<bool, Error> {
+    if !g.opts.build.llvm_direct || g.llvm.is_none() {
+        return Ok(false);
+    }
+    if let Some(why) = crate::mir_llvm::unsupported(g.m, &g.lay, f) {
+        return fallback(g, &f.name, &why);
     }
     if g.native.is_none() {
         g.native = Some(native_functions(g));
@@ -1426,7 +1429,21 @@ fn direct_function(g: &mut Gen, i: usize, f: &Func) -> bool {
         file: f.loc.file,
         line: f.loc.line,
     });
-    true
+    Ok(true)
+}
+
+/// A function or glue the direct emitter cannot write: an error when `MS_LLVM_FALLBACK=deny` forbids
+/// the translation, otherwise `false` leaves it to the Cranelift lowering and its translation.
+fn fallback(g: &Gen, what: &str, why: &str) -> Result<bool, Error> {
+    let line = format!("llvm-fallback: {what}: {why}");
+    match g.opts.build.llvm_fallback {
+        Fallback::Deny => Err(Error(line)),
+        Fallback::Report => {
+            eprintln!("{line}");
+            Ok(false)
+        }
+        Fallback::Translate => Ok(false),
+    }
 }
 
 /// The glue, descriptors, closures and vtables `f`'s instructions refer to, declared now so that
@@ -1457,6 +1474,22 @@ fn direct_plan(g: &mut Gen, f: &Func) -> crate::mir_llvm::Plan {
                 (Op::Drop | Op::DropIf, _) => {
                     let ty = f.ty(i.args[usize::from(i.op == Op::DropIf)]);
                     if own_kind(&g.lay, ty) == OwnKind::Glue && !plan.drop.contains_key(&ty) {
+                        let id = g.glue(Glue::Drop, ty);
+                        plan.drop.insert(
+                            ty,
+                            crate::glue_llvm::target(g, Glue::Drop, ty, symbol_of(g, id)),
+                        );
+                    }
+                }
+                (
+                    Op::ListSet | Op::ListSetNn | Op::ListSetU | Op::ListDropLast | Op::ListRelease,
+                    _,
+                ) => {
+                    let elem = g.m.seq_elem(f.ty(i.args[0]));
+                    if let Some(ty) = elem
+                        && own_kind(&g.lay, ty) == OwnKind::Glue
+                        && !plan.drop.contains_key(&ty)
+                    {
                         let id = g.glue(Glue::Drop, ty);
                         plan.drop.insert(
                             ty,
@@ -1509,8 +1542,8 @@ fn direct_plan(g: &mut Gen, f: &Func) -> crate::mir_llvm::Plan {
     plan
 }
 
-/// Emits the stack-growth shim of the native function `f`.
-fn direct_shim(g: &mut Gen, kind: Glue, ty: Ty, f: usize) -> bool {
+/// Emits the stack-growth shim of the directly emitted function `f`, in its calling convention.
+fn direct_shim(g: &mut Gen, kind: Glue, ty: Ty, f: usize, native: bool) -> bool {
     let id = g.glue[&(kind, ty)];
     let sym = symbol_of(g, id);
     let callee = symbol_of(g, g.funcs[f]);
@@ -1525,7 +1558,36 @@ fn direct_shim(g: &mut Gen, kind: Glue, ty: Ty, f: usize) -> bool {
     };
     let (m, lay) = (g.m, &g.lay);
     llvm.add_direct(&sym, "glue", (0, 0), false, locs, |env| {
-        crate::mir_llvm::grow_shim(env.types, lay, &m.funcs[f], &callee, env.loc)
+        let shim = if native {
+            crate::mir_llvm::grow_shim
+        } else {
+            crate::mir_llvm::leaf_grow_shim
+        };
+        shim(env.types, lay, &m.funcs[f], &callee, env.loc)
+    });
+    llvm.mark_glue();
+    g.llvm = Some(llvm);
+    g.llvm_funcs.push(LlvmFn {
+        id,
+        symbol: sym,
+        name: "glue".to_string(),
+        file: u32::MAX,
+        line: 0,
+    });
+    true
+}
+
+/// Emits the closure glue `kind` under its leaf symbol `sym`: the closure header and the runtime
+/// call it through a pointer, so it has no native twin.
+fn direct_closure_glue(g: &mut Gen, kind: Glue, id: FuncId, sym: String) -> bool {
+    let mut llvm = g.llvm.take().expect("checked by the caller");
+    let no_bits = HashMap::new();
+    let locs = crate::llvm_ir::DirectLocs {
+        syms: &crate::llvm_ir::NoSymbols,
+        bits: &no_bits,
+    };
+    llvm.add_direct(&sym, "glue", (0, 0), false, locs, |env| {
+        crate::glue_llvm::closure::emit(g, kind, env.types, env.loc)
     });
     llvm.mark_glue();
     g.llvm = Some(llvm);
@@ -1541,17 +1603,32 @@ fn direct_shim(g: &mut Gen, kind: Glue, ty: Ty, f: usize) -> bool {
 
 /// Emits the glue `kind` for `ty` straight to LLVM IR; `false` leaves it to the Cranelift
 /// lowering and its translation.
-fn direct_glue(g: &mut Gen, kind: Glue, ty: Ty) -> bool {
-    if let Glue::GrowShim(f) = kind
-        && g.native.as_ref().is_some_and(|n| n.contains(&(f as usize)))
-    {
-        return direct_shim(g, kind, ty, f as usize);
+fn direct_glue(g: &mut Gen, kind: Glue, ty: Ty) -> Result<bool, Error> {
+    if !g.opts.build.llvm_direct || g.llvm.is_none() {
+        return Ok(false);
     }
-    if !g.opts.build.llvm_direct || g.llvm.is_none() || !crate::glue_llvm::supports(g, kind, ty) {
-        return false;
+    if let Glue::GrowShim(f) = kind {
+        let f = f as usize;
+        let native = g.native.as_ref().is_some_and(|n| n.contains(&f));
+        if native || crate::mir_llvm::supports(g.m, &g.lay, &g.m.funcs[f]) {
+            return Ok(direct_shim(g, kind, ty, f, native));
+        }
+    }
+    if !crate::glue_llvm::supports(g, kind, ty) {
+        let ty_kind = format!("{:?}", g.m.types.kind(ty));
+        let end = ty_kind.find(['(', ' ', '{']).unwrap_or(ty_kind.len());
+        return fallback(g, &format!("glue {kind:?}"), &ty_kind[..end]);
     }
     let id = g.glue[&(kind, ty)];
     let sym = symbol_of(g, id);
+    if crate::glue_llvm::closure::is_closure(kind) {
+        return Ok(direct_closure_glue(g, kind, id, sym));
+    }
+    // The descriptor a clone names is declared while the LLVM module is still set, so it is
+    // exported (`Gen::private`); the emitter below runs with the module taken.
+    if kind == Glue::Clone && matches!(g.m.types.kind(ty), ms_mir::types::TyKind::Obj(..)) {
+        g.typedesc(ty);
+    }
     let mut llvm = g.llvm.take().expect("checked above");
     let nat = crate::glue_llvm::native(&sym);
     // Glue has no MIR, so no source locations to resolve.
@@ -1580,7 +1657,7 @@ fn direct_glue(g: &mut Gen, kind: Glue, ty: Ty) -> bool {
         file: u32::MAX,
         line: 0,
     });
-    true
+    Ok(true)
 }
 
 /// Runs the passes that precede Cranelift's own compilation. `true` when the function went to
