@@ -19,6 +19,11 @@
 //! body `@"f.n"`; direct calls name `@"f.n"`. The runtime's `msrt_*` entry points keep the C leaf
 //! ABI.
 
+#![allow(
+    dead_code,
+    reason = "the direct emitter adopts this in the records and glue follow-ups; remove then"
+)]
+
 use crate::layout::{Layouts, Leaf, mem_layout};
 use ms_mir::ir::Mode;
 use ms_mir::types::Ty;
