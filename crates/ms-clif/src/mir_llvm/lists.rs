@@ -542,6 +542,7 @@ pub(super) fn consts(m: &Module, f: &Func) -> Vec<(String, String)> {
         out.push((name, def));
     }
     out
+}
 
 /// Whether an element is made of plain `i64`, `double` and `i8` leaves, which sit in memory
 /// exactly as in registers, and is held as those leaves (a record held behind one pointer is not).
