@@ -270,7 +270,7 @@ fn regex_span_source_methods_reach_pages_and_search_once() {
     let syms = ms_syntax::Names::global();
     let regex = standard_library(syms)
         .iter()
-        .find(|module| module.path == "@std/string.ms")
+        .find(|module| module.path == "@std/regex.ms")
         .unwrap()
         .declarations
         .iter()
@@ -306,7 +306,7 @@ fn regex_span_source_methods_reach_pages_and_search_once() {
             assert!(signature.contains(budget), "{signature}");
         }
         assert!(
-            page(syms, &format!("string.Regex.{name}"))
+            page(syms, &format!("regex.Regex.{name}"))
                 .unwrap()
                 .contains(signature)
         );

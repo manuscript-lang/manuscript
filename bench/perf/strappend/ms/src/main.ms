@@ -1,6 +1,6 @@
 import (
 	stdout from "@std/io/io.ms",
-	StringBuilder from "@std/string.ms",
+	StringBuilder from "@std/string_builder.ms",
 	monotonic from "@std/time.ms",
 )
 

@@ -439,11 +439,7 @@ impl Walker<'_> {
         // `String.view` and `Bytes.view` borrow their receiver: a position that would keep the view
         // needs an owner, so it takes a `.clone()` of the view. A temporary receiver is copied out.
         if d == Demand::Move
-            && matches!(
-                name.as_str(),
-                "view" | "split" | "lines" | "chars" | "keys" | "values" | "slice"
-            )
-            && let Some(source) = self.native_borrow_receiver(e)
+            && let Some((NativeBorrow::Derived, source)) = self.native_borrow_of(e)
             && self.is_place(source)
         {
             self.error(
@@ -459,15 +455,7 @@ impl Walker<'_> {
             && name == "get"
             && args.is_empty()
             && let Some(inner) = receiver_expr
-            && let ExprKind::Call {
-                callee: inner_callee,
-                ..
-            } = &inner.kind
-            && let ExprKind::Member {
-                name: inner_name, ..
-            } = &inner_callee.kind
-            && self.syms.str(inner_name) == "slice"
-            && let Some(source) = self.native_borrow_receiver(inner)
+            && let Some((NativeBorrow::Derived, source)) = self.native_borrow_of(inner)
             && self.is_place(source)
         {
             self.error(

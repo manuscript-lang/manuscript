@@ -654,6 +654,7 @@ fn none_references_cover_written_case_tokens_beyond_snapshot_limit() {
     // The general snapshot caps large responses. Pin how many written `none` tokens each module
     // contributes; implicit Optional defaults have no `none` token and must not add ranges. The
     // bundled sources shift constantly, so the pin is a count per module, not line numbers.
+    // `regex.ms` loads only when imported, and this workspace does not import it.
     let expected = std::collections::BTreeMap::from([
         ("collections/collections.ms", 6),
         ("concurrency/promise.ms", 2),
@@ -666,7 +667,7 @@ fn none_references_cover_written_case_tokens_beyond_snapshot_limit() {
         ("math/decimal.ms", 1),
         ("math/math.ms", 3),
         ("random.ms", 3),
-        ("string.ms", 6),
+        ("string.ms", 4),
         ("test/test.ms", 2),
     ]);
     for id in [first, second] {

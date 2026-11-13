@@ -2,7 +2,7 @@
 // conform: phase=test
 import (
 	Bytes from "@std/bytes.ms",
-	HashAlgorithm, digest from "@std/crypto.ms",
+	HashAlgorithm, digest from "@std/crypto/crypto.ms",
 	Crc64Polynomial, crc64, crc64_of from "@std/crypto/hash.ms",
 	adler32, adler32_of, crc32, crc32_of from "@std/data/checksum.ms",
 	ReadStream, Source from "@std/io/io.ms",

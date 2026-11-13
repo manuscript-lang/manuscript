@@ -1,6 +1,6 @@
 // conform: tags=diagnostics
 // conform: phase=check
-import StringBuilder from "@std/string.ms"
+import StringBuilder from "@std/string_builder.ms"
 import Closeable from "@std/cleanup.ms"
 type Resource:
     visits: List[Int]

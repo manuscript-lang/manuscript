@@ -751,7 +751,7 @@ fn reverse_span[T](var items: List[T], start: Int, end: Int) Unit:
 
 import (
 	panic from "@std/core.ms",
-	StringBuilder from "@std/string.ms",
+	StringBuilder from "@std/string_builder.ms",
 
 	msrt_list_distinct,
 	msrt_list_flatten,

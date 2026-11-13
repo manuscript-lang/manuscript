@@ -1,7 +1,7 @@
 import (
 	stdin, stdout from "@std/io/io.ms",
 	read_all from "@std/io/streams.ms",
-	StringBuilder from "@std/string.ms",
+	StringBuilder from "@std/string_builder.ms",
 )
 
 fn main() Unit:

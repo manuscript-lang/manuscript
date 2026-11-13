@@ -6,7 +6,7 @@
 // final program, not any model's tokenizer count.
 import (
 	GlobOptions, glob from "@std/os/fs.ms",
-	compile from "@std/string.ms",
+	compile from "@std/regex.ms",
 
 	read_text from "../lib/text.ms",
 )

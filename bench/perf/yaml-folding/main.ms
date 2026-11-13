@@ -1,7 +1,7 @@
 import (
 	parse, stringify from "@std/data/yaml.ms",
 	arguments from "@std/os/env.ms",
-	StringBuilder from "@std/string.ms",
+	StringBuilder from "@std/string_builder.ms",
 	monotonic from "@std/time.ms",
 )
 

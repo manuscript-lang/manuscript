@@ -1,5 +1,5 @@
 import bench, words from "./harness.ms"
-import StringBuilder from "@std/string.ms"
+import StringBuilder from "@std/string_builder.ms"
 import parse, escape, unescape from "@std/data/html.ms"
 
 fn html_doc(count: Int) String:

@@ -1,6 +1,6 @@
 import stdout, stdin, read_line, ReadStream from "@std/io/io.ms"
 import Instant, monotonic from "@std/time.ms"
-import StringBuilder from "@std/string.ms"
+import StringBuilder from "@std/string_builder.ms"
 
 interface Counter:
     fn bump(by: Int) Int

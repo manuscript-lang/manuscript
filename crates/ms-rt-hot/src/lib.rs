@@ -966,14 +966,14 @@ pub unsafe extern "C-unwind" fn msrt_bytes_read_word(
     width: i64,
     little: u8,
     out: usize,
-) -> i64 {
+) -> u8 {
     // SAFETY: `b` is a live byte list and `out` is writable.
     unsafe {
         let v = &*(b as *const VecVal);
         let n = width as usize;
         let start = at as usize;
         if at < 0 || start > v.len || v.len - start < n {
-            return ms_rt_abi::STATUS_OUT_OF_RANGE as i64;
+            return ms_rt_abi::STATUS_OUT_OF_RANGE;
         }
         let p = v.ptr.add(start);
         let raw = match n {
@@ -981,7 +981,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_read_word(
             2 => (p as *const u16).read_unaligned() as u64,
             4 => (p as *const u32).read_unaligned() as u64,
             8 => (p as *const u64).read_unaligned(),
-            _ => return ms_rt_abi::STATUS_OUT_OF_RANGE as i64,
+            _ => return ms_rt_abi::STATUS_OUT_OF_RANGE,
         };
         let raw = if little != 0 || n == 1 {
             raw
@@ -989,6 +989,6 @@ pub unsafe extern "C-unwind" fn msrt_bytes_read_word(
             raw.swap_bytes() >> (64 - 8 * n as u32)
         };
         (out as *mut i64).write(raw as i64);
-        ms_rt_abi::STATUS_OK as i64
+        ms_rt_abi::STATUS_OK
     }
 }

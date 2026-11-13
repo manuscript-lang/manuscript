@@ -1,4 +1,4 @@
-//! `@std/string.ms` natives, on top of the `regex` crate and its pattern dialect.
+//! `@std/regex.ms` natives, on top of the `regex` crate and its pattern dialect.
 #![no_std]
 
 // Links the msrt_* runtime symbols into this crate's test binaries.

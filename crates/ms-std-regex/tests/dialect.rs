@@ -1,4 +1,4 @@
-//! Pins the `regex` crate dialect that `@std/string.ms` exposes (no Go/RE2 translation layer).
+//! Pins the `regex` crate dialect that `@std/regex.ms` exposes (no Go/RE2 translation layer).
 // Links the msrt_* runtime symbols.
 use ms_rt as _;
 use ms_std_regex::compile;

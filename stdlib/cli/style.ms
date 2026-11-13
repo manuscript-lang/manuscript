@@ -16,7 +16,7 @@ fn main() Unit!:
 */
 import (
 	terminal_capabilities from "@std/cli/terminal.ms",
-	Regex, compile from "@std/string.ms",
+	Regex, compile from "@std/regex.ms",
 )
 
 // A terminal color: the terminal default, a 16-color index, a 256-color palette index,

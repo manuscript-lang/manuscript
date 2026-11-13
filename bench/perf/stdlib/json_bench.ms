@@ -1,6 +1,6 @@
 import (
 	JsonValue, parse, stringify from "@std/data/json.ms",
-	StringBuilder from "@std/string.ms",
+	StringBuilder from "@std/string_builder.ms",
 	keep, measure from "@std/test/bench.ms",
 )
 

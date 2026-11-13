@@ -14,7 +14,7 @@ name := basename(config)
 import (
 	Bytes, BytesBuilder from "@std/bytes.ms",
 	Os, os from "@std/os/system.ms",
-	StringBuilder from "@std/string.ms",
+	StringBuilder from "@std/string_builder.ms",
 
 	msstd_path_matches_glob from "@std/internal/path.ms",
 )

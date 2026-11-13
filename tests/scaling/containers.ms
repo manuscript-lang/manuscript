@@ -6,7 +6,7 @@ import (
 	SortedMap from "@std/collections/sorted.ms",
 	stdout from "@std/io/io.ms",
 	arguments from "@std/os/env.ms",
-	StringBuilder from "@std/string.ms",
+	StringBuilder from "@std/string_builder.ms",
 	Instant, monotonic from "@std/time.ms",
 )
 

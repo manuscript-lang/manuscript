@@ -12,6 +12,8 @@ mod facts;
 pub use facts::{BindingFact, BindingFlags, Fact, NodeFacts};
 mod live;
 mod modes;
+mod native_borrow;
+pub use native_borrow::{NativeBorrow, native_borrow};
 mod moved;
 pub(crate) mod places;
 mod walk;

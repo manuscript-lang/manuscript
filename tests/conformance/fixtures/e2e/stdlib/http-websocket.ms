@@ -288,3 +288,29 @@ test "a promise cancelled while it owns a WebSocket closes it without ending the
 		options: PromiseOptions(timeout: 50.milliseconds())
 	).wait()
 	expect_true(read.is_error())?
+
+fn direct(var exchange: HttpExchange) Unit!:
+	var socket = http_result(
+		exchange.upgrade(
+			allowed_origins: [],
+			subprotocols: [],
+			max_message_bytes: none,
+		)
+	)?
+	message := (http_result(socket.input.next())?).get()
+	_sent := http_result(socket.output.write(message))?
+
+test "HttpExchange.upgrade returns a WebSocket":
+	server := serve(address: "127.0.0.1:0", handler: direct) | expect_ok?
+	var socket = web_socket("ws://{server.address()}/") | expect_ok?
+	_sent := (
+		socket.output.write(
+			WebSocketMessage(
+				data: "hi".to_bytes(),
+				kind: WebSocketKind.Text,
+			)
+		)
+		| expect_ok?
+	)
+	message := (socket.input.next() | expect_ok?).get()
+	message.data | expect_equal("hi".to_bytes())?

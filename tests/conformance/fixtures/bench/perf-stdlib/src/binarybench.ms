@@ -1,6 +1,6 @@
 import bench, words from "./harness.ms"
 import base64_encode, base64_decode, hex_encode from "@std/data/encoding.ms"
-import sha256 from "@std/crypto.ms"
+import sha256 from "@std/crypto/crypto.ms"
 import BytesBuilder from "@std/bytes.ms"
 
 export fn bench_binary() Unit:

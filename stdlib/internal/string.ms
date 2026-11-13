@@ -1,4 +1,4 @@
-import Regex from "@std/string.ms"
+import Regex from "@std/regex.ms"
 
 export extern fn msrt_string_from_scalars(values: List[Int]) String!
 

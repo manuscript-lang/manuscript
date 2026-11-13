@@ -1,4 +1,4 @@
-import StringBuilder from "@std/string.ms"
+import StringBuilder from "@std/string_builder.ms"
 
 fn f() String:
     var sb = StringBuilder()

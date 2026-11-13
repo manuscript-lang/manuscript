@@ -1,5 +1,5 @@
 import bench, words from "./harness.ms"
-import compile, Regex from "@std/string.ms"
+import compile, Regex from "@std/regex.ms"
 
 fn run(re: Regex) Unit:
     text := words(2000).join(" ")

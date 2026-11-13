@@ -1,4 +1,5 @@
-//! Embeds `stdlib/*.ms`, `stdlib/*/*.ms` and unchanged.
+//! Embeds `stdlib/*.ms` and `stdlib/*/*.ms`. The files in `stdlib/core/` are the implicit prelude; they keep
+//! their flat `@std/<file>.ms` paths, so the directory groups them without changing any import.
 
 use std::fmt::Write as _;
 use std::path::PathBuf;
@@ -25,7 +26,11 @@ fn main() {
             {
                 let inner = inner.file_name().to_string_lossy().into_owned();
                 if inner.ends_with(".ms") {
-                    names.push(format!("{name}/{inner}"));
+                    names.push(if name == "core" {
+                        inner
+                    } else {
+                        format!("{name}/{inner}")
+                    });
                 }
             }
         }
@@ -33,14 +38,14 @@ fn main() {
     names.sort();
     let texts: Vec<String> = names
         .iter()
-        .map(|name| std::fs::read_to_string(dir.join(name)).expect("read stdlib module"))
+        .map(|name| std::fs::read_to_string(source_path(&dir, name)).expect("read stdlib module"))
         .collect();
     let eager = eager_modules(&names, &texts);
     let mut out = String::from(
         "/// Bundled standard declarations in file-name order, and whether each loads with the standard declarations.\npub const SOURCES: &[(&str, &str, bool)] = &[\n",
     );
     for (i, name) in names.iter().enumerate() {
-        let path = dir.join(name);
+        let path = source_path(&dir, name);
         println!("cargo:rerun-if-changed={}", path.display());
         writeln!(
             out,
@@ -54,6 +59,16 @@ fn main() {
     runtime_facts(&manifest, &mut out);
     let dest = PathBuf::from(std::env::var("OUT_DIR").expect("out dir")).join("std_sources.rs");
     std::fs::write(dest, out).expect("write");
+}
+
+/// The file that holds a bundled module: the prelude files live in `stdlib/core/` but are named flat.
+fn source_path(dir: &std::path::Path, name: &str) -> PathBuf {
+    let flat = dir.join(name);
+    if flat.exists() {
+        flat
+    } else {
+        dir.join("core").join(name)
+    }
 }
 
 /// The ownership facts the checker reads from the runtime's declarations (`rt_symbols.txt`, written
