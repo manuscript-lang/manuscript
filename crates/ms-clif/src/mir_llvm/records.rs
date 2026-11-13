@@ -187,6 +187,71 @@ pub(super) fn released(
         })
 }
 
+/// The fields of the indirect record `r` that `rec.release` visits: a boxed collection always (its
+/// header block is freed), any other when the mask does not move it out and it owns something;
+/// each with its field index, so that `block_spans` locates it, and whether it is boxed.
+fn block_released(lay: &Layouts, r: ms_mir::types::RecId, mask: u32) -> Vec<(Ty, usize, bool)> {
+    let spans = block_spans(lay, r);
+    lay.m.records[r.index()]
+        .fields
+        .iter()
+        .enumerate()
+        .filter(|(k, f)| spans[*k].2 || (mask >> k & 1 == 0 && lay.m.needs_drop(f.1)))
+        .map(|(k, f)| (f.1, k, spans[k].2))
+        .collect()
+}
+
+/// The types of the fields `rec.release` of a record of type `ty` drops through glue.
+pub(super) fn release_types(lay: &Layouts, ty: Ty, mask: u32) -> Vec<Ty> {
+    match indirect(lay, ty) {
+        Some(r) => block_released(lay, r, mask)
+            .into_iter()
+            .filter(|(fty, k, _)| mask >> k & 1 == 0 && lay.m.needs_drop(*fty))
+            .map(|(fty, ..)| fty)
+            .collect(),
+        None => released(lay, ty, mask).map(|(t, ..)| t).collect(),
+    }
+}
+
+/// `rec.release` of an indirect record: drops the fields the mask keeps, frees the header block of
+/// each collection field and then the record's block.
+fn release_block(cx: &mut Cx, b: &mut FnBuilder, r: ms_mir::types::RecId, mask: u32, p: &Val) {
+    let lay = cx.lay;
+    let s = block_shape(b.types(), lay, r);
+    let spans = block_spans(lay, r);
+    declare_heap(cx);
+    for (fty, k, boxed) in block_released(lay, r, mask) {
+        let (at, n, _) = spans[k];
+        let kept = mask >> k & 1 == 0 && lay.m.needs_drop(fty);
+        if !boxed {
+            let leaves = load_leaves(b, &s, p, at, n, &[]);
+            super::glue::drop_held(cx, fty, leaves, b);
+            continue;
+        }
+        let slot = b.field_ptr(&s.st, p, at);
+        let bp = b.load(&LTy::Ptr, &slot, 8);
+        let some = b.icmp("ne", &bp, &NULL());
+        let (_, then, join) = next_split(cx, "r");
+        b.cond_br(&some, &then, &join);
+        b.label(&then);
+        if kept {
+            let words = (0..lay.width(fty))
+                .map(|w| {
+                    let at = b.elem_ptr(&LTy::I64, &bp, &Val::int(w as i64));
+                    b.load(&LTy::I64, &at, 8)
+                })
+                .collect();
+            super::glue::drop_held(cx, fty, words, b);
+        }
+        let word = b.ptr_to_int(&bp);
+        b.call(&LTy::Void, "", "msrt_free", &[(word, "")]);
+        b.br(&join);
+        b.label(&join);
+    }
+    let word = b.ptr_to_int(p);
+    b.call(&LTy::Void, "", "msrt_free", &[(word, "")]);
+}
+
 /// How many times `inst` splits its block: reading, creating or addressing a boxed collection
 /// field branches on the null header.
 fn splits(lay: &Layouts, f: &Func, i: &Inst, _: bool) -> usize {
@@ -196,9 +261,16 @@ fn splits(lay: &Layouts, f: &Func, i: &Inst, _: bool) -> usize {
             .and_then(|r| indirect(lay, f.ty(r)))
             .map_or(0, |r| block_spans(lay, r).iter().filter(|s| s.2).count()),
         (Op::RecGet | Op::PtrField, Imm::Field(r, k)) => usize::from(field_boxed(lay, r, k)),
-        (Op::RecRelease, Imm::RecMask(_, mask)) => released(lay, f.ty(i.args[0]), mask)
-            .filter(|(fty, ..)| own_kind(lay, *fty) == OwnKind::Str)
-            .count(),
+        (Op::RecRelease, Imm::RecMask(_, mask)) => match indirect(lay, f.ty(i.args[0])) {
+            // Each boxed collection field is tested for its header; a string field is a check.
+            Some(r) => block_released(lay, r, mask)
+                .iter()
+                .map(|(fty, _, boxed)| usize::from(*boxed || own_kind(lay, *fty) == OwnKind::Str))
+                .sum(),
+            None => released(lay, f.ty(i.args[0]), mask)
+                .filter(|(fty, ..)| own_kind(lay, *fty) == OwnKind::Str)
+                .count(),
+        },
         _ => 0,
     }
 }
@@ -247,8 +319,6 @@ pub(super) fn op_ok(lay: &Layouts, f: &Func, i: &Inst) -> bool {
         (Op::PtrField | Op::RecGet, Imm::Field(..)) => true,
         (Op::RecSet | Op::RecFill, Imm::Field(r, _)) => !lay.m.records[r.index()].indirect,
         (Op::RecNew, _) => true,
-        // An indirect record's block is freed too, which stays with the translation.
-        (Op::RecRelease, _) => indirect(lay, f.ty(i.args[0])).is_none(),
         (
             Op::Slot | Op::Load | Op::Take | Op::PtrField | Op::RecGet | Op::RecSet | Op::RecFill,
             _,
@@ -699,6 +769,10 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
                 return;
             };
             let rty = f.ty(inst.args[0]);
+            if let Some(r) = indirect(lay, rty) {
+                release_block(cx, b, r, mask, &arg(0)[0]);
+                return;
+            }
             let own = arg(0).clone();
             let s = is_mem(lay, rty).then(|| shape(b.types(), lay, rty).expect("is_mem checked"));
             for (fty, at, n) in released(lay, rty, mask) {
