@@ -1574,6 +1574,11 @@ fn direct_glue(g: &mut Gen, kind: Glue, ty: Ty) -> bool {
     if crate::glue_llvm::closure::is_closure(kind) {
         return direct_closure_glue(g, kind, id, sym);
     }
+    // The descriptor a clone names is declared while the LLVM module is still set, so it is
+    // exported (`Gen::private`); the emitter below runs with the module taken.
+    if kind == Glue::Clone && matches!(g.m.types.kind(ty), ms_mir::types::TyKind::Obj(..)) {
+        g.typedesc(ty);
+    }
     let mut llvm = g.llvm.take().expect("checked above");
     let nat = crate::glue_llvm::native(&sym);
     // Glue has no MIR, so no source locations to resolve.
