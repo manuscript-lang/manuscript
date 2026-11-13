@@ -65,6 +65,8 @@ pub struct LlvmModule {
     /// The function symbols in each vtable, by its data symbol. The Cranelift object defines the
     /// vtable; each unit gets an `available_externally` copy so LLVM can read its slots.
     vtables: HashMap<String, Vec<String>>,
+    /// The heap functions are declared as an allocation family (`BuildOptions::heap_facts`).
+    pub heap_facts: bool,
 }
 
 /// Symbol of the empty function every module starts with: the fault and profile tables address
@@ -280,6 +282,17 @@ pub(crate) const RANGE_BOOL_NODE: usize = TBAA_BASE + 5;
 pub(crate) const RANGE_LEN_NODE: usize = TBAA_BASE + 6;
 /// `!align` node of an 8-byte aligned pointer (a vtable slot).
 pub(crate) const ALIGN8_NODE: usize = TBAA_BASE + 7;
+/// `!range` node of the case index of an enum with `n` cases, `[0, n)`, for `n` in 1 to
+/// `MAX_TAG_RANGE`.
+pub(crate) fn range_tag_node(n: usize) -> usize {
+    assert!(
+        (1..=MAX_TAG_RANGE).contains(&n),
+        "no range node for {n} cases"
+    );
+    TBAA_BASE + 7 + n
+}
+/// The largest enum whose case index has a range node.
+pub(crate) const MAX_TAG_RANGE: usize = 16;
 /// The empty node `!noundef` and `!nonnull` point at.
 pub(crate) const EMPTY_NODE: usize = 3;
 
@@ -340,6 +353,7 @@ impl LlvmModule {
             data: BTreeMap::new(),
             consts: BTreeMap::new(),
             vtables: HashMap::new(),
+            heap_facts: true,
         };
         // Placeholder slots for the fixed ids and one `DIFile` per file.
         m.di.meta.resize(FIRST_FILE + nfiles, String::new());
@@ -619,6 +633,9 @@ impl LlvmModule {
             tail,
             "!{RANGE_BOOL_NODE} = !{{i8 0, i8 2}}\n!{RANGE_LEN_NODE} = !{{i64 0, i64 -9223372036854775808}}\n!{ALIGN8_NODE} = !{{i64 8}}\n"
         );
+        for n in 1..=MAX_TAG_RANGE {
+            let _ = writeln!(tail, "!{} = !{{i64 0, i64 {n}}}", range_tag_node(n));
+        }
         for (i, f) in self.di.files.iter().enumerate() {
             let name = f.as_deref().unwrap_or("<unknown>");
             let _ = writeln!(
@@ -696,7 +713,10 @@ impl LlvmModule {
             };
             for (name, decl) in &self.decls {
                 if !defined.contains(name.as_str()) && (units == 1 || used.contains(name)) {
-                    s.push_str(decl);
+                    let plain = (!self.heap_facts)
+                        .then(|| crate::mir_llvm::rt::plain_heap_decl(name))
+                        .flatten();
+                    s.push_str(plain.unwrap_or(decl));
                     s.push('\n');
                 }
             }

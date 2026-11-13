@@ -928,6 +928,8 @@ fn direct_lists_and_strings_match_cranelift() {
     element_drops();
     record_elements();
     crate::llvm_direct_data::optionals_and_alternatives_match_cranelift();
+    crate::llvm_direct_data::unwrap_and_own_match_cranelift();
+    crate::llvm_direct_data::boxed_enums_match_cranelift();
     crate::llvm_direct_data::narrow_integers_match_cranelift();
     crate::llvm_direct_data::narrow_record_fields_match_cranelift();
     crate::llvm_direct_data::narrow_sums_fault_like_cranelift();

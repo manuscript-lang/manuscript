@@ -10,6 +10,8 @@ Measured (2026-11-12, same machine): none of this moves the kernels or competenc
 
 Tried without effect (2026-11-12): an entry `llvm.assume` with `dereferenceable(ptr, len * size)` for every list parameter left the LCS grid unchanged (33.7 against 35.3 ms, noise); allocator results are declared `align 16`.
 
+Allocator facts (2026-11-13): `msrt_alloc`, `msrt_alloc_zeroed`, `msrt_realloc` and `msrt_free` are one LLVM allocation family (`allockind`, `allocsize`, `alloc-family="msrt"`, `memory(inaccessiblemem: ...)`; `rt::heap_decl` is the only spelling, and `free` and `realloc` take a `ptr`). LLVM then deletes a block that is only stored to and freed, and an allocation no longer clobbers the memory the program can name: a temp `List` built and read in a loop went from 33M to 1.2M instructions. The ownership-count gate sets `MS_HEAP_FACTS=off` so elided blocks are still counted; never loosen a count to match LLVM.
+
 Apply when: adding facts to the direct LLVM emitter.
 Evidence: [module and units](../../crates/ms-clif/src/llvm_ir.rs), [direct emitter](../../crates/ms-clif/src/mir_llvm/mod.rs), `make drift-check`.
 Verify: `ms-conform diff --a target/release/ms --b target/release/ms --env-b MS_BACKEND=cranelift --phase run,test`.

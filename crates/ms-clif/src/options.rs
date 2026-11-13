@@ -38,6 +38,10 @@ pub struct BuildOptions {
     pub llvm_units: Option<usize>,
     /// LLVM vectorizes loops (loop and SLP vectorizers).
     pub vectorize: bool,
+    /// Tell LLVM the heap functions are an allocator (`MS_HEAP_FACTS=off` turns it off): it then
+    /// deletes blocks nothing reads and pairs frees with allocations. The ownership-count gate
+    /// turns it off so every block the compiler asks for is counted.
+    pub heap_facts: bool,
     /// Run LLVM's verifier after every optimizer pass (`opt -verify-each`).
     pub llvm_verify: bool,
     /// Copy the LLVM IR of a release build to `ms-keep.ll`.
@@ -64,6 +68,7 @@ impl Default for BuildOptions {
             cranelift_only: false,
             llvm_units: None,
             vectorize: true,
+            heap_facts: true,
             llvm_verify: false,
             keep_ll: false,
             rt_hot: RtHot::Embedded,
