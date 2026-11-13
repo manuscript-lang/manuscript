@@ -388,6 +388,15 @@ fn llvm_direct_emission_matches_translation() {
         new_ir.contains("%a0_0, i64 %a0_1, i64 %a0_2, double %a1_0"),
         "the list function was not emitted directly"
     );
+    // A pure loop-free function carries what LLVM cannot infer across a unit boundary.
+    let grind = new_ir
+        .lines()
+        .find(|l| l.starts_with("define") && l.contains("grind"))
+        .expect("grind");
+    assert!(
+        grind.contains("memory(none)") && grind.contains("willreturn"),
+        "{grind}"
+    );
 }
 
 /// Glue for strings, lists, records and optionals is emitted straight to LLVM IR
