@@ -137,10 +137,7 @@ impl Types {
     }
 
     fn field(&self, ty: &Ty, idx: usize) -> Ty {
-        let Ty::Struct(i) = ty else {
-            panic!("field of a non-struct")
-        };
-        self.structs[*i].fields[idx].clone()
+        self.fields_of(ty)[idx].clone()
     }
 }
 
@@ -186,6 +183,7 @@ pub enum Bin {
     FMul,
     FDiv,
     LShr,
+    Shl,
 }
 
 impl Bin {
@@ -202,6 +200,7 @@ impl Bin {
             Bin::FMul => "fmul",
             Bin::FDiv => "fdiv",
             Bin::LShr => "lshr",
+            Bin::Shl => "shl",
         }
     }
 
@@ -273,6 +272,11 @@ impl<'t> FnBuilder<'t> {
     pub fn name_next(&mut self, v: &Val) {
         assert!(self.pending.is_none(), "a reserved name is unused");
         self.pending = Some(v.clone());
+    }
+
+    /// Sets the `!dbg` node written on the following instructions.
+    pub fn set_dbg(&mut self, dbg: Option<usize>) {
+        self.dbg = dbg;
     }
 
     /// Takes the pending name back, for a caller that defines helper values first.
@@ -470,8 +474,9 @@ impl<'t> FnBuilder<'t> {
             .iter()
             .map(|(v, a)| format!("{}{a} {}", self.ty(&v.ty), v.text))
             .collect();
+        // Merging calls from distinct source sites loses the caller's fault frame.
         let head = format!(
-            "call {ret_attr}{} @\"{callee}\"({})",
+            "call {ret_attr}{} @\"{callee}\"({}) nomerge",
             self.ty(ret),
             actuals.join(", ")
         );
@@ -552,6 +557,29 @@ impl<'t> FnBuilder<'t> {
 
     pub fn br(&mut self, block: &str) {
         self.line(format!("br label %{block}"));
+    }
+
+    /// A conditional branch whose `then` side is taken far more often than `els` (or the other
+    /// way round), so the cold side is laid out away from the hot path.
+    pub fn cond_br_likely(&mut self, cond: &Val, then: &str, els: &str, then_hot: bool) {
+        assert_eq!(cond.ty, Ty::I1);
+        let (a, b) = if then_hot { (2000, 1) } else { (1, 2000) };
+        self.line(format!(
+            "br i1 {}, label %{then}, label %{els}, !prof !{{!\"branch_weights\", i32 {a}, i32 {b}}}",
+            cond.text
+        ));
+    }
+
+    /// An empty inline asm taking the fault site number `n`: keeps fault sites distinct, so LLVM
+    /// neither merges them (which drops the line of a fault in a trace) nor hoists them.
+    pub fn fault_site(&mut self, n: u32) {
+        self.line(format!("call void asm sideeffect \"\", \"i\"(i32 {n})"));
+    }
+
+    /// `inttoptr` of a pointer-sized integer leaf.
+    pub fn int_to_ptr(&mut self, v: &Val) -> Val {
+        assert_eq!(v.ty, Ty::I64);
+        self.def(Ty::Ptr, format!("inttoptr i64 {} to ptr", v.text))
     }
 
     pub fn cond_br(&mut self, cond: &Val, then: &str, els: &str) {

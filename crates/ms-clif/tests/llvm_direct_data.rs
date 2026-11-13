@@ -193,6 +193,7 @@ b3():
 #[test]
 fn direct_optionals_and_alternatives_match_cranelift() {
     let Some(opts) = direct() else { return };
+    let _kept = support::KEPT_IR.lock().unwrap_or_else(|e| e.into_inner());
     let want = run_native(PROGRAM, "direct_data-cranelift");
     let got = run_llvm(PROGRAM, &opts, "direct_data");
     let ir = std::fs::read_to_string("ms-keep.ll").unwrap();

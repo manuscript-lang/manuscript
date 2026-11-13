@@ -1293,10 +1293,12 @@ fn direct_function(g: &mut Gen, i: usize, f: &Func) -> bool {
     };
     let funcs = &g.funcs;
     let symbol_of = |k: usize| syms.symbol_of(funcs[k]);
+    let m = g.m;
     let lay = &g.lay;
     let mut llvm = g.llvm.take().expect("checked above");
-    llvm.add_direct(&sym, &f.name, fn_loc, exported, |loc| {
-        crate::mir_llvm::emit(lay, f, loc, &symbol_of)
+    let checks = g.opts.checks;
+    llvm.add_direct(&sym, &f.name, fn_loc, exported, |env| {
+        crate::mir_llvm::emit(m, lay, i, f, checks, env, &symbol_of)
     });
     g.llvm = Some(llvm);
     g.llvm_funcs.push(LlvmFn {
@@ -1318,8 +1320,8 @@ fn direct_glue(g: &mut Gen, kind: Glue, ty: Ty) -> bool {
     let id = g.glue[&(kind, ty)];
     let sym = symbol_of(g, id);
     let mut llvm = g.llvm.take().expect("checked above");
-    llvm.add_direct(&sym, "glue", (0, 0), false, |loc| {
-        crate::glue_llvm::emit(g, kind, ty, loc)
+    llvm.add_direct(&sym, "glue", (0, 0), false, |env| {
+        crate::glue_llvm::emit(g, kind, ty, env.loc)
     });
     llvm.mark_glue();
     g.llvm = Some(llvm);

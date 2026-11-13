@@ -133,6 +133,34 @@ struct DebugInfo {
     lexical: HashMap<(usize, u32), usize>,
 }
 
+/// What a function emitted straight from MIR gets from the module.
+pub(crate) struct DirectEnv<'a> {
+    /// The `DILocation` node of the function itself (line 0).
+    pub loc: usize,
+    /// Fault call sites numbered so far in the module.
+    pub sites: &'a mut u32,
+    di: &'a mut DebugInfo,
+    sp: usize,
+    lines: HashMap<u32, usize>,
+}
+
+impl DirectEnv<'_> {
+    /// The `DILocation` node for source line `line` of the function (0: the function itself).
+    pub fn line(&mut self, line: u32) -> usize {
+        if line == 0 {
+            return self.loc;
+        }
+        if let Some(n) = self.lines.get(&line) {
+            return *n;
+        }
+        let n = self
+            .di
+            .push(format!("!DILocation(line: {line}, scope: !{})", self.sp));
+        self.lines.insert(line, n);
+        n
+    }
+}
+
 impl DebugInfo {
     fn push(&mut self, text: String) -> usize {
         self.meta.push(text);
@@ -1423,7 +1451,7 @@ impl LlvmModule {
         display: &str,
         fn_loc: (u32, u32),
         public: bool,
-        emit: impl FnOnce(usize) -> crate::mir_llvm::Emitted,
+        emit: impl FnOnce(&mut DirectEnv) -> crate::mir_llvm::Emitted,
     ) {
         let (sp_file, sp_line) = fn_loc;
         let sp = self.di.meta.len();
@@ -1434,7 +1462,14 @@ impl LlvmModule {
             metadata_string(name)
         ));
         let loc = self.di.push(format!("!DILocation(line: 0, scope: !{sp})"));
-        let out = emit(loc);
+        let mut env = DirectEnv {
+            loc,
+            sites: &mut self.sites,
+            di: &mut self.di,
+            sp,
+            lines: HashMap::new(),
+        };
+        let out = emit(&mut env);
         for (callee, decl) in out.decls {
             self.decls.entry(callee).or_insert(decl);
         }
@@ -1442,7 +1477,10 @@ impl LlvmModule {
             name: name.to_string(),
             public,
             glue: false,
-            header: format!("{} @\"{name}\"({}) #0 !dbg !{sp} {{\n", out.ret, out.params),
+            header: format!(
+                "{} @\"{name}\"({}) #0{} !dbg !{sp} {{\n",
+                out.ret, out.params, out.attrs
+            ),
             body: out.body,
         });
     }

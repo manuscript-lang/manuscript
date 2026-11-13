@@ -374,7 +374,7 @@ fn llvm_direct_emission_matches_translation() {
     assert_eq!(new_out, old_out);
     assert_eq!(
         new_out,
-        "-10570.332140489487\n-10610.442345302587\n-18691.88657748569\n-3832.9476242902874\n1798.4798787257132\n24\n"
+        "-10570.332140489487\n-10610.442345302587\n-18691.88657748569\n-3832.9476242902874\n1798.4798787257132\n2478.7401910972353\n24\n"
     );
     // Direct functions name their values `%vN`; the translation names them `%tN`.
     let direct = |ir: &str| {
@@ -387,6 +387,22 @@ fn llvm_direct_emission_matches_translation() {
     assert!(
         new_ir.contains("%a0_0, i64 %a0_1, i64 %a0_2, double %a1_0"),
         "the list function was not emitted directly"
+    );
+    // A pure loop-free function carries what LLVM cannot infer across a unit boundary.
+    let grind = new_ir
+        .lines()
+        .find(|l| l.starts_with("define") && l.contains("grind"))
+        .expect("grind");
+    assert!(
+        grind.contains("memory(none)") && grind.contains("willreturn"),
+        "{grind}"
+    );
+    // Reading elements: the function that loops over a list is direct too, with its bounds check.
+    assert!(
+        new_ir.lines().any(|l| l.starts_with("define")
+            && l.contains("@\"total_floats")
+            && l.contains("%a0_2")),
+        "the list loop was not emitted directly"
     );
 }
 
@@ -429,7 +445,7 @@ fn llvm_direct_glue_matches_translation() {
     let (new_out, new_ir) = run(true);
     let _ = std::fs::remove_dir_all(&dir);
     assert_eq!(new_out, old_out);
-    assert_eq!(new_out, "1325 some(hello world this is long text) 1\n");
+    assert_eq!(new_out, "210 20 1 first node name that is long enough\n");
     let direct = |ir: &str| {
         let mut lines = ir.lines();
         while let Some(l) = lines.next() {
