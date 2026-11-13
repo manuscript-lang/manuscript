@@ -58,6 +58,8 @@ pub struct BuildOptions {
     pub static_musl: bool,
     /// Print the time at which each build phase finished.
     pub timings: bool,
+    /// Print the Cranelift IR of every function to standard error (`MS_DUMP_CLIF=1`).
+    pub dump_clif: bool,
     /// Report or reject copies of object values in the lowered code.
     pub copy_probe: CopyProbe,
 }
@@ -77,6 +79,7 @@ impl Default for BuildOptions {
             runtime: None,
             static_musl: false,
             timings: false,
+            dump_clif: false,
             copy_probe: CopyProbe::Off,
         }
     }

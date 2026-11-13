@@ -27,6 +27,7 @@ pub fn from_env() -> BuildOptions {
         runtime: var("MS_RT_LIB").map(PathBuf::from),
         static_musl: false,
         timings: var("MS_TIMINGS").is_some_and(|v| v != "0"),
+        dump_clif: var("MS_DUMP_CLIF").is_some_and(|v| v != "0"),
         copy_probe: match var("MS_COPY_PROBE") {
             Some(v) if v == "strict" => CopyProbe::Strict,
             Some(v) if v != "0" => CopyProbe::Report,

@@ -1203,7 +1203,7 @@ fn prepare(g: &Gen, ctx: &mut Context) {
             ctx.func.dfg.ext_funcs[func_ref].colocated = false;
         }
     }
-    if g.opts.dump_clif {
+    if g.opts.dump_clif || g.opts.build.dump_clif {
         eprintln!("; {}\n{}", ctx.func.name, ctx.func.display());
     }
     if g.opts.opt_level != "none" {

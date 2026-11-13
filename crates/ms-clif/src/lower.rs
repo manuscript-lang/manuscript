@@ -823,6 +823,29 @@ impl<'a, 'm> Lower<'a, 'm> {
         self.b.ins().icmp_imm_s(IntCC::Equal, c, 0)
     }
 
+    /// The arguments of a join block reached by both edges of a branch on `c`: the common value,
+    /// or a `select` between the two.
+    fn select_args(
+        &mut self,
+        c: Value,
+        then: &[BlockArg],
+        els: &[BlockArg],
+    ) -> Option<Vec<BlockArg>> {
+        let mut out = Vec::with_capacity(then.len());
+        for (t, e) in then.iter().zip(els) {
+            let (BlockArg::Value(t), BlockArg::Value(e)) = (t, e) else {
+                return None;
+            };
+            let v = if t == e {
+                *t
+            } else {
+                self.b.ins().select(c, *t, *e)
+            };
+            out.push(BlockArg::Value(v));
+        }
+        Some(out)
+    }
+
     fn lower_term(&mut self, f: &Func, t: &Term) {
         match t {
             Term::Br(tg) => {
@@ -847,7 +870,16 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let (eb, ea) = self.target(els);
                 let (ts, es) = (self.edge_stores(then), self.edge_stores(els));
                 if ts.is_empty() && es.is_empty() {
-                    self.b.ins().brif(c, tb, &ta, eb, &ea);
+                    if tb == eb
+                        && self.g.opts.opt_level != "none"
+                        && let Some(args) = self.select_args(c, &ta, &ea)
+                    {
+                        // Both edges reach one block: pick each argument with a conditional move
+                        // instead of branching on data that is often unpredictable (`min`, `max`).
+                        self.b.ins().jump(tb, &args);
+                    } else {
+                        self.b.ins().brif(c, tb, &ta, eb, &ea);
+                    }
                 } else {
                     let (tt, te) = (self.b.create_block(), self.b.create_block());
                     self.b.ins().brif(c, tt, &[], te, &[]);
