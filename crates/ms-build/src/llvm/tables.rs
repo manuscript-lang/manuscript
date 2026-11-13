@@ -4,18 +4,17 @@
 //! `ms.tables` blob (`crates/ms-rt/ABI.md`). Cranelift reports code offsets while compiling;
 //! with LLVM the code layout is only known after optimization, so the tables are rebuilt from
 //! the DWARF line program and inlined-subroutine DIEs that LLVM emits for the debug metadata
-//! in [`crate::llvm_ir`]. LLVM's own inlining appears as inlined scopes, exactly like the
+//! in `ms_mir_llvm`. LLVM's own inlining appears as inlined scopes, exactly like the
 //! scopes the MIR inliner types, so fault traces keep every source frame.
 
-use crate::Error;
-use crate::cg::{FuncDbg, LlvmFn};
-use cranelift_object::object::{
+use gimli::{EndianSlice, RunTimeEndian};
+use ms_clif::Error;
+use ms_mir::ir::Scope;
+use ms_mir_llvm::{FuncInfo, TEXT_ANCHOR, TableFn};
+use object::{
     BinaryFormat, File, Object as _, ObjectSection as _, ObjectSymbol as _, RelocationKind,
     RelocationTarget, SectionIndex, SectionKind,
 };
-use gimli::{EndianSlice, RunTimeEndian};
-use ms_mir::ir::Scope;
-use ms_mir_llvm::TEXT_ANCHOR;
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -34,7 +33,7 @@ struct Inlined {
 
 /// The tables rebuilt from the LLVM object.
 pub struct Tables {
-    pub dbg: Vec<FuncDbg>,
+    pub dbg: Vec<TableFn>,
     pub scopes: Vec<Scope>,
 }
 
@@ -204,7 +203,7 @@ impl ScopeSweep {
 /// Rebuilds the tables from the DWARF in the object file `object`.
 pub fn read(
     object: &Path,
-    funcs: &[LlvmFn],
+    funcs: &[FuncInfo],
     files: &[String],
     anchored: bool,
 ) -> Result<Tables, Error> {
@@ -406,24 +405,22 @@ pub fn read(
         ));
     }
     // Assemble per-function range lists.
-    let mut dbg: Vec<FuncDbg> = funcs
+    let mut dbg: Vec<TableFn> = funcs
         .iter()
         .enumerate()
         .filter_map(|(i, f)| {
-            placed[i].map(|(addr, size)| FuncDbg {
-                id: f.id,
+            placed[i].map(|(addr, size)| TableFn {
+                symbol: f.symbol.clone(),
                 name: f.name.clone(),
                 file: f.file,
                 line: f.line,
                 size: size as u32,
                 ranges: Vec::new(),
-                dwarf_ranges: Vec::new(),
                 text: if anchored {
                     addr.wrapping_sub(anchor_at)
                 } else {
                     0
                 },
-                reloc: None,
             })
         })
         .collect();
@@ -509,13 +506,12 @@ pub fn read(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::link::llvm_tools;
-    use cranelift_module::FuncId;
+    use ms_clif::link::llvm_tools;
     use std::collections::BTreeSet;
     use std::process::Command;
 
     fn lines_for(triple: &str) -> Option<(BTreeSet<u32>, usize)> {
-        let tools = llvm_tools(&crate::BuildOptions::default()).ok()??;
+        let tools = llvm_tools(&ms_clif::BuildOptions::default()).ok()??;
         let dir = std::env::temp_dir().join(format!("ms-tables-{}-{triple}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let object = dir.join("m.o");
@@ -529,11 +525,9 @@ mod tests {
             .output()
             .unwrap();
         assert!(status.status.success(), "llc {triple}: {status:?}");
-        let funcs: Vec<LlvmFn> = ["ms_entry", "sum_squares#1"]
+        let funcs: Vec<FuncInfo> = ["ms_entry", "sum_squares#1"]
             .iter()
-            .enumerate()
-            .map(|(i, symbol)| LlvmFn {
-                id: FuncId::from_u32(i as u32),
+            .map(|symbol| FuncInfo {
                 symbol: (*symbol).into(),
                 name: (*symbol).into(),
                 file: 0,
@@ -627,7 +621,6 @@ mod sweep_tests {
     /// recover the exact names, lines and call sites.
     #[test]
     fn quoted_metadata_survives_llvm_and_fault_table_reconstruction() {
-        use cranelift_module::FuncId;
         use ms_mir::ir::{Loc, Scope};
         const INLINE: &str = "inline\"\\雪\n}\ndefine scope";
         let file = "/source/雪\nquote\".ms".to_string();
@@ -669,25 +662,14 @@ mod sweep_tests {
             },
         )
         .unwrap();
-        let build = crate::BuildOptions::default();
-        if crate::link::llvm_tools(&build).ok().flatten().is_none() {
+        let build = ms_clif::BuildOptions::default();
+        if ms_clif::link::llvm_tools(&build).ok().flatten().is_none() {
             return;
         }
-        let object = crate::llvm_obj::compile_all(&program.units, "3", &build)
+        let object = crate::llvm::obj::compile_all(&program.units, "3", &build)
             .unwrap()
             .remove(0);
-        let funcs: Vec<LlvmFn> = program
-            .funcs
-            .iter()
-            .enumerate()
-            .map(|(i, f)| LlvmFn {
-                id: FuncId::from_u32(i as u32),
-                symbol: f.symbol.clone(),
-                name: f.name.clone(),
-                file: f.file,
-                line: f.line,
-            })
-            .collect();
+        let funcs = program.funcs.clone();
         let tables = read(object.path(), &funcs, &[file], false).unwrap();
         assert!(
             tables

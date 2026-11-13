@@ -8,7 +8,7 @@ const KERNELS: &str = include_str!("vectorized_loops/k.ms");
 
 #[test]
 fn element_wise_list_loops_are_vectorized() {
-    if !ms_clif::llvm_available(&ms_cli::engine::build_options_from_env()) {
+    if !ms_build::llvm_available(&ms_cli::engine::build_options_from_env()) {
         return;
     }
     let tools = ms_clif::link::llvm_tools(&ms_cli::engine::build_options_from_env())
@@ -64,7 +64,7 @@ fn element_wise_list_loops_are_vectorized() {
 /// A fault inside a vectorized function reports its exit code and source frames.
 #[test]
 fn vectorized_function_reports_fault_frames() {
-    if !ms_clif::llvm_available(&ms_cli::engine::build_options_from_env()) {
+    if !ms_build::llvm_available(&ms_cli::engine::build_options_from_env()) {
         return;
     }
     let dir = std::env::temp_dir().join(format!("ms-vector-fault-{}", std::process::id()));
@@ -97,7 +97,7 @@ fn vectorized_function_reports_fault_frames() {
 /// `MS_VECTORIZE=off` leaves the list loops scalar.
 #[test]
 fn vectorize_off_keeps_loops_scalar() {
-    if !ms_clif::llvm_available(&ms_cli::engine::build_options_from_env()) {
+    if !ms_build::llvm_available(&ms_cli::engine::build_options_from_env()) {
         return;
     }
     let dir = std::env::temp_dir().join(format!("ms-vectorize-off-{}", std::process::id()));
@@ -124,7 +124,7 @@ fn vectorize_off_keeps_loops_scalar() {
 /// Release builds emit one copy of each function: no per-CPU copies, dispatcher or CPU query.
 #[test]
 fn release_builds_emit_no_per_cpu_copies() {
-    if !ms_clif::llvm_available(&ms_cli::engine::build_options_from_env()) {
+    if !ms_build::llvm_available(&ms_cli::engine::build_options_from_env()) {
         return;
     }
     let dir = std::env::temp_dir().join(format!("ms-one-copy-{}", std::process::id()));
@@ -154,7 +154,7 @@ fn release_builds_emit_no_per_cpu_copies() {
 #[cfg(target_arch = "aarch64")]
 #[test]
 fn element_wise_list_loops_use_neon() {
-    if !ms_clif::llvm_available(&ms_cli::engine::build_options_from_env()) {
+    if !ms_build::llvm_available(&ms_cli::engine::build_options_from_env()) {
         return;
     }
     let tools = ms_clif::link::llvm_tools(&ms_cli::engine::build_options_from_env())

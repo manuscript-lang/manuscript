@@ -80,4 +80,4 @@ domains:
     paths:
       - "crates/ms-mir-llvm/src/mir_llvm/**"
       - "crates/ms-mir-llvm/**"
-      - "crates/ms-clif/src/llvm_*.rs"
+      - "crates/ms-build/src/llvm/**"

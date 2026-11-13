@@ -5,6 +5,7 @@ pub mod builder;
 pub mod copies;
 pub mod elaborate;
 pub mod exit_drops;
+pub mod fault_tables;
 pub mod frames;
 /// The reference interpreter, used by tests as an oracle; compiled only for them.
 #[cfg(feature = "test-support")]
