@@ -15,9 +15,9 @@
 //! Values of type `ptr` are LLVM `ptr` inside a function and `i64` across a call. A record that
 //! holds a `ptr` is not handled (its leaf is an integer here); the function falls back.
 
-use super::{Area, Cx, Vals, leaves};
+use super::{Area, Cx, Vals, held_leaves};
 use crate::layout::{Layouts, Leaf, mem_layout};
-use crate::llvm_build::{FnBuilder, Ty as LTy, Val};
+use crate::llvm_build::{FnBuilder, Ty as LTy, Types, Val};
 use ms_mir::ir::{Func, Imm, Inst, Op, Target, Value};
 use ms_mir::types::{Ty, TyKind};
 
@@ -31,7 +31,7 @@ pub(super) const AREA: Area = Area {
 /// Records with more leaves than this live in memory.
 pub(super) const MEM_LEAVES: usize = 8;
 
-/// The memory shape of a type whose leaves are all `i64`, `f64` or `i8`.
+/// The memory shape of a type whose leaves are all `i64`, `f64`, `i8` or `ptr`.
 pub(super) struct Shape {
     /// The struct of the leaves.
     pub st: LTy,
@@ -41,24 +41,30 @@ pub(super) struct Shape {
     pub align: u32,
 }
 
-/// The shape of `ty`, when it has leaves and every leaf has the same size in registers and in memory.
-pub(super) fn shape(lay: &Layouts, ty: Ty) -> Option<Shape> {
+/// The memory type of the leaves of `ty`: a struct named after a record, string or list, else a
+/// literal one; `None` when it has none or a leaf differs in registers and in memory.
+fn shape_leaves(lay: &Layouts, ty: Ty) -> Option<(Vec<LTy>, crate::layout::MemLayout)> {
     let raw = lay.leaves(ty);
-    let leaves: Vec<LTy> = raw
-        .iter()
-        .map(|l| match l {
-            Leaf::I64 => Some(LTy::I64),
-            Leaf::F64 => Some(LTy::F64),
-            Leaf::I8 => Some(LTy::I8),
-            _ => None,
-        })
-        .collect::<Option<_>>()?;
-    if leaves.is_empty() {
+    if raw.is_empty()
+        || raw
+            .iter()
+            .any(|l| !matches!(l, Leaf::I64 | Leaf::F64 | Leaf::I8))
+    {
         return None;
     }
-    let mem = mem_layout(&raw);
+    Some((held_leaves(lay, ty), mem_layout(&raw)))
+}
+
+/// Whether `ty` has a memory shape.
+pub(super) fn shape_ok(lay: &Layouts, ty: Ty) -> bool {
+    shape_leaves(lay, ty).is_some()
+}
+
+/// The shape of `ty`, when it has leaves and every leaf has the same size in registers and in memory.
+pub(super) fn shape(types: &Types, lay: &Layouts, ty: Ty) -> Option<Shape> {
+    let (leaves, mem) = shape_leaves(lay, ty)?;
     Some(Shape {
-        st: LTy::Tuple(leaves.clone()),
+        st: super::aggregate(types, lay, ty),
         leaves,
         size: mem.size,
         align: mem.align,
@@ -77,24 +83,11 @@ pub(super) fn is_mem(lay: &Layouts, ty: Ty) -> bool {
     record(lay, ty).is_some() && lay.width(ty) > MEM_LEAVES
 }
 
-/// Whether a record holds a `ptr` field anywhere inside.
-fn holds_ptr(lay: &Layouts, ty: Ty) -> bool {
-    match record(lay, ty) {
-        Some(r) => lay.m.records[r.index()]
-            .fields
-            .iter()
-            .any(|f| f.1 == Ty::PTR || holds_ptr(lay, f.1)),
-        None => false,
-    }
-}
-
 /// Whether this module handles values of `ty`: `ptr`, and records that are either small or have a
 /// memory shape.
 pub(super) fn ty_ok(lay: &Layouts, ty: Ty) -> bool {
     ty == Ty::PTR
-        || (record(lay, ty).is_some()
-            && !holds_ptr(lay, ty)
-            && (lay.width(ty) <= MEM_LEAVES || shape(lay, ty).is_some()))
+        || (record(lay, ty).is_some() && (lay.width(ty) <= MEM_LEAVES || shape_ok(lay, ty)))
 }
 
 /// The ops this module emits.
@@ -116,7 +109,7 @@ pub(super) fn handles(op: Op) -> bool {
 
 /// Whether the operands and immediate of `i` are within what this module emits.
 pub(super) fn op_ok(lay: &Layouts, f: &Func, i: &Inst) -> bool {
-    let mem_ty = |t: Ty| shape(lay, t).is_some();
+    let mem_ty = |t: Ty| shape_ok(lay, t);
     match (i.op, i.imm) {
         (Op::Slot, Imm::Ty(t)) => mem_ty(t),
         (Op::Load | Op::Take, Imm::Ty(t)) => mem_ty(t) && i.res.is_some_and(|r| f.ty(r) == t),
@@ -136,17 +129,17 @@ pub(super) fn op_ok(lay: &Layouts, f: &Func, i: &Inst) -> bool {
 /// The values a MIR value of type `ty` is held as: its leaves, with `ptr` as `ptr`; a record in
 /// memory is one `ptr`.
 pub(super) fn held(lay: &Layouts, ty: Ty) -> Vec<LTy> {
-    if is_mem(lay, ty) || ty == Ty::PTR {
+    if is_mem(lay, ty) {
         return vec![LTy::Ptr];
     }
-    leaves(lay, ty).into_iter().map(|l| l.0).collect()
+    held_leaves(lay, ty)
 }
 
 /// The values of a block parameter: its own reserved names, or for a record in memory a slot that
 /// each incoming edge copies into.
 pub(super) fn block_param(b: &mut FnBuilder, lay: &Layouts, ty: Ty) -> Vec<Val> {
     if is_mem(lay, ty) {
-        let st = shape(lay, ty).expect("is_mem checked").st;
+        let st = shape(b.types(), lay, ty).expect("is_mem checked").st;
         return vec![b.alloca(&st)];
     }
     reserve(b, lay, ty)
@@ -166,23 +159,36 @@ fn field_span(lay: &Layouts, rty: Ty, i: usize) -> (usize, usize) {
     (at, lay.width(fields[i].1))
 }
 
-/// The leaves of `v` as they cross a call: a `ptr` as its address, a record in memory loaded.
+/// The leaves of `v` as they cross a call: a record in memory loaded, and each pointer as itself
+/// in the native convention (`native`) or as its address (`i64`) in the leaf convention.
 pub(super) fn abi_leaves(
     b: &mut FnBuilder,
     lay: &Layouts,
     ty: Ty,
     vals: &Vals,
     v: Value,
+    native: bool,
 ) -> Vec<Val> {
     let own = &vals[&v.index()];
-    if ty == Ty::PTR {
-        return vec![b.ptr_to_int(&own[0])];
+    let leaves = if is_mem(lay, ty) {
+        let s = shape(b.types(), lay, ty).expect("is_mem checked");
+        load_leaves(b, &s, &own[0], 0, s.leaves.len(), &[])
+    } else {
+        own.clone()
+    };
+    if native {
+        return leaves;
     }
-    if is_mem(lay, ty) {
-        let s = shape(lay, ty).expect("is_mem checked");
-        return load_leaves(b, &s, &own[0], 0, s.leaves.len(), &[]);
-    }
-    own.clone()
+    leaves
+        .into_iter()
+        .map(|l| {
+            if l.ty == LTy::Ptr {
+                b.ptr_to_int(&l)
+            } else {
+                l
+            }
+        })
+        .collect()
 }
 
 /// Loads leaves `at..at + n` of the record at `base`; each takes the matching name of `named`
@@ -221,12 +227,12 @@ fn align(t: &LTy) -> u64 {
 /// What the entry block must do before anything else: define the values of parameters that do not
 /// arrive as they are used.
 pub(super) enum Entry {
-    /// A `ptr` parameter arrives as an address.
+    /// A pointer leaf arrives as an address.
     Ptr { held: Val, abi: Val },
     /// A record in memory arrives as leaves and is stored into its slot.
     Mem { slot: Val, abi: Vec<Val>, ty: Ty },
     /// A value passed by pointer (see `abi_llvm`) is loaded into its leaves.
-    Load { ptr: Val, dsts: Vec<Val> },
+    Load { ptr: Val, dsts: Vec<Val>, ty: Ty },
 }
 
 /// The held values of an entry parameter of type `ty` that arrives as `abi`, and what the entry
@@ -238,16 +244,8 @@ pub(super) fn bind_param(
     abi: Vec<Val>,
     entry: &mut Vec<Entry>,
 ) -> Vec<Val> {
-    if ty == Ty::PTR {
-        let held = b.reserve(LTy::Ptr);
-        entry.push(Entry::Ptr {
-            held: held.clone(),
-            abi: abi[0].clone(),
-        });
-        return vec![held];
-    }
     if is_mem(lay, ty) {
-        let slot = b.alloca(&shape(lay, ty).expect("is_mem checked").st);
+        let slot = b.alloca(&shape(b.types(), lay, ty).expect("is_mem checked").st);
         entry.push(Entry::Mem {
             slot: slot.clone(),
             abi,
@@ -255,7 +253,22 @@ pub(super) fn bind_param(
         });
         return vec![slot];
     }
-    abi
+    // Pointer leaves that arrive as addresses are converted at the top of the entry block.
+    abi.into_iter()
+        .zip(held_leaves(lay, ty))
+        .map(|(a, t)| {
+            if t == LTy::Ptr && a.ty == LTy::I64 {
+                let held = b.reserve(LTy::Ptr);
+                entry.push(Entry::Ptr {
+                    held: held.clone(),
+                    abi: a,
+                });
+                held
+            } else {
+                a
+            }
+        })
+        .collect()
 }
 
 pub(super) fn emit_entry(b: &mut FnBuilder, lay: &Layouts, entry: Vec<Entry>) {
@@ -266,11 +279,11 @@ pub(super) fn emit_entry(b: &mut FnBuilder, lay: &Layouts, entry: Vec<Entry>) {
                 b.int_to_ptr(&abi);
             }
             Entry::Mem { slot, abi, ty } => {
-                let s = shape(lay, ty).expect("is_mem checked");
+                let s = shape(b.types(), lay, ty).expect("is_mem checked");
                 store_leaves(b, &s, &slot, 0, &abi);
             }
-            Entry::Load { ptr, dsts } => {
-                let st = LTy::Tuple(dsts.iter().map(|d| d.ty.clone()).collect());
+            Entry::Load { ptr, dsts, ty } => {
+                let st = super::aggregate(b.types(), lay, ty);
                 for (k, dst) in dsts.iter().enumerate() {
                     let p = b.field_ptr(&st, &ptr, k);
                     b.name_next(dst);
@@ -296,7 +309,7 @@ pub(super) fn copies(b: &mut FnBuilder, lay: &Layouts, f: &Func, vals: &Vals, t:
     let mut pairs = Vec::new();
     for (p, a) in params.iter().zip(&t.args) {
         if is_mem(lay, f.ty(p.value)) {
-            let s = shape(lay, f.ty(p.value)).expect("is_mem checked");
+            let s = shape(b.types(), lay, f.ty(p.value)).expect("is_mem checked");
             pairs.push((
                 vals[&p.value.index()][0].clone(),
                 vals[&a.index()][0].clone(),
@@ -346,7 +359,7 @@ pub(super) fn bind_early(
         Op::Slot => {
             let Imm::Ty(t) = inst.imm else { return None };
             // The runtime may write a whole word to a slot of a smaller type.
-            let st = shape(lay, t)?;
+            let st = shape(b.types(), lay, t)?;
             let ty = if st.size < 8 { LTy::I64 } else { st.st };
             Some(vec![b.alloca(&ty)])
         }
@@ -390,28 +403,23 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
             let ty = f.ty(inst.res.expect("load result"));
             let p = arg(0)[0].clone();
             if is_mem(lay, ty) {
-                let s = shape(lay, ty).expect("is_mem checked");
+                let s = shape(b.types(), lay, ty).expect("is_mem checked");
                 b.alloca_as(&out[0], &s.st);
                 b.copy_bytes(&out[0], &p, s.size as u64, s.align as u64);
-            } else if ty == Ty::PTR {
-                let t = b.load(&LTy::I64, &p, 8);
-                b.name_next(&out[0]);
-                b.int_to_ptr(&t);
             } else {
-                let s = shape(lay, ty).expect("op_ok checked");
+                let s = shape(b.types(), lay, ty).expect("op_ok checked");
                 load_leaves(b, &s, &p, 0, s.leaves.len(), &out);
             }
         }
         Op::Store | Op::Put => {
             let p = arg(0)[0].clone();
             let ty = f.ty(inst.args[1]);
-            let s = shape(lay, ty).expect("op_ok checked");
+            let s = shape(b.types(), lay, ty).expect("op_ok checked");
             if is_mem(lay, ty) {
                 let src = arg(1)[0].clone();
                 b.copy_bytes(&p, &src, s.size as u64, s.align as u64);
             } else {
-                let v = abi_leaves(b, lay, ty, vals, inst.args[1]);
-                store_leaves(b, &s, &p, 0, &v);
+                store_leaves(b, &s, &p, 0, &vals[&inst.args[1].index()]);
             }
         }
         Op::PtrField => {
@@ -423,7 +431,7 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
                 .expect("record type interned");
             let (at, _) = field_span(lay, rty, i as usize);
             b.name_next(&out[0]);
-            match shape(lay, rty) {
+            match shape(b.types(), lay, rty) {
                 Some(s) => b.field_ptr(&s.st, &arg(0)[0], at),
                 None => {
                     let offsets = mem_layout(&lay.leaves(rty)).offsets;
@@ -434,7 +442,7 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         Op::RecNew => {
             // A record in memory: each field is stored into a fresh slot.
             let res = inst.res.expect("rec.new result");
-            let s = shape(lay, f.ty(res)).expect("is_mem checked");
+            let s = shape(b.types(), lay, f.ty(res)).expect("is_mem checked");
             b.alloca_as(&out[0], &s.st);
             let mut at = 0;
             for a in &inst.args {
@@ -446,7 +454,7 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
             let res = inst.res.expect("rec.get result");
             let rty = f.ty(inst.args[0]);
             let (at, n) = field_span(lay, rty, i as usize);
-            let s = shape(lay, rty).expect("is_mem checked");
+            let s = shape(b.types(), lay, rty).expect("is_mem checked");
             let rec = arg(0)[0].clone();
             if is_mem(lay, f.ty(res)) {
                 // A nested record is the same bytes at an offset; the parent is never written.
@@ -460,7 +468,7 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
             let Imm::Field(_, i) = inst.imm else { return };
             let rty = f.ty(inst.args[0]);
             let (at, _) = field_span(lay, rty, i as usize);
-            let s = shape(lay, rty).expect("is_mem checked");
+            let s = shape(b.types(), lay, rty).expect("is_mem checked");
             let src = arg(0)[0].clone();
             b.alloca_as(&out[0], &s.st);
             b.copy_bytes(&out[0], &src, s.size as u64, s.align as u64);
@@ -490,7 +498,7 @@ fn write_field(
     if is_mem(lay, ty) {
         let src = vals[&v.index()][0].clone();
         let p = b.field_ptr(&s.st, slot, at);
-        let inner = shape(lay, ty).expect("is_mem checked");
+        let inner = shape(b.types(), lay, ty).expect("is_mem checked");
         b.copy_bytes(&p, &src, inner.size as u64, inner.align as u64);
     } else {
         store_leaves(b, s, slot, at, &vals[&v.index()]);
@@ -498,15 +506,10 @@ fn write_field(
     n
 }
 
-/// Defines the held value of a call result of type `ty` (`ptr` or a record in memory) from the
-/// call's own result `r` (a leaf, or a tuple of several), under the reserved name `out[0]`.
+/// Defines the held value of a call result that is a record in memory from the call's own result
+/// `r` (a leaf, or a tuple of several), under the reserved name `out[0]`.
 pub(super) fn call_result(b: &mut FnBuilder, lay: &Layouts, ty: Ty, r: Val, out: &[Val]) {
-    if ty == Ty::PTR {
-        b.name_next(&out[0]);
-        b.int_to_ptr(&r);
-        return;
-    }
-    let s = shape(lay, ty).expect("is_mem checked");
+    let s = shape(b.types(), lay, ty).expect("is_mem checked");
     let abi = if s.leaves.len() == 1 {
         vec![r]
     } else {
@@ -514,6 +517,25 @@ pub(super) fn call_result(b: &mut FnBuilder, lay: &Layouts, ty: Ty, r: Val, out:
     };
     b.alloca_as(&out[0], &s.st);
     store_leaves(b, &s, &out[0], 0, &abi);
+}
+
+/// Defines the held values `out` of a result that came back in the leaf convention, as the call's
+/// own result `r` (one leaf, or a tuple of several): a pointer leaf comes back as an address and
+/// is converted, every other leaf is the call's result itself under its reserved name.
+pub(super) fn name_leaves(b: &mut FnBuilder, r: Val, out: &[Val]) {
+    for (k, dst) in out.iter().enumerate() {
+        let word = if out.len() == 1 {
+            r.clone()
+        } else if dst.ty == LTy::Ptr {
+            b.extract(&r, k)
+        } else {
+            b.name_next(dst);
+            b.extract(&r, k);
+            continue;
+        };
+        b.name_next(dst);
+        b.int_to_ptr(&word);
+    }
 }
 
 /// The held values of an entry parameter of type `ty` that arrives as the pointer `ptr`. A record
@@ -529,13 +551,14 @@ pub(super) fn bind_indirect(
     if is_mem(lay, ty) {
         return vec![ptr];
     }
-    let dsts: Vec<Val> = leaves(lay, ty)
+    let dsts: Vec<Val> = held_leaves(lay, ty)
         .into_iter()
-        .map(|l| b.reserve(l.0))
+        .map(|t| b.reserve(t))
         .collect();
     entry.push(Entry::Load {
         ptr,
         dsts: dsts.clone(),
+        ty,
     });
     dsts
 }
@@ -546,8 +569,8 @@ pub(super) fn spill(b: &mut FnBuilder, lay: &Layouts, ty: Ty, vals: &Vals, v: Va
     if is_mem(lay, ty) {
         return vals[&v.index()][0].clone();
     }
-    let leaves = abi_leaves(b, lay, ty, vals, v);
-    let st = LTy::Tuple(leaves.iter().map(|l| l.ty.clone()).collect());
+    let leaves = abi_leaves(b, lay, ty, vals, v, true);
+    let st = super::aggregate(b.types(), lay, ty);
     let slot = b.alloca(&st);
     store_regs(b, &st, &slot, &leaves);
     slot
@@ -570,12 +593,12 @@ pub(super) fn store_result(
     sret: &Val,
 ) {
     if is_mem(lay, ty) {
-        let s = shape(lay, ty).expect("is_mem checked");
+        let s = shape(b.types(), lay, ty).expect("is_mem checked");
         b.copy_bytes(sret, &vals[&v.index()][0], s.size as u64, s.align as u64);
         return;
     }
-    let leaves = abi_leaves(b, lay, ty, vals, v);
-    let st = LTy::Tuple(leaves.iter().map(|l| l.ty.clone()).collect());
+    let leaves = abi_leaves(b, lay, ty, vals, v, true);
+    let st = super::aggregate(b.types(), lay, ty);
     store_regs(b, &st, sret, &leaves);
 }
 
@@ -583,11 +606,11 @@ pub(super) fn store_result(
 /// memory, else a scratch slot that [`load_result`] reads back.
 pub(super) fn result_slot(b: &mut FnBuilder, lay: &Layouts, ty: Ty, out: &[Val]) -> Val {
     if is_mem(lay, ty) {
-        let s = shape(lay, ty).expect("is_mem checked");
+        let s = shape(b.types(), lay, ty).expect("is_mem checked");
         b.alloca_as(&out[0], &s.st);
         return out[0].clone();
     }
-    let st = LTy::Tuple(leaves(lay, ty).into_iter().map(|l| l.0).collect());
+    let st = super::aggregate(b.types(), lay, ty);
     b.alloca(&st)
 }
 
@@ -596,7 +619,7 @@ pub(super) fn load_result(b: &mut FnBuilder, lay: &Layouts, ty: Ty, slot: &Val, 
     if is_mem(lay, ty) {
         return;
     }
-    let st = LTy::Tuple(leaves(lay, ty).into_iter().map(|l| l.0).collect());
+    let st = super::aggregate(b.types(), lay, ty);
     for (k, dst) in out.iter().enumerate() {
         let p = b.field_ptr(&st, slot, k);
         b.name_next(dst);

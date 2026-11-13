@@ -6,7 +6,7 @@
 //! one cell each in a heap block followed by room for the results, and the function returns what
 //! that run produced. It is the check `Lower::depth_enter` writes for the Cranelift path.
 
-use super::{Area, Cx, Emitted, Vals, block_label, leaves, ret_attr, ret_ty};
+use super::{Area, Cx, Emitted, Vals, block_label, call_ret_ty, ret_attr};
 use crate::abi_llvm::{Pass, Reg, Ret, Signature};
 use crate::layout::Layouts;
 use crate::llvm_build::Types;
@@ -121,17 +121,24 @@ pub(super) fn enter(cx: &mut Cx, b: &mut FnBuilder) {
 }
 
 /// The leaf types a function returns, as they cross a call.
-pub(super) fn ret_abi(lay: &crate::layout::Layouts, ret: ms_mir::types::Ty) -> Vec<LTy> {
-    leaves(lay, ret).into_iter().map(|l| l.0).collect()
+pub(super) fn ret_abi(
+    lay: &crate::layout::Layouts,
+    ret: ms_mir::types::Ty,
+    native: bool,
+) -> Vec<LTy> {
+    match call_ret_ty(lay, ret, native) {
+        LTy::Void => Vec::new(),
+        LTy::Tuple(ts) => ts,
+        one => vec![one],
+    }
 }
 
 /// The grow shim of a function in the native convention: it reads the cells `enter` filled (the
 /// result pointer if any, then each parameter as scalars or a pointer), calls the function, and
 /// writes the scalar results after them.
-pub(super) fn shim(lay: &Layouts, f: &Func, sym: &str, dbg: usize) -> Emitted {
-    let types = Types::default();
-    let sig = Signature::of(lay, &f.params, f.ret);
-    let mut b = FnBuilder::new(&types, Some(dbg));
+pub(super) fn shim(types: &Types, lay: &Layouts, f: &Func, sym: &str, dbg: usize) -> Emitted {
+    let sig = Signature::of(types, lay, &f.params, f.ret);
+    let mut b = FnBuilder::new(types, Some(dbg));
     b.label("entry");
     let block = b.int_to_ptr(&Val::new("%a0", LTy::I64));
     let mut cell = 0;
@@ -153,6 +160,7 @@ pub(super) fn shim(lay: &Layouts, f: &Func, sym: &str, dbg: usize) -> Emitted {
                         Reg::I8 => (LTy::I8, " zeroext"),
                         Reg::F64 => (LTy::F64, ""),
                         Reg::I64 => (LTy::I64, ""),
+                        Reg::Ptr => (LTy::Ptr, ""),
                     };
                     args.push((read(&mut b, &ty), attr));
                 }
@@ -164,7 +172,7 @@ pub(super) fn shim(lay: &Layouts, f: &Func, sym: &str, dbg: usize) -> Emitted {
         }
     }
     let first_result = cell;
-    let ret = ret_ty(lay, f.ret);
+    let ret = call_ret_ty(lay, f.ret, true);
     let attr = ret_attr(lay, f.ret);
     let (ret, attr) = match sig.result {
         Ret::Sret(_) => (LTy::Void, ""),

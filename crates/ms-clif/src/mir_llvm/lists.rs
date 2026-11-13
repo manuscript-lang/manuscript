@@ -1,8 +1,8 @@
 //! Strings and lists: the length leaf, element reads and writes, and string bytes.
 
-use super::{Area, Cx, Vals, block_label, leaf};
+use super::{Area, Cx, Vals, block_label, held_leaves};
 use crate::layout::{Layouts, Leaf, mem_layout};
-use crate::llvm_build::{Bin, FnBuilder, Meta, Range, Tbaa, Ty as LTy, Types, Val};
+use crate::llvm_build::{Bin, FnBuilder, Meta, Range, Tbaa, Ty as LTy, Val};
 use ms_mir::ir::{Func, Inst, Module, Op};
 use ms_mir::types::TyKind;
 
@@ -97,8 +97,8 @@ fn list_access(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     let l = &vals[&inst.args[0].index()];
     let i = vals[&inst.args[1].index()][0].clone();
     let elem = cx.m.seq_elem(cx.f.ty(inst.args[0])).expect("a list");
-    let tys: Vec<LTy> = cx.lay.leaves(elem).into_iter().map(|x| leaf(x).0).collect();
-    let (ptr, len) = (b.int_to_ptr(&l[0]), l[1].clone());
+    let tys = held_leaves(cx.lay, elem);
+    let (ptr, len) = (l[0].clone(), l[1].clone());
     let wraps = matches!(inst.op, Op::ListGet | Op::ListSet | Op::ListFill);
     let idx = if wraps {
         let neg = b.icmp("slt", &i, &Val::int(0));
@@ -129,10 +129,10 @@ fn list_access(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         ));
         b.label(&next);
     }
-    let types = Types::default();
+    let types = b.types();
     let whole = match tys.as_slice() {
         [one] => one.clone(),
-        many => LTy::Tuple(many.to_vec()),
+        _ => super::aggregate(types, cx.lay, elem),
     };
     debug_assert_eq!(
         types.size_align(&whole).0,

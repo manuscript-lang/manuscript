@@ -17,7 +17,7 @@ mod lists;
 mod maps;
 mod records;
 
-use crate::abi_llvm::{Pass, Ret, Signature};
+use crate::abi_llvm::{Pass, Reg, Ret, Signature};
 use crate::layout::{Layouts, Leaf};
 use crate::llvm_build::{FnBuilder, Ty as LTy, Types, Val};
 use crate::llvm_ir::DirectEnv;
@@ -77,6 +77,60 @@ fn leaves(lay: &Layouts, ty: Ty) -> Vec<(LTy, &'static str)> {
         _ => {}
     }
     ls
+}
+
+/// The types a value of type `ty` is held as inside a function: its leaves, with the pointer
+/// ones as `ptr` (`Layouts::pointer_leaves`). A function in the leaf convention gets and returns
+/// those leaves as `i64` and converts at its entry and returns.
+fn held_leaves(lay: &Layouts, ty: Ty) -> Vec<LTy> {
+    let mut tys: Vec<LTy> = lay.leaves(ty).into_iter().map(|l| leaf(l).0).collect();
+    for (t, ptr) in tys.iter_mut().zip(lay.pointer_leaves(ty)) {
+        if ptr {
+            *t = LTy::Ptr;
+        }
+    }
+    tys
+}
+
+/// The struct a value of type `ty` has in memory: named for strings, lists and records, so the
+/// module defines each once, else a literal struct of its held leaves.
+pub(crate) fn aggregate(types: &Types, lay: &Layouts, ty: Ty) -> LTy {
+    let fields = held_leaves(lay, ty);
+    let name = match lay.m.types.kind(ty) {
+        TyKind::Str => "ms.str".to_string(),
+        TyKind::Bytes => "ms.bytes".to_string(),
+        TyKind::List(_) => "ms.list".to_string(),
+        TyKind::Rec(r) => format!("ms.rec.{}", lay.m.records[r.index()].name),
+        _ => return LTy::Tuple(fields),
+    };
+    types.named(&name, fields)
+}
+
+/// The LLVM type of a register of the native convention.
+fn reg_ty(r: Reg) -> LTy {
+    match r {
+        Reg::I64 => LTy::I64,
+        Reg::F64 => LTy::F64,
+        Reg::I8 => LTy::I8,
+        Reg::Ptr => LTy::Ptr,
+    }
+}
+
+/// The result as it crosses a call: the `void`, the register or a tuple of them, in the native
+/// convention when `native` and as leaves otherwise.
+fn call_ret_ty(lay: &Layouts, ty: Ty, native: bool) -> LTy {
+    if !native {
+        return ret_ty(lay, ty);
+    }
+    let mut tys: Vec<LTy> = crate::abi_llvm::regs_of(lay, ty)
+        .into_iter()
+        .map(reg_ty)
+        .collect();
+    match tys.len() {
+        0 => LTy::Void,
+        1 => tys.remove(0),
+        _ => LTy::Tuple(tys),
+    }
 }
 
 /// Whether this stage handles values of `ty`: some area accepts its kind.
@@ -287,8 +341,8 @@ pub fn emit(
     env: &mut DirectEnv,
     symbol_of: &dyn Fn(usize) -> String,
 ) -> Emitted {
-    let types = Types::default();
-    let mut b = FnBuilder::new(&types, Some(env.loc));
+    let types = env.types;
+    let mut b = FnBuilder::new(types, Some(env.loc));
     let rpo = f.rpo();
     // Name every value before emitting anything: a phi names values a later block defines (the
     // back edge of a loop), and a constant is its own text.
@@ -298,7 +352,7 @@ pub fn emit(
     let mut entry_abi = Vec::new();
     let sig = native
         .contains(&idx)
-        .then(|| Signature::of(lay, &f.params, f.ret));
+        .then(|| Signature::of(types, lay, &f.params, f.ret));
     let sret = sig
         .as_ref()
         .is_some_and(|s| matches!(s.result, Ret::Sret(_)))
@@ -313,8 +367,13 @@ pub fn emit(
             continue;
         }
         let mut abi = Vec::new();
+        let regs = match sig.as_ref().map(|s| &s.passes[i]) {
+            Some(Pass::Scalars(r)) => Some(r),
+            _ => None,
+        };
         for (j, (t, attr)) in leaves(lay, p.ty).into_iter().enumerate() {
             params.push(format!("{}{attr} %a{i}_{j}", types.text(&t)));
+            let t = regs.map_or(t, |r| reg_ty(r[j]));
             abi.push(Val::new(format!("%a{i}_{j}"), t));
         }
         entry_abi.extend(abi.iter().cloned());
@@ -375,7 +434,7 @@ pub fn emit(
         ret_abi: if sret.is_some() {
             Vec::new()
         } else {
-            depth::ret_abi(lay, f.ret)
+            depth::ret_abi(lay, f.ret, sig.is_some())
         },
         grow_shim,
         native,
@@ -438,7 +497,7 @@ pub fn emit(
                 b.ret(None);
             }
             Term::Ret(Some(v)) => {
-                let abi = records::abi_leaves(&mut b, lay, f.ty(*v), &vals, *v);
+                let abi = records::abi_leaves(&mut b, lay, f.ty(*v), &vals, *v, sig.is_some());
                 match abi.as_slice() {
                     [] => b.ret(None),
                     [one] => b.ret(Some(one)),
@@ -475,6 +534,6 @@ fn inst_text(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
 }
 
 /// The grow shim of the native function `f` called `sym` (see [`depth::shim`]).
-pub fn grow_shim(lay: &Layouts, f: &Func, sym: &str, dbg: usize) -> Emitted {
-    depth::shim(lay, f, sym, dbg)
+pub fn grow_shim(types: &Types, lay: &Layouts, f: &Func, sym: &str, dbg: usize) -> Emitted {
+    depth::shim(types, lay, f, sym, dbg)
 }

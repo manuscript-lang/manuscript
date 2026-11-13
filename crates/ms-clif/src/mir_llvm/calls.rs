@@ -1,7 +1,7 @@
 //! Direct calls between functions emitted from MIR.
 
 use super::attrs::pure_attrs;
-use super::{Area, Cx, Vals, leaves, records, ret_attr, ret_ty};
+use super::{Area, Cx, Vals, call_ret_ty, leaves, records, ret_attr};
 use crate::abi_llvm::{Pass, Ret, Signature};
 use crate::llvm_build::{FnBuilder, Ty as LTy, Types, Val};
 use ms_mir::ir::{Imm, Inst, Op};
@@ -29,7 +29,7 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     let attrs = pure_attrs(m, lay, cx.native, c.index(), &mut cx.memo).unwrap_or("");
     let pure = !attrs.is_empty();
     if cx.native.contains(&c.index()) {
-        let sig = Signature::of(lay, &callee.params, callee.ret);
+        let sig = Signature::of(b.types(), lay, &callee.params, callee.ret);
         // A result larger than two registers comes back through a slot the caller owns.
         let slot = match sig.result {
             Ret::Sret(_) => Some(records::result_slot(b, lay, callee.ret, &out)),
@@ -39,7 +39,7 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         for ((p, a), pass) in callee.params.iter().zip(&inst.args).zip(&sig.passes) {
             match pass {
                 Pass::Scalars(_) => {
-                    let abi = records::abi_leaves(b, lay, p.ty, vals, *a);
+                    let abi = records::abi_leaves(b, lay, p.ty, vals, *a, true);
                     for (v, (_, at)) in abi.into_iter().zip(leaves(lay, p.ty)) {
                         args.push((v, at));
                     }
@@ -50,7 +50,7 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         cx.decls.push((sym.clone(), sig.declare(&sym, attrs)));
         let ret = match &slot {
             Some(_) => LTy::Void,
-            None => ret_ty(lay, callee.ret),
+            None => call_ret_ty(lay, callee.ret, true),
         };
         let attr = if slot.is_some() {
             ""
@@ -62,22 +62,31 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
                 b.call(&ret, attr, &sym, &args);
                 records::load_result(b, lay, callee.ret, slot, &out);
             }
-            None => finish_call(b, lay, callee.ret, (&ret, attr, pure), &sym, &args, &out),
+            None => finish_call(
+                b,
+                lay,
+                callee.ret,
+                (&ret, attr, pure),
+                &sym,
+                &args,
+                &out,
+                true,
+            ),
         }
         return;
     }
     let mut args: Vec<(Val, &str)> = Vec::new();
     for (p, a) in callee.params.iter().zip(&inst.args) {
-        let abi = records::abi_leaves(b, lay, p.ty, vals, *a);
+        let abi = records::abi_leaves(b, lay, p.ty, vals, *a, false);
         for (v, (_, at)) in abi.into_iter().zip(leaves(lay, p.ty)) {
             args.push((v, at));
         }
     }
-    let ret = ret_ty(lay, callee.ret);
+    let ret = call_ret_ty(lay, callee.ret, false);
     let attr = ret_attr(lay, callee.ret);
     let formals: Vec<String> = args
         .iter()
-        .map(|(v, a)| format!("{}{a}", Types::default().text(&v.ty)))
+        .map(|(v, a)| format!("{}{a}", b.types().text(&v.ty)))
         .collect();
     cx.decls.push((
         sym.clone(),
@@ -87,7 +96,16 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
             formals.join(", "),
         ),
     ));
-    finish_call(b, lay, callee.ret, (&ret, attr, pure), &sym, &args, &out);
+    finish_call(
+        b,
+        lay,
+        callee.ret,
+        (&ret, attr, pure),
+        &sym,
+        &args,
+        &out,
+        false,
+    );
 }
 
 /// Writes the call and names its results `out`.
@@ -100,6 +118,7 @@ fn finish_call(
     sym: &str,
     args: &[(Val, &str)],
     out: &[Val],
+    native: bool,
 ) {
     // A pure callee cannot fault, so its call sites need no fault frame of their own.
     let call = |b: &mut FnBuilder| {
@@ -109,10 +128,14 @@ fn finish_call(
             b.call(ret, attr, sym, args)
         }
     };
-    if result == Ty::PTR || records::is_mem(lay, result) {
-        // The result is a `ptr` or a record in memory, rebuilt from the call's result.
+    if records::is_mem(lay, result) {
+        // The result is a record in memory, rebuilt from the call's result.
         let r = call(b).expect("a result");
         records::call_result(b, lay, result, r, out);
+    } else if !native && out.iter().any(|d| d.ty == LTy::Ptr) {
+        // Pointer leaves come back as addresses.
+        let r = call(b).expect("a result");
+        records::name_leaves(b, r, out);
     } else if out.len() <= 1 {
         if let [r] = out {
             b.name_next(r);
