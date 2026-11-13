@@ -13,11 +13,13 @@ mod closures;
 mod depth;
 mod enums;
 mod faults;
+mod globals;
 mod glue;
 mod lists;
 mod maps;
 mod records;
 mod rt;
+mod strings;
 
 use crate::abi_llvm::{Pass, Reg, Ret, Signature};
 use crate::layout::{Layouts, Leaf};
@@ -84,6 +86,8 @@ pub struct Plan {
     pub closures: HashMap<(usize, bool), ClosureSyms>,
     /// The data symbol of each vtable an instruction names.
     pub vtables: HashMap<usize, String>,
+    /// The data symbol of each global an instruction names.
+    pub globals: HashMap<usize, String>,
 }
 
 /// LLVM type and parameter attribute of one register leaf. `I8` leaves (`Bool`, flags) are
@@ -337,6 +341,8 @@ const AREAS: &[Area] = &[
     records::AREA,
     depth::AREA,
     glue::AREA,
+    globals::AREA,
+    strings::AREA,
     enums::AREA,
     maps::AREA,
     closures::AREA,
@@ -348,7 +354,7 @@ fn area_of(op: Op) -> Option<&'static Area> {
 
 /// Whether stage 1 can emit `f`.
 pub fn supports(m: &Module, lay: &Layouts, f: &Func) -> bool {
-    if !f.noalias.is_empty() || !signature_ok(lay, &f.params, f.ret) {
+    if !signature_ok(lay, &f.params, f.ret) {
         return false;
     }
     let ty_ok = |v| supported_ty(lay, f.ty(v));
@@ -378,21 +384,10 @@ pub fn supports(m: &Module, lay: &Layouts, f: &Func) -> bool {
         }
         let ok = match &bd.term {
             Term::Br(t) => !is_entry(t),
-            Term::CondBr { then, els, .. } => {
-                then.block != els.block && !is_entry(then) && !is_entry(els)
-            }
+            Term::CondBr { then, els, .. } => !is_entry(then) && !is_entry(els),
             Term::Ret(_) | Term::Unreachable => true,
             Term::Switch { cases, default, .. } => {
-                // Two edges into one block are two phi entries and must carry the same values.
-                let targets: Vec<&Target> = cases.iter().map(|c| &c.1).chain([default]).collect();
-                targets
-                    .iter()
-                    .all(|t| !is_entry(t) && !records::has_copies(lay, f, t))
-                    && targets.iter().all(|a| {
-                        targets
-                            .iter()
-                            .all(|b| a.block != b.block || a.args == b.args)
-                    })
+                !cases.iter().map(|c| &c.1).chain([default]).any(is_entry)
             }
             Term::Fault(k) => faults::terminator_ok(*k),
         };
@@ -402,6 +397,49 @@ pub fn supports(m: &Module, lay: &Layouts, f: &Func) -> bool {
         bd.term.for_each_target(|t| entry_target |= is_entry(t));
     }
     !entry_target
+}
+
+/// Whether the edge of a conditional terminator to `t` is a block of its own, named after the block
+/// it leaves: it copies into a record's slot, which only its own edge may do, or its target is also
+/// reached by another edge of the same terminator, whose phi entries need distinct predecessors.
+fn split_edge(lay: &Layouts, f: &Func, term: &Term, t: &Target) -> bool {
+    let mut reached = 0;
+    term.for_each_target(|u| reached += usize::from(u.block == t.block));
+    !matches!(term, Term::Br(_)) && (reached > 1 || records::has_copies(lay, f, t))
+}
+
+/// The labels the edges of `term` branch to, in target order: the target itself, or the edge's own
+/// block `{from}_e{k}` (see [`split_edge`]).
+fn edge_labels(lay: &Layouts, f: &Func, term: &Term, from: &str) -> Vec<String> {
+    let mut labels = Vec::new();
+    term.for_each_target(|t| {
+        labels.push(if split_edge(lay, f, term, t) {
+            format!("{from}_e{}", labels.len())
+        } else {
+            block_label(t.block.index(), 0)
+        });
+    });
+    labels
+}
+
+/// Writes the blocks of the split edges named by `labels`.
+fn edge_blocks(
+    b: &mut FnBuilder,
+    lay: &Layouts,
+    f: &Func,
+    vals: &Vals,
+    term: &Term,
+    labels: &[String],
+) {
+    let mut k = 0;
+    term.for_each_target(|t| {
+        if split_edge(lay, f, term, t) {
+            b.label(&labels[k]);
+            records::copies(b, lay, f, vals, t);
+            b.br(&block_label(t.block.index(), 0));
+        }
+        k += 1;
+    });
 }
 
 fn is_entry(t: &Target) -> bool {
@@ -489,7 +527,7 @@ pub fn emit(
     let mut entry_abi = Vec::new();
     let sig = native
         .contains(&idx)
-        .then(|| Signature::of(types, lay, &f.params, f.ret));
+        .then(|| Signature::of(types, lay, &f.params, &f.noalias, f.ret));
     let sret = sig
         .as_ref()
         .is_some_and(|s| matches!(s.result, Ret::Sret(_)))
@@ -544,7 +582,7 @@ pub fn emit(
         let mut k = 0;
         term.for_each_target(|t| {
             let from = exit_label(lay, f, checks, bb.index());
-            let from = if matches!(term, Term::CondBr { .. }) && records::has_copies(lay, f, t) {
+            let from = if split_edge(lay, f, term, t) {
                 format!("{from}_e{k}")
             } else {
                 from
@@ -613,33 +651,23 @@ pub fn emit(
                 records::copies(&mut b, lay, f, &vals, t);
                 b.br(&block_label(t.block.index(), 0));
             }
-            Term::CondBr { cond, then, els } => {
+            Term::CondBr { cond, .. } => {
                 let c = vals[&cond.index()][0].clone();
                 let from = exit_label(lay, f, checks, bb.index());
-                let to = |k: usize, t: &Target| {
-                    if records::has_copies(lay, f, t) {
-                        format!("{from}_e{k}")
-                    } else {
-                        block_label(t.block.index(), 0)
-                    }
-                };
-                b.cond_br(&c, &to(0, then), &to(1, els));
-                for (k, t) in [then, els].into_iter().enumerate() {
-                    if records::has_copies(lay, f, t) {
-                        b.label(&to(k, t));
-                        records::copies(&mut b, lay, f, &vals, t);
-                        b.br(&block_label(t.block.index(), 0));
-                    }
-                }
+                let to = edge_labels(lay, f, &bd.term, &from);
+                b.cond_br(&c, &to[0], &to[1]);
+                edge_blocks(&mut b, lay, f, &vals, &bd.term, &to);
             }
-            Term::Switch {
-                value,
-                cases,
-                default,
-            } => {
-                let label = |t: &Target| block_label(t.block.index(), 0);
-                let arms: Vec<(i64, String)> = cases.iter().map(|(k, t)| (*k, label(t))).collect();
-                b.switch(&vals[&value.index()][0], &label(default), &arms);
+            Term::Switch { value, cases, .. } => {
+                let from = exit_label(lay, f, checks, bb.index());
+                let to = edge_labels(lay, f, &bd.term, &from);
+                let arms: Vec<(i64, String)> = cases
+                    .iter()
+                    .zip(&to)
+                    .map(|((k, _), l)| (*k, l.clone()))
+                    .collect();
+                b.switch(&vals[&value.index()][0], &to[cases.len()], &arms);
+                edge_blocks(&mut b, lay, f, &vals, &bd.term, &to);
             }
             Term::Ret(Some(v)) if sret.is_some() => {
                 let to = sret.as_ref().expect("checked");
@@ -689,6 +717,50 @@ fn inst_text(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
 /// The grow shim of the native function `f` called `sym` (see [`depth::shim`]).
 pub fn grow_shim(types: &Types, lay: &Layouts, f: &Func, sym: &str, dbg: usize) -> Emitted {
     depth::shim(types, lay, f, sym, dbg)
+}
+
+#[cfg(test)]
+mod coverage {
+    use super::*;
+
+    /// The ops no area lowers yet. An op leaves this list when an area handles it; the scope
+    /// markers are not here because `elaborate` removes them before code generation.
+    const UNLOWERED: &[Op] = &[
+        Op::AltOwn,
+        Op::RecRelease,
+        Op::BytesLit,
+        Op::ListConst,
+        Op::ListAddr,
+        Op::ListAddrU,
+        Op::OptUnwrap,
+        Op::OptAddr,
+    ];
+
+    const MARKERS: &[Op] = &[
+        Op::ScopeBegin,
+        Op::ScopeOwn,
+        Op::ScopeEnd,
+        Op::ScopeDisown,
+        Op::ScopeMark,
+    ];
+
+    #[test]
+    fn every_op_is_lowered_or_listed() {
+        for &op in Op::ALL {
+            let lowered = area_of(op).is_some();
+            let listed = UNLOWERED.contains(&op);
+            let marker = MARKERS.contains(&op);
+            assert!(
+                marker || lowered != listed,
+                "{op:?}: {}",
+                if lowered {
+                    "lowered, so remove it from UNLOWERED"
+                } else {
+                    "not lowered: implement it or add it to UNLOWERED"
+                }
+            );
+        }
+    }
 }
 
 #[cfg(test)]

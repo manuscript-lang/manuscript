@@ -4,16 +4,16 @@ use super::{Area, Cx, Vals, faults};
 use crate::layout::Layouts;
 use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Val};
 use ms_mir::ir::{Cc, Func, Imm, Inst, Module, Op};
-use ms_mir::types::TyKind;
+use ms_mir::types::{Ty, TyKind};
 
 pub(super) const AREA: Area = Area {
     handles,
     ty_ok,
     pure_op,
     splits,
-    inst_ok: |m, _, f, i| i.op != Op::Conv || conv_ints(m, f, i),
     pre,
     emit,
+    ..Area::NONE
 };
 
 fn ty_ok(k: &TyKind) -> bool {
@@ -71,9 +71,26 @@ fn handles(op: Op) -> bool {
             | Op::SDivChk
             | Op::SRemChk
             | Op::IntOverflowIf
+            | Op::IAddOverflow
+            | Op::IMulOverflow
+            | Op::Shl
+            | Op::Sshr
+            | Op::Ushr
+            | Op::Rotl
+            | Op::Rotr
+            | Op::Clz
+            | Op::Ctz
+            | Op::Popcnt
+            | Op::FSqrt
+            | Op::FAbs
+            | Op::FFloor
+            | Op::FCeil
+            | Op::FTrunc
+            | Op::F2IOpt
+            | Op::F32Round
+            | Op::Conv
             | Op::NarrowChk
             | Op::INarrowOpt
-            | Op::Conv
     )
 }
 
@@ -146,7 +163,7 @@ fn signed_min(ty: &LTy) -> i64 {
 
 /// A constant is its own text: no register.
 fn pre(
-    _: &Module,
+    m: &Module,
     lay: &Layouts,
     f: &Func,
     inst: &Inst,
@@ -154,6 +171,14 @@ fn pre(
     b: &mut FnBuilder,
 ) -> Option<Vec<Val>> {
     match (inst.op, inst.imm) {
+        // A conversion to anything but `Float32` or an integer keeps the register.
+        (Op::Conv, _)
+            if inst
+                .res
+                .is_some_and(|r| f.ty(r) != Ty::FLOAT32 && !conv_ints(m, f, inst)) =>
+        {
+            Some(vals[&inst.args[0].index()].clone())
+        }
         // Whether the value fits, and the value: the register itself when it is a 64-bit one, else
         // its truncation (`narrow_opt`).
         (Op::INarrowOpt, _) => {
@@ -222,6 +247,16 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     }
     if checked(inst.op) {
         return checked_op(cx, inst, vals, b, &out);
+    }
+    if inst.op == Op::Conv && out.len() == 1 && out[0].text == arg(0).text {
+        return;
+    }
+    let int_conv = inst.op == Op::Conv && conv_ints(cx.lay.m, cx.f, inst);
+    if let Some(done) = (!int_conv)
+        .then(|| bit_or_float_op(inst, &arg, b, &out))
+        .flatten()
+    {
+        return done;
     }
     // A single-leaf result is named in place; `Select` handles several.
     if let ([r], false) = (
@@ -380,6 +415,100 @@ fn rem(b: &mut FnBuilder, x: &Val, y: &Val, name: &dyn Fn(&mut FnBuilder)) {
     let r = b.bin(Bin::SRem, x, &safe);
     name(b);
     b.select(&m1, &Val::int(0), &r);
+}
+
+/// The result takes its reserved name on the next instruction written.
+fn name(b: &mut FnBuilder, out: &[Val], k: usize) {
+    b.name_next(&out[k]);
+}
+
+/// Shifts, rotates, bit counts, float functions and conversions whose result is more than one
+/// instruction. `None` for any other op.
+fn bit_or_float_op(
+    inst: &Inst,
+    arg: &dyn Fn(usize) -> Val,
+    b: &mut FnBuilder,
+    out: &[Val],
+) -> Option<()> {
+    let intrinsic = |b: &mut FnBuilder, ty: LTy, name_: &str, args: &[Val]| {
+        let args: Vec<(Val, &str)> = args.iter().map(|a| (a.clone(), "")).collect();
+        b.call_pure(&ty, "", name_, &args).expect("a value")
+    };
+    match inst.op {
+        Op::Shl | Op::Sshr | Op::Ushr => {
+            // The machine takes the amount modulo 64; LLVM leaves a larger one undefined.
+            let amount = b.bin(Bin::And, &arg(1), &Val::int(63));
+            name(b, out, 0);
+            let op = match inst.op {
+                Op::Shl => Bin::Shl,
+                Op::Sshr => Bin::AShr,
+                _ => Bin::LShr,
+            };
+            b.bin(op, &arg(0), &amount);
+        }
+        Op::Rotl | Op::Rotr => {
+            name(b, out, 0);
+            let f = if inst.op == Op::Rotl {
+                "llvm.fshl.i64"
+            } else {
+                "llvm.fshr.i64"
+            };
+            intrinsic(b, LTy::I64, f, &[arg(0), arg(0), arg(1)]);
+        }
+        Op::Clz | Op::Ctz => {
+            name(b, out, 0);
+            let f = if inst.op == Op::Clz {
+                "llvm.ctlz.i64"
+            } else {
+                "llvm.cttz.i64"
+            };
+            // A zero input gives 64, as the machine instruction does.
+            intrinsic(b, LTy::I64, f, &[arg(0), Val::bool(false)]);
+        }
+        Op::Popcnt => {
+            name(b, out, 0);
+            intrinsic(b, LTy::I64, "llvm.ctpop.i64", &[arg(0)]);
+        }
+        Op::FSqrt | Op::FAbs | Op::FFloor | Op::FCeil | Op::FTrunc => {
+            name(b, out, 0);
+            let f = match inst.op {
+                Op::FSqrt => "llvm.sqrt.f64",
+                Op::FAbs => "llvm.fabs.f64",
+                Op::FFloor => "llvm.floor.f64",
+                Op::FCeil => "llvm.ceil.f64",
+                _ => "llvm.trunc.f64",
+            };
+            intrinsic(b, LTy::F64, f, &[arg(0)]);
+        }
+        Op::F32Round | Op::Conv => {
+            let narrow = b.fptrunc(&arg(0));
+            name(b, out, 0);
+            b.fpext(&narrow);
+        }
+        Op::F2IOpt => {
+            // Some(v) when the float is in range, else none with the saturated value as filler.
+            let (lo, hi) = (-9223372036854775808.0_f64, 9223372036854775808.0_f64);
+            let ge = b.fcmp("oge", &arg(0), &Val::double(lo.to_bits()));
+            let lt = b.fcmp("olt", &arg(0), &Val::double(hi.to_bits()));
+            name(b, out, 0);
+            b.bin(Bin::And, &ge, &lt);
+            name(b, out, 1);
+            intrinsic(b, LTy::I64, "llvm.fptosi.sat.i64.f64", &[arg(0)]);
+        }
+        Op::IAddOverflow | Op::IMulOverflow => {
+            let with = if inst.op == Op::IAddOverflow {
+                "sadd"
+            } else {
+                "smul"
+            };
+            let (_, of) = b.overflow(with, &arg(0), &arg(1));
+            // The flag is the result; rename it by copying.
+            name(b, out, 0);
+            b.bin(Bin::Or, &of, &Val::bool(false));
+        }
+        _ => return None,
+    }
+    Some(())
 }
 
 /// `NarrowChk`: the 64-bit register as a sized integer, faulting when it is outside the range.
