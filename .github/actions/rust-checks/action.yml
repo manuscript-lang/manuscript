@@ -1,16 +1,14 @@
 name: Rust checks
 description: The Rust checks for one platform (pull requests on Linux, pushes to main and manual runs on all six). Run after checkout, the sccache restore and rust-env.
 
-# One job runs one part, so the parts run on separate runners; `ab` runs all of them in one job.
+# One job runs one part (`a` or `b`), so the two parts run on separate runners; `ab` runs both in one job.
 #   part a  unit: build the workspace once, nextest, doc tests, and on Linux amd64 format and clippy
 #           the Cranelift corpus and fixtures on platforms that run them.
-#   part bN conformance shard N of 3 (CONFORM_SHARD=N/3): the LLVM corpus and fixtures, and the
-#           Cranelift corpus where the leg runs it in the conformance part.
-#   part g  the gates (below), without the corpus.
+#   part b  conformance: the LLVM corpus and fixtures, plus the gates (below).
 #   gates   bundled-LLVM release build, source conformance, cancellation and ownership checks, the
-#           packaged ms on a hello project, glibc 2.28 on Linux. They run in part g, except on legs
-#           that run the Cranelift corpus in the conformance shards, where they run in part a. Measured 2026-11-13 on a
-#           pull request, one leg's single conformance job took 29 minutes against 8 for part a, so the corpus is sharded.
+#           packaged ms on a hello project, glibc 2.28 on Linux. They run in part b, except on legs
+#           that run the Cranelift corpus in part b, where they run in part a. Measured on main, part
+#           a (build, nextest, doc tests) outlasts part b by several minutes on every leg without Cranelift.
 
 inputs:
   os:
@@ -20,7 +18,7 @@ inputs:
     description: amd64 or arm64.
     required: true
   part:
-    description: a (unit tests), g (gates), bN (conformance shard N of `shards`), or ab (everything, in one job).
+    description: a, b, or ab.
     required: true
   lint:
     description: "'true' also runs format and clippy."
@@ -28,9 +26,6 @@ inputs:
   cranelift:
     description: "'a' or 'b' also runs the corpus and fixtures with MS_BACKEND=cranelift in that part; the gates then run in the other part."
     default: ''
-  shards:
-    description: How many conformance shards (b0 to bN-1) the leg runs.
-    default: '3'
   gates:
     description: "'false' skips the gates, when another job of the same run covers them."
     default: 'true'
@@ -43,17 +38,14 @@ runs:
       run: |
         part='${{ inputs.part }}'
         cranelift='${{ inputs.cranelift }}'
-        # Gates run in part a on a leg whose conformance shards run Cranelift, otherwise in part g.
-        gates_part=g
+        gates_part=b
         if [ "$cranelift" = b ]; then gates_part=a; fi
         if [ '${{ inputs.gates }}' = false ]; then gates_part=none; fi
         {
-          echo "UNIT=$([[ $part == a || $part == ab ]] && echo true || echo false)"
-          echo "CONFORM=$([[ $part == b* || $part == ab ]] && echo true || echo false)"
-          echo "GATES=$([[ $gates_part != none && ( $part == "$gates_part" || $part == ab ) ]] && echo true || echo false)"
-          echo "CRANELIFT=$([[ -n $cranelift && ( ( $cranelift == a && ( $part == a || $part == ab ) ) || ( $cranelift == b && ( $part == b* || $part == ab ) ) ) ]] && echo true || echo false)"
-          # A conformance shard `bN` runs every third fixture starting at N; `ab` and the other parts run all of them.
-          if [[ $part =~ ^b([0-9]+)$ ]]; then echo "CONFORM_SHARD=${BASH_REMATCH[1]}/${{ inputs.shards }}"; fi
+          echo "UNIT=$([[ $part == *a* ]] && echo true || echo false)"
+          echo "CONFORM=$([[ $part == *b* ]] && echo true || echo false)"
+          echo "GATES=$([[ $part == *$gates_part* ]] && echo true || echo false)"
+          echo "CRANELIFT=$([[ -n $cranelift && $part == *$cranelift* ]] && echo true || echo false)"
         } >> "$GITHUB_ENV"
     - name: Keep native test artifacts in runner storage
       shell: bash

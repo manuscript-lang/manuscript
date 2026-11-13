@@ -1,13 +1,13 @@
 name: CI/CD
 
 # One workflow, four triggers:
-#   pull request  the Linux legs, each split into `tests`, `gates` and three `conformance` shards;
-#                 the language checks and the book run in linux-arm64 gates. A green pull request auto-merges; there
+#   pull request  the Linux legs, each split into `tests` and `conformance` (four jobs); the language checks
+#                 and the book run inside linux-arm64 conformance. A green pull request auto-merges; there
 #                 is no merge queue, which built every stacked ref with the full matrix and restarted on
 #                 every outside merge.
 #   merge queue   the same as a pull request, in case a queue is configured again.
 #   main          every 30 minutes (cron at :07 and :37), when main has a commit that no earlier scheduled run
-#                 checked: all six platforms, each split into `tests`, `gates` and three `conformance` shards (see
+#                 checked: all six platforms, each split into `tests` and `conformance` (twelve jobs, see
 #                 .github/actions/rust-checks); linux-arm64 also builds the book for Pages and the tests
 #                 jobs save the sccache caches. A failure is fixed or reverted.
 #   manual run    the same as a main run; its `os` input runs one platform.
@@ -91,7 +91,7 @@ jobs:
   # `lint`: also format and clippy. `cranelift`: the part (`a` or `b`) that also runs the corpus and
   # fixtures with `MS_BACKEND=cranelift`, the backend Debug builds use; the gates run in the other part.
   # `gates: false` skips the gates. On pull requests linux-amd64 runs Cranelift in `conformance` and
-  # leaves the gates to linux-arm64; the corpus runs in three shards per leg so no job passes about twelve minutes.
+  # leaves the gates to linux-arm64, so each of the four jobs stays under ten minutes.
   # `docs`: also the language checks and the book (in the conformance part on pull requests); on main
   # the book is uploaded for Pages.
   # Failures shared with Linux are in tests/conformance/expect-fail.txt; platform-only ones go
@@ -99,15 +99,14 @@ jobs:
   rust:
     needs: due
     if: needs.due.outputs.run == 'true'
-    name: ${{ matrix.leg.os }}-${{ matrix.leg.arch }}${{ matrix.part == 'a' && ' · tests' || matrix.part == 'g' && ' · gates' || format(' · conformance {0}', matrix.part) }}
+    name: ${{ matrix.leg.os }}-${{ matrix.leg.arch }}${{ matrix.part == 'a' && ' · tests' || matrix.part == 'b' && ' · conformance' || '' }}
     runs-on: ${{ matrix.leg.runner }}
     timeout-minutes: 75
     strategy:
       fail-fast: false
       matrix:
-        # Every leg is split into `tests` (a), `gates` (g) and `conformance` shards (b0, b1, b2) on
-        # separate runners for wall time: the corpus is the longest step, and CONFORM_SHARD=i/n splits it.
-        part: [a, g, b0, b1, b2]
+        # Every leg is split into `tests` (a) and `conformance` (b) on two runners for wall time.
+        part: [a, b]
         leg: >-
           ${{ fromJSON(
           (github.event_name == 'pull_request' || github.event_name == 'merge_group') && '[{"os": "linux", "arch": "amd64", "runner": "ubuntu-24.04", "lint": true, "cranelift": "b", "gates": "false"}, {"os": "linux", "arch": "arm64", "runner": "ubuntu-24.04-arm", "docs": true}]' ||
@@ -118,39 +117,33 @@ jobs:
           ) }}
     env:
       PR: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
-      # The gates part has nothing to run on a leg whose gates run in part a, or that skips them.
-      SKIP: ${{ matrix.part == 'g' && (matrix.leg.cranelift == 'b' || matrix.leg.gates == 'false') }}
     steps:
-      - if: env.SKIP != 'true'
-        uses: actions/checkout@v7
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
       # Documentation-only pull requests skip the Rust steps.
       - id: scope
-        if: env.SKIP != 'true'
         uses: ./.github/actions/rust-scope
       - id: sccache
-        if: env.SKIP != 'true'
         uses: ./.github/actions/sccache
         with:
           # One cache per leg, saved by main's single job and restored by both pull request parts.
           prefix: cargo-sccache-${{ matrix.leg.os }}-${{ matrix.leg.arch }}-
-      - if: env.SKIP != 'true'
-        uses: ./.github/actions/rust-env
+      - uses: ./.github/actions/rust-env
         with:
           os: ${{ matrix.leg.os }}
           arch: ${{ matrix.leg.arch }}
-          llvm-consumers: ${{ !startsWith(matrix.part, 'b') && 'true' || 'false' }}
+          llvm-consumers: ${{ matrix.part != 'b' && 'true' || 'false' }}
       - uses: ./.github/actions/language-checks
-        if: matrix.leg.docs && matrix.part == 'g'
+        if: matrix.leg.docs && matrix.part != 'a'
       - uses: ./.github/actions/book-checks
-        if: matrix.leg.docs && matrix.part == 'g'
+        if: matrix.leg.docs && matrix.part != 'a'
       - uses: actions/upload-pages-artifact@v5
-        if: matrix.leg.docs && matrix.part == 'g' && env.PR != 'true'
+        if: matrix.leg.docs && matrix.part == 'b' && env.PR != 'true'
         with:
           path: .artifacts/book
       - uses: ./.github/actions/rust-checks
-        if: env.SKIP != 'true' && steps.scope.outputs.rust == 'true'
+        if: steps.scope.outputs.rust == 'true'
         with:
           os: ${{ matrix.leg.os }}
           arch: ${{ matrix.leg.arch }}
