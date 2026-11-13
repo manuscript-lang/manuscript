@@ -268,6 +268,11 @@ impl<'t> FnBuilder<'t> {
         self.types.text(t)
     }
 
+    /// Sets the `!dbg` location of the instructions that follow.
+    pub fn set_dbg(&mut self, dbg: Option<usize>) {
+        self.dbg = dbg;
+    }
+
     /// Makes the next defined value take the reserved name `v` (a phi may already use it).
     pub fn name_next(&mut self, v: &Val) {
         assert!(self.pending.is_none(), "a reserved name is unused");
