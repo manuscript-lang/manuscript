@@ -383,4 +383,13 @@ fn llvm_direct_emission_matches_translation() {
     };
     assert!(!direct(&old_ir), "the translation was not used");
     assert!(direct(&new_ir), "no function was emitted directly");
+    // A pure loop-free function carries what LLVM cannot infer across a unit boundary.
+    let grind = new_ir
+        .lines()
+        .find(|l| l.starts_with("define") && l.contains("grind"))
+        .expect("grind");
+    assert!(
+        grind.contains("memory(none)") && grind.contains("willreturn"),
+        "{grind}"
+    );
 }

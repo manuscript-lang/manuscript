@@ -1288,7 +1288,7 @@ fn direct_function(g: &mut Gen, i: usize, f: &Func) -> bool {
     let m = g.m;
     let mut llvm = g.llvm.take().expect("checked above");
     llvm.add_direct(&sym, &f.name, fn_loc, exported, |loc| {
-        crate::mir_llvm::emit(m, f, loc, &symbol_of)
+        crate::mir_llvm::emit(m, i, f, loc, &symbol_of)
     });
     g.llvm = Some(llvm);
     g.llvm_funcs.push(LlvmFn {

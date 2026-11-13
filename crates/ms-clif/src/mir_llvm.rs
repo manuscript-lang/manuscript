@@ -17,6 +17,8 @@ pub struct Emitted {
     pub ret: String,
     /// Parameter list.
     pub params: String,
+    /// Function attributes written after the group reference (empty when none are proven).
+    pub attrs: String,
     /// Entry label through the closing brace.
     pub body: String,
     /// `(symbol, declare line)` of each callee.
@@ -128,6 +130,67 @@ pub fn supports(m: &Module, f: &Func) -> bool {
     !entry_target
 }
 
+/// Attributes LLVM cannot always infer, for a function with no memory access or fault: its result
+/// depends on its arguments alone. A function across a unit boundary is only a `declare`, so the
+/// call site would otherwise know nothing. `willreturn` needs the body and its callees to be
+/// loop-free and acyclic; `None` when `f` is not such a scalar function at all.
+fn pure_attrs(
+    m: &Module,
+    idx: usize,
+    memo: &mut HashMap<usize, Option<bool>>,
+) -> Option<&'static str> {
+    let terminates = pure_terminates(m, idx, memo)?;
+    Some(if terminates {
+        " nounwind willreturn nofree nosync norecurse memory(none)"
+    } else {
+        " nounwind nofree nosync memory(none)"
+    })
+}
+
+/// `Some(true)` when `idx` is a scalar function that is pure and always returns, `Some(false)`
+/// when it is pure but may loop or recurse for ever, `None` when it is not pure.
+fn pure_terminates(
+    m: &Module,
+    idx: usize,
+    memo: &mut HashMap<usize, Option<bool>>,
+) -> Option<bool> {
+    if let Some(v) = memo.get(&idx) {
+        return *v;
+    }
+    // A call back into a function being analysed is recursion: pure, but it may not return.
+    memo.insert(idx, Some(false));
+    let f = &m.funcs[idx];
+    let verdict = if supports(m, f) {
+        let rpo = f.rpo();
+        let mut order = vec![usize::MAX; f.blocks.len()];
+        for (k, b) in rpo.iter().enumerate() {
+            order[b.index()] = k;
+        }
+        let mut terminates = true;
+        let mut pure = true;
+        for b in &rpo {
+            let bd = &f.blocks[b.index()];
+            bd.term
+                .for_each_target(|t| terminates &= order[t.block.index()] > order[b.index()]);
+            for i in &bd.insts {
+                if i.op != Op::Call {
+                    continue;
+                }
+                let Imm::Func(c) = i.imm else { continue };
+                match pure_terminates(m, c.index(), memo) {
+                    Some(t) => terminates &= t,
+                    None => pure = false,
+                }
+            }
+        }
+        pure.then_some(terminates)
+    } else {
+        None
+    };
+    memo.insert(idx, verdict);
+    verdict
+}
+
 fn is_entry(t: &Target) -> bool {
     t.block.index() == 0
 }
@@ -149,7 +212,14 @@ fn ret_ty(ty: Ty) -> LTy {
 
 /// Emits `f`, which `supports` accepted. `symbol_of` names the function with MIR index `i`;
 /// `loc` is the `DILocation` node every instruction carries.
-pub fn emit(m: &Module, f: &Func, loc: usize, symbol_of: &dyn Fn(usize) -> String) -> Emitted {
+pub fn emit(
+    m: &Module,
+    idx: usize,
+    f: &Func,
+    loc: usize,
+    symbol_of: &dyn Fn(usize) -> String,
+) -> Emitted {
+    let mut memo = HashMap::new();
     let types = Types::default();
     let mut b = FnBuilder::new(&types, Some(loc));
     let rpo = f.rpo();
@@ -217,7 +287,7 @@ pub fn emit(m: &Module, f: &Func, loc: usize, symbol_of: &dyn Fn(usize) -> Strin
             }
         }
         for inst in &bd.insts {
-            inst_text(m, inst, symbol_of, &vals, &mut decls, &mut b);
+            inst_text(m, inst, symbol_of, &mut memo, &vals, &mut decls, &mut b);
         }
         match &bd.term {
             Term::Br(t) => b.br(&format!("b{}", t.block.index())),
@@ -237,6 +307,7 @@ pub fn emit(m: &Module, f: &Func, loc: usize, symbol_of: &dyn Fn(usize) -> Strin
     Emitted {
         ret: ret_text(f.ret).expect("supported"),
         params: params.join(", "),
+        attrs: pure_attrs(m, idx, &mut memo).unwrap_or("").to_string(),
         body: b.finish(),
         decls,
     }
@@ -281,6 +352,7 @@ fn inst_text(
     m: &Module,
     inst: &Inst,
     symbol_of: &dyn Fn(usize) -> String,
+    memo: &mut HashMap<usize, Option<bool>>,
     vals: &HashMap<usize, Val>,
     decls: &mut Vec<(String, String)>,
     b: &mut FnBuilder,
@@ -338,9 +410,10 @@ fn inst_text(
             decls.push((
                 sym.clone(),
                 format!(
-                    "declare {attr}{} @\"{sym}\"({})",
+                    "declare {attr}{} @\"{sym}\"({}){}",
                     Types::default().text(&ret),
-                    formals.join(", ")
+                    formals.join(", "),
+                    pure_attrs(m, c.index(), memo).unwrap_or("")
                 ),
             ));
             match b.call(&ret, attr, &sym, &args) {
