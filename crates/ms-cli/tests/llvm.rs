@@ -408,6 +408,13 @@ fn llvm_direct_emission_matches_translation() {
             && l.contains("%a0_2")),
         "the list loop was not emitted directly"
     );
+    // The list element loads carry the scalar element alias class.
+    assert!(
+        new_ir
+            .lines()
+            .any(|l| l.contains("load double") && l.contains("!tbaa")),
+        "no tagged element load"
+    );
 }
 
 /// Glue for strings, lists, records and optionals is emitted straight to LLVM IR
