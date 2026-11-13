@@ -125,7 +125,7 @@ impl Cx {
             return true;
         }
         match m.types.kind(t).clone() {
-            TyKind::Rec(r) => m.records[r.index()]
+            TyKind::Type(r) => m.type_defs[r.index()]
                 .fields
                 .iter()
                 .any(|f| self.holds_extension_in(m, f.1, seen)),

@@ -507,7 +507,7 @@ impl LlvmModule {
             .ir
     }
 
-    /// Records the function symbols in the vtable `name`, slot by slot.
+    /// Types the function symbols in the vtable `name`, slot by slot.
     pub fn set_vtable(&mut self, name: String, slots: Vec<String>) {
         self.vtables.insert(name, slots);
     }

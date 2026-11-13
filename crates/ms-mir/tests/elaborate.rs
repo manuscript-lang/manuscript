@@ -604,7 +604,7 @@ b3():
     }
 }
 
-/// A slot owner the program closes by hand on one branch: `scope.mark` records it, the join
+/// A slot owner the program closes by hand on one branch: `scope.mark` types it, the join
 /// carries a flag, and the scope end still releases the owner on both paths.
 #[test]
 fn a_slot_owner_closed_by_hand_on_some_paths_is_still_released_at_the_scope_end() {

@@ -297,7 +297,7 @@ impl Cx {
         Ok(id)
     }
 
-    /// `equals` of data with built-in equality (scalars, collections, records without an
+    /// `equals` of data with built-in equality (scalars, collections, types without an
     /// `impl Equal`): structural equality against another value of the same type, and `False`
     /// against any other type.
     fn builtin_equals(

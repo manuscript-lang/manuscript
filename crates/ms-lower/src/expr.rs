@@ -2,13 +2,13 @@
 
 use crate::Error;
 use crate::func::{FnLower, Val};
-use crate::nativerec::native_rec;
+use crate::nativetype::native_type;
 use ms_check::api::ast::*;
 use ms_check::api::hir::Resolution;
 use ms_check::api::types::{self as ct, Builtin, Kind};
 use ms_mir::ir::{Cc, Imm, Op, Value};
 use ms_mir::types::Native;
-use ms_mir::types::NativeRec;
+use ms_mir::types::NativeType;
 use ms_mir::types::{Ty as MTy, TyKind};
 
 /// Element count above which a list literal of constants is emitted as static data.
@@ -287,11 +287,11 @@ impl<'a> FnLower<'a> {
                     .ok_or_else(|| Error::new(format!("invalid Decimal literal {text}")))?;
                 let dec = if negate { dec.negate() } else { dec };
                 let ty = self.emty(e)?;
-                let TyKind::Rec(rid) = self.b.m.types.kind(ty).clone() else {
-                    return Err(Error::new("Decimal is not a record"));
+                let TyKind::Type(rid) = self.b.m.types.kind(ty).clone() else {
+                    return Err(Error::new("Decimal is not a type"));
                 };
                 let fields = [dec.lo as i64, dec.hi, dec.exp].map(|n| self.b.iconst(n));
-                let v = self.b.rec_new(rid, &fields);
+                let v = self.b.type_new(rid, &fields);
                 Ok(Val { v, own: false })
             }
             other => Err(Error::new(format!(
@@ -543,15 +543,15 @@ impl<'a> FnLower<'a> {
             return Ok(obj);
         }
         let oty = self.ty_of(obj.v);
-        let TyKind::Rec(rid) = self.b.m.types.kind(oty).clone() else {
-            return Err(Error::new("member access on a non-record"));
+        let TyKind::Type(rid) = self.b.m.types.kind(oty).clone() else {
+            return Err(Error::new("member access on a non-type"));
         };
-        let idx = self.b.m.records[rid.index()]
+        let idx = self.b.m.type_defs[rid.index()]
             .fields
             .iter()
             .position(|f| f.0 == name)
             .ok_or_else(|| Error::new(format!("no field {name}")))? as u32;
-        let f = self.b.rec_get(rid, idx, obj.v);
+        let f = self.b.type_get(rid, idx, obj.v);
         if let Some((uid, names)) = self.resource_move_of(e) {
             let o = self.moved_field(uid, &names, f)?;
             return Ok(Val { v: o, own: true });
@@ -565,13 +565,17 @@ impl<'a> FnLower<'a> {
         if obj.own {
             // Move the field out of the temporary and release the rest of it.
             let fty = self.ty_of(f);
-            let o = if self.needs_drop(fty) && self.b.m.records[rid.index()].fields.len() <= 32 {
+            let o = if self.needs_drop(fty) && self.b.m.type_defs[rid.index()].fields.len() <= 32 {
                 let o = self
                     .b
                     .emit(Op::MoveOut, &[f], Imm::None, Some(fty))
                     .expect("move out");
-                self.b
-                    .emit(Op::RecRelease, &[obj.v], Imm::RecMask(rid, 1 << idx), None);
+                self.b.emit(
+                    Op::TypeRelease,
+                    &[obj.v],
+                    Imm::TypeMask(rid, 1 << idx),
+                    None,
+                );
                 o
             } else {
                 let o = self.owned(Val { v: f, own: false });
@@ -590,9 +594,9 @@ impl<'a> FnLower<'a> {
         ) && !self.is_resource(self.ty_of(f))
             && self.needs_drop(self.ty_of(f))
         {
-            // The checker moves this field out of its owner at its last use. The record still
+            // The checker moves this field out of its owner at its last use. The type still
             // drops whole at scope end, so the moved value is a copy here until a field-level
-            // release replaces it (`copyelim`, `rec.release`); the move is the checker's
+            // release replaces it (`copyelim`, `type.release`); the move is the checker's
             // recorded fact, not a hidden copy.
             return Ok(Val {
                 v: self.clone_value(f),
@@ -918,14 +922,14 @@ impl<'a> FnLower<'a> {
         Err(Error::new("ordering this type is not supported yet"))
     }
 
-    /// Whether `t` is the `Duration` record.
+    /// Whether `t` is the `Duration` type.
     pub(crate) fn is_duration(&self, t: MTy) -> bool {
-        native_rec(self.b.m, t) == Some(NativeRec::Duration)
+        native_type(self.b.m, t) == Some(NativeType::Duration)
     }
 
-    /// Whether `t` is the `Instant` record.
+    /// Whether `t` is the `Instant` type.
     fn is_instant(&self, t: MTy) -> bool {
-        native_rec(self.b.m, t) == Some(NativeRec::Instant)
+        native_type(self.b.m, t) == Some(NativeType::Instant)
     }
 
     /// Whether `t` is the `BigInt` runtime object.
@@ -933,9 +937,9 @@ impl<'a> FnLower<'a> {
         matches!(self.b.m.types.kind(t), TyKind::Obj(Native::BigInt, _))
     }
 
-    /// Whether `t` is the `Decimal` record.
+    /// Whether `t` is the `Decimal` type.
     pub(crate) fn is_decimal(&self, t: MTy) -> bool {
-        native_rec(self.b.m, t) == Some(NativeRec::Decimal)
+        native_type(self.b.m, t) == Some(NativeType::Decimal)
     }
 
     /// Structural equality of two operands of the same type.

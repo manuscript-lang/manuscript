@@ -1095,7 +1095,7 @@ impl<'a> FnLower<'a> {
         Ok(out)
     }
 
-    /// `map.entries()`: a list of fresh `MapEntry` records.
+    /// `map.entries()`: a list of fresh `MapEntry` types.
     pub(crate) fn map_entries(
         &mut self,
         recv_expr: Option<&ms_check::api::ast::Expr>,
@@ -1105,8 +1105,8 @@ impl<'a> FnLower<'a> {
         let TyKind::List(entry) = self.b.m.types.kind(result).clone() else {
             return Err(Error::new("entries without a list type"));
         };
-        let TyKind::Rec(rid) = self.b.m.types.kind(entry).clone() else {
-            return Err(Error::new("entries without a record type"));
+        let TyKind::Type(rid) = self.b.m.types.kind(entry).clone() else {
+            return Err(Error::new("entries without a type"));
         };
         let (mv, hidden) = self.list_source(recv_expr, recv)?;
         let acc: Var = self.fresh_var(result);
@@ -1117,9 +1117,9 @@ impl<'a> FnLower<'a> {
             let value = value.ok_or_else(|| Error::new("entries of a set"))?;
             let ko = s.clone_value(key);
             let vo = s.clone_value(value);
-            let rec = s.b.rec_new(rid, &[ko, vo]);
+            let tval = s.b.type_new(rid, &[ko, vo]);
             let cur = s.b.use_var(acc);
-            let next = s.b.list_push(cur, rec);
+            let next = s.b.list_push(cur, tval);
             s.b.def_var(acc, next);
             Ok(())
         })?;
@@ -1128,7 +1128,7 @@ impl<'a> FnLower<'a> {
         Ok(Val { v: out, own: true })
     }
 
-    /// `list.entries()`: `ListEntry` records pairing each index with its element.
+    /// `list.entries()`: `ListEntry` types pairing each index with its element.
     pub(crate) fn list_entries(
         &mut self,
         recv_expr: Option<&ms_check::api::ast::Expr>,
@@ -1138,8 +1138,8 @@ impl<'a> FnLower<'a> {
         let TyKind::List(entry) = self.b.m.types.kind(result).clone() else {
             return Err(Error::new("entries without a list type"));
         };
-        let TyKind::Rec(rid) = self.b.m.types.kind(entry).clone() else {
-            return Err(Error::new("entries without a record type"));
+        let TyKind::Type(rid) = self.b.m.types.kind(entry).clone() else {
+            return Err(Error::new("entries without a type"));
         };
         let (lv, hidden) = self.list_source(recv_expr, recv)?;
         let acc = self.fresh_var(result);
@@ -1151,9 +1151,9 @@ impl<'a> FnLower<'a> {
         self.b.def_var(acc, first);
         self.each_element(lv, &mut |s, i, x| {
             let xo = s.owned_boundary(Val { v: x, own: false });
-            let rec = s.b.rec_new(rid, &[i, xo]);
+            let tval = s.b.type_new(rid, &[i, xo]);
             let cur = s.b.use_var(acc);
-            let next = s.b.list_push(cur, rec);
+            let next = s.b.list_push(cur, tval);
             s.b.def_var(acc, next);
             Ok(None)
         })?;

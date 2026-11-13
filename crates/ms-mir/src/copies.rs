@@ -46,7 +46,7 @@ fn holds_object_in(m: &Module, t: Ty, seen: &mut Vec<Ty>) -> bool {
         }
         TyKind::Obj(..) | TyKind::Fn(..) | TyKind::Iface(_) => true,
         TyKind::Opt(i) | TyKind::List(i) => holds_object_in(m, *i, seen),
-        TyKind::Rec(r) => m.records[r.index()]
+        TyKind::Type(r) => m.type_defs[r.index()]
             .fields
             .iter()
             .any(|(_, f)| holds_object_in(m, *f, seen)),

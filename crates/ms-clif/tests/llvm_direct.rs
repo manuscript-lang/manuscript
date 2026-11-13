@@ -866,26 +866,26 @@ b0:
     check("direct_element_drops", src, 12, &["nested", "strings"]);
 }
 
-fn record_elements() {
+fn type_elements() {
     let src = r#"module "d"
 entry @main
 file 0 "d.ms"
-record Big { a: int, b: int, c: int, d: int, e: int, f: int, g: int, h: int, i: int, j: int }
-record Wide { a: int, b: int, c: int, d: int, e: int, f: int, g: int, h: int, i: int, s: str }
+type Big { a: int, b: int, c: int, d: int, e: int, f: int, g: int, h: int, i: int, j: int }
+type Wide { a: int, b: int, c: int, d: int, e: int, f: int, g: int, h: int, i: int, s: str }
 fn @bigs(%n: int) -> int !0:1:1 {
 b0:
   %x: int = iconst 3 !0:2:1
-  %p: Big = rec.new Big %x, %x, %x, %x, %x, %x, %x, %x, %x, %n !0:2:1
-  %q: Big = rec.new Big %n, %x, %x, %x, %x, %x, %x, %x, %x, %x !0:2:1
+  %p: Big = type.new Big %x, %x, %x, %x, %x, %x, %x, %x, %x, %n !0:2:1
+  %q: Big = type.new Big %n, %x, %x, %x, %x, %x, %x, %x, %x, %x !0:2:1
   %l: list<Big> = list.lit %p, %q !0:3:1
   %z: int = iconst 0 !0:3:1
   %one: int = iconst 1 !0:3:1
   %r: Big = list.get %l, %one !0:4:1
-  %ra: int = rec.get Big.a %r !0:4:1
-  %t: Big = rec.new Big %x, %x, %x, %x, %x, %x, %x, %x, %x, %x !0:5:1
+  %ra: int = type.get Big.a %r !0:4:1
+  %t: Big = type.new Big %x, %x, %x, %x, %x, %x, %x, %x, %x, %x !0:5:1
   %l2: list<Big> = list.set %l, %z, %t !0:5:1
   %r2: Big = list.get %l2, %z !0:6:1
-  %rj: int = rec.get Big.j %r2 !0:6:1
+  %rj: int = type.get Big.j %r2 !0:6:1
   %s: int = iadd %ra, %rj !0:7:1
   list.release %l2, %z !0:7:1
   ret %s
@@ -895,7 +895,7 @@ b0:
   %x: int = iconst 3 !0:9:1
   %s0: str = str "a string long enough to live on the heap" !0:9:1
   %s: str = clone %s0 !0:9:1
-  %w: Wide = rec.new Wide %x, %x, %x, %x, %x, %x, %x, %x, %x, %s !0:9:1
+  %w: Wide = type.new Wide %x, %x, %x, %x, %x, %x, %x, %x, %x, %s !0:9:1
   %l: list<Wide> = list.lit %w !0:10:1
   %z: int = iconst 0 !0:10:1
   list.release %l, %z !0:11:1
@@ -912,7 +912,7 @@ b0:
 }
 "#;
     // bigs: 4 + 3; wides: 3 + 4
-    check("direct_record_elements", src, 14, &["bigs", "wides"]);
+    check("direct_type_elements", src, 14, &["bigs", "wides"]);
 }
 
 /// One test, not three: each build writes `ms-keep.ll` in the working directory.
@@ -926,14 +926,14 @@ fn direct_lists_and_strings_match_cranelift() {
     list_take_release();
     constants_and_addresses();
     element_drops();
-    record_elements();
+    type_elements();
     crate::llvm_direct_data::optionals_and_alternatives_match_cranelift();
     crate::llvm_direct_data::unwrap_and_own_match_cranelift();
     crate::llvm_direct_data::unit_slot_matches_cranelift();
     crate::llvm_direct_data::boxed_enums_match_cranelift();
     crate::llvm_direct_data::enum_clones_match_cranelift();
     crate::llvm_direct_data::narrow_integers_match_cranelift();
-    crate::llvm_direct_data::narrow_record_fields_match_cranelift();
+    crate::llvm_direct_data::narrow_type_fields_match_cranelift();
     crate::llvm_direct_data::memory_payload_matches_cranelift();
     crate::llvm_direct_data::narrow_sums_fault_like_cranelift();
     closures_and_runtime_calls();

@@ -657,7 +657,7 @@ fn compile_with_isa(
             .map_err(|e| e.to_string())?;
     }
     // Cranelift's ARM64 COFF writer supports absolute addresses, but not GOT or
-    // ADRP data relocations. The PE linker records these absolute addresses in
+    // ADRP data relocations. The PE linker types these absolute addresses in
     // the image's base-relocation table so the loader can still relocate it.
     flags
         .set("is_pic", if arm64_coff { "false" } else { "true" })
@@ -1432,7 +1432,7 @@ fn direct_plan(g: &mut Gen, f: &Func) -> crate::mir_llvm::Plan {
                     let ty = f.ty(i.args[usize::from(i.op == Op::DropIf)]);
                     plan_drop(g, &mut plan, ty);
                 }
-                (Op::AltRelease | Op::AltUnbox | Op::RecRelease, _) => {
+                (Op::AltRelease | Op::AltUnbox | Op::TypeRelease, _) => {
                     for ty in crate::mir_llvm::released_types(&g.lay, f, i) {
                         plan_drop(g, &mut plan, ty);
                     }
@@ -1686,7 +1686,7 @@ fn prepare(g: &Gen, ctx: &mut Context) {
     }
 }
 
-/// Records the line and fault tables of a function that Cranelift has compiled and defined.
+/// Types the line and fault tables of a function that Cranelift has compiled and defined.
 fn finish(
     g: &mut Gen,
     ctx: &mut Context,

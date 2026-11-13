@@ -17,9 +17,9 @@ mod globals;
 mod glue;
 mod lists;
 mod maps;
-mod records;
 pub(crate) mod rt;
 mod strings;
+mod types;
 
 use crate::abi_llvm::{Pass, Reg, Ret, Signature};
 use crate::layout::{Layouts, Leaf};
@@ -28,7 +28,7 @@ use crate::llvm_ir::DirectEnv;
 use attrs::pure_attrs;
 pub(crate) use glue::cloned_ty;
 
-/// The types of the fields a release (`alt.release`, `alt.unbox`, `rec.release`) drops through
+/// The types of the fields a release (`alt.release`, `alt.unbox`, `type.release`) drops through
 /// glue: the driver declares their drop glue.
 pub(crate) fn released_types(lay: &Layouts, f: &Func, inst: &Inst) -> Vec<Ty> {
     match (inst.op, inst.imm) {
@@ -36,8 +36,8 @@ pub(crate) fn released_types(lay: &Layouts, f: &Func, inst: &Inst) -> Vec<Ty> {
             .into_iter()
             .map(|(t, _)| t)
             .collect(),
-        (Op::RecRelease, Imm::RecMask(_, mask)) => {
-            records::release_types(lay, f.ty(inst.args[0]), mask)
+        (Op::TypeRelease, Imm::TypeMask(_, mask)) => {
+            types::release_types(lay, f.ty(inst.args[0]), mask)
         }
         _ => Vec::new(),
     }
@@ -220,18 +220,18 @@ fn signed_leaves(lay: &Layouts, ty: Ty) -> Vec<bool> {
         .collect()
 }
 
-/// The fields of record `r`'s struct: one per field of the record, a scalar or the field type's
+/// The fields of type `r`'s struct: one per field of the type, a scalar or the field type's
 /// own struct, so a field is reached by its index. `None` when nesting would move a leaf off the
 /// offset the runtime and the Cranelift object give it (a smaller struct's tail padding), in
-/// which case the record keeps one field per leaf.
-fn field_types(types: &Types, lay: &Layouts, ty: Ty, r: ms_mir::types::RecId) -> Option<Vec<LTy>> {
+/// which case the type keeps one field per leaf.
+fn field_types(types: &Types, lay: &Layouts, ty: Ty, r: ms_mir::types::TypeId) -> Option<Vec<LTy>> {
     let mut fields = Vec::new();
-    for f in &lay.m.records[r.index()].fields {
+    for f in &lay.m.type_defs[r.index()].fields {
         match lay.width(f.1) {
             0 => {}
             1 if !matches!(
                 lay.m.types.kind(f.1),
-                TyKind::Rec(_) | TyKind::Opt(_) | TyKind::Alt(_)
+                TyKind::Type(_) | TyKind::Opt(_) | TyKind::Alt(_)
             ) =>
             {
                 fields.extend(mem_leaves(lay, f.1));
@@ -244,11 +244,11 @@ fn field_types(types: &Types, lay: &Layouts, ty: Ty, r: ms_mir::types::RecId) ->
     (want.iter().map(|o| u64::from(*o)).eq(got)).then_some(fields)
 }
 
-/// The struct a value of type `ty` has in memory: named for strings, lists and records, so the
+/// The struct a value of type `ty` has in memory: named for strings, lists and types, so the
 /// module defines each once, else a literal struct of its held leaves.
 pub(crate) fn aggregate(types: &Types, lay: &Layouts, ty: Ty) -> LTy {
     let fields = match lay.m.types.kind(ty) {
-        TyKind::Rec(r) if !lay.m.records[r.index()].indirect => {
+        TyKind::Type(r) if !lay.m.type_defs[r.index()].indirect => {
             field_types(types, lay, ty, *r).unwrap_or_else(|| mem_leaves(lay, ty))
         }
         _ => mem_leaves(lay, ty),
@@ -257,7 +257,7 @@ pub(crate) fn aggregate(types: &Types, lay: &Layouts, ty: Ty) -> LTy {
         TyKind::Str => "ms.str".to_string(),
         TyKind::Bytes => "ms.bytes".to_string(),
         TyKind::List(_) => "ms.list".to_string(),
-        TyKind::Rec(r) => format!("ms.rec.{}", lay.m.records[r.index()].name),
+        TyKind::Type(r) => format!("ms.type.{}", lay.m.type_defs[r.index()].name),
         TyKind::Alt(a) if !lay.is_boxed(*a) => format!("ms.enum.{}", lay.m.alts[a.index()].name),
         TyKind::Opt(_) => format!("ms.opt.{}", ty.index()),
         _ => return LTy::Tuple(fields),
@@ -295,7 +295,7 @@ fn call_ret_ty(lay: &Layouts, ty: Ty, native: bool) -> LTy {
 /// Whether this stage handles values of `ty`: some area accepts its kind.
 fn supported_ty(lay: &Layouts, ty: Ty) -> bool {
     let kind = lay.m.types.kind(ty);
-    records::ty_ok(lay, ty) || AREAS.iter().any(|a| (a.ty_ok)(kind))
+    types::ty_ok(lay, ty) || AREAS.iter().any(|a| (a.ty_ok)(kind))
 }
 
 /// The result type: `void` for no leaves, the leaf itself for one, a tuple for several.
@@ -389,7 +389,7 @@ const AREAS: &[Area] = &[
     arith::AREA,
     lists::AREA,
     calls::AREA,
-    records::AREA,
+    types::AREA,
     depth::AREA,
     glue::AREA,
     globals::AREA,
@@ -445,8 +445,8 @@ pub fn unsupported(m: &Module, lay: &Layouts, f: &Func) -> Option<String> {
             {
                 return Some(format!("op {:?} on {}", i.op, ty_name(f.ty(v))));
             }
-            if i.op == Op::Select && i.res.is_some_and(|r| records::is_mem(lay, f.ty(r))) {
-                return Some("select of a record".into());
+            if i.op == Op::Select && i.res.is_some_and(|r| types::is_mem(lay, f.ty(r))) {
+                return Some("select of a type".into());
             }
             if i.op == Op::Call {
                 let Imm::Func(c) = i.imm else {
@@ -484,12 +484,12 @@ pub fn supports(m: &Module, lay: &Layouts, f: &Func) -> bool {
 }
 
 /// Whether the edge of a conditional terminator to `t` is a block of its own, named after the block
-/// it leaves: it copies into a record's slot, which only its own edge may do, or its target is also
+/// it leaves: it copies into a type's slot, which only its own edge may do, or its target is also
 /// reached by another edge of the same terminator, whose phi entries need distinct predecessors.
 fn split_edge(lay: &Layouts, f: &Func, term: &Term, t: &Target) -> bool {
     let mut reached = 0;
     term.for_each_target(|u| reached += usize::from(u.block == t.block));
-    !matches!(term, Term::Br(_)) && (reached > 1 || records::has_copies(lay, f, t))
+    !matches!(term, Term::Br(_)) && (reached > 1 || types::has_copies(lay, f, t))
 }
 
 /// The labels the edges of `term` branch to, in target order: the target itself, or the edge's own
@@ -519,7 +519,7 @@ fn edge_blocks(
     term.for_each_target(|t| {
         if split_edge(lay, f, term, t) {
             b.label(&labels[k]);
-            records::copies(b, lay, f, vals, t);
+            types::copies(b, lay, f, vals, t);
             b.br(&block_label(t.block.index(), 0));
         }
         k += 1;
@@ -621,7 +621,7 @@ pub fn emit(
         if let Some(Pass::Indirect(..)) = sig.as_ref().map(|s| &s.passes[i]) {
             let ptr = Val::new(format!("%a{i}"), LTy::Ptr);
             entry_abi.push(ptr.clone());
-            let own = records::bind_indirect(&mut b, lay, p.ty, ptr, &mut entry);
+            let own = types::bind_indirect(&mut b, lay, p.ty, ptr, &mut entry);
             vals.insert(f.blocks[0].params[i].value.index(), own);
             continue;
         }
@@ -636,28 +636,28 @@ pub fn emit(
             abi.push(Val::new(format!("%a{i}_{j}"), t));
         }
         entry_abi.extend(abi.iter().cloned());
-        let own = records::bind_param(&mut b, lay, p.ty, abi, &mut entry);
+        let own = types::bind_param(&mut b, lay, p.ty, abi, &mut entry);
         vals.insert(f.blocks[0].params[i].value.index(), own);
     }
     for bb in &rpo {
         let bd = &f.blocks[bb.index()];
         if bb.index() != 0 {
             for p in &bd.params {
-                let own = records::block_param(&mut b, lay, f.ty(p.value));
+                let own = types::block_param(&mut b, lay, f.ty(p.value));
                 vals.insert(p.value.index(), own);
             }
         }
         for inst in &bd.insts {
             let Some(res) = inst.res else { continue };
             let pre = area_of(inst.op).and_then(|a| (a.pre)(m, lay, f, inst, &vals, &mut b));
-            let own = match pre.or_else(|| records::bind_early(&mut b, lay, f, &vals, inst)) {
+            let own = match pre.or_else(|| types::bind_early(&mut b, lay, f, &vals, inst)) {
                 Some(own) => own,
-                None => records::reserve(&mut b, lay, f.ty(res)),
+                None => types::reserve(&mut b, lay, f.ty(res)),
             };
             vals.insert(res.index(), own);
         }
     }
-    // Incoming edges of every block, for the phis. Copies into a record's slot run only on their
+    // Incoming edges of every block, for the phis. Copies into a type's slot run only on their
     // own edge, so a conditional edge that has some is a block of its own, named after the block
     // it leaves.
     let mut incoming: HashMap<usize, Vec<(String, Vec<ms_mir::ir::Value>)>> = HashMap::new();
@@ -706,10 +706,10 @@ pub fn emit(
         cx.split = 0;
         b.label(&format!("b{}", bb.index()));
         if bb.index() == 0 {
-            records::emit_entry(&mut b, lay, std::mem::take(&mut entry));
+            types::emit_entry(&mut b, lay, std::mem::take(&mut entry));
         } else {
             for (j, p) in bd.params.iter().enumerate() {
-                if records::is_mem(lay, f.ty(p.value)) {
+                if types::is_mem(lay, f.ty(p.value)) {
                     continue;
                 }
                 for (k, dst) in vals[&p.value.index()].iter().enumerate() {
@@ -732,7 +732,7 @@ pub fn emit(
         b.set_dbg(Some(env.at(bd.term_loc)));
         match &bd.term {
             Term::Br(t) => {
-                records::copies(&mut b, lay, f, &vals, t);
+                types::copies(&mut b, lay, f, &vals, t);
                 b.br(&block_label(t.block.index(), 0));
             }
             Term::CondBr { cond, .. } => {
@@ -755,11 +755,11 @@ pub fn emit(
             }
             Term::Ret(Some(v)) if sret.is_some() => {
                 let to = sret.as_ref().expect("checked");
-                records::store_result(&mut b, lay, f.ty(*v), &vals, *v, to);
+                types::store_result(&mut b, lay, f.ty(*v), &vals, *v, to);
                 b.ret(None);
             }
             Term::Ret(Some(v)) => {
-                let abi = records::abi_leaves(&mut b, lay, f.ty(*v), &vals, *v, sig.is_some());
+                let abi = types::abi_leaves(&mut b, lay, f.ty(*v), &vals, *v, sig.is_some());
                 match abi.as_slice() {
                     [] => b.ret(None),
                     [one] => b.ret(Some(one)),

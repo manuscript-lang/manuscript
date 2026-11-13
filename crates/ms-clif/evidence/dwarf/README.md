@@ -34,7 +34,7 @@ Linux x86_64 ELF, Rust 1.99.1 / Cranelift 0.136.0, GCC 14.2.0, GNU binutils 2.44
 
 The `*-lines.txt` and `*-addresses.txt` files retain consumer output for both
 optimization settings (`false` = unoptimized, `true` = optimized) and both artifact
-types. `object-sections.txt` records emitted sections and relocations. Addresses
+types. `object-sections.txt` types emitted sections and relocations. Addresses
 are example artifact addresses, not portable constants. Temporary source paths
 include the test process ID; tests recreate their fixtures.
 
@@ -75,7 +75,7 @@ local section relocations plus stored function offsets fix the verifier and let
 LLVM symbolize both functions' distinct source lines. This probe does not link or
 execute on macOS/Windows and does not establish native target coverage.
 Supplemental Linux-hosted lld links also exercise PE sections and a Mach-O debug
-map plus dsymutil. The Mach-O CU explicitly records its original zero base so
+map plus dsymutil. The Mach-O CU explicitly types its original zero base so
 dsymutil relocates its range list together with subprogram addresses; the linked
 dSYM then passes full verification and adjacent source lookup for both functions.
 These are metadata checks with a stub runtime, not native execution coverage.

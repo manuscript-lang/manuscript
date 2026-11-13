@@ -71,16 +71,16 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let Imm::Field(r, i) = inst.imm else {
                     unreachable!()
                 };
-                let rty = m.types.find(&TyKind::Rec(r)).expect("record type interned");
+                let rty = m.types.find(&TyKind::Type(r)).expect("type interned");
                 let (fty, at, _) = self.fields_of(rty)[i as usize];
-                if let Some(block) = self.rec_block(rty) {
-                    // The argument addresses the record's pointer.
+                if let Some(block) = self.type_block(rty) {
+                    // The argument addresses the type's pointer.
                     let held = self.a(inst, 0)[0];
                     let p = self.b.ins().load(types::I64, flags(), held, 0);
-                    let (bk, _) = self.rec_block_fields(rty)[i as usize];
+                    let (bk, _) = self.type_block_fields(rty)[i as usize];
                     let off = mem_layout(&block).offsets[bk] as i64;
                     let slot = self.add_imm(p, off);
-                    if self.g.lay.rec_field_boxed(fty) {
+                    if self.g.lay.type_field_boxed(fty) {
                         return vec![self.map_header_ensure(slot)];
                     }
                     return vec![slot];
@@ -97,7 +97,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                             .enumerate()
                             .all(|(k, o)| lay.offsets[at + k] - lay.offsets[at] == *o)
                     },
-                    "field {i} of record {r:?} is laid out differently inside the record"
+                    "field {i} of type {r:?} is laid out differently inside the type"
                 );
                 let p = self.a(inst, 0)[0];
                 vec![self.add_imm(p, off)]
