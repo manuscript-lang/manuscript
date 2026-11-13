@@ -1,8 +1,11 @@
 //! Direct calls between functions emitted from MIR.
 
 use super::attrs::pure_attrs;
-use super::{Area, Cx, Vals, call_ret_ty, leaves, records, ret_attr};
-use crate::abi_llvm::{Pass, Ret, Signature};
+use super::records::Abi;
+use super::{
+    Area, Cx, Vals, call_ret_ty, leaves, native_ret_attr, native_ret_ty, records, ret_attr,
+};
+use crate::abi_llvm::{Pass, Reg, Ret, Signature};
 use crate::layout::Layouts;
 use crate::llvm_build::{FnBuilder, Ty as LTy, Types, Val};
 use ms_mir::ir::{ExternDef, ExternRole, Func, Imm, Inst, Mode, Module, Op, Value};
@@ -138,9 +141,12 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         for ((p, a), pass) in callee.params.iter().zip(&inst.args).zip(&sig.passes) {
             match pass {
                 Pass::Scalars(_) => {
-                    let abi = records::abi_leaves(b, lay, p.ty, vals, *a, true);
-                    for (v, (_, at)) in abi.into_iter().zip(leaves(lay, p.ty)) {
-                        args.push((v, at));
+                    let abi = records::abi_leaves(b, lay, p.ty, vals, *a, Abi::Native);
+                    let Pass::Scalars(regs) = pass else {
+                        unreachable!()
+                    };
+                    for ((v, (_, at)), r) in abi.into_iter().zip(leaves(lay, p.ty)).zip(regs) {
+                        args.push((v, native_attr(*r, at)));
                     }
                 }
                 Pass::Indirect(..) => args.push((records::spill(b, lay, p.ty, vals, *a), "")),
@@ -149,12 +155,12 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         cx.decls.push((sym.clone(), sig.declare(&sym, attrs)));
         let ret = match &slot {
             Some(_) => LTy::Void,
-            None => call_ret_ty(lay, callee.ret, true),
+            None => native_ret_ty(lay, callee.ret),
         };
         let attr = if slot.is_some() {
             ""
         } else {
-            ret_attr(lay, callee.ret)
+            native_ret_attr(lay, callee.ret)
         };
         match &slot {
             Some(slot) => {
@@ -176,7 +182,7 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     }
     let mut args: Vec<(Val, &str)> = Vec::new();
     for (p, a) in callee.params.iter().zip(&inst.args) {
-        let abi = records::abi_leaves(b, lay, p.ty, vals, *a, false);
+        let abi = records::abi_leaves(b, lay, p.ty, vals, *a, Abi::Leaf);
         for (v, (_, at)) in abi.into_iter().zip(leaves(lay, p.ty)) {
             args.push((v, at));
         }
@@ -197,6 +203,14 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         &out,
         false,
     );
+}
+
+/// The attribute of an argument in the native convention: a sized integer carries its extension.
+fn native_attr(r: Reg, leaf_attr: &'static str) -> &'static str {
+    match (r, r.extension()) {
+        (Reg::I8, _) | (_, "") => leaf_attr,
+        (_, ext) => ext,
+    }
 }
 
 /// The function a call goes to.
@@ -285,7 +299,7 @@ pub(super) fn leaf_call(
 ) {
     let mut actuals = vec![(first, "")];
     for (p, a) in params.iter().zip(args) {
-        let abi = records::abi_leaves(b, lay, *p, vals, *a, false);
+        let abi = records::abi_leaves(b, lay, *p, vals, *a, Abi::Leaf);
         for (v, (_, at)) in abi.into_iter().zip(leaves(lay, *p)) {
             actuals.push((v, at));
         }
@@ -320,7 +334,7 @@ fn call_rt(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder
     let mut args: Vec<(Val, &str)> = Vec::new();
     for (p, a) in def.params.iter().zip(&inst.args) {
         if passes_directly(lay, p.ty) {
-            let abi = records::abi_leaves(b, lay, p.ty, vals, *a, true);
+            let abi = records::abi_leaves(b, lay, p.ty, vals, *a, Abi::Rt);
             for (v, (_, at)) in abi.into_iter().zip(leaves(lay, p.ty)) {
                 args.push((v, at));
             }

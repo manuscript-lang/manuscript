@@ -249,6 +249,19 @@ fn field_span(lay: &Layouts, rty: Ty, i: usize) -> (usize, usize) {
     (at, lay.width(fields[i].1))
 }
 
+/// The convention the leaves of a call cross in.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum Abi {
+    /// The leaf convention Cranelift shares: each pointer an `i64`, each sized integer an `i64`
+    /// and each `Float32` a `double`.
+    Leaf,
+    /// The C convention of a runtime function: pointers stay `ptr`, but sized integers and
+    /// `Float32` are still widened.
+    Rt,
+    /// Directly emitted functions (`abi_llvm::Signature`): every leaf is the type it is held as.
+    Native,
+}
+
 /// The leaves of `v` as they cross a call: a record in memory loaded, a boolean as an `i8`, and
 /// each pointer as itself in the native convention (`native`) or as its address (`i64`) in the
 /// leaf convention.
@@ -258,7 +271,7 @@ pub(super) fn abi_leaves(
     ty: Ty,
     vals: &Vals,
     v: Value,
-    native: bool,
+    abi: Abi,
 ) -> Vec<Val> {
     let own = &vals[&v.index()];
     let leaves = if is_mem(lay, ty) {
@@ -272,7 +285,9 @@ pub(super) fn abi_leaves(
         .into_iter()
         .enumerate()
         .map(|(k, l)| match l.ty {
-            LTy::Ptr if !native => b.ptr_to_int(&l),
+            LTy::Ptr if abi == Abi::Leaf => b.ptr_to_int(&l),
+            LTy::I1 => b.zext(&l, LTy::I8),
+            _ if abi == Abi::Native => l,
             _ => to_abi(b, &l, narrow[k]),
         })
         .collect()
@@ -963,7 +978,7 @@ pub(super) fn spill(b: &mut FnBuilder, lay: &Layouts, ty: Ty, vals: &Vals, v: Va
     if is_mem(lay, ty) {
         return vals[&v.index()][0].clone();
     }
-    let leaves = abi_leaves(b, lay, ty, vals, v, true);
+    let leaves = abi_leaves(b, lay, ty, vals, v, Abi::Native);
     let st = super::aggregate(b.types(), lay, ty);
     let slot = b.alloca(&st);
     store_regs(b, lay, ty, &st, &slot, &leaves);
@@ -992,7 +1007,7 @@ pub(super) fn store_result(
         b.copy_bytes(sret, &vals[&v.index()][0], s.size as u64, s.align as u64);
         return;
     }
-    let leaves = abi_leaves(b, lay, ty, vals, v, true);
+    let leaves = abi_leaves(b, lay, ty, vals, v, Abi::Native);
     let st = super::aggregate(b.types(), lay, ty);
     store_regs(b, lay, ty, &st, sret, &leaves);
 }

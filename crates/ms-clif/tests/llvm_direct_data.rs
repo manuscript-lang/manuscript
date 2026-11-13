@@ -359,7 +359,10 @@ pub fn narrow_integers_match_cranelift() {
         let direct = header.contains("%a0_0") || header.contains("dereferenceable");
         assert!(direct, "{f} was translated: {header}");
     }
-    assert!(ir.contains("sext i8 "), "no sign extension of a byte");
+    assert!(
+        ir.contains("i8 signext %a0_0"),
+        "a byte did not cross a call as a signed `i8`"
+    );
     assert_eq!((got.code, &got.stdout), (want.code, &want.stdout));
 }
 
@@ -521,7 +524,7 @@ pub fn narrow_unsigned_matches_cranelift() {
 }
 
 /// `Float32` is a real `float`: it adds, rounds, converts, sits in a record and an optional, and
-/// crosses a call (where the leaf convention widens it to a `double`).
+/// crosses a call between directly emitted functions as a `float`.
 const FLOAT32: &str = r#"module "d"
 record Pair { a: float32, b: float32 }
 entry @main
@@ -571,6 +574,6 @@ pub fn float32_matches_cranelift() {
     let ir = std::fs::read_to_string("ms-keep.ll").unwrap();
     let _ = std::fs::remove_file("ms-keep.ll");
     assert!(ir.contains("fadd float "), "no float addition");
-    assert!(ir.contains("fpext float "), "no widening across the call");
+    assert!(ir.contains("float %a0_0"), "a float did not cross a call as `float`");
     assert_eq!((got.code, &got.stdout), (want.code, &want.stdout));
 }

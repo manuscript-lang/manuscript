@@ -28,6 +28,7 @@ use crate::llvm_ir::DirectEnv;
 use attrs::pure_attrs;
 use ms_mir::ir::{Func, Imm, Inst, Mode, Module, Op, Target, Term};
 use ms_mir::types::{Ty, TyKind};
+use records::Abi;
 use std::collections::{HashMap, HashSet};
 
 /// Where the function sits in the module: its index, its grow shim when it has a stack-depth
@@ -236,25 +237,50 @@ fn reg_ty(r: Reg) -> LTy {
     match r {
         Reg::I64 => LTy::I64,
         Reg::F64 => LTy::F64,
-        Reg::I8 => LTy::I8,
+        Reg::F32 => LTy::F32,
+        Reg::I8 | Reg::N8 | Reg::U8 => LTy::I8,
+        Reg::N16 | Reg::U16 => LTy::I16,
+        Reg::N32 | Reg::U32 => LTy::I32,
         Reg::Ptr => LTy::Ptr,
     }
 }
 
-/// The result as it crosses a call: the `void`, the register or a tuple of them, in the native
-/// convention when `native` and as leaves otherwise.
+/// The result as it crosses a call to a function in the leaf convention (`native` false) or the C
+/// convention of the runtime (pointers as `ptr`): the `void`, the register or a tuple of them.
+/// A sized integer is an `i64` and a `Float32` a `double` in both.
 fn call_ret_ty(lay: &Layouts, ty: Ty, native: bool) -> LTy {
     if !native {
         return ret_ty(lay, ty);
     }
+    result_ty(lay, ty, Reg::c_abi)
+}
+
+/// The result of a function in the native convention: each leaf in its own type.
+fn native_ret_ty(lay: &Layouts, ty: Ty) -> LTy {
+    result_ty(lay, ty, |r| r)
+}
+
+fn result_ty(lay: &Layouts, ty: Ty, reg: fn(Reg) -> Reg) -> LTy {
     let mut tys: Vec<LTy> = crate::abi_llvm::regs_of(lay, ty)
         .into_iter()
-        .map(reg_ty)
+        .map(|r| reg_ty(reg(r)))
         .collect();
     match tys.len() {
         0 => LTy::Void,
         1 => tys.remove(0),
         _ => LTy::Tuple(tys),
+    }
+}
+
+/// The result attribute of a native function: a sized integer carries its extension, any other
+/// result what `ret_attr` says.
+fn native_ret_attr(lay: &Layouts, ty: Ty) -> &'static str {
+    match crate::abi_llvm::regs_of(lay, ty).as_slice() {
+        [r] if r.extension() != "" && *r != Reg::I8 => match r.extension() {
+            " signext" => "signext ",
+            _ => "zeroext ",
+        },
+        _ => ret_attr(lay, ty),
     }
 }
 
@@ -702,7 +728,12 @@ pub fn emit(
                 b.ret(None);
             }
             Term::Ret(Some(v)) => {
-                let abi = records::abi_leaves(&mut b, lay, f.ty(*v), &vals, *v, sig.is_some());
+                let ret_abi = if sig.is_some() {
+                    Abi::Native
+                } else {
+                    Abi::Leaf
+                };
+                let abi = records::abi_leaves(&mut b, lay, f.ty(*v), &vals, *v, ret_abi);
                 match abi.as_slice() {
                     [] => b.ret(None),
                     [one] => b.ret(Some(one)),
