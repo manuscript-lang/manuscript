@@ -370,10 +370,15 @@ fn area_of(op: Op) -> Option<&'static Area> {
     AREAS.iter().find(|a| (a.handles)(op))
 }
 
-/// Whether stage 1 can emit `f`.
-pub fn supports(m: &Module, lay: &Layouts, f: &Func) -> bool {
+/// Why `f` cannot be emitted directly, or `None` when it can.
+pub fn unsupported(m: &Module, lay: &Layouts, f: &Func) -> Option<String> {
+    let ty_name = |t: Ty| {
+        let kind = format!("{:?}", m.types.kind(t));
+        let end = kind.find(['(', ' ', '{']).unwrap_or(kind.len());
+        format!("type {}", &kind[..end])
+    };
     if !signature_ok(lay, &f.params, f.ret) {
-        return false;
+        return Some("signature".into());
     }
     let ty_ok = |v| supported_ty(lay, f.ty(v));
     let rpo = f.rpo();
@@ -381,22 +386,37 @@ pub fn supports(m: &Module, lay: &Layouts, f: &Func) -> bool {
     let mut entry_target = false;
     for b in &rpo {
         let bd = &f.blocks[b.index()];
-        if bd.params.iter().any(|p| !ty_ok(p.value)) {
-            return false;
+        if let Some(p) = bd.params.iter().find(|p| !ty_ok(p.value)) {
+            return Some(format!("block parameter of {}", ty_name(f.ty(p.value))));
         }
         for i in &bd.insts {
-            if !area_of(i.op).is_some_and(|a| (a.inst_ok)(m, lay, f, i))
-                || i.res.is_some_and(|r| !ty_ok(r))
-                || i.args.iter().any(|a| !ty_ok(*a))
-                || (i.op == Op::Select && i.res.is_some_and(|r| records::is_mem(lay, f.ty(r))))
+            let Some(area) = area_of(i.op) else {
+                return Some(format!("op {:?} has no lowering", i.op));
+            };
+            if !(area.inst_ok)(m, lay, f, i) {
+                return Some(format!("op {:?} in a shape it does not lower", i.op));
+            }
+            if let Some(v) = i
+                .res
+                .into_iter()
+                .chain(i.args.iter().copied())
+                .find(|v| !ty_ok(*v))
             {
-                return false;
+                return Some(format!("op {:?} on {}", i.op, ty_name(f.ty(v))));
+            }
+            if i.op == Op::Select && i.res.is_some_and(|r| records::is_mem(lay, f.ty(r))) {
+                return Some("select of a record".into());
             }
             if i.op == Op::Call {
-                let Imm::Func(c) = i.imm else { return false };
+                let Imm::Func(c) = i.imm else {
+                    return Some("call without a callee".into());
+                };
                 let callee = &m.funcs[c.index()];
                 if !signature_ok(lay, &callee.params, callee.ret) {
-                    return false;
+                    return Some(format!(
+                        "call to {} with an unsupported signature",
+                        callee.name
+                    ));
                 }
             }
         }
@@ -410,11 +430,16 @@ pub fn supports(m: &Module, lay: &Layouts, f: &Func) -> bool {
             Term::Fault(k) => faults::terminator_ok(*k),
         };
         if !ok {
-            return false;
+            return Some("terminator".into());
         }
         bd.term.for_each_target(|t| entry_target |= is_entry(t));
     }
-    !entry_target
+    entry_target.then(|| "branch to the entry block".into())
+}
+
+/// Whether the emitter can emit `f`.
+pub fn supports(m: &Module, lay: &Layouts, f: &Func) -> bool {
+    unsupported(m, lay, f).is_none()
 }
 
 /// Whether the edge of a conditional terminator to `t` is a block of its own, named after the block
@@ -722,7 +747,7 @@ pub fn emit(
         body: b.finish(),
         decls: cx.decls,
         data: cx.data,
-        consts: lists::consts(m, f),
+        consts: lists::consts(m, lay, f),
     }
 }
 
@@ -737,22 +762,18 @@ pub fn grow_shim(types: &Types, lay: &Layouts, f: &Func, sym: &str, dbg: usize) 
     depth::shim(types, lay, f, sym, dbg)
 }
 
+/// The grow shim of the leaf-convention function `f` called `sym`.
+pub fn leaf_grow_shim(types: &Types, lay: &Layouts, f: &Func, sym: &str, dbg: usize) -> Emitted {
+    depth::leaf_shim(types, lay, f, sym, dbg)
+}
+
 #[cfg(test)]
 mod coverage {
     use super::*;
 
     /// The ops no area lowers yet. An op leaves this list when an area handles it; the scope
     /// markers are not here because `elaborate` removes them before code generation.
-    const UNLOWERED: &[Op] = &[
-        Op::AltOwn,
-        Op::RecRelease,
-        Op::BytesLit,
-        Op::ListConst,
-        Op::ListAddr,
-        Op::ListAddrU,
-        Op::OptUnwrap,
-        Op::OptAddr,
-    ];
+    const UNLOWERED: &[Op] = &[Op::AltOwn, Op::RecRelease, Op::OptUnwrap, Op::OptAddr];
 
     const MARKERS: &[Op] = &[
         Op::ScopeBegin,

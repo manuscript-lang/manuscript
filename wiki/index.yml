@@ -74,3 +74,11 @@ domains:
       - "bench/perf/**"
       - "bench/agent/**"
       - "bench/**"
+  - id: llvm-langref
+    file: llvm-langref/index.md
+    topics: [LLVM IR, language reference, instructions, intrinsics, attributes, metadata, direct LLVM emission]
+    paths:
+      - "crates/ms-clif/src/mir_llvm/**"
+      - "crates/ms-clif/src/llvm_*.rs"
+      - "crates/ms-clif/src/abi_llvm.rs"
+      - "crates/ms-clif/src/glue_llvm.rs"

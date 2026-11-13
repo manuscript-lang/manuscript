@@ -118,11 +118,28 @@ fn pure_op(op: Op) -> bool {
 }
 
 /// Each check splits the block: a signed division checks for zero and for overflow.
-fn splits(_: &Layouts, _: &Func, inst: &Inst, checks: bool) -> usize {
+fn splits(lay: &Layouts, f: &Func, inst: &Inst, checks: bool) -> usize {
+    let range = usize::from(checks && sized_range(lay, f, inst).is_some());
     match inst.op {
-        Op::SDivChk if checks => 2,
-        op => usize::from(checks && checked(op)),
+        Op::SDivChk if checks => 2 + range,
+        op => usize::from(checks && checked(op)) + range,
     }
+}
+
+/// The range of the sized integer type a checked arithmetic op yields, when narrower than 64 bits:
+/// its result is also checked against it.
+fn sized_range(lay: &Layouts, f: &Func, inst: &Inst) -> Option<(i64, i64)> {
+    if !matches!(
+        inst.op,
+        Op::IAddChk | Op::ISubChk | Op::IMulChk | Op::INegChk | Op::SDivChk
+    ) {
+        return None;
+    }
+    let ty = f.ty(inst.res?);
+    let types = &lay.m.types;
+    types.int_bits(ty).filter(|b| *b < 64)?;
+    let (lo, hi) = types.int_range(ty)?;
+    Some((lo as i64, hi as i64))
 }
 
 /// A constant is its own text: no register.
@@ -259,6 +276,17 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
 /// the plain operations. The result takes its reserved name on the last instruction written,
 /// which is in the block after the checks.
 fn checked_op(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder, out: &[Val]) {
+    checked_op_64(cx, inst, vals, b, out);
+    if let (true, Some((lo, hi)), [r]) = (cx.checks, sized_range(cx.lay, cx.f, inst), out) {
+        let below = b.icmp("slt", r, &Val::int(lo));
+        let above = b.icmp("sgt", r, &Val::int(hi));
+        let bad = b.bin(Bin::Or, &below, &above);
+        faults::fault_if(cx, b, &bad, "msrt_fault_int_range", &[]);
+    }
+}
+
+/// The 64-bit check of `checked_op`.
+fn checked_op_64(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder, out: &[Val]) {
     let arg = |i: usize| vals[&inst.args[i].index()][0].clone();
     let name = |b: &mut FnBuilder| {
         if let [r] = out {
@@ -447,7 +475,7 @@ fn narrow_chk(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         .lay
         .m
         .types
-        .int_range(cx.f.ty(inst.args[0]))
+        .int_range(cx.f.ty(inst.res.expect("a result")))
         .unwrap_or((i64::MIN.into(), i64::MAX.into()));
     let below = b.icmp("slt", &x, &Val::int(lo as i64));
     let above = b.icmp("sgt", &x, &Val::int(hi as i64));

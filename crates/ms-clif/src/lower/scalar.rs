@@ -126,6 +126,38 @@ impl<'a, 'm> Lower<'a, 'm> {
         }
     }
 
+    /// Faults with `msrt_fault_int_range` when the register `x` is outside the range of the
+    /// sized integer type `ty`.
+    fn fault_out_of_range(&mut self, x: Value, ty: Ty) {
+        let (lo, hi) = self
+            .g
+            .lay
+            .m
+            .types
+            .int_range(ty)
+            .unwrap_or((i64::MIN.into(), i64::MAX.into()));
+        let (lo_k, hi_k) = (
+            self.b.ins().iconst(types::I64, lo as i64),
+            self.b.ins().iconst(types::I64, hi as i64),
+        );
+        let lo = self.b.ins().icmp(IntCC::SignedLessThan, x, lo_k);
+        let hi = self.b.ins().icmp(IntCC::SignedGreaterThan, x, hi_k);
+        let bad = self.b.ins().bor(lo, hi);
+        self.fault_if(bad, "msrt_fault_int_range", vec![]);
+    }
+
+    /// A checked integer result of a sized type is also checked against the type's range.
+    pub(super) fn range_check_sized(&mut self, f: &Func, inst: &Inst, vs: Vs) -> Vs {
+        let sized = inst.res.map(|r| f.ty(r)).filter(|t| {
+            self.g.lay.m.types.int_bits(*t).is_some_and(|b| b < 64)
+                && !matches!(inst.op, Op::NarrowChk | Op::INarrowOpt | Op::Conv)
+        });
+        if let (Some(t), true, Some(x)) = (sized, self.g.opts.checks, vs.first().copied()) {
+            self.fault_out_of_range(x, t);
+        }
+        vs
+    }
+
     /// Overflow-checked integer arithmetic, narrowing and conversions.
     pub(super) fn checked_integer_ops(&mut self, f: &Func, inst: &Inst) -> Vs {
         let checks = self.g.opts.checks;
@@ -158,22 +190,8 @@ impl<'a, 'm> Lower<'a, 'm> {
             }
             Op::NarrowChk => {
                 let x = self.a(inst, 0)[0];
-                let (lo, hi) = self
-                    .g
-                    .lay
-                    .m
-                    .types
-                    .int_range(f.ty(inst.args[0]))
-                    .unwrap_or((i64::MIN.into(), i64::MAX.into()));
                 if checks {
-                    let (lo_k, hi_k) = (
-                        self.b.ins().iconst(types::I64, lo as i64),
-                        self.b.ins().iconst(types::I64, hi as i64),
-                    );
-                    let lo = self.b.ins().icmp(IntCC::SignedLessThan, x, lo_k);
-                    let hi = self.b.ins().icmp(IntCC::SignedGreaterThan, x, hi_k);
-                    let bad = self.b.ins().bor(lo, hi);
-                    self.fault_if(bad, "msrt_fault_int_range", vec![]);
+                    self.fault_out_of_range(x, res_ty.unwrap_or(Ty::INT));
                 }
                 vec![x]
             }
