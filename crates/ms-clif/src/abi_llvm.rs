@@ -89,8 +89,18 @@ pub enum Ret {
     Sret(Mem),
 }
 
+/// The size and alignment of the leaves spilled to memory as registers: a literal struct of
+/// `i64`, `double` and `i8` fields, which is also what a record in memory is.
 fn mem_of(leaves: &[Leaf]) -> Mem {
-    let m = mem_layout(leaves);
+    let regs: Vec<Leaf> = leaves
+        .iter()
+        .map(|l| match Reg::of(*l) {
+            Reg::I8 => Leaf::I8,
+            Reg::F64 => Leaf::F64,
+            Reg::I64 => Leaf::I64,
+        })
+        .collect();
+    let m = mem_layout(&regs);
     Mem {
         size: m.size,
         align: m.align,
@@ -190,8 +200,14 @@ impl Signature {
         let mut formals = Vec::new();
         let ret = match &result {
             Ret::Sret(mem) => {
+                let tys: Vec<&str> = lay
+                    .leaves(ret_ty)
+                    .into_iter()
+                    .map(|l| Reg::of(l).llvm())
+                    .collect();
+                let st = format!("{{ {} }}", tys.join(", "));
                 formals.push(Formal {
-                    ty: format!("ptr {}", sret_attrs("%\"T\"", *mem)),
+                    ty: format!("ptr {}", sret_attrs(&st, *mem)),
                     name: "%sret".to_string(),
                 });
                 "void".to_string()

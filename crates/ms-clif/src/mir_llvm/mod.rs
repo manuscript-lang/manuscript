@@ -17,13 +17,22 @@ mod lists;
 mod maps;
 mod records;
 
+use crate::abi_llvm::{Pass, Ret, Signature};
 use crate::layout::{Layouts, Leaf};
 use crate::llvm_build::{FnBuilder, Ty as LTy, Types, Val};
 use crate::llvm_ir::DirectEnv;
 use attrs::pure_attrs;
 use ms_mir::ir::{Func, Imm, Inst, Mode, Module, Op, Target, Term};
 use ms_mir::types::{Ty, TyKind};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+
+/// Where the function sits in the module: its index, its grow shim when it has a stack-depth
+/// check, and the set of functions in the native calling convention.
+pub struct Place<'a> {
+    pub idx: usize,
+    pub grow_shim: Option<String>,
+    pub native: &'a HashSet<usize>,
+}
 
 /// A finished function: pieces of the `define` line, the body, and the callees it declares.
 pub struct Emitted {
@@ -219,6 +228,9 @@ struct Cx<'a> {
     ret_abi: Vec<LTy>,
     /// Symbol of the function's grow shim, when it has a stack-depth check.
     grow_shim: Option<String>,
+    /// The functions in the native calling convention (`abi_llvm`); every other function takes
+    /// and returns leaves.
+    native: &'a HashSet<usize>,
 }
 
 /// The label a MIR block ends in: each check splits it, and a successor's phis name that label.
@@ -248,7 +260,11 @@ type Vals = HashMap<usize, Vec<Val>>;
 pub fn emit(
     m: &Module,
     lay: &Layouts,
-    (idx, grow_shim): (usize, Option<String>),
+    Place {
+        idx,
+        grow_shim,
+        native,
+    }: Place,
     f: &Func,
     checks: bool,
     env: &mut DirectEnv,
@@ -263,7 +279,22 @@ pub fn emit(
     let mut params = Vec::new();
     let mut entry = Vec::new();
     let mut entry_abi = Vec::new();
+    let sig = native
+        .contains(&idx)
+        .then(|| Signature::of(lay, &f.params, f.ret));
+    let sret = sig
+        .as_ref()
+        .is_some_and(|s| matches!(s.result, Ret::Sret(_)))
+        .then(|| Val::new("%sret", LTy::Ptr));
+    entry_abi.extend(sret.iter().cloned());
     for (i, p) in f.params.iter().enumerate() {
+        if let Some(Pass::Indirect(..)) = sig.as_ref().map(|s| &s.passes[i]) {
+            let ptr = Val::new(format!("%a{i}"), LTy::Ptr);
+            entry_abi.push(ptr.clone());
+            let own = records::bind_indirect(&mut b, lay, p.ty, ptr, &mut entry);
+            vals.insert(f.blocks[0].params[i].value.index(), own);
+            continue;
+        }
         let mut abi = Vec::new();
         for (j, (t, attr)) in leaves(lay, p.ty).into_iter().enumerate() {
             params.push(format!("{}{attr} %a{i}_{j}", types.text(&t)));
@@ -324,8 +355,13 @@ pub fn emit(
         block: 0,
         split: 0,
         entry_abi,
-        ret_abi: depth::ret_abi(lay, f.ret),
+        ret_abi: if sret.is_some() {
+            Vec::new()
+        } else {
+            depth::ret_abi(lay, f.ret)
+        },
         grow_shim,
+        native,
     };
     for bb in &rpo {
         let bd = &f.blocks[bb.index()];
@@ -379,6 +415,11 @@ pub fn emit(
                     }
                 }
             }
+            Term::Ret(Some(v)) if sret.is_some() => {
+                let to = sret.as_ref().expect("checked");
+                records::store_result(&mut b, lay, f.ty(*v), &vals, *v, to);
+                b.ret(None);
+            }
             Term::Ret(Some(v)) => {
                 let abi = records::abi_leaves(&mut b, lay, f.ty(*v), &vals, *v);
                 match abi.as_slice() {
@@ -396,9 +437,13 @@ pub fn emit(
     }
     *env.sites = cx.sites;
     Emitted {
-        ret: ret_text(lay, f.ret),
-        params: params.join(", "),
-        attrs: pure_attrs(m, lay, idx, &mut cx.memo)
+        ret: sig
+            .as_ref()
+            .map_or_else(|| ret_text(lay, f.ret), |s| s.ret.clone()),
+        params: sig
+            .as_ref()
+            .map_or_else(|| params.join(", "), Signature::define_params),
+        attrs: pure_attrs(m, lay, native, idx, &mut cx.memo)
             .unwrap_or("")
             .to_string(),
         body: b.finish(),
@@ -410,4 +455,9 @@ pub fn emit(
 fn inst_text(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     let area = area_of(inst.op).expect("supports rejects other ops");
     (area.emit)(cx, inst, vals, b);
+}
+
+/// The grow shim of the native function `f` called `sym` (see [`depth::shim`]).
+pub fn grow_shim(lay: &Layouts, f: &Func, sym: &str, dbg: usize) -> Emitted {
+    depth::shim(lay, f, sym, dbg)
 }

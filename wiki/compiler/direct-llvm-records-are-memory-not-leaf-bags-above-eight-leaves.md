@@ -11,3 +11,10 @@ Verified (yaml parse program, 2026-11-13): the Cranelift lowering flattens a rec
 - `depth.enter` is the first instruction of a recursive function: it compares `llvm.frameaddress` with the limit cell in the stack region and, below it, reruns the function through its grow shim (`mir_llvm/depth.rs`). It splits the entry block, so `exit_label` counts it.
 
 Apply when: adding ops to the direct emitter, or changing how it passes records across calls.
+
+## Native calling convention (`abi_llvm.rs`)
+
+- A function whose every reference is a call from a directly emitted function (not the entry, an export, a vtable, closure, cleanup, capture closer or a fallback caller) is native: values over 16 bytes pass as `ptr nonnull ... dereferenceable(N)`, results over 16 bytes through `sret`, and `var` parameters still fall back. Everything else keeps the leaf signature, so no thunks exist and the fault tables are unchanged (`cg::native_functions`).
+- The shim that grows the stack for a native function passes the pointers through its cells and calls the native symbol (`mir_llvm/depth.rs`); the Cranelift shim only knows leaves.
+- A native function that reads memory through a parameter is never `memory(none)` (`mir_llvm/attrs.rs`).
+- Not done: `ptr` leaves (a pointer is still an `i64` leaf), named struct types (the spill and `sret` types are literal structs), TBAA and range metadata.

@@ -6,9 +6,12 @@
 //! one cell each in a heap block followed by room for the results, and the function returns what
 //! that run produced. It is the check `Lower::depth_enter` writes for the Cranelift path.
 
-use super::{Area, Cx, Vals, block_label, leaves};
+use super::{Area, Cx, Emitted, Vals, block_label, leaves, ret_attr, ret_ty};
+use crate::abi_llvm::{Pass, Reg, Ret, Signature};
+use crate::layout::Layouts;
+use crate::llvm_build::Types;
 use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Val};
-use ms_mir::ir::{Inst, Op};
+use ms_mir::ir::{Func, Inst, Op};
 use ms_rt_abi::symbols::{STACK_LIMIT_CELL, STACK_REGION};
 
 pub(super) const AREA: Area = Area {
@@ -62,7 +65,13 @@ pub(super) fn enter(cx: &mut Cx, b: &mut FnBuilder) {
         .expect("a block");
     for (i, p) in params.iter().enumerate() {
         let at = b.elem_ptr(&LTy::I64, &block, &Val::int(i as i64));
-        b.store(p, &at, align(&p.ty));
+        // A native function's pointers (its result slot and aggregate parameters) cross as words.
+        let p = if p.ty == LTy::Ptr {
+            b.ptr_to_int(p)
+        } else {
+            p.clone()
+        };
+        b.store(&p, &at, align(&p.ty));
     }
     let shim = cx
         .grow_shim
@@ -114,4 +123,70 @@ pub(super) fn enter(cx: &mut Cx, b: &mut FnBuilder) {
 /// The leaf types a function returns, as they cross a call.
 pub(super) fn ret_abi(lay: &crate::layout::Layouts, ret: ms_mir::types::Ty) -> Vec<LTy> {
     leaves(lay, ret).into_iter().map(|l| l.0).collect()
+}
+
+/// The grow shim of a function in the native convention: it reads the cells `enter` filled (the
+/// result pointer if any, then each parameter as scalars or a pointer), calls the function, and
+/// writes the scalar results after them.
+pub(super) fn shim(lay: &Layouts, f: &Func, sym: &str, dbg: usize) -> Emitted {
+    let types = Types::default();
+    let sig = Signature::of(lay, &f.params, f.ret);
+    let mut b = FnBuilder::new(&types, Some(dbg));
+    b.label("entry");
+    let block = b.int_to_ptr(&Val::new("%a0", LTy::I64));
+    let mut cell = 0;
+    let mut read = |b: &mut FnBuilder, ty: &LTy| {
+        let at = b.elem_ptr(&LTy::I64, &block, &Val::int(cell));
+        cell += 1;
+        b.load(ty, &at, align(ty))
+    };
+    let mut args: Vec<(Val, &str)> = Vec::new();
+    if matches!(sig.result, Ret::Sret(_)) {
+        let w = read(&mut b, &LTy::I64);
+        args.push((b.int_to_ptr(&w), ""));
+    }
+    for pass in &sig.passes {
+        match pass {
+            Pass::Scalars(regs) => {
+                for r in regs {
+                    let (ty, attr) = match r {
+                        Reg::I8 => (LTy::I8, " zeroext"),
+                        Reg::F64 => (LTy::F64, ""),
+                        Reg::I64 => (LTy::I64, ""),
+                    };
+                    args.push((read(&mut b, &ty), attr));
+                }
+            }
+            Pass::Indirect(..) => {
+                let w = read(&mut b, &LTy::I64);
+                args.push((b.int_to_ptr(&w), ""));
+            }
+        }
+    }
+    let first_result = cell;
+    let ret = ret_ty(lay, f.ret);
+    let attr = ret_attr(lay, f.ret);
+    let (ret, attr) = match sig.result {
+        Ret::Sret(_) => (LTy::Void, ""),
+        Ret::Scalars(_) => (ret, attr),
+    };
+    let result = b.call(&ret, attr, sym, &args);
+    if let Some(r) = result {
+        let leaves = match &ret {
+            LTy::Tuple(ts) => (0..ts.len()).map(|k| b.extract(&r, k)).collect(),
+            _ => vec![r],
+        };
+        for (j, v) in leaves.iter().enumerate() {
+            let at = b.elem_ptr(&LTy::I64, &block, &Val::int(first_result + j as i64));
+            b.store(v, &at, align(&v.ty));
+        }
+    }
+    b.ret(None);
+    Emitted {
+        ret: "void".to_string(),
+        params: "i64 %a0".to_string(),
+        attrs: String::new(),
+        body: b.finish(),
+        decls: vec![(sym.to_string(), sig.declare(sym, ""))],
+    }
 }

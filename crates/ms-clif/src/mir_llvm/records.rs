@@ -225,6 +225,8 @@ pub(super) enum Entry {
     Ptr { held: Val, abi: Val },
     /// A record in memory arrives as leaves and is stored into its slot.
     Mem { slot: Val, abi: Vec<Val>, ty: Ty },
+    /// A value passed by pointer (see `abi_llvm`) is loaded into its leaves.
+    Load { ptr: Val, dsts: Vec<Val> },
 }
 
 /// The held values of an entry parameter of type `ty` that arrives as `abi`, and what the entry
@@ -266,6 +268,14 @@ pub(super) fn emit_entry(b: &mut FnBuilder, lay: &Layouts, entry: Vec<Entry>) {
             Entry::Mem { slot, abi, ty } => {
                 let s = shape(lay, ty).expect("is_mem checked");
                 store_leaves(b, &s, &slot, 0, &abi);
+            }
+            Entry::Load { ptr, dsts } => {
+                let st = LTy::Tuple(dsts.iter().map(|d| d.ty.clone()).collect());
+                for (k, dst) in dsts.iter().enumerate() {
+                    let p = b.field_ptr(&st, &ptr, k);
+                    b.name_next(dst);
+                    b.load(&dst.ty, &p, align(&dst.ty));
+                }
             }
         }
     }
@@ -504,4 +514,92 @@ pub(super) fn call_result(b: &mut FnBuilder, lay: &Layouts, ty: Ty, r: Val, out:
     };
     b.alloca_as(&out[0], &s.st);
     store_leaves(b, &s, &out[0], 0, &abi);
+}
+
+/// The held values of an entry parameter of type `ty` that arrives as the pointer `ptr`. A record
+/// in memory is used where it is (it is never written); anything else is loaded into its leaves
+/// at the top of the entry block.
+pub(super) fn bind_indirect(
+    b: &mut FnBuilder,
+    lay: &Layouts,
+    ty: Ty,
+    ptr: Val,
+    entry: &mut Vec<Entry>,
+) -> Vec<Val> {
+    if is_mem(lay, ty) {
+        return vec![ptr];
+    }
+    let dsts: Vec<Val> = leaves(lay, ty)
+        .into_iter()
+        .map(|l| b.reserve(l.0))
+        .collect();
+    entry.push(Entry::Load {
+        ptr,
+        dsts: dsts.clone(),
+    });
+    dsts
+}
+
+/// A pointer to value `v` of type `ty` to pass by pointer: the slot of a record in memory, or a
+/// fresh stack slot holding its leaves.
+pub(super) fn spill(b: &mut FnBuilder, lay: &Layouts, ty: Ty, vals: &Vals, v: Value) -> Val {
+    if is_mem(lay, ty) {
+        return vals[&v.index()][0].clone();
+    }
+    let leaves = abi_leaves(b, lay, ty, vals, v);
+    let st = LTy::Tuple(leaves.iter().map(|l| l.ty.clone()).collect());
+    let slot = b.alloca(&st);
+    store_regs(b, &st, &slot, &leaves);
+    slot
+}
+
+fn store_regs(b: &mut FnBuilder, st: &LTy, base: &Val, leaves: &[Val]) {
+    for (k, v) in leaves.iter().enumerate() {
+        let p = b.field_ptr(st, base, k);
+        b.store(v, &p, align(&v.ty));
+    }
+}
+
+/// Writes the result `v` of type `ty` through the hidden result pointer `sret`.
+pub(super) fn store_result(
+    b: &mut FnBuilder,
+    lay: &Layouts,
+    ty: Ty,
+    vals: &Vals,
+    v: Value,
+    sret: &Val,
+) {
+    if is_mem(lay, ty) {
+        let s = shape(lay, ty).expect("is_mem checked");
+        b.copy_bytes(sret, &vals[&v.index()][0], s.size as u64, s.align as u64);
+        return;
+    }
+    let leaves = abi_leaves(b, lay, ty, vals, v);
+    let st = LTy::Tuple(leaves.iter().map(|l| l.ty.clone()).collect());
+    store_regs(b, &st, sret, &leaves);
+}
+
+/// The slot a call result of type `ty` is written to: the result's own name for a record in
+/// memory, else a scratch slot that [`load_result`] reads back.
+pub(super) fn result_slot(b: &mut FnBuilder, lay: &Layouts, ty: Ty, out: &[Val]) -> Val {
+    if is_mem(lay, ty) {
+        let s = shape(lay, ty).expect("is_mem checked");
+        b.alloca_as(&out[0], &s.st);
+        return out[0].clone();
+    }
+    let st = LTy::Tuple(leaves(lay, ty).into_iter().map(|l| l.0).collect());
+    b.alloca(&st)
+}
+
+/// Reads the result of type `ty` back from the slot a call wrote it to, into the names `out`.
+pub(super) fn load_result(b: &mut FnBuilder, lay: &Layouts, ty: Ty, slot: &Val, out: &[Val]) {
+    if is_mem(lay, ty) {
+        return;
+    }
+    let st = LTy::Tuple(leaves(lay, ty).into_iter().map(|l| l.0).collect());
+    for (k, dst) in out.iter().enumerate() {
+        let p = b.field_ptr(&st, slot, k);
+        b.name_next(dst);
+        b.load(&dst.ty, &p, align(&dst.ty));
+    }
 }
