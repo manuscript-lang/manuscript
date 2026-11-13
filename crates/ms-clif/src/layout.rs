@@ -250,6 +250,36 @@ impl<'m> Layouts<'m> {
         self.shape(ty).leaves.clone()
     }
 
+    /// Which register leaves of `ty` are pointers, one flag per leaf of [`Layouts::leaves`]: a
+    /// `ptr`, a function or object handle, an indirect record or boxed alternative or optional
+    /// (nullable), a list's data pointer. A string's first word is a tagged encoding and an
+    /// inline alternative's payload slots are shared between cases, so those stay integers. A
+    /// register leaf is an `i64` for the Cranelift object and the runtime either way; this only
+    /// says what the direct LLVM emitter may type as `ptr`.
+    pub fn pointer_leaves(&self, ty: Ty) -> Vec<bool> {
+        let n = self.width(ty);
+        let one = || vec![true];
+        match self.m.types.kind(ty) {
+            TyKind::Ptr | TyKind::Fn(..) => one(),
+            TyKind::Obj(n, _) if !n.is_map_or_set() => one(),
+            TyKind::Bytes | TyKind::List(_) => vec![true, false, false],
+            TyKind::Rec(r) if self.m.records[r.index()].indirect => one(),
+            TyKind::Rec(r) => self.m.records[r.index()]
+                .fields
+                .iter()
+                .flat_map(|f| self.pointer_leaves(f.1))
+                .collect(),
+            TyKind::Opt(inner) if self.opt_is_nullable(*inner) => one(),
+            TyKind::Opt(inner) if !self.is_str_like(ty) => {
+                let mut flags = vec![false];
+                flags.extend(self.pointer_leaves(*inner));
+                flags
+            }
+            TyKind::Alt(a) if self.is_boxed(*a) => one(),
+            _ => vec![false; n],
+        }
+    }
+
     /// Number of register leaves.
     pub fn width(&self, ty: Ty) -> usize {
         self.shape(ty).leaves.len()
@@ -388,6 +418,31 @@ mod tests {
         assert_eq!(lay.mem(os).size, ms_rt_abi::OPT_STR_SIZE as u32);
         assert_eq!(lay.leaves(os), lay.leaves(Ty::STR));
         assert!(lay.is_str_like(os) && lay.is_str_like(Ty::STR) && !lay.is_str_like(oi));
+    }
+
+    #[test]
+    fn pointer_leaves_match_the_leaves() {
+        let mut m = Module::new("t");
+        let list = m.types.list(Ty::INT);
+        let opt_list = m.types.opt(list);
+        let (_, rec) = m.add_record(
+            "R",
+            vec![
+                ("p".into(), Ty::PTR),
+                ("l".into(), list),
+                ("n".into(), Ty::INT),
+            ],
+        );
+        let lay = Layouts::new(&m);
+        for t in [Ty::PTR, Ty::STR, list, opt_list, rec, Ty::INT] {
+            assert_eq!(lay.pointer_leaves(t).len(), lay.width(t), "{t:?}");
+        }
+        assert_eq!(lay.pointer_leaves(list), vec![true, false, false]);
+        assert_eq!(
+            lay.pointer_leaves(rec),
+            vec![true, true, false, false, false]
+        );
+        assert_eq!(lay.pointer_leaves(Ty::STR), vec![false, false]);
     }
 
     #[test]
