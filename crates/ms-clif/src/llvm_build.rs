@@ -29,8 +29,6 @@ pub enum Ty {
     /// A named struct from [`Types`].
     Struct(usize),
     Array(Box<Ty>, u64),
-    /// An anonymous struct `{ a, b }`: the result of a call that returns several leaves.
-    Tuple(Vec<Ty>),
 }
 
 /// A named struct type: fields laid out in order with natural alignment.
@@ -80,10 +78,6 @@ impl Types {
             Ty::Ptr => "ptr".into(),
             Ty::Struct(i) => format!("%\"{}\"", self.structs[*i].name),
             Ty::Array(e, n) => format!("[{n} x {}]", self.text(e)),
-            Ty::Tuple(fs) => {
-                let fs: Vec<String> = fs.iter().map(|f| self.text(f)).collect();
-                format!("{{ {} }}", fs.join(", "))
-            }
         }
     }
 
@@ -99,23 +93,15 @@ impl Types {
                 let (s, a) = self.size_align(e);
                 (s * n, a)
             }
-            Ty::Struct(_) | Ty::Tuple(_) => {
+            Ty::Struct(i) => {
                 let (mut off, mut align) = (0u64, 1u64);
-                for f in self.fields_of(ty) {
+                for f in &self.structs[*i].fields {
                     let (s, a) = self.size_align(f);
                     off = off.div_ceil(a) * a + s;
                     align = align.max(a);
                 }
                 (off.div_ceil(align) * align, align)
             }
-        }
-    }
-
-    fn fields_of<'a>(&'a self, ty: &'a Ty) -> &'a [Ty] {
-        match ty {
-            Ty::Struct(i) => &self.structs[*i].fields,
-            Ty::Tuple(fs) => fs,
-            _ => panic!("fields of a non-struct"),
         }
     }
 
@@ -217,8 +203,6 @@ pub struct FnBuilder<'t> {
     allocas: String,
     /// `, !dbg !N` appended to every instruction.
     dbg: Option<usize>,
-    /// The name the next defined value takes, set by [`FnBuilder::name_next`].
-    pending: Option<Val>,
 }
 
 impl<'t> FnBuilder<'t> {
@@ -229,7 +213,6 @@ impl<'t> FnBuilder<'t> {
             next: 0,
             allocas: String::new(),
             dbg,
-            pending: None,
         }
     }
 
@@ -252,35 +235,13 @@ impl<'t> FnBuilder<'t> {
     }
 
     fn def(&mut self, ty: Ty, rhs: String) -> Val {
-        let v = match self.pending.take() {
-            Some(v) => {
-                assert_eq!(v.ty, ty, "the reserved name has another type");
-                v
-            }
-            None => self.reserve(ty),
-        };
+        let v = self.reserve(ty);
         self.line(format!("{} = {rhs}", v.text));
         v
     }
 
     fn ty(&self, t: &Ty) -> String {
         self.types.text(t)
-    }
-
-    /// Makes the next defined value take the reserved name `v` (a phi may already use it).
-    pub fn name_next(&mut self, v: &Val) {
-        assert!(self.pending.is_none(), "a reserved name is unused");
-        self.pending = Some(v.clone());
-    }
-
-    /// Takes the pending name back, for a caller that defines helper values first.
-    pub fn take_name(&mut self) -> Option<Val> {
-        self.pending.take()
-    }
-
-    /// Puts a name taken with [`FnBuilder::take_name`] back.
-    pub fn restore_name(&mut self, v: Option<Val>) {
-        self.pending = v;
     }
 
     /// Starts a block.
@@ -483,41 +444,25 @@ impl<'t> FnBuilder<'t> {
         self.line("unreachable".into());
     }
 
-    /// A tuple of `vals`, for a function that returns several leaves.
-    pub fn tuple(&mut self, vals: &[Val]) -> Val {
-        let ty = Ty::Tuple(vals.iter().map(|v| v.ty.clone()).collect());
-        let mut agg = Val::new("undef", ty.clone());
-        for (i, v) in vals.iter().enumerate() {
-            let last = i + 1 == vals.len();
-            let rhs = format!(
-                "insertvalue {} {}, {} {}, {i}",
-                self.ty(&ty),
-                agg.text,
-                self.ty(&v.ty),
-                v.text
-            );
-            agg = if last {
-                self.def(ty.clone(), rhs)
-            } else {
-                let saved = self.pending.take();
-                let t = self.def(ty.clone(), rhs);
-                self.pending = saved;
-                t
-            };
+    /// Renames the result of the last instruction, `from`, to the reserved name `to`.
+    pub fn alias(&mut self, to: &Val, from: &Val) {
+        if to.text == from.text {
+            return;
         }
-        agg
-    }
-
-    /// Leaf `idx` of a tuple.
-    pub fn extract(&mut self, agg: &Val, idx: usize) -> Val {
-        let Ty::Tuple(fs) = &agg.ty else {
-            panic!("extract from a non-tuple")
-        };
-        let ty = fs[idx].clone();
-        self.def(
-            ty,
-            format!("extractvalue {} {}, {idx}", self.ty(&agg.ty), agg.text),
-        )
+        assert_eq!(to.ty, from.ty);
+        let line_start = self.out[..self.out.len() - 1]
+            .rfind('\n')
+            .map_or(0, |i| i + 1);
+        let last = &self.out[line_start..];
+        let prefix = format!("  {} = ", from.text);
+        assert!(
+            last.starts_with(&prefix),
+            "the last line does not define {}",
+            from.text
+        );
+        let renamed = format!("  {} = {}", to.text, &last[prefix.len()..]);
+        self.out.truncate(line_start);
+        self.out.push_str(&renamed);
     }
 
     /// The body: the entry label, the allocas, then everything else, closed with `}`.

@@ -1269,7 +1269,7 @@ impl Pipeline {
 /// Emits `f` straight from MIR when `MS_LLVM_DIRECT` asks for it and `mir_llvm` supports the
 /// function; `false` leaves it to the Cranelift lowering and its translation.
 fn direct_function(g: &mut Gen, i: usize, f: &Func) -> bool {
-    if !g.opts.build.llvm_direct || g.llvm.is_none() || !crate::mir_llvm::supports(g.m, &g.lay, f) {
+    if !g.opts.build.llvm_direct || g.llvm.is_none() || !crate::mir_llvm::supports(g.m, f) {
         return false;
     }
     let id = g.funcs[i];
@@ -1286,10 +1286,9 @@ fn direct_function(g: &mut Gen, i: usize, f: &Func) -> bool {
     let funcs = &g.funcs;
     let symbol_of = |k: usize| syms.symbol_of(funcs[k]);
     let m = g.m;
-    let lay = &g.lay;
     let mut llvm = g.llvm.take().expect("checked above");
     llvm.add_direct(&sym, &f.name, fn_loc, exported, |loc| {
-        crate::mir_llvm::emit(m, lay, f, loc, &symbol_of)
+        crate::mir_llvm::emit(m, f, loc, &symbol_of)
     });
     g.llvm = Some(llvm);
     g.llvm_funcs.push(LlvmFn {

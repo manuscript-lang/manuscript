@@ -374,7 +374,7 @@ fn llvm_direct_emission_matches_translation() {
     assert_eq!(new_out, old_out);
     assert_eq!(
         new_out,
-        "-10570.332140489487\n-10610.442345302587\n-18691.88657748569\n-3832.9476242902874\n1798.4798787257132\n24\n"
+        "-10570.332140489487\n-10610.442345302587\n-18691.88657748569\n-3832.9476242902874\n24\n"
     );
     // Direct functions name their values `%vN`; the translation names them `%tN`.
     let direct = |ir: &str| {
@@ -383,9 +383,4 @@ fn llvm_direct_emission_matches_translation() {
     };
     assert!(!direct(&old_ir), "the translation was not used");
     assert!(direct(&new_ir), "no function was emitted directly");
-    // A list parameter is three leaves, and `length` is one of them.
-    assert!(
-        new_ir.contains("%a0_0, i64 %a0_1, i64 %a0_2, double %a1_0"),
-        "the list function was not emitted directly"
-    );
 }
