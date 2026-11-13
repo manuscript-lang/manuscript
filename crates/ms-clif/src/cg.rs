@@ -1444,8 +1444,8 @@ fn direct_plan(g: &mut Gen, f: &Func) -> crate::mir_llvm::Plan {
     for bd in &f.blocks {
         for i in &bd.insts {
             match (i.op, i.imm) {
-                (Op::Clone, _) => {
-                    let ty = f.ty(i.args[0]);
+                (Op::Clone | Op::AltOwn, _) => {
+                    let ty = crate::mir_llvm::cloned_ty(f, i);
                     if own_kind(&g.lay, ty) == OwnKind::Glue && !plan.clone.contains_key(&ty) {
                         let id = g.glue(Glue::Clone, ty);
                         plan.clone.insert(

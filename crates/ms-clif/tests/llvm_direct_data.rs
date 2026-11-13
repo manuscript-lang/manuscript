@@ -241,3 +241,76 @@ pub fn optionals_and_alternatives_match_cranelift() {
     assert!(ir.contains("switch i64 "), "no switch on the tag");
     assert_eq!((got.code, &got.stdout), (want.code, &want.stdout));
 }
+
+const UNWRAP_PROGRAM: &str = r#"module "d"
+entry @main
+file 0 "d.ms"
+alt Name { Text(s: str), Count(n: int) }
+record Pair { name: str, tag: str, n: int }
+record Big { a: int, b: int, c: int, d: int, e: int, f: int, g: int, h: int, name: str, n: int }
+fn @unwrap_int(%o: opt<int>) -> int !0:1:1 {
+b0:
+  %v: int = opt.unwrap %o !0:2:1
+  ret %v
+}
+fn @unwrap_len(%o: opt<str>) -> int !0:10:1 {
+b0:
+  %s: str = opt.unwrap %o !0:11:1
+  drop %s !0:13:1
+  %n: int = iconst 5 !0:12:1
+  ret %n
+}
+fn @release_pair(%p: move Pair) -> int !0:40:1 {
+b0:
+  %n: int = rec.get Pair.n %p !0:41:1
+  rec.release Pair.tag %p !0:42:1
+  ret %n
+}
+fn @release_big(%p: move Big) -> int !0:50:1 {
+b0:
+  %n: int = rec.get Big.n %p !0:51:1
+  rec.release Big %p !0:52:1
+  ret %n
+}
+fn @main() -> int !0:30:1 {
+b0:
+  %n: int = iconst 37 !0:31:1
+  %on: opt<int> = opt.some %n !0:31:1
+  %a: int = call @unwrap_int(%on) !0:31:1
+  %lit: str = str "hello" !0:32:1
+  %os: opt<str> = opt.view %lit !0:32:1
+  %b: int = call @unwrap_len(%os) !0:32:1
+  %k: int = iconst 3 !0:35:1
+  %s1: str = clone %lit !0:35:1
+  %s2: str = clone %lit !0:35:1
+  %p: Pair = rec.new Pair %s1, %s2, %k !0:35:1
+  %d: int = call @release_pair(%p) !0:35:1
+  %s3: str = clone %lit !0:36:1
+  %q: Big = rec.new Big %k, %k, %k, %k, %k, %k, %k, %k, %s3, %k !0:36:1
+  %e: int = call @release_big(%q) !0:36:1
+  %ab: int = iadd %a, %b !0:34:1
+  %ac: int = iadd %ab, %b !0:34:1
+  %ad: int = iadd %ac, %d !0:37:1
+  %r: int = iadd %ad, %e !0:37:1
+  ret %r
+}
+"#;
+
+/// Unwrapping an optional (an integer, and a string that is cloned) and releasing records; run from `llvm_direct`'s one test for the same reason.
+pub fn unwrap_and_own_match_cranelift() {
+    let Some(opts) = direct() else { return };
+    let want = run_native(UNWRAP_PROGRAM, "direct_unwrap-cranelift");
+    let got = run_llvm(UNWRAP_PROGRAM, &opts, "direct_unwrap");
+    let ir = std::fs::read_to_string("ms-keep.ll").unwrap();
+    let _ = std::fs::remove_file("ms-keep.ll");
+    for f in ["unwrap_int", "unwrap_len", "release_pair", "release_big"] {
+        let header = ir
+            .lines()
+            .find(|l| l.starts_with("define") && l.contains(&format!("@\"{f}#")))
+            .unwrap_or_else(|| panic!("no {f} in the IR"));
+        let direct = header.contains("%a0_0") || header.contains("dereferenceable");
+        assert!(direct, "{f} was translated: {header}");
+    }
+    assert_eq!((got.code, &got.stdout), (want.code, &want.stdout));
+    assert_eq!(got.code, 37 + 5 + 5 + 3 + 3);
+}

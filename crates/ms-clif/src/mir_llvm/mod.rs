@@ -24,6 +24,7 @@ use crate::layout::{Layouts, Leaf};
 use crate::llvm_build::{FnBuilder, Ty as LTy, Types, Val};
 use crate::llvm_ir::DirectEnv;
 use attrs::pure_attrs;
+pub(crate) use glue::cloned_ty;
 use ms_mir::ir::{Func, Imm, Inst, Mode, Module, Op, Target, Term};
 use ms_mir::types::{Ty, TyKind};
 use std::collections::{HashMap, HashSet};
@@ -654,15 +655,11 @@ mod coverage {
     const UNLOWERED: &[Op] = &[
         Op::NarrowChk,
         Op::INarrowOpt,
-        Op::AltOwn,
-        Op::RecRelease,
         Op::BytesLit,
         Op::ListConst,
         Op::ListAddr,
         Op::ListAddrU,
         Op::StrAscii,
-        Op::OptUnwrap,
-        Op::OptAddr,
         Op::Poll,
         Op::GlobalGet,
         Op::GlobalSet,

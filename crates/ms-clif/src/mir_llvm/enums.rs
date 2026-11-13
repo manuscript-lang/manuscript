@@ -7,7 +7,8 @@
 //! cast each. `opt.is_some` of a niche optional is one comparison. Types behind a pointer
 //! (self-containing) and payloads that are records in memory stay on the translation.
 
-use super::{Area, Cx, Vals, held_leaves, records};
+use super::{Area, Cx, Vals, glue, held_leaves, records};
+use crate::glue_llvm::{OwnKind, own_kind};
 use crate::layout::Layouts;
 use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Val};
 use ms_mir::ir::{Func, Imm, Inst, Module, Op};
@@ -17,10 +18,10 @@ pub(super) const AREA: Area = Area {
     handles,
     ty_ok,
     inst_ok,
-    pure_op: handles,
+    splits,
+    pure_op: |op| handles(op) && op != Op::OptUnwrap,
     pre,
     emit,
-    ..Area::NONE
 };
 
 /// Any optional or enum travels as its leaves, so it is fine as a value; the ops below reject the
@@ -37,6 +38,8 @@ fn handles(op: Op) -> bool {
             | Op::OptNone
             | Op::OptIsSome
             | Op::OptGet
+            | Op::OptUnwrap
+            | Op::OptAddr
             | Op::OptUnbox
             | Op::AltNew
             | Op::AltView
@@ -123,6 +126,10 @@ fn subject(f: &Func, inst: &Inst) -> Ty {
 }
 
 fn inst_ok(m: &Module, lay: &Layouts, f: &Func, inst: &Inst) -> bool {
+    // The address of a boxed optional's payload is the optional itself, a nullable pointer.
+    if inst.op == Op::OptAddr {
+        return opt_repr(lay, f.ty(inst.args[0])) == OptRepr::Nullable;
+    }
     if !plain(lay, subject(f, inst)) {
         return false;
     }
@@ -138,6 +145,24 @@ fn inst_ok(m: &Module, lay: &Layouts, f: &Func, inst: &Inst) -> bool {
         (Op::AltUnbox, Imm::AltField(a, c, i)) => droppable(a, c, Some(i), 0),
         _ => true,
     }
+}
+
+/// The payload type of the optional `inst` unwraps.
+fn payload_ty(lay: &Layouts, f: &Func, inst: &Inst) -> Ty {
+    match lay.m.types.kind(f.ty(inst.args[0])) {
+        TyKind::Opt(inner) => *inner,
+        _ => unreachable!("an optional operand"),
+    }
+}
+
+/// Whether `inst` writes a check before it, and then the clone of a payload that needs one:
+/// each is a block split.
+fn splits(lay: &Layouts, f: &Func, inst: &Inst, checks: bool) -> usize {
+    if inst.op != Op::OptUnwrap {
+        return 0;
+    }
+    let clone = own_kind(lay, payload_ty(lay, f, inst)) == OwnKind::Str;
+    usize::from(checks) + usize::from(clone)
 }
 
 /// The leaves a payload read or write moves between a field and the enum's slots: for each
@@ -189,7 +214,11 @@ fn pre(
         (Op::OptIsSome, _) if opt_repr(lay, f.ty(inst.args[0])) == OptRepr::Tagged => {
             vec![arg(0)[0].clone()]
         }
-        (Op::OptGet | Op::OptUnbox, _) => match opt_repr(lay, f.ty(inst.args[0])) {
+        (Op::OptAddr, _) => arg(0).clone(),
+        (Op::OptUnwrap, _) if own_kind(lay, payload_ty(lay, f, inst)) != OwnKind::Identity => {
+            return None;
+        }
+        (Op::OptGet | Op::OptUnwrap | Op::OptUnbox, _) => match opt_repr(lay, f.ty(inst.args[0])) {
             OptRepr::Tagged => arg(0)[1..].to_vec(),
             _ => arg(0).clone(),
         },
@@ -235,16 +264,15 @@ fn pre(
 fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     let Some(res) = inst.res else { return };
     let out = &vals[&res.index()];
+    if inst.op == Op::OptUnwrap {
+        unwrap(cx, inst, vals, out, b);
+        return;
+    }
     if inst.op == Op::OptIsSome && opt_repr(cx.lay, cx.f.ty(inst.args[0])) != OptRepr::Tagged {
+        let ty = cx.f.ty(inst.args[0]);
         let v = &vals[&inst.args[0].index()];
-        let any = match opt_repr(cx.lay, cx.f.ty(inst.args[0])) {
-            OptRepr::Str => {
-                let t = b.bin(Bin::Xor, &v[1], &Val::int(ms_rt_abi::STR_STATIC as i64));
-                b.bin(Bin::Or, &v[0], &t)
-            }
-            OptRepr::Nullable => v[0].clone(),
-            OptRepr::Tagged => unreachable!("checked above"),
-        };
+        // The presence test of a niche optional is the instruction itself, named for the result.
+        let any = niche_any(b, cx.lay, ty, v);
         b.name_next(&out[0]);
         b.icmp("ne", &any, &zero(&any.ty));
         return;
@@ -255,4 +283,47 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
             convert(b, &src, &out[i].ty);
         }
     }
+}
+
+/// Whether the niche or tagged optional `v` of type `ty` is present, as an `i1`.
+fn present(b: &mut FnBuilder, lay: &Layouts, ty: Ty, v: &[Val]) -> Val {
+    if opt_repr(lay, ty) == OptRepr::Tagged {
+        return v[0].clone();
+    }
+    let any = niche_any(b, lay, ty, v);
+    b.icmp("ne", &any, &zero(&any.ty))
+}
+
+/// The word of a niche optional that is zero exactly when it is none (a string also has the static
+/// tag: an inline string may have a zero first word, but never that tag).
+fn niche_any(b: &mut FnBuilder, lay: &Layouts, ty: Ty, v: &[Val]) -> Val {
+    match opt_repr(lay, ty) {
+        OptRepr::Str => {
+            let t = b.bin(Bin::Xor, &v[1], &Val::int(ms_rt_abi::STR_STATIC as i64));
+            b.bin(Bin::Or, &v[0], &t)
+        }
+        OptRepr::Nullable => v[0].clone(),
+        OptRepr::Tagged => unreachable!("a tagged optional has a flag"),
+    }
+}
+
+/// `opt.unwrap`: faults on none when checks are on, then yields an owned payload: the leaves
+/// themselves when they own nothing (`pre` chose them), else a clone.
+fn unwrap(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder) {
+    let ty = cx.f.ty(inst.args[0]);
+    let v = &vals[&inst.args[0].index()];
+    if cx.checks {
+        let some = present(b, cx.lay, ty, v);
+        let none = b.icmp("eq", &some, &Val::bool(false));
+        super::faults::fault_if(cx, b, &none, "msrt_fault_unwrap_none", &[]);
+    }
+    let inner = payload_ty(cx.lay, cx.f, inst);
+    if own_kind(cx.lay, inner) == OwnKind::Identity {
+        return;
+    }
+    let payload = match opt_repr(cx.lay, ty) {
+        OptRepr::Tagged => &v[1..],
+        _ => &v[..],
+    };
+    glue::clone_leaves(cx, inner, payload, out, b);
 }
