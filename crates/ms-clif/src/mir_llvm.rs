@@ -6,6 +6,7 @@
 //! direct calls between such functions; every other function falls back to the translation. Both
 //! paths use the same leaf calling convention, so they call each other freely.
 
+use crate::glue_llvm::{CloneKind, clone_kind, clone_str};
 use crate::layout::{Layouts, Leaf};
 use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Types, Val};
 use ms_mir::ir::{Cc, Func, Imm, Inst, Mode, Module, Op, Target, Term};
@@ -22,6 +23,18 @@ pub struct Emitted {
     pub body: String,
     /// `(symbol, declare line)` of each callee.
     pub decls: Vec<(String, String)>,
+    /// Symbols of the data objects the function addresses.
+    pub data: Vec<String>,
+}
+
+/// What a function needs from the module before it is emitted: the symbols of the glue and data
+/// its instructions refer to. The driver declares them (glue is queued for generation).
+#[derive(Default)]
+pub struct Plan {
+    /// `Clone` glue symbol by type, for types cloned by a glue call.
+    pub clone: HashMap<Ty, String>,
+    /// Type descriptor symbol by type.
+    pub desc: HashMap<Ty, String>,
 }
 
 /// LLVM type and parameter attribute of one register leaf. `I8` leaves (`Bool`, flags) are
@@ -48,6 +61,7 @@ fn supported_ty(lay: &Layouts, ty: Ty) -> bool {
             | TyKind::Int
             | TyKind::Float
             | TyKind::Bool
+            | TyKind::Ptr
             | TyKind::Str
             | TyKind::Bytes
             | TyKind::List(_)
@@ -113,6 +127,8 @@ fn supported_op(op: Op) -> bool {
             | Op::Select
             | Op::B2I
             | Op::ListLen
+            | Op::Clone
+            | Op::TypeDesc
             | Op::Call
     )
 }
@@ -176,6 +192,7 @@ pub fn emit(
     m: &Module,
     lay: &Layouts,
     f: &Func,
+    plan: &Plan,
     loc: usize,
     symbol_of: &dyn Fn(usize) -> String,
 ) -> Emitted {
@@ -216,6 +233,10 @@ pub fn emit(
                 (Op::BConst, Imm::Bool(v)) => vec![Val::byte(v as u8)],
                 // The length is a leaf of the list: no instruction.
                 (Op::ListLen, _) => vec![vals[&inst.args[0].index()][1].clone()],
+                // Cloning plain data is the value itself.
+                (Op::Clone, _) if clone_kind(lay, f.ty(inst.args[0])) == CloneKind::Identity => {
+                    vals[&inst.args[0].index()].clone()
+                }
                 _ => reserve_all(&mut b, f.ty(res)),
             };
             vals.insert(res.index(), own);
@@ -231,7 +252,7 @@ pub fn emit(
                 .push((bb.index(), t.args.clone()))
         });
     }
-    let mut decls = Vec::new();
+    let mut out = Out::default();
     for bb in &rpo {
         let bd = &f.blocks[bb.index()];
         b.label(&format!("b{}", bb.index()));
@@ -243,15 +264,32 @@ pub fn emit(
                         .map(Vec::as_slice)
                         .unwrap_or(&[])
                         .iter()
-                        .map(|(from, args)| (vals[&args[j].index()][k].clone(), format!("b{from}")))
+                        .map(|(from, args)| {
+                            (vals[&args[j].index()][k].clone(), end_label(lay, f, *from))
+                        })
                         .collect();
                     b.phi(dst, &edges);
                 }
             }
         }
-        for inst in &bd.insts {
-            inst_text(m, lay, inst, symbol_of, &vals, &mut decls, &mut b);
+        let mut label = format!("b{}", bb.index());
+        for (k, inst) in bd.insts.iter().enumerate() {
+            let at = Site {
+                label: &mut label,
+                block: bb.index(),
+                inst: k,
+            };
+            let cx = Cx {
+                m,
+                lay,
+                f,
+                plan,
+                symbol_of,
+                vals: &vals,
+            };
+            inst_text(&cx, inst, &mut out, at, &mut b);
         }
+        debug_assert_eq!(label, end_label(lay, f, bb.index()));
         match &bd.term {
             Term::Br(t) => b.br(&format!("b{}", t.block.index())),
             Term::CondBr { cond, then, els } => {
@@ -278,7 +316,46 @@ pub fn emit(
         ret: ret_text(lay, f.ret),
         params: params.join(", "),
         body: b.finish(),
-        decls,
+        decls: out.decls,
+        data: out.data,
+    }
+}
+
+/// What emission reads: the module, the plan and the values of every MIR value.
+struct Cx<'a> {
+    m: &'a Module,
+    lay: &'a Layouts<'a>,
+    f: &'a Func,
+    plan: &'a Plan,
+    symbol_of: &'a dyn Fn(usize) -> String,
+    vals: &'a Vals,
+}
+
+/// Callee declarations and data symbols the function uses.
+#[derive(Default)]
+struct Out {
+    decls: Vec<(String, String)>,
+    data: Vec<String>,
+}
+
+/// Where an instruction is written: the label of the LLVM block being filled, which a string
+/// clone moves on, and the MIR block and instruction it came from.
+struct Site<'a> {
+    label: &'a mut String,
+    block: usize,
+    inst: usize,
+}
+
+/// The label of the LLVM block that ends MIR block `bb`: its own, or the join block of its last
+/// string clone, which splits the block.
+fn end_label(lay: &Layouts, f: &Func, bb: usize) -> String {
+    let last = f.blocks[bb]
+        .insts
+        .iter()
+        .rposition(|i| i.op == Op::Clone && clone_kind(lay, f.ty(i.args[0])) == CloneKind::Str);
+    match last {
+        Some(k) => format!("b{bb}.j{k}"),
+        None => format!("b{bb}"),
     }
 }
 
@@ -311,15 +388,16 @@ fn fcc(cc: Cc) -> &'static str {
 
 /// Writes one instruction. Each result leaf takes the name reserved for it in `vals`, which a phi
 /// may already use.
-fn inst_text(
-    m: &Module,
-    lay: &Layouts,
-    inst: &Inst,
-    symbol_of: &dyn Fn(usize) -> String,
-    vals: &Vals,
-    decls: &mut Vec<(String, String)>,
-    b: &mut FnBuilder,
-) {
+fn inst_text(cx: &Cx, inst: &Inst, out_sinks: &mut Out, at: Site, b: &mut FnBuilder) {
+    let Cx {
+        m,
+        lay,
+        f,
+        plan,
+        symbol_of,
+        vals,
+    } = *cx;
+    let decls = &mut out_sinks.decls;
     let arg = |i: usize| vals[&inst.args[i].index()][0].clone();
     let out = inst
         .res
@@ -328,7 +406,8 @@ fn inst_text(
     if matches!(
         inst.op,
         Op::IConst | Op::FConst | Op::BConst | Op::UnitConst | Op::ListLen
-    ) {
+    ) || (inst.op == Op::Clone && clone_kind(lay, f.ty(inst.args[0])) == CloneKind::Identity)
+    {
         return;
     }
     // A single-leaf result is named in place; `Select` and `Call` handle several.
@@ -374,6 +453,66 @@ fn inst_text(
             }
         }
         Op::B2I => drop(b.zext(&arg(0), LTy::I64)),
+        Op::TypeDesc => {
+            let Imm::Ty(t) = inst.imm else { return };
+            let sym = &plan.desc[&t];
+            out_sinks.data.push(sym.clone());
+            let addr = Val::new(format!("@\"{sym}\""), LTy::Ptr);
+            drop(b.ptrtoint(&addr));
+        }
+        Op::Clone => {
+            let ty = f.ty(inst.args[0]);
+            let ls = leaves(lay, ty);
+            let args = &vals[&inst.args[0].index()];
+            match clone_kind(lay, ty) {
+                CloneKind::Identity => {}
+                CloneKind::Str => {
+                    b.take_name();
+                    let join = format!("b{}.j{}", at.block, at.inst);
+                    let dup = format!("b{}.d{}", at.block, at.inst);
+                    clone_str(b, decls, (at.label, &dup, &join), args, Some(&out));
+                    *at.label = join;
+                }
+                CloneKind::Obj => {
+                    decls.push((
+                        "msrt_obj_clone".into(),
+                        "declare i64 @\"msrt_obj_clone\"(i64)".into(),
+                    ));
+                    b.call(&LTy::I64, "", "msrt_obj_clone", &[(args[0].clone(), "")]);
+                }
+                CloneKind::Glue => {
+                    let sym = &plan.clone[&ty];
+                    let ret = ret_ty(lay, ty);
+                    let attr = ret_attr(lay, ty);
+                    let call_args: Vec<(Val, &str)> = args
+                        .iter()
+                        .zip(&ls)
+                        .map(|(v, (_, a))| (v.clone(), *a))
+                        .collect();
+                    let formals: Vec<String> = ls
+                        .iter()
+                        .map(|(t, a)| format!("{}{a}", Types::default().text(t)))
+                        .collect();
+                    decls.push((
+                        sym.clone(),
+                        format!(
+                            "declare {attr}{} @\"{sym}\"({})",
+                            Types::default().text(&ret),
+                            formals.join(", ")
+                        ),
+                    ));
+                    if out.len() <= 1 {
+                        b.call(&ret, attr, sym, &call_args);
+                    } else {
+                        let t = b.call(&ret, attr, sym, &call_args).expect("a tuple result");
+                        for (k, dst) in out.iter().enumerate() {
+                            b.name_next(dst);
+                            b.extract(&t, k);
+                        }
+                    }
+                }
+            }
+        }
         Op::Call => {
             let Imm::Func(c) = inst.imm else { return };
             let callee = &m.funcs[c.index()];

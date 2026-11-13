@@ -5,7 +5,7 @@
 //! it covers (strings, lists, plain records, optionals); every other glue keeps the old path.
 
 use crate::cg::{Gen, Glue};
-use crate::layout::{Leaf, mem_layout};
+use crate::layout::{Layouts, Leaf, mem_layout};
 use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Types, Val};
 use crate::mir_llvm::Emitted;
 use ms_mir::types::{Ty, TyKind};
@@ -63,6 +63,92 @@ pub fn supports(g: &Gen, kind: Glue, ty: Ty) -> bool {
         },
         _ => false,
     }
+}
+
+/// How a value of one type is cloned.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum CloneKind {
+    /// Plain data: the copy is the value.
+    Identity,
+    /// A string: static and inline ones copy bitwise, the others through the runtime.
+    Str,
+    /// A closure or an object with a clone entry in its header.
+    Obj,
+    /// The `Clone` glue function of the type.
+    Glue,
+}
+
+/// Whether a value of `ty` is a pointer to an object with a header (a closure or a native
+/// object other than a map or set), or an optional of one.
+pub fn is_obj_like(lay: &Layouts, ty: Ty) -> bool {
+    match lay.m.types.kind(ty) {
+        TyKind::Fn(..) => true,
+        TyKind::Obj(n, _) => !n.is_map_or_set(),
+        TyKind::Opt(inner) => lay.opt_is_nullable(*inner) && !lay.opt_is_boxed(*inner),
+        _ => false,
+    }
+}
+
+pub fn clone_kind(lay: &Layouts, ty: Ty) -> CloneKind {
+    if !lay.m.needs_drop(ty) {
+        CloneKind::Identity
+    } else if lay.is_str_like(ty) {
+        CloneKind::Str
+    } else if is_obj_like(lay, ty) {
+        CloneKind::Obj
+    } else {
+        CloneKind::Glue
+    }
+}
+
+/// Clones the string `vs` (pointer, tagged capacity) from the current block, which is `pre`:
+/// a static (`10`) or inline (`01`) string is the same value, any other is copied by the
+/// runtime in block `dup`. Ends in block `join` with the two leaves as phis, named `out` when
+/// given.
+pub fn clone_str(
+    b: &mut FnBuilder,
+    decls: &mut Vec<(String, String)>,
+    (pre, dup, join): (&str, &str, &str),
+    vs: &[Val],
+    out: Option<&[Val]>,
+) -> Vs {
+    decls.push((
+        "msrt_str_copy".into(),
+        "declare void @\"msrt_str_copy\"(i64, i64, i64)".into(),
+    ));
+    let tag = b.bin(Bin::LShr, &vs[1], &Val::int(62));
+    let tag = b.bin(Bin::Sub, &tag, &Val::int(1));
+    let shared = b.icmp("ult", &tag, &Val::int(2));
+    b.cond_br(&shared, join, dup);
+    b.label(dup);
+    let slot = b.alloca(&LTy::Array(Box::new(LTy::I64), 2));
+    let at = b.ptrtoint(&slot);
+    b.call(
+        &LTy::Void,
+        "",
+        "msrt_str_copy",
+        &[(vs[0].clone(), ""), (vs[1].clone(), ""), (at, "")],
+    );
+    let c0 = b.load(&LTy::I64, &slot, 8);
+    let hi = b.gep_bytes(&slot, 8);
+    let c1 = b.load(&LTy::I64, &hi, 8);
+    b.br(join);
+    b.label(join);
+    [c0, c1]
+        .into_iter()
+        .enumerate()
+        .map(|(i, c)| {
+            let p = match out {
+                Some(o) => o[i].clone(),
+                None => b.reserve(LTy::I64),
+            };
+            b.phi(
+                &p,
+                &[(vs[i].clone(), pre.to_string()), (c, dup.to_string())],
+            );
+            p
+        })
+        .collect()
 }
 
 struct E<'a, 'm, 't> {
@@ -210,14 +296,7 @@ impl E<'_, '_, '_> {
     }
 
     fn is_obj_like(&self, ty: Ty) -> bool {
-        match self.g.m.types.kind(ty) {
-            TyKind::Fn(..) => true,
-            TyKind::Obj(n, _) => !n.is_map_or_set(),
-            TyKind::Opt(inner) => {
-                self.g.lay.opt_is_nullable(*inner) && !self.g.lay.opt_is_boxed(*inner)
-            }
-            _ => false,
-        }
+        is_obj_like(&self.g.lay, ty)
     }
 
     fn drop_value(&mut self, ty: Ty, vs: &[Val]) {
@@ -244,32 +323,10 @@ impl E<'_, '_, '_> {
             return vs.to_vec();
         }
         if self.g.lay.is_str_like(ty) {
-            // A static (`10`) or inline (`01`) string copies bitwise; an owned one or a view is
-            // duplicated.
-            let tag = self.b.bin(Bin::LShr, &vs[1], &Val::int(62));
-            let tag = self.b.bin(Bin::Sub, &tag, &Val::int(1));
-            let shared = self.b.icmp("ult", &tag, &Val::int(2));
             let (pre, dup, join) = (self.cur.clone(), self.fresh("d"), self.fresh("j"));
-            self.b.cond_br(&shared, &join, &dup);
-            self.label(&dup);
-            let slot = self.b.alloca(&LTy::Array(Box::new(LTy::I64), 2));
-            let out = self.b.ptrtoint(&slot);
-            self.rt("msrt_str_copy", &[&vs[0], &vs[1], &out], false);
-            let c0 = self.b.load(&LTy::I64, &slot, 8);
-            let at = self.b.gep_bytes(&slot, 8);
-            let c1 = self.b.load(&LTy::I64, &at, 8);
-            self.br(&join);
-            let dup_end = self.cur.clone();
-            self.label(&join);
-            return [(0, c0), (1, c1)]
-                .into_iter()
-                .map(|(i, c)| {
-                    let p = self.b.reserve(LTy::I64);
-                    self.b
-                        .phi(&p, &[(vs[i].clone(), pre.clone()), (c, dup_end.clone())]);
-                    p
-                })
-                .collect();
+            let out = clone_str(&mut self.b, &mut self.decls, (&pre, &dup, &join), vs, None);
+            self.cur = join;
+            return out;
         }
         if self.is_obj_like(ty) {
             return vec![self.rt("msrt_obj_clone", &[&vs[0]], true).expect("result")];
@@ -318,8 +375,8 @@ impl E<'_, '_, '_> {
         // The back edge leaves from a block of its own, whatever blocks `body` made.
         self.br(&latch);
         self.label(&latch);
-        let n = self.b.bin(Bin::Add, &i, &Val::int(1));
-        self.b.alias(&next, &n);
+        self.b.name_next(&next);
+        self.b.bin(Bin::Add, &i, &Val::int(1));
         self.br(&head);
         self.label(&done);
     }
@@ -576,6 +633,32 @@ fn finish(e: E, types: &Types, params: &[Leaf], rets: &[Leaf]) -> Emitted {
         ret,
         params,
         decls: e.decls,
+        data: Vec::new(),
         body: e.b.finish(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A string clone splits the block: the shared case skips the copy, and the two leaves leave
+    /// as phis over the entry and the copy block.
+    #[test]
+    fn string_clone_joins_with_phis_over_both_paths() {
+        let types = Types::default();
+        let mut b = FnBuilder::new(&types, None);
+        b.label("b0");
+        let vs = vec![Val::new("%a0", LTy::I64), Val::new("%a1", LTy::I64)];
+        let mut decls = Vec::new();
+        let out = clone_str(&mut b, &mut decls, ("b0", "b0.d1", "b0.j1"), &vs, None);
+        b.ret_multi(&out);
+        let text = b.finish();
+        assert!(text.contains("lshr i64 %a1, 62"), "{text}");
+        assert!(text.contains("b0.d1:"), "{text}");
+        assert!(text.contains("b0.j1:"), "{text}");
+        assert!(text.contains("[ %a0, %b0 ], [ %v"), "{text}");
+        assert!(text.contains(", %b0.d1 ]"), "{text}");
+        assert_eq!(decls.len(), 1);
     }
 }

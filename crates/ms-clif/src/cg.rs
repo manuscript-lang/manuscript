@@ -1291,13 +1291,15 @@ fn direct_function(g: &mut Gen, i: usize, f: &Func) -> bool {
     } else {
         (0, f.loc.line)
     };
+    let plan = direct_plan(g, f);
+    let syms = ModuleSymbols(&g.module, &g.locs, &g.scopes, &g.m.externs);
     let funcs = &g.funcs;
     let symbol_of = |k: usize| syms.symbol_of(funcs[k]);
     let m = g.m;
     let lay = &g.lay;
     let mut llvm = g.llvm.take().expect("checked above");
     llvm.add_direct(&sym, &f.name, fn_loc, exported, |loc| {
-        crate::mir_llvm::emit(m, lay, f, loc, &symbol_of)
+        crate::mir_llvm::emit(m, lay, f, &plan, loc, &symbol_of)
     });
     g.llvm = Some(llvm);
     g.llvm_funcs.push(LlvmFn {
@@ -1308,6 +1310,34 @@ fn direct_function(g: &mut Gen, i: usize, f: &Func) -> bool {
         line: f.loc.line,
     });
     true
+}
+
+/// The glue and descriptors `f`'s instructions refer to, declared now so that emission can name
+/// them: clone glue is queued for generation like any other.
+fn direct_plan(g: &mut Gen, f: &Func) -> crate::mir_llvm::Plan {
+    use crate::glue_llvm::{CloneKind, clone_kind};
+    use ms_mir::ir::{Imm, Op};
+    let mut plan = crate::mir_llvm::Plan::default();
+    for bd in &f.blocks {
+        for i in &bd.insts {
+            match (i.op, i.imm) {
+                (Op::Clone, _) => {
+                    let ty = f.ty(i.args[0]);
+                    if clone_kind(&g.lay, ty) == CloneKind::Glue && !plan.clone.contains_key(&ty) {
+                        let id = g.glue(Glue::Clone, ty);
+                        plan.clone.insert(ty, symbol_of(g, id));
+                    }
+                }
+                (Op::TypeDesc, Imm::Ty(t)) => {
+                    let id = g.typedesc(t);
+                    let name = g.module.declarations().get_data_decl(id).linkage_name(id);
+                    plan.desc.insert(t, name.into_owned());
+                }
+                _ => {}
+            }
+        }
+    }
+    plan
 }
 
 /// Emits the glue `kind` for `ty` straight to LLVM IR; `false` leaves it to the Cranelift
