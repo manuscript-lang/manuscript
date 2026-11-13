@@ -390,8 +390,11 @@ fn llvm_direct_emission_matches_translation() {
         ),
         "the list function was not emitted directly"
     );
-    // A `Bool` parameter is a zero-extended byte.
-    assert!(new_ir.contains("i8 zeroext %a2_0"), "{new_ir}");
+    // A `Bool` parameter is a zero-extended byte that is 0 or 1.
+    assert!(
+        new_ir.contains("i8 zeroext range(i8 0, 2) %a2_0"),
+        "{new_ir}"
+    );
     // A pure loop-free function carries what LLVM cannot infer across a unit boundary.
     let grind = new_ir
         .lines()
