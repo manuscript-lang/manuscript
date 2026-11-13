@@ -516,26 +516,10 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         _ if is_early(lay, f, inst) => {}
         Op::Load | Op::Take => {
             let ty = f.ty(inst.res.expect("load result"));
-            let p = arg(0)[0].clone();
-            if is_mem(lay, ty) {
-                let s = shape(b.types(), lay, ty).expect("is_mem checked");
-                b.alloca_as(&out[0], &s.st);
-                b.copy_bytes(&out[0], &p, s.size as u64, s.align as u64);
-            } else {
-                let s = shape(b.types(), lay, ty).expect("op_ok checked");
-                load_leaves(b, &s, &p, 0, s.leaves.len(), &out);
-            }
+            load_value(b, lay, ty, &arg(0)[0], &out);
         }
         Op::Store | Op::Put => {
-            let p = arg(0)[0].clone();
-            let ty = f.ty(inst.args[1]);
-            let s = shape(b.types(), lay, ty).expect("op_ok checked");
-            if is_mem(lay, ty) {
-                let src = arg(1)[0].clone();
-                b.copy_bytes(&p, &src, s.size as u64, s.align as u64);
-            } else {
-                store_leaves(b, &s, &p, 0, &vals[&inst.args[1].index()]);
-            }
+            store_value(b, lay, f.ty(inst.args[1]), vals, inst.args[1], &arg(0)[0]);
         }
         Op::PtrField => {
             let Imm::Field(r, i) = inst.imm else { return };
@@ -602,6 +586,35 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
             write_field(b, lay, f, vals, &s, &out[0], at, inst.args[1]);
         }
         _ => unreachable!("handles lists the ops"),
+    }
+}
+
+/// Defines the held value `out` of type `ty` from the memory at `p`: a record in memory is copied
+/// into a fresh slot, anything else is loaded leaf by leaf.
+pub(super) fn load_value(b: &mut FnBuilder, lay: &Layouts, ty: Ty, p: &Val, out: &[Val]) {
+    let s = shape(b.types(), lay, ty).expect("the type has a memory shape");
+    if is_mem(lay, ty) {
+        b.alloca_as(&out[0], &s.st);
+        b.copy_bytes(&out[0], p, s.size as u64, s.align as u64);
+    } else {
+        load_leaves(b, &s, p, 0, s.leaves.len(), out);
+    }
+}
+
+/// Stores MIR value `v` of type `ty` into the memory at `p`.
+pub(super) fn store_value(
+    b: &mut FnBuilder,
+    lay: &Layouts,
+    ty: Ty,
+    vals: &Vals,
+    v: Value,
+    p: &Val,
+) {
+    let s = shape(b.types(), lay, ty).expect("the type has a memory shape");
+    if is_mem(lay, ty) {
+        b.copy_bytes(p, &vals[&v.index()][0], s.size as u64, s.align as u64);
+    } else {
+        store_leaves(b, &s, p, 0, &vals[&v.index()]);
     }
 }
 

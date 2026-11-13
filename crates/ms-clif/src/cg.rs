@@ -1305,13 +1305,16 @@ fn native_functions(g: &Gen) -> HashSet<usize> {
         .funcs
         .iter()
         .map(|f| {
-            g.opts.build.llvm_direct
-                && g.llvm.is_some()
-                && matches!(f.kind, FuncKind::Normal)
-                && crate::mir_llvm::supports(m, &g.lay, f)
+            g.opts.build.llvm_direct && g.llvm.is_some() && crate::mir_llvm::supports(m, &g.lay, f)
         })
         .collect();
-    let mut keep = direct.clone();
+    // The code of a closure and the methods of a vtable are called by address: they keep the leaf
+    // convention, though they call native functions.
+    let mut keep: Vec<bool> = direct
+        .iter()
+        .zip(&m.funcs)
+        .map(|(d, f)| *d && matches!(f.kind, FuncKind::Normal))
+        .collect();
     let mut clear = |k: usize| keep[k] = false;
     for f in [m.entry.map(|e| e.index())].into_iter().flatten() {
         clear(f);
@@ -1426,13 +1429,16 @@ fn direct_function(g: &mut Gen, i: usize, f: &Func) -> bool {
     true
 }
 
-/// The glue and descriptors `f`'s instructions refer to, declared now so that emission can name
-/// them: clone glue is queued for generation like any other.
+/// The glue, descriptors, closures and vtables `f`'s instructions refer to, declared now so that
+/// emission can name them: glue is queued for generation like any other. The frame decisions are
+/// those of the Cranelift lowering.
 fn direct_plan(g: &mut Gen, f: &Func) -> crate::mir_llvm::Plan {
     use crate::glue_llvm::{OwnKind, own_kind};
     use ms_mir::ir::{Imm, Op};
     let mut plan = crate::mir_llvm::Plan {
         checks: g.opts.checks,
+        framed_closures: crate::lower::framed_closure_objects(g.m, f),
+        framed_ifaces: crate::lower::framed_iface_borrows(g.m, f),
         ..Default::default()
     };
     for bd in &f.blocks {
@@ -1466,6 +1472,30 @@ fn direct_plan(g: &mut Gen, f: &Func) -> crate::mir_llvm::Plan {
                     let id = g.typedesc(t);
                     let name = g.module.declarations().get_data_decl(id).linkage_name(id);
                     plan.desc.insert(t, name.into_owned());
+                }
+                (Op::ClosureNew, Imm::Func(c)) => {
+                    let framed = i
+                        .res
+                        .is_some_and(|r| plan.framed_closures.contains(&r.index()));
+                    let clone = g.glue(Glue::ClosureClone(c.0), Ty::UNIT);
+                    let drop = g.glue(
+                        if framed {
+                            Glue::ClosureDropFramed(c.0)
+                        } else {
+                            Glue::ClosureDrop(c.0)
+                        },
+                        Ty::UNIT,
+                    );
+                    let syms = crate::mir_llvm::ClosureSyms {
+                        clone: symbol_of(g, clone),
+                        drop: symbol_of(g, drop),
+                    };
+                    plan.closures.insert((c.index(), framed), syms);
+                }
+                (Op::IfaceNew | Op::IfaceBorrow | Op::IfaceIs, Imm::Vtable(vt)) => {
+                    let id = g.vtables[vt.index()];
+                    let name = g.module.declarations().get_data_decl(id).linkage_name(id);
+                    plan.vtables.insert(vt.index(), name.into_owned());
                 }
                 _ => {}
             }
