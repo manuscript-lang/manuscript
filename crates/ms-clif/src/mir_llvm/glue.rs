@@ -50,10 +50,12 @@ fn ty_ok(k: &TyKind) -> bool {
 }
 
 /// Whether `inst` branches inside its MIR block, so that what follows is in another LLVM block:
-/// a string clone, a drop that frees a string conditionally, and a guarded drop.
+/// a string clone, a drop of a string, and a guarded drop of anything but plain data. An unguarded
+/// drop of an object or glue is one call and splits nothing.
 fn splits(lay: &Layouts, f: &Func, i: &Inst, _: bool) -> usize {
     let split = match i.op {
-        Op::Clone | Op::Drop => own_kind(lay, f.ty(i.args[0])) == OwnKind::Str,
+        Op::Clone => own_kind(lay, f.ty(i.args[0])) == OwnKind::Str,
+        Op::Drop => own_kind(lay, f.ty(i.args[0])) == OwnKind::Str,
         Op::DropIf => own_kind(lay, f.ty(i.args[1])) != OwnKind::Identity,
         _ => false,
     };
@@ -61,7 +63,14 @@ fn splits(lay: &Layouts, f: &Func, i: &Inst, _: bool) -> usize {
 }
 
 /// Cloning plain data and moving a value out are the value itself.
-fn pre(lay: &Layouts, f: &Func, inst: &Inst, vals: &Vals) -> Option<Vec<Val>> {
+fn pre(
+    _: &Module,
+    lay: &Layouts,
+    f: &Func,
+    inst: &Inst,
+    vals: &Vals,
+    _: &mut FnBuilder,
+) -> Option<Vec<Val>> {
     let same = match inst.op {
         Op::MoveOut => true,
         Op::Clone => own_kind(lay, f.ty(inst.args[0])) == OwnKind::Identity,
@@ -212,7 +221,8 @@ fn drop_inst(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     let v = inst.args[usize::from(guarded)];
     let args = &vals[&v.index()];
     let (block, at) = (cx.block, cx.split);
-    cx.split += 1;
+    // Only a drop that branches starts a new block (`splits` counts the same ones).
+    cx.split += usize::from(guarded || kind == OwnKind::Str);
     let join = block_label(block, cx.split);
     let mut n = 0;
     let mut fresh = |what: &str| {

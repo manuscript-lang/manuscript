@@ -49,7 +49,14 @@ fn inst_ok(m: &Module, lay: &Layouts, f: &Func, i: &Inst) -> bool {
 }
 
 /// The length is a leaf of the list, and a write hands back the same list: no instruction.
-fn pre(_: &Layouts, _: &Func, inst: &Inst, vals: &Vals) -> Option<Vec<Val>> {
+fn pre(
+    _: &Module,
+    _: &Layouts,
+    _: &Func,
+    inst: &Inst,
+    vals: &Vals,
+    _: &mut FnBuilder,
+) -> Option<Vec<Val>> {
     match inst.op {
         Op::ListLen => Some(vec![vals[&inst.args[0].index()][1].clone()]),
         Op::ListSet | Op::ListSetNn | Op::ListSetU | Op::ListFill => {

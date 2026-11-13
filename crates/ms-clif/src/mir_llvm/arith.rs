@@ -3,7 +3,7 @@
 use super::{Area, Cx, Vals, faults};
 use crate::layout::Layouts;
 use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Val};
-use ms_mir::ir::{Cc, Func, Imm, Inst, Op};
+use ms_mir::ir::{Cc, Func, Imm, Inst, Module, Op};
 use ms_mir::types::TyKind;
 
 pub(super) const AREA: Area = Area {
@@ -92,7 +92,14 @@ fn splits(_: &Layouts, _: &Func, inst: &Inst, checks: bool) -> usize {
 }
 
 /// A constant is its own text: no register.
-fn pre(_: &Layouts, _: &Func, inst: &Inst, _: &Vals) -> Option<Vec<Val>> {
+fn pre(
+    _: &Module,
+    _: &Layouts,
+    _: &Func,
+    inst: &Inst,
+    _: &Vals,
+    _: &mut FnBuilder,
+) -> Option<Vec<Val>> {
     match (inst.op, inst.imm) {
         (Op::IConst, Imm::Int(v)) => Some(vec![Val::int(v)]),
         (Op::FConst, Imm::Float(bits)) => Some(vec![Val::double(bits)]),

@@ -443,6 +443,7 @@ fn direct_lists_and_strings_match_cranelift() {
     list_reads_and_writes();
     a_bad_list_index_faults();
     string_bytes();
+    crate::llvm_direct_data::optionals_and_alternatives_match_cranelift();
     closures_and_runtime_calls();
     interfaces();
     checked_arithmetic();
