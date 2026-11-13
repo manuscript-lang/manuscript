@@ -186,6 +186,8 @@ pub enum Bin {
     FMul,
     FDiv,
     LShr,
+    AShr,
+    Shl,
     SDiv,
     SRem,
 }
@@ -204,6 +206,8 @@ impl Bin {
             Bin::FMul => "fmul",
             Bin::FDiv => "fdiv",
             Bin::LShr => "lshr",
+            Bin::AShr => "ashr",
+            Bin::Shl => "shl",
             Bin::SDiv => "sdiv",
             Bin::SRem => "srem",
         }
@@ -211,6 +215,19 @@ impl Bin {
 
     fn float(self) -> bool {
         matches!(self, Bin::FAdd | Bin::FSub | Bin::FMul | Bin::FDiv)
+    }
+}
+
+/// The name of LLVM's `op` with overflow on `i64`: `llvm.sadd.with.overflow.i64` and so on.
+pub fn overflow_intrinsic(op: Bin, signed: bool) -> &'static str {
+    match (op, signed) {
+        (Bin::Add, true) => "llvm.sadd.with.overflow.i64",
+        (Bin::Sub, true) => "llvm.ssub.with.overflow.i64",
+        (Bin::Mul, true) => "llvm.smul.with.overflow.i64",
+        (Bin::Add, false) => "llvm.uadd.with.overflow.i64",
+        (Bin::Sub, false) => "llvm.usub.with.overflow.i64",
+        (Bin::Mul, false) => "llvm.umul.with.overflow.i64",
+        _ => panic!("no overflow intrinsic for {}", op.name()),
     }
 }
 
@@ -329,6 +346,18 @@ impl<'t> FnBuilder<'t> {
             Ty::I1,
             format!("fcmp {cc} {} {}, {}", self.ty(&a.ty), a.text, b.text),
         )
+    }
+
+    /// `double` to `float`.
+    pub fn fptrunc(&mut self, v: &Val) -> Val {
+        assert_eq!(v.ty, Ty::F64);
+        self.def(Ty::F32, format!("fptrunc double {} to float", v.text))
+    }
+
+    /// `float` to `double`.
+    pub fn fpext(&mut self, v: &Val) -> Val {
+        assert_eq!(v.ty, Ty::F32);
+        self.def(Ty::F64, format!("fpext float {} to double", v.text))
     }
 
     pub fn zext(&mut self, v: &Val, to: Ty) -> Val {
@@ -588,17 +617,13 @@ impl<'t> FnBuilder<'t> {
         ));
     }
 
-    /// `a op b` on `Int` with LLVM's overflow intrinsic: the wrapped result and the overflow flag.
-    /// `op` is `Add`, `Sub` or `Mul`; the result takes the pending name. The intrinsic is
-    /// `declare { i64, i1 } @"llvm.s<op>.with.overflow.i64"(i64, i64)`.
-    pub fn overflow(&mut self, op: Bin, a: &Val, b: &Val) -> (Val, Val) {
+    /// `a op b` on 64-bit integers with LLVM's overflow intrinsic (signed, or unsigned): the
+    /// wrapped result and the overflow flag. `op` is `Add`, `Sub` or `Mul`; the result takes the
+    /// pending name. The intrinsic is [`overflow_intrinsic`], declared
+    /// `declare { i64, i1 } @"..."(i64, i64)`.
+    pub fn overflow(&mut self, op: Bin, signed: bool, a: &Val, b: &Val) -> (Val, Val) {
         assert_eq!((&a.ty, &b.ty), (&Ty::I64, &Ty::I64));
-        let intrinsic = match op {
-            Bin::Add => "llvm.sadd.with.overflow.i64",
-            Bin::Sub => "llvm.ssub.with.overflow.i64",
-            Bin::Mul => "llvm.smul.with.overflow.i64",
-            _ => panic!("no overflow intrinsic for {}", op.name()),
-        };
+        let intrinsic = overflow_intrinsic(op, signed);
         let pending = self.pending.take();
         let agg = self.agg(&[Ty::I64, Ty::I1]);
         let r = self.def(

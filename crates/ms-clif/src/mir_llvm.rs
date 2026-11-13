@@ -7,7 +7,7 @@
 //! paths use the same leaf calling convention, so they call each other freely.
 
 use crate::layout::{Layouts, Leaf};
-use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Types, Val};
+use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Types, Val, overflow_intrinsic};
 use ms_mir::ir::{Cc, FaultKind, Func, Imm, Inst, Mode, Module, Op, Target, Term};
 use ms_mir::types::{Ty, TyKind};
 use std::collections::HashMap;
@@ -39,14 +39,22 @@ fn leaves(lay: &Layouts, ty: Ty) -> Vec<(LTy, &'static str)> {
     lay.leaves(ty).into_iter().map(leaf).collect()
 }
 
-/// Whether this stage handles values of `ty`: scalars, strings and lists (every list is three
+/// Whether this stage handles values of `ty`: scalars (sized integers are `i64` registers), strings and lists (every list is three
 /// leaves, whatever its element).
 fn supported_ty(lay: &Layouts, ty: Ty) -> bool {
     matches!(
         lay.m.types.kind(ty),
         TyKind::Unit
             | TyKind::Int
+            | TyKind::Int8
+            | TyKind::Int16
+            | TyKind::Int32
+            | TyKind::UInt8
+            | TyKind::UInt16
+            | TyKind::UInt32
+            | TyKind::UInt64
             | TyKind::Float
+            | TyKind::Float32
             | TyKind::Bool
             | TyKind::Str
             | TyKind::Bytes
@@ -119,6 +127,20 @@ fn supported_op(op: Op) -> bool {
             | Op::INegChk
             | Op::SDivChk
             | Op::SRemChk
+            | Op::UAddChk
+            | Op::USubChk
+            | Op::UMulChk
+            | Op::NarrowChk
+            | Op::F32Round
+            | Op::Conv
+            | Op::Shl
+            | Op::Sshr
+            | Op::Ushr
+            | Op::Rotl
+            | Op::Rotr
+            | Op::Clz
+            | Op::Ctz
+            | Op::Popcnt
             | Op::Call
     )
 }
@@ -240,6 +262,9 @@ pub fn emit(
                 (Op::BConst, Imm::Bool(v)) => vec![Val::byte(v as u8)],
                 // The length is a leaf of the list: no instruction.
                 (Op::ListLen, _) => vec![vals[&inst.args[0].index()][1].clone()],
+                // The same register: a conversion between integer types, or a narrowing whose
+                // check is all there is to do.
+                _ if is_identity(lay, f, inst) => vals[&inst.args[0].index()].clone(),
                 _ => reserve_all(&mut b, f.ty(res)),
             };
             vals.insert(res.index(), own);
@@ -290,6 +315,7 @@ pub fn emit(
         for inst in &bd.insts {
             let env = Env {
                 m,
+                f,
                 lay,
                 symbol_of,
                 vals: &vals,
@@ -371,7 +397,15 @@ fn seg_label(bb: usize, n: usize) -> String {
 /// How many blocks an op's checks split its block into.
 fn check_splits(op: Op) -> usize {
     match op {
-        Op::IAddChk | Op::ISubChk | Op::IMulChk | Op::INegChk | Op::SRemChk => 1,
+        Op::IAddChk
+        | Op::ISubChk
+        | Op::IMulChk
+        | Op::INegChk
+        | Op::SRemChk
+        | Op::UAddChk
+        | Op::USubChk
+        | Op::UMulChk
+        | Op::NarrowChk => 1,
         Op::SDivChk => 2,
         _ => 0,
     }
@@ -449,10 +483,25 @@ fn fcc(cc: Cc) -> &'static str {
     }
 }
 
+/// Whether the result of `inst` is its operand's register unchanged: `Conv` between types that
+/// share a register (anything but a `Float` rounded to `Float32`), and `NarrowChk`, whose check
+/// is emitted but whose value is its operand.
+fn is_identity(lay: &Layouts, f: &Func, inst: &Inst) -> bool {
+    let kind = |v: ms_mir::ir::Value| lay.m.types.kind(f.ty(v));
+    match (inst.op, inst.res) {
+        (Op::NarrowChk, _) => true,
+        (Op::Conv, Some(r)) => {
+            !(matches!(kind(r), TyKind::Float32) && !matches!(kind(inst.args[0]), TyKind::Float32))
+        }
+        _ => false,
+    }
+}
+
 /// What the instructions of one function share.
 #[derive(Clone, Copy)]
 struct Env<'a> {
     m: &'a Module,
+    f: &'a Func,
     lay: &'a Layouts<'a>,
     symbol_of: &'a dyn Fn(usize) -> String,
     vals: &'a Vals,
@@ -470,6 +519,7 @@ fn inst_text(
 ) {
     let Env {
         m,
+        f,
         lay,
         symbol_of,
         vals,
@@ -478,6 +528,7 @@ fn inst_text(
     let arg = |i: usize| vals[&inst.args[i].index()][0].clone();
     let out = inst
         .res
+        .filter(|_| !is_identity(lay, f, inst))
         .map(|r| vals[&r.index()].clone())
         .unwrap_or_default();
     if matches!(
@@ -518,17 +569,96 @@ fn inst_text(
                 Op::IMulChk => (Bin::Mul, arg(0), arg(1)),
                 _ => (Bin::Sub, Val::int(0), arg(0)),
             };
-            let intrinsic = match op {
-                Bin::Add => "llvm.sadd.with.overflow.i64",
-                Bin::Sub => "llvm.ssub.with.overflow.i64",
-                _ => "llvm.smul.with.overflow.i64",
-            };
+            let intrinsic = overflow_intrinsic(op, true);
             decls.push((
                 intrinsic.to_string(),
                 format!("declare {{ i64, i1 }} @\"{intrinsic}\"(i64, i64)"),
             ));
-            let (_, of) = b.overflow(op, &x, &y);
+            let (_, of) = b.overflow(op, true, &x, &y);
             fault_if(b, decls, seg, &of, "msrt_fault_int_overflow", &[]);
+        }
+        Op::UAddChk | Op::USubChk | Op::UMulChk => {
+            let op = match inst.op {
+                Op::UAddChk => Bin::Add,
+                Op::USubChk => Bin::Sub,
+                _ => Bin::Mul,
+            };
+            if checks {
+                let intrinsic = overflow_intrinsic(op, false);
+                decls.push((
+                    intrinsic.to_string(),
+                    format!("declare {{ i64, i1 }} @\"{intrinsic}\"(i64, i64)"),
+                ));
+                let (_, of) = b.overflow(op, false, &arg(0), &arg(1));
+                fault_if(b, decls, seg, &of, "msrt_fault_int_range", &[]);
+            } else {
+                drop(b.bin(op, &arg(0), &arg(1)));
+            }
+        }
+        Op::NarrowChk => {
+            if checks {
+                let x = arg(0);
+                let (lo, hi) = lay
+                    .m
+                    .types
+                    .int_range(f.ty(inst.args[0]))
+                    .unwrap_or((i64::MIN.into(), i64::MAX.into()));
+                let below = b.icmp("slt", &x, &Val::int(lo as i64));
+                let above = b.icmp("sgt", &x, &Val::int(hi as i64));
+                let bad = b.bin(Bin::Or, &below, &above);
+                fault_if(b, decls, seg, &bad, "msrt_fault_int_range", &[]);
+            }
+        }
+        Op::F32Round | Op::Conv => {
+            // A `Float32` is a `double` register holding a value that fits a `float`.
+            let name = b.take_name();
+            let narrow = b.fptrunc(&arg(0));
+            b.restore_name(name);
+            drop(b.fpext(&narrow));
+        }
+        Op::Shl | Op::Sshr | Op::Ushr => {
+            // The shift amount is taken modulo 64, as the hardware (and Cranelift) does; LLVM
+            // calls a larger one poison.
+            let name = b.take_name();
+            let amount = b.bin(Bin::And, &arg(1), &Val::int(63));
+            b.restore_name(name);
+            let op = match inst.op {
+                Op::Shl => Bin::Shl,
+                Op::Sshr => Bin::AShr,
+                _ => Bin::LShr,
+            };
+            drop(b.bin(op, &arg(0), &amount));
+        }
+        Op::Rotl | Op::Rotr | Op::Clz | Op::Ctz | Op::Popcnt => {
+            let x = arg(0);
+            let (name, formals, args): (&str, &str, Vec<(Val, &str)>) = match inst.op {
+                Op::Rotl => (
+                    "llvm.fshl.i64",
+                    "i64, i64, i64",
+                    vec![(x.clone(), ""), (x, ""), (arg(1), "")],
+                ),
+                Op::Rotr => (
+                    "llvm.fshr.i64",
+                    "i64, i64, i64",
+                    vec![(x.clone(), ""), (x, ""), (arg(1), "")],
+                ),
+                Op::Clz => (
+                    "llvm.ctlz.i64",
+                    "i64, i1",
+                    vec![(x, ""), (Val::new("false", LTy::I1), "")],
+                ),
+                Op::Ctz => (
+                    "llvm.cttz.i64",
+                    "i64, i1",
+                    vec![(x, ""), (Val::new("false", LTy::I1), "")],
+                ),
+                _ => ("llvm.ctpop.i64", "i64", vec![(x, "")]),
+            };
+            decls.push((
+                name.to_string(),
+                format!("declare i64 @\"{name}\"({formals})"),
+            ));
+            drop(b.call(&LTy::I64, "", name, &args));
         }
         Op::SDivChk => {
             let (x, y) = (arg(0), arg(1));
@@ -774,6 +904,45 @@ mod tests {
             "{}",
             out.body
         );
+    }
+
+    /// Sized integers are `i64` registers: an unsigned add faults on carry, a narrowing checks its
+    /// range and keeps its operand's register, shifts mask the amount, and bit counts and
+    /// rotates are LLVM intrinsics.
+    #[test]
+    fn sized_integers_and_bit_operations() {
+        let mut m = Module::default();
+        let u8_ty = m.types.intern(TyKind::UInt8);
+        let p = Param {
+            ty: u8_ty,
+            mode: Mode::Borrow,
+        };
+        let mut b = FuncBuilder::new(&mut m, "bits", vec![p, p], u8_ty);
+        let (x, y) = (b.params()[0], b.params()[1]);
+        let sum = b.binop(Op::UAddChk, x, y);
+        let narrow = b.narrow_chk(sum);
+        let shifted = b.binop(Op::Shl, narrow, y);
+        let rot = b.binop(Op::Rotl, shifted, y);
+        let id = {
+            b.ret(Some(rot));
+            b.finish()
+        };
+        let lay = Layouts::new(&m);
+        let f = &m.funcs[id.index()];
+        assert!(supports(&m, &lay, f));
+        let out = emit(&m, &lay, f, 7, true, &|_| String::new());
+        let t = &out.body;
+        assert!(
+            t.contains("@\"llvm.uadd.with.overflow.i64\"(i64 %a0_0, i64 %a1_0)"),
+            "{t}"
+        );
+        assert!(t.contains("call void @\"msrt_fault_int_range\"()"), "{t}");
+        // The narrowing names no value: the shift reads the sum.
+        assert!(t.contains("icmp slt i64 %v1, 0"), "{t}");
+        assert!(t.contains("icmp sgt i64 %v1, 255"), "{t}");
+        assert!(t.contains("and i64 %a1_0, 63"), "{t}");
+        assert!(t.contains("shl i64 %v1, %v"), "{t}");
+        assert!(t.contains("@\"llvm.fshl.i64\"(i64 %v"), "{t}");
     }
 
     #[test]
