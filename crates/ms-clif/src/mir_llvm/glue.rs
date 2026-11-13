@@ -113,10 +113,7 @@ fn cleanup_push(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBu
     let slot = b.ptr_to_int(&slot);
     let thunk = Val::new(format!("@\"{}\"", cx.plan.cleanup[&c.index()]), LTy::Ptr);
     let thunk = b.ptr_to_int(&thunk);
-    cx.decls.push((
-        "msrt_cleanup_push".into(),
-        "declare i64 @\"msrt_cleanup_push\"(i64, i64) nounwind".into(),
-    ));
+    super::rt::declare(cx, "msrt_cleanup_push");
     b.name_next(&out[0]);
     b.call(
         &LTy::I64,
@@ -164,10 +161,7 @@ fn clone(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder) 
             clone_str(b, &mut cx.decls, (&pre, &dup, &join), args, Some(out));
         }
         OwnKind::Obj => {
-            cx.decls.push((
-                "msrt_obj_clone".into(),
-                "declare i64 @\"msrt_obj_clone\"(i64) nounwind".into(),
-            ));
+            super::rt::declare(cx, "msrt_obj_clone");
             let obj = word(b, &args[0]);
             if out[0].ty == LTy::Ptr {
                 let r = b.call(&LTy::I64, "", "msrt_obj_clone", &[(obj, "")]);

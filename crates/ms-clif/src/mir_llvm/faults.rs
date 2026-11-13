@@ -26,14 +26,10 @@ pub(super) fn terminator_ok(kind: FaultKind) -> bool {
 /// Calls the runtime function `name` (which takes `args` i64 words and never returns) and ends the
 /// block.
 pub(super) fn call(cx: &mut Cx, b: &mut FnBuilder, name: &'static str, args: &[Val]) {
-    let formals = vec!["i64"; args.len()].join(", ");
     let actuals: Vec<(Val, &str)> = args.iter().map(|a| (a.clone(), "")).collect();
     b.call(&LTy::Void, "", name, &actuals);
     b.unreachable();
-    cx.decls.push((
-        name.into(),
-        format!("declare void @\"{name}\"({formals}) cold noreturn"),
-    ));
+    super::rt::declare_fault(cx, name, args.len());
 }
 
 /// The body of a `Fault` terminator.

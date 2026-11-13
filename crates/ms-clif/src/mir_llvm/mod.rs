@@ -17,6 +17,7 @@ mod glue;
 mod lists;
 mod maps;
 mod records;
+mod rt;
 
 use crate::abi_llvm::{Pass, Reg, Ret, Signature};
 use crate::layout::{Layouts, Leaf};

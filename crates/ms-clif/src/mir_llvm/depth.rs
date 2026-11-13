@@ -103,21 +103,11 @@ pub(super) fn enter(cx: &mut Cx, b: &mut FnBuilder) {
         }
     }
     b.label(&next);
-    for (name, decl) in [
-        (
-            "msrt_alloc",
-            "declare noalias align 16 ptr @\"msrt_alloc\"(i64)",
-        ),
-        ("msrt_free", "declare void @\"msrt_free\"(i64)"),
-        (
-            "msrt_task_grow",
-            "declare void @\"msrt_task_grow\"(i64, i64)",
-        ),
-        (&shim[..], "declare void @\"SHIM\"(i64)"),
-    ] {
-        let decl = decl.replace("SHIM", &shim);
-        cx.decls.push((name.to_string(), decl));
+    for name in ["msrt_alloc", "msrt_free", "msrt_task_grow"] {
+        super::rt::declare(cx, name);
     }
+    cx.decls
+        .push((shim.clone(), format!("declare void @\"{shim}\"(i64)")));
 }
 
 /// The leaf types a function returns, as they cross a call.
