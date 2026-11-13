@@ -27,6 +27,8 @@ pub enum Range {
     Bool,
     /// A length or count: not negative.
     Len,
+    /// The case index of an enum with this many cases (1 to 16): `[0, n)`.
+    Tag(usize),
 }
 
 /// Facts about the memory a load reads or a store writes. Each is a promise about the program,
@@ -67,6 +69,7 @@ impl Meta {
                 let (node, want) = match r {
                     Range::Bool => (RANGE_BOOL_NODE, Ty::I8),
                     Range::Len => (RANGE_LEN_NODE, Ty::I64),
+                    Range::Tag(n) => (crate::llvm_ir::range_tag_node(n), Ty::I64),
                 };
                 assert_eq!(*ty, want, "a range on a load of another type");
                 let _ = write!(out, ", !range !{node}");

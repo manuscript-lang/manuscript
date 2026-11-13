@@ -91,6 +91,8 @@ pub struct LlvmModule {
     /// Internal functions' parameters that are exclusive pointers, by symbol. They are passed as
     /// `ptr noalias`, so LLVM knows nothing else the function reaches overlaps them.
     exclusive: HashMap<String, Vec<usize>>,
+    /// The heap functions are declared as an allocation family (`BuildOptions::heap_facts`).
+    pub heap_facts: bool,
 }
 
 /// Symbol of the empty function every module starts with: the fault and profile tables address
@@ -306,6 +308,17 @@ pub(crate) const RANGE_BOOL_NODE: usize = TBAA_BASE + 5;
 pub(crate) const RANGE_LEN_NODE: usize = TBAA_BASE + 6;
 /// `!align` node of an 8-byte aligned pointer (a vtable slot).
 pub(crate) const ALIGN8_NODE: usize = TBAA_BASE + 7;
+/// `!range` node of the case index of an enum with `n` cases, `[0, n)`, for `n` in 1 to
+/// `MAX_TAG_RANGE`.
+pub(crate) fn range_tag_node(n: usize) -> usize {
+    assert!(
+        (1..=MAX_TAG_RANGE).contains(&n),
+        "no range node for {n} cases"
+    );
+    TBAA_BASE + 7 + n
+}
+/// The largest enum whose case index has a range node.
+pub(crate) const MAX_TAG_RANGE: usize = 16;
 /// The empty node `!noundef` and `!nonnull` point at.
 pub(crate) const EMPTY_NODE: usize = 3;
 
@@ -367,6 +380,7 @@ impl LlvmModule {
             consts: BTreeMap::new(),
             vtables: HashMap::new(),
             exclusive: HashMap::new(),
+            heap_facts: true,
         };
         // Placeholder slots for the fixed ids and one `DIFile` per file.
         m.di.meta.resize(FIRST_FILE + nfiles, String::new());
@@ -1140,14 +1154,22 @@ impl<'a> Tr<'a> {
                 let sigref = self.ext_func(func_ref).signature;
                 let vals: Vec<Value> = args.as_slice(&self.f.dfg.value_lists).to_vec();
                 let exclusive = self.exclusive.get(&name).cloned().unwrap_or_default();
-                if returns_fresh_block(&name) {
+                if name == "msrt_free" {
+                    // The block goes back as a pointer, which LLVM pairs with its allocation.
+                    let p = self.ptr(vals[0], 0);
+                    self.line(format!("call void @\"{name}\"(ptr {p}) nomerge"));
+                } else if returns_fresh_block(&name) {
                     // A fresh block: `noalias` tells LLVM nothing else reaches it, and keeping the
                     // pointer lets later accesses address it without an `inttoptr`. `msrt_realloc`
                     // also takes the block it replaces, which is dead after the call.
-                    let args: Vec<String> = vals
-                        .iter()
-                        .map(|v| format!("i64 {}", self.op(*v)))
-                        .collect();
+                    let args: Vec<String> = if name == "msrt_realloc" {
+                        let old = self.ptr(vals[0], 0);
+                        vec![format!("ptr {old}"), format!("i64 {}", self.op(vals[1]))]
+                    } else {
+                        vals.iter()
+                            .map(|v| format!("i64 {}", self.op(*v)))
+                            .collect()
+                    };
                     let p = self.def(format!(
                         "call noalias align 16 ptr @\"{name}\"({}) nomerge",
                         args.join(", ")
@@ -1239,7 +1261,10 @@ impl<'a> Tr<'a> {
         } else {
             ret_ty(&sig.returns)
         };
-        let decl = format!("declare {ret} @\"{name}\"({}){attrs}", sig_params(sig));
+        let decl = crate::mir_llvm::rt::heap_decl(&name).map_or_else(
+            || format!("declare {ret} @\"{name}\"({}){attrs}", sig_params(sig)),
+            str::to_string,
+        );
         self.decls.entry(name.clone()).or_insert(decl);
         name
     }
@@ -1911,6 +1936,9 @@ impl LlvmModule {
             tail,
             "!{RANGE_BOOL_NODE} = !{{i8 0, i8 2}}\n!{RANGE_LEN_NODE} = !{{i64 0, i64 -9223372036854775808}}\n!{ALIGN8_NODE} = !{{i64 8}}\n"
         );
+        for n in 1..=MAX_TAG_RANGE {
+            let _ = writeln!(tail, "!{} = !{{i64 0, i64 {n}}}", range_tag_node(n));
+        }
         for (i, f) in self.di.files.iter().enumerate() {
             let name = f.as_deref().unwrap_or("<unknown>");
             let _ = writeln!(
@@ -1988,7 +2016,10 @@ impl LlvmModule {
             };
             for (name, decl) in &self.decls {
                 if !defined.contains(name.as_str()) && (units == 1 || used.contains(name)) {
-                    s.push_str(decl);
+                    let plain = (!self.heap_facts)
+                        .then(|| crate::mir_llvm::rt::plain_heap_decl(name))
+                        .flatten();
+                    s.push_str(plain.unwrap_or(decl));
                     s.push('\n');
                 }
             }

@@ -64,7 +64,8 @@ fn pure_terminates(
             for i in &bd.insts {
                 // Every op `supports` accepts today is register-only; a memory op added later must
                 // not inherit `memory(none)`, so the list is explicit.
-                pure &= matches!(i.op, Op::Call) || !touches_memory(i.op);
+                pure &= matches!(i.op, Op::Call)
+                    || (!touches_memory(i.op) && !super::enums::touches_memory(lay, f, i));
                 if i.op != Op::Call {
                     continue;
                 }
