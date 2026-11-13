@@ -14,6 +14,7 @@ pub fn from_env() -> BuildOptions {
         llvm_units: text("MS_LLVM_UNITS").and_then(|v| v.parse().ok()),
         vectorize: !text("MS_VECTORIZE").is_some_and(|v| v == "off" || v == "0"),
         llvm_direct: var("MS_LLVM_DIRECT").is_some_and(|v| v != "0"),
+        heap_facts: !text("MS_HEAP_FACTS").is_some_and(|v| v == "off" || v == "0"),
         llvm_verify: var("MS_LLVM_VERIFY").is_some_and(|v| v != "0"),
         keep_ll: var("MS_KEEP_LL").is_some(),
         rt_hot: match var("MS_RT_HOT") {

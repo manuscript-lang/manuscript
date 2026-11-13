@@ -93,7 +93,7 @@ pub(super) fn enter(cx: &mut Cx, b: &mut FnBuilder) {
             b.load(t, &at, align(t))
         })
         .collect();
-    b.call(&LTy::Void, "", "msrt_free", &[(block_addr, "")]);
+    b.call(&LTy::Void, "", "msrt_free", &[(block.clone(), "")]);
     match results.as_slice() {
         [] => b.ret(None),
         [one] => b.ret(Some(one)),

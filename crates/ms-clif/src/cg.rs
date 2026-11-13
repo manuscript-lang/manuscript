@@ -742,7 +742,9 @@ fn compile_with_isa(
                 .collect();
             let cwd = std::env::current_dir()
                 .map_or_else(|_| ".".into(), |d| d.to_string_lossy().into_owned());
-            crate::llvm_ir::LlvmModule::new(files, cwd)
+            let mut module = crate::llvm_ir::LlvmModule::new(files, cwd);
+            module.heap_facts = opts.build.heap_facts;
+            module
         }),
     };
     for (i, f) in m.funcs.iter().enumerate() {
