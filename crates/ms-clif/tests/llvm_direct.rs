@@ -230,6 +230,47 @@ b0:
     check("direct_list_build", src, 26, &["build"]);
 }
 
+fn string_literals() {
+    // A literal is a private constant of the LLVM module, not data of the Cranelift object.
+    let src = r#"module "d"
+entry @main
+file 0 "d.ms"
+fn @pick(%i: int) -> int !0:1:1 {
+b0:
+  %s: str = str "hello, \"world\"" !0:2:1
+  %x: int = str.byte %s, %i !0:3:1
+  ret %x
+}
+fn @other(%i: int) -> int !0:4:1 {
+b0:
+  %s: str = str "hello, \"world\"" !0:5:1
+  %t: str = str "xyz" !0:5:1
+  %x: int = str.byte %s, %i !0:6:1
+  %one: int = iconst 1 !0:6:1
+  %y: int = str.byte %t, %one !0:6:1
+  %r: int = isub %x, %y !0:7:1
+  ret %r
+}
+fn @main() -> int !0:10:1 {
+b0:
+  %i: int = iconst 8 !0:12:1
+  %a: int = call @pick(%i) !0:13:1
+  %b: int = call @other(%i) !0:14:1
+  %r: int = isub %a, %b !0:15:1
+  ret %r
+}
+"#;
+    // "hello, \"world\"": byte 8 is 'w' (119); 'w' - 'y' = -2, so 119 - (-2) = 121.
+    check("direct_str_lit", src, 121, &["pick"]);
+    let ir = std::fs::read_to_string("ms-keep.ll").unwrap();
+    assert!(
+        ir.contains(
+            "private unnamed_addr constant [15 x i8] c\"hello, \\22world\\22\\00\", align 16"
+        ),
+        "no LLVM constant for the literal"
+    );
+}
+
 /// One test, not three: each build writes `ms-keep.ll` in the working directory.
 #[test]
 fn direct_lists_and_strings_match_cranelift() {
@@ -237,5 +278,6 @@ fn direct_lists_and_strings_match_cranelift() {
     a_bad_list_index_faults();
     string_bytes();
     list_building();
+    string_literals();
     let _ = std::fs::remove_file("ms-keep.ll");
 }

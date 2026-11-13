@@ -11,6 +11,7 @@ use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Types, Val};
 use crate::llvm_ir::DirectEnv;
 use ms_mir::ir::{Cc, Func, Imm, Inst, Mode, Module, Op, Target, Term};
 use ms_mir::types::{Ty, TyKind};
+use ms_rt_abi::STR_STATIC;
 use std::collections::HashMap;
 
 /// A finished function: pieces of the `define` line, the body, and the callees it declares.
@@ -25,6 +26,29 @@ pub struct Emitted {
     pub body: String,
     /// `(symbol, declare line)` of each callee.
     pub decls: Vec<(String, String)>,
+    /// `(symbol, definition)` of the private constants the function addresses (string
+    /// literals). Each unit that names one defines it.
+    pub consts: Vec<(String, String)>,
+}
+
+/// The module-level constant holding the bytes of string literal `id`, and its definition: LLVM
+/// owns the bytes, so it knows their size, that they never change, and that no other symbol
+/// aliases them.
+fn str_const(id: u32, bytes: &[u8]) -> (String, String) {
+    let name = format!("ms.lit.{id}");
+    let mut text = String::new();
+    for &b in bytes.iter().chain(&[0u8]) {
+        if (0x20..0x7f).contains(&b) && b != b'"' && b != b'\\' {
+            text.push(b as char);
+        } else {
+            text.push_str(&format!("\\{b:02X}"));
+        }
+    }
+    let def = format!(
+        "@\"{name}\" = private unnamed_addr constant [{} x i8] c\"{text}\", align 16",
+        bytes.len() + 1
+    );
+    (name, def)
 }
 
 /// LLVM type and parameter attribute of one register leaf. `I8` leaves (`Bool`, flags) are
@@ -97,6 +121,7 @@ fn supported_op(op: Op) -> bool {
             | Op::FConst
             | Op::BConst
             | Op::UnitConst
+            | Op::StrLit
             | Op::IAdd
             | Op::ISub
             | Op::IMul
@@ -279,6 +304,7 @@ const PURE_OPS: &[Op] = &[
     Op::Select,
     Op::B2I,
     Op::ListLen,
+    Op::StrLit,
 ];
 
 /// Whether a supported op may read or write memory.
@@ -415,6 +441,7 @@ pub fn emit(
     // Name every value before emitting anything: a phi names values a later block defines (the
     // back edge of a loop), and a constant is its own text.
     let mut vals: Vals = HashMap::new();
+    let mut consts: Vec<(String, String)> = Vec::new();
     let mut params = Vec::new();
     for (i, p) in f.params.iter().enumerate() {
         let mut own = Vec::new();
@@ -445,6 +472,18 @@ pub fn emit(
                 (Op::FConst, Imm::Float(bits)) => vec![Val::double(bits)],
                 (Op::BConst, Imm::Bool(v)) => vec![Val::byte(v as u8)],
                 // The length is a leaf of the list: no instruction.
+                // The address of the literal's constant and its length, tagged as static.
+                (Op::StrLit, Imm::Str(id)) => {
+                    let bytes = m.strings[id.0 as usize].as_bytes();
+                    let (name, def) = str_const(id.0, bytes);
+                    if !consts.iter().any(|(n, _)| *n == name) {
+                        consts.push((name.clone(), def));
+                    }
+                    vec![
+                        Val::new(format!("ptrtoint (ptr @\"{name}\" to i64)"), LTy::I64),
+                        Val::int((bytes.len() | STR_STATIC) as i64),
+                    ]
+                }
                 (Op::ListLen, _) => vec![vals[&inst.args[0].index()][1].clone()],
                 (Op::ListNew, _) => vec![
                     b.reserve(LTy::I64),
@@ -556,6 +595,7 @@ pub fn emit(
             .to_string(),
         body: b.finish(),
         decls: cx.decls,
+        consts,
     }
 }
 
@@ -597,7 +637,7 @@ fn inst_text(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         .unwrap_or_default();
     if matches!(
         inst.op,
-        Op::IConst | Op::FConst | Op::BConst | Op::UnitConst | Op::ListLen
+        Op::IConst | Op::FConst | Op::BConst | Op::UnitConst | Op::StrLit | Op::ListLen
     ) {
         return;
     }

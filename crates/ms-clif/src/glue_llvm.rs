@@ -577,6 +577,7 @@ fn finish(e: E, types: &Types, params: &[Leaf], rets: &[Leaf]) -> Emitted {
         params,
         attrs: String::new(),
         decls: e.decls,
+        consts: Vec::new(),
         body: e.b.finish(),
     }
 }

@@ -53,6 +53,9 @@ pub struct LlvmModule {
     decls: BTreeMap<String, String>,
     /// External data symbols referenced.
     data: BTreeMap<String, ()>,
+    /// Private constants (string literals) of directly emitted functions, by name: each unit
+    /// whose text names one defines it.
+    consts: BTreeMap<String, String>,
     /// The function symbols in each vtable, by its data symbol. The Cranelift object defines the
     /// vtable; each unit gets an `available_externally` copy so LLVM can read its slots.
     vtables: HashMap<String, Vec<String>>,
@@ -312,6 +315,7 @@ impl LlvmModule {
             defs: Vec::new(),
             decls: BTreeMap::new(),
             data: BTreeMap::new(),
+            consts: BTreeMap::new(),
             vtables: HashMap::new(),
             exclusive: HashMap::new(),
         };
@@ -1473,6 +1477,9 @@ impl LlvmModule {
         for (callee, decl) in out.decls {
             self.decls.entry(callee).or_insert(decl);
         }
+        for (name, def) in out.consts {
+            self.consts.entry(name).or_insert(def);
+        }
         self.defs.push(Def {
             name: name.to_string(),
             public,
@@ -1933,6 +1940,12 @@ impl LlvmModule {
                     && (units == 1 || used.contains(name))
                 {
                     let _ = writeln!(s, "@\"{name}\" = external global i8");
+                }
+            }
+            for (name, def) in &self.consts {
+                if used.contains(name) {
+                    s.push_str(def);
+                    s.push('\n');
                 }
             }
             s.push_str(&tail);
