@@ -119,6 +119,12 @@ fn supported_op(op: Op) -> bool {
             | Op::ListGet
             | Op::ListGetNn
             | Op::ListGetU
+            | Op::ListSet
+            | Op::ListSetNn
+            | Op::ListSetU
+            | Op::ListFill
+            | Op::StrByte
+            | Op::StrAsciiAt
             | Op::Call
     )
 }
@@ -145,7 +151,8 @@ pub fn supports(m: &Module, lay: &Layouts, f: &Func) -> bool {
             if !supported_op(i.op) || i.res.is_some_and(|r| !ty_ok(r)) {
                 return false;
             }
-            if matches!(i.op, Op::ListGet | Op::ListGetNn | Op::ListGetU) && !elem_ok(m, lay, f, i)
+            if let Some(l) = list_arg(i.op)
+                && !elem_ok(m, lay, f, i, l)
             {
                 return false;
             }
@@ -273,13 +280,24 @@ fn touches_memory(op: Op) -> bool {
     !PURE_OPS.contains(&op)
 }
 
-/// Whether the element a list read loads is made of plain `i64`, `double` and `i8` leaves, which
-/// sit in memory exactly as in registers.
-fn elem_ok(m: &Module, lay: &Layouts, f: &Func, i: &Inst) -> bool {
-    let Some(e) = m.seq_elem(f.ty(i.args[0])) else {
+/// The operand that is the list for the list reads and writes, `None` for other ops.
+fn list_arg(op: Op) -> Option<usize> {
+    match op {
+        Op::ListGet | Op::ListGetNn | Op::ListGetU => Some(0),
+        Op::ListSet | Op::ListSetNn | Op::ListSetU | Op::ListFill => Some(0),
+        _ => None,
+    }
+}
+
+/// Whether the element a list access moves is made of plain `i64`, `double` and `i8` leaves,
+/// which sit in memory exactly as in registers, and needs no drop when overwritten.
+fn elem_ok(m: &Module, lay: &Layouts, f: &Func, i: &Inst, list: usize) -> bool {
+    let Some(e) = m.seq_elem(f.ty(i.args[list])) else {
         return false;
     };
-    i.res.is_some_and(|r| f.ty(r) == e)
+    let writes = !matches!(i.op, Op::ListGet | Op::ListGetNn | Op::ListGetU);
+    (!writes || !m.needs_drop(e) && i.args.len() == 3 && f.ty(i.args[2]) == e)
+        && (writes || i.res.is_some_and(|r| f.ty(r) == e))
         && lay
             .leaves(e)
             .iter()
@@ -309,18 +327,31 @@ struct Cx<'a> {
     split: usize,
 }
 
-/// Whether `op` ends its block early to branch to a fault when checks are on.
+/// Whether `op` is a list access that branches to a fault when checks are on.
 fn checked(op: Op) -> bool {
-    matches!(op, Op::ListGet | Op::ListGetNn)
+    matches!(
+        op,
+        Op::ListGet | Op::ListGetNn | Op::ListSet | Op::ListSetNn | Op::ListFill
+    )
 }
 
-/// The label a MIR block ends in: each check splits it, and a successor's phis name that label.
+/// How many times `op` splits its block: a bounds check or a string read that joins branches
+/// starts a new block, and a successor's phis name the label the block ends in.
+fn splits(op: Op, checks: bool) -> usize {
+    match op {
+        _ if checked(op) => usize::from(checks),
+        Op::StrByte | Op::StrAsciiAt => 1,
+        _ => 0,
+    }
+}
+
+/// The label a MIR block ends in.
 fn exit_label(f: &Func, checks: bool, bb: usize) -> String {
-    let n = if checks {
-        f.blocks[bb].insts.iter().filter(|i| checked(i.op)).count()
-    } else {
-        0
-    };
+    let n = f.blocks[bb]
+        .insts
+        .iter()
+        .map(|i| splits(i.op, checks))
+        .sum();
     block_label(bb, n)
 }
 
@@ -383,6 +414,10 @@ pub fn emit(
                 (Op::BConst, Imm::Bool(v)) => vec![Val::byte(v as u8)],
                 // The length is a leaf of the list: no instruction.
                 (Op::ListLen, _) => vec![vals[&inst.args[0].index()][1].clone()],
+                // A write hands back the same list.
+                (Op::ListSet | Op::ListSetNn | Op::ListSetU | Op::ListFill, _) => {
+                    vals[&inst.args[0].index()].clone()
+                }
                 _ => reserve_all(&mut b, f.ty(res)),
             };
             vals.insert(res.index(), own);
@@ -514,8 +549,12 @@ fn inst_text(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     ) {
         return;
     }
-    if matches!(inst.op, Op::ListGet | Op::ListGetNn | Op::ListGetU) {
-        list_get(cx, inst, vals, b);
+    if list_arg(inst.op).is_some() {
+        list_access(cx, inst, vals, b);
+        return;
+    }
+    if matches!(inst.op, Op::StrByte | Op::StrAsciiAt) {
+        str_byte(cx, inst, vals, b);
         return;
     }
     // A single-leaf result is named in place; `Select` and `Call` handle several.
@@ -600,17 +639,17 @@ fn inst_text(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     }
 }
 
-/// A list element read: normalize a negative index (`ListGet`), branch to the fault when it is out
-/// of range, then load each leaf of the element at its offset. The element type is an LLVM
-/// type, so the address is a typed `getelementptr` and LLVM sees a strided access it can vectorize.
-fn list_get(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
+/// A list element access: normalize a negative index, branch to the fault when it is out of
+/// range, then load or store each leaf of the element. The element type is an LLVM type, so the
+/// address is a typed `getelementptr` and LLVM sees a strided access it can vectorize.
+fn list_access(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     let l = &vals[&inst.args[0].index()];
     let i = vals[&inst.args[1].index()][0].clone();
-    let out = &vals[&inst.res.expect("list read result").index()];
     let elem = cx.m.seq_elem(cx.f.ty(inst.args[0])).expect("a list");
     let tys: Vec<LTy> = cx.lay.leaves(elem).into_iter().map(|x| leaf(x).0).collect();
     let (ptr, len) = (b.int_to_ptr(&l[0]), l[1].clone());
-    let idx = if inst.op == Op::ListGet {
+    let wraps = matches!(inst.op, Op::ListGet | Op::ListSet | Op::ListFill);
+    let idx = if wraps {
         let neg = b.icmp("slt", &i, &Val::int(0));
         let wrapped = b.bin(Bin::Add, &i, &len);
         b.select(&neg, &wrapped, &i)
@@ -649,13 +688,74 @@ fn list_get(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         u64::from(mem_layout(&cx.lay.leaves(elem)).size)
     );
     let at = b.elem_ptr(&whole, &ptr, &idx);
-    for (k, (t, dst)) in tys.iter().zip(out).enumerate() {
-        let from = if tys.len() == 1 {
+    let reads = matches!(inst.op, Op::ListGet | Op::ListGetNn | Op::ListGetU);
+    let out = inst.res.map(|r| &vals[&r.index()]);
+    for (k, t) in tys.iter().enumerate() {
+        let to = if tys.len() == 1 {
             at.clone()
         } else {
             b.field_ptr(&whole, &at, k)
         };
-        b.name_next(dst);
-        b.load(t, &from, types.size_align(t).1);
+        let align = types.size_align(t).1;
+        if reads {
+            b.name_next(&out.expect("list read result")[k]);
+            b.load(t, &to, align);
+        } else {
+            b.store(&vals[&inst.args[2].index()][k], &to, align);
+        }
     }
+}
+
+/// `StrByte` and `StrAsciiAt`: the byte at an index of a string. An inline string keeps its
+/// bytes in its two words, little-endian, so the byte is a shift and mask; any other string loads
+/// it from memory. `StrAsciiAt` yields -1 unless the string is flagged ASCII and the index is in
+/// range, and the caller then takes the general path.
+fn str_byte(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
+    use ms_rt_abi::STR_LEN_MASK;
+    let s = &vals[&inst.args[0].index()];
+    let i = vals[&inst.args[1].index()][0].clone();
+    let out = vals[&inst.res.expect("string byte result").index()][0].clone();
+    let (bb, split) = (cx.block, cx.split);
+    let load = format!("l{bb}_{split}");
+    let join = block_label(bb, split + 1);
+    cx.split += 1;
+    let load_byte = |b: &mut FnBuilder, i: &Val| {
+        let ptr = b.int_to_ptr(&s[0]);
+        let at = b.elem_ptr(&LTy::I8, &ptr, i);
+        let byte = b.load(&LTy::I8, &at, 1);
+        b.zext(&byte, LTy::I64)
+    };
+    if inst.op == Op::StrAsciiAt {
+        let flag = b.bin(Bin::LShr, &s[1], &Val::int(61));
+        let flag = b.bin(Bin::And, &flag, &Val::int(3));
+        let ascii = b.icmp("eq", &flag, &Val::int(1));
+        let len = b.bin(Bin::And, &s[1], &Val::int(STR_LEN_MASK as i64));
+        let below = b.icmp("ult", &i, &len);
+        let ok = b.bin(Bin::And, &ascii, &below);
+        let head = block_label(bb, split);
+        b.cond_br(&ok, &load, &join);
+        b.label(&load);
+        let byte = load_byte(b, &i);
+        b.br(&join);
+        b.label(&join);
+        b.phi(&out, &[(Val::int(-1), head), (byte, load)]);
+        return;
+    }
+    let tag = b.bin(Bin::LShr, &s[1], &Val::int(62));
+    let inline = b.icmp("eq", &tag, &Val::int(1));
+    let word = format!("w{bb}_{split}");
+    b.cond_br(&inline, &word, &load);
+    b.label(&word);
+    let high = b.icmp("sge", &i, &Val::int(8));
+    let w = b.select(&high, &s[1], &s[0]);
+    let shift = b.bin(Bin::And, &i, &Val::int(7));
+    let shift = b.bin(Bin::Shl, &shift, &Val::int(3));
+    let w = b.bin(Bin::LShr, &w, &shift);
+    let inline_byte = b.bin(Bin::And, &w, &Val::int(0xff));
+    b.br(&join);
+    b.label(&load);
+    let mem_byte = load_byte(b, &i);
+    b.br(&join);
+    b.label(&join);
+    b.phi(&out, &[(inline_byte, word), (mem_byte, load)]);
 }
