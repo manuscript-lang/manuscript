@@ -1498,7 +1498,10 @@ impl LlvmModule {
             name: name.to_string(),
             public,
             glue: false,
-            header: format!("{} @\"{name}\"({}) #0 !dbg !{sp} {{\n", out.ret, out.params),
+            header: format!(
+                "{} @\"{name}\"({}) #0{} !dbg !{sp} {{\n",
+                out.ret, out.params, out.attrs
+            ),
             body: out.body,
         });
     }

@@ -21,6 +21,8 @@ pub struct Emitted {
     pub ret: String,
     /// Parameter list.
     pub params: String,
+    /// Function attributes written after the group reference (empty when none are proven).
+    pub attrs: String,
     /// Entry label through the closing brace.
     pub body: String,
     /// `(symbol, declare line)` of each callee.
@@ -180,6 +182,106 @@ pub fn supports(m: &Module, lay: &Layouts, f: &Func) -> bool {
     !entry_target
 }
 
+/// Attributes LLVM cannot always infer, for a function with no memory access or fault: its result
+/// depends on its arguments alone. A function across a unit boundary is only a `declare`, so the
+/// call site would otherwise know nothing. `willreturn` needs the body and its callees to be
+/// loop-free and acyclic; `None` when `f` is not such a scalar function at all.
+fn pure_attrs(
+    m: &Module,
+    lay: &Layouts,
+    idx: usize,
+    memo: &mut HashMap<usize, Option<bool>>,
+) -> Option<&'static str> {
+    let terminates = pure_terminates(m, lay, idx, memo)?;
+    Some(if terminates {
+        " nounwind willreturn nofree nosync norecurse memory(none)"
+    } else {
+        " nounwind nofree nosync memory(none)"
+    })
+}
+
+/// `Some(true)` when `idx` is a scalar function that is pure and always returns, `Some(false)`
+/// when it is pure but may loop or recurse for ever, `None` when it is not pure.
+fn pure_terminates(
+    m: &Module,
+    lay: &Layouts,
+    idx: usize,
+    memo: &mut HashMap<usize, Option<bool>>,
+) -> Option<bool> {
+    if let Some(v) = memo.get(&idx) {
+        return *v;
+    }
+    // A call back into a function being analysed is recursion: pure, but it may not return.
+    memo.insert(idx, Some(false));
+    let f = &m.funcs[idx];
+    let verdict = if supports(m, lay, f) {
+        let rpo = f.rpo();
+        let mut order = vec![usize::MAX; f.blocks.len()];
+        for (k, b) in rpo.iter().enumerate() {
+            order[b.index()] = k;
+        }
+        let mut terminates = true;
+        let mut pure = true;
+        for b in &rpo {
+            let bd = &f.blocks[b.index()];
+            bd.term
+                .for_each_target(|t| terminates &= order[t.block.index()] > order[b.index()]);
+            for i in &bd.insts {
+                // Every op `supports` accepts today is register-only; a memory op added later must
+                // not inherit `memory(none)`, so the list is explicit.
+                pure &= matches!(i.op, Op::Call) || !touches_memory(i.op);
+                if i.op != Op::Call {
+                    continue;
+                }
+                let Imm::Func(c) = i.imm else { continue };
+                match pure_terminates(m, lay, c.index(), memo) {
+                    Some(t) => terminates &= t,
+                    None => pure = false,
+                }
+            }
+        }
+        pure.then_some(terminates)
+    } else {
+        None
+    };
+    memo.insert(idx, verdict);
+    verdict
+}
+
+/// The ops that read neither memory nor anything a fault could depend on: register arithmetic and
+/// the length leaf of a list. Every other supported op (list and string accesses, which load, store
+/// and fault) may touch memory, so a function with one is not `memory(none)`.
+const PURE_OPS: &[Op] = &[
+    Op::IConst,
+    Op::FConst,
+    Op::BConst,
+    Op::UnitConst,
+    Op::IAdd,
+    Op::ISub,
+    Op::IMul,
+    Op::INeg,
+    Op::And,
+    Op::Or,
+    Op::Xor,
+    Op::Not,
+    Op::ICmp,
+    Op::UICmp,
+    Op::FCmp,
+    Op::FAdd,
+    Op::FSub,
+    Op::FMul,
+    Op::FDiv,
+    Op::FNeg,
+    Op::Select,
+    Op::B2I,
+    Op::ListLen,
+];
+
+/// Whether a supported op may read or write memory.
+fn touches_memory(op: Op) -> bool {
+    !PURE_OPS.contains(&op)
+}
+
 /// Whether the element a list read loads is made of plain `i64`, `double` and `i8` leaves, which
 /// sit in memory exactly as in registers.
 fn elem_ok(m: &Module, lay: &Layouts, f: &Func, i: &Inst) -> bool {
@@ -207,6 +309,8 @@ struct Cx<'a> {
     /// Fault call sites numbered so far in the module.
     sites: u32,
     symbol_of: &'a dyn Fn(usize) -> String,
+    /// Which callees are pure, and whether they return (see [`pure_attrs`]).
+    memo: HashMap<usize, Option<bool>>,
     /// `(symbol, declare line)` of each callee.
     decls: Vec<(String, String)>,
     /// MIR block being written and the checks it has split off so far.
@@ -246,16 +350,17 @@ fn block_label(bb: usize, split: usize) -> String {
 /// The values of one MIR value: one per register leaf.
 type Vals = HashMap<usize, Vec<Val>>;
 
-/// Emits `f`, which `supports` accepted. `symbol_of` names the function with MIR index `i`;
+/// Emits `f`, which `supports` accepted. The function has MIR index `idx` and, when it is
+/// recursive, the grow shim `grow_shim`. `symbol_of` names the function with MIR index `i`;
 /// `loc` is the `DILocation` node every instruction carries.
 pub fn emit(
     m: &Module,
     lay: &Layouts,
+    (idx, grow_shim): (usize, Option<String>),
     f: &Func,
     checks: bool,
     env: &mut DirectEnv,
     symbol_of: &dyn Fn(usize) -> String,
-    grow_shim: Option<String>,
 ) -> Emitted {
     let types = Types::default();
     let mut b = FnBuilder::new(&types, Some(env.loc));
@@ -328,6 +433,7 @@ pub fn emit(
         checks,
         sites: *env.sites,
         symbol_of,
+        memo: HashMap::new(),
         decls: Vec::new(),
         block: 0,
         split: 0,
@@ -406,6 +512,9 @@ pub fn emit(
     Emitted {
         ret: ret_text(lay, f.ret),
         params: params.join(", "),
+        attrs: pure_attrs(m, lay, idx, &mut cx.memo)
+            .unwrap_or("")
+            .to_string(),
         body: b.finish(),
         decls: cx.decls,
     }
@@ -532,9 +641,10 @@ fn inst_text(cx: &mut Cx, inst: &Inst, vals: &mut Vals, b: &mut FnBuilder) {
             cx.decls.push((
                 sym.clone(),
                 format!(
-                    "declare {attr}{} @\"{sym}\"({})",
+                    "declare {attr}{} @\"{sym}\"({}){}",
                     Types::default().text(&ret),
-                    formals.join(", ")
+                    formals.join(", "),
+                    pure_attrs(m, lay, c.index(), &mut cx.memo).unwrap_or("")
                 ),
             ));
             if callee.ret == Ty::PTR || records::is_mem(lay, callee.ret) {

@@ -1332,7 +1332,7 @@ fn direct_function(g: &mut Gen, i: usize, f: &Func) -> bool {
             syms: &syms,
             bits: &bits,
         },
-        |env| crate::mir_llvm::emit(m, lay, f, checks, env, &symbol_of, grow_shim),
+        |env| crate::mir_llvm::emit(m, lay, (i, grow_shim), f, checks, env, &symbol_of),
     );
     g.llvm = Some(llvm);
     g.llvm_funcs.push(LlvmFn {
