@@ -45,6 +45,20 @@ MIR -> mir_llvm         -> LLVM IR text -> opt/llc   (release; new)
 - Facts (stage 3, each with a golden test): `nonnull dereferenceable(N) align A` on record pointers; `noalias readonly nocapture` on borrowed pointer parameters; struct-path TBAA per (record, field). Start with `readonly` only; add `noalias` per fact with a test, since a wrong one is a silent miscompile.
 - Memory model: no change. Borrow parameters are not written during the call; `var` parameters are exclusive; `.clone()` stays the only copy and emits a clone call, never a bare `memcpy` of an owner.
 
+## Calling convention (one design for records, lists, glue and closures)
+
+Direct functions call each other through an LLVM-native signature; the leaf signature stays only where the runtime or a translated function calls in. Owner of the code: the records thread, in `crates/ms-clif/src/abi_llvm.rs` (`classify(ty, mode) -> Pass`, `ret(ty) -> Ret`, attribute strings), used by everyone else.
+
+- Size classes, from `mem_layout` (so layout, runtime and Cranelift agree): a value of at most 16 bytes is scalars (`Int`, `Float`, `Bool`, sized integers as `i64`/`double` registers, `String` as two params `ptr`, `i64`); anything larger (every list, 24 bytes; records and alternatives above two words) is indirect. The 16-byte threshold is a start, changed only by measurement.
+- Borrow, indirect: `ptr nonnull readonly nocapture align A dereferenceable(N)`. No `noalias` until the borrow rules are proven for `scoped` closures (open point), with a golden test per added fact.
+- Move, indirect: the caller passes a pointer to a temporary it owns and no longer uses: `ptr nonnull nocapture noalias align A dereferenceable(N)`. No `byval`: that is a copy the move does not need, and a clone is always an explicit call.
+- Var, indirect or scalar: `ptr nonnull nocapture noalias align A dereferenceable(N)` to the variable's slot, updated in place; the "final value returned after the result" of MIR becomes a store at each `ret`, and the caller reads the slot after the call. Scalar `var` parameters use the same pointer.
+- Result: at most 16 bytes returns as scalars or an anonymous `{ .. }` (two registers); larger is a hidden first parameter `ptr sret(%T) noalias nocapture nonnull align A dereferenceable(N)`.
+- Types: a named struct per record and alternative (`mem_layout` field order and offsets), `%List = type { ptr, i64, i64 }`, accesses by `getelementptr inbounds nuw` and `load`/`store` with explicit `align`, copies by `memcpy` with alignment (never leaf by leaf).
+- Boundary: a function `f` whose address escapes, which the runtime calls (closures, vtable methods, comparators, entry points), or which a translated function calls, gets a thunk. The native body is `internal` `@"f.n"`; `@"f"` keeps today's leaf signature and forwards to it, so LLVM inlines the native body into the thunk's callers. Direct to direct calls name `@"f.n"`. When the translation is deleted the thunks go and the names swap. The runtime's `msrt_*` entry points keep the C leaf ABI.
+- Calls of `internal` functions that never escape may use `fastcc`, adopted only with a measured gain.
+- Fault sites, `DISubprogram` and profile tables are found by the symbol and DWARF subprogram of `@"f.n"`; the thunk carries none.
+
 ## Stages
 
 1. Skeleton and harness (this PR): `mir_llvm` with scalar ops, comparisons, branches, block parameters and direct calls; per-function fallback; flag; a differential check that runs fixtures with and without the flag and compares output.
