@@ -277,6 +277,17 @@ const FIRST_FILE: usize = 5;
 /// First metadata id of the TBAA nodes, above any debug-info id a program can reach.
 const TBAA_BASE: usize = 1 << 30;
 
+/// Metadata node of the access tag for a list element that is one scalar word.
+pub(crate) const TBAA_SCALAR_ELEM_NODE: usize = TBAA_BASE + 3;
+/// Metadata node of the access tag for a list element that is a list or string header.
+pub(crate) const TBAA_HEADER_ELEM_NODE: usize = TBAA_BASE + 4;
+/// `!range` node of a `Bool` byte: `[0, 2)`.
+pub(crate) const RANGE_BOOL_NODE: usize = TBAA_BASE + 5;
+/// `!range` node of a length: `[0, 2^63)`.
+pub(crate) const RANGE_LEN_NODE: usize = TBAA_BASE + 6;
+/// The empty node `!noundef` and `!nonnull` point at.
+pub(crate) const EMPTY_NODE: usize = 3;
+
 /// The symbol names `text` mentions as `@"name"`.
 fn referenced(text: &str) -> HashSet<String> {
     let mut names = HashSet::new();
@@ -763,8 +774,8 @@ impl<'a> Tr<'a> {
             return String::new();
         };
         match self.f.dfg.alias_regions[region].user_id & !crate::lower::REGION_IN_BOUNDS {
-            crate::lower::REGION_SCALAR_ELEM => format!(", !tbaa !{}", TBAA_BASE + 3),
-            crate::lower::REGION_HEADER_ELEM => format!(", !tbaa !{}", TBAA_BASE + 4),
+            crate::lower::REGION_SCALAR_ELEM => format!(", !tbaa !{TBAA_SCALAR_ELEM_NODE}"),
+            crate::lower::REGION_HEADER_ELEM => format!(", !tbaa !{TBAA_HEADER_ELEM_NODE}"),
             _ => String::new(),
         }
     }
@@ -1867,8 +1878,12 @@ impl LlvmModule {
             b = TBAA_BASE,
             s = TBAA_BASE + 1,
             h = TBAA_BASE + 2,
-            ts = TBAA_BASE + 3,
-            th = TBAA_BASE + 4
+            ts = TBAA_SCALAR_ELEM_NODE,
+            th = TBAA_HEADER_ELEM_NODE
+        );
+        let _ = write!(
+            tail,
+            "!{RANGE_BOOL_NODE} = !{{i8 0, i8 2}}\n!{RANGE_LEN_NODE} = !{{i64 0, i64 -9223372036854775808}}\n"
         );
         for (i, f) in self.di.files.iter().enumerate() {
             let name = f.as_deref().unwrap_or("<unknown>");

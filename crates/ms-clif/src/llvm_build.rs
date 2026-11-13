@@ -14,6 +14,75 @@
 
 use std::fmt::Write as _;
 
+/// The alias class of a memory access, which LLVM's type-based alias analysis uses to tell that
+/// a scalar element store cannot overwrite a list or string header word.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Tbaa {
+    /// A list element that is one scalar word.
+    ScalarElem,
+    /// A list element that is a list or string header.
+    HeaderElem,
+}
+
+/// The values an integer load can take, as `!range`.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Range {
+    /// A `Bool` byte: 0 or 1.
+    Bool,
+    /// A length or count: not negative.
+    Len,
+}
+
+/// Facts about the memory a load reads or a store writes. Each is a promise about the program,
+/// not a hint: a wrong one makes the result poison or the code wrong.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub struct Meta {
+    /// The alias class, `!tbaa`.
+    pub tbaa: Option<Tbaa>,
+    /// The value range of an integer load, `!range`.
+    pub range: Option<Range>,
+    /// A loaded pointer is not null, `!nonnull`.
+    pub nonnull: bool,
+    /// A loaded value is never `undef` or `poison`, `!noundef`.
+    pub noundef: bool,
+}
+
+impl Meta {
+    /// `, !tbaa !N, !range !N, ...` for an access of type `ty`; `load` is whether it reads.
+    fn text(&self, ty: &Ty, load: bool) -> String {
+        use crate::llvm_ir::{
+            EMPTY_NODE, RANGE_BOOL_NODE, RANGE_LEN_NODE, TBAA_HEADER_ELEM_NODE,
+            TBAA_SCALAR_ELEM_NODE,
+        };
+        let mut out = String::new();
+        if let Some(t) = self.tbaa {
+            let node = match t {
+                Tbaa::ScalarElem => TBAA_SCALAR_ELEM_NODE,
+                Tbaa::HeaderElem => TBAA_HEADER_ELEM_NODE,
+            };
+            let _ = write!(out, ", !tbaa !{node}");
+        }
+        if load {
+            if let Some(r) = self.range {
+                let (node, want) = match r {
+                    Range::Bool => (RANGE_BOOL_NODE, Ty::I8),
+                    Range::Len => (RANGE_LEN_NODE, Ty::I64),
+                };
+                assert_eq!(*ty, want, "a range on a load of another type");
+                let _ = write!(out, ", !range !{node}");
+            }
+            if self.nonnull {
+                assert_eq!(*ty, Ty::Ptr, "!nonnull on a load that is not a pointer");
+                let _ = write!(out, ", !nonnull !{EMPTY_NODE}");
+            }
+            if self.noundef {
+                let _ = write!(out, ", !noundef !{EMPTY_NODE}");
+            }
+        }
+        out
+    }
+}
+
 /// An LLVM type.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum Ty {
@@ -419,22 +488,38 @@ impl<'t> FnBuilder<'t> {
 
     /// A load with the alignment of `ty`, or the stricter `align` the caller knows.
     pub fn load(&mut self, ty: &Ty, ptr: &Val, align: u64) -> Val {
+        self.load_with(ty, ptr, align, Meta::default())
+    }
+
+    /// A load carrying `meta`.
+    pub fn load_with(&mut self, ty: &Ty, ptr: &Val, align: u64, meta: Meta) -> Val {
         assert_eq!(ptr.ty, Ty::Ptr);
         assert!(align.is_power_of_two());
         self.def(
             ty.clone(),
-            format!("load {}, ptr {}, align {align}", self.ty(ty), ptr.text),
+            format!(
+                "load {}, ptr {}, align {align}{}",
+                self.ty(ty),
+                ptr.text,
+                meta.text(ty, true)
+            ),
         )
     }
 
     pub fn store(&mut self, val: &Val, ptr: &Val, align: u64) {
+        self.store_with(val, ptr, align, Meta::default());
+    }
+
+    /// A store carrying `meta` (only its alias class applies to a store).
+    pub fn store_with(&mut self, val: &Val, ptr: &Val, align: u64, meta: Meta) {
         assert_eq!(ptr.ty, Ty::Ptr);
         assert!(align.is_power_of_two());
         self.line(format!(
-            "store {} {}, ptr {}, align {align}",
+            "store {} {}, ptr {}, align {align}{}",
             self.ty(&val.ty),
             val.text,
-            ptr.text
+            ptr.text,
+            meta.text(&val.ty, false)
         ));
     }
 
@@ -467,7 +552,9 @@ impl<'t> FnBuilder<'t> {
     }
 
     /// A call; `ret` is `Ty::Void` for none. `args` carry their parameter attributes in `attrs`
-    /// (same length), such as `" zeroext"`.
+    /// (same length), such as `" zeroext"`. Calls from distinct source sites are never merged,
+    /// which would lose the caller's fault frame; use [`FnBuilder::call_pure`] for a callee that
+    /// cannot fault.
     pub fn call(
         &mut self,
         ret: &Ty,
@@ -475,13 +562,35 @@ impl<'t> FnBuilder<'t> {
         callee: &str,
         args: &[(Val, &str)],
     ) -> Option<Val> {
+        self.call_with(ret, ret_attr, callee, args, " nomerge")
+    }
+
+    /// A call to a callee proven pure (`memory(none)`, so it cannot fault): LLVM may merge,
+    /// hoist and delete it like any other expression.
+    pub fn call_pure(
+        &mut self,
+        ret: &Ty,
+        ret_attr: &str,
+        callee: &str,
+        args: &[(Val, &str)],
+    ) -> Option<Val> {
+        self.call_with(ret, ret_attr, callee, args, "")
+    }
+
+    fn call_with(
+        &mut self,
+        ret: &Ty,
+        ret_attr: &str,
+        callee: &str,
+        args: &[(Val, &str)],
+        fn_attrs: &str,
+    ) -> Option<Val> {
         let actuals: Vec<String> = args
             .iter()
             .map(|(v, a)| format!("{}{a} {}", self.ty(&v.ty), v.text))
             .collect();
-        // Merging calls from distinct source sites loses the caller's fault frame.
         let head = format!(
-            "call {ret_attr}{} @\"{callee}\"({}) nomerge",
+            "call {ret_attr}{} @\"{callee}\"({}){fn_attrs}",
             self.ty(ret),
             actuals.join(", ")
         );
@@ -493,11 +602,13 @@ impl<'t> FnBuilder<'t> {
         }
     }
 
-    /// Copies `len` bytes from `src` to `dst` (non-overlapping), both aligned to `align`.
-    pub fn memcpy(&mut self, dst: &Val, src: &Val, len: &Val, align: u64) {
+    /// Copies `len` bytes from `src` (aligned to `src_align`) to `dst` (aligned to `dst_align`),
+    /// non-overlapping.
+    pub fn memcpy(&mut self, dst: (&Val, u64), src: (&Val, u64), len: &Val) {
+        let ((dst, dst_align), (src, src_align)) = (dst, src);
         assert_eq!((&dst.ty, &src.ty, &len.ty), (&Ty::Ptr, &Ty::Ptr, &Ty::I64));
         self.line(format!(
-            "call void @llvm.memcpy.p0.p0.i64(ptr align {align} {}, ptr align {align} {}, i64 {}, i1 false)",
+            "call void @llvm.memcpy.p0.p0.i64(ptr align {dst_align} {}, ptr align {src_align} {}, i64 {}, i1 false)",
             dst.text, src.text, len.text
         ));
     }
@@ -523,7 +634,7 @@ impl<'t> FnBuilder<'t> {
     pub fn ret_multi(&mut self, vals: &[Val]) {
         let tys: Vec<Ty> = vals.iter().map(|v| v.ty.clone()).collect();
         let agg = self.agg(&tys);
-        let mut cur = "undef".to_string();
+        let mut cur = "poison".to_string();
         for (i, v) in vals.iter().enumerate() {
             let t = self.reserve(Ty::Void);
             self.line(format!(
@@ -630,7 +741,7 @@ impl<'t> FnBuilder<'t> {
     /// A tuple of `vals`, for a function that returns several leaves.
     pub fn tuple(&mut self, vals: &[Val]) -> Val {
         let ty = Ty::Tuple(vals.iter().map(|v| v.ty.clone()).collect());
-        let mut agg = Val::new("undef", ty.clone());
+        let mut agg = Val::new("poison", ty.clone());
         for (i, v) in vals.iter().enumerate() {
             let last = i + 1 == vals.len();
             let rhs = format!(
@@ -677,6 +788,31 @@ impl<'t> FnBuilder<'t> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn loads_and_stores_carry_their_metadata() {
+        use crate::llvm_ir::{RANGE_BOOL_NODE, TBAA_SCALAR_ELEM_NODE};
+        let types = Types::default();
+        let mut b = FnBuilder::new(&types, None);
+        let p = b.reserve(Ty::Ptr);
+        let meta = Meta {
+            tbaa: Some(Tbaa::ScalarElem),
+            range: Some(Range::Bool),
+            ..Meta::default()
+        };
+        let v = b.load_with(&Ty::I8, &p, 1, meta);
+        b.store_with(&v, &p, 1, meta);
+        b.load(&Ty::I8, &p, 1);
+        let text = b.finish();
+        let tbaa = format!("!tbaa !{TBAA_SCALAR_ELEM_NODE}");
+        assert!(
+            text.contains(&format!("align 1, {tbaa}, !range !{RANGE_BOOL_NODE}")),
+            "{text}"
+        );
+        // A store takes only the alias class; a plain load takes nothing.
+        assert!(text.contains(&format!("align 1, {tbaa}\n")), "{text}");
+        assert_eq!(text.matches("!range").count(), 1, "{text}");
+    }
 
     #[test]
     fn struct_layout_matches_natural_alignment() {

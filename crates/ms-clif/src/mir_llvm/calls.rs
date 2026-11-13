@@ -27,6 +27,7 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     let callee = &m.funcs[c.index()];
     let sym = (cx.symbol_of)(c.index());
     let attrs = pure_attrs(m, lay, cx.native, c.index(), &mut cx.memo).unwrap_or("");
+    let pure = !attrs.is_empty();
     if cx.native.contains(&c.index()) {
         let sig = Signature::of(lay, &callee.params, callee.ret);
         // A result larger than two registers comes back through a slot the caller owns.
@@ -61,7 +62,7 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
                 b.call(&ret, attr, &sym, &args);
                 records::load_result(b, lay, callee.ret, slot, &out);
             }
-            None => finish_call(b, lay, callee.ret, &ret, attr, &sym, &args, &out),
+            None => finish_call(b, lay, callee.ret, (&ret, attr, pure), &sym, &args, &out),
         }
         return;
     }
@@ -86,7 +87,7 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
             formals.join(", "),
         ),
     ));
-    finish_call(b, lay, callee.ret, &ret, attr, &sym, &args, &out);
+    finish_call(b, lay, callee.ret, (&ret, attr, pure), &sym, &args, &out);
 }
 
 /// Writes the call and names its results `out`.
@@ -95,23 +96,30 @@ fn finish_call(
     b: &mut FnBuilder,
     lay: &crate::layout::Layouts,
     result: Ty,
-    ret: &LTy,
-    attr: &str,
+    (ret, attr, pure): (&LTy, &str, bool),
     sym: &str,
     args: &[(Val, &str)],
     out: &[Val],
 ) {
+    // A pure callee cannot fault, so its call sites need no fault frame of their own.
+    let call = |b: &mut FnBuilder| {
+        if pure {
+            b.call_pure(ret, attr, sym, args)
+        } else {
+            b.call(ret, attr, sym, args)
+        }
+    };
     if result == Ty::PTR || records::is_mem(lay, result) {
         // The result is a `ptr` or a record in memory, rebuilt from the call's result.
-        let r = b.call(ret, attr, sym, args).expect("a result");
+        let r = call(b).expect("a result");
         records::call_result(b, lay, result, r, out);
     } else if out.len() <= 1 {
         if let [r] = out {
             b.name_next(r);
         }
-        b.call(ret, attr, sym, args);
+        call(b);
     } else {
-        let t = b.call(ret, attr, sym, args).expect("a tuple result");
+        let t = call(b).expect("a tuple result");
         for (k, dst) in out.iter().enumerate() {
             b.name_next(dst);
             b.extract(&t, k);
