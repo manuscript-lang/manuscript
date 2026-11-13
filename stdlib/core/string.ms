@@ -1,9 +1,7 @@
 import (
 	Bytes from "@std/bytes.ms",
 	Writable from "@std/core.ms",
-	ReadStream from "@std/io/io.ms",
 	StringBuilder from "@std/string_builder.ms",
-	ScalarSource from "@std/string_scalars.ms",
 
 	msrt_string_from_scalars from "@std/internal/string.ms",
 	msstd_unicode_display_width,
@@ -273,9 +271,3 @@ fn chars_start_at(cs: List[String], at: Int, needle: List[String]) Bool:
 
 fn is_word_scalar(c: String) Bool:
 	return msstd_unicode_is_alphanumeric(c.scalar_at(0, -1)) or c == "'"
-
-// A stream of the text's scalars, each as a one-scalar String. Unlike `get(index)`,
-// which walks from the start every time, the stream decodes the next scalar where it
-// stopped, so scanning long non-ASCII text is linear.
-fn String.stream() ReadStream[String]:
-	return ReadStream[String](ScalarSource(self.to_bytes(), 0))

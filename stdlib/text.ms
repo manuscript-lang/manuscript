@@ -1,5 +1,6 @@
 import (
-	panic from "@std/core.ms",
+	Bytes from "@std/bytes.ms",
+	ReadStream from "@std/io/io.ms",
 	parse_int from "@std/math/math.ms",
 	from_scalars from "@std/string.ms",
 	StringBuilder from "@std/string_builder.ms",
@@ -143,3 +144,37 @@ export fn unquote(text: String) String!:
 				return error(Error("string: invalid input", kind: "EINVAL"))
 
 	return from_scalars(out)
+
+// Reads a string's scalars one at a time, decoding its UTF-8 bytes where it stands.
+type ScalarSource:
+	// The UTF-8 text, encoded once by `scalars`.
+	bytes: Bytes
+	// Byte offset of the next scalar, always on a scalar boundary.
+	at: Int
+
+// The next scalar as a one-scalar String, or none at the end.
+fn var ScalarSource.next() String?!:
+	if self.at >= self.bytes.length(): return ok(none)
+
+	stop := self.at + scalar_width(self.bytes.get(self.at).to_int())
+	scalar := self.bytes.decode_utf8_range(self.at, stop)
+	self.at = stop
+	return ok(scalar)
+
+// Releases nothing; the bytes are owned by the source.
+fn var ScalarSource.close() Unit!:
+	return ok(unit)
+
+// Bytes in the scalar a lead byte starts.
+fn scalar_width(lead: Int) Int:
+	if lead < 128: return 1
+	if lead < 224: return 2
+	if lead < 240: return 3
+
+	return 4
+
+// A stream of the text's scalars, each as a one-scalar String. Unlike `get(index)`,
+// which walks from the start every time, the stream decodes the next scalar where it
+// stopped, so scanning long non-ASCII text is linear.
+export fn scalars(text: String) ReadStream[String]:
+	return ReadStream[String](ScalarSource(text.to_bytes(), 0))
