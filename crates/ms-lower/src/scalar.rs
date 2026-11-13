@@ -170,6 +170,18 @@ impl FnLower<'_> {
         }))
     }
 
+    /// The scalar count of the borrowed string `text`: its byte length when it is known to be
+    /// ASCII (read inline by the backends), else the runtime's count.
+    pub(crate) fn scalar_len(&mut self, text: Value) -> Result<Value, Error> {
+        let known = self.b.str_ascii_len(text);
+        let zero = self.b.iconst(0);
+        let hit = self.b.icmp(Cc::Ge, known, zero);
+        let n = self.two_ways(hit, MTy::INT, &mut |_| Ok(Some(known)), &mut |s| {
+            Ok(Some(s.b.str_len(text)))
+        })?;
+        Ok(n.v)
+    }
+
     /// Whether the local `uid` may stay a code point: every use compares it.
     pub(crate) fn scalar_eligible(&self, b: &ms_check::api::types::BindingRef) -> bool {
         !b.mutable

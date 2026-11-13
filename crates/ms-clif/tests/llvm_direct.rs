@@ -142,6 +142,11 @@ b0:
     )
 }
 
+/// The `str.ascii_len` of `text`.
+fn ascii_len_program(text: &str) -> String {
+    string_program("str.ascii_len", text, 0).replace("%s, %i !0:2:1", "%s !0:2:1")
+}
+
 fn string_bytes() {
     let long = "abcdefghijklmnopqrstu";
     // An inline string holds its bytes in its words; a longer one is read from memory.
@@ -168,6 +173,14 @@ fn string_bytes() {
     check(
         "direct_ascii_none",
         &string_program("str.ascii_at", long, 9),
+        67,
+        &["get"],
+    );
+    // `str.ascii_len` answers -1 (exit code 67) for a long literal, which is neither inline nor
+    // flagged; the inline cases are covered by a built program in the conformance corpus.
+    check(
+        "direct_ascii_len_heap",
+        &ascii_len_program(long),
         67,
         &["get"],
     );

@@ -30,6 +30,7 @@ fn handles(op: Op) -> bool {
             Op::StrLit
                 | Op::StrByte
                 | Op::StrAsciiAt
+                | Op::StrAsciiLen
                 | Op::StrLen
                 | Op::ListNew
                 | Op::ListLit
@@ -198,6 +199,7 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         Op::ListRelease => list_release(cx, inst, vals, b),
         Op::ListConst => list_const(cx, inst, vals, b),
         Op::StrLen => str_len(cx, inst, vals, b),
+        Op::StrAsciiLen => str_ascii_len(inst, vals, b),
         _ => list_access(cx, inst, vals, b),
     }
 }
@@ -653,6 +655,33 @@ fn str_len(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     let addr = b.ptr_to_int(&slot);
     b.name_next(out);
     b.call(&LTy::I64, "", "msrt_string_length", &[(addr, "")]);
+}
+
+/// `StrAsciiLen`: the byte length of an inline string whose bytes are all below 0x80 or of a string
+/// flagged ASCII, else -1 (the caller then asks the runtime for the scalar count).
+fn str_ascii_len(inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
+    use ms_rt_abi::{STR_ASCII, STR_INLINE, STR_INLINE_LEN_SHIFT, STR_INLINE_MAX, STR_LEN_MASK};
+    let s = &vals[&inst.args[0].index()];
+    let out = &vals[&inst.res.expect("string length result").index()][0];
+    let int = |v: u64| Val::int(v as i64);
+    // Inline: the top two bits are `01`; the two words' bytes, without the length byte, are all
+    // below 0x80.
+    let tag = b.bin(Bin::And, &s[1], &int(3u64 << 62));
+    let inline = b.icmp("eq", &tag, &int(STR_INLINE as u64));
+    let high0 = b.bin(Bin::And, &s[0], &int(0x8080_8080_8080_8080));
+    let high1 = b.bin(Bin::And, &s[1], &int(0x0080_8080_8080_8080));
+    let high = b.bin(Bin::Or, &high0, &high1);
+    let low = b.icmp("eq", &high, &Val::int(0));
+    let shifted = b.bin(Bin::LShr, &s[1], &Val::int(i64::from(STR_INLINE_LEN_SHIFT)));
+    let inline_len = b.bin(Bin::And, &shifted, &int(STR_INLINE_MAX as u64));
+    let inline_len = b.select(&low, &inline_len, &Val::int(-1));
+    // Flagged: the ASCII bit set and the inline bit clear.
+    let flags = b.bin(Bin::And, &s[1], &int((STR_INLINE | STR_ASCII) as u64));
+    let flagged = b.icmp("eq", &flags, &int(STR_ASCII as u64));
+    let len = b.bin(Bin::And, &s[1], &int(STR_LEN_MASK as u64));
+    let other = b.select(&flagged, &len, &Val::int(-1));
+    b.name_next(out);
+    b.select(&inline, &inline_len, &other);
 }
 
 /// The module-level constants for the string literals `f` uses: LLVM owns the bytes, so it knows

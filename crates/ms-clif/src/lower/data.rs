@@ -399,6 +399,30 @@ impl<'a, 'm> Lower<'a, 'm> {
                 self.b.switch_to_block(join);
                 vec![self.b.block_params(join)[0]]
             }
+            Op::StrAsciiLen => {
+                // The byte length of an inline string with no byte at or above 0x80, or of a
+                // string flagged ASCII; else -1.
+                let s = self.a(inst, 0);
+                let (miss, zero) = (self.iconst(-1), self.iconst(0));
+                let tag = self.b.ins().ushr_imm_u(s[1], 62);
+                let inline = self.b.ins().icmp_imm_s(IntCC::Equal, tag, 1);
+                let high0 = self
+                    .b
+                    .ins()
+                    .band_imm_s(s[0], 0x8080_8080_8080_8080u64 as i64);
+                let high1 = self.b.ins().band_imm_s(s[1], 0x0080_8080_8080_8080);
+                let high = self.b.ins().bor(high0, high1);
+                let low = self.b.ins().icmp(IntCC::Equal, high, zero);
+                let shifted = self.b.ins().ushr_imm_u(s[1], STR_INLINE_LEN_SHIFT as i64);
+                let inline_len = self.b.ins().band_imm_s(shifted, STR_INLINE_MAX as i64);
+                let inline_len = self.b.ins().select(low, inline_len, miss);
+                let flag = self.b.ins().ushr_imm_u(s[1], 61);
+                let flag = self.b.ins().band_imm_s(flag, 3);
+                let flagged = self.b.ins().icmp_imm_s(IntCC::Equal, flag, 1);
+                let len = self.b.ins().band_imm_s(s[1], STR_LEN_MASK as i64);
+                let other = self.b.ins().select(flagged, len, miss);
+                vec![self.b.ins().select(inline, inline_len, other)]
+            }
             Op::StrAscii => {
                 let b = self.a(inst, 0)[0];
                 let d = self.g.rt_data("msrt_ascii_chars");
