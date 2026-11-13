@@ -26,4 +26,10 @@ Apply when: adding ops to the direct emitter, or changing how it passes records 
 - `cg::direct_plan` makes the glue and vtable symbols before emission, since only the generator can declare glue. It also decides which closures and borrowed interface boxes live in the frame; the analyses are shared with the Cranelift lowering (`lower::framed_closure_objects`, `framed_iface_borrows`).
 - A runtime call passes leaves where the value passes directly and the address of a copy otherwise, with a hidden last result pointer. C shims, `MapNew`, `CleanupDiscard` and `var` parameters fall back. A runtime function's `declare` is first-wins across the unit: a call whose types differ from it (`ptr` against `i64`) is legal IR and the same ABI.
 - An area's `emit` also runs for ops its `pre` answered; it must do nothing for them. An interface's two words are `i64` leaves, so `iface.data` is an `inttoptr`.
-- A hand-written MIR test only gets a direct function when the function owns nothing: the verifier wants owned values dropped and drops are not emitted directly yet.
+- A hand-written MIR test must satisfy the verifier: every owned value is dropped or returned.
+
+## Indirect records (`Error`)
+
+- An indirect record is one `ptr` to a heap block named `ms.rec.<Name>.block`: its fields' leaves in order, with a map or set field as one nullable `ptr` to a seven-word header (null is the empty value, exactly as `Layouts::rec_block` and the Cranelift path write it; both paths share live `Error` values, so the layout must not drift). Field reads are typed GEPs plus loads (`records.rs`).
+- Branching inside an instruction (a null header) needs `Area.splits`, which now sees the instruction: `RecNew` splits once per boxed field, a boxed `RecGet` and `PtrField` once.
+- Done: type, `RecNew`, `RecGet`, `PtrField`. `RecSet`, `RecFill` and `RecRelease` still fall back: they need the glue area's `drop_value` for the old fields. `RecNew` and the boxed paths are checked only by reading and by `opt` verify on a hacked build; they cannot run end to end until the maps area and the optionals area (an `Error` is built with `kind: String?` and a `Map`) land, so rerun the `Error` programs under `MS_LLVM_DIRECT=0/1` when they do.

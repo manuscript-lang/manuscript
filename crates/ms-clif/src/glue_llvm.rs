@@ -5,7 +5,7 @@
 //! it covers (strings, lists, plain records, optionals); every other glue keeps the old path.
 
 use crate::cg::{Gen, Glue};
-use crate::layout::{Leaf, mem_layout};
+use crate::layout::{Layouts, Leaf, mem_layout};
 use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Types, Val};
 use crate::mir_llvm::Emitted;
 use ms_mir::types::{Ty, TyKind};
@@ -65,6 +65,538 @@ pub fn supports(g: &Gen, kind: Glue, ty: Ty) -> bool {
     }
 }
 
+/// How a value of one type is cloned or dropped.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum OwnKind {
+    /// Plain data: the copy is the value and there is nothing to drop.
+    Identity,
+    /// A string: static and inline ones copy bitwise and own nothing; the others go through
+    /// the runtime.
+    Str,
+    /// A closure or an object with a clone entry in its header.
+    Obj,
+    /// The `Clone` or `Drop` glue function of the type.
+    Glue,
+}
+
+/// Whether a value of `ty` is a pointer to an object with a header (a closure or a native
+/// object other than a map or set), or an optional of one.
+pub fn is_obj_like(lay: &Layouts, ty: Ty) -> bool {
+    match lay.m.types.kind(ty) {
+        TyKind::Fn(..) => true,
+        TyKind::Obj(n, _) => !n.is_map_or_set(),
+        TyKind::Opt(inner) => lay.opt_is_nullable(*inner) && !lay.opt_is_boxed(*inner),
+        _ => false,
+    }
+}
+
+pub fn own_kind(lay: &Layouts, ty: Ty) -> OwnKind {
+    if !lay.m.needs_drop(ty) {
+        OwnKind::Identity
+    } else if lay.is_str_like(ty) {
+        OwnKind::Str
+    } else if is_obj_like(lay, ty) {
+        OwnKind::Obj
+    } else {
+        OwnKind::Glue
+    }
+}
+
+/// Clones the string `vs` (pointer, tagged capacity) from the current block, which is `pre`:
+/// a static (`10`) or inline (`01`) string is the same value, any other is copied by the
+/// runtime in block `dup`. Ends in block `join` with the two leaves as phis, named `out` when
+/// given.
+pub fn clone_str(
+    b: &mut FnBuilder,
+    decls: &mut Vec<(String, String)>,
+    (pre, dup, join): (&str, &str, &str),
+    vs: &[Val],
+    out: Option<&[Val]>,
+) -> Vs {
+    decls.push((
+        "msrt_str_copy".into(),
+        "declare void @\"msrt_str_copy\"(i64, i64, i64) nounwind".into(),
+    ));
+    let tag = b.bin(Bin::LShr, &vs[1], &Val::int(62));
+    let tag = b.bin(Bin::Sub, &tag, &Val::int(1));
+    let shared = b.icmp("ult", &tag, &Val::int(2));
+    b.cond_br(&shared, join, dup);
+    b.label(dup);
+    let slot = b.alloca(&LTy::Array(Box::new(LTy::I64), 2));
+    let at = b.ptrtoint(&slot);
+    b.call(
+        &LTy::Void,
+        "",
+        "msrt_str_copy",
+        &[(vs[0].clone(), ""), (vs[1].clone(), ""), (at, "")],
+    );
+    let c0 = b.load(&LTy::I64, &slot, 8);
+    let hi = b.gep_bytes(&slot, 8);
+    let c1 = b.load(&LTy::I64, &hi, 8);
+    b.br(join);
+    b.label(join);
+    [c0, c1]
+        .into_iter()
+        .enumerate()
+        .map(|(i, c)| {
+            let p = match out {
+                Some(o) => o[i].clone(),
+                None => b.reserve(LTy::I64),
+            };
+            b.phi(
+                &p,
+                &[(vs[i].clone(), pre.to_string()), (c, dup.to_string())],
+            );
+            p
+        })
+        .collect()
+}
+
+// ---- native calling convention ---------------------------------------------------------------
+//
+// Glue is internal to the LLVM module. Its native entry `@"sym.n"` takes a value of at most 16
+// bytes in registers and a larger one by pointer: a moved value as `ptr nonnull nocapture noalias`,
+// a borrowed one as `ptr nonnull readonly nocapture`, a result as a hidden `sret` first parameter.
+// `@"sym"` keeps the leaf signature the runtime, descriptors and translated code call, and
+// forwards to the native entry, so direct callers inline the body. (`proposals/mir-to-llvm-direct.md`,
+// "Calling convention"; this is the one place that knows it for glue.)
+
+/// The native entry's symbol for glue `sym`.
+pub fn native(sym: &str) -> String {
+    format!("{sym}.n")
+}
+
+/// The symbol a direct caller calls for glue `sym` of `kind` over `ty`: the native entry when it
+/// is emitted directly, else the leaf symbol of the Cranelift lowering.
+pub fn target(g: &Gen, kind: Glue, ty: Ty, sym: String) -> String {
+    if supports(g, kind, ty) {
+        native(&sym)
+    } else {
+        sym
+    }
+}
+
+/// The glue symbol a native entry belongs to, or `None` for a leaf symbol.
+pub fn unnative(sym: &str) -> Option<&str> {
+    sym.strip_suffix(".n")
+}
+
+/// The type of a value of `leaves` in memory: a literal struct of the leaves' memory types, laid
+/// out like [`mem_layout`].
+fn slot_ty(leaves: &[Leaf]) -> LTy {
+    LTy::Tuple(leaves.iter().map(|l| mem(*l)).collect())
+}
+
+/// Whether a value of `leaves` travels by pointer.
+fn indirect(leaves: &[Leaf]) -> bool {
+    mem_layout(leaves).size > 16
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Mode {
+    /// Read-only for the call.
+    Borrow,
+    /// Owned by the callee, which may drop and overwrite it.
+    Move,
+}
+
+/// Attributes (leading space) of a pointer to a value of `leaves`.
+fn ptr_attrs(mode: Mode, leaves: &[Leaf]) -> String {
+    let lay = mem_layout(leaves);
+    let own = match mode {
+        Mode::Borrow => "readonly nocapture",
+        Mode::Move => "nocapture noalias",
+    };
+    let deref = if lay.size > 0 {
+        format!(" dereferenceable({})", lay.size)
+    } else {
+        String::new()
+    };
+    format!(" noundef nonnull {own} align {}{deref}", lay.align)
+}
+
+/// The hidden result pointer of a value of `leaves`.
+fn sret_attrs(leaves: &[Leaf]) -> String {
+    let lay = mem_layout(leaves);
+    format!(
+        " sret({}) noundef nonnull nocapture noalias align {} dereferenceable({})",
+        Types::default().text(&slot_ty(leaves)),
+        lay.align,
+        lay.size
+    )
+}
+
+/// A parameter: its type and the attributes after it (leading space).
+struct P {
+    ty: LTy,
+    attrs: String,
+}
+
+/// A native signature.
+struct Sig {
+    params: Vec<P>,
+    ret: LTy,
+    ret_attr: &'static str,
+}
+
+impl Sig {
+    fn formals(&self, named: bool) -> String {
+        let t = Types::default();
+        self.params
+            .iter()
+            .enumerate()
+            .map(|(i, p)| {
+                let name = if named {
+                    format!(" %a{i}")
+                } else {
+                    String::new()
+                };
+                format!("{}{}{name}", t.text(&p.ty), p.attrs)
+            })
+            .collect::<Vec<_>>()
+            .join(", ")
+    }
+
+    fn ret_text(&self) -> String {
+        format!("{}{}", self.ret_attr, Types::default().text(&self.ret))
+    }
+
+    fn declare(&self, sym: &str) -> (String, String) {
+        (
+            sym.to_string(),
+            format!(
+                "declare {} @\"{sym}\"({})",
+                self.ret_text(),
+                self.formals(false)
+            ),
+        )
+    }
+}
+
+fn reg_params(leaves: &[Leaf]) -> Vec<P> {
+    leaves
+        .iter()
+        .map(|l| P {
+            ty: reg(*l),
+            attrs: attr(*l).to_string(),
+        })
+        .collect()
+}
+
+/// The result type of `leaves` in registers: nothing, the leaf, or a pair.
+fn reg_ret(leaves: &[Leaf]) -> (LTy, &'static str) {
+    match leaves {
+        [] => (LTy::Void, ""),
+        [l] => (reg(*l), if attr(*l).is_empty() { "" } else { "zeroext " }),
+        ls => (LTy::Tuple(ls.iter().map(|l| reg(*l)).collect()), ""),
+    }
+}
+
+fn drop_sig(leaves: &[Leaf]) -> Sig {
+    let params = if indirect(leaves) {
+        vec![P {
+            ty: LTy::Ptr,
+            attrs: ptr_attrs(Mode::Move, leaves),
+        }]
+    } else {
+        reg_params(leaves)
+    };
+    Sig {
+        params,
+        ret: LTy::Void,
+        ret_attr: "",
+    }
+}
+
+fn clone_sig(leaves: &[Leaf]) -> Sig {
+    if !indirect(leaves) {
+        let (ret, ret_attr) = reg_ret(leaves);
+        return Sig {
+            params: reg_params(leaves),
+            ret,
+            ret_attr,
+        };
+    }
+    Sig {
+        params: vec![
+            P {
+                ty: LTy::Ptr,
+                attrs: sret_attrs(leaves),
+            },
+            P {
+                ty: LTy::Ptr,
+                attrs: ptr_attrs(Mode::Borrow, leaves),
+            },
+        ],
+        ret: LTy::Void,
+        ret_attr: "",
+    }
+}
+
+/// The native signature of glue `kind` over a value of `leaves`.
+fn native_sig(kind: Glue, leaves: &[Leaf]) -> Sig {
+    let ptr = |mode| P {
+        ty: LTy::Ptr,
+        attrs: ptr_attrs(mode, leaves),
+    };
+    let void = |params| Sig {
+        params,
+        ret: LTy::Void,
+        ret_attr: "",
+    };
+    match kind {
+        Glue::Drop => drop_sig(leaves),
+        Glue::Clone => clone_sig(leaves),
+        Glue::SlotDrop | Glue::BlockDrop => void(vec![ptr(Mode::Move)]),
+        Glue::SlotCopy => void(vec![
+            ptr(Mode::Borrow),
+            P {
+                ty: LTy::Ptr,
+                attrs: format!(
+                    " noundef nonnull nocapture noalias writeonly align {}",
+                    mem_layout(leaves).align
+                ),
+            },
+        ]),
+        Glue::BlockClone => Sig {
+            params: vec![ptr(Mode::Borrow)],
+            ret: LTy::Ptr,
+            ret_attr: "noalias ",
+        },
+        Glue::CleanupThunk(_) => void(vec![P {
+            ty: LTy::Ptr,
+            attrs: " noundef nonnull nocapture".into(),
+        }]),
+        _ => unreachable!("supports rejects other glue"),
+    }
+}
+
+/// The leaf signature of glue `kind` (what `@"sym"` has).
+fn leaf_sig(kind: Glue, leaves: &[Leaf]) -> Sig {
+    let word = |n: usize| {
+        (0..n)
+            .map(|_| P {
+                ty: LTy::I64,
+                attrs: String::new(),
+            })
+            .collect::<Vec<_>>()
+    };
+    let void = |params| Sig {
+        params,
+        ret: LTy::Void,
+        ret_attr: "",
+    };
+    match kind {
+        Glue::Drop => void(reg_params(leaves)),
+        Glue::Clone => {
+            let (ret, ret_attr) = reg_ret(leaves);
+            Sig {
+                params: reg_params(leaves),
+                ret,
+                ret_attr,
+            }
+        }
+        Glue::BlockClone => Sig {
+            params: word(1),
+            ret: LTy::I64,
+            ret_attr: "",
+        },
+        Glue::SlotCopy => void(word(2)),
+        _ => void(word(1)),
+    }
+}
+
+/// Loads the leaves stored at `p`, a `ptr` to a [`slot_ty`] value. A given name is the one the
+/// leaf's final instruction defines.
+fn load_leaves(b: &mut FnBuilder, p: &Val, leaves: &[Leaf], names: Option<&[Val]>) -> Vs {
+    let ty = slot_ty(leaves);
+    let mut out = Vec::new();
+    for (k, l) in leaves.iter().enumerate() {
+        let at = b.field_ptr(&ty, p, k);
+        let packed = !matches!(l, Leaf::I64 | Leaf::F64 | Leaf::F32 | Leaf::I8);
+        if !packed && let Some(n) = names {
+            b.name_next(&n[k]);
+        }
+        let v = b.load(&mem(*l), &at, l.size() as u64);
+        out.push(match l {
+            Leaf::N8 | Leaf::N16 | Leaf::N32 | Leaf::U8 | Leaf::U16 | Leaf::U32 => {
+                if let Some(n) = names {
+                    b.name_next(&n[k]);
+                }
+                if matches!(l, Leaf::N8 | Leaf::N16 | Leaf::N32) {
+                    b.sext(&v, LTy::I64)
+                } else {
+                    b.zext(&v, LTy::I64)
+                }
+            }
+            _ => v,
+        });
+    }
+    out
+}
+
+/// Stores `vs` as a [`slot_ty`] value at `p`.
+fn store_leaves(b: &mut FnBuilder, p: &Val, leaves: &[Leaf], vs: &[Val]) {
+    let ty = slot_ty(leaves);
+    for (k, l) in leaves.iter().enumerate() {
+        let at = b.field_ptr(&ty, p, k);
+        let v = match l {
+            Leaf::N8 | Leaf::N16 | Leaf::N32 | Leaf::U8 | Leaf::U16 | Leaf::U32 => {
+                b.trunc(&vs[k], mem(*l))
+            }
+            _ => vs[k].clone(),
+        };
+        b.store(&v, &at, l.size() as u64);
+    }
+}
+
+fn reg_args(vs: &[Val], leaves: &[Leaf]) -> Vec<(Val, &'static str)> {
+    vs.iter()
+        .zip(leaves)
+        .map(|(v, l)| (v.clone(), attr(*l)))
+        .collect()
+}
+
+/// How a function calls glue: a value in memory, passed by pointer (a clone also writes through a
+/// result pointer), or its leaves in registers.
+pub enum GlueCall {
+    Memory(String),
+    Regs(String),
+}
+
+/// Declares the drop glue `target` for a value of `ty` and says how to call it.
+pub fn drop_callee(
+    lay: &Layouts,
+    ty: Ty,
+    target: &str,
+    decls: &mut Vec<(String, String)>,
+) -> GlueCall {
+    let leaves = lay.leaves(ty);
+    match unnative(target) {
+        Some(sym) => {
+            let n = native(sym);
+            decls.push(drop_sig(&leaves).declare(&n));
+            if indirect(&leaves) {
+                GlueCall::Memory(n)
+            } else {
+                GlueCall::Regs(n)
+            }
+        }
+        None => {
+            decls.push(leaf_sig(Glue::Drop, &leaves).declare(target));
+            GlueCall::Regs(target.to_string())
+        }
+    }
+}
+
+/// Declares the clone glue `target` for a value of `ty` and says how to call it.
+pub fn clone_callee(
+    lay: &Layouts,
+    ty: Ty,
+    target: &str,
+    decls: &mut Vec<(String, String)>,
+) -> GlueCall {
+    let leaves = lay.leaves(ty);
+    match unnative(target) {
+        Some(sym) => {
+            let n = native(sym);
+            decls.push(clone_sig(&leaves).declare(&n));
+            if indirect(&leaves) {
+                GlueCall::Memory(n)
+            } else {
+                GlueCall::Regs(n)
+            }
+        }
+        None => {
+            decls.push(leaf_sig(Glue::Clone, &leaves).declare(target));
+            GlueCall::Regs(target.to_string())
+        }
+    }
+}
+
+/// Calls drop glue `target` (see [`target`]) on the value `vs` of type `ty`.
+pub fn call_drop(
+    b: &mut FnBuilder,
+    decls: &mut Vec<(String, String)>,
+    lay: &Layouts,
+    target: &str,
+    ty: Ty,
+    vs: &[Val],
+) {
+    let leaves = lay.leaves(ty);
+    let Some(sym) = unnative(target) else {
+        decls.push(leaf_sig(Glue::Drop, &leaves).declare(target));
+        b.call(&LTy::Void, "", target, &reg_args(vs, &leaves));
+        return;
+    };
+    let n = native(sym);
+    decls.push(drop_sig(&leaves).declare(&n));
+    if indirect(&leaves) {
+        let slot = b.alloca(&slot_ty(&leaves));
+        store_leaves(b, &slot, &leaves, vs);
+        b.call(&LTy::Void, "", &n, &[(slot, "")]);
+    } else {
+        b.call(&LTy::Void, "", &n, &reg_args(vs, &leaves));
+    }
+}
+
+/// Calls clone glue `target` (see [`target`]) on the value `vs` of type `ty`; the leaves of the
+/// copy are named `names` when given.
+pub fn call_clone(
+    b: &mut FnBuilder,
+    decls: &mut Vec<(String, String)>,
+    lay: &Layouts,
+    target: &str,
+    ty: Ty,
+    vs: &[Val],
+    names: Option<&[Val]>,
+) -> Vs {
+    let leaves = lay.leaves(ty);
+    let (n, native_call) = match unnative(target) {
+        Some(sym) => (native(sym), true),
+        None => (target.to_string(), false),
+    };
+    // The leaf symbol of glue that falls back to the translation returns its leaves in registers
+    // whatever their size.
+    let sig = if native_call {
+        clone_sig(&leaves)
+    } else {
+        leaf_sig(Glue::Clone, &leaves)
+    };
+    decls.push(sig.declare(&n));
+    if native_call && indirect(&leaves) {
+        let (src, dst) = (b.alloca(&slot_ty(&leaves)), b.alloca(&slot_ty(&leaves)));
+        store_leaves(b, &src, &leaves, vs);
+        b.call(&LTy::Void, "", &n, &[(dst.clone(), ""), (src, "")]);
+        return load_leaves(b, &dst, &leaves, names);
+    }
+    // Registers, or the leaf symbol, whose clone signature is the same.
+    let args = reg_args(vs, &leaves);
+    match leaves.as_slice() {
+        [] => {
+            b.call(&LTy::Void, "", &n, &args);
+            vec![]
+        }
+        [_] => {
+            if let Some(n0) = names {
+                b.name_next(&n0[0]);
+            }
+            vec![b.call(&sig.ret, sig.ret_attr, &n, &args).expect("result")]
+        }
+        _ => {
+            let t = b.call(&sig.ret, "", &n, &args).expect("a tuple");
+            (0..leaves.len())
+                .map(|k| {
+                    if let Some(n0) = names {
+                        b.name_next(&n0[k]);
+                    }
+                    b.extract(&t, k)
+                })
+                .collect()
+        }
+    }
+}
+
 struct E<'a, 'm, 't> {
     g: &'a mut Gen<'m>,
     b: FnBuilder<'t>,
@@ -104,7 +636,7 @@ impl E<'_, '_, '_> {
     fn declare(&mut self, name: &str, ret: &str, params: &str) {
         self.decls.push((
             name.to_string(),
-            format!("declare {ret} @\"{name}\"({params})"),
+            format!("declare {ret} @\"{name}\"({params}) nounwind"),
         ));
     }
 
@@ -121,162 +653,110 @@ impl E<'_, '_, '_> {
         self.rt("msrt_free", &[p], false);
     }
 
-    /// A fresh block of `size` bytes, as an address.
+    /// A fresh block of `size` bytes.
     fn alloc(&mut self, size: &Val) -> Val {
         self.declare("msrt_alloc", "noalias align 16 ptr", "i64");
-        let p = self
-            .b
+        self.b
             .call(
                 &LTy::Ptr,
                 "noalias align 16 ",
                 "msrt_alloc",
                 &[(size.clone(), "")],
             )
-            .expect("result");
-        self.b.ptrtoint(&p)
+            .expect("result")
     }
 
-    fn load_leaves(&mut self, base: &Val, off: u64, leaves: &[Leaf]) -> Vs {
-        let lay = mem_layout(leaves);
-        let p = self.b.inttoptr(base);
-        leaves
-            .iter()
-            .enumerate()
-            .map(|(k, l)| {
-                let at = self.b.gep_bytes(&p, off + lay.offsets[k] as u64);
-                let v = self.b.load(&mem(*l), &at, l.size() as u64);
-                match l {
-                    Leaf::N8 | Leaf::N16 | Leaf::N32 => self.b.sext(&v, LTy::I64),
-                    Leaf::U8 | Leaf::U16 | Leaf::U32 => self.b.zext(&v, LTy::I64),
-                    _ => v,
-                }
-            })
-            .collect()
+    fn ptr_of(&mut self, addr: &Val) -> Val {
+        self.b.inttoptr(addr)
     }
 
-    fn store_leaves(&mut self, base: &Val, off: u64, leaves: &[Leaf], vs: &[Val]) {
-        let lay = mem_layout(leaves);
-        let p = self.b.inttoptr(base);
-        for (k, l) in leaves.iter().enumerate() {
-            let at = self.b.gep_bytes(&p, off + lay.offsets[k] as u64);
-            let v = match l {
-                Leaf::N8 | Leaf::N16 | Leaf::N32 | Leaf::U8 | Leaf::U16 | Leaf::U32 => {
-                    self.b.trunc(&vs[k], mem(*l))
-                }
-                _ => vs[k].clone(),
-            };
-            self.b.store(&v, &at, l.size() as u64);
-        }
-    }
-
-    /// Calls the function `sym` taking `params` and returning `rets` leaves.
-    fn call_leaves(&mut self, sym: &str, params: &[Leaf], rets: &[Leaf], args: &[Val]) -> Vs {
-        let formals: Vec<String> = params
-            .iter()
-            .map(|l| format!("{}{}", self.types_text(&reg(*l)), attr(*l)))
-            .collect();
-        let rty: Vec<LTy> = rets.iter().map(|l| reg(*l)).collect();
-        let (ret_text, ret_attr) = match rets {
-            [] => ("void".to_string(), ""),
-            [l] => (
-                self.types_text(&reg(*l)),
-                if attr(*l).is_empty() { "" } else { "zeroext " },
-            ),
-            _ => (self.b.agg(&rty), ""),
-        };
-        self.declare(sym, &format!("{ret_attr}{ret_text}"), &formals.join(", "));
-        let a: Vec<(Val, &str)> = args
-            .iter()
-            .zip(params)
-            .map(|(v, l)| (v.clone(), attr(*l)))
-            .collect();
-        match rets {
-            [] => {
-                self.b.call(&LTy::Void, "", sym, &a);
-                vec![]
-            }
-            [_] => vec![self.b.call(&rty[0], ret_attr, sym, &a).expect("result")],
-            _ => self.b.call_multi(&rty, sym, &a),
-        }
-    }
-
-    fn types_text(&self, t: &LTy) -> String {
-        Types::default().text(t)
-    }
-
+    /// The symbol to call for glue `kind` of `ty`.
     fn glue_sym(&mut self, kind: Glue, ty: Ty) -> String {
         let id = self.g.glue(kind, ty);
-        crate::cg::symbol_of(self.g, id)
-    }
-
-    fn is_obj_like(&self, ty: Ty) -> bool {
-        match self.g.m.types.kind(ty) {
-            TyKind::Fn(..) => true,
-            TyKind::Obj(n, _) => !n.is_map_or_set(),
-            TyKind::Opt(inner) => {
-                self.g.lay.opt_is_nullable(*inner) && !self.g.lay.opt_is_boxed(*inner)
-            }
-            _ => false,
-        }
+        let sym = crate::cg::symbol_of(self.g, id);
+        target(self.g, kind, ty, sym)
     }
 
     fn drop_value(&mut self, ty: Ty, vs: &[Val]) {
-        if !self.g.m.needs_drop(ty) {
-            return;
+        match own_kind(&self.g.lay, ty) {
+            OwnKind::Identity => {}
+            OwnKind::Str => {
+                // Only an owned string (tag `00`) frees anything.
+                let owned = self.b.icmp("ult", &vs[1], &Val::int(STR_INLINE as i64));
+                self.if_then(&owned, |s| {
+                    s.rt("msrt_str_free", &[&vs[0]], false);
+                });
+            }
+            OwnKind::Obj => {
+                self.rt("msrt_obj_drop", &[&vs[0]], false);
+            }
+            OwnKind::Glue => {
+                let sym = self.glue_sym(Glue::Drop, ty);
+                call_drop(&mut self.b, &mut self.decls, &self.g.lay, &sym, ty, vs);
+            }
         }
-        if self.g.lay.is_str_like(ty) {
-            // Only an owned string (tag `00`) frees anything.
-            let owned = self.b.icmp("ult", &vs[1], &Val::int(STR_INLINE as i64));
-            self.if_then(&owned, |s| {
-                s.rt("msrt_str_free", &[&vs[0]], false);
-            });
-        } else if self.is_obj_like(ty) {
-            self.rt("msrt_obj_drop", &[&vs[0]], false);
-        } else {
-            let sym = self.glue_sym(Glue::Drop, ty);
-            let leaves = self.g.lay.leaves(ty);
-            self.call_leaves(&sym, &leaves, &[], vs);
+    }
+
+    /// Drops the value of type `ty` stored at `p`, in place when it travels by pointer.
+    fn drop_at(&mut self, ty: Ty, p: &Val) {
+        let leaves = self.g.lay.leaves(ty);
+        let sym = (own_kind(&self.g.lay, ty) == OwnKind::Glue && indirect(&leaves))
+            .then(|| self.glue_sym(Glue::Drop, ty))
+            .filter(|s| unnative(s).is_some());
+        if let Some(sym) = sym {
+            self.decls.push(drop_sig(&leaves).declare(&sym));
+            self.b.call(&LTy::Void, "", &sym, &[(p.clone(), "")]);
+        } else if own_kind(&self.g.lay, ty) != OwnKind::Identity {
+            let vs = load_leaves(&mut self.b, p, &leaves, None);
+            self.drop_value(ty, &vs);
         }
     }
 
     fn clone_value(&mut self, ty: Ty, vs: &[Val]) -> Vs {
-        if !self.g.m.needs_drop(ty) {
-            return vs.to_vec();
+        match own_kind(&self.g.lay, ty) {
+            OwnKind::Identity => vs.to_vec(),
+            OwnKind::Str => {
+                let (pre, dup, join) = (self.cur.clone(), self.fresh("d"), self.fresh("j"));
+                let out = clone_str(&mut self.b, &mut self.decls, (&pre, &dup, &join), vs, None);
+                self.cur = join;
+                out
+            }
+            OwnKind::Obj => vec![self.rt("msrt_obj_clone", &[&vs[0]], true).expect("result")],
+            OwnKind::Glue => {
+                let sym = self.glue_sym(Glue::Clone, ty);
+                call_clone(
+                    &mut self.b,
+                    &mut self.decls,
+                    &self.g.lay,
+                    &sym,
+                    ty,
+                    vs,
+                    None,
+                )
+            }
         }
-        if self.g.lay.is_str_like(ty) {
-            // A static (`10`) or inline (`01`) string copies bitwise; an owned one or a view is
-            // duplicated.
-            let tag = self.b.bin(Bin::LShr, &vs[1], &Val::int(62));
-            let tag = self.b.bin(Bin::Sub, &tag, &Val::int(1));
-            let shared = self.b.icmp("ult", &tag, &Val::int(2));
-            let (pre, dup, join) = (self.cur.clone(), self.fresh("d"), self.fresh("j"));
-            self.b.cond_br(&shared, &join, &dup);
-            self.label(&dup);
-            let slot = self.b.alloca(&LTy::Array(Box::new(LTy::I64), 2));
-            let out = self.b.ptrtoint(&slot);
-            self.rt("msrt_str_copy", &[&vs[0], &vs[1], &out], false);
-            let c0 = self.b.load(&LTy::I64, &slot, 8);
-            let at = self.b.gep_bytes(&slot, 8);
-            let c1 = self.b.load(&LTy::I64, &at, 8);
-            self.br(&join);
-            let dup_end = self.cur.clone();
-            self.label(&join);
-            return [(0, c0), (1, c1)]
-                .into_iter()
-                .map(|(i, c)| {
-                    let p = self.b.reserve(LTy::I64);
-                    self.b
-                        .phi(&p, &[(vs[i].clone(), pre.clone()), (c, dup_end.clone())]);
-                    p
-                })
-                .collect();
-        }
-        if self.is_obj_like(ty) {
-            return vec![self.rt("msrt_obj_clone", &[&vs[0]], true).expect("result")];
-        }
-        let sym = self.glue_sym(Glue::Clone, ty);
+    }
+
+    /// Stores a clone of the value of type `ty` at `src` into `dst`, building it in place when
+    /// it travels by pointer.
+    fn clone_at(&mut self, ty: Ty, src: &Val, dst: &Val) {
         let leaves = self.g.lay.leaves(ty);
-        self.call_leaves(&sym, &leaves, &leaves, vs)
+        let sym = (own_kind(&self.g.lay, ty) == OwnKind::Glue && indirect(&leaves))
+            .then(|| self.glue_sym(Glue::Clone, ty))
+            .filter(|s| unnative(s).is_some());
+        if let Some(sym) = sym {
+            self.decls.push(clone_sig(&leaves).declare(&sym));
+            self.b.call(
+                &LTy::Void,
+                "",
+                &sym,
+                &[(dst.clone(), ""), (src.clone(), "")],
+            );
+        } else {
+            let vs = load_leaves(&mut self.b, src, &leaves, None);
+            let out = self.clone_value(ty, &vs);
+            store_leaves(&mut self.b, dst, &leaves, &out);
+        }
     }
 
     /// The fields of a plain record: `(type, first leaf, width)`.
@@ -327,13 +807,11 @@ impl E<'_, '_, '_> {
     fn drop_list(&mut self, ty: Ty, ptr: &Val, len: &Val) {
         let m = self.g.m;
         if let Some(e) = m.list_elem(ty).filter(|e| m.needs_drop(*e)) {
-            let leaves = self.g.lay.leaves(e);
-            let size = mem_layout(&leaves).size as i64;
+            let et = slot_ty(&self.g.lay.leaves(e));
+            let base = self.ptr_of(ptr);
             self.count(len, |s, i| {
-                let off = s.b.bin(Bin::Mul, i, &Val::int(size));
-                let at = s.b.bin(Bin::Add, ptr, &off);
-                let ev = s.load_leaves(&at, 0, &leaves);
-                s.drop_value(e, &ev);
+                let at = s.b.elem_ptr(&et, &base, i);
+                s.drop_at(e, &at);
             });
         }
         let nn = self.test(ptr);
@@ -355,12 +833,11 @@ impl E<'_, '_, '_> {
                 }
             }
             TyKind::Opt(inner) if self.g.lay.opt_is_boxed(inner) => {
-                let leaves = self.g.lay.leaves(inner);
                 let nn = self.test(&vs[0]);
                 self.if_then(&nn, |s| {
+                    let p = s.ptr_of(&vs[0]);
                     if m.needs_drop(inner) {
-                        let payload = s.load_leaves(&vs[0], 0, &leaves);
-                        s.drop_value(inner, &payload);
+                        s.drop_at(inner, &p);
                     }
                     s.free(&vs[0]);
                 });
@@ -390,23 +867,19 @@ impl E<'_, '_, '_> {
         self.label(&some);
         let bytes = self.b.bin(Bin::Mul, len, &Val::int(size));
         let np = self.alloc(&bytes);
+        let src = self.ptr_of(ptr);
         match elem.filter(|e| m.needs_drop(*e)) {
-            None => {
-                let (d, s) = (self.b.inttoptr(&np), self.b.inttoptr(ptr));
-                self.b.memcpy((&d, align), (&s, align), &bytes);
-            }
+            None => self.b.memcpy((&np, align), (&src, align), &bytes),
             Some(e) => {
-                let leaves = leaves.expect("element");
+                let et = slot_ty(&leaves.expect("element"));
                 self.count(len, |s, i| {
-                    let off = s.b.bin(Bin::Mul, i, &Val::int(size));
-                    let src = s.b.bin(Bin::Add, ptr, &off);
-                    let dst = s.b.bin(Bin::Add, &np, &off);
-                    let ev = s.load_leaves(&src, 0, &leaves);
-                    let cv = s.clone_value(e, &ev);
-                    s.store_leaves(&dst, 0, &leaves, &cv);
+                    let from = s.b.elem_ptr(&et, &src, i);
+                    let to = s.b.elem_ptr(&et, &np, i);
+                    s.clone_at(e, &from, &to);
                 });
             }
         }
+        let np = self.b.ptrtoint(&np);
         self.br(&join);
         let end = self.cur.clone();
         self.label(&join);
@@ -434,10 +907,10 @@ impl E<'_, '_, '_> {
                 let nn = self.test(&vs[0]);
                 self.b.cond_br(&nn, &yes, &join);
                 self.label(&yes);
-                let payload = self.load_leaves(&vs[0], 0, &leaves);
-                let c = self.clone_value(inner, &payload);
+                let src = self.ptr_of(&vs[0]);
                 let q = self.alloc(&Val::int(size.max(1)));
-                self.store_leaves(&q, 0, &leaves, &c);
+                self.clone_at(inner, &src, &q);
+                let q = self.b.ptrtoint(&q);
                 self.br(&join);
                 let end = self.cur.clone();
                 self.label(&join);
@@ -472,73 +945,75 @@ impl E<'_, '_, '_> {
             _ => vs.to_vec(),
         }
     }
-
-    fn ret(&mut self, vs: &[Val]) {
-        match vs {
-            [] => self.b.ret(None),
-            [v] => self.b.ret(Some(v)),
-            _ => self.b.ret_multi(vs),
-        }
-    }
 }
 
-/// Emits the glue `kind` for `ty`, which `supports` accepted. `loc` is the function's
-/// `DILocation` node.
-pub fn emit(g: &mut Gen, kind: Glue, ty: Ty, loc: usize) -> Emitted {
-    let types = Types::default();
+/// Emits the glue `kind` for `ty`, which `supports` accepted, with its leaf thunk. `loc` is the
+/// `DILocation` node of each function.
+pub fn emit(g: &mut Gen, kind: Glue, ty: Ty, types: &Types, loc: usize) -> Emitted {
     let leaves = g.lay.leaves(ty);
-    let (params, rets): (Vec<Leaf>, Vec<Leaf>) = match kind {
-        Glue::Drop => (leaves.clone(), vec![]),
-        Glue::Clone => (leaves.clone(), leaves.clone()),
-        Glue::BlockClone => (vec![Leaf::I64], vec![Leaf::I64]),
-        Glue::SlotCopy => (vec![Leaf::I64; 2], vec![]),
-        _ => (vec![Leaf::I64], vec![]),
-    };
+    let sig = native_sig(kind, &leaves);
     let mut e = E {
         g,
-        b: FnBuilder::new(&types, Some(loc)),
+        b: FnBuilder::new(types, Some(loc)),
         cur: String::new(),
         n: 0,
         decls: Vec::new(),
     };
     e.label("entry");
-    let args: Vs = params
-        .iter()
-        .enumerate()
-        .map(|(i, l)| Val::new(format!("%a{i}"), reg(*l)))
-        .collect();
+    let a = |i: usize, t: LTy| Val::new(format!("%a{i}"), t);
+    // The value parameter as leaves: registers as they come, a pointer loaded.
+    let value = |e: &mut E, at: usize| -> Vs {
+        if indirect(&leaves) {
+            load_leaves(&mut e.b, &a(at, LTy::Ptr), &leaves, None)
+        } else {
+            leaves
+                .iter()
+                .enumerate()
+                .map(|(k, l)| a(at + k, reg(*l)))
+                .collect()
+        }
+    };
     match kind {
-        Glue::Drop => e.glue_drop(ty, &args),
+        Glue::Drop => {
+            let vs = value(&mut e, 0);
+            e.glue_drop(ty, &vs);
+            e.b.ret(None);
+        }
         Glue::Clone => {
-            let out = e.glue_copy(ty, &args);
-            e.ret(&out);
-            return finish(e, &types, &params, &rets);
+            let sret = indirect(&leaves);
+            let vs = value(&mut e, usize::from(sret));
+            let out = e.glue_copy(ty, &vs);
+            if sret {
+                store_leaves(&mut e.b, &a(0, LTy::Ptr), &leaves, &out);
+                e.b.ret(None);
+            } else {
+                match out.as_slice() {
+                    [] => e.b.ret(None),
+                    [one] => e.b.ret(Some(one)),
+                    many => e.b.ret_multi(many),
+                }
+            }
         }
         Glue::BlockDrop => {
-            if e.g.m.needs_drop(ty) {
-                let vs = e.load_leaves(&args[0], 0, &leaves);
-                e.drop_value(ty, &vs);
-            }
-            e.free(&args[0]);
+            let p = a(0, LTy::Ptr);
+            e.drop_at(ty, &p);
+            let addr = e.b.ptrtoint(&p);
+            e.free(&addr);
+            e.b.ret(None);
         }
         Glue::BlockClone => {
-            let vs = e.load_leaves(&args[0], 0, &leaves);
-            let c = e.clone_value(ty, &vs);
+            let src = a(0, LTy::Ptr);
             let blk = e.alloc(&Val::int(mem_layout(&leaves).size.max(1) as i64));
-            e.store_leaves(&blk, 0, &leaves, &c);
-            e.ret(&[blk]);
-            return finish(e, &types, &params, &rets);
+            e.clone_at(ty, &src, &blk);
+            e.b.ret(Some(&blk));
         }
         Glue::SlotDrop => {
-            if e.g.m.needs_drop(ty) {
-                let vs = e.load_leaves(&args[0], 0, &leaves);
-                e.drop_value(ty, &vs);
-            }
+            e.drop_at(ty, &a(0, LTy::Ptr));
+            e.b.ret(None);
         }
         Glue::SlotCopy => {
-            let vs = e.load_leaves(&args[0], 0, &leaves);
-            let out = e.clone_value(ty, &vs);
-            e.store_leaves(&args[1], 0, &leaves, &out);
+            e.clone_at(ty, &a(0, LTy::Ptr), &a(1, LTy::Ptr));
+            e.b.ret(None);
         }
         Glue::CleanupThunk(f) => {
             let fid = e.g.funcs[f as usize];
@@ -546,38 +1021,133 @@ pub fn emit(g: &mut Gen, kind: Glue, ty: Ty, loc: usize) -> Emitted {
             let pty = callee.params[0].ty;
             let (cp, cr) = (e.g.param_leaves(callee), e.g.lay.leaves(callee.ret));
             let pl = e.g.lay.leaves(pty);
-            let vs = e.load_leaves(&args[0], 0, &pl);
-            let sym = crate::cg::symbol_of(e.g, fid);
-            e.call_leaves(&sym, &cp, &cr, &vs);
+            let vs = load_leaves(&mut e.b, &a(0, LTy::Ptr), &pl, None);
+            let callee_sym = crate::cg::symbol_of(e.g, fid);
+            let formals = reg_params(&cp);
+            let (ret, ret_attr) = reg_ret(&cr);
+            let csig = Sig {
+                params: formals,
+                ret,
+                ret_attr,
+            };
+            e.decls.push(csig.declare(&callee_sym));
+            let call_args = reg_args(&vs, &cp);
+            match cr.as_slice() {
+                [] | [_] => {
+                    e.b.call(&csig.ret, csig.ret_attr, &callee_sym, &call_args);
+                }
+                _ => {
+                    e.b.call(&csig.ret, "", &callee_sym, &call_args);
+                }
+            }
+            e.b.ret(None);
         }
         _ => unreachable!("supports rejects other glue"),
     }
-    e.ret(&[]);
-    finish(e, &types, &params, &rets)
+    let (native_decls, native_body) = (e.decls, e.b.finish());
+    Emitted {
+        ret: sig.ret_text(),
+        params: sig.formals(true),
+        attrs: " nounwind".into(),
+        decls: native_decls,
+        data: Vec::new(),
+        body: native_body,
+    }
 }
 
-fn finish(e: E, types: &Types, params: &[Leaf], rets: &[Leaf]) -> Emitted {
-    let ret = match rets {
-        [] => "void".to_string(),
-        [l] => format!(
-            "{}{}",
-            if attr(*l).is_empty() { "" } else { "zeroext " },
-            types.text(&reg(*l))
-        ),
-        _ => e.b.agg(&rets.iter().map(|l| reg(*l)).collect::<Vec<_>>()),
-    };
-    let params = params
+/// `@"sym"` with the leaf signature, forwarding to `@"sym.n"`.
+pub fn thunk(g: &Gen, kind: Glue, ty: Ty, sym: &str, types: &Types, loc: usize) -> Emitted {
+    let leaves = &g.lay.leaves(ty);
+    let mut b = FnBuilder::new(types, Some(loc));
+    b.label("entry");
+    let leaf = leaf_sig(kind, leaves);
+    let nat = native_sig(kind, leaves);
+    let n = native(sym);
+    let a = |i: usize, t: &LTy| Val::new(format!("%a{i}"), t.clone());
+    let args: Vec<Val> = leaf
+        .params
         .iter()
         .enumerate()
-        .map(|(i, l)| format!("{}{} %a{i}", types.text(&reg(*l)), attr(*l)))
-        .collect::<Vec<_>>()
-        .join(", ");
+        .map(|(i, p)| a(i, &p.ty))
+        .collect();
+    let mut fwd: Vec<(Val, &str)> = Vec::new();
+    let mut sret = None;
+    match kind {
+        Glue::Drop | Glue::Clone if indirect(leaves) => {
+            if kind == Glue::Clone {
+                let out = b.alloca(&slot_ty(leaves));
+                fwd.push((out.clone(), ""));
+                sret = Some(out);
+            }
+            let slot = b.alloca(&slot_ty(leaves));
+            store_leaves(&mut b, &slot, leaves, &args);
+            fwd.push((slot, ""));
+        }
+        Glue::Drop | Glue::Clone => fwd = reg_args(&args, leaves),
+        _ => {
+            for v in &args {
+                fwd.push((b.inttoptr(v), ""));
+            }
+        }
+    }
+    let decls = vec![nat.declare(&n)];
+    let ret_value = match (&sret, &nat.ret) {
+        (Some(out), _) => {
+            b.call(&LTy::Void, "", &n, &fwd);
+            Some(load_leaves(&mut b, out, leaves, None))
+        }
+        (None, LTy::Void) => {
+            b.call(&LTy::Void, "", &n, &fwd);
+            None
+        }
+        (None, LTy::Ptr) => {
+            let p = b.call(&LTy::Ptr, nat.ret_attr, &n, &fwd).expect("result");
+            Some(vec![b.ptrtoint(&p)])
+        }
+        (None, LTy::Tuple(fs)) => {
+            let t = b.call(&nat.ret, "", &n, &fwd).expect("a tuple");
+            Some((0..fs.len()).map(|k| b.extract(&t, k)).collect())
+        }
+        (None, _) => Some(vec![
+            b.call(&nat.ret, nat.ret_attr, &n, &fwd).expect("result"),
+        ]),
+    };
+    match ret_value.as_deref() {
+        None | Some([]) => b.ret(None),
+        Some([one]) => b.ret(Some(one)),
+        Some(many) => b.ret_multi(many),
+    }
     Emitted {
-        ret,
-        params,
-        attrs: String::new(),
-        decls: e.decls,
+        ret: leaf.ret_text(),
+        params: leaf.formals(true),
+        attrs: " nounwind".into(),
+        decls,
         data: Vec::new(),
-        body: e.b.finish(),
+        body: b.finish(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A string clone splits the block: the shared case skips the copy, and the two leaves leave
+    /// as phis over the entry and the copy block.
+    #[test]
+    fn string_clone_joins_with_phis_over_both_paths() {
+        let types = Types::default();
+        let mut b = FnBuilder::new(&types, None);
+        b.label("b0");
+        let vs = vec![Val::new("%a0", LTy::I64), Val::new("%a1", LTy::I64)];
+        let mut decls = Vec::new();
+        let out = clone_str(&mut b, &mut decls, ("b0", "b0.d1", "b0.j1"), &vs, None);
+        b.ret_multi(&out);
+        let text = b.finish();
+        assert!(text.contains("lshr i64 %a1, 62"), "{text}");
+        assert!(text.contains("b0.d1:"), "{text}");
+        assert!(text.contains("b0.j1:"), "{text}");
+        assert!(text.contains("[ %a0, %b0 ], [ %v"), "{text}");
+        assert!(text.contains(", %b0.d1 ]"), "{text}");
+        assert_eq!(decls.len(), 1);
     }
 }

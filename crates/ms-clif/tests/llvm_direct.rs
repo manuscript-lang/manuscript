@@ -225,8 +225,7 @@ b0:
 fn interfaces() {
     // An owned interface box built and returned, and calls through the vtable of a method that
     // reads the data and takes an argument; `probe` reads the data word and tests the vtable.
-    // Borrowed boxes and views are owned values the verifier wants dropped, and drops are not
-    // emitted directly yet, so their functions stay with the translation.
+    // `framed` borrows a box that stays in the frame, views it and drops both.
     let src = r#"module "d"
 entry @main
 file 0 "d.ms"
@@ -262,6 +261,15 @@ b0:
   %r: int = iadd %a, %bonus !0:11:1
   ret %r
 }
+fn @framed(%y: int, %k: int) -> int inline(never) !0:30:1 {
+b0:
+  %v: dyn Scale = iface.borrow @v_int %y !0:31:1
+  %w: dyn Scale = iface.view %v !0:32:1
+  %r: int = call @use(%w, %k) !0:33:1
+  drop %w
+  drop %v
+  ret %r
+}
 fn @main() -> int !0:20:1 {
 b0:
   %x: int = iconst 7
@@ -270,17 +278,21 @@ b0:
   %a: int = call @use(%s, %three) !0:22:1
   %p: int = call @probe(%s, %three) !0:23:1
   drop %s
-  %t: int = iadd %a, %p !0:24:1
+  %five: int = iconst 5
+  %two: int = iconst 2
+  %f: int = call @framed(%five, %two) !0:26:1
+  %af: int = iadd %a, %f !0:27:1
+  %t: int = iadd %af, %p !0:24:1
   %u: unit = call.rt @msrt_print_int(%t) !0:25:1
   ret %t
 }
 "#;
-    // 7 * 3 + (7 + 7 * 3 + 10) = 59
+    // 7 * 3 + 5 * 2 + (7 + 7 * 3 + 10) = 69
     check(
         "direct_interfaces",
         src,
-        59,
-        &["scale_int", "use", "make", "probe"],
+        69,
+        &["scale_int", "use", "make", "probe", "framed"],
     );
 }
 

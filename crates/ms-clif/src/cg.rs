@@ -1373,7 +1373,6 @@ fn direct_function(g: &mut Gen, i: usize, f: &Func) -> bool {
         .any(|inst| inst.op == ms_mir::ir::Op::DepthEnter)
         .then(|| g.glue(Glue::GrowShim(i as u32), Ty::UNIT));
     g.add_scopes(f);
-    let plan = direct_plan(g, f);
     let mut bits = HashMap::new();
     for inst in f.blocks.iter().flat_map(|b| &b.insts) {
         bits.entry(inst.loc).or_insert_with(|| g.loc_bits(inst.loc));
@@ -1388,15 +1387,15 @@ fn direct_function(g: &mut Gen, i: usize, f: &Func) -> bool {
     } else {
         (0, f.loc.line)
     };
+    let plan = direct_plan(g, f);
+    let syms = ModuleSymbols(&g.module, &g.locs, &g.scopes, &g.m.externs);
     let funcs = &g.funcs;
     let symbol_of = |k: usize| syms.symbol_of(funcs[k]);
     let grow_shim = shim.map(|s| syms.symbol_of(s));
     let m = g.m;
     let lay = &g.lay;
     let native = g.native.as_ref().expect("computed above");
-    let plan = &plan;
     let mut llvm = g.llvm.take().expect("checked above");
-    let checks = g.opts.checks;
     llvm.add_direct(
         &sym,
         &f.name,
@@ -1411,9 +1410,8 @@ fn direct_function(g: &mut Gen, i: usize, f: &Func) -> bool {
                 idx: i,
                 grow_shim,
                 native,
-                plan,
             };
-            crate::mir_llvm::emit(m, lay, place, f, checks, env, &symbol_of)
+            crate::mir_llvm::emit(m, lay, place, f, &plan, env, &symbol_of)
         },
     );
     g.llvm = Some(llvm);
@@ -1427,49 +1425,76 @@ fn direct_function(g: &mut Gen, i: usize, f: &Func) -> bool {
     true
 }
 
-/// What `f`'s closures and interfaces need from the generator: the frame decisions of the lowering
-/// and the symbols of the glue and vtables its instructions point to, which the generator
-/// declares here because only it can.
+/// The glue, descriptors, closures and vtables `f`'s instructions refer to, declared now so that
+/// emission can name them: glue is queued for generation like any other. The frame decisions are
+/// those of the Cranelift lowering.
 fn direct_plan(g: &mut Gen, f: &Func) -> crate::mir_llvm::Plan {
+    use crate::glue_llvm::{OwnKind, own_kind};
     use ms_mir::ir::{Imm, Op};
-    let m = g.m;
     let mut plan = crate::mir_llvm::Plan {
-        framed_closures: crate::lower::framed_closure_objects(m, f),
-        framed_ifaces: crate::lower::framed_iface_borrows(m, f),
+        checks: g.opts.checks,
+        framed_closures: crate::lower::framed_closure_objects(g.m, f),
+        framed_ifaces: crate::lower::framed_iface_borrows(g.m, f),
         ..Default::default()
     };
-    for inst in f.blocks.iter().flat_map(|b| &b.insts) {
-        match (inst.op, inst.imm) {
-            (Op::ClosureNew, Imm::Func(c)) => {
-                let framed = inst
-                    .res
-                    .is_some_and(|r| plan.framed_closures.contains(&r.index()));
-                let clone = g.glue(Glue::ClosureClone(c.0), Ty::UNIT);
-                let drop = g.glue(
-                    if framed {
-                        Glue::ClosureDropFramed(c.0)
-                    } else {
-                        Glue::ClosureDrop(c.0)
-                    },
-                    Ty::UNIT,
-                );
-                let syms = crate::mir_llvm::ClosureSyms {
-                    clone: symbol_of(g, clone),
-                    drop: symbol_of(g, drop),
-                };
-                plan.closures.insert((c.index(), framed), syms);
+    for bd in &f.blocks {
+        for i in &bd.insts {
+            match (i.op, i.imm) {
+                (Op::Clone, _) => {
+                    let ty = f.ty(i.args[0]);
+                    if own_kind(&g.lay, ty) == OwnKind::Glue && !plan.clone.contains_key(&ty) {
+                        let id = g.glue(Glue::Clone, ty);
+                        plan.clone.insert(
+                            ty,
+                            crate::glue_llvm::target(g, Glue::Clone, ty, symbol_of(g, id)),
+                        );
+                    }
+                }
+                (Op::Drop | Op::DropIf, _) => {
+                    let ty = f.ty(i.args[usize::from(i.op == Op::DropIf)]);
+                    if own_kind(&g.lay, ty) == OwnKind::Glue && !plan.drop.contains_key(&ty) {
+                        let id = g.glue(Glue::Drop, ty);
+                        plan.drop.insert(
+                            ty,
+                            crate::glue_llvm::target(g, Glue::Drop, ty, symbol_of(g, id)),
+                        );
+                    }
+                }
+                (Op::CleanupPush, Imm::Func(c)) => {
+                    let id = g.glue(Glue::CleanupThunk(c.0), Ty::UNIT);
+                    plan.cleanup.insert(c.index(), symbol_of(g, id));
+                }
+                (Op::TypeDesc, Imm::Ty(t)) => {
+                    let id = g.typedesc(t);
+                    let name = g.module.declarations().get_data_decl(id).linkage_name(id);
+                    plan.desc.insert(t, name.into_owned());
+                }
+                (Op::ClosureNew, Imm::Func(c)) => {
+                    let framed = i
+                        .res
+                        .is_some_and(|r| plan.framed_closures.contains(&r.index()));
+                    let clone = g.glue(Glue::ClosureClone(c.0), Ty::UNIT);
+                    let drop = g.glue(
+                        if framed {
+                            Glue::ClosureDropFramed(c.0)
+                        } else {
+                            Glue::ClosureDrop(c.0)
+                        },
+                        Ty::UNIT,
+                    );
+                    let syms = crate::mir_llvm::ClosureSyms {
+                        clone: symbol_of(g, clone),
+                        drop: symbol_of(g, drop),
+                    };
+                    plan.closures.insert((c.index(), framed), syms);
+                }
+                (Op::IfaceNew | Op::IfaceBorrow | Op::IfaceIs, Imm::Vtable(vt)) => {
+                    let id = g.vtables[vt.index()];
+                    let name = g.module.declarations().get_data_decl(id).linkage_name(id);
+                    plan.vtables.insert(vt.index(), name.into_owned());
+                }
+                _ => {}
             }
-            (Op::IfaceNew | Op::IfaceBorrow | Op::IfaceIs, Imm::Vtable(vt)) => {
-                let id = g.vtables[vt.index()];
-                let name = g
-                    .module
-                    .declarations()
-                    .get_data_decl(id)
-                    .linkage_name(id)
-                    .into_owned();
-                plan.vtables.insert(vt.index(), name);
-            }
-            _ => {}
         }
     }
     plan
@@ -1519,20 +1544,29 @@ fn direct_glue(g: &mut Gen, kind: Glue, ty: Ty) -> bool {
     let id = g.glue[&(kind, ty)];
     let sym = symbol_of(g, id);
     let mut llvm = g.llvm.take().expect("checked above");
+    let nat = crate::glue_llvm::native(&sym);
     // Glue has no MIR, so no source locations to resolve.
     let no_bits = HashMap::new();
     let locs = crate::llvm_ir::DirectLocs {
         syms: &crate::llvm_ir::NoSymbols,
         bits: &no_bits,
     };
+    llvm.add_direct(&nat, "glue", (0, 0), false, locs, |env| {
+        crate::glue_llvm::emit(g, kind, ty, env.types, env.loc)
+    });
+    llvm.mark_glue();
+    let locs = crate::llvm_ir::DirectLocs {
+        syms: &crate::llvm_ir::NoSymbols,
+        bits: &no_bits,
+    };
     llvm.add_direct(&sym, "glue", (0, 0), false, locs, |env| {
-        crate::glue_llvm::emit(g, kind, ty, env.loc)
+        crate::glue_llvm::thunk(g, kind, ty, &sym, env.types, env.loc)
     });
     llvm.mark_glue();
     g.llvm = Some(llvm);
     g.llvm_funcs.push(LlvmFn {
         id,
-        symbol: sym,
+        symbol: nat,
         name: "glue".to_string(),
         file: u32::MAX,
         line: 0,

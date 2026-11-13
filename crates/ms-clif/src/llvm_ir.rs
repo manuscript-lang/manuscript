@@ -1517,8 +1517,8 @@ impl LlvmModule {
         for (callee, decl) in out.decls {
             self.decls.entry(callee).or_insert(decl);
         }
-        for symbol in out.data {
-            self.data.insert(symbol, ());
+        for sym in out.data {
+            self.data.insert(sym, ());
         }
         self.defs.push(Def {
             name: name.to_string(),

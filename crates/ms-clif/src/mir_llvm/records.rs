@@ -17,12 +17,13 @@
 
 use super::{Area, Cx, Vals, held_leaves, mem_leaves};
 use crate::layout::{Layouts, Leaf, mem_layout};
-use crate::llvm_build::{FnBuilder, Ty as LTy, Types, Val};
+use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Types, Val};
 use ms_mir::ir::{Func, Imm, Inst, Op, Target, Value};
 use ms_mir::types::{Ty, TyKind};
 
 pub(super) const AREA: Area = Area {
     handles,
+    splits,
     inst_ok: |_, lay, f, i| op_ok(lay, f, i),
     emit,
     ..Area::NONE
@@ -81,6 +82,84 @@ fn record(lay: &Layouts, ty: Ty) -> Option<ms_mir::types::RecId> {
     }
 }
 
+/// The indirect record `ty` (the library's `Error`): its value is one pointer to a heap block.
+fn indirect(lay: &Layouts, ty: Ty) -> Option<ms_mir::types::RecId> {
+    match lay.m.types.kind(ty) {
+        TyKind::Rec(r) if lay.m.records[r.index()].indirect => Some(*r),
+        _ => None,
+    }
+}
+
+/// Whether the block of indirect record `r` is made of plain leaves, none of them a record in
+/// memory (whose offsets inside the flat block would differ from its own).
+fn block_ok(lay: &Layouts, r: ms_mir::types::RecId) -> bool {
+    lay.rec_block(r)
+        .iter()
+        .all(|l| matches!(l, Leaf::I64 | Leaf::F64 | Leaf::I8))
+        && lay.m.records[r.index()]
+            .fields
+            .iter()
+            .all(|f| !is_mem(lay, f.1))
+}
+
+/// The memory shape of the block behind indirect record `r`: the leaves of its fields in order,
+/// with a map or set field as the one nullable pointer to its header.
+fn block_shape(types: &Types, lay: &Layouts, r: ms_mir::types::RecId) -> Shape {
+    let (mut leaves, mut held) = (Vec::new(), Vec::new());
+    for f in &lay.m.records[r.index()].fields {
+        if lay.rec_field_boxed(f.1) {
+            leaves.push(LTy::Ptr);
+            held.push(LTy::Ptr);
+        } else {
+            leaves.extend(mem_leaves(lay, f.1));
+            held.extend(held_leaves(lay, f.1));
+        }
+    }
+    let mem = mem_layout(&lay.rec_block(r));
+    let name = format!("ms.rec.{}.block", lay.m.records[r.index()].name);
+    Shape {
+        st: types.named(&name, leaves.clone()),
+        leaves,
+        held,
+        size: mem.size,
+        align: mem.align,
+    }
+}
+
+/// Block leaf index, leaf count and whether the field holds a header pointer, per field of `r`.
+fn block_spans(lay: &Layouts, r: ms_mir::types::RecId) -> Vec<(usize, usize, bool)> {
+    let mut at = 0;
+    lay.m.records[r.index()]
+        .fields
+        .iter()
+        .map(|f| {
+            let boxed = lay.rec_field_boxed(f.1);
+            let n = if boxed { 1 } else { lay.width(f.1) };
+            at += n;
+            (at - n, n, boxed)
+        })
+        .collect()
+}
+
+/// Whether field `i` of `r` is an indirect record's boxed collection.
+fn field_boxed(lay: &Layouts, r: ms_mir::types::RecId, i: u32) -> bool {
+    lay.m.records[r.index()].indirect
+        && lay.rec_field_boxed(lay.m.records[r.index()].fields[i as usize].1)
+}
+
+/// How many times `inst` splits its block: reading, creating or addressing a boxed collection
+/// field branches on the null header.
+fn splits(lay: &Layouts, f: &Func, i: &Inst, _: bool) -> usize {
+    match (i.op, i.imm) {
+        (Op::RecNew, _) => i
+            .res
+            .and_then(|r| indirect(lay, f.ty(r)))
+            .map_or(0, |r| block_spans(lay, r).iter().filter(|s| s.2).count()),
+        (Op::RecGet | Op::PtrField, Imm::Field(r, k)) => usize::from(field_boxed(lay, r, k)),
+        _ => 0,
+    }
+}
+
 /// Whether a value of `ty` is held as a pointer to memory.
 pub(super) fn is_mem(lay: &Layouts, ty: Ty) -> bool {
     record(lay, ty).is_some() && lay.width(ty) > MEM_LEAVES
@@ -90,6 +169,7 @@ pub(super) fn is_mem(lay: &Layouts, ty: Ty) -> bool {
 /// memory shape.
 pub(super) fn ty_ok(lay: &Layouts, ty: Ty) -> bool {
     ty == Ty::PTR
+        || indirect(lay, ty).is_some_and(|r| block_ok(lay, r))
         || (record(lay, ty).is_some() && (lay.width(ty) <= MEM_LEAVES || shape_ok(lay, ty)))
 }
 
@@ -117,9 +197,8 @@ pub(super) fn op_ok(lay: &Layouts, f: &Func, i: &Inst) -> bool {
         (Op::Slot, Imm::Ty(t)) => mem_ty(t),
         (Op::Load | Op::Take, Imm::Ty(t)) => mem_ty(t) && i.res.is_some_and(|r| f.ty(r) == t),
         (Op::Store | Op::Put, _) => mem_ty(f.ty(i.args[1])),
-        (Op::PtrField | Op::RecGet | Op::RecSet | Op::RecFill, Imm::Field(r, _)) => {
-            !lay.m.records[r.index()].indirect
-        }
+        (Op::PtrField | Op::RecGet, Imm::Field(..)) => true,
+        (Op::RecSet | Op::RecFill, Imm::Field(r, _)) => !lay.m.records[r.index()].indirect,
         (Op::RecNew, _) => true,
         (
             Op::Slot | Op::Load | Op::Take | Op::PtrField | Op::RecGet | Op::RecSet | Op::RecFill,
@@ -366,8 +445,13 @@ pub(super) fn copies(b: &mut FnBuilder, lay: &Layouts, f: &Func, vals: &Vals, t:
 fn is_early(lay: &Layouts, f: &Func, inst: &Inst) -> bool {
     match inst.op {
         Op::Slot => true,
-        Op::RecNew => inst.res.is_some_and(|r| !is_mem(lay, f.ty(r))),
-        Op::RecGet | Op::RecSet | Op::RecFill => !is_mem(lay, f.ty(inst.args[0])),
+        Op::RecNew => inst
+            .res
+            .is_some_and(|r| !is_mem(lay, f.ty(r)) && indirect(lay, f.ty(r)).is_none()),
+        Op::RecGet | Op::RecSet | Op::RecFill => {
+            let t = f.ty(inst.args[0]);
+            !is_mem(lay, t) && indirect(lay, t).is_none()
+        }
         _ => false,
     }
 }
@@ -444,6 +528,10 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
                 .types
                 .find(&TyKind::Rec(r))
                 .expect("record type interned");
+            if let Some(r) = indirect(lay, rty) {
+                ptr_field(cx, b, r, i as usize, &arg(0)[0], &out[0]);
+                return;
+            }
             let (at, _) = field_span(lay, rty, i as usize);
             b.name_next(&out[0]);
             match shape(b.types(), lay, rty) {
@@ -454,6 +542,10 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
                 }
             };
         }
+        Op::RecNew if indirect(lay, f.ty(inst.res.expect("rec.new result"))).is_some() => {
+            let r = indirect(lay, f.ty(inst.res.expect("rec.new result"))).expect("checked");
+            rec_new(cx, b, r, inst, vals, &out[0]);
+        }
         Op::RecNew => {
             // A record in memory: each field is stored into a fresh slot.
             let res = inst.res.expect("rec.new result");
@@ -463,6 +555,10 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
             for a in &inst.args {
                 at += write_field(b, lay, f, vals, &s, &out[0], at, *a);
             }
+        }
+        Op::RecGet if indirect(lay, f.ty(inst.args[0])).is_some() => {
+            let Imm::Field(r, i) = inst.imm else { return };
+            rec_get(cx, b, r, i as usize, &arg(0)[0], &out);
         }
         Op::RecGet => {
             let Imm::Field(_, i) = inst.imm else { return };
@@ -520,6 +616,183 @@ pub(super) fn store_value(
     } else {
         store_leaves(b, &s, p, 0, &vals[&v.index()]);
     }
+}
+
+const NULL: fn() -> Val = || Val::new("null", LTy::Ptr);
+
+/// Declares the runtime's allocator and `free` for a block.
+fn declare_heap(cx: &mut Cx) {
+    cx.decls.push((
+        "msrt_alloc".into(),
+        "declare noalias align 16 ptr @\"msrt_alloc\"(i64)".into(),
+    ));
+    cx.decls.push((
+        "msrt_free".into(),
+        "declare void @\"msrt_free\"(i64)".into(),
+    ));
+}
+
+/// A fresh heap block of `size` bytes, named `dst` when given.
+fn alloc(b: &mut FnBuilder, size: u32, dst: Option<&Val>) -> Val {
+    if let Some(d) = dst {
+        b.name_next(d);
+    }
+    b.call(
+        &LTy::Ptr,
+        "noalias align 16 ",
+        "msrt_alloc",
+        &[(Val::int(i64::from(size.max(1))), "")],
+    )
+    .expect("a block")
+}
+
+/// The label the next join block of the current MIR block gets, and the labels of the code that
+/// precedes it; counts the split.
+fn next_split(cx: &mut Cx, tag: &str) -> (String, String, String) {
+    let (bb, split) = (cx.block, cx.split);
+    cx.split += 1;
+    (
+        super::block_label(bb, split),
+        format!("{tag}{bb}_{split}"),
+        super::block_label(bb, split + 1),
+    )
+}
+
+/// `rec.new` of an indirect record: one heap block with the field leaves stored at their offsets;
+/// a map or set that is not the all-zero empty value gets a header block of its own, else the
+/// field is null.
+fn rec_new(
+    cx: &mut Cx,
+    b: &mut FnBuilder,
+    r: ms_mir::types::RecId,
+    inst: &Inst,
+    vals: &Vals,
+    out: &Val,
+) {
+    declare_heap(cx);
+    let lay = cx.lay;
+    let s = block_shape(b.types(), lay, r);
+    let block = alloc(b, s.size, Some(out));
+    let spans = block_spans(lay, r);
+    for (a, (at, n, boxed)) in inst.args.iter().zip(spans) {
+        let words = &vals[&a.index()];
+        if boxed {
+            let header = header_store(cx, b, words);
+            let p = b.field_ptr(&s.st, &block, at);
+            b.store(&header, &p, 8);
+        } else {
+            store_leaves(b, &s, &block, at, &words[..n]);
+        }
+    }
+}
+
+/// A header block holding `words`, or null when they are the all-zero empty collection (a stamped
+/// empty one, with its descriptor word set, keeps its block).
+fn header_store(cx: &mut Cx, b: &mut FnBuilder, words: &[Val]) -> Val {
+    let as_int = |b: &mut FnBuilder, w: &Val| {
+        if w.ty == LTy::Ptr {
+            b.ptr_to_int(w)
+        } else {
+            w.clone()
+        }
+    };
+    let (first, last) = (as_int(b, &words[0]), as_int(b, &words[words.len() - 1]));
+    let used = b.bin(Bin::Or, &first, &last);
+    let used = b.icmp("ne", &used, &Val::int(0));
+    let (head, some, join) = next_split(cx, "h");
+    b.cond_br(&used, &some, &join);
+    b.label(&some);
+    let bp = alloc(b, ms_rt_abi::MAP_SIZE as u32, None);
+    for (k, w) in words.iter().enumerate() {
+        let at = b.elem_ptr(&LTy::I64, &bp, &Val::int(k as i64));
+        b.store(w, &at, 8);
+    }
+    b.br(&join);
+    b.label(&join);
+    let out = b.reserve(LTy::Ptr);
+    b.phi(&out, &[(NULL(), head), (bp, some)]);
+    out
+}
+
+/// `rec.get` of an indirect record: the field's leaves loaded from the block; a map or set loads
+/// its header through the pointer, or is the all-zero empty value when that is null.
+fn rec_get(
+    cx: &mut Cx,
+    b: &mut FnBuilder,
+    r: ms_mir::types::RecId,
+    i: usize,
+    rec: &Val,
+    out: &[Val],
+) {
+    let lay = cx.lay;
+    let s = block_shape(b.types(), lay, r);
+    let (at, n, boxed) = block_spans(lay, r)[i];
+    if !boxed {
+        load_leaves(b, &s, rec, at, n, out);
+        return;
+    }
+    let p = b.field_ptr(&s.st, rec, at);
+    let bp = b.load(&LTy::Ptr, &p, 8);
+    let some_header = b.icmp("ne", &bp, &NULL());
+    let (head, some, join) = next_split(cx, "g");
+    b.cond_br(&some_header, &some, &join);
+    b.label(&some);
+    let loaded: Vec<Val> = out
+        .iter()
+        .enumerate()
+        .map(|(k, dst)| {
+            let at = b.elem_ptr(&LTy::I64, &bp, &Val::int(k as i64));
+            b.load(&dst.ty, &at, 8)
+        })
+        .collect();
+    b.br(&join);
+    b.label(&join);
+    for (dst, v) in out.iter().zip(loaded) {
+        let zero = if dst.ty == LTy::Ptr {
+            NULL()
+        } else {
+            Val::int(0)
+        };
+        b.phi(dst, &[(zero, head.clone()), (v, some.clone())]);
+    }
+}
+
+/// `ptr.field` of an indirect record: the argument addresses the record's pointer; the result is
+/// the address of the field in the block, or for a map or set the header block, created empty when
+/// the field is null.
+fn ptr_field(
+    cx: &mut Cx,
+    b: &mut FnBuilder,
+    r: ms_mir::types::RecId,
+    i: usize,
+    at: &Val,
+    out: &Val,
+) {
+    let lay = cx.lay;
+    let s = block_shape(b.types(), lay, r);
+    let (k, _, boxed) = block_spans(lay, r)[i];
+    let block = b.load(&LTy::Ptr, at, 8);
+    if !boxed {
+        b.name_next(out);
+        b.field_ptr(&s.st, &block, k);
+        return;
+    }
+    declare_heap(cx);
+    let slot = b.field_ptr(&s.st, &block, k);
+    let have = b.load(&LTy::Ptr, &slot, 8);
+    let present = b.icmp("ne", &have, &NULL());
+    let (head, make, join) = next_split(cx, "m");
+    b.cond_br(&present, &join, &make);
+    b.label(&make);
+    let bp = alloc(b, ms_rt_abi::MAP_SIZE as u32, None);
+    for w in 0..ms_rt_abi::MAP_SIZE / 8 {
+        let p = b.elem_ptr(&LTy::I64, &bp, &Val::int(w as i64));
+        b.store(&Val::int(0), &p, 8);
+    }
+    b.store(&bp, &slot, 8);
+    b.br(&join);
+    b.label(&join);
+    b.phi(out, &[(have, head), (bp, make)]);
 }
 
 /// Stores MIR value `v` into the record `slot` at leaf `at`; returns the leaves it spans.
