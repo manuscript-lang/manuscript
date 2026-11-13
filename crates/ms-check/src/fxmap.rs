@@ -25,11 +25,10 @@ impl Hasher for Fx {
     }
     #[inline]
     fn write(&mut self, bytes: &[u8]) {
-        let mut chunks = bytes.chunks_exact(8);
-        for c in &mut chunks {
-            self.mix(u64::from_le_bytes(c.try_into().expect("8 bytes")));
+        let (words, rest) = bytes.as_chunks::<8>();
+        for w in words {
+            self.mix(u64::from_le_bytes(*w));
         }
-        let rest = chunks.remainder();
         if !rest.is_empty() {
             let mut buf = [0u8; 8];
             buf[..rest.len()].copy_from_slice(rest);
