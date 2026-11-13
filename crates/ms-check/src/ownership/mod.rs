@@ -275,16 +275,28 @@ impl Hir<'_> {
             .collect();
         let mut summaries = Summaries::default();
         let mut escaped: HashMap<Key, HashSet<NodeId>> = HashMap::default();
-        let mut outcomes: Vec<walk::Outcome> = Vec::new();
+        let mut outcomes: Vec<Option<walk::Outcome>> = callables.iter().map(|_| None).collect();
+        // The summaries each callable read in its last analysis. A later round re-analyzes it only
+        // when one of them changed, or its own escaped lambdas did; its outcome is a function of
+        // those inputs alone, so the kept one equals a fresh one.
+        let mut reads: Vec<HashSet<Key>> = vec![HashSet::default(); callables.len()];
+        let mut changed_before: HashSet<Key> = HashSet::default();
+        let mut escaped_before: HashSet<usize> = HashSet::default();
         // Parameter modes, closure escapes and result slots feed each other, and each step
         // carries a fact one call further, so a chain needs about one round per callable.
         let rounds = callables.len() + 16;
         let contract_methods =
             walk::ContractMethods::new(ms_syntax::Names::global(), &self.program().methods);
         for round in 0..=rounds {
-            outcomes.clear();
-            let mut changed = false;
-            for (c, l) in callables.iter().zip(&liveness) {
+            let mut changed_now: HashSet<Key> = HashSet::default();
+            let mut escaped_now: HashSet<usize> = HashSet::default();
+            for (i, (c, l)) in callables.iter().zip(&liveness).enumerate() {
+                if round > 0
+                    && !escaped_before.contains(&i)
+                    && !reads[i].iter().any(|k| changed_before.contains(k))
+                {
+                    continue;
+                }
                 let key = (c.module.file, c.id());
                 let known = escaped.entry(key).or_default().clone();
                 let out = walk::analyze(&walk::Context {
@@ -296,21 +308,27 @@ impl Hir<'_> {
                     live: l,
                     escaped: &known,
                 });
+                reads[i] = summaries.take_reads();
                 // The last pass keeps the over-approximated summaries for every callee.
-                if round < rounds && summaries.get(&key) != Some(&out.summary) {
+                if round < rounds && summaries.decls.get(&key) != Some(&out.summary) {
                     summaries.decls.insert(key, out.summary.clone());
-                    changed = true;
+                    changed_now.insert(key);
                 }
                 if out.escaped != known {
                     escaped.insert(key, out.escaped.clone());
-                    changed = true;
+                    escaped_now.insert(i);
                 }
-                outcomes.push(out);
+                outcomes[i] = Some(out);
             }
-            if !changed {
+            if changed_now.is_empty() && escaped_now.is_empty() {
                 break;
             }
+            changed_before = changed_now;
+            escaped_before = escaped_now;
         }
+        let outcomes = outcomes
+            .into_iter()
+            .map(|o| o.expect("round 0 analyzes every callable"));
         let mut facts = HashMap::default();
         let mut diagnostics = Vec::new();
         let mut binding_facts = BindingFlags::default();
