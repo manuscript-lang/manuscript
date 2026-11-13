@@ -239,6 +239,11 @@ struct ModuleSymbols<'a>(
     &'a [ms_mir::ir::ExternDef],
 );
 
+/// The linkage symbol of function `id`.
+pub(crate) fn symbol_of(g: &Gen, id: FuncId) -> String {
+    ModuleSymbols(&g.module, &g.locs, &g.scopes, &g.m.externs).symbol_of(id)
+}
+
 impl ModuleSymbols<'_> {
     fn symbol_of(&self, id: FuncId) -> String {
         self.0
@@ -855,6 +860,9 @@ fn compile_with_isa(
         pipe.finish(&mut g)
     })?;
     while let Some((kind, ty)) = g.queue.pop() {
+        if direct_glue(&mut g, kind, ty) {
+            continue;
+        }
         let temps;
         let id = g.glue[&(kind, ty)];
         ctx.clear();
@@ -1297,6 +1305,30 @@ fn direct_function(g: &mut Gen, i: usize, f: &Func) -> bool {
         name: f.name.clone(),
         file: f.loc.file,
         line: f.loc.line,
+    });
+    true
+}
+
+/// Emits the glue `kind` for `ty` straight to LLVM IR; `false` leaves it to the Cranelift
+/// lowering and its translation.
+fn direct_glue(g: &mut Gen, kind: Glue, ty: Ty) -> bool {
+    if !g.opts.build.llvm_direct || g.llvm.is_none() || !crate::glue_llvm::supports(g, kind, ty) {
+        return false;
+    }
+    let id = g.glue[&(kind, ty)];
+    let sym = symbol_of(g, id);
+    let mut llvm = g.llvm.take().expect("checked above");
+    llvm.add_direct(&sym, "glue", (0, 0), false, |loc| {
+        crate::glue_llvm::emit(g, kind, ty, loc)
+    });
+    llvm.mark_glue();
+    g.llvm = Some(llvm);
+    g.llvm_funcs.push(LlvmFn {
+        id,
+        symbol: sym,
+        name: "glue".to_string(),
+        file: u32::MAX,
+        line: 0,
     });
     true
 }

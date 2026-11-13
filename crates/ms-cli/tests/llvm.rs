@@ -384,3 +384,59 @@ fn llvm_direct_emission_matches_translation() {
     assert!(!direct(&old_ir), "the translation was not used");
     assert!(direct(&new_ir), "no function was emitted directly");
 }
+
+/// Glue for strings, lists, records and optionals is emitted straight to LLVM IR
+/// (`MS_LLVM_DIRECT`): the program prints the same output, and the kept IR has a glue function
+/// whose entry block is the direct emitter's `entry`, which the translation never names so.
+#[test]
+fn llvm_direct_glue_matches_translation() {
+    if !cfg!(any(target_os = "linux", target_os = "macos"))
+        || !ms_clif::llvm_available(&ms_cli::engine::build_options_from_env())
+    {
+        return;
+    }
+    let source = format!("{}/tests/llvm/direct_glue.ms", env!("CARGO_MANIFEST_DIR"));
+    let dir = std::env::temp_dir().join(format!("ms-llvm-glue-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let run = |direct: bool| {
+        let work = dir.join(if direct { "direct" } else { "old" });
+        std::fs::create_dir_all(&work).unwrap();
+        let mut cmd = Command::new(env!("CARGO_BIN_EXE_ms"));
+        cmd.current_dir(&work)
+            .env("MS_BACKEND", "llvm")
+            .env("MS_LLVM_UNITS", "1")
+            .env("MS_KEEP_LL", "1")
+            .args(["build", &source, "-o", "prog"]);
+        if direct {
+            cmd.env("MS_LLVM_DIRECT", "1");
+        }
+        let built = cmd.output().unwrap();
+        assert!(
+            built.status.success(),
+            "{}",
+            String::from_utf8_lossy(&built.stderr)
+        );
+        let out = Command::new(work.join("prog")).output().unwrap();
+        let ir = std::fs::read_to_string(work.join("ms-keep.ll")).unwrap();
+        (String::from_utf8_lossy(&out.stdout).into_owned(), ir)
+    };
+    let (old_out, old_ir) = run(false);
+    let (new_out, new_ir) = run(true);
+    let _ = std::fs::remove_dir_all(&dir);
+    assert_eq!(new_out, old_out);
+    assert_eq!(new_out, "1325 some(hello world this is long text) 1\n");
+    let direct = |ir: &str| {
+        let mut lines = ir.lines();
+        while let Some(l) = lines.next() {
+            if l.starts_with("define")
+                && l.contains("@\"ms.glue.")
+                && lines.next() == Some("entry:")
+            {
+                return true;
+            }
+        }
+        false
+    };
+    assert!(!direct(&old_ir), "the translation was not used");
+    assert!(direct(&new_ir), "no glue was emitted directly");
+}
