@@ -2,8 +2,8 @@
 
 use super::{AREAS, Module, supports};
 use crate::abi_llvm::{self, Pass, Ret};
-use crate::layout::Layouts;
 use ms_mir::ir::{Imm, Op, Term};
+use ms_mir::layout::Layouts;
 use std::collections::{HashMap, HashSet};
 
 /// Attributes LLVM cannot always infer, for a function with no memory access or fault: its result

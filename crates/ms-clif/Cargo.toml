@@ -9,6 +9,7 @@ autotests = false
 [dependencies]
 ms-mir = { path = "../ms-mir" }
 ms-rt-abi = { path = "../ms-rt-abi" }
+ms-mir-llvm = { path = "../ms-mir-llvm" }
 cranelift-codegen = "=0.136.0"
 cranelift-frontend = "=0.136.0"
 cranelift-module = "=0.136.0"

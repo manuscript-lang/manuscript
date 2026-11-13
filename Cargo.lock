@@ -1026,6 +1026,7 @@ dependencies = [
  "gimli 0.34.0",
  "httparse",
  "ms-mir",
+ "ms-mir-llvm",
  "ms-rt-abi",
  "object",
  "rustls",
@@ -1097,6 +1098,15 @@ name = "ms-mir"
 version = "0.0.0"
 dependencies = [
  "ms-mir",
+ "ms-rt-abi",
+]
+
+[[package]]
+name = "ms-mir-llvm"
+version = "0.0.0"
+dependencies = [
+ "ms-mir",
+ "ms-rt-abi",
 ]
 
 [[package]]

@@ -1,8 +1,8 @@
 //! Compiles LLVM IR text to an object file.
 
 use crate::link::llvm_tools;
-use crate::llvm_ir::Unit;
 use crate::{BuildOptions, Error, RtHot};
+use ms_mir_llvm::Unit;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 

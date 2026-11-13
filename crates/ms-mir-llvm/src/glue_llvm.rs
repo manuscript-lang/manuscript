@@ -4,11 +4,11 @@
 //! the type. This module writes the same bodies straight through the typed builder for the types
 //! it covers (strings, lists, plain types, optionals); every other glue keeps the old path.
 
-use crate::cg::{Gen, Glue};
-use crate::layout::{AltRepr, Layouts, Leaf, mem_layout};
+use crate::Glue;
 use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Types, Val};
 use crate::mir_llvm::Emitted;
-use cranelift_module::Module as _;
+use crate::state::Gen;
+use ms_mir::layout::{AltRepr, Layouts, Leaf, mem_layout};
 use ms_mir::types::{Ty, TyKind};
 use ms_rt_abi::STR_INLINE;
 
@@ -627,10 +627,9 @@ struct E<'a, 'm, 't> {
 /// Calls MIR function `f` in the leaf convention with `args` (its parameter leaves), ignoring
 /// what it returns.
 fn call_func(e: &mut E, f: usize, args: &[Val]) {
-    let fid = e.g.funcs[f];
     let callee = &e.g.m.funcs[f];
     let (cp, cr) = (e.g.param_leaves(callee), e.g.lay.leaves(callee.ret));
-    let sym = crate::cg::symbol_of(e.g, fid);
+    let sym = e.g.func_symbol(f);
     let (ret, ret_attr) = reg_ret(&cr);
     let sig = Sig {
         params: reg_params(&cp),
@@ -726,8 +725,7 @@ impl E<'_, '_, '_> {
 
     /// The symbol to call for glue `kind` of `ty`.
     fn glue_sym(&mut self, kind: Glue, ty: Ty) -> String {
-        let id = self.g.glue(kind, ty);
-        let sym = crate::cg::symbol_of(self.g, id);
+        let sym = self.g.glue_symbol(kind, ty);
         target(self.g, kind, ty, sym)
     }
 
@@ -946,14 +944,7 @@ impl E<'_, '_, '_> {
     }
 
     /// The symbol of a data object the glue addresses, as a pointer.
-    fn data_addr(&mut self, id: cranelift_module::DataId) -> Val {
-        let sym = self
-            .g
-            .module
-            .declarations()
-            .get_data_decl(id)
-            .linkage_name(id)
-            .into_owned();
+    fn data_addr(&mut self, sym: String) -> Val {
         self.data.push(sym.clone());
         Val::new(format!("@\"{sym}\""), LTy::Ptr)
     }
@@ -964,8 +955,8 @@ impl E<'_, '_, '_> {
         let slot = self.b.alloca(&slot_ty(&leaves));
         store_leaves(&mut self.b, &slot, &leaves, vs);
         let slot = self.b.ptrtoint(&slot);
-        let id = self.g.typedesc(ty);
-        let desc = self.data_addr(id);
+        let sym = self.g.typedesc_symbol(ty);
+        let desc = self.data_addr(sym);
         let desc = self.b.ptrtoint(&desc);
         self.rt("msrt_slot_drop", &[&desc, &slot], false);
     }
@@ -1196,8 +1187,8 @@ impl E<'_, '_, '_> {
             .collect();
         let mut acc: Option<(Val, Val)> = None;
         for c in units {
-            let id = self.g.unit_block(a, c, size as usize);
-            let addr = self.data_addr(id);
+            let sym = self.g.unit_block_symbol(a, c, size as usize);
+            let addr = self.data_addr(sym);
             let addr = self.b.ptrtoint(&addr);
             let is = self.b.icmp("eq", tag, &Val::int(c as i64));
             acc = Some(match acc {
@@ -1501,8 +1492,8 @@ impl E<'_, '_, '_> {
                 );
                 store_leaves(&mut self.b, &src, &leaves, vs);
                 let desc = {
-                    let id = self.g.typedesc(ty);
-                    let addr = self.data_addr(id);
+                    let sym = self.g.typedesc_symbol(ty);
+                    let addr = self.data_addr(sym);
                     self.b.ptrtoint(&addr)
                 };
                 let (from, to) = (self.b.ptrtoint(&src), self.b.ptrtoint(&dst));

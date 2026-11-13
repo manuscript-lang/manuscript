@@ -490,6 +490,8 @@ pub struct Closure {
     pub code: *const u8,
 }
 pub const CLOSURE_CODE_OFFSET: usize = 16;
+/// Offset of the first capture in a closure object.
+pub const CLOSURE_CAPTURES_OFFSET: usize = 24;
 pub const CLOSURE_CAPTURE_OFFSET: usize = 24;
 
 /// Interface (contract view) value passed or stored inline: `{ data, vtable }`.

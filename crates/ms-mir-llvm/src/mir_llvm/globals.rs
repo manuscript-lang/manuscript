@@ -5,9 +5,9 @@ use super::glue::drop_value;
 use super::types::{load_value, reserve, shape_ok, store_value};
 use super::{Area, Cx, Vals};
 use crate::glue_llvm::{OwnKind, own_kind};
-use crate::layout::Layouts;
 use crate::llvm_build::{FnBuilder, Ty as LTy, Val};
 use ms_mir::ir::{Func, Imm, Inst, Module, Op, Value};
+use ms_mir::layout::Layouts;
 
 pub(super) const AREA: Area = Area {
     handles: |op| matches!(op, Op::GlobalGet | Op::GlobalSet),

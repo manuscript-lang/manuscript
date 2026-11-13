@@ -2,7 +2,7 @@
 
 # LLVM Language Reference (23.1.0)
 
-Organized copy of the LLVM Language Reference for work on direct LLVM emission (`crates/ms-clif/src/mir_llvm`; see [Direct LLVM records](../compiler/direct-llvm-records-are-memory-not-leaf-bags-above-eight-leaves.md)). Read the page for the construct you emit instead of guessing semantics.
+Organized copy of the LLVM Language Reference for work on direct LLVM emission (`crates/ms-mir-llvm/src/mir_llvm`; see [Direct LLVM records](../compiler/direct-llvm-records-are-memory-not-leaf-bags-above-eight-leaves.md)). Read the page for the construct you emit instead of guessing semantics.
 
 - Source: <https://releases.llvm.org/23.1.0/docs/LangRef.html> (converted from the published HTML; text and links only, formatting simplified).
 - Version: the repo pins LLVM tools `23.1.1` ([`toolchain/lld.lock`](../../toolchain/lld.lock)). The 23.1.1 manual is not published separately, so this is the 23.1.0 manual; patch releases do not change the IR language. The live <https://llvm.org/docs/LangRef.html> tracks the 24.0 development branch and can describe newer IR.

@@ -62,9 +62,14 @@ pub struct LlvmModule {
     /// Private constants (string literals) of directly emitted functions, by name: each unit
     /// whose text names one defines it.
     consts: BTreeMap<String, String>,
-    /// The function symbols in each vtable, by its data symbol. The Cranelift object defines the
-    /// vtable; each unit gets an `available_externally` copy so LLVM can read its slots.
+    /// The function symbols in each vtable, by its data symbol, and the vtables in definition
+    /// order. The first unit defines the vtables; each other unit that names one gets an
+    /// `available_externally` copy so LLVM can read its slots.
     vtables: HashMap<String, Vec<String>>,
+    vtable_order: Vec<String>,
+    /// Definitions of the other data objects (descriptors, globals, shared blocks), by symbol.
+    /// The first unit defines them.
+    data_defs: BTreeMap<String, String>,
     /// The heap functions are declared as an allocation family (`BuildOptions::heap_facts`).
     pub heap_facts: bool,
 }
@@ -353,6 +358,8 @@ impl LlvmModule {
             data: BTreeMap::new(),
             consts: BTreeMap::new(),
             vtables: HashMap::new(),
+            vtable_order: Vec::new(),
+            data_defs: BTreeMap::new(),
             heap_facts: true,
         };
         // Placeholder slots for the fixed ids and one `DIFile` per file.
@@ -447,7 +454,7 @@ impl LlvmModule {
     /// optimizer quadratic in the nesting depth of a literal. Count a cycle's closing edge,
     /// then stop traversing it; direct self calls remain excluded. Shallow glue still inlines.
     fn deep_glue(&self) -> HashSet<String> {
-        let glue_call = format!("@\"{}", crate::cg::GLUE_PREFIX);
+        let glue_call = format!("@\"{}", crate::GLUE_PREFIX);
         let callees: HashMap<&str, Vec<&str>> = self
             .defs
             .iter()
@@ -507,9 +514,20 @@ impl LlvmModule {
             .ir
     }
 
-    /// Types the function symbols in the vtable `name`, slot by slot.
-    pub fn set_vtable(&mut self, name: String, slots: Vec<String>) {
+    /// Defines the vtable `name` with these function symbols, slot by slot.
+    pub fn define_vtable(&mut self, name: String, slots: Vec<String>) {
+        self.vtable_order.push(name.clone());
         self.vtables.insert(name, slots);
+    }
+
+    /// Defines a data object; `def` is its whole `@"name" = ...` line.
+    pub fn define_data(&mut self, name: String, def: String) {
+        self.data_defs.insert(name, def);
+    }
+
+    /// Records that the module names the data symbol `name`, so a unit that names it declares it.
+    pub fn reference_data(&mut self, name: &str) {
+        self.data.insert(name.to_string(), ());
     }
 
     /// Whether `d` is written `optnone` (see [`HUGE_FUNCTION_LINES`]).
@@ -657,7 +675,7 @@ impl LlvmModule {
             let _ = writeln!(tail, "!{i} = {n}");
         }
         let mut out = Vec::with_capacity(units);
-        for (members, unoptimized) in &groups {
+        for (gi, (members, unoptimized)) in groups.iter().enumerate() {
             let mut s = String::new();
             let _ = writeln!(s, "target triple = \"{triple}\"");
             // Struct bodies come before any use: a `getelementptr` on a type not yet defined
@@ -672,6 +690,13 @@ impl LlvmModule {
             for d in members {
                 self.write_def(&mut s, d, &deep, anchored, pinned);
             }
+            // The first unit defines the data, then the vtables.
+            if gi == 0 {
+                for def in self.data_defs.values() {
+                    s.push_str(def);
+                    s.push('\n');
+                }
+            }
             // References can precede definitions, and with several units point into another:
             // declare what this unit calls and does not define, found in one scan of its text.
             let local: HashSet<&str> = members.iter().map(|d| d.name.as_str()).collect();
@@ -679,14 +704,18 @@ impl LlvmModule {
             // A vtable this unit names is written with its slots; the functions they name are
             // then referenced too, so the scan below declares the ones another unit defines.
             let mut tables = String::new();
-            for name in self.data.keys() {
-                if let Some(slots) = self.vtables.get(name)
-                    && (units == 1 || used.contains(name))
-                {
-                    let list: Vec<String> = slots.iter().map(|f| format!("ptr @\"{f}\"")).collect();
+            for name in &self.vtable_order {
+                let slots = &self.vtables[name];
+                let list: Vec<String> = slots.iter().map(|f| format!("ptr @\"{f}\"")).collect();
+                let (linkage, wanted) = if gi == 0 {
+                    ("hidden", true)
+                } else {
+                    ("available_externally", used.contains(name))
+                };
+                if wanted {
                     let _ = writeln!(
                         tables,
-                        "@\"{name}\" = available_externally constant [{} x ptr] [{}], align 8",
+                        "@\"{name}\" = {linkage} constant [{} x ptr] [{}], align 8",
                         slots.len(),
                         list.join(", ")
                     );
@@ -724,6 +753,7 @@ impl LlvmModule {
             for name in self.data.keys() {
                 if !defined.contains(name.as_str())
                     && !self.vtables.contains_key(name)
+                    && !(gi == 0 && self.data_defs.contains_key(name))
                     && (units == 1 || used.contains(name))
                 {
                     let _ = writeln!(s, "@\"{name}\" = external global i8");
@@ -793,7 +823,7 @@ mod tests {
     fn glue_module(edges: &[Vec<usize>]) -> LlvmModule {
         let mut module = LlvmModule::new(vec![Some("glue.ms".into())], ".".into());
         for (node, calls) in edges.iter().enumerate() {
-            let name = format!("{}{node}.drop", crate::cg::GLUE_PREFIX);
+            let name = format!("{}{node}.drop", crate::GLUE_PREFIX);
             let mut body = "block0:\n".to_string();
             for callee in calls {
                 writeln!(body, "  call void @\"ms.glue.{callee}.drop\"()").unwrap();
@@ -921,77 +951,6 @@ mod tests {
         ] {
             assert!(text.contains(quoted), "missing {quoted}: {text}");
         }
-    }
-
-    #[test]
-    fn quoted_metadata_survives_llvm_and_fault_table_reconstruction() {
-        struct Inlined;
-        const INLINE: &str = "inline\"\\雪\n}\ndefine scope";
-        impl Symbols for Inlined {
-            fn loc(&self, bits: u32) -> Option<(u32, u32, u32)> {
-                (bits == 0).then_some((0, 7, 1))
-            }
-            fn scope(&self, idx: u32) -> Option<(String, u32, u32, u32)> {
-                (idx == 1).then(|| (INLINE.into(), 0, 0, 3))
-            }
-        }
-        let file = "/source/雪\nquote\".ms".to_string();
-        let display = "display\"\\雪\n}\ndefine name";
-        let mut m = LlvmModule::new(vec![Some(file.clone())], "dir\r\n}\ndefine cwd".into());
-        let loc = ms_mir::ir::Loc {
-            file: 0,
-            line: 7,
-            col: 0,
-            scope: 1,
-        };
-        let bits = HashMap::from([(loc, 0)]);
-        m.add_direct(
-            "metadata",
-            display,
-            (0, 1),
-            true,
-            DirectLocs {
-                syms: &Inlined,
-                bits: &bits,
-            },
-            |env| {
-                let at = env.at(loc);
-                let mut out = unit_function("ret void");
-                out.body = format!("entry:\n  ret void, !dbg !{at}\n}}\n\n");
-                out
-            },
-        );
-        let triple = format!("{}-unknown-linux-gnu", std::env::consts::ARCH);
-        let unit = Unit {
-            ir: m.finish(&triple, &HashSet::new(), false),
-            unoptimized: false,
-        };
-        let object = crate::llvm_obj::compile_all(
-            std::slice::from_ref(&unit),
-            "3",
-            &crate::BuildOptions::default(),
-        )
-        .unwrap()
-        .remove(0);
-        let funcs = [crate::cg::LlvmFn {
-            id: cranelift_module::FuncId::from_u32(0),
-            symbol: "metadata".into(),
-            name: display.into(),
-            file: 0,
-            line: 1,
-        }];
-        let tables = crate::llvm_tables::read(object.path(), &funcs, &[file], false).unwrap();
-        assert!(
-            tables
-                .scopes
-                .iter()
-                .any(|s| s.name == INLINE && s.call_line == 3),
-            "inlined name or call line lost: {:?}",
-            tables.scopes
-        );
-        // Line-table-only DWARF may omit the abstract origin's declaration file. The
-        // instruction row still has to recover the exact source path and line.
-        assert!(tables.dbg[0].ranges.iter().any(|r| r.1 == 0 && r.2 == 7));
     }
 
     #[test]

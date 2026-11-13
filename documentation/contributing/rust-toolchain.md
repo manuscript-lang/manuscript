@@ -58,6 +58,7 @@ Under Miri the allocator takes its reservation from the heap in place of `mmap` 
 | `ms-syntax` | Lexer, parser, syntax tree, formatter |
 | `ms-check` | Resolution, types, generics, contracts, effects, cleanup, ownership; typed HIR; diagnostics |
 | `ms-mir` | MIR representation, ownership elaboration, optimizer, verifier, text format, interpreter |
+| `ms-mir-llvm` | MIR to LLVM IR text: functions, glue, descriptors, vtables and globals; depends only on `ms-mir` and `ms-rt-abi` |
 | `ms-clif` | MIR to Cranelift object code, line tables, perf map, and native linking with cached lld/LLVM tools and embedded startup files |
 | `ms-rt`, `ms-rt-abi`, `ms-native` | Runtime (with the `ffi` and `glue` helpers the native crates build on), C-layout ABI types, and the static library embedded in `ms` |
 | `ms-rt-hot` | The runtime's pure helpers (map probes, string compare and hash), also linked as LLVM IR into release programs so they inline |
@@ -76,7 +77,7 @@ The following details describe the compiler's generated artifacts and platform i
 
 ### Optimization
 
-`ms-clif` writes LLVM IR straight from MIR (`mir_llvm`, `glue_llvm`, assembled by `llvm_ir.rs`) and the pinned `opt` and `llc` (`default<O3>` and `-O3`, `Os` and `-O2` for MinSizeRel) optimize it, then the pinned `lld` links the objects side by side (no `clang` or `cc`); Cranelift still emits data, descriptors and `main`, and Debug builds stay on Cranelift. Fault traces and profiles keep their source frames because the runtime tables are rebuilt from LLVM's DWARF (`llvm_tables.rs`). The code targets the baseline CPU of each architecture; LLVM does the vectorizing and the build emits no per-CPU copies or dispatchers. `llc` aligns loops to 32 bytes on x86-64, so a small loop does not straddle a cache line depending on where the linker places the function. `MS_VECTORIZE=off` disables the loop and SLP vectorizers.
+`ms-mir-llvm` writes LLVM IR straight from MIR (`mir_llvm`, `glue_llvm`, assembled by `llvm_ir.rs`) and `ms-clif` runs the pinned `opt` and `llc` (`default<O3>` and `-O3`, `Os` and `-O2` for MinSizeRel) optimize it, then the pinned `lld` links the objects side by side (no `clang` or `cc`); the LLVM modules define the data and descriptors, Cranelift still emits the fault and profile tables and `main`, and Debug builds stay on Cranelift. Fault traces and profiles keep their source frames because the runtime tables are rebuilt from LLVM's DWARF (`llvm_tables.rs`). The code targets the baseline CPU of each architecture; LLVM does the vectorizing and the build emits no per-CPU copies or dispatchers. `llc` aligns loops to 32 bytes on x86-64, so a small loop does not straddle a cache line depending on where the linker places the function. `MS_VECTORIZE=off` disables the loop and SLP vectorizers.
 
 `MS_BACKEND=cranelift` opts out; `MS_LLVM_TOOLS` names a directory holding `opt`, `llc` and `llvm-link`. See [build tools and local setup](../developer-tooling/how-it-works.md#build-tools-and-local-setup) for downloads, caches and fallback behavior. On Windows the IR targets the mingw-w64 triple.
 

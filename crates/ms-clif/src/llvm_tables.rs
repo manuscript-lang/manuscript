@@ -9,13 +9,13 @@
 
 use crate::Error;
 use crate::cg::{FuncDbg, LlvmFn};
-use crate::llvm_ir::TEXT_ANCHOR;
 use cranelift_object::object::{
     BinaryFormat, File, Object as _, ObjectSection as _, ObjectSymbol as _, RelocationKind,
     RelocationTarget, SectionIndex, SectionKind,
 };
 use gimli::{EndianSlice, RunTimeEndian};
 use ms_mir::ir::Scope;
+use ms_mir_llvm::TEXT_ANCHOR;
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -620,5 +620,85 @@ mod sweep_tests {
         assert_eq!(sweep.at(5), 0);
         assert_eq!(sweep.at(13), 2);
         assert_eq!(sweep.at(40), 0);
+    }
+
+    /// Odd characters in a file path, the working directory and an inlined function's name reach
+    /// the debug metadata as quoted strings; LLVM must accept them and the fault tables must
+    /// recover the exact names, lines and call sites.
+    #[test]
+    fn quoted_metadata_survives_llvm_and_fault_table_reconstruction() {
+        use cranelift_module::FuncId;
+        use ms_mir::ir::{Loc, Scope};
+        const INLINE: &str = "inline\"\\雪\n}\ndefine scope";
+        let file = "/source/雪\nquote\".ms".to_string();
+        let mut m = ms_mir::parse::parse_module(
+            "module \"m\"\nfile 0 \"x.ms\"\nfn @metadata() -> int export {\nb0:\n  %0: int = iconst 1\n  ret %0\n}\n",
+        )
+        .unwrap();
+        m.files = vec![file.clone()];
+        let at = Loc {
+            file: 0,
+            line: 7,
+            col: 0,
+            scope: 1,
+        };
+        let f = &mut m.funcs[0];
+        f.loc = Loc {
+            file: 0,
+            line: 1,
+            col: 0,
+            scope: 0,
+        };
+        f.scopes.push(Scope {
+            name: INLINE.into(),
+            file: 0,
+            parent: 0,
+            call_line: 3,
+        });
+        f.blocks[0].insts.iter_mut().for_each(|i| i.loc = at);
+        f.blocks[0].term_loc = at;
+        let triple = format!("{}-unknown-linux-gnu", std::env::consts::ARCH);
+        let program = ms_mir_llvm::emit(
+            &m,
+            &ms_mir_llvm::Options {
+                checks: true,
+                heap_facts: true,
+                units: Some(1),
+                triple,
+                anchor: false,
+            },
+        )
+        .unwrap();
+        let build = crate::BuildOptions::default();
+        if crate::link::llvm_tools(&build).ok().flatten().is_none() {
+            return;
+        }
+        let object = crate::llvm_obj::compile_all(&program.units, "3", &build)
+            .unwrap()
+            .remove(0);
+        let funcs: Vec<LlvmFn> = program
+            .funcs
+            .iter()
+            .enumerate()
+            .map(|(i, f)| LlvmFn {
+                id: FuncId::from_u32(i as u32),
+                symbol: f.symbol.clone(),
+                name: f.name.clone(),
+                file: f.file,
+                line: f.line,
+            })
+            .collect();
+        let tables = read(object.path(), &funcs, &[file], false).unwrap();
+        assert!(
+            tables
+                .scopes
+                .iter()
+                .any(|s| s.name == INLINE && s.call_line == 3),
+            "inlined name or call line lost: {:?}",
+            tables.scopes
+        );
+        // Line-table-only DWARF may omit the abstract origin's declaration file. The
+        // instruction row still has to recover the exact source path and line.
+        assert!(tables.dbg[0].ranges.iter().any(|r| r.1 == 0 && r.2 == 7));
     }
 }

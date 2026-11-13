@@ -22,11 +22,11 @@ mod strings;
 mod types;
 
 use crate::abi_llvm::{Pass, Reg, Ret, Signature};
-use crate::layout::{Layouts, Leaf};
 use crate::llvm_build::{FnBuilder, Ty as LTy, Types, Val};
 use crate::llvm_ir::DirectEnv;
 use attrs::pure_attrs;
 pub(crate) use glue::cloned_ty;
+use ms_mir::layout::{Layouts, Leaf};
 
 /// The types of the fields a release (`alt.release`, `alt.unbox`, `type.release`) drops through
 /// glue: the driver declares their drop glue.
@@ -253,7 +253,7 @@ fn field_types(types: &Types, lay: &Layouts, ty: Ty, r: ms_mir::types::TypeId) -
             _ => fields.push(aggregate(types, lay, f.1)),
         }
     }
-    let want = crate::layout::mem_layout(&lay.leaves(ty)).offsets;
+    let want = ms_mir::layout::mem_layout(&lay.leaves(ty)).offsets;
     let got = types.leaf_offsets(&LTy::Tuple(fields.clone()));
     (want.iter().map(|o| u64::from(*o)).eq(got)).then_some(fields)
 }

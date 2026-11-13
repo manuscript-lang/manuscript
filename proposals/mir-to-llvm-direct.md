@@ -26,7 +26,7 @@ Largest functions: `flow_value` 17,644 lines per copy, `sequence_items` 14,754, 
 
 Release build wall time of this program is 2.9 s with and without AVX2 copies (warm, same machine, one run each), against 0.6 s on Cranelift. So dropping the copies cuts lines by a third but not time: line count alone does not explain compile time, and stage 3 must show a time drop, not only a line drop. The 28% dead-load figure from the coordinator is unverified here and is not used.
 
-Cause (`crates/ms-clif/src/layout.rs`): a MIR value is flattened to scalar leaves; the Cranelift lowering and then `llvm_ir.rs` see only leaves. Nothing tells LLVM that the 57 loads are one 456-byte object, so there is no `memcpy`, no `sroa` on a typed alloca, and no `noalias readonly` on a borrowed record.
+Cause (`crates/ms-mir/src/layout.rs`): a MIR value is flattened to scalar leaves; the Cranelift lowering and then `llvm_ir.rs` see only leaves. Nothing tells LLVM that the 57 loads are one 456-byte object, so there is no `memcpy`, no `sroa` on a typed alloca, and no `noalias readonly` on a borrowed record.
 
 ## Design
 
@@ -35,7 +35,7 @@ MIR -> ms-clif lowering -> CLIF -> object        (debug; unchanged)
 MIR -> mir_llvm         -> LLVM IR text -> opt/llc   (release; new)
 ```
 
-- Home: module `crates/ms-clif/src/mir_llvm/`, not a new crate. It needs `Gen` (symbols, glue ids, fault tables) and `layout.rs`; a separate crate would depend on `ms-clif` while `cg.rs` calls it. Move it out when the neutral layout module exists.
+- Home: the crate `crates/ms-mir-llvm`, which depends only on `ms-mir` and `ms-rt-abi`. It started as a module of `ms-clif` and moved out once layout (`ms-mir/src/layout.rs`) and the frame analysis (`ms-mir/src/frames.rs`) were neutral; the emitter now names its own symbols and writes its own data (descriptors, vtables, globals, shared blocks).
 - Debug info and tables: direct functions go through the same `LlvmModule` (`DISubprogram` with the linkage name, `DILocation` on every call, `defs`, `llvm_funcs`, the `.avx2`/`.base` scheme), because the fault-table reader finds functions by DWARF symbol. Glue has no MIR and stays on the old path until stage 4. Mixed TBAA: functions from the old path keep their two regions; typed tags are only added in stage 3 together with a check that no old-path function touches the same memory untagged.
 - Hook: `prepare` in `cg.rs` already routes each function to LLVM. With `MS_LLVM_DIRECT`, `mir_llvm::try_function(f)` runs first and returns `None` for any function it cannot yet emit; that function takes the old path. Both paths keep the same leaf calling convention in stage 2, so a direct function and a translated one call each other.
 - Value classes: a value of at most N leaves is SSA (N chosen by measurement; start with 1, alloca above) (scalars, or a struct of them). A larger record lives in one `alloca` of its LLVM struct type; copies are `memcpy`, a field read is a `getelementptr` and a `load`, a field write a `getelementptr` and a `store`. This is how rustc treats large aggregates.
@@ -67,7 +67,7 @@ MIR -> mir_llvm         -> LLVM IR text -> opt/llc   (release; new)
 
 ## Builder: in-house, no inkwell (Chinmay, 2026-11-13)
 
-Chinmay asked for `inkwell`, then chose the in-house builder, tried the `inkwell` plan once more, and settled on generating LLVM IR text directly: `crates/ms-clif/src/llvm_build.rs` is the builder. Reasons `inkwell` was dropped, measured 2026-11-13:
+Chinmay asked for `inkwell`, then chose the in-house builder, tried the `inkwell` plan once more, and settled on generating LLVM IR text directly: `crates/ms-mir-llvm/src/llvm_build.rs` is the builder. Reasons `inkwell` was dropped, measured 2026-11-13:
 
 - It links LLVM into `ms` at build time: every platform's build needs the LLVM 23 headers, static libraries and `llvm-config`. A distribution install lacks some static libraries (Polly), the glibc 2.28 floor needs LLVM built in the manylinux_2_28 container, and Windows has no ready static libraries.
 - Binary size on Linux amd64, stripped: about +4 MB to build IR only, about +54 MB with the optimizer and code generator in process (today's `ms` is 44.5 MB; `opt`, `llc` and `lld` are downloaded separately).

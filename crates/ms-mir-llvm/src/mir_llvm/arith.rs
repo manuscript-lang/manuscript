@@ -1,9 +1,9 @@
 //! Scalar values: constants, integer and float arithmetic, comparisons, selects.
 
 use super::{Area, Cx, Vals, faults};
-use crate::layout::Layouts;
 use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Val};
 use ms_mir::ir::{Cc, Func, Imm, Inst, Module, Op};
+use ms_mir::layout::Layouts;
 use ms_mir::types::TyKind;
 
 pub(super) const AREA: Area = Area {
