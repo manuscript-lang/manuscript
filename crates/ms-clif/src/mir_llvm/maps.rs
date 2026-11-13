@@ -1,6 +1,6 @@
 //! Maps and sets, and pointer tests.
 //!
-//! A `Map` or `Set` is seven words and an empty one is all zero, so `map.new` (handled in
+//! An opaque runtime object is one pointer. A `Map` or `Set` is seven words and an empty one is all zero, so `map.new` (handled in
 //! `calls.rs` with the other runtime calls) is seven constants. Every other map operation is a
 //! runtime call. The interface ops live in `closures.rs`.
 
@@ -11,7 +11,7 @@ use ms_mir::types::TyKind;
 
 pub(super) const AREA: Area = Area {
     handles: |op| op == Op::PtrIsNull,
-    ty_ok: |k| matches!(k, TyKind::Obj(n, _) if n.is_map_or_set()),
+    ty_ok: |k| matches!(k, TyKind::Obj(..)),
     emit,
     ..Area::NONE
 };
