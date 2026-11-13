@@ -8,7 +8,7 @@ BENCHFILTER ?=
 BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
 CONFORM_SHARD ?= 0/1
 
-.PHONY: runtime doctor verify verify-full check repo-check workflow-check unit test build conform drift-check llvm-direct-check leak-check cancel-sweep scaling-check count-check resource-matrix close-matrix copy-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench vscode-package vscode-install
+.PHONY: runtime doctor verify verify-full check repo-check workflow-check unit test build conform conform-fast drift-check llvm-direct-check leak-check cancel-sweep scaling-check count-check resource-matrix close-matrix copy-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench vscode-package vscode-install
 
 doctor: build
 	HUGO="$(HUGO)" $(MS) run tools/doctor.ms
@@ -61,6 +61,11 @@ build: runtime
 # CONFORM_SHARD=i/n splits the run.
 conform: build
 	$(MS) run tools/conform.ms
+
+# The quick local loop: every phase, with programs built by Cranelift (about 3x faster than LLVM; see
+# documentation/contributing/development.md). CI still runs the LLVM pass; run `make conform` before merging.
+conform-fast: build
+	CONFORM_FAST=1 MS_BACKEND=cranelift $(MS) run tools/conform.ms
 
 # Backend drift: the run and test phases of the corpus under LLVM (Release default) and under Cranelift
 # (MS_BACKEND=cranelift), compared directly; any differing stdout, stderr or exit status fails.
