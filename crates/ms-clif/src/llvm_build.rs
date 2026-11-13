@@ -12,6 +12,7 @@
     reason = "stage 2 (records and memory) uses the rest of the builder"
 )]
 
+use std::cell::RefCell;
 use std::fmt::Write as _;
 
 /// The alias class of a memory access, which LLVM's type-based alias analysis uses to tell that
@@ -109,26 +110,53 @@ pub struct StructDef {
     pub fields: Vec<Ty>,
 }
 
-/// The struct types of a module.
+/// The struct types of a module. One value is shared by every function of the module (each
+/// function's builder borrows it), so a struct named once is the same type everywhere; the
+/// definitions are written once at the end of the module.
 #[derive(Default, Debug)]
 pub struct Types {
-    structs: Vec<StructDef>,
+    structs: RefCell<Vec<StructDef>>,
 }
 
 impl Types {
     /// Declares a struct and returns its type.
-    pub fn add_struct(&mut self, name: &str, fields: Vec<Ty>) -> Ty {
-        self.structs.push(StructDef {
+    pub fn add_struct(&self, name: &str, fields: Vec<Ty>) -> Ty {
+        let mut structs = self.structs.borrow_mut();
+        structs.push(StructDef {
             name: name.to_string(),
             fields,
         });
-        Ty::Struct(self.structs.len() - 1)
+        Ty::Struct(structs.len() - 1)
+    }
+
+    /// The struct called `name` with these `fields`, declared on first use. A name taken by a
+    /// struct of other fields gets a numeric suffix, so two records of one name stay distinct.
+    pub fn named(&self, name: &str, fields: Vec<Ty>) -> Ty {
+        let found = {
+            let structs = self.structs.borrow();
+            let mut candidate = name.to_string();
+            let mut n = 1;
+            loop {
+                match structs.iter().position(|d| d.name == candidate) {
+                    Some(i) if structs[i].fields == fields => break Ok(i),
+                    Some(_) => {
+                        n += 1;
+                        candidate = format!("{name}.{n}");
+                    }
+                    None => break Err(candidate),
+                }
+            }
+        };
+        match found {
+            Ok(i) => Ty::Struct(i),
+            Err(unused) => self.add_struct(&unused, fields),
+        }
     }
 
     /// `%"name" = type { .. }` lines for every struct.
     pub fn definitions(&self) -> String {
         let mut s = String::new();
-        for d in &self.structs {
+        for d in self.structs.borrow().iter() {
             let fields: Vec<String> = d.fields.iter().map(|f| self.text(f)).collect();
             let _ = writeln!(s, "%\"{}\" = type {{ {} }}", d.name, fields.join(", "));
         }
@@ -147,7 +175,7 @@ impl Types {
             Ty::F32 => "float".into(),
             Ty::F64 => "double".into(),
             Ty::Ptr => "ptr".into(),
-            Ty::Struct(i) => format!("%\"{}\"", self.structs[*i].name),
+            Ty::Struct(i) => format!("%\"{}\"", self.structs.borrow()[*i].name),
             Ty::Array(e, n) => format!("[{n} x {}]", self.text(e)),
             Ty::Tuple(fs) => {
                 let fs: Vec<String> = fs.iter().map(|f| self.text(f)).collect();
@@ -170,7 +198,7 @@ impl Types {
             }
             Ty::Struct(_) | Ty::Tuple(_) => {
                 let (mut off, mut align) = (0u64, 1u64);
-                for f in self.fields_of(ty) {
+                for f in &self.fields_of(ty) {
                     let (s, a) = self.size_align(f);
                     off = off.div_ceil(a) * a + s;
                     align = align.max(a);
@@ -180,10 +208,10 @@ impl Types {
         }
     }
 
-    fn fields_of<'a>(&'a self, ty: &'a Ty) -> &'a [Ty] {
+    fn fields_of(&self, ty: &Ty) -> Vec<Ty> {
         match ty {
-            Ty::Struct(i) => &self.structs[*i].fields,
-            Ty::Tuple(fs) => fs,
+            Ty::Struct(i) => self.structs.borrow()[*i].fields.clone(),
+            Ty::Tuple(fs) => fs.clone(),
             _ => panic!("fields of a non-struct"),
         }
     }
@@ -194,7 +222,7 @@ impl Types {
             panic!("field_offset of a non-struct")
         };
         let mut off = 0u64;
-        for (k, f) in self.structs[*i].fields.iter().enumerate() {
+        for (k, f) in self.structs.borrow()[*i].fields.iter().enumerate() {
             let (s, a) = self.size_align(f);
             off = off.div_ceil(a) * a;
             if k == idx {
@@ -235,6 +263,11 @@ impl Val {
 
     pub fn byte(v: u8) -> Val {
         Val::new(v.to_string(), Ty::I8)
+    }
+
+    /// An `i1` constant.
+    pub fn bool(v: bool) -> Val {
+        Val::new(if v { "true" } else { "false" }, Ty::I1)
     }
 }
 
@@ -359,6 +392,11 @@ impl<'t> FnBuilder<'t> {
     }
 
     /// Starts a block.
+    /// The module's struct types.
+    pub fn types(&self) -> &'t Types {
+        self.types
+    }
+
     pub fn label(&mut self, name: &str) {
         let _ = writeln!(self.out, "{name}:");
     }
@@ -525,15 +563,20 @@ impl<'t> FnBuilder<'t> {
 
     /// A stack slot for one `ty`, aligned for it; the `alloca` goes to the top of the entry block.
     pub fn alloca(&mut self, ty: &Ty) -> Val {
-        let (_, align) = self.types.size_align(ty);
         let v = self.reserve(Ty::Ptr);
+        self.alloca_as(&v, ty);
+        v
+    }
+
+    /// Like [`FnBuilder::alloca`], with the slot named by the reserved pointer `v`.
+    pub fn alloca_as(&mut self, v: &Val, ty: &Ty) {
+        let (_, align) = self.types.size_align(ty);
         let _ = writeln!(
             self.allocas,
             "  {} = alloca {}, align {align}",
             v.text,
             self.ty(ty)
         );
-        v
     }
 
     /// Copies one `ty` from `src` to `dst` (non-overlapping), with its alignment.
@@ -688,6 +731,30 @@ impl<'t> FnBuilder<'t> {
     }
 
     /// `inttoptr` of a pointer-sized integer leaf.
+    /// `ptr` `offset` bytes past `base`; the instruction is written even for 0, so the result can
+    /// take a reserved name.
+    pub fn byte_ptr(&mut self, base: &Val, offset: u64) -> Val {
+        assert_eq!(base.ty, Ty::Ptr);
+        self.def(
+            Ty::Ptr,
+            format!("getelementptr inbounds i8, ptr {}, i64 {offset}", base.text),
+        )
+    }
+
+    pub fn ptr_to_int(&mut self, v: &Val) -> Val {
+        assert_eq!(v.ty, Ty::Ptr);
+        self.def(Ty::I64, format!("ptrtoint ptr {} to i64", v.text))
+    }
+
+    /// Copies `size` bytes (non-overlapping) with the alignment both sides are known to have.
+    pub fn copy_bytes(&mut self, dst: &Val, src: &Val, size: u64, align: u64) {
+        assert_eq!((&dst.ty, &src.ty), (&Ty::Ptr, &Ty::Ptr));
+        self.line(format!(
+            "call void @llvm.memcpy.p0.p0.i64(ptr align {align} {}, ptr align {align} {}, i64 {size}, i1 false)",
+            dst.text, src.text
+        ));
+    }
+
     pub fn int_to_ptr(&mut self, v: &Val) -> Val {
         assert_eq!(v.ty, Ty::I64);
         self.def(Ty::Ptr, format!("inttoptr i64 {} to ptr", v.text))
@@ -787,7 +854,7 @@ mod tests {
 
     #[test]
     fn struct_layout_matches_natural_alignment() {
-        let mut t = Types::default();
+        let t = Types::default();
         let r = t.add_struct("R", vec![Ty::I8, Ty::I64, Ty::I32]);
         assert_eq!(t.size_align(&r), (24, 8));
         assert_eq!(t.field_offset(&r, 1), 8);
@@ -795,9 +862,24 @@ mod tests {
         assert_eq!(t.definitions(), "%\"R\" = type { i8, i64, i32 }\n");
     }
 
+    /// One name is one type module-wide; a name taken by other fields is suffixed.
+    #[test]
+    fn a_named_struct_is_declared_once_and_names_do_not_clash() {
+        let t = Types::default();
+        let a = t.named("ms.list", vec![Ty::Ptr, Ty::I64, Ty::I64]);
+        assert_eq!(a, t.named("ms.list", vec![Ty::Ptr, Ty::I64, Ty::I64]));
+        let b = t.named("ms.list", vec![Ty::I64]);
+        assert_ne!(a, b);
+        assert_eq!(t.text(&b), "%\"ms.list.2\"");
+        assert_eq!(
+            t.definitions(),
+            "%\"ms.list\" = type { ptr, i64, i64 }\n%\"ms.list.2\" = type { i64 }\n"
+        );
+    }
+
     #[test]
     fn a_record_copy_is_one_memcpy_and_accesses_are_aligned() {
-        let mut t = Types::default();
+        let t = Types::default();
         let r = t.add_struct("R", vec![Ty::I64, Ty::F64, Ty::I64]);
         let mut b = FnBuilder::new(&t, None);
         b.label("b0");

@@ -1,11 +1,14 @@
 //! Clone, drop and type descriptors: plain data is the value, strings are cloned and freed
 //! inline, objects go through the runtime, and the rest call the type's glue.
 
-use super::{Area, Cx, Vals, block_label};
-use crate::glue_llvm::{OwnKind, call_clone, call_drop, clone_str, own_kind};
+use super::calls::finish_call;
+use super::records::{abi_leaves, load_result, result_slot, spill};
+use super::{Area, Cx, Vals, block_label, call_ret_ty, leaves, ret_attr};
+use crate::glue_llvm::{GlueCall, OwnKind, clone_callee, clone_str, drop_callee, own_kind};
 use crate::layout::Layouts;
 use crate::llvm_build::{FnBuilder, Ty as LTy, Val};
-use ms_mir::ir::{Func, Imm, Inst, Op};
+use ms_mir::ir::{Func, Imm, Inst, Op, Value};
+use ms_mir::types::Ty;
 use ms_mir::types::TyKind;
 use ms_rt_abi::STR_INLINE;
 
@@ -65,11 +68,35 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
             cx.data.push(sym.clone());
             let addr = Val::new(format!("@\"{sym}\""), LTy::Ptr);
             b.name_next(&out[0]);
-            b.ptrtoint(&addr);
+            b.elem_ptr(&LTy::I8, &addr, &Val::int(0));
         }
         Op::Clone => clone(cx, inst, vals, &out, b),
         _ => drop_inst(cx, inst, vals, b),
     }
+}
+
+/// A pointer leaf as the address word the runtime takes.
+fn word(b: &mut FnBuilder, v: &Val) -> Val {
+    if v.ty == LTy::Ptr {
+        b.ptr_to_int(v)
+    } else {
+        v.clone()
+    }
+}
+
+/// The leaves of `v` in the leaf convention, each with its attributes.
+fn leaf_args(
+    b: &mut FnBuilder,
+    cx: &Cx,
+    ty: Ty,
+    vals: &Vals,
+    v: Value,
+) -> Vec<(Val, &'static str)> {
+    abi_leaves(b, cx.lay, ty, vals, v, false)
+        .into_iter()
+        .zip(leaves(cx.lay, ty))
+        .map(|(x, (_, a))| (x, a))
+        .collect()
 }
 
 fn clone(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder) {
@@ -90,12 +117,33 @@ fn clone(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder) 
                 "msrt_obj_clone".into(),
                 "declare i64 @\"msrt_obj_clone\"(i64) nounwind".into(),
             ));
-            b.name_next(&out[0]);
-            b.call(&LTy::I64, "", "msrt_obj_clone", &[(args[0].clone(), "")]);
+            let obj = word(b, &args[0]);
+            if out[0].ty == LTy::Ptr {
+                let r = b.call(&LTy::I64, "", "msrt_obj_clone", &[(obj, "")]);
+                b.name_next(&out[0]);
+                b.int_to_ptr(&r.expect("result"));
+            } else {
+                b.name_next(&out[0]);
+                b.call(&LTy::I64, "", "msrt_obj_clone", &[(obj, "")]);
+            }
         }
         OwnKind::Glue => {
-            let sym = &cx.plan.clone[&ty];
-            call_clone(b, &mut cx.decls, cx.lay, sym, ty, args, Some(out));
+            let v = inst.args[0];
+            let target = cx.plan.clone[&ty].clone();
+            match clone_callee(cx.lay, ty, &target, &mut cx.decls) {
+                GlueCall::Memory(n) => {
+                    let src = spill(b, cx.lay, ty, vals, v);
+                    let dst = result_slot(b, cx.lay, ty, out);
+                    b.call(&LTy::Void, "", &n, &[(dst.clone(), ""), (src, "")]);
+                    load_result(b, cx.lay, ty, &dst, out);
+                }
+                GlueCall::Regs(n) => {
+                    let args = leaf_args(b, cx, ty, vals, v);
+                    let ret = call_ret_ty(cx.lay, ty, false);
+                    let attr = ret_attr(cx.lay, ty);
+                    finish_call(b, cx.lay, ty, (&ret, attr, false), &n, &args, out, false);
+                }
+            }
         }
     }
 }
@@ -107,7 +155,8 @@ fn drop_inst(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     if kind == OwnKind::Identity {
         return;
     }
-    let args = &vals[&inst.args[usize::from(guarded)].index()];
+    let v = inst.args[usize::from(guarded)];
+    let args = &vals[&v.index()];
     let (block, at) = (cx.block, cx.split);
     cx.split += 1;
     let join = block_label(block, cx.split);
@@ -117,7 +166,7 @@ fn drop_inst(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         format!("b{block}.{what}{at}.{n}")
     };
     if guarded {
-        let on = b.icmp("ne", &vals[&inst.args[0].index()][0], &Val::byte(0));
+        let on = vals[&inst.args[0].index()][0].clone();
         let then = fresh("t");
         b.cond_br(&on, &then, &join);
         b.label(&then);
@@ -130,17 +179,28 @@ fn drop_inst(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
             b.cond_br(&owned, &free, &cont);
             b.label(&free);
             cx.decls.push(rt_decl("msrt_str_free"));
-            b.call(&LTy::Void, "", "msrt_str_free", &[(args[0].clone(), "")]);
+            let p = word(b, &args[0]);
+            b.call(&LTy::Void, "", "msrt_str_free", &[(p, "")]);
             b.br(&cont);
             b.label(&cont);
         }
         OwnKind::Obj => {
             cx.decls.push(rt_decl("msrt_obj_drop"));
-            b.call(&LTy::Void, "", "msrt_obj_drop", &[(args[0].clone(), "")]);
+            let p = word(b, &args[0]);
+            b.call(&LTy::Void, "", "msrt_obj_drop", &[(p, "")]);
         }
         _ => {
-            let sym = &cx.plan.drop[&ty];
-            call_drop(b, &mut cx.decls, cx.lay, sym, ty, args);
+            let target = cx.plan.drop[&ty].clone();
+            match drop_callee(cx.lay, ty, &target, &mut cx.decls) {
+                GlueCall::Memory(n) => {
+                    let p = spill(b, cx.lay, ty, vals, v);
+                    b.call(&LTy::Void, "", &n, &[(p, "")]);
+                }
+                GlueCall::Regs(n) => {
+                    let args = leaf_args(b, cx, ty, vals, v);
+                    b.call(&LTy::Void, "", &n, &args);
+                }
+            }
         }
     }
     if guarded {

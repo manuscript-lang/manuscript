@@ -188,6 +188,9 @@ pub struct Gen<'m> {
     pub llvm: Option<crate::llvm_ir::LlvmModule>,
     /// Source functions defined through [`Gen::llvm`], for the fault and profile tables.
     pub llvm_funcs: Vec<LlvmFn>,
+    /// Functions that use the native LLVM calling convention, once computed (see
+    /// [`native_functions`]).
+    pub native: Option<HashSet<usize>>,
     /// Functions the Cranelift object refers to by address.
     pub pinned: HashSet<FuncId>,
     /// Symbol the LLVM-built code's table addresses are relative to.
@@ -302,6 +305,19 @@ pub struct FuncDbg {
 }
 
 impl<'m> Gen<'m> {
+    /// Makes the inlined-callee scopes of `f` module-wide, so that locations can name them, and
+    /// sets `scope_base` for [`Gen::loc_bits`].
+    pub fn add_scopes(&mut self, f: &Func) {
+        self.scope_base = self.scopes.len() as u32;
+        for sc in &f.scopes {
+            let mut sc = sc.clone();
+            if sc.parent != 0 {
+                sc.parent += self.scope_base;
+            }
+            self.scopes.push(sc);
+        }
+    }
+
     /// Cranelift source location bits for a MIR location (`!0` when unknown).
     pub fn loc_bits(&mut self, loc: ms_mir::ir::Loc) -> u32 {
         if loc.is_none() || loc.line == 0 {
@@ -715,6 +731,7 @@ fn compile_with_isa(
         desc_ids: HashMap::new(),
         unit_blocks: HashMap::new(),
         llvm_funcs: Vec::new(),
+        native: None,
         pinned: HashSet::new(),
         anchor: None,
         llvm: opts.llvm.map(|_| {
@@ -1274,13 +1291,89 @@ impl Pipeline {
     }
 }
 
+/// The functions that take and return values in the native LLVM calling convention
+/// (`abi_llvm`): aggregates by pointer, large results through a hidden pointer. Such a function
+/// has no leaf entry, so every reference to it must be a call from a directly emitted function:
+/// the rest of the program (the runtime, closures, vtables, cleanups, exports, the entry, and
+/// functions that fall back to the translation) only knows the leaf convention. Its stack-growth
+/// shim is written for the native convention too (see [`direct_shim`]).
+fn native_functions(g: &Gen) -> HashSet<usize> {
+    use ms_mir::ir::{FuncKind, Imm, Op};
+    let m = g.m;
+    let n = m.funcs.len();
+    let direct: Vec<bool> = m
+        .funcs
+        .iter()
+        .map(|f| {
+            g.opts.build.llvm_direct
+                && g.llvm.is_some()
+                && matches!(f.kind, FuncKind::Normal)
+                && crate::mir_llvm::supports(m, &g.lay, f)
+        })
+        .collect();
+    let mut keep = direct.clone();
+    let mut clear = |k: usize| keep[k] = false;
+    for f in [m.entry.map(|e| e.index())].into_iter().flatten() {
+        clear(f);
+    }
+    for v in &m.vtables {
+        v.methods.iter().for_each(|f| clear(f.index()));
+    }
+    for (_, a, b) in &m.desc_glue {
+        clear(a.index());
+        clear(b.index());
+    }
+    for (i, f) in m.funcs.iter().enumerate() {
+        f.capture_closers.iter().for_each(|(_, c)| clear(c.index()));
+        let others = [
+            f.slot_result,
+            f.close_exit.map(|c| c.0),
+            f.close_exit.map(|c| c.1),
+        ];
+        others.into_iter().flatten().for_each(|c| clear(c.index()));
+        for inst in f.blocks.iter().flat_map(|b| &b.insts) {
+            let Imm::Func(c) = inst.imm else { continue };
+            // Any use but a call from a directly emitted function needs the leaf entry.
+            if inst.op != Op::Call || !direct[i] {
+                clear(c.index());
+            }
+        }
+    }
+    let syms = ModuleSymbols(&g.module, &g.locs, &g.scopes, &g.m.externs);
+    for i in 0..n {
+        let id = g.funcs[i];
+        let exported = g.module.declarations().get_function_decl(id).linkage == Linkage::Import
+            && !syms.symbol_of(id).contains('#')
+            && !g.glue_ids.contains(&id);
+        if exported {
+            clear(i);
+        }
+    }
+    (0..n).filter(|&i| keep[i]).collect()
+}
+
 /// Emits `f` straight from MIR when `MS_LLVM_DIRECT` asks for it and `mir_llvm` supports the
 /// function; `false` leaves it to the Cranelift lowering and its translation.
 fn direct_function(g: &mut Gen, i: usize, f: &Func) -> bool {
     if !g.opts.build.llvm_direct || g.llvm.is_none() || !crate::mir_llvm::supports(g.m, &g.lay, f) {
         return false;
     }
+    if g.native.is_none() {
+        g.native = Some(native_functions(g));
+    }
     let id = g.funcs[i];
+    // A recursive function's stack-depth check runs it again through its grow shim.
+    let shim = f
+        .blocks
+        .iter()
+        .flat_map(|b| &b.insts)
+        .any(|inst| inst.op == ms_mir::ir::Op::DepthEnter)
+        .then(|| g.glue(Glue::GrowShim(i as u32), Ty::UNIT));
+    g.add_scopes(f);
+    let mut bits = HashMap::new();
+    for inst in f.blocks.iter().flat_map(|b| &b.insts) {
+        bits.entry(inst.loc).or_insert_with(|| g.loc_bits(inst.loc));
+    }
     let syms = ModuleSymbols(&g.module, &g.locs, &g.scopes, &g.m.externs);
     let sym = syms.symbol_of(id);
     let exported = g.module.declarations().get_function_decl(id).linkage == Linkage::Import
@@ -1295,12 +1388,29 @@ fn direct_function(g: &mut Gen, i: usize, f: &Func) -> bool {
     let syms = ModuleSymbols(&g.module, &g.locs, &g.scopes, &g.m.externs);
     let funcs = &g.funcs;
     let symbol_of = |k: usize| syms.symbol_of(funcs[k]);
+    let grow_shim = shim.map(|s| syms.symbol_of(s));
     let m = g.m;
     let lay = &g.lay;
+    let native = g.native.as_ref().expect("computed above");
     let mut llvm = g.llvm.take().expect("checked above");
-    llvm.add_direct(&sym, &f.name, fn_loc, exported, |env| {
-        crate::mir_llvm::emit(m, lay, i, f, &plan, env, &symbol_of)
-    });
+    llvm.add_direct(
+        &sym,
+        &f.name,
+        fn_loc,
+        exported,
+        crate::llvm_ir::DirectLocs {
+            syms: &syms,
+            bits: &bits,
+        },
+        |env| {
+            let place = crate::mir_llvm::Place {
+                idx: i,
+                grow_shim,
+                native,
+            };
+            crate::mir_llvm::emit(m, lay, place, f, &plan, env, &symbol_of)
+        },
+    );
     g.llvm = Some(llvm);
     g.llvm_funcs.push(LlvmFn {
         id,
@@ -1356,9 +1466,44 @@ fn direct_plan(g: &mut Gen, f: &Func) -> crate::mir_llvm::Plan {
     plan
 }
 
+/// Emits the stack-growth shim of the native function `f`.
+fn direct_shim(g: &mut Gen, kind: Glue, ty: Ty, f: usize) -> bool {
+    let id = g.glue[&(kind, ty)];
+    let sym = symbol_of(g, id);
+    let callee = symbol_of(g, g.funcs[f]);
+    let mut llvm = g
+        .llvm
+        .take()
+        .expect("native functions are emitted directly");
+    let no_bits = HashMap::new();
+    let locs = crate::llvm_ir::DirectLocs {
+        syms: &crate::llvm_ir::NoSymbols,
+        bits: &no_bits,
+    };
+    let (m, lay) = (g.m, &g.lay);
+    llvm.add_direct(&sym, "glue", (0, 0), false, locs, |env| {
+        crate::mir_llvm::grow_shim(env.types, lay, &m.funcs[f], &callee, env.loc)
+    });
+    llvm.mark_glue();
+    g.llvm = Some(llvm);
+    g.llvm_funcs.push(LlvmFn {
+        id,
+        symbol: sym,
+        name: "glue".to_string(),
+        file: u32::MAX,
+        line: 0,
+    });
+    true
+}
+
 /// Emits the glue `kind` for `ty` straight to LLVM IR; `false` leaves it to the Cranelift
 /// lowering and its translation.
 fn direct_glue(g: &mut Gen, kind: Glue, ty: Ty) -> bool {
+    if let Glue::GrowShim(f) = kind
+        && g.native.as_ref().is_some_and(|n| n.contains(&(f as usize)))
+    {
+        return direct_shim(g, kind, ty, f as usize);
+    }
     if !g.opts.build.llvm_direct || g.llvm.is_none() || !crate::glue_llvm::supports(g, kind, ty) {
         return false;
     }
@@ -1366,12 +1511,22 @@ fn direct_glue(g: &mut Gen, kind: Glue, ty: Ty) -> bool {
     let sym = symbol_of(g, id);
     let mut llvm = g.llvm.take().expect("checked above");
     let nat = crate::glue_llvm::native(&sym);
-    llvm.add_direct(&nat, "glue", (0, 0), false, |env| {
-        crate::glue_llvm::emit(g, kind, ty, env.loc)
+    // Glue has no MIR, so no source locations to resolve.
+    let no_bits = HashMap::new();
+    let locs = crate::llvm_ir::DirectLocs {
+        syms: &crate::llvm_ir::NoSymbols,
+        bits: &no_bits,
+    };
+    llvm.add_direct(&nat, "glue", (0, 0), false, locs, |env| {
+        crate::glue_llvm::emit(g, kind, ty, env.types, env.loc)
     });
     llvm.mark_glue();
-    llvm.add_direct(&sym, "glue", (0, 0), false, |env| {
-        crate::glue_llvm::thunk(g, kind, ty, &sym, env.loc)
+    let locs = crate::llvm_ir::DirectLocs {
+        syms: &crate::llvm_ir::NoSymbols,
+        bits: &no_bits,
+    };
+    llvm.add_direct(&sym, "glue", (0, 0), false, locs, |env| {
+        crate::glue_llvm::thunk(g, kind, ty, &sym, env.types, env.loc)
     });
     llvm.mark_glue();
     g.llvm = Some(llvm);

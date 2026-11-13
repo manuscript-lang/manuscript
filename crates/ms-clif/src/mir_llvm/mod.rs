@@ -10,19 +10,29 @@ mod arith;
 mod attrs;
 mod calls;
 mod closures;
+mod depth;
 mod enums;
 mod glue;
 mod lists;
 mod maps;
 mod records;
 
+use crate::abi_llvm::{Pass, Reg, Ret, Signature};
 use crate::layout::{Layouts, Leaf};
 use crate::llvm_build::{FnBuilder, Ty as LTy, Types, Val};
 use crate::llvm_ir::DirectEnv;
 use attrs::pure_attrs;
 use ms_mir::ir::{Func, Imm, Inst, Mode, Module, Op, Target, Term};
 use ms_mir::types::{Ty, TyKind};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+
+/// Where the function sits in the module: its index, its grow shim when it has a stack-depth
+/// check, and the set of functions in the native calling convention.
+pub struct Place<'a> {
+    pub idx: usize,
+    pub grow_shim: Option<String>,
+    pub native: &'a HashSet<usize>,
+}
 
 /// A finished function: pieces of the `define` line, the body, and the callees it declares.
 pub struct Emitted {
@@ -86,10 +96,77 @@ fn leaves(lay: &Layouts, ty: Ty) -> Vec<(LTy, &'static str)> {
     ls
 }
 
+/// The types a value of type `ty` is held as inside a function: its leaves, with the pointer
+/// ones as `ptr` (`Layouts::pointer_leaves`) and the boolean ones as `i1` (`Layouts::bool_leaves`).
+/// A function gets and returns a boolean as `i8`, and in the leaf convention a pointer as `i64`,
+/// and converts at its entry and returns; memory holds the `mem_leaves`.
+fn held_leaves(lay: &Layouts, ty: Ty) -> Vec<LTy> {
+    let mut tys = mem_leaves(lay, ty);
+    for (t, is_bool) in tys.iter_mut().zip(lay.bool_leaves(ty)) {
+        if is_bool {
+            *t = LTy::I1;
+        }
+    }
+    tys
+}
+
+/// The types a value of type `ty` has in memory: its leaves, with the pointer ones as `ptr` and a
+/// boolean as the `i8` it is stored as.
+fn mem_leaves(lay: &Layouts, ty: Ty) -> Vec<LTy> {
+    let mut tys: Vec<LTy> = lay.leaves(ty).into_iter().map(|l| leaf(l).0).collect();
+    for (t, ptr) in tys.iter_mut().zip(lay.pointer_leaves(ty)) {
+        if ptr {
+            *t = LTy::Ptr;
+        }
+    }
+    tys
+}
+
+/// The struct a value of type `ty` has in memory: named for strings, lists and records, so the
+/// module defines each once, else a literal struct of its held leaves.
+pub(crate) fn aggregate(types: &Types, lay: &Layouts, ty: Ty) -> LTy {
+    let fields = mem_leaves(lay, ty);
+    let name = match lay.m.types.kind(ty) {
+        TyKind::Str => "ms.str".to_string(),
+        TyKind::Bytes => "ms.bytes".to_string(),
+        TyKind::List(_) => "ms.list".to_string(),
+        TyKind::Rec(r) => format!("ms.rec.{}", lay.m.records[r.index()].name),
+        _ => return LTy::Tuple(fields),
+    };
+    types.named(&name, fields)
+}
+
+/// The LLVM type of a register of the native convention.
+fn reg_ty(r: Reg) -> LTy {
+    match r {
+        Reg::I64 => LTy::I64,
+        Reg::F64 => LTy::F64,
+        Reg::I8 => LTy::I8,
+        Reg::Ptr => LTy::Ptr,
+    }
+}
+
+/// The result as it crosses a call: the `void`, the register or a tuple of them, in the native
+/// convention when `native` and as leaves otherwise.
+fn call_ret_ty(lay: &Layouts, ty: Ty, native: bool) -> LTy {
+    if !native {
+        return ret_ty(lay, ty);
+    }
+    let mut tys: Vec<LTy> = crate::abi_llvm::regs_of(lay, ty)
+        .into_iter()
+        .map(reg_ty)
+        .collect();
+    match tys.len() {
+        0 => LTy::Void,
+        1 => tys.remove(0),
+        _ => LTy::Tuple(tys),
+    }
+}
+
 /// Whether this stage handles values of `ty`: some area accepts its kind.
 fn supported_ty(lay: &Layouts, ty: Ty) -> bool {
     let kind = lay.m.types.kind(ty);
-    AREAS.iter().any(|a| (a.ty_ok)(kind))
+    records::ty_ok(lay, ty) || AREAS.iter().any(|a| (a.ty_ok)(kind))
 }
 
 /// The result type: `void` for no leaves, the leaf itself for one, a tuple for several.
@@ -165,6 +242,7 @@ const AREAS: &[Area] = &[
     lists::AREA,
     calls::AREA,
     records::AREA,
+    depth::AREA,
     glue::AREA,
     enums::AREA,
     maps::AREA,
@@ -178,7 +256,6 @@ fn area_of(op: Op) -> Option<&'static Area> {
 /// Whether stage 1 can emit `f`.
 pub fn supports(m: &Module, lay: &Layouts, f: &Func) -> bool {
     if !matches!(f.kind, ms_mir::ir::FuncKind::Normal)
-        || !f.scopes.is_empty()
         || !f.noalias.is_empty()
         || !signature_ok(lay, &f.params, f.ret)
     {
@@ -196,6 +273,8 @@ pub fn supports(m: &Module, lay: &Layouts, f: &Func) -> bool {
         for i in &bd.insts {
             if !area_of(i.op).is_some_and(|a| (a.inst_ok)(m, lay, f, i))
                 || i.res.is_some_and(|r| !ty_ok(r))
+                || i.args.iter().any(|a| !ty_ok(*a))
+                || (i.op == Op::Select && i.res.is_some_and(|r| records::is_mem(lay, f.ty(r))))
             {
                 return false;
             }
@@ -248,6 +327,15 @@ struct Cx<'a> {
     /// MIR block being written and the splits it has made so far.
     block: usize,
     split: usize,
+    /// The entry parameters as they arrive, one per leaf, and the result leaves: what the
+    /// stack-depth check passes to a new stack segment and returns.
+    entry_abi: Vec<Val>,
+    ret_abi: Vec<LTy>,
+    /// Symbol of the function's grow shim, when it has a stack-depth check.
+    grow_shim: Option<String>,
+    /// The functions in the native calling convention (`abi_llvm`); every other function takes
+    /// and returns leaves.
+    native: &'a HashSet<usize>,
 }
 
 /// The label a MIR block ends in: each check splits it, and a successor's phis name that label.
@@ -271,62 +359,99 @@ fn block_label(bb: usize, split: usize) -> String {
 /// The values of one MIR value: one per register leaf.
 type Vals = HashMap<usize, Vec<Val>>;
 
-/// Emits `f`, which `supports` accepted. `symbol_of` names the function with MIR index `i`;
+/// Emits `f`, which `supports` accepted. The function has MIR index `idx` and, when it is
+/// recursive, the grow shim `grow_shim`. `symbol_of` names the function with MIR index `i`;
 /// `loc` is the `DILocation` node every instruction carries.
 pub fn emit(
     m: &Module,
     lay: &Layouts,
-    idx: usize,
+    Place {
+        idx,
+        grow_shim,
+        native,
+    }: Place,
     f: &Func,
     plan: &Plan,
     env: &mut DirectEnv,
     symbol_of: &dyn Fn(usize) -> String,
 ) -> Emitted {
     let checks = plan.checks;
-    let types = Types::default();
-    let mut b = FnBuilder::new(&types, Some(env.loc));
+    let types = env.types;
+    let mut b = FnBuilder::new(types, Some(env.loc));
     let rpo = f.rpo();
     // Name every value before emitting anything: a phi names values a later block defines (the
     // back edge of a loop), and a constant is its own text.
     let mut vals: Vals = HashMap::new();
     let mut params = Vec::new();
+    let mut entry = Vec::new();
+    let mut entry_abi = Vec::new();
+    let sig = native
+        .contains(&idx)
+        .then(|| Signature::of(types, lay, &f.params, f.ret));
+    let sret = sig
+        .as_ref()
+        .is_some_and(|s| matches!(s.result, Ret::Sret(_)))
+        .then(|| Val::new("%sret", LTy::Ptr));
+    entry_abi.extend(sret.iter().cloned());
     for (i, p) in f.params.iter().enumerate() {
-        let mut own = Vec::new();
+        if let Some(Pass::Indirect(..)) = sig.as_ref().map(|s| &s.passes[i]) {
+            let ptr = Val::new(format!("%a{i}"), LTy::Ptr);
+            entry_abi.push(ptr.clone());
+            let own = records::bind_indirect(&mut b, lay, p.ty, ptr, &mut entry);
+            vals.insert(f.blocks[0].params[i].value.index(), own);
+            continue;
+        }
+        let mut abi = Vec::new();
+        let regs = match sig.as_ref().map(|s| &s.passes[i]) {
+            Some(Pass::Scalars(r)) => Some(r),
+            _ => None,
+        };
         for (j, (t, attr)) in leaves(lay, p.ty).into_iter().enumerate() {
             params.push(format!("{}{attr} %a{i}_{j}", types.text(&t)));
-            own.push(Val::new(format!("%a{i}_{j}"), t));
+            let t = regs.map_or(t, |r| reg_ty(r[j]));
+            abi.push(Val::new(format!("%a{i}_{j}"), t));
         }
+        entry_abi.extend(abi.iter().cloned());
+        let own = records::bind_param(&mut b, lay, p.ty, abi, &mut entry);
         vals.insert(f.blocks[0].params[i].value.index(), own);
     }
-    let reserve_all = |b: &mut FnBuilder, ty: Ty| -> Vec<Val> {
-        leaves(lay, ty)
-            .into_iter()
-            .map(|l| b.reserve(l.0))
-            .collect()
-    };
     for bb in &rpo {
         let bd = &f.blocks[bb.index()];
         if bb.index() != 0 {
             for p in &bd.params {
-                let own = reserve_all(&mut b, f.ty(p.value));
+                let own = records::block_param(&mut b, lay, f.ty(p.value));
                 vals.insert(p.value.index(), own);
             }
         }
         for inst in &bd.insts {
             let Some(res) = inst.res else { continue };
             let pre = area_of(inst.op).and_then(|a| (a.pre)(lay, f, inst, &vals));
-            let own = pre.unwrap_or_else(|| reserve_all(&mut b, f.ty(res)));
+            let own = match pre.or_else(|| records::bind_early(&mut b, lay, f, &vals, inst)) {
+                Some(own) => own,
+                None => records::reserve(&mut b, lay, f.ty(res)),
+            };
             vals.insert(res.index(), own);
         }
     }
-    // Incoming edges of every block, for the phis.
-    let mut incoming: HashMap<usize, Vec<(usize, Vec<ms_mir::ir::Value>)>> = HashMap::new();
+    // Incoming edges of every block, for the phis. Copies into a record's slot run only on their
+    // own edge, so a conditional edge that has some is a block of its own, named after the block
+    // it leaves.
+    let mut incoming: HashMap<usize, Vec<(String, Vec<ms_mir::ir::Value>)>> = HashMap::new();
     for bb in &rpo {
-        f.blocks[bb.index()].term.for_each_target(|t| {
+        let term = &f.blocks[bb.index()].term;
+        let mut k = 0;
+        term.for_each_target(|t| {
+            let from = exit_label(lay, f, checks, bb.index());
+            let from = if matches!(term, Term::CondBr { .. }) && records::has_copies(lay, f, t) {
+                format!("{from}_e{k}")
+            } else {
+                from
+            };
             incoming
                 .entry(t.block.index())
                 .or_default()
-                .push((bb.index(), t.args.clone()))
+                .push((from, t.args.clone()));
+            k += 1;
         });
     }
     let mut cx = Cx {
@@ -342,62 +467,96 @@ pub fn emit(
         data: Vec::new(),
         block: 0,
         split: 0,
+        entry_abi,
+        ret_abi: if sret.is_some() {
+            Vec::new()
+        } else {
+            depth::ret_abi(lay, f.ret, sig.is_some())
+        },
+        grow_shim,
+        native,
     };
     for bb in &rpo {
         let bd = &f.blocks[bb.index()];
         cx.block = bb.index();
         cx.split = 0;
         b.label(&format!("b{}", bb.index()));
-        if bb.index() != 0 {
+        if bb.index() == 0 {
+            records::emit_entry(&mut b, lay, std::mem::take(&mut entry));
+        } else {
             for (j, p) in bd.params.iter().enumerate() {
+                if records::is_mem(lay, f.ty(p.value)) {
+                    continue;
+                }
                 for (k, dst) in vals[&p.value.index()].iter().enumerate() {
                     let edges: Vec<(Val, String)> = incoming
                         .get(&bb.index())
                         .map(Vec::as_slice)
                         .unwrap_or(&[])
                         .iter()
-                        .map(|(from, args)| {
-                            (
-                                vals[&args[j].index()][k].clone(),
-                                exit_label(lay, f, checks, *from),
-                            )
-                        })
+                        .map(|(from, args)| (vals[&args[j].index()][k].clone(), from.clone()))
                         .collect();
                     b.phi(dst, &edges);
                 }
             }
         }
         for inst in &bd.insts {
-            b.set_dbg(Some(env.line(inst.loc.line)));
+            b.set_dbg(Some(env.at(inst.loc)));
             inst_text(&mut cx, inst, &vals, &mut b);
         }
         match &bd.term {
-            Term::Br(t) => b.br(&block_label(t.block.index(), 0)),
-            Term::CondBr { cond, then, els } => {
-                let c = b.icmp("ne", &vals[&cond.index()][0], &Val::byte(0));
-                b.cond_br(
-                    &c,
-                    &block_label(then.block.index(), 0),
-                    &block_label(els.block.index(), 0),
-                );
+            Term::Br(t) => {
+                records::copies(&mut b, lay, f, &vals, t);
+                b.br(&block_label(t.block.index(), 0));
             }
-            Term::Ret(Some(v)) => match vals[&v.index()].as_slice() {
-                [] => b.ret(None),
-                [one] => b.ret(Some(one)),
-                many => {
-                    let t = b.tuple(many);
-                    b.ret(Some(&t));
+            Term::CondBr { cond, then, els } => {
+                let c = vals[&cond.index()][0].clone();
+                let from = exit_label(lay, f, checks, bb.index());
+                let to = |k: usize, t: &Target| {
+                    if records::has_copies(lay, f, t) {
+                        format!("{from}_e{k}")
+                    } else {
+                        block_label(t.block.index(), 0)
+                    }
+                };
+                b.cond_br(&c, &to(0, then), &to(1, els));
+                for (k, t) in [then, els].into_iter().enumerate() {
+                    if records::has_copies(lay, f, t) {
+                        b.label(&to(k, t));
+                        records::copies(&mut b, lay, f, &vals, t);
+                        b.br(&block_label(t.block.index(), 0));
+                    }
                 }
-            },
+            }
+            Term::Ret(Some(v)) if sret.is_some() => {
+                let to = sret.as_ref().expect("checked");
+                records::store_result(&mut b, lay, f.ty(*v), &vals, *v, to);
+                b.ret(None);
+            }
+            Term::Ret(Some(v)) => {
+                let abi = records::abi_leaves(&mut b, lay, f.ty(*v), &vals, *v, sig.is_some());
+                match abi.as_slice() {
+                    [] => b.ret(None),
+                    [one] => b.ret(Some(one)),
+                    many => {
+                        let t = b.tuple(many);
+                        b.ret(Some(&t));
+                    }
+                }
+            }
             Term::Ret(None) => b.ret(None),
             _ => b.unreachable(),
         }
     }
     *env.sites = cx.sites;
     Emitted {
-        ret: ret_text(lay, f.ret),
-        params: params.join(", "),
-        attrs: pure_attrs(m, lay, idx, &mut cx.memo)
+        ret: sig
+            .as_ref()
+            .map_or_else(|| ret_text(lay, f.ret), |s| s.ret.clone()),
+        params: sig
+            .as_ref()
+            .map_or_else(|| params.join(", "), Signature::define_params),
+        attrs: pure_attrs(m, lay, native, idx, &mut cx.memo)
             .unwrap_or("")
             .to_string(),
         body: b.finish(),
@@ -410,4 +569,9 @@ pub fn emit(
 fn inst_text(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     let area = area_of(inst.op).expect("supports rejects other ops");
     (area.emit)(cx, inst, vals, b);
+}
+
+/// The grow shim of the native function `f` called `sym` (see [`depth::shim`]).
+pub fn grow_shim(types: &Types, lay: &Layouts, f: &Func, sym: &str, dbg: usize) -> Emitted {
+    depth::shim(types, lay, f, sym, dbg)
 }

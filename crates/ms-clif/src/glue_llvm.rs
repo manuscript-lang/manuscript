@@ -457,6 +457,63 @@ fn reg_args(vs: &[Val], leaves: &[Leaf]) -> Vec<(Val, &'static str)> {
         .collect()
 }
 
+/// How a function calls glue: a value in memory, passed by pointer (a clone also writes through a
+/// result pointer), or its leaves in registers.
+pub enum GlueCall {
+    Memory(String),
+    Regs(String),
+}
+
+/// Declares the drop glue `target` for a value of `ty` and says how to call it.
+pub fn drop_callee(
+    lay: &Layouts,
+    ty: Ty,
+    target: &str,
+    decls: &mut Vec<(String, String)>,
+) -> GlueCall {
+    let leaves = lay.leaves(ty);
+    match unnative(target) {
+        Some(sym) => {
+            let n = native(sym);
+            decls.push(drop_sig(&leaves).declare(&n));
+            if indirect(&leaves) {
+                GlueCall::Memory(n)
+            } else {
+                GlueCall::Regs(n)
+            }
+        }
+        None => {
+            decls.push(leaf_sig(Glue::Drop, &leaves).declare(target));
+            GlueCall::Regs(target.to_string())
+        }
+    }
+}
+
+/// Declares the clone glue `target` for a value of `ty` and says how to call it.
+pub fn clone_callee(
+    lay: &Layouts,
+    ty: Ty,
+    target: &str,
+    decls: &mut Vec<(String, String)>,
+) -> GlueCall {
+    let leaves = lay.leaves(ty);
+    match unnative(target) {
+        Some(sym) => {
+            let n = native(sym);
+            decls.push(clone_sig(&leaves).declare(&n));
+            if indirect(&leaves) {
+                GlueCall::Memory(n)
+            } else {
+                GlueCall::Regs(n)
+            }
+        }
+        None => {
+            decls.push(leaf_sig(Glue::Clone, &leaves).declare(target));
+            GlueCall::Regs(target.to_string())
+        }
+    }
+}
+
 /// Calls drop glue `target` (see [`target`]) on the value `vs` of type `ty`.
 pub fn call_drop(
     b: &mut FnBuilder,
@@ -892,13 +949,12 @@ impl E<'_, '_, '_> {
 
 /// Emits the glue `kind` for `ty`, which `supports` accepted, with its leaf thunk. `loc` is the
 /// `DILocation` node of each function.
-pub fn emit(g: &mut Gen, kind: Glue, ty: Ty, loc: usize) -> Emitted {
+pub fn emit(g: &mut Gen, kind: Glue, ty: Ty, types: &Types, loc: usize) -> Emitted {
     let leaves = g.lay.leaves(ty);
     let sig = native_sig(kind, &leaves);
-    let types = Types::default();
     let mut e = E {
         g,
-        b: FnBuilder::new(&types, Some(loc)),
+        b: FnBuilder::new(types, Some(loc)),
         cur: String::new(),
         n: 0,
         decls: Vec::new(),
@@ -1000,10 +1056,9 @@ pub fn emit(g: &mut Gen, kind: Glue, ty: Ty, loc: usize) -> Emitted {
 }
 
 /// `@"sym"` with the leaf signature, forwarding to `@"sym.n"`.
-pub fn thunk(g: &Gen, kind: Glue, ty: Ty, sym: &str, loc: usize) -> Emitted {
+pub fn thunk(g: &Gen, kind: Glue, ty: Ty, sym: &str, types: &Types, loc: usize) -> Emitted {
     let leaves = &g.lay.leaves(ty);
-    let types = Types::default();
-    let mut b = FnBuilder::new(&types, Some(loc));
+    let mut b = FnBuilder::new(types, Some(loc));
     b.label("entry");
     let leaf = leaf_sig(kind, leaves);
     let nat = native_sig(kind, leaves);
