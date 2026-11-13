@@ -125,6 +125,9 @@ fn supported_op(op: Op) -> bool {
             | Op::ListFill
             | Op::StrByte
             | Op::StrAsciiAt
+            | Op::ListNew
+            | Op::ListLit
+            | Op::ListPush
             | Op::Call
     )
 }
@@ -154,6 +157,9 @@ pub fn supports(m: &Module, lay: &Layouts, f: &Func) -> bool {
             if let Some(l) = list_arg(i.op)
                 && !elem_ok(m, lay, f, i, l)
             {
+                return false;
+            }
+            if matches!(i.op, Op::ListNew | Op::ListLit | Op::ListPush) && !build_ok(m, lay, f, i) {
                 return false;
             }
             if i.op == Op::Call {
@@ -280,6 +286,32 @@ fn touches_memory(op: Op) -> bool {
     !PURE_OPS.contains(&op)
 }
 
+/// Whether the elements a list is built from are plain `i64`, `double` and `i8` leaves (a
+/// `ListNew` stores none, so any element will do).
+fn build_ok(m: &Module, lay: &Layouts, f: &Func, i: &Inst) -> bool {
+    let list = if i.op == Op::ListPush {
+        f.ty(i.args[0])
+    } else {
+        match i.res {
+            Some(r) => f.ty(r),
+            None => return false,
+        }
+    };
+    let Some(e) = m.seq_elem(list) else {
+        return false;
+    };
+    let args_ok = match i.op {
+        Op::ListNew => i.args.len() == 1,
+        Op::ListLit => i.args.iter().all(|a| f.ty(*a) == e),
+        _ => i.args.len() == 2 && f.ty(i.args[1]) == e,
+    };
+    args_ok
+        && lay
+            .leaves(e)
+            .iter()
+            .all(|l| matches!(l, Leaf::I64 | Leaf::F64 | Leaf::I8))
+}
+
 /// The operand that is the list for the list reads and writes, `None` for other ops.
 fn list_arg(op: Op) -> Option<usize> {
     match op {
@@ -340,7 +372,7 @@ fn checked(op: Op) -> bool {
 fn splits(op: Op, checks: bool) -> usize {
     match op {
         _ if checked(op) => usize::from(checks),
-        Op::StrByte | Op::StrAsciiAt => 1,
+        Op::StrByte | Op::StrAsciiAt | Op::ListNew | Op::ListPush => 1,
         _ => 0,
     }
 }
@@ -414,6 +446,26 @@ pub fn emit(
                 (Op::BConst, Imm::Bool(v)) => vec![Val::byte(v as u8)],
                 // The length is a leaf of the list: no instruction.
                 (Op::ListLen, _) => vec![vals[&inst.args[0].index()][1].clone()],
+                (Op::ListNew, _) => vec![
+                    b.reserve(LTy::I64),
+                    Val::int(0),
+                    vals[&inst.args[0].index()][0].clone(),
+                ],
+                (Op::ListLit, _) => {
+                    let n = Val::int(inst.args.len() as i64);
+                    if inst.args.is_empty() {
+                        vec![Val::int(0); 3]
+                    } else {
+                        vec![b.reserve(LTy::I64), n.clone(), n]
+                    }
+                }
+                (Op::ListPush, _) => {
+                    vec![
+                        b.reserve(LTy::I64),
+                        b.reserve(LTy::I64),
+                        b.reserve(LTy::I64),
+                    ]
+                }
                 // A write hands back the same list.
                 (Op::ListSet | Op::ListSetNn | Op::ListSetU | Op::ListFill, _) => {
                     vals[&inst.args[0].index()].clone()
@@ -557,6 +609,10 @@ fn inst_text(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         str_byte(cx, inst, vals, b);
         return;
     }
+    if matches!(inst.op, Op::ListNew | Op::ListLit | Op::ListPush) {
+        list_build(cx, inst, vals, b);
+        return;
+    }
     // A single-leaf result is named in place; `Select` and `Call` handle several.
     if let [r] = out.as_slice() {
         b.name_next(r);
@@ -647,7 +703,7 @@ fn list_access(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     let i = vals[&inst.args[1].index()][0].clone();
     let elem = cx.m.seq_elem(cx.f.ty(inst.args[0])).expect("a list");
     let tys: Vec<LTy> = cx.lay.leaves(elem).into_iter().map(|x| leaf(x).0).collect();
-    let (ptr, len) = (b.int_to_ptr(&l[0]), l[1].clone());
+    let (ptr, len) = (b.inttoptr(&l[0]), l[1].clone());
     let wraps = matches!(inst.op, Op::ListGet | Op::ListSet | Op::ListFill);
     let idx = if wraps {
         let neg = b.icmp("slt", &i, &Val::int(0));
@@ -720,7 +776,7 @@ fn str_byte(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     let join = block_label(bb, split + 1);
     cx.split += 1;
     let load_byte = |b: &mut FnBuilder, i: &Val| {
-        let ptr = b.int_to_ptr(&s[0]);
+        let ptr = b.inttoptr(&s[0]);
         let at = b.elem_ptr(&LTy::I8, &ptr, i);
         let byte = b.load(&LTy::I8, &at, 1);
         b.zext(&byte, LTy::I64)
@@ -758,4 +814,125 @@ fn str_byte(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     b.br(&join);
     b.label(&join);
     b.phi(&out, &[(inline_byte, word), (mem_byte, load)]);
+}
+
+/// The LLVM type of one list element (a tuple of its leaves) and of each leaf.
+fn elem_shape(cx: &Cx, list: Ty) -> (LTy, Vec<LTy>, u64) {
+    let elem = cx.m.seq_elem(list).expect("a list");
+    let leaves = cx.lay.leaves(elem);
+    let tys: Vec<LTy> = leaves.iter().map(|x| leaf(*x).0).collect();
+    let whole = match tys.as_slice() {
+        [one] => one.clone(),
+        many => LTy::Tuple(many.to_vec()),
+    };
+    (whole, tys, u64::from(mem_layout(&leaves).size))
+}
+
+/// A call to a runtime allocator; its result is a fresh block, kept as the `i64` leaf of a list.
+fn rt_alloc(cx: &mut Cx, b: &mut FnBuilder, name: &str, args: &[Val], dst: Option<&Val>) -> Val {
+    let params = vec!["i64"; args.len()].join(", ");
+    cx.decls.push((
+        name.to_string(),
+        format!("declare noalias align 16 ptr @\"{name}\"({params})"),
+    ));
+    let actuals: Vec<(Val, &str)> = args.iter().map(|a| (a.clone(), "")).collect();
+    let p = b
+        .call(&LTy::Ptr, "noalias align 16 ", name, &actuals)
+        .expect("a pointer");
+    if let Some(d) = dst {
+        b.name_next(d);
+    }
+    b.ptrtoint(&p)
+}
+
+/// Stores the leaves `vs` of one element at index `idx` of the list block at `ptr`.
+fn store_elem(b: &mut FnBuilder, shape: &(LTy, Vec<LTy>, u64), ptr: &Val, idx: &Val, vs: &[Val]) {
+    let (whole, tys, _) = shape;
+    let at = b.elem_ptr(whole, ptr, idx);
+    for (k, (t, v)) in tys.iter().zip(vs).enumerate() {
+        let to = if tys.len() == 1 {
+            at.clone()
+        } else {
+            b.field_ptr(whole, &at, k)
+        };
+        b.store(v, &to, Types::default().size_align(t).1);
+    }
+}
+
+/// `ListNew` (a block of `cap` elements, none when `cap` is zero), `ListLit` (a block holding
+/// the arguments) and `ListPush` (append, growing the block when it is full). A list is `(ptr,
+/// len, cap)`; `ListNew` and `ListLit` know the last two statically.
+fn list_build(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
+    let out = &vals[&inst.res.expect("list result").index()];
+    let list = cx.f.ty(inst.res.expect("list result"));
+    let shape = elem_shape(cx, list);
+    let size = shape.2.max(1) as i64;
+    let (bb, split) = (cx.block, cx.split);
+    let head = block_label(bb, split);
+    match inst.op {
+        Op::ListLit => {
+            if inst.args.is_empty() {
+                return;
+            }
+            let bytes = Val::int(inst.args.len() as i64 * size);
+            let p = rt_alloc(cx, b, "msrt_alloc", &[bytes], Some(&out[0]));
+            let ptr = b.inttoptr(&p);
+            for (i, a) in inst.args.iter().enumerate() {
+                store_elem(b, &shape, &ptr, &Val::int(i as i64), &vals[&a.index()]);
+            }
+        }
+        Op::ListNew => {
+            let cap = vals[&inst.args[0].index()][0].clone();
+            let (some, join) = (format!("n{bb}_{split}"), block_label(bb, split + 1));
+            cx.split += 1;
+            let nz = b.icmp("ne", &cap, &Val::int(0));
+            b.cond_br(&nz, &some, &join);
+            b.label(&some);
+            let bytes = b.bin(Bin::Mul, &cap, &Val::int(size));
+            let p = rt_alloc(cx, b, "msrt_alloc", &[bytes], None);
+            b.br(&join);
+            b.label(&join);
+            b.phi(&out[0], &[(Val::int(0), head), (p, some)]);
+        }
+        _ => {
+            let l = &vals[&inst.args[0].index()];
+            let (ptr0, len, cap) = (l[0].clone(), l[1].clone(), l[2].clone());
+            let (grow, first, again, joined) = (
+                format!("g{bb}_{split}"),
+                format!("a{bb}_{split}"),
+                format!("r{bb}_{split}"),
+                format!("j{bb}_{split}"),
+            );
+            let ready = block_label(bb, split + 1);
+            cx.split += 1;
+            let full = b.icmp("eq", &len, &cap);
+            b.cond_br_likely(&full, &grow, &ready, false);
+            b.label(&grow);
+            let empty = b.icmp("eq", &cap, &Val::int(0));
+            let doubled = b.bin(Bin::Shl, &cap, &Val::int(1));
+            let ncap = b.select(&empty, &Val::int(4), &doubled);
+            let bytes = b.bin(Bin::Mul, &ncap, &Val::int(size));
+            b.cond_br(&empty, &first, &again);
+            b.label(&first);
+            let fresh = rt_alloc(cx, b, "msrt_alloc", std::slice::from_ref(&bytes), None);
+            b.br(&joined);
+            b.label(&again);
+            let moved = rt_alloc(cx, b, "msrt_realloc", &[ptr0.clone(), bytes], None);
+            b.br(&joined);
+            b.label(&joined);
+            let np = b.reserve(LTy::I64);
+            b.phi(&np, &[(fresh, first), (moved, again)]);
+            b.br(&ready);
+            b.label(&ready);
+            b.phi(
+                &out[0],
+                &[(ptr0, head.clone()), (np.clone(), joined.clone())],
+            );
+            b.phi(&out[2], &[(cap, head), (ncap, joined)]);
+            let ptr = b.inttoptr(&out[0]);
+            store_elem(b, &shape, &ptr, &len, &vals[&inst.args[1].index()]);
+            b.name_next(&out[1]);
+            b.bin(Bin::Add, &len, &Val::int(1));
+        }
+    }
 }

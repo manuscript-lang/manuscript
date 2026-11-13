@@ -576,12 +576,6 @@ impl<'t> FnBuilder<'t> {
         self.line(format!("call void asm sideeffect \"\", \"i\"(i32 {n})"));
     }
 
-    /// `inttoptr` of a pointer-sized integer leaf.
-    pub fn int_to_ptr(&mut self, v: &Val) -> Val {
-        assert_eq!(v.ty, Ty::I64);
-        self.def(Ty::Ptr, format!("inttoptr i64 {} to ptr", v.text))
-    }
-
     pub fn cond_br(&mut self, cond: &Val, then: &str, els: &str) {
         assert_eq!(cond.ty, Ty::I1);
         self.line(format!("br i1 {}, label %{then}, label %{els}", cond.text));
