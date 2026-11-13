@@ -122,25 +122,49 @@ fn leaves(lay: &Layouts, ty: Ty) -> Vec<(LTy, &'static str)> {
 /// A function gets and returns a boolean as `i8`, and in the leaf convention a pointer as `i64`,
 /// and converts at its entry and returns; memory holds the `mem_leaves`.
 fn held_leaves(lay: &Layouts, ty: Ty) -> Vec<LTy> {
-    let mut tys = mem_leaves(lay, ty);
-    for (t, is_bool) in tys.iter_mut().zip(lay.bool_leaves(ty)) {
-        if is_bool {
+    let (ptrs, bools) = (lay.pointer_leaves(ty), lay.bool_leaves(ty));
+    let mut tys: Vec<LTy> = lay.leaves(ty).into_iter().map(|l| leaf(l).0).collect();
+    for (k, t) in tys.iter_mut().enumerate() {
+        if ptrs[k] {
+            *t = LTy::Ptr;
+        } else if bools[k] {
             *t = LTy::I1;
         }
     }
     tys
 }
 
-/// The types a value of type `ty` has in memory: its leaves, with the pointer ones as `ptr` and a
-/// boolean as the `i8` it is stored as.
+/// The types a value of type `ty` has in memory: its leaves, with the pointer ones as `ptr`, a
+/// boolean as the `i8` it is stored as, and a narrow integer as the 1, 2 or 4 byte integer it
+/// occupies (`mem_leaf`).
 fn mem_leaves(lay: &Layouts, ty: Ty) -> Vec<LTy> {
-    let mut tys: Vec<LTy> = lay.leaves(ty).into_iter().map(|l| leaf(l).0).collect();
+    let mut tys: Vec<LTy> = lay.leaves(ty).into_iter().map(mem_leaf).collect();
     for (t, ptr) in tys.iter_mut().zip(lay.pointer_leaves(ty)) {
         if ptr {
             *t = LTy::Ptr;
         }
     }
     tys
+}
+
+/// The memory type of one leaf: a narrow integer is held in an `i64` register and stored in its
+/// own width.
+fn mem_leaf(l: Leaf) -> LTy {
+    match l {
+        Leaf::N8 | Leaf::U8 => LTy::I8,
+        Leaf::N16 | Leaf::U16 => LTy::I16,
+        Leaf::N32 | Leaf::U32 => LTy::I32,
+        l => leaf(l).0,
+    }
+}
+
+/// Per leaf of `ty`: whether loading it from memory sign-extends (`Int8` to `Int32`). Other
+/// narrow leaves zero-extend; wider ones are not extended.
+fn signed_leaves(lay: &Layouts, ty: Ty) -> Vec<bool> {
+    lay.leaves(ty)
+        .into_iter()
+        .map(|l| matches!(l, Leaf::N8 | Leaf::N16 | Leaf::N32))
+        .collect()
 }
 
 /// The struct a value of type `ty` has in memory: named for strings, lists and records, so the

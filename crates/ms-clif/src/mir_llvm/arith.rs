@@ -17,7 +17,20 @@ pub(super) const AREA: Area = Area {
 };
 
 fn ty_ok(k: &TyKind) -> bool {
-    matches!(k, TyKind::Unit | TyKind::Int | TyKind::Float | TyKind::Bool)
+    matches!(
+        k,
+        TyKind::Unit
+            | TyKind::Int
+            | TyKind::Float
+            | TyKind::Bool
+            | TyKind::Int8
+            | TyKind::Int16
+            | TyKind::Int32
+            | TyKind::UInt8
+            | TyKind::UInt16
+            | TyKind::UInt32
+            | TyKind::UInt64
+    )
 }
 
 fn handles(op: Op) -> bool {
@@ -58,6 +71,8 @@ fn handles(op: Op) -> bool {
             | Op::SDivChk
             | Op::SRemChk
             | Op::IntOverflowIf
+            | Op::NarrowChk
+            | Op::INarrowOpt
     )
 }
 
@@ -75,6 +90,7 @@ fn checked(op: Op) -> bool {
             | Op::SDivChk
             | Op::SRemChk
             | Op::IntOverflowIf
+            | Op::NarrowChk
     )
 }
 
@@ -97,10 +113,17 @@ fn pre(
     _: &Layouts,
     _: &Func,
     inst: &Inst,
-    _: &Vals,
-    _: &mut FnBuilder,
+    vals: &Vals,
+    b: &mut FnBuilder,
 ) -> Option<Vec<Val>> {
     match (inst.op, inst.imm) {
+        // The value itself, after `emit` checks its range.
+        (Op::NarrowChk, _) => Some(vec![vals[&inst.args[0].index()][0].clone()]),
+        // Whether the value fits, and the value.
+        (Op::INarrowOpt, _) => Some(vec![
+            b.reserve(LTy::I1),
+            vals[&inst.args[0].index()][0].clone(),
+        ]),
         (Op::IConst, Imm::Int(v)) => Some(vec![Val::int(v)]),
         (Op::FConst, Imm::Float(bits)) => Some(vec![Val::double(bits)]),
         (Op::BConst, Imm::Bool(v)) => Some(vec![Val::bool(v)]),
@@ -147,6 +170,12 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         Op::IConst | Op::FConst | Op::BConst | Op::UnitConst
     ) {
         return;
+    }
+    if inst.op == Op::NarrowChk {
+        return narrow_chk(cx, inst, vals, b);
+    }
+    if inst.op == Op::INarrowOpt {
+        return narrow_opt(cx, inst, vals, b);
     }
     if checked(inst.op) {
         return checked_op(cx, inst, vals, b, &out);
@@ -282,4 +311,39 @@ fn rem(b: &mut FnBuilder, x: &Val, y: &Val, name: &dyn Fn(&mut FnBuilder)) {
     let r = b.bin(Bin::SRem, x, &safe);
     name(b);
     b.select(&m1, &Val::int(0), &r);
+}
+
+/// `NarrowChk`: faults when the value is outside the range of its (narrow) type. The register is
+/// the value itself, so nothing else is written.
+fn narrow_chk(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
+    if !cx.checks {
+        return;
+    }
+    let x = vals[&inst.args[0].index()][0].clone();
+    let (lo, hi) = cx
+        .lay
+        .m
+        .types
+        .int_range(cx.f.ty(inst.args[0]))
+        .unwrap_or((i64::MIN.into(), i64::MAX.into()));
+    let below = b.icmp("slt", &x, &Val::int(lo as i64));
+    let above = b.icmp("sgt", &x, &Val::int(hi as i64));
+    let bad = b.bin(Bin::Or, &below, &above);
+    faults::fault_if(cx, b, &bad, "msrt_fault_int_range", &[]);
+}
+
+/// `INarrowOpt`: `[fits, value]`, where it fits when the register is inside the range of the
+/// optional's integer type.
+fn narrow_opt(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
+    let m = cx.lay.m;
+    let x = vals[&inst.args[0].index()][0].clone();
+    let res = cx.f.ty(inst.res.expect("a result"));
+    let (lo, hi) = m.opt_inner(res).map_or((i64::MIN, i64::MAX), |inner| {
+        m.types.narrow_range(cx.f.ty(inst.args[0]), inner)
+    });
+    let ok = vals[&inst.res.expect("a result").index()][0].clone();
+    let ge = b.icmp("sge", &x, &Val::int(lo));
+    let le = b.icmp("sle", &x, &Val::int(hi));
+    b.name_next(&ok);
+    b.bin(Bin::And, &ge, &le);
 }

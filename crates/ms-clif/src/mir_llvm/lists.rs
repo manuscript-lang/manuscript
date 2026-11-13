@@ -1,6 +1,6 @@
 //! Strings and lists: the length leaf, element reads and writes, and string bytes.
 
-use super::{Area, Cx, Vals, block_label, held_leaves, mem_leaves};
+use super::{Area, Cx, Vals, block_label, held_leaves, mem_leaves, signed_leaves};
 use crate::layout::{Layouts, Leaf, mem_layout};
 use crate::llvm_build::{Bin, FnBuilder, Meta, Range, Tbaa, Ty as LTy, Val};
 use ms_mir::ir::{Func, Imm, Inst, Module, Op};
@@ -167,6 +167,7 @@ fn list_access(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     let elem = cx.m.seq_elem(cx.f.ty(inst.args[0])).expect("a list");
     let tys = mem_leaves(cx.lay, elem);
     let held = held_leaves(cx.lay, elem);
+    let signed = signed_leaves(cx.lay, elem);
     let (ptr, len) = (l[0].clone(), l[1].clone());
     let wraps = matches!(inst.op, Op::ListGet | Op::ListSet | Op::ListFill);
     let idx = if wraps {
@@ -205,22 +206,18 @@ fn list_access(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         let meta = elem_meta(cx.m.types.kind(elem), k);
         if reads {
             let dst = &out.expect("list read result")[k];
-            if held[k] == LTy::I1 {
-                // A boolean element is a byte in memory.
-                let byte = b.load_with(t, &to, align, meta);
-                b.name_next(dst);
-                b.trunc(&byte, LTy::I1);
-            } else {
+            // A boolean is a byte in memory and a narrow integer its own width.
+            if *t == held[k] {
                 b.name_next(dst);
                 b.load_with(t, &to, align, meta);
+            } else {
+                let w = b.load_with(t, &to, align, meta);
+                b.name_next(dst);
+                super::records::widen(b, &w, &held[k], signed[k]);
             }
         } else {
             let v = vals[&inst.args[2].index()][k].clone();
-            let v = if v.ty == LTy::I1 {
-                b.zext(&v, LTy::I8)
-            } else {
-                v
-            };
+            let v = super::records::to_mem(b, &v, t);
             b.store_with(&v, &to, align, meta);
         }
     }
@@ -377,11 +374,7 @@ fn store_elem(cx: &Cx, b: &mut FnBuilder, list: Ty, ptr: &Val, idx: &Val, vs: &[
         } else {
             b.field_ptr(&whole, &at, k)
         };
-        let v = if v.ty == LTy::I1 {
-            b.zext(v, LTy::I8)
-        } else {
-            v.clone()
-        };
+        let v = super::records::to_mem(b, v, t);
         let align = b.types().size_align(t).1;
         b.store_with(&v, &to, align, elem_meta(cx.m.types.kind(elem), k));
     }
@@ -541,5 +534,5 @@ fn plain_elem(lay: &Layouts, e: Ty) -> bool {
         && lay
             .leaves(e)
             .iter()
-            .all(|l| matches!(l, Leaf::I64 | Leaf::F64 | Leaf::I8))
+            .all(|l| matches!(l, Leaf::I64 | Leaf::F64 | Leaf::I8) || super::records::is_narrow(*l))
 }
