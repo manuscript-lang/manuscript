@@ -46,6 +46,25 @@ pub struct Emitted {
     pub body: String,
     /// `(symbol, declare line)` of each callee.
     pub decls: Vec<(String, String)>,
+    /// Symbols of the data objects the function addresses.
+    pub data: Vec<String>,
+}
+
+/// What a function needs from the module before it is emitted: whether checks are on, and the
+/// symbols of the glue and descriptors its instructions call. The driver declares them (glue is
+/// queued for generation).
+#[derive(Default)]
+pub struct Plan {
+    /// Whether bounds checks are emitted.
+    pub checks: bool,
+    /// Symbol to call for the `Clone` glue of a type (see `glue_llvm::target`).
+    pub clone: HashMap<Ty, String>,
+    /// Symbol to call for the `Drop` glue of a type.
+    pub drop: HashMap<Ty, String>,
+    /// Type descriptor symbol by type.
+    pub desc: HashMap<Ty, String>,
+    /// Symbol of the cleanup thunk by the MIR index of the closer.
+    pub cleanup: HashMap<usize, String>,
 }
 
 /// LLVM type and parameter attribute of one register leaf. `I8` leaves (`Bool`, flags) are
@@ -294,6 +313,8 @@ struct Cx<'a> {
     m: &'a Module,
     f: &'a Func,
     lay: &'a Layouts<'a>,
+    /// The glue and descriptors the function refers to.
+    plan: &'a Plan,
     /// Whether bounds checks are emitted.
     checks: bool,
     /// Fault call sites numbered so far in the module.
@@ -303,7 +324,9 @@ struct Cx<'a> {
     memo: HashMap<usize, Option<bool>>,
     /// `(symbol, declare line)` of each callee.
     decls: Vec<(String, String)>,
-    /// MIR block being written and the checks it has split off so far.
+    /// Symbols of the data objects the function addresses.
+    data: Vec<String>,
+    /// MIR block being written and the splits it has made so far.
     block: usize,
     split: usize,
     /// The entry parameters as they arrive, one per leaf, and the result leaves: what the
@@ -350,10 +373,11 @@ pub fn emit(
         native,
     }: Place,
     f: &Func,
-    checks: bool,
+    plan: &Plan,
     env: &mut DirectEnv,
     symbol_of: &dyn Fn(usize) -> String,
 ) -> Emitted {
+    let checks = plan.checks;
     let types = env.types;
     let mut b = FnBuilder::new(types, Some(env.loc));
     let rpo = f.rpo();
@@ -436,11 +460,13 @@ pub fn emit(
         m,
         f,
         lay,
+        plan,
         checks,
         sites: *env.sites,
         symbol_of,
         memo: HashMap::new(),
         decls: Vec::new(),
+        data: Vec::new(),
         block: 0,
         split: 0,
         entry_abi,
@@ -537,6 +563,7 @@ pub fn emit(
             .to_string(),
         body: b.finish(),
         decls: cx.decls,
+        data: cx.data,
     }
 }
 
