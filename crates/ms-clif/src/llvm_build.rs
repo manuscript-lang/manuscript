@@ -137,10 +137,7 @@ impl Types {
     }
 
     fn field(&self, ty: &Ty, idx: usize) -> Ty {
-        let Ty::Struct(i) = ty else {
-            panic!("field of a non-struct")
-        };
-        self.structs[*i].fields[idx].clone()
+        self.fields_of(ty)[idx].clone()
     }
 }
 

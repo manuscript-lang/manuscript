@@ -1325,14 +1325,20 @@ fn direct_plan(g: &mut Gen, f: &Func) -> crate::mir_llvm::Plan {
                     let ty = f.ty(i.args[0]);
                     if own_kind(&g.lay, ty) == OwnKind::Glue && !plan.clone.contains_key(&ty) {
                         let id = g.glue(Glue::Clone, ty);
-                        plan.clone.insert(ty, symbol_of(g, id));
+                        plan.clone.insert(
+                            ty,
+                            crate::glue_llvm::target(g, Glue::Clone, ty, symbol_of(g, id)),
+                        );
                     }
                 }
                 (Op::Drop | Op::DropIf, _) => {
                     let ty = f.ty(i.args[usize::from(i.op == Op::DropIf)]);
                     if own_kind(&g.lay, ty) == OwnKind::Glue && !plan.drop.contains_key(&ty) {
                         let id = g.glue(Glue::Drop, ty);
-                        plan.drop.insert(ty, symbol_of(g, id));
+                        plan.drop.insert(
+                            ty,
+                            crate::glue_llvm::target(g, Glue::Drop, ty, symbol_of(g, id)),
+                        );
                     }
                 }
                 (Op::TypeDesc, Imm::Ty(t)) => {
@@ -1356,14 +1362,19 @@ fn direct_glue(g: &mut Gen, kind: Glue, ty: Ty) -> bool {
     let id = g.glue[&(kind, ty)];
     let sym = symbol_of(g, id);
     let mut llvm = g.llvm.take().expect("checked above");
-    llvm.add_direct(&sym, "glue", (0, 0), false, |loc| {
+    let nat = crate::glue_llvm::native(&sym);
+    llvm.add_direct(&nat, "glue", (0, 0), false, |loc| {
         crate::glue_llvm::emit(g, kind, ty, loc)
+    });
+    llvm.mark_glue();
+    llvm.add_direct(&sym, "glue", (0, 0), false, |loc| {
+        crate::glue_llvm::thunk(g, kind, ty, &sym, loc)
     });
     llvm.mark_glue();
     g.llvm = Some(llvm);
     g.llvm_funcs.push(LlvmFn {
         id,
-        symbol: sym,
+        symbol: nat,
         name: "glue".to_string(),
         file: u32::MAX,
         line: 0,

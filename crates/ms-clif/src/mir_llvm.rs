@@ -558,7 +558,6 @@ fn inst_text(cx: &Cx, inst: &Inst, out_sinks: &mut Out, at: Site, b: &mut FnBuil
         }
         Op::Clone => {
             let ty = f.ty(inst.args[0]);
-            let ls = leaves(lay, ty);
             let args = &vals[&inst.args[0].index()];
             match own_kind(lay, ty) {
                 OwnKind::Identity => {}
@@ -578,34 +577,7 @@ fn inst_text(cx: &Cx, inst: &Inst, out_sinks: &mut Out, at: Site, b: &mut FnBuil
                 }
                 OwnKind::Glue => {
                     let sym = &plan.clone[&ty];
-                    let ret = ret_ty(lay, ty);
-                    let attr = ret_attr(lay, ty);
-                    let call_args: Vec<(Val, &str)> = args
-                        .iter()
-                        .zip(&ls)
-                        .map(|(v, (_, a))| (v.clone(), *a))
-                        .collect();
-                    let formals: Vec<String> = ls
-                        .iter()
-                        .map(|(t, a)| format!("{}{a}", Types::default().text(t)))
-                        .collect();
-                    decls.push((
-                        sym.clone(),
-                        format!(
-                            "declare {attr}{} @\"{sym}\"({})",
-                            Types::default().text(&ret),
-                            formals.join(", ")
-                        ),
-                    ));
-                    if out.len() <= 1 {
-                        b.call(&ret, attr, sym, &call_args);
-                    } else {
-                        let t = b.call(&ret, attr, sym, &call_args).expect("a tuple result");
-                        for (k, dst) in out.iter().enumerate() {
-                            b.name_next(dst);
-                            b.extract(&t, k);
-                        }
-                    }
+                    crate::glue_llvm::call_clone(b, decls, lay, sym, ty, args, Some(&out));
                 }
             }
         }
@@ -648,21 +620,7 @@ fn inst_text(cx: &Cx, inst: &Inst, out_sinks: &mut Out, at: Site, b: &mut FnBuil
                 }
                 _ => {
                     let sym = &plan.drop[&ty];
-                    let ls = leaves(lay, ty);
-                    let call_args: Vec<(Val, &str)> = args
-                        .iter()
-                        .zip(&ls)
-                        .map(|(v, (_, a))| (v.clone(), *a))
-                        .collect();
-                    let formals: Vec<String> = ls
-                        .iter()
-                        .map(|(t, a)| format!("{}{a}", Types::default().text(t)))
-                        .collect();
-                    decls.push((
-                        sym.clone(),
-                        format!("declare void @\"{sym}\"({})", formals.join(", ")),
-                    ));
-                    b.call(&LTy::Void, "", sym, &call_args);
+                    crate::glue_llvm::call_drop(b, decls, lay, sym, ty, args);
                 }
             }
             if guarded {
