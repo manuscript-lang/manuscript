@@ -424,7 +424,15 @@ pub fn unsupported(m: &Module, lay: &Layouts, f: &Func) -> Option<String> {
                 return Some(format!("op {:?} has no lowering", i.op));
             };
             if !(area.inst_ok)(m, lay, f, i) {
-                return Some(format!("op {:?} in a shape it does not lower", i.op));
+                // Name the type the op works on, which is what the shape is.
+                let ty = match i.imm {
+                    Imm::Ty(t) => Some(t),
+                    _ => i.args.first().map(|a| f.ty(*a)).or(i.res.map(|r| f.ty(r))),
+                };
+                let on = ty.map_or(String::new(), |t| {
+                    format!(" on {} with leaves {:?}", ty_name(t), lay.leaves(t))
+                });
+                return Some(format!("op {:?}{on} in a shape it does not lower", i.op));
             }
             if let Some(v) = i
                 .res
