@@ -2,7 +2,7 @@
 // expect-mir: "msrt_strbuilder_append"
 // expect-mir: "msrt_strbuilder_freeze"
 
-import StringBuilder from "@std/string.ms"
+import StringBuilder from "@std/string_builder.ms"
 
 export fn main() Int:
     var b = StringBuilder()

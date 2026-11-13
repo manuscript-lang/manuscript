@@ -4,7 +4,7 @@ import (
 	create_directory, read_file, write_file from "@std/os/fs.ms",
 	dirname from "@std/os/path.ms",
 	RunOptions, run from "@std/os/process.ms",
-	compile from "@std/string.ms",
+	compile from "@std/regex.ms",
 	monotonic, seconds from "@std/time.ms",
 )
 

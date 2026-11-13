@@ -3,7 +3,7 @@
 // conform: origin=tests/e2e/testdata/accept/services.ms
 import expect_equal from "@std/test/test.ms"
 import BytesBuilder from "@std/bytes.ms"
-import StringBuilder from "@std/string.ms"
+import StringBuilder from "@std/string_builder.ms"
 
 test "builders":
     var bytes = BytesBuilder()

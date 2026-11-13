@@ -1,5 +1,5 @@
 import bench from "./harness.ms"
-import StringBuilder from "@std/string.ms"
+import StringBuilder from "@std/string_builder.ms"
 import parse, stringify, YamlValue from "@std/data/yaml.ms"
 
 fn yaml_doc(count: Int) String:

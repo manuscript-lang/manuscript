@@ -4,7 +4,7 @@
 import (
 	arguments from "@std/os/env.ms",
 	create_directory, write_file from "@std/os/fs.ms",
-	StringBuilder from "@std/string.ms",
+	StringBuilder from "@std/string_builder.ms",
 )
 
 type Rng:

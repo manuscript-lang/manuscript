@@ -1,4 +1,4 @@
-//! `@std/crypto.ms` natives: digests, HMAC,
+//! `@std/crypto/crypto.ms` natives: digests, HMAC,
 //! PBKDF2, HKDF, AES-GCM/CTR/CBC and Ed25519, built on RustCrypto.
 #![no_std]
 

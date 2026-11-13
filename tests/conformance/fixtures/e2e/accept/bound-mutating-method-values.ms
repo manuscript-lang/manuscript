@@ -1,7 +1,7 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
 import (
-	StringBuilder from "@std/string.ms",
+	StringBuilder from "@std/string_builder.ms",
 	expect_equal from "@std/test/test.ms",
 )
 

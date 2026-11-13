@@ -1,7 +1,7 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
 import (
-	compile from "@std/string.ms",
+	compile from "@std/regex.ms",
 	expect_contains, expect_equal from "@std/test/test.ms",
 )
 

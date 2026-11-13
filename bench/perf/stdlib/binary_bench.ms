@@ -1,6 +1,6 @@
 import (
 	Bytes, BytesBuilder from "@std/bytes.ms",
-	sha256 from "@std/crypto.ms",
+	sha256 from "@std/crypto/crypto.ms",
 	base64_decode, base64_encode, hex_encode from "@std/data/encoding.ms",
 	keep, measure from "@std/test/bench.ms",
 

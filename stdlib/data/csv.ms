@@ -1,7 +1,7 @@
 import (
 	Bytes, join from "@std/bytes.ms",
 	ReadStream, Sink, Transform, WriteStream, through from "@std/io/io.ms",
-	StringBuilder from "@std/string.ms",
+	StringBuilder from "@std/string_builder.ms",
 )
 
 // Delimiter and line ending used when parsing or writing CSV, and the row and cell

@@ -10,7 +10,7 @@ import (
 	rsa_sign,
 	rsa_sign_pss,
 	rsa_verify,
-	rsa_verify_pss from "@std/crypto.ms",
+	rsa_verify_pss from "@std/crypto/crypto.ms",
 	expect_equal, expect_false, expect_true from "@std/test/test.ms",
 )
 

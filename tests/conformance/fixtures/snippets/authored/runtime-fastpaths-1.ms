@@ -2,7 +2,7 @@
 // conform: phase=run
 // conform: origin=perf fast paths: builder append fusion, chars, parse_int, sort
 import stdout from "@std/io/io.ms"
-import StringBuilder from "@std/string.ms"
+import StringBuilder from "@std/string_builder.ms"
 import parse_int from "@std/math/math.ms"
 
 fn compare(left: Int, right: Int) Int:

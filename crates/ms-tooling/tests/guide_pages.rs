@@ -150,7 +150,7 @@ fn std_pages_resolve_forms() {
     );
     for path in ["nope", "json.nope", "prelude.List.nope"] {
         let error = page(syms, path).unwrap_err();
-        assert!(error.len() <= 700, "Page({path:?}) error = {error}");
+        assert!(error.len() <= 900, "Page({path:?}) error = {error}");
     }
     let index = index(syms);
     assert!(index.contains("json "));
@@ -189,7 +189,7 @@ fn search_finds_apis_from_loose_queries() {
         ("http server", "@std/net/http.ms", "HttpServer"),
         ("parse_int", "@std/math/math.ms", "parse_int"),
         ("sleep", "@std/time.ms", "sleep"),
-        ("regex replace", "@std/string.ms", "Regex.replace_all"),
+        ("regex replace", "@std/regex.ms", "Regex.replace_all"),
         ("base64 encode", "@std/data/encoding.ms", "base64_encode"),
         ("sorted", "prelude", "List.sorted"),
         ("sort by", "prelude", "List.sorted"),

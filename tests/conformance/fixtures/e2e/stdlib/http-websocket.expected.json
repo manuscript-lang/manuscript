@@ -43,19 +43,24 @@
           "index": 6,
           "name": "http-websocket.ms::a promise cancelled while it owns a WebSocket closes it without ending the program",
           "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "http-websocket.ms::HttpExchange.upgrade returns a WebSocket",
+          "status": "passed"
         }
       ],
       "summary": {
-        "available": 7,
-        "selected": 7,
-        "passed": 7,
+        "available": 8,
+        "selected": 8,
+        "passed": 8,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN http-websocket.ms::HTTP buffered and streaming clients call a Manuscript handler\nPASS http-websocket.ms::HTTP buffered and streaming clients call a Manuscript handler\nRUN http-websocket.ms::WebSocket negotiates a protocol and echoes a text frame\nPASS http-websocket.ms::WebSocket negotiates a protocol and echoes a text frame\nRUN http-websocket.ms::WebSocket upgrades need HTTP/1.1 and one key\nPASS http-websocket.ms::WebSocket upgrades need HTTP/1.1 and one key\nRUN http-websocket.ms::HTTP streaming handlers see the Host request header\nPASS http-websocket.ms::HTTP streaming handlers see the Host request header\nRUN http-websocket.ms::HTTP requests reject an empty method\nPASS http-websocket.ms::HTTP requests reject an empty method\nRUN http-websocket.ms::a WebSocket read cancelled by its timeout leaves the socket closable\nPASS http-websocket.ms::a WebSocket read cancelled by its timeout leaves the socket closable\nRUN http-websocket.ms::a promise cancelled while it owns a WebSocket closes it without ending the program\nPASS http-websocket.ms::a promise cancelled while it owns a WebSocket closes it without ending the program\n7 tests, 0 failed\n",
+      "stdout": "RUN http-websocket.ms::HTTP buffered and streaming clients call a Manuscript handler\nPASS http-websocket.ms::HTTP buffered and streaming clients call a Manuscript handler\nRUN http-websocket.ms::WebSocket negotiates a protocol and echoes a text frame\nPASS http-websocket.ms::WebSocket negotiates a protocol and echoes a text frame\nRUN http-websocket.ms::WebSocket upgrades need HTTP/1.1 and one key\nPASS http-websocket.ms::WebSocket upgrades need HTTP/1.1 and one key\nRUN http-websocket.ms::HTTP streaming handlers see the Host request header\nPASS http-websocket.ms::HTTP streaming handlers see the Host request header\nRUN http-websocket.ms::HTTP requests reject an empty method\nPASS http-websocket.ms::HTTP requests reject an empty method\nRUN http-websocket.ms::a WebSocket read cancelled by its timeout leaves the socket closable\nPASS http-websocket.ms::a WebSocket read cancelled by its timeout leaves the socket closable\nRUN http-websocket.ms::a promise cancelled while it owns a WebSocket closes it without ending the program\nPASS http-websocket.ms::a promise cancelled while it owns a WebSocket closes it without ending the program\nRUN http-websocket.ms::HttpExchange.upgrade returns a WebSocket\nPASS http-websocket.ms::HttpExchange.upgrade returns a WebSocket\n8 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

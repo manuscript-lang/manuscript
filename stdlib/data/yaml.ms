@@ -3,7 +3,8 @@ import (
 	Bytes from "@std/bytes.ms",
 	quote_text from "@std/data/quote.ms",
 	parse_int from "@std/math/math.ms",
-	StringBuilder, from_scalars from "@std/string.ms",
+	from_scalars from "@std/string.ms",
+	StringBuilder from "@std/string_builder.ms",
 )
 
 // A YAML value represented as null, boolean, number text, string, array, or object.

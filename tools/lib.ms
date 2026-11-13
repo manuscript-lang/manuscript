@@ -1,7 +1,7 @@
 // Shared helpers for the repository tools in this directory. Run a tool from the
 // repository root with `ms run tools/<name>.ms [-- arguments]`.
 import (
-	sha256 from "@std/crypto.ms",
+	sha256 from "@std/crypto/crypto.ms",
 	hex_encode from "@std/data/encoding.ms",
 	stderr from "@std/io/io.ms",
 	environment, set_environment from "@std/os/env.ms",

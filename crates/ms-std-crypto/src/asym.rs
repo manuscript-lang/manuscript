@@ -1,4 +1,4 @@
-//! Asymmetric operations of `@std/crypto.ms`: ECDSA and ECDH over P-256/384/521, X25519, and RSA
+//! Asymmetric operations of `@std/crypto/crypto.ms`: ECDSA and ECDH over P-256/384/521, X25519, and RSA
 //! (PKCS#1 v1.5, PSS, OAEP), with PKCS#8 / PKIX DER keys.
 use crate::{Alg, CryptoFail};
 use alloc::vec::Vec;

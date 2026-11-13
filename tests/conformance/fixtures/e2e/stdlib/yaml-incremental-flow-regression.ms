@@ -2,7 +2,7 @@
 // conform: phase=test
 import (
 	YamlValue, parse from "@std/data/yaml.ms",
-	StringBuilder from "@std/string.ms",
+	StringBuilder from "@std/string_builder.ms",
 	expect_equal, expect_ok from "@std/test/test.ms",
 )
 

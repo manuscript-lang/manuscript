@@ -1,7 +1,7 @@
 import (
 	Bytes from "@std/bytes.ms",
 	base64_decode, base64_encode from "@std/data/encoding.ms",
-	StringBuilder from "@std/string.ms",
+	StringBuilder from "@std/string_builder.ms",
 )
 
 /*
