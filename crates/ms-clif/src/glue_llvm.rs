@@ -495,10 +495,16 @@ pub fn call_clone(
     names: Option<&[Val]>,
 ) -> Vs {
     let leaves = lay.leaves(ty);
-    let sig = clone_sig(&leaves);
     let (n, native_call) = match unnative(target) {
         Some(sym) => (native(sym), true),
         None => (target.to_string(), false),
+    };
+    // The leaf symbol of glue that falls back to the translation returns its leaves in registers
+    // whatever their size.
+    let sig = if native_call {
+        clone_sig(&leaves)
+    } else {
+        leaf_sig(Glue::Clone, &leaves)
     };
     decls.push(sig.declare(&n));
     if native_call && indirect(&leaves) {
