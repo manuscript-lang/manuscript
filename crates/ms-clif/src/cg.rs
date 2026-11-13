@@ -3,7 +3,7 @@
 
 use crate::layout::{Layouts, Leaf};
 use crate::lower::Lower;
-use crate::{Error, Fallback, Options};
+use crate::{Error, Options};
 use cranelift_codegen::Context;
 use cranelift_codegen::ir::{self, AbiParam, Signature, UserFuncName, types};
 use ms_mir::types::Native;
@@ -188,6 +188,8 @@ pub struct Gen<'m> {
     pub llvm: Option<crate::llvm_ir::LlvmModule>,
     /// Source functions defined through [`Gen::llvm`], for the fault and profile tables.
     pub llvm_funcs: Vec<LlvmFn>,
+    /// Functions and glue the direct emitter could not write, one line each.
+    pub unsupported: Vec<String>,
     /// Functions that use the native LLVM calling convention, once computed (see
     /// [`native_functions`]).
     pub native: Option<HashSet<usize>>,
@@ -239,12 +241,11 @@ struct ModuleSymbols<'a>(
     &'a ObjectModule,
     &'a [(u32, u32, u32)],
     &'a [ms_mir::ir::Scope],
-    &'a [ms_mir::ir::ExternDef],
 );
 
 /// The linkage symbol of function `id`.
 pub(crate) fn symbol_of(g: &Gen, id: FuncId) -> String {
-    ModuleSymbols(&g.module, &g.locs, &g.scopes, &g.m.externs).symbol_of(id)
+    ModuleSymbols(&g.module, &g.locs, &g.scopes).symbol_of(id)
 }
 
 impl ModuleSymbols<'_> {
@@ -265,25 +266,6 @@ impl crate::llvm_ir::Symbols for ModuleSymbols<'_> {
     fn scope(&self, idx: u32) -> Option<(String, u32, u32, u32)> {
         let sc = self.2.get((idx as usize).checked_sub(1)?)?;
         Some((sc.name.clone(), sc.file, sc.parent, sc.call_line))
-    }
-
-    fn reads_only(&self, symbol: &str) -> bool {
-        self.3.iter().any(|e| e.reads && e.name == symbol)
-    }
-
-    fn symbol(&self, namespace: u32, index: u32) -> String {
-        let decls = self.0.declarations();
-        if namespace == 0 {
-            decls
-                .get_function_decl(FuncId::from_u32(index))
-                .linkage_name(FuncId::from_u32(index))
-                .into_owned()
-        } else {
-            decls
-                .get_data_decl(DataId::from_u32(index))
-                .linkage_name(DataId::from_u32(index))
-                .into_owned()
-        }
     }
 }
 
@@ -731,6 +713,7 @@ fn compile_with_isa(
         desc_ids: HashMap::new(),
         unit_blocks: HashMap::new(),
         llvm_funcs: Vec::new(),
+        unsupported: Vec::new(),
         native: None,
         pinned: HashSet::new(),
         anchor: None,
@@ -762,22 +745,6 @@ fn compile_with_isa(
             .declare_function(&name, g.func_linkage(exported), &sig)
             .map_err(|e| e.to_string())?;
         g.funcs.push(id);
-        if !exported && !f.noalias.is_empty() {
-            // The Cranelift parameter that carries each exclusive MIR pointer parameter.
-            let at = f
-                .noalias
-                .iter()
-                .map(|&k| {
-                    f.params[..k as usize]
-                        .iter()
-                        .map(|p| g.lay.width(p.ty))
-                        .sum()
-                })
-                .collect();
-            if let Some(llvm) = g.llvm.as_mut() {
-                llvm.set_exclusive(&name, at);
-            }
-        }
     }
     if opts.llvm.is_some() && internalize(g.module.isa().triple()) {
         let sig = g.module.make_signature();
@@ -856,7 +823,8 @@ fn compile_with_isa(
             ctx.clear();
             ctx.func.signature = g.func_sig(f);
             ctx.func.name = UserFuncName::user(0, g.funcs[i].as_u32());
-            if direct_function(&mut g, i, f)? {
+            if g.llvm.is_some() {
+                direct_function(&mut g, i, f);
                 continue;
             }
             {
@@ -869,15 +837,14 @@ fn compile_with_isa(
             }
             crate::slotshare::share(&mut ctx.func, &temps);
             let fid = g.funcs[i];
-            if prepare(&mut g, &mut ctx, fid, &f.name, Some(f)) {
-                continue;
-            }
+            prepare(&g, &mut ctx);
             pipe.submit(&mut g, std::mem::replace(&mut ctx, Context::new()), fid, i)?;
         }
         pipe.finish(&mut g)
     })?;
     while let Some((kind, ty)) = g.queue.pop() {
-        if direct_glue(&mut g, kind, ty)? {
+        if g.llvm.is_some() {
+            direct_glue(&mut g, kind, ty);
             continue;
         }
         let temps;
@@ -900,10 +867,16 @@ fn compile_with_isa(
         crate::slotshare::share(&mut ctx.func, &temps);
         define(&mut g, &mut ctx, id, "glue")?;
     }
+    if !g.unsupported.is_empty() {
+        return Err(Error(format!(
+            "the direct LLVM emitter cannot write:\n{}",
+            g.unsupported.join("\n")
+        )));
+    }
     let triple = llvm_triple(g.module.isa().triple());
     let mut llvm_objects = Vec::new();
     if let Some(llvm) = g.llvm.take() {
-        let syms = ModuleSymbols(&g.module, &g.locs, &g.scopes, &g.m.externs);
+        let syms = ModuleSymbols(&g.module, &g.locs, &g.scopes);
         let pinned = g.pinned.iter().map(|id| syms.symbol_of(*id)).collect();
         let units = llvm_units(opts.build.llvm_units, llvm.code_bytes());
         // Separate objects have no common anchor: every function keeps a symbol.
@@ -1166,9 +1139,7 @@ fn define_with(
     name: &str,
     source: Option<&Func>,
 ) -> Result<(), Error> {
-    if prepare(g, ctx, id, name, source) {
-        return Ok(());
-    }
+    prepare(g, ctx);
     g.module
         .define_function(id, ctx)
         .map_err(|e| Error(format!("{name}: {e:?}")))?;
@@ -1294,26 +1265,19 @@ impl Pipeline {
 /// The functions that take and return values in the native LLVM calling convention
 /// (`abi_llvm`): aggregates by pointer, large results through a hidden pointer. Such a function
 /// has no leaf entry, so every reference to it must be a call from a directly emitted function:
-/// the rest of the program (the runtime, closures, vtables, cleanups, exports, the entry, and
-/// functions that fall back to the translation) only knows the leaf convention. Its stack-growth
+/// the rest of the program (the runtime, closures, vtables, cleanups, exports and the entry) only
+/// knows the leaf convention. Its stack-growth
 /// shim is written for the native convention too (see [`direct_shim`]).
 fn native_functions(g: &Gen) -> HashSet<usize> {
     use ms_mir::ir::{FuncKind, Imm, Op};
     let m = g.m;
     let n = m.funcs.len();
-    let direct: Vec<bool> = m
-        .funcs
-        .iter()
-        .map(|f| {
-            g.opts.build.llvm_direct && g.llvm.is_some() && crate::mir_llvm::supports(m, &g.lay, f)
-        })
-        .collect();
     // The code of a closure and the methods of a vtable are called by address: they keep the leaf
     // convention, though they call native functions.
-    let mut keep: Vec<bool> = direct
+    let mut keep: Vec<bool> = m
+        .funcs
         .iter()
-        .zip(&m.funcs)
-        .map(|(d, f)| *d && matches!(f.kind, FuncKind::Normal))
+        .map(|f| matches!(f.kind, FuncKind::Normal))
         .collect();
     let mut clear = |k: usize| keep[k] = false;
     for f in [m.entry.map(|e| e.index())].into_iter().flatten() {
@@ -1326,7 +1290,7 @@ fn native_functions(g: &Gen) -> HashSet<usize> {
         clear(a.index());
         clear(b.index());
     }
-    for (i, f) in m.funcs.iter().enumerate() {
+    for f in m.funcs.iter() {
         f.capture_closers.iter().for_each(|(_, c)| clear(c.index()));
         let others = [
             f.slot_result,
@@ -1337,12 +1301,12 @@ fn native_functions(g: &Gen) -> HashSet<usize> {
         for inst in f.blocks.iter().flat_map(|b| &b.insts) {
             let Imm::Func(c) = inst.imm else { continue };
             // Any use but a call from a directly emitted function needs the leaf entry.
-            if inst.op != Op::Call || !direct[i] {
+            if inst.op != Op::Call {
                 clear(c.index());
             }
         }
     }
-    let syms = ModuleSymbols(&g.module, &g.locs, &g.scopes, &g.m.externs);
+    let syms = ModuleSymbols(&g.module, &g.locs, &g.scopes);
     for i in 0..n {
         let id = g.funcs[i];
         let exported = g.module.declarations().get_function_decl(id).linkage == Linkage::Import
@@ -1355,14 +1319,11 @@ fn native_functions(g: &Gen) -> HashSet<usize> {
     (0..n).filter(|&i| keep[i]).collect()
 }
 
-/// Emits `f` straight from MIR when `MS_LLVM_DIRECT` asks for it and `mir_llvm` supports the
-/// function; `false` leaves it to the Cranelift lowering and its translation.
-fn direct_function(g: &mut Gen, i: usize, f: &Func) -> Result<bool, Error> {
-    if !g.opts.build.llvm_direct || g.llvm.is_none() {
-        return Ok(false);
-    }
+/// Emits `f` straight from MIR. A function `mir_llvm` cannot write is recorded in
+/// `Gen::unsupported`, and the build fails with all of them once emission is done.
+fn direct_function(g: &mut Gen, i: usize, f: &Func) {
     if let Some(why) = crate::mir_llvm::unsupported(g.m, &g.lay, f) {
-        return fallback(g, &f.name, &why);
+        return unsupported(g, &f.name, &why);
     }
     if g.native.is_none() {
         g.native = Some(native_functions(g));
@@ -1384,7 +1345,7 @@ fn direct_function(g: &mut Gen, i: usize, f: &Func) -> Result<bool, Error> {
     for loc in locs {
         bits.entry(loc).or_insert_with(|| g.loc_bits(loc));
     }
-    let syms = ModuleSymbols(&g.module, &g.locs, &g.scopes, &g.m.externs);
+    let syms = ModuleSymbols(&g.module, &g.locs, &g.scopes);
     let sym = syms.symbol_of(id);
     let exported = g.module.declarations().get_function_decl(id).linkage == Linkage::Import
         && !sym.contains('#')
@@ -1395,7 +1356,7 @@ fn direct_function(g: &mut Gen, i: usize, f: &Func) -> Result<bool, Error> {
         (0, f.loc.line)
     };
     let plan = direct_plan(g, f);
-    let syms = ModuleSymbols(&g.module, &g.locs, &g.scopes, &g.m.externs);
+    let syms = ModuleSymbols(&g.module, &g.locs, &g.scopes);
     let funcs = &g.funcs;
     let symbol_of = |k: usize| syms.symbol_of(funcs[k]);
     let grow_shim = shim.map(|s| syms.symbol_of(s));
@@ -1429,21 +1390,11 @@ fn direct_function(g: &mut Gen, i: usize, f: &Func) -> Result<bool, Error> {
         file: f.loc.file,
         line: f.loc.line,
     });
-    Ok(true)
 }
 
-/// A function or glue the direct emitter cannot write: an error when `MS_LLVM_FALLBACK=deny` forbids
-/// the translation, otherwise `false` leaves it to the Cranelift lowering and its translation.
-fn fallback(g: &Gen, what: &str, why: &str) -> Result<bool, Error> {
-    let line = format!("llvm-fallback: {what}: {why}");
-    match g.opts.build.llvm_fallback {
-        Fallback::Deny => Err(Error(line)),
-        Fallback::Report => {
-            eprintln!("{line}");
-            Ok(false)
-        }
-        Fallback::Translate => Ok(false),
-    }
+/// Records a function or glue the direct emitter cannot write.
+fn unsupported(g: &mut Gen, what: &str, why: &str) {
+    g.unsupported.push(format!("  {what}: {why}"));
 }
 
 /// The glue, descriptors, closures and vtables `f`'s instructions refer to, declared now so that
@@ -1527,7 +1478,7 @@ fn direct_plan(g: &mut Gen, f: &Func) -> crate::mir_llvm::Plan {
 }
 
 /// Emits the stack-growth shim of the directly emitted function `f`, in its calling convention.
-fn direct_shim(g: &mut Gen, kind: Glue, ty: Ty, f: usize, native: bool) -> bool {
+fn direct_shim(g: &mut Gen, kind: Glue, ty: Ty, f: usize, native: bool) {
     let id = g.glue[&(kind, ty)];
     let sym = symbol_of(g, id);
     let callee = symbol_of(g, g.funcs[f]);
@@ -1558,12 +1509,11 @@ fn direct_shim(g: &mut Gen, kind: Glue, ty: Ty, f: usize, native: bool) -> bool 
         file: u32::MAX,
         line: 0,
     });
-    true
 }
 
 /// Emits the closure glue `kind` under its leaf symbol `sym`: the closure header and the runtime
 /// call it through a pointer, so it has no native twin.
-fn direct_closure_glue(g: &mut Gen, kind: Glue, id: FuncId, sym: String) -> bool {
+fn direct_closure_glue(g: &mut Gen, kind: Glue, id: FuncId, sym: String) {
     let mut llvm = g.llvm.take().expect("checked by the caller");
     let no_bits = HashMap::new();
     let locs = crate::llvm_ir::DirectLocs {
@@ -1582,31 +1532,26 @@ fn direct_closure_glue(g: &mut Gen, kind: Glue, id: FuncId, sym: String) -> bool
         file: u32::MAX,
         line: 0,
     });
-    true
 }
 
-/// Emits the glue `kind` for `ty` straight to LLVM IR; `false` leaves it to the Cranelift
-/// lowering and its translation.
-fn direct_glue(g: &mut Gen, kind: Glue, ty: Ty) -> Result<bool, Error> {
-    if !g.opts.build.llvm_direct || g.llvm.is_none() {
-        return Ok(false);
-    }
+/// Emits the glue `kind` for `ty` straight to LLVM IR, or records it in `Gen::unsupported`.
+fn direct_glue(g: &mut Gen, kind: Glue, ty: Ty) {
     if let Glue::GrowShim(f) = kind {
         let f = f as usize;
         let native = g.native.as_ref().is_some_and(|n| n.contains(&f));
         if native || crate::mir_llvm::supports(g.m, &g.lay, &g.m.funcs[f]) {
-            return Ok(direct_shim(g, kind, ty, f, native));
+            return direct_shim(g, kind, ty, f, native);
         }
     }
     if !crate::glue_llvm::supports(g, kind, ty) {
         let ty_kind = format!("{:?}", g.m.types.kind(ty));
         let end = ty_kind.find(['(', ' ', '{']).unwrap_or(ty_kind.len());
-        return fallback(g, &format!("glue {kind:?}"), &ty_kind[..end]);
+        return unsupported(g, &format!("glue {kind:?}"), &ty_kind[..end]);
     }
     let id = g.glue[&(kind, ty)];
     let sym = symbol_of(g, id);
     if crate::glue_llvm::closure::is_closure(kind) {
-        return Ok(direct_closure_glue(g, kind, id, sym));
+        return direct_closure_glue(g, kind, id, sym);
     }
     // The descriptor a clone names is declared while the LLVM module is still set, so it is
     // exported (`Gen::private`); the emitter below runs with the module taken.
@@ -1641,12 +1586,10 @@ fn direct_glue(g: &mut Gen, kind: Glue, ty: Ty) -> Result<bool, Error> {
         file: u32::MAX,
         line: 0,
     });
-    Ok(true)
 }
 
-/// Runs the passes that precede Cranelift's own compilation. `true` when the function went to
-/// LLVM instead and nothing is left to compile.
-fn prepare(g: &mut Gen, ctx: &mut Context, id: FuncId, name: &str, source: Option<&Func>) -> bool {
+/// Runs the passes that precede Cranelift's own compilation.
+fn prepare(g: &Gen, ctx: &mut Context) {
     if windows_arm64(g.module.isa().triple()) {
         // Non-PIC near symbols also select unsupported ADRP relocations.
         // Far symbol addresses use the COFF writer's supported Abs8 form.
@@ -1670,45 +1613,11 @@ fn prepare(g: &mut Gen, ctx: &mut Context, id: FuncId, name: &str, source: Optio
         }
     }
     if g.opts.dump_clif {
-        eprintln!("; {name}\n{}", ctx.func.display());
-    }
-    if let Some(mut llvm) = g.llvm.take() {
-        let sym = ModuleSymbols(&g.module, &g.locs, &g.scopes, &g.m.externs).symbol_of(id);
-        let exported = g.module.declarations().get_function_decl(id).linkage == Linkage::Import
-            && !sym.contains('#')
-            && !g.glue_ids.contains(&id);
-        let (display, fn_loc) = match source {
-            Some(f) if f.loc.file != u32::MAX => (f.name.as_str(), (f.loc.file, f.loc.line)),
-            Some(f) => (f.name.as_str(), (0, f.loc.line)),
-            None => (name, (0, 0)),
-        };
-        llvm.add_function(
-            &sym,
-            display,
-            fn_loc,
-            &ctx.func,
-            &ModuleSymbols(&g.module, &g.locs, &g.scopes, &g.m.externs),
-            exported,
-        );
-        if g.glue_ids.contains(&id) {
-            llvm.mark_glue();
-        }
-        // Glue is listed too: a cleanup thunk can hold an inlined callee that a trace must name.
-        g.llvm_funcs.push(LlvmFn {
-            id,
-            symbol: sym,
-            name: source.map_or_else(|| name.to_string(), |f| f.name.clone()),
-            file: source.map_or(u32::MAX, |f| f.loc.file),
-            line: source.map_or(0, |f| f.loc.line),
-        });
-        g.llvm = Some(llvm);
-        g.module.clear_context(ctx);
-        return true;
+        eprintln!("; {}\n{}", ctx.func.name, ctx.func.display());
     }
     if g.opts.opt_level != "none" {
         crate::spill::spill_loop_cold(&mut ctx.func);
     }
-    false
 }
 
 /// Records the line and fault tables of a function that Cranelift has compiled and defined.

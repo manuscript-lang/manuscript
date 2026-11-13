@@ -8,7 +8,7 @@ BENCHFILTER ?=
 BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
 CONFORM_SHARD ?= 0/1
 
-.PHONY: runtime doctor verify verify-full check repo-check workflow-check unit test build conform drift-check llvm-direct-check leak-check cancel-sweep scaling-check count-check resource-matrix close-matrix copy-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench vscode-package vscode-install
+.PHONY: runtime doctor verify verify-full check repo-check workflow-check unit test build conform drift-check llvm-report leak-check cancel-sweep scaling-check count-check resource-matrix close-matrix copy-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench vscode-package vscode-install
 
 doctor: build
 	HUGO="$(HUGO)" $(MS) run tools/doctor.ms
@@ -62,14 +62,12 @@ build: runtime
 conform: build
 	$(MS) run tools/conform.ms
 
-# Backend drift: the run and test phases of the corpus under LLVM (Release default) and under Cranelift
-# (MS_BACKEND=cranelift), compared directly; any differing stdout, stderr or exit status fails.
-# The direct MIR-to-LLVM emitter (MS_LLVM_DIRECT=1) against the translation: the same corpus under both,
-# compared directly, with LLVM's verifier after every pass; then IR size, build time and kernel times.
-llvm-direct-check: build
-	MS=$(MS) $(MS) run tools/llvm-direct-check.ms -- diff
+# Release build time, IR size, direct-emission share and kernel times of the LLVM backend against Cranelift.
+llvm-report: build
 	MS=$(MS) $(MS) run tools/llvm-direct-check.ms -- report
 
+# Backend drift: the run and test phases of the corpus under LLVM (Release default) and under Cranelift
+# (MS_BACKEND=cranelift), compared directly; any differing stdout, stderr or exit status fails.
 drift-check: build
 	cargo build --release --locked -q -p ms-conform
 	target/release/ms-conform diff --a target/release/ms --b target/release/ms --env-b MS_BACKEND=cranelift --phase run,test --quiet

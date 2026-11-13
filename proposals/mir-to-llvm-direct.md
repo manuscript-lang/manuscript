@@ -2,6 +2,8 @@
 
 ## Summary
 
+- Status (2026-11-13): the translation and the flag are deleted; every release function and glue is written by `mir_llvm` and `glue_llvm`, and one they cannot write is a build error.
+
 - Problem: a release build lowers MIR to Cranelift IR and then translates that, line by line, to LLVM text. Cranelift IR has no record types, so every record is a bag of scalars and LLVM gets huge, mostly redundant IR.
 - Change: a second backend, `mir_llvm`, that emits LLVM IR from MIR with typed records, `memcpy` for copies and `ptr` for addresses. The Cranelift debug path is untouched.
 - Cost: a port of the op lowering (about 4k lines) and a differential harness. Staged; each stage lands behind a flag and falls back per function to the old path.

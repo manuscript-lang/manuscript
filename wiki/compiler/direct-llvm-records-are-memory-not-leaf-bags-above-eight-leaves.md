@@ -35,7 +35,7 @@ Apply when: adding ops to the direct emitter, or changing how it passes records 
 
 - An indirect record is one `ptr` to a heap block named `ms.rec.<Name>.block`: its fields' leaves in order, with a map or set field as one nullable `ptr` to a seven-word header (null is the empty value, exactly as `Layouts::rec_block` and the Cranelift path write it; both paths share live `Error` values, so the layout must not drift). Field reads are typed GEPs plus loads (`records.rs`).
 - Branching inside an instruction (a null header) needs `Area.splits`, which now sees the instruction: `RecNew` splits once per boxed field, a boxed `RecGet` and `PtrField` once.
-- Done: type, `RecNew`, `RecGet`, `PtrField`. `RecSet`, `RecFill` and `RecRelease` still fall back: they need the glue area's `drop_value` for the old fields. `RecNew` and the boxed paths are checked only by reading and by `opt` verify on a hacked build; they cannot run end to end until the maps area and the optionals area (an `Error` is built with `kind: String?` and a `Map`) land, so rerun the `Error` programs under `MS_LLVM_DIRECT=0/1` when they do.
+- Done: type, `RecNew`, `RecGet`, `PtrField`. `RecSet`, `RecFill` and `RecRelease` were not yet lowered: they need the glue area's `drop_value` for the old fields. `RecNew` and the boxed paths are checked only by reading and by `opt` verify on a hacked build; they cannot run end to end until the maps area and the optionals area (an `Error` is built with `kind: String?` and a `Map`) land, so rerun the `Error` programs under `MS_BACKEND=llvm` and `cranelift` when they do.
 
 ## Sized integers in MIR
 

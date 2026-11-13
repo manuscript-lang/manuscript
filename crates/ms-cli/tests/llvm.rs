@@ -330,11 +330,10 @@ fn constant_literals_of_any_length_build_in_bounded_time() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
-/// Functions made only of scalar arithmetic, comparisons, branches and calls are emitted straight
-/// from MIR (`MS_LLVM_DIRECT`); the rest still go through the Cranelift translation. The program
-/// prints the same output either way, and the kept IR shows a direct function.
+/// Release builds emit every function straight from MIR. The program prints the expected output,
+/// and the kept IR shows the facts the emitter proves.
 #[test]
-fn llvm_direct_emission_matches_translation() {
+fn llvm_direct_emission_proves_facts() {
     if !cfg!(any(target_os = "linux", target_os = "macos"))
         || !ms_clif::llvm_available(&ms_cli::engine::build_options_from_env())
     {
@@ -346,43 +345,33 @@ fn llvm_direct_emission_matches_translation() {
     );
     let dir = std::env::temp_dir().join(format!("ms-llvm-direct-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
-    let run = |direct: bool| {
-        let work = dir.join(if direct { "direct" } else { "old" });
-        std::fs::create_dir_all(&work).unwrap();
-        let mut cmd = Command::new(env!("CARGO_BIN_EXE_ms"));
-        cmd.current_dir(&work)
-            .env("MS_BACKEND", "llvm")
-            .env("MS_LLVM_UNITS", "1")
-            .env("MS_KEEP_LL", "1")
-            .args(["build", &source, "-o", "prog"]);
-        if direct {
-            cmd.env("MS_LLVM_DIRECT", "1");
-        }
-        let built = cmd.output().unwrap();
-        assert!(
-            built.status.success(),
-            "{}",
-            String::from_utf8_lossy(&built.stderr)
-        );
-        let out = Command::new(work.join("prog")).output().unwrap();
-        let ir = std::fs::read_to_string(work.join("ms-keep.ll")).unwrap();
-        (String::from_utf8_lossy(&out.stdout).into_owned(), ir)
-    };
-    let (old_out, old_ir) = run(false);
-    let (new_out, new_ir) = run(true);
+    let built = Command::new(env!("CARGO_BIN_EXE_ms"))
+        .current_dir(&dir)
+        .env("MS_BACKEND", "llvm")
+        .env("MS_LLVM_UNITS", "1")
+        .env("MS_KEEP_LL", "1")
+        .args(["build", &source, "-o", "prog"])
+        .output()
+        .unwrap();
+    assert!(
+        built.status.success(),
+        "{}",
+        String::from_utf8_lossy(&built.stderr)
+    );
+    let out = Command::new(dir.join("prog")).output().unwrap();
+    let new_ir = std::fs::read_to_string(dir.join("ms-keep.ll")).unwrap();
+    let new_out = String::from_utf8_lossy(&out.stdout).into_owned();
     let _ = std::fs::remove_dir_all(&dir);
-    assert_eq!(new_out, old_out);
     assert_eq!(
         new_out,
         "-10570.332140489487\n-10610.442345302587\n-18691.88657748569\n-3832.9476242902874\n1798.4798787257132\n2478.7401910972353\n24\n"
     );
-    // Direct functions name their values `%vN`; the translation names them `%tN`.
-    let direct = |ir: &str| {
-        ir.lines()
-            .any(|l| l.trim_start().starts_with("%v") && l.contains("= fmul double"))
-    };
-    assert!(!direct(&old_ir), "the translation was not used");
-    assert!(direct(&new_ir), "no function was emitted directly");
+    assert!(
+        new_ir
+            .lines()
+            .any(|l| l.trim_start().starts_with("%v") && l.contains("= fmul double")),
+        "no function was emitted directly"
+    );
     // A list parameter of a function only direct code calls is a borrowed pointer to the list.
     assert!(
         new_ir.contains(
@@ -420,11 +409,11 @@ fn llvm_direct_emission_matches_translation() {
     );
 }
 
-/// Glue for strings, lists, records and optionals is emitted straight to LLVM IR
-/// (`MS_LLVM_DIRECT`): the program prints the same output, and the kept IR has a glue function
-/// whose entry block is the direct emitter's `entry`, which the translation never names so.
+/// Glue for strings, lists, records and optionals is emitted straight to LLVM IR: the program prints
+/// the expected output, and the kept IR has a glue function whose entry block is the direct
+/// emitter's `entry`.
 #[test]
-fn llvm_direct_glue_matches_translation() {
+fn llvm_direct_glue_is_emitted_directly() {
     if !cfg!(any(target_os = "linux", target_os = "macos"))
         || !ms_clif::llvm_available(&ms_cli::engine::build_options_from_env())
     {
@@ -433,51 +422,37 @@ fn llvm_direct_glue_matches_translation() {
     let source = format!("{}/tests/llvm/direct_glue.ms", env!("CARGO_MANIFEST_DIR"));
     let dir = std::env::temp_dir().join(format!("ms-llvm-glue-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
-    let run = |direct: bool| {
-        let work = dir.join(if direct { "direct" } else { "old" });
-        std::fs::create_dir_all(&work).unwrap();
-        let mut cmd = Command::new(env!("CARGO_BIN_EXE_ms"));
-        cmd.current_dir(&work)
-            .env("MS_BACKEND", "llvm")
-            .env("MS_LLVM_UNITS", "1")
-            .env("MS_KEEP_LL", "1")
-            .args(["build", &source, "-o", "prog"]);
-        if direct {
-            cmd.env("MS_LLVM_DIRECT", "1");
-        }
-        let built = cmd.output().unwrap();
-        assert!(
-            built.status.success(),
-            "{}",
-            String::from_utf8_lossy(&built.stderr)
-        );
-        let out = Command::new(work.join("prog")).output().unwrap();
-        let ir = std::fs::read_to_string(work.join("ms-keep.ll")).unwrap();
-        (String::from_utf8_lossy(&out.stdout).into_owned(), ir)
-    };
-    let (old_out, old_ir) = run(false);
-    let (new_out, new_ir) = run(true);
+    let built = Command::new(env!("CARGO_BIN_EXE_ms"))
+        .current_dir(&dir)
+        .env("MS_BACKEND", "llvm")
+        .env("MS_LLVM_UNITS", "1")
+        .env("MS_KEEP_LL", "1")
+        .args(["build", &source, "-o", "prog"])
+        .output()
+        .unwrap();
+    assert!(
+        built.status.success(),
+        "{}",
+        String::from_utf8_lossy(&built.stderr)
+    );
+    let out = Command::new(dir.join("prog")).output().unwrap();
+    let ir = std::fs::read_to_string(dir.join("ms-keep.ll")).unwrap();
     let _ = std::fs::remove_dir_all(&dir);
-    assert_eq!(new_out, old_out);
-    assert_eq!(new_out, "210 20 1 first node name that is long enough\n");
-    let direct = |ir: &str| {
-        let mut lines = ir.lines();
-        while let Some(l) = lines.next() {
-            if l.starts_with("define")
-                && l.contains("@\"ms.glue.")
-                && lines.next() == Some("entry:")
-            {
-                return true;
-            }
-        }
-        false
-    };
-    assert!(!direct(&old_ir), "the translation was not used");
-    assert!(direct(&new_ir), "no glue was emitted directly");
+    assert_eq!(
+        String::from_utf8_lossy(&out.stdout),
+        "210 20 1 first node name that is long enough\n"
+    );
+    let mut lines = ir.lines();
+    let mut direct = false;
+    while let Some(l) = lines.next() {
+        direct |=
+            l.starts_with("define") && l.contains("@\"ms.glue.") && lines.next() == Some("entry:");
+    }
+    assert!(direct, "no glue was emitted directly");
 }
 
 /// A recursive method is called by address, so it keeps the leaf convention, and its stack-growth
-/// shim is emitted directly too: nothing about it goes through the translation.
+/// shim is emitted directly too.
 #[test]
 fn llvm_direct_grow_shim_for_a_leaf_convention_function() {
     if !cfg!(any(target_os = "linux", target_os = "macos"))
@@ -495,13 +470,11 @@ fn llvm_direct_grow_shim_for_a_leaf_convention_function() {
         .current_dir(&dir)
         .env("MS_BACKEND", "llvm")
         .env("MS_LLVM_UNITS", "1")
-        .env("MS_LLVM_FALLBACK", "report")
         .args(["build", &source, "-o", "prog"])
         .output()
         .unwrap();
     let stderr = String::from_utf8_lossy(&built.stderr);
     assert!(built.status.success(), "{stderr}");
-    assert!(!stderr.contains("GrowShim"), "{stderr}");
     let out = Command::new(dir.join("prog")).output().unwrap();
     let _ = std::fs::remove_dir_all(&dir);
     assert_eq!(String::from_utf8_lossy(&out.stdout), "3000007\n");
