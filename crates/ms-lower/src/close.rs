@@ -844,10 +844,10 @@ impl FnLower<'_> {
     /// declared before it (the pass closes at the scope end, after the scope's other closers).
     fn raw_closable(&mut self, binding: &ct::BindingRef, kind: &CloseKind, owned: bool) -> bool {
         let uid = binding.uid;
-        let CloseKind::Func { fid, .. } = kind else {
-            return false;
+        let unit_close = match kind {
+            CloseKind::Func { fid, .. } => self.b.m.funcs[fid.index()].ret == MTy::UNIT,
+            CloseKind::Iface(..) => true,
         };
-        let unit_close = self.b.m.funcs[fid.index()].ret == MTy::UNIT;
         if !unit_close && !self.fallible_close_ok(kind, uid) {
             return false;
         }
@@ -894,6 +894,15 @@ impl FnLower<'_> {
         // register nothing twice), one whose close changes the value (the close works on the
         // value's own storage), and one a resource field moves out of (each field registers
         // its own address).
+        // `none` holds nothing, so the binding owns it as it owns any value it later fills.
+        let x = if !x.own && self.b.defining_op_anywhere(x.v) == Some(Op::OptNone) {
+            crate::func::Val {
+                v: self.owned(x),
+                own: true,
+            }
+        } else {
+            x
+        };
         let places = self
             .cx
             .ownership
@@ -910,6 +919,11 @@ impl FnLower<'_> {
         }
         self.redefined.insert(binding.uid);
         let raw = std::mem::replace(&mut self.raw_owners, false);
+        // The pass closes a binding that lives in memory, whatever its close does to the value.
+        let raw_ok = raw && places.is_none() && self.raw_closable(binding, &kind, x.own);
+        if raw_ok {
+            self.slotted.insert(binding.uid);
+        }
         self.bind_local(binding, x);
         self.raw_owners = raw;
         let ty = self.locals[&binding.uid].ty;
@@ -918,8 +932,7 @@ impl FnLower<'_> {
             return self.bind_split(binding, kind, places);
         }
         if let Some(ptr) = slot
-            && raw
-            && self.raw_closable(binding, &kind, x.own)
+            && raw_ok
         {
             // The elaborate pass closes it where its scope ends, shielded, and drops what is left.
             let thunk = self.close_thunk(&kind, ty, true);

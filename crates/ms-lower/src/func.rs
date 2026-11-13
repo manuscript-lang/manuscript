@@ -189,6 +189,8 @@ pub(crate) struct FnLower<'a> {
     pub scope_done: Vec<usize>,
     /// Record to build on return and the binding uids of the `var` parameters it carries.
     pub var_slots: Vec<VarSlot>,
+    /// Some binding of the function closes a resource when its scope ends.
+    pub closing_fn: bool,
     /// The expression statement being lowered, whose value nothing reads (by address).
     pub discard: Option<usize>,
     /// The start of the statement being lowered.
@@ -625,8 +627,11 @@ impl<'a> FnLower<'a> {
         let var = self
             .b
             .declare_var(ty, if owned { Mode::Move } else { Mode::Borrow });
-        if matches!(self.b.m.types.kind(ty), TyKind::Rec(_)) && !self.slotted.contains(&b.uid) {
-            // A record stays in the caller's slot: field reads and writes touch only the fields
+        if (self.closing_fn || matches!(self.b.m.types.kind(ty), TyKind::Rec(_)))
+            && !self.slotted.contains(&b.uid)
+        {
+            // A function whose scopes close resources keeps every `var` parameter in the
+            // caller's slot, so the pass's error exit has nothing to put back. A record stays in the caller's slot: field reads and writes touch only the fields
             // they name, instead of moving every field out at entry and back at each return.
             self.locals.insert(
                 b.uid,
@@ -706,6 +711,7 @@ impl<'a> FnLower<'a> {
             deferred_close: None,
             scope_done: Vec::new(),
             var_slots: Vec::new(),
+            closing_fn: false,
             slotted: HashSet::new(),
             scrutinee_lives: false,
             redefined: HashSet::new(),
@@ -1982,6 +1988,7 @@ impl<'a> FnLower<'a> {
         let owned_mask = self.variant.owned.then(|| self.cx.owned_mask(c)).flatten();
         if let ms_check::api::hir::Body::Block(stmts) = c.body() {
             self.slotted = crate::closure::slotted_in(self.syms, self, stmts);
+            self.closing_fn = crate::closure::closes_resources(self, c, stmts);
             self.string_needed = crate::scalar::string_uses(self, stmts);
         }
         // Parameters the body changes are the callee's own copies.
