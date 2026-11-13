@@ -1463,8 +1463,12 @@ fn direct_plan(g: &mut Gen, f: &Func) -> crate::mir_llvm::Plan {
     for bd in &f.blocks {
         for i in &bd.insts {
             match (i.op, i.imm) {
-                (Op::Clone, _) => {
-                    let ty = f.ty(i.args[0]);
+                (Op::Clone | Op::AltOwn | Op::OptUnwrap, _) => {
+                    // `opt.unwrap` clones the payload of its operand.
+                    let ty = match i.op {
+                        Op::OptUnwrap => g.m.opt_inner(f.ty(i.args[0])).expect("an optional"),
+                        _ => crate::mir_llvm::cloned_ty(f, i),
+                    };
                     if own_kind(&g.lay, ty) == OwnKind::Glue && !plan.clone.contains_key(&ty) {
                         let id = g.glue(Glue::Clone, ty);
                         plan.clone.insert(
@@ -1475,12 +1479,11 @@ fn direct_plan(g: &mut Gen, f: &Func) -> crate::mir_llvm::Plan {
                 }
                 (Op::Drop | Op::DropIf, _) => {
                     let ty = f.ty(i.args[usize::from(i.op == Op::DropIf)]);
-                    if own_kind(&g.lay, ty) == OwnKind::Glue && !plan.drop.contains_key(&ty) {
-                        let id = g.glue(Glue::Drop, ty);
-                        plan.drop.insert(
-                            ty,
-                            crate::glue_llvm::target(g, Glue::Drop, ty, symbol_of(g, id)),
-                        );
+                    plan_drop(g, &mut plan, ty);
+                }
+                (Op::AltRelease | Op::AltUnbox | Op::RecRelease, _) => {
+                    for ty in crate::mir_llvm::released_types(&g.lay, f, i) {
+                        plan_drop(g, &mut plan, ty);
                     }
                 }
                 (
@@ -1527,6 +1530,19 @@ fn direct_plan(g: &mut Gen, f: &Func) -> crate::mir_llvm::Plan {
                     };
                     plan.closures.insert((c.index(), framed), syms);
                 }
+                (Op::AltNew | Op::AltView, Imm::Case(a, c)) => {
+                    let ty = f.ty(i.res.expect("an enum result"));
+                    let unit = g.m.alts[a.index()].cases[c as usize].fields.is_empty();
+                    if unit
+                        && g.lay.is_boxed(a)
+                        && let Some(size) = g.lay.boxed_block_size(ty)
+                    {
+                        let id = g.unit_block(a, c as usize, size);
+                        let name = g.module.declarations().get_data_decl(id).linkage_name(id);
+                        plan.units
+                            .insert((a.index(), c as usize), name.into_owned());
+                    }
+                }
                 (Op::GlobalGet | Op::GlobalSet, Imm::Global(gl)) => {
                     let id = g.globals[gl.index()];
                     let name = g.module.declarations().get_data_decl(id).linkage_name(id);
@@ -1542,6 +1558,18 @@ fn direct_plan(g: &mut Gen, f: &Func) -> crate::mir_llvm::Plan {
         }
     }
     plan
+}
+
+/// Declares the drop glue of `ty` for the function being planned, when it has some.
+fn plan_drop(g: &mut Gen, plan: &mut crate::mir_llvm::Plan, ty: Ty) {
+    use crate::glue_llvm::{OwnKind, own_kind};
+    if own_kind(&g.lay, ty) == OwnKind::Glue && !plan.drop.contains_key(&ty) {
+        let id = g.glue(Glue::Drop, ty);
+        plan.drop.insert(
+            ty,
+            crate::glue_llvm::target(g, Glue::Drop, ty, symbol_of(g, id)),
+        );
+    }
 }
 
 /// Emits the stack-growth shim of the directly emitted function `f`, in its calling convention.
@@ -1628,7 +1656,9 @@ fn direct_glue(g: &mut Gen, kind: Glue, ty: Ty) -> Result<bool, Error> {
     }
     // The descriptor a clone names is declared while the LLVM module is still set, so it is
     // exported (`Gen::private`); the emitter below runs with the module taken.
-    if kind == Glue::Clone && matches!(g.m.types.kind(ty), ms_mir::types::TyKind::Obj(..)) {
+    if matches!(kind, Glue::Clone | Glue::Drop)
+        && matches!(g.m.types.kind(ty), ms_mir::types::TyKind::Obj(..))
+    {
         g.typedesc(ty);
     }
     let mut llvm = g.llvm.take().expect("checked above");

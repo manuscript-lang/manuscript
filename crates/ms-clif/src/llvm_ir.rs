@@ -308,6 +308,17 @@ pub(crate) const RANGE_BOOL_NODE: usize = TBAA_BASE + 5;
 pub(crate) const RANGE_LEN_NODE: usize = TBAA_BASE + 6;
 /// `!align` node of an 8-byte aligned pointer (a vtable slot).
 pub(crate) const ALIGN8_NODE: usize = TBAA_BASE + 7;
+/// `!range` node of the case index of an enum with `n` cases, `[0, n)`, for `n` in 1 to
+/// `MAX_TAG_RANGE`.
+pub(crate) fn range_tag_node(n: usize) -> usize {
+    assert!(
+        (1..=MAX_TAG_RANGE).contains(&n),
+        "no range node for {n} cases"
+    );
+    TBAA_BASE + 7 + n
+}
+/// The largest enum whose case index has a range node.
+pub(crate) const MAX_TAG_RANGE: usize = 16;
 /// The empty node `!noundef` and `!nonnull` point at.
 pub(crate) const EMPTY_NODE: usize = 3;
 
@@ -1924,6 +1935,9 @@ impl LlvmModule {
             tail,
             "!{RANGE_BOOL_NODE} = !{{i8 0, i8 2}}\n!{RANGE_LEN_NODE} = !{{i64 0, i64 -9223372036854775808}}\n!{ALIGN8_NODE} = !{{i64 8}}\n"
         );
+        for n in 1..=MAX_TAG_RANGE {
+            let _ = writeln!(tail, "!{} = !{{i64 0, i64 {n}}}", range_tag_node(n));
+        }
         for (i, f) in self.di.files.iter().enumerate() {
             let name = f.as_deref().unwrap_or("<unknown>");
             let _ = writeln!(
