@@ -6,6 +6,8 @@
 //! direct calls between such functions; every other function falls back to the translation. Both
 //! paths use the same leaf calling convention, so they call each other freely.
 
+mod calls;
+
 use crate::glue_llvm::{OwnKind, clone_str, own_kind};
 use crate::layout::{Layouts, Leaf};
 use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Types, Val};
@@ -38,6 +40,17 @@ pub struct Plan {
     pub drop: HashMap<Ty, String>,
     /// Type descriptor symbol by type.
     pub desc: HashMap<Ty, String>,
+    /// The `closure.new` results that live in this function's frame (nothing escapes).
+    pub framed: std::collections::HashSet<usize>,
+    /// Clone and drop glue symbols of a closure's object, by the closure function and whether its
+    /// object is in a frame.
+    pub closures: HashMap<(usize, bool), ClosureSyms>,
+}
+
+/// The glue entries a closure object carries in its header.
+pub struct ClosureSyms {
+    pub clone: String,
+    pub drop: String,
 }
 
 /// LLVM type and parameter attribute of one register leaf. `I8` leaves (`Bool`, flags) are
@@ -65,6 +78,7 @@ fn supported_ty(lay: &Layouts, ty: Ty) -> bool {
             | TyKind::Float
             | TyKind::Bool
             | TyKind::Ptr
+            | TyKind::Fn(..)
             | TyKind::Str
             | TyKind::Bytes
             | TyKind::List(_)
@@ -135,16 +149,12 @@ fn supported_op(op: Op) -> bool {
             | Op::DropIf
             | Op::TypeDesc
             | Op::Call
-    )
+    ) || calls::handles(op)
 }
 
 /// Whether stage 1 can emit `f`.
 pub fn supports(m: &Module, lay: &Layouts, f: &Func) -> bool {
-    if !matches!(f.kind, ms_mir::ir::FuncKind::Normal)
-        || !f.scopes.is_empty()
-        || !f.noalias.is_empty()
-        || !signature_ok(lay, &f.params, f.ret)
-    {
+    if !f.scopes.is_empty() || !f.noalias.is_empty() || !signature_ok(lay, &f.params, f.ret) {
         return false;
     }
     let ty_ok = |v| supported_ty(lay, f.ty(v));
@@ -164,6 +174,15 @@ pub fn supports(m: &Module, lay: &Layouts, f: &Func) -> bool {
                 let Imm::Func(c) = i.imm else { return false };
                 let callee = &m.funcs[c.index()];
                 if !signature_ok(lay, &callee.params, callee.ret) {
+                    return false;
+                }
+            }
+            if i.op == Op::CallRt {
+                let Imm::Ext(e) = i.imm else { return false };
+                let def = &m.externs[e.index()];
+                let tys_ok = def.params.iter().all(|p| supported_ty(lay, p.ty))
+                    && supported_ty(lay, def.ret);
+                if !tys_ok || !calls::extern_ok(m, def) {
                     return false;
                 }
             }
@@ -425,6 +444,10 @@ fn inst_text(cx: &Cx, inst: &Inst, out_sinks: &mut Out, at: Site, b: &mut FnBuil
         Op::IConst | Op::FConst | Op::BConst | Op::UnitConst | Op::ListLen
     ) || (inst.op == Op::Clone && own_kind(lay, f.ty(inst.args[0])) == OwnKind::Identity)
     {
+        return;
+    }
+    if calls::handles(inst.op) {
+        calls::emit(cx, inst, out_sinks, b);
         return;
     }
     // A single-leaf result is named in place; `Select` and `Call` handle several.

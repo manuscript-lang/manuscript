@@ -1317,7 +1317,10 @@ fn direct_function(g: &mut Gen, i: usize, f: &Func) -> bool {
 fn direct_plan(g: &mut Gen, f: &Func) -> crate::mir_llvm::Plan {
     use crate::glue_llvm::{OwnKind, own_kind};
     use ms_mir::ir::{Imm, Op};
-    let mut plan = crate::mir_llvm::Plan::default();
+    let mut plan = crate::mir_llvm::Plan {
+        framed: crate::lower::framed_closure_objects(g.m, f),
+        ..Default::default()
+    };
     for bd in &f.blocks {
         for i in &bd.insts {
             match (i.op, i.imm) {
@@ -1333,6 +1336,27 @@ fn direct_plan(g: &mut Gen, f: &Func) -> crate::mir_llvm::Plan {
                     if own_kind(&g.lay, ty) == OwnKind::Glue && !plan.drop.contains_key(&ty) {
                         let id = g.glue(Glue::Drop, ty);
                         plan.drop.insert(ty, symbol_of(g, id));
+                    }
+                }
+                (Op::ClosureNew, Imm::Func(c)) => {
+                    let framed = i.res.is_some_and(|r| plan.framed.contains(&r.index()));
+                    let key = (c.index(), framed);
+                    if let std::collections::hash_map::Entry::Vacant(slot) =
+                        plan.closures.entry(key)
+                    {
+                        let clone = g.glue(Glue::ClosureClone(c.0), Ty::UNIT);
+                        let drop = g.glue(
+                            if framed {
+                                Glue::ClosureDropFramed(c.0)
+                            } else {
+                                Glue::ClosureDrop(c.0)
+                            },
+                            Ty::UNIT,
+                        );
+                        slot.insert(crate::mir_llvm::ClosureSyms {
+                            clone: symbol_of(g, clone),
+                            drop: symbol_of(g, drop),
+                        });
                     }
                 }
                 (Op::TypeDesc, Imm::Ty(t)) => {

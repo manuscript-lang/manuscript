@@ -487,3 +487,67 @@ fn llvm_direct_clone_matches_translation() {
         "a long string that is certainly not inline\nhi\n3 5 6\n"
     );
 }
+
+/// Closures, indirect calls and runtime calls are emitted straight from MIR (`MS_LLVM_DIRECT`): the
+/// program prints the same output, and the kept IR has the closure object written through typed
+/// stores, a call through the code pointer it holds, and a runtime call with a hidden result pointer.
+#[test]
+fn llvm_direct_closures_match_translation() {
+    if !cfg!(any(target_os = "linux", target_os = "macos"))
+        || !ms_clif::llvm_available(&ms_cli::engine::build_options_from_env())
+    {
+        return;
+    }
+    let source = format!(
+        "{}/tests/llvm/direct_closures.ms",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    let dir = std::env::temp_dir().join(format!("ms-llvm-closures-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let run = |direct: bool| {
+        let work = dir.join(if direct { "direct" } else { "old" });
+        std::fs::create_dir_all(&work).unwrap();
+        let mut cmd = Command::new(env!("CARGO_BIN_EXE_ms"));
+        cmd.current_dir(&work)
+            .env("MS_BACKEND", "llvm")
+            .env("MS_LLVM_UNITS", "1")
+            .env("MS_KEEP_LL", "1")
+            .args(["build", &source, "-o", "prog"]);
+        if direct {
+            cmd.env("MS_LLVM_DIRECT", "1");
+        }
+        let built = cmd.output().unwrap();
+        assert!(
+            built.status.success(),
+            "{}",
+            String::from_utf8_lossy(&built.stderr)
+        );
+        let out = Command::new(work.join("prog")).output().unwrap();
+        let ir = std::fs::read_to_string(work.join("ms-keep.ll")).unwrap();
+        (String::from_utf8_lossy(&out.stdout).into_owned(), ir)
+    };
+    let (old_out, old_ir) = run(false);
+    let (new_out, new_ir) = run(true);
+    let _ = std::fs::remove_dir_all(&dir);
+    assert_eq!(new_out, old_out);
+    assert_eq!(new_out, "33.96875\n0\n0.0625\n3\n7\n");
+    // Direct functions name their values `%vN`; the translation names them `%tN`.
+    let direct = |ir: &str, what: &str| {
+        ir.lines()
+            .any(|l| l.trim_start().starts_with("%v") && l.contains(what))
+    };
+    for what in [
+        // A closure object: heap block, then its code pointer, captures written as typed stores.
+        "= call noalias align 16 ptr @\"msrt_alloc\"",
+        // The call through the code pointer the closure holds.
+        "= call double %v",
+    ] {
+        assert!(!direct(&old_ir, what), "the translation was used: {what}");
+        assert!(direct(&new_ir, what), "not emitted directly: {what}");
+    }
+    // A runtime call whose result is not a register passes the address of a stack slot.
+    assert!(
+        new_ir.contains("call void @\"msrt_int_to_string\"(i64 %a0_0, i64 %v"),
+        "no direct runtime call with a result slot"
+    );
+}

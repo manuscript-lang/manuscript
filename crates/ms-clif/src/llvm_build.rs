@@ -345,6 +345,36 @@ impl<'t> FnBuilder<'t> {
         self.def(to, rhs)
     }
 
+    pub fn fptrunc(&mut self, v: &Val, to: Ty) -> Val {
+        let from = self.ty(&v.ty);
+        let rhs = format!("fptrunc {from} {} to {}", v.text, self.ty(&to));
+        self.def(to, rhs)
+    }
+
+    pub fn fpext(&mut self, v: &Val, to: Ty) -> Val {
+        let from = self.ty(&v.ty);
+        let rhs = format!("fpext {from} {} to {}", v.text, self.ty(&to));
+        self.def(to, rhs)
+    }
+
+    /// Marks the `size` bytes at the stack slot `slot` as live from here.
+    pub fn lifetime_start(&mut self, slot: &Val, size: u64) {
+        assert_eq!(slot.ty, Ty::Ptr);
+        self.line(format!(
+            "call void @llvm.lifetime.start.p0(i64 {size}, ptr {})",
+            slot.text
+        ));
+    }
+
+    /// Marks the stack slot `slot` as dead from here.
+    pub fn lifetime_end(&mut self, slot: &Val, size: u64) {
+        assert_eq!(slot.ty, Ty::Ptr);
+        self.line(format!(
+            "call void @llvm.lifetime.end.p0(i64 {size}, ptr {})",
+            slot.text
+        ));
+    }
+
     /// An `i64` address as a `ptr`.
     pub fn inttoptr(&mut self, v: &Val) -> Val {
         assert_eq!(v.ty, Ty::I64);
@@ -466,12 +496,38 @@ impl<'t> FnBuilder<'t> {
         callee: &str,
         args: &[(Val, &str)],
     ) -> Option<Val> {
-        let actuals: Vec<String> = args
-            .iter()
+        let a = self.actuals(args);
+        self.call_text(ret, ret_attr, &format!("@\"{callee}\""), a)
+    }
+
+    /// A call through the function pointer `callee`, which is a `ptr`.
+    pub fn call_ptr(
+        &mut self,
+        ret: &Ty,
+        ret_attr: &str,
+        callee: &Val,
+        args: &[(Val, &str)],
+    ) -> Option<Val> {
+        assert_eq!(callee.ty, Ty::Ptr, "an indirect call goes through a ptr");
+        let a = self.actuals(args);
+        self.call_text(ret, ret_attr, &callee.text, a)
+    }
+
+    fn actuals(&self, args: &[(Val, &str)]) -> Vec<String> {
+        args.iter()
             .map(|(v, a)| format!("{}{a} {}", self.ty(&v.ty), v.text))
-            .collect();
+            .collect()
+    }
+
+    fn call_text(
+        &mut self,
+        ret: &Ty,
+        ret_attr: &str,
+        callee: &str,
+        actuals: Vec<String>,
+    ) -> Option<Val> {
         let head = format!(
-            "call {ret_attr}{} @\"{callee}\"({})",
+            "call {ret_attr}{} {callee}({})",
             self.ty(ret),
             actuals.join(", ")
         );
@@ -654,6 +710,18 @@ mod tests {
         assert!(text.contains("getelementptr inbounds %\"R\", ptr %v1, i32 0, i32 2"));
         assert!(text.contains("load i64, ptr %v2, align 8"));
         assert!(text.ends_with("}\n\n"));
+    }
+
+    #[test]
+    fn an_indirect_call_goes_through_a_pointer() {
+        let t = Types::default();
+        let mut b = FnBuilder::new(&t, None);
+        b.label("b0");
+        let code = Val::new("%c", Ty::Ptr);
+        let r = b.call_ptr(&Ty::I64, "", &code, &[(Val::int(7), "")]);
+        b.ret(r.as_ref());
+        let text = b.finish();
+        assert!(text.contains("= call i64 %c(i64 7)"), "{text}");
     }
 
     #[test]

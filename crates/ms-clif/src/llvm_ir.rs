@@ -36,8 +36,20 @@ pub trait Symbols {
 /// Attributes of a call to a function that only reads memory.
 /// Runtime allocators: each returns a block no other pointer reaches, so the translation declares
 /// the result `noalias ptr` and keeps the pointer for the accesses that follow.
-fn returns_fresh_block(symbol: &str) -> bool {
+pub(crate) fn returns_fresh_block(symbol: &str) -> bool {
     matches!(symbol, "msrt_alloc" | "msrt_alloc_zeroed" | "msrt_realloc")
+}
+
+/// The attributes a `declare` of the runtime function `name` carries: faults never return, and a
+/// function that only reads memory says so.
+pub(crate) fn runtime_attrs(name: &str, reads: bool) -> &'static str {
+    if fault_function(name) {
+        " cold noreturn"
+    } else if reads {
+        READS_ONLY
+    } else {
+        ""
+    }
 }
 
 const READS_ONLY: &str = " nounwind willreturn nofree nosync memory(read)";
@@ -1152,13 +1164,7 @@ impl<'a> Tr<'a> {
         let data = self.ext_func(fr);
         let name = self.name_of(&data.name);
         let sig = &self.f.dfg.signatures[data.signature];
-        let attrs = if fault_function(&name) {
-            " cold noreturn"
-        } else if self.syms.reads_only(&name) {
-            READS_ONLY
-        } else {
-            ""
-        };
+        let attrs = runtime_attrs(&name, self.syms.reads_only(&name));
         let ret = if returns_fresh_block(&name) {
             "noalias align 16 ptr".to_string()
         } else {
@@ -1762,6 +1768,8 @@ impl LlvmModule {
              declare void @llvm.memcpy.p0.p0.i64(ptr, ptr, i64, i1)\n\
              declare void @llvm.memmove.p0.p0.i64(ptr, ptr, i64, i1)\n\
              declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)\n\
+             declare void @llvm.lifetime.start.p0(i64, ptr)\n\
+             declare void @llvm.lifetime.end.p0(i64, ptr)\n\
              declare ptr @llvm.frameaddress.p0(i32)\n\
              declare double @llvm.fabs.f64(double)\n\
              declare double @llvm.sqrt.f64(double)\n\
