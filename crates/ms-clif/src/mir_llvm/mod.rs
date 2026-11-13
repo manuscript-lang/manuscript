@@ -154,7 +154,18 @@ fn leaves(lay: &Layouts, ty: Ty) -> Vec<(LTy, &'static str)> {
 /// and converts at its entry and returns; memory holds the `mem_leaves`.
 fn held_leaves(lay: &Layouts, ty: Ty) -> Vec<LTy> {
     let (ptrs, bools) = (lay.pointer_leaves(ty), lay.bool_leaves(ty));
-    let mut tys: Vec<LTy> = lay.leaves(ty).into_iter().map(|l| leaf(l).0).collect();
+    // A narrow integer is held as the `iN` it is, not as the `i64` of the leaf convention.
+    let mut tys: Vec<LTy> = lay
+        .leaves(ty)
+        .into_iter()
+        .map(|l| {
+            if records::is_narrow(l) {
+                mem_leaf(l)
+            } else {
+                leaf(l).0
+            }
+        })
+        .collect();
     for (k, t) in tys.iter_mut().enumerate() {
         if ptrs[k] {
             *t = LTy::Ptr;

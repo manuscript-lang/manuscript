@@ -294,6 +294,8 @@ pub enum Bin {
     Shl,
     SDiv,
     SRem,
+    UDiv,
+    URem,
 }
 
 impl Bin {
@@ -312,6 +314,8 @@ impl Bin {
             Bin::LShr => "lshr",
             Bin::Shl => "shl",
             Bin::SDiv => "sdiv",
+            Bin::UDiv => "udiv",
+            Bin::URem => "urem",
             Bin::SRem => "srem",
         }
     }

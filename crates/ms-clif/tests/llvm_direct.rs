@@ -575,6 +575,7 @@ fn direct_lists_and_strings_match_cranelift() {
     crate::llvm_direct_data::narrow_integers_match_cranelift();
     crate::llvm_direct_data::narrow_record_fields_match_cranelift();
     crate::llvm_direct_data::narrow_sums_fault_like_cranelift();
+    crate::llvm_direct_data::narrow_unsigned_matches_cranelift();
     closures_and_runtime_calls();
     interfaces();
     checked_arithmetic();

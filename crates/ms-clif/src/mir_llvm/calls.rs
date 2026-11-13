@@ -209,7 +209,7 @@ pub(super) fn finish_call(
         records::call_result(b, lay, result, r, out);
     } else if out
         .iter()
-        .any(|d| d.ty == LTy::I1 || (!native && d.ty == LTy::Ptr))
+        .any(|d| !matches!(d.ty, LTy::I64 | LTy::F64) && (d.ty != LTy::Ptr || !native))
     {
         // Booleans come back as bytes and, in the leaf convention, pointers as addresses.
         let r = call(b).expect("a result");

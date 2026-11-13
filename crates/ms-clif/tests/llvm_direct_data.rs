@@ -436,5 +436,51 @@ pub fn narrow_sums_fault_like_cranelift() {
         assert_eq!((got.code, &got.stdout), (want.code, &want.stdout), "{name}");
         assert_eq!(want.code, if name == "fits" { 1 } else { 67 }, "{name}");
     }
+    let ir = std::fs::read_to_string("ms-keep.ll").unwrap();
+    assert!(
+        ir.contains("@llvm.sadd.with.overflow.i8"),
+        "no i8 overflow check"
+    );
     let _ = std::fs::remove_file("ms-keep.ll");
+}
+
+/// A `UInt8` value is a real `i8`: it compares, divides and overflows as unsigned.
+const UNSIGNED: &str = r#"module "d"
+entry @main
+file 0 "d.ms"
+fn @big(%a: uint8, %b: uint8) -> int inline(never) !0:1:1 {
+b0:
+  %c: bool = icmp.gt %a, %b !0:2:1
+  %q: uint8 = sdiv.chk %a, %b !0:2:1
+  %one: int = iconst 1 !0:2:1
+  %zero: int = iconst 0 !0:2:1
+  %g: int = select %c, %one, %zero !0:2:1
+  %w: int = conv %q !0:2:1
+  %r: int = iadd %g, %w !0:2:1
+  ret %r
+}
+fn @main() -> int !0:10:1 {
+b0:
+  %x: int = iconst 200 !0:11:1
+  %y: int = iconst 100 !0:11:1
+  %ox: opt<uint8> = inarrow.opt %x !0:11:1
+  %oy: opt<uint8> = inarrow.opt %y !0:11:1
+  %a: uint8 = opt.get %ox !0:11:1
+  %b: uint8 = opt.get %oy !0:11:1
+  %r: int = call @big(%a, %b) !0:12:1
+  ret %r
+}
+"#;
+
+/// Run from `llvm_direct`'s one test (see above).
+pub fn narrow_unsigned_matches_cranelift() {
+    let Some(opts) = direct() else { return };
+    let want = run_native(UNSIGNED, "direct_unsigned-cranelift");
+    assert_eq!(want.code, 3, "the Cranelift build disagrees");
+    let got = run_llvm(UNSIGNED, &opts, "direct_unsigned");
+    let ir = std::fs::read_to_string("ms-keep.ll").unwrap();
+    let _ = std::fs::remove_file("ms-keep.ll");
+    assert!(ir.contains("icmp ugt i8"), "no unsigned byte compare");
+    assert!(ir.contains("udiv i8"), "no unsigned byte division");
+    assert_eq!((got.code, &got.stdout), (want.code, &want.stdout));
 }

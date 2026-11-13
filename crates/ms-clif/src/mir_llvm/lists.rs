@@ -1,6 +1,6 @@
 //! Strings and lists: the length leaf, element reads and writes, and string bytes.
 
-use super::{Area, Cx, Vals, block_label, held_leaves, mem_leaves, signed_leaves};
+use super::{Area, Cx, Vals, block_label, held_leaves, mem_leaves};
 use crate::layout::{Layouts, Leaf, mem_layout};
 use crate::llvm_build::{Bin, FnBuilder, Meta, Range, Tbaa, Ty as LTy, Val};
 use ms_mir::ir::{Func, Imm, Inst, Module, Op};
@@ -167,7 +167,6 @@ fn list_access(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     let elem = cx.m.seq_elem(cx.f.ty(inst.args[0])).expect("a list");
     let tys = mem_leaves(cx.lay, elem);
     let held = held_leaves(cx.lay, elem);
-    let signed = signed_leaves(cx.lay, elem);
     let (ptr, len) = (l[0].clone(), l[1].clone());
     let wraps = matches!(inst.op, Op::ListGet | Op::ListSet | Op::ListFill);
     let idx = if wraps {
@@ -213,7 +212,7 @@ fn list_access(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
             } else {
                 let w = b.load_with(t, &to, align, meta);
                 b.name_next(dst);
-                super::records::widen(b, &w, &held[k], signed[k]);
+                super::records::widen(b, &w, &held[k]);
             }
         } else {
             let v = vals[&inst.args[2].index()][k].clone();

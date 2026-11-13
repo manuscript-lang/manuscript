@@ -11,9 +11,9 @@ pub(super) const AREA: Area = Area {
     ty_ok,
     pure_op,
     splits,
+    inst_ok: |m, _, f, i| i.op != Op::Conv || conv_ints(m, f, i),
     pre,
     emit,
-    ..Area::NONE
 };
 
 fn ty_ok(k: &TyKind) -> bool {
@@ -73,7 +73,14 @@ fn handles(op: Op) -> bool {
             | Op::IntOverflowIf
             | Op::NarrowChk
             | Op::INarrowOpt
+            | Op::Conv
     )
+}
+
+/// Whether a `Conv` retypes an integer as another integer (floats are not written here).
+fn conv_ints(m: &Module, f: &Func, i: &Inst) -> bool {
+    let ty = |v| f.ty(v);
+    i.res.is_some_and(|r| m.types.is_int(ty(r))) && m.types.is_int(ty(i.args[0]))
 }
 
 /// Whether the op can fault when checks are on.
@@ -101,47 +108,66 @@ fn pure_op(op: Op) -> bool {
 
 /// Each check splits the block: a signed division checks for zero and for overflow.
 fn splits(lay: &Layouts, f: &Func, inst: &Inst, checks: bool) -> usize {
-    let range = usize::from(checks && sized_range(lay, f, inst).is_some());
     match inst.op {
-        Op::SDivChk if checks => 2 + range,
-        op => usize::from(checks && checked(op)) + range,
+        Op::SDivChk if checks && sized(lay, f, inst).is_some_and(|u| u) => 1,
+        Op::SDivChk if checks => 2,
+        op => usize::from(checks && checked(op)),
     }
 }
 
-/// The range of the sized integer type a checked arithmetic op yields, when narrower than 64 bits:
-/// its result is also checked against it.
-fn sized_range(lay: &Layouts, f: &Func, inst: &Inst) -> Option<(i64, i64)> {
-    if !matches!(
-        inst.op,
-        Op::IAddChk | Op::ISubChk | Op::IMulChk | Op::INegChk | Op::SDivChk
-    ) {
-        return None;
-    }
+/// For a checked op that yields a sized integer (narrower than 64 bits): whether it is unsigned.
+fn sized(lay: &Layouts, f: &Func, inst: &Inst) -> Option<bool> {
     let ty = f.ty(inst.res?);
     let types = &lay.m.types;
     types.int_bits(ty).filter(|b| *b < 64)?;
-    let (lo, hi) = types.int_range(ty)?;
-    Some((lo as i64, hi as i64))
+    Some(types.is_unsigned(ty))
+}
+
+/// The constant `v` of the integer type `ty`, as its text: the value wrapped to the width.
+fn lit(ty: &LTy, v: i64) -> Val {
+    let text = match ty {
+        LTy::I8 => (v as i8).to_string(),
+        LTy::I16 => (v as i16).to_string(),
+        LTy::I32 => (v as i32).to_string(),
+        _ => v.to_string(),
+    };
+    Val::new(text, ty.clone())
+}
+
+/// The smallest value of the signed integer type `ty`.
+fn signed_min(ty: &LTy) -> i64 {
+    match ty {
+        LTy::I8 => i64::from(i8::MIN),
+        LTy::I16 => i64::from(i16::MIN),
+        LTy::I32 => i64::from(i32::MIN),
+        _ => i64::MIN,
+    }
 }
 
 /// A constant is its own text: no register.
 fn pre(
     _: &Module,
-    _: &Layouts,
-    _: &Func,
+    lay: &Layouts,
+    f: &Func,
     inst: &Inst,
     vals: &Vals,
     b: &mut FnBuilder,
 ) -> Option<Vec<Val>> {
     match (inst.op, inst.imm) {
-        // The value itself, after `emit` checks its range.
-        (Op::NarrowChk, _) => Some(vec![vals[&inst.args[0].index()][0].clone()]),
-        // Whether the value fits, and the value.
-        (Op::INarrowOpt, _) => Some(vec![
-            b.reserve(LTy::I1),
-            vals[&inst.args[0].index()][0].clone(),
-        ]),
-        (Op::IConst, Imm::Int(v)) => Some(vec![Val::int(v)]),
+        // Whether the value fits, and the value: the register itself when it is a 64-bit one, else
+        // its truncation (`narrow_opt`).
+        (Op::INarrowOpt, _) => {
+            let held = super::held_leaves(lay, f.ty(inst.res?));
+            let value = match held[1] {
+                LTy::I64 => vals[&inst.args[0].index()][0].clone(),
+                _ => b.reserve(held[1].clone()),
+            };
+            Some(vec![b.reserve(LTy::I1), value])
+        }
+        (Op::IConst, Imm::Int(v)) => {
+            let held = super::held_leaves(lay, f.ty(inst.res?));
+            Some(vec![lit(&held[0], v)])
+        }
         (Op::FConst, Imm::Float(bits)) => Some(vec![Val::double(bits)]),
         (Op::BConst, Imm::Bool(v)) => Some(vec![Val::bool(v)]),
         _ => None,
@@ -198,7 +224,7 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         return checked_op(cx, inst, vals, b, &out);
     }
     // A single-leaf result is named in place; `Select` handles several.
-    if let ([r], false) = (out.as_slice(), inst.op == Op::Select) {
+    if let ([r], false) = (out.as_slice(), matches!(inst.op, Op::Select | Op::Conv)) {
         b.name_next(r);
     }
     match inst.op {
@@ -212,7 +238,7 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         Op::FSub => drop(b.bin(Bin::FSub, &arg(0), &arg(1))),
         Op::FMul => drop(b.bin(Bin::FMul, &arg(0), &arg(1))),
         Op::FDiv => drop(b.bin(Bin::FDiv, &arg(0), &arg(1))),
-        Op::INeg => drop(b.bin(Bin::Sub, &Val::int(0), &arg(0))),
+        Op::INeg => drop(b.bin(Bin::Sub, &lit(&arg(0).ty, 0), &arg(0))),
         Op::FNeg => drop(b.fneg(&arg(0))),
         Op::Not => drop(b.bin(Bin::Xor, &arg(0), &Val::bool(true))),
         Op::ICmp | Op::UICmp | Op::FCmp => {
@@ -221,7 +247,10 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
             if inst.op == Op::FCmp {
                 b.fcmp(fcc(cc), &arg(0), &arg(1));
             } else {
-                b.icmp(icc(cc, inst.op == Op::UICmp), &arg(0), &arg(1));
+                // A sized unsigned integer is compared as the unsigned `iN` it is.
+                let unsigned =
+                    inst.op == Op::UICmp || cx.lay.m.types.is_unsigned(cx.f.ty(inst.args[0]));
+                b.icmp(icc(cc, unsigned), &arg(0), &arg(1));
             }
         }
         Op::Select => {
@@ -235,8 +264,24 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
                 );
             }
         }
+        Op::Conv => {
+            // The same number as another integer type: extended by the source's signedness, then
+            // cut to the target's width (a range check, when one is wanted, comes first).
+            let x = widen_int(cx, b, inst, &arg(0));
+            let to = out[0].ty.clone();
+            b.name_next(&out[0]);
+            if to == LTy::I64 {
+                // Only a name to give: the register itself.
+                b.bin(Bin::Add, &x, &Val::int(0));
+            } else {
+                b.trunc(&x, to);
+            }
+        }
         Op::B2I => drop(b.zext(&arg(0), LTy::I64)),
-        Op::I2F => drop(b.sitofp(&arg(0))),
+        Op::I2F => {
+            let x = widen_int(cx, b, inst, &arg(0));
+            drop(b.sitofp(&x))
+        }
         Op::SDiv => drop(b.bin(Bin::SDiv, &arg(0), &arg(1))),
         Op::SRem => drop(b.bin(Bin::SRem, &arg(0), &arg(1))),
         _ => unreachable!("handles lists these ops only"),
@@ -247,17 +292,9 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
 /// the plain operations. The result takes its reserved name on the last instruction written,
 /// which is in the block after the checks.
 fn checked_op(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder, out: &[Val]) {
-    checked_op_64(cx, inst, vals, b, out);
-    if let (true, Some((lo, hi)), [r]) = (cx.checks, sized_range(cx.lay, cx.f, inst), out) {
-        let below = b.icmp("slt", r, &Val::int(lo));
-        let above = b.icmp("sgt", r, &Val::int(hi));
-        let bad = b.bin(Bin::Or, &below, &above);
-        faults::fault_if(cx, b, &bad, "msrt_fault_int_range", &[]);
+    if let Some(unsigned) = sized(cx.lay, cx.f, inst) {
+        return sized_op(cx, inst, vals, b, out, unsigned);
     }
-}
-
-/// The 64-bit check of `checked_op`.
-fn checked_op_64(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder, out: &[Val]) {
     let arg = |i: usize| vals[&inst.args[i].index()][0].clone();
     let name = |b: &mut FnBuilder| {
         if let [r] = out {
@@ -341,37 +378,128 @@ fn rem(b: &mut FnBuilder, x: &Val, y: &Val, name: &dyn Fn(&mut FnBuilder)) {
     b.select(&m1, &Val::int(0), &r);
 }
 
-/// `NarrowChk`: faults when the value is outside the range of its (narrow) type. The register is
-/// the value itself, so nothing else is written.
+/// `NarrowChk`: the 64-bit register as a sized integer, faulting when it is outside the range.
 fn narrow_chk(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
-    if !cx.checks {
-        return;
-    }
     let x = vals[&inst.args[0].index()][0].clone();
-    let (lo, hi) = cx
-        .lay
-        .m
-        .types
-        .int_range(cx.f.ty(inst.res.expect("a result")))
-        .unwrap_or((i64::MIN.into(), i64::MAX.into()));
-    let below = b.icmp("slt", &x, &Val::int(lo as i64));
-    let above = b.icmp("sgt", &x, &Val::int(hi as i64));
-    let bad = b.bin(Bin::Or, &below, &above);
-    faults::fault_if(cx, b, &bad, "msrt_fault_int_range", &[]);
+    let out = vals[&inst.res.expect("a result").index()][0].clone();
+    if cx.checks {
+        let (lo, hi) = cx
+            .lay
+            .m
+            .types
+            .int_range(cx.f.ty(inst.res.expect("a result")))
+            .unwrap_or((i64::MIN.into(), i64::MAX.into()));
+        let below = b.icmp("slt", &x, &Val::int(lo as i64));
+        let above = b.icmp("sgt", &x, &Val::int(hi as i64));
+        let bad = b.bin(Bin::Or, &below, &above);
+        faults::fault_if(cx, b, &bad, "msrt_fault_int_range", &[]);
+    }
+    b.name_next(&out);
+    b.trunc(&x, out.ty.clone());
 }
 
-/// `INarrowOpt`: `[fits, value]`, where it fits when the register is inside the range of the
-/// optional's integer type.
+/// `INarrowOpt`: `[fits, value]`, where it fits when the integer is inside the range of the
+/// optional's integer type; the value is the register truncated to that type.
 fn narrow_opt(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     let m = cx.lay.m;
-    let x = vals[&inst.args[0].index()][0].clone();
+    let x = widen_int(cx, b, inst, &vals[&inst.args[0].index()][0]);
     let res = cx.f.ty(inst.res.expect("a result"));
     let (lo, hi) = m.opt_inner(res).map_or((i64::MIN, i64::MAX), |inner| {
         m.types.narrow_range(cx.f.ty(inst.args[0]), inner)
     });
-    let ok = vals[&inst.res.expect("a result").index()][0].clone();
+    let out = &vals[&inst.res.expect("a result").index()];
     let ge = b.icmp("sge", &x, &Val::int(lo));
     let le = b.icmp("sle", &x, &Val::int(hi));
-    b.name_next(&ok);
+    b.name_next(&out[0]);
     b.bin(Bin::And, &ge, &le);
+    if out[1].ty != LTy::I64 {
+        b.name_next(&out[1]);
+        b.trunc(&x, out[1].ty.clone());
+    }
+}
+
+/// A checked op on a sized integer, computed in its own width: the overflow of `iN` is the range
+/// fault of the type, and an unsigned type uses the unsigned operations.
+fn sized_op(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder, out: &[Val], unsigned: bool) {
+    let x = vals[&inst.args[0].index()][0].clone();
+    let y = vals.get(&inst.args.get(1).map_or(usize::MAX, |a| a.index()));
+    let y = y.map_or_else(|| x.clone(), |v| v[0].clone());
+    let ty = x.ty.clone();
+    let zero = lit(&ty, 0);
+    let name = |b: &mut FnBuilder| {
+        if let [r] = out {
+            b.name_next(r);
+        }
+    };
+    let range = "msrt_fault_int_range";
+    match inst.op {
+        Op::IAddChk | Op::ISubChk | Op::IMulChk | Op::INegChk if !cx.checks => {
+            name(b);
+            match inst.op {
+                Op::IAddChk => drop(b.bin(Bin::Add, &x, &y)),
+                Op::ISubChk => drop(b.bin(Bin::Sub, &x, &y)),
+                Op::IMulChk => drop(b.bin(Bin::Mul, &x, &y)),
+                _ => drop(b.bin(Bin::Sub, &zero, &x)),
+            }
+        }
+        Op::IAddChk | Op::ISubChk | Op::IMulChk | Op::INegChk => {
+            let kind = match inst.op {
+                Op::IAddChk => "add",
+                Op::ISubChk | Op::INegChk => "sub",
+                _ => "mul",
+            };
+            let with = format!("{}{kind}", if unsigned { "u" } else { "s" });
+            name(b);
+            let (_, of) = if inst.op == Op::INegChk {
+                b.overflow(&with, &zero, &x)
+            } else {
+                b.overflow(&with, &x, &y)
+            };
+            faults::fault_if(cx, b, &of, range, &[]);
+        }
+        Op::SDivChk => {
+            if cx.checks {
+                let z = b.icmp("eq", &y, &zero);
+                faults::fault_if(cx, b, &z, "msrt_fault_div_zero", &[]);
+                if !unsigned {
+                    let m1 = b.icmp("eq", &y, &lit(&ty, -1));
+                    let mn = b.icmp("eq", &x, &lit(&ty, signed_min(&ty)));
+                    let both = b.bin(Bin::And, &m1, &mn);
+                    faults::fault_if(cx, b, &both, range, &[]);
+                }
+            }
+            name(b);
+            b.bin(if unsigned { Bin::UDiv } else { Bin::SDiv }, &x, &y);
+        }
+        _ => {
+            if cx.checks {
+                let z = b.icmp("eq", &y, &zero);
+                faults::fault_if(cx, b, &z, "msrt_fault_rem_zero", &[]);
+            }
+            if unsigned {
+                name(b);
+                b.bin(Bin::URem, &x, &y);
+            } else {
+                // A divisor of -1 is swapped for 1 and the result zeroed, which avoids the trap on
+                // the type's minimum.
+                let m1 = b.icmp("eq", &y, &lit(&ty, -1));
+                let safe = b.select(&m1, &lit(&ty, 1), &y);
+                let r = b.bin(Bin::SRem, &x, &safe);
+                name(b);
+                b.select(&m1, &zero, &r);
+            }
+        }
+    }
+}
+
+/// The register `x` of an integer operand as an `i64`, extended by its type's signedness.
+fn widen_int(cx: &Cx, b: &mut FnBuilder, inst: &Inst, x: &Val) -> Val {
+    if x.ty == LTy::I64 {
+        return x.clone();
+    }
+    if cx.lay.m.types.is_unsigned(cx.f.ty(inst.args[0])) {
+        b.zext(x, LTy::I64)
+    } else {
+        b.sext(x, LTy::I64)
+    }
 }
