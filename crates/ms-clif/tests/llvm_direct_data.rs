@@ -777,3 +777,42 @@ pub fn narrow_sums_fault_like_cranelift() {
     }
     let _ = std::fs::remove_file("ms-keep.ll");
 }
+
+/// A slot of `unit` (a result that holds nothing) is still an address that is written and read.
+const UNIT_SLOT_PROGRAM: &str = r#"module "d"
+entry @main
+file 0 "d.ms"
+fn @f(%a: int) -> int !0:1:1 {
+b0:
+  %s: ptr = slot unit !0:2:1
+  %u: unit = unit !0:3:1
+  store %s, %u !0:4:1
+  %v: unit = load unit %s !0:5:1
+  %r: int = iadd %a, %a !0:6:1
+  ret %r
+}
+fn @main() -> int !0:10:1 {
+b0:
+  %a: int = iconst 21 !0:11:1
+  %r: int = call @f(%a) !0:12:1
+  ret %r
+}
+"#;
+
+pub fn unit_slot_matches_cranelift() {
+    let Some(opts) = direct() else { return };
+    let want = run_native(UNIT_SLOT_PROGRAM, "direct_unit_slot-cranelift");
+    let got = run_llvm(UNIT_SLOT_PROGRAM, &opts, "direct_unit_slot");
+    let ir = std::fs::read_to_string("ms-keep.ll").unwrap();
+    let _ = std::fs::remove_file("ms-keep.ll");
+    let header = ir
+        .lines()
+        .find(|l| l.starts_with("define") && l.contains("@\"f#"))
+        .expect("no f in the IR");
+    assert!(
+        header.contains("%a0_0") || header.contains("dereferenceable") || header.contains("i64 %"),
+        "f was translated: {header}"
+    );
+    assert_eq!((got.code, &got.stdout), (want.code, &want.stdout));
+    assert_eq!(got.code, 42);
+}
