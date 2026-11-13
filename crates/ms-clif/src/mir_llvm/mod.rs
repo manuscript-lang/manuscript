@@ -35,6 +35,12 @@ pub struct Place<'a> {
     pub native: &'a HashSet<usize>,
 }
 
+/// The glue a closure object points to.
+pub struct ClosureSyms {
+    pub clone: String,
+    pub drop: String,
+}
+
 /// A finished function: pieces of the `define` line, the body, and the callees it declares.
 pub struct Emitted {
     /// Return type with its attributes (`void` for `Unit`).
@@ -55,8 +61,8 @@ pub struct Emitted {
 }
 
 /// What a function needs from the module before it is emitted: whether checks are on, and the
-/// symbols of the glue and descriptors its instructions call. The driver declares them (glue is
-/// queued for generation).
+/// symbols of the glue, descriptors and vtables its instructions name. The driver declares them
+/// (glue is queued for generation).
 #[derive(Default)]
 pub struct Plan {
     /// Whether bounds checks are emitted.
@@ -69,6 +75,14 @@ pub struct Plan {
     pub desc: HashMap<Ty, String>,
     /// Symbol of the cleanup thunk by the MIR index of the closer.
     pub cleanup: HashMap<usize, String>,
+    /// `closure.new` results that live in a stack slot.
+    pub framed_closures: HashSet<usize>,
+    /// `iface.borrow` results that keep their leaves in a stack slot.
+    pub framed_ifaces: HashSet<usize>,
+    /// The glue of each closure function, by `(function, framed)`.
+    pub closures: HashMap<(usize, bool), ClosureSyms>,
+    /// The data symbol of each vtable an instruction names.
+    pub vtables: HashMap<usize, String>,
 }
 
 /// LLVM type and parameter attribute of one register leaf. `I8` leaves (`Bool`, flags) are
@@ -265,10 +279,7 @@ fn area_of(op: Op) -> Option<&'static Area> {
 
 /// Whether stage 1 can emit `f`.
 pub fn supports(m: &Module, lay: &Layouts, f: &Func) -> bool {
-    if !matches!(f.kind, ms_mir::ir::FuncKind::Normal)
-        || !f.noalias.is_empty()
-        || !signature_ok(lay, &f.params, f.ret)
-    {
+    if !f.noalias.is_empty() || !signature_ok(lay, &f.params, f.ret) {
         return false;
     }
     let ty_ok = |v| supported_ty(lay, f.ty(v));
