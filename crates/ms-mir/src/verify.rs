@@ -167,9 +167,9 @@ pub fn arg_modes(m: &Module, inst: &Inst) -> Vec<Mode> {
         v
     };
     match inst.op {
-        Op::RecNew | Op::AltNew | Op::ListLit | Op::ClosureNew => all(Mode::Move),
-        Op::RecSet
-        | Op::RecFill
+        Op::TypeNew | Op::AltNew | Op::ListLit | Op::ClosureNew => all(Mode::Move),
+        Op::TypeSet
+        | Op::TypeFill
         | Op::ListPush
         | Op::ListDropLast
         | Op::ListSet
@@ -183,7 +183,7 @@ pub fn arg_modes(m: &Module, inst: &Inst) -> Vec<Mode> {
         | Op::GlobalSet
         | Op::AltUnbox
         | Op::AltRelease
-        | Op::RecRelease
+        | Op::TypeRelease
         | Op::OptUnbox => one(0),
         Op::Put => one(1),
         Op::DropIf => one(1),
@@ -723,10 +723,10 @@ impl Verifier<'_> {
     }
 }
 
-fn r_id(inst: &Inst) -> crate::types::RecId {
+fn r_id(inst: &Inst) -> crate::types::TypeId {
     match inst.imm {
-        Imm::Rec(r) | Imm::Field(r, _) => r,
-        _ => crate::types::RecId(u32::MAX),
+        Imm::Type(r) | Imm::Field(r, _) => r,
+        _ => crate::types::TypeId(u32::MAX),
     }
 }
 

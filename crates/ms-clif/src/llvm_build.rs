@@ -139,7 +139,7 @@ impl Types {
     }
 
     /// The struct called `name` with these `fields`, declared on first use. A name taken by a
-    /// struct of other fields gets a numeric suffix, so two records of one name stay distinct.
+    /// struct of other fields gets a numeric suffix, so two types of one name stay distinct.
     pub fn named(&self, name: &str, fields: Vec<Ty>) -> Ty {
         let found = {
             let structs = self.structs.borrow();
@@ -1045,7 +1045,7 @@ mod tests {
     }
 
     #[test]
-    fn a_record_copy_is_one_memcpy_and_accesses_are_aligned() {
+    fn a_type_copy_is_one_memcpy_and_accesses_are_aligned() {
         let t = Types::default();
         let r = t.add_struct("R", vec![Ty::I64, Ty::F64, Ty::I64]);
         let mut b = FnBuilder::new(&t, None);

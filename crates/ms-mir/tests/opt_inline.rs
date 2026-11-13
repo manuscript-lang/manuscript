@@ -620,7 +620,7 @@ fn holder_program(second: &str) -> String {
     format!(
         r#"module "holder"
 entry @main
-record Holder {{ key: fn(int) -> int }}
+type Holder {{ key: fn(int) -> int }}
 fn @double(%env: ptr, %x: int) -> int closure() {{
 b0:
   %r: int = iadd.chk %x, %x
@@ -634,14 +634,14 @@ b0:
 }}
 fn @apply(%h: Holder, %x: int) -> int {{
 b0:
-  %f: fn(int) -> int = rec.get Holder.key %h
+  %f: fn(int) -> int = type.get Holder.key %h
   %r: int = call.ind (%f, %x)
   ret %r
 }}
 fn @main() -> int {{
 b0:
   %f: fn(int) -> int = closure.new @double
-  %h: Holder = rec.new Holder %f
+  %h: Holder = type.new Holder %f
 {second}
   %x: int = iconst 21
   %a: int = call @apply (%h, %x)
@@ -658,7 +658,7 @@ b0:
 #[test]
 fn a_closure_field_that_every_constructor_sets_to_the_same_code_is_called_directly() {
     let src = holder_program(
-        "  %f2: fn(int) -> int = closure.new @double\n  %g: Holder = rec.new Holder %f2",
+        "  %f2: fn(int) -> int = closure.new @double\n  %g: Holder = type.new Holder %f2",
     );
     let before = outcome(&module(&src));
     let mut m = module(&src);
@@ -672,7 +672,7 @@ fn a_closure_field_that_every_constructor_sets_to_the_same_code_is_called_direct
 #[test]
 fn a_closure_field_set_to_different_code_keeps_its_indirect_call() {
     let src = holder_program(
-        "  %f2: fn(int) -> int = closure.new @negate\n  %g: Holder = rec.new Holder %f2",
+        "  %f2: fn(int) -> int = closure.new @negate\n  %g: Holder = type.new Holder %f2",
     );
     let before = outcome(&module(&src));
     let mut m = module(&src);

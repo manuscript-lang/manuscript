@@ -31,7 +31,7 @@ type RtEntry = (
 );
 
 /// The ABI facts a runtime function declares with a `// ms:` comment in its source
-/// (`cargo xtask symbols` records them in `rt_symbols.txt`).
+/// (`cargo xtask symbols` types them in `rt_symbols.txt`).
 #[derive(Clone, Copy, Default)]
 pub(crate) struct RtFlags {
     /// Never reaches a cancellation point.
@@ -232,8 +232,8 @@ const STATUS_NONE: i64 = 16;
 pub(crate) enum Wrap {
     /// An interface value over the handle, with the interface type.
     Iface(ms_mir::ir::VtableId, MTy),
-    /// A record whose only field is the handle.
-    Record(ms_mir::types::RecId),
+    /// A type whose only field is the handle.
+    Type(ms_mir::types::TypeId),
 }
 
 impl FnLower<'_> {
@@ -418,12 +418,12 @@ impl FnLower<'_> {
                     }
                 }
                 _ if p.ty == "HasRaw" && i + 1 < end && sig.params[i + 1].ty == "HasRaw" => {
-                    // An optional record: its presence, then each field in turn.
+                    // An optional type: its presence, then each field in turn.
                     let input = *inputs
                         .get(cursor)
                         .ok_or_else(|| Error::new(format!("{sym}: missing argument")))?;
                     cursor += 1;
-                    i += 1 + self.flatten_optional_record(
+                    i += 1 + self.flatten_optional_type(
                         input,
                         &sig.params[i + 1..end],
                         &mut vals,
@@ -488,17 +488,16 @@ impl FnLower<'_> {
                         i += 1;
                         continue;
                     }
-                    // A generic element slot takes the record whole, whatever its field is called.
+                    // A generic element slot takes the type whole, whatever its field is called.
                     let element = p.ty == "*const u8" || p.ty == "*mut u8";
-                    if let Some(fields) = self.record_fields_named(x, &p.name).filter(|_| !element)
-                    {
-                        // A record argument crosses as its fields.
-                        let TyKind::Rec(rid) = self.b.m.types.kind(self.ty_of(x.v)).clone() else {
-                            unreachable!("record_fields_named found a record");
+                    if let Some(fields) = self.type_fields_named(x, &p.name).filter(|_| !element) {
+                        // A type argument crosses as its fields.
+                        let TyKind::Type(rid) = self.b.m.types.kind(self.ty_of(x.v)).clone() else {
+                            unreachable!("type_fields_named found a type");
                         };
-                        let rec = self.borrow(x);
+                        let tval = self.borrow(x);
                         for k in 0..fields {
-                            let f = self.b.rec_get(rid, k as u32, rec);
+                            let f = self.b.type_get(rid, k as u32, tval);
                             vals.push(f);
                         }
                         i += fields;
@@ -517,7 +516,7 @@ impl FnLower<'_> {
                     };
                     let consumed_aggregate = p.ty == "*mut VecVal" || p.ty == "*mut MapVal";
                     let clock = p.ty == "*const Timestamp" || p.ty == "*const Instant";
-                    // A record the runtime reads as a `repr(C)` struct of the same leaves.
+                    // A type the runtime reads as a `repr(C)` struct of the same leaves.
                     let wire = p.ty.starts_with("*const ") && p.ty.ends_with("Wire");
                     if p.ty == "*const u8"
                         || p.ty == "*mut u8"
@@ -588,19 +587,19 @@ impl FnLower<'_> {
         Ok(r)
     }
 
-    /// The field count of a record argument whose first field is the runtime parameter `name`.
-    fn record_fields_named(&self, x: Val, name: &str) -> Option<usize> {
-        let TyKind::Rec(rid) = self.b.m.types.kind(self.ty_of(x.v)) else {
+    /// The field count of a type argument whose first field is the runtime parameter `name`.
+    fn type_fields_named(&self, x: Val, name: &str) -> Option<usize> {
+        let TyKind::Type(rid) = self.b.m.types.kind(self.ty_of(x.v)) else {
             return None;
         };
-        let fields = &self.b.m.records[rid.index()].fields;
+        let fields = &self.b.m.type_defs[rid.index()].fields;
         (fields.first()?.0 == name).then_some(fields.len())
     }
 
-    /// Pushes `has_record` and the `(has, value)` pairs of the optional fields of an optional
-    /// record argument, reading fields only when the record is present. Returns the number of
+    /// Pushes `has_type` and the `(has, value)` pairs of the optional fields of an optional
+    /// type argument, reading fields only when the type is present. Returns the number of
     /// runtime parameters used after the presence flag.
-    pub(crate) fn flatten_optional_record(
+    pub(crate) fn flatten_optional_type(
         &mut self,
         input: Input,
         params: &[RtParam],
@@ -609,15 +608,15 @@ impl FnLower<'_> {
         let x = input.val;
         let held = x.map(|x| self.ty_of(x.v));
         // The checker may already have converted the argument to an optional element.
-        let wrapped =
-            input.wrapped || held.is_some_and(|t| matches!(self.b.m.types.kind(t), TyKind::Rec(_)));
-        let rec_ty = held.and_then(|t| match self.b.m.types.kind(t).clone() {
+        let wrapped = input.wrapped
+            || held.is_some_and(|t| matches!(self.b.m.types.kind(t), TyKind::Type(_)));
+        let type_ty = held.and_then(|t| match self.b.m.types.kind(t).clone() {
             TyKind::Opt(t) if !wrapped => Some(t),
-            TyKind::Rec(_) => Some(t),
+            TyKind::Type(_) => Some(t),
             _ => None,
         });
-        let fields = match rec_ty.map(|t| self.b.m.types.kind(t).clone()) {
-            Some(TyKind::Rec(rid)) => self.b.m.records[rid.index()].fields.clone(),
+        let fields = match type_ty.map(|t| self.b.m.types.kind(t).clone()) {
+            Some(TyKind::Type(rid)) => self.b.m.type_defs[rid.index()].fields.clone(),
             _ => Vec::new(),
         };
         let has = match x {
@@ -632,23 +631,23 @@ impl FnLower<'_> {
             None => self.b.bconst(false),
         };
         vals.push(has);
-        // A record to read fields from: the argument itself, or the empty record when the
+        // A type to read fields from: the argument itself, or the empty type when the
         // optional is none (the fields are then ignored by the runtime).
         let mut blank_val = None;
-        let view = match (x, rec_ty) {
+        let view = match (x, type_ty) {
             (Some(x), Some(rt)) => {
                 let held = self.borrow(x);
                 if wrapped {
                     Some(held)
                 } else {
-                    let TyKind::Rec(rid) = self.b.m.types.kind(rt).clone() else {
-                        unreachable!("fields come from a record");
+                    let TyKind::Type(rid) = self.b.m.types.kind(rt).clone() else {
+                        unreachable!("fields come from a type");
                     };
                     let mut empty = Vec::new();
                     for (_, ft) in &fields {
                         empty.push(self.none_owned(*ft));
                     }
-                    let blank = self.b.rec_new(rid, &empty);
+                    let blank = self.b.type_new(rid, &empty);
                     let some = self.b.opt_get(held);
                     blank_val = Some(blank);
                     Some(self.b.select(has, some, blank))
@@ -667,17 +666,17 @@ impl FnLower<'_> {
                 _ => s.b.bconst(false),
             };
             let (fh, fv) = match (view, fields.get(k)) {
-                (Some(rec), Some(_)) => {
-                    let TyKind::Rec(rid) = self
+                (Some(tval), Some(_)) => {
+                    let TyKind::Type(rid) = self
                         .b
                         .m
                         .types
-                        .kind(rec_ty.expect("view has a type"))
+                        .kind(type_ty.expect("view has a type"))
                         .clone()
                     else {
-                        unreachable!("fields come from a record");
+                        unreachable!("fields come from a type");
                     };
-                    let f = self.b.rec_get(rid, k as u32, rec);
+                    let f = self.b.type_get(rid, k as u32, tval);
                     let some = self.b.opt_get(f);
                     (self.b.opt_is_some(f), self.unduration(some))
                 }
@@ -688,7 +687,7 @@ impl FnLower<'_> {
             used += 2;
             k += 1;
         }
-        // The runtime reads scalars only, so the empty record can go once they are out.
+        // The runtime reads scalars only, so the empty type can go once they are out.
         if let Some(b) = blank_val {
             self.drop_value(b);
         }
@@ -762,7 +761,7 @@ impl FnLower<'_> {
     /// The nanosecond count of a `Duration` operand, else the operand itself.
     pub(crate) fn unduration(&mut self, v: Value) -> Value {
         if self.is_duration(self.ty_of(v)) {
-            return self.duration_nanos(v).expect("duration is a record");
+            return self.duration_nanos(v).expect("duration is a type");
         }
         v
     }
@@ -892,7 +891,7 @@ impl FnLower<'_> {
             let out = self.call_runtime(sym, &vals, result)?;
             return Ok(Val { v: out, own: true });
         }
-        // `InfoOut` is flat words that become a `FileInfo` record.
+        // `InfoOut` is flat words that become a `FileInfo` type.
         let body =
             sig.params.len() - usize::from(sig.params.last().is_some_and(|p| p.ty == "ErrSlot"));
         if sig.params[..body]
@@ -920,19 +919,19 @@ impl FnLower<'_> {
             (TyKind::Alt(_), TyKind::Iface(i)) => Some(*i),
             _ => None,
         };
-        // `Result[Wrapper, E]` where `Wrapper` is a record around one runtime handle (a std type
+        // `Result[Wrapper, E]` where `Wrapper` is a type around one runtime handle (a std type
         // such as `FileHandle { native: NativeFile }`): the runtime writes the handle and the
-        // record is built around it.
-        let record = match (self.b.m.types.kind(result), self.b.m.types.kind(payload)) {
-            (TyKind::Alt(_), TyKind::Rec(r)) => {
-                let fields = &self.b.m.records[r.index()].fields;
+        // type is built around it.
+        let kind = match (self.b.m.types.kind(result), self.b.m.types.kind(payload)) {
+            (TyKind::Alt(_), TyKind::Type(r)) => {
+                let fields = &self.b.m.type_defs[r.index()].fields;
                 let one_handle = fields.len() == 1
                     && matches!(self.b.m.types.kind(fields[0].1), TyKind::Obj(..));
                 one_handle.then_some((*r, fields[0].1))
             }
             _ => None,
         };
-        let slot_ty = match (wrap, record) {
+        let slot_ty = match (wrap, kind) {
             (Some(_), _) => crate::natiface::handle_ty(self.b.m),
             (None, Some((_, handle))) => handle,
             (None, None) => eof.unwrap_or(payload),
@@ -958,13 +957,13 @@ impl FnLower<'_> {
             };
             return self.status_optional_result(sym, code, take, result);
         }
-        let wrap = match (wrap, record) {
+        let wrap = match (wrap, kind) {
             (Some(i), _) => {
                 let hir = self.hir.clone();
                 let vt = self.cx.handle_vtable_of(self.b.m, &hir, sym, i)?;
                 Some(Wrap::Iface(vt, payload))
             }
-            (None, Some((rec, _))) => Some(Wrap::Record(rec)),
+            (None, Some((tval, _))) => Some(Wrap::Type(tval)),
             (None, None) => None,
         };
         let Some(code) = code else {
@@ -1089,7 +1088,7 @@ impl FnLower<'_> {
             .error_case()
             .ok_or_else(|| Error::new("not a Result"))?;
         let et = self.b.m.alts[a.index()].cases[err].fields[0].1;
-        if let TyKind::Rec(er) = self.b.m.types.kind(et).clone() {
+        if let TyKind::Type(er) = self.b.m.types.kind(et).clone() {
             let e = self.status_error_value(er, code, sym)?;
             return Ok(self.b.alt_new(a, err as u32, &[e]));
         }
@@ -1097,7 +1096,7 @@ impl FnLower<'_> {
         let TyKind::Alt(ea) = self.b.m.types.kind(et).clone() else {
             return Err(Error::new("a runtime status needs an error alternative"));
         };
-        // Every stdlib native returns an `Error` record; an alternative error type belongs to a
+        // Every stdlib native returns an `Error` type; an alternative error type belongs to a
         // user `extern fn`, whose statuses number its cases 1 + declaration index.
         let cases: Vec<(i64, usize)> = (0..self.b.m.alts[ea.index()].cases.len())
             .map(|i| (i as i64 + 1, i))
@@ -1110,7 +1109,7 @@ impl FnLower<'_> {
     /// the module's domain and the failure, a `Failed` status carries the module's own text.
     pub(crate) fn status_error_value(
         &mut self,
-        er: ms_mir::types::RecId,
+        er: ms_mir::types::TypeId,
         code: Value,
         sym: &str,
     ) -> Result<Value, Error> {
@@ -1126,7 +1125,7 @@ impl FnLower<'_> {
 
     fn status_chain(
         &mut self,
-        er: ms_mir::types::RecId,
+        er: ms_mir::types::TypeId,
         code: Value,
         table: &[(i64, &'static str, &'static str)],
         domain: &str,
@@ -1182,30 +1181,30 @@ impl FnLower<'_> {
                     None => literal(s),
                 }
             };
-            s.error_record(er, kind, text, None)
+            s.error_type(er, kind, text, None)
         };
         if rest.is_empty() {
             return build(self);
         }
         let k = self.b.iconst(n);
         let hit = self.b.icmp(Cc::Eq, code, k);
-        let ty = self.b.m.types.rec(er);
+        let ty = self.b.m.types.named(er);
         let r = self.two_ways(hit, ty, &mut |s| build(s).map(Some), &mut |s| {
             s.status_chain(er, code, rest, domain).map(Some)
         })?;
         Ok(r.v)
     }
 
-    /// An `Error` record: the owned `message`, the error code `kind` (such as `ENOENT`), and the
+    /// An `Error` type: the owned `message`, the error code `kind` (such as `ENOENT`), and the
     /// details `{"site": site}` when a failed test expectation passes its source `site`.
-    pub(crate) fn error_record(
+    pub(crate) fn error_type(
         &mut self,
-        er: ms_mir::types::RecId,
+        er: ms_mir::types::TypeId,
         kind: &str,
         message: Value,
         site: Option<Value>,
     ) -> Result<Value, Error> {
-        let fields = self.b.m.records[er.index()].fields.clone();
+        let fields = self.b.m.type_defs[er.index()].fields.clone();
         let code = self.b.str_lit(kind);
         let code = self.owned(Val {
             v: code,
@@ -1219,7 +1218,7 @@ impl FnLower<'_> {
             let (key, site) = (self.owned_copy(key), self.owned_copy(site));
             details = self.map_insert(details, key, site)?;
         }
-        Ok(self.b.rec_new(er, &[message, kind_value, details]))
+        Ok(self.b.type_new(er, &[message, kind_value, details]))
     }
 
     /// An clone of the borrowed string `v`.
@@ -1272,7 +1271,7 @@ impl FnLower<'_> {
                         s.b.emit(Op::IfaceNew, &[payload], Imm::Vtable(vt), Some(it))
                             .expect("iface")
                     }
-                    Some(Wrap::Record(rec)) => s.b.rec_new(rec, &[payload]),
+                    Some(Wrap::Type(tval)) => s.b.type_new(tval, &[payload]),
                     None => payload,
                 };
                 Ok(Some(s.b.alt_new(a, ok as u32, &[payload])))

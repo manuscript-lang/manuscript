@@ -307,7 +307,7 @@ fn slotfuse_passes_the_field_to_the_mutator_without_a_slot() {
 
 const BUILDER_APPEND: &str = r#"module "main"
 file 0 "a.ms"
-record SB { sealed: bool, items: bytes }
+type SB { sealed: bool, items: bytes }
 extern @msrt_list_new() -> bytes list_new
 extern @msrt_fault_string(str) -> unit noreturn
 extern @msrt_strbuilder_append(ptr, str) -> unit strbuilder_append
@@ -320,7 +320,7 @@ b0:
   depth.enter
   %0: bytes = call.rt @msrt_list_new ()
   %1: bool = bconst false
-  %2: SB = rec.new SB %1, %0
+  %2: SB = type.new SB %1, %0
   %3: ptr = slot SB
   put %3, %2
   %4: int = iconst 0
@@ -610,7 +610,7 @@ fn replaced_list_loses_the_byte_range() {
     assert_eq!(count(&m, "iadd.chk"), 1, "{}", print_module(&m));
 }
 
-/// Reading a list field twice from one record yields one list, so a bound tested on the first
+/// Reading a list field twice from one type yields one list, so a bound tested on the first
 /// read covers the second.
 #[test]
 fn repeated_field_reads_share_one_list_for_bounds_proofs() {
@@ -626,10 +626,10 @@ fn repeated_field_reads_share_one_list_for_bounds_proofs() {
     assert_eq!(exec(&before), exec(&after));
 }
 
-/// A record that comes back from a call has a list of unknown length, whatever the list it went
-/// in with: its length must not be folded from the record built before the loop.
+/// A type that comes back from a call has a list of unknown length, whatever the list it went
+/// in with: its length must not be folded from the type built before the loop.
 #[test]
-fn a_record_returned_through_memory_keeps_an_unknown_list_length() {
+fn a_type_returned_through_memory_keeps_an_unknown_list_length() {
     let src = std::fs::read_to_string(dir("fixtures-opt").join("field_list_opaque.mir")).unwrap();
     let before = parse(&src);
     let want = exec(&before);

@@ -167,7 +167,7 @@ pub(crate) struct FnLower<'a> {
     /// While a mutator discards entries: set by a failed close, which faults after the mutation
     /// removed the entry, so the unwind does not close it a second time.
     pub deferred_close: Option<ms_mir::builder::Var>,
-    /// Record to build on return and the binding uids of the `var` parameters it carries.
+    /// Type to build on return and the binding uids of the `var` parameters it carries.
     pub var_slots: Vec<VarSlot>,
     /// Some binding of the function closes a resource when its scope ends.
     pub closing_fn: bool,
@@ -610,11 +610,11 @@ impl<'a> FnLower<'a> {
         let var = self
             .b
             .declare_var(ty, if owned { Mode::Move } else { Mode::Borrow });
-        if (self.closing_fn || matches!(self.b.m.types.kind(ty), TyKind::Rec(_)))
+        if (self.closing_fn || matches!(self.b.m.types.kind(ty), TyKind::Type(_)))
             && !self.slotted.contains(&b.uid)
         {
             // A function whose scopes close resources keeps every `var` parameter in the
-            // caller's slot, so the pass's error exit has nothing to put back. A record stays in the caller's slot: field reads and writes touch only the fields
+            // caller's slot, so the pass's error exit has nothing to put back. A type stays in the caller's slot: field reads and writes touch only the fields
             // they name, instead of moving every field out at entry and back at each return.
             self.locals.insert(
                 b.uid,
@@ -867,7 +867,7 @@ impl<'a> FnLower<'a> {
 
     /// The payload `field` of the active `case` of the alternative `obj`, owned by the caller,
     /// which moving_params `obj`: an owned temporary hands the payload over and releases the rest; a
-    /// borrowed one is a gap in the checker's facts (`owned` records it in strict mode).
+    /// borrowed one is a gap in the checker's facts (`owned` types it in strict mode).
     pub fn take_alt_field(
         &mut self,
         alt: ms_mir::types::AltId,
@@ -1081,7 +1081,7 @@ impl<'a> FnLower<'a> {
     /// Declares the local of `binding` holding `value`.
     pub fn bind_local(&mut self, binding: &BindingRef, x: Val) {
         let ty = self.ty_of(x.v);
-        // An immutable `let` of a string read from a list element or record field is a lexical
+        // An immutable `let` of a string read from a list element or type field is a lexical
         // borrow (the checker rejects changing the container while it lives): no copy, no drop.
         // Standard-library source is not ownership checked, so it always copies.
         let borrowed = ty == MTy::STR
@@ -1092,7 +1092,7 @@ impl<'a> FnLower<'a> {
             && (self.views.contains(&x.v)
                 || matches!(
                     self.b.defining_op(x.v),
-                    Some(Op::ListGet | Op::ListGetNn | Op::ListGetU | Op::RecGet)
+                    Some(Op::ListGet | Op::ListGetNn | Op::ListGetU | Op::TypeGet)
                 ));
         // A pattern variable the checker proved a read-only borrow of its scrutinee stays where it
         // is: a borrow-returning function can hand it back, and a reader skips the copy.
@@ -1108,7 +1108,7 @@ impl<'a> FnLower<'a> {
                     Some(
                         Op::AltGet
                             | Op::OptGet
-                            | Op::RecGet
+                            | Op::TypeGet
                             | Op::ListGet
                             | Op::ListGetNn
                             | Op::ListGetU

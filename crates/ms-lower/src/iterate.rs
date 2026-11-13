@@ -301,7 +301,7 @@ impl FnLower<'_> {
                         .map(|x| s.owned_boundary(Val { v: *x, own: false }))
                         .collect();
                     let item = match s.b.m.types.kind(inner).clone() {
-                        TyKind::Rec(rid) if xs.len() == 2 => s.b.rec_new(rid, &owned),
+                        TyKind::Type(rid) if xs.len() == 2 => s.b.type_new(rid, &owned),
                         _ => owned[0],
                     };
                     let found = s.b.opt_some(item);

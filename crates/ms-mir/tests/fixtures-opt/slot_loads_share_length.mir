@@ -1,10 +1,10 @@
 module "slot_loads_share_length"
 entry @main
-record Box { items: list<int> }
+type Box { items: list<int> }
 fn @pick(%p: ptr, %i: int) -> int {
 b0:
   %b: Box = load Box %p
-  %l: list<int> = rec.get Box.items %b
+  %l: list<int> = type.get Box.items %b
   %n: int = list.len %l
   %z: int = iconst 0
   %low: bool = icmp.ge %i, %z
@@ -14,7 +14,7 @@ mid:
   br_if %below, read(), none()
 read:
   %b2: Box = load Box %p
-  %l2: list<int> = rec.get Box.items %b2
+  %l2: list<int> = type.get Box.items %b2
   %x: int = list.get %l2, %i
   ret %x
 none:
@@ -27,7 +27,7 @@ b0:
   %b: int = iconst 20
   %c: int = iconst 30
   %l: list<int> = list.lit %a, %b, %c
-  %box: Box = rec.new Box %l
+  %box: Box = type.new Box %l
   %s: ptr = slot Box
   put %s, %box
   %one: int = iconst 1

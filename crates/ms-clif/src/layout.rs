@@ -17,7 +17,7 @@
 //! | `String` | `ptr, tagged` (length and ownership tag, see `ms_rt_abi::StrVal`) |
 //! | `List[T]`, `Bytes` | `ptr, len, cap` |
 //! | `Map`, `Set` | seven `i64` words (`MapVal`) |
-//! | record | the fields' leaves in declaration order |
+//! | type | the fields' leaves in declaration order |
 //! | `T?` of a closure or handle object (single-pointer payloads) | nullable `i64` |
 //! | `String?` | the string's leaves; none is a null `ptr` (tagged static, length 0) |
 //! | `T?` otherwise | `present: i8`, then `T`'s leaves |
@@ -233,15 +233,15 @@ impl<'m> Layouts<'m> {
         fields
     }
 
-    /// The leaves of the heap block behind an indirect record: its fields' leaves in order, except
+    /// The leaves of the heap block behind an indirect type: its fields' leaves in order, except
     /// that a `Map` or `Set` field is one pointer to a header block that exists only while the
-    /// collection is not the all-zero empty value (see [`Layouts::rec_field_boxed`]).
-    pub fn rec_block(&self, r: ms_mir::types::RecId) -> Vec<Leaf> {
-        self.m.records[r.index()]
+    /// collection is not the all-zero empty value (see [`Layouts::type_field_boxed`]).
+    pub fn type_block(&self, r: ms_mir::types::TypeId) -> Vec<Leaf> {
+        self.m.type_defs[r.index()]
             .fields
             .iter()
             .flat_map(|f| {
-                if self.rec_field_boxed(f.1) {
+                if self.type_field_boxed(f.1) {
                     vec![Leaf::I64]
                 } else {
                     self.leaves(f.1)
@@ -250,10 +250,10 @@ impl<'m> Layouts<'m> {
             .collect()
     }
 
-    /// Whether a field of type `fty` inside an indirect record's block holds a nullable pointer
+    /// Whether a field of type `fty` inside an indirect type's block holds a nullable pointer
     /// to its header instead of the header itself. An empty map is seven zero words, so an
     /// `Error` that carries no details has a block of five words and one allocation.
-    pub fn rec_field_boxed(&self, fty: Ty) -> bool {
+    pub fn type_field_boxed(&self, fty: Ty) -> bool {
         matches!(self.m.types.kind(fty), TyKind::Obj(n, _) if n.is_map_or_set())
     }
 
@@ -271,7 +271,7 @@ impl<'m> Layouts<'m> {
     }
 
     /// Which register leaves of `ty` are pointers, one flag per leaf of [`Layouts::leaves`]: a
-    /// `ptr`, a function or object handle, an indirect record or boxed alternative or optional
+    /// `ptr`, a function or object handle, an indirect type or boxed alternative or optional
     /// (nullable), a list's data pointer. A string's first word is a tagged encoding and an
     /// inline alternative's payload slots are shared between cases, so those stay integers. A
     /// register leaf is an `i64` for the Cranelift object and the runtime either way; this only
@@ -297,8 +297,8 @@ impl<'m> Layouts<'m> {
             // The data pointer and the vtable address (tag bits in its low two).
             TyKind::Iface(_) => vec![ptr; 2],
             TyKind::Bytes | TyKind::List(_) => vec![ptr, false, false],
-            TyKind::Rec(r) if self.m.records[r.index()].indirect => one(ptr),
-            TyKind::Rec(r) => self.m.records[r.index()]
+            TyKind::Type(r) if self.m.type_defs[r.index()].indirect => one(ptr),
+            TyKind::Type(r) => self.m.type_defs[r.index()]
                 .fields
                 .iter()
                 .flat_map(|f| self.marks(f.1, ptr))
@@ -362,9 +362,9 @@ impl<'m> Layouts<'m> {
             TyKind::Obj(n, _) if n.is_map_or_set() => plain(vec![I64; ms_rt_abi::MAP_SIZE / 8]),
             TyKind::Obj(..) => plain(vec![I64]),
             TyKind::Iface(_) => plain(vec![I64, I64]),
-            TyKind::Rec(r) if self.m.records[r.index()].indirect => plain(vec![I64]),
-            TyKind::Rec(r) => plain(
-                self.m.records[r.index()]
+            TyKind::Type(r) if self.m.type_defs[r.index()].indirect => plain(vec![I64]),
+            TyKind::Type(r) => plain(
+                self.m.type_defs[r.index()]
                     .fields
                     .iter()
                     .flat_map(|f| self.leaves(f.1))
@@ -460,7 +460,7 @@ mod tests {
         let list = m.types.list(Ty::INT);
         let opt_list = m.types.opt(list);
         let opt_bool = m.types.opt(Ty::BOOL);
-        let (_, rec) = m.add_record(
+        let (_, tval) = m.add_type(
             "R",
             vec![
                 ("p".into(), Ty::PTR),
@@ -469,16 +469,16 @@ mod tests {
             ],
         );
         let lay = Layouts::new(&m);
-        for t in [Ty::PTR, Ty::STR, list, opt_list, rec, Ty::INT] {
+        for t in [Ty::PTR, Ty::STR, list, opt_list, tval, Ty::INT] {
             assert_eq!(lay.pointer_leaves(t).len(), lay.width(t), "{t:?}");
         }
         assert_eq!(lay.pointer_leaves(list), vec![true, false, false]);
         assert_eq!(
-            lay.pointer_leaves(rec),
+            lay.pointer_leaves(tval),
             vec![true, true, false, false, false]
         );
         assert_eq!(lay.pointer_leaves(Ty::STR), vec![false, false]);
-        for t in [Ty::BOOL, opt_bool, rec] {
+        for t in [Ty::BOOL, opt_bool, tval] {
             assert_eq!(lay.bool_leaves(t).len(), lay.width(t), "{t:?}");
         }
         assert_eq!(lay.bool_leaves(Ty::BOOL), vec![true]);
@@ -488,13 +488,13 @@ mod tests {
     }
 
     #[test]
-    fn indirect_record_is_one_pointer() {
+    fn indirect_type_is_one_pointer() {
         let mut m = Module::new("t");
-        let (id, ty) = m.add_record("Big", vec![("a".into(), Ty::STR), ("b".into(), Ty::INT)]);
+        let (id, ty) = m.add_type("Big", vec![("a".into(), Ty::STR), ("b".into(), Ty::INT)]);
         assert_eq!(Layouts::new(&m).width(ty), 3);
-        m.records[id.index()].indirect = true;
+        m.type_defs[id.index()].indirect = true;
         let lay = Layouts::new(&m);
         assert_eq!(lay.leaves(ty), vec![Leaf::I64]);
-        assert_eq!(lay.rec_block(id).len(), 3);
+        assert_eq!(lay.type_block(id).len(), 3);
     }
 }

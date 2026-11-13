@@ -1084,7 +1084,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             | Op::I2F
             | Op::F2IOpt
             | Op::B2I => self.float_ops(f, inst),
-            Op::RecNew | Op::RecGet | Op::RecSet | Op::RecFill => self.records(f, inst),
+            Op::TypeNew | Op::TypeGet | Op::TypeSet | Op::TypeFill => self.type_op(f, inst),
             Op::AltNew
             | Op::AltView
             | Op::AltPlain
@@ -1092,7 +1092,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             | Op::AltTag
             | Op::AltGet
             | Op::AltTake
-            | Op::RecRelease
+            | Op::TypeRelease
             | Op::AltRelease
             | Op::AltUnbox => self.alternatives(f, inst),
             Op::ListNew

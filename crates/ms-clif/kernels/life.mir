@@ -1,18 +1,18 @@
 module "life"
-record Grid { width: int, height: int, cells: list<int> }
+type Grid { width: int, height: int, cells: list<int> }
 extern @msrt_print_int(int)
 entry @main
 fn @cell(%g: Grid, %x: int, %y: int) -> int {
 b0:
-  %w: int = rec.get Grid.width %g
-  %h: int = rec.get Grid.height %g
+  %w: int = type.get Grid.width %g
+  %h: int = type.get Grid.height %g
   %xw: int = iadd.chk %x, %w
   %wx: int = srem.chk %xw, %w
   %yh: int = iadd.chk %y, %h
   %wy: int = srem.chk %yh, %h
   %row: int = imul.chk %wy, %w
   %idx: int = iadd.chk %row, %wx
-  %cells: list<int> = rec.get Grid.cells %g
+  %cells: list<int> = type.get Grid.cells %g
   %v: int = list.get %cells, %idx
   ret %v
 }
@@ -58,8 +58,8 @@ b0:
   %one: int = iconst 1
   %two: int = iconst 2
   %three: int = iconst 3
-  %w: int = rec.get Grid.width %g
-  %h: int = rec.get Grid.height %g
+  %w: int = type.get Grid.width %g
+  %h: int = type.get Grid.height %g
   %total: int = imul %w, %h
   %next0: list<int> = list.new %total
   br ly(%zero, %next0)
@@ -88,7 +88,7 @@ lxd:
   %y1: int = iadd.chk %y, %one
   br ly(%y1, %nx)
 lyd:
-  %out: Grid = rec.new Grid %w, %h, %next
+  %out: Grid = type.new Grid %w, %h, %next
   ret %out
 }
 fn @life(%gens: int) -> int {
@@ -115,7 +115,7 @@ ib:
   %i1: int = iadd.chk %i, %one
   br init(%i1, %cells2)
 id:
-  %g0: Grid = rec.new Grid %size, %size, %cells
+  %g0: Grid = type.new Grid %size, %size, %cells
   br gen(%zero, %g0)
 gen(%n: int, %g: move Grid):
   %cn: bool = icmp.lt %n, %gens
@@ -127,7 +127,7 @@ gb:
   %n1: int = iadd.chk %n, %one
   br gen(%n1, %g2)
 gd:
-  %cells3: list<int> = rec.get Grid.cells %g
+  %cells3: list<int> = type.get Grid.cells %g
   %len: int = list.len %cells3
   br sum(%zero, %zero)
 sum(%k: int, %s: int):

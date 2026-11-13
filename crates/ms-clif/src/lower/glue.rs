@@ -209,15 +209,15 @@ impl<'a, 'm> Lower<'a, 'm> {
         }
     }
 
-    /// Splits `vs` into per-field slices for a record type.
+    /// Splits `vs` into per-field slices for a type.
     pub(super) fn fields_of(&self, ty: Ty) -> Vec<(Ty, usize, usize)> {
         let m = self.g.m;
-        let TyKind::Rec(r) = m.types.kind(ty) else {
+        let TyKind::Type(r) = m.types.kind(ty) else {
             return Vec::new();
         };
         let mut out = Vec::new();
         let mut at = 0;
-        for f in &m.records[r.index()].fields {
+        for f in &m.type_defs[r.index()].fields {
             let w = self.g.lay.width(f.1);
             out.push((f.1, at, w));
             at += w;
@@ -225,25 +225,25 @@ impl<'a, 'm> Lower<'a, 'm> {
         out
     }
 
-    /// The block leaves of `ty` when it is an indirect record (one pointer in registers).
-    pub(super) fn rec_block(&self, ty: Ty) -> Option<Vec<Leaf>> {
+    /// The block leaves of `ty` when it is an indirect type (one pointer in registers).
+    pub(super) fn type_block(&self, ty: Ty) -> Option<Vec<Leaf>> {
         match self.g.m.types.kind(ty) {
-            TyKind::Rec(r) if self.g.m.records[r.index()].indirect => {
-                Some(self.g.lay.rec_block(*r))
+            TyKind::Type(r) if self.g.m.type_defs[r.index()].indirect => {
+                Some(self.g.lay.type_block(*r))
             }
             _ => None,
         }
     }
 
-    /// The block leaf index and width of each field of the indirect record `ty`.
-    pub(super) fn rec_block_fields(&self, ty: Ty) -> Vec<(usize, usize)> {
-        let TyKind::Rec(r) = self.g.m.types.kind(ty) else {
+    /// The block leaf index and width of each field of the indirect type `ty`.
+    pub(super) fn type_block_fields(&self, ty: Ty) -> Vec<(usize, usize)> {
+        let TyKind::Type(r) = self.g.m.types.kind(ty) else {
             return Vec::new();
         };
         let mut at = 0;
         let mut out = Vec::new();
-        for f in &self.g.m.records[r.index()].fields {
-            let n = if self.g.lay.rec_field_boxed(f.1) {
+        for f in &self.g.m.type_defs[r.index()].fields {
+            let n = if self.g.lay.type_field_boxed(f.1) {
                 1
             } else {
                 self.g.lay.width(f.1)
@@ -254,14 +254,14 @@ impl<'a, 'm> Lower<'a, 'm> {
         out
     }
 
-    /// Field `i` of the indirect record whose block is at `p`: its leaves, with a boxed
+    /// Field `i` of the indirect type whose block is at `p`: its leaves, with a boxed
     /// collection header read through its pointer (zeros when there is none).
-    pub(super) fn rec_load_field(&mut self, ty: Ty, p: Value, i: usize) -> Vs {
-        let block = self.rec_block(ty).expect("indirect record");
+    pub(super) fn type_load_field(&mut self, ty: Ty, p: Value, i: usize) -> Vs {
+        let block = self.type_block(ty).expect("indirect type");
         let lay = mem_layout(&block);
-        let (bk, n) = self.rec_block_fields(ty)[i];
+        let (bk, n) = self.type_block_fields(ty)[i];
         let fty = self.fields_of(ty)[i].0;
-        if self.g.lay.rec_field_boxed(fty) {
+        if self.g.lay.type_field_boxed(fty) {
             let bp = self.load_leaf(Leaf::I64, p, lay.offsets[bk] as i32);
             return self.map_header_load(bp);
         }
@@ -270,28 +270,28 @@ impl<'a, 'm> Lower<'a, 'm> {
             .collect()
     }
 
-    /// The field leaves of record `vs`, loaded from its block when it is indirect.
-    pub(super) fn rec_expand(&mut self, ty: Ty, vs: &[Value]) -> Vs {
-        if self.rec_block(ty).is_none() {
+    /// The field leaves of type `vs`, loaded from its block when it is indirect.
+    pub(super) fn type_expand(&mut self, ty: Ty, vs: &[Value]) -> Vs {
+        if self.type_block(ty).is_none() {
             return vs.to_vec();
         }
         let n = self.fields_of(ty).len();
         (0..n)
-            .flat_map(|i| self.rec_load_field(ty, vs[0], i))
+            .flat_map(|i| self.type_load_field(ty, vs[0], i))
             .collect()
     }
 
-    /// The register value of a record with field leaves `flat`: a fresh block when indirect.
-    pub(super) fn rec_pack(&mut self, ty: Ty, flat: Vs) -> Vs {
-        let Some(block) = self.rec_block(ty) else {
+    /// The register value of a type with field leaves `flat`: a fresh block when indirect.
+    pub(super) fn type_pack(&mut self, ty: Ty, flat: Vs) -> Vs {
+        let Some(block) = self.type_block(ty) else {
             return flat;
         };
         let lay = mem_layout(&block);
         let p = self.alloc(lay.size as i64);
         let fields = self.fields_of(ty);
-        for (i, (bk, n)) in self.rec_block_fields(ty).into_iter().enumerate() {
+        for (i, (bk, n)) in self.type_block_fields(ty).into_iter().enumerate() {
             let (fty, at, w) = fields[i];
-            if self.g.lay.rec_field_boxed(fty) {
+            if self.g.lay.type_field_boxed(fty) {
                 let bp = self.map_header_store(&flat[at..at + w]);
                 self.store_leaf(Leaf::I64, bp, p, lay.offsets[bk] as i32);
             } else {
@@ -303,14 +303,14 @@ impl<'a, 'm> Lower<'a, 'm> {
         vec![p]
     }
 
-    /// Frees the block of the indirect record at `p` and the header blocks of its collections.
+    /// Frees the block of the indirect type at `p` and the header blocks of its collections.
     /// The field values were dropped or moved out already.
-    pub(super) fn rec_free_block(&mut self, ty: Ty, p: Value) {
-        let block = self.rec_block(ty).expect("indirect record");
+    pub(super) fn type_free_block(&mut self, ty: Ty, p: Value) {
+        let block = self.type_block(ty).expect("indirect type");
         let lay = mem_layout(&block);
         let fields = self.fields_of(ty);
-        for (i, (bk, _)) in self.rec_block_fields(ty).into_iter().enumerate() {
-            if self.g.lay.rec_field_boxed(fields[i].0) {
+        for (i, (bk, _)) in self.type_block_fields(ty).into_iter().enumerate() {
+            if self.g.lay.type_field_boxed(fields[i].0) {
                 let bp = self.load_leaf(Leaf::I64, p, lay.offsets[bk] as i32);
                 let nn = self.b.ins().icmp_imm_s(IntCC::NotEqual, bp, 0);
                 self.if_then(nn, |s| s.free(bp));
@@ -319,16 +319,16 @@ impl<'a, 'm> Lower<'a, 'm> {
         self.free(p);
     }
 
-    /// Drops the fields of the indirect record at `p` whose bit in `moved` is clear (the others
+    /// Drops the fields of the indirect type at `p` whose bit in `moved` is clear (the others
     /// were moved out) and frees its block and its collection headers. A collection that was
     /// never filled has no header block and costs one null check.
-    pub(super) fn rec_release(&mut self, ty: Ty, p: Value, moved: u64) {
-        let block = self.rec_block(ty).expect("indirect record");
+    pub(super) fn type_release(&mut self, ty: Ty, p: Value, moved: u64) {
+        let block = self.type_block(ty).expect("indirect type");
         let lay = mem_layout(&block);
         for (i, (fty, _, _)) in self.fields_of(ty).into_iter().enumerate() {
-            let (bk, n) = self.rec_block_fields(ty)[i];
+            let (bk, n) = self.type_block_fields(ty)[i];
             let kept = moved >> i & 1 == 0 && self.g.m.needs_drop(fty);
-            if self.g.lay.rec_field_boxed(fty) {
+            if self.g.lay.type_field_boxed(fty) {
                 let bp = self.load_leaf(Leaf::I64, p, lay.offsets[bk] as i32);
                 let nn = self.b.ins().icmp_imm_s(IntCC::NotEqual, bp, 0);
                 self.if_then(nn, |s| {
@@ -480,8 +480,8 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let d = self.typedesc_addr(ty);
                 self.rt_call("msrt_slot_drop", &[d, slot]);
             }
-            TyKind::Rec(_) if self.rec_block(ty).is_some() => self.rec_release(ty, vs[0], 0),
-            TyKind::Rec(_) => {
+            TyKind::Type(_) if self.type_block(ty).is_some() => self.type_release(ty, vs[0], 0),
+            TyKind::Type(_) => {
                 for (fty, at, w) in self.fields_of(ty) {
                     if m.needs_drop(fty) {
                         self.drop_value(fty, &vs[at..at + w]);
@@ -859,13 +859,13 @@ impl<'a, 'm> Lower<'a, 'm> {
         let m = self.g.m;
         match m.types.kind(ty).clone() {
             TyKind::Bytes | TyKind::List(_) => self.list_copy(ty, vs),
-            TyKind::Rec(_) => {
-                let flat = self.rec_expand(ty, vs);
+            TyKind::Type(_) => {
+                let flat = self.type_expand(ty, vs);
                 let mut out = Vec::new();
                 for (fty, at, w) in self.fields_of(ty) {
                     out.extend(self.clone_value(fty, &flat[at..at + w]));
                 }
-                self.rec_pack(ty, out)
+                self.type_pack(ty, out)
             }
             TyKind::Opt(inner) if self.g.lay.opt_is_boxed(inner) => {
                 // Null stays null; otherwise copy the payload into a fresh block.

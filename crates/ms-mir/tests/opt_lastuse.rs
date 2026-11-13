@@ -304,13 +304,13 @@ fn a_drop_at_the_start_of_a_join_block_counts_as_a_use() {
     assert_eq!(all[1], [Op::Drop, Op::Drop]);
 }
 
-/// A chain of records that each hold two lists of the previous one: linear in types, but every
+/// A chain of types that each hold two lists of the previous one: linear in types, but every
 /// path through it is distinct.
-fn shared_record_chain(depth: usize) -> String {
-    let mut s = String::from("module \"dag\"\nrecord R0 { value: str }\n");
+fn shared_type_chain(depth: usize) -> String {
+    let mut s = String::from("module \"dag\"\ntype R0 { value: str }\n");
     for k in 1..=depth {
         s += &format!(
-            "record R{k} {{ left: list<R{}>, right: list<R{}> }}\n",
+            "type R{k} {{ left: list<R{}>, right: list<R{}> }}\n",
             k - 1,
             k - 1
         );
@@ -323,8 +323,8 @@ fn shared_record_chain(depth: usize) -> String {
 
 /// Classifying a type once per path made this exponential in the nesting depth.
 #[test]
-fn shared_record_types_are_classified_once() {
-    let mut m = parse_module(&shared_record_chain(60)).expect("parse");
+fn shared_type_types_are_classified_once() {
+    let mut m = parse_module(&shared_type_chain(60)).expect("parse");
     verify_module(&m).expect("input verifies");
     let start = std::time::Instant::now();
     opt::lastuse::run(&mut m);

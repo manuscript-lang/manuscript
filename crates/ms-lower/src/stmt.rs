@@ -337,7 +337,7 @@ impl<'a> FnLower<'a> {
     }
 
     /// Binds the names of `pattern` to the parts of `x`: lists by position (the length is
-    /// checked), records by field.
+    /// checked), types by field.
     fn bind_pattern(&mut self, pattern: &Pattern, x: Val) -> Result<(), Error> {
         match &pattern.kind {
             PatternKind::Name(_) => {
@@ -398,26 +398,26 @@ impl<'a> FnLower<'a> {
             }
             PatternKind::Record(fields) => {
                 let rt = self.ty_of(x.v);
-                let TyKind::Rec(rid) = self.b.m.types.kind(rt).clone() else {
-                    return Err(Error::new("a record pattern needs a record"));
+                let TyKind::Type(rid) = self.b.m.types.kind(rt).clone() else {
+                    return Err(Error::new("a type pattern needs a type"));
                 };
-                let decl = self.b.m.records[rid.index()].fields.clone();
+                let decl = self.b.m.type_defs[rid.index()].fields.clone();
                 let index = |name: &str| {
                     decl.iter()
                         .position(|d| d.0 == name)
                         .ok_or_else(|| Error::new(format!("no field {name}")))
                 };
                 if !x.own {
-                    let rec = self.borrow(x);
+                    let tval = self.borrow(x);
                     for f in fields {
                         let idx = index(self.syms.str(f.name))?;
-                        let fv = self.b.rec_get(rid, idx as u32, rec);
+                        let fv = self.b.type_get(rid, idx as u32, tval);
                         self.bind_pattern(&f.pattern, Val { v: fv, own: false })?;
                     }
                     return Ok(());
                 }
-                // An owned record hands each named field to its pattern and drops the others:
-                // the fields are taken out of the record where it lies, never copied.
+                // An owned type hands each named field to its pattern and drops the others:
+                // the fields are taken out of the type where it lies, never copied.
                 let slot = self
                     .b
                     .emit(Op::Slot, &[], Imm::Ty(rt), Some(MTy::PTR))
@@ -562,7 +562,7 @@ impl<'a> FnLower<'a> {
         scan.found
     }
 
-    /// `a.b.c = v`: rebuilds the record chain with `rec.set`.
+    /// `a.b.c = v`: rebuilds the type chain with `type.set`.
     fn assign_member(&mut self, target: &Expr, value: &Expr, x: Val) -> Result<(), Error> {
         let mut path: Vec<&Expr> = Vec::new();
         let mut cur = target;
@@ -868,22 +868,22 @@ impl<'a> FnLower<'a> {
             unreachable!()
         };
         let oty = self.ty_of(obj);
-        let TyKind::Rec(rid) = self.b.m.types.kind(oty).clone() else {
-            return Err(Error::new("field mutation on a non-record"));
+        let TyKind::Type(rid) = self.b.m.types.kind(oty).clone() else {
+            return Err(Error::new("field mutation on a non-type"));
         };
-        let idx = self.b.m.records[rid.index()]
+        let idx = self.b.m.type_defs[rid.index()]
             .fields
             .iter()
             .position(|f| f.0 == self.syms.str(name))
             .ok_or_else(|| Error::new(format!("no field {name_t}", name_t = self.syms.str(name))))?
             as u32;
-        let cur = self.b.rec_get(rid, idx, obj);
+        let cur = self.b.type_get(rid, idx, obj);
         let (cur_own, moved) = self.take_projection(cur);
         let inner = self.update_path(cur_own, rest, f)?;
         Ok(if moved {
-            self.b.rec_fill(rid, idx, obj, inner)
+            self.b.type_fill(rid, idx, obj, inner)
         } else {
-            self.b.rec_set(rid, idx, obj, inner)
+            self.b.type_set(rid, idx, obj, inner)
         })
     }
 
@@ -901,10 +901,10 @@ impl<'a> FnLower<'a> {
             unreachable!()
         };
         let oty = self.ty_of(obj);
-        let TyKind::Rec(rid) = self.b.m.types.kind(oty).clone() else {
-            return Err(Error::new("field assignment on a non-record"));
+        let TyKind::Type(rid) = self.b.m.types.kind(oty).clone() else {
+            return Err(Error::new("field assignment on a non-type"));
         };
-        let idx = self.b.m.records[rid.index()]
+        let idx = self.b.m.type_defs[rid.index()]
             .fields
             .iter()
             .position(|f| f.0 == self.syms.str(name))
@@ -915,7 +915,7 @@ impl<'a> FnLower<'a> {
         } else {
             self.owned(Val { v: obj, own: false })
         };
-        let cur = self.b.rec_get(rid, idx, base);
+        let cur = self.b.type_get(rid, idx, base);
         let (cur_own, moved) = self.take_projection(cur);
         let inner = if rest.is_empty() {
             // The field's old value dies here: a resource in it closes first.
@@ -926,9 +926,9 @@ impl<'a> FnLower<'a> {
             self.set_path(cur_own, true, rest, new)?
         };
         Ok(if moved {
-            self.b.rec_fill(rid, idx, base, inner)
+            self.b.type_fill(rid, idx, base, inner)
         } else {
-            self.b.rec_set(rid, idx, base, inner)
+            self.b.type_set(rid, idx, base, inner)
         })
     }
 
@@ -1222,7 +1222,7 @@ impl<'a> FnLower<'a> {
     }
 
     /// Whether a walk of a map of type `mt` can bind its items in place. A `MapEntry` is read
-    /// straight out of the slot, which matches the record's layout only when the key fills
+    /// straight out of the slot, which matches the type's layout only when the key fills
     /// whole words (`Int`, `Float`, `String`): the value then starts right after it in both.
     fn walks(&self, walk: Walk, mt: MTy) -> bool {
         let TyKind::Obj(_, a) = self.b.m.types.kind(mt) else {
@@ -1305,9 +1305,9 @@ impl<'a> FnLower<'a> {
         let e = match (walk, vt) {
             (Walk::Keys, _) => load(self, kp, kt),
             (Walk::Values, Some(vt)) => load(self, vp, vt),
-            // The slot holds the key and then the value exactly where a `MapEntry` record keeps
+            // The slot holds the key and then the value exactly where a `MapEntry` type keeps
             // them when the key is word-sized and word-aligned (see `walks_entries`), so the
-            // entry is read in place as one record.
+            // entry is read in place as one type.
             (Walk::Entries, Some(_)) => load(self, kp, elem),
             _ => return Err(Error::new("values of a set walk its keys")),
         };
@@ -1612,7 +1612,7 @@ impl<'a> FnLower<'a> {
         self.push_scope();
         self.hoist_literals(body)?;
         let mut list_var = None;
-        let mut cursor: Option<(Value, ms_mir::types::RecId, MTy)> = None;
+        let mut cursor: Option<(Value, ms_mir::types::TypeId, MTy)> = None;
         let (start, len) = match self.range_bounds(iter)? {
             Some(bounds) => bounds,
             None => {
@@ -1723,17 +1723,17 @@ impl<'a> FnLower<'a> {
                     // A list the loop owns lives in a cursor in memory: the list and the index of
                     // the first element the loop has not taken. The pass releases the rest of the
                     // list from the cursor wherever the loop ends.
-                    let (rec, rty) = self.list_cursor(ity);
+                    let (tval, rty) = self.list_cursor(ity);
                     let slot = self
                         .b
                         .emit(Op::Slot, &[], Imm::Ty(rty), Some(MTy::PTR))
                         .expect("slot");
                     let list = self.owned(it);
                     let zero = self.b.iconst(0);
-                    let held = self.b.rec_new(rec, &[list, zero]);
+                    let held = self.b.type_new(tval, &[list, zero]);
                     self.b.emit(Op::Put, &[slot, held], Imm::None, None);
-                    cursor = Some((slot, rec, ity));
-                    let list = self.cursor_list(slot, rec, ity);
+                    cursor = Some((slot, tval, ity));
+                    let list = self.cursor_list(slot, tval, ity);
                     (self.b.iconst(0), self.b.list_len(list))
                 } else {
                     let var = if !it.own {
@@ -1815,7 +1815,7 @@ impl<'a> FnLower<'a> {
         let i = self.b.use_var(idx);
         let e = match list_var {
             _ if cursor.is_some() => {
-                let (slot, rec, lty) = cursor.expect("cursor");
+                let (slot, tval, lty) = cursor.expect("cursor");
                 // The cursor moves past the element before it is taken, so that leaving the loop
                 // anywhere after releases only what comes after.
                 let next = self
@@ -1824,10 +1824,10 @@ impl<'a> FnLower<'a> {
                     .expect("add");
                 let at = self
                     .b
-                    .emit(Op::PtrField, &[slot], Imm::Field(rec, 1), Some(MTy::PTR))
+                    .emit(Op::PtrField, &[slot], Imm::Field(tval, 1), Some(MTy::PTR))
                     .expect("field");
                 self.b.emit(Op::Store, &[at, next], Imm::None, None);
-                let list = self.cursor_list(slot, rec, lty);
+                let list = self.cursor_list(slot, tval, lty);
                 self.b.list_take(list, i)
             }
             Some(var) => {

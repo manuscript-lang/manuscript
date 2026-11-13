@@ -1,10 +1,8 @@
 //! Direct calls between functions emitted from MIR.
 
 use super::attrs::pure_attrs;
-use super::records::Abi;
-use super::{
-    Area, Cx, Vals, call_ret_ty, leaves, native_ret_attr, native_ret_ty, records, ret_attr,
-};
+use super::types::Abi;
+use super::{Area, Cx, Vals, call_ret_ty, leaves, native_ret_attr, native_ret_ty, ret_attr, types};
 use crate::abi_llvm::{Pass, Reg, Ret, Signature};
 use crate::layout::Layouts;
 use crate::llvm_build::{FnBuilder, Ty as LTy, Types, Val};
@@ -88,7 +86,7 @@ fn passes_directly(lay: &Layouts, t: Ty) -> bool {
 /// either pass directly or have a memory shape, and it is not
 /// a function the lowering treats as a guarded or constant case.
 fn extern_ok(lay: &Layouts, def: &ExternDef) -> bool {
-    let crosses = |t: Ty| passes_directly(lay, t) || records::shape_ok(lay, t);
+    let crosses = |t: Ty| passes_directly(lay, t) || types::shape_ok(lay, t);
     def.role != ExternRole::MapNew && def.params.iter().all(|p| crosses(p.ty)) && crosses(def.ret)
 }
 
@@ -125,14 +123,14 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         let sig = Signature::of(b.types(), lay, &callee.params, &callee.noalias, callee.ret);
         // A result larger than two registers comes back through a slot the caller owns.
         let slot = match sig.result {
-            Ret::Sret(_) => Some(records::result_slot(b, lay, callee.ret, &out)),
+            Ret::Sret(_) => Some(types::result_slot(b, lay, callee.ret, &out)),
             Ret::Scalars(_) => None,
         };
         let mut args: Vec<(Val, &str)> = slot.iter().map(|s| (s.clone(), "")).collect();
         for ((p, a), pass) in callee.params.iter().zip(&inst.args).zip(&sig.passes) {
             match pass {
                 Pass::Scalars(_) => {
-                    let abi = records::abi_leaves(b, lay, p.ty, vals, *a, Abi::Native);
+                    let abi = types::abi_leaves(b, lay, p.ty, vals, *a, Abi::Native);
                     let Pass::Scalars(regs) = pass else {
                         unreachable!()
                     };
@@ -140,7 +138,7 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
                         args.push((v, native_attr(*r, at)));
                     }
                 }
-                Pass::Indirect(..) => args.push((records::spill(b, lay, p.ty, vals, *a), "")),
+                Pass::Indirect(..) => args.push((types::spill(b, lay, p.ty, vals, *a), "")),
             }
         }
         cx.decls.push((sym.clone(), sig.declare(&sym, attrs)));
@@ -156,7 +154,7 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         match &slot {
             Some(slot) => {
                 b.call_keep(&ret, attr, &sym, &args);
-                records::load_result(b, lay, callee.ret, slot, &out);
+                types::load_result(b, lay, callee.ret, slot, &out);
             }
             None => finish_call(
                 b,
@@ -173,7 +171,7 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     }
     let mut args: Vec<(Val, &str)> = Vec::new();
     for (p, a) in callee.params.iter().zip(&inst.args) {
-        let abi = records::abi_leaves(b, lay, p.ty, vals, *a, Abi::Leaf);
+        let abi = types::abi_leaves(b, lay, p.ty, vals, *a, Abi::Leaf);
         for (v, (_, at)) in abi.into_iter().zip(leaves(lay, p.ty)) {
             args.push((v, at));
         }
@@ -230,14 +228,14 @@ pub(super) fn finish_call(
         Callee::Symbol(sym) if pure => b.call_pure(ret, attr, sym, args),
         Callee::Symbol(sym) => b.call_keep(ret, attr, sym, args),
     };
-    if records::is_mem(lay, result) {
-        // The result is a record in memory, rebuilt from the call's result.
+    if types::is_mem(lay, result) {
+        // The result is a type in memory, rebuilt from the call's result.
         let r = call(b).expect("a result");
-        records::call_result(b, lay, result, r, out);
-    } else if records::ret_needs_conversion(ret, out) {
+        types::call_result(b, lay, result, r, out);
+    } else if types::ret_needs_conversion(ret, out) {
         // Booleans come back as bytes and, in the leaf convention, pointers as addresses.
         let r = call(b).expect("a result");
-        records::name_leaves(b, r, out, native);
+        types::name_leaves(b, r, out, native);
     } else if out.len() <= 1 {
         if let [r] = out {
             b.name_next(r);
@@ -290,7 +288,7 @@ pub(super) fn leaf_call(
 ) {
     let mut actuals = vec![(first, "")];
     for (p, a) in params.iter().zip(args) {
-        let abi = records::abi_leaves(b, lay, *p, vals, *a, Abi::Leaf);
+        let abi = types::abi_leaves(b, lay, *p, vals, *a, Abi::Leaf);
         for (v, (_, at)) in abi.into_iter().zip(leaves(lay, *p)) {
             actuals.push((v, at));
         }
@@ -330,18 +328,18 @@ fn call_rt(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder
     let mut args: Vec<(Val, &str)> = Vec::new();
     for (p, a) in def.params.iter().zip(&inst.args) {
         if passes_directly(lay, p.ty) {
-            let abi = records::abi_leaves(b, lay, p.ty, vals, *a, abi_kind);
+            let abi = types::abi_leaves(b, lay, p.ty, vals, *a, abi_kind);
             let regs = crate::abi_llvm::regs_of(lay, p.ty);
             for ((v, (_, at)), r) in abi.into_iter().zip(leaves(lay, p.ty)).zip(regs) {
                 args.push((v, if c_abi { native_attr(r, at) } else { at }));
             }
         } else {
-            let slot = records::spill(b, lay, p.ty, vals, *a);
+            let slot = types::spill(b, lay, p.ty, vals, *a);
             args.push((slot, if p.mode == Mode::Borrow { BORROWED } else { "" }));
         }
     }
     let direct = passes_directly(lay, def.ret);
-    let slot = (!direct).then(|| records::result_slot(b, lay, def.ret, out));
+    let slot = (!direct).then(|| types::result_slot(b, lay, def.ret, out));
     if let Some(slot) = &slot {
         args.push((slot.clone(), OUT));
     }
@@ -371,7 +369,7 @@ fn call_rt(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder
     match &slot {
         Some(slot) => {
             b.call_keep(&ret, attr, &def.name, &args);
-            records::load_result(b, lay, def.ret, slot, out);
+            types::load_result(b, lay, def.ret, slot, out);
         }
         None => finish_call(
             b,

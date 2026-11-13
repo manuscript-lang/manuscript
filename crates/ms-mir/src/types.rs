@@ -22,8 +22,8 @@ id_type!(
     Ty
 );
 id_type!(
-    /// A record declaration in [`crate::Module::records`].
-    RecId
+    /// A type declaration in [`crate::Module::types`].
+    TypeId
 );
 id_type!(
     /// An alternative (sum type) declaration in [`crate::Module::alts`].
@@ -69,8 +69,8 @@ pub enum TyKind {
     /// A raw machine word that needs no drop (descriptors, code
     /// addresses, erased interface data).
     Ptr,
-    /// A record: a value with fields in declaration order.
-    Rec(RecId),
+    /// A type: a value with fields in declaration order.
+    Type(TypeId),
     /// An alternative: a value with a tag and payload.
     Alt(AltId),
     /// `List[T]`: an owned list value.
@@ -282,9 +282,9 @@ impl TyTable {
         self.intern(TyKind::Opt(inner))
     }
 
-    /// A record type.
-    pub fn rec(&mut self, id: RecId) -> Ty {
-        self.intern(TyKind::Rec(id))
+    /// A type.
+    pub fn named(&mut self, id: TypeId) -> Ty {
+        self.intern(TyKind::Type(id))
     }
 
     /// An alternative type.
@@ -405,24 +405,24 @@ impl TyTable {
     }
 }
 
-/// A record declaration.
+/// A type declaration.
 #[derive(Clone, Debug, PartialEq)]
-pub struct RecordDef {
+pub struct TypeDef {
     /// Source-level name, used in the text format and diagnostics.
     pub name: String,
     /// Fields in declaration (and layout) order.
     pub fields: Vec<(String, Ty)>,
-    /// Which plain-data native record this is, when the runtime implements its operations.
-    /// Set where the record is lowered from its declaration; not part of the text format.
-    pub native: Option<NativeRec>,
+    /// Which plain-data native type this is, when the runtime implements its operations.
+    /// Set where the type is lowered from its declaration; not part of the text format.
+    pub native: Option<NativeType>,
     /// Whether a value is one pointer to a heap block of the fields (a layout choice for large,
-    /// rarely built records such as `Error`); set where the record is lowered, not in the text format.
+    /// rarely built types such as `Error`); set where the type is lowered, not in the text format.
     pub indirect: bool,
 }
 
-/// A native record type known by identity: the runtime implements its ordering and text.
+/// A native type known by identity: the runtime implements its ordering and text.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum NativeRec {
+pub enum NativeType {
     /// `Timestamp` of `@std/time.ms`.
     Timestamp,
     /// `Instant` of `@std/time.ms`.

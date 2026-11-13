@@ -7,10 +7,10 @@
 //! cast each. `opt.is_some` of a niche optional is one comparison. An enum that contains itself
 //! is one pointer to a heap block (case index first, then the shared payload slots): building it
 //! allocates, reading loads, and taking a payload out frees the block; a case with no payload is
-//! a shared static block that is never freed. Payloads that are records in memory stay on the
+//! a shared static block that is never freed. Payloads that are types in memory stay on the
 //! translation. Fields a release leaves behind are dropped through the drop glue.
 
-use super::{Area, Cx, Vals, glue, held_leaves, mem_leaves, narrow_leaves, records};
+use super::{Area, Cx, Vals, glue, held_leaves, mem_leaves, narrow_leaves, types};
 use crate::glue_llvm::{OwnKind, own_kind};
 use crate::layout::{AltRepr, Layouts, Leaf, mem_layout};
 use crate::llvm_build::{Bin, FnBuilder, Meta, Range, Ty as LTy, Val};
@@ -80,21 +80,21 @@ fn opt_repr(lay: &Layouts, opt: Ty) -> OptRepr {
 }
 
 /// Whether values of `ty` are all register leaves, here: not behind a pointer and holding no
-/// record that lives in memory.
+/// type that lives in memory.
 fn plain(lay: &Layouts, ty: Ty) -> bool {
     match lay.m.types.kind(ty) {
         TyKind::Opt(inner) => !lay.opt_is_boxed(*inner) && leafy(lay, *inner),
         TyKind::Alt(a) => !lay.is_boxed(*a) && fields_leafy(lay, ty, *a, None),
-        _ => !records::is_mem(lay, ty),
+        _ => !types::is_mem(lay, ty),
     }
 }
 
-/// The record in memory that field `i` of case `c` of `alt` (of type `ty`) is, when its leaves
-/// can move between the record's memory and the enum's slots as they are: each slot holds the
+/// The type in memory that field `i` of case `c` of `alt` (of type `ty`) is, when its leaves
+/// can move between the type's memory and the enum's slots as they are: each slot holds the
 /// leaf's memory type, or an `i64` for a narrow integer, or an `i1` for a byte.
 fn mem_field(lay: &Layouts, ty: Ty, alt: AltId, c: usize, i: usize) -> Option<Ty> {
     let (fty, idx) = lay.alt_fields(alt)[c][i].clone();
-    if !records::is_mem(lay, fty) {
+    if !types::is_mem(lay, fty) {
         return None;
     }
     let (slots, mem) = (held_leaves(lay, ty), mem_leaves(lay, fty));
@@ -117,12 +117,12 @@ fn leafy(lay: &Layouts, ty: Ty) -> bool {
     match lay.m.types.kind(ty) {
         TyKind::Opt(inner) => lay.opt_is_boxed(*inner) || leafy(lay, *inner),
         TyKind::Alt(a) => lay.is_boxed(*a) || fields_leafy(lay, ty, *a, None),
-        _ => !records::is_mem(lay, ty),
+        _ => !types::is_mem(lay, ty),
     }
 }
 
 /// Whether the payload fields of case `case` of `a` (every case when `None`), of the enum `ty`,
-/// are leafy, or are records in memory that move to and from the slots of an inline enum.
+/// are leafy, or are types in memory that move to and from the slots of an inline enum.
 fn fields_leafy(lay: &Layouts, ty: Ty, a: AltId, case: Option<u32>) -> bool {
     lay.m.alts[a.index()]
         .cases
@@ -214,11 +214,11 @@ fn inst_ok(_: &Module, lay: &Layouts, f: &Func, inst: &Inst) -> bool {
         };
         return block_ok(&block_of(lay, subject)) && fields_leafy(lay, subject, a, case);
     }
-    // Dropping a record in memory would need its address, which no slot holds.
+    // Dropping a type in memory would need its address, which no slot holds.
     plain(lay, subject)
         && released(lay, inst)
             .iter()
-            .all(|(t, _)| !records::is_mem(lay, *t))
+            .all(|(t, _)| !types::is_mem(lay, *t))
 }
 
 /// The payload type of the optional `inst` unwraps.
@@ -254,7 +254,7 @@ fn sources(lay: &Layouts, inst: &Inst, vals: &Vals) -> Vec<(usize, Val, Option<b
             let mut out = Vec::new();
             for (i, (t, idx)) in lay.alt_fields(a)[c as usize].iter().enumerate() {
                 // A record in memory is loaded in `emit`, not moved leaf by leaf.
-                if !records::is_mem(lay, *t) {
+                if !types::is_mem(lay, *t) {
                     let signs = narrow_leaves(lay, *t);
                     out.extend(
                         idx.iter()
@@ -269,7 +269,7 @@ fn sources(lay: &Layouts, inst: &Inst, vals: &Vals) -> Vec<(usize, Val, Option<b
         }
         (Op::AltGet | Op::AltTake | Op::AltUnbox, Imm::AltField(a, c, i)) => {
             let (t, idx) = &lay.alt_fields(a)[c as usize][i as usize];
-            if records::is_mem(lay, *t) {
+            if types::is_mem(lay, *t) {
                 return Vec::new();
             }
             let signs = narrow_leaves(lay, *t);
@@ -295,10 +295,10 @@ fn pre(
     let arg = |i: usize| &vals[&inst.args[i].index()];
     let res_ty = || f.ty(inst.res.expect("a result"));
     // A boxed enum's ops read or write its block; only the pointer itself is free. A payload that
-    // is a record in memory comes out as a new slot, which `emit` fills.
+    // is a type in memory comes out as a new slot, which `emit` fills.
     if (inst.op != Op::AltPlain && boxed_alt(lay, subject(f, inst)).is_some())
         || (matches!(inst.op, Op::AltGet | Op::AltTake | Op::AltUnbox)
-            && inst.res.is_some_and(|r| records::is_mem(lay, f.ty(r))))
+            && inst.res.is_some_and(|r| types::is_mem(lay, f.ty(r))))
     {
         return None;
     }
@@ -359,7 +359,7 @@ fn pre(
     }
     if let (Op::AltNew | Op::AltView, Imm::Case(a, c)) = (inst.op, inst.imm) {
         for (t, idx) in lay.alt_fields(a)[c as usize].iter() {
-            if records::is_mem(lay, *t) {
+            if types::is_mem(lay, *t) {
                 for k in idx {
                     out[*k] = b.reserve(out[*k].ty.clone());
                 }
@@ -405,26 +405,26 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     memory_payloads(cx, inst, vals, out, b);
 }
 
-/// A payload that is a record in memory: loaded from its address into the enum's slots for a new
+/// A payload that is a type in memory: loaded from its address into the enum's slots for a new
 /// enum, or stored from the slots into a new slot for a read.
 fn memory_payloads(cx: &Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder) {
     let lay = cx.lay;
     match (inst.op, inst.imm) {
         (Op::AltNew | Op::AltView, Imm::Case(a, c)) => {
             for (i, (t, idx)) in lay.alt_fields(a)[c as usize].iter().enumerate() {
-                if records::is_mem(lay, *t) {
+                if types::is_mem(lay, *t) {
                     let named: Vec<Val> = idx.iter().map(|k| out[*k].clone()).collect();
                     let at = &vals[&inst.args[i].index()][0];
-                    records::load_into_leaves(b, lay, *t, at, &named);
+                    types::load_into_leaves(b, lay, *t, at, &named);
                 }
             }
         }
         (Op::AltGet | Op::AltTake | Op::AltUnbox, Imm::AltField(a, c, i)) => {
             let (t, idx) = &lay.alt_fields(a)[c as usize][i as usize];
-            if records::is_mem(lay, *t) {
+            if types::is_mem(lay, *t) {
                 let slots = &vals[&inst.args[0].index()];
                 let leaves: Vec<Val> = idx.iter().map(|k| slots[*k].clone()).collect();
-                records::store_into_slot(b, lay, *t, &out[0], &leaves);
+                types::store_into_slot(b, lay, *t, &out[0], &leaves);
             }
         }
         _ => {}
@@ -546,8 +546,8 @@ fn boxed(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder) 
                 return;
             }
             let size = mem_layout(&block).size;
-            records::declare_heap(cx);
-            let p = records::alloc(b, size, Some(&out[0]));
+            types::declare_heap(cx);
+            let p = types::alloc(b, size, Some(&out[0]));
             let tag = slot_ptr(b, &block, &p, 0);
             b.store(&Val::int(i64::from(c)), &tag, 8);
             for (i, (fty, idx)) in fields.iter().enumerate() {
@@ -563,7 +563,7 @@ fn boxed(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder) 
                         }
                         _ => (v.ty.clone(), v.clone()),
                     };
-                    records::store_leaf(b, &v, &mem, &at);
+                    types::store_leaf(b, &v, &mem, &at);
                 }
             }
         }
@@ -665,7 +665,7 @@ fn release(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         glue::drop_held(cx, fty, leaves, b);
     }
     if boxed && !lay.alt_fields(a)[c as usize].is_empty() {
-        records::declare_heap(cx);
+        types::declare_heap(cx);
         let p = b.ptr_to_int(&own[0]);
         b.call(&LTy::Void, "", "msrt_free", &[(p, "")]);
     }

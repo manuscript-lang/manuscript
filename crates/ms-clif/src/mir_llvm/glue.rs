@@ -2,7 +2,7 @@
 //! inline, objects go through the runtime, and the rest call the type's glue.
 
 use super::calls::{Callee, finish_call};
-use super::records::{Abi, abi_leaves_of, is_mem, load_result, result_slot, spill, spill_of};
+use super::types::{Abi, abi_leaves_of, is_mem, load_result, result_slot, spill, spill_of};
 use super::{Area, Cx, Vals, block_label, call_ret_ty, leaves, ret_attr};
 use crate::glue_llvm::{GlueCall, OwnKind, clone_callee, clone_str, drop_callee, own_kind};
 use crate::layout::Layouts;
@@ -153,8 +153,8 @@ fn cleanup_push(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBu
     });
     let ty = cx.f.ty(inst.args[0]);
     let slot = if is_mem(cx.lay, ty) {
-        // The runtime keeps the address, so it is a copy the record's own slot cannot change.
-        let s = super::records::shape(b.types(), cx.lay, ty).expect("a record has a shape");
+        // The runtime keeps the address, so it is a copy the type's own slot cannot change.
+        let s = super::types::shape(b.types(), cx.lay, ty).expect("a type has a shape");
         let copy = b.alloca(&s.st);
         b.copy_bytes(
             &copy,

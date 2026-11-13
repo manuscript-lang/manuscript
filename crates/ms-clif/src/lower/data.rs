@@ -1,54 +1,54 @@
-//! Cranelift lowering of record, alternative, list, optional and string instructions.
+//! Cranelift lowering of type, alternative, list, optional and string instructions.
 //!
 //! Each function handles one op family; [`Lower::lower_inst`] routes to it.
 
 use super::*;
 
 impl<'a, 'm> Lower<'a, 'm> {
-    /// Records.
-    pub(super) fn records(&mut self, f: &Func, inst: &Inst) -> Vs {
+    /// Types.
+    pub(super) fn type_op(&mut self, f: &Func, inst: &Inst) -> Vs {
         let m = self.g.m;
         let res_ty = inst.res.map(|r| f.ty(r));
         match inst.op {
-            Op::RecNew => {
+            Op::TypeNew => {
                 let flat: Vs = (0..inst.args.len()).flat_map(|i| self.a(inst, i)).collect();
-                self.rec_pack(res_ty.expect("rec.new result"), flat)
+                self.type_pack(res_ty.expect("type.new result"), flat)
             }
-            Op::RecGet => {
+            Op::TypeGet => {
                 let Imm::Field(_, i) = inst.imm else {
                     unreachable!()
                 };
                 let ty = f.ty(inst.args[0]);
                 let (_, at, w) = self.fields_of(ty)[i as usize];
-                if self.rec_block(ty).is_some() {
+                if self.type_block(ty).is_some() {
                     let p = self.a(inst, 0)[0];
-                    self.rec_load_field(ty, p, i as usize)
+                    self.type_load_field(ty, p, i as usize)
                 } else {
                     self.a(inst, 0)[at..at + w].to_vec()
                 }
             }
-            Op::RecSet | Op::RecFill => {
+            Op::TypeSet | Op::TypeFill => {
                 let Imm::Field(_, i) = inst.imm else {
                     unreachable!()
                 };
                 let ty = f.ty(inst.args[0]);
                 let (fty, at, w) = self.fields_of(ty)[i as usize];
                 let held = self.a(inst, 0);
-                let mut obj = self.rec_expand(ty, &held);
-                if inst.op == Op::RecSet && m.needs_drop(fty) {
+                let mut obj = self.type_expand(ty, &held);
+                if inst.op == Op::TypeSet && m.needs_drop(fty) {
                     let old = obj[at..at + w].to_vec();
                     self.drop_value(fty, &old);
                 }
                 let new = self.a(inst, 1);
                 obj.splice(at..at + w, new);
-                // The old value is consumed by the set: an indirect record moves its fields into a
+                // The old value is consumed by the set: an indirect type moves its fields into a
                 // fresh block and frees the old one, so no block is ever written in place.
-                if self.rec_block(ty).is_some() {
-                    self.rec_free_block(ty, held[0]);
+                if self.type_block(ty).is_some() {
+                    self.type_free_block(ty, held[0]);
                 }
-                self.rec_pack(ty, obj)
+                self.type_pack(ty, obj)
             }
-            _ => unreachable!("records is only called for its own ops"),
+            _ => unreachable!("types is only called for its own ops"),
         }
     }
 
@@ -99,14 +99,14 @@ impl<'a, 'm> Lower<'a, 'm> {
                     _ => idx.iter().map(|k| v[*k]).collect(),
                 }
             }
-            Op::RecRelease => {
-                let Imm::RecMask(_, mask) = inst.imm else {
+            Op::TypeRelease => {
+                let Imm::TypeMask(_, mask) = inst.imm else {
                     unreachable!()
                 };
                 let ty = f.ty(inst.args[0]);
                 let held = self.a(inst, 0);
-                if self.rec_block(ty).is_some() {
-                    self.rec_release(ty, held[0], mask as u64);
+                if self.type_block(ty).is_some() {
+                    self.type_release(ty, held[0], mask as u64);
                     return vec![];
                 }
                 for (k, (fty, at, w)) in self.fields_of(ty).into_iter().enumerate() {

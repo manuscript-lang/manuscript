@@ -1,10 +1,10 @@
-//! `FileSystem.stat` and `FileHandle.stat`: the runtime fills a flat word record
-//! (`InfoOut` in `ms-std-fs`) and this module builds the `FileInfo` record from it.
+//! `FileSystem.stat` and `FileHandle.stat`: the runtime fills a flat word type
+//! (`InfoOut` in `ms-std-fs`) and this module builds the `FileInfo` type from it.
 
 use crate::Error;
 use crate::func::{FnLower, Val};
 use ms_mir::ir::{Cc, Imm, Op, Value};
-use ms_mir::types::{AltId, RecId, Ty as MTy, TyKind};
+use ms_mir::types::{AltId, Ty as MTy, TyKind, TypeId};
 
 /// `InfoOut` word order after the leading name. The producer in `ms-std-fs` writes the same.
 const WORDS: [&str; 21] = [
@@ -57,16 +57,16 @@ const TIMES: [(&str, &str); 4] = [
 ];
 
 impl FnLower<'_> {
-    /// The record the runtime writes `InfoOut` as: the name and one `Int` per word.
-    fn info_raw(&mut self) -> (RecId, MTy) {
+    /// The type the runtime writes `InfoOut` as: the name and one `Int` per word.
+    fn info_raw(&mut self) -> (TypeId, MTy) {
         if let Some(t) = self.cx.fs_info_raw
-            && let TyKind::Rec(r) = self.b.m.types.kind(t)
+            && let TyKind::Type(r) = self.b.m.types.kind(t)
         {
             return (*r, t);
         }
         let mut fields = vec![("name".to_string(), MTy::STR)];
         fields.extend(WORDS.iter().map(|w| (w.to_string(), MTy::INT)));
-        let (id, ty) = self.b.m.add_record("FsInfoRaw", fields);
+        let (id, ty) = self.b.m.add_type("FsInfoRaw", fields);
         self.cx.fs_info_raw = Some(ty);
         (id, ty)
     }
@@ -112,31 +112,31 @@ impl FnLower<'_> {
         )
     }
 
-    /// The owned `FileInfo` for the borrowed raw record.
+    /// The owned `FileInfo` for the borrowed raw type.
     fn file_info(
         &mut self,
         a: AltId,
         ok: usize,
-        raw_id: RecId,
+        raw_id: TypeId,
         raw: Value,
     ) -> Result<Value, Error> {
         let info_ty = self.b.m.alts[a.index()].cases[ok].fields[0].1;
-        let TyKind::Rec(info_id) = self.b.m.types.kind(info_ty).clone() else {
-            return Err(Error::new("stat does not produce a record"));
+        let TyKind::Type(info_id) = self.b.m.types.kind(info_ty).clone() else {
+            return Err(Error::new("stat does not produce a type"));
         };
-        let fields = self.b.m.records[info_id.index()].fields.clone();
+        let fields = self.b.m.type_defs[info_id.index()].fields.clone();
         let word = |s: &mut Self, name: &str| -> Value {
             let at = WORDS
                 .iter()
                 .position(|w| *w == name)
                 .expect("known InfoOut word") as u32;
-            s.b.rec_get(raw_id, at + 1, raw)
+            s.b.type_get(raw_id, at + 1, raw)
         };
         let mut values = Vec::new();
         for (name, ty) in &fields {
             let v = match name.as_str() {
                 "name" => {
-                    let n = self.b.rec_get(raw_id, 0, raw);
+                    let n = self.b.type_get(raw_id, 0, raw);
                     self.b
                         .emit(Op::Clone, &[n], Imm::None, Some(MTy::STR))
                         .expect("copy")
@@ -152,7 +152,7 @@ impl FnLower<'_> {
             };
             values.push(v);
         }
-        Ok(self.b.rec_new(info_id, &values))
+        Ok(self.b.type_new(info_id, &values))
     }
 
     /// The `FileKind` selected by the `kinds` bit set.
@@ -185,25 +185,25 @@ impl FnLower<'_> {
     /// The `Timestamp` of the `<prefix>_seconds` and `<prefix>_nanos` words.
     fn timestamp(
         &mut self,
-        raw_id: RecId,
+        raw_id: TypeId,
         raw: Value,
         ty: MTy,
         prefix: &str,
     ) -> Result<Value, Error> {
-        let TyKind::Rec(ts) = self.b.m.types.kind(ty).clone() else {
-            return Err(Error::new("a timestamp field is not a record"));
+        let TyKind::Type(ts) = self.b.m.types.kind(ty).clone() else {
+            return Err(Error::new("a timestamp field is not a type"));
         };
         let at = |s: &mut Self, suffix: &str| {
             let name = format!("{prefix}_{suffix}");
             let i = WORDS.iter().position(|w| *w == name).expect("time word") as u32;
-            s.b.rec_get(raw_id, i + 1, raw)
+            s.b.type_get(raw_id, i + 1, raw)
         };
         let (secs, nanos) = (at(self, "seconds"), at(self, "nanos"));
-        Ok(self.b.rec_new(ts, &[secs, nanos]))
+        Ok(self.b.type_new(ts, &[secs, nanos]))
     }
 
     /// `Timestamp?`: present when the host recorded a creation time.
-    fn created(&mut self, raw_id: RecId, raw: Value, ty: MTy) -> Result<Value, Error> {
+    fn created(&mut self, raw_id: TypeId, raw: Value, ty: MTy) -> Result<Value, Error> {
         let TyKind::Opt(inner) = self.b.m.types.kind(ty).clone() else {
             return Err(Error::new("`created` is not an optional"));
         };
@@ -211,7 +211,7 @@ impl FnLower<'_> {
             .iter()
             .position(|w| *w == "created_present")
             .expect("word") as u32;
-        let flag = self.b.rec_get(raw_id, at + 1, raw);
+        let flag = self.b.type_get(raw_id, at + 1, raw);
         let zero = self.b.iconst(0);
         let present = self.b.icmp(Cc::Ne, flag, zero);
         let made = self.two_ways(
@@ -227,7 +227,7 @@ impl FnLower<'_> {
     }
 
     /// `exact`: unbounded copies of the numeric fields and the times in nanoseconds.
-    fn exact(&mut self, raw_id: RecId, raw: Value, ty: MTy) -> Result<Value, Error> {
+    fn exact(&mut self, raw_id: TypeId, raw: Value, ty: MTy) -> Result<Value, Error> {
         let TyKind::Obj(_, args) = self.b.m.types.kind(ty).clone() else {
             return Err(Error::new("`exact` is not a map"));
         };
@@ -236,18 +236,18 @@ impl FnLower<'_> {
         let mut map = self.map_new(ty)?;
         let mut entries: Vec<(&str, Value)> = Vec::new();
         for name in ["size", "mode"] {
-            let n = self.b.rec_get(raw_id, at(name), raw);
+            let n = self.b.type_get(raw_id, at(name), raw);
             entries.push((name, self.call_runtime("msstd_bigint_from_int", &[n], big)?));
         }
         for name in COUNTERS {
-            let n = self.b.rec_get(raw_id, at(name), raw);
+            let n = self.b.type_get(raw_id, at(name), raw);
             entries.push((name, self.call_runtime("msstd_bigint_from_u64", &[n], big)?));
         }
         for (key, prefix) in TIMES {
             let s = self
                 .b
-                .rec_get(raw_id, at(&format!("{prefix}_seconds")), raw);
-            let n = self.b.rec_get(raw_id, at(&format!("{prefix}_nanos")), raw);
+                .type_get(raw_id, at(&format!("{prefix}_seconds")), raw);
+            let n = self.b.type_get(raw_id, at(&format!("{prefix}_nanos")), raw);
             let v = self.call_runtime("msstd_bigint_from_seconds_nanos", &[s, n], big)?;
             entries.push((key, v));
         }
