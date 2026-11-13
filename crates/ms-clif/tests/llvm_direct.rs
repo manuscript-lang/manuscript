@@ -58,7 +58,7 @@ fn check(name: &str, src: &str, code: i32, direct_fns: &[&str]) {
             .find(|l| l.starts_with("define") && l.contains(&format!("@\"{f}#")))
             .unwrap_or_else(|| panic!("{name}: no {f} in the IR"));
         assert!(
-            header.contains("%a0_0") || header.contains("%a1_0"),
+            header.contains("%a0_0") || header.contains("%a1_0") || header.contains("sret("),
             "{name}: {f} was translated: {header}"
         );
     }
@@ -174,11 +174,83 @@ fn string_bytes() {
     );
 }
 
+/// Interfaces: a box built from an `int` (heap, and a frame slot for a borrow), a method call
+/// through the vtable, a view and a vtable test, and `map.new` as zero words. Only the method
+/// call and `map.new` are emitted directly until `drop` is: every owned interface is dropped, so
+/// the functions that build one still take the translation (they run, and must agree).
+fn interfaces_and_maps() {
+    let src = r#"module "d"
+iface Area { area(int) -> int }
+vtable @v_int: Area for int { @area_int }
+extern @msrt_map_new() -> Map<int, int> leaf map_new
+entry @main
+file 0 "d.ms"
+fn @area_int(%self: ptr, %k: int) -> int method !0:1:1 {
+b0:
+  %v: int = load int %self !0:2:1
+  %r: int = imul %v, %k !0:3:1
+  ret %r
+}
+fn @through(%s: dyn Area, %k: int) -> int !0:4:1 {
+b0:
+  %r: int = call.method Area.area (%s, %k) !0:5:1
+  ret %r
+}
+fn @boxed(%x: int, %k: int) -> int !0:6:1 {
+b0:
+  %s: dyn Area = iface.new @v_int %x !0:7:1
+  %r: int = call.method Area.area (%s, %k) !0:8:1
+  drop %s !0:8:1
+  ret %r
+}
+fn @borrowed(%x: int, %k: int) -> int !0:9:1 {
+b0:
+  %s: dyn Area = iface.borrow @v_int %x !0:10:1
+  %r: int = call.method Area.area (%s, %k) !0:11:1
+  drop %s !0:11:1
+  ret %r
+}
+fn @viewed(%s: dyn Area) -> int !0:12:1 {
+b0:
+  %v: dyn Area = iface.view %s !0:13:1
+  %is: bool = iface.is @v_int %v !0:14:1
+  %i: int = b2i %is !0:15:1
+  drop %v !0:15:1
+  ret %i
+}
+fn @fresh() -> Map<int, int> !0:16:1 {
+b0:
+  %m: Map<int, int> = call.rt @msrt_map_new () !0:17:1
+  ret %m
+}
+fn @main() -> int !0:20:1 {
+b0:
+  %six: int = iconst 6
+  %seven: int = iconst 7
+  %a: int = call @boxed(%six, %seven) !0:21:1
+  %three: int = iconst 3
+  %five: int = iconst 5
+  %b: int = call @borrowed(%three, %five) !0:22:1
+  %s: dyn Area = iface.new @v_int %three !0:23:1
+  %c: int = call @through(%s, %five) !0:24:1
+  %d: int = call @viewed(%s) !0:25:1
+  %ab: int = iadd %a, %b !0:27:1
+  %cd: int = iadd %c, %d !0:28:1
+  %r: int = iadd %ab, %cd !0:29:1
+  drop %s !0:29:1
+  ret %r
+}
+"#;
+    // 6*7 + 3*5 + 3*5 + 1 = 73
+    check("direct_ifaces", src, 73, &["through", "fresh"]);
+}
+
 /// One test, not three: each build writes `ms-keep.ll` in the working directory.
 #[test]
 fn direct_lists_and_strings_match_cranelift() {
     list_reads_and_writes();
     a_bad_list_index_faults();
     string_bytes();
+    interfaces_and_maps();
     let _ = std::fs::remove_file("ms-keep.ll");
 }

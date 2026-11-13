@@ -1390,6 +1390,14 @@ fn direct_function(g: &mut Gen, i: usize, f: &Func) -> bool {
     let m = g.m;
     let lay = &g.lay;
     let native = g.native.as_ref().expect("computed above");
+    let vtables: Vec<String> = g
+        .vtables
+        .iter()
+        .map(|id| {
+            let decls = g.module.declarations();
+            decls.get_data_decl(*id).linkage_name(*id).into_owned()
+        })
+        .collect();
     let mut llvm = g.llvm.take().expect("checked above");
     let checks = g.opts.checks;
     llvm.add_direct(
@@ -1406,6 +1414,7 @@ fn direct_function(g: &mut Gen, i: usize, f: &Func) -> bool {
                 idx: i,
                 grow_shim,
                 native,
+                vtables: &vtables,
             };
             crate::mir_llvm::emit(m, lay, place, f, checks, env, &symbol_of)
         },

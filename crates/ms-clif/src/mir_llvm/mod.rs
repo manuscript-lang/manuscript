@@ -32,6 +32,8 @@ pub struct Place<'a> {
     pub idx: usize,
     pub grow_shim: Option<String>,
     pub native: &'a HashSet<usize>,
+    /// The symbol of each vtable, by its MIR index.
+    pub vtables: &'a [String],
 }
 
 /// A finished function: pieces of the `define` line, the body, and the callees it declares.
@@ -46,6 +48,8 @@ pub struct Emitted {
     pub body: String,
     /// `(symbol, declare line)` of each callee.
     pub decls: Vec<(String, String)>,
+    /// Data symbols the function addresses (vtables), which the module declares.
+    pub data: Vec<String>,
 }
 
 /// LLVM type and parameter attribute of one register leaf. `I8` leaves (`Bool`, flags) are
@@ -303,6 +307,10 @@ struct Cx<'a> {
     memo: HashMap<usize, Option<bool>>,
     /// `(symbol, declare line)` of each callee.
     decls: Vec<(String, String)>,
+    /// Data symbols the function addresses.
+    data: Vec<String>,
+    /// The symbol of each vtable, by its MIR index.
+    vtables: &'a [String],
     /// MIR block being written and the checks it has split off so far.
     block: usize,
     split: usize,
@@ -348,6 +356,7 @@ pub fn emit(
         idx,
         grow_shim,
         native,
+        vtables,
     }: Place,
     f: &Func,
     checks: bool,
@@ -441,6 +450,8 @@ pub fn emit(
         symbol_of,
         memo: HashMap::new(),
         decls: Vec::new(),
+        data: Vec::new(),
+        vtables,
         block: 0,
         split: 0,
         entry_abi,
@@ -537,6 +548,7 @@ pub fn emit(
             .to_string(),
         body: b.finish(),
         decls: cx.decls,
+        data: cx.data,
     }
 }
 
