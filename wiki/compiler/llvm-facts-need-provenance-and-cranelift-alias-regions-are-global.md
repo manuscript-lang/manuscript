@@ -14,6 +14,10 @@ Tried without effect (2026-11-12): an entry `llvm.assume` with `dereferenceable(
 
 Allocator facts (2026-11-13): `msrt_alloc`, `msrt_alloc_zeroed`, `msrt_realloc` and `msrt_free` are one LLVM allocation family (`allockind`, `allocsize`, `alloc-family="msrt"`, `memory(inaccessiblemem: ...)`; `rt::heap_decl` is the only spelling, and `free` and `realloc` take a `ptr`). LLVM then deletes a block that is only stored to and freed, and an allocation no longer clobbers the memory the program can name: a temp `List` built and read in a loop went from 33M to 1.2M instructions. The ownership-count gate sets `MS_HEAP_FACTS=off` so elided blocks are still counted; never loosen a count to match LLVM.
 
+Allocator inlining measured and rejected (2026-11-13): with heap facts off, an alloc + two appends + free of a small list costs 5.5 ns (20M rounds in 0.11 s, native), so the two calls are at most a fifth of that; the fast path needs a thread-local `State`, which bitcode linked into the program cannot address portably on Windows and macOS. Elision by LLVM (above) removes the whole block where it can; do not inline the fast path without a benchmark where the call itself dominates. Under `valgrind` the 256 GiB reservation fails and every block goes through libc `malloc`, so instruction counts of allocation-heavy programs there are not the shipped allocator's.
+
+Range proofs are already in MIR (`ms-mir/src/opt/range.rs`: intervals, induction variables, `i < len`, bounded counters), so no new proof is the cheap win; what stays checked is an accumulation with no bound (`total += x[i]`). Vectorizing that needs a loop-versioning scheme (wrapping vector loop, scalar replay on overflow so the fault names the right iteration), which is a project of its own.
+
 Apply when: adding facts to the LLVM translation, or tagging memory accesses in lowering.
 Evidence: [translation](../../crates/ms-clif/src/llvm_ir.rs), [element flags](../../crates/ms-clif/src/lower.rs), `make drift-check`.
 Verify: `ms-conform diff --a target/release/ms --b target/release/ms --env-b MS_BACKEND=cranelift --phase run,test`.
