@@ -6,10 +6,10 @@
 //! direct calls between such functions; every other function falls back to the translation. Both
 //! paths use the same leaf calling convention, so they call each other freely.
 
-use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Types, Val};
 use ms_mir::ir::{Cc, Func, Imm, Inst, Mode, Module, Op, Target, Term};
 use ms_mir::types::Ty;
 use std::collections::HashMap;
+use std::fmt::Write as _;
 
 /// A finished function: pieces of the `define` line, the body, and the callees it declares.
 pub struct Emitted {
@@ -132,120 +132,81 @@ fn is_entry(t: &Target) -> bool {
     t.block.index() == 0
 }
 
-/// LLVM type of a scalar MIR type.
-fn llty(ty: Ty) -> LTy {
-    match ty {
-        Ty::INT => LTy::I64,
-        Ty::FLOAT => LTy::F64,
-        Ty::BOOL => LTy::I8,
-        _ => unreachable!("supports rejects other types"),
-    }
-}
-
-/// LLVM result type: `void` for `Unit`.
-fn ret_ty(ty: Ty) -> LTy {
-    if ty == Ty::UNIT { LTy::Void } else { llty(ty) }
-}
-
 /// Emits `f`, which `supports` accepted. `symbol_of` names the function with MIR index `i`;
-/// `loc` is the `DILocation` node every instruction carries.
+/// `loc` is the `DILocation` node every call carries.
 pub fn emit(m: &Module, f: &Func, loc: usize, symbol_of: &dyn Fn(usize) -> String) -> Emitted {
-    let types = Types::default();
-    let mut b = FnBuilder::new(&types, Some(loc));
     let rpo = f.rpo();
-    // Name every value before emitting anything: a phi names values a later block defines (the
-    // back edge of a loop), and a constant is its own text.
-    let mut vals: HashMap<usize, Val> = HashMap::new();
+    let mut names: HashMap<usize, String> = HashMap::new();
+    let mut decls = Vec::new();
     let mut params = Vec::new();
     for (i, p) in f.params.iter().enumerate() {
-        let t = llty(p.ty);
-        params.push(format!("{}{} %a{i}", types.text(&t), param_attr(p.ty)));
-        vals.insert(
-            f.blocks[0].params[i].value.index(),
-            Val::new(format!("%a{i}"), t),
-        );
-    }
-    for bb in &rpo {
-        let bd = &f.blocks[bb.index()];
-        if bb.index() != 0 {
-            for p in &bd.params {
-                if f.ty(p.value) != Ty::UNIT {
-                    vals.insert(p.value.index(), b.reserve(llty(f.ty(p.value))));
-                }
-            }
-        }
-        for inst in &bd.insts {
-            let Some(res) = inst.res.filter(|r| f.ty(*r) != Ty::UNIT) else {
-                continue;
-            };
-            let v = match (inst.op, inst.imm) {
-                (Op::IConst, Imm::Int(v)) => Val::int(v),
-                (Op::FConst, Imm::Float(bits)) => Val::double(bits),
-                (Op::BConst, Imm::Bool(v)) => Val::byte(v as u8),
-                _ => b.reserve(llty(f.ty(res))),
-            };
-            vals.insert(res.index(), v);
-        }
+        let (t, a) = scalar(p.ty).expect("supported");
+        params.push(format!("{t}{a} %a{i}"));
+        names.insert(f.blocks[0].params[i].value.index(), format!("%a{i}"));
     }
     // Incoming edges of every block, for the phis.
     let mut incoming: HashMap<usize, Vec<(usize, Vec<ms_mir::ir::Value>)>> = HashMap::new();
-    for bb in &rpo {
-        f.blocks[bb.index()].term.for_each_target(|t| {
+    for b in &rpo {
+        f.blocks[b.index()].term.for_each_target(|t| {
             incoming
                 .entry(t.block.index())
                 .or_default()
-                .push((bb.index(), t.args.clone()))
+                .push((b.index(), t.args.clone()))
         });
     }
-    let mut decls = Vec::new();
-    for bb in &rpo {
-        let bd = &f.blocks[bb.index()];
-        b.label(&format!("b{}", bb.index()));
-        if bb.index() != 0 {
+    let mut out = String::new();
+    for b in &rpo {
+        let bd = &f.blocks[b.index()];
+        let _ = writeln!(out, "b{}:", b.index());
+        if b.index() != 0 {
             for (j, p) in bd.params.iter().enumerate() {
-                let Some(dst) = vals.get(&p.value.index()) else {
+                let Some((t, _)) = scalar(f.ty(p.value)) else {
                     continue;
                 };
-                let edges: Vec<(Val, String)> = incoming
-                    .get(&bb.index())
+                let name = format!("%v{}", p.value.index());
+                let edges: Vec<String> = incoming
+                    .get(&b.index())
                     .map(Vec::as_slice)
                     .unwrap_or(&[])
                     .iter()
-                    .map(|(from, args)| (vals[&args[j].index()].clone(), format!("b{from}")))
+                    .map(|(from, args)| format!("[ {}, %b{from} ]", names[&args[j].index()]))
                     .collect();
-                b.phi(dst, &edges);
+                let _ = writeln!(out, "  {name} = phi {t} {}", edges.join(", "));
+                names.insert(p.value.index(), name);
             }
         }
         for inst in &bd.insts {
-            inst_text(m, inst, symbol_of, &vals, &mut decls, &mut b);
+            inst_text(m, f, inst, loc, symbol_of, &mut names, &mut decls, &mut out);
         }
         match &bd.term {
-            Term::Br(t) => b.br(&format!("b{}", t.block.index())),
+            Term::Br(t) => {
+                let _ = writeln!(out, "  br label %b{}", t.block.index());
+            }
             Term::CondBr { cond, then, els } => {
-                let c = b.icmp("ne", &vals[&cond.index()], &Val::byte(0));
-                b.cond_br(
-                    &c,
-                    &format!("b{}", then.block.index()),
-                    &format!("b{}", els.block.index()),
+                let _ = writeln!(
+                    out,
+                    "  %c{0} = icmp ne i8 {1}, 0\n  br i1 %c{0}, label %b{2}, label %b{3}",
+                    b.index(),
+                    names[&cond.index()],
+                    then.block.index(),
+                    els.block.index()
                 );
             }
-            Term::Ret(Some(v)) if f.ret != Ty::UNIT => b.ret(Some(&vals[&v.index()])),
-            Term::Ret(_) => b.ret(None),
-            _ => b.unreachable(),
+            Term::Ret(Some(v)) if f.ret != Ty::UNIT => {
+                let (t, _) = scalar(f.ret).expect("supported");
+                let _ = writeln!(out, "  ret {t} {}", names[&v.index()]);
+            }
+            Term::Ret(_) => out.push_str("  ret void\n"),
+            _ => out.push_str("  unreachable\n"),
         }
     }
+    out.push_str("}\n\n");
     Emitted {
         ret: ret_text(f.ret).expect("supported"),
         params: params.join(", "),
-        body: b.finish(),
+        body: out,
         decls,
     }
-}
-
-/// The attribute of a parameter or result of type `ty`: `Bool` bytes are zero-extended across
-/// calls, like the Cranelift ABI.
-fn param_attr(ty: Ty) -> &'static str {
-    scalar(ty).map_or("", |s| s.1)
 }
 
 fn icc(cc: Cc, unsigned: bool) -> &'static str {
@@ -275,85 +236,141 @@ fn fcc(cc: Cc) -> &'static str {
     }
 }
 
-/// Writes one instruction. Its result, when it has one, is renamed to the value reserved for it
-/// in `vals`, which a phi may already name.
+#[allow(clippy::too_many_arguments)]
 fn inst_text(
     m: &Module,
+    f: &Func,
     inst: &Inst,
+    loc: usize,
     symbol_of: &dyn Fn(usize) -> String,
-    vals: &HashMap<usize, Val>,
+    names: &mut HashMap<usize, String>,
     decls: &mut Vec<(String, String)>,
-    b: &mut FnBuilder,
+    out: &mut String,
 ) {
-    let arg = |i: usize| vals[&inst.args[i].index()].clone();
-    let result = match inst.op {
-        Op::IConst | Op::FConst | Op::BConst | Op::UnitConst => return,
-        Op::IAdd => b.bin(Bin::Add, &arg(0), &arg(1)),
-        Op::ISub => b.bin(Bin::Sub, &arg(0), &arg(1)),
-        Op::IMul => b.bin(Bin::Mul, &arg(0), &arg(1)),
-        Op::And => b.bin(Bin::And, &arg(0), &arg(1)),
-        Op::Or => b.bin(Bin::Or, &arg(0), &arg(1)),
-        Op::Xor => b.bin(Bin::Xor, &arg(0), &arg(1)),
-        Op::FAdd => b.bin(Bin::FAdd, &arg(0), &arg(1)),
-        Op::FSub => b.bin(Bin::FSub, &arg(0), &arg(1)),
-        Op::FMul => b.bin(Bin::FMul, &arg(0), &arg(1)),
-        Op::FDiv => b.bin(Bin::FDiv, &arg(0), &arg(1)),
-        Op::INeg => b.bin(Bin::Sub, &Val::int(0), &arg(0)),
-        Op::FNeg => b.fneg(&arg(0)),
-        Op::Not => b.bin(Bin::Xor, &arg(0), &Val::byte(1)),
-        Op::ICmp | Op::UICmp | Op::FCmp => {
+    let arg = |names: &HashMap<usize, String>, i: usize| names[&inst.args[i].index()].clone();
+    let ty_of = |i: usize| scalar(f.ty(inst.args[i])).map_or("i64", |t| t.0);
+    let Some(res) = inst.res else {
+        // A call with a `Unit` result has none; any other op without a result is `unit`.
+        if inst.op == Op::Call {
+            call_text(m, inst, loc, symbol_of, names, decls, None, out);
+        }
+        return;
+    };
+    let r = format!("%v{}", res.index());
+    let bin = |names: &HashMap<usize, String>, op: &str, out: &mut String| {
+        let _ = writeln!(
+            out,
+            "  {r} = {op} {} {}, {}",
+            ty_of(0),
+            arg(names, 0),
+            arg(names, 1)
+        );
+    };
+    let cmp = |names: &HashMap<usize, String>, kind: &str, cc: &str, out: &mut String| {
+        let _ = writeln!(
+            out,
+            "  {r}.c = {kind} {cc} {} {}, {}\n  {r} = zext i1 {r}.c to i8",
+            ty_of(0),
+            arg(names, 0),
+            arg(names, 1)
+        );
+    };
+    match inst.op {
+        Op::IConst => {
+            let Imm::Int(v) = inst.imm else { return };
+            names.insert(res.index(), v.to_string());
+            return;
+        }
+        Op::FConst => {
+            let Imm::Float(bits) = inst.imm else { return };
+            names.insert(res.index(), format!("0x{bits:016X}"));
+            return;
+        }
+        Op::BConst => {
+            let Imm::Bool(v) = inst.imm else { return };
+            names.insert(res.index(), (v as u8).to_string());
+            return;
+        }
+        Op::UnitConst => return,
+        Op::IAdd | Op::FAdd => bin(names, if inst.op == Op::IAdd { "add" } else { "fadd" }, out),
+        Op::ISub => bin(names, "sub", out),
+        Op::FSub => bin(names, "fsub", out),
+        Op::IMul => bin(names, "mul", out),
+        Op::FMul => bin(names, "fmul", out),
+        Op::FDiv => bin(names, "fdiv", out),
+        Op::And => bin(names, "and", out),
+        Op::Or => bin(names, "or", out),
+        Op::Xor => bin(names, "xor", out),
+        Op::INeg => {
+            let _ = writeln!(out, "  {r} = sub i64 0, {}", arg(names, 0));
+        }
+        Op::FNeg => {
+            let _ = writeln!(out, "  {r} = fneg double {}", arg(names, 0));
+        }
+        Op::Not => {
+            let _ = writeln!(out, "  {r} = xor i8 {}, 1", arg(names, 0));
+        }
+        Op::ICmp | Op::UICmp => {
             let Imm::Cc(cc) = inst.imm else { return };
-            let c = if inst.op == Op::FCmp {
-                b.fcmp(fcc(cc), &arg(0), &arg(1))
-            } else {
-                b.icmp(icc(cc, inst.op == Op::UICmp), &arg(0), &arg(1))
-            };
-            b.zext(&c, LTy::I8)
+            cmp(names, "icmp", icc(cc, inst.op == Op::UICmp), out);
+        }
+        Op::FCmp => {
+            let Imm::Cc(cc) = inst.imm else { return };
+            cmp(names, "fcmp", fcc(cc), out);
         }
         Op::Select => {
-            let c = b.icmp("ne", &arg(0), &Val::byte(0));
-            b.select(&c, &arg(1), &arg(2))
+            let t = ty_of(1);
+            let _ = writeln!(
+                out,
+                "  {r}.c = icmp ne i8 {}, 0\n  {r} = select i1 {r}.c, {t} {}, {t} {}",
+                arg(names, 0),
+                arg(names, 1),
+                arg(names, 2)
+            );
         }
-        Op::B2I => b.zext(&arg(0), LTy::I64),
+        Op::B2I => {
+            let _ = writeln!(out, "  {r} = zext i8 {} to i64", arg(names, 0));
+        }
         Op::Call => {
-            let Imm::Func(c) = inst.imm else { return };
-            let callee = &m.funcs[c.index()];
-            let sym = symbol_of(c.index());
-            let ret = ret_ty(callee.ret);
-            let attr = if callee.ret == Ty::BOOL {
-                "zeroext "
-            } else {
-                ""
-            };
-            let args: Vec<(Val, &str)> = callee
-                .params
-                .iter()
-                .zip(&inst.args)
-                .map(|(p, a)| (vals[&a.index()].clone(), param_attr(p.ty)))
-                .collect();
-            let formals: Vec<String> = args
-                .iter()
-                .map(|(v, a)| format!("{}{a}", Types::default().text(&v.ty)))
-                .collect();
-            decls.push((
-                sym.clone(),
-                format!(
-                    "declare {attr}{} @\"{sym}\"({})",
-                    Types::default().text(&ret),
-                    formals.join(", ")
-                ),
-            ));
-            match b.call(&ret, attr, &sym, &args) {
-                Some(v) => v,
-                None => return,
-            }
+            call_text(m, inst, loc, symbol_of, names, decls, Some(&r), out);
+            names.insert(res.index(), r);
+            return;
         }
         _ => unreachable!("supports rejects other ops"),
-    };
-    // The builder named the result itself; bind the name MIR users were given.
-    if let Some(res) = inst.res
-        && let Some(want) = vals.get(&res.index())
-    {
-        b.alias(want, &result);
     }
+    names.insert(res.index(), r);
+}
+
+#[allow(clippy::too_many_arguments)]
+fn call_text(
+    m: &Module,
+    inst: &Inst,
+    loc: usize,
+    symbol_of: &dyn Fn(usize) -> String,
+    names: &HashMap<usize, String>,
+    decls: &mut Vec<(String, String)>,
+    result: Option<&str>,
+    out: &mut String,
+) {
+    let Imm::Func(c) = inst.imm else { return };
+    let callee = &m.funcs[c.index()];
+    let sym = symbol_of(c.index());
+    let ret = ret_text(callee.ret).expect("supported");
+    let mut formals = Vec::new();
+    let mut actuals = Vec::new();
+    for (p, a) in callee.params.iter().zip(&inst.args) {
+        let (t, attr) = scalar(p.ty).expect("supported");
+        formals.push(format!("{t}{attr}"));
+        actuals.push(format!("{t}{attr} {}", names[&a.index()]));
+    }
+    decls.push((
+        sym.clone(),
+        format!("declare {ret} @\"{sym}\"({})", formals.join(", ")),
+    ));
+    let lhs = result.map(|r| format!("{r} = ")).unwrap_or_default();
+    let _ = writeln!(
+        out,
+        "  {lhs}call {ret} @\"{sym}\"({}), !dbg !{loc}",
+        actuals.join(", ")
+    );
 }

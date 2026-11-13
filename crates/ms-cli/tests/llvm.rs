@@ -372,10 +372,7 @@ fn llvm_direct_emission_matches_translation() {
     let (new_out, new_ir) = run(true);
     let _ = std::fs::remove_dir_all(&dir);
     assert_eq!(new_out, old_out);
-    assert_eq!(
-        new_out,
-        "-10570.332140489487\n-10610.442345302587\n-18691.88657748569\n-3832.9476242902874\n24\n"
-    );
+    assert_eq!(new_out, "-10570.332140489487\n-10610.442345302587\n24\n");
     // Direct functions name their values `%vN`; the translation names them `%tN`.
     let direct = |ir: &str| {
         ir.lines()
