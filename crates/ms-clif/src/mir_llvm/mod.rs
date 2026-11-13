@@ -102,8 +102,8 @@ struct Area {
     ty_ok: fn(&TyKind) -> bool,
     /// Extra conditions on one instruction of an op this area handles.
     inst_ok: fn(&Module, &Layouts, &Func, &Inst) -> bool,
-    /// How many blocks the op's checks split off when checks are on.
-    splits: fn(Op) -> usize,
+    /// How many blocks the op splits off (its checks only when checks are on).
+    splits: fn(Op, bool) -> usize,
     /// Whether the op touches neither memory nor anything a fault could depend on.
     pure_op: fn(Op) -> bool,
     /// The value an instruction is without any code (a constant, a leaf of its operand).
@@ -118,7 +118,7 @@ impl Area {
         handles: |_| false,
         ty_ok: |_| false,
         inst_ok: |_, _, _, _| true,
-        splits: |_| 0,
+        splits: |_, _| 0,
         pure_op: |_| false,
         pre: |_, _, _, _| None,
         emit: |_, _, _, _| unreachable!("an area emits only the ops it handles"),
@@ -214,15 +214,11 @@ struct Cx<'a> {
 
 /// The label a MIR block ends in: each check splits it, and a successor's phis name that label.
 fn exit_label(f: &Func, checks: bool, bb: usize) -> String {
-    let n = if checks {
-        f.blocks[bb]
-            .insts
-            .iter()
-            .map(|i| area_of(i.op).map_or(0, |a| (a.splits)(i.op)))
-            .sum()
-    } else {
-        0
-    };
+    let n = f.blocks[bb]
+        .insts
+        .iter()
+        .map(|i| area_of(i.op).map_or(0, |a| (a.splits)(i.op, checks)))
+        .sum();
     block_label(bb, n)
 }
 
