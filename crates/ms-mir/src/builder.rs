@@ -260,9 +260,10 @@ impl<'m> FuncBuilder<'m> {
         let ty = self.ty(a);
         self.val(op, &[a], Imm::None, ty)
     }
-    /// `narrow.chk`: faults unless a sized integer is within its type's range.
-    pub fn narrow_chk(&mut self, a: Value) -> Value {
-        self.unop(Op::NarrowChk, a)
+    /// `narrow.chk`: the 64-bit integer `a` as the sized integer type `to`; faults unless it is
+    /// within the type's range.
+    pub fn narrow_chk(&mut self, a: Value, to: Ty) -> Value {
+        self.val(Op::NarrowChk, &[a], Imm::None, to)
     }
     /// `f32.round`: rounds a `Float32` to the nearest binary32 value.
     pub fn f32_round(&mut self, a: Value) -> Value {
