@@ -1,8 +1,9 @@
 import (
 	Bytes from "@std/bytes.ms",
 	Writable from "@std/core.ms",
-	ReadStream, ScalarSource from "@std/io/io.ms",
+	ReadStream from "@std/io/io.ms",
 	StringBuilder from "@std/string_builder.ms",
+	ScalarSource from "@std/string_scalars.ms",
 
 	msrt_string_from_scalars from "@std/internal/string.ms",
 	msstd_unicode_display_width,
