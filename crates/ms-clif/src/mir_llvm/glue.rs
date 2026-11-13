@@ -50,10 +50,12 @@ fn ty_ok(k: &TyKind) -> bool {
 }
 
 /// Whether `inst` branches inside its MIR block, so that what follows is in another LLVM block:
-/// a string clone, a drop that frees a string conditionally, and a guarded drop.
+/// a string clone, a drop of a string, and a guarded drop of anything but plain data. An unguarded
+/// drop of an object or glue is one call and splits nothing.
 fn splits(lay: &Layouts, f: &Func, i: &Inst, _: bool) -> usize {
     let split = match i.op {
-        Op::Clone | Op::Drop => own_kind(lay, f.ty(i.args[0])) == OwnKind::Str,
+        Op::Clone => own_kind(lay, f.ty(i.args[0])) == OwnKind::Str,
+        Op::Drop => own_kind(lay, f.ty(i.args[0])) == OwnKind::Str,
         Op::DropIf => own_kind(lay, f.ty(i.args[1])) != OwnKind::Identity,
         _ => false,
     };
@@ -120,10 +122,7 @@ fn cleanup_push(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBu
     let slot = b.ptr_to_int(&slot);
     let thunk = Val::new(format!("@\"{}\"", cx.plan.cleanup[&c.index()]), LTy::Ptr);
     let thunk = b.ptr_to_int(&thunk);
-    cx.decls.push((
-        "msrt_cleanup_push".into(),
-        "declare i64 @\"msrt_cleanup_push\"(i64, i64) nounwind".into(),
-    ));
+    super::rt::declare(cx, "msrt_cleanup_push");
     b.name_next(&out[0]);
     b.call(
         &LTy::I64,
@@ -171,10 +170,7 @@ fn clone(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder) 
             clone_str(b, &mut cx.decls, (&pre, &dup, &join), args, Some(out));
         }
         OwnKind::Obj => {
-            cx.decls.push((
-                "msrt_obj_clone".into(),
-                "declare i64 @\"msrt_obj_clone\"(i64) nounwind".into(),
-            ));
+            super::rt::declare(cx, "msrt_obj_clone");
             let obj = word(b, &args[0]);
             if out[0].ty == LTy::Ptr {
                 let r = b.call(&LTy::I64, "", "msrt_obj_clone", &[(obj, "")]);
@@ -225,10 +221,8 @@ fn drop_inst(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     let v = inst.args[usize::from(guarded)];
     let args = &vals[&v.index()];
     let (block, at) = (cx.block, cx.split);
-    // Only a string drop and a guarded drop start a block (see `splits`).
-    if guarded || kind == OwnKind::Str {
-        cx.split += 1;
-    }
+    // Only a drop that branches starts a new block (`splits` counts the same ones).
+    cx.split += usize::from(guarded || kind == OwnKind::Str);
     let join = block_label(block, cx.split);
     let mut n = 0;
     let mut fresh = |what: &str| {

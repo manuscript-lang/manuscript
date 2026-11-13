@@ -17,6 +17,7 @@ mod glue;
 mod lists;
 mod maps;
 mod records;
+mod rt;
 
 use crate::abi_llvm::{Pass, Reg, Ret, Signature};
 use crate::layout::{Layouts, Leaf};
@@ -223,8 +224,8 @@ fn signature_ok(lay: &Layouts, params: &[ms_mir::ir::Param], ret: Ty) -> bool {
             .all(|p| p.mode != Mode::Var && supported_ty(lay, p.ty))
 }
 
-/// An area's `pre` hook: the leaves of an instruction's result without emitting code for it;
-/// it may reserve names for the leaves that are computed.
+/// An area's `pre` hook: the values an instruction is without any code, naming (not defining)
+/// any it leaves for `emit`.
 type Pre = fn(&Module, &Layouts, &Func, &Inst, &Vals, &mut FnBuilder) -> Option<Vec<Val>>;
 
 /// One area of the emitter: the ops, types and checks it owns. Each area lives in its own module
@@ -313,8 +314,19 @@ pub fn supports(m: &Module, lay: &Layouts, f: &Func) -> bool {
                 then.block != els.block && !is_entry(then) && !is_entry(els)
             }
             Term::Ret(_) | Term::Unreachable => true,
+            Term::Switch { cases, default, .. } => {
+                // Two edges into one block are two phi entries and must carry the same values.
+                let targets: Vec<&Target> = cases.iter().map(|c| &c.1).chain([default]).collect();
+                targets
+                    .iter()
+                    .all(|t| !is_entry(t) && !records::has_copies(lay, f, t))
+                    && targets.iter().all(|a| {
+                        targets
+                            .iter()
+                            .all(|b| a.block != b.block || a.args == b.args)
+                    })
+            }
             Term::Fault(k) => faults::terminator_ok(*k),
-            Term::Switch { .. } => false,
         };
         if !ok {
             return false;
@@ -551,6 +563,15 @@ pub fn emit(
                         b.br(&block_label(t.block.index(), 0));
                     }
                 }
+            }
+            Term::Switch {
+                value,
+                cases,
+                default,
+            } => {
+                let label = |t: &Target| block_label(t.block.index(), 0);
+                let arms: Vec<(i64, String)> = cases.iter().map(|(k, t)| (*k, label(t))).collect();
+                b.switch(&vals[&value.index()][0], &label(default), &arms);
             }
             Term::Ret(Some(v)) if sret.is_some() => {
                 let to = sret.as_ref().expect("checked");

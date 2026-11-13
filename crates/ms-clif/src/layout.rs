@@ -274,6 +274,8 @@ impl<'m> Layouts<'m> {
             TyKind::Bool => one(!ptr),
             TyKind::Ptr | TyKind::Fn(..) => one(ptr),
             TyKind::Obj(n, _) if !n.is_map_or_set() => one(ptr),
+            // The data pointer and the vtable address (tag bits in its low two).
+            TyKind::Iface(_) => vec![ptr; 2],
             TyKind::Bytes | TyKind::List(_) => vec![ptr, false, false],
             TyKind::Rec(r) if self.m.records[r.index()].indirect => one(ptr),
             TyKind::Rec(r) => self.m.records[r.index()]

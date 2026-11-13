@@ -13,7 +13,7 @@
 use super::calls::{Callee, declare_leaf, leaf_call};
 use super::{Area, Cx, Vals, aggregate, records};
 use crate::layout::{Layouts, Leaf, mem_layout};
-use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Types, Val};
+use crate::llvm_build::{FnBuilder, Meta, Ty as LTy, Types, Val};
 use ms_mir::ir::{Func, FuncKind, Imm, Inst, Module, Op};
 use ms_mir::types::{Ty, TyKind};
 
@@ -24,6 +24,9 @@ pub(super) const AREA: Area = Area {
     emit,
     ..Area::NONE
 };
+
+/// Mask that clears the two tag bits of a vtable word.
+const UNTAG: i64 = !3;
 
 fn handles(op: Op) -> bool {
     matches!(
@@ -84,40 +87,49 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         }
         (Op::IfaceData, _) => {
             b.name_next(&out[0]);
-            b.int_to_ptr(&vals[&inst.args[0].index()][0]);
+            b.byte_ptr(&vals[&inst.args[0].index()][0], 0);
         }
         (Op::CallInd, _) => call_closure(cx, inst, vals, &out, b),
         (Op::IfaceNew | Op::IfaceBorrow, Imm::Vtable(vt)) => {
             iface_new(cx, inst, vals, vt.index(), &out, b)
         }
         (Op::IfaceView, _) => {
+            // The same data, with the vtable retagged as a view: nothing is freed.
             let v = &vals[&inst.args[0].index()];
             b.name_next(&out[0]);
-            b.bin(Bin::Or, &v[0], &Val::int(0));
-            let word = b.bin(Bin::And, &v[1], &Val::int(!3));
+            b.byte_ptr(&v[0], 0);
+            let bare = b.ptrmask(&v[1], UNTAG);
             b.name_next(&out[1]);
-            b.bin(Bin::Or, &word, &Val::int(2));
+            b.byte_ptr(&bare, 2);
         }
         (Op::IfaceIs, Imm::Vtable(vt)) => {
-            let have = b.bin(Bin::And, &vals[&inst.args[0].index()][1], &Val::int(!3));
-            let want = vtable(cx, vt.index(), 0, None, b);
+            let have = b.ptrmask(&vals[&inst.args[0].index()][1], UNTAG);
+            let want = vtable(cx, vt.index());
             b.name_next(&out[0]);
             b.icmp("eq", &have, &want);
         }
         (Op::CallMethod, Imm::Method(iface, k)) => {
             let sig = &cx.m.ifaces[iface.index()].methods[k as usize];
             let recv = &vals[&inst.args[0].index()];
-            let table = b.bin(Bin::And, &recv[1], &Val::int(!3));
-            let table = b.int_to_ptr(&table);
+            // The table address with the tag cleared; the slot is an invariant, non-null,
+            // 8-aligned code pointer, so a vtable LLVM can see devirtualizes the call.
+            let table = b.ptrmask(&recv[1], UNTAG);
             let slot = b.byte_ptr(&table, 8 * (1 + u64::from(k)));
-            let code = b.load(&LTy::Ptr, &slot, 8);
+            let meta = Meta {
+                invariant: true,
+                nonnull: true,
+                align8: true,
+                ..Meta::default()
+            };
+            let code = b.load_with(&LTy::Ptr, &slot, 8, meta);
+            let data = b.ptr_to_int(&recv[0]);
             let ret = sig.ret;
             leaf_call(
                 b,
                 cx.lay,
                 vals,
                 Callee::Pointer(&code),
-                recv[0].clone(),
+                data,
                 (&sig.params, &inst.args[1..]),
                 ret,
                 &out,
@@ -127,31 +139,16 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     }
 }
 
-/// The address of the vtable `vt`, a data object the Cranelift object defines, with `tag` in its
-/// low bits; the result takes the reserved name `out` when there is one.
-fn vtable(cx: &mut Cx, vt: usize, tag: i64, out: Option<&Val>, b: &mut FnBuilder) -> Val {
+/// The address of the vtable `vt`, a data object the Cranelift object defines.
+fn vtable(cx: &mut Cx, vt: usize) -> Val {
     let sym = &cx.plan.vtables[&vt];
     cx.data.push(sym.clone());
-    let addr = Val::new(format!("@\"{sym}\""), LTy::Ptr);
-    let name = |b: &mut FnBuilder, fresh: bool| match out {
-        Some(out) if fresh => b.name_next(out),
-        _ => {}
-    };
-    name(b, tag == 0);
-    let word = b.ptr_to_int(&addr);
-    if tag == 0 {
-        return word;
-    }
-    name(b, true);
-    b.bin(Bin::Or, &word, &Val::int(tag))
+    Val::new(format!("@\"{sym}\""), LTy::Ptr)
 }
 
 /// A fresh heap block of `size` bytes.
 fn alloc(cx: &mut Cx, size: u64, b: &mut FnBuilder) -> Val {
-    cx.decls.push((
-        "msrt_alloc".into(),
-        "declare noalias align 16 ptr @\"msrt_alloc\"(i64)".into(),
-    ));
+    super::rt::declare(cx, "msrt_alloc");
     b.call(
         &LTy::Ptr,
         "noalias align 16 ",
@@ -182,8 +179,10 @@ fn iface_new(cx: &mut Cx, inst: &Inst, vals: &Vals, vt: usize, out: &[Val], b: &
         records::store_value(b, cx.lay, ty, vals, inst.args[0], &block);
     }
     b.name_next(&out[0]);
-    b.ptr_to_int(&block);
-    vtable(cx, vt, tag, Some(&out[1]), b);
+    b.byte_ptr(&block, 0);
+    let table = vtable(cx, vt);
+    b.name_next(&out[1]);
+    b.byte_ptr(&table, tag);
 }
 
 /// The environment of a closure whose captures are `captures`: its type, the field of each

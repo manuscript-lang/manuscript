@@ -46,6 +46,10 @@ pub struct Meta {
     pub nonnull: bool,
     /// A loaded value is never `undef` or `poison`, `!noundef`.
     pub noundef: bool,
+    /// The memory never changes once the program reads it (a vtable slot), `!invariant.load`.
+    pub invariant: bool,
+    /// A loaded pointer is 8-byte aligned, `!align`.
+    pub align8: bool,
 }
 
 impl Meta {
@@ -78,6 +82,13 @@ impl Meta {
             }
             if self.noundef {
                 let _ = write!(out, ", !noundef !{EMPTY_NODE}");
+            }
+            if self.invariant {
+                let _ = write!(out, ", !invariant.load !{EMPTY_NODE}");
+            }
+            if self.align8 {
+                assert_eq!(*ty, Ty::Ptr, "!align on a load that is not a pointer");
+                let _ = write!(out, ", !align !{}", crate::llvm_ir::ALIGN8_NODE);
             }
         }
         out
@@ -690,6 +701,16 @@ impl<'t> FnBuilder<'t> {
         }
     }
 
+    /// `ptr` with the bits outside `mask` cleared (`llvm.ptrmask`): LLVM keeps track of what the
+    /// pointer points to, which an `inttoptr` of an `and` loses.
+    pub fn ptrmask(&mut self, p: &Val, mask: i64) -> Val {
+        assert_eq!(p.ty, Ty::Ptr);
+        self.def(
+            Ty::Ptr,
+            format!("call ptr @llvm.ptrmask.p0.i64(ptr {}, i64 {mask})", p.text),
+        )
+    }
+
     /// Copies `len` bytes from `src` (aligned to `src_align`) to `dst` (aligned to `dst_align`),
     /// non-overlapping.
     pub fn memcpy(&mut self, dst: (&Val, u64), src: (&Val, u64), len: &Val) {
@@ -813,6 +834,21 @@ impl<'t> FnBuilder<'t> {
     pub fn cond_br(&mut self, cond: &Val, then: &str, els: &str) {
         assert_eq!(cond.ty, Ty::I1);
         self.line(format!("br i1 {}, label %{then}, label %{els}", cond.text));
+    }
+
+    /// `switch` on an integer: each `(constant, block)` pair, and the block for any other value.
+    pub fn switch(&mut self, value: &Val, default: &str, cases: &[(i64, String)]) {
+        assert!(matches!(value.ty, Ty::I8 | Ty::I16 | Ty::I32 | Ty::I64));
+        let ty = self.ty(&value.ty);
+        let arms: Vec<String> = cases
+            .iter()
+            .map(|(k, b)| format!("{ty} {k}, label %{b}"))
+            .collect();
+        self.line(format!(
+            "switch {ty} {}, label %{default} [ {} ]",
+            value.text,
+            arms.join(" ")
+        ));
     }
 
     pub fn ret(&mut self, v: Option<&Val>) {

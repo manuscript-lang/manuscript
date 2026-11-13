@@ -622,14 +622,8 @@ const NULL: fn() -> Val = || Val::new("null", LTy::Ptr);
 
 /// Declares the runtime's allocator and `free` for a block.
 fn declare_heap(cx: &mut Cx) {
-    cx.decls.push((
-        "msrt_alloc".into(),
-        "declare noalias align 16 ptr @\"msrt_alloc\"(i64)".into(),
-    ));
-    cx.decls.push((
-        "msrt_free".into(),
-        "declare void @\"msrt_free\"(i64)".into(),
-    ));
+    super::rt::declare(cx, "msrt_alloc");
+    super::rt::declare(cx, "msrt_free");
 }
 
 /// A fresh heap block of `size` bytes, named `dst` when given.
