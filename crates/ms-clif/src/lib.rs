@@ -16,6 +16,7 @@ mod dwarf;
 mod glue_llvm;
 mod llvm_build;
 pub mod llvm_ir;
+mod llvm_lifetimes;
 mod llvm_obj;
 mod mir_llvm;
 pub use llvm_obj::available as llvm_available;
