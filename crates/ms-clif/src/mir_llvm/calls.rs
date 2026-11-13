@@ -82,16 +82,11 @@ fn passes_directly(lay: &Layouts, t: Ty) -> bool {
 }
 
 /// Whether a call of the runtime function `def` is within what this module emits: the types
-/// either pass directly or have a memory shape, no parameter is updated in place, and it is not
+/// either pass directly or have a memory shape, and it is not
 /// a function the lowering treats as a guarded or constant case.
 fn extern_ok(lay: &Layouts, def: &ExternDef) -> bool {
     let crosses = |t: Ty| passes_directly(lay, t) || records::shape_ok(lay, t);
-    def.role != ExternRole::MapNew
-        && def
-            .params
-            .iter()
-            .all(|p| p.mode != Mode::Var && crosses(p.ty))
-        && crosses(def.ret)
+    def.role != ExternRole::MapNew && def.params.iter().all(|p| crosses(p.ty)) && crosses(def.ret)
 }
 
 fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
