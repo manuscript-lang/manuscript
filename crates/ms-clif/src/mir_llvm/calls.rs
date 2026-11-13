@@ -136,7 +136,7 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         };
         match &slot {
             Some(slot) => {
-                b.call(&ret, attr, &sym, &args);
+                b.call_keep(&ret, attr, &sym, &args);
                 records::load_result(b, lay, callee.ret, slot, &out);
             }
             None => finish_call(
@@ -201,7 +201,7 @@ pub(super) fn finish_call(
     let call = |b: &mut FnBuilder| match callee {
         Callee::Pointer(code) => b.call_ptr(ret, attr, code, args),
         Callee::Symbol(sym) if pure => b.call_pure(ret, attr, sym, args),
-        Callee::Symbol(sym) => b.call(ret, attr, sym, args),
+        Callee::Symbol(sym) => b.call_keep(ret, attr, sym, args),
     };
     if records::is_mem(lay, result) {
         // The result is a record in memory, rebuilt from the call's result.
@@ -337,7 +337,7 @@ fn call_rt(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder
     ));
     match &slot {
         Some(slot) => {
-            b.call(&ret, attr, &def.name, &args);
+            b.call_keep(&ret, attr, &def.name, &args);
             records::load_result(b, lay, def.ret, slot, out);
         }
         None => finish_call(

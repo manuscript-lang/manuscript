@@ -168,7 +168,7 @@ pub(super) fn shim(types: &Types, lay: &Layouts, f: &Func, sym: &str, dbg: usize
         Ret::Sret(_) => (LTy::Void, ""),
         Ret::Scalars(_) => (ret, attr),
     };
-    let result = b.call(&ret, attr, sym, &args);
+    let result = b.call_keep(&ret, attr, sym, &args);
     if let Some(r) = result {
         let leaves = match &ret {
             LTy::Tuple(ts) => (0..ts.len()).map(|k| b.extract(&r, k)).collect(),

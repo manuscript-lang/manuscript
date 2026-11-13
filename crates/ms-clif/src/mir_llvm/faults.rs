@@ -27,7 +27,7 @@ pub(super) fn terminator_ok(kind: FaultKind) -> bool {
 /// block.
 pub(super) fn call(cx: &mut Cx, b: &mut FnBuilder, name: &'static str, args: &[Val]) {
     let actuals: Vec<(Val, &str)> = args.iter().map(|a| (a.clone(), "")).collect();
-    b.call(&LTy::Void, "", name, &actuals);
+    b.call_keep(&LTy::Void, "", name, &actuals);
     b.unreachable();
     super::rt::declare_fault(cx, name, args.len());
 }
