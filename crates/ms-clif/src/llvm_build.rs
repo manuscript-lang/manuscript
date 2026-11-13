@@ -488,11 +488,13 @@ impl<'t> FnBuilder<'t> {
         }
     }
 
-    /// Copies `len` bytes from `src` to `dst` (non-overlapping), both aligned to `align`.
-    pub fn memcpy(&mut self, dst: &Val, src: &Val, len: &Val, align: u64) {
+    /// Copies `len` bytes from `src` (aligned to `src_align`) to `dst` (aligned to `dst_align`),
+    /// non-overlapping.
+    pub fn memcpy(&mut self, dst: (&Val, u64), src: (&Val, u64), len: &Val) {
+        let ((dst, dst_align), (src, src_align)) = (dst, src);
         assert_eq!((&dst.ty, &src.ty, &len.ty), (&Ty::Ptr, &Ty::Ptr, &Ty::I64));
         self.line(format!(
-            "call void @llvm.memcpy.p0.p0.i64(ptr align {align} {}, ptr align {align} {}, i64 {}, i1 false)",
+            "call void @llvm.memcpy.p0.p0.i64(ptr align {dst_align} {}, ptr align {src_align} {}, i64 {}, i1 false)",
             dst.text, src.text, len.text
         ));
     }
@@ -518,7 +520,7 @@ impl<'t> FnBuilder<'t> {
     pub fn ret_multi(&mut self, vals: &[Val]) {
         let tys: Vec<Ty> = vals.iter().map(|v| v.ty.clone()).collect();
         let agg = self.agg(&tys);
-        let mut cur = "undef".to_string();
+        let mut cur = "poison".to_string();
         for (i, v) in vals.iter().enumerate() {
             let t = self.reserve(Ty::Void);
             self.line(format!(
@@ -601,7 +603,7 @@ impl<'t> FnBuilder<'t> {
     /// A tuple of `vals`, for a function that returns several leaves.
     pub fn tuple(&mut self, vals: &[Val]) -> Val {
         let ty = Ty::Tuple(vals.iter().map(|v| v.ty.clone()).collect());
-        let mut agg = Val::new("undef", ty.clone());
+        let mut agg = Val::new("poison", ty.clone());
         for (i, v) in vals.iter().enumerate() {
             let last = i + 1 == vals.len();
             let rhs = format!(
