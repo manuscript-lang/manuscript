@@ -83,7 +83,9 @@ fn opt_repr(lay: &Layouts, opt: Ty) -> OptRepr {
 /// type that lives in memory.
 fn plain(lay: &Layouts, ty: Ty) -> bool {
     match lay.m.types.kind(ty) {
-        TyKind::Opt(inner) => !lay.opt_is_boxed(*inner) && leafy(lay, *inner),
+        TyKind::Opt(inner) => {
+            !lay.opt_is_boxed(*inner) && (leafy(lay, *inner) || mem_opt(lay, ty).is_some())
+        }
         TyKind::Alt(a) => !lay.is_boxed(*a) && fields_leafy(lay, ty, *a, None),
         _ => !types::is_mem(lay, ty),
     }
@@ -91,24 +93,48 @@ fn plain(lay: &Layouts, ty: Ty) -> bool {
 
 /// The type in memory that field `i` of case `c` of `alt` (of type `ty`) is, when its leaves
 /// can move between the type's memory and the enum's slots as they are: each slot holds the
-/// leaf's memory type, or an `i64` for a narrow integer, or an `i1` for a byte.
+/// leaf's memory type, or an `i64` for a narrow integer or a pointer, or an `i1` for a byte.
 fn mem_field(lay: &Layouts, ty: Ty, alt: AltId, c: usize, i: usize) -> Option<Ty> {
     let (fty, idx) = lay.alt_fields(alt)[c][i].clone();
     if !types::is_mem(lay, fty) {
         return None;
     }
     let (slots, mem) = (held_leaves(lay, ty), mem_leaves(lay, fty));
-    let fits = |slot: &LTy, mem: &LTy| {
-        slot == mem
-            || matches!(
-                (slot, mem),
-                (LTy::I64, LTy::I8 | LTy::I16 | LTy::I32) | (LTy::I1, LTy::I8)
-            )
-    };
     idx.iter()
         .zip(&mem)
-        .all(|(k, m)| fits(&slots[*k], m))
+        .all(|(k, m)| slot_fits(&slots[*k], m))
         .then_some(fty)
+}
+
+/// Whether a leaf of memory type `mem` moves to or from a slot held as `slot` by a conversion.
+fn slot_fits(slot: &LTy, mem: &LTy) -> bool {
+    slot == mem
+        || matches!(
+            (slot, mem),
+            (LTy::I64, LTy::I8 | LTy::I16 | LTy::I32 | LTy::Ptr)
+                | (LTy::Ptr, LTy::I64)
+                | (LTy::I1, LTy::I8)
+        )
+}
+
+/// The record in memory that the optional `ty` holds, when it is a tagged optional whose payload
+/// leaves follow the presence flag and move to and from the record's memory.
+fn mem_opt(lay: &Layouts, ty: Ty) -> Option<Ty> {
+    let TyKind::Opt(inner) = lay.m.types.kind(ty) else {
+        return None;
+    };
+    if lay.opt_is_boxed(*inner)
+        || !types::is_mem(lay, *inner)
+        || opt_repr(lay, ty) != OptRepr::Tagged
+    {
+        return None;
+    }
+    let slots = held_leaves(lay, ty);
+    mem_leaves(lay, *inner)
+        .iter()
+        .zip(&slots[1..])
+        .all(|(m, s)| slot_fits(s, m))
+        .then_some(*inner)
 }
 
 /// Whether a value of `ty` is held in registers as leaves, where a pointer to a block counts as
@@ -295,6 +321,8 @@ fn pre(
     if (inst.op != Op::AltPlain && boxed_alt(lay, subject(f, inst)).is_some())
         || (matches!(inst.op, Op::AltGet | Op::AltTake | Op::AltUnbox)
             && inst.res.is_some_and(|r| types::is_mem(lay, f.ty(r))))
+        || (matches!(inst.op, Op::OptGet | Op::OptUnbox)
+            && mem_opt(lay, f.ty(inst.args[0])).is_some())
     {
         return None;
     }
@@ -305,6 +333,15 @@ fn pre(
     ) && boxed_opt(lay, subject(f, inst)).is_some()
     {
         return None;
+    }
+    if matches!(inst.op, Op::OptSome | Op::OptView) && mem_opt(lay, res_ty()).is_some() {
+        // The payload's leaves are loaded from its memory by `emit`.
+        let held = held_leaves(lay, res_ty());
+        return Some(
+            std::iter::once(Val::bool(true))
+                .chain(held[1..].iter().map(|t| b.reserve(t.clone())))
+                .collect(),
+        );
     }
     let mut out = match (inst.op, inst.imm) {
         (Op::OptSome | Op::OptView, _) => match opt_repr(lay, res_ty()) {
@@ -435,6 +472,18 @@ fn memory_payloads(cx: &Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBui
                 let slots = &vals[&inst.args[0].index()];
                 let leaves: Vec<Val> = idx.iter().map(|k| slots[*k].clone()).collect();
                 types::store_into_slot(b, lay, *t, &out[0], &leaves);
+            }
+        }
+        (Op::OptSome | Op::OptView, _) => {
+            if let Some(inner) = mem_opt(lay, cx.f.ty(inst.res.expect("a result"))) {
+                let at = &vals[&inst.args[0].index()][0];
+                types::load_into_leaves(b, lay, inner, at, &out[1..]);
+            }
+        }
+        (Op::OptGet | Op::OptUnbox, _) => {
+            if let Some(inner) = mem_opt(lay, cx.f.ty(inst.args[0])) {
+                let leaves = &vals[&inst.args[0].index()][1..];
+                types::store_into_slot(b, lay, inner, &out[0], leaves);
             }
         }
         _ => {}
@@ -636,6 +685,13 @@ fn unwrap(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder)
         OptRepr::Tagged => &v[1..],
         _ => &v[..],
     };
+    if types::is_mem(cx.lay, inner) {
+        // The clone glue reads a record in memory from its address: spill the leaves first.
+        let at = b.reserve(LTy::Ptr);
+        types::store_into_slot(b, cx.lay, inner, &at, payload);
+        glue::clone_leaves(cx, inner, &[at], out, b);
+        return;
+    }
     glue::clone_leaves(cx, inner, payload, out, b);
 }
 

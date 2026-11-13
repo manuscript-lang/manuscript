@@ -463,11 +463,14 @@ pub(super) fn store_leaf(b: &mut FnBuilder, v: &Val, mem: &LTy, p: &Val) {
     b.store(&v, p, align(mem));
 }
 
-/// A held value as its memory type `mem`: an `i1` as the byte, an `i64` as a narrow integer.
+/// A held value as its memory type `mem`: an `i1` as the byte, an `i64` as a narrow integer, and
+/// a pointer or word in a slot of the other kind.
 pub(super) fn to_mem(b: &mut FnBuilder, v: &Val, mem: &LTy) -> Val {
     match (&v.ty, mem) {
         (LTy::I1, _) => b.zext(v, LTy::I8),
         (LTy::I64, LTy::I8 | LTy::I16 | LTy::I32) => b.trunc(v, mem.clone()),
+        (LTy::I64, LTy::Ptr) => b.inttoptr(v),
+        (LTy::Ptr, LTy::I64) => b.ptrtoint(v),
         _ => v.clone(),
     }
 }
@@ -492,6 +495,8 @@ pub(super) fn widen(b: &mut FnBuilder, w: &Val, held: &LTy, signed: bool) -> Val
         (LTy::I8, LTy::I1) => b.trunc(w, LTy::I1),
         (LTy::I8 | LTy::I16 | LTy::I32, LTy::I64) if signed => b.sext(w, LTy::I64),
         (LTy::I8 | LTy::I16 | LTy::I32, LTy::I64) => b.zext(w, LTy::I64),
+        (LTy::Ptr, LTy::I64) => b.ptrtoint(w),
+        (LTy::I64, LTy::Ptr) => b.inttoptr(w),
         _ => w.clone(),
     }
 }
