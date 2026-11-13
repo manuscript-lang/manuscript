@@ -473,8 +473,8 @@ impl D {
                 }
                 self.w("] []");
             }
-            PatternKind::Record(fields) => {
-                self.w("record ");
+            PatternKind::Type(fields) => {
+                self.w("type ");
                 self.q("");
                 self.w(" [] [");
                 for f in fields {
@@ -868,9 +868,9 @@ impl D {
                     std::slice::from_ref(&ret),
                 );
             }
-            DeclKind::Record(r) => self.decl_fields(
+            DeclKind::Type(r) => self.decl_fields(
                 d.pos,
-                "record",
+                "type",
                 names.str(r.name),
                 e,
                 false,

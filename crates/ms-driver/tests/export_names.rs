@@ -129,7 +129,7 @@ fn export_lookalikes_in_comments_and_text_declare_nothing() {
     let syms = ms_syntax::Names::global();
     let source = concat!(
         "/*\n",
-        "export type CommentedRecord:\n",
+        "export type CommentedType:\n",
         "    value: Int\n",
         "export enum Commented:\n",
         "    Hidden\n",

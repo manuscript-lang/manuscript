@@ -8,12 +8,12 @@ use crate::tls::{self, TlsOptions};
 #[cfg(test)]
 use ms_rt::ffi::HasRaw;
 use ms_rt::ffi::{
-    Bytes, BytesVec, ErrOut, Has, ObjRef, Object, Out, RecList, StatusCode, Str, StringList,
-    abi_record, native,
+    Bytes, BytesVec, ErrOut, Has, ObjRef, Object, Out, StatusCode, Str, StringList, TypeList,
+    abi_type, native,
 };
 use ms_rt_abi::{STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED};
 
-abi_record! {
+abi_type! {
     /// `TlsOptions` as the compiler lays it out for natives.
     pub struct TlsOptionsWire {
         pub server_name: Str,
@@ -63,7 +63,7 @@ pub fn tls_options(
     }
 }
 
-abi_record! {
+abi_type! {
     /// Negotiated TLS state of a connection, in the field order of `TlsInfo`.
     pub struct TlsInfoWire {
         pub version: i64,
@@ -74,7 +74,7 @@ abi_record! {
     }
 }
 
-abi_record! {
+abi_type! {
     /// A `Timestamp` at the layout the compiler gives the native time type.
     #[derive(Clone, Copy)]
     pub struct Timestamp {
@@ -83,9 +83,9 @@ abi_record! {
     }
 }
 
-abi_record! {
+abi_type! {
     /// `CertificateInfo` at its natural layout.
-    pub struct CertificateRec {
+    pub struct CertificateType {
         pub subject: Str,
         pub issuer: Str,
         pub dns_names: StringList,
@@ -144,9 +144,9 @@ native! {
         pem: &str,
         has_max: Has,
         max: i64,
-    ) -> Result<RecList<CertificateRec>, StatusCode> {
+    ) -> Result<TypeList<CertificateType>, StatusCode> {
         let list = tls::parse_certificates(pem, opt(*has_max, max)).map_err(|e| StatusCode(e.code()))?;
-        Ok(RecList::new(list.iter().map(|c| CertificateRec {
+        Ok(TypeList::new(list.iter().map(|c| CertificateType {
             subject: Str::new(&c.subject),
             issuer: Str::new(&c.issuer),
             dns_names: StringList::new(c.dns_names.iter()),
@@ -208,7 +208,7 @@ mod tests {
             );
             let certs = certs.assume_init();
             assert_eq!(certs.len, 1);
-            let first = &*certs.ptr.cast::<CertificateRec>();
+            let first = &*certs.ptr.cast::<CertificateType>();
             assert_eq!(first.not_after.seconds, 4_102_444_800);
             let mut limited = std::mem::MaybeUninit::<ms_rt_abi::VecVal>::zeroed();
             assert_eq!(

@@ -424,7 +424,7 @@ impl Scanner<'_> {
     }
     /// Whether the word ending at `hi` is a member or field name, where a contextual keyword
     /// is an ordinary name: after `.`, or a `name:` label that opens a line or follows `(` or `,`
-    /// (record fields, parameters, argument labels).
+    /// (type fields, parameters, argument labels).
     fn names_a_member(&self, hi: usize) -> bool {
         let prev = self.tokens.last().map(|t| t.kind);
         if prev == Some(Tok::Dot) {

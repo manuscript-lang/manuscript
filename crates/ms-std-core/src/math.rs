@@ -3,9 +3,9 @@
 //!
 //! The generic `max` and `min` are not natives: `@std/math` writes them over `Comparable`.
 //! ms: domain number
-use ms_rt::ffi::{STATUS_INVALID_INPUT, STATUS_OUT_OF_RANGE, StatusCode, abi_record, native};
+use ms_rt::ffi::{STATUS_INVALID_INPUT, STATUS_OUT_OF_RANGE, StatusCode, abi_type, native};
 
-abi_record! {
+abi_type! {
     /// `WordSum`, in declaration order.
     pub struct WordSumOut {
         pub sum: u64,
@@ -13,7 +13,7 @@ abi_record! {
     }
 }
 
-abi_record! {
+abi_type! {
     /// `WordDifference`, in declaration order.
     pub struct WordDifferenceOut {
         pub difference: u64,
@@ -21,7 +21,7 @@ abi_record! {
     }
 }
 
-abi_record! {
+abi_type! {
     /// `WideProduct`, in declaration order.
     pub struct WideProductOut {
         pub high: u64,
@@ -29,7 +29,7 @@ abi_record! {
     }
 }
 
-abi_record! {
+abi_type! {
     /// `WordDivision`, in declaration order.
     pub struct WordDivisionOut {
         pub quotient: u64,
@@ -37,7 +37,7 @@ abi_record! {
     }
 }
 
-abi_record! {
+abi_type! {
     /// `BinaryFloatParts`, in declaration order.
     pub struct BinaryFloatPartsOut {
         pub fraction: f64,
@@ -45,7 +45,7 @@ abi_record! {
     }
 }
 
-abi_record! {
+abi_type! {
     /// `FloatParts`, in declaration order.
     pub struct FloatPartsOut {
         pub integer: f64,

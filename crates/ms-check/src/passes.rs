@@ -127,7 +127,7 @@ fn parameter_names(syms: ms_syntax::Names, params: &[TypeParam]) -> String {
 
 fn type_decl_params(d: &Decl) -> Option<(Name, &[TypeParam], bool)> {
     match &d.kind {
-        DeclKind::Record(r) => Some((r.name, &r.type_params, false)),
+        DeclKind::Type(r) => Some((r.name, &r.type_params, false)),
         DeclKind::Alternative(a) => Some((a.name, &a.type_params, false)),
         DeclKind::Interface(i) => Some((i.name, &i.type_params, true)),
         _ => None,

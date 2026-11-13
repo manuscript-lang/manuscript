@@ -132,7 +132,7 @@ impl Scan<'_> {
         match &p.kind {
             PatternKind::Name(_) => {}
             PatternKind::List(items) => items.iter().for_each(|i| self.pattern(i)),
-            PatternKind::Record(fields) => fields.iter().for_each(|f| self.pattern(&f.pattern)),
+            PatternKind::Type(fields) => fields.iter().for_each(|f| self.pattern(&f.pattern)),
         }
     }
 

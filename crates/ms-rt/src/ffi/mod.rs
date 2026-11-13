@@ -11,13 +11,13 @@
 #![cfg_attr(test, allow(clippy::undocumented_unsafe_blocks))]
 
 mod native;
-pub use crate::{abi_handle, abi_record, native};
+pub use crate::{abi_handle, abi_type, native};
 pub use ms_rt_abi::{ErrSlot, HasRaw};
 pub use native::{
-    AbiHandle, AbiRecord, AbiSlot, AbiType, Bytes, BytesList, BytesVec, EntryFilter, ErrOut,
+    AbiHandle, AbiNamedType, AbiSlot, AbiType, Bytes, BytesList, BytesVec, EntryFilter, ErrOut,
     Failure, FromAbi, Global, Handler, Has, IdArray, IntList, IntMap, IntoAbi, Mut, ObjBox,
-    ObjCell, ObjMut, ObjRef, ObjSlot, Object, OptInt, Out, Own, PairFilter, RecList, Ref, Status,
-    StatusCode, Str, StrArray, StrMap, StringList, StringTable, Text, TextList, argv,
+    ObjCell, ObjMut, ObjRef, ObjSlot, Object, OptInt, Out, Own, PairFilter, Ref, Status,
+    StatusCode, Str, StrArray, StrMap, StringList, StringTable, Text, TextList, TypeList, argv,
     monotonic_nanos, start_nanos,
 };
 

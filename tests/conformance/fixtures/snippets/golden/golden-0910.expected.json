@@ -9,7 +9,7 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "function types and case payloads cannot have defaults; put the default on a named function parameter or a record field instead",
+        "message": "function types and case payloads cannot have defaults; put the default on a named function parameter or a type field instead",
         "position": {
           "file": "golden-0910.ms",
           "line": 4,
@@ -27,7 +27,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0910.ms:4:22: parse: function types and case payloads cannot have defaults; put the default on a named function parameter or a record field instead\n   |\n 4 |     Value(value: Int = 1)\n   |                      ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0910.ms:4:22: parse: function types and case payloads cannot have defaults; put the default on a named function parameter or a type field instead\n   |\n 4 |     Value(value: Int = 1)\n   |                      ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

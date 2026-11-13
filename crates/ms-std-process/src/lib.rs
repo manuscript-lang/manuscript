@@ -41,7 +41,7 @@ use command::Subprocess;
 use ms_rt::ffi::ErrOut;
 use ms_rt::ffi::{
     Bytes, Has, IntList, ObjBox, ObjMut, ObjRef, Object, StatusCode, Str, StrMap, StringList, Text,
-    TextList, abi_handle, abi_record, argv, monotonic_nanos, native, start_nanos,
+    TextList, abi_handle, abi_type, argv, monotonic_nanos, native, start_nanos,
 };
 use ms_rt_abi::STATUS_INVALID_INPUT;
 use ms_std_fs::err::Fail as FsFail;
@@ -64,7 +64,7 @@ fn bytes_of<'a>(items: &'a [&'a str]) -> Vec<&'a [u8]> {
     items.iter().map(|s| s.as_bytes()).collect()
 }
 
-abi_record! {
+abi_type! {
     /// Flattened `ResourceUsage` (microseconds, bytes and counts, in declaration order).
     pub struct ResourceOut {
         pub user_microseconds: i64,
@@ -79,7 +79,7 @@ abi_record! {
     }
 }
 
-abi_record! {
+abi_type! {
     /// Flattened `CpuUsage`: user and kernel microseconds.
     pub struct CpuOut {
         pub user_microseconds: i64,
@@ -87,7 +87,7 @@ abi_record! {
     }
 }
 
-abi_record! {
+abi_type! {
     /// `memory_usage`: `heap_used`, `heap_total`, `heap_system`, `external`, `resident` in bytes.
     /// Linux, macOS and Windows; other hosts report `STATUS_UNSUPPORTED`.
     pub struct MemoryOut {
@@ -99,7 +99,7 @@ abi_record! {
     }
 }
 
-abi_record! {
+abi_type! {
     /// Flattened `ProcessInfo`.
     pub struct ProcessInfoOut {
         pub pid: i64,
@@ -115,7 +115,7 @@ abi_record! {
     }
 }
 
-abi_record! {
+abi_type! {
     /// Flattened `CommandOutput`.
     pub struct CommandOut {
         pub exit_code: i64,

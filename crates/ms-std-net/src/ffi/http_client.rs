@@ -13,8 +13,8 @@ use crate::http::headers::Headers;
 use crate::http::url;
 use crate::wait::Deadline;
 use ms_rt::ffi::{
-    Bytes, BytesList, ErrOut, Has, ObjRef, ObjSlot, Object, OptInt, Out, StatusCode, Str,
-    abi_record, native,
+    Bytes, BytesList, ErrOut, Has, ObjRef, ObjSlot, Object, OptInt, Out, StatusCode, Str, abi_type,
+    native,
 };
 use ms_rt_abi::{
     STATUS_CLOSED, STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED, STATUS_NONE,
@@ -24,7 +24,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::Duration;
 
-abi_record! {
+abi_type! {
     /// `HttpClientOptions` as the compiler lays it out for natives.
     pub struct HttpClientOptionsWire {
         pub max_redirects: OptInt,
@@ -37,7 +37,7 @@ abi_record! {
     }
 }
 
-abi_record! {
+abi_type! {
     /// A buffered response with its metadata (`ClientResponse`).
     pub struct ClientResponseWire {
         pub status: i64,
@@ -47,7 +47,7 @@ abi_record! {
     }
 }
 
-abi_record! {
+abi_type! {
     /// `HttpResponseMetadata`.
     pub struct MetadataWire {
         pub status: i64,

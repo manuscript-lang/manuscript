@@ -20,7 +20,7 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "assignment requires a record field; only fields of a record value can be assigned with 'x.field = ...'",
+        "message": "assignment requires a type field; only fields of a type value can be assigned with 'x.field = ...'",
         "position": {
           "file": "format-testformatexpressionlayouts-35.ms",
           "line": 8,
@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/format-testformatexpressionlayouts-35.ms:8:5: resolution: unknown binding box; declare it with 'box := ...' before use, define 'fn box(...) T:', or import it from a module\n   |\n 8 |     box.count -= total\n   |     ^\n<DIR>/format-testformatexpressionlayouts-35.ms:8:9: type: assignment requires a record field; only fields of a record value can be assigned with 'x.field = ...'\n   |\n 8 |     box.count -= total\n   |         ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/format-testformatexpressionlayouts-35.ms:8:5: resolution: unknown binding box; declare it with 'box := ...' before use, define 'fn box(...) T:', or import it from a module\n   |\n 8 |     box.count -= total\n   |     ^\n<DIR>/format-testformatexpressionlayouts-35.ms:8:9: type: assignment requires a type field; only fields of a type value can be assigned with 'x.field = ...'\n   |\n 8 |     box.count -= total\n   |         ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

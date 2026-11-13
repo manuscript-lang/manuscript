@@ -20,11 +20,11 @@ pub use core_time as logic;
 
 use alloc::string::String;
 use core_time::Ts;
-use ms_rt::ffi::{StatusCode, Str, abi_record, native};
+use ms_rt::ffi::{StatusCode, Str, abi_type, native};
 use ms_rt::glue::{fault, fault_fmt};
 use ms_rt_abi::{STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_OUT_OF_RANGE};
 
-abi_record! {
+abi_type! {
     #[derive(Clone, Copy)]
     pub struct Timestamp {
         pub seconds: i64,
@@ -32,7 +32,7 @@ abi_record! {
     }
 }
 
-abi_record! {
+abi_type! {
     #[derive(Clone, Copy)]
     pub struct Instant {
         pub domain: u64,
@@ -40,7 +40,7 @@ abi_record! {
     }
 }
 
-abi_record! {
+abi_type! {
     /// `Date` fields in declaration order, then the zone name (owned string).
     pub struct CalendarOut {
         pub year: i64,

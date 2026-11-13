@@ -48,7 +48,7 @@ fn exported_methods(syms: ms_syntax::Names, module: &Module) -> Vec<String> {
         .iter()
         .filter(|d| d.export)
         .filter_map(|d| match &d.kind {
-            DeclKind::Record(r) => Some(syms.str(r.name)),
+            DeclKind::Type(r) => Some(syms.str(r.name)),
             DeclKind::Alternative(a) => Some(syms.str(a.name)),
             DeclKind::Interface(i) => Some(syms.str(i.name)),
             _ => None,

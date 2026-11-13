@@ -1,11 +1,11 @@
-diag parse 13:5:171 end=13:7:173 fix=- "a type declares only record fields; write its methods after it as 'fn Customer.name(...)'"
+diag parse 13:5:171 end=13:7:173 fix=- "a type declares only fields; write its methods after it as 'fn Customer.name(...)'"
 diag parse 14:9:224 end=14:10:225 fix=14:9:224>14:10:225=":" "expected ':', found '{'; blocks are not braced: end the header with ':', indent the body four spaces on the following lines, and remove the closing '}'"
 diag parse 15:5:273 end=15:11:279 fix=- "expected a name, found 'return'; 'return' is a reserved word and cannot be used as a name"
 diag parse 19:5:407 end=19:8:410 fix=- "'try' was replaced by a postfix '?': write f(x)? instead of try f(x), and x | step? instead of x | try step"
 import 1:1:0 1:8:7 "expect_equal" "@std/test/test.ms"
-(decl 3:1:46 record "CustomerId" false false 0:0:0 false [] [(param 4:5:67 "value" (type 4:12:74 "String" [] [] nil) nil) ] [] [] [] nil nil nil [])
-(decl 6:1:82 record "OrderId" false false 0:0:0 false [] [(param 7:5:100 "value" (type 7:12:107 "String" [] [] nil) nil) ] [] [] [] nil nil nil [])
-(decl 9:1:115 record "Customer" false false 0:0:0 false [] [(param 10:5:134 "id" (type 10:9:138 "CustomerId" [] [] nil) nil) (param 11:5:153 "name" (type 11:11:159 "String" [] [] nil) nil) ] [] [] [] nil nil nil [])
+(decl 3:1:46 type "CustomerId" false false 0:0:0 false [] [(param 4:5:67 "value" (type 4:12:74 "String" [] [] nil) nil) ] [] [] [] nil nil nil [])
+(decl 6:1:82 type "OrderId" false false 0:0:0 false [] [(param 7:5:100 "value" (type 7:12:107 "String" [] [] nil) nil) ] [] [] [] nil nil nil [])
+(decl 9:1:115 type "Customer" false false 0:0:0 false [] [(param 10:5:134 "id" (type 10:9:138 "CustomerId" [] [] nil) nil) (param 11:5:153 "name" (type 11:11:159 "String" [] [] nil) nil) ] [] [] [] nil nil nil [])
 (decl 17:1:311 test "nominal record and nested binding" false false 0:0:0 false [] [] [] [] [] (type 17:1:311 "Unit" [] [] nil) nil nil [(stmt 18:5:357 bind "" "" false 0:0:0 (pattern 18:5:357 name "customer" [] []) nil nil (expr 18:17:369 call "" (expr 18:17:369 name "Customer" nil nil [] [] [] [] [] nil [] []) nil [(arg 18:26:378 "" (expr 18:26:378 call "" (expr 18:26:378 name "CustomerId" nil nil [] [] [] [] [] nil [] []) nil [(arg 18:37:389 "" (expr 18:37:389 text "" nil nil [] [] [] [(part "c1" nil) ] [] nil [] [])) ] [] [] [] [] nil [] [])) (arg 18:44:396 "" (expr 18:44:396 text "" nil nil [] [] [] [(part "Ada" nil) ] [] nil [] [])) ] [] [] [] [] nil [] []) [] []) ])
 omitted []
 recovered [115-311 311-460 ]

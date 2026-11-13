@@ -31,7 +31,7 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "record binding requires a record; destructure only record values, or bind the whole value to one name",
+        "message": "type binding requires a type; destructure only type values, or bind the whole value to one name",
         "position": {
           "file": "for-destructuring.ms",
           "line": 11,
@@ -65,7 +65,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/for-destructuring.ms:8:9: type: positional binding requires a list; use [a, b] patterns only with List values\n   |\n 8 |     for [a, b] in numbers:  // error: positional binding requires a list\n   |            ^\n<DIR>/for-destructuring.ms:9:15: resolution: unknown binding a; declare it with 'a := ...' before use, define 'fn a(...) T:', or import it from a module\n   |\n 9 |         print(a)  // error: unknown binding a\n   |                     ^\n<DIR>/for-destructuring.ms:11:9: type: record binding requires a record; destructure only record values, or bind the whole value to one name\n    |\n 11 |     for {x} in [[1, 2]]:  // error: record binding requires a record\n    |            ^\n<DIR>/for-destructuring.ms:12:15: resolution: unknown binding x; declare it with 'x := ...' before use, define 'fn x(...) T:', or import it from a module\n    |\n 12 |         print(x)  // error: unknown binding x\n    |                     ^\n<DIR>/for-destructuring.ms:17:11: resolution: unknown binding b; declare it with 'b := ...' before use, define 'fn b(...) T:', or import it from a module\n    |\n 17 |     print(b)  // error: unknown binding b\n    |              ^\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/for-destructuring.ms:8:9: type: positional binding requires a list; use [a, b] patterns only with List values\n   |\n 8 |     for [a, b] in numbers:  // error: positional binding requires a list\n   |            ^\n<DIR>/for-destructuring.ms:9:15: resolution: unknown binding a; declare it with 'a := ...' before use, define 'fn a(...) T:', or import it from a module\n   |\n 9 |         print(a)  // error: unknown binding a\n   |                     ^\n<DIR>/for-destructuring.ms:11:9: type: type binding requires a type; destructure only type values, or bind the whole value to one name\n    |\n 11 |     for {x} in [[1, 2]]:  // error: record binding requires a record\n    |            ^\n<DIR>/for-destructuring.ms:12:15: resolution: unknown binding x; declare it with 'x := ...' before use, define 'fn x(...) T:', or import it from a module\n    |\n 12 |         print(x)  // error: unknown binding x\n    |                     ^\n<DIR>/for-destructuring.ms:17:11: resolution: unknown binding b; declare it with 'b := ...' before use, define 'fn b(...) T:', or import it from a module\n    |\n 17 |     print(b)  // error: unknown binding b\n    |              ^\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

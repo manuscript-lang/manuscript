@@ -624,15 +624,15 @@ impl Cx {
                 Ok(m.types.func(params, ret))
             }
             Kind::Native => self.lower_native_ty(m, t),
-            Kind::Record if t.is(Builtin::Bytes) => Ok(MTy::BYTES),
+            Kind::Type if t.is(Builtin::Bytes) => Ok(MTy::BYTES),
             Kind::Alternative if t.is(Builtin::Optional) => {
                 let inner = self.lower_ty(m, &t.args[0])?;
                 Ok(m.types.opt(inner))
             }
-            Kind::Record | Kind::Alternative if self.is_native_collection(t) => {
+            Kind::Type | Kind::Alternative if self.is_native_collection(t) => {
                 self.lower_native_ty(m, t)
             }
-            Kind::Record => {
+            Kind::Type => {
                 let (id, ty) = m.add_type(&t.display(self.syms).to_string(), Vec::new());
                 m.type_defs[id.index()].native = if t.is(Builtin::Timestamp) {
                     Some(NativeType::Timestamp)

@@ -535,7 +535,7 @@ impl<'a> FnLower<'a> {
             return self.method_value(e, left, &m);
         }
         let lt = self.ety(left);
-        if lt.kind != Kind::Record {
+        if lt.kind != Kind::Type {
             return Err(Error::new(format!("unsupported member access .{name}")));
         }
         let obj = self.expr(left)?;

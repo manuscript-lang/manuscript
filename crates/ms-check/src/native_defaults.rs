@@ -57,8 +57,8 @@ impl Checker {
             );
             return;
         }
-        let record = d.index.is_none() && matches!(d.decl.decl().kind, DeclKind::Record(_));
-        if record && t.result_ty().kind != Kind::Record {
+        let is_user_type = d.index.is_none() && matches!(d.decl.decl().kind, DeclKind::Type(_));
+        if is_user_type && t.result_ty().kind != Kind::Type {
             self.type_error(
                 d.pos(),
                 "native opaque constructor expression defaults need a delivery/disposal design; keep Optional.none defaults or use a source wrapper",

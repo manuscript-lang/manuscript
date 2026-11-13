@@ -609,7 +609,7 @@ impl Checker {
         }
         seen.push(ptr);
         let mut names: Vec<String> = Vec::new();
-        if receiver.kind == Kind::Record {
+        if receiver.kind == Kind::Type {
             names.extend(
                 fields(receiver)
                     .iter()
@@ -743,7 +743,7 @@ impl Checker {
             return format!("{message}; {reason}");
         }
         let available = self.member_names(receiver);
-        if receiver.kind != Kind::Record {
+        if receiver.kind != Kind::Type {
             for f in fields(receiver) {
                 if f.name == name {
                     return format!(
@@ -1007,7 +1007,7 @@ impl Checker {
         }
         if let Some(sym) = actual.symbol()
             && sym.native == Native::Source
-            && matches!(actual.kind, Kind::Record | Kind::Alternative)
+            && matches!(actual.kind, Kind::Type | Kind::Alternative)
         {
             let gap = self.shape_gap(actual, expected).unwrap_or_default();
             return format!(

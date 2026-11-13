@@ -413,7 +413,7 @@ impl Checker {
             && (nominal.is_none()
                 || foreign_native
                 || !(own_extern
-                    || matches!(receiver.kind, Kind::Record | Kind::Alternative)
+                    || matches!(receiver.kind, Kind::Type | Kind::Alternative)
                     || (self.m().is_standard(self.syms) && receiver.kind == Kind::Native)))
         {
             if !receiver.is_invalid() {
@@ -908,7 +908,7 @@ impl Checker {
     ) -> Option<String> {
         if !matches!(
             receiver.kind,
-            Kind::Record | Kind::Alternative | Kind::Native | Kind::Primitive
+            Kind::Type | Kind::Alternative | Kind::Native | Kind::Primitive
         ) || contract.kind != Kind::Contract
         {
             return None;
@@ -1006,7 +1006,7 @@ impl Checker {
             // The payload of an interface value has a type the interface does not name; one over
             // a native without a `clone` faults when copied (`ownership::Classifier::clonable`).
             Kind::Contract => return !t.is(Builtin::Closeable),
-            // A function value owns its captures and has no `clone`; a record holding one is
+            // A function value owns its captures and has no `clone`; a type holding one is
             // not Clonable either (`ownership::Classifier::clonable`).
             Kind::Function => return false,
             Kind::Primitive => return true,
@@ -1404,8 +1404,7 @@ impl Checker {
     pub(crate) fn methods(&self, receiver: &Ty, name: Name) -> Vec<MethodRef> {
         // A type's own `clone` replaces the structural one: a resource's clone duplicates its
         // handle and returns a `Result`.
-        if self.syms.str(name) == "clone"
-            && matches!(receiver.kind, Kind::Record | Kind::Alternative)
+        if self.syms.str(name) == "clone" && matches!(receiver.kind, Kind::Type | Kind::Alternative)
         {
             let own = self.implemented_methods(receiver, name);
             if !own.is_empty() {
@@ -1615,7 +1614,7 @@ impl Checker {
                 refs.extend(params(&f.params));
                 refs.push(&f.result);
             }
-            DeclKind::Record(r) => refs.extend(params(&r.fields)),
+            DeclKind::Type(r) => refs.extend(params(&r.fields)),
             DeclKind::Alternative(a) => {
                 for c in &a.cases {
                     refs.extend(params(&c.fields));
@@ -1723,7 +1722,7 @@ impl Checker {
         }
         if bound.is(Builtin::Hashable) && float_bits(t).is_some() {
             return format!(
-                "{t_t} does not satisfy Hashable; Float has no Hashable implementation, so wrap it in a record with an Int or String key, or use Decimal",
+                "{t_t} does not satisfy Hashable; Float has no Hashable implementation, so wrap it in a type with an Int or String key, or use Decimal",
                 t_t = t.display(self.syms)
             );
         }
@@ -1731,7 +1730,7 @@ impl Checker {
             && (t.is(Builtin::List) || t.is(Builtin::Map) || t.is(Builtin::Set))
         {
             return format!(
-                "{prefix}collections have no Hashable implementation, so use a record key or join the elements into a String"
+                "{prefix}collections have no Hashable implementation, so use a type as the key or join the elements into a String"
             );
         }
         if bound.is(Builtin::Hashable) && self.holds_resource(t, &mut Vec::new()) {
@@ -1751,7 +1750,7 @@ impl Checker {
                 "{prefix}it is or holds {what}, so it cannot be cloned; move it, or use it in place"
             );
         }
-        if matches!(t.kind, Kind::Record | Kind::Alternative)
+        if matches!(t.kind, Kind::Type | Kind::Alternative)
             && let Some(symbol) = t.symbol()
             && (symbol.native == Native::Source || self.standard_declarations)
         {
@@ -1793,7 +1792,7 @@ pub(crate) fn native_method(
             native: Native::Builtin(native),
         };
     if syms.str(name) == "clone"
-        && (matches!(t.kind, Kind::Record | Kind::Alternative)
+        && (matches!(t.kind, Kind::Type | Kind::Alternative)
             || (t.kind == Kind::Variable && t.bounds().iter().any(implies_clonable))
             || t.kind == Kind::Primitive
             || t.is(Builtin::List)
@@ -1804,7 +1803,7 @@ pub(crate) fn native_method(
         let mut owner = t.clone();
         if matches!(
             t.kind,
-            Kind::Record | Kind::Alternative | Kind::Primitive | Kind::Variable
+            Kind::Type | Kind::Alternative | Kind::Primitive | Kind::Variable
         ) {
             owner = session.standard_symbol("CloneOperations")?.ty(syms);
         }

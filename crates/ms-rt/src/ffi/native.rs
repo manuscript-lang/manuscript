@@ -212,7 +212,7 @@ impl<const N: usize> IntoAbi for [String; N] {
     }
 }
 
-/// An owned runtime string stored inside a record (`String` field), for [`abi_record!`].
+/// An owned runtime string stored inside a record (`String` field), for [`abi_type!`].
 /// Dropping it does not free the string: the record's owner does that.
 #[repr(transparent)]
 pub struct Str(StrVal);
@@ -237,7 +237,7 @@ impl Str {
     }
 }
 
-/// An owned `List[String]` stored inside a record, for [`abi_record!`].
+/// An owned `List[String]` stored inside a record, for [`abi_type!`].
 #[repr(transparent)]
 pub struct StringList(VecVal);
 
@@ -645,7 +645,7 @@ impl Status for StatusCode {
     }
 }
 
-/// An owned `Bytes` value stored inside a record, for [`abi_record!`].
+/// An owned `Bytes` value stored inside a record, for [`abi_type!`].
 #[repr(transparent)]
 pub struct Bytes(VecVal);
 
@@ -665,7 +665,7 @@ impl Bytes {
     }
 }
 
-/// A type that may be a field of an [`abi_record!`]. `release` and `duplicate` are the
+/// A type that may be a field of an [`abi_type!`]. `release` and `duplicate` are the
 /// drop and copy of the slot inside a runtime list or record.
 pub trait AbiSlot: Sized {
     /// Releases what the slot owns.
@@ -758,10 +758,10 @@ impl AbiSlot for StringList {
 
 /// An owned `List[R]` of records, stored inside a record or returned from a native.
 #[repr(transparent)]
-pub struct RecList<R: AbiRecord>(VecVal, PhantomData<R>);
+pub struct TypeList<R: AbiNamedType>(VecVal, PhantomData<R>);
 
-impl<R: AbiRecord> RecList<R> {
-    pub fn new(items: impl IntoIterator<Item = R>) -> RecList<R> {
+impl<R: AbiNamedType> TypeList<R> {
+    pub fn new(items: impl IntoIterator<Item = R>) -> TypeList<R> {
         let mut v = core::mem::MaybeUninit::<VecVal>::uninit();
         // SAFETY: `msrt_list_new` initializes `v`; each pushed record moves into the list.
         unsafe {
@@ -770,7 +770,7 @@ impl<R: AbiRecord> RecList<R> {
                 msrt_list_push(v.as_mut_ptr(), R::desc(), (&raw const item).cast());
                 core::mem::forget(item);
             }
-            RecList(v.assume_init(), PhantomData)
+            TypeList(v.assume_init(), PhantomData)
         }
     }
 
@@ -783,32 +783,32 @@ impl<R: AbiRecord> RecList<R> {
     }
 }
 
-impl<R: AbiRecord> AbiSlot for RecList<R> {
+impl<R: AbiNamedType> AbiSlot for TypeList<R> {
     unsafe fn release(&mut self) {
         // SAFETY: caller contract.
         unsafe { msrt_list_drop(&raw mut self.0, R::desc()) }
     }
-    unsafe fn duplicate(&self) -> RecList<R> {
+    unsafe fn duplicate(&self) -> TypeList<R> {
         let mut v = core::mem::MaybeUninit::<VecVal>::uninit();
         // SAFETY: caller contract; `msrt_list_copy` initializes `v`.
         unsafe {
             msrt_list_copy(&raw const self.0, R::desc(), v.as_mut_ptr());
-            RecList(v.assume_init(), PhantomData)
+            TypeList(v.assume_init(), PhantomData)
         }
     }
 }
 
-impl<R: AbiRecord> AbiType for &RecList<R> {
-    type Raw = *const RecList<R>;
+impl<R: AbiNamedType> AbiType for &TypeList<R> {
+    type Raw = *const TypeList<R>;
 }
 // SAFETY: list arguments are live lists that outlive the call.
-unsafe impl<'a, R: AbiRecord> FromAbi<'a> for &'a RecList<R> {
-    unsafe fn from_raw(raw: *const RecList<R>) -> &'a RecList<R> {
+unsafe impl<'a, R: AbiNamedType> FromAbi<'a> for &'a TypeList<R> {
+    unsafe fn from_raw(raw: *const TypeList<R>) -> &'a TypeList<R> {
         // SAFETY: caller contract.
         unsafe { &*raw }
     }
 }
-impl<R: AbiRecord> IntoAbi for RecList<R> {
+impl<R: AbiNamedType> IntoAbi for TypeList<R> {
     type Raw = VecVal;
     fn into_raw(self) -> VecVal {
         self.0
@@ -978,7 +978,7 @@ unsafe impl FromAbi<'_> for Handler {
     }
 }
 
-/// A runtime object stored inline in a record, which owns it, for [`abi_record!`].
+/// A runtime object stored inline in a record, which owns it, for [`abi_type!`].
 #[repr(transparent)]
 pub struct ObjSlot<T: AbiHandle>(*mut ObjCell<T>);
 
@@ -1280,27 +1280,27 @@ macro_rules! abi_handle {
     };
 }
 
-/// A `repr(C)` record whose fields are all [`AbiSlot`]s; declare it with [`abi_record!`].
+/// A `repr(C)` record whose fields are all [`AbiSlot`]s; declare it with [`abi_type!`].
 ///
 /// # Safety
 /// The type is `repr(C)` with the layout of the Manuscript record and every field is an
-/// [`AbiSlot`]. Only [`abi_record!`] implements it.
-pub unsafe trait AbiRecord: Sized {
+/// [`AbiSlot`]. Only [`abi_type!`] implements it.
+pub unsafe trait AbiNamedType: Sized {
     /// The slot descriptor of the record, for `List[Record]`.
     fn desc() -> &'static TypeDesc;
 }
 
-impl<R: AbiRecord> AbiType for &R {
+impl<R: AbiNamedType> AbiType for &R {
     type Raw = *const R;
 }
 // SAFETY: record arguments are live records that outlive the call.
-unsafe impl<'a, R: AbiRecord> FromAbi<'a> for &'a R {
+unsafe impl<'a, R: AbiNamedType> FromAbi<'a> for &'a R {
     unsafe fn from_raw(raw: *const R) -> &'a R {
         // SAFETY: caller contract.
         unsafe { &*raw }
     }
 }
-impl<R: AbiRecord> IntoAbi for R {
+impl<R: AbiNamedType> IntoAbi for R {
     type Raw = R;
     fn into_raw(self) -> R {
         self
@@ -1308,7 +1308,7 @@ impl<R: AbiRecord> IntoAbi for R {
 }
 
 /// Declares a record type shared with generated code: a `repr(C)` struct whose fields are all
-/// [`AbiSlot`](crate::ffi::AbiSlot)s, usable as `&Rec` arguments and `-> Rec` / `-> out Rec` results of
+/// [`AbiSlot`](crate::ffi::AbiSlot)s, usable as `&Type` arguments and `-> Type` / `-> out Type` results of
 /// [`native!`](crate::native).
 ///
 /// The compiler flattens a record into its fields' leaves with no padding of its own, so a field
@@ -1316,7 +1316,7 @@ impl<R: AbiRecord> IntoAbi for R {
 /// padded `repr(C)` size. Where a field follows a nested record, list the nested fields inline
 /// and test the offset of the field after them with `offset_of!`.
 #[macro_export]
-macro_rules! abi_record {
+macro_rules! abi_type {
     (
         $(#[$m:meta])*
         $vis:vis struct $name:ident { $($fvis:vis $f:ident: $t:ty),* $(,)? }
@@ -1338,7 +1338,7 @@ macro_rules! abi_record {
         }
         #[allow(unsafe_code)]
         // SAFETY: `repr(C)` above; every field is an `AbiSlot` (a bound of the calls below).
-        unsafe impl $crate::ffi::AbiRecord for $name {
+        unsafe impl $crate::ffi::AbiNamedType for $name {
             fn desc() -> &'static $crate::ffi::TypeDesc {
                 // SAFETY (both fns): the runtime passes live slots of this record type.
                 unsafe extern "C" fn release(slot: *mut u8) {
@@ -1433,7 +1433,7 @@ macro_rules! native_signature {
 /// native! {
 ///     fn msstd_path_basename(windows: bool, path: &str) -> String { rules(windows).basename(path) }
 ///     fn msstd_path_relative(windows: bool, base: &str, target: &str) -> Result<String, InvalidInput> { .. }
-///     fn msstd_path_parse(windows: bool, path: &str) -> out PartsRec { .. }
+///     fn msstd_path_parse(windows: bool, path: &str) -> out PartsType { .. }
 /// }
 /// ```
 ///

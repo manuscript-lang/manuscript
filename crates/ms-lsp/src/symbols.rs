@@ -63,7 +63,7 @@ impl Outline<'_> {
         }
         let mut selection_name = name.clone();
         match &decl.kind {
-            DeclKind::Record(_) => kind = CLASS,
+            DeclKind::Type(_) => kind = CLASS,
             DeclKind::Alternative(_) => kind = ENUM,
             DeclKind::Alias(_) => kind = CLASS,
             DeclKind::Interface(_) => kind = INTERFACE,
@@ -79,7 +79,7 @@ impl Outline<'_> {
             _ => {}
         }
         let mut children: Vec<Json> = Vec::new();
-        for field in d.record_fields() {
+        for field in d.type_fields() {
             let r = self.selection(field.pos.offset as usize, syms.str(field.name));
             let start = field.pos.offset as usize;
             let rest = &self.d.text.as_bytes()[start.min(self.d.text.len())..];

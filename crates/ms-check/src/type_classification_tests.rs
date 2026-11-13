@@ -210,7 +210,7 @@ fn shared_phantom_arguments_do_not_expand_into_display_strings() {
     let mut kept = vec![];
     let mut arg = int();
     for _ in 0..30 {
-        let mut branch = Type::new(syms, n("Branch"), n("test/Branch"), Kind::Record);
+        let mut branch = Type::new(syms, n("Branch"), n("test/Branch"), Kind::Type);
         branch.args = vec![arg.clone(), arg];
         arg = Rc::new(branch);
     }
@@ -218,7 +218,7 @@ fn shared_phantom_arguments_do_not_expand_into_display_strings() {
         &mut kept,
         "Phantom",
         "test/Phantom",
-        Kind::Record,
+        Kind::Type,
         vec![],
         vec![arg.clone(), arg],
         vec![int()],
@@ -280,7 +280,7 @@ fn nominal_depth_cutoff_still_allows_sixty_five_active_frames() {
             &mut kept,
             &format!("Layer{depth}"),
             &format!("test/Layer{depth}"),
-            Kind::Record,
+            Kind::Type,
             vec![],
             vec![],
             vec![t],
@@ -301,7 +301,7 @@ fn nominal_types_without_payloads_do_not_need_argument_bindings() {
     let syms = ms_syntax::Names::global();
     let parameter = Rc::new(Type::new(syms, n("T"), n("test/Empty/T"), Kind::Variable));
     let mut kept = vec![];
-    for kind in [Kind::Record, Kind::Alternative] {
+    for kind in [Kind::Type, Kind::Alternative] {
         let empty = nominal(
             &mut kept,
             "Empty",
@@ -312,12 +312,12 @@ fn nominal_types_without_payloads_do_not_need_argument_bindings() {
             vec![],
         );
         let def = empty.def.as_ref().unwrap();
-        // Neither record fields nor case payloads use a parameter. Classification
+        // Neither type fields nor case payloads use a parameter. Classification
         // therefore remains available while unused parameter metadata is being filled.
         let _parameters = def.variables.borrow_mut();
         assert_eq!(
             classifier().class(syms, &empty),
-            if kind == Kind::Record {
+            if kind == Kind::Type {
                 Class::Move
             } else {
                 Class::Copy
@@ -512,22 +512,22 @@ fn declaration_facts_keep_qualified_ids_nominal_rules_and_collection_overrides()
     let syms = ms_syntax::Names::global();
     let close = declared_type(Kind::Contract, "Closeable", "@std/Closeable", vec![]);
     let foreign = declared_type(Kind::Contract, "Closeable", "foreign/Closeable", vec![]);
-    let record = declared_type(Kind::Record, "Decimal", "@std/Decimal", vec![]);
+    let decimal = declared_type(Kind::Type, "Decimal", "@std/Decimal", vec![]);
     let first = declared_type(Kind::Native, "Decimal", "@std/Decimal", vec![]);
     let second = declared_type(Kind::Native, "Same", "second/Same", vec![]);
     let list = declared_type(Kind::Native, "List", "@std/List", vec![close.clone()]);
     let map = declared_type(Kind::Native, "Map", "@std/Map", vec![int(), int()]);
     let mut program = Program {
         methods: vec![
-            trait_fact(&record, None, false),
+            trait_fact(&decimal, None, false),
             trait_fact(&first, None, false),
             trait_fact(&second, Some(foreign), false),
         ],
         ..Program::default()
     };
     let prior = Classifier::new(&program);
-    assert_eq!(prior.class(syms, &record), Class::Move);
-    assert!(!prior.closes_itself(&record));
+    assert_eq!(prior.class(syms, &decimal), Class::Move);
+    assert!(!prior.closes_itself(&decimal));
     // Facts are keyed by the same qualified receiver ID across receiver kinds.
     assert_eq!(prior.class(syms, &first), Class::Copy);
     assert_eq!(prior.class(syms, &second), Class::Move);
@@ -557,7 +557,7 @@ fn shared_first_children_keep_cutoff_and_late_resource_rules() {
             &mut kept,
             &format!("SharedLayer{depth}"),
             &format!("test/SharedLayer{depth}"),
-            Kind::Record,
+            Kind::Type,
             vec![],
             vec![],
             vec![child],
@@ -567,7 +567,7 @@ fn shared_first_children_keep_cutoff_and_late_resource_rules() {
                 &mut kept,
                 "SharedRoot",
                 "test/SharedRoot",
-                Kind::Record,
+                Kind::Type,
                 vec![],
                 vec![],
                 vec![child.clone(), child.clone()],
@@ -588,7 +588,7 @@ fn shared_first_children_keep_cutoff_and_late_resource_rules() {
                 &mut kept,
                 "NativeBoundary",
                 "test/NativeBoundary",
-                Kind::Record,
+                Kind::Type,
                 vec![],
                 vec![],
                 vec![through_native],
@@ -607,7 +607,7 @@ fn shared_first_children_keep_cutoff_and_late_resource_rules() {
         &mut kept,
         "Cycle",
         "test/SharedCycle",
-        Kind::Record,
+        Kind::Type,
         vec![],
         vec![],
         vec![],
@@ -625,7 +625,7 @@ fn shared_first_children_keep_cutoff_and_late_resource_rules() {
         &mut kept,
         "LateResource",
         "test/LateResource",
-        Kind::Record,
+        Kind::Type,
         vec![],
         vec![],
         vec![cycle.clone(), cycle, closeable],
@@ -641,7 +641,7 @@ fn named_native_clone_facts_keep_name_kind_and_result_guards() {
     let ordinary = declared_type(Kind::Native, "Ordinary", "test/Ordinary", vec![]);
     let valid = declared_type(Kind::Native, "Valid", "test/ValidClone", vec![]);
     let wrong = declared_type(Kind::Native, "Wrong", "test/WrongClone", vec![]);
-    let nonnative = declared_type(Kind::Record, "NonNative", "test/NonNativeClone", vec![]);
+    let nonnative = declared_type(Kind::Type, "NonNative", "test/NonNativeClone", vec![]);
     let probe = declared_type(Kind::Native, "NonNative", "test/NonNativeClone", vec![]);
     let file: Arc<str> = Arc::from("clone_decl.ms");
     let parsed =

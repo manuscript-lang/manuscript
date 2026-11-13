@@ -112,7 +112,7 @@ pub enum DeclKind {
     /// Module-level `let name [: Type] = value`.
     Const(ConstDecl),
     /// `type Name:` with `field: Type [= default]` lines.
-    Record(RecordDecl),
+    Type(TypeDecl),
     /// `enum Name:` with bare variant declarations.
     Alternative(AlternativeDecl),
     /// `type Name[T] = Type`: another name for a type expression.
@@ -164,7 +164,7 @@ pub struct ConstDecl {
 
 /// `type Name[T]:` with fields.
 #[derive(Debug, Clone)]
-pub struct RecordDecl {
+pub struct TypeDecl {
     /// Type name.
     pub name: Symbol,
     /// Generic parameters.
@@ -275,7 +275,7 @@ pub struct Case {
     pub fields: Vec<Param>,
 }
 
-/// A parameter, record field, or case payload field.
+/// A parameter, type field, or case payload field.
 #[derive(Debug, Clone)]
 pub struct Param {
     /// Node id.
@@ -669,10 +669,10 @@ pub enum PatternKind {
     /// `[a, b]`.
     List(Vec<Pattern>),
     /// `{x, y: [a, b]}`.
-    Record(Vec<PatternField>),
+    Type(Vec<PatternField>),
 }
 
-/// A field of a record pattern. `{x}` is the field `x` bound to the pattern
+/// A field of a type pattern. `{x}` is the field `x` bound to the pattern
 /// name `x` (positioned at the field).
 #[derive(Debug, Clone)]
 pub struct PatternField {
@@ -709,7 +709,7 @@ impl Stmt {
 pub enum AssignTarget {
     /// A local binding name.
     Name(Symbol),
-    /// A record field (`a.b`); always an [`ExprKind::Member`].
+    /// A type field (`a.b`); always an [`ExprKind::Member`].
     Member(Expr),
 }
 

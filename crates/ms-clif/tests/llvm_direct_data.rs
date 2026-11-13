@@ -813,6 +813,61 @@ pub fn memory_payload_matches_cranelift() {
     assert_eq!((got.code, &got.stdout), (want.code, &want.stdout));
 }
 
+/// An enum whose payload is an optional record of more than eight leaves: the flag and the
+/// record's leaves sit in the enum's slots.
+const OPTIONAL_PAYLOAD: &str = r#"module "d"
+type Wide { a: int8, b: int, c: int, d: int, e: int, f: int, g: int, h: int, i: int }
+alt Holder { Plain(n: int), Maybe(w: opt<Wide>) }
+entry @main
+file 0 "d.ms"
+fn @mk(%a: int8, %n: int) -> Holder inline(never) !0:1:1 {
+b0:
+  %w: Wide = type.new Wide %a, %n, %n, %n, %n, %n, %n, %n, %n !0:2:1
+  %o: opt<Wide> = opt.some %w !0:2:1
+  %h: Holder = alt.new Holder.Maybe %o !0:2:1
+  ret %h
+}
+fn @mkn() -> Holder inline(never) !0:3:1 {
+b0:
+  %o: opt<Wide> = opt.none !0:4:1
+  %h: Holder = alt.new Holder.Maybe %o !0:4:1
+  ret %h
+}
+fn @read(%h: Holder) -> int inline(never) !0:5:1 {
+b0:
+  %o: opt<Wide> = alt.get Holder.Maybe.w %h !0:6:1
+  %p: bool = opt.is_some %o !0:6:1
+  %zero: int = iconst 0 !0:6:1
+  %one: int = iconst 1 !0:6:1
+  %r: int = select %p, %one, %zero !0:6:1
+  ret %r
+}
+fn @main() -> int !0:20:1 {
+b0:
+  %n: int = iconst 7 !0:21:1
+  %o8: opt<int8> = inarrow.opt %n !0:21:1
+  %a: int8 = opt.get %o8 !0:21:1
+  %h: Holder = call @mk(%a, %n) !0:22:1
+  %x: int = call @read(%h) !0:23:1
+  %g: Holder = call @mkn() !0:24:1
+  %y: int = call @read(%g) !0:25:1
+  %ten: int = iconst 10 !0:26:1
+  %t: int = imul %x, %ten !0:26:1
+  %r: int = iadd %t, %y !0:26:1
+  ret %r
+}
+"#;
+
+/// Run from `llvm_direct`'s one test (see above).
+pub fn optional_payload_matches_cranelift() {
+    let Some(opts) = direct() else { return };
+    let want = run_native(OPTIONAL_PAYLOAD, "direct_opt_payload-cranelift");
+    assert_eq!(want.code, 10, "the Cranelift build disagrees");
+    let got = run_llvm(OPTIONAL_PAYLOAD, &opts, "direct_opt_payload");
+    let _ = std::fs::remove_file("ms-keep.ll");
+    assert_eq!((got.code, &got.stdout), (want.code, &want.stdout));
+}
+
 /// An optional record of more than eight leaves, one with a string, and an enum whose slots hold
 /// that string where another case holds an integer.
 const MEMORY_OPTIONAL: &str = r#"module "d"
@@ -1021,6 +1076,153 @@ pub fn unit_slot_matches_cranelift() {
     );
     assert_eq!((got.code, &got.stdout), (want.code, &want.stdout));
     assert_eq!(got.code, 42);
+}
+
+const BOXED_OPT_PROGRAM: &str = r#"module "d"
+entry @main
+file 0 "d.ms"
+type Node { v: int, next: opt<Node> }
+fn @head(%o: opt<Node>) -> int !0:1:1 {
+b0:
+  %some: bool = opt.is_some %o !0:2:1
+  br_if %some, b1(), b2() !0:2:1
+b1():
+  %n: Node = opt.get %o !0:3:1
+  %v: int = type.get Node.v %n !0:3:1
+  ret %v
+b2():
+  %z: int = iconst 0 !0:4:1
+  ret %z
+}
+fn @take(%o: move opt<Node>) -> int !0:10:1 {
+b0:
+  %n: Node = opt.unbox %o !0:11:1
+  %v: int = type.get Node.v %n !0:11:1
+  type.release Node.v %n !0:12:1
+  ret %v
+}
+fn @unw(%o: opt<Node>) -> int !0:15:1 {
+b0:
+  %n: Node = opt.unwrap %o !0:16:1
+  %v: int = type.get Node.v %n !0:16:1
+  drop %n !0:17:1
+  ret %v
+}
+fn @main() -> int !0:20:1 {
+b0:
+  %b0: opt<Node> = opt.none !0:21:1
+  %none: opt<Node> = clone %b0 !0:21:1
+  %three: int = iconst 3 !0:21:1
+  %n1: Node = type.new Node %three, %none !0:21:1
+  %o1: opt<Node> = opt.some %n1 !0:21:1
+  %seven: int = iconst 7 !0:22:1
+  %n2: Node = type.new Node %seven, %o1 !0:22:1
+  %o2: opt<Node> = opt.some %n2 !0:22:1
+  %a: int = call @head(%o2) !0:23:1
+  %n0: opt<Node> = opt.none !0:23:1
+  %b: int = call @head(%n0) !0:23:1
+  %u: int = call @unw(%o2) !0:24:1
+  %c: int = call @take(%o2) !0:24:1
+  %ab: int = iadd %a, %b !0:25:1
+  %ac: int = iadd %ab, %u !0:25:1
+  %r: int = iadd %ac, %c !0:25:1
+  ret %r
+}
+"#;
+
+const BOXED_OPT_MEM_PROGRAM: &str = r#"module "d"
+entry @main
+file 0 "d.ms"
+type Node { v: int, b: int, c: int, d: int, e: int, f: int, g: int, h: int, name: str, next: opt<Node> }
+fn @head(%o: opt<Node>) -> int !0:1:1 {
+b0:
+  %some: bool = opt.is_some %o !0:2:1
+  br_if %some, b1(), b2() !0:2:1
+b1():
+  %n: Node = opt.get %o !0:3:1
+  %v: int = type.get Node.v %n !0:3:1
+  ret %v
+b2():
+  %z: int = iconst 0 !0:4:1
+  ret %z
+}
+fn @take(%o: move opt<Node>) -> int !0:10:1 {
+b0:
+  %n: Node = opt.unbox %o !0:11:1
+  %v: int = type.get Node.v %n !0:11:1
+  type.release Node.v %n !0:12:1
+  ret %v
+}
+fn @unw(%o: opt<Node>) -> int !0:15:1 {
+b0:
+  %n: Node = opt.unwrap %o !0:16:1
+  %v: int = type.get Node.v %n !0:16:1
+  drop %n !0:17:1
+  ret %v
+}
+fn @main() -> int !0:20:1 {
+b0:
+  %b0: opt<Node> = opt.none !0:21:1
+  %none: opt<Node> = clone %b0 !0:21:1
+  %three: int = iconst 3 !0:21:1
+  %l1: str = str "one" !0:21:1
+  %s1: str = clone %l1 !0:21:1
+  %n1: Node = type.new Node %three, %three, %three, %three, %three, %three, %three, %three, %s1, %none !0:21:1
+  %o1: opt<Node> = opt.some %n1 !0:21:1
+  %seven: int = iconst 7 !0:22:1
+  %l2: str = str "two" !0:22:1
+  %s2: str = clone %l2 !0:22:1
+  %n2: Node = type.new Node %seven, %seven, %seven, %seven, %seven, %seven, %seven, %seven, %s2, %o1 !0:22:1
+  %o2: opt<Node> = opt.some %n2 !0:22:1
+  %a: int = call @head(%o2) !0:23:1
+  %n0: opt<Node> = opt.none !0:23:1
+  %b: int = call @head(%n0) !0:23:1
+  %u: int = call @unw(%o2) !0:24:1
+  %c: int = call @take(%o2) !0:24:1
+  %ab: int = iadd %a, %b !0:25:1
+  %ac: int = iadd %ab, %u !0:25:1
+  %r: int = iadd %ac, %c !0:25:1
+  ret %r
+}
+"#;
+
+/// A self-containing optional (a nullable pointer to a block): build, presence, read and unbox;
+/// run from `llvm_direct`'s one test.
+pub fn boxed_optionals_match_cranelift() {
+    let Some(opts) = direct() else { return };
+    let want = run_native(BOXED_OPT_PROGRAM, "direct_boxed_opt-cranelift");
+    let got = run_llvm(BOXED_OPT_PROGRAM, &opts, "direct_boxed_opt");
+    let ir = std::fs::read_to_string("ms-keep.ll").unwrap();
+    let _ = std::fs::remove_file("ms-keep.ll");
+    for f in ["head", "take", "unw"] {
+        let header = ir
+            .lines()
+            .find(|l| l.starts_with("define") && l.contains(&format!("@\"{f}#")))
+            .unwrap_or_else(|| panic!("no {f} in the IR"));
+        let direct = header.contains("%a0_0") || header.contains("dereferenceable");
+        assert!(direct, "{f} was translated: {header}");
+    }
+    assert_eq!((got.code, &got.stdout), (want.code, &want.stdout));
+    assert_eq!(got.code, 7 + 7 + 7);
+}
+
+/// The same with a payload large enough to live in memory.
+pub fn boxed_optionals_of_records_in_memory_match_cranelift() {
+    let Some(opts) = direct() else { return };
+    let want = run_native(BOXED_OPT_MEM_PROGRAM, "direct_boxed_opt_mem-cranelift");
+    let got = run_llvm(BOXED_OPT_MEM_PROGRAM, &opts, "direct_boxed_opt_mem");
+    let ir = std::fs::read_to_string("ms-keep.ll").unwrap();
+    let _ = std::fs::remove_file("ms-keep.ll");
+    for f in ["head", "take", "unw"] {
+        let header = ir
+            .lines()
+            .find(|l| l.starts_with("define") && l.contains(&format!("@\"{f}#")))
+            .unwrap_or_else(|| panic!("no {f} in the IR"));
+        let direct = header.contains("%a0_0") || header.contains("dereferenceable");
+        assert!(direct, "{f} was translated: {header}");
+    }
+    assert_eq!((got.code, &got.stdout), (want.code, &want.stdout));
+    assert_eq!(got.code, 7 + 7 + 7);
 }
 
 /// A type holding a type, in memory, behaves like the Cranelift build (the struct shape itself

@@ -12,7 +12,7 @@ use std::rc::Rc;
 /// Whether a member is a field or a method.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum MemberKind {
-    /// A record field (or a duration unit of `Int`).
+    /// A type field (or a duration unit of `Int`).
     Field,
     /// A method resolved with the same rules as calls.
     Method,
@@ -73,11 +73,11 @@ pub fn members(
     }
     let mut result: Vec<Member> = Vec::new();
     let mut field_names: HashSet<Name> = HashSet::new();
-    // An opaque record's fields are visible only in its declaring file.
+    // An opaque type's fields are visible only in its declaring file.
     let hidden = receiver
         .opaque_module()
         .is_some_and(|declaring| module != Some(declaring));
-    if receiver.kind == Kind::Record && !hidden {
+    if receiver.kind == Kind::Type && !hidden {
         for field in fields(receiver) {
             if field.name == n("to_string") {
                 continue;

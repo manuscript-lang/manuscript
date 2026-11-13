@@ -102,7 +102,7 @@ test('noncallable arrays, reference indexes and unrelated pure rendering stay un
     if (!['fn', 'method'].includes(row[1])) assert.deepEqual(row, stripped.e[i], e.key);
     row[10].forEach((slot, j) => assert.deepEqual(slot[3].map(k => p.D.entities[k].key), e.slots[j].refs));
     if (row[11]) assert.deepEqual(row[11][1].map(k => p.D.entities[k].key), e.result.refs);
-    if (!['record', 'alternative', 'interface'].includes(row[1])) continue;
+    if (!['type', 'alternative', 'interface'].includes(row[1])) continue;
     p.S.sel = e.key;
     withoutModes.S.sel = e.key;
     assert.equal(p.types(), withoutModes.types(), e.key + ' type graph');

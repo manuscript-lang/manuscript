@@ -131,7 +131,7 @@ fn parsed_exported_names(syms: ms_syntax::Names, source: &str) -> Vec<Export> {
         .filter_map(|decl| match decl.kind {
             DeclKind::Fn(function) => Some((function.name, false)),
             DeclKind::Const(constant) => Some((constant.name, false)),
-            DeclKind::Record(record) => Some((record.name, true)),
+            DeclKind::Type(decl) => Some((decl.name, true)),
             DeclKind::Alternative(alternative) => Some((alternative.name, true)),
             DeclKind::Alias(alias) => Some((alias.name, true)),
             DeclKind::Interface(interface) => Some((interface.name, true)),

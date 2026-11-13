@@ -699,7 +699,7 @@ impl Checker {
         if rt.is_invalid() {
             return i;
         }
-        if rt.kind == Kind::Record
+        if rt.kind == Kind::Type
             && self.syms.str(name) != "to_string"
             && let Some(f) = field_of(&rt, name)
         {

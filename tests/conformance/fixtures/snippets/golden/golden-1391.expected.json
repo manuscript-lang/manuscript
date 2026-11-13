@@ -9,7 +9,7 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "a type declares only record fields; write its methods after it as 'fn Data.name(...)'",
+        "message": "a type declares only fields; write its methods after it as 'fn Data.name(...)'",
         "position": {
           "file": "golden-1391.ms",
           "line": 4,
@@ -27,7 +27,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1391.ms:4:5: parse: a type declares only record fields; write its methods after it as 'fn Data.name(...)'\n   |\n 4 |     fn read() Int:\n   |     ^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1391.ms:4:5: parse: a type declares only fields; write its methods after it as 'fn Data.name(...)'\n   |\n 4 |     fn read() Int:\n   |     ^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }
