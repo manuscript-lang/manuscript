@@ -50,6 +50,7 @@ file 0 "d.ms"
 alt Shape { Circle(r: float), Rect(w: int, h: int), Dot }
 alt Pick { Left(x: int), Right(y: float, z: int) }
 alt Wrap { Flag(on: bool, n: int), Items(l: list<int>) }
+alt Narrow { A(n: int8), B(w: uint16, v: int32) }
 fn @area(%s: Shape) -> int !0:1:1 {
 b0:
   %t: int = alt.tag %s !0:2:1
@@ -165,6 +166,31 @@ b2():
   %len: int = list.len %l !0:59:1
   ret %len
 }
+fn @narrow(%s: Narrow) -> int !0:80:1 {
+b0:
+  %t: int = alt.tag %s !0:81:1
+  %zero: int = iconst 0 !0:81:1
+  %isa: bool = icmp.eq %t, %zero !0:81:1
+  br_if %isa, b1(), b2() !0:81:1
+b1():
+  %n: int8 = alt.get Narrow.A.n %s !0:82:1
+  %three: int8 = iconst 3 !0:82:1
+  %is3: bool = icmp.eq %n, %three !0:82:1
+  %r: int = b2i %is3 !0:82:1
+  ret %r
+b2():
+  %w: uint16 = alt.get Narrow.B.w %s !0:83:1
+  %f: int32 = alt.get Narrow.B.v %s !0:83:1
+  %lim: int32 = iconst 1 !0:83:1
+  %hi: bool = icmp.gt %f, %lim !0:83:1
+  %nine: uint16 = iconst 9 !0:83:1
+  %isw: bool = icmp.eq %w, %nine !0:83:1
+  %both: bool = and %hi, %isw !0:83:1
+  %k: int = b2i %both !0:83:1
+  %ten: int = iconst 10 !0:83:1
+  %r2: int = iadd %k, %ten !0:83:1
+  ret %r2
+}
 fn @main() -> int !0:60:1 {
 b0:
   %z: int = iconst 0 !0:61:1
@@ -213,8 +239,17 @@ b3():
   drop %w1 !0:73:1
   %ll: int = iadd %l1, %l2 !0:73:1
   %u3: int = iadd %u, %ll !0:73:1
+  %n3: int8 = iconst 3 !0:74:1
+  %na: Narrow = alt.new Narrow.A %n3 !0:74:1
+  %w9: uint16 = iconst 9 !0:74:1
+  %h: int32 = iconst 5 !0:74:1
+  %nb: Narrow = alt.new Narrow.B %w9, %h !0:74:1
+  %m1: int = call @narrow(%na) !0:74:1
+  %m2: int = call @narrow(%nb) !0:74:1
+  %mm: int = iadd %m1, %m2 !0:74:1
+  %u4: int = iadd %u3, %mm !0:74:1
   %r1: int = iadd %acc, %pq !0:72:1
-  %r2: int = iadd %r1, %u3 !0:72:1
+  %r2: int = iadd %r1, %u4 !0:72:1
   ret %r2
 }
 "#;
@@ -228,7 +263,7 @@ pub fn optionals_and_alternatives_match_cranelift() {
     let ir = std::fs::read_to_string("ms-keep.ll").unwrap();
     let _ = std::fs::remove_file("ms-keep.ll");
     for f in [
-        "area", "make", "find", "orelse", "present", "unpick", "wrap_len",
+        "area", "make", "find", "orelse", "present", "unpick", "wrap_len", "narrow",
     ] {
         let header = ir
             .lines()
