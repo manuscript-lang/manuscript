@@ -1557,6 +1557,23 @@ fn direct_shim(g: &mut Gen, kind: Glue, ty: Ty, f: usize, native: bool) {
     });
 }
 
+/// Declares the shared blocks of the payloadless cases of boxed enum `ty` while the LLVM module is
+/// still set, so they are exported (`Gen::private`): the clone glue addresses them.
+fn declare_unit_blocks(g: &mut Gen, ty: Ty) {
+    let ms_mir::types::TyKind::Alt(a) = g.m.types.kind(ty).clone() else {
+        return;
+    };
+    let Some(crate::layout::AltRepr::Boxed { block, .. }) = g.lay.shape(ty).alt.clone() else {
+        return;
+    };
+    let size = crate::layout::mem_layout(&block).size as usize;
+    for (c, case) in g.m.alts[a.index()].cases.iter().enumerate() {
+        if case.fields.is_empty() {
+            g.unit_block(a, c, size);
+        }
+    }
+}
+
 /// Emits the closure glue `kind` under its leaf symbol `sym`: the closure header and the runtime
 /// call it through a pointer, so it has no native twin.
 fn direct_closure_glue(g: &mut Gen, kind: Glue, id: FuncId, sym: String) {
@@ -1599,11 +1616,12 @@ fn direct_glue(g: &mut Gen, kind: Glue, ty: Ty) {
     if crate::glue_llvm::closure::is_closure(kind) {
         return direct_closure_glue(g, kind, id, sym);
     }
-    // The descriptor a clone names is declared while the LLVM module is still set, so it is
-    // exported (`Gen::private`); the emitter below runs with the module taken.
-    if matches!(kind, Glue::Clone | Glue::Drop)
-        && matches!(g.m.types.kind(ty), ms_mir::types::TyKind::Obj(..))
-    {
+    if kind == Glue::Clone {
+        declare_unit_blocks(g, ty);
+    }
+    // Data the glue addresses is declared while the LLVM module still exists: it is exported
+    // only then.
+    if matches!(kind, Glue::Drop | Glue::Clone) && matches!(g.m.types.kind(ty), TyKind::Obj(..)) {
         g.typedesc(ty);
     }
     let mut llvm = g.llvm.take().expect("checked above");

@@ -632,6 +632,111 @@ pub fn boxed_enums_match_cranelift() {
     assert_eq!(got.code, 9 + 4 + 9 + 4 + 5);
 }
 
+const ENUM_CLONE_PROGRAM: &str = r#"module "d"
+entry @main
+file 0 "d.ms"
+alt Tree { Leaf, Node(l: Tree, v: int, r: Tree), Tag(s: str, n: int) }
+alt Chain { Nil, Cons(h: str, t: Chain) }
+alt Name { Text(s: str), Count(n: int) }
+fn @value(%t: Tree) -> int inline(never) !0:1:1 {
+b0:
+  %k: int = alt.tag %t !0:2:1
+  switch %k [1: b1(), 2: b2()] default b3() !0:2:1
+b1():
+  %v: int = alt.get Tree.Node.v %t !0:3:1
+  ret %v
+b2():
+  %n: int = alt.get Tree.Tag.n %t !0:4:1
+  ret %n
+b3():
+  %z: int = iconst 0 !0:5:1
+  ret %z
+}
+fn @depth(%c: Chain) -> int inline(never) !0:10:1 {
+b0:
+  %k: int = alt.tag %c !0:11:1
+  switch %k [1: b1()] default b2() !0:11:1
+b1():
+  %t: Chain = alt.get Chain.Cons.t %c !0:12:1
+  %d: int = call @depth(%t) !0:12:1
+  %one: int = iconst 1 !0:12:1
+  %r: int = iadd %d, %one !0:12:1
+  ret %r
+b2():
+  %z: int = iconst 0 !0:13:1
+  ret %z
+}
+fn @count(%n: Name) -> int inline(never) !0:20:1 {
+b0:
+  %k: int = alt.tag %n !0:21:1
+  switch %k [1: b1()] default b2() !0:21:1
+b1():
+  %v: int = alt.get Name.Count.n %n !0:22:1
+  ret %v
+b2():
+  %z: int = iconst 100 !0:23:1
+  ret %z
+}
+fn @main() -> int !0:40:1 {
+b0:
+  %lit: str = str "a long string that is certainly stored on the heap" !0:41:1
+  %l1: Tree = alt.new Tree.Leaf !0:42:1
+  %l2: Tree = alt.new Tree.Leaf !0:42:1
+  %nine: int = iconst 9 !0:42:1
+  %node: Tree = alt.new Tree.Node %l1, %nine, %l2 !0:42:1
+  %s1: str = clone %lit !0:43:1
+  %four: int = iconst 4 !0:43:1
+  %tag: Tree = alt.new Tree.Tag %s1, %four !0:43:1
+  %nc: Tree = clone %node !0:44:1
+  %tc: Tree = clone %tag !0:44:1
+  drop %node !0:44:1
+  drop %tag !0:44:1
+  %a: int = call @value(%nc) !0:45:1
+  %b: int = call @value(%tc) !0:45:1
+  drop %nc !0:45:1
+  drop %tc !0:45:1
+  %n1: Chain = alt.new Chain.Nil !0:46:1
+  %h1: str = clone %lit !0:46:1
+  %c1: Chain = alt.new Chain.Cons %h1, %n1 !0:46:1
+  %h2: str = clone %lit !0:46:1
+  %c2: Chain = alt.new Chain.Cons %h2, %c1 !0:46:1
+  %h3: str = clone %lit !0:46:1
+  %c3: Chain = alt.new Chain.Cons %h3, %c2 !0:46:1
+  %cc: Chain = clone %c3 !0:47:1
+  drop %c3 !0:47:1
+  %d: int = call @depth(%cc) !0:47:1
+  drop %cc !0:47:1
+  %s2: str = clone %lit !0:48:1
+  %tx: Name = alt.new Name.Text %s2 !0:48:1
+  %ct: Name = alt.new Name.Count %nine !0:48:1
+  %txc: Name = clone %tx !0:48:1
+  %ctc: Name = clone %ct !0:48:1
+  drop %tx !0:48:1
+  %e: int = call @count(%txc) !0:49:1
+  %f: int = call @count(%ctc) !0:49:1
+  drop %txc !0:49:1
+  drop %ct !0:49:1
+  drop %ctc !0:49:1
+  %ab: int = iadd %a, %b !0:50:1
+  %abd: int = iadd %ab, %d !0:50:1
+  %abe: int = iadd %abd, %e !0:50:1
+  %r: int = iadd %abe, %f !0:50:1
+  ret %r
+}
+"#;
+
+/// Clones of boxed and inline enums (a payloadless case, a string payload, a chain copied in a
+/// loop); the originals are dropped before the copies are read. Run from `llvm_direct`'s one test.
+pub fn enum_clones_match_cranelift() {
+    let Some(opts) = direct() else { return };
+    let want = run_native(ENUM_CLONE_PROGRAM, "direct_enum_clone-cranelift");
+    let got = run_llvm(ENUM_CLONE_PROGRAM, &opts, "direct_enum_clone");
+    let _ = std::fs::remove_file("ms-keep.ll");
+    assert_eq!((got.code, &got.stdout), (want.code, &want.stdout));
+    // 9 + 4 + 3 + 100 + 9
+    assert_eq!(got.code, 125);
+}
+
 /// An `Int8` sum that leaves the type's range faults like Cranelift, and one inside it does not.
 fn narrow_sum(x: i64, y: i64) -> String {
     format!(
@@ -670,4 +775,43 @@ pub fn narrow_sums_fault_like_cranelift() {
         assert_eq!(want.code, if name == "fits" { 1 } else { 67 }, "{name}");
     }
     let _ = std::fs::remove_file("ms-keep.ll");
+}
+
+/// A slot of `unit` (a result that holds nothing) is still an address that is written and read.
+const UNIT_SLOT_PROGRAM: &str = r#"module "d"
+entry @main
+file 0 "d.ms"
+fn @f(%a: int) -> int !0:1:1 {
+b0:
+  %s: ptr = slot unit !0:2:1
+  %u: unit = unit !0:3:1
+  store %s, %u !0:4:1
+  %v: unit = load unit %s !0:5:1
+  %r: int = iadd %a, %a !0:6:1
+  ret %r
+}
+fn @main() -> int !0:10:1 {
+b0:
+  %a: int = iconst 21 !0:11:1
+  %r: int = call @f(%a) !0:12:1
+  ret %r
+}
+"#;
+
+pub fn unit_slot_matches_cranelift() {
+    let Some(opts) = direct() else { return };
+    let want = run_native(UNIT_SLOT_PROGRAM, "direct_unit_slot-cranelift");
+    let got = run_llvm(UNIT_SLOT_PROGRAM, &opts, "direct_unit_slot");
+    let ir = std::fs::read_to_string("ms-keep.ll").unwrap();
+    let _ = std::fs::remove_file("ms-keep.ll");
+    let header = ir
+        .lines()
+        .find(|l| l.starts_with("define") && l.contains("@\"f#"))
+        .expect("no f in the IR");
+    assert!(
+        header.contains("%a0_0") || header.contains("dereferenceable") || header.contains("i64 %"),
+        "f was translated: {header}"
+    );
+    assert_eq!((got.code, &got.stdout), (want.code, &want.stdout));
+    assert_eq!(got.code, 42);
 }
