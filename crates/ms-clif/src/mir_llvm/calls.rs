@@ -1,9 +1,11 @@
 //! Direct calls between functions emitted from MIR.
 
 use super::attrs::pure_attrs;
-use super::{Area, Cx, Vals, leaves, ret_attr, ret_ty};
-use crate::llvm_build::{FnBuilder, Types, Val};
+use super::{Area, Cx, Vals, leaves, records, ret_attr, ret_ty};
+use crate::abi_llvm::{Pass, Ret, Signature};
+use crate::llvm_build::{FnBuilder, Ty as LTy, Types, Val};
 use ms_mir::ir::{Imm, Inst, Op};
+use ms_mir::types::Ty;
 
 pub(super) const AREA: Area = Area {
     handles,
@@ -21,21 +23,58 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         .res
         .map(|r| vals[&r.index()].clone())
         .unwrap_or_default();
-    // A single-leaf result is named in place.
-    if let [r] = out.as_slice() {
-        b.name_next(r);
-    }
     let Imm::Func(c) = inst.imm else { return };
     let callee = &m.funcs[c.index()];
     let sym = (cx.symbol_of)(c.index());
-    let ret = ret_ty(lay, callee.ret);
-    let attr = ret_attr(lay, callee.ret);
+    let attrs = pure_attrs(m, lay, cx.native, c.index(), &mut cx.memo).unwrap_or("");
+    let pure = !attrs.is_empty();
+    if cx.native.contains(&c.index()) {
+        let sig = Signature::of(lay, &callee.params, callee.ret);
+        // A result larger than two registers comes back through a slot the caller owns.
+        let slot = match sig.result {
+            Ret::Sret(_) => Some(records::result_slot(b, lay, callee.ret, &out)),
+            Ret::Scalars(_) => None,
+        };
+        let mut args: Vec<(Val, &str)> = slot.iter().map(|s| (s.clone(), "")).collect();
+        for ((p, a), pass) in callee.params.iter().zip(&inst.args).zip(&sig.passes) {
+            match pass {
+                Pass::Scalars(_) => {
+                    let abi = records::abi_leaves(b, lay, p.ty, vals, *a);
+                    for (v, (_, at)) in abi.into_iter().zip(leaves(lay, p.ty)) {
+                        args.push((v, at));
+                    }
+                }
+                Pass::Indirect(..) => args.push((records::spill(b, lay, p.ty, vals, *a), "")),
+            }
+        }
+        cx.decls.push((sym.clone(), sig.declare(&sym, attrs)));
+        let ret = match &slot {
+            Some(_) => LTy::Void,
+            None => ret_ty(lay, callee.ret),
+        };
+        let attr = if slot.is_some() {
+            ""
+        } else {
+            ret_attr(lay, callee.ret)
+        };
+        match &slot {
+            Some(slot) => {
+                b.call(&ret, attr, &sym, &args);
+                records::load_result(b, lay, callee.ret, slot, &out);
+            }
+            None => finish_call(b, lay, callee.ret, (&ret, attr, pure), &sym, &args, &out),
+        }
+        return;
+    }
     let mut args: Vec<(Val, &str)> = Vec::new();
     for (p, a) in callee.params.iter().zip(&inst.args) {
-        for (v, (_, at)) in vals[&a.index()].iter().zip(leaves(lay, p.ty)) {
-            args.push((v.clone(), at));
+        let abi = records::abi_leaves(b, lay, p.ty, vals, *a);
+        for (v, (_, at)) in abi.into_iter().zip(leaves(lay, p.ty)) {
+            args.push((v, at));
         }
     }
+    let ret = ret_ty(lay, callee.ret);
+    let attr = ret_attr(lay, callee.ret);
     let formals: Vec<String> = args
         .iter()
         .map(|(v, a)| format!("{}{a}", Types::default().text(&v.ty)))
@@ -43,22 +82,41 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     cx.decls.push((
         sym.clone(),
         format!(
-            "declare {attr}{} @\"{sym}\"({}){}",
+            "declare {attr}{} @\"{sym}\"({}){attrs}",
             Types::default().text(&ret),
             formals.join(", "),
-            pure_attrs(m, lay, c.index(), &mut cx.memo).unwrap_or("")
         ),
     ));
+    finish_call(b, lay, callee.ret, (&ret, attr, pure), &sym, &args, &out);
+}
+
+/// Writes the call and names its results `out`.
+#[allow(clippy::too_many_arguments)]
+fn finish_call(
+    b: &mut FnBuilder,
+    lay: &crate::layout::Layouts,
+    result: Ty,
+    (ret, attr, pure): (&LTy, &str, bool),
+    sym: &str,
+    args: &[(Val, &str)],
+    out: &[Val],
+) {
     // A pure callee cannot fault, so its call sites need no fault frame of their own.
-    let pure = pure_attrs(m, lay, c.index(), &mut cx.memo).is_some();
     let call = |b: &mut FnBuilder| {
         if pure {
-            b.call_pure(&ret, attr, &sym, &args)
+            b.call_pure(ret, attr, sym, args)
         } else {
-            b.call(&ret, attr, &sym, &args)
+            b.call(ret, attr, sym, args)
         }
     };
-    if out.len() <= 1 {
+    if result == Ty::PTR || records::is_mem(lay, result) {
+        // The result is a `ptr` or a record in memory, rebuilt from the call's result.
+        let r = call(b).expect("a result");
+        records::call_result(b, lay, result, r, out);
+    } else if out.len() <= 1 {
+        if let [r] = out {
+            b.name_next(r);
+        }
         call(b);
     } else {
         let t = call(b).expect("a tuple result");

@@ -1,9 +1,10 @@
 //! Function attributes proven from MIR: which functions are pure and which always return.
 
 use super::{AREAS, Module, supports};
+use crate::abi_llvm::{Pass, Ret, Signature};
 use crate::layout::Layouts;
 use ms_mir::ir::{Imm, Op};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 /// Attributes LLVM cannot always infer, for a function with no memory access or fault: its result
 /// depends on its arguments alone. A function across a unit boundary is only a `declare`, so the
@@ -12,10 +13,11 @@ use std::collections::HashMap;
 pub(super) fn pure_attrs(
     m: &Module,
     lay: &Layouts,
+    native: &HashSet<usize>,
     idx: usize,
     memo: &mut HashMap<usize, Option<bool>>,
 ) -> Option<&'static str> {
-    let terminates = pure_terminates(m, lay, idx, memo)?;
+    let terminates = pure_terminates(m, lay, native, idx, memo)?;
     Some(if terminates {
         " nounwind willreturn nofree nosync norecurse memory(none)"
     } else {
@@ -28,6 +30,7 @@ pub(super) fn pure_attrs(
 fn pure_terminates(
     m: &Module,
     lay: &Layouts,
+    native: &HashSet<usize>,
     idx: usize,
     memo: &mut HashMap<usize, Option<bool>>,
 ) -> Option<bool> {
@@ -37,7 +40,13 @@ fn pure_terminates(
     // A call back into a function being analysed is recursion: pure, but it may not return.
     memo.insert(idx, Some(false));
     let f = &m.funcs[idx];
-    let verdict = if supports(m, lay, f) {
+    // A native function reads its aggregate parameters through pointers: not `memory(none)`.
+    let reads_memory = native.contains(&idx) && {
+        let sig = Signature::of(lay, &f.params, f.ret);
+        matches!(sig.result, Ret::Sret(_))
+            || sig.passes.iter().any(|p| matches!(p, Pass::Indirect(..)))
+    };
+    let verdict = if !reads_memory && supports(m, lay, f) {
         let rpo = f.rpo();
         let mut order = vec![usize::MAX; f.blocks.len()];
         for (k, b) in rpo.iter().enumerate() {
@@ -57,7 +66,7 @@ fn pure_terminates(
                     continue;
                 }
                 let Imm::Func(c) = i.imm else { continue };
-                match pure_terminates(m, lay, c.index(), memo) {
+                match pure_terminates(m, lay, native, c.index(), memo) {
                     Some(t) => terminates &= t,
                     None => pure = false,
                 }
