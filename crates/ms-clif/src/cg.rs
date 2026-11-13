@@ -1291,14 +1291,15 @@ fn direct_function(g: &mut Gen, i: usize, f: &Func) -> bool {
     } else {
         (0, f.loc.line)
     };
+    let plan = direct_plan(g, f);
+    let syms = ModuleSymbols(&g.module, &g.locs, &g.scopes, &g.m.externs);
     let funcs = &g.funcs;
     let symbol_of = |k: usize| syms.symbol_of(funcs[k]);
     let m = g.m;
     let lay = &g.lay;
     let mut llvm = g.llvm.take().expect("checked above");
-    let checks = g.opts.checks;
     llvm.add_direct(&sym, &f.name, fn_loc, exported, |env| {
-        crate::mir_llvm::emit(m, lay, i, f, checks, env, &symbol_of)
+        crate::mir_llvm::emit(m, lay, i, f, &plan, env, &symbol_of)
     });
     g.llvm = Some(llvm);
     g.llvm_funcs.push(LlvmFn {
@@ -1309,6 +1310,44 @@ fn direct_function(g: &mut Gen, i: usize, f: &Func) -> bool {
         line: f.loc.line,
     });
     true
+}
+
+/// The glue `f`'s instructions refer to, declared now so that emission can name it: closure glue
+/// is queued for generation like any other.
+fn direct_plan(g: &mut Gen, f: &Func) -> crate::mir_llvm::Plan {
+    use ms_mir::ir::{Imm, Op};
+    let mut plan = crate::mir_llvm::Plan {
+        checks: g.opts.checks,
+        framed: crate::lower::framed_closure_objects(g.m, f),
+        ..Default::default()
+    };
+    for bd in &f.blocks {
+        for i in &bd.insts {
+            let (Op::ClosureNew, Imm::Func(c)) = (i.op, i.imm) else {
+                continue;
+            };
+            let framed = i.res.is_some_and(|r| plan.framed.contains(&r.index()));
+            let std::collections::hash_map::Entry::Vacant(slot) =
+                plan.closures.entry((c.index(), framed))
+            else {
+                continue;
+            };
+            let clone = g.glue(Glue::ClosureClone(c.0), Ty::UNIT);
+            let drop = g.glue(
+                if framed {
+                    Glue::ClosureDropFramed(c.0)
+                } else {
+                    Glue::ClosureDrop(c.0)
+                },
+                Ty::UNIT,
+            );
+            slot.insert(crate::mir_llvm::ClosureSyms {
+                clone: symbol_of(g, clone),
+                drop: symbol_of(g, drop),
+            });
+        }
+    }
+    plan
 }
 
 /// Emits the glue `kind` for `ty` straight to LLVM IR; `false` leaves it to the Cranelift

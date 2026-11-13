@@ -24,6 +24,25 @@ use ms_mir::ir::{Func, Imm, Inst, Mode, Module, Op, Target, Term};
 use ms_mir::types::{Ty, TyKind};
 use std::collections::HashMap;
 
+/// What a function needs from the module before it is emitted: the symbols of the glue its
+/// instructions refer to, which the driver declares (glue is queued for generation).
+#[derive(Default)]
+pub struct Plan {
+    /// Whether bounds checks are emitted.
+    pub checks: bool,
+    /// The `closure.new` results that live in this function's frame (nothing escapes).
+    pub framed: std::collections::HashSet<usize>,
+    /// Clone and drop glue symbols of a closure's object, by the closure function and whether its
+    /// object is in a frame.
+    pub closures: HashMap<(usize, bool), ClosureSyms>,
+}
+
+/// The glue entries a closure object carries in its header.
+pub struct ClosureSyms {
+    pub clone: String,
+    pub drop: String,
+}
+
 /// A finished function: pieces of the `define` line, the body, and the callees it declares.
 pub struct Emitted {
     /// Return type with its attributes (`void` for `Unit`).
@@ -143,11 +162,7 @@ fn area_of(op: Op) -> Option<&'static Area> {
 
 /// Whether stage 1 can emit `f`.
 pub fn supports(m: &Module, lay: &Layouts, f: &Func) -> bool {
-    if !matches!(f.kind, ms_mir::ir::FuncKind::Normal)
-        || !f.scopes.is_empty()
-        || !f.noalias.is_empty()
-        || !signature_ok(lay, &f.params, f.ret)
-    {
+    if !f.scopes.is_empty() || !f.noalias.is_empty() || !signature_ok(lay, &f.params, f.ret) {
         return false;
     }
     let ty_ok = |v| supported_ty(lay, f.ty(v));
@@ -203,6 +218,7 @@ struct Cx<'a> {
     /// Fault call sites numbered so far in the module.
     sites: u32,
     symbol_of: &'a dyn Fn(usize) -> String,
+    plan: &'a Plan,
     /// Which callees are pure, and whether they return (see [`pure_attrs`]).
     memo: HashMap<usize, Option<bool>>,
     /// `(symbol, declare line)` of each callee.
@@ -240,7 +256,7 @@ pub fn emit(
     lay: &Layouts,
     idx: usize,
     f: &Func,
-    checks: bool,
+    plan: &Plan,
     env: &mut DirectEnv,
     symbol_of: &dyn Fn(usize) -> String,
 ) -> Emitted {
@@ -290,6 +306,7 @@ pub fn emit(
                 .push((bb.index(), t.args.clone()))
         });
     }
+    let checks = plan.checks;
     let mut cx = Cx {
         m,
         f,
@@ -297,6 +314,7 @@ pub fn emit(
         checks,
         sites: *env.sites,
         symbol_of,
+        plan,
         memo: HashMap::new(),
         decls: Vec::new(),
         block: 0,
