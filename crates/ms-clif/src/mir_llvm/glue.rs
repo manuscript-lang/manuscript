@@ -374,8 +374,3 @@ pub(super) fn drop_leaves(
     drop_core(cx, b, ty, &vals, v, free, cont);
     own_kind(cx.lay, ty) == OwnKind::Str
 }
-
-/// Whether dropping a value of `ty` starts a new block.
-pub(super) fn drop_splits(lay: &Layouts, ty: Ty) -> usize {
-    usize::from(own_kind(lay, ty) == OwnKind::Str)
-}
