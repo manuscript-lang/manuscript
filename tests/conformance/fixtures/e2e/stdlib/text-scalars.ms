@@ -7,8 +7,7 @@ import (
 
 fn read_all(text: String) List[String]!:
 	var out: List[String] = []
-	var scalars = scalars(text)
-	for scalar in scalars:
+	for scalar in scalars(text):
 		out.append(scalar)
 	return ok(out)
 
