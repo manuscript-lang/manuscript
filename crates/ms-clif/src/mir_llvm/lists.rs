@@ -1,8 +1,8 @@
 //! Strings and lists: the length leaf, element reads and writes, and string bytes.
 
-use super::{Area, Cx, Vals, block_label, leaf};
+use super::{Area, Cx, Vals, block_label, held_leaves, mem_leaves};
 use crate::layout::{Layouts, Leaf, mem_layout};
-use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Types, Val};
+use crate::llvm_build::{Bin, FnBuilder, Meta, Range, Tbaa, Ty as LTy, Val};
 use ms_mir::ir::{Func, Imm, Inst, Module, Op};
 use ms_mir::types::{Ty, TyKind};
 use ms_rt_abi::STR_STATIC;
@@ -68,12 +68,12 @@ fn pre(
     match inst.op {
         // Only the block pointer is computed; the length and capacity are known statically.
         Op::ListNew => Some(vec![
-            b.reserve(LTy::I64),
+            b.reserve(LTy::Ptr),
             Val::int(0),
             vals[&inst.args[0].index()][0].clone(),
         ]),
-        // The literal's bytes are a module constant: the pointer is a constant expression and
-        // the length carries the static tag.
+        // The literal's bytes are a module constant: the pointer word is a constant expression
+        // and the length carries the static tag.
         Op::StrLit => {
             let Imm::Str(id) = inst.imm else { return None };
             let len = m.strings[id.0 as usize].len();
@@ -85,10 +85,12 @@ fn pre(
                 Val::int((len | STR_STATIC) as i64),
             ])
         }
-        Op::ListLit if inst.args.is_empty() => Some(vec![Val::int(0); 3]),
+        Op::ListLit if inst.args.is_empty() => {
+            Some(vec![Val::new("null", LTy::Ptr), Val::int(0), Val::int(0)])
+        }
         Op::ListLit => {
             let n = Val::int(inst.args.len() as i64);
-            Some(vec![b.reserve(LTy::I64), n.clone(), n])
+            Some(vec![b.reserve(LTy::Ptr), n.clone(), n])
         }
         Op::ListLen => Some(vec![vals[&inst.args[0].index()][1].clone()]),
         Op::ListSet | Op::ListSetNn | Op::ListSetU | Op::ListFill => {
@@ -138,8 +140,9 @@ fn list_access(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     let l = &vals[&inst.args[0].index()];
     let i = vals[&inst.args[1].index()][0].clone();
     let elem = cx.m.seq_elem(cx.f.ty(inst.args[0])).expect("a list");
-    let tys: Vec<LTy> = cx.lay.leaves(elem).into_iter().map(|x| leaf(x).0).collect();
-    let (ptr, len) = (b.inttoptr(&l[0]), l[1].clone());
+    let tys = mem_leaves(cx.lay, elem);
+    let held = held_leaves(cx.lay, elem);
+    let (ptr, len) = (l[0].clone(), l[1].clone());
     let wraps = matches!(inst.op, Op::ListGet | Op::ListSet | Op::ListFill);
     let idx = if wraps {
         let neg = b.icmp("slt", &i, &Val::int(0));
@@ -170,10 +173,10 @@ fn list_access(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         ));
         b.label(&next);
     }
-    let types = Types::default();
+    let types = b.types();
     let whole = match tys.as_slice() {
         [one] => one.clone(),
-        many => LTy::Tuple(many.to_vec()),
+        _ => super::aggregate(types, cx.lay, elem),
     };
     debug_assert_eq!(
         types.size_align(&whole).0,
@@ -189,13 +192,61 @@ fn list_access(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
             b.field_ptr(&whole, &at, k)
         };
         let align = types.size_align(t).1;
+        let meta = elem_meta(cx.m.types.kind(elem), k);
         if reads {
-            b.name_next(&out.expect("list read result")[k]);
-            b.load(t, &to, align);
+            let dst = &out.expect("list read result")[k];
+            if held[k] == LTy::I1 {
+                // A boolean element is a byte in memory.
+                let byte = b.load_with(t, &to, align, meta);
+                b.name_next(dst);
+                b.trunc(&byte, LTy::I1);
+            } else {
+                b.name_next(dst);
+                b.load_with(t, &to, align, meta);
+            }
         } else {
-            b.store(&vals[&inst.args[2].index()][k], &to, align);
+            let v = vals[&inst.args[2].index()][k].clone();
+            let v = if v.ty == LTy::I1 {
+                b.zext(&v, LTy::I8)
+            } else {
+                v
+            };
+            b.store_with(&v, &to, align, meta);
         }
     }
+}
+
+/// What LLVM may assume about leaf `k` of a list element of kind `elem`. A buffer holds one
+/// element type, so a scalar element never lies where a list or string header does; only element
+/// accesses are tagged, since a record field or inner header is also read through borrowed
+/// pointers that carry no tag. A `Bool` is 0 or 1 and an inner list's length is not negative.
+fn elem_meta(elem: &TyKind, k: usize) -> Meta {
+    let mut meta = Meta::default();
+    match elem {
+        TyKind::Bool => {
+            meta.tbaa = Some(Tbaa::ScalarElem);
+            meta.range = Some(Range::Bool);
+        }
+        TyKind::Int
+        | TyKind::Float
+        | TyKind::Int8
+        | TyKind::Int16
+        | TyKind::Int32
+        | TyKind::Float32
+        | TyKind::UInt8
+        | TyKind::UInt16
+        | TyKind::UInt32
+        | TyKind::UInt64 => meta.tbaa = Some(Tbaa::ScalarElem),
+        TyKind::List(_) | TyKind::Bytes => {
+            meta.tbaa = Some(Tbaa::HeaderElem);
+            if k == 1 {
+                meta.range = Some(Range::Len);
+            }
+        }
+        TyKind::Str => meta.tbaa = Some(Tbaa::HeaderElem),
+        _ => {}
+    }
+    meta
 }
 
 /// `StrByte` and `StrAsciiAt`: the byte at an index of a string. An inline string keeps its
@@ -212,7 +263,7 @@ fn str_byte(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     let join = block_label(bb, split + 1);
     cx.split += 1;
     let load_byte = |b: &mut FnBuilder, i: &Val| {
-        let ptr = b.inttoptr(&s[0]);
+        let ptr = b.int_to_ptr(&s[0]);
         let at = b.elem_ptr(&LTy::I8, &ptr, i);
         let byte = b.load(&LTy::I8, &at, 1);
         b.zext(&byte, LTy::I64)
@@ -278,46 +329,47 @@ fn build_ok(m: &Module, lay: &Layouts, f: &Func, i: &Inst) -> bool {
             .all(|l| matches!(l, Leaf::I64 | Leaf::F64 | Leaf::I8))
 }
 
-/// The LLVM type of one list element (a tuple of its leaves) and of each leaf.
-fn elem_shape(cx: &Cx, list: Ty) -> (LTy, Vec<LTy>, u64) {
-    let elem = cx.m.seq_elem(list).expect("a list");
-    let leaves = cx.lay.leaves(elem);
-    let tys: Vec<LTy> = leaves.iter().map(|x| leaf(*x).0).collect();
-    let whole = match tys.as_slice() {
-        [one] => one.clone(),
-        many => LTy::Tuple(many.to_vec()),
-    };
-    (whole, tys, u64::from(mem_layout(&leaves).size))
-}
-
-/// A call to a runtime allocator; its result is a fresh block, kept as the `i64` leaf of a list.
+/// A call to a runtime allocator; its result is a fresh block of memory.
 fn rt_alloc(cx: &mut Cx, b: &mut FnBuilder, name: &str, args: &[Val], dst: Option<&Val>) -> Val {
-    let params = vec!["i64"; args.len()].join(", ");
+    let params = args
+        .iter()
+        .map(|a| if a.ty == LTy::Ptr { "ptr" } else { "i64" })
+        .collect::<Vec<_>>()
+        .join(", ");
     cx.decls.push((
         name.to_string(),
         format!("declare noalias align 16 ptr @\"{name}\"({params})"),
     ));
     let actuals: Vec<(Val, &str)> = args.iter().map(|a| (a.clone(), "")).collect();
-    let p = b
-        .call(&LTy::Ptr, "noalias align 16 ", name, &actuals)
-        .expect("a pointer");
     if let Some(d) = dst {
         b.name_next(d);
     }
-    b.ptrtoint(&p)
+    b.call(&LTy::Ptr, "noalias align 16 ", name, &actuals)
+        .expect("a pointer")
 }
 
 /// Stores the leaves `vs` of one element at index `idx` of the list block at `ptr`.
-fn store_elem(b: &mut FnBuilder, shape: &(LTy, Vec<LTy>, u64), ptr: &Val, idx: &Val, vs: &[Val]) {
-    let (whole, tys, _) = shape;
-    let at = b.elem_ptr(whole, ptr, idx);
+fn store_elem(cx: &Cx, b: &mut FnBuilder, list: Ty, ptr: &Val, idx: &Val, vs: &[Val]) {
+    let elem = cx.m.seq_elem(list).expect("a list");
+    let tys = mem_leaves(cx.lay, elem);
+    let whole = match tys.as_slice() {
+        [one] => one.clone(),
+        _ => super::aggregate(b.types(), cx.lay, elem),
+    };
+    let at = b.elem_ptr(&whole, ptr, idx);
     for (k, (t, v)) in tys.iter().zip(vs).enumerate() {
         let to = if tys.len() == 1 {
             at.clone()
         } else {
-            b.field_ptr(whole, &at, k)
+            b.field_ptr(&whole, &at, k)
         };
-        b.store(v, &to, Types::default().size_align(t).1);
+        let v = if v.ty == LTy::I1 {
+            b.zext(v, LTy::I8)
+        } else {
+            v.clone()
+        };
+        let align = b.types().size_align(t).1;
+        b.store_with(&v, &to, align, elem_meta(cx.m.types.kind(elem), k));
     }
 }
 
@@ -327,8 +379,8 @@ fn store_elem(b: &mut FnBuilder, shape: &(LTy, Vec<LTy>, u64), ptr: &Val, idx: &
 fn list_build(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     let out = &vals[&inst.res.expect("list result").index()];
     let list = cx.f.ty(inst.res.expect("list result"));
-    let shape = elem_shape(cx, list);
-    let size = shape.2.max(1) as i64;
+    let elem = cx.m.seq_elem(list).expect("a list");
+    let size = i64::from(mem_layout(&cx.lay.leaves(elem)).size).max(1);
     let (bb, split) = (cx.block, cx.split);
     let head = block_label(bb, split);
     match inst.op {
@@ -337,10 +389,9 @@ fn list_build(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
                 return;
             }
             let bytes = Val::int(inst.args.len() as i64 * size);
-            let p = rt_alloc(cx, b, "msrt_alloc", &[bytes], Some(&out[0]));
-            let ptr = b.inttoptr(&p);
+            let ptr = rt_alloc(cx, b, "msrt_alloc", &[bytes], Some(&out[0]));
             for (i, a) in inst.args.iter().enumerate() {
-                store_elem(b, &shape, &ptr, &Val::int(i as i64), &vals[&a.index()]);
+                store_elem(cx, b, list, &ptr, &Val::int(i as i64), &vals[&a.index()]);
             }
         }
         Op::ListNew => {
@@ -354,7 +405,7 @@ fn list_build(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
             let p = rt_alloc(cx, b, "msrt_alloc", &[bytes], None);
             b.br(&join);
             b.label(&join);
-            b.phi(&out[0], &[(Val::int(0), head), (p, some)]);
+            b.phi(&out[0], &[(Val::new("null", LTy::Ptr), head), (p, some)]);
         }
         _ => {
             let l = &vals[&inst.args[0].index()];
@@ -382,17 +433,13 @@ fn list_build(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
             let moved = rt_alloc(cx, b, "msrt_realloc", &[ptr0.clone(), bytes], None);
             b.br(&joined);
             b.label(&joined);
-            let np = b.reserve(LTy::I64);
+            let np = b.reserve(LTy::Ptr);
             b.phi(&np, &[(fresh, first), (moved, again)]);
             b.br(&ready);
             b.label(&ready);
-            b.phi(
-                &out[0],
-                &[(ptr0, head.clone()), (np.clone(), joined.clone())],
-            );
+            b.phi(&out[0], &[(ptr0, head.clone()), (np, joined.clone())]);
             b.phi(&out[2], &[(cap, head), (ncap, joined)]);
-            let ptr = b.inttoptr(&out[0]);
-            store_elem(b, &shape, &ptr, &len, &vals[&inst.args[1].index()]);
+            store_elem(cx, b, list, &out[0], &len, &vals[&inst.args[1].index()]);
             b.name_next(&out[1]);
             b.bin(Bin::Add, &len, &Val::int(1));
         }

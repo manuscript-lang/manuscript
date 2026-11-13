@@ -393,7 +393,7 @@ impl E<'_, '_, '_> {
         match elem.filter(|e| m.needs_drop(*e)) {
             None => {
                 let (d, s) = (self.b.inttoptr(&np), self.b.inttoptr(ptr));
-                self.b.memcpy(&d, &s, &bytes, align);
+                self.b.memcpy((&d, align), (&s, align), &bytes);
             }
             Some(e) => {
                 let leaves = leaves.expect("element");

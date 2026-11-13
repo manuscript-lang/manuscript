@@ -250,6 +250,48 @@ impl<'m> Layouts<'m> {
         self.shape(ty).leaves.clone()
     }
 
+    /// Which register leaves of `ty` are pointers, one flag per leaf of [`Layouts::leaves`]: a
+    /// `ptr`, a function or object handle, an indirect record or boxed alternative or optional
+    /// (nullable), a list's data pointer. A string's first word is a tagged encoding and an
+    /// inline alternative's payload slots are shared between cases, so those stay integers. A
+    /// register leaf is an `i64` for the Cranelift object and the runtime either way; this only
+    /// says what the direct LLVM emitter may type as `ptr`.
+    pub fn pointer_leaves(&self, ty: Ty) -> Vec<bool> {
+        self.marks(ty, true)
+    }
+
+    /// Which register leaves of `ty` are booleans, one flag per leaf: a `Bool` and the presence
+    /// flag of an optional, both zero or one. The direct LLVM emitter holds them as `i1`.
+    pub fn bool_leaves(&self, ty: Ty) -> Vec<bool> {
+        self.marks(ty, false)
+    }
+
+    /// The leaves that are pointers (`ptr`) or booleans (not `ptr`).
+    fn marks(&self, ty: Ty, ptr: bool) -> Vec<bool> {
+        let n = self.width(ty);
+        let one = |yes: bool| vec![yes];
+        match self.m.types.kind(ty) {
+            TyKind::Bool => one(!ptr),
+            TyKind::Ptr | TyKind::Fn(..) => one(ptr),
+            TyKind::Obj(n, _) if !n.is_map_or_set() => one(ptr),
+            TyKind::Bytes | TyKind::List(_) => vec![ptr, false, false],
+            TyKind::Rec(r) if self.m.records[r.index()].indirect => one(ptr),
+            TyKind::Rec(r) => self.m.records[r.index()]
+                .fields
+                .iter()
+                .flat_map(|f| self.marks(f.1, ptr))
+                .collect(),
+            TyKind::Opt(inner) if self.opt_is_nullable(*inner) => one(ptr),
+            TyKind::Opt(inner) if !self.is_str_like(ty) => {
+                let mut flags = vec![!ptr];
+                flags.extend(self.marks(*inner, ptr));
+                flags
+            }
+            TyKind::Alt(a) if self.is_boxed(*a) => one(ptr),
+            _ => vec![false; n],
+        }
+    }
+
     /// Number of register leaves.
     pub fn width(&self, ty: Ty) -> usize {
         self.shape(ty).leaves.len()
@@ -388,6 +430,39 @@ mod tests {
         assert_eq!(lay.mem(os).size, ms_rt_abi::OPT_STR_SIZE as u32);
         assert_eq!(lay.leaves(os), lay.leaves(Ty::STR));
         assert!(lay.is_str_like(os) && lay.is_str_like(Ty::STR) && !lay.is_str_like(oi));
+    }
+
+    #[test]
+    fn pointer_leaves_match_the_leaves() {
+        let mut m = Module::new("t");
+        let list = m.types.list(Ty::INT);
+        let opt_list = m.types.opt(list);
+        let opt_bool = m.types.opt(Ty::BOOL);
+        let (_, rec) = m.add_record(
+            "R",
+            vec![
+                ("p".into(), Ty::PTR),
+                ("l".into(), list),
+                ("n".into(), Ty::INT),
+            ],
+        );
+        let lay = Layouts::new(&m);
+        for t in [Ty::PTR, Ty::STR, list, opt_list, rec, Ty::INT] {
+            assert_eq!(lay.pointer_leaves(t).len(), lay.width(t), "{t:?}");
+        }
+        assert_eq!(lay.pointer_leaves(list), vec![true, false, false]);
+        assert_eq!(
+            lay.pointer_leaves(rec),
+            vec![true, true, false, false, false]
+        );
+        assert_eq!(lay.pointer_leaves(Ty::STR), vec![false, false]);
+        for t in [Ty::BOOL, opt_bool, rec] {
+            assert_eq!(lay.bool_leaves(t).len(), lay.width(t), "{t:?}");
+        }
+        assert_eq!(lay.bool_leaves(Ty::BOOL), vec![true]);
+        // Presence flag and value of `Bool?`; no booleans in a list or a string.
+        assert_eq!(lay.bool_leaves(opt_bool), vec![true, true]);
+        assert_eq!(lay.bool_leaves(list), vec![false; 3]);
     }
 
     #[test]
