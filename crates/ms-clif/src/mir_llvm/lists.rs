@@ -286,7 +286,7 @@ fn load_at(
         let to = if tys.len() == 1 {
             at.clone()
         } else {
-            b.field_ptr(whole, at, k)
+            b.leaf_ptr(whole, at, k)
         };
         let align = b.types().size_align(t).1;
         let meta = elem_meta(cx.m.types.kind(elem), k);
@@ -322,7 +322,7 @@ fn store_at(cx: &Cx, b: &mut FnBuilder, elem: Ty, whole: &LTy, at: &Val, vs: &[V
         let to = if tys.len() == 1 {
             at.clone()
         } else {
-            b.field_ptr(whole, at, k)
+            b.leaf_ptr(whole, at, k)
         };
         let v = super::records::to_mem(b, v, t);
         let align = b.types().size_align(t).1;
@@ -688,19 +688,19 @@ pub(super) fn consts(m: &Module, lay: &Layouts, f: &Func) -> Vec<(String, String
             continue;
         }
         if let (Op::StrLit, Imm::Str(id)) = (inst.op, inst.imm) {
-            string_const(m, id.0, &mut out);
+            str_const(m, id.0, &mut out);
         }
     }
-    for bd in &f.blocks {
-        if let Term::Fault(FaultKind::Message(id)) = bd.term {
-            string_const(m, id.0, &mut out);
+    for b in &f.blocks {
+        if let Term::Fault(FaultKind::Message(id)) = b.term {
+            str_const(m, id.0, &mut out);
         }
     }
     out
 }
 
-/// Adds the constant for string literal `id` unless `out` has it.
-fn string_const(m: &Module, id: u32, out: &mut Vec<(String, String)>) {
+/// The constant for string literal `id`, once.
+fn str_const(m: &Module, id: u32, out: &mut Vec<(String, String)>) {
     let name = format!("ms.lit.{id}");
     if out.iter().any(|(n, _)| *n == name) {
         return;

@@ -36,10 +36,8 @@ pub(crate) fn released_types(lay: &Layouts, f: &Func, inst: &Inst) -> Vec<Ty> {
             .into_iter()
             .map(|(t, _)| t)
             .collect(),
-        (Op::RecRelease, Imm::RecMask(_, mask)) if matches!(lay.m.types.kind(f.ty(inst.args[0])), TyKind::Rec(r) if !lay.m.records[r.index()].indirect) => {
-            records::released(lay, f.ty(inst.args[0]), mask)
-                .map(|(t, ..)| t)
-                .collect()
+        (Op::RecRelease, Imm::RecMask(_, mask)) => {
+            records::release_types(lay, f.ty(inst.args[0]), mask)
         }
         _ => Vec::new(),
     }
@@ -222,10 +220,39 @@ fn signed_leaves(lay: &Layouts, ty: Ty) -> Vec<bool> {
         .collect()
 }
 
+/// The fields of record `r`'s struct: one per field of the record, a scalar or the field type's
+/// own struct, so a field is reached by its index. `None` when nesting would move a leaf off the
+/// offset the runtime and the Cranelift object give it (a smaller struct's tail padding), in
+/// which case the record keeps one field per leaf.
+fn field_types(types: &Types, lay: &Layouts, ty: Ty, r: ms_mir::types::RecId) -> Option<Vec<LTy>> {
+    let mut fields = Vec::new();
+    for f in &lay.m.records[r.index()].fields {
+        match lay.width(f.1) {
+            0 => {}
+            1 if !matches!(
+                lay.m.types.kind(f.1),
+                TyKind::Rec(_) | TyKind::Opt(_) | TyKind::Alt(_)
+            ) =>
+            {
+                fields.extend(mem_leaves(lay, f.1));
+            }
+            _ => fields.push(aggregate(types, lay, f.1)),
+        }
+    }
+    let want = crate::layout::mem_layout(&lay.leaves(ty)).offsets;
+    let got = types.leaf_offsets(&LTy::Tuple(fields.clone()));
+    (want.iter().map(|o| u64::from(*o)).eq(got)).then_some(fields)
+}
+
 /// The struct a value of type `ty` has in memory: named for strings, lists and records, so the
 /// module defines each once, else a literal struct of its held leaves.
 pub(crate) fn aggregate(types: &Types, lay: &Layouts, ty: Ty) -> LTy {
-    let fields = mem_leaves(lay, ty);
+    let fields = match lay.m.types.kind(ty) {
+        TyKind::Rec(r) if !lay.m.records[r.index()].indirect => {
+            field_types(types, lay, ty, *r).unwrap_or_else(|| mem_leaves(lay, ty))
+        }
+        _ => mem_leaves(lay, ty),
+    };
     let name = match lay.m.types.kind(ty) {
         TyKind::Str => "ms.str".to_string(),
         TyKind::Bytes => "ms.bytes".to_string(),
@@ -299,10 +326,9 @@ fn ret_text(lay: &Layouts, ty: Ty) -> String {
 }
 
 fn signature_ok(lay: &Layouts, params: &[ms_mir::ir::Param], ret: Ty) -> bool {
-    supported_ty(lay, ret)
-        && params
-            .iter()
-            .all(|p| p.mode != Mode::Var && supported_ty(lay, p.ty))
+    // A `var` parameter is an owned one without copy-out, as in the interpreter and the
+    // Cranelift path: no lowering produces one.
+    supported_ty(lay, ret) && params.iter().all(|p| supported_ty(lay, p.ty))
 }
 
 /// Why a signature is refused: the first result or parameter that is not supported.
