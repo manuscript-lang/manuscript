@@ -91,6 +91,8 @@ pub struct LlvmModule {
     /// Internal functions' parameters that are exclusive pointers, by symbol. They are passed as
     /// `ptr noalias`, so LLVM knows nothing else the function reaches overlaps them.
     exclusive: HashMap<String, Vec<usize>>,
+    /// The heap functions are declared as an allocation family (`BuildOptions::heap_facts`).
+    pub heap_facts: bool,
 }
 
 /// Symbol of the empty function every module starts with: the fault and profile tables address
@@ -378,6 +380,7 @@ impl LlvmModule {
             consts: BTreeMap::new(),
             vtables: HashMap::new(),
             exclusive: HashMap::new(),
+            heap_facts: true,
         };
         // Placeholder slots for the fixed ids and one `DIFile` per file.
         m.di.meta.resize(FIRST_FILE + nfiles, String::new());
@@ -1151,14 +1154,22 @@ impl<'a> Tr<'a> {
                 let sigref = self.ext_func(func_ref).signature;
                 let vals: Vec<Value> = args.as_slice(&self.f.dfg.value_lists).to_vec();
                 let exclusive = self.exclusive.get(&name).cloned().unwrap_or_default();
-                if returns_fresh_block(&name) {
+                if name == "msrt_free" {
+                    // The block goes back as a pointer, which LLVM pairs with its allocation.
+                    let p = self.ptr(vals[0], 0);
+                    self.line(format!("call void @\"{name}\"(ptr {p}) nomerge"));
+                } else if returns_fresh_block(&name) {
                     // A fresh block: `noalias` tells LLVM nothing else reaches it, and keeping the
                     // pointer lets later accesses address it without an `inttoptr`. `msrt_realloc`
                     // also takes the block it replaces, which is dead after the call.
-                    let args: Vec<String> = vals
-                        .iter()
-                        .map(|v| format!("i64 {}", self.op(*v)))
-                        .collect();
+                    let args: Vec<String> = if name == "msrt_realloc" {
+                        let old = self.ptr(vals[0], 0);
+                        vec![format!("ptr {old}"), format!("i64 {}", self.op(vals[1]))]
+                    } else {
+                        vals.iter()
+                            .map(|v| format!("i64 {}", self.op(*v)))
+                            .collect()
+                    };
                     let p = self.def(format!(
                         "call noalias align 16 ptr @\"{name}\"({}) nomerge",
                         args.join(", ")
@@ -1250,7 +1261,10 @@ impl<'a> Tr<'a> {
         } else {
             ret_ty(&sig.returns)
         };
-        let decl = format!("declare {ret} @\"{name}\"({}){attrs}", sig_params(sig));
+        let decl = crate::mir_llvm::rt::heap_decl(&name).map_or_else(
+            || format!("declare {ret} @\"{name}\"({}){attrs}", sig_params(sig)),
+            str::to_string,
+        );
         self.decls.entry(name.clone()).or_insert(decl);
         name
     }
@@ -2001,7 +2015,10 @@ impl LlvmModule {
             };
             for (name, decl) in &self.decls {
                 if !defined.contains(name.as_str()) && (units == 1 || used.contains(name)) {
-                    s.push_str(decl);
+                    let plain = (!self.heap_facts)
+                        .then(|| crate::mir_llvm::rt::plain_heap_decl(name))
+                        .flatten();
+                    s.push_str(plain.unwrap_or(decl));
                     s.push('\n');
                 }
             }

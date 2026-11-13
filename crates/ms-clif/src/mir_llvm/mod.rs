@@ -18,7 +18,7 @@ mod glue;
 mod lists;
 mod maps;
 mod records;
-mod rt;
+pub(crate) mod rt;
 mod strings;
 
 use crate::abi_llvm::{Pass, Reg, Ret, Signature};
