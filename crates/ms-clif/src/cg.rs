@@ -1281,6 +1281,16 @@ fn direct_function(g: &mut Gen, i: usize, f: &Func) -> bool {
         return false;
     }
     let id = g.funcs[i];
+    // The string literals' bytes are data objects of the Cranelift object; the LLVM function names
+    // them.
+    let mut strs = crate::mir_llvm::StrSymbols::new();
+    for inst in f.blocks.iter().flat_map(|b| &b.insts) {
+        if let (ms_mir::ir::Op::StrLit, ms_mir::ir::Imm::Str(s)) = (inst.op, inst.imm) {
+            let d = g.str_lit(s.0);
+            let name = g.module.declarations().get_data_decl(d).linkage_name(d);
+            strs.insert(s.0, name.into_owned());
+        }
+    }
     let syms = ModuleSymbols(&g.module, &g.locs, &g.scopes, &g.m.externs);
     let sym = syms.symbol_of(id);
     let exported = g.module.declarations().get_function_decl(id).linkage == Linkage::Import
@@ -1298,7 +1308,7 @@ fn direct_function(g: &mut Gen, i: usize, f: &Func) -> bool {
     let mut llvm = g.llvm.take().expect("checked above");
     let checks = g.opts.checks;
     llvm.add_direct(&sym, &f.name, fn_loc, exported, |env| {
-        crate::mir_llvm::emit(m, lay, f, checks, env, &symbol_of)
+        crate::mir_llvm::emit(m, lay, f, checks, env, &strs, &symbol_of)
     });
     g.llvm = Some(llvm);
     g.llvm_funcs.push(LlvmFn {

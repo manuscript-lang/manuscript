@@ -11,6 +11,7 @@ use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Types, Val};
 use crate::llvm_ir::DirectEnv;
 use ms_mir::ir::{Cc, Func, Imm, Inst, Mode, Module, Op, Target, Term};
 use ms_mir::types::{Ty, TyKind};
+use ms_rt_abi::STR_STATIC;
 use std::collections::HashMap;
 
 /// A finished function: pieces of the `define` line, the body, and the callees it declares.
@@ -23,7 +24,13 @@ pub struct Emitted {
     pub body: String,
     /// `(symbol, declare line)` of each callee.
     pub decls: Vec<(String, String)>,
+    /// Symbols of the data objects (string literals) the function addresses.
+    pub data: Vec<String>,
 }
+
+/// Data objects of the string literals a function uses, by string index, defined by the caller in
+/// the Cranelift object.
+pub type StrSymbols = HashMap<u32, String>;
 
 /// LLVM type and parameter attribute of one register leaf. `I8` leaves (`Bool`, flags) are
 /// zero-extended across calls, like the Cranelift ABI; narrow integers live in `i64` registers.
@@ -95,6 +102,7 @@ fn supported_op(op: Op) -> bool {
             | Op::FConst
             | Op::BConst
             | Op::UnitConst
+            | Op::StrLit
             | Op::IAdd
             | Op::ISub
             | Op::IMul
@@ -302,6 +310,7 @@ pub fn emit(
     f: &Func,
     checks: bool,
     env: &mut DirectEnv,
+    strs: &StrSymbols,
     symbol_of: &dyn Fn(usize) -> String,
 ) -> Emitted {
     let types = Types::default();
@@ -310,6 +319,7 @@ pub fn emit(
     // Name every value before emitting anything: a phi names values a later block defines (the
     // back edge of a loop), and a constant is its own text.
     let mut vals: Vals = HashMap::new();
+    let mut data: Vec<String> = Vec::new();
     let mut params = Vec::new();
     for (i, p) in f.params.iter().enumerate() {
         let mut own = Vec::new();
@@ -340,6 +350,18 @@ pub fn emit(
                 (Op::FConst, Imm::Float(bits)) => vec![Val::double(bits)],
                 (Op::BConst, Imm::Bool(v)) => vec![Val::byte(v as u8)],
                 // The length is a leaf of the list: no instruction.
+                // The address of the literal's bytes and its length, tagged as static.
+                (Op::StrLit, Imm::Str(id)) => {
+                    let sym = &strs[&id.0];
+                    if !data.contains(sym) {
+                        data.push(sym.clone());
+                    }
+                    let len = m.strings[id.0 as usize].len();
+                    vec![
+                        Val::new(format!("ptrtoint (ptr @\"{sym}\" to i64)"), LTy::I64),
+                        Val::int((len | STR_STATIC) as i64),
+                    ]
+                }
                 (Op::ListLen, _) => vec![vals[&inst.args[0].index()][1].clone()],
                 (Op::ListNew, _) => vec![
                     b.reserve(LTy::I64),
@@ -447,6 +469,7 @@ pub fn emit(
         params: params.join(", "),
         body: b.finish(),
         decls: cx.decls,
+        data,
     }
 }
 
@@ -488,7 +511,7 @@ fn inst_text(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         .unwrap_or_default();
     if matches!(
         inst.op,
-        Op::IConst | Op::FConst | Op::BConst | Op::UnitConst | Op::ListLen
+        Op::IConst | Op::FConst | Op::BConst | Op::UnitConst | Op::StrLit | Op::ListLen
     ) {
         return;
     }
