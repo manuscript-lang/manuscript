@@ -1,4 +1,4 @@
-// conform: tags=control-flow,lists,loops,stdlib-testing,testing,tier-core
+// conform: tags=control-flow,lists,stdlib-testing,testing,tier-core
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
