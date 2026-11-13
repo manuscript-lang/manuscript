@@ -11,6 +11,8 @@ use crate::mir_llvm::Emitted;
 use ms_mir::types::{Ty, TyKind};
 use ms_rt_abi::STR_INLINE;
 
+pub mod closure;
+
 type Vs = Vec<Val>;
 
 fn reg(l: Leaf) -> LTy {
@@ -43,6 +45,7 @@ pub fn supports(g: &Gen, kind: Glue, ty: Ty) -> bool {
     match kind {
         Glue::SlotDrop | Glue::SlotCopy | Glue::BlockDrop | Glue::BlockClone => true,
         Glue::CleanupThunk(_) => true,
+        k if closure::is_closure(k) => true,
         Glue::Drop => match m.types.kind(ty) {
             TyKind::Bytes | TyKind::List(_) => true,
             TyKind::Rec(r) => !m.records[r.index()].indirect,
@@ -57,8 +60,8 @@ pub fn supports(g: &Gen, kind: Glue, ty: Ty) -> bool {
         Glue::Clone => match m.types.kind(ty) {
             TyKind::Bytes | TyKind::List(_) => true,
             TyKind::Rec(r) => !m.records[r.index()].indirect,
-            TyKind::Opt(_) => true,
-            TyKind::Obj(..) | TyKind::Alt(_) | TyKind::Iface(_) => false,
+            TyKind::Opt(_) | TyKind::Obj(..) | TyKind::Iface(_) => true,
+            TyKind::Alt(_) => false,
             _ => true,
         },
         _ => false,
@@ -603,6 +606,30 @@ struct E<'a, 'm, 't> {
     cur: String,
     n: u32,
     decls: Vec<(String, String)>,
+    /// Symbols of the data objects the function addresses.
+    data: Vec<String>,
+}
+
+/// Calls MIR function `f` in the leaf convention with `args` (its parameter leaves), ignoring
+/// what it returns.
+fn call_func(e: &mut E, f: usize, args: &[Val]) {
+    let fid = e.g.funcs[f];
+    let callee = &e.g.m.funcs[f];
+    let (cp, cr) = (e.g.param_leaves(callee), e.g.lay.leaves(callee.ret));
+    let sym = crate::cg::symbol_of(e.g, fid);
+    let (ret, ret_attr) = reg_ret(&cr);
+    let sig = Sig {
+        params: reg_params(&cp),
+        ret,
+        ret_attr,
+    };
+    e.decls.push(sig.declare(&sym));
+    let attr = if matches!(cr.as_slice(), [] | [_]) {
+        sig.ret_attr
+    } else {
+        ""
+    };
+    e.b.call(&sig.ret, attr, &sym, &reg_args(args, &cp));
 }
 
 impl E<'_, '_, '_> {
@@ -942,8 +969,51 @@ impl E<'_, '_, '_> {
                 }
                 out
             }
+            TyKind::Obj(..) => {
+                // Map and Set are owned values the runtime copies through their descriptor.
+                let leaves = self.g.lay.leaves(ty);
+                let (src, dst) = (
+                    self.b.alloca(&slot_ty(&leaves)),
+                    self.b.alloca(&slot_ty(&leaves)),
+                );
+                store_leaves(&mut self.b, &src, &leaves, vs);
+                let desc = self.desc_addr(ty);
+                let (from, to) = (self.b.ptrtoint(&src), self.b.ptrtoint(&dst));
+                self.rt("msrt_slot_copy", &[&desc, &from, &to], false);
+                load_leaves(&mut self.b, &dst, &leaves, None)
+            }
+            TyKind::Iface(i) => {
+                // The payload copier sits after the methods in the vtable. The copy owns its
+                // payload whatever the source owned, so the tag bits come off.
+                let vt = self.b.bin(Bin::And, &vs[1], &Val::int(!3));
+                let slot = 8 * (1 + m.ifaces[i.index()].methods.len()) as i64;
+                let at = self.b.bin(Bin::Add, &vt, &Val::int(slot));
+                let at = self.ptr_of(&at);
+                let copier = self.b.load(&LTy::Ptr, &at, 8);
+                let data = self
+                    .b
+                    .call_ptr(&LTy::I64, "", &copier, &[(vs[0].clone(), "")])
+                    .expect("result");
+                vec![data, vt]
+            }
             _ => vs.to_vec(),
         }
+    }
+
+    /// The address of the type descriptor of `ty` as a word.
+    fn desc_addr(&mut self, ty: Ty) -> Val {
+        use cranelift_module::Module as _;
+        let id = self.g.typedesc(ty);
+        let sym = self
+            .g
+            .module
+            .declarations()
+            .get_data_decl(id)
+            .linkage_name(id)
+            .into_owned();
+        let addr = Val::new(format!("@\"{sym}\""), LTy::Ptr);
+        self.data.push(sym);
+        self.b.ptrtoint(&addr)
     }
 }
 
@@ -958,6 +1028,7 @@ pub fn emit(g: &mut Gen, kind: Glue, ty: Ty, types: &Types, loc: usize) -> Emitt
         cur: String::new(),
         n: 0,
         decls: Vec::new(),
+        data: Vec::new(),
     };
     e.label("entry");
     let a = |i: usize, t: LTy| Val::new(format!("%a{i}"), t);
@@ -1016,41 +1087,21 @@ pub fn emit(g: &mut Gen, kind: Glue, ty: Ty, types: &Types, loc: usize) -> Emitt
             e.b.ret(None);
         }
         Glue::CleanupThunk(f) => {
-            let fid = e.g.funcs[f as usize];
-            let callee = &e.g.m.funcs[f as usize];
-            let pty = callee.params[0].ty;
-            let (cp, cr) = (e.g.param_leaves(callee), e.g.lay.leaves(callee.ret));
+            let pty = e.g.m.funcs[f as usize].params[0].ty;
             let pl = e.g.lay.leaves(pty);
             let vs = load_leaves(&mut e.b, &a(0, LTy::Ptr), &pl, None);
-            let callee_sym = crate::cg::symbol_of(e.g, fid);
-            let formals = reg_params(&cp);
-            let (ret, ret_attr) = reg_ret(&cr);
-            let csig = Sig {
-                params: formals,
-                ret,
-                ret_attr,
-            };
-            e.decls.push(csig.declare(&callee_sym));
-            let call_args = reg_args(&vs, &cp);
-            match cr.as_slice() {
-                [] | [_] => {
-                    e.b.call(&csig.ret, csig.ret_attr, &callee_sym, &call_args);
-                }
-                _ => {
-                    e.b.call(&csig.ret, "", &callee_sym, &call_args);
-                }
-            }
+            call_func(&mut e, f as usize, &vs);
             e.b.ret(None);
         }
         _ => unreachable!("supports rejects other glue"),
     }
-    let (native_decls, native_body) = (e.decls, e.b.finish());
+    let (native_decls, native_data, native_body) = (e.decls, e.data, e.b.finish());
     Emitted {
         ret: sig.ret_text(),
         params: sig.formals(true),
         attrs: " nounwind".into(),
         decls: native_decls,
-        data: Vec::new(),
+        data: native_data,
         consts: Vec::new(),
         body: native_body,
     }
