@@ -174,11 +174,68 @@ fn string_bytes() {
     );
 }
 
+fn list_building() {
+    let src = r#"module "d"
+entry @main
+file 0 "d.ms"
+fn @build(%n: int, %cap: int) -> list<int> !0:1:1 {
+b0:
+  %zero: int = iconst 0 !0:2:1
+  %l0: list<int> = list.new %cap !0:3:1
+  br loop(%zero, %l0) !0:3:1
+loop(%i: int, %l: move list<int>):
+  %c: bool = icmp.lt %i, %n !0:4:1
+  br_if %c, body(), done() !0:4:1
+body():
+  %l2: list<int> = list.push %l, %i !0:5:1
+  %one: int = iconst 1 !0:6:1
+  %i2: int = iadd %i, %one !0:6:1
+  br loop(%i2, %l2) !0:6:1
+done():
+  ret %l !0:7:1
+}
+fn @at(%l: list<int>, %i: int) -> int !0:8:1 {
+b0:
+  %x: int = list.get %l, %i !0:9:1
+  ret %x
+}
+fn @main() -> int !0:20:1 {
+b0:
+  %zero: int = iconst 0 !0:21:1
+  %ten: int = iconst 10 !0:21:1
+  %three: int = iconst 3 !0:21:1
+  %cap: int = iconst 16 !0:21:1
+  %nine: int = iconst 9 !0:21:1
+  %two: int = iconst 2 !0:21:1
+  %one: int = iconst 1 !0:21:1
+  %a: list<int> = call @build(%ten, %zero) !0:22:1
+  %b: list<int> = call @build(%three, %cap) !0:23:1
+  %f: int = iconst 4 !0:24:1
+  %g: int = iconst 5 !0:24:1
+  %lit: list<int> = list.lit %f, %g !0:24:1
+  %x: int = call @at(%a, %nine) !0:25:1
+  %n: int = list.len %a !0:25:1
+  %y: int = call @at(%b, %two) !0:26:1
+  %z: int = call @at(%lit, %one) !0:27:1
+  %s1: int = iadd %x, %n !0:28:1
+  %s2: int = iadd %s1, %y !0:28:1
+  %s3: int = iadd %s2, %z !0:28:1
+  drop %a !0:29:1
+  drop %b !0:29:1
+  drop %lit !0:29:1
+  ret %s3 !0:30:1
+}
+"#;
+    // 9 + 10 + 2 + 5: growth from empty (4, 8, 16) and no growth with room to spare.
+    check("direct_list_build", src, 26, &["build"]);
+}
+
 /// One test, not three: each build writes `ms-keep.ll` in the working directory.
 #[test]
 fn direct_lists_and_strings_match_cranelift() {
     list_reads_and_writes();
     a_bad_list_index_faults();
     string_bytes();
+    list_building();
     let _ = std::fs::remove_file("ms-keep.ll");
 }
