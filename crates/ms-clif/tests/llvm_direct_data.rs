@@ -925,7 +925,6 @@ b0:
 }
 "#;
 
-
 /// A self-containing optional (a nullable pointer to a block): build, presence, read and unbox;
 /// run from `llvm_direct`'s one test.
 pub fn boxed_optionals_match_cranelift() {
