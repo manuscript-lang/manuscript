@@ -185,7 +185,6 @@ pub enum Bin {
     FSub,
     FMul,
     FDiv,
-    LShr,
 }
 
 impl Bin {
@@ -201,7 +200,6 @@ impl Bin {
             Bin::FSub => "fsub",
             Bin::FMul => "fmul",
             Bin::FDiv => "fdiv",
-            Bin::LShr => "lshr",
         }
     }
 
@@ -333,41 +331,6 @@ impl<'t> FnBuilder<'t> {
         self.def(to, rhs)
     }
 
-    pub fn sext(&mut self, v: &Val, to: Ty) -> Val {
-        let from = self.ty(&v.ty);
-        let rhs = format!("sext {from} {} to {}", v.text, self.ty(&to));
-        self.def(to, rhs)
-    }
-
-    pub fn trunc(&mut self, v: &Val, to: Ty) -> Val {
-        let from = self.ty(&v.ty);
-        let rhs = format!("trunc {from} {} to {}", v.text, self.ty(&to));
-        self.def(to, rhs)
-    }
-
-    /// An `i64` address as a `ptr`.
-    pub fn inttoptr(&mut self, v: &Val) -> Val {
-        assert_eq!(v.ty, Ty::I64);
-        self.def(Ty::Ptr, format!("inttoptr i64 {} to ptr", v.text))
-    }
-
-    pub fn ptrtoint(&mut self, v: &Val) -> Val {
-        assert_eq!(v.ty, Ty::Ptr);
-        self.def(Ty::I64, format!("ptrtoint ptr {} to i64", v.text))
-    }
-
-    /// `ptr` `off` bytes past `base`.
-    pub fn gep_bytes(&mut self, base: &Val, off: u64) -> Val {
-        assert_eq!(base.ty, Ty::Ptr);
-        if off == 0 {
-            return base.clone();
-        }
-        self.def(
-            Ty::Ptr,
-            format!("getelementptr inbounds i8, ptr {}, i64 {off}", base.text),
-        )
-    }
-
     pub fn select(&mut self, cond: &Val, a: &Val, b: &Val) -> Val {
         assert_eq!(cond.ty, Ty::I1);
         assert_eq!(a.ty, b.ty);
@@ -481,56 +444,6 @@ impl<'t> FnBuilder<'t> {
         } else {
             Some(self.def(ret.clone(), head))
         }
-    }
-
-    /// Copies `len` bytes from `src` to `dst` (non-overlapping), both aligned to `align`.
-    pub fn memcpy(&mut self, dst: &Val, src: &Val, len: &Val, align: u64) {
-        assert_eq!((&dst.ty, &src.ty, &len.ty), (&Ty::Ptr, &Ty::Ptr, &Ty::I64));
-        self.line(format!(
-            "call void @llvm.memcpy.p0.p0.i64(ptr align {align} {}, ptr align {align} {}, i64 {}, i1 false)",
-            dst.text, src.text, len.text
-        ));
-    }
-
-    /// A call returning several values as an anonymous struct, split into its parts.
-    pub fn call_multi(&mut self, rets: &[Ty], callee: &str, args: &[(Val, &str)]) -> Vec<Val> {
-        let actuals: Vec<String> = args
-            .iter()
-            .map(|(v, a)| format!("{}{a} {}", self.ty(&v.ty), v.text))
-            .collect();
-        let agg = self.agg(rets);
-        let r = self.def(
-            Ty::Void,
-            format!("call {agg} @\"{callee}\"({})", actuals.join(", ")),
-        );
-        rets.iter()
-            .enumerate()
-            .map(|(i, t)| self.def(t.clone(), format!("extractvalue {agg} {}, {i}", r.text)))
-            .collect()
-    }
-
-    /// Returns several values as an anonymous struct.
-    pub fn ret_multi(&mut self, vals: &[Val]) {
-        let tys: Vec<Ty> = vals.iter().map(|v| v.ty.clone()).collect();
-        let agg = self.agg(&tys);
-        let mut cur = "undef".to_string();
-        for (i, v) in vals.iter().enumerate() {
-            let t = self.reserve(Ty::Void);
-            self.line(format!(
-                "{} = insertvalue {agg} {cur}, {} {}, {i}",
-                t.text,
-                self.ty(&v.ty),
-                v.text
-            ));
-            cur = t.text;
-        }
-        self.line(format!("ret {agg} {cur}"));
-    }
-
-    /// The text of the anonymous struct of `tys`.
-    pub fn agg(&self, tys: &[Ty]) -> String {
-        let parts: Vec<String> = tys.iter().map(|t| self.ty(t)).collect();
-        format!("{{ {} }}", parts.join(", "))
     }
 
     /// Defines the reserved `dst` as a phi of `(value, block)` pairs.

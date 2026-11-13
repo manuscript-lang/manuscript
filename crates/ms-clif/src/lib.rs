@@ -12,7 +12,6 @@ pub mod link;
 
 mod cg;
 mod dwarf;
-mod glue_llvm;
 mod llvm_build;
 pub mod llvm_ir;
 mod llvm_obj;
