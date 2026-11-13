@@ -110,7 +110,7 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
 
 /// Writes the call and names its results `out`.
 #[allow(clippy::too_many_arguments)]
-fn finish_call(
+pub(super) fn finish_call(
     b: &mut FnBuilder,
     lay: &crate::layout::Layouts,
     result: Ty,

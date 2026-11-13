@@ -1,6 +1,6 @@
 //! Scalar values: constants, integer and float arithmetic, comparisons, selects.
 
-use super::{Area, Cx, Vals};
+use super::{Area, Cx, Vals, faults};
 use crate::layout::Layouts;
 use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Val};
 use ms_mir::ir::{Cc, Func, Imm, Inst, Op};
@@ -9,7 +9,8 @@ use ms_mir::types::TyKind;
 pub(super) const AREA: Area = Area {
     handles,
     ty_ok,
-    pure_op: handles,
+    pure_op,
+    splits,
     pre,
     emit,
     ..Area::NONE
@@ -44,7 +45,50 @@ fn handles(op: Op) -> bool {
             | Op::FNeg
             | Op::Select
             | Op::B2I
+            | Op::I2F
+            | Op::SDiv
+            | Op::SRem
+            | Op::IAddChk
+            | Op::ISubChk
+            | Op::IMulChk
+            | Op::UAddChk
+            | Op::USubChk
+            | Op::UMulChk
+            | Op::INegChk
+            | Op::SDivChk
+            | Op::SRemChk
+            | Op::IntOverflowIf
     )
+}
+
+/// Whether the op can fault when checks are on.
+fn checked(op: Op) -> bool {
+    matches!(
+        op,
+        Op::IAddChk
+            | Op::ISubChk
+            | Op::IMulChk
+            | Op::UAddChk
+            | Op::USubChk
+            | Op::UMulChk
+            | Op::INegChk
+            | Op::SDivChk
+            | Op::SRemChk
+            | Op::IntOverflowIf
+    )
+}
+
+/// A checked op is not pure: it may fault.
+fn pure_op(op: Op) -> bool {
+    handles(op) && !checked(op)
+}
+
+/// Each check splits the block: a signed division checks for zero and for overflow.
+fn splits(_: &Layouts, _: &Func, inst: &Inst, checks: bool) -> usize {
+    match inst.op {
+        Op::SDivChk if checks => 2,
+        op => usize::from(checks && checked(op)),
+    }
 }
 
 /// A constant is its own text: no register.
@@ -85,7 +129,7 @@ fn fcc(cc: Cc) -> &'static str {
 }
 
 /// Writes one scalar instruction.
-fn emit(_: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
+fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     let arg = |i: usize| vals[&inst.args[i].index()][0].clone();
     let out = inst
         .res
@@ -96,6 +140,9 @@ fn emit(_: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         Op::IConst | Op::FConst | Op::BConst | Op::UnitConst
     ) {
         return;
+    }
+    if checked(inst.op) {
+        return checked_op(cx, inst, vals, b, &out);
     }
     // A single-leaf result is named in place; `Select` handles several.
     if let ([r], false) = (out.as_slice(), inst.op == Op::Select) {
@@ -136,6 +183,96 @@ fn emit(_: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
             }
         }
         Op::B2I => drop(b.zext(&arg(0), LTy::I64)),
+        Op::I2F => drop(b.sitofp(&arg(0))),
+        Op::SDiv => drop(b.bin(Bin::SDiv, &arg(0), &arg(1))),
+        Op::SRem => drop(b.bin(Bin::SRem, &arg(0), &arg(1))),
         _ => unreachable!("handles lists these ops only"),
     }
+}
+
+/// The overflow-checked integers, division and `IntOverflowIf`. With checks off they wrap, like
+/// the plain operations. The result takes its reserved name on the last instruction written,
+/// which is in the block after the checks.
+fn checked_op(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder, out: &[Val]) {
+    let arg = |i: usize| vals[&inst.args[i].index()][0].clone();
+    let name = |b: &mut FnBuilder| {
+        if let [r] = out {
+            b.name_next(r);
+        }
+    };
+    if inst.op == Op::IntOverflowIf {
+        if cx.checks {
+            faults::fault_if(cx, b, &arg(0), "msrt_fault_int_overflow", &[]);
+        }
+        return;
+    }
+    let x = arg(0);
+    let y = if inst.args.len() > 1 {
+        arg(1)
+    } else {
+        x.clone()
+    };
+    let zero = Val::int(0);
+    if !cx.checks {
+        match inst.op {
+            Op::SRemChk => return rem(b, &x, &y, &name),
+            _ => name(b),
+        }
+        match inst.op {
+            Op::IAddChk | Op::UAddChk => drop(b.bin(Bin::Add, &x, &y)),
+            Op::ISubChk | Op::USubChk => drop(b.bin(Bin::Sub, &x, &y)),
+            Op::IMulChk | Op::UMulChk => drop(b.bin(Bin::Mul, &x, &y)),
+            Op::INegChk => drop(b.bin(Bin::Sub, &zero, &x)),
+            _ => drop(b.bin(Bin::SDiv, &x, &y)),
+        }
+        return;
+    }
+    let (with, fault) = match inst.op {
+        Op::IAddChk => ("sadd", "msrt_fault_int_overflow"),
+        Op::ISubChk => ("ssub", "msrt_fault_int_overflow"),
+        Op::IMulChk => ("smul", "msrt_fault_int_overflow"),
+        Op::UAddChk => ("uadd", "msrt_fault_int_range"),
+        Op::USubChk => ("usub", "msrt_fault_int_range"),
+        Op::UMulChk => ("umul", "msrt_fault_int_range"),
+        Op::INegChk => ("ssub", "msrt_fault_int_overflow"),
+        Op::SDivChk => {
+            let z = b.icmp("eq", &y, &zero);
+            faults::fault_if(cx, b, &z, "msrt_fault_div_zero", &[]);
+            let m1 = b.icmp("eq", &y, &Val::int(-1));
+            let mn = b.icmp("eq", &x, &Val::int(i64::MIN));
+            let both = b.bin(Bin::And, &m1, &mn);
+            faults::fault_if(
+                cx,
+                b,
+                &both,
+                "msrt_fault_div_overflow",
+                &[x.clone(), y.clone()],
+            );
+            name(b);
+            b.bin(Bin::SDiv, &x, &y);
+            return;
+        }
+        _ => {
+            let z = b.icmp("eq", &y, &zero);
+            faults::fault_if(cx, b, &z, "msrt_fault_rem_zero", &[]);
+            return rem(b, &x, &y, &name);
+        }
+    };
+    name(b);
+    let (_, of) = if inst.op == Op::INegChk {
+        b.overflow(with, &zero, &x)
+    } else {
+        b.overflow(with, &x, &y)
+    };
+    faults::fault_if(cx, b, &of, fault, &[]);
+}
+
+/// `x % y` for any `y` but zero: a divisor of -1 is swapped for 1 and the result zeroed, which
+/// avoids the hardware trap on `Int.min % -1`.
+fn rem(b: &mut FnBuilder, x: &Val, y: &Val, name: &dyn Fn(&mut FnBuilder)) {
+    let m1 = b.icmp("eq", y, &Val::int(-1));
+    let safe = b.select(&m1, &Val::int(1), y);
+    let r = b.bin(Bin::SRem, x, &safe);
+    name(b);
+    b.select(&m1, &Val::int(0), &r);
 }

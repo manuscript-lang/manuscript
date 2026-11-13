@@ -297,6 +297,8 @@ pub enum Bin {
     FDiv,
     LShr,
     Shl,
+    SDiv,
+    SRem,
 }
 
 impl Bin {
@@ -314,6 +316,8 @@ impl Bin {
             Bin::FDiv => "fdiv",
             Bin::LShr => "lshr",
             Bin::Shl => "shl",
+            Bin::SDiv => "sdiv",
+            Bin::SRem => "srem",
         }
     }
 
@@ -427,6 +431,19 @@ impl<'t> FnBuilder<'t> {
         )
     }
 
+    /// The result and the overflow flag of `llvm.<op>.with.overflow` (`sadd`, `usub`, ...); the
+    /// result takes the reserved name.
+    pub fn overflow(&mut self, op: &str, a: &Val, b: &Val) -> (Val, Val) {
+        assert_eq!(a.ty, b.ty);
+        let ty = self.ty(&a.ty);
+        let pair = self.reserve(Ty::Tuple(vec![a.ty.clone(), Ty::I1]));
+        self.line(format!(
+            "{} = call {{ {ty}, i1 }} @llvm.{op}.with.overflow.{ty}({ty} {}, {ty} {})",
+            pair.text, a.text, b.text
+        ));
+        (self.extract(&pair, 0), self.extract(&pair, 1))
+    }
+
     pub fn fneg(&mut self, a: &Val) -> Val {
         self.def(a.ty.clone(), format!("fneg {} {}", self.ty(&a.ty), a.text))
     }
@@ -447,6 +464,12 @@ impl<'t> FnBuilder<'t> {
             Ty::I1,
             format!("fcmp {cc} {} {}, {}", self.ty(&a.ty), a.text, b.text),
         )
+    }
+
+    /// A signed `i64` converted to `double`.
+    pub fn sitofp(&mut self, v: &Val) -> Val {
+        assert_eq!(v.ty, Ty::I64);
+        self.def(Ty::F64, format!("sitofp i64 {} to double", v.text))
     }
 
     pub fn zext(&mut self, v: &Val, to: Ty) -> Val {

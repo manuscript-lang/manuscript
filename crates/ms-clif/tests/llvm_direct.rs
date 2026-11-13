@@ -174,6 +174,73 @@ fn string_bytes() {
     );
 }
 
+/// A function of two integers: `op` on them, returned.
+fn int_program(op: &str, x: i64, y: i64) -> String {
+    format!(
+        r#"module "d"
+entry @main
+file 0 "d.ms"
+fn @f(%a: int, %b: int) -> int !0:1:1 {{
+b0:
+  %x: int = {op} %a, %b !0:2:1
+  ret %x
+}}
+fn @main() -> int !0:10:1 {{
+b0:
+  %a: int = iconst {x}
+  %b: int = iconst {y}
+  %r: int = call @f(%a, %b) !0:12:1
+  ret %r
+}}
+"#
+    )
+}
+
+/// A function that faults with `kind`, called from `main`.
+fn fault_program(kind: &str) -> String {
+    format!(
+        r#"module "d"
+entry @main
+file 0 "d.ms"
+fn @f(%a: int) -> int !0:1:1 {{
+b0:
+  fault {kind}
+}}
+fn @main() -> int !0:10:1 {{
+b0:
+  %a: int = iconst 1
+  %r: int = call @f(%a) !0:12:1
+  ret %r
+}}
+"#
+    )
+}
+
+fn checked_arithmetic() {
+    let (min, max) = (i64::MIN, i64::MAX);
+    for (name, op, x, y, code) in [
+        ("add", "iadd.chk", 20, 22, 42),
+        ("sub", "isub.chk", 50, 8, 42),
+        ("mul", "imul.chk", 6, 7, 42),
+        ("div", "sdiv.chk", -85, -2, 42),
+        ("rem", "srem.chk", 142, 100, 42),
+        ("remmin", "srem.chk", min, -1, 0),
+        ("add_over", "iadd.chk", max, 1, 67),
+        ("mul_over", "imul.chk", max, 2, 67),
+        ("div_zero", "sdiv.chk", 1, 0, 67),
+        ("div_min", "sdiv.chk", min, -1, 67),
+        ("rem_zero", "srem.chk", 1, 0, 67),
+    ] {
+        check(
+            &format!("direct_{name}"),
+            &int_program(op, x, y),
+            code,
+            &["f"],
+        );
+    }
+    check("direct_fault", &fault_program("div_by_zero"), 67, &["f"]);
+}
+
 /// Interfaces: a box built from an `int` (heap, and a frame slot for a borrow), a method call
 /// through the vtable, a view and a vtable test, and `map.new` as zero words. Only the method
 /// call and `map.new` are emitted directly until `drop` is: every owned interface is dropped, so
@@ -251,6 +318,7 @@ fn direct_lists_and_strings_match_cranelift() {
     list_reads_and_writes();
     a_bad_list_index_faults();
     string_bytes();
+    checked_arithmetic();
     interfaces_and_maps();
     let _ = std::fs::remove_file("ms-keep.ll");
 }
