@@ -5,9 +5,10 @@
 //! it covers (strings, lists, plain records, optionals); every other glue keeps the old path.
 
 use crate::cg::{Gen, Glue};
-use crate::layout::{Layouts, Leaf, mem_layout};
+use crate::layout::{AltRepr, Layouts, Leaf, mem_layout};
 use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Types, Val};
 use crate::mir_llvm::Emitted;
+use cranelift_module::Module as _;
 use ms_mir::types::{Ty, TyKind};
 use ms_rt_abi::STR_INLINE;
 
@@ -48,13 +49,12 @@ pub fn supports(g: &Gen, kind: Glue, ty: Ty) -> bool {
         k if closure::is_closure(k) => true,
         Glue::Drop => match m.types.kind(ty) {
             TyKind::Bytes | TyKind::List(_) => true,
-            TyKind::Rec(r) => !m.records[r.index()].indirect,
+            TyKind::Rec(_) => true,
             TyKind::Opt(inner) => {
                 g.lay.opt_is_boxed(*inner)
                     || g.lay.is_str_like(ty)
                     || !g.lay.opt_is_nullable(*inner)
             }
-            TyKind::Obj(..) | TyKind::Alt(_) | TyKind::Iface(_) => false,
             _ => true,
         },
         Glue::Clone => match m.types.kind(ty) {
@@ -676,13 +676,26 @@ impl E<'_, '_, '_> {
             .call(if ret { &LTy::I64 } else { &LTy::Void }, "", name, &a)
     }
 
+    /// Frees the block at `p` (a pointer or its `i64` address); the runtime's `free` takes a pointer so LLVM
+    /// pairs it with the allocation.
     fn free(&mut self, p: &Val) {
-        self.rt("msrt_free", &[p], false);
+        self.declare_heap("msrt_free");
+        let ptr = if p.ty == LTy::Ptr {
+            p.clone()
+        } else {
+            self.b.inttoptr(p)
+        };
+        self.b.call(&LTy::Void, "", "msrt_free", &[(ptr, "")]);
+    }
+
+    fn declare_heap(&mut self, name: &str) {
+        let decl = crate::mir_llvm::rt::heap_decl(name).expect("a heap function");
+        self.decls.push((name.to_string(), decl.to_string()));
     }
 
     /// A fresh block of `size` bytes.
     fn alloc(&mut self, size: &Val) -> Val {
-        self.declare("msrt_alloc", "noalias align 16 ptr", "i64");
+        self.declare_heap("msrt_alloc");
         self.b
             .call(
                 &LTy::Ptr,
@@ -852,6 +865,7 @@ impl E<'_, '_, '_> {
                 let owned = self.test(&vs[2]);
                 self.if_then(&owned, |s| s.drop_list(ty, &vs[0], &vs[1]));
             }
+            TyKind::Rec(r) if m.records[r.index()].indirect => self.drop_indirect(r, &vs[0]),
             TyKind::Rec(_) => {
                 for (fty, at, w) in self.fields_of(ty) {
                     if m.needs_drop(fty) {
@@ -874,8 +888,234 @@ impl E<'_, '_, '_> {
                 let present = self.test(&vs[0]);
                 self.if_then(&present, |s| s.drop_value(inner, &vs[1..]));
             }
+            TyKind::Obj(..) => self.drop_obj(ty, vs),
+            TyKind::Iface(_) => self.drop_iface(vs),
+            TyKind::Alt(a) => self.drop_alt(ty, a, vs),
             _ => {}
         }
+    }
+
+    /// Drops the fields of the indirect record whose block is `p`, then frees the block and the
+    /// header blocks of its collections (a collection that was never filled has none).
+    fn drop_indirect(&mut self, r: ms_mir::types::RecId, p: &Val) {
+        let m = self.g.m;
+        let block = self.g.lay.rec_block(r);
+        let offsets = mem_layout(&block).offsets;
+        let base = self.ptr_of(p);
+        let mut at = 0;
+        for f in &m.records[r.index()].fields {
+            let boxed = self.g.lay.rec_field_boxed(f.1);
+            let n = if boxed { 1 } else { self.g.lay.width(f.1) };
+            let (bk, fty) = (at, f.1);
+            at += n;
+            if boxed {
+                let bp = self.load_block_leaf(&base, offsets[bk], block[bk]);
+                let nn = self.test(&bp);
+                self.if_then(&nn, |s| {
+                    if m.needs_drop(fty) {
+                        let hp = s.ptr_of(&bp);
+                        let words: Vec<Val> = (0..ms_rt_abi::MAP_SIZE / 8)
+                            .map(|k| s.load_block_leaf(&hp, (k * 8) as u32, Leaf::I64))
+                            .collect();
+                        s.drop_value(fty, &words);
+                    }
+                    s.free(&bp);
+                });
+            } else if m.needs_drop(fty) {
+                let fv: Vec<Val> = (bk..bk + n)
+                    .map(|k| self.load_block_leaf(&base, offsets[k], block[k]))
+                    .collect();
+                self.drop_value(fty, &fv);
+            }
+        }
+        self.free(p);
+    }
+
+    /// The symbol of a data object the glue addresses, as a pointer.
+    fn data_addr(&mut self, id: cranelift_module::DataId) -> Val {
+        let sym = self
+            .g
+            .module
+            .declarations()
+            .get_data_decl(id)
+            .linkage_name(id)
+            .into_owned();
+        self.data.push(sym.clone());
+        Val::new(format!("@\"{sym}\""), LTy::Ptr)
+    }
+
+    /// A map or set is an owned value the runtime drops through its descriptor.
+    fn drop_obj(&mut self, ty: Ty, vs: &[Val]) {
+        let leaves = self.g.lay.leaves(ty);
+        let slot = self.b.alloca(&slot_ty(&leaves));
+        store_leaves(&mut self.b, &slot, &leaves, vs);
+        let slot = self.b.ptrtoint(&slot);
+        let id = self.g.typedesc(ty);
+        let desc = self.data_addr(id);
+        let desc = self.b.ptrtoint(&desc);
+        self.rt("msrt_slot_drop", &[&desc, &slot], false);
+    }
+
+    /// The vtable word's low bits say what the value owns: 0 the box and its payload (`vtable[0]`
+    /// is the payload destructor), 1 only the box (`iface.borrow`), 2 nothing (`iface.view`).
+    fn drop_iface(&mut self, vs: &[Val]) {
+        let (data, vt) = (&vs[0], &vs[1]);
+        let tag = self.b.bin(Bin::And, vt, &Val::int(3));
+        let owned = self.b.icmp("eq", &tag, &Val::int(0));
+        self.if_then(&owned, |s| {
+            let at = s.ptr_of(vt);
+            let f = s.b.load(&LTy::I64, &at, 8);
+            let f = s.b.inttoptr(&f);
+            s.b.call_ptr(&LTy::Void, "", &f, &[(data.clone(), "")]);
+        });
+        let borrowed = self.b.icmp("eq", &tag, &Val::int(1));
+        self.if_then(&borrowed, |s| s.free(data));
+    }
+
+    /// Loads the block leaf `l` at byte `off` of `p`, widened to the register it travels in.
+    fn load_block_leaf(&mut self, p: &Val, off: u32, l: Leaf) -> Val {
+        let at = self.b.gep_bytes(p, u64::from(off));
+        let v = self.b.load(&mem(l), &at, l.size() as u64);
+        match l {
+            Leaf::N8 | Leaf::N16 | Leaf::N32 => self.b.sext(&v, LTy::I64),
+            Leaf::U8 | Leaf::U16 | Leaf::U32 => self.b.zext(&v, LTy::I64),
+            _ => v,
+        }
+    }
+
+    /// Frees the block `p` of a boxed enum whose case index is `tag`, unless the case has no
+    /// payload: such values are one shared static block.
+    fn free_boxed(&mut self, a: ms_mir::types::AltId, tag: &Val, p: &Val) {
+        let units: Vec<usize> = self.g.m.alts[a.index()]
+            .cases
+            .iter()
+            .enumerate()
+            .filter(|(_, c)| c.fields.is_empty())
+            .map(|(i, _)| i)
+            .collect();
+        let (free, cont) = (self.fresh("f"), self.fresh("c"));
+        if units.is_empty() {
+            self.free(p);
+            return;
+        }
+        let mut unit: Option<Val> = None;
+        for c in units {
+            let is = self.b.icmp("eq", tag, &Val::int(c as i64));
+            unit = Some(match unit {
+                None => is,
+                Some(u) => self.b.bin(Bin::Or, &u, &is),
+            });
+        }
+        self.b.cond_br(&unit.expect("a unit case"), &cont, &free);
+        self.label(&free);
+        self.free(p);
+        self.br(&cont);
+        self.label(&cont);
+    }
+
+    /// The field of `case` that holds the same boxed enum again (the tail of a chain such as
+    /// `Cons(head, tail)`): `(field, leaves, optional)`. Dropping loops over it, so a long chain
+    /// does not overflow the stack.
+    fn tail_field(&self, ty: Ty, case: &[(Ty, Vec<usize>)]) -> Option<(usize, Vec<usize>, bool)> {
+        case.iter().enumerate().rev().find_map(|(i, (fty, idx))| {
+            if *fty == ty && idx.len() == 1 {
+                return Some((i, idx.clone(), false));
+            }
+            match self.g.m.types.kind(*fty) {
+                TyKind::Opt(inner) if *inner == ty && idx.len() == 2 => {
+                    Some((i, idx.clone(), true))
+                }
+                _ => None,
+            }
+        })
+    }
+
+    /// Drops what an enum owns: the payload fields of its case, then (boxed) the block.
+    fn drop_alt(&mut self, ty: Ty, a: ms_mir::types::AltId, vs: &[Val]) {
+        let m = self.g.m;
+        let fields = self.g.lay.alt_fields(a);
+        let boxed = match &self.g.lay.shape(ty).alt {
+            Some(AltRepr::Boxed { block, .. }) => Some(block.clone()),
+            _ => None,
+        };
+        let droppable = |c: usize, case: &Vec<(Ty, Vec<usize>)>| {
+            !m.alts[a.index()].borrows(c) && case.iter().any(|(t, _)| m.needs_drop(*t))
+        };
+        let Some(block) = boxed else {
+            for (c, case) in fields.iter().enumerate().filter(|(c, k)| droppable(*c, k)) {
+                let is = self.b.icmp("eq", &vs[0], &Val::int(c as i64));
+                self.if_then(&is, |s| {
+                    for (fty, idx) in case.iter().filter(|(t, _)| m.needs_drop(*t)) {
+                        let fv: Vec<Val> = idx.iter().map(|i| vs[*i].clone()).collect();
+                        s.drop_value(*fty, &fv);
+                    }
+                });
+            }
+            return;
+        };
+        let offsets = mem_layout(&block).offsets;
+        let chain = fields.iter().any(|c| self.tail_field(ty, c).is_some());
+        // The head of the loop: the block being dropped.
+        let (head, latch, exit) = (self.fresh("h"), self.fresh("l"), self.fresh("e"));
+        let pre = self.cur.clone();
+        let (cur, next) = (self.b.reserve(LTy::I64), self.b.reserve(LTy::I64));
+        if chain {
+            self.br(&head);
+            self.label(&head);
+            self.b
+                .phi(&cur, &[(vs[0].clone(), pre), (next.clone(), latch.clone())]);
+        }
+        let first = if chain { cur.clone() } else { vs[0].clone() };
+        let base = self.ptr_of(&first);
+        let tag = self.load_block_leaf(&base, 0, Leaf::I64);
+        let mut back: Vec<(Val, String)> = Vec::new();
+        for (c, case) in fields.iter().enumerate().filter(|(c, k)| droppable(*c, k)) {
+            let tail = self.tail_field(ty, case);
+            let (this, other) = (self.fresh("t"), self.fresh("o"));
+            let is = self.b.icmp("eq", &tag, &Val::int(c as i64));
+            self.b.cond_br(&is, &this, &other);
+            self.label(&this);
+            for (i, (fty, idx)) in case.iter().enumerate() {
+                if !m.needs_drop(*fty) || tail.as_ref().is_some_and(|t| t.0 == i) {
+                    continue;
+                }
+                let fv: Vec<Val> = idx
+                    .iter()
+                    .map(|k| self.load_block_leaf(&base, offsets[*k], block[*k]))
+                    .collect();
+                self.drop_value(*fty, &fv);
+            }
+            match tail {
+                Some((_, idx, optional)) => {
+                    let k = *idx.last().expect("tail leaf");
+                    let child = self.load_block_leaf(&base, offsets[k], block[k]);
+                    let present = optional.then(|| {
+                        let p = self.load_block_leaf(&base, offsets[idx[0]], block[idx[0]]);
+                        self.test(&p)
+                    });
+                    self.free(&first);
+                    back.push((child, self.cur.clone()));
+                    match present {
+                        Some(p) => self.b.cond_br(&p, &latch, &exit),
+                        None => self.br(&latch),
+                    }
+                }
+                None => {
+                    self.free(&first);
+                    self.br(&exit);
+                }
+            }
+            self.label(&other);
+        }
+        // A case with nothing to drop: only the block is freed.
+        self.free_boxed(a, &tag, &first);
+        self.br(&exit);
+        if chain {
+            self.label(&latch);
+            self.b.phi(&next, &back);
+            self.br(&head);
+        }
+        self.label(&exit);
     }
 
     fn list_copy(&mut self, ty: Ty, vs: &[Val]) -> Vs {
@@ -1068,8 +1308,7 @@ pub fn emit(g: &mut Gen, kind: Glue, ty: Ty, types: &Types, loc: usize) -> Emitt
         Glue::BlockDrop => {
             let p = a(0, LTy::Ptr);
             e.drop_at(ty, &p);
-            let addr = e.b.ptrtoint(&p);
-            e.free(&addr);
+            e.free(&p);
             e.b.ret(None);
         }
         Glue::BlockClone => {

@@ -16,6 +16,7 @@
 //! holds a `ptr` is not handled (its leaf is an integer here); the function falls back.
 
 use super::{Area, Cx, Vals, held_leaves, mem_leaves, narrow_leaves};
+use crate::glue_llvm::{OwnKind, own_kind};
 use crate::layout::{Layouts, Leaf, mem_layout};
 use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Types, Val};
 use ms_mir::ir::{Func, Imm, Inst, Op, Target, Value};
@@ -155,6 +156,26 @@ fn field_boxed(lay: &Layouts, r: ms_mir::types::RecId, i: u32) -> bool {
         && lay.rec_field_boxed(lay.m.records[r.index()].fields[i as usize].1)
 }
 
+/// The fields of the record `ty` that `rec.release` drops: those the mask does not move out and
+/// that own something, each with its type and leaf index and count.
+pub(super) fn released(
+    lay: &Layouts,
+    ty: Ty,
+    mask: u32,
+) -> impl Iterator<Item = (Ty, usize, usize)> {
+    let r = record(lay, ty).expect("a record that is not indirect");
+    let mut at = 0;
+    lay.m.records[r.index()]
+        .fields
+        .iter()
+        .enumerate()
+        .filter_map(move |(k, f)| {
+            let w = lay.width(f.1);
+            at += w;
+            (mask >> k & 1 == 0 && lay.m.needs_drop(f.1)).then_some((f.1, at - w, w))
+        })
+}
+
 /// How many times `inst` splits its block: reading, creating or addressing a boxed collection
 /// field branches on the null header.
 fn splits(lay: &Layouts, f: &Func, i: &Inst, _: bool) -> usize {
@@ -164,6 +185,9 @@ fn splits(lay: &Layouts, f: &Func, i: &Inst, _: bool) -> usize {
             .and_then(|r| indirect(lay, f.ty(r)))
             .map_or(0, |r| block_spans(lay, r).iter().filter(|s| s.2).count()),
         (Op::RecGet | Op::PtrField, Imm::Field(r, k)) => usize::from(field_boxed(lay, r, k)),
+        (Op::RecRelease, Imm::RecMask(_, mask)) => released(lay, f.ty(i.args[0]), mask)
+            .filter(|(fty, ..)| own_kind(lay, *fty) == OwnKind::Str)
+            .count(),
         _ => 0,
     }
 }
@@ -189,6 +213,7 @@ pub(super) fn handles(op: Op) -> bool {
             | Op::RecGet
             | Op::RecSet
             | Op::RecFill
+            | Op::RecRelease
             | Op::Slot
             | Op::Load
             | Op::Take
@@ -208,6 +233,8 @@ pub(super) fn op_ok(lay: &Layouts, f: &Func, i: &Inst) -> bool {
         (Op::PtrField | Op::RecGet, Imm::Field(..)) => true,
         (Op::RecSet | Op::RecFill, Imm::Field(r, _)) => !lay.m.records[r.index()].indirect,
         (Op::RecNew, _) => true,
+        // An indirect record's block is freed too, which stays with the translation.
+        (Op::RecRelease, _) => indirect(lay, f.ty(i.args[0])).is_none(),
         (
             Op::Slot | Op::Load | Op::Take | Op::PtrField | Op::RecGet | Op::RecSet | Op::RecFill,
             _,
@@ -260,12 +287,22 @@ pub(super) fn abi_leaves(
     v: Value,
     native: bool,
 ) -> Vec<Val> {
-    let own = &vals[&v.index()];
+    abi_leaves_of(b, lay, ty, &vals[&v.index()], native)
+}
+
+/// [`abi_leaves`] of the held values `own` of a `ty`.
+pub(super) fn abi_leaves_of(
+    b: &mut FnBuilder,
+    lay: &Layouts,
+    ty: Ty,
+    own: &[Val],
+    native: bool,
+) -> Vec<Val> {
     let leaves = if is_mem(lay, ty) {
         let s = shape(b.types(), lay, ty).expect("is_mem checked");
         load_leaves(b, &s, &own[0], 0, s.leaves.len(), &[])
     } else {
-        own.clone()
+        own.to_vec()
     };
     let narrow = narrow_leaves(lay, ty);
     leaves
@@ -311,7 +348,7 @@ fn store_leaves(b: &mut FnBuilder, s: &Shape, base: &Val, at: usize, leaves: &[V
 
 /// Stores a leaf in its memory type `mem`: a boolean as the byte it is in memory, a narrow
 /// integer truncated to its width.
-fn store_leaf(b: &mut FnBuilder, v: &Val, mem: &LTy, p: &Val) {
+pub(super) fn store_leaf(b: &mut FnBuilder, v: &Val, mem: &LTy, p: &Val) {
     let v = to_mem(b, v, mem);
     b.store(&v, p, align(mem));
 }
@@ -634,6 +671,23 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
             b.copy_bytes(&out[0], &src, s.size as u64, s.align as u64);
             write_field(b, lay, f, vals, &s, &out[0], at, inst.args[1]);
         }
+        Op::RecRelease => {
+            let Imm::RecMask(_, mask) = inst.imm else {
+                return;
+            };
+            let rty = f.ty(inst.args[0]);
+            let own = arg(0).clone();
+            let s = is_mem(lay, rty).then(|| shape(b.types(), lay, rty).expect("is_mem checked"));
+            for (fty, at, n) in released(lay, rty, mask) {
+                let leaves = match &s {
+                    // A field that is itself a record in memory is its address in the parent.
+                    Some(s) if is_mem(lay, fty) => vec![b.field_ptr(&s.st, &own[0], at)],
+                    Some(s) => load_leaves(b, s, &own[0], at, n, &[]),
+                    None => own[at..at + n].to_vec(),
+                };
+                super::glue::drop_held(cx, fty, leaves, b);
+            }
+        }
         _ => unreachable!("handles lists the ops"),
     }
 }
@@ -670,13 +724,13 @@ pub(super) fn store_value(
 const NULL: fn() -> Val = || Val::new("null", LTy::Ptr);
 
 /// Declares the runtime's allocator and `free` for a block.
-fn declare_heap(cx: &mut Cx) {
+pub(super) fn declare_heap(cx: &mut Cx) {
     super::rt::declare(cx, "msrt_alloc");
     super::rt::declare(cx, "msrt_free");
 }
 
 /// A fresh heap block of `size` bytes, named `dst` when given.
-fn alloc(b: &mut FnBuilder, size: u32, dst: Option<&Val>) -> Val {
+pub(super) fn alloc(b: &mut FnBuilder, size: u32, dst: Option<&Val>) -> Val {
     if let Some(d) = dst {
         b.name_next(d);
     }
@@ -951,10 +1005,15 @@ pub(super) fn bind_indirect(
 /// A pointer to value `v` of type `ty` to pass by pointer: the slot of a record in memory, or a
 /// fresh stack slot holding its leaves.
 pub(super) fn spill(b: &mut FnBuilder, lay: &Layouts, ty: Ty, vals: &Vals, v: Value) -> Val {
+    spill_of(b, lay, ty, &vals[&v.index()])
+}
+
+/// [`spill`] of the held values `own` of a `ty`.
+pub(super) fn spill_of(b: &mut FnBuilder, lay: &Layouts, ty: Ty, own: &[Val]) -> Val {
     if is_mem(lay, ty) {
-        return vals[&v.index()][0].clone();
+        return own[0].clone();
     }
-    let leaves = abi_leaves(b, lay, ty, vals, v, true);
+    let leaves = abi_leaves_of(b, lay, ty, own, true);
     let st = super::aggregate(b.types(), lay, ty);
     let slot = b.alloca(&st);
     store_regs(b, lay, ty, &st, &slot, &leaves);
