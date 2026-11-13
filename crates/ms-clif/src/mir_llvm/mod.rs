@@ -106,6 +106,33 @@ const BOOL_ATTR: &str = " zeroext range(i8 0, 2)";
 /// `[0, 2^63)`).
 const LEN_ATTR: &str = " range(i64 0, -9223372036854775808)";
 
+/// `range` of the case index of an enum with `n` cases: `[0, n)`. Enums have few cases, so the
+/// text is static; a larger enum carries no range.
+pub(crate) fn tag_attr(n: usize) -> &'static str {
+    const RANGES: [&str; 16] = [
+        " range(i64 0, 1)",
+        " range(i64 0, 2)",
+        " range(i64 0, 3)",
+        " range(i64 0, 4)",
+        " range(i64 0, 5)",
+        " range(i64 0, 6)",
+        " range(i64 0, 7)",
+        " range(i64 0, 8)",
+        " range(i64 0, 9)",
+        " range(i64 0, 10)",
+        " range(i64 0, 11)",
+        " range(i64 0, 12)",
+        " range(i64 0, 13)",
+        " range(i64 0, 14)",
+        " range(i64 0, 15)",
+        " range(i64 0, 16)",
+    ];
+    n.checked_sub(1)
+        .and_then(|i| RANGES.get(i))
+        .copied()
+        .unwrap_or("")
+}
+
 /// The leaves of a value of type `ty`, in calling-convention order, each with its attributes. The
 /// attributes are facts about the value, not the register: `Bool` is 0 or 1 and a list's length
 /// is not negative, which lets LLVM drop checks and fold comparisons. A string's words are a tagged
@@ -116,6 +143,10 @@ fn leaves(lay: &Layouts, ty: Ty) -> Vec<(LTy, &'static str)> {
     match lay.m.types.kind(ty) {
         TyKind::Bool => ls[0].1 = BOOL_ATTR,
         TyKind::Bytes | TyKind::List(_) => ls[1].1 = LEN_ATTR,
+        // An enum held as leaves starts with its case index.
+        TyKind::Alt(a) if !lay.is_boxed(*a) => {
+            ls[0].1 = tag_attr(lay.m.alts[a.index()].cases.len())
+        }
         _ => {}
     }
     ls
@@ -126,25 +157,49 @@ fn leaves(lay: &Layouts, ty: Ty) -> Vec<(LTy, &'static str)> {
 /// A function gets and returns a boolean as `i8`, and in the leaf convention a pointer as `i64`,
 /// and converts at its entry and returns; memory holds the `mem_leaves`.
 fn held_leaves(lay: &Layouts, ty: Ty) -> Vec<LTy> {
-    let mut tys = mem_leaves(lay, ty);
-    for (t, is_bool) in tys.iter_mut().zip(lay.bool_leaves(ty)) {
-        if is_bool {
+    let (ptrs, bools) = (lay.pointer_leaves(ty), lay.bool_leaves(ty));
+    let mut tys: Vec<LTy> = lay.leaves(ty).into_iter().map(|l| leaf(l).0).collect();
+    for (k, t) in tys.iter_mut().enumerate() {
+        if ptrs[k] {
+            *t = LTy::Ptr;
+        } else if bools[k] {
             *t = LTy::I1;
         }
     }
     tys
 }
 
-/// The types a value of type `ty` has in memory: its leaves, with the pointer ones as `ptr` and a
-/// boolean as the `i8` it is stored as.
+/// The types a value of type `ty` has in memory: its leaves, with the pointer ones as `ptr`, a
+/// boolean as the `i8` it is stored as, and a narrow integer as the 1, 2 or 4 byte integer it
+/// occupies (`mem_leaf`).
 fn mem_leaves(lay: &Layouts, ty: Ty) -> Vec<LTy> {
-    let mut tys: Vec<LTy> = lay.leaves(ty).into_iter().map(|l| leaf(l).0).collect();
+    let mut tys: Vec<LTy> = lay.leaves(ty).into_iter().map(mem_leaf).collect();
     for (t, ptr) in tys.iter_mut().zip(lay.pointer_leaves(ty)) {
         if ptr {
             *t = LTy::Ptr;
         }
     }
     tys
+}
+
+/// The memory type of one leaf: a narrow integer is held in an `i64` register and stored in its
+/// own width.
+fn mem_leaf(l: Leaf) -> LTy {
+    match l {
+        Leaf::N8 | Leaf::U8 => LTy::I8,
+        Leaf::N16 | Leaf::U16 => LTy::I16,
+        Leaf::N32 | Leaf::U32 => LTy::I32,
+        l => leaf(l).0,
+    }
+}
+
+/// Per leaf of `ty`: whether loading it from memory sign-extends (`Int8` to `Int32`). Other
+/// narrow leaves zero-extend; wider ones are not extended.
+fn signed_leaves(lay: &Layouts, ty: Ty) -> Vec<bool> {
+    lay.leaves(ty)
+        .into_iter()
+        .map(|l| matches!(l, Leaf::N8 | Leaf::N16 | Leaf::N32))
+        .collect()
 }
 
 /// The struct a value of type `ty` has in memory: named for strings, lists and records, so the
@@ -156,6 +211,8 @@ pub(crate) fn aggregate(types: &Types, lay: &Layouts, ty: Ty) -> LTy {
         TyKind::Bytes => "ms.bytes".to_string(),
         TyKind::List(_) => "ms.list".to_string(),
         TyKind::Rec(r) => format!("ms.rec.{}", lay.m.records[r.index()].name),
+        TyKind::Alt(a) if !lay.is_boxed(*a) => format!("ms.enum.{}", lay.m.alts[a.index()].name),
+        TyKind::Opt(_) => format!("ms.opt.{}", ty.index()),
         _ => return LTy::Tuple(fields),
     };
     types.named(&name, fields)
@@ -658,8 +715,6 @@ mod coverage {
     /// The ops no area lowers yet. An op leaves this list when an area handles it; the scope
     /// markers are not here because `elaborate` removes them before code generation.
     const UNLOWERED: &[Op] = &[
-        Op::NarrowChk,
-        Op::INarrowOpt,
         Op::AltOwn,
         Op::RecRelease,
         Op::BytesLit,
@@ -694,5 +749,19 @@ mod coverage {
                 }
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::tag_attr;
+
+    #[test]
+    fn a_case_index_is_below_the_case_count() {
+        assert_eq!(tag_attr(3), " range(i64 0, 3)");
+        assert_eq!(tag_attr(16), " range(i64 0, 16)");
+        // No cases, or more than the table holds: no claim.
+        assert_eq!(tag_attr(0), "");
+        assert_eq!(tag_attr(17), "");
     }
 }

@@ -217,11 +217,15 @@ fn reg_formal(r: Reg, name: String) -> Formal {
 }
 
 /// A fact about register `j` of a value of type `ty`, beyond its width: `Bool` is 0 or 1 and a
-/// list's or bytes' length is not negative (the range wraps: it is `[0, 2^63)`).
+/// list's or bytes' length is not negative, an enum's case index is below its case count (the range wraps: it is `[0, 2^63)`).
 fn range_attr(lay: &Layouts, ty: Ty, j: usize) -> &'static str {
     match (lay.m.types.kind(ty), j) {
         (TyKind::Bool, 0) => " range(i8 0, 2)",
         (TyKind::Bytes | TyKind::List(_), 1) => " range(i64 0, -9223372036854775808)",
+        // An inline enum starts with its case index.
+        (TyKind::Alt(a), 0) if !lay.is_boxed(*a) => {
+            crate::mir_llvm::tag_attr(lay.m.alts[a.index()].cases.len())
+        }
         _ => "",
     }
 }
