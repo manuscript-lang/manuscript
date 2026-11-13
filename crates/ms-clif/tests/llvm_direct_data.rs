@@ -241,3 +241,160 @@ pub fn optionals_and_alternatives_match_cranelift() {
     assert!(ir.contains("switch i64 "), "no switch on the tag");
     assert_eq!((got.code, &got.stdout), (want.code, &want.stdout));
 }
+
+/// Narrow integers in list elements and across calls: `Int8` sign-extends and `UInt16` zero-extends
+/// when read back from their 1 and 2 byte slots, and `narrow.chk` and `inarrow.opt` test the range.
+const NARROW: &str = r#"module "d"
+entry @main
+file 0 "d.ms"
+fn @pack8(%a: int8, %b: int8) -> list<int8> inline(never) !0:1:1 {
+b0:
+  %l: list<int8> = list.lit %a, %b !0:2:1
+  ret %l
+}
+fn @read8(%l: list<int8>, %i: int) -> int8 inline(never) !0:3:1 {
+b0:
+  %x: int8 = list.get %l, %i !0:4:1
+  ret %x
+}
+fn @read16(%l: list<uint16>, %i: int) -> uint16 inline(never) !0:5:1 {
+b0:
+  %x: uint16 = list.get %l, %i !0:6:1
+  ret %x
+}
+fn @fit(%x: int) -> int inline(never) !0:7:1 {
+b0:
+  %o: opt<int8> = inarrow.opt %x !0:8:1
+  %ok: bool = opt.is_some %o !0:8:1
+  %one: int = iconst 1 !0:8:1
+  %zero: int = iconst 0 !0:8:1
+  %r: int = select %ok, %one, %zero !0:8:1
+  ret %r
+}
+fn @chk(%x: int8) -> int8 inline(never) !0:9:1 {
+b0:
+  %y: int8 = narrow.chk %x !0:10:1
+  ret %y
+}
+fn @main() -> int !0:20:1 {
+b0:
+  %neg: int = iconst -3 !0:21:1
+  %big: int = iconst 200 !0:21:1
+  %hi: int = iconst 60000 !0:21:1
+  %on: opt<int8> = inarrow.opt %neg !0:21:1
+  %bn: opt<int8> = inarrow.opt %big !0:21:1
+  %n8: int8 = opt.get %on !0:21:1
+  %m8: int8 = iconst 100 !0:21:1
+  %l8: list<int8> = call @pack8(%n8, %m8) !0:22:1
+  %zero: int = iconst 0 !0:22:1
+  %one: int = iconst 1 !0:22:1
+  %r0: int8 = call @read8(%l8, %zero) !0:22:1
+  %r1: int8 = call @read8(%l8, %one) !0:22:1
+  drop %l8 !0:22:1
+  %e0: bool = icmp.eq %r0, %n8 !0:23:1
+  %e1: bool = icmp.eq %r1, %m8 !0:23:1
+  %neg0: bool = icmp.lt %r0, %m8 !0:23:1
+  %f0: int = call @fit(%neg) !0:24:1
+  %f1: int = call @fit(%big) !0:24:1
+  %c: int8 = call @chk(%n8) !0:24:1
+  %a: int = select %e0, %one, %zero !0:25:1
+  %b: int = select %e1, %one, %zero !0:25:1
+  %d: int = select %neg0, %one, %zero !0:25:1
+  %s1: int = iadd %a, %b !0:26:1
+  %s2: int = iadd %s1, %d !0:26:1
+  %s3: int = iadd %s2, %f0 !0:26:1
+  %s4: int = iadd %s3, %f1 !0:26:1
+  ret %s4
+}
+"#;
+
+/// Run from `llvm_direct`'s one test (see above).
+pub fn narrow_integers_match_cranelift() {
+    let Some(opts) = direct() else { return };
+    let want = run_native(NARROW, "direct_narrow-cranelift");
+    assert_eq!(want.code, 4, "the Cranelift build disagrees");
+    let got = run_llvm(NARROW, &opts, "direct_narrow");
+    let ir = std::fs::read_to_string("ms-keep.ll").unwrap();
+    let _ = std::fs::remove_file("ms-keep.ll");
+    for f in ["pack8", "read8", "fit", "chk"] {
+        let header = ir
+            .lines()
+            .find(|l| l.starts_with("define") && l.contains(&format!("@\"{f}#")))
+            .unwrap_or_else(|| panic!("no {f} in the IR"));
+        let direct = header.contains("%a0_0") || header.contains("dereferenceable");
+        assert!(direct, "{f} was translated: {header}");
+    }
+    assert!(ir.contains("sext i8 "), "no sign extension of a byte");
+    assert_eq!((got.code, &got.stdout), (want.code, &want.stdout));
+}
+
+/// A record of more than eight leaves lives in memory: its `Int8`, `UInt16` and `Int32` fields are
+/// 1, 2 and 4 bytes there and read back sign- or zero-extended.
+const NARROW_RECORD: &str = r#"module "d"
+record Wide { a: int8, b: uint16, c: int32, d: int, e: int, f: int, g: int, h: int, i: int }
+entry @main
+file 0 "d.ms"
+fn @mk(%a: int8, %b: uint16, %c: int32, %n: int) -> Wide inline(never) !0:1:1 {
+b0:
+  %w: Wide = rec.new Wide %a, %b, %c, %n, %n, %n, %n, %n, %n !0:2:1
+  ret %w
+}
+fn @sum(%w: Wide) -> int inline(never) !0:3:1 {
+b0:
+  %a: int8 = rec.get Wide.a %w !0:4:1
+  %b: uint16 = rec.get Wide.b %w !0:4:1
+  %c: int32 = rec.get Wide.c %w !0:4:1
+  %zero: int = iconst 0 !0:4:1
+  %one: int = iconst 1 !0:4:1
+  %m8: int8 = iconst -3 !0:4:1
+  %ea: bool = icmp.eq %a, %m8 !0:4:1
+  %hi: uint16 = iconst 60000 !0:4:1
+  %eb: bool = icmp.eq %b, %hi !0:4:1
+  %m32: int32 = iconst -70000 !0:4:1
+  %ec: bool = icmp.eq %c, %m32 !0:4:1
+  %x: int = select %ea, %one, %zero !0:5:1
+  %y: int = select %eb, %one, %zero !0:5:1
+  %z: int = select %ec, %one, %zero !0:5:1
+  %s1: int = iadd %x, %y !0:5:1
+  %s2: int = iadd %s1, %z !0:5:1
+  ret %s2
+}
+fn @main() -> int !0:20:1 {
+b0:
+  %n: int = iconst 7 !0:21:1
+  %o8: opt<int8> = inarrow.opt %n !0:21:1
+  %a: int8 = opt.get %o8 !0:21:1
+  %neg3: int = iconst -3 !0:21:1
+  %on: opt<int8> = inarrow.opt %neg3 !0:21:1
+  %m8: int8 = opt.get %on !0:21:1
+  %big: int = iconst 60000 !0:21:1
+  %ob: opt<uint16> = inarrow.opt %big !0:21:1
+  %b: uint16 = opt.get %ob !0:21:1
+  %m: int = iconst -70000 !0:21:1
+  %oc: opt<int32> = inarrow.opt %m !0:21:1
+  %c: int32 = opt.get %oc !0:21:1
+  %w: Wide = call @mk(%m8, %b, %c, %n) !0:22:1
+  %r: int = call @sum(%w) !0:23:1
+  ret %r
+}
+"#;
+
+/// Run from `llvm_direct`'s one test (see above).
+pub fn narrow_record_fields_match_cranelift() {
+    let Some(opts) = direct() else { return };
+    let want = run_native(NARROW_RECORD, "direct_narrow_record-cranelift");
+    assert_eq!(want.code, 3, "the Cranelift build disagrees");
+    let got = run_llvm(NARROW_RECORD, &opts, "direct_narrow_record");
+    let ir = std::fs::read_to_string("ms-keep.ll").unwrap();
+    let _ = std::fs::remove_file("ms-keep.ll");
+    for f in ["mk", "sum"] {
+        let header = ir
+            .lines()
+            .find(|l| l.starts_with("define") && l.contains(&format!("@\"{f}#")))
+            .unwrap_or_else(|| panic!("no {f} in the IR"));
+        let direct = header.contains("%a0_0") || header.contains("dereferenceable");
+        assert!(direct, "{f} was translated: {header}");
+    }
+    assert!(ir.contains("load i16"), "no two byte load");
+    assert_eq!((got.code, &got.stdout), (want.code, &want.stdout));
+}

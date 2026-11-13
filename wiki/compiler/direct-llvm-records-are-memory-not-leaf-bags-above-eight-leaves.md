@@ -6,7 +6,7 @@ Verified (yaml parse program, 2026-11-13): the Cranelift lowering flattens a rec
 
 - Offsets must be those of `layout::mem_layout` over the flat leaf list, not of nested LLVM structs: a nested struct pads to its own alignment and the flat layout does not. Use a flat literal struct and address fields with typed `getelementptr` on it.
 - A block parameter that is a record in memory gets a slot of its own and each edge copies into it; a conditional edge with copies becomes its own block. A swap (an argument that is another parameter's slot) copies aside first. No phi per leaf.
-- Only records whose leaves are `i64`, `f64` or `i8` are handled (a narrow integer is `i64` in registers and smaller in memory).
+- Only records whose leaves are `i64`, `f64`, `i8` or a narrow integer are handled.
 - Direct functions must carry the inlining chain per instruction (`DirectEnv::at`), or fault traces and profiles lose the inlined frames.
 - `depth.enter` is the first instruction of a recursive function: it compares `llvm.frameaddress` with the limit cell in the stack region and, below it, reruns the function through its grow shim (`mir_llvm/depth.rs`). It splits the entry block, so `exit_label` counts it.
 
@@ -20,7 +20,7 @@ Apply when: adding ops to the direct emitter, or changing how it passes records 
 - Held values inside a function: pointer leaves are `ptr` and booleans `i1` (`Layouts::pointer_leaves`, `bool_leaves`; `mod.rs::held_leaves`). Across the leaf convention a pointer is `i64` and a bool `i8`; in memory a bool is a byte (`mem_leaves`). Convert at the edge (`records::abi_leaves`, `load_into`, `store_leaf`), never in the middle.
 - Strings, bytes, lists and records are named struct types in one `Types` per module (`aggregate`); their bodies must be written before the first function that uses them, or `llvm-link` rejects a `getelementptr` as unsized.
 - Checked arithmetic (`iadd.chk` and friends, `sdiv.chk`, `srem.chk`) uses `llvm.*.with.overflow` and `faults::fault_if`, which splits the block (`Area::splits` must count every split). The result takes its reserved name on the last instruction, after the checks. A function that ends in `fault` or contains a checked op is never `memory(none)`.
-- Not done: narrow integers (`Int8` to `UInt32`, a register `i64` but 1 to 4 bytes in memory) need a memory-type story in records and lists before `arith` may accept them.
+- Narrow integers (`Int8` to `UInt32`) are `i64` held and 1, 2 or 4 bytes in memory (`mem_leaf`): a load extends (`signed_leaves` says sign or zero), a store truncates (`records::to_mem`, `widen`). `NarrowChk` and `INarrowOpt` compare the register with the range. `Float32` (`f64` held, 4 bytes in memory) is not done.
 
 ## Closures, interfaces and runtime calls (`mir_llvm/closures.rs`, `calls.rs`)
 
