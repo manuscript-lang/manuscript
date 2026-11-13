@@ -6,8 +6,9 @@
 //! direct calls between such functions; every other function falls back to the translation. Both
 //! paths use the same leaf calling convention, so they call each other freely.
 
-use crate::layout::{Layouts, Leaf};
+use crate::layout::{Layouts, Leaf, mem_layout};
 use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Types, Val};
+use crate::llvm_ir::DirectEnv;
 use ms_mir::ir::{Cc, Func, Imm, Inst, Mode, Module, Op, Target, Term};
 use ms_mir::types::{Ty, TyKind};
 use std::collections::HashMap;
@@ -115,6 +116,9 @@ fn supported_op(op: Op) -> bool {
             | Op::Select
             | Op::B2I
             | Op::ListLen
+            | Op::ListGet
+            | Op::ListGetNn
+            | Op::ListGetU
             | Op::Call
     )
 }
@@ -139,6 +143,10 @@ pub fn supports(m: &Module, lay: &Layouts, f: &Func) -> bool {
         }
         for i in &bd.insts {
             if !supported_op(i.op) || i.res.is_some_and(|r| !ty_ok(r)) {
+                return false;
+            }
+            if matches!(i.op, Op::ListGet | Op::ListGetNn | Op::ListGetU) && !elem_ok(m, lay, f, i)
+            {
                 return false;
             }
             if i.op == Op::Call {
@@ -231,13 +239,97 @@ fn pure_terminates(
     verdict
 }
 
-/// Whether a supported op may read or write memory. None does yet.
+/// The ops that read neither memory nor anything a fault could depend on: register arithmetic and
+/// the length leaf of a list. Every other supported op (list and string accesses, which load, store
+/// and fault) may touch memory, so a function with one is not `memory(none)`.
+const PURE_OPS: &[Op] = &[
+    Op::IConst,
+    Op::FConst,
+    Op::BConst,
+    Op::UnitConst,
+    Op::IAdd,
+    Op::ISub,
+    Op::IMul,
+    Op::INeg,
+    Op::And,
+    Op::Or,
+    Op::Xor,
+    Op::Not,
+    Op::ICmp,
+    Op::UICmp,
+    Op::FCmp,
+    Op::FAdd,
+    Op::FSub,
+    Op::FMul,
+    Op::FDiv,
+    Op::FNeg,
+    Op::Select,
+    Op::B2I,
+    Op::ListLen,
+];
+
+/// Whether a supported op may read or write memory.
 fn touches_memory(op: Op) -> bool {
-    !supported_op(op)
+    !PURE_OPS.contains(&op)
+}
+
+/// Whether the element a list read loads is made of plain `i64`, `double` and `i8` leaves, which
+/// sit in memory exactly as in registers.
+fn elem_ok(m: &Module, lay: &Layouts, f: &Func, i: &Inst) -> bool {
+    let Some(e) = m.seq_elem(f.ty(i.args[0])) else {
+        return false;
+    };
+    i.res.is_some_and(|r| f.ty(r) == e)
+        && lay
+            .leaves(e)
+            .iter()
+            .all(|l| matches!(l, Leaf::I64 | Leaf::F64 | Leaf::I8))
 }
 
 fn is_entry(t: &Target) -> bool {
     t.block.index() == 0
+}
+
+/// What emitting one function needs besides the builder.
+struct Cx<'a> {
+    m: &'a Module,
+    f: &'a Func,
+    lay: &'a Layouts<'a>,
+    /// Whether bounds checks are emitted.
+    checks: bool,
+    /// Fault call sites numbered so far in the module.
+    sites: u32,
+    symbol_of: &'a dyn Fn(usize) -> String,
+    /// Which callees are pure, and whether they return (see [`pure_attrs`]).
+    memo: HashMap<usize, Option<bool>>,
+    /// `(symbol, declare line)` of each callee.
+    decls: Vec<(String, String)>,
+    /// MIR block being written and the checks it has split off so far.
+    block: usize,
+    split: usize,
+}
+
+/// Whether `op` ends its block early to branch to a fault when checks are on.
+fn checked(op: Op) -> bool {
+    matches!(op, Op::ListGet | Op::ListGetNn)
+}
+
+/// The label a MIR block ends in: each check splits it, and a successor's phis name that label.
+fn exit_label(f: &Func, checks: bool, bb: usize) -> String {
+    let n = if checks {
+        f.blocks[bb].insts.iter().filter(|i| checked(i.op)).count()
+    } else {
+        0
+    };
+    block_label(bb, n)
+}
+
+fn block_label(bb: usize, split: usize) -> String {
+    if split == 0 {
+        format!("b{bb}")
+    } else {
+        format!("b{bb}.{split}")
+    }
 }
 
 /// The values of one MIR value: one per register leaf.
@@ -250,12 +342,12 @@ pub fn emit(
     lay: &Layouts,
     idx: usize,
     f: &Func,
-    loc: usize,
+    checks: bool,
+    env: &mut DirectEnv,
     symbol_of: &dyn Fn(usize) -> String,
 ) -> Emitted {
-    let mut memo = HashMap::new();
     let types = Types::default();
-    let mut b = FnBuilder::new(&types, Some(loc));
+    let mut b = FnBuilder::new(&types, Some(env.loc));
     let rpo = f.rpo();
     // Name every value before emitting anything: a phi names values a later block defines (the
     // back edge of a loop), and a constant is its own text.
@@ -306,9 +398,22 @@ pub fn emit(
                 .push((bb.index(), t.args.clone()))
         });
     }
-    let mut decls = Vec::new();
+    let mut cx = Cx {
+        m,
+        f,
+        lay,
+        checks,
+        sites: *env.sites,
+        symbol_of,
+        memo: HashMap::new(),
+        decls: Vec::new(),
+        block: 0,
+        split: 0,
+    };
     for bb in &rpo {
         let bd = &f.blocks[bb.index()];
+        cx.block = bb.index();
+        cx.split = 0;
         b.label(&format!("b{}", bb.index()));
         if bb.index() != 0 {
             for (j, p) in bd.params.iter().enumerate() {
@@ -318,25 +423,29 @@ pub fn emit(
                         .map(Vec::as_slice)
                         .unwrap_or(&[])
                         .iter()
-                        .map(|(from, args)| (vals[&args[j].index()][k].clone(), format!("b{from}")))
+                        .map(|(from, args)| {
+                            (
+                                vals[&args[j].index()][k].clone(),
+                                exit_label(f, checks, *from),
+                            )
+                        })
                         .collect();
                     b.phi(dst, &edges);
                 }
             }
         }
         for inst in &bd.insts {
-            inst_text(
-                m, lay, inst, symbol_of, &mut memo, &vals, &mut decls, &mut b,
-            );
+            b.set_dbg(Some(env.line(inst.loc.line)));
+            inst_text(&mut cx, inst, &vals, &mut b);
         }
         match &bd.term {
-            Term::Br(t) => b.br(&format!("b{}", t.block.index())),
+            Term::Br(t) => b.br(&block_label(t.block.index(), 0)),
             Term::CondBr { cond, then, els } => {
                 let c = b.icmp("ne", &vals[&cond.index()][0], &Val::byte(0));
                 b.cond_br(
                     &c,
-                    &format!("b{}", then.block.index()),
-                    &format!("b{}", els.block.index()),
+                    &block_label(then.block.index(), 0),
+                    &block_label(els.block.index(), 0),
                 );
             }
             Term::Ret(Some(v)) => match vals[&v.index()].as_slice() {
@@ -351,12 +460,15 @@ pub fn emit(
             _ => b.unreachable(),
         }
     }
+    *env.sites = cx.sites;
     Emitted {
         ret: ret_text(lay, f.ret),
         params: params.join(", "),
-        attrs: pure_attrs(m, lay, idx, &mut memo).unwrap_or("").to_string(),
+        attrs: pure_attrs(m, lay, idx, &mut cx.memo)
+            .unwrap_or("")
+            .to_string(),
         body: b.finish(),
-        decls,
+        decls: cx.decls,
     }
 }
 
@@ -389,17 +501,8 @@ fn fcc(cc: Cc) -> &'static str {
 
 /// Writes one instruction. Each result leaf takes the name reserved for it in `vals`, which a phi
 /// may already use.
-#[allow(clippy::too_many_arguments)]
-fn inst_text(
-    m: &Module,
-    lay: &Layouts,
-    inst: &Inst,
-    symbol_of: &dyn Fn(usize) -> String,
-    memo: &mut HashMap<usize, Option<bool>>,
-    vals: &Vals,
-    decls: &mut Vec<(String, String)>,
-    b: &mut FnBuilder,
-) {
+fn inst_text(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
+    let (m, lay) = (cx.m, cx.lay);
     let arg = |i: usize| vals[&inst.args[i].index()][0].clone();
     let out = inst
         .res
@@ -409,6 +512,10 @@ fn inst_text(
         inst.op,
         Op::IConst | Op::FConst | Op::BConst | Op::UnitConst | Op::ListLen
     ) {
+        return;
+    }
+    if matches!(inst.op, Op::ListGet | Op::ListGetNn | Op::ListGetU) {
+        list_get(cx, inst, vals, b);
         return;
     }
     // A single-leaf result is named in place; `Select` and `Call` handle several.
@@ -457,7 +564,7 @@ fn inst_text(
         Op::Call => {
             let Imm::Func(c) = inst.imm else { return };
             let callee = &m.funcs[c.index()];
-            let sym = symbol_of(c.index());
+            let sym = (cx.symbol_of)(c.index());
             let ret = ret_ty(lay, callee.ret);
             let attr = ret_attr(lay, callee.ret);
             let mut args: Vec<(Val, &str)> = Vec::new();
@@ -470,13 +577,13 @@ fn inst_text(
                 .iter()
                 .map(|(v, a)| format!("{}{a}", Types::default().text(&v.ty)))
                 .collect();
-            decls.push((
+            cx.decls.push((
                 sym.clone(),
                 format!(
                     "declare {attr}{} @\"{sym}\"({}){}",
                     Types::default().text(&ret),
                     formals.join(", "),
-                    pure_attrs(m, lay, c.index(), memo).unwrap_or("")
+                    pure_attrs(m, lay, c.index(), &mut cx.memo).unwrap_or("")
                 ),
             ));
             if out.len() <= 1 {
@@ -490,5 +597,65 @@ fn inst_text(
             }
         }
         _ => unreachable!("supports rejects other ops"),
+    }
+}
+
+/// A list element read: normalize a negative index (`ListGet`), branch to the fault when it is out
+/// of range, then load each leaf of the element at its offset. The element type is an LLVM
+/// type, so the address is a typed `getelementptr` and LLVM sees a strided access it can vectorize.
+fn list_get(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
+    let l = &vals[&inst.args[0].index()];
+    let i = vals[&inst.args[1].index()][0].clone();
+    let out = &vals[&inst.res.expect("list read result").index()];
+    let elem = cx.m.seq_elem(cx.f.ty(inst.args[0])).expect("a list");
+    let tys: Vec<LTy> = cx.lay.leaves(elem).into_iter().map(|x| leaf(x).0).collect();
+    let (ptr, len) = (b.int_to_ptr(&l[0]), l[1].clone());
+    let idx = if inst.op == Op::ListGet {
+        let neg = b.icmp("slt", &i, &Val::int(0));
+        let wrapped = b.bin(Bin::Add, &i, &len);
+        b.select(&neg, &wrapped, &i)
+    } else {
+        i.clone()
+    };
+    if cx.checks && checked(inst.op) {
+        let oob = b.icmp("uge", &idx, &len);
+        let fault = format!("f{}_{}", cx.block, cx.split);
+        cx.split += 1;
+        let next = block_label(cx.block, cx.split);
+        b.cond_br_likely(&oob, &fault, &next, false);
+        b.label(&fault);
+        cx.sites += 1;
+        b.fault_site(cx.sites);
+        b.call(
+            &LTy::Void,
+            "",
+            "msrt_index_fault",
+            &[(i.clone(), ""), (len, "")],
+        );
+        b.unreachable();
+        cx.decls.push((
+            "msrt_index_fault".into(),
+            "declare void @\"msrt_index_fault\"(i64, i64) cold noreturn".into(),
+        ));
+        b.label(&next);
+    }
+    let types = Types::default();
+    let whole = match tys.as_slice() {
+        [one] => one.clone(),
+        many => LTy::Tuple(many.to_vec()),
+    };
+    debug_assert_eq!(
+        types.size_align(&whole).0,
+        u64::from(mem_layout(&cx.lay.leaves(elem)).size)
+    );
+    let at = b.elem_ptr(&whole, &ptr, &idx);
+    for (k, (t, dst)) in tys.iter().zip(out).enumerate() {
+        let from = if tys.len() == 1 {
+            at.clone()
+        } else {
+            b.field_ptr(&whole, &at, k)
+        };
+        b.name_next(dst);
+        b.load(t, &from, types.size_align(t).1);
     }
 }
