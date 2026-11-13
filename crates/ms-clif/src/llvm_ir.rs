@@ -141,23 +141,27 @@ pub(crate) struct DirectEnv<'a> {
     pub sites: &'a mut u32,
     di: &'a mut DebugInfo,
     sp: usize,
-    lines: HashMap<u32, usize>,
+    sp_file: u32,
+    locs: DirectLocs<'a>,
+}
+
+/// How a direct function's source locations resolve: the symbol tables and the source-location
+/// bits of each MIR location in the function (see `Gen::loc_bits`).
+#[derive(Clone, Copy)]
+pub(crate) struct DirectLocs<'a> {
+    pub syms: &'a dyn Symbols,
+    pub bits: &'a HashMap<ms_mir::ir::Loc, u32>,
 }
 
 impl DirectEnv<'_> {
-    /// The `DILocation` node for source line `line` of the function (0: the function itself).
-    pub fn line(&mut self, line: u32) -> usize {
-        if line == 0 {
-            return self.loc;
-        }
-        if let Some(n) = self.lines.get(&line) {
-            return *n;
-        }
-        let n = self
-            .di
-            .push(format!("!DILocation(line: {line}, scope: !{})", self.sp));
-        self.lines.insert(line, n);
-        n
+    /// The `DILocation` node for MIR location `loc`: its source line, and the chain of inlined
+    /// callees it sits in, like a translated instruction's. The function itself when unknown.
+    pub fn at(&mut self, loc: ms_mir::ir::Loc) -> usize {
+        self.locs
+            .bits
+            .get(&loc)
+            .and_then(|b| self.di.location(self.locs.syms, *b, self.sp, self.sp_file))
+            .unwrap_or(self.loc)
     }
 }
 
@@ -1451,6 +1455,7 @@ impl LlvmModule {
         display: &str,
         fn_loc: (u32, u32),
         public: bool,
+        locs: DirectLocs,
         emit: impl FnOnce(&mut DirectEnv) -> crate::mir_llvm::Emitted,
     ) {
         let (sp_file, sp_line) = fn_loc;
@@ -1467,7 +1472,8 @@ impl LlvmModule {
             sites: &mut self.sites,
             di: &mut self.di,
             sp,
-            lines: HashMap::new(),
+            sp_file,
+            locs,
         };
         let out = emit(&mut env);
         for (callee, decl) in out.decls {

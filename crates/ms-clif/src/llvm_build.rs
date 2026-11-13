@@ -575,6 +575,30 @@ impl<'t> FnBuilder<'t> {
     }
 
     /// `inttoptr` of a pointer-sized integer leaf.
+    /// `ptr` `offset` bytes past `base`; the instruction is written even for 0, so the result can
+    /// take a reserved name.
+    pub fn byte_ptr(&mut self, base: &Val, offset: u64) -> Val {
+        assert_eq!(base.ty, Ty::Ptr);
+        self.def(
+            Ty::Ptr,
+            format!("getelementptr inbounds i8, ptr {}, i64 {offset}", base.text),
+        )
+    }
+
+    pub fn ptr_to_int(&mut self, v: &Val) -> Val {
+        assert_eq!(v.ty, Ty::Ptr);
+        self.def(Ty::I64, format!("ptrtoint ptr {} to i64", v.text))
+    }
+
+    /// Copies `size` bytes (non-overlapping) with the alignment both sides are known to have.
+    pub fn copy_bytes(&mut self, dst: &Val, src: &Val, size: u64, align: u64) {
+        assert_eq!((&dst.ty, &src.ty), (&Ty::Ptr, &Ty::Ptr));
+        self.line(format!(
+            "call void @llvm.memcpy.p0.p0.i64(ptr align {align} {}, ptr align {align} {}, i64 {size}, i1 false)",
+            dst.text, src.text
+        ));
+    }
+
     pub fn int_to_ptr(&mut self, v: &Val) -> Val {
         assert_eq!(v.ty, Ty::I64);
         self.def(Ty::Ptr, format!("inttoptr i64 {} to ptr", v.text))

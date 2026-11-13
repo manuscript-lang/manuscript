@@ -9,6 +9,7 @@
 use crate::layout::{Layouts, Leaf, mem_layout};
 use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Types, Val};
 use crate::llvm_ir::DirectEnv;
+mod records;
 use ms_mir::ir::{Cc, Func, Imm, Inst, Mode, Module, Op, Target, Term};
 use ms_mir::types::{Ty, TyKind};
 use std::collections::HashMap;
@@ -43,16 +44,17 @@ fn leaves(lay: &Layouts, ty: Ty) -> Vec<(LTy, &'static str)> {
 /// Whether this stage handles values of `ty`: scalars, strings and lists (every list is three
 /// leaves, whatever its element).
 fn supported_ty(lay: &Layouts, ty: Ty) -> bool {
-    matches!(
-        lay.m.types.kind(ty),
-        TyKind::Unit
-            | TyKind::Int
-            | TyKind::Float
-            | TyKind::Bool
-            | TyKind::Str
-            | TyKind::Bytes
-            | TyKind::List(_)
-    )
+    records::ty_ok(lay, ty)
+        || matches!(
+            lay.m.types.kind(ty),
+            TyKind::Unit
+                | TyKind::Int
+                | TyKind::Float
+                | TyKind::Bool
+                | TyKind::Str
+                | TyKind::Bytes
+                | TyKind::List(_)
+        )
 }
 
 /// The result type: `void` for no leaves, the leaf itself for one, a tuple for several.
@@ -118,13 +120,12 @@ fn supported_op(op: Op) -> bool {
             | Op::ListGetNn
             | Op::ListGetU
             | Op::Call
-    )
+    ) || records::handles(op)
 }
 
 /// Whether stage 1 can emit `f`.
 pub fn supports(m: &Module, lay: &Layouts, f: &Func) -> bool {
     if !matches!(f.kind, ms_mir::ir::FuncKind::Normal)
-        || !f.scopes.is_empty()
         || !f.noalias.is_empty()
         || !signature_ok(lay, &f.params, f.ret)
     {
@@ -140,7 +141,12 @@ pub fn supports(m: &Module, lay: &Layouts, f: &Func) -> bool {
             return false;
         }
         for i in &bd.insts {
-            if !supported_op(i.op) || i.res.is_some_and(|r| !ty_ok(r)) {
+            if !supported_op(i.op)
+                || i.res.is_some_and(|r| !ty_ok(r))
+                || i.args.iter().any(|a| !ty_ok(*a))
+                || !records::op_ok(lay, f, i)
+                || (i.op == Op::Select && i.res.is_some_and(|r| records::is_mem(lay, f.ty(r))))
+            {
                 return false;
             }
             if matches!(i.op, Op::ListGet | Op::ListGetNn | Op::ListGetU) && !elem_ok(m, lay, f, i)
@@ -248,25 +254,21 @@ pub fn emit(
     // back edge of a loop), and a constant is its own text.
     let mut vals: Vals = HashMap::new();
     let mut params = Vec::new();
+    let mut entry = Vec::new();
     for (i, p) in f.params.iter().enumerate() {
-        let mut own = Vec::new();
+        let mut abi = Vec::new();
         for (j, (t, attr)) in leaves(lay, p.ty).into_iter().enumerate() {
             params.push(format!("{}{attr} %a{i}_{j}", types.text(&t)));
-            own.push(Val::new(format!("%a{i}_{j}"), t));
+            abi.push(Val::new(format!("%a{i}_{j}"), t));
         }
+        let own = records::bind_param(&mut b, lay, p.ty, abi, &mut entry);
         vals.insert(f.blocks[0].params[i].value.index(), own);
     }
-    let reserve_all = |b: &mut FnBuilder, ty: Ty| -> Vec<Val> {
-        leaves(lay, ty)
-            .into_iter()
-            .map(|l| b.reserve(l.0))
-            .collect()
-    };
     for bb in &rpo {
         let bd = &f.blocks[bb.index()];
         if bb.index() != 0 {
             for p in &bd.params {
-                let own = reserve_all(&mut b, f.ty(p.value));
+                let own = records::block_param(&mut b, lay, f.ty(p.value));
                 vals.insert(p.value.index(), own);
             }
         }
@@ -278,19 +280,33 @@ pub fn emit(
                 (Op::BConst, Imm::Bool(v)) => vec![Val::byte(v as u8)],
                 // The length is a leaf of the list: no instruction.
                 (Op::ListLen, _) => vec![vals[&inst.args[0].index()][1].clone()],
-                _ => reserve_all(&mut b, f.ty(res)),
+                _ => match records::bind_early(&mut b, lay, f, &vals, inst) {
+                    Some(own) => own,
+                    None => records::reserve(&mut b, lay, f.ty(res)),
+                },
             };
             vals.insert(res.index(), own);
         }
     }
     // Incoming edges of every block, for the phis.
-    let mut incoming: HashMap<usize, Vec<(usize, Vec<ms_mir::ir::Value>)>> = HashMap::new();
+    // Copies into a record's slot run only on their own edge, so a conditional edge that has some
+    // is a block of its own, named after the block it leaves.
+    let mut incoming: HashMap<usize, Vec<(String, Vec<ms_mir::ir::Value>)>> = HashMap::new();
     for bb in &rpo {
-        f.blocks[bb.index()].term.for_each_target(|t| {
+        let term = &f.blocks[bb.index()].term;
+        let mut k = 0;
+        term.for_each_target(|t| {
+            let from = exit_label(f, checks, bb.index());
+            let from = if matches!(term, Term::CondBr { .. }) && records::has_copies(lay, f, t) {
+                format!("{from}_e{k}")
+            } else {
+                from
+            };
             incoming
                 .entry(t.block.index())
                 .or_default()
-                .push((bb.index(), t.args.clone()))
+                .push((from, t.args.clone()));
+            k += 1;
         });
     }
     let mut cx = Cx {
@@ -309,47 +325,64 @@ pub fn emit(
         cx.block = bb.index();
         cx.split = 0;
         b.label(&format!("b{}", bb.index()));
-        if bb.index() != 0 {
+        if bb.index() == 0 {
+            records::emit_entry(&mut b, lay, std::mem::take(&mut entry));
+        } else {
             for (j, p) in bd.params.iter().enumerate() {
+                if records::is_mem(lay, f.ty(p.value)) {
+                    continue;
+                }
                 for (k, dst) in vals[&p.value.index()].iter().enumerate() {
                     let edges: Vec<(Val, String)> = incoming
                         .get(&bb.index())
                         .map(Vec::as_slice)
                         .unwrap_or(&[])
                         .iter()
-                        .map(|(from, args)| {
-                            (
-                                vals[&args[j].index()][k].clone(),
-                                exit_label(f, checks, *from),
-                            )
-                        })
+                        .map(|(from, args)| (vals[&args[j].index()][k].clone(), from.clone()))
                         .collect();
                     b.phi(dst, &edges);
                 }
             }
         }
         for inst in &bd.insts {
-            b.set_dbg(Some(env.line(inst.loc.line)));
-            inst_text(&mut cx, inst, &vals, &mut b);
+            b.set_dbg(Some(env.at(inst.loc)));
+            inst_text(&mut cx, inst, &mut vals, &mut b);
         }
         match &bd.term {
-            Term::Br(t) => b.br(&block_label(t.block.index(), 0)),
+            Term::Br(t) => {
+                records::copies(&mut b, lay, f, &vals, t);
+                b.br(&block_label(t.block.index(), 0));
+            }
             Term::CondBr { cond, then, els } => {
                 let c = b.icmp("ne", &vals[&cond.index()][0], &Val::byte(0));
-                b.cond_br(
-                    &c,
-                    &block_label(then.block.index(), 0),
-                    &block_label(els.block.index(), 0),
-                );
-            }
-            Term::Ret(Some(v)) => match vals[&v.index()].as_slice() {
-                [] => b.ret(None),
-                [one] => b.ret(Some(one)),
-                many => {
-                    let t = b.tuple(many);
-                    b.ret(Some(&t));
+                let from = exit_label(f, checks, bb.index());
+                let to = |k: usize, t: &Target| {
+                    if records::has_copies(lay, f, t) {
+                        format!("{from}_e{k}")
+                    } else {
+                        block_label(t.block.index(), 0)
+                    }
+                };
+                b.cond_br(&c, &to(0, then), &to(1, els));
+                for (k, t) in [then, els].into_iter().enumerate() {
+                    if records::has_copies(lay, f, t) {
+                        b.label(&to(k, t));
+                        records::copies(&mut b, lay, f, &vals, t);
+                        b.br(&block_label(t.block.index(), 0));
+                    }
                 }
-            },
+            }
+            Term::Ret(Some(v)) => {
+                let abi = records::abi_leaves(&mut b, lay, f.ty(*v), &vals, *v);
+                match abi.as_slice() {
+                    [] => b.ret(None),
+                    [one] => b.ret(Some(one)),
+                    many => {
+                        let t = b.tuple(many);
+                        b.ret(Some(&t));
+                    }
+                }
+            }
             Term::Ret(None) => b.ret(None),
             _ => b.unreachable(),
         }
@@ -392,7 +425,7 @@ fn fcc(cc: Cc) -> &'static str {
 
 /// Writes one instruction. Each result leaf takes the name reserved for it in `vals`, which a phi
 /// may already use.
-fn inst_text(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
+fn inst_text(cx: &mut Cx, inst: &Inst, vals: &mut Vals, b: &mut FnBuilder) {
     let (m, lay) = (cx.m, cx.lay);
     let arg = |i: usize| vals[&inst.args[i].index()][0].clone();
     let out = inst
@@ -407,6 +440,10 @@ fn inst_text(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     }
     if matches!(inst.op, Op::ListGet | Op::ListGetNn | Op::ListGetU) {
         list_get(cx, inst, vals, b);
+        return;
+    }
+    if records::handles(inst.op) {
+        records::inst(b, cx.lay, cx.f, vals, inst, &out);
         return;
     }
     // A single-leaf result is named in place; `Select` and `Call` handle several.
@@ -459,11 +496,15 @@ fn inst_text(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
             let ret = ret_ty(lay, callee.ret);
             let attr = ret_attr(lay, callee.ret);
             let mut args: Vec<(Val, &str)> = Vec::new();
+            // Converting arguments writes instructions that must not take the result's name.
+            let pending = b.take_name();
             for (p, a) in callee.params.iter().zip(&inst.args) {
-                for (v, (_, at)) in vals[&a.index()].iter().zip(leaves(lay, p.ty)) {
-                    args.push((v.clone(), at));
+                let abi = records::abi_leaves(b, lay, p.ty, vals, *a);
+                for (v, (_, at)) in abi.into_iter().zip(leaves(lay, p.ty)) {
+                    args.push((v, at));
                 }
             }
+            b.restore_name(pending);
             let formals: Vec<String> = args
                 .iter()
                 .map(|(v, a)| format!("{}{a}", Types::default().text(&v.ty)))
@@ -476,7 +517,14 @@ fn inst_text(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
                     formals.join(", ")
                 ),
             ));
-            if out.len() <= 1 {
+            if callee.ret == Ty::PTR || records::is_mem(lay, callee.ret) {
+                // The result is a `ptr` or a record in memory: built from the call's result.
+                let pending = b.take_name();
+                let r = b.call(&ret, attr, &sym, &args).expect("a result");
+                b.restore_name(pending);
+                let own = records::call_result(b, lay, callee.ret, r, &out);
+                vals.insert(inst.res.expect("call result").index(), own);
+            } else if out.len() <= 1 {
                 b.call(&ret, attr, &sym, &args);
             } else {
                 let t = b.call(&ret, attr, &sym, &args).expect("a tuple result");

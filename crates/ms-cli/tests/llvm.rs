@@ -452,3 +452,75 @@ fn llvm_direct_glue_matches_translation() {
     assert!(!direct(&old_ir), "the translation was not used");
     assert!(direct(&new_ir), "no glue was emitted directly");
 }
+
+/// Records are emitted straight from MIR as typed memory: a large record is one `alloca` of a struct
+/// of its leaves, copies are `memcpy`, and a field read is an offset and one aligned load. The
+/// program prints the same output with and without `MS_LLVM_DIRECT`.
+#[test]
+fn llvm_direct_records_match_translation() {
+    if !cfg!(any(target_os = "linux", target_os = "macos"))
+        || !ms_clif::llvm_available(&ms_cli::engine::build_options_from_env())
+    {
+        return;
+    }
+    let source = format!(
+        "{}/tests/llvm/direct_records.ms",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    let dir = std::env::temp_dir().join(format!("ms-llvm-records-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let run = |direct: bool| {
+        let work = dir.join(if direct { "direct" } else { "old" });
+        std::fs::create_dir_all(&work).unwrap();
+        let mut cmd = Command::new(env!("CARGO_BIN_EXE_ms"));
+        cmd.current_dir(&work)
+            .env("MS_BACKEND", "llvm")
+            .env("MS_LLVM_UNITS", "1")
+            .env("MS_KEEP_LL", "1")
+            .args(["build", &source, "-o", "prog"]);
+        if direct {
+            cmd.env("MS_LLVM_DIRECT", "1");
+        }
+        let built = cmd.output().unwrap();
+        assert!(
+            built.status.success(),
+            "{}",
+            String::from_utf8_lossy(&built.stderr)
+        );
+        let out = Command::new(work.join("prog")).output().unwrap();
+        let ir = std::fs::read_to_string(work.join("ms-keep.ll")).unwrap();
+        (String::from_utf8_lossy(&out.stdout).into_owned(), ir)
+    };
+    let (old_out, _) = run(false);
+    let (new_out, new_ir) = run(true);
+    let _ = std::fs::remove_dir_all(&dir);
+    assert_eq!(new_out, old_out);
+    assert_eq!(
+        new_out,
+        "2.0098808648425246\n2.0049404324212574\n2.5024702162106354\n0\nfalse\n100\n0.00008220982406701269\n"
+    );
+    // `Body` has nine leaves, so it lives in memory: a slot of its struct, copied whole, with fields
+    // read at their byte offsets. No whole-record read is a load per leaf.
+    assert!(
+        new_ir.contains(
+            "= alloca { double, double, double, double, double, double, double, i64, i8 }"
+        ),
+        "no record slot"
+    );
+    assert!(
+        new_ir.contains("call void @llvm.memcpy.p0.p0.i64(ptr align 8")
+            && new_ir.contains("i64 72, i1 false"),
+        "no whole-record copy"
+    );
+    assert!(
+        new_ir.contains("getelementptr inbounds i8, ptr")
+            && new_ir.contains("load i8, ptr")
+            && new_ir.contains("align 1"),
+        "no field read at an offset"
+    );
+    // Inlined callees keep their own frames: the direct function carries the inlining chain.
+    assert!(
+        new_ir.contains("inlinedAt:"),
+        "direct functions lost their inlined-callee locations"
+    );
+}

@@ -302,6 +302,19 @@ pub struct FuncDbg {
 }
 
 impl<'m> Gen<'m> {
+    /// Makes the inlined-callee scopes of `f` module-wide, so that locations can name them, and
+    /// sets `scope_base` for [`Gen::loc_bits`].
+    pub fn add_scopes(&mut self, f: &Func) {
+        self.scope_base = self.scopes.len() as u32;
+        for sc in &f.scopes {
+            let mut sc = sc.clone();
+            if sc.parent != 0 {
+                sc.parent += self.scope_base;
+            }
+            self.scopes.push(sc);
+        }
+    }
+
     /// Cranelift source location bits for a MIR location (`!0` when unknown).
     pub fn loc_bits(&mut self, loc: ms_mir::ir::Loc) -> u32 {
         if loc.is_none() || loc.line == 0 {
@@ -1281,6 +1294,11 @@ fn direct_function(g: &mut Gen, i: usize, f: &Func) -> bool {
         return false;
     }
     let id = g.funcs[i];
+    g.add_scopes(f);
+    let mut bits = HashMap::new();
+    for inst in f.blocks.iter().flat_map(|b| &b.insts) {
+        bits.entry(inst.loc).or_insert_with(|| g.loc_bits(inst.loc));
+    }
     let syms = ModuleSymbols(&g.module, &g.locs, &g.scopes, &g.m.externs);
     let sym = syms.symbol_of(id);
     let exported = g.module.declarations().get_function_decl(id).linkage == Linkage::Import
@@ -1297,9 +1315,17 @@ fn direct_function(g: &mut Gen, i: usize, f: &Func) -> bool {
     let lay = &g.lay;
     let mut llvm = g.llvm.take().expect("checked above");
     let checks = g.opts.checks;
-    llvm.add_direct(&sym, &f.name, fn_loc, exported, |env| {
-        crate::mir_llvm::emit(m, lay, f, checks, env, &symbol_of)
-    });
+    llvm.add_direct(
+        &sym,
+        &f.name,
+        fn_loc,
+        exported,
+        crate::llvm_ir::DirectLocs {
+            syms: &syms,
+            bits: &bits,
+        },
+        |env| crate::mir_llvm::emit(m, lay, f, checks, env, &symbol_of),
+    );
     g.llvm = Some(llvm);
     g.llvm_funcs.push(LlvmFn {
         id,
