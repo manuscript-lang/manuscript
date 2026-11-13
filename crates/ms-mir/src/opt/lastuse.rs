@@ -2,7 +2,7 @@
 //! where lowering put the drop (the end of the enclosing scope).
 //!
 //! A candidate `v` is a value of a type whose drop only frees memory (strings, lists, maps,
-//! sets and records, alternatives and optionals of those) that is dropped with `drop v`.
+//! sets and types, alternatives and optionals of those) that is dropped with `drop v`.
 //! Everything that may point into `v` forms its *family*: results of instructions that take a
 //! family member (string views, interior pointers, projections, runtime calls), out-pointers
 //! of calls that take one, and block parameters that receive one. `v` lives until the last
@@ -40,7 +40,7 @@ pub fn run_where(m: &mut Module, select: impl Fn(&Func) -> bool) -> bool {
 
 /// Whether dropping a value of `t` only frees memory.
 ///
-/// `seen` holds every record and alternative already entered. Revisiting one counts as plain: it
+/// `seen` holds every type and alternative already entered. Revisiting one counts as plain: it
 /// is either still being visited (a cycle) or was finished without finding a resource, since any
 /// other finding ends the whole walk. So each type is classified once, however many paths reach it.
 fn plain(m: &Module, t: crate::types::Ty, seen: &mut HashSet<crate::types::Ty>) -> bool {
@@ -62,11 +62,11 @@ fn plain(m: &Module, t: crate::types::Ty, seen: &mut HashSet<crate::types::Ty>) 
         TyKind::Ptr | TyKind::Fn(..) | TyKind::Iface(_) => false,
         TyKind::List(e) | TyKind::Opt(e) => plain(m, *e, seen),
         TyKind::Obj(n, args) => n.is_map_or_set() && args.iter().all(|a| plain(m, *a, seen)),
-        TyKind::Rec(r) => {
+        TyKind::Type(r) => {
             if !seen.insert(t) {
                 return true;
             }
-            m.records[r.index()]
+            m.type_defs[r.index()]
                 .fields
                 .iter()
                 .all(|f| plain(m, f.1, seen))
@@ -158,7 +158,7 @@ impl PendingDrops {
 
 /// Where a value is read, built once per function so each candidate costs its own footprint
 /// rather than a scan of the function. Instruction indices are those of the original function:
-/// the pass never inserts or removes instructions while it analyses, it records the drops it
+/// the pass never inserts or removes instructions while it analyses, it types the drops it
 /// removes (`removed`) and the drops it adds (`pending`) and rewrites every block at the end.
 /// New edge blocks are added to the function at once, so terminators are always current.
 struct Index {
@@ -229,7 +229,7 @@ impl Index {
         self.pending[bi].iter().flat_map(move |p| p.positions(v))
     }
 
-    /// Records a drop of `v` directly behind `pos`: behind the instruction, ahead of the drops
+    /// Types a drop of `v` directly behind `pos`: behind the instruction, ahead of the drops
     /// already placed there, or behind the pending drop `pos` names.
     fn insert_pending(&mut self, bi: usize, pos: Pos, v: Value) {
         if let Some(pending) = &mut self.pending[bi] {
@@ -662,7 +662,7 @@ fn candidate(
             }
         }
     }
-    // Apply: record the removed drops and the new ones.
+    // Apply: type the removed drops and the new ones.
     for (bi, k) in existing {
         ix.removed[bi][k] = true;
     }

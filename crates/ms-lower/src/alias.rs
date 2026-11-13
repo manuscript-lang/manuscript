@@ -17,7 +17,7 @@ use ms_mir::types::{Ty as MTy, TyKind};
 /// One step from a local to the part a borrow names.
 #[derive(Clone)]
 pub(crate) enum AStep {
-    /// A record field.
+    /// A type field.
     Field(Name),
     /// A list element, at an index saved when the borrow was made.
     Index(Value),
@@ -250,7 +250,7 @@ impl<'a> FnLower<'a> {
             cur = match s {
                 AStep::Field(name) => {
                     let (rid, idx) = self.field_index(cur, *name)?;
-                    self.b.rec_get(rid, idx, cur)
+                    self.b.type_get(rid, idx, cur)
                 }
                 AStep::Index(at) => self.b.list_get(cur, *at),
                 AStep::Key(var, at) => {
@@ -298,13 +298,13 @@ impl<'a> FnLower<'a> {
         match first {
             AStep::Field(name) => {
                 let (rid, idx) = self.field_index(obj, *name)?;
-                let cur = self.b.rec_get(rid, idx, obj);
+                let cur = self.b.type_get(rid, idx, obj);
                 let (cur_own, moved) = self.take_projection(cur);
                 let inner = self.update_steps(cur_own, rest, f)?;
                 Ok(if moved {
-                    self.b.rec_fill(rid, idx, obj, inner)
+                    self.b.type_fill(rid, idx, obj, inner)
                 } else {
-                    self.b.rec_set(rid, idx, obj, inner)
+                    self.b.type_set(rid, idx, obj, inner)
                 })
             }
             AStep::Index(at) => {
@@ -348,11 +348,11 @@ impl<'a> FnLower<'a> {
         }
     }
 
-    fn field_index(&self, obj: Value, name: Name) -> Result<(ms_mir::types::RecId, u32), Error> {
-        let TyKind::Rec(rid) = self.b.m.types.kind(self.ty_of(obj)).clone() else {
-            return Err(Error::new("field access on a non-record"));
+    fn field_index(&self, obj: Value, name: Name) -> Result<(ms_mir::types::TypeId, u32), Error> {
+        let TyKind::Type(rid) = self.b.m.types.kind(self.ty_of(obj)).clone() else {
+            return Err(Error::new("field access on a non-type"));
         };
-        let idx = self.b.m.records[rid.index()]
+        let idx = self.b.m.type_defs[rid.index()]
             .fields
             .iter()
             .position(|f| f.0 == self.syms.str(name))

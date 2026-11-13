@@ -365,8 +365,8 @@ impl<'a> FnLower<'a> {
         let TyKind::List(entry) = self.b.m.types.kind(lt).clone() else {
             return Err(Error::new("map_from_entries takes a list"));
         };
-        let TyKind::Rec(rid) = self.b.m.types.kind(entry).clone() else {
-            return Err(Error::new("map_from_entries takes entry records"));
+        let TyKind::Type(rid) = self.b.m.types.kind(entry).clone() else {
+            return Err(Error::new("map_from_entries takes entry types"));
         };
         let lvar = self.fresh_var(lt);
         let held = self.clone_value(list);
@@ -375,7 +375,7 @@ impl<'a> FnLower<'a> {
         let fresh = self.map_new(map)?;
         self.b.def_var(acc, fresh);
         self.each_element(lvar, &mut |s, _, item| {
-            let (k, v) = (s.b.rec_get(rid, 0, item), s.b.rec_get(rid, 1, item));
+            let (k, v) = (s.b.type_get(rid, 0, item), s.b.type_get(rid, 1, item));
             let k = s.clone_value(k);
             let v = s.clone_value(v);
             let old = s.b.use_var(acc);

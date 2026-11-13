@@ -42,7 +42,7 @@ fn write_ty(m: &Module, t: Ty, out: &mut String) {
         TyKind::Str => out.push_str("str"),
         TyKind::Bytes => out.push_str("bytes"),
         TyKind::Ptr => out.push_str("ptr"),
-        TyKind::Rec(r) => out.push_str(&m.records[r.index()].name),
+        TyKind::Type(r) => out.push_str(&m.type_defs[r.index()].name),
         TyKind::Alt(a) => out.push_str(&m.alts[a.index()].name),
         TyKind::List(e) => {
             out.push_str("list<");
@@ -131,13 +131,13 @@ pub fn print_module(m: &Module) -> String {
         let items: Vec<String> = l.iter().map(|x| x.to_string()).collect();
         let _ = writeln!(o, "consts {i} [{}]", items.join(", "));
     }
-    for r in &m.records {
+    for r in &m.type_defs {
         let fields: Vec<String> = r
             .fields
             .iter()
             .map(|(n, t)| format!("{n}: {}", ty_str(m, *t)))
             .collect();
-        let _ = writeln!(o, "record {} {{ {} }}", r.name, fields.join(", "));
+        let _ = writeln!(o, "type {} {{ {} }}", r.name, fields.join(", "));
     }
     for a in &m.alts {
         let cases: Vec<String> = a
@@ -359,11 +359,11 @@ fn print_inst(m: &Module, i: &Inst, n: &dyn Fn(Value) -> String) -> String {
         Imm::Func(f) => format!("@{}", m.funcs[f.index()].name),
         Imm::Ext(e) => format!("@{}", m.externs[e.index()].name),
         Imm::Ty(t) => ty_str(m, t),
-        Imm::Rec(r) => m.records[r.index()].name.clone(),
+        Imm::Type(r) => m.type_defs[r.index()].name.clone(),
         Imm::Field(r, f) => format!(
             "{}.{}",
-            m.records[r.index()].name,
-            m.records[r.index()].fields[f as usize].0
+            m.type_defs[r.index()].name,
+            m.type_defs[r.index()].fields[f as usize].0
         ),
         Imm::Case(a, c) => format!(
             "{}.{}",
@@ -390,9 +390,9 @@ fn print_inst(m: &Module, i: &Inst, n: &dyn Fn(Value) -> String) -> String {
             }
             s
         }
-        Imm::RecMask(r, mask) => {
-            let mut s = m.records[r.index()].name.clone();
-            for (i, (name, _)) in m.records[r.index()].fields.iter().enumerate() {
+        Imm::TypeMask(r, mask) => {
+            let mut s = m.type_defs[r.index()].name.clone();
+            for (i, (name, _)) in m.type_defs[r.index()].fields.iter().enumerate() {
                 if mask >> i & 1 == 1 {
                     s.push('.');
                     s.push_str(name);

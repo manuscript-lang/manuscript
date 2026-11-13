@@ -113,7 +113,9 @@ impl InstCheck<'_, '_> {
             | Op::I2F
             | Op::F2IOpt
             | Op::B2I => self.float_ops(),
-            Op::RecNew | Op::RecGet | Op::RecSet | Op::RecFill | Op::RecRelease => self.records(),
+            Op::TypeNew | Op::TypeGet | Op::TypeSet | Op::TypeFill | Op::TypeRelease => {
+                self.type_ops()
+            }
             Op::AltNew
             | Op::AltView
             | Op::AltPlain
@@ -447,18 +449,18 @@ impl InstCheck<'_, '_> {
         }
     }
 
-    /// Records.
-    fn records(&self) -> Result<(), String> {
+    /// Type operations.
+    fn type_ops(&self) -> Result<(), String> {
         match self.inst.op {
-            Op::RecNew => {
-                let Imm::Rec(r) = self.inst.imm else {
-                    return Err("missing record".into());
+            Op::TypeNew => {
+                let Imm::Type(r) = self.inst.imm else {
+                    return Err("missing type".into());
                 };
-                let fields = self.m.field_types(self.inst.imm).ok_or("bad record")?;
+                let fields = self.m.field_types(self.inst.imm).ok_or("bad type")?;
                 if self.n != fields.len() {
                     return Err(format!(
-                        "record {} has {} fields, found {} operands",
-                        self.m.records[r.index()].name,
+                        "type {} has {} fields, found {} operands",
+                        self.m.type_defs[r.index()].name,
                         fields.len(),
                         self.n
                     ));
@@ -466,7 +468,7 @@ impl InstCheck<'_, '_> {
                 for (i, ft) in fields.iter().enumerate() {
                     if self.t(i) != *ft {
                         return Err(self.mismatch(
-                            &format!("field {}", self.m.records[r.index()].fields[i].0),
+                            &format!("field {}", self.m.type_defs[r.index()].fields[i].0),
                             self.t(i),
                             *ft,
                         ));
@@ -474,45 +476,45 @@ impl InstCheck<'_, '_> {
                 }
                 self.want(
                     self.res
-                        .map(|r| matches!(self.m.types.kind(r), TyKind::Rec(x) if *x == r_id(self.inst)))
+                        .map(|r| matches!(self.m.types.kind(r), TyKind::Type(x) if *x == r_id(self.inst)))
                         .unwrap_or(false),
-                    "rec.new yields the record type",
+                    "type.new yields the type",
                 )
             }
-            Op::RecGet | Op::RecSet | Op::RecFill => {
+            Op::TypeGet | Op::TypeSet | Op::TypeFill => {
                 let Imm::Field(r, i) = self.inst.imm else {
                     return Err("missing field".into());
                 };
-                let rec = self.m.records.get(r.index()).ok_or("bad record")?;
-                let fty = rec.fields.get(i as usize).ok_or("bad field index")?.1;
-                if !matches!(self.m.types.kind(self.t(0)), TyKind::Rec(x) if *x == r) {
-                    return Err(format!("operand 0 must be record {}", rec.name));
+                let tval = self.m.type_defs.get(r.index()).ok_or("bad type")?;
+                let fty = tval.fields.get(i as usize).ok_or("bad field index")?.1;
+                if !matches!(self.m.types.kind(self.t(0)), TyKind::Type(x) if *x == r) {
+                    return Err(format!("operand 0 must be type {}", tval.name));
                 }
-                if self.inst.op == Op::RecGet {
+                if self.inst.op == Op::TypeGet {
                     self.arity(1)?;
-                    self.want(self.res == Some(fty), "rec.get yields the field type")
+                    self.want(self.res == Some(fty), "type.get yields the field type")
                 } else {
                     self.arity(2)?;
                     self.want(
                         self.t(1) == fty && self.res == Some(self.t(0)),
-                        "stored value must have the field type; yields the updated record",
+                        "stored value must have the field type; yields the updated type",
                     )
                 }
             }
-            Op::RecRelease => {
+            Op::TypeRelease => {
                 self.arity(1)?;
-                let Imm::RecMask(r, _) = self.inst.imm else {
+                let Imm::TypeMask(r, _) = self.inst.imm else {
                     return Err("missing field mask".into());
                 };
                 self.want(
-                    r.index() < self.m.records.len()
-                        && self.m.records[r.index()].fields.len() <= 32
-                        && self.m.types.kind(self.t(0)) == &TyKind::Rec(r)
+                    r.index() < self.m.type_defs.len()
+                        && self.m.type_defs[r.index()].fields.len() <= 32
+                        && self.m.types.kind(self.t(0)) == &TyKind::Type(r)
                         && self.res.is_none(),
-                    "rec.release takes a record with at most 32 fields",
+                    "type.release takes a type with at most 32 fields",
                 )
             }
-            _ => unreachable!("records is only called for its own ops"),
+            _ => unreachable!("types is only called for its own ops"),
         }
     }
 
@@ -1128,8 +1130,8 @@ impl InstCheck<'_, '_> {
                 let Imm::Field(r, i) = self.inst.imm else {
                     return Err("missing field".into());
                 };
-                let rec = self.m.records.get(r.index()).ok_or("bad record")?;
-                if rec.fields.get(i as usize).is_none() {
+                let tval = self.m.type_defs.get(r.index()).ok_or("bad type")?;
+                if tval.fields.get(i as usize).is_none() {
                     return Err("bad field index".into());
                 }
                 self.want(

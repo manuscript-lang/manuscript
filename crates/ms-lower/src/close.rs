@@ -11,7 +11,7 @@ use ms_check::api::types as ct;
 use ms_check::api::types::Builtin;
 use ms_mir::builder::FuncBuilder;
 use ms_mir::ir::{Cc, FuncId, FuncKind, Imm, Linkage, Mode, Op, Param, Value};
-use ms_mir::types::{AltId, IfaceId, Native, RecId, Std, Ty as MTy, TyKind};
+use ms_mir::types::{AltId, IfaceId, Native, Std, Ty as MTy, TyKind, TypeId};
 
 /// How a binding is closed.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -52,10 +52,10 @@ impl CloseKind {
 /// A field to close: its index, MIR type and close.
 type Part = (u32, MTy, CloseKind);
 
-/// What a record, alternative or collection holds that needs closing.
+/// What a type, alternative or collection holds that needs closing.
 enum Shape {
-    /// Record fields: index, type, close; last declared first.
-    Rec(RecId, Vec<Part>),
+    /// Type fields: index, type, close; last declared first.
+    Type(TypeId, Vec<Part>),
     /// The fields to close in each case that has any.
     Alt(AltId, Vec<(u32, Vec<Part>)>),
     /// The payload of an `Optional`.
@@ -70,7 +70,7 @@ enum Shape {
 /// Closes the parts `shape` names in the value stored at `ptr`, each in place.
 fn emit_parts(b: &mut FuncBuilder<'_>, ptr: Value, shape: Shape) {
     match shape {
-        Shape::Rec(r, parts) => {
+        Shape::Type(r, parts) => {
             for (i, ft, k) in parts {
                 let fp = b
                     .emit(Op::PtrField, &[ptr], Imm::Field(r, i), Some(MTy::PTR))
@@ -229,13 +229,17 @@ struct SplitItem {
     moved: Option<Vec<ct::Name>>,
 }
 
-/// Drops the parts of the record of type `ty` stored at `p` (reached by `prefix`) that are not
+/// Drops the parts of the type of type `ty` stored at `p` (reached by `prefix`) that are not
 /// among the fields at `owned`.
 fn drop_rest(b: &mut FuncBuilder, p: Value, ty: MTy, prefix: &mut Vec<u32>, owned: &[Vec<u32>]) {
-    let TyKind::Rec(r) = b.m.types.kind(ty).clone() else {
+    let TyKind::Type(r) = b.m.types.kind(ty).clone() else {
         return;
     };
-    let fields: Vec<MTy> = b.m.records[r.index()].fields.iter().map(|f| f.1).collect();
+    let fields: Vec<MTy> = b.m.type_defs[r.index()]
+        .fields
+        .iter()
+        .map(|f| f.1)
+        .collect();
     for (i, fty) in fields.into_iter().enumerate() {
         prefix.push(i as u32);
         if !owned.iter().any(|o| o == prefix) && b.m.needs_drop(fty) {
@@ -263,7 +267,7 @@ fn close_at(b: &mut FuncBuilder<'_>, kind: &CloseKind, ptr: Value, ty: MTy) {
     close_error_fault(b, r, None);
 }
 
-/// Closes the value at `ptr` and records a failed close in `failed` instead of faulting.
+/// Closes the value at `ptr` and types a failed close in `failed` instead of faulting.
 fn close_at_deferred(
     b: &mut FuncBuilder<'_>,
     kind: &CloseKind,
@@ -499,7 +503,7 @@ impl FnLower<'_> {
 
     fn temp_closer(&mut self, mt: MTy) -> Option<CloseKind> {
         let ty = self.cx.source_tys.get(mt.0 as usize).cloned()?;
-        // A resource, or a record or list holding one (only read in place: the checker rejects
+        // A resource, or a type or list holding one (only read in place: the checker rejects
         // moving a resource part out of a computed value). A wrapper (`Result`, `Optional`) may
         // have had its payload moved out already, so it closes only when it is itself one.
         if self.cx.classes.class(self.syms, &ty) != ms_check::api::ownership::Class::Resource
@@ -528,12 +532,12 @@ impl FnLower<'_> {
     /// callee's parameter type is lowered) has no entry yet. An optional closes what it holds.
     fn generated_closer(&mut self, ty: MTy) -> Result<Option<CloseKind>, Error> {
         let TyKind::Opt(inner) = self.b.m.types.kind(ty).clone() else {
-            // A record, alternative, list or object type is registered when its checker type is
+            // A type, alternative, list or object type is registered when its checker type is
             // lowered; one that is not would be taken for plain data and never closed. A
             // borrowing variant of an alternative owns only the cases it does not borrow.
             debug_assert!(
                 match self.b.m.types.kind(ty) {
-                    TyKind::Rec(_) | TyKind::List(_) | TyKind::Obj(..) => false,
+                    TyKind::Type(_) | TyKind::List(_) | TyKind::Obj(..) => false,
                     TyKind::Alt(a) => self.b.m.alts[a.index()].borrowed != 0,
                     _ => true,
                 },
@@ -955,7 +959,7 @@ impl FnLower<'_> {
     }
 
     /// A binding some path moves a resource field out of lives in memory. Each resource field is
-    /// an owner of the pass that closes it, and a record owner declared before them drops
+    /// an owner of the pass that closes it, and a type owner declared before them drops
     /// everything else, so the pass closes the fields last declared first and the rest after.
     /// A move of a field disowns its owner.
     fn bind_split(
@@ -995,7 +999,7 @@ impl FnLower<'_> {
         Ok(())
     }
 
-    /// The owners for the resource fields of the record of checked type `ty` stored at `ptr`,
+    /// The owners for the resource fields of the type of checked type `ty` stored at `ptr`,
     /// reached by `prefix` from the binding; `tails` are the moved places below it, by name.
     fn split_fields(
         &mut self,
@@ -1007,15 +1011,15 @@ impl FnLower<'_> {
         items: &mut Vec<SplitItem>,
     ) -> Result<(), Error> {
         let mt = self.mty(ty)?;
-        let TyKind::Rec(r) = self.b.m.types.kind(mt).clone() else {
-            return Err(Error::new("a moved field of a non-record"));
+        let TyKind::Type(r) = self.b.m.types.kind(mt).clone() else {
+            return Err(Error::new("a moved field of a non-type"));
         };
         for (i, f) in ct::fields(ty).iter().enumerate() {
             if self.cx.classes.class(self.syms, &f.ty) != ms_check::api::ownership::Class::Resource
             {
                 continue;
             }
-            let fty = self.b.m.records[r.index()].fields[i].1;
+            let fty = self.b.m.type_defs[r.index()].fields[i].1;
             let fp = self
                 .b
                 .emit(
@@ -1077,7 +1081,7 @@ impl FnLower<'_> {
         id
     }
 
-    /// The function that drops what the record of type `ty` held in memory holds besides the
+    /// The function that drops what the type of type `ty` held in memory holds besides the
     /// resource fields at `owned`, which owners of their own close and drop.
     fn split_rest_thunk(&mut self, ty: MTy, owned: &[Vec<u32>]) -> FuncId {
         let key = HelperKey::SplitRest(ty, owned.to_vec());
@@ -1233,7 +1237,7 @@ impl FnLower<'_> {
     }
 
     /// `own`, followed by the close of every resource `ty` holds, last declared first: the
-    /// close of a record, alternative, `Optional`, `List` or `Map` is generated from its parts.
+    /// close of a type, alternative, `Optional`, `List` or `Map` is generated from its parts.
     fn close_with_parts(
         &mut self,
         ty: &ct::Ty,
@@ -1241,16 +1245,16 @@ impl FnLower<'_> {
     ) -> Result<Option<CloseKind>, Error> {
         let mt = self.mty(ty)?;
         let shape = match self.b.m.types.kind(mt).clone() {
-            TyKind::Rec(r) => {
+            TyKind::Type(r) => {
                 let held = ct::fields(ty);
                 let mut parts = Vec::new();
                 for (i, f) in held.iter().enumerate().rev() {
-                    let ft = self.b.m.records[r.index()].fields[i].1;
+                    let ft = self.b.m.type_defs[r.index()].fields[i].1;
                     if let Some(k) = self.part_closer(&f.ty)? {
                         parts.push((i as u32, ft, k));
                     }
                 }
-                (!parts.is_empty()).then_some(Shape::Rec(r, parts))
+                (!parts.is_empty()).then_some(Shape::Type(r, parts))
             }
             TyKind::Alt(a) => {
                 let s = ct::substitution(ty);
@@ -1332,13 +1336,13 @@ impl FnLower<'_> {
     }
 
     /// The function the cleanup stack calls with the registered value.
-    /// The record a loop over an owned list of type `list` keeps in memory: the list and the
+    /// The type a loop over an owned list of type `list` keeps in memory: the list and the
     /// index of the first element the loop has not taken.
-    pub(crate) fn list_cursor(&mut self, list: MTy) -> (RecId, MTy) {
+    pub(crate) fn list_cursor(&mut self, list: MTy) -> (TypeId, MTy) {
         if let Some(c) = self.cx.list_cursors.get(&list) {
             return *c;
         }
-        let c = self.b.m.add_record(
+        let c = self.b.m.add_type(
             "ListCursor",
             vec![("list".into(), list), ("next".into(), MTy::INT)],
         );
@@ -1347,10 +1351,10 @@ impl FnLower<'_> {
     }
 
     /// The list a cursor holds, as a borrow.
-    pub(crate) fn cursor_list(&mut self, slot: Value, rec: RecId, list: MTy) -> Value {
+    pub(crate) fn cursor_list(&mut self, slot: Value, tval: TypeId, list: MTy) -> Value {
         let at = self
             .b
-            .emit(Op::PtrField, &[slot], Imm::Field(rec, 0), Some(MTy::PTR))
+            .emit(Op::PtrField, &[slot], Imm::Field(tval, 0), Some(MTy::PTR))
             .expect("field");
         self.b
             .emit(Op::Load, &[at], Imm::Ty(list), Some(list))
@@ -1364,7 +1368,7 @@ impl FnLower<'_> {
         if let Some(f) = self.cx.helpers.get(&key) {
             return *f;
         }
-        let (rec, _) = self.list_cursor(list);
+        let (tval, _) = self.list_cursor(list);
         let elem = self.b.m.list_elem(list).expect("a list");
         let ps = vec![Param {
             ty: MTy::PTR,
@@ -1375,10 +1379,10 @@ impl FnLower<'_> {
         b.func_mut().kind = FuncKind::Normal;
         let p = b.params()[0];
         let lp = b
-            .emit(Op::PtrField, &[p], Imm::Field(rec, 0), Some(MTy::PTR))
+            .emit(Op::PtrField, &[p], Imm::Field(tval, 0), Some(MTy::PTR))
             .expect("field");
         let np = b
-            .emit(Op::PtrField, &[p], Imm::Field(rec, 1), Some(MTy::PTR))
+            .emit(Op::PtrField, &[p], Imm::Field(tval, 1), Some(MTy::PTR))
             .expect("field");
         let next = b
             .emit(Op::Load, &[np], Imm::Ty(MTy::INT), Some(MTy::INT))
@@ -1539,7 +1543,7 @@ impl FnLower<'_> {
         }
     }
 
-    /// Records that the program called `close()` on the closing binding `recv` named.
+    /// Types that the program called `close()` on the closing binding `recv` named.
     pub(crate) fn note_explicit_close(&mut self, recv: &Expr) {
         let ms_check::api::hir::Resolution::Local(b) = self.hir.resolution(recv) else {
             return;

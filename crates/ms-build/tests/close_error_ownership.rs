@@ -47,10 +47,10 @@ fn close_errors_preserve_owned_identity_and_disjoint_borrowing() {
         let f = module.funcs.iter().find(|f| f.name == name).expect(name);
         for i in f.blocks.iter().flat_map(|b| &b.insts) {
             if i.op == Op::Clone
-                && let TyKind::Rec(r) = module.types.kind(f.ty(i.args[0]))
+                && let TyKind::Type(r) = module.types.kind(f.ty(i.args[0]))
             {
                 assert_ne!(
-                    module.records[r.index()].name,
+                    module.type_defs[r.index()].name,
                     "Error",
                     "{name} must keep the original owned Error"
                 );
@@ -85,10 +85,10 @@ fn close_errors_preserve_owned_identity_and_disjoint_borrowing() {
     for f in &module.funcs {
         for i in f.blocks.iter().flat_map(|b| &b.insts) {
             if i.op == Op::Clone
-                && let TyKind::Rec(r) = module.types.kind(f.ty(i.args[0]))
+                && let TyKind::Type(r) = module.types.kind(f.ty(i.args[0]))
             {
                 assert_ne!(
-                    module.records[r.index()].name,
+                    module.type_defs[r.index()].name,
                     "Failing",
                     "resources must move, including generic error payloads"
                 );

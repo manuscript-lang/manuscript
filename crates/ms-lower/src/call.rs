@@ -25,11 +25,11 @@ pub(crate) struct Args {
 pub(crate) type VarArgument = (usize, Value, MTy, Option<usize>);
 
 /// The variable whose fields a call changes, its value with those fields moved out, and per
-/// field: record, index, slot, type and whether the field was moved out (refilled afterwards).
+/// field: type, index, slot, type and whether the field was moved out (refilled afterwards).
 type JointFields = (
     crate::func::Local,
     Value,
-    Vec<(ms_mir::types::RecId, u32, Value, MTy, bool)>,
+    Vec<(ms_mir::types::TypeId, u32, Value, MTy, bool)>,
 );
 
 impl<'a> FnLower<'a> {
@@ -341,15 +341,15 @@ impl<'a> FnLower<'a> {
             let ExprKind::Member { name, .. } = &place.kind else {
                 unreachable!("joint_var_root admits only fields")
             };
-            let TyKind::Rec(rid) = self.b.m.types.kind(self.ty_of(obj)).clone() else {
-                return Err(Error::new("field mutation on a non-record"));
+            let TyKind::Type(rid) = self.b.m.types.kind(self.ty_of(obj)).clone() else {
+                return Err(Error::new("field mutation on a non-type"));
             };
-            let idx = self.b.m.records[rid.index()]
+            let idx = self.b.m.type_defs[rid.index()]
                 .fields
                 .iter()
                 .position(|f| f.0 == self.syms.str(name))
                 .ok_or_else(|| Error::new("no such field"))? as u32;
-            let cur = self.b.rec_get(rid, idx, obj);
+            let cur = self.b.type_get(rid, idx, obj);
             let (own, moved) = self.take_projection(cur);
             let slot = self
                 .b
@@ -367,9 +367,9 @@ impl<'a> FnLower<'a> {
         for (rid, idx, slot, ty, moved) in taken {
             let new = self.move_out(slot, ty);
             obj = if moved {
-                self.b.rec_fill(rid, idx, obj, new)
+                self.b.type_fill(rid, idx, obj, new)
             } else {
-                self.b.rec_set(rid, idx, obj, new)
+                self.b.type_set(rid, idx, obj, new)
             };
         }
         self.local_put(&root, obj);
@@ -1246,7 +1246,7 @@ impl<'a> FnLower<'a> {
                     let r = self.order(want, &static_ty, a, b)?;
                     return Ok(Val { v: r, own: false });
                 }
-                // A resource closed through its parts (a record holding one) has no `close` of
+                // A resource closed through its parts (a type holding one) has no `close` of
                 // its own: closing it closes what it holds.
                 if m.name().is_some_and(|n| self.syms.str(n) == "close")
                     && contract.is(Builtin::Closeable)
@@ -1703,7 +1703,7 @@ impl<'a> FnLower<'a> {
             self.unhold_temp(key);
         }
         let v = match (self.b.m.types.kind(mt).clone(), case) {
-            (TyKind::Rec(r), None) => self.b.rec_new(r, &vals),
+            (TyKind::Type(r), None) => self.b.type_new(r, &vals),
             (TyKind::Opt(_), Some(_)) => self.b.opt_some(vals[0]),
             (TyKind::Alt(a), Some(c)) => {
                 let idx = self.b.m.alts[a.index()]
@@ -1853,7 +1853,7 @@ impl<'a> FnLower<'a> {
                 Some(Val { v, own: true })
             }
             ExprKind::Call { args, .. } if args.iter().all(|a| a.name.is_some()) => {
-                let (Some(sym), TyKind::Rec(rid)) = (t.symbol(), self.b.m.types.kind(mt).clone())
+                let (Some(sym), TyKind::Type(rid)) = (t.symbol(), self.b.m.types.kind(mt).clone())
                 else {
                     return Ok(None);
                 };
@@ -1881,7 +1881,7 @@ impl<'a> FnLower<'a> {
                     vals.push(self.owned(x));
                 }
                 Some(Val {
-                    v: self.b.rec_new(rid, &vals),
+                    v: self.b.type_new(rid, &vals),
                     own: true,
                 })
             }
