@@ -639,6 +639,55 @@ b0:
     check("direct_element_drops", src, 12, &["nested", "strings"]);
 }
 
+fn record_elements() {
+    let src = r#"module "d"
+entry @main
+file 0 "d.ms"
+record Big { a: int, b: int, c: int, d: int, e: int, f: int, g: int, h: int, i: int, j: int }
+record Wide { a: int, b: int, c: int, d: int, e: int, f: int, g: int, h: int, i: int, s: str }
+fn @bigs(%n: int) -> int !0:1:1 {
+b0:
+  %x: int = iconst 3 !0:2:1
+  %p: Big = rec.new Big %x, %x, %x, %x, %x, %x, %x, %x, %x, %n !0:2:1
+  %q: Big = rec.new Big %n, %x, %x, %x, %x, %x, %x, %x, %x, %x !0:2:1
+  %l: list<Big> = list.lit %p, %q !0:3:1
+  %z: int = iconst 0 !0:3:1
+  %one: int = iconst 1 !0:3:1
+  %r: Big = list.get %l, %one !0:4:1
+  %ra: int = rec.get Big.a %r !0:4:1
+  %t: Big = rec.new Big %x, %x, %x, %x, %x, %x, %x, %x, %x, %x !0:5:1
+  %l2: list<Big> = list.set %l, %z, %t !0:5:1
+  %r2: Big = list.get %l2, %z !0:6:1
+  %rj: int = rec.get Big.j %r2 !0:6:1
+  %s: int = iadd %ra, %rj !0:7:1
+  list.release %l2, %z !0:7:1
+  ret %s
+}
+fn @wides(%n: int) -> int !0:8:1 {
+b0:
+  %x: int = iconst 3 !0:9:1
+  %s0: str = str "a string long enough to live on the heap" !0:9:1
+  %s: str = clone %s0 !0:9:1
+  %w: Wide = rec.new Wide %x, %x, %x, %x, %x, %x, %x, %x, %x, %s !0:9:1
+  %l: list<Wide> = list.lit %w !0:10:1
+  %z: int = iconst 0 !0:10:1
+  list.release %l, %z !0:11:1
+  %r: int = iadd %x, %n !0:11:1
+  ret %r
+}
+fn @main() -> int !0:20:1 {
+b0:
+  %n: int = iconst 4 !0:20:1
+  %a: int = call @bigs(%n) !0:21:1
+  %b: int = call @wides(%n) !0:22:1
+  %r: int = iadd %a, %b !0:23:1
+  ret %r
+}
+"#;
+    // bigs: 4 + 3; wides: 3 + 4
+    check("direct_record_elements", src, 14, &["bigs", "wides"]);
+}
+
 /// One test, not three: each build writes `ms-keep.ll` in the working directory.
 #[test]
 fn direct_lists_and_strings_match_cranelift() {
@@ -650,6 +699,7 @@ fn direct_lists_and_strings_match_cranelift() {
     list_take_release();
     constants_and_addresses();
     element_drops();
+    record_elements();
     crate::llvm_direct_data::optionals_and_alternatives_match_cranelift();
     closures_and_runtime_calls();
     interfaces();

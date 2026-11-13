@@ -128,7 +128,7 @@ fn pre(
             let ptr = if n == 0 {
                 Val::new("null", LTy::Ptr)
             } else {
-                Val::new(format!("@\"ms.blob.{i}\""), LTy::Ptr)
+                Val::new(format!("@\"ms.direct.blob.{i}\""), LTy::Ptr)
             };
             Some(vec![ptr, Val::int(n), Val::int(0)])
         }
@@ -209,8 +209,6 @@ fn list_access(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     let l = &vals[&inst.args[0].index()];
     let i = vals[&inst.args[1].index()][0].clone();
     let elem = cx.m.seq_elem(cx.f.ty(inst.args[0])).expect("a list");
-    let tys = mem_leaves(cx.lay, elem);
-    let held = held_leaves(cx.lay, elem);
     let (ptr, len) = (l[0].clone(), l[1].clone());
     let wraps = matches!(
         inst.op,
@@ -227,13 +225,9 @@ fn list_access(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         let oob = b.icmp("uge", &idx, &len);
         super::faults::fault_if(cx, b, &oob, "msrt_index_fault", &[i.clone(), len]);
     }
-    let types = b.types();
-    let whole = match tys.as_slice() {
-        [one] => one.clone(),
-        _ => super::aggregate(types, cx.lay, elem),
-    };
+    let whole = elem_whole(b.types(), cx.lay, elem);
     debug_assert_eq!(
-        types.size_align(&whole).0,
+        b.types().size_align(&whole).0,
         u64::from(mem_layout(&cx.lay.leaves(elem)).size)
     );
     if matches!(inst.op, Op::ListAddr | Op::ListAddrU) {
@@ -243,71 +237,146 @@ fn list_access(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         return;
     }
     let at = b.elem_ptr(&whole, &ptr, &idx);
-    let reads = matches!(
-        inst.op,
-        Op::ListGet | Op::ListGetNn | Op::ListGetU | Op::ListTake
-    );
-    let out = inst.res.map(|r| &vals[&r.index()]);
     if matches!(inst.op, Op::ListSet | Op::ListSetNn | Op::ListSetU) && cx.m.needs_drop(elem) {
         drop_elem(cx, b, elem, &ptr, &idx);
     }
+    if matches!(
+        inst.op,
+        Op::ListGet | Op::ListGetNn | Op::ListGetU | Op::ListTake
+    ) {
+        let out = &vals[&inst.res.expect("list read result").index()];
+        load_at(cx, b, elem, &whole, &at, Some(out));
+    } else {
+        store_at(cx, b, elem, &whole, &at, &vals[&inst.args[2].index()]);
+    }
+}
+
+/// The types the leaves of an element have in memory: those of the registers, except that a
+/// narrow integer or `Float32` is as narrow as it is stored.
+fn elem_mem_tys(lay: &Layouts, elem: Ty) -> Vec<LTy> {
+    let mut tys = mem_leaves(lay, elem);
+    for (t, l) in tys.iter_mut().zip(lay.leaves(elem)) {
+        match l {
+            Leaf::N8 | Leaf::U8 => *t = LTy::I8,
+            Leaf::N16 | Leaf::U16 => *t = LTy::I16,
+            Leaf::N32 | Leaf::U32 => *t = LTy::I32,
+            Leaf::F32 => *t = LTy::F32,
+            _ => {}
+        }
+    }
+    tys
+}
+
+/// The LLVM type of one element in a list block.
+fn elem_whole(types: &crate::llvm_build::Types, lay: &Layouts, elem: Ty) -> LTy {
+    let tys = elem_mem_tys(lay, elem);
+    match tys.as_slice() {
+        [one] => one.clone(),
+        _ => super::aggregate(types, lay, elem),
+    }
+}
+
+/// Loads the element at `at`. With `out` each result leaf takes its reserved name and a record
+/// held in memory is copied into a fresh slot; without it the leaves are fresh values and such a
+/// record is the pointer itself (what its drop glue takes).
+fn load_at(
+    cx: &Cx,
+    b: &mut FnBuilder,
+    elem: Ty,
+    whole: &LTy,
+    at: &Val,
+    out: Option<&[Val]>,
+) -> Vec<Val> {
+    if super::records::is_mem(cx.lay, elem) {
+        let Some(out) = out else {
+            return vec![at.clone()];
+        };
+        super::records::load_value(b, cx.lay, elem, at, out);
+        return out.to_vec();
+    }
+    let tys = elem_mem_tys(cx.lay, elem);
+    let held = held_leaves(cx.lay, elem);
+    let leaves = cx.lay.leaves(elem);
+    let mut got = Vec::new();
     for (k, t) in tys.iter().enumerate() {
         let to = if tys.len() == 1 {
             at.clone()
         } else {
-            b.field_ptr(&whole, &at, k)
+            b.field_ptr(whole, at, k)
         };
-        let align = types.size_align(t).1;
+        let align = b.types().size_align(t).1;
         let meta = elem_meta(cx.m.types.kind(elem), k);
-        if reads {
-            let dst = &out.expect("list read result")[k];
-            if held[k] == LTy::I1 {
-                // A boolean element is a byte in memory.
-                let byte = b.load_with(t, &to, align, meta);
-                b.name_next(dst);
-                b.trunc(&byte, LTy::I1);
-            } else {
-                b.name_next(dst);
-                b.load_with(t, &to, align, meta);
+        let dst = out.map(|o| &o[k]);
+        let named = |b: &mut FnBuilder| {
+            if let Some(d) = dst {
+                b.name_next(d);
             }
+        };
+        let v = match leaves[k] {
+            Leaf::N8 | Leaf::N16 | Leaf::N32 => {
+                let w = b.load_with(t, &to, align, meta);
+                named(b);
+                b.sext(&w, LTy::I64)
+            }
+            Leaf::U8 | Leaf::U16 | Leaf::U32 => {
+                let w = b.load_with(t, &to, align, meta);
+                named(b);
+                b.zext(&w, LTy::I64)
+            }
+            Leaf::F32 => {
+                let w = b.load_with(t, &to, align, meta);
+                named(b);
+                b.fpext(&w)
+            }
+            // A boolean element is a byte in memory.
+            _ if held[k] == LTy::I1 => {
+                let w = b.load_with(t, &to, align, meta);
+                named(b);
+                b.trunc(&w, LTy::I1)
+            }
+            _ => {
+                named(b);
+                b.load_with(t, &to, align, meta)
+            }
+        };
+        got.push(v);
+    }
+    got
+}
+
+/// Stores the held leaves `vs` of one element at `at`.
+fn store_at(cx: &Cx, b: &mut FnBuilder, elem: Ty, whole: &LTy, at: &Val, vs: &[Val]) {
+    if super::records::is_mem(cx.lay, elem) {
+        let (size, align) = b.types().size_align(whole);
+        b.copy_bytes(at, &vs[0], size, align);
+        return;
+    }
+    let tys = elem_mem_tys(cx.lay, elem);
+    let leaves = cx.lay.leaves(elem);
+    for (k, (t, v)) in tys.iter().zip(vs).enumerate() {
+        let to = if tys.len() == 1 {
+            at.clone()
         } else {
-            let v = vals[&inst.args[2].index()][k].clone();
-            let v = if v.ty == LTy::I1 {
-                b.zext(&v, LTy::I8)
-            } else {
-                v
-            };
-            b.store_with(&v, &to, align, meta);
-        }
+            b.field_ptr(whole, at, k)
+        };
+        let v = match leaves[k] {
+            Leaf::N8 | Leaf::N16 | Leaf::N32 | Leaf::U8 | Leaf::U16 | Leaf::U32 => {
+                b.trunc(v, t.clone())
+            }
+            Leaf::F32 => b.fptrunc(v),
+            _ if v.ty == LTy::I1 => b.zext(v, LTy::I8),
+            _ => v.clone(),
+        };
+        let align = b.types().size_align(t).1;
+        b.store_with(&v, &to, align, elem_meta(cx.m.types.kind(elem), k));
     }
 }
 
-/// Loads element `idx` of the block at `ptr` as its held leaves.
+/// Element `idx` of the block at `ptr` as its held leaves (a record in memory as its address).
 fn load_elem(cx: &Cx, b: &mut FnBuilder, elem: Ty, ptr: &Val, idx: &Val) -> Vec<Val> {
-    let tys = mem_leaves(cx.lay, elem);
-    let held = held_leaves(cx.lay, elem);
-    let whole = match tys.as_slice() {
-        [one] => one.clone(),
-        _ => super::aggregate(b.types(), cx.lay, elem),
-    };
+    let whole = elem_whole(b.types(), cx.lay, elem);
     let at = b.elem_ptr(&whole, ptr, idx);
-    tys.iter()
-        .enumerate()
-        .map(|(k, t)| {
-            let to = if tys.len() == 1 {
-                at.clone()
-            } else {
-                b.field_ptr(&whole, &at, k)
-            };
-            let align = b.types().size_align(t).1;
-            let v = b.load_with(t, &to, align, elem_meta(cx.m.types.kind(elem), k));
-            if held[k] == LTy::I1 {
-                b.trunc(&v, LTy::I1)
-            } else {
-                v
-            }
-        })
-        .collect()
+    load_at(cx, b, elem, &whole, &at, None)
 }
 
 /// Drops element `idx` of the block at `ptr`. A string element takes one split.
@@ -460,26 +529,9 @@ fn rt_alloc(cx: &mut Cx, b: &mut FnBuilder, name: &str, args: &[Val], dst: Optio
 /// Stores the leaves `vs` of one element at index `idx` of the list block at `ptr`.
 fn store_elem(cx: &Cx, b: &mut FnBuilder, list: Ty, ptr: &Val, idx: &Val, vs: &[Val]) {
     let elem = cx.m.seq_elem(list).expect("a list");
-    let tys = mem_leaves(cx.lay, elem);
-    let whole = match tys.as_slice() {
-        [one] => one.clone(),
-        _ => super::aggregate(b.types(), cx.lay, elem),
-    };
+    let whole = elem_whole(b.types(), cx.lay, elem);
     let at = b.elem_ptr(&whole, ptr, idx);
-    for (k, (t, v)) in tys.iter().zip(vs).enumerate() {
-        let to = if tys.len() == 1 {
-            at.clone()
-        } else {
-            b.field_ptr(&whole, &at, k)
-        };
-        let v = if v.ty == LTy::I1 {
-            b.zext(v, LTy::I8)
-        } else {
-            v.clone()
-        };
-        let align = b.types().size_align(t).1;
-        b.store_with(&v, &to, align, elem_meta(cx.m.types.kind(elem), k));
-    }
+    store_at(cx, b, elem, &whole, &at, vs);
 }
 
 /// `ListNew` (a block of `cap` elements, none when `cap` is zero), `ListLit` (a block holding
@@ -571,7 +623,7 @@ fn list_const(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         std::slice::from_ref(&bytes),
         Some(&out[0]),
     );
-    let src = Val::new(format!("@\"ms.list.{i}\""), LTy::Ptr);
+    let src = Val::new(format!("@\"ms.direct.list.{i}\""), LTy::Ptr);
     b.memcpy((&p, 16), (&src, 16), &bytes);
 }
 
@@ -664,7 +716,7 @@ pub(super) fn consts(m: &Module, lay: &Layouts, f: &Func) -> Vec<(String, String
     for inst in f.blocks.iter().flat_map(|b| &b.insts) {
         if let (Op::BytesLit | Op::ListConst, Imm::Int(i)) = (inst.op, inst.imm) {
             let (name, bytes) = if inst.op == Op::BytesLit {
-                (format!("ms.blob.{i}"), m.blobs[i as usize].clone())
+                (format!("ms.direct.blob.{i}"), m.blobs[i as usize].clone())
             } else {
                 let e = m
                     .seq_elem(f.ty(inst.res.expect("list result")))
@@ -672,9 +724,15 @@ pub(super) fn consts(m: &Module, lay: &Layouts, f: &Func) -> Vec<(String, String
                 let width = lay.leaves(e)[0].size() as usize;
                 let raw = &m.list_consts[i as usize];
                 (
-                    format!("ms.list.{i}"),
+                    format!("ms.direct.list.{i}"),
                     raw.iter()
-                        .flat_map(|v| v.to_le_bytes()[..width].to_vec())
+                        .flat_map(|v| {
+                            if lay.leaves(e)[0] == Leaf::F32 {
+                                (f64::from_bits(*v as u64) as f32).to_le_bytes().to_vec()
+                            } else {
+                                v.to_le_bytes()[..width].to_vec()
+                            }
+                        })
                         .collect(),
                 )
             };
@@ -713,12 +771,17 @@ pub(super) fn consts(m: &Module, lay: &Layouts, f: &Func) -> Vec<(String, String
     out
 }
 
-/// Whether an element is made of plain `i64`, `double` and `i8` leaves, which sit in memory
-/// exactly as in registers, and is held as those leaves (a record held behind one pointer is not).
+/// Whether an element can sit in a list block: leaves that are `i64`, `double`, `i8` or a single
+/// narrow integer or `Float32`, which are as wide in memory as they are narrow, or a record held
+/// in memory.
 fn plain_elem(lay: &Layouts, e: Ty) -> bool {
-    !super::records::is_mem(lay, e)
-        && lay
-            .leaves(e)
+    let leaves = lay.leaves(e);
+    (super::records::is_mem(lay, e) && super::records::shape_ok(lay, e))
+        || leaves
             .iter()
             .all(|l| matches!(l, Leaf::I64 | Leaf::F64 | Leaf::I8))
+        || matches!(
+            leaves.as_slice(),
+            [Leaf::N8 | Leaf::N16 | Leaf::N32 | Leaf::U8 | Leaf::U16 | Leaf::U32 | Leaf::F32]
+        )
 }
