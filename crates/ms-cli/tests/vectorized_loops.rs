@@ -60,14 +60,13 @@ fn element_wise_list_loops_are_vectorized() {
     }
 }
 
-/// A fault inside the AVX2 copy of a vectorized function reports the same exit code and source
-/// frames as the baseline copy.
+/// A fault inside a vectorized function reports its exit code and source frames.
 #[test]
-fn per_cpu_copies_report_the_same_fault_frames() {
+fn vectorized_function_reports_fault_frames() {
     if !ms_clif::llvm_available(&ms_cli::engine::build_options_from_env()) {
         return;
     }
-    let dir = std::env::temp_dir().join(format!("ms-cpu-copies-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("ms-vector-fault-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     std::fs::write(
         dir.join("fault.ms"),
@@ -85,24 +84,13 @@ fn per_cpu_copies_report_the_same_fault_frames() {
         "{}",
         String::from_utf8_lossy(&built.stderr)
     );
-    let run = |level: &str| {
-        let out = Command::new(dir.join("fault"))
-            .env("MS_CPU_LEVEL", level)
-            .output()
-            .unwrap();
-        (
-            out.status.code(),
-            String::from_utf8_lossy(&out.stderr).into_owned(),
-        )
-    };
-    let (native, baseline) = (run("native"), run("baseline"));
+    let out = Command::new(dir.join("fault")).output().unwrap();
+    let stderr = String::from_utf8_lossy(&out.stderr).into_owned();
     let _ = std::fs::remove_dir_all(&dir);
-    assert_ne!(native.0, Some(0), "{}", native.1);
-    assert_eq!(native, baseline);
-    // One frame for the function: the dispatcher between the caller and the copy leaves none.
-    assert_eq!(native.1.matches(" in scale").count(), 1, "{}", native.1);
-    assert!(native.1.contains("fault.ms:3 in scale"), "{}", native.1);
-    assert!(native.1.contains("fault.ms:8 in main"), "{}", native.1);
+    assert_ne!(out.status.code(), Some(0), "{stderr}");
+    assert_eq!(stderr.matches(" in scale").count(), 1, "{stderr}");
+    assert!(stderr.contains("fault.ms:3 in scale"), "{stderr}");
+    assert!(stderr.contains("fault.ms:8 in main"), "{stderr}");
 }
 
 /// `MS_VECTORIZE=off` leaves the list loops scalar.
@@ -129,31 +117,23 @@ fn vectorize_off_keeps_loops_scalar() {
     );
     let ir = std::fs::read_to_string(dir.join("ms-keep.ll")).unwrap();
     let _ = std::fs::remove_dir_all(&dir);
-    assert!(
-        !ir.contains(".avx2"),
-        "per-CPU copies with vectorization off"
-    );
+    assert!(!ir.contains(".avx2"), "per-CPU copies were emitted");
 }
 
-/// A search loop that returns early cannot be vectorized, so its function keeps one copy and no
-/// dispatcher; a single-exit sum loop gets both copies.
+/// Release builds emit one copy of each function: no per-CPU copies, dispatcher or CPU query.
 #[test]
-fn only_vectorizable_loops_get_per_cpu_copies() {
+fn release_builds_emit_no_per_cpu_copies() {
     if !ms_clif::llvm_available(&ms_cli::engine::build_options_from_env()) {
         return;
     }
-    let dir = std::env::temp_dir().join(format!("ms-search-loop-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("ms-one-copy-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
-    std::fs::write(
-        dir.join("search.ms"),
-        include_str!("vectorized_loops/search.ms"),
-    )
-    .unwrap();
+    std::fs::write(dir.join("k.ms"), KERNELS).unwrap();
     let built = Command::new(env!("CARGO_BIN_EXE_ms"))
         .current_dir(&dir)
         .env("MS_BACKEND", "llvm")
         .env("MS_KEEP_LL", "1")
-        .args(["build", "search.ms", "-o", "search"])
+        .args(["build", "k.ms", "-o", "k"])
         .output()
         .unwrap();
     assert!(
@@ -163,15 +143,9 @@ fn only_vectorizable_loops_get_per_cpu_copies() {
     );
     let ir = std::fs::read_to_string(dir.join("ms-keep.ll")).unwrap();
     let _ = std::fs::remove_dir_all(&dir);
-    // Per-CPU copies exist for x86-64 only; the early-return loop has none on any host.
-    assert!(
-        !cfg!(target_arch = "x86_64") || ir.contains("@\"total#2.avx2\""),
-        "the sum loop has no AVX2 copy"
-    );
-    assert!(
-        !ir.contains("@\"find#1.avx2\"") && !ir.contains("@\"find#1.base\""),
-        "a search loop with an early return got per-CPU copies"
-    );
+    for banned in [".avx2", "msrt_cpu_level", "target-features"] {
+        assert!(!ir.contains(banned), "the IR mentions {banned}");
+    }
 }
 
 /// On aarch64 the element-wise loops compile to NEON vector instructions. There are no per-CPU

@@ -423,7 +423,6 @@ pub fn read(
                 } else {
                     0
                 },
-                copy_symbol: f.copy.then(|| f.symbol.clone()),
                 reloc: None,
             })
         })
@@ -536,7 +535,6 @@ mod tests {
             .map(|(i, symbol)| LlvmFn {
                 id: FuncId::from_u32(i as u32),
                 symbol: (*symbol).into(),
-                copy: false,
                 name: (*symbol).into(),
                 file: 0,
                 line: 0,
