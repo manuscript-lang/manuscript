@@ -11,16 +11,37 @@ use ms_mir::types::{Ty, TyKind};
 pub(super) const AREA: Area = Area {
     handles,
     inst_ok,
+    pre,
     emit,
     ..Area::NONE
 };
 
 fn inst_ok(m: &Module, lay: &Layouts, _: &Func, inst: &Inst) -> bool {
     match (inst.op, inst.imm) {
-        (Op::CallRt, Imm::Ext(e)) => extern_ok(m, lay, &m.externs[e.index()]),
+        (Op::CallRt, Imm::Ext(e)) => {
+            is_map_new(m, inst) || extern_ok(m, lay, &m.externs[e.index()])
+        }
         (Op::CallRt, _) => false,
         _ => true,
     }
+}
+
+/// `map_new` (and `set_new`): an empty map is seven zero words (`ms_rt::map::empty()`, pinned by
+/// a runtime test), so it is constants and no call.
+fn is_map_new(m: &Module, inst: &Inst) -> bool {
+    matches!((inst.op, inst.imm), (Op::CallRt, Imm::Ext(e)) if m.externs[e.index()].role == ExternRole::MapNew)
+}
+
+fn pre(
+    _: &Module,
+    lay: &Layouts,
+    f: &Func,
+    inst: &Inst,
+    _: &Vals,
+    _: &mut FnBuilder,
+) -> Option<Vec<Val>> {
+    let res = inst.res?;
+    is_map_new(lay.m, inst).then(|| vec![Val::int(0); lay.width(f.ty(res))])
 }
 
 fn handles(op: Op) -> bool {
@@ -73,6 +94,9 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         .res
         .map(|r| vals[&r.index()].clone())
         .unwrap_or_default();
+    if is_map_new(m, inst) {
+        return;
+    }
     if inst.op == Op::CallRt {
         return call_rt(cx, inst, vals, &out, b);
     }
