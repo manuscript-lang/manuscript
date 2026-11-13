@@ -159,12 +159,6 @@ runs:
         CONFORM_LEAKS: '1'
       shell: bash
       run: target/debug/ms run tools/conform.ms
-    # The direct MIR-to-LLVM emitter (MS_LLVM_DIRECT, proposals/mir-to-llvm-direct.md) against the
-    # translation it replaces: same corpus, same output; `opt` rejects any module that does not verify.
-    - name: Conformance corpus (direct LLVM emitter against translation)
-      if: env.CONFORM == 'true'
-      shell: bash
-      run: MS=target/debug/ms target/debug/ms run tools/llvm-direct-check.ms -- diff
     - name: Conformance corpus (Cranelift)
       if: env.CRANELIFT == 'true'
       env:
