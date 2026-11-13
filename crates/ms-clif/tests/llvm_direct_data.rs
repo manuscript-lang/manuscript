@@ -816,7 +816,7 @@ pub fn memory_payload_matches_cranelift() {
 /// An enum whose payload is an optional record of more than eight leaves: the flag and the
 /// record's leaves sit in the enum's slots.
 const OPTIONAL_PAYLOAD: &str = r#"module "d"
-record Wide { a: int8, b: int, c: int, d: int, e: int, f: int, g: int, h: int, i: int }
+type Wide { a: int8, b: int, c: int, d: int, e: int, f: int, g: int, h: int, i: int }
 alt Holder { Plain(n: int), Maybe(w: opt<Wide>) }
 entry @main
 file 0 "d.ms"
