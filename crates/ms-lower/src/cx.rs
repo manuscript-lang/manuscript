@@ -90,6 +90,10 @@ pub enum HelperKey {
     /// The close of a loop's cursor over an owned list of the given type, closing the elements it
     /// never reached with the given close, when there is one.
     ListTail(MTy, Option<crate::close::CloseKind>),
+    /// The close of a field held in memory that never turns into a returning close.
+    CloseField(MTy, crate::close::CloseKind),
+    /// What a record holds besides the resource fields at these paths, which other owners close.
+    SplitRest(MTy, Vec<Vec<u32>>),
     /// How a failed scope-end close becomes the return of a function of the given type: the
     /// close's `Result` type, the function's return type, whether a pending return is held, and
     /// whether that return is a borrow the exit must not release.

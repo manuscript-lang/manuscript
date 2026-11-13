@@ -2012,6 +2012,42 @@ fn lambda_changes(
         .collect()
 }
 
+/// Whether a parameter, `let`, loop variable or match payload of `body` closes a resource when
+/// its scope ends.
+pub(crate) fn closes_resources(
+    fl: &FnLower<'_>,
+    c: &ms_check::api::hir::Callable,
+    body: &[Stmt],
+) -> bool {
+    use ms_check::api::ownership::BindingFact::ImplicitClose;
+    struct Scan<'a, 'b> {
+        fl: &'a FnLower<'b>,
+        found: bool,
+    }
+    impl ms_check::api::visit::Visitor for Scan<'_, '_> {
+        fn stmt(&mut self, s: &Stmt) {
+            self.found |= self.fl.hir.stmt(s).cleanup.is_some();
+        }
+        fn expr(&mut self, e: &Expr) {
+            if let ExprKind::Match { arms, .. } = &e.kind {
+                for arm in arms {
+                    for b in self.fl.hir.arm(arm).bindings.iter().flatten() {
+                        self.found |= self.fl.cx.ownership.binding_facts.has(b.uid, ImplicitClose);
+                    }
+                }
+            }
+        }
+    }
+    let params = c
+        .self_binding
+        .iter()
+        .chain(c.parameters.iter())
+        .any(|b| fl.cx.ownership.binding_facts.has(b.uid, ImplicitClose));
+    let mut scan = Scan { fl, found: params };
+    ms_check::api::visit::walk_block(&mut scan, body);
+    scan.found
+}
+
 /// The locals a closure written in `body` changes: they must live in memory.
 pub(crate) fn slotted_in(
     syms: ms_check::api::Names,
