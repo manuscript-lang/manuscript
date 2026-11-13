@@ -69,6 +69,11 @@ pub(super) fn is_narrow(l: Leaf) -> bool {
     )
 }
 
+/// Whether `ty` has no leaves (`Unit`): moving it through memory is nothing.
+fn empty(lay: &Layouts, ty: Ty) -> bool {
+    lay.leaves(ty).is_empty()
+}
+
 /// Whether `ty` has a memory shape.
 pub(super) fn shape_ok(lay: &Layouts, ty: Ty) -> bool {
     shape_leaves(lay, ty).is_some()
@@ -233,9 +238,12 @@ pub(super) fn handles(op: Op) -> bool {
 pub(super) fn op_ok(lay: &Layouts, f: &Func, i: &Inst) -> bool {
     let mem_ty = |t: Ty| shape_ok(lay, t);
     match (i.op, i.imm) {
-        (Op::Slot, Imm::Ty(t)) => mem_ty(t),
-        (Op::Load | Op::Take, Imm::Ty(t)) => mem_ty(t) && i.res.is_some_and(|r| f.ty(r) == t),
-        (Op::Store | Op::Put, _) => mem_ty(f.ty(i.args[1])),
+        // A slot is bytes: any type has a size.
+        (Op::Slot, Imm::Ty(_)) => true,
+        (Op::Load | Op::Take, Imm::Ty(t)) => {
+            (mem_ty(t) || empty(lay, t)) && i.res.is_some_and(|r| f.ty(r) == t)
+        }
+        (Op::Store | Op::Put, _) => mem_ty(f.ty(i.args[1])) || empty(lay, f.ty(i.args[1])),
         (Op::PtrField | Op::RecGet, Imm::Field(..)) => true,
         (Op::RecSet | Op::RecFill, Imm::Field(r, _)) => !lay.m.records[r.index()].indirect,
         (Op::RecNew, _) => true,
@@ -567,9 +575,10 @@ pub(super) fn bind_early(
         Op::Slot => {
             let Imm::Ty(t) = inst.imm else { return None };
             // The runtime may write a whole word to a slot of a smaller type.
-            let st = shape(b.types(), lay, t)?;
-            let ty = if st.size < 8 { LTy::I64 } else { st.st };
-            Some(vec![b.alloca(&ty)])
+            let words = lay.mem(t).size.max(8).div_ceil(8);
+            Some(vec![
+                b.alloca(&LTy::Array(Box::new(LTy::I64), u64::from(words))),
+            ])
         }
         Op::RecNew => Some(
             inst.args
@@ -607,6 +616,8 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     let arg = |i: usize| vals[&inst.args[i].index()].clone();
     match inst.op {
         _ if is_early(lay, f, inst) => {}
+        Op::Load | Op::Take | Op::Store | Op::Put
+            if empty(lay, f.ty(inst.res.unwrap_or_else(|| inst.args[1]))) => {}
         Op::Load | Op::Take => {
             let ty = f.ty(inst.res.expect("load result"));
             load_value(b, lay, ty, &arg(0)[0], &out);

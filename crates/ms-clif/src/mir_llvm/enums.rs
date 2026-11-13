@@ -645,5 +645,6 @@ fn release(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
                 convert(b, &src, &out[i].ty);
             }
         }
+        memory_payloads(cx, inst, vals, out, b);
     }
 }
