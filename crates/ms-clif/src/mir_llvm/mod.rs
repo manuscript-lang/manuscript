@@ -12,6 +12,7 @@ mod calls;
 mod closures;
 mod depth;
 mod enums;
+mod faults;
 mod glue;
 mod lists;
 mod maps;
@@ -46,6 +47,25 @@ pub struct Emitted {
     pub body: String,
     /// `(symbol, declare line)` of each callee.
     pub decls: Vec<(String, String)>,
+    /// Symbols of the data objects the function addresses.
+    pub data: Vec<String>,
+}
+
+/// What a function needs from the module before it is emitted: whether checks are on, and the
+/// symbols of the glue and descriptors its instructions call. The driver declares them (glue is
+/// queued for generation).
+#[derive(Default)]
+pub struct Plan {
+    /// Whether bounds checks are emitted.
+    pub checks: bool,
+    /// Symbol to call for the `Clone` glue of a type (see `glue_llvm::target`).
+    pub clone: HashMap<Ty, String>,
+    /// Symbol to call for the `Drop` glue of a type.
+    pub drop: HashMap<Ty, String>,
+    /// Type descriptor symbol by type.
+    pub desc: HashMap<Ty, String>,
+    /// Symbol of the cleanup thunk by the MIR index of the closer.
+    pub cleanup: HashMap<usize, String>,
 }
 
 /// LLVM type and parameter attribute of one register leaf. `I8` leaves (`Bool`, flags) are
@@ -201,7 +221,7 @@ struct Area {
     /// Extra conditions on one instruction of an op this area handles.
     inst_ok: fn(&Module, &Layouts, &Func, &Inst) -> bool,
     /// How many blocks the op splits off (its checks only when checks are on).
-    splits: fn(Op, bool) -> usize,
+    splits: fn(&Layouts, &Func, &Inst, bool) -> usize,
     /// Whether the op touches neither memory nor anything a fault could depend on.
     pure_op: fn(Op) -> bool,
     /// The value an instruction is without any code (a constant, a leaf of its operand).
@@ -216,7 +236,7 @@ impl Area {
         handles: |_| false,
         ty_ok: |_| false,
         inst_ok: |_, _, _, _| true,
-        splits: |_, _| 0,
+        splits: |_, _, _, _| 0,
         pure_op: |_| false,
         pre: |_, _, _, _, _| None,
         emit: |_, _, _, _| unreachable!("an area emits only the ops it handles"),
@@ -279,7 +299,8 @@ pub fn supports(m: &Module, lay: &Layouts, f: &Func) -> bool {
                 then.block != els.block && !is_entry(then) && !is_entry(els)
             }
             Term::Ret(_) | Term::Unreachable => true,
-            Term::Switch { .. } | Term::Fault(_) => false,
+            Term::Fault(k) => faults::terminator_ok(*k),
+            Term::Switch { .. } => false,
         };
         if !ok {
             return false;
@@ -298,6 +319,8 @@ struct Cx<'a> {
     m: &'a Module,
     f: &'a Func,
     lay: &'a Layouts<'a>,
+    /// The glue and descriptors the function refers to.
+    plan: &'a Plan,
     /// Whether bounds checks are emitted.
     checks: bool,
     /// Fault call sites numbered so far in the module.
@@ -307,7 +330,9 @@ struct Cx<'a> {
     memo: HashMap<usize, Option<bool>>,
     /// `(symbol, declare line)` of each callee.
     decls: Vec<(String, String)>,
-    /// MIR block being written and the checks it has split off so far.
+    /// Symbols of the data objects the function addresses.
+    data: Vec<String>,
+    /// MIR block being written and the splits it has made so far.
     block: usize,
     split: usize,
     /// The entry parameters as they arrive, one per leaf, and the result leaves: what the
@@ -322,11 +347,11 @@ struct Cx<'a> {
 }
 
 /// The label a MIR block ends in: each check splits it, and a successor's phis name that label.
-fn exit_label(f: &Func, checks: bool, bb: usize) -> String {
+fn exit_label(lay: &Layouts, f: &Func, checks: bool, bb: usize) -> String {
     let n = f.blocks[bb]
         .insts
         .iter()
-        .map(|i| area_of(i.op).map_or(0, |a| (a.splits)(i.op, checks)))
+        .map(|i| area_of(i.op).map_or(0, |a| (a.splits)(lay, f, i, checks)))
         .sum();
     block_label(bb, n)
 }
@@ -354,10 +379,11 @@ pub fn emit(
         native,
     }: Place,
     f: &Func,
-    checks: bool,
+    plan: &Plan,
     env: &mut DirectEnv,
     symbol_of: &dyn Fn(usize) -> String,
 ) -> Emitted {
+    let checks = plan.checks;
     let types = env.types;
     let mut b = FnBuilder::new(types, Some(env.loc));
     let rpo = f.rpo();
@@ -423,7 +449,7 @@ pub fn emit(
         let term = &f.blocks[bb.index()].term;
         let mut k = 0;
         term.for_each_target(|t| {
-            let from = exit_label(f, checks, bb.index());
+            let from = exit_label(lay, f, checks, bb.index());
             let from = if matches!(term, Term::CondBr { .. }) && records::has_copies(lay, f, t) {
                 format!("{from}_e{k}")
             } else {
@@ -440,11 +466,13 @@ pub fn emit(
         m,
         f,
         lay,
+        plan,
         checks,
         sites: *env.sites,
         symbol_of,
         memo: HashMap::new(),
         decls: Vec::new(),
+        data: Vec::new(),
         block: 0,
         split: 0,
         entry_abi,
@@ -484,6 +512,8 @@ pub fn emit(
             b.set_dbg(Some(env.at(inst.loc)));
             inst_text(&mut cx, inst, &vals, &mut b);
         }
+        // A fault names the position of its terminator in the trace.
+        b.set_dbg(Some(env.at(bd.term_loc)));
         match &bd.term {
             Term::Br(t) => {
                 records::copies(&mut b, lay, f, &vals, t);
@@ -491,7 +521,7 @@ pub fn emit(
             }
             Term::CondBr { cond, then, els } => {
                 let c = vals[&cond.index()][0].clone();
-                let from = exit_label(f, checks, bb.index());
+                let from = exit_label(lay, f, checks, bb.index());
                 let to = |k: usize, t: &Target| {
                     if records::has_copies(lay, f, t) {
                         format!("{from}_e{k}")
@@ -525,6 +555,7 @@ pub fn emit(
                 }
             }
             Term::Ret(None) => b.ret(None),
+            Term::Fault(k) => faults::terminator(&mut cx, &mut b, *k),
             _ => b.unreachable(),
         }
     }
@@ -541,6 +572,7 @@ pub fn emit(
             .to_string(),
         body: b.finish(),
         decls: cx.decls,
+        data: cx.data,
     }
 }
 

@@ -47,7 +47,8 @@ fn checked(op: Op) -> bool {
 
 /// How many times `op` splits its block: a bounds check or a string read that joins branches
 /// starts a new block, and a successor's phis name the label the block ends in.
-fn splits(op: Op, checks: bool) -> usize {
+fn splits(_: &Layouts, _: &Func, i: &Inst, checks: bool) -> usize {
+    let op = i.op;
     match op {
         _ if checked(op) => usize::from(checks),
         Op::StrByte | Op::StrAsciiAt | Op::ListNew | Op::ListPush | Op::ListRelease => 1,
@@ -158,25 +159,7 @@ fn list_access(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     };
     if cx.checks && checked(inst.op) {
         let oob = b.icmp("uge", &idx, &len);
-        let fault = format!("f{}_{}", cx.block, cx.split);
-        cx.split += 1;
-        let next = block_label(cx.block, cx.split);
-        b.cond_br_likely(&oob, &fault, &next, false);
-        b.label(&fault);
-        cx.sites += 1;
-        b.fault_site(cx.sites);
-        b.call(
-            &LTy::Void,
-            "",
-            "msrt_index_fault",
-            &[(i.clone(), ""), (len, "")],
-        );
-        b.unreachable();
-        cx.decls.push((
-            "msrt_index_fault".into(),
-            "declare void @\"msrt_index_fault\"(i64, i64) cold noreturn".into(),
-        ));
-        b.label(&next);
+        super::faults::fault_if(cx, b, &oob, "msrt_index_fault", &[i.clone(), len]);
     }
     let types = b.types();
     let whole = match tys.as_slice() {

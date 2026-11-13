@@ -1371,8 +1371,12 @@ fn direct_function(g: &mut Gen, i: usize, f: &Func) -> bool {
         .then(|| g.glue(Glue::GrowShim(i as u32), Ty::UNIT));
     g.add_scopes(f);
     let mut bits = HashMap::new();
-    for inst in f.blocks.iter().flat_map(|b| &b.insts) {
-        bits.entry(inst.loc).or_insert_with(|| g.loc_bits(inst.loc));
+    let locs = f
+        .blocks
+        .iter()
+        .flat_map(|b| b.insts.iter().map(|i| i.loc).chain([b.term_loc]));
+    for loc in locs {
+        bits.entry(loc).or_insert_with(|| g.loc_bits(loc));
     }
     let syms = ModuleSymbols(&g.module, &g.locs, &g.scopes, &g.m.externs);
     let sym = syms.symbol_of(id);
@@ -1384,6 +1388,8 @@ fn direct_function(g: &mut Gen, i: usize, f: &Func) -> bool {
     } else {
         (0, f.loc.line)
     };
+    let plan = direct_plan(g, f);
+    let syms = ModuleSymbols(&g.module, &g.locs, &g.scopes, &g.m.externs);
     let funcs = &g.funcs;
     let symbol_of = |k: usize| syms.symbol_of(funcs[k]);
     let grow_shim = shim.map(|s| syms.symbol_of(s));
@@ -1391,7 +1397,6 @@ fn direct_function(g: &mut Gen, i: usize, f: &Func) -> bool {
     let lay = &g.lay;
     let native = g.native.as_ref().expect("computed above");
     let mut llvm = g.llvm.take().expect("checked above");
-    let checks = g.opts.checks;
     llvm.add_direct(
         &sym,
         &f.name,
@@ -1407,7 +1412,7 @@ fn direct_function(g: &mut Gen, i: usize, f: &Func) -> bool {
                 grow_shim,
                 native,
             };
-            crate::mir_llvm::emit(m, lay, place, f, checks, env, &symbol_of)
+            crate::mir_llvm::emit(m, lay, place, f, &plan, env, &symbol_of)
         },
     );
     g.llvm = Some(llvm);
@@ -1419,6 +1424,54 @@ fn direct_function(g: &mut Gen, i: usize, f: &Func) -> bool {
         line: f.loc.line,
     });
     true
+}
+
+/// The glue and descriptors `f`'s instructions refer to, declared now so that emission can name
+/// them: clone glue is queued for generation like any other.
+fn direct_plan(g: &mut Gen, f: &Func) -> crate::mir_llvm::Plan {
+    use crate::glue_llvm::{OwnKind, own_kind};
+    use ms_mir::ir::{Imm, Op};
+    let mut plan = crate::mir_llvm::Plan {
+        checks: g.opts.checks,
+        ..Default::default()
+    };
+    for bd in &f.blocks {
+        for i in &bd.insts {
+            match (i.op, i.imm) {
+                (Op::Clone, _) => {
+                    let ty = f.ty(i.args[0]);
+                    if own_kind(&g.lay, ty) == OwnKind::Glue && !plan.clone.contains_key(&ty) {
+                        let id = g.glue(Glue::Clone, ty);
+                        plan.clone.insert(
+                            ty,
+                            crate::glue_llvm::target(g, Glue::Clone, ty, symbol_of(g, id)),
+                        );
+                    }
+                }
+                (Op::Drop | Op::DropIf, _) => {
+                    let ty = f.ty(i.args[usize::from(i.op == Op::DropIf)]);
+                    if own_kind(&g.lay, ty) == OwnKind::Glue && !plan.drop.contains_key(&ty) {
+                        let id = g.glue(Glue::Drop, ty);
+                        plan.drop.insert(
+                            ty,
+                            crate::glue_llvm::target(g, Glue::Drop, ty, symbol_of(g, id)),
+                        );
+                    }
+                }
+                (Op::CleanupPush, Imm::Func(c)) => {
+                    let id = g.glue(Glue::CleanupThunk(c.0), Ty::UNIT);
+                    plan.cleanup.insert(c.index(), symbol_of(g, id));
+                }
+                (Op::TypeDesc, Imm::Ty(t)) => {
+                    let id = g.typedesc(t);
+                    let name = g.module.declarations().get_data_decl(id).linkage_name(id);
+                    plan.desc.insert(t, name.into_owned());
+                }
+                _ => {}
+            }
+        }
+    }
+    plan
 }
 
 /// Emits the stack-growth shim of the native function `f`.
@@ -1465,20 +1518,29 @@ fn direct_glue(g: &mut Gen, kind: Glue, ty: Ty) -> bool {
     let id = g.glue[&(kind, ty)];
     let sym = symbol_of(g, id);
     let mut llvm = g.llvm.take().expect("checked above");
+    let nat = crate::glue_llvm::native(&sym);
     // Glue has no MIR, so no source locations to resolve.
     let no_bits = HashMap::new();
     let locs = crate::llvm_ir::DirectLocs {
         syms: &crate::llvm_ir::NoSymbols,
         bits: &no_bits,
     };
+    llvm.add_direct(&nat, "glue", (0, 0), false, locs, |env| {
+        crate::glue_llvm::emit(g, kind, ty, env.types, env.loc)
+    });
+    llvm.mark_glue();
+    let locs = crate::llvm_ir::DirectLocs {
+        syms: &crate::llvm_ir::NoSymbols,
+        bits: &no_bits,
+    };
     llvm.add_direct(&sym, "glue", (0, 0), false, locs, |env| {
-        crate::glue_llvm::emit(g, kind, ty, env.loc)
+        crate::glue_llvm::thunk(g, kind, ty, &sym, env.types, env.loc)
     });
     llvm.mark_glue();
     g.llvm = Some(llvm);
     g.llvm_funcs.push(LlvmFn {
         id,
-        symbol: sym,
+        symbol: nat,
         name: "glue".to_string(),
         file: u32::MAX,
         line: 0,
