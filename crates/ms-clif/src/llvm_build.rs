@@ -183,6 +183,7 @@ pub enum Bin {
     FMul,
     FDiv,
     LShr,
+    Shl,
 }
 
 impl Bin {
@@ -199,6 +200,7 @@ impl Bin {
             Bin::FMul => "fmul",
             Bin::FDiv => "fdiv",
             Bin::LShr => "lshr",
+            Bin::Shl => "shl",
         }
     }
 

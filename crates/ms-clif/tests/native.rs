@@ -12,14 +12,14 @@ use std::sync::OnceLock;
 use crate::support;
 use support::cc;
 
-fn dir() -> PathBuf {
+pub fn dir() -> PathBuf {
     let d = std::env::temp_dir().join(format!("ms-clif-tests-{}", std::process::id()));
     std::fs::create_dir_all(&d).unwrap();
     d
 }
 
 /// Builds the test runtime once and returns the path of its object file.
-fn runtime() -> &'static PathBuf {
+pub fn runtime() -> &'static PathBuf {
     static RT: OnceLock<PathBuf> = OnceLock::new();
     RT.get_or_init(|| {
         let out = dir().join("testrt.o");
@@ -40,7 +40,7 @@ pub struct Outcome {
     pub code: i32,
 }
 
-fn module(src: &str) -> ms_mir::ir::Module {
+pub fn module(src: &str) -> ms_mir::ir::Module {
     let m = parse_module(src).unwrap_or_else(|e| panic!("{e}"));
     verify_module(&m).unwrap_or_else(|e| panic!("{e:#?}"));
     m
