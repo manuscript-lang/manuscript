@@ -1437,7 +1437,7 @@ fn direct_shim(g: &mut Gen, kind: Glue, ty: Ty, f: usize) -> bool {
     };
     let (m, lay) = (g.m, &g.lay);
     llvm.add_direct(&sym, "glue", (0, 0), false, locs, |env| {
-        crate::mir_llvm::grow_shim(lay, &m.funcs[f], &callee, env.loc)
+        crate::mir_llvm::grow_shim(env.types, lay, &m.funcs[f], &callee, env.loc)
     });
     llvm.mark_glue();
     g.llvm = Some(llvm);

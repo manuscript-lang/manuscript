@@ -25,6 +25,7 @@
 )]
 
 use crate::layout::{Layouts, Leaf, mem_layout};
+use crate::llvm_build::Types;
 use ms_mir::ir::{Mode, Param};
 use ms_mir::types::Ty;
 
@@ -40,6 +41,8 @@ pub enum Reg {
     F64,
     /// `i8`: booleans and presence flags.
     I8,
+    /// `ptr`: a leaf that is an address (see `Layouts::pointer_leaves`).
+    Ptr,
 }
 
 impl Reg {
@@ -58,6 +61,7 @@ impl Reg {
             Reg::I64 => "i64",
             Reg::F64 => "double",
             Reg::I8 => "i8",
+            Reg::Ptr => "ptr",
         }
     }
 }
@@ -89,18 +93,18 @@ pub enum Ret {
     Sret(Mem),
 }
 
-/// The size and alignment of the leaves spilled to memory as registers: a literal struct of
-/// `i64`, `double` and `i8` fields, which is also what a record in memory is.
-fn mem_of(leaves: &[Leaf]) -> Mem {
-    let regs: Vec<Leaf> = leaves
+/// The size and alignment of the registers spilled to memory: a literal struct of `i64`,
+/// `double`, `i8` and `ptr` fields, which is also what a record in memory is.
+fn mem_of(regs: &[Reg]) -> Mem {
+    let leaves: Vec<Leaf> = regs
         .iter()
-        .map(|l| match Reg::of(*l) {
+        .map(|r| match r {
             Reg::I8 => Leaf::I8,
             Reg::F64 => Leaf::F64,
-            Reg::I64 => Leaf::I64,
+            Reg::I64 | Reg::Ptr => Leaf::I64,
         })
         .collect();
-    let m = mem_layout(&regs);
+    let m = mem_layout(&leaves);
     Mem {
         size: m.size,
         align: m.align,
@@ -111,34 +115,53 @@ fn regs(leaves: &[Leaf]) -> Vec<Reg> {
     leaves.iter().copied().map(Reg::of).collect()
 }
 
-/// How a parameter with these leaves is passed.
-pub fn classify_leaves(leaves: &[Leaf], mode: Mode) -> Pass {
-    let mem = mem_of(leaves);
+/// The registers of a value of type `ty`: its leaves, with the pointer ones as `ptr`.
+pub fn regs_of(lay: &Layouts, ty: Ty) -> Vec<Reg> {
+    let mut r = regs(&lay.leaves(ty));
+    for (reg, ptr) in r.iter_mut().zip(lay.pointer_leaves(ty)) {
+        if ptr {
+            *reg = Reg::Ptr;
+        }
+    }
+    r
+}
+
+fn pass_regs(regs: Vec<Reg>, mode: Mode) -> Pass {
+    let mem = mem_of(&regs);
     if mode == Mode::Var || mem.size > SCALAR_BYTES {
         Pass::Indirect(mode, mem)
     } else {
-        Pass::Scalars(regs(leaves))
+        Pass::Scalars(regs)
     }
+}
+
+fn ret_regs(regs: Vec<Reg>) -> Ret {
+    let mem = mem_of(&regs);
+    if mem.size > SCALAR_BYTES {
+        Ret::Sret(mem)
+    } else {
+        Ret::Scalars(regs)
+    }
+}
+
+/// How a parameter with these leaves is passed.
+pub fn classify_leaves(leaves: &[Leaf], mode: Mode) -> Pass {
+    pass_regs(regs(leaves), mode)
 }
 
 /// How a result with these leaves comes back.
 pub fn ret_leaves(leaves: &[Leaf]) -> Ret {
-    let mem = mem_of(leaves);
-    if mem.size > SCALAR_BYTES {
-        Ret::Sret(mem)
-    } else {
-        Ret::Scalars(regs(leaves))
-    }
+    ret_regs(regs(leaves))
 }
 
 /// How a parameter of type `ty` is passed in `mode`.
 pub fn classify(lay: &Layouts, ty: Ty, mode: Mode) -> Pass {
-    classify_leaves(&lay.leaves(ty), mode)
+    pass_regs(regs_of(lay, ty), mode)
 }
 
 /// How a result of type `ty` comes back.
 pub fn ret(lay: &Layouts, ty: Ty) -> Ret {
-    ret_leaves(&lay.leaves(ty))
+    ret_regs(regs_of(lay, ty))
 }
 
 impl Mem {
@@ -195,17 +218,12 @@ fn reg_formal(r: Reg, name: String) -> Formal {
 
 impl Signature {
     /// The signature of a function with these MIR parameters and result.
-    pub fn of(lay: &Layouts, params: &[Param], ret_ty: Ty) -> Signature {
+    pub fn of(types: &Types, lay: &Layouts, params: &[Param], ret_ty: Ty) -> Signature {
         let result = ret(lay, ret_ty);
         let mut formals = Vec::new();
         let ret = match &result {
             Ret::Sret(mem) => {
-                let tys: Vec<&str> = lay
-                    .leaves(ret_ty)
-                    .into_iter()
-                    .map(|l| Reg::of(l).llvm())
-                    .collect();
-                let st = format!("{{ {} }}", tys.join(", "));
+                let st = types.text(&crate::mir_llvm::aggregate(types, lay, ret_ty));
                 formals.push(Formal {
                     ty: format!("ptr {}", sret_attrs(&st, *mem)),
                     name: "%sret".to_string(),

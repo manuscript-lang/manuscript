@@ -64,6 +64,8 @@ pub struct LlvmModule {
     sites: u32,
     /// Function definitions in emission order.
     defs: Vec<Def>,
+    /// Named struct types of the directly emitted functions; every unit defines them all.
+    types: crate::llvm_build::Types,
     /// `declare` lines of external functions, by symbol.
     decls: BTreeMap<String, String>,
     /// External data symbols referenced.
@@ -154,6 +156,8 @@ pub(crate) struct DirectEnv<'a> {
     pub loc: usize,
     /// Fault call sites numbered so far in the module.
     pub sites: &'a mut u32,
+    /// The struct types of the module, shared by every function.
+    pub types: &'a crate::llvm_build::Types,
     di: &'a mut DebugInfo,
     sp: usize,
     sp_file: u32,
@@ -340,6 +344,7 @@ impl LlvmModule {
                 lexical: HashMap::new(),
             },
             defs: Vec::new(),
+            types: crate::llvm_build::Types::default(),
             decls: BTreeMap::new(),
             data: BTreeMap::new(),
             vtables: HashMap::new(),
@@ -1496,6 +1501,7 @@ impl LlvmModule {
         let mut env = DirectEnv {
             loc,
             sites: &mut self.sites,
+            types: &self.types,
             di: &mut self.di,
             sp,
             sp_file,
@@ -1908,6 +1914,9 @@ impl LlvmModule {
         for (members, unoptimized) in &groups {
             let mut s = String::new();
             let _ = writeln!(s, "target triple = \"{triple}\"");
+            // Struct bodies come before any use: a `getelementptr` on a type not yet defined
+            // is rejected as unsized.
+            s.push_str(&self.types.definitions());
             if anchored {
                 let _ = writeln!(
                     s,
