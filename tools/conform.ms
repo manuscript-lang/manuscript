@@ -1,9 +1,10 @@
 // The frozen conformance corpus against the Rust ms on this host (`make conform`).
 // Known failures: tests/conformance/expect-fail.txt plus expect-fail.<os>.txt when
-// present. CONFORM_SHARD=i/n splits the run. CONFORM_FAST=1 builds every program with Cranelift (the
-// Debug backend, about 3x faster than LLVM) and still runs all four phases: the quick local loop. CONFORM_LEAKS=1 also checks for leaked
-// heap blocks. Arguments after `--` go to `ms-conform run`. Usage: ms run
-// tools/conform.ms [-- extra ms-conform run arguments]
+// present. CONFORM_SHARD=i/n splits the run. CONFORM_FAST=1 builds every program with
+// Cranelift (the Debug backend, about 3x faster than LLVM) and still runs all four
+// phases: the quick local loop. CONFORM_LEAKS=1 also checks for leaked heap blocks.
+// Arguments after `--` go to `ms-conform run`. Usage: ms run tools/conform.ms [-- extra
+// ms-conform run arguments]
 import (
 	arguments from "@std/os/env.ms",
 	access, create_directory, read_file, write_file from "@std/os/fs.ms",
@@ -49,8 +50,10 @@ fn main() Int:
 	write_file(allow, text, replace: true).wait().get()
 
 	conform := "target/debug/ms-conform{exe()}"
-	// The quick loop tests the release-profile compiler `make build` just produced, which also checks
-	// faster than the debug one; nothing rebuilds it while the tool runs.
+
+	// The quick loop tests the release-profile compiler `make build` just produced,
+	// which also checks faster than the debug one; nothing rebuilds it while the tool
+	// runs.
 	fast := env("CONFORM_FAST", "") != ""
 	ms := if fast: "target/release/ms{exe()}" else: "target/debug/ms{exe()}"
 	shard := env("CONFORM_SHARD", "0/1")
