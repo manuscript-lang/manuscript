@@ -236,6 +236,8 @@ static void die(const char *msg, size_t len) {
   exit(67);
 }
 void msrt_fault(const char *msg, size_t len) { die(msg, len); }
+/* Strings the tests build are literals, never copied; the symbol only has to link. */
+void msrt_str_copy(const char *p, size_t tagged, uint64_t *out) { out[0] = (uint64_t)p; out[1] = tagged; }
 void msrt_fault_int_overflow(void) { die("integer overflow", 16); }
 void msrt_fault_int_range(void) { die("integer range", 16); }
 void msrt_fault_div_zero(void) { die("division by zero", 16); }
