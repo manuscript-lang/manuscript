@@ -62,7 +62,7 @@ impl DeclRef {
         match &self.0.decl.kind {
             DeclKind::Fn(f) => f.name,
             DeclKind::Const(c) => c.name,
-            DeclKind::Record(r) => r.name,
+            DeclKind::Type(r) => r.name,
             DeclKind::Alternative(a) => a.name,
             DeclKind::Alias(a) => a.name,
             DeclKind::Interface(i) => i.name,
@@ -74,7 +74,7 @@ impl DeclRef {
     pub fn type_params(&self) -> &[TypeParam] {
         match &self.0.decl.kind {
             DeclKind::Fn(f) => &f.type_params,
-            DeclKind::Record(r) => &r.type_params,
+            DeclKind::Type(r) => &r.type_params,
             DeclKind::Alternative(a) => &a.type_params,
             DeclKind::Alias(a) => &a.type_params,
             DeclKind::Interface(i) => &i.type_params,
@@ -91,10 +91,10 @@ impl DeclRef {
         }
     }
 
-    /// Record fields.
-    pub fn record_fields(&self) -> &[Param] {
+    /// Type fields.
+    pub fn type_fields(&self) -> &[Param] {
         match &self.0.decl.kind {
-            DeclKind::Record(r) => &r.fields,
+            DeclKind::Type(r) => &r.fields,
             _ => &[],
         }
     }
@@ -242,7 +242,7 @@ pub struct Info {
     pub symbol: Option<SymRef>,
     /// Resolved local binding.
     pub binding: Option<BindingRef>,
-    /// Constructed type (record, alternative case, contract view).
+    /// Constructed type (type, alternative case, contract view).
     pub constructor: Option<Ty>,
     /// Constructed case name.
     pub case: Option<Name>,

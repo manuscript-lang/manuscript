@@ -1743,7 +1743,7 @@ impl<'a> FnLower<'a> {
             .as_ref()
             .ok_or_else(|| Error::new("type without declaration"))?;
         let field = decl
-            .record_fields()
+            .type_fields()
             .get(i)
             .ok_or_else(|| Error::new("missing field"))?;
         let ft = ct::fields(t)[i].ty.clone();
@@ -1862,7 +1862,7 @@ impl<'a> FnLower<'a> {
                 };
                 let types = ct::fields(t);
                 let mut vals = Vec::new();
-                for (field, ft) in decl.record_fields().iter().zip(&types) {
+                for (field, ft) in decl.type_fields().iter().zip(&types) {
                     let given = args
                         .iter()
                         .find(|a| {

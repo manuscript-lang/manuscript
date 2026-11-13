@@ -6,7 +6,7 @@ use std::collections::HashSet;
 use std::rc::Rc;
 
 fn pair(syms: ms_syntax::Names, left: Ty, right: Ty) -> Ty {
-    let mut t = Type::new(syms, n("Pair"), n("test/Pair"), Kind::Record);
+    let mut t = Type::new(syms, n("Pair"), n("test/Pair"), Kind::Type);
     t.args = vec![left, right];
     Rc::new(t)
 }
@@ -107,10 +107,10 @@ fn shared_fibonacci_and_shallow_fanout_keep_ids_and_representatives() {
     assert_eq!(table.intern(&right), fibonacci);
     assert!(Rc::ptr_eq(table.ty(fibonacci), &right));
 
-    let mut row = Type::new(syms, n("Row"), n("test/Row"), Kind::Record);
+    let mut row = Type::new(syms, n("Row"), n("test/Row"), Kind::Type);
     row.args = vec![int(); 512];
     let row = Rc::new(row);
-    let mut fanout = Type::new(syms, n("Fanout"), n("test/Fanout"), Kind::Record);
+    let mut fanout = Type::new(syms, n("Fanout"), n("test/Fanout"), Kind::Type);
     fanout.args = vec![row; 512];
     let fanout = Rc::new(fanout);
     let mut table = TyTable::new();
@@ -160,7 +160,7 @@ fn cache_storage_reuse_keeps_large_tiny_and_fresh_queries_independent() {
     let chain = |depth| {
         let mut t = int();
         for _ in 0..depth {
-            let mut node = Type::new(syms, n("Node"), n("test/Node"), Kind::Record);
+            let mut node = Type::new(syms, n("Node"), n("test/Node"), Kind::Type);
             node.args.push(t);
             t = Rc::new(node);
         }
@@ -191,9 +191,9 @@ fn identity_still_ignores_nonfunction_callable_edges_and_variable_snapshots() {
     assert_eq!(table.intern(&graph), id);
     assert_eq!(table.shape(&graph), id);
 
-    let mut record = Type::new(syms, n("Record"), n("test/Record"), Kind::Record);
-    let plain = table.intern(&Rc::new(record.clone()));
-    record.params.push(var_param(graph.clone(), true));
-    record.result = Some(graph);
-    assert_eq!(table.intern(&Rc::new(record)), plain);
+    let mut user = Type::new(syms, n("Type"), n("test/Type"), Kind::Type);
+    let plain = table.intern(&Rc::new(user.clone()));
+    user.params.push(var_param(graph.clone(), true));
+    user.result = Some(graph);
+    assert_eq!(table.intern(&Rc::new(user)), plain);
 }

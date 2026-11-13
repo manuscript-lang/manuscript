@@ -231,7 +231,7 @@ impl Checker {
                         Some(r) => match &r.ty {
                             None => true,
                             Some(rt) => {
-                                rt.kind != Kind::Record
+                                rt.kind != Kind::Type
                                     || r.symbol.as_ref().is_some_and(|s| s.kind == SymKind::Type)
                                     || tinfo.method.is_some()
                             }
@@ -240,7 +240,7 @@ impl Checker {
                     if bad {
                         self.type_error(
                             t.pos,
-                            "assignment requires a record field; only fields of a record value can be assigned with 'x.field = ...'",
+                            "assignment requires a type field; only fields of a type value can be assigned with 'x.field = ...'",
                         );
                     }
                 }
@@ -256,7 +256,7 @@ impl Checker {
                         self.type_error(
                             s.pos,
                             format!(
-                                "cannot assign to {what} {name_t}; assignment targets are 'var' bindings and record fields"
+                                "cannot assign to {what} {name_t}; assignment targets are 'var' bindings and type fields"
                             , name_t = self.syms.str(name)),
                         );
                     } else {
@@ -843,11 +843,11 @@ impl Checker {
                 let b = self.bind(*name, t, mutable, p.pos);
                 self.m().facts_mut().patterns.insert(p.id, b);
             }
-            PatternKind::Record(pfields) => {
-                if t.kind != Kind::Record {
+            PatternKind::Type(pfields) => {
+                if t.kind != Kind::Type {
                     self.type_error(
                         p.pos,
-                        "record binding requires a record; destructure only record values, or bind the whole value to one name",
+                        "type binding requires a type; destructure only type values, or bind the whole value to one name",
                     );
                     return;
                 }
@@ -859,7 +859,7 @@ impl Checker {
                         self.type_error(
                             f.pos,
                             format!(
-                                "duplicate record field {}; bind each field once",
+                                "duplicate type field {}; bind each field once",
                                 self.syms.str(f.name)
                             ),
                         );
@@ -875,7 +875,7 @@ impl Checker {
                         self.type_error(
                             f.pos,
                             format!(
-                                "unknown record field {}; fields: {}",
+                                "unknown type field {}; fields: {}",
                                 self.syms.str(f.name),
                                 list(&names_of(self.syms, &fs), 12)
                             ),
@@ -1183,7 +1183,7 @@ impl Checker {
             } else {
                 target = self.type_expression(&arm.path);
                 match &target {
-                    Some(t) if matches!(t.kind, Kind::Record | Kind::Alternative) => {
+                    Some(t) if matches!(t.kind, Kind::Type | Kind::Alternative) => {
                         let t = t.clone();
                         let has_variables = t.def.as_ref().is_some_and(|d| d.arity() > 0);
                         if has_variables && !matches!(arm.path.kind, ExprKind::Apply { .. }) {
@@ -1233,7 +1233,7 @@ impl Checker {
                     _ => {
                         self.type_error(
                             arm.pos,
-                            "contract pattern requires a concrete record or alternative type; name an implementing type like Circle, or use '_'",
+                            "contract pattern requires a concrete type or enum; name an implementing type like Circle, or use '_'",
                         );
                         target = None;
                     }
@@ -1836,7 +1836,7 @@ impl Checker {
         }
     }
 
-    /// A declared field of a non-record standard type, whose member diagnostic
+    /// A declared field of a non-type standard type, whose member diagnostic
     /// already says the field cannot be reached.
     fn opaque_field(&self, receiver: Option<&Info>, name: Name) -> bool {
         let Some(r) = receiver else {
@@ -1845,7 +1845,7 @@ impl Checker {
         let Some(t) = &r.ty else {
             return false;
         };
-        if t.kind == Kind::Record {
+        if t.kind == Kind::Type {
             return false;
         }
         fields(t).iter().any(|f| f.name == name)

@@ -33,8 +33,8 @@ pub enum Kind {
     Inferred,
     /// A type parameter.
     Variable,
-    /// A record type (`type T:` with fields).
-    Record,
+    /// A type (`type T:` with fields).
+    Type,
     /// An enum (`enum T:` with cases).
     Alternative,
     /// An interface (contract).
@@ -53,7 +53,7 @@ impl Kind {
             Kind::Invalid => "invalid",
             Kind::Inferred => "inferred",
             Kind::Variable => "variable",
-            Kind::Record => "record",
+            Kind::Type => "type",
             Kind::Alternative => "alternative",
             Kind::Contract => "contract",
             Kind::Function => "function",
@@ -551,7 +551,7 @@ impl Type {
     pub fn opaque_module(&self) -> Option<Name> {
         let symbol = self.symbol()?;
         let opaque = match &symbol.decl.as_ref()?.decl().kind {
-            DeclKind::Record(r) => r.opaque,
+            DeclKind::Type(r) => r.opaque,
             DeclKind::Alternative(a) => a.opaque,
             _ => false,
         };
@@ -600,11 +600,11 @@ pub struct Definition {
     symbol: RefCell<Weak<Sym>>,
     // Signature resolution preserves these immutable source field positions.
     field_indices: HashMap<Name, usize>,
-    /// Definition kind (record, alternative, contract, native).
+    /// Definition kind (type, alternative, contract, native).
     pub kind: Kind,
     /// Declared type variables.
     pub variables: RefCell<Vec<Ty>>,
-    /// Record fields.
+    /// Type fields.
     pub fields: RefCell<Vec<Param>>,
     /// Alternative cases.
     pub cases: RefCell<Vec<Case>>,
@@ -620,7 +620,7 @@ impl Definition {
     pub fn new(symbol: &SymRef, kind: Kind) -> Rc<Definition> {
         let mut field_indices = HashMap::new();
         if let Some(decl) = &symbol.decl {
-            for (index, field) in decl.record_fields().iter().enumerate() {
+            for (index, field) in decl.type_fields().iter().enumerate() {
                 // Invalid duplicate declarations still resolve to the first field.
                 field_indices.entry(field.name).or_insert(index);
             }
@@ -673,7 +673,7 @@ impl Definition {
 /// Whether a module-level symbol is a type or a function.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum SymKind {
-    /// A type (record, alternative, interface or primitive).
+    /// A type (named type, alternative, interface or primitive).
     Type,
     /// A function (including constants and native functions).
     Fn,
@@ -1414,7 +1414,7 @@ pub fn bind_type_arguments(t: &Ty, bindings: &mut Subst) {
     }
 }
 
-/// Record fields with the type arguments substituted.
+/// Type fields with the type arguments substituted.
 pub fn fields(t: &Ty) -> Vec<Param> {
     let Some(def) = &t.def else {
         return Vec::new();
@@ -1443,7 +1443,7 @@ pub fn holds_function(t: &Ty) -> bool {
 fn holds_function_in(t: &Ty, seen: &mut Vec<Name>) -> bool {
     match t.kind {
         Kind::Function => true,
-        Kind::Record | Kind::Alternative => {
+        Kind::Type | Kind::Alternative => {
             if seen.contains(&t.id) {
                 return false;
             }
@@ -1471,7 +1471,7 @@ pub fn native_declares_clone(syms: ms_syntax::Names, t: &Ty) -> bool {
     })
 }
 
-/// One declared record field, freshly substituted with the receiver's type arguments.
+/// One declared type field, freshly substituted with the receiver's type arguments.
 pub fn field_of(t: &Ty, name: Name) -> Option<Param> {
     let def = t.def.as_ref()?;
     let index = *def.field_indices.get(&name)?;

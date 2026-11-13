@@ -160,7 +160,7 @@ fn invocation_default_metadata_survives_substitution_and_erases_recursively() {
             .missing_value_at_call(),
         Some(cause)
     );
-    let mut wrapper = Type::new(syms, n("Wrapper"), n("Wrapper"), Kind::Record);
+    let mut wrapper = Type::new(syms, n("Wrapper"), n("Wrapper"), Kind::Type);
     wrapper.args = vec![marked.clone()];
     let nested = function(
         syms,

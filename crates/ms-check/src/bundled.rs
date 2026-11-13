@@ -19,7 +19,7 @@ pub fn decl_has_body(d: &Decl) -> bool {
         DeclKind::Const(_) | DeclKind::Alias(_) => true,
         DeclKind::Test(t) => !t.body.is_empty(),
         DeclKind::Impl(i) => i.methods.iter().any(|m| !m.func.body.is_empty()),
-        DeclKind::Record(_) | DeclKind::Alternative(_) | DeclKind::Interface(_) => false,
+        DeclKind::Type(_) | DeclKind::Alternative(_) | DeclKind::Interface(_) => false,
     }
 }
 
@@ -41,5 +41,5 @@ pub fn is_pure_source(module: &Module) -> bool {
         && !module
             .decls
             .iter()
-            .any(|d| matches!(&d.kind, DeclKind::Record(r) if r.external))
+            .any(|d| matches!(&d.kind, DeclKind::Type(r) if r.external))
 }

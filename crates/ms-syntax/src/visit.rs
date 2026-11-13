@@ -29,7 +29,7 @@ pub fn walk_decl<V: Visitor>(v: &mut V, d: &Decl) {
     match &d.kind {
         DeclKind::Fn(f) => walk_callable(v, &f.params, &f.body),
         DeclKind::Const(c) => walk_expr(v, &c.value),
-        DeclKind::Record(r) => walk_params(v, &r.fields),
+        DeclKind::Type(r) => walk_params(v, &r.fields),
         DeclKind::Alternative(_) | DeclKind::Alias(_) => {}
         DeclKind::Interface(i) => i
             .methods

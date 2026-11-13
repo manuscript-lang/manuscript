@@ -8,7 +8,7 @@ fn enum_declarations_preserve_forms_and_formatting() {
     for ending in ["\n", "\r\n"] {
         let source = include_str!("data/enums/accepted.ms").replace('\n', ending);
         let module = ms_syntax::parser::parse(&file, &source).unwrap();
-        assert!(matches!(module.decls[0].kind, DeclKind::Record(_)));
+        assert!(matches!(module.decls[0].kind, DeclKind::Type(_)));
         let DeclKind::Alternative(outcome) = &module.decls[1].kind else {
             panic!("expected enum");
         };
@@ -35,7 +35,7 @@ fn legacy_type_and_enum_syntax_is_rejected_without_automatic_fixes() {
     for (source, cause) in [
         (
             include_str!("data/enums/legacy.ms"),
-            "a record declared with 'type' cannot contain enum variants;",
+            "a type declared with 'type' cannot contain enum variants;",
         ),
         (
             include_str!("data/enums/legacy-enum.ms"),

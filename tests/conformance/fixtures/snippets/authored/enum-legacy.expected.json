@@ -9,7 +9,7 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "a record declared with 'type' cannot contain enum variants; replace 'type' with 'enum' and remove any legacy 'case' prefixes",
+        "message": "a type declared with 'type' cannot contain enum variants; replace 'type' with 'enum' and remove any legacy 'case' prefixes",
         "position": {
           "file": "enum-legacy.ms",
           "line": 3,
@@ -27,7 +27,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/enum-legacy.ms:3:15: parse: a record declared with 'type' cannot contain enum variants; replace 'type' with 'enum' and remove any legacy 'case' prefixes\n   |\n 3 | export opaque type Legacy:\n   |               ^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/enum-legacy.ms:3:15: parse: a type declared with 'type' cannot contain enum variants; replace 'type' with 'enum' and remove any legacy 'case' prefixes\n   |\n 3 | export opaque type Legacy:\n   |               ^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -206,7 +206,7 @@ impl Checker {
                 continue;
             };
             for d in &module.decls {
-                if !matches!(d.decl().kind, DeclKind::Fn(_) | DeclKind::Record(_)) {
+                if !matches!(d.decl().kind, DeclKind::Fn(_) | DeclKind::Type(_)) {
                     continue;
                 }
                 let Some(s) = names.borrow().get(&d.name()).cloned() else {
@@ -379,7 +379,7 @@ impl Checker {
             for d in &module.decls {
                 if !matches!(
                     d.decl().kind,
-                    DeclKind::Record(_) | DeclKind::Alternative(_) | DeclKind::Interface(_)
+                    DeclKind::Type(_) | DeclKind::Alternative(_) | DeclKind::Interface(_)
                 ) {
                     continue;
                 }
@@ -430,7 +430,7 @@ impl Checker {
                 walk(t, pos, *file, &nodes, &mut found);
             };
             for (i, f) in def.fields.borrow().iter().enumerate() {
-                let pos = d.record_fields()[i].pos;
+                let pos = d.type_fields()[i].pos;
                 names.insert(
                     (*file, pos),
                     format!("{}.{}", self.syms.str(d.name()), self.syms.str(f.name)),

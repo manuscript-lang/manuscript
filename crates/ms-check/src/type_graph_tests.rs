@@ -3,7 +3,7 @@ use crate::types::*;
 use std::{cell::Cell, rc::Rc};
 
 fn pair(syms: ms_syntax::Names, left: Ty, right: Ty) -> Ty {
-    let mut t = Type::new(syms, n("Pair"), n("test/Pair"), Kind::Record);
+    let mut t = Type::new(syms, n("Pair"), n("test/Pair"), Kind::Type);
     t.args = vec![left, right];
     Rc::new(t)
 }
@@ -139,7 +139,7 @@ fn required_types_erase_permissions_in_every_original_child_position() {
     });
     permitted.result = Some(int());
     let permitted = Rc::new(permitted);
-    let mut container = Type::new(syms, n("Container"), n("test/Container"), Kind::Record);
+    let mut container = Type::new(syms, n("Container"), n("test/Container"), Kind::Type);
     container.args.push(permitted.clone());
     container.params.push(Param {
         name: n("unusual"),
@@ -174,7 +174,7 @@ fn inference_resolution_bounds_shared_graphs_and_keeps_late_failures() {
             allow_invalid,
         ));
     }
-    let mut wide = Type::new(syms, n("Wide"), n("test/Wide"), Kind::Record);
+    let mut wide = Type::new(syms, n("Wide"), n("test/Wide"), Kind::Type);
     wide.args = vec![concrete.clone(); 16];
     assert!(inference_type_resolved(&Rc::new(wide), &variables, false));
     let t = pair(syms, concrete, variable);
@@ -191,7 +191,7 @@ fn inference_resolution_preserves_all_edges_and_invalid_policy() {
     let variable = Rc::new(Type::new(syms, n("T"), n("test/T"), Kind::Variable));
     for leaf in [invalid(), variable.clone()] {
         for edge in 0..3 {
-            let mut t = Type::new(syms, n("Container"), n("test/Container"), Kind::Record);
+            let mut t = Type::new(syms, n("Container"), n("test/Container"), Kind::Type);
             match edge {
                 0 => t.args.push(leaf.clone()),
                 1 => t.params.push(Param::new(n("value"), leaf.clone())),

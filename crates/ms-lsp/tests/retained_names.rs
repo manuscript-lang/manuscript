@@ -163,7 +163,7 @@ fn retained_type_scope_uses_existing_symbols() {
         panic!("expected call");
     };
     let expected = editor::type_expression(names.names(), callee, &query.scope)
-        .expect("applied record type")
+        .expect("applied type")
         .display(names.names())
         .to_string();
     assert_eq!(expected, "Item[Int]");
@@ -174,7 +174,7 @@ fn retained_type_scope_uses_existing_symbols() {
         other.names().intern(&format!("foreign_{i}"));
     }
     let actual = editor::type_expression(names.names(), callee, &query.scope)
-        .expect("retained record type")
+        .expect("retained type")
         .display(names.names())
         .to_string();
     assert_eq!(actual, expected);

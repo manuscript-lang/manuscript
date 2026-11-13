@@ -1218,7 +1218,7 @@ impl<'a> Layout<'a> {
     fn declaration(&mut self, d: &Decl) {
         match &d.kind {
             DeclKind::Fn(f) => self.func(f),
-            DeclKind::Record(r) => r.fields.iter().for_each(|f| self.typ(f.ty.as_ref())),
+            DeclKind::Type(r) => r.fields.iter().for_each(|f| self.typ(f.ty.as_ref())),
             DeclKind::Alternative(a) => a.cases.iter().for_each(|c| self.parameters(&c.fields)),
             DeclKind::Alias(a) => a.targets.iter().for_each(|t| self.typ(Some(t))),
             DeclKind::Interface(i) => i.methods.iter().for_each(|m| self.func(&m.func)),

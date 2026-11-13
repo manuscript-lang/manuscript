@@ -70,7 +70,7 @@ impl Renumber<'_> {
         match &mut p.kind {
             PatternKind::Name(_) => {}
             PatternKind::List(items) => items.iter_mut().for_each(|i| self.pattern(i)),
-            PatternKind::Record(fields) => {
+            PatternKind::Type(fields) => {
                 fields.iter_mut().for_each(|f| self.pattern(&mut f.pattern))
             }
         }

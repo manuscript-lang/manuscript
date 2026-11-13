@@ -386,7 +386,7 @@ impl Walker<'_> {
             return false;
         }
         let resource = |t: &Ty| self.cx.classes.class(self.syms, t) == Class::Resource;
-        if ty.kind == Kind::Record && fields(ty).iter().any(|f| resource(&f.ty)) {
+        if ty.kind == Kind::Type && fields(ty).iter().any(|f| resource(&f.ty)) {
             return false;
         }
         if ty.kind == Kind::Alternative
@@ -424,7 +424,7 @@ impl Walker<'_> {
     }
 
     /// Whether a returned expression has the declared result type itself: a value converted on
-    /// the way out (`Door` returned as `Door?`, a record as an interface) is a new value.
+    /// the way out (`Door` returned as `Door?`, a type as an interface) is a new value.
     pub(super) fn returns_as_declared(&self, e: &Expr) -> bool {
         let c = self.cx.c;
         let result = match (c.func.method(), c.func.func()) {

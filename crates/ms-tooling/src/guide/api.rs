@@ -353,7 +353,7 @@ fn document_declaration(
         "{prefix}{keyword} {name}{}:\n",
         render::type_parameters(syms, decl.type_params())
     );
-    for field in decl.record_fields().iter().filter(|_| !opaque) {
+    for field in decl.type_fields().iter().filter(|_| !opaque) {
         b += &format!(
             "    {}: {}",
             syms.str(field.name),
@@ -427,7 +427,7 @@ fn document_members(
     let text = source.map_or("", Source::text);
     let comment = |offset: u32| leading_comment(text, offset as usize);
     let mut members = Vec::new();
-    for field in decl.record_fields().iter().filter(|_| !opaque) {
+    for field in decl.type_fields().iter().filter(|_| !opaque) {
         let mut signature = format!(
             "{}: {}",
             syms.str(field.name),

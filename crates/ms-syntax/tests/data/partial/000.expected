@@ -1,4 +1,4 @@
-diag parse 13:5:171 end=13:7:173 fix=- "a type declares only record fields; write its methods after it as 'fn Customer.name(...)'"
+diag parse 13:5:171 end=13:7:173 fix=- "a type declares only fields; write its methods after it as 'fn Customer.name(...)'"
 diag parse 14:9:224 end=14:10:225 fix=14:9:224>14:10:225=":" "expected ':', found '{'; blocks are not braced: end the header with ':', indent the body four spaces on the following lines, and remove the closing '}'"
 diag parse 15:5:273 end=15:11:279 fix=- "expected a name, found 'return'; 'return' is a reserved word and cannot be used as a name"
 diag parse 19:5:407 end=19:8:410 fix=- "'try' was replaced by a postfix '?': write f(x)? instead of try f(x), and x | step? instead of x | try step"

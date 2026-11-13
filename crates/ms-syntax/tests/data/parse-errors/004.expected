@@ -1,1 +1,1 @@
-error parse 7:5:117 "an enum contains only variants; write 'Name' or 'Name(field: Type)', use 'type' for record fields, and put methods in an 'impl' block"
+error parse 7:5:117 "an enum contains only variants; write 'Name' or 'Name(field: Type)', use 'type' for type fields, and put methods in an 'impl' block"

@@ -9,7 +9,7 @@
       {
         "code": "MS2002",
         "phase": "resolution",
-        "message": "type alias A refers to itself; an alias names another type, so break the cycle with a record or enum",
+        "message": "type alias A refers to itself; an alias names another type, so break the cycle with a type or enum",
         "position": {
           "file": "diag-alias-cycle.ms",
           "line": 4,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-alias-cycle.ms:4:1: resolution: type alias A refers to itself; an alias names another type, so break the cycle with a record or enum\n   |\n 4 | type A = B\n   | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-alias-cycle.ms:4:1: resolution: type alias A refers to itself; an alias names another type, so break the cycle with a type or enum\n   |\n 4 | type A = B\n   | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

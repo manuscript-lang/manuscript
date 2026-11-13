@@ -301,7 +301,7 @@ fn kind_and_name(syms: ms_syntax::Names, decl: &DeclRef) -> (&'static str, Strin
     match &d.kind {
         DeclKind::Fn(f) => ("fn", syms.str(f.name).to_string()),
         DeclKind::Const(c) => ("constant", syms.str(c.name).to_string()),
-        DeclKind::Record(r) => ("record", syms.str(r.name).to_string()),
+        DeclKind::Type(r) => ("record", syms.str(r.name).to_string()),
         DeclKind::Alternative(a) => ("alternative", syms.str(a.name).to_string()),
         DeclKind::Alias(a) => ("alias", syms.str(a.name).to_string()),
         DeclKind::Interface(i) => ("interface", syms.str(i.name).to_string()),
@@ -407,7 +407,7 @@ fn type_text(syms: ms_syntax::Names, ty: &TypeRef) -> String {
 /// Fields, case payloads, or parameters, and the result, of one declaration.
 fn declared_slots(syms: ms_syntax::Names, kind: &DeclKind) -> (Vec<Slot>, Option<Slot>) {
     match kind {
-        DeclKind::Record(r) => (r.fields.iter().map(|p| slot(syms, p)).collect(), None),
+        DeclKind::Type(r) => (r.fields.iter().map(|p| slot(syms, p)).collect(), None),
         DeclKind::Alternative(a) => {
             let cases = a
                 .cases

@@ -365,7 +365,7 @@ fn a_native_document_uri_checks_unsaved_text_instead_of_disk() {
 }
 
 #[test]
-fn an_opaque_record_offers_no_fields_outside_its_file() {
+fn an_opaque_type_offers_no_fields_outside_its_file() {
     let syms = ms_syntax::Names::global();
     let workspace = Workspace::new("completion-opaque");
     std::fs::write(

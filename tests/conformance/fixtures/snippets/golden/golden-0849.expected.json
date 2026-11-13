@@ -9,7 +9,7 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "a type declares only record fields; write its methods after it as 'fn List[T].name(...)'",
+        "message": "a type declares only fields; write its methods after it as 'fn List[T].name(...)'",
         "position": {
           "file": "golden-0849.ms",
           "line": 4,
@@ -27,7 +27,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0849.ms:4:5: parse: a type declares only record fields; write its methods after it as 'fn List[T].name(...)'\n   |\n 4 |     fn get() T:\n   |     ^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0849.ms:4:5: parse: a type declares only fields; write its methods after it as 'fn List[T].name(...)'\n   |\n 4 |     fn get() T:\n   |     ^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

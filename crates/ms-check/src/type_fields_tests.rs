@@ -1,4 +1,4 @@
-//! Record member lookup indexes source positions and substitutes only the selected field.
+//! Type member lookup indexes source positions and substitutes only the selected field.
 
 use crate::checker::{CheckOptions, Checker, Program};
 use crate::types::*;
@@ -9,25 +9,25 @@ fn check(source: &str) -> Program {
     let syms = ms_syntax::Names::global();
     let session = crate::Session::new();
     session.ensure_standard();
-    let file: Arc<str> = Arc::from("record_fields.ms");
+    let file: Arc<str> = Arc::from("type_fields.ms");
     let module = ms_syntax::parser::parse(&file, source).expect("valid fixture");
     Checker::new(&session, &CheckOptions::default())
         .check_modules(vec![crate::load_module(syms, &module)], None)
 }
 
 fn access() -> Program {
-    let p = check(include_str!("../tests/record_fields/access.ms"));
+    let p = check(include_str!("../tests/type_fields/access.ms"));
     assert!(p.diagnostics.is_empty(), "{:?}", p.diagnostics);
     p
 }
 
 fn named(p: &Program, name: &str) -> Ty {
     let syms = ms_syntax::Names::global();
-    p.symbols[&n("record_fields.ms")].borrow()[&n(name)].ty(syms)
+    p.symbols[&n("type_fields.ms")].borrow()[&n(name)].ty(syms)
 }
 
 #[test]
-fn record_fields_members_keep_generic_types_and_method_fallbacks() {
+fn type_fields_members_keep_generic_types_and_method_fallbacks() {
     let syms = ms_syntax::Names::global();
     let p = access();
     assert!(crate::unused::check(syms, &p).is_empty());
@@ -51,7 +51,7 @@ fn record_fields_members_keep_generic_types_and_method_fallbacks() {
 }
 
 #[test]
-fn record_fields_empty_primitive_and_monomorphic_lookups() {
+fn type_fields_empty_primitive_and_monomorphic_lookups() {
     let syms = ms_syntax::Names::global();
     let p = access();
     for ty in [named(&p, "Empty"), int()] {
@@ -66,7 +66,7 @@ fn record_fields_empty_primitive_and_monomorphic_lookups() {
 }
 
 #[test]
-fn record_fields_partial_substitution_takes_fresh_variable_snapshots() {
+fn type_fields_partial_substitution_takes_fresh_variable_snapshots() {
     let syms = ms_syntax::Names::global();
     let p = access();
     let row = named(&p, "Row");
@@ -91,7 +91,7 @@ fn record_fields_partial_substitution_takes_fresh_variable_snapshots() {
 }
 
 #[test]
-fn record_fields_lookup_does_not_substitute_unselected_fields() {
+fn type_fields_lookup_does_not_substitute_unselected_fields() {
     let syms = ms_syntax::Names::global();
     let p = access();
     let row = named(&p, "Row");
@@ -108,9 +108,9 @@ fn record_fields_lookup_does_not_substitute_unselected_fields() {
 }
 
 #[test]
-fn record_fields_duplicate_names_keep_the_first_declared_field() {
+fn type_fields_duplicate_names_keep_the_first_declared_field() {
     let syms = ms_syntax::Names::global();
-    let p = check(include_str!("../tests/record_fields/diagnostics.ms"));
+    let p = check(include_str!("../tests/type_fields/diagnostics.ms"));
     let duplicate = named(&p, "Duplicate");
     assert_eq!(
         syms.str(field_of(&duplicate, n("value")).unwrap().ty.id),
@@ -120,9 +120,9 @@ fn record_fields_duplicate_names_keep_the_first_declared_field() {
 }
 
 #[test]
-fn record_fields_bundled_and_source_standard_records_have_indices() {
+fn type_fields_bundled_and_source_standard_records_have_indices() {
     let syms = ms_syntax::Names::global();
-    let p = check(include_str!("../tests/record_fields/standard.ms"));
+    let p = check(include_str!("../tests/type_fields/standard.ms"));
     assert!(p.diagnostics.is_empty(), "{:?}", p.diagnostics);
     let pair = p.session.standard("Pair", vec![int(), string()]);
     assert_eq!(syms.str(field_of(&pair, n("first")).unwrap().ty.id), "Int");
@@ -147,15 +147,13 @@ fn record_fields_bundled_and_source_standard_records_have_indices() {
 }
 
 #[test]
-fn record_fields_recovered_declarations_keep_source_positions() {
+fn type_fields_recovered_declarations_keep_source_positions() {
     let syms = ms_syntax::Names::global();
     let session = crate::Session::new();
     session.ensure_standard();
-    let file = Arc::from("record_fields.ms");
-    let (module, errors) = ms_syntax::partial::parse_partial(
-        &file,
-        include_str!("../tests/record_fields/recovery.ms"),
-    );
+    let file = Arc::from("type_fields.ms");
+    let (module, errors) =
+        ms_syntax::partial::parse_partial(&file, include_str!("../tests/type_fields/recovery.ms"));
     assert!(!errors.is_empty());
     let p = Checker::new(&session, &CheckOptions::default())
         .check_modules(vec![crate::load_module(syms, &module)], None);
@@ -167,8 +165,8 @@ fn record_fields_recovered_declarations_keep_source_positions() {
 }
 
 #[test]
-fn record_fields_diagnostics_remain_stable() {
-    let p = check(include_str!("../tests/record_fields/diagnostics.ms"));
+fn type_fields_diagnostics_remain_stable() {
+    let p = check(include_str!("../tests/type_fields/diagnostics.ms"));
     let actual = p
         .diagnostics
         .iter()
@@ -176,7 +174,7 @@ fn record_fields_diagnostics_remain_stable() {
         .collect::<Vec<_>>();
     assert_eq!(
         actual,
-        include_str!("../tests/record_fields/diagnostics.txt")
+        include_str!("../tests/type_fields/diagnostics.txt")
             .lines()
             .collect::<Vec<_>>()
     );

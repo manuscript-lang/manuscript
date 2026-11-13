@@ -522,7 +522,7 @@ impl FnLower<'_> {
             return Ok(());
         }
         match t.kind {
-            ct::Kind::Record => {
+            ct::Kind::Type => {
                 let fields = jfields(self.syms, &ct::fields(t));
                 self.jexpect_kind(doc, id, KIND_OBJECT)?;
                 let vals = self.jdecode_fields(t, None, &fields, doc, id, strict)?;
@@ -817,7 +817,7 @@ impl FnLower<'_> {
         let has_default = owner
             .symbol()
             .and_then(|s| s.decl.clone())
-            .and_then(|d| d.record_fields().get(i).map(|f| f.default.is_some()))
+            .and_then(|d| d.type_fields().get(i).map(|f| f.default.is_some()))
             .unwrap_or(false);
         if has_default || ty.is(Builtin::Optional) {
             // Temporaries of the default end with it: this value joins other paths.
@@ -1139,7 +1139,7 @@ impl FnLower<'_> {
             }
         }
         match t.kind {
-            ct::Kind::Record => {
+            ct::Kind::Type => {
                 let fields = jfields(self.syms, &ct::fields(t));
                 let TyKind::Type(r) = self.b.m.types.kind(mt).clone() else {
                     return Err(Error::new("a type lowers to a type"));

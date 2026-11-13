@@ -748,7 +748,7 @@ impl Walker<'_> {
         {
             return false;
         }
-        // A type that closes itself would close a record with a hole in it.
+        // A type that closes itself would close a type with a hole in it.
         let mut at = e;
         while let ExprKind::Member { left, .. } = &at.kind {
             let holder = self.cx.m.ty(left);

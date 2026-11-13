@@ -328,7 +328,7 @@ pub fn build_index(syms: ms_syntax::Names, analysis: &Analysis, standard: bool) 
                         func.pos().offset,
                         index
                     );
-                    if matches!(d.decl().kind, DeclKind::Record(_)) && func.index.is_none() {
+                    if matches!(d.decl().kind, DeclKind::Type(_)) && func.index.is_none() {
                         let symbol = program
                             .symbols
                             .get(&m.file)
@@ -384,7 +384,7 @@ pub fn build_index(syms: ms_syntax::Names, analysis: &Analysis, standard: bool) 
             let Some(def) = ty.def.clone() else { continue };
             let skey = symbol_key(syms, &b.root, Some(symbol));
             let typed_fields = fields(&ty);
-            for field in d.record_fields() {
+            for field in d.type_fields() {
                 for typed in &typed_fields {
                     if typed.name == field.name {
                         b.add(
@@ -667,9 +667,7 @@ impl BindingWalker<'_> {
         match &p.kind {
             PatternKind::Name(_) => {}
             PatternKind::List(items) => items.iter().for_each(|x| self.pattern(syms, x)),
-            PatternKind::Record(fields) => {
-                fields.iter().for_each(|f| self.pattern(syms, &f.pattern))
-            }
+            PatternKind::Type(fields) => fields.iter().for_each(|f| self.pattern(syms, &f.pattern)),
         }
     }
 }
@@ -858,7 +856,7 @@ impl UseWalker<'_> {
                 if info.method.is_none() {
                     let receiver = self.info_of(left).and_then(|i| i.ty);
                     if let Some(receiver) = receiver
-                        && receiver.kind == Kind::Record
+                        && receiver.kind == Kind::Type
                         && let Some(def) = &receiver.def
                     {
                         let parent = def.symbol();
@@ -925,7 +923,7 @@ impl UseWalker<'_> {
         }
         if let ExprKind::Call { callee, args } = &e.kind {
             if let Some(constructor) = &info.constructor
-                && constructor.kind == Kind::Record
+                && constructor.kind == Kind::Type
                 && let Some(def) = &constructor.def
             {
                 let parent = def.symbol();
@@ -1189,7 +1187,7 @@ pub fn type_references(m: &ModRef) -> Vec<TypeSite> {
                     collect_type(t, &mut out);
                 }
             }
-            DeclKind::Record(r) => {
+            DeclKind::Type(r) => {
                 collect_type_params(&r.type_params, &mut out);
                 collect_params(&r.fields, &mut out);
             }

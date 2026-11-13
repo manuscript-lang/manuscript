@@ -141,7 +141,7 @@ fn all_three_node_graphs_match_original_diagnostics() {
                                 0 => variables[&id][0].clone(),
                                 1 if (i + j) % 2 == 0 => int(),
                                 _ => {
-                                    let mut t = Type::new(syms, n("List"), n("List"), Kind::Record);
+                                    let mut t = Type::new(syms, n("List"), n("List"), Kind::Type);
                                     t.args = variables[&id].clone();
                                     std::rc::Rc::new(t)
                                 }

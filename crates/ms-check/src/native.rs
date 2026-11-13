@@ -30,7 +30,7 @@ impl Checker {
         if invalid_ty(&rt) {
             return Some(Info::of(invalid()));
         }
-        if rt.kind == Kind::Record
+        if rt.kind == Kind::Type
             && self.syms.str(name) != "to_string"
             && fields(&rt).iter().any(|f| f.name == *name)
         {
