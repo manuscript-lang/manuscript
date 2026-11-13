@@ -150,7 +150,11 @@ fn field_boxed(lay: &Layouts, r: ms_mir::types::RecId, i: u32) -> bool {
 
 /// The fields of the record `ty` that `rec.release` drops: those the mask does not move out and
 /// that own something, each with its type and leaf index and count.
-fn released(lay: &Layouts, ty: Ty, mask: u32) -> impl Iterator<Item = (Ty, usize, usize)> {
+pub(super) fn released(
+    lay: &Layouts,
+    ty: Ty,
+    mask: u32,
+) -> impl Iterator<Item = (Ty, usize, usize)> {
     let r = record(lay, ty).expect("a record that is not indirect");
     let mut at = 0;
     lay.m.records[r.index()]
@@ -335,7 +339,7 @@ fn store_leaves(b: &mut FnBuilder, s: &Shape, base: &Val, at: usize, leaves: &[V
 }
 
 /// Stores a leaf, a boolean as the byte it is in memory.
-fn store_leaf(b: &mut FnBuilder, v: &Val, p: &Val) {
+pub(super) fn store_leaf(b: &mut FnBuilder, v: &Val, p: &Val) {
     let v = if v.ty == LTy::I1 {
         b.zext(v, LTy::I8)
     } else {
@@ -671,13 +675,13 @@ pub(super) fn store_value(
 const NULL: fn() -> Val = || Val::new("null", LTy::Ptr);
 
 /// Declares the runtime's allocator and `free` for a block.
-fn declare_heap(cx: &mut Cx) {
+pub(super) fn declare_heap(cx: &mut Cx) {
     super::rt::declare(cx, "msrt_alloc");
     super::rt::declare(cx, "msrt_free");
 }
 
 /// A fresh heap block of `size` bytes, named `dst` when given.
-fn alloc(b: &mut FnBuilder, size: u32, dst: Option<&Val>) -> Val {
+pub(super) fn alloc(b: &mut FnBuilder, size: u32, dst: Option<&Val>) -> Val {
     if let Some(d) = dst {
         b.name_next(d);
     }
