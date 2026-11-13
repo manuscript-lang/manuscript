@@ -363,22 +363,22 @@ pub fn narrow_integers_match_cranelift() {
     assert_eq!((got.code, &got.stdout), (want.code, &want.stdout));
 }
 
-/// A record of more than eight leaves lives in memory: its `Int8`, `UInt16` and `Int32` fields are
+/// A type of more than eight leaves lives in memory: its `Int8`, `UInt16` and `Int32` fields are
 /// 1, 2 and 4 bytes there and read back sign- or zero-extended.
-const NARROW_RECORD: &str = r#"module "d"
-record Wide { a: int8, b: uint16, c: int32, d: int, e: int, f: int, g: int, h: int, i: int }
+const NARROW_TYPE: &str = r#"module "d"
+type Wide { a: int8, b: uint16, c: int32, d: int, e: int, f: int, g: int, h: int, i: int }
 entry @main
 file 0 "d.ms"
 fn @mk(%a: int8, %b: uint16, %c: int32, %n: int) -> Wide inline(never) !0:1:1 {
 b0:
-  %w: Wide = rec.new Wide %a, %b, %c, %n, %n, %n, %n, %n, %n !0:2:1
+  %w: Wide = type.new Wide %a, %b, %c, %n, %n, %n, %n, %n, %n !0:2:1
   ret %w
 }
 fn @sum(%w: Wide) -> int inline(never) !0:3:1 {
 b0:
-  %a: int8 = rec.get Wide.a %w !0:4:1
-  %b: uint16 = rec.get Wide.b %w !0:4:1
-  %c: int32 = rec.get Wide.c %w !0:4:1
+  %a: int8 = type.get Wide.a %w !0:4:1
+  %b: uint16 = type.get Wide.b %w !0:4:1
+  %c: int32 = type.get Wide.c %w !0:4:1
   %zero: int = iconst 0 !0:4:1
   %one: int = iconst 1 !0:4:1
   %m8: int8 = iconst -3 !0:4:1
@@ -415,11 +415,11 @@ b0:
 "#;
 
 /// Run from `llvm_direct`'s one test (see above).
-pub fn narrow_record_fields_match_cranelift() {
+pub fn narrow_type_fields_match_cranelift() {
     let Some(opts) = direct() else { return };
-    let want = run_native(NARROW_RECORD, "direct_narrow_record-cranelift");
+    let want = run_native(NARROW_TYPE, "direct_narrow_type-cranelift");
     assert_eq!(want.code, 3, "the Cranelift build disagrees");
-    let got = run_llvm(NARROW_RECORD, &opts, "direct_narrow_record");
+    let got = run_llvm(NARROW_TYPE, &opts, "direct_narrow_type");
     let ir = std::fs::read_to_string("ms-keep.ll").unwrap();
     let _ = std::fs::remove_file("ms-keep.ll");
     for f in ["mk", "sum"] {
@@ -438,8 +438,8 @@ const UNWRAP_PROGRAM: &str = r#"module "d"
 entry @main
 file 0 "d.ms"
 alt Name { Text(s: str), Count(n: int) }
-record Pair { name: str, tag: str, n: int }
-record Big { a: int, b: int, c: int, d: int, e: int, f: int, g: int, h: int, name: str, n: int }
+type Pair { name: str, tag: str, n: int }
+type Big { a: int, b: int, c: int, d: int, e: int, f: int, g: int, h: int, name: str, n: int }
 fn @unwrap_int(%o: opt<int>) -> int !0:1:1 {
 b0:
   %v: int = opt.unwrap %o !0:2:1
@@ -461,14 +461,14 @@ b0:
 }
 fn @release_pair(%p: move Pair) -> int !0:40:1 {
 b0:
-  %n: int = rec.get Pair.n %p !0:41:1
-  rec.release Pair.tag %p !0:42:1
+  %n: int = type.get Pair.n %p !0:41:1
+  type.release Pair.tag %p !0:42:1
   ret %n
 }
 fn @release_big(%p: move Big) -> int !0:50:1 {
 b0:
-  %n: int = rec.get Big.n %p !0:51:1
-  rec.release Big %p !0:52:1
+  %n: int = type.get Big.n %p !0:51:1
+  type.release Big %p !0:52:1
   ret %n
 }
 fn @main() -> int !0:30:1 {
@@ -488,10 +488,10 @@ b0:
   drop %lst !0:38:1
   %s1: str = clone %lit !0:35:1
   %s2: str = clone %lit !0:35:1
-  %p: Pair = rec.new Pair %s1, %s2, %k !0:35:1
+  %p: Pair = type.new Pair %s1, %s2, %k !0:35:1
   %d: int = call @release_pair(%p) !0:35:1
   %s3: str = clone %lit !0:36:1
-  %q: Big = rec.new Big %k, %k, %k, %k, %k, %k, %k, %k, %s3, %k !0:36:1
+  %q: Big = type.new Big %k, %k, %k, %k, %k, %k, %k, %k, %s3, %k !0:36:1
   %e: int = call @release_big(%q) !0:36:1
   %ab: int = iadd %a, %b !0:34:1
   %ac: int = iadd %ab, %b !0:34:1
@@ -502,7 +502,7 @@ b0:
 }
 "#;
 
-/// Unwrapping an optional (an integer, and a string that is cloned) and releasing records; run from `llvm_direct`'s one test for the same reason.
+/// Unwrapping an optional (an integer, and a string that is cloned) and releasing types; run from `llvm_direct`'s one test for the same reason.
 pub fn unwrap_and_own_match_cranelift() {
     let Some(opts) = direct() else { return };
     let want = run_native(UNWRAP_PROGRAM, "direct_unwrap-cranelift");
@@ -738,26 +738,26 @@ pub fn enum_clones_match_cranelift() {
     assert_eq!(got.code, 125);
 }
 
-/// An enum whose payload is a record of more than eight leaves: the record's leaves sit in the
-/// enum's slots, as in the Cranelift build, and move to and from the record's memory.
+/// An enum whose payload is a type of more than eight leaves: the type's leaves sit in the
+/// enum's slots, as in the Cranelift build, and move to and from the type's memory.
 const MEMORY_PAYLOAD: &str = r#"module "d"
-record Wide { a: int8, b: uint16, c: int32, d: int, e: int, f: int, g: int, h: int, i: int }
+type Wide { a: int8, b: uint16, c: int32, d: int, e: int, f: int, g: int, h: int, i: int }
 alt Holder { Plain(n: int), Big(w: Wide) }
 entry @main
 file 0 "d.ms"
 fn @mkb(%a: int8, %b: uint16, %c: int32, %n: int) -> Holder inline(never) !0:1:1 {
 b0:
-  %w: Wide = rec.new Wide %a, %b, %c, %n, %n, %n, %n, %n, %n !0:2:1
+  %w: Wide = type.new Wide %a, %b, %c, %n, %n, %n, %n, %n, %n !0:2:1
   %h: Holder = alt.new Holder.Big %w !0:2:1
   ret %h
 }
 fn @readb(%h: Holder) -> int inline(never) !0:3:1 {
 b0:
   %w: Wide = alt.get Holder.Big.w %h !0:4:1
-  %a: int8 = rec.get Wide.a %w !0:4:1
-  %b: uint16 = rec.get Wide.b %w !0:4:1
-  %c: int32 = rec.get Wide.c %w !0:4:1
-  %d: int = rec.get Wide.d %w !0:4:1
+  %a: int8 = type.get Wide.a %w !0:4:1
+  %b: uint16 = type.get Wide.b %w !0:4:1
+  %c: int32 = type.get Wide.c %w !0:4:1
+  %d: int = type.get Wide.d %w !0:4:1
   %zero: int = iconst 0 !0:4:1
   %one: int = iconst 1 !0:4:1
   %m8: int8 = iconst -3 !0:4:1
@@ -871,7 +871,7 @@ pub fn optional_payload_matches_cranelift() {
 /// An optional record of more than eight leaves, one with a string, and an enum whose slots hold
 /// that string where another case holds an integer.
 const MEMORY_OPTIONAL: &str = r#"module "d"
-record Wide { a: int8, b: str, c: int, d: int, e: int, f: int, g: int, h: int, i: int }
+type Wide { a: int8, b: str, c: int, d: int, e: int, f: int, g: int, h: int, i: int }
 alt Holder { Plain(n: int), Big(w: Wide) }
 entry @main
 file 0 "d.ms"
@@ -879,7 +879,7 @@ fn @mko(%a: int8, %n: int) -> opt<Wide> inline(never) !0:1:1 {
 b0:
   %lit: str = str "hello" !0:2:1
   %s: str = clone %lit !0:2:1
-  %w: Wide = rec.new Wide %a, %s, %n, %n, %n, %n, %n, %n, %n !0:2:1
+  %w: Wide = type.new Wide %a, %s, %n, %n, %n, %n, %n, %n, %n !0:2:1
   %o: opt<Wide> = opt.some %w !0:2:1
   ret %o
 }
@@ -890,8 +890,8 @@ b0:
   br_if %p, b1(), b2() !0:5:1
 b1():
   %w: Wide = opt.get %o !0:6:1
-  %a: int8 = rec.get Wide.a %w !0:6:1
-  %c: int = rec.get Wide.c %w !0:6:1
+  %a: int8 = type.get Wide.a %w !0:6:1
+  %c: int = type.get Wide.c %w !0:6:1
   %x: int = iadd %c, %c !0:6:1
   ret %x
 b2():
@@ -901,7 +901,7 @@ fn @mkh(%a: int8, %n: int) -> Holder inline(never) !0:7:1 {
 b0:
   %lit: str = str "abc" !0:8:1
   %s: str = clone %lit !0:8:1
-  %w: Wide = rec.new Wide %a, %s, %n, %n, %n, %n, %n, %n, %n !0:8:1
+  %w: Wide = type.new Wide %a, %s, %n, %n, %n, %n, %n, %n, %n !0:8:1
   %h: Holder = alt.new Holder.Big %w !0:8:1
   ret %h
 }
@@ -921,10 +921,10 @@ b0:
   %h: Holder = call @mkh(%a, %n) !0:25:1
   %t: int = call @tag(%h) !0:25:1
   %w: Wide = alt.unbox Holder.Big.w %h !0:25:1
-  %wc: int = rec.get Wide.c %w !0:25:1
+  %wc: int = type.get Wide.c %w !0:25:1
   drop %w !0:25:1
   %u: Wide = opt.unwrap %o !0:25:1
-  %uc: int = rec.get Wide.c %u !0:25:1
+  %uc: int = type.get Wide.c %u !0:25:1
   drop %u !0:25:1
   drop %o !0:25:1
   %s1: int = iadd %r, %q !0:26:1
@@ -1032,23 +1032,23 @@ pub fn unit_slot_matches_cranelift() {
     assert_eq!(got.code, 42);
 }
 
-/// A record holding a record, in memory, behaves like the Cranelift build (the struct shape itself
+/// A type holding a type, in memory, behaves like the Cranelift build (the struct shape itself
 /// is pinned by `nested_leaves_are_reached_by_field_indices` in `llvm_build`).
-const NESTED_RECORD: &str = r#"module "d"
-record Pair { a: int8, b: int }
-record Outer { p: Pair, c: int32, d: int, e: int, f: int, g: int, h: int, i: int }
+const NESTED_TYPE: &str = r#"module "d"
+type Pair { a: int8, b: int }
+type Outer { p: Pair, c: int32, d: int, e: int, f: int, g: int, h: int, i: int }
 entry @main
 file 0 "d.ms"
 fn @mk(%p: Pair, %c: int32, %n: int) -> Outer inline(never) !0:1:1 {
 b0:
-  %w: Outer = rec.new Outer %p, %c, %n, %n, %n, %n, %n, %n !0:2:1
+  %w: Outer = type.new Outer %p, %c, %n, %n, %n, %n, %n, %n !0:2:1
   ret %w
 }
 fn @sum(%w: Outer) -> int inline(never) !0:3:1 {
 b0:
-  %p: Pair = rec.get Outer.p %w !0:4:1
-  %b: int = rec.get Pair.b %p !0:4:1
-  %d: int = rec.get Outer.d %w !0:4:1
+  %p: Pair = type.get Outer.p %w !0:4:1
+  %b: int = type.get Pair.b %p !0:4:1
+  %d: int = type.get Outer.d %w !0:4:1
   %s: int = iadd %b, %d !0:4:1
   ret %s
 }
@@ -1057,7 +1057,7 @@ b0:
   %n: int = iconst 7 !0:21:1
   %o8: opt<int8> = inarrow.opt %n !0:21:1
   %a: int8 = opt.get %o8 !0:21:1
-  %p: Pair = rec.new Pair %a, %n !0:21:1
+  %p: Pair = type.new Pair %a, %n !0:21:1
   %oc: opt<int32> = inarrow.opt %n !0:21:1
   %c: int32 = opt.get %oc !0:21:1
   %w: Outer = call @mk(%p, %c, %n) !0:22:1
@@ -1067,13 +1067,13 @@ b0:
 "#;
 
 #[test]
-pub fn nested_record_is_a_struct_of_structs() {
+pub fn nested_type_is_a_struct_of_structs() {
     let Some(mut opts) = direct() else { return };
     // Every test that keeps `ms-keep.ll` shares one file in the working directory; this one does
     // not read it, so it must not overwrite it.
     opts.build.keep_ll = false;
-    let want = run_native(NESTED_RECORD, "direct_nested_record-cranelift");
+    let want = run_native(NESTED_TYPE, "direct_nested_type-cranelift");
     assert_eq!(want.code, 14, "the Cranelift build disagrees");
-    let got = run_llvm(NESTED_RECORD, &opts, "direct_nested_record");
+    let got = run_llvm(NESTED_TYPE, &opts, "direct_nested_type");
     assert_eq!((got.code, &got.stdout), (want.code, &want.stdout));
 }

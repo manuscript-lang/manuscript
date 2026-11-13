@@ -7,10 +7,10 @@
 //! are the function parameters.
 //!
 //! Every SSA value has one monomorphic [`Ty`]. MIR follows the value-semantics
-//! memory model: records, lists, optionals and the like are *values*, flattened
+//! memory model: types, lists, optionals and the like are *values*, flattened
 //! into scalar leaves by the backend (see [`crate::layout`]), not heap objects
 //! with identity. A value whose type [needs a drop](Module::needs_drop) (lists,
-//! maps, strings, boxed alternatives, records containing them) is
+//! maps, strings, boxed alternatives, types containing them) is
 //! either **owned** (it must be consumed exactly once: moved into a consuming
 //! position or `drop`ped) or **borrowed** (a read-only view the producer keeps
 //! alive). Ownership is determined by the defining instruction (see
@@ -20,11 +20,11 @@
 //!
 //! Mutation is threaded through SSA: an operation that changes an owned value
 //! moving_params it and returns the updated value (`list.push`, `list.set`,
-//! `rec.set`), and a `var` parameter is copy-in/copy-out: the callee returns
+//! `type.set`), and a `var` parameter is copy-in/copy-out: the callee returns
 //! its final value after its result.
 
 use crate::types::{
-    AltDef, AltId, IfaceDef, IfaceId, RecId, RecordDef, Ty, TyKind, TyTable, id_type,
+    AltDef, AltId, IfaceDef, IfaceId, Ty, TyKind, TyTable, TypeDef, TypeId, id_type,
 };
 use std::collections::HashMap;
 use std::fmt;
@@ -279,8 +279,8 @@ pub enum Op {
     ICmp, UICmp, FCmp,
     // Float arithmetic and conversions.
     FAdd, FSub, FMul, FDiv, FNeg, FSqrt, FAbs, FFloor, FCeil, FTrunc, I2F, F2IOpt, B2I, Select,
-    // Records and alternatives.
-    RecNew, RecGet, RecSet, RecFill, AltNew, AltView, AltPlain, AltOwn, AltTag, AltGet, AltUnbox, AltTake, AltRelease, RecRelease,
+    // Types and alternatives.
+    TypeNew, TypeGet, TypeSet, TypeFill, AltNew, AltView, AltPlain, AltOwn, AltTag, AltGet, AltUnbox, AltTake, AltRelease, TypeRelease,
     // Lists.
     ListNew, ListLit, ListConst, ListLen, ListGet, ListGetNn, ListGetU, ListTake, ListSet, ListSetNn, ListSetU, ListFill, ListPush, ListDropLast, ListRelease,
     // Optionals.
@@ -291,7 +291,7 @@ pub enum Op {
     ClosureNew, ClosureCap, ClosureCapAddr, IfaceNew, IfaceBorrow, IfaceView, IfaceData, IfaceIs,
     // Ownership.
     Clone, Drop, DropIf, MoveOut,
-    // Raw memory: stack slots, interior pointers into lists and records.
+    // Raw memory: stack slots, interior pointers into lists and types.
     Slot, Load, Take, Store, Put, ListAddr, ListAddrU, PtrField, PtrIsNull,
     // Calls.
     Call, CallInd, CallRt, CallMethod,
@@ -354,9 +354,9 @@ pub enum ImmKind {
     Ext,
     /// Type.
     Ty,
-    /// Record id.
-    Rec,
-    /// Record id and field index.
+    /// Type id.
+    Type,
+    /// Type id and field index.
     Field,
     /// Alternative id and case index.
     Case,
@@ -364,8 +364,8 @@ pub enum ImmKind {
     AltField,
     /// Alternative id, case and the set of payload fields that were moved out.
     AltMask,
-    /// Record id and the set of fields that were moved out.
-    RecMask,
+    /// Type id and the set of fields that were moved out.
+    TypeMask,
     /// Vtable.
     Vtable,
     /// Global.
@@ -413,18 +413,18 @@ pub enum Imm {
     Ext(ExtId),
     /// A type.
     Ty(Ty),
-    /// A record.
-    Rec(RecId),
-    /// A record field.
-    Field(RecId, u32),
+    /// A type.
+    Type(TypeId),
+    /// A type field.
+    Field(TypeId, u32),
     /// An alternative case.
     Case(AltId, u32),
     /// An alternative case field.
     AltField(AltId, u32, u32),
     /// Alternative id, case and a bit set of payload fields moved out by `alt.take`.
     AltMask(AltId, u32, u32),
-    /// Record id and a bit set of fields moved out before `rec.release`.
-    RecMask(RecId, u32),
+    /// Type id and a bit set of fields moved out before `type.release`.
+    TypeMask(TypeId, u32),
     /// A vtable.
     Vtable(VtableId),
     /// A global.
@@ -1015,8 +1015,8 @@ pub struct Module {
     pub files: Vec<String>,
     /// Type table.
     pub types: TyTable,
-    /// Record declarations.
-    pub records: Vec<RecordDef>,
+    /// Type declarations.
+    pub type_defs: Vec<TypeDef>,
     /// Alternative declarations.
     pub alts: Vec<AltDef>,
     /// Interface declarations.

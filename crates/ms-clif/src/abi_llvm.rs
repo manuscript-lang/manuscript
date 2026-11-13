@@ -1,6 +1,6 @@
 //! The calling convention of directly emitted LLVM functions.
 //!
-//! One design for records, lists, glue and closures. A value of at most [`SCALAR_BYTES`] bytes
+//! One design for types, lists, glue and closures. A value of at most [`SCALAR_BYTES`] bytes
 //! (by `mem_layout`, so layout, runtime and the Cranelift object agree) is passed as scalars, so
 //! a `String` is two parameters. Anything larger is indirect: a pointer to the caller's slot.
 //!
@@ -21,7 +21,7 @@
 
 #![allow(
     dead_code,
-    reason = "the direct emitter adopts this in the records and glue follow-ups; remove then"
+    reason = "the direct emitter adopts this in the types and glue follow-ups; remove then"
 )]
 
 use crate::layout::{Layouts, Leaf, mem_layout};
@@ -94,7 +94,7 @@ pub enum Ret {
 }
 
 /// The size and alignment of the registers spilled to memory: a literal struct of `i64`,
-/// `double`, `i8` and `ptr` fields, which is also what a record in memory is.
+/// `double`, `i8` and `ptr` fields, which is also what a type in memory is.
 fn mem_of(regs: &[Reg]) -> Mem {
     let leaves: Vec<Leaf> = regs
         .iter()

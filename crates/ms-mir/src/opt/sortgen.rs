@@ -140,7 +140,7 @@ pub fn run(m: &mut Module) -> bool {
     changed
 }
 
-/// The element type when the sort is over plain-data values (words or records that own nothing) and `g` has the shape
+/// The element type when the sort is over plain-data values (words or types that own nothing) and `g` has the shape
 /// `(env, elem, elem) -> int`.
 fn word_elem(m: &Module, thunk: FuncId, g: FuncId) -> Option<Ty> {
     let code = &m.funcs[g.index()];
@@ -159,7 +159,7 @@ fn word_elem(m: &Module, thunk: FuncId, g: FuncId) -> Option<Ty> {
         && code.params[2].ty == elem
         && code.ret == Ty::INT;
     let plain =
-        elem == Ty::INT || elem == Ty::FLOAT || matches!(m.types.kind(elem), TyKind::Rec(_));
+        elem == Ty::INT || elem == Ty::FLOAT || matches!(m.types.kind(elem), TyKind::Type(_));
     (shaped && plain).then_some(elem)
 }
 

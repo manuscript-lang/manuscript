@@ -8,7 +8,7 @@ use ms_check::api::ownership::BorrowKind;
 use ms_check::api::types::{self as ct, Builtin, Kind, Name, Subst};
 use ms_mir::ir::{FuncId, Module};
 use ms_mir::types::{CaseDef, IfaceDef, MethodSig, Std, Ty as MTy};
-use ms_mir::types::{Native, NativeRec};
+use ms_mir::types::{Native, NativeType};
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -92,7 +92,7 @@ pub enum HelperKey {
     ListTail(MTy, Option<crate::close::CloseKind>),
     /// The close of a field held in memory that never turns into a returning close.
     CloseField(MTy, crate::close::CloseKind),
-    /// What a record holds besides the resource fields at these paths, which other owners close.
+    /// What a type holds besides the resource fields at these paths, which other owners close.
     SplitRest(MTy, Vec<Vec<u32>>),
     /// How a failed scope-end close becomes the return of a function of the given type: the
     /// close's `Result` type, the function's return type, whether a pending return is held, and
@@ -402,19 +402,19 @@ pub struct Cx {
     pub tycache: Vec<Option<MTy>>,
     /// Checker type identities, interned on demand while lowering.
     pub tys: ms_check::api::tytable::TyTable,
-    /// The runtime's raw `fs` info record, once built.
+    /// The runtime's raw `fs` info type, once built.
     pub fs_info_raw: Option<MTy>,
     /// Function instances by key.
     pub insts: HashMap<InstKey, FuncId>,
     /// Bodies waiting to be lowered.
     pub queue: Vec<Job>,
-    /// Records and alternatives declared `opaque type`; their text form is the type name.
+    /// Types and alternatives declared `opaque type`; their text form is the type name.
     pub opaque_tys: Column<()>,
     /// Helper functions (formatting, equality, ...) by key.
     pub helpers: HashMap<HelperKey, FuncId>,
-    /// The record a loop over an owned list keeps in memory (the list and the next index) by
+    /// The type a loop over an owned list keeps in memory (the list and the next index) by
     /// list type.
-    pub list_cursors: HashMap<MTy, (ms_mir::types::RecId, MTy)>,
+    pub list_cursors: HashMap<MTy, (ms_mir::types::TypeId, MTy)>,
     /// Interface implementation tables built by lowering.
     pub vtables: HashMap<VtableKey, ms_mir::ir::VtableId>,
     /// The checker type of every lowered interface.
@@ -423,10 +423,10 @@ pub struct Cx {
     pub methods: Vec<ct::MethodRef>,
     /// `methods` by receiver and operation name.
     pub method_index: MethodIndex,
-    /// The checker type behind each lowered record or alternative.
+    /// The checker type behind each lowered type or alternative.
     pub source_tys: Column<ct::Ty>,
-    /// The `.ms` methods of the native records, built once from the program's methods.
-    pub native_ops: crate::nativerec::NativeOps,
+    /// The `.ms` methods of the native types, built once from the program's methods.
+    pub native_ops: crate::nativetype::NativeOps,
     /// Types whose descriptor glue is registered, per implementation scope.
     pub glue_seen: std::collections::HashSet<(MTy, u32)>,
     /// Nominal types with an extension implemented outside their defining module.
@@ -440,7 +440,7 @@ pub struct Cx {
     /// What the ownership stage decided: moves, borrows, getters, captures, per-node and per-binding
     /// facts. Lowering reads these and decides none of them again.
     pub ownership: Rc<ms_check::api::ownership::OwnershipFacts>,
-    /// Which types are resources, for the closers of records and collections that hold them.
+    /// Which types are resources, for the closers of types and collections that hold them.
     pub classes: ms_check::api::ownership::Classifier,
 }
 
@@ -481,7 +481,7 @@ impl Cx {
             mods.insert(m.data.file, Rc::new(m));
         }
         let mutated = crate::mutation::infer_mutated(&callables);
-        let native_ops = crate::nativerec::NativeOps::new(syms, program, &callables);
+        let native_ops = crate::nativetype::NativeOps::new(syms, program, &callables);
         let extended = program
             .methods
             .iter()
@@ -577,7 +577,7 @@ impl Cx {
         let out = self.lower_ty_uncached(m, t, key)?;
         if matches!(
             m.types.kind(out),
-            ms_mir::types::TyKind::Rec(_)
+            ms_mir::types::TyKind::Type(_)
                 | ms_mir::types::TyKind::Alt(_)
                 | ms_mir::types::TyKind::Opt(_)
                 | ms_mir::types::TyKind::List(_)
@@ -633,17 +633,17 @@ impl Cx {
                 self.lower_native_ty(m, t)
             }
             Kind::Record => {
-                let (id, ty) = m.add_record(&t.display(self.syms).to_string(), Vec::new());
-                m.records[id.index()].native = if t.is(Builtin::Timestamp) {
-                    Some(NativeRec::Timestamp)
+                let (id, ty) = m.add_type(&t.display(self.syms).to_string(), Vec::new());
+                m.type_defs[id.index()].native = if t.is(Builtin::Timestamp) {
+                    Some(NativeType::Timestamp)
                 } else if t.is(Builtin::Instant) {
-                    Some(NativeRec::Instant)
+                    Some(NativeType::Instant)
                 } else if t.is(Builtin::Duration) {
-                    Some(NativeRec::Duration)
+                    Some(NativeType::Duration)
                 } else {
                     None
                 };
-                m.records[id.index()].indirect = t.is(Builtin::Error);
+                m.type_defs[id.index()].indirect = t.is(Builtin::Error);
                 self.set_lowered(key, ty);
                 if t.opaque_module().is_some() {
                     self.opaque_tys.set_if_absent(ty.0 as usize, ());
@@ -653,7 +653,7 @@ impl Cx {
                     let ty = self.lower_ty(m, &f.ty)?;
                     fields.push((self.syms.str(f.name).to_string(), ty));
                 }
-                m.records[id.index()].fields = fields;
+                m.type_defs[id.index()].fields = fields;
                 Ok(ty)
             }
             Kind::Alternative => {
@@ -777,9 +777,9 @@ impl Cx {
         }
         // `Decimal` is plain data in the runtime's `repr(C)` layout (`ms_rt::decimal::Dec`).
         if t.is(Builtin::Decimal) {
-            let (id, ty) = m.add_record("Decimal", Vec::new());
-            m.records[id.index()].native = Some(NativeRec::Decimal);
-            m.records[id.index()].fields = ["lo", "hi", "exp"]
+            let (id, ty) = m.add_type("Decimal", Vec::new());
+            m.type_defs[id.index()].native = Some(NativeType::Decimal);
+            m.type_defs[id.index()].fields = ["lo", "hi", "exp"]
                 .iter()
                 .map(|f| (f.to_string(), MTy::INT))
                 .collect();

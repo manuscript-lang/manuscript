@@ -25,7 +25,7 @@ pub trait Symbols {
     fn scope(&self, idx: u32) -> Option<(String, u32, u32, u32)>;
     /// Whether the runtime function `symbol` only reads memory: it returns, does not unwind and
     /// writes nothing, so calls to it do not clobber the caller's memory and loads of list
-    /// lengths, record fields and map headers survive them. Declared `// ms: pure` on the
+    /// lengths, type fields and map headers survive them. Declared `// ms: pure` on the
     /// function, which only lookups with no descriptor callbacks (that could run user code)
     /// and no fault may be.
     fn reads_only(&self, _symbol: &str) -> bool {
@@ -405,7 +405,7 @@ fn attr(t: Type) -> &'static str {
     if t == types::I8 { " zeroext" } else { "" }
 }
 
-/// The extension attribute of a signature parameter or return, as Cranelift records it: runtime
+/// The extension attribute of a signature parameter or return, as Cranelift types it: runtime
 /// bytes are zero-extended (`abi_param`), a user shim's narrow arguments carry their own, and
 /// a user shim's narrow results carry none, because the C callee need not extend them.
 fn param_attr(p: &ir::AbiParam) -> &'static str {
@@ -833,7 +833,7 @@ impl<'a> Tr<'a> {
         d
     }
 
-    /// Records result `idx` of `inst` as the `i1` `flag` widened to `i8`.
+    /// Types result `idx` of `inst` as the `i1` `flag` widened to `i8`.
     fn set_flag(&mut self, inst: Inst, idx: usize, flag: String) {
         let r = self.f.dfg.inst_results(inst)[idx];
         if self.wide.contains(&r) {
@@ -1809,7 +1809,7 @@ impl LlvmModule {
             .ir
     }
 
-    /// Records the function symbols in the vtable `name`, slot by slot.
+    /// Types the function symbols in the vtable `name`, slot by slot.
     pub fn set_vtable(&mut self, name: String, slots: Vec<String>) {
         self.vtables.insert(name, slots);
     }

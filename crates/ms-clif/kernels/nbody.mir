@@ -1,6 +1,6 @@
 module "nbody"
-record Body { x: float, y: float, z: float, vx: float, vy: float, vz: float, mass: float }
-record Adv { e: float, bodies: list<Body> }
+type Body { x: float, y: float, z: float, vx: float, vy: float, vz: float, mass: float }
+type Adv { e: float, bodies: list<Body> }
 extern @msrt_print_int(int)
 entry @main
 fn @advance(%bodies: move list<Body>, %steps: int) -> Adv {
@@ -22,10 +22,10 @@ iloop(%i: int):
   br_if %ci, ib(), pinit()
 ib:
   %a: Body = list.get %bodies, %i
-  %ax: float = rec.get Body.x %a
-  %ay: float = rec.get Body.y %a
-  %az: float = rec.get Body.z %a
-  %am: float = rec.get Body.mass %a
+  %ax: float = type.get Body.x %a
+  %ay: float = type.get Body.y %a
+  %az: float = type.get Body.z %a
+  %am: float = type.get Body.mass %a
   %j0: int = iadd.chk %i, %one
   br jloop(%j0)
 jloop(%j: int):
@@ -33,10 +33,10 @@ jloop(%j: int):
   br_if %cj, jb(), jd()
 jb:
   %b: Body = list.get %bodies, %j
-  %bx: float = rec.get Body.x %b
-  %by: float = rec.get Body.y %b
-  %bz: float = rec.get Body.z %b
-  %bm: float = rec.get Body.mass %b
+  %bx: float = type.get Body.x %b
+  %by: float = type.get Body.y %b
+  %bz: float = type.get Body.z %b
+  %bm: float = type.get Body.mass %b
   %dx: float = fsub %ax, %bx
   %dy: float = fsub %ay, %by
   %dz: float = fsub %az, %bz
@@ -132,10 +132,10 @@ eloop(%q: int, %e: float):
   br_if %cq, eb(), ed()
 eb:
   %eb0: Body = list.get %bodies, %q
-  %ex: float = rec.get Body.vx %eb0
-  %ey: float = rec.get Body.vy %eb0
-  %ez: float = rec.get Body.vz %eb0
-  %em: float = rec.get Body.mass %eb0
+  %ex: float = type.get Body.vx %eb0
+  %ey: float = type.get Body.vy %eb0
+  %ez: float = type.get Body.vz %eb0
+  %em: float = type.get Body.mass %eb0
   %ex2: float = fmul %ex, %ex
   %ey2: float = fmul %ey, %ey
   %ez2: float = fmul %ez, %ez
@@ -146,7 +146,7 @@ eb:
   %q1: int = iadd.chk %q, %one
   br eloop(%q1, %e1)
 ed:
-  %out: Adv = rec.new Adv %e, %bodies
+  %out: Adv = type.new Adv %e, %bodies
   ret %out
 }
 fn @main() -> int {
@@ -160,11 +160,11 @@ b0:
   %f4: float = fconst 4.0
   %f10: float = fconst 10.0
   %fh: float = fconst 0.5
-  %b0: Body = rec.new Body %z, %z, %z, %z, %z, %z, %f10
-  %b1: Body = rec.new Body %f1, %z, %z, %z, %f1, %z, %f1
-  %b2: Body = rec.new Body %z, %f2, %z, %f1, %z, %z, %f1
-  %b3: Body = rec.new Body %z, %z, %f3, %z, %z, %f1, %f1
-  %b4: Body = rec.new Body %f4, %f4, %z, %z, %z, %z, %fh
+  %b0: Body = type.new Body %z, %z, %z, %z, %z, %z, %f10
+  %b1: Body = type.new Body %f1, %z, %z, %z, %f1, %z, %f1
+  %b2: Body = type.new Body %z, %f2, %z, %f1, %z, %z, %f1
+  %b3: Body = type.new Body %z, %z, %f3, %z, %z, %f1, %f1
+  %b4: Body = type.new Body %f4, %f4, %z, %z, %z, %z, %fh
   %l1: list<Body> = list.push %l0, %b0
   %l2: list<Body> = list.push %l1, %b1
   %l3: list<Body> = list.push %l2, %b2
@@ -172,7 +172,7 @@ b0:
   %l5: list<Body> = list.push %l4, %b4
   %steps: int = iconst 200000
   %r: Adv = call @advance (%l5, %steps)
-  %e: float = rec.get Adv.e %r
+  %e: float = type.get Adv.e %r
   %k: float = fconst 1000.0
   %ek: float = fmul %e, %k
   %o: opt<int> = f2i.opt %ek

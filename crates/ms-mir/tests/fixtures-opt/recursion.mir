@@ -1,4 +1,4 @@
-module "rec"
+module "tval"
 entry @main
 fn @fib(%n: int) -> int {
 b0:

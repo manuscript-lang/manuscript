@@ -265,23 +265,23 @@ pub(crate) fn build_format(
     let mut b = FuncBuilder::new(m, "format", format_params(t), MTy::STR);
     let x = b.params()[0];
     let depth = b.params()[1];
-    let declared_text = match crate::nativerec::native_rec(b.m, t) {
-        Some(r) if crate::nativerec::has_declared_text(r) => {
-            cx.native_method(b.m, r, crate::nativerec::NativeOp::ToString)?
+    let declared_text = match crate::nativetype::native_type(b.m, t) {
+        Some(r) if crate::nativetype::has_declared_text(r) => {
+            cx.native_method(b.m, r, crate::nativetype::NativeOp::ToString)?
         }
         _ => None,
     };
     match b.m.types.kind(t).clone() {
-        TyKind::Rec(_) if declared_text.is_some() => {
-            // The record's own `to_string`, declared in its `.ms` file.
+        TyKind::Type(_) if declared_text.is_some() => {
+            // The type's own `to_string`, declared in its `.ms` file.
             let f = declared_text.expect("checked");
             let text = b.call(f, &[x]);
             b.ret(Some(text));
         }
-        TyKind::Rec(_) | TyKind::Alt(_) if cx.opaque_tys.contains(t.0 as usize) => {
+        TyKind::Type(_) | TyKind::Alt(_) if cx.opaque_tys.contains(t.0 as usize) => {
             // An opaque value shows its type name only, never its hidden fields.
             let name = match b.m.types.kind(t).clone() {
-                TyKind::Rec(r) => b.m.records[r.index()].name.clone(),
+                TyKind::Type(r) => b.m.type_defs[r.index()].name.clone(),
                 TyKind::Alt(a) => b.m.alts[a.index()].name.clone(),
                 _ => String::new(),
             };
@@ -324,15 +324,15 @@ pub(crate) fn build_format(
             let r = finish(&mut b, acc);
             b.ret(Some(r));
         }
-        TyKind::Rec(r) => {
-            let def = b.m.records[r.index()].clone();
+        TyKind::Type(r) => {
+            let def = b.m.type_defs[r.index()].clone();
             let mut order: Vec<usize> = (0..def.fields.len()).collect();
             if !repr {
                 order.sort_by(|a, c| def.fields[*a].0.cmp(&def.fields[*c].0));
             }
             let mut vals = Vec::new();
             for i in order {
-                let v = b.rec_get(r, i as u32, x);
+                let v = b.type_get(r, i as u32, x);
                 vals.push((Some(def.fields[i].0.clone()), def.fields[i].1, v));
             }
             let acc = start(&mut b, def.name.split('[').next().unwrap_or(&def.name));
@@ -573,11 +573,11 @@ impl<'a> FnLower<'a> {
         Ok(Val { v, own: true })
     }
 
-    /// Calls the method `name` of a record of `@std/time.ms` (`Duration`, `Instant`,
+    /// Calls the method `name` of a type of `@std/time.ms` (`Duration`, `Instant`,
     /// `Timestamp`) with the receiver first.
     pub(crate) fn time_call(
         &mut self,
-        record: ms_check::api::types::Builtin,
+        builtin: ms_check::api::types::Builtin,
         name: &str,
         args: &[Value],
     ) -> Result<Value, Error> {
@@ -586,12 +586,12 @@ impl<'a> FnLower<'a> {
             .methods
             .iter()
             .find(|m| {
-                m.receiver.is(record)
+                m.receiver.is(builtin)
                     && m.decl
                         .as_ref()
                         .is_some_and(|d| self.syms.str(d.name()) == name)
             })
-            .ok_or_else(|| Error::new(format!("{record:?}.{name} not found")))?;
+            .ok_or_else(|| Error::new(format!("{builtin:?}.{name} not found")))?;
         let callable =
             self.callable_of_decl(method.module, method.decl.as_ref().map(|d| d.id()))?;
         let f = self
@@ -603,10 +603,10 @@ impl<'a> FnLower<'a> {
     /// The nanosecond count of a `Duration`.
     pub(crate) fn duration_nanos(&mut self, d: Value) -> Result<Value, Error> {
         let t = self.ty_of(d);
-        let TyKind::Rec(rid) = self.b.m.types.kind(t).clone() else {
-            return Err(Error::new("Duration is not a record"));
+        let TyKind::Type(rid) = self.b.m.types.kind(t).clone() else {
+            return Err(Error::new("Duration is not a type"));
         };
-        Ok(self.b.rec_get(rid, 0, d))
+        Ok(self.b.type_get(rid, 0, d))
     }
 
     /// The `Duration` holding `nanos`.
@@ -614,10 +614,10 @@ impl<'a> FnLower<'a> {
         let t = self
             .cx
             .lower_ty(self.b.m, &self.cx.session.time_type("Duration"))?;
-        let TyKind::Rec(rid) = self.b.m.types.kind(t).clone() else {
-            return Err(Error::new("Duration is not a record"));
+        let TyKind::Type(rid) = self.b.m.types.kind(t).clone() else {
+            return Err(Error::new("Duration is not a type"));
         };
-        Ok(self.b.rec_new(rid, &[nanos]))
+        Ok(self.b.type_new(rid, &[nanos]))
     }
 
     /// A text literal with interpolations.

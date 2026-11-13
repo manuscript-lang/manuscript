@@ -9,7 +9,7 @@
 //!
 //! # Semantics decided here
 //!
-//! * `rec.set`, `list.set*` and `list.push` consume their collection operand
+//! * `type.set`, `list.set*` and `list.push` consume their collection operand
 //!   and yield the updated value. Negative indices of `list.get` and
 //!   `list.set` count from the end; the `.nn` forms fault on negative indices.
 //!   The `.u` forms are unchecked in the backend; here they fault like the
@@ -20,7 +20,7 @@
 //!   (`IntOverflow`); `srem.chk` faults on zero and yields 0 for `MIN % -1`.
 //!   Unchecked `sdiv`/`srem` wrap and still fault on zero.
 //! * `shl`/`sshr` use only the low six bits of the shift amount.
-//! * `cleanup.push` records `(closer, value)` and yields a handle;
+//! * `cleanup.push` types `(closer, value)` and yields a handle;
 //!   `cleanup.run` pops and runs the innermost action. A fault runs the
 //!   remaining actions LIFO; faults inside them are collected in
 //!   [`Fault::cleanup_faults`].
@@ -65,8 +65,8 @@ pub enum Val {
     Str(Rc<str>),
     /// A raw word: type descriptor (the type id) or stack slot address.
     Ptr(u64),
-    /// A record: fields in declaration order.
-    Rec(Rc<Vec<Val>>),
+    /// A type: fields in declaration order.
+    Type(Rc<Vec<Val>>),
     /// An alternative: case index and payload fields.
     Alt(u32, Rc<Vec<Val>>),
     /// A list.
@@ -105,7 +105,7 @@ impl PartialEq for Val {
             (Val::Float(a), Val::Float(b)) => a == b,
             (Val::Str(a), Val::Str(b)) => a == b,
             (Val::Ptr(a), Val::Ptr(b)) => a == b,
-            (Val::Rec(a), Val::Rec(b)) | (Val::List(a), Val::List(b)) => a == b,
+            (Val::Type(a), Val::Type(b)) | (Val::List(a), Val::List(b)) => a == b,
             (Val::Alt(t, a), Val::Alt(u, b)) => t == u && a == b,
             (Val::Opt(a), Val::Opt(b)) => a == b,
             _ => false,
@@ -361,8 +361,8 @@ impl<'m> Interp<'m> {
             TyKind::Ptr => Val::Ptr(0),
             TyKind::List(_) => Val::List(Rc::new(Vec::new())),
             TyKind::Opt(_) => Val::Opt(None),
-            TyKind::Rec(r) => Val::Rec(Rc::new(
-                self.m.records[r.index()]
+            TyKind::Type(r) => Val::Type(Rc::new(
+                self.m.type_defs[r.index()]
                     .fields
                     .iter()
                     .map(|f| self.default_val(f.1))
@@ -586,10 +586,10 @@ impl<'m> Interp<'m> {
             | Op::F2IOpt
             | Op::B2I
             | Op::Select => self.comparisons_and_floats(f, regs, inst),
-            Op::RecNew
-            | Op::RecGet
-            | Op::RecSet
-            | Op::RecFill
+            Op::TypeNew
+            | Op::TypeGet
+            | Op::TypeSet
+            | Op::TypeFill
             | Op::AltNew
             | Op::AltView
             | Op::AltOwn
@@ -597,9 +597,9 @@ impl<'m> Interp<'m> {
             | Op::AltTag
             | Op::AltGet
             | Op::AltTake
-            | Op::RecRelease
+            | Op::TypeRelease
             | Op::AltRelease
-            | Op::AltUnbox => self.records_and_alternatives(f, regs, inst),
+            | Op::AltUnbox => self.types_and_alternatives(f, regs, inst),
             Op::ListNew
             | Op::ListLit
             | Op::ListConst

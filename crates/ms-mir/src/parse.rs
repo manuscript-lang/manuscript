@@ -1,6 +1,6 @@
 //! Deterministic text format: the parser. See [`crate::print`] for the grammar by example.
 //!
-//! Top-level items are one per line (`module`, `file`, `record`, `alt`,
+//! Top-level items are one per line (`module`, `file`, `type`, `alt`,
 //! `iface`, `extern`, `global`, `vtable`, `entry`) except `fn`, whose body
 //! extends to a line holding only `}`. Items may reference each other in any
 //! order. Inside functions, blocks and values may be referenced before they
@@ -295,7 +295,7 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
         .iter()
         .map(|(n, l)| tokenize(l, *n).map(|t| (*n, t)))
         .collect::<Result<_, _>>()?;
-    // Pass A: names of records, alternatives and interfaces.
+    // Pass A: names of types, alternatives and interfaces.
     for (n, t) in &toks {
         let mut c = Cur {
             toks: t,
@@ -303,9 +303,9 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
             line: *n,
         };
         match c.ident()?.as_str() {
-            "record" => {
+            "type" => {
                 let name = c.ident()?;
-                m.records.push(RecordDef {
+                m.type_defs.push(TypeDef {
                     name,
                     fields: Vec::new(),
                     native: None,
@@ -342,9 +342,9 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
         };
         let kw = c.ident()?;
         match kw.as_str() {
-            "record" => {
+            "type" => {
                 let name = c.ident()?;
-                let id = m.record_by_name(&name).expect("registered");
+                let id = m.type_by_name(&name).expect("registered");
                 c.expect_p('{')?;
                 let mut fields = Vec::new();
                 while !c.eat_p('}') {
@@ -354,7 +354,7 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
                     fields.push((fname, ty));
                     c.eat_p(',');
                 }
-                m.records[id.index()].fields = fields;
+                m.type_defs[id.index()].fields = fields;
             }
             "alt" => {
                 let name = c.ident()?;
@@ -548,7 +548,7 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
             }
             "entry" => entry_name = Some((c.at()?, *n)),
             "vtable" => vtable_items.push((*n, t.clone())),
-            "record" | "alt" | "iface" => {}
+            "type" | "alt" | "iface" => {}
             o => return c.err(format!("unknown item '{o}'")),
         }
     }
@@ -753,8 +753,8 @@ fn parse_ty(c: &mut Cur, m: &mut Module) -> Result<Ty, ParseError> {
                     c.eat_p(',');
                 }
                 m.types.obj(&name, args)
-            } else if let Some(r) = m.record_by_name(&name) {
-                m.types.rec(r)
+            } else if let Some(r) = m.type_by_name(&name) {
+                m.types.named(r)
             } else if let Some(a) = m.alt_by_name(&name) {
                 m.types.alt(a)
             } else {
@@ -1149,24 +1149,24 @@ fn parse_line(
             line: c.line,
             message: "bad index".into(),
         })?),
-        ImmKind::Rec => {
+        ImmKind::Type => {
             let n = c.ident()?;
-            Imm::Rec(m.record_by_name(&n).ok_or_else(|| ParseError {
+            Imm::Type(m.type_by_name(&n).ok_or_else(|| ParseError {
                 line: c.line,
-                message: format!("unknown record {n}"),
+                message: format!("unknown type {n}"),
             })?)
         }
         ImmKind::Field => {
             let n = c.ident()?;
             let (r, fld) = n.split_once('.').ok_or_else(|| ParseError {
                 line: c.line,
-                message: "expected Record.field".into(),
+                message: "expected Type.field".into(),
             })?;
-            let rid = m.record_by_name(r).ok_or_else(|| ParseError {
+            let rid = m.type_by_name(r).ok_or_else(|| ParseError {
                 line: c.line,
-                message: format!("unknown record {r}"),
+                message: format!("unknown type {r}"),
             })?;
-            let fi = m.records[rid.index()]
+            let fi = m.type_defs[rid.index()]
                 .fields
                 .iter()
                 .position(|x| x.0 == fld)
@@ -1256,16 +1256,16 @@ fn parse_line(
             }
             Imm::AltMask(aid, ci as u32, mask)
         }
-        ImmKind::RecMask => {
+        ImmKind::TypeMask => {
             let n = c.ident()?;
             let parts: Vec<&str> = n.split('.').collect();
-            let rid = m.record_by_name(parts[0]).ok_or_else(|| ParseError {
+            let rid = m.type_by_name(parts[0]).ok_or_else(|| ParseError {
                 line: c.line,
-                message: format!("unknown record {}", parts[0]),
+                message: format!("unknown type {}", parts[0]),
             })?;
             let mut mask = 0u32;
             for name in &parts[1..] {
-                let fi = m.records[rid.index()]
+                let fi = m.type_defs[rid.index()]
                     .fields
                     .iter()
                     .position(|x| x.0 == *name)
@@ -1275,7 +1275,7 @@ fn parse_line(
                     })?;
                 mask |= 1 << fi;
             }
-            Imm::RecMask(rid, mask)
+            Imm::TypeMask(rid, mask)
         }
         ImmKind::Method => {
             let n = c.ident()?;
