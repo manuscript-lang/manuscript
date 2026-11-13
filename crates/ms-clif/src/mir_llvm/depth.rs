@@ -127,7 +127,7 @@ pub(super) fn ret_abi(
 /// result pointer if any, then each parameter as scalars or a pointer), calls the function, and
 /// writes the scalar results after them.
 pub(super) fn shim(types: &Types, lay: &Layouts, f: &Func, sym: &str, dbg: usize) -> Emitted {
-    let sig = Signature::of(types, lay, &f.params, f.ret);
+    let sig = Signature::of(types, lay, &f.params, &f.noalias, f.ret);
     let mut b = FnBuilder::new(types, Some(dbg));
     b.label("entry");
     let block = b.int_to_ptr(&Val::new("%a0", LTy::I64));

@@ -227,8 +227,15 @@ fn range_attr(lay: &Layouts, ty: Ty, j: usize) -> &'static str {
 }
 
 impl Signature {
-    /// The signature of a function with these MIR parameters and result.
-    pub fn of(types: &Types, lay: &Layouts, params: &[Param], ret_ty: Ty) -> Signature {
+    /// The signature of a function with these MIR parameters and result. `exclusive` lists the
+    /// pointer parameters nothing else the function reaches overlaps (`Func::noalias`).
+    pub fn of(
+        types: &Types,
+        lay: &Layouts,
+        params: &[Param],
+        exclusive: &[u32],
+        ret_ty: Ty,
+    ) -> Signature {
         let result = ret(lay, ret_ty);
         let mut formals = Vec::new();
         let ret = match &result {
@@ -258,6 +265,9 @@ impl Signature {
                     for (j, r) in regs.iter().enumerate() {
                         let mut f = reg_formal(*r, format!("%a{i}_{j}"));
                         f.ty.push_str(range_attr(lay, p.ty, j));
+                        if *r == Reg::Ptr && exclusive.contains(&(i as u32)) {
+                            f.ty.push_str(" noalias");
+                        }
                         formals.push(f);
                     }
                 }

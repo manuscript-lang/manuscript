@@ -106,7 +106,7 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     let attrs = pure_attrs(m, lay, cx.native, c.index(), &mut cx.memo).unwrap_or("");
     let pure = !attrs.is_empty();
     if cx.native.contains(&c.index()) {
-        let sig = Signature::of(b.types(), lay, &callee.params, callee.ret);
+        let sig = Signature::of(b.types(), lay, &callee.params, &callee.noalias, callee.ret);
         // A result larger than two registers comes back through a slot the caller owns.
         let slot = match sig.result {
             Ret::Sret(_) => Some(records::result_slot(b, lay, callee.ret, &out)),
