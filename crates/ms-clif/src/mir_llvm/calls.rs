@@ -9,7 +9,7 @@ use super::attrs::pure_attrs;
 use super::{Area, Cx, Vals, leaves, ret_attr, ret_ty, supported_ty};
 use crate::layout::{Layouts, Leaf, mem_layout};
 use crate::llvm_build::{FnBuilder, Ty as LTy, Types, Val};
-use ms_mir::ir::{ExternDef, Func, Imm, Inst, Module, Op};
+use ms_mir::ir::{ExternDef, Func, Imm, Inst, Mode, Module, Op};
 use ms_mir::types::{Ty, TyKind};
 
 pub(super) const AREA: Area = Area {
@@ -88,50 +88,120 @@ pub(super) fn mem_ty(l: Leaf) -> LTy {
     }
 }
 
-/// Stores the leaves `vs` into the object at `base`, from byte `at`, as `mem_layout` places them.
-pub(super) fn store_leaves(b: &mut FnBuilder, base: &Val, at: u64, leaves: &[Leaf], vs: &[Val]) {
-    let lay = mem_layout(leaves);
-    for ((l, v), off) in leaves.iter().zip(vs).zip(&lay.offsets) {
-        let p = b.gep_bytes(base, at + u64::from(*off));
-        let narrow = match l {
-            Leaf::N8 | Leaf::U8 => Some(LTy::I8),
-            Leaf::N16 | Leaf::U16 => Some(LTy::I16),
-            Leaf::N32 | Leaf::U32 => Some(LTy::I32),
-            _ => None,
-        };
-        let v = match (narrow, l) {
-            (Some(t), _) => b.trunc(v, t),
-            (None, Leaf::F32) => b.fptrunc(v, LTy::F32),
-            (None, _) => v.clone(),
-        };
-        b.store(&v, &p, u64::from(l.size()));
-    }
+/// A struct that holds values in memory: some header fields, then parts (a closure's captures, one
+/// spilled argument) whose leaves sit where `mem_layout` puts them, with the padding spelled out.
+/// Accesses are `getelementptr` on the struct and typed loads and stores, so LLVM sees fields
+/// instead of byte offsets. The offsets agree with the runtime and the translation by construction
+/// (`debug_assert`ed against the size `mem_layout` gives).
+pub(super) struct MemObj {
+    pub ty: LTy,
+    /// The struct field of each leaf, per part.
+    fields: Vec<Vec<usize>>,
+    /// Size in bytes.
+    pub size: u64,
 }
 
-/// Loads the leaves of a value from the object at `base`, from byte `at`, into the registers
-/// `dst` (each takes the name reserved for it).
-pub(super) fn load_leaves(b: &mut FnBuilder, base: &Val, at: u64, leaves: &[Leaf], dst: &[Val]) {
-    let lay = mem_layout(leaves);
-    for ((l, d), off) in leaves.iter().zip(dst).zip(&lay.offsets) {
-        let p = b.gep_bytes(base, at + u64::from(*off));
-        match l {
-            Leaf::I64 | Leaf::F64 | Leaf::I8 => {
-                b.name_next(d);
-                b.load(&mem_ty(*l), &p, u64::from(l.size()));
+impl MemObj {
+    /// `header` types come first; each part starts at a multiple of its alignment, and the whole
+    /// is rounded up to `round` bytes.
+    pub(super) fn new(header: &[LTy], parts: &[Vec<Leaf>], round: u64) -> MemObj {
+        let types = crate::llvm_build::Types::default();
+        let mut fields: Vec<LTy> = header.to_vec();
+        let mut off: u64 = header.iter().map(|t| types.size_align(t).0).sum();
+        let mut index = Vec::new();
+        let pad = |fields: &mut Vec<LTy>, n: u64| {
+            if n > 0 {
+                fields.push(LTy::Array(Box::new(LTy::I8), n));
             }
-            Leaf::N8 | Leaf::N16 | Leaf::N32 | Leaf::U8 | Leaf::U16 | Leaf::U32 => {
-                let v = b.load(&mem_ty(*l), &p, u64::from(l.size()));
-                b.name_next(d);
-                if matches!(l, Leaf::N8 | Leaf::N16 | Leaf::N32) {
-                    b.sext(&v, LTy::I64);
-                } else {
-                    b.zext(&v, LTy::I64);
+        };
+        for leaves in parts {
+            let l = mem_layout(leaves);
+            let start = off.next_multiple_of(u64::from(l.align));
+            pad(&mut fields, start - off);
+            off = start;
+            let mut own = Vec::new();
+            for (leaf, at) in leaves.iter().zip(&l.offsets) {
+                let at = start + u64::from(*at);
+                pad(&mut fields, at - off);
+                own.push(fields.len());
+                fields.push(mem_ty(*leaf));
+                off = at + u64::from(leaf.size());
+            }
+            let end = start + u64::from(l.size);
+            pad(&mut fields, end - off);
+            off = end;
+            index.push(own);
+        }
+        let size = off.next_multiple_of(round.max(1));
+        pad(&mut fields, size - off);
+        let ty = LTy::Tuple(fields);
+        debug_assert_eq!(types.size_align(&ty).0, size);
+        MemObj {
+            ty,
+            fields: index,
+            size,
+        }
+    }
+
+    /// The address of capture `part`'s first leaf.
+    pub(super) fn field_of(&self, b: &mut FnBuilder, base: &Val, part: usize) -> Val {
+        b.field_ptr(&self.ty, base, self.fields[part][0])
+    }
+
+    /// Stores the register leaves `vs` of part `part` into the object at `base`.
+    pub(super) fn store(
+        &self,
+        b: &mut FnBuilder,
+        base: &Val,
+        part: usize,
+        leaves: &[Leaf],
+        vs: &[Val],
+    ) {
+        for ((l, v), idx) in leaves.iter().zip(vs).zip(&self.fields[part]) {
+            let p = b.field_ptr(&self.ty, base, *idx);
+            let v = match l {
+                Leaf::N8 | Leaf::U8 | Leaf::N16 | Leaf::U16 | Leaf::N32 | Leaf::U32 => {
+                    b.trunc(v, mem_ty(*l))
                 }
-            }
-            Leaf::F32 => {
-                let v = b.load(&LTy::F32, &p, 4);
-                b.name_next(d);
-                b.fpext(&v, LTy::F64);
+                Leaf::F32 => b.fptrunc(v, LTy::F32),
+                _ => v.clone(),
+            };
+            b.store(&v, &p, u64::from(l.size()));
+        }
+    }
+
+    /// Loads part `part` from the object at `base` into the registers `dst` (each takes the name
+    /// reserved for it).
+    pub(super) fn load(
+        &self,
+        b: &mut FnBuilder,
+        base: &Val,
+        part: usize,
+        leaves: &[Leaf],
+        dst: &[Val],
+    ) {
+        for ((l, d), idx) in leaves.iter().zip(dst).zip(&self.fields[part]) {
+            let p = b.field_ptr(&self.ty, base, *idx);
+            let align = u64::from(l.size());
+            match l {
+                Leaf::I64 | Leaf::F64 | Leaf::I8 => {
+                    b.name_next(d);
+                    b.load(&mem_ty(*l), &p, align);
+                }
+                Leaf::N8 | Leaf::N16 | Leaf::N32 | Leaf::U8 | Leaf::U16 | Leaf::U32 => {
+                    let v = b.load(&mem_ty(*l), &p, align);
+                    b.name_next(d);
+                    if matches!(l, Leaf::N8 | Leaf::N16 | Leaf::N32) {
+                        b.sext(&v, LTy::I64);
+                    } else {
+                        b.zext(&v, LTy::I64);
+                    }
+                }
+                Leaf::F32 => {
+                    let v = b.load(&LTy::F32, &p, 4);
+                    b.name_next(d);
+                    b.fpext(&v, LTy::F64);
+                }
             }
         }
     }
@@ -249,11 +319,29 @@ fn call_extern(
                 args.push((v.clone(), at));
             }
         } else {
+            // The callee gets the address of a copy; it only reads a borrowed one.
             let leaves = lay.leaves(p.ty);
-            let slot = spill(b, &leaves, vs);
-            temps.push((slot.clone(), u64::from(mem_layout(&leaves).size)));
-            formals.push((LTy::I64, ""));
-            args.push((b.ptrtoint(&slot), ""));
+            let obj = MemObj::new(&[], std::slice::from_ref(&leaves), 1);
+            let slot = b.alloca(&obj.ty);
+            b.lifetime_start(&slot, obj.size);
+            obj.store(b, &slot, 0, &leaves, vs);
+            temps.push((slot.clone(), obj.size));
+            formals.push((
+                LTy::Ptr,
+                if p.mode == Mode::Borrow {
+                    BORROWED
+                } else {
+                    KEPT
+                },
+            ));
+            args.push((
+                slot,
+                if p.mode == Mode::Borrow {
+                    BORROWED
+                } else {
+                    KEPT
+                },
+            ));
         }
     }
     let direct_ret = passes_directly(lay, def.ret);
@@ -264,13 +352,14 @@ fn call_extern(
     };
     let mut result_slot = None;
     if !direct_ret {
+        // The result comes back through a hidden last argument, a slot the callee fills.
         let leaves = lay.leaves(def.ret);
-        let size = u64::from(mem_layout(&leaves).size);
-        let slot = b.alloca(&LTy::Array(Box::new(LTy::I64), size.div_ceil(8).max(1)));
-        b.lifetime_start(&slot, size);
-        formals.push((LTy::I64, ""));
-        args.push((b.ptrtoint(&slot), ""));
-        result_slot = Some((slot, leaves, size));
+        let obj = MemObj::new(&[], std::slice::from_ref(&leaves), 1);
+        let slot = b.alloca(&obj.ty);
+        b.lifetime_start(&slot, obj.size);
+        formals.push((LTy::Ptr, OUT));
+        args.push((slot.clone(), OUT));
+        result_slot = Some((slot, leaves, obj));
     }
     let attrs = crate::llvm_ir::runtime_attrs(&def.name, def.reads);
     let ret = ret_of(&rets);
@@ -309,14 +398,20 @@ fn call_extern(
             if direct_ret { out } else { &[] },
         );
     }
-    if let Some((slot, leaves, size)) = result_slot {
-        load_leaves(b, &slot, 0, &leaves, out);
-        b.lifetime_end(&slot, size);
+    if let Some((slot, leaves, obj)) = result_slot {
+        obj.load(b, &slot, 0, &leaves, out);
+        b.lifetime_end(&slot, obj.size);
     }
     for (slot, size) in temps {
         b.lifetime_end(&slot, size);
     }
 }
+
+/// Attributes of a pointer argument: a copy the callee only reads and does not keep, one it may
+/// take over, and the slot it fills.
+const BORROWED: &str = " readonly captures(none)";
+const KEPT: &str = " captures(none)";
+const OUT: &str = " noalias writeonly captures(none)";
 
 fn param_text(formals: &[(LTy, &str)]) -> String {
     let t = crate::llvm_build::Types::default();
@@ -325,15 +420,6 @@ fn param_text(formals: &[(LTy, &str)]) -> String {
         .map(|(ty, a)| format!("{}{a}", t.text(ty)))
         .collect::<Vec<_>>()
         .join(", ")
-}
-
-/// A stack copy of the leaves `vs`, live from here until `lifetime_end`.
-fn spill(b: &mut FnBuilder, leaves: &[Leaf], vs: &[Val]) -> Val {
-    let size = u64::from(mem_layout(leaves).size);
-    let slot = b.alloca(&LTy::Array(Box::new(LTy::I64), size.div_ceil(8).max(1)));
-    b.lifetime_start(&slot, size);
-    store_leaves(b, &slot, 0, leaves, vs);
-    slot
 }
 
 fn direct_call(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {

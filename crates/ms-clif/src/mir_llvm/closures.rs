@@ -6,12 +6,11 @@
 //! code pointer from the object and passes the object as the first argument.
 
 use super::calls::{
-    Callee, call_into, declare_function, declare_text, leaf_args, leaf_list, load_leaves,
-    store_leaves,
+    Callee, MemObj, call_into, declare_function, declare_text, leaf_args, leaf_list,
 };
 use super::{Area, Cx, Vals};
-use crate::layout::{Layouts, Leaf, mem_layout};
-use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Val};
+use crate::layout::{Layouts, Leaf};
+use crate::llvm_build::{FnBuilder, Ty as LTy, Val};
 use ms_mir::ir::{Imm, Inst, Op};
 use ms_mir::types::{Ty, TyKind};
 
@@ -41,14 +40,15 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
             let ms_mir::ir::FuncKind::Closure { captures } = &f.kind else {
                 unreachable!("closure.cap outside a closure")
             };
-            let (off, leaves) = capture_layout(lay, captures, i as usize);
-            let env = &vals[&inst.args[0].index()][0];
+            let (obj, parts) = object(lay, captures);
+            let i = i as usize;
+            let base = b.inttoptr(&vals[&inst.args[0].index()][0]);
             if inst.op == Op::ClosureCapAddr {
+                let at = obj.field_of(&mut *b, &base, i);
                 b.name_next(&out[0]);
-                b.bin(Bin::Add, env, &Val::int(off as i64));
+                b.ptrtoint(&at);
             } else {
-                let base = b.inttoptr(env);
-                load_leaves(b, &base, off, &leaves, &out);
+                obj.load(b, &base, i, &parts[i], &out);
             }
         }
         (Op::FuncAddr, Imm::Func(c)) => {
@@ -64,7 +64,9 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
             };
             let clo = vals[&inst.args[0].index()][0].clone();
             let obj = b.inttoptr(&clo);
-            let at = b.gep_bytes(&obj, u64::from(crate::cg::CLOSURE_CODE as u32));
+            // The code word is the third field of the object header.
+            let header = LTy::Tuple(vec![LTy::Ptr; 3]);
+            let at = b.field_ptr(&header, &obj, 2);
             let code = b.load(&LTy::Ptr, &at, 8);
             let mut args = vec![(clo, "")];
             args.extend(leaf_args(cx, vals, inst, 1, &ps));
@@ -74,29 +76,14 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     }
 }
 
-/// The byte offset and leaves of capture `i` in a closure with `captures`, and the object size.
-fn capture_layout(lay: &Layouts, captures: &[Ty], i: usize) -> (u64, Vec<Leaf>) {
-    let mut off = u64::from(crate::cg::CLOSURE_CAPTURES);
-    for (k, c) in captures.iter().enumerate() {
-        let leaves = lay.leaves(*c);
-        let l = mem_layout(&leaves);
-        off = off.next_multiple_of(u64::from(l.align));
-        if k == i {
-            return (off, leaves);
-        }
-        off += u64::from(l.size);
-    }
-    unreachable!("capture {i} of {}", captures.len())
-}
-
-/// The size of a closure object with `captures`, rounded to a word.
-fn object_size(lay: &Layouts, captures: &[Ty]) -> u64 {
-    let mut off = u64::from(crate::cg::CLOSURE_CAPTURES);
-    for c in captures {
-        let l = mem_layout(&lay.leaves(*c));
-        off = off.next_multiple_of(u64::from(l.align)) + u64::from(l.size);
-    }
-    off.next_multiple_of(8)
+/// The closure object of a function with `captures`: the clone, drop and code words, then each
+/// capture's leaves, in a struct that LLVM can address by field.
+fn object(lay: &Layouts, captures: &[Ty]) -> (MemObj, Vec<Vec<Leaf>>) {
+    let parts: Vec<Vec<Leaf>> = captures.iter().map(|c| lay.leaves(*c)).collect();
+    (
+        MemObj::new(&[LTy::Ptr, LTy::Ptr, LTy::Ptr], &parts, 8),
+        parts,
+    )
 }
 
 fn closure_new(cx: &mut Cx, inst: &Inst, vals: &Vals, c: usize, out: &[Val], b: &mut FnBuilder) {
@@ -106,11 +93,11 @@ fn closure_new(cx: &mut Cx, inst: &Inst, vals: &Vals, c: usize, out: &[Val], b: 
         ms_mir::ir::FuncKind::Closure { captures } => captures.clone(),
         _ => Vec::new(),
     };
-    let size = object_size(lay, &captures);
+    let (obj, parts) = object(lay, &captures);
     let framed = inst.res.is_some_and(|r| plan.framed.contains(&r.index()));
-    // The object is the address of a frame slot, or a fresh heap block.
-    let obj = if framed {
-        b.alloca(&LTy::Array(Box::new(LTy::I64), size / 8))
+    // The object is a frame slot, or a fresh heap block.
+    let ptr = if framed {
+        b.alloca(&obj.ty)
     } else {
         cx.decls.push((
             "msrt_alloc".into(),
@@ -120,7 +107,7 @@ fn closure_new(cx: &mut Cx, inst: &Inst, vals: &Vals, c: usize, out: &[Val], b: 
             &LTy::Ptr,
             "noalias align 16 ",
             "msrt_alloc",
-            &[(Val::int(size.max(1) as i64), "")],
+            &[(Val::int(obj.size.max(1) as i64), "")],
         )
         .expect("a pointer")
     };
@@ -135,19 +122,13 @@ fn closure_new(cx: &mut Cx, inst: &Inst, vals: &Vals, c: usize, out: &[Val], b: 
     ));
     let code = symbol_of(c);
     declare_function(cx, &code, callee);
-    let header = [
-        (0, syms.clone.as_str()),
-        (8, syms.drop.as_str()),
-        (u64::from(crate::cg::CLOSURE_CODE as u32), code.as_str()),
-    ];
-    for (at, sym) in header {
-        let p = b.gep_bytes(&obj, at);
+    for (field, sym) in [&syms.clone, &syms.drop, &code].into_iter().enumerate() {
+        let p = b.field_ptr(&obj.ty, &ptr, field);
         b.store(&Val::new(format!("@\"{sym}\""), LTy::Ptr), &p, 8);
     }
-    for (i, _) in captures.iter().enumerate() {
-        let (off, leaves) = capture_layout(lay, &captures, i);
-        store_leaves(b, &obj, off, &leaves, &vals[&inst.args[i].index()]);
+    for (i, leaves) in parts.iter().enumerate() {
+        obj.store(b, &ptr, i, leaves, &vals[&inst.args[i].index()]);
     }
     b.name_next(&out[0]);
-    b.ptrtoint(&obj);
+    b.ptrtoint(&ptr);
 }

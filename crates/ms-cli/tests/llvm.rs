@@ -569,7 +569,9 @@ fn main() Int:
     }
     // A runtime call whose result is not a register passes the address of a stack slot.
     assert!(
-        new_ir.contains("call void @\"msrt_int_to_string\"(i64 %a0_0, i64 %v"),
+        new_ir.contains(
+            "call void @\"msrt_int_to_string\"(i64 %a0_0, ptr noalias writeonly captures(none) %v"
+        ),
         "no direct runtime call with a result slot"
     );
 }
