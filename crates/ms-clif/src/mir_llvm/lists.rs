@@ -678,13 +678,9 @@ pub(super) fn consts(m: &Module, lay: &Layouts, f: &Func) -> Vec<(String, String
                 let e = m
                     .seq_elem(f.ty(inst.res.expect("list result")))
                     .expect("a list");
-                let width = lay.leaves(e)[0].size() as usize;
-                let raw = &m.list_consts[i as usize];
                 (
                     format!("ms.direct.list.{i}"),
-                    raw.iter()
-                        .flat_map(|v| v.to_le_bytes()[..width].to_vec())
-                        .collect(),
+                    lay.leaves(e)[0].const_bytes(&m.list_consts[i as usize]),
                 )
             };
             if !bytes.is_empty() && !out.iter().any(|(n, _)| *n == name) {
@@ -726,8 +722,8 @@ pub(super) fn consts(m: &Module, lay: &Layouts, f: &Func) -> Vec<(String, String
 /// integers, or a record held in memory.
 fn plain_elem(lay: &Layouts, e: Ty) -> bool {
     (super::records::is_mem(lay, e) && super::records::shape_ok(lay, e))
-        || lay
-            .leaves(e)
-            .iter()
-            .all(|l| matches!(l, Leaf::I64 | Leaf::F64 | Leaf::I8) || super::records::is_narrow(*l))
+        || lay.leaves(e).iter().all(|l| {
+            matches!(l, Leaf::I64 | Leaf::F64 | Leaf::I8 | Leaf::F32)
+                || super::records::is_narrow(*l)
+        })
 }

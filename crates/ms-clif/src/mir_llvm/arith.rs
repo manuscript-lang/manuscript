@@ -4,7 +4,7 @@ use super::{Area, Cx, Vals, faults};
 use crate::layout::Layouts;
 use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Val};
 use ms_mir::ir::{Cc, Func, Imm, Inst, Module, Op};
-use ms_mir::types::{Ty, TyKind};
+use ms_mir::types::TyKind;
 
 pub(super) const AREA: Area = Area {
     handles,
@@ -22,6 +22,7 @@ fn ty_ok(k: &TyKind) -> bool {
         TyKind::Unit
             | TyKind::Int
             | TyKind::Float
+            | TyKind::Float32
             | TyKind::Bool
             | TyKind::Int8
             | TyKind::Int16
@@ -171,11 +172,12 @@ fn pre(
     b: &mut FnBuilder,
 ) -> Option<Vec<Val>> {
     match (inst.op, inst.imm) {
-        // A conversion to anything but `Float32` or an integer keeps the register.
-        (Op::Conv, _)
-            if inst
-                .res
-                .is_some_and(|r| f.ty(r) != Ty::FLOAT32 && !conv_ints(m, f, inst)) =>
+        // A conversion between floats of one width, or any `Float32` rounding of a `float`, is
+        // the register itself; `emit` widens or narrows the others.
+        (Op::Conv | Op::F32Round, _)
+            if !conv_ints(m, f, inst)
+                && super::held_leaves(lay, f.ty(inst.args[0]))
+                    == super::held_leaves(lay, f.ty(inst.res?)) =>
         {
             Some(vals[&inst.args[0].index()].clone())
         }
@@ -193,7 +195,17 @@ fn pre(
             let held = super::held_leaves(lay, f.ty(inst.res?));
             Some(vec![lit(&held[0], v)])
         }
-        (Op::FConst, Imm::Float(bits)) => Some(vec![Val::double(bits)]),
+        // A `Float32` constant is written as a `float`; its `double` text is rounded to binary32
+        // first, which LLVM requires of the hex form.
+        (Op::FConst, Imm::Float(bits)) => {
+            let held = super::held_leaves(lay, f.ty(inst.res?));
+            let bits = if held[0] == LTy::F32 {
+                f64::from(f64::from_bits(bits) as f32).to_bits()
+            } else {
+                bits
+            };
+            Some(vec![Val::new(Val::double(bits).text, held[0].clone())])
+        }
         (Op::BConst, Imm::Bool(v)) => Some(vec![Val::bool(v)]),
         _ => None,
     }
@@ -248,7 +260,7 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     if checked(inst.op) {
         return checked_op(cx, inst, vals, b, &out);
     }
-    if inst.op == Op::Conv && out.len() == 1 && out[0].text == arg(0).text {
+    if matches!(inst.op, Op::Conv | Op::F32Round) && out.len() == 1 && out[0].text == arg(0).text {
         return;
     }
     let int_conv = inst.op == Op::Conv && conv_ints(cx.lay.m, cx.f, inst);
@@ -319,7 +331,7 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         Op::I2F => {
             let x = widen_int(cx, b, inst, &arg(0));
             b.name_next(&out[0]);
-            drop(b.sitofp(&x))
+            drop(b.sitofp(&x, out[0].ty.clone()))
         }
         Op::SDiv => drop(b.bin(Bin::SDiv, &arg(0), &arg(1))),
         Op::SRem => drop(b.bin(Bin::SRem, &arg(0), &arg(1))),
@@ -471,29 +483,39 @@ fn bit_or_float_op(
         }
         Op::FSqrt | Op::FAbs | Op::FFloor | Op::FCeil | Op::FTrunc => {
             name(b, out, 0);
-            let f = match inst.op {
-                Op::FSqrt => "llvm.sqrt.f64",
-                Op::FAbs => "llvm.fabs.f64",
-                Op::FFloor => "llvm.floor.f64",
-                Op::FCeil => "llvm.ceil.f64",
-                _ => "llvm.trunc.f64",
+            let (op, w) = match inst.op {
+                Op::FSqrt => ("sqrt", &arg(0).ty),
+                Op::FAbs => ("fabs", &arg(0).ty),
+                Op::FFloor => ("floor", &arg(0).ty),
+                Op::FCeil => ("ceil", &arg(0).ty),
+                _ => ("trunc", &arg(0).ty),
             };
-            intrinsic(b, LTy::F64, f, &[arg(0)]);
+            let f = format!("llvm.{op}.{}", if *w == LTy::F32 { "f32" } else { "f64" });
+            intrinsic(b, w.clone(), &f, &[arg(0)]);
         }
+        // A `Float32` is a `float` here, so only a change of width writes anything.
         Op::F32Round | Op::Conv => {
-            let narrow = b.fptrunc(&arg(0));
             name(b, out, 0);
-            b.fpext(&narrow);
+            if out[0].ty == LTy::F32 {
+                b.fptrunc(&arg(0));
+            } else {
+                b.fpext(&arg(0));
+            }
         }
         Op::F2IOpt => {
             // Some(v) when the float is in range, else none with the saturated value as filler.
+            let x = if arg(0).ty == LTy::F32 {
+                b.fpext(&arg(0))
+            } else {
+                arg(0)
+            };
             let (lo, hi) = (-9223372036854775808.0_f64, 9223372036854775808.0_f64);
-            let ge = b.fcmp("oge", &arg(0), &Val::double(lo.to_bits()));
-            let lt = b.fcmp("olt", &arg(0), &Val::double(hi.to_bits()));
+            let ge = b.fcmp("oge", &x, &Val::double(lo.to_bits()));
+            let lt = b.fcmp("olt", &x, &Val::double(hi.to_bits()));
             name(b, out, 0);
             b.bin(Bin::And, &ge, &lt);
             name(b, out, 1);
-            intrinsic(b, LTy::I64, "llvm.fptosi.sat.i64.f64", &[arg(0)]);
+            intrinsic(b, LTy::I64, "llvm.fptosi.sat.i64.f64", &[x]);
         }
         Op::IAddOverflow | Op::IMulOverflow => {
             let with = if inst.op == Op::IAddOverflow {

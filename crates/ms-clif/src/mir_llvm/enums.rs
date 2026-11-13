@@ -101,6 +101,7 @@ fn zero(t: &LTy) -> Val {
         LTy::I8 => Val::byte(0),
         LTy::I16 | LTy::I32 => Val::new("0", t.clone()),
         LTy::F64 => Val::double(0),
+        LTy::F32 => Val::new("0.0", LTy::F32),
         LTy::Ptr => Val::new("null", LTy::Ptr),
         _ => Val::int(0),
     }
@@ -118,6 +119,8 @@ fn convert(b: &mut FnBuilder, v: &Val, to: &LTy, signed: Option<bool>) -> Val {
         (LTy::I8 | LTy::I16 | LTy::I32, LTy::I64) if signed == Some(true) => b.sext(v, LTy::I64),
         (LTy::I8 | LTy::I16 | LTy::I32, LTy::I64) => b.zext(v, LTy::I64),
         (LTy::I64, LTy::I8 | LTy::I16 | LTy::I32) => b.trunc(v, to.clone()),
+        (LTy::F32, LTy::F64) => b.fpext(v),
+        (LTy::F64, LTy::F32) => b.fptrunc(v),
         (a, t) => unreachable!("no conversion from {a:?} to {t:?}"),
     }
 }

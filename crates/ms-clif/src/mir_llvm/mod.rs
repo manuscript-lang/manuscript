@@ -90,8 +90,9 @@ pub struct Plan {
     pub globals: HashMap<usize, String>,
 }
 
-/// LLVM type and parameter attribute of one register leaf. `I8` leaves (`Bool`, flags) are
-/// zero-extended across calls, like the Cranelift ABI; narrow integers live in `i64` registers.
+/// LLVM type and parameter attribute of one register leaf in the leaf calling convention, which
+/// Cranelift shares: `I8` leaves (`Bool`, flags) are zero-extended across calls, narrow integers
+/// are `i64` and a `Float32` is a `double`. Inside a function they are held as their own type.
 fn leaf(l: Leaf) -> (LTy, &'static str) {
     match l {
         Leaf::F64 | Leaf::F32 => (LTy::F64, ""),
@@ -163,7 +164,7 @@ fn held_leaves(lay: &Layouts, ty: Ty) -> Vec<LTy> {
         .leaves(ty)
         .into_iter()
         .map(|l| {
-            if records::is_narrow(l) {
+            if records::is_narrow(l) || l == Leaf::F32 {
                 mem_leaf(l)
             } else {
                 leaf(l).0
@@ -200,6 +201,7 @@ fn mem_leaf(l: Leaf) -> LTy {
         Leaf::N8 | Leaf::U8 => LTy::I8,
         Leaf::N16 | Leaf::U16 => LTy::I16,
         Leaf::N32 | Leaf::U32 => LTy::I32,
+        Leaf::F32 => LTy::F32,
         l => leaf(l).0,
     }
 }
