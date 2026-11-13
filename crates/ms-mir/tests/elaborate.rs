@@ -693,6 +693,53 @@ b3():
     }
 }
 
+/// A slot owner handed on to the enclosing scope (a pending temporary that outlives the scope it
+/// was made in): the exit before the hand-over uses the entry registered first, the scope end
+/// after it the entry registered again, and the value closes once.
+#[test]
+fn a_slot_owner_handed_to_the_enclosing_scope_is_closed_once_on_every_path() {
+    for (cond, want) in [(1, "~\n7\n"), (0, "x\n~\n7\n")] {
+        let (_, out, text) = elaborate_and_run_text(&format!(
+            r#"fn @shut(%p: ptr) -> unit {{
+b0:
+  %r: list<int> = load list<int> %p
+  %z: int = iconst 0
+  %id: int = list.get %r, %z
+  %u: unit = call.rt @msrt_print_int (%id)
+  ret %u
+}}
+fn @main() -> int {{
+b0:
+  scope.begin 1 0
+  scope.begin 2 1
+  %n: int = iconst 7
+  %a: list<int> = call @mk (%n)
+  %s: ptr = slot list<int>
+  put %s, %a
+  scope.own 2 4 %s
+  %k: int = iconst {cond}
+  %one: int = iconst 1
+  %c: bool = icmp.eq %k, %one
+  br_if %c, b1(), b2()
+b1():
+  scope.end 2 0
+  scope.end 1 0
+  %e: int = iconst 1
+  ret %e
+b2():
+  scope.disown %s
+  scope.end 2 0
+  scope.own 1 4 %s
+  scope.end 1 0
+  %r: int = iconst 0
+  ret %r
+}}
+"#
+        ));
+        assert_eq!(out, want, "cond {cond}\n{text}");
+    }
+}
+
 /// A memory-slot owner whose close returns a `Result`: the close runs shielded, its error becomes
 /// the function's return value through the function's close exit, and a close that succeeds
 /// leaves the normal return alone.

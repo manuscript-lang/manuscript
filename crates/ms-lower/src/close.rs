@@ -26,7 +26,8 @@ pub(crate) enum CloseKind {
 #[derive(Clone)]
 pub(crate) struct ResourceTemp {
     slot: Value,
-    handle: Value,
+    /// The close function the pass runs on the slot (`scope.own` kind).
+    owner_kind: u32,
     kind: CloseKind,
 }
 
@@ -409,19 +410,32 @@ impl FnLower<'_> {
             .emit(Op::Slot, &[], Imm::Ty(ty), Some(MTy::PTR))
             .expect("resource temporary slot");
         self.move_into(slot, v);
-        let thunk = self.close_thunk(&kind, ty, true);
-        let handle = self
-            .b
-            .emit(Op::CleanupPush, &[slot], Imm::Func(thunk), Some(MTy::INT))
-            .expect("resource temporary cleanup");
+        let thunk = self.close_thunk_as(&kind, ty, true, true);
+        let owner_kind = thunk.index() as u32 + 2;
+        let scope = self.own_raw_value(slot, owner_kind);
         let key = self
             .b
             .emit(Op::Load, &[slot], Imm::Ty(ty), Some(ty))
             .expect("resource temporary view");
-        self.resource_temps
-            .insert(key, ResourceTemp { slot, handle, kind });
+        self.resource_temps.insert(
+            key,
+            ResourceTemp {
+                slot,
+                owner_kind,
+                kind,
+            },
+        );
+        self.pass_temps.insert(key, scope);
         self.temps.push(key);
         key
+    }
+
+    /// What the pass owns for the pending temporary `t`, and with which close: a resource's slot,
+    /// or the value itself.
+    pub(crate) fn temp_owner(&self, t: Value) -> (Value, u32) {
+        self.resource_temps
+            .get(&t)
+            .map_or((t, 0), |r| (r.slot, r.owner_kind))
     }
 
     /// The authoritative slot for an intact pending resource.
@@ -431,8 +445,6 @@ impl FnLower<'_> {
 
     /// A leaf operation has consumed the slot on success. Nothing remains to take or drop.
     pub(crate) fn retire_consumed_resource_temp(&mut self, key: Value) {
-        let handle = self.resource_temps[&key].handle;
-        let _ = self.call_runtime("msrt_cleanup_remove", &[handle], MTy::UNIT);
         self.unhold_temp(key);
     }
 
@@ -441,8 +453,10 @@ impl FnLower<'_> {
     /// branch must not change the continuing path, but each runtime path consumes the handle once.
     pub(crate) fn take_resource_temp(&mut self, key: Value) -> (Value, CloseKind) {
         let owner = self.resource_temps[&key].clone();
-        let _ = self.call_runtime("msrt_cleanup_remove", &[owner.handle], MTy::UNIT);
         let v = self.move_out(owner.slot, self.ty_of(key));
+        if !self.dead {
+            self.b.emit(Op::ScopeDisown, &[owner.slot], Imm::None, None);
+        }
         (v, owner.kind)
     }
 
@@ -1562,17 +1576,33 @@ impl FnLower<'_> {
     }
 
     pub(crate) fn close_thunk(&mut self, kind: &CloseKind, ty: MTy, in_slot: bool) -> FuncId {
-        let key = match kind {
-            CloseKind::Iface(i, k) => HelperKey::CloseIface {
-                iface: i.0,
-                k: *k,
-                in_slot,
-            },
-            CloseKind::Func { fid, writes_back } => HelperKey::CloseFunc {
-                fid: *fid,
-                writes_back: *writes_back,
-                in_slot,
-            },
+        self.close_thunk_as(kind, ty, in_slot, false)
+    }
+
+    /// `close_thunk`; `private` makes a function of its own, one no scope's fallible close turns
+    /// into a returning one: a pending temporary whose close fails faults, as `drop_temp` does.
+    pub(crate) fn close_thunk_as(
+        &mut self,
+        kind: &CloseKind,
+        ty: MTy,
+        in_slot: bool,
+        private: bool,
+    ) -> FuncId {
+        let key = if private {
+            HelperKey::CloseSilent(ty, kind.clone())
+        } else {
+            match kind {
+                CloseKind::Iface(i, k) => HelperKey::CloseIface {
+                    iface: i.0,
+                    k: *k,
+                    in_slot,
+                },
+                CloseKind::Func { fid, writes_back } => HelperKey::CloseFunc {
+                    fid: *fid,
+                    writes_back: *writes_back,
+                    in_slot,
+                },
+            }
         };
         if let Some(f) = self.cx.helpers.get(&key) {
             return *f;
@@ -1593,7 +1623,12 @@ impl FnLower<'_> {
         let v = b.params()[0];
         if in_slot {
             b.func_mut().slot_close = b.m.needs_drop(ty).then_some(ty);
-            close_at_silent(&mut b, kind, v, ty);
+            if private {
+                let r = close_at_result(&mut b, kind, v, ty);
+                close_error_fault(&mut b, r);
+            } else {
+                close_at_silent(&mut b, kind, v, ty);
+            }
         } else {
             let (_, r) = close_owned_result(&mut b, kind, v, ty);
             if b.m.needs_drop(b.ty(r)) {

@@ -1718,7 +1718,11 @@ impl<'a> FnLower<'a> {
                     .m
                     .list_elem(ity)
                     .is_some_and(|e| self.b.m.needs_drop(e));
-                if it.own && elem_drops && self.raw_owners {
+                let closes = self.cx.ownership.binding_facts.has(
+                    loop_var.uid,
+                    ms_check::api::ownership::BindingFact::ImplicitClose,
+                );
+                if it.own && (elem_drops || closes) && self.raw_owners {
                     // A list the loop owns lives in a cursor in memory: the list and the index of
                     // the first element the loop has not taken. The pass releases the rest of the
                     // list from the cursor wherever the loop ends.

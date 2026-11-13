@@ -337,8 +337,13 @@ fn apply(m: &Module, f: &Func, cx: &Ctx, st: &mut State, inst: &Inst) -> Result<
     }
     // A disowned view that moves into another local is owned again by that local's scope.
     if inst.op == Op::ScopeOwn {
-        if st.get(inst.args[0]).is_none() {
-            st.push(inst.args[0], St::Live);
+        let v = inst.args[0];
+        match st.get(v) {
+            None => st.push(v, St::Live),
+            // A slot owner handed on to an enclosing scope (a pending temporary that outlives
+            // the scope it was made in) holds its value again.
+            Some(St::Moved) if is_slot_owner(cx, f, v) => st.set(v, St::Live),
+            _ => {}
         }
         return Ok(());
     }
@@ -570,8 +575,22 @@ fn function(
         .filter(|i| i.op == Op::ScopeMark && i.imm == Imm::Int(2))
         .map(|i| i.args[0])
         .collect();
+    let mut owned_at: HashMap<Value, usize> = HashMap::new();
+    for i in f.blocks.iter().flat_map(|b| &b.insts) {
+        if i.op == Op::ScopeOwn {
+            *owned_at.entry(i.args[0]).or_default() += 1;
+        }
+    }
+    // A slot owner handed on to another scope registers a new entry where it is owned again.
+    let reowned: Vec<Value> = owned_at
+        .into_iter()
+        .filter(|(v, n)| *n > 1 && is_slot_owner(&cx, f, *v))
+        .map(|(v, _)| v)
+        .collect();
+    let mut reowned = reowned;
+    reowned.sort_by_key(|v| v.0);
     let mut hkeys: HashMap<Value, Value> = HashMap::new();
-    for v in refilled {
+    for v in refilled.into_iter().chain(reowned) {
         hkeys.entry(v).or_insert_with(|| f.new_value(Ty::INT));
     }
     // The flag parameters of every block: one per flagged owner that is live on entry.
@@ -819,7 +838,14 @@ impl Em<'_> {
                 Some(Marker::Begin) => continue,
                 Some(Marker::Own) => {
                     let v = inst.args[0];
+                    let was = st.get(v);
                     apply(self.m, self.f, self.cx, &mut st, &inst)?;
+                    if was == Some(St::Moved) && is_slot_owner(self.cx, self.f, v) {
+                        let key = self.hkeys.get(&v).copied();
+                        self.reregister(cur, v, key)?;
+                        self.set_held(cur, v);
+                        continue;
+                    }
                     if self.cx.tags[&v].1 >= 1 {
                         self.register(cur, v)?;
                     }
