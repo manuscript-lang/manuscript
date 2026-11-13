@@ -116,10 +116,7 @@ fn elem_ok(m: &Module, lay: &Layouts, f: &Func, i: &Inst, list: usize) -> bool {
     );
     (!writes || !m.needs_drop(e) && i.args.len() == 3 && f.ty(i.args[2]) == e)
         && (writes || i.res.is_some_and(|r| f.ty(r) == e))
-        && lay
-            .leaves(e)
-            .iter()
-            .all(|l| matches!(l, Leaf::I64 | Leaf::F64 | Leaf::I8))
+        && plain_elem(lay, e)
 }
 
 fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
@@ -313,11 +310,7 @@ fn build_ok(m: &Module, lay: &Layouts, f: &Func, i: &Inst) -> bool {
         Op::ListLit => i.args.iter().all(|a| f.ty(*a) == e),
         _ => i.args.len() == 2 && f.ty(i.args[1]) == e,
     };
-    args_ok
-        && lay
-            .leaves(e)
-            .iter()
-            .all(|l| matches!(l, Leaf::I64 | Leaf::F64 | Leaf::I8))
+    args_ok && plain_elem(lay, e)
 }
 
 /// A call to a runtime allocator; its result is a fresh block of memory. Arguments cross as
@@ -411,7 +404,7 @@ fn list_build(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
             let (ptr0, len, cap) = (l[0].clone(), l[1].clone(), l[2].clone());
             let (grow, first, again, joined) = (
                 format!("g{bb}_{split}"),
-                format!("a{bb}_{split}"),
+                format!("p{bb}_{split}"),
                 format!("r{bb}_{split}"),
                 format!("j{bb}_{split}"),
             );
@@ -493,4 +486,14 @@ fn str_len(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     let addr = b.ptr_to_int(&slot);
     b.name_next(out);
     b.call(&LTy::I64, "", "msrt_string_length", &[(addr, "")]);
+}
+
+/// Whether an element is made of plain `i64`, `double` and `i8` leaves, which sit in memory
+/// exactly as in registers, and is held as those leaves (a record held behind one pointer is not).
+fn plain_elem(lay: &Layouts, e: Ty) -> bool {
+    !super::records::is_mem(lay, e)
+        && lay
+            .leaves(e)
+            .iter()
+            .all(|l| matches!(l, Leaf::I64 | Leaf::F64 | Leaf::I8))
 }
