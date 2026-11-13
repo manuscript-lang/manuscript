@@ -1,0 +1,69 @@
+# Emit LLVM IR directly from MIR
+
+## Summary
+
+- Problem: a release build lowers MIR to Cranelift IR and then translates that, line by line, to LLVM text. Cranelift IR has no record types, so every record is a bag of scalars and LLVM gets huge, mostly redundant IR.
+- Change: a second backend, `mir_llvm`, that emits LLVM IR from MIR with typed records, `memcpy` for copies and `ptr` for addresses. The Cranelift debug path is untouched.
+- Cost: a port of the op lowering (about 4k lines) and a differential harness. Staged; each stage lands behind a flag and falls back per function to the old path.
+- Gate (after stage 3): stop unless the yaml IR is at least 2x smaller than the `MS_VECTORIZE=off` baseline (122k lines), its release build is at least 1.5x faster, and no `bench/perf` kernel is slower by more than 15% (the measured layout noise between identical builds is 11%; use interleaved runs). Report the share of functions emitted directly, so fallback functions do not flatter the numbers. Add one compute-heavy program besides yaml.
+- Decision already made: Chinmay, 2026-11-13, "let's translate MIR to LLVM IR directly". This reverses the earlier standing rule against a new direct emitter. Plan source: `architecture/mir-to-llvm-direct-plan-2026-11-12.md`.
+
+## Problem
+
+Measured on `main` (76dd1fbb), linux/amd64, `@std/data/yaml` parse program, `MS_KEEP_LL=1`:
+
+| | Lines |
+| --- | ---: |
+| MIR (`ms emit`) | 18,963 |
+| LLVM IR handed to `opt` (3 units + main) | 183,081 |
+| of which per-CPU AVX2 copies | 53,876 (31%) |
+| `load` instructions | 37,163 |
+| `memcpy` calls | 26 |
+
+Largest functions: `flow_value` 17,644 lines per copy, `sequence_items` 14,754, `block` 14,251. `Flow` is a 456-byte record of 57 scalars; every whole-record read is 57 loads (and 57 stores for a write), and `flow_value` reads it 92 times.
+
+Release build wall time of this program is 2.9 s with and without AVX2 copies (warm, same machine, one run each), against 0.6 s on Cranelift. So dropping the copies cuts lines by a third but not time: line count alone does not explain compile time, and stage 3 must show a time drop, not only a line drop. The 28% dead-load figure from the coordinator is unverified here and is not used.
+
+Cause (`crates/ms-clif/src/layout.rs`): a MIR value is flattened to scalar leaves; the Cranelift lowering and then `llvm_ir.rs` see only leaves. Nothing tells LLVM that the 57 loads are one 456-byte object, so there is no `memcpy`, no `sroa` on a typed alloca, and no `noalias readonly` on a borrowed record.
+
+## Design
+
+```
+MIR -> ms-clif lowering -> CLIF -> object        (debug; unchanged)
+MIR -> mir_llvm         -> LLVM IR text -> opt/llc   (release; new)
+```
+
+- Home: module `crates/ms-clif/src/mir_llvm/`, not a new crate. It needs `Gen` (symbols, glue ids, fault tables) and `layout.rs`; a separate crate would depend on `ms-clif` while `cg.rs` calls it. Move it out when the neutral layout module exists.
+- Debug info and tables: direct functions go through the same `LlvmModule` (`DISubprogram` with the linkage name, `DILocation` on every call, `defs`, `llvm_funcs`, the `.avx2`/`.base` scheme), because the fault-table reader finds functions by DWARF symbol. Glue has no MIR and stays on the old path until stage 4. Mixed TBAA: functions from the old path keep their two regions; typed tags are only added in stage 3 together with a check that no old-path function touches the same memory untagged.
+- Hook: `prepare` in `cg.rs` already routes each function to LLVM. With `MS_LLVM_DIRECT`, `mir_llvm::try_function(f)` runs first and returns `None` for any function it cannot yet emit; that function takes the old path. Both paths keep the same leaf calling convention in stage 2, so a direct function and a translated one call each other.
+- Value classes: a value of at most N leaves is SSA (N chosen by measurement; start with 1, alloca above) (scalars, or a struct of them). A larger record lives in one `alloca` of its LLVM struct type; copies are `memcpy`, a field read is a `getelementptr` and a `load`, a field write a `getelementptr` and a `store`. This is how rustc treats large aggregates.
+- Types: one named LLVM struct per record and alternative, built from the same leaf layout as `mem_layout`, so offsets and sizes agree with the runtime and the Cranelift object by construction (asserted in a test).
+- Facts (stage 3, each with a golden test): `nonnull dereferenceable(N) align A` on record pointers; `noalias readonly nocapture` on borrowed pointer parameters; struct-path TBAA per (record, field). Start with `readonly` only; add `noalias` per fact with a test, since a wrong one is a silent miscompile.
+- Memory model: no change. Borrow parameters are not written during the call; `var` parameters are exclusive; `.clone()` stays the only copy and emits a clone call, never a bare `memcpy` of an owner.
+
+## Stages
+
+1. Skeleton and harness (this PR): `mir_llvm` with scalar ops, comparisons, branches, block parameters and direct calls; per-function fallback; flag; a differential check that runs fixtures with and without the flag and compares output.
+2. Records: typed structs, alloca and `memcpy`, `rec.get/set/new`, optionals and alternatives, strings and lists as `{ptr, len, cap}` structs.
+3. Facts and the calling convention: records above a size chosen by measurement pass by pointer. This changes the shared signature builder, so it also changes the Cranelift lowering and the exclusive-parameter indexes (`set_exclusive`); that is a real cost to the debug path, taken only if stage 2 alone misses the gate. Large returns use a hidden result pointer. First facts. Measure: this is the gate.
+4. Glue, data objects, vtables, closures, faults and per-CPU copies. Per-CPU copies stay, but are made by cloning the finished function once after `opt` shows a loop, not by emitting twice.
+5. Loop markers and range facts. 6. Delete `llvm_ir.rs`'s instruction layer. 7. `bench/perf` before and after.
+
+## Alternatives considered
+
+- Do nothing: yaml release builds stay at about 2.9 s and grow with every record field.
+- Fix the translation: drop dead loads, merge adjacent leaf loads into one wide load, skip AVX2 copies of cold functions. Cheap, and it likely removes half the lines. It cannot give LLVM record types, `memcpy` or borrow facts, because the information is gone before the translation sees it. These are cheap and should be tried first as a measured baseline: AVX2 copies off already gives 122k lines, and the gate above is set against that number. They cannot give LLVM record types, `memcpy` or borrow facts.
+- Pass records by pointer only in the new backend: impossible, since both backends call each other through one signature until the old path is deleted.
+- New crate now: blocked by the dependency direction above.
+
+## Testing
+
+- `opt -verify` on every emitted unit; the conformance corpus and `bench/perf` kernels run with the flag on and compared to the flag off (output and exit code).
+- One golden fixture per fact (stage 3): the attribute is present, and a missed case is not given it.
+- Cost check per stage: IR lines and release build time for the yaml program, recorded in `bench/compile-time/`.
+- Linux, macOS and Windows stay at parity; no gating. Windows and macOS CI is dispatched on the branch before any stage is called done.
+
+## Open points
+
+- Whether the neutral layout module should be extracted before stage 3.
+- Whether record `noalias` can be proven for borrows that reach `scoped` closures; until then `readonly` only.
