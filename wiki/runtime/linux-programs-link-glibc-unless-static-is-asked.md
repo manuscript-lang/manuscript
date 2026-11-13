@@ -20,3 +20,5 @@ Failure modes:
 - The pre-2.29 `exp`/`log`/`pow` are glibc's compatibility wrappers, a few percent slower.
 
 Verify: CI's "Programs run on glibc 2.28" step builds `tests/glibc-floor/floor.ms`, checks that `objdump -T` shows no strong version above 2.28, and runs it in `almalinux:8`.
+
+The compiler itself holds the same floor (2026-11-13). The Linux `ms` release builds in the `manylinux_2_28` container (AlmaLinux 8), and so do the Linux lld and LLVM tools in `llvm-bundle`; ubuntu-24.04 binaries need glibc 2.38 (measured on r3). `toolchain/check-glibc-floor.sh` reads a binary's version requirements and fails on any above 2.28 or on a non-glibc shared library; CI runs it on the packaged `ms` and on the downloaded tools. A new bundle tag must pass its own build check before `toolchain/lld.lock` is bumped.

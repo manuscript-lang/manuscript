@@ -33,6 +33,21 @@ pub trait Symbols {
     }
 }
 
+/// Symbols of a function with no source: nothing resolves.
+pub(crate) struct NoSymbols;
+
+impl Symbols for NoSymbols {
+    fn symbol(&self, _: u32, _: u32) -> String {
+        unreachable!("no source locations to resolve")
+    }
+    fn loc(&self, _: u32) -> Option<(u32, u32, u32)> {
+        None
+    }
+    fn scope(&self, _: u32) -> Option<(String, u32, u32, u32)> {
+        None
+    }
+}
+
 /// Attributes of a call to a function that only reads memory.
 /// Runtime allocators: each returns a block no other pointer reaches, so the translation declares
 /// the result `noalias ptr` and keeps the pointer for the accesses that follow.
@@ -49,6 +64,8 @@ pub struct LlvmModule {
     sites: u32,
     /// Function definitions in emission order.
     defs: Vec<Def>,
+    /// Named struct types of the directly emitted functions; every unit defines them all.
+    types: crate::llvm_build::Types,
     /// `declare` lines of external functions, by symbol.
     decls: BTreeMap<String, String>,
     /// External data symbols referenced.
@@ -139,25 +156,31 @@ pub(crate) struct DirectEnv<'a> {
     pub loc: usize,
     /// Fault call sites numbered so far in the module.
     pub sites: &'a mut u32,
+    /// The struct types of the module, shared by every function.
+    pub types: &'a crate::llvm_build::Types,
     di: &'a mut DebugInfo,
     sp: usize,
-    lines: HashMap<u32, usize>,
+    sp_file: u32,
+    locs: DirectLocs<'a>,
+}
+
+/// How a direct function's source locations resolve: the symbol tables and the source-location
+/// bits of each MIR location in the function (see `Gen::loc_bits`).
+#[derive(Clone, Copy)]
+pub(crate) struct DirectLocs<'a> {
+    pub syms: &'a dyn Symbols,
+    pub bits: &'a HashMap<ms_mir::ir::Loc, u32>,
 }
 
 impl DirectEnv<'_> {
-    /// The `DILocation` node for source line `line` of the function (0: the function itself).
-    pub fn line(&mut self, line: u32) -> usize {
-        if line == 0 {
-            return self.loc;
-        }
-        if let Some(n) = self.lines.get(&line) {
-            return *n;
-        }
-        let n = self
-            .di
-            .push(format!("!DILocation(line: {line}, scope: !{})", self.sp));
-        self.lines.insert(line, n);
-        n
+    /// The `DILocation` node for MIR location `loc`: its source line, and the chain of inlined
+    /// callees it sits in, like a translated instruction's. The function itself when unknown.
+    pub fn at(&mut self, loc: ms_mir::ir::Loc) -> usize {
+        self.locs
+            .bits
+            .get(&loc)
+            .and_then(|b| self.di.location(self.locs.syms, *b, self.sp, self.sp_file))
+            .unwrap_or(self.loc)
     }
 }
 
@@ -258,6 +281,17 @@ const FIRST_FILE: usize = 5;
 /// First metadata id of the TBAA nodes, above any debug-info id a program can reach.
 const TBAA_BASE: usize = 1 << 30;
 
+/// Metadata node of the access tag for a list element that is one scalar word.
+pub(crate) const TBAA_SCALAR_ELEM_NODE: usize = TBAA_BASE + 3;
+/// Metadata node of the access tag for a list element that is a list or string header.
+pub(crate) const TBAA_HEADER_ELEM_NODE: usize = TBAA_BASE + 4;
+/// `!range` node of a `Bool` byte: `[0, 2)`.
+pub(crate) const RANGE_BOOL_NODE: usize = TBAA_BASE + 5;
+/// `!range` node of a length: `[0, 2^63)`.
+pub(crate) const RANGE_LEN_NODE: usize = TBAA_BASE + 6;
+/// The empty node `!noundef` and `!nonnull` point at.
+pub(crate) const EMPTY_NODE: usize = 3;
+
 /// The symbol names `text` mentions as `@"name"`.
 fn referenced(text: &str) -> HashSet<String> {
     let mut names = HashSet::new();
@@ -310,6 +344,7 @@ impl LlvmModule {
                 lexical: HashMap::new(),
             },
             defs: Vec::new(),
+            types: crate::llvm_build::Types::default(),
             decls: BTreeMap::new(),
             data: BTreeMap::new(),
             vtables: HashMap::new(),
@@ -744,8 +779,8 @@ impl<'a> Tr<'a> {
             return String::new();
         };
         match self.f.dfg.alias_regions[region].user_id & !crate::lower::REGION_IN_BOUNDS {
-            crate::lower::REGION_SCALAR_ELEM => format!(", !tbaa !{}", TBAA_BASE + 3),
-            crate::lower::REGION_HEADER_ELEM => format!(", !tbaa !{}", TBAA_BASE + 4),
+            crate::lower::REGION_SCALAR_ELEM => format!(", !tbaa !{TBAA_SCALAR_ELEM_NODE}"),
+            crate::lower::REGION_HEADER_ELEM => format!(", !tbaa !{TBAA_HEADER_ELEM_NODE}"),
             _ => String::new(),
         }
     }
@@ -1451,6 +1486,7 @@ impl LlvmModule {
         display: &str,
         fn_loc: (u32, u32),
         public: bool,
+        locs: DirectLocs,
         emit: impl FnOnce(&mut DirectEnv) -> crate::mir_llvm::Emitted,
     ) {
         let (sp_file, sp_line) = fn_loc;
@@ -1465,9 +1501,11 @@ impl LlvmModule {
         let mut env = DirectEnv {
             loc,
             sites: &mut self.sites,
+            types: &self.types,
             di: &mut self.di,
             sp,
-            lines: HashMap::new(),
+            sp_file,
+            locs,
         };
         let out = emit(&mut env);
         for (callee, decl) in out.decls {
@@ -1846,8 +1884,12 @@ impl LlvmModule {
             b = TBAA_BASE,
             s = TBAA_BASE + 1,
             h = TBAA_BASE + 2,
-            ts = TBAA_BASE + 3,
-            th = TBAA_BASE + 4
+            ts = TBAA_SCALAR_ELEM_NODE,
+            th = TBAA_HEADER_ELEM_NODE
+        );
+        let _ = write!(
+            tail,
+            "!{RANGE_BOOL_NODE} = !{{i8 0, i8 2}}\n!{RANGE_LEN_NODE} = !{{i64 0, i64 -9223372036854775808}}\n"
         );
         for (i, f) in self.di.files.iter().enumerate() {
             let name = f.as_deref().unwrap_or("<unknown>");
@@ -1872,6 +1914,9 @@ impl LlvmModule {
         for (members, unoptimized) in &groups {
             let mut s = String::new();
             let _ = writeln!(s, "target triple = \"{triple}\"");
+            // Struct bodies come before any use: a `getelementptr` on a type not yet defined
+            // is rejected as unsized.
+            s.push_str(&self.types.definitions());
             if anchored {
                 let _ = writeln!(
                     s,

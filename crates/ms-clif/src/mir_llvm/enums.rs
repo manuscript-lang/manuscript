@@ -1,12 +1,14 @@
 //! Enums and optionals: tags, payloads and construction.
 //!
-//! An optional or an enum that does not hold itself is its leaves: a tag (or presence flag, or
-//! null) and payload slots. Construction, tag reads and payload reads only choose leaves, so they
-//! write no instruction; `opt.is_some` of a niche optional is one comparison. Types behind a
-//! pointer (self-containing) need allocation and stay on the translation.
+//! An optional or an enum that does not hold itself is its leaves: a tag (or an `i1` presence flag,
+//! or a null `ptr`) and payload slots. Construction, tag reads and payload reads mostly choose
+//! leaves, so they write no instruction. An enum's payload slots are shared between cases, so a
+//! slot is a plain `i64`, `double` or `i8`: a `ptr` or `i1` payload converts at the boundary, one
+//! cast each. `opt.is_some` of a niche optional is one comparison. Types behind a pointer
+//! (self-containing) and payloads that are records in memory stay on the translation.
 
-use super::{Area, Cx, Vals};
-use crate::layout::{Layouts, Leaf};
+use super::{Area, Cx, Vals, held_leaves, records};
+use crate::layout::Layouts;
 use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Val};
 use ms_mir::ir::{Func, Imm, Inst, Module, Op};
 use ms_mir::types::{Ty, TyKind};
@@ -50,9 +52,9 @@ fn handles(op: Op) -> bool {
 /// How an optional that is not behind a pointer is laid out (`layout.rs`).
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum OptRepr {
-    /// `present: i8`, then the payload's leaves.
+    /// `present: i1`, then the payload's leaves.
     Tagged,
-    /// A nullable pointer or handle: the payload itself, zero for none.
+    /// A nullable pointer or handle: the payload itself, null for none.
     Nullable,
     /// A string's leaves; none is a null pointer with the static tag.
     Str,
@@ -71,21 +73,42 @@ fn opt_repr(lay: &Layouts, opt: Ty) -> OptRepr {
     }
 }
 
-/// Whether `ty` (an optional or an enum) lives behind a pointer.
-fn behind_pointer(lay: &Layouts, ty: Ty) -> bool {
+/// Whether values of `ty` are all register leaves, here: not behind a pointer and holding no
+/// record that lives in memory.
+fn plain(lay: &Layouts, ty: Ty) -> bool {
     match lay.m.types.kind(ty) {
-        TyKind::Opt(inner) => lay.opt_is_boxed(*inner),
-        TyKind::Alt(a) => lay.is_boxed(*a),
-        _ => false,
+        TyKind::Opt(inner) => !lay.opt_is_boxed(*inner) && plain(lay, *inner),
+        TyKind::Alt(a) => {
+            !lay.is_boxed(*a)
+                && lay.m.alts[a.index()]
+                    .cases
+                    .iter()
+                    .all(|c| c.fields.iter().all(|f| plain(lay, f.1)))
+        }
+        _ => !records::is_mem(lay, ty),
     }
 }
 
-/// The constant zero of a register leaf.
-fn zero(l: Leaf) -> Val {
-    match super::leaf(l).0 {
-        LTy::F64 => Val::double(0),
+/// The constant zero of a held type.
+fn zero(t: &LTy) -> Val {
+    match t {
+        LTy::I1 => Val::bool(false),
         LTy::I8 => Val::byte(0),
+        LTy::F64 => Val::double(0),
+        LTy::Ptr => Val::new("null", LTy::Ptr),
         _ => Val::int(0),
+    }
+}
+
+/// `v` as `to`: a payload leaf between the type it is held as and the slot it lives in.
+fn convert(b: &mut FnBuilder, v: &Val, to: &LTy) -> Val {
+    match (&v.ty, to) {
+        (a, b_) if a == b_ => v.clone(),
+        (LTy::I1, LTy::I8) => b.zext(v, LTy::I8),
+        (LTy::I8, LTy::I1) => b.icmp("ne", v, &Val::byte(0)),
+        (LTy::Ptr, LTy::I64) => b.ptrtoint(v),
+        (LTy::I64, LTy::Ptr) => b.inttoptr(v),
+        (a, t) => unreachable!("no conversion from {a:?} to {t:?}"),
     }
 }
 
@@ -100,7 +123,7 @@ fn subject(f: &Func, inst: &Inst) -> Ty {
 }
 
 fn inst_ok(m: &Module, lay: &Layouts, f: &Func, inst: &Inst) -> bool {
-    if behind_pointer(lay, subject(f, inst)) {
+    if !plain(lay, subject(f, inst)) {
         return false;
     }
     // Payload fields that are neither moved out nor kept would be dropped, which needs glue.
@@ -117,20 +140,51 @@ fn inst_ok(m: &Module, lay: &Layouts, f: &Func, inst: &Inst) -> bool {
     }
 }
 
-/// The values of an op that only rearranges or names leaves, so it writes no instruction.
-fn rearrange(lay: &Layouts, f: &Func, inst: &Inst, vals: &Vals) -> Option<Vec<Val>> {
+/// The leaves a payload read or write moves between a field and the enum's slots: for each
+/// result leaf (a read) or slot (a write), the slot or field leaf it comes from.
+fn sources(lay: &Layouts, inst: &Inst, vals: &Vals) -> Vec<(usize, Val)> {
+    let arg = |i: usize| &vals[&inst.args[i].index()];
+    match (inst.op, inst.imm) {
+        (Op::AltNew | Op::AltView, Imm::Case(a, c)) => {
+            let mut out = Vec::new();
+            for (i, (_, idx)) in lay.alt_fields(a)[c as usize].iter().enumerate() {
+                out.extend(idx.iter().copied().zip(arg(i).iter().cloned()));
+            }
+            out
+        }
+        (Op::AltGet | Op::AltTake | Op::AltUnbox, Imm::AltField(a, c, i)) => {
+            let (_, idx) = &lay.alt_fields(a)[c as usize][i as usize];
+            idx.iter()
+                .enumerate()
+                .map(|(j, k)| (j, arg(0)[*k].clone()))
+                .collect()
+        }
+        _ => Vec::new(),
+    }
+}
+
+/// The values of an op that only chooses leaves, converting a payload leaf whose held type is not
+/// its slot's: a converted leaf takes a reserved name that `emit` defines.
+fn pre(
+    _: &Module,
+    lay: &Layouts,
+    f: &Func,
+    inst: &Inst,
+    vals: &Vals,
+    b: &mut FnBuilder,
+) -> Option<Vec<Val>> {
     let arg = |i: usize| &vals[&inst.args[i].index()];
     let res_ty = || f.ty(inst.res.expect("a result"));
-    Some(match (inst.op, inst.imm) {
+    let mut out = match (inst.op, inst.imm) {
         (Op::OptSome | Op::OptView, _) => match opt_repr(lay, res_ty()) {
-            OptRepr::Tagged => std::iter::once(Val::byte(1))
+            OptRepr::Tagged => std::iter::once(Val::bool(true))
                 .chain(arg(0).iter().cloned())
                 .collect(),
             _ => arg(0).clone(),
         },
         (Op::OptNone, _) => match opt_repr(lay, res_ty()) {
             OptRepr::Str => vec![Val::int(0), Val::int(ms_rt_abi::STR_STATIC as i64)],
-            _ => lay.leaves(res_ty()).into_iter().map(zero).collect(),
+            _ => held_leaves(lay, res_ty()).iter().map(zero).collect(),
         },
         (Op::OptIsSome, _) if opt_repr(lay, f.ty(inst.args[0])) == OptRepr::Tagged => {
             vec![arg(0)[0].clone()]
@@ -139,48 +193,65 @@ fn rearrange(lay: &Layouts, f: &Func, inst: &Inst, vals: &Vals) -> Option<Vec<Va
             OptRepr::Tagged => arg(0)[1..].to_vec(),
             _ => arg(0).clone(),
         },
-        (Op::AltNew | Op::AltView, Imm::Case(a, c)) => {
-            let mut out: Vec<Val> = lay.leaves(res_ty()).into_iter().map(zero).collect();
+        (Op::AltNew | Op::AltView, Imm::Case(_, c)) => {
+            let mut out: Vec<Val> = held_leaves(lay, res_ty()).iter().map(zero).collect();
             out[0] = Val::int(c as i64);
-            for (i, (_, idx)) in lay.alt_fields(a)[c as usize].iter().enumerate() {
-                for (k, v) in idx.iter().zip(arg(i)) {
-                    out[*k] = v.clone();
-                }
-            }
             out
         }
         (Op::AltPlain, _) => arg(0).clone(),
         (Op::AltTag, _) => vec![arg(0)[0].clone()],
         (Op::AltGet | Op::AltTake | Op::AltUnbox, Imm::AltField(a, c, i)) => {
-            let (_, idx) = &lay.alt_fields(a)[c as usize][i as usize];
-            idx.iter().map(|k| arg(0)[*k].clone()).collect()
+            let (fty, _) = lay.alt_fields(a)[c as usize][i as usize];
+            held_leaves(lay, fty)
+                .into_iter()
+                .map(|t| zero(&t))
+                .collect()
         }
-        (Op::AltRelease, _) => vec![],
+        (Op::AltRelease, _) => return Some(vec![]),
         _ => return None,
-    })
+    };
+    // Payload leaves: the source itself when its type matches, else a name `emit` defines.
+    let held = inst.res.map(|r| held_leaves(lay, f.ty(r)));
+    for (i, src) in sources(lay, inst, vals) {
+        let want = match inst.op {
+            Op::AltNew | Op::AltView => src.ty.clone(),
+            _ => held.as_ref().expect("a result")[i].clone(),
+        };
+        out[i] = match inst.op {
+            Op::AltNew | Op::AltView => {
+                let slot = out[i].ty.clone();
+                if src.ty == slot { src } else { b.reserve(slot) }
+            }
+            _ if src.ty == want => src,
+            _ => b.reserve(want),
+        };
+    }
+    Some(out)
 }
 
-fn pre(lay: &Layouts, f: &Func, inst: &Inst, vals: &Vals) -> Option<Vec<Val>> {
-    rearrange(lay, f, inst, vals)
-}
-
-/// The one op here that needs code: whether a niche optional holds a value. It is present unless
-/// its first leaf is null (a string also has the static tag: an inline string may have a zero
-/// first word, but never that tag).
+/// Defines the reserved leaves `pre` left: a payload leaf converted to or from its slot, and the
+/// presence of a niche optional, which is present unless its first leaf is null (a string also
+/// has the static tag: an inline string may have a zero first word, but never that tag).
 fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
-    if rearrange(cx.lay, cx.f, inst, vals).is_some() {
+    let out = &vals[&inst.res.expect("a result").index()];
+    if inst.op == Op::OptIsSome && opt_repr(cx.lay, cx.f.ty(inst.args[0])) != OptRepr::Tagged {
+        let v = &vals[&inst.args[0].index()];
+        let any = match opt_repr(cx.lay, cx.f.ty(inst.args[0])) {
+            OptRepr::Str => {
+                let t = b.bin(Bin::Xor, &v[1], &Val::int(ms_rt_abi::STR_STATIC as i64));
+                b.bin(Bin::Or, &v[0], &t)
+            }
+            OptRepr::Nullable => v[0].clone(),
+            OptRepr::Tagged => unreachable!("checked above"),
+        };
+        b.name_next(&out[0]);
+        b.icmp("ne", &any, &zero(&any.ty));
         return;
     }
-    let v = &vals[&inst.args[0].index()];
-    let out = &vals[&inst.res.expect("a result").index()];
-    let any = match opt_repr(cx.lay, cx.f.ty(inst.args[0])) {
-        OptRepr::Str => {
-            let t = b.bin(Bin::Xor, &v[1], &Val::int(ms_rt_abi::STR_STATIC as i64));
-            b.bin(Bin::Or, &v[0], &t)
+    for (i, src) in sources(cx.lay, inst, vals) {
+        if out[i] != src {
+            b.name_next(&out[i]);
+            convert(b, &src, &out[i].ty);
         }
-        _ => v[0].clone(),
-    };
-    let c = b.icmp("ne", &any, &Val::int(0));
-    b.name_next(&out[0]);
-    b.zext(&c, LTy::I8);
+    }
 }

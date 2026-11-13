@@ -49,6 +49,7 @@ entry @main
 file 0 "d.ms"
 alt Shape { Circle(r: float), Rect(w: int, h: int), Dot }
 alt Pick { Left(x: int), Right(y: float, z: int) }
+alt Wrap { Flag(on: bool, n: int), Items(l: list<int>) }
 fn @area(%s: Shape) -> int !0:1:1 {
 b0:
   %t: int = alt.tag %s !0:2:1
@@ -148,6 +149,22 @@ b4():
   %zi: int = select %hi, %z, %sel !0:54:1
   ret %zi
 }
+fn @wrap_len(%w: Wrap) -> int !0:56:1 {
+b0:
+  %t: int = alt.tag %w !0:57:1
+  %zero: int = iconst 0 !0:57:1
+  %isf: bool = icmp.eq %t, %zero !0:57:1
+  br_if %isf, b1(), b2() !0:57:1
+b1():
+  %on: bool = alt.get Wrap.Flag.on %w !0:58:1
+  %n: int = alt.get Wrap.Flag.n %w !0:58:1
+  %r: int = select %on, %n, %zero !0:58:1
+  ret %r
+b2():
+  %l: list<int> = alt.get Wrap.Items.l %w !0:59:1
+  %len: int = list.len %l !0:59:1
+  ret %len
+}
 fn @main() -> int !0:60:1 {
 b0:
   %z: int = iconst 0 !0:61:1
@@ -184,8 +201,20 @@ b3():
   %u1: int = call @unpick(%pk, %nine) !0:71:1
   %u2: int = call @unpick(%lft, %nine) !0:71:1
   %u: int = iadd %u1, %u2 !0:71:1
+  %yes: bool = bconst true !0:73:1
+  %w1: Wrap = alt.new Wrap.Flag %yes, %nine !0:73:1
+  %a1: int = iconst 1 !0:73:1
+  %a2: int = iconst 2 !0:73:1
+  %items: list<int> = list.lit %a1, %a2, %ten !0:73:1
+  %w2: Wrap = alt.new Wrap.Items %items !0:73:1
+  %l1: int = call @wrap_len(%w1) !0:73:1
+  %l2: int = call @wrap_len(%w2) !0:73:1
+  drop %w2 !0:73:1
+  drop %w1 !0:73:1
+  %ll: int = iadd %l1, %l2 !0:73:1
+  %u3: int = iadd %u, %ll !0:73:1
   %r1: int = iadd %acc, %pq !0:72:1
-  %r2: int = iadd %r1, %u !0:72:1
+  %r2: int = iadd %r1, %u3 !0:72:1
   ret %r2
 }
 "#;
@@ -198,7 +227,9 @@ pub fn optionals_and_alternatives_match_cranelift() {
     let got = run_llvm(PROGRAM, &opts, "direct_data");
     let ir = std::fs::read_to_string("ms-keep.ll").unwrap();
     let _ = std::fs::remove_file("ms-keep.ll");
-    for f in ["area", "make", "find", "orelse", "present", "unpick"] {
+    for f in [
+        "area", "make", "find", "orelse", "present", "unpick", "wrap_len",
+    ] {
         let header = ir
             .lines()
             .find(|l| l.starts_with("define") && l.contains(&format!("@\"{f}#")))

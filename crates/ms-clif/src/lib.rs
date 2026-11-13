@@ -10,6 +10,7 @@
 pub mod layout;
 pub mod link;
 
+mod abi_llvm;
 mod cg;
 mod dwarf;
 mod glue_llvm;

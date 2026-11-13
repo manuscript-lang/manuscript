@@ -1,8 +1,8 @@
 //! Strings and lists: the length leaf, element reads and writes, and string bytes.
 
-use super::{Area, Cx, Vals, block_label, leaf};
+use super::{Area, Cx, Vals, block_label, held_leaves, mem_leaves};
 use crate::layout::{Layouts, Leaf, mem_layout};
-use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Types, Val};
+use crate::llvm_build::{Bin, FnBuilder, Meta, Range, Tbaa, Ty as LTy, Val};
 use ms_mir::ir::{Func, Inst, Module, Op};
 use ms_mir::types::TyKind;
 
@@ -48,7 +48,14 @@ fn inst_ok(m: &Module, lay: &Layouts, f: &Func, i: &Inst) -> bool {
 }
 
 /// The length is a leaf of the list, and a write hands back the same list: no instruction.
-fn pre(_: &Layouts, _: &Func, inst: &Inst, vals: &Vals) -> Option<Vec<Val>> {
+fn pre(
+    _: &Module,
+    _: &Layouts,
+    _: &Func,
+    inst: &Inst,
+    vals: &Vals,
+    _: &mut FnBuilder,
+) -> Option<Vec<Val>> {
     match inst.op {
         Op::ListLen => Some(vec![vals[&inst.args[0].index()][1].clone()]),
         Op::ListSet | Op::ListSetNn | Op::ListSetU | Op::ListFill => {
@@ -97,8 +104,9 @@ fn list_access(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     let l = &vals[&inst.args[0].index()];
     let i = vals[&inst.args[1].index()][0].clone();
     let elem = cx.m.seq_elem(cx.f.ty(inst.args[0])).expect("a list");
-    let tys: Vec<LTy> = cx.lay.leaves(elem).into_iter().map(|x| leaf(x).0).collect();
-    let (ptr, len) = (b.int_to_ptr(&l[0]), l[1].clone());
+    let tys = mem_leaves(cx.lay, elem);
+    let held = held_leaves(cx.lay, elem);
+    let (ptr, len) = (l[0].clone(), l[1].clone());
     let wraps = matches!(inst.op, Op::ListGet | Op::ListSet | Op::ListFill);
     let idx = if wraps {
         let neg = b.icmp("slt", &i, &Val::int(0));
@@ -129,10 +137,10 @@ fn list_access(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         ));
         b.label(&next);
     }
-    let types = Types::default();
+    let types = b.types();
     let whole = match tys.as_slice() {
         [one] => one.clone(),
-        many => LTy::Tuple(many.to_vec()),
+        _ => super::aggregate(types, cx.lay, elem),
     };
     debug_assert_eq!(
         types.size_align(&whole).0,
@@ -148,13 +156,61 @@ fn list_access(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
             b.field_ptr(&whole, &at, k)
         };
         let align = types.size_align(t).1;
+        let meta = elem_meta(cx.m.types.kind(elem), k);
         if reads {
-            b.name_next(&out.expect("list read result")[k]);
-            b.load(t, &to, align);
+            let dst = &out.expect("list read result")[k];
+            if held[k] == LTy::I1 {
+                // A boolean element is a byte in memory.
+                let byte = b.load_with(t, &to, align, meta);
+                b.name_next(dst);
+                b.trunc(&byte, LTy::I1);
+            } else {
+                b.name_next(dst);
+                b.load_with(t, &to, align, meta);
+            }
         } else {
-            b.store(&vals[&inst.args[2].index()][k], &to, align);
+            let v = vals[&inst.args[2].index()][k].clone();
+            let v = if v.ty == LTy::I1 {
+                b.zext(&v, LTy::I8)
+            } else {
+                v
+            };
+            b.store_with(&v, &to, align, meta);
         }
     }
+}
+
+/// What LLVM may assume about leaf `k` of a list element of kind `elem`. A buffer holds one
+/// element type, so a scalar element never lies where a list or string header does; only element
+/// accesses are tagged, since a record field or inner header is also read through borrowed
+/// pointers that carry no tag. A `Bool` is 0 or 1 and an inner list's length is not negative.
+fn elem_meta(elem: &TyKind, k: usize) -> Meta {
+    let mut meta = Meta::default();
+    match elem {
+        TyKind::Bool => {
+            meta.tbaa = Some(Tbaa::ScalarElem);
+            meta.range = Some(Range::Bool);
+        }
+        TyKind::Int
+        | TyKind::Float
+        | TyKind::Int8
+        | TyKind::Int16
+        | TyKind::Int32
+        | TyKind::Float32
+        | TyKind::UInt8
+        | TyKind::UInt16
+        | TyKind::UInt32
+        | TyKind::UInt64 => meta.tbaa = Some(Tbaa::ScalarElem),
+        TyKind::List(_) | TyKind::Bytes => {
+            meta.tbaa = Some(Tbaa::HeaderElem);
+            if k == 1 {
+                meta.range = Some(Range::Len);
+            }
+        }
+        TyKind::Str => meta.tbaa = Some(Tbaa::HeaderElem),
+        _ => {}
+    }
+    meta
 }
 
 /// `StrByte` and `StrAsciiAt`: the byte at an index of a string. An inline string keeps its
