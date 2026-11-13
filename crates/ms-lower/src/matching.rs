@@ -109,11 +109,8 @@ impl FnLower<'_> {
                     self.slotted.insert(uid);
                     self.slotify(uid);
                 }
-                if let Some(kind) = closer
-                    && !self.own_hidden_slot(uid, &kind)
-                {
-                    self.hidden_closers.insert(uid, kind);
-                    self.note_closer();
+                if let Some(kind) = closer {
+                    self.own_hidden_slot(uid, &kind);
                 }
             }
             owned_uid = Some(uid);
@@ -353,10 +350,7 @@ impl FnLower<'_> {
             {
                 // This arm left the scrutinee whole: it goes with the arm.
                 let l = self.locals[&uid];
-                let mut v = self.local_take(&l);
-                if let Some(kind) = self.hidden_closers.get(&uid).cloned() {
-                    v = self.close_discarded_kind(&kind, v);
-                }
+                let v = self.local_take(&l);
                 self.drop_value(v);
                 self.closed_on_path.insert(uid);
             }
@@ -514,11 +508,7 @@ impl FnLower<'_> {
             && !self.slotted.contains(&uid)
             && !self.aliases.contains_key(&uid)
             && !self.must_move.contains(&uid)
-            && !self.closers.contains_key(&uid)
-            && !self.rest_closers.contains_key(&uid)
-            && !self.hidden_closers.contains_key(&uid)
-            && !self.held.contains_key(&uid)
-            && !self.list_iters.contains_key(&uid);
+            && !self.held.contains_key(&uid);
         plain.then_some(uid)
     }
 

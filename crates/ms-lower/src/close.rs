@@ -220,42 +220,39 @@ fn emit_parts(b: &mut FuncBuilder<'_>, ptr: Value, shape: Shape) {
     }
 }
 
-/// A closing binding's close operation and its entry on the runtime cleanup stack, which a fault
-/// runs.
-#[derive(Clone)]
-pub(crate) struct Closer {
-    kind: CloseKind,
-    handle: ms_mir::ir::Value,
-    /// Set while the binding still holds the resource; a move clears it. Present only for a
-    /// binding some path moves.
-    pub(crate) flag: Option<ms_mir::builder::Var>,
-    /// The current cleanup entry of a binding that can be reassigned after a move, which pushes
-    /// a new one.
-    entry: Option<ms_mir::builder::Var>,
-    /// Set once the program calls `close()` on the binding itself: the scope end still closes
-    /// it, which releases what the call left, but a result the program handled is dropped
-    /// instead of returned again. Present only for a binding with such a call.
-    explicit: Option<ms_mir::builder::Var>,
-    /// A binding some path moves a resource field out of closes field by field.
-    pub(crate) split: Option<std::rc::Rc<Split>>,
-}
-
-/// The resource fields of a binding that has parts moved out: each closes on its own cleanup
-/// entry, so a move takes exactly that part out of the binding's duty.
-pub(crate) struct Split {
-    /// Every resource field, in declaration order (the scope closes them last first).
-    items: Vec<SplitItem>,
-    /// The moved places: field indexes from the root, and the flag set while the binding
-    /// still holds the place.
-    moved: Vec<(Vec<u32>, Vec<ct::Name>, ms_mir::builder::Var)>,
-}
-
+/// A resource field of a binding with moved parts that has an owner of its own.
 struct SplitItem {
     path: Vec<u32>,
-    ty: MTy,
-    kind: CloseKind,
-    handle: Value,
-    pub(crate) flag: Option<ms_mir::builder::Var>,
+    ptr: Value,
+    thunk: FuncId,
+    /// The field's path by name when some path moves it out.
+    moved: Option<Vec<ct::Name>>,
+}
+
+/// Drops the parts of the record of type `ty` stored at `p` (reached by `prefix`) that are not
+/// among the fields at `owned`.
+fn drop_rest(b: &mut FuncBuilder, p: Value, ty: MTy, prefix: &mut Vec<u32>, owned: &[Vec<u32>]) {
+    let TyKind::Rec(r) = b.m.types.kind(ty).clone() else {
+        return;
+    };
+    let fields: Vec<MTy> = b.m.records[r.index()].fields.iter().map(|f| f.1).collect();
+    for (i, fty) in fields.into_iter().enumerate() {
+        prefix.push(i as u32);
+        if !owned.iter().any(|o| o == prefix) && b.m.needs_drop(fty) {
+            let fp = b
+                .emit(Op::PtrField, &[p], Imm::Field(r, i as u32), Some(MTy::PTR))
+                .expect("field address");
+            if owned.iter().any(|o| o.starts_with(prefix)) {
+                drop_rest(b, fp, fty, prefix, owned);
+            } else {
+                let o = b
+                    .emit(Op::Take, &[fp], Imm::Ty(fty), Some(fty))
+                    .expect("field");
+                b.emit(Op::Drop, &[o], Imm::None, None);
+            }
+        }
+        prefix.pop();
+    }
 }
 
 /// Closes the value of type `ty` stored at `ptr`, in place. A close that fails here has nowhere to
@@ -596,14 +593,6 @@ impl FnLower<'_> {
         r
     }
 
-    /// Closes the value the local `l` holds, in place, shielded like any other close.
-    pub(crate) fn close_local(&mut self, l: &crate::func::Local, kind: &CloseKind) {
-        let _ = self.call_runtime("msrt_shield_enter", &[], MTy::UNIT);
-        let r = self.close_local_result(l, kind);
-        close_error_fault(&mut self.b, r, None);
-        let _ = self.call_runtime("msrt_shield_exit", &[], MTy::UNIT);
-    }
-
     /// `x.close()` on a value closed through its parts: the receiver `recv` is a local, closed
     /// in place, or a temporary, closed and released.
     pub(crate) fn close_receiver(
@@ -854,7 +843,7 @@ impl FnLower<'_> {
     /// Whether the elaborate pass can close the owned binding that lives in memory: nothing
     /// closes it by hand, a move of it is one the pass tracks, and no closer of its scope was
     /// declared before it (the pass closes at the scope end, after the scope's other closers).
-    fn raw_closable(&mut self, binding: &ct::BindingRef, kind: &CloseKind, owned: bool) -> bool {
+    fn raw_closable(&mut self, binding: &ct::BindingRef, kind: &CloseKind) -> bool {
         let uid = binding.uid;
         let unit_close = match kind {
             CloseKind::Func { fid, .. } => self.b.m.funcs[fid.index()].ret == MTy::UNIT,
@@ -871,9 +860,7 @@ impl FnLower<'_> {
                 .has(uid, ms_check::api::ownership::BindingFact::ConditionalMove);
         let by_hand = own.binding_facts.has(uid, BindingFact::ExplicitClose)
             || own.binding_facts.has(uid, BindingFact::CloseHandled);
-        owned
-            && !self.dead
-            && self.scope_closes_nothing()
+        !self.dead
             && (!moves || self.close_succeeds_with_unit(kind))
             && (!by_hand || self.close_succeeds_with_unit(kind))
     }
@@ -906,15 +893,6 @@ impl FnLower<'_> {
         // register nothing twice), one whose close changes the value (the close works on the
         // value's own storage), and one a resource field moves out of (each field registers
         // its own address).
-        // `none` holds nothing, so the binding owns it as it owns any value it later fills.
-        let x = if !x.own && self.b.defining_op_anywhere(x.v) == Some(Op::OptNone) {
-            crate::func::Val {
-                v: self.owned(x),
-                own: true,
-            }
-        } else {
-            x
-        };
         let places = self
             .cx
             .ownership
@@ -932,7 +910,7 @@ impl FnLower<'_> {
         self.redefined.insert(binding.uid);
         let raw = std::mem::replace(&mut self.raw_owners, false);
         // The pass closes a binding that lives in memory, whatever its close does to the value.
-        let raw_ok = raw && places.is_none() && self.raw_closable(binding, &kind, x.own);
+        let raw_ok = raw && places.is_none() && self.raw_closable(binding, &kind);
         if raw_ok {
             self.slotted.insert(binding.uid);
         }
@@ -941,7 +919,13 @@ impl FnLower<'_> {
         let ty = self.locals[&binding.uid].ty;
         let slot = self.locals[&binding.uid].slot;
         if let Some(places) = places {
-            return self.bind_split(binding, kind, places);
+            return if raw {
+                self.bind_split(binding, places)
+            } else {
+                Err(Error::new(
+                    "a binding with moved fields the pass cannot own",
+                ))
+            };
         }
         if let Some(ptr) = slot
             && raw_ok
@@ -965,79 +949,22 @@ impl FnLower<'_> {
             self.raw_slots.insert(binding.uid, raw);
             return Ok(());
         }
-        let thunk = self.close_thunk(&kind, ty, slot.is_some());
-        let registered = match slot {
-            Some(ptr) => ptr,
-            None => self.read_local(binding)?.v,
-        };
-        let handle = self
-            .b
-            .emit(
-                Op::CleanupPush,
-                &[registered],
-                Imm::Func(thunk),
-                Some(MTy::INT),
-            )
-            .expect("handle");
-        let flag = self
-            .cx
-            .ownership
-            .close_moves
-            .contains_key(&binding.uid)
-            .then(|| {
-                let flag = self.b.declare_var(MTy::BOOL, Mode::Borrow);
-                let held = self.b.bconst(true);
-                self.b.def_var(flag, held);
-                flag
-            });
-        let explicit = self
-            .cx
-            .ownership
-            .binding_facts
-            .has(
-                binding.uid,
-                ms_check::api::ownership::BindingFact::ExplicitClose,
-            )
-            .then(|| {
-                let explicit = self.b.declare_var(MTy::BOOL, Mode::Borrow);
-                let no = self.b.bconst(false);
-                self.b.def_var(explicit, no);
-                explicit
-            });
-        let entry = (flag.is_some() && binding.mutable).then(|| {
-            let entry = self.b.declare_var(MTy::INT, Mode::Borrow);
-            self.b.def_var(entry, handle);
-            entry
-        });
-        self.note_closer();
-        self.closers.insert(
-            binding.uid,
-            Closer {
-                kind,
-                handle,
-                flag,
-                entry,
-                explicit,
-                split: None,
-            },
-        );
-        // A binding that needs no drop is not registered by `bind_local`; closing still runs.
-        let scope = self.scopes.last_mut().expect("scope");
-        if !scope.contains(&binding.uid) {
-            scope.push(binding.uid);
-        }
-        Ok(())
+        Err(Error::new(
+            "a closing binding the elaborate pass cannot own (internal: report this program)",
+        ))
     }
 
-    /// Registers the cleanup entries of a binding with moved resource fields, one per resource
-    /// field, so that moving a field out discards exactly its entry.
+    /// A binding some path moves a resource field out of lives in memory. Each resource field is
+    /// an owner of the pass that closes it, and a record owner declared before them drops
+    /// everything else, so the pass closes the fields last declared first and the rest after.
+    /// A move of a field disowns its owner.
     fn bind_split(
         &mut self,
         binding: &ct::BindingRef,
-        kind: CloseKind,
         places: std::collections::HashMap<ms_check::api::ast::NodeId, Vec<ct::Name>>,
     ) -> Result<(), Error> {
-        let root = self.locals[&binding.uid]
+        let uid = binding.uid;
+        let root = self.locals[&uid]
             .slot
             .ok_or_else(|| Error::new("a split binding lives in memory"))?;
         let ty = ct::sub(&binding.ty, &self.subst);
@@ -1048,44 +975,27 @@ impl FnLower<'_> {
                 .collect::<Vec<_>>()
         });
         tails.dedup();
-        let mut split = Split {
-            items: Vec::new(),
-            moved: Vec::new(),
-        };
-        self.split_fields(&ty, root, &[], &[], &tails, &mut split)?;
-        let flag = self
-            .cx
-            .ownership
-            .close_moves
-            .contains_key(&binding.uid)
-            .then(|| {
-                let flag = self.b.declare_var(MTy::BOOL, Mode::Borrow);
-                let held = self.b.bconst(true);
-                self.b.def_var(flag, held);
-                flag
-            });
-        let handle = self.b.iconst(0);
-        self.note_closer();
-        self.closers.insert(
-            binding.uid,
-            Closer {
-                kind,
-                handle,
-                flag,
-                entry: None,
-                explicit: None,
-                split: Some(std::rc::Rc::new(split)),
-            },
-        );
-        self.redefined.insert(binding.uid);
-        let scope = self.scopes.last_mut().expect("scope");
-        if !scope.contains(&binding.uid) {
-            scope.push(binding.uid);
+        let mut items = Vec::new();
+        self.split_fields(&ty, root, &[], &[], &tails, &mut items)?;
+        let paths: Vec<Vec<u32>> = items.iter().map(|i| i.path.clone()).collect();
+        let rest = self.split_rest_thunk(self.locals[&uid].ty, &paths);
+        if let Some(scope) = self.scopes.last_mut() {
+            scope.retain(|u| *u != uid);
         }
+        let mut owners = vec![root];
+        self.own_raw_kind(uid, root, rest.index() as u32 + 2);
+        for item in items {
+            self.own_raw_value(item.ptr, item.thunk.index() as u32 + 2);
+            owners.push(item.ptr);
+            if let Some(names) = item.moved {
+                self.split_places.insert((uid, names), item.ptr);
+            }
+        }
+        self.split_owners.insert(uid, owners);
         Ok(())
     }
 
-    /// The entries for the resource fields of the record of checked type `ty` stored at `ptr`,
+    /// The owners for the resource fields of the record of checked type `ty` stored at `ptr`,
     /// reached by `prefix` from the binding; `tails` are the moved places below it, by name.
     fn split_fields(
         &mut self,
@@ -1094,7 +1004,7 @@ impl FnLower<'_> {
         prefix: &[u32],
         names: &[ct::Name],
         tails: &[Vec<ct::Name>],
-        split: &mut Split,
+        items: &mut Vec<SplitItem>,
     ) -> Result<(), Error> {
         let mt = self.mty(ty)?;
         let TyKind::Rec(r) = self.b.m.types.kind(mt).clone() else {
@@ -1126,170 +1036,85 @@ impl FnLower<'_> {
                 .collect();
             let moved = below.iter().any(|t| t.len() == here.len());
             if !below.is_empty() && !moved {
-                self.split_fields(&f.ty, fp, &path, &here, tails, split)?;
+                self.split_fields(&f.ty, fp, &path, &here, tails, items)?;
                 continue;
             }
             let Some(kind) = self.part_closer(&f.ty)? else {
                 return Err(Error::new("a moved resource without a close operation"));
             };
-            let thunk = self.close_thunk(&kind, fty, true);
-            let handle = self
-                .b
-                .emit(Op::CleanupPush, &[fp], Imm::Func(thunk), Some(MTy::INT))
-                .expect("handle");
-            let flag = moved.then(|| {
-                let flag = self.b.declare_var(MTy::BOOL, Mode::Borrow);
-                let held = self.b.bconst(true);
-                self.b.def_var(flag, held);
-                split.moved.push((path.clone(), here.clone(), flag));
-                flag
-            });
-            split.items.push(SplitItem {
+            items.push(SplitItem {
                 path,
-                ty: fty,
-                kind,
-                handle,
-                flag,
+                ptr: fp,
+                thunk: self.field_thunk(&kind, fty),
+                moved: moved.then_some(here),
             });
         }
         Ok(())
     }
 
-    /// The address of the field at `path` in the record of type `ty` stored at `root`.
-    fn field_ptr(&mut self, root: Value, ty: MTy, path: &[u32]) -> Value {
-        let (mut p, mut t) = (root, ty);
-        for &i in path {
-            let TyKind::Rec(r) = self.b.m.types.kind(t).clone() else {
-                unreachable!("a split path runs through records")
-            };
-            t = self.b.m.records[r.index()].fields[i as usize].1;
-            p = self
-                .b
-                .emit(Op::PtrField, &[p], Imm::Field(r, i), Some(MTy::PTR))
-                .expect("field address");
+    /// A close of the value of type `ty` held in memory that ignores a failed close, and that no
+    /// scope's fallible close turns into a returning one.
+    fn field_thunk(&mut self, kind: &CloseKind, ty: MTy) -> FuncId {
+        let key = HelperKey::CloseField(ty, kind.clone());
+        if let Some(f) = self.cx.helpers.get(&key) {
+            return *f;
         }
-        p
+        let ps = vec![Param {
+            ty: MTy::PTR,
+            mode: Mode::Borrow,
+        }];
+        let mut b = FuncBuilder::new(self.b.m, "close", ps, MTy::UNIT);
+        b.func_mut().linkage = Linkage::Internal;
+        b.func_mut().kind = FuncKind::Normal;
+        b.func_mut().slot_close = b.m.needs_drop(ty).then_some(ty);
+        let v = b.params()[0];
+        close_at_silent(&mut b, kind, v, ty);
+        let u = b.unit();
+        b.ret(Some(u));
+        let f = b.into_func();
+        let id = self.b.m.add_func(f);
+        self.cx.helpers.insert(key, id);
+        id
     }
 
-    /// A move of the resource field `names` out of the binding `uid` at the member `e`: the
-    /// new owner closes it, so the binding's entry for it goes away and the scope end skips it.
+    /// The function that drops what the record of type `ty` held in memory holds besides the
+    /// resource fields at `owned`, which owners of their own close and drop.
+    fn split_rest_thunk(&mut self, ty: MTy, owned: &[Vec<u32>]) -> FuncId {
+        let key = HelperKey::SplitRest(ty, owned.to_vec());
+        if let Some(f) = self.cx.helpers.get(&key) {
+            return *f;
+        }
+        let ps = vec![Param {
+            ty: MTy::PTR,
+            mode: Mode::Borrow,
+        }];
+        let mut b = FuncBuilder::new(self.b.m, "close", ps, MTy::UNIT);
+        b.func_mut().linkage = Linkage::Internal;
+        b.func_mut().kind = FuncKind::Normal;
+        let p = b.params()[0];
+        drop_rest(&mut b, p, ty, &mut Vec::new(), owned);
+        let u = b.unit();
+        b.ret(Some(u));
+        let f = b.into_func();
+        let id = self.b.m.add_func(f);
+        self.cx.helpers.insert(key, id);
+        id
+    }
+
+    /// A move of the resource field `names` out of the binding `uid`: the new owner closes it,
+    /// so the binding's owner for it goes away.
     pub(crate) fn moved_field(
         &mut self,
         uid: usize,
         names: &[ct::Name],
         field: Value,
     ) -> Result<Value, Error> {
-        let split = self
-            .closers
-            .get(&uid)
-            .and_then(|c| c.split.clone())
-            .ok_or_else(|| Error::new("a resource field moves out of a binding with no closer"))?;
-        let (path, _, flag) = split
-            .moved
-            .iter()
-            .find(|(_, n, _)| n.as_slice() == names)
+        let ptr = *self
+            .split_places
+            .get(&(uid, names.to_vec()))
             .ok_or_else(|| Error::new("a moved field the binding does not track"))?;
-        let item = split
-            .items
-            .iter()
-            .find(|i| i.path == *path)
-            .expect("an entry for a moved field");
-        // The entries of later fields stay: only this one stops closing.
-        let _ = self.call_runtime("msrt_cleanup_cancel", &[item.handle], MTy::UNIT);
-        let gone = self.b.bconst(false);
-        self.b.def_var(*flag, gone);
+        self.b.emit(Op::ScopeDisown, &[ptr], Imm::None, None);
         Ok(self.b.move_out(field))
-    }
-
-    /// Leaves a split binding: every field's cleanup entry goes, and each field that the
-    /// binding still holds closes, last declared first.
-    fn close_split(&mut self, uid: usize, split: &Split, whole: Option<ms_mir::builder::Var>) {
-        let l = self.locals[&uid];
-        let root = l.slot.expect("a split binding lives in memory");
-        for item in split.items.iter().rev() {
-            let _ = self.call_runtime("msrt_cleanup_discard", &[item.handle], MTy::UNIT);
-            let join = self.b.new_block();
-            for flag in whole.into_iter().chain(item.flag) {
-                let next = self.b.new_block();
-                let held = self.b.use_var(flag);
-                self.b.br_if(held, next, &[], join, &[]);
-                self.b.seal_block(next);
-                self.b.switch_to(next);
-            }
-            let _ = self.call_runtime("msrt_shield_enter", &[], MTy::UNIT);
-            let fp = self.field_ptr(root, l.ty, &item.path);
-            close_at(&mut self.b, &item.kind, fp, item.ty);
-            let _ = self.call_runtime("msrt_shield_exit", &[], MTy::UNIT);
-            self.b.br(join, &[]);
-            self.b.seal_block(join);
-            self.b.switch_to(join);
-        }
-    }
-
-    /// Drops the local `uid` of a split binding without the places that were moved out.
-    pub(crate) fn release_split(&mut self, uid: usize) {
-        let Some(split) = self.closers.get(&uid).and_then(|c| c.split.clone()) else {
-            return;
-        };
-        let l = self.locals[&uid];
-        let v = self.local_take(&l);
-        self.release_leaves(v, &[], &split.moved);
-        // Every part is dropped or moved; this only moving_params the record.
-        let TyKind::Rec(r) = self.b.m.types.kind(l.ty).clone() else {
-            return;
-        };
-        let n = self.b.m.records[r.index()].fields.len();
-        let mask = if n >= 32 { u32::MAX } else { (1u32 << n) - 1 };
-        self.b
-            .emit(Op::RecRelease, &[v], Imm::RecMask(r, mask), None);
-    }
-
-    /// Drops the parts of the record `v` (reached by `prefix`) that were not moved out.
-    fn release_leaves(
-        &mut self,
-        v: Value,
-        prefix: &[u32],
-        moved: &[(Vec<u32>, Vec<ct::Name>, ms_mir::builder::Var)],
-    ) {
-        let TyKind::Rec(r) = self.b.m.types.kind(self.ty_of(v)).clone() else {
-            return;
-        };
-        let fields: Vec<MTy> = self.b.m.records[r.index()]
-            .fields
-            .iter()
-            .map(|f| f.1)
-            .collect();
-        for (i, fty) in fields.into_iter().enumerate() {
-            if !self.b.m.needs_drop(fty) {
-                continue;
-            }
-            let mut path = prefix.to_vec();
-            path.push(i as u32);
-            let here = moved.iter().find(|(p, _, _)| *p == path).map(|m| m.2);
-            let deeper = moved
-                .iter()
-                .any(|(p, _, _)| p.len() > path.len() && p.starts_with(&path));
-            let (run, join) = (self.b.new_block(), self.b.new_block());
-            match here {
-                Some(flag) => {
-                    let held = self.b.use_var(flag);
-                    self.b.br_if(held, run, &[], join, &[]);
-                }
-                None => self.b.br(run, &[]),
-            }
-            self.b.seal_block(run);
-            self.b.switch_to(run);
-            let f = self.b.rec_get(r, i as u32, v);
-            if deeper {
-                self.release_leaves(f, &path, moved);
-            } else {
-                let o = self.b.move_out(f);
-                self.b.emit(Op::Drop, &[o], Imm::None, None);
-            }
-            self.b.br(join, &[]);
-            self.b.seal_block(join);
-            self.b.switch_to(join);
-        }
     }
 
     /// How a binding of `ty` is closed: its own close operation (`cleanup`, or the type's
@@ -1671,129 +1496,6 @@ impl FnLower<'_> {
         id
     }
 
-    /// Closes the owned `old`, the value a reassignment replaces, shielded like any other close,
-    /// and hands back what the close leaves for the caller to drop. The binding's cleanup entry
-    /// stays: it closes whatever the binding holds when its scope ends.
-    fn close_replaced(&mut self, closer: &Closer, old: Value, ty: MTy) -> Value {
-        self.close_replaced_kind(&closer.kind, closer.explicit, old, ty)
-    }
-
-    /// `close_replaced` for a close `kind` and the flag that says the program already closed
-    /// the value.
-    pub(crate) fn close_replaced_kind(
-        &mut self,
-        kind: &CloseKind,
-        explicit: Option<ms_mir::builder::Var>,
-        old: Value,
-        ty: MTy,
-    ) -> Value {
-        let _ = self.call_runtime("msrt_shield_enter", &[], MTy::UNIT);
-        let out = if let Some(explicit) = explicit {
-            // The program already closed `old` and handled the result: closing it again
-            // releases what is left, and its result is dropped.
-            let out = self.owned_var(ty);
-            let called = self.b.use_var(explicit);
-            let (again, first, join) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
-            self.b.br_if(called, again, &[], first, &[]);
-            self.b.seal_block(again);
-            self.b.seal_block(first);
-            self.b.switch_to(again);
-            let (v, r) = close_owned_result(&mut self.b, kind, old, ty);
-            self.drop_value(r);
-            self.b.def_var(out, v);
-            self.b.br(join, &[]);
-            self.b.switch_to(first);
-            let v = close_owned(&mut self.b, kind, old, ty);
-            self.b.def_var(out, v);
-            self.b.br(join, &[]);
-            self.b.seal_block(join);
-            self.b.switch_to(join);
-            self.b.use_var(out)
-        } else {
-            close_owned(&mut self.b, kind, old, ty)
-        };
-        let _ = self.call_runtime("msrt_shield_exit", &[], MTy::UNIT);
-        out
-    }
-
-    /// A variable to merge an owned value of type `ty` from several paths.
-    fn owned_var(&mut self, ty: MTy) -> ms_mir::builder::Var {
-        let mode = if self.b.m.needs_drop(ty) {
-            Mode::Move
-        } else {
-            Mode::Borrow
-        };
-        self.b.declare_var(ty, mode)
-    }
-
-    /// The cleanup entry the binding's scope end discards.
-    fn entry_of(&mut self, closer: &Closer) -> Value {
-        match closer.entry {
-            Some(v) => self.b.use_var(v),
-            None => closer.handle,
-        }
-    }
-
-    /// Replaces the value of the closing binding `uid`, the owned `old` taken out of it: the old
-    /// value is closed when the binding still holds one, and a binding a move emptied registers
-    /// a new cleanup entry for the value stored next. What the close leaves of `old` is
-    /// returned for the caller to drop.
-    pub(crate) fn assign_closing(
-        &mut self,
-        uid: usize,
-        closer: &Closer,
-        old: Value,
-        ty: MTy,
-    ) -> Result<Value, Error> {
-        let old = self.replace_closing(uid, closer, old, ty)?;
-        // The new value has not been closed by the program.
-        if let Some(explicit) = closer.explicit {
-            let no = self.b.bconst(false);
-            self.b.def_var(explicit, no);
-        }
-        Ok(old)
-    }
-
-    fn replace_closing(
-        &mut self,
-        uid: usize,
-        closer: &Closer,
-        old: Value,
-        ty: MTy,
-    ) -> Result<Value, Error> {
-        let Some(flag) = closer.flag else {
-            return Ok(self.close_replaced(closer, old, ty));
-        };
-        let out = self.owned_var(ty);
-        let held = self.b.use_var(flag);
-        let (close, empty, join) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
-        self.b.br_if(held, close, &[], empty, &[]);
-        self.b.seal_block(close);
-        self.b.seal_block(empty);
-        self.b.switch_to(close);
-        let v = self.close_replaced(closer, old, ty);
-        self.b.def_var(out, v);
-        self.b.br(join, &[]);
-        self.b.switch_to(empty);
-        // Nothing to close: the bits are those of a moved-out value, which the caller's
-        // conditional drop skips.
-        self.b.def_var(out, old);
-        if let (Some(entry), Some(ptr)) = (closer.entry, self.locals[&uid].slot) {
-            let thunk = self.close_thunk(&closer.kind, ty, true);
-            let handle = self
-                .b
-                .emit(Op::CleanupPush, &[ptr], Imm::Func(thunk), Some(MTy::INT))
-                .expect("handle");
-            self.b.def_var(entry, handle);
-        }
-        self.b.br(join, &[]);
-        self.b.seal_block(join);
-        self.b.switch_to(join);
-        let held = self.b.bconst(true);
-        self.b.def_var(flag, held);
-        Ok(self.b.use_var(out))
-    }
-
     /// The function that closes a value of the closing binding `uid` held by a closure built at
     /// `e`, when `e` moves the binding into its environment.
     pub(crate) fn capture_closer(&mut self, uid: usize, e: &Expr, ty: MTy) -> Option<FuncId> {
@@ -1804,14 +1506,7 @@ impl FnLower<'_> {
             }
             return Some(self.close_thunk(&raw.kind, ty, true));
         }
-        let closer = self.closers.get(&uid).cloned()?;
-        closer.flag?;
-        let moves = self.cx.ownership.close_moves.get(&uid)?;
-        if self.dead || !moves.contains(&e.id) {
-            return None;
-        }
-        // The closure's drop passes the capture's address: the value is closed where it lies.
-        Some(self.close_thunk(&closer.kind, ty, true))
+        None
     }
 
     /// A move of the closing binding `uid` at the name expression `e`: the new owner closes the
@@ -1829,74 +1524,19 @@ impl FnLower<'_> {
             }
             return;
         }
-        let Some(closer) = self.closers.get(&uid).cloned() else {
-            return;
-        };
-        let Some(flag) = closer.flag else {
-            return;
-        };
-        if self.dead
-            || !self
+        if let Some(owners) = self.split_owners.get(&uid).cloned() {
+            let moved = self
                 .cx
                 .ownership
                 .close_moves
                 .get(&uid)
-                .is_some_and(|n| n.contains(&e.id))
-        {
-            return;
-        }
-        if let Some(split) = &closer.split {
-            for item in &split.items {
-                let _ = self.call_runtime("msrt_cleanup_cancel", &[item.handle], MTy::UNIT);
+                .is_some_and(|n| n.contains(&e.id));
+            if moved && !self.dead {
+                for owner in owners {
+                    self.b.emit(Op::ScopeDisown, &[owner], Imm::None, None);
+                }
             }
-        } else {
-            // Cancel, not discard: entries registered after this one must still run on a fault.
-            let handle = self.entry_of(&closer);
-            let _ = self.call_runtime("msrt_cleanup_cancel", &[handle], MTy::UNIT);
         }
-        let gone = self.b.bconst(false);
-        self.b.def_var(flag, gone);
-    }
-
-    /// The close at scope end: its failure is returned like `try`, unless the program already
-    /// called `close()` on this path and handled the result, which is not returned a second time.
-    fn scope_close(&mut self, uid: usize, closer: &Closer) {
-        if self
-            .cx
-            .ownership
-            .binding_facts
-            .has(uid, ms_check::api::ownership::BindingFact::CloseHandled)
-        {
-            // The checker proved every lifetime transferred or explicitly handled its
-            // result. Keep cleanup, but do not generate an impossible owned error return.
-            if let Some(r) = self.emit_close(uid, closer) {
-                self.drop_value(r);
-            }
-            return;
-        }
-        let Some(explicit) = closer.explicit else {
-            if let Some(r) = self.emit_close(uid, closer) {
-                self.propagate_close_error(uid, r);
-            }
-            return;
-        };
-        let called = self.b.use_var(explicit);
-        let (again, first, join) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
-        self.b.br_if(called, again, &[], first, &[]);
-        self.b.seal_block(again);
-        self.b.seal_block(first);
-        self.b.switch_to(again);
-        if let Some(r) = self.emit_close(uid, closer) {
-            self.drop_value(r);
-        }
-        self.b.br(join, &[]);
-        self.b.switch_to(first);
-        if let Some(r) = self.emit_close(uid, closer) {
-            self.propagate_close_error(uid, r);
-        }
-        self.b.br(join, &[]);
-        self.b.seal_block(join);
-        self.b.switch_to(join);
     }
 
     /// Records that the program called `close()` on the closing binding `recv` named.
@@ -1909,40 +1549,7 @@ impl FnLower<'_> {
         }
         if let Some(raw) = self.raw_slots.get(&b.uid).cloned() {
             self.mark_raw_closed(&raw, true);
-            return;
         }
-        let Some(explicit) = self.closers.get(&b.uid).and_then(|c| c.explicit) else {
-            return;
-        };
-        let yes = self.b.bconst(true);
-        self.b.def_var(explicit, yes);
-    }
-
-    /// Leaves the binding `uid` at the end of its scope, closing it unless a move took it.
-    pub(crate) fn close_at_scope_end(&mut self, uid: usize, closer: &Closer) {
-        if closer.split.is_some() {
-            self.emit_close(uid, closer);
-            return;
-        }
-        let Some(flag) = closer.flag else {
-            self.scope_close(uid, closer);
-            return;
-        };
-        let held = self.b.use_var(flag);
-        let (close, moved, join) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
-        self.b.br_if(held, close, &[], moved, &[]);
-        self.b.seal_block(close);
-        self.b.seal_block(moved);
-        self.b.switch_to(close);
-        self.scope_close(uid, closer);
-        self.b.br(join, &[]);
-        // A move cancelled the entry; it leaves the stack now.
-        self.b.switch_to(moved);
-        let handle = self.entry_of(closer);
-        let _ = self.call_runtime("msrt_cleanup_discard", &[handle], MTy::UNIT);
-        self.b.br(join, &[]);
-        self.b.seal_block(join);
-        self.b.switch_to(join);
     }
 
     /// Closes the owned `v`, a value of the place `place` that the program is about to overwrite
@@ -2022,121 +1629,5 @@ impl FnLower<'_> {
             close_at(&mut self.b, kind, ptr, ty);
         }
         let _ = self.call_runtime("msrt_shield_exit", &[], MTy::UNIT);
-    }
-
-    /// Leaves the closing binding `uid`: the cleanup entry goes away and its close runs on the
-    /// current value.
-    /// The result of a close that can fail is returned for the caller to propagate.
-    pub(crate) fn emit_close(&mut self, uid: usize, closer: &Closer) -> Option<Value> {
-        if let Some(split) = &closer.split {
-            self.close_split(uid, split, closer.flag);
-            return None;
-        }
-        let l = self.locals[&uid];
-        let handle = self.entry_of(closer);
-        let _ = self.call_runtime("msrt_cleanup_discard", &[handle], MTy::UNIT);
-        // Like the cleanup stack on a fault, a stop request that arrives while the close runs
-        // must not interrupt it. The close works on the binding's own value; the scope still
-        // drops what it leaves behind.
-        let _ = self.call_runtime("msrt_shield_enter", &[], MTy::UNIT);
-        let r = self.close_local_result(&l, &closer.kind);
-        let _ = self.call_runtime("msrt_shield_exit", &[], MTy::UNIT);
-        self.fallible_result(r)
-    }
-
-    /// `r` when it is the `Result` of a close that can fail; a `Unit` result needs nothing.
-    fn fallible_result(&mut self, r: Value) -> Option<Value> {
-        (self.b.ty(r) != MTy::UNIT).then_some(r)
-    }
-
-    /// A scope-end close returned `r`: on an error, the function returns it after closing what
-    /// is still open, like `try value.close()`. A close that fails while an error is already on its
-    /// way out is dropped, so the first error is the one returned.
-    fn propagate_close_error(&mut self, uid: usize, r: Value) {
-        if self.returning_close_error {
-            self.drop_value(r);
-            return;
-        }
-        // Select the already-pending error before compatibility: even a custom domain
-        // error takes precedence over the Error returned by a scope close.
-        if let Some(pending) = self.pending_return
-            && matches!(self.b.m.types.kind(self.b.ty(pending.v)), TyKind::Alt(a)
-                if self.b.m.alts[a.index()].std == Std::Result)
-        {
-            let tag = self.b.alt_tag(pending.v);
-            let error = self.b.iconst(Std::ERROR as i64);
-            let is_error = self.b.icmp(Cc::Eq, tag, error);
-            let (keep, replace, join) =
-                (self.b.new_block(), self.b.new_block(), self.b.new_block());
-            self.b.br_if(is_error, keep, &[], replace, &[]);
-            self.b.seal_block(keep);
-            self.b.seal_block(replace);
-            self.enter(keep);
-            self.drop_value(r);
-            self.b.br(join, &[]);
-            self.enter(replace);
-            self.return_close_error(uid, r);
-            self.b.br(join, &[]);
-            self.b.seal_block(join);
-            self.enter(join);
-            return;
-        }
-        self.return_close_error(uid, r);
-    }
-
-    /// No domain error has been selected: a failed close can select this function's outcome.
-    fn return_close_error(&mut self, uid: usize, r: Value) {
-        let rty = self.b.ty(r);
-        let TyKind::Alt(a) = self.b.m.types.kind(rty).clone() else {
-            return;
-        };
-        let err = Std::ERROR;
-        // A function that cannot return the close's `Error` faults on a failed close instead.
-        let returned = match self.b.m.types.kind(self.result_ty()).clone() {
-            TyKind::Alt(ra)
-                if self.b.m.alts[ra.index()].std == Std::Result
-                    && self.b.m.alts[ra.index()].cases[err].fields[0].1
-                        == self.b.m.alts[a.index()].cases[err].fields[0].1 =>
-            {
-                Some((ra, err))
-            }
-            _ => None,
-        };
-        let Some((ra, ret_err)) = returned else {
-            close_error_fault(&mut self.b, r, None);
-            return;
-        };
-        let tag = self.b.alt_tag(r);
-        let k = self.b.iconst(err as i64);
-        let is_err = self.b.icmp(Cc::Eq, tag, k);
-        let (errb, okb) = (self.b.new_block(), self.b.new_block());
-        self.b.br_if(is_err, errb, &[], okb, &[]);
-        self.b.seal_block(errb);
-        self.b.seal_block(okb);
-
-        self.enter(errb);
-        let po = self.b.alt_take(a, err as u32, 0, r);
-        self.b.alt_release(a, err as u32, 1, r);
-        let out = self.b.alt_new(ra, ret_err as u32, &[po]);
-        if let Some(pending) = self.pending_return
-            && pending.own
-        {
-            self.drop_value(pending.v);
-        }
-        // This binding is closed; release its value, then return through the enclosing scopes
-        // without closing again what this path has already closed.
-        let l = self.locals[&uid];
-        self.drop_local(uid, &l);
-        let before = self.closed_on_path.clone();
-        self.closed_on_path.insert(uid);
-        let done = self.scope_done.clone();
-        self.closed_on_path.extend(done);
-        self.returning_close_error = true;
-        self.emit_return(Some(crate::func::Val { v: out, own: true }));
-        self.returning_close_error = false;
-        self.closed_on_path = before;
-
-        self.enter(okb);
-        self.drop_value(r);
     }
 }

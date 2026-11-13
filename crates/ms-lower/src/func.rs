@@ -35,8 +35,6 @@ pub(crate) struct ScopeMark {
     parent: u32,
     /// `scope.begin` was emitted.
     begun: bool,
-    /// A closer of this scope is run by lowering, which closes before the pass does.
-    closes: bool,
 }
 
 impl ScopeMark {
@@ -45,7 +43,6 @@ impl ScopeMark {
             id,
             parent: parent.map_or(0, |p| p + 1),
             begun: false,
-            closes: false,
         }
     }
 }
@@ -128,29 +125,16 @@ pub(crate) struct FnLower<'a> {
     /// Resources in memory the elaborate pass closes: the slot address and how the value closes.
     /// A move of the value disowns the slot.
     pub raw_slots: HashMap<usize, RawSlot>,
-    /// Bindings closed at scope end and how each is closed when its scope is left.
-    pub closers: HashMap<usize, crate::close::Closer>,
-    /// Loops that own their elements: how an element closes, the list and the loop index, by
-    /// the scope entry that closes the unreached ones when the loop is left.
-    pub rest_closers: HashMap<
-        usize,
-        (
-            crate::close::CloseKind,
-            ms_mir::builder::Var,
-            ms_mir::builder::Var,
-        ),
-    >,
-    /// Hidden owned scrutinees whose payload closes when the scope is left, by hidden uid.
-    pub hidden_closers: HashMap<usize, crate::close::CloseKind>,
+    /// The address of each resource field a binding's paths move out, by binding and field path.
+    pub split_places: HashMap<(usize, Vec<ct::Name>), Value>,
+    /// Every owner of a binding with moved fields, which a move of the whole binding disowns.
+    pub split_owners: HashMap<usize, Vec<Value>>,
     /// Whether an owned local some path moves out of still holds its value, by binding: the
     /// scope end drops it only where it does.
     pub held: HashMap<usize, ms_mir::builder::Var>,
     /// Owned locals every path moves out of before leaving their scope: the move moving_params
     /// them, and the scope end has nothing to drop.
     pub must_move: HashSet<usize>,
-    /// Lists a loop takes the elements out of, by the hidden local holding the list: the loop
-    /// index, so that leaving the loop releases the list from the element after it.
-    pub list_iters: HashMap<usize, ms_mir::builder::Var>,
     /// Owned temporaries borrowed by the current statement.
     pub temps: Vec<Value>,
     /// The pending temporaries `elaborate` also owns (see `pend_temp`).
@@ -180,13 +164,9 @@ pub(crate) struct FnLower<'a> {
     pub prologue_done: bool,
     /// Bindings whose close already ran on the path that is returning a close error.
     pub closed_on_path: HashSet<usize>,
-    /// A close error is being returned, so a further close failure is dropped.
-    pub returning_close_error: bool,
     /// While a mutator discards entries: set by a failed close, which faults after the mutation
     /// removed the entry, so the unwind does not close it a second time.
     pub deferred_close: Option<ms_mir::builder::Var>,
-    /// Bindings of the scope being left whose close and drop already ran.
-    pub scope_done: Vec<usize>,
     /// Record to build on return and the binding uids of the `var` parameters it carries.
     pub var_slots: Vec<VarSlot>,
     /// Some binding of the function closes a resource when its scope ends.
@@ -686,12 +666,10 @@ impl<'a> FnLower<'a> {
             raw_vars: HashMap::new(),
             tracked_vars: HashMap::new(),
             raw_slots: HashMap::new(),
-            closers: HashMap::new(),
-            rest_closers: HashMap::new(),
-            hidden_closers: HashMap::new(),
+            split_places: HashMap::new(),
+            split_owners: HashMap::new(),
             held: HashMap::new(),
             must_move: HashSet::new(),
-            list_iters: HashMap::new(),
             temps: Vec::new(),
             pass_temps: std::collections::HashMap::new(),
             default_frames: Vec::new(),
@@ -707,9 +685,7 @@ impl<'a> FnLower<'a> {
             pending_return: None,
             prologue_done: false,
             closed_on_path: HashSet::new(),
-            returning_close_error: false,
             deferred_close: None,
-            scope_done: Vec::new(),
             var_slots: Vec::new(),
             closing_fn: false,
             slotted: HashSet::new(),
@@ -1342,11 +1318,7 @@ impl<'a> FnLower<'a> {
             return;
         }
         let v = self.local_take(l);
-        let flag = self
-            .held
-            .get(&uid)
-            .copied()
-            .or_else(|| self.closers.get(&uid).and_then(|c| c.flag));
+        let flag = self.held.get(&uid).copied();
         match flag {
             Some(flag) => {
                 let held = self.b.use_var(flag);
@@ -1537,17 +1509,16 @@ impl<'a> FnLower<'a> {
 
     /// Hands the held scrutinee `uid`, which lives in memory, to the pass to close with `closer`
     /// (shielded, errors dropped) where its scope ends.
-    pub fn own_hidden_slot(&mut self, uid: usize, closer: &crate::close::CloseKind) -> bool {
+    pub fn own_hidden_slot(&mut self, uid: usize, closer: &crate::close::CloseKind) {
         let l = self.locals[&uid];
         let (Some(ptr), true) = (l.slot, self.raw_owners && !self.dead) else {
-            return false;
+            return;
         };
         let thunk = self.close_thunk(closer, l.ty, true);
         if let Some(scope) = self.scopes.last_mut() {
             scope.retain(|u| *u != uid);
         }
         self.own_raw_kind(uid, ptr, thunk.index() as u32 + 2);
-        true
     }
 
     /// Makes the innermost scope drop `var`, so a `return` or `break` leaving it releases it too.
@@ -1624,18 +1595,6 @@ impl<'a> FnLower<'a> {
         self.own_raw_kind(uid, v, 0);
     }
 
-    /// Notes that the current scope has a closer that lowering runs itself.
-    pub fn note_closer(&mut self) {
-        if let Some(m) = self.scope_marks.last_mut() {
-            m.closes = true;
-        }
-    }
-
-    /// Whether the current scope has no closer lowering runs itself.
-    pub fn scope_closes_nothing(&self) -> bool {
-        self.scope_marks.last().is_some_and(|m| !m.closes)
-    }
-
     /// `own_raw` with the owner's cleanup `kind` (`scope.own S K v`).
     pub fn own_raw_kind(&mut self, uid: usize, v: Value, kind: u32) {
         self.own_raw_value(v, kind);
@@ -1684,7 +1643,6 @@ impl<'a> FnLower<'a> {
     }
 
     fn drop_scope_locals(&mut self, depth: usize) {
-        let outer_done = std::mem::take(&mut self.scope_done);
         for i in (depth..self.scopes.len()).rev() {
             let uids = self.scopes[i].clone();
             for uid in uids.iter().rev() {
@@ -1696,40 +1654,11 @@ impl<'a> FnLower<'a> {
                     self.own_raw_value_in(i, cur, 0);
                     continue;
                 }
-                if let Some((kind, list, idx)) = self.rest_closers.get(uid).cloned() {
-                    self.close_rest(&kind, list, idx);
-                    // A later close that fails returns without closing the rest again.
-                    self.scope_done.push(*uid);
-                    continue;
-                }
-                if let Some(closer) = self.closers.get(uid).cloned() {
-                    self.close_at_scope_end(*uid, &closer);
-                }
                 let l = self.locals[uid];
-                if let Some(kind) = self.hidden_closers.get(uid).cloned() {
-                    self.close_local(&l, &kind);
-                }
-                if self.closers.get(uid).is_some_and(|c| c.split.is_some()) {
-                    self.release_split(*uid);
-                } else if let Some(idx) = self.list_iters.get(uid).copied() {
-                    // The elements up to the loop index moved into the loop variable; the
-                    // rest go with the list.
-                    let list = self.local_take(&l);
-                    let i = self.b.use_var(idx);
-                    let one = self.b.iconst(1);
-                    let from = self
-                        .b
-                        .emit(Op::IAdd, &[i, one], ms_mir::ir::Imm::None, Some(MTy::INT))
-                        .expect("add");
-                    self.b.list_release(list, from);
-                } else {
-                    self.drop_local(*uid, &l);
-                }
-                self.scope_done.push(*uid);
+                self.drop_local(*uid, &l);
             }
             self.end_raw(i);
         }
-        self.scope_done = outer_done;
     }
 
     /// Ends a scope, dropping its locals when control reaches the end.
