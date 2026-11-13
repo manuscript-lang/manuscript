@@ -215,6 +215,14 @@ runs:
         else
           "../../$(basename "$ms")" run ms.toml
         fi
+    - name: Downloaded tools need no newer than glibc 2.28
+      if: env.GATES == 'true' && inputs.os == 'linux'
+      shell: bash
+      run: |
+        # ms downloads the pinned lld and LLVM tools on first use; the build above used them.
+        tools=$(find "$XDG_CACHE_HOME/ms/lld" "$XDG_CACHE_HOME/ms/llvm" -type f -perm -u+x)
+        test -n "$tools"
+        sh toolchain/check-glibc-floor.sh $tools
     - name: Programs run on glibc 2.28
       if: env.GATES == 'true' && inputs.os == 'linux'
       shell: bash

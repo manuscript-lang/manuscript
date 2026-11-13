@@ -17,13 +17,15 @@ jobs:
   package:
     name: ${{ matrix.os }}-${{ matrix.arch }}
     runs-on: ${{ matrix.runner }}
+    # Linux builds in AlmaLinux 8 (glibc 2.28), so the shipped ms runs on every glibc from 2.28 on; empty elsewhere.
+    container: ${{ matrix.container }}
     timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
         include:
-          - { os: linux, arch: amd64, runner: ubuntu-24.04 }
-          - { os: linux, arch: arm64, runner: ubuntu-24.04-arm }
+          - { os: linux, arch: amd64, runner: ubuntu-24.04, container: 'quay.io/pypa/manylinux_2_28_x86_64' }
+          - { os: linux, arch: arm64, runner: ubuntu-24.04-arm, container: 'quay.io/pypa/manylinux_2_28_aarch64' }
           - { os: darwin, arch: amd64, runner: macos-15-intel }
           - { os: darwin, arch: arm64, runner: macos-15 }
           - { os: windows, arch: amd64, runner: windows-2025 }
@@ -35,6 +37,11 @@ jobs:
       RUSTC_WRAPPER: sccache
       SCCACHE_CACHE_SIZE: 2G
     steps:
+      - name: Install Rust in the glibc 2.28 container
+        if: matrix.container
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain none
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
@@ -78,6 +85,8 @@ jobs:
             ms="extracted distribution/$name/ms"
           fi
           cmp LICENSE "extracted distribution/$name/LICENSE"
+          # The shipped ms must run on glibc 2.28, the manylinux_2_28 container's version.
+          if [ '${{ matrix.os }}' = linux ]; then sh toolchain/check-glibc-floor.sh "$ms"; fi
           "$ms" --version
           cd "extracted distribution/$name/examples/hello"
           bin="../../$(basename "$ms")"
