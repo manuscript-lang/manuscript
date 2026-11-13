@@ -232,9 +232,7 @@ fn pure_terminates(
             bd.term
                 .for_each_target(|t| terminates &= order[t.block.index()] > order[b.index()]);
             for i in &bd.insts {
-                // Every op `supports` accepts today is register-only; a memory op added later must
-                // not inherit `memory(none)`, so the list is explicit.
-                pure &= matches!(i.op, Op::Call) || !touches_memory(i.op);
+                pure &= i.op == Op::Call || register_only(i.op);
                 if i.op != Op::Call {
                     continue;
                 }
@@ -253,9 +251,37 @@ fn pure_terminates(
     verdict
 }
 
-/// Whether a supported op may read or write memory. None does yet.
-fn touches_memory(op: Op) -> bool {
-    !supported_op(op)
+/// Ops that read and write no memory: arithmetic, comparisons, constants and the length leaf of a
+/// list. This is an allow-list on purpose: an op that is not named here, including every op added
+/// to `supported_op` later, counts as touching memory, so it never inherits `memory(none)`. `Call`
+/// is judged through its callee.
+fn register_only(op: Op) -> bool {
+    matches!(
+        op,
+        Op::IConst
+            | Op::FConst
+            | Op::BConst
+            | Op::UnitConst
+            | Op::IAdd
+            | Op::ISub
+            | Op::IMul
+            | Op::INeg
+            | Op::And
+            | Op::Or
+            | Op::Xor
+            | Op::Not
+            | Op::ICmp
+            | Op::UICmp
+            | Op::FCmp
+            | Op::FAdd
+            | Op::FSub
+            | Op::FMul
+            | Op::FDiv
+            | Op::FNeg
+            | Op::Select
+            | Op::B2I
+            | Op::ListLen
+    )
 }
 
 fn is_entry(t: &Target) -> bool {
@@ -512,5 +538,18 @@ fn inst_text(
             }
         }
         _ => unreachable!("supports rejects other ops"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn only_named_ops_are_register_only() {
+        assert!(register_only(Op::IAdd) && register_only(Op::ListLen));
+        // A call is judged through its callee; anything not named touches memory.
+        assert!(!register_only(Op::Call));
+        assert!(!register_only(Op::Clone) && !register_only(Op::Drop));
     }
 }
