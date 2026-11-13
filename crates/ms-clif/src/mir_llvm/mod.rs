@@ -19,6 +19,7 @@ mod lists;
 mod maps;
 mod records;
 mod rt;
+mod strings;
 
 use crate::abi_llvm::{Pass, Reg, Ret, Signature};
 use crate::layout::{Layouts, Leaf};
@@ -273,6 +274,7 @@ const AREAS: &[Area] = &[
     depth::AREA,
     glue::AREA,
     globals::AREA,
+    strings::AREA,
     enums::AREA,
     maps::AREA,
     closures::AREA,
@@ -664,7 +666,6 @@ mod coverage {
         Op::ListConst,
         Op::ListAddr,
         Op::ListAddrU,
-        Op::StrAscii,
         Op::OptUnwrap,
         Op::OptAddr,
     ];

@@ -109,6 +109,11 @@ uint8_t *msrt_alloc(size_t n) {
   return p;
 }
 void msrt_free(uint8_t *p) { if (p) { msrt_live_allocs--; free(p); } }
+/* One-character ASCII strings, two bytes each: the character and its NUL. */
+#define C2(n) {n, 0}
+#define C8(n) C2(n), C2(n + 1), C2(n + 2), C2(n + 3), C2(n + 4), C2(n + 5), C2(n + 6), C2(n + 7)
+#define C64(n) C8(n), C8(n + 8), C8(n + 16), C8(n + 24), C8(n + 32), C8(n + 40), C8(n + 48), C8(n + 56)
+uint8_t msrt_ascii_chars[128][2] = { C64(0), C64(64) };
 void msrt_str_free(uint8_t *p) { msrt_free(p); }
 /* The scalar count of the string at s: two words, the second holding the length and the tag in its
    top bits (see StrVal); an inline string keeps its bytes in the words themselves. */

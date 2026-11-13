@@ -567,6 +567,28 @@ fn bit_and_float_operations() {
     }
 }
 
+/// `str.ascii`: the shared one-character string of a byte, read back with `str.byte`.
+fn ascii_string() {
+    let src = r#"module "d"
+entry @main
+file 0 "d.ms"
+fn @f(%b: int) -> int !0:1:1 {
+b0:
+  %s: str = str.ascii %b !0:2:1
+  %i: int = iconst 0 !0:3:1
+  %x: int = str.byte %s, %i !0:4:1
+  ret %x
+}
+fn @main() -> int !0:10:1 {
+b0:
+  %b: int = iconst 42
+  %r: int = call @f(%b) !0:12:1
+  ret %r
+}
+"#;
+    check("direct_str_ascii", src, 42, &["f"]);
+}
+
 /// A global written, read back, overwritten, and a cancellation poll between.
 fn globals_and_poll() {
     let src = r#"module "d"
@@ -723,6 +745,7 @@ fn direct_lists_and_strings_match_cranelift() {
     checked_arithmetic();
     bit_and_float_operations();
     globals_and_poll();
+    ascii_string();
     interfaces_and_maps();
     let _ = std::fs::remove_file("ms-keep.ll");
 }
