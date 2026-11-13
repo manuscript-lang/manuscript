@@ -27,7 +27,15 @@ fn handles(op: Op) -> bool {
         || list_arg(op).is_some()
         || matches!(
             op,
-            Op::StrLit | Op::StrByte | Op::StrAsciiAt | Op::ListNew | Op::ListLit | Op::ListPush
+            Op::StrLit
+                | Op::StrByte
+                | Op::StrAsciiAt
+                | Op::StrLen
+                | Op::ListNew
+                | Op::ListLit
+                | Op::ListPush
+                | Op::ListDropLast
+                | Op::ListRelease
         )
 }
 
@@ -44,7 +52,7 @@ fn checked(op: Op) -> bool {
 fn splits(op: Op, checks: bool) -> usize {
     match op {
         _ if checked(op) => usize::from(checks),
-        Op::StrByte | Op::StrAsciiAt | Op::ListNew | Op::ListPush => 1,
+        Op::StrByte | Op::StrAsciiAt | Op::ListNew | Op::ListPush | Op::ListRelease => 1,
         _ => 0,
     }
 }
@@ -52,6 +60,9 @@ fn splits(op: Op, checks: bool) -> usize {
 fn inst_ok(m: &Module, lay: &Layouts, f: &Func, i: &Inst) -> bool {
     if matches!(i.op, Op::ListNew | Op::ListLit | Op::ListPush) {
         return build_ok(m, lay, f, i);
+    }
+    if matches!(i.op, Op::ListDropLast | Op::ListRelease) {
+        return release_ok(m, f, i);
     }
     list_arg(i.op).is_none_or(|l| elem_ok(m, lay, f, i, l))
 }
@@ -72,6 +83,11 @@ fn pre(
             Val::int(0),
             vals[&inst.args[0].index()][0].clone(),
         ]),
+        // The new length is computed; the block and capacity stay.
+        Op::ListDropLast => {
+            let l = &vals[&inst.args[0].index()];
+            Some(vec![l[0].clone(), b.reserve(LTy::I64), l[2].clone()])
+        }
         // The literal's bytes are a module constant: the pointer word is a constant expression
         // and the length carries the static tag.
         Op::StrLit => {
@@ -103,7 +119,7 @@ fn pre(
 /// The operand that is the list for the list reads and writes, `None` for other ops.
 fn list_arg(op: Op) -> Option<usize> {
     match op {
-        Op::ListGet | Op::ListGetNn | Op::ListGetU => Some(0),
+        Op::ListGet | Op::ListGetNn | Op::ListGetU | Op::ListTake => Some(0),
         Op::ListSet | Op::ListSetNn | Op::ListSetU | Op::ListFill => Some(0),
         _ => None,
     }
@@ -115,7 +131,10 @@ fn elem_ok(m: &Module, lay: &Layouts, f: &Func, i: &Inst, list: usize) -> bool {
     let Some(e) = m.seq_elem(f.ty(i.args[list])) else {
         return false;
     };
-    let writes = !matches!(i.op, Op::ListGet | Op::ListGetNn | Op::ListGetU);
+    let writes = !matches!(
+        i.op,
+        Op::ListGet | Op::ListGetNn | Op::ListGetU | Op::ListTake
+    );
     (!writes || !m.needs_drop(e) && i.args.len() == 3 && f.ty(i.args[2]) == e)
         && (writes || i.res.is_some_and(|r| f.ty(r) == e))
         && lay
@@ -129,6 +148,14 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         Op::ListLen | Op::StrLit => {}
         Op::StrByte | Op::StrAsciiAt => str_byte(cx, inst, vals, b),
         Op::ListNew | Op::ListLit | Op::ListPush => list_build(cx, inst, vals, b),
+        Op::ListDropLast => {
+            let out = &vals[&inst.res.expect("list result").index()];
+            let len = vals[&inst.args[0].index()][1].clone();
+            b.name_next(&out[1]);
+            b.bin(Bin::Add, &len, &Val::int(-1));
+        }
+        Op::ListRelease => list_release(cx, inst, vals, b),
+        Op::StrLen => str_len(cx, inst, vals, b),
         _ => list_access(cx, inst, vals, b),
     }
 }
@@ -183,7 +210,10 @@ fn list_access(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         u64::from(mem_layout(&cx.lay.leaves(elem)).size)
     );
     let at = b.elem_ptr(&whole, &ptr, &idx);
-    let reads = matches!(inst.op, Op::ListGet | Op::ListGetNn | Op::ListGetU);
+    let reads = matches!(
+        inst.op,
+        Op::ListGet | Op::ListGetNn | Op::ListGetU | Op::ListTake
+    );
     let out = inst.res.map(|r| &vals[&r.index()]);
     for (k, t) in tys.iter().enumerate() {
         let to = if tys.len() == 1 {
@@ -329,18 +359,26 @@ fn build_ok(m: &Module, lay: &Layouts, f: &Func, i: &Inst) -> bool {
             .all(|l| matches!(l, Leaf::I64 | Leaf::F64 | Leaf::I8))
 }
 
-/// A call to a runtime allocator; its result is a fresh block of memory.
+/// A call to a runtime allocator; its result is a fresh block of memory. Arguments cross as
+/// `i64` words, like every other runtime call, so the declaration agrees with the one the
+/// translated path writes for the same symbol.
 fn rt_alloc(cx: &mut Cx, b: &mut FnBuilder, name: &str, args: &[Val], dst: Option<&Val>) -> Val {
-    let params = args
-        .iter()
-        .map(|a| if a.ty == LTy::Ptr { "ptr" } else { "i64" })
-        .collect::<Vec<_>>()
-        .join(", ");
+    let params = vec!["i64"; args.len()].join(", ");
     cx.decls.push((
         name.to_string(),
         format!("declare noalias align 16 ptr @\"{name}\"({params})"),
     ));
-    let actuals: Vec<(Val, &str)> = args.iter().map(|a| (a.clone(), "")).collect();
+    let words: Vec<Val> = args
+        .iter()
+        .map(|a| {
+            if a.ty == LTy::Ptr {
+                b.ptr_to_int(a)
+            } else {
+                a.clone()
+            }
+        })
+        .collect();
+    let actuals: Vec<(Val, &str)> = words.iter().map(|a| (a.clone(), "")).collect();
     if let Some(d) = dst {
         b.name_next(d);
     }
@@ -444,6 +482,56 @@ fn list_build(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
             b.bin(Bin::Add, &len, &Val::int(1));
         }
     }
+}
+
+/// `ListDropLast` and `ListRelease` for elements that need no drop (`list.droplast 1` follows a
+/// `list.take` of that element, so it drops nothing either).
+fn release_ok(m: &Module, f: &Func, i: &Inst) -> bool {
+    let Some(e) = m.seq_elem(f.ty(i.args[0])) else {
+        return false;
+    };
+    !m.needs_drop(e) || (i.op == Op::ListDropLast && i.imm == Imm::Int(1))
+}
+
+/// `ListRelease`: free the block of an owned list (`cap != 0`; a view owns nothing) that has
+/// one. No element needs a drop, so only the block goes.
+fn list_release(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
+    let l = &vals[&inst.args[0].index()];
+    let (bb, split) = (cx.block, cx.split);
+    let (free, join) = (format!("e{bb}_{split}"), block_label(bb, split + 1));
+    cx.split += 1;
+    let owned = b.icmp("ne", &l[2], &Val::int(0));
+    let some = b.icmp("ne", &l[0], &Val::new("null", LTy::Ptr));
+    let both = b.bin(Bin::And, &owned, &some);
+    b.cond_br(&both, &free, &join);
+    b.label(&free);
+    cx.decls.push((
+        "msrt_free".into(),
+        "declare void @\"msrt_free\"(i64)".into(),
+    ));
+    let word = b.ptr_to_int(&l[0]);
+    b.call(&LTy::Void, "", "msrt_free", &[(word, "")]);
+    b.br(&join);
+    b.label(&join);
+}
+
+/// `StrLen`: the scalar count, computed by the runtime from the string's two words in a slot.
+fn str_len(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
+    let s = &vals[&inst.args[0].index()];
+    let out = &vals[&inst.res.expect("string length result").index()][0];
+    let pair = LTy::Tuple(vec![LTy::I64, LTy::I64]);
+    let slot = b.alloca(&pair);
+    for (k, w) in s.iter().enumerate() {
+        let at = b.field_ptr(&pair, &slot, k);
+        b.store(w, &at, 8);
+    }
+    cx.decls.push((
+        "msrt_string_length".into(),
+        "declare i64 @\"msrt_string_length\"(i64)".into(),
+    ));
+    let addr = b.ptr_to_int(&slot);
+    b.name_next(out);
+    b.call(&LTy::I64, "", "msrt_string_length", &[(addr, "")]);
 }
 
 /// The module-level constants for the string literals `f` uses: LLVM owns the bytes, so it knows

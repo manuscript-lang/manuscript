@@ -271,6 +271,34 @@ b0:
     );
 }
 
+/// Taking the last element, dropping it and releasing the block.
+fn list_take_release() {
+    let src = r#"module "d"
+entry @main
+file 0 "d.ms"
+fn @drain(%a: int) -> int !0:1:1 {
+b0:
+  %one: int = iconst 1 !0:2:1
+  %b: int = iadd %a, %one !0:2:1
+  %l: list<int> = list.lit %a, %b !0:3:1
+  %n: int = list.len %l !0:3:1
+  %i: int = isub %n, %one !0:3:1
+  %x: int = list.take %l, %i !0:4:1
+  %l2: list<int> = list.droplast 1 %l !0:5:1
+  %zero: int = iconst 0 !0:6:1
+  list.release %l2, %zero !0:6:1
+  ret %x
+}
+fn @main() -> int !0:10:1 {
+b0:
+  %a: int = iconst 34 !0:11:1
+  %x: int = call @drain(%a) !0:12:1
+  ret %x
+}
+"#;
+    check("direct_take_release", src, 35, &["drain"]);
+}
+
 /// One test, not three: each build writes `ms-keep.ll` in the working directory.
 #[test]
 fn direct_lists_and_strings_match_cranelift() {
@@ -279,5 +307,6 @@ fn direct_lists_and_strings_match_cranelift() {
     string_bytes();
     list_building();
     string_literals();
+    list_take_release();
     let _ = std::fs::remove_file("ms-keep.ll");
 }
