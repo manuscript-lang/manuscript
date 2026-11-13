@@ -63,6 +63,8 @@ pub struct Plan {
     pub drop: HashMap<Ty, String>,
     /// Type descriptor symbol by type.
     pub desc: HashMap<Ty, String>,
+    /// Symbol of the cleanup thunk by the MIR index of the closer.
+    pub cleanup: HashMap<usize, String>,
 }
 
 /// LLVM type and parameter attribute of one register leaf. `I8` leaves (`Bool`, flags) are

@@ -1454,6 +1454,10 @@ fn direct_plan(g: &mut Gen, f: &Func) -> crate::mir_llvm::Plan {
                         );
                     }
                 }
+                (Op::CleanupPush, Imm::Func(c)) => {
+                    let id = g.glue(Glue::CleanupThunk(c.0), Ty::UNIT);
+                    plan.cleanup.insert(c.index(), symbol_of(g, id));
+                }
                 (Op::TypeDesc, Imm::Ty(t)) => {
                     let id = g.typedesc(t);
                     let name = g.module.declarations().get_data_decl(id).linkage_name(id);
