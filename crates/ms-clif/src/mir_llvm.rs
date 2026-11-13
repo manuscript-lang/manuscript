@@ -367,7 +367,11 @@ fn call_text(
         sym.clone(),
         format!("declare {ret} @\"{sym}\"({})", formals.join(", ")),
     ));
-    let lhs = result.map(|r| format!("{r} = ")).unwrap_or_default();
+    // LLVM rejects a name on a call that returns `void`.
+    let lhs = result
+        .filter(|_| callee.ret != Ty::UNIT)
+        .map(|r| format!("{r} = "))
+        .unwrap_or_default();
     let _ = writeln!(
         out,
         "  {lhs}call {ret} @\"{sym}\"({}), !dbg !{loc}",
