@@ -10,6 +10,8 @@ use super::Cx;
 fn text(name: &str) -> Option<&'static str> {
     Some(match name {
         "msrt_alloc" => "declare noalias align 16 ptr @\"msrt_alloc\"(i64) nounwind",
+        "msrt_realloc" => "declare noalias align 16 ptr @\"msrt_realloc\"(i64, i64) nounwind",
+        "msrt_string_length" => "declare i64 @\"msrt_string_length\"(i64) nounwind",
         "msrt_free" => "declare void @\"msrt_free\"(i64) nounwind",
         "msrt_task_grow" => "declare void @\"msrt_task_grow\"(i64, i64) nounwind",
         "msrt_cleanup_push" => "declare i64 @\"msrt_cleanup_push\"(i64, i64) nounwind",

@@ -32,7 +32,14 @@ fn is_map_new(m: &Module, inst: &Inst) -> bool {
     matches!((inst.op, inst.imm), (Op::CallRt, Imm::Ext(e)) if m.externs[e.index()].role == ExternRole::MapNew)
 }
 
-fn pre(lay: &Layouts, f: &Func, inst: &Inst, _: &Vals) -> Option<Vec<Val>> {
+fn pre(
+    _: &Module,
+    lay: &Layouts,
+    f: &Func,
+    inst: &Inst,
+    _: &Vals,
+    _: &mut FnBuilder,
+) -> Option<Vec<Val>> {
     let res = inst.res?;
     is_map_new(lay.m, inst).then(|| vec![Val::int(0); lay.width(f.ty(res))])
 }
