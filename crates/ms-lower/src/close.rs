@@ -1465,6 +1465,102 @@ impl FnLower<'_> {
     }
 
     /// The function the cleanup stack calls with the registered value.
+    /// The record a loop over an owned list of type `list` keeps in memory: the list and the
+    /// index of the first element the loop has not taken.
+    pub(crate) fn list_cursor(&mut self, list: MTy) -> (RecId, MTy) {
+        if let Some(c) = self.cx.list_cursors.get(&list) {
+            return *c;
+        }
+        let c = self.b.m.add_record(
+            "ListCursor",
+            vec![("list".into(), list), ("next".into(), MTy::INT)],
+        );
+        self.cx.list_cursors.insert(list, c);
+        c
+    }
+
+    /// The list a cursor holds, as a borrow.
+    pub(crate) fn cursor_list(&mut self, slot: Value, rec: RecId, list: MTy) -> Value {
+        let at = self
+            .b
+            .emit(Op::PtrField, &[slot], Imm::Field(rec, 0), Some(MTy::PTR))
+            .expect("field");
+        self.b
+            .emit(Op::Load, &[at], Imm::Ty(list), Some(list))
+            .expect("list")
+    }
+
+    /// The close of a loop's cursor (`list_cursor`): closes the elements the loop never reached
+    /// with `closer`, shielded and errors dropped, then releases them with the list.
+    pub(crate) fn list_tail_thunk(&mut self, list: MTy, closer: Option<&CloseKind>) -> FuncId {
+        let key = HelperKey::ListTail(list, closer.cloned());
+        if let Some(f) = self.cx.helpers.get(&key) {
+            return *f;
+        }
+        let (rec, _) = self.list_cursor(list);
+        let elem = self.b.m.list_elem(list).expect("a list");
+        let ps = vec![Param {
+            ty: MTy::PTR,
+            mode: Mode::Borrow,
+        }];
+        let mut b = FuncBuilder::new(self.b.m, "close", ps, MTy::UNIT);
+        b.func_mut().linkage = Linkage::Internal;
+        b.func_mut().kind = FuncKind::Normal;
+        let p = b.params()[0];
+        let lp = b
+            .emit(Op::PtrField, &[p], Imm::Field(rec, 0), Some(MTy::PTR))
+            .expect("field");
+        let np = b
+            .emit(Op::PtrField, &[p], Imm::Field(rec, 1), Some(MTy::PTR))
+            .expect("field");
+        let next = b
+            .emit(Op::Load, &[np], Imm::Ty(MTy::INT), Some(MTy::INT))
+            .expect("next");
+        if let Some(kind) = closer {
+            let cur = b.declare_var(MTy::INT, Mode::Borrow);
+            b.def_var(cur, next);
+            let (header, body, done) = (b.new_block(), b.new_block(), b.new_block());
+            b.br(header, &[]);
+            b.switch_to(header);
+            let j = b.use_var(cur);
+            let l = b
+                .emit(Op::Load, &[lp], Imm::Ty(list), Some(list))
+                .expect("list");
+            let len = b.list_len(l);
+            let more = b.icmp(Cc::Lt, j, len);
+            b.br_if(more, body, &[], done, &[]);
+            b.seal_block(body);
+            b.switch_to(body);
+            let j = b.use_var(cur);
+            let l = b
+                .emit(Op::Load, &[lp], Imm::Ty(list), Some(list))
+                .expect("list");
+            let ep = b
+                .emit(Op::ListAddrU, &[l, j], Imm::None, Some(MTy::PTR))
+                .expect("element address");
+            close_at_silent(&mut b, kind, ep, elem);
+            let one = b.iconst(1);
+            let bumped = b
+                .emit(Op::IAdd, &[j, one], Imm::None, Some(MTy::INT))
+                .expect("add");
+            b.def_var(cur, bumped);
+            b.br(header, &[]);
+            b.seal_block(header);
+            b.seal_block(done);
+            b.switch_to(done);
+        }
+        let l = b
+            .emit(Op::Take, &[lp], Imm::Ty(list), Some(list))
+            .expect("list");
+        b.list_release(l, next);
+        let u = b.unit();
+        b.ret(Some(u));
+        let f = b.into_func();
+        let id = self.b.m.add_func(f);
+        self.cx.helpers.insert(key, id);
+        id
+    }
+
     pub(crate) fn close_thunk(&mut self, kind: &CloseKind, ty: MTy, in_slot: bool) -> FuncId {
         let key = match kind {
             CloseKind::Iface(i, k) => HelperKey::CloseIface {
