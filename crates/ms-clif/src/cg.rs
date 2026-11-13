@@ -1534,6 +1534,30 @@ fn direct_shim(g: &mut Gen, kind: Glue, ty: Ty, f: usize) -> bool {
     true
 }
 
+/// Emits the closure glue `kind` under its leaf symbol `sym`: the closure header and the runtime
+/// call it through a pointer, so it has no native twin.
+fn direct_closure_glue(g: &mut Gen, kind: Glue, id: FuncId, sym: String) -> bool {
+    let mut llvm = g.llvm.take().expect("checked by the caller");
+    let no_bits = HashMap::new();
+    let locs = crate::llvm_ir::DirectLocs {
+        syms: &crate::llvm_ir::NoSymbols,
+        bits: &no_bits,
+    };
+    llvm.add_direct(&sym, "glue", (0, 0), false, locs, |env| {
+        crate::glue_llvm::closure::emit(g, kind, env.types, env.loc)
+    });
+    llvm.mark_glue();
+    g.llvm = Some(llvm);
+    g.llvm_funcs.push(LlvmFn {
+        id,
+        symbol: sym,
+        name: "glue".to_string(),
+        file: u32::MAX,
+        line: 0,
+    });
+    true
+}
+
 /// Emits the glue `kind` for `ty` straight to LLVM IR; `false` leaves it to the Cranelift
 /// lowering and its translation.
 fn direct_glue(g: &mut Gen, kind: Glue, ty: Ty) -> bool {
@@ -1547,6 +1571,9 @@ fn direct_glue(g: &mut Gen, kind: Glue, ty: Ty) -> bool {
     }
     let id = g.glue[&(kind, ty)];
     let sym = symbol_of(g, id);
+    if crate::glue_llvm::closure::is_closure(kind) {
+        return direct_closure_glue(g, kind, id, sym);
+    }
     let mut llvm = g.llvm.take().expect("checked above");
     let nat = crate::glue_llvm::native(&sym);
     // Glue has no MIR, so no source locations to resolve.
