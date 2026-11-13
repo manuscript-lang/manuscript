@@ -301,7 +301,7 @@ fn kind_and_name(syms: ms_syntax::Names, decl: &DeclRef) -> (&'static str, Strin
     match &d.kind {
         DeclKind::Fn(f) => ("fn", syms.str(f.name).to_string()),
         DeclKind::Const(c) => ("constant", syms.str(c.name).to_string()),
-        DeclKind::Type(r) => ("record", syms.str(r.name).to_string()),
+        DeclKind::Type(r) => ("type", syms.str(r.name).to_string()),
         DeclKind::Alternative(a) => ("alternative", syms.str(a.name).to_string()),
         DeclKind::Alias(a) => ("alias", syms.str(a.name).to_string()),
         DeclKind::Interface(i) => ("interface", syms.str(i.name).to_string()),
@@ -533,7 +533,7 @@ fn resolve_type_refs(syms: ms_syntax::Names, facts: &mut Facts, program: &Progra
             }
         } else if let Some(def) = &ty.def {
             match fact.kind.as_str() {
-                "record" => {
+                "type" => {
                     for (slot, field) in fact.slots.iter_mut().zip(def.fields.borrow().iter()) {
                         slot.refs = checked_type_refs(syms, &field.ty);
                     }

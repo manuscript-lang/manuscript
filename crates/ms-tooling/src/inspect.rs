@@ -124,7 +124,7 @@ fn entity_kind(decl: &DeclRef) -> &'static str {
     match &decl.decl().kind {
         DeclKind::Fn(_) => "fn",
         DeclKind::Const(_) => "constant",
-        DeclKind::Type(_) => "record",
+        DeclKind::Type(_) => "type",
         DeclKind::Alternative(_) => "alternative",
         DeclKind::Alias(_) => "alias",
         DeclKind::Interface(_) => "interface",

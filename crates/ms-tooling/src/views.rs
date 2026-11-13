@@ -631,7 +631,7 @@ fn types_view(facts: &Facts, entity: &str, depth: i64) -> Result<Node, String> {
         let held: HashSet<&str> = facts
             .entities
             .values()
-            .filter(|f| matches!(f.kind.as_str(), "record" | "alternative"))
+            .filter(|f| matches!(f.kind.as_str(), "type" | "alternative"))
             .flat_map(|f| {
                 f.slots
                     .iter()
@@ -641,7 +641,7 @@ fn types_view(facts: &Facts, entity: &str, depth: i64) -> Result<Node, String> {
         let all: Vec<&Fact> = facts
             .entities
             .values()
-            .filter(|f| matches!(f.kind.as_str(), "record" | "alternative" | "interface"))
+            .filter(|f| matches!(f.kind.as_str(), "type" | "alternative" | "interface"))
             .collect();
         let tops: Vec<&Fact> = all
             .iter()
@@ -736,7 +736,7 @@ pub fn mermaid_view(facts: &Facts, view: &str, entity: &str, depth: i64) -> Opti
 }
 
 fn is_data_type(f: &Fact) -> bool {
-    matches!(f.kind.as_str(), "record" | "alternative" | "interface")
+    matches!(f.kind.as_str(), "type" | "alternative" | "interface")
 }
 
 /// Mermaid class members cannot contain `[` or `]`; generics use `~`.
@@ -814,11 +814,11 @@ fn class_diagram(facts: &Facts, entity: &str, depth: i64) -> Option<String> {
         } else {
             let _ = writeln!(out, "    class {id}[\"{name}\"] {{");
         }
-        if f.kind != "record" {
+        if f.kind != "type" {
             let _ = writeln!(out, "        <<{}>>", f.kind);
         }
         for s in &f.slots {
-            if f.kind == "record" {
+            if f.kind == "type" {
                 let _ = writeln!(out, "        +{} {}", mermaid_text(&s.ty), s.name);
             } else {
                 let _ = writeln!(out, "        {}{}", s.name, mermaid_text(&s.ty));
@@ -962,7 +962,7 @@ pub fn ascii_view(facts: &Facts, view: &str, entity: &str, depth: i64) -> Option
 fn ascii_classes(facts: &Facts, chosen: &[&Fact]) -> String {
     let mut out = String::new();
     for f in chosen.iter().take(NODE_CAP) {
-        let tag = if f.kind == "record" {
+        let tag = if f.kind == "type" {
             String::new()
         } else {
             format!("<<{}>> ", f.kind)
@@ -972,7 +972,7 @@ fn ascii_classes(facts: &Facts, chosen: &[&Fact]) -> String {
             .slots
             .iter()
             .map(|s| {
-                if f.kind == "record" {
+                if f.kind == "type" {
                     format!("{}: {}", s.name, s.ty)
                 } else {
                     format!("{}{}", s.name, s.ty)
@@ -1121,7 +1121,7 @@ fn overview(facts: &Facts) -> Vec<Module> {
                 m.fns += 1;
                 m.entry |= f.name == "main";
             }
-            "record" | "alternative" | "interface" => m.types += 1,
+            "type" | "alternative" | "interface" => m.types += 1,
             "test" | "bench" => m.tests += 1,
             _ => {}
         }

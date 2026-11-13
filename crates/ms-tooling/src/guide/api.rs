@@ -36,7 +36,7 @@ pub struct ApiDeclaration {
     pub doc: String,
     /// Effects the function declares with `// ms: effect NAME` lines (`std.fs.read`).
     pub effects: Vec<String>,
-    /// `fn`, `record`, `alternative`, `interface`, `native`, `constant`, `type`.
+    /// `fn`, `alternative`, `interface`, `native`, `constant`, `type`, `alias`.
     pub kind: String,
     /// Whether the representation is inaccessible outside its declaring module.
     pub opaque: bool,

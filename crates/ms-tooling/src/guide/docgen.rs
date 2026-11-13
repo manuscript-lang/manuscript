@@ -11,7 +11,6 @@ fn declaration_kind(kind: &str) -> &str {
     match kind {
         "fn" => "Function",
         "constant" => "Constant",
-        "record" => "Record",
         "alternative" => "Enum",
         "interface" => "Interface",
         "type" => "Type",

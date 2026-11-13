@@ -526,9 +526,9 @@ fn views_answer_one_question_each() {
 #[test]
 fn ambiguous_entity_remedies_select_distinct_declarations() {
     let facts = facts_of(vec![
-        fact("main.ms", "record", "Box", 1),
+        fact("main.ms", "type", "Box", 1),
         fact("main.ms", "impl", "Box", 4),
-        fact("other.ms", "record", "Box", 1),
+        fact("other.ms", "type", "Box", 1),
     ]);
     for name in ["Box", "main.ms::Box"] {
         let error = find_entity(&facts, name).unwrap_err();
@@ -544,19 +544,15 @@ fn ambiguous_entity_remedies_select_distinct_declarations() {
             })
             .collect();
         let expected = if name == "Box" {
-            vec![
-                "main.ms#impl#Box",
-                "main.ms#record#Box",
-                "other.ms#record#Box",
-            ]
+            vec!["main.ms#impl#Box", "main.ms#type#Box", "other.ms#type#Box"]
         } else {
-            vec!["main.ms#impl#Box", "main.ms#record#Box"]
+            vec!["main.ms#impl#Box", "main.ms#type#Box"]
         };
         assert_eq!(selected, expected);
     }
     assert_eq!(
-        find_entity(&facts, "main.ms#record#Box").unwrap().kind,
-        "record"
+        find_entity(&facts, "main.ms#type#Box").unwrap().kind,
+        "type"
     );
     assert_eq!(
         find_entity(&facts, "Box").unwrap_err(),
@@ -567,8 +563,8 @@ fn ambiguous_entity_remedies_select_distinct_declarations() {
 #[test]
 fn cross_module_entity_remedies_keep_file_qualification() {
     let facts = facts_of(vec![
-        fact("a.ms", "record", "Item", 1),
-        fact("b.ms", "record", "Item", 1),
+        fact("a.ms", "type", "Item", 1),
+        fact("b.ms", "type", "Item", 1),
         fact("a.ms", "fn", "unique", 4),
     ]);
     let error = find_entity(&facts, "Item").unwrap_err();
@@ -576,18 +572,18 @@ fn cross_module_entity_remedies_keep_file_qualification() {
         error,
         "Item is ambiguous; use one of: a.ms::Item, b.ms::Item"
     );
-    for selector in ["a.ms::Item", "b.ms::Item", "a.ms#record#Item"] {
+    for selector in ["a.ms::Item", "b.ms::Item", "a.ms#type#Item"] {
         assert_eq!(find_entity(&facts, selector).unwrap().name, "Item");
     }
     assert_eq!(find_entity(&facts, "unique").unwrap().file, "a.ms");
-    let missing = find_entity(&facts, "a.ms#record#Missing").unwrap_err();
-    assert!(missing.contains("a.ms#record#Missing"));
+    let missing = find_entity(&facts, "a.ms#type#Missing").unwrap_err();
+    assert!(missing.contains("a.ms#type#Missing"));
     assert!(missing.contains("file#kind#name"), "{missing}");
 }
 
 #[test]
 fn full_entity_ids_take_precedence_over_display_names() {
-    let record = fact("main.ms", "record", "Box", 1);
+    let record = fact("main.ms", "type", "Box", 1);
     let named_test = fact("main.ms", "test", &record.key, 7);
     let facts = facts_of(vec![
         record.clone(),
@@ -610,15 +606,15 @@ fn full_entity_ids_take_precedence_over_display_names() {
 #[test]
 fn entity_remedies_account_for_other_declarations_display_names() {
     let facts = facts_of(vec![
-        fact("main.ms", "record", "Item", 1),
-        fact("other.ms", "record", "Item", 1),
+        fact("main.ms", "type", "Item", 1),
+        fact("other.ms", "type", "Item", 1),
         fact("main.ms", "test", "other.ms::Item", 7),
     ]);
     let error = find_entity(&facts, "Item").unwrap_err();
     let (_, remedies) = error.split_once("; use one of: ").unwrap();
-    assert_eq!(remedies, "main.ms#record#Item, other.ms#record#Item");
+    assert_eq!(remedies, "main.ms#type#Item, other.ms#type#Item");
     for selector in remedies.split(", ") {
-        assert_eq!(find_entity(&facts, selector).unwrap().kind, "record");
+        assert_eq!(find_entity(&facts, selector).unwrap().kind, "type");
     }
 }
 
@@ -869,15 +865,15 @@ fn slot(name: &str, ty: &str, var: bool, refs: &[&str]) -> ms_tooling::facts::Sl
 
 #[test]
 fn types_view_expands_held_types_and_marks_cycles() {
-    let mut order = fact("t.ms", "record", "Order", 1);
-    let mut item = fact("t.ms", "record", "Item", 5);
+    let mut order = fact("t.ms", "type", "Order", 1);
+    let mut item = fact("t.ms", "type", "Item", 5);
     order.slots = vec![slot("items", "List[Item]", false, &[&item.key])];
     item.slots = vec![slot("order", "Order", false, &[&order.key])];
     let mut facts = facts_of(vec![order, item]);
     let tree = build_view(&facts, "types", "Order", 0).unwrap().ascii();
     assert_eq!(
         tree,
-        "TYPES VIEW\n`- Order  [record] t.ms:1\n   `- items: List[Item]\n      `- Item  [record] t.ms:5\n         `- order: Order\n            `- Order  (cycle)\n"
+        "TYPES VIEW\n`- Order  [type] t.ms:1\n   `- items: List[Item]\n      `- Item  [type] t.ms:5\n         `- order: Order\n            `- Order  (cycle)\n"
     );
     // Without --entity a type nothing holds is the root; a pure cycle falls back to all types.
     let all = build_view(&facts, "types", "", 1).unwrap().ascii();
@@ -918,11 +914,11 @@ fn class_with_member<'a>(diagram: &'a str, member: &str) -> &'a str {
 
 #[test]
 fn types_mermaid_preserves_distinct_declaration_identities() {
-    let mut first = fact("a.ms", "record", "Item", 1);
-    let mut second = fact("b.ms", "record", "Item", 1);
+    let mut first = fact("a.ms", "type", "Item", 1);
+    let mut second = fact("b.ms", "type", "Item", 1);
     let mut sanitized = fact("c.ms", "interface", "Box[Item]", 1);
     let mut literal = fact("d.ms", "alternative", "Box_Item_", 1);
-    let reserved = fact("e.ms", "record", "__ms_type_0", 1);
+    let reserved = fact("e.ms", "type", "__ms_type_0", 1);
     first.slots = vec![slot("first", "Item", false, &[&second.key])];
     second.slots = vec![slot("second", "Item", false, &[&first.key])];
     sanitized.slots = vec![slot("sanitized", "", false, &[&literal.key])];
@@ -976,7 +972,7 @@ fn types_mermaid_preserves_distinct_declaration_identities() {
 #[test]
 fn types_mermaid_only_links_declared_nodes_at_the_cap() {
     let mut types: Vec<_> = (0..=NODE_CAP)
-        .map(|i| fact(&format!("{i:03}.ms"), "record", "Item", 1))
+        .map(|i| fact(&format!("{i:03}.ms"), "type", "Item", 1))
         .collect();
     let included = types[NODE_CAP - 1].key.clone();
     let excluded = types[NODE_CAP].key.clone();
