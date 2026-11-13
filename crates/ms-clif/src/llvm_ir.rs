@@ -45,8 +45,6 @@ const READS_ONLY: &str = " nounwind willreturn nofree nosync memory(read)";
 /// An LLVM module under construction.
 pub struct LlvmModule {
     di: DebugInfo,
-    /// Functions with loops over list elements get per-CPU copies (x86-64 only).
-    per_cpu: bool,
     /// Fault call sites numbered so far (unique across the module).
     sites: u32,
     /// Function definitions in emission order.
@@ -78,8 +76,6 @@ struct Def {
     header: String,
     /// The entry label, the stack slots, then the rest of the body.
     body: String,
-    /// The x86-64-v3 copy of a function with a loop over list elements: its header and body.
-    avx2: Option<(String, String)>,
 }
 
 /// Body lines above which a function is compiled without LLVM's optimizer (`optnone`): SROA, the
@@ -117,49 +113,6 @@ fn is_huge(body: &str) -> bool {
 /// Whether a function body is long enough to be optimized for size.
 fn is_large(body: &str) -> bool {
     body.bytes().filter(|&b| b == b'\n').count() > LARGE_FUNCTION_LINES
-}
-
-/// Symbol suffix of a function's x86-64-v3 (AVX2, FMA) copy.
-pub(crate) const AVX2_SUFFIX: &str = ".avx2";
-/// Symbol suffix of a dispatched function's baseline copy.
-pub(crate) const BASE_SUFFIX: &str = ".base";
-/// `msrt_cpu_level` at or above this runs the x86-64-v3 copies.
-const AVX2_LEVEL: u32 = 3;
-
-/// The dispatcher `define` header and body for a function whose definition `header` names
-/// `name`: it calls the AVX2 copy when the CPU supports it, else the baseline copy.
-fn dispatcher(name: &str, header: &str) -> (String, String) {
-    // `RET @"name"(PARAMS) #N !dbg !K {`: the dispatcher keeps the signature, drops the debug
-    // subprogram (each belongs to one function), and passes its parameters through.
-    let (ret, rest) = header
-        .split_once(" @\"")
-        .expect("header names the function");
-    let params = rest
-        .split_once('(')
-        .and_then(|(_, p)| p.rsplit_once(')'))
-        .map_or("", |(p, _)| p);
-    let args = params
-        .split(", ")
-        .filter(|p| !p.is_empty())
-        .map(|p| p.replace(" noalias", ""))
-        .collect::<Vec<_>>()
-        .join(", ");
-    let bare = ret.trim_start_matches("zeroext ");
-    let head_ret = ret;
-    let call = |target: &str, r: &str| {
-        if ret == "void" {
-            format!("  tail call void @\"{name}{target}\"({args})\n  ret void\n")
-        } else {
-            format!("  %{r} = tail call {ret} @\"{name}{target}\"({args})\n  ret {bare} %{r}\n")
-        }
-    };
-    let head = format!("{head_ret} @\"{name}\"({params}) #0 {{\n");
-    let body = format!(
-        "entry:\n  %l = call i64 @msrt_cpu_level()\n  %v3 = icmp sge i64 %l, {AVX2_LEVEL}\n  br i1 %v3, label %fast, label %base\nfast:\n{}base:\n{}}}\n\n",
-        call(AVX2_SUFFIX, "fast.r"),
-        call(BASE_SUFFIX, "base.r")
-    );
-    (head, body)
 }
 
 /// Line-table metadata under construction.
@@ -318,7 +271,6 @@ impl LlvmModule {
         }
         let nfiles = files.len();
         let mut m = LlvmModule {
-            per_cpu: true,
             sites: 0,
             di: DebugInfo {
                 meta: Vec::new(),
@@ -595,48 +547,9 @@ struct Tr<'a> {
     ptr_params: HashSet<Value>,
     /// Entry parameters addressed as memory (see `find_addr_params`).
     addr_params: HashSet<Value>,
-    /// Layout position of each block, and of the block being translated.
-    order: HashMap<Block, usize>,
-    at: usize,
-    /// Per block position: it addresses list elements, and it calls something other than a fault
-    /// or a pure runtime helper (a loop that calls out cannot be vectorized).
-    elements: Vec<bool>,
-    calls: Vec<bool>,
-    /// `(from, to)` layout positions of the branches that go back to an earlier or the same block.
-    back_edges: Vec<(usize, usize)>,
-    /// `(from, to)` layout positions of every branch in source-block order, and per block position: it ends the function
-    /// (a return) or calls a fault.
-    edges: Vec<(usize, usize)>,
-    returns: Vec<bool>,
-    faults: Vec<bool>,
 }
 
 impl<'a> Tr<'a> {
-    /// Whether some loop addresses list elements, calls nothing and has a single way out: the
-    /// loops LLVM may vectorize. A loop is the layout range from a branch target to the branch
-    /// back to it. A search loop that returns or breaks early has a second way out and stays
-    /// scalar, so a function holding only such loops keeps one copy and can be inlined.
-    fn has_element_loop(&self) -> bool {
-        self.back_edges.iter().any(|&(from, to)| {
-            let range = to..=from;
-            if !self.elements[to..=from].iter().any(|&e| e)
-                || self.calls[to..=from].iter().any(|&c| c)
-            {
-                return false;
-            }
-            // Edges were appended as blocks were translated in layout order. Restrict the
-            // scan to this loop instead of visiting every other loop's edges again.
-            let first = self.edges.partition_point(|&(f, _)| f < to);
-            let last = self.edges.partition_point(|&(f, _)| f <= from);
-            let exits = self.edges[first..last]
-                .iter()
-                .filter(|&&(_, t)| !range.contains(&t) && !self.faults[t])
-                .count()
-                + self.returns[to..=from].iter().filter(|&&r| r).count();
-            exits <= 1
-        })
-    }
-
     /// Whether `v` is a pointer by construction: a fresh block, a stack slot or symbol address, a
     /// parameter the body addresses memory through, or such a pointer plus an offset.
     fn is_pointer(&self, v: Value, depth: u32) -> bool {
@@ -898,7 +811,6 @@ impl<'a> Tr<'a> {
         let p = if let Some((base, scaled)) = self.indexed.get(&v).copied() {
             let (b, s) = (self.op(base), self.op(scaled));
             let bp = self.def(format!("inttoptr i64 {b} to ptr"));
-            self.elements[self.at] = true;
             let flags = if elem { "inbounds nuw " } else { "" };
             self.def(format!("getelementptr {flags}i8, ptr {bp}, i64 {s}"))
         } else {
@@ -920,12 +832,6 @@ impl<'a> Tr<'a> {
     fn target(&mut self, bc: ir::BlockCall) -> String {
         let pool = &self.f.dfg.value_lists;
         let blk = bc.block(pool);
-        if let Some(&to) = self.order.get(&blk) {
-            self.edges.push((self.at, to));
-            if to <= self.at {
-                self.back_edges.push((self.at, to));
-            }
-        }
         let params = self.f.dfg.block_params(blk);
         let args: Vec<String> = bc
             .args(pool)
@@ -1141,11 +1047,7 @@ impl<'a> Tr<'a> {
             }
             InstructionData::Call { args, func_ref, .. } => {
                 let name = self.callee(func_ref);
-                if !fault_function(&name) && !self.syms.reads_only(&name) {
-                    self.calls[self.at] = true;
-                }
                 if fault_function(&name) {
-                    self.faults[self.at] = true;
                     // Keeps fault sites distinct, so LLVM neither merges them (which drops the
                     // line of a fault in a trace) nor hoists them.
                     self.sites += 1;
@@ -1179,7 +1081,6 @@ impl<'a> Tr<'a> {
             }
             InstructionData::CallIndirect { args, sig_ref, .. } => {
                 let vals: Vec<Value> = args.as_slice(&self.f.dfg.value_lists).to_vec();
-                self.calls[self.at] = true;
                 let callee = self.op(vals[0]);
                 let p = self.def(format!("inttoptr i64 {callee} to ptr"));
                 self.call(inst, sig_ref, &p, &vals[1..], &[]);
@@ -1213,7 +1114,6 @@ impl<'a> Tr<'a> {
             }
             InstructionData::MultiAry { args, .. } => {
                 assert_eq!(opc, Opcode::Return, "multi-ary {opc}");
-                self.returns[self.at] = true;
                 let vals: Vec<Value> = args.as_slice(&self.f.dfg.value_lists).to_vec();
                 self.ret(&vals);
             }
@@ -1362,9 +1262,6 @@ impl<'a> Tr<'a> {
                 } else {
                     ""
                 };
-                if self.is_product(index) {
-                    self.elements[self.at] = true;
-                }
                 let sum = self.def(format!("getelementptr {flags}i8, ptr {at}, i64 {idx}"));
                 self.bases.insert(res, (sum, 0));
             }
@@ -1497,13 +1394,7 @@ impl LlvmModule {
         self.exclusive.insert(name.to_string(), at);
     }
 
-    /// Turns the per-CPU copies of vectorizable loops on or off (they exist for x86-64 only).
-    pub fn set_per_cpu(&mut self, on: bool) {
-        self.per_cpu = on;
-    }
-
-    /// Appends the definition of `f` named `name`. Returns whether the symbol became a
-    /// dispatcher between per-CPU copies (`name.avx2`, `name.base`), which hold the code.
+    /// Appends the definition of `f` named `name`.
     pub fn add_function(
         &mut self,
         name: &str,
@@ -1512,26 +1403,15 @@ impl LlvmModule {
         f: &Function,
         syms: &dyn Symbols,
         public: bool,
-    ) -> bool {
-        // A function with a loop over list elements is also compiled for x86-64-v3 (AVX2, FMA),
-        // where LLVM vectorizes twice as wide; on x86-64 its symbol becomes a dispatcher that
-        // picks a copy by the running CPU (see `finish`).
-        let (header, body, vector) = self.translate(name, name, display, fn_loc, f, syms);
-        let avx2 = (vector && self.per_cpu).then(|| {
-            let clone = format!("{name}{AVX2_SUFFIX}");
-            let (h, b, _) = self.translate(&clone, name, display, fn_loc, f, syms);
-            (h, b)
-        });
-        let copies = avx2.is_some();
+    ) {
+        let (header, body) = self.translate(name, name, display, fn_loc, f, syms);
         self.defs.push(Def {
             name: name.to_string(),
             public,
             glue: false,
             header,
             body,
-            avx2,
         });
-        copies
     }
 
     /// Adds a function emitted straight from MIR (see `mir_llvm`). `emit` receives the id of the
@@ -1564,7 +1444,6 @@ impl LlvmModule {
             glue: false,
             header: format!("{} @\"{name}\"({}) #0 !dbg !{sp} {{\n", out.ret, out.params),
             body: out.body,
-            avx2: None,
         });
     }
 
@@ -1575,9 +1454,8 @@ impl LlvmModule {
         }
     }
 
-    /// The `define` header (after the linkage) and body of `f` under `name`, and whether it
-    /// has a loop over list elements; `source` is the symbol the function was declared as,
-    /// which keys its exclusive parameters.
+    /// The `define` header (after the linkage) and body of `f` under `name`; `source` is the
+    /// symbol the function was declared as, which keys its exclusive parameters.
     fn translate(
         &mut self,
         name: &str,
@@ -1586,7 +1464,7 @@ impl LlvmModule {
         fn_loc: (u32, u32),
         f: &Function,
         syms: &dyn Symbols,
-    ) -> (String, String, bool) {
+    ) -> (String, String) {
         let blocks: Vec<Block> = f.layout.blocks().collect();
         let entry = blocks[0];
         // Debug info: a subprogram per function and one location node per (file, line, scope).
@@ -1622,14 +1500,6 @@ impl LlvmModule {
             elem_addrs,
             ptr_params: HashSet::new(),
             addr_params: HashSet::new(),
-            order: blocks.iter().enumerate().map(|(i, b)| (*b, i)).collect(),
-            at: 0,
-            elements: vec![false; blocks.len()],
-            calls: vec![false; blocks.len()],
-            back_edges: Vec::new(),
-            edges: Vec::new(),
-            returns: vec![false; blocks.len()],
-            faults: vec![false; blocks.len()],
         };
         // Entry parameters are the function parameters; other block parameters are phis.
         let mut params = Vec::new();
@@ -1669,8 +1539,7 @@ impl LlvmModule {
         }
         // Translate each block's instructions; phis are added once every incoming edge is known.
         let mut bodies: Vec<(Block, String)> = Vec::with_capacity(blocks.len());
-        for (at, b) in blocks.iter().enumerate() {
-            tr.at = at;
+        for b in blocks.iter() {
             tr.out.clear();
             tr.cur = tr.label(*b);
             for inst in f.layout.block_insts(*b) {
@@ -1754,7 +1623,7 @@ impl LlvmModule {
         body.push_str(&allocas);
         body.push_str(rest);
         body.push_str("}\n\n");
-        (header, body, tr.has_element_loop())
+        (header, body)
     }
 
     /// Glue functions at the top of a chain of glue calls three or more levels deep. They stay
@@ -1828,7 +1697,7 @@ impl LlvmModule {
 
     /// Whether `d` is written `optnone` (see [`HUGE_FUNCTION_LINES`]).
     fn is_unoptimized(&self, d: &Def, deep: &HashSet<String>) -> bool {
-        d.avx2.is_none() && !deep.contains(&d.name) && is_huge(&d.body)
+        !deep.contains(&d.name) && is_huge(&d.body)
     }
 
     /// Whether some function is compiled without optimization, which gets a unit of its own.
@@ -1839,20 +1708,12 @@ impl LlvmModule {
 
     /// What `d` adds to its unit's size when the functions are cut into units.
     fn weight(d: &Def) -> usize {
-        d.body.len() * if d.avx2.is_some() { 3 } else { 1 }
+        d.body.len()
     }
 
     /// Total bytes of function text, which decides how many units a module is worth.
     pub fn code_bytes(&self) -> usize {
-        self.defs
-            .iter()
-            .map(|d| {
-                d.body.len()
-                    + d.avx2
-                        .as_ref()
-                        .map_or(0, |(h, b)| h.len() + b.len() + d.body.len())
-            })
-            .sum()
+        self.defs.iter().map(|d| d.body.len()).sum()
     }
 
     /// The module as `units` texts of about equal size, each a complete module: the functions
@@ -1930,7 +1791,6 @@ impl LlvmModule {
         tail.push_str("attributes #4 = { \"frame-pointer\"=\"all\" nounwind noinline optnone }\n");
         tail.push_str("attributes #5 = { \"frame-pointer\"=\"all\" nounwind optsize }\n");
         tail.push_str("attributes #2 = { \"frame-pointer\"=\"all\" nounwind noimplicitfloat }\n");
-        tail.push_str("attributes #3 = { \"frame-pointer\"=\"all\" nounwind noinline \"target-features\"=\"+avx,+avx2,+fma,+f16c,+bmi,+bmi2\" }\n");
         // Debug metadata: line tables only (no variables, types or inline frames).
         let first_file = self.di.files.iter().position(Option::is_some).unwrap_or(0);
         tail.push_str("!llvm.dbg.cu = !{!0}\n!llvm.module.flags = !{!1, !2}\n");
@@ -1980,9 +1840,8 @@ impl LlvmModule {
                     "define void @\"{TEXT_ANCHOR}\"() #0 {{\n  ret void\n}}\n"
                 );
             }
-            let mut uses_level = false;
             for d in members {
-                uses_level |= self.write_def(&mut s, d, &deep, anchored, pinned);
+                self.write_def(&mut s, d, &deep, anchored, pinned);
             }
             // References can precede definitions, and with several units point into another:
             // declare what this unit calls and does not define, found in one scan of its text.
@@ -2038,9 +1897,6 @@ impl LlvmModule {
                     let _ = writeln!(s, "@\"{name}\" = external global i8");
                 }
             }
-            if uses_level {
-                s.push_str("declare i64 @msrt_cpu_level() nounwind willreturn memory(none)\n");
-            }
             s.push_str(&tail);
             out.push(Unit {
                 ir: s,
@@ -2050,7 +1906,7 @@ impl LlvmModule {
         out
     }
 
-    /// Writes `d` as a definition and says whether it needs the CPU-level query.
+    /// Writes `d` as a definition.
     fn write_def(
         &self,
         s: &mut String,
@@ -2058,7 +1914,7 @@ impl LlvmModule {
         deep: &HashSet<String>,
         anchored: bool,
         pinned: &HashSet<String>,
-    ) -> bool {
+    ) {
         let vis = if d.public {
             ""
         } else if !anchored || pinned.contains(&d.name) {
@@ -2066,31 +1922,6 @@ impl LlvmModule {
         } else {
             "internal "
         };
-        if let Some((header, body)) = &d.avx2 {
-            // Where the tables address functions by symbol (COFF, Mach-O), the copies the
-            // tables list need visible symbols too, as the dispatcher has.
-            let copy_vis = if !anchored || pinned.contains(&d.name) {
-                "hidden "
-            } else {
-                "internal "
-            };
-            let (dh, db) = dispatcher(&d.name, &d.header);
-            let _ = write!(s, "define {vis}{dh}{db}");
-            let base = d.header.replacen(
-                &format!("@\"{}\"(", d.name),
-                &format!("@\"{}{BASE_SUFFIX}\"(", d.name),
-                1,
-            );
-            // The copies stay out of line: inlined into the dispatcher, which has no debug
-            // subprogram, their line tables are dropped and a fault loses its frames.
-            let base = base.replacen(" #0 ", " #1 ", 1);
-            let _ = write!(s, "define {copy_vis}{base}{}", d.body);
-            let fast = header
-                .replacen(" #0 ", " #3 ", 1)
-                .replacen(" #2 ", " #3 ", 1);
-            let _ = write!(s, "define {copy_vis}{fast}{body}");
-            return true;
-        }
         let header = if deep.contains(&d.name) {
             d.header.replacen(" #0 ", " #1 ", 1)
         } else if is_huge(&d.body) {
@@ -2101,7 +1932,6 @@ impl LlvmModule {
             d.header.clone()
         };
         let _ = write!(s, "define {vis}{header}{}", d.body);
-        false
     }
 }
 
@@ -2128,7 +1958,6 @@ mod tests {
                 public: false,
                 glue: true,
                 body,
-                avx2: None,
             });
         }
         module
@@ -2159,7 +1988,6 @@ mod tests {
                 "b0:\n{}  ret void\n}}\n\n",
                 "  call void @\"x\"()\n".repeat(lines)
             ),
-            avx2: None,
         }
     }
 
@@ -2300,7 +2128,6 @@ mod tests {
         let funcs = [crate::cg::LlvmFn {
             id: cranelift_module::FuncId::from_u32(0),
             symbol: "metadata".into(),
-            copy: false,
             name: display.into(),
             file: 0,
             line: 1,
@@ -2734,154 +2561,6 @@ mod tests {
                 }
             }
         }
-    }
-
-    fn scalar_loop_for_cpu_classification(b: &mut FunctionBuilder<'_>, n: Value, zero: Value) {
-        let header = b.create_block();
-        let body = b.create_block();
-        let done = b.create_block();
-        b.append_block_param(header, types::I64);
-        b.ins().jump(header, &[zero.into()]);
-        b.switch_to_block(header);
-        let i = b.block_params(header)[0];
-        let more = b.ins().icmp(IntCC::SignedLessThan, i, n);
-        b.ins().brif(more, body, &[], done, &[]);
-        b.switch_to_block(body);
-        let inc = b.ins().iadd_imm_s(i, 1);
-        b.ins().jump(header, &[inc.into()]);
-        b.switch_to_block(done);
-    }
-
-    fn loop_for_cpu_classification(
-        elements: bool,
-        calls: bool,
-        early_return: bool,
-        neighbors: bool,
-    ) -> Function {
-        let mut sig = Signature::new(CallConv::SystemV);
-        sig.params = vec![AbiParam::new(types::I64); 2];
-        sig.returns.push(AbiParam::new(types::I64));
-        let mut f = Function::with_name_signature(UserFuncName::user(0, 0), sig);
-        let sigref = f.import_signature(Signature::new(CallConv::SystemV));
-        let name = f.declare_imported_user_function(ir::UserExternalName::new(0, 0));
-        let callee = f.import_function(ExtFuncData {
-            name: ExternalName::User(name),
-            signature: sigref,
-            colocated: false,
-            patchable: false,
-        });
-        let mut cx = FunctionBuilderContext::new();
-        let mut b = FunctionBuilder::new(&mut f, &mut cx);
-        let entry = b.create_block();
-        let header = b.create_block();
-        let body = b.create_block();
-        let done = b.create_block();
-        b.append_block_params_for_function_params(entry);
-        b.append_block_param(header, types::I64);
-        b.switch_to_block(entry);
-        let base = b.block_params(entry)[0];
-        let n = b.block_params(entry)[1];
-        let zero = b.ins().iconst(types::I64, 0);
-        if neighbors {
-            scalar_loop_for_cpu_classification(&mut b, n, zero);
-        }
-        b.ins().jump(header, &[zero.into()]);
-        b.switch_to_block(header);
-        let i = b.block_params(header)[0];
-        let more = b.ins().icmp(IntCC::SignedLessThan, i, n);
-        b.ins().brif(more, body, &[], done, &[]);
-        b.switch_to_block(body);
-        if elements {
-            let scaled = b.ins().imul_imm_s(i, 8);
-            let address = b.ins().iadd(base, scaled);
-            b.ins()
-                .load(types::F64, ir::MemFlagsData::trusted(), address, 0);
-        }
-        if calls {
-            b.ins().call(callee, &[]);
-        }
-        if early_return {
-            let stop = b.create_block();
-            let next = b.create_block();
-            let found = b.ins().icmp_imm_s(IntCC::Equal, i, 1);
-            b.ins().brif(found, stop, &[], next, &[]);
-            b.switch_to_block(stop);
-            b.ins().return_(&[i]);
-            b.switch_to_block(next);
-        }
-        let inc = b.ins().iadd_imm_s(i, 1);
-        b.ins().jump(header, &[inc.into()]);
-        b.switch_to_block(done);
-        if neighbors {
-            scalar_loop_for_cpu_classification(&mut b, n, zero);
-        }
-        b.ins().return_(&[n]);
-        b.seal_all_blocks();
-        b.finalize(cranelift_codegen::isa::TargetFrontendConfig {
-            default_call_conv: CallConv::SystemV,
-            pointer_width: target_lexicon::PointerWidth::U64,
-            page_size_align_log2: 12,
-        });
-        f
-    }
-
-    #[test]
-    fn cpu_copies_require_elements_no_calls_and_one_exit() {
-        struct OpaqueCall;
-        impl Symbols for OpaqueCall {
-            fn symbol(&self, _: u32, _: u32) -> String {
-                "opaque_call".into()
-            }
-            fn loc(&self, _: u32) -> Option<(u32, u32, u32)> {
-                None
-            }
-            fn scope(&self, _: u32) -> Option<(String, u32, u32, u32)> {
-                None
-            }
-        }
-        for (elements, calls, early_return, copies) in [
-            (false, false, false, false),
-            (true, false, false, true),
-            (true, true, false, false),
-            (true, false, true, false),
-        ] {
-            for neighbors in [false, true] {
-                let mut m = LlvmModule::new(vec![Some("loops.ms".into())], ".".into());
-                let f = loop_for_cpu_classification(elements, calls, early_return, neighbors);
-                assert_eq!(
-                    m.add_function("loops", "loops", (0, 1), &f, &OpaqueCall, true),
-                    copies,
-                    "elements={elements}, calls={calls}, early_return={early_return}, neighbors={neighbors}"
-                );
-            }
-        }
-    }
-
-    #[test]
-    fn a_dispatcher_passes_its_parameters_to_the_copy_for_the_cpu() {
-        let (head, body) = dispatcher(
-            "k",
-            "zeroext i8 @\"k\"(i64 %a0, ptr noalias %x1, i8 zeroext %a2) #0 !dbg !5 {\n",
-        );
-        assert_eq!(
-            head,
-            "zeroext i8 @\"k\"(i64 %a0, ptr noalias %x1, i8 zeroext %a2) #0 {\n"
-        );
-        assert!(body.contains("call i64 @msrt_cpu_level()"), "{body}");
-        let args = "(i64 %a0, ptr %x1, i8 zeroext %a2)";
-        assert!(
-            body.contains(&format!("tail call zeroext i8 @\"k.avx2\"{args}")),
-            "{body}"
-        );
-        assert!(
-            body.contains(&format!("tail call zeroext i8 @\"k.base\"{args}")),
-            "{body}"
-        );
-        let (_, void) = dispatcher("u", "void @\"u\"() #0 !dbg !6 {\n");
-        assert!(
-            void.contains("tail call void @\"u.avx2\"()\n  ret void"),
-            "{void}"
-        );
     }
 
     #[test]

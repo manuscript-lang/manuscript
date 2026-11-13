@@ -198,9 +198,6 @@ pub struct Gen<'m> {
 pub struct LlvmFn {
     pub id: FuncId,
     pub symbol: String,
-    /// A per-CPU copy: it shares `id` with its dispatcher, so it needs a symbol of its own where
-    /// the tables address functions by symbol.
-    pub copy: bool,
     pub name: String,
     pub file: u32,
     pub line: u32,
@@ -296,9 +293,6 @@ pub struct FuncDbg {
     /// Offset of the function from [`crate::llvm_ir::TEXT_ANCHOR`]; zero when Cranelift built it
     /// (its own symbol is the table's target).
     pub text: u64,
-    /// The symbol of a per-CPU copy, and the import declared for it, which the tables address
-    /// where there is no anchor.
-    pub copy_symbol: Option<String>,
     pub reloc: Option<FuncId>,
 }
 
@@ -690,7 +684,6 @@ fn compile_with_isa(
     let builder = ObjectBuilder::new(isa, m.name.as_str(), default_libcall_names())
         .map_err(|e| e.to_string())?;
     let module = ObjectModule::new(builder);
-    let x86_64 = module.isa().triple().architecture == target_lexicon::Architecture::X86_64;
     let mut g = Gen {
         m,
         lay: Layouts::new(m),
@@ -727,9 +720,7 @@ fn compile_with_isa(
                 .collect();
             let cwd = std::env::current_dir()
                 .map_or_else(|_| ".".into(), |d| d.to_string_lossy().into_owned());
-            let mut llvm = crate::llvm_ir::LlvmModule::new(files, cwd);
-            llvm.set_per_cpu(x86_64 && opts.build.vectorize);
-            llvm
+            crate::llvm_ir::LlvmModule::new(files, cwd)
         }),
     };
     for (i, f) in m.funcs.iter().enumerate() {
@@ -923,20 +914,6 @@ fn compile_with_isa(
         }
         g.dbg = dbg;
         g.scopes = scopes;
-        if !anchored {
-            // The copies share their dispatcher's id; the tables name each by its own symbol.
-            for i in 0..g.dbg.len() {
-                let Some(symbol) = g.dbg[i].copy_symbol.clone() else {
-                    continue;
-                };
-                let sig = g.module.make_signature();
-                let imported = g
-                    .module
-                    .declare_function(&symbol, Linkage::Import, &sig)
-                    .map_err(|e| Error(format!("{symbol}: {e}")))?;
-                g.dbg[i].reloc = Some(imported);
-            }
-        }
         llvm_objects = objects;
     }
     let tables = if g.m.entry.is_some() {
@@ -1316,7 +1293,6 @@ fn direct_function(g: &mut Gen, i: usize, f: &Func) -> bool {
     g.llvm = Some(llvm);
     g.llvm_funcs.push(LlvmFn {
         id,
-        copy: false,
         symbol: sym,
         name: f.name.clone(),
         file: f.loc.file,
@@ -1363,7 +1339,7 @@ fn prepare(g: &mut Gen, ctx: &mut Context, id: FuncId, name: &str, source: Optio
             Some(f) => (f.name.as_str(), (0, f.loc.line)),
             None => (name, (0, 0)),
         };
-        let copies = llvm.add_function(
+        llvm.add_function(
             &sym,
             display,
             fn_loc,
@@ -1375,27 +1351,13 @@ fn prepare(g: &mut Gen, ctx: &mut Context, id: FuncId, name: &str, source: Optio
             llvm.mark_glue();
         }
         // Glue is listed too: a cleanup thunk can hold an inlined callee that a trace must name.
-        // A function with per-CPU copies is listed as them, under the same name: the dispatcher
-        // between its caller and the copy is no frame of its own. Copies the optimizer drops
-        // have no symbol, and the tables keep the entries whose symbols exist.
-        let symbols = if copies {
-            vec![
-                format!("{sym}{}", crate::llvm_ir::AVX2_SUFFIX),
-                format!("{sym}{}", crate::llvm_ir::BASE_SUFFIX),
-            ]
-        } else {
-            vec![sym.clone()]
-        };
-        for symbol in symbols {
-            g.llvm_funcs.push(LlvmFn {
-                id,
-                copy: copies,
-                symbol,
-                name: source.map_or_else(|| name.to_string(), |f| f.name.clone()),
-                file: source.map_or(u32::MAX, |f| f.loc.file),
-                line: source.map_or(0, |f| f.loc.line),
-            });
-        }
+        g.llvm_funcs.push(LlvmFn {
+            id,
+            symbol: sym,
+            name: source.map_or_else(|| name.to_string(), |f| f.name.clone()),
+            file: source.map_or(u32::MAX, |f| f.loc.file),
+            line: source.map_or(0, |f| f.loc.line),
+        });
         g.llvm = Some(llvm);
         g.module.clear_context(ctx);
         return true;
@@ -1460,7 +1422,6 @@ fn finish(
             ranges,
             dwarf_ranges,
             text: 0,
-            copy_symbol: None,
             reloc: None,
         });
     }

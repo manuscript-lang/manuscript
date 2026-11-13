@@ -36,7 +36,7 @@ pub struct BuildOptions {
     /// How many objects LLVM compiles a release program into, in parallel; `None` picks one per
     /// core for programs big enough to repay it, and 1 keeps the whole program in one module.
     pub llvm_units: Option<usize>,
-    /// LLVM vectorizes loops and builds AVX2 copies of them.
+    /// LLVM vectorizes loops (loop and SLP vectorizers).
     pub vectorize: bool,
     /// Emit supported functions straight from MIR instead of translating Cranelift IR.
     pub llvm_direct: bool,
