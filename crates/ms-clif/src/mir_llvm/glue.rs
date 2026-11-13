@@ -1,7 +1,7 @@
 //! Clone, drop, moves, cleanups and type descriptors: plain data is the value, strings are cloned and freed
 //! inline, objects go through the runtime, and the rest call the type's glue.
 
-use super::calls::finish_call;
+use super::calls::{Callee, finish_call};
 use super::records::{abi_leaves, is_mem, load_result, result_slot, spill};
 use super::{Area, Cx, Vals, block_label, call_ret_ty, leaves, ret_attr};
 use crate::glue_llvm::{GlueCall, OwnKind, clone_callee, clone_str, drop_callee, own_kind};
@@ -92,10 +92,10 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
             b.name_next(&out[0]);
             b.elem_ptr(&LTy::I8, &addr, &Val::int(0));
         }
+        // The moved value is the operand itself: nothing to write.
+        Op::MoveOut => {}
         Op::Clone => clone(cx, inst, vals, &out, b),
         Op::CleanupPush => cleanup_push(cx, inst, vals, &out, b),
-        // Moving a value out is the value itself (see `pre`).
-        Op::MoveOut => {}
         Op::CleanupRun => {
             cx.decls.push(rt_decl("msrt_cleanup_run"));
             let h = vals[&inst.args[0].index()][0].clone();
@@ -192,7 +192,16 @@ fn clone(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder) 
                     let args = leaf_args(b, cx, ty, vals, v);
                     let ret = call_ret_ty(cx.lay, ty, false);
                     let attr = ret_attr(cx.lay, ty);
-                    finish_call(b, cx.lay, ty, (&ret, attr, false), &n, &args, out, false);
+                    finish_call(
+                        b,
+                        cx.lay,
+                        ty,
+                        (&ret, attr, false),
+                        Callee::Symbol(&n),
+                        &args,
+                        out,
+                        false,
+                    );
                 }
             }
         }
