@@ -3,7 +3,7 @@
 use super::{AREAS, Module, supports};
 use crate::abi_llvm::{self, Pass, Ret};
 use crate::layout::Layouts;
-use ms_mir::ir::{Imm, Op};
+use ms_mir::ir::{Imm, Op, Term};
 use std::collections::{HashMap, HashSet};
 
 /// Attributes LLVM cannot always infer, for a function with no memory access or fault: its result
@@ -57,6 +57,8 @@ fn pure_terminates(
         let mut pure = true;
         for b in &rpo {
             let bd = &f.blocks[b.index()];
+            // A fault is an effect: a function that reaches one is not pure.
+            pure &= !matches!(bd.term, Term::Fault(_));
             bd.term
                 .for_each_target(|t| terminates &= order[t.block.index()] > order[b.index()]);
             for i in &bd.insts {
