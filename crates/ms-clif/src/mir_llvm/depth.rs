@@ -6,9 +6,23 @@
 //! one cell each in a heap block followed by room for the results, and the function returns what
 //! that run produced. It is the check `Lower::depth_enter` writes for the Cranelift path.
 
-use super::{Cx, block_label, leaves};
+use super::{Area, Cx, Vals, block_label, leaves};
 use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Val};
+use ms_mir::ir::{Inst, Op};
 use ms_rt_abi::symbols::{STACK_LIMIT_CELL, STACK_REGION};
+
+pub(super) const AREA: Area = Area {
+    handles: |op| matches!(op, Op::DepthEnter | Op::DepthLeave),
+    splits: |op, _| usize::from(op == Op::DepthEnter),
+    emit,
+    ..Area::NONE
+};
+
+fn emit(cx: &mut Cx, inst: &Inst, _: &Vals, b: &mut FnBuilder) {
+    if inst.op == Op::DepthEnter {
+        enter(cx, b);
+    }
+}
 
 /// Alignment of a leaf in its 8-byte cell.
 fn align(t: &LTy) -> u64 {

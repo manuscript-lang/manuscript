@@ -183,6 +183,7 @@ pub enum Bin {
     FMul,
     FDiv,
     LShr,
+    Shl,
 }
 
 impl Bin {
@@ -199,6 +200,7 @@ impl Bin {
             Bin::FMul => "fmul",
             Bin::FDiv => "fdiv",
             Bin::LShr => "lshr",
+            Bin::Shl => "shl",
         }
     }
 
@@ -438,15 +440,20 @@ impl<'t> FnBuilder<'t> {
 
     /// A stack slot for one `ty`, aligned for it; the `alloca` goes to the top of the entry block.
     pub fn alloca(&mut self, ty: &Ty) -> Val {
-        let (_, align) = self.types.size_align(ty);
         let v = self.reserve(Ty::Ptr);
+        self.alloca_as(&v, ty);
+        v
+    }
+
+    /// Like [`FnBuilder::alloca`], with the slot named by the reserved pointer `v`.
+    pub fn alloca_as(&mut self, v: &Val, ty: &Ty) {
+        let (_, align) = self.types.size_align(ty);
         let _ = writeln!(
             self.allocas,
             "  {} = alloca {}, align {align}",
             v.text,
             self.ty(ty)
         );
-        v
     }
 
     /// Copies one `ty` from `src` to `dst` (non-overlapping), with its alignment.
