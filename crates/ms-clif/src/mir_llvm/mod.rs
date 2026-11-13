@@ -45,6 +45,7 @@ pub(crate) fn released_types(lay: &Layouts, f: &Func, inst: &Inst) -> Vec<Ty> {
 use ms_mir::ir::{Func, Imm, Inst, Mode, Module, Op, Target, Term};
 use ms_mir::types::{Ty, TyKind};
 use std::collections::{HashMap, HashSet};
+use types::Abi;
 
 /// Where the function sits in the module: its index, its grow shim when it has a stack-depth
 /// check, and the set of functions in the native calling convention.
@@ -108,8 +109,9 @@ pub struct Plan {
     pub globals: HashMap<usize, String>,
 }
 
-/// LLVM type and parameter attribute of one register leaf. `I8` leaves (`Bool`, flags) are
-/// zero-extended across calls, like the Cranelift ABI; narrow integers live in `i64` registers.
+/// LLVM type and parameter attribute of one register leaf in the leaf calling convention, which
+/// Cranelift shares: `I8` leaves (`Bool`, flags) are zero-extended across calls, narrow integers
+/// are `i64` and a `Float32` is a `double`. Inside a function they are held as their own type.
 fn leaf(l: Leaf) -> (LTy, &'static str) {
     match l {
         Leaf::F64 | Leaf::F32 => (LTy::F64, ""),
@@ -176,7 +178,18 @@ fn leaves(lay: &Layouts, ty: Ty) -> Vec<(LTy, &'static str)> {
 /// and converts at its entry and returns; memory holds the `mem_leaves`.
 fn held_leaves(lay: &Layouts, ty: Ty) -> Vec<LTy> {
     let (ptrs, bools) = (lay.pointer_leaves(ty), lay.bool_leaves(ty));
-    let mut tys: Vec<LTy> = lay.leaves(ty).into_iter().map(|l| leaf(l).0).collect();
+    // A narrow integer is held as the `iN` it is, not as the `i64` of the leaf convention.
+    let mut tys: Vec<LTy> = lay
+        .leaves(ty)
+        .into_iter()
+        .map(|l| {
+            if types::is_narrow(l) || l == Leaf::F32 {
+                mem_leaf(l)
+            } else {
+                leaf(l).0
+            }
+        })
+        .collect();
     for (k, t) in tys.iter_mut().enumerate() {
         if ptrs[k] {
             *t = LTy::Ptr;
@@ -207,16 +220,17 @@ fn mem_leaf(l: Leaf) -> LTy {
         Leaf::N8 | Leaf::U8 => LTy::I8,
         Leaf::N16 | Leaf::U16 => LTy::I16,
         Leaf::N32 | Leaf::U32 => LTy::I32,
+        Leaf::F32 => LTy::F32,
         l => leaf(l).0,
     }
 }
 
-/// Per leaf of `ty`: whether loading it from memory sign-extends (`Int8` to `Int32`). Other
-/// narrow leaves zero-extend; wider ones are not extended.
-fn signed_leaves(lay: &Layouts, ty: Ty) -> Vec<bool> {
+/// Per leaf of `ty`: `Some(signed)` for a narrow integer (`Int8` to `Int32` are signed, the
+/// unsigned ones zero-extend), `None` for any other leaf.
+fn narrow_leaves(lay: &Layouts, ty: Ty) -> Vec<Option<bool>> {
     lay.leaves(ty)
         .into_iter()
-        .map(|l| matches!(l, Leaf::N8 | Leaf::N16 | Leaf::N32))
+        .map(|l| types::is_narrow(l).then_some(matches!(l, Leaf::N8 | Leaf::N16 | Leaf::N32)))
         .collect()
 }
 
@@ -270,25 +284,50 @@ fn reg_ty(r: Reg) -> LTy {
     match r {
         Reg::I64 => LTy::I64,
         Reg::F64 => LTy::F64,
-        Reg::I8 => LTy::I8,
+        Reg::F32 => LTy::F32,
+        Reg::I8 | Reg::N8 | Reg::U8 => LTy::I8,
+        Reg::N16 | Reg::U16 => LTy::I16,
+        Reg::N32 | Reg::U32 => LTy::I32,
         Reg::Ptr => LTy::Ptr,
     }
 }
 
-/// The result as it crosses a call: the `void`, the register or a tuple of them, in the native
-/// convention when `native` and as leaves otherwise.
+/// The result as it crosses a call to a function in the leaf convention (`native` false) or the C
+/// convention of the runtime (pointers as `ptr`): the `void`, the register or a tuple of them.
+/// A sized integer is an `i64` and a `Float32` a `double` in both.
 fn call_ret_ty(lay: &Layouts, ty: Ty, native: bool) -> LTy {
     if !native {
         return ret_ty(lay, ty);
     }
+    result_ty(lay, ty, Reg::c_abi)
+}
+
+/// The result of a function in the native convention: each leaf in its own type.
+fn native_ret_ty(lay: &Layouts, ty: Ty) -> LTy {
+    result_ty(lay, ty, |r| r)
+}
+
+fn result_ty(lay: &Layouts, ty: Ty, reg: fn(Reg) -> Reg) -> LTy {
     let mut tys: Vec<LTy> = crate::abi_llvm::regs_of(lay, ty)
         .into_iter()
-        .map(reg_ty)
+        .map(|r| reg_ty(reg(r)))
         .collect();
     match tys.len() {
         0 => LTy::Void,
         1 => tys.remove(0),
         _ => LTy::Tuple(tys),
+    }
+}
+
+/// The result attribute of a native function: a sized integer carries its extension, any other
+/// result what `ret_attr` says.
+fn native_ret_attr(lay: &Layouts, ty: Ty) -> &'static str {
+    match crate::abi_llvm::regs_of(lay, ty).as_slice() {
+        [r] if r.extension() != "" && *r != Reg::I8 => match r.extension() {
+            " signext" => "signext ",
+            _ => "zeroext ",
+        },
+        _ => ret_attr(lay, ty),
     }
 }
 
@@ -759,7 +798,12 @@ pub fn emit(
                 b.ret(None);
             }
             Term::Ret(Some(v)) => {
-                let abi = types::abi_leaves(&mut b, lay, f.ty(*v), &vals, *v, sig.is_some());
+                let ret_abi = if sig.is_some() {
+                    Abi::Native
+                } else {
+                    Abi::Leaf
+                };
+                let abi = types::abi_leaves(&mut b, lay, f.ty(*v), &vals, *v, ret_abi);
                 match abi.as_slice() {
                     [] => b.ret(None),
                     [one] => b.ret(Some(one)),

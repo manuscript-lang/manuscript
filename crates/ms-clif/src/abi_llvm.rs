@@ -35,23 +35,51 @@ pub const SCALAR_BYTES: u32 = 16;
 /// An LLVM scalar a leaf is passed as.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Reg {
-    /// `i64`: integers, sized integers widened to registers, pointers.
+    /// `i64`: integers and, in the C convention, pointers and sized integers.
     I64,
     /// `double`.
     F64,
+    /// `float`: a `Float32`.
+    F32,
     /// `i8`: booleans and presence flags.
     I8,
     /// `ptr`: a leaf that is an address (see `Layouts::pointer_leaves`).
     Ptr,
+    /// A sized integer as the `i8`, `i16` or `i32` it is: signed (`Int8` to `Int32`).
+    N8,
+    N16,
+    N32,
+    /// The unsigned ones (`UInt8` to `UInt32`).
+    U8,
+    U16,
+    U32,
 }
 
 impl Reg {
-    /// The register a leaf is held in.
+    /// The register a leaf travels in between directly emitted functions: a sized integer or
+    /// `Float32` as the narrow type it is.
     pub fn of(leaf: Leaf) -> Reg {
         match leaf {
-            Leaf::F64 | Leaf::F32 => Reg::F64,
+            Leaf::F64 => Reg::F64,
+            Leaf::F32 => Reg::F32,
             Leaf::I8 => Reg::I8,
+            Leaf::N8 => Reg::N8,
+            Leaf::N16 => Reg::N16,
+            Leaf::N32 => Reg::N32,
+            Leaf::U8 => Reg::U8,
+            Leaf::U16 => Reg::U16,
+            Leaf::U32 => Reg::U32,
             _ => Reg::I64,
+        }
+    }
+
+    /// The register the same leaf is in the C convention the runtime and Cranelift use: a sized
+    /// integer widened to `i64` and a `Float32` to `double`.
+    pub fn c_abi(self) -> Reg {
+        match self {
+            Reg::N8 | Reg::N16 | Reg::N32 | Reg::U8 | Reg::U16 | Reg::U32 => Reg::I64,
+            Reg::F32 => Reg::F64,
+            r => r,
         }
     }
 
@@ -60,8 +88,20 @@ impl Reg {
         match self {
             Reg::I64 => "i64",
             Reg::F64 => "double",
-            Reg::I8 => "i8",
+            Reg::F32 => "float",
+            Reg::I8 | Reg::N8 | Reg::U8 => "i8",
+            Reg::N16 | Reg::U16 => "i16",
+            Reg::N32 | Reg::U32 => "i32",
             Reg::Ptr => "ptr",
+        }
+    }
+
+    /// The parameter or result attribute that says how the register is extended past its width.
+    pub fn extension(self) -> &'static str {
+        match self {
+            Reg::I8 | Reg::U8 | Reg::U16 | Reg::U32 => " zeroext",
+            Reg::N8 | Reg::N16 | Reg::N32 => " signext",
+            _ => "",
         }
     }
 }
@@ -101,6 +141,13 @@ fn mem_of(regs: &[Reg]) -> Mem {
         .map(|r| match r {
             Reg::I8 => Leaf::I8,
             Reg::F64 => Leaf::F64,
+            Reg::F32 => Leaf::F32,
+            Reg::N8 => Leaf::N8,
+            Reg::N16 => Leaf::N16,
+            Reg::N32 => Leaf::N32,
+            Reg::U8 => Leaf::U8,
+            Reg::U16 => Leaf::U16,
+            Reg::U32 => Leaf::U32,
             Reg::I64 | Reg::Ptr => Leaf::I64,
         })
         .collect();
@@ -209,10 +256,7 @@ pub struct Signature {
 }
 
 fn reg_formal(r: Reg, name: String) -> Formal {
-    let ty = match r {
-        Reg::I8 => "i8 zeroext".to_string(),
-        r => r.llvm().to_string(),
-    };
+    let ty = format!("{}{}", r.llvm(), r.extension());
     Formal { ty, name }
 }
 
@@ -254,7 +298,10 @@ impl Signature {
             Ret::Scalars(r) => match r.as_slice() {
                 [] => "void".to_string(),
                 [Reg::I8] => format!("zeroext{} i8", range_attr(lay, ret_ty, 0)),
-                [one] => one.llvm().to_string(),
+                [one] => match one.extension().trim_start() {
+                    "" => one.llvm().to_string(),
+                    ext => format!("{ext} {}", one.llvm()),
+                },
                 many => {
                     let tys: Vec<&str> = many.iter().map(|r| r.llvm()).collect();
                     format!("{{ {} }}", tys.join(", "))
@@ -364,9 +411,11 @@ mod tests {
     }
 
     #[test]
-    fn sized_integers_and_floats_ride_registers() {
-        assert_eq!(Reg::of(Leaf::U8), Reg::I64);
-        assert_eq!(Reg::of(Leaf::F32), Reg::F64);
+    fn sized_integers_and_floats_keep_their_width() {
+        assert_eq!(Reg::of(Leaf::U8), Reg::U8);
+        assert_eq!(Reg::of(Leaf::U8).c_abi(), Reg::I64);
+        assert_eq!(Reg::of(Leaf::F32), Reg::F32);
+        assert_eq!(Reg::of(Leaf::F32).c_abi(), Reg::F64);
         assert_eq!(Reg::of(Leaf::I8), Reg::I8);
     }
 

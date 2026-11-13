@@ -354,6 +354,8 @@ pub enum Bin {
     Shl,
     SDiv,
     SRem,
+    UDiv,
+    URem,
 }
 
 impl Bin {
@@ -373,6 +375,8 @@ impl Bin {
             Bin::AShr => "ashr",
             Bin::Shl => "shl",
             Bin::SDiv => "sdiv",
+            Bin::UDiv => "udiv",
+            Bin::URem => "urem",
             Bin::SRem => "srem",
         }
     }
@@ -524,10 +528,11 @@ impl<'t> FnBuilder<'t> {
         self.def(Ty::F64, format!("fpext float {} to double", v.text))
     }
 
-    /// A signed `i64` converted to `double`.
-    pub fn sitofp(&mut self, v: &Val) -> Val {
+    /// A signed `i64` converted to `float` or `double`.
+    pub fn sitofp(&mut self, v: &Val, to: Ty) -> Val {
         assert_eq!(v.ty, Ty::I64);
-        self.def(Ty::F64, format!("sitofp i64 {} to double", v.text))
+        let rhs = format!("sitofp i64 {} to {}", v.text, self.ty(&to));
+        self.def(to, rhs)
     }
 
     pub fn zext(&mut self, v: &Val, to: Ty) -> Val {

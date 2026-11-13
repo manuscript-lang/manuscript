@@ -15,7 +15,7 @@
 //! Values of type `ptr` are LLVM `ptr` inside a function and `i64` across a call. A type that
 //! holds a `ptr` is not handled (its leaf is an integer here); the function falls back.
 
-use super::{Area, Cx, Vals, held_leaves, mem_leaves, signed_leaves};
+use super::{Area, Cx, Vals, held_leaves, mem_leaves, narrow_leaves};
 use crate::glue_llvm::{OwnKind, own_kind};
 use crate::layout::{Layouts, Leaf, mem_layout};
 use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Types, Val};
@@ -41,8 +41,6 @@ pub(super) struct Shape {
     pub leaves: Vec<LTy>,
     /// Type each leaf is held as in a register: the memory type, or `i1` for a boolean.
     pub held: Vec<LTy>,
-    /// Whether loading each leaf sign-extends it (`Int8` to `Int32`).
-    pub signed: Vec<bool>,
     pub size: u32,
     pub align: u32,
 }
@@ -54,7 +52,7 @@ fn shape_leaves(lay: &Layouts, ty: Ty) -> Option<(Vec<LTy>, crate::layout::MemLa
     if raw.is_empty()
         || raw
             .iter()
-            .any(|l| !matches!(l, Leaf::I64 | Leaf::F64 | Leaf::I8) && !is_narrow(*l))
+            .any(|l| !matches!(l, Leaf::I64 | Leaf::F64 | Leaf::I8 | Leaf::F32) && !is_narrow(*l))
     {
         return None;
     }
@@ -85,7 +83,6 @@ pub(super) fn shape(types: &Types, lay: &Layouts, ty: Ty) -> Option<Shape> {
     Some(Shape {
         st: super::aggregate(types, lay, ty),
         held: held_leaves(lay, ty),
-        signed: signed_leaves(lay, ty),
         leaves,
         size: mem.size,
         align: mem.align,
@@ -112,7 +109,7 @@ fn indirect(lay: &Layouts, ty: Ty) -> Option<ms_mir::types::TypeId> {
 fn block_ok(lay: &Layouts, r: ms_mir::types::TypeId) -> bool {
     lay.type_block(r)
         .iter()
-        .all(|l| matches!(l, Leaf::I64 | Leaf::F64 | Leaf::I8) || is_narrow(*l))
+        .all(|l| matches!(l, Leaf::I64 | Leaf::F64 | Leaf::I8 | Leaf::F32) || is_narrow(*l))
         && lay.m.type_defs[r.index()]
             .fields
             .iter()
@@ -122,16 +119,14 @@ fn block_ok(lay: &Layouts, r: ms_mir::types::TypeId) -> bool {
 /// The memory shape of the block behind indirect type `r`: the leaves of its fields in order,
 /// with a map or set field as the one nullable pointer to its header.
 fn block_shape(types: &Types, lay: &Layouts, r: ms_mir::types::TypeId) -> Shape {
-    let (mut leaves, mut held, mut signed) = (Vec::new(), Vec::new(), Vec::new());
+    let (mut leaves, mut held) = (Vec::new(), Vec::new());
     for f in &lay.m.type_defs[r.index()].fields {
         if lay.type_field_boxed(f.1) {
             leaves.push(LTy::Ptr);
             held.push(LTy::Ptr);
-            signed.push(false);
         } else {
             leaves.extend(mem_leaves(lay, f.1));
             held.extend(held_leaves(lay, f.1));
-            signed.extend(signed_leaves(lay, f.1));
         }
     }
     let mem = mem_layout(&lay.type_block(r));
@@ -140,7 +135,6 @@ fn block_shape(types: &Types, lay: &Layouts, r: ms_mir::types::TypeId) -> Shape 
         st: types.named(&name, leaves.clone()),
         leaves,
         held,
-        signed,
         size: mem.size,
         align: mem.align,
     }
@@ -387,7 +381,20 @@ fn field_span(lay: &Layouts, rty: Ty, i: usize) -> (usize, usize) {
     (at, lay.width(fields[i].1))
 }
 
-/// The leaves of `v` as they cross a call: a type in memory loaded, a boolean as an `i8`, and
+/// The convention the leaves of a call cross in.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum Abi {
+    /// The leaf convention Cranelift shares: each pointer an `i64`, each sized integer an `i64`
+    /// and each `Float32` a `double`.
+    Leaf,
+    /// The C convention of a runtime function: pointers stay `ptr`, but sized integers and
+    /// `Float32` are still widened.
+    Rt,
+    /// Directly emitted functions (`abi_llvm::Signature`): every leaf is the type it is held as.
+    Native,
+}
+
+/// The leaves of `v` as they cross a call: a record in memory loaded, a boolean as an `i8`, and
 /// each pointer as itself in the native convention (`native`) or as its address (`i64`) in the
 /// leaf convention.
 pub(super) fn abi_leaves(
@@ -396,9 +403,9 @@ pub(super) fn abi_leaves(
     ty: Ty,
     vals: &Vals,
     v: Value,
-    native: bool,
+    abi: Abi,
 ) -> Vec<Val> {
-    abi_leaves_of(b, lay, ty, &vals[&v.index()], native)
+    abi_leaves_of(b, lay, ty, &vals[&v.index()], abi)
 }
 
 /// [`abi_leaves`] of the held values `own` of a `ty`.
@@ -407,7 +414,7 @@ pub(super) fn abi_leaves_of(
     lay: &Layouts,
     ty: Ty,
     own: &[Val],
-    native: bool,
+    abi: Abi,
 ) -> Vec<Val> {
     let leaves = if is_mem(lay, ty) {
         let s = shape(b.types(), lay, ty).expect("is_mem checked");
@@ -415,12 +422,15 @@ pub(super) fn abi_leaves_of(
     } else {
         own.to_vec()
     };
+    let narrow = narrow_leaves(lay, ty);
     leaves
         .into_iter()
-        .map(|l| match l.ty {
+        .enumerate()
+        .map(|(k, l)| match l.ty {
+            LTy::Ptr if abi == Abi::Leaf => b.ptr_to_int(&l),
             LTy::I1 => b.zext(&l, LTy::I8),
-            LTy::Ptr if !native => b.ptr_to_int(&l),
-            _ => l,
+            _ if abi == Abi::Native => l,
+            _ => to_abi(b, &l, narrow[k]),
         })
         .collect()
 }
@@ -439,10 +449,10 @@ fn load_leaves(
         .map(|k| {
             let p = b.leaf_ptr(&s.st, base, k);
             match named.get(k - at) {
-                Some(v) => load_into(b, v, &s.leaves[k], s.signed[k], &p),
+                Some(v) => load_into(b, v, &s.leaves[k], &p),
                 None => {
                     let w = b.load(&s.leaves[k], &p, align(&s.leaves[k]));
-                    widen(b, &w, &s.held[k], s.signed[k])
+                    widen(b, &w, &s.held[k])
                 }
             }
         })
@@ -463,12 +473,14 @@ pub(super) fn store_leaf(b: &mut FnBuilder, v: &Val, mem: &LTy, p: &Val) {
     b.store(&v, p, align(mem));
 }
 
-/// A held value as its memory type `mem`: an `i1` as the byte, an `i64` as a narrow integer, and
-/// a pointer or word in a slot of the other kind.
+/// A value as its memory type `mem`: an `i1` as the byte, an `i64` register of the leaf
+/// convention as a narrow integer, a `double` of it as a `float`, and a pointer or word in a slot
+/// of the other kind.
 pub(super) fn to_mem(b: &mut FnBuilder, v: &Val, mem: &LTy) -> Val {
     match (&v.ty, mem) {
         (LTy::I1, _) => b.zext(v, LTy::I8),
         (LTy::I64, LTy::I8 | LTy::I16 | LTy::I32) => b.trunc(v, mem.clone()),
+        (LTy::F64, LTy::F32) => b.fptrunc(v),
         (LTy::I64, LTy::Ptr) => b.inttoptr(v),
         (LTy::Ptr, LTy::I64) => b.ptrtoint(v),
         _ => v.clone(),
@@ -476,29 +488,51 @@ pub(super) fn to_mem(b: &mut FnBuilder, v: &Val, mem: &LTy) -> Val {
 }
 
 /// Loads the leaf of memory type `mem` at `p` as the reserved held value `dst`: a boolean byte is
-/// narrowed to the `i1` it is held as, and a narrow integer extended to its `i64` register
-/// (`signed` for `Int8` to `Int32`).
-fn load_into(b: &mut FnBuilder, dst: &Val, mem: &LTy, signed: bool, p: &Val) -> Val {
+/// narrowed to the `i1` it is held as.
+fn load_into(b: &mut FnBuilder, dst: &Val, mem: &LTy, p: &Val) -> Val {
     if dst.ty == *mem {
         b.name_next(dst);
         return b.load(mem, p, align(mem));
     }
     let w = b.load(mem, p, align(mem));
     b.name_next(dst);
-    widen(b, &w, &dst.ty, signed)
+    widen(b, &w, &dst.ty)
 }
 
-/// A loaded memory value as the type it is held as: `i1` for a boolean byte, `i64` for a narrow
-/// integer; anything else is already held as it is stored.
-pub(super) fn widen(b: &mut FnBuilder, w: &Val, held: &LTy, signed: bool) -> Val {
+/// A loaded memory value as the type it is held as: `i1` for a boolean byte; anything else is
+/// already held as it is stored.
+pub(super) fn widen(b: &mut FnBuilder, w: &Val, held: &LTy) -> Val {
     match (&w.ty, held) {
         (LTy::I8, LTy::I1) => b.trunc(w, LTy::I1),
-        (LTy::I8 | LTy::I16 | LTy::I32, LTy::I64) if signed => b.sext(w, LTy::I64),
-        (LTy::I8 | LTy::I16 | LTy::I32, LTy::I64) => b.zext(w, LTy::I64),
         (LTy::Ptr, LTy::I64) => b.ptrtoint(w),
         (LTy::I64, LTy::Ptr) => b.inttoptr(w),
         _ => w.clone(),
     }
+}
+
+/// A held leaf as it crosses a call in the leaf convention: a boolean as a byte and a narrow
+/// integer (`narrow` says whether the leaf is one, and signed) extended to the `i64` register.
+pub(super) fn to_abi(b: &mut FnBuilder, v: &Val, narrow: Option<bool>) -> Val {
+    match (&v.ty, narrow) {
+        (LTy::I1, _) => b.zext(v, LTy::I8),
+        (LTy::F32, _) => b.fpext(v),
+        (LTy::I64, _) => v.clone(),
+        (_, Some(true)) => b.sext(v, LTy::I64),
+        (_, Some(false)) => b.zext(v, LTy::I64),
+        _ => v.clone(),
+    }
+}
+
+/// Whether a leaf held as `held` arrives in the leaf convention as another type, which the entry
+/// block converts: a pointer as an address, a boolean as a byte, a narrow integer as an `i64`.
+fn arrives_converted(held: &LTy, abi: &LTy) -> bool {
+    matches!(
+        (held, abi),
+        (LTy::Ptr, LTy::I64)
+            | (LTy::I1, LTy::I8)
+            | (LTy::I8 | LTy::I16 | LTy::I32, LTy::I64)
+            | (LTy::F32, LTy::F64)
+    )
 }
 
 /// A leaf's alignment in memory: its size.
@@ -506,7 +540,7 @@ fn align(t: &LTy) -> u64 {
     match t {
         LTy::I1 | LTy::I8 => 1,
         LTy::I16 => 2,
-        LTy::I32 => 4,
+        LTy::I32 | LTy::F32 => 4,
         _ => 8,
     }
 }
@@ -545,7 +579,7 @@ pub(super) fn bind_param(
     abi.into_iter()
         .zip(held_leaves(lay, ty))
         .map(|(a, t)| {
-            if (t == LTy::Ptr && a.ty == LTy::I64) || (t == LTy::I1 && a.ty == LTy::I8) {
+            if arrives_converted(&t, &a.ty) {
                 let held = b.reserve(t);
                 entry.push(Entry::Conv {
                     held: held.clone(),
@@ -564,11 +598,7 @@ pub(super) fn emit_entry(b: &mut FnBuilder, lay: &Layouts, entry: Vec<Entry>) {
         match e {
             Entry::Conv { held, abi } => {
                 b.name_next(&held);
-                if held.ty == LTy::I1 {
-                    b.trunc(&abi, LTy::I1);
-                } else {
-                    b.int_to_ptr(&abi);
-                }
+                from_abi(b, &abi, &held.ty);
             }
             Entry::Mem { slot, abi, ty } => {
                 let s = shape(b.types(), lay, ty).expect("is_mem checked");
@@ -576,10 +606,10 @@ pub(super) fn emit_entry(b: &mut FnBuilder, lay: &Layouts, entry: Vec<Entry>) {
             }
             Entry::Load { ptr, dsts, ty } => {
                 let st = super::aggregate(b.types(), lay, ty);
-                let (mem, signed) = (mem_leaves(lay, ty), signed_leaves(lay, ty));
+                let mem = mem_leaves(lay, ty);
                 for (k, dst) in dsts.iter().enumerate() {
                     let p = b.leaf_ptr(&st, &ptr, k);
-                    load_into(b, dst, &mem[k], signed[k], &p);
+                    load_into(b, dst, &mem[k], &p);
                 }
             }
         }
@@ -1036,28 +1066,55 @@ pub(super) fn call_result(b: &mut FnBuilder, lay: &Layouts, ty: Ty, r: Val, out:
 /// own result `r` (one leaf, or a tuple of several): a boolean comes back as a byte and a pointer
 /// (in the leaf convention, not the native one) as an address, and each is converted; every other leaf is the call's
 /// result itself under its reserved name.
-pub(super) fn name_leaves(b: &mut FnBuilder, r: Val, out: &[Val], native: bool) {
+pub(super) fn name_leaves(b: &mut FnBuilder, r: Val, out: &[Val], _native: bool) {
+    let abi = ret_leaf_types(&r.ty, out.len());
     for (k, dst) in out.iter().enumerate() {
-        let converted = dst.ty == LTy::I1 || (!native && dst.ty == LTy::Ptr);
+        let same = abi[k] == dst.ty;
         let word = if out.len() == 1 {
             r.clone()
-        } else if converted {
-            b.extract(&r, k)
-        } else {
+        } else if same {
             b.name_next(dst);
             b.extract(&r, k);
             continue;
+        } else {
+            b.extract(&r, k)
         };
         b.name_next(dst);
-        if dst.ty == LTy::I1 {
-            b.trunc(&word, LTy::I1);
-        } else {
-            b.int_to_ptr(&word);
-        }
+        assert!(!same, "a single leaf that matches needs no conversion");
+        from_abi(b, &word, &dst.ty);
     }
 }
 
-/// The held values of an entry parameter of type `ty` that arrives as the pointer `ptr`. A type
+/// A leaf that arrived in the leaf convention as the type it is held as: an address as a `ptr`, a
+/// `double` as a `float`, an `i64` or byte as the narrower integer.
+fn from_abi(b: &mut FnBuilder, v: &Val, held: &LTy) -> Val {
+    match held {
+        LTy::Ptr => b.int_to_ptr(v),
+        LTy::F32 => b.fptrunc(v),
+        _ => b.trunc(v, held.clone()),
+    }
+}
+
+/// The types of the `n` leaves a call returns as `ret`: the tuple's elements, or the one type.
+fn ret_leaf_types(ret: &LTy, n: usize) -> Vec<LTy> {
+    match ret {
+        LTy::Tuple(ts) => ts.clone(),
+        t if n == 1 => vec![t.clone()],
+        _ => Vec::new(),
+    }
+}
+
+/// Whether a leaf of a call result is held as another type than it comes back as: a boolean as a
+/// byte, a pointer as an address in the leaf convention, a narrow integer as an `i64`, a
+/// `Float32` as a `double`.
+pub(super) fn ret_needs_conversion(ret: &LTy, out: &[Val]) -> bool {
+    ret_leaf_types(ret, out.len())
+        .iter()
+        .zip(out)
+        .any(|(abi, dst)| *abi != dst.ty)
+}
+
+/// The held values of an entry parameter of type `ty` that arrives as the pointer `ptr`. A record
 /// in memory is used where it is (it is never written); anything else is loaded into its leaves
 /// at the top of the entry block.
 pub(super) fn bind_indirect(
@@ -1093,7 +1150,7 @@ pub(super) fn spill_of(b: &mut FnBuilder, lay: &Layouts, ty: Ty, own: &[Val]) ->
     if is_mem(lay, ty) {
         return own[0].clone();
     }
-    let leaves = abi_leaves_of(b, lay, ty, own, true);
+    let leaves = abi_leaves_of(b, lay, ty, own, Abi::Native);
     let st = super::aggregate(b.types(), lay, ty);
     let slot = b.alloca(&st);
     store_regs(b, lay, ty, &st, &slot, &leaves);
@@ -1122,7 +1179,7 @@ pub(super) fn store_result(
         b.copy_bytes(sret, &vals[&v.index()][0], s.size as u64, s.align as u64);
         return;
     }
-    let leaves = abi_leaves(b, lay, ty, vals, v, true);
+    let leaves = abi_leaves(b, lay, ty, vals, v, Abi::Native);
     let st = super::aggregate(b.types(), lay, ty);
     store_regs(b, lay, ty, &st, sret, &leaves);
 }
@@ -1145,9 +1202,9 @@ pub(super) fn load_result(b: &mut FnBuilder, lay: &Layouts, ty: Ty, slot: &Val, 
         return;
     }
     let st = super::aggregate(b.types(), lay, ty);
-    let (mem, signed) = (mem_leaves(lay, ty), signed_leaves(lay, ty));
+    let mem = mem_leaves(lay, ty);
     for (k, dst) in out.iter().enumerate() {
         let p = b.leaf_ptr(&st, slot, k);
-        load_into(b, dst, &mem[k], signed[k], &p);
+        load_into(b, dst, &mem[k], &p);
     }
 }
