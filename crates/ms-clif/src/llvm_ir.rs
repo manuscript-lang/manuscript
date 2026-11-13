@@ -1862,7 +1862,6 @@ impl LlvmModule {
                 );
             }
         }
-        tail.push_str(&self.types.definitions());
         tail.push_str("attributes #0 = { \"frame-pointer\"=\"all\" nounwind }\n");
         tail.push_str("attributes #1 = { \"frame-pointer\"=\"all\" nounwind noinline }\n");
         tail.push_str("attributes #4 = { \"frame-pointer\"=\"all\" nounwind noinline optnone }\n");
@@ -1915,6 +1914,9 @@ impl LlvmModule {
         for (members, unoptimized) in &groups {
             let mut s = String::new();
             let _ = writeln!(s, "target triple = \"{triple}\"");
+            // Struct bodies come before any use: a `getelementptr` on a type not yet defined
+            // is rejected as unsized.
+            s.push_str(&self.types.definitions());
             if anchored {
                 let _ = writeln!(
                     s,
