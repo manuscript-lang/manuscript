@@ -395,6 +395,17 @@ fn commutative(op: Op, imm: Imm) -> bool {
     }
 }
 
+/// Whether the folded value `r` of `inst` is within the range of the sized type a checked
+/// operation yields: out of it the operation faults, so it is not a constant.
+fn in_type(f: &Func, inst: &Inst, r: i64) -> bool {
+    let checked = matches!(
+        inst.op,
+        Op::IAddChk | Op::ISubChk | Op::IMulChk | Op::INegChk | Op::SDivChk
+    );
+    let range = inst.res.and_then(|v| f.ty(v).sized_range());
+    !checked || range.is_none_or(|(lo, hi)| (lo..=hi).contains(&r))
+}
+
 /// Evaluates an integer operation when it cannot fault.
 fn int_op(op: Op, x: i64, y: i64) -> Option<i64> {
     Some(match op {
@@ -470,7 +481,9 @@ fn integer_rule(f: &mut Func, env: &mut Env, out: &mut Vec<Inst>, inst: &Inst) -
         Op::IAdd | Op::ISub | Op::IMul | Op::IAddChk | Op::ISubChk | Op::IMulChk => {
             let (x, y) = (a(0), a(1));
             if let (Some(p), Some(q)) = (env.ci(x), env.ci(y)) {
-                return int_op(inst.op, p, q).map_or(Act::Keep, |r| Act::Const(K::I(r)));
+                return int_op(inst.op, p, q)
+                    .filter(|r| in_type(f, inst, *r))
+                    .map_or(Act::Keep, |r| Act::Const(K::I(r)));
             }
             match inst.op {
                 Op::IAdd | Op::IAddChk => {
@@ -517,7 +530,9 @@ fn integer_rule(f: &mut Func, env: &mut Env, out: &mut Vec<Inst>, inst: &Inst) -
                 } else {
                     p.checked_neg()
                 };
-                return r.map_or(Act::Keep, |r| Act::Const(K::I(r)));
+                return r
+                    .filter(|r| in_type(f, inst, *r))
+                    .map_or(Act::Keep, |r| Act::Const(K::I(r)));
             }
             if inst.op == Op::INeg
                 && let Some((Op::INeg, args, _)) = env.defs.get(&x)
@@ -531,7 +546,9 @@ fn integer_rule(f: &mut Func, env: &mut Env, out: &mut Vec<Inst>, inst: &Inst) -
             let div = matches!(inst.op, Op::SDiv | Op::SDivChk);
             let chk = matches!(inst.op, Op::SDivChk | Op::SRemChk);
             if let (Some(p), Some(q)) = (env.ci(x), env.ci(y)) {
-                return int_op(inst.op, p, q).map_or(Act::Keep, |r| Act::Const(K::I(r)));
+                return int_op(inst.op, p, q)
+                    .filter(|r| in_type(f, inst, *r))
+                    .map_or(Act::Keep, |r| Act::Const(K::I(r)));
             }
             match env.ci(y) {
                 // Checked remainder defines MIN % -1 as zero, like the backend's

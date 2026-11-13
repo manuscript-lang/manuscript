@@ -14,6 +14,22 @@ impl Interp<'_> {
     ) -> R<Flow> {
         let mut ops = Operands { regs, inst };
         let m = self.m;
+        // A checked result faults when it overflows or leaves the range of its sized type.
+        let sized = |v: Option<i64>| -> R<Val> {
+            let v = v.ok_or_else(overflow)?;
+            let range = inst
+                .res
+                .filter(|r| {
+                    m.types
+                        .int_bits(f.values[r.index()])
+                        .is_some_and(|b| b < 64)
+                })
+                .and_then(|r| m.types.int_range(f.values[r.index()]));
+            match range {
+                Some((lo, hi)) if !(lo..=hi).contains(&i128::from(v)) => Err(overflow()),
+                _ => Ok(Val::Int(v)),
+            }
+        };
         match inst.op {
             Op::IConst => ops.set(Val::Int(imm_int(inst.imm))),
             Op::FConst => ops.set(Val::Float(inst.imm.float())),
@@ -45,7 +61,7 @@ impl Interp<'_> {
             Op::NarrowChk => {
                 let (lo, hi) = m
                     .types
-                    .int_range(f.values[inst.args[0].index()])
+                    .int_range(inst.res.map_or(Ty::INT, |r| f.values[r.index()]))
                     .unwrap_or((i64::MIN.into(), i64::MAX.into()));
                 let v = ops.int(0)?;
                 if !(lo..=hi).contains(&i128::from(v)) {
@@ -70,15 +86,9 @@ impl Interp<'_> {
                 ops.set(Val::Opt(fits.then(|| Rc::new(Val::Int(v)))));
             }
             Op::F32Round => ops.set(Val::Float(ops.float(0)? as f32 as f64)),
-            Op::IAddChk => ops.set(Val::Int(
-                ops.int(0)?.checked_add(ops.int(1)?).ok_or_else(overflow)?,
-            )),
-            Op::ISubChk => ops.set(Val::Int(
-                ops.int(0)?.checked_sub(ops.int(1)?).ok_or_else(overflow)?,
-            )),
-            Op::IMulChk => ops.set(Val::Int(
-                ops.int(0)?.checked_mul(ops.int(1)?).ok_or_else(overflow)?,
-            )),
+            Op::IAddChk => ops.set(sized(ops.int(0)?.checked_add(ops.int(1)?))?),
+            Op::ISubChk => ops.set(sized(ops.int(0)?.checked_sub(ops.int(1)?))?),
+            Op::IMulChk => ops.set(sized(ops.int(0)?.checked_mul(ops.int(1)?))?),
             Op::UAddChk | Op::USubChk | Op::UMulChk => {
                 let (x, y) = (ops.int(0)? as u64, ops.int(1)? as u64);
                 let r = match inst.op {
@@ -88,13 +98,13 @@ impl Interp<'_> {
                 };
                 ops.set(Val::Int(r.ok_or_else(overflow)? as i64))
             }
-            Op::INegChk => ops.set(Val::Int(ops.int(0)?.checked_neg().ok_or_else(overflow)?)),
+            Op::INegChk => ops.set(sized(ops.int(0)?.checked_neg())?),
             Op::SDivChk => {
                 let (x, y) = (ops.int(0)?, ops.int(1)?);
                 if y == 0 {
                     return Err(div0());
                 }
-                ops.set(Val::Int(x.checked_div(y).ok_or_else(overflow)?));
+                ops.set(sized(x.checked_div(y))?);
             }
             Op::SRemChk => {
                 let (x, y) = (ops.int(0)?, ops.int(1)?);
