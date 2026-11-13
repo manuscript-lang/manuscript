@@ -5,7 +5,7 @@
 // expect-stdout: 2
 // `items_of` lends a field of its parameter; over a temporary (`items_of(Big(..))`) the caller owns a
 // copy of that field in Debug (one 24-byte list), and copyelim moves it out of the
-// dying record in Release (rec.release). A field of an owned record moves out at its
+// dying record in Release (type.release). A field of an owned record moves out at its
 // last use; the rest of the record is still cleaned up exactly once.
 import stdout from "@std/io/io.ms"
 

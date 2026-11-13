@@ -152,7 +152,7 @@ impl FnLower<'_> {
             return Err(Error::new("an ms_list needs a list"));
         };
         let code = self.elem_code(elem)?;
-        let (rec, rt) = self.b.m.add_record(
+        let (tval, rt) = self.b.m.add_type(
             "ms_list",
             vec![("vec".into(), MTy::INT), ("elem".into(), MTy::INT)],
         );
@@ -162,12 +162,12 @@ impl FnLower<'_> {
             .expect("slot");
         let vec = self
             .b
-            .emit(Op::PtrField, &[r], Imm::Field(rec, 0), Some(MTy::PTR))
+            .emit(Op::PtrField, &[r], Imm::Field(tval, 0), Some(MTy::PTR))
             .expect("field");
         self.b.emit(Op::Store, &[vec, slot], Imm::None, None);
         let at = self
             .b
-            .emit(Op::PtrField, &[r], Imm::Field(rec, 1), Some(MTy::PTR))
+            .emit(Op::PtrField, &[r], Imm::Field(tval, 1), Some(MTy::PTR))
             .expect("field");
         let k = self.b.iconst(code as i64);
         self.b.emit(Op::Store, &[at, k], Imm::None, None);
@@ -468,7 +468,7 @@ impl FnLower<'_> {
             .map(|p| self.needs_drop(*p) && !matches!(self.b.m.types.kind(*p), TyKind::Obj(..)))
             .collect();
         let ret_drops = self.needs_drop(ret);
-        let (_, cell) = self.b.m.add_record(
+        let (_, cell) = self.b.m.add_type(
             "ms_fn_cell",
             vec![
                 ("a".into(), MTy::INT),
@@ -476,7 +476,7 @@ impl FnLower<'_> {
                 ("c".into(), MTy::INT),
             ],
         );
-        let (frame, _) = self.b.m.add_record(
+        let (frame, _) = self.b.m.add_type(
             "ms_fn_frame",
             (0..=CALL_MAX_PARAMS)
                 .map(|i| (format!("c{i}"), cell))

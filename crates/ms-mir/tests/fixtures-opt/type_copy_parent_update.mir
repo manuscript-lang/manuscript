@@ -1,0 +1,23 @@
+module "type_copy_parent_update"
+type Item { values: list<int> }
+type Parent { child: Item }
+entry @main
+fn @main() -> int {
+b0:
+  %ten: int = iconst 10
+  %twenty: int = iconst 20
+  %zero: int = iconst 0
+  %values: list<int> = list.lit %ten
+  %item: Item = type.new Item %values
+  %parent: Parent = type.new Parent %item
+  %borrowed: Item = type.get Parent.child %parent
+  %copy: Item = clone %borrowed
+  %newvalues: list<int> = list.lit %twenty
+  %newitem: Item = type.new Item %newvalues
+  %updated: Parent = type.set Parent.child %parent, %newitem
+  %field: list<int> = type.get Item.values %copy
+  %r: int = list.get %field, %zero
+  drop %copy
+  drop %updated
+  ret %r
+}

@@ -443,10 +443,10 @@ impl<'a> FnLower<'a> {
                 Ok(Val { v: r, own: true })
             }
             "partition" => {
-                let TyKind::Rec(rid) = self.b.m.types.kind(out).clone() else {
-                    return Err(Error::new("partition without a record result"));
+                let TyKind::Type(rid) = self.b.m.types.kind(out).clone() else {
+                    return Err(Error::new("partition without a type result"));
                 };
-                let lt = self.b.m.records[rid.index()].fields[0].1;
+                let lt = self.b.m.type_defs[rid.index()].fields[0].1;
                 let zero = self.b.iconst(0);
                 let (yes, no) = (self.fresh_var(lt), self.fresh_var(lt));
                 for v in [yes, no] {
@@ -475,8 +475,8 @@ impl<'a> FnLower<'a> {
                     Ok(None)
                 })?;
                 let (a, b) = (self.b.use_var(yes), self.b.use_var(no));
-                let rec = self.b.rec_new(rid, &[a, b]);
-                Ok(Val { v: rec, own: true })
+                let tval = self.b.type_new(rid, &[a, b]);
+                Ok(Val { v: tval, own: true })
             }
             "flat_map" => {
                 let TyKind::List(res_elem) = self.b.m.types.kind(out).clone() else {

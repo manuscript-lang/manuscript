@@ -399,7 +399,7 @@ impl FnLower<'_> {
                 let mask = if n >= 32 { u32::MAX } else { (1u32 << n) - 1 };
                 self.b.alt_release(*a, k as u32, mask, cur);
                 // Named fields become bindings before omitted fields close, just as in a
-                // record pattern. The omitted fields close in reverse declaration order.
+                // type pattern. The omitted fields close in reverse declaration order.
                 for (i, &v) in fields.iter().enumerate() {
                     if let Some(b) = bindings.get(i).and_then(|b| b.as_ref()) {
                         self.bind_payload(Some(b), v)?;

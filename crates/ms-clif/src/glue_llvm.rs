@@ -2,7 +2,7 @@
 //!
 //! Glue (drop, clone, slot and block helpers) has no MIR: the Cranelift lowering builds it from
 //! the type. This module writes the same bodies straight through the typed builder for the types
-//! it covers (strings, lists, plain records, optionals); every other glue keeps the old path.
+//! it covers (strings, lists, plain types, optionals); every other glue keeps the old path.
 
 use crate::cg::{Gen, Glue};
 use crate::layout::{AltRepr, Layouts, Leaf, mem_layout};
@@ -49,7 +49,7 @@ pub fn supports(g: &Gen, kind: Glue, ty: Ty) -> bool {
         k if closure::is_closure(k) => true,
         Glue::Drop => match m.types.kind(ty) {
             TyKind::Bytes | TyKind::List(_) => true,
-            TyKind::Rec(_) => true,
+            TyKind::Type(_) => true,
             TyKind::Opt(inner) => {
                 g.lay.opt_is_boxed(*inner)
                     || g.lay.is_str_like(ty)
@@ -813,13 +813,13 @@ impl E<'_, '_, '_> {
         }
     }
 
-    /// The fields of a plain record: `(type, first leaf, width)`.
+    /// The fields of a plain type: `(type, first leaf, width)`.
     fn fields_of(&self, ty: Ty) -> Vec<(Ty, usize, usize)> {
-        let TyKind::Rec(r) = self.g.m.types.kind(ty) else {
+        let TyKind::Type(r) = self.g.m.types.kind(ty) else {
             return Vec::new();
         };
         let mut at = 0;
-        self.g.m.records[r.index()]
+        self.g.m.type_defs[r.index()]
             .fields
             .iter()
             .map(|f| {
@@ -879,8 +879,8 @@ impl E<'_, '_, '_> {
                 let owned = self.test(&vs[2]);
                 self.if_then(&owned, |s| s.drop_list(ty, &vs[0], &vs[1]));
             }
-            TyKind::Rec(r) if m.records[r.index()].indirect => self.drop_indirect(r, &vs[0]),
-            TyKind::Rec(_) => {
+            TyKind::Type(r) if m.type_defs[r.index()].indirect => self.drop_indirect(r, &vs[0]),
+            TyKind::Type(_) => {
                 for (fty, at, w) in self.fields_of(ty) {
                     if m.needs_drop(fty) {
                         self.drop_value(fty, &vs[at..at + w]);
@@ -909,16 +909,16 @@ impl E<'_, '_, '_> {
         }
     }
 
-    /// Drops the fields of the indirect record whose block is `p`, then frees the block and the
+    /// Drops the fields of the indirect type whose block is `p`, then frees the block and the
     /// header blocks of its collections (a collection that was never filled has none).
-    fn drop_indirect(&mut self, r: ms_mir::types::RecId, p: &Val) {
+    fn drop_indirect(&mut self, r: ms_mir::types::TypeId, p: &Val) {
         let m = self.g.m;
-        let block = self.g.lay.rec_block(r);
+        let block = self.g.lay.type_block(r);
         let offsets = mem_layout(&block).offsets;
         let base = self.ptr_of(p);
         let mut at = 0;
-        for f in &m.records[r.index()].fields {
-            let boxed = self.g.lay.rec_field_boxed(f.1);
+        for f in &m.type_defs[r.index()].fields {
+            let boxed = self.g.lay.type_field_boxed(f.1);
             let n = if boxed { 1 } else { self.g.lay.width(f.1) };
             let (bk, fty) = (at, f.1);
             at += n;
@@ -1132,18 +1132,18 @@ impl E<'_, '_, '_> {
         self.label(&exit);
     }
 
-    /// Clones the indirect record whose block is `p`: a new block over clones of the fields. A
+    /// Clones the indirect type whose block is `p`: a new block over clones of the fields. A
     /// collection field lives behind a header block of its own, which the copy gets too (none
     /// when the original has none).
-    fn clone_indirect(&mut self, r: ms_mir::types::RecId, p: &Val) -> Vs {
+    fn clone_indirect(&mut self, r: ms_mir::types::TypeId, p: &Val) -> Vs {
         let m = self.g.m;
-        let block = self.g.lay.rec_block(r);
+        let block = self.g.lay.type_block(r);
         let base = self.ptr_of(p);
         let loaded = load_leaves(&mut self.b, &base, &block, None);
         let mut out = loaded.clone();
         let mut at = 0;
-        for f in &m.records[r.index()].fields {
-            let boxed = self.g.lay.rec_field_boxed(f.1);
+        for f in &m.type_defs[r.index()].fields {
+            let boxed = self.g.lay.type_field_boxed(f.1);
             let n = if boxed { 1 } else { self.g.lay.width(f.1) };
             let (bk, fty) = (at, f.1);
             at += n;
@@ -1440,9 +1440,9 @@ impl E<'_, '_, '_> {
         let m = self.g.m;
         match m.types.kind(ty).clone() {
             TyKind::Bytes | TyKind::List(_) => self.list_copy(ty, vs),
-            TyKind::Rec(r) if m.records[r.index()].indirect => self.clone_indirect(r, &vs[0]),
+            TyKind::Type(r) if m.type_defs[r.index()].indirect => self.clone_indirect(r, &vs[0]),
             TyKind::Alt(a) => self.clone_alt(ty, a, vs),
-            TyKind::Rec(_) => {
+            TyKind::Type(_) => {
                 let mut out = Vec::new();
                 for (fty, at, w) in self.fields_of(ty) {
                     out.extend(self.clone_value(fty, &vs[at..at + w]));

@@ -12,7 +12,7 @@ use crate::ir::{
     Block, BlockData, BlockParam, Func, FuncId, FuncKind, Imm, InlineHint, Inst, Linkage, Loc,
     Mode, Module, Op, Param, Scope, SortThunk, Target, Term, Value,
 };
-use crate::types::{RecId, Ty, TyKind};
+use crate::types::{Ty, TyKind, TypeId};
 use crate::vmap::{ValueMap, ValueSet};
 use std::collections::{HashMap, HashSet};
 
@@ -578,12 +578,12 @@ fn inline_closures(m: &mut Module) -> bool {
     changed
 }
 
-/// The closure code held by each record field that every construction in the module sets to the
+/// The closure code held by each type field that every construction in the module sets to the
 /// same capture-free closure and that nothing else ever writes, so reading the field always
-/// yields that closure whichever record it is read from.
-fn constant_closure_fields(m: &Module) -> HashMap<(RecId, u32), FuncId> {
+/// yields that closure whichever type it is read from.
+fn constant_closure_fields(m: &Module) -> HashMap<(TypeId, u32), FuncId> {
     // `None` marks a field with two different closures or a write the analysis cannot see.
-    let mut seen: HashMap<(RecId, u32), Option<FuncId>> = HashMap::new();
+    let mut seen: HashMap<(TypeId, u32), Option<FuncId>> = HashMap::new();
     for f in &m.funcs {
         let mut defs: ValueMap<&Inst> = ValueMap::new();
         for inst in f.blocks.iter().flat_map(|b| b.insts.iter()) {
@@ -593,10 +593,10 @@ fn constant_closure_fields(m: &Module) -> HashMap<(RecId, u32), FuncId> {
         }
         for inst in f.blocks.iter().flat_map(|b| b.insts.iter()) {
             match (inst.op, inst.imm) {
-                (Op::RecSet | Op::RecFill | Op::PtrField, Imm::Field(r, k)) => {
+                (Op::TypeSet | Op::TypeFill | Op::PtrField, Imm::Field(r, k)) => {
                     seen.insert((r, k), None);
                 }
-                (Op::RecNew, Imm::Rec(r)) => {
+                (Op::TypeNew, Imm::Type(r)) => {
                     for (k, a) in inst.args.iter().enumerate() {
                         if !matches!(m.types.kind(f.ty(*a)), TyKind::Fn(..)) {
                             continue;
@@ -626,7 +626,7 @@ fn constant_closure_fields(m: &Module) -> HashMap<(RecId, u32), FuncId> {
         .collect()
 }
 
-fn inline_closures_in(m: &mut Module, fi: usize, fields: &HashMap<(RecId, u32), FuncId>) -> bool {
+fn inline_closures_in(m: &mut Module, fi: usize, fields: &HashMap<(TypeId, u32), FuncId>) -> bool {
     let budget = m.funcs[fi].inst_count() * GROWTH_FACTOR + GROWTH_SLACK;
     let mut grown = 0usize;
     let mut changed = false;
@@ -637,7 +637,7 @@ fn inline_closures_in(m: &mut Module, fi: usize, fields: &HashMap<(RecId, u32), 
         known.insert(*v, roots[root].clone());
     }
     for inst in m.funcs[fi].blocks.iter().flat_map(|b| b.insts.iter()) {
-        if let (Op::RecGet, Imm::Field(r, k), Some(v)) = (inst.op, inst.imm, inst.res)
+        if let (Op::TypeGet, Imm::Field(r, k), Some(v)) = (inst.op, inst.imm, inst.res)
             && let Some(g) = fields.get(&(r, k))
         {
             known.insert(v, (*g, Vec::new()));

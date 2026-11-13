@@ -253,17 +253,14 @@ fn a_closure_copy_that_only_feeds_calls_is_removed() {
 }
 
 #[test]
-fn readonly_record_projections_borrow_the_original_without_a_deep_copy() {
+fn readonly_type_projections_borrow_the_original_without_a_deep_copy() {
     for (source, copies) in [
-        (include_str!("fixtures-opt/record_readonly_copy.mir"), 0),
-        (include_str!("fixtures-opt/record_copy_owner_drop.mir"), 1),
-        (
-            include_str!("fixtures-opt/record_copy_parent_update.mir"),
-            1,
-        ),
+        (include_str!("fixtures-opt/type_readonly_copy.mir"), 0),
+        (include_str!("fixtures-opt/type_copy_owner_drop.mir"), 1),
+        (include_str!("fixtures-opt/type_copy_parent_update.mir"), 1),
         // A projection taken before the copy is read after the copy's drop, so the copy stays.
         (
-            include_str!("fixtures-opt/record_copy_earlier_projection.mir"),
+            include_str!("fixtures-opt/type_copy_earlier_projection.mir"),
             1,
         ),
     ] {
@@ -512,14 +509,14 @@ fn a_long_run_of_copy_then_drop_pairs_becomes_moves_in_linear_time() {
 /// on every step (quadratic in the iteration count).
 const REBUILD: &str = r#"module "main"
 file 0 "t.ms"
-record Link { next: opt<Link>, id: int }
+type Link { next: opt<Link>, id: int }
 entry @main
 
 fn @main() -> int export {
 b0:
   %0: opt<Link> = opt.none
   %2: int = iconst 0
-  %3: Link = rec.new Link %0, %2
+  %3: Link = type.new Link %0, %2
   %4: int = iconst 1
   %5: int = iconst 5
   %6: int = iconst 1
@@ -530,14 +527,14 @@ b1(%7: int, %8: move Link):
 b2():
   %10: Link = clone %8
   %11: opt<Link> = opt.some %10
-  %12: Link = rec.new Link %11, %7
+  %12: Link = type.new Link %11, %7
   drop %8
   br b3()
 b3():
   %13: int = iadd %7, %6
   br b1(%13, %12)
 b4():
-  %14: int = rec.get Link.id %8
+  %14: int = type.get Link.id %8
   drop %8
   ret %14
 }
@@ -558,7 +555,7 @@ fn an_unoptimized_build_moves_a_value_rebuilt_from_itself() {
 }
 
 const DEAD_RECORD: &str = r#"module "t"
-record Pair { a: list<int>, b: list<int> }
+type Pair { a: list<int>, b: list<int> }
 entry @main
 
 fn @main() -> int export {
@@ -566,8 +563,8 @@ b0:
   %1: int = iconst 7
   %2: list<int> = list.lit %1
   %3: list<int> = list.lit %1, %1
-  %4: Pair = rec.new Pair %2, %3
-  %5: list<int> = rec.get Pair.a %4
+  %4: Pair = type.new Pair %2, %3
+  %5: list<int> = type.get Pair.a %4
   %6: list<int> = clone %5
   drop %4
   %7: int = list.len %6
@@ -577,7 +574,7 @@ b0:
 "#;
 
 #[test]
-fn a_field_cloned_out_of_a_dying_record_is_moved_not_copied() {
+fn a_field_cloned_out_of_a_dying_type_is_moved_not_copied() {
     let mut m = parse_module(DEAD_RECORD).unwrap_or_else(|e| panic!("{e}"));
     verify_module(&m).unwrap_or_else(|e| panic!("{e:?}"));
     let before = Interp::new(&m).run_entry().map_err(|f| f.message);
@@ -586,7 +583,7 @@ fn a_field_cloned_out_of_a_dying_record_is_moved_not_copied() {
         panic!("{e:?}\n{}", print_module(&m));
     }
     assert_eq!(count(&m, "main", Op::Clone), 0);
-    assert_eq!(count(&m, "main", Op::RecRelease), 1);
+    assert_eq!(count(&m, "main", Op::TypeRelease), 1);
     assert_eq!(count(&m, "main", Op::Drop), 1);
     assert_eq!(before, Interp::new(&m).run_entry().map_err(|f| f.message));
 }

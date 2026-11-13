@@ -35,7 +35,7 @@ impl<'a> FnLower<'a> {
         } else {
             recv
         };
-        // Record only the owner held by this call, never an enclosing borrowed temporary.
+        // Type only the owner held by this call, never an enclosing borrowed temporary.
         // Intact wrappers need their payload closer on an expected-error return too.
         let (recv, held) = if recv.own && (snapshot || later_try) {
             if let Some(key) = self.hold_resource_temp(recv.v)? {
@@ -361,8 +361,8 @@ impl<'a> FnLower<'a> {
                 let TyKind::List(pair) = self.b.m.types.kind(result).clone() else {
                     return Err(Error::new("zip without a list result"));
                 };
-                let TyKind::Rec(rid) = self.b.m.types.kind(pair).clone() else {
-                    return Err(Error::new("zip without a record element"));
+                let TyKind::Type(rid) = self.b.m.types.kind(pair).clone() else {
+                    return Err(Error::new("zip without a type element"));
                 };
                 let other = self.borrow(args[0].val);
                 let other_len = self.b.list_len(other);
@@ -383,9 +383,9 @@ impl<'a> FnLower<'a> {
                     let y = s.b.list_get(other, i);
                     let xo = s.clone_value(x);
                     let yo = s.clone_value(y);
-                    let rec = s.b.rec_new(rid, &[xo, yo]);
+                    let tval = s.b.type_new(rid, &[xo, yo]);
                     let cur = s.b.use_var(acc);
-                    let next = s.b.list_push(cur, rec);
+                    let next = s.b.list_push(cur, tval);
                     s.b.def_var(acc, next);
                     s.b.br(skip, &[]);
                     s.b.switch_to(skip);
