@@ -224,7 +224,10 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         return checked_op(cx, inst, vals, b, &out);
     }
     // A single-leaf result is named in place; `Select` handles several.
-    if let ([r], false) = (out.as_slice(), matches!(inst.op, Op::Select | Op::Conv)) {
+    if let ([r], false) = (
+        out.as_slice(),
+        matches!(inst.op, Op::Select | Op::Conv | Op::I2F),
+    ) {
         b.name_next(r);
     }
     match inst.op {
@@ -280,6 +283,7 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         Op::B2I => drop(b.zext(&arg(0), LTy::I64)),
         Op::I2F => {
             let x = widen_int(cx, b, inst, &arg(0));
+            b.name_next(&out[0]);
             drop(b.sitofp(&x))
         }
         Op::SDiv => drop(b.bin(Bin::SDiv, &arg(0), &arg(1))),

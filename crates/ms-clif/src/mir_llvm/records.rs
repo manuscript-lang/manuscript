@@ -15,7 +15,7 @@
 //! Values of type `ptr` are LLVM `ptr` inside a function and `i64` across a call. A record that
 //! holds a `ptr` is not handled (its leaf is an integer here); the function falls back.
 
-use super::{Area, Cx, Vals, held_leaves, mem_leaves, signed_leaves};
+use super::{Area, Cx, Vals, held_leaves, mem_leaves, narrow_leaves};
 use crate::layout::{Layouts, Leaf, mem_layout};
 use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Types, Val};
 use ms_mir::ir::{Func, Imm, Inst, Op, Target, Value};
@@ -267,13 +267,13 @@ pub(super) fn abi_leaves(
     } else {
         own.clone()
     };
-    let signed = signed_leaves(lay, ty);
+    let narrow = narrow_leaves(lay, ty);
     leaves
         .into_iter()
         .enumerate()
         .map(|(k, l)| match l.ty {
             LTy::Ptr if !native => b.ptr_to_int(&l),
-            _ => to_abi(b, &l, signed[k]),
+            _ => to_abi(b, &l, narrow[k]),
         })
         .collect()
 }
@@ -348,12 +348,13 @@ pub(super) fn widen(b: &mut FnBuilder, w: &Val, held: &LTy) -> Val {
 }
 
 /// A held leaf as it crosses a call in the leaf convention: a boolean as a byte and a narrow
-/// integer extended to the `i64` register (`signed` for `Int8` to `Int32`).
-pub(super) fn to_abi(b: &mut FnBuilder, v: &Val, signed: bool) -> Val {
-    match v.ty {
-        LTy::I1 => b.zext(v, LTy::I8),
-        LTy::I8 | LTy::I16 | LTy::I32 if signed => b.sext(v, LTy::I64),
-        LTy::I8 | LTy::I16 | LTy::I32 => b.zext(v, LTy::I64),
+/// integer (`narrow` says whether the leaf is one, and signed) extended to the `i64` register.
+pub(super) fn to_abi(b: &mut FnBuilder, v: &Val, narrow: Option<bool>) -> Val {
+    match (&v.ty, narrow) {
+        (LTy::I1, _) => b.zext(v, LTy::I8),
+        (LTy::I64, _) => v.clone(),
+        (_, Some(true)) => b.sext(v, LTy::I64),
+        (_, Some(false)) => b.zext(v, LTy::I64),
         _ => v.clone(),
     }
 }
@@ -882,25 +883,44 @@ pub(super) fn call_result(b: &mut FnBuilder, lay: &Layouts, ty: Ty, r: Val, out:
 /// own result `r` (one leaf, or a tuple of several): a boolean comes back as a byte and a pointer
 /// (in the leaf convention, not the native one) as an address, and each is converted; every other leaf is the call's
 /// result itself under its reserved name.
-pub(super) fn name_leaves(b: &mut FnBuilder, r: Val, out: &[Val], native: bool) {
+pub(super) fn name_leaves(b: &mut FnBuilder, r: Val, out: &[Val], _native: bool) {
+    let abi = ret_leaf_types(&r.ty, out.len());
     for (k, dst) in out.iter().enumerate() {
-        let converted = dst.ty != LTy::I64 && dst.ty != LTy::F64 && (dst.ty != LTy::Ptr || !native);
+        let same = abi[k] == dst.ty;
         let word = if out.len() == 1 {
             r.clone()
-        } else if converted {
-            b.extract(&r, k)
-        } else {
+        } else if same {
             b.name_next(dst);
             b.extract(&r, k);
             continue;
+        } else {
+            b.extract(&r, k)
         };
         b.name_next(dst);
-        if dst.ty == LTy::Ptr {
-            b.int_to_ptr(&word);
-        } else {
-            b.trunc(&word, dst.ty.clone());
+        match (&dst.ty, same) {
+            (_, true) => unreachable!("a single leaf that matches needs no conversion"),
+            (LTy::Ptr, _) => drop(b.int_to_ptr(&word)),
+            (t, _) => drop(b.trunc(&word, t.clone())),
         }
     }
+}
+
+/// The types of the `n` leaves a call returns as `ret`: the tuple's elements, or the one type.
+fn ret_leaf_types(ret: &LTy, n: usize) -> Vec<LTy> {
+    match ret {
+        LTy::Tuple(ts) => ts.clone(),
+        t if n == 1 => vec![t.clone()],
+        _ => Vec::new(),
+    }
+}
+
+/// Whether a leaf of a call result is held as another type than it comes back as: a boolean as a
+/// byte, a pointer as an address in the leaf convention, a narrow integer as an `i64`.
+pub(super) fn ret_needs_conversion(ret: &LTy, out: &[Val]) -> bool {
+    ret_leaf_types(ret, out.len())
+        .iter()
+        .zip(out)
+        .any(|(abi, dst)| *abi != dst.ty)
 }
 
 /// The held values of an entry parameter of type `ty` that arrives as the pointer `ptr`. A record

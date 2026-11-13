@@ -7,7 +7,7 @@
 //! cast each. `opt.is_some` of a niche optional is one comparison. Types behind a pointer
 //! (self-containing) and payloads that are records in memory stay on the translation.
 
-use super::{Area, Cx, Vals, held_leaves, records};
+use super::{Area, Cx, Vals, held_leaves, narrow_leaves, records};
 use crate::layout::Layouts;
 use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Val};
 use ms_mir::ir::{Func, Imm, Inst, Module, Op};
@@ -94,20 +94,25 @@ fn zero(t: &LTy) -> Val {
     match t {
         LTy::I1 => Val::bool(false),
         LTy::I8 => Val::byte(0),
+        LTy::I16 | LTy::I32 => Val::new("0", t.clone()),
         LTy::F64 => Val::double(0),
         LTy::Ptr => Val::new("null", LTy::Ptr),
         _ => Val::int(0),
     }
 }
 
-/// `v` as `to`: a payload leaf between the type it is held as and the slot it lives in.
-fn convert(b: &mut FnBuilder, v: &Val, to: &LTy) -> Val {
+/// `v` as `to`: a payload leaf between the type it is held as and the slot it lives in. A narrow
+/// integer fills an `i64` slot extended by its signedness (`signed`) and reads back truncated.
+fn convert(b: &mut FnBuilder, v: &Val, to: &LTy, signed: Option<bool>) -> Val {
     match (&v.ty, to) {
         (a, b_) if a == b_ => v.clone(),
         (LTy::I1, LTy::I8) => b.zext(v, LTy::I8),
         (LTy::I8, LTy::I1) => b.icmp("ne", v, &Val::byte(0)),
         (LTy::Ptr, LTy::I64) => b.ptrtoint(v),
         (LTy::I64, LTy::Ptr) => b.inttoptr(v),
+        (LTy::I8 | LTy::I16 | LTy::I32, LTy::I64) if signed == Some(true) => b.sext(v, LTy::I64),
+        (LTy::I8 | LTy::I16 | LTy::I32, LTy::I64) => b.zext(v, LTy::I64),
+        (LTy::I64, LTy::I8 | LTy::I16 | LTy::I32) => b.trunc(v, to.clone()),
         (a, t) => unreachable!("no conversion from {a:?} to {t:?}"),
     }
 }
@@ -142,21 +147,29 @@ fn inst_ok(m: &Module, lay: &Layouts, f: &Func, inst: &Inst) -> bool {
 
 /// The leaves a payload read or write moves between a field and the enum's slots: for each
 /// result leaf (a read) or slot (a write), the slot or field leaf it comes from.
-fn sources(lay: &Layouts, inst: &Inst, vals: &Vals) -> Vec<(usize, Val)> {
+fn sources(lay: &Layouts, inst: &Inst, vals: &Vals) -> Vec<(usize, Val, Option<bool>)> {
     let arg = |i: usize| &vals[&inst.args[i].index()];
     match (inst.op, inst.imm) {
         (Op::AltNew | Op::AltView, Imm::Case(a, c)) => {
             let mut out = Vec::new();
-            for (i, (_, idx)) in lay.alt_fields(a)[c as usize].iter().enumerate() {
-                out.extend(idx.iter().copied().zip(arg(i).iter().cloned()));
+            for (i, (t, idx)) in lay.alt_fields(a)[c as usize].iter().enumerate() {
+                let signs = narrow_leaves(lay, *t);
+                out.extend(
+                    idx.iter()
+                        .copied()
+                        .zip(arg(i).iter().cloned())
+                        .zip(signs)
+                        .map(|((k, v), s)| (k, v, s)),
+                );
             }
             out
         }
         (Op::AltGet | Op::AltTake | Op::AltUnbox, Imm::AltField(a, c, i)) => {
-            let (_, idx) = &lay.alt_fields(a)[c as usize][i as usize];
+            let (t, idx) = &lay.alt_fields(a)[c as usize][i as usize];
+            let signs = narrow_leaves(lay, *t);
             idx.iter()
                 .enumerate()
-                .map(|(j, k)| (j, arg(0)[*k].clone()))
+                .map(|(j, k)| (j, arg(0)[*k].clone(), signs[j]))
                 .collect()
         }
         _ => Vec::new(),
@@ -212,7 +225,7 @@ fn pre(
     };
     // Payload leaves: the source itself when its type matches, else a name `emit` defines.
     let held = inst.res.map(|r| held_leaves(lay, f.ty(r)));
-    for (i, src) in sources(lay, inst, vals) {
+    for (i, src, _) in sources(lay, inst, vals) {
         let want = match inst.op {
             Op::AltNew | Op::AltView => src.ty.clone(),
             _ => held.as_ref().expect("a result")[i].clone(),
@@ -249,10 +262,10 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         b.icmp("ne", &any, &zero(&any.ty));
         return;
     }
-    for (i, src) in sources(cx.lay, inst, vals) {
+    for (i, src, signed) in sources(cx.lay, inst, vals) {
         if out[i] != src {
             b.name_next(&out[i]);
-            convert(b, &src, &out[i].ty);
+            convert(b, &src, &out[i].ty, signed);
         }
     }
 }

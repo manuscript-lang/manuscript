@@ -207,10 +207,7 @@ pub(super) fn finish_call(
         // The result is a record in memory, rebuilt from the call's result.
         let r = call(b).expect("a result");
         records::call_result(b, lay, result, r, out);
-    } else if out
-        .iter()
-        .any(|d| !matches!(d.ty, LTy::I64 | LTy::F64) && (d.ty != LTy::Ptr || !native))
-    {
+    } else if records::ret_needs_conversion(ret, out) {
         // Booleans come back as bytes and, in the leaf convention, pointers as addresses.
         let r = call(b).expect("a result");
         records::name_leaves(b, r, out, native);

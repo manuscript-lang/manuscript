@@ -200,12 +200,12 @@ fn mem_leaf(l: Leaf) -> LTy {
     }
 }
 
-/// Per leaf of `ty`: whether loading it from memory sign-extends (`Int8` to `Int32`). Other
-/// narrow leaves zero-extend; wider ones are not extended.
-fn signed_leaves(lay: &Layouts, ty: Ty) -> Vec<bool> {
+/// Per leaf of `ty`: `Some(signed)` for a narrow integer (`Int8` to `Int32` are signed, the
+/// unsigned ones zero-extend), `None` for any other leaf.
+fn narrow_leaves(lay: &Layouts, ty: Ty) -> Vec<Option<bool>> {
     lay.leaves(ty)
         .into_iter()
-        .map(|l| matches!(l, Leaf::N8 | Leaf::N16 | Leaf::N32))
+        .map(|l| records::is_narrow(l).then_some(matches!(l, Leaf::N8 | Leaf::N16 | Leaf::N32)))
         .collect()
 }
 
