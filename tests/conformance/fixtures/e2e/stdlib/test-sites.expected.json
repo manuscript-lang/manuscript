@@ -3,7 +3,7 @@
   "phase": "test",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "exit_code": 1,
+    "exit_code": 0,
     "report": {
       "repeat": 1,
       "format": 1,
@@ -47,27 +47,20 @@
         {
           "index": 7,
           "name": "test-sites.ms::source location constants name their use site",
-          "status": "failed",
-          "failure": "expected 69, got 71\n  at test-sites.ms:71:5",
-          "position": {
-            "file": "test-sites.ms",
-            "line": 71,
-            "column": 5,
-            "offset": 0
-          }
+          "status": "passed"
         }
       ],
       "summary": {
         "available": 8,
         "selected": 8,
-        "passed": 7,
-        "failed": 1,
+        "passed": 8,
+        "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
-      "exit_code": 1,
-      "stdout": "RUN test-sites.ms::a failed expectation names the line of its call\nPASS test-sites.ms::a failed expectation names the line of its call\nRUN test-sites.ms::a wrapper that forwards its site reports its own caller\nPASS test-sites.ms::a wrapper that forwards its site reports its own caller\nRUN test-sites.ms::an explicit site wins\nPASS test-sites.ms::an explicit site wins\nRUN test-sites.ms::expectations return the original payload\nPASS test-sites.ms::expectations return the original payload\nRUN test-sites.ms::repr quotes strings and spells out collections\nPASS test-sites.ms::repr quotes strings and spells out collections\nRUN test-sites.ms::catch_fault returns a fault message and none for a normal return\nPASS test-sites.ms::catch_fault returns a fault message and none for a normal return\nRUN test-sites.ms::fail builds an error with a site\nPASS test-sites.ms::fail builds an error with a site\nRUN test-sites.ms::source location constants name their use site\nFAIL test-sites.ms::source location constants name their use site: expected 69, got 71\n  at test-sites.ms:71:5\n8 tests, 1 failed\n",
+      "exit_code": 0,
+      "stdout": "RUN test-sites.ms::a failed expectation names the line of its call\nPASS test-sites.ms::a failed expectation names the line of its call\nRUN test-sites.ms::a wrapper that forwards its site reports its own caller\nPASS test-sites.ms::a wrapper that forwards its site reports its own caller\nRUN test-sites.ms::an explicit site wins\nPASS test-sites.ms::an explicit site wins\nRUN test-sites.ms::expectations return the original payload\nPASS test-sites.ms::expectations return the original payload\nRUN test-sites.ms::repr quotes strings and spells out collections\nPASS test-sites.ms::repr quotes strings and spells out collections\nRUN test-sites.ms::catch_fault returns a fault message and none for a normal return\nPASS test-sites.ms::catch_fault returns a fault message and none for a normal return\nRUN test-sites.ms::fail builds an error with a site\nPASS test-sites.ms::fail builds an error with a site\nRUN test-sites.ms::source location constants name their use site\nPASS test-sites.ms::source location constants name their use site\n8 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [
@@ -88,14 +81,8 @@
       "summary.skipped",
       "tests",
       "tests[].duration_ns",
-      "tests[].failure",
       "tests[].index",
       "tests[].name",
-      "tests[].position",
-      "tests[].position.column",
-      "tests[].position.file",
-      "tests[].position.line",
-      "tests[].position.offset",
       "tests[].status"
     ],
     "stderr": ""
