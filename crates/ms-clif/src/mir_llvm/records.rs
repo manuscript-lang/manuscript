@@ -247,6 +247,27 @@ pub(super) fn reserve(b: &mut FnBuilder, lay: &Layouts, ty: Ty) -> Vec<Val> {
     held(lay, ty).into_iter().map(|t| b.reserve(t)).collect()
 }
 
+/// Loads the leaves of the record of type `ty` in memory at `base` into the reserved `named`
+/// values, one per leaf.
+pub(super) fn load_into_leaves(
+    b: &mut FnBuilder,
+    lay: &Layouts,
+    ty: Ty,
+    base: &Val,
+    named: &[Val],
+) {
+    let s = shape(b.types(), lay, ty).expect("is_mem checked");
+    load_leaves(b, &s, base, 0, s.leaves.len(), named);
+}
+
+/// Defines the reserved pointer `dst` as a new slot for a record of type `ty` in memory and
+/// stores its `leaves` there.
+pub(super) fn store_into_slot(b: &mut FnBuilder, lay: &Layouts, ty: Ty, dst: &Val, leaves: &[Val]) {
+    let s = shape(b.types(), lay, ty).expect("is_mem checked");
+    b.alloca_as(dst, &s.st);
+    store_regs(b, lay, ty, &s.st, dst, leaves);
+}
+
 /// Leaf index and count of field `i` of record type `rty`.
 fn field_span(lay: &Layouts, rty: Ty, i: usize) -> (usize, usize) {
     let r = record(lay, rty).expect("a record");
