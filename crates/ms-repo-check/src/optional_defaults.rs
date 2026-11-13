@@ -36,7 +36,7 @@ pub fn check(syms: ms_syntax::Names, files: &[String]) -> Vec<String> {
             .iter()
             .filter(|d| d.export)
             .filter_map(|d| match &d.kind {
-                DeclKind::Record(r) => Some(syms.str(r.name)),
+                DeclKind::Type(r) => Some(syms.str(r.name)),
                 DeclKind::Alternative(a) => Some(syms.str(a.name)),
                 _ => None,
             })
@@ -58,7 +58,7 @@ pub fn check(syms: ms_syntax::Names, files: &[String]) -> Vec<String> {
         found,
         |path, entry| {
             format!(
-                "{path}: `{entry}` is optional or an options record with no default; add `= none` or `= Options()` so callers never pass it explicitly"
+                "{path}: `{entry}` is optional or an options type with no default; add `= none` or `= Options()` so callers never pass it explicitly"
             )
         },
         |entry| {
@@ -86,8 +86,8 @@ fn undefaulted(syms: ms_syntax::Names, owner: &str, func: &Func, found: &mut Vec
             .ty
             .as_ref()
             .is_some_and(|t| t.name(syms) == "Optional");
-        let record = pname == "options" || pname == "limits";
-        if optional || record {
+        let options_like = pname == "options" || pname == "limits";
+        if optional || options_like {
             found.push(format!("{function} {pname}"));
         }
     }

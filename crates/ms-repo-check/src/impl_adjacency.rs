@@ -21,7 +21,7 @@ fn misplaced(syms: ms_syntax::Names, module: &Module) -> Vec<(u32, String)> {
         .decls
         .iter()
         .filter_map(|d| match &d.kind {
-            DeclKind::Record(r) => Some(syms.str(r.name)),
+            DeclKind::Type(r) => Some(syms.str(r.name)),
             DeclKind::Alternative(a) => Some(syms.str(a.name)),
             _ => None,
         })
@@ -30,7 +30,7 @@ fn misplaced(syms: ms_syntax::Names, module: &Module) -> Vec<(u32, String)> {
     let mut previous: Option<&str> = None;
     for decl in &module.decls {
         match &decl.kind {
-            DeclKind::Record(r) => previous = Some(syms.str(r.name)),
+            DeclKind::Type(r) => previous = Some(syms.str(r.name)),
             DeclKind::Alternative(a) => previous = Some(syms.str(a.name)),
             DeclKind::Impl(i) => {
                 let name = i.receiver.name(syms);

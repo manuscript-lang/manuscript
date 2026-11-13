@@ -9,7 +9,7 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "enum variants have no field or method bodies; write 'Name' or 'Name(field: Type)', use 'type' for record fields, and put methods in an 'impl' block",
+        "message": "enum variants have no field or method bodies; write 'Name' or 'Name(field: Type)', use 'type' for type fields, and put methods in an 'impl' block",
         "position": {
           "file": "enum-record-field.ms",
           "line": 4,
@@ -27,7 +27,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/enum-record-field.ms:4:10: parse: enum variants have no field or method bodies; write 'Name' or 'Name(field: Type)', use 'type' for record fields, and put methods in an 'impl' block\n   |\n 4 |     value: Int\n   |          ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/enum-record-field.ms:4:10: parse: enum variants have no field or method bodies; write 'Name' or 'Name(field: Type)', use 'type' for type fields, and put methods in an 'impl' block\n   |\n 4 |     value: Int\n   |          ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

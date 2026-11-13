@@ -5,20 +5,20 @@
 use alloc::string::String;
 use ms_decimal::{Dec, Mode, Overflow, RoundFail, overflow_message};
 use ms_rt::ffi::{
-    Has, Out, STATUS_INVALID_INPUT, STATUS_OUT_OF_RANGE, Status, abi_record, fault_kind, native,
+    Has, Out, STATUS_INVALID_INPUT, STATUS_OUT_OF_RANGE, Status, abi_type, fault_kind, native,
 };
 
-abi_record! {
+abi_type! {
     /// The record layout of [`Dec`] across the ABI.
-    pub struct DecRec {
+    pub struct DecType {
         pub lo: u64,
         pub hi: i64,
         pub exp: i64,
     }
 }
 
-impl From<&DecRec> for Dec {
-    fn from(r: &DecRec) -> Dec {
+impl From<&DecType> for Dec {
+    fn from(r: &DecType) -> Dec {
         Dec {
             lo: r.lo,
             hi: r.hi,
@@ -27,9 +27,9 @@ impl From<&DecRec> for Dec {
     }
 }
 
-impl From<Dec> for DecRec {
-    fn from(d: Dec) -> DecRec {
-        DecRec {
+impl From<Dec> for DecType {
+    fn from(d: Dec) -> DecType {
+        DecType {
             lo: d.lo,
             hi: d.hi,
             exp: d.exp,
@@ -69,7 +69,7 @@ fn mode_of(has: bool, index: i64) -> Result<Mode, Failure> {
 macro_rules! binary {
     ($name:ident, $method:ident, $op:literal) => {
         native! {
-            fn $name(a: &DecRec, b: &DecRec) -> out DecRec {
+            fn $name(a: &DecType, b: &DecType) -> out DecType {
                 let (a, b) = (Dec::from(a), Dec::from(b));
                 checked(a.$method(&b), $op, a, b).into()
             }
@@ -88,24 +88,24 @@ native! {
 
     /// The Decimal of runtime text, or `InvalidInput` when it is malformed or not exactly representable.
     // ms: leaf
-    fn msstd_decimal_parse(text: &str) -> Result<DecRec, Failure> {
+    fn msstd_decimal_parse(text: &str) -> Result<DecType, Failure> {
         Dec::parse(text)
-            .map(DecRec::from)
+            .map(DecType::from)
             .ok_or(Failure(RoundFail::InvalidInput))
     }
 
     // ms: leaf
-    fn msstd_decimal_from_int(n: i64) -> out DecRec {
+    fn msstd_decimal_from_int(n: i64) -> out DecType {
         Dec::from_int(n).into()
     }
 
     // ms: leaf
-    fn msstd_decimal_from_uint(n: i64) -> out DecRec {
+    fn msstd_decimal_from_uint(n: i64) -> out DecType {
         Dec::from_uint(n as u64).into()
     }
 
     // ms: leaf
-    fn msstd_decimal_divide(a: &DecRec, b: &DecRec) -> out DecRec {
+    fn msstd_decimal_divide(a: &DecType, b: &DecType) -> out DecType {
         let (a, b) = (Dec::from(a), Dec::from(b));
         if b.is_zero() {
             fault_kind(
@@ -117,28 +117,28 @@ native! {
     }
 
     // ms: leaf
-    fn msstd_decimal_negate(a: &DecRec) -> out DecRec {
+    fn msstd_decimal_negate(a: &DecType) -> out DecType {
         Dec::from(a).negate().into()
     }
 
     // ms: leaf
-    fn msstd_decimal_compare(a: &DecRec, b: &DecRec) -> i64 {
+    fn msstd_decimal_compare(a: &DecType, b: &DecType) -> i64 {
         Dec::from(a).compare(&Dec::from(b))
     }
 
     // ms: leaf
-    fn msstd_decimal_to_string(a: &DecRec) -> String {
+    fn msstd_decimal_to_string(a: &DecType) -> String {
         Dec::from(a).render()
     }
 
     // ms: leaf
-    fn msstd_decimal_to_float(a: &DecRec) -> f64 {
+    fn msstd_decimal_to_float(a: &DecType) -> f64 {
         Dec::from(a).to_float()
     }
 
     /// `true` and `out` written when the truncated value fits an `Int`.
     // ms: leaf
-    fn msstd_decimal_truncate_to_int(a: &DecRec, out: Out<i64>) -> bool {
+    fn msstd_decimal_truncate_to_int(a: &DecType, out: Out<i64>) -> bool {
         match Dec::from(a).truncate_to_int() {
             Some(n) => {
                 out.write(n);
@@ -150,20 +150,20 @@ native! {
 
     // ms: leaf
     fn msstd_decimal_round(
-        value: &DecRec,
+        value: &DecType,
         places: i64,
         has_mode: Has,
         mode: i64,
-    ) -> Result<DecRec, Failure> {
+    ) -> Result<DecType, Failure> {
         Dec::from(value)
             .round(places, mode_of(*has_mode, mode)?)
-            .map(DecRec::from)
+            .map(DecType::from)
             .map_err(Failure)
     }
 
     // ms: leaf
     fn msstd_decimal_to_fixed(
-        value: &DecRec,
+        value: &DecType,
         digits: i64,
         has_mode: Has,
         mode: i64,

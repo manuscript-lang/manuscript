@@ -1,4 +1,4 @@
-//! Completion must not advertise an opaque record's private constructor fields.
+//! Completion must not advertise an opaque type's private constructor fields.
 
 use ms_lsp::analysis::{Document, Documents, analyze};
 use ms_lsp::completion::{completion_at, signature_help};

@@ -61,11 +61,11 @@ fn optional_context_preserves_numeric_and_wrapping_restrictions() {
             "expected Int8??, found Int",
         ),
         (
-            include_str!("optional_literal_context/reject-record_named.ms"),
+            include_str!("optional_literal_context/reject-type_named.ms"),
             "expected Int8?, found Int",
         ),
         (
-            include_str!("optional_literal_context/reject-record_overflow.ms"),
+            include_str!("optional_literal_context/reject-type_overflow.ms"),
             "overflows Int8",
         ),
         (

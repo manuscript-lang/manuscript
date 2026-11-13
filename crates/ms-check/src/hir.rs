@@ -127,7 +127,7 @@ pub enum Resolution {
     Function(SymRef),
     /// A type used as a value.
     Type(SymRef),
-    /// A record or alternative-case constructor.
+    /// A type or alternative-case constructor.
     Constructor {
         /// The constructed type.
         ty: Ty,
@@ -193,7 +193,7 @@ impl ModuleHir {
                         out.push(self.callable(CallableKind::Method, m.func.name, func));
                     }
                 }
-                DeclKind::Record(_)
+                DeclKind::Type(_)
                 | DeclKind::Alternative(_)
                 | DeclKind::Alias(_)
                 | DeclKind::Interface(_) => {}

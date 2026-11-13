@@ -87,7 +87,7 @@ pub struct StdResult {
 pub(crate) struct World {
     state: u8, // 0 unloaded, 1 loading, 2 loaded
     symbols: HashMap<Name, SymRef>,
-    /// Exported records and alternatives of source modules, declared when the module is registered so
+    /// Exported types and alternatives of source modules, declared when the module is registered so
     /// native modules can name them before the source module is checked.
     source_types: HashMap<(Name, Name), SymRef>,
     /// Source modules whose types native modules named while loading; they are checked right after.
@@ -150,8 +150,8 @@ pub fn keeps_callbacks(symbol: &str) -> bool {
     RUNTIME_KEEPS.contains(&symbol)
 }
 
-/// Native types that declare fields, so they cannot be written `extern type`. A record in a native
-/// module is otherwise an ordinary record (`Error`), so the runtime's own `List` is named here.
+/// Native types that declare fields, so they cannot be written `extern type`. A type in a native
+/// module is otherwise an ordinary type (`Error`), so the runtime's own `List` is named here.
 const NATIVE_WITH_FIELDS: &[&str] = &["List"];
 
 // -------------------------------------------------------------------- queries
@@ -181,14 +181,14 @@ pub fn module_stem(file: &str) -> &str {
     }
 }
 
-/// Declares the symbol of a record or alternative of a bundled source module. The checker of the
+/// Declares the symbol of a type or alternative of a bundled source module. The checker of the
 /// module reuses it, so native modules and the source module agree on one type.
 pub(crate) fn source_type_symbol(syms: ms_syntax::Names, module: &ModRef, d: &DeclRef) -> SymRef {
     let name = d.name();
     let kind = match d.decl().kind {
         DeclKind::Alternative(_) => Kind::Alternative,
         DeclKind::Interface(_) => Kind::Contract,
-        _ => Kind::Record,
+        _ => Kind::Type,
     };
     let stem = module_stem(syms.str(module.file));
     let s = Rc::new(Sym {
@@ -250,7 +250,7 @@ fn decl_name(d: &Decl) -> Name {
     match &d.kind {
         DeclKind::Fn(f) => f.name,
         DeclKind::Const(c) => c.name,
-        DeclKind::Record(r) => r.name,
+        DeclKind::Type(r) => r.name,
         DeclKind::Alternative(a) => a.name,
         DeclKind::Alias(a) => a.name,
         DeclKind::Interface(i) => i.name,
@@ -261,7 +261,7 @@ fn decl_name(d: &Decl) -> Name {
 fn decl_type_params(d: &Decl) -> &[TypeParam] {
     match &d.kind {
         DeclKind::Fn(f) => &f.type_params,
-        DeclKind::Record(r) => &r.type_params,
+        DeclKind::Type(r) => &r.type_params,
         DeclKind::Alternative(a) => &a.type_params,
         DeclKind::Alias(a) => &a.type_params,
         DeclKind::Interface(i) => &i.type_params,
@@ -439,7 +439,7 @@ fn split_mixed(syms: ms_syntax::Names, parsed: &Module) -> Result<Option<Halves>
         let name = match &d.kind {
             DeclKind::Fn(f) => f.name,
             DeclKind::Const(c) => c.name,
-            DeclKind::Record(r) => r.name,
+            DeclKind::Type(r) => r.name,
             DeclKind::Alternative(a) => a.name,
             DeclKind::Alias(a) => a.name,
             DeclKind::Interface(i) => i.name,
@@ -483,7 +483,7 @@ fn split_mixed(syms: ms_syntax::Names, parsed: &Module) -> Result<Option<Halves>
     let foreign: Vec<Decl> = parsed
         .decls
         .iter()
-        .filter(|d| matches!(d.kind, DeclKind::Record(_) | DeclKind::Alternative(_)))
+        .filter(|d| matches!(d.kind, DeclKind::Type(_) | DeclKind::Alternative(_)))
         .cloned()
         .collect();
     Ok(Some((
@@ -575,7 +575,7 @@ impl Loader<'_> {
         let source_implementation = module.decls.iter().any(has_implementation);
         if source_implementation {
             for d in &module.decls {
-                if let DeclKind::Record(r) = &d.decl().kind
+                if let DeclKind::Type(r) = &d.decl().kind
                     && r.external
                 {
                     self.register_extern_type(syms, module, d)?;
@@ -612,7 +612,7 @@ impl Loader<'_> {
             let name = d.name();
             let (kind, sym_kind) = match &d.decl().kind {
                 DeclKind::Fn(_) => (None, SymKind::Fn),
-                DeclKind::Record(_) => (Some(Kind::Record), SymKind::Type),
+                DeclKind::Type(_) => (Some(Kind::Type), SymKind::Type),
                 DeclKind::Alternative(_) => (Some(Kind::Alternative), SymKind::Type),
                 DeclKind::Interface(_) => (Some(Kind::Contract), SymKind::Type),
                 _ => (None, SymKind::Type),
@@ -638,7 +638,7 @@ impl Loader<'_> {
             });
             if let Some(mut kind) = kind {
                 // `extern type` declares an opaque runtime value; `List` also carries a constructor field.
-                let external = matches!(&d.decl().kind, DeclKind::Record(r) if r.external);
+                let external = matches!(&d.decl().kind, DeclKind::Type(r) if r.external);
                 if external || NATIVE_WITH_FIELDS.contains(&syms.str(name)) {
                     kind = Kind::Native;
                 }
@@ -799,7 +799,7 @@ impl Loader<'_> {
                     continue;
                 }
                 let def = s.ty(syms).def.clone().expect("def");
-                let fields = self.c.params(d.record_fields());
+                let fields = self.c.params(d.type_fields());
                 *def.fields.borrow_mut() = fields;
                 def.clear_cases();
                 let mut seen: HashSet<Name> = HashSet::new();
@@ -980,7 +980,7 @@ impl Loader<'_> {
                     let ctor = constructor_signature(syms, &self.c.session, &symbol.ty(syms));
                     self.c.check_native_defaults(
                         &FuncRef::of_decl(declaration.clone()),
-                        declaration.record_fields(),
+                        declaration.type_fields(),
                         &ctor,
                         &symbol.variables(),
                         false,
@@ -1176,7 +1176,7 @@ impl Session {
         self.world(|w| w.modules.contains_key(&path))
     }
 
-    /// The symbol of a record or alternative declared in a bundled source module, as registered at load.
+    /// The symbol of a type or alternative declared in a bundled source module, as registered at load.
     pub fn source_type(self: &Rc<Self>, module: Name, name: Name) -> Option<SymRef> {
         self.ensure_standard();
         self.load_deferred(module);
@@ -1607,8 +1607,8 @@ impl Session {
     fn register_source(self: &Rc<Self>, module: &ModRef) {
         for d in &module.decls {
             match &d.decl().kind {
-                DeclKind::Record(r) if r.external => {}
-                DeclKind::Record(_) | DeclKind::Alternative(_) | DeclKind::Interface(_)
+                DeclKind::Type(r) if r.external => {}
+                DeclKind::Type(_) | DeclKind::Alternative(_) | DeclKind::Interface(_)
                     if d.decl().export =>
                 {
                     let stub = source_type_symbol(self.syms, module, d);
@@ -1646,9 +1646,9 @@ impl Session {
         }
     }
 
-    /// `Duration`, `Instant` or `Timestamp`, the records of `@std/time.ms`.
+    /// `Duration`, `Instant` or `Timestamp`, the types of `@std/time.ms`.
     pub fn time_type(self: &Rc<Self>, name: &str) -> Ty {
-        // The module is checked on first use; its records have no fields before that.
+        // The module is checked on first use; its types have no fields before that.
         self.standard_exports("@std/time.ms");
         let sym = self
             .source_type(n("@std/time.ms"), n(name))
@@ -1716,7 +1716,7 @@ pub fn constructor_signature(
     if let Some(sym) = t.symbol()
         && let Some(decl) = &sym.decl
     {
-        for f in decl.record_fields() {
+        for f in decl.type_fields() {
             if f.default.is_some() {
                 defaults.insert(f.name);
             }

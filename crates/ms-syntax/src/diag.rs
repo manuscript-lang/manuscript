@@ -504,9 +504,9 @@ pub const KINDS: &[Kind] = &[
     kind!(
         "MS3000",
         "MS3000.12",
-        "requires a record field",
+        "requires a type field",
         "Assignment target",
-        "assign to a record field or a variable"
+        "assign to a type field or a variable"
     ),
     kind!(
         "MS3001",

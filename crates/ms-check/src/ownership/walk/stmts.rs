@@ -192,7 +192,7 @@ impl Walker<'_> {
                 // closes it at the end of the iteration unless the body moves it on.
                 if class == Class::Resource
                     && source.owned
-                    && matches!(b.ty.kind, Kind::Record | Kind::Alternative | Kind::Native)
+                    && matches!(b.ty.kind, Kind::Type | Kind::Alternative | Kind::Native)
                 {
                     self.resources.push((b.uid, b.name, iter.pos, true));
                 }

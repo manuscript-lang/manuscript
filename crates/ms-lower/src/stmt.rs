@@ -396,7 +396,7 @@ impl<'a> FnLower<'a> {
                 }
                 Ok(())
             }
-            PatternKind::Record(fields) => {
+            PatternKind::Type(fields) => {
                 let rt = self.ty_of(x.v);
                 let TyKind::Type(rid) = self.b.m.types.kind(rt).clone() else {
                     return Err(Error::new("a type pattern needs a type"));

@@ -11,7 +11,7 @@ use ms_rt::ffi::ErrSlot;
 #[cfg(test)]
 use ms_rt::ffi::HasRaw;
 use ms_rt::ffi::{
-    Bytes, ErrOut, Has, ObjRef, Object, Out, RecList, StatusCode, Str, abi_handle, abi_record,
+    Bytes, ErrOut, Has, ObjRef, Object, Out, StatusCode, Str, TypeList, abi_handle, abi_type,
     native,
 };
 use ms_rt_abi::{
@@ -22,7 +22,7 @@ use std::net::IpAddr;
 
 abi_handle!(Cidr);
 
-abi_record! {
+abi_type! {
     /// One resolved DNS record as compiled code lays out `DnsRecord`.
     pub struct DnsRecordWire {
         pub kind: i64,
@@ -33,7 +33,7 @@ abi_record! {
     }
 }
 
-abi_record! {
+abi_type! {
     /// A received datagram: the payload and the sender's address.
     pub struct DatagramWire {
         pub data: Bytes,
@@ -242,7 +242,7 @@ native! {
         max: i64,
         has_timeout: Has,
         timeout: i64,
-        out: Out<RecList<DnsRecordWire>>,
+        out: Out<TypeList<DnsRecordWire>>,
         err: ErrOut,
     ) -> Result<(), StatusCode> {
         let Some(kind) = u8::try_from(kind).ok().and_then(DnsKind::from_index) else {
@@ -252,7 +252,7 @@ native! {
             .0
             .resolve(name, kind, opt(*has_max, max), opt(*has_timeout, timeout));
         let list = report(list, &err)?;
-        out.write(RecList::new(list.iter().map(|rec| DnsRecordWire {
+        out.write(TypeList::new(list.iter().map(|rec| DnsRecordWire {
             kind: i64::from(DnsKind::index(rec.kind)),
             value: Str::new(&rec.value),
             priority: rec.priority,

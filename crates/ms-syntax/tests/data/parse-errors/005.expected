@@ -1,1 +1,1 @@
-error parse 7:5:114 "a type declares only record fields; write its methods after it as 'fn Flag.name(...)'"
+error parse 7:5:114 "a type declares only fields; write its methods after it as 'fn Flag.name(...)'"

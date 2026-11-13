@@ -91,7 +91,6 @@ fn module(path: &str, declarations: Vec<ApiDeclaration>) -> ApiModule {
 fn declaration_kind_presentation() {
     for (kind, label) in [
         ("fn", "Function"),
-        ("record", "Record"),
         ("alternative", "Enum"),
         ("interface", "Interface"),
         ("type", "Type"),
@@ -204,7 +203,7 @@ fn mixed_prelude_module_import_guidance() {
 fn member_descriptions_reach_markdown_and_compatible_json() {
     let data = ApiDeclaration {
         name: "Data".into(),
-        kind: "record".into(),
+        kind: "type".into(),
         ty: "Data".into(),
         declaration: "type Data:\n    value: Int\n".into(),
         fields: vec!["value: Int".into()],

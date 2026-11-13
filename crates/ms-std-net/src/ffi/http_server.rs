@@ -11,7 +11,7 @@ use crate::error::HttpErr;
 use crate::http::server::{Limits, Options, Server};
 use crate::tls;
 use ms_rt::ffi::{
-    ErrOut, Handler, Has, ObjRef, Object, OptInt, Out, StatusCode, Str, StringList, abi_record,
+    ErrOut, Handler, Has, ObjRef, Object, OptInt, Out, StatusCode, Str, StringList, abi_type,
     native,
 };
 use ms_rt_abi::Obj;
@@ -19,7 +19,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::Duration;
 
-abi_record! {
+abi_type! {
     /// `HttpServerOptions` as the compiler lays it out for natives; `tls` is meaningful only when
     /// `tls_present` (the `TlsOptions?` flag) is nonzero.
     pub struct HttpServerOptionsWire {

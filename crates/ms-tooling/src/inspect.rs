@@ -124,7 +124,7 @@ fn entity_kind(decl: &DeclRef) -> &'static str {
     match &decl.decl().kind {
         DeclKind::Fn(_) => "fn",
         DeclKind::Const(_) => "constant",
-        DeclKind::Record(_) => "record",
+        DeclKind::Type(_) => "type",
         DeclKind::Alternative(_) => "alternative",
         DeclKind::Alias(_) => "alias",
         DeclKind::Interface(_) => "interface",
@@ -520,7 +520,7 @@ fn locals(syms: ms_syntax::Names, module: &ModuleData, ends: &LineEnds, out: &mu
             }
         };
         let params: &[Param] = match &decl.decl().kind {
-            DeclKind::Record(r) => &r.fields,
+            DeclKind::Type(r) => &r.fields,
             DeclKind::Fn(f) => &f.params,
             _ => &[],
         };
@@ -555,7 +555,7 @@ impl LocalScan<'_> {
         match &p.kind {
             PatternKind::Name(_) => {}
             PatternKind::List(items) => items.iter().for_each(|i| self.pattern(i)),
-            PatternKind::Record(fields) => fields.iter().for_each(|f| self.pattern(&f.pattern)),
+            PatternKind::Type(fields) => fields.iter().for_each(|f| self.pattern(&f.pattern)),
         }
     }
 }

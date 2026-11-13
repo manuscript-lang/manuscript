@@ -257,7 +257,7 @@ fn foreign_declaration(t: Token, text: &str) -> Option<(String, Option<&'static 
         ),
         "class" | "struct" | "record" | "data" => (
             Some("type"),
-            "declare a record with 'type Name:' and 'field: Type' lines, then add methods as 'fn Name.method(...)' after it",
+            "declare a type with 'type Name:' and 'field: Type' lines, then add methods as 'fn Name.method(...)' after it",
         ),
         "union" | "variant" | "sealed" => (
             Some("enum"),
@@ -830,7 +830,7 @@ impl<'a> Parser<'a> {
                 if self.take(Tok::Assign) {
                     if !defaults {
                         let t = self.previous();
-                        return self.fail(t, "function types and case payloads cannot have defaults; put the default on a named function parameter or a record field instead");
+                        return self.fail(t, "function types and case payloads cannot have defaults; put the default on a named function parameter or a type field instead");
                     }
                     default = Some(self.expression(0)?);
                 } else if defaults && let Some(t) = &ty {
@@ -1301,7 +1301,7 @@ impl<'a> Parser<'a> {
                     return self.fail(t, "an extern type has no body; remove the ':'");
                 }
                 self.end()?;
-                DeclKind::Record(RecordDecl {
+                DeclKind::Type(TypeDecl {
                     name,
                     type_params,
                     fields: Vec::new(),
@@ -1354,7 +1354,7 @@ impl<'a> Parser<'a> {
                 let mut decl = self.type_declaration(next)?;
                 decl.pos = token.pos;
                 match &mut decl.kind {
-                    DeclKind::Record(r) => r.opaque = true,
+                    DeclKind::Type(r) => r.opaque = true,
                     DeclKind::Alternative(a) => a.opaque = true,
                     _ => {}
                 }
@@ -1383,7 +1383,7 @@ impl<'a> Parser<'a> {
                         };
                         format!("write 'export opaque {keyword} Name:', with export first")
                     } else {
-                        "'opaque' applies only to a record or enum; write 'opaque type Name:' or 'opaque enum Name:', optionally after 'export'".into()
+                        "'opaque' applies only to a type or enum; write 'opaque type Name:' or 'opaque enum Name:', optionally after 'export'".into()
                     };
                     return self.fail(token, format!("misplaced 'opaque'; {advice}"));
                 }
@@ -1485,7 +1485,7 @@ impl<'a> Parser<'a> {
                 pos: token.pos,
                 export: false,
                 synthetic: false,
-                kind: DeclKind::Record(RecordDecl {
+                kind: DeclKind::Type(TypeDecl {
                     name,
                     type_params,
                     fields: Vec::new(),
@@ -1518,14 +1518,14 @@ impl<'a> Parser<'a> {
                             Tok::LParen | Tok::Newline | Tok::Dedent | Tok::Eof
                         )))
             {
-                return self.fail(token, "a record declared with 'type' cannot contain enum variants; replace 'type' with 'enum' and remove any legacy 'case' prefixes");
+                return self.fail(token, "a type declared with 'type' cannot contain enum variants; replace 'type' with 'enum' and remove any legacy 'case' prefixes");
             }
             if token.kind == Tok::Enum {
                 if let Some(prefix) = self.legacy_case_prefix() {
                     return self.fail(prefix, "enum variants do not use 'case'; remove the prefix and write 'Name' or 'Name(field: Type)'");
                 }
                 if self.kind() != Tok::Name {
-                    return self.fail(self.peek(), "an enum contains only variants; write 'Name' or 'Name(field: Type)', use 'type' for record fields, and put methods in an 'impl' block");
+                    return self.fail(self.peek(), "an enum contains only variants; write 'Name' or 'Name(field: Type)', use 'type' for type fields, and put methods in an 'impl' block");
                 }
             }
             if token.kind == Tok::Interface && !matches!(self.kind(), Tok::Fn | Tok::Var) {
@@ -1547,7 +1547,7 @@ impl<'a> Parser<'a> {
                     }
                 }
                 if self.kind() == Tok::Colon {
-                    return self.fail(self.peek(), "enum variants have no field or method bodies; write 'Name' or 'Name(field: Type)', use 'type' for record fields, and put methods in an 'impl' block");
+                    return self.fail(self.peek(), "enum variants have no field or method bodies; write 'Name' or 'Name(field: Type)', use 'type' for type fields, and put methods in an 'impl' block");
                 }
                 if self.kind() == Tok::Assign {
                     return self.fail(self.peek(), "enum variants cannot have defaults; write 'Name' or 'Name(field: Type)' and supply payload values when constructing a variant");
@@ -1568,7 +1568,7 @@ impl<'a> Parser<'a> {
                 if token.kind == Tok::Type {
                     let t = self.previous();
                     let names = type_param_names(self.names, &type_params);
-                    return self.fail(t, format!("a type declares only record fields; write its methods after it as 'fn {name_t}{names}.name(...)'", name_t = self.names.str(name)));
+                    return self.fail(t, format!("a type declares only fields; write its methods after it as 'fn {name_t}{names}.name(...)'", name_t = self.names.str(name)));
                 }
                 let mname = self.need(Tok::Name)?;
                 let m = self.method_signature(mname, true, false, mutating)?;
@@ -1618,7 +1618,7 @@ impl<'a> Parser<'a> {
                 cases,
                 opaque: false,
             }),
-            _ => DeclKind::Record(RecordDecl {
+            _ => DeclKind::Type(TypeDecl {
                 name,
                 type_params,
                 fields,
@@ -2068,7 +2068,7 @@ impl<'a> Parser<'a> {
                         "except" | "finally" => return self.fail(t, format!("'{n_t}' is not a keyword; failures are values; return error(...) from a fn returning T!, propagate a Result with 'call()?', or handle it with 'if value := result:' and an else branch", n_t = self.names.str(n))),
                         "loop" => return self.fail(t, "'loop' is not a keyword; write 'while true:' and leave it with 'break'"),
                         "foreach" => return self.fail(t, "'foreach' is not a keyword; write 'for item in items:'"),
-                        "class" => return self.fail(t, "'class' is not a keyword inside a fn; declare a record with 'type Name:' at module level"),
+                        "class" => return self.fail(t, "'class' is not a keyword inside a fn; declare a type with 'type Name:' at module level"),
                         "del" => return self.fail(t, "'del' is not a keyword; remove from a collection with its methods, such as xs.remove(i) or m.remove(key)"),
                         "global" | "nonlocal" => return self.fail(t, format!("'{n_t}' is not a keyword; a fn sees module constants directly, and mutable state lives in a 'var' or a field passed explicitly", n_t = self.names.str(n))),
                         "yield" => return self.fail(t, "'yield' is not a keyword; there are no generators, so build a list and return it"),
@@ -2161,7 +2161,7 @@ impl<'a> Parser<'a> {
         match e.kind {
             ExprKind::Name(n) if self.names.str(n) != "self" && self.names.str(n) != "fixture" => Ok(AssignTarget::Name(n)),
             ExprKind::Member { .. } => Ok(AssignTarget::Member(e)),
-            _ => self.fail(start, "assignment requires a local binding name or record field; the left side of '=' must be a name or a.field; to change a collection element, write xs[index] = value on a List or m[key] = value on a Map"),
+            _ => self.fail(start, "assignment requires a local binding name or type field; the left side of '=' must be a name or a.field; to change a collection element, write xs[index] = value on a List or m[key] = value on a Map"),
         }
     }
 
@@ -2346,11 +2346,11 @@ impl<'a> Parser<'a> {
             return Ok(Pattern {
                 id,
                 pos: t.pos,
-                kind: PatternKind::Record(fields),
+                kind: PatternKind::Type(fields),
             });
         }
         let msg = format!(
-            "expected a binding name, list pattern, or record pattern, found {}; write a name, [a, b], or {{x, y}}",
+            "expected a binding name, list pattern, or type pattern, found {}; write a name, [a, b], or {{x, y}}",
             describe(self.src, t)
         );
         self.fail(t, msg)
@@ -2662,7 +2662,7 @@ impl<'a> Parser<'a> {
                 let e = self.expression(0)?;
                 if self.kind() == Tok::Comma {
                     let c = self.peek();
-                    return self.fail(c, "Manuscript has no tuples; declare a record with 'type Pair:' and named fields, or use a List when the items share one type");
+                    return self.fail(c, "Manuscript has no tuples; declare a type with 'type Pair:' and named fields, or use a List when the items share one type");
                 }
                 self.need(Tok::RParen)?;
                 e

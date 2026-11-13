@@ -1,17 +1,17 @@
 //! C ABI shims for `@std/net/url.ms` (`msstd_url_*`).
 //!
 //! `Url` and `QueryEntry` are records at their natural layout, fields in declaration order (see
-//! [`UrlRec`], [`QueryEntryRec`]). Strings inside a record written by the runtime are owned (+1)
+//! [`UrlType`], [`QueryEntryType`]). Strings inside a record written by the runtime are owned (+1)
 //! by the record; strings inside a record read by the runtime are borrowed.
 //! ms: domain URL
 use crate::Components;
 use alloc::string::String;
 use alloc::vec::Vec;
-use ms_rt::ffi::{Fail, Has, OptInt, RecList, Str, abi_record, native};
+use ms_rt::ffi::{Fail, Has, OptInt, Str, TypeList, abi_type, native};
 
-abi_record! {
+abi_type! {
     /// `Url` record: `scheme, host, port: Int?, path, query, fragment`.
-    pub struct UrlRec {
+    pub struct UrlType {
         pub scheme: Str,
         pub host: Str,
         pub port: OptInt,
@@ -21,15 +21,15 @@ abi_record! {
     }
 }
 
-abi_record! {
+abi_type! {
     /// `QueryEntry` record: `key, value`.
-    pub struct QueryEntryRec {
+    pub struct QueryEntryType {
         pub key: Str,
         pub value: Str,
     }
 }
 
-fn read_url(u: &UrlRec) -> Components {
+fn read_url(u: &UrlType) -> Components {
     Components {
         scheme: u.scheme.as_str().into(),
         host: u.host.as_str().into(),
@@ -40,8 +40,8 @@ fn read_url(u: &UrlRec) -> Components {
     }
 }
 
-fn write_url(c: Components) -> UrlRec {
-    UrlRec {
+fn write_url(c: Components) -> UrlType {
+    UrlType {
         scheme: Str::new(&c.scheme),
         host: Str::new(&c.host),
         port: OptInt::new(c.port),
@@ -63,17 +63,17 @@ native! {
     }
 
     // ms: leaf
-    fn msstd_url_parse(text: &str) -> Result<UrlRec, Fail> {
+    fn msstd_url_parse(text: &str) -> Result<UrlType, Fail> {
         crate::parse(text).map(write_url)
     }
 
     // ms: leaf
-    fn msstd_url_resolve(base: &UrlRec, reference: &str) -> Result<UrlRec, Fail> {
+    fn msstd_url_resolve(base: &UrlType, reference: &str) -> Result<UrlType, Fail> {
         crate::resolve(&read_url(base), reference).map(write_url)
     }
 
     // ms: leaf
-    fn msstd_url_format(value: &UrlRec) -> Result<String, Fail> {
+    fn msstd_url_format(value: &UrlType) -> Result<String, Fail> {
         crate::format(&read_url(value))
     }
 
@@ -82,9 +82,9 @@ native! {
         text: &str,
         has_max: Has,
         max: i64,
-    ) -> Result<RecList<QueryEntryRec>, Fail> {
+    ) -> Result<TypeList<QueryEntryType>, Fail> {
         crate::parse_query(text, has_max.then_some(max)).map(|items| {
-            RecList::new(items.iter().map(|(k, v)| QueryEntryRec {
+            TypeList::new(items.iter().map(|(k, v)| QueryEntryType {
                 key: Str::new(k),
                 value: Str::new(v),
             }))
@@ -92,7 +92,7 @@ native! {
     }
 
     // ms: leaf
-    fn msstd_url_format_query(entries: &RecList<QueryEntryRec>) -> String {
+    fn msstd_url_format_query(entries: &TypeList<QueryEntryType>) -> String {
         let items: Vec<(&str, &str)> = entries
             .as_slice()
             .iter()
@@ -107,14 +107,14 @@ native! {
 mod tests {
     use super::*;
     use core::mem::MaybeUninit;
-    use ms_rt::ffi::AbiRecord;
+    use ms_rt::ffi::AbiNamedType;
     use ms_rt::ffi::{StrVal, VecVal, new_string, str_ref, take_string};
     use ms_rt_abi::STATUS_OK;
 
     #[test]
     fn abi_roundtrip() {
         let text = new_string("https://Example.com:81/p?a=1&a=2#f");
-        let mut rec = MaybeUninit::<UrlRec>::uninit();
+        let mut rec = MaybeUninit::<UrlType>::uninit();
         let mut s = MaybeUninit::<StrVal>::uninit();
         let mut q = MaybeUninit::<VecVal>::uninit();
         // SAFETY: all pointers are live; results are released below.
@@ -131,7 +131,7 @@ mod tests {
             assert_eq!((*q.as_ptr()).len, 2);
             let f = take_string(|o| msstd_url_format_query(q.as_ptr().cast(), o));
             assert_eq!(f, "a=1&a=2");
-            ms_rt::vec::msrt_list_drop(q.as_mut_ptr(), QueryEntryRec::desc());
+            ms_rt::vec::msrt_list_drop(q.as_mut_ptr(), QueryEntryType::desc());
             for o in [
                 r.scheme.as_ptr(),
                 r.host.as_ptr(),

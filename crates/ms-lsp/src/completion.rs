@@ -439,7 +439,7 @@ impl Completer<'_> {
         let module_file = self.a.result.module(syms, &self.a.document).map(|m| m.file);
         if c.type_context && self.a.expression.is_none() {
             // Type markers have no expression scope. Keep the checked variables
-            // of this declaration, including record fields and case payloads.
+            // of this declaration, including type fields and case payloads.
             let method_variables = self
                 .a
                 .result
@@ -519,7 +519,7 @@ impl Completer<'_> {
                         .collect();
                     insert = format!("{name_t}[{}]", parts.join(", "), name_t = syms.str(name));
                 }
-                if !c.type_context && ty.kind == Kind::Record && self.structure_visible(syms, &ty) {
+                if !c.type_context && ty.kind == Kind::Type && self.structure_visible(syms, &ty) {
                     let signature = constructor_signature(syms, &self.a.result.session, &ty);
                     insert = callable_text(
                         syms,
@@ -577,7 +577,7 @@ impl Completer<'_> {
         if symbols.is_empty() {
             let file: std::sync::Arc<str> = uri::filename(&self.d.uri).into();
             let (module, _) = ms_syntax::parse_partial(&file, &self.d.text);
-            // The parser reports `type` declarations as records, so Go's kind
+            // The parser reports `type` declarations as types, so Go's kind
             // test for types never matches here: every fallback item is a function.
             for decl in &module.decls {
                 let name = decl_name(syms, decl);
@@ -737,7 +737,7 @@ fn decl_name(syms: ms_syntax::Names, decl: &ms_syntax::ast::Decl) -> String {
     match &decl.kind {
         DeclKind::Fn(f) => syms.str(f.name).to_string(),
         DeclKind::Const(c) => syms.str(c.name).to_string(),
-        DeclKind::Record(r) => syms.str(r.name).to_string(),
+        DeclKind::Type(r) => syms.str(r.name).to_string(),
         DeclKind::Alternative(a) => syms.str(a.name).to_string(),
         DeclKind::Alias(a) => syms.str(a.name).to_string(),
         DeclKind::Interface(i) => syms.str(i.name).to_string(),

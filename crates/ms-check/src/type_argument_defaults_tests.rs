@@ -30,7 +30,7 @@ fn type_defaults_see_later_local_implementations() {
 }
 
 #[test]
-fn type_default_bounds_see_complete_record_fields_in_either_order() {
+fn type_default_bounds_see_complete_type_fields_in_either_order() {
     for source in [
         include_str!("../tests/type_argument_defaults/invalid_fields.ms"),
         include_str!("../tests/type_argument_defaults/incomplete_fields.ms"),
