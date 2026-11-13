@@ -1526,8 +1526,8 @@ fn direct_plan(g: &mut Gen, f: &Func) -> crate::mir_llvm::Plan {
     plan
 }
 
-/// Emits the stack-growth shim of the native function `f`.
-fn direct_shim(g: &mut Gen, kind: Glue, ty: Ty, f: usize) -> bool {
+/// Emits the stack-growth shim of the directly emitted function `f`, in its calling convention.
+fn direct_shim(g: &mut Gen, kind: Glue, ty: Ty, f: usize, native: bool) -> bool {
     let id = g.glue[&(kind, ty)];
     let sym = symbol_of(g, id);
     let callee = symbol_of(g, g.funcs[f]);
@@ -1542,7 +1542,12 @@ fn direct_shim(g: &mut Gen, kind: Glue, ty: Ty, f: usize) -> bool {
     };
     let (m, lay) = (g.m, &g.lay);
     llvm.add_direct(&sym, "glue", (0, 0), false, locs, |env| {
-        crate::mir_llvm::grow_shim(env.types, lay, &m.funcs[f], &callee, env.loc)
+        let shim = if native {
+            crate::mir_llvm::grow_shim
+        } else {
+            crate::mir_llvm::leaf_grow_shim
+        };
+        shim(env.types, lay, &m.funcs[f], &callee, env.loc)
     });
     llvm.mark_glue();
     g.llvm = Some(llvm);
@@ -1583,13 +1588,15 @@ fn direct_closure_glue(g: &mut Gen, kind: Glue, id: FuncId, sym: String) -> bool
 /// Emits the glue `kind` for `ty` straight to LLVM IR; `false` leaves it to the Cranelift
 /// lowering and its translation.
 fn direct_glue(g: &mut Gen, kind: Glue, ty: Ty) -> Result<bool, Error> {
-    if let Glue::GrowShim(f) = kind
-        && g.native.as_ref().is_some_and(|n| n.contains(&(f as usize)))
-    {
-        return Ok(direct_shim(g, kind, ty, f as usize));
-    }
     if !g.opts.build.llvm_direct || g.llvm.is_none() {
         return Ok(false);
+    }
+    if let Glue::GrowShim(f) = kind {
+        let f = f as usize;
+        let native = g.native.as_ref().is_some_and(|n| n.contains(&f));
+        if native || crate::mir_llvm::supports(g.m, &g.lay, &g.m.funcs[f]) {
+            return Ok(direct_shim(g, kind, ty, f, native));
+        }
     }
     if !crate::glue_llvm::supports(g, kind, ty) {
         let ty_kind = format!("{:?}", g.m.types.kind(ty));
@@ -1599,7 +1606,7 @@ fn direct_glue(g: &mut Gen, kind: Glue, ty: Ty) -> Result<bool, Error> {
     let id = g.glue[&(kind, ty)];
     let sym = symbol_of(g, id);
     if crate::glue_llvm::closure::is_closure(kind) {
-        return direct_closure_glue(g, kind, id, sym);
+        return Ok(direct_closure_glue(g, kind, id, sym));
     }
     // The descriptor a clone names is declared while the LLVM module is still set, so it is
     // exported (`Gen::private`); the emitter below runs with the module taken.
