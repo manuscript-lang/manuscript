@@ -1354,8 +1354,14 @@ fn direct_glue(g: &mut Gen, kind: Glue, ty: Ty) -> bool {
     let id = g.glue[&(kind, ty)];
     let sym = symbol_of(g, id);
     let mut llvm = g.llvm.take().expect("checked above");
-    llvm.add_direct(&sym, "glue", (0, 0), false, |loc| {
-        crate::glue_llvm::emit(g, kind, ty, loc)
+    // Glue has no MIR, so no source locations to resolve.
+    let no_bits = HashMap::new();
+    let locs = crate::llvm_ir::DirectLocs {
+        syms: &crate::llvm_ir::NoSymbols,
+        bits: &no_bits,
+    };
+    llvm.add_direct(&sym, "glue", (0, 0), false, locs, |env| {
+        crate::glue_llvm::emit(g, kind, ty, env.loc)
     });
     llvm.mark_glue();
     g.llvm = Some(llvm);

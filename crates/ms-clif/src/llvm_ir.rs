@@ -33,6 +33,21 @@ pub trait Symbols {
     }
 }
 
+/// Symbols of a function with no source: nothing resolves.
+pub(crate) struct NoSymbols;
+
+impl Symbols for NoSymbols {
+    fn symbol(&self, _: u32, _: u32) -> String {
+        unreachable!("no source locations to resolve")
+    }
+    fn loc(&self, _: u32) -> Option<(u32, u32, u32)> {
+        None
+    }
+    fn scope(&self, _: u32) -> Option<(String, u32, u32, u32)> {
+        None
+    }
+}
+
 /// Attributes of a call to a function that only reads memory.
 /// Runtime allocators: each returns a block no other pointer reaches, so the translation declares
 /// the result `noalias ptr` and keeps the pointer for the accesses that follow.
