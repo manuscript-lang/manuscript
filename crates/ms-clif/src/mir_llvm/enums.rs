@@ -141,7 +141,9 @@ fn mem_opt(lay: &Layouts, ty: Ty) -> Option<Ty> {
 /// one: a payload may be a self-containing enum or optional.
 fn leafy(lay: &Layouts, ty: Ty) -> bool {
     match lay.m.types.kind(ty) {
-        TyKind::Opt(inner) => lay.opt_is_boxed(*inner) || leafy(lay, *inner),
+        TyKind::Opt(inner) => {
+            lay.opt_is_boxed(*inner) || leafy(lay, *inner) || mem_opt(lay, ty).is_some()
+        }
         TyKind::Alt(a) => lay.is_boxed(*a) || fields_leafy(lay, ty, *a, None),
         _ => !records::is_mem(lay, ty),
     }
