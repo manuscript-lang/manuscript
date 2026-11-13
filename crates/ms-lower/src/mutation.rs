@@ -9,7 +9,7 @@ use ms_check::api::ast::*;
 use ms_check::api::hir::{Body, Callable, ModuleHir, Resolution};
 use ms_check::api::types::{self as ct, Kind, Name};
 use ms_check::api::visit::Visitor;
-use std::collections::{HashMap, HashSet};
+use ms_check::fxmap::{HashMap, HashSet};
 use std::rc::Rc;
 
 /// A source function or method: module file and declaration node.
@@ -341,7 +341,7 @@ fn scan<'h>(syms: ms_check::api::Names, hir: &'h ModuleHir, body: Body<'_>) -> M
     let mut v = Mutations {
         syms,
         hir,
-        roots: HashSet::new(),
+        roots: HashSet::default(),
         edges: Vec::new(),
     };
     match body {
@@ -426,8 +426,8 @@ pub(crate) fn changing_method_roots(
         syms,
         hir,
         mutated,
-        called: HashSet::new(),
-        roots: HashSet::new(),
+        called: HashSet::default(),
+        roots: HashSet::default(),
     };
     match body {
         Body::Block(b) => ms_check::api::visit::walk_block(&mut v, b),
@@ -465,7 +465,7 @@ pub(crate) fn mutated_locals(
 /// checker rejects a change through any other parameter, so no body scan is needed (over the
 /// whole conformance corpus the earlier inference added nothing to this set).
 pub(crate) fn infer_mutated(callables: &HashMap<FnKey, Rc<Callable>>) -> HashSet<ParamKey> {
-    let mut mutated = HashSet::new();
+    let mut mutated = HashSet::default();
     for (key, c) in callables {
         let has_self = c.self_binding.is_some();
         if has_self && c.func.method().is_some_and(|m| m.mutating) {

@@ -10,9 +10,9 @@
 //! join keeps the bindings every incoming path moves. Scope-close inference reuses the walk
 //! with completed explicit-close and replacement actions, without changing lowering move facts.
 
+use crate::fxmap::{HashMap, HashSet};
 use crate::hir::*;
 use ms_syntax::ast::*;
-use std::collections::{HashMap, HashSet};
 
 /// Every path from here completes an action for these bindings before leaving their scope.
 type Must = HashSet<usize>;
@@ -36,19 +36,19 @@ pub fn conditional(
         m,
         actions: actions
             .iter()
-            .fold(HashMap::new(), |mut actions, &(node, uid)| {
+            .fold(HashMap::default(), |mut actions, &(node, uid)| {
                 actions.entry(node).or_insert_with(Vec::new).push(uid);
                 actions
             }),
         tracked: actions.iter().map(|(_, u)| *u).collect(),
-        out: HashSet::new(),
+        out: HashSet::default(),
         breaks: Vec::new(),
         continues: Vec::new(),
     };
     let must = match c.body() {
-        Body::Block(body) => p.block(body, Must::new()),
+        Body::Block(body) => p.block(body, Must::default()),
         Body::Expr(e) => {
-            let mut must = Must::new();
+            let mut must = Must::default();
             p.expr(e, &mut must);
             must
         }
@@ -121,7 +121,7 @@ impl Pass<'_> {
             }
             StmtKind::Call(e) => self.expr(e, &mut must),
             StmtKind::Return(e) => {
-                must = Must::new();
+                must = Must::default();
                 if let Some(e) = e {
                     self.expr(e, &mut must);
                 }
@@ -287,7 +287,7 @@ impl Pass<'_> {
             std::mem::take(&mut self.breaks),
             std::mem::take(&mut self.continues),
         );
-        let inner = self.block(&l.body, Must::new());
+        let inner = self.block(&l.body, Must::default());
         for b in self.m.lambda_parameters(e) {
             self.define(b.uid, &inner);
         }

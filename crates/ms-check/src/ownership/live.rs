@@ -10,10 +10,10 @@
 //! the whole binding (is any part of it used later), and `places` answers for the place a
 //! field-path read names (is it, a prefix of it or an extension of it used later).
 
+use crate::fxmap::HashMap;
 use crate::hir::*;
 use crate::types::*;
 use ms_syntax::ast::*;
-use std::collections::HashMap;
 
 /// Liveness of one use.
 #[derive(Copy, Clone, Debug)]

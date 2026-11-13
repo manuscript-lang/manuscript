@@ -3,6 +3,7 @@
 use crate::checker::Checker;
 use crate::effect_directives::Lines;
 use crate::effect_reach::{ReachNode, resolve};
+use crate::fxmap::{HashMap, HashSet};
 use crate::std_ops::{collection_mutation, is_text_builder};
 use crate::syntax::*;
 use crate::types::Method;
@@ -10,7 +11,7 @@ use crate::types::*;
 use ms_syntax::Pos;
 use ms_syntax::ast::*;
 use ms_syntax::visit::{self, Visitor};
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::BTreeSet;
 
 enum Target {
     Decl(DeclRef),
@@ -223,7 +224,7 @@ impl Checker {
         let modules: HashMap<Name, ModRef> =
             self.p.modules.iter().map(|m| (m.file, m.clone())).collect();
         let mut order: Vec<Name> = Vec::new();
-        let mut nodes: HashMap<Name, EffectNode> = HashMap::new();
+        let mut nodes: HashMap<Name, EffectNode> = HashMap::default();
         let mut add = |id: Name, module: Option<ModRef>, target: Target| {
             if !nodes.contains_key(&id) {
                 order.push(id);
@@ -234,7 +235,7 @@ impl Checker {
                     module,
                     target,
                     effects: BTreeSet::new(),
-                    edges: HashSet::new(),
+                    edges: HashSet::default(),
                     edge_pos: Vec::new(),
                 },
             );
@@ -265,9 +266,9 @@ impl Checker {
             }
         }
         let ids: HashSet<Name> = nodes.keys().copied().collect();
-        let mut conversions: HashMap<(Name, Name), Vec<Name>> = HashMap::new();
-        let mut by_receiver: HashMap<Name, Vec<Name>> = HashMap::new();
-        let mut own_methods: HashMap<Name, Vec<(Name, Name)>> = HashMap::new();
+        let mut conversions: HashMap<(Name, Name), Vec<Name>> = HashMap::default();
+        let mut by_receiver: HashMap<Name, Vec<Name>> = HashMap::default();
+        let mut own_methods: HashMap<Name, Vec<(Name, Name)>> = HashMap::default();
         for m in &self.p.methods {
             if let Some(contract) = &m.contract
                 && !ms_syntax::Names::global().str(m.id).is_empty()
@@ -296,7 +297,7 @@ impl Checker {
                 module: &module,
                 ids: &ids,
                 effects: BTreeSet::new(),
-                edges: HashSet::new(),
+                edges: HashSet::default(),
                 edge_pos: Vec::new(),
                 conversions: &conversions,
                 by_receiver: &by_receiver,
@@ -332,7 +333,7 @@ impl Checker {
     /// Declared effects (`// ms: effect`) per callable and the project callables that reach an
     /// effect no `// ms: allow_effect` scope permits.
     fn declared_effects(&mut self, order: &[Name], nodes: &HashMap<Name, EffectNode>) {
-        let mut lines: HashMap<Name, Lines> = HashMap::new();
+        let mut lines: HashMap<Name, Lines> = HashMap::default();
         let mut reach: Vec<ReachNode> = Vec::with_capacity(order.len());
         for id in order {
             let node = &nodes[id];
@@ -401,7 +402,7 @@ fn propagate_effects(order: &[Name], nodes: &mut HashMap<Name, EffectNode>) {
     if work.is_empty() {
         return;
     }
-    let mut callers: HashMap<Name, Vec<Name>> = HashMap::new();
+    let mut callers: HashMap<Name, Vec<Name>> = HashMap::default();
     for id in order {
         for edge in &nodes[id].edges {
             if nodes.contains_key(edge) {

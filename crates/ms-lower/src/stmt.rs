@@ -543,7 +543,7 @@ impl<'a> FnLower<'a> {
     /// Whether the expression `e` moves the binding `uid` out of its local.
     fn moved_within(&self, uid: usize, e: &Expr) -> bool {
         struct Scan<'a> {
-            moves: &'a std::collections::HashSet<ms_check::api::ast::NodeId>,
+            moves: &'a ms_check::fxmap::HashSet<ms_check::api::ast::NodeId>,
             found: bool,
         }
         impl ms_check::api::visit::Visitor for Scan<'_> {

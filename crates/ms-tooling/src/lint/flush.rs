@@ -6,10 +6,10 @@ use super::{Finding, finding, module_file};
 use crate::walk::walk_module;
 use ms_check::api::editor::{MemberKind, members};
 use ms_check::api::types::{Builtin, Name, Ty, n};
+use ms_check::fxmap::{HashMap, HashSet};
 use ms_check::{ModuleData, Program};
 use ms_syntax::ast::*;
 use ms_syntax::visit::Visitor;
-use std::collections::{HashMap, HashSet};
 
 /// Zero-argument methods that return a `Result` and complete earlier writes. `sync` is absent: a
 /// file's writes already reach the OS, and an `fsync` is a durability choice, not a pending flush.
@@ -25,8 +25,8 @@ pub(super) fn lint(
         module,
         moves: &program.ownership.close_moves,
         owned: Vec::new(),
-        finished: HashSet::new(),
-        kept: HashSet::new(),
+        finished: HashSet::default(),
+        kept: HashSet::default(),
     };
     walk_module(module, &mut scan);
     let file = module_file(syms, module);

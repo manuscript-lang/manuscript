@@ -1,12 +1,12 @@
 //! Checker-side wrappers around the syntax tree: shared declarations, modules
 //! with their fact tables, and per-node facts.
 
+use crate::fxmap::{HashMap, HashSet};
 use crate::types::*;
 use ms_syntax::ast::*;
 use ms_syntax::ast::{Case, Method, Param};
 use ms_syntax::{Pos, Span};
 use std::cell::{Ref, RefCell, RefMut};
-use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use std::sync::Arc;
 

@@ -1,5 +1,6 @@
 //! The checker state and the module-level passes.
 
+use crate::fxmap::{HashMap, HashSet};
 use crate::stdlib::{Session, StdResult};
 use crate::syntax::*;
 use crate::types::*;
@@ -8,7 +9,6 @@ use crate::tytable::{TyId, TyTable};
 use ms_syntax::ast::*;
 use ms_syntax::{Cause, Diagnostic, Phase, Pos};
 use std::cell::RefCell;
-use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 /// Lexical scope of local bindings and type variables.
@@ -26,8 +26,8 @@ impl Scope {
     pub fn new(parent: Option<Rc<Scope>>) -> Rc<Scope> {
         Rc::new(Scope {
             parent,
-            bindings: RefCell::new(HashMap::new()),
-            types: RefCell::new(HashMap::new()),
+            bindings: RefCell::new(HashMap::default()),
+            types: RefCell::new(HashMap::default()),
         })
     }
 
@@ -267,41 +267,41 @@ impl Checker {
                 session: session.clone(),
                 ..Program::default()
             },
-            methods_by_receiver: HashMap::new(),
-            methods_by_contract: HashMap::new(),
-            variable_receiver_contract_methods: HashMap::new(),
+            methods_by_receiver: HashMap::default(),
+            methods_by_contract: HashMap::default(),
+            variable_receiver_contract_methods: HashMap::default(),
             generic_contract_methods: Vec::new(),
-            methods_by_name: HashMap::new(),
+            methods_by_name: HashMap::default(),
             clone_probes: RefCell::new(Vec::new()),
             tys: RefCell::new(TyTable::new()),
             module: None,
-            names: Rc::new(RefCell::new(HashMap::new())),
+            names: Rc::new(RefCell::new(HashMap::default())),
             syms: ms_syntax::Names::global(),
             scope: Scope::new(None),
             result: None,
             return_inference: None,
-            inference_variables: VarSet::new(),
-            deferred_callbacks: HashSet::new(),
+            inference_variables: VarSet::default(),
+            deferred_callbacks: HashSet::default(),
             checked_arguments: None,
             call_arity: None,
             function: 0,
             serial: 0,
             loops: 0,
             test_function: 0,
-            rejected_names: HashSet::new(),
+            rejected_names: HashSet::default(),
             unknown_type: false,
-            resolving_aliases: HashSet::new(),
+            resolving_aliases: HashSet::default(),
             allow_type_set: false,
-            unresolved_constructors: HashSet::new(),
-            reported_bounds: HashSet::new(),
+            unresolved_constructors: HashSet::default(),
+            reported_bounds: HashSet::default(),
             in_declaration_checks: false,
             label_mismatch: false,
-            conflicted_arguments: HashSet::new(),
+            conflicted_arguments: HashSet::default(),
             call_name: String::new(),
             call_pos: None,
-            captures: HashMap::new(),
-            constants_visiting: HashSet::new(),
-            cycle_reported: HashSet::new(),
+            captures: HashMap::default(),
+            constants_visiting: HashSet::default(),
+            cycle_reported: HashSet::default(),
             imports: ImportMap::default(),
         }
     }
@@ -662,7 +662,7 @@ impl Checker {
     /// Starts a module: fresh symbol table seeded with the primitive types and the standard prelude.
     fn begin_module(&mut self, module: &ModRef) {
         self.module = Some(module.clone());
-        self.names = Rc::new(RefCell::new(HashMap::new()));
+        self.names = Rc::new(RefCell::new(HashMap::default()));
         self.p.symbols.insert(module.file, self.names.clone());
         self.scope = Scope::new(None);
         for name in PRIMITIVE_NAMES {
@@ -1140,7 +1140,7 @@ impl Checker {
             );
             return invalid();
         }
-        let mut bindings = Subst::new();
+        let mut bindings = Subst::default();
         for (v, a) in vars.iter().zip(written) {
             bindings.insert(v.id, a);
         }
@@ -1159,7 +1159,7 @@ impl Checker {
             .filter(|(_, d)| !matches!(d.decl().kind, DeclKind::Impl(_) | DeclKind::Test(_)))
             .map(|(i, d)| (d.name(), i))
             .collect();
-        let mut state: HashMap<usize, bool> = HashMap::new();
+        let mut state: HashMap<usize, bool> = HashMap::default();
         for index in 0..module.decls.len() {
             self.declaration_type_defaults(module, &declared, &mut state, index);
         }
@@ -1258,8 +1258,8 @@ impl Checker {
             self.module = Some(check.module);
             let current: Subst = check.variables.iter().map(|v| (v.id, v.clone())).collect();
             let resolved = sub(&check.resolved, &current);
-            self.well_formed(&resolved, check.pos, &mut HashSet::new());
-            let bindings = Subst::from([(check.variable.id, resolved.clone())]);
+            self.well_formed(&resolved, check.pos, &mut HashSet::default());
+            let bindings = Subst::from_iter([(check.variable.id, resolved.clone())]);
             for bound in check.variable.bounds() {
                 let bound = sub(&bound, &bindings);
                 if !self.satisfies(&resolved, &bound) {
@@ -1308,7 +1308,7 @@ impl Checker {
                 let fields = self.params(d.type_fields());
                 *def.fields.borrow_mut() = fields;
                 def.clear_cases();
-                let mut seen: HashSet<Name> = HashSet::new();
+                let mut seen: HashSet<Name> = HashSet::default();
                 for cs in d.cases() {
                     if !seen.insert(cs.name) {
                         self.type_error(
@@ -1325,7 +1325,7 @@ impl Checker {
                         fields,
                     });
                 }
-                let mut seen: HashSet<Name> = HashSet::new();
+                let mut seen: HashSet<Name> = HashSet::default();
                 for (mi, m) in d.methods().iter().enumerate() {
                     if !seen.insert(m.func.name) {
                         self.type_error(
@@ -1767,7 +1767,7 @@ impl Checker {
 
     pub(crate) fn params(&mut self, params: &[ms_syntax::ast::Param]) -> Vec<Param> {
         let mut result = Vec::new();
-        let mut seen: HashSet<Name> = HashSet::new();
+        let mut seen: HashSet<Name> = HashSet::default();
         for p in params {
             if !seen.insert(p.name) {
                 self.type_error(
@@ -1796,7 +1796,7 @@ impl Checker {
     ) -> Ty {
         let ps = self.params(params);
         let r = self.resolve(result);
-        let mut defaults: HashSet<Name> = HashSet::new();
+        let mut defaults: HashSet<Name> = HashSet::default();
         for p in params {
             if p.default.is_some() {
                 defaults.insert(p.name);
@@ -1939,7 +1939,7 @@ impl Checker {
         params: &[ms_syntax::ast::Param],
         types: &[Param],
     ) {
-        let mut seen: HashSet<Name> = HashSet::new();
+        let mut seen: HashSet<Name> = HashSet::default();
         for (i, p) in types.iter().enumerate() {
             let repeated = !seen.insert(p.name);
             let pos = if i < params.len() {
@@ -2108,7 +2108,7 @@ pub(crate) fn hex(s: &str) -> String {
 
 /// Drops repeats of one message at one position.
 pub fn unique_diagnostics(diagnostics: Vec<Diagnostic>) -> Vec<Diagnostic> {
-    let mut seen: HashSet<(String, Pos, String)> = HashSet::new();
+    let mut seen: HashSet<(String, Pos, String)> = HashSet::default();
     let mut result = Vec::with_capacity(diagnostics.len());
     for d in diagnostics {
         // The position carries its file.

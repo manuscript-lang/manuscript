@@ -594,9 +594,9 @@ impl<'a> FnLower<'a> {
             .ok_or_else(|| Error::new(format!("{builtin:?}.{name} not found")))?;
         let callable =
             self.callable_of_decl(method.module, method.decl.as_ref().map(|d| d.id()))?;
-        let f = self
-            .cx
-            .function_for(self.b.m, &callable, &ms_check::api::types::Subst::new())?;
+        let f =
+            self.cx
+                .function_for(self.b.m, &callable, &ms_check::api::types::Subst::default())?;
         Ok(self.b.call(f, args))
     }
 

@@ -5,12 +5,12 @@ use crate::facts::{
 };
 use crate::flow::{FlowBuilder, Site, StmtView};
 use ms_check::api::syntax::{DeclRef, FuncRef};
+use ms_check::fxmap::{HashMap, HashSet};
 use ms_check::{ModRef, Program};
 use ms_syntax::visit::{Visitor, walk_callable, walk_expr};
 use ms_syntax::{
     DeclKind, Expr, ExprKind, Method, NodeId, Param, Stmt, StmtKind, TypeKind, TypeRef, UnaryOp,
 };
-use std::collections::{HashMap, HashSet};
 
 /// An inspection entity, as far as facts need it.
 #[derive(Clone, Debug, Default)]
@@ -52,7 +52,7 @@ pub fn collect_facts(
     program: &Program,
 ) -> Facts {
     let mut facts = Facts::default();
-    let mut id_to_key: HashMap<String, String> = HashMap::new();
+    let mut id_to_key: HashMap<String, String> = HashMap::default();
     for e in inspection
         .entities
         .iter()
@@ -88,7 +88,7 @@ pub fn collect_facts(
         .collect();
     // Borrow identities for membership; allocate an owned target only once per
     // distinct edge, including when many sites call the same target.
-    let mut edges = HashSet::new();
+    let mut edges = HashSet::default();
     for call in &inspection.calls {
         let Some(owner_key) = id_to_key.get(&call.owner) else {
             continue;
@@ -485,7 +485,7 @@ fn declared_slots(syms: ms_syntax::Names, kind: &DeclKind) -> (Vec<Slot>, Option
 fn resolve_type_refs(syms: ms_syntax::Names, facts: &mut Facts, program: &Program) {
     use ms_check::api::types::Ty;
 
-    let mut checked: HashMap<String, Ty> = HashMap::new();
+    let mut checked: HashMap<String, Ty> = HashMap::default();
     for module in program.modules.iter().filter(|m| !m.is_standard(syms)) {
         let Some(names) = program.symbols.get(&module.file) else {
             continue;
@@ -566,7 +566,7 @@ fn resolve_type_refs(syms: ms_syntax::Names, facts: &mut Facts, program: &Progra
 fn checked_type_refs(syms: ms_syntax::Names, ty: &ms_check::api::types::Ty) -> Vec<String> {
     let mut refs = Vec::new();
     let mut pending = vec![ty];
-    let mut seen = HashSet::new();
+    let mut seen = HashSet::default();
     while let Some(ty) = pending.pop() {
         // Default generic arguments may share the same resolved type graph. Visit a
         // shared subtree once, without expanding it exponentially or recursing deeply.

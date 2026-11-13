@@ -160,7 +160,7 @@ fn all_three_node_graphs_match_original_diagnostics() {
                     })
                     .collect();
                 let components = components(&edges);
-                let mut completed = HashSet::new();
+                let mut completed = HashSet::default();
                 let mut checker = Checker::new(&crate::Session::new(), &CheckOptions::default());
                 let mut expected = Vec::new();
                 for &root in &ids {
@@ -169,7 +169,7 @@ fn all_three_node_graphs_match_original_diagnostics() {
                         variables[&root].clone(),
                         &variables,
                         &edges,
-                        &mut HashMap::new(),
+                        &mut HashMap::default(),
                         &mut expected,
                     );
                     checker.visit_application(
@@ -177,7 +177,7 @@ fn all_three_node_graphs_match_original_diagnostics() {
                         variables[&root].clone(),
                         &variables,
                         &edges,
-                        &mut HashMap::new(),
+                        &mut HashMap::default(),
                         &components,
                         &mut completed,
                     );

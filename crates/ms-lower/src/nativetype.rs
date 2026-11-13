@@ -6,9 +6,9 @@ use ms_check::Program;
 use ms_check::api::NodeId;
 use ms_check::api::hir::Callable;
 use ms_check::api::types::Name;
+use ms_check::fxmap::HashMap;
 use ms_mir::ir::{FuncId, Module};
 use ms_mir::types::{NativeType, Ty as MTy, TyKind};
-use std::collections::HashMap;
 use std::rc::Rc;
 
 /// The native type `t` is, if any; lowering sets it on the type when it declares it.
@@ -108,7 +108,7 @@ impl Cx {
         Ok(Some(self.function_for(
             m,
             &callable,
-            &ms_check::api::types::Subst::new(),
+            &ms_check::api::types::Subst::default(),
         )?))
     }
 }

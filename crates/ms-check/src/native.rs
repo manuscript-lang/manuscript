@@ -122,7 +122,7 @@ impl Checker {
                 .map(Some)
                 .collect();
         } else if !vars.is_empty() {
-            let mut subst = Subst::new();
+            let mut subst = Subst::default();
             let resolved = function_arguments(self.syms, args, &signature.params);
             self.infer_arguments(
                 &resolved,

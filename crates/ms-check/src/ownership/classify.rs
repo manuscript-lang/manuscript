@@ -1,8 +1,8 @@
 //! Value classes: how a value of a type moves.
 
 use crate::checker::Program;
+use crate::fxmap::HashSet;
 use crate::types::*;
-use std::collections::HashSet;
 use std::rc::Rc;
 #[cfg(test)]
 thread_local! {
@@ -55,9 +55,9 @@ impl Classifier {
     /// A classifier for the types of one checked program.
     pub fn new(p: &Program) -> Classifier {
         let syms = ms_syntax::Names::global();
-        let mut closeable = HashSet::new();
-        let mut copyable = HashSet::new();
-        let mut clonable = HashSet::new();
+        let mut closeable = HashSet::default();
+        let mut copyable = HashSet::default();
+        let mut clonable = HashSet::default();
         let mut clone_name = None;
         for method in &p.methods {
             if method.contract.is_some() && method.closes(syms) {

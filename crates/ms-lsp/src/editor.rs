@@ -459,7 +459,7 @@ fn find_marker(
 ) -> Option<(Expr, ModRef, ScopeState)> {
     struct Find<'a> {
         syms: ms_syntax::Names,
-        scopes: &'a std::collections::HashMap<NodeId, ScopeState>,
+        scopes: &'a ms_check::fxmap::HashMap<NodeId, ScopeState>,
         marker: &'a str,
         found: Option<(Expr, ScopeState)>,
     }
@@ -755,7 +755,7 @@ pub fn query_call(syms: ms_syntax::Names, a: &EditorAnalysis) -> Option<(Expr, T
         module: &'a ModRef,
         found: Option<(Expr, Ty)>,
         scope: &'a ScopeState,
-        hidden: std::collections::HashMap<NodeId, bool>,
+        hidden: ms_check::fxmap::HashMap<NodeId, bool>,
         session: &'a std::rc::Rc<ms_check::Session>,
     }
     impl Visitor for Calls<'_> {
@@ -829,7 +829,7 @@ pub fn query_call(syms: ms_syntax::Names, a: &EditorAnalysis) -> Option<(Expr, T
         module: &module,
         found: None,
         scope: &a.scope,
-        hidden: std::collections::HashMap::new(),
+        hidden: std::collections::HashMap::default(),
         session: &a.result.session,
     };
     for d in &module.decls {

@@ -3,10 +3,11 @@
 
 use crate::checker::{CheckOptions, Checker};
 use crate::contracts::native_method;
+use crate::fxmap::HashSet;
 use crate::stdlib;
 use crate::syntax::{FuncRef, ModuleData};
 use crate::types::*;
-use std::collections::{BTreeMap, BTreeSet, HashSet};
+use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
 /// Whether a member is a field or a method.
@@ -72,7 +73,7 @@ pub fn members(
         collect(&intrinsic, &mut candidates);
     }
     let mut result: Vec<Member> = Vec::new();
-    let mut field_names: HashSet<Name> = HashSet::new();
+    let mut field_names: HashSet<Name> = HashSet::default();
     // An opaque type's fields are visible only in its declaring file.
     let hidden = receiver
         .opaque_module()

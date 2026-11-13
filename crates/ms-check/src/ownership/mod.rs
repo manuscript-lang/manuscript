@@ -32,12 +32,12 @@ pub enum OwnedBorrow {
     Whole(Option<Name>),
 }
 
+use crate::fxmap::{HashMap, HashSet};
 use crate::hir::*;
 use crate::types::*;
 use modes::{Key, Summaries};
 use ms_syntax::Diagnostic;
 use ms_syntax::ast::NodeId;
-use std::collections::{HashMap, HashSet};
 
 /// How a use treats the value it names.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -274,7 +274,7 @@ impl Hir<'_> {
             .map(|c| live::liveness(&modules[&c.module.file], c))
             .collect();
         let mut summaries = Summaries::default();
-        let mut escaped: HashMap<Key, HashSet<NodeId>> = HashMap::new();
+        let mut escaped: HashMap<Key, HashSet<NodeId>> = HashMap::default();
         let mut outcomes: Vec<walk::Outcome> = Vec::new();
         // Parameter modes, closure escapes and result slots feed each other, and each step
         // carries a fact one call further, so a chain needs about one round per callable.
@@ -311,16 +311,16 @@ impl Hir<'_> {
                 break;
             }
         }
-        let mut facts = HashMap::new();
+        let mut facts = HashMap::default();
         let mut diagnostics = Vec::new();
         let mut binding_facts = BindingFlags::default();
-        let mut close_moves = HashMap::new();
-        let mut moves: HashMap<usize, HashSet<NodeId>> = HashMap::new();
-        let mut resource_moves = HashMap::new();
-        let mut borrowed_captures = HashSet::new();
-        let mut moving_params = HashMap::new();
-        let mut owned_borrows = HashMap::new();
-        let mut getter_borrows = HashMap::new();
+        let mut close_moves = HashMap::default();
+        let mut moves: HashMap<usize, HashSet<NodeId>> = HashMap::default();
+        let mut resource_moves = HashMap::default();
+        let mut borrowed_captures = HashSet::default();
+        let mut moving_params = HashMap::default();
+        let mut owned_borrows = HashMap::default();
+        let mut getter_borrows = HashMap::default();
         let mut node_facts = NodeFacts::default();
         for (c, out) in callables.iter().zip(outcomes) {
             let file = c.module.file;
@@ -398,7 +398,7 @@ impl Hir<'_> {
             for u in &out.facts.moved_payloads {
                 binding_facts.set(*u, BindingFact::MovedPayload);
             }
-            let mut moved: HashSet<(NodeId, usize)> = HashSet::new();
+            let mut moved: HashSet<(NodeId, usize)> = HashSet::default();
             for u in out.facts.uses.values() {
                 if u.access == Access::Move {
                     moves.entry(u.binding).or_default().insert(u.node);

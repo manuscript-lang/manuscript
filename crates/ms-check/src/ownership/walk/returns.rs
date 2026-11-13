@@ -595,7 +595,7 @@ impl Walker<'_> {
         };
         let mut vars = variable_set(&variables);
         vars.extend(variable_set(&sig.args));
-        let mut bound = Subst::new();
+        let mut bound = Subst::default();
         !unify(&p.ty, &self.cx.m.ty(arg), &vars, &mut bound)
     }
 

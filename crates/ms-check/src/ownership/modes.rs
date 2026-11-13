@@ -1,12 +1,12 @@
 //! How a callee treats its receiver and arguments.
 
+use crate::fxmap::HashMap;
 use crate::hir::*;
 use crate::std_ops::{collection_mutation, is_text_builder};
 use crate::syntax::*;
 use crate::types::*;
 use ms_syntax::Pos;
 use ms_syntax::ast::*;
-use std::collections::HashMap;
 
 /// What a callable does with a value it is given.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

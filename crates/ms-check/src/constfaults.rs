@@ -2,10 +2,10 @@
 //! zero, an index outside a list literal and locking a `Shared` twice.
 
 use crate::checker::Checker;
+use crate::fxmap::HashMap;
 use crate::types::*;
 use ms_syntax::ast::*;
 use std::cell::RefCell;
-use std::collections::HashMap;
 
 /// Memoized facts about arithmetic trees over literals, keyed by file and node. Each fact of a
 /// node reads only the facts of its operands, so every node is visited once however deep the tree.

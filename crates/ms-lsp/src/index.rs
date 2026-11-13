@@ -5,10 +5,10 @@
 use crate::analysis::Analysis;
 use ms_check::api::syntax::{DeclRef, FuncRef, Info, ModRef};
 use ms_check::api::types::{BindingRef, Kind, Method, MethodRef, Name, SymRef, Ty, fields};
+use ms_check::fxmap::{HashMap, HashSet};
 use ms_syntax::Symbol;
 use ms_syntax::ast::*;
 use ms_syntax::visit::{self, Visitor};
-use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 /// What the checker knows about a resolved occurrence.
@@ -190,7 +190,7 @@ pub struct DeclFiles {
 impl DeclFiles {
     /// Indexes the declarations of `modules`.
     pub fn new(modules: &[ModRef]) -> DeclFiles {
-        let mut files = HashMap::new();
+        let mut files = HashMap::default();
         for m in modules {
             for d in &m.decls {
                 files.insert(Rc::as_ptr(&d.0) as usize, m.file);
@@ -305,8 +305,8 @@ pub fn build_index(syms: ms_syntax::Names, analysis: &Analysis, standard: bool) 
         root: analysis.module_path(""),
         files: DeclFiles::new(&modules),
         by_file: modules.iter().map(|m| (m.file, m.clone())).collect(),
-        binding_keys: HashMap::new(),
-        seen: HashSet::new(),
+        binding_keys: HashMap::default(),
+        seen: HashSet::default(),
         out: Vec::new(),
     };
     // Checked facts exist only for modules this program contains; bundled
@@ -559,7 +559,7 @@ pub fn build_index(syms: ms_syntax::Names, analysis: &Analysis, standard: bool) 
             syms,
             b: &mut b,
             module: m,
-            hidden: HashMap::new(),
+            hidden: HashMap::default(),
         };
         for d in &m.decls {
             visit::walk_decl(&mut walker, d.decl());

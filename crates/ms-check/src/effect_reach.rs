@@ -8,9 +8,10 @@
 //! slice of one flat `Vec<u64>`, and propagation is a worklist over caller lists.
 
 use crate::effect_directives::matches;
+use crate::fxmap::HashMap;
 use crate::types::Name;
 use ms_syntax::Pos;
-use std::collections::{HashMap, VecDeque};
+use std::collections::VecDeque;
 
 /// One callable and the callables it references: calls, function values, closure bodies.
 pub struct ReachNode {
@@ -307,7 +308,7 @@ fn path_to(
     bit: usize,
     searched: &mut usize,
 ) -> Vec<usize> {
-    let mut parent: HashMap<usize, usize> = HashMap::new();
+    let mut parent: HashMap<usize, usize> = HashMap::default();
     let mut queue = VecDeque::from([start]);
     while let Some(at) = queue.pop_front() {
         *searched = searched.saturating_add(1 + nodes[at].edges.len());

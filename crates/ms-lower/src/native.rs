@@ -210,7 +210,7 @@ impl<'a> FnLower<'a> {
                 self.fill_native_defaults(sym.module, func, params, &mut args)?;
                 self.at(e.pos);
                 // The runtime answers with the declared error type; the use may expect a wider one.
-                let mut subst = ct::Subst::new();
+                let mut subst = ct::Subst::default();
                 if let (Some(v), Some(a)) = (sym.variables().first(), self.ety(e).args.first()) {
                     subst.insert(v.id, a.clone());
                 }
