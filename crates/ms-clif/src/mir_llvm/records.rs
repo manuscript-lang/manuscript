@@ -37,8 +37,6 @@ pub(super) struct Shape {
     pub st: LTy,
     /// Memory type of each leaf.
     pub leaves: Vec<LTy>,
-    /// Byte offset of each leaf.
-    pub offsets: Vec<u32>,
     pub size: u32,
     pub align: u32,
 }
@@ -62,7 +60,6 @@ pub(super) fn shape(lay: &Layouts, ty: Ty) -> Option<Shape> {
     Some(Shape {
         st: LTy::Tuple(leaves.clone()),
         leaves,
-        offsets: mem.offsets,
         size: mem.size,
         align: mem.align,
     })
@@ -200,7 +197,7 @@ fn load_leaves(
 ) -> Vec<Val> {
     (at..at + n)
         .map(|k| {
-            let p = b.byte_ptr(base, s.offsets[k] as u64);
+            let p = b.field_ptr(&s.st, base, k);
             if let Some(v) = named.get(k - at) {
                 b.name_next(v);
             }
@@ -211,7 +208,7 @@ fn load_leaves(
 
 fn store_leaves(b: &mut FnBuilder, s: &Shape, base: &Val, at: usize, leaves: &[Val]) {
     for (k, v) in leaves.iter().enumerate() {
-        let p = b.byte_ptr(base, s.offsets[at + k] as u64);
+        let p = b.field_ptr(&s.st, base, at + k);
         b.store(v, &p, align(&v.ty));
     }
 }
@@ -415,9 +412,14 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
                 .find(&TyKind::Rec(r))
                 .expect("record type interned");
             let (at, _) = field_span(lay, rty, i as usize);
-            let offsets = mem_layout(&lay.leaves(rty)).offsets;
             b.name_next(&out[0]);
-            b.byte_ptr(&arg(0)[0], offsets[at] as u64);
+            match shape(lay, rty) {
+                Some(s) => b.field_ptr(&s.st, &arg(0)[0], at),
+                None => {
+                    let offsets = mem_layout(&lay.leaves(rty)).offsets;
+                    b.byte_ptr(&arg(0)[0], offsets[at] as u64)
+                }
+            };
         }
         Op::RecNew => {
             // A record in memory: each field is stored into a fresh slot.
@@ -439,7 +441,7 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
             if is_mem(lay, f.ty(res)) {
                 // A nested record is the same bytes at an offset; the parent is never written.
                 b.name_next(&out[0]);
-                b.byte_ptr(&rec, s.offsets[at] as u64);
+                b.field_ptr(&s.st, &rec, at);
             } else {
                 load_leaves(b, &s, &rec, at, n, &out);
             }
@@ -477,7 +479,7 @@ fn write_field(
     }
     if is_mem(lay, ty) {
         let src = vals[&v.index()][0].clone();
-        let p = b.byte_ptr(slot, s.offsets[at] as u64);
+        let p = b.field_ptr(&s.st, slot, at);
         let inner = shape(lay, ty).expect("is_mem checked");
         b.copy_bytes(&p, &src, inner.size as u64, inner.align as u64);
     } else {

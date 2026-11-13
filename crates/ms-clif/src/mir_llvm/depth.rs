@@ -61,7 +61,7 @@ pub(super) fn enter(cx: &mut Cx, b: &mut FnBuilder) {
         )
         .expect("a block");
     for (i, p) in params.iter().enumerate() {
-        let at = b.byte_ptr(&block, (i * 8) as u64);
+        let at = b.elem_ptr(&LTy::I64, &block, &Val::int(i as i64));
         b.store(p, &at, align(&p.ty));
     }
     let shim = cx
@@ -80,7 +80,7 @@ pub(super) fn enter(cx: &mut Cx, b: &mut FnBuilder) {
         .iter()
         .enumerate()
         .map(|(j, t)| {
-            let at = b.byte_ptr(&block, ((params.len() + j) * 8) as u64);
+            let at = b.elem_ptr(&LTy::I64, &block, &Val::int((params.len() + j) as i64));
             b.load(t, &at, align(t))
         })
         .collect();
