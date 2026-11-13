@@ -12,7 +12,10 @@
 // files]
 import (
 	stdout from "@std/io/io.ms",
-	arguments, change_directory, working_directory from "@std/os/env.ms",
+	arguments,
+	change_directory,
+	set_environment,
+	working_directory from "@std/os/env.ms",
 	GlobOptions, glob, read_file, temporary from "@std/os/fs.ms",
 	run from "@std/os/process.ms",
 
@@ -31,6 +34,10 @@ fn after(text: String, prefix: String) List[String]:
 fn main() Int:
 	code := use_stats_runtime()
 	if code != 0: return code
+
+	// LLVM would delete blocks nothing reads; the gate counts every block the compiler
+	// asks for.
+	set_environment("MS_HEAP_FACTS", "off").get()
 
 	root := working_directory().get()
 	var files = List[String]()
