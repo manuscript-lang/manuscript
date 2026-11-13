@@ -318,8 +318,8 @@ impl E<'_, '_, '_> {
         // The back edge leaves from a block of its own, whatever blocks `body` made.
         self.br(&latch);
         self.label(&latch);
-        self.b.name_next(&next);
-        self.b.bin(Bin::Add, &i, &Val::int(1));
+        let n = self.b.bin(Bin::Add, &i, &Val::int(1));
+        self.b.alias(&next, &n);
         self.br(&head);
         self.label(&done);
     }
