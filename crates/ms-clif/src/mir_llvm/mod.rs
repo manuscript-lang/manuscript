@@ -42,7 +42,7 @@ pub(crate) fn released_types(lay: &Layouts, f: &Func, inst: &Inst) -> Vec<Ty> {
         _ => Vec::new(),
     }
 }
-use ms_mir::ir::{Func, Imm, Inst, Mode, Module, Op, Target, Term};
+use ms_mir::ir::{Func, Imm, Inst, Module, Op, Target, Term};
 use ms_mir::types::{Ty, TyKind};
 use std::collections::{HashMap, HashSet};
 
@@ -326,10 +326,9 @@ fn ret_text(lay: &Layouts, ty: Ty) -> String {
 }
 
 fn signature_ok(lay: &Layouts, params: &[ms_mir::ir::Param], ret: Ty) -> bool {
-    supported_ty(lay, ret)
-        && params
-            .iter()
-            .all(|p| p.mode != Mode::Var && supported_ty(lay, p.ty))
+    // A `var` parameter is an owned one without copy-out, as in the interpreter and the
+    // Cranelift path: no lowering produces one.
+    supported_ty(lay, ret) && params.iter().all(|p| supported_ty(lay, p.ty))
 }
 
 /// An area's `pre` hook: the values an instruction is without any code, naming (not defining)
