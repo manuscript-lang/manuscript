@@ -25,7 +25,7 @@
 )]
 
 use crate::layout::{Layouts, Leaf, mem_layout};
-use ms_mir::ir::Mode;
+use ms_mir::ir::{Mode, Param};
 use ms_mir::types::Ty;
 
 /// Values up to this many bytes travel as scalars. A start; change it only by measurement.
@@ -151,6 +151,102 @@ pub fn sret_attrs(ty: &str, mem: Mem) -> String {
     format!("sret({ty}) noalias nocapture nonnull {}", mem.access())
 }
 
+/// One parameter of a function as it is written: its type with attributes, and its name.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct Formal {
+    /// `i64`, `double`, `i8 zeroext` or `ptr nonnull readonly nocapture align 8 dereferenceable(24)`.
+    pub ty: String,
+    /// The local name inside the function: `%a{i}_{j}` for a scalar, `%a{i}` for a pointer,
+    /// `%sret` for the hidden result pointer.
+    pub name: String,
+}
+
+/// The signature of a function in the native convention. Built once, it prints the `define`
+/// pieces and every `declare`, so the two cannot drift apart.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct Signature {
+    /// The result, as written after `define`/`declare`: `void`, `i64`, `zeroext i8`, `{ i64, i64 }`.
+    pub ret: String,
+    /// The hidden result pointer first, then each parameter's pieces in order.
+    pub params: Vec<Formal>,
+    /// How each MIR parameter is passed, in order.
+    pub passes: Vec<Pass>,
+    /// How the result comes back.
+    pub result: Ret,
+}
+
+fn reg_formal(r: Reg, name: String) -> Formal {
+    let ty = match r {
+        Reg::I8 => "i8 zeroext".to_string(),
+        r => r.llvm().to_string(),
+    };
+    Formal { ty, name }
+}
+
+impl Signature {
+    /// The signature of a function with these MIR parameters and result.
+    pub fn of(lay: &Layouts, params: &[Param], ret_ty: Ty) -> Signature {
+        let result = ret(lay, ret_ty);
+        let mut formals = Vec::new();
+        let ret = match &result {
+            Ret::Sret(mem) => {
+                formals.push(Formal {
+                    ty: format!("ptr {}", sret_attrs("%\"T\"", *mem)),
+                    name: "%sret".to_string(),
+                });
+                "void".to_string()
+            }
+            Ret::Scalars(r) => match r.as_slice() {
+                [] => "void".to_string(),
+                [Reg::I8] => "zeroext i8".to_string(),
+                [one] => one.llvm().to_string(),
+                many => {
+                    let tys: Vec<&str> = many.iter().map(|r| r.llvm()).collect();
+                    format!("{{ {} }}", tys.join(", "))
+                }
+            },
+        };
+        let mut passes = Vec::new();
+        for (i, p) in params.iter().enumerate() {
+            let pass = classify(lay, p.ty, p.mode);
+            match &pass {
+                Pass::Scalars(regs) => {
+                    for (j, r) in regs.iter().enumerate() {
+                        formals.push(reg_formal(*r, format!("%a{i}_{j}")));
+                    }
+                }
+                Pass::Indirect(mode, mem) => formals.push(Formal {
+                    ty: format!("ptr {}", param_attrs(*mode, *mem)),
+                    name: format!("%a{i}"),
+                }),
+            }
+            passes.push(pass);
+        }
+        Signature {
+            ret,
+            params: formals,
+            passes,
+            result,
+        }
+    }
+
+    /// The parameter list of a `define`.
+    pub fn define_params(&self) -> String {
+        let parts: Vec<String> = self
+            .params
+            .iter()
+            .map(|f| format!("{} {}", f.ty, f.name))
+            .collect();
+        parts.join(", ")
+    }
+
+    /// `declare <ret> @"sym"(<types>)` followed by `attrs`.
+    pub fn declare(&self, sym: &str, attrs: &str) -> String {
+        let tys: Vec<&str> = self.params.iter().map(|f| f.ty.as_str()).collect();
+        format!("declare {} @\"{sym}\"({}){attrs}", self.ret, tys.join(", "))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -212,6 +308,12 @@ mod tests {
         assert_eq!(Reg::of(Leaf::U8), Reg::I64);
         assert_eq!(Reg::of(Leaf::F32), Reg::F64);
         assert_eq!(Reg::of(Leaf::I8), Reg::I8);
+    }
+
+    #[test]
+    fn a_register_formal_widens_a_bool() {
+        assert_eq!(reg_formal(Reg::I8, "%a0_0".into()).ty, "i8 zeroext");
+        assert_eq!(reg_formal(Reg::F64, "%a0_1".into()).ty, "double");
     }
 
     #[test]
