@@ -141,6 +141,9 @@ fn compile(
     if !build.vectorize {
         opt.args(["-vectorize-loops=false", "-vectorize-slp=false"]);
     }
+    if build.llvm_verify {
+        opt.arg("-verify-each");
+    }
     opt.arg(format!("-passes={pipeline}"))
         .arg(&input)
         .arg("-o")

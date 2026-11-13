@@ -52,7 +52,7 @@ fn pre(_: &Layouts, _: &Func, inst: &Inst, _: &Vals, _: &mut FnBuilder) -> Optio
     match (inst.op, inst.imm) {
         (Op::IConst, Imm::Int(v)) => Some(vec![Val::int(v)]),
         (Op::FConst, Imm::Float(bits)) => Some(vec![Val::double(bits)]),
-        (Op::BConst, Imm::Bool(v)) => Some(vec![Val::byte(v as u8)]),
+        (Op::BConst, Imm::Bool(v)) => Some(vec![Val::bool(v)]),
         _ => None,
     }
 }
@@ -98,7 +98,7 @@ fn emit(_: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         return;
     }
     // A single-leaf result is named in place; `Select` handles several.
-    if let [r] = out.as_slice() {
+    if let ([r], false) = (out.as_slice(), inst.op == Op::Select) {
         b.name_next(r);
     }
     match inst.op {
@@ -114,22 +114,18 @@ fn emit(_: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         Op::FDiv => drop(b.bin(Bin::FDiv, &arg(0), &arg(1))),
         Op::INeg => drop(b.bin(Bin::Sub, &Val::int(0), &arg(0))),
         Op::FNeg => drop(b.fneg(&arg(0))),
-        Op::Not => drop(b.bin(Bin::Xor, &arg(0), &Val::byte(1))),
+        Op::Not => drop(b.bin(Bin::Xor, &arg(0), &Val::bool(true))),
         Op::ICmp | Op::UICmp | Op::FCmp => {
             let Imm::Cc(cc) = inst.imm else { return };
-            // The comparison is an `i1`; the result is its zero-extension, so name only that.
-            let pending = b.take_name();
-            let c = if inst.op == Op::FCmp {
-                b.fcmp(fcc(cc), &arg(0), &arg(1))
+            // The result is the comparison's `i1`.
+            if inst.op == Op::FCmp {
+                b.fcmp(fcc(cc), &arg(0), &arg(1));
             } else {
-                b.icmp(icc(cc, inst.op == Op::UICmp), &arg(0), &arg(1))
-            };
-            b.restore_name(pending);
-            b.zext(&c, LTy::I8);
+                b.icmp(icc(cc, inst.op == Op::UICmp), &arg(0), &arg(1));
+            }
         }
         Op::Select => {
-            b.take_name();
-            let c = b.icmp("ne", &arg(0), &Val::byte(0));
+            let c = arg(0);
             for (k, dst) in out.iter().enumerate() {
                 b.name_next(dst);
                 b.select(
