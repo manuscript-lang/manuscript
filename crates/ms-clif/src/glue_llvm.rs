@@ -1124,7 +1124,7 @@ impl E<'_, '_, '_> {
                 let words = load_leaves(
                     &mut self.b,
                     &hp,
-                    &vec![Leaf::I64; ms_rt_abi::MAP_SIZE / 8],
+                    &[Leaf::I64; ms_rt_abi::MAP_SIZE / 8],
                     None,
                 );
                 let words = if m.needs_drop(fty) {
