@@ -231,7 +231,8 @@ pub(super) fn handles(op: Op) -> bool {
 
 /// Whether the operands and immediate of `i` are within what this module emits.
 pub(super) fn op_ok(lay: &Layouts, f: &Func, i: &Inst) -> bool {
-    let mem_ty = |t: Ty| shape_ok(lay, t);
+    // A type with no leaves (`Unit`) has nothing to read or write, but its slot is still an address.
+    let mem_ty = |t: Ty| shape_ok(lay, t) || lay.leaves(t).is_empty();
     match (i.op, i.imm) {
         (Op::Slot, Imm::Ty(t)) => mem_ty(t),
         (Op::Load | Op::Take, Imm::Ty(t)) => mem_ty(t) && i.res.is_some_and(|r| f.ty(r) == t),
@@ -546,8 +547,10 @@ pub(super) fn bind_early(
         Op::Slot => {
             let Imm::Ty(t) = inst.imm else { return None };
             // The runtime may write a whole word to a slot of a smaller type.
-            let st = shape(b.types(), lay, t)?;
-            let ty = if st.size < 8 { LTy::I64 } else { st.st };
+            let ty = match shape(b.types(), lay, t) {
+                Some(st) if st.size >= 8 => st.st,
+                _ => LTy::I64,
+            };
             Some(vec![b.alloca(&ty)])
         }
         Op::RecNew => Some(
@@ -588,10 +591,15 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         _ if is_early(lay, f, inst) => {}
         Op::Load | Op::Take => {
             let ty = f.ty(inst.res.expect("load result"));
-            load_value(b, lay, ty, &arg(0)[0], &out);
+            if !out.is_empty() {
+                load_value(b, lay, ty, &arg(0)[0], &out);
+            }
         }
         Op::Store | Op::Put => {
-            store_value(b, lay, f.ty(inst.args[1]), vals, inst.args[1], &arg(0)[0]);
+            let ty = f.ty(inst.args[1]);
+            if !lay.leaves(ty).is_empty() {
+                store_value(b, lay, ty, vals, inst.args[1], &arg(0)[0]);
+            }
         }
         Op::PtrField => {
             let Imm::Field(r, i) = inst.imm else { return };
