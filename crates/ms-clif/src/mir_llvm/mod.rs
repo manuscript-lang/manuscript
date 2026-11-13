@@ -104,7 +104,7 @@ const LEN_ATTR: &str = " range(i64 0, -9223372036854775808)";
 
 /// `range` of the case index of an enum with `n` cases: `[0, n)`. Enums have few cases, so the
 /// text is static; a larger enum carries no range.
-fn tag_attr(n: usize) -> &'static str {
+pub(crate) fn tag_attr(n: usize) -> &'static str {
     const RANGES: [&str; 16] = [
         " range(i64 0, 1)",
         " range(i64 0, 2)",
@@ -654,4 +654,18 @@ fn inst_text(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
 /// The grow shim of the native function `f` called `sym` (see [`depth::shim`]).
 pub fn grow_shim(types: &Types, lay: &Layouts, f: &Func, sym: &str, dbg: usize) -> Emitted {
     depth::shim(types, lay, f, sym, dbg)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::tag_attr;
+
+    #[test]
+    fn a_case_index_is_below_the_case_count() {
+        assert_eq!(tag_attr(3), " range(i64 0, 3)");
+        assert_eq!(tag_attr(16), " range(i64 0, 16)");
+        // No cases, or more than the table holds: no claim.
+        assert_eq!(tag_attr(0), "");
+        assert_eq!(tag_attr(17), "");
+    }
 }
