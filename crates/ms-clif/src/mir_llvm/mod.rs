@@ -361,6 +361,25 @@ fn area_of(op: Op) -> Option<&'static Area> {
     AREAS.iter().find(|a| (a.handles)(op))
 }
 
+/// A short name of `t` for a diagnostic: its kind, with the payloads of optionals and enums.
+fn shape_name(m: &Module, lay: &Layouts, t: Ty) -> String {
+    let kind = format!("{:?}", m.types.kind(t));
+    let name = &kind[..kind.find(['(', ' ', '{']).unwrap_or(kind.len())];
+    match m.types.kind(t) {
+        TyKind::Opt(inner) => format!("{name}<{}>", shape_name(m, lay, *inner)),
+        TyKind::Alt(a) => {
+            let fields: Vec<String> = m.alts[a.index()]
+                .cases
+                .iter()
+                .flat_map(|c| c.fields.iter().map(|f| shape_name(m, lay, f.1)))
+                .collect();
+            format!("{name}[{}]", fields.join(","))
+        }
+        TyKind::Rec(_) => format!("{name}:{}", lay.width(t)),
+        _ => name.to_string(),
+    }
+}
+
 /// Why `f` cannot be emitted directly, or `None` when it can.
 pub fn unsupported(m: &Module, lay: &Layouts, f: &Func) -> Option<String> {
     let ty_name = |t: Ty| {
@@ -385,7 +404,18 @@ pub fn unsupported(m: &Module, lay: &Layouts, f: &Func) -> Option<String> {
                 return Some(format!("op {:?} has no lowering", i.op));
             };
             if !(area.inst_ok)(m, lay, f, i) {
-                return Some(format!("op {:?} in a shape it does not lower", i.op));
+                let tys: Vec<String> = i
+                    .args
+                    .iter()
+                    .copied()
+                    .chain(i.res)
+                    .map(|v| shape_name(m, lay, f.ty(v)))
+                    .collect();
+                return Some(format!(
+                    "op {:?} in a shape it does not lower ({})",
+                    i.op,
+                    tys.join(", ")
+                ));
             }
             if let Some(v) = i
                 .res
