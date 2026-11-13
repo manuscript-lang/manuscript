@@ -213,12 +213,30 @@ fn clone(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder) 
 
 fn drop_inst(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     let guarded = inst.op == Op::DropIf;
-    let ty = cx.f.ty(inst.args[usize::from(guarded)]);
+    let v = inst.args[usize::from(guarded)];
+    let guard = guarded.then(|| vals[&inst.args[0].index()][0].clone());
+    drop_value(cx, cx.f.ty(v), vals, v, guard, b);
+}
+
+/// Drops the value of type `ty` held as `held` (its leaves), for a payload an alternative releases.
+pub(super) fn drop_held(cx: &mut Cx, ty: Ty, held: Vec<Val>, b: &mut FnBuilder) {
+    let v = Value(0);
+    let vals = Vals::from([(v.index(), held)]);
+    drop_value(cx, ty, &vals, v, None, b);
+}
+
+/// How many blocks dropping a value of type `ty` splits off: a string's free, and a guarded drop.
+pub(super) fn drop_splits(lay: &Layouts, ty: Ty, guarded: bool) -> usize {
+    usize::from(guarded || own_kind(lay, ty) == OwnKind::Str)
+        * usize::from(own_kind(lay, ty) != OwnKind::Identity)
+}
+
+fn drop_value(cx: &mut Cx, ty: Ty, vals: &Vals, v: Value, guard: Option<Val>, b: &mut FnBuilder) {
+    let guarded = guard.is_some();
     let kind = own_kind(cx.lay, ty);
     if kind == OwnKind::Identity {
         return;
     }
-    let v = inst.args[usize::from(guarded)];
     let args = &vals[&v.index()];
     let (block, at) = (cx.block, cx.split);
     // Only a drop that branches starts a new block (`splits` counts the same ones).
@@ -230,9 +248,8 @@ fn drop_inst(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         format!("b{block}.{what}{at}.{n}")
     };
     if guarded {
-        let on = vals[&inst.args[0].index()][0].clone();
         let then = fresh("t");
-        b.cond_br(&on, &then, &join);
+        b.cond_br(&guard.expect("guarded"), &then, &join);
         b.label(&then);
     }
     match kind {
