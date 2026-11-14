@@ -292,6 +292,8 @@ impl Interp<'_> {
                 ops.set(Val::Str(((*b as u8) as char).to_string().into()));
             }
 
+            // The interpreter never takes the inline store: the runtime call that follows appends.
+            Op::BytesPush => ops.set(Val::Bool(false)),
             _ => unreachable!("optionals_and_strings is only called for its own ops"),
         }
         Ok(Flow::Next)

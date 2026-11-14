@@ -416,6 +416,12 @@ impl<'m> FuncBuilder<'m> {
     pub fn str_ascii_len(&mut self, s: Value) -> Value {
         self.val(Op::StrAsciiLen, &[s], Imm::None, Ty::INT)
     }
+    /// `bytes.push`: stores `value` at the end of the byte builder at `slot` when it has room and
+    /// the value is a byte, and says whether it did; otherwise the caller appends through the
+    /// runtime.
+    pub fn bytes_push(&mut self, slot: Value, value: Value) -> Value {
+        self.val(Op::BytesPush, &[slot, value], Imm::None, Ty::BOOL)
+    }
     /// `list.get` (negative indexes count from the end).
     pub fn list_get(&mut self, l: Value, i: Value) -> Value {
         let e = self.m.seq_elem(self.ty(l)).expect("list operand");

@@ -1060,6 +1060,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             Op::StrByte | Op::StrAscii | Op::StrAsciiAt | Op::StrAsciiLen | Op::StrLen => {
                 self.strings(inst)
             }
+            Op::BytesPush => self.bytes_push(inst),
             Op::ClosureNew
             | Op::ClosureCap
             | Op::ClosureCapAddr

@@ -583,6 +583,22 @@ impl FnLower<'_> {
             }
             i += 1;
         }
+        // A byte append with room to spare is a store and a length bump the backends write
+        // inline; only a full builder or an out-of-range value reaches the runtime.
+        if sym == "msrt_bytes_append" && vals.len() == 2 {
+            let done = self.b.bytes_push(vals[0], vals[1]);
+            let r = self.two_ways_mode(
+                done,
+                MTy::UNIT,
+                ms_mir::ir::Mode::Borrow,
+                &mut |s| Ok(Some(s.b.unit())),
+                &mut |s| {
+                    s.finish_rt_call(sym, &sig, has_out, vals.clone(), result)
+                        .map(|r| Some(r.v))
+                },
+            )?;
+            return Ok(r);
+        }
         let r = self.finish_rt_call(sym, &sig, has_out, vals, result)?;
         Ok(r)
     }

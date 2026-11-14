@@ -627,7 +627,8 @@ impl<'m> Interp<'m> {
             | Op::StrByte
             | Op::StrAsciiAt
             | Op::StrAsciiLen
-            | Op::StrAscii => self.optionals_and_strings(f, regs, inst),
+            | Op::StrAscii
+            | Op::BytesPush => self.optionals_and_strings(f, regs, inst),
             Op::ClosureNew
             | Op::ClosureCap
             | Op::ClosureCapAddr

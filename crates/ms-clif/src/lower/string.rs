@@ -258,9 +258,11 @@ impl<'a, 'm> Lower<'a, 'm> {
         Vec::new()
     }
 
-    /// `BytesBuilder.append` of a byte value with room to spare is a store and a length bump;
-    /// an out-of-range value (which faults) or a full buffer calls the runtime.
-    pub(super) fn bytes_append(&mut self, id: FuncId, builder: Value, value: Value) -> Vs {
+    /// `bytes.push`: a byte value with room to spare is a store and a length bump, and the result
+    /// says so; an out-of-range value (which faults) or a full buffer leaves it to the runtime
+    /// call that follows.
+    pub(super) fn bytes_push(&mut self, inst: &Inst) -> Vs {
+        let (builder, value) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
         let len = self
             .b
             .ins()
@@ -275,11 +277,12 @@ impl<'a, 'm> Lower<'a, 'm> {
             .icmp_imm_s(IntCC::UnsignedLessThanOrEqual, value, 255);
         let room = self.b.ins().icmp(IntCC::UnsignedLessThan, len, cap);
         let fast = self.b.ins().band(byte, room);
-        let store = self.b.create_block();
-        let slow = self.b.create_block();
-        self.b.set_cold_block(slow);
-        let join = self.b.create_block();
-        self.b.ins().brif(fast, store, &[], slow, &[]);
+        let (store, join) = (self.b.create_block(), self.b.create_block());
+        self.b.append_block_param(join, types::I8);
+        let no = self.b.ins().iconst(types::I8, 0);
+        self.b
+            .ins()
+            .brif(fast, store, &[], join, &[BlockArg::Value(no)]);
         self.b.switch_to_block(store);
         let data = self
             .b
@@ -292,11 +295,9 @@ impl<'a, 'm> Lower<'a, 'm> {
         self.b
             .ins()
             .store(flags(), next, builder, VEC_LEN_OFFSET as i32);
-        self.b.ins().jump(join, &[]);
-        self.b.switch_to_block(slow);
-        self.call_id(id, &[builder, value]);
-        self.b.ins().jump(join, &[]);
+        let yes = self.b.ins().iconst(types::I8, 1);
+        self.b.ins().jump(join, &[BlockArg::Value(yes)]);
         self.b.switch_to_block(join);
-        Vec::new()
+        vec![self.b.block_params(join)[0]]
     }
 }

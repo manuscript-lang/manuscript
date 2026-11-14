@@ -8,6 +8,7 @@
 
 mod arith;
 mod attrs;
+mod bytes;
 mod calls;
 mod closures;
 mod depth;
@@ -433,6 +434,7 @@ const AREAS: &[Area] = &[
     glue::AREA,
     globals::AREA,
     strings::AREA,
+    bytes::AREA,
     enums::AREA,
     maps::AREA,
     closures::AREA,
