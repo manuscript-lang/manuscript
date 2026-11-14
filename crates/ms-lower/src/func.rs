@@ -6,10 +6,10 @@ use ms_check::Program;
 use ms_check::api::Pos;
 use ms_check::api::hir::{Callable, CallableKind, ModuleHir};
 use ms_check::api::types::{self as ct, BindingRef, Subst};
+use ms_check::fxmap::{HashMap, HashSet};
 use ms_mir::builder::{FuncBuilder, Var};
 use ms_mir::ir::{Block, FuncId, Linkage, Loc, Mode, Module, Op, Param, Value};
 use ms_mir::types::{Ty as MTy, TyKind};
-use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 /// An evaluated operand: the SSA value and whether it is an owned temporary.
@@ -115,7 +115,7 @@ pub(crate) struct FnLower<'a> {
     /// Raw owners are off while a binding is declared with a closer of its own.
     pub raw_owners: bool,
     /// Locals whose drop is left to `elaborate`.
-    pub raw_owned: std::collections::HashSet<usize>,
+    pub raw_owned: ms_check::fxmap::HashSet<usize>,
     /// Reassigned locals of a scope that nothing moves: no marker until a path leaves the scope,
     /// where the value the variable holds then is registered (see `drop_scope_locals`).
     pub raw_vars: HashMap<usize, ms_mir::builder::Var>,
@@ -138,7 +138,7 @@ pub(crate) struct FnLower<'a> {
     /// Owned temporaries borrowed by the current statement.
     pub temps: Vec<Value>,
     /// The pending temporaries `elaborate` also owns (see `pend_temp`).
-    pub pass_temps: std::collections::HashMap<Value, u32>,
+    pub pass_temps: ms_check::fxmap::HashMap<Value, u32>,
     /// The copies of earlier `var` arguments a default being evaluated may change, innermost last.
     pub default_frames: Vec<DefaultFrame>,
     /// Checked place indices retained through the final writeback.
@@ -202,7 +202,7 @@ pub(crate) struct FnLower<'a> {
     /// Values whose copy on storing is declared: the payload an `Optional`/`Result` read (`get()`,
     /// `err()`) borrows, which these types copy by rule, and a payload of a last-use scrutinee the
     /// checker moves out (`owned` does not report it).
-    pub boundary_reads: std::collections::HashSet<Value>,
+    pub boundary_reads: ms_check::fxmap::HashSet<Value>,
     /// Exclusive borrows in scope: the place each names.
     pub aliases: HashMap<usize, crate::alias::Alias>,
     /// Locals a closure of this body changes: they live in memory so the closure shares them.
@@ -444,7 +444,7 @@ pub(crate) fn lower_program(
         })
         .cloned()
         .ok_or_else(|| Error::new("no main function"))?;
-    let main_id = cx.function_for(&mut m, &main, &Subst::new())?;
+    let main_id = cx.function_for(&mut m, &main, &Subst::default())?;
     drain(syms, &mut cx, &mut m)?;
     cx.check_strict_copies()?;
     let entry = if m.funcs[main_id.index()].ret == MTy::INT {
@@ -486,7 +486,7 @@ pub(crate) fn lower_tests(
         if let ms_check::api::ast::DeclKind::Test(t) = &c.func.decl.decl().kind {
             names.push(format!("{file_t}::{}", t.name, file_t = syms.str(file)));
         }
-        ids.push(cx.function_for(&mut m, c, &Subst::new())?);
+        ids.push(cx.function_for(&mut m, c, &Subst::default())?);
     }
     if bench && !tests.is_empty() {
         // Each bench runs under the standard driver, which repeats and times its body.
@@ -499,7 +499,7 @@ pub(crate) fn lower_tests(
             })
             .cloned()
             .ok_or_else(|| Error::new("the bench driver @std/test/bench.ms is not loaded"))?;
-        let driver = cx.function_for(&mut m, &driver, &Subst::new())?;
+        let driver = cx.function_for(&mut m, &driver, &Subst::default())?;
         let per: Vec<i64> = tests
             .iter()
             .map(|(_, c)| match &c.func.decl.decl().kind {
@@ -660,25 +660,25 @@ impl<'a> FnLower<'a> {
             subst,
             variant: Variant::default(),
             file,
-            locals: HashMap::new(),
+            locals: HashMap::default(),
             scopes: vec![Vec::new()],
             scope_marks: vec![ScopeMark::new(0, None)],
             next_scope: 1,
             raw_owners: true,
-            raw_owned: std::collections::HashSet::new(),
-            raw_vars: HashMap::new(),
-            tracked_vars: HashMap::new(),
-            raw_slots: HashMap::new(),
-            split_places: HashMap::new(),
-            split_owners: HashMap::new(),
-            held: HashMap::new(),
-            must_move: HashSet::new(),
+            raw_owned: std::collections::HashSet::default(),
+            raw_vars: HashMap::default(),
+            tracked_vars: HashMap::default(),
+            raw_slots: HashMap::default(),
+            split_places: HashMap::default(),
+            split_owners: HashMap::default(),
+            held: HashMap::default(),
+            must_move: HashSet::default(),
             temps: Vec::new(),
-            pass_temps: std::collections::HashMap::new(),
+            pass_temps: std::collections::HashMap::default(),
             default_frames: Vec::new(),
-            prepared_indices: HashMap::new(),
-            capture_indices: HashSet::new(),
-            resource_temps: HashMap::new(),
+            prepared_indices: HashMap::default(),
+            capture_indices: HashSet::default(),
+            resource_temps: HashMap::default(),
             loops: Vec::new(),
             dead: false,
             ret_ty,
@@ -687,19 +687,19 @@ impl<'a> FnLower<'a> {
             counts_depth: false,
             pending_return: None,
             prologue_done: false,
-            closed_on_path: HashSet::new(),
+            closed_on_path: HashSet::default(),
             deferred_close: None,
             var_slots: Vec::new(),
             closing_fn: false,
-            slotted: HashSet::new(),
+            slotted: HashSet::default(),
             scrutinee_lives: false,
-            redefined: HashSet::new(),
-            views: HashSet::new(),
-            borrowed_params: HashSet::new(),
-            stable_reads: HashSet::new(),
+            redefined: HashSet::default(),
+            views: HashSet::default(),
+            borrowed_params: HashSet::default(),
+            stable_reads: HashSet::default(),
             keys_view_for: None,
             map_walk_for: None,
-            hoisted: HashMap::new(),
+            hoisted: HashMap::default(),
             map_walk: None,
             split_view_for: None,
             discard: None,
@@ -711,13 +711,13 @@ impl<'a> FnLower<'a> {
             chars_iter_for: None,
             converting: None,
             scalars_scan: false,
-            string_needed: HashSet::new(),
-            scalar_locals: HashMap::new(),
+            string_needed: HashSet::default(),
+            scalar_locals: HashMap::default(),
             in_thunk: false,
             adapter: false,
             hold_declared: false,
             boundary_reads: Default::default(),
-            aliases: HashMap::new(),
+            aliases: HashMap::default(),
             scope_override: None,
         }
     }

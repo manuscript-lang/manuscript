@@ -1,9 +1,9 @@
 //! Per-node ownership flags in one dense table per module, indexed by `NodeId`, so lowering
 //! reads one byte instead of probing a hash set per fact.
 
+use crate::fxmap::HashMap;
 use crate::types::Name;
 use ms_syntax::ast::NodeId;
-use std::collections::HashMap;
 
 /// A boolean ownership fact about a node.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]

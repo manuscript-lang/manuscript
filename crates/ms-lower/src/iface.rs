@@ -86,7 +86,7 @@ impl Cx {
                     {
                         continue;
                     }
-                    let mut subst = ct::Subst::new();
+                    let mut subst = ct::Subst::default();
                     let vars = ct::variable_set(&mm.variables);
                     if !ct::unify(&mm.receiver, concrete, &vars, &mut subst) {
                         continue;
@@ -371,7 +371,7 @@ impl Cx {
             {
                 continue;
             }
-            let mut subst = ct::Subst::new();
+            let mut subst = ct::Subst::default();
             let vars = ct::variable_set(&mm.variables);
             if ct::unify(&mm.receiver, concrete, &vars, &mut subst) {
                 found = Some((mm.module, decl.id(), subst));

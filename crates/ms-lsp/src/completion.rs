@@ -15,9 +15,9 @@ use ms_check::Session;
 use ms_check::api::editor::{MemberKind, members, prelude_type_names, standard_export_inventory};
 use ms_check::api::syntax::{DeclRef, FuncRef};
 use ms_check::api::types::{Kind, Name, SymKind, SymRef, Ty, cases, constructor_signature, n};
+use ms_check::fxmap::{HashMap, HashSet};
 use ms_driver::project::pathops;
 use ms_syntax::ast::DeclKind;
-use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 /// One completion item before JSON encoding.
@@ -325,7 +325,7 @@ impl Completer<'_> {
         if module
             .facts()
             .info(left.id)
-            .is_some_and(|info| hidden_structure(&module, left, info, &mut HashMap::new()))
+            .is_some_and(|info| hidden_structure(&module, left, info, &mut HashMap::default()))
         {
             return;
         }
@@ -406,7 +406,7 @@ impl Completer<'_> {
             &self.a.result.program,
             &self.a.result.module(syms, &self.a.document),
         ) else {
-            return HashMap::new();
+            return HashMap::default();
         };
         program
             .symbols
@@ -778,7 +778,7 @@ pub fn completion_at(
         snippets,
         a,
         items: Vec::new(),
-        seen: HashSet::new(),
+        seen: HashSet::default(),
         files,
         import_placement: None,
         range: Range {
@@ -851,7 +851,7 @@ fn import_completion(
     }
     let start = start?;
     let line = &d.text[start..c.offset];
-    let mut imported: HashSet<String> = HashSet::new();
+    let mut imported: HashSet<String> = HashSet::default();
     {
         let stop = if grouped { ')' } else { '\n' };
         let end = d.text[start..].find(stop).unwrap_or(d.text.len() - start);
@@ -1094,7 +1094,7 @@ pub fn signature_help(
         parameters.push(obj([("label", label.into())]));
     }
     let mut active = 0;
-    let mut used = HashSet::new();
+    let mut used = HashSet::default();
     for label in arguments {
         let slot = match label {
             Some(name) => t.params.iter().position(|p| syms.str(p.name) == name),

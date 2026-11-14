@@ -1,13 +1,13 @@
 //! Finite generic applications.
 
 use crate::checker::Checker;
+use crate::fxmap::{HashMap, HashSet};
 use crate::syntax::*;
 use crate::types::*;
 use crate::tytable::{TyId, TyTable};
 use ms_syntax::Pos;
 use ms_syntax::ast::*;
 use ms_syntax::visit::{self, Visitor};
-use std::collections::{HashMap, HashSet};
 
 struct Edge {
     target: Name,
@@ -26,8 +26,8 @@ struct Node {
 /// Nodes that can reach a directed cycle. Removing sinks also removes their incoming edges;
 /// what remains is precisely the part of the graph that can reach an active ancestor.
 fn recursive_paths(edges: &HashMap<Name, Vec<Edge>>) -> HashSet<Name> {
-    let mut degree: HashMap<Name, usize> = HashMap::new();
-    let mut predecessors: HashMap<Name, Vec<Name>> = HashMap::new();
+    let mut degree: HashMap<Name, usize> = HashMap::default();
+    let mut predecessors: HashMap<Name, Vec<Name>> = HashMap::default();
     for (&id, outgoing) in edges {
         degree.insert(id, outgoing.len());
         for edge in outgoing {
@@ -61,14 +61,14 @@ fn recursive_paths(edges: &HashMap<Name, Vec<Edge>>) -> HashSet<Name> {
 
 /// Strongly connected declaration components, computed without expanding type arguments.
 fn components(edges: &HashMap<Name, Vec<Edge>>) -> HashMap<Name, usize> {
-    let mut reverse: HashMap<Name, Vec<Name>> = HashMap::new();
+    let mut reverse: HashMap<Name, Vec<Name>> = HashMap::default();
     for (&id, outgoing) in edges {
         reverse.entry(id).or_default();
         for edge in outgoing {
             reverse.entry(edge.target).or_default().push(id);
         }
     }
-    let mut seen = HashSet::new();
+    let mut seen = HashSet::default();
     let mut finish = Vec::new();
     for &root in reverse.keys() {
         let mut stack = vec![(root, false)];
@@ -86,7 +86,7 @@ fn components(edges: &HashMap<Name, Vec<Edge>>) -> HashMap<Name, usize> {
             }
         }
     }
-    let mut result = HashMap::new();
+    let mut result = HashMap::default();
     for root in finish.into_iter().rev() {
         if result.contains_key(&root) {
             continue;
@@ -170,7 +170,7 @@ impl Visitor for EdgeScan<'_> {
             && self.nodes.contains_key(&im.id)
             && let Some(m) = self.methods.get(&im.id)
         {
-            let mut s = Subst::new();
+            let mut s = Subst::default();
             if unify(
                 &m.receiver,
                 &im.receiver,
@@ -200,7 +200,7 @@ impl Checker {
         let modules: HashMap<Name, ModRef> =
             self.p.modules.iter().map(|m| (m.file, m.clone())).collect();
         let mut order: Vec<Name> = Vec::new();
-        let mut nodes: HashMap<Name, Node> = HashMap::new();
+        let mut nodes: HashMap<Name, Node> = HashMap::default();
         for module in &self.p.modules {
             let Some(names) = self.p.symbols.get(&module.file) else {
                 continue;
@@ -226,7 +226,7 @@ impl Checker {
                 }
             }
         }
-        let mut methods: HashMap<Name, MethodRef> = HashMap::new();
+        let mut methods: HashMap<Name, MethodRef> = HashMap::default();
         for m in &self.p.methods {
             methods.insert(m.id, m.clone());
             if !m.variables.is_empty()
@@ -244,7 +244,7 @@ impl Checker {
                 );
             }
         }
-        let mut edges: HashMap<Name, Vec<Edge>> = HashMap::new();
+        let mut edges: HashMap<Name, Vec<Edge>> = HashMap::default();
         for id in &order {
             let node = &nodes[id];
             let Some(module) = &node.module else {
@@ -282,12 +282,12 @@ impl Checker {
             outgoing.retain(|edge| recursive.contains(&edge.target));
         }
         let components = components(&edges);
-        let mut completed = HashSet::new();
+        let mut completed = HashSet::default();
         for root in &order {
             if !recursive.contains(root) {
                 continue;
             }
-            let mut active: HashMap<Name, Vec<Ty>> = HashMap::new();
+            let mut active: HashMap<Name, Vec<Ty>> = HashMap::default();
             self.visit_application(
                 *root,
                 variables[root].clone(),
@@ -323,7 +323,7 @@ impl Checker {
         }
         let mut valid = true;
         active.insert(id, args.clone());
-        let mut s = Subst::new();
+        let mut s = Subst::default();
         for (i, v) in variables[&id].iter().enumerate() {
             if i < args.len() {
                 s.insert(v.id, args[i].clone());
@@ -369,8 +369,8 @@ impl Checker {
     /// genuine recursive generic applications even though values store
     /// references.
     pub(crate) fn finite_type_applications(&mut self) {
-        let mut nodes: HashMap<Name, (Vec<Ty>, DeclRef, Name)> = HashMap::new();
-        let mut types: HashMap<Name, Ty> = HashMap::new();
+        let mut nodes: HashMap<Name, (Vec<Ty>, DeclRef, Name)> = HashMap::default();
+        let mut types: HashMap<Name, Ty> = HashMap::default();
         let mut roots: Vec<Name> = Vec::new();
         for module in &self.p.modules {
             let Some(names) = self.p.symbols.get(&module.file) else {
@@ -395,8 +395,8 @@ impl Checker {
                 types.insert(t.id, t);
             }
         }
-        let mut edges: HashMap<Name, Vec<Edge>> = HashMap::new();
-        let mut names: HashMap<(Name, Pos), String> = HashMap::new();
+        let mut edges: HashMap<Name, Vec<Edge>> = HashMap::default();
+        let mut names: HashMap<(Name, Pos), String> = HashMap::default();
         for id in &roots {
             let (_, d, file) = &nodes[id];
             let def = types[id].def.clone().expect("def");
@@ -471,7 +471,7 @@ impl Checker {
             .iter()
             .map(|(id, (vars, _, _))| (*id, vars.clone()))
             .collect();
-        let mut reported: HashSet<(Name, Pos)> = HashSet::new();
+        let mut reported: HashSet<(Name, Pos)> = HashSet::default();
         // A diagnostic needs an active ancestor, so only declarations on a path to a cycle can
         // produce one. Without this pruning every declaration is a root and a chain of N
         // generic types is walked N times with N different type variables (quadratic).
@@ -481,12 +481,12 @@ impl Checker {
         }
         // A specialization's reachable subgraph is explored once across all roots,
         // so checking N declarations is linear in the graph rather than N walks.
-        let mut visited: HashSet<TyId> = HashSet::new();
+        let mut visited: HashSet<TyId> = HashSet::default();
         for root in &roots {
             if !recursive.contains(root) {
                 continue;
             }
-            let mut active: HashMap<Name, Vec<Ty>> = HashMap::new();
+            let mut active: HashMap<Name, Vec<Ty>> = HashMap::default();
             self.visit_type_application(
                 *root,
                 variables[root].clone(),
@@ -520,7 +520,7 @@ impl Checker {
             return;
         }
         active.insert(id, args.clone());
-        let mut s = Subst::new();
+        let mut s = Subst::default();
         for (i, v) in variables[&id].iter().enumerate() {
             if i < args.len() {
                 s.insert(v.id, args[i].clone());

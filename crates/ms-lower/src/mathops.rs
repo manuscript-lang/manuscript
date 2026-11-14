@@ -70,7 +70,7 @@ impl FnLower<'_> {
             .as_ref()
             .ok_or_else(|| Error::new("compare without declaration"))?;
         let c = self.callable_of_decl(im.module, Some(decl.id()))?;
-        let fid = self.cx.function_for(self.b.m, &c, &ct::Subst::new())?;
+        let fid = self.cx.function_for(self.b.m, &c, &ct::Subst::default())?;
         let other = b;
         let recv = if self.cx.var_positions(&c).contains(&0) {
             // A changing receiver is borrowed as a slot holding a copy that is dropped afterwards.

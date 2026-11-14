@@ -1,13 +1,13 @@
 //! Function expressions.
 
 use crate::checker::{CallbackReturns, Checker, Scope};
+use crate::fxmap::{HashMap, HashSet};
 use crate::inference::{callback_context, inference_known_opt, inference_type_known};
 use crate::syntax::*;
 use crate::types::Param;
 use crate::types::*;
 use ms_syntax::Cause;
 use ms_syntax::ast::*;
-use std::collections::{HashMap, HashSet};
 
 impl Checker {
     /// Checks a function expression against the context that expects it.
@@ -24,8 +24,8 @@ impl Checker {
             context = None;
         }
         let mut params: Vec<Param> = Vec::with_capacity(l.params.len());
-        let mut seen: HashSet<Name> = HashSet::new();
-        let mut defaults: HashSet<Name> = HashSet::new();
+        let mut seen: HashSet<Name> = HashSet::default();
+        let mut defaults: HashSet<Name> = HashSet::default();
         let has_var = l.params.iter().any(|p| p.mutable);
         for (index, param) in l.params.iter().enumerate() {
             if !seen.insert(param.name) {
@@ -103,9 +103,9 @@ impl Checker {
         self.serial += 1;
         self.function = self.serial;
         self.loops = 0;
-        self.captures.insert(self.function, HashMap::new());
+        self.captures.insert(self.function, HashMap::default());
         let mut bindings: Vec<BindingRef> = Vec::new();
-        let mut bound: HashSet<Name> = HashSet::new();
+        let mut bound: HashSet<Name> = HashSet::default();
         for (index, param) in params.iter().enumerate() {
             if let Some(default) = &l.params[index].default {
                 self.expression(default, Some(&param.ty));
@@ -151,7 +151,7 @@ impl Checker {
             for (index, p) in params.iter_mut().enumerate() {
                 p.name = c.params[index].name;
             }
-            let mut renamed: HashSet<Name> = HashSet::new();
+            let mut renamed: HashSet<Name> = HashSet::default();
             for (index, param) in l.params.iter().enumerate() {
                 if defaults.contains(&param.name) {
                     renamed.insert(params[index].name);

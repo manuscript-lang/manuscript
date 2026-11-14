@@ -17,6 +17,7 @@ mod effect_directives;
 mod effect_reach;
 mod effects;
 mod exprs;
+pub mod fxmap;
 mod hints;
 mod hir;
 mod inference;

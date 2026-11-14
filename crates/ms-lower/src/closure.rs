@@ -241,7 +241,7 @@ impl FnLower<'_> {
     pub fn function_value(&mut self, e: &Expr, sym: &ct::SymRef) -> Result<Val, Error> {
         let callee = self.callable_of_decl(sym.module, sym.decl.as_ref().map(|d| d.id()))?;
         let vars = ct::variable_set(&sym.variables());
-        let mut subst = ct::Subst::new();
+        let mut subst = ct::Subst::default();
         if !vars.is_empty() {
             let want = self.ety(e);
             if !ct::unify(&sym.ty(self.syms), &want, &vars, &mut subst) {
@@ -743,7 +743,7 @@ impl FnLower<'_> {
                 })
                 .cloned()
                 .unwrap_or_else(|| im.clone());
-            let mut subst = ct::Subst::new();
+            let mut subst = ct::Subst::default();
             if !ct::unify(
                 &declared.receiver,
                 &recv_ty,
@@ -902,7 +902,7 @@ impl FnLower<'_> {
         let want = self.ety(e);
         let declared = sym.ty(self.syms);
         let vars = ct::variable_set(&sym.variables());
-        let mut subst = ct::Subst::new();
+        let mut subst = ct::Subst::default();
         if !vars.is_empty() && !ct::unify(&declared, &want, &vars, &mut subst) {
             return Err(Error::new(
                 "cannot infer the function value's type arguments",
@@ -1026,7 +1026,7 @@ impl FnLower<'_> {
                 // Omission adaptation needs the declared payload types, including the
                 // method's own type arguments fixed by its checked function-value type.
                 let declared = ct::sub(&m.ty, &self.subst);
-                let mut subst = ct::Subst::new();
+                let mut subst = ct::Subst::default();
                 if !ct::unify(
                     &declared,
                     &self.ety(e),
@@ -1471,7 +1471,14 @@ pub(crate) fn build_iface_thunk(
     let file = m.add_file(syms.str(job.hir.data.file));
     let mut b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
     b.func_mut().kind = proto.kind.clone();
-    let mut fl = FnLower::new(cx, b, job.hir.clone(), ct::Subst::new(), file, proto.ret);
+    let mut fl = FnLower::new(
+        cx,
+        b,
+        job.hir.clone(),
+        ct::Subst::default(),
+        file,
+        proto.ret,
+    );
     let result = lower_iface_thunk(&mut fl, job, job.recv);
     let mut f = fl.b.into_func();
     result?;
@@ -1518,7 +1525,14 @@ pub(crate) fn build_native_thunk(
     let file = m.add_file(syms.str(job.hir.data.file));
     let mut b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
     b.func_mut().kind = proto.kind.clone();
-    let mut fl = FnLower::new(cx, b, job.hir.clone(), ct::Subst::new(), file, proto.ret);
+    let mut fl = FnLower::new(
+        cx,
+        b,
+        job.hir.clone(),
+        ct::Subst::default(),
+        file,
+        proto.ret,
+    );
     let result = lower_native_thunk(syms, &mut fl, job);
     let mut f = fl.b.into_func();
     result?;
@@ -1677,7 +1691,14 @@ pub(crate) fn build_bound_native(
     let mut b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
     b.func_mut().kind = proto.kind.clone();
     b.func_mut().capture_closers = proto.capture_closers.clone();
-    let mut fl = FnLower::new(cx, b, job.hir.clone(), ct::Subst::new(), file, proto.ret);
+    let mut fl = FnLower::new(
+        cx,
+        b,
+        job.hir.clone(),
+        ct::Subst::default(),
+        file,
+        proto.ret,
+    );
     fl.scope_override = Some(job.scope);
     let recv_ty = match job.held {
         Held::Value => captures[0],
@@ -1704,7 +1725,14 @@ pub(crate) fn build_iface_native(
     let mut b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
     b.func_mut().kind = proto.kind.clone();
     b.func_mut().linkage = proto.linkage;
-    let mut fl = FnLower::new(cx, b, job.hir.clone(), ct::Subst::new(), file, proto.ret);
+    let mut fl = FnLower::new(
+        cx,
+        b,
+        job.hir.clone(),
+        ct::Subst::default(),
+        file,
+        proto.ret,
+    );
     fl.scope_override = Some(job.scope);
     let result = lower_iface_native(syms, &mut fl, job);
     let mut f = fl.b.into_func();
@@ -1985,7 +2013,7 @@ fn lambda_mutated(
     syms: ms_check::api::Names,
     fl: &FnLower<'_>,
     lam: &Lambda,
-) -> std::collections::HashSet<usize> {
+) -> ms_check::fxmap::HashSet<usize> {
     let scan = |body| {
         crate::mutation::mutated_locals(syms, &fl.hir, body, &fl.cx.callables, &fl.cx.mutated)
     };
@@ -2003,7 +2031,7 @@ fn lambda_changes(
     fl: &FnLower<'_>,
     lam: &Lambda,
     captures: &[ct::BindingRef],
-) -> std::collections::HashSet<usize> {
+) -> ms_check::fxmap::HashSet<usize> {
     let mutated = lambda_mutated(syms, fl, lam);
     captures
         .iter()
@@ -2053,10 +2081,10 @@ pub(crate) fn slotted_in(
     syms: ms_check::api::Names,
     fl: &FnLower<'_>,
     body: &[Stmt],
-) -> std::collections::HashSet<usize> {
+) -> ms_check::fxmap::HashSet<usize> {
     struct Scan<'a, 'b> {
         fl: &'a FnLower<'b>,
-        found: std::collections::HashSet<usize>,
+        found: ms_check::fxmap::HashSet<usize>,
     }
     impl ms_check::api::visit::Visitor for Scan<'_, '_> {
         fn expr(&mut self, e: &Expr) {
@@ -2088,11 +2116,11 @@ pub(crate) fn slotted_in(
 fn with_alias_origins(
     fl: &FnLower<'_>,
     body: &[Stmt],
-    mut changed: std::collections::HashSet<usize>,
-) -> std::collections::HashSet<usize> {
+    mut changed: ms_check::fxmap::HashSet<usize>,
+) -> ms_check::fxmap::HashSet<usize> {
     struct Origins<'a, 'b> {
         fl: &'a FnLower<'b>,
-        roots: std::collections::HashMap<usize, usize>,
+        roots: ms_check::fxmap::HashMap<usize, usize>,
     }
     impl ms_check::api::visit::Visitor for Origins<'_, '_> {
         fn expr(&mut self, e: &Expr) {
@@ -2298,7 +2326,14 @@ pub(crate) fn build_fn_adapter(
     let file = m.add_file(syms.str(job.hir.data.file));
     let mut b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
     b.func_mut().kind = proto.kind.clone();
-    let mut fl = FnLower::new(cx, b, job.hir.clone(), ct::Subst::new(), file, proto.ret);
+    let mut fl = FnLower::new(
+        cx,
+        b,
+        job.hir.clone(),
+        ct::Subst::default(),
+        file,
+        proto.ret,
+    );
     let result = lower_fn_adapter(&mut fl, job.have, job.scoped, &job.reads);
     let mut f = fl.b.into_func();
     result?;

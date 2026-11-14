@@ -26,6 +26,9 @@ inputs:
   cranelift:
     description: "'a' or 'b' also runs the corpus and fixtures with MS_BACKEND=cranelift in that part; the gates then run in the other part."
     default: ''
+  gates-part:
+    description: "'a' or 'b': the part that runs the gates, when the default (the part that does not run the Cranelift corpus, else b) would leave one part much longer."
+    default: ''
   gates:
     description: "'false' skips the gates, when another job of the same run covers them."
     default: 'true'
@@ -40,6 +43,7 @@ runs:
         cranelift='${{ inputs.cranelift }}'
         gates_part=b
         if [ "$cranelift" = b ]; then gates_part=a; fi
+        if [ -n '${{ inputs.gates-part }}' ]; then gates_part='${{ inputs.gates-part }}'; fi
         if [ '${{ inputs.gates }}' = false ]; then gates_part=none; fi
         {
           echo "UNIT=$([[ $part == *a* ]] && echo true || echo false)"

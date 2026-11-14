@@ -5,9 +5,9 @@
 
 use crate::facts::key_name;
 use crate::tree::Node;
+use ms_check::fxmap::{HashMap, HashSet};
 use ms_syntax::visit::{Visitor, walk_expr};
 use ms_syntax::{Arm, Expr, ExprKind, NodeId, Pos, Stmt, StmtKind, UnaryOp};
-use std::collections::{HashMap, HashSet};
 
 /// A call site of the inspection, as the flow needs it.
 #[derive(Clone, Debug, PartialEq, Eq)]

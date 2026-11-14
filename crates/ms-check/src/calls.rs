@@ -2,6 +2,7 @@
 
 use crate::checker::Checker;
 use crate::exprs::{callee_name, is_plain_literal};
+use crate::fxmap::{HashMap, HashSet};
 use crate::hints::*;
 use crate::inference::*;
 use crate::stdlib::constructor_signature;
@@ -13,7 +14,6 @@ use crate::types::{Case, Param};
 use ms_syntax::Cause;
 use ms_syntax::Pos;
 use ms_syntax::ast::*;
-use std::collections::{HashMap, HashSet};
 
 /// Resolves labels without changing source syntax or written evaluation order.
 /// Only an explicit `name: value` selects a named parameter. Every other value,
@@ -29,7 +29,7 @@ pub(crate) fn function_arguments<'a>(
 
 fn parameter_indices(params: &[Param]) -> HashMap<Name, usize> {
     // Keep the first declaration for malformed signatures, just as the old lookup did.
-    let mut indices = HashMap::with_capacity(params.len());
+    let mut indices = HashMap::with_capacity_and_hasher(params.len(), Default::default());
     for (index, param) in params.iter().enumerate() {
         indices.entry(param.name).or_insert(index);
     }
@@ -174,7 +174,7 @@ impl Checker {
     ) -> Info {
         // Argument checks belong to this call only. Nested calls own
         // their own evidence; callback reuse also requires the same final context.
-        let previous = self.checked_arguments.replace(HashMap::new());
+        let previous = self.checked_arguments.replace(HashMap::default());
         let outer_arity = self.call_arity.take();
         self.call_arity =
             matches!(callee.kind, ExprKind::Member { .. }).then_some((callee.id, args.len()));
@@ -419,7 +419,7 @@ impl Checker {
                     conflict: false,
                 };
                 if !explicit {
-                    let mut subst = Subst::new();
+                    let mut subst = Subst::default();
                     let params = sig.params.clone();
                     let resolved = function_arguments(self.syms, args, &params);
                     self.infer_arguments(&resolved, &params, &vars, &mut subst, Some(&mut context));
@@ -595,7 +595,7 @@ impl Checker {
     fn arguments(&mut self, args: &[Arg], params: &[Param], defaults: &Defaults) -> bool {
         let call_name = std::mem::take(&mut self.call_name);
         let call_pos = self.call_pos.take();
-        let mut seen: HashSet<Name> = HashSet::new();
+        let mut seen: HashSet<Name> = HashSet::default();
         let mut no_return = false;
         for arg in args {
             if self.syms.str(arg.name).is_empty() {
@@ -697,10 +697,10 @@ impl Checker {
         pos: Pos,
         name: &str,
     ) -> Ty {
-        let mut subst = Subst::new();
+        let mut subst = Subst::default();
         let mut args: Vec<Option<Ty>> = args.to_vec();
         if args.len() < vars.len() && args.len() >= required_type_arguments(vars) {
-            let mut known = Subst::new();
+            let mut known = Subst::default();
             for (v, a) in vars.iter().zip(&args) {
                 if let Some(a) = a {
                     known.insert(v.id, a.clone());
@@ -797,7 +797,7 @@ impl Checker {
             }
         });
         let vars = def.variables();
-        let mut subst = Subst::new();
+        let mut subst = Subst::default();
         for (index, v) in vars.iter().enumerate() {
             if index < t.args.len() && t.args[index].id != v.id {
                 subst.insert(v.id, t.args[index].clone());
@@ -1003,7 +1003,7 @@ mod argument_tests {
                         })
                         .collect();
                     let resolved = bind_arguments(syms, &args, &params, positional);
-                    let mut seen = HashSet::new();
+                    let mut seen = HashSet::default();
                     for (index, (arg, actual)) in args.iter().zip(&resolved).enumerate() {
                         let mut expected = arg.name.unwrap_or_else(|| n(""));
                         if syms.str(expected).is_empty()

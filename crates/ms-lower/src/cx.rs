@@ -6,10 +6,10 @@ use ms_check::api::NodeId;
 use ms_check::api::hir::{Callable, ModuleHir};
 use ms_check::api::ownership::BorrowKind;
 use ms_check::api::types::{self as ct, Builtin, Kind, Name, Subst};
+use ms_check::fxmap::HashMap;
 use ms_mir::ir::{FuncId, Module};
 use ms_mir::types::{CaseDef, IfaceDef, MethodSig, Std, Ty as MTy};
 use ms_mir::types::{Native, NativeType};
-use std::collections::HashMap;
 use std::rc::Rc;
 
 /// What an instance is requested with besides its type variables.
@@ -428,13 +428,13 @@ pub struct Cx {
     /// The `.ms` methods of the native types, built once from the program's methods.
     pub native_ops: crate::nativetype::NativeOps,
     /// Types whose descriptor glue is registered, per implementation scope.
-    pub glue_seen: std::collections::HashSet<(MTy, u32)>,
+    pub glue_seen: ms_check::fxmap::HashSet<(MTy, u32)>,
     /// Nominal types with an extension implemented outside their defining module.
-    pub extended: std::collections::HashSet<Name>,
+    pub extended: ms_check::fxmap::HashSet<Name>,
     /// The modules that scoped tables were built for; a scope number is the position plus one.
     pub scope_names: Vec<Name>,
     /// Parameters (receiver first) that functions hand back changed.
-    pub mutated: std::collections::HashSet<crate::mutation::ParamKey>,
+    pub mutated: ms_check::fxmap::HashSet<crate::mutation::ParamKey>,
     /// The `make_fixture` factory and hooks type of each module with tests.
     pub fixtures: HashMap<Name, ms_check::TestFixture>,
     /// What the ownership stage decided: moves, borrows, getters, captures, per-node and per-binding
@@ -472,8 +472,8 @@ impl Cx {
 
     /// Indexes every module of the program.
     pub fn new(syms: ms_check::api::Names, program: &Program) -> Cx {
-        let mut mods = HashMap::new();
-        let mut callables = HashMap::new();
+        let mut mods = HashMap::default();
+        let mut callables = HashMap::default();
         for m in program.hir().modules() {
             for c in m.callables() {
                 callables.insert((m.data.file, c.id()), Rc::new(c));
@@ -503,13 +503,13 @@ impl Cx {
             tycache: Vec::new(),
             tys: Default::default(),
             fs_info_raw: None,
-            insts: HashMap::new(),
+            insts: HashMap::default(),
             queue: Vec::new(),
             opaque_tys: Default::default(),
-            helpers: HashMap::new(),
-            list_cursors: HashMap::new(),
-            vtables: HashMap::new(),
-            contracts: HashMap::new(),
+            helpers: HashMap::default(),
+            list_cursors: HashMap::default(),
+            vtables: HashMap::default(),
+            contracts: HashMap::default(),
             method_index: MethodIndex::new(&program.methods),
             methods: program.methods.clone(),
             fixtures: program.test_fixtures.clone(),

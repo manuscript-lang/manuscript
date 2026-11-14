@@ -408,8 +408,8 @@ fn readonly_bound_queries_preserve_independent_snapshots_and_release_borrows() {
         Kind::Contract,
     ));
     *parameter.bounds.borrow_mut() = vec![data, foreign];
-    let plain = sub(&parameter, &Subst::new());
-    let resource = sub(&parameter, &Subst::new());
+    let plain = sub(&parameter, &Subst::default());
+    let resource = sub(&parameter, &Subst::default());
     resource.bounds.borrow_mut().push(closeable.clone());
     let classifier = classifier();
     assert_eq!(classifier.class(syms, &resource), Class::Resource);
