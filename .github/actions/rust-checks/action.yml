@@ -73,9 +73,25 @@ runs:
       if: runner.os == 'Windows'
       shell: bash
       run: echo 'RUSTFLAGS=-C link-arg=/FORCE:UNRESOLVED' >> "$GITHUB_ENV"
+    # The runtime archives take 45 to 60 s to build and change only when the runtime crates do, so they are
+    # cached on those sources. `ms-cli`'s build script rejects an archive older than the runtime sources by
+    # modification time, so a restored archive is touched.
+    - name: Restore the native runtime
+      id: runtime
+      uses: actions/cache@v6
+      with:
+        path: |
+          target/ms-native/*.a
+          target/ms-native/*.ll
+        key: ms-native-${{ inputs.os }}-${{ inputs.arch }}-${{ hashFiles('Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', 'vendor/**', 'crates/xtask/**', 'crates/ms-native/**', 'crates/ms-rt/**', 'crates/ms-rt-abi/**', 'crates/ms-rt-hot/**', 'crates/ms-std-*/**', 'crates/ms-decimal/**', 'crates/ms-inflate/**') }}
     - name: Build the native runtime
+      if: steps.runtime.outputs.cache-hit != 'true'
       shell: bash
       run: cargo xtask runtime
+    - name: Mark the restored runtime as fresh
+      if: steps.runtime.outputs.cache-hit == 'true'
+      shell: bash
+      run: touch target/ms-native/*.a target/ms-native/*.ll
     - name: Format and clippy
       if: env.UNIT == 'true' && inputs.lint == 'true'
       shell: bash
