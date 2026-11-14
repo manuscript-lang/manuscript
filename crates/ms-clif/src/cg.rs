@@ -576,6 +576,16 @@ fn compile_with_isa(
     flags
         .set("opt_level", opts.opt_level)
         .map_err(|e| e.to_string())?;
+    flags
+        .set(
+            "enable_verifier",
+            if opts.build.clif_verify {
+                "true"
+            } else {
+                "false"
+            },
+        )
+        .map_err(|e| e.to_string())?;
     if single_pass(m, opts) {
         // The backtracking allocator is quadratic in a function's size and Debug builds keep owned
         // values live to scope end, so a very long function takes seconds; the single-pass
@@ -1013,7 +1023,7 @@ fn prepare(g: &Gen, ctx: &mut Context) {
             ctx.func.dfg.ext_funcs[func_ref].colocated = false;
         }
     }
-    if g.opts.dump_clif {
+    if g.opts.dump_clif || g.opts.build.dump_clif {
         eprintln!("; {}\n{}", ctx.func.name, ctx.func.display());
     }
     if g.opts.opt_level != "none" {
