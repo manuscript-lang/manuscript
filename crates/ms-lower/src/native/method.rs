@@ -263,8 +263,11 @@ impl<'a> FnLower<'a> {
         // Other operations on a sized number run on its 64-bit kind; a clone keeps its width.
         let recv_nums = {
             let t = self.ty_of(recv.v);
+            let name = native.rsplit('/').next();
             (self.b.m.types.is_int(t) || self.b.m.types.is_float(t))
-                && native.rsplit('/').next() != Some("clone")
+                && name != Some("clone")
+                // A Float32 formats as itself: widened, it would print the double's digits.
+                && !(name == Some("to_string") && t == MTy::FLOAT32)
         };
         let recv = if recv_nums {
             for a in &mut args {
