@@ -526,3 +526,111 @@ fn a_leaf_dropped_on_a_sibling_path_still_fuses() {
     assert_eq!(text.matches("@msrt_string_fmt3 (").count(), 1, "{text}");
     assert_eq!(text.matches("@msrt_int_to_string (").count(), 0, "{text}");
 }
+
+const LOOP_INTERP: &str = r#"module "main"
+file 0 "a.ms"
+extern @msrt_string_concat(str, str) -> str string_concat
+extern @msrt_int_to_string(int) -> str int_to_string
+extern @msrt_string_empty() -> str
+entry @main
+
+fn @main() -> int export {
+b0:
+  %0: str = call.rt @msrt_string_empty ()
+  %1: int = iconst 0
+  %2: int = iconst 10
+  %3: int = iconst 1
+  br b1(%1, %0)
+b1(%4: int, %5: move str):
+  %6: bool = icmp.lt %4, %2
+  br_if %6, b2(), b3()
+b2():
+  %7: str = str "item-"
+  %8: str = call.rt @msrt_int_to_string (%4)
+  %9: str = call.rt @msrt_string_concat (%7, %8)
+  %10: str = str ","
+  %11: str = call.rt @msrt_string_concat (%9, %10)
+  %12: str = call.rt @msrt_string_concat (%5, %11)
+  drop %5
+  drop %11
+  drop %9
+  drop %8
+  %13: int = iadd %4, %3
+  br b1(%13, %12)
+b3():
+  drop %5
+  %14: int = iconst 0
+  ret %14
+}
+"#;
+
+/// `s += "item-{i},"` appends to the loop-carried `s` in place and builds the piece with one
+/// join. Fusing `s` into the join would copy the whole prefix every iteration.
+#[test]
+fn an_interpolated_append_in_a_loop_grows_the_accumulator_in_place() {
+    let mut m = parse_module(LOOP_INTERP).expect("parse");
+    verify_module(&m).expect("verify");
+    opt::optimize(&mut m, opt::Level::Speed, true);
+    let text = print_module(&m);
+    assert_eq!(
+        text.matches("call.rt @msrt_string_append").count(),
+        1,
+        "{text}"
+    );
+    assert_eq!(
+        text.matches("call.rt @msrt_string_fmt").count(),
+        1,
+        "{text}"
+    );
+}
+
+const LOOP_CALL: &str = r#"module "main"
+file 0 "a.ms"
+extern @msrt_string_concat(str, str) -> str string_concat
+extern @msrt_int_to_string(int) -> str int_to_string
+extern @msrt_string_empty() -> str
+entry @main
+
+fn @piece(%0: int) -> str inline(never) {
+b0:
+  %1: str = call.rt @msrt_int_to_string (%0)
+  ret %1
+}
+
+fn @main() -> int export {
+b0:
+  %0: str = call.rt @msrt_string_empty ()
+  %1: int = iconst 0
+  %2: int = iconst 10
+  %3: int = iconst 1
+  br b1(%1, %0)
+b1(%4: int, %5: move str):
+  %6: bool = icmp.lt %4, %2
+  br_if %6, b2(), b3()
+b2():
+  %7: str = call @piece (%4)
+  %8: str = call.rt @msrt_string_concat (%5, %7)
+  drop %5
+  drop %7
+  %9: int = iadd %4, %3
+  br b1(%9, %8)
+b3():
+  drop %5
+  %10: int = iconst 0
+  ret %10
+}
+"#;
+
+/// `s += f(x)` with a non-literal right side also grows the accumulator in place.
+#[test]
+fn appending_a_call_result_in_a_loop_grows_the_accumulator_in_place() {
+    let mut m = parse_module(LOOP_CALL).expect("parse");
+    verify_module(&m).expect("verify");
+    opt::optimize(&mut m, opt::Level::Speed, true);
+    let text = print_module(&m);
+    assert_eq!(
+        text.matches("call.rt @msrt_string_append").count(),
+        1,
+        "{text}"
+    );
+}

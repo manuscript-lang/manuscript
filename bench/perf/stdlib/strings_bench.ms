@@ -23,6 +23,15 @@ bench "string.concat":
 
 	measure(20000, work)?
 
+bench "string.append_interpolated":
+	fn work() Result[Unit, Error]:
+		var s = ""
+		for i in 0..20000:
+			s += "item-{i},"
+		return keep(s.length())
+
+	measure(20000, work)?
+
 bench "string.split":
 	text := words(2000).join(" ")
 

@@ -381,6 +381,27 @@ struct Fusion {
     remove: HashSet<(usize, usize)>,
 }
 
+/// Whether `root` is `s = s + piece` on a loop-carried owned `s` that dies right after: a fused
+/// join would copy the whole prefix every iteration, so the root is left for `append_in_place`
+/// (which grows `s` in place) and only `piece` fuses, as a root of its own.
+fn accumulator_append(f: &Func, root: &Inst, at: (usize, usize)) -> bool {
+    let (Some(&a), Some(&b)) = (root.args.first(), root.args.get(1)) else {
+        return false;
+    };
+    let carried = f.blocks[1..]
+        .iter()
+        .flat_map(|blk| &blk.params)
+        .any(|p| p.value == a && p.mode == Mode::Move);
+    if !carried || b == a {
+        return false;
+    }
+    // The first use of `a` after the root is a drop in the same block.
+    let rest = &f.blocks[at.0].insts[at.1 + 1..];
+    rest.iter()
+        .find(|i| i.args.contains(&a))
+        .is_some_and(|i| i.op == Op::Drop)
+}
+
 /// Fuses every chain that can be fused independently of the others in one scan. Each fusion
 /// would otherwise cost a rescan of the function, and a function with many interpolated
 /// strings would be quadratic.
@@ -392,6 +413,9 @@ fn fuse_concat(m: &mut Module, fi: usize) -> bool {
     for (bi, b) in f.blocks.iter().enumerate() {
         for (ii, inst) in b.insts.iter().enumerate().rev() {
             if ext_role(m, inst) != Some(ExternRole::StringConcat) || claimed.contains(&(bi, ii)) {
+                continue;
+            }
+            if accumulator_append(f, inst, (bi, ii)) {
                 continue;
             }
             let mut g = Gather {
