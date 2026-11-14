@@ -464,6 +464,8 @@ msstd_encoding_base64_decode(text: *const StrVal, url_safe: u8, has_max: HasRaw,
 msstd_encoding_base64_decode_unpadded(text: *const StrVal, url_safe: u8, has_max: HasRaw, max: i64, out: *mut VecVal) -> u8 @domain=encoding @leaf
 msstd_encoding_base64_encode(data: *const VecVal, url_safe: u8, out: *mut StrVal) @domain=encoding @leaf
 msstd_encoding_base64_encode_unpadded(data: *const VecVal, url_safe: u8, out: *mut StrVal) @domain=encoding @leaf
+msstd_encoding_hex_decode(text: *const StrVal, has_max: HasRaw, max: i64, out: *mut VecVal) -> u8 @domain=encoding @leaf
+msstd_encoding_hex_encode(data: *const VecVal, out: *mut StrVal) @domain=encoding @leaf
 msstd_fs_access(path: *const StrVal, mode: i64, err: ErrSlot) -> u8 @domain=filesystem
 msstd_fs_admit(bytes: i64) -> u8 @domain=filesystem
 msstd_fs_append_file(path: *const StrVal, data: *const VecVal, err: ErrSlot) -> u8 @domain=filesystem

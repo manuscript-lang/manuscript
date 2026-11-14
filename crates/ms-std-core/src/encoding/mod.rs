@@ -7,7 +7,10 @@ pub mod ffi;
 mod variants;
 
 pub use ascii85::{ascii85_decode, ascii85_encode};
-pub use variants::{base32_decode, base32_encode, base64_decode_unpadded, base64_encode_unpadded};
+pub use variants::{
+    base32_decode, base32_encode, base64_decode_unpadded, base64_encode_unpadded, hex_decode,
+    hex_encode,
+};
 
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -41,26 +44,91 @@ static URL_REVERSE: [u8; 256] = reverse_alphabet(URL);
 
 /// Padded Base64 (standard or URL-safe alphabet).
 pub fn base64_encode(data: &[u8], url_safe: bool) -> String {
-    let alpha = if url_safe { URL } else { STD };
-    let mut out = String::with_capacity(data.len().div_ceil(3) * 4);
-    for c in data.chunks(3) {
-        let v = (c[0] as u32) << 16
-            | (*c.get(1).unwrap_or(&0) as u32) << 8
-            | *c.get(2).unwrap_or(&0) as u32;
-        out.push(alpha[(v >> 18) as usize & 63] as char);
-        out.push(alpha[(v >> 12) as usize & 63] as char);
-        out.push(if c.len() > 1 {
-            alpha[(v >> 6) as usize & 63] as char
-        } else {
-            '='
-        });
-        out.push(if c.len() > 2 {
-            alpha[v as usize & 63] as char
-        } else {
-            '='
-        });
+    base64_encode_with(data, if url_safe { URL } else { STD }, true)
+}
+
+/// Base64 text built as bytes, three input bytes per four output bytes, then the tail.
+pub(crate) fn base64_encode_with(data: &[u8], alpha: &[u8; 64], pad: bool) -> String {
+    let mut out = Vec::with_capacity(data.len().div_ceil(3) * 4);
+    out.resize(data.len() / 3 * 4, 0);
+    let (groups, tail) = data.as_chunks::<3>();
+    for (quad, c) in out.as_chunks_mut::<4>().0.iter_mut().zip(groups) {
+        let v = u32::from(c[0]) << 16 | u32::from(c[1]) << 8 | u32::from(c[2]);
+        *quad = [
+            alpha[(v >> 18) as usize & 63],
+            alpha[(v >> 12) as usize & 63],
+            alpha[(v >> 6) as usize & 63],
+            alpha[v as usize & 63],
+        ];
     }
-    out
+    if let [a] = *tail {
+        out.extend_from_slice(&[alpha[usize::from(a >> 2)], alpha[usize::from(a << 4 & 63)]]);
+        if pad {
+            out.extend_from_slice(b"==");
+        }
+    } else if let [a, b] = *tail {
+        let v = u32::from(a) << 8 | u32::from(b);
+        out.extend_from_slice(&[
+            alpha[(v >> 10) as usize & 63],
+            alpha[(v >> 4) as usize & 63],
+            alpha[(v << 2) as usize & 63],
+        ]);
+        if pad {
+            out.push(b'=');
+        }
+    }
+    // The alphabets and `=` are ASCII, so this validation cannot fail.
+    String::from_utf8(out).unwrap_or_default()
+}
+
+/// Decodes unpadded Base64 symbols (`symbols.len() % 4 != 1`): four symbols make three bytes. The
+/// last two or three symbols must leave zero unused bits unless `allow_trailing_bits`. A byte
+/// outside the alphabet, including `=`, is invalid data.
+pub(crate) fn base64_decode_symbols(
+    symbols: &[u8],
+    rev: &[u8; 256],
+    allow_trailing_bits: bool,
+) -> Result<Vec<u8>, Fail> {
+    let mut out = Vec::with_capacity(symbols.len() / 4 * 3 + 2);
+    out.resize(symbols.len() / 4 * 3, 0);
+    let (quads, tail) = symbols.as_chunks::<4>();
+    // Every valid digit is below 64 and every invalid byte maps to 0xff, so ORing all digits
+    // finds a bad byte without a branch per quad.
+    let mut bad = 0u8;
+    for (triple, q) in out.as_chunks_mut::<3>().0.iter_mut().zip(quads) {
+        let (a, b, c, d) = (
+            rev[usize::from(q[0])],
+            rev[usize::from(q[1])],
+            rev[usize::from(q[2])],
+            rev[usize::from(q[3])],
+        );
+        bad |= a | b | c | d;
+        let v = u32::from(a) << 18 | u32::from(b) << 12 | u32::from(c) << 6 | u32::from(d);
+        *triple = [(v >> 16) as u8, (v >> 8) as u8, v as u8];
+    }
+    if bad > 63 {
+        return Err(Fail::InvalidData);
+    }
+    let digit = |i: usize| rev[usize::from(tail[i])];
+    match tail.len() {
+        2 => {
+            let (a, b) = (digit(0), digit(1));
+            if a | b > 63 || (!allow_trailing_bits && b & 0xf != 0) {
+                return Err(Fail::InvalidData);
+            }
+            out.push(a << 2 | b >> 4);
+        }
+        3 => {
+            let (a, b, c) = (digit(0), digit(1), digit(2));
+            if a | b | c > 63 || (!allow_trailing_bits && c & 0x3 != 0) {
+                return Err(Fail::InvalidData);
+            }
+            let v = u32::from(a) << 10 | u32::from(b) << 4 | u32::from(c) >> 2;
+            out.extend_from_slice(&[(v >> 8) as u8, v as u8]);
+        }
+        _ => {}
+    }
+    Ok(out)
 }
 
 /// Strict padded Base64: no whitespace, length a multiple of four, zero trailing bits.
@@ -92,42 +160,8 @@ fn base64_decode_with(
         return Err(Fail::LimitExceeded);
     }
     let rev = if url_safe { &URL_REVERSE } else { &STD_REVERSE };
-    let mut out = Vec::with_capacity(t.len() / 4 * 3);
-    let quads = t.len() / 4;
-    for (qi, q) in t.chunks(4).enumerate() {
-        let last = qi + 1 == quads;
-        let pad = if last { padding } else { 0 };
-        let mut v = 0u32;
-        for (i, &c) in q.iter().enumerate() {
-            let d = if i >= 4 - pad {
-                if c != b'=' {
-                    return Err(Fail::InvalidData);
-                }
-                0
-            } else {
-                match rev[c as usize] {
-                    0xff => return Err(Fail::InvalidData),
-                    d => d as u32,
-                }
-            };
-            v = v << 6 | d;
-        }
-        // Strict mode: the unused low bits of the last group must be zero.
-        match pad {
-            _ if allow_trailing_bits => {}
-            1 if v & 0xff != 0 => return Err(Fail::InvalidData),
-            2 if v & 0xffff != 0 => return Err(Fail::InvalidData),
-            _ => {}
-        }
-        out.push((v >> 16) as u8);
-        if pad < 2 {
-            out.push((v >> 8) as u8);
-        }
-        if pad < 1 {
-            out.push(v as u8);
-        }
-    }
-    Ok(out)
+    // The trailing `=` are the padding; an `=` anywhere before them is not in the alphabet.
+    base64_decode_symbols(&t[..t.len() - padding], rev, allow_trailing_bits)
 }
 
 #[cfg(test)]
