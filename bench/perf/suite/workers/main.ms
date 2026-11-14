@@ -1,6 +1,7 @@
-// Concurrency: a fixed set of independent chunks, each processed by its own promise (compare a thread pool,
-// goroutines and worker threads). A chunk generates 200,000 pseudo-random values, counts them into 256 buckets
-// and folds them into a checksum, so every task does real CPU work and shares nothing.
+// Concurrency: a fixed set of independent chunks, each processed by its own promise
+// (compare a thread pool, goroutines and worker threads). A chunk generates 200,000
+// pseudo-random values, counts them into 256 buckets and folds them into a checksum, so
+// every task does real CPU work and shares nothing.
 import Promise, promise, wait_all from "@std/concurrency/promise.ms"
 
 fn chunk_checksum(chunk: Int) Int!:
@@ -18,7 +19,6 @@ fn chunk_checksum(chunk: Int) Int!:
 
 	for b in 0..256:
 		h = (h * 131 + hist[b]) % 1000000007
-
 	return ok(h)
 
 // A promise a function returns owns the values it captured.
