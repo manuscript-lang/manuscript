@@ -66,7 +66,8 @@ fn main() Int:
 	// `MS_BACKEND=cranelift` skips the check and parse phases: the LLVM pass already
 	// ran them, and their results do not depend on the backend. `CONFORM_ALL_PHASES=1`
 	// keeps them, for a Cranelift run that is the only pass (pull requests in CI).
-	backend_only := env("MS_BACKEND", "") == "cranelift" and not fast and env("CONFORM_ALL_PHASES", "") == ""
+	all_phases := env("CONFORM_ALL_PHASES", "") != ""
+	backend_only := env("MS_BACKEND", "") == "cranelift" and not fast and not all_phases
 	phases := if backend_only: "run,test" else: "run,check,test"
 	main_run := [
 		"run",
