@@ -70,10 +70,10 @@ impl<'a, 'm> Lower<'a, 'm> {
         vec![self.b.block_params(join)[0]]
     }
 
-    /// `str.eq_fast`: 1 when two strings are equal, 0 when unequal, -1 when only a byte
-    /// comparison can tell. Identical words are equal and differing kinds or lengths are unequal
-    /// without a call.
-    pub(super) fn string_eq_fast(&mut self, inst: &Inst) -> Vs {
+    /// `a == b` for two strings, decided from their words where possible: identical words are
+    /// equal, and differing kinds, lengths or inline bytes are unequal, all without a call. Only
+    /// two distinct blocks of one length reach the runtime comparison.
+    pub(super) fn string_eq_call(&mut self, f: &Func, inst: &Inst) -> Vs {
         let (a, b) = (self.a(inst, 0), self.a(inst, 1));
         let (yes, no, unknown) = (self.iconst(1), self.iconst(0), self.iconst(-1));
         // `x = a.tagged ^ b.tagged`. With `0 < x < 1 << 62` both have one kind and the low bits
@@ -98,7 +98,22 @@ impl<'a, 'm> Lower<'a, 'm> {
         let kinds = self.b.ins().select(same_len, unknown, no);
         let is_same = self.b.ins().icmp_imm_s(IntCC::Equal, x, 0);
         let rest = self.b.ins().select(is_same, same_hi, kinds);
-        vec![self.b.ins().select(differ, no, rest)]
+        let known = self.b.ins().select(differ, no, rest);
+        let decided = self
+            .b
+            .ins()
+            .icmp_imm_s(IntCC::SignedGreaterThanOrEqual, known, 0);
+        let answer = self.b.ins().icmp_imm_s(IntCC::NotEqual, known, 0);
+        let (slow, join) = (self.b.create_block(), self.b.create_block());
+        self.b.append_block_param(join, types::I8);
+        self.b
+            .ins()
+            .brif(decided, join, &[BlockArg::Value(answer)], slow, &[]);
+        self.b.switch_to_block(slow);
+        let r = self.call_extern_plain(f, inst);
+        self.b.ins().jump(join, &[BlockArg::Value(r[0])]);
+        self.b.switch_to_block(join);
+        vec![self.b.block_params(join)[0]]
     }
 
     /// `StringBuilder.append` of a literal of 1 to 16 bytes with room to spare is a few constant

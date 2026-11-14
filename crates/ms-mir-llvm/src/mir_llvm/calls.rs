@@ -27,8 +27,13 @@ fn inst_ok(m: &Module, lay: &Layouts, _: &Func, inst: &Inst) -> bool {
 }
 
 /// Discarding a cleanup handle branches: handle 0 is a registration that was skipped.
+/// A string comparison that the words do not decide calls the runtime in a block of its own.
 fn splits(lay: &Layouts, _: &Func, inst: &Inst, _: bool) -> usize {
-    usize::from(is_discard(lay.m, inst))
+    usize::from(is_discard(lay.m, inst) || is_string_eq(lay.m, inst))
+}
+
+fn is_string_eq(m: &Module, inst: &Inst) -> bool {
+    matches!((inst.op, inst.imm), (Op::CallRt, Imm::Ext(e)) if m.externs[e.index()].role == ExternRole::StringEq)
 }
 
 fn is_discard(m: &Module, inst: &Inst) -> bool {
@@ -109,6 +114,28 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         call_rt(cx, inst, vals, &out, b);
         b.br(&next);
         b.label(&next);
+        return;
+    }
+    if is_string_eq(m, inst) {
+        // Decide from the words; only two distinct blocks of one length call the runtime.
+        let known = super::lists::eq_words(
+            b,
+            &vals[&inst.args[0].index()],
+            &vals[&inst.args[1].index()],
+        );
+        let decided = b.icmp("sge", &known, &Val::int(0));
+        let answer = b.icmp("ne", &known, &Val::int(0));
+        let head = super::block_label(cx.block, cx.split);
+        let slow = format!("e{}_{}", cx.block, cx.split);
+        cx.split += 1;
+        let join = super::block_label(cx.block, cx.split);
+        b.cond_br(&decided, &join, &slow);
+        b.label(&slow);
+        let called = [b.reserve(out[0].ty.clone())];
+        call_rt(cx, inst, vals, &called, b);
+        b.br(&join);
+        b.label(&join);
+        b.phi(&out[0], &[(answer, head), (called[0].clone(), slow)]);
         return;
     }
     if inst.op == Op::CallRt {

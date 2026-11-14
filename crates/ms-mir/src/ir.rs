@@ -286,7 +286,7 @@ pub enum Op {
     // Optionals.
     OptSome, OptView, OptNone, OptIsSome, OptGet, OptUnwrap, OptUnbox, OptAddr,
     // Strings.
-    StrLen, StrByte, StrAscii, StrAsciiAt, StrAsciiLen, StrEqFast, StrEqLit,
+    StrLen, StrByte, StrAscii, StrAsciiAt, StrAsciiLen, StrEqLit,
     // Byte builders.
     BytesPush,
     // Closures and interface views.

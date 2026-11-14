@@ -152,7 +152,6 @@ impl InstCheck<'_, '_> {
             | Op::StrAscii
             | Op::StrAsciiAt
             | Op::StrAsciiLen
-            | Op::StrEqFast
             | Op::StrEqLit
             | Op::BytesPush => self.strings(),
             Op::ClosureNew
@@ -826,13 +825,6 @@ impl InstCheck<'_, '_> {
                 self.want(
                     self.t(0) == Ty::STR && self.res == Some(Ty::INT),
                     "str.ascii_len takes a string and yields int",
-                )
-            }
-            Op::StrEqFast => {
-                self.arity(2)?;
-                self.want(
-                    self.t(0) == Ty::STR && self.t(1) == Ty::STR && self.res == Some(Ty::INT),
-                    "str.eq_fast takes two strings and yields int (1 equal, 0 unequal, -1 unknown)",
                 )
             }
             Op::StrEqLit => {

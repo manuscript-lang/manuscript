@@ -422,11 +422,6 @@ impl<'m> FuncBuilder<'m> {
     pub fn bytes_push(&mut self, slot: Value, value: Value) -> Value {
         self.val(Op::BytesPush, &[slot, value], Imm::None, Ty::BOOL)
     }
-    /// `str.eq_fast`: 1 when two strings are equal, 0 when unequal, -1 when only a byte
-    /// comparison can tell.
-    pub fn str_eq_fast(&mut self, a: Value, b: Value) -> Value {
-        self.val(Op::StrEqFast, &[a, b], Imm::None, Ty::INT)
-    }
     /// `str.eq_lit`: whether `a` equals the literal `id` (1 to 8 bytes, no NUL).
     pub fn str_eq_lit(&mut self, a: Value, id: StrId) -> Value {
         self.val(Op::StrEqLit, &[a], Imm::Str(id), Ty::BOOL)

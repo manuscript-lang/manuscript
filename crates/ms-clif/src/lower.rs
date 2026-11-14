@@ -1102,7 +1102,6 @@ impl<'a, 'm> Lower<'a, 'm> {
             | Op::StrAscii
             | Op::StrAsciiAt
             | Op::StrAsciiLen
-            | Op::StrEqFast
             | Op::StrEqLit
             | Op::StrLen => self.strings(inst),
             Op::BytesPush => self.bytes_push(inst),

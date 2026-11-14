@@ -31,7 +31,6 @@ fn handles(op: Op) -> bool {
                 | Op::StrByte
                 | Op::StrAsciiAt
                 | Op::StrAsciiLen
-                | Op::StrEqFast
                 | Op::StrEqLit
                 | Op::StrLen
                 | Op::ListNew
@@ -207,7 +206,6 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         Op::ListConst => list_const(cx, inst, vals, b),
         Op::StrLen => str_len(cx, inst, vals, b),
         Op::StrAsciiLen => str_ascii_len(inst, vals, b),
-        Op::StrEqFast => str_eq_fast(inst, vals, b),
         Op::StrEqLit => str_eq_lit(cx, inst, vals, b),
         _ => list_access(cx, inst, vals, b),
     }
@@ -704,12 +702,10 @@ fn tagged_len(b: &mut FnBuilder, w: &Val) -> Val {
     b.select(&inline, &short, &long)
 }
 
-/// `StrEqFast`: 1 when two strings are equal, 0 when unequal, -1 when only a byte comparison can
-/// tell. Identical words are equal, and differing kinds or lengths are unequal, without a call.
-fn str_eq_fast(inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
+/// 1 when two strings are equal, 0 when unequal, -1 when only a byte comparison can tell.
+/// Identical words are equal, and differing kinds, lengths or inline bytes are unequal.
+pub(super) fn eq_words(b: &mut FnBuilder, x: &[Val], y: &[Val]) -> Val {
     use ms_rt_abi::{STR_ASCII, STR_INLINE};
-    let (x, y) = (&vals[&inst.args[0].index()], &vals[&inst.args[1].index()]);
-    let out = &vals[&inst.res.expect("equality result").index()][0];
     let (yes, no, unknown) = (Val::int(1), Val::int(0), Val::int(-1));
     // `d = x.tagged ^ y.tagged` without the ASCII flag (equal strings may differ in it). With
     // `0 < d < 1 << 62` both have one kind and the low bits differ: unequal.
@@ -730,8 +726,7 @@ fn str_eq_fast(inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     let kinds = b.select(&same_len, &unknown, &no);
     let same_word = b.icmp("eq", &d, &Val::int(0));
     let rest = b.select(&same_word, &same_hi, &kinds);
-    b.name_next(out);
-    b.select(&differ, &no, &rest);
+    b.select(&differ, &no, &rest)
 }
 
 /// `StrEqLit`: whether a string equals a literal of 1 to 8 bytes with no NUL. An inline string

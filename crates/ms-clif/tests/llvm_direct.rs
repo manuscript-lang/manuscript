@@ -139,14 +139,17 @@ b0:
     )
 }
 
-/// A program returning `str.eq_fast` of two literals, or `str.eq_lit` of the first against `lit`.
+/// A program returning the equality of two literals (`msrt_string_eq`, which the backends decide
+/// from the words first), or `str.eq_lit` of the first against `lit`.
 fn string_eq_program(a: &str, b: &str, lit: Option<&str>) -> String {
     let body = match lit {
         Some(l) => format!("%q: bool = str.eq_lit \"{l}\" %s !0:2:1\n  %x: int = b2i %q !0:2:1"),
-        None => "%x: int = str.eq_fast %s, %t !0:2:1".to_string(),
+        None => "%q: bool = call.rt @msrt_string_eq (%s, %t) !0:2:1\n  %x: int = b2i %q !0:2:1"
+            .to_string(),
     };
     format!(
         r#"module "d"
+extern @msrt_string_eq(str, str) -> bool leaf reads string_eq
 entry @main
 file 0 "d.ms"
 fn @get(%s: str, %t: str) -> int !0:1:1 {{
@@ -172,16 +175,16 @@ fn ascii_len_program(text: &str) -> String {
 
 fn string_bytes() {
     let long = "abcdefghijklmnopqrstu";
-    // `str.eq_fast` decides identical strings and strings of different lengths; `str.eq_lit`
+    // The string comparison decides identical strings and strings of different lengths; `str.eq_lit`
     // compares a literal of up to eight bytes by its length and bytes.
     check(
-        "direct_eq_fast_same",
+        "direct_eq_same",
         &string_eq_program(long, long, None),
         1,
         &["get"],
     );
     check(
-        "direct_eq_fast_length",
+        "direct_eq_length",
         &string_eq_program("abc", long, None),
         0,
         &["get"],
