@@ -1547,24 +1547,6 @@ pub fn float_text(v: f64) -> Option<String> {
     String::from_utf8(out).ok()
 }
 
-/// Fixed-size text for the `{:e}` form of a float: at most 17 digits, a point, and an exponent.
-struct Sci {
-    bytes: [u8; 32],
-    len: usize,
-}
-
-impl core::fmt::Write for Sci {
-    fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        let end = self.len + s.len();
-        self.bytes
-            .get_mut(self.len..end)
-            .ok_or(core::fmt::Error)?
-            .copy_from_slice(s.as_bytes());
-        self.len = end;
-        Ok(())
-    }
-}
-
 /// Powers of ten that a double holds exactly.
 const POW10: [f64; 23] = [
     1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11, 1e12, 1e13, 1e14, 1e15, 1e16,
@@ -1631,23 +1613,7 @@ fn short_digits(abs: f64, buf: &mut [u8; 24]) -> Option<(usize, i32)> {
 /// The shortest round-trip digits of `abs` through the standard formatter, as in
 /// [`short_digits`].
 fn sci_digits(abs: f64, buf: &mut [u8; 24]) -> Option<(usize, i32)> {
-    use core::fmt::Write;
-    let mut sci = Sci {
-        bytes: [0; 32],
-        len: 0,
-    };
-    write!(sci, "{abs:e}").ok()?;
-    let text = &sci.bytes[..sci.len];
-    let e_at = text.iter().position(|&c| c == b'e')?;
-    let exp: i32 = core::str::from_utf8(&text[e_at + 1..]).ok()?.parse().ok()?;
-    let mut n = 0;
-    for &c in &text[..e_at] {
-        if c != b'.' {
-            *buf.get_mut(n)? = c;
-            n += 1;
-        }
-    }
-    Some((n, exp))
+    Some(ms_rt::num::shortest_digits(abs, buf))
 }
 
 const POW10_INT: [u64; 5] = [1, 10, 100, 1000, 10000];

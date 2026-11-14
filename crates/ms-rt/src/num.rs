@@ -244,14 +244,93 @@ impl core::fmt::Write for Scientific {
 fn shortest(v: f64) -> (Scientific, i32) {
     let mut s = Scientific::default();
     write!(s, "{v:e}").expect("shortest finite binary64 scientific form fits 32 bytes");
-    split_scientific(s)
+    let (digits, exp) = split_scientific(s);
+    let mut exact = Scientific::default();
+    let precision = digits.len - 1;
+    if is_odd_tail(&digits) && may_tie(&digits, exp, v.to_bits(), 52, 1075) {
+        write!(exact, "{v:.precision$e}").expect("exact binary64 scientific form fits 32 bytes");
+    }
+    prefer_even(digits, exp, exact, |text| {
+        text.parse::<f64>().is_ok_and(|b| b == v)
+    })
+}
+
+/// The shortest round-trip digits of a finite positive `v` copied into `buf`, with the decimal
+/// exponent of the first digit.
+pub fn shortest_digits(v: f64, buf: &mut [u8; 24]) -> (usize, i32) {
+    let (digits, exp) = shortest(v);
+    let n = digits.len.min(buf.len());
+    buf[..n].copy_from_slice(&digits.as_slice()[..n]);
+    (n, exp)
 }
 
 /// The same for a finite positive binary32 value.
 fn shortest32(v: f32) -> (Scientific, i32) {
     let mut s = Scientific::default();
     write!(s, "{v:e}").expect("shortest finite binary32 scientific form fits 32 bytes");
-    split_scientific(s)
+    let (digits, exp) = split_scientific(s);
+    let mut exact = Scientific::default();
+    let precision = digits.len - 1;
+    if is_odd_tail(&digits) && may_tie(&digits, exp, u64::from(v.to_bits()), 23, 150) {
+        write!(exact, "{v:.precision$e}").expect("exact binary32 scientific form fits 32 bytes");
+    }
+    prefer_even(digits, exp, exact, |text| {
+        text.parse::<f32>().is_ok_and(|b| b == v)
+    })
+}
+
+/// Whether the exact value can sit halfway between two decimals of the shortest length: its
+/// exact decimal expansion then has one more significant digit than the shortest form. A value
+/// with `fraction_bits` binary places after the point has exactly that many decimal places, so a
+/// fractional value is a candidate only when its exact length matches. An integer is exact in
+/// full, so only the large ones, whose shortest form drops digits, are candidates.
+fn may_tie(digits: &Scientific, exp: i32, bits: u64, mantissa_bits: u32, bias: i32) -> bool {
+    // `shortest` takes positive values, so the sign bit is clear.
+    let field = (bits >> mantissa_bits) as i32;
+    let mut mantissa = bits & ((1 << mantissa_bits) - 1);
+    if field > 0 {
+        mantissa |= 1 << mantissa_bits;
+    }
+    let binary_exponent = field.max(1) - bias + mantissa.trailing_zeros() as i32;
+    if binary_exponent >= 0 {
+        return exp >= 15;
+    }
+    -binary_exponent == digits.len as i32 - exp
+}
+
+fn is_odd_tail(digits: &Scientific) -> bool {
+    digits.as_slice().last().is_some_and(|d| d % 2 == 1)
+}
+
+/// The shortest digits when two candidates of that length are equally close to the exact value
+/// are the one with an even final digit, but the shortest-digits formatter rounds such a tie
+/// up. The exact formatter rounds half to even, so its answer replaces an odd tail whenever it
+/// has the same length and exponent and still reads back as the same value.
+fn prefer_even(
+    digits: Scientific,
+    exp: i32,
+    exact: Scientific,
+    reads_back: impl Fn(&str) -> bool,
+) -> (Scientific, i32) {
+    if exact.len == 0 {
+        return (digits, exp);
+    }
+    let (rounded, rounded_exp) = split_scientific(exact);
+    if rounded_exp != exp || rounded.as_slice() == digits.as_slice() {
+        return (digits, exp);
+    }
+    let mut text = String::with_capacity(rounded.len + 8);
+    let digits_text = core::str::from_utf8(rounded.as_slice()).unwrap_or("0");
+    text.push_str(&digits_text[..1]);
+    text.push('.');
+    text.push_str(&digits_text[1..]);
+    text.push('e');
+    text.push_str(&exp.to_string());
+    if reads_back(&text) {
+        (rounded, exp)
+    } else {
+        (digits, exp)
+    }
 }
 
 fn split_scientific(mut s: Scientific) -> (Scientific, i32) {
@@ -763,6 +842,18 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::excessive_precision)] // exactly representable tie values
+    fn float_ties_choose_the_even_final_digit() {
+        let _g = crate::testutil::lock();
+        // 29501041598734.3125 sits exactly between two 17-digit decimals.
+        assert_eq!(float_to_string(29501041598734.3125), b"29501041598734.312");
+        assert_eq!(float_to_string(1313322917213848.25), b"1313322917213848.2");
+        assert_eq!(float32_to_string(3423159.25), b"3423159.2");
+        assert_eq!(float32_to_string(4311.78125), b"4311.7812");
+        assert_eq!(float32_to_string(-4526.03125), b"-4526.0312");
+    }
+
+    #[test]
     fn float_strings_render_shortest() {
         let _g = crate::testutil::lock();
         let cases: [(f64, &str); 14] = [
@@ -836,16 +927,26 @@ mod tests {
             );
             out
         };
+        // The previous formatter rounded an exact tie up; the current one keeps the even digit,
+        // so a single differing digit that is one lower and even is the same answer.
+        let same = |ours: Vec<u8>, old: Vec<u8>| {
+            let differing: Vec<usize> = (0..ours.len().min(old.len()))
+                .filter(|&i| ours[i] != old[i])
+                .collect();
+            ours == old
+                || (ours.len() == old.len()
+                    && differing.len() == 1
+                    && ours[differing[0]].is_multiple_of(2)
+                    && ours[differing[0]] + 1 == old[differing[0]])
+        };
         let check = |value: f64| {
-            assert_eq!(
-                float_to_string(value),
-                previous(value, false),
+            assert!(
+                same(float_to_string(value), previous(value, false)),
                 "binary64 bits={:016x}",
                 value.to_bits()
             );
-            assert_eq!(
-                float32_to_string(value),
-                previous(value, true),
+            assert!(
+                same(float32_to_string(value), previous(value, true)),
                 "binary32 input bits={:016x}",
                 value.to_bits()
             );
