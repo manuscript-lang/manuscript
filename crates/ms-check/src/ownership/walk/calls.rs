@@ -400,7 +400,9 @@ impl Walker<'_> {
         // generic is copied when the function is instantiated, as its bound allows).
         if d == Demand::Move
             && let Some((kind, recv)) = self.native_borrow_of(e)
-            && (kind != NativeBorrow::PayloadGet || self.native_borrow_receiver(recv).is_some())
+            && (kind != NativeBorrow::PayloadGet
+                || self.native_borrow_receiver(recv).is_some()
+                || self.pure_origins(recv).is_some())
         {
             let ty = self.cx.m.ty(e);
             let class = self.class_of(e);

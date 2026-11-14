@@ -23,6 +23,8 @@ export fn main() Int:
 	var moved = List[Handle]()
 	moved.append(handles.get(0))
 	holder := Holder(handles.get(1))
+	var last = List[Handle]()
+	last.append(handles.last().get())
 	return holder.handle.id + moved.length() + returned(handles, 0).get().id + from_map(Map[Int, Handle](), 0).get().id
 
 // A plain value read with `get` is rejected the same way; `.clone()` gives the new owner a copy.
