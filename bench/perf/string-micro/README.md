@@ -20,3 +20,6 @@ Compare numbers only from the same machine; treat them as a profiling guide.
 | `sorted(a.compare(b))` of 1M words | 550, then 270 to 330 | 337 | 1.6x, then 0.8 to 1.0x | two inline strings (up to 15 bytes) compare as two byte-swapped 128-bit words instead of a `memcmp` call; `a < b` 17 to 10 ms |
 | `Float.to_string` | 150 | 110 | 1.3x | not a gap (an earlier 250 was noise) |
 | `for c in s.chars(): s += c.length()` | 91 | 9 | 10x | the loop builds a string per non-compared character; comparing against a literal stays a code point (20 ms) |
+| `length()` of 8 MB non-ASCII text | 17 per call | 1 | 17x | counts non-continuation bytes eight at a time instead of a validation pass plus a byte filter: 3 ms for both `length()` and `scalar_length()` |
+| `for c in s.chars(): if c == "世"` on non-ASCII text | 36 | 10 | 3.6x | open: each non-ASCII scalar decodes twice (value and width, about 97 instructions) |
+| `normalize("NFD")` per word | 176 | - | - | no Rust standard-library equivalent |
