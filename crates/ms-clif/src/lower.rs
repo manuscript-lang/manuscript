@@ -68,6 +68,11 @@ pub struct Lower<'a, 'm> {
     pslots: HashMap<(usize, usize), ir::StackSlot>,
     /// Wide block parameters whose leaves are loaded from their home at each use.
     lazy: Vec<bool>,
+    /// Quotients of the signed divisions lowered so far in this block, by operands, so a
+    /// remainder of the same operands reuses the divide.
+    quotients: HashMap<(Value, Value), Value>,
+    /// The same for remainders: the quotient by the divisor with -1 replaced by 1.
+    safe_quotients: HashMap<(Value, Value), Value>,
     /// MIR block being lowered.
     cur: usize,
     /// MIR function being lowered (the key of its grow shim).
@@ -107,6 +112,8 @@ impl<'a, 'm> Lower<'a, 'm> {
             str_lits: HashMap::new(),
             pslots: HashMap::new(),
             lazy: Vec::new(),
+            quotients: HashMap::new(),
+            safe_quotients: HashMap::new(),
             cur: 0,
             fid: 0,
             overflow_result: None,
@@ -741,6 +748,8 @@ impl<'a, 'm> Lower<'a, 'm> {
             self.b.switch_to_block(cb);
             // Bind block parameters.
             self.cur = b.index();
+            self.quotients.clear();
+            self.safe_quotients.clear();
             let params = self.b.block_params(cb).to_vec();
             let mut at = 0;
             for (j, p) in f.blocks[b.index()].params.iter().enumerate() {

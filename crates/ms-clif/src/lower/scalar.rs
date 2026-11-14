@@ -116,11 +116,11 @@ impl<'a, 'm> Lower<'a, 'm> {
             }],
             Op::SDiv => vec![{
                 let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
-                self.b.ins().sdiv(x, y)
+                self.divide(x, y)
             }],
             Op::SRem => vec![{
                 let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
-                self.b.ins().srem(x, y)
+                self.remainder(x, y)
             }],
             _ => unreachable!("integer_ops is only called for its own ops"),
         }
@@ -277,7 +277,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                     let both = self.b.ins().band(m1, mn);
                     self.fault_if(both, "msrt_fault_div_overflow", vec![x, y]);
                 }
-                vec![self.b.ins().sdiv(x, y)]
+                vec![self.divide(x, y)]
             }
             Op::SRemChk => {
                 let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
@@ -285,15 +285,42 @@ impl<'a, 'm> Lower<'a, 'm> {
                     let z = self.b.ins().icmp_imm_s(IntCC::Equal, y, 0);
                     self.fault_if(z, "msrt_fault_rem_zero", vec![]);
                 }
-                let m1 = self.b.ins().icmp_imm_s(IntCC::Equal, y, -1);
-                let one = self.iconst(1);
-                let safe = self.b.ins().select(m1, one, y);
-                let r = self.b.ins().srem(x, safe);
-                let zero = self.iconst(0);
-                vec![self.b.ins().select(m1, zero, r)]
+                vec![self.remainder(x, y)]
             }
             _ => unreachable!("checked_integer_ops is only called for its own ops"),
         }
+    }
+
+    /// `x / y` for a divisor known to be nonzero and, with `x` the minimum, not -1. A remainder
+    /// of the same operands earlier in the block has divided already: reuse its quotient.
+    fn divide(&mut self, x: Value, y: Value) -> Value {
+        if let Some(&q) = self.safe_quotients.get(&(x, y)) {
+            // That quotient divided by 1 when `y` is -1, where the true one is `-x`.
+            let m1 = self.b.ins().icmp_imm_s(IntCC::Equal, y, -1);
+            let neg = self.b.ins().ineg(x);
+            return self.b.ins().select(m1, neg, q);
+        }
+        let q = self.b.ins().sdiv(x, y);
+        self.quotients.insert((x, y), q);
+        q
+    }
+
+    /// `x % y` for a nonzero divisor (a divisor of -1 gives 0). One plain divide whose quotient a
+    /// later `x / y` in the block reuses, or the quotient an earlier one left: x86 divides once
+    /// for both, and Cranelift would divide twice.
+    fn remainder(&mut self, x: Value, y: Value) -> Value {
+        let (q, d) = if let Some(&q) = self.quotients.get(&(x, y)) {
+            (q, y)
+        } else {
+            let m1 = self.b.ins().icmp_imm_s(IntCC::Equal, y, -1);
+            let one = self.iconst(1);
+            let safe = self.b.ins().select(m1, one, y);
+            let q = self.b.ins().sdiv(x, safe);
+            self.safe_quotients.insert((x, y), q);
+            (q, safe)
+        };
+        let p = self.b.ins().imul(q, d);
+        self.b.ins().isub(x, p)
     }
 
     /// Bit operations and booleans.
