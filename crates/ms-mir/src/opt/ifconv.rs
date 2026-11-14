@@ -23,8 +23,7 @@ const MAX_ARM: usize = 4;
 
 /// Runs the pass over every function.
 pub fn run(m: &mut Module) -> bool {
-    let mut changed = false;
-    for i in 0..m.funcs.len() {
+    let results = super::par_funcs(m.funcs.len(), |i| {
         let mut f = m.funcs[i].clone();
         let positive: ValueSet = f
             .blocks
@@ -41,8 +40,14 @@ pub fn run(m: &mut Module) -> bool {
         while convert_all(m, &mut f, &positive) {
             any = true;
         }
-        if any {
+        any.then(|| {
             f.compact_blocks();
+            f
+        })
+    });
+    let mut changed = false;
+    for (i, f) in results.into_iter().enumerate() {
+        if let Some(f) = f {
             m.funcs[i] = f;
             changed = true;
         }
