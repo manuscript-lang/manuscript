@@ -215,6 +215,7 @@ msrt_promise_new() -> i64 @domain=promise
 msrt_promise_on_cancel(id: i64, cancel: i64) @domain=promise
 msrt_promise_put(id: i64, value: *mut u8, d: ValueDesc, failed: i64) @domain=promise @takes:value
 msrt_promise_ready(fd: i64, events: i64, timeout_ns: i64) -> i64 @domain=promise
+msrt_promise_run_unstarted(id: i64) -> u8 @domain=promise
 msrt_promise_sleep(ns: i64) -> i64 @domain=promise
 msrt_promise_start(id: i64, work: *mut Closure) @domain=promise @keeps:work @spawns
 msrt_promise_start_here(id: i64, work: *mut Closure) @domain=promise @keeps:work @spawns

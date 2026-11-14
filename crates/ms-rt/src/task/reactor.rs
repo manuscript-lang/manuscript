@@ -292,6 +292,9 @@ pub(super) unsafe fn reactor_wait() {
                 abandon_wait();
                 fault::fault_kind(FaultKind::Deadlock, CROSS_ISOLATE_DEADLOCK);
             }
+            if crate::promise::rescue_ends() {
+                continue;
+            }
             crate::sched::set_idle(true);
             spin_for_work();
             // Posters interrupt the poller only while this says it may block, so look for work

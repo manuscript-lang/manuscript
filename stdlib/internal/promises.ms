@@ -13,6 +13,8 @@ export extern fn msrt_promise_take[T](id: Int) T?
 
 export extern fn msrt_promise_done(id: Int) Bool
 
+export extern fn msrt_promise_run_unstarted(id: Int) Bool
+
 export extern fn msrt_promise_start(id: Int, work: fn() Unit) Unit
 
 // As `msrt_promise_start`, but always on the calling thread.
