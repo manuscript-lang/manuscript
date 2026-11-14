@@ -456,6 +456,46 @@ fn llvm_direct_glue_is_emitted_directly() {
     assert!(direct, "no glue was emitted directly");
 }
 
+/// A free takes the block as a `ptr`, as its declaration says. Passing the address as an `i64`
+/// hid the block from LLVM, which then moved the read of a record's name after the free of the
+/// record's box (`if hit := found:` printed garbage).
+#[test]
+fn llvm_free_calls_pass_a_pointer() {
+    if !cfg!(any(target_os = "linux", target_os = "macos"))
+        || !ms_build::llvm_available(&ms_cli::engine::build_options_from_env())
+    {
+        return;
+    }
+    let source = format!(
+        "{}/tests/llvm/free_pointer_argument.ms",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    let dir = std::env::temp_dir().join(format!("ms-llvm-free-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let built = Command::new(env!("CARGO_BIN_EXE_ms"))
+        .current_dir(&dir)
+        .env("MS_BACKEND", "llvm")
+        .env("MS_LLVM_UNITS", "1")
+        .env("MS_KEEP_LL", "1")
+        .args(["build", &source, "-o", "prog"])
+        .output()
+        .unwrap();
+    assert!(
+        built.status.success(),
+        "{}",
+        String::from_utf8_lossy(&built.stderr)
+    );
+    let out = Command::new(dir.join("prog")).output().unwrap();
+    let ir = std::fs::read_to_string(dir.join("ms-keep.ll")).unwrap();
+    let _ = std::fs::remove_dir_all(&dir);
+    assert_eq!(String::from_utf8_lossy(&out.stdout), "a,b,c:1\nhit a,b,c\n");
+    assert!(ir.contains("@\"msrt_free\"(ptr"), "no free in the program");
+    assert!(
+        !ir.contains("@\"msrt_free\"(i64"),
+        "a free was called with an integer address"
+    );
+}
+
 /// A recursive method is called by address, so it keeps the leaf convention, and its stack-growth
 /// shim is emitted directly too.
 #[test]

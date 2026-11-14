@@ -190,6 +190,8 @@ pub(crate) struct FnLower<'a> {
     pub string_needed: HashSet<usize>,
     /// Locals kept as the code point of the one-scalar `String` they stand for.
     pub scalar_locals: HashMap<usize, Value>,
+    /// Loop variables of `for e in xs.entries()` kept as the index and the borrowed element.
+    pub entry_locals: HashMap<usize, (Value, Value)>,
     /// Lowering a function value's thunk: its arguments are borrowed by the language's call
     /// rule, so one a native consumes is copied, and that copy is declared (`owned_arg`).
     pub in_thunk: bool,
@@ -798,6 +800,7 @@ impl<'a> FnLower<'a> {
             scalars_scan: false,
             string_needed: HashSet::default(),
             scalar_locals: HashMap::default(),
+            entry_locals: HashMap::default(),
             in_thunk: false,
             adapter: false,
             hold_declared: false,

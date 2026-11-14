@@ -247,13 +247,11 @@ fn release_block(cx: &mut Cx, b: &mut FnBuilder, r: ms_mir::types::TypeId, mask:
                 .collect();
             super::glue::drop_held(cx, fty, words, b);
         }
-        let word = b.ptr_to_int(&bp);
-        b.call(&LTy::Void, "", "msrt_free", &[(word, "")]);
+        b.call(&LTy::Void, "", "msrt_free", &[(bp, "")]);
         b.br(&join);
         b.label(&join);
     }
-    let word = b.ptr_to_int(p);
-    b.call(&LTy::Void, "", "msrt_free", &[(word, "")]);
+    b.call(&LTy::Void, "", "msrt_free", &[(p.clone(), "")]);
 }
 
 /// How many times `inst` splits its block: reading, creating or addressing a boxed collection
@@ -1032,8 +1030,7 @@ fn type_set(
                 .collect();
             super::glue::drop_held(cx, fty, held, b);
         }
-        let word = b.ptr_to_int(&bp);
-        b.call(&LTy::Void, "", "msrt_free", &[(word, "")]);
+        b.call(&LTy::Void, "", "msrt_free", &[(bp, "")]);
         b.br(&join);
         b.label(&join);
         let header = header_store(cx, b, words);
@@ -1046,8 +1043,7 @@ fn type_set(
         }
         store_leaves(b, &s, &block, at, &words[..n]);
     }
-    let word = b.ptr_to_int(old);
-    b.call(&LTy::Void, "", "msrt_free", &[(word, "")]);
+    b.call(&LTy::Void, "", "msrt_free", &[(old.clone(), "")]);
 }
 
 /// A header block holding `words`, or null when they are the all-zero empty collection (a stamped

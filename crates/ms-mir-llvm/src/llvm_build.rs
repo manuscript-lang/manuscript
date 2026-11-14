@@ -804,6 +804,13 @@ impl<'t> FnBuilder<'t> {
         args: &[(Val, &str)],
         fn_attrs: &str,
     ) -> Option<Val> {
+        // `msrt_free` is declared `(ptr allocptr)`. An `i64` argument is a call through a
+        // mismatched type: LLVM cannot see which block is freed, so it may move a read of the
+        // block past the free.
+        assert!(
+            callee != "msrt_free" || args.iter().all(|(v, _)| v.ty == Ty::Ptr),
+            "msrt_free takes a ptr"
+        );
         self.call_to(ret, ret_attr, &format!("@\"{callee}\""), args, fn_attrs)
     }
 

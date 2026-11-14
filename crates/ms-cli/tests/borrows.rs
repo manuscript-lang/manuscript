@@ -47,6 +47,16 @@ fn if_var_borrows_map_and_list_entries() {
 }
 
 #[test]
+fn list_entries_loop_reads_index_and_value_in_place() {
+    let (status, text) = run_ms(&["run", &fixture("list_entries_walk.ms")]);
+    assert_eq!(status, Some(0), "{text}");
+    assert_eq!(
+        text,
+        "0:1 2:3 x1 y3 0=a 1=bb 10 11 12 20 21 22 30 31 32 [1, 3, 5]\n"
+    );
+}
+
+#[test]
 fn touching_the_origin_while_borrowed_is_rejected() {
     let (status, text) = run_ms(&["run", &fixture("rejected_read_origin.ms")]);
     assert_eq!(status, Some(1), "{text}");

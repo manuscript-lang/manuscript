@@ -1603,6 +1603,79 @@ impl<'a> FnLower<'a> {
         Ok(())
     }
 
+    /// `for e in xs.entries()` over a list the body cannot change, where `e` is only read as
+    /// `e.index` or `e.value`: the loop walks `xs` and keeps no entry records. Returns `xs`.
+    fn list_entries_walk<'e>(
+        &self,
+        iter: &'e Expr,
+        loop_var: &ms_check::api::types::BindingRef,
+        body: &[Stmt],
+    ) -> Option<&'e Expr> {
+        use ms_check::api::visit::{self, Visitor};
+        let ExprKind::Call { callee, args } = &iter.kind else {
+            return None;
+        };
+        let ExprKind::Member { left, name } = &callee.kind else {
+            return None;
+        };
+        if !args.is_empty()
+            || self.syms.str(*name) != "entries"
+            || !self.hir.ty(left).is(ms_check::api::types::Builtin::List)
+            || !matches!(
+                self.hir.resolution(callee),
+                ms_check::api::hir::Resolution::Method(_)
+            )
+            || loop_var.mutable
+            || self.slotted.contains(&loop_var.uid)
+            || self.cx.ownership.moves.contains_key(&loop_var.uid)
+            || !self.unchanged_by(left, body)
+        {
+            return None;
+        }
+        struct Uses<'a, 'b> {
+            fl: &'a FnLower<'b>,
+            uid: usize,
+            lambdas: usize,
+            allowed: Vec<ms_check::api::ast::NodeId>,
+            ok: bool,
+        }
+        impl Visitor for Uses<'_, '_> {
+            fn expr(&mut self, e: &Expr) {
+                match &e.kind {
+                    ExprKind::Lambda(_) => self.lambdas += 1,
+                    ExprKind::Member { left, name }
+                        if matches!(self.fl.syms.str(*name), "index" | "value") =>
+                    {
+                        self.allowed.push(left.id);
+                    }
+                    ExprKind::Name(_) => {
+                        if let ms_check::api::hir::Resolution::Local(b) = self.fl.hir.resolution(e)
+                            && b.uid == self.uid
+                            && (self.lambdas > 0 || !self.allowed.contains(&e.id))
+                        {
+                            self.ok = false;
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            fn leave_expr(&mut self, e: &Expr) {
+                if matches!(e.kind, ExprKind::Lambda(_)) {
+                    self.lambdas -= 1;
+                }
+            }
+        }
+        let mut uses = Uses {
+            fl: self,
+            uid: loop_var.uid,
+            lambdas: 0,
+            allowed: Vec::new(),
+            ok: true,
+        };
+        visit::walk_block(&mut uses, body);
+        uses.ok.then_some(&**left)
+    }
+
     fn for_stmt(&mut self, s: &Stmt, iter: &Expr, body: &[Stmt]) -> Result<(), Error> {
         let outermost = self.loops.is_empty();
         let r = self.for_loop(s, iter, body);
@@ -1622,8 +1695,25 @@ impl<'a> FnLower<'a> {
         self.hoist_literals(body)?;
         let mut list_var = None;
         let mut cursor: Option<(Value, ms_mir::types::TypeId, MTy)> = None;
+        let entries_recv = self.list_entries_walk(iter, &loop_var, body);
+        let mut entries_loop = false;
         let (start, len) = match self.range_bounds(iter)? {
             Some(bounds) => bounds,
+            None if entries_recv.is_some() => {
+                let it = self.expr(entries_recv.expect("receiver"))?;
+                if self.dead {
+                    self.discard_scope();
+                    return Ok(());
+                }
+                let var = self
+                    .b
+                    .declare_var(self.ty_of(it.v), ms_mir::ir::Mode::Borrow);
+                self.b.def_var(var, it.v);
+                list_var = Some(var);
+                entries_loop = true;
+                let list = self.b.use_var(var);
+                (self.b.iconst(0), self.b.list_len(list))
+            }
             None => {
                 // A loop that moves its element needs the owned snapshot, not a borrowed walk.
                 let borrowed = !loop_var.mutable
@@ -1852,6 +1942,9 @@ impl<'a> FnLower<'a> {
                 }
                 None => self.bind_local(&loop_var, Val { v: e, own: true }),
             }
+        } else if entries_loop {
+            // `e.index` and `e.value` read the position and the borrowed element directly.
+            self.entry_locals.insert(loop_var.uid, (i, e));
         } else if list_var.is_some() && !loop_var.mutable && !self.slotted.contains(&loop_var.uid) {
             // The loop holds the list and the body cannot change it: the element is a borrow.
             self.bind_borrow_of(&loop_var, e);
