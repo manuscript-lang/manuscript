@@ -2,7 +2,8 @@ name: Platform benchmarks
 
 # Manual runs only: builds the release `ms` natively on each platform, runs the runtime allocator and
 # memory tests, prints the bench/perf/strappend table (StringBuilder and List growth against Rust) and
-# three rounds of bench/perf/json (against Node and serde_json), so that a runtime change can be
+# three rounds of bench/perf/json (against Node and serde_json), and the file, spawn and pipe timings of
+# bench/tools/platform_io.ms, so that a runtime change can be
 # checked on Linux, macOS and Windows before and after merging.
 on:
   workflow_dispatch:
@@ -84,9 +85,15 @@ jobs:
           for _ in 1 2 3; do
             MS="$PWD/$ms" "$PWD/$ms" run bench/tools/json_bench.ms
           done | tee json-${{ matrix.name }}.txt
+      - name: Run bench/tools/platform_io
+        run: |
+          ms=target/release/ms
+          if [ "$RUNNER_OS" = Windows ]; then ms="$ms.exe"; fi
+          MS="$PWD/$ms" "$PWD/$ms" run bench/tools/platform_io.ms | tee platform-io-${{ matrix.name }}.txt
       - uses: actions/upload-artifact@v7
         with:
           name: bench-${{ matrix.name }}
           path: |
             strappend-${{ matrix.name }}.txt
             json-${{ matrix.name }}.txt
+            platform-io-${{ matrix.name }}.txt
