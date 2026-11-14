@@ -32,7 +32,7 @@ PASS decrement.ms::checked decrement
 1 tests, 0 failed
 ```
 
-A test follows `Result[Unit, Error]` return rules; normal completion succeeds. `ms test` runs each selected test in a separate process. See [testing](../../../learn/testing.md) for fixtures, selection and reporting.
+A test follows `Result[Unit, Error]` return rules; normal completion succeeds. `ms test` runs every test file at once, each in its own promise in one process. See [testing](../../../learn/testing.md) for fixtures, selection and reporting.
 
 ## Required coverage
 

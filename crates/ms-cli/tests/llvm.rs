@@ -95,16 +95,21 @@ fn llvm_native_calls_keep_distinct_fault_sites() {
         include_str!("llvm/llvm-native-calls-keep-distinct-fault-sites.ms"),
     )
     .unwrap();
+    // A fault ends its file, so each faulting test runs on its own.
     let run = |backend| {
-        let output = Command::new(env!("CARGO_BIN_EXE_ms"))
-            .env("MS_BACKEND", backend)
-            .args(["test"])
-            .arg(&source)
-            .output()
-            .unwrap();
-        assert_eq!(output.status.code(), Some(1));
-        assert!(output.stderr.is_empty(), "{:?}", output.stderr);
-        String::from_utf8(output.stdout).unwrap()
+        let mut text = String::new();
+        for name in ["first", "second"] {
+            let output = Command::new(env!("CARGO_BIN_EXE_ms"))
+                .env("MS_BACKEND", backend)
+                .args(["test", "--test", &format!("sites.ms::{name}")])
+                .arg(&source)
+                .output()
+                .unwrap();
+            assert_eq!(output.status.code(), Some(1));
+            assert!(output.stderr.is_empty(), "{:?}", output.stderr);
+            text.push_str(&String::from_utf8(output.stdout).unwrap());
+        }
+        text
     };
     let cranelift = run("cranelift");
     let llvm = run("llvm");

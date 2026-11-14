@@ -197,6 +197,9 @@ struct Task {
     defer_deadline: i64,
     /// The promise this task runs (`promise::msrt_promise_start`), or 0; told when the task ends.
     promise: i64,
+    /// The test output capture this task's standard output goes to, or 0 (`msrt_test_capture_set`);
+    /// tasks and promises it starts inherit it.
+    capture: u64,
     /// The task's block, which generated code reaches through its region's cell.
     hdr: fault::Hdr,
     /// While hibernating: the copy of the stack from `sp` to its top, and its length.

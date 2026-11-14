@@ -667,8 +667,13 @@ fn request_cancel(id: i64) {
 pub(crate) fn execute(start: Start) {
     sched::live_add(1);
     // SAFETY: the creator holds a reference to the closure until it is told the task ended.
-    let task =
-        unsafe { task::spawn_promise_task(start.closure as *mut ms_rt_abi::Closure, start.id) };
+    let task = unsafe {
+        task::spawn_promise_task(
+            start.closure as *mut ms_rt_abi::Closure,
+            start.id,
+            start.capture,
+        )
+    };
     deliver(
         start.id,
         Event::Started {
@@ -686,6 +691,13 @@ pub(crate) fn task_ended(id: i64, status: u8, msg: &ms_rt_abi::StrVal, started: 
     } else {
         Vec::new()
     };
+    let capture = task::capture();
+    if status == 1
+        && capture != 0
+        && let Some(record) = fault::take_record(msg)
+    {
+        crate::io::capture_fault(capture, record.encode());
+    }
     sched::live_add(-1);
     // Ending drops the closure, which closes what it captured: like any implicit close that runs
     // shielded, since a cancelled task would otherwise be cancelled again at its first park.
@@ -1254,6 +1266,7 @@ unsafe fn start_on(id: i64, work: *mut ms_rt_abi::Closure, mode: Mode) {
         id,
         closure: work as usize,
         at: crate::sys::monotonic_ns(),
+        capture: task::capture(),
     };
     // A spread promise is placed on purpose, so a stream pinned to this thread does not hold it here.
     if mode == Mode::Here

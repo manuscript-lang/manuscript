@@ -23,7 +23,7 @@ fn make_fixture() ApiFixture:
         server: serve(address: "127.0.0.1:0", handler: buffered(handle)).get()
     )
 
-fn var ApiFixture.after_all() Unit:
+fn var ApiFixture.after_all() Unit!:
     self.server.close().get(none)
 
 test "first request":

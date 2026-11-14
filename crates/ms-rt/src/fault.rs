@@ -1151,6 +1151,18 @@ pub fn write_record(record: &Record) {
     }
 }
 
+/// The structured record of the fault whose message `msg` a guard just handed over, when it is
+/// still the last one raised (another thread's fault may have replaced it).
+pub fn take_record(msg: &ms_rt_abi::StrVal) -> Option<Record> {
+    // SAFETY: `msg` is a string the guard just produced.
+    let text = unsafe { core::slice::from_raw_parts(msg.data(), msg.len()) };
+    let mut last = LAST_RECORD.lock().ok()?;
+    if last.as_ref().is_some_and(|r| text.starts_with(&r.message)) {
+        return last.take();
+    }
+    None
+}
+
 /// Writes the last fault's record for the report `text` just printed. A record that does not
 /// describe `text` (an earlier recovered fault) is replaced by one holding only the text.
 #[cfg(not(test))]
@@ -1202,10 +1214,6 @@ pub fn fault_vec(mut report: Vec<u8>) -> ! {
     finish_report(None)
 }
 
-/// Starts the fault message of `skip(reason)`; ms-lower writes the same marker.
-#[cfg(not(test))]
-const SKIP_MARKER: &[u8] = b"\x01SKIP\x01";
-
 crate::isolate_static! {
     static PRIMARY: Option<Vec<u8>> = None;
 }
@@ -1241,25 +1249,6 @@ fn finish_report(primary: Option<Vec<u8>>) -> ! {
     {
         if guard_active() {
             guard_exit(GUARD_FAULT, report)
-        }
-        if report.as_slice().starts_with(SKIP_MARKER)
-            && !report
-                .as_slice()
-                .windows(16)
-                .any(|w| w == b"\ncleanup fault: ")
-        {
-            // `skip`: the cleanups ran; report the reason (the first line) and end with success.
-            let line = report
-                .as_slice()
-                .split(|b| *b == b'\n')
-                .next()
-                .unwrap_or_default();
-            let mut out = Vec::new();
-            out.extend_from_slice(line);
-            out.push(b'\n');
-            crate::io::flush_stdout();
-            sys::write_all(sys::STDERR, out.as_slice());
-            crate::process::exit(0)
         }
         report.push(b'\n');
         crate::io::flush_stdout();

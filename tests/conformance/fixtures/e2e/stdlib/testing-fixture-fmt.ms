@@ -9,10 +9,10 @@ type Counter:
 fn make_fixture() Counter:
     return Counter(0)
 
-fn var Counter.before_each() Unit:
+fn var Counter.before_each() Unit!:
     self.value = 1
 
-fn var Counter.after_each() Unit:
+fn var Counter.after_each() Unit!:
     self.value = 10
 
 test "first fixture use":

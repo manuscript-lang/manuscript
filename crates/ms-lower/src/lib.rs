@@ -97,9 +97,6 @@ pub fn lower_benches(
     func::lower_tests(syms, program, options, true)
 }
 
-/// The marker a failed test writes to stderr ahead of its message.
-pub use runner::SKIP_MARKER;
-
 /// Lowers a checked program (no diagnostics) to a MIR module with `main` as the entry.
 pub fn lower_program(
     syms: ms_check::api::Names,

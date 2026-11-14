@@ -165,6 +165,7 @@ fn run_structured(
         while let Ok(chunk) = stderr.try_recv() {
             err.extend_from_slice(&chunk);
         }
+        false
     });
     // Output written just before exit; a pipe held open elsewhere ends the wait.
     while let Ok(chunk) = stdout.recv_timeout(Duration::from_millis(100)) {

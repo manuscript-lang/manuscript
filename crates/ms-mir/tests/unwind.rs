@@ -602,3 +602,45 @@ fn registers_live_temporaries_before_a_noreturn_fault_call() {
         print_module(&m)
     );
 }
+
+/// A recursive call that moves its argument consumes it: the rewrite of the function must read
+/// the callee's parameter modes from its own signature while the function itself is swapped out.
+#[test]
+fn a_recursive_call_that_moves_an_argument_consumes_it() {
+    let (m, _) = rewrite(
+        r#"
+fn @walk(%n: int, %s: move str) -> int {
+b0:
+  %z: int = iconst 0
+  %done: bool = icmp.eq %n, %z
+  br_if %done, b1(), b2()
+b1():
+  drop %s
+  ret %z
+b2():
+  %one: int = iconst 1
+  %m: int = isub %n, %one
+  %r: int = call @walk (%m, %s)
+  %t: int = call.rt @msrt_task_sleep (%r)
+  ret %t
+}
+
+fn @main() -> int {
+b0:
+  %h: str = str "held"
+  %s: str = clone %h
+  %n: int = iconst 3
+  %r: int = call @walk (%n, %s)
+  ret %r
+}
+"#,
+        true,
+    );
+    // The call takes `%s`, so nothing in `walk` is left to register around it or the sleep.
+    assert_eq!(
+        count(&m, "walk", Op::CleanupPush),
+        0,
+        "{}",
+        print_module(&m)
+    );
+}

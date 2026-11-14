@@ -1,29 +1,28 @@
-//! `ms test` and `ms bench`: every test (or bench) runs in its own process, so a
-//! fault, abort or hang fails only that one.
+//! `ms test` and `ms bench`. Tests run together in one process; each bench runs in its own.
 //!
-//! `ms bench` uses the same protocol over the `bench` blocks. Each runs under the
+//! # Tests
+//!
+//! The lowering builds one executable per `ms test` ([`ms_build::Lower::lower_tests`]) whose
+//! entry calls `run_test_files` in `@std/internal/test_runner.ms`: every test file runs at once in its
+//! own promise, a file's tests in order around one fixture. `MS_TEST_SELECT` names the test
+//! indices to run, `MS_TEST_TIMEOUT_NS` bounds each test's waits, and the harness appends
+//! records (start, output, result, fault) to the file `MS_TEST_RESULTS` names; see the
+//! runner's doc comment for the format. This side reads them as they arrive, prints each
+//! test's output between its `RUN` and result lines in plan order, and stops the process when
+//! a test runs past `--timeout` without waiting. A fault ends its file: the running test fails
+//! and the file's later tests are not run. A crash fails the running tests and leaves the rest
+//! not run. Selection (`--test=`, `--match=`, `--exclude=`, `--filter=`), `--repeat=`,
+//! `--shuffle=`, `--fail-fast` and `--timeout=` are applied here.
+//!
+//! # Benches
+//!
+//! `exe <index> [program arguments]` runs bench number `index` under the
 //! `@std/test/bench.ms` driver, which calibrates, repeats and times the body, reads its
-//! settings from `MS_BENCH_TIME_MS`, `MS_BENCH_SAMPLES` and `MS_BENCH_ITERATIONS`,
-//! and writes one `MSBENCH {json}` line of per-iteration statistics to standard
-//! output. The bench's other standard output is discarded.
-//!
-//! # The test executable protocol
-//!
-//! The lowering builds one executable per `ms test` ([`ms_build::Lower::lower_tests`])
-//! and returns the test names in index order. `exe <index> [program arguments]`
-//! runs test number `index` and exits: status 0 means passed; status 1 means the test
-//! returned an error, whose message and source site the process wrote as a
-//! [`ms_rt_abi::record::Record`] to the file `MS_FAULT_RECORD` names (it also prints them to
-//! standard error). Any other status (a fault, abort or signal) is a failure described by
-//! how the process ended; a fault leaves its record in the same file.
-//! `skip` ends the test with status 0 after writing [`SKIP_MARKER`] and the
-//! reason to standard error; the test is reported skipped, not passed.
-//!
-//! The test's standard output goes to the command's standard output between
-//! its `RUN` and result lines; standard error passes through. Selection
-//! (`--test=`, `--match=`, `--exclude=`, `--filter=`), `--repeat=`,
-//! `--shuffle=`, `--fail-fast` and `--timeout=` are applied here. Fixtures
-//! therefore run once per test, not once per module.
+//! settings from `MS_BENCH_TIME_MS`, `MS_BENCH_SAMPLES` and `MS_BENCH_ITERATIONS`, and writes
+//! one `MSBENCH {json}` line of per-iteration statistics to standard output; its other output
+//! is discarded. Status 1 means the bench returned an error, whose message and source site
+//! the process wrote as a [`ms_rt_abi::record::Record`] to the file `MS_FAULT_RECORD` names;
+//! any other failing status is described by how the process ended.
 
 use std::io::Read;
 use std::process::{Command, Stdio};
@@ -32,9 +31,6 @@ use std::time::{Duration, Instant};
 
 use ms_build::Lower;
 use ms_driver::project::pathops;
-
-/// Written to standard error, ahead of the reason, by a test that skips itself and exits 0.
-pub const SKIP_MARKER: &str = "\u{1}SKIP\u{1}";
 
 use super::{Engine, Target, TempDir, compile_target};
 use crate::backend::{BackendResult, Io, TestRequest};
@@ -485,12 +481,44 @@ impl Runner<'_> {
         let started = Instant::now();
         let mut failed = 0;
         let mut reason = String::new();
+        // Tests run together as promises in one process; each bench runs in its own.
+        let mut together = if options.bench || plan.is_empty() {
+            None
+        } else {
+            // Each `--repeat` round is one run of the executable, which runs a test once.
+            let indices: Vec<usize> = selected.iter().map(|(index, _)| *index).collect();
+            let files = file_numbers(available);
+            let mut all = self.run_all_together(&indices, &files, out);
+            for _ in 1..repeat {
+                for (index, mut more) in self.run_all_together(&indices, &files, out) {
+                    all.entry(index).or_default().append(&mut more);
+                }
+            }
+            Some(all)
+        };
         for (position, (index, name)) in plan.iter().enumerate() {
             out.line(format!("RUN {name}"));
             let began = Instant::now();
-            let result = self.run_one(*index, out);
+            let (result, took) = match together.as_mut() {
+                Some(results) => {
+                    let (result, took, printed) = results
+                        .get_mut(index)
+                        .and_then(|queue| queue.pop_front())
+                        .unwrap_or((
+                            Ran::Failed("the test reported no result".into()),
+                            Duration::ZERO,
+                            Vec::new(),
+                        ));
+                    out.write(&printed);
+                    (result, took)
+                }
+                None => {
+                    let result = self.run_one(*index, out);
+                    (result, began.elapsed())
+                }
+            };
             let case = &mut document.tests[position];
-            case.duration = began.elapsed();
+            case.duration = took;
             match result {
                 Ran::Cancelled => {
                     // The interrupted test is not a result; it stays not run.
@@ -500,6 +528,10 @@ impl Runner<'_> {
                 Ran::Passed => {
                     out.line(format!("PASS {name}"));
                     case.status = Status::Passed;
+                }
+                Ran::NotRun(why) => {
+                    out.line(format!("NOT RUN {name}: {why}"));
+                    case.failure = why;
                 }
                 Ran::Measured(stats) => {
                     out.line(format!("BENCH {name}: {}", describe_stats(&stats)));
@@ -562,6 +594,203 @@ impl Runner<'_> {
         i32::from(failed > 0 || reason == "cancelled")
     }
 
+    /// Runs `indices` together; `files[i]` numbers test `i`'s file as the harness does. A
+    /// fault ends its file: the test that was running fails with it and the file's later tests
+    /// are not run. A test past `--timeout` that never waits stops the process and ends its
+    /// file the same way; a crash (stack overflow, abort, signal) ends the files whose tests
+    /// were running, since the culprit is not known. The other files' unfinished tests run
+    /// again in a new process, on a new fixture.
+    fn run_all_together(
+        &self,
+        indices: &[usize],
+        files: &[usize],
+        out: &mut Out,
+    ) -> std::collections::HashMap<usize, std::collections::VecDeque<Outcome>> {
+        let file_of = |index: usize| files.get(index).copied().unwrap_or(usize::MAX);
+        let mut all: std::collections::HashMap<usize, std::collections::VecDeque<Outcome>> =
+            std::collections::HashMap::new();
+        let mut remaining = indices.to_vec();
+        while !remaining.is_empty() {
+            let mut run = self.run_together(&remaining, out);
+            for (index, mut results) in std::mem::take(&mut run.results) {
+                all.entry(index).or_default().append(&mut results);
+            }
+            let crashed = run.timed_out.is_empty();
+            // Each ended file's failure, and why its later tests did not run.
+            let mut ended: std::collections::HashMap<usize, (String, String)> = run
+                .faults
+                .iter()
+                .map(|(file, why)| {
+                    (
+                        *file,
+                        (why.clone(), "an earlier test in this file faulted".into()),
+                    )
+                })
+                .collect();
+            for &index in &remaining {
+                if all.contains_key(&index) || ended.contains_key(&file_of(index)) {
+                    continue;
+                }
+                let why = if run.timed_out.contains(&index) {
+                    let limit = self.options.timeout.unwrap_or_default();
+                    (
+                        format!(
+                            "timed out after {limit:?}; a test that never waits is stopped with its process"
+                        ),
+                        "an earlier test in this file timed out".into(),
+                    )
+                } else if crashed && run.running.contains(&index) {
+                    (
+                        format!("the test process {} while this test ran", run.ended),
+                        format!(
+                            "the test process {} while an earlier test in this file ran",
+                            run.ended
+                        ),
+                    )
+                } else {
+                    continue;
+                };
+                ended.insert(file_of(index), why);
+            }
+            let mut next = Vec::new();
+            for &index in &remaining {
+                if all.contains_key(&index) {
+                    continue;
+                }
+                let file = file_of(index);
+                let Some((why, later)) = ended.get(&file) else {
+                    next.push(index);
+                    continue;
+                };
+                let (ran, printed) = if !run.started.contains(&index) {
+                    (Ran::NotRun(later.clone()), Vec::new())
+                } else if run.faults.contains_key(&file) {
+                    let record = run
+                        .fault_records
+                        .get(&file)
+                        .and_then(|bytes| ms_rt_abi::record::Record::decode(bytes));
+                    let fault = match record {
+                        Some(record) => {
+                            let mut fault = Fault::from_record(record);
+                            // The harness's own frames sit below the test's.
+                            if let Some(at) = fault
+                                .trace
+                                .iter()
+                                .position(|f| f.file.ends_with("internal/test_runner.ms"))
+                            {
+                                fault.trace.truncate(at);
+                            }
+                            Some(fault)
+                        }
+                        None => Fault::from_text(why),
+                    };
+                    let ran = match fault {
+                        Some(fault) => Ran::Faulted(why.clone(), fault),
+                        None => Ran::Failed(why.clone()),
+                    };
+                    (ran, run.fault_outputs.remove(&file).unwrap_or_default())
+                } else {
+                    (Ran::Failed(why.clone()), Vec::new())
+                };
+                all.entry(index)
+                    .or_default()
+                    .push_back((ran, Duration::ZERO, printed));
+            }
+            if next.len() == remaining.len() {
+                // Nothing finished: the process cannot run tests at all.
+                for index in next {
+                    let why = format!("the test process {} before this test started", run.ended);
+                    all.entry(index).or_default().push_back((
+                        Ran::Failed(why),
+                        Duration::ZERO,
+                        Vec::new(),
+                    ));
+                }
+                break;
+            }
+            remaining = next;
+        }
+        all
+    }
+
+    /// Runs the tests `indices` in one process under the harness in `@std/internal/test_runner.ms`,
+    /// reading its records as they arrive. A test with no result past `--timeout` (plus a
+    /// second, since the harness fails its next wait at the limit) never waits; the process is
+    /// stopped.
+    fn run_together(&self, indices: &[usize], out: &mut Out) -> Together {
+        let mut run = Together::default();
+        let stops = Stops::catch();
+        let mut command = Command::new(self.executable);
+        let select: Vec<String> = indices.iter().map(|i| i.to_string()).collect();
+        let records = TempDir::create("ms-test-results-").ok();
+        let records_path = records
+            .as_ref()
+            .map(|d| d.0.join("results"))
+            .unwrap_or_default();
+        command
+            .env("MS_TEST_SELECT", select.join(","))
+            .env("MS_TEST_RESULTS", &records_path)
+            .args(&self.options.program)
+            .current_dir(self.working);
+        if let Some(timeout) = self.options.timeout {
+            command.env("MS_TEST_TIMEOUT_NS", timeout.as_nanos().to_string());
+        }
+        if let Some(runs) = self.options.runs {
+            command.env("MS_TEST_RUNS", runs.to_string());
+        }
+        if let Some(seed) = self.options.seed {
+            command.env("MS_TEST_SEED", seed.to_string());
+        }
+        if let Some(fuzz) = self.options.fuzz {
+            command.env("MS_TEST_FUZZ_MS", fuzz.as_millis().to_string());
+        }
+        let spawned = command
+            .stdin(Stdio::inherit())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::inherit())
+            .spawn();
+        let mut child = match spawned {
+            Ok(child) => child,
+            Err(error) => {
+                run.ended = error.to_string();
+                return run;
+            }
+        };
+        let stdout = pipe_reader(child.stdout.take().expect("piped stdout"));
+        let mut printed: Vec<u8> = Vec::new();
+        let limit = self.options.timeout.map(|t| t + Duration::from_secs(1));
+        let mut reader = RecordReader::default();
+        let waited = wait_supervised(&mut child, &stops, None, &mut || {
+            while let Ok(chunk) = stdout.try_recv() {
+                printed.extend_from_slice(&chunk);
+            }
+            reader.read(&records_path, &mut run);
+            let Some(limit) = limit else { return false };
+            let late: Vec<usize> = reader
+                .running
+                .iter()
+                .filter(|(_, (_, began))| began.elapsed() >= limit)
+                .map(|(index, _)| *index)
+                .collect();
+            run.timed_out.extend(&late);
+            !late.is_empty()
+        });
+        run.ended = match &waited {
+            Ok(_) if !run.timed_out.is_empty() => {
+                "was stopped because a test timed out".to_string()
+            }
+            Ok(w) => describe_exit(&w.status),
+            Err(error) => error.to_string(),
+        };
+        while let Ok(chunk) = stdout.recv_timeout(Duration::from_millis(100)) {
+            printed.extend_from_slice(&chunk);
+        }
+        out.write(&printed);
+        reader.read(&records_path, &mut run);
+        run.running = reader.running.keys().copied().collect();
+        run
+    }
+
     /// Run test `index` in its own process.
     fn run_one(&self, index: usize, out: &mut Out) -> Ran {
         let stops = Stops::catch();
@@ -616,6 +845,7 @@ impl Runner<'_> {
             while let Ok(chunk) = stderr.try_recv() {
                 errors.extend_from_slice(&chunk);
             }
+            false
         });
         // Output written just before exit; a silent pipe held open elsewhere ends the wait.
         while let Ok(chunk) = stdout.recv_timeout(Duration::from_millis(100)) {
@@ -668,10 +898,6 @@ impl Runner<'_> {
             return Ran::Rejected(shown, position);
         }
         if waited.status.success() {
-            if let Some((before, reason)) = errors.split_once(SKIP_MARKER) {
-                let _ = out.io.stderr.write_all(before.as_bytes());
-                return Ran::Skipped(reason.trim_end_matches('\n').to_string());
-            }
             let _ = out.io.stderr.write_all(errors.as_bytes());
             if bench {
                 return match measurement(&printed) {
@@ -695,6 +921,153 @@ impl Runner<'_> {
             Ran::Failed(text.to_string())
         }
     }
+}
+
+/// A test's result, how long it ran, and its standard output.
+type Outcome = (Ran, Duration, Vec<u8>);
+
+/// What one run of the test executable reported.
+#[derive(Default)]
+struct Together {
+    /// Each test's results, in completion order.
+    results: std::collections::HashMap<usize, std::collections::VecDeque<Outcome>>,
+    /// Tests that started.
+    started: std::collections::HashSet<usize>,
+    /// Files whose test faulted, by the harness's file number, with the fault message.
+    faults: std::collections::HashMap<usize, String>,
+    /// Each test's standard output, in completion order, before its result.
+    outputs: std::collections::HashMap<usize, std::collections::VecDeque<Vec<u8>>>,
+    /// A faulted file's encoded fault record (`ms_rt_abi::record`), when the runtime kept one.
+    fault_records: std::collections::HashMap<usize, Vec<u8>>,
+    /// A faulted file's output since its last result.
+    fault_outputs: std::collections::HashMap<usize, Vec<u8>>,
+    /// Tests that had started and not reported when the process ended.
+    running: std::collections::HashSet<usize>,
+    /// Tests stopped with the process for running past `--timeout`.
+    timed_out: std::collections::HashSet<usize>,
+    /// How the process ended.
+    ended: String,
+}
+
+/// Reads the harness's records from the results file as they are appended.
+#[derive(Default)]
+struct RecordReader {
+    /// Bytes of the file already read.
+    offset: u64,
+    /// Read bytes not yet a whole record.
+    pending: Vec<u8>,
+    /// Tests started and not yet reported, with when the host saw them start.
+    running: std::collections::HashMap<usize, (usize, Instant)>,
+}
+
+impl RecordReader {
+    /// Reads what the file gained since the last call into `run`.
+    fn read(&mut self, path: &std::path::Path, run: &mut Together) {
+        use std::io::{Seek, SeekFrom};
+        let Ok(mut file) = std::fs::File::open(path) else {
+            return;
+        };
+        if file.seek(SeekFrom::Start(self.offset)).is_err() {
+            return;
+        }
+        let before = self.pending.len();
+        if file.read_to_end(&mut self.pending).is_err() {
+            return;
+        }
+        self.offset += (self.pending.len() - before) as u64;
+        let used = self.parse(run);
+        self.pending.drain(..used);
+    }
+
+    /// Takes the whole records at the start of `pending`; returns the bytes they used.
+    fn parse(&mut self, run: &mut Together) -> usize {
+        let mut at = 0;
+        while let Some(end) = self.pending[at..].iter().position(|&b| b == b'\n') {
+            let line = String::from_utf8_lossy(&self.pending[at..at + end]).into_owned();
+            let mut next = at + end + 1;
+            if let Some(rest) = line.strip_prefix("\u{1}MSOUT ") {
+                let (key, size) = rest.split_once(' ').unwrap_or((rest, "0"));
+                let size = size.parse::<usize>().unwrap_or(0);
+                if self.pending.len() < next + size + 1 {
+                    break;
+                }
+                let printed = self.pending[next..next + size].to_vec();
+                next += size + 1;
+                if let Some(file) = key.strip_prefix('f').and_then(|f| f.parse().ok()) {
+                    run.fault_outputs.insert(file, printed);
+                } else if let Some(file) = key.strip_prefix('r').and_then(|f| f.parse().ok()) {
+                    run.fault_records.insert(file, printed);
+                } else if let Ok(index) = key.parse() {
+                    run.outputs.entry(index).or_default().push_back(printed);
+                }
+            } else if let Some(rest) = line.strip_prefix("\u{1}MSSTART ") {
+                let mut words = rest.split(' ').map(|w| w.parse::<usize>().ok());
+                if let (Some(Some(index)), Some(Some(file))) = (words.next(), words.next()) {
+                    run.started.insert(index);
+                    self.running.insert(index, (file, Instant::now()));
+                }
+            } else if let Some(rest) = line.strip_prefix("\u{1}MSFAULT ") {
+                let (file, message) = rest.split_once('\u{1}').unwrap_or((rest, ""));
+                if let Ok(file) = file.parse::<usize>() {
+                    run.faults.insert(file, message.replace('\u{2}', "\n"));
+                    // The faulted file's test is no longer running.
+                    self.running.retain(|_, (of, _)| *of != file);
+                }
+            } else if let Some(rest) = line.strip_prefix("\u{1}MSTEST ") {
+                let (index, outcome) = parse_result(rest, run);
+                self.running.remove(&index);
+                run.results.entry(index).or_default().push_back(outcome);
+            }
+            at = next;
+        }
+        at
+    }
+}
+
+/// A `MSTEST` record's test index and outcome, with the output recorded before it.
+fn parse_result(rest: &str, run: &mut Together) -> (usize, Outcome) {
+    let mut fields = rest.splitn(3, '\u{1}');
+    let head = fields.next().unwrap_or_default();
+    let message = fields.next().unwrap_or_default().to_string();
+    let site = fields.next().unwrap_or_default().to_string();
+    let mut words = head.split(' ');
+    let index: usize = words
+        .next()
+        .and_then(|w| w.parse().ok())
+        .unwrap_or(usize::MAX);
+    let status = words.next().unwrap_or_default();
+    let nanos: u64 = words.next().and_then(|w| w.parse().ok()).unwrap_or(0);
+    let ran = match status {
+        "pass" => Ran::Passed,
+        "skip" => Ran::Skipped(message),
+        _ if site.is_empty() => Ran::Failed(message),
+        _ => Ran::Rejected(format!("{message}\n  at {site}"), position_of_site(&site)),
+    };
+    let printed = run
+        .outputs
+        .get_mut(&index)
+        .and_then(|q| q.pop_front())
+        .unwrap_or_default();
+    (index, (ran, Duration::from_nanos(nanos), printed))
+}
+
+/// The harness's file number of each test: files numbered in order of their first test, as
+/// lowering groups them; a name is `file::test`.
+fn file_numbers(names: &[String]) -> Vec<usize> {
+    let mut seen: Vec<&str> = Vec::new();
+    names
+        .iter()
+        .map(|name| {
+            let file = name.split_once("::").map_or(name.as_str(), |(f, _)| f);
+            match seen.iter().position(|f| *f == file) {
+                Some(at) => at,
+                None => {
+                    seen.push(file);
+                    seen.len() - 1
+                }
+            }
+        })
+        .collect()
 }
 
 /// The statistics object of the `MSBENCH` line a bench driver wrote.
@@ -754,6 +1127,8 @@ pub(super) fn pipe_reader(mut pipe: impl Read + Send + 'static) -> mpsc::Receive
 
 enum Ran {
     Passed,
+    /// An earlier test of the same file faulted, which ended the file.
+    NotRun(String),
     Skipped(String),
     Failed(String),
     /// An expectation failed: its message with the site appended, and the site as a position.
@@ -1058,24 +1433,27 @@ mod tests {
     }
 
     #[cfg(unix)]
-    const NAMES: [&str; 4] = ["m::pass", "m::fail", "m::crash", "m::hang"];
+    const NAMES: [&str; 4] = ["a::pass", "b::fail", "c::crash", "d::hang"];
 
-    /// A shell script that speaks the test executable protocol.
+    /// A shell script that speaks the test harness's record protocol; each test is its own file.
     #[cfg(unix)]
     fn script(dir: &std::path::Path) -> std::path::PathBuf {
         use std::os::unix::fs::PermissionsExt;
         let path = dir.join("program");
         let text = r#"#!/bin/sh
-case "$1" in
-0) echo "hello from pass"; echo "note" >&2; exit 0;;
-1) b() { printf "\\$(printf %03o "$(($1 & 255))")"; }
-   { printf 'MSFR\001'; b $$; b $(($$ >> 8)); b $(($$ >> 16)); b $(($$ >> 24)); \
-     printf '\007\002\004\000\000\000boom\000\000\000\000\000\000\000\000\014\000\000\000src/a.ms:3:4'; } > "$MS_FAULT_RECORD"
-   printf 'boom\n  at src/a.ms:3:4\n' >&2; exit 1;;
-2) ulimit -c 0; kill -SEGV $$;;
-3) sleep 30;;
-4) printf '\001SKIP\001not today\n' >&2; exit 0;;
-esac
+r="$MS_TEST_RESULTS"
+IFS=,
+for i in $MS_TEST_SELECT; do
+  printf '\001MSSTART %s %s\n' "$i" "$i" >> "$r"
+  case $i in
+  0) printf '\001MSOUT 0 16\nhello from pass\n\n' >> "$r"; echo note >&2
+     printf '\001MSTEST 0 pass 1000\001\001\n' >> "$r";;
+  1) printf '\001MSTEST 1 fail 1000\001boom\001src/a.ms:3:4\n' >> "$r";;
+  2) ulimit -c 0; kill -SEGV $$;;
+  3) sleep 30;;
+  4) printf '\001MSTEST 4 skip 1000\001not today\001\n' >> "$r";;
+  esac
+done
 "#;
         std::fs::write(&path, text).unwrap();
         std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
@@ -1128,14 +1506,14 @@ esac
 
     #[cfg(unix)]
     #[test]
-    fn each_test_runs_in_its_own_process() {
-        let (status, text, document) = run_script(&["--timeout=3s"]);
+    fn crashes_and_timeouts_fail_only_their_tests() {
+        let (status, text, document) = run_script(&["--timeout=1s"]);
         assert_eq!(status, 1, "failed + crashed + timed out: {text}");
         let expected = [
-            "RUN m::pass\nhello from pass\nPASS m::pass\n",
-            "RUN m::fail\nFAIL m::fail: boom\n  at src/a.ms:3:4\n",
-            "RUN m::crash\nFAIL m::crash: test process was terminated by signal 11\n",
-            "RUN m::hang\nFAIL m::hang: timed out after 3s; the test was cancelled (use --timeout to change the limit, 0 disables it)\n",
+            "RUN a::pass\nhello from pass\nPASS a::pass\n",
+            "RUN b::fail\nFAIL b::fail: boom\n  at src/a.ms:3:4\n",
+            "RUN c::crash\nFAIL c::crash: the test process was terminated by signal 11 while this test ran\n",
+            "RUN d::hang\nFAIL d::hang: timed out after 1s; a test that never waits is stopped with its process\n",
             "4 tests, 3 failed\n",
         ];
         assert_eq!(text, expected.concat());
@@ -1149,7 +1527,7 @@ esac
     #[cfg(unix)]
     #[test]
     fn failure_count_cannot_wrap_to_a_successful_exit() {
-        let (status, text, document) = run_script(&["--test=m::fail", "--repeat=256"]);
+        let (status, text, document) = run_script(&["--test=b::fail", "--repeat=256"]);
         assert_eq!(status, 1, "256 failures must not become exit status zero");
         assert_eq!(document.count(Status::Failed), 256);
         assert!(text.ends_with("256 tests, 256 failed\n"), "{text}");
@@ -1158,12 +1536,12 @@ esac
     #[cfg(unix)]
     #[test]
     fn a_skipping_test_is_reported_skipped() {
-        let names = ["m::pass", "m::fail", "m::crash", "m::hang", "m::skip"];
-        let (status, text, document) = run_names(&["--test=m::pass", "--test=m::skip"], &names);
+        let names = ["a::pass", "b::fail", "c::crash", "d::hang", "e::skip"];
+        let (status, text, document) = run_names(&["--test=a::pass", "--test=e::skip"], &names);
         assert_eq!(status, 0, "{text}");
         let expected = [
-            "RUN m::pass\nhello from pass\nPASS m::pass\n",
-            "RUN m::skip\nSKIP m::skip: not today\n",
+            "RUN a::pass\nhello from pass\nPASS a::pass\n",
+            "RUN e::skip\nSKIP e::skip: not today\n",
             "2 tests, 0 failed, 1 skipped\n",
         ];
         assert_eq!(text, expected.concat());
@@ -1177,16 +1555,16 @@ esac
     #[test]
     fn selection_listing_and_fail_fast() {
         let (status, text, _) = run_script(&["--list", "--match=pass|fail"]);
-        assert_eq!((status, text.as_str()), (0, "m::pass\nm::fail\n"));
+        assert_eq!((status, text.as_str()), (0, "a::pass\nb::fail\n"));
 
-        let (status, text, document) = run_script(&["--fail-fast", "--timeout=3s"]);
+        let (status, text, document) = run_script(&["--fail-fast", "--timeout=1s"]);
         assert_eq!(status, 1);
         assert!(text.ends_with("2 tests, 1 failed, 2 not run\n"), "{text}");
         assert_eq!(document.reason.as_deref(), Some("fail_fast"));
         assert_eq!(document.tests.len(), 4);
         assert_eq!(document.tests[2].status, Status::NotRun);
 
-        let (status, text, _) = run_script(&["--test=m::missing"]);
+        let (status, text, _) = run_script(&["--test=z::missing"]);
         assert_eq!((status, text.as_str()), (1, ""));
 
         let (status, text, _) = run_script(&["--filter=zzz"]);
@@ -1196,7 +1574,7 @@ esac
             "{text}"
         );
 
-        let (status, text, _) = run_script(&["--test=m::pass", "--repeat=2"]);
+        let (status, text, _) = run_script(&["--test=a::pass", "--repeat=2"]);
         assert_eq!(status, 0);
         assert!(text.ends_with("2 tests, 0 failed\n"), "{text}");
     }

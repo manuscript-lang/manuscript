@@ -177,6 +177,7 @@ pub unsafe extern "C-unwind" fn msrt_task_spawn(
         }
         (*t).entry = Some(entry);
         (*t).arg = arg;
+        (*t).capture = capture();
         (*t).detached = flags & SPAWN_DETACHED != 0;
         (*t).fatal = flags & SPAWN_FATAL != 0;
         (*t).sp = sp;
@@ -660,17 +661,38 @@ pub(super) unsafe fn arm_kill(h: u64, limit_ns: i64) {
 ///
 /// # Safety
 /// `closure` must be a live closure object that outlives the task.
-pub(crate) unsafe fn spawn_promise_task(closure: *mut ms_rt_abi::Closure, promise: i64) -> u64 {
+pub(crate) unsafe fn spawn_promise_task(
+    closure: *mut ms_rt_abi::Closure,
+    promise: i64,
+    capture: u64,
+) -> u64 {
     // SAFETY: single threaded scheduler; forwarded contract.
     unsafe {
         let h = msrt_task_spawn(closure_entry, closure.cast(), 0, 0);
         let t = lookup(h);
         (*t).promise = promise;
+        (*t).capture = capture;
         if !crate::promise::is_native_work(closure) {
             (*t).started_by = fault::capture_frames();
         }
         h
     }
+}
+
+/// The output capture of the running task, or 0 (also on a thread with no task yet).
+pub(crate) fn capture() -> u64 {
+    let s = sched();
+    if s.cur.is_null() {
+        return 0;
+    }
+    // SAFETY: the running task's record is live.
+    unsafe { (*s.cur).capture }
+}
+
+/// Sets the running task's output capture.
+pub(crate) fn set_capture(capture: u64) {
+    // SAFETY: single threaded scheduler; the running task's record is live.
+    unsafe { (*ensure_init()).capture = capture };
 }
 
 /// The deadline of the deferred promise the running task is executing (`i64::MAX`: none).

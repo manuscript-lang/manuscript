@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import (\n\tstdout from \"@std/io/io.ms\",\n\tTestHooks, expect_equal from \"@std/test/test.ms\",\n)\n\ntype UnusedFixture:\n\tvalue: Int\n\nfn UnusedFixture.before_all() Unit:\n\t_written := stdout().write(\"UNUSED before_all\").get()\n\nfn UnusedFixture.before_each() Unit:\n\t_written := stdout().write(\"UNUSED before_each\").get()\n\nfn UnusedFixture.after_each() Unit:\n\t_written := stdout().write(\"UNUSED after_each\").get()\n\nfn UnusedFixture.after_all() Unit:\n\t_written := stdout().write(\"UNUSED after_all\").get()\n\ntest \"plain test\":\n\texpect_equal(1 + 1, 2)?\n"
+    "fmt": "import (\n\tstdout from \"@std/io/io.ms\",\n\tTestHooks, expect_equal from \"@std/test/test.ms\",\n)\n\ntype UnusedFixture:\n\tvalue: Int\n\nfn UnusedFixture.before_all() Unit!:\n\t_written := stdout().write(\"UNUSED before_all\").get()\n\nfn UnusedFixture.before_each() Unit!:\n\t_written := stdout().write(\"UNUSED before_each\").get()\n\nfn UnusedFixture.after_each() Unit!:\n\t_written := stdout().write(\"UNUSED after_each\").get()\n\nfn UnusedFixture.after_all() Unit!:\n\t_written := stdout().write(\"UNUSED after_all\").get()\n\ntest \"plain test\":\n\texpect_equal(1 + 1, 2)?\n"
   }
 }

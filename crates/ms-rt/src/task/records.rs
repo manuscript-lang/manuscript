@@ -63,6 +63,7 @@ pub(super) unsafe fn new_task(ctx: Ctx) -> *mut Task {
             timed_out: false,
             defer_deadline: i64::MAX,
             promise: 0,
+            capture: 0,
             hdr: fault::Hdr::new(0),
             frozen: null_mut(),
             frozen_len: 0,

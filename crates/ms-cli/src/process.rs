@@ -91,18 +91,19 @@ impl Drop for Stops {
 
 /// Wait for `child`, forwarding SIGINT and SIGTERM received meanwhile.
 pub fn wait_with_signals(child: &mut Child, stops: &Stops) -> std::io::Result<ExitStatus> {
-    wait_supervised(child, stops, None, &mut || {}).map(|waited| waited.status)
+    wait_supervised(child, stops, None, &mut || false).map(|waited| waited.status)
 }
 
 /// Wait for `child`, forwarding SIGINT and SIGTERM, killing it once `timeout`
-/// has elapsed, and calling `poll` (to drain pipes) at growing intervals up to 10 milliseconds: a
+/// has elapsed, and calling `poll` (to drain pipes; true kills the child as timed out) at growing intervals up to
+/// 10 milliseconds: a
 /// child that exits at once is noticed at once, where a fixed 10 ms nap made every short test
 /// cost 10 ms.
 pub fn wait_supervised(
     child: &mut Child,
     stops: &Stops,
     timeout: Option<Duration>,
-    poll: &mut dyn FnMut(),
+    poll: &mut dyn FnMut() -> bool,
 ) -> std::io::Result<Waited> {
     let started = Instant::now();
     let (mut timed_out, mut interrupted) = (false, false);
@@ -129,7 +130,10 @@ pub fn wait_supervised(
             timed_out = true;
             let _ = child.kill();
         }
-        poll();
+        if poll() && !timed_out {
+            timed_out = true;
+            let _ = child.kill();
+        }
         std::thread::sleep(nap);
         nap = (nap * 2).min(Duration::from_millis(10));
     };

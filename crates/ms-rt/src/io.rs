@@ -92,7 +92,146 @@ pub fn write_stdout_parts(data: &[u8], end: &[u8]) {
         };
         TTY.store(tty, Ordering::Relaxed);
     }
+    let capture = crate::task::capture();
+    if capture != 0 && append_capture(capture, data, end) {
+        return;
+    }
     append(&OUT, tty == 2, data, end);
+}
+
+/// Standard output of the tasks under each test capture, by capture id.
+static CAPTURES: std::sync::Mutex<Vec<(u64, Vec<u8>)>> = std::sync::Mutex::new(Vec::new());
+static NEXT_CAPTURE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+
+/// Appends to capture `id`; false when it has ended (the output goes to standard output).
+fn append_capture(id: u64, data: &[u8], end: &[u8]) -> bool {
+    let mut captures = CAPTURES.lock().unwrap_or_else(|e| e.into_inner());
+    let Some((_, buf)) = captures.iter_mut().find(|(c, _)| *c == id) else {
+        return false;
+    };
+    buf.extend_from_slice(data);
+    buf.extend_from_slice(end);
+    true
+}
+
+/// A new, empty test output capture for the test runner (`@std/internal/test_runner.ms`).
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_test_capture_new() -> i64 {
+    let id = NEXT_CAPTURE.fetch_add(1, Ordering::Relaxed);
+    CAPTURES
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .push((id, Vec::new()));
+    id as i64
+}
+
+/// Sends the standard output of the running task, and of the tasks and promises it starts
+/// from now on, to capture `id` (0: standard output).
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_test_capture_set(id: i64) {
+    crate::task::set_capture(id as u64);
+}
+
+/// Bounds the running task's waits for one test (`on`), or lifts the bound: from
+/// `MS_TEST_TIMEOUT_NS` from now (unset or 0: no bound) each fails with `ETIMEDOUT`, as a promise
+/// `timeout` does.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_test_deadline(on: bool) {
+    static TIMEOUT: std::sync::OnceLock<i64> = std::sync::OnceLock::new();
+    let timeout = *TIMEOUT.get_or_init(|| {
+        std::env::var("MS_TEST_TIMEOUT_NS")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(0)
+    });
+    let at = match timeout {
+        _ if !on => i64::MAX,
+        ..=0 => i64::MAX,
+        ns => crate::sys::monotonic_ns().saturating_add(ns),
+    };
+    crate::task::set_defer_deadline(at);
+}
+
+/// The capture the running task's standard output goes to, or 0.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_test_capture_current() -> i64 {
+    crate::task::capture() as i64
+}
+
+/// Returns and clears what capture `id` has collected.
+///
+/// # Safety
+/// `out` is writable memory for a string.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_test_capture_take(id: i64, out: *mut StrVal) {
+    let mut captures = CAPTURES.lock().unwrap_or_else(|e| e.into_inner());
+    let text = captures
+        .iter_mut()
+        .find(|(c, _)| *c == id as u64)
+        .map(|(_, buf)| core::mem::take(buf))
+        .unwrap_or_default();
+    drop(captures);
+    // SAFETY: `out` is uninitialised memory for a string.
+    unsafe { *out = crate::string::from_bytes(&text) };
+}
+
+/// Appends `text` to the file at `path` (the test runner's results file), whole: records from
+/// files running at once never interleave. Failure is ignored; the host reports the test as
+/// unfinished.
+///
+/// # Safety
+/// `path` and `text` are live strings.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_test_record(path: *const StrVal, text: *const StrVal) {
+    use std::io::Write;
+    static LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    // SAFETY: the caller passes live strings.
+    let (path, text) = unsafe { (crate::string::bytes(path), crate::string::bytes(text)) };
+    let Ok(path) = core::str::from_utf8(path) else {
+        return;
+    };
+    let _held = LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    if let Ok(mut file) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+    {
+        let _ = file.write_all(text);
+    }
+}
+
+/// Keeps the encoded record of a fault that ended a task under capture `id`, for
+/// `msrt_test_capture_fault`.
+pub(crate) fn capture_fault(id: u64, record: Vec<u8>) {
+    let mut faults = CAPTURE_FAULTS.lock().unwrap_or_else(|e| e.into_inner());
+    faults.retain(|(c, _)| *c != id);
+    faults.push((id, record));
+}
+
+static CAPTURE_FAULTS: std::sync::Mutex<Vec<(u64, Vec<u8>)>> = std::sync::Mutex::new(Vec::new());
+
+/// The encoded fault record (`ms_rt_abi::record`) of the last task under capture `id` that
+/// faulted, or an empty string; taking it clears it.
+///
+/// # Safety
+/// `out` is writable memory for a string.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_test_capture_fault(id: i64, out: *mut StrVal) {
+    let mut faults = CAPTURE_FAULTS.lock().unwrap_or_else(|e| e.into_inner());
+    let record = match faults.iter().position(|(c, _)| *c == id as u64) {
+        Some(at) => faults.swap_remove(at).1,
+        None => Vec::new(),
+    };
+    drop(faults);
+    // SAFETY: `out` is uninitialised memory for a string.
+    unsafe { *out = crate::string::from_bytes(&record) };
+}
+
+/// Ends capture `id`; later output of its tasks goes to standard output.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_test_capture_free(id: i64) {
+    let mut captures = CAPTURES.lock().unwrap_or_else(|e| e.into_inner());
+    captures.retain(|(c, _)| *c != id as u64);
 }
 
 fn append(target: &'static Out, tty: bool, data: &[u8], end: &[u8]) {

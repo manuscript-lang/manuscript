@@ -7,16 +7,16 @@ import stdout from "@std/io/io.ms"
 type UnusedFixture:
     value: Int
 
-fn UnusedFixture.before_all() Unit:
+fn UnusedFixture.before_all() Unit!:
     _written := stdout().write("UNUSED before_all").get()
 
-fn UnusedFixture.before_each() Unit:
+fn UnusedFixture.before_each() Unit!:
     _written := stdout().write("UNUSED before_each").get()
 
-fn UnusedFixture.after_each() Unit:
+fn UnusedFixture.after_each() Unit!:
     _written := stdout().write("UNUSED after_each").get()
 
-fn UnusedFixture.after_all() Unit:
+fn UnusedFixture.after_all() Unit!:
     _written := stdout().write("UNUSED after_all").get()
 
 test "plain test":

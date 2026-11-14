@@ -713,7 +713,6 @@ impl FnLower<'_> {
                 .iter()
                 .all(|v| self.locals.get(&v.uid).is_some_and(|l| l.slot == Some(v.ptr)))
             && self.default_frames.is_empty()
-            && self.fixture.is_none()
     }
 
     /// Gives the slot close `thunk` the function that returns its `Result`, and this function

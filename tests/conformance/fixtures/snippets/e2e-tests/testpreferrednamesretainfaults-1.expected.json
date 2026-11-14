@@ -18,50 +18,51 @@
         {
           "index": 1,
           "name": "testpreferrednamesretainfaults-1.ms::bound set",
-          "status": "failed",
-          "failure": "List.set: index must be between -1 and 0 (negative indexes count from the end), found -2\n  at testpreferrednamesretainfaults-1.ms:10 in test bound set"
+          "status": "not_run",
+          "failure": "an earlier test in this file faulted"
         },
         {
           "index": 2,
           "name": "testpreferrednamesretainfaults-1.ms::new remove",
-          "status": "failed",
-          "failure": "List.remove: index must be between -1 and 0 (negative indexes count from the end), found 1\n  at testpreferrednamesretainfaults-1.ms:13 in test new remove"
+          "status": "not_run",
+          "failure": "an earlier test in this file faulted"
         },
         {
           "index": 3,
           "name": "testpreferrednamesretainfaults-1.ms::bound remove",
-          "status": "failed",
-          "failure": "List.remove: index must be between -1 and 0 (negative indexes count from the end), found -2\n  at testpreferrednamesretainfaults-1.ms:18 in test bound remove"
+          "status": "not_run",
+          "failure": "an earlier test in this file faulted"
         },
         {
           "index": 4,
           "name": "testpreferrednamesretainfaults-1.ms::empty set",
-          "status": "failed",
-          "failure": "List.set: index has no valid value for an empty collection, found 0\n  at testpreferrednamesretainfaults-1.ms:22 in test empty set"
+          "status": "not_run",
+          "failure": "an earlier test in this file faulted"
         },
         {
           "index": 5,
           "name": "testpreferrednamesretainfaults-1.ms::empty remove",
-          "status": "failed",
-          "failure": "List.remove: index has no valid value for an empty collection, found 0\n  at testpreferrednamesretainfaults-1.ms:26 in test empty remove"
+          "status": "not_run",
+          "failure": "an earlier test in this file faulted"
         },
         {
           "index": 6,
           "name": "testpreferrednamesretainfaults-1.ms::continues",
-          "status": "passed"
+          "status": "not_run",
+          "failure": "an earlier test in this file faulted"
         }
       ],
       "summary": {
         "available": 7,
         "selected": 7,
-        "passed": 1,
-        "failed": 6,
+        "passed": 0,
+        "failed": 1,
         "skipped": 0,
-        "not_run": 0
+        "not_run": 6
       },
       "completed": true,
       "exit_code": 1,
-      "stdout": "RUN testpreferrednamesretainfaults-1.ms::new set\nFAIL testpreferrednamesretainfaults-1.ms::new set: List.set: index must be between -1 and 0 (negative indexes count from the end), found 1\n  at testpreferrednamesretainfaults-1.ms:5 in test new set\nRUN testpreferrednamesretainfaults-1.ms::bound set\nFAIL testpreferrednamesretainfaults-1.ms::bound set: List.set: index must be between -1 and 0 (negative indexes count from the end), found -2\n  at testpreferrednamesretainfaults-1.ms:10 in test bound set\nRUN testpreferrednamesretainfaults-1.ms::new remove\nFAIL testpreferrednamesretainfaults-1.ms::new remove: List.remove: index must be between -1 and 0 (negative indexes count from the end), found 1\n  at testpreferrednamesretainfaults-1.ms:13 in test new remove\nRUN testpreferrednamesretainfaults-1.ms::bound remove\nFAIL testpreferrednamesretainfaults-1.ms::bound remove: List.remove: index must be between -1 and 0 (negative indexes count from the end), found -2\n  at testpreferrednamesretainfaults-1.ms:18 in test bound remove\nRUN testpreferrednamesretainfaults-1.ms::empty set\nFAIL testpreferrednamesretainfaults-1.ms::empty set: List.set: index has no valid value for an empty collection, found 0\n  at testpreferrednamesretainfaults-1.ms:22 in test empty set\nRUN testpreferrednamesretainfaults-1.ms::empty remove\nFAIL testpreferrednamesretainfaults-1.ms::empty remove: List.remove: index has no valid value for an empty collection, found 0\n  at testpreferrednamesretainfaults-1.ms:26 in test empty remove\nRUN testpreferrednamesretainfaults-1.ms::continues\nPASS testpreferrednamesretainfaults-1.ms::continues\n7 tests, 6 failed\n",
+      "stdout": "RUN testpreferrednamesretainfaults-1.ms::new set\nFAIL testpreferrednamesretainfaults-1.ms::new set: List.set: index must be between -1 and 0 (negative indexes count from the end), found 1\n  at testpreferrednamesretainfaults-1.ms:5 in test new set\nRUN testpreferrednamesretainfaults-1.ms::bound set\nNOT RUN testpreferrednamesretainfaults-1.ms::bound set: an earlier test in this file faulted\nRUN testpreferrednamesretainfaults-1.ms::new remove\nNOT RUN testpreferrednamesretainfaults-1.ms::new remove: an earlier test in this file faulted\nRUN testpreferrednamesretainfaults-1.ms::bound remove\nNOT RUN testpreferrednamesretainfaults-1.ms::bound remove: an earlier test in this file faulted\nRUN testpreferrednamesretainfaults-1.ms::empty set\nNOT RUN testpreferrednamesretainfaults-1.ms::empty set: an earlier test in this file faulted\nRUN testpreferrednamesretainfaults-1.ms::empty remove\nNOT RUN testpreferrednamesretainfaults-1.ms::empty remove: an earlier test in this file faulted\nRUN testpreferrednamesretainfaults-1.ms::continues\nNOT RUN testpreferrednamesretainfaults-1.ms::continues: an earlier test in this file faulted\n1 tests, 1 failed, 6 not run\n",
       "diagnostics": []
     },
     "shape": [
