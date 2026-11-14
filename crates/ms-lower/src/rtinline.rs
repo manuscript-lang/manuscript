@@ -389,6 +389,19 @@ impl FnLower<'_> {
             let f = self.read_word_fn();
             return Some(self.b.call(f, args));
         }
+        // A literal needle of two or more bytes skips the dispatch on the needle's length.
+        if sym == "msrt_string_contains"
+            && let Some(id) = self.b.str_lit_of(args[1])
+            && self.b.m.strings[id.0 as usize].len() >= 2
+        {
+            let ext = crate::text::runtime_fn(
+                self.b.m,
+                "msrt_string_contains_long",
+                &[MTy::STR, MTy::STR],
+                MTy::BOOL,
+            );
+            return Some(self.b.call_rt(ext, args));
+        }
         if sym == "msrt_string_view" {
             let f = self.view_fn();
             return Some(self.b.call(f, args));

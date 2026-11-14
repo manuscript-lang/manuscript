@@ -860,8 +860,14 @@ pub fn rfind(hay: &[u8], needle: &[u8]) -> Option<usize> {
     memchr::memmem::rfind(hay, needle)
 }
 
-/// The search behind `msrt_string_contains` for every case its fast path does not cover.
-pub unsafe fn msrt_string_contains_long(a: *const StrVal, v: *const StrVal) -> u8 {
+/// The search behind `msrt_string_contains` for every case its fast path does not cover; a call
+/// with a literal needle of two or more bytes goes straight here.
+#[unsafe(no_mangle)]
+// ms: leaf pure domain=string
+pub unsafe extern "C-unwind" fn msrt_string_contains_long(
+    a: *const StrVal,
+    v: *const StrVal,
+) -> u8 {
     // SAFETY: caller passes live strings.
     unsafe {
         let (hay, needle) = (bytes(a), bytes(v));
