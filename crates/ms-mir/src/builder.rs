@@ -422,6 +422,10 @@ impl<'m> FuncBuilder<'m> {
     pub fn bytes_push(&mut self, slot: Value, value: Value) -> Value {
         self.val(Op::BytesPush, &[slot, value], Imm::None, Ty::BOOL)
     }
+    /// `str.bytes`: the byte length of a string.
+    pub fn str_bytes(&mut self, s: Value) -> Value {
+        self.val(Op::StrBytes, &[s], Imm::None, Ty::INT)
+    }
     /// `str.eq_lit`: whether `a` equals the literal `id` (1 to 8 bytes, no NUL).
     pub fn str_eq_lit(&mut self, a: Value, id: StrId) -> Value {
         self.val(Op::StrEqLit, &[a], Imm::Str(id), Ty::BOOL)

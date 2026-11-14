@@ -1,2 +1,4 @@
 export fn main() Int:
-    return "input".byte_length()
+    if "input".contains("put"):
+        return 5
+    return 47

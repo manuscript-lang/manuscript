@@ -153,6 +153,7 @@ impl InstCheck<'_, '_> {
             | Op::StrAsciiAt
             | Op::StrAsciiLen
             | Op::StrEqLit
+            | Op::StrBytes
             | Op::BytesPush => self.strings(),
             Op::ClosureNew
             | Op::ClosureCap
@@ -825,6 +826,13 @@ impl InstCheck<'_, '_> {
                 self.want(
                     self.t(0) == Ty::STR && self.res == Some(Ty::INT),
                     "str.ascii_len takes a string and yields int",
+                )
+            }
+            Op::StrBytes => {
+                self.arity(1)?;
+                self.want(
+                    self.t(0) == Ty::STR && self.res == Some(Ty::INT),
+                    "str.bytes takes a string and yields its byte length",
                 )
             }
             Op::StrEqLit => {

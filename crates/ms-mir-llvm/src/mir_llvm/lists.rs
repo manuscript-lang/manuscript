@@ -31,6 +31,7 @@ fn handles(op: Op) -> bool {
                 | Op::StrByte
                 | Op::StrAsciiAt
                 | Op::StrAsciiLen
+                | Op::StrBytes
                 | Op::StrEqLit
                 | Op::StrLen
                 | Op::ListNew
@@ -207,6 +208,11 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         Op::ListConst => list_const(cx, inst, vals, b),
         Op::StrLen => str_len(cx, inst, vals, b),
         Op::StrAsciiLen => str_ascii_len(cx, inst, vals, b),
+        Op::StrBytes => {
+            let out = vals[&inst.res.expect("string length result").index()][0].clone();
+            let w = vals[&inst.args[0].index()][1].clone();
+            tagged_len(b, &w, Some(&out));
+        }
         Op::StrEqLit => str_eq_lit(cx, inst, vals, b),
         _ => list_access(cx, inst, vals, b),
     }
@@ -704,13 +710,16 @@ fn str_ascii_len(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
 }
 
 /// The byte length of a string from its second word: inline strings keep it in bits 56 to 59.
-fn tagged_len(b: &mut FnBuilder, w: &Val) -> Val {
+fn tagged_len(b: &mut FnBuilder, w: &Val, name: Option<&Val>) -> Val {
     use ms_rt_abi::{STR_INLINE, STR_INLINE_LEN_SHIFT, STR_LEN_MASK};
     let tag = b.bin(Bin::And, w, &Val::int((3u64 << 62) as i64));
     let inline = b.icmp("eq", &tag, &Val::int(STR_INLINE as i64));
     let shifted = b.bin(Bin::LShr, w, &Val::int(i64::from(STR_INLINE_LEN_SHIFT)));
     let short = b.bin(Bin::And, &shifted, &Val::int(15));
     let long = b.bin(Bin::And, w, &Val::int(STR_LEN_MASK as i64));
+    if let Some(n) = name {
+        b.name_next(n);
+    }
     b.select(&inline, &short, &long)
 }
 
@@ -733,7 +742,7 @@ pub(super) fn eq_words(b: &mut FnBuilder, x: &[Val], y: &[Val]) -> Val {
     let other = b.select(&inline, &no, &unknown);
     let same_hi = b.select(&same_ptr, &yes, &other);
     // Different kinds are equal only with the same byte length.
-    let (lx, ly) = (tagged_len(b, &x[1]), tagged_len(b, &y[1]));
+    let (lx, ly) = (tagged_len(b, &x[1], None), tagged_len(b, &y[1], None));
     let same_len = b.icmp("eq", &lx, &ly);
     let kinds = b.select(&same_len, &unknown, &no);
     let same_word = b.icmp("eq", &d, &Val::int(0));
