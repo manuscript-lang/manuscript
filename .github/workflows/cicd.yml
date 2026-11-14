@@ -106,7 +106,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Every leg is split into `tests` (a) and `conformance` (b) on two runners for wall time.
+        # Every leg is split into `tests` (a) and `conformance` (b) on two runners for wall time. Measured on
+        # pull requests: one job per leg (tests and corpus back to back) took 9.5 to 11 minutes, the split 7 to 10.
         part: [a, b]
         leg: >-
           ${{ fromJSON(
