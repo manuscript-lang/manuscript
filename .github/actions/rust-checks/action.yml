@@ -11,6 +11,9 @@ description: The Rust checks for one platform (pull requests on Linux, pushes to
 #           a (build, nextest, doc tests) outlasts part b by several minutes on every leg without Cranelift.
 
 inputs:
+  docs:
+    description: "'false' on a pull request that changes no documentation, standard library or example test: the tutorial and stdlib example tests are skipped. Main and manual runs pass 'true'."
+    default: 'true'
   llvm:
     description: "'false' on a pull request that touches no LLVM-related code: the corpus runs once with Cranelift (every phase) and the release gates are skipped. Main and manual runs pass 'true'."
     default: 'true'
@@ -54,6 +57,7 @@ runs:
           echo "GATES=$([[ $part == *$gates_part* ]] && echo true || echo false)"
           echo "CRANELIFT=$([[ -n $cranelift && $part == *$cranelift* && '${{ inputs.llvm }}' != false ]] && echo true || echo false)"
           echo "LLVM=${{ inputs.llvm }}"
+          echo "DOCS=${{ inputs.docs }}"
         } >> "$GITHUB_ENV"
     - name: Keep native test artifacts in runner storage
       shell: bash
@@ -113,6 +117,9 @@ runs:
         filter=()
         if [ "$LLVM" != true ]; then
           filter=(-E 'not (package(ms-mir-llvm) | test(/^llvm::/) | test(/^llvm_direct(_data)?::/))')
+        fi
+        if [ "$DOCS" = false ]; then
+          filter=(-E "not (test(/^doc_examples::/)$([ "$LLVM" != true ] && echo ' | package(ms-mir-llvm) | test(/^llvm::/) | test(/^llvm_direct(_data)?::/)'))")
         fi
         cargo nextest run --workspace --locked --no-fail-fast "${filter[@]}"
         cargo test --workspace --doc --locked
