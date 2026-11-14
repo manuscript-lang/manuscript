@@ -29,7 +29,7 @@ Measured (`ms-conform run --phase run,test`, 1,228 fixtures, `target/release/ms`
 
 1. **Start-up cost.** Ownership: re-analyze a callable in a later round only if a summary it read changed (reads recorded in `Summaries::get`; done: hello `ms check` 85 to 70 ms with the hasher). Library: analyzing only callables reachable from user code is a second step; it needs an explicit root set (lowering roots, vtable impls of instantiated types, drop glue, closures) and a differential test that every fact lowering reads equals the full analysis, with a hard error on a missing fact.
 2. **Batch mode** (gated on a prototype that shows the saving beyond stage 1, and on a per-fixture panic and timeout fallback; process-global state such as `Names::global()` must not change output). `ms run --each` and `ms test --each` (same shape as `ms check --each --json`): one library load, then each input is checked, lowered, compiled and linked on its own, and reported as its own result. `ms-conform` groups run and test fixtures into batches the way `observe_check_batch` groups check fixtures, and falls back to one process for a fixture the batch could not report.
-3. **Backend choice.** `make conform-fast` runs the corpus on Cranelift (done in #3835). CI keeps one LLVM run (linux-arm64) and one Cranelift run (linux-amd64) against the same expected output; the drift step is removed (owner, 2026-11-13).
+3. **Backend choice.** `make conform` runs the corpus on Cranelift (done in #3835). CI keeps one LLVM run (linux-arm64) and one Cranelift run (linux-amd64) against the same expected output; the drift step is removed (owner, 2026-11-13).
 4. **Later, needs approval.** Compile each fixture with Cranelift JIT into memory and run it in a worker: no object file, linker or exec. Needs `cranelift-jit` (a new dependency, so the owner decides).
 
 ## Components touched
@@ -39,7 +39,7 @@ Measured (`ms-conform run --phase run,test`, 1,228 fixtures, `target/release/ms`
 | `crates/ms-check/src/ownership` | read-tracked worklist; demand-driven prelude | `cargo test -p ms-check`; corpus facts identical (`make conform`) |
 | `crates/ms-cli` | `--each` for `run` and `test` | e2e: results equal single-file runs |
 | `crates/ms-conform` | batch run and test fixtures | corpus passes; per-fixture output unchanged |
-| `tools/conform.ms`, Makefile | fast loop | `make conform-fast` |
+| `tools/conform.ms`, Makefile | fast loop | `make conform` |
 
 ## Alternatives
 

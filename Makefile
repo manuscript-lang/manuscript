@@ -8,7 +8,7 @@ BENCHFILTER ?=
 BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
 CONFORM_SHARD ?= 0/1
 
-.PHONY: runtime doctor verify verify-full check repo-check workflow-check unit test build conform conform-fast drift-check llvm-report leak-check cancel-sweep scaling-check count-check resource-matrix close-matrix copy-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench vscode-package vscode-install
+.PHONY: runtime doctor verify verify-full check repo-check workflow-check unit test build conform conform-llvm drift-check llvm-report leak-check cancel-sweep scaling-check count-check resource-matrix close-matrix copy-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench vscode-package vscode-install
 
 doctor: build
 	HUGO="$(HUGO)" $(MS) run tools/doctor.ms
@@ -56,16 +56,16 @@ test: unit conform
 build: runtime
 	cargo build --release --locked -p ms-cli
 
-# The run, check and test phases of the frozen conformance corpus against the Rust `ms`, excluding fixtures whose
-# answer depends on aliasing; known differences are listed in tests/conformance/expect-fail.txt.
-# CONFORM_SHARD=i/n splits the run.
+# The frozen conformance corpus against the Rust `ms`, every phase, with programs built by Cranelift (about 3x
+# faster than LLVM; see documentation/contributing/development.md). Excludes fixtures whose answer depends on
+# aliasing; known differences are listed in tests/conformance/expect-fail.txt. CONFORM_SHARD=i/n splits the run.
 conform: build
-	$(MS) run tools/conform.ms
-
-# The quick local loop: every phase, with programs built by Cranelift (about 3x faster than LLVM; see
-# documentation/contributing/development.md). CI still runs the LLVM pass; run `make conform` before merging.
-conform-fast: build
 	CONFORM_FAST=1 MS_BACKEND=cranelift $(MS) run tools/conform.ms
+
+# The same corpus with programs built by LLVM (Release), as CI runs on main and on pull requests that touch
+# LLVM-related code. Run it after changing LLVM code.
+conform-llvm: build
+	$(MS) run tools/conform.ms
 
 # Release build time, IR size, direct-emission share and kernel times of the LLVM backend against Cranelift.
 llvm-report: build
