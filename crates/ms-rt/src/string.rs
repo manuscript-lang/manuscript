@@ -460,7 +460,10 @@ pub unsafe extern "C-unwind" fn msrt_string_compare(a: *const StrVal, b: *const 
             // Inline bits are zero past the length, so the first byte is the most significant
             // after a byte swap: equal padded words differ at most in length (a prefix, or a
             // string that continues with NUL bytes), and the shorter one is smaller.
-            let (x, y) = ((*a).inline_bits().swap_bytes(), (*b).inline_bits().swap_bytes());
+            let (x, y) = (
+                (*a).inline_bits().swap_bytes(),
+                (*b).inline_bits().swap_bytes(),
+            );
             return x.cmp(&y).then((*a).len().cmp(&(*b).len())) as i64;
         }
         bytes(a).cmp(bytes(b)) as i64
@@ -3680,9 +3683,23 @@ mod tests {
     fn compare_matches_byte_order_for_inline_and_heap_strings() {
         let long = "abcdefghijklmnopqrstuvwxyz";
         let samples = [
-            "", "a", "a\0", "a\0b", "ab", "b", "w123-4", "w123-45", "é", "éa", "\u{10ffff}",
-            "123456789012345", "12345678901234x", long, "abcdefghijklmnopqrstuvwxyA",
-            "abcdefghijklmno", "abcdefghijklmnoP",
+            "",
+            "a",
+            "a\0",
+            "a\0b",
+            "ab",
+            "b",
+            "w123-4",
+            "w123-45",
+            "é",
+            "éa",
+            "\u{10ffff}",
+            "123456789012345",
+            "12345678901234x",
+            long,
+            "abcdefghijklmnopqrstuvwxyA",
+            "abcdefghijklmno",
+            "abcdefghijklmnoP",
         ];
         for a in samples {
             for b in samples {
