@@ -1,2 +1,0 @@
-cargo run --release --locked -q -p ms-repo-check
-Nested matches, formatting, stdlib syntax, release pins, triggers, unsafe boundary, inline sources, portability, fixture twins, stream names, internal externs, optional defaults, crate layering, and thread affinity agree.

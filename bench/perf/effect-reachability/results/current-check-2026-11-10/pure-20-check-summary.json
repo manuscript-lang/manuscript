@@ -1,8 +1,0 @@
-{
-  "case": "pure-20-check",
-  "pairs": 11,
-  "baseline_median_ms": 59.51398,
-  "candidate_median_ms": 59.88923,
-  "paired_median_ratio": 0.9804628660982533,
-  "slower_pairs": 5
-}

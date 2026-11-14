@@ -1,5 +1,0 @@
-hello: 21 exact-output pairs passed
-{"case":"hello","pairs":21,"baseline_median_ms":156.73364,"candidate_median_ms":163.530539,"paired_median_ratio":0.9787759347248538,"slower_pairs":9}
-e2e-driver: 21 exact-output pairs passed
-{"case":"e2e-driver","pairs":21,"baseline_median_ms":150.586557,"candidate_median_ms":145.006399,"paired_median_ratio":1.0238452573008539,"slower_pairs":11}
-inventory: /workspace/effect-rust/ms-baseline: 

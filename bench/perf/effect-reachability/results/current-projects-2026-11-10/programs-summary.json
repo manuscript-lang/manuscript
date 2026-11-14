@@ -1,8 +1,0 @@
-{
-  "case": "programs",
-  "pairs": 11,
-  "baseline_median_ms": 59.877459,
-  "candidate_median_ms": 59.745527,
-  "paired_median_ratio": 1.0090134585035004,
-  "slower_pairs": 7
-}

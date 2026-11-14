@@ -1,8 +1,0 @@
-{
-  "case": "none-20-build",
-  "pairs": 7,
-  "baseline_median_ms": 87.342064,
-  "candidate_median_ms": 85.892799,
-  "paired_median_ratio": 0.9910078295484367,
-  "slower_pairs": 2
-}

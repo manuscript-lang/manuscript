@@ -1,8 +1,0 @@
-{
-  "case": "cyclic-1-check",
-  "pairs": 11,
-  "baseline_median_ms": 58.997084,
-  "candidate_median_ms": 59.912565,
-  "paired_median_ratio": 1.000311124938886,
-  "slower_pairs": 6
-}

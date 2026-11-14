@@ -1,8 +1,0 @@
-{
-  "case": "none-2000-check",
-  "pairs": 11,
-  "baseline_median_ms": 541.374204,
-  "candidate_median_ms": 132.123754,
-  "paired_median_ratio": 0.2469611973713264,
-  "slower_pairs": 0
-}

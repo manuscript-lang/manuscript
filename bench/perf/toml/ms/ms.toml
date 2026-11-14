@@ -1,4 +1,0 @@
-[project]
-name = "toml-bench"
-source = "./src"
-entry = "./src/main.ms"

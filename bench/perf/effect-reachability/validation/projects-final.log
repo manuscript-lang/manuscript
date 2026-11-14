@@ -1,7 +1,0 @@
-hello: 21 exact-output pairs passed
-{"case":"hello","pairs":21,"baseline_median_ms":152.132012,"candidate_median_ms":148.163151,"paired_median_ratio":0.9543879035794255,"slower_pairs":6}
-e2e-driver: 21 exact-output pairs passed
-{"case":"e2e-driver","pairs":21,"baseline_median_ms":177.12016,"candidate_median_ms":167.897904,"paired_median_ratio":0.9786015366763512,"slower_pairs":8}
-programs: 21 exact-output pairs passed
-{"case":"programs","pairs":21,"baseline_median_ms":70.328504,"candidate_median_ms":70.412149,"paired_median_ratio":1.0011893470675843,"slower_pairs":11}
-project controls passed
