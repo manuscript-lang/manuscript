@@ -845,6 +845,21 @@ pub extern "C-unwind" fn msrt_promise_done(id: i64) -> u8 {
     }
 }
 
+/// Runs promise `id` on the calling task's own stack if it is one of this thread's and no thread has
+/// taken it; answers whether it ran. For a waiter that is about to wait on it anyway: a task start
+/// costs far more than the call this makes.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_promise_run_unstarted(id: i64) -> u8 {
+    let t = table();
+    let Some(i) = index(t, id) else { return 0 };
+    if t.state[i] != State::Pending || t.closure[i] == 0 {
+        return 0;
+    }
+    run_unstarted(id);
+    let t = table();
+    index(t, id).map_or(1, |i| u8::from(t.state[i] != State::Pending))
+}
+
 /// Completes `i` with no value (a finished sleep): `wait` answers 0 and nothing is left to take.
 fn complete_unit(t: &mut Table, i: usize) {
     if t.state[i] == State::Pending {

@@ -15,6 +15,7 @@ import (
 	msrt_promise_new,
 	msrt_promise_on_cancel,
 	msrt_promise_put,
+	msrt_promise_run_unstarted,
 	msrt_promise_start,
 	msrt_promise_start_here,
 	msrt_promise_start_spread,
@@ -253,7 +254,7 @@ export fn wait_all[T](promises: List[Promise[T]]) List[T]!:
 	while head < count:
 		if taken[head]:
 			head += 1
-		else if pending[head].done():
+		else if msrt_promise_run_unstarted(pending[head].id) or pending[head].done():
 			value := pending[head].wait()?
 			slots[head] = ok(value)
 			taken[head] = true

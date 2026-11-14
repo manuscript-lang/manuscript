@@ -12,6 +12,7 @@ export extern fn msrt_promise_put[T](id: Int, value: T, failed: Int) Unit
 export extern fn msrt_promise_take[T](id: Int) T?
 
 export extern fn msrt_promise_done(id: Int) Bool
+export extern fn msrt_promise_run_unstarted(id: Int) Bool
 
 export extern fn msrt_promise_start(id: Int, work: fn() Unit) Unit
 
