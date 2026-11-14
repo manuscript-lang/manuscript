@@ -126,16 +126,26 @@ opt-level = 3
 [profile.release.package.adler2]
 opt-level = 3
 
-# Cranelift is slow to build unoptimized; keep it lightly optimized in dev builds.
+# Cranelift is slow to build unoptimized; keep it lightly optimized in dev builds. Its debug assertions are
+# off: the single-pass register allocator's `validate_lru` alone was a third of all instructions in a debug
+# `ms test` (every program the corpus and the e2e tests compile goes through it).
 [profile.dev.package.regalloc2]
 opt-level = 1
+debug-assertions = false
+overflow-checks = false
 
 [profile.dev.package.cranelift-codegen]
 opt-level = 1
+debug-assertions = false
+overflow-checks = false
 [profile.dev.package.cranelift-frontend]
 opt-level = 1
+debug-assertions = false
+overflow-checks = false
 [profile.dev.package.cranelift-object]
 opt-level = 1
+debug-assertions = false
+overflow-checks = false
 
 # Cranelift 0.136.0 plus one change: the x64 backend branches directly on the overflow flag of
 # `sadd_overflow`, `ssub_overflow` and `usub_overflow` (as it already does for `uadd_overflow`

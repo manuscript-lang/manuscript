@@ -276,7 +276,7 @@ impl Exchange {
                     let chunk: Vec<u8> = st.decoded.drain(..n).collect();
                     if chunk.len() > st.remaining_read {
                         st.body_over_limit = true;
-                        return Err(IoErr::failed("request body limit exceeded"));
+                        return Err(IoErr::LimitExceeded);
                     }
                     st.remaining_read -= chunk.len();
                     return Ok(Some(chunk));
@@ -466,7 +466,7 @@ impl Exchange {
             return Err(IoErr::InvalidInput);
         }
         if data.len() > remaining {
-            return Err(IoErr::failed("response body limit exceeded"));
+            return Err(IoErr::LimitExceeded);
         }
         if !server::body_allowed(status) {
             return Err(IoErr::InvalidInput);

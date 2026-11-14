@@ -70,7 +70,8 @@ fn runnable(path: String, windows: Bool) Bool:
 
 	return access(path, 1).is_ok()
 
-// Reads a fresh live process environment map; non-UTF-8 entries return ENOTSUP.
+// Reads a fresh live process environment map. An entry whose name or value is not valid
+// UTF-8 is left out.
 // ms: effect std.env.read
 export fn environment() Map[String, String]!:
 	return msstd_process_environment_map()

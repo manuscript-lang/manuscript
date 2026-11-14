@@ -23,7 +23,7 @@ if echo "$manifest" | grep -qv ':-$'; then "$MS" run "$here/gen.ms" -- "$work/in
 
 have() { command -v "$1" >/dev/null 2>&1; }
 now() { date +%s%N; }
-printf '%-12s %8s %8s %8s %8s %8s %8s %8s\n' program ms rust go node c ms/rust ms/go
+printf '%-12s %8s %8s %8s %8s %8s %8s %8s %8s\n' program ms rust go node c ms/rust ms/go ms/node
 for t in $manifest; do
   name=${t%%:*}; input=${t#*:}; d=$here/$name
   "$MS" build "$d/main.ms" -o "$work/${name}_ms" >/dev/null
@@ -59,6 +59,6 @@ for t in $manifest; do
   done
   set -- $res
   awk -v n="$name" -v a="$1" -v b="$2" -v g="$3" -v j="$4" -v c="$5" 'BEGIN{
-    r = (b > 0) ? sprintf("%.2fx", a / b) : "-"; q = (g > 0) ? sprintf("%.2fx", a / g) : "-"
-    printf "%-12s %8s %8s %8s %8s %8s %8s %8s\n", n, a, b, g, j, c, r, q }'
+    r = (b > 0) ? sprintf("%.2fx", a / b) : "-"; q = (g > 0) ? sprintf("%.2fx", a / g) : "-"; z = (j > 0) ? sprintf("%.2fx", a / j) : "-"
+    printf "%-12s %8s %8s %8s %8s %8s %8s %8s %8s\n", n, a, b, g, j, c, r, q, z }'
 done

@@ -1,8 +1,0 @@
-{
-  "case": "many-1-check",
-  "pairs": 11,
-  "baseline_median_ms": 58.804734,
-  "candidate_median_ms": 62.958221,
-  "paired_median_ratio": 0.9755397414092546,
-  "slower_pairs": 5
-}

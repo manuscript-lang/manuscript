@@ -1,8 +1,0 @@
-{
-  "case": "sparse-1-check",
-  "pairs": 11,
-  "baseline_median_ms": 66.097146,
-  "candidate_median_ms": 67.534218,
-  "paired_median_ratio": 1.099977956209311,
-  "slower_pairs": 8
-}

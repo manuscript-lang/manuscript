@@ -1,8 +1,0 @@
-{
-  "case": "pure-500-lint",
-  "pairs": 41,
-  "baseline_median_ms": 72.265089,
-  "candidate_median_ms": 71.818462,
-  "paired_median_ratio": 1.0106912821255636,
-  "slower_pairs": 23
-}

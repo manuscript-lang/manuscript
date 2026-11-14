@@ -723,6 +723,7 @@ pub(crate) fn execute(start: Start) {
             start.closure as *mut ms_rt_abi::Closure,
             start.id,
             start.capture,
+            start.stolen_at,
         )
     };
     deliver(
@@ -1336,6 +1337,7 @@ unsafe fn start_on(id: i64, work: *mut ms_rt_abi::Closure, mode: Mode) {
         closure: work as usize,
         at: crate::sys::monotonic_ns(),
         capture: task::capture(),
+        stolen_at: 0,
     };
     // A spread promise is placed on purpose, so a stream pinned to this thread does not hold it here.
     if mode == Mode::Here

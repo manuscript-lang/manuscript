@@ -1,8 +1,0 @@
-{
-  "case": "direct-2000-check",
-  "pairs": 11,
-  "baseline_median_ms": 132.442838,
-  "candidate_median_ms": 138.945257,
-  "paired_median_ratio": 1.0655932014975698,
-  "slower_pairs": 9
-}

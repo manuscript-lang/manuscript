@@ -1,8 +1,0 @@
-{
-  "case": "many-1-lint",
-  "pairs": 11,
-  "baseline_median_ms": 56.177572,
-  "candidate_median_ms": 57.532826,
-  "paired_median_ratio": 1.027844536724258,
-  "slower_pairs": 8
-}

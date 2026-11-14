@@ -109,6 +109,9 @@ pub(super) extern "C" fn task_main() -> ! {
             (*t).msg = msg;
             if (*t).promise != 0 {
                 crate::promise::task_ended((*t).promise, (*t).status, &(*t).msg, &(*t).started_by);
+                if (*t).stolen_at != 0 {
+                    crate::sched::steal_feedback((*t).stolen_at);
+                }
             }
         }
         if !(*t).owned.is_null() {
@@ -671,6 +674,7 @@ pub(crate) unsafe fn spawn_promise_task(
     closure: *mut ms_rt_abi::Closure,
     promise: i64,
     capture: u64,
+    stolen_at: i64,
 ) -> u64 {
     // SAFETY: single threaded scheduler; forwarded contract.
     unsafe {
@@ -678,6 +682,7 @@ pub(crate) unsafe fn spawn_promise_task(
         let t = lookup(h);
         (*t).promise = promise;
         (*t).capture = capture;
+        (*t).stolen_at = stolen_at;
         if !crate::promise::is_native_work(closure) {
             (*t).started_by = fault::capture_frames();
         }

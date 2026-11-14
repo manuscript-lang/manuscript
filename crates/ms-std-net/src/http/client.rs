@@ -1588,7 +1588,7 @@ impl BodyState {
             let inflater = self.fast_gzip.as_mut().expect("buffered gzip state");
             let pushed = inflater.push(&self.gz_in, more, out, limit);
             let (used, done) = pushed.map_err(|f| match f {
-                gunzip::Fail::Limit => IoErr::Failed("response body limit exceeded".into()),
+                gunzip::Fail::Limit => IoErr::LimitExceeded,
                 gunzip::Fail::Truncated => {
                     IoErr::Failed("connection closed before the exchange completed".into())
                 }
@@ -1685,7 +1685,7 @@ fn h2_framing(head: &ResponseHead, method: &str, stream: &H2Stream) -> Framing {
 
 fn gzip_error(e: std::io::Error) -> IoErr {
     if e.to_string() == "response body limit exceeded" {
-        return IoErr::Failed("response body limit exceeded".into());
+        return IoErr::LimitExceeded;
     }
     match e.kind() {
         std::io::ErrorKind::UnexpectedEof => {
@@ -1792,7 +1792,7 @@ impl ResponseBody {
             let n = max.min(state.ready.len() - state.ready_pos);
             if n as u64 > state.remaining {
                 state.abandon();
-                return Err(IoErr::Failed("response body limit exceeded".into()));
+                return Err(IoErr::LimitExceeded);
             }
             state.remaining -= n as u64;
             if state.ready_pos == 0 && n == state.ready.len() {
@@ -1857,7 +1857,7 @@ impl ResponseBody {
                 let n = state.ready.len() - state.ready_pos;
                 if n as u64 > state.remaining {
                     state.abandon();
-                    return Err(IoErr::Failed("response body limit exceeded".into()));
+                    return Err(IoErr::LimitExceeded);
                 }
                 state.remaining -= n as u64;
                 if out.is_empty() && state.ready_pos == 0 {
@@ -1916,7 +1916,7 @@ impl ResponseBody {
                 let more = state.gz_step(self.deadline, out, room)?;
                 let grew = (out.len() - before) as u64;
                 if grew > state.remaining {
-                    return Err(IoErr::Failed("response body limit exceeded".into()));
+                    return Err(IoErr::LimitExceeded);
                 }
                 if grew > 0 || !more {
                     state.remaining -= grew;
@@ -1937,7 +1937,7 @@ impl ResponseBody {
                 .map_err(|m| IoErr::Failed(m.to_string()))?;
             wire.consume(used);
             if (out.len() - before) as u64 > state.remaining {
-                return Err(IoErr::Failed("response body limit exceeded".into()));
+                return Err(IoErr::LimitExceeded);
             }
             state.remaining -= (out.len() - before) as u64;
             if progress == Decoded::Done {
@@ -1991,7 +1991,7 @@ impl ResponseBody {
             ));
         }
         if n as u64 > state.remaining {
-            return Err(IoErr::Failed("response body limit exceeded".into()));
+            return Err(IoErr::LimitExceeded);
         }
         state.remaining -= n as u64;
         if state.decoder.took_raw(n) == Decoded::Done {
@@ -2007,7 +2007,7 @@ impl ResponseBody {
             match self.read(READ_BUF) {
                 Ok(Some(chunk)) => out.extend_from_slice(&chunk),
                 Ok(None) => return Ok(out),
-                Err(IoErr::Failed(m)) if m == "response body limit exceeded" => {
+                Err(IoErr::LimitExceeded) => {
                     return Err(ReadAll::Limit);
                 }
                 Err(IoErr::Closed) => return Err(ReadAll::Closed),
@@ -2502,7 +2502,7 @@ mod tests {
         limited.max_response = 99_999;
         assert!(matches!(
             c.send(limited).unwrap().read_all_bytes(),
-            Err(IoErr::Failed(m)) if m == "response body limit exceeded"
+            Err(IoErr::LimitExceeded)
         ));
         let mut exact = request("GET", &address, "/gz");
         exact.max_response = 100_000;
@@ -2667,10 +2667,7 @@ mod tests {
         let mut limited = request("GET", &address, "/length");
         limited.max_response = 299_999;
         let body = c.send(limited).unwrap();
-        assert_eq!(
-            body.read_all_bytes(),
-            Err(IoErr::Failed("response body limit exceeded".into()))
-        );
+        assert_eq!(body.read_all_bytes(), Err(IoErr::LimitExceeded));
         let body = c.send(request("GET", &address, "/short")).unwrap();
         assert!(body.read_all_bytes().is_err());
     }

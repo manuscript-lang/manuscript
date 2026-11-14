@@ -1,5 +1,0 @@
-running 1 of 5388 fixtures with /workspace/codec-native-review/target/release/ms
-1 fixtures: 1 pass, 0 fail, 0 expected fail, 0 unexpected pass, 0 unrecorded (100.0%)
-  test       1/1     100.0%  1 s fixture time
-slowest fixtures:
-     0.85 s  test  e2e/stdlib/varint

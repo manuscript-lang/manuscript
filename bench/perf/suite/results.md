@@ -1,5 +1,24 @@
 # Suite results
 
+## 2026-11-14, Go and Node for the text, data and file programs
+
+`81a9844b`, same machine and method (min of 2). The ten programs that moved in from `engineering/` now have Go and Node versions; every output matches the C and Rust output. Go and Node use their standard libraries (`encoding/json`, `JSON.parse`, `strings`, `Map`), so `jsonsum` compares Manuscript's typed parse against their generic parse.
+
+| program | ms | rust | go | node | c | ms / rust | ms / go | ms / node |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| logstats | 63 | 82 | 307 | 397 | 58 | 0.77x | 0.21x | 0.16x |
+| csvgroup | 173 | 331 | 600 | 1280 | 69 | 0.52x | 0.29x | 0.14x |
+| wordfreq | 267 | 243 | 1207 | 1512 | 257 | 1.10x | 0.22x | 0.18x |
+| sortrecords | 281 | 296 | 789 | 1342 | 339 | 0.95x | 0.36x | 0.21x |
+| grep | 35 | 32 | 274 | 155 | 29 | 1.09x | 0.13x | 0.23x |
+| **treegrep** | 93 | 31 | 49 | 75 | 32 | **3.00x** | **1.90x** | 1.24x |
+| pargroup | 47 | 40 | 50 | 196 | 24 | 1.18x | 0.94x | 0.24x |
+| jsonsum | 185 | 294 | 897 | 278 | 223 | 0.63x | 0.21x | 0.67x |
+| dedupe | 299 | 507 | 535 | 971 | 315 | 0.59x | 0.56x | 0.31x |
+| report | 167 | 166 | 538 | 1332 | 214 | 1.01x | 0.31x | 0.13x |
+
+Only `treegrep` is slower than Go and Node as well as Rust and C: Go walks the same tree in 49 ms and Node in 75 ms against 93 ms. That makes the directory-walk gap a Manuscript cost, not an operating system floor.
+
 ## 2026-11-14 baseline
 
 `d4006e73`, Release `ms` from `make build`, gcc 13.3 `-O2`, rustc 1.99.1 `-O`, Go 1.24.7, Node 22.23, 4 vCPU Xeon 2.1 GHz VM, min of 5. Ratios are Manuscript time over the other language's time, so below 1.00x is faster.
@@ -58,3 +77,7 @@ Same day, second change (`pargroup`): a worker thread's root task waits for sche
 Same day, third change: `String.split` starts its list with room for eight pieces (never more than the text can hold) instead of four, so a seven-field line no longer grows and copies its list once. `pargroup` on one thread: 940M to 780M instructions (callgrind, -17%). Conformance corpus: 3942 and 1458 fixtures pass.
 
 Same day, fourth change: a split at a one-byte separator of a text up to 128 bytes (a record, a log line) finds every separator in one pass over eight-byte words instead of one search per piece. `pargroup` on one thread: 873M to 803M instructions (-8%); a control of five split shapes (record, two fields, 450-byte text with one separator, dense 400-byte, 20 KB) 2.05G to 1.92G. Longer texts keep the per-piece search: a 512-byte limit made the controls 9% worse (2.23G). Not done: a split read only by constant indexes could skip building the list, but the pieces cost about 90 instructions each and the finds would repeat per index, so the saving is below 15% on this program.
+
+## 2026-11-14: name the `x86-64` CPU for `llc`
+
+Same sandbox (4 cores). `llc` with no `-mcpu` (LLVM 23) no longer emits the 32-bit guard in front of a 64-bit `idiv`, so division and remainder of small values took the slow 64-bit path; `-mcpu=x86-64`, which rustc uses, restores it. Trial-division primes loop, 1 thread / 4 threads, median of 7: 1443 / 430 ms before, 920 / 288 ms after (Rust, 1 thread: 930 ms). Minimum of 5 in `run.sh`: `workers` 535 to 353 ms (Rust 251), `hashing` 156, `lz` 224, `interp` 157 (no regression against the table above). Remaining `workers` gap is the 100k small promises, which still do not scale past 1 thread (64 ms on 1 thread, 180 ms on 4).

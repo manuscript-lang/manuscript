@@ -1,8 +1,0 @@
-{
-  "case": "allowed-2000-check",
-  "pairs": 11,
-  "baseline_median_ms": 125.625539,
-  "candidate_median_ms": 125.310284,
-  "paired_median_ratio": 1.0207823967158216,
-  "slower_pairs": 7
-}
