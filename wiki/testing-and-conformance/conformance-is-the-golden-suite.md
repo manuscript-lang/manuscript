@@ -11,4 +11,4 @@ Decision (Chinmay, 2026-11-11): the conformance corpus is the one golden test su
 - Order events with real synchronization, never random sleeps. Run tests on Debug (Cranelift) builds; a platform-sensitive test is verified on macOS and Windows before the fix is called done.
 
 Apply when: adding a test or moving coverage between layers.
-Evidence: [pull request CI budget](../repository/pull-request-ci-has-a-five-minute-budget.md).
+Evidence: [pull request CI budget](../repository/pull-request-ci-has-a-ten-minute-budget.md).
