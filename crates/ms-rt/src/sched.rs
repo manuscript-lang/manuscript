@@ -105,6 +105,8 @@ pub(crate) struct Start {
     pub at: i64,
     /// The creator's output capture, which the task inherits (`msrt_test_capture_set`).
     pub capture: u64,
+    /// When another thread took it from its creator's queue (monotonic ns); 0 if it did not.
+    pub stolen_at: i64,
 }
 
 /// How long a start waits in its creator's queue before another thread may take it. Most forks
@@ -169,6 +171,10 @@ struct Slot {
     pending: AtomicU32,
     /// When the oldest of them was queued, or 0 when none is.
     front_at: AtomicI64,
+    /// Until when this thread takes no start from another's queue, after steals that ran for less
+    /// than they cost; and the length of the pause it doubles while that keeps happening.
+    steal_off_until: AtomicI64,
+    steal_pause: AtomicI64,
     /// The registry slot of the thread's isolate, or `usize::MAX` before it runs.
     isolate: AtomicUsize,
     /// The token the thread's root task parks on; posting it lets the thread end.
@@ -184,6 +190,8 @@ impl Slot {
             live: AtomicU32::new(0),
             pending: AtomicU32::new(0),
             front_at: AtomicI64::new(0),
+            steal_off_until: AtomicI64::new(0),
+            steal_pause: AtomicI64::new(0),
             isolate: AtomicUsize::new(usize::MAX),
             root: AtomicU64::new(0),
             mail: Mutex::new(Mail {
@@ -485,6 +493,9 @@ pub(crate) fn next_pending() -> Option<Start> {
         return None;
     }
     let now = crate::sys::monotonic_ns();
+    if now < SLOTS[me].steal_off_until.load(Ordering::Relaxed) {
+        return None;
+    }
     let started = STARTED.load(Ordering::Acquire);
     let (mut best, mut most) = (usize::MAX, 0);
     for thread in (0..started).filter(|&t| t != me) {
@@ -503,8 +514,36 @@ pub(crate) fn next_pending() -> Option<Start> {
         None
     };
     publish(&SLOTS[best], &mail);
-    start
+    start.map(|s| Start {
+        stolen_at: now,
+        ..s
+    })
 }
+
+/// A stolen promise that was started at `at` has ended. One that ran for less than a steal costs
+/// (a task and three events) made the work slower, so this thread stops stealing for a pause that
+/// doubles each time that repeats; a promise worth moving resets it.
+pub(crate) fn steal_feedback(at: i64) {
+    let me = current();
+    if me == NONE {
+        return;
+    }
+    let now = crate::sys::monotonic_ns();
+    let slot = &SLOTS[me];
+    if now - at >= STEAL_WORTH_NS {
+        slot.steal_pause.store(0, Ordering::Relaxed);
+        return;
+    }
+    let pause = (slot.steal_pause.load(Ordering::Relaxed) * 2)
+        .clamp(STEAL_PAUSE_MIN_NS, STEAL_PAUSE_MAX_NS);
+    slot.steal_pause.store(pause, Ordering::Relaxed);
+    slot.steal_off_until.store(now + pause, Ordering::Relaxed);
+}
+
+/// A stolen promise that runs shorter than this was not worth the steal.
+const STEAL_WORTH_NS: i64 = 5_000;
+const STEAL_PAUSE_MIN_NS: i64 = 50_000;
+const STEAL_PAUSE_MAX_NS: i64 = 2_000_000;
 
 /// Whether the oldest start queued on `thread` has waited a beat.
 fn aged(thread: usize, now: i64) -> bool {
@@ -520,6 +559,7 @@ pub(crate) fn steal_wait_ns() -> i64 {
         return -1;
     }
     // The clock is read only once a queued start exists: an idle thread polls this in a spin.
+    let off = SLOTS[me].steal_off_until.load(Ordering::Relaxed);
     let mut now = 0;
     let mut wait = -1;
     for thread in (0..STARTED.load(Ordering::Acquire)).filter(|&t| t != me) {
@@ -528,7 +568,7 @@ pub(crate) fn steal_wait_ns() -> i64 {
             if now == 0 {
                 now = crate::sys::monotonic_ns();
             }
-            let w = (at + BEAT_NS - now).max(0);
+            let w = (at + BEAT_NS - now).max(off - now).max(0);
             wait = if wait < 0 { w } else { wait.min(w) };
         }
     }
@@ -649,6 +689,8 @@ pub fn shutdown() {
         *lock_events(&slot.posted.events) = Vec::new();
         slot.pending.store(0, Ordering::SeqCst);
         slot.front_at.store(0, Ordering::SeqCst);
+        slot.steal_off_until.store(0, Ordering::SeqCst);
+        slot.steal_pause.store(0, Ordering::SeqCst);
         slot.posted.signalled.store(0, Ordering::SeqCst);
         slot.busy.store(0, Ordering::SeqCst);
         slot.live.store(0, Ordering::SeqCst);
