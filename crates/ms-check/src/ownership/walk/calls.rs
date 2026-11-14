@@ -245,8 +245,14 @@ impl Walker<'_> {
                 && ty_contains(&self.cx.m.ty(r), &result_ty);
             let takes_preserved =
                 passthrough.is_some_and(|t| !self.cx.classes.clonable(self.syms, &t));
+            // `get()` at the last use of an owned local hands its payload over even when the
+            // payload is `Clonable` (`native_borrow_of` reads the same rule): a copy would make a
+            // cursor walk (`n := cur.get()`, `cur = n.next`) clone the rest of the list per step.
+            let takes_last_use = args.is_empty()
+                && native_borrow(&self.cx.m.ty(r), &name, 0) == Some(NativeBorrow::PayloadGet)
+                && self.owned_local_at_last_use(r);
             if mode == ParamMode::Borrow
-                && (takes_payload || takes_preserved)
+                && (takes_payload || takes_preserved || takes_last_use)
                 && self.native_borrow_receiver(e).is_none()
             {
                 let in_collection = {

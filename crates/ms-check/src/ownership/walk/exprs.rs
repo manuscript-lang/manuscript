@@ -724,6 +724,7 @@ impl Walker<'_> {
         let Some(meta) = self.meta.get(&root.uid) else {
             return false;
         };
+        let role = meta.role;
         let owner = matches!(meta.perm, Perm::Immutable | Perm::Mutable)
             && !meta.is_receiver
             && !matches!(meta.role, Role::Fixture)
@@ -784,7 +785,19 @@ impl Walker<'_> {
         }
         self.check_change(e.pos, &info.resolved, "move", &info.text, Some(root.uid));
         self.mark_mutated(root.uid);
-        self.record(info.root_node, &root, Access::Borrow);
+        // A part that is also the root's last use takes the whole local: lowering moves the part
+        // out and releases the rest, instead of copying the part and dropping the whole later
+        // (a cursor walk `cur = n.next` would otherwise clone the rest of the list per step).
+        let whole = !resource
+            && matches!(role, Role::Let | Role::Var)
+            && self.cx.classes.class(self.syms, &root.ty) != Class::Resource
+            && !self.facts.resource_moves.contains_key(&root.uid)
+            && self.is_last(info.root_node, &root);
+        self.record(
+            info.root_node,
+            &root,
+            if whole { Access::Move } else { Access::Borrow },
+        );
         if meta_is_parameter(self, root.uid) {
             self.consumed.insert(root.uid);
             self.consumed_at.entry(root.uid).or_insert(e.pos);
