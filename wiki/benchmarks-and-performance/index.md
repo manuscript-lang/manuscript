@@ -4,6 +4,7 @@
 
 Perf and agent benchmarks, profiling.
 
+- [Runtime string results are built in place, not through a `Vec`](runtime-string-results-are-built-in-place-not-through-a-vec.md): inline `starts_with`/`ends_with`, one-allocation `lower`/`upper`/`reverse`, an exact `parse_float` fast path (lower 40 to 22 ms, reverse 66 to 14 per million).
 - [Sorting records that own data uses the generated sort over bitwise scratch](sorting-owning-records-uses-bitwise-scratch.md): inlined comparator for `String`-holding records, 225M to 102M instructions, then 82M with the driftsort; scratch owns nothing so a comparator fault is safe.
 - [User `hash()` values are mixed before they index a table](user-hash-values-are-mixed-before-indexing.md): identity-like hashes of small-int records clustered under linear probing (562 to 103 ms for 1M `Set[Pt]` operations).
 - [Runtime fast paths are generated MIR with a runtime twin](runtime-fast-paths-are-generated-mir-with-a-runtime-twin.md): `ms-rt-hot` is deleted; map probes, `String.view` and `StringBuilder.append` inline through shared MIR in both backends; hash and probe change together; `update` passes a map address.
