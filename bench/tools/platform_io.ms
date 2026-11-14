@@ -101,6 +101,8 @@ fn round_trips(program: String, n: Int) Unit!:
 	var child = spawn(program, [], SpawnOptions())?
 	var input = child.stdin()
 	var output = child.stdout()
+	print("{host()} pipe round trip: child started")
+
 	var best = 1000000000000
 
 	for round in 0..3:
@@ -111,6 +113,8 @@ fn round_trips(program: String, n: Int) Unit!:
 			input.flush()?
 
 			_reply := output.next()?
+			if round == 0 and i == 0:
+				print("{host()} pipe round trip: first reply")
 
 		best = min(best, now_ns() - start)
 
