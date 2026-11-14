@@ -25,7 +25,7 @@ Times are the minimum wall time in ms of N samples with process start and output
 | `jsonrt` | data formats | generic JSON parse, tree walk, stringify against Go and Node |
 | `strings` | text | interpolation, case, trim, replace, search, padding, sorting strings |
 | `concat` | text | appending to one long string with `+=`, and `join` |
-| `workers` | concurrency | promises over CPU work, then 100k small promises, against threads, goroutines and worker threads |
+| `workers` | concurrency | 128 independent chunks, each generating 200k values, counting them into buckets and folding a checksum, one promise per chunk against a thread pool, goroutines and worker threads |
 | `logstats`, `csvgroup`, `wordfreq`, `sortrecords`, `grep`, `dedupe`, `report` | text and data | stdin programs on 15 to 40 MB of generated input, against C and Rust |
 | `jsonsum` | data formats | typed `parse[List[Rec]]` against a hand-written tree parser |
 | `treegrep`, `pargroup` | files | walking a directory tree, reading files on 4 workers |

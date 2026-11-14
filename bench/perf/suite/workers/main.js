@@ -1,32 +1,30 @@
+const os = require("node:os");
 const { Worker, isMainThread, parentPort, workerData } = require("node:worker_threads");
 
-function countPrimes(lo, hi) {
-  let count = 0;
-  for (let n = lo; n < hi; n++) {
-    if (n < 2) continue;
-    let isPrime = true;
-    for (let d = 2; d * d <= n; d++) if (n % d === 0) { isPrime = false; break; }
-    if (isPrime) count++;
+function chunkChecksum(chunk) {
+  const hist = new Array(256).fill(0);
+  let x = chunk * 7919 + 1;
+  let h = 0;
+  for (let i = 0; i < 200000; i++) {
+    x = (x * 48271) % 2147483647;
+    hist[x % 256]++;
+    h = (h * 31 + x) % 1000000007;
   }
-  return count;
+  for (let b = 0; b < 256; b++) h = (h * 131 + hist[b]) % 1000000007;
+  return h;
 }
 
-const small = (i) => { let t = 0; for (let k = 0; k < 200; k++) t += (i + k) % 7; return t; };
-
 if (!isMainThread) {
-  parentPort.postMessage(countPrimes(workerData.lo, workerData.hi));
+  let t = 0;
+  for (let c = workerData.first; c < 128; c += workerData.step) t += chunkChecksum(c);
+  parentPort.postMessage(t);
 } else {
-  // Worker threads for the CPU-bound chunks; the small tasks run as promises on the one main thread
-  // (Node has no cheaper way to spread them).
-  const chunks = Array.from({ length: 16 }, (_, c) => new Promise((resolve, reject) => {
-    const w = new Worker(__filename, { workerData: { lo: c * 250000, hi: c * 250000 + 250000 } });
-    w.on("message", resolve);
-    w.on("error", reject);
+  // One worker thread per core, each taking every n-th chunk.
+  const n = os.availableParallelism();
+  const parts = Array.from({ length: n }, (_, w) => new Promise((resolve, reject) => {
+    const worker = new Worker(__filename, { workerData: { first: w, step: n } });
+    worker.on("message", resolve);
+    worker.on("error", reject);
   }));
-  Promise.all(chunks).then(async (counts) => {
-    const primes = counts.reduce((a, b) => a + b, 0);
-    const many = Array.from({ length: 100000 }, (_, i) => Promise.resolve().then(() => small(i)));
-    const total = (await Promise.all(many)).reduce((a, b) => a + b, 0);
-    console.log(`primes ${primes} small ${total}`);
-  });
+  Promise.all(parts).then((r) => console.log(`chunks 128 checksum ${r.reduce((a, b) => a + b, 0)}`));
 }

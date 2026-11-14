@@ -1,54 +1,36 @@
-// Concurrency: CPU-bound work fanned out over promises, then many small promises.
-// Compared with threads, goroutines and worker threads.
+// Concurrency: a fixed set of independent chunks, each processed by its own promise (compare a thread pool,
+// goroutines and worker threads). A chunk generates 200,000 pseudo-random values, counts them into 256 buckets
+// and folds them into a checksum, so every task does real CPU work and shares nothing.
 import Promise, promise, wait_all from "@std/concurrency/promise.ms"
 
-fn count_primes(lo: Int, hi: Int) Int!:
-	var count = 0
+fn chunk_checksum(chunk: Int) Int!:
+	var hist: List[Int] = []
+	for b in 0..256:
+		hist.append(0)
 
-	for n in lo..hi:
-		if n < 2: continue
+	var x = chunk * 7919 + 1
+	var h = 0
 
-		var is_prime = true
-		var d = 2
+	for i in 0..200000:
+		x = (x * 48271) % 2147483647
+		hist[x % 256] = hist[x % 256] + 1
+		h = (h * 31 + x) % 1000000007
 
-		while d * d <= n:
-			if n % d == 0:
-				is_prime = false
-				break
+	for b in 0..256:
+		h = (h * 131 + hist[b]) % 1000000007
 
-			d += 1
-
-		if is_prime: count += 1
-
-	return ok(count)
-
-fn small(i: Int) Int!:
-	var t = 0
-	for k in 0..200:
-		t += (i + k) % 7
-	return ok(t)
+	return ok(h)
 
 // A promise a function returns owns the values it captured.
-fn start_primes(lo: Int) Promise[Int]:
-	return promise[Int](fn: count_primes(lo, lo + 250000))
-
-fn start_small(i: Int) Promise[Int]:
-	return promise[Int](fn: small(i))
+fn start_chunk(chunk: Int) Promise[Int]:
+	return promise[Int](fn: chunk_checksum(chunk))
 
 fn main() Unit:
 	var ps: List[Promise[Int]] = []
-	for chunk in 0..16:
-		ps.append(start_primes(chunk * 250000))
-
-	var primes = 0
-	for r in wait_all(ps).get():
-		primes += r
-
-	var many: List[Promise[Int]] = []
-	for i in 0..100000:
-		many.append(start_small(i))
+	for chunk in 0..128:
+		ps.append(start_chunk(chunk))
 
 	var total = 0
-	for r in wait_all(many).get():
+	for r in wait_all(ps).get():
 		total += r
-	print("primes {primes} small {total}")
+	print("chunks 128 checksum {total}")
