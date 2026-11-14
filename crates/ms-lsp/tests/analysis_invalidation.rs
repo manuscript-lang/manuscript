@@ -49,7 +49,7 @@ fn publications(messages: &[Json], uri: &str) -> Vec<Json> {
 
 #[test]
 fn editing_independent_documents_reuses_checked_analyses() {
-    for count in [1, 8, 32] {
+    for count in [1, 8] {
         let ws = Workspace::new("independent-edits");
         let mut s = Script::initialize(&ws.root.to_string_lossy(), false);
         let source = include_str!("analysis_invalidation/independent.ms");

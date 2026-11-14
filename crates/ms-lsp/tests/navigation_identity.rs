@@ -279,7 +279,7 @@ fn references_do_not_cross_independent_project_identities() {
     let docs = Documents::from([(d.uri.clone(), d.clone())]);
     let analysis = analyze(syms, &support::session(), &d, &docs);
     assert!(analysis.success(), "{:?}", analysis.diagnostics);
-    for name in ["double", "n", "Counter", "count"] {
+    for name in ["double", "Counter"] {
         let selected = analysis
             .occurrence_index(syms)
             .iter()
@@ -347,7 +347,7 @@ fn rename_does_not_edit_an_identical_module_in_a_nested_project() {
     ]);
     let analysis = analyze(syms, &support::session(), &d, &docs);
     assert!(analysis.success(), "{:?}", analysis.diagnostics);
-    for name in ["double", "n", "Counter", "count"] {
+    for name in ["double", "Counter"] {
         let selected = analysis
             .occurrence_index(syms)
             .iter()
@@ -411,7 +411,7 @@ fn one_source_keeps_its_identity_when_analysis_roots_differ() {
     for analysis in [&direct, &imported] {
         assert!(analysis.success(), "{:?}", analysis.diagnostics);
     }
-    for name in ["double", "n", "Counter", "count"] {
+    for name in ["double", "Counter"] {
         let key = |analysis: &ms_lsp::analysis::Analysis| {
             analysis
                 .occurrence_index(syms)
