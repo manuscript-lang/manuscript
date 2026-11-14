@@ -4,7 +4,7 @@ import (
 	Bytes from "@std/bytes.ms",
 	PromiseOptions from "@std/concurrency/promise.ms",
 	fetch from "@std/net/fetch.ms",
-	HttpExchange from "@std/net/http.ms",
+	HttpExchange, HttpServer, HttpServerOptions from "@std/net/http.ms",
 	connect, serve from "@std/net/net.ms",
 	memory_usage from "@std/os/system.ms",
 	expect_ok from "@std/test/test.ms",
@@ -38,8 +38,16 @@ test "a faulting handler releases the values its frames own":
 fn hanging(var exchange: HttpExchange) Unit!:
 	sleep(30.seconds()).wait()?
 
+// Closing cancels the hanging handlers at once rather than waiting out their sleep.
+fn hanging_server() HttpServer!:
+	return serve(
+		address: "127.0.0.1:0",
+		handler: hanging,
+		options: HttpServerOptions(grace: 0.seconds()),
+	)
+
 test "a fetch cancelled by its timeout releases its read buffer":
-	server := serve(address: "127.0.0.1:0", handler: hanging) | expect_ok?
+	server := hanging_server()?
 	url := "http://{server.address()}/"
 
 	// Warm up the thread's buffers and the connection pool before measuring.
@@ -60,8 +68,9 @@ test "a fetch cancelled by its timeout releases its read buffer":
 	if grown > 8000000: return error(Error("resident memory grew {grown} bytes"))
 
 test "a fetch cancelled by its timeout frees the request state its frames own":
-	server := serve(address: "127.0.0.1:0", handler: hanging) | expect_ok?
+	server := hanging_server()?
 	url := "http://{server.address()}/"
+
 	// One fetch waits long enough for its request to be sent; the rest cancel at once.
 	_ := fetch(url).with(options: PromiseOptions(timeout: 5.milliseconds())).wait()
 	for i in 0..200:
