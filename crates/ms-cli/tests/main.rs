@@ -20,6 +20,7 @@ mod extern_link;
 mod fifo_cancel;
 mod fifo_cleanup;
 mod fmt;
+mod hot_helpers_off;
 mod if_var_evaluation;
 mod import_hints;
 mod llvm;
