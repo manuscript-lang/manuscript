@@ -673,8 +673,8 @@ impl FnLower<'_> {
         }
         if key.is(Builtin::Bool) {
             let (t, f) = (self.b.str_lit("true"), self.b.str_lit("false"));
-            let is_t = self.call_runtime("msrt_string_eq", &[name, t], MTy::BOOL)?;
-            let is_f = self.call_runtime("msrt_string_eq", &[name, f], MTy::BOOL)?;
+            let is_t = crate::eq::string_eq(&mut self.b, name, t);
+            let is_f = crate::eq::string_eq(&mut self.b, name, f);
             self.drop_value(name);
             let any = self.b.binop(Op::Or, is_t, is_f);
             self.jrequire(any, &[], &[acc]);
@@ -693,7 +693,7 @@ impl FnLower<'_> {
             .filter(|(_, c)| c.fields.is_empty())
         {
             let lit = self.b.str_lit(self.syms.str(c.name));
-            let hit = self.call_runtime("msrt_string_eq", &[name, lit], MTy::BOOL)?;
+            let hit = crate::eq::string_eq(&mut self.b, name, lit);
             let k = self.b.iconst(i as i64);
             idx = self.b.select(hit, k, idx);
         }

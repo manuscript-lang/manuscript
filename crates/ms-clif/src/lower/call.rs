@@ -113,10 +113,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             unreachable!()
         };
         if self.g.m.externs[e.index()].role == ExternRole::StringEq {
-            if let Some(r) = self.string_eq_literal(inst) {
-                return r;
-            }
-            return self.string_eq_inline(f, inst);
+            return self.string_eq_call(f, inst);
         }
         if self.g.m.externs[e.index()].role == ExternRole::MapNew {
             // `ms_rt::map::empty()` is all zero words (a unit test pins it).

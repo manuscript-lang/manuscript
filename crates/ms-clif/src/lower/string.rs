@@ -3,24 +3,15 @@
 use super::*;
 
 impl<'a, 'm> Lower<'a, 'm> {
-    /// Calls a runtime function with the ABI mapping of `ms-rt`: aggregates by pointer
-    /// to a spilled copy, aggregate results through a trailing out pointer.
-    /// `s == "lit"` for a literal of one to eight bytes without a NUL, compared inline: the
-    /// length word, then the bytes in power-of-two chunks (read only once the length matches,
-    /// so no load passes the object's NUL terminator).
-    pub(super) fn string_eq_literal(&mut self, inst: &Inst) -> Option<Vs> {
-        let (lit, other) = match (
-            self.str_lits.get(&inst.args[0].index()),
-            self.str_lits.get(&inst.args[1].index()),
-        ) {
-            (_, Some(l)) => (*l, self.a(inst, 0)),
-            (Some(l), None) => (*l, self.a(inst, 1)),
-            (None, None) => return None,
+    /// `str.eq_lit`: `s == "lit"` for a literal of one to eight bytes without a NUL, compared
+    /// inline: the length word, then the bytes in power-of-two chunks (read only once the length
+    /// matches, so no load passes the object's NUL terminator).
+    pub(super) fn string_eq_literal(&mut self, inst: &Inst) -> Vs {
+        let Imm::Str(lit) = inst.imm else {
+            unreachable!("str.eq_lit carries a literal")
         };
-        let bytes = self.g.m.strings[lit as usize].as_bytes().to_vec();
-        if bytes.is_empty() || bytes.len() > 8 || bytes.contains(&0) {
-            return None;
-        }
+        let other = self.a(inst, 0);
+        let bytes = self.g.m.strings[lit.0 as usize].as_bytes().to_vec();
         let unaligned = MemFlagsData::new().with_notrap();
         // The literal as an inline string: equal words. Another kind of string compares its
         // masked length (never the literal's for an inline string) and then its bytes.
@@ -76,21 +67,15 @@ impl<'a, 'm> Lower<'a, 'm> {
             .ins()
             .jump(join, &[BlockArg::Value(all.expect("non-empty literal"))]);
         self.b.switch_to_block(join);
-        Some(vec![self.b.block_params(join)[0]])
+        vec![self.b.block_params(join)[0]]
     }
 
-    /// `a == b` for two strings: differing lengths are unequal and identical pointers equal without
-    /// a call; only same-length distinct blocks reach the runtime.
-    pub(super) fn string_eq_inline(&mut self, f: &Func, inst: &Inst) -> Vs {
+    /// `a == b` for two strings, decided from their words where possible: identical words are
+    /// equal, and differing kinds, lengths or inline bytes are unequal, all without a call. Only
+    /// two distinct blocks of one length reach the runtime comparison.
+    pub(super) fn string_eq_call(&mut self, f: &Func, inst: &Inst) -> Vs {
         let (a, b) = (self.a(inst, 0), self.a(inst, 1));
-        let join = self.b.create_block();
-        self.b.append_block_param(join, types::I8);
-        let no = self.b.ins().iconst(types::I8, 0);
-        let (same_hi, other_kind, slow) = (
-            self.b.create_block(),
-            self.b.create_block(),
-            self.b.create_block(),
-        );
+        let (yes, no, unknown) = (self.iconst(1), self.iconst(0), self.iconst(-1));
         // `x = a.tagged ^ b.tagged`. With `0 < x < 1 << 62` both have one kind and the low bits
         // differ: different lengths, or for inline strings different bytes. Either way unequal.
         // The ASCII flag may differ between equal strings, so it is masked out.
@@ -101,29 +86,29 @@ impl<'a, 'm> Lower<'a, 'm> {
             self.b
                 .ins()
                 .icmp_imm_u(IntCC::UnsignedLessThan, below, (STR_INLINE - 1) as i64);
-        let undecided = self.b.create_block();
-        self.b
-            .ins()
-            .brif(differ, join, &[BlockArg::Value(no)], undecided, &[]);
-        self.b.switch_to_block(undecided);
-        let is_same = self.b.ins().icmp_imm_s(IntCC::Equal, x, 0);
-        self.b.ins().brif(is_same, same_hi, &[], other_kind, &[]);
         // Same second word: the same first word is the same string. Otherwise inline strings
         // differ, and other kinds of one length compare their bytes.
-        self.b.switch_to_block(same_hi);
         let same_ptr = self.b.ins().icmp(IntCC::Equal, a[0], b[0]);
         let inline = self.str_is_inline(a[1]);
-        let known = self.b.ins().bor(same_ptr, inline);
-        self.b
-            .ins()
-            .brif(known, join, &[BlockArg::Value(same_ptr)], slow, &[]);
-        // Different kinds are equal only with the same byte length; the runtime compares bytes.
-        self.b.switch_to_block(other_kind);
+        let other_same = self.b.ins().select(inline, no, unknown);
+        let same_hi = self.b.ins().select(same_ptr, yes, other_same);
+        // Different kinds are equal only with the same byte length.
         let (la, lb) = (self.str_byte_len(a[1]), self.str_byte_len(b[1]));
         let same_len = self.b.ins().icmp(IntCC::Equal, la, lb);
+        let kinds = self.b.ins().select(same_len, unknown, no);
+        let is_same = self.b.ins().icmp_imm_s(IntCC::Equal, x, 0);
+        let rest = self.b.ins().select(is_same, same_hi, kinds);
+        let known = self.b.ins().select(differ, no, rest);
+        let decided = self
+            .b
+            .ins()
+            .icmp_imm_s(IntCC::SignedGreaterThanOrEqual, known, 0);
+        let answer = self.b.ins().icmp_imm_s(IntCC::NotEqual, known, 0);
+        let (slow, join) = (self.b.create_block(), self.b.create_block());
+        self.b.append_block_param(join, types::I8);
         self.b
             .ins()
-            .brif(same_len, slow, &[], join, &[BlockArg::Value(no)]);
+            .brif(decided, join, &[BlockArg::Value(answer)], slow, &[]);
         self.b.switch_to_block(slow);
         let r = self.call_extern_plain(f, inst);
         self.b.ins().jump(join, &[BlockArg::Value(r[0])]);

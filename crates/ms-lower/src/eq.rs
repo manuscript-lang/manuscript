@@ -75,8 +75,7 @@ pub(crate) fn element_eq(
         return Ok(b.bconst(true));
     }
     if t == MTy::STR {
-        let ext = runtime_fn(b.m, "msrt_string_eq", &[MTy::STR, MTy::STR], MTy::BOOL);
-        return Ok(b.call_rt(ext, &[x, y]));
+        return Ok(string_eq(b, x, y));
     }
     match b.m.types.kind(t) {
         TyKind::Obj(Native::BigInt, _) => {
@@ -451,4 +450,20 @@ fn hash_into(b: &mut FuncBuilder<'_>, t: MTy, v: Value, acc: Value) -> Value {
         }
         _ => acc,
     }
+}
+
+/// `x == y` for two strings. A literal of 1 to 8 bytes is compared inline (`str.eq_lit`); any other
+/// pair is the runtime call, which the backends decide from the strings' words before calling
+/// (`ExternRole::StringEq`).
+pub(crate) fn string_eq(b: &mut FuncBuilder<'_>, x: Value, y: Value) -> Value {
+    for (lit, other) in [(y, x), (x, y)] {
+        let Some(id) = b.str_lit_of(lit) else {
+            continue;
+        };
+        if ms_mir::ir::eq_lit_ok(b.m.strings[id.0 as usize].as_bytes()) {
+            return b.str_eq_lit(other, id);
+        }
+    }
+    let ext = runtime_fn(b.m, "msrt_string_eq", &[MTy::STR, MTy::STR], MTy::BOOL);
+    b.call_rt(ext, &[x, y])
 }

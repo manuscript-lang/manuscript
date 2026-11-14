@@ -31,6 +31,7 @@ fn handles(op: Op) -> bool {
                 | Op::StrByte
                 | Op::StrAsciiAt
                 | Op::StrAsciiLen
+                | Op::StrEqLit
                 | Op::StrLen
                 | Op::ListNew
                 | Op::ListLit
@@ -64,7 +65,12 @@ fn splits(lay: &Layouts, f: &Func, i: &Inst, checks: bool) -> usize {
         Op::ListSet | Op::ListSetNn | Op::ListSetU => usize::from(checks && checked(op)) + drops(),
         _ if checked(op) => usize::from(checks),
         Op::ListDropLast if i.imm != Imm::Int(1) => drops(),
-        Op::StrByte | Op::StrAsciiAt | Op::ListNew | Op::ListPush | Op::ListRelease => 1,
+        Op::StrByte
+        | Op::StrAsciiAt
+        | Op::StrEqLit
+        | Op::ListNew
+        | Op::ListPush
+        | Op::ListRelease => 1,
         _ => 0,
     }
 }
@@ -200,6 +206,7 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         Op::ListConst => list_const(cx, inst, vals, b),
         Op::StrLen => str_len(cx, inst, vals, b),
         Op::StrAsciiLen => str_ascii_len(inst, vals, b),
+        Op::StrEqLit => str_eq_lit(cx, inst, vals, b),
         _ => list_access(cx, inst, vals, b),
     }
 }
@@ -682,6 +689,102 @@ fn str_ascii_len(inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     let other = b.select(&flagged, &len, &Val::int(-1));
     b.name_next(out);
     b.select(&inline, &inline_len, &other);
+}
+
+/// The byte length of a string from its second word: inline strings keep it in bits 56 to 59.
+fn tagged_len(b: &mut FnBuilder, w: &Val) -> Val {
+    use ms_rt_abi::{STR_INLINE, STR_INLINE_LEN_SHIFT, STR_LEN_MASK};
+    let tag = b.bin(Bin::And, w, &Val::int((3u64 << 62) as i64));
+    let inline = b.icmp("eq", &tag, &Val::int(STR_INLINE as i64));
+    let shifted = b.bin(Bin::LShr, w, &Val::int(i64::from(STR_INLINE_LEN_SHIFT)));
+    let short = b.bin(Bin::And, &shifted, &Val::int(15));
+    let long = b.bin(Bin::And, w, &Val::int(STR_LEN_MASK as i64));
+    b.select(&inline, &short, &long)
+}
+
+/// 1 when two strings are equal, 0 when unequal, -1 when only a byte comparison can tell.
+/// Identical words are equal, and differing kinds, lengths or inline bytes are unequal.
+pub(super) fn eq_words(b: &mut FnBuilder, x: &[Val], y: &[Val]) -> Val {
+    use ms_rt_abi::{STR_ASCII, STR_INLINE};
+    let (yes, no, unknown) = (Val::int(1), Val::int(0), Val::int(-1));
+    // `d = x.tagged ^ y.tagged` without the ASCII flag (equal strings may differ in it). With
+    // `0 < d < 1 << 62` both have one kind and the low bits differ: unequal.
+    let d = b.bin(Bin::Xor, &x[1], &y[1]);
+    let d = b.bin(Bin::And, &d, &Val::int(!(STR_ASCII as i64)));
+    let below = b.bin(Bin::Sub, &d, &Val::int(1));
+    let differ = b.icmp("ult", &below, &Val::int((STR_INLINE - 1) as i64));
+    // The same second word: the same first word is the same string; inline strings with other
+    // words differ; other kinds of one length need their bytes compared.
+    let same_ptr = b.icmp("eq", &x[0], &y[0]);
+    let tag = b.bin(Bin::And, &x[1], &Val::int((3u64 << 62) as i64));
+    let inline = b.icmp("eq", &tag, &Val::int(STR_INLINE as i64));
+    let other = b.select(&inline, &no, &unknown);
+    let same_hi = b.select(&same_ptr, &yes, &other);
+    // Different kinds are equal only with the same byte length.
+    let (lx, ly) = (tagged_len(b, &x[1]), tagged_len(b, &y[1]));
+    let same_len = b.icmp("eq", &lx, &ly);
+    let kinds = b.select(&same_len, &unknown, &no);
+    let same_word = b.icmp("eq", &d, &Val::int(0));
+    let rest = b.select(&same_word, &same_hi, &kinds);
+    b.select(&differ, &no, &rest)
+}
+
+/// `StrEqLit`: whether a string equals a literal of 1 to 8 bytes with no NUL. An inline string
+/// equals it when both words match; any other string when its length matches and its bytes do,
+/// read in power-of-two chunks only after the length matched.
+fn str_eq_lit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
+    use ms_rt_abi::{STR_INLINE, STR_INLINE_LEN_SHIFT, STR_LEN_MASK};
+    let Imm::Str(id) = inst.imm else {
+        unreachable!("str.eq_lit carries a literal")
+    };
+    let bytes = cx.m.strings[id.0 as usize].as_bytes().to_vec();
+    let s = &vals[&inst.args[0].index()];
+    let out = vals[&inst.res.expect("equality result").index()][0].clone();
+    let (bb, split) = (cx.block, cx.split);
+    let (check, join) = (format!("q{bb}_{split}"), block_label(bb, split + 1));
+    let head = block_label(bb, split);
+    cx.split += 1;
+    let mut word = [0u8; 8];
+    word[..bytes.len()].copy_from_slice(&bytes);
+    let inline_tag = (STR_INLINE | (bytes.len() << STR_INLINE_LEN_SHIFT)) as i64;
+    let same_tag = b.icmp("eq", &s[1], &Val::int(inline_tag));
+    let same_word = b.icmp("eq", &s[0], &Val::int(i64::from_le_bytes(word)));
+    let inline_eq = b.bin(Bin::And, &same_tag, &same_word);
+    let len = b.bin(Bin::And, &s[1], &Val::int(STR_LEN_MASK as i64));
+    let same_len = b.icmp("eq", &len, &Val::int(bytes.len() as i64));
+    b.cond_br(&same_len, &check, &join);
+    b.label(&check);
+    let ptr = b.int_to_ptr(&s[0]);
+    let mut all: Option<Val> = None;
+    let mut at = 0;
+    while at < bytes.len() {
+        let n = [8, 4, 2, 1]
+            .into_iter()
+            .find(|n| bytes.len() - at >= *n)
+            .expect("a chunk fits");
+        let ty = match n {
+            8 => LTy::I64,
+            4 => LTy::I32,
+            2 => LTy::I16,
+            _ => LTy::I8,
+        };
+        let mut chunk = [0u8; 8];
+        chunk[..n].copy_from_slice(&bytes[at..at + n]);
+        let shift = 64 - 8 * n as u32;
+        let want = (i64::from_le_bytes(chunk) << shift) >> shift;
+        let p = b.elem_ptr(&LTy::I8, &ptr, &Val::int(at as i64));
+        let got = b.load(&ty, &p, 1);
+        let eq = b.icmp("eq", &got, &Val::new(want.to_string(), ty));
+        all = Some(match all {
+            Some(a) => b.bin(Bin::And, &a, &eq),
+            None => eq,
+        });
+        at += n;
+    }
+    let all = all.expect("a non-empty literal");
+    b.br(&join);
+    b.label(&join);
+    b.phi(&out, &[(inline_eq, head), (all, check)]);
 }
 
 /// The module-level constants for the string literals `f` uses: LLVM owns the bytes, so it knows

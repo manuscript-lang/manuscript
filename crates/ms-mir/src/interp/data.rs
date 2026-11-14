@@ -285,6 +285,13 @@ impl Interp<'_> {
                 };
                 ops.set(Val::Int(if s.is_ascii() { s.len() as i64 } else { -1 }));
             }
+            Op::StrEqLit => {
+                let (Val::Str(a), Imm::Str(id)) = (&ops.regs[inst.args[0].index()], inst.imm)
+                else {
+                    return Err(Raw::internal("str.eq_lit on non-string"));
+                };
+                ops.set(Val::Bool(**a == *m.strings[id.0 as usize]));
+            }
             Op::StrAscii => {
                 let Val::Int(b) = &ops.regs[inst.args[0].index()] else {
                     return Err(Raw::internal("str.ascii on &inst.args non-int"));
