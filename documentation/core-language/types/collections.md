@@ -26,7 +26,7 @@ also_empty := List[Int]()
 sized := List[Int](reserve: 1000)
 ```
 
-`reserve: n` preallocates room for `n` items so appending up to that count does not regrow the list. The list stays empty; a negative or `none` reserve preallocates nothing.
+`reserve: n` preallocates room for `n` items so appending up to that count does not regrow the list. The list stays empty; a negative or `none` reserve preallocates nothing, and a count above 134217728 (2^27) is capped there as the list grows on demand past it.
 
 The first literal infers `List[Int]`; an empty literal needs an annotation or expected type. Every element must match the element type (no implicit numeric conversion) and evaluates left to right. See [collections as arguments](../functions/declarations-and-calls.md#collections-as-arguments).
 
