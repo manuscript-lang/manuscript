@@ -13,3 +13,5 @@ Read [benchmarks and performance](../../wiki/benchmarks-and-performance/index.md
 4. **Show before/after.** Same machine, same suite, medians. A change that slows another suite is revised or closed.
 5. **Record.** Add a dated section to the suite's results rather than editing old numbers. A fix not worth its code is closed not-planned on the issue with the numbers and what was tried.
 6. **Land** with [create-pr](../create-pr/SKILL.md); cite the benchmark page and revision.
+
+Do not over-index on a few kernels: a fix must help programs in general, with no special case for one benchmark. Perf work covers stdlib and release builds for ordinary engineering tasks.

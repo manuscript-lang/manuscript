@@ -10,4 +10,5 @@ description: Fix a GitHub issue end to end: label it, find the root cause, test,
 3. **Find the root cause.** Fix it where the wrong behavior starts, in the general layer. No special case keyed on a name, an op shape or one benchmark or test; if only a hack fits, say so on the issue instead of shipping it. A temporary workaround needs its own issue naming the removal condition.
 4. **Test** at the layer that fails for the right reason, within the [CI budget](../ci-time/SKILL.md). Never skip a platform; dispatch the Windows or macOS CI for platform-sensitive changes.
 5. **Open the PR** with [create-pr](../create-pr/SKILL.md): ready for review, squash auto-merge on, `Fixes #N` in the body. Start the next slice on a stacked branch instead of waiting on CI.
-6. **After it merges**, remove the `in progress` label, close every issue the PR fixes and check each is closed, and delete any workaround the fix made obsolete.
+6. **Close what cannot be fixed.** An irreproducible bug is closed with the evidence. A PR that needs another design round is closed, not merged; the design goes back through [author-proposal](../author-proposal/SKILL.md).
+7. **After it merges**, remove the `in progress` label, close every issue the PR fixes and check each is closed, and delete any workaround the fix made obsolete.
