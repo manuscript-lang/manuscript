@@ -1,4 +1,4 @@
-// conform: tags=testing,bytes,tier-stdlib
+// conform: tags=stdlib-bytes,stdlib-testing,testing,tier-stdlib
 // conform: phase=test
 import (
 	Bytes from "@std/bytes.ms",
