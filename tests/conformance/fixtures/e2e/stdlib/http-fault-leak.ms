@@ -90,3 +90,26 @@ test "a fetch cancelled by its timeout frees the request state its frames own":
 	if grown > 2000 * 64: return error(
 		Error("heap grew {grown} bytes over 2000 cancelled fetches")
 	)
+
+test "a fetch cancelled while it waits for the response frees the cancellation error":
+	server := hanging_server()?
+	url := "http://{server.address()}/"
+
+	// The first fetches warm the connection pool and the thread's buffers.
+	for i in 0..20:
+		_ := fetch(url).with(options: PromiseOptions(timeout: 5.milliseconds())).wait()
+
+	before := (memory_usage() | expect_ok?).heap_used
+
+	for i in 0..400:
+		timed_out := fetch(url).with(
+			options: PromiseOptions(timeout: 3.milliseconds())
+		).wait()
+		if timed_out.is_ok(): return error(Error("a hanging handler answered"))
+
+	// The error a cancelled read returns is dropped before the boundary jumps into the
+	// runtime's cancellation; keeping it leaked its text on every cancelled call.
+	grown := (memory_usage() | expect_ok?).heap_used - before
+	if grown > 512: return error(
+		Error("heap grew {grown} bytes over 400 fetches cancelled while reading")
+	)

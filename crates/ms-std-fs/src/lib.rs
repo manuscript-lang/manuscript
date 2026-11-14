@@ -35,8 +35,10 @@ use stream::Stream;
 
 /// Raises a pending cancel once the failing operation's frames have returned and dropped what
 /// they held. Runs only at the FFI boundary, never on a pool thread.
-fn raise_cancel() {
+/// The failure's text is dropped first: the jump skips destructors.
+fn raise_cancel(message: &mut Option<Vec<u8>>) {
     if !ms_rt::glue::pool::on_pool_thread() && ms_rt::glue::cancel_pending() {
+        drop(message.take());
         ms_rt::glue::cancelled();
     }
 }
@@ -44,27 +46,37 @@ fn raise_cancel() {
 /// A filesystem result as a status: a failure stores its text in `err`, which the caller reads
 /// for `STATUS_FAILED` (so it is always written for that status).
 pub fn fs_status<T>(r: Res<T>, err: &ErrOut) -> Result<T, StatusCode> {
-    r.map_err(|Fail { status, message }| {
-        raise_cancel();
-        if status == STATUS_FAILED {
-            err.set_bytes(&message.unwrap_or_default());
-        }
-        StatusCode(status)
-    })
+    r.map_err(
+        |Fail {
+             status,
+             mut message,
+         }| {
+            raise_cancel(&mut message);
+            if status == STATUS_FAILED {
+                err.set_bytes(&message.unwrap_or_default());
+            }
+            StatusCode(status)
+        },
+    )
 }
 
 /// Like [`fs_status`], naming `path` for every failure but `STATUS_FAILED`, which has its own text:
 /// the message reads `filesystem: <failure>: <path>`.
 pub fn fs_status_at<T>(path: &[u8], r: Res<T>, err: &ErrOut) -> Result<T, StatusCode> {
-    r.map_err(|Fail { status, message }| {
-        raise_cancel();
-        if status == STATUS_FAILED {
-            err.set_bytes(&message.unwrap_or_default());
-        } else {
-            err.set_bytes(path);
-        }
-        StatusCode(status)
-    })
+    r.map_err(
+        |Fail {
+             status,
+             mut message,
+         }| {
+            raise_cancel(&mut message);
+            if status == STATUS_FAILED {
+                err.set_bytes(&message.unwrap_or_default());
+            } else {
+                err.set_bytes(path);
+            }
+            StatusCode(status)
+        },
+    )
 }
 
 /// Like [`fs_status_at`] for a two-path operation: the detail reads `<source> -> <destination>`.
