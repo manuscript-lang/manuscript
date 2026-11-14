@@ -534,6 +534,13 @@ impl<'a> FnLower<'a> {
         if let Resolution::Method(m) = self.hir.resolution(e) {
             return self.method_value(e, left, &m);
         }
+        if let ExprKind::Name(_) = &left.kind
+            && let Resolution::Local(b) = self.hir.resolution(left)
+            && let Some(&(index, element)) = self.entry_locals.get(&b.uid)
+        {
+            let v = if name == "index" { index } else { element };
+            return Ok(Val { v, own: false });
+        }
         let lt = self.ety(left);
         if lt.kind != Kind::Type {
             return Err(Error::new(format!("unsupported member access .{name}")));
