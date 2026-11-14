@@ -85,6 +85,18 @@ pub(crate) fn par_funcs<T: Send>(count: usize, work: impl Fn(usize) -> T + Sync)
     all.into_iter().map(|(_, t)| t).collect()
 }
 
+/// Stores the functions a parallel pass changed; returns whether any was.
+pub(crate) fn store(m: &mut Module, results: Vec<Option<crate::ir::Func>>) -> bool {
+    let mut changed = false;
+    for (i, f) in results.into_iter().enumerate() {
+        if let Some(f) = f {
+            m.funcs[i] = f;
+            changed = true;
+        }
+    }
+    changed
+}
+
 /// Runs the pipeline. With `verify`, the module is re-verified after every pass and
 /// the first failure panics with the pass name (used by tests and debug builds).
 pub fn optimize(m: &mut Module, level: Level, verify: bool) {
@@ -138,21 +150,26 @@ pub fn optimize(m: &mut Module, level: Level, verify: bool) {
     check(m, "slotfuse");
     loopslot::run(m);
     check(m, "loopslot");
-    for round in 0..3 {
-        let mut changed = optparam::run(m);
-        check(m, "optparam");
-        changed |= simplify::run(m);
-        check(m, "simplify");
-        changed |= copyelim::run(m);
-        check(m, "copyelim");
-        changed |= range::run(m);
-        check(m, "range");
-        changed |= ifconv::run(m);
-        check(m, "ifconv");
-        if !changed && round > 0 {
-            break;
+    // These passes read the module but rewrite only their own function, so each function runs
+    // its own rounds (at most three, stopping at the first that changes nothing) in parallel.
+    let results = par_funcs(m.funcs.len(), |i| {
+        let mut f = m.funcs[i].clone();
+        let mut any = false;
+        for _ in 0..3 {
+            let mut changed = optparam::run_func(m, &mut f);
+            changed |= simplify::run_func(m, &mut f);
+            changed |= copyelim::run_funcs(m, &mut f);
+            changed |= range::run_func(m, &mut f);
+            changed |= ifconv::run_func(m, &mut f);
+            if !changed {
+                break;
+            }
+            any = true;
         }
-    }
+        any.then_some(f)
+    });
+    store(m, results);
+    check(m, "function passes");
     crate::exit_drops::run(m);
     check(m, "exit_drops");
     reserve::run(m);

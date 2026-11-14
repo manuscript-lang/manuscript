@@ -10,7 +10,7 @@
 use crate::ir::*;
 use crate::types::Ty;
 use crate::verify::dominators;
-use crate::vmap::{ValueMap, ValueSet};
+use crate::vmap::{ScopedTable, ValueMap, ValueSet};
 use std::collections::{HashMap, HashSet};
 
 /// Runs the pass over every function; returns whether anything changed.
@@ -19,19 +19,12 @@ pub fn run(m: &mut Module) -> bool {
         let mut f = m.funcs[i].clone();
         simplify_func(m, &mut f).then_some(f)
     });
-    apply(m, results)
+    super::store(m, results)
 }
 
-/// Stores the functions a parallel pass changed.
-fn apply(m: &mut Module, results: Vec<Option<Func>>) -> bool {
-    let mut changed = false;
-    for (i, f) in results.into_iter().enumerate() {
-        if let Some(f) = f {
-            m.funcs[i] = f;
-            changed = true;
-        }
-    }
-    changed
+/// Runs the pass over one function; returns whether it changed.
+pub fn run_func(m: &Module, f: &mut Func) -> bool {
+    simplify_func(m, f)
 }
 
 /// Runs only the trivial block-parameter elimination, which keeps every instruction in place.
@@ -45,7 +38,7 @@ pub fn run_phis(m: &mut Module) -> bool {
         }
         any.then_some(f)
     });
-    apply(m, results)
+    super::store(m, results)
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -1069,7 +1062,7 @@ fn branches(f: &mut Func) -> bool {
 
 // ---- value numbering -------------------------------------------------------
 
-type Key = (Op, Vec<Value>, Imm, Ty);
+type Key = (Op, Imm, Ty);
 
 fn cse(m: &Module, f: &mut Func) -> bool {
     let rpo = f.rpo();
@@ -1082,26 +1075,26 @@ fn cse(m: &Module, f: &mut Func) -> bool {
             children[idom[i]].push(i);
         }
     }
-    let mut table: HashMap<Key, Value> = HashMap::new();
+    let insts: usize = f.blocks.iter().map(|b| b.insts.len()).sum();
+    let mut table: ScopedTable<Key> = ScopedTable::new(insts);
     let mut subst: ValueMap<Value> = ValueMap::new();
     let mut removed: Vec<(usize, usize)> = Vec::new();
-    // Explicit walk of the dominator tree; `Exit` unwinds a block's table entries.
+    let mut args: Vec<Value> = Vec::new();
+    // Explicit walk of the dominator tree; `Exit` drops a block's table entries.
     enum Step {
         Enter(usize),
-        Exit(Vec<Key>),
+        Exit(usize),
     }
     let mut stack = vec![Step::Enter(0)];
     while let Some(s) = stack.pop() {
         let b = match s {
-            Step::Exit(keys) => {
-                for k in keys {
-                    table.remove(&k);
-                }
+            Step::Exit(mark) => {
+                table.reset(mark);
                 continue;
             }
             Step::Enter(b) => b,
         };
-        let mut log = Vec::new();
+        stack.push(Step::Exit(table.mark()));
         for (ii, inst) in f.blocks[b].insts.iter().enumerate() {
             let Some(r) = inst.res else { continue };
             let ty = f.ty(r);
@@ -1120,20 +1113,19 @@ fn cse(m: &Module, f: &mut Func) -> bool {
             {
                 continue;
             }
-            let mut args: Vec<Value> = inst.args.iter().map(|a| resolve(&subst, *a)).collect();
+            args.clear();
+            args.extend(inst.args.iter().map(|a| resolve(&subst, *a)));
             if commutative(inst.op, inst.imm) {
                 args.sort_by_key(|v| v.0);
             }
-            let key = (inst.op, args, inst.imm, ty);
-            if let Some(prev) = table.get(&key) {
-                subst.insert(r, *prev);
+            let key = (inst.op, inst.imm, ty);
+            if let Some(prev) = table.get(&key, &args) {
+                subst.insert(r, prev);
                 removed.push((b, ii));
             } else {
-                table.insert(key.clone(), r);
-                log.push(key);
+                table.insert(key, &args, r);
             }
         }
-        stack.push(Step::Exit(log));
         for &c in children[b].iter().rev() {
             stack.push(Step::Enter(c));
         }
@@ -1184,6 +1176,14 @@ fn is_map_probe(m: &Module, i: &Inst) -> bool {
 /// are the ways a map is inserted into, removed from or moved.
 fn map_probes(m: &Module, f: &mut Func) -> bool {
     type Probe = (ExtId, Value, Value, Value, Value);
+    if !f
+        .blocks
+        .iter()
+        .flat_map(|b| &b.insts)
+        .any(|i| is_map_probe(m, i))
+    {
+        return false;
+    }
     let preds = f.predecessors();
     let mut ends: Vec<Option<HashMap<Probe, Value>>> = vec![None; f.blocks.len()];
     let mut subst: ValueMap<Value> = ValueMap::new();

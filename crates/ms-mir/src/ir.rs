@@ -799,35 +799,39 @@ impl Func {
 
     /// Predecessor lists, indexed by block.
     pub fn predecessors(&self) -> Vec<Vec<Block>> {
-        let mut preds = vec![Vec::new(); self.blocks.len()];
+        let mut preds: Vec<Vec<Block>> = vec![Vec::new(); self.blocks.len()];
         for (i, b) in self.blocks.iter().enumerate() {
-            for s in b.term.successors() {
-                if !preds[s.index()].contains(&Block(i as u32)) {
-                    preds[s.index()].push(Block(i as u32));
+            let at = Block(i as u32);
+            b.term.for_each_target(|t| {
+                let list = &mut preds[t.block.index()];
+                if !list.contains(&at) {
+                    list.push(at);
                 }
-            }
+            });
         }
         preds
     }
 
-    /// Blocks in reverse post-order from the entry (unreachable blocks omitted).
+    /// Blocks in reverse post-order from the entry (unreachable blocks omitted). The walk visits
+    /// the last successor of a terminator first.
     pub fn rpo(&self) -> Vec<Block> {
         let n = self.blocks.len();
         let mut seen = vec![false; n];
         let mut post = Vec::with_capacity(n);
-        let mut stack: Vec<(usize, Vec<Block>)> = vec![(0, self.blocks[0].term.successors())];
-        seen[0] = true;
-        while let Some((b, succs)) = stack.last_mut() {
-            if let Some(s) = succs.pop() {
-                if !seen[s.index()] {
-                    seen[s.index()] = true;
-                    let next = self.blocks[s.index()].term.successors();
-                    stack.push((s.index(), next));
-                }
-            } else {
-                post.push(Block(*b as u32));
-                stack.pop();
+        // `(block, true)` closes a block after its successors; one flat stack, no per-block list.
+        let mut stack: Vec<(u32, bool)> = vec![(0, false)];
+        while let Some((b, done)) = stack.pop() {
+            if done {
+                post.push(Block(b));
+                continue;
             }
+            if std::mem::replace(&mut seen[b as usize], true) {
+                continue;
+            }
+            stack.push((b, true));
+            self.blocks[b as usize]
+                .term
+                .for_each_target(|t| stack.push((t.block.0, false)));
         }
         post.reverse();
         post
@@ -836,6 +840,11 @@ impl Func {
     /// Removes unreachable blocks and renumbers the rest in reverse post-order.
     pub fn compact_blocks(&mut self) {
         let order = self.rpo();
+        // Already reachable and in order: nothing to move or renumber.
+        if order.len() == self.blocks.len() && order.iter().enumerate().all(|(i, b)| b.index() == i)
+        {
+            return;
+        }
         let mut map = vec![u32::MAX; self.blocks.len()];
         for (new, old) in order.iter().enumerate() {
             map[old.index()] = new as u32;
