@@ -954,6 +954,17 @@ pub fn heap_stats() -> [i64; 2] {
             p = unsafe { *(p as *mut *mut u8) };
         }
     }
+    // Blocks other threads freed wait on the remote-free stack until this thread's next slow-path
+    // allocation; they are free, and counting them as used made the figure depend on thread timing.
+    // Only this thread drains the stack, so the chain from a loaded head stays valid.
+    let mut p = REMOTE[s.heap as usize].load(Ordering::Acquire);
+    while !p.is_null() {
+        // SAFETY: remote blocks are small blocks of this heap with the link in word 0.
+        unsafe {
+            spare += CLASS_SIZES[page_word(p).unwrap_unchecked() as u8 as usize] as usize;
+            p = *(p as *mut *mut u8);
+        }
+    }
     [
         carved.saturating_sub(spare) as i64,
         (pages * PAGE_SIZE) as i64,
@@ -1366,6 +1377,22 @@ mod tests {
             assert!(grow_chunk_of(again).is_some());
             free(again);
         }
+    }
+
+    #[test]
+    fn heap_stats_count_a_remote_free_before_the_owner_drains_it() {
+        let _g = lock();
+        let p = alloc(48) as usize;
+        let before = heap_stats()[0];
+        std::thread::spawn(move || {
+            // SAFETY: a live block of the spawning thread's arena, freed once.
+            unsafe { free(p as *mut u8) };
+        })
+        .join()
+        .unwrap();
+        // No allocation has drained the remote stack, yet the block no longer counts as used.
+        let size = CLASS_SIZES[class_of(48)] as i64;
+        assert_eq!(before - heap_stats()[0], size);
     }
 
     #[test]
