@@ -187,6 +187,16 @@ fn view_tainted(m: &Module, fi: usize) -> Vec<bool> {
         let mut changed = false;
         for b in &f.blocks {
             for inst in &b.insts {
+                // A view written to memory taints the address, so what is read back through
+                // it (a `for` cursor's list slot and its fields) is a view too.
+                if matches!(inst.op, Op::Put | Op::Store)
+                    && let [ptr, val, ..] = inst.args[..]
+                    && tainted[val.index()]
+                    && !tainted[ptr.index()]
+                {
+                    tainted[ptr.index()] = true;
+                    changed = true;
+                }
                 let Some(r) = inst.res else { continue };
                 if tainted[r.index()] {
                     continue;
