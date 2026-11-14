@@ -130,8 +130,6 @@ export extern fn msrt_io_write_bytes_stdout(data: Bytes) Unit
 
 export extern fn msrt_io_write_bytes_stderr(data: Bytes) Unit
 
-export extern fn msrt_io_flush() Unit
-
 // Bounds every wait of the running task until it is restored: none lasts past
 // `timeout_ns` in all, and one that reaches it reports a timeout to its caller. A bound
 // already in force stays when it ends sooner. Returns the previous limit.

@@ -53,6 +53,24 @@ native! {
         })
     }
 
+    /// The result of writing standard output: with `flush`, the buffered text is written first;
+    /// the first write that failed (a full disk, a closed descriptor) is returned as an error.
+    fn msstd_io_stdout_status(flush: bool; err: ErrOut) -> Result<(), StatusCode> {
+        if flush {
+            ms_rt::io::flush_stdout();
+        }
+        match ms_rt::io::stdout_error() {
+            0 => Ok(()),
+            code => status(
+                Err(IoFail {
+                    status: ms_std_fs::sys::classify(code),
+                    message: ms_std_fs::sys::describe(code).into_bytes(),
+                }),
+                &err,
+            ),
+        }
+    }
+
     /// Reads a chunk; `STATUS_NONE` at end of stream.
     fn msstd_io_read(
         h: ObjMut<Stream>,

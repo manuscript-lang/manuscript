@@ -347,7 +347,22 @@ pub unsafe extern "C-unwind" fn msrt_start(
         crate::io::flush_stdout();
         crate::process::run_exit_hooks();
         crate::profile::finish();
-        *MAIN_RESULT.ptr() as i32
+        let status = *MAIN_RESULT.ptr() as i32;
+        let lost = crate::io::stdout_error();
+        if lost != 0 && status == 0 {
+            // Output the buffer could not deliver (a full disk, a closed descriptor): say so
+            // instead of exiting as if it had been written.
+            let mut text = std::io::Error::from_raw_os_error(lost).to_string();
+            if let Some(i) = text.rfind(" (os error ") {
+                text.truncate(i);
+            }
+            sys::write_all(
+                sys::STDERR,
+                format!("error: write to standard output: {text}\n").as_bytes(),
+            );
+            return 1;
+        }
+        status
     }
 }
 

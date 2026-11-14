@@ -4,8 +4,7 @@ import (
 	Closeable from "@std/core.ms",
 	Duration, monotonic from "@std/time.ms",
 
-	msstd_io_redirect_null from "@std/internal/io.ms",
-	msrt_io_flush,
+	msstd_io_redirect_null, msstd_io_stdout_status from "@std/internal/io.ms",
 	msrt_io_write_bytes_stderr,
 	msrt_io_write_bytes_stdout,
 	msrt_io_write_stderr,
@@ -250,15 +249,18 @@ export fn stdin() ReadStream[Bytes]:
 // Writes are buffered until flushed or the process exits, a child starts, or something
 // is written to standard error. Closing does not flush: `stdout()` makes a fresh stream
 // each call, so a flush on close would turn every `stdout().write(...)` into a system
-// call.
+// call. `flush` returns the first failed write (a full disk, a closed descriptor),
+// `write` returns it once it is known, and the process exits 1 if output was lost and
+// the program would have exited 0; a broken pipe is not an error.
 type StdoutText:
 	unused: Bool = false
 
 fn var StdoutText.write(value: String) Unit!:
 	msrt_io_write_stdout(value)
+	return msstd_io_stdout_status(false)
 
 fn var StdoutText.flush() Unit!:
-	msrt_io_flush()
+	return msstd_io_stdout_status(true)
 
 fn var StdoutText.close() Unit!:
 	return ok(unit)
@@ -268,9 +270,10 @@ type StdoutBytes:
 
 fn var StdoutBytes.write(value: Bytes) Unit!:
 	msrt_io_write_bytes_stdout(value)
+	return msstd_io_stdout_status(false)
 
 fn var StdoutBytes.flush() Unit!:
-	msrt_io_flush()
+	return msstd_io_stdout_status(true)
 
 fn var StdoutBytes.close() Unit!:
 	return ok(unit)
