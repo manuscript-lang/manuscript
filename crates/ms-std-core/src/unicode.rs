@@ -1,7 +1,7 @@
 //! Unicode properties and UTF-8 validation, using Rust's character tables and validator.
 //! ms: domain unicode
 use alloc::vec::Vec;
-use ms_rt::ffi::native;
+use ms_rt::ffi::{Str, native};
 
 fn scalar(value: i64) -> Option<char> {
     u32::try_from(value).ok().and_then(char::from_u32)
@@ -15,6 +15,13 @@ native! {
 
     fn msstd_unicode_fields(text: &str) -> out Vec<&str> {
         text.split_whitespace().collect()
+    }
+
+    // Trims the scalars that occur in `set` from the start (`from_start`), the end (`from_end`), or both.
+    fn msstd_string_trim_chars(text: &str, set: &str, from_start: bool, from_end: bool) -> out Str {
+        let member = |c: char| set.contains(c);
+        let text = if from_start { text.trim_start_matches(member) } else { text };
+        Str::new(if from_end { text.trim_end_matches(member) } else { text })
     }
 
     fn msstd_unicode_is_alphabetic(value: i64) -> bool {

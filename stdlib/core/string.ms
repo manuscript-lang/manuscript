@@ -4,6 +4,7 @@ import (
 	StringBuilder from "@std/string_builder.ms",
 
 	msrt_string_from_scalars from "@std/internal/string.ms",
+	msstd_string_trim_chars,
 	msstd_unicode_display_width,
 	msstd_unicode_fields,
 	msstd_unicode_is_alphanumeric from "@std/internal/unicode.ms",
@@ -119,47 +120,15 @@ fn fold_key(text: String) String:
 
 // Removes every leading and trailing scalar that occurs in set.
 fn String.trim_chars(set: String) String:
-	return self.trim_start_chars(set).trim_end_chars(set)
+	return msstd_string_trim_chars(self, set, true, true)
 
 // Removes every leading scalar that occurs in set.
 fn String.trim_start_chars(set: String) String:
-	var skipped = 0
-	var window = SCAN_WINDOW
-
-	while true:
-		// Scalars are read in doubling windows, so the cost follows the trimmed
-		// run, not the text length.
-		cs := self.take(skipped + window).drop(skipped).chars()
-		var i = 0
-		while i < cs.length() and set.contains(cs[i]):
-			i += 1
-		skipped += i
-		if i < cs.length() or cs.length() < window: break
-
-		window *= 2
-
-	return self.drop(skipped)
+	return msstd_string_trim_chars(self, set, true, false)
 
 // Removes every trailing scalar that occurs in set.
 fn String.trim_end_chars(set: String) String:
-	var kept = self.length()
-	var window = SCAN_WINDOW
-
-	while kept > 0:
-		var low = kept - window
-		if low < 0:
-			low = 0
-
-		cs := self.slice(low, kept).get("").chars()
-		var i = cs.length()
-		while i > 0 and set.contains(cs[i - 1]):
-			i -= 1
-		kept = low + i
-		if i > 0: break
-
-		window *= 2
-
-	return self.take(kept)
+	return msstd_string_trim_chars(self, set, false, true)
 
 // Reports whether any scalar of set occurs in the text.
 fn String.contains_any(set: String) Bool:

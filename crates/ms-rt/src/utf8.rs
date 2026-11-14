@@ -15,6 +15,22 @@ pub fn decode(s: &[u8]) -> (u32, usize) {
 
 fn decode_multi(s: &[u8]) -> (u32, usize) {
     let b0 = s[0];
+    // Two-byte and the unrestricted three-byte leads, which cover most text, decode with one
+    // length check and no range tables; any other shape takes the general path below.
+    if (0xC2..=0xDF).contains(&b0) && s.len() >= 2 && s[1] & 0xC0 == 0x80 {
+        return (((b0 as u32 & 0x1F) << 6) | (s[1] as u32 & 0x3F), 2);
+    }
+    if (0xE1..=0xEF).contains(&b0)
+        && b0 != 0xED
+        && s.len() >= 3
+        && s[1] & 0xC0 == 0x80
+        && s[2] & 0xC0 == 0x80
+    {
+        return (
+            ((b0 as u32 & 0x0F) << 12) | ((s[1] as u32 & 0x3F) << 6) | (s[2] as u32 & 0x3F),
+            3,
+        );
+    }
     let cont = |i: usize, lo: u8, hi: u8| -> Option<u32> {
         match s.get(i) {
             Some(&b) if b >= lo && b <= hi => Some((b & 0x3F) as u32),
@@ -224,6 +240,31 @@ mod tests {
                     "{start}..{end}"
                 );
             }
+        }
+    }
+
+    #[test]
+    fn decode_matches_std_for_every_scalar_and_replaces_malformed_prefixes() {
+        for c in (0..=0x10FFFFu32).filter_map(char::from_u32) {
+            let mut buf = [0u8; 4];
+            let enc = c.encode_utf8(&mut buf).as_bytes();
+            assert_eq!(decode(enc), (c as u32, enc.len()), "{c:?}");
+            // A truncated tail is malformed.
+            if enc.len() > 1 {
+                assert_eq!(
+                    decode(&enc[..enc.len() - 1]),
+                    (RUNE_ERROR, 1),
+                    "{c:?} truncated"
+                );
+            }
+        }
+        for bad in [
+            &[0xC0u8, 0x80][..],
+            &[0xE0, 0x80, 0x80],
+            &[0xED, 0xA0, 0x80],
+            &[0xE4, 0x41, 0x80],
+        ] {
+            assert_eq!(decode(bad), (RUNE_ERROR, 1), "{bad:x?}");
         }
     }
 

@@ -114,6 +114,16 @@ const HUGE_FUNCTION_LINES: usize = 60_000;
 const LARGE_FUNCTION_LINES: usize = 25_000;
 const _: () = assert!(LARGE_FUNCTION_LINES < HUGE_FUNCTION_LINES);
 
+/// Body lines above which a function with no loop is compiled without the optimizer. Folding
+/// the branches of a long run of statements leaves one basic block of thousands of
+/// instructions, and instruction selection on one block is superlinear: 300 statements that
+/// call a generic function (12k lines, one block after optimization) took 2.3 s in `llc`,
+/// 400 took 6.5 s and 800 took 56 s, against 60 ms for the same `main` as `optnone`. Code with
+/// no loop runs once per call; the largest function of the benchmark suites is 9.3k lines and
+/// has loops. A workaround for LLVM's instruction selection, tracked in #3928 with its
+/// removal condition.
+const LOOPFREE_HUGE_FUNCTION_LINES: usize = 8_000;
+
 /// One LLVM module of the program.
 pub struct Unit {
     /// The module's IR text.
@@ -127,7 +137,32 @@ pub struct Unit {
 
 /// Whether a function body is long enough to skip optimization.
 fn is_huge(body: &str) -> bool {
-    body.bytes().filter(|&b| b == b'\n').count() > HUGE_FUNCTION_LINES
+    let lines = body.bytes().filter(|&b| b == b'\n').count();
+    lines > HUGE_FUNCTION_LINES || (lines > LOOPFREE_HUGE_FUNCTION_LINES && !has_back_edge(body))
+}
+
+/// Whether some branch goes to a block that starts at or before it, which is a loop.
+fn has_back_edge(body: &str) -> bool {
+    let mut started: HashSet<&str> = HashSet::new();
+    for line in body.lines() {
+        if let Some(label) = line.strip_suffix(':').filter(|l| !l.starts_with(' ')) {
+            started.insert(label);
+            continue;
+        }
+        let line = line.trim_start();
+        if !(line.starts_with("br ") || line.starts_with("switch ")) {
+            continue;
+        }
+        let targets = line.split("label %").skip(1);
+        let reaches_started = |t: &str| {
+            let end = t.find([',', ' ', ']']).unwrap_or(t.len());
+            started.contains(&t[..end])
+        };
+        if targets.into_iter().any(reaches_started) {
+            return true;
+        }
+    }
+    false
 }
 
 /// Whether a function body is long enough to be optimized for size.
@@ -953,9 +988,37 @@ mod tests {
     }
 
     #[test]
+    fn a_long_body_without_a_loop_skips_optimization_but_one_with_a_loop_does_not() {
+        let straight = format!(
+            "b0:\n{}  br label %b1\nb1:\n  ret void\n}}\n",
+            "  call void @\"x\"()\n".repeat(LOOPFREE_HUGE_FUNCTION_LINES)
+        );
+        assert!(is_huge(&straight));
+        let looping = format!(
+            "b0:\n  br label %b1\nb1:\n{}  br i1 %c, label %b1, label %b2\nb2:\n  ret void\n}}\n",
+            "  call void @\"x\"()\n".repeat(LOOPFREE_HUGE_FUNCTION_LINES)
+        );
+        assert!(!is_huge(&looping));
+        let switching = format!(
+            "b0:\n  br label %b1\nb1:\n{}  switch i64 %k, label %b2 [ i64 0, label %b1 ]\nb2:\n  ret void\n}}\n",
+            "  call void @\"x\"()\n".repeat(LOOPFREE_HUGE_FUNCTION_LINES)
+        );
+        assert!(!is_huge(&switching));
+        let short = "b0:\n  br label %b1\nb1:\n  ret void\n}\n";
+        assert!(!is_huge(short));
+    }
+
+    #[test]
     fn only_a_huge_body_skips_optimization() {
-        assert!(!is_huge(&"  ret void\n".repeat(HUGE_FUNCTION_LINES)));
-        assert!(is_huge(&"  ret void\n".repeat(HUGE_FUNCTION_LINES + 1)));
+        // A loop keeps a body below the larger bound optimized.
+        let looped = |extra: usize| {
+            format!(
+                "b0:\n  br label %b0\n{}",
+                "  ret void\n".repeat(HUGE_FUNCTION_LINES - 2 + extra)
+            )
+        };
+        assert!(!is_huge(&looped(0)));
+        assert!(is_huge(&looped(1)));
     }
 
     fn plain_def(name: &str, lines: usize) -> Def {
