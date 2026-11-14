@@ -928,7 +928,10 @@ impl Checker {
             };
             self.type_error(
                 value.pos,
-                format!("`?.` needs an optional receiver, found {t_t}; {fix}", t_t = t.display(self.syms)),
+                format!(
+                    "`?.` needs an optional receiver, found {t_t}; {fix}",
+                    t_t = t.display(self.syms)
+                ),
             );
             return (true, false);
         }
