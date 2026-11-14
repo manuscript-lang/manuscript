@@ -64,11 +64,24 @@ fn lock(target: &'static Out) -> Guard {
     Guard(target)
 }
 
+/// The code of the first write to standard output that failed (0: none). A broken pipe is not
+/// recorded: a program piped into `head` still ends quietly.
+static STDOUT_ERROR: core::sync::atomic::AtomicI32 = core::sync::atomic::AtomicI32::new(0);
+
 fn flush_locked(out: &mut Vec<u8>) {
     if !out.is_empty() {
-        sys::write_all(sys::STDOUT, out.as_slice());
+        let code = sys::write_all(sys::STDOUT, out.as_slice());
+        // What could not be written is dropped, so a later flush does not retry the same bytes.
         out.clear();
+        if code != 0 && !sys::is_broken_pipe(code) {
+            let _ = STDOUT_ERROR.compare_exchange(0, code, Ordering::Relaxed, Ordering::Relaxed);
+        }
     }
+}
+
+/// The code of the first failed write to standard output, or 0.
+pub fn stdout_error() -> i32 {
+    STDOUT_ERROR.load(Ordering::Relaxed)
 }
 
 pub fn flush_stdout() {

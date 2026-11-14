@@ -556,6 +556,7 @@ msstd_http_worker_close(handle w: *const ObjCell<WorkerH>) @domain=HTTP
 msstd_io_close(handle h: *mut ObjCell<Stream>, err: ErrSlot) -> u8 @domain=I/O
 msstd_io_read(handle h: *mut ObjCell<Stream>, has_max: HasRaw, max: i64, out: *mut VecVal, err: ErrSlot) -> u8 @domain=I/O
 msstd_io_redirect_null(which: i64, err: ErrSlot) -> u8 @domain=I/O
+msstd_io_stdout_status(flush: u8, err: ErrSlot) -> u8 @domain=I/O
 msstd_io_write(handle h: *mut ObjCell<Stream>, data: *const StrVal, err: ErrSlot) -> u8 @domain=I/O
 msstd_io_write_bytes(handle h: *mut ObjCell<Stream>, data: *const VecVal, err: ErrSlot) -> u8 @domain=I/O
 msstd_json_bool(handle d: *const ObjCell<Doc>, id: u32) -> u8 @domain=JSON @leaf

@@ -67,7 +67,7 @@ fn finish(var output: WriteStream[String]) Unit!:
     return output.close()
 ```
 
-`flush()` follows the destination’s backpressure rule. File and socket streams wait for queued bytes to drain; a pipe waits until its queue is at or below `capacity`, which need not be empty. Closing a built-in pipe writer releases that writing end without waiting for the reader. A custom sink supplies its own close behavior and may wait. The owner still performs its scope-end close, which is harmless because close is idempotent.
+`flush()` follows the destination’s backpressure rule. File and socket streams wait for queued bytes to drain; a pipe waits until its queue is at or below `capacity`, which need not be empty. Closing a built-in pipe writer releases that writing end without waiting for the reader. Standard output is buffered: `stdout().flush()` writes the buffer and returns the first failed write (a full disk, a closed descriptor) as an error, `write` returns it once it is known, and a program that would exit 0 after losing output exits 1 with a message on standard error. A broken pipe is not an error. `print` has no result and reports nothing itself. A custom sink supplies its own close behavior and may wait. The owner still performs its scope-end close, which is harmless because close is idempotent.
 
 Choose the operation that confirms your work: `close()` returns a `Result` and a failed scope-end close is returned or faults; explicit commit, finish, or flush operations report expected errors with `Result`. A value that is not a resource, such as a `List[Int]` or a closure that captures none, adds no close behavior.
 

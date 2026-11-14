@@ -42,6 +42,7 @@ unsafe extern "system" {
     fn VirtualAlloc(addr: *mut c_void, len: usize, kind: DWORD, protect: DWORD) -> *mut c_void;
     fn VirtualFree(addr: *mut c_void, len: usize, kind: DWORD) -> BOOL;
     fn GetStdHandle(which: DWORD) -> HANDLE;
+    fn GetLastError() -> DWORD;
     fn WriteFile(
         h: HANDLE,
         buf: *const c_void,
@@ -220,16 +221,16 @@ pub unsafe fn isatty(fd: c_int) -> c_int {
 
 /// Writes all of `data` to a standard stream. Console output is converted to UTF-16 so text
 /// shows correctly whatever the code page; redirected output is the raw bytes.
-pub fn write_all(fd: c_int, data: &[u8]) {
+pub fn write_all(fd: c_int, data: &[u8]) -> c_int {
     let h = std_handle(fd);
     if h.is_null() || h as isize == -1 {
-        return;
+        // ERROR_INVALID_HANDLE
+        return 6;
     }
     let mut mode = 0;
     // SAFETY: valid out pointer.
     if unsafe { GetConsoleMode(h, &mut mode) } != 0 {
-        write_console(h, data);
-        return;
+        return write_console(h, data);
     }
     let mut rest = data;
     while !rest.is_empty() {
@@ -238,15 +239,29 @@ pub fn write_all(fd: c_int, data: &[u8]) {
         // SAFETY: `rest` is readable for `n` bytes.
         let ok = unsafe { WriteFile(h, rest.as_ptr().cast(), n, &mut done, core::ptr::null_mut()) };
         if ok == 0 || done == 0 {
-            return;
+            return last_write_error(ok == 0);
         }
         rest = &rest[done as usize..];
     }
+    0
+}
+
+/// The code of the write that just failed; a write that stored nothing without an error is
+/// `ERROR_WRITE_FAULT`.
+fn last_write_error(failed: bool) -> c_int {
+    // SAFETY: plain system call.
+    let code = if failed { unsafe { GetLastError() } } else { 0 };
+    if code == 0 { 29 } else { code as c_int }
+}
+
+/// Whether a write failure means the reader went away (`ERROR_BROKEN_PIPE`, `ERROR_NO_DATA`).
+pub fn is_broken_pipe(code: c_int) -> bool {
+    code == 109 || code == 232
 }
 
 /// Converts UTF-8 to UTF-16 in chunks and writes it to a console. A multi-byte sequence cut at a
 /// chunk end is carried into the next chunk.
-fn write_console(h: HANDLE, data: &[u8]) {
+fn write_console(h: HANDLE, data: &[u8]) -> c_int {
     const CHUNK: usize = 4096;
     let mut wide = [0u16; CHUNK];
     let mut rest = data;
@@ -283,12 +298,13 @@ fn write_console(h: HANDLE, data: &[u8]) {
                 )
             };
             if ok == 0 || done == 0 {
-                return;
+                return last_write_error(ok == 0);
             }
             out = &out[done as usize..];
         }
         rest = &rest[take..];
     }
+    0
 }
 
 /// Reads an environment variable as bytes (without the NUL), if set.

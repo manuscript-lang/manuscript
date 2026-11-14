@@ -197,20 +197,28 @@ pub const O_CREAT: c_int = 0o100;
 #[cfg(not(target_os = "macos"))]
 pub const O_TRUNC: c_int = 0o1000;
 
-/// Writes all of `data` to `fd`, retrying on partial writes and EINTR.
-pub fn write_all(fd: c_int, mut data: &[u8]) {
+/// Writes all of `data` to `fd`, retrying on partial writes and EINTR; returns 0, or the error code of the failed write.
+pub fn write_all(fd: c_int, mut data: &[u8]) -> c_int {
     while !data.is_empty() {
         // SAFETY: `data` is a valid readable slice for its length.
         let n = unsafe { write(fd, data.as_ptr().cast(), data.len()) };
         if n <= 0 {
-            // EINTR retries; any other error drops the output (nothing to report to).
+            // EINTR retries; any other failure returns its code (EIO when nothing was written
+            // and no code was set).
             if n < 0 && last_errno() == 4 {
                 continue;
             }
-            return;
+            return if n < 0 { last_errno() } else { 5 };
         }
         data = &data[n as usize..];
     }
+    0
+}
+
+/// Whether a write failure means the reader went away (`EPIPE`): a program piped into `head`
+/// ends quietly instead of reporting it.
+pub fn is_broken_pipe(code: c_int) -> bool {
+    code == 32
 }
 
 unsafe extern "C" {

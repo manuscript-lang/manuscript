@@ -2,6 +2,8 @@ import NativeRawTerminal from "@std/cli/terminal.ms"
 
 export extern fn msstd_io_redirect_null(which: Int) Unit!
 
+export extern fn msstd_io_stdout_status(flush: Bool) Unit!
+
 export extern fn msstd_terminal_raw_mode() NativeRawTerminal!
 
 export extern fn msstd_terminal_capabilities_input_is_terminal() Bool
