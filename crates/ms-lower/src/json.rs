@@ -121,7 +121,9 @@ pub(crate) fn build_json(
 ) -> Result<(), Error> {
     let proto = m.funcs[func.index()].clone();
     let file = m.add_file(syms.str(job.hir.data.file));
-    let b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
+    let mut b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
+    // Encoding or decoding recursive data recurses: it checks the stack like any recursive function.
+    b.emit(Op::DepthEnter, &[], ms_mir::ir::Imm::None, None);
     let mut fl = FnLower::new(
         cx,
         b,

@@ -263,6 +263,8 @@ pub(crate) fn build_format(
     repr: bool,
 ) -> Result<(), Error> {
     let mut b = FuncBuilder::new(m, "format", format_params(t), MTy::STR);
+    // Formatting recursive data recurses: it checks the stack like any recursive function.
+    b.emit(Op::DepthEnter, &[], Imm::None, None);
     let x = b.params()[0];
     let depth = b.params()[1];
     let declared_text = match crate::nativetype::native_type(b.m, t) {

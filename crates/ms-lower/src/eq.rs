@@ -135,6 +135,8 @@ pub(crate) fn build_eq(
         return Ok(());
     }
     let mut b = FuncBuilder::new(m, "equal", vec![p, p], MTy::BOOL);
+    // A comparison of recursive data recurses: it checks the stack like any recursive function.
+    b.emit(Op::DepthEnter, &[], Imm::None, None);
     let (x, y) = (b.params()[0], b.params()[1]);
     let no = b.new_block();
     let yes = b.new_block();

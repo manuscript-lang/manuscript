@@ -11,6 +11,7 @@ use crate::state::Gen;
 use ms_mir::layout::{AltRepr, Layouts, Leaf, mem_layout};
 use ms_mir::types::{Ty, TyKind};
 use ms_rt_abi::STR_INLINE;
+use ms_rt_abi::symbols::{STACK_LIMIT_CELL, STACK_REGION};
 
 pub mod closure;
 
@@ -671,6 +672,28 @@ impl E<'_, '_, '_> {
         body(self);
         self.br(&cont);
         self.label(&cont);
+    }
+
+    /// Whether the stack pointer is below the running segment's limit (the check a recursive
+    /// function starts with, `depth.enter`).
+    fn stack_low(&mut self) -> Val {
+        let frame = self
+            .b
+            .call(
+                &LTy::Ptr,
+                "",
+                "llvm.frameaddress.p0",
+                &[(Val::new("0", LTy::I32), "")],
+            )
+            .expect("a pointer");
+        let sp = self.b.ptr_to_int(&frame);
+        let base = self.b.bin(Bin::And, &sp, &Val::int(!(STACK_REGION - 1)));
+        let cell = self
+            .b
+            .bin(Bin::Add, &base, &Val::int(STACK_REGION - STACK_LIMIT_CELL));
+        let cell = self.b.int_to_ptr(&cell);
+        let limit = self.b.load(&LTy::I64, &cell, 8);
+        self.b.icmp("ult", &sp, &limit)
     }
 
     /// Starts a nested drop of recursive data, or parks the value `vs` on the runtime's worklist
@@ -1586,17 +1609,38 @@ pub fn emit(g: &mut Gen, kind: Glue, ty: Ty, types: &Types, loc: usize) -> Emitt
         Glue::Clone => {
             let sret = indirect(&leaves);
             let vs = value(&mut e, usize::from(sret));
-            let out = e.glue_copy(ty, &vs);
-            if sret {
-                store_leaves(&mut e.b, &a(0, LTy::Ptr), &leaves, &out);
-                e.b.ret(None);
-            } else {
-                match out.as_slice() {
-                    [] => e.b.ret(None),
-                    [one] => e.b.ret(Some(one)),
-                    many => e.b.ret_multi(many),
+            let ret = |e: &mut E, out: &[Val]| {
+                if sret {
+                    store_leaves(&mut e.b, &a(0, LTy::Ptr), &leaves, out);
+                    e.b.ret(None);
+                } else {
+                    match out {
+                        [] => e.b.ret(None),
+                        [one] => e.b.ret(Some(one)),
+                        many => e.b.ret_multi(many),
+                    }
                 }
+            };
+            // Recursive data copies on a new stack segment when this one is nearly used up.
+            if e.g.m.drop_recurses(ty) {
+                let low = e.stack_low();
+                let (grow, cont) = (e.fresh("g"), e.fresh("c"));
+                e.b.cond_br(&low, &grow, &cont);
+                e.label(&grow);
+                let (src, dst) = (e.b.alloca(&slot_ty(&leaves)), e.b.alloca(&slot_ty(&leaves)));
+                store_leaves(&mut e.b, &src, &leaves, &vs);
+                let sym = e.g.glue_symbol(Glue::SlotCopy, ty);
+                e.decls
+                    .push(leaf_sig(Glue::SlotCopy, &leaves).declare(&sym));
+                let f = e.b.ptrtoint(&Val::new(format!("@\"{sym}\""), LTy::Ptr));
+                let (s, d) = (e.b.ptrtoint(&src), e.b.ptrtoint(&dst));
+                e.rt("msrt_slot_copy_grown", &[&f, &s, &d], false);
+                let out = load_leaves(&mut e.b, &dst, &leaves, None);
+                ret(&mut e, &out);
+                e.label(&cont);
             }
+            let out = e.glue_copy(ty, &vs);
+            ret(&mut e, &out);
         }
         Glue::BlockDrop => {
             let p = a(0, LTy::Ptr);
