@@ -48,7 +48,7 @@ impl FnLower<'_> {
             return Ok(self.b.alt_new(a, METHOD_TOKENS.len() as u32, &[own]));
         }
         let token = self.b.str_lit(METHOD_TOKENS[from]);
-        let hit = self.call_runtime("msrt_string_eq", &[text, token], MTy::BOOL)?;
+        let hit = crate::eq::string_eq(&mut self.b, text, token);
         let r = self.two_ways(
             hit,
             ty,
@@ -211,7 +211,7 @@ impl FnLower<'_> {
             return self.failed_status(e, err);
         };
         let lit = self.b.str_lit(code);
-        let hit = self.call_runtime("msrt_string_eq", &[kind, lit], MTy::BOOL)?;
+        let hit = crate::eq::string_eq(&mut self.b, kind, lit);
         let r = self.two_ways(
             hit,
             MTy::INT,

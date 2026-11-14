@@ -139,6 +139,32 @@ b0:
     )
 }
 
+/// A program returning `str.eq_fast` of two literals, or `str.eq_lit` of the first against `lit`.
+fn string_eq_program(a: &str, b: &str, lit: Option<&str>) -> String {
+    let body = match lit {
+        Some(l) => format!("%q: bool = str.eq_lit \"{l}\" %s !0:2:1\n  %x: int = b2i %q !0:2:1"),
+        None => "%x: int = str.eq_fast %s, %t !0:2:1".to_string(),
+    };
+    format!(
+        r#"module "d"
+entry @main
+file 0 "d.ms"
+fn @get(%s: str, %t: str) -> int !0:1:1 {{
+b0:
+  {body}
+  ret %x
+}}
+fn @main() -> int !0:10:1 {{
+b0:
+  %s: str = str "{a}" !0:11:1
+  %t: str = str "{b}" !0:12:1
+  %r: int = call @get(%s, %t) !0:13:1
+  ret %r
+}}
+"#
+    )
+}
+
 /// The `str.ascii_len` of `text`.
 fn ascii_len_program(text: &str) -> String {
     string_program("str.ascii_len", text, 0).replace("%s, %i !0:2:1", "%s !0:2:1")
@@ -146,6 +172,44 @@ fn ascii_len_program(text: &str) -> String {
 
 fn string_bytes() {
     let long = "abcdefghijklmnopqrstu";
+    // `str.eq_fast` decides identical strings and strings of different lengths; `str.eq_lit`
+    // compares a literal of up to eight bytes by its length and bytes.
+    check(
+        "direct_eq_fast_same",
+        &string_eq_program(long, long, None),
+        1,
+        &["get"],
+    );
+    check(
+        "direct_eq_fast_length",
+        &string_eq_program("abc", long, None),
+        0,
+        &["get"],
+    );
+    check(
+        "direct_eq_lit_same",
+        &string_eq_program("abc", "", Some("abc")),
+        1,
+        &["get"],
+    );
+    check(
+        "direct_eq_lit_other",
+        &string_eq_program("abd", "", Some("abc")),
+        0,
+        &["get"],
+    );
+    check(
+        "direct_eq_lit_long",
+        &string_eq_program(long, "", Some("abc")),
+        0,
+        &["get"],
+    );
+    check(
+        "direct_eq_lit_eight",
+        &string_eq_program("eight888", "", Some("eight888")),
+        1,
+        &["get"],
+    );
     // An inline string holds its bytes in its words; a longer one is read from memory.
     check(
         "direct_byte_inline",

@@ -69,14 +69,6 @@ pub unsafe fn equal(a: *const StrVal, b: *const StrVal) -> bool {
     unsafe { ((*a).ptr_word == (*b).ptr_word && (*a).tagged == (*b).tagged) || bytes_eq(a, b) }
 }
 
-/// C view: `msrt_string_eq(a: *const StrVal, b: *const StrVal) -> u8`
-#[unsafe(no_mangle)]
-// ms: leaf pure domain=string
-pub unsafe extern "C-unwind" fn msrt_string_eq(a: usize, b: usize) -> u8 {
-    // SAFETY: caller passes live strings.
-    unsafe { equal(a as *const StrVal, b as *const StrVal) as u8 }
-}
-
 unsafe extern "C-unwind" {
     /// The general substring search, in the runtime archive.
     fn msrt_string_contains_long(a: usize, v: usize) -> u8;
