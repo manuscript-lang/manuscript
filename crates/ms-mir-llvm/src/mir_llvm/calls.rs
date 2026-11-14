@@ -55,7 +55,8 @@ fn pre(
     _: &mut FnBuilder,
 ) -> Option<Vec<Val>> {
     let res = inst.res?;
-    is_map_new(lay.m, inst).then(|| vec![Val::int(0); lay.width(f.ty(res))])
+    (is_map_new(lay.m, inst) && !types::is_mem(lay, f.ty(res)))
+        .then(|| vec![Val::int(0); lay.width(f.ty(res))])
 }
 
 fn handles(op: Op) -> bool {
@@ -102,6 +103,11 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         .map(|r| vals[&r.index()].clone())
         .unwrap_or_default();
     if is_map_new(m, inst) {
+        // A map lives in a slot: the empty one is seven zero words.
+        if let Some(res) = inst.res.filter(|r| types::is_mem(lay, cx.f.ty(*r))) {
+            let zeros = vec![Val::int(0); lay.width(cx.f.ty(res))];
+            types::store_into_slot(b, lay, cx.f.ty(res), &out[0], &zeros);
+        }
         return;
     }
     if is_discard(m, inst) {

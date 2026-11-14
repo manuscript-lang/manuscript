@@ -332,6 +332,16 @@ fn drop_core(
     cont: &str,
 ) {
     let args = &vals[&v.index()];
+    let loose;
+    let (vals, args) = if super::types::is_mem(cx.lay, ty) && args.len() > 1 {
+        // A value in memory is its slot, so loose leaves (a map's words) go into one first.
+        let slot = b.reserve(LTy::Ptr);
+        super::types::store_into_slot(b, cx.lay, ty, &slot, args);
+        loose = Vals::from([(v.index(), vec![slot])]);
+        (&loose, &loose[&v.index()])
+    } else {
+        (vals, args)
+    };
     match own_kind(cx.lay, ty) {
         OwnKind::Str => {
             // Only an owned string (tag `00`) frees anything.

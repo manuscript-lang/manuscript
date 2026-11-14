@@ -18,7 +18,7 @@
 use super::{Area, Cx, Vals, held_leaves, mem_leaves, narrow_leaves};
 use crate::glue_llvm::{OwnKind, own_kind};
 use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Types, Val};
-use ms_mir::ir::{Func, Imm, Inst, Op, Target, Value};
+use ms_mir::ir::{Func, Imm, Inst, Mode, Op, Target, Value};
 use ms_mir::layout::{Layouts, Leaf, mem_layout};
 use ms_mir::types::{Ty, TyKind};
 
@@ -113,7 +113,17 @@ fn block_ok(lay: &Layouts, r: ms_mir::types::TypeId) -> bool {
         && lay.m.type_defs[r.index()]
             .fields
             .iter()
-            .all(|f| !is_mem(lay, f.1))
+            .all(|f| !is_mem(lay, f.1) || is_map_or_set(lay, f.1))
+}
+
+/// The leaves of MIR value `v`: a map or set, held as a pointer, is read into its words.
+fn value_words(cx: &Cx, b: &mut FnBuilder, vals: &Vals, v: Value) -> Vec<Val> {
+    let (lay, ty) = (cx.lay, cx.f.ty(v));
+    if !is_mem(lay, ty) {
+        return vals[&v.index()].clone();
+    }
+    let s = shape(b.types(), lay, ty).expect("is_mem checked");
+    load_leaves(b, &s, &vals[&v.index()][0], 0, s.leaves.len(), &[])
 }
 
 /// The memory shape of the block behind indirect type `r`: the leaves of its fields in order,
@@ -282,7 +292,22 @@ fn splits(lay: &Layouts, f: &Func, i: &Inst, _: bool) -> usize {
 
 /// Whether a value of `ty` is held as a pointer to memory.
 pub(super) fn is_mem(lay: &Layouts, ty: Ty) -> bool {
-    named_type(lay, ty).is_some() && lay.width(ty) > MEM_LEAVES
+    is_map_or_set(lay, ty)
+        || named_type(lay, ty).is_some_and(|r| lay.width(ty) > MEM_LEAVES || holds_map(lay, r))
+}
+
+/// Whether a field of named type `r`, at any depth, is a map or set (held as a pointer, so the
+/// type cannot be built from leaves).
+fn holds_map(lay: &Layouts, r: ms_mir::types::TypeId) -> bool {
+    lay.m.type_defs[r.index()].fields.iter().any(|(_, t)| {
+        is_map_or_set(lay, *t) || named_type(lay, *t).is_some_and(|r| holds_map(lay, r))
+    })
+}
+
+/// A map or set: seven words the runtime updates through a pointer, so the value lives in one slot
+/// instead of being copied there and back around every call.
+pub(super) fn is_map_or_set(lay: &Layouts, ty: Ty) -> bool {
+    matches!(lay.m.types.kind(ty), TyKind::Obj(n, _) if n.is_map_or_set())
 }
 
 /// Whether this module handles values of `ty`: `ptr`, and types that are either small or have a
@@ -655,6 +680,7 @@ pub(super) fn copies(b: &mut FnBuilder, lay: &Layouts, f: &Func, vals: &Vals, t:
     let clash = pairs
         .iter()
         .any(|(_, src, _)| pairs.iter().any(|(dst, _, _)| dst.text == src.text));
+    pairs.retain(|(dst, src, _)| dst.text != src.text);
     for (dst, mut src, s) in pairs {
         if clash {
             let tmp = b.alloca(&s.st);
@@ -663,6 +689,25 @@ pub(super) fn copies(b: &mut FnBuilder, lay: &Layouts, f: &Func, vals: &Vals, t:
         }
         b.copy_bytes(&dst, &src, s.size as u64, s.align as u64);
     }
+}
+
+/// The map or set that slot `slot` only ever holds: one owned block parameter put into it. The
+/// runtime updates the map in place through the slot, and the parameter is consumed by the put, so
+/// the slot is the parameter's own storage and the copies in and out disappear.
+fn slot_alias(f: &Func, lay: &Layouts, slot: Value) -> Option<Value> {
+    let mut writes = f
+        .blocks
+        .iter()
+        .flat_map(|bl| &bl.insts)
+        .filter(|i| matches!(i.op, Op::Put | Op::Store) && i.args[0] == slot);
+    let put = writes.next().filter(|i| i.op == Op::Put)?;
+    let v = put.args[1];
+    let owned = f.blocks.iter().any(|bl| {
+        bl.params
+            .iter()
+            .any(|p| p.value == v && p.mode == Mode::Move)
+    });
+    (writes.next().is_none() && owned && is_map_or_set(lay, f.ty(v))).then_some(v)
 }
 
 /// Whether the result of `inst` is bound by [`bind_early`]: a type held as leaves is built, read
@@ -698,6 +743,9 @@ pub(super) fn bind_early(
     match inst.op {
         Op::Slot => {
             let Imm::Ty(t) = inst.imm else { return None };
+            if let Some(v) = slot_alias(f, lay, inst.res?) {
+                return Some(vals[&v.index()].clone());
+            }
             // The runtime may write a whole word to a slot of a smaller type.
             let words = lay.mem(t).size.max(8).div_ceil(8);
             Some(vec![
@@ -742,10 +790,16 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         _ if is_early(lay, f, inst) => {}
         Op::Load | Op::Take | Op::Store | Op::Put
             if empty(lay, f.ty(inst.res.unwrap_or_else(|| inst.args[1]))) => {}
+        Op::Take if slot_alias(f, lay, inst.args[0]).is_some() => {
+            let s = shape(b.types(), lay, f.ty(inst.res.expect("take result"))).expect("is_mem");
+            b.name_next(&out[0]);
+            b.leaf_ptr(&s.st, &arg(0)[0], 0);
+        }
         Op::Load | Op::Take => {
             let ty = f.ty(inst.res.expect("load result"));
             load_value(b, lay, ty, &arg(0)[0], &out);
         }
+        Op::Put if slot_alias(f, lay, inst.args[0]).is_some() => {}
         Op::Store | Op::Put => {
             store_value(b, lay, f.ty(inst.args[1]), vals, inst.args[1], &arg(0)[0]);
         }
@@ -827,7 +881,7 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
             for (fty, at, n) in released(lay, rty, mask) {
                 let leaves = match &s {
                     // A field that is itself a type in memory is its address in the parent.
-                    Some(s) if is_mem(lay, fty) => vec![b.field_ptr(&s.st, &own[0], at)],
+                    Some(s) if is_mem(lay, fty) => vec![b.leaf_ptr(&s.st, &own[0], at)],
                     Some(s) => load_leaves(b, s, &own[0], at, n, &[]),
                     None => own[at..at + n].to_vec(),
                 };
@@ -918,7 +972,7 @@ fn type_new(
     let block = alloc(b, s.size, Some(out));
     let spans = block_spans(lay, r);
     for (a, (at, n, boxed)) in inst.args.iter().zip(spans) {
-        let words = &vals[&a.index()];
+        let words = &value_words(cx, b, vals, *a);
         if boxed {
             let header = header_store(cx, b, words);
             let p = b.leaf_ptr(&s.st, &block, at);
@@ -951,7 +1005,7 @@ fn type_set(
     let drop_old = inst.op == Op::TypeSet && lay.m.needs_drop(fty);
     let block = alloc(b, s.size, Some(out));
     b.copy_bytes(&block, old, s.size as u64, s.align as u64);
-    let words = &vals[&inst.args[1].index()];
+    let words = &value_words(cx, b, vals, inst.args[1]);
     if boxed {
         let slot = b.leaf_ptr(&s.st, old, at);
         let bp = b.load(&LTy::Ptr, &slot, 8);
@@ -1031,29 +1085,42 @@ fn type_get(
         load_leaves(b, &s, tval, at, n, out);
         return;
     }
+    let fty = lay.m.type_defs[r.index()].fields[i].1;
+    let held = held_leaves(lay, fty);
     let p = b.leaf_ptr(&s.st, tval, at);
     let bp = b.load(&LTy::Ptr, &p, 8);
     let some_header = b.icmp("ne", &bp, &NULL());
     let (head, some, join) = next_split(cx, "g");
     b.cond_br(&some_header, &some, &join);
     b.label(&some);
-    let loaded: Vec<Val> = out
+    let loaded: Vec<Val> = held
         .iter()
         .enumerate()
-        .map(|(k, dst)| {
+        .map(|(k, ty)| {
             let at = b.elem_ptr(&LTy::I64, &bp, &Val::int(k as i64));
-            b.load(&dst.ty, &at, 8)
+            b.load(ty, &at, 8)
         })
         .collect();
     b.br(&join);
     b.label(&join);
-    for (dst, v) in out.iter().zip(loaded) {
-        let zero = if dst.ty == LTy::Ptr {
-            NULL()
-        } else {
-            Val::int(0)
-        };
-        b.phi(dst, &[(zero, head.clone()), (v, some.clone())]);
+    let in_mem = is_mem(lay, fty);
+    let words: Vec<Val> = held
+        .iter()
+        .zip(loaded)
+        .enumerate()
+        .map(|(k, (ty, v))| {
+            let zero = if *ty == LTy::Ptr { NULL() } else { Val::int(0) };
+            let dst = if in_mem {
+                b.reserve(ty.clone())
+            } else {
+                out[k].clone()
+            };
+            b.phi(&dst, &[(zero, head.clone()), (v, some.clone())]);
+            dst
+        })
+        .collect();
+    if in_mem {
+        store_into_slot(b, lay, fty, &out[0], &words);
     }
 }
 
