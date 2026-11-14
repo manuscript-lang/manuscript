@@ -297,6 +297,33 @@ fn nominal_depth_cutoff_still_allows_sixty_five_active_frames() {
 }
 
 #[test]
+fn nested_instances_of_one_generic_are_told_apart_by_their_arguments() {
+    let syms = ms_syntax::Names::global();
+    let mut kept = vec![];
+    let int = Rc::new(Type::new(syms, n("Int"), n("@std/Int"), Kind::Primitive));
+    // `Opt[T]` holds a `T`: nesting it reaches `Opt[Opt[Int]]`, then `Opt[Int]`, then `Int`.
+    // Each level has the declaration's id, so only the arguments tell an ancestor from a child.
+    let mut t = int.clone();
+    for depth in 0..300 {
+        t = nominal(
+            &mut kept,
+            "Opt",
+            "test/Opt",
+            Kind::Alternative,
+            vec![],
+            vec![t.clone()],
+            vec![t],
+        );
+        let expected = if depth <= 64 {
+            Class::Copy
+        } else {
+            Class::Move
+        };
+        assert_eq!(classifier().class(syms, &t), expected, "depth {depth}");
+    }
+}
+
+#[test]
 fn nominal_types_without_payloads_do_not_need_argument_bindings() {
     let syms = ms_syntax::Names::global();
     let parameter = Rc::new(Type::new(syms, n("T"), n("test/Empty/T"), Kind::Variable));

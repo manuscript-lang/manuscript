@@ -14,6 +14,22 @@ struct Visiting<'a> {
     ty: &'a Ty,
     parent: Option<&'a Visiting<'a>>,
     depth: usize,
+    /// Argument nesting of `ty`, when cheap to know: equal types have equal nesting, so a
+    /// differing value proves two instances distinct without walking them.
+    shape: Option<usize>,
+}
+
+/// The most type nodes one nesting measure visits; a larger type reports no nesting.
+const SHAPE_BUDGET: usize = 1024;
+
+/// How deeply `t`'s type arguments nest, or `None` when the type is larger than the budget.
+fn arg_nesting(t: &Ty, budget: &mut usize) -> Option<usize> {
+    *budget = budget.checked_sub(1)?;
+    let mut deepest = 0;
+    for a in &t.args {
+        deepest = deepest.max(arg_nesting(a, budget)? + 1);
+    }
+    Some(deepest)
 }
 
 fn same_instance(a: &Ty, b: &Ty) -> bool {
@@ -258,9 +274,13 @@ impl Classifier {
             // A type containing itself is boxed: it cannot be copied implicitly.
             return Class::Move;
         }
+        // `Box(Box(...))` is compared with every ancestor, and two such types differ only at
+        // their innermost argument: a differing nesting rejects them without the walk.
+        let shape = arg_nesting(t, &mut { SHAPE_BUDGET });
         let mut ancestor = visiting;
         while let Some(active) = ancestor {
-            if same_instance(active.ty, t) {
+            let distinct = matches!((active.shape, shape), (Some(a), Some(b)) if a != b);
+            if !distinct && same_instance(active.ty, t) {
                 return Class::Move;
             }
             ancestor = active.parent;
@@ -269,6 +289,7 @@ impl Classifier {
             ty: t,
             parent: visiting,
             depth: depth + 1,
+            shape,
         };
         // A type is a container of its fields and has one owner whatever they are; an
         // alternative of primitives is a primitive.
