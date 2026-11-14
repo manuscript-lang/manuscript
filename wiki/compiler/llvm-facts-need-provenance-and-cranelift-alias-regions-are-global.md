@@ -41,3 +41,5 @@ Direct-emitter facts: what is in and what to keep out (2026-11-13). In: `range` 
 A hot string op written as a chain of selects costs more than a branch: `StrAsciiLen` computed both the inline and the heap case for every string and made `records_1M_x20` 13% slower than the old path; giving the inline case its own block made it 17% faster than the old path. Compare any new inline op against the runtime call it replaced with an interleaved run before merging.
 
 - A map or set is a memory value (`is_mem`), and a type holding one is too: held as seven SSA words LLVM spilled the whole map around every runtime call (strmap_10M +10%). A map put into a slot from an owned block parameter is that parameter's own storage, so `put`, `take` and the edge copy vanish. Loose words handed to a drop (glue, `drop_held`) go into a slot first.
+
+- The deep-drop guard (`ms_rt::dropq`) counts nesting only when the stack pointer is within `DEEP_DROP_HEADROOM` of the segment limit. Calling `msrt_drop_enter` and `msrt_drop_leave` on every drop cost trees_d16_x20 about 5% on both backends.

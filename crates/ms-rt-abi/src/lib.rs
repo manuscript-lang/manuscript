@@ -742,6 +742,10 @@ pub mod symbols {
     /// `*((sp & !(STACK_REGION - 1)) + STACK_REGION - STACK_LIMIT_CELL)`. The runtime writes it
     /// beside the block's address and whenever the limit or the segment changes.
     pub const STACK_LIMIT_CELL: i64 = 8;
+    /// How far above the recursion limit the drop glue of recursive data starts to count its
+    /// nesting (`ms_rt::dropq`): shallower than this it recurses without any runtime call, and
+    /// below it a nest of at most `LIMIT` drops fits in the headroom.
+    pub const DEEP_DROP_HEADROOM: i64 = 192 << 10;
     /// `u8` at this offset of the block: non-zero when a stop request (SIGINT, SIGTERM) is
     /// pending and not shielded.
     pub const ISOLATE_HDR_CANCEL: i64 = 8;

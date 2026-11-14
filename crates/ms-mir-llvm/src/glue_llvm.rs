@@ -11,7 +11,7 @@ use crate::state::Gen;
 use ms_mir::layout::{AltRepr, Layouts, Leaf, mem_layout};
 use ms_mir::types::{Ty, TyKind};
 use ms_rt_abi::STR_INLINE;
-use ms_rt_abi::symbols::{STACK_LIMIT_CELL, STACK_REGION};
+use ms_rt_abi::symbols::{DEEP_DROP_HEADROOM, STACK_LIMIT_CELL, STACK_REGION};
 
 pub mod closure;
 
@@ -677,6 +677,11 @@ impl E<'_, '_, '_> {
     /// Whether the stack pointer is below the running segment's limit (the check a recursive
     /// function starts with, `depth.enter`).
     fn stack_low(&mut self) -> Val {
+        self.stack_within(0)
+    }
+
+    /// Whether the stack pointer is within `headroom` bytes of the running segment's limit.
+    fn stack_within(&mut self, headroom: i64) -> Val {
         let frame = self
             .b
             .call(
@@ -692,13 +697,19 @@ impl E<'_, '_, '_> {
             .b
             .bin(Bin::Add, &base, &Val::int(STACK_REGION - STACK_LIMIT_CELL));
         let cell = self.b.int_to_ptr(&cell);
-        let limit = self.b.load(&LTy::I64, &cell, 8);
+        let mut limit = self.b.load(&LTy::I64, &cell, 8);
+        if headroom != 0 {
+            limit = self.b.bin(Bin::Add, &limit, &Val::int(headroom));
+        }
         self.b.icmp("ult", &sp, &limit)
     }
 
     /// Starts a nested drop of recursive data, or parks the value `vs` on the runtime's worklist
     /// and returns when the nesting is at its limit (`msrt_drop_enter`).
-    fn park_deep_drop(&mut self, ty: Ty, leaves: &[Leaf], vs: &[Val]) {
+    fn park_deep_drop(&mut self, ty: Ty, leaves: &[Leaf], vs: &[Val], deep: &Val) {
+        let (enter, body) = (self.fresh("e"), self.fresh("b"));
+        self.b.cond_br(deep, &enter, &body);
+        self.label(&enter);
         let defer = self.rt("msrt_drop_enter", &[], true).expect("result");
         let defer = self.test(&defer);
         let (park, run) = (self.fresh("p"), self.fresh("r"));
@@ -716,6 +727,8 @@ impl E<'_, '_, '_> {
         self.rt("msrt_drop_defer", &[&f, &p], false);
         self.b.ret(None);
         self.label(&run);
+        self.br(&body);
+        self.label(&body);
     }
 
     fn declare(&mut self, name: &str, ret: &str, params: &str) {
@@ -1597,12 +1610,15 @@ pub fn emit(g: &mut Gen, kind: Glue, ty: Ty, types: &Types, loc: usize) -> Emitt
             // Data that can contain itself bounds its nesting (`ms_rt::dropq`): past the limit
             // the value is parked on the runtime's worklist and dropped later.
             let bounded = e.g.m.drop_recurses(ty);
-            if bounded {
-                e.park_deep_drop(ty, &leaves, &vs);
+            let deep = bounded.then(|| e.stack_within(DEEP_DROP_HEADROOM));
+            if let Some(deep) = &deep {
+                e.park_deep_drop(ty, &leaves, &vs, deep);
             }
             e.glue_drop(ty, &vs);
-            if bounded {
-                e.rt("msrt_drop_leave", &[], false);
+            if let Some(deep) = &deep {
+                e.if_then(deep, |e| {
+                    e.rt("msrt_drop_leave", &[], false);
+                });
             }
             e.b.ret(None);
         }
