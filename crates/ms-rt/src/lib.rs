@@ -34,6 +34,8 @@ pub mod desc;
 pub mod dropq;
 pub mod fault;
 pub mod ffi;
+mod float_digits;
+mod float_table;
 pub mod global;
 pub mod glue;
 pub mod io;

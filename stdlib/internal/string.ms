@@ -2,6 +2,16 @@ import Regex from "@std/regex.ms"
 
 export extern fn msrt_string_from_scalars(values: List[Int]) String!
 
+export extern fn msrt_string_fields(text: String) List[String]
+
+// Text without the scalars of `set` at the start and, as selected, the end.
+export extern fn msrt_string_trim_chars(
+	text: String,
+	set: String,
+	from_start: Bool,
+	from_end: Bool,
+) String
+
 export extern fn msstd_unicode_in_category(value: Int, category: String) Bool
 
 export extern fn msstd_regex_compile(pattern: String) Regex!

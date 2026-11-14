@@ -3,10 +3,10 @@ import (
 	Writable from "@std/core.ms",
 	StringBuilder from "@std/string_builder.ms",
 
-	msrt_string_from_scalars from "@std/internal/string.ms",
-	msstd_string_trim_chars,
+	msrt_string_fields,
+	msrt_string_from_scalars,
+	msrt_string_trim_chars from "@std/internal/string.ms",
 	msstd_unicode_display_width,
-	msstd_unicode_fields,
 	msstd_unicode_is_alphanumeric from "@std/internal/unicode.ms",
 )
 
@@ -52,7 +52,7 @@ export fn from_scalars(values: List[Int]) String!:
 // text gives an empty list. Exact field text is preserved without normalization;
 // the byte-order mark and zero-width space are not separators.
 fn String.fields() List[String]:
-	return msstd_unicode_fields(self)
+	return msrt_string_fields(self)
 
 // Terminal columns the text occupies, measured by Unicode sequence width with
 // ambiguous characters narrow: combining marks add nothing, wide characters and
@@ -120,15 +120,15 @@ fn fold_key(text: String) String:
 
 // Removes every leading and trailing scalar that occurs in set.
 fn String.trim_chars(set: String) String:
-	return msstd_string_trim_chars(self, set, true, true)
+	return msrt_string_trim_chars(self, set, true, true)
 
 // Removes every leading scalar that occurs in set.
 fn String.trim_start_chars(set: String) String:
-	return msstd_string_trim_chars(self, set, true, false)
+	return msrt_string_trim_chars(self, set, true, false)
 
 // Removes every trailing scalar that occurs in set.
 fn String.trim_end_chars(set: String) String:
-	return msstd_string_trim_chars(self, set, false, true)
+	return msrt_string_trim_chars(self, set, false, true)
 
 // Reports whether any scalar of set occurs in the text.
 fn String.contains_any(set: String) Bool:
