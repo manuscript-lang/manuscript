@@ -16,7 +16,7 @@ import (
 	write_file from "@std/os/fs.ms",
 	RunOptions, SpawnOptions, run, spawn from "@std/os/process.ms",
 
-	capture, exe, fail, host, ms_binary, now_ns, usage from "./lib.ms",
+	capture, exe, fail, host, ms_binary, note, now_ns, usage from "./lib.ms",
 )
 
 // The child of the pipe round trip: echoes every chunk it reads.
@@ -113,8 +113,10 @@ fn round_trips(program: String, n: Int) Unit!:
 			input.flush()?
 
 			_reply := output.next()?
-			if round == 0 and i == 0:
-				print("{host()} pipe round trip: first reply")
+			if i % 50 == 0:
+				note(
+					"{host()} pipe round trip {round}.{i}: {now_ns() - start} ns elapsed"
+				)
 
 		best = min(best, now_ns() - start)
 
