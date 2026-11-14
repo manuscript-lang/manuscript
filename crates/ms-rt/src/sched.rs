@@ -561,6 +561,14 @@ pub(crate) fn steal_wait_ns() -> i64 {
     // The clock is read only once a queued start exists: an idle thread polls this in a spin.
     let off = SLOTS[me].steal_off_until.load(Ordering::Relaxed);
     let mut now = 0;
+    if off != 0 {
+        // Paused: wake when the pause ends without reading the queues of the threads that are
+        // still queueing, whose cache lines this would keep bouncing.
+        now = crate::sys::monotonic_ns();
+        if now < off {
+            return off - now;
+        }
+    }
     let mut wait = -1;
     for thread in (0..STARTED.load(Ordering::Acquire)).filter(|&t| t != me) {
         let at = SLOTS[thread].front_at.load(Ordering::SeqCst);
