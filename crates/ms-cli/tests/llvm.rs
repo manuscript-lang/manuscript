@@ -195,15 +195,17 @@ fn llvm_builds_a_huge_straight_line_function_in_bounded_time() {
 /// A Debug build keeps every element of one `list.lit` live at once, and the Cranelift register
 /// allocator is quadratic in that: 40000 elements took 20s. A long literal of plain values is
 /// built in chunks, in order, so the build grows linearly with the literal. The test compares 40000
-/// elements against 10000 instead of a wall-clock limit, which a slow or loaded runner can miss
-/// (macOS Intel took 12.2 s under nextest): linear growth is at most 4x, the quadratic one about 10x.
+/// elements against 5000 instead of a wall-clock limit, which a slow or loaded runner can miss
+/// (macOS Intel took 12.2 s under nextest). A fixed build cost dilutes the small run, so linear
+/// growth is at most 8x, and the quadratic one is about 10x on top of that. The limit of 20x keeps
+/// a 2.5x margin for load noise on the linear side.
 #[test]
 fn debug_builds_a_long_list_literal_in_bounded_time() {
-    let small = build_long_literal(10_000);
+    let small = build_long_literal(5_000);
     let large = build_long_literal(40_000);
     assert!(
-        large < small * 6,
-        "40000 elements took {large:?}, 10000 took {small:?}: the build is not linear"
+        large < small * 20,
+        "40000 elements took {large:?}, 5000 took {small:?}: the build is not linear"
     );
 }
 
