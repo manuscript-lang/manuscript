@@ -1,43 +1,41 @@
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread;
 
-fn count_primes(lo: i64, hi: i64) -> i64 {
-    let mut count = 0;
-    for n in lo..hi {
-        if n < 2 { continue; }
-        let mut is_prime = true;
-        let mut d = 2;
-        while d * d <= n {
-            if n % d == 0 { is_prime = false; break; }
-            d += 1;
-        }
-        if is_prime { count += 1; }
+fn chunk_checksum(chunk: i64) -> i64 {
+    let mut hist = [0i64; 256];
+    let mut x = chunk * 7919 + 1;
+    let mut h = 0i64;
+    for _ in 0..200000 {
+        x = (x * 48271) % 2147483647;
+        hist[(x % 256) as usize] += 1;
+        h = (h * 31 + x) % 1000000007;
     }
-    count
-}
-
-fn small(i: i64) -> i64 {
-    let mut t = 0;
-    for k in 0..200 { t += (i + k) % 7; }
-    t
+    for b in 0..256 {
+        h = (h * 131 + hist[b]) % 1000000007;
+    }
+    h
 }
 
 fn main() {
-    let handles: Vec<_> = (0..16).map(|chunk| {
-        let lo = chunk * 250000;
-        thread::spawn(move || count_primes(lo, lo + 250000))
-    }).collect();
-    let primes: i64 = handles.into_iter().map(|h| h.join().unwrap()).sum();
-
-    // One OS thread per small task would measure thread creation, not the work; use a fixed pool of workers over a shared index.
+    // A fixed pool of one worker per core pulling chunk numbers, the usual shape without a task runtime.
     let workers = thread::available_parallelism().map(|n| n.get()).unwrap_or(4);
+    let next = AtomicUsize::new(0);
     let total: i64 = thread::scope(|s| {
-        let handles: Vec<_> = (0..workers).map(|w| s.spawn(move || {
-            let mut t = 0;
-            let mut i = w as i64;
-            while i < 100000 { t += small(i); i += workers as i64; }
-            t
-        })).collect();
+        let handles: Vec<_> = (0..workers)
+            .map(|_| {
+                s.spawn(|| {
+                    let mut t = 0;
+                    loop {
+                        let c = next.fetch_add(1, Ordering::Relaxed);
+                        if c >= 128 {
+                            return t;
+                        }
+                        t += chunk_checksum(c as i64);
+                    }
+                })
+            })
+            .collect();
         handles.into_iter().map(|h| h.join().unwrap()).sum()
     });
-    println!("primes {primes} small {total}");
+    println!("chunks 128 checksum {total}");
 }

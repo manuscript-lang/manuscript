@@ -81,3 +81,9 @@ Same day, fourth change: a split at a one-byte separator of a text up to 128 byt
 ## 2026-11-14: name the `x86-64` CPU for `llc`
 
 Same sandbox (4 cores). `llc` with no `-mcpu` (LLVM 23) no longer emits the 32-bit guard in front of a 64-bit `idiv`, so division and remainder of small values took the slow 64-bit path; `-mcpu=x86-64`, which rustc uses, restores it. Trial-division primes loop, 1 thread / 4 threads, median of 7: 1443 / 430 ms before, 920 / 288 ms after (Rust, 1 thread: 930 ms). Minimum of 5 in `run.sh`: `workers` 535 to 353 ms (Rust 251), `hashing` 156, `lz` 224, `interp` 157 (no regression against the table above). Remaining `workers` gap is the 100k small promises, which still do not scale past 1 thread (64 ms on 1 thread, 180 ms on 4).
+
+## 2026-11-14: `workers` is now a realistic chunked workload
+
+The old `workers` ran 16 prime-counting chunks and then 100k promises of about 1 us each, a stress test of task creation that no program resembles, against a Rust version with a different design. It is now 128 independent chunks that each generate 200,000 values, count them into 256 buckets and fold a checksum: the same loop in Manuscript (a promise per chunk), Rust (one worker per core pulling chunk numbers), Go (a goroutine per chunk) and Node (a worker thread per core). The 100k-promise stress test stays in `bench/perf/small-promises`.
+
+`ms` from `make build` on main, 4 vCPU Xeon VM, min of 7: ms 49 ms, Rust 30, Go 33, Node 279. ms / Rust 1.63x, ms / Go 1.48x. By threads (min of 9): ms 173 / 84 / 51 ms on 1 / 2 / 4 threads, Rust 125 ms pinned to one core and 32 ms on 4, so scaling is fine (3.4x) and the gap is the loop itself (1.4x at one thread).

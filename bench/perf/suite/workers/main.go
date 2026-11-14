@@ -5,63 +5,35 @@ import (
 	"sync"
 )
 
-func countPrimes(lo, hi int) int {
-	count := 0
-	for n := lo; n < hi; n++ {
-		if n < 2 {
-			continue
-		}
-		isPrime := true
-		for d := 2; d*d <= n; d++ {
-			if n%d == 0 {
-				isPrime = false
-				break
-			}
-		}
-		if isPrime {
-			count++
-		}
+func chunkChecksum(chunk int) int {
+	var hist [256]int
+	x := chunk*7919 + 1
+	h := 0
+	for i := 0; i < 200000; i++ {
+		x = (x * 48271) % 2147483647
+		hist[x%256]++
+		h = (h*31 + x) % 1000000007
 	}
-	return count
-}
-
-func small(i int) int {
-	t := 0
-	for k := 0; k < 200; k++ {
-		t += (i + k) % 7
+	for b := 0; b < 256; b++ {
+		h = (h*131 + hist[b]) % 1000000007
 	}
-	return t
+	return h
 }
 
 func main() {
 	var wg sync.WaitGroup
-	results := make([]int, 16)
-	for chunk := 0; chunk < 16; chunk++ {
+	results := make([]int, 128)
+	for chunk := 0; chunk < 128; chunk++ {
 		wg.Add(1)
 		go func(c int) {
 			defer wg.Done()
-			results[c] = countPrimes(c*250000, c*250000+250000)
+			results[c] = chunkChecksum(c)
 		}(chunk)
 	}
 	wg.Wait()
-	primes := 0
-	for _, r := range results {
-		primes += r
-	}
-
-	// One goroutine per small task, as the Manuscript version creates one promise per task.
-	small_ := make([]int, 100000)
-	for i := 0; i < 100000; i++ {
-		wg.Add(1)
-		go func(i int) {
-			defer wg.Done()
-			small_[i] = small(i)
-		}(i)
-	}
-	wg.Wait()
 	total := 0
-	for _, r := range small_ {
+	for _, r := range results {
 		total += r
 	}
-	fmt.Printf("primes %d small %d\n", primes, total)
+	fmt.Printf("chunks 128 checksum %d\n", total)
 }
