@@ -348,6 +348,11 @@ impl Network {
             }
             return Ok(out);
         }
+        // `localhost` needs no system lookup, so it needs no pool thread either: handing it off
+        // cost a task switch and two wake-ups (33 us) for an answer that is a constant.
+        if let Some(ips) = localhost_addrs(&host.to_ascii_lowercase()) {
+            return Ok(ips.into_iter().map(normalize).filter(keep).collect());
+        }
         match blocking(Lane::Dns, host.to_string(), resolve, deadline)? {
             None => Err(NetErr::Timeout),
             Some(Err(_)) => Err(NetErr::failed(cannot_resolve(host))),
@@ -668,16 +673,14 @@ impl Network {
 #[expect(clippy::ptr_arg, reason = "a pool job takes `&I` for its input type")]
 fn resolve(host: &String) -> io::Result<Vec<IpAddr>> {
     let name = host.to_ascii_lowercase();
-    if let Some(loopback) = localhost_addrs(&name) {
-        return Ok(loopback);
-    }
     (name.as_str(), 0u16)
         .to_socket_addrs()
         .map(|it| it.map(|a| a.ip()).collect())
 }
 
 /// `localhost` and `*.localhost` always name the loopback interface (RFC 6761), so they need no
-/// system lookup. Windows runners answered `localhost` too slowly for a two-second deadline.
+/// system lookup and no pool thread (`lookup_ips` answers them directly). Windows runners answered
+/// `localhost` too slowly for a two-second deadline.
 fn localhost_addrs(name: &str) -> Option<Vec<IpAddr>> {
     let name = name.strip_suffix('.').unwrap_or(name);
     let local = name == "localhost" || name.ends_with(".localhost");
@@ -821,8 +824,15 @@ mod tests {
             IpAddr::V4(Ipv4Addr::LOCALHOST),
             IpAddr::V6(Ipv6Addr::LOCALHOST),
         ];
+        let network = Network::new_root();
+        let deadline = Deadline::from_nanos(None).unwrap();
         for name in ["localhost", "LocalHost", "localhost.", "app.localhost"] {
-            assert_eq!(resolve(&name.to_string()).unwrap(), loopback, "{name}");
+            // Answered without a pool thread, so no runtime is needed.
+            assert_eq!(
+                network.resolve_ips(name, deadline).unwrap(),
+                loopback,
+                "{name}"
+            );
         }
         assert_eq!(localhost_addrs("notlocalhost"), None);
         assert_eq!(localhost_addrs("localhost.example"), None);
