@@ -274,6 +274,15 @@ pub fn is_not_found(e: Errno) -> bool {
     kind(e) == io::ErrorKind::NotFound
 }
 
+/// `true` when `e` says resolving the path ran into a symbolic link loop (`ELOOP`, or
+/// `ERROR_CANT_RESOLVE_FILENAME` on Windows).
+pub fn is_link_loop(e: Errno) -> bool {
+    #[cfg(unix)]
+    return e == libc::ELOOP;
+    #[cfg(windows)]
+    return e == 1921;
+}
+
 /// `true` when `e` says the path already exists.
 pub fn is_exists(e: Errno) -> bool {
     kind(e) == io::ErrorKind::AlreadyExists

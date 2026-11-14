@@ -579,7 +579,8 @@ impl GlobState {
         if is_link(&info) && o.follow_links {
             match sys::stat(&cpath(p)?, true) {
                 Ok(st) => info = st,
-                Err(e) if sys::is_not_found(e) => return Ok(()),
+                // A dangling or looping link has no directory to enter.
+                Err(e) if sys::is_not_found(e) || sys::is_link_loop(e) => return Ok(()),
                 Err(e) => return Err(Fail::errno(e, "stat", p)),
             }
         }
