@@ -38,19 +38,24 @@
           "index": 5,
           "name": "string-text.ms::slice bounds from the end agree with the same bounds from the start on non-ASCII text",
           "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "string-text.ms::character-set trims cover each end, non-ASCII sets, empty sets and whole-text trims",
+          "status": "passed"
         }
       ],
       "summary": {
-        "available": 6,
-        "selected": 6,
-        "passed": 6,
+        "available": 7,
+        "selected": 7,
+        "passed": 7,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN string-text.ms::string text helpers\nPASS string-text.ms::string text helpers\nRUN string-text.ms::replace_each without replacements preserves exact text\nPASS string-text.ms::replace_each without replacements preserves exact text\nRUN string-text.ms::char-set trims and find_char agree with a scalar walk across scan windows\nPASS string-text.ms::char-set trims and find_char agree with a scalar walk across scan windows\nRUN string-text.ms::take and drop clamp on ASCII and non-ASCII text\nPASS string-text.ms::take and drop clamp on ASCII and non-ASCII text\nRUN string-text.ms::negative get and scalar_at index from the end on non-ASCII text\nPASS string-text.ms::negative get and scalar_at index from the end on non-ASCII text\nRUN string-text.ms::slice bounds from the end agree with the same bounds from the start on non-ASCII text\nPASS string-text.ms::slice bounds from the end agree with the same bounds from the start on non-ASCII text\n6 tests, 0 failed\n",
+      "stdout": "RUN string-text.ms::string text helpers\nPASS string-text.ms::string text helpers\nRUN string-text.ms::replace_each without replacements preserves exact text\nPASS string-text.ms::replace_each without replacements preserves exact text\nRUN string-text.ms::char-set trims and find_char agree with a scalar walk across scan windows\nPASS string-text.ms::char-set trims and find_char agree with a scalar walk across scan windows\nRUN string-text.ms::take and drop clamp on ASCII and non-ASCII text\nPASS string-text.ms::take and drop clamp on ASCII and non-ASCII text\nRUN string-text.ms::negative get and scalar_at index from the end on non-ASCII text\nPASS string-text.ms::negative get and scalar_at index from the end on non-ASCII text\nRUN string-text.ms::slice bounds from the end agree with the same bounds from the start on non-ASCII text\nPASS string-text.ms::slice bounds from the end agree with the same bounds from the start on non-ASCII text\nRUN string-text.ms::character-set trims cover each end, non-ASCII sets, empty sets and whole-text trims\nPASS string-text.ms::character-set trims cover each end, non-ASCII sets, empty sets and whole-text trims\n7 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

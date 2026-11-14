@@ -131,3 +131,13 @@ test "slice bounds from the end agree with the same bounds from the start on non
 				expect_true(text.slice(start, end).is_error())?
 			else:
 				expect_equal(text.slice(start, end).get(""), text.slice(a, b).get(""))?
+
+test "character-set trims cover each end, non-ASCII sets, empty sets and whole-text trims":
+	"éxé—a—é".trim_chars("é—x") | expect_equal("a")?
+	"  éa  é".trim_start_chars(" é") | expect_equal("a  é")?
+	"é  aé  ".trim_end_chars(" é") | expect_equal("é  a")?
+	"abc".trim_chars("") | expect_equal("abc")?
+	"aaaa".trim_chars("a") | expect_equal("")?
+	"".trim_end_chars("a") | expect_equal("")?
+	"a😀b😀".trim_end_chars("😀") | expect_equal("a😀b")?
+	("x".repeat(100000).get("") + "é" + "y".repeat(100000).get("")).trim_chars("xy") | expect_equal("é")?

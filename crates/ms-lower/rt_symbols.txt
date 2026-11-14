@@ -743,6 +743,7 @@ msstd_regex_named_captures(handle re: *const ObjCell<Regex>, text: *const StrVal
 msstd_regex_replace_all(handle re: *const ObjCell<Regex>, text: *const StrVal, replacement: *const StrVal, has_max: HasRaw, max: i64, out: *mut StrVal) -> u8 @domain=regular expression @leaf
 msstd_regex_replace_template(handle re: *const ObjCell<Regex>, text: *const StrVal, template: *const StrVal, has_max: HasRaw, max: i64, out: *mut StrVal) -> u8 @domain=regular expression @leaf
 msstd_regex_split(handle re: *const ObjCell<Regex>, text: *const StrVal, has_max: HasRaw, max: i64, out: *mut VecVal) -> u8 @domain=regular expression @leaf
+msstd_string_trim_chars(text: *const StrVal, set: *const StrVal, from_start: u8, from_end: u8, out: *mut StrVal) @domain=unicode
 msstd_system_constants(out: *mut MapVal) @domain=system
 msstd_system_cpus(out: *mut VecVal, err: ErrSlot) -> u8 @domain=system
 msstd_system_dev_null(out: *mut StrVal) @domain=system
