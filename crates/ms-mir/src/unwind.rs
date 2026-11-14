@@ -928,10 +928,11 @@ fn hoist_loops(
     }
     loops.sort_by_key(|(_, body)| std::cmp::Reverse(body.len()));
     let mut covered: Vec<BTreeSet<u32>> = none();
-    let mut chosen: Vec<(usize, Vec<Value>)> = Vec::new();
+    let mut chosen: Vec<(usize, Vec<Value>, Vec<usize>)> = Vec::new();
     for (h, body) in &loops {
         let Some(live) = &entry[*h] else { continue };
         let used = consumed_inside(m, f, owned_def, body);
+        let (stable, chain) = stable_params(m, f, owned_def, *h, body);
         let held: Vec<Value> = live
             .iter()
             .filter(|v| {
@@ -942,19 +943,20 @@ fn hoist_loops(
             })
             .map(|v| Value(*v))
             .collect();
-        if held.is_empty() {
-            chosen.push((*h, Vec::new()));
+        if held.is_empty() && stable.is_empty() {
+            chosen.push((*h, Vec::new(), Vec::new()));
             continue;
         }
         for &b in body {
             covered[b].extend(held.iter().map(|v| v.0));
+            covered[b].extend(chain.iter().copied());
         }
-        chosen.push((*h, held));
+        chosen.push((*h, held, stable));
     }
     let mut bodies: Vec<Vec<usize>> = loops.iter().map(|(_, b)| b.clone()).collect();
     let mut changed = false;
-    for (li, (h, held)) in chosen.iter().enumerate() {
-        if held.is_empty() {
+    for (li, (h, held, stable)) in chosen.iter().enumerate() {
+        if held.is_empty() && stable.is_empty() {
             continue;
         }
         changed = true;
@@ -979,7 +981,9 @@ fn hoist_loops(
             })
             .collect();
         let mut insts = Vec::new();
-        let first = push_all(m, cx, f, &mut insts, held, loc);
+        let mut regs = held.clone();
+        regs.extend(stable.iter().map(|k| params[*k].value));
+        let first = push_all(m, cx, f, &mut insts, &regs, loc);
         let args = params.iter().map(|p| p.value).collect();
         f.blocks[pre].params = params;
         f.blocks[pre].insts = insts;
@@ -1048,6 +1052,85 @@ fn hoist_loops(
     owned_def.resize(f.values.len(), false);
     debug_assert_eq!(covered.len(), f.blocks.len());
     (covered, changed)
+}
+
+/// Header parameters of the loop at `h` that only ever carry one list updated in place, and the
+/// values of those chains (the parameter and each `list.set` result).
+///
+/// `list.set` stores into the list's own storage and returns the same pointer, length and
+/// capacity, so one registration made before the loop names the live list for every value of the
+/// chain. A parameter qualifies when each latch passes the result of a chain of `list.set`s that
+/// starts at it, no chain value has another consumer, and the elements need no drop: a `set` drops
+/// the old element before the store, and an unwind in between would drop it twice.
+fn stable_params(
+    m: &Module,
+    f: &Func,
+    owned_def: &[bool],
+    h: usize,
+    body: &[usize],
+) -> (Vec<usize>, Vec<u32>) {
+    let is_set = |op: Op| matches!(op, Op::ListSet | Op::ListSetNn | Op::ListSetU);
+    let mut sets: BTreeMap<u32, u32> = BTreeMap::new(); // result -> list argument
+    let mut moves: BTreeMap<u32, usize> = BTreeMap::new();
+    for &b in body {
+        for inst in &f.blocks[b].insts {
+            if let (true, Some(r)) = (is_set(inst.op), inst.res) {
+                sets.insert(r.0, inst.args[0].0);
+            }
+            let modes = crate::verify::arg_modes(m, inst);
+            for (a, mode) in inst.args.iter().zip(&modes) {
+                if *mode == Mode::Move {
+                    *moves.entry(a.0).or_default() += 1;
+                }
+            }
+        }
+        f.blocks[b].term.for_each_target(|t| {
+            if !body.contains(&t.block.index()) {
+                return;
+            }
+            for (a, p) in t.args.iter().zip(&f.blocks[t.block.index()].params) {
+                if p.mode == Mode::Move {
+                    *moves.entry(a.0).or_default() += 1;
+                }
+            }
+        });
+    }
+    let mut stable = Vec::new();
+    let mut chain_values = Vec::new();
+    'params: for (k, p) in f.blocks[h].params.iter().enumerate() {
+        let elem_plain = m.list_elem(f.ty(p.value)).is_some_and(|e| !m.needs_drop(e));
+        if p.mode != Mode::Move || !owned_def[p.value.index()] || !elem_plain {
+            continue;
+        }
+        let mut chain = vec![p.value.0];
+        let mut latches = 0;
+        for &b in body {
+            let mut latch_args = Vec::new();
+            f.blocks[b].term.for_each_target(|t| {
+                if t.block.index() == h {
+                    latch_args.push(t.args[k].0);
+                }
+            });
+            for mut v in latch_args {
+                latches += 1;
+                while v != p.value.0 {
+                    let Some(&from) = sets.get(&v) else {
+                        continue 'params;
+                    };
+                    chain.push(v);
+                    v = from;
+                }
+            }
+        }
+        let once = chain.iter().all(|v| moves.get(v) == Some(&1));
+        let distinct = chain.iter().collect::<BTreeSet<_>>().len() == chain.len();
+        if latches == 0 || !once || !distinct {
+            continue;
+        }
+        stable.push(k);
+        chain_values.extend(chain);
+    }
+    (stable, chain_values)
 }
 
 /// Owned values consumed by an instruction in `body`, or passed on an edge that stays inside it.

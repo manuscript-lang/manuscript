@@ -644,3 +644,66 @@ b0:
         print_module(&m)
     );
 }
+
+fn list_loop(update: &str) -> String {
+    format!(
+        r#"
+fn @main() -> int {{
+b0:
+  %l: list<int> = list.lit
+  %zero: int = iconst 0
+  br b1(%zero, %l)
+b1(%i: int, %xs: move list<int>):
+  %ten: int = iconst 10
+  %more: bool = icmp.lt %i, %ten
+  br_if %more, b2(), b3()
+b2():
+  %one: int = iconst 1
+  %next: int = iadd.chk %i, %one
+  %ys: list<int> = {update}
+  br b1(%next, %ys)
+b3():
+  drop %xs
+  ret %i
+}}
+"#
+    )
+}
+
+#[test]
+fn registers_a_list_updated_in_place_across_a_loop_once() {
+    let (m, changed) = rewrite(&list_loop("list.set %xs, %zero, %i"), true);
+    assert!(changed, "{}", print_module(&m));
+    let f = &m.funcs[m.func_by_name("main").expect("main").index()];
+    let pushes = |b: usize| {
+        f.blocks[b]
+            .insts
+            .iter()
+            .filter(|i| i.op == Op::CleanupPush)
+            .count()
+    };
+    assert_eq!(pushes(2), 0, "{}", print_module(&m));
+    assert_eq!(
+        count(&m, "main", Op::CleanupPush),
+        1,
+        "{}",
+        print_module(&m)
+    );
+    assert_eq!(
+        calls(&m, "main", "msrt_cleanup_discard"),
+        1,
+        "{}",
+        print_module(&m)
+    );
+}
+
+#[test]
+fn keeps_per_iteration_windows_for_a_list_that_grows_in_the_loop() {
+    let (m, _) = rewrite(&list_loop("list.push %xs, %i"), true);
+    let f = &m.funcs[m.func_by_name("main").expect("main").index()];
+    assert!(
+        f.blocks[2].insts.iter().any(|i| i.op == Op::CleanupPush),
+        "{}",
+        print_module(&m)
+    );
+}
