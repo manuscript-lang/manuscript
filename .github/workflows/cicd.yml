@@ -92,7 +92,8 @@ jobs:
   # `lint`: also format and clippy. `cranelift`: the part (`a` or `b`) that also runs the corpus and
   # fixtures with `MS_BACKEND=cranelift`, the backend Debug builds use; the gates run in the other part.
   # `gates: false` skips the gates. On pull requests linux-amd64 runs Cranelift in `conformance` and
-  # leaves the gates to linux-arm64, so each job stays under ten minutes.
+  # leaves the gates to linux-arm64, so each job stays under ten minutes. On pull requests linux-arm64 runs
+  # format and clippy: it finishes about 4 minutes before linux-amd64, which carries the corpus.
   # `docs`: also the language checks and the book (in the conformance part on pull requests); on main
   # the book is uploaded for Pages.
   # Failures shared with Linux are in tests/conformance/expect-fail.txt; platform-only ones go
@@ -112,7 +113,7 @@ jobs:
         part: ${{ fromJSON((github.event_name == 'pull_request' || github.event_name == 'merge_group') && '["ab"]' || '["a", "b"]') }}
         leg: >-
           ${{ fromJSON(
-          (github.event_name == 'pull_request' || github.event_name == 'merge_group') && '[{"os": "linux", "arch": "amd64", "runner": "ubuntu-24.04", "lint": true, "cranelift": "b", "gates": "false"}, {"os": "linux", "arch": "arm64", "runner": "ubuntu-24.04-arm", "docs": true, "gates_part": "a"}]' ||
+          (github.event_name == 'pull_request' || github.event_name == 'merge_group') && '[{"os": "linux", "arch": "amd64", "runner": "ubuntu-24.04", "cranelift": "b", "gates": "false"}, {"os": "linux", "arch": "arm64", "runner": "ubuntu-24.04-arm", "lint": true, "docs": true, "gates_part": "a"}]' ||
           inputs.os == 'linux' && '[{"os": "linux", "arch": "amd64", "runner": "ubuntu-24.04", "lint": true, "cranelift": "b"}, {"os": "linux", "arch": "arm64", "runner": "ubuntu-24.04-arm", "docs": true, "gates_part": "a"}]' ||
           inputs.os == 'darwin' && '[{"os": "darwin", "arch": "amd64", "runner": "macos-15-intel"}, {"os": "darwin", "arch": "arm64", "runner": "macos-15", "cranelift": "a"}]' ||
           inputs.os == 'windows' && '[{"os": "windows", "arch": "amd64", "runner": "windows-2025", "cranelift": "b"}, {"os": "windows", "arch": "arm64", "runner": "windows-11-arm"}]' ||
