@@ -16,7 +16,7 @@ use crate::{alloc, fault, task};
 use core::cell::UnsafeCell;
 use core::cmp::Reverse;
 use ms_rt_abi::TypeDesc;
-use std::collections::BinaryHeap;
+use std::collections::{BinaryHeap, VecDeque};
 
 pub const OK: i64 = 0;
 pub const ERROR: i64 = 1;
@@ -177,6 +177,8 @@ pub(crate) fn teardown() {
         }
     }
     *t = Table::empty();
+    // Fresh buffer: the capacity grew with the ends queued.
+    ends().jobs = VecDeque::new();
 }
 
 fn table() -> &'static mut Table {
@@ -501,14 +503,58 @@ fn end_remote(id: i64, status: u8, report: Vec<u8>) {
         apply(Event::Ended { id, status, report });
         return;
     }
-    let job = Box::into_raw(Box::new(EndJob { id, status, report }));
-    // SAFETY: the entry takes the job; the task is detached and ends by itself.
-    unsafe { task::msrt_task_spawn(end_entry, job.cast(), task::SPAWN_DETACHED, 0) };
+    let ends = ends();
+    ends.jobs.push_back(EndJob { id, status, report });
+    if ends.enders < ENDERS {
+        spawn_ender();
+    }
 }
 
-unsafe extern "C-unwind" fn end_entry(arg: *mut u8) {
-    // SAFETY: `arg` is the job `end_remote` leaked for this task.
-    let EndJob { id, status, report } = *unsafe { Box::from_raw(arg.cast::<EndJob>()) };
+/// Ends waiting for a task to run them, and how many tasks are draining them. One task per end
+/// cost a stack for each: 100k short promises that ran on other threads made 100k stacks at once.
+struct Ends {
+    jobs: VecDeque<EndJob>,
+    enders: usize,
+}
+
+crate::isolate_static! {
+    static ENDS: Ends = Ends { jobs: VecDeque::new(), enders: 0 };
+}
+
+fn ends() -> &'static mut Ends {
+    // SAFETY: the queue belongs to the calling isolate.
+    unsafe { &mut *ENDS.ptr() }
+}
+
+/// Tasks that drain the queue of ends. A drop that waits parks only its own task.
+const ENDERS: usize = 4;
+
+fn spawn_ender() {
+    ends().enders += 1;
+    // SAFETY: the task is detached and ends by itself.
+    unsafe { task::msrt_task_spawn(ender_entry, core::ptr::null_mut(), task::SPAWN_DETACHED, 0) };
+}
+
+/// Called when the thread has nothing to run and ends are queued: every ender is parked in a
+/// drop, and a queued end might be what that drop waits for, so one more task takes the queue.
+/// True when it started one.
+pub(crate) fn rescue_ends() -> bool {
+    if ends().jobs.is_empty() {
+        return false;
+    }
+    spawn_ender();
+    true
+}
+
+unsafe extern "C-unwind" fn ender_entry(_: *mut u8) {
+    while let Some(job) = ends().jobs.pop_front() {
+        finish_end(job);
+    }
+    ends().enders -= 1;
+}
+
+fn finish_end(job: EndJob) {
+    let EndJob { id, status, report } = job;
     let t = table();
     if let Some(i) = index(t, id) {
         let closure = t.closure[i];
@@ -2379,6 +2425,28 @@ mod tests {
         }
         sched::shutdown();
         task::teardown();
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn ends_from_other_threads_drain_through_a_few_tasks() {
+        let _g = lock();
+        sched::msrt_runtime_set_threads(4);
+        sched::warm(4);
+        let ids: Vec<i64> = (0..2000).map(|_| msrt_promise_new()).collect();
+        for &id in &ids {
+            start_with_id(id, answer_thread);
+        }
+        for &id in &ids {
+            assert_eq!(msrt_promise_wait(id, -1), OK);
+        }
+        assert!(ends().enders <= ENDERS + 1, "{} enders", ends().enders);
+        for id in ids {
+            msrt_promise_drop(id);
+        }
+        sched::shutdown();
+        task::teardown();
+        assert!(ends().jobs.is_empty());
     }
 
     fn slow_job(ms: &u64) -> u64 {
