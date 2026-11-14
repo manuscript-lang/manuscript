@@ -328,6 +328,18 @@ impl core::fmt::Write for Scientific {
 
 /// Shortest round-trip digits and decimal exponent of a finite positive `v`.
 fn shortest(v: f64) -> (Scientific, i32) {
+    let (digits, exp10) = crate::float_digits::shortest(v);
+    let mut s = Scientific::default();
+    let mut tmp = [0u8; 20];
+    let text = format_u64(digits, &mut tmp);
+    s.bytes[..text.len()].copy_from_slice(text);
+    s.len = text.len();
+    (s, exp10 + text.len() as i32 - 1)
+}
+
+/// The same through the standard formatter, which the tests compare `shortest` with.
+#[cfg(test)]
+fn shortest_via_core(v: f64) -> (Scientific, i32) {
     let mut s = Scientific::default();
     write!(s, "{v:e}").expect("shortest finite binary64 scientific form fits 32 bytes");
     let (digits, exp) = split_scientific(s);
@@ -552,6 +564,62 @@ pub fn float32_to_string(v: f64) -> Vec<u8> {
     float32_text(v).as_slice().to_vec()
 }
 
+/// `{v:.digits$}` for a finite `v` below 2^53 in magnitude and up to 15 fractional digits, exactly:
+/// the scaled value `c * 2^q * 10^digits` of the binary64 `c * 2^q` is an integer product that
+/// fits 128 bits, so it is divided by a power of two with the remainder deciding the rounding (a
+/// tie goes to the even last digit, as in the standard formatter). Returns false, writing
+/// nothing, for any other value.
+fn push_fixed(v: f64, digits: usize, out: &mut Vec<u8>) -> bool {
+    const POW10: [u64; 16] = {
+        let mut t = [1u64; 16];
+        let mut i = 1;
+        while i < 16 {
+            t[i] = t[i - 1] * 10;
+            i += 1;
+        }
+        t
+    };
+    let bits = v.to_bits();
+    let biased = (bits >> 52) as i32 & 0x7ff;
+    let fraction = bits & ((1 << 52) - 1);
+    let (c, q) = if biased == 0 {
+        (fraction, -1074)
+    } else {
+        (fraction | 1 << 52, biased - 1075)
+    };
+    if digits > 15 || q > 0 {
+        return false;
+    }
+    let scale = POW10[digits];
+    let product = u128::from(c) * u128::from(scale);
+    let shift = (-q) as u32;
+    let scaled = if shift >= 128 {
+        0
+    } else if shift == 0 {
+        product
+    } else {
+        let whole = product >> shift;
+        let rest = product & ((1u128 << shift) - 1);
+        let half = 1u128 << (shift - 1);
+        whole + u128::from(rest > half || (rest == half && whole & 1 == 1))
+    };
+    let Ok(scaled) = u64::try_from(scaled) else {
+        return false;
+    };
+    if bits >> 63 != 0 {
+        out.push(b'-');
+    }
+    let mut tmp = [0u8; 20];
+    out.extend_from_slice(format_u64(scaled / scale, &mut tmp));
+    if digits > 0 {
+        out.push(b'.');
+        let fraction = format_u64(scaled % scale, &mut tmp);
+        out.extend(core::iter::repeat_n(b'0', digits - fraction.len()));
+        out.extend_from_slice(fraction);
+    }
+    true
+}
+
 /// `to_precision` (`'g'`, minimum 1), `to_exponential` (`'e'`), `to_fixed` (`'f'`).
 /// Returns `None` when `digits` is outside `minimum..=100`.
 pub fn float_precision(v: f64, format: u8, digits: i64, minimum: i64) -> Option<Vec<u8>> {
@@ -567,7 +635,9 @@ pub fn float_precision(v: f64, format: u8, digits: i64, minimum: i64) -> Option<
         if v.abs() >= 1e21 {
             return Some(float_to_string(v));
         }
-        let _ = write!(out, "{v:.digits$}");
+        if !push_fixed(v, digits, &mut out) {
+            let _ = write!(out, "{v:.digits$}");
+        }
         return Some(out);
     }
     let mdigits = if format == b'g' { digits - 1 } else { digits };
@@ -850,6 +920,130 @@ mod tests {
 
     fn s(b: Vec<u8>) -> String {
         String::from_utf8(b.as_slice().to_vec()).unwrap()
+    }
+
+    /// The Schubfach digits agree with the standard formatter's, tie rule included, over every
+    /// binary exponent, the edges of each binade, random bit patterns and decimal literals.
+    #[test]
+    fn fixed_notation_matches_the_standard_formatter() {
+        let mut x = 0x2545_f491_4f6c_dd1du64;
+        let mut next = || {
+            x ^= x << 13;
+            x ^= x >> 7;
+            x ^= x << 17;
+            x
+        };
+        let mut values: std::vec::Vec<f64> = std::vec![
+            0.0,
+            -0.0,
+            0.5,
+            1.5,
+            2.5,
+            0.125,
+            0.375,
+            -0.001,
+            1e-320,
+            9007199254740991.0,
+            1e15,
+            123456.789
+        ];
+        for i in 0..4000 {
+            values.push(f64::from(i) / 8.0);
+            values.push(f64::from(i) * 0.005);
+            values.push(-f64::from(i) * 1.37);
+        }
+        for _ in 0..60_000 {
+            let bits = next();
+            values.push(
+                f64::from_bits(bits & 0x7fff_ffff_ffff_ffff)
+                    * if bits >> 63 != 0 { -1.0 } else { 1.0 },
+            );
+            values.push(
+                (next() % 1_000_000_000_000) as f64 / 1000.0
+                    * if bits & 1 != 0 { -1.0 } else { 1.0 },
+            );
+        }
+        for v in values {
+            if !v.is_finite() || v.abs() >= 1e21 {
+                continue;
+            }
+            for digits in [0usize, 1, 2, 3, 6, 9, 15, 16, 20] {
+                let mut fast = Vec::new();
+                if push_fixed(v, digits, &mut fast) {
+                    assert_eq!(
+                        core::str::from_utf8(&fast).unwrap(),
+                        std::format!("{v:.digits$}"),
+                        "{v:e} {digits}"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn shortest_digits_match_the_standard_formatter() {
+        let check = |v: f64| {
+            if !(v.is_finite() && v > 0.0) {
+                return;
+            }
+            let (a, ea) = shortest(v);
+            let (b, eb) = shortest_via_core(v);
+            assert_eq!(
+                (a.as_slice(), ea),
+                (b.as_slice(), eb),
+                "{v:e} {:#x}",
+                v.to_bits()
+            );
+        };
+        let mut x = 0x9e37_79b9_7f4a_7c15u64;
+        let mut next = || {
+            x ^= x << 13;
+            x ^= x >> 7;
+            x ^= x << 17;
+            x
+        };
+        for exp in 0u64..2047 {
+            for mantissa in [
+                0,
+                1,
+                2,
+                3,
+                (1 << 52) - 1,
+                (1 << 52) - 2,
+                1 << 51,
+                0x0005_5555_5555_5555,
+                0x000a_aaaa_aaaa_aaaa,
+            ] {
+                check(f64::from_bits(exp << 52 | mantissa));
+            }
+            for _ in 0..300 {
+                check(f64::from_bits(exp << 52 | next() & ((1 << 52) - 1)));
+            }
+        }
+        for _ in 0..300_000 {
+            check(f64::from_bits(next() & 0x7fff_ffff_ffff_ffff));
+        }
+        for i in 1..200_000u64 {
+            check(i as f64 * 0.1);
+            check(i as f64 * 1.37);
+            check(i as f64 / 7.0);
+            check(i as f64 * 1e-7);
+            check((i * i * i) as f64 * 1e15);
+            check(f64::from(i as u32) * 0.5 + 0.25);
+        }
+        for e in -330..320 {
+            for m in [
+                1.0,
+                1.5,
+                2.5,
+                5.0,
+                9.999999999999999,
+                4.35,
+                1.0000000000000002,
+            ] {
+                check(m * 10f64.powi(e));
+            }
+        }
     }
 
     #[test]

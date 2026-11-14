@@ -22,3 +22,15 @@ Rust's `HashMap` uses SipHash, so the `freq_*` and `lookup_long` rows are not a 
 | `upper()` of a short word | 29 | 23 | 27 | as `lower()` |
 | `Float.to_string` | 167 | 144 | 111 | the digits were rendered into a `Vec` and copied again; they are now rendered into a stack buffer |
 | `parse_float` of the printed text | 218 | 186 | 135 | a literal with at most 19 digits and a power of ten within 22 is one exact multiplication or division (Clinger), validated in the same pass; the rest takes the general parser as before |
+
+## 2026-11-14, round 2
+
+`a8deb279` plus this change, same machine and method, milliseconds.
+
+| operation | before | after | rust | change |
+|---|---:|---:|---:|---|
+| `Float.to_string` of 1M floats | 167 | 61 | 111 | Schubfach shortest digits (`float_digits.rs`, a 617-entry table from `tools/float-table.ms`) instead of formatting through `{:e}` and reparsing; callgrind 2,200 to 800 instructions per call including setup. Checked bit for bit against the standard formatter on 60M random patterns, every binary exponent and the edges of each binade |
+| `parse_float` of the printed text | 218 | 102 | 135 | the faster digits plus the round-1 exact path |
+| `to_fixed(2)` of 1M floats | 153 | 47 | 151 | an exact integer path for values under 2^53 with up to 15 digits: one 128-bit product, a shift, and the remainder decides the tie (half to even); other values use the standard formatter |
+| `fields()` of 10.7 MB (`string-micro` `fields`) | 41 | 24 | 24 | one byte loop with a class table instead of `split_whitespace` and a copy per field |
+| `trim_chars("w")` per word | 21 | 15 | 7 | ASCII set members tested from two 64-bit masks; no per-call UTF-8 validation of both strings |

@@ -2529,6 +2529,154 @@ pub unsafe extern "C-unwind" fn msrt_string_lines(s: *const StrVal, out: *mut Ve
     }
 }
 
+/// The scalars of a set string: the ASCII ones as a bit mask, the rest by comparison.
+struct ScalarSet<'a> {
+    low: u64,
+    high: u64,
+    wide: &'a [u8],
+}
+
+impl<'a> ScalarSet<'a> {
+    fn new(set: &'a [u8]) -> ScalarSet<'a> {
+        let (mut low, mut high) = (0u64, 0u64);
+        let mut wide_from = None;
+        for (i, &b) in set.iter().enumerate() {
+            if b < 64 {
+                low |= 1 << b;
+            } else if b < 0x80 {
+                high |= 1 << (b - 64);
+            } else if wide_from.is_none() {
+                wide_from = Some(i);
+            }
+        }
+        ScalarSet {
+            low,
+            high,
+            wide: wide_from.map_or(&[], |i| &set[i..]),
+        }
+    }
+
+    #[inline(always)]
+    fn contains(&self, c: u32) -> bool {
+        if c < 64 {
+            return self.low >> c & 1 != 0;
+        }
+        if c < 0x80 {
+            return self.high >> (c - 64) & 1 != 0;
+        }
+        let mut i = 0;
+        while i < self.wide.len() {
+            let (w, n) = utf8::decode(&self.wide[i..]);
+            if w == c {
+                return true;
+            }
+            i += n;
+        }
+        false
+    }
+}
+
+/// `String.trim_chars` and its start and end forms: the text without the leading and trailing
+/// scalars that occur in `set`. ASCII scalars are tested from a bit mask and only others decoded.
+#[unsafe(no_mangle)]
+// ms: leaf domain=string
+pub unsafe extern "C-unwind" fn msrt_string_trim_chars(
+    s: *const StrVal,
+    set: *const StrVal,
+    from_start: u8,
+    from_end: u8,
+    out: *mut StrVal,
+) {
+    // SAFETY: caller passes live strings and a writable `out`.
+    unsafe {
+        let text = bytes(s);
+        let members = ScalarSet::new(bytes(set));
+        let (mut a, mut b) = (0, text.len());
+        if from_start != 0 {
+            while a < b {
+                let (c, w) = if text[a] < 0x80 {
+                    (u32::from(text[a]), 1)
+                } else {
+                    utf8::decode(&text[a..b])
+                };
+                if !members.contains(c) {
+                    break;
+                }
+                a += w;
+            }
+        }
+        if from_end != 0 {
+            while b > a {
+                let (c, w) = if text[b - 1] < 0x80 {
+                    (u32::from(text[b - 1]), 1)
+                } else {
+                    utf8::decode_last(&text[a..b])
+                };
+                if !members.contains(c) {
+                    break;
+                }
+                b -= w;
+            }
+        }
+        from_bytes(&text[a..b]).write_to(out)
+    }
+}
+
+/// How `fields` treats a byte: 0 an ordinary ASCII byte, 1 ASCII White_Space, 2 the start of a
+/// multibyte scalar, which is decoded.
+const FIELD_CLASS: [u8; 256] = {
+    let mut table = [0u8; 256];
+    let mut i = 0;
+    while i < 256 {
+        table[i] = if i >= 0x80 {
+            2
+        } else if i == 32 || (i >= 9 && i <= 13) {
+            1
+        } else {
+            0
+        };
+        i += 1;
+    }
+    table
+};
+
+/// `String.fields`: the runs of text between Unicode White_Space, none empty. A byte below 0x80
+/// is tested directly and only other scalars are decoded, so ordinary text is one byte loop.
+#[unsafe(no_mangle)]
+// ms: leaf domain=string
+pub unsafe extern "C-unwind" fn msrt_string_fields(s: *const StrVal, out: *mut VecVal) {
+    // SAFETY: caller passes a live string and a writable out.
+    unsafe {
+        let text = bytes(s);
+        let mut v = EMPTY_VEC;
+        let mut field_start = usize::MAX;
+        let mut i = 0;
+        while i < text.len() {
+            let (space, width) = match FIELD_CLASS[text[i] as usize] {
+                0 => (false, 1),
+                1 => (true, 1),
+                _ => {
+                    let (c, w) = utf8::decode(&text[i..]);
+                    (utf8::is_space(c), w)
+                }
+            };
+            if space {
+                if field_start != usize::MAX {
+                    push_str(&mut v, from_bytes(&text[field_start..i]));
+                    field_start = usize::MAX;
+                }
+            } else if field_start == usize::MAX {
+                field_start = i;
+            }
+            i += width;
+        }
+        if field_start != usize::MAX {
+            push_str(&mut v, from_bytes(&text[field_start..]));
+        }
+        *out = v;
+    }
+}
+
 /// Keep nearby line endings cheap, then scan long lines with the vector byte searcher.
 /// A scalar prefix also avoids vector-search setup for ordinary short lines in a long text.
 #[inline]
@@ -3949,6 +4097,98 @@ mod tests {
                 unsafe { (map_case(st(&before), false), map_case(st(&after), false)) };
             assert_eq!(txt(&lowered_before), std::format!("a{mark}ς"));
             assert_eq!(txt(&lowered_after), std::format!("aσ{mark}a"));
+        }
+    }
+
+    #[test]
+    fn fields_match_the_standard_whitespace_split() {
+        let _g = testutil::lock();
+        let atoms = [
+            "a",
+            "bc",
+            "é",
+            "日本",
+            " ",
+            "  ",
+            "\t",
+            "\n",
+            "\r",
+            "\u{b}",
+            "\u{c}",
+            "\u{85}",
+            "\u{a0}",
+            "\u{2003}",
+            "\u{3000}",
+            "\u{200b}",
+            "\u{feff}",
+            "😀",
+            "long-token-over-fifteen-bytes",
+        ];
+        let mut x = 7u64;
+        for _ in 0..3000 {
+            let mut text = S::new();
+            for _ in 0..(x % 9) {
+                x = x
+                    .wrapping_mul(6364136223846793005)
+                    .wrapping_add(1442695040888963407);
+                text.push_str(atoms[(x >> 33) as usize % atoms.len()]);
+            }
+            x = x
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
+            let expected: std::vec::Vec<&str> = text.split_whitespace().collect();
+            // SAFETY: `st` leaks a live string; `v` is a writable list.
+            let got = unsafe {
+                let mut v = EMPTY_VEC;
+                msrt_string_fields(st(&text), &mut v);
+                list(v)
+            };
+            assert_eq!(got, expected, "{text:?}");
+        }
+    }
+
+    #[test]
+    fn trim_chars_match_the_standard_trim_matches() {
+        let _g = testutil::lock();
+        let atoms = [
+            "a",
+            "b",
+            "é",
+            "ü",
+            "日",
+            "-",
+            " ",
+            "😀",
+            "xyz",
+            "long-token-over-fifteen-bytes",
+        ];
+        let sets = ["", "a", "ab-", "é", "日é-", "😀 ", "xyzb", "ü日 -"];
+        let mut x = 11u64;
+        for _ in 0..4000 {
+            let mut text = S::new();
+            for _ in 0..(x % 8) {
+                x = x
+                    .wrapping_mul(6364136223846793005)
+                    .wrapping_add(1442695040888963407);
+                text.push_str(atoms[(x >> 33) as usize % atoms.len()]);
+            }
+            x = x
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
+            let set = sets[(x >> 33) as usize % sets.len()];
+            let member = |c: char| set.contains(c);
+            for (start, end) in [(1u8, 1u8), (1, 0), (0, 1)] {
+                let mut expected = text.as_str();
+                if start != 0 {
+                    expected = expected.trim_start_matches(member);
+                }
+                if end != 0 {
+                    expected = expected.trim_end_matches(member);
+                }
+                let got =
+                    ret(|o| unsafe { msrt_string_trim_chars(st(&text), st(set), start, end, o) });
+                assert_eq!(got, expected, "{text:?} {set:?} {start} {end}");
+            }
         }
     }
 
