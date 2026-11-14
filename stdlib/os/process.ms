@@ -121,7 +121,7 @@ export extern type NativeSubprocess
 /*
 A long-lived child process with live stdin, stdout, and stderr streams. Closing it
 kills the child's process group, joins it, and closes all three streams.
-A stream spawned as Stdio.Inherit or Stdio.Null has no pipe: it is already closed, so reads and writes return EBADF.
+A stream spawned as Stdio.Inherit or Stdio.Null has no pipe: it is already closed, so a read returns end of stream (`none`) and a write returns EBADF.
 */
 export opaque type Subprocess:
 	// The runtime handle; it is released by `close` and owned by this value.
