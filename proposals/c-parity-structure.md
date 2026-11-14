@@ -16,7 +16,7 @@ Proposal, 2026-11-12, checked against `fff26e41`. Evidence: [`bench/perf/structu
 - Library-heavy programs are. `logstats`, `csvgroup`, `wordfreq` and `grep` run at 1.59x to 3.25x C (sorting is at parity). On 2 MB of input, code compiled from `.ms` is 3%, 8% and 17% of the instructions of `grep`, `logstats` and `csvgroup`; the rest is the native runtime, the allocator and libc.
 - Per-call cost: `msrt_split_next` is 109 instructions per piece; `ms_rt::string::find` is 38% of `grep`; `msrt_string_view`, a call that builds two words, is 21% of `wordfreq`. 828 runtime symbols are opaque to LLVM and 17 are inlined (`ms-rt-hot`).
 - Allocation follows the API: `logstats` allocates 4.3 times per line and `csvgroup` 5.4 times per row, where C allocates 9 times in total.
-- Fast paths are tied to a shape. `ms-lower` peeks at following statements through six fields (`crates/ms-lower/src/func.rs:193-238`, `stmt.rs:29`) and matches by name; the `split` view needs a parameter receiver read through `get`, so `f[5]` copies (`native/method.rs:106`, `mutation.rs:214`), and `engineering/ms/logstats.ms` itself takes the copying entry.
+- Fast paths are tied to a shape. `ms-lower` peeks at following statements through six fields (`crates/ms-lower/src/func.rs:193-238`, `stmt.rs:29`) and matches by name; the `split` view needs a parameter receiver read through `get`, so `f[5]` copies (`native/method.rs:106`, `mutation.rs:214`), and `suite/logstats/main.ms` itself takes the copying entry.
 
 | work | recognized shape | neighboring shape | cost |
 | --- | --- | --- | ---: |

@@ -3,11 +3,11 @@
 Evidence for [`proposals/c-parity-structure.md`](../../../proposals/c-parity-structure.md): where ordinary Manuscript spends its time against C once single runtime calls are tuned. Two programs.
 
 - `shapes.ms`: the same work in the shape lowering recognizes and in a neighboring shape (a binding, a helper argument, a combinator chain). Prints microseconds per case.
-- `logstats_bytes.ms`: [`engineering/ms/logstats.ms`](../engineering/ms/logstats.ms) written as a byte scan with no `split`, the code a C programmer would write. It bounds what removing per-line lists and copies can gain.
+- `logstats_bytes.ms`: [`suite/logstats/main.ms`](../suite/logstats/main.ms) written as a byte scan with no `split`, the code a C programmer would write. It bounds what removing per-line lists and copies can gain.
 
 ```sh
 ms build bench/perf/structural-gaps/shapes.ms -o /tmp/shapes && /tmp/shapes
-MS=./target/release/ms BENCH_OUTPUT=/tmp/eng sh bench/perf/engineering/run.sh 1
+MS=./target/release/ms BENCH_OUTPUT=/tmp/eng sh bench/perf/suite/run.sh 1
 ms build bench/perf/structural-gaps/logstats_bytes.ms -o /tmp/logstats_bytes
 head -c 2000000 /tmp/eng/input/access.log > /tmp/small.log
 valgrind --tool=callgrind /tmp/logstats_bytes < /tmp/small.log
@@ -47,10 +47,10 @@ Largest native rows: `ms_rt::string::find` 37.8% of `grep`; `msrt_string_split` 
 
 | version | instructions | allocations | wall on 22 MB, min of 5 |
 | --- | ---: | ---: | ---: |
-| `engineering/ms/logstats.ms` (`line.split(" ")`, `f[3].clone()`) | 112.5M | 152,022 | 99 ms |
+| `suite/logstats/main.ms` (`line.split(" ")`, `f[3].clone()`) | 112.5M | 152,022 | 99 ms |
 | `for part in line.split(" ")` with a field counter | 123.9M | 127,890 | not timed |
 | `logstats_bytes.ms` (byte scan, `Bytes.view`) | 64.7M | 45,450 | 74 ms |
-| `engineering/c/logstats.c` | 37.0M | 9 | 58 ms |
+| `suite/logstats/main.c` | 37.0M | 9 | 58 ms |
 
 - The piece iterator is no cheaper than the list: `msrt_split_next` is 109 instructions per piece (284,173 calls) and the iterator and each kept key still allocate.
 - The byte scan removes 42% of the instructions. What is left against C is the scan itself (about 20 instructions per input byte in the compiled loop against `memchr`) and one key copy per line: `Map.update` takes an owned key, so a key that is already present is still copied and freed.
@@ -74,7 +74,7 @@ Same build and machine. `grid.ms`, `accumulate.ms`, `recursion.ms` and `teardown
 - `grid`: each cell reloads both row headers from the outer list, and after the element store writes the row's `{ptr, len, cap}` back (three stores a cell), because `dp[i][j] = v` takes the row out and puts it back and LLVM cannot tell that an `Int` store leaves a list header unchanged. A flat `List[Int]` with `i * w + j` is 132.8M: the bounds and overflow checks are most of the rest.
 - `accumulate`: Manuscript matches C with trapping adds; unchecked C is 2.7x to 3.5x faster because the loop vectorizes. An overflow flag tested once per outer pass does not help (60.3M to 80.3M instructions against 64.3M trapping, 24.3M unchecked, on 4M updates).
 - `recursion`: the stack check is 5 of the instructions per call and two dependent loads (`and`, load the limit's address, compare with the limit). `gcc` also turns the second call into a loop, which is half of the gap.
-- `engineering/pargroup` (2,000 files, 4 workers): 53 to 79 ms against 21 to 37 ms. `strace -c -f`: 4,707 `futex`, 1,505 `epoll_wait` and 1,512 `write` calls where C makes none; each `read_file` inside a worker hands the read to a pool thread and waits to be woken.
+- `suite/pargroup` (2,000 files, 4 workers): 53 to 79 ms against 21 to 37 ms. `strace -c -f`: 4,707 `futex`, 1,505 `epoll_wait` and 1,512 `write` calls where C makes none; each `read_file` inside a worker hands the read to a pool thread and waits to be woken.
 - At or ahead of C, so not opportunities: `Result` and `?` on a hot path (12.5 instructions per call and check), interface dispatch over a `List[Shape]`, `print` of interpolated lines (0.67x `printf`), `String +=` (1.02x), `parse_int` (80 instructions against `strtoll` 145), process start (0.4 ms more).
 
 ## 2026-11-12, exit drops and the stack check

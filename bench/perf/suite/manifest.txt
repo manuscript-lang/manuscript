@@ -1,0 +1,24 @@
+# program   category        input
+interp      interpreters    -
+graph       graphs          -
+objgraph    allocation      -
+sim         numeric         -
+dispatch    abstraction     -
+hashing     crypto          -
+lz          compression     -
+exprparse   parsing         -
+logstats    text-and-data   access.log
+csvgroup    text-and-data   orders.csv
+wordfreq    text-and-data   words.txt
+sortrecords text-and-data   records.txt
+grep        text-and-data   access.log
+treegrep    files           tree
+pargroup    files           tree
+jsonsum     data-formats    records.json
+dedupe      text-and-data   records.txt
+report      text-and-data   records.txt
+jsonrt data-formats -
+regex text-and-data -
+workers concurrency -
+strings text-and-data -
+concat text-and-data -

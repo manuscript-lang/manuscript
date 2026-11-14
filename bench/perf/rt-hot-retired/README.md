@@ -2,7 +2,7 @@
 
 Dated 2026-11-14. Machine: shared cloud VM (wall times vary by up to 10%; instruction counts from `valgrind --tool=callgrind` are the reliable column). Baseline: `main` before the stack (#3844, #3852, #3853) and this change; candidate: this branch. Both built with `ms build` (release, LLVM).
 
-Rerun: `ms build bench/perf/rt-hot-retired/hot.ms -o /tmp/hot && /tmp/hot` (prints microseconds), and `MS=... sh bench/perf/engineering/run.sh`.
+Rerun: `ms build bench/perf/rt-hot-retired/hot.ms -o /tmp/hot && /tmp/hot` (prints microseconds), and `MS=... sh bench/perf/suite/run.sh`.
 
 ## Loops (`hot.ms`, microseconds, best of three)
 
