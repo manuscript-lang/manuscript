@@ -63,6 +63,10 @@ impl<'a, 'm> Lower<'a, 'm> {
                 };
                 vec![self.elem_addr(l[0], l[1], i, size, mode)]
             }
+            Op::PtrAdd => {
+                let (p, o) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
+                vec![self.b.ins().iadd(p, o)]
+            }
             Op::PtrIsNull => {
                 let p = self.a(inst, 0)[0];
                 vec![self.b.ins().icmp_imm_s(IntCC::Equal, p, 0)]

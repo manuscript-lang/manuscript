@@ -155,6 +155,9 @@ impl Interp<'_> {
             Op::Rotl => ops.set(Val::Int(
                 (ops.int(0)? as u64).rotate_left((ops.int(1)? & 63) as u32) as i64,
             )),
+            Op::UMulHi => ops.set(Val::Int(
+                ((u128::from(ops.int(0)? as u64) * u128::from(ops.int(1)? as u64)) >> 64) as i64,
+            )),
             Op::Rotr => ops.set(Val::Int(
                 (ops.int(0)? as u64).rotate_right((ops.int(1)? & 63) as u32) as i64,
             )),

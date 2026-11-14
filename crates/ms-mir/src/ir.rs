@@ -274,7 +274,7 @@ pub enum Op {
     // Conversions: `Conv` retypes a number to another type of its kind (rounding to binary32 for `Float32`); `INarrowOpt` yields some(value) when an int fits the smaller type.
     Conv, INarrowOpt,
     // Bit operations and booleans (`And`/`Or`/`Xor` accept Int or Bool).
-    And, Or, Xor, Shl, Sshr, Ushr, Rotl, Rotr, Clz, Ctz, Popcnt, Not,
+    And, Or, Xor, Shl, Sshr, Ushr, Rotl, Rotr, UMulHi, Clz, Ctz, Popcnt, Not,
     // Comparisons.
     ICmp, UICmp, FCmp,
     // Float arithmetic and conversions.
@@ -294,7 +294,7 @@ pub enum Op {
     // Ownership.
     Clone, Drop, DropIf, MoveOut,
     // Raw memory: stack slots, interior pointers into lists and types.
-    Slot, Load, Take, Store, Put, ListAddr, ListAddrU, PtrField, PtrIsNull,
+    Slot, Load, Take, Store, Put, ListAddr, ListAddrU, PtrField, PtrIsNull, PtrAdd,
     // Calls.
     Call, CallInd, CallRt, CallMethod,
     // Runtime services.

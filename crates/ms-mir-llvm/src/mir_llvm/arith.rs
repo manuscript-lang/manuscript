@@ -79,6 +79,7 @@ fn handles(op: Op) -> bool {
             | Op::Ushr
             | Op::Rotl
             | Op::Rotr
+            | Op::UMulHi
             | Op::Clz
             | Op::Ctz
             | Op::Popcnt
@@ -457,6 +458,9 @@ fn bit_or_float_op(
                 _ => Bin::LShr,
             };
             b.bin(op, &arg(0), &amount);
+        }
+        Op::UMulHi => {
+            b.umulhi(&arg(0), &arg(1), &out[0]);
         }
         Op::Rotl | Op::Rotr => {
             name(b, out, 0);

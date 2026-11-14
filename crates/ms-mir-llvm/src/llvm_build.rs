@@ -102,6 +102,8 @@ pub enum Ty {
     I16,
     I32,
     I64,
+    /// Only the intermediate of a widening multiply; never stored.
+    I128,
     F32,
     F64,
     Ptr,
@@ -181,6 +183,7 @@ impl Types {
             Ty::I16 => "i16".into(),
             Ty::I32 => "i32".into(),
             Ty::I64 => "i64".into(),
+            Ty::I128 => "i128".into(),
             Ty::F32 => "float".into(),
             Ty::F64 => "double".into(),
             Ty::Ptr => "ptr".into(),
@@ -201,6 +204,7 @@ impl Types {
             Ty::I16 => (2, 2),
             Ty::I32 | Ty::F32 => (4, 4),
             Ty::I64 | Ty::F64 | Ty::Ptr => (8, 8),
+            Ty::I128 => (16, 16),
             Ty::Array(e, n) => {
                 let (s, a) = self.size_align(e);
                 (s * n, a)
@@ -580,6 +584,25 @@ impl<'t> FnBuilder<'t> {
             Ty::Ptr,
             format!("getelementptr inbounds i8, ptr {}, i64 {off}", base.text),
         )
+    }
+
+    /// `ptr` `off` bytes past `base`.
+    pub fn gep_dyn(&mut self, base: &Val, off: &Val) -> Val {
+        assert_eq!(base.ty, Ty::Ptr);
+        assert_eq!(off.ty, Ty::I64);
+        self.def(
+            Ty::Ptr,
+            format!("getelementptr i8, ptr {}, i64 {}", base.text, off.text),
+        )
+    }
+
+    /// High 64 bits of the unsigned product of two `i64`.
+    pub fn umulhi(&mut self, a: &Val, b: &Val, out: &Val) -> Val {
+        let (wa, wb) = (self.zext(a, Ty::I128), self.zext(b, Ty::I128));
+        let p = self.bin(Bin::Mul, &wa, &wb);
+        let hi = self.bin(Bin::LShr, &p, &Val::new("64", Ty::I128));
+        self.name_next(out);
+        self.trunc(&hi, Ty::I64)
     }
 
     pub fn select(&mut self, cond: &Val, a: &Val, b: &Val) -> Val {

@@ -10,13 +10,19 @@ use ms_mir::ir::{Inst, Op};
 use ms_mir::types::TyKind;
 
 pub(super) const AREA: Area = Area {
-    handles: |op| op == Op::PtrIsNull,
+    handles: |op| matches!(op, Op::PtrIsNull | Op::PtrAdd),
     ty_ok: |k| matches!(k, TyKind::Obj(..)),
     emit,
     ..Area::NONE
 };
 
 fn emit(_: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
+    if inst.op == Op::PtrAdd {
+        let out = &vals[&inst.res.expect("ptr.add has a result").index()];
+        b.name_next(&out[0]);
+        b.gep_dyn(&vals[&inst.args[0].index()][0], &vals[&inst.args[1].index()][0]);
+        return;
+    }
     let out = &vals[&inst.res.expect("ptr.is_null has a result").index()];
     b.name_next(&out[0]);
     b.icmp(

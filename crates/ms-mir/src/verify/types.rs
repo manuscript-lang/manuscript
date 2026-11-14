@@ -83,6 +83,7 @@ impl InstCheck<'_, '_> {
             | Op::Ushr
             | Op::Rotl
             | Op::Rotr
+            | Op::UMulHi
             | Op::IAddOverflow
             | Op::IMulOverflow
             | Op::IntOverflowIf
@@ -169,6 +170,7 @@ impl InstCheck<'_, '_> {
             | Op::ListAddr
             | Op::ListAddrU
             | Op::PtrIsNull
+            | Op::PtrAdd
             | Op::PtrField
             | Op::Load
             | Op::Take
@@ -1155,6 +1157,13 @@ impl InstCheck<'_, '_> {
                         && self.t(1) == Ty::INT
                         && self.res == Some(Ty::PTR),
                     "list.addr takes a list and an index and yields a ptr to the element",
+                )
+            }
+            Op::PtrAdd => {
+                self.arity(2)?;
+                self.want(
+                    self.t(0) == Ty::PTR && self.t(1) == Ty::INT && self.res == Some(Ty::PTR),
+                    "ptr.add takes a ptr and a byte offset and yields a ptr",
                 )
             }
             Op::PtrIsNull => {
