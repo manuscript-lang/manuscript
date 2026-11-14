@@ -839,7 +839,7 @@ impl Exchange {
                     let mut st = self.st.borrow_mut();
                     if chunk.len() > st.remaining_read {
                         st.body_over_limit = true;
-                        return Err(IoErr::failed("request body limit exceeded"));
+                        return Err(IoErr::LimitExceeded);
                     }
                     st.remaining_read -= chunk.len();
                     drop(st);
