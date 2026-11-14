@@ -770,6 +770,16 @@ impl Func {
         f
     }
 
+    /// An empty function with this one's signature. A pass that takes a function out of the
+    /// module to rewrite it leaves this behind, so a recursive call still reads which arguments
+    /// the callee consumes and whether its result borrows.
+    pub fn signature_stand_in(&self) -> Func {
+        let mut s = Func::new("", self.params.clone(), self.ret);
+        s.ret_borrowed = self.ret_borrowed;
+        s.ret_view = self.ret_view;
+        s
+    }
+
     /// Allocates a fresh value of type `ty`.
     pub fn new_value(&mut self, ty: Ty) -> Value {
         self.values.push(ty);

@@ -100,7 +100,7 @@ pub fn run(m: &mut Module) -> Result<(), String> {
         if !is_raw(&m.funcs[fi]) {
             continue;
         }
-        let stand_in = Func::new("", Vec::new(), Ty::UNIT);
+        let stand_in = m.funcs[fi].signature_stand_in();
         let mut f = std::mem::replace(&mut m.funcs[fi], stand_in);
         let out = function(m, &mut f, close, discard, cancel, shield);
         m.funcs[fi] = f;

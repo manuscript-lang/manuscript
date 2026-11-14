@@ -74,7 +74,7 @@ pub fn run(m: &mut Module) -> bool {
     for fi in 0..count {
         // The stand-in keeps the signature, so a recursive call still reads which arguments
         // it consumes.
-        let stand_in = Func::new("", m.funcs[fi].params.clone(), m.funcs[fi].ret);
+        let stand_in = m.funcs[fi].signature_stand_in();
         let mut f = std::mem::replace(&mut m.funcs[fi], stand_in);
         changed |= function(m, &mut cx, &mut f);
         m.funcs[fi] = f;
