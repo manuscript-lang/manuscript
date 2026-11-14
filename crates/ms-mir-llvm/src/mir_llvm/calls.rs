@@ -29,7 +29,13 @@ fn inst_ok(m: &Module, lay: &Layouts, _: &Func, inst: &Inst) -> bool {
 /// Discarding a cleanup handle branches: handle 0 is a registration that was skipped.
 /// A string comparison that the words do not decide calls the runtime in a block of its own.
 fn splits(lay: &Layouts, _: &Func, inst: &Inst, _: bool) -> usize {
-    usize::from(is_discard(lay.m, inst) || is_string_eq(lay.m, inst))
+    usize::from(
+        is_discard(lay.m, inst) || is_string_eq(lay.m, inst) || is_strbuilder_append(lay.m, inst),
+    )
+}
+
+fn is_strbuilder_append(m: &Module, inst: &Inst) -> bool {
+    matches!((inst.op, inst.imm), (Op::CallRt, Imm::Ext(e)) if m.externs[e.index()].role == ExternRole::StrBuilderAppend)
 }
 
 fn is_string_eq(m: &Module, inst: &Inst) -> bool {
@@ -143,6 +149,9 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         b.label(&join);
         b.phi(&out[0], &[(answer, head), (called[0].clone(), slow)]);
         return;
+    }
+    if is_strbuilder_append(m, inst) {
+        return strbuilder_append(cx, inst, vals, b);
     }
     if inst.op == Op::CallRt {
         return call_rt(cx, inst, vals, &out, b);
@@ -415,4 +424,105 @@ fn call_rt(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder
             true,
         ),
     }
+}
+
+/// `StringBuilder.append` of a string with room to spare is a capacity check,
+/// a copy and a length bump: up to sixteen bytes as one or two overlapping moves, longer text with
+/// `memcpy`; a full buffer calls the runtime.
+fn strbuilder_append(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
+    use crate::llvm_build::Bin;
+    use ms_rt_abi::{
+        STR_INLINE_LEN_SHIFT, STR_INLINE_MAX, STR_LEN_MASK, VEC_CAP_OFFSET, VEC_LEN_OFFSET,
+        VEC_PTR_OFFSET,
+    };
+    let builder = vals[&inst.args[0].index()][0].clone();
+    let text = &vals[&inst.args[1].index()];
+    let at = |b: &mut FnBuilder, off: usize| b.byte_ptr(&builder, off as u64);
+    let (len_at, cap_at, ptr_at) = (
+        at(b, VEC_LEN_OFFSET),
+        at(b, VEC_CAP_OFFSET),
+        at(b, VEC_PTR_OFFSET),
+    );
+    let len = b.load(&LTy::I64, &len_at, 8);
+    let cap = b.load(&LTy::I64, &cap_at, 8);
+    let tag = b.bin(Bin::LShr, &text[1], &Val::int(62));
+    let inline = b.icmp("eq", &tag, &Val::int(1));
+    let flat_len = b.bin(Bin::And, &text[1], &Val::int(STR_LEN_MASK as i64));
+    let inline_len = b.bin(Bin::LShr, &text[1], &Val::int(STR_INLINE_LEN_SHIFT as i64));
+    let inline_len = b.bin(Bin::And, &inline_len, &Val::int(STR_INLINE_MAX as i64));
+    let size = b.select(&inline, &inline_len, &flat_len);
+    // An inline string's bytes are its own words: copy them out of a slot.
+    let own = types::spill(b, cx.lay, Ty::STR, vals, inst.args[1]);
+    let flat_ptr = b.int_to_ptr(&text[0]);
+    let src = b.select(&inline, &own, &flat_ptr);
+    let next = b.bin(Bin::Add, &len, &size);
+    let room = b.icmp("ule", &next, &cap);
+    let n = cx.split;
+    let label = |what: &str| format!("sa{}_{n}_{what}", cx.block);
+    let (store, slow, big, short, w8, q, w4, r, w1, done) = (
+        label("store"),
+        label("slow"),
+        label("big"),
+        label("short"),
+        label("w8"),
+        label("q"),
+        label("w4"),
+        label("r"),
+        label("w1"),
+        label("done"),
+    );
+    cx.split += 1;
+    let join = super::block_label(cx.block, cx.split);
+    b.cond_br_likely(&room, &store, &slow, true);
+    b.label(&store);
+    let data = b.load(&LTy::Ptr, &ptr_at, 8);
+    let dst = b.gep_dyn(&data, &len);
+    let long = b.icmp("ugt", &size, &Val::int(16));
+    b.cond_br(&long, &big, &short);
+    b.label(&big);
+    b.memcpy((&dst, 1), (&src, 1), &size);
+    b.br(&done);
+    b.label(&short);
+    let ge8 = b.icmp("uge", &size, &Val::int(8));
+    b.cond_br(&ge8, &w8, &q);
+    // Overlapping moves of the widest width that fits cover every length without a loop.
+    let moves = |b: &mut FnBuilder, ty: LTy, w: i64| {
+        let tail = b.bin(Bin::Sub, &size, &Val::int(w));
+        let (s2, d2) = (b.gep_dyn(&src, &tail), b.gep_dyn(&dst, &tail));
+        let head = b.load(&ty, &src, 1);
+        let last = b.load(&ty, &s2, 1);
+        b.store(&head, &dst, 1);
+        b.store(&last, &d2, 1);
+    };
+    b.label(&w8);
+    moves(b, LTy::I64, 8);
+    b.br(&done);
+    b.label(&q);
+    let ge4 = b.icmp("uge", &size, &Val::int(4));
+    b.cond_br(&ge4, &w4, &r);
+    b.label(&w4);
+    moves(b, LTy::I32, 4);
+    b.br(&done);
+    b.label(&r);
+    let some = b.icmp("ne", &size, &Val::int(0));
+    b.cond_br(&some, &w1, &done);
+    b.label(&w1);
+    // One to three bytes: the first, middle and last.
+    let half = b.bin(Bin::LShr, &size, &Val::int(1));
+    let last_at = b.bin(Bin::Sub, &size, &Val::int(1));
+    let first = b.load(&LTy::I8, &src, 1);
+    let (ms, ls) = (b.gep_dyn(&src, &half), b.gep_dyn(&src, &last_at));
+    let (md, ld) = (b.gep_dyn(&dst, &half), b.gep_dyn(&dst, &last_at));
+    let (mid, lastb) = (b.load(&LTy::I8, &ms, 1), b.load(&LTy::I8, &ls, 1));
+    b.store(&first, &dst, 1);
+    b.store(&mid, &md, 1);
+    b.store(&lastb, &ld, 1);
+    b.br(&done);
+    b.label(&done);
+    b.store(&next, &len_at, 8);
+    b.br(&join);
+    b.label(&slow);
+    call_rt(cx, inst, vals, &[], b);
+    b.br(&join);
+    b.label(&join);
 }

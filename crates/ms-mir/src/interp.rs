@@ -647,6 +647,8 @@ impl<'m> Interp<'m> {
             | Op::Slot
             | Op::PtrIsNull
             | Op::PtrAdd
+            | Op::PtrNull
+            | Op::PtrLoadU
             | Op::ListAddr
             | Op::ListAddrU
             | Op::PtrField

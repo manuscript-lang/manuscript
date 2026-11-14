@@ -1124,6 +1124,8 @@ impl<'a, 'm> Lower<'a, 'm> {
             | Op::ListAddrU
             | Op::PtrIsNull
             | Op::PtrAdd
+            | Op::PtrNull
+            | Op::PtrLoadU
             | Op::PtrField
             | Op::Load
             | Op::Take

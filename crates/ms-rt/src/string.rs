@@ -69,8 +69,11 @@ pub unsafe fn bytes_eq(a: *const StrVal, b: *const StrVal) -> bool {
     }
 }
 
-/// Deterministic 64-bit hash of bytes: eight bytes per multiply-fold step, with the tail read as
-/// one overlapping word, then a final avalanche. Hashes are lookup aids, not stable identifiers.
+/// Deterministic 64-bit hash of bytes. Up to [`STR_INLINE_MAX`] bytes are the two words an inline
+/// string holds (zero past the length), folded in turn with the length as the seed, which is what
+/// the compiler's inline map probe computes from an inline key. Longer text takes eight bytes per
+/// multiply-fold step, with the tail read as one overlapping word, then a final avalanche. Hashes
+/// are lookup aids, not stable identifiers.
 #[inline]
 pub fn hash_bytes(b: &[u8]) -> u64 {
     const K0: u64 = 0x9e37_79b9_7f4a_7c15;
@@ -86,28 +89,19 @@ pub fn hash_bytes(b: &[u8]) -> u64 {
         w.copy_from_slice(&b[at..at + 8]);
         u64::from_le_bytes(w)
     }
-    #[inline(always)]
-    fn half(b: &[u8], at: usize) -> u64 {
-        let mut w = [0u8; 4];
-        w.copy_from_slice(&b[at..at + 4]);
-        u64::from(u32::from_le_bytes(w))
-    }
     let n = b.len();
     let mut h = K0 ^ (n as u64).wrapping_mul(K1);
+    if n <= STR_INLINE_MAX {
+        let bits = StrVal::inline(b).inline_bits();
+        return fold(fold(h ^ bits as u64, K1) ^ (bits >> 64) as u64, K0);
+    }
     let mut i = 0;
     while i + 8 <= n {
         h = fold(h ^ word(b, i), K1);
         i += 8;
     }
-    let tail = if n >= 8 {
-        word(b, n - 8)
-    } else if n >= 4 {
-        half(b, 0) << 32 | half(b, n - 4)
-    } else if n > 0 {
-        u64::from(b[0]) << 16 | u64::from(b[n >> 1]) << 8 | u64::from(b[n - 1])
-    } else {
-        0
-    };
+    // Sixteen bytes or more: the last eight bytes, overlapping the words already folded in.
+    let tail = word(b, n - 8);
     fold(h ^ tail, K0)
 }
 
@@ -2241,22 +2235,6 @@ unsafe fn scalar_range(s: *const StrVal, start: i64, end: i64) -> Option<(usize,
         let (a, b) = (offset(start)?, offset(end)?);
         (a <= b).then_some((a, b))
     }
-}
-
-/// `byte_length()` for a bound method value; direct calls read the length inline (`str.bytes`).
-#[unsafe(no_mangle)]
-// ms: leaf pure domain=string
-pub unsafe extern "C-unwind" fn msrt_string_byte_length(s: *const StrVal) -> i64 {
-    // SAFETY: caller passes a live string.
-    unsafe { (*s).len() as i64 }
-}
-
-/// `is_empty()` for a bound method value; direct calls read the length inline (`str.bytes`).
-#[unsafe(no_mangle)]
-// ms: leaf pure domain=string
-pub unsafe extern "C-unwind" fn msrt_string_is_empty(s: *const StrVal) -> u8 {
-    // SAFETY: caller passes a live string.
-    unsafe { (*s).is_empty() as u8 }
 }
 
 /// `String.view(start, end)`: the scalars `[start, end)` borrowed from the receiver, nothing

@@ -1,0 +1,15 @@
+[Wiki](../index.md) › [Benchmarks and performance](index.md)
+
+# Runtime fast paths are generated MIR with a runtime twin
+
+Verified (2026-11-14, `bench/perf/rt-hot-retired/README.md`): `ms-rt-hot` is deleted. Release programs no longer link helper bitcode; every fast path is MIR that both backends compile, with the `ms-rt` function as the slow twin. Against `main`, map and set lookups, `String.view` and `StringBuilder.append` came out equal or faster, and the engineering suite output is byte-identical.
+
+- Direction (Chinmay): no raw memory or byte primitives in Manuscript; the fast paths are shared MIR operations so Cranelift and LLVM both inline them, with no language change. See `proposals/retire-ms-rt-hot.md`.
+- Map and set probes (`Map[Int, word]`, `Map[String, word]`, `Set[Int]`) and `String.view` are generated `inline(always)` MIR functions in `ms-lower/src/rtinline.rs`, chosen by `call_runtime` from the runtime symbol (`word_map_symbol` still picks the symbol from the types). They read the map through its memory form with `ptr.add`, `ptr.loadu`, `ptr.null` and `umulhi`, so a lookup fuses with the key computation and the use of the value. Calling the runtime twin instead cost 30 to 70% on tight lookup loops; call overhead was the whole loss.
+- A `String` key shorter than 16 bytes is two words, so `hash_bytes` for up to 15 bytes is defined on those words (length as seed, two folds). The MIR probe computes the same hash with no branch on length, and a longer key calls `msrt_string_hash`. Change `hash_bytes` and `string_hash` in `rtinline.rs` together; a mismatch makes lookups miss without a crash.
+- A matching hash makes equal words (an inline string, or one block) decide a key; only distinct blocks call `msrt_string_eq`. `string_eq` for user code is decided from the words in each backend (`eq_words` in LLVM, `string_eq_call` in Cranelift) and calls the runtime only for two distinct blocks of one length.
+- `StringBuilder.append` is inlined by the LLVM backend (`calls.rs`, as Cranelift already did): capacity check, overlapping moves up to 16 bytes, `memcpy` beyond, runtime call for a full buffer. An inline string is spilled to a slot first; leaving inline strings to the call cost 8% instructions on a report loop.
+- A map passed by address (`update`) is not a map value: `inline_probe` takes a `ptr` argument as the map itself. Storing that pointer into a slot and reading it as a map made `update` miss every key.
+- Keep a selects-for-everything form out of hot paths: computing all three length cases of the hash plus a full `eq_words` was 40 more instructions per lookup than branching on the common case.
+- Test the ASCII case with the flag or the inline bits, never `[u8]::is_ascii` on a short string (12% loss on `length`). Build a `memmem` searcher only for text of 128 bytes or more (`Needle::for_text`).
+- After editing `ms-rt`, run `cargo xtask runtime` before any `cargo test` or `clippy --workspace`; the `ms-cli` build script rejects a stale archive. Compare one kernel's instruction counts with `valgrind --tool=callgrind` on a program built by `main` and by the branch.

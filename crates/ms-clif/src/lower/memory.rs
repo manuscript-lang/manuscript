@@ -63,6 +63,28 @@ impl<'a, 'm> Lower<'a, 'm> {
                 };
                 vec![self.elem_addr(l[0], l[1], i, size, mode)]
             }
+            Op::PtrLoadU => {
+                let Imm::Int(w) = inst.imm else {
+                    unreachable!()
+                };
+                let p = self.a(inst, 0)[0];
+                let ty = match w {
+                    1 => types::I8,
+                    2 => types::I16,
+                    4 => types::I32,
+                    _ => types::I64,
+                };
+                let x = self
+                    .b
+                    .ins()
+                    .load(ty, MemFlagsData::new().with_notrap(), p, 0);
+                vec![if w == 8 {
+                    x
+                } else {
+                    self.b.ins().uextend(types::I64, x)
+                }]
+            }
+            Op::PtrNull => vec![self.b.ins().iconst(types::I64, 0)],
             Op::PtrAdd => {
                 let (p, o) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
                 vec![self.b.ins().iadd(p, o)]

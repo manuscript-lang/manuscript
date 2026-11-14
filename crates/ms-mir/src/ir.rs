@@ -294,7 +294,7 @@ pub enum Op {
     // Ownership.
     Clone, Drop, DropIf, MoveOut,
     // Raw memory: stack slots, interior pointers into lists and types.
-    Slot, Load, Take, Store, Put, ListAddr, ListAddrU, PtrField, PtrIsNull, PtrAdd,
+    Slot, Load, Take, Store, Put, ListAddr, ListAddrU, PtrField, PtrIsNull, PtrAdd, PtrNull, PtrLoadU,
     // Calls.
     Call, CallInd, CallRt, CallMethod,
     // Runtime services.
