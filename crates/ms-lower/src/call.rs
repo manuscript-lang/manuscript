@@ -1277,7 +1277,14 @@ impl<'a> FnLower<'a> {
                     static_ty_t = static_ty.display(self.syms)
                 )));
             };
-            return self.method_call(e, view, &im);
+            // The checker saw an operation of the contract, whose result owns; the instance's
+            // method may return a borrow of its receiver, so the call copies it.
+            let result = self.method_call(e, view, &im)?;
+            if self.dead || result.own || !self.needs_drop(self.ty_of(result.v)) {
+                return Ok(result);
+            }
+            let copy = self.clone_value(result.v);
+            return Ok(self.val(copy, true));
         }
         let recv = self.expr(recv_expr)?;
         if self.dead {
