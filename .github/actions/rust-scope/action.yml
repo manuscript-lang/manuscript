@@ -33,9 +33,9 @@ runs:
         # Pull requests build programs with Cranelift (the Debug backend). Code that feeds or drives the
         # LLVM release path also runs the LLVM corpus and the release gates, as main does: the LLVM
         # backend and its glue, the build and link driver, the runtime and its ABI, the pinned
-        # toolchain, the CI tools, and the workflow files themselves.
+        # toolchain and the CI tools. Workflow edits run the Cranelift path; main runs LLVM.
         llvm=false
-        if git diff --name-only "$BASE" "$GITHUB_SHA" | grep -qE '^(crates/(ms-mir-llvm|ms-build|ms-rt|ms-rt-abi|ms-rt-hot)/|crates/ms-clif/tests/llvm_|toolchain/|tools/|\.github/|Cargo\.lock$|rust-toolchain\.toml$)'; then
+        if git diff --name-only "$BASE" "$GITHUB_SHA" | grep -qE '^(crates/(ms-mir-llvm|ms-build|ms-rt|ms-rt-abi|ms-rt-hot)/|crates/ms-clif/tests/llvm_|toolchain/|tools/|Cargo\.lock$|rust-toolchain\.toml$)'; then
           llvm=true
         fi
         echo "rust=$rust" >> "$GITHUB_OUTPUT"
