@@ -34,6 +34,10 @@ export fn main() Int:
     print(b.contains("#"))
     print("é!".contains("!"))
     print("".contains("x"))
+    for ch in ["=", "#", "é", "ab", "", "y;"]:
+        print(a.contains(ch))
+        print("#.SE".contains(ch))
+        print(b.contains(ch))
     c := "héllo"
     d := "hello"
     print(d.scalar_at(0))

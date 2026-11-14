@@ -91,7 +91,7 @@ impl FnLower<'_> {
             ),
             StrFn::ContainsByte => (
                 "contains_byte",
-                vec![param(MTy::STR), param(MTy::STR), param(MTy::INT)],
+                vec![param(MTy::STR), param(MTy::STR)],
                 MTy::BOOL,
             ),
             StrFn::ScalarAt => (
@@ -127,13 +127,14 @@ impl FnLower<'_> {
                 Some(self.b.call(f, args))
             }
             "msrt_string_contains" => {
-                // Only a literal needle of one byte: the byte is a constant of the caller.
-                let id = self.b.str_lit_of(args[1])?;
-                let text = self.b.m.strings[id.0 as usize].as_bytes();
-                let &[c] = text else { return None };
-                let c = self.b.iconst(i64::from(c));
+                // A literal needle of two or more bytes skips the one-byte dispatch.
+                if let Some(id) = self.b.str_lit_of(args[1])
+                    && self.b.m.strings[id.0 as usize].len() >= 2
+                {
+                    return None;
+                }
                 let f = self.str_fn(StrFn::ContainsByte);
-                Some(self.b.call(f, &[args[0], args[1], c]))
+                Some(self.b.call(f, args))
             }
             "msrt_string_scalar_at" => {
                 let f = self.str_fn(StrFn::ScalarAt);
@@ -238,18 +239,19 @@ fn parse_int(b: &mut FuncBuilder<'_>) {
     b.ret(Some(ok));
 }
 
-/// `hay.contains(needle)` for a needle of one byte `c` (the third parameter): a scan of a text of
-/// under 32 bytes; a longer text calls the runtime.
+/// `hay.contains(needle)` for a needle of one byte and a text of under 32 bytes: a scan (the
+/// character-class test `"#.SE".contains(c)`); every other case calls the runtime.
 fn contains_byte(b: &mut FuncBuilder<'_>) {
     let ps = b.params();
-    let (hay, needle, c) = (ps[0], ps[1], ps[2]);
+    let (hay, needle) = (ps[0], ps[1]);
     let ext = runtime_fn(
         b.m,
         "msrt_string_contains",
         &[MTy::STR, MTy::STR],
         MTy::BOOL,
     );
-    let (slow, scan, header, body, step, hit) = (
+    let (slow, header, body, step, hit, miss, one_byte) = (
+        b.new_block(),
         b.new_block(),
         b.new_block(),
         b.new_block(),
@@ -258,21 +260,27 @@ fn contains_byte(b: &mut FuncBuilder<'_>) {
         b.new_block(),
     );
     let s = slot_of(b, hay);
+    let n = slot_of(b, needle);
     let (data, len) = bytes_of(b, s);
+    let (ndata, nlen) = bytes_of(b, n);
     let c32 = b.iconst(32);
-    let long = b.icmp(Cc::Ge, len, c32);
-    b.br_if(long, slow, &[], scan, &[]);
+    let one = b.iconst(1);
+    let short = b.icmp(Cc::Lt, len, c32);
+    let single = b.icmp(Cc::Eq, nlen, one);
+    let no = b.bconst(false);
+    let both = b.select(short, single, no);
+    b.br_if(both, one_byte, &[], slow, &[]);
+    b.seal_block(one_byte);
     b.seal_block(slow);
-    b.seal_block(scan);
-    b.switch_to(scan);
-    let at = b.declare_var(MTy::INT, Mode::Borrow);
+    b.switch_to(one_byte);
     let zero = b.iconst(0);
+    let c = byte_at(b, ndata, zero);
+    let at = b.declare_var(MTy::INT, Mode::Borrow);
     b.def_var(at, zero);
     b.br(header, &[]);
     b.switch_to(header);
     let i = b.use_var(at);
     let more = b.icmp(Cc::Lt, i, len);
-    let miss = b.new_block();
     b.br_if(more, body, &[], miss, &[]);
     b.seal_block(body);
     b.seal_block(miss);
@@ -291,8 +299,8 @@ fn contains_byte(b: &mut FuncBuilder<'_>) {
     let yes = b.bconst(true);
     b.ret(Some(yes));
     b.switch_to(miss);
-    let no = b.bconst(false);
-    b.ret(Some(no));
+    let f = b.bconst(false);
+    b.ret(Some(f));
     b.switch_to(slow);
     let r = b.call_rt(ext, &[hay, needle]);
     b.ret(Some(r));

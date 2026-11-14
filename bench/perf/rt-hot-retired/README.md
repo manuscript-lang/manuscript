@@ -35,3 +35,15 @@ Output is byte-identical to `main` for all eight programs. Instructions from cal
 What is inlined without the hot crate: map and set lookups, `String.view`, `Bytes` fixed-width reads, `String.parse_int`, `String.scalar_at` of an inline ASCII string and a one-byte `contains` (all generated MIR, `rtinline.rs` and `rtstr.rs`); keys of 16 bytes or more hash inline, and keys of 16 to 32 bytes compare with four overlapping word loads. A literal `contains` needle of two or more bytes calls `msrt_string_contains_multi` directly. The runtime hashes an inline key from its words as they are (`hash_str`), which the compiler's probe computes the same way.
 
 The one remaining difference is grep at +0.5% instructions (two more instructions per `contains` call in the caller, which sets up both strings for the call).
+
+## Agent-challenge programs against `main` at ef253e785
+
+The reference solutions of c16, c13 and c03 (`bench/agent/challenges/*/solutions/ms`, c16 with `.clone()` added to `chars()` so it builds) on about 3 MB of their largest hidden input, callgrind instructions in millions. Output is identical.
+
+| program | main | #3860 alone | this change |
+| --- | --- | --- | --- |
+| c16-maze-bfs | 413.3 | 508.3 (+23%) | 389.6 (-5.7%) |
+| c13-inventory-orders | 6,057.8 | 6,043.3 | 6,043.3 (-0.2%) |
+| c03-csv-group-sum | 728.2 | 732.0 | 733.8 (+0.8%) |
+
+#3860 turned the character-class test `"#.SE".contains(cell)` into a call (165M instructions in maze-bfs); `contains` of a one-byte needle in a text under 32 bytes is generated MIR whatever the needle is. csv is +0.8% because `msrt_string_index_of` (23M) is a call where the hot crate inlined it.
