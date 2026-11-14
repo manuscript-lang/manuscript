@@ -107,7 +107,14 @@ runs:
         # One build with every target: the later steps (nextest, the CLI, the native tests, the
         # corpus runner) then reuse it instead of rebuilding dependencies with other features.
         cargo build --workspace --all-targets --locked --keep-going
-        cargo nextest run --workspace --locked --no-fail-fast
+        # A pull request that touches no LLVM-specific code skips the tests of the LLVM backend (the
+        # `llvm`, `llvm_direct` and `llvm_direct_data` test modules and the `ms-mir-llvm` crate); main and
+        # LLVM pull requests run them.
+        filter=()
+        if [ "$LLVM" != true ]; then
+          filter=(-E 'not (package(ms-mir-llvm) | test(/^llvm::/) | test(/^llvm_direct(_data)?::/))')
+        fi
+        cargo nextest run --workspace --locked --no-fail-fast "${filter[@]}"
         cargo test --workspace --doc --locked
     - name: Build CLI for native source conformance
       shell: bash

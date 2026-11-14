@@ -163,6 +163,33 @@ jobs:
           cache-hit: ${{ steps.sccache.outputs.cache-hit }}
           primary-key: ${{ steps.sccache.outputs.primary-key }}
 
+  # The pull request time budget (AGENTS.md, wiki/repository/pull-request-ci-has-a-five-minute-budget.md): each
+  # Linux job of a pull request finishes in under 5 minutes. Not part of `Platform checks`, so a slow run
+  # shows a red check without blocking the merge queue of other work.
+  budget:
+    name: Time budget
+    needs: rust
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.rust.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+    env:
+      BUDGET_SECONDS: '300'
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Every Linux job is within the budget
+        run: |
+          over=0
+          while read -r name seconds; do
+            echo "$name: ${seconds}s of ${BUDGET_SECONDS}s"
+            if [ "$seconds" -gt "$BUDGET_SECONDS" ]; then over=1; fi
+          done < <(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs" --paginate \
+            --jq '.jobs[] | select(.name | startswith("linux-")) | "\(.name | gsub(" "; "_")) \((.completed_at | fromdate) - (.started_at | fromdate))"')
+          if [ "$over" = 1 ]; then
+            echo "A pull request job is over the ${BUDGET_SECONDS}s budget: cut a test or a step (see AGENTS.md)." >&2
+            exit 1
+          fi
+
   # The sum of the jobs above, one name for a ruleset to require.
   platforms:
     name: Platform checks
