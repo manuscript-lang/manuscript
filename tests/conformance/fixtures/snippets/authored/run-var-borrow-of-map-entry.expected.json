@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "11 [x] zzz\nMap(1: Map(k: [1, 2]))\n",
+    "stderr": ""
+  }
+}

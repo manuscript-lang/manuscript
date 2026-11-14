@@ -125,7 +125,28 @@ impl<'a> FnLower<'a> {
                     ));
                 };
                 let mut a = self.alias_chain(left)?;
+                let whole = self.alias_read(&a)?;
                 let i = self.expr(index)?;
+                if matches!(self.b.m.types.kind(self.ty_of(whole.v)), TyKind::Obj(..)) {
+                    // A map entry: found once, and a missing key faults like a read.
+                    let at = self.borrow(i);
+                    let copy = self.clone_value(at);
+                    let key = self.bind_hidden(Val { v: copy, own: true });
+                    let ptr = self.map_entry_ptr(whole.v, key)?;
+                    let missing = self
+                        .b
+                        .emit(Op::PtrIsNull, &[ptr], Imm::None, Some(MTy::BOOL))
+                        .expect("is_null");
+                    let (bad, good) = (self.b.new_block(), self.b.new_block());
+                    self.b.br_if(missing, bad, &[], good, &[]);
+                    self.b.seal_block(bad);
+                    self.b.seal_block(good);
+                    self.b.switch_to(bad);
+                    self.fault_key_not_found(at)?;
+                    self.b.switch_to(good);
+                    a.steps.push(AStep::Key(key, Some(ptr)));
+                    return Ok(a);
+                }
                 let at = self.borrow(i);
                 a.steps.push(AStep::Index(at));
                 Ok(a)
