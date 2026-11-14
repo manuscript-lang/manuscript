@@ -1483,7 +1483,7 @@ impl<'a> FnLower<'a> {
             own: false,
         });
         let s = self.b.use_var(text_var);
-        let len = self.call_runtime("msrt_string_byte_length", &[s], MTy::INT)?;
+        let len = self.b.str_bytes(s);
         let zero = self.b.iconst(0);
         let idx = self.b.declare_var(MTy::INT, ms_mir::ir::Mode::Borrow);
         self.b.def_var(idx, zero);

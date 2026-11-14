@@ -178,6 +178,19 @@ impl<'a> FnLower<'a> {
             let n = self.scalar_len(r)?;
             return Ok(Val { v: n, own: false });
         }
+        if str_recv && (native == "byte_length" || native == "is_empty") {
+            let r = self.borrow(recv);
+            let n = self.b.str_bytes(r);
+            if native == "byte_length" {
+                return Ok(Val { v: n, own: false });
+            }
+            let zero = self.b.iconst(0);
+            let empty = self.b.icmp(ms_mir::ir::Cc::Eq, n, zero);
+            return Ok(Val {
+                v: empty,
+                own: false,
+            });
+        }
         if let Some((_, sym, ret)) = PLAIN_STRING
             .iter()
             .find(|(n, _, _)| str_recv && *n == native)

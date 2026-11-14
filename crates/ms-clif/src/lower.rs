@@ -1062,6 +1062,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             | Op::StrAsciiAt
             | Op::StrAsciiLen
             | Op::StrEqLit
+            | Op::StrBytes
             | Op::StrLen => self.strings(inst),
             Op::ClosureNew
             | Op::ClosureCap

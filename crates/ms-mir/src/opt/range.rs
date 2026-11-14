@@ -1489,6 +1489,7 @@ impl<'a> Fa<'a> {
             | Op::ListGetU
             | Op::StrLen
             | Op::StrAsciiLen
+            | Op::StrBytes
             | Op::Conv
             | Op::AltTag => self.other_ops(inst, env, ty, top),
             _ => Some(top),
@@ -1721,7 +1722,7 @@ impl<'a> Fa<'a> {
                 },
                 _ => top,
             },
-            Op::StrLen => Itv { lo: 0, hi: LEN_MAX },
+            Op::StrLen | Op::StrBytes => Itv { lo: 0, hi: LEN_MAX },
             Op::StrAsciiLen => Itv {
                 lo: -1,
                 hi: LEN_MAX,

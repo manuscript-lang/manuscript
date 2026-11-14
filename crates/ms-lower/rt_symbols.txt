@@ -259,7 +259,7 @@ msrt_streams_open(fd: i64, flags: i64) -> i64
 msrt_streams_read(stream: i64) -> i64
 msrt_streams_write(stream: i64, data: *const VecVal) -> i64
 msrt_string_append(a: *const StrVal, b: *const StrVal, out: *mut StrVal) @domain=string @fresh @leaf
-msrt_string_byte_length(s: *const StrVal) -> i64 @domain=map @leaf @pure
+msrt_string_byte_length(s: *const StrVal) -> i64 @domain=string @leaf @pure
 msrt_string_char_at(s: *const StrVal, at: i64, out: *mut StrVal) @domain=string @leaf
 msrt_string_char_width(s: *const StrVal, at: i64) -> i64 @domain=string @leaf
 msrt_string_chars(s: *const StrVal, out: *mut VecVal) @domain=string @leaf

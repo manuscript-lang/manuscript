@@ -368,6 +368,22 @@ pub unsafe extern "C-unwind" fn msrt_string_eq(a: *const StrVal, b: *const StrVa
 }
 
 /// C view: `msrt_string_length(s: *const StrVal) -> i64`
+/// `byte_length()` for a bound method value; direct calls read the length inline (`str.bytes`).
+#[unsafe(no_mangle)]
+// ms: leaf pure domain=string
+pub unsafe extern "C-unwind" fn msrt_string_byte_length(s: *const StrVal) -> i64 {
+    // SAFETY: caller passes a live string.
+    unsafe { (*s).len() as i64 }
+}
+
+/// `is_empty()` for a bound method value; direct calls read the length inline (`str.bytes`).
+#[unsafe(no_mangle)]
+// ms: leaf pure domain=string
+pub unsafe extern "C-unwind" fn msrt_string_is_empty(s: *const StrVal) -> u8 {
+    // SAFETY: caller passes a live string.
+    unsafe { (*s).is_empty() as u8 }
+}
+
 #[unsafe(no_mangle)]
 // ms: leaf pure domain=string
 pub unsafe extern "C-unwind" fn msrt_string_length(s: *const StrVal) -> i64 {
@@ -3367,7 +3383,7 @@ mod tests {
         unsafe {
             let s = st("héllo");
             assert_eq!(msrt_string_length(s), 5);
-            assert_eq!(crate::testutil::hot::msrt_string_byte_length(s), 6);
+            assert_eq!((*s).len() as i64, 6);
             assert_eq!(ret(|o| msrt_string_get(s, 1, HasRaw(0), st(""), o)), "é");
             assert_eq!(ret(|o| msrt_string_get(s, -1, HasRaw(0), st(""), o)), "o");
             assert_eq!(ms_rt_hot::msrt_string_scalar_at(s as usize, 1, 0, 0), 0xE9);
