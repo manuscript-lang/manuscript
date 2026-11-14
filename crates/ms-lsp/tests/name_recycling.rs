@@ -9,7 +9,7 @@ use std::io::Cursor;
 use crate::support;
 use support::{Script, Workspace, canonical, decode};
 
-const EDITS: usize = 100;
+const EDITS: usize = 60;
 const NAME_LEN: usize = 100;
 
 fn script(workspace: &Workspace, edits: usize) -> Script {

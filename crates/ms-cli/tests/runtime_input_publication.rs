@@ -340,52 +340,55 @@ fn engine_runtime_precedence_protects_only_the_selected_archive() {
         return;
     }
     let mut failures = Vec::new();
-    for selected_target in [true, false] {
-        for metadata in [false, true] {
-            for warm in [false, true] {
-                for missing_ignored in [false, true] {
-                    let fixture = Fixture::new(&format!(
-                        "selected-runtime-{selected_target}-{metadata}-{warm}-{missing_ignored}"
-                    ));
-                    let root = &fixture.0;
-                    let inputs = root.join("inputs");
-                    let safe = root.join("safe");
-                    std::fs::create_dir(&inputs).unwrap();
-                    std::fs::create_dir(&safe).unwrap();
-                    let target = inputs.join(if metadata {
-                        "program.ms-build.json"
-                    } else {
-                        "program"
-                    });
-                    let selected = if selected_target {
-                        target.clone()
-                    } else {
-                        root.join("selected-runtime.a")
-                    };
-                    let ignored = if selected_target {
-                        root.join("ignored-runtime.a")
-                    } else {
-                        target
-                    };
-                    std::fs::write(&selected, archive()).unwrap();
-                    // An overridden environment runtime is not consumed, even when its bytes are invalid.
-                    if !missing_ignored {
-                        std::fs::write(&ignored, b"unused environment runtime").unwrap();
-                    }
-                    if selected_target {
-                        std::fs::write(
-                            inputs.join(if metadata {
-                                "program"
-                            } else {
-                                "program.ms-build.json"
-                            }),
-                            b"previous artifact",
-                        )
-                        .unwrap();
-                    }
-                    common::symlink_dir(if warm { &safe } else { &inputs }, &root.join("publish"))
-                        .unwrap();
-                    let result = Command::new(std::env::current_exe().unwrap())
+    // Half of the sixteen combinations: the first three flags take every value and `missing_ignored` is their
+    // parity, so every three of the four flags still appear in all eight combinations (each case spawns a
+    // test process that builds a program).
+    for case in 0..8u8 {
+        let selected_target = case & 1 == 0;
+        let metadata = case & 2 != 0;
+        let warm = case & 4 != 0;
+        let missing_ignored = (case.count_ones() % 2) == 1;
+        let fixture = Fixture::new(&format!(
+            "selected-runtime-{selected_target}-{metadata}-{warm}-{missing_ignored}"
+        ));
+        let root = &fixture.0;
+        let inputs = root.join("inputs");
+        let safe = root.join("safe");
+        std::fs::create_dir(&inputs).unwrap();
+        std::fs::create_dir(&safe).unwrap();
+        let target = inputs.join(if metadata {
+            "program.ms-build.json"
+        } else {
+            "program"
+        });
+        let selected = if selected_target {
+            target.clone()
+        } else {
+            root.join("selected-runtime.a")
+        };
+        let ignored = if selected_target {
+            root.join("ignored-runtime.a")
+        } else {
+            target
+        };
+        std::fs::write(&selected, archive()).unwrap();
+        // An overridden environment runtime is not consumed, even when its bytes are invalid.
+        if !missing_ignored {
+            std::fs::write(&ignored, b"unused environment runtime").unwrap();
+        }
+        if selected_target {
+            std::fs::write(
+                inputs.join(if metadata {
+                    "program"
+                } else {
+                    "program.ms-build.json"
+                }),
+                b"previous artifact",
+            )
+            .unwrap();
+        }
+        common::symlink_dir(if warm { &safe } else { &inputs }, &root.join("publish")).unwrap();
+        let result = Command::new(std::env::current_exe().unwrap())
                         .args([
                             "--exact",
                             "runtime_input_publication::engine_runtime_precedence_protects_only_the_selected_archive",
@@ -400,20 +403,17 @@ fn engine_runtime_precedence_protects_only_the_selected_archive() {
                         .env("MS_CACHE", "on")
                         .output()
                         .unwrap();
-                    eprintln!(
-                        "selected_target={selected_target}, metadata={metadata}, warm={warm}, missing_ignored={missing_ignored}: {:?}",
-                        result.status.code()
-                    );
-                    eprint!("{}", String::from_utf8_lossy(&result.stderr));
-                    if !result.status.success() {
-                        failures.push(format!(
+        eprintln!(
+            "selected_target={selected_target}, metadata={metadata}, warm={warm}, missing_ignored={missing_ignored}: {:?}",
+            result.status.code()
+        );
+        eprint!("{}", String::from_utf8_lossy(&result.stderr));
+        if !result.status.success() {
+            failures.push(format!(
                         "selected_target={selected_target}, metadata={metadata}, warm={warm}, missing_ignored={missing_ignored}: {}{}",
                         String::from_utf8_lossy(&result.stdout),
                         String::from_utf8_lossy(&result.stderr)
                     ));
-                    }
-                }
-            }
         }
     }
     assert!(failures.is_empty(), "{}", failures.join("\n"));
