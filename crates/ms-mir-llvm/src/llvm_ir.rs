@@ -556,7 +556,7 @@ impl LlvmModule {
     /// `defs` in depth-first order along the calls in their text, starting from the exported
     /// functions and the entry, so a function is cut into a unit beside its callees and the
     /// inliner keeps what it would have inlined in one unit.
-    fn by_call_order<'a>(defs: Vec<&'a Def>) -> Vec<&'a Def> {
+    fn by_call_order(defs: Vec<&Def>) -> Vec<&Def> {
         let index: HashMap<&str, usize> = defs
             .iter()
             .enumerate()
