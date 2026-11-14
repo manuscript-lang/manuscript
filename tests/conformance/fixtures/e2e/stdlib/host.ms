@@ -61,10 +61,10 @@ test "subprocess validation returns expected domain errors":
 		[],
 		RunOptions(input: "".to_bytes()),
 	).wait()
-	expect_equal(missing.err().kind, "EAGAIN")?
+	expect_equal(missing.err().kind, "ENOENT")?
 	expect_equal(
 		missing.err().message,
-		"process: service unavailable: manuscript-nonexistent-command-stdlib",
+		"process: not found: manuscript-nonexistent-command-stdlib",
 	)?
 
 test "subprocess streams that are not piped are closed":
