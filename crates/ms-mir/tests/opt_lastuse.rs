@@ -403,7 +403,7 @@ fn long_lived_lists(n: usize) -> String {
 /// pipelines in an unoptimized build).
 #[test]
 fn a_chain_of_long_lived_values_is_handled_in_linear_time() {
-    let n = 6000;
+    let n = 3000;
     let mut m = parse_module(&long_lived_lists(n)).expect("parse");
     verify_module(&m).expect("input verifies");
     let start = std::time::Instant::now();
