@@ -217,6 +217,21 @@ fn heap_copy(data: &[u8]) -> StrVal {
     if data.is_ascii() { s.with_ascii() } else { s }
 }
 
+/// A string of exactly `len` bytes written by `fill`: inline when it fits, otherwise one
+/// allocation with no intermediate buffer. `ascii` says that `fill` writes only ASCII bytes.
+#[inline(always)]
+fn build_exact(len: usize, ascii: bool, fill: impl FnOnce(&mut [u8])) -> StrVal {
+    if len <= STR_INLINE_MAX {
+        let mut small = [0u8; STR_INLINE_MAX + 1];
+        fill(&mut small[..len]);
+        return from_bytes(&small[..len]);
+    }
+    let r = alloc_str(len);
+    // SAFETY: `r` owns `len` writable bytes.
+    fill(unsafe { core::slice::from_raw_parts_mut(r.ptr_word, len) });
+    if ascii { r.with_ascii() } else { r }
+}
+
 /// Whether every byte of `s` is ASCII, from its flag when it has one.
 ///
 /// # Safety
@@ -1335,16 +1350,26 @@ unsafe fn msrt_string_reverse_val(a: *const StrVal) -> StrVal {
     // SAFETY: caller passes a live string.
     unsafe {
         let text = bytes(a);
-        let mut out = Vec::with_capacity(text.len());
-        let mut end = text.len();
-        let mut tmp = [0u8; 4];
-        while end > 0 {
-            let (c, w) = utf8::decode_last(&text[..end]);
-            let n = utf8::encode(c, &mut tmp);
-            out.extend_from_slice(&tmp[..n]);
-            end -= w;
+        if is_ascii(&*a) {
+            return build_exact(text.len(), true, |dst| {
+                for (d, &c) in dst.iter_mut().zip(text.iter().rev()) {
+                    *d = c;
+                }
+            });
         }
-        from_buf(out)
+        // Reversing whole scalars keeps each one's width, so the result has the same length.
+        build_exact(text.len(), false, |dst| {
+            let mut at = 0;
+            let mut end = text.len();
+            let mut tmp = [0u8; 4];
+            while end > 0 {
+                let (c, w) = utf8::decode_last(&text[..end]);
+                let n = utf8::encode(c, &mut tmp);
+                dst[at..at + n].copy_from_slice(&tmp[..n]);
+                at += n;
+                end -= w;
+            }
+        })
     }
 }
 
@@ -1496,7 +1521,7 @@ unsafe fn map_case_take(s: *mut StrVal, upper: bool, out: *mut StrVal) {
             }
             return StrVal::owned(ptr, len).with_ascii().write_to(out);
         }
-        let r = from_buf(map_case(bytes(s), upper));
+        let r = map_case(s, upper);
         release(&*s);
         r.write_to(out)
     }
@@ -1541,23 +1566,33 @@ unsafe fn msrt_string_trim_end_val(s: *const StrVal) -> StrVal {
     unsafe { trimmed(s, false, true) }
 }
 
-fn map_case(text: &[u8], upper: bool) -> Vec<u8> {
-    if text.is_ascii() {
-        let mut out = text.to_vec();
-        if upper {
-            out.make_ascii_uppercase();
-        } else {
-            out.make_ascii_lowercase();
+/// `upper` or `lower` of the string `s`: ASCII text is copied once into its result and mapped
+/// there; other text maps scalar by scalar.
+///
+/// # Safety
+/// `s` is a live string.
+unsafe fn map_case(s: *const StrVal, upper: bool) -> StrVal {
+    // SAFETY: caller contract.
+    unsafe {
+        let text = bytes(s);
+        if is_ascii(&*s) {
+            return build_exact(text.len(), true, |dst| {
+                dst.copy_from_slice(text);
+                if upper {
+                    dst.make_ascii_uppercase();
+                } else {
+                    dst.make_ascii_lowercase();
+                }
+            });
         }
-        return out;
-    }
-    let text = core::str::from_utf8(text).expect("String contains valid UTF-8");
-    if upper {
-        text.to_uppercase().into_bytes()
-    } else {
-        // Whole-string mapping supplies Unicode's full Cased and Case_Ignorable tables
-        // for the contextual final-sigma rule.
-        text.to_lowercase().into_bytes()
+        let text = core::str::from_utf8(text).expect("String contains valid UTF-8");
+        if upper {
+            from_buf(text.to_uppercase().into_bytes())
+        } else {
+            // Whole-string mapping supplies Unicode's full Cased and Case_Ignorable tables
+            // for the contextual final-sigma rule.
+            from_buf(text.to_lowercase().into_bytes())
+        }
     }
 }
 
@@ -1571,7 +1606,7 @@ pub unsafe extern "C-unwind" fn msrt_string_upper(s: *const StrVal, out: *mut St
 #[inline(always)]
 unsafe fn msrt_string_upper_val(s: *const StrVal) -> StrVal {
     // SAFETY: caller passes a live string.
-    unsafe { from_buf(map_case(bytes(s), true)) }
+    unsafe { map_case(s, true) }
 }
 
 #[unsafe(no_mangle)]
@@ -1584,7 +1619,7 @@ pub unsafe extern "C-unwind" fn msrt_string_lower(s: *const StrVal, out: *mut St
 #[inline(always)]
 unsafe fn msrt_string_lower_val(s: *const StrVal) -> StrVal {
     // SAFETY: caller passes a live string.
-    unsafe { from_buf(map_case(bytes(s), false)) }
+    unsafe { map_case(s, false) }
 }
 
 /// `trim` of a string that dies at the call (the optimizer rewrites a call whose receiver
@@ -1936,7 +1971,13 @@ unsafe fn replace_shrinking(s: *const StrVal, old: &[u8], new: &[u8]) -> StrVal 
         }
         let ptr = alloc::realloc(buf, len + 1);
         *ptr.add(len) = 0;
-        StrVal::owned(ptr, len)
+        let r = StrVal::owned(ptr, len);
+        // Text that is known to be ASCII stays so when the replacement is ASCII.
+        if (*s).flagged_ascii() && new.is_ascii() {
+            r.with_ascii()
+        } else {
+            r
+        }
     }
 }
 
@@ -3093,7 +3134,7 @@ unsafe fn msrt_int_to_string_val(v: i64) -> StrVal {
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_float32_to_string(v: f64, out: *mut StrVal) {
     // SAFETY: caller passes a writable `out` and live arguments.
-    unsafe { from_buf(crate::num::float32_to_string(v)).write_to(out) }
+    unsafe { from_bytes(crate::num::float32_text(v).as_slice()).write_to(out) }
 }
 
 #[unsafe(no_mangle)]
@@ -3104,7 +3145,7 @@ pub unsafe extern "C-unwind" fn msrt_float_to_string(v: f64, out: *mut StrVal) {
 }
 
 unsafe fn msrt_float_to_string_val(v: f64) -> StrVal {
-    from_buf(crate::num::float_to_string(v))
+    from_bytes(crate::num::float_text(v).as_slice())
 }
 
 #[unsafe(no_mangle)]
@@ -3903,14 +3944,11 @@ mod tests {
         for mark in ["\u{1ab0}", "\u{5bf}", "\u{2060}", "\u{fe0f}"] {
             let before = std::format!("A{mark}Σ");
             let after = std::format!("AΣ{mark}A");
-            assert_eq!(
-                map_case(before.as_bytes(), false),
-                std::format!("a{mark}ς").as_bytes()
-            );
-            assert_eq!(
-                map_case(after.as_bytes(), false),
-                std::format!("aσ{mark}a").as_bytes()
-            );
+            // SAFETY: `st` leaks a live string.
+            let (lowered_before, lowered_after) =
+                unsafe { (map_case(st(&before), false), map_case(st(&after), false)) };
+            assert_eq!(txt(&lowered_before), std::format!("a{mark}ς"));
+            assert_eq!(txt(&lowered_after), std::format!("aσ{mark}a"));
         }
     }
 
