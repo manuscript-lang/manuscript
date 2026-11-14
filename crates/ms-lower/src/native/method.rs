@@ -316,14 +316,8 @@ impl<'a> FnLower<'a> {
                     .b
                     .emit(Op::Load, &[slot], Imm::Ty(MTy::BYTES), Some(MTy::BYTES))
                     .expect("load");
-                if recv.own
-                    || matches!(
-                        self.b.defining_op_anywhere(recv.v),
-                        Some(Op::StrLit | Op::BytesLit)
-                    )
-                {
-                    // The view of a temporary or a literal has no place to borrow from: the
-                    // result is the copy.
+                if recv.own {
+                    // The view of a temporary cannot outlive it: the result is the copy.
                     let o = self.clone_value(v);
                     return Ok(Val { v: o, own: true });
                 }
@@ -342,17 +336,14 @@ impl<'a> FnLower<'a> {
                     .b
                     .emit(Op::Load, &[slot], Imm::Ty(MTy::STR), Some(MTy::STR))
                     .expect("load");
-                if recv.own
-                    || matches!(
-                        self.b.defining_op_anywhere(recv.v),
-                        Some(Op::StrLit | Op::BytesLit)
-                    )
-                {
-                    // The view of a temporary or a literal has no place to borrow from: the
-                    // result is the copy.
+                if recv.own {
+                    // The view of a temporary cannot outlive it: the result is the copy.
                     let o = self.clone_value(v);
                     return Ok(Val { v: o, own: true });
                 }
+                // Whatever the receiver is (a local, a field, a literal's static text), the
+                // result is a borrow of it, so an immutable `let` holds it without a copy.
+                self.views.insert(v);
                 Ok(Val { v, own: false })
             }
             (TyKind::List(_) | TyKind::Bytes, "is_empty") => {
