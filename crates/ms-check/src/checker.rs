@@ -100,10 +100,9 @@ pub struct Program {
     pub syms: ms_syntax::Names,
     /// Fixtures per module file.
     pub test_fixtures: HashMap<Name, TestFixture>,
-    /// Conservative potential effects by callable id.
-    pub effects: HashMap<Name, Vec<&'static str>>,
-    /// Declared effects (`// ms: effect`) callers see, by callable id, sorted by name.
-    pub declared_effects: HashMap<Name, Vec<String>>,
+    /// The effect scan: the project's callables and what they reach, and the rest of the library on demand
+    /// (`Program::effects_of`).
+    pub effect_scan: RefCell<crate::effects::EffectScan>,
     /// `allow_effect` patterns in force per project callable (its own lines, else its file's);
     /// absent means no line, so the callable is pure.
     pub effect_permits: HashMap<Name, Vec<String>>,

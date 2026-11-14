@@ -318,18 +318,14 @@ fn symbol_of(
 
 fn effects_of(program: &Program, id: &str) -> Vec<String> {
     program
-        .effects
-        .get(&n(id))
-        .map(|list| list.iter().map(|s| s.to_string()).collect())
-        .unwrap_or_default()
+        .effects_of(n(id))
+        .iter()
+        .map(|s| s.to_string())
+        .collect()
 }
 
 fn reach_of(program: &Program, id: &str) -> Vec<String> {
-    program
-        .declared_effects
-        .get(&n(id))
-        .cloned()
-        .unwrap_or_default()
+    program.declared_effects_of(n(id))
 }
 
 fn permits_of(program: &Program, id: &str) -> Vec<String> {

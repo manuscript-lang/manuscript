@@ -216,13 +216,37 @@ impl Visitor for Scan<'_> {
     }
 }
 
-impl Checker {
-    /// Computes each callable's potential effects, nested closure bodies
-    /// included. An indirect or unclassified operation contributes unknown
-    /// rather than claiming purity.
-    pub(crate) fn effect_summaries(&mut self) {
-        let modules: HashMap<Name, ModRef> =
-            self.p.modules.iter().map(|m| (m.file, m.clone())).collect();
+/// The effect scan of a program: every callable is a node, but a node is scanned only when a root
+/// or a scanned node reaches it. The standard library does not depend on the program, so a
+/// library callable scanned later has the effects it would have had first; most programs reach a
+/// few library callables and never scan the rest.
+#[derive(Default)]
+pub struct EffectScan {
+    state: Option<State>,
+    /// Conservative potential effects by callable id, for the scanned callables.
+    effects: HashMap<Name, Vec<&'static str>>,
+    /// Declared effects (`// ms: effect`) callers see, by callable id, for the scanned callables.
+    declared: HashMap<Name, Vec<String>>,
+}
+
+struct State {
+    order: Vec<Name>,
+    nodes: HashMap<Name, EffectNode>,
+    scanned: HashSet<Name>,
+    ids: HashSet<Name>,
+    conversions: HashMap<(Name, Name), Vec<Name>>,
+    by_receiver: HashMap<Name, Vec<Name>>,
+    own_methods: HashMap<Name, Vec<(Name, Name)>>,
+}
+
+impl EffectScan {
+    /// Registers every callable of `modules` and `methods` as an unscanned node.
+    fn new(
+        modules: &[ModRef],
+        symbols: &HashMap<Name, crate::checker::Names>,
+        methods: &[MethodRef],
+    ) -> EffectScan {
+        let by_file: HashMap<Name, ModRef> = modules.iter().map(|m| (m.file, m.clone())).collect();
         let mut order: Vec<Name> = Vec::new();
         let mut nodes: HashMap<Name, EffectNode> = HashMap::default();
         let mut add = |id: Name, module: Option<ModRef>, target: Target| {
@@ -240,8 +264,8 @@ impl Checker {
                 },
             );
         };
-        for module in &self.p.modules {
-            let Some(names) = self.p.symbols.get(&module.file) else {
+        for module in modules {
+            let Some(names) = symbols.get(&module.file) else {
                 continue;
             };
             for d in &module.decls {
@@ -256,11 +280,11 @@ impl Checker {
                 }
             }
         }
-        for method in &self.p.methods {
+        for method in methods {
             if let Some(decl) = &method.decl {
                 add(
                     method.id,
-                    modules.get(&method.module).cloned(),
+                    by_file.get(&method.module).cloned(),
                     Target::Method(decl.clone()),
                 );
             }
@@ -269,7 +293,7 @@ impl Checker {
         let mut conversions: HashMap<(Name, Name), Vec<Name>> = HashMap::default();
         let mut by_receiver: HashMap<Name, Vec<Name>> = HashMap::default();
         let mut own_methods: HashMap<Name, Vec<(Name, Name)>> = HashMap::default();
-        for m in &self.p.methods {
+        for m in methods {
             if let Some(contract) = &m.contract
                 && !ms_syntax::Names::global().str(m.id).is_empty()
             {
@@ -288,55 +312,81 @@ impl Checker {
                 by_receiver.entry(m.receiver.id).or_default().push(m.id);
             }
         }
-        for node in nodes.values_mut() {
-            let Some(module) = node.module.clone() else {
-                continue;
-            };
-            let mut scan = Scan {
-                syms: ms_syntax::Names::global(),
-                module: &module,
-                ids: &ids,
-                effects: BTreeSet::new(),
-                edges: HashSet::default(),
-                edge_pos: Vec::new(),
-                conversions: &conversions,
-                by_receiver: &by_receiver,
-                own_methods: &own_methods,
-            };
-            match &node.target {
-                Target::Decl(d) => {
-                    visit::walk_decl(&mut scan, d.decl());
-                    for m in &d.0.folded {
-                        visit::walk_callable(&mut scan, &m.func.params, &m.func.body);
+        EffectScan {
+            state: Some(State {
+                order,
+                nodes,
+                scanned: HashSet::default(),
+                ids,
+                conversions,
+                by_receiver,
+                own_methods,
+            }),
+            ..EffectScan::default()
+        }
+    }
+
+    /// Scans `roots` and everything they reach that is not scanned yet, then folds the callees'
+    /// effects into their callers. Returns whether any node was scanned.
+    fn scan(&mut self, roots: Vec<Name>) -> bool {
+        let Some(st) = self.state.as_mut() else {
+            return false;
+        };
+        let mut todo: Vec<Name> = roots
+            .into_iter()
+            .filter(|id| st.nodes.contains_key(id) && st.scanned.insert(*id))
+            .collect();
+        if todo.is_empty() {
+            return false;
+        }
+        while let Some(id) = todo.pop() {
+            let node = st.nodes.get_mut(&id).expect("node");
+            if let Some(module) = node.module.clone() {
+                let mut scan = Scan {
+                    syms: ms_syntax::Names::global(),
+                    module: &module,
+                    ids: &st.ids,
+                    effects: BTreeSet::new(),
+                    edges: HashSet::default(),
+                    edge_pos: Vec::new(),
+                    conversions: &st.conversions,
+                    by_receiver: &st.by_receiver,
+                    own_methods: &st.own_methods,
+                };
+                match &node.target {
+                    Target::Decl(d) => {
+                        visit::walk_decl(&mut scan, d.decl());
+                        for m in &d.0.folded {
+                            visit::walk_callable(&mut scan, &m.func.params, &m.func.body);
+                        }
+                    }
+                    Target::Method(f) => {
+                        if let Some(func) = f.func() {
+                            visit::walk_callable(&mut scan, &func.params, &func.body);
+                        }
                     }
                 }
-                Target::Method(f) => {
-                    if let Some(func) = f.func() {
-                        visit::walk_callable(&mut scan, &func.params, &func.body);
-                    }
+                node.effects = scan.effects;
+                node.edges = scan.edges;
+                node.edge_pos = scan.edge_pos;
+            }
+            for e in node.edges.clone() {
+                if st.nodes.contains_key(&e) && st.scanned.insert(e) {
+                    todo.push(e);
                 }
             }
-            node.effects = scan.effects;
-            node.edges = scan.edges;
-            node.edge_pos = scan.edge_pos;
         }
-        self.declared_effects(&order, &nodes);
-        propagate_effects(&order, &mut nodes);
-        self.p.effects = nodes
-            .into_iter()
-            .map(|(id, node)| (id, node.effects.into_iter().collect()))
-            .collect();
+        true
     }
-}
 
-impl Checker {
-    /// Declared effects (`// ms: effect`) per callable and the project callables that reach an
-    /// effect no `// ms: allow_effect` scope permits.
-    fn declared_effects(&mut self, order: &[Name], nodes: &HashMap<Name, EffectNode>) {
+    /// Declared effects per scanned callable and the project callables that reach an effect no
+    /// `// ms: allow_effect` scope permits.
+    fn declared_effects(&self) -> (crate::effect_reach::Reach, HashMap<Name, Vec<String>>) {
+        let st = self.state.as_ref().expect("scan state");
         let mut lines: HashMap<Name, Lines> = HashMap::default();
-        let mut reach: Vec<ReachNode> = Vec::with_capacity(order.len());
-        for id in order {
-            let node = &nodes[id];
+        let mut reach: Vec<ReachNode> = Vec::with_capacity(st.scanned.len());
+        for id in st.order.iter().filter(|id| st.scanned.contains(id)) {
+            let node = &st.nodes[id];
             let Some(module) = &node.module else {
                 continue;
             };
@@ -370,7 +420,7 @@ impl Checker {
                 edges: node.edge_pos.clone(),
             });
         }
-        self.p.effect_permits = reach
+        let permits = reach
             .iter()
             .filter(|n| n.project)
             .filter_map(|n| {
@@ -378,9 +428,85 @@ impl Checker {
                 Some((n.id, lines.clone()))
             })
             .collect();
-        let resolved = resolve(&reach);
-        self.p.declared_effects = resolved.declared;
+        (resolve(&reach), permits)
+    }
+
+    /// Folds the effects of the scanned nodes into their callers and publishes the results.
+    fn publish(&mut self) -> (crate::effect_reach::Reach, HashMap<Name, Vec<String>>) {
+        let (resolved, permits) = self.declared_effects();
+        let st = self.state.as_mut().expect("scan state");
+        let scanned: Vec<Name> = st
+            .order
+            .iter()
+            .filter(|id| st.scanned.contains(id))
+            .copied()
+            .collect();
+        propagate_effects(&scanned, &mut st.nodes);
+        self.effects = scanned
+            .iter()
+            .map(|id| (*id, st.nodes[id].effects.iter().copied().collect()))
+            .collect();
+        self.declared = resolved.declared.clone();
+        (resolved, permits)
+    }
+
+    /// Scans what `id` reaches (once) and publishes.
+    fn reach(&mut self, id: Name) {
+        let new = self.state.as_ref().is_some_and(|s| !s.scanned.contains(&id));
+        if new && self.scan(vec![id]) {
+            self.publish();
+        }
+    }
+}
+
+impl Checker {
+    /// Computes the potential effects of the project's callables and of every callable they reach.
+    /// An indirect or unclassified operation contributes unknown rather than claiming purity. The
+    /// rest of the standard library is scanned if a query asks (`Program::effects_of`).
+    pub(crate) fn effect_summaries(&mut self) {
+        let mut scan = EffectScan::new(&self.p.modules, &self.p.symbols, &self.p.methods);
+        let project: Vec<Name> = {
+            let st = scan.state.as_ref().expect("scan state");
+            st.order
+                .iter()
+                .filter(|id| {
+                    st.nodes[id].module.as_ref().is_some_and(|m| {
+                        !crate::stdlib::is_bundled_source(ms_syntax::Names::global().str(m.file))
+                    })
+                })
+                .copied()
+                .collect()
+        };
+        scan.scan(project);
+        let (resolved, permits) = scan.publish();
+        self.p.effect_permits = permits;
         self.p.effect_violations = resolved.violations;
+        *self.p.effect_scan.borrow_mut() = scan;
+    }
+}
+
+impl crate::checker::Program {
+    /// Potential effects of callable `id` (project or library), scanning what it reaches on first use.
+    pub fn effects_of(&self, id: Name) -> Vec<&'static str> {
+        let mut scan = self.effect_scan.borrow_mut();
+        scan.reach(id);
+        scan.effects.get(&id).cloned().unwrap_or_default()
+    }
+
+    /// Declared effects (`// ms: effect`) callers see for callable `id`, scanning what it reaches on first use.
+    pub fn declared_effects_of(&self, id: Name) -> Vec<String> {
+        let mut scan = self.effect_scan.borrow_mut();
+        scan.reach(id);
+        scan.declared.get(&id).cloned().unwrap_or_default()
+    }
+
+    /// Scans every callable, for a listing of the whole library.
+    pub fn scan_all_effects(&self) {
+        let mut scan = self.effect_scan.borrow_mut();
+        let all: Vec<Name> = scan.state.as_ref().map(|s| s.order.clone()).unwrap_or_default();
+        if scan.scan(all) {
+            scan.publish();
+        }
     }
 }
 
