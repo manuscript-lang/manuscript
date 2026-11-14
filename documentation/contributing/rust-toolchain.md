@@ -61,7 +61,6 @@ Under Miri the allocator takes its reservation from the heap in place of `mmap` 
 | `ms-mir-llvm` | MIR to LLVM IR text: functions, glue, descriptors, vtables and globals; depends only on `ms-mir` and `ms-rt-abi` |
 | `ms-clif` | MIR to Cranelift object code, line tables, perf map, and native linking with cached lld/LLVM tools and embedded startup files |
 | `ms-rt`, `ms-rt-abi`, `ms-native` | Runtime (with the `ffi` and `glue` helpers the native crates build on), C-layout ABI types, and the static library embedded in `ms` |
-| `ms-rt-hot` | The runtime's pure helpers (map probes, string compare and hash), also linked as LLVM IR into release programs so they inline |
 | `ms-std-*` | One crate per native standard module, depending on `ms-rt` as an ordinary Rust crate |
 | `ms-lower` | Checked HIR to MIR, including native standard calls |
 | `ms-driver` | Manifest, lock, import resolution; module graph, entry rule, checking |

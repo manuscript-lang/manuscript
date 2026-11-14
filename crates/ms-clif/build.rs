@@ -90,7 +90,6 @@ fn main() {
         );
         names.push("glibc.symbols".to_string());
     }
-    names.push(embed_hot_ir(&bundle));
     let mut id = 0xcbf29ce484222325u64;
     for name in &names {
         let bytes = std::fs::read(bundle.join(name)).expect("read bundled file");
@@ -235,31 +234,6 @@ fn mingw() -> PathBuf {
         "no llvm-mingw to bundle: run `sh toolchain/fetch-mingw.sh` or set MS_MINGW to its root"
     );
     root
-}
-
-/// Copies the `ms-rt-hot` IR that `cargo xtask runtime` writes (`MS_RT_HOT_IR` names another) into the
-/// bundle, or an empty placeholder: without it release builds still work, they just do not inline the
-/// runtime's pure helpers. Returns the bundled file's name.
-fn embed_hot_ir(bundle: &Path) -> String {
-    println!("cargo:rerun-if-env-changed=MS_RT_HOT_IR");
-    let built = std::env::var_os("MS_RT_HOT_IR")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| {
-            Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/ms-native/ms_rt_hot.ll")
-        });
-    println!("cargo:rerun-if-changed={}", built.display());
-    let bytes = std::fs::read(&built).unwrap_or_default();
-    if bytes.is_empty() {
-        println!(
-            "cargo:warning=no {}: release builds will not inline runtime helpers (run `cargo xtask runtime`)",
-            built.display()
-        );
-    }
-    let to = bundle.join("ms_rt_hot.ll");
-    if std::fs::read(&to).ok().as_deref() != Some(&bytes) {
-        std::fs::write(&to, bytes).expect("write the runtime helper IR");
-    }
-    "ms_rt_hot.ll".to_string()
 }
 
 fn sysroot() -> PathBuf {

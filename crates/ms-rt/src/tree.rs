@@ -9,11 +9,11 @@ use crate::alloc;
 use crate::desc::{msrt_desc_string, slot_drop};
 use crate::ffi::{AbiHandle, AbiType, FromAbi, ObjCell, ObjMut};
 use crate::map;
+use crate::map::{LIVE, Layout};
 use crate::string::from_bytes;
 use core::marker::PhantomData;
 use core::mem::MaybeUninit;
 use ms_rt_abi::{StrVal, TypeDesc, VecVal};
-use ms_rt_hot::{LIVE, Layout};
 use std::vec::Vec;
 
 pub const NULL: i64 = 0;

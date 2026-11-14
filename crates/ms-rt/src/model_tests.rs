@@ -4,10 +4,10 @@
 //! `Vec`/`String` model, compares after every step, and checks that nothing leaks.
 use crate::alloc::live_blocks;
 use crate::desc::{msrt_desc_int, msrt_desc_string};
+use crate::map::msrt_map_length;
 use crate::map::*;
 use crate::string::{self, NO_STR, from_bytes};
 use crate::testutil;
-use crate::testutil::hot::msrt_map_length;
 use crate::vec::*;
 use ms_rt_abi::*;
 

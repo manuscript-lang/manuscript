@@ -7,7 +7,7 @@
 //!                    \->  ms-driver, ms-tooling  ->  ms-lsp  ->  ms-cli
 //! ```
 //!
-//! The runtime (`ms-rt-abi`, `ms-rt-hot`, `ms-rt`, `ms-std-*`, `ms-native`) is a
+//! The runtime (`ms-rt-abi`, `ms-rt`, `ms-std-*`, `ms-native`) is a
 //! separate world. The compiler meets it only through the C ABI described by
 //! `ms-rt-abi`, so a runtime crate never depends on a compiler crate and a
 //! compiler crate never depends on a runtime crate other than `ms-rt-abi`.
@@ -69,7 +69,7 @@ const COMPILER_AND_TOOLS: &[(&str, &[&str])] = &[
 /// Pure arithmetic both worlds use: the compiler folds literals with it and the runtime wraps it.
 const SHARED: &str = "ms-decimal";
 
-const RUNTIME: &[&str] = &["ms-rt-abi", "ms-rt-hot", "ms-rt", "ms-std-", "ms-native"];
+const RUNTIME: &[&str] = &["ms-rt-abi", "ms-rt", "ms-std-", "ms-native"];
 
 fn is_runtime(name: &str) -> bool {
     RUNTIME.iter().any(|r| name.starts_with(r))

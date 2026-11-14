@@ -83,7 +83,6 @@ fn embedded_build(source: &Path, output: &Path, cache: &Path) -> Output {
         .env("MS_CACHE", "on")
         .env("MS_TIMINGS", "1")
         .env_remove("MS_RT_LIB")
-        .env_remove("MS_RT_HOT")
         .args([
             "build",
             source.to_str().unwrap(),

@@ -13,7 +13,7 @@ pub mod link;
 mod cg;
 mod dwarf;
 mod options;
-pub use options::{BuildOptions, CopyProbe, RtHot};
+pub use options::{BuildOptions, CopyProbe};
 mod lower;
 mod slotshare;
 mod spill;
