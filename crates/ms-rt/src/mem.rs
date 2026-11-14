@@ -10,6 +10,7 @@
 //! Copy bodies use explicit SIMD loads/stores or assembly rather than scalar copy loops that
 //! LLVM could turn back into calls to the function being defined.
 
+#[cfg_attr(test, allow(unused_imports))] // only the x86_64 and musl test builds use it
 use core::ffi::c_int;
 #[cfg(not(test))]
 use core::ffi::c_void;
@@ -386,7 +387,7 @@ pub unsafe extern "C" fn memset(dst: *mut c_void, c: c_int, n: usize) -> *mut c_
 /// Both ranges must be valid for `n` bytes.
 #[cfg(any(
     all(test, target_arch = "x86_64"),
-    all(target_os = "linux", target_env = "musl")
+    all(not(test), target_os = "linux", target_env = "musl")
 ))]
 #[inline(always)]
 unsafe fn compare(a: *const u8, b: *const u8, n: usize) -> c_int {
