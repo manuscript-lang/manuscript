@@ -91,6 +91,13 @@ struct Def {
     body: String,
 }
 
+/// Bytes of body below which a function another unit defines is also written into a unit that
+/// calls it, as an `available_externally` copy for the inliner.
+const SMALL_COPY_BYTES: usize = 8000;
+
+/// How many levels of callees of such copies are copied too.
+const SMALL_COPY_DEPTH: usize = 3;
+
 /// Body lines above which a function is compiled without LLVM's optimizer (`optnone`): SROA, the
 /// SLP vectorizer and the code generator grow faster than linearly with one function's size, so
 /// a generated function of thousands of statements took minutes, and one of 2000 loops (60k lines)
@@ -546,6 +553,52 @@ impl LlvmModule {
         d.body.len()
     }
 
+    /// `defs` in depth-first order along the calls in their text, starting from the exported
+    /// functions and the entry, so a function is cut into a unit beside its callees and the
+    /// inliner keeps what it would have inlined in one unit.
+    fn by_call_order<'a>(defs: Vec<&'a Def>) -> Vec<&'a Def> {
+        let index: HashMap<&str, usize> = defs
+            .iter()
+            .enumerate()
+            .map(|(i, d)| (d.name.as_str(), i))
+            .collect();
+        let calls: Vec<Vec<usize>> = defs
+            .iter()
+            .map(|d| {
+                let mut seen = HashSet::new();
+                let mut out = Vec::new();
+                let mut rest = d.body.as_str();
+                while let Some(at) = rest.find("@\"") {
+                    rest = &rest[at + 2..];
+                    let Some(end) = rest.find('"') else { break };
+                    if let Some(&c) = index.get(&rest[..end])
+                        && seen.insert(c)
+                    {
+                        out.push(c);
+                    }
+                    rest = &rest[end..];
+                }
+                out
+            })
+            .collect();
+        let mut visited = vec![false; defs.len()];
+        let mut order = Vec::with_capacity(defs.len());
+        let roots = (0..defs.len())
+            .filter(|&i| defs[i].public)
+            .chain(0..defs.len());
+        for root in roots {
+            let mut stack = vec![root];
+            while let Some(i) = stack.pop() {
+                if std::mem::replace(&mut visited[i], true) {
+                    continue;
+                }
+                order.push(defs[i]);
+                stack.extend(calls[i].iter().rev().copied());
+            }
+        }
+        order
+    }
+
     /// Total bytes of function text, which decides how many units a module is worth.
     pub fn code_bytes(&self) -> usize {
         self.defs.iter().map(|d| d.body.len()).sum()
@@ -570,6 +623,11 @@ impl LlvmModule {
             .iter()
             .partition(|d| !self.is_unoptimized(d, &deep));
         let units = units.clamp(1, plain.len().max(1));
+        let plain = if units > 1 {
+            Self::by_call_order(plain)
+        } else {
+            plain
+        };
         let mut groups: Vec<(Vec<&Def>, bool)> = Vec::new();
         let total: usize = plain.iter().map(|d| Self::weight(d)).sum();
         let mut seen = 0usize;
@@ -690,6 +748,12 @@ impl LlvmModule {
             for d in members {
                 self.write_def(&mut s, d, &deep, anchored, pinned);
             }
+            let local: HashSet<&str> = members.iter().map(|d| d.name.as_str()).collect();
+            let copied = if units > 1 && !unoptimized {
+                self.write_small_copies(&mut s, &local, &deep)
+            } else {
+                HashSet::new()
+            };
             // The first unit defines the data, then the vtables.
             if gi == 0 {
                 for def in self.data_defs.values() {
@@ -699,7 +763,6 @@ impl LlvmModule {
             }
             // References can precede definitions, and with several units point into another:
             // declare what this unit calls and does not define, found in one scan of its text.
-            let local: HashSet<&str> = members.iter().map(|d| d.name.as_str()).collect();
             let mut used = referenced(&s);
             // A vtable this unit names is written with its slots; the functions they name are
             // then referenced too, so the scan below declares the ones another unit defines.
@@ -727,7 +790,7 @@ impl LlvmModule {
                 for d in self
                     .defs
                     .iter()
-                    .filter(|d| !local.contains(d.name.as_str()))
+                    .filter(|d| !local.contains(d.name.as_str()) && !copied.contains(&d.name))
                 {
                     if used.contains(&d.name)
                         && let Some(at) = d.header.find(" #")
@@ -772,6 +835,46 @@ impl LlvmModule {
             });
         }
         out
+    }
+
+    /// Writes `available_externally` copies of the small functions other units define that this
+    /// unit's text calls, directly or through another copy, so LLVM inlines them as it would in
+    /// one unit; the copies are dropped after inlining and the real definition stays in its own
+    /// unit. Returns the names written.
+    fn write_small_copies(
+        &self,
+        s: &mut String,
+        local: &HashSet<&str>,
+        deep: &HashSet<String>,
+    ) -> HashSet<String> {
+        let mut copied: HashSet<String> = HashSet::new();
+        let mut wanted = referenced(s);
+        for _ in 0..SMALL_COPY_DEPTH {
+            let mut added = String::new();
+            for d in &self.defs {
+                if d.body.len() > SMALL_COPY_BYTES
+                    || local.contains(d.name.as_str())
+                    || copied.contains(&d.name)
+                    || !wanted.contains(&d.name)
+                    || deep.contains(&d.name)
+                {
+                    continue;
+                }
+                let vis = if d.public { "" } else { "hidden " };
+                let _ = write!(
+                    added,
+                    "define available_externally {vis}{}{}",
+                    d.header, d.body
+                );
+                copied.insert(d.name.clone());
+            }
+            if added.is_empty() {
+                break;
+            }
+            wanted.extend(referenced(&added));
+            s.push_str(&added);
+        }
+        copied
     }
 
     /// Writes `d` as a definition.
@@ -885,6 +988,46 @@ mod tests {
         assert!(defines(&units[1], "huge"));
         // The huge function's neighbours are declared where they are only called.
         assert!(!units[1].ir.contains("optnone") || units[1].ir.contains("#4"));
+    }
+
+    /// A function whose body calls `callees`.
+    fn caller(name: &str, callees: &[&str], padding: usize) -> Def {
+        let mut def = plain_def(name, padding);
+        let calls: String = callees
+            .iter()
+            .map(|c| format!("  call void @\"{c}\"()\n"))
+            .collect();
+        def.body = def.body.replacen("b0:\n", &format!("b0:\n{calls}"), 1);
+        def
+    }
+
+    #[test]
+    fn units_follow_calls_and_copy_small_callees_for_the_inliner() {
+        let mut module = LlvmModule::new(vec![Some("a.ms".into())], ".".into());
+        // Emission order interleaves two call chains; the cut must keep each chain together.
+        module.defs.push(caller("a1", &["a2"], 100));
+        module.defs.push(caller("b1", &["b2"], 100));
+        module.defs.push(caller("a2", &["tiny"], 100));
+        module.defs.push(caller("b2", &[], 100));
+        module.defs.push(caller("tiny", &[], 2));
+        module.defs[0].public = true;
+        let units = module.finish_units("x86_64-unknown-linux-gnu", &HashSet::new(), false, 2);
+        assert_eq!(units.len(), 2);
+        let defines =
+            |u: &Unit, name: &str| u.ir.contains(&format!("hidden void @\"{name}\"() #0 {{"));
+        let calls_chain = &units[0];
+        assert!(defines(calls_chain, "a2"), "a callee follows its caller");
+        assert!(!defines(calls_chain, "b2") || !defines(&units[1], "a2"));
+        // The small function is defined once and copied where another unit calls it.
+        let copies = units
+            .iter()
+            .filter(|u| {
+                u.ir.contains("define available_externally hidden void @\"tiny\"")
+            })
+            .count();
+        let owners = units.iter().filter(|u| defines(u, "tiny")).count();
+        assert_eq!(owners, 1);
+        assert!(copies <= 1);
     }
 
     #[test]

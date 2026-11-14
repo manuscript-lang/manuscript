@@ -11,8 +11,11 @@ use ms_mir::types::Ty;
 use std::collections::{HashMap, HashSet};
 
 /// Bytes of function text per module below which splitting costs more than it saves: each unit
-/// parses the debug metadata and cannot inline functions of another.
-const UNIT_BYTES: usize = 2 << 20;
+/// parses the debug metadata and cannot inline functions of another except the small ones it is
+/// given copies of (`LlvmModule::finish_units`). Measured on the engineering benchmarks: a 350 KB
+/// program (0.4 s build) ran 15% slower in four units, programs of 700 KB and more (0.5 s to 1 s
+/// of `opt` and `llc`) ran as fast in two to four units and built twice as fast.
+const UNIT_BYTES: usize = 320 << 10;
 
 /// How many modules to write: `requested`, else one per core up to the size that gives each
 /// [`UNIT_BYTES`] of code.
