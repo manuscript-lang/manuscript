@@ -109,7 +109,7 @@ struct Cx {
     raw_values: BTreeSet<u32>,
 }
 
-fn starts_tasks(m: &Module) -> bool {
+pub fn starts_tasks(m: &Module) -> bool {
     m.externs.iter().any(|e| e.role == ExternRole::SpawnsTask)
 }
 
