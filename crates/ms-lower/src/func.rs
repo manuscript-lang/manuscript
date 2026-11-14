@@ -2031,7 +2031,7 @@ impl<'a> FnLower<'a> {
                 self.bind_var_parameter(b, v)?;
                 continue;
             }
-            if owned_mask.as_ref().is_some_and(|mask| mask[i]) && self.needs_drop(self.ty_of(v)) {
+            if owned_mask.as_ref().is_some_and(|mask| mask[i]) && self.holds(self.ty_of(v)) {
                 // The caller handed the value over: the callee owns it and drops it at scope end.
                 if self
                     .cx
