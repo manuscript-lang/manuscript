@@ -355,7 +355,7 @@ impl<'a> FnLower<'a> {
                         return self.bind_closing(&b, x, None);
                     }
                     Some(b) => self.bind_local(&b, x),
-                    None if x.own => self.drop_temp(x.v),
+                    None if x.own => self.bind_payload(None, x.v)?,
                     None => {}
                 }
                 Ok(())
@@ -453,7 +453,7 @@ impl<'a> FnLower<'a> {
                         )
                         .expect("field address");
                     let fv = self.move_out(fp, *fty);
-                    self.drop_temp(fv);
+                    self.bind_payload(None, fv)?;
                 }
                 Ok(())
             }
