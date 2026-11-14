@@ -384,7 +384,10 @@ pub unsafe extern "C" fn memset(dst: *mut c_void, c: c_int, n: usize) -> *mut c_
 ///
 /// # Safety
 /// Both ranges must be valid for `n` bytes.
-#[cfg(any(test, all(target_os = "linux", target_env = "musl")))]
+#[cfg(any(
+    all(test, target_arch = "x86_64"),
+    all(target_os = "linux", target_env = "musl")
+))]
 #[inline(always)]
 unsafe fn compare(a: *const u8, b: *const u8, n: usize) -> c_int {
     // SAFETY: every read lies inside the first `n` bytes of a range.
