@@ -28,7 +28,9 @@ pub fn report<T, E: Status>(
 ) -> Result<T, ms_rt::ffi::StatusCode> {
     r.map_err(|e| {
         if crate::rt::cancel_pending() {
-            // Every frame that held values across the park has returned and dropped them.
+            // Every frame that held values across the park has returned and dropped them;
+            // the error is the last value, and the jump would skip its destructor.
+            drop(e);
             crate::rt::cancelled();
         }
         if let Some(m) = e.failed_message() {
@@ -46,6 +48,7 @@ fn opt(has: bool, v: i64) -> Option<i64> {
 /// The status byte of a std error.
 pub fn code<E: Status>(e: E) -> ms_rt::ffi::StatusCode {
     if crate::rt::cancel_pending() {
+        drop(e);
         crate::rt::cancelled();
     }
     ms_rt::ffi::StatusCode(e.code())

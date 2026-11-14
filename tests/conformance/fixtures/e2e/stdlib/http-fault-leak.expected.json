@@ -23,19 +23,24 @@
           "index": 2,
           "name": "http-fault-leak.ms::a fetch cancelled by its timeout frees the request state its frames own",
           "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "http-fault-leak.ms::a fetch cancelled while it waits for the response frees the cancellation error",
+          "status": "passed"
         }
       ],
       "summary": {
-        "available": 3,
-        "selected": 3,
-        "passed": 3,
+        "available": 4,
+        "selected": 4,
+        "passed": 4,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN http-fault-leak.ms::a faulting handler releases the values its frames own\nPASS http-fault-leak.ms::a faulting handler releases the values its frames own\nRUN http-fault-leak.ms::a fetch cancelled by its timeout releases its read buffer\nPASS http-fault-leak.ms::a fetch cancelled by its timeout releases its read buffer\nRUN http-fault-leak.ms::a fetch cancelled by its timeout frees the request state its frames own\nPASS http-fault-leak.ms::a fetch cancelled by its timeout frees the request state its frames own\n3 tests, 0 failed\n",
+      "stdout": "RUN http-fault-leak.ms::a faulting handler releases the values its frames own\nPASS http-fault-leak.ms::a faulting handler releases the values its frames own\nRUN http-fault-leak.ms::a fetch cancelled by its timeout releases its read buffer\nPASS http-fault-leak.ms::a fetch cancelled by its timeout releases its read buffer\nRUN http-fault-leak.ms::a fetch cancelled by its timeout frees the request state its frames own\nPASS http-fault-leak.ms::a fetch cancelled by its timeout frees the request state its frames own\nRUN http-fault-leak.ms::a fetch cancelled while it waits for the response frees the cancellation error\nPASS http-fault-leak.ms::a fetch cancelled while it waits for the response frees the cancellation error\n4 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [
