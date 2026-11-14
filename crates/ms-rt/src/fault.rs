@@ -488,8 +488,8 @@ pub fn fatal_kind(kind: FaultKind, msg: &[u8]) -> ! {
     #[cfg(not(test))]
     {
         crate::io::flush_stdout();
-        sys::write_all(sys::STDERR, msg);
-        sys::write_all(sys::STDERR, b"\n");
+        let _ = sys::write_all(sys::STDERR, msg);
+        let _ = sys::write_all(sys::STDERR, b"\n");
         write_record(&Record::new(kind, msg));
         // SAFETY: terminating the process.
         unsafe { sys::_exit(ms_rt_abi::EXIT_FAULT) }
@@ -1252,7 +1252,7 @@ fn finish_report(primary: Option<Vec<u8>>) -> ! {
         }
         report.push(b'\n');
         crate::io::flush_stdout();
-        sys::write_all(sys::STDERR, report.as_slice());
+        let _ = sys::write_all(sys::STDERR, report.as_slice());
         write_last_record(&report, Frames::default());
         crate::process::exit(ms_rt_abi::EXIT_FAULT)
     }
@@ -1294,7 +1294,7 @@ pub fn exit_with_report(msg: &ms_rt_abi::StrVal, started: &[usize]) {
         render_started(&mut report, &started);
         report.push(b'\n');
         crate::io::flush_stdout();
-        sys::write_all(sys::STDERR, report.as_slice());
+        let _ = sys::write_all(sys::STDERR, report.as_slice());
         write_last_record(&text, started);
         crate::process::exit(ms_rt_abi::EXIT_FAULT)
     }

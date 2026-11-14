@@ -2,7 +2,7 @@
 use crate::sys;
 use core::cell::UnsafeCell;
 use ms_rt_abi::{MapVal, StrVal, VecVal};
-use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicI32, AtomicU8, Ordering};
 
 const BUF_LIMIT: usize = 64 * 1024;
 /// The process-wide output buffer. Every thread that runs Manuscript code writes through it, so
@@ -64,11 +64,39 @@ fn lock(target: &'static Out) -> Guard {
     Guard(target)
 }
 
+/// The first failed stdout write since `msrt_io_error` last ran (an OS code), or 0. A broken
+/// pipe is not kept: a reader that went away ends the output quietly.
+static WRITE_ERROR: AtomicI32 = AtomicI32::new(0);
+
 fn flush_locked(out: &mut Vec<u8>) {
+    drain(sys::STDOUT, out);
+}
+
+fn drain(fd: i32, out: &mut Vec<u8>) {
     if !out.is_empty() {
-        sys::write_all(sys::STDOUT, out.as_slice());
+        if let Err(code) = sys::write_all(fd, out.as_slice())
+            && std::io::Error::from_raw_os_error(code).kind() != std::io::ErrorKind::BrokenPipe
+        {
+            let _ = WRITE_ERROR.compare_exchange(0, code, Ordering::Relaxed, Ordering::Relaxed);
+        }
         out.clear();
     }
+}
+
+/// Takes the kept stdout write failure as text, or an empty string.
+///
+/// # Safety
+/// `out` is writable memory for a string.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_io_error(out: *mut StrVal) {
+    let code = WRITE_ERROR.swap(0, Ordering::Relaxed);
+    let text = if code == 0 {
+        String::new()
+    } else {
+        std::io::Error::from_raw_os_error(code).to_string()
+    };
+    // SAFETY: `out` is uninitialised memory for a string.
+    unsafe { *out = crate::string::from_bytes(text.as_bytes()) };
 }
 
 pub fn flush_stdout() {
@@ -245,7 +273,7 @@ fn append(target: &'static Out, tty: bool, data: &[u8], end: &[u8]) {
 
 pub fn write_stderr(data: &[u8]) {
     flush_stdout();
-    sys::write_all(sys::STDERR, data);
+    let _ = sys::write_all(sys::STDERR, data);
 }
 
 #[unsafe(no_mangle)]
@@ -340,6 +368,23 @@ pub extern "C-unwind" fn msrt_io_flush() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A failed drain is kept for `msrt_io_error` and the buffer is dropped.
+    #[test]
+    fn failed_drain_is_reported_once() {
+        let mut buf = b"lost".to_vec();
+        drain(9999, &mut buf);
+        assert!(buf.is_empty());
+        let mut text = core::mem::MaybeUninit::<StrVal>::uninit();
+        // SAFETY: `text` is writable memory for a string.
+        unsafe { msrt_io_error(text.as_mut_ptr()) };
+        // SAFETY: initialised by the call above.
+        assert!(!unsafe { crate::string::bytes(text.as_ptr()) }.is_empty());
+        // SAFETY: as above.
+        unsafe { msrt_io_error(text.as_mut_ptr()) };
+        // SAFETY: as above.
+        assert!(unsafe { crate::string::bytes(text.as_ptr()) }.is_empty());
+    }
 
     /// A line and its ending are one append: threads printing at once never split a line, which
     /// two separate writes allowed ("startedstarted\n\n").

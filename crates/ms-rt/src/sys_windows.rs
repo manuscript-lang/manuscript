@@ -220,16 +220,15 @@ pub unsafe fn isatty(fd: c_int) -> c_int {
 
 /// Writes all of `data` to a standard stream. Console output is converted to UTF-16 so text
 /// shows correctly whatever the code page; redirected output is the raw bytes.
-pub fn write_all(fd: c_int, data: &[u8]) {
+pub fn write_all(fd: c_int, data: &[u8]) -> Result<(), c_int> {
     let h = std_handle(fd);
     if h.is_null() || h as isize == -1 {
-        return;
+        return Err(6);
     }
     let mut mode = 0;
     // SAFETY: valid out pointer.
     if unsafe { GetConsoleMode(h, &mut mode) } != 0 {
-        write_console(h, data);
-        return;
+        return write_console(h, data);
     }
     let mut rest = data;
     while !rest.is_empty() {
@@ -238,15 +237,16 @@ pub fn write_all(fd: c_int, data: &[u8]) {
         // SAFETY: `rest` is readable for `n` bytes.
         let ok = unsafe { WriteFile(h, rest.as_ptr().cast(), n, &mut done, core::ptr::null_mut()) };
         if ok == 0 || done == 0 {
-            return;
+            return Err(std::io::Error::last_os_error().raw_os_error().unwrap_or(5));
         }
         rest = &rest[done as usize..];
     }
+    Ok(())
 }
 
 /// Converts UTF-8 to UTF-16 in chunks and writes it to a console. A multi-byte sequence cut at a
 /// chunk end is carried into the next chunk.
-fn write_console(h: HANDLE, data: &[u8]) {
+fn write_console(h: HANDLE, data: &[u8]) -> Result<(), c_int> {
     const CHUNK: usize = 4096;
     let mut wide = [0u16; CHUNK];
     let mut rest = data;
@@ -283,12 +283,13 @@ fn write_console(h: HANDLE, data: &[u8]) {
                 )
             };
             if ok == 0 || done == 0 {
-                return;
+                return Err(std::io::Error::last_os_error().raw_os_error().unwrap_or(5));
             }
             out = &out[done as usize..];
         }
         rest = &rest[take..];
     }
+    Ok(())
 }
 
 /// Reads an environment variable as bytes (without the NUL), if set.

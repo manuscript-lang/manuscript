@@ -5,6 +5,7 @@ import (
 	Duration, monotonic from "@std/time.ms",
 
 	msstd_io_redirect_null from "@std/internal/io.ms",
+	msrt_io_error,
 	msrt_io_flush,
 	msrt_io_write_bytes_stderr,
 	msrt_io_write_bytes_stdout,
@@ -248,17 +249,26 @@ export fn stdin() ReadStream[Bytes]:
 
 // Standard output, as text or bytes; the runtime's process-wide buffer is shared.
 // Writes are buffered until flushed or the process exits, a child starts, or something
-// is written to standard error. Closing does not flush: `stdout()` makes a fresh stream
-// each call, so a flush on close would turn every `stdout().write(...)` into a system
-// call.
+// is written to standard error. A failed drain (a full disk, a closed descriptor) is
+// returned by the next `write` or `flush`; a reader that went away (broken pipe) is not
+// an error. Closing does not flush: `stdout()` makes a fresh stream each call, so a
+// flush on close would turn every `stdout().write(...)` into a system call.
+fn stdout_result() Unit!:
+	message := msrt_io_error()
+	if message.length() > 0: return error(Error(message, kind: "EIO"))
+
+	return ok(unit)
+
 type StdoutText:
 	unused: Bool = false
 
 fn var StdoutText.write(value: String) Unit!:
 	msrt_io_write_stdout(value)
+	return stdout_result()
 
 fn var StdoutText.flush() Unit!:
 	msrt_io_flush()
+	return stdout_result()
 
 fn var StdoutText.close() Unit!:
 	return ok(unit)
@@ -268,9 +278,11 @@ type StdoutBytes:
 
 fn var StdoutBytes.write(value: Bytes) Unit!:
 	msrt_io_write_bytes_stdout(value)
+	return stdout_result()
 
 fn var StdoutBytes.flush() Unit!:
 	msrt_io_flush()
+	return stdout_result()
 
 fn var StdoutBytes.close() Unit!:
 	return ok(unit)

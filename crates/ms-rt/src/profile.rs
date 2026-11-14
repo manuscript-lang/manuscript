@@ -324,7 +324,7 @@ fn write_file(path_nul: &[u8], data: &[u8]) {
             0o644,
         );
         if fd >= 0 {
-            sys::write_all(fd, data);
+            let _ = sys::write_all(fd, data);
             sys::close(fd);
         }
     }

@@ -197,20 +197,22 @@ pub const O_CREAT: c_int = 0o100;
 #[cfg(not(target_os = "macos"))]
 pub const O_TRUNC: c_int = 0o1000;
 
-/// Writes all of `data` to `fd`, retrying on partial writes and EINTR.
-pub fn write_all(fd: c_int, mut data: &[u8]) {
+/// Writes all of `data` to `fd`, retrying on partial writes and EINTR. The error is the OS code.
+pub fn write_all(fd: c_int, mut data: &[u8]) -> Result<(), c_int> {
     while !data.is_empty() {
         // SAFETY: `data` is a valid readable slice for its length.
         let n = unsafe { write(fd, data.as_ptr().cast(), data.len()) };
         if n <= 0 {
-            // EINTR retries; any other error drops the output (nothing to report to).
-            if n < 0 && last_errno() == 4 {
+            // EINTR retries; any other error drops the rest of the output.
+            let errno = last_errno();
+            if n < 0 && errno == 4 {
                 continue;
             }
-            return;
+            return Err(if n < 0 { errno } else { 5 });
         }
         data = &data[n as usize..];
     }
+    Ok(())
 }
 
 unsafe extern "C" {

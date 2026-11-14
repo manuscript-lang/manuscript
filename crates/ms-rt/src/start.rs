@@ -52,8 +52,8 @@ fn stop_requested(sig: i32) {
 
 /// Reports a stop that cleanup did not survive, on standard error and in the fault record.
 fn incomplete_cleanup(message: &[u8]) {
-    sys::write_all(sys::STDERR, message);
-    sys::write_all(sys::STDERR, b"\n");
+    let _ = sys::write_all(sys::STDERR, message);
+    let _ = sys::write_all(sys::STDERR, b"\n");
     fault::write_record(&Record::new(FaultKind::IncompleteCleanup, message));
 }
 
