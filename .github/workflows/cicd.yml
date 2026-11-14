@@ -2,8 +2,8 @@ name: CI/CD
 
 # One workflow, four triggers:
 #   pull request  the Linux legs with programs built by Cranelift (the Debug backend); a pull request that touches
-#                 LLVM-related code (see .github/actions/rust-scope) also runs the LLVM corpus and release gates. The Linux legs, each one job (`ab`: the tests and the conformance corpus together); the language checks
-#                 and the book run inside linux-arm64. A green pull request auto-merges; there
+#                 LLVM-related code (see .github/actions/rust-scope) also runs the LLVM corpus and release gates. The Linux legs, each split into `tests` and `conformance` (four jobs); the language checks
+#                 and the book run inside linux-arm64 conformance. A green pull request auto-merges; there
 #                 is no merge queue, which built every stacked ref with the full matrix and restarted on
 #                 every outside merge.
 #   merge queue   the same as a pull request, in case a queue is configured again.
@@ -92,7 +92,7 @@ jobs:
   # `lint`: also format and clippy. `cranelift`: the part (`a` or `b`) that also runs the corpus and
   # fixtures with `MS_BACKEND=cranelift`, the backend Debug builds use; the gates run in the other part.
   # `gates: false` skips the gates. On pull requests linux-amd64 runs Cranelift in `conformance` and
-  # leaves the gates to linux-arm64, so each job stays under ten minutes.
+  # leaves the gates to linux-arm64, so each of the four jobs stays under ten minutes.
   # `docs`: also the language checks and the book (in the conformance part on pull requests); on main
   # the book is uploaded for Pages.
   # Failures shared with Linux are in tests/conformance/expect-fail.txt; platform-only ones go
@@ -106,10 +106,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Main and manual runs split every leg into `tests` (a) and `conformance` (b) on two runners for wall
-        # time. Pull requests run each Linux leg as one job (`ab`): the two halves repeat the setup and the
-        # build, so one runner does the same work in less total time and uses half the runners.
-        part: ${{ fromJSON((github.event_name == 'pull_request' || github.event_name == 'merge_group') && '["ab"]' || '["a", "b"]') }}
+        # Every leg is split into `tests` (a) and `conformance` (b) on two runners for wall time. Measured on
+        # pull requests: one job per leg (tests and corpus back to back) took 9.5 to 11 minutes, the split 7 to 10.
+        part: [a, b]
         leg: >-
           ${{ fromJSON(
           (github.event_name == 'pull_request' || github.event_name == 'merge_group') && '[{"os": "linux", "arch": "amd64", "runner": "ubuntu-24.04", "lint": true, "cranelift": "b", "gates": "false"}, {"os": "linux", "arch": "arm64", "runner": "ubuntu-24.04-arm", "docs": true, "gates_part": "a"}]' ||
