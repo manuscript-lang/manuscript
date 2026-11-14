@@ -230,6 +230,7 @@ impl Cx {
                 call_args.push(inner);
             }
             let r = b.call(callee, &call_args);
+            let r = own_result(&mut b, callee, r, s.ret);
             b.ret(Some(r));
             let f = b.into_func();
             methods.push(m.add_func(f));
@@ -624,4 +625,29 @@ fn build_builtin_compare(
     b.ret(Some(sign));
     let f = b.into_func();
     m.add_func(f)
+}
+
+/// A table entry's result is owned: a callee that returns a borrow of its receiver (`fn Dog.name()
+/// String: return self.n`) is copied before the entry returns it, as a method value's thunk does.
+fn own_result(
+    b: &mut FuncBuilder,
+    callee: ms_mir::ir::FuncId,
+    r: ms_mir::ir::Value,
+    want: MTy,
+) -> ms_mir::ir::Value {
+    let func = &b.m.funcs[callee.index()];
+    if !func.ret_borrowed {
+        return r;
+    }
+    let ret = func.ret;
+    if let TyKind::Alt(a) = b.m.types.kind(ret).clone()
+        && b.m.alts[a.index()].borrowed != 0
+    {
+        return b.alt_own(r, want);
+    }
+    if !b.m.needs_drop(ret) {
+        return r;
+    }
+    b.emit(Op::Clone, &[r], Imm::Int(1), Some(ret))
+        .expect("copy result")
 }
