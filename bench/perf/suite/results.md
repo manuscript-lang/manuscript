@@ -39,3 +39,16 @@ Of the 21 programs with a Rust version, Manuscript is ahead on 11 and within 1.1
 5. Smaller: `grep` 1.3x (input path), `sortrecords` 1.15x, `report` 1.09x, `sim` 1.09x.
 
 `regex`, `jsonrt` and `strings` compare against Go and Node because Rust's `std` has no regex or JSON; Rust sources exist only where `std` can do the job. `hashing` and `lz` use `List[Int]` for bytes in Manuscript, Go and Rust alike so all four languages move the same amount of memory. `workers` runs Node's CPU half on worker threads and its small tasks as promises on the main thread.
+
+## 2026-11-14: waiting on a local promise no longer sends a file read to the blocking pool
+
+Same machine and suite, min of 9, strace counts for `treegrep` on the 2005-file tree.
+
+`promise(fn: ..., Placement.Here)` created its waiter's token as remote, so a blocking call inside the work saw a waiter another thread might wake and handed every `read_file` to the pool (2 futex, 1 epoll_wait, 1 eventfd write per file). A promise started on this thread is now woken only from this thread, so a lone task reads inline. `read_file` also drops its second `fstat`.
+
+| Program | before (ms) | after (ms) | C (ms) |
+| --- | --- | --- | --- |
+| treegrep | 90 | 33 | 27 |
+| pargroup | 42 | 42 to 48 | 20 |
+
+`treegrep` futex calls 3997 to 1, epoll_wait 2000 to 0. `pargroup` keeps its pool hand-off by design (four stripe tasks overlap I/O); its remaining gap is compute: one thread takes 73 ms, four take 48 ms.

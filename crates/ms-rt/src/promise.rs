@@ -72,11 +72,16 @@ const DEFERRED: u8 = 16;
 const TIMED_OUT: u8 = 32;
 /// `stop` asked the work to cancel; if it returns without a result anyway, the promise reads as cancelled.
 const STOPPED: u8 = 64;
+/// The work runs in a task on the thread that created the promise and never elsewhere, so only
+/// this thread can complete it: a waiter's token is local, and a blocking call made by the work
+/// sees a waiter that nothing else can wake.
+const HERE: u8 = 128;
 
 // Each flag is its own bit: two sharing one made a held result look like deferred work.
 const _: () = assert!(
-    (WANT_CANCEL | REMOTE_WAKE | HELD | HELD_ERROR | DEFERRED | TIMED_OUT | STOPPED).count_ones()
-        == 7
+    (WANT_CANCEL | REMOTE_WAKE | HELD | HELD_ERROR | DEFERRED | TIMED_OUT | STOPPED | HERE)
+        .count_ones()
+        == 8
 );
 
 const NO_RESULT: Result = Result {
@@ -1262,6 +1267,9 @@ unsafe fn start_on(id: i64, work: *mut ms_rt_abi::Closure, mode: Mode) {
     t.closure[i] = work as usize;
     // SAFETY: called on the runtime thread by the running task.
     t.creator[i] = unsafe { task::lend_current() };
+    if mode == Mode::Here {
+        t.flags[i] |= HERE;
+    }
     let start = Start {
         id,
         closure: work as usize,
@@ -1431,6 +1439,11 @@ fn outcome(t: &Table, i: usize) -> Option<i64> {
     }
 }
 
+/// Whether the waiter of slot `i` may be woken from another thread.
+fn needs_remote_token(t: &Table, i: usize) -> bool {
+    t.flags[i] & REMOTE_WAKE != 0 || (t.closure[i] != 0 && t.flags[i] & HERE == 0)
+}
+
 /// Parks until promise `id` changes (an event, a completion, a timeout, a cancellation) and
 /// returns how the park ended. The slot is looked up again afterwards, so the caller does too.
 fn park_on(id: i64, timeout_ns: i64) -> u32 {
@@ -1439,7 +1452,7 @@ fn park_on(id: i64, timeout_ns: i64) -> u32 {
         return 0;
     };
     // The work may finish on another thread, so the scheduler must not call this a deadlock.
-    let flags = if t.closure[i] != 0 || t.flags[i] & REMOTE_WAKE != 0 {
+    let flags = if needs_remote_token(t, i) {
         task::TOKEN_REMOTE
     } else {
         0
@@ -1558,10 +1571,9 @@ pub unsafe extern "C-unwind" fn msrt_promise_wait_any(
         }
         // SAFETY: single scheduler per isolate; the token is ours until freed.
         unsafe {
-            let remote = list.iter().any(|&id| {
-                index(table(), id)
-                    .is_some_and(|i| table().closure[i] != 0 || table().flags[i] & REMOTE_WAKE != 0)
-            });
+            let remote = list
+                .iter()
+                .any(|&id| index(table(), id).is_some_and(|i| needs_remote_token(table(), i)));
             let token = task::msrt_token_new(if remote { task::TOKEN_REMOTE } else { 0 });
             let t = table();
             for &id in &list {
@@ -1827,6 +1839,18 @@ pub extern "C-unwind" fn msrt_promise_drop(id: i64) {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_promise_that_runs_here_wakes_its_waiter_locally() {
+        let mut t = super::Table::empty();
+        t.flags.push(0);
+        t.closure.push(1);
+        assert!(super::needs_remote_token(&t, 0));
+        t.flags[0] |= super::HERE;
+        assert!(!super::needs_remote_token(&t, 0));
+        t.flags[0] |= super::REMOTE_WAKE;
+        assert!(super::needs_remote_token(&t, 0));
+    }
+
     use super::*;
     use crate::desc::msrt_desc_int;
     use crate::testutil::lock;
