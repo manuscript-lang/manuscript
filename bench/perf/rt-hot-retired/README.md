@@ -19,19 +19,19 @@ Rerun: `ms build bench/perf/rt-hot-retired/hot.ms -o /tmp/hot && /tmp/hot` (prin
 
 ## Engineering suite against `main` at ef253e785 (maps held in memory, #3867)
 
-Output is byte-identical to `main` for all eight programs. Instructions from callgrind, millions.
+Output is byte-identical to `main` for all eight programs. Instructions from callgrind, millions; wall time is the best of seven runs on the shared VM (ms).
 
-| task | main | this change | change |
-| --- | --- | --- | --- |
-| logstats | 874.3 | 882.2 | +0.9% |
-| csvgroup | 2,485.3 | 2,545.5 | +2.4% |
-| wordfreq | 1,964.6 | 1,931.2 | -1.7% |
-| sortrecords | 2,010.5 | 2,036.5 | +1.3% |
-| grep | 244.2 | 246.2 | +0.8% |
-| jsonsum | 1,427.1 | 1,423.1 | -0.3% |
-| dedupe | 1,748.2 | 1,777.4 | +1.7% |
-| report | 1,761.6 | 1,752.6 | -0.5% |
+| task | main | this change | change | wall main | wall this change |
+| --- | --- | --- | --- | --- | --- |
+| logstats | 874.3 | 861.4 | -1.5% | 64.6 | 60.5 |
+| csvgroup | 2,485.3 | 2,480.0 | -0.2% | 164.6 | 162.9 |
+| wordfreq | 1,964.6 | 1,931.1 | -1.7% | 261.1 | 230.4 |
+| sortrecords | 2,010.5 | 2,008.8 | -0.1% | 286.8 | 288.1 |
+| grep | 244.2 | 245.4 | +0.5% | 34.6 | 34.8 |
+| jsonsum | 1,427.1 | 1,423.0 | -0.3% | 160.8 | 158.2 |
+| dedupe | 1,748.2 | 1,745.0 | -0.2% | 269.9 | 212.4 |
+| report | 1,761.6 | 1,733.0 | -1.6% | 162.5 | 160.1 |
 
-Keys of 16 bytes or more hash inline, keys of 16 to 32 bytes compare with four overlapping word loads, `Bytes` fixed-width readers inline, and a literal needle of two or more bytes calls the general `contains` directly.
+What is inlined without the hot crate: map and set lookups, `String.view`, `Bytes` fixed-width reads, `String.parse_int`, `String.scalar_at` of an inline ASCII string and a one-byte `contains` (all generated MIR, `rtinline.rs` and `rtstr.rs`); keys of 16 bytes or more hash inline, and keys of 16 to 32 bytes compare with four overlapping word loads. A literal `contains` needle of two or more bytes calls `msrt_string_contains_multi` directly. The runtime hashes an inline key from its words as they are (`hash_str`), which the compiler's probe computes the same way.
 
-Open gap, 0.8 to 2.4%, from callgrind's per-function diff against `main`: `String.parse_int` (sortrecords, csvgroup, logstats), `String.scalar_at` (logstats), `String.contains` (csvgroup) and `msrt_map_entry_ptrs` (dedupe, one step of a map `for` loop) were inlined into the caller by the hot crate and are calls now. Each call costs about the work it replaced, plus call setup; the callers lost 40 to 75M instructions and the calls cost 80 to 120M. The follow-up generates these as MIR.
+The one remaining difference is grep at +0.5% instructions (two more instructions per `contains` call in the caller, which sets up both strings for the call).

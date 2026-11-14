@@ -9,7 +9,7 @@
 use crate::alloc;
 use crate::desc::{needs_no_drop, slot_copy, slot_drop, slot_eq, slot_hash};
 use crate::fault;
-use crate::string::{self, bytes, equal, hash_bytes, hash_int};
+use crate::string::{self, equal, hash_int};
 use ms_rt_abi::record::FaultKind;
 use ms_rt_abi::*;
 
@@ -73,7 +73,7 @@ pub unsafe fn find_sw8(m: &MapVal, key: *const u8) -> *const u8 {
     // slot holds a live string.
     unsafe {
         let k = key as *const StrVal;
-        let h = hash_bytes(bytes(k)) | LIVE;
+        let h = string::hash_str(k) | LIVE;
         let index = index_of(m);
         let mut pos = (h as usize ^ (h >> 32) as usize) & m.mask;
         loop {
@@ -502,7 +502,7 @@ impl KeyOps for StrKey {
     #[inline(always)]
     unsafe fn hash(_: &TypeDesc, key: *const u8) -> u64 {
         // SAFETY: the key slot holds a live string.
-        unsafe { crate::string::hash_bytes(crate::string::bytes(key as *const StrVal)) }
+        unsafe { crate::string::hash_str(key as *const StrVal) }
     }
     #[inline(always)]
     unsafe fn eq(_: &TypeDesc, a: *const u8, b: *const u8) -> bool {
