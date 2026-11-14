@@ -399,6 +399,8 @@ impl<'a, 'm> Lower<'a, 'm> {
                 self.b.switch_to_block(join);
                 vec![self.b.block_params(join)[0]]
             }
+            Op::StrEqFast => self.string_eq_fast(inst),
+            Op::StrEqLit => self.string_eq_literal(inst),
             Op::StrAsciiLen => {
                 // The byte length of an inline string with no byte at or above 0x80, or of a
                 // string flagged ASCII; else -1.

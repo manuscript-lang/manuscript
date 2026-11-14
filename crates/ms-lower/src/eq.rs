@@ -75,8 +75,7 @@ pub(crate) fn element_eq(
         return Ok(b.bconst(true));
     }
     if t == MTy::STR {
-        let ext = runtime_fn(b.m, "msrt_string_eq", &[MTy::STR, MTy::STR], MTy::BOOL);
-        return Ok(b.call_rt(ext, &[x, y]));
+        return Ok(string_eq(b, x, y));
     }
     match b.m.types.kind(t) {
         TyKind::Obj(Native::BigInt, _) => {
@@ -449,4 +448,36 @@ fn hash_into(b: &mut FuncBuilder<'_>, t: MTy, v: Value, acc: Value) -> Value {
         }
         _ => acc,
     }
+}
+
+/// `x == y` for two strings. A literal of 1 to 8 bytes is compared inline; otherwise the backends
+/// decide equal and unequal pairs from the strings' words and only a byte comparison of two
+/// distinct blocks of one length calls the runtime.
+pub(crate) fn string_eq(b: &mut FuncBuilder<'_>, x: Value, y: Value) -> Value {
+    for (lit, other) in [(y, x), (x, y)] {
+        let Some(id) = b.str_lit_of(lit) else {
+            continue;
+        };
+        if ms_mir::ir::eq_lit_ok(b.m.strings[id.0 as usize].as_bytes()) {
+            return b.str_eq_lit(other, id);
+        }
+    }
+    let known = b.str_eq_fast(x, y);
+    let zero = b.iconst(0);
+    let decided = b.icmp(Cc::Ge, known, zero);
+    let (fast, slow, join) = (b.new_block(), b.new_block(), b.new_block());
+    let out = b.add_block_param(join, MTy::BOOL, Mode::Borrow);
+    b.br_if(decided, fast, &[], slow, &[]);
+    b.seal_block(fast);
+    b.seal_block(slow);
+    b.switch_to(fast);
+    let yes = b.icmp(Cc::Ne, known, zero);
+    b.br(join, &[yes]);
+    b.switch_to(slow);
+    let ext = runtime_fn(b.m, "msrt_string_eq", &[MTy::STR, MTy::STR], MTy::BOOL);
+    let same = b.call_rt(ext, &[x, y]);
+    b.br(join, &[same]);
+    b.seal_block(join);
+    b.switch_to(join);
+    out
 }

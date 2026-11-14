@@ -152,6 +152,8 @@ impl InstCheck<'_, '_> {
             | Op::StrAscii
             | Op::StrAsciiAt
             | Op::StrAsciiLen
+            | Op::StrEqFast
+            | Op::StrEqLit
             | Op::BytesPush => self.strings(),
             Op::ClosureNew
             | Op::ClosureCap
@@ -824,6 +826,22 @@ impl InstCheck<'_, '_> {
                 self.want(
                     self.t(0) == Ty::STR && self.res == Some(Ty::INT),
                     "str.ascii_len takes a string and yields int",
+                )
+            }
+            Op::StrEqFast => {
+                self.arity(2)?;
+                self.want(
+                    self.t(0) == Ty::STR && self.t(1) == Ty::STR && self.res == Some(Ty::INT),
+                    "str.eq_fast takes two strings and yields int (1 equal, 0 unequal, -1 unknown)",
+                )
+            }
+            Op::StrEqLit => {
+                self.arity(1)?;
+                self.want(
+                    self.t(0) == Ty::STR
+                        && self.res == Some(Ty::BOOL)
+                        && matches!(self.inst.imm, Imm::Str(id) if crate::ir::eq_lit_ok(self.m.strings[id.0 as usize].as_bytes())),
+                    "str.eq_lit takes a string and a literal of 1 to 8 bytes without NUL and yields bool",
                 )
             }
             Op::StrAscii => {

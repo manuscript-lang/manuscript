@@ -286,7 +286,7 @@ pub enum Op {
     // Optionals.
     OptSome, OptView, OptNone, OptIsSome, OptGet, OptUnwrap, OptUnbox, OptAddr,
     // Strings.
-    StrLen, StrByte, StrAscii, StrAsciiAt, StrAsciiLen,
+    StrLen, StrByte, StrAscii, StrAsciiAt, StrAsciiLen, StrEqFast, StrEqLit,
     // Byte builders.
     BytesPush,
     // Closures and interface views.
@@ -1066,3 +1066,8 @@ impl fmt::Display for Loc {
 mod module;
 pub use module::Boxing;
 mod ops;
+
+/// Whether `bytes` may be the literal of `str.eq_lit`: 1 to 8 bytes, no NUL.
+pub fn eq_lit_ok(bytes: &[u8]) -> bool {
+    (1..=8).contains(&bytes.len()) && !bytes.contains(&0)
+}

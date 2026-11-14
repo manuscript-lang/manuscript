@@ -307,6 +307,17 @@ unsafe fn walk_sub_scalars(s: *const StrVal, a: usize, b: usize) -> Option<StrVa
     }
 }
 
+/// C view: `msrt_string_eq(a: *const StrVal, b: *const StrVal) -> u8`
+///
+/// The compiler decides most comparisons inline (`str.eq_fast`, `str.eq_lit`) and calls this
+/// for two distinct blocks of one length.
+#[unsafe(no_mangle)]
+// ms: leaf pure domain=string
+pub unsafe extern "C-unwind" fn msrt_string_eq(a: *const StrVal, b: *const StrVal) -> u8 {
+    // SAFETY: caller passes live strings.
+    unsafe { equal(a, b) as u8 }
+}
+
 /// C view: `msrt_string_length(s: *const StrVal) -> i64`
 #[unsafe(no_mangle)]
 // ms: leaf pure domain=string

@@ -73,8 +73,7 @@ pub(crate) fn build_runner(m: &mut Module, tests: &[FuncId]) -> Result<FuncId, E
         let zero = b.iconst(0);
         let selected = b.list_get(args, zero);
         let lit = b.str_lit(&i.to_string());
-        let eq_fn = runtime_fn(b.m, "msrt_string_eq", &[MTy::STR, MTy::STR], MTy::BOOL);
-        let hit = b.call_rt(eq_fn, &[selected, lit]);
+        let hit = crate::eq::string_eq(&mut b, selected, lit);
         b.emit(Op::Drop, &[args], Imm::None, None);
         let (run, miss) = (b.new_block(), b.new_block());
         b.br_if(hit, run, &[], miss, &[]);
