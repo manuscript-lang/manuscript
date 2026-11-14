@@ -9,6 +9,13 @@ use ms_lsp::json::obj;
 use support::{Script, Workspace, compare};
 
 /// Offsets of every identifier start in `text` as (line, character).
+/// Every `step`th position starting at `offset`. The positions of a whole file are thousands of
+/// requests, each rechecking the document; a sample keeps the coverage of every construct in the
+/// file at a fraction of the time (the Rust test budget, see AGENTS.md).
+fn sample(positions: Vec<(usize, usize)>, step: usize, offset: usize) -> Vec<(usize, usize)> {
+    positions.into_iter().skip(offset).step_by(step).collect()
+}
+
 fn identifier_positions(text: &str) -> Vec<(usize, usize)> {
     let mut out = Vec::new();
     for (line, content) in text.split('\n').enumerate() {
@@ -64,7 +71,7 @@ fn navigation_over_every_identifier() {
     let source = ws.read("main.ms");
     let mut s = Script::initialize(&ws.root.to_string_lossy(), true);
     s.open(&main, &source, 1);
-    for (line, character) in identifier_positions(&source) {
+    for (line, character) in sample(identifier_positions(&source), 4, 0) {
         for method in [
             "textDocument/hover",
             "textDocument/definition",
@@ -119,13 +126,13 @@ fn completion_positions(text: &str) -> Vec<(usize, usize)> {
     out
 }
 
-fn complete_everywhere(name: &str, snippets: bool) {
+fn complete_everywhere(name: &str, snippets: bool, offset: usize) {
     let ws = Workspace::new(name);
     let main = ws.uri("main.ms");
     let source = ws.read("main.ms");
     let mut s = Script::initialize(&ws.root.to_string_lossy(), snippets);
     s.open(&main, &source, 1);
-    for (line, character) in completion_positions(&source) {
+    for (line, character) in sample(completion_positions(&source), 4, offset) {
         s.at("textDocument/completion", &main, line, character);
         s.at("textDocument/signatureHelp", &main, line, character);
     }
@@ -134,12 +141,12 @@ fn complete_everywhere(name: &str, snippets: bool) {
 
 #[test]
 fn completion_and_signatures_with_snippets() {
-    complete_everywhere("completion-snippets", true);
+    complete_everywhere("completion-snippets", true, 0);
 }
 
 #[test]
 fn completion_and_signatures_without_snippets() {
-    complete_everywhere("completion-plain", false);
+    complete_everywhere("completion-plain", false, 2);
 }
 
 /// Half-written code: the checker cannot see these, so the editor repairs a

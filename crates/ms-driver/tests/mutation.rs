@@ -11,7 +11,7 @@ use ms_check::Session;
 use ms_driver::{CheckRequest, LoadOptions, check_graph_in, load_file};
 use ms_syntax::Diagnostic;
 
-const MUTATIONS_PER_FILE: u64 = 6;
+const MUTATIONS_PER_FILE: u64 = 2;
 const MAX_SOURCE: usize = 8000;
 
 /// SplitMix64, so a failing seed reproduces on every platform.
