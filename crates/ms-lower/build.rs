@@ -156,8 +156,11 @@ fn main() {
                     .or_else(|| f.strip_prefix("takes:"))
             })
             .collect();
+        // A function that writes through a `*mut` argument (an out slot) does not only read
+        // memory, whatever else it is declared: `memory(read)` would let LLVM drop the call.
+        let pure = bit("pure") & u8::from(!line.contains("*mut"));
         let flags = bit("leaf")
-            | bit("pure") << 1
+            | pure << 1
             | bit("fresh") << 2
             | bit("handle") << 3
             | bit("spawns") << 4
