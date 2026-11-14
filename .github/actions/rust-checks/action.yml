@@ -114,12 +114,17 @@ runs:
         # A pull request that touches no LLVM-specific code skips the tests of the LLVM backend (the
         # `llvm`, `llvm_direct` and `llvm_direct_data` test modules and the `ms-mir-llvm` crate); main and
         # LLVM pull requests run them.
-        filter=()
+        skip=()
         if [ "$LLVM" != true ]; then
-          filter=(-E 'not (package(ms-mir-llvm) | test(/^llvm::/) | test(/^llvm_direct(_data)?::/))')
+          skip+=('package(ms-mir-llvm)' 'test(/^llvm::/)' 'test(/^llvm_direct(_data)?::/)')
         fi
         if [ "$DOCS" = false ]; then
-          filter=(-E "not (test(/^doc_examples::/)$([ "$LLVM" != true ] && echo ' | package(ms-mir-llvm) | test(/^llvm::/) | test(/^llvm_direct(_data)?::/)'))")
+          skip+=('test(/^doc_examples::/)')
+        fi
+        filter=()
+        if [ "${#skip[@]}" -gt 0 ]; then
+          expr="not ($(IFS='|'; echo "${skip[*]}"))"
+          filter=(-E "$expr")
         fi
         cargo nextest run --workspace --locked --no-fail-fast "${filter[@]}"
         cargo test --workspace --doc --locked
