@@ -30,7 +30,7 @@ pub fn run_where(m: &mut Module, select: impl Fn(&Func) -> bool) -> bool {
         if m.funcs[fi].blocks.is_empty() || !select(&m.funcs[fi]) {
             continue;
         }
-        let stand_in = Func::new("", Vec::new(), crate::types::Ty::UNIT);
+        let stand_in = m.funcs[fi].signature_stand_in();
         let mut f = std::mem::replace(&mut m.funcs[fi], stand_in);
         changed |= function(m, &mut f);
         m.funcs[fi] = f;
