@@ -1,7 +1,8 @@
 name: CI/CD
 
 # One workflow, four triggers:
-#   pull request  the Linux legs, each split into `tests` and `conformance` (four jobs); the language checks
+#   pull request  the Linux legs with programs built by Cranelift (the Debug backend); a pull request that touches
+#                 LLVM-related code (see .github/actions/rust-scope) also runs the LLVM corpus and release gates. The Linux legs, each split into `tests` and `conformance` (four jobs); the language checks
 #                 and the book run inside linux-arm64 conformance. A green pull request auto-merges; there
 #                 is no merge queue, which built every stacked ref with the full matrix and restarted on
 #                 every outside merge.
@@ -152,6 +153,7 @@ jobs:
           cranelift: ${{ matrix.leg.cranelift || '' }}
           gates: ${{ matrix.leg.gates || 'true' }}
           gates-part: ${{ matrix.leg.gates_part || '' }}
+          llvm: ${{ steps.scope.outputs.llvm }}
       - uses: ./.github/actions/sccache-save
         # Part a builds the whole workspace, a superset of part b, so one save per leg keeps the cache count at six.
         if: ${{ !cancelled() && matrix.part == 'a' }}

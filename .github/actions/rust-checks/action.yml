@@ -11,6 +11,9 @@ description: The Rust checks for one platform (pull requests on Linux, pushes to
 #           a (build, nextest, doc tests) outlasts part b by several minutes on every leg without Cranelift.
 
 inputs:
+  llvm:
+    description: "'false' on a pull request that touches no LLVM-related code: the corpus runs once with Cranelift (every phase) and the release gates are skipped. Main and manual runs pass 'true'."
+    default: 'true'
   os:
     description: linux, darwin or windows.
     required: true
@@ -44,12 +47,13 @@ runs:
         gates_part=b
         if [ "$cranelift" = b ]; then gates_part=a; fi
         if [ -n '${{ inputs.gates-part }}' ]; then gates_part='${{ inputs.gates-part }}'; fi
-        if [ '${{ inputs.gates }}' = false ]; then gates_part=none; fi
+        if [ '${{ inputs.gates }}' = false ] || [ '${{ inputs.llvm }}' = false ]; then gates_part=none; fi
         {
           echo "UNIT=$([[ $part == *a* ]] && echo true || echo false)"
           echo "CONFORM=$([[ $part == *b* ]] && echo true || echo false)"
           echo "GATES=$([[ $part == *$gates_part* ]] && echo true || echo false)"
-          echo "CRANELIFT=$([[ -n $cranelift && $part == *$cranelift* ]] && echo true || echo false)"
+          echo "CRANELIFT=$([[ -n $cranelift && $part == *$cranelift* && '${{ inputs.llvm }}' != false ]] && echo true || echo false)"
+          echo "LLVM=${{ inputs.llvm }}"
         } >> "$GITHUB_ENV"
     - name: Keep native test artifacts in runner storage
       shell: bash
@@ -158,9 +162,17 @@ runs:
       shell: bash
       run: MS=target/debug/ms target/debug/ms run tools/scaling-check.ms
     - name: Conformance corpus (LLVM) and leaks
-      if: env.CONFORM == 'true'
+      if: env.CONFORM == 'true' && env.LLVM == 'true'
       env:
         CONFORM_LEAKS: '1'
+      shell: bash
+      run: target/debug/ms run tools/conform.ms
+    # A pull request that touches no LLVM-related code runs the whole corpus once, built by Cranelift.
+    - name: Conformance corpus (Cranelift, every phase)
+      if: env.CONFORM == 'true' && env.LLVM != 'true'
+      env:
+        MS_BACKEND: cranelift
+        CONFORM_ALL_PHASES: '1'
       shell: bash
       run: target/debug/ms run tools/conform.ms
     - name: Conformance corpus (Cranelift)
