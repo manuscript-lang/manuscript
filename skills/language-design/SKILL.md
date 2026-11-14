@@ -48,3 +48,4 @@ Chinmay's design preferences for languages, standard libraries, runtimes, compil
 - Do not expose internals (stdlib externs live in `stdlib/internal/`), and ship one public interface per concern rather than several overlapping ones.
 - A proposal starts from what exists today and first principles (what problem, is this the most effective fix), not a clean-slate redesign; tighten it, then run the skeptic review. A fix for one API's ergonomics may belong in the language instead.
 - `ms fmt` is zero-config: tune the defaults, never add a config file.
+- A stdlib function with more than three parameters takes an options record; three or fewer stay positional. A closure capture truly borrows or is a compile error, never a hidden copy. Callbacks may change the element they receive (`fn(var T)`).
