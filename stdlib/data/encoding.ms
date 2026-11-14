@@ -7,8 +7,11 @@ import (
 	msstd_encoding_ascii85_encode,
 	msstd_encoding_base32_decode,
 	msstd_encoding_base32_encode,
+	msstd_encoding_base64_decode,
 	msstd_encoding_base64_decode_unpadded,
-	msstd_encoding_base64_encode_unpadded from "@std/internal/encoding.ms",
+	msstd_encoding_base64_encode_unpadded,
+	msstd_encoding_hex_decode,
+	msstd_encoding_hex_encode from "@std/internal/encoding.ms",
 )
 
 // Encodes unframed ASCII85; complete groups of four zero bytes become `z`. No Adobe
@@ -69,74 +72,7 @@ export fn base64_decode(
 		url_safe,
 		max_bytes,
 	)
-
-	limit := budget(max_bytes)
-	if limit < 0: return error(Error("encoding: invalid input", kind: "EINVAL"))
-
-	bytes := text.to_bytes().values()
-	length := bytes.length()
-	var padding = 0
-	var tail = length
-
-	while tail > 0 and bytes[tail - 1] == 61:
-		padding += 1
-		tail -= 1
-
-	for byte in bytes:
-		if byte == 9 or byte == 10 or byte == 13 or byte == 32: return error(
-			encoding_invalid_data()
-		)
-	if padding > 2 or length % 4 != 0: return error(encoding_invalid_data())
-	if length / 4 * 3 - padding > limit: return error(
-		Error("encoding: limit exceeded", kind: "EOVERFLOW")
-	)
-
-	var out = BytesBuilder()
-	quads := length / 4
-
-	for quad in 0..quads:
-		var pad = 0
-		if quad + 1 == quads: pad = padding
-
-		var value = 0
-
-		for offset in 0..4:
-			byte := bytes[quad * 4 + offset]
-			var digit = 0
-
-			if offset >= 4 - pad:
-				if byte != 61: return error(encoding_invalid_data())
-			else:
-				digit = base64_digit(byte.to_int(), url_safe)
-				if digit < 0: return error(encoding_invalid_data())
-
-			value = value * 64 + digit
-
-		if pad == 1 and value % 256 != 0: return error(encoding_invalid_data())
-		if pad == 2 and value % 65536 != 0: return error(encoding_invalid_data())
-
-		out.append(byte_of(value / 65536 % 256))
-		if pad < 2: out.append(byte_of(value / 256 % 256))
-		if pad < 1: out.append(byte_of(value % 256))
-
-	return ok(out.build())
-
-// Value of a Base64 digit in the chosen alphabet, or -1.
-fn base64_digit(byte: Int, url_safe: Bool) Int:
-	if byte >= 65 and byte <= 90: return byte - 65
-	if byte >= 97 and byte <= 122: return byte - 71
-	if byte >= 48 and byte <= 57: return byte + 4
-
-	if url_safe:
-		if byte == 45: return 62
-		if byte == 95: return 63
-
-		return -1
-
-	if byte == 43: return 62
-	if byte == 47: return 63
-
-	return -1
+	return msstd_encoding_base64_decode(text, url_safe, max_bytes)
 
 // The budget as a count, with no budget as a very large one and a negative budget as
 // -1.
@@ -160,64 +96,11 @@ export fn base64_encode(data: Bytes, url_safe: Bool = false, padded: Bool = true
 
 // Decodes hexadecimal text. `max_bytes` bounds decoded output when supplied.
 export fn hex_decode(text: String, max_bytes: Int?) Bytes!:
-	limit := budget(max_bytes)
-	if limit < 0: return error(Error("encoding: invalid input", kind: "EINVAL"))
-
-	length := text.byte_length()
-	if length / 2 > limit: return error(
-		Error("encoding: limit exceeded", kind: "EOVERFLOW")
-	)
-	if length % 2 != 0: return error(encoding_invalid_data())
-
-	digits := text.to_bytes().values()
-	var out = BytesBuilder()
-
-	for pair in 0..(length / 2):
-		high := hex_digit(digits[pair * 2].to_int())
-		low := hex_digit(digits[pair * 2 + 1].to_int())
-		if high < 0 or low < 0: return error(encoding_invalid_data())
-
-		out.append(byte_of(high * 16 + low))
-
-	return ok(out.build())
-
-// Value of a hexadecimal digit of either case, or -1.
-fn hex_digit(byte: Int) Int:
-	if byte >= 48 and byte <= 57: return byte - 48
-	if byte >= 97 and byte <= 102: return byte - 87
-	if byte >= 65 and byte <= 70: return byte - 55
-
-	return -1
+	return msstd_encoding_hex_decode(text, max_bytes)
 
 // Encodes each byte as two lowercase hexadecimal digits.
 export fn hex_encode(data: Bytes) String:
-	length := data.length()
-	if length == 0: return ""
-
-	digits: List[UInt8] := [
-		48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 97, 98, 99, 100, 101, 102
-	]
-	bytes := data.values()
-	var result = StringBuilder()
-	var index = 0
-
-	while index < length:
-		// Keep the temporary ASCII output bounded to 16 KiB.
-		end := if length - index > 8192: index + 8192 else: length
-		var out = List[UInt8](reserve: (end - index) * 2)
-
-		for pos in index..end:
-			n := bytes[pos].to_int()
-			out.append(digits[n / 16])
-			out.append(digits[n % 16])
-
-		text := Bytes(out).decode_utf8().get("")
-		if index == 0 and end == length: return text
-
-		result.append(text)
-		index = end
-
-	return result.build()
+	return msstd_encoding_hex_encode(data)
 
 // Encodes text as UTF-16 code units, little-endian unless `little_endian` is false.
 // No byte order mark is written.

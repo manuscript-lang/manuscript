@@ -31,6 +31,18 @@ native! {
     }
 
     // ms: leaf
+    fn msstd_encoding_hex_encode(data: &[u8]) -> String {
+        super::hex_encode(data)
+    }
+
+    // ms: leaf
+    fn msstd_encoding_hex_decode(
+        text: &str, has_max: Has, max: i64,
+    ) -> Result<Vec<u8>, Fail> {
+        super::hex_decode(text, has_max.then_some(max))
+    }
+
+    // ms: leaf
     fn msstd_encoding_base32_encode(data: &[u8], hex_alphabet: bool, padded: bool) -> String {
         super::base32_encode(data, hex_alphabet, padded)
     }

@@ -1,6 +1,9 @@
 //! Base32 (RFC 4648, both alphabets, padded or not) and unpadded Base64, strict like the padded
 //! Base64 in `mod.rs`: no whitespace, canonical length, zero trailing bits, padding only at the end.
-use super::{STD, STD_REVERSE, URL, URL_REVERSE, limit, reverse_alphabet};
+use super::{
+    STD, STD_REVERSE, URL, URL_REVERSE, base64_decode_symbols, base64_encode_with, limit,
+    reverse_alphabet,
+};
 use alloc::{string::String, vec::Vec};
 use ms_rt::ffi::Fail;
 
@@ -93,8 +96,55 @@ fn decode(
     Ok(out)
 }
 
+/// Lowercase hexadecimal, two digits per byte.
+pub fn hex_encode(data: &[u8]) -> String {
+    const DIGITS: &[u8; 16] = b"0123456789abcdef";
+    let mut out = alloc::vec![0u8; data.len() * 2];
+    for ([high, low], &byte) in out.as_chunks_mut::<2>().0.iter_mut().zip(data) {
+        *high = DIGITS[usize::from(byte >> 4)];
+        *low = DIGITS[usize::from(byte & 15)];
+    }
+    // Hexadecimal digits are ASCII, so this validation cannot fail.
+    String::from_utf8(out).unwrap_or_default()
+}
+
+/// Hexadecimal of either case. The budget is checked before the length parity and the digits.
+pub fn hex_decode(text: &str, max_bytes: Option<i64>) -> Result<Vec<u8>, Fail> {
+    static REVERSE: [u8; 256] = {
+        let mut table = [0xff; 256];
+        let mut i = 0;
+        while i < 16 {
+            let digit = b"0123456789abcdef"[i];
+            table[digit as usize] = i as u8;
+            table[digit.to_ascii_uppercase() as usize] = i as u8;
+            i += 1;
+        }
+        table
+    };
+    let max = limit(max_bytes)?;
+    let t = text.as_bytes();
+    if t.len() / 2 > max {
+        return Err(Fail::LimitExceeded);
+    }
+    if !t.len().is_multiple_of(2) {
+        return Err(Fail::InvalidData);
+    }
+    let mut out = alloc::vec![0u8; t.len() / 2];
+    // Bad digits map to 0xff, which ORs into `bad` above 15 instead of branching per byte.
+    let mut bad = 0u8;
+    for (byte, [first, second]) in out.iter_mut().zip(t.as_chunks::<2>().0) {
+        let (high, low) = (REVERSE[usize::from(*first)], REVERSE[usize::from(*second)]);
+        bad |= high | low;
+        *byte = high << 4 | low;
+    }
+    if bad > 15 {
+        return Err(Fail::InvalidData);
+    }
+    Ok(out)
+}
+
 pub fn base64_encode_unpadded(data: &[u8], url_safe: bool) -> String {
-    encode(data, if url_safe { URL } else { STD }, 6, 4, false)
+    base64_encode_with(data, if url_safe { URL } else { STD }, false)
 }
 
 pub fn base64_decode_unpadded(
@@ -116,7 +166,7 @@ pub fn base64_decode_unpadded(
         return Err(Fail::LimitExceeded);
     }
     let rev = if url_safe { &URL_REVERSE } else { &STD_REVERSE };
-    decode(text, rev, 6, 4, false, max_bytes)
+    base64_decode_symbols(text.as_bytes(), rev, false)
 }
 
 pub fn base32_encode(data: &[u8], hex_alphabet: bool, padded: bool) -> String {
@@ -222,6 +272,27 @@ mod tests {
                 assert_eq!(base64_decode_unpadded(&e, url, None).unwrap(), raw);
             }
         }
+    }
+
+    #[test]
+    fn hex_round_trips_and_reports_errors_in_contract_order() {
+        let raw: Vec<u8> = (0..=255).collect();
+        let text = hex_encode(&raw);
+        assert_eq!(&text[..8], "00010203");
+        assert_eq!(hex_decode(&text, None).unwrap(), raw);
+        assert_eq!(hex_decode(&text.to_uppercase(), None).unwrap(), raw);
+        assert_eq!(hex_decode("", None).unwrap(), b"");
+        // The budget is checked before parity and digits; parity before digits.
+        assert_eq!(hex_decode("zz", Some(0)), Err(Fail::LimitExceeded));
+        assert_eq!(hex_decode("abc", Some(1)), Err(Fail::InvalidData));
+        assert_eq!(hex_decode("zz", None), Err(Fail::InvalidData));
+        assert_eq!(hex_decode("0g", None), Err(Fail::InvalidData));
+        assert_eq!(hex_decode("00 0", None), Err(Fail::InvalidData));
+        assert_eq!(hex_decode("00", Some(-1)), Err(Fail::InvalidInput));
+        // A bad digit anywhere in a long input is found.
+        let mut long = hex_encode(&[7; 1000]);
+        long.replace_range(1500..1501, "x");
+        assert_eq!(hex_decode(&long, None), Err(Fail::InvalidData));
     }
 
     #[test]

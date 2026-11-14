@@ -89,3 +89,9 @@ python3 bench/perf/codec-encoding/rss.py /tmp/codec-results /tmp/codec-baseline 
 ```
 
 The probe and C source retain decode operations for validation-path controls, but the committed timing matrix filters to the changed encoders. Benchmarks require Linux CPU affinity and Python3; no third-party Python libraries are used. Checksum or output mismatches fail the runner. Current results are from one shared VM and are evidence for these implementations, not universal platform guarantees.
+
+## 2026-11-14: Base64 and hex run in Rust natives
+
+Padded and unpadded Base64 and hex encode and decode now call small Rust natives (`crates/ms-std-core/src/encoding`) that write into a pre-sized buffer a group at a time and find bad digits with one OR-reduction instead of a branch per byte. The padded Base64 decoder was pure Manuscript before; it now shares the native with the unpadded one. Error kinds and their precedence (budget, then parity or padding, then digits) are unchanged and covered by the existing fixtures plus a hex unit test.
+
+Measured on 8 MiB of text-like bytes, Release LLVM build, same shared VM, best of 7 per run and three runs each (`/tmp` probe, not committed): before 219/143-164/357-503/205-277 MB/s, after 981-990/807-811/774-792/1152-1262 MB/s for Base64 encode, Base64 decode, hex encode, hex decode. Go 1.24 `encoding/base64` and `encoding/hex` on the same machine and input, best of 7: 489/634/498/486 MB/s. A differential of 700 random valid and invalid inputs against Python's `base64` and `bytes.fromhex` matched exactly.
