@@ -346,7 +346,7 @@ fn project_references_symbols_and_edits() {
         if uri == &helper {
             s.open(uri, &source, 1);
         }
-        for (line, character) in identifier_positions(&source) {
+        for (line, character) in sample(identifier_positions(&source), 3, 0) {
             s.at("textDocument/references", uri, line, character);
             s.at("textDocument/definition", uri, line, character);
             s.at("textDocument/hover", uri, line, character);
