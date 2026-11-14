@@ -17,6 +17,6 @@ Compare numbers only from the same machine; treat them as a profiling guide.
 |---|---:|---:|---:|---|
 | `fields()` of 10.7 MB | 87, then 40 to 57 | 30 | 2.9x, then 1.3 to 1.9x | the native built a Rust `String` per field, then copied each into a runtime string; it now copies once into a list sized up front |
 | `trim_chars("w")` per word | 115 | 8 | 14x | open: the stdlib loop reads windows of scalars as lists; a rewrite over `scalar_values()` was no faster, so it needs a native |
-| `sorted(a.compare(b))` of 1M words | 550 | 337 | 1.6x | open |
+| `sorted(a.compare(b))` of 1M words | 550, then 270 to 330 | 337 | 1.6x, then 0.8 to 1.0x | two inline strings (up to 15 bytes) compare as two byte-swapped 128-bit words instead of a `memcmp` call; `a < b` 17 to 10 ms |
 | `Float.to_string` | 150 | 110 | 1.3x | not a gap (an earlier 250 was noise) |
 | `for c in s.chars(): s += c.length()` | 91 | 9 | 10x | the loop builds a string per non-compared character; comparing against a literal stays a code point (20 ms) |
