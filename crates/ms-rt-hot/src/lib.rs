@@ -308,41 +308,6 @@ pub unsafe extern "C-unwind" fn msrt_string_scalar_at(
     }
 }
 
-unsafe extern "C-unwind" {
-    /// The scalar count of text that is not known to be short ASCII, in the archive.
-    fn msrt_string_scalar_count_slow(s: usize) -> i64;
-}
-
-/// Scalar count: the byte length for ASCII text (flagged, or short enough to check here), else
-/// the runtime's count.
-#[inline(always)]
-unsafe fn scalar_count(s: usize) -> i64 {
-    // SAFETY: caller passes a live string.
-    unsafe {
-        let sv = s as *const StrVal;
-        if short_ascii(sv) {
-            return (*sv).len() as i64;
-        }
-        msrt_string_scalar_count_slow(s)
-    }
-}
-
-/// C view: `msrt_string_length(s: *const StrVal) -> i64`
-#[unsafe(no_mangle)]
-// ms: leaf pure domain=string
-pub unsafe extern "C-unwind" fn msrt_string_length(s: usize) -> i64 {
-    // SAFETY: caller passes a live string.
-    unsafe { scalar_count(s) }
-}
-
-/// C view: `msrt_string_scalar_length(s: *const StrVal) -> i64`
-#[unsafe(no_mangle)]
-// ms: leaf pure domain=string
-pub unsafe extern "C-unwind" fn msrt_string_scalar_length(s: usize) -> i64 {
-    // SAFETY: caller passes a live string.
-    unsafe { scalar_count(s) }
-}
-
 /// C view: `msrt_string_starts_with(a: *const StrVal, v: *const StrVal) -> u8`
 #[unsafe(no_mangle)]
 // ms: leaf pure domain=string

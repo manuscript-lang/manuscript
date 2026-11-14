@@ -175,7 +175,7 @@ impl<'a> FnLower<'a> {
         }
         if str_recv && (native == "length" || native == "scalar_length") {
             let r = self.borrow(recv);
-            let n = self.b.str_len(r);
+            let n = self.scalar_len(r)?;
             return Ok(Val { v: n, own: false });
         }
         if let Some((_, sym, ret)) = PLAIN_STRING

@@ -1488,6 +1488,7 @@ impl<'a> Fa<'a> {
             | Op::ListGetNn
             | Op::ListGetU
             | Op::StrLen
+            | Op::StrAsciiLen
             | Op::Conv
             | Op::AltTag => self.other_ops(inst, env, ty, top),
             _ => Some(top),
@@ -1721,6 +1722,10 @@ impl<'a> Fa<'a> {
                 _ => top,
             },
             Op::StrLen => Itv { lo: 0, hi: LEN_MAX },
+            Op::StrAsciiLen => Itv {
+                lo: -1,
+                hi: LEN_MAX,
+            },
             Op::AltTag => match self.m.types.kind(self.f.ty(inst.args[0])) {
                 TyKind::Alt(a) => {
                     let n = self.m.alts[a.index()].cases.len() as i64;

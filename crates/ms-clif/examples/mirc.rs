@@ -3,7 +3,7 @@
 //! Compiles a MIR text file to a native executable. Without `--rt` the C test
 //! runtime used by the backend tests is built and linked.
 
-use ms_clif::{Options, compile_parts};
+use ms_clif::{Options, compile};
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -20,12 +20,6 @@ fn main() {
             "--no-poll" => opts.poll = false,
             "--dump-clif" => opts.dump_clif = true,
             "--no-opt" => optimize = false,
-            "--llvm" => {
-                opts.llvm = match args.next().as_deref() {
-                    Some("s") => Some("s"),
-                    _ => Some("3"),
-                }
-            }
             "--opt" => {
                 opts.opt_level = match args.next().as_deref() {
                     Some("none") => "none",
@@ -47,19 +41,10 @@ fn main() {
     if optimize {
         ms_mir::opt::optimize(&mut m, ms_mir::opt::Level::Speed, true);
     }
-    let parts = compile_parts(&m, &opts).unwrap_or_else(|e| panic!("{e}"));
+    let object = compile(&m, &opts).unwrap_or_else(|e| panic!("{e}"));
     let objp = out.with_extension("o");
-    std::fs::write(&objp, parts.object).expect("write object");
-    let llvm_obj: Vec<PathBuf> = parts
-        .llvm
-        .iter()
-        .enumerate()
-        .map(|(k, bytes)| {
-            let p = out.with_extension(format!("llvm{k}.o"));
-            std::fs::write(&p, bytes).expect("write LLVM object");
-            p
-        })
-        .collect();
+    std::fs::write(&objp, object).expect("write object");
+    let llvm_obj: Vec<PathBuf> = Vec::new();
     let cc_obj = |name: &str| {
         let p = out.with_file_name(format!("{name}.o"));
         let c = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(format!("tests/rt/{name}.c"));

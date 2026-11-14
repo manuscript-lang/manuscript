@@ -412,6 +412,10 @@ impl<'m> FuncBuilder<'m> {
     pub fn str_len(&mut self, s: Value) -> Value {
         self.val(Op::StrLen, &[s], Imm::None, Ty::INT)
     }
+    /// `str.ascii_len`: the length of a string known to be all ASCII, else -1.
+    pub fn str_ascii_len(&mut self, s: Value) -> Value {
+        self.val(Op::StrAsciiLen, &[s], Imm::None, Ty::INT)
+    }
     /// `list.get` (negative indexes count from the end).
     pub fn list_get(&mut self, l: Value, i: Value) -> Value {
         let e = self.m.seq_elem(self.ty(l)).expect("list operand");

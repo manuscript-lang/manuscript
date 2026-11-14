@@ -184,17 +184,6 @@ pub struct Gen<'m> {
     unit_blocks: HashMap<(ms_mir::types::AltId, usize), DataId>,
     /// The `ms.tables` blob, once emitted.
     pub tables: Option<DataId>,
-    /// Symbol the LLVM-built code's table addresses are relative to.
-    pub anchor: Option<FuncId>,
-}
-
-/// A source function compiled by LLVM.
-pub struct LlvmFn {
-    pub id: FuncId,
-    pub symbol: String,
-    pub name: String,
-    pub file: u32,
-    pub line: u32,
 }
 
 impl Gen<'_> {
@@ -229,10 +218,6 @@ pub struct FuncDbg {
     pub ranges: Vec<(u32, u32, u32, u32)>,
     /// Exact known source spans `(start, end, file, line)`; gaps stay unmapped in DWARF.
     pub dwarf_ranges: Vec<(u32, u32, u32, u32)>,
-    /// Offset of the function from [`ms_mir_llvm::TEXT_ANCHOR`]; zero when Cranelift built it
-    /// (its own symbol is the table's target).
-    pub text: u64,
-    pub reloc: Option<FuncId>,
 }
 
 impl<'m> Gen<'m> {
@@ -565,7 +550,7 @@ impl<'m> Gen<'m> {
     }
 }
 
-pub fn compile(m: &Module, opts: &Options) -> Result<crate::Parts, Error> {
+pub fn compile(m: &Module, opts: &Options) -> Result<Vec<u8>, Error> {
     let isa_builder = cranelift_native::builder().map_err(|e| e.to_string())?;
     compile_with_isa(m, opts, isa_builder)
 }
@@ -585,7 +570,7 @@ fn compile_with_isa(
     m: &Module,
     opts: &Options,
     isa_builder: cranelift_codegen::isa::Builder,
-) -> Result<crate::Parts, Error> {
+) -> Result<Vec<u8>, Error> {
     let arm64_coff = windows_arm64(isa_builder.triple());
     let mut flags = settings::builder();
     flags
@@ -665,13 +650,11 @@ fn compile_with_isa(
         tables: None,
         desc_ids: HashMap::new(),
         unit_blocks: HashMap::new(),
-        anchor: None,
     };
     let mut ctx = Context::new();
     let mut fctx = FunctionBuilderContext::new();
-    let llvm_objects = match opts.llvm {
-        Some(level) => build_llvm(&mut g, level)?,
-        None => {
+    {
+        {
             for (i, f) in m.funcs.iter().enumerate() {
                 let sig = g.func_sig(f);
                 let exported = f.linkage == ms_mir::ir::Linkage::Export
@@ -781,9 +764,8 @@ fn compile_with_isa(
                 crate::slotshare::share(&mut ctx.func, &temps);
                 define(&mut g, &mut ctx, id, "glue")?;
             }
-            Vec::new()
         }
-    };
+    }
     let tables = if g.m.entry.is_some() {
         Some(emit_tables(&mut g)?)
     } else {
@@ -793,110 +775,10 @@ fn compile_with_isa(
     let endian = g.module.isa().endianness();
     let mut product = g.module.finish();
     if let Some(t) = tables {
-        relocate_tables(&mut product, &g.dbg, g.anchor, &t);
-    }
-    if !llvm_objects.is_empty() {
-        return Ok(crate::Parts {
-            object: product.emit().map_err(|e| Error(e.to_string()))?,
-            llvm: llvm_objects
-                .iter()
-                .map(crate::llvm_obj::LlvmObject::bytes)
-                .collect::<Result<_, _>>()?,
-        });
+        relocate_tables(&mut product, &g.dbg, &t);
     }
     crate::dwarf::emit(&mut product, m, &g.dbg, endian)?;
-    Ok(crate::Parts {
-        object: product.emit().map_err(|e| Error(e.to_string()))?,
-        llvm: Vec::new(),
-    })
-}
-
-/// Release builds: has `ms_mir_llvm` write the program, compiles its modules with LLVM, and sets up
-/// the fault and profile tables for the code they hold.
-fn build_llvm(g: &mut Gen, level: &str) -> Result<Vec<crate::llvm_obj::LlvmObject>, Error> {
-    let triple = g.module.isa().triple().clone();
-    let program = ms_mir_llvm::emit(
-        g.m,
-        &ms_mir_llvm::Options {
-            checks: g.opts.checks,
-            heap_facts: g.opts.build.heap_facts,
-            units: g.opts.build.llvm_units,
-            triple: llvm_triple(&triple),
-            anchor: internalize(&triple),
-        },
-    )
-    .map_err(|e| Error(e.0))?;
-    if program.anchored {
-        let sig = g.module.make_signature();
-        let id = g
-            .module
-            .declare_function(ms_mir_llvm::TEXT_ANCHOR, Linkage::Import, &sig)
-            .map_err(|e| e.to_string())?;
-        g.anchor = Some(id);
-    }
-    // The tables name each function by symbol, and keep the order of the functions.
-    let mut funcs = Vec::new();
-    for f in &program.funcs {
-        let sig = match (f.symbol == ms_mir_llvm::ENTRY_SYMBOL, g.m.entry) {
-            (true, Some(entry)) => g.func_sig(&g.m.funcs[entry.index()]),
-            _ => g.module.make_signature(),
-        };
-        let id = g
-            .module
-            .declare_function(&f.symbol, Linkage::Import, &sig)
-            .map_err(|e| e.to_string())?;
-        funcs.push(LlvmFn {
-            id,
-            symbol: f.symbol.clone(),
-            name: f.name.clone(),
-            file: f.file,
-            line: f.line,
-        });
-    }
-    let objects = crate::llvm_obj::compile_all(&program.units, level, &g.opts.build)?;
-    let mut dbg = Vec::new();
-    let mut scopes: Vec<ms_mir::ir::Scope> = Vec::new();
-    for obj in &objects {
-        let t = crate::llvm_tables::read(obj.path(), &funcs, &g.m.files, program.anchored)?;
-        // Scope ids count from one within an object.
-        let base = scopes.len() as u32;
-        for mut d in t.dbg {
-            if base != 0 {
-                for r in &mut d.ranges {
-                    if r.3 != 0 {
-                        r.3 += base;
-                    }
-                }
-            }
-            dbg.push(d);
-        }
-        scopes.extend(t.scopes.into_iter().map(|mut sc| {
-            if sc.parent != 0 {
-                sc.parent += base;
-            }
-            sc
-        }));
-    }
-    g.dbg = dbg;
-    g.scopes = scopes;
-    Ok(objects)
-}
-
-/// The target triple of the LLVM IR. Windows executables link over the mingw-w64 CRT, so the code
-/// must follow its conventions rather than MSVC's.
-fn llvm_triple(triple: &target_lexicon::Triple) -> String {
-    if triple.operating_system != target_lexicon::OperatingSystem::Windows {
-        return triple.to_string();
-    }
-    format!("{}-w64-windows-gnu", triple.architecture)
-}
-
-/// Whether LLVM-built functions may be internal, with the tables addressing them from an anchor.
-/// Mach-O links with `-dead_strip` and one atom per function, so offsets within the object's code
-/// do not survive the link; COFF linkers reject the undefined symbol that the Cranelift object
-/// declares for each function it never references. Both keep a visible symbol per function.
-fn internalize(triple: &target_lexicon::Triple) -> bool {
-    triple.binary_format == target_lexicon::BinaryFormat::Elf
+    product.emit().map_err(|e| Error(e.to_string()))
 }
 
 fn windows_arm64(triple: &target_lexicon::Triple) -> bool {
@@ -907,105 +789,41 @@ fn windows_arm64(triple: &target_lexicon::Triple) -> bool {
         )
 }
 
-/// Layout facts of the emitted `ms.tables` blob needed to relocate it after `finish`.
+/// The emitted `ms.tables` blob, kept to relocate it after `finish`.
 struct Tables {
     id: DataId,
-    funcs_at: usize,
-    lines_at: usize,
-    line_scopes_at: usize,
-    scopes_at: usize,
-    strings_at: usize,
-    /// `(entry offset in blob, function index in dbg, code offset)`; the relocation target for each pc.
-    pcs: Vec<(usize, usize, u32)>,
+    built: ms_mir::fault_tables::Built,
 }
-
-const TABLES_HEADER: usize = 80;
-const SCOPE_ENTRY: usize = 16;
-const FUNC_ENTRY: usize = 24;
-const LINE_ENTRY: usize = 16;
 
 /// Builds the symbol and line tables handed to `msrt_start` (`crates/ms-rt/ABI.md`).
 /// Absolute addresses are zero here and filled by relocations in [`relocate_tables`].
 fn emit_tables(g: &mut Gen) -> Result<Tables, Error> {
-    let mut strings: Vec<u8> = Vec::new();
-    let mut intern = |s: &str| -> u32 {
-        let at = strings.len() as u32;
-        strings.extend_from_slice(s.as_bytes());
-        strings.push(0);
-        at
-    };
-    let files: Vec<u32> = g.m.files.iter().map(|f| intern(f)).collect();
-    let file_off = |f: u32| files.get(f as usize).copied().unwrap_or(u32::MAX);
-    let mut order: Vec<usize> = (0..g.dbg.len()).collect();
-    order.sort_by_key(|i| g.dbg[*i].id.as_u32());
-    let names: Vec<u32> = g.dbg.iter().map(|d| intern(&d.name)).collect();
-    let scope_names: Vec<u32> = g.scopes.iter().map(|sc| intern(&sc.name)).collect();
-    let nlines: usize = g.dbg.iter().map(|d| d.ranges.len()).sum();
-    let funcs_at = TABLES_HEADER;
-    let lines_at = funcs_at + g.dbg.len() * FUNC_ENTRY;
-    let line_scopes_at = lines_at + nlines * LINE_ENTRY;
-    let scopes_at = (line_scopes_at + nlines * 4).next_multiple_of(8);
-    let strings_at = scopes_at + g.scopes.len() * SCOPE_ENTRY;
-    let mut blob = vec![0u8; strings_at + strings.len()];
-    blob[0..4].copy_from_slice(&3u32.to_le_bytes()); // ms-rt ABI_VERSION
-    blob[72..80].copy_from_slice(&(g.scopes.len() as u64).to_le_bytes());
-    blob[16..24].copy_from_slice(&(g.dbg.len() as u64).to_le_bytes());
-    blob[32..40].copy_from_slice(&(nlines as u64).to_le_bytes());
-    blob[48..56].copy_from_slice(&(strings.len() as u64).to_le_bytes());
-    for (n, sc) in g.scopes.iter().enumerate() {
-        let at = scopes_at + n * SCOPE_ENTRY;
-        blob[at..at + 4].copy_from_slice(&scope_names[n].to_le_bytes());
-        blob[at + 4..at + 8].copy_from_slice(&file_off(sc.file).to_le_bytes());
-        blob[at + 8..at + 12].copy_from_slice(&sc.parent.to_le_bytes());
-        blob[at + 12..at + 16].copy_from_slice(&sc.call_line.to_le_bytes());
-    }
-    blob[strings_at..].copy_from_slice(&strings);
-    let mut pcs = Vec::new();
-    let mut at_line = lines_at;
-    for (n, d) in g.dbg.iter().enumerate() {
-        let at = funcs_at + n * FUNC_ENTRY;
-        pcs.push((at, n, 0));
-        blob[at + 8..at + 12].copy_from_slice(&d.size.to_le_bytes());
-        blob[at + 12..at + 16].copy_from_slice(&names[n].to_le_bytes());
-        blob[at + 16..at + 20].copy_from_slice(&file_off(d.file).to_le_bytes());
-        blob[at + 20..at + 24].copy_from_slice(&d.line.to_le_bytes());
-        for &(off, file, line, scope) in &d.ranges {
-            // The runtime resolves a pc to the last entry at or before it.
-            pcs.push((at_line, n, off));
-            blob[at_line + 8..at_line + 12].copy_from_slice(&line.to_le_bytes());
-            blob[at_line + 12..at_line + 16].copy_from_slice(&file_off(file).to_le_bytes());
-            let ls = line_scopes_at + (at_line - lines_at) / LINE_ENTRY * 4;
-            blob[ls..ls + 4].copy_from_slice(&scope.to_le_bytes());
-            at_line += LINE_ENTRY;
-        }
-    }
+    let funcs: Vec<_> = g
+        .dbg
+        .iter()
+        .map(|d| ms_mir::fault_tables::FuncTable {
+            name: &d.name,
+            file: d.file,
+            line: d.line,
+            size: d.size,
+            ranges: &d.ranges,
+        })
+        .collect();
+    let mut built = ms_mir::fault_tables::build(&g.m.files, &funcs, &g.scopes);
     let id = g
         .module
         .declare_data("ms.tables", Linkage::Local, true, false)
         .map_err(|e| e.to_string())?;
     let mut desc = DataDescription::new();
-    desc.define(blob.into_boxed_slice());
+    desc.define(std::mem::take(&mut built.blob).into_boxed_slice());
     desc.set_align(8);
     g.module.define_data(id, &desc).map_err(|e| e.to_string())?;
     g.tables = Some(id);
-    Ok(Tables {
-        id,
-        funcs_at,
-        lines_at,
-        line_scopes_at,
-        scopes_at,
-        strings_at,
-        pcs,
-    })
+    Ok(Tables { id, built })
 }
 
 /// Adds the absolute relocations that point the tables at code and at themselves.
-fn relocate_tables(
-    product: &mut cranelift_object::ObjectProduct,
-    dbg: &[FuncDbg],
-    anchor: Option<FuncId>,
-    t: &Tables,
-) {
+fn relocate_tables(product: &mut cranelift_object::ObjectProduct, dbg: &[FuncDbg], t: &Tables) {
     use cranelift_object::object::{
         RelocationEncoding, RelocationFlags, RelocationKind,
         write::{Relocation, SymbolSection},
@@ -1022,17 +840,11 @@ fn relocate_tables(
         encoding: RelocationEncoding::Generic,
         size: 64,
     };
-    // LLVM-built functions have no visible symbol: they are addressed from the anchor.
     let syms: Vec<_> = t
+        .built
         .pcs
         .iter()
-        .map(|p| match anchor {
-            Some(a) => (product.function_symbol(a), dbg[p.1].text as i64),
-            None => (
-                product.function_symbol(dbg[p.1].reloc.unwrap_or(dbg[p.1].id)),
-                0,
-            ),
-        })
+        .map(|p| product.function_symbol(dbg[p.1].id))
         .collect();
     let obj = &mut product.object;
     let mut add = |offset: usize, symbol, addend: i64| {
@@ -1044,13 +856,11 @@ fn relocate_tables(
         };
         obj.add_relocation(section, r).expect("relocation");
     };
-    add(8, own, t.funcs_at as i64);
-    add(24, own, t.lines_at as i64);
-    add(40, own, t.strings_at as i64);
-    add(56, own, t.line_scopes_at as i64);
-    add(64, own, t.scopes_at as i64);
-    for (&(at, _, off), (sym, base)) in t.pcs.iter().zip(syms) {
-        add(at, sym, base + off as i64);
+    for &(at, target) in &t.built.pointers {
+        add(at, own, target as i64);
+    }
+    for (&(at, _, off), sym) in t.built.pcs.iter().zip(syms) {
+        add(at, sym, i64::from(off));
     }
 }
 
@@ -1274,8 +1084,6 @@ fn finish(
             size: cc.code_buffer().len() as u32,
             ranges,
             dwarf_ranges,
-            text: 0,
-            reloc: None,
         });
     }
     g.module.clear_context(ctx);
@@ -1291,16 +1099,7 @@ fn emit_main(
     let Some(entry) = g.m.entry else {
         return Ok(());
     };
-    // The entry function is built by LLVM in release builds: name it by symbol.
-    let entry_id = match g.opts.llvm {
-        Some(_) => {
-            let sig = g.func_sig(&g.m.funcs[entry.index()]);
-            g.module
-                .declare_function(ms_mir_llvm::ENTRY_SYMBOL, Linkage::Import, &sig)
-                .map_err(|e| e.to_string())?
-        }
-        None => g.funcs[entry.index()],
-    };
+    let entry_id = g.funcs[entry.index()];
     let mut sig = g.module.make_signature();
     sig.params.push(AbiParam::new(types::I32));
     sig.params.push(AbiParam::new(types::I64));
@@ -1416,14 +1215,9 @@ mod target_tests {
                 for (target, magic) in targets {
                     let triple: target_lexicon::Triple = target.parse().unwrap();
                     let isa = cranelift_codegen::isa::lookup(triple).unwrap();
-                    let parts = compile_with_isa(&m, &opts, isa)
+                    let object = compile_with_isa(&m, &opts, isa)
                         .unwrap_or_else(|e| panic!("{} {target} {level:?}: {e}", path.display()));
-                    assert!(
-                        parts.object.starts_with(magic),
-                        "{} {target}",
-                        path.display()
-                    );
-                    assert!(parts.llvm.is_empty());
+                    assert!(object.starts_with(magic), "{} {target}", path.display());
                 }
             }
         }

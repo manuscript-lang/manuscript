@@ -12,11 +12,8 @@ pub mod link;
 
 mod cg;
 mod dwarf;
-mod llvm_obj;
-pub use llvm_obj::available as llvm_available;
 mod options;
 pub use options::{BuildOptions, CopyProbe, RtHot};
-mod llvm_tables;
 mod lower;
 mod slotshare;
 mod spill;
@@ -35,9 +32,6 @@ pub struct Options {
     pub opt_level: &'static str,
     /// Dump Cranelift IR of every function to stderr.
     pub dump_clif: bool,
-    /// Release builds: optimize functions with LLVM at this level (`"3"` or `"s"`) instead of
-    /// compiling them with Cranelift. Profiles and fault traces carry no source lines.
-    pub llvm: Option<&'static str>,
     /// Environment-independent build settings.
     pub build: BuildOptions,
 }
@@ -49,7 +43,6 @@ impl Default for Options {
             poll: true,
             opt_level: "speed",
             dump_clif: false,
-            llvm: None,
             build: BuildOptions::default(),
         }
     }
@@ -73,27 +66,7 @@ impl From<String> for Error {
     }
 }
 
-/// The relocatable objects of a compiled module. They are linked together: LLVM's object refers
-/// to symbols in the Cranelift one (data, descriptors, tables) and the other way round.
-pub struct Parts {
-    /// Cranelift's object: everything when `llvm` is `None`, else data, descriptors, tables and
-    /// `main`.
-    pub object: Vec<u8>,
-    /// The objects holding the functions LLVM compiled, when [`Options::llvm`] is set.
-    pub llvm: Vec<Vec<u8>>,
-}
-
-/// Compiles a verified module to relocatable objects.
-pub fn compile_parts(m: &Module, opts: &Options) -> Result<Parts, Error> {
-    cg::compile(m, opts)
-}
-
-/// Compiles a verified module to a single relocatable object file with Cranelift.
+/// Compiles a verified module to a single relocatable object file.
 pub fn compile(m: &Module, opts: &Options) -> Result<Vec<u8>, Error> {
-    if opts.llvm.is_some() {
-        return Err(Error(
-            "LLVM builds produce two objects; use compile_parts".into(),
-        ));
-    }
-    Ok(cg::compile(m, opts)?.object)
+    cg::compile(m, opts)
 }

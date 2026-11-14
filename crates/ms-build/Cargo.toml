@@ -13,6 +13,10 @@ workspace = true
 ms-check = { path = "../ms-check" }
 ms-mir = { path = "../ms-mir" }
 ms-clif = { path = "../ms-clif" }
+ms-mir-llvm = { path = "../ms-mir-llvm" }
+# Already locked for `ms-clif`: read the DWARF of the objects LLVM writes.
+gimli = { version = "=0.34.0", default-features = false, features = ["read", "std"] }
+object = { version = "0.40", default-features = false, features = ["std", "read_core", "elf", "macho", "coff"] }
 ms-lower = { path = "../ms-lower" }
 
 [dev-dependencies]

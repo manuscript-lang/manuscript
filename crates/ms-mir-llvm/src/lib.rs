@@ -11,10 +11,12 @@ mod llvm_lifetimes;
 mod mir_llvm;
 mod program;
 mod state;
+mod tables;
 
 pub use llvm_ir::{TEXT_ANCHOR, Unit};
 pub use program::emit;
 pub use state::ENTRY_SYMBOL;
+pub use tables::{TableFn, tables_unit};
 
 /// The name prefix of generated glue functions, followed by a serial and the kind.
 pub const GLUE_PREFIX: &str = "ms.glue.";
