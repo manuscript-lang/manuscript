@@ -576,7 +576,7 @@ mod fs_io {
 
 mod process {
     use super::*;
-    use ms_rt_abi::{STATUS_OUTPUT_LIMIT, STATUS_TIMEOUT, STATUS_UNAVAILABLE, VecVal};
+    use ms_rt_abi::{STATUS_NOT_FOUND, STATUS_OUTPUT_LIMIT, STATUS_TIMEOUT, VecVal};
     use ms_std_process::*;
 
     fn list_of(items: &[&str]) -> VecVal {
@@ -716,7 +716,7 @@ mod process {
                     out.as_mut_ptr(),
                     ErrSlot(core::ptr::null_mut())
                 ),
-                STATUS_UNAVAILABLE
+                STATUS_NOT_FOUND
             );
             let spin = list_of(&["-c", "sleep 30"]);
             assert_eq!(
