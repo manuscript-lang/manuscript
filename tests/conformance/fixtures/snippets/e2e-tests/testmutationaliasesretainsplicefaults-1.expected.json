@@ -18,38 +18,39 @@
         {
           "index": 1,
           "name": "testmutationaliasesretainsplicefaults-1.ms::new count",
-          "status": "failed",
-          "failure": "List.splice: delete_count must be between 0 and 1, found 2\n  at testmutationaliasesretainsplicefaults-1.ms:8 in test new count"
+          "status": "not_run",
+          "failure": "an earlier test in this file faulted"
         },
         {
           "index": 2,
           "name": "testmutationaliasesretainsplicefaults-1.ms::bound start",
-          "status": "failed",
-          "failure": "List.splice: start must be between 0 and 1, found 2\n  at testmutationaliasesretainsplicefaults-1.ms:13 in test bound start"
+          "status": "not_run",
+          "failure": "an earlier test in this file faulted"
         },
         {
           "index": 3,
           "name": "testmutationaliasesretainsplicefaults-1.ms::bound count",
-          "status": "failed",
-          "failure": "List.splice: delete_count must be between 0 and 1, found -1\n  at testmutationaliasesretainsplicefaults-1.ms:18 in test bound count"
+          "status": "not_run",
+          "failure": "an earlier test in this file faulted"
         },
         {
           "index": 4,
           "name": "testmutationaliasesretainsplicefaults-1.ms::continues",
-          "status": "passed"
+          "status": "not_run",
+          "failure": "an earlier test in this file faulted"
         }
       ],
       "summary": {
         "available": 5,
         "selected": 5,
-        "passed": 1,
-        "failed": 4,
+        "passed": 0,
+        "failed": 1,
         "skipped": 0,
-        "not_run": 0
+        "not_run": 4
       },
       "completed": true,
       "exit_code": 1,
-      "stdout": "RUN testmutationaliasesretainsplicefaults-1.ms::new start\nFAIL testmutationaliasesretainsplicefaults-1.ms::new start: List.splice: start must be between 0 and 1, found -1\n  at testmutationaliasesretainsplicefaults-1.ms:5 in test new start\nRUN testmutationaliasesretainsplicefaults-1.ms::new count\nFAIL testmutationaliasesretainsplicefaults-1.ms::new count: List.splice: delete_count must be between 0 and 1, found 2\n  at testmutationaliasesretainsplicefaults-1.ms:8 in test new count\nRUN testmutationaliasesretainsplicefaults-1.ms::bound start\nFAIL testmutationaliasesretainsplicefaults-1.ms::bound start: List.splice: start must be between 0 and 1, found 2\n  at testmutationaliasesretainsplicefaults-1.ms:13 in test bound start\nRUN testmutationaliasesretainsplicefaults-1.ms::bound count\nFAIL testmutationaliasesretainsplicefaults-1.ms::bound count: List.splice: delete_count must be between 0 and 1, found -1\n  at testmutationaliasesretainsplicefaults-1.ms:18 in test bound count\nRUN testmutationaliasesretainsplicefaults-1.ms::continues\nPASS testmutationaliasesretainsplicefaults-1.ms::continues\n5 tests, 4 failed\n",
+      "stdout": "RUN testmutationaliasesretainsplicefaults-1.ms::new start\nFAIL testmutationaliasesretainsplicefaults-1.ms::new start: List.splice: start must be between 0 and 1, found -1\n  at testmutationaliasesretainsplicefaults-1.ms:5 in test new start\nRUN testmutationaliasesretainsplicefaults-1.ms::new count\nNOT RUN testmutationaliasesretainsplicefaults-1.ms::new count: an earlier test in this file faulted\nRUN testmutationaliasesretainsplicefaults-1.ms::bound start\nNOT RUN testmutationaliasesretainsplicefaults-1.ms::bound start: an earlier test in this file faulted\nRUN testmutationaliasesretainsplicefaults-1.ms::bound count\nNOT RUN testmutationaliasesretainsplicefaults-1.ms::bound count: an earlier test in this file faulted\nRUN testmutationaliasesretainsplicefaults-1.ms::continues\nNOT RUN testmutationaliasesretainsplicefaults-1.ms::continues: an earlier test in this file faulted\n1 tests, 1 failed, 4 not run\n",
       "diagnostics": []
     },
     "shape": [

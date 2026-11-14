@@ -103,6 +103,8 @@ pub(crate) struct Start {
     pub closure: usize,
     /// When it was queued (monotonic ns); 0 for a start that is run at once.
     pub at: i64,
+    /// The creator's output capture, which the task inherits (`msrt_test_capture_set`).
+    pub capture: u64,
 }
 
 /// How long a start waits in its creator's queue before another thread may take it. Most forks

@@ -2010,7 +2010,7 @@ impl Checker {
         {
             self.type_error(
                 decl.pos(),
-                "make_fixture must return a concrete type implementing @std/test/test.ms TestHooks; return your fixture type and declare any of fn var Fixture.before_all(), before_each(), after_each() and after_all() with no arguments and no result",
+                "make_fixture must return a concrete type implementing @std/test/test.ms TestHooks; return your fixture type and declare any of fn var Fixture.before_all(), before_each(), after_each() and after_all() with no arguments returning Unit!",
             );
             return;
         }

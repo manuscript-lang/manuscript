@@ -3,15 +3,16 @@
 // (`ms-rt` feature `stats`) numbers the parks of a process; `MS_PARK_COUNT=1` prints
 // how many a test made, and
 // `MS_CANCEL_AT_PARK=k` makes the k-th one report a cancellation, as if the parking task had been
-// cancelled there. The cancelled test must end with the same live blocks as the
-// uncancelled run (a test that leaks without cancellation belongs to `leak-check`). A
-// run that ends with more Rust heap blocks (`ms-rt rust heap at exit`) is a `heap:` hit
-// and fails too. A hit must reproduce: it is re-run twice, and counts the uncancelled
-// run itself shows over five runs (worker buffers vary with timing) are not hits. A
-// cancel that ends the process (status 143) prints no counts and is not swept.
-// Arguments name the files to sweep (default: tests/conformance/fixtures/e2e/stdlib).
-// SWEEP_MAX_PARKS bounds the parks tried per test (default 64); MS names the ms to run
-// (default target/release/ms). Usage: ms run tools/cancel-sweep.ms [-- files]
+// cancelled there. Each test runs alone (`--test`), since a file's tests share a
+// process. The cancelled test must end with the same live blocks as the uncancelled run
+// (a test that leaks without cancellation belongs to `leak-check`). A run that ends
+// with more Rust heap blocks (`ms-rt rust heap at exit`) is a `heap:` hit and fails
+// too. A hit must reproduce: it is re-run twice, and counts the uncancelled run itself
+// shows over five runs (worker buffers vary with timing) are not hits. A cancel that
+// ends the process (status 143) prints no counts and is not swept. Arguments name the
+// files to sweep (default: tests/conformance/fixtures/e2e/stdlib). SWEEP_MAX_PARKS
+// bounds the parks tried per test (default 64); MS names the ms to run (default
+// target/release/ms). Usage: ms run tools/cancel-sweep.ms [-- files]
 import (
 	Promise, promise from "@std/concurrency/promise.ms",
 	stdout from "@std/io/io.ms",
@@ -85,6 +86,18 @@ fn test_run(ms: String, file: String, filter: String, cancel_at: Int) List[Count
 
 	return List[Counted]()
 
+// The names of the tests in `file`, as `ms test --list` prints them.
+fn test_names(ms: String, file: String) List[String]:
+	var names = List[String]()
+	if out := run(
+		ms.clone(),
+		["test", file.clone(), "--list"],
+		RunOptions(timeout: seconds(120)),
+	).wait():
+		for line in out.stdout.decode_utf8().get("").split("\n"):
+			if line.contains("::"): names.append(line.clone())
+	return names
+
 // Sweeps `files`: one line per cancelled run (`swept`), then one `leak:` report per run
 // that left live blocks.
 fn sweep(ms: String, root: String, files: List[String], most: Int) List[String]:
@@ -93,16 +106,17 @@ fn sweep(ms: String, root: String, files: List[String], most: Int) List[String]:
 	for f in files:
 		file := "{root}/{f}"
 
-		for base in test_run(ms.clone(), file.clone(), "", 0):
+		// A file's tests share one process, so each test is counted in a run of its
+		// own.
+		for name in test_names(ms.clone(), file.clone()):
+			found := test_run(ms.clone(), file.clone(), name.clone(), 0)
+			if found.is_empty() or found[0].name != name: continue
+
+			base := found[0].clone()
 			if base.parks == 0: continue
 
 			last := if base.parks < most: base.parks else: most
-
-			// The reference is a filtered run too: the filter argument itself stays
-			// allocated, so an unfiltered baseline would differ by that block.
-			var reference = base.clone()
-			for again in test_run(ms.clone(), file.clone(), base.name.clone(), 0):
-				if again.name == base.name: reference = again.clone()
+			reference := base.clone()
 
 			// Counts the uncancelled run shows on any of five runs are normal for this
 			// test: worker threads leave buffers of timing-dependent size behind, which

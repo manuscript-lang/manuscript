@@ -1511,6 +1511,22 @@ impl Session {
                 &mut diagnostics,
             );
         }
+        // Test blocks run under the promise harness in `@std/test/runner.ms`.
+        let testing = modules.iter().any(|m| {
+            m.decls
+                .iter()
+                .any(|d| matches!(&d.decl().kind, DeclKind::Test(t) if !t.bench))
+        });
+        if testing && let Some(runner) = self.standard_source_module(n("@std/test/runner.ms")) {
+            visit(
+                self.syms,
+                self,
+                &runner,
+                &mut state,
+                &mut ordered,
+                &mut diagnostics,
+            );
+        }
         // Prelude functions reach user code without an import, so their modules come with any program of its own.
         if modules.iter().any(|m| !m.is_standard(self.syms)) {
             for (path, name) in STANDARD_PRELUDE_FUNCTIONS {

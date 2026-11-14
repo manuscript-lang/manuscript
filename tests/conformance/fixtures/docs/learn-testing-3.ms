@@ -9,7 +9,7 @@ type Counter:
 fn make_fixture() Counter:
     return Counter(0)
 
-fn var Counter.before_each() Unit:
+fn var Counter.before_each() Unit!:
     self.count = 0
 
 test "increments":

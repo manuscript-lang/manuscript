@@ -1202,10 +1202,6 @@ pub fn fault_vec(mut report: Vec<u8>) -> ! {
     finish_report(None)
 }
 
-/// Starts the fault message of `skip(reason)`; ms-lower writes the same marker.
-#[cfg(not(test))]
-const SKIP_MARKER: &[u8] = b"\x01SKIP\x01";
-
 crate::isolate_static! {
     static PRIMARY: Option<Vec<u8>> = None;
 }
@@ -1241,25 +1237,6 @@ fn finish_report(primary: Option<Vec<u8>>) -> ! {
     {
         if guard_active() {
             guard_exit(GUARD_FAULT, report)
-        }
-        if report.as_slice().starts_with(SKIP_MARKER)
-            && !report
-                .as_slice()
-                .windows(16)
-                .any(|w| w == b"\ncleanup fault: ")
-        {
-            // `skip`: the cleanups ran; report the reason (the first line) and end with success.
-            let line = report
-                .as_slice()
-                .split(|b| *b == b'\n')
-                .next()
-                .unwrap_or_default();
-            let mut out = Vec::new();
-            out.extend_from_slice(line);
-            out.push(b'\n');
-            crate::io::flush_stdout();
-            sys::write_all(sys::STDERR, out.as_slice());
-            crate::process::exit(0)
         }
         report.push(b'\n');
         crate::io::flush_stdout();

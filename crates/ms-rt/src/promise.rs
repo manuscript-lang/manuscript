@@ -667,8 +667,13 @@ fn request_cancel(id: i64) {
 pub(crate) fn execute(start: Start) {
     sched::live_add(1);
     // SAFETY: the creator holds a reference to the closure until it is told the task ended.
-    let task =
-        unsafe { task::spawn_promise_task(start.closure as *mut ms_rt_abi::Closure, start.id) };
+    let task = unsafe {
+        task::spawn_promise_task(
+            start.closure as *mut ms_rt_abi::Closure,
+            start.id,
+            start.capture,
+        )
+    };
     deliver(
         start.id,
         Event::Started {
@@ -1254,6 +1259,7 @@ unsafe fn start_on(id: i64, work: *mut ms_rt_abi::Closure, mode: Mode) {
         id,
         closure: work as usize,
         at: crate::sys::monotonic_ns(),
+        capture: task::capture(),
     };
     // A spread promise is placed on purpose, so a stream pinned to this thread does not hold it here.
     if mode == Mode::Here

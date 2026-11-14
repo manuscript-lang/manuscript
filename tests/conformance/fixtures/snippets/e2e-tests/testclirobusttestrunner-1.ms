@@ -7,7 +7,7 @@ test "passing":
     expect_equal(2 + 2, 4)?
 
 test "skipped":
-    skip("fixture unavailable")
+    skip("fixture unavailable")?
 
 test "failing":
     expect_equal(1, 2)?

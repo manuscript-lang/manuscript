@@ -18,32 +18,33 @@
         {
           "index": 1,
           "name": "testdurationunitpropertysourceframes-1.ms::negative unit overflow",
-          "status": "failed",
-          "failure": "Int.minutes: value must be between -153722867 and 153722867, found -153722868\n  at testdurationunitpropertysourceframes-1.ms:8 in test negative unit overflow"
+          "status": "not_run",
+          "failure": "an earlier test in this file faulted"
         },
         {
           "index": 2,
           "name": "testdurationunitpropertysourceframes-1.ms::receiver fault comes first",
-          "status": "failed",
-          "failure": "division by zero; right must be nonzero, found 0\n  at testdurationunitpropertysourceframes-1.ms:11 in test receiver fault comes first"
+          "status": "not_run",
+          "failure": "an earlier test in this file faulted"
         },
         {
           "index": 3,
           "name": "testdurationunitpropertysourceframes-1.ms::continues with valid units",
-          "status": "passed"
+          "status": "not_run",
+          "failure": "an earlier test in this file faulted"
         }
       ],
       "summary": {
         "available": 4,
         "selected": 4,
-        "passed": 1,
-        "failed": 3,
+        "passed": 0,
+        "failed": 1,
         "skipped": 0,
-        "not_run": 0
+        "not_run": 3
       },
       "completed": true,
       "exit_code": 1,
-      "stdout": "RUN testdurationunitpropertysourceframes-1.ms::positive unit overflow\nFAIL testdurationunitpropertysourceframes-1.ms::positive unit overflow: Int.minutes: value must be between -153722867 and 153722867, found 153722868\n  at testdurationunitpropertysourceframes-1.ms:5 in test positive unit overflow\nRUN testdurationunitpropertysourceframes-1.ms::negative unit overflow\nFAIL testdurationunitpropertysourceframes-1.ms::negative unit overflow: Int.minutes: value must be between -153722867 and 153722867, found -153722868\n  at testdurationunitpropertysourceframes-1.ms:8 in test negative unit overflow\nRUN testdurationunitpropertysourceframes-1.ms::receiver fault comes first\nFAIL testdurationunitpropertysourceframes-1.ms::receiver fault comes first: division by zero; right must be nonzero, found 0\n  at testdurationunitpropertysourceframes-1.ms:11 in test receiver fault comes first\nRUN testdurationunitpropertysourceframes-1.ms::continues with valid units\nPASS testdurationunitpropertysourceframes-1.ms::continues with valid units\n4 tests, 3 failed\n",
+      "stdout": "RUN testdurationunitpropertysourceframes-1.ms::positive unit overflow\nFAIL testdurationunitpropertysourceframes-1.ms::positive unit overflow: Int.minutes: value must be between -153722867 and 153722867, found 153722868\n  at testdurationunitpropertysourceframes-1.ms:5 in test positive unit overflow\nRUN testdurationunitpropertysourceframes-1.ms::negative unit overflow\nNOT RUN testdurationunitpropertysourceframes-1.ms::negative unit overflow: an earlier test in this file faulted\nRUN testdurationunitpropertysourceframes-1.ms::receiver fault comes first\nNOT RUN testdurationunitpropertysourceframes-1.ms::receiver fault comes first: an earlier test in this file faulted\nRUN testdurationunitpropertysourceframes-1.ms::continues with valid units\nNOT RUN testdurationunitpropertysourceframes-1.ms::continues with valid units: an earlier test in this file faulted\n1 tests, 1 failed, 3 not run\n",
       "diagnostics": []
     },
     "shape": [

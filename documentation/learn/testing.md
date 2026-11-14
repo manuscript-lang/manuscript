@@ -117,7 +117,7 @@ ms test test.ms --repeat 10 --shuffle 42
 - Copy exact `module::name` identities from `--list`; repeat `--test` to select several.
 - `--filter`, `--match`, and `--exclude` narrow the selection; regexes match any part of the identity. Empty selections fail.
 - `--list` builds but never runs test bodies.
-- Each selected test and repetition runs in a fresh process. In-memory state is isolated; external files and services remain shared unless the test resets them. `--shuffle` takes a seed.
+- Test files run at once, each in its own promise, in one process; a file's tests run in order and share its fixture. Process-wide state (working directory, environment, files, services) is shared, so a test that changes it restores it. A fault in a test ends its file: later tests in that file are reported not run. `--shuffle` takes a seed.
 - `--fail-fast` leaves remaining tests `not_run` in JSON.
 
 ## Property tests and fuzzing
@@ -169,7 +169,7 @@ All assertions return `Result`, so use `?`:
 
 - `expect_some`, `expect_ok`, `expect_error` yield the checked payload.
 - `expect_fault(operation)` checks programming faults.
-- `fail(message)` fails explicitly; `skip(reason)` skips while running cleanup.
+- `fail(message)?` fails explicitly; `skip(reason)?` skips the test.
 - Write each independently reported case as its own `test` block.
 
 ## Golden files and misbehaving streams
@@ -234,7 +234,7 @@ type Counter:
 fn make_fixture() Counter:
     return Counter(0)
 
-fn var Counter.before_each() Unit:
+fn var Counter.before_each() Unit!:
     self.count = 0
 
 test "increments":
@@ -255,10 +255,10 @@ PASS test.ms::starts fresh
 2 tests, 0 failed
 ```
 
-`ms test` starts a separate process for each selected test. Each process creates its own fixture and runs its hooks, so the second test starts from a fresh `Counter`. The same isolation applies to repetitions.
+A file's tests share one fixture: `make_fixture` and `before_all` run once before the file's first test, `before_each` and `after_each` around each test, and `after_all` after the last, so `before_each` above resets the `Counter` that the second test reads. Each `--repeat` round runs the file again on a new fixture.
 
-- One instance for the selected test in its process; the factory and `before_all` run again for the next test or repetition.
-- Optional hooks (use `self`, no arguments, return `Unit`): `before_all`, `before_each`, `after_each`, `after_all`.
+- One instance per file and run; a fault in a test still runs `after_each` and `after_all`, and the file's later tests are reported not run.
+- Optional hooks (use `self`, no arguments, return `Unit!`): `before_all`, `before_each`, `after_each`, `after_all`. A hook's error fails the tests it guards; `skip(reason)?` skips them.
 - Build in `make_fixture`, reset in `before_each`, release in `after_all`.
 
 ## Run tests only on some platforms
@@ -273,7 +273,7 @@ import os, Os from "@std/os/system.ms"
 
 test "unix permission bits":
     if os() == Os.Windows:
-        skip("Unix only")
+        skip("Unix only")?
     // Unix-only assertions follow.
 ```
 
@@ -289,9 +289,9 @@ type WindowsOnly:
 fn make_fixture() WindowsOnly:
     return WindowsOnly(os() == Os.Windows)
 
-fn var WindowsOnly.before_all() Unit:
+fn var WindowsOnly.before_all() Unit!:
     if not self.ok:
-        skip("Windows only")
+        skip("Windows only")?
 ```
 
 Skipped tests are counted in the `ms test` summary, so a platform that runs nothing stays visible.

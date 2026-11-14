@@ -150,7 +150,7 @@ Examples:
 pub const HELP_TEST: &str = r#"Usage: ms test <file.ms|ms.toml> [more.ms ...] [--json] [--filter text] [--timeout duration] [--build-type level] [--watch] [-- program arguments]
 
 Build and execute test blocks in the module and its imported modules.
-More .ms files after the first build into the same executable and run in one invocation; each test keeps its own process.
+More .ms files after the first build into the same executable and run in one invocation. Files run at once, each in its own promise; a file's tests run in order, and a fault ends its file.
 Tests run with the project directory (or the test file's directory) as the working directory, so relative fixture paths resolve there.
 Each test prints RUN before it starts and PASS or FAIL after; a test that exceeds the timeout fails by name.
 Arguments after -- are passed to the test executable; its exit status is returned.

@@ -10,21 +10,21 @@ type Hooks:
 fn make_fixture() Hooks:
     return Hooks(runs: 0)
 
-fn var Hooks.before_all() Unit:
+fn var Hooks.before_all() Unit!:
     stdout().write("before_all\n").get()
 
-fn var Hooks.before_each() Unit:
+fn var Hooks.before_each() Unit!:
     self.runs += 1
     stdout().write("before_each {self.runs}\n").get()
 
-fn var Hooks.after_each() Unit:
+fn var Hooks.after_each() Unit!:
     stdout().write("after_each {self.runs}\n").get()
 
-fn var Hooks.after_all() Unit:
+fn var Hooks.after_all() Unit!:
     stdout().write("after_all\n").get()
 
 test "a skipped test still tears down":
-    skip("not today")
+    skip("not today")?
 
 test "a failed assertion still tears down":
     fail("expected failure")?

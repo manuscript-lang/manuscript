@@ -7,23 +7,23 @@ import (
 
 /*
 Setup and cleanup for tests that need a fixture. Define `fn make_fixture() T` in the test file,
-where `T` implements `TestHooks`; each test accesses its own instance as `fixture`.
-Each selected test and repetition runs in a fresh process, so the factory and all hooks run again.
-Missing hooks are no-ops. All supplied hooks take no arguments and return Unit.
-For a server fixture, start the server in the factory and close it in `after_all`.
-Tests share the fixture definition, not one running server or mutable instance.
+where `T` implements `TestHooks`; each test accesses the file's one instance as `fixture`.
+The file's tests run in order on that instance: the factory and `before_all` run once, the
+`*_each` hooks around every test, and `after_all` at the end. Missing hooks are no-ops; every
+hook takes no arguments and returns `Unit!`. A hook's error fails the tests it guards, and an
+ESKIP error (`skip(reason)?`) skips them. A fault in a test runs `after_each` and `after_all`
+and leaves the file's later tests not run. For a server fixture, start the server in
+`before_all` and close it in `after_all`.
 */
 export interface TestHooks:
-	// Runs after the fixture factory in each selected test process.
-	var fn before_all() Unit
-	// Runs before each selected test execution, including repetitions.
-	var fn before_each() Unit
-	// Runs after each test attempt, including before_each failure, skip, or assertion
-	// failure.
-	var fn after_each() Unit
-	// Runs after the test finishes or stops in its process; also runs when before_all
-	// fails.
-	var fn after_all() Unit
+	// Runs once, after the fixture factory, before the file's first test.
+	var fn before_all() Unit!
+	// Runs before each test, including repetitions.
+	var fn before_each() Unit!
+	// Runs after each test, including after a failure, skip or fault.
+	var fn after_each() Unit!
+	// Runs once after the file's last test, and after a fault.
+	var fn after_all() Unit!
 
 // The position (`file:line:col`) of the call that omitted this argument. Valid only as
 // a parameter default, in a function called directly.
@@ -54,9 +54,7 @@ export fn catch_fault(operation: fn() Unit) String?:
 	cause := result.err()
 	if cause.kind != "EIO": return none
 
-	line := cause.details["report"].split("\n").get(0).clone()
-	if line.starts_with("\u{1}SKIP\u{1}"): panic(line)
-	return line
+	return cause.details["report"].split("\n").get(0).clone()
 
 // Fails unless actual is True. `site` names the call in the failure and defaults to the
 // caller's position.
@@ -149,7 +147,7 @@ export fn expect_error[T, E: Clonable](actual: T!E, site: String = caller_site()
 	return error(failure("expected error, got {repr(actual)}", site))
 
 // Calls operation once, requires a programming fault, and returns its message.
-// Cancellation and skip propagate.
+// Cancellation propagates.
 export fn expect_fault(operation: fn() Unit, site: String = caller_site()) String!:
 	if message := catch_fault(operation): return ok(message)
 	return error(
@@ -163,7 +161,7 @@ export fn expect_fault(operation: fn() Unit, site: String = caller_site()) Strin
 export fn fail(message: String, site: String = caller_site()) Unit!:
 	return error(failure(message, site))
 
-// Stops and skips the current test, unwinding lexical cleanup. A cleanup failure
-// overrides the skip.
-export fn skip(reason: String) Never:
-	panic("\u{1}SKIP\u{1}{reason}")
+// Skips the current test: returns an error of kind ESKIP with `reason`, which
+// `skip(reason)?` passes up; the test is reported skipped, not failed.
+export fn skip(reason: String) Unit!:
+	return error(Error(reason, kind: "ESKIP"))

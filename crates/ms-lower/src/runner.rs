@@ -6,9 +6,6 @@ use ms_mir::builder::FuncBuilder;
 use ms_mir::ir::{Cc, Func, FuncId, FuncKind, Imm, Linkage, Mode, Module, Op, Param};
 use ms_mir::types::{Ty as MTy, TyKind};
 
-/// Marks a skip: the fault message of `skip(reason)`, which the report turns into a skipped test.
-pub const SKIP_MARKER: &str = "\u{1}SKIP\u{1}";
-
 /// One entry per bench that calls `driver(closure over the bench, operations per iteration)`. The
 /// driver takes the body as a `fn() Result[Unit, Error]` and returns that `Result`, so the
 /// entries run as tests do.
@@ -21,23 +18,7 @@ pub(crate) fn bench_entries(
     let mut entries = Vec::new();
     for (&bench, &per) in benches.iter().zip(per) {
         let proto = m.funcs[bench.index()].clone();
-        // A closure body takes its environment first and forwards to the bench.
-        let mut thunk = FuncBuilder::new(
-            m,
-            &proto.name,
-            vec![Param {
-                ty: MTy::PTR,
-                mode: Mode::Borrow,
-            }],
-            proto.ret,
-        );
-        thunk.func_mut().kind = FuncKind::Closure {
-            captures: Vec::new(),
-        };
-        let r = thunk.call(bench, &[]);
-        thunk.ret(Some(r));
-        let thunk = thunk.into_func();
-        let thunk = m.add_func(thunk);
+        let thunk = closure_thunk(m, bench);
         let fty = m.types.func(Vec::new(), proto.ret);
         let borrowed = m.funcs[driver.index()]
             .params
@@ -57,6 +38,197 @@ pub(crate) fn bench_entries(
         entries.push(m.add_func(f));
     }
     entries
+}
+
+/// A closure body that takes its environment first and forwards to `target`, which takes no
+/// arguments.
+fn closure_thunk(m: &mut Module, target: FuncId) -> FuncId {
+    let proto = m.funcs[target.index()].clone();
+    let mut thunk = FuncBuilder::new(
+        m,
+        &proto.name,
+        vec![Param {
+            ty: MTy::PTR,
+            mode: Mode::Borrow,
+        }],
+        proto.ret,
+    );
+    thunk.func_mut().kind = FuncKind::Closure {
+        captures: Vec::new(),
+    };
+    let r = thunk.call(target, &[]);
+    thunk.ret(Some(r));
+    let thunk = thunk.into_func();
+    m.add_func(thunk)
+}
+
+/// A closure body: its environment, then `params` (all borrowed), returning `ret`; `body`
+/// computes the result from the parameters after the environment.
+fn closure_fn(
+    m: &mut Module,
+    name: &str,
+    params: &[MTy],
+    ret: MTy,
+    body: impl FnOnce(&mut FuncBuilder<'_>, &[ms_mir::ir::Value]) -> ms_mir::ir::Value,
+) -> FuncId {
+    let mut all = vec![Param {
+        ty: MTy::PTR,
+        mode: Mode::Borrow,
+    }];
+    all.extend(params.iter().map(|&ty| Param {
+        ty,
+        mode: Mode::Borrow,
+    }));
+    let mut b = FuncBuilder::new(m, name, all, ret);
+    b.func_mut().kind = FuncKind::Closure {
+        captures: Vec::new(),
+    };
+    let values = b.params();
+    let r = body(&mut b, &values[1..]);
+    b.ret(Some(r));
+    let f = b.into_func();
+    m.add_func(f)
+}
+
+/// `ok(unit)` of the `Result` type `ret`.
+fn ok_unit(b: &mut FuncBuilder<'_>, ret: MTy) -> ms_mir::ir::Value {
+    let TyKind::Alt(a) = b.m.types.kind(ret).clone() else {
+        panic!("a hook closure returns a Result");
+    };
+    let ok = b.m.alts[a.index()].ok_case().expect("ok case") as u32;
+    let u = b.unit();
+    b.alt_new(a, ok, &[u])
+}
+
+/// The parameter and result types of the closure type `ty`.
+fn fn_parts(m: &Module, ty: MTy) -> Result<(Vec<MTy>, MTy), Error> {
+    match m.types.kind(ty).clone() {
+        TyKind::Fn(params, ret) => Ok((params, ret)),
+        _ => Err(Error::new("the test runner expects a function value")),
+    }
+}
+
+/// The element type of the list type `ty`.
+fn list_elem(m: &Module, ty: MTy) -> Result<MTy, Error> {
+    match m.types.kind(ty).clone() {
+        TyKind::List(e) => Ok(e),
+        _ => Err(Error::new("the test runner expects a list")),
+    }
+}
+
+/// One test file for `build_file_runners`.
+pub(crate) struct TestFile {
+    /// Each test's function and index in the listing, in source order.
+    pub tests: Vec<(FuncId, i64)>,
+    /// `run_plain_file`, or the `run_fixture_file` instance for the file's fixture type.
+    pub harness: FuncId,
+    /// The fixture factory and its `before_all`, `before_each`, `after_each` and `after_all`
+    /// hooks, for a file with `make_fixture`.
+    pub fixture: Option<(FuncId, [Option<FuncId>; 4])>,
+}
+
+/// Builds `main`: one closure per file that calls the file's harness with its tests, handed
+/// to `run_files` (`@std/test/runner.ms` `run_test_files`), whose status `main` returns.
+pub(crate) fn build_file_runners(
+    m: &mut Module,
+    files: &[TestFile],
+    run_files: FuncId,
+) -> Result<FuncId, Error> {
+    let runner_ty = list_elem(m, m.funcs[run_files.index()].params[0].ty)?;
+    let (runner_params, runner_ret) = fn_parts(m, runner_ty)?;
+    let mut runners = Vec::new();
+    for (position, file) in files.iter().enumerate() {
+        let harness = m.funcs[file.harness.index()].clone();
+        let types: Vec<MTy> = harness.params.iter().map(|p| p.ty).collect();
+        let borrowed: Vec<bool> = harness
+            .params
+            .iter()
+            .map(|p| p.mode == Mode::Borrow)
+            .collect();
+        // Parameters: file, [make, four hooks,] tests, indices, selected, results.
+        let tests_at = if file.fixture.is_some() { 6 } else { 1 };
+        let test_ty = list_elem(m, types[tests_at])?;
+        let (test_params, test_ret) = fn_parts(m, test_ty)?;
+        let mut test_closures = Vec::new();
+        for &(t, _) in &file.tests {
+            let thunk = closure_fn(m, "test", &test_params, test_ret, |b, ps| b.call(t, ps));
+            test_closures.push(thunk);
+        }
+        let mut fixture_closures = Vec::new();
+        if let Some((make, hooks)) = &file.fixture {
+            let (make_params, make_ret) = fn_parts(m, types[1])?;
+            let make = *make;
+            fixture_closures.push((
+                closure_fn(m, "make_fixture", &make_params, make_ret, |b, ps| {
+                    b.call(make, ps)
+                }),
+                types[1],
+            ));
+            for (i, hook) in hooks.iter().enumerate() {
+                let (hook_params, hook_ret) = fn_parts(m, types[2 + i])?;
+                let hook = *hook;
+                let thunk = closure_fn(m, "hook", &hook_params, hook_ret, |b, ps| match hook {
+                    Some(h) if b.m.funcs[h.index()].ret == MTy::UNIT => {
+                        b.call(h, ps);
+                        ok_unit(b, hook_ret)
+                    }
+                    Some(h) => b.call(h, ps),
+                    None => ok_unit(b, hook_ret),
+                });
+                fixture_closures.push((thunk, types[2 + i]));
+            }
+        }
+        let indices: Vec<i64> = file.tests.iter().map(|&(_, i)| i).collect();
+        let target = file.harness;
+        let runner = closure_fn(m, "test file", &runner_params, runner_ret, |b, ps| {
+            let mut args = vec![b.iconst(position as i64)];
+            for &(c, ty) in &fixture_closures {
+                let v = b
+                    .emit(Op::ClosureNew, &[], Imm::Func(c), Some(ty))
+                    .expect("closure");
+                args.push(v);
+            }
+            let mut items = Vec::new();
+            for &c in &test_closures {
+                let v = b
+                    .emit(Op::ClosureNew, &[], Imm::Func(c), Some(test_ty))
+                    .expect("closure");
+                items.push(v);
+            }
+            args.push(b.list_lit(test_ty, &items));
+            args.push(b.list_const(MTy::INT, indices.clone()));
+            args.extend_from_slice(ps);
+            let r = b.call(target, &args);
+            // Arguments the harness borrows are still ours; the caller's own stay theirs.
+            let made = args.len() - ps.len();
+            for (i, v) in args.iter().take(made).enumerate() {
+                if borrowed[i] && i > 0 {
+                    b.emit(Op::Drop, &[*v], Imm::None, None);
+                }
+            }
+            r
+        });
+        runners.push(runner);
+    }
+    let borrowed = m.funcs[run_files.index()].params[0].mode == Mode::Borrow;
+    let mut b = FuncBuilder::new(m, "main", Vec::new(), MTy::INT);
+    let mut items = Vec::new();
+    for c in runners {
+        let v = b
+            .emit(Op::ClosureNew, &[], Imm::Func(c), Some(runner_ty))
+            .expect("closure");
+        items.push(v);
+    }
+    let list = b.list_lit(runner_ty, &items);
+    let status = b.call(run_files, &[list]);
+    if borrowed {
+        b.emit(Op::Drop, &[list], Imm::None, None);
+    }
+    b.ret(Some(status));
+    let mut f = b.into_func();
+    f.linkage = Linkage::Export;
+    f.compact_blocks();
+    Ok(m.add_func(f))
 }
 
 /// Builds `main`: argument `i` selects test `i`, which must return `Result[Unit, Error]`.

@@ -175,8 +175,6 @@ pub(crate) struct FnLower<'a> {
     pub discard: Option<usize>,
     /// The start of the statement being lowered.
     pub stmt_pos: Option<Pos>,
-    /// The fixture hooks a test runs after its body, on every exit.
-    pub fixture: Option<crate::fixture::Hooks>,
     /// The `err` slot of the runtime call whose `Failed` text the next status error reads.
     pub err_slot: Option<Value>,
     /// The `for` iterable whose `String.split` call may become a piece iterator (see `for_stmt`).
@@ -376,6 +374,14 @@ impl Cx {
                 mode: if owned { Mode::Move } else { Mode::Borrow },
             });
         }
+        // A test of a file with `make_fixture` changes the file's one fixture in place.
+        let fixture_param = c.fixture.is_some();
+        if fixture_param {
+            params.push(Param {
+                ty: MTy::PTR,
+                mode: Mode::Borrow,
+            });
+        }
         let result = ct::sub(&self.callable_result(c)?, subst);
         let ret = self.lower_ty(m, &result)?;
         let ret = self.borrowing_result_ty(m, c, ret);
@@ -389,9 +395,13 @@ impl Cx {
         } else {
             self.syms.str(c.name).to_string()
         };
+        let params_len = params.len();
         let mut f = ms_mir::ir::Func::new(&name, params, ret);
         // The checker keeps a `var` argument from overlapping any other argument.
         f.noalias = vars.iter().map(|&i| i as u32).collect();
+        if fixture_param {
+            f.noalias.push((params_len - 1) as u32);
+        }
         // The checker found every result a reference into the arguments. An optional that holds
         // its payload in a heap block cannot be a view (`opt.view` of a boxed optional), so that
         // instance returns a copy the caller owns; the checker still treats the call as a borrow,
@@ -509,9 +519,85 @@ pub(crate) fn lower_tests(
             .collect();
         ids = crate::runner::bench_entries(&mut m, &ids, &per, driver);
     }
+    if bench || tests.is_empty() {
+        drain(syms, &mut cx, &mut m)?;
+        cx.check_strict_copies()?;
+        m.entry = Some(crate::runner::build_runner(&mut m, &ids)?);
+        return Ok((m, names));
+    }
+    // Test files run as promises under `@std/test/runner.ms`, each file's tests in order.
+    const RUNNER: &str = "@std/test/runner.ms";
+    let find = |cx: &Cx, name: &str| {
+        cx.callables
+            .values()
+            .find(|c| syms.str(c.module.file) == RUNNER && syms.str(c.name) == name)
+            .cloned()
+            .ok_or_else(|| Error::new("the test runner @std/test/runner.ms is not loaded"))
+    };
+    let run_files = find(&cx, "run_test_files")?;
+    let run_files = cx.function_for(&mut m, &run_files, &Subst::default())?;
+    let mut order: Vec<ct::Name> = Vec::new();
+    for (file, _) in &tests {
+        if !order.contains(file) {
+            order.push(*file);
+        }
+    }
+    let mut files = Vec::new();
+    for file in &order {
+        let members: Vec<(FuncId, i64)> = tests
+            .iter()
+            .zip(&ids)
+            .enumerate()
+            .filter(|(_, ((f, _), _))| f == file)
+            .map(|(i, (_, id))| (*id, i as i64))
+            .collect();
+        let fixture = cx.fixtures.get(file).cloned();
+        let Some(fixture) = fixture else {
+            let plain = find(&cx, "run_plain_file")?;
+            files.push(crate::runner::TestFile {
+                tests: members,
+                harness: cx.function_for(&mut m, &plain, &Subst::default())?,
+                fixture: None,
+            });
+            continue;
+        };
+        let generic = find(&cx, "run_fixture_file")?;
+        // `make: fn() F` names the fixture type variable.
+        let variable = generic
+            .parameters
+            .get(1)
+            .map(|b| b.ty.result_ty())
+            .ok_or_else(|| Error::new("run_fixture_file takes the fixture type"))?;
+        let mut subst = Subst::default();
+        subst.insert(variable.id, fixture.ty.clone());
+        let harness = cx.function_for(&mut m, &generic, &subst)?;
+        let factory = fixture
+            .factory
+            .decl
+            .as_ref()
+            .and_then(|d| cx.callables.get(&(fixture.factory.module, d.id())).cloned())
+            .ok_or_else(|| Error::new("make_fixture not found"))?;
+        let make = cx.function_for(&mut m, &factory, &Subst::default())?;
+        let mut hooks = [None; 4];
+        for (i, name) in ["before_all", "before_each", "after_each", "after_all"]
+            .iter()
+            .enumerate()
+        {
+            if let Some(hook) = cx.fixture_hook(&fixture.ty, name) {
+                hooks[i] = Some(cx.function_for(&mut m, &hook, &Subst::default())?);
+            }
+        }
+        files.push(crate::runner::TestFile {
+            tests: members,
+            harness,
+            fixture: Some((make, hooks)),
+        });
+    }
     drain(syms, &mut cx, &mut m)?;
     cx.check_strict_copies()?;
-    m.entry = Some(crate::runner::build_runner(&mut m, &ids)?);
+    m.entry = Some(crate::runner::build_file_runners(
+        &mut m, &files, run_files,
+    )?);
     Ok((m, names))
 }
 
@@ -705,7 +791,6 @@ impl<'a> FnLower<'a> {
             discard: None,
             stmt_pos: None,
             source_scope: 0,
-            fixture: None,
             err_slot: None,
             split_iter_for: None,
             chars_iter_for: None,
@@ -1755,7 +1840,6 @@ impl<'a> FnLower<'a> {
                     self.drop_temp(t);
                 }
             }
-            self.end_fixture();
         }
         // The returned value leaves its owner before the scopes end, so their cleanup does not
         // drop it.
@@ -1980,7 +2064,9 @@ impl<'a> FnLower<'a> {
             }
         }
         if let Some(f) = &c.fixture {
-            self.begin_fixture(c, f)?;
+            // The file's fixture arrives as the last parameter, changed in place.
+            let v = *self.b.params().last().expect("fixture parameter");
+            self.bind_var_parameter(f, v)?;
         }
         match c.body() {
             ms_check::api::hir::Body::Block(stmts) => {
