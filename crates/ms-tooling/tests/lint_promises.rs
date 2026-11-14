@@ -73,6 +73,8 @@ fn the_fix_waits_for_a_dropped_call() {
 fn promise_fixes_preserve_written_call_expressions() {
     let syms = ms_syntax::Names::global();
     let file: Arc<str> = Arc::from("lint.ms");
+    // One session for the 54 checks: the standard library is checked once, not before each program.
+    let session = ms_check::Session::new();
     for expression in [
         "make(1)",
         "1 | make",
@@ -90,8 +92,9 @@ fn promise_fixes_preserve_written_call_expressions() {
                     .replace("EXPRESSION", &format!("{binding}{expression}"))
                     .replace('\n', newline);
                 let module = ms_syntax::parser::parse(&file, &source).expect(&source);
-                let program = ms_check::check(
+                let program = ms_check::check_in(
                     syms,
+                    &session,
                     vec![ms_check::load_module(syms, &module)],
                     ImportMap::default(),
                     CheckOptions::default(),
@@ -120,8 +123,9 @@ fn promise_fixes_preserve_written_call_expressions() {
                     &fix.replacement,
                 );
                 let module = ms_syntax::parser::parse(&file, &fixed).expect(&fixed);
-                let program = ms_check::check(
+                let program = ms_check::check_in(
                     syms,
+                    &session,
                     vec![ms_check::load_module(syms, &module)],
                     ImportMap::default(),
                     CheckOptions::default(),
