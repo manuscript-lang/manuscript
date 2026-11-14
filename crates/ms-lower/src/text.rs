@@ -165,6 +165,24 @@ fn element_text(
     b.def_var(out, dots);
     b.br(join, &[]);
     b.switch_to(fmt);
+    if t == MTy::STR && !repr {
+        // An empty string inside a container shows as `""`, so `[""]` is not read as `[]`.
+        let n = b.str_bytes(v);
+        let zero = b.iconst(0);
+        let empty = b.icmp(Cc::Eq, n, zero);
+        let (quoted, plain) = (b.new_block(), b.new_block());
+        b.br_if(empty, quoted, &[], plain, &[]);
+        b.seal_block(quoted);
+        b.seal_block(plain);
+        b.switch_to(quoted);
+        let marks = b.str_lit("\"\"");
+        let marks = b
+            .emit(Op::Clone, &[marks], Imm::None, Some(MTy::STR))
+            .expect("copy");
+        b.def_var(out, marks);
+        b.br(join, &[]);
+        b.switch_to(plain);
+    }
     let (txt, owned) = match scalar_text(b, t, v, repr) {
         Some(r) => r,
         None => {

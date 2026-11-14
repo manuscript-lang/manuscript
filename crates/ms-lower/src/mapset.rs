@@ -29,6 +29,9 @@ pub(crate) fn is_map_or_set(m: &ms_mir::ir::Module, t: MTy) -> bool {
 }
 
 /// `x` of `x.clone()`.
+/// The most items a `List[T](reserve: n)` preallocates.
+const RESERVE_LIMIT: i64 = 1 << 27;
+
 fn clone_receiver<'e>(
     syms: ms_check::api::Names,
     hir: &ms_check::api::hir::ModuleHir,
@@ -447,7 +450,12 @@ impl<'a> FnLower<'a> {
                 let zero = self.b.iconst(0);
                 let neg = self.b.icmp(Cc::Lt, n, zero);
                 let floor = self.b.select(neg, zero, n);
-                let cap = self.b.select(has, floor, zero);
+                // `reserve` is a hint: a count past 2^27 items is capped, so the allocation
+                // stays a size either backend can satisfy (it grows on demand past that).
+                let limit = self.b.iconst(RESERVE_LIMIT);
+                let big = self.b.icmp(Cc::Gt, floor, limit);
+                let capped = self.b.select(big, limit, floor);
+                let cap = self.b.select(has, capped, zero);
                 let v = self.b.list_new(elem, cap);
                 Ok(Val { v, own: true })
             }
