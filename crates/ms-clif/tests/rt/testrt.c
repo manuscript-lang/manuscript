@@ -256,6 +256,7 @@ void msrt_fault_depth(void) { die("stack overflow: call depth limit exceeded (re
 uint64_t msrt_drop_enter(void) { return 0; }
 void msrt_drop_defer(void (*run)(uint8_t *), uint8_t *block) { run(block); }
 void msrt_drop_leave(void) {}
+void msrt_slot_copy_grown(void (*copy)(const uint8_t *, uint8_t *), const uint8_t *src, uint8_t *dst) { copy(src, dst); }
 /* The leak check needs every free at exit. */
 uint8_t msrt_exit_frees(void) { return 1; }
 void msrt_cancelled(void) { fflush(stdout); run_cleanups(); exit(130); }

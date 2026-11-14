@@ -239,6 +239,7 @@ msrt_set_values(m: *const MapVal, kd: KeyDesc, vd: ValDesc, out: *mut VecVal) @d
 msrt_shield_enter() @leaf
 msrt_shield_exit() @leaf
 msrt_slot_copy(d: *const TypeDesc, src: *const u8, dst: *mut u8) @leaf
+msrt_slot_copy_grown(copy: RunCopy, src: *const u8, dst: *mut u8)
 msrt_slot_drop(d: *const TypeDesc, slot: *mut u8) @leaf
 msrt_slot_eq(d: *const TypeDesc, a: *const u8, b: *const u8) -> u8 @domain=slot @leaf
 msrt_slot_hash(d: *const TypeDesc, slot: *const u8) -> i64 @leaf
