@@ -8,6 +8,7 @@ Checking, lowering, MIR, Cranelift, build, fault sites.
 
 - [Checked Int arithmetic is language behavior](checked-int-arithmetic-is-language-behavior.md): `Int` arithmetic faults on overflow ([design contract](../../crates/DESIGN.md)).
 - [Compiler passes use the right algorithm and data structure for their input size](compiler-passes-use-the-right-algorithm-and-data-structure-f.md): the user wants parsing, checking, and lowering to stay linear (or n log n) in source size, with no ad-hoc special cases.
+- [The LLVM backend is its own crate and needs only MIR](the-llvm-backend-is-its-own-crate-and-needs-only-mir.md): `ms-mir-llvm` emits its own symbols and data and depends on no Cranelift code.
 - [Error is an indirect record, one pointer wide](error-is-an-indirect-record-one-pointer-wide.md): `T!` was 12 words; boxing `Error` cuts fallible frames by about 190 B.
 - [Evaluation order: receivers and operands are captured before later calls](evaluation-order-receivers-and-operands-are-captured-before.md): a plain local read is not ordered against a later call unless the lowering orders it.
 - [Fault locations name the failing operation's statement, without columns](fault-locations-name-the-failing-operation-s-statement-witho.md): the user rejected per-call bookkeeping in generated code; a fault captures its frames where it is created, and the process runs scope-end cl…
@@ -24,6 +25,6 @@ Checking, lowering, MIR, Cranelift, build, fault sites.
 - [Compiler change checklist](compiler-change-checklist.md): syntax, checking, lowering, MIR, Cranelift, build, and linking rules to check before editing the compiler.
 - [LLVM resolves interface calls only from vtables it can read](llvm-resolves-interface-calls-from-vtables-it-can-read.md): release units carry `available_externally` vtable copies so calls on a known `iface.new` inline.
 - [Direct LLVM records above eight leaves are memory, not leaf bags](direct-llvm-records-are-memory-not-leaf-bags-above-eight-leaves.md): one `alloca` of the leaf struct, `memcpy` copies, byte-offset field reads, slots for block parameters.
-- [LLVM facts need pointer provenance, and Cranelift alias regions are not markers](llvm-facts-need-provenance-and-cranelift-alias-regions-are-global.md): what the translation keeps as `ptr`, why region tags are Cranelift-global, and what blocks vectorization.
+- [LLVM facts need pointer provenance, and Cranelift alias regions are not markers](llvm-facts-need-provenance-and-cranelift-alias-regions-are-global.md): the deleted translation, why region tags are Cranelift-global, direct-emitter facts, and what blocks vectorization.
 - [Structural property bits are not worth a whole-program pass](structural-property-bits-are-not-worth-a-whole-program-pass.md): a typical check makes about 270 property queries, and answers depended on per-file impl visibility.
 - [Unwind leaves slot values to an active scope close](unwind-leaves-slot-values-to-an-active-scope-close.md): a value taken from a scope-closed slot must not get its own unwind drop, which would free the receiver before the slot's close runs.

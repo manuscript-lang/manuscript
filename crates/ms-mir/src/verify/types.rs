@@ -147,7 +147,9 @@ impl InstCheck<'_, '_> {
             | Op::OptUnwrap
             | Op::OptUnbox
             | Op::OptAddr => self.optionals(),
-            Op::StrLen | Op::StrByte | Op::StrAscii | Op::StrAsciiAt => self.strings(),
+            Op::StrLen | Op::StrByte | Op::StrAscii | Op::StrAsciiAt | Op::StrAsciiLen => {
+                self.strings()
+            }
             Op::ClosureNew
             | Op::ClosureCap
             | Op::ClosureCapAddr
@@ -812,6 +814,13 @@ impl InstCheck<'_, '_> {
                 self.want(
                     self.t(0) == Ty::STR && self.t(1) == Ty::INT && self.res == Some(Ty::INT),
                     "str.ascii_at takes a string and a scalar index and yields int",
+                )
+            }
+            Op::StrAsciiLen => {
+                self.arity(1)?;
+                self.want(
+                    self.t(0) == Ty::STR && self.res == Some(Ty::INT),
+                    "str.ascii_len takes a string and yields int",
                 )
             }
             Op::StrAscii => {

@@ -94,13 +94,104 @@ fn trim_left(s: &str) -> &str {
 
 const MARKER: Id = 0;
 
+/// What a stack entry means to the `p`-in-button-scope check, as packed indices plus one.
+#[derive(Clone, Copy, Default)]
+struct Mark {
+    /// Nearest `p` element at or below this entry.
+    p: u32,
+    /// Nearest button-scope boundary at or below this entry.
+    stop: u32,
+}
+
+/// The stack of open elements. `marks` runs parallel to `ids` so the scope check that every
+/// block start tag makes ("is a `p` open within button scope?") reads the top entry instead of
+/// walking the stack, which made deep nesting quadratic.
+#[derive(Default)]
+struct OpenElements {
+    ids: Vec<Id>,
+    marks: Vec<Mark>,
+}
+
+impl core::ops::Deref for OpenElements {
+    type Target = [Id];
+    fn deref(&self) -> &[Id] {
+        &self.ids
+    }
+}
+
+impl OpenElements {
+    fn mark_at(&self, i: usize, nodes: &[Node]) -> Mark {
+        let below = if i == 0 {
+            Mark::default()
+        } else {
+            self.marks[i - 1]
+        };
+        let n = &nodes[self.ids[i]];
+        let tag = n.atom.as_str();
+        let at = i as u32 + 1;
+        let html = n.namespace.is_empty();
+        let stop = (html && tag == "button") || default_scope_stop(&n.namespace).contains(&tag);
+        Mark {
+            p: if html && tag == "p" { at } else { below.p },
+            stop: if stop { at } else { below.stop },
+        }
+    }
+
+    fn remark(&mut self, from: usize, nodes: &[Node]) {
+        self.marks.truncate(from);
+        for i in from..self.ids.len() {
+            let m = self.mark_at(i, nodes);
+            self.marks.push(m);
+        }
+    }
+
+    fn push(&mut self, n: Id, nodes: &[Node]) {
+        self.ids.push(n);
+        let m = self.mark_at(self.ids.len() - 1, nodes);
+        self.marks.push(m);
+    }
+
+    fn pop(&mut self) -> Option<Id> {
+        self.marks.pop();
+        self.ids.pop()
+    }
+
+    fn truncate(&mut self, len: usize) {
+        self.ids.truncate(len);
+        self.marks.truncate(len);
+    }
+
+    fn insert(&mut self, at: usize, n: Id, nodes: &[Node]) {
+        self.ids.insert(at, n);
+        self.remark(at, nodes);
+    }
+
+    fn set(&mut self, i: usize, n: Id, nodes: &[Node]) {
+        self.ids[i] = n;
+        self.remark(i, nodes);
+    }
+
+    fn remove(&mut self, n: Id, nodes: &[Node]) {
+        if let Some(i) = self.ids.iter().rposition(|&x| x == n) {
+            self.ids.remove(i);
+            self.remark(i, nodes);
+        }
+    }
+
+    /// Index of the nearest `p` that button scope reaches, if any.
+    fn p_in_button_scope(&self) -> Option<usize> {
+        let m = self.marks.last()?;
+        (m.p > m.stop).then(|| m.p as usize - 1)
+    }
+}
+
 pub struct Parser {
     tokenizer: Tokenizer,
     tok: Token,
     has_self_closing: bool,
     pub nodes: Vec<Node>,
     pub doc: Id,
-    oe: Vec<Id>,
+    oe: OpenElements,
     afe: Vec<Id>,
     head: Option<Id>,
     form: Option<Id>,
@@ -110,9 +201,7 @@ pub struct Parser {
     original_im: Option<Im>,
     foster_parenting: bool,
     quirks: bool,
-    /// Stops parsing once this many elements are open; tree depth trails it only by
-    /// adoption-agency moves. Scope searches walk the open stack, so unbounded nesting is
-    /// quadratic.
+    /// Stops parsing once this many elements are open, so the depth limit costs only that much.
     pub max_open: usize,
     pub exceeded: bool,
 }
@@ -234,7 +323,7 @@ impl Parser {
             has_self_closing: false,
             nodes,
             doc: 1,
-            oe: Vec::new(),
+            oe: OpenElements::default(),
             afe: Vec::new(),
             head: None,
             form: None,
@@ -385,6 +474,9 @@ impl Parser {
     // ---- scope ----
 
     fn index_of_element_in_scope(&self, s: Scope, match_tags: &[&str]) -> Option<usize> {
+        if matches!(s, Scope::Button) && match_tags == ["p"] {
+            return self.oe.p_in_button_scope();
+        }
         for i in (0..self.oe.len()).rev() {
             let n = &self.nodes[self.oe[i]];
             let tag = n.atom.as_str();
@@ -494,7 +586,7 @@ impl Parser {
             self.append_child(t, n);
         }
         if self.nodes[n].ty == NodeType::Element {
-            self.oe.push(n);
+            self.oe.push(n, &self.nodes);
         }
     }
 
@@ -988,9 +1080,9 @@ impl Parser {
                 "base" | "basefont" | "bgsound" | "link" | "meta" | "noframes" | "script"
                 | "style" | "template" | "title" => {
                     let head = self.head.unwrap_or(self.doc);
-                    self.oe.push(head);
+                    self.oe.push(head, &self.nodes);
                     let r = self.in_head_im();
-                    Self::remove_from(&mut self.oe, head);
+                    self.oe.remove(head, &self.nodes);
                     return r;
                 }
                 "head" => return true,
@@ -1046,7 +1138,7 @@ impl Parser {
                     self.im = Im::InTemplate;
                     return false;
                 }
-                for &e in &self.oe {
+                for &e in self.oe.iter() {
                     match self.atom(e) {
                         "dd" | "dt" | "li" | "optgroup" | "option" | "p" | "rb" | "rp" | "rt"
                         | "rtc" | "tbody" | "td" | "tfoot" | "th" | "thead" | "tr" | "body"
@@ -1155,7 +1247,7 @@ impl Parser {
                     let n = self.afe[i];
                     if self.nodes[n].ty == NodeType::Element && self.atom(n) == "a" {
                         self.in_body_end_tag_formatting("a", "a");
-                        Self::remove_from(&mut self.oe, n);
+                        self.oe.remove(n, &self.nodes);
                         Self::remove_from(&mut self.afe, n);
                         break;
                     }
@@ -1345,7 +1437,7 @@ impl Parser {
                         _ => return true,
                     }
                     self.generate_implied_end_tags(&[]);
-                    Self::remove_from(&mut self.oe, node.unwrap_or(0));
+                    self.oe.remove(node.unwrap_or(0), &self.nodes);
                 }
             }
             "p" => {
@@ -1456,13 +1548,13 @@ impl Parser {
                     continue;
                 }
                 let Some(ni) = ni else {
-                    Self::remove_from(&mut self.oe, node);
+                    self.oe.remove(node, &self.nodes);
                     continue;
                 };
                 let clone = self.clone_node(node);
                 self.afe[ni] = clone;
                 if let Some(oi) = Self::index_in(&self.oe, node) {
-                    self.oe[oi] = clone;
+                    self.oe.set(oi, clone, &self.nodes);
                 }
                 node = clone;
                 if last_node == furthest {
@@ -1492,9 +1584,9 @@ impl Parser {
             Self::remove_from(&mut self.afe, formatting);
             let at = (bookmark.max(0) as usize).min(self.afe.len());
             self.afe.insert(at, clone);
-            Self::remove_from(&mut self.oe, formatting);
+            self.oe.remove(formatting, &self.nodes);
             let at = Self::index_in(&self.oe, furthest).map_or(0, |i| i + 1);
-            self.oe.insert(at, clone);
+            self.oe.insert(at, clone, &self.nodes);
         }
     }
 

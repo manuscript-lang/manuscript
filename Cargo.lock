@@ -976,13 +976,16 @@ dependencies = [
 name = "ms-build"
 version = "0.0.0"
 dependencies = [
+ "gimli 0.34.0",
  "ms-check",
  "ms-clif",
  "ms-driver",
  "ms-lower",
  "ms-mir",
+ "ms-mir-llvm",
  "ms-rt",
  "ms-syntax",
+ "object",
 ]
 
 [[package]]
@@ -1025,6 +1028,7 @@ dependencies = [
  "flate2",
  "gimli 0.34.0",
  "httparse",
+ "ms-build",
  "ms-mir",
  "ms-rt-abi",
  "object",
@@ -1097,6 +1101,15 @@ name = "ms-mir"
 version = "0.0.0"
 dependencies = [
  "ms-mir",
+ "ms-rt-abi",
+]
+
+[[package]]
+name = "ms-mir-llvm"
+version = "0.0.0"
+dependencies = [
+ "ms-mir",
+ "ms-rt-abi",
 ]
 
 [[package]]

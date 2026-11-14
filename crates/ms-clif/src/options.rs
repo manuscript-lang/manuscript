@@ -28,17 +28,6 @@ pub enum CopyProbe {
     Strict,
 }
 
-/// What happens to a function or glue the direct MIR-to-LLVM emitter cannot write.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum Fallback {
-    /// It goes through the Cranelift translation.
-    Translate,
-    /// Like `Translate`, and each one is named on stderr as `llvm-fallback: <what>: <why>`.
-    Report,
-    /// It is a build error.
-    Deny,
-}
-
 /// Build settings shared by code generation, linking and the build cache.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct BuildOptions {
@@ -49,14 +38,10 @@ pub struct BuildOptions {
     pub llvm_units: Option<usize>,
     /// LLVM vectorizes loops (loop and SLP vectorizers).
     pub vectorize: bool,
-    /// Emit supported functions straight from MIR instead of translating Cranelift IR.
-    pub llvm_direct: bool,
     /// Tell LLVM the heap functions are an allocator (`MS_HEAP_FACTS=off` turns it off): it then
     /// deletes blocks nothing reads and pairs frees with allocations. The ownership-count gate
     /// turns it off so every block the compiler asks for is counted.
     pub heap_facts: bool,
-    /// What a function or glue the direct emitter cannot write does (`MS_LLVM_FALLBACK`).
-    pub llvm_fallback: Fallback,
     /// Run LLVM's verifier after every optimizer pass (`opt -verify-each`).
     pub llvm_verify: bool,
     /// Copy the LLVM IR of a release build to `ms-keep.ll`.
@@ -73,6 +58,12 @@ pub struct BuildOptions {
     pub static_musl: bool,
     /// Print the time at which each build phase finished.
     pub timings: bool,
+    /// Run Cranelift's IR verifier on every function (`MS_CLIF_VERIFY`). It checks the code
+    /// generator's own output and costs about a third of Cranelift's compile time, so shipped
+    /// builds skip it and builds of the compiler with debug assertions (the test suites) keep it.
+    pub clif_verify: bool,
+    /// Print the Cranelift IR of every function to standard error (`MS_DUMP_CLIF=1`).
+    pub dump_clif: bool,
     /// Report or reject copies of object values in the lowered code.
     pub copy_probe: CopyProbe,
 }
@@ -83,9 +74,7 @@ impl Default for BuildOptions {
             cranelift_only: false,
             llvm_units: None,
             vectorize: true,
-            llvm_direct: false,
             heap_facts: true,
-            llvm_fallback: Fallback::Translate,
             llvm_verify: false,
             keep_ll: false,
             rt_hot: RtHot::Embedded,
@@ -94,6 +83,8 @@ impl Default for BuildOptions {
             runtime: None,
             static_musl: false,
             timings: false,
+            dump_clif: false,
+            clif_verify: cfg!(debug_assertions),
             copy_probe: CopyProbe::Off,
         }
     }

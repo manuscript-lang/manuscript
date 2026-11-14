@@ -63,8 +63,9 @@ pub fn parse(text: &str, limits: Limits) -> Result<Tree, Fail> {
         return Err(Fail::LimitExceeded);
     }
     let mut p = parse::Parser::new(text.as_bytes());
-    // Twice the depth budget plus slack for elements the tree places shallower than the stack.
-    p.max_open = max_depth.saturating_mul(2).saturating_add(64);
+    // The open-element stack tracks tree depth; the slack covers the implied html, head and body
+    // elements and adoption-agency moves. The exact depth is checked once parsing finishes.
+    p.max_open = max_depth.saturating_add(64);
     p.parse();
     if p.exceeded {
         return Err(Fail::LimitExceeded);

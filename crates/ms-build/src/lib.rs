@@ -10,12 +10,14 @@
 #[cfg(test)]
 use ms_rt as _;
 pub mod cache;
+pub mod llvm;
+pub use llvm::available as llvm_available;
 pub mod lower;
 pub mod native;
 
 pub use lower::{Lower, Native, Unavailable};
 pub use ms_clif::link::debug_companion_path;
-pub use ms_clif::{BuildOptions, CopyProbe, Fallback, RtHot};
+pub use ms_clif::{BuildOptions, CopyProbe, RtHot};
 pub use ms_lower::SKIP_MARKER;
 pub use ms_mir::ir::Module;
 pub use native::{

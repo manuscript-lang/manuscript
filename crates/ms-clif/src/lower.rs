@@ -9,7 +9,7 @@ use cranelift_codegen::ir::{
 };
 use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext, Switch};
 use cranelift_module::{DataId, FuncId, Module as _};
-use ms_mir::ir::{Cc, ExternRole, FaultKind, Func, Imm, Inst, Mode, Op, Target, Term};
+use ms_mir::ir::{Cc, ExternRole, FaultKind, Func, Imm, Inst, Op, Target, Term};
 use ms_mir::types::{Ty, TyKind};
 use ms_rt_abi::symbols::{ISOLATE_HDR_CANCEL, ISOLATE_HDR_GUARDED, STACK_LIMIT_CELL, STACK_REGION};
 use ms_rt_abi::{
@@ -33,17 +33,6 @@ mod string;
 fn flags() -> MemFlagsData {
     MemFlagsData::trusted()
 }
-
-/// Alias region of a list element that is one scalar word (`Int`, `Float`, `Bool`, sized
-/// numbers). The LLVM emitter turns the region id into a TBAA tag (`llvm_ir.rs`).
-pub const REGION_SCALAR_ELEM: u32 = 1;
-/// Alias region of a list element that is a list or string header, the words of which a scalar
-/// store never overwrites.
-pub const REGION_HEADER_ELEM: u32 = 2;
-/// Bit set on an element access whose index is known to be below the list's length (a bounds
-/// check, or a proof the optimizer already acted on). The LLVM translation addresses such an
-/// access with a non-wrapping, in-bounds offset. It is only a marker for that translation.
-pub const REGION_IN_BOUNDS: u32 = 4;
 
 /// Where a wide value (`Map`, `Set`: seven words) also lives in memory, so calls take its
 /// address instead of spilling a copy. A home on a block parameter holds for the rest of the
@@ -79,6 +68,11 @@ pub struct Lower<'a, 'm> {
     pslots: HashMap<(usize, usize), ir::StackSlot>,
     /// Wide block parameters whose leaves are loaded from their home at each use.
     lazy: Vec<bool>,
+    /// Quotients of the signed divisions lowered so far in this block, by operands, so a
+    /// remainder of the same operands reuses the divide.
+    quotients: HashMap<(Value, Value), Value>,
+    /// The same for remainders: the quotient by the divisor with -1 replaced by 1.
+    safe_quotients: HashMap<(Value, Value), Value>,
     /// MIR block being lowered.
     cur: usize,
     /// MIR function being lowered (the key of its grow shim).
@@ -91,11 +85,6 @@ pub struct Lower<'a, 'm> {
     pub unsupported: Option<String>,
     /// Slots of statement-scoped temporaries, merged between blocks by `slotshare`.
     temps: Vec<ir::StackSlot>,
-    /// Alias region of the access being lowered, set around a list element load or store.
-    region: Option<ir::AliasRegion>,
-    /// Element type behind each pointer made by `list.addr`, so a `load` or `store` through it
-    /// carries the element's alias region.
-    elem_ptrs: HashMap<Value, (Ty, Op)>,
 }
 
 fn bargs(vs: &[Value]) -> Vec<BlockArg> {
@@ -123,14 +112,14 @@ impl<'a, 'm> Lower<'a, 'm> {
             str_lits: HashMap::new(),
             pslots: HashMap::new(),
             lazy: Vec::new(),
+            quotients: HashMap::new(),
+            safe_quotients: HashMap::new(),
             cur: 0,
             fid: 0,
             overflow_result: None,
             blocks: Vec::new(),
             unsupported: None,
             temps: Vec::new(),
-            region: None,
-            elem_ptrs: HashMap::new(),
         }
     }
 
@@ -403,49 +392,7 @@ impl<'a, 'm> Lower<'a, 'm> {
 
     /// Flags of a leaf access, with the alias region of the list element being accessed.
     fn mem_flags(&self) -> MemFlagsData {
-        flags().with_alias_region(self.region)
-    }
-
-    /// The alias region for elements of type `elem`, when scalar stores and header words must
-    /// not be assumed to overlap: a scalar element never lies where a list or string header does.
-    ///
-    /// Only the LLVM emitter reads the regions, as TBAA tags. A Cranelift alias region means
-    /// disjoint from every other access, untagged ones included, so a tagged store that no
-    /// tagged load observes would be dead code there: Cranelift output stays untagged.
-    fn elem_region(&mut self, elem: Ty, in_bounds: bool) -> Option<ir::AliasRegion> {
-        self.g.llvm.as_ref()?;
-        let id = match self.g.m.types.kind(elem) {
-            TyKind::Bool
-            | TyKind::Int
-            | TyKind::Float
-            | TyKind::Int8
-            | TyKind::Int16
-            | TyKind::Int32
-            | TyKind::Float32
-            | TyKind::UInt8
-            | TyKind::UInt16
-            | TyKind::UInt32
-            | TyKind::UInt64 => REGION_SCALAR_ELEM,
-            TyKind::List(_) | TyKind::Str | TyKind::Bytes => REGION_HEADER_ELEM,
-            _ => 0,
-        } | if in_bounds { REGION_IN_BOUNDS } else { 0 };
-        if id == 0 {
-            return None;
-        }
-        Some(self.b.func.dfg.alias_regions.insert(ir::AliasRegionData {
-            user_id: id,
-            description: "list element".into(),
-        }))
-    }
-
-    /// Runs `access` with the alias region of list elements of type `elem`.
-    fn in_elem_region<R>(&mut self, elem: Ty, mode: Op, access: impl FnOnce(&mut Self) -> R) -> R {
-        // Without checks only a proven index is known to be in bounds.
-        let in_bounds = self.g.opts.checks || matches!(mode, Op::ListGetU | Op::ListSetU);
-        self.region = self.elem_region(elem, in_bounds);
-        let out = access(self);
-        self.region = None;
-        out
+        flags()
     }
 
     fn store_leaves(&mut self, ptr: Value, base: i64, leaves: &[Leaf], vs: &[Value]) {
@@ -756,11 +703,11 @@ impl<'a, 'm> Lower<'a, 'm> {
     }
 
     fn framed_iface_borrows(&self, f: &Func) -> HashSet<usize> {
-        framed_iface_borrows(self.g.m, f)
+        ms_mir::frames::framed_iface_borrows(self.g.m, f)
     }
 
     fn framed_closure_objects(&self, f: &Func) -> HashSet<usize> {
-        framed_closure_objects(self.g.m, f)
+        ms_mir::frames::framed_closure_objects(self.g.m, f)
     }
 
     pub fn lower_func(&mut self, fi: usize, f: &Func) {
@@ -801,6 +748,8 @@ impl<'a, 'm> Lower<'a, 'm> {
             self.b.switch_to_block(cb);
             // Bind block parameters.
             self.cur = b.index();
+            self.quotients.clear();
+            self.safe_quotients.clear();
             let params = self.b.block_params(cb).to_vec();
             let mut at = 0;
             for (j, p) in f.blocks[b.index()].params.iter().enumerate() {
@@ -849,13 +798,12 @@ impl<'a, 'm> Lower<'a, 'm> {
         }
     }
 
-    pub fn lower_main(&mut self, entry: usize) {
+    pub fn lower_main(&mut self, fid: FuncId) {
         let blk = self.b.create_block();
         self.b.append_block_params_for_function_params(blk);
         self.b.switch_to_block(blk);
         let p = self.b.block_params(blk).to_vec();
         let (argc, argv) = (self.b.ins().sextend(types::I64, p[0]), p[1]);
-        let fid = self.g.funcs[entry];
         let fref = self.fref(fid);
         let faddr = self.b.ins().func_addr(types::I64, fref);
         let tables = match self.g.tables {
@@ -884,6 +832,29 @@ impl<'a, 'm> Lower<'a, 'm> {
         self.b.ins().icmp_imm_s(IntCC::Equal, c, 0)
     }
 
+    /// The arguments of a join block reached by both edges of a branch on `c`: the common value,
+    /// or a `select` between the two.
+    fn select_args(
+        &mut self,
+        c: Value,
+        then: &[BlockArg],
+        els: &[BlockArg],
+    ) -> Option<Vec<BlockArg>> {
+        let mut out = Vec::with_capacity(then.len());
+        for (t, e) in then.iter().zip(els) {
+            let (BlockArg::Value(t), BlockArg::Value(e)) = (t, e) else {
+                return None;
+            };
+            let v = if t == e {
+                *t
+            } else {
+                self.b.ins().select(c, *t, *e)
+            };
+            out.push(BlockArg::Value(v));
+        }
+        Some(out)
+    }
+
     fn lower_term(&mut self, f: &Func, t: &Term) {
         match t {
             Term::Br(tg) => {
@@ -908,7 +879,16 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let (eb, ea) = self.target(els);
                 let (ts, es) = (self.edge_stores(then), self.edge_stores(els));
                 if ts.is_empty() && es.is_empty() {
-                    self.b.ins().brif(c, tb, &ta, eb, &ea);
+                    if tb == eb
+                        && self.g.opts.opt_level != "none"
+                        && let Some(args) = self.select_args(c, &ta, &ea)
+                    {
+                        // Both edges reach one block: pick each argument with a conditional move
+                        // instead of branching on data that is often unpredictable (`min`, `max`).
+                        self.b.ins().jump(tb, &args);
+                    } else {
+                        self.b.ins().brif(c, tb, &ta, eb, &ea);
+                    }
                 } else {
                     let (tt, te) = (self.b.create_block(), self.b.create_block());
                     self.b.ins().brif(c, tt, &[], te, &[]);
@@ -1118,7 +1098,9 @@ impl<'a, 'm> Lower<'a, 'm> {
             | Op::OptUnwrap
             | Op::OptUnbox
             | Op::OptAddr => self.optionals(f, inst),
-            Op::StrByte | Op::StrAscii | Op::StrAsciiAt | Op::StrLen => self.strings(inst),
+            Op::StrByte | Op::StrAscii | Op::StrAsciiAt | Op::StrAsciiLen | Op::StrLen => {
+                self.strings(inst)
+            }
             Op::ClosureNew
             | Op::ClosureCap
             | Op::ClosureCapAddr
@@ -1296,105 +1278,4 @@ fn c_param(l: Leaf) -> ir::AbiParam {
         ir::ArgumentExtension::Uext => p.uext(),
         ir::ArgumentExtension::None => p,
     }
-}
-
-/// The `iface.borrow` results of `f` whose only uses are arguments of calls to functions that
-/// whose result is not a view of their arguments, and drops. Such an interface cannot outlive the
-/// frame, so its leaves need no heap box.
-pub(crate) fn framed_iface_borrows(m: &ms_mir::ir::Module, f: &Func) -> HashSet<usize> {
-    let mut framed = HashSet::new();
-    for b in &f.blocks {
-        for i in &b.insts {
-            if i.op == Op::IfaceBorrow
-                && let Some(r) = i.res
-            {
-                framed.insert(r.index());
-            }
-        }
-    }
-    if framed.is_empty() {
-        return framed;
-    }
-    for b in &f.blocks {
-        for i in &b.insts {
-            let plain = match i.op {
-                Op::Drop => true,
-                Op::Call | Op::CallMethod => !m.result_views(f, i),
-                _ => false,
-            };
-            if !plain {
-                for a in &i.args {
-                    framed.remove(&a.index());
-                }
-            }
-        }
-        if let Term::Ret(Some(v)) = &b.term {
-            framed.remove(&v.index());
-        }
-        if let Term::CondBr { cond: v, .. } | Term::Switch { value: v, .. } = &b.term {
-            framed.remove(&v.index());
-        }
-        b.term.for_each_target(|t| {
-            for a in &t.args {
-                framed.remove(&a.index());
-            }
-        });
-    }
-    framed
-}
-
-/// The `closure.new` results of `f` that cannot outlive the frame: their only uses are drops,
-/// being called, and arguments a callee only borrows whose result does not point into them.
-/// A closure that owns a resource (a capture closer) keeps its heap object, which the
-/// unwinder releases.
-pub(crate) fn framed_closure_objects(m: &ms_mir::ir::Module, f: &Func) -> HashSet<usize> {
-    let mut framed = HashSet::new();
-    for b in &f.blocks {
-        for i in &b.insts {
-            if let (Op::ClosureNew, Imm::Func(c), Some(r)) = (i.op, i.imm, i.res)
-                && m.funcs[c.index()].capture_closers.is_empty()
-            {
-                framed.insert(r.index());
-            }
-        }
-    }
-    if framed.is_empty() {
-        return framed;
-    }
-    for b in &f.blocks {
-        for i in &b.insts {
-            let borrows = |k: usize| match (i.op, i.imm) {
-                (Op::Call, Imm::Func(g)) => m.funcs[g.index()]
-                    .params
-                    .get(k)
-                    .is_some_and(|p| p.mode == Mode::Borrow),
-                (Op::CallRt, Imm::Ext(e)) => m.externs[e.index()]
-                    .params
-                    .get(k)
-                    .is_some_and(|p| p.mode == Mode::Borrow),
-                (Op::CallInd, _) => k == 0,
-                _ => false,
-            };
-            let plain_call =
-                matches!(i.op, Op::Call | Op::CallRt | Op::CallInd) && !m.result_views(f, i);
-            for (k, a) in i.args.iter().enumerate() {
-                let ok = i.op == Op::Drop || (plain_call && borrows(k));
-                if !ok {
-                    framed.remove(&a.index());
-                }
-            }
-        }
-        if let Term::Ret(Some(v)) = &b.term {
-            framed.remove(&v.index());
-        }
-        if let Term::CondBr { cond: v, .. } | Term::Switch { value: v, .. } = &b.term {
-            framed.remove(&v.index());
-        }
-        b.term.for_each_target(|t| {
-            for a in &t.args {
-                framed.remove(&a.index());
-            }
-        });
-    }
-    framed
 }

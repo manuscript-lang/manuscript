@@ -1,0 +1,13 @@
+[package]
+name = "ms-mir-llvm"
+version = "0.0.0"
+edition.workspace = true
+publish.workspace = true
+description = "Manuscript LLVM backend: emits LLVM IR text straight from MIR. It depends only on MIR; the caller compiles and links the IR"
+
+[dependencies]
+ms-mir = { path = "../ms-mir" }
+ms-rt-abi = { path = "../ms-rt-abi" }
+
+[lints]
+workspace = true

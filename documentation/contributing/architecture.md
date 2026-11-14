@@ -15,6 +15,7 @@ weight = 1
     -> ms-lower   (checked HIR to MIR, including native standard calls)
     -> ms-mir     (optimizer, verifier)
     -> ms-clif    (MIR to Cranelift object code; line tables; perf map)
+    -> ms-mir-llvm (MIR to LLVM IR for release builds; ms-build drives it)
     -> link with ms-native (ms-rt and the ms-std-* crates) -> executable
 ```
 
@@ -33,7 +34,7 @@ weight = 1
 | --- | --- |
 | `ms-syntax` | Lexer, parser, syntax tree, formatter |
 | `ms-check` | Resolution, types, generics, contracts, effects, cleanup, ownership; typed HIR; diagnostics; editor queries |
-| `ms-lower`, `ms-mir`, `ms-clif` | Checked HIR to MIR; optimizer and verifier; Cranelift and LLVM code generation |
+| `ms-lower`, `ms-mir`, `ms-mir-llvm`, `ms-clif` | Checked HIR to MIR; optimizer and verifier; Cranelift and LLVM code generation |
 | `ms-rt`, `ms-rt-abi`, `ms-native` | Runtime (with the `ffi` and `glue` helpers the native crates build on), C-layout ABI types, and the static library embedded in `ms` |
 | `ms-std-*` | One crate per native standard module, depending on `ms-rt` as an ordinary Rust crate |
 | `ms-driver` | Manifest, lock, import resolution; module graph, entry rule, checking |

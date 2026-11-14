@@ -1,0 +1,385 @@
+//! Direct calls between functions emitted from MIR.
+
+use super::attrs::pure_attrs;
+use super::types::Abi;
+use super::{Area, Cx, Vals, call_ret_ty, leaves, native_ret_attr, native_ret_ty, ret_attr, types};
+use crate::abi_llvm::{Pass, Reg, Ret, Signature};
+use crate::llvm_build::{FnBuilder, Ty as LTy, Types, Val};
+use ms_mir::ir::{ExternDef, ExternRole, Func, Imm, Inst, Mode, Module, Op, Value};
+use ms_mir::layout::Layouts;
+use ms_mir::types::{Ty, TyKind};
+
+pub(super) const AREA: Area = Area {
+    handles,
+    inst_ok,
+    splits,
+    pre,
+    emit,
+    ..Area::NONE
+};
+
+fn inst_ok(m: &Module, lay: &Layouts, _: &Func, inst: &Inst) -> bool {
+    match (inst.op, inst.imm) {
+        (Op::CallRt, Imm::Ext(e)) => is_map_new(m, inst) || extern_ok(lay, &m.externs[e.index()]),
+        (Op::CallRt, _) => false,
+        _ => true,
+    }
+}
+
+/// Discarding a cleanup handle branches: handle 0 is a registration that was skipped.
+fn splits(lay: &Layouts, _: &Func, inst: &Inst, _: bool) -> usize {
+    usize::from(is_discard(lay.m, inst))
+}
+
+fn is_discard(m: &Module, inst: &Inst) -> bool {
+    matches!((inst.op, inst.imm), (Op::CallRt, Imm::Ext(e)) if m.externs[e.index()].role == ExternRole::CleanupDiscard)
+}
+
+/// `map_new` (and `set_new`): an empty map is seven zero words (`ms_rt::map::empty()`, pinned by
+/// a runtime test), so it is constants and no call.
+fn is_map_new(m: &Module, inst: &Inst) -> bool {
+    matches!((inst.op, inst.imm), (Op::CallRt, Imm::Ext(e)) if m.externs[e.index()].role == ExternRole::MapNew)
+}
+
+fn pre(
+    _: &Module,
+    lay: &Layouts,
+    f: &Func,
+    inst: &Inst,
+    _: &Vals,
+    _: &mut FnBuilder,
+) -> Option<Vec<Val>> {
+    let res = inst.res?;
+    is_map_new(lay.m, inst).then(|| vec![Val::int(0); lay.width(f.ty(res))])
+}
+
+fn handles(op: Op) -> bool {
+    matches!(op, Op::Call | Op::CallRt)
+}
+
+/// The values the runtime takes by value: scalars, pointers and the small optionals of them.
+/// Anything else crosses as the address of a copy.
+fn passes_directly(lay: &Layouts, t: Ty) -> bool {
+    match lay.m.types.kind(t) {
+        TyKind::Unit
+        | TyKind::Bool
+        | TyKind::Int
+        | TyKind::Int8
+        | TyKind::Int16
+        | TyKind::Int32
+        | TyKind::UInt8
+        | TyKind::UInt16
+        | TyKind::UInt32
+        | TyKind::UInt64
+        | TyKind::Float
+        | TyKind::Float32
+        | TyKind::Ptr
+        | TyKind::Fn(..)
+        | TyKind::Iface(_) => true,
+        TyKind::Obj(n, _) => !n.is_map_or_set(),
+        TyKind::Opt(inner) => lay.opt_is_nullable(*inner) || lay.m.types.is_scalar(*inner),
+        _ => false,
+    }
+}
+
+/// Whether a call of the runtime function `def` is within what this module emits: the types
+/// either pass directly or have a memory shape, and it is not
+/// a function the lowering treats as a guarded or constant case.
+fn extern_ok(lay: &Layouts, def: &ExternDef) -> bool {
+    let crosses = |t: Ty| passes_directly(lay, t) || types::shape_ok(lay, t);
+    def.role != ExternRole::MapNew && def.params.iter().all(|p| crosses(p.ty)) && crosses(def.ret)
+}
+
+fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
+    let (m, lay) = (cx.m, cx.lay);
+    let out = inst
+        .res
+        .map(|r| vals[&r.index()].clone())
+        .unwrap_or_default();
+    if is_map_new(m, inst) {
+        return;
+    }
+    if is_discard(m, inst) {
+        let on = b.icmp("ne", &vals[&inst.args[0].index()][0], &Val::int(0));
+        let then = format!("c{}_{}", cx.block, cx.split);
+        cx.split += 1;
+        let next = super::block_label(cx.block, cx.split);
+        b.cond_br_likely(&on, &then, &next, false);
+        b.label(&then);
+        call_rt(cx, inst, vals, &out, b);
+        b.br(&next);
+        b.label(&next);
+        return;
+    }
+    if inst.op == Op::CallRt {
+        return call_rt(cx, inst, vals, &out, b);
+    }
+    let Imm::Func(c) = inst.imm else { return };
+    let callee = &m.funcs[c.index()];
+    let sym = (cx.symbol_of)(c.index());
+    let attrs = pure_attrs(m, lay, cx.native, c.index(), &mut cx.memo).unwrap_or("");
+    let pure = !attrs.is_empty();
+    if cx.native.contains(&c.index()) {
+        let sig = Signature::of(b.types(), lay, &callee.params, &callee.noalias, callee.ret);
+        // A result larger than two registers comes back through a slot the caller owns.
+        let slot = match sig.result {
+            Ret::Sret(_) => Some(types::result_slot(b, lay, callee.ret, &out)),
+            Ret::Scalars(_) => None,
+        };
+        let mut args: Vec<(Val, &str)> = slot.iter().map(|s| (s.clone(), "")).collect();
+        for ((p, a), pass) in callee.params.iter().zip(&inst.args).zip(&sig.passes) {
+            match pass {
+                Pass::Scalars(_) => {
+                    let abi = types::abi_leaves(b, lay, p.ty, vals, *a, Abi::Native);
+                    let Pass::Scalars(regs) = pass else {
+                        unreachable!()
+                    };
+                    for ((v, (_, at)), r) in abi.into_iter().zip(leaves(lay, p.ty)).zip(regs) {
+                        args.push((v, native_attr(*r, at)));
+                    }
+                }
+                Pass::Indirect(..) => args.push((types::spill(b, lay, p.ty, vals, *a), "")),
+            }
+        }
+        cx.decls.push((sym.clone(), sig.declare(&sym, attrs)));
+        let ret = match &slot {
+            Some(_) => LTy::Void,
+            None => native_ret_ty(lay, callee.ret),
+        };
+        let attr = if slot.is_some() {
+            ""
+        } else {
+            native_ret_attr(lay, callee.ret)
+        };
+        match &slot {
+            Some(slot) => {
+                b.call_keep(&ret, attr, &sym, &args);
+                types::load_result(b, lay, callee.ret, slot, &out);
+            }
+            None => finish_call(
+                b,
+                lay,
+                callee.ret,
+                (&ret, attr, pure),
+                Callee::Symbol(&sym),
+                &args,
+                &out,
+                true,
+            ),
+        }
+        return;
+    }
+    let mut args: Vec<(Val, &str)> = Vec::new();
+    for (p, a) in callee.params.iter().zip(&inst.args) {
+        let abi = types::abi_leaves(b, lay, p.ty, vals, *a, Abi::Leaf);
+        for (v, (_, at)) in abi.into_iter().zip(leaves(lay, p.ty)) {
+            args.push((v, at));
+        }
+    }
+    let ret = call_ret_ty(lay, callee.ret, false);
+    let attr = ret_attr(lay, callee.ret);
+    cx.decls.push((
+        sym.clone(),
+        declare_leaf(b.types(), lay, callee, &sym, attrs),
+    ));
+    finish_call(
+        b,
+        lay,
+        callee.ret,
+        (&ret, attr, pure),
+        Callee::Symbol(&sym),
+        &args,
+        &out,
+        false,
+    );
+}
+
+/// The attribute of an argument in the native convention: a sized integer carries its extension.
+fn native_attr(r: Reg, leaf_attr: &'static str) -> &'static str {
+    match (r, r.extension()) {
+        (Reg::I8, _) | (_, "") => leaf_attr,
+        (_, ext) => ext,
+    }
+}
+
+/// The function a call goes to.
+pub(super) enum Callee<'a> {
+    /// A function by its symbol.
+    Symbol(&'a str),
+    /// The code a pointer holds.
+    Pointer(&'a Val),
+}
+
+/// Writes the call and names its results `out`.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn finish_call(
+    b: &mut FnBuilder,
+    lay: &ms_mir::layout::Layouts,
+    result: Ty,
+    (ret, attr, pure): (&LTy, &str, bool),
+    callee: Callee,
+    args: &[(Val, &str)],
+    out: &[Val],
+    native: bool,
+) {
+    // A pure callee cannot fault, so its call sites need no fault frame of their own.
+    let call = |b: &mut FnBuilder| match callee {
+        Callee::Pointer(code) => b.call_ptr(ret, attr, code, args),
+        Callee::Symbol(sym) if pure => b.call_pure(ret, attr, sym, args),
+        Callee::Symbol(sym) => b.call_keep(ret, attr, sym, args),
+    };
+    if types::is_mem(lay, result) {
+        // The result is a type in memory, rebuilt from the call's result.
+        let r = call(b).expect("a result");
+        types::call_result(b, lay, result, r, out);
+    } else if types::ret_needs_conversion(ret, out) {
+        // Booleans come back as bytes and, in the leaf convention, pointers as addresses.
+        let r = call(b).expect("a result");
+        types::name_leaves(b, r, out, native);
+    } else if out.len() <= 1 {
+        if let [r] = out {
+            b.name_next(r);
+        }
+        call(b);
+    } else {
+        let t = call(b).expect("a tuple result");
+        for (k, dst) in out.iter().enumerate() {
+            b.name_next(dst);
+            b.extract(&t, k);
+        }
+    }
+}
+
+/// `declare` of `callee` in the leaf convention, the one the runtime and the translated functions
+/// use: one parameter per leaf, pointers as addresses.
+pub(super) fn declare_leaf(
+    types: &Types,
+    lay: &Layouts,
+    callee: &Func,
+    sym: &str,
+    attrs: &str,
+) -> String {
+    let formals: Vec<String> = callee
+        .params
+        .iter()
+        .flat_map(|p| leaves(lay, p.ty))
+        .map(|(t, a)| format!("{}{a}", types.text(&t)))
+        .collect();
+    format!(
+        "declare {}{} @\"{sym}\"({}){attrs}",
+        ret_attr(lay, callee.ret),
+        types.text(&call_ret_ty(lay, callee.ret, false)),
+        formals.join(", ")
+    )
+}
+
+/// A call in the leaf convention to `callee`, a closure's code or a method: `first` is the
+/// object or receiver address as an `i64`, then `args` of types `params`. Its results are `out`.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn leaf_call(
+    b: &mut FnBuilder,
+    lay: &Layouts,
+    vals: &Vals,
+    callee: Callee,
+    first: Val,
+    (params, args): (&[Ty], &[Value]),
+    ret: Ty,
+    out: &[Val],
+) {
+    let mut actuals = vec![(first, "")];
+    for (p, a) in params.iter().zip(args) {
+        let abi = types::abi_leaves(b, lay, *p, vals, *a, Abi::Leaf);
+        for (v, (_, at)) in abi.into_iter().zip(leaves(lay, *p)) {
+            actuals.push((v, at));
+        }
+    }
+    let rt = call_ret_ty(lay, ret, false);
+    let attr = ret_attr(lay, ret);
+    finish_call(
+        b,
+        lay,
+        ret,
+        (&rt, attr, false),
+        callee,
+        &actuals,
+        out,
+        false,
+    );
+}
+
+/// Parameter attributes of the address of a copy the runtime reads: a borrowed value is only
+/// read, and a value the callee keeps is read as it is consumed.
+const BORROWED: &str = " readonly";
+/// The hidden last parameter of a result that does not pass directly: a slot the callee fills.
+const OUT: &str = " noalias writeonly";
+
+/// A call of the runtime function in `inst`: values that pass directly go as leaves, any other as
+/// the address of a copy, and a result that does not pass directly comes back through a hidden last
+/// pointer.
+fn call_rt(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder) {
+    let (m, lay) = (cx.m, cx.lay);
+    let Imm::Ext(e) = inst.imm else { return };
+    let def = &m.externs[e.index()];
+    // A user `extern fn` follows the C ABI, where a sized number is its own type and the callee
+    // trusts the extension attribute; a runtime function takes and returns the leaf convention's
+    // `i64` and `double`.
+    let c_abi = m.c_externs.contains(&def.name);
+    let abi_kind = if c_abi { Abi::Native } else { Abi::Rt };
+    let mut args: Vec<(Val, &str)> = Vec::new();
+    for (p, a) in def.params.iter().zip(&inst.args) {
+        if passes_directly(lay, p.ty) {
+            let abi = types::abi_leaves(b, lay, p.ty, vals, *a, abi_kind);
+            let regs = crate::abi_llvm::regs_of(lay, p.ty);
+            for ((v, (_, at)), r) in abi.into_iter().zip(leaves(lay, p.ty)).zip(regs) {
+                args.push((v, if c_abi { native_attr(r, at) } else { at }));
+            }
+        } else {
+            let slot = types::spill(b, lay, p.ty, vals, *a);
+            args.push((slot, if p.mode == Mode::Borrow { BORROWED } else { "" }));
+        }
+    }
+    let direct = passes_directly(lay, def.ret);
+    let slot = (!direct).then(|| types::result_slot(b, lay, def.ret, out));
+    if let Some(slot) = &slot {
+        args.push((slot.clone(), OUT));
+    }
+    let attrs = crate::llvm_ir::runtime_attrs(&def.name, def.reads);
+    let types = b.types();
+    let formals: Vec<String> = args
+        .iter()
+        .map(|(v, a)| format!("{}{a}", types.text(&v.ty)))
+        .collect();
+    let (ret, attr) = match &slot {
+        Some(_) => (LTy::Void, ""),
+        None if crate::llvm_ir::returns_fresh_block(&def.name) => (LTy::Ptr, "noalias align 16 "),
+        // A C result has no extension attribute: the callee leaves the bits above a narrow
+        // result undefined, so the held `iN` is the low bits and nothing is trusted.
+        None if c_abi => (native_ret_ty(lay, def.ret), ""),
+        None => (call_ret_ty(lay, def.ret, true), ret_attr(lay, def.ret)),
+    };
+    cx.decls.push((
+        def.name.clone(),
+        format!(
+            "declare {attr}{} @\"{}\"({}){attrs}",
+            types.text(&ret),
+            def.name,
+            formals.join(", ")
+        ),
+    ));
+    match &slot {
+        Some(slot) => {
+            b.call_keep(&ret, attr, &def.name, &args);
+            types::load_result(b, lay, def.ret, slot, out);
+        }
+        None => finish_call(
+            b,
+            lay,
+            def.ret,
+            (&ret, attr, false),
+            Callee::Symbol(&def.name),
+            &args,
+            out,
+            true,
+        ),
+    }
+}

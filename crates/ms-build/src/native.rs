@@ -107,11 +107,12 @@ impl Backend {
 }
 
 impl Profile {
-    fn options(self, build: &BuildOptions) -> (Level, Options) {
+    fn options(self, build: &BuildOptions) -> (Level, Options, Option<&'static str>) {
         let mut options = Options {
             build: build.clone(),
             ..Options::default()
         };
+        let mut llvm = None;
         let level = match self {
             // Debug keeps every check and skips MIR and Cranelift optimization so
             // locals and line tables stay faithful.
@@ -120,16 +121,16 @@ impl Profile {
                 Level::None
             }
             Profile::Release => {
-                options.llvm = llvm_level(build, "3");
+                llvm = llvm_level(build, "3");
                 Level::Speed
             }
             Profile::MinSizeRel => {
                 options.opt_level = "speed_and_size";
-                options.llvm = llvm_level(build, "s");
+                llvm = llvm_level(build, "s");
                 Level::Speed
             }
         };
-        (level, options)
+        (level, options, llvm)
     }
 }
 
@@ -140,7 +141,7 @@ fn llvm_level(build: &BuildOptions, level: &'static str) -> Option<&'static str>
     if build.cranelift_only {
         return None;
     }
-    ms_clif::llvm_available(build).then_some(level)
+    crate::llvm::available(build).then_some(level)
 }
 
 /// Native inputs beyond the explicit link files: the selected runtime archive and helper IR.
@@ -265,8 +266,8 @@ pub fn build_executable_pinned(
             );
         }
     };
-    let (level, options) = profile.options(build);
-    let backend = if options.llvm.is_some() {
+    let (level, options, llvm) = profile.options(build);
+    let backend = if llvm.is_some() {
         Backend::Llvm
     } else {
         Backend::Cranelift
@@ -278,11 +279,17 @@ pub fn build_executable_pinned(
         verify_after(module, "unwind")?;
     }
     phase("mir optimize");
-    let parts = ms_clif::compile_parts(module, &options).map_err(|e| {
+    let compiled = match llvm {
+        Some(level) => crate::llvm::compile(module, options.checks, level, build),
+        None => ms_clif::compile(module, &options).map(|object| vec![object]),
+    };
+    let mut objects = compiled.map_err(|e| {
         format!(
             "native code generation failed (this is a Manuscript bug, so report it with the source that triggers it; 'ms emit <file>' prints the lowered code): {e}"
         )
     })?;
+    // The first object is the main one; the rest link beside it, ahead of the runtime.
+    let first = objects.remove(0);
 
     phase("codegen");
     let directory = output
@@ -296,7 +303,7 @@ pub fn build_executable_pinned(
         )
     })?;
     let object_path = stage.path().join("program.o");
-    let llvm_paths: Vec<PathBuf> = (0..parts.llvm.len())
+    let llvm_paths: Vec<PathBuf> = (0..objects.len())
         .map(|k| stage.path().join(format!("program.llvm{k}.o")))
         .collect();
     let staged = stage.path().join("program.exe");
@@ -310,14 +317,14 @@ pub fn build_executable_pinned(
             let _ = std::fs::remove_dir_all(companion);
         }
     };
-    if let Err(error) = std::fs::write(&object_path, parts.object) {
+    if let Err(error) = std::fs::write(&object_path, first) {
         cleanup();
         return Err(format!("cannot write {}: {error}", object_path.display()));
     }
     // The functions LLVM compiled link beside the Cranelift object, ahead of the runtime.
     let mut inputs: Vec<&Path> = extra.iter().map(PathBuf::as_path).collect();
     inputs.push(runtime);
-    for (k, (path, llvm)) in llvm_paths.iter().zip(&parts.llvm).enumerate() {
+    for (k, (path, llvm)) in llvm_paths.iter().zip(&objects).enumerate() {
         if let Err(error) = std::fs::write(path, llvm) {
             cleanup();
             return Err(format!("cannot write {}: {error}", path.display()));

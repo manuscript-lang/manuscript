@@ -279,6 +279,12 @@ impl Interp<'_> {
                     .filter(|_| s.is_ascii() && *i >= 0);
                 ops.set(Val::Int(byte.map_or(-1, |b| i64::from(*b))));
             }
+            Op::StrAsciiLen => {
+                let Val::Str(s) = &ops.regs[inst.args[0].index()] else {
+                    return Err(Raw::internal("str.ascii_len on non-string"));
+                };
+                ops.set(Val::Int(if s.is_ascii() { s.len() as i64 } else { -1 }));
+            }
             Op::StrAscii => {
                 let Val::Int(b) = &ops.regs[inst.args[0].index()] else {
                     return Err(Raw::internal("str.ascii on &inst.args non-int"));

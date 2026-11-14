@@ -34,8 +34,6 @@ const STRING_TO_STRING: &[(&str, &str)] = &[
 
 /// A string method that maps its borrowed operands straight to a runtime function.
 const PLAIN_STRING: &[(&str, &str, MTy)] = &[
-    ("length", "msrt_string_length", MTy::INT),
-    ("scalar_length", "msrt_string_scalar_length", MTy::INT),
     ("byte_length", "msrt_string_byte_length", MTy::INT),
     ("is_empty", "msrt_string_is_empty", MTy::BOOL),
     ("contains", "msrt_string_contains", MTy::BOOL),

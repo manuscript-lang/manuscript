@@ -1,7 +1,7 @@
 //! Build settings read from the environment, once, when the engine is created. Everything below
 //! the command line receives them as a [`BuildOptions`] value.
 
-use ms_build::{BuildOptions, CopyProbe, Fallback, RtHot};
+use ms_build::{BuildOptions, CopyProbe, RtHot};
 use std::path::PathBuf;
 
 /// The settings the `MS_*` build variables select; unset variables keep the defaults.
@@ -13,13 +13,6 @@ pub fn from_env() -> BuildOptions {
         cranelift_only: text("MS_BACKEND").is_some_and(|b| b == "cranelift"),
         llvm_units: text("MS_LLVM_UNITS").and_then(|v| v.parse().ok()),
         vectorize: !text("MS_VECTORIZE").is_some_and(|v| v == "off" || v == "0"),
-        llvm_fallback: match text("MS_LLVM_FALLBACK").as_deref() {
-            Some("deny") => Fallback::Deny,
-            Some("report") => Fallback::Report,
-            _ => Fallback::Translate,
-        },
-        llvm_direct: var("MS_LLVM_DIRECT").is_some_and(|v| v != "0")
-            || matches!(text("MS_LLVM_FALLBACK").as_deref(), Some("deny" | "report")),
         heap_facts: !text("MS_HEAP_FACTS").is_some_and(|v| v == "off" || v == "0"),
         llvm_verify: var("MS_LLVM_VERIFY").is_some_and(|v| v != "0"),
         keep_ll: var("MS_KEEP_LL").is_some(),
@@ -34,6 +27,8 @@ pub fn from_env() -> BuildOptions {
         runtime: var("MS_RT_LIB").map(PathBuf::from),
         static_musl: false,
         timings: var("MS_TIMINGS").is_some_and(|v| v != "0"),
+        clif_verify: var("MS_CLIF_VERIFY").map_or(cfg!(debug_assertions), |v| v != "0"),
+        dump_clif: var("MS_DUMP_CLIF").is_some_and(|v| v != "0"),
         copy_probe: match var("MS_COPY_PROBE") {
             Some(v) if v == "strict" => CopyProbe::Strict,
             Some(v) if v != "0" => CopyProbe::Report,

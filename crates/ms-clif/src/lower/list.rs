@@ -102,8 +102,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let l = self.a(inst, 0);
                 let i = self.a(inst, 1)[0];
                 let at = self.elem_addr(l[0], l[1], i, size, inst.op);
-                let (e, _, _) = self.elem_info(lt);
-                self.in_elem_region(e, inst.op, |s| s.load_leaves(at, 0, &leaves))
+                self.load_leaves(at, 0, &leaves)
             }
             Op::ListSet | Op::ListSetNn | Op::ListSetU | Op::ListFill => {
                 let lt = f.ty(inst.args[0]);
@@ -113,10 +112,10 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let v = self.a(inst, 2);
                 let at = self.elem_addr(l[0], l[1], i, size, inst.op);
                 if inst.op != Op::ListFill && self.g.m.needs_drop(e) {
-                    let old = self.in_elem_region(e, inst.op, |s| s.load_leaves(at, 0, &leaves));
+                    let old = self.load_leaves(at, 0, &leaves);
                     self.drop_value(e, &old);
                 }
-                self.in_elem_region(e, inst.op, |s| s.store_leaves(at, 0, &leaves, &v));
+                self.store_leaves(at, 0, &leaves, &v);
                 l
             }
             Op::ListDropLast => {

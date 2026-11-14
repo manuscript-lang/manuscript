@@ -169,10 +169,10 @@ runs:
         MS_BACKEND: cranelift
       shell: bash
       run: target/debug/ms run tools/conform.ms
-    - name: Direct LLVM emitter size, build time and kernel times against the translation
+    - name: LLVM backend size, build time and kernel times against Cranelift
       if: env.GATES == 'true'
       shell: bash
-      run: MS=target/debug/ms RUNS=3 target/debug/ms run tools/llvm-direct-check.ms -- report | tee -a "${GITHUB_STEP_SUMMARY:-/dev/null}"
+      run: RUNS=3 target/debug/ms run tools/llvm-direct-check.ms -- report | tee -a "${GITHUB_STEP_SUMMARY:-/dev/null}"
     - name: Ownership counts and cleanup order hold
       if: env.GATES == 'true'
       shell: bash

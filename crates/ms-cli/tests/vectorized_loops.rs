@@ -8,7 +8,7 @@ const KERNELS: &str = include_str!("vectorized_loops/k.ms");
 
 #[test]
 fn element_wise_list_loops_are_vectorized() {
-    if !ms_clif::llvm_available(&ms_cli::engine::build_options_from_env()) {
+    if !ms_build::llvm_available(&ms_cli::engine::build_options_from_env()) {
         return;
     }
     let tools = ms_clif::link::llvm_tools(&ms_cli::engine::build_options_from_env())
@@ -51,8 +51,9 @@ fn element_wise_list_loops_are_vectorized() {
     let text = String::from_utf8_lossy(&remarks.stderr).into_owned();
     let _ = std::fs::remove_dir_all(&dir);
     assert!(remarks.status.success(), "{text}");
-    // Lines 3 and 6 of `k.ms` are the loops of `fma` and `scale`.
-    for line in ["k.ms:3:0: vectorized loop", "k.ms:6:0: vectorized loop"] {
+    // LLVM reports a loop at the line of its body: lines 3 and 7 of `k.ms` are the loops of `fma`
+    // and `scale`.
+    for line in ["k.ms:3:0: vectorized loop", "k.ms:7:0: vectorized loop"] {
         assert!(
             text.contains(line),
             "a list loop is not vectorized:\n{text}"
@@ -63,7 +64,7 @@ fn element_wise_list_loops_are_vectorized() {
 /// A fault inside a vectorized function reports its exit code and source frames.
 #[test]
 fn vectorized_function_reports_fault_frames() {
-    if !ms_clif::llvm_available(&ms_cli::engine::build_options_from_env()) {
+    if !ms_build::llvm_available(&ms_cli::engine::build_options_from_env()) {
         return;
     }
     let dir = std::env::temp_dir().join(format!("ms-vector-fault-{}", std::process::id()));
@@ -96,7 +97,7 @@ fn vectorized_function_reports_fault_frames() {
 /// `MS_VECTORIZE=off` leaves the list loops scalar.
 #[test]
 fn vectorize_off_keeps_loops_scalar() {
-    if !ms_clif::llvm_available(&ms_cli::engine::build_options_from_env()) {
+    if !ms_build::llvm_available(&ms_cli::engine::build_options_from_env()) {
         return;
     }
     let dir = std::env::temp_dir().join(format!("ms-vectorize-off-{}", std::process::id()));
@@ -123,7 +124,7 @@ fn vectorize_off_keeps_loops_scalar() {
 /// Release builds emit one copy of each function: no per-CPU copies, dispatcher or CPU query.
 #[test]
 fn release_builds_emit_no_per_cpu_copies() {
-    if !ms_clif::llvm_available(&ms_cli::engine::build_options_from_env()) {
+    if !ms_build::llvm_available(&ms_cli::engine::build_options_from_env()) {
         return;
     }
     let dir = std::env::temp_dir().join(format!("ms-one-copy-{}", std::process::id()));
@@ -153,7 +154,7 @@ fn release_builds_emit_no_per_cpu_copies() {
 #[cfg(target_arch = "aarch64")]
 #[test]
 fn element_wise_list_loops_use_neon() {
-    if !ms_clif::llvm_available(&ms_cli::engine::build_options_from_env()) {
+    if !ms_build::llvm_available(&ms_cli::engine::build_options_from_env()) {
         return;
     }
     let tools = ms_clif::link::llvm_tools(&ms_cli::engine::build_options_from_env())

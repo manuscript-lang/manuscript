@@ -3,7 +3,7 @@
 //! The layers, lowest first:
 //!
 //! ```text
-//! ms-syntax  ->  ms-check  ->  ms-lower  ->  ms-clif / ms-build
+//! ms-syntax  ->  ms-check  ->  ms-lower  ->  ms-clif / ms-mir-llvm / ms-build
 //!                    \->  ms-driver, ms-tooling  ->  ms-lsp  ->  ms-cli
 //! ```
 //!
@@ -21,7 +21,8 @@ use std::fs;
 const COMPILER_AND_TOOLS: &[(&str, &[&str])] = &[
     ("ms-syntax", &[]),
     ("ms-json", &[]),
-    ("ms-mir", &[]),
+    // `ms-mir` owns machine layout (`layout.rs`), which needs the runtime's value sizes.
+    ("ms-mir", &["ms-rt-abi"]),
     ("ms-decimal", &[]),
     ("ms-check", &["ms-syntax"]),
     // `ms-decimal` is pure arithmetic: lowering folds Decimal literals with it.
@@ -29,8 +30,14 @@ const COMPILER_AND_TOOLS: &[(&str, &[&str])] = &[
         "ms-lower",
         &["ms-check", "ms-mir", "ms-rt-abi", "ms-decimal"],
     ),
+    // The two code generators know nothing of each other: `ms-mir-llvm` depends on MIR and the
+    // ABI only, and `ms-build` runs it for release builds.
+    ("ms-mir-llvm", &["ms-mir", "ms-rt-abi"]),
     ("ms-clif", &["ms-mir", "ms-rt-abi"]),
-    ("ms-build", &["ms-check", "ms-clif", "ms-lower", "ms-mir"]),
+    (
+        "ms-build",
+        &["ms-check", "ms-clif", "ms-lower", "ms-mir", "ms-mir-llvm"],
+    ),
     ("ms-driver", &["ms-check", "ms-syntax"]),
     ("ms-tooling", &["ms-check", "ms-json", "ms-syntax"]),
     (
