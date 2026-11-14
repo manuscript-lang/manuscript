@@ -6,6 +6,10 @@ outputs:
     description: "'false' when the pull request touches only those paths, else 'true'."
     value: ${{ steps.scope.outputs.rust }}
 
+  llvm:
+    description: "'true' on scheduled, queued and manual runs, and on a pull request that touches LLVM-related code; else 'false'."
+    value: ${{ steps.scope.outputs.llvm }}
+
 runs:
   using: composite
   steps:
@@ -18,6 +22,7 @@ runs:
         # Scheduled runs, the merge queue and manual runs always run the Rust checks.
         if [ "$EVENT" != pull_request ]; then
           echo "rust=true" >> "$GITHUB_OUTPUT"
+          echo "llvm=true" >> "$GITHUB_OUTPUT"
           exit 0
         fi
         git fetch --no-tags --depth=1 origin "$BASE"
@@ -25,4 +30,13 @@ runs:
         if ! git diff --name-only "$BASE" "$GITHUB_SHA" | grep -qvE '^(documentation/|website/|blog/|proposals/|skills/|extensions/|.*\.md$)'; then
           rust=false
         fi
+        # Pull requests build programs with Cranelift (the Debug backend). Code that feeds or drives the
+        # LLVM release path also runs the LLVM corpus and the release gates, as main does: the LLVM
+        # backend and its glue, the build and link driver, the runtime and its ABI, the pinned
+        # toolchain, the CI tools, and the workflow files themselves.
+        llvm=false
+        if git diff --name-only "$BASE" "$GITHUB_SHA" | grep -qE '^(crates/(ms-mir-llvm|ms-build|ms-rt|ms-rt-abi|ms-rt-hot)/|crates/ms-clif/tests/llvm_|toolchain/|tools/|\.github/|Cargo\.lock$|rust-toolchain\.toml$)'; then
+          llvm=true
+        fi
         echo "rust=$rust" >> "$GITHUB_OUTPUT"
+        echo "llvm=$llvm" >> "$GITHUB_OUTPUT"
