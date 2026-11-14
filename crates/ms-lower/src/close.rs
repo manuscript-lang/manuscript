@@ -1243,7 +1243,29 @@ impl FnLower<'_> {
         own: Option<CloseKind>,
     ) -> Result<Option<CloseKind>, Error> {
         let mt = self.mty(ty)?;
-        let shape = match self.b.m.types.kind(mt).clone() {
+        let key = HelperKey::CloseParts(self.cx.tys.intern(ty), own.is_some());
+        // A type that holds itself (through a list or an optional) reaches its own closer
+        // while its parts are built: the helper is declared first and filled in after.
+        let kind = self.b.m.types.kind(mt).clone();
+        let declared = matches!(kind, TyKind::Type(_) | TyKind::Alt(_));
+        if declared {
+            if let Some(f) = self.cx.helpers.get(&key) {
+                return Ok(Some(CloseKind::Func {
+                    fid: *f,
+                    writes_back: true,
+                }));
+            }
+            let ps = vec![Param {
+                ty: MTy::PTR,
+                mode: Mode::Borrow,
+            }];
+            let mut stub = ms_mir::ir::Func::new("close_parts", ps, MTy::UNIT);
+            stub.linkage = Linkage::Internal;
+            stub.kind = FuncKind::Normal;
+            let fid = self.b.m.add_func(stub);
+            self.cx.helpers.insert(key.clone(), fid);
+        }
+        let shape = match kind {
             TyKind::Type(r) => {
                 let held = ct::fields(ty);
                 let mut parts = Vec::new();
@@ -1300,12 +1322,14 @@ impl FnLower<'_> {
             _ => None,
         };
         let Some(shape) = shape else {
+            if declared {
+                self.cx.helpers.remove(&key);
+            }
             return Ok(own);
         };
         // The helper closes the holder in place, through its address: a part whose close
         // changes it is written back where it lives, with no copy of the holder.
-        let key = HelperKey::CloseParts(self.cx.tys.intern(ty), own.is_some());
-        if let Some(f) = self.cx.helpers.get(&key) {
+        if !declared && let Some(f) = self.cx.helpers.get(&key) {
             return Ok(Some(CloseKind::Func {
                 fid: *f,
                 writes_back: true,
@@ -1326,8 +1350,17 @@ impl FnLower<'_> {
         let u = b.unit();
         b.ret(Some(u));
         let f = b.into_func();
-        let fid = self.b.m.add_func(f);
-        self.cx.helpers.insert(key, fid);
+        let fid = match self.cx.helpers.get(&key) {
+            Some(&fid) if declared => {
+                self.b.m.funcs[fid.index()] = f;
+                fid
+            }
+            _ => {
+                let fid = self.b.m.add_func(f);
+                self.cx.helpers.insert(key, fid);
+                fid
+            }
+        };
         Ok(Some(CloseKind::Func {
             fid,
             writes_back: true,
