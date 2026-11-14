@@ -147,6 +147,24 @@ opt-level = 1
 debug-assertions = false
 overflow-checks = false
 
+# The dev profile with the Cranelift crates' own debug assertions back on. `main` builds `ms` with it
+# (`cargo build --profile checked -p ms-cli`) and runs the Cranelift corpus, so an assertion that fires on
+# the IR we generate is still caught within 30 minutes of a merge; pull requests skip it for speed.
+[profile.checked]
+inherits = "dev"
+[profile.checked.package.regalloc2]
+debug-assertions = true
+overflow-checks = true
+[profile.checked.package.cranelift-codegen]
+debug-assertions = true
+overflow-checks = true
+[profile.checked.package.cranelift-frontend]
+debug-assertions = true
+overflow-checks = true
+[profile.checked.package.cranelift-object]
+debug-assertions = true
+overflow-checks = true
+
 # Cranelift 0.136.0 plus one change: the x64 backend branches directly on the overflow flag of
 # `sadd_overflow`, `ssub_overflow` and `usub_overflow` (as it already does for `uadd_overflow`
 # and the multiplies) instead of `seto`, `test`, `jne`. See vendor/cranelift-codegen/PATCH.md.
