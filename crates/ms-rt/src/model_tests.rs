@@ -525,12 +525,7 @@ fn string_ops_match_char_model(seed: u64) {
                 assert_eq!(text(&got), chars[i].to_string());
                 string::release(&got);
                 assert_eq!(
-                    ms_rt_hot::msrt_string_scalar_at(
-                        s as *const _ as usize,
-                        i as i64 - n as i64,
-                        0,
-                        0
-                    ),
+                    string::msrt_string_scalar_at(s, i as i64 - n as i64, HasRaw(0), 0),
                     chars[i] as i64
                 );
             }
@@ -538,11 +533,7 @@ fn string_ops_match_char_model(seed: u64) {
             let nv = new_str(&needle);
             let ns = &nv;
             let mut at = 0i64;
-            let found = ms_rt_hot::msrt_string_index_of(
-                s as *const _ as usize,
-                ns as *const _ as usize,
-                &mut at as *mut i64 as usize,
-            ) != 0;
+            let found = string::msrt_string_index_of(s, ns, &mut at) != 0;
             let want = model
                 .find(&needle)
                 .map(|b| model[..b].chars().count() as i64);
