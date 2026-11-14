@@ -40,7 +40,9 @@ impl FnLower<'_> {
             fixture.factory.module,
             fixture.factory.decl.as_ref().map(|d| d.id()),
         )?;
-        let fid = self.cx.function_for(self.b.m, &factory, &Subst::new())?;
+        let fid = self
+            .cx
+            .function_for(self.b.m, &factory, &Subst::default())?;
         let made = self.b.call(fid, &[]);
         let hook = |s: &mut Self, name: &str| s.fixture_hook(&fixture.ty, name);
         let (before_all, before_each) = (hook(self, "before_all"), hook(self, "before_each"));
@@ -81,7 +83,7 @@ impl FnLower<'_> {
         hook: &Rc<Callable>,
         binding: &BindingRef,
     ) -> Result<(), Error> {
-        let fid = self.cx.function_for(self.b.m, hook, &Subst::new())?;
+        let fid = self.cx.function_for(self.b.m, hook, &Subst::default())?;
         let writes_back = self.cx.var_positions(hook).contains(&0);
         let local = self.local(binding)?;
         let kind = CloseKind::Func { fid, writes_back };
@@ -151,7 +153,7 @@ impl FnLower<'_> {
     /// Calls a hook on the fixture local; a hook that changes `self` works on the local's value
     /// through a slot, which is stored back.
     fn run_hook(&mut self, hook: &Rc<Callable>, binding: &BindingRef) -> Result<(), Error> {
-        let fid = self.cx.function_for(self.b.m, hook, &Subst::new())?;
+        let fid = self.cx.function_for(self.b.m, hook, &Subst::default())?;
         let recv = self.read_local(binding)?;
         if self.cx.var_positions(hook).is_empty() {
             let v = self.b.call(fid, &[recv.v]);

@@ -1,12 +1,12 @@
 //! How a callee treats its receiver and arguments.
 
+use crate::fxmap::{HashMap, HashSet};
 use crate::hir::*;
 use crate::std_ops::{collection_mutation, is_text_builder};
 use crate::syntax::*;
 use crate::types::*;
 use ms_syntax::Pos;
 use ms_syntax::ast::*;
-use std::collections::HashMap;
 
 /// What a callable does with a value it is given.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -123,6 +123,22 @@ pub type Key = (Name, NodeId);
 #[derive(Default)]
 pub struct Summaries {
     pub decls: HashMap<Key, Summary>,
+    /// The keys read since the last `take_reads`, so the fixpoint re-analyzes a callable only when
+    /// a summary it read changed.
+    reads: std::cell::RefCell<HashSet<Key>>,
+}
+
+impl Summaries {
+    /// The summary of `key`, recording that the caller depends on it (present or not).
+    pub fn get(&self, key: &Key) -> Option<&Summary> {
+        self.reads.borrow_mut().insert(*key);
+        self.decls.get(key)
+    }
+
+    /// The keys read since the previous call.
+    pub fn take_reads(&self) -> HashSet<Key> {
+        std::mem::take(&mut *self.reads.borrow_mut())
+    }
 }
 
 impl std::ops::Deref for Summaries {

@@ -1,6 +1,7 @@
 //! Statements, patterns and `match`.
 
 use crate::checker::{Checker, Scope};
+use crate::fxmap::HashSet;
 use crate::hints::*;
 use crate::suggestions;
 use crate::syntax::*;
@@ -10,7 +11,6 @@ use crate::tytable::TyId;
 use ms_syntax::Cause;
 use ms_syntax::Pos;
 use ms_syntax::ast::*;
-use std::collections::HashSet;
 use std::rc::Rc;
 
 /// The case or type name an arm path stands for.
@@ -174,7 +174,7 @@ impl Checker {
         let mut expected: Option<Ty> = None;
         if let Some(t) = ty {
             let resolved = self.resolve(Some(t));
-            self.well_formed(&resolved, t.pos, &mut HashSet::new());
+            self.well_formed(&resolved, t.pos, &mut HashSet::default());
             expected = Some(resolved);
         }
         let before = self.p.diagnostics.len();
@@ -853,7 +853,7 @@ impl Checker {
                 }
                 self.opaque_denied(p.pos, t, "its fields cannot be destructured here");
                 let fs = fields(t);
-                let mut seen: HashSet<Name> = HashSet::new();
+                let mut seen: HashSet<Name> = HashSet::default();
                 for f in pfields {
                     if !seen.insert(f.name) {
                         self.type_error(
@@ -957,7 +957,7 @@ impl Checker {
         }
         self.opaque_denied(pos, &t, "its cases cannot be matched here");
         let all_cases = cases(&t);
-        let mut seen: HashSet<Name> = HashSet::new();
+        let mut seen: HashSet<Name> = HashSet::default();
         let (mut fall, mut breaks) = (false, false);
         let (mut wildcard, mut unknown_case) = (false, false);
         for (index, arm) in arms.iter().enumerate() {
@@ -1109,7 +1109,7 @@ impl Checker {
         info: &Info,
         body: &mut dyn FnMut(&mut Checker, &'a Arm) -> (bool, bool),
     ) -> (bool, bool) {
-        let mut seen: HashSet<String> = HashSet::new();
+        let mut seen: HashSet<String> = HashSet::default();
         let (mut fall, mut breaks, mut wildcard) = (false, false, false);
         for (index, arm) in arms.iter().enumerate() {
             self.set_arm_bindings(arm, Vec::new());
@@ -1166,7 +1166,7 @@ impl Checker {
         body: &mut dyn FnMut(&mut Checker, &'a Arm) -> (bool, bool),
     ) -> (bool, bool) {
         let contract = info.t();
-        let mut seen: HashSet<TyId> = HashSet::new();
+        let mut seen: HashSet<TyId> = HashSet::default();
         let (mut wildcard, mut fall, mut breaks) = (false, false, false);
         for (index, arm) in arms.iter().enumerate() {
             self.set_arm_bindings(arm, Vec::new());
@@ -1192,7 +1192,7 @@ impl Checker {
                                 "concrete type pattern requires explicit type arguments; write e.g. Box[Int]",
                             );
                         }
-                        self.well_formed(&t, arm.pos, &mut HashSet::new());
+                        self.well_formed(&t, arm.pos, &mut HashSet::default());
                         if !self.implements(&t, &contract) {
                             self.type_error(
                                 arm.pos,
@@ -1381,7 +1381,7 @@ impl Checker {
         let mut result = Vec::new();
         for a in args {
             let t = self.resolve(Some(a));
-            self.well_formed(&t, a.pos, &mut HashSet::new());
+            self.well_formed(&t, a.pos, &mut HashSet::default());
             result.push(t);
         }
         result
@@ -1866,7 +1866,7 @@ impl Checker {
             return;
         }
         let mut state = ScopeState::default();
-        let mut hidden: HashSet<Name> = HashSet::new();
+        let mut hidden: HashSet<Name> = HashSet::default();
         let mut s = Some(self.scope.clone());
         while let Some(sc) = s {
             for (name, b) in sc.bindings.borrow().iter() {
@@ -1918,6 +1918,6 @@ fn is_place_path(e: &Expr) -> bool {
 }
 
 /// Whether the literal arms of a match on `t` cover both `Bool` values.
-fn both_bools(t: &Ty, seen: &std::collections::HashSet<String>) -> bool {
+fn both_bools(t: &Ty, seen: &crate::fxmap::HashSet<String>) -> bool {
     t.is(Builtin::Bool) && seen.contains("true") && seen.contains("false")
 }

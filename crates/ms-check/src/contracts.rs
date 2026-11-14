@@ -1,6 +1,7 @@
 //! Implementations, contracts and their evidence.
 
 use crate::checker::{Checker, Scope};
+use crate::fxmap::{HashMap, HashSet};
 use crate::hints::{list, signature_text};
 use crate::stdlib;
 use crate::syntax::*;
@@ -9,7 +10,6 @@ use crate::types::*;
 use crate::tytable::TyId;
 use ms_syntax::Pos;
 use ms_syntax::ast::*;
-use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 /// Whether an interface declares an operation with type parameters of its own. Such an operation
@@ -82,7 +82,7 @@ fn overlap(a: &Ty, b: &Ty, x: &Ty, y: &Ty, vars: &[Ty]) -> bool {
     }
     impl Unifier {
         fn deref(&self, t: &Ty) -> Ty {
-            let mut seen: HashSet<Name> = HashSet::new();
+            let mut seen: HashSet<Name> = HashSet::default();
             let mut t = t.clone();
             while let Some(next) = self.sub.get(&t.id) {
                 if !seen.insert(t.id) {
@@ -148,14 +148,14 @@ fn overlap(a: &Ty, b: &Ty, x: &Ty, y: &Ty, vars: &[Ty]) -> bool {
     }
     let mut u = Unifier {
         variable: variable_set(vars),
-        sub: Subst::new(),
+        sub: Subst::default(),
     };
     u.matches(a, x) && u.matches(b, y)
 }
 
 /// Binds an interface's `Self` to the type implementing it.
 pub(crate) fn self_binding(syms: ms_syntax::Names, contract: &Ty, implementor: &Ty) -> Subst {
-    let mut s = Subst::new();
+    let mut s = Subst::default();
     s.insert(
         crate::checker::self_variable(syms, contract.id).id,
         implementor.clone(),
@@ -374,7 +374,7 @@ impl Checker {
         {
             // Copy resolved bounds: their names belong to the receiver's module and
             // need not be imported by a module extending that receiver.
-            let mut substitution = Subst::new();
+            let mut substitution = Subst::default();
             for parameter in symbol.variables() {
                 let id = self.unique("typevar");
                 let v: Ty = Rc::new(Type::new(self.syms, parameter.name, id, Kind::Variable));
@@ -424,11 +424,11 @@ impl Checker {
             }
             // An impl whose receiver is not valid nominal data must not become
             // evidence for later conversions; report the receiver's own faults only.
-            self.well_formed(&receiver, d.pos(), &mut HashSet::new());
+            self.well_formed(&receiver, d.pos(), &mut HashSet::default());
             self.scope = old;
             return;
         }
-        let mut occurs: HashSet<Name> = HashSet::new();
+        let mut occurs: HashSet<Name> = HashSet::default();
         fn visit(t: &Ty, occurs: &mut HashSet<Name>) {
             occurs.insert(t.id);
             for a in &t.args {
@@ -443,7 +443,7 @@ impl Checker {
         }
         visit(&receiver, &mut occurs);
         let mut active: Vec<Ty> = Vec::new();
-        let mut specialized = Subst::new();
+        let mut specialized = Subst::default();
         for (i, v) in vars.iter().enumerate() {
             if occurs.contains(&v.id) {
                 active.push(v.clone());
@@ -513,7 +513,7 @@ impl Checker {
                 , contract_t = contract.display(self.syms), receiver_t = receiver.display(self.syms)),
             );
         }
-        let mut seen: HashSet<Name> = HashSet::new();
+        let mut seen: HashSet<Name> = HashSet::default();
         let mut ops: Vec<Operation> = Vec::new();
         // Interface arguments and `Self`, applied to operation signatures and bounds alike.
         let mut interface_substitution = Subst::default();
@@ -798,8 +798,8 @@ impl Checker {
                 );
             }
         }
-        self.well_formed(&receiver, d.pos(), &mut HashSet::new());
-        self.well_formed(&contract, d.pos(), &mut HashSet::new());
+        self.well_formed(&receiver, d.pos(), &mut HashSet::default());
+        self.well_formed(&contract, d.pos(), &mut HashSet::default());
         self.scope = old;
     }
 
@@ -872,7 +872,7 @@ impl Checker {
             let Some(mc) = &m.contract else {
                 continue;
             };
-            let mut s = Subst::new();
+            let mut s = Subst::default();
             if unify(&m.receiver, receiver, &variable_set(&m.variables), &mut s)
                 && same(&sub(mc, &s), contract)
                 && self.bounds_satisfied(m.split_variables().0, &s)
@@ -1073,7 +1073,7 @@ impl Checker {
                     &m.receiver,
                     t,
                     &variable_set(&m.variables),
-                    &mut Subst::new(),
+                    &mut Subst::default(),
                 )
         });
         closeable
@@ -1108,7 +1108,7 @@ impl Checker {
                             .session
                             .sole_operation("@std/data/json.ms", "JsonEncode")))
                 && {
-                    let mut s = Subst::new();
+                    let mut s = Subst::default();
                     unify(&m.receiver, t, &variable_set(&m.variables), &mut s)
                 }
         })
@@ -1302,7 +1302,7 @@ impl Checker {
             {
                 continue;
             }
-            let mut s = Subst::new();
+            let mut s = Subst::default();
             if unify(&m.receiver, t, &variable_set(&m.variables), &mut s)
                 && self.bounds_satisfied(&m.variables, &s)
             {
@@ -1320,7 +1320,7 @@ impl Checker {
                 {
                     continue;
                 }
-                let mut s = Subst::new();
+                let mut s = Subst::default();
                 if unify(&m.receiver, t, &variable_set(&m.variables), &mut s)
                     && self.bounds_satisfied(&m.variables, &s)
                 {
@@ -1383,7 +1383,7 @@ impl Checker {
             if !self.method_visible(m) {
                 continue;
             }
-            let mut s = Subst::new();
+            let mut s = Subst::default();
             let (shared, own) = m.split_variables();
             if unify(&m.receiver, receiver, &variable_set(shared), &mut s)
                 && self.bounds_satisfied(shared, &s)
@@ -1581,7 +1581,7 @@ impl Checker {
                         if s.export
                             && let Some(default) = v.default_ty()
                         {
-                            self.public(&default, d.pos(), &mut HashSet::new());
+                            self.public(&default, d.pos(), &mut HashSet::default());
                         }
                     }
                 }
@@ -1593,7 +1593,7 @@ impl Checker {
                 if s.export
                     && let Some(default) = v.default_ty()
                 {
-                    self.public(&default, d.pos(), &mut HashSet::new());
+                    self.public(&default, d.pos(), &mut HashSet::default());
                 }
             }
             self.scope = old;
@@ -1660,9 +1660,9 @@ impl Checker {
     }
 
     fn check_declared(&mut self, t: &Ty, pos: Pos, export: bool) {
-        self.well_formed(t, pos, &mut HashSet::new());
+        self.well_formed(t, pos, &mut HashSet::default());
         if export {
-            self.public(t, pos, &mut HashSet::new());
+            self.public(t, pos, &mut HashSet::default());
         }
     }
 

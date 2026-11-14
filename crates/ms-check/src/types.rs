@@ -6,11 +6,11 @@
 //! `RefCell`s; cloning a [`Type`] snapshots them, while cloning the `Rc`
 //! shares them.
 
+use crate::fxmap::{HashMap, HashSet};
 use crate::syntax::{DeclRef, FuncRef};
 pub use ms_syntax::Symbol as Name;
 use ms_syntax::ast::DeclKind;
 use std::cell::RefCell;
-use std::collections::{HashMap, HashSet};
 use std::fmt::{self, Write as _};
 use std::rc::{Rc, Weak};
 
@@ -618,7 +618,7 @@ pub struct Definition {
 impl Definition {
     /// A new definition owned by `symbol`.
     pub fn new(symbol: &SymRef, kind: Kind) -> Rc<Definition> {
-        let mut field_indices = HashMap::new();
+        let mut field_indices = HashMap::default();
         if let Some(decl) = &symbol.decl {
             for (index, field) in decl.type_fields().iter().enumerate() {
                 // Invalid duplicate declarations still resolve to the first field.
@@ -632,7 +632,7 @@ impl Definition {
             variables: RefCell::new(Vec::new()),
             fields: RefCell::new(Vec::new()),
             cases: RefCell::new(Vec::new()),
-            case_indices: RefCell::new(HashMap::new()),
+            case_indices: RefCell::new(HashMap::default()),
             operations: RefCell::new(Vec::new()),
         })
     }
@@ -1205,7 +1205,10 @@ pub fn same(a: &Ty, b: &Ty) -> bool {
             }
         }
         if context.remaining == 0 {
-            context.equal.get_or_insert_with(HashSet::new).insert(key);
+            context
+                .equal
+                .get_or_insert_with(HashSet::default)
+                .insert(key);
         }
         true
     }
@@ -1398,7 +1401,7 @@ fn required_walk(t: &Ty) -> Ty {
 
 /// The substitution binding a nominal type's variables to its arguments.
 pub fn substitution(t: &Ty) -> Subst {
-    let mut r = Subst::new();
+    let mut r = Subst::default();
     bind_type_arguments(t, &mut r);
     r
 }
@@ -1489,7 +1492,7 @@ pub fn cases(t: &Ty) -> Vec<Case> {
     if cs.is_empty() {
         return Vec::new();
     }
-    let mut s = Subst::new();
+    let mut s = Subst::default();
     let mut bound = false;
     cs.iter()
         .map(|c| {
@@ -1523,7 +1526,7 @@ pub fn case_of(t: &Ty, name: Name) -> Option<Case> {
     let def = t.def.as_ref()?;
     let cs = def.cases.borrow();
     let c = cs.get(*def.case_indices.borrow().get(&name)?)?;
-    let mut s = Subst::new();
+    let mut s = Subst::default();
     if !c.fields.is_empty() {
         bind_type_arguments(t, &mut s);
     }
@@ -1627,7 +1630,7 @@ pub fn required_type_arguments(vars: &[Ty]) -> usize {
 /// Fills unresolved and omitted trailing arguments from defaults.
 pub fn complete_type_arguments(vars: &[Ty], args: &[Option<Ty>]) -> Vec<Option<Ty>> {
     let mut result: Vec<Option<Ty>> = args.to_vec();
-    let mut bindings = Subst::new();
+    let mut bindings = Subst::default();
     for (index, v) in vars.iter().enumerate() {
         if index >= result.len() {
             result.push(None);
@@ -1647,7 +1650,7 @@ pub fn complete_type_arguments(vars: &[Ty], args: &[Option<Ty>]) -> Vec<Option<T
 /// Extends explicit arguments with defaults of the remaining variables.
 pub fn with_default_arguments(vars: &[Ty], args: &[Ty]) -> Vec<Ty> {
     let mut result: Vec<Ty> = args.to_vec();
-    let mut bindings = Subst::new();
+    let mut bindings = Subst::default();
     for (i, a) in result.iter().enumerate() {
         bindings.insert(vars[i].id, a.clone());
     }
@@ -1725,7 +1728,7 @@ pub(crate) fn type_any<const CALLABLES: bool>(t: &Ty, matches: impl Fn(&Ty) -> b
     // Ordinary queries need only a stack counter. Retry a large query with
     // deduplication after at most64 nonleaf expansions, independent of DAG size.
     bounded::<CALLABLES>(t, &matches, &mut 64)
-        .unwrap_or_else(|| visit::<CALLABLES>(t, &matches, &mut HashSet::new()))
+        .unwrap_or_else(|| visit::<CALLABLES>(t, &matches, &mut HashSet::default()))
 }
 
 /// Whether `t` mentions `<invalid>` anywhere.

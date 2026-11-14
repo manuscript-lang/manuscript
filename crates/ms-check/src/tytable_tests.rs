@@ -1,8 +1,8 @@
 //! Interned type ids agree with the rendered keys they replace.
+use crate::fxmap::HashSet;
 use crate::type_keys::{lowering_key, type_key};
 use crate::types::*;
 use crate::tytable::TyTable;
-use std::collections::HashSet;
 use std::rc::Rc;
 
 fn pair(syms: ms_syntax::Names, left: Ty, right: Ty) -> Ty {
@@ -124,7 +124,7 @@ fn shared_fibonacci_and_shallow_fanout_keep_ids_and_representatives() {
 fn activated_queries_keep_identity_modes_and_function_metadata() {
     let syms = ms_syntax::Names::global();
     let mut permitted = (*function(syms, vec![var_param(int(), false)], int())).clone();
-    permitted.defaults = Some(Rc::new(ParameterDefaults::new(VarSet::from([n("p")]))));
+    permitted.defaults = Some(Rc::new(ParameterDefaults::new(VarSet::from_iter([n("p")]))));
     let permitted = Rc::new(permitted);
     let graph = shared(permitted.clone(), 30);
     let mut table = TyTable::new();

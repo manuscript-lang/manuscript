@@ -1,7 +1,8 @@
 name: CI/CD
 
 # One workflow, four triggers:
-#   pull request  the Linux legs, each split into `tests` and `conformance` (four jobs); the language checks
+#   pull request  the Linux legs with programs built by Cranelift (the Debug backend); a pull request that touches
+#                 LLVM-related code (see .github/actions/rust-scope) also runs the LLVM corpus and release gates. The Linux legs, each split into `tests` and `conformance` (four jobs); the language checks
 #                 and the book run inside linux-arm64 conformance. A green pull request auto-merges; there
 #                 is no merge queue, which built every stacked ref with the full matrix and restarted on
 #                 every outside merge.
@@ -109,11 +110,11 @@ jobs:
         part: [a, b]
         leg: >-
           ${{ fromJSON(
-          (github.event_name == 'pull_request' || github.event_name == 'merge_group') && '[{"os": "linux", "arch": "amd64", "runner": "ubuntu-24.04", "lint": true, "cranelift": "b", "gates": "false"}, {"os": "linux", "arch": "arm64", "runner": "ubuntu-24.04-arm", "docs": true}]' ||
-          inputs.os == 'linux' && '[{"os": "linux", "arch": "amd64", "runner": "ubuntu-24.04", "lint": true, "cranelift": "b"}, {"os": "linux", "arch": "arm64", "runner": "ubuntu-24.04-arm", "docs": true}]' ||
+          (github.event_name == 'pull_request' || github.event_name == 'merge_group') && '[{"os": "linux", "arch": "amd64", "runner": "ubuntu-24.04", "lint": true, "cranelift": "b", "gates": "false"}, {"os": "linux", "arch": "arm64", "runner": "ubuntu-24.04-arm", "docs": true, "gates_part": "a"}]' ||
+          inputs.os == 'linux' && '[{"os": "linux", "arch": "amd64", "runner": "ubuntu-24.04", "lint": true, "cranelift": "b"}, {"os": "linux", "arch": "arm64", "runner": "ubuntu-24.04-arm", "docs": true, "gates_part": "a"}]' ||
           inputs.os == 'darwin' && '[{"os": "darwin", "arch": "amd64", "runner": "macos-15-intel"}, {"os": "darwin", "arch": "arm64", "runner": "macos-15", "cranelift": "a"}]' ||
           inputs.os == 'windows' && '[{"os": "windows", "arch": "amd64", "runner": "windows-2025", "cranelift": "b"}, {"os": "windows", "arch": "arm64", "runner": "windows-11-arm"}]' ||
-          '[{"os": "linux", "arch": "amd64", "runner": "ubuntu-24.04", "lint": true, "cranelift": "b"}, {"os": "linux", "arch": "arm64", "runner": "ubuntu-24.04-arm", "docs": true}, {"os": "darwin", "arch": "amd64", "runner": "macos-15-intel"}, {"os": "darwin", "arch": "arm64", "runner": "macos-15", "cranelift": "a"}, {"os": "windows", "arch": "amd64", "runner": "windows-2025", "cranelift": "b"}, {"os": "windows", "arch": "arm64", "runner": "windows-11-arm"}]'
+          '[{"os": "linux", "arch": "amd64", "runner": "ubuntu-24.04", "lint": true, "cranelift": "b"}, {"os": "linux", "arch": "arm64", "runner": "ubuntu-24.04-arm", "docs": true, "gates_part": "a"}, {"os": "darwin", "arch": "amd64", "runner": "macos-15-intel"}, {"os": "darwin", "arch": "arm64", "runner": "macos-15", "cranelift": "a"}, {"os": "windows", "arch": "amd64", "runner": "windows-2025", "cranelift": "b"}, {"os": "windows", "arch": "arm64", "runner": "windows-11-arm"}]'
           ) }}
     env:
       PR: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
@@ -151,6 +152,8 @@ jobs:
           lint: ${{ matrix.leg.lint || false }}
           cranelift: ${{ matrix.leg.cranelift || '' }}
           gates: ${{ matrix.leg.gates || 'true' }}
+          gates-part: ${{ matrix.leg.gates_part || '' }}
+          llvm: ${{ steps.scope.outputs.llvm }}
       - uses: ./.github/actions/sccache-save
         # Part a builds the whole workspace, a superset of part b, so one save per leg keeps the cache count at six.
         if: ${{ !cancelled() && matrix.part == 'a' }}

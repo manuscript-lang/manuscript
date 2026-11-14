@@ -1,10 +1,10 @@
 //! Module-level constants.
 
 use crate::checker::Checker;
+use crate::fxmap::HashMap;
 use crate::syntax::*;
 use crate::types::*;
 use ms_syntax::ast::*;
-use std::collections::HashMap;
 
 impl Checker {
     /// Resolves a constant's type once: its annotation, or the type of its
@@ -102,7 +102,7 @@ impl Checker {
     /// and `let B: Int = A` would pass the check and recurse until the
     /// call-depth limit.
     pub(crate) fn check_constant_cycles(&mut self, module: &ModRef) {
-        let mut state: HashMap<usize, u8> = HashMap::new(); // 1 visiting, 2 done
+        let mut state: HashMap<usize, u8> = HashMap::default(); // 1 visiting, 2 done
         for d in &module.decls {
             if !d.is_constant() {
                 continue;

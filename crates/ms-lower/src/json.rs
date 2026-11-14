@@ -124,7 +124,14 @@ pub(crate) fn build_json(
     let mut b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
     // Encoding or decoding recursive data recurses: it checks the stack like any recursive function.
     b.emit(Op::DepthEnter, &[], ms_mir::ir::Imm::None, None);
-    let mut fl = FnLower::new(cx, b, job.hir.clone(), ct::Subst::new(), file, proto.ret);
+    let mut fl = FnLower::new(
+        cx,
+        b,
+        job.hir.clone(),
+        ct::Subst::default(),
+        file,
+        proto.ret,
+    );
     let result = if job.encode {
         fl.lower_encoder(&job.ty)
     } else {
@@ -1083,9 +1090,9 @@ impl FnLower<'_> {
         }
         if let Some(c) = self.json_encode_impl(t) {
             // `JsonEncode` replaces the structural encoding.
-            let fid = self.cx.function_for(self.b.m, &c, &ct::Subst::new())?;
+            let fid = self.cx.function_for(self.b.m, &c, &ct::Subst::default())?;
             let tree = self.b.call(fid, &[value]);
-            let jt = ct::sub(&self.cx.callable_result(&c)?, &ct::Subst::new());
+            let jt = ct::sub(&self.cx.callable_result(&c)?, &ct::Subst::default());
             let written = self.jencode_call(&jt, w, tree)?;
             self.drop_value(tree);
             return Ok(written);

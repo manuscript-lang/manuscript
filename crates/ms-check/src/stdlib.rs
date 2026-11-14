@@ -8,6 +8,7 @@
 pub use crate::bundled::EXTENSION_MODULES;
 use crate::bundled::{decl_has_body, is_mixed, is_pure_source};
 use crate::checker::{CheckOptions, Checker, Names};
+use crate::fxmap::{HashMap, HashSet};
 use crate::syntax::*;
 use crate::types::Case;
 use crate::types::*;
@@ -15,7 +16,7 @@ use ms_syntax::ast::Method;
 use ms_syntax::ast::*;
 use ms_syntax::{Diagnostic, Phase};
 use std::cell::RefCell;
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::BTreeSet;
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -275,7 +276,7 @@ fn fold_inherent_impls(
 ) -> Result<(Vec<DeclRef>, u32), String> {
     let mut kept: Vec<(Decl, Vec<Method>)> = Vec::new();
     let mut next_id = module.node_count;
-    let mut types: HashMap<Name, usize> = HashMap::new();
+    let mut types: HashMap<Name, usize> = HashMap::default();
     let mut specials: Vec<Decl> = Vec::new();
     for d in &module.decls {
         if matches!(&d.kind, DeclKind::Impl(i) if i.contract.is_none()) {
@@ -584,7 +585,7 @@ impl Loader<'_> {
             self.c.session.register_source(module);
             return Ok(());
         }
-        let mut symbols: HashMap<Name, SymRef> = HashMap::new();
+        let mut symbols: HashMap<Name, SymRef> = HashMap::default();
         for d in &module.decls {
             if let DeclKind::Impl(i) = &d.decl().kind {
                 for method in &i.methods {
@@ -695,7 +696,7 @@ impl Loader<'_> {
     fn scope_module(&mut self, syms: ms_syntax::Names, module: &ModRef) {
         let c = &mut *self.c;
         c.module = Some(module.clone());
-        c.names = Rc::new(RefCell::new(HashMap::new()));
+        c.names = Rc::new(RefCell::new(HashMap::default()));
         c.scope = crate::checker::Scope::new(None);
         for name in PRIMITIVE_NAMES {
             let nm = n(name);
@@ -802,7 +803,7 @@ impl Loader<'_> {
                 let fields = self.c.params(d.type_fields());
                 *def.fields.borrow_mut() = fields;
                 def.clear_cases();
-                let mut seen: HashSet<Name> = HashSet::new();
+                let mut seen: HashSet<Name> = HashSet::default();
                 for cs in d.cases() {
                     if !seen.insert(cs.name) {
                         self.c
@@ -814,7 +815,7 @@ impl Loader<'_> {
                         fields,
                     });
                 }
-                let mut seen: HashSet<Name> = HashSet::new();
+                let mut seen: HashSet<Name> = HashSet::default();
                 for (mi, method) in d.methods().iter().enumerate() {
                     if !seen.insert(method.func.name) {
                         self.c.type_error(
@@ -1117,7 +1118,7 @@ impl Session {
     pub fn func_module(self: &Rc<Self>, f: &ms_syntax::ast::Func) -> Option<ModRef> {
         self.world(|w| {
             if w.func_modules.is_none() {
-                let mut map = HashMap::new();
+                let mut map = HashMap::default();
                 for m in &w.sources {
                     for d in &m.decls {
                         if let Some(f) = d.func() {
@@ -1231,7 +1232,7 @@ impl Session {
         if let Some(module) = self.standard_source_module(path) {
             // An invalid module is reported where a program imports it.
             let Ok(checked) = self.ensure_source(&module) else {
-                return HashMap::new();
+                return HashMap::default();
             };
             return checked
                 .exports
@@ -1443,7 +1444,7 @@ impl Session {
     ) -> (Vec<ModRef>, Vec<Diagnostic>) {
         let mut ordered: Vec<ModRef> = Vec::new();
         let mut diagnostics: Vec<Diagnostic> = Vec::new();
-        let mut state: HashMap<Name, u8> = HashMap::new();
+        let mut state: HashMap<Name, u8> = HashMap::default();
         fn visit(
             syms: ms_syntax::Names,
             session: &Rc<Session>,
@@ -1712,7 +1713,7 @@ pub fn constructor_signature(
             session.standard("List", vec![t.args[0].clone()]),
         )];
     }
-    let mut defaults: HashSet<Name> = HashSet::new();
+    let mut defaults: HashSet<Name> = HashSet::default();
     if let Some(sym) = t.symbol()
         && let Some(decl) = &sym.decl
     {

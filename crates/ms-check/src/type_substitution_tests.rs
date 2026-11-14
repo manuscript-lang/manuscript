@@ -1,7 +1,7 @@
 //! Substitution preserves concrete sharing and snapshots unresolved variables.
 
+use crate::fxmap::HashSet;
 use crate::types::*;
-use std::collections::HashSet;
 use std::rc::Rc;
 
 fn variable() -> Ty {
@@ -23,7 +23,9 @@ fn signature(children: &[Ty], result: Ty) -> Ty {
         })
         .collect();
     ty.result = Some(result);
-    ty.defaults = Some(Rc::new(ParameterDefaults::new(HashSet::from([n("p0")]))));
+    ty.defaults = Some(Rc::new(ParameterDefaults::new(HashSet::from_iter([n(
+        "p0",
+    )]))));
     Rc::new(ty)
 }
 
@@ -34,7 +36,10 @@ fn concrete_substitution_keeps_nested_types_and_callable_permissions() {
     let mut outer = Type::new(syms, n("Box"), n("substitution/Box"), Kind::Type);
     outer.args = vec![callback];
     let outer = Rc::new(outer);
-    for bindings in [Subst::new(), Subst::from([(n("unused"), string())])] {
+    for bindings in [
+        Subst::default(),
+        Subst::from_iter([(n("unused"), string())]),
+    ] {
         assert!(Rc::ptr_eq(&outer, &sub(&outer, &bindings)));
     }
     assert!(outer.args[0].is_default(n("p0")));
@@ -52,7 +57,7 @@ fn substitution_keeps_prefixes_suffixes_labels_and_result_at_each_changed_slot()
         ty.args = children.clone();
         let ty = Rc::new(ty);
         let replacement = string();
-        let got = sub(&ty, &Subst::from([(var.id, replacement.clone())]));
+        let got = sub(&ty, &Subst::from_iter([(var.id, replacement.clone())]));
         assert!(!Rc::ptr_eq(&ty, &got));
         assert!(Rc::ptr_eq(&ty.result_ty(), &got.result_ty()));
         assert!(Rc::ptr_eq(
@@ -76,12 +81,12 @@ fn substitution_keeps_prefixes_suffixes_labels_and_result_at_each_changed_slot()
 fn unbound_nested_variables_snapshot_bounds_and_defaults_even_without_bindings() {
     let var = variable();
     let ty = signature(&[int(), var.clone(), string()], var.clone());
-    let before = sub(&ty, &Subst::new());
+    let before = sub(&ty, &Subst::default());
     assert!(!Rc::ptr_eq(&before.params[1].ty, &var));
     assert!(!Rc::ptr_eq(&before.result_ty(), &var));
     var.bounds.borrow_mut().push(string());
     *var.default.borrow_mut() = Some(int());
-    let after = sub(&ty, &Subst::new());
+    let after = sub(&ty, &Subst::default());
     for snapshot in [&before.params[1].ty, &before.result_ty()] {
         assert!(snapshot.bounds().is_empty());
         assert!(snapshot.default_ty().is_none());
@@ -107,7 +112,7 @@ fn result_only_substitution_keeps_concrete_arguments_and_parameters() {
     ty.args = vec![bool_()];
     let ty = Rc::new(ty);
     let result = string();
-    let got = sub(&ty, &Subst::from([(var.id, result.clone())]));
+    let got = sub(&ty, &Subst::from_iter([(var.id, result.clone())]));
     assert!(Rc::ptr_eq(&result, &got.result_ty()));
     assert!(Rc::ptr_eq(&ty.args[0], &got.args[0]));
     for (old, new) in ty.params.iter().zip(&got.params) {
@@ -128,6 +133,6 @@ fn substitution_walks_a_shared_concrete_subtree_once() {
         pair.args = vec![node.clone(), node];
         node = Rc::new(pair);
     }
-    let bindings = Subst::from([(n("substitution/C"), string())]);
+    let bindings = Subst::from_iter([(n("substitution/C"), string())]);
     assert!(Rc::ptr_eq(&node, &sub(&node, &bindings)));
 }

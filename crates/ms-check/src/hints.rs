@@ -4,10 +4,10 @@
 //! stable wording rule codes classify; the fix names concrete source to write.
 
 use crate::checker::Checker;
+use crate::fxmap::HashSet;
 use crate::stdlib;
 use crate::types::*;
 use ms_syntax::ast::Import;
-use std::collections::HashSet;
 use std::rc::Rc;
 
 /// Returns the candidate most similar to `name`, or "" when none is near
@@ -86,7 +86,7 @@ pub fn list(names: &[String], limit: usize) -> String {
 
 /// Sorted, de-duplicated, non-empty names.
 pub fn unique_sorted(names: &[String]) -> Vec<String> {
-    let mut seen: HashSet<&str> = HashSet::new();
+    let mut seen: HashSet<&str> = HashSet::default();
     let mut out: Vec<String> = Vec::new();
     for name in names {
         if !name.is_empty() && seen.insert(name.as_str()) {
@@ -646,7 +646,7 @@ impl Checker {
             if !self.method_visible(m) {
                 continue;
             }
-            let mut sub = Subst::new();
+            let mut sub = Subst::default();
             if unify(&m.receiver, receiver, &variable_set(&m.variables), &mut sub) {
                 names.push(self.syms.str(name).to_string());
             }
@@ -693,7 +693,7 @@ impl Checker {
             if m.name() != Some(name) || !self.method_visible(m) {
                 continue;
             }
-            let mut s = Subst::new();
+            let mut s = Subst::default();
             let (shared, _) = m.split_variables();
             if !unify(&m.receiver, receiver, &variable_set(shared), &mut s) {
                 continue;

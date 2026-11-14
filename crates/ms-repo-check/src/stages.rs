@@ -12,7 +12,7 @@ use std::fs;
 const STAGES: &[(&str, &[&str])] = &[
     (
         "syntax: tree facts, types, desugaring",
-        &["syntax", "passes", "types", "tytable", "std_ops"],
+        &["syntax", "passes", "types", "tytable", "std_ops", "fxmap"],
     ),
     (
         "load: bundled sources and the session",

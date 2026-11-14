@@ -1,11 +1,11 @@
 //! Local and match payload bindings that are never read. Names starting with `_` are exempt.
 
+use crate::fxmap::HashMap;
 use crate::syntax::ModuleData;
 use crate::types::BindingRef;
 use crate::{Diagnostic, Program};
 use ms_syntax::ast::*;
 use ms_syntax::visit::{Visitor, walk_decl, walk_expr};
-use std::collections::HashMap;
 
 /// Errors for every unread binding in the program's own (non-standard) modules.
 pub(crate) fn check(syms: ms_syntax::Names, program: &Program) -> Vec<Diagnostic> {
@@ -40,7 +40,7 @@ fn walk<V: Visitor>(module: &ModuleData, v: &mut V) {
 /// assignment to the same binding (`total = total + 2`) only feeds that
 /// binding's next value, so it does not make the binding observable.
 fn binding_reads(module: &ModuleData) -> HashMap<usize, i64> {
-    let mut reads: HashMap<usize, i64> = HashMap::new();
+    let mut reads: HashMap<usize, i64> = HashMap::default();
     for info in module.facts().exprs.iter().flatten() {
         if let Some(binding) = &info.binding {
             *reads.entry(binding.uid).or_default() += 1;

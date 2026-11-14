@@ -965,7 +965,7 @@ impl FnLower<'_> {
     fn bind_split(
         &mut self,
         binding: &ct::BindingRef,
-        places: std::collections::HashMap<ms_check::api::ast::NodeId, Vec<ct::Name>>,
+        places: ms_check::fxmap::HashMap<ms_check::api::ast::NodeId, Vec<ct::Name>>,
     ) -> Result<(), Error> {
         let uid = binding.uid;
         let root = self.locals[&uid]
@@ -1181,7 +1181,7 @@ impl FnLower<'_> {
             .iter()
             .find(|d| d.module == im.module && d.decl.as_ref().map(|x| x.id()) == Some(decl.id()))
             .unwrap_or(&im);
-        let mut subst = ct::Subst::new();
+        let mut subst = ct::Subst::default();
         if !ct::unify(
             &declared.receiver,
             ty,
@@ -1207,7 +1207,7 @@ impl FnLower<'_> {
                         &m.receiver,
                         ty,
                         &ct::variable_set(&m.variables),
-                        &mut ct::Subst::new(),
+                        &mut ct::Subst::default(),
                     )
             })
             .cloned()

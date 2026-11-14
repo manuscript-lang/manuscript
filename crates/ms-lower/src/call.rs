@@ -78,7 +78,7 @@ impl<'a> FnLower<'a> {
                 let c = self.callable_of_decl(sym.module, sym.decl.as_ref().map(|d| d.id()))?;
                 self.call_callable(
                     &c,
-                    &Subst::new(),
+                    &Subst::default(),
                     Args {
                         slots: Vec::new(),
                         places: Vec::new(),
@@ -139,7 +139,7 @@ impl<'a> FnLower<'a> {
         vars: &[ct::Ty],
         type_args: &[Option<ct::Ty>],
     ) -> Result<Subst, Error> {
-        let mut s = Subst::new();
+        let mut s = Subst::default();
         for (i, v) in vars.iter().enumerate() {
             let Some(Some(a)) = type_args.get(i) else {
                 return Err(Error::new(format!(
@@ -1086,7 +1086,7 @@ impl<'a> FnLower<'a> {
             .ok_or_else(|| Error::new("method without declaration"))?;
         let c = self.callable_of_decl(m.module, Some(decl.id()))?;
         let rt = self.ety(recv_expr);
-        let mut subst = Subst::new();
+        let mut subst = Subst::default();
         // The checked reference fixes an implementation's variables; its declaration keeps them.
         let declared = self
             .cx
@@ -1167,7 +1167,7 @@ impl<'a> FnLower<'a> {
         let written = self.cx.methods.iter().filter(named).find(|mm| {
             mm.contract.as_ref().is_some_and(|c| {
                 let vars = ct::variable_set(&mm.variables);
-                let mut bound = ct::Subst::new();
+                let mut bound = ct::Subst::default();
                 c.id == contract.id
                     && ct::unify(&mm.receiver, recv, &vars, &mut bound)
                     && ct::unify(c, &wanted, &vars, &mut bound)
@@ -1182,7 +1182,7 @@ impl<'a> FnLower<'a> {
                             &mm.receiver,
                             recv,
                             &ct::variable_set(&mm.variables),
-                            &mut ct::Subst::new(),
+                            &mut ct::Subst::default(),
                         )
                 })
             })

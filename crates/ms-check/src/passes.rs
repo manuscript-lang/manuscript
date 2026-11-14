@@ -2,13 +2,13 @@
 //! post-check passes that make trees ready for lowering (constant folding,
 //! argument order, `try` shape).
 
+use crate::fxmap::HashMap;
 use crate::syntax::*;
 use crate::types::*;
 use ms_syntax::Pos;
 use ms_syntax::ast::Method;
 use ms_syntax::ast::*;
 use ms_syntax::visit::{self, Visitor};
-use std::collections::HashMap;
 
 /// A misuse of an inherent `impl Type:` block.
 pub struct InherentError {
@@ -263,7 +263,7 @@ pub fn desugar_inherent_impls(
 ) -> (Vec<Decl>, Vec<InherentError>, u32) {
     let mut errors: Vec<InherentError> = Vec::new();
     let mut next_id = module.node_count;
-    let mut types: HashMap<Name, (&[TypeParam], bool)> = HashMap::new();
+    let mut types: HashMap<Name, (&[TypeParam], bool)> = HashMap::default();
     for d in foreign.iter().chain(&module.decls) {
         if let Some((name, params, is_interface)) = type_decl_params(d) {
             types.insert(name, (params, is_interface));
@@ -275,7 +275,7 @@ pub fn desugar_inherent_impls(
             types.entry(n(scalar)).or_insert((&[], false));
         }
     }
-    let mut first: HashMap<(Name, String), usize> = HashMap::new();
+    let mut first: HashMap<(Name, String), usize> = HashMap::default();
     let mut out: Vec<Decl> = Vec::new();
     let expanded = expand_set_receivers(&module.decls, &mut next_id);
     for d in &expanded {
@@ -389,7 +389,7 @@ pub fn desugar_inherent_impls(
             }
         }
     }
-    let mut counters: HashMap<Name, usize> = HashMap::new();
+    let mut counters: HashMap<Name, usize> = HashMap::default();
     let mut final_decls: Vec<Decl> = Vec::with_capacity(out.len() + first.len());
     for mut d in out {
         let DeclKind::Impl(imp) = &mut d.kind else {

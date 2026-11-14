@@ -10,9 +10,9 @@ use crate::Error;
 use crate::func::{FnLower, Val};
 use ms_check::api::ast::*;
 use ms_check::api::hir::Resolution;
+use ms_check::fxmap::HashSet;
 use ms_mir::ir::{Cc, Imm, Op, Value};
 use ms_mir::types::Ty as MTy;
-use std::collections::HashSet;
 
 /// The condition code of an ordering or equality operator.
 fn cond(op: BinaryOp) -> Option<Cc> {
@@ -107,8 +107,8 @@ pub(crate) fn string_uses(fl: &FnLower<'_>, body: &[Stmt]) -> HashSet<usize> {
     }
     let mut scan = Scan {
         fl,
-        compared: HashSet::new(),
-        needed: HashSet::new(),
+        compared: HashSet::default(),
+        needed: HashSet::default(),
     };
     ms_check::api::visit::walk_block(&mut scan, body);
     scan.needed

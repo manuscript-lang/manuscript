@@ -7,11 +7,11 @@ use crate::json::{Json, obj};
 use crate::text::{self, Position, Range};
 use ms_check::api::syntax::ModRef;
 use ms_check::api::types::{Name, SymRef};
+use ms_check::fxmap::HashMap;
 use ms_syntax::Pos;
 use ms_syntax::ast::*;
 use ms_syntax::visit::{self, Visitor};
 use std::cell::OnceCell;
-use std::collections::HashMap;
 use std::rc::Rc;
 
 /// The occurrence covering a position, if the document is checked.
@@ -132,7 +132,7 @@ pub fn at(
         source: &d.text,
         cursor: text::offset(&d.text, p).map_err(|_| p),
         best: None,
-        hidden: HashMap::new(),
+        hidden: HashMap::default(),
         lines: OnceCell::new(),
     };
     for decl in &module.decls {

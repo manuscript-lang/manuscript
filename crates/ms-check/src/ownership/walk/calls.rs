@@ -38,7 +38,7 @@ impl Walker<'_> {
             let Some(decl) = &m.decl else {
                 continue;
             };
-            let mut bound = Subst::new();
+            let mut bound = Subst::default();
             if !unify(&m.receiver, src, &variable_set(&m.variables), &mut bound) {
                 continue;
             }

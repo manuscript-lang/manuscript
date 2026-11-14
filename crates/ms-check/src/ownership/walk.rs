@@ -50,9 +50,9 @@ pub struct ContractMethods<'a> {
 impl<'a> ContractMethods<'a> {
     pub fn new(syms: ms_syntax::Names, methods: &'a [MethodRef]) -> Self {
         let mut index = ContractMethods {
-            by_receiver: HashMap::new(),
-            by_variable: HashMap::new(),
-            inherent: HashMap::new(),
+            by_receiver: HashMap::default(),
+            by_variable: HashMap::default(),
+            inherent: HashMap::default(),
             inherent_variable: Vec::new(),
         };
         for m in methods {
@@ -228,29 +228,29 @@ pub fn analyze(cx: &Context) -> Outcome {
         cx,
         facts: CallableOwnership::default(),
         diags: Vec::new(),
-        meta: HashMap::new(),
+        meta: HashMap::default(),
         active: Default::default(),
         pending: Vec::new(),
         carried: Vec::new(),
         declared: Vec::new(),
-        consumed: HashSet::new(),
-        consumed_at: HashMap::new(),
+        consumed: HashSet::default(),
+        consumed_at: HashMap::default(),
         move_note: None,
-        callees: HashSet::new(),
+        callees: HashSet::default(),
         escaped: cx.escaped.clone(),
-        positions: HashMap::new(),
+        positions: HashMap::default(),
         mutated: Vec::new(),
         captured: Vec::new(),
         hidden: 0,
-        var_fixes: HashMap::new(),
+        var_fixes: HashMap::default(),
         used: cx.live.uses.keys().map(|(_, uid)| *uid).collect(),
-        nested_cache: HashMap::new(),
+        nested_cache: HashMap::default(),
         resources: Vec::new(),
         arm_payloads: Vec::new(),
-        chain_places: HashMap::new(),
+        chain_places: HashMap::default(),
         keep_scrutinee: false,
-        closed: HashSet::new(),
-        close_completions: HashSet::new(),
+        closed: HashSet::default(),
+        close_completions: HashSet::default(),
         borrow_receiver: false,
         borrow_params: Vec::new(),
         borrow_path: None,
@@ -266,8 +266,8 @@ pub fn analyze(cx: &Context) -> Outcome {
         borrow_not_clonable: false,
         borrowed_mask: 0,
         view_return: false,
-        view_locals: HashSet::new(),
-        view_calls: HashSet::new(),
+        view_locals: HashSet::default(),
+        view_calls: HashSet::default(),
         view_move: None,
         self_assign: None,
         entry_lambda: None,
@@ -502,7 +502,7 @@ impl Walker<'_> {
             // The fixture is state the tests share and the hooks change.
             self.declare(b, Role::Fixture, Perm::Mutable, None, false);
         }
-        let mut positions = Positions(HashMap::new());
+        let mut positions = Positions(HashMap::default());
         match c.body() {
             Body::Block(body) => visit::walk_block(&mut positions, body),
             Body::Expr(e) => visit::walk_expr(&mut positions, e),
@@ -740,7 +740,7 @@ impl Walker<'_> {
                 }
             }
         }
-        self.mutated.push(HashSet::new());
+        self.mutated.push(HashSet::default());
         self.captured.push(captures.iter().map(|b| b.uid).collect());
         let mark = self.declared.len();
         for (i, b) in params.iter().enumerate() {

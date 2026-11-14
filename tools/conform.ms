@@ -1,8 +1,10 @@
 // The frozen conformance corpus against the Rust ms on this host (`make conform`).
 // Known failures: tests/conformance/expect-fail.txt plus expect-fail.<os>.txt when
-// present. CONFORM_SHARD=i/n splits the run. CONFORM_LEAKS=1 also checks for leaked
-// heap blocks. Arguments after `--` go to `ms-conform run`. Usage: ms run
-// tools/conform.ms [-- extra ms-conform run arguments]
+// present. CONFORM_SHARD=i/n splits the run. CONFORM_FAST=1 builds every program with
+// Cranelift (the Debug backend, about 3x faster than LLVM) and still runs all four
+// phases: the quick local loop. CONFORM_LEAKS=1 also checks for leaked heap blocks.
+// Arguments after `--` go to `ms-conform run`. Usage: ms run tools/conform.ms [-- extra
+// ms-conform run arguments]
 import (
 	arguments from "@std/os/env.ms",
 	access, create_directory, read_file, write_file from "@std/os/fs.ms",
@@ -48,7 +50,12 @@ fn main() Int:
 	write_file(allow, text, replace: true).wait().get()
 
 	conform := "target/debug/ms-conform{exe()}"
-	ms := "target/debug/ms{exe()}"
+
+	// The quick loop tests the release-profile compiler `make build` just produced,
+	// which also checks faster than the debug one; nothing rebuilds it while the tool
+	// runs.
+	fast := env("CONFORM_FAST", "") != ""
+	ms := if fast: "target/release/ms{exe()}" else: "target/debug/ms{exe()}"
 	shard := env("CONFORM_SHARD", "0/1")
 	code = run_program(conform, ["lint"])
 	if code != 0: return code
@@ -57,8 +64,10 @@ fn main() Int:
 
 	// Only `run` and `test` reach a code generator, so a second pass with
 	// `MS_BACKEND=cranelift` skips the check and parse phases: the LLVM pass already
-	// ran them, and their results do not depend on the backend.
-	backend_only := env("MS_BACKEND", "") == "cranelift"
+	// ran them, and their results do not depend on the backend. `CONFORM_ALL_PHASES=1`
+	// keeps them, for a Cranelift run that is the only pass (pull requests in CI).
+	all_phases := env("CONFORM_ALL_PHASES", "") != ""
+	backend_only := env("MS_BACKEND", "") == "cranelift" and not fast and not all_phases
 	phases := if backend_only: "run,test" else: "run,check,test"
 	main_run := [
 		"run",

@@ -26,7 +26,7 @@ fn shared_negative_search_visits_a_bounded_number_of_nodes() {
     }));
     assert!(calls.get() < 300, "{} predicate calls", calls.get());
     assert!(!invalid_ty(&t));
-    assert!(!mentions_variable(&t, &VarSet::from([n("absent")])));
+    assert!(!mentions_variable(&t, &VarSet::from_iter([n("absent")])));
 }
 
 #[test]
@@ -35,7 +35,7 @@ fn searches_keep_late_matches_and_do_not_cache_across_queries() {
     let variable = Rc::new(Type::new(syms, n("T"), n("test/T"), Kind::Variable));
     let negative = shared(int(), 20);
     let t = pair(syms, negative.clone(), variable.clone());
-    let mut variables = VarSet::from([variable.id]);
+    let mut variables = VarSet::from_iter([variable.id]);
     assert!(mentions_variable(&t, &variables));
     variables.clear();
     assert!(!mentions_variable(&t, &variables));
@@ -57,7 +57,7 @@ fn callable_edges_remain_part_of_only_callable_queries() {
     function.result = Some(invalid());
     let t = shared(Rc::new(function), 20);
     assert!(invalid_ty(&t));
-    assert!(mentions_variable(&t, &VarSet::from([variable.id])));
+    assert!(mentions_variable(&t, &VarSet::from_iter([variable.id])));
     assert!(!type_any::<false>(&t, |t| t.kind == Kind::Variable));
     let calls = Cell::new(0);
     assert!(type_any::<true>(&pair(syms, variable, invalid()), |_| {
@@ -130,7 +130,9 @@ fn required_types_preserve_sharing_and_changed_variable_snapshots() {
 fn required_types_erase_permissions_in_every_original_child_position() {
     let syms = ms_syntax::Names::global();
     let mut permitted = Type::new(syms, n("fn"), n("fn"), Kind::Function);
-    permitted.defaults = Some(Rc::new(ParameterDefaults::new(VarSet::from([n("value")]))));
+    permitted.defaults = Some(Rc::new(ParameterDefaults::new(VarSet::from_iter([n(
+        "value",
+    )]))));
     permitted.params.push(Param {
         name: n("value"),
         ty: int(),
@@ -161,7 +163,7 @@ fn inference_resolution_bounds_shared_graphs_and_keeps_late_failures() {
     let syms = ms_syntax::Names::global();
     let concrete = shared(int(), 30);
     let variable = Rc::new(Type::new(syms, n("T"), n("test/T"), Kind::Variable));
-    let mut variables = VarSet::from([variable.id]);
+    let mut variables = VarSet::from_iter([variable.id]);
     for allow_invalid in [false, true] {
         assert!(inference_type_resolved(
             &concrete,
@@ -198,30 +200,38 @@ fn inference_resolution_preserves_all_edges_and_invalid_policy() {
                 _ => t.result = Some(leaf.clone()),
             }
             let t = shared(Rc::new(t), 30);
-            let variables = VarSet::from([variable.id]);
+            let variables = VarSet::from_iter([variable.id]);
             assert!(!inference_type_resolved(&t, &variables, false));
             assert_eq!(
                 inference_type_resolved(&t, &variables, true),
                 leaf.is_invalid()
             );
-            assert!(inference_type_resolved(&t, &VarSet::new(), true));
+            assert!(inference_type_resolved(&t, &VarSet::default(), true));
         }
     }
     let missing_result = Rc::new(Type::new(syms, n("fn"), n("fn"), Kind::Function));
     assert!(inference_type_resolved(
         &missing_result,
-        &VarSet::new(),
+        &VarSet::default(),
         false
     ));
     let inferred = Rc::new(Type::new(syms, n("?"), n("test/inferred"), Kind::Inferred));
-    assert!(inference_type_resolved(&inferred, &VarSet::new(), false));
+    assert!(inference_type_resolved(
+        &inferred,
+        &VarSet::default(),
+        false
+    ));
     // Bounds and type defaults are not inference-resolution edges.
     variable.bounds.borrow_mut().push(invalid());
     *variable.default.borrow_mut() = Some(invalid());
-    assert!(inference_type_resolved(&variable, &VarSet::new(), false));
+    assert!(inference_type_resolved(
+        &variable,
+        &VarSet::default(),
+        false
+    ));
     assert!(!inference_type_resolved(
         &invalid(),
-        &VarSet::from([invalid().id]),
+        &VarSet::from_iter([invalid().id]),
         true
     ));
 }
