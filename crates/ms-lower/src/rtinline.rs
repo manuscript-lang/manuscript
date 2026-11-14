@@ -389,6 +389,9 @@ impl FnLower<'_> {
             let f = self.read_word_fn();
             return Some(self.b.call(f, args));
         }
+        if let Some(v) = self.inline_str(sym, args) {
+            return Some(v);
+        }
         // A literal needle of two or more bytes skips the dispatch on the needle's length.
         if sym == "msrt_string_contains"
             && let Some(id) = self.b.str_lit_of(args[1])
@@ -396,7 +399,7 @@ impl FnLower<'_> {
         {
             let ext = crate::text::runtime_fn(
                 self.b.m,
-                "msrt_string_contains_long",
+                "msrt_string_contains_multi",
                 &[MTy::STR, MTy::STR],
                 MTy::BOOL,
             );

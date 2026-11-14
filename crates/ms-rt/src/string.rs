@@ -92,8 +92,7 @@ pub fn hash_bytes(b: &[u8]) -> u64 {
     let n = b.len();
     let mut h = K0 ^ (n as u64).wrapping_mul(K1);
     if n <= STR_INLINE_MAX {
-        let bits = StrVal::inline(b).inline_bits();
-        return fold(fold(h ^ bits as u64, K1) ^ (bits >> 64) as u64, K0);
+        return hash_inline(n, StrVal::inline(b).inline_bits());
     }
     let mut i = 0;
     while i + 8 <= n {
@@ -103,6 +102,35 @@ pub fn hash_bytes(b: &[u8]) -> u64 {
     // Sixteen bytes or more: the last eight bytes, overlapping the words already folded in.
     let tail = word(b, n - 8);
     fold(h ^ tail, K0)
+}
+
+/// The hash of a string of `n <= STR_INLINE_MAX` bytes whose little-endian bits are `bits`.
+#[inline(always)]
+fn hash_inline(n: usize, bits: u128) -> u64 {
+    const K0: u64 = 0x9e37_79b9_7f4a_7c15;
+    const K1: u64 = 0xff51_afd7_ed55_8ccd;
+    #[inline(always)]
+    fn fold(a: u64, b: u64) -> u64 {
+        let m = u128::from(a) * u128::from(b);
+        (m as u64) ^ ((m >> 64) as u64)
+    }
+    let h = K0 ^ (n as u64).wrapping_mul(K1);
+    fold(fold(h ^ bits as u64, K1) ^ (bits >> 64) as u64, K0)
+}
+
+/// `hash_bytes` of the string `s`; an inline string is hashed from its words as they are.
+///
+/// # Safety
+/// `s` must be a live string.
+#[inline(always)]
+pub unsafe fn hash_str(s: *const StrVal) -> u64 {
+    // SAFETY: caller contract.
+    unsafe {
+        if (*s).is_inline() {
+            return hash_inline((*s).len(), (*s).inline_bits());
+        }
+        hash_bytes(bytes(s))
+    }
 }
 
 /// Hash of an `Int` key: one widening multiply folded to 64 bits.
@@ -860,14 +888,8 @@ pub fn rfind(hay: &[u8], needle: &[u8]) -> Option<usize> {
     memchr::memmem::rfind(hay, needle)
 }
 
-/// The search behind `msrt_string_contains` for every case its fast path does not cover; a call
-/// with a literal needle of two or more bytes goes straight here.
-#[unsafe(no_mangle)]
-// ms: leaf pure domain=string
-pub unsafe extern "C-unwind" fn msrt_string_contains_long(
-    a: *const StrVal,
-    v: *const StrVal,
-) -> u8 {
+/// The search behind `msrt_string_contains` for every case its fast path does not cover.
+pub unsafe fn msrt_string_contains_long(a: *const StrVal, v: *const StrVal) -> u8 {
     // SAFETY: caller passes live strings.
     unsafe {
         let (hay, needle) = (bytes(a), bytes(v));
@@ -878,6 +900,18 @@ pub unsafe extern "C-unwind" fn msrt_string_contains_long(
         }
         find(hay, needle).is_some() as u8
     }
+}
+
+/// `contains` where the caller knows the needle has two or more bytes (a literal): the general
+/// search without the one-byte checks.
+#[unsafe(no_mangle)]
+// ms: leaf pure domain=string
+pub unsafe extern "C-unwind" fn msrt_string_contains_multi(
+    a: *const StrVal,
+    v: *const StrVal,
+) -> u8 {
+    // SAFETY: caller passes live strings.
+    unsafe { find(bytes(a), bytes(v)).is_some() as u8 }
 }
 
 /// The scalar index of byte offset `at` in `text`, the bytes of `s`: a string flagged ASCII needs no
