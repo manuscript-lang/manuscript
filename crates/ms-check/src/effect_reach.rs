@@ -8,6 +8,8 @@
 //! slice of one flat `Vec<u64>`, and propagation is a worklist over caller lists.
 
 use crate::effect_directives::matches;
+/// The effect scan a `Program` holds, named here with the other effect results it carries.
+pub(crate) use crate::effects::EffectScan;
 use crate::fxmap::HashMap;
 use crate::types::Name;
 use ms_syntax::Pos;

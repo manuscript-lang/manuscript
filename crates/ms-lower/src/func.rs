@@ -273,7 +273,8 @@ impl Cx {
     /// returns), for a function or method whose parameters all pass by value; a method's mask
     /// starts with its receiver. Every other callable, and every call through a function value or
     /// interface, uses the borrowed signature.
-    pub(crate) fn owned_mask(&self, c: &Callable) -> Option<Vec<bool>> {
+    pub(crate) fn owned_mask(&mut self, c: &Callable) -> Option<Vec<bool>> {
+        self.ensure_ownership(c);
         if !matches!(c.kind, CallableKind::Function | CallableKind::Method) {
             return None;
         }
@@ -359,6 +360,7 @@ impl Cx {
         if let Some(id) = self.insts.get(&key) {
             return Ok(*id);
         }
+        self.ensure_ownership(c);
         let mut params = Vec::new();
         let bindings: Vec<&BindingRef> = c.self_binding.iter().chain(c.parameters.iter()).collect();
         let vars = self.var_positions(c);
@@ -636,7 +638,10 @@ fn lower_job(
             callable,
             subst,
             variant,
-        } => (callable.clone(), subst.clone(), *variant),
+        } => {
+            cx.ensure_ownership(callable);
+            (callable.clone(), subst.clone(), *variant)
+        }
         JobKind::Format(t, repr) => {
             return crate::text::build_format(cx, m, job.func, *t, *repr);
         }

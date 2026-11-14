@@ -191,11 +191,7 @@ fn effects_line(
         (_, Some(s)) if s.native == ms_check::api::types::Native::Source => s.id,
         _ => return None,
     };
-    let reach = program
-        .declared_effects
-        .get(&id)
-        .cloned()
-        .unwrap_or_default();
+    let reach = program.declared_effects_of(id);
     let permits = program.effect_permits.get(&id).cloned().unwrap_or_default();
     let mut parts = vec![if reach.is_empty() {
         "effects: pure (ambient authority only)".to_string()
