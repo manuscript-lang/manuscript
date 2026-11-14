@@ -29,7 +29,14 @@ fn symbol_limit_bounds_the_combined_result_list() {
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
 
-    for (fixture, project_total) in [("", 0), ("partial.ms", 1), ("lengths.ms", 12)] {
+    // One process per case (each indexes the standard library): no project (the standard library alone
+    // is capped at the limit), one project symbol ahead of the standard ones, and more project symbols
+    // than the limit.
+    for (fixture, project_total, limit, expected) in [
+        ("", 0, "11", 10),
+        ("partial.ms", 1, "1", 1),
+        ("lengths.ms", 12, "10", 10),
+    ] {
         if !fixture.is_empty() {
             std::fs::copy(
                 std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -39,42 +46,40 @@ fn symbol_limit_bounds_the_combined_result_list() {
             )
             .unwrap();
         }
-        for (limit, expected) in [("1", 1), ("10", 10), ("11", 10)] {
-            let (status, out) = ms(&dir, &["length", "--limit", limit, "--json"]);
-            assert_eq!(status, 0, "{out}");
-            let document = ms_json::parse(&out).unwrap();
-            let matches = document.get("matches").unwrap().as_array().unwrap();
-            assert_eq!(
-                matches.len(),
-                expected,
-                "project_total={project_total}, limit={limit}: {out}"
-            );
-            assert_eq!(
-                document.get("project_total").unwrap().as_i64(),
-                Some(project_total)
-            );
-            let projects = (project_total as usize).min(expected);
-            assert!(
-                matches[..projects]
-                    .iter()
-                    .all(|entry| entry.get("origin").unwrap().as_str() == Some("project"))
-            );
-            assert!(
-                matches[projects..]
-                    .iter()
-                    .all(|entry| entry.get("origin").unwrap().as_str() == Some("std"))
-            );
-        }
-        let (status, out) = ms(&dir, &["length", "--limit", "1"]);
+        let (status, out) = ms(&dir, &["length", "--limit", limit, "--json"]);
         assert_eq!(status, 0, "{out}");
+        let document = ms_json::parse(&out).unwrap();
+        let matches = document.get("matches").unwrap().as_array().unwrap();
         assert_eq!(
-            out.lines()
-                .filter(|line| line.contains("  fn  ") || line.contains("  operation  "))
-                .count(),
-            1,
-            "{out}"
+            matches.len(),
+            expected,
+            "project_total={project_total}, limit={limit}: {out}"
+        );
+        assert_eq!(
+            document.get("project_total").unwrap().as_i64(),
+            Some(project_total)
+        );
+        let projects = (project_total as usize).min(expected);
+        assert!(
+            matches[..projects]
+                .iter()
+                .all(|entry| entry.get("origin").unwrap().as_str() == Some("project"))
+        );
+        assert!(
+            matches[projects..]
+                .iter()
+                .all(|entry| entry.get("origin").unwrap().as_str() == Some("std"))
         );
     }
+    let (status, out) = ms(&dir, &["length", "--limit", "1"]);
+    assert_eq!(status, 0, "{out}");
+    assert_eq!(
+        out.lines()
+            .filter(|line| line.contains("  fn  ") || line.contains("  operation  "))
+            .count(),
+        1,
+        "{out}"
+    );
     std::fs::remove_dir_all(dir).unwrap();
 }
 

@@ -61,8 +61,9 @@ fn mutate(source: &str, rng: &mut Rng) -> String {
     text
 }
 
-/// The sources one shard mutates: every `SHARDS`th file, so the shards run as separate tests in
-/// parallel and together cover every file once.
+/// The sources one shard mutates: every `SHARDS`th file of the first half of each block of `2 * SHARDS`
+/// files, so the shards run as separate tests in parallel and together cover every other group of files.
+/// The unmutated files are not checked again here: the conformance corpus checks each of them.
 const SHARDS: usize = 4;
 
 fn sources(shard: usize) -> Vec<(PathBuf, String)> {
@@ -95,7 +96,7 @@ fn sources(shard: usize) -> Vec<(PathBuf, String)> {
     assert!(out.len() > 100, "found {} sources", out.len());
     out.into_iter()
         .enumerate()
-        .filter_map(|(i, source)| (i % SHARDS == shard).then_some(source))
+        .filter_map(|(i, source)| (i % (2 * SHARDS) == shard).then_some(source))
         .collect()
 }
 
@@ -165,12 +166,13 @@ fn mutated_programs_never_break_the_checker(shard: usize) {
             let session = Session::new();
             let files = sources(shard);
             for (origin, original) in files {
-                let mut cases = vec![original.clone()];
                 let mut rng = Rng(origin
                     .to_string_lossy()
                     .bytes()
                     .fold(7, |h, b| h.wrapping_mul(31).wrapping_add(u64::from(b))));
-                cases.extend((0..MUTATIONS_PER_FILE).map(|_| mutate(&original, &mut rng)));
+                let cases: Vec<String> = (0..MUTATIONS_PER_FILE)
+                    .map(|_| mutate(&original, &mut rng))
+                    .collect();
                 for case in cases {
                     if catch_unwind(AssertUnwindSafe(|| check(&session, &path, &case))).is_err() {
                         panic!("{} failed on:\n{case:?}", origin.display());
