@@ -2558,6 +2558,13 @@ unsafe fn split_into(
         let first = (text.len() / sepb.len() + 1).min(limit).min(8);
         v.ptr = alloc::alloc(first * ELEM);
         v.cap = first;
+        if let [sep] = *sepb
+            && text.len() <= ONE_PASS_SPLIT
+        {
+            split_bytes_once(text, sep, limit, &mut v, piece);
+            *out = v;
+            return;
+        }
         let mut start = 0;
         let needle = Needle::for_text(sepb, text.len());
         while v.len < limit {
@@ -2574,6 +2581,60 @@ unsafe fn split_into(
         }
         *out = v;
     }
+}
+
+/// Texts up to this many bytes split at a one-byte separator in one pass over their words: a
+/// record's fields are a few bytes apart, where a search per piece costs more than the scan.
+const ONE_PASS_SPLIT: usize = 128;
+
+/// The pieces of `text` between bytes equal to `sep`, at most `limit` of them (the rest of the
+/// text is dropped once the list is full), found by testing eight bytes at a time and taking
+/// each match from the word's mask.
+///
+/// # Safety
+/// `v` holds a list of `StrVal`s with room for its first piece.
+#[inline(always)]
+unsafe fn split_bytes_once(
+    text: &[u8],
+    sep: u8,
+    limit: usize,
+    v: &mut VecVal,
+    piece: impl Fn(&[u8]) -> StrVal,
+) {
+    const LOW: u64 = 0x7f7f_7f7f_7f7f_7f7f;
+    const HIGH: u64 = 0x8080_8080_8080_8080;
+    let pat = 0x0101_0101_0101_0101 * sep as u64;
+    let mut start = 0;
+    let (words, tail) = text.as_chunks::<8>();
+    for (i, w) in words.iter().enumerate() {
+        let x = u64::from_le_bytes(*w) ^ pat;
+        // A byte of `x` is zero exactly where the text has `sep`; unlike the shorter test,
+        // this mask has no false bytes above a match, so every set bit is a piece end.
+        let mut mask = !(((x & LOW) + LOW) | x) & HIGH;
+        while mask != 0 {
+            let at = i * 8 + mask.trailing_zeros() as usize / 8;
+            // SAFETY: the caller's list has room, and `push_str` grows it.
+            unsafe { push_str(v, piece(&text[start..at])) };
+            start = at + 1;
+            if v.len >= limit {
+                return;
+            }
+            mask &= mask - 1;
+        }
+    }
+    let base = words.len() * 8;
+    for (j, &b) in tail.iter().enumerate() {
+        if b == sep {
+            // SAFETY: as above.
+            unsafe { push_str(v, piece(&text[start..base + j])) };
+            start = base + j + 1;
+            if v.len >= limit {
+                return;
+            }
+        }
+    }
+    // SAFETY: as above; the list is not full, or the loops returned.
+    unsafe { push_str(v, piece(&text[start..])) };
 }
 
 /// The state of `for piece in text.split(separator)` that does not build the list.
@@ -3681,6 +3742,32 @@ mod tests {
                     ret(|o| msrt_string_get(s, 9, HasRaw(0), st(""), o));
                 },
             );
+        }
+    }
+
+    #[test]
+    fn one_byte_split_matches_the_standard_split_at_every_shape() {
+        let _g = testutil::lock();
+        let alphabet = b"ab,, \xc3\xa9";
+        for len in (0..40).chain([63, 64, 65, 127, 128, 129, 200]) {
+            for seed in 0..12usize {
+                let text: std::vec::Vec<u8> = (0..len)
+                    .map(|i| alphabet[(i * 7 + seed * 5 + i / 3) % alphabet.len()])
+                    .collect();
+                let Ok(text) = std::string::String::from_utf8(text) else {
+                    continue;
+                };
+                for max in [usize::MAX, 0, 1, 2, 5, 9] {
+                    let want: std::vec::Vec<&str> = text.split(',').take(max).collect();
+                    // SAFETY: the strings are live for the calls and the list is released by the test.
+                    unsafe {
+                        let mut v = EMPTY_VEC;
+                        let has = HasRaw((max != usize::MAX) as _);
+                        msrt_string_split(st(&text), st(","), has, max as i64, &mut v);
+                        assert_eq!(list(v), want, "{text:?} max {max}");
+                    }
+                }
+            }
         }
     }
 
