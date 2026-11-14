@@ -32,7 +32,7 @@ Verify: root controls, mapping/sequence/anchor prefixes, Unicode, retained comme
 
 Verified: stripping continuation lines before joining loses paragraph breaks and can misclassify comment markers inside an open quote. Quoted and plain folding remove the first break before empty lines; folded blocks do so only between ordinary lines, preserving breaks around more-indented content. Chomping also needs to know whether the final physical line had a terminator. Quotes and opening containers are structural only at node starts; quotes inside plain text must not hide comments. Marker search and completeness use one scanner, and fast comment candidates also recognize line-feed separation.
 
-Block-scalar indentation is relative to the containing mapping/sequence (zero at the root), not the header column or plain-scalar continuation threshold. Preserve that structural base through standalone headers and anchor-only lines; it determines both automatic indentation and explicit indicators. See [indentation regressions](../../tests/conformance/fixtures/e2e/stdlib/yaml-block-indentation.ms) (#2977). When detecting indentation, leading empty lines may not exceed the first nonempty content line; apply that validation only to implicit indentation, preserving explicit-indicator spaces and empty-only scalars (#2982).
+Block-scalar indentation is relative to the containing mapping/sequence (zero at the root), not the header column or plain-scalar continuation threshold. Preserve that structural base through standalone headers and anchor-only lines; it determines both automatic indentation and explicit indicators. See [indentation regressions](../../tests/conformance/fixtures/e2e/stdlib/yaml-regressions.ms) (#2977). When detecting indentation, leading empty lines may not exceed the first nonempty content line; apply that validation only to implicit indentation, preserving explicit-indicator spaces and empty-only scalars (#2982).
 
 A supported version directive must accept the same explicit document-start forms as a directive-free document; validate same-line content before the existing source-projected split (#2985).
 
@@ -49,7 +49,7 @@ Before gathering any physical continuation of a flow collection or quoted scalar
 reject column-zero `---` or `...` followed by ASCII space, tab or line end. These
 are document boundaries even inside an open quote; stripping comments or folding
 first can silently turn them into content. Keep indented markers and prefixes
-such as `---word` as content; [boundary tests](../../tests/conformance/fixtures/e2e/stdlib/yaml-document-boundaries.ms)
+such as `---word` as content; [boundary tests](../../tests/conformance/fixtures/e2e/stdlib/yaml-regressions.ms)
 cover these distinctions and physical error rows ([YAML markers](https://yaml.org/spec/1.2.2/#912-document-markers)).
 
 ## YAML comments terminate plain scalar continuation
