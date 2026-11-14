@@ -43,6 +43,12 @@ pub enum Level {
 /// drop at their last use and the Cranelift backend allocates registers in a single pass.
 pub const LONG_FUNCTION_INSTS: usize = 4000;
 
+/// The same limit in a program that starts tasks. The unwind pass registers a cleanup for every
+/// owned value live at each place that can fault or park, so values that live to scope end make a
+/// function's code and frame grow with the square of its length; a frame past a task's 512 KiB
+/// stack slot overflows it. Dropping at the last use keeps the live set, and so the growth, small.
+pub const TASK_LONG_FUNCTION_INSTS: usize = 300;
+
 /// The number of instructions in `f`, excluding terminators.
 pub fn instruction_count(f: &crate::ir::Func) -> usize {
     f.blocks.iter().map(|b| b.insts.len()).sum()
@@ -110,8 +116,13 @@ pub fn optimize(m: &mut Module, level: Level, verify: bool) {
         // that are live at once, so only a long function pays for the earlier drops.
         // A function that reads alternative payloads also drops early, so that the payloads it
         // copies out of a dying value can be moved (`copyelim::run_takes`).
+        let long = if crate::unwind::starts_tasks(m) {
+            TASK_LONG_FUNCTION_INSTS
+        } else {
+            LONG_FUNCTION_INSTS
+        };
         lastuse::run_where(m, |f| {
-            instruction_count(f) > LONG_FUNCTION_INSTS
+            instruction_count(f) > long
                 || f.blocks
                     .iter()
                     .any(|b| b.insts.iter().any(|i| i.op == Op::AltGet))
