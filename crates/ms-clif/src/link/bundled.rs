@@ -53,8 +53,7 @@ pub(super) const LLVM_TOOLS_SHA256: &str = env!("MS_LLVM_TOOLS_SHA256");
 
 /// LLVM IR of the runtime's pure helpers (`ms-rt-hot`), linked into release programs before they
 /// are optimized so the helpers inline; empty when the runtime was not built with `cargo xtask runtime`.
-pub(crate) const RUNTIME_HOT_IR: &str =
-    include_str!(concat!(env!("OUT_DIR"), "/linker/ms_rt_hot.ll"));
+pub const RUNTIME_HOT_IR: &str = include_str!(concat!(env!("OUT_DIR"), "/linker/ms_rt_hot.ll"));
 
 /// A hash of every bundled file; names the cache directory the files are unpacked into.
 pub(super) const LINKER_ID: &str = env!("MS_LINKER_ID");

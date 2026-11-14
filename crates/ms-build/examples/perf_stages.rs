@@ -41,7 +41,7 @@ fn main() {
     stage("verify", || ms_mir::verify::verify_module(&module).unwrap());
     stage("llvm_available", || {
         assert!(
-            ms_clif::llvm_available(&ms_clif::BuildOptions::default()),
+            ms_build::llvm_available(&ms_clif::BuildOptions::default()),
             "LLVM is required; fallback is not a measurement"
         )
     });
@@ -52,28 +52,21 @@ fn main() {
             ms_mir::opt::optimize(&mut module, ms_mir::opt::Level::Speed, false);
         }
     });
-    let options = ms_clif::Options {
-        llvm: Some("3"),
-        build: ms_clif::BuildOptions {
-            llvm_units: Some(1),
-            ..Default::default()
-        },
+    let build = ms_clif::BuildOptions {
+        llvm_units: Some(1),
         ..Default::default()
     };
-    let parts = stage("codegen", || {
-        ms_clif::compile_parts(&module, &options).unwrap()
+    let mut objects = stage("codegen", || {
+        ms_build::llvm::compile(&module, true, "3", &build).unwrap()
     });
-    let llvm = parts
-        .llvm
-        .into_iter()
-        .next()
-        .expect("LLVM must actually emit an object");
+    let first = objects.remove(0);
+    let rest = objects.remove(0);
     let output = Path::new(&args[2]);
     let object = output.with_extension("clif.o");
     let llvm_object = output.with_extension("llvm.o");
     stage("write_objects", || {
-        std::fs::write(&object, parts.object).unwrap();
-        std::fs::write(&llvm_object, llvm).unwrap();
+        std::fs::write(&object, first).unwrap();
+        std::fs::write(&llvm_object, rest).unwrap();
     });
     stage("link", || {
         ms_clif::link::link_with(

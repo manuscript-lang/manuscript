@@ -34,7 +34,7 @@ fn build_and_run_units(backend: &str, units: &str, out: &std::path::Path) -> (Op
 #[test]
 fn llvm_release_matches_cranelift_fault_frames() {
     if !cfg!(any(target_os = "linux", target_os = "macos"))
-        || !ms_clif::llvm_available(&ms_cli::engine::build_options_from_env())
+        || !ms_build::llvm_available(&ms_cli::engine::build_options_from_env())
     {
         return;
     }
@@ -67,7 +67,7 @@ fn llvm_release_matches_cranelift_fault_frames() {
 #[test]
 fn llvm_units_keep_fault_frames() {
     if !cfg!(any(target_os = "linux", target_os = "macos"))
-        || !ms_clif::llvm_available(&ms_cli::engine::build_options_from_env())
+        || !ms_build::llvm_available(&ms_cli::engine::build_options_from_env())
     {
         return;
     }
@@ -83,7 +83,7 @@ fn llvm_units_keep_fault_frames() {
 #[test]
 fn llvm_native_calls_keep_distinct_fault_sites() {
     if !cfg!(any(target_os = "linux", target_os = "macos"))
-        || !ms_clif::llvm_available(&ms_cli::engine::build_options_from_env())
+        || !ms_build::llvm_available(&ms_cli::engine::build_options_from_env())
     {
         return;
     }
@@ -155,7 +155,7 @@ fn deeply_nested_literal_builds_quickly() {
 #[test]
 fn llvm_builds_a_huge_straight_line_function_in_bounded_time() {
     if !cfg!(any(target_os = "linux", target_os = "macos"))
-        || !ms_clif::llvm_available(&ms_cli::engine::build_options_from_env())
+        || !ms_build::llvm_available(&ms_cli::engine::build_options_from_env())
     {
         return;
     }
@@ -299,7 +299,7 @@ fn constant_literals_of_any_length_build_in_bounded_time() {
         if backend == "llvm" && !cfg!(any(target_os = "linux", target_os = "macos")) {
             continue;
         }
-        if backend == "llvm" && !ms_clif::llvm_available(&ms_cli::engine::build_options_from_env())
+        if backend == "llvm" && !ms_build::llvm_available(&ms_cli::engine::build_options_from_env())
         {
             continue;
         }
@@ -335,7 +335,7 @@ fn constant_literals_of_any_length_build_in_bounded_time() {
 #[test]
 fn llvm_direct_emission_proves_facts() {
     if !cfg!(any(target_os = "linux", target_os = "macos"))
-        || !ms_clif::llvm_available(&ms_cli::engine::build_options_from_env())
+        || !ms_build::llvm_available(&ms_cli::engine::build_options_from_env())
     {
         return;
     }
@@ -415,7 +415,7 @@ fn llvm_direct_emission_proves_facts() {
 #[test]
 fn llvm_direct_glue_is_emitted_directly() {
     if !cfg!(any(target_os = "linux", target_os = "macos"))
-        || !ms_clif::llvm_available(&ms_cli::engine::build_options_from_env())
+        || !ms_build::llvm_available(&ms_cli::engine::build_options_from_env())
     {
         return;
     }
@@ -456,7 +456,7 @@ fn llvm_direct_glue_is_emitted_directly() {
 #[test]
 fn llvm_direct_grow_shim_for_a_leaf_convention_function() {
     if !cfg!(any(target_os = "linux", target_os = "macos"))
-        || !ms_clif::llvm_available(&ms_cli::engine::build_options_from_env())
+        || !ms_build::llvm_available(&ms_cli::engine::build_options_from_env())
     {
         return;
     }

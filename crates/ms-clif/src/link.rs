@@ -8,7 +8,7 @@ mod bundled;
 #[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
 mod fetch;
 mod lld;
-pub(crate) use bundled::RUNTIME_HOT_IR;
+pub use bundled::RUNTIME_HOT_IR;
 pub use lld::{is_static, llvm_tools};
 
 /// Links `object` and the runtime inputs (objects or static libraries), in order, into the executable `out`.

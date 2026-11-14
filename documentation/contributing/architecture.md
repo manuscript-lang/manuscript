@@ -15,7 +15,7 @@ weight = 1
     -> ms-lower   (checked HIR to MIR, including native standard calls)
     -> ms-mir     (optimizer, verifier)
     -> ms-clif    (MIR to Cranelift object code; line tables; perf map)
-    -> ms-mir-llvm (MIR to LLVM IR; no dependency on ms-clif)
+    -> ms-mir-llvm (MIR to LLVM IR for release builds; ms-build drives it)
     -> link with ms-native (ms-rt and the ms-std-* crates) -> executable
 ```
 

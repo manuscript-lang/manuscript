@@ -1,7 +1,7 @@
 //! Compiles LLVM IR text to an object file.
 
-use crate::link::llvm_tools;
-use crate::{BuildOptions, Error, RtHot};
+use ms_clif::link::llvm_tools;
+use ms_clif::{BuildOptions, Error, RtHot};
 use ms_mir_llvm::Unit;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -45,14 +45,25 @@ pub fn compile_all(
     level: &str,
     build: &BuildOptions,
 ) -> Result<Vec<LlvmObject>, Error> {
+    compile_numbered(irs, level, build, 0)
+}
+
+/// Like [`compile_all`] for modules numbered from `first` in the program (their names and kept
+/// IR files must not collide with the earlier ones).
+pub fn compile_numbered(
+    irs: &[Unit],
+    level: &str,
+    build: &BuildOptions,
+    first: usize,
+) -> Result<Vec<LlvmObject>, Error> {
     if let [unit] = irs {
-        return Ok(vec![compile(unit, level, build, 0)?]);
+        return Ok(vec![compile(unit, level, build, first)?]);
     }
     std::thread::scope(|scope| {
         let jobs: Vec<_> = irs
             .iter()
             .enumerate()
-            .map(|(k, unit)| scope.spawn(move || compile(unit, level, build, k)))
+            .map(|(k, unit)| scope.spawn(move || compile(unit, level, build, first + k)))
             .collect();
         jobs.into_iter()
             .map(|job| {
@@ -183,7 +194,7 @@ fn hot_library(build: &BuildOptions, dir: &Path, tools: &Path, program: &str) ->
         RtHot::Off => return None,
         RtHot::File(path) => std::fs::read_to_string(path).ok(),
     };
-    let ir = custom.as_deref().unwrap_or(crate::link::RUNTIME_HOT_IR);
+    let ir = custom.as_deref().unwrap_or(ms_clif::link::RUNTIME_HOT_IR);
     let linker = tools.join(format!("llvm-link{}", std::env::consts::EXE_SUFFIX));
     if ir.is_empty() || !linker.is_file() || !calls_hot_helper(ir, program) {
         return None;

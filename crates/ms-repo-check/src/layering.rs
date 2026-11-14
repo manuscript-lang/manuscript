@@ -30,11 +30,14 @@ const COMPILER_AND_TOOLS: &[(&str, &[&str])] = &[
         "ms-lower",
         &["ms-check", "ms-mir", "ms-rt-abi", "ms-decimal"],
     ),
-    // `ms-mir-llvm` depends on MIR and the ABI only, never on `ms-clif`; `ms-clif` runs it for
-    // release builds.
+    // The two code generators know nothing of each other: `ms-mir-llvm` depends on MIR and the
+    // ABI only, and `ms-build` runs it for release builds.
     ("ms-mir-llvm", &["ms-mir", "ms-rt-abi"]),
-    ("ms-clif", &["ms-mir", "ms-mir-llvm", "ms-rt-abi"]),
-    ("ms-build", &["ms-check", "ms-clif", "ms-lower", "ms-mir"]),
+    ("ms-clif", &["ms-mir", "ms-rt-abi"]),
+    (
+        "ms-build",
+        &["ms-check", "ms-clif", "ms-lower", "ms-mir", "ms-mir-llvm"],
+    ),
     ("ms-driver", &["ms-check", "ms-syntax"]),
     ("ms-tooling", &["ms-check", "ms-json", "ms-syntax"]),
     (

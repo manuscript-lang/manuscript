@@ -9,7 +9,6 @@ autotests = false
 [dependencies]
 ms-mir = { path = "../ms-mir" }
 ms-rt-abi = { path = "../ms-rt-abi" }
-ms-mir-llvm = { path = "../ms-mir-llvm" }
 cranelift-codegen = "=0.136.0"
 cranelift-frontend = "=0.136.0"
 cranelift-module = "=0.136.0"
@@ -19,6 +18,8 @@ target-lexicon = "0.13"
 gimli = { version = "=0.34.0", default-features = false, features = ["write", "read", "std"] }
 
 [dev-dependencies]
+# Release-build tests compile through the LLVM driver in `ms-build`.
+ms-build = { path = "../ms-build" }
 # The reference interpreter is the oracle for native-code tests.
 ms-mir = { path = "../ms-mir", features = ["test-support"] }
 # Exercise both supported architectures on every host, including ELF, Mach-O and COFF emission.
