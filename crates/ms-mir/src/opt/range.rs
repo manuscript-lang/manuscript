@@ -631,12 +631,12 @@ fn byte_lists(m: &Module, f: &Func) -> Vec<bool> {
 
 /// Runs the pass over every function; returns whether anything changed.
 pub fn run(m: &mut Module) -> bool {
+    let all_edits = super::par_funcs(m.funcs.len(), |fi| {
+        let mut fa = Fa::new(m, &m.funcs[fi]);
+        if fa.solve() { fa.edits() } else { Vec::new() }
+    });
     let mut changed = false;
-    for fi in 0..m.funcs.len() {
-        let edits = {
-            let mut fa = Fa::new(m, &m.funcs[fi]);
-            if fa.solve() { fa.edits() } else { Vec::new() }
-        };
+    for (fi, edits) in all_edits.into_iter().enumerate() {
         if edits.is_empty() {
             continue;
         }

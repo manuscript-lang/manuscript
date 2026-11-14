@@ -48,6 +48,43 @@ pub fn instruction_count(f: &crate::ir::Func) -> usize {
     f.blocks.iter().map(|b| b.insts.len()).sum()
 }
 
+/// Computes `work(i)` for every function index below `count` on all cores and returns the results
+/// in index order. `work` may only read the module: the caller applies the results afterwards, so
+/// every function sees the module as it was before the pass, whatever the thread count.
+pub(crate) fn par_funcs<T: Send>(count: usize, work: impl Fn(usize) -> T + Sync) -> Vec<T> {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    let threads = std::thread::available_parallelism()
+        .map_or(1, usize::from)
+        .min(count / 8);
+    if threads <= 1 {
+        return (0..count).map(work).collect();
+    }
+    let next = AtomicUsize::new(0);
+    let parts: Vec<Vec<(usize, T)>> = std::thread::scope(|s| {
+        let workers: Vec<_> = (0..threads)
+            .map(|_| {
+                s.spawn(|| {
+                    let mut done = Vec::new();
+                    loop {
+                        let i = next.fetch_add(1, Ordering::Relaxed);
+                        if i >= count {
+                            return done;
+                        }
+                        done.push((i, work(i)));
+                    }
+                })
+            })
+            .collect();
+        workers
+            .into_iter()
+            .map(|w| w.join().unwrap_or_else(|e| std::panic::resume_unwind(e)))
+            .collect()
+    });
+    let mut all: Vec<(usize, T)> = parts.into_iter().flatten().collect();
+    all.sort_unstable_by_key(|(i, _)| *i);
+    all.into_iter().map(|(_, t)| t).collect()
+}
+
 /// Runs the pipeline. With `verify`, the module is re-verified after every pass and
 /// the first failure panics with the pass name (used by tests and debug builds).
 pub fn optimize(m: &mut Module, level: Level, verify: bool) {
