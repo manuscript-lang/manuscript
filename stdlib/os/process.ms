@@ -95,7 +95,7 @@ export interface Commands:
 	/*
     Starts `program` directly, without a shell, searching the PATH, and waits for it to finish. `arguments` are passed after the program name, `options.input` is written to its standard input, and its output is captured.
     Output beyond `options.max_output_bytes` in total across both streams returns EOVERFLOW, `options.timeout` returns ETIMEDOUT, and in both cases the child's process group is killed. Cancelling the calling task also kills it.
-    `options.cwd` is the child's working directory (none inherits the caller's); `options.env` adds or replaces variables on top of the inherited environment, and a name that is empty or holds `=`, or a NUL byte anywhere, returns EINVAL. A `cwd` that does not exist returns EAGAIN. Neither touches the caller's own directory or environment, so concurrent tasks can run children in different directories.
+    `options.cwd` is the child's working directory (none inherits the caller's); `options.env` adds or replaces variables on top of the inherited environment, and a name that is empty or holds `=`, or a NUL byte anywhere, returns EINVAL. A `cwd` that does not exist returns ENOENT. Neither touches the caller's own directory or environment, so concurrent tasks can run children in different directories.
     */
 	fn run(
 		program: String,
@@ -105,8 +105,8 @@ export interface Commands:
 	// Starts `program` directly, without a shell, searching the PATH, and returns a
 	// live Subprocess that its scope closes. `arguments` follow the program name;
 	// `options.stdin`, `options.stdout`, and `options.stderr` each choose a pipe (the
-	// default), the parent's own stream, or the null device. Returns EINVAL, EAGAIN, or
-	// EIO when it cannot start. Closing the Subprocess, or cancelling the acquiring
+	// default), the parent's own stream, or the null device. Returns EINVAL, ENOENT (no such program or
+	// working directory), EACCES (not executable), or EIO when it cannot start. Closing the Subprocess, or cancelling the acquiring
 	// execution, kills the child's process group.
 	// `options.cwd` and `options.env` behave as in `run`.
 	fn spawn(
@@ -281,7 +281,7 @@ fn run_command(
 /*
 Starts `program` directly, without a shell, searching the PATH, and returns a promise that finishes when it does. `arguments` are passed after the program name, `options.input` is written to its standard input, and its output is captured.
 Output beyond `options.max_output_bytes` in total across both streams returns EOVERFLOW, `options.timeout` returns ETIMEDOUT, and in both cases the child's process group is killed. Cancelling the calling task also kills it.
-`options.cwd` is the child's working directory (none inherits the caller's); `options.env` adds or replaces variables on top of the inherited environment, and a name that is empty or holds `=`, or a NUL byte anywhere, returns EINVAL. A `cwd` that does not exist returns EAGAIN. Neither touches the caller's own directory or environment, so concurrent tasks can run children in different directories.
+`options.cwd` is the child's working directory (none inherits the caller's); `options.env` adds or replaces variables on top of the inherited environment, and a name that is empty or holds `=`, or a NUL byte anywhere, returns EINVAL. A `cwd` that does not exist returns ENOENT. Neither touches the caller's own directory or environment, so concurrent tasks can run children in different directories.
 */
 // ms: effect std.process.run
 export fn run(
@@ -300,8 +300,8 @@ export fn run(
 // Starts `program` directly, without a shell, searching the PATH, and returns a live
 // Subprocess that its scope closes. `arguments` follow the program name;
 // `options.stdin`, `options.stdout`, and `options.stderr` each choose a pipe (the
-// default), the parent's own stream, or the null device. Returns EINVAL, EAGAIN, or EIO
-// when it cannot start. Closing the Subprocess, or cancelling the acquiring execution,
+// default), the parent's own stream, or the null device. Returns EINVAL, ENOENT (no such program or working
+// directory), EACCES (not executable), or EIO when it cannot start. Closing the Subprocess, or cancelling the acquiring execution,
 // kills the child's process group.
 // `options.cwd` and `options.env` behave as in `run`.
 // ms: effect std.process.run

@@ -5,7 +5,7 @@
 //! suspended and runs only once it is in a job object, so a kill reaches its whole process tree,
 //! including anything it starts right away.
 use alloc::vec::Vec;
-use ms_rt_abi::{STATUS_FAILED, STATUS_UNAVAILABLE};
+use ms_rt_abi::{STATUS_FAILED, STATUS_NOT_FOUND, STATUS_PERMISSION_DENIED};
 use ms_std_fs::err::{Fail, Res, describe};
 use ms_std_fs::sys;
 use std::ffi::OsString;
@@ -83,7 +83,8 @@ fn duplicate(fd: sys::Fd) -> Result<Stdio, i32> {
 }
 
 /// Starts `program` with `args`, the given standard streams and the extra variables `env`;
-/// `Unavailable` when it is missing.
+/// `NotFound` when it or the working directory is missing and `PermissionDenied` when it cannot
+/// be executed, the same on every platform.
 pub fn start(
     program: &[u8],
     args: &[Vec<u8>],
@@ -128,13 +129,21 @@ pub fn start(
     }
     match cmd.spawn() {
         Ok(inner) => Ok(Child::new(inner)),
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Err(Fail::status(STATUS_UNAVAILABLE)),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Err(Fail::status(STATUS_NOT_FOUND)),
         // Windows reports a missing working directory as "directory name is invalid".
         Err(_) if cwd.is_some_and(|d| !std::path::Path::new(&os_string(d)).is_dir()) => {
-            Err(Fail::status(STATUS_UNAVAILABLE))
+            Err(Fail::status(STATUS_NOT_FOUND))
         }
+        Err(e) if is_not_executable(&e) => Err(Fail::status(STATUS_PERMISSION_DENIED)),
         Err(e) => Err(failed(e.raw_os_error().unwrap_or(0))),
     }
+}
+
+/// Whether starting failed because the file may not be run: denied, or (Windows) not an executable
+/// image (`ERROR_BAD_EXE_FORMAT`).
+fn is_not_executable(e: &std::io::Error) -> bool {
+    e.kind() == std::io::ErrorKind::PermissionDenied
+        || (cfg!(windows) && e.raw_os_error() == Some(193))
 }
 
 /// Resumes the threads of the suspended process `pid`: just its main thread, since it has run
@@ -431,5 +440,28 @@ impl Drop for Child {
         if self.exit >= 0 {
             let _ = sys::close(self.exit);
         }
+    }
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+    use super::*;
+
+    fn failure(program: &[u8], cwd: Option<&[u8]>) -> u8 {
+        let null = || StdStream::Null;
+        match start(program, &[], [null(), null(), null()], &[], cwd) {
+            Ok(_) => panic!("start succeeded"),
+            Err(fail) => fail.status,
+        }
+    }
+
+    #[test]
+    fn start_names_a_missing_program_or_directory_and_a_file_that_cannot_run() {
+        assert_eq!(failure(b"/nonexistent/program", None), STATUS_NOT_FOUND);
+        assert_eq!(
+            failure(b"/bin/sh", Some(b"/nonexistent-dir")),
+            STATUS_NOT_FOUND
+        );
+        assert_eq!(failure(b"/dev/null", None), STATUS_PERMISSION_DENIED);
     }
 }

@@ -58,8 +58,8 @@ test "bad cwd and variable names are rejected":
     )?
 
     missing := run(shell(), print_cwd(), RunOptions(cwd: "/definitely/not/here")).wait().err()
-    expect_equal(missing.kind, "EAGAIN")?
+    expect_equal(missing.kind, "ENOENT")?
     expect_equal(
         missing.message,
-        "process: service unavailable: working directory /definitely/not/here"
+        "process: not found: working directory /definitely/not/here"
     )?

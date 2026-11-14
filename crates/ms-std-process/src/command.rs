@@ -360,7 +360,7 @@ impl Drop for Subprocess {
 #[cfg(all(test, unix))]
 mod tests {
     use super::*;
-    use ms_rt_abi::STATUS_UNAVAILABLE;
+    use ms_rt_abi::STATUS_NOT_FOUND;
 
     fn args(list: &[&str]) -> Vec<Vec<u8>> {
         list.iter().map(|s| s.as_bytes().to_vec()).collect()
@@ -407,7 +407,7 @@ mod tests {
             .err()
             .unwrap()
             .status,
-            STATUS_UNAVAILABLE
+            STATUS_NOT_FOUND
         );
     }
 
