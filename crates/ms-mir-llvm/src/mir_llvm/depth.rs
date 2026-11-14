@@ -48,8 +48,7 @@ fn region_cell(b: &mut FnBuilder, offset: i64) -> (Val, Val) {
 
 /// The address of the running task's header block: the last word of the stack region.
 pub(super) fn task_hdr(b: &mut FnBuilder) -> Val {
-    let (_, cell) = region_cell(b, 16);
-    b.load(&LTy::Ptr, &cell, 8)
+    b.task_hdr()
 }
 
 /// Faults when the running task was cancelled: its flag is a byte in the task's header block,
