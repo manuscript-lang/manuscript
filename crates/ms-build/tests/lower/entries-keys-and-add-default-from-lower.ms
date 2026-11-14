@@ -1,5 +1,5 @@
 // Lowered and verified by tests/lower.rs; each expect line is checked against the printed MIR.
-// expect-mir: "msrt_map_contains"
+// expect-mir: "map_probe"
 
 import stdout from "@std/io/io.ms"
 

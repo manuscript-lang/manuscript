@@ -16,7 +16,6 @@ stats = []
 [dependencies]
 memchr = "2.8.3"
 ms-rt-abi = { path = "../ms-rt-abi" }
-ms-rt-hot = { path = "../ms-rt-hot" }
 mio = { version = "1", default-features = false, features = ["os-poll", "os-ext", "net"] }
 unicode-normalization = { version = "0.1.24", default-features = false }
 

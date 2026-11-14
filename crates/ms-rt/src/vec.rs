@@ -2044,12 +2044,103 @@ pub unsafe extern "C-unwind" fn msrt_bytes_extend(b: *mut VecVal, values: *const
 
 // ---- Bytes fixed-width codecs ----
 
+/// The `width` bytes (1, 2, 4 or 8) at `at` as an unsigned number, or all eight bytes as the `i64`
+/// with that bit pattern. `@std/bytes.ms` builds every `Bytes.int32_le(at)` style read on it, and a
+/// call with a constant `width` and `little` inlines to one bounds compare and one load. Missing
+/// bytes are `STATUS_OUT_OF_RANGE`.
+#[unsafe(no_mangle)]
+// ms: leaf pure domain=binary
+pub unsafe extern "C-unwind" fn msrt_bytes_read_word(
+    b: *const VecVal,
+    at: i64,
+    width: i64,
+    little: u8,
+    out: *mut i64,
+) -> u8 {
+    // SAFETY: `b` is a live byte list and `out` is writable.
+    unsafe {
+        let v = &*b;
+        let n = width as usize;
+        let start = at as usize;
+        if at < 0 || start > v.len || v.len - start < n {
+            return ms_rt_abi::STATUS_OUT_OF_RANGE;
+        }
+        let p = v.ptr.add(start);
+        let raw = match n {
+            1 => p.read() as u64,
+            2 => (p as *const u16).read_unaligned() as u64,
+            4 => (p as *const u32).read_unaligned() as u64,
+            8 => (p as *const u64).read_unaligned(),
+            _ => return ms_rt_abi::STATUS_OUT_OF_RANGE,
+        };
+        let raw = if little != 0 || n == 1 {
+            raw
+        } else {
+            raw.swap_bytes() >> (64 - 8 * n as u32)
+        };
+        out.write(raw as i64);
+        ms_rt_abi::STATUS_OK
+    }
+}
+
 // ---- StringBuilder (bytes) ----
 
-pub(crate) use ms_rt_hot::copy_short;
+/// Copies `n <= 16` bytes with at most two overlapping loads and stores, so the compiler cannot
+/// turn it into a vector loop or a `memcpy` call. The ranges must not overlap.
+#[inline(always)]
+pub unsafe fn copy_short(src: *const u8, dst: *mut u8, n: usize) {
+    // SAFETY: caller guarantees `n` readable and writable bytes; each access stays within them.
+    unsafe {
+        if n >= 8 {
+            let head = src.cast::<u64>().read_unaligned();
+            let tail = src.add(n - 8).cast::<u64>().read_unaligned();
+            dst.cast::<u64>().write_unaligned(head);
+            dst.add(n - 8).cast::<u64>().write_unaligned(tail);
+        } else if n >= 4 {
+            let head = src.cast::<u32>().read_unaligned();
+            let tail = src.add(n - 4).cast::<u32>().read_unaligned();
+            dst.cast::<u32>().write_unaligned(head);
+            dst.add(n - 4).cast::<u32>().write_unaligned(tail);
+        } else if n > 0 {
+            let first = *src;
+            let mid = *src.add(n / 2);
+            let last = *src.add(n - 1);
+            *dst = first;
+            *dst.add(n / 2) = mid;
+            *dst.add(n - 1) = last;
+        }
+    }
+}
 
-/// What the program's inlined `msrt_strbuilder_append` (in `ms-rt-hot`) calls when the text does
-/// not fit the builder's spare room.
+/// Appends a string to a builder.
+///
+/// Text that fits the builder's spare room is copied by the caller's own code (one byte, a short
+/// word as overlapping moves, longer text with `memcpy`); a full buffer calls the runtime.
+#[unsafe(no_mangle)]
+// ms: leaf
+pub unsafe extern "C-unwind" fn msrt_strbuilder_append(b: *mut VecVal, s: *const StrVal) {
+    // SAFETY: caller passes a live builder and string.
+    unsafe {
+        let v = &mut *b;
+        let text = string::bytes(s);
+        let n = text.len();
+        if v.cap - v.len >= n {
+            let dst = v.ptr.add(v.len);
+            v.len += n;
+            if n == 1 {
+                *dst = text[0];
+            } else if n <= 16 {
+                copy_short(text.as_ptr(), dst, n);
+            } else {
+                core::ptr::copy_nonoverlapping(text.as_ptr(), dst, n);
+            }
+            return;
+        }
+        msrt_strbuilder_append_slow(b, s);
+    }
+}
+
+/// Appends a string past the builder's spare room: grows, then copies.
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_strbuilder_append_slow(b: *mut VecVal, s: *const StrVal) {

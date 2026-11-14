@@ -1048,6 +1048,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             | Op::Ushr
             | Op::Rotl
             | Op::Rotr
+            | Op::UMulHi
             | Op::Clz
             | Op::Ctz
             | Op::Popcnt
@@ -1122,6 +1123,9 @@ impl<'a, 'm> Lower<'a, 'm> {
             | Op::ListAddr
             | Op::ListAddrU
             | Op::PtrIsNull
+            | Op::PtrAdd
+            | Op::PtrNull
+            | Op::PtrLoadU
             | Op::PtrField
             | Op::Load
             | Op::Take

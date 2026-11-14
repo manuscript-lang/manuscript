@@ -64,7 +64,49 @@ pub fn format_radix(v: i64, radix: u32, out: &mut Vec<u8>) {
     out.extend_from_slice(&tmp[i..]);
 }
 
-pub use ms_rt_hot::parse_int_decimal;
+/// `String.parse_int`: optional sign, ASCII digits only; overflow is `None`.
+pub fn parse_int_decimal(text: &[u8]) -> Option<i64> {
+    let (neg, digits) = match text.first()? {
+        b'-' => (true, &text[1..]),
+        b'+' => (false, &text[1..]),
+        _ => (false, text),
+    };
+    if digits.is_empty() {
+        return None;
+    }
+    // Up to eighteen digits cannot overflow, so skip the per-digit checks.
+    if digits.len() <= 18 {
+        let mut acc = 0i64;
+        for &c in digits {
+            let d = c.wrapping_sub(b'0');
+            if d > 9 {
+                return None;
+            }
+            acc = acc * 10 + d as i64;
+        }
+        return Some(if neg { -acc } else { acc });
+    }
+    // Longer text is valid only with leading zeros; at most nineteen significant digits can fit, so the
+    // untouched suffix of an overlong input is never scanned.
+    let zeros = digits.iter().take_while(|&&c| c == b'0').count();
+    let significant = &digits[zeros..];
+    if significant.len() > 19 {
+        return None;
+    }
+    let mut acc = 0u64;
+    for &c in significant {
+        let d = c.wrapping_sub(b'0');
+        if d > 9 {
+            return None;
+        }
+        acc = acc * 10 + d as u64;
+    }
+    if neg {
+        0i64.checked_sub_unsigned(acc)
+    } else {
+        i64::try_from(acc).ok()
+    }
+}
 
 /// `Numbers.parse_int`: Err carries the status code. Radix 0 reads a `0x`, `0o` or `0b` prefix (any case) after
 /// the sign and otherwise means 10.

@@ -144,14 +144,10 @@ fn llvm_level(build: &BuildOptions, level: &'static str) -> Option<&'static str>
     crate::llvm::available(build).then_some(level)
 }
 
-/// Native inputs beyond the explicit link files: the selected runtime archive and helper IR.
+/// Native inputs beyond the explicit link files: the selected runtime archive.
 /// The caller resolves runtime precedence before forming this inventory.
-pub fn native_inputs(build: &BuildOptions, runtime: &Path) -> Vec<PathBuf> {
-    let mut inputs = vec![runtime.to_path_buf()];
-    if let ms_clif::RtHot::File(path) = &build.rt_hot {
-        inputs.push(path.clone());
-    }
-    inputs
+pub fn native_inputs(_build: &BuildOptions, runtime: &Path) -> Vec<PathBuf> {
+    vec![runtime.to_path_buf()]
 }
 
 /// The backend currently available for `profile`. For an existing artifact, use

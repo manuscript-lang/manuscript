@@ -171,6 +171,7 @@ fn speculatable(m: &Module, f: &Func, i: &Inst, positive: &ValueSet) -> bool {
         | Op::Ushr
         | Op::Rotl
         | Op::Rotr
+        | Op::UMulHi
         | Op::Clz
         | Op::Ctz
         | Op::Popcnt

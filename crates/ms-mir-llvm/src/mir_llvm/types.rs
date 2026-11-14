@@ -695,6 +695,16 @@ pub(super) fn copies(b: &mut FnBuilder, lay: &Layouts, f: &Func, vals: &Vals, t:
 /// runtime updates the map in place through the slot, and the parameter is consumed by the put, so
 /// the slot is the parameter's own storage and the copies in and out disappear.
 fn slot_alias(f: &Func, lay: &Layouts, slot: Value) -> Option<Value> {
+    // A `put` through a pointer parameter writes the caller's map, so only a `slot` of this
+    // function can be the parameter's own storage.
+    let is_slot = f
+        .blocks
+        .iter()
+        .flat_map(|bl| &bl.insts)
+        .any(|i| i.res == Some(slot) && i.op == Op::Slot);
+    if !is_slot {
+        return None;
+    }
     let mut writes = f
         .blocks
         .iter()

@@ -6,7 +6,7 @@ Perf and agent benchmarks, profiling.
 
 - [Sorting records that own data uses the generated sort over bitwise scratch](sorting-owning-records-uses-bitwise-scratch.md): inlined comparator for `String`-holding records, 225M to 102M instructions, then 82M with the driftsort; scratch owns nothing so a comparator fault is safe.
 - [User `hash()` values are mixed before they index a table](user-hash-values-are-mixed-before-indexing.md): identity-like hashes of small-int records clustered under linear probing (562 to 103 ms for 1M `Set[Pt]` operations).
-- [Hot string and set fast paths live in `ms-rt-hot` with a slow twin](hot-string-fast-paths-live-in-ms-rt-hot-with-a-slow-twin.md): fast case inlined, rare case calls `*_slow`; test ASCII by flag or inline bits; `Set[Int]` fixed layout; build `memmem` only for long text.
+- [Runtime fast paths are generated MIR with a runtime twin](runtime-fast-paths-are-generated-mir-with-a-runtime-twin.md): `ms-rt-hot` is deleted; map probes, `String.view` and `StringBuilder.append` inline through shared MIR in both backends; hash and probe change together; `update` passes a map address.
 - [Numeric parsing needs invalid-input performance controls](numeric-parsing-needs-invalid-input-performance-controls.md): valid-input gains can hide overflow and malformed-input regressions; preserve error precedence and equivalent Rust validation.
 
 - [`var` record parameters stay in the caller's slot](var-record-parameters-stay-in-the-callers-slot.md): wide-record methods no longer move every field out and back per call; `Bytes` reads inline (`Lines.next` 147 to 75 instructions per line).

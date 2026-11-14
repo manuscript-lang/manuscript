@@ -9,21 +9,385 @@
 use crate::alloc;
 use crate::desc::{needs_no_drop, slot_copy, slot_drop, slot_eq, slot_hash};
 use crate::fault;
-use crate::string;
+use crate::string::{self, bytes, equal, hash_bytes, hash_int};
 use ms_rt_abi::record::FaultKind;
 use ms_rt_abi::*;
 
-use ms_rt_hot::{LIVE, Layout, is_word, key_desc, layout, slot};
 const REMOVED: u64 = u32::MAX as u64;
 
-#[inline(always)]
-fn entry(h: u64, slot: usize) -> u64 {
-    (h & !0xFFFF_FFFF) | (slot as u64 + 1)
-}
+/// Top bit of a slot's hash word: set for a live entry, clear for a removed one.
+pub const LIVE: u64 = 1 << 63;
 
 #[inline(always)]
 fn index_of(m: &MapVal) -> *mut u64 {
     m.index as *mut u64
+}
+
+#[inline(always)]
+unsafe fn slot_hash_of(p: *const u8) -> u64 {
+    // SAFETY: slots start with the hash word.
+    unsafe { *(p as *const u64) }
+}
+
+/// Slot of the `Int` key at `key` in a map whose values are 8 bytes, 8-aligned (stride 24), or
+/// null. The shape of most counters and indexes; it needs no descriptor dispatch.
+#[inline(always)]
+pub unsafe fn find_w8(m: &MapVal, key: *const u8) -> *const u8 {
+    if m.len == 0 {
+        return core::ptr::null();
+    }
+    // SAFETY: caller contract; index and slots are consistent for a non-empty map.
+    unsafe {
+        let k = *(key as *const u64);
+        let h = hash_int(k) | LIVE;
+        let index = index_of(m);
+        let mut pos = (h as usize ^ (h >> 32) as usize) & m.mask;
+        loop {
+            let e = *index.add(pos);
+            if e == 0 {
+                return core::ptr::null();
+            }
+            if (e ^ h) >> 32 == 0 {
+                let p = m.slots.add((e as u32 - 1) as usize * 24);
+                if *(p.add(8) as *const u64) == k {
+                    return p;
+                }
+            }
+            pos = (pos + 1) & m.mask;
+        }
+    }
+}
+
+/// Stride of a `String`-keyed slot with an 8-byte value: hash, key, value.
+pub const SW8_STRIDE: usize = 8 + ms_rt_abi::STR_SIZE + 8;
+/// Offset of the value in such a slot.
+pub const SW8_VALUE: usize = 8 + ms_rt_abi::STR_SIZE;
+
+/// [`find_w8`] for a `String` key: slot of the entry, or null.
+#[inline(always)]
+pub unsafe fn find_sw8(m: &MapVal, key: *const u8) -> *const u8 {
+    if m.len == 0 {
+        return core::ptr::null();
+    }
+    // SAFETY: caller contract; index and slots are consistent for a non-empty map, and the key
+    // slot holds a live string.
+    unsafe {
+        let k = key as *const StrVal;
+        let h = hash_bytes(bytes(k)) | LIVE;
+        let index = index_of(m);
+        let mut pos = (h as usize ^ (h >> 32) as usize) & m.mask;
+        loop {
+            let e = *index.add(pos);
+            if e == 0 {
+                return core::ptr::null();
+            }
+            if (e ^ h) >> 32 == 0 {
+                let p = m.slots.add((e as u32 - 1) as usize * SW8_STRIDE);
+                if slot_hash_of(p) == h && equal(p.add(8) as *const StrVal, k) {
+                    return p;
+                }
+            }
+            pos = (pos + 1) & m.mask;
+        }
+    }
+}
+
+/// `get_ptr` for a `String` key and an 8-byte, 8-aligned value: the value's address or null. The
+/// descriptors are accepted for signature parity with the generic entry point and ignored.
+#[unsafe(no_mangle)]
+// ms: leaf pure
+pub unsafe extern "C-unwind" fn msrt_map_get_ptr_sw8(
+    m: *const MapVal,
+    _kd: KeyDesc,
+    _vd: ValDesc,
+    key: *const u8,
+) -> *const u8 {
+    // SAFETY: caller contract.
+    unsafe {
+        let p = find_sw8(&*m, key);
+        if p.is_null() {
+            core::ptr::null()
+        } else {
+            p.add(SW8_VALUE)
+        }
+    }
+}
+
+/// `contains` for a `String` key and an 8-byte, 8-aligned value.
+#[unsafe(no_mangle)]
+// ms: leaf pure
+pub unsafe extern "C-unwind" fn msrt_map_contains_sw8(
+    m: *const MapVal,
+    _kd: KeyDesc,
+    _vd: ValDesc,
+    key: *const u8,
+) -> u8 {
+    // SAFETY: caller contract.
+    unsafe { !find_sw8(&*m, key).is_null() as u8 }
+}
+
+/// `get` for a `String` key and a plain 8-byte scalar value (`Int` or `Float`).
+#[unsafe(no_mangle)]
+// ms: leaf
+pub unsafe extern "C-unwind" fn msrt_map_get_sw8(
+    m: *const MapVal,
+    _kd: KeyDesc,
+    _vd: ValDesc,
+    key: *const u8,
+    out: *mut u8,
+) -> u8 {
+    // SAFETY: caller contract.
+    unsafe {
+        let p = find_sw8(&*m, key);
+        if p.is_null() {
+            return 0;
+        }
+        core::ptr::copy_nonoverlapping(p.add(SW8_VALUE), out, 8);
+        1
+    }
+}
+
+/// `get_ptr` for an `Int` key and an 8-byte, 8-aligned value. The call site checked the shape;
+/// the descriptors are accepted for signature parity and ignored.
+#[unsafe(no_mangle)]
+// ms: leaf pure
+pub unsafe extern "C-unwind" fn msrt_map_get_ptr_w8(
+    m: *const MapVal,
+    _kd: KeyDesc,
+    _vd: ValDesc,
+    key: *const u8,
+) -> *const u8 {
+    // SAFETY: caller contract.
+    unsafe {
+        let p = find_w8(&*m, key);
+        if p.is_null() {
+            core::ptr::null()
+        } else {
+            p.add(16)
+        }
+    }
+}
+
+/// `contains` for an `Int` key and an 8-byte, 8-aligned value.
+#[unsafe(no_mangle)]
+// ms: leaf pure
+pub unsafe extern "C-unwind" fn msrt_map_contains_w8(
+    m: *const MapVal,
+    _kd: KeyDesc,
+    _vd: ValDesc,
+    key: *const u8,
+) -> u8 {
+    // SAFETY: caller contract.
+    unsafe { !find_w8(&*m, key).is_null() as u8 }
+}
+
+/// Slot of the `Int` key at `key` in a `Set[Int]` (slots of a hash word and the key, stride 16),
+/// or null: [`find_w8`] without a value.
+#[inline(always)]
+pub unsafe fn find_set_w(m: &MapVal, key: *const u8) -> *const u8 {
+    if m.len == 0 {
+        return core::ptr::null();
+    }
+    // SAFETY: caller contract; index and slots are consistent for a non-empty map.
+    unsafe {
+        let k = *(key as *const u64);
+        let h = hash_int(k) | LIVE;
+        let index = index_of(m);
+        let mut pos = (h as usize ^ (h >> 32) as usize) & m.mask;
+        loop {
+            let e = *index.add(pos);
+            if e == 0 {
+                return core::ptr::null();
+            }
+            if (e ^ h) >> 32 == 0 {
+                let p = m.slots.add((e as u32 - 1) as usize * 16);
+                if *(p.add(8) as *const u64) == k {
+                    return p;
+                }
+            }
+            pos = (pos + 1) & m.mask;
+        }
+    }
+}
+
+/// `contains` for a `Set[Int]`.
+#[unsafe(no_mangle)]
+// ms: leaf pure domain=set
+pub unsafe extern "C-unwind" fn msrt_set_contains_w(
+    m: *const MapVal,
+    _kd: KeyDesc,
+    _vd: ValDesc,
+    key: *const u8,
+) -> u8 {
+    // SAFETY: caller contract.
+    unsafe { !find_set_w(&*m, key).is_null() as u8 }
+}
+
+/// `get` for an `Int` key and a plain 8-byte scalar value (`Int` or `Float`).
+#[unsafe(no_mangle)]
+// ms: leaf
+pub unsafe extern "C-unwind" fn msrt_map_get_w8(
+    m: *const MapVal,
+    _kd: KeyDesc,
+    _vd: ValDesc,
+    key: *const u8,
+    out: *mut u8,
+) -> u8 {
+    // SAFETY: caller contract.
+    unsafe {
+        let p = find_w8(&*m, key);
+        if p.is_null() {
+            return 0;
+        }
+        core::ptr::copy_nonoverlapping(p.add(16), out, 8);
+        1
+    }
+}
+
+/// `length()`: the number of live entries.
+#[unsafe(no_mangle)]
+// ms: leaf pure
+pub unsafe extern "C-unwind" fn msrt_map_length(m: *const MapVal) -> i64 {
+    // SAFETY: caller contract.
+    unsafe { (*m).len as i64 }
+}
+
+/// Number of slots to scan with `msrt_map_entry_ptrs` (live entries plus holes).
+#[unsafe(no_mangle)]
+// ms: leaf pure
+pub unsafe extern "C-unwind" fn msrt_map_slot_count(m: *const MapVal) -> i64 {
+    // SAFETY: caller contract.
+    unsafe { (*m).used as i64 }
+}
+
+// Slot layout from type descriptors (read-only static data)
+
+#[derive(Clone, Copy)]
+pub struct Layout {
+    pub koff: usize,
+    pub voff: usize,
+    pub stride: usize,
+    pub ksize: usize,
+    pub vsize: usize,
+}
+
+pub fn align_up(n: usize, a: usize) -> usize {
+    (n + a - 1) & !(a - 1)
+}
+
+/// True for an 8-byte, 8-aligned slot (one load and compare of the descriptor's size and align).
+#[inline(always)]
+pub fn is_word(d: &TypeDesc) -> bool {
+    (u64::from(d.size) | u64::from(d.align) << 32) == 8 | 8 << 32
+}
+
+#[inline(always)]
+pub fn layout(kd: &TypeDesc, vd: Option<&TypeDesc>) -> Layout {
+    // 8-byte, 8-aligned keys and values (Int, Float, pointers) are the common case; a constant
+    // layout spares the alignment arithmetic on every lookup.
+    if is_word(kd) && vd.is_some_and(is_word) {
+        return Layout {
+            koff: 8,
+            voff: 16,
+            stride: 24,
+            ksize: 8,
+            vsize: 8,
+        };
+    }
+    // Word-multiple slots (a `String` is two words) need only additions.
+    let (ks, ka) = (kd.size as usize, kd.align);
+    if ka == 8 && ks % 8 == 0 {
+        match vd {
+            Some(v) if v.align == 8 && v.size % 8 == 0 => {
+                let vs = v.size as usize;
+                return Layout {
+                    koff: 8,
+                    voff: 8 + ks,
+                    stride: 8 + ks + vs,
+                    ksize: ks,
+                    vsize: vs,
+                };
+            }
+            None => {
+                return Layout {
+                    koff: 8,
+                    voff: 8 + ks,
+                    stride: 8 + ks,
+                    ksize: ks,
+                    vsize: 0,
+                };
+            }
+            _ => {}
+        }
+    }
+    layout_general(kd, vd)
+}
+
+pub fn layout_general(kd: &TypeDesc, vd: Option<&TypeDesc>) -> Layout {
+    let ka = (kd.align as usize).max(8);
+    let koff = align_up(8, ka);
+    let ksize = kd.size as usize;
+    let (va, vsize) = vd.map_or((1, 0), |v| ((v.align as usize).max(1), v.size as usize));
+    let voff = align_up(koff + ksize, va);
+    let stride = align_up(voff + vsize, ka.max(va).max(8));
+    Layout {
+        koff,
+        voff,
+        stride,
+        ksize,
+        vsize,
+    }
+}
+
+#[inline(always)]
+pub unsafe fn slot(m: &MapVal, l: &Layout, i: usize) -> *mut u8 {
+    // SAFETY: `i < used`.
+    unsafe { m.slots.add(i * l.stride) }
+}
+
+/// The descriptor a map was created with, else the caller's: a collection keeps the
+/// `Equal` and `Hashable` of the module that made it.
+///
+/// `m` is a live map, as every exported operation requires.
+// Callers are the exported operations, which require a live map; the same contract as `ms-rt`'s own.
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
+pub fn key_desc(m: *const MapVal, kd: *const TypeDesc) -> *const TypeDesc {
+    // SAFETY: exported operations are only called with live maps.
+    let own = unsafe { (*m).desc };
+    if own.is_null() { kd } else { own }
+}
+
+/// Borrowed pointers to the key and value of slot `i`; 0 for a hole.
+#[unsafe(no_mangle)]
+// ms: leaf
+pub unsafe extern "C-unwind" fn msrt_map_entry_ptrs(
+    m: *const MapVal,
+    kd: KeyDesc,
+    vd: ValDesc,
+    i: i64,
+    key_out: *mut *const u8,
+    val_out: *mut *const u8,
+) -> u8 {
+    let kd = key_desc(m, kd);
+    // SAFETY: caller contract.
+    unsafe {
+        let m = &*m;
+        let l = layout(&*kd, opt(vd));
+        let p = slot(m, &l, i as usize);
+        if slot_hash_of(p) & LIVE == 0 {
+            return 0;
+        }
+        *key_out = p.add(l.koff);
+        if !val_out.is_null() {
+            *val_out = p.add(l.voff);
+        }
+        1
+    }
+}
+
+#[inline(always)]
+fn entry(h: u64, slot: usize) -> u64 {
+    (h & !0xFFFF_FFFF) | (slot as u64 + 1)
 }
 
 pub fn empty() -> MapVal {
@@ -91,12 +455,6 @@ fn layout_k<K: KeyOps>(kd: &TypeDesc, vd: Option<&TypeDesc>) -> Layout {
         };
     }
     layout(kd, vd)
-}
-
-#[inline(always)]
-unsafe fn slot_hash_of(p: *mut u8) -> u64 {
-    // SAFETY: slots start with the hash word.
-    unsafe { *(p as *const u64) }
 }
 
 /// Hash, equality and ownership of one key type, resolved once per call by [`keyed!`] so that
@@ -1456,7 +1814,7 @@ pub unsafe extern "C-unwind" fn msrt_set_add_copy_w(m: *mut MapVal, kd: KeyDesc,
         if !(*m).desc.is_null() {
             return msrt_set_add_copy(m, kd, key);
         }
-        if !ms_rt_hot::find_set_w(&*m, key).is_null() {
+        if !find_set_w(&*m, key).is_null() {
             return;
         }
         let m = &mut *m;
@@ -1859,7 +2217,6 @@ mod tests {
         assert_eq!(alloc::live_blocks(), before);
     }
     use crate::testutil;
-    use crate::testutil::hot::*;
     use core::sync::atomic::{AtomicUsize, Ordering};
 
     #[test]

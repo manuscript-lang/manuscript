@@ -1,7 +1,7 @@
 //! Compiles LLVM IR text to an object file.
 
 use ms_clif::link::llvm_tools;
-use ms_clif::{BuildOptions, Error, RtHot};
+use ms_clif::{BuildOptions, Error};
 use ms_mir_llvm::Unit;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -133,21 +133,7 @@ fn compile(
     let bitcode = dir.join("m.bc");
     let tool =
         |name: &str| Command::new(tools.join(format!("{name}{}", std::env::consts::EXE_SUFFIX)));
-    let mut input = ll;
-    if let Some(hot) = hot_library(build, &dir, &tools, ir) {
-        // The runtime's pure helpers (`ms-rt-hot`): only the definitions the program calls are
-        // linked, internalized so the archive's copies stay the only exported ones, and LLVM
-        // inlines them.
-        let linked = dir.join("linked.bc");
-        let mut link = tool("llvm-link");
-        link.args(["--only-needed", "--internalize"])
-            .arg(&input)
-            .arg(&hot)
-            .arg("-o")
-            .arg(&linked);
-        run(link, "llvm-link (runtime helpers)")?;
-        input = linked;
-    }
+    let input = ll;
     let mut opt = tool("opt");
     if !build.vectorize {
         opt.args(["-vectorize-loops=false", "-vectorize-slp=false"]);
@@ -185,34 +171,6 @@ fn compile(
     Ok(this)
 }
 
-/// The runtime helper IR written into `dir`, or `None` when this `ms` has none, `build.rt_hot` turns
-/// it off or names another file, `llvm-link` is not in `tools`, or the `program` IR calls none of
-/// the helpers (linking would only cost time).
-fn hot_library(build: &BuildOptions, dir: &Path, tools: &Path, program: &str) -> Option<PathBuf> {
-    let custom = match &build.rt_hot {
-        RtHot::Embedded => None,
-        RtHot::Off => return None,
-        RtHot::File(path) => std::fs::read_to_string(path).ok(),
-    };
-    let ir = custom.as_deref().unwrap_or(ms_clif::link::RUNTIME_HOT_IR);
-    let linker = tools.join(format!("llvm-link{}", std::env::consts::EXE_SUFFIX));
-    if ir.is_empty() || !linker.is_file() || !calls_hot_helper(ir, program) {
-        return None;
-    }
-    let path = dir.join("ms_rt_hot.ll");
-    std::fs::write(&path, ir).ok()?;
-    Some(path)
-}
-
-/// Whether `program` mentions a function that `hot` defines under a runtime symbol name.
-fn calls_hot_helper(hot: &str, program: &str) -> bool {
-    hot.lines()
-        .filter(|line| line.starts_with("define "))
-        .filter_map(|line| line.split("@msrt_").nth(1))
-        .filter_map(|rest| rest.split('(').next())
-        .any(|name| program.contains(&format!("@\"msrt_{name}\"")))
-}
-
 impl LlvmObject {
     /// The object file `llc` wrote, whose DWARF the line tables are rebuilt from.
     pub fn path(&self) -> &Path {
@@ -222,26 +180,5 @@ impl LlvmObject {
     /// The object's bytes.
     pub fn bytes(&self) -> Result<Vec<u8>, Error> {
         std::fs::read(&self.obj).map_err(|e| Error(e.to_string()))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    const HOT: &str = "define noundef i64 @msrt_map_length(i64 noundef %m) alwaysinline #0 {\n\
-                       define internal i64 @_ZN6ms_rt_hot3foo() #1 {\n";
-
-    #[test]
-    fn links_only_programs_that_name_a_defined_helper() {
-        assert!(calls_hot_helper(
-            HOT,
-            "%t = call i64 @\"msrt_map_length\"(i64 %m)"
-        ));
-        assert!(!calls_hot_helper(
-            HOT,
-            "declare i64 @\"msrt_map_length_other\"(i64)"
-        ));
-        assert!(!calls_hot_helper(HOT, "call void @\"msrt_print\"()"));
     }
 }

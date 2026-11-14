@@ -39,6 +39,7 @@ mod natiface;
 mod native;
 mod nativetype;
 mod rtcall;
+mod rtinline;
 mod runner;
 mod scalar;
 mod scope;

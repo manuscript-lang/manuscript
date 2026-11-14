@@ -5,17 +5,6 @@
 
 use std::path::PathBuf;
 
-/// Which runtime helper IR release builds link in so the helpers inline.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum RtHot {
-    /// The IR embedded in `ms`.
-    Embedded,
-    /// None, to compare against a build without inlined helpers.
-    Off,
-    /// Another helper library, for experiments.
-    File(PathBuf),
-}
-
 /// What the build does with a `copy` of an object value, which one-owner lowering must not emit.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
 pub enum CopyProbe {
@@ -46,8 +35,6 @@ pub struct BuildOptions {
     pub llvm_verify: bool,
     /// Copy the LLVM IR of a release build to `ms-keep.ll`.
     pub keep_ll: bool,
-    /// The runtime helper IR linked into release programs.
-    pub rt_hot: RtHot,
     /// A directory holding `opt`, `llc` and `llvm-link`, instead of the pinned release.
     pub llvm_tools: Option<PathBuf>,
     /// An `lld` to link with, instead of the pinned release.
@@ -77,7 +64,6 @@ impl Default for BuildOptions {
             heap_facts: true,
             llvm_verify: false,
             keep_ll: false,
-            rt_hot: RtHot::Embedded,
             llvm_tools: None,
             lld: None,
             runtime: None,

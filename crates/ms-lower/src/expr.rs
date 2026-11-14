@@ -984,6 +984,9 @@ impl<'a> FnLower<'a> {
     /// Calls a runtime function by symbol, declaring it from the operand types: operands are
     /// borrowed, except the function values an extern keeps, which it is handed; the result is owned.
     pub fn call_runtime(&mut self, sym: &str, args: &[Value], ret: MTy) -> Result<Value, Error> {
+        if let Some(v) = self.inline_probe(sym, args, ret) {
+            return Ok(v);
+        }
         let params = args
             .iter()
             .enumerate()

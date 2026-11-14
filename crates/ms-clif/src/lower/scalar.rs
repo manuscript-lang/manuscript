@@ -354,6 +354,10 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
                 self.b.ins().rotl(x, y)
             }],
+            Op::UMulHi => vec![{
+                let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
+                self.b.ins().umulhi(x, y)
+            }],
             Op::Rotr => vec![{
                 let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
                 self.b.ins().rotr(x, y)

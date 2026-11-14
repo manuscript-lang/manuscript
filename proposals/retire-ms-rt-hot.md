@@ -2,7 +2,9 @@
 
 ## Status
 
-Requested by Chinmay (2026-11-12): "ideally we don't have this hot crate and just do it in Manuscript", then "make the compiler emit fast code instead". Draft; not implemented. PR #3730 (more `ms-rt-hot` functions) is held as the baseline. This reverses the wiki note of the same day that says to keep moving fast paths into `ms-rt-hot`; the wiki page changes when group A lands.
+Implemented (2026-11-14): `crates/ms-rt-hot`, the xtask IR step and the `llvm-link` step are deleted. Group A and B moved into `ms-rt` and shared MIR operations (`str.ascii_len`, `str.eq_lit`, `str.bytes`); group C became generated `inline(always)` MIR (`ms-lower/src/rtinline.rs`) built from `ptr.add`, `ptr.loadu`, `ptr.null` and `umulhi`, and `StringBuilder.append` is emitted inline by the LLVM backend as Cranelift already did. Results and the comparison with `main` are in `bench/perf/rt-hot-retired/README.md`; durable notes are in `wiki/benchmarks-and-performance/runtime-fast-paths-are-generated-mir-with-a-runtime-twin.md`. The text below is the original plan.
+
+Requested by Chinmay (2026-11-12): "ideally we don't have this hot crate and just do it in Manuscript", then "make the compiler emit fast code instead". PR #3730 (more `ms-rt-hot` functions) was held as the baseline.
 
 Constraint (Chinmay, 2026-11-12): no language or grammar change. Everything below is lowering, MIR, stdlib `.ms` in existing syntax and compiler-side hints; a source-level need in group C is an open question for Chinmay, not an assumption.
 

@@ -8,8 +8,8 @@ Agent programs write lookup tables inline: `{"open": 3, "report": 1}.get(cmd).ge
 
 ## One-byte `contains` is inlined
 
-`msrt_string_contains` is a pure helper in `ms-rt-hot`: a one-byte needle in a text under 32 bytes is a scan the program inlines (`"+-*/".contains(op)`, 80 to about 10 instructions); longer cases call `msrt_string_contains_long` in `ms-rt`. Keep the two in step if the search changes.
+`msrt_string_contains` is a pure function in `ms-rt` (`ms-rt-hot` is gone): a one-byte needle in a text under 32 bytes is a short scan; longer cases call `msrt_string_contains_long`. Keep the two in step if the search changes. Releases call it (`"+-*/".contains(op)`); the 80-to-10-instruction inline form needed the hot crate.
 
 ## `StringBuilder.append` is inlined the same way
 
-`msrt_strbuilder_append` is in `ms-rt-hot` (a writer, so `// ms: leaf` without `pure`); a text that fits the spare room is copied inline and a full buffer calls `msrt_strbuilder_append_slow` in `ms-rt`. `copy_short` lives in `ms-rt-hot` and `ms-rt` re-exports it.
+Both backends emit the append inline (`ms-clif` `strbuilder_append`, `ms-mir-llvm` `calls.rs`): a text that fits the spare room is copied in place and a full buffer calls `msrt_strbuilder_append` in `ms-rt`.

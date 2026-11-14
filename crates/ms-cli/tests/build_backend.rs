@@ -22,7 +22,6 @@ fn command(root: &Path, profile: &str, cranelift: bool) -> Command {
         .env_remove("MS_BACKEND")
         .env("MS_CACHE", "on")
         .env("MS_TIMINGS", "1")
-        .env("MS_RT_HOT", root.join("helper.ll"))
         .args(["build"])
         .arg(root.join("main.ms"))
         .args(["--build-type", profile, "-o"])
@@ -43,12 +42,7 @@ fn success(result: Output) -> String {
 
 fn check(root: &Path, profile: &str, llvm: bool) -> Vec<u8> {
     let output = root.join(format!("program{}", std::env::consts::EXE_SUFFIX));
-    // The custom helper returns 47 only when LLVM actually consumes its IR.
-    // Cranelift links the normal runtime and returns the string's length, 5.
-    assert_eq!(
-        Command::new(&output).status().unwrap().code(),
-        Some(if llvm { 47 } else { 5 })
-    );
+    assert_eq!(Command::new(&output).status().unwrap().code(), Some(5));
     let metadata = PathBuf::from(format!("{}.ms-build.json", output.display()));
     let document = ms_json::parse(std::fs::read(metadata).unwrap()).unwrap();
     assert_eq!(
@@ -70,11 +64,6 @@ fn sidecar_backend_matches_native_codegen_on_cold_warm_and_verified_builds() {
     ] {
         let root = common::scratch(&format!("backend-{name}"));
         std::fs::write(root.join("main.ms"), include_str!("build_backend/main.ms")).unwrap();
-        std::fs::write(
-            root.join("helper.ll"),
-            include_str!("build_backend/helper.ll"),
-        )
-        .unwrap();
         if let Some(tools) = tools() {
             common::symlink_dir(tools, &root.join("tools")).unwrap();
         }
@@ -196,11 +185,6 @@ fn automatic_discovery_changes_preserve_the_cached_artifact_backend() {
     for initially_available in [true, false] {
         let root = common::scratch(&format!("backend-discovery-{initially_available}"));
         std::fs::write(root.join("main.ms"), include_str!("build_backend/main.ms")).unwrap();
-        std::fs::write(
-            root.join("helper.ll"),
-            include_str!("build_backend/helper.ll"),
-        )
-        .unwrap();
 
         // A real default-cache build provisions the linker when necessary,
         // before the test switches to its disposable discovery fixture.

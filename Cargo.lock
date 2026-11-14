@@ -1155,20 +1155,12 @@ dependencies = [
  "memchr",
  "mio",
  "ms-rt-abi",
- "ms-rt-hot",
  "unicode-normalization",
 ]
 
 [[package]]
 name = "ms-rt-abi"
 version = "0.1.0"
-
-[[package]]
-name = "ms-rt-hot"
-version = "0.1.0"
-dependencies = [
- "ms-rt-abi",
-]
 
 [[package]]
 name = "ms-std-archive"

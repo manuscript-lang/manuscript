@@ -565,6 +565,7 @@ impl<'m> Interp<'m> {
             | Op::Ushr
             | Op::Rotl
             | Op::Rotr
+            | Op::UMulHi
             | Op::Clz
             | Op::Ctz
             | Op::Popcnt
@@ -645,6 +646,9 @@ impl<'m> Interp<'m> {
             | Op::DropIf
             | Op::Slot
             | Op::PtrIsNull
+            | Op::PtrAdd
+            | Op::PtrNull
+            | Op::PtrLoadU
             | Op::ListAddr
             | Op::ListAddrU
             | Op::PtrField

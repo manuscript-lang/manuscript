@@ -74,13 +74,7 @@ pub fn key(parts: &[&str], inputs: &[&Path], build: &BuildOptions) -> Option<Str
     let _ = writeln!(text, "{}", std::env::current_dir().ok()?.display());
     let _ = writeln!(text, "{}", std::env::consts::OS);
     let _ = writeln!(text, "{build:?}");
-    // Custom runtime helper IR is read by LLVM just like the runtime archive is read by
-    // the linker. Its path in BuildOptions is not enough when the file changes in place.
-    let helper = match &build.rt_hot {
-        ms_clif::RtHot::File(path) => Some(path.as_path()),
-        _ => None,
-    };
-    for input in inputs.iter().copied().chain(helper) {
+    for input in inputs.iter().copied() {
         let s = stamp(input)?;
         let _ = writeln!(text, "{} {} {}", input.display(), s.mtime, s.size);
     }
@@ -373,40 +367,6 @@ mod tests {
         assert_ne!(base, key(&["Debug", "out"], &[&input], &build).unwrap());
         assert!(key(&["Debug"], &[&dir.join("missing")], &build).is_none());
         let _ = std::fs::remove_dir_all(dir);
-    }
-
-    #[test]
-    fn key_tracks_runtime_helper_file_changes() {
-        let dir = scratch("runtime-helper-key");
-        let helper = dir.join("helpers.ll");
-        std::fs::write(&helper, b"first helper IR").unwrap();
-        let build = BuildOptions {
-            rt_hot: ms_clif::RtHot::File(helper.clone()),
-            ..BuildOptions::default()
-        };
-        let original = key(&["Release"], &[], &build).unwrap();
-        assert_eq!(original, key(&["Release"], &[], &build).unwrap());
-        std::fs::write(&helper, b"replacement helper IR").unwrap();
-        assert_ne!(original, key(&["Release"], &[], &build).unwrap());
-        let replaced = key(&["Release"], &[], &build).unwrap();
-        let modified = std::fs::metadata(&helper).unwrap().modified().unwrap();
-        std::fs::File::options()
-            .write(true)
-            .open(&helper)
-            .unwrap()
-            .set_modified(modified + std::time::Duration::from_secs(2))
-            .unwrap();
-        assert_ne!(replaced, key(&["Release"], &[], &build).unwrap());
-        std::fs::remove_file(&helper).unwrap();
-        assert!(key(&["Release"], &[], &build).is_none());
-        for rt_hot in [ms_clif::RtHot::Embedded, ms_clif::RtHot::Off] {
-            let build = BuildOptions {
-                rt_hot,
-                ..BuildOptions::default()
-            };
-            assert!(key(&["Release"], &[], &build).is_some());
-        }
-        std::fs::remove_dir_all(dir).unwrap();
     }
 
     #[test]

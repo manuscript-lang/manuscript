@@ -109,7 +109,12 @@ impl Interp<'_> {
                 };
                 ops.set(Val::Bool(*p == 0));
             }
-            Op::ListAddr | Op::ListAddrU | Op::PtrField => {
+            Op::ListAddr
+            | Op::ListAddrU
+            | Op::PtrField
+            | Op::PtrAdd
+            | Op::PtrNull
+            | Op::PtrLoadU => {
                 return Err(Raw::internal(
                     "interior pointers are not supported by the interpreter",
                 ));
