@@ -91,9 +91,9 @@ jobs:
   # cannot read it, and a separate job to pick it would cost one more job per run.
   # `lint`: also format and clippy. `cranelift`: the part (`a` or `b`) that also runs the corpus and
   # fixtures with `MS_BACKEND=cranelift`, the backend Debug builds use; the gates run in the other part.
+  # `gates: false` skips the gates. On pull requests linux-amd64 runs Cranelift in `conformance` and
   # leaves the gates to linux-arm64, so each job stays under ten minutes. On pull requests linux-arm64 runs
   # format and clippy: it finishes about 4 minutes before linux-amd64, which carries the corpus.
-  # leaves the gates to linux-arm64, so each job stays under ten minutes.
   # `docs`: also the language checks and the book (in the conformance part on pull requests); on main
   # the book is uploaded for Pages.
   # Failures shared with Linux are in tests/conformance/expect-fail.txt; platform-only ones go
