@@ -30,12 +30,12 @@ runs:
         if ! git diff --name-only "$BASE" "$GITHUB_SHA" | grep -qvE '^(documentation/|website/|blog/|proposals/|skills/|extensions/|.*\.md$)'; then
           rust=false
         fi
-        # Pull requests build programs with Cranelift (the Debug backend). Code that feeds or drives the
-        # LLVM release path also runs the LLVM corpus and the release gates, as main does: the LLVM
-        # backend and its glue, the build and link driver, the runtime and its ABI, the pinned
-        # toolchain and the CI tools. Workflow edits run the Cranelift path; main runs LLVM.
+        # Pull requests build programs with Cranelift (the Debug backend). Only code that is specific to the
+        # LLVM release path also runs the LLVM corpus and the release gates, as main does: the LLVM backend
+        # and its glue, the LLVM driver in ms-build, the LLVM tests, and the pinned LLVM and lld tools.
+        # Shared code (front end, runtime, build driver, CI files) is covered by main within 30 minutes.
         llvm=false
-        if git diff --name-only "$BASE" "$GITHUB_SHA" | grep -qE '^(crates/(ms-mir-llvm|ms-build|ms-rt|ms-rt-abi|ms-rt-hot)/|crates/ms-clif/tests/llvm_|toolchain/|tools/|Cargo\.lock$|rust-toolchain\.toml$)'; then
+        if git diff --name-only "$BASE" "$GITHUB_SHA" | grep -qE '^(crates/ms-mir-llvm/|crates/ms-build/src/llvm|crates/ms-clif/tests/llvm_|crates/ms-cli/tests/llvm|toolchain/)'; then
           llvm=true
         fi
         echo "rust=$rust" >> "$GITHUB_OUTPUT"
