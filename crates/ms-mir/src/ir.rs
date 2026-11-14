@@ -287,6 +287,8 @@ pub enum Op {
     OptSome, OptView, OptNone, OptIsSome, OptGet, OptUnwrap, OptUnbox, OptAddr,
     // Strings.
     StrLen, StrByte, StrAscii, StrAsciiAt, StrAsciiLen,
+    // Byte builders.
+    BytesPush,
     // Closures and interface views.
     ClosureNew, ClosureCap, ClosureCapAddr, IfaceNew, IfaceBorrow, IfaceView, IfaceData, IfaceIs,
     // Ownership.

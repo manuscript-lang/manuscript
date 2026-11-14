@@ -217,12 +217,6 @@ impl<'a, 'm> Lower<'a, 'm> {
             }
             return self.strbuilder_append(id, args[0], args[1]);
         }
-        if def.role == ExternRole::BytesAppend
-            && args.len() == 2
-            && self.g.lay.leaves(ret_ty).is_empty()
-        {
-            return self.bytes_append(id, args[0], args[1]);
-        }
         if self.g.m.c_externs.contains(&def.name) {
             return self.call_c_extern(id, &args, ret_ty);
         }

@@ -147,9 +147,12 @@ impl InstCheck<'_, '_> {
             | Op::OptUnwrap
             | Op::OptUnbox
             | Op::OptAddr => self.optionals(),
-            Op::StrLen | Op::StrByte | Op::StrAscii | Op::StrAsciiAt | Op::StrAsciiLen => {
-                self.strings()
-            }
+            Op::StrLen
+            | Op::StrByte
+            | Op::StrAscii
+            | Op::StrAsciiAt
+            | Op::StrAsciiLen
+            | Op::BytesPush => self.strings(),
             Op::ClosureNew
             | Op::ClosureCap
             | Op::ClosureCapAddr
@@ -828,6 +831,15 @@ impl InstCheck<'_, '_> {
                 self.want(
                     self.t(0) == Ty::INT && self.res == Some(Ty::STR),
                     "str.ascii takes an ASCII byte and yields the shared one-character string",
+                )
+            }
+            Op::BytesPush => {
+                self.arity(2)?;
+                self.want(
+                    self.t(0) == Ty::PTR
+                        && self.m.types.is_int(self.t(1))
+                        && self.res == Some(Ty::BOOL),
+                    "bytes.push takes a builder address and a byte value and yields bool",
                 )
             }
             _ => unreachable!("strings is only called for its own ops"),
