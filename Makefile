@@ -63,8 +63,9 @@ conform: build
 	CONFORM_FAST=1 MS_BACKEND=cranelift $(MS) run tools/conform.ms
 
 # The same corpus with programs built by LLVM (Release), as CI runs on main and on pull requests that touch
-# LLVM-related code. Run it after changing LLVM code.
+# LLVM-related code. Run it after changing LLVM code. It runs on `target/debug/ms`, so that is rebuilt first.
 conform-llvm: build
+	cargo build --locked -p ms-cli
 	$(MS) run tools/conform.ms
 
 # Release build time, IR size, direct-emission share and kernel times of the LLVM backend against Cranelift.
