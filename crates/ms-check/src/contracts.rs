@@ -1772,6 +1772,23 @@ impl Checker {
     }
 }
 
+/// The intrinsic interface declaring `to_string`, which every value has.
+const VALUE_OPERATIONS: &str = "ValueOperations";
+/// The intrinsic interface declaring `clone`, which every data value has.
+const CLONE_OPERATIONS: &str = "CloneOperations";
+
+impl Method {
+    /// Whether the method is declared for every receiver type (`to_string`, `clone`) instead of
+    /// one numeric family, so it runs on a sized number at its own width. A family method
+    /// (`Float.to_fixed`, `Int.to_hex`) runs on the 64-bit kind.
+    pub fn is_width_generic(&self, syms: ms_syntax::Names) -> bool {
+        self.decl.as_ref().is_some_and(|d| {
+            let owner = syms.str(d.decl.name());
+            owner == VALUE_OPERATIONS || owner == CLONE_OPERATIONS
+        })
+    }
+}
+
 /// A standard method that exists without an impl.
 pub(crate) fn native_method(
     syms: ms_syntax::Names,
@@ -1805,7 +1822,7 @@ pub(crate) fn native_method(
             t.kind,
             Kind::Type | Kind::Alternative | Kind::Primitive | Kind::Variable
         ) {
-            owner = session.standard_symbol("CloneOperations")?.ty(syms);
+            owner = session.standard_symbol(CLONE_OPERATIONS)?.ty(syms);
         }
         let decl = stdlib::standard_method_declaration(&owner, name);
         return Some(native_of(
@@ -1817,7 +1834,7 @@ pub(crate) fn native_method(
         ));
     }
     if syms.str(name) == "to_string" {
-        let owner = session.standard_symbol("ValueOperations")?.ty(syms);
+        let owner = session.standard_symbol(VALUE_OPERATIONS)?.ty(syms);
         let ty = owner.def.as_ref()?.operations.borrow()[0].ty.clone();
         let decl = stdlib::standard_method_declaration(&owner, name);
         return Some(native_of(name, t, ty, Vec::new(), decl));

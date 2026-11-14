@@ -260,15 +260,10 @@ impl<'a> FnLower<'a> {
         {
             return Ok(v);
         }
-        // Other operations on a sized number run on its 64-bit kind; a clone keeps its width.
-        let recv_nums = {
-            let t = self.ty_of(recv.v);
-            let name = native.rsplit('/').next();
-            (self.b.m.types.is_int(t) || self.b.m.types.is_float(t))
-                && name != Some("clone")
-                // A Float32 formats as itself: widened, it would print the double's digits.
-                && !(name == Some("to_string") && t == MTy::FLOAT32)
-        };
+        // Family operations on a sized number run on its 64-bit kind; a method declared for every
+        // type (`clone`, `to_string`) keeps the receiver's width, so a Float32 prints as itself.
+        let recv_nums = (self.b.m.types.is_int(recv_ty) || self.b.m.types.is_float(recv_ty))
+            && !m.is_width_generic(self.syms);
         let recv = if recv_nums {
             for a in &mut args {
                 a.val = self.widen_numeric(a.val);
