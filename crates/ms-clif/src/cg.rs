@@ -591,6 +591,16 @@ fn compile_with_isa(
     flags
         .set("opt_level", opts.opt_level)
         .map_err(|e| e.to_string())?;
+    flags
+        .set(
+            "enable_verifier",
+            if opts.build.clif_verify {
+                "true"
+            } else {
+                "false"
+            },
+        )
+        .map_err(|e| e.to_string())?;
     if single_pass(m, opts) {
         // The backtracking allocator is quadratic in a function's size and Debug builds keep owned
         // values live to scope end, so a very long function takes seconds; the single-pass
