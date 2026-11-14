@@ -307,6 +307,55 @@ unsafe fn walk_sub_scalars(s: *const StrVal, a: usize, b: usize) -> Option<StrVa
     }
 }
 
+/// C view: `msrt_string_starts_with(a: *const StrVal, v: *const StrVal) -> u8`
+#[unsafe(no_mangle)]
+// ms: leaf pure domain=string
+pub unsafe extern "C-unwind" fn msrt_string_starts_with(a: *const StrVal, v: *const StrVal) -> u8 {
+    // SAFETY: caller passes live strings.
+    unsafe { bytes(a).starts_with(bytes(v)) as u8 }
+}
+
+/// C view: `msrt_string_ends_with(a: *const StrVal, v: *const StrVal) -> u8`
+#[unsafe(no_mangle)]
+// ms: leaf pure domain=string
+pub unsafe extern "C-unwind" fn msrt_string_ends_with(a: *const StrVal, v: *const StrVal) -> u8 {
+    // SAFETY: caller passes live strings.
+    unsafe { bytes(a).ends_with(bytes(v)) as u8 }
+}
+
+/// C view: `msrt_string_compare(a: *const StrVal, b: *const StrVal) -> i64`
+#[unsafe(no_mangle)]
+// ms: leaf pure domain=map
+pub unsafe extern "C-unwind" fn msrt_string_compare(a: *const StrVal, b: *const StrVal) -> i64 {
+    // SAFETY: caller passes live strings.
+    unsafe { bytes(a).cmp(bytes(b)) as i64 }
+}
+
+/// Hash of a string's bytes (equal strings hash equally).
+///
+/// C view: `msrt_string_hash(s: *const StrVal) -> i64`
+#[unsafe(no_mangle)]
+// ms: leaf pure domain=map
+pub unsafe extern "C-unwind" fn msrt_string_hash(s: *const StrVal) -> i64 {
+    // SAFETY: caller passes a live string.
+    hash_bytes(unsafe { bytes(s) }) as i64
+}
+
+/// C view: `msrt_hash_int(v: i64) -> i64`
+#[unsafe(no_mangle)]
+// ms: leaf domain=map
+pub extern "C-unwind" fn msrt_hash_int(v: i64) -> i64 {
+    mix(v as u64 ^ 0x9e37_79b9) as i64
+}
+
+/// C view: `msrt_hash_bytes(p: *const u8, len: usize) -> i64`
+#[unsafe(no_mangle)]
+// ms: leaf domain=map
+pub unsafe extern "C-unwind" fn msrt_hash_bytes(p: *const u8, len: usize) -> i64 {
+    // SAFETY: caller passes a readable range.
+    hash_bytes(unsafe { core::slice::from_raw_parts(p, len) }) as i64
+}
+
 /// C view: `msrt_string_eq(a: *const StrVal, b: *const StrVal) -> u8`
 ///
 /// The compiler decides most comparisons inline (the backends decide it from the words; `str.eq_lit`) and calls this
