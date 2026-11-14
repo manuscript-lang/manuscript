@@ -240,11 +240,14 @@ pub fn set_title(title: &[u8]) -> Res<()> {
 // ---------------------------------------------------------------------------
 
 /// The live environment as `(name, value)` pairs; any non-UTF-8 entry is `Unsupported`.
+/// The live environment as bytes. An entry whose name or value is not valid UTF-8 cannot be a
+/// `String` and is left out, so one such variable does not hide the rest (`PATH`, the test
+/// runner's own settings).
 pub fn environment() -> Res<Vec<(Vec<u8>, Vec<u8>)>> {
     let mut out = Vec::new();
     for (name, value) in std::env::vars_os() {
         let (Some(name), Some(value)) = (name.to_str(), value.to_str()) else {
-            return Err(Fail::status(STATUS_UNSUPPORTED));
+            continue;
         };
         out.push((name.as_bytes().to_vec(), value.as_bytes().to_vec()));
     }
@@ -670,4 +673,40 @@ pub fn memory_usage() -> Res<[i64; 5]> {
         (resident - heap[1]).max(0),
         resident,
     ])
+}
+
+#[cfg(test)]
+mod non_utf8_environment {
+    use super::*;
+
+    #[cfg(unix)]
+    fn invalid_text() -> std::ffi::OsString {
+        std::os::unix::ffi::OsStringExt::from_vec(vec![b'a', 0xff, 0xfe])
+    }
+
+    #[cfg(windows)]
+    fn invalid_text() -> std::ffi::OsString {
+        std::os::windows::ffi::OsStringExt::from_wide(&[0x61, 0xd800])
+    }
+
+    /// One variable that is not valid UTF-8 is left out; the others stay readable.
+    #[test]
+    fn environment_skips_entries_that_are_not_utf8() {
+        #[cfg(unix)]
+        let _guard = crate::environment_guard();
+        let bad = "MS_PROC_TEST_NON_UTF8";
+        // SAFETY: tests that touch the environment on Unix hold the environment guard.
+        unsafe {
+            std::env::set_var("MS_PROC_TEST_UTF8", "ok");
+            std::env::set_var(bad, invalid_text());
+        }
+        let entries = environment().unwrap();
+        // SAFETY: as above.
+        unsafe {
+            std::env::remove_var(bad);
+            std::env::remove_var("MS_PROC_TEST_UTF8");
+        }
+        assert!(entries.contains(&(b"MS_PROC_TEST_UTF8".to_vec(), b"ok".to_vec())));
+        assert!(!entries.iter().any(|(name, _)| name == bad.as_bytes()));
+    }
 }
