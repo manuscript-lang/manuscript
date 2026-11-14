@@ -389,22 +389,6 @@ pub fn mix(mut h: u64) -> u64 {
     h ^ (h >> 29)
 }
 
-/// C view: `msrt_string_byte_length(s: *const StrVal) -> i64`
-#[unsafe(no_mangle)]
-// ms: leaf pure
-pub unsafe extern "C-unwind" fn msrt_string_byte_length(s: usize) -> i64 {
-    // SAFETY: caller passes a live string.
-    unsafe { (*(s as *const StrVal)).len() as i64 }
-}
-
-/// C view: `msrt_string_is_empty(s: *const StrVal) -> u8`
-#[unsafe(no_mangle)]
-// ms: leaf pure domain=string
-pub unsafe extern "C-unwind" fn msrt_string_is_empty(s: usize) -> u8 {
-    // SAFETY: caller passes a live string.
-    unsafe { (*(s as *const StrVal)).is_empty() as u8 }
-}
-
 // ---------------------------------------------------------------------------
 // Maps and sets
 // ---------------------------------------------------------------------------

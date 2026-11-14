@@ -285,6 +285,12 @@ impl Interp<'_> {
                 };
                 ops.set(Val::Int(if s.is_ascii() { s.len() as i64 } else { -1 }));
             }
+            Op::StrBytes => {
+                let Val::Str(s) = &ops.regs[inst.args[0].index()] else {
+                    return Err(Raw::internal("str.bytes on non-string"));
+                };
+                ops.set(Val::Int(s.len() as i64));
+            }
             Op::StrEqLit => {
                 let (Val::Str(a), Imm::Str(id)) = (&ops.regs[inst.args[0].index()], inst.imm)
                 else {

@@ -627,6 +627,7 @@ impl<'m> Interp<'m> {
             | Op::StrByte
             | Op::StrAsciiAt
             | Op::StrAsciiLen
+            | Op::StrBytes
             | Op::StrEqLit
             | Op::StrAscii
             | Op::BytesPush => self.optionals_and_strings(f, regs, inst),

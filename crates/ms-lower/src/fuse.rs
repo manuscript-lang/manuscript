@@ -235,7 +235,7 @@ impl FnLower<'_> {
     /// characters decoded by the runtime; the body returns a flag that stops the scan.
     fn each_scalar(&mut self, tvar: Var, body: &mut ScalarBody<'_, Self>) -> Result<(), Error> {
         let s = self.b.use_var(tvar);
-        let len = self.call_runtime("msrt_string_byte_length", &[s], MTy::INT)?;
+        let len = self.b.str_bytes(s);
         let idx = self.b.declare_var(MTy::INT, Mode::Borrow);
         let zero = self.b.iconst(0);
         self.b.def_var(idx, zero);
