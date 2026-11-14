@@ -13,13 +13,14 @@ Generated programs that push one dimension of the compiler (statements in one fu
 | | 800 | 80 s | 0.4 s (codegen) |
 | | 2000 | not run | 1.1 s (codegen) |
 
+`ms check` of `Box(Box(...(1)))` (`gen_flat.py generic`), same machine, 120 / 240 / 480 levels: 0.49 / 2.9 / 17 s before, 0.12 / 0.17 / 0.6 s after. The ownership classifier compared each type with every ancestor, and two `Box` instances differ only at the innermost argument; it now rejects ancestors whose argument nesting differs first.
+
 Cause: the optimizer folds the branches of a long straight-line `main` into one basic block of thousands of instructions, and LLVM's instruction selection is superlinear in one block (98% of `llc` time; 300 statements took 2.3 s, with the same function marked `optnone` 60 ms). A function over 8000 IR lines with no loop now skips the optimizer like the existing 60000-line bound; no function of the benchmark suites changes.
 
 Open (not fixed here):
 
 | shape | n | time | note |
 |---|---:|---:|---|
-| `generic`: `Box(Box(...(1)))` | 120, 240 | 0.4 s, 3.2 s | cubic: the ownership classifier compares each type with its ancestors (`same_instance`) once per call and level |
 | `nestfor`: `n` nested `for` loops | 500, 900 | 8.7 s, 47 s | cubic in depth |
 | `elseif`: `n`-arm `else if` chain | 5000, 20000 | 1.0 s, 6.3 s | quadratic |
 | `record` / `enum` with `n` fields or cases | 20000 | 3 s | quadratic |
