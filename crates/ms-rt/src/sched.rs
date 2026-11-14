@@ -146,7 +146,15 @@ pub(crate) enum Event {
 
 struct Mail {
     pending: VecDeque<Start>,
-    events: Vec<Event>,
+}
+
+/// Events other threads post to a thread, on a cache line of their own: they arrive while the
+/// thread queues its starts and idle threads read its queue, and none of the three may share a lock or a line.
+#[repr(align(64))]
+struct Posted {
+    /// Whether `events` may hold events.
+    signalled: AtomicU32,
+    events: Mutex<Vec<Event>>,
 }
 
 /// One thread's shared state, on its own cache line.
@@ -161,13 +169,12 @@ struct Slot {
     pending: AtomicU32,
     /// When the oldest of them was queued, or 0 when none is.
     front_at: AtomicI64,
-    /// Whether `mail.events` may hold events.
-    signalled: AtomicU32,
     /// The registry slot of the thread's isolate, or `usize::MAX` before it runs.
     isolate: AtomicUsize,
     /// The token the thread's root task parks on; posting it lets the thread end.
     root: AtomicU64,
     mail: Mutex<Mail>,
+    posted: Posted,
 }
 
 impl Slot {
@@ -177,13 +184,15 @@ impl Slot {
             live: AtomicU32::new(0),
             pending: AtomicU32::new(0),
             front_at: AtomicI64::new(0),
-            signalled: AtomicU32::new(0),
             isolate: AtomicUsize::new(usize::MAX),
             root: AtomicU64::new(0),
             mail: Mutex::new(Mail {
                 pending: VecDeque::new(),
-                events: Vec::new(),
             }),
+            posted: Posted {
+                signalled: AtomicU32::new(0),
+                events: Mutex::new(Vec::new()),
+            },
         }
     }
 }
@@ -210,6 +219,10 @@ fn publish(slot: &Slot, mail: &Mail) {
         .store(mail.pending.len() as u32, Ordering::SeqCst);
     let at = mail.pending.front().map_or(0, |s| s.at);
     slot.front_at.store(at, Ordering::SeqCst);
+}
+
+fn lock_events(m: &Mutex<Vec<Event>>) -> std::sync::MutexGuard<'_, Vec<Event>> {
+    m.lock().unwrap_or_else(|e| e.into_inner())
 }
 
 fn lock(m: &Mutex<Mail>) -> std::sync::MutexGuard<'_, Mail> {
@@ -315,7 +328,15 @@ pub(crate) fn submit(start: Start) {
         let mut mail = lock(&SLOTS[me].mail);
         first = mail.pending.is_empty();
         mail.pending.push_back(start);
-        publish(&SLOTS[me], &mail);
+        // Only the count changes for a queue that was not empty: its oldest start is the same, so
+        // `front_at` stays untouched and idle threads polling it keep the cache line.
+        if first {
+            publish(&SLOTS[me], &mail);
+        } else {
+            SLOTS[me]
+                .pending
+                .store(mail.pending.len() as u32, Ordering::Release);
+        }
     }
     if first && IDLE.load(Ordering::Acquire) & !(1u64 << me) != 0 {
         wake_idle(me);
@@ -399,17 +420,17 @@ pub(crate) fn release_mail() {
     if mail.pending.is_empty() {
         mail.pending = VecDeque::new();
     }
-    if mail.events.is_empty() {
-        mail.events = Vec::new();
+    let mut events = lock_events(&SLOTS[me].posted.events);
+    if events.is_empty() {
+        *events = Vec::new();
     }
 }
 
 /// Sends `event` to `thread` and wakes it.
 pub(crate) fn post(thread: usize, event: Event) {
     {
-        let mut mail = lock(&SLOTS[thread].mail);
-        mail.events.push(event);
-        SLOTS[thread].signalled.store(1, Ordering::Release);
+        lock_events(&SLOTS[thread].posted.events).push(event);
+        SLOTS[thread].posted.signalled.store(1, Ordering::Release);
     }
     wake(thread);
 }
@@ -433,16 +454,16 @@ fn wake_idle(except: usize) {
 /// Whether events wait for the calling thread.
 pub(crate) fn signalled() -> bool {
     let me = current();
-    me != NONE && SLOTS[me].signalled.load(Ordering::Acquire) != 0
+    me != NONE && SLOTS[me].posted.signalled.load(Ordering::Acquire) != 0
 }
 
 /// Takes the events queued for the calling thread.
 pub(crate) fn take_events() -> Vec<Event> {
     let me = current();
-    if me == NONE || SLOTS[me].signalled.swap(0, Ordering::Acquire) == 0 {
+    if me == NONE || SLOTS[me].posted.signalled.swap(0, Ordering::Acquire) == 0 {
         return Vec::new();
     }
-    core::mem::take(&mut lock(&SLOTS[me].mail).events)
+    core::mem::take(&mut *lock_events(&SLOTS[me].posted.events))
 }
 
 /// The next promise for the calling thread to start: its own oldest, else one taken from the
@@ -625,10 +646,10 @@ pub fn shutdown() {
         // Fresh buffers, not `clear`: the capacity grew with the promises queued and would stay.
         let mut mail = lock(&slot.mail);
         mail.pending = VecDeque::new();
-        mail.events = Vec::new();
+        *lock_events(&slot.posted.events) = Vec::new();
         slot.pending.store(0, Ordering::SeqCst);
         slot.front_at.store(0, Ordering::SeqCst);
-        slot.signalled.store(0, Ordering::SeqCst);
+        slot.posted.signalled.store(0, Ordering::SeqCst);
         slot.busy.store(0, Ordering::SeqCst);
         slot.live.store(0, Ordering::SeqCst);
     }
