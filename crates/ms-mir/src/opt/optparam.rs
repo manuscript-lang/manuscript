@@ -19,12 +19,19 @@ use std::collections::HashMap;
 
 /// Runs the pass; returns whether anything changed.
 pub fn run(m: &mut Module) -> bool {
+    let results = super::par_funcs(m.funcs.len(), |fi| {
+        let mut f = m.funcs[fi].clone();
+        run_func(m, &mut f).then_some(f)
+    });
+    super::store(m, results)
+}
+
+/// Runs the pass over one function; returns whether it changed.
+pub fn run_func(m: &Module, f: &mut Func) -> bool {
     let mut changed = false;
-    for fi in 0..m.funcs.len() {
-        // One sweep splits every eligible parameter; a second confirms none is left.
-        while split_all(m, fi) {
-            changed = true;
-        }
+    // One sweep splits every eligible parameter; a second confirms none is left.
+    while split_all(m, f) {
+        changed = true;
     }
     changed
 }
@@ -52,10 +59,9 @@ fn const_of(m: &Module, ty: Ty, loc: crate::ir::Loc, f: &mut Func) -> Inst {
     }
 }
 
-/// Splits every eligible parameter of function `fi` in one analysis and one rewrite, so the cost
+/// Splits every eligible parameter of function `f` in one analysis and one rewrite, so the cost
 /// is linear in the function rather than per split.
-fn split_all(m: &mut Module, fi: usize) -> bool {
-    let f = &m.funcs[fi];
+fn split_all(m: &Module, f: &mut Func) -> bool {
     let mut defs: ValueMap<Op> = ValueMap::new();
     let mut other_uses: ValueSet = ValueSet::new();
     for b in &f.blocks {
@@ -102,16 +108,13 @@ fn split_all(m: &mut Module, fi: usize) -> bool {
     if splits.is_empty() {
         return false;
     }
-    apply(m, fi, &splits);
+    apply(m, f, &splits);
     true
 }
 
-fn apply(m: &mut Module, fi: usize, splits: &[(usize, usize, Ty)]) {
+fn apply(m: &Module, slot: &mut Func, splits: &[(usize, usize, Ty)]) {
     // Snapshot constructors; the function is rewritten edge by edge.
-    let mut f = std::mem::replace(
-        &mut m.funcs[fi],
-        crate::ir::Func::new("", Vec::new(), Ty::UNIT),
-    );
+    let mut f = std::mem::replace(slot, crate::ir::Func::new("", Vec::new(), Ty::UNIT));
     let mut defs: ValueMap<(Op, Vec<Value>)> = ValueMap::new();
     for b in &f.blocks {
         for i in &b.insts {
@@ -222,5 +225,5 @@ fn apply(m: &mut Module, fi: usize, splits: &[(usize, usize, Ty)]) {
             }
         });
     }
-    m.funcs[fi] = f;
+    *slot = f;
 }

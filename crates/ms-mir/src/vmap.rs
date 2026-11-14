@@ -240,3 +240,152 @@ impl Extend<Value> for ValueSet {
         }
     }
 }
+
+/// A multiplicative hasher for small integer keys (`rustc-hash`'s mix): the default SipHash costs
+/// more than the table lookup it feeds.
+#[derive(Default)]
+struct Fx(u64);
+
+impl std::hash::Hasher for Fx {
+    fn finish(&self) -> u64 {
+        self.0
+    }
+    fn write(&mut self, bytes: &[u8]) {
+        for &b in bytes {
+            self.write_u64(u64::from(b));
+        }
+    }
+    fn write_u8(&mut self, n: u8) {
+        self.write_u64(u64::from(n));
+    }
+    fn write_u16(&mut self, n: u16) {
+        self.write_u64(u64::from(n));
+    }
+    fn write_u32(&mut self, n: u32) {
+        self.write_u64(u64::from(n));
+    }
+    fn write_i64(&mut self, n: i64) {
+        self.write_u64(n as u64);
+    }
+    fn write_usize(&mut self, n: usize) {
+        self.write_u64(n as u64);
+    }
+    fn write_u64(&mut self, n: u64) {
+        self.0 = (self.0.rotate_left(5) ^ n).wrapping_mul(0x517c_c1b7_2722_0a95);
+    }
+}
+
+/// An expression table for value numbering over a dominator tree: entries are added on entering a
+/// block and dropped, newest first, on leaving it ([`ScopedTable::mark`], [`ScopedTable::reset`]).
+/// Entries and their operand lists live in two flat vectors and buckets are `u32` indices into the
+/// entry vector, so a lookup hashes once, allocates nothing and removal is a truncation.
+pub struct ScopedTable<K: Copy + Eq + std::hash::Hash> {
+    /// Bucket to the newest entry plus one; zero when empty.
+    heads: Vec<u32>,
+    entries: Vec<ScopedEntry<K>>,
+    operands: Vec<Value>,
+    mask: usize,
+}
+
+struct ScopedEntry<K> {
+    hash: u64,
+    key: K,
+    operands: (u32, u32),
+    value: Value,
+    /// The previous entry of the bucket plus one.
+    next: u32,
+}
+
+impl<K: Copy + Eq + std::hash::Hash> ScopedTable<K> {
+    /// A table for about `expected` live entries.
+    pub fn new(expected: usize) -> Self {
+        let size = (expected * 2).next_power_of_two().max(16);
+        ScopedTable {
+            heads: vec![0; size],
+            entries: Vec::new(),
+            operands: Vec::new(),
+            mask: size - 1,
+        }
+    }
+
+    fn hash(key: &K, operands: &[Value]) -> u64 {
+        use std::hash::Hasher;
+        let mut h = Fx::default();
+        key.hash(&mut h);
+        for v in operands {
+            h.write_u32(v.0);
+        }
+        // Spread the multiplicative mix into the low bits the mask keeps.
+        h.finish() ^ (h.finish() >> 29)
+    }
+
+    /// The value recorded for `key` over `operands`.
+    pub fn get(&self, key: &K, operands: &[Value]) -> Option<Value> {
+        let hash = Self::hash(key, operands);
+        let mut at = self.heads[hash as usize & self.mask];
+        while at != 0 {
+            let e = &self.entries[at as usize - 1];
+            if e.hash == hash
+                && e.key == *key
+                && self.operands[e.operands.0 as usize..e.operands.1 as usize] == *operands
+            {
+                return Some(e.value);
+            }
+            at = e.next;
+        }
+        None
+    }
+
+    /// Records `value` for `key` over `operands`; the caller has checked there is none.
+    pub fn insert(&mut self, key: K, operands: &[Value], value: Value) {
+        let hash = Self::hash(&key, operands);
+        let start = self.operands.len() as u32;
+        self.operands.extend_from_slice(operands);
+        let bucket = hash as usize & self.mask;
+        self.entries.push(ScopedEntry {
+            hash,
+            key,
+            operands: (start, self.operands.len() as u32),
+            value,
+            next: self.heads[bucket],
+        });
+        self.heads[bucket] = self.entries.len() as u32;
+    }
+
+    /// The position to [`ScopedTable::reset`] to.
+    pub fn mark(&self) -> usize {
+        self.entries.len()
+    }
+
+    /// Drops every entry added since `mark`.
+    pub fn reset(&mut self, mark: usize) {
+        while self.entries.len() > mark {
+            let e = self.entries.pop().expect("entry above the mark");
+            self.heads[e.hash as usize & self.mask] = e.next;
+            self.operands.truncate(e.operands.0 as usize);
+        }
+    }
+}
+
+#[cfg(test)]
+mod scoped_table_tests {
+    use super::*;
+
+    #[test]
+    fn entries_are_found_by_key_and_operands_and_leave_with_their_scope() {
+        let mut t: ScopedTable<(u8, u8)> = ScopedTable::new(4);
+        let (a, b, c) = (Value(1), Value(2), Value(3));
+        t.insert((1, 0), &[a, b], c);
+        let mark = t.mark();
+        t.insert((1, 0), &[b, a], a);
+        t.insert((2, 0), &[a, b], b);
+        assert_eq!(t.get(&(1, 0), &[a, b]), Some(c));
+        assert_eq!(t.get(&(1, 0), &[b, a]), Some(a));
+        assert_eq!(t.get(&(2, 0), &[a, b]), Some(b));
+        assert_eq!(t.get(&(1, 0), &[a]), None);
+        t.reset(mark);
+        assert_eq!(t.get(&(1, 0), &[a, b]), Some(c));
+        assert_eq!(t.get(&(1, 0), &[b, a]), None);
+        assert_eq!(t.get(&(2, 0), &[a, b]), None);
+    }
+}

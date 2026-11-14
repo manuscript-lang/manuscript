@@ -631,51 +631,55 @@ fn byte_lists(m: &Module, f: &Func) -> Vec<bool> {
 
 /// Runs the pass over every function; returns whether anything changed.
 pub fn run(m: &mut Module) -> bool {
-    let all_edits = super::par_funcs(m.funcs.len(), |fi| {
-        let mut fa = Fa::new(m, &m.funcs[fi]);
-        if fa.solve() { fa.edits() } else { Vec::new() }
+    let results = super::par_funcs(m.funcs.len(), |fi| {
+        let mut f = m.funcs[fi].clone();
+        run_func(m, &mut f).then_some(f)
     });
-    let mut changed = false;
-    for (fi, edits) in all_edits.into_iter().enumerate() {
-        if edits.is_empty() {
-            continue;
-        }
-        changed = true;
-        let f = &mut m.funcs[fi];
-        let mut terms = false;
-        for e in edits {
-            match e {
-                Edit::Op(b, i, op) => {
-                    f.blocks[b].insts[i].op = op;
-                    if matches!(op, Op::IAdd | Op::ISub | Op::IMul | Op::INeg)
-                        && let Some(r) = f.blocks[b].insts[i].res
-                    {
-                        f.exact.insert(r);
-                    }
-                }
-                Edit::Const(b, i, v) => {
-                    let inst = &mut f.blocks[b].insts[i];
-                    inst.op = Op::BConst;
-                    inst.args.clear();
-                    inst.imm = Imm::Bool(v);
-                }
-                Edit::Int(b, i, v) => {
-                    let inst = &mut f.blocks[b].insts[i];
-                    inst.op = Op::IConst;
-                    inst.args.clear();
-                    inst.imm = Imm::Int(v);
-                }
-                Edit::Term(b, t) => {
-                    f.blocks[b].term = t;
-                    terms = true;
+    super::store(m, results)
+}
+
+/// Runs the pass over one function; returns whether it changed.
+pub fn run_func(m: &Module, f: &mut Func) -> bool {
+    let edits = {
+        let mut fa = Fa::new(m, f);
+        if fa.solve() { fa.edits() } else { Vec::new() }
+    };
+    if edits.is_empty() {
+        return false;
+    }
+    let mut terms = false;
+    for e in edits {
+        match e {
+            Edit::Op(b, i, op) => {
+                f.blocks[b].insts[i].op = op;
+                if matches!(op, Op::IAdd | Op::ISub | Op::IMul | Op::INeg)
+                    && let Some(r) = f.blocks[b].insts[i].res
+                {
+                    f.exact.insert(r);
                 }
             }
-        }
-        if terms {
-            f.compact_blocks();
+            Edit::Const(b, i, v) => {
+                let inst = &mut f.blocks[b].insts[i];
+                inst.op = Op::BConst;
+                inst.args.clear();
+                inst.imm = Imm::Bool(v);
+            }
+            Edit::Int(b, i, v) => {
+                let inst = &mut f.blocks[b].insts[i];
+                inst.op = Op::IConst;
+                inst.args.clear();
+                inst.imm = Imm::Int(v);
+            }
+            Edit::Term(b, t) => {
+                f.blocks[b].term = t;
+                terms = true;
+            }
         }
     }
-    changed
+    if terms {
+        f.compact_blocks();
+    }
+    true
 }
 
 /// A block parameter that only ever receives one other value (or itself, around a loop) is

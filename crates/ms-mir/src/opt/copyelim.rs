@@ -14,28 +14,21 @@ use crate::verify::arg_modes;
 pub fn run(m: &mut Module) -> bool {
     let results = super::par_funcs(m.funcs.len(), |fi| {
         let mut f = m.funcs[fi].clone();
-        let mut changed = run_func(m, &mut f);
-        changed |= move_dead_sources(m, &mut f);
-        changed |= move_dead_sources_across_blocks(m, &mut f);
-        changed |= borrow_local_copies(m, &mut f);
-        changed |= borrow_str_copies_across_blocks(m, &mut f);
-        changed |= borrow_str_phis(m, &mut f);
-        changed |= unbox_dead_sources(m, &mut f);
-        changed |= unbox_dead_options(m, &mut f);
-        changed.then_some(f)
+        run_funcs(m, &mut f).then_some(f)
     });
-    store(m, results)
+    super::store(m, results)
 }
 
-/// Stores the functions a parallel pass changed.
-fn store(m: &mut Module, results: Vec<Option<Func>>) -> bool {
-    let mut changed = false;
-    for (fi, f) in results.into_iter().enumerate() {
-        if let Some(f) = f {
-            m.funcs[fi] = f;
-            changed = true;
-        }
-    }
+/// Runs the pass over one function; returns whether it changed.
+pub fn run_funcs(m: &Module, f: &mut Func) -> bool {
+    let mut changed = run_func(m, f);
+    changed |= move_dead_sources(m, f);
+    changed |= move_dead_sources_across_blocks(m, f);
+    changed |= borrow_local_copies(m, f);
+    changed |= borrow_str_copies_across_blocks(m, f);
+    changed |= borrow_str_phis(m, f);
+    changed |= unbox_dead_sources(m, f);
+    changed |= unbox_dead_options(m, f);
     changed
 }
 
@@ -1026,7 +1019,7 @@ pub fn run_takes(m: &mut Module) -> bool {
         }
         changed.then_some(f)
     });
-    store(m, results)
+    super::store(m, results)
 }
 
 /// Turns `p = type.get f v; c = clone p; ...; drop v` into `c = type.get f v` plus drops of the

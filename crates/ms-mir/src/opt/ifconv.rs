@@ -25,34 +25,32 @@ const MAX_ARM: usize = 4;
 pub fn run(m: &mut Module) -> bool {
     let results = super::par_funcs(m.funcs.len(), |i| {
         let mut f = m.funcs[i].clone();
-        let positive: ValueSet = f
-            .blocks
-            .iter()
-            .flat_map(|b| &b.insts)
-            .filter(|i| i.op == Op::IConst && matches!(i.imm, Imm::Int(n) if n > 0))
-            .filter_map(|i| i.res)
-            .collect();
-        let mut any = false;
-        if let Some(merged) = merge_returns(m, &f, &positive) {
-            f = merged;
-            any = true;
-        }
-        while convert_all(m, &mut f, &positive) {
-            any = true;
-        }
-        any.then(|| {
-            f.compact_blocks();
-            f
-        })
+        run_func(m, &mut f).then_some(f)
     });
-    let mut changed = false;
-    for (i, f) in results.into_iter().enumerate() {
-        if let Some(f) = f {
-            m.funcs[i] = f;
-            changed = true;
-        }
+    super::store(m, results)
+}
+
+/// Runs the pass over one function; returns whether it changed.
+pub fn run_func(m: &Module, f: &mut Func) -> bool {
+    let positive: ValueSet = f
+        .blocks
+        .iter()
+        .flat_map(|b| &b.insts)
+        .filter(|i| i.op == Op::IConst && matches!(i.imm, Imm::Int(n) if n > 0))
+        .filter_map(|i| i.res)
+        .collect();
+    let mut any = false;
+    if let Some(merged) = merge_returns(m, f, &positive) {
+        *f = merged;
+        any = true;
     }
-    changed
+    while convert_all(m, f, &positive) {
+        any = true;
+    }
+    if any {
+        f.compact_blocks();
+    }
+    any
 }
 
 /// Early returns of scalars (`if a < b { return -1 } if a > b { return 1 } return 0`) become one
