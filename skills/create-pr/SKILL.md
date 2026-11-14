@@ -32,3 +32,4 @@ Use these four sections, in this order, then Documentation and Compatibility lin
 - PRs run the Linux legs only. For a host-specific change, dispatch `cicd.yml` on the branch (its `os` input picks one platform) ([why](../../wiki/repository/pr-checks-skip-windows-so-dispatch-the-full-matrix.md)).
 - If the user holds a PR, turn off its auto-merge and say so.
 - Pull requests run the Linux legs and squash auto-merge when they pass; do not merge by hand while checks are pending. The other platform legs run on `main` after merge.
+- Stacked PRs: auto-merge cannot be enabled on a PR whose base is another PR's branch. When the lower PR squash-merges, rebase the next one onto `main` dropping the old commits (`git rebase --onto origin/main <old base>`), retarget it to `main`, then enable auto-merge. Check every open PR for conflicts after each merge.

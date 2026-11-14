@@ -13,3 +13,6 @@ Read [benchmarks and performance](../../wiki/benchmarks-and-performance/index.md
 4. **Show before/after.** Same machine, same suite, medians. A change that slows another suite is revised or closed.
 5. **Record.** Add a dated section to the suite's results rather than editing old numbers. A fix not worth its code is closed not-planned on the issue with the numbers and what was tried.
 6. **Land** with [create-pr](../create-pr/SKILL.md); cite the benchmark page and revision.
+
+Do not over-index on a few kernels: a fix must help programs in general, with no special case for one benchmark. Perf work covers stdlib and release builds for ordinary engineering tasks.
+Do not fall back to Rust to make a program fast: make Manuscript fast enough, with a general compiler or stdlib change, and take general wins before one-off ones. Everyday data structures (types, enums, generics, collections) must be fast in the general case. Be skeptical of a result that looks too good (a Manuscript win of 2x or more over Rust usually means an unfair baseline). Deleting or replacing code must not regress perf; fast paths are shared MIR operations both backends inline. Run an experiment or spike before a big rewrite. Release builds keep cross-file optimization and the vectorizer.

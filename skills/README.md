@@ -13,6 +13,8 @@ a simplification pass for design proposals.
 [Bug bash](bug-bash/SKILL.md) and [perf bash](perf-bash/SKILL.md) are the repeated
 probe-fix-file and measure-fix-record workflows.
 
+[Add benchmark](add-benchmark/SKILL.md), [CI time](ci-time/SKILL.md) and [fix issue](fix-issue/SKILL.md) are the repeated benchmark-with-ports, CI-time investigation and issue-to-close workflows.
+
 ## Maintain the catalog
 
 - Each skill needs `SKILL.md` with `name` and `description` frontmatter, a concrete trigger, repository entry points, and applicable checks. Match the folder and frontmatter names.
