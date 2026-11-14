@@ -46,3 +46,4 @@ Perf and agent benchmarks, profiling.
 - [Path resolution builders must preserve clean separators](path-resolution-builders-must-preserve-clean-separators.md): avoid growing-prefix copies without sending ordinary clean paths through dirty normalization; retain small/A/A and invalid-input controls.
 - [CRC table input terms are independent of the register](crc-table-input-terms-are-independent-of-the-register.md): combine input-only terms before the rolling-state chain, verify native assembly and tiny/tail/seed controls.
 - [Cranelift branches that pick a value need selects](cranelift-branches-that-pick-a-value-need-selects.md): emit `select` when both edges join one block; Cranelift never if-converts.
+- [A Manuscript HTML parser matches Rust with Int tables and a flat tree](a-ms-html-parser-matches-rust-with-int-tables-and-a-flat-tree.md): atoms, Int `match` tables and a flat tree keep a Manuscript parser at Rust speed.

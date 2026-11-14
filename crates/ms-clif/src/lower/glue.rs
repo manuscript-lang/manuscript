@@ -77,6 +77,9 @@ impl<'a, 'm> Lower<'a, 'm> {
                 self.b.ins().return_(&[]);
             }
             Glue::Clone => {
+                if self.g.m.drop_recurses(ty) {
+                    self.clone_on_new_segment(ty, &params);
+                }
                 let out = self.glue_copy(ty, &params);
                 self.b.ins().return_(&out);
             }
@@ -229,6 +232,39 @@ impl<'a, 'm> Lower<'a, 'm> {
                 self.b.ins().return_(&[]);
             }
         }
+    }
+
+    /// The first thing the copy glue of recursive data does: when the stack is nearly used up,
+    /// the copy runs on a new segment through the slot copy glue and the glue returns its result
+    /// (`msrt_slot_copy_grown`); otherwise it carries on.
+    fn clone_on_new_segment(&mut self, ty: Ty, params: &[Value]) {
+        let sp = self.b.ins().get_stack_pointer(types::I64);
+        let base = self.b.ins().band_imm_s(sp, !(STACK_REGION - 1));
+        let limit = self.b.ins().load(
+            types::I64,
+            flags(),
+            base,
+            (STACK_REGION - STACK_LIMIT_CELL) as i32,
+        );
+        let low = self.b.ins().icmp(IntCC::UnsignedLessThan, sp, limit);
+        let grow = self.b.create_block();
+        let cont = self.b.create_block();
+        self.b.set_cold_block(grow);
+        self.b.ins().brif(low, grow, &[], cont, &[]);
+        self.b.switch_to_block(grow);
+        let leaves = self.g.lay.leaves(ty);
+        let size = mem_layout(&leaves).size;
+        let (src, dst) = (self.new_slot(size), self.new_slot(size));
+        let src = self.b.ins().stack_addr(types::I64, src, 0);
+        let dst = self.b.ins().stack_addr(types::I64, dst, 0);
+        self.store_leaves(src, 0, &leaves, params);
+        let copy = self.g.glue(Glue::SlotCopy, ty);
+        let r = self.fref(copy);
+        let fa = self.b.ins().func_addr(types::I64, r);
+        self.rt_call("msrt_slot_copy_grown", &[fa, src, dst]);
+        let out = self.load_leaves(dst, 0, &leaves);
+        self.b.ins().return_(&out);
+        self.b.switch_to_block(cont);
     }
 
     /// Splits `vs` into per-field slices for a type.

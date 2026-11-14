@@ -82,3 +82,33 @@ pub(crate) fn reset() {
         (*s).draining = false;
     }
 }
+
+type RunCopy = unsafe extern "C-unwind" fn(*const u8, *mut u8);
+
+/// Runs `copy(src, dst)` on a new stack segment: the copy glue of recursive data calls this when
+/// the stack is nearly used up, like a recursive function's grow shim (`msrt_task_grow`).
+///
+/// # Safety
+/// `copy` is a slot copy glue; `src` holds a live value and `dst` has room for its copy.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_slot_copy_grown(copy: RunCopy, src: *const u8, dst: *mut u8) {
+    unsafe extern "C-unwind" fn shim(block: *mut u8) {
+        // SAFETY: `block` holds the three words stored below.
+        unsafe {
+            let w = block as *const usize;
+            let copy: RunCopy = core::mem::transmute(*w);
+            copy(*w.add(1) as *const u8, *w.add(2) as *mut u8);
+        }
+    }
+    // SAFETY: the block is a heap allocation, freed here or by the grow's cleanup if the copy
+    // leaves by a fault.
+    unsafe {
+        let block = alloc::alloc(3 * core::mem::size_of::<usize>());
+        let w = block as *mut usize;
+        *w = copy as usize;
+        *w.add(1) = src as usize;
+        *w.add(2) = dst as usize;
+        crate::task::msrt_task_grow(shim, block);
+        alloc::free(block);
+    }
+}

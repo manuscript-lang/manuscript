@@ -1,0 +1,6 @@
+[project]
+name = "html-oracle"
+source = "."
+
+[embed]
+"@assets" = "./assets"

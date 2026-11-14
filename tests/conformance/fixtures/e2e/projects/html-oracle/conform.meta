@@ -1,0 +1,3 @@
+// conform: tags=projects,testing,tier-stdlib
+// conform: phase=test
+// conform: entry=conformance_test.ms

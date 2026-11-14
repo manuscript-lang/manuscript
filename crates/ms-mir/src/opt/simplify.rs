@@ -15,12 +15,20 @@ use std::collections::{HashMap, HashSet};
 
 /// Runs the pass over every function; returns whether anything changed.
 pub fn run(m: &mut Module) -> bool {
-    let mut changed = false;
-    for i in 0..m.funcs.len() {
+    let results = super::par_funcs(m.funcs.len(), |i| {
         let mut f = m.funcs[i].clone();
-        if simplify_func(m, &mut f) {
-            changed = true;
+        simplify_func(m, &mut f).then_some(f)
+    });
+    apply(m, results)
+}
+
+/// Stores the functions a parallel pass changed.
+fn apply(m: &mut Module, results: Vec<Option<Func>>) -> bool {
+    let mut changed = false;
+    for (i, f) in results.into_iter().enumerate() {
+        if let Some(f) = f {
             m.funcs[i] = f;
+            changed = true;
         }
     }
     changed
@@ -29,19 +37,15 @@ pub fn run(m: &mut Module) -> bool {
 /// Runs only the trivial block-parameter elimination, which keeps every instruction in place.
 /// An unoptimized build needs it so `copyelim` sees through loop-carried values.
 pub fn run_phis(m: &mut Module) -> bool {
-    let mut changed = false;
-    for i in 0..m.funcs.len() {
+    let results = super::par_funcs(m.funcs.len(), |i| {
         let mut f = m.funcs[i].clone();
         let mut any = false;
         while phis(m, &mut f) {
             any = true;
         }
-        if any {
-            changed = true;
-            m.funcs[i] = f;
-        }
-    }
-    changed
+        any.then_some(f)
+    });
+    apply(m, results)
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]

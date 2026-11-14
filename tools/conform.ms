@@ -64,8 +64,10 @@ fn main() Int:
 
 	// Only `run` and `test` reach a code generator, so a second pass with
 	// `MS_BACKEND=cranelift` skips the check and parse phases: the LLVM pass already
-	// ran them, and their results do not depend on the backend.
-	backend_only := env("MS_BACKEND", "") == "cranelift" and not fast
+	// ran them, and their results do not depend on the backend. `CONFORM_ALL_PHASES=1`
+	// keeps them, for a Cranelift run that is the only pass (pull requests in CI).
+	all_phases := env("CONFORM_ALL_PHASES", "") != ""
+	backend_only := env("MS_BACKEND", "") == "cranelift" and not fast and not all_phases
 	phases := if backend_only: "run,test" else: "run,check,test"
 	main_run := [
 		"run",
