@@ -212,7 +212,11 @@ impl Walker<'_> {
             if self.cx.classes.class(self.syms, &b.ty) == Class::Resource {
                 continue;
             }
-            for p in self.with_held(self.resolve(&Place::local(b.uid))) {
+            // The promise reads the binding where it sits, so the binding's own place counts as
+            // well as the places it borrows (`body := bodies[k]` ends with the loop body).
+            let own = Place::local(b.uid);
+            let places = self.with_held(self.resolve(&own));
+            for p in std::iter::once(own).chain(places) {
                 if !out.contains(&p) {
                     out.push(p);
                 }
