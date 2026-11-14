@@ -576,6 +576,20 @@ fn token(source: &str, kind: EditorKind, start: usize, end: usize) -> EditorToke
     }
 }
 
+/// Where a diagnostic at `offset` inside `token` ends. A text literal is one token, but a
+/// diagnostic inside its interpolation (`{name}`) covers only the name there, not the rest
+/// of the literal.
+fn diagnostic_end(source: &str, token: &EditorToken<'_>, offset: usize) -> usize {
+    if token.kind != EditorKind::Str || offset == token.start {
+        return token.end;
+    }
+    let rest = source.as_bytes().get(offset..token.end).unwrap_or_default();
+    match rest.iter().take_while(|&&b| identifier(b)).count() {
+        0 => token.end,
+        name => offset + name,
+    }
+}
+
 /// The range of the token containing `offset`, or an empty range at it.
 pub fn diagnostic_range(source: &str, offset: usize) -> Range {
     let start = position(source, offset);
@@ -584,7 +598,7 @@ pub fn diagnostic_range(source: &str, offset: usize) -> Range {
         .into_iter()
         .find(|t| offset >= t.start && offset < t.end)
     {
-        end = position(source, t.end);
+        end = position(source, diagnostic_end(source, &t, offset));
     }
     Range { start, end }
 }
@@ -612,7 +626,10 @@ impl<'a> DiagnosticRanges<'a> {
             .tokens
             .get(index)
             .filter(|token| token.start <= offset && offset < token.end)
-            .map_or(start, |token| self.positions.position(token.end));
+            .map_or(start, |token| {
+                self.positions
+                    .position(diagnostic_end(self.positions.source, token, offset))
+            });
         Range { start, end }
     }
 }
@@ -659,6 +676,18 @@ mod tests {
                 assert_eq!(positions.position(offset), position(source, offset));
             }
         }
+    }
+
+    #[test]
+    fn a_diagnostic_in_an_interpolation_covers_the_name_not_the_rest_of_the_literal() {
+        let source = "print(\"😀 {missing.x} tail\")\nprint(\"whole\")";
+        let at = source.find("missing").unwrap();
+        let range = diagnostic_range(source, at);
+        assert_eq!(range.end.character - range.start.character, 7);
+        let index = DiagnosticRanges::new(source).range(at);
+        assert_eq!(index.end, range.end);
+        let literal = DiagnosticRanges::new(source).range(source.find("\"whole").unwrap());
+        assert_eq!(literal.end.character - literal.start.character, 7);
     }
 
     #[test]

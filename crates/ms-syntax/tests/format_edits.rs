@@ -237,3 +237,13 @@ fn imports_merge_sort_and_split_into_sections() {
         assert_eq!(ms_syntax::format(&file, &actual).unwrap(), actual, "{name}");
     }
 }
+
+#[test]
+fn an_if_whose_multiline_header_joins_is_compacted_in_the_same_run() {
+    let file: Arc<str> = Arc::from("edits.ms");
+    let source = "fn f(mode: Int) Int:\n    if not (\n            mode == 2\n        ):\n            return 2\n    return 3\n";
+    let expected = "fn f(mode: Int) Int:\n\tif not (mode == 2): return 2\n\treturn 3\n";
+    let once = ms_syntax::format(&file, source).unwrap();
+    assert_eq!(once, expected);
+    assert_eq!(ms_syntax::format(&file, &once).unwrap(), once);
+}

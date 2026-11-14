@@ -21,7 +21,23 @@ const WIDTH: usize = 88;
 const FLOW_WIDTH: usize = 50;
 
 /// Formats `source`. Invalid syntax never produces output.
+///
+/// Joining a multi-line header can make an `if` body eligible for the one-line form, which
+/// the compact pass judged on the unjoined text, so the output is formatted again until the
+/// pass has nothing left to do; a second run of `ms fmt` then changes nothing.
 pub fn format(file: &Arc<str>, source: &str) -> PResult<String> {
+    let mut out = format_once(file, source)?;
+    for _ in 0..4 {
+        let module = parse(file, &out)?;
+        if compact::compact(file, &module, &out).is_none() {
+            break;
+        }
+        out = format_once(file, &out)?;
+    }
+    Ok(out)
+}
+
+fn format_once(file: &Arc<str>, source: &str) -> PResult<String> {
     parse(file, source)?;
     let mut normalized = source.replace("\r\n", "\n");
     if normalized.contains('\t') {
