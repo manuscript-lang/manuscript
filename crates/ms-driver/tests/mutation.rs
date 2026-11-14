@@ -4,8 +4,11 @@
 
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 
-use ms_driver::{CheckRequest, LoadOptions, check_graph, load_file};
+use ms_check::Session;
+
+use ms_driver::{CheckRequest, LoadOptions, check_graph_in, load_file};
 use ms_syntax::Diagnostic;
 
 const MUTATIONS_PER_FILE: u64 = 6;
@@ -96,16 +99,19 @@ fn sources(shard: usize) -> Vec<(PathBuf, String)> {
         .collect()
 }
 
-fn diagnostics(path: &Path, source: &str) -> Vec<Diagnostic> {
+/// Every check of a shard shares one session, so the standard library is checked once instead of
+/// before each program (about 60 ms of an unoptimized build); the session also serves as the
+/// warm state an editor keeps between edits.
+fn diagnostics(session: &Rc<Session>, path: &Path, source: &str) -> Vec<Diagnostic> {
     let syms = ms_syntax::Names::global();
     std::fs::write(path, source).unwrap();
     let graph = load_file(syms, path.to_str().unwrap(), LoadOptions::default());
-    check_graph(syms, graph, CheckRequest::default()).diagnostics
+    check_graph_in(syms, session, graph, CheckRequest::default(), None).diagnostics
 }
 
-fn check(path: &Path, source: &str) {
-    let first = diagnostics(path, source);
-    let second = diagnostics(path, source);
+fn check(session: &Rc<Session>, path: &Path, source: &str) {
+    let first = diagnostics(session, path, source);
+    let second = diagnostics(session, path, source);
     assert_eq!(first, second, "diagnostics are not deterministic");
     let own = |d: &Diagnostic| &*d.file == "fuzz.ms";
     let len = source.len() as u32;
@@ -136,7 +142,7 @@ fn check(path: &Path, source: &str) {
             continue;
         }
         let fixed = format!("{}{}{}", &source[..a], fix.replacement, &source[b..]);
-        let left = diagnostics(path, &fixed);
+        let left = diagnostics(session, path, &fixed);
         assert!(
             !left
                 .iter()
@@ -156,6 +162,7 @@ fn mutated_programs_never_break_the_checker(shard: usize) {
             let _ = std::fs::remove_dir_all(&dir);
             std::fs::create_dir_all(&dir).unwrap();
             let path = dir.join("fuzz.ms");
+            let session = Session::new();
             let files = sources(shard);
             for (origin, original) in files {
                 let mut cases = vec![original.clone()];
@@ -165,7 +172,7 @@ fn mutated_programs_never_break_the_checker(shard: usize) {
                     .fold(7, |h, b| h.wrapping_mul(31).wrapping_add(u64::from(b))));
                 cases.extend((0..MUTATIONS_PER_FILE).map(|_| mutate(&original, &mut rng)));
                 for case in cases {
-                    if catch_unwind(AssertUnwindSafe(|| check(&path, &case))).is_err() {
+                    if catch_unwind(AssertUnwindSafe(|| check(&session, &path, &case))).is_err() {
                         panic!("{} failed on:\n{case:?}", origin.display());
                     }
                 }
