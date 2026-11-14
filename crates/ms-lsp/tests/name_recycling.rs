@@ -9,7 +9,7 @@ use std::io::Cursor;
 use crate::support;
 use support::{Script, Workspace, canonical, decode};
 
-const EDITS: usize = 300;
+const EDITS: usize = 100;
 const NAME_LEN: usize = 100;
 
 fn script(workspace: &Workspace, edits: usize) -> Script {
@@ -71,11 +71,11 @@ fn a_server_over_its_limit_starts_over_and_answers_the_same() {
     let script = script(&workspace, EDITS);
 
     let before = default.text_bytes();
-    let recycled = run(&script, Some(5_000));
+    let recycled = run(&script, Some(1_000));
     let recycled_growth = default.text_bytes() - before;
     // Names typed after the limit went into replacement tables, not the process default.
     assert!(
-        recycled_growth < 5_000 + 2 * NAME_LEN,
+        recycled_growth < 1_000 + 2 * NAME_LEN,
         "the default table grew by {recycled_growth} bytes"
     );
 

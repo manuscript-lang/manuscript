@@ -6,8 +6,11 @@
 // Links the msrt_* runtime symbols.
 use ms_lsp::json::{self, Json, obj};
 use ms_rt as _;
+use std::cell::RefCell;
+use std::collections::HashMap;
 use std::io::Cursor;
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 thread_local! {
@@ -277,21 +280,40 @@ fn mask_workspace_ids(text: &str) -> String {
     out
 }
 
+/// The UTF-16 lines of a bundled standard-library module, read once per thread: building a
+/// session loads every bundled module, which a snapshot would otherwise repeat for each range.
+fn stdlib_lines(uri: &str) -> Rc<Vec<Vec<u16>>> {
+    thread_local! {
+        static SESSION: Rc<ms_check::Session> = ms_check::Session::new();
+        static LINES: RefCell<HashMap<String, Rc<Vec<Vec<u16>>>>> = RefCell::default();
+    }
+    if let Some(lines) = LINES.with(|cache| cache.borrow().get(uri).cloned()) {
+        return lines;
+    }
+    let source = SESSION
+        .with(|session| {
+            ms_lsp::analysis::standard_library_source(ms_syntax::Names::global(), session, uri)
+        })
+        .expect("bundled stdlib module");
+    let lines: Rc<Vec<Vec<u16>>> = Rc::new(
+        source
+            .split('\n')
+            .map(|l| l.trim_end_matches('\r').encode_utf16().collect())
+            .collect(),
+    );
+    LINES.with(|cache| cache.borrow_mut().insert(uri.to_string(), lines.clone()));
+    lines
+}
+
 /// The source text a standard-library location's `range` covers.
 fn stdlib_range_text(uri: &str, range: &Json) -> String {
-    let syms = ms_syntax::Names::global();
-    let source = ms_lsp::analysis::standard_library_source(syms, &ms_check::Session::new(), uri)
-        .expect("bundled stdlib module");
+    let lines = stdlib_lines(uri);
     let position = |key: &str| {
         let at = range.get(key).expect("range end");
         let n = |k: &str| at.get(k).and_then(Json::as_i64).expect("position") as usize;
         (n("line"), n("character"))
     };
     let (start, end) = (position("start"), position("end"));
-    let lines: Vec<Vec<u16>> = source
-        .split('\n')
-        .map(|l| l.trim_end_matches('\r').encode_utf16().collect())
-        .collect();
     let mut text: Vec<u16> = Vec::new();
     for (line, units) in lines.iter().enumerate().take(end.0 + 1).skip(start.0) {
         let from = if line == start.0 { start.1 } else { 0 };
