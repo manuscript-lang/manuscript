@@ -2055,9 +2055,26 @@ pub(crate) fn closes_resources<'p>(
         fl: &'a FnLower<'b>,
         found: bool,
     }
+    impl Scan<'_, '_> {
+        fn closes(&self, p: &Pattern) -> bool {
+            match &p.kind {
+                PatternKind::Name(_) => {
+                    self.fl.hir.pattern_binding(p).is_some_and(|b| {
+                        self.fl.cx.ownership.binding_facts.has(b.uid, ImplicitClose)
+                    })
+                }
+                PatternKind::List(items) => items.iter().any(|i| self.closes(i)),
+                PatternKind::Type(fields) => fields.iter().any(|f| self.closes(&f.pattern)),
+            }
+        }
+    }
     impl ms_check::api::visit::Visitor for Scan<'_, '_> {
         fn stmt(&mut self, s: &Stmt) {
             self.found |= self.fl.hir.stmt(s).cleanup.is_some();
+            // A destructuring `let` that takes a resource out of a record owns it too.
+            if let StmtKind::Bind { pattern, .. } = &s.kind {
+                self.found |= self.closes(pattern);
+            }
         }
         fn expr(&mut self, e: &Expr) {
             if let ExprKind::Match { arms, .. } = &e.kind {
