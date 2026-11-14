@@ -54,7 +54,7 @@ Whole corpus, measured: 662 `phase=test` fixtures in 17 batches of 40 (`ms test 
 10. **Compile time.** Out of scope here; it is about 37 s of the corpus and has its own work. This proposal only requires that each batch's tests can start as soon as it links.
 11. **Parallelism limit.** `--parallel <n>` caps tests in flight; default 4 per core, since a waiting test holds no thread; `1` is serial, for debugging.
 12. **Leak accounting.** The stats runtime's live-block count is process-wide, so `ms-conform` (`LEAK_CHECKED`) and `tools/count-check.ms` keep coverage. `tools/cancel-sweep.ms` needs per-test park counts, so it runs each test alone with `--test`.
-13. **Virtual clock, on by default.** Each test promise and every promise it starts share one test clock: `sleep`, promise `timeout`, `monotonic()` and `now()` read it. When every promise of the test is blocked, the clock jumps to the next timer (Go's `testing/synctest` model), so timer waits take no wall time and are deterministic. A promise blocked on real I/O (socket, file, child process) is not durably blocked, so the clock waits for it. `--timeout` stays wall time. A test that needs real time calls `@std/test` `with_real_clock(operation)` (hypothesis name, checked in stage 4).
+13. **Virtual clock: measured, not built.** Chosen as on by default (2026-11-14), then measured before building: across all 666 test fixtures the run phase sums to 27 s serial (about 7 s wall on 4 cores, `f2db6005`, release `ms`, `MS_BACKEND=cranelift`), and timer waits are about 3 s of it (`http2-cancelled-requests`, `many-tasks`, `http-fault-leak`). The saving is about 1 s of a 9 min CI leg, against a runtime change to detect process-wide timer-only idleness across isolates, I/O and blocking jobs. Revisit if timer waits grow to a visible share of the run phase.
 14. **Benches.** `ms bench` keeps one process per bench (timing needs isolation); only the test path changes.
 
 ## Components touched
@@ -82,7 +82,7 @@ Whole corpus, measured: 662 `phase=test` fixtures in 17 batches of 40 (`ms test 
 2. Per-test output buffer and scoped cwd/env helpers; fix the 2 fixtures. Check: corpus output identical.
 3. `ms-conform` batches fixtures per `ms test` call and compiles batches in parallel (independent of promises; 12.6 s to 8.5 s on 40 fixtures alone). Check: corpus test phase under 6 s on 4 cores (from 33 s); `make conform-fast` corpus time, and the CI conformance legs, before and after.
 
-4. Virtual clock in `ms-rt` timers and `@std/time`, `with_real_clock`; fixtures that measure real elapsed time opt out. Check: `many-tasks.ms` and `http2-cancelled-requests.ms` under 50 ms each; corpus test phase re-measured.
+4. Virtual clock: dropped after measurement (design item 13).
 
 ## Results
 
