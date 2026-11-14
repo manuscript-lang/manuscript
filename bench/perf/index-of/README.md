@@ -11,4 +11,9 @@ The string equality decision was a branchless chain of selects evaluated for eve
 | instructions (callgrind, whole program) | 1,078M | 793M | 390M |
 | search loop (min of 25) | 47.1 ms | 35.2 ms | about 19.5 ms (whole program) |
 
-The remaining gap is the call to `msrt_string_eq` for each pair of one length with different blocks, about half of the pairs here.
+Same day, second step: two blocks of one kind and length are now compared in place for 8 to 16 bytes (the first and last eight bytes cover every byte), in both backends. Only other lengths call `msrt_string_eq`, which cost about 50 instructions a call.
+
+| | before | after | Rust |
+| --- | --- | --- | --- |
+| instructions (callgrind, whole program) | 793M | 503M | 390M |
+| search loop (min of 25) | 30.3 ms | 16.3 ms | 16.0 ms |

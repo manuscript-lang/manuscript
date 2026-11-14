@@ -4,7 +4,7 @@ use super::attrs::pure_attrs;
 use super::types::Abi;
 use super::{Area, Cx, Vals, call_ret_ty, leaves, native_ret_attr, native_ret_ty, ret_attr, types};
 use crate::abi_llvm::{Pass, Reg, Ret, Signature};
-use crate::llvm_build::{FnBuilder, Ty as LTy, Types, Val};
+use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Types, Val};
 use ms_mir::ir::{ExternDef, ExternRole, Func, Imm, Inst, Mode, Module, Op, Value};
 use ms_mir::layout::Layouts;
 use ms_mir::types::{Ty, TyKind};
@@ -102,6 +102,13 @@ fn extern_ok(lay: &Layouts, def: &ExternDef) -> bool {
     def.role != ExternRole::MapNew && def.params.iter().all(|p| crosses(p.ty)) && crosses(def.ret)
 }
 
+/// Whether the eight bytes of `x` and `y` at `at` are equal.
+fn word_eq(b: &mut FnBuilder, x: &Val, y: &Val, at: &Val) -> Val {
+    let (p, q) = (b.elem_ptr(&LTy::I8, x, at), b.elem_ptr(&LTy::I8, y, at));
+    let (u, v) = (b.load(&LTy::I64, &p, 1), b.load(&LTy::I64, &q, 1));
+    b.icmp("eq", &u, &v)
+}
+
 fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     let (m, lay) = (cx.m, cx.lay);
     let out = inst
@@ -136,10 +143,12 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         let (d, differ) = super::lists::eq_differ(b, x, y);
         let n = cx.split;
         let head = super::block_label(cx.block, n);
-        let (same, kinds, slow) = (
+        let (same, kinds, slow, wide, words) = (
             format!("d{}_{n}", cx.block),
             format!("k{}_{n}", cx.block),
             format!("e{}_{n}", cx.block),
+            format!("w{}_{n}", cx.block),
+            format!("r{}_{n}", cx.block),
         );
         cx.split += 1;
         let join = super::block_label(cx.block, cx.split);
@@ -152,7 +161,20 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         let known = super::lists::eq_same_tag(b, x, y);
         let decided = b.icmp("sge", &known, &Val::int(0));
         let answer = b.icmp("ne", &known, &Val::int(0));
-        b.cond_br(&decided, &join, &slow);
+        b.cond_br(&decided, &join, &wide);
+        // Two blocks of one kind and length: 8 to 16 bytes are the first and last eight, compared
+        // in place; other lengths call the runtime.
+        b.label(&wide);
+        let len = b.bin(Bin::And, &x[1], &Val::int(ms_rt_abi::STR_LEN_MASK as i64));
+        let off = b.bin(Bin::Sub, &len, &Val::int(8));
+        let fits = b.icmp("ult", &off, &Val::int(9));
+        b.cond_br(&fits, &words, &slow);
+        b.label(&words);
+        let (px, py) = (b.int_to_ptr(&x[0]), b.int_to_ptr(&y[0]));
+        let first = word_eq(b, &px, &py, &Val::int(0));
+        let last = word_eq(b, &px, &py, &off);
+        let bytes_equal = b.bin(Bin::And, &first, &last);
+        b.br(&join);
         b.label(&kinds);
         let same_len = super::lists::eq_kinds_same_len(b, x, y);
         b.cond_br(&same_len, &slow, &join);
@@ -166,6 +188,7 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
             &[
                 (Val::bool(false), head),
                 (answer, same),
+                (bytes_equal, words),
                 (Val::bool(false), kinds),
                 (called[0].clone(), slow),
             ],

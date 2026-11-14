@@ -89,7 +89,9 @@ impl<'a, 'm> Lower<'a, 'm> {
         // Most pairs differ in kind, length or inline bytes: that decides first. Then pairs with
         // one tagged word need only their first words; the rest are of different kinds and equal
         // only with one byte length.
-        let (mid, same, kinds, slow, join) = (
+        let (mid, same, kinds, slow, join, wide, words) = (
+            self.b.create_block(),
+            self.b.create_block(),
             self.b.create_block(),
             self.b.create_block(),
             self.b.create_block(),
@@ -118,7 +120,28 @@ impl<'a, 'm> Lower<'a, 'm> {
         let answer = self.b.ins().icmp_imm_s(IntCC::NotEqual, known, 0);
         self.b
             .ins()
-            .brif(decided, join, &[BlockArg::Value(answer)], slow, &[]);
+            .brif(decided, join, &[BlockArg::Value(answer)], wide, &[]);
+        // Two blocks of one kind and length: 8 to 16 bytes are the first and last eight, compared
+        // in place; other lengths call the runtime.
+        self.b.switch_to_block(wide);
+        let len = self.b.ins().band_imm_s(a[1], STR_LEN_MASK as i64);
+        let off = self.b.ins().iadd_imm_s(len, -8);
+        let fits = self.b.ins().icmp_imm_u(IntCC::UnsignedLessThan, off, 9);
+        self.b.ins().brif(fits, words, &[], slow, &[]);
+        self.b.switch_to_block(words);
+        let mut eq = Vec::new();
+        for at in [None, Some(off)] {
+            let (pa, pb) = match at {
+                Some(o) => (self.b.ins().iadd(a[0], o), self.b.ins().iadd(b[0], o)),
+                None => (a[0], b[0]),
+            };
+            let flags = MemFlagsData::new().with_notrap();
+            let wa = self.b.ins().load(types::I64, flags, pa, 0);
+            let wb = self.b.ins().load(types::I64, flags, pb, 0);
+            eq.push(self.b.ins().icmp(IntCC::Equal, wa, wb));
+        }
+        let both = self.b.ins().band(eq[0], eq[1]);
+        self.b.ins().jump(join, &[BlockArg::Value(both)]);
         self.b.switch_to_block(kinds);
         let (la, lb) = (self.str_byte_len(a[1]), self.str_byte_len(b[1]));
         let same_len = self.b.ins().icmp(IntCC::Equal, la, lb);
