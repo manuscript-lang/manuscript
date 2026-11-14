@@ -333,6 +333,20 @@ impl FnLower<'_> {
                     Some(v) => Some(self.expr(v)?),
                     None => None,
                 };
+                // A match used as a statement is typed Unit while an arm may end in a call that
+                // returns something: the arm's value is discarded.
+                let x = match x {
+                    Some(x) if rty == MTy::UNIT && self.ty_of(x.v) != MTy::UNIT => {
+                        if x.own
+                            && let Some(value) = &arm.value
+                        {
+                            let ty = self.ety(value);
+                            self.drop_unused(x.v, &ty);
+                        }
+                        None
+                    }
+                    other => other,
+                };
                 if !self.dead {
                     let v = match x {
                         Some(x) if borrowed => x.v,

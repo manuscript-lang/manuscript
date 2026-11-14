@@ -2,6 +2,7 @@ import (
 	Data, panic from "@std/core.ms",
 
 	msstd_decimal_compare,
+	msstd_decimal_parse,
 	msstd_decimal_round,
 	msstd_decimal_to_fixed,
 	msstd_decimal_to_float,
@@ -83,3 +84,12 @@ HalfEven is the default; rounded zero has no minus sign. Trailing zeros are reta
 */
 fn Decimal.to_fixed(digits: Int, mode: RoundingMode?) String!:
 	return msstd_decimal_to_fixed(self, digits, mode)
+
+/*
+Parses decimal text exactly: an optional sign, digits with an optional fraction (digits on both sides of the point), and
+an optional exponent, as in `19.99`, `-0.5` or `1e3` (the `d` literal without its suffix). Text that is empty,
+malformed, has more than 34 significant digits, or has an exponent out of range gives an
+`EINVAL` error. Nothing is rounded.
+*/
+export fn parse_decimal(text: String) Decimal!:
+	return msstd_decimal_parse(text)

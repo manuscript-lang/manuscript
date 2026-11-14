@@ -53,7 +53,7 @@ Here `handler` is built as in the test. The wait lasts until shutdown or a serve
 
 The accept loop is a promise. Each accepted connection becomes a promise of its own on the least busy thread, where it stays; HTTP/1.1, HTTP/2 and the TLS handshake of `options.tls` run there. Each request runs the handler as a promise owned by its connection. A client disconnect or the request timeout drops that promise, which cancels the handler at its next wait.
 
-The handler, the router and everything they capture are built once and only read by every thread. A handler therefore cannot change shared state. State that changes across requests lives in one owner promise that handlers write to through a `pipe`.
+The handler, the router and everything they capture are built once and only read by every thread. A handler therefore cannot change shared state. State that changes across requests lives in one owner promise that handlers write to through a `pipe`. A pipe's reader ends as soon as no writer is open, so the function that starts the owner keeps one `gate` writer open until the server has closed, and each handler calls `writer()` for its own end ([pipes](streams.md#pipes)). A pipe carries clonable values, so a request that needs an answer from the owner cannot send a reply writer along; let handlers read the owner's data from a file or another read-only source.
 
 A fault in a handler ends only that request, and the connection answers 500. Request-scoped writes through `HttpExchange` (`send`, `send_headers`, `read`, `close`) are `var fn`, since an exchange belongs to one handler.
 

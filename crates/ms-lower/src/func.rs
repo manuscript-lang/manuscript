@@ -2004,7 +2004,11 @@ impl<'a> FnLower<'a> {
         let owned_mask = self.variant.owned.then(|| self.cx.owned_mask(c)).flatten();
         if let ms_check::api::hir::Body::Block(stmts) = c.body() {
             self.slotted = crate::closure::slotted_in(self.syms, self, stmts);
-            self.closing_fn = crate::closure::closes_resources(self, c, stmts);
+            self.closing_fn = crate::closure::closes_resources(
+                self,
+                c.self_binding.iter().chain(c.parameters.iter()),
+                stmts,
+            );
             self.string_needed = crate::scalar::string_uses(self, stmts);
         }
         // Parameters the body changes are the callee's own copies.

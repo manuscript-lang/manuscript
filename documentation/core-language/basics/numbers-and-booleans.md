@@ -76,6 +76,7 @@ fn sized() Unit:
 | `Float` | `to_float32() Float32?` (none when a finite value exceeds the `Float32` range; rounding is silent), `truncate_to_int() Int?` |
 | `Float32` | `to_float64()`, `to_float()`, `truncate_to_int() Int?` |
 | `Decimal`, `BigInt` | `to_float() Float?` (none beyond the `Float` range); `truncate_to_int() Int?` |
+| `String` to `Decimal` | `parse_decimal(text) Decimal!` from `@std/math/decimal.ms`: sign, digits, optional fraction and exponent, exact or an `EINVAL` error (`String.parse_int()` and `parse_float` cover `Int` and `Float`) |
 
 `to_intN()` returns the wider or equal type directly when every value fits (`Int8.to_int32()`) and `Optional` of it otherwise (`Int32.to_int8()` is `none` for 70000); conversions to a float round to the nearest value, ties to even. Int→Decimal is exact. Int→Float rounds once to nearest binary64, ties to even. A conversion to a float returns `none` only when a finite value is beyond the target range (`1e300.to_float32()`, a huge `Decimal` or `BigInt` `to_float()`); rounding itself is silent. `truncate_to_int` drops the fraction toward zero; NaN, infinities, and out-of-range results yield `none` (`1e300.truncate_to_int()` is `none`; Float +2^63 fails, -2^63 converts).
 

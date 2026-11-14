@@ -921,9 +921,17 @@ impl Checker {
         let info = self.expression(value, None);
         let t = info.t();
         if arms.first().is_some_and(|a| a.chain) && !t.is_invalid() && !t.is(Builtin::Optional) {
+            let fix = if t.is(Builtin::Result) {
+                "`?.` is the Optional chain, not `?` followed by `.`; unwrap the Result first with `v := x?` or `(x?).member`"
+            } else {
+                "write `.` to read a member of a value that is always present"
+            };
             self.type_error(
                 value.pos,
-                format!("`?.` needs an optional receiver, found {t_t}; write `.` to read a member of a value that is always present", t_t = t.display(self.syms)),
+                format!(
+                    "`?.` needs an optional receiver, found {t_t}; {fix}",
+                    t_t = t.display(self.syms)
+                ),
             );
             return (true, false);
         }

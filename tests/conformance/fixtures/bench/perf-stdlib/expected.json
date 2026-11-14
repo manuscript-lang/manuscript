@@ -14,7 +14,7 @@
           "file": "src/strings.ms",
           "line": 43,
           "column": 56,
-          "offset": 942
+          "offset": 950
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "src/binarybench.ms",
           "line": 36,
           "column": 29,
-          "offset": 969
+          "offset": 976
         }
       },
       {

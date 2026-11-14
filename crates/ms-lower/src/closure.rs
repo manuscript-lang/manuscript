@@ -1970,6 +1970,9 @@ fn lower_lambda_body(
         }
     }
     let bindings = fl.hir.lambda_parameters(&job.expr);
+    // As for a named function: a `var` parameter stays in the caller's slot when the body's
+    // scopes close resources, so the pass's error exit has nothing to put back.
+    fl.closing_fn = closes_resources(fl, bindings.iter(), &lam.body);
     for (i, (b, v)) in bindings.iter().zip(params.iter().skip(1)).enumerate() {
         if lam.params.get(i).is_some_and(|p| p.mutable) {
             // A `var` parameter: the lambda owns the value it takes from the slot and puts back
@@ -2042,9 +2045,9 @@ fn lambda_changes(
 
 /// Whether a parameter, `let`, loop variable or match payload of `body` closes a resource when
 /// its scope ends.
-pub(crate) fn closes_resources(
+pub(crate) fn closes_resources<'p>(
     fl: &FnLower<'_>,
-    c: &ms_check::api::hir::Callable,
+    params: impl Iterator<Item = &'p ct::BindingRef>,
     body: &[Stmt],
 ) -> bool {
     use ms_check::api::ownership::BindingFact::ImplicitClose;
@@ -2066,10 +2069,8 @@ pub(crate) fn closes_resources(
             }
         }
     }
-    let params = c
-        .self_binding
-        .iter()
-        .chain(c.parameters.iter())
+    let params = params
+        .into_iter()
         .any(|b| fl.cx.ownership.binding_facts.has(b.uid, ImplicitClose));
     let mut scan = Scan { fl, found: params };
     ms_check::api::visit::walk_block(&mut scan, body);
