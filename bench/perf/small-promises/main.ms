@@ -1,4 +1,5 @@
-// 100k promises of about 1 us of work each, started in a list and awaited together (the small half of bench/perf/suite/workers).
+// 100k promises of about 1 us of work each, started in a list and awaited together (the
+// small half of bench/perf/suite/workers).
 // `MS_THREADS=4 ms run bench/perf/small-promises/main.ms`
 import Promise, promise, wait_all from "@std/concurrency/promise.ms"
 
@@ -15,6 +16,7 @@ fn main() Unit:
 	var many: List[Promise[Int]] = []
 	for i in 0..100000:
 		many.append(start_small(i))
+
 	var total = 0
 	for r in wait_all(many).get():
 		total += r
