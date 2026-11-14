@@ -300,36 +300,6 @@ pub unsafe extern "C-unwind" fn msrt_string_scalar_at(
     }
 }
 
-/// C view: `msrt_string_starts_with(a: *const StrVal, v: *const StrVal) -> u8`
-#[unsafe(no_mangle)]
-// ms: leaf pure domain=string
-pub unsafe extern "C-unwind" fn msrt_string_starts_with(a: usize, v: usize) -> u8 {
-    // SAFETY: caller passes live strings.
-    unsafe { bytes(a as *const StrVal).starts_with(bytes(v as *const StrVal)) as u8 }
-}
-
-/// C view: `msrt_string_ends_with(a: *const StrVal, v: *const StrVal) -> u8`
-#[unsafe(no_mangle)]
-// ms: leaf pure domain=string
-pub unsafe extern "C-unwind" fn msrt_string_ends_with(a: usize, v: usize) -> u8 {
-    // SAFETY: caller passes live strings.
-    unsafe { bytes(a as *const StrVal).ends_with(bytes(v as *const StrVal)) as u8 }
-}
-
-/// C view: `msrt_string_compare(a: *const StrVal, b: *const StrVal) -> i64`
-#[unsafe(no_mangle)]
-// ms: leaf pure
-pub unsafe extern "C-unwind" fn msrt_string_compare(a: usize, b: usize) -> i64 {
-    // SAFETY: caller passes live strings.
-    unsafe {
-        match bytes(a as *const StrVal).cmp(bytes(b as *const StrVal)) {
-            core::cmp::Ordering::Less => -1,
-            core::cmp::Ordering::Equal => 0,
-            core::cmp::Ordering::Greater => 1,
-        }
-    }
-}
-
 /// Whether two strings hold the same bytes: overlapping word compares for up to 16 bytes, so short
 /// keys need no `memcmp` call.
 ///
@@ -419,18 +389,6 @@ pub fn mix(mut h: u64) -> u64 {
     h ^ (h >> 29)
 }
 
-/// Hash of a string's bytes (equal strings hash equally).
-///
-/// # Safety
-/// `s` must be live.
-/// C view: `msrt_string_hash(s: *const StrVal) -> i64`
-#[unsafe(no_mangle)]
-// ms: leaf pure
-pub unsafe extern "C-unwind" fn msrt_string_hash(s: usize) -> i64 {
-    // SAFETY: caller contract.
-    hash_bytes(unsafe { bytes(s as *const StrVal) }) as i64
-}
-
 /// C view: `msrt_string_byte_length(s: *const StrVal) -> i64`
 #[unsafe(no_mangle)]
 // ms: leaf pure
@@ -445,21 +403,6 @@ pub unsafe extern "C-unwind" fn msrt_string_byte_length(s: usize) -> i64 {
 pub unsafe extern "C-unwind" fn msrt_string_is_empty(s: usize) -> u8 {
     // SAFETY: caller passes a live string.
     unsafe { (*(s as *const StrVal)).is_empty() as u8 }
-}
-
-/// C view: `msrt_hash_int(v: i64) -> i64`
-#[unsafe(no_mangle)]
-// ms: leaf
-pub extern "C-unwind" fn msrt_hash_int(v: i64) -> i64 {
-    mix(v as u64 ^ 0x9e37_79b9) as i64
-}
-
-/// C view: `msrt_hash_bytes(p: *const u8, len: usize) -> i64`
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_hash_bytes(p: usize, len: usize) -> i64 {
-    // SAFETY: caller passes a readable range.
-    unsafe { hash_bytes(core::slice::from_raw_parts(p as *const u8, len)) as i64 }
 }
 
 // ---------------------------------------------------------------------------
