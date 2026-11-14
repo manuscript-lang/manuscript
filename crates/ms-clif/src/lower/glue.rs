@@ -54,7 +54,12 @@ impl<'a, 'm> Lower<'a, 'm> {
                 // Data that can contain itself bounds its nesting (`ms_rt::dropq`): past the
                 // limit the value is parked on the runtime's worklist and dropped later.
                 let bounded = self.g.m.drop_recurses(ty);
-                if bounded {
+                let deep = bounded.then(|| self.stack_within_headroom());
+                if let Some(deep) = deep {
+                    let enter = self.b.create_block();
+                    let body = self.b.create_block();
+                    self.b.ins().brif(deep, enter, &[], body, &[]);
+                    self.b.switch_to_block(enter);
                     let defer = self.rt_call("msrt_drop_enter", &[])[0];
                     let park = self.b.create_block();
                     let run = self.b.create_block();
@@ -69,10 +74,18 @@ impl<'a, 'm> Lower<'a, 'm> {
                     self.rt_call("msrt_drop_defer", &[fa, blk]);
                     self.b.ins().return_(&[]);
                     self.b.switch_to_block(run);
+                    self.b.ins().jump(body, &[]);
+                    self.b.switch_to_block(body);
                 }
                 self.glue_drop(ty, &params);
-                if bounded {
+                if let Some(deep) = deep {
+                    let leave = self.b.create_block();
+                    let done = self.b.create_block();
+                    self.b.ins().brif(deep, leave, &[], done, &[]);
+                    self.b.switch_to_block(leave);
                     self.rt_call("msrt_drop_leave", &[]);
+                    self.b.ins().jump(done, &[]);
+                    self.b.switch_to_block(done);
                 }
                 self.b.ins().return_(&[]);
             }
@@ -232,6 +245,21 @@ impl<'a, 'm> Lower<'a, 'm> {
                 self.b.ins().return_(&[]);
             }
         }
+    }
+
+    /// Whether the stack pointer is within `DEEP_DROP_HEADROOM` of the running segment's limit:
+    /// the drop glue of recursive data counts its nesting only then.
+    fn stack_within_headroom(&mut self) -> Value {
+        let sp = self.b.ins().get_stack_pointer(types::I64);
+        let base = self.b.ins().band_imm_s(sp, !(STACK_REGION - 1));
+        let limit = self.b.ins().load(
+            types::I64,
+            flags(),
+            base,
+            (STACK_REGION - STACK_LIMIT_CELL) as i32,
+        );
+        let limit = self.b.ins().iadd_imm_s(limit, DEEP_DROP_HEADROOM);
+        self.b.ins().icmp(IntCC::UnsignedLessThan, sp, limit)
     }
 
     /// The first thing the copy glue of recursive data does: when the stack is nearly used up,
