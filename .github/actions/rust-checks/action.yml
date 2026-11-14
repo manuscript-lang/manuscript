@@ -38,6 +38,15 @@ inputs:
   gates:
     description: "'false' skips the gates, when another job of the same run covers them."
     default: 'true'
+  llvm-job:
+    description: "A pull request's separate LLVM jobs: 'corpus' runs the LLVM corpus and leak sweep (one `shard`), 'gates' runs the LLVM backend tests and the release gates. Empty for the ordinary legs."
+    default: ''
+  shard:
+    description: "For llvm-job 'corpus': the corpus shard, `i/n`."
+    default: ''
+  suffix:
+    description: Added to the name of the uploaded artifacts, so jobs of one platform and part do not collide.
+    default: ''
 
 runs:
   using: composite
@@ -58,13 +67,28 @@ runs:
           echo "CRANELIFT=$([[ -n $cranelift && $part == *$cranelift* && '${{ inputs.llvm }}' != false ]] && echo true || echo false)"
           echo "LLVM=${{ inputs.llvm }}"
           echo "DOCS=${{ inputs.docs }}"
+          echo "LLVM_TESTS=false"
         } >> "$GITHUB_ENV"
+        # The LLVM jobs of a pull request replace the parts: the corpus alone, or the backend tests and
+        # the gates, so no job carries both.
+        case '${{ inputs.llvm-job }}' in
+          corpus)
+            echo "UNIT=false" >> "$GITHUB_ENV"; echo "CONFORM=true" >> "$GITHUB_ENV"
+            echo "GATES=false" >> "$GITHUB_ENV"; echo "CRANELIFT=false" >> "$GITHUB_ENV"
+            echo "LLVM=true" >> "$GITHUB_ENV"; echo "DOCS=false" >> "$GITHUB_ENV"
+            echo "CONFORM_SHARD=${{ inputs.shard }}" >> "$GITHUB_ENV" ;;
+          gates)
+            echo "UNIT=false" >> "$GITHUB_ENV"; echo "CONFORM=false" >> "$GITHUB_ENV"
+            echo "GATES=true" >> "$GITHUB_ENV"; echo "CRANELIFT=false" >> "$GITHUB_ENV"
+            echo "LLVM=true" >> "$GITHUB_ENV"; echo "DOCS=false" >> "$GITHUB_ENV"
+            echo "LLVM_TESTS=true" >> "$GITHUB_ENV" ;;
+        esac
     - name: Keep native test artifacts in runner storage
       shell: bash
       run: |
         printf '%s\n' "TMPDIR=$RUNNER_TEMP" "TMP=$RUNNER_TEMP" "TEMP=$RUNNER_TEMP" >> "$GITHUB_ENV"
     - uses: taiki-e/install-action@v2
-      if: env.UNIT == 'true'
+      if: env.UNIT == 'true' || env.LLVM_TESTS == 'true'
       with:
         tool: nextest
     # MSVC rejects a test binary whose crates reference msrt_* runtime symbols that only ms-rt
@@ -105,12 +129,17 @@ runs:
     # nextest runs each test in its own process, so tests that share process-global
     # state (the runtime allocator, the environment) cannot interfere.
     - name: Tests and doc tests
-      if: env.UNIT == 'true'
+      if: env.UNIT == 'true' || env.LLVM_TESTS == 'true'
       shell: bash
       run: |
         # One build with every target: the later steps (nextest, the CLI, the native tests, the
         # corpus runner) then reuse it instead of rebuilding dependencies with other features.
         cargo build --workspace --all-targets --locked --keep-going
+        # The LLVM job of a pull request runs only the tests of the LLVM backend.
+        if [ "$LLVM_TESTS" = true ]; then
+          cargo nextest run --workspace --locked --no-fail-fast -E 'package(ms-mir-llvm) | test(/^llvm::/) | test(/^llvm_direct(_data)?::/)'
+          exit 0
+        fi
         # A pull request that touches no LLVM-specific code skips the tests of the LLVM backend (the
         # `llvm`, `llvm_direct` and `llvm_direct_data` test modules and the `ms-mir-llvm` crate); main and
         # LLVM pull requests run them.
@@ -141,7 +170,7 @@ runs:
         # `-p ms-cli` unifies features differently from the workspace build and recompiles the
         # cranelift crates, ms-clif, ms-build and ms-cli (about 40 s). Parts that ran the workspace
         # build above reuse it: the same command is a no-op and relinks target/debug/ms.
-        if [ "$UNIT" = true ]; then
+        if [ "$UNIT" = true ] || [ "$LLVM_TESTS" = true ]; then
           cargo build --workspace --all-targets --locked 2>&1 | tee "$reports/build.log"
         else
           cargo build --locked -p ms-cli 2>&1 | tee "$reports/build.log"
@@ -300,7 +329,7 @@ runs:
       if: always()
       uses: actions/upload-artifact@v7
       with:
-        name: rust-${{ inputs.os }}-${{ inputs.arch }}-${{ inputs.part }}
+        name: rust-${{ inputs.os }}-${{ inputs.arch }}-${{ inputs.part }}${{ inputs.suffix }}
         path: |
           .artifacts/conform.md
           ${{ runner.temp }}/ms-clif-tests-*

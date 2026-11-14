@@ -45,3 +45,21 @@ test "different text is different at every length and kind":
 	expect_equal(same(long, built(["a long string ", "past fifteen bytez"])), false)?
 	expect_equal(same(long, short), false)?
 	expect_equal(same(built(["ab\u{0}", "c"]), "ab"), false)?
+
+fn filled(n: Int, at: Int) String:
+	var parts: List[String] = []
+
+	for i in 0..n:
+		if i == at:
+			parts.append("b")
+		else:
+			parts.append("a")
+
+	return built(parts)
+
+test "owned text of one length differs at any byte, which the inline compare covers":
+	for n in 8..40:
+		for at in 0..n:
+			expect_equal(same(filled(n, at), filled(n, n)), false)?
+			expect_equal(same(filled(n, at), filled(n, at)), true)?
+			expect_equal(same(filled(n, at), filled(n + 1, at)), false)?

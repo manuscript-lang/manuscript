@@ -723,31 +723,36 @@ fn tagged_len(b: &mut FnBuilder, w: &Val, name: Option<&Val>) -> Val {
     b.select(&inline, &short, &long)
 }
 
-/// 1 when two strings are equal, 0 when unequal, -1 when only a byte comparison can tell.
-/// Identical words are equal, and differing kinds, lengths or inline bytes are unequal.
-pub(super) fn eq_words(b: &mut FnBuilder, x: &[Val], y: &[Val]) -> Val {
+/// `d = x.tagged ^ y.tagged` without the ASCII flag (equal strings may differ in it), and whether
+/// `0 < d < 1 << 62`: both strings then have one kind and the low bits differ (other lengths, or
+/// other inline bytes), so they are unequal. Most comparisons end here.
+pub(super) fn eq_differ(b: &mut FnBuilder, x: &[Val], y: &[Val]) -> (Val, Val) {
     use ms_rt_abi::{STR_ASCII, STR_INLINE};
-    let (yes, no, unknown) = (Val::int(1), Val::int(0), Val::int(-1));
-    // `d = x.tagged ^ y.tagged` without the ASCII flag (equal strings may differ in it). With
-    // `0 < d < 1 << 62` both have one kind and the low bits differ: unequal.
     let d = b.bin(Bin::Xor, &x[1], &y[1]);
     let d = b.bin(Bin::And, &d, &Val::int(!(STR_ASCII as i64)));
     let below = b.bin(Bin::Sub, &d, &Val::int(1));
     let differ = b.icmp("ult", &below, &Val::int((STR_INLINE - 1) as i64));
-    // The same second word: the same first word is the same string; inline strings with other
-    // words differ; other kinds of one length need their bytes compared.
+    (d, differ)
+}
+
+/// 1 when two strings with the same tagged word are equal, 0 when unequal, -1 when only a byte
+/// comparison can tell: the same first word is the same string, other inline strings differ, and
+/// other kinds of one length need their bytes compared.
+pub(super) fn eq_same_tag(b: &mut FnBuilder, x: &[Val], y: &[Val]) -> Val {
+    use ms_rt_abi::STR_INLINE;
+    let (yes, no, unknown) = (Val::int(1), Val::int(0), Val::int(-1));
     let same_ptr = b.icmp("eq", &x[0], &y[0]);
     let tag = b.bin(Bin::And, &x[1], &Val::int((3u64 << 62) as i64));
     let inline = b.icmp("eq", &tag, &Val::int(STR_INLINE as i64));
     let other = b.select(&inline, &no, &unknown);
-    let same_hi = b.select(&same_ptr, &yes, &other);
-    // Different kinds are equal only with the same byte length.
+    b.select(&same_ptr, &yes, &other)
+}
+
+/// Whether two strings of different kinds have one byte length, the only case where they can be
+/// equal.
+pub(super) fn eq_kinds_same_len(b: &mut FnBuilder, x: &[Val], y: &[Val]) -> Val {
     let (lx, ly) = (tagged_len(b, &x[1], None), tagged_len(b, &y[1], None));
-    let same_len = b.icmp("eq", &lx, &ly);
-    let kinds = b.select(&same_len, &unknown, &no);
-    let same_word = b.icmp("eq", &d, &Val::int(0));
-    let rest = b.select(&same_word, &same_hi, &kinds);
-    b.select(&differ, &no, &rest)
+    b.icmp("eq", &lx, &ly)
 }
 
 /// `StrEqLit`: whether a string equals a literal of 1 to 8 bytes with no NUL. An inline string

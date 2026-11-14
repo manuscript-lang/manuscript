@@ -2,7 +2,7 @@ name: CI/CD
 
 # One workflow, four triggers:
 #   pull request  the Linux legs with programs built by Cranelift (the Debug backend); a pull request that touches
-#                 LLVM-related code (see .github/actions/rust-scope) also runs the LLVM corpus and release gates. The Linux legs, each one job (`ab`: the tests and the conformance corpus together); the language checks
+#                 LLVM-related code (see .github/actions/rust-scope) also starts the `llvm` jobs: the LLVM corpus in two shards, and the LLVM backend tests with the release gates. The Linux legs, each one job (`ab`: the tests and the conformance corpus together); the language checks
 #                 and the book run inside linux-arm64. A green pull request auto-merges; there
 #                 is no merge queue, which built every stacked ref with the full matrix and restarted on
 #                 every outside merge.
@@ -156,7 +156,8 @@ jobs:
           cranelift: ${{ matrix.leg.cranelift || '' }}
           gates: ${{ matrix.leg.gates || 'true' }}
           gates-part: ${{ matrix.leg.gates_part || '' }}
-          llvm: ${{ steps.scope.outputs.llvm }}
+          # A pull request that touches LLVM code runs the LLVM suite in the `llvm` jobs, not here.
+          llvm: ${{ env.PR == 'true' && 'false' || steps.scope.outputs.llvm }}
           docs: ${{ steps.scope.outputs.docs }}
       - uses: ./.github/actions/sccache-save
         # Part a builds the whole workspace, a superset of part b, so one save per leg keeps the cache count at six.
@@ -165,13 +166,59 @@ jobs:
           cache-hit: ${{ steps.sccache.outputs.cache-hit }}
           primary-key: ${{ steps.sccache.outputs.primary-key }}
 
+  # A pull request that touches LLVM-related code (rust-scope) also runs the LLVM suite, in jobs of its own so
+  # that no job passes ten minutes: the LLVM corpus in two shards, and the LLVM backend tests with the release
+  # gates. Other pull requests start these jobs and skip their steps, in a few seconds. Main runs the suite
+  # inside `rust`.
+  llvm:
+    needs: due
+    if: needs.due.outputs.run == 'true' && github.event_name == 'pull_request'
+    name: llvm-${{ matrix.leg.arch }}-${{ matrix.leg.job }}${{ matrix.leg.shard && format('-{0}', matrix.leg.index) || '' }}
+    runs-on: ${{ matrix.leg.runner }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        leg:
+          - {job: corpus, arch: amd64, runner: ubuntu-24.04, shard: '0/2', index: 1}
+          - {job: corpus, arch: amd64, runner: ubuntu-24.04, shard: '1/2', index: 2}
+          - {job: gates, arch: arm64, runner: ubuntu-24.04-arm}
+    env:
+      PR: 'true'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+      - id: scope
+        uses: ./.github/actions/rust-scope
+      - id: sccache
+        if: steps.scope.outputs.llvm == 'true'
+        uses: ./.github/actions/sccache
+        with:
+          prefix: cargo-sccache-linux-${{ matrix.leg.arch }}-
+      - uses: ./.github/actions/rust-env
+        if: steps.scope.outputs.llvm == 'true'
+        with:
+          os: linux
+          arch: ${{ matrix.leg.arch }}
+          llvm-consumers: ${{ matrix.leg.job == 'gates' && 'true' || 'false' }}
+      - uses: ./.github/actions/rust-checks
+        if: steps.scope.outputs.llvm == 'true'
+        with:
+          os: linux
+          arch: ${{ matrix.leg.arch }}
+          part: ab
+          llvm-job: ${{ matrix.leg.job }}
+          shard: ${{ matrix.leg.shard }}
+          suffix: -llvm-${{ matrix.leg.job }}${{ matrix.leg.index }}
+
   # The pull request time budget (AGENTS.md, wiki/repository/pull-request-ci-has-a-ten-minute-budget.md): each
   # Linux job of a pull request finishes in under 10 minutes. `Platform checks` requires it, so an over-budget
   # pull request cannot merge.
   budget:
     name: Time budget
-    needs: rust
-    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.rust.result == 'success' }}
+    needs: [rust, llvm]
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.rust.result == 'success' && needs.llvm.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       actions: read
@@ -186,7 +233,7 @@ jobs:
             echo "$name: ${seconds}s of ${BUDGET_SECONDS}s"
             if [ "$seconds" -gt "$BUDGET_SECONDS" ]; then over=1; fi
           done < <(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs" --paginate \
-            --jq '.jobs[] | select(.name | startswith("linux-")) | "\(.name | gsub(" "; "_")) \((.completed_at | fromdate) - (.started_at | fromdate))"')
+            --jq '.jobs[] | select(.name | startswith("linux-") or startswith("llvm-")) | "\(.name | gsub(" "; "_")) \((.completed_at | fromdate) - (.started_at | fromdate))"')
           if [ "$over" = 1 ]; then
             echo "::error::A pull request job is over the ${BUDGET_SECONDS}s budget: cut a test or a step (see AGENTS.md)."
             exit 1
@@ -196,17 +243,20 @@ jobs:
   platforms:
     name: Platform checks
     if: always()
-    needs: [due, rust, budget]
+    needs: [due, rust, llvm, budget]
     runs-on: ubuntu-latest
     steps:
       - name: Require every platform leg
         env:
           RESULT: ${{ needs.rust.result }}
+          LLVM_RESULT: ${{ needs.llvm.result }}
           BUDGET: ${{ needs.budget.result }}
           DUE: ${{ needs.due.outputs.run }}
         run: |
           # The budget job runs on pull requests only; it is skipped elsewhere or when a leg already failed.
           test "$BUDGET" != failure || exit 1
+          test "$LLVM_RESULT" != failure || exit 1
+          test "$LLVM_RESULT" != cancelled || exit 1
           test "$RESULT" = success || test "$DUE" = false
 
   pages:
