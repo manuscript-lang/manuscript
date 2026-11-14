@@ -159,36 +159,46 @@ fn count_long(s: &[u8]) -> usize {
 }
 
 /// Byte offset of scalar `n` (clamped to the end).
-pub fn offset_of(s: &[u8], mut n: usize) -> usize {
-    let mut i = 0;
-    while n > 0 && i < s.len() {
-        i += if s[i] < 0x80 { 1 } else { decode(&s[i..]).1 };
-        n -= 1;
-    }
-    i
+pub fn offset_of(s: &[u8], n: usize) -> usize {
+    advance(s, 0, n).unwrap_or(s.len())
 }
 
-/// Byte offset reached by moving `n` scalars forward from byte offset `from`, or `None` when
-/// fewer than `n` scalars remain. Runs of eight ASCII bytes are skipped a word at a time, and no
-/// scalar count of the whole string is needed, so reaching a nearby index costs the distance only.
+/// Scalar starts in eight bytes: the bytes that are not continuation bytes (`10xxxxxx`).
+#[inline(always)]
+fn starts_in_word(w: u64) -> usize {
+    const LOW_BITS: u64 = 0x0101_0101_0101_0101;
+    8 - ((w >> 7) & !(w >> 6) & LOW_BITS).count_ones() as usize
+}
+
+/// Byte offset reached by moving `n` scalars forward from byte offset `from` (the start of a
+/// scalar), or `None` when fewer than `n` scalars remain. `s` is valid UTF-8, so a scalar starts at
+/// every non-continuation byte: whole words whose starts all lie before the target are skipped by
+/// counting them, eight bytes per step for any text, and no scalar count of the whole string is
+/// needed, so reaching a nearby index costs the distance only.
 pub fn advance(s: &[u8], from: usize, mut n: usize) -> Option<usize> {
     let mut i = from;
-    while n > 0 {
+    while n >= 8 && i + 8 <= s.len() {
+        let k = starts_in_word(u64::from_le_bytes(s[i..i + 8].try_into().unwrap()));
+        if k > n {
+            break;
+        }
+        i += 8;
+        n -= k;
+    }
+    // Here `i` may sit inside a scalar; its continuation bytes are not starts.
+    loop {
+        while i < s.len() && s[i] & 0xC0 == 0x80 {
+            i += 1;
+        }
+        if n == 0 {
+            return Some(i);
+        }
         if i >= s.len() {
             return None;
         }
-        if n >= 8 && i + 8 <= s.len() {
-            let w = u64::from_le_bytes(s[i..i + 8].try_into().unwrap());
-            if w & 0x8080_8080_8080_8080 == 0 {
-                i += 8;
-                n -= 8;
-                continue;
-            }
-        }
-        i += if s[i] < 0x80 { 1 } else { decode(&s[i..]).1 };
+        i += 1;
         n -= 1;
     }
-    Some(i)
 }
 
 /// Byte offset reached by moving `n` scalars backward from byte offset `end`, or `None` when
@@ -266,6 +276,27 @@ mod tests {
         ] {
             assert_eq!(decode(bad), (RUNE_ERROR, 1), "{bad:x?}");
         }
+    }
+
+    #[test]
+    fn advance_matches_char_indices_from_every_start() {
+        let text = "aé日😀bПривет你好ñ\u{1F600}xyz0123456789".repeat(7);
+        let b = text.as_bytes();
+        let mut starts: Vec<usize> = text.char_indices().map(|(i, _)| i).collect();
+        starts.push(b.len());
+        for (si, &from) in starts.iter().enumerate().step_by(5) {
+            for n in 0..starts.len() - si + 3 {
+                assert_eq!(
+                    advance(b, from, n),
+                    starts.get(si + n).copied(),
+                    "{from}+{n}"
+                );
+            }
+        }
+        assert_eq!(offset_of(b, 5), starts[5]);
+        assert_eq!(offset_of(b, usize::MAX), b.len());
+        assert_eq!(advance(b"", 0, 0), Some(0));
+        assert_eq!(advance(b"", 0, 1), None);
     }
 
     #[test]
