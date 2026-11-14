@@ -129,16 +129,17 @@ fn count_long(s: &[u8]) -> usize {
     if s.is_ascii() {
         return s.len();
     }
-    if core::str::from_utf8(s).is_ok() {
-        return s.iter().filter(|&&b| b & 0xC0 != 0x80).count();
+    // A String is valid UTF-8, so a scalar starts at every byte that is not a continuation
+    // byte (`10xxxxxx`); counting those needs no validation pass.
+    const LOW_BITS: u64 = 0x0101_0101_0101_0101;
+    let (words, tail) = s.as_chunks::<8>();
+    let mut continuation = 0usize;
+    for w in words {
+        let w = u64::from_le_bytes(*w);
+        continuation += ((w >> 7) & !(w >> 6) & LOW_BITS).count_ones() as usize;
     }
-    let mut n = 0;
-    let mut i = 0;
-    while i < s.len() {
-        i += decode(&s[i..]).1;
-        n += 1;
-    }
-    n
+    continuation += tail.iter().filter(|&&b| b & 0xC0 == 0x80).count();
+    s.len() - continuation
 }
 
 /// Byte offset of scalar `n` (clamped to the end).
@@ -209,6 +210,21 @@ mod tests {
         assert_eq!(count(b"padded"), 6);
         assert_eq!(count("héllo 😀".as_bytes()), 7);
         assert_eq!(count(&[b'a', 0xFF, b'b', 0xC3]), 4);
+    }
+
+    #[test]
+    fn count_of_long_mixed_text_matches_chars_at_every_length_and_offset() {
+        let text = "aé日😀bПривет你好ñ".repeat(9);
+        for start in (0..text.len()).filter(|&i| text.is_char_boundary(i)) {
+            for end in (start..=text.len()).filter(|&i| text.is_char_boundary(i)) {
+                let part = &text[start..end];
+                assert_eq!(
+                    count(part.as_bytes()),
+                    part.chars().count(),
+                    "{start}..{end}"
+                );
+            }
+        }
     }
 
     #[test]

@@ -455,7 +455,19 @@ pub unsafe extern "C-unwind" fn msrt_string_ends_with(a: *const StrVal, v: *cons
 // ms: leaf pure domain=map
 pub unsafe extern "C-unwind" fn msrt_string_compare(a: *const StrVal, b: *const StrVal) -> i64 {
     // SAFETY: caller passes live strings.
-    unsafe { bytes(a).cmp(bytes(b)) as i64 }
+    unsafe {
+        if (*a).is_inline() && (*b).is_inline() {
+            // Inline bits are zero past the length, so the first byte is the most significant
+            // after a byte swap: equal padded words differ at most in length (a prefix, or a
+            // string that continues with NUL bytes), and the shorter one is smaller.
+            let (x, y) = (
+                (*a).inline_bits().swap_bytes(),
+                (*b).inline_bits().swap_bytes(),
+            );
+            return x.cmp(&y).then((*a).len().cmp(&(*b).len())) as i64;
+        }
+        bytes(a).cmp(bytes(b)) as i64
+    }
 }
 
 /// Hash of a string's bytes (equal strings hash equally).
@@ -3667,6 +3679,38 @@ mod tests {
     fn st(t: &str) -> *const StrVal {
         Box::leak(Box::new(from_bytes(t.as_bytes())))
     }
+    #[test]
+    fn compare_matches_byte_order_for_inline_and_heap_strings() {
+        let long = "abcdefghijklmnopqrstuvwxyz";
+        let samples = [
+            "",
+            "a",
+            "a\0",
+            "a\0b",
+            "ab",
+            "b",
+            "w123-4",
+            "w123-45",
+            "é",
+            "éa",
+            "\u{10ffff}",
+            "123456789012345",
+            "12345678901234x",
+            long,
+            "abcdefghijklmnopqrstuvwxyA",
+            "abcdefghijklmno",
+            "abcdefghijklmnoP",
+        ];
+        for a in samples {
+            for b in samples {
+                let want = a.as_bytes().cmp(b.as_bytes()) as i64;
+                // SAFETY: both strings are live.
+                let got = unsafe { msrt_string_compare(st(a), st(b)) };
+                assert_eq!(got, want, "{a:?} against {b:?}");
+            }
+        }
+    }
+
     fn txt(s: &StrVal) -> S {
         // SAFETY: tests pass live strings.
         S::from_utf8_lossy(unsafe { bytes(s) }).into_owned()
