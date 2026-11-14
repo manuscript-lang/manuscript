@@ -673,6 +673,28 @@ impl E<'_, '_, '_> {
         self.label(&cont);
     }
 
+    /// Starts a nested drop of recursive data, or parks the value `vs` on the runtime's worklist
+    /// and returns when the nesting is at its limit (`msrt_drop_enter`).
+    fn park_deep_drop(&mut self, ty: Ty, leaves: &[Leaf], vs: &[Val]) {
+        let defer = self.rt("msrt_drop_enter", &[], true).expect("result");
+        let defer = self.test(&defer);
+        let (park, run) = (self.fresh("p"), self.fresh("r"));
+        self.b.cond_br(&defer, &park, &run);
+        self.label(&park);
+        let blk = self.alloc(&Val::int(mem_layout(leaves).size.max(1) as i64));
+        store_leaves(&mut self.b, &blk, leaves, vs);
+        let sym = self.g.glue_symbol(Glue::SlotDrop, ty);
+        self.decls
+            .push(leaf_sig(Glue::SlotDrop, leaves).declare(&sym));
+        let (f, p) = (
+            self.b.ptrtoint(&Val::new(format!("@\"{sym}\""), LTy::Ptr)),
+            self.b.ptrtoint(&blk),
+        );
+        self.rt("msrt_drop_defer", &[&f, &p], false);
+        self.b.ret(None);
+        self.label(&run);
+    }
+
     fn declare(&mut self, name: &str, ret: &str, params: &str) {
         self.decls.push((
             name.to_string(),
@@ -1549,7 +1571,16 @@ pub fn emit(g: &mut Gen, kind: Glue, ty: Ty, types: &Types, loc: usize) -> Emitt
     match kind {
         Glue::Drop => {
             let vs = value(&mut e, 0);
+            // Data that can contain itself bounds its nesting (`ms_rt::dropq`): past the limit
+            // the value is parked on the runtime's worklist and dropped later.
+            let bounded = e.g.m.drop_recurses(ty);
+            if bounded {
+                e.park_deep_drop(ty, &leaves, &vs);
+            }
             e.glue_drop(ty, &vs);
+            if bounded {
+                e.rt("msrt_drop_leave", &[], false);
+            }
             e.b.ret(None);
         }
         Glue::Clone => {

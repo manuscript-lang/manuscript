@@ -31,6 +31,7 @@ pub mod bits;
 pub mod cabi;
 pub mod cancel;
 pub mod desc;
+pub mod dropq;
 pub mod fault;
 pub mod ffi;
 pub mod global;

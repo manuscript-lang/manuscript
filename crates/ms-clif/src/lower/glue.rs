@@ -51,7 +51,29 @@ impl<'a, 'm> Lower<'a, 'm> {
         let params = self.b.block_params(entry).to_vec();
         match kind {
             Glue::Drop => {
+                // Data that can contain itself bounds its nesting (`ms_rt::dropq`): past the
+                // limit the value is parked on the runtime's worklist and dropped later.
+                let bounded = self.g.m.drop_recurses(ty);
+                if bounded {
+                    let defer = self.rt_call("msrt_drop_enter", &[])[0];
+                    let park = self.b.create_block();
+                    let run = self.b.create_block();
+                    self.b.ins().brif(defer, park, &[], run, &[]);
+                    self.b.switch_to_block(park);
+                    let leaves = self.g.lay.leaves(ty);
+                    let blk = self.alloc(mem_layout(&leaves).size as i64);
+                    self.store_leaves(blk, 0, &leaves, &params);
+                    let slot_drop = self.g.glue(Glue::SlotDrop, ty);
+                    let r = self.fref(slot_drop);
+                    let fa = self.b.ins().func_addr(types::I64, r);
+                    self.rt_call("msrt_drop_defer", &[fa, blk]);
+                    self.b.ins().return_(&[]);
+                    self.b.switch_to_block(run);
+                }
                 self.glue_drop(ty, &params);
+                if bounded {
+                    self.rt_call("msrt_drop_leave", &[]);
+                }
                 self.b.ins().return_(&[]);
             }
             Glue::Clone => {

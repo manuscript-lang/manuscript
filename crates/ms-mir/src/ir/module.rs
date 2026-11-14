@@ -288,6 +288,46 @@ impl Module {
         }
     }
 
+    /// Whether dropping a value of `ty` can drop a value of `ty` again below it: the type
+    /// reaches itself through its fields, cases, optional payloads and collection elements
+    /// (`type Json: ... List[Json]`). Its drop glue bounds its own nesting (`ms_rt::dropq`).
+    pub fn drop_recurses(&self, ty: Ty) -> bool {
+        let mut seen = Vec::new();
+        let mut todo = self.drop_children(ty);
+        while let Some(t) = todo.pop() {
+            if t == ty {
+                return true;
+            }
+            if !seen.contains(&t) {
+                seen.push(t);
+                todo.extend(self.drop_children(t));
+            }
+        }
+        false
+    }
+
+    /// The types whose values a drop of `ty` drops.
+    fn drop_children(&self, ty: Ty) -> Vec<Ty> {
+        use crate::types::Native;
+        match self.types.kind(ty) {
+            TyKind::Opt(inner) | TyKind::List(inner) => vec![*inner],
+            TyKind::Obj(Native::Map | Native::Set, args) => args.clone(),
+            TyKind::Type(r) => self.type_defs[r.index()]
+                .fields
+                .iter()
+                .map(|f| f.1)
+                .collect(),
+            TyKind::Alt(a) => {
+                let def = &self.alts[a.index()];
+                (0..def.cases.len())
+                    .filter(|i| !def.borrows(*i))
+                    .flat_map(|i| def.cases[i].fields.iter().map(|f| f.1))
+                    .collect()
+            }
+            _ => Vec::new(),
+        }
+    }
+
     /// Whether dropping a value of `ty` only returns memory: strings, bytes, lists, maps, sets,
     /// big integers, optionals, types and alternatives made of such. A closure, an interface
     /// value or an opaque runtime handle may own a file or a connection, so it is not plain.
