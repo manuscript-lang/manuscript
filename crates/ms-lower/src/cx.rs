@@ -89,6 +89,8 @@ pub enum HelperKey {
     MapProbe(crate::rtinline::Shape, crate::rtinline::Answer),
     /// The inlinable fast path of `String.view`.
     StringView,
+    /// The inlinable fixed-width `Bytes` read.
+    BytesReadWord,
     /// The close of an owner whose failure is dropped: a function of its own, by the type it closes.
     CloseSilent(MTy, crate::close::CloseKind),
     /// The close of a loop's cursor over an owned list of the given type, closing the elements it

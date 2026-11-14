@@ -1,6 +1,6 @@
 import (
-	StringBuilder from "@std/string_builder.ms",
 	Bytes from "@std/bytes.ms",
+	StringBuilder from "@std/string_builder.ms",
 	monotonic from "@std/time.ms",
 )
 
@@ -31,12 +31,16 @@ fn map_str_get(m: Map[String, Int], keys: List[String], n: Int) Int:
 
 fn builder(n: Int) Int:
 	var total = 0
+
 	for r in 0..n:
 		var sb = StringBuilder()
+
 		for i in 0..100:
 			sb.append("ab")
 			sb.append("cdefghijklmnopqrst")
+
 		total += sb.to_string().length()
+
 	return total
 
 fn read_words(b: Bytes, n: Int) Int:
@@ -58,12 +62,15 @@ fn main() Unit:
 	var mi = Map[Int, Int]()
 	var ms = Map[String, Int]()
 	var keys = List[String]()
+
 	for i in 0..1000:
 		set.add(i * 2)
 		mi.add(i * 2, i)
+
 		k := "key{i}"
 		ms.add(k.clone(), i)
 		keys.append(k)
+
 	b := "abcdefghij".repeat(100).get().to_bytes()
 	text := "abcdefghij".repeat(100).get()
 	t0 := monotonic().tick

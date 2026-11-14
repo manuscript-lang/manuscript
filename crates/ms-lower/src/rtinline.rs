@@ -120,21 +120,81 @@ fn string_hash(b: &mut FuncBuilder<'_>, key: Value, k: Value) -> Value {
     b.seal_block(short);
     b.seal_block(long);
     b.switch_to(long);
-    let ext = runtime_fn(b.m, "msrt_string_hash", &[MTy::STR], MTy::INT);
-    let called = b.call_rt(ext, &[k]);
-    b.def_var(hash, called);
-    b.br(done, &[]);
-    b.switch_to(short);
-    // Length, and the bytes past the eighth (the string keeps the rest of its words zero).
-    let len = int(b, Op::Ushr, w1, 56);
-    let n = int(b, Op::And, len, 15);
-    let high = int(b, Op::And, w1, (1 << 56) - 1);
+    // A text of sixteen bytes or more is folded here, eight bytes at a time; the rare short text
+    // that is not inline calls the runtime, which hashes it the same way.
     let fold = |b: &mut FuncBuilder<'_>, x: Value, m: i64| {
         let m = b.iconst(m);
         let lo = b.binop(Op::IMul, x, m);
         let hi = b.binop(Op::UMulHi, x, m);
         b.binop(Op::Xor, lo, hi)
     };
+    let size = int(b, Op::And, w1, (1 << 61) - 1);
+    let c16 = b.iconst(16);
+    let wide = b.icmp(Cc::Ge, size, c16);
+    let (fold_in, call, header, body, tail) = (
+        b.new_block(),
+        b.new_block(),
+        b.new_block(),
+        b.new_block(),
+        b.new_block(),
+    );
+    b.br_if(wide, fold_in, &[], call, &[]);
+    b.seal_block(fold_in);
+    b.seal_block(call);
+    b.switch_to(call);
+    let ext = runtime_fn(b.m, "msrt_string_hash", &[MTy::STR], MTy::INT);
+    let called = b.call_rt(ext, &[k]);
+    b.def_var(hash, called);
+    b.br(done, &[]);
+    b.switch_to(fold_in);
+    let data = load(b, key, 0, MTy::PTR);
+    let seed = int(b, Op::IMul, size, K1);
+    let h0 = int(b, Op::Xor, seed, K0);
+    let acc = b.declare_var(MTy::INT, Mode::Borrow);
+    let at = b.declare_var(MTy::INT, Mode::Borrow);
+    b.def_var(acc, h0);
+    let zero = b.iconst(0);
+    b.def_var(at, zero);
+    b.br(header, &[]);
+    b.switch_to(header);
+    let i = b.use_var(at);
+    let end = int(b, Op::IAdd, i, 8);
+    let more = b.icmp(Cc::Le, end, size);
+    b.br_if(more, body, &[], tail, &[]);
+    b.seal_block(body);
+    b.seal_block(tail);
+    b.switch_to(body);
+    let word_at = b
+        .emit(Op::PtrAdd, &[data, i], Imm::None, Some(MTy::PTR))
+        .expect("ptr.add");
+    let word = b
+        .emit(Op::PtrLoadU, &[word_at], Imm::Int(8), Some(MTy::INT))
+        .expect("ptr.loadu");
+    let h = b.use_var(acc);
+    let mixed = b.binop(Op::Xor, h, word);
+    let h = fold(b, mixed, K1);
+    b.def_var(acc, h);
+    b.def_var(at, end);
+    b.br(header, &[]);
+    b.seal_block(header);
+    b.switch_to(tail);
+    let back = int(b, Op::ISub, size, 8);
+    let last_at = b
+        .emit(Op::PtrAdd, &[data, back], Imm::None, Some(MTy::PTR))
+        .expect("ptr.add");
+    let last = b
+        .emit(Op::PtrLoadU, &[last_at], Imm::Int(8), Some(MTy::INT))
+        .expect("ptr.loadu");
+    let h = b.use_var(acc);
+    let mixed = b.binop(Op::Xor, h, last);
+    let hashed = fold(b, mixed, K0);
+    b.def_var(hash, hashed);
+    b.br(done, &[]);
+    b.switch_to(short);
+    // Length, and the bytes past the eighth (the string keeps the rest of its words zero).
+    let len = int(b, Op::Ushr, w1, 56);
+    let n = int(b, Op::And, len, 15);
+    let high = int(b, Op::And, w1, (1 << 56) - 1);
     // The seed is the length; the two words are folded in turn (see `hash_bytes`).
     let seed = int(b, Op::IMul, n, K1);
     let h0 = int(b, Op::Xor, seed, K0);
@@ -236,6 +296,53 @@ fn find(b: &mut FuncBuilder<'_>, shape: Shape, m: Value, key: Value) -> Value {
         b.br_if(same, matched, &[], compare, &[]);
         b.seal_block(compare);
         b.switch_to(compare);
+        // Two blocks of 16 to 32 bytes: four overlapping word compares cover every byte.
+        let (s1, k1) = (load(b, slot, 16, MTy::INT), load(b, key, 8, MTy::INT));
+        let mask = (1 << 61) - 1;
+        let (sn, kn) = (int(b, Op::And, s1, mask), int(b, Op::And, k1, mask));
+        let (st, kt) = (int(b, Op::Ushr, s1, 62), int(b, Op::Ushr, k1, 62));
+        let one = b.iconst(1);
+        let (sf, kf) = (b.icmp(Cc::Ne, st, one), b.icmp(Cc::Ne, kt, one));
+        let same_len = b.icmp(Cc::Eq, sn, kn);
+        let c16 = b.iconst(16);
+        let c32 = b.iconst(32);
+        let (lo, hi) = (b.icmp(Cc::Ge, sn, c16), b.icmp(Cc::Le, sn, c32));
+        let mut wide = b.binop(Op::And, sf, kf);
+        for cond in [same_len, lo, hi] {
+            wide = b.binop(Op::And, wide, cond);
+        }
+        let (blocks, general) = (b.new_block(), b.new_block());
+        b.br_if(wide, blocks, &[], general, &[]);
+        b.seal_block(blocks);
+        b.seal_block(general);
+        b.switch_to(blocks);
+        let (sp, kp) = (load(b, slot, 8, MTy::PTR), load(b, key, 0, MTy::PTR));
+        let back = int(b, Op::ISub, sn, 8);
+        let back2 = int(b, Op::ISub, sn, 16);
+        let eight = b.iconst(8);
+        let mut all = b.bconst(true);
+        for off in [None, Some(eight), Some(back2), Some(back)] {
+            let (x, y) = match off {
+                None => (sp, kp),
+                Some(off) => (
+                    b.emit(Op::PtrAdd, &[sp, off], Imm::None, Some(MTy::PTR))
+                        .expect("ptr.add"),
+                    b.emit(Op::PtrAdd, &[kp, off], Imm::None, Some(MTy::PTR))
+                        .expect("ptr.add"),
+                ),
+            };
+            let (u, v) = (
+                b.emit(Op::PtrLoadU, &[x], Imm::Int(8), Some(MTy::INT))
+                    .expect("ptr.loadu"),
+                b.emit(Op::PtrLoadU, &[y], Imm::Int(8), Some(MTy::INT))
+                    .expect("ptr.loadu"),
+            );
+            let e = b.icmp(Cc::Eq, u, v);
+            all = b.binop(Op::And, all, e);
+        }
+        b.def_var(verdict, all);
+        b.br(matched, &[]);
+        b.switch_to(general);
         let stored_key = load(b, slot, 8, MTy::STR);
         let eq = string_eq(b, stored_key, k);
         b.def_var(verdict, eq);
@@ -278,6 +385,10 @@ impl FnLower<'_> {
     /// the key and value descriptors (unused), the address of the key, and for a `get` the
     /// address to copy the value to.
     pub(crate) fn inline_probe(&mut self, sym: &str, args: &[Value], ret: MTy) -> Option<Value> {
+        if sym == "msrt_bytes_read_word" && args.len() == 5 {
+            let f = self.read_word_fn();
+            return Some(self.b.call(f, args));
+        }
         if sym == "msrt_string_view" {
             let f = self.view_fn();
             return Some(self.b.call(f, args));
@@ -554,4 +665,96 @@ fn pack_short(b: &mut FuncBuilder<'_>, p: Value, n: Value) -> (Value, Value) {
     b.seal_block(join);
     b.switch_to(join);
     (b.use_var(lo_v), b.use_var(hi_v))
+}
+
+impl FnLower<'_> {
+    /// The generated `Bytes` fixed-width read (`msrt_bytes_read_word`): with the offset in range
+    /// and a little-endian read (or one byte), one unaligned load into `out` and a zero status;
+    /// big-endian reads and a bad width call the runtime.
+    fn read_word_fn(&mut self) -> FuncId {
+        let key = HelperKey::BytesReadWord;
+        if let Some(f) = self.cx.helpers.get(&key) {
+            return *f;
+        }
+        let param = |ty| Param {
+            ty,
+            mode: Mode::Borrow,
+        };
+        let tys = [MTy::BYTES, MTy::INT, MTy::INT, MTy::BOOL, MTy::PTR];
+        let ext = runtime_fn(self.b.m, "msrt_bytes_read_word", &tys, MTy::INT);
+        let mut b = FuncBuilder::new(
+            self.b.m,
+            "bytes_read_word",
+            tys.iter().map(|t| param(*t)).collect(),
+            MTy::INT,
+        );
+        b.func_mut().linkage = Linkage::Internal;
+        b.func_mut().inline = InlineHint::Always;
+        let ps = b.params();
+        let (bytes, at, width, little, out) = (ps[0], ps[1], ps[2], ps[3], ps[4]);
+        let (check, fast, slow, fail, store) = (
+            b.new_block(),
+            b.new_block(),
+            b.new_block(),
+            b.new_block(),
+            b.new_block(),
+        );
+        let loaded = b.add_block_param(store, MTy::INT, Mode::Borrow);
+        // The byte list through its memory form: data pointer, then length.
+        let vec = b
+            .emit(Op::Slot, &[], Imm::Ty(MTy::BYTES), Some(MTy::PTR))
+            .expect("slot");
+        b.emit(Op::Store, &[vec, bytes], Imm::None, None);
+        let len = load(&mut b, vec, 8, MTy::INT);
+        let zero = b.iconst(0);
+        let rest = b.binop(Op::ISub, len, at);
+        let (a, c, d) = (
+            b.icmp(Cc::Ge, at, zero),
+            b.icmp(Cc::Le, at, len),
+            b.icmp(Cc::Ge, rest, width),
+        );
+        let ok = b.binop(Op::And, a, c);
+        let ok = b.binop(Op::And, ok, d);
+        b.br_if(ok, check, &[], fail, &[]);
+        b.seal_block(check);
+        b.switch_to(check);
+        let one = b.iconst(1);
+        let single = b.icmp(Cc::Eq, width, one);
+        let direct = b.binop(Op::Or, little, single);
+        b.br_if(direct, fast, &[], slow, &[]);
+        b.seal_block(fast);
+        b.seal_block(slow);
+        b.switch_to(fast);
+        let data = load(&mut b, vec, 0, MTy::PTR);
+        let p = b
+            .emit(Op::PtrAdd, &[data, at], Imm::None, Some(MTy::PTR))
+            .expect("ptr.add");
+        let blocks: Vec<(i64, Block)> = [1, 2, 4, 8].iter().map(|w| (*w, b.new_block())).collect();
+        b.switch(width, &blocks, slow);
+        for (w, blk) in blocks {
+            b.seal_block(blk);
+            b.switch_to(blk);
+            let x = b
+                .emit(Op::PtrLoadU, &[p], Imm::Int(w), Some(MTy::INT))
+                .expect("ptr.loadu");
+            b.br(store, &[x]);
+        }
+        b.seal_block(store);
+        b.switch_to(store);
+        b.emit(Op::Store, &[out, loaded], Imm::None, None);
+        let ok = b.iconst(0);
+        b.ret(Some(ok));
+        b.seal_block(slow);
+        b.switch_to(slow);
+        let status = b.call_rt(ext, &[bytes, at, width, little, out]);
+        b.ret(Some(status));
+        b.seal_block(fail);
+        b.switch_to(fail);
+        let oor = b.iconst(2);
+        b.ret(Some(oor));
+        let func = b.into_func();
+        let fid = self.b.m.add_func(func);
+        self.cx.helpers.insert(key, fid);
+        fid
+    }
 }

@@ -12,7 +12,7 @@ Rerun: `ms build bench/perf/rt-hot-retired/hot.ms -o /tmp/hot && /tmp/hot` (prin
 | `Map[Int, Int].get` | 13,400 | 8,600 |
 | `Map[String, Int].get` (inline keys) | 17,000 | 17,100 |
 | `StringBuilder.append` x200 | 689,000 | 662,000 |
-| `Bytes.int32_le` | 11,000 | 12,200 to 13,700 (a call now) |
+| `Bytes.int32_le` | 11,400 | 6,400 |
 | `String.view` | 15,500 | 9,200 |
 
 `Map[String, Int].get` is 27.8M instructions on `main` and 27.2M here for 300k lookups.
@@ -21,8 +21,8 @@ Rerun: `ms build bench/perf/rt-hot-retired/hot.ms -o /tmp/hot && /tmp/hot` (prin
 
 | task | main (ms) | this change (ms) | instructions |
 | --- | --- | --- | --- |
-| logstats | 69.6 | 74.0 | +3.3% (path keys are over 15 bytes, so hash and equality are calls) |
-| csvgroup | 173.4 | 183.1 | +1% |
+| logstats | 69.6 | n/a | 893M against 901M |
+| csvgroup | 173.4 | n/a | 2,564M against 2,543M (+0.8%, within wall-clock noise; cause not isolated) |
 | wordfreq | 270.1 | 233.8 | fewer |
 | sortrecords | 298.0 | 295.9 | equal |
 | grep | 36.1 | 35.1 | equal |
@@ -30,6 +30,4 @@ Rerun: `ms build bench/perf/rt-hot-retired/hot.ms -o /tmp/hot && /tmp/hot` (prin
 | dedupe | 305.1 | 255.6 | fewer |
 | report | 174.7 | 173.4 | 1,757M against 1,791M |
 
-Open gaps: lookups with keys of 16 bytes or more call `msrt_string_hash` and `msrt_string_eq` (about 20 instructions each per lookup), and `Bytes.int32_le` calls `msrt_bytes_read_word`. Both were inlined by the hot crate; the Manuscript-side replacement would need a word loop in the generated MIR.
-
-Compile time of `wordfreq`: 0.59 s here against 0.65 s on `main`.
+Keys of 16 bytes or more hash inline, and keys of 16 to 32 bytes compare with four overlapping word loads; `Bytes.int32_le` and the other fixed-width readers inline. The one remaining difference is csvgroup at +0.8% instructions.
