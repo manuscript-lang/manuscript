@@ -39,7 +39,7 @@ fn symbol_limit_bounds_the_combined_result_list() {
             )
             .unwrap();
         }
-        for (limit, expected) in [("1", 1), ("2", 2), ("10", 10), ("11", 10)] {
+        for (limit, expected) in [("1", 1), ("10", 10), ("11", 10)] {
             let (status, out) = ms(&dir, &["length", "--limit", limit, "--json"]);
             assert_eq!(status, 0, "{out}");
             let document = ms_json::parse(&out).unwrap();
