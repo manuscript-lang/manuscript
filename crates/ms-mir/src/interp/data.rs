@@ -285,16 +285,6 @@ impl Interp<'_> {
                 };
                 ops.set(Val::Int(if s.is_ascii() { s.len() as i64 } else { -1 }));
             }
-            Op::StrEqFast => {
-                let (Val::Str(a), Val::Str(b)) = (
-                    &ops.regs[inst.args[0].index()],
-                    &ops.regs[inst.args[1].index()],
-                ) else {
-                    return Err(Raw::internal("str.eq_fast on non-string"));
-                };
-                // The interpreter decides every comparison; the lowering's fallback never runs.
-                ops.set(Val::Int(i64::from(a == b)));
-            }
             Op::StrEqLit => {
                 let (Val::Str(a), Imm::Str(id)) = (&ops.regs[inst.args[0].index()], inst.imm)
                 else {

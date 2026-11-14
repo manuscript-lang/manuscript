@@ -125,6 +125,17 @@ int64_t msrt_string_length(const uint64_t *s) {
   for (uint64_t i = 0; i < n; i++) if ((p[i] & 0xC0) != 0x80) count++;
   return count;
 }
+/* Byte equality of two strings, as `msrt_string_eq`: the generated code calls it only for two
+   distinct blocks of one length, so the lengths already match unless a test calls it directly. */
+uint8_t msrt_string_eq(const uint64_t *a, const uint64_t *b) {
+  uint64_t ta = a[1], tb = b[1];
+  uint64_t na = (ta >> 62) == 1 ? (ta >> 56) & 15 : ta & ((1ULL << 61) - 1);
+  uint64_t nb = (tb >> 62) == 1 ? (tb >> 56) & 15 : tb & ((1ULL << 61) - 1);
+  if (na != nb) return 0;
+  const uint8_t *pa = (ta >> 62) == 1 ? (const uint8_t *)a : (const uint8_t *)a[0];
+  const uint8_t *pb = (tb >> 62) == 1 ? (const uint8_t *)b : (const uint8_t *)b[0];
+  return memcmp(pa, pb, na) == 0;
+}
 uint8_t *msrt_realloc(uint8_t *p, size_t n) {
   if (!p) return msrt_alloc(n);
   uint8_t *q = realloc(p, n ? n : 1);

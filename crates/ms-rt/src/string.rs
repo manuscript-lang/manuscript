@@ -309,7 +309,7 @@ unsafe fn walk_sub_scalars(s: *const StrVal, a: usize, b: usize) -> Option<StrVa
 
 /// C view: `msrt_string_eq(a: *const StrVal, b: *const StrVal) -> u8`
 ///
-/// The compiler decides most comparisons inline (`str.eq_fast`, `str.eq_lit`) and calls this
+/// The compiler decides most comparisons inline (the backends decide it from the words; `str.eq_lit`) and calls this
 /// for two distinct blocks of one length.
 #[unsafe(no_mangle)]
 // ms: leaf pure domain=string
