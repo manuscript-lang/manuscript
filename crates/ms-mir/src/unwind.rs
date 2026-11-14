@@ -72,7 +72,10 @@ pub fn run(m: &mut Module) -> bool {
     };
     let mut changed = false;
     for fi in 0..count {
-        let mut f = std::mem::replace(&mut m.funcs[fi], Func::new("", Vec::new(), Ty::UNIT));
+        // The stand-in keeps the signature, so a recursive call still reads which arguments
+        // it consumes.
+        let stand_in = Func::new("", m.funcs[fi].params.clone(), m.funcs[fi].ret);
+        let mut f = std::mem::replace(&mut m.funcs[fi], stand_in);
         changed |= function(m, &mut cx, &mut f);
         m.funcs[fi] = f;
     }
