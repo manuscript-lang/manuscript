@@ -165,9 +165,9 @@ jobs:
           cache-hit: ${{ steps.sccache.outputs.cache-hit }}
           primary-key: ${{ steps.sccache.outputs.primary-key }}
 
-  # The pull request time budget (AGENTS.md, wiki/repository/pull-request-ci-has-a-five-minute-budget.md): each
-  # Linux job of a pull request finishes in under 5 minutes. Not part of `Platform checks`, so a slow run
-  # shows a warning annotation without blocking the merge queue of other work.
+  # The pull request time budget (AGENTS.md, wiki/repository/pull-request-ci-has-a-ten-minute-budget.md): each
+  # Linux job of a pull request finishes in under 10 minutes. `Platform checks` requires it, so an over-budget
+  # pull request cannot merge.
   budget:
     name: Time budget
     needs: rust
@@ -176,7 +176,7 @@ jobs:
     permissions:
       actions: read
     env:
-      BUDGET_SECONDS: '300'
+      BUDGET_SECONDS: '600'
       GH_TOKEN: ${{ github.token }}
     steps:
       - name: Every Linux job is within the budget
@@ -188,22 +188,26 @@ jobs:
           done < <(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs" --paginate \
             --jq '.jobs[] | select(.name | startswith("linux-")) | "\(.name | gsub(" "; "_")) \((.completed_at | fromdate) - (.started_at | fromdate))"')
           if [ "$over" = 1 ]; then
-            # Report-only until the budget is met: a warning annotation, never a failure that blocks merging.
-            echo "::warning::A pull request job is over the ${BUDGET_SECONDS}s budget: cut a test or a step (see AGENTS.md)."
+            echo "::error::A pull request job is over the ${BUDGET_SECONDS}s budget: cut a test or a step (see AGENTS.md)."
+            exit 1
           fi
 
   # The sum of the jobs above, one name for a ruleset to require.
   platforms:
     name: Platform checks
     if: always()
-    needs: [due, rust]
+    needs: [due, rust, budget]
     runs-on: ubuntu-latest
     steps:
       - name: Require every platform leg
         env:
           RESULT: ${{ needs.rust.result }}
+          BUDGET: ${{ needs.budget.result }}
           DUE: ${{ needs.due.outputs.run }}
-        run: test "$RESULT" = success || test "$DUE" = false
+        run: |
+          # The budget job runs on pull requests only; it is skipped elsewhere or when a leg already failed.
+          test "$BUDGET" != failure || exit 1
+          test "$RESULT" = success || test "$DUE" = false
 
   pages:
     name: Publish Pages docs
