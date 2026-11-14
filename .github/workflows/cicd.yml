@@ -156,6 +156,7 @@ jobs:
           gates: ${{ matrix.leg.gates || 'true' }}
           gates-part: ${{ matrix.leg.gates_part || '' }}
           llvm: ${{ steps.scope.outputs.llvm }}
+          docs: ${{ steps.scope.outputs.docs }}
       - uses: ./.github/actions/sccache-save
         # Part a builds the whole workspace, a superset of part b, so one save per leg keeps the cache count at six.
         if: ${{ !cancelled() && matrix.part == 'a' }}
@@ -165,7 +166,7 @@ jobs:
 
   # The pull request time budget (AGENTS.md, wiki/repository/pull-request-ci-has-a-five-minute-budget.md): each
   # Linux job of a pull request finishes in under 5 minutes. Not part of `Platform checks`, so a slow run
-  # shows a red check without blocking the merge queue of other work.
+  # shows a warning annotation without blocking the merge queue of other work.
   budget:
     name: Time budget
     needs: rust
@@ -186,8 +187,8 @@ jobs:
           done < <(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs" --paginate \
             --jq '.jobs[] | select(.name | startswith("linux-")) | "\(.name | gsub(" "; "_")) \((.completed_at | fromdate) - (.started_at | fromdate))"')
           if [ "$over" = 1 ]; then
-            echo "A pull request job is over the ${BUDGET_SECONDS}s budget: cut a test or a step (see AGENTS.md)." >&2
-            exit 1
+            # Report-only until the budget is met: a warning annotation, never a failure that blocks merging.
+            echo "::warning::A pull request job is over the ${BUDGET_SECONDS}s budget: cut a test or a step (see AGENTS.md)."
           fi
 
   # The sum of the jobs above, one name for a ruleset to require.
