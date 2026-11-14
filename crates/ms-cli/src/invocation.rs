@@ -671,7 +671,9 @@ pub fn validate(inv: &mut Invocation, io: &mut Io) -> Result<Plan, i32> {
             ),
         ));
     }
-    let kind = match BuildType::parse(&inv.build_type_name) {
+    // `ms test` and `ms run` compile with Cranelift (Debug) unless told otherwise: it builds
+    // several times faster. `ms build` and `ms bench` default to Release (LLVM).
+    let kind = match BuildType::parse_or(&inv.build_type_name, default_build_type(&command)) {
         Ok(kind) => kind,
         Err(message) => {
             let _ = writeln!(io.stderr, "{message}");
@@ -707,6 +709,14 @@ pub fn validate(inv: &mut Invocation, io: &mut Io) -> Result<Plan, i32> {
         ));
     }
     Ok(Plan { build_type: kind })
+}
+
+/// The build type a command uses when `--build-type` is absent.
+fn default_build_type(command: &str) -> BuildType {
+    match command {
+        "run" | "test" => BuildType::Debug,
+        _ => BuildType::Release,
+    }
 }
 
 /// Whether `flag` (without an inline `=value`) is followed by its value in the next argument.

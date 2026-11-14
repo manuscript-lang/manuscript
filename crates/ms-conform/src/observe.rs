@@ -186,7 +186,7 @@ fn process_fields(o: &mut Json, out: &Output, work: &Path) {
 }
 
 fn run_phase(ctx: &Ctx, fx: &Fixture, work: &Path, entry: &str) -> Json {
-    let mut args: Vec<&str> = vec!["run", entry];
+    let mut args: Vec<&str> = vec!["run", entry, "--build-type", "Release"];
     if !fx.args.is_empty() {
         args.push("--");
         args.extend(fx.args.iter().map(String::as_str));
@@ -517,7 +517,7 @@ fn strip_faults(report: &mut Json) {
 }
 
 fn test_phase(ctx: &Ctx, fx: &Fixture, work: &Path, entry: &str) -> Json {
-    let mut args: Vec<&str> = vec!["test", entry, "--json"];
+    let mut args: Vec<&str> = vec!["test", entry, "--json", "--build-type", "Release"];
     if !fx.args.is_empty() {
         args.push("--");
         args.extend(fx.args.iter().map(String::as_str));

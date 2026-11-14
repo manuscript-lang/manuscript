@@ -43,8 +43,13 @@ impl BuildType {
 
     /// Empty means Release, like `compiler.ParseBuildType`.
     pub fn parse(name: &str) -> Result<BuildType, String> {
+        BuildType::parse_or(name, BuildType::Release)
+    }
+
+    /// Like [`BuildType::parse`], with `default` for an empty name.
+    pub fn parse_or(name: &str, default: BuildType) -> Result<BuildType, String> {
         if name.is_empty() {
-            return Ok(BuildType::Release);
+            return Ok(default);
         }
         [BuildType::Debug, BuildType::Release, BuildType::MinSizeRel]
             .into_iter()
