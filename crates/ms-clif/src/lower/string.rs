@@ -86,29 +86,45 @@ impl<'a, 'm> Lower<'a, 'm> {
             self.b
                 .ins()
                 .icmp_imm_u(IntCC::UnsignedLessThan, below, (STR_INLINE - 1) as i64);
-        // Same second word: the same first word is the same string. Otherwise inline strings
-        // differ, and other kinds of one length compare their bytes.
+        // Most pairs differ in kind, length or inline bytes: that decides first. Then pairs with
+        // one tagged word need only their first words; the rest are of different kinds and equal
+        // only with one byte length.
+        let (mid, same, kinds, slow, join) = (
+            self.b.create_block(),
+            self.b.create_block(),
+            self.b.create_block(),
+            self.b.create_block(),
+            self.b.create_block(),
+        );
+        self.b.append_block_param(join, types::I8);
+        let unequal = self.b.ins().iconst(types::I8, 0);
+        self.b
+            .ins()
+            .brif(differ, join, &[BlockArg::Value(unequal)], mid, &[]);
+        self.b.switch_to_block(mid);
+        let is_same = self.b.ins().icmp_imm_s(IntCC::Equal, x, 0);
+        self.b.ins().brif(is_same, same, &[], kinds, &[]);
+        self.b.switch_to_block(same);
+        // The same first word is the same string; other inline strings differ, and other kinds
+        // of one length compare their bytes.
         let same_ptr = self.b.ins().icmp(IntCC::Equal, a[0], b[0]);
         let inline = self.str_is_inline(a[1]);
         let other_same = self.b.ins().select(inline, no, unknown);
-        let same_hi = self.b.ins().select(same_ptr, yes, other_same);
-        // Different kinds are equal only with the same byte length.
-        let (la, lb) = (self.str_byte_len(a[1]), self.str_byte_len(b[1]));
-        let same_len = self.b.ins().icmp(IntCC::Equal, la, lb);
-        let kinds = self.b.ins().select(same_len, unknown, no);
-        let is_same = self.b.ins().icmp_imm_s(IntCC::Equal, x, 0);
-        let rest = self.b.ins().select(is_same, same_hi, kinds);
-        let known = self.b.ins().select(differ, no, rest);
+        let known = self.b.ins().select(same_ptr, yes, other_same);
         let decided = self
             .b
             .ins()
             .icmp_imm_s(IntCC::SignedGreaterThanOrEqual, known, 0);
         let answer = self.b.ins().icmp_imm_s(IntCC::NotEqual, known, 0);
-        let (slow, join) = (self.b.create_block(), self.b.create_block());
-        self.b.append_block_param(join, types::I8);
         self.b
             .ins()
             .brif(decided, join, &[BlockArg::Value(answer)], slow, &[]);
+        self.b.switch_to_block(kinds);
+        let (la, lb) = (self.str_byte_len(a[1]), self.str_byte_len(b[1]));
+        let same_len = self.b.ins().icmp(IntCC::Equal, la, lb);
+        self.b
+            .ins()
+            .brif(same_len, slow, &[], join, &[BlockArg::Value(unequal)]);
         self.b.switch_to_block(slow);
         let r = self.call_extern_plain(f, inst);
         self.b.ins().jump(join, &[BlockArg::Value(r[0])]);

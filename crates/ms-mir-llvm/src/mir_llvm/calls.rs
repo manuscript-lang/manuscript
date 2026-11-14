@@ -129,25 +129,47 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         return;
     }
     if is_string_eq(m, inst) {
-        // Decide from the words; only two distinct blocks of one length call the runtime.
-        let known = super::lists::eq_words(
-            b,
-            &vals[&inst.args[0].index()],
-            &vals[&inst.args[1].index()],
+        // Decide from the words; only two distinct blocks of one length call the runtime. Most
+        // pairs differ in kind, length or inline bytes, which one xor decides before any branch;
+        // pairs with one tagged word need only their first words; the rest are of different kinds.
+        let (x, y) = (&vals[&inst.args[0].index()], &vals[&inst.args[1].index()]);
+        let (d, differ) = super::lists::eq_differ(b, x, y);
+        let n = cx.split;
+        let head = super::block_label(cx.block, n);
+        let (same, kinds, slow) = (
+            format!("d{}_{n}", cx.block),
+            format!("k{}_{n}", cx.block),
+            format!("e{}_{n}", cx.block),
         );
-        let decided = b.icmp("sge", &known, &Val::int(0));
-        let answer = b.icmp("ne", &known, &Val::int(0));
-        let head = super::block_label(cx.block, cx.split);
-        let slow = format!("e{}_{}", cx.block, cx.split);
         cx.split += 1;
         let join = super::block_label(cx.block, cx.split);
+        let (mid, tail) = (format!("f{}_{n}", cx.block), kinds.clone());
+        b.cond_br(&differ, &join, &mid);
+        b.label(&mid);
+        let same_word = b.icmp("eq", &d, &Val::int(0));
+        b.cond_br(&same_word, &same, &tail);
+        b.label(&same);
+        let known = super::lists::eq_same_tag(b, x, y);
+        let decided = b.icmp("sge", &known, &Val::int(0));
+        let answer = b.icmp("ne", &known, &Val::int(0));
         b.cond_br(&decided, &join, &slow);
+        b.label(&kinds);
+        let same_len = super::lists::eq_kinds_same_len(b, x, y);
+        b.cond_br(&same_len, &slow, &join);
         b.label(&slow);
         let called = [b.reserve(out[0].ty.clone())];
         call_rt(cx, inst, vals, &called, b);
         b.br(&join);
         b.label(&join);
-        b.phi(&out[0], &[(answer, head), (called[0].clone(), slow)]);
+        b.phi(
+            &out[0],
+            &[
+                (Val::bool(false), head),
+                (answer, same),
+                (Val::bool(false), kinds),
+                (called[0].clone(), slow),
+            ],
+        );
         return;
     }
     if is_strbuilder_append(m, inst) {
