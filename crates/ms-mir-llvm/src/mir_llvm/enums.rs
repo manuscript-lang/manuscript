@@ -752,8 +752,7 @@ fn boxed_optional(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut Fn
     let p = &vals[&inst.args[0].index()][0];
     read_payload(b, lay, inner, p, out);
     if inst.op == Op::OptUnbox {
-        let w = b.ptr_to_int(p);
-        b.call(&LTy::Void, "", "msrt_free", &[(w, "")]);
+        b.call(&LTy::Void, "", "msrt_free", &[(p.clone(), "")]);
     }
 }
 
@@ -793,8 +792,7 @@ fn release(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     }
     if boxed && !lay.alt_fields(a)[c as usize].is_empty() {
         types::declare_heap(cx);
-        let p = b.ptr_to_int(&own[0]);
-        b.call(&LTy::Void, "", "msrt_free", &[(p, "")]);
+        b.call(&LTy::Void, "", "msrt_free", &[(own[0].clone(), "")]);
     }
     // An inline unbox: the result leaves are the field's, converted out of their slots.
     if !boxed && let Some(out) = result {
