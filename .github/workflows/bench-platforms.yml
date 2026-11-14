@@ -96,10 +96,11 @@ jobs:
           rustc -O "${linker[@]}" -o platform_io_rust bench/perf/platform_io/main.rs
           ./platform_io_rust 2000 "$PWD/$ms" | tee platform-io-rust-${{ matrix.name }}.txt
       - name: Run bench/tools/platform_io
+        timeout-minutes: 5
         run: |
           ms=target/release/ms
           if [ "$RUNNER_OS" = Windows ]; then ms="$ms.exe"; fi
-          MS="$PWD/$ms" timeout 300 "$PWD/$ms" run bench/tools/platform_io.ms | tee platform-io-${{ matrix.name }}.txt
+          MS="$PWD/$ms" "$PWD/$ms" run bench/tools/platform_io.ms | tee platform-io-${{ matrix.name }}.txt
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
