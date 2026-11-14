@@ -128,7 +128,7 @@ pub(crate) struct TestFile {
 }
 
 /// Builds `main`: one closure per file that calls the file's harness with its tests, handed
-/// to `run_files` (`@std/test/runner.ms` `run_test_files`), whose status `main` returns.
+/// to `run_files` (`@std/internal/test_runner.ms` `run_test_files`), whose status `main` returns.
 pub(crate) fn build_file_runners(
     m: &mut Module,
     files: &[TestFile],

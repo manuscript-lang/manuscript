@@ -1,5 +1,5 @@
 //! The shared test fixture. A file with `make_fixture` hands one fixture to all of its tests:
-//! each test takes it as a final `var` parameter, and `@std/test/runner.ms`
+//! each test takes it as a final `var` parameter, and `@std/internal/test_runner.ms`
 //! `run_fixture_file` makes it and runs the `TestHooks` around the tests. This module finds
 //! the hooks the fixture type declares.
 

@@ -525,14 +525,14 @@ pub(crate) fn lower_tests(
         m.entry = Some(crate::runner::build_runner(&mut m, &ids)?);
         return Ok((m, names));
     }
-    // Test files run as promises under `@std/test/runner.ms`, each file's tests in order.
-    const RUNNER: &str = "@std/test/runner.ms";
+    // Test files run as promises under `@std/internal/test_runner.ms`, each file's tests in order.
+    const RUNNER: &str = "@std/internal/test_runner.ms";
     let find = |cx: &Cx, name: &str| {
         cx.callables
             .values()
             .find(|c| syms.str(c.module.file) == RUNNER && syms.str(c.name) == name)
             .cloned()
-            .ok_or_else(|| Error::new("the test runner @std/test/runner.ms is not loaded"))
+            .ok_or_else(|| Error::new("the test runner @std/internal/test_runner.ms is not loaded"))
     };
     let run_files = find(&cx, "run_test_files")?;
     let run_files = cx.function_for(&mut m, &run_files, &Subst::default())?;

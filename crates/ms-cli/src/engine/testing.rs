@@ -3,7 +3,7 @@
 //! # Tests
 //!
 //! The lowering builds one executable per `ms test` ([`ms_build::Lower::lower_tests`]) whose
-//! entry calls `run_test_files` in `@std/test/runner.ms`: every test file runs at once in its
+//! entry calls `run_test_files` in `@std/internal/test_runner.ms`: every test file runs at once in its
 //! own promise, a file's tests in order around one fixture. `MS_TEST_SELECT` names the test
 //! indices to run, `MS_TEST_TIMEOUT_NS` bounds each test's waits, and the harness appends
 //! records (start, output, result, fault) to the file `MS_TEST_RESULTS` names; see the
@@ -665,7 +665,26 @@ impl Runner<'_> {
                 let (ran, printed) = if !run.started.contains(&index) {
                     (Ran::NotRun(later.clone()), Vec::new())
                 } else if run.faults.contains_key(&file) {
-                    let ran = match Fault::from_text(why) {
+                    let record = run
+                        .fault_records
+                        .get(&file)
+                        .and_then(|bytes| ms_rt_abi::record::Record::decode(bytes));
+                    let fault = match record {
+                        Some(record) => {
+                            let mut fault = Fault::from_record(record);
+                            // The harness's own frames sit below the test's.
+                            if let Some(at) = fault
+                                .trace
+                                .iter()
+                                .position(|f| f.file.ends_with("internal/test_runner.ms"))
+                            {
+                                fault.trace.truncate(at);
+                            }
+                            Some(fault)
+                        }
+                        None => Fault::from_text(why),
+                    };
+                    let ran = match fault {
                         Some(fault) => Ran::Faulted(why.clone(), fault),
                         None => Ran::Failed(why.clone()),
                     };
@@ -694,7 +713,7 @@ impl Runner<'_> {
         all
     }
 
-    /// Runs the tests `indices` in one process under the harness in `@std/test/runner.ms`,
+    /// Runs the tests `indices` in one process under the harness in `@std/internal/test_runner.ms`,
     /// reading its records as they arrive. A test with no result past `--timeout` (plus a
     /// second, since the harness fails its next wait at the limit) never waits; the process is
     /// stopped.
@@ -918,6 +937,8 @@ struct Together {
     faults: std::collections::HashMap<usize, String>,
     /// Each test's standard output, in completion order, before its result.
     outputs: std::collections::HashMap<usize, std::collections::VecDeque<Vec<u8>>>,
+    /// A faulted file's encoded fault record (`ms_rt_abi::record`), when the runtime kept one.
+    fault_records: std::collections::HashMap<usize, Vec<u8>>,
     /// A faulted file's output since its last result.
     fault_outputs: std::collections::HashMap<usize, Vec<u8>>,
     /// Tests that had started and not reported when the process ended.
@@ -974,6 +995,8 @@ impl RecordReader {
                 next += size + 1;
                 if let Some(file) = key.strip_prefix('f').and_then(|f| f.parse().ok()) {
                     run.fault_outputs.insert(file, printed);
+                } else if let Some(file) = key.strip_prefix('r').and_then(|f| f.parse().ok()) {
+                    run.fault_records.insert(file, printed);
                 } else if let Ok(index) = key.parse() {
                     run.outputs.entry(index).or_default().push_back(printed);
                 }

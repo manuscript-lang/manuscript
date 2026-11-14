@@ -1,15 +1,16 @@
 import (
 	Placement, PromiseOptions, promise from "@std/concurrency/promise.ms",
-	environment from "@std/os/env.ms",
-	append_file from "@std/os/fs.ms",
 	Instant, monotonic from "@std/time.ms",
 
+	msstd_process_environment_map from "@std/internal/env.ms",
 	msrt_test_capture_current,
+	msrt_test_capture_fault,
 	msrt_test_capture_free,
 	msrt_test_capture_new,
 	msrt_test_capture_set,
 	msrt_test_capture_take,
-	msrt_test_deadline from "@std/internal/test.ms",
+	msrt_test_deadline,
+	msrt_test_record from "@std/internal/test.ms",
 )
 
 /*
@@ -26,10 +27,11 @@ with ETIMEDOUT after `MS_TEST_TIMEOUT_NS`, as a promise timeout does. Records go
 `\u{1}MSTEST <index> <status> <nanoseconds>\u{1}<message>\u{1}<site>` when it ends (status
 pass, fail or skip), or `\u{1}MSFAULT <file>\u{1}<message>` when a test of that file faulted.
 A test's standard output comes before its result as `\u{1}MSOUT <index> <bytes>`, a newline,
-the output and a newline; a faulted file's last output as `\u{1}MSOUT f<file> <bytes>`.
+the output and a newline; a faulted file's last output as `\u{1}MSOUT f<file> <bytes>` and
+its fault record (`ms_rt_abi::record`) as `\u{1}MSOUT r<file> <bytes>`.
 */
 export fn run_test_files(files: List[fn(List[Int], String) Unit]) Int:
-	environment := environment().get(Map[String, String]())
+	environment := msstd_process_environment_map().get(Map[String, String]())
 	results := environment.get_or("MS_TEST_RESULTS", "")
 	var selected = List[Int]()
 	for text in environment.get_or("MS_TEST_SELECT", "").split(","):
@@ -83,6 +85,7 @@ fn run_file(
 
 	if result.is_error():
 		output(results, "f{position}", msrt_test_capture_take(capture))
+		output(results, "r{position}", msrt_test_capture_fault(capture))
 		record(results, "\u{1}MSFAULT {position}\u{1}{fault_message(result.err())}\n")
 
 	msrt_test_capture_free(capture)
@@ -106,7 +109,7 @@ fn fault_message(cause: Error) String:
 	var kept = List[String]()
 
 	for text in report.trim_end().split("\n"):
-		if text.starts_with("  at @std/test/runner.ms:"): break
+		if text.starts_with("  at @std/internal/test_runner.ms:"): break
 
 		kept.append(text.clone())
 
@@ -238,4 +241,4 @@ fn output(results: String, key: String, text: String) Unit:
 	record(results, "\u{1}MSOUT {key} {text.byte_length()}\n{text}\n")
 
 fn record(results: String, text: String) Unit:
-	append_file(results, text).wait().get()
+	msrt_test_record(results, text)

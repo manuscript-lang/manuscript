@@ -20,3 +20,10 @@ export extern fn msrt_test_capture_current() Int
 // `MS_TEST_TIMEOUT_NS` from now (unset or 0: no bound) each fails with ETIMEDOUT, as a
 // promise timeout does.
 export extern fn msrt_test_deadline(on: Bool) Unit
+
+// The encoded fault record of the last task under capture `id` that faulted, or "";
+// taking it clears it.
+export extern fn msrt_test_capture_fault(id: Int) String
+
+// Appends `text` to the file at `path` (the test runner's results file), whole.
+export extern fn msrt_test_record(path: String, text: String) Unit

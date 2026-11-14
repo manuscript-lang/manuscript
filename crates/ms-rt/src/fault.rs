@@ -1151,6 +1151,18 @@ pub fn write_record(record: &Record) {
     }
 }
 
+/// The structured record of the fault whose message `msg` a guard just handed over, when it is
+/// still the last one raised (another thread's fault may have replaced it).
+pub fn take_record(msg: &ms_rt_abi::StrVal) -> Option<Record> {
+    // SAFETY: `msg` is a string the guard just produced.
+    let text = unsafe { core::slice::from_raw_parts(msg.data(), msg.len()) };
+    let mut last = LAST_RECORD.lock().ok()?;
+    if last.as_ref().is_some_and(|r| text.starts_with(&r.message)) {
+        return last.take();
+    }
+    None
+}
+
 /// Writes the last fault's record for the report `text` just printed. A record that does not
 /// describe `text` (an earlier recovered fault) is replaced by one holding only the text.
 #[cfg(not(test))]

@@ -114,7 +114,7 @@ fn append_capture(id: u64, data: &[u8], end: &[u8]) -> bool {
     true
 }
 
-/// A new, empty test output capture for the test runner (`@std/test/runner.ms`).
+/// A new, empty test output capture for the test runner (`@std/internal/test_runner.ms`).
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_test_capture_new() -> i64 {
     let id = NEXT_CAPTURE.fetch_add(1, Ordering::Relaxed);
@@ -173,6 +173,58 @@ pub unsafe extern "C-unwind" fn msrt_test_capture_take(id: i64, out: *mut StrVal
     drop(captures);
     // SAFETY: `out` is uninitialised memory for a string.
     unsafe { *out = crate::string::from_bytes(&text) };
+}
+
+/// Appends `text` to the file at `path` (the test runner's results file), whole: records from
+/// files running at once never interleave. Failure is ignored; the host reports the test as
+/// unfinished.
+///
+/// # Safety
+/// `path` and `text` are live strings.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_test_record(path: *const StrVal, text: *const StrVal) {
+    use std::io::Write;
+    static LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    // SAFETY: the caller passes live strings.
+    let (path, text) = unsafe { (crate::string::bytes(path), crate::string::bytes(text)) };
+    let Ok(path) = core::str::from_utf8(path) else {
+        return;
+    };
+    let _held = LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    if let Ok(mut file) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+    {
+        let _ = file.write_all(text);
+    }
+}
+
+/// Keeps the encoded record of a fault that ended a task under capture `id`, for
+/// `msrt_test_capture_fault`.
+pub(crate) fn capture_fault(id: u64, record: Vec<u8>) {
+    let mut faults = CAPTURE_FAULTS.lock().unwrap_or_else(|e| e.into_inner());
+    faults.retain(|(c, _)| *c != id);
+    faults.push((id, record));
+}
+
+static CAPTURE_FAULTS: std::sync::Mutex<Vec<(u64, Vec<u8>)>> = std::sync::Mutex::new(Vec::new());
+
+/// The encoded fault record (`ms_rt_abi::record`) of the last task under capture `id` that
+/// faulted, or an empty string; taking it clears it.
+///
+/// # Safety
+/// `out` is writable memory for a string.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_test_capture_fault(id: i64, out: *mut StrVal) {
+    let mut faults = CAPTURE_FAULTS.lock().unwrap_or_else(|e| e.into_inner());
+    let record = match faults.iter().position(|(c, _)| *c == id as u64) {
+        Some(at) => faults.swap_remove(at).1,
+        None => Vec::new(),
+    };
+    drop(faults);
+    // SAFETY: `out` is uninitialised memory for a string.
+    unsafe { *out = crate::string::from_bytes(&record) };
 }
 
 /// Ends capture `id`; later output of its tasks goes to standard output.

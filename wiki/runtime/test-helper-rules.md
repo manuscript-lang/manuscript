@@ -43,5 +43,5 @@ Verify: a faulting operation runs its cleanups LIFO and leaves the caller's pend
 Decision (Chinmay, 2026-11-14): `ms test` compiles one binary and runs every test file at once in a `Placement.Spread` promise; a file's tests run in order on one shared fixture. A fault stops the rest of its file; `skip(reason)?` is an `ESKIP` error so it ends only its test; a test that never waits is stopped by killing the process (cancellation is cooperative), and other files' unfinished tests rerun in a new process. Do not reintroduce a process per test or a second runner lane. A promise made in a loop reads loop variables in place (#3845): the harness uses a fork-join tree. Generated code that recurses without a stack-depth check overflows a promise task's 512 KB slot where the main task's 256 MB stack survived (#3851, #3857).
 
 Apply when: changing `ms test`, the harness, fixtures, timeouts or output capture.
-Evidence: [proposal](../../proposals/promise-test-runner.md), [harness](../../stdlib/test/runner.ms), [host](../../crates/ms-cli/src/engine/testing.rs).
+Evidence: [proposal](../../proposals/promise-test-runner.md), [harness](../../stdlib/internal/test_runner.ms), [host](../../crates/ms-cli/src/engine/testing.rs).
 Verify: the conformance test phase passes; `ms test` on a spinning test names it as timed out and finishes the other files.

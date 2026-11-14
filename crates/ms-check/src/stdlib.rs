@@ -1511,13 +1511,15 @@ impl Session {
                 &mut diagnostics,
             );
         }
-        // Test blocks run under the promise harness in `@std/test/runner.ms`.
+        // Test blocks run under the promise harness in `@std/internal/test_runner.ms`.
         let testing = modules.iter().any(|m| {
             m.decls
                 .iter()
                 .any(|d| matches!(&d.decl().kind, DeclKind::Test(t) if !t.bench))
         });
-        if testing && let Some(runner) = self.standard_source_module(n("@std/test/runner.ms")) {
+        if testing
+            && let Some(runner) = self.standard_source_module(n("@std/internal/test_runner.ms"))
+        {
             visit(
                 self.syms,
                 self,

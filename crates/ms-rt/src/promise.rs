@@ -691,6 +691,13 @@ pub(crate) fn task_ended(id: i64, status: u8, msg: &ms_rt_abi::StrVal, started: 
     } else {
         Vec::new()
     };
+    let capture = task::capture();
+    if status == 1
+        && capture != 0
+        && let Some(record) = fault::take_record(msg)
+    {
+        crate::io::capture_fault(capture, record.encode());
+    }
     sched::live_add(-1);
     // Ending drops the closure, which closes what it captured: like any implicit close that runs
     // shielded, since a cancelled task would otherwise be cancelled again at its first park.
