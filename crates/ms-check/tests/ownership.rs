@@ -3,19 +3,22 @@
 //! offending line with a trailing `// error: <text>` comment, and the checker
 //! must report exactly those diagnostics, one per marker, on those lines.
 
-use ms_check::{CheckOptions, ImportMap};
+use ms_check::{CheckOptions, ImportMap, Session};
 use std::path::Path;
+use std::rc::Rc;
 use std::sync::Arc;
 
-fn diagnostics(source: &str) -> Vec<(u32, String)> {
+/// One session per test, so the standard library is checked once instead of before each program.
+fn diagnostics(session: &Rc<Session>, source: &str) -> Vec<(u32, String)> {
     let syms = ms_syntax::Names::global();
     let file: Arc<str> = Arc::from("t.ms");
     let module = match ms_syntax::parser::parse(&file, source) {
         Ok(m) => m,
         Err(d) => return vec![(d.pos.line, format!("parse: {}", d.message))],
     };
-    let program = ms_check::check(
+    let program = ms_check::check_in(
         syms,
+        session,
         vec![ms_check::load_module(syms, &module)],
         ImportMap::default(),
         CheckOptions::default(),
@@ -69,9 +72,10 @@ fn run_on_big_stack(f: impl FnOnce() + Send + 'static) {
 #[test]
 fn accepted_programs_have_no_diagnostics() {
     run_on_big_stack(|| {
+        let session = Session::new();
         let mut failures = Vec::new();
         for (name, source) in sources("accept") {
-            let got = diagnostics(&source);
+            let got = diagnostics(&session, &source);
             if !got.is_empty() {
                 failures.push(format!("{name}: {got:#?}"));
             }
@@ -87,11 +91,12 @@ fn accepted_programs_have_no_diagnostics() {
 #[test]
 fn rejected_programs_report_exactly_the_marked_lines() {
     run_on_big_stack(|| {
+        let session = Session::new();
         let mut failures = Vec::new();
         for (name, source) in sources("reject") {
             let expected = markers(&source);
             assert!(!expected.is_empty(), "{name} has no `// error:` marker");
-            let mut got = diagnostics(&source);
+            let mut got = diagnostics(&session, &source);
             let mut missing = Vec::new();
             for (line, text) in &expected {
                 match got
