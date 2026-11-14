@@ -1,0 +1,4 @@
+[project]
+name = "html-bench"
+source = "./src"
+entry = "./src/main.ms"
