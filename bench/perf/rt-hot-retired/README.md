@@ -34,4 +34,4 @@ Output is byte-identical to `main` for all eight programs. Instructions from cal
 
 Keys of 16 bytes or more hash inline, keys of 16 to 32 bytes compare with four overlapping word loads, `Bytes` fixed-width readers inline, and a literal needle of two or more bytes calls the general `contains` directly.
 
-Open gap, 1 to 2.5% in the map-heavy programs: `msrt_map_entry_ptrs` (one step of a map `for` loop) was inlined with constant descriptors by the hot crate and is a call now, and `msrt_map_slot_lent` costs a few instructions more per call. Generating both as MIR from the descriptors is the follow-up.
+Open gap, 0.8 to 2.4%, from callgrind's per-function diff against `main`: `String.parse_int` (sortrecords, csvgroup, logstats), `String.scalar_at` (logstats), `String.contains` (csvgroup) and `msrt_map_entry_ptrs` (dedupe, one step of a map `for` loop) were inlined into the caller by the hot crate and are calls now. Each call costs about the work it replaced, plus call setup; the callers lost 40 to 75M instructions and the calls cost 80 to 120M. The follow-up generates these as MIR.
