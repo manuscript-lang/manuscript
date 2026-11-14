@@ -4,8 +4,8 @@ import (
 	StringBuilder from "@std/string_builder.ms",
 
 	msrt_string_from_scalars from "@std/internal/string.ms",
-	msstd_unicode_display_width,
 	msstd_string_trim_chars,
+	msstd_unicode_display_width,
 	msstd_unicode_fields,
 	msstd_unicode_is_alphanumeric from "@std/internal/unicode.ms",
 )
