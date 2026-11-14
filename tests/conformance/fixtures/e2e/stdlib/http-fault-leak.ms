@@ -108,8 +108,14 @@ test "a fetch cancelled while it waits for the response frees the cancellation e
 		if timed_out.is_ok(): return error(Error("a hanging handler answered"))
 
 	// The error a cancelled read returns is dropped before the boundary jumps into the
-	// runtime's cancellation; keeping it leaked its text on every cancelled call.
+	// runtime's cancellation; keeping it leaked its text on every cancelled call, tens
+	// of bytes each, so 400 fetches grew the heap by well over 10 KB. The bound is
+	// above the noise: caches the earlier tests filled drain while this one runs, and
+	// under CPU load the heap read from -2 KB to +3 KB with no growth from round to
+	// round.
 	grown := (memory_usage() | expect_ok?).heap_used - before
-	if grown > 512: return error(
-		Error("heap grew {grown} bytes over 400 fetches cancelled while reading")
+	if grown > 6144: return error(
+		Error(
+			"heap grew {grown} bytes over 400 fetches cancelled while reading"
+		)
 	)
