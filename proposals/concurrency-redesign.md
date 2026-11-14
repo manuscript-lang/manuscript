@@ -146,7 +146,7 @@ Tests in one process: `serve(":0", ...)` followed by `fetch(server.address()).wa
 
 ## Deleted
 
-`TaskGroup`, `Task`, `TaskChannel`, `WorkerGroup`, `worker_channel`, `ProcessGroup` with the `ms-std-process` fork IPC (4k lines), `Channel`, `Transport`, `channel_reader`, `channel_writer`, `Shared`, `share`, `lock`, `SharedGuard`, `Once`, per-task timeouts, `contain_faults`, `serve_cores`, `serve_core`, `serve_connections`, and in flow.ms `Cache`, `SingleFlight` and `Debounce`. By grep, `ProcessGroup`, `contain_faults`, `Once` and those three flow.ms types are unused outside their own code and fixtures.
+`TaskGroup`, `Task`, `TaskChannel`, `WorkerGroup`, `worker_channel`, `ProcessGroup` with the `ms-std-process` fork IPC (4k lines), `Channel`, `Transport`, `channel_reader`, `channel_writer`, `Shared`, `share`, `lock`, `SharedGuard`, `Once`, per-task timeouts, `contain_faults`, `serve_cores`, `serve_core`, `serve_connections`, and in the old flow.ms (now resilience.ms) `Cache`, `SingleFlight` and `Debounce`. By grep, `ProcessGroup`, `contain_faults`, `Once` and those three types are unused outside their own code and fixtures.
 
 ## Migration
 
@@ -182,7 +182,7 @@ Tests in one process: `serve(":0", ...)` followed by `fetch(server.address()).wa
   - the declared lending of `promise` captures;
   - an unused-promise warning;
   - `ReadStream` is not iterable, with a message pointing to `.wait()`.
-- **Stdlib:** `promise.ms`, generic `io.ms`, `serve` in `net.ms`, plus `log.ms`, `router.ms` and `flow.ms`. Delete everything listed above, along with its checker and lowering glue.
+- **Stdlib:** `promise.ms`, generic `io.ms`, `serve` in `net.ms`, plus `log.ms`, `router.ms` and `resilience.ms`. Delete everything listed above, along with its checker and lowering glue.
 - **Codemods:** the three rows marked codemod above.
 - **Docs:** the concurrency guides, `references.md:10,62`, and `ms guide`.
 - **Checks:**

@@ -8,7 +8,7 @@ import (
 	Throttle,
 	map_concurrent,
 	rate_limiter,
-	retry from "@std/concurrency/flow.ms",
+	retry from "@std/concurrency/resilience.ms",
 	expect_equal, expect_error, expect_ok, expect_true from "@std/test/test.ms",
 	Duration, milliseconds, monotonic, sleep from "@std/time.ms",
 )

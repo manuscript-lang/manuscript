@@ -1,5 +1,5 @@
 import (
-	map_concurrent from "@std/concurrency/flow.ms",
+	map_concurrent from "@std/concurrency/resilience.ms",
 	arguments from "@std/os/env.ms",
 	list, read_file from "@std/os/fs.ms",
 )
