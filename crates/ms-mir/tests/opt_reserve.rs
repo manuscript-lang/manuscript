@@ -86,6 +86,31 @@ out():
 }
 
 #[test]
+fn sizes_a_list_that_starts_from_a_literal_with_elements() {
+    // `[0]` then one push per pass: the literal becomes a sized list and a push.
+    let m = rewrite(
+        "fn @fill(%n: int) -> list<int> {
+b0:
+  %z: int = iconst 0
+  %l0: list<int> = list.lit %z
+  br head(%z, %l0)
+head(%i: int, %l: move list<int>):
+  %c: bool = icmp.lt %i, %n
+  br_if %c, body(), out()
+body():
+  %lp: list<int> = list.push %l, %i
+  %one: int = iconst 1
+  %next: int = iadd %i, %one
+  br head(%next, %lp)
+out():
+  ret %l
+}",
+    );
+    assert_eq!(count(&m, "list.lit"), 0, "{}", print_module(&m));
+    assert_eq!(count(&m, "list.new"), 1, "{}", print_module(&m));
+}
+
+#[test]
 fn keeps_the_literal_when_a_loop_may_push_less() {
     // One path skips the push.
     let skip = rewrite(
