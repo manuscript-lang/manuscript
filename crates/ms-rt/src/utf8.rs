@@ -132,11 +132,10 @@ fn count_long(s: &[u8]) -> usize {
     // A String is valid UTF-8, so a scalar starts at every byte that is not a continuation
     // byte (`10xxxxxx`); counting those needs no validation pass.
     const LOW_BITS: u64 = 0x0101_0101_0101_0101;
-    let words = s.chunks_exact(8);
-    let tail = words.remainder();
+    let (words, tail) = s.as_chunks::<8>();
     let mut continuation = 0usize;
     for w in words {
-        let w = u64::from_le_bytes(w.try_into().expect("an eight-byte chunk"));
+        let w = u64::from_le_bytes(*w);
         continuation += ((w >> 7) & !(w >> 6) & LOW_BITS).count_ones() as usize;
     }
     continuation += tail.iter().filter(|&&b| b & 0xC0 == 0x80).count();
