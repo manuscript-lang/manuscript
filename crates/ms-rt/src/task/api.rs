@@ -486,7 +486,9 @@ pub unsafe extern "C-unwind" fn msrt_task_others_stalled() -> bool {
         }
         for i in 0..s.slots.len() {
             let t = s.slots[i].task;
-            if t.is_null() || t == cur {
+            // A worker thread's root task only waits for the scheduler's mail, which a
+            // blocking call delays by its own length and no more.
+            if t.is_null() || t == cur || (t == s.main && crate::isolate::is_worker()) {
                 continue;
             }
             let t = &*t;
@@ -495,11 +497,15 @@ pub unsafe extern "C-unwind" fn msrt_task_others_stalled() -> bool {
                 State::Waiting => {
                     // A token another thread may post (a pool job, a promise completed
                     // elsewhere) could wake the task while this thread is blocked, so only a
-                    // token posted from this thread counts.
-                    t.wait_token != 0
-                        && t.deadline == NO_DEADLINE
+                    // token posted from this thread counts. A task with no token, descriptor
+                    // or deadline is joining a task of this thread, which only its end wakes.
+                    t.deadline == NO_DEADLINE
                         && t.kill_at == NO_DEADLINE
-                        && token_mut(&mut s, t.wait_token).is_some_and(|k| !k.remote)
+                        && if t.wait_token == 0 {
+                            t.wait_events == 0
+                        } else {
+                            token_mut(&mut s, t.wait_token).is_some_and(|k| !k.remote)
+                        }
                 }
                 _ => false,
             };

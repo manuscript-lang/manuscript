@@ -39,3 +39,20 @@ Of the 21 programs with a Rust version, Manuscript is ahead on 11 and within 1.1
 5. Smaller: `grep` 1.3x (input path), `sortrecords` 1.15x, `report` 1.09x, `sim` 1.09x.
 
 `regex`, `jsonrt` and `strings` compare against Go and Node because Rust's `std` has no regex or JSON; Rust sources exist only where `std` can do the job. `hashing` and `lz` use `List[Int]` for bytes in Manuscript, Go and Rust alike so all four languages move the same amount of memory. `workers` runs Node's CPU half on worker threads and its small tasks as promises on the main thread.
+
+## 2026-11-14: waiting on a local promise no longer sends a file read to the blocking pool
+
+Same machine and suite, min of 9, strace counts for `treegrep` on the 2005-file tree.
+
+`promise(fn: ..., Placement.Here)` created its waiter's token as remote, so a blocking call inside the work saw a waiter another thread might wake and handed every `read_file` to the pool (2 futex, 1 epoll_wait, 1 eventfd write per file). A promise started on this thread is now woken only from this thread, so a lone task reads inline. `read_file` also drops its second `fstat`.
+
+| Program | before (ms) | after (ms) | C (ms) |
+| --- | --- | --- | --- |
+| treegrep | 90 | 33 | 27 |
+| pargroup | 42 | 42 to 48 | 20 |
+
+`treegrep` futex calls 3997 to 1, epoll_wait 2000 to 0. `pargroup` keeps its pool hand-off by design (four stripe tasks overlap I/O); its remaining gap is compute: one thread takes 73 ms, four take 48 ms.
+
+Same day, second change (`pargroup`): a worker thread's root task waits for scheduler mail and a task that joins a local task waits for nothing else, but neither counted as stalled, so the four stripe tasks on worker threads still sent every read to the pool. Both now count, so `pargroup` reads inline on worker threads (epoll_wait 2005 to 505, futex 4097 to 1008). Median of 25 runs, noisy VM: `pargroup` 44 to 51 ms before, 35 to 42 ms after; Rust 27 to 32 ms, C 18 to 20 ms. `workers` is unchanged (836 ms against 944 ms in the first run, within noise).
+
+Same day, third change: `String.split` starts its list with room for eight pieces (never more than the text can hold) instead of four, so a seven-field line no longer grows and copies its list once. `pargroup` on one thread: 940M to 780M instructions (callgrind, -17%). Conformance corpus: 3942 and 1458 fixtures pass.

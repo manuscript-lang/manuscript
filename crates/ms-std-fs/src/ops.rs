@@ -135,11 +135,20 @@ pub(crate) fn open_waitless(path: &CPath, flags: i32, mode: u32) -> Result<sys::
 /// `read_bounded`; `cancellable` checks for a stop request between reads, which a blocking-pool
 /// thread must not do. A cancellable read of a pipe or device also waits for it to be readable.
 fn read_limited(fd: sys::Fd, max: i64, cancellable: bool) -> Result<Vec<u8>, Fail> {
+    read_limited_with(fd, max, cancellable, sys::fstat(fd).ok())
+}
+
+/// [`read_limited`] given the descriptor's `fstat`, for a caller that already has it.
+fn read_limited_with(
+    fd: sys::Fd,
+    max: i64,
+    cancellable: bool,
+    stat: Option<sys::Stat>,
+) -> Result<Vec<u8>, Fail> {
     const CHUNK: usize = 32 * 1024;
     const LARGEST_READ: usize = 1 << 20;
     // A regular file of known size is read into one buffer of that size (plus a byte to see the
     // end), usually with a single read, instead of through a chunk buffer and copies.
-    let stat = sys::fstat(fd).ok();
     let known = stat
         .as_ref()
         .filter(|st| st.is_regular())
@@ -202,12 +211,11 @@ pub fn read_file(path: &[u8], max: i64) -> Res<Vec<u8>> {
     let fd = open_waitless(&p, sys::O_RDONLY, 0).map_err(|e| Fail::errno(e, "open", path))?;
     drop(p);
     let read = || {
-        if let Ok(st) = sys::fstat(fd)
-            && sys::is_dir(&st)
-        {
+        let stat = sys::fstat(fd).ok();
+        if stat.as_ref().is_some_and(sys::is_dir) {
             return Err(Fail::invalid());
         }
-        read_bounded(fd, max)
+        read_limited_with(fd, max, true, stat)
     };
     // A cancel returns an error here, so the close below runs.
     let result = read();

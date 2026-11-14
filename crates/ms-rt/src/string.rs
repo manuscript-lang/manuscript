@@ -2552,6 +2552,12 @@ unsafe fn split_into(
             *out = v;
             return;
         }
+        // Most splits are of records with several fields: room for eight pieces (never more than
+        // the text can hold) saves the grow-and-copy of the usual seven, without sizing a
+        // two-piece split for eight.
+        let first = (text.len() / sepb.len() + 1).min(limit).min(8);
+        v.ptr = alloc::alloc(first * ELEM);
+        v.cap = first;
         let mut start = 0;
         let needle = Needle::for_text(sepb, text.len());
         while v.len < limit {
