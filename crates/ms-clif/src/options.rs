@@ -42,8 +42,7 @@ pub struct BuildOptions {
     /// deletes blocks nothing reads and pairs frees with allocations. The ownership-count gate
     /// turns it off so every block the compiler asks for is counted.
     pub heap_facts: bool,
-    /// Run LLVM's verifier after every optimizer pass (`opt -verify-each`), and keep Cranelift's IR
-    /// verifier on in release builds of `ms` (debug builds always run it).
+    /// Run LLVM's verifier after every optimizer pass (`opt -verify-each`).
     pub llvm_verify: bool,
     /// Copy the LLVM IR of a release build to `ms-keep.ll`.
     pub keep_ll: bool,
