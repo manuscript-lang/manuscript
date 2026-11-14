@@ -5,7 +5,7 @@ weight = 2
 
 # Build levels
 
-`--build-type` sets native optimization and debugging information. The default is an optimized Release executable.
+`--build-type` sets native optimization and debugging information. `ms build` and `ms bench` default to an optimized Release executable. `ms run` and `ms test` default to Debug, which compiles with Cranelift and builds much faster; pass `--build-type Release` to run or test the optimized (LLVM) code.
 
 Save this entrypoint as `main.ms`:
 
@@ -43,7 +43,7 @@ Every level links with `--gc-sections` (`-dead_strip` on macOS), so runtime and 
 
 ## Defaults and command behavior
 
-- The default is `Release`, including for `profile`.
+- The default is `Release` for `build`, `bench` and `profile`, and `Debug` for `run` and `test`.
 - Repeated build types, unknown levels, and build-type flags on source-only commands are rejected before compilation.
 - Flags after `--` go to the program.
 - Optimized code may reorder or remove source operations. DWARF provides file/line lookup, without variable, type, or inline-frame information; see [native debugging](../debugging/debugger-integration.md).

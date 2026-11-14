@@ -139,7 +139,7 @@ Options:
   --build-type <level>  Debug, Release, or MinSizeRel (case-insensitive)
   --link <file>         Link an object or static library that defines `extern fn` symbols (repeatable)
   --static              Linux: link a static musl executable instead of the system glibc
-  Default build type: Release
+  Default build type: Debug (Cranelift, fast to build); use --build-type Release for LLVM
   -h, --help  Show this help without executing the command
 
 Examples:
@@ -174,14 +174,14 @@ Options:
   --build-type <level>  Debug, Release, or MinSizeRel (case-insensitive)
   --link <file>         Link an object or static library that defines `extern fn` symbols (repeatable)
   --static              Linux: link a static musl executable instead of the system glibc
-  Default build type: Release
+  Default build type: Debug (Cranelift, fast to build); use --build-type Release for LLVM
   -h, --help  Show this help without executing the command
 
 Examples:
   ms test test.ms
   ms test ms.toml --fuzz 30s
   ms test ms.toml --seed 1234 --filter "sorting"
-  ms test ms.toml --build-type Debug
+  ms test ms.toml --build-type Release
   ms test ms.toml --filter "nick collisions" --timeout 10s
 "#;
 

@@ -39,7 +39,7 @@ Built my-app
 Arguments: 2
 ```
 
-On Windows, name the output `my-app.exe` and run `.\my-app.exe first second`. Builds default to optimized `Release`; choose [a build level](builds/build-levels.md) when you need unoptimized debugging or a smaller executable.
+On Windows, name the output `my-app.exe` and run `.\my-app.exe first second`. `ms build` defaults to optimized `Release` (`ms run` and `ms test` default to `Debug`, built with Cranelift); choose [a build level](builds/build-levels.md) when you need unoptimized debugging or a smaller executable.
 
 Share the executable for the platform you built on. On Linux, the default target uses glibc 2.28 or newer. Use `ms build ms.toml --static -o my-app` for a self-contained musl executable; see [platform linking](https://github.com/manuscript-lang/manuscript/blob/main/documentation/contributing/rust-toolchain.md#platform-linking) for supported targets. Files your program opens by path remain external: distribute them with the program, or [embed assets](builds/project-configuration.md#embedded-files) in the executable.
 
