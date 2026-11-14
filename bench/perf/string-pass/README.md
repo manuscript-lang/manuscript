@@ -34,3 +34,7 @@ Rust's `HashMap` uses SipHash, so the `freq_*` and `lookup_long` rows are not a 
 | `to_fixed(2)` of 1M floats | 153 | 47 | 151 | an exact integer path for values under 2^53 with up to 15 digits: one 128-bit product, a shift, and the remainder decides the tie (half to even); other values use the standard formatter |
 | `fields()` of 10.7 MB (`string-micro` `fields`) | 41 | 24 | 24 | one byte loop with a class table instead of `split_whitespace` and a copy per field |
 | `trim_chars("w")` per word | 21 | 15 | 7 | ASCII set members tested from two 64-bit masks; no per-call UTF-8 validation of both strings |
+
+## Round 3 check (2026-11-14): builders, concatenation, interpolation
+
+No change needed. Min of 3, ms, same VM: `builder_mixed` 33 (Rust 26 to 39), `concat3` 23 (Rust 59), `interp_strings` 41 (Rust 123), `plus_equals` 16 (Rust 18), `int_hex` 30 (Rust 40). The remaining `trim_chars` gap (15 vs 7) is an owned result against Rust's borrowed slice; closing it needs the checker's borrowed-result rule for `trim` extended to `trim_chars`, which is keyed on the method name today (`ms-lower/src/call.rs`), so it waits for the general borrowed-results design (`proposals/borrowed-results.md`).
