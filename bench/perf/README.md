@@ -51,3 +51,7 @@ environment, and raw samples for inspection:
 MS=./target/release/ms GO=go BENCH_OUTPUT=.artifacts/perf-programs ms run bench/tools/programs.ms -- 11
 python3 -m unittest discover -s bench/perf/programs -p 'test_*.py'
 ```
+
+## Investigation folders
+
+The folders not in the table above each record one perf investigation. They keep only their written results (the Markdown pages). Scripts, probes, raw samples and patches were removed on 2026-11-14 to cut the directory from 84 MB to under 15 MB; recover them from git history before that date (`git log --diff-filter=D -- bench/perf/<folder>`). A "Rerun" line in one of these pages refers to a file that is no longer in the tree. New investigations add their numbers to the [suite](suite) results or a dated page, not a new folder of raw data.

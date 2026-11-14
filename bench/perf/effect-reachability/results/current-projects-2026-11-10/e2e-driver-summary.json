@@ -1,8 +1,0 @@
-{
-  "case": "e2e-driver",
-  "pairs": 11,
-  "baseline_median_ms": 142.127184,
-  "candidate_median_ms": 138.202533,
-  "paired_median_ratio": 1.002264158316527,
-  "slower_pairs": 6
-}

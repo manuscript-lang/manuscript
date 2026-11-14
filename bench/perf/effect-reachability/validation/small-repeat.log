@@ -1,9 +1,0 @@
-none-1-check: 41 exact-output pairs passed
-direct-1-check: 41 exact-output pairs passed
-pure-1-check: 41 exact-output pairs passed
-allowed-1-check: 41 exact-output pairs passed
-none-20-check: 41 exact-output pairs passed
-direct-20-check: 41 exact-output pairs passed
-pure-20-check: 41 exact-output pairs passed
-allowed-20-check: 41 exact-output pairs passed
-effect controls passed

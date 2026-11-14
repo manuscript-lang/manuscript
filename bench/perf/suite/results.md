@@ -1,5 +1,24 @@
 # Suite results
 
+## 2026-11-14, Go and Node for the text, data and file programs
+
+`81a9844b`, same machine and method (min of 2). The ten programs that moved in from `engineering/` now have Go and Node versions; every output matches the C and Rust output. Go and Node use their standard libraries (`encoding/json`, `JSON.parse`, `strings`, `Map`), so `jsonsum` compares Manuscript's typed parse against their generic parse.
+
+| program | ms | rust | go | node | c | ms / rust | ms / go | ms / node |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| logstats | 63 | 82 | 307 | 397 | 58 | 0.77x | 0.21x | 0.16x |
+| csvgroup | 173 | 331 | 600 | 1280 | 69 | 0.52x | 0.29x | 0.14x |
+| wordfreq | 267 | 243 | 1207 | 1512 | 257 | 1.10x | 0.22x | 0.18x |
+| sortrecords | 281 | 296 | 789 | 1342 | 339 | 0.95x | 0.36x | 0.21x |
+| grep | 35 | 32 | 274 | 155 | 29 | 1.09x | 0.13x | 0.23x |
+| **treegrep** | 93 | 31 | 49 | 75 | 32 | **3.00x** | **1.90x** | 1.24x |
+| pargroup | 47 | 40 | 50 | 196 | 24 | 1.18x | 0.94x | 0.24x |
+| jsonsum | 185 | 294 | 897 | 278 | 223 | 0.63x | 0.21x | 0.67x |
+| dedupe | 299 | 507 | 535 | 971 | 315 | 0.59x | 0.56x | 0.31x |
+| report | 167 | 166 | 538 | 1332 | 214 | 1.01x | 0.31x | 0.13x |
+
+Only `treegrep` is slower than Go and Node as well as Rust and C: Go walks the same tree in 49 ms and Node in 75 ms against 93 ms. That makes the directory-walk gap a Manuscript cost, not an operating system floor.
+
 ## 2026-11-14 baseline
 
 `d4006e73`, Release `ms` from `make build`, gcc 13.3 `-O2`, rustc 1.99.1 `-O`, Go 1.24.7, Node 22.23, 4 vCPU Xeon 2.1 GHz VM, min of 5. Ratios are Manuscript time over the other language's time, so below 1.00x is faster.

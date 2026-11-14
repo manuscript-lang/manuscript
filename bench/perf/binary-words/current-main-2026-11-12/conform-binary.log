@@ -1,7 +1,0 @@
-running 2 of 5388 fixtures with /workspace/codec-native-review/target/release/ms
-2 fixtures: 2 pass, 0 fail, 0 expected fail, 0 unexpected pass, 0 unrecorded (100.0%)
-  parse      1/1     100.0%  0 s fixture time
-  test       1/1     100.0%  1 s fixture time
-slowest fixtures:
-     0.69 s  test  e2e/stdlib/binary
-     0.02 s  parse e2e/stdlib/binary-fmt

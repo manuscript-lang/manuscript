@@ -1,8 +1,0 @@
-{
-  "case": "direct-500-lint",
-  "pairs": 41,
-  "baseline_median_ms": 75.210389,
-  "candidate_median_ms": 76.262228,
-  "paired_median_ratio": 1.0066814715537102,
-  "slower_pairs": 22
-}

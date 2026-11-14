@@ -1,7 +1,0 @@
-none-20-build: 7 exact-output pairs passed
-{"case":"none-20-build","pairs":7,"baseline_median_ms":87.342064,"candidate_median_ms":85.892799,"paired_median_ratio":0.9910078295484367,"slower_pairs":2}
-none-500-build: 7 exact-output pairs passed
-{"case":"none-500-build","pairs":7,"baseline_median_ms":133.360582,"candidate_median_ms":102.187693,"paired_median_ratio":0.7640545654871526,"slower_pairs":0}
-none-2000-build: 7 exact-output pairs passed
-{"case":"none-2000-build","pairs":7,"baseline_median_ms":571.246386,"candidate_median_ms":185.319408,"paired_median_ratio":0.3187716534680436,"slower_pairs":0}
-effect controls passed

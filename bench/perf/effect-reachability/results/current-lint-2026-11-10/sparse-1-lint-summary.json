@@ -1,8 +1,0 @@
-{
-  "case": "sparse-1-lint",
-  "pairs": 11,
-  "baseline_median_ms": 54.567964,
-  "candidate_median_ms": 54.702817,
-  "paired_median_ratio": 0.9730556558789696,
-  "slower_pairs": 3
-}

@@ -1,8 +1,0 @@
-{
-  "case": "cyclic-2000-lint",
-  "pairs": 11,
-  "baseline_median_ms": 142.22227,
-  "candidate_median_ms": 146.562079,
-  "paired_median_ratio": 1.0017525531596916,
-  "slower_pairs": 6
-}

@@ -1,9 +1,0 @@
-Current-main ff4ce5edff87e46edf1f1f105bc93cd1b6236217
-Baseline and candidate: csv.ms all10 tests passed each Debug and LLVM Release.
-Candidate: csv-rows.ms all14 passed LLVM Release.
-ms-conform record --id e2e/stdlib/csv:1written(csv),1unchanged(csv-rows),0rejected; deterministic double-run.
-Golden reviewed: only2new passing test records and summary8→10.
-ms-conform run --id e2e/stdlib/csv:2/2pass.
-ms-conform lint:5383fixtures,0problems.
-repo-check:passed all checks.
-Independent reviewer csv_candidate_review: semantic equivalence, new tests and all23paired medians checked; ordinary changes within A/A noise.

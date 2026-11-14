@@ -1,8 +1,0 @@
-{
-  "case": "hello",
-  "pairs": 11,
-  "baseline_median_ms": 144.591151,
-  "candidate_median_ms": 143.880897,
-  "paired_median_ratio": 0.9948836795038443,
-  "slower_pairs": 4
-}
