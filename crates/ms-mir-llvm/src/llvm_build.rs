@@ -393,6 +393,10 @@ pub struct FnBuilder<'t> {
     next: u32,
     /// Allocas, written at the top of the entry block.
     allocas: String,
+    /// The running task's header pointer, loaded once after the allocas: it depends only on the
+    /// frame's address, so every use in the function shares one load. Written by [`FnBuilder::task_hdr`].
+    hdr: Option<Val>,
+    prologue: String,
     /// `, !dbg !N` appended to every instruction.
     dbg: Option<usize>,
     /// The name the next defined value takes, set by [`FnBuilder::name_next`].
@@ -406,6 +410,8 @@ impl<'t> FnBuilder<'t> {
             out: String::new(),
             next: 0,
             allocas: String::new(),
+            hdr: None,
+            prologue: String::new(),
             dbg,
             pending: None,
         }
@@ -681,6 +687,33 @@ impl<'t> FnBuilder<'t> {
             ptr.text,
             meta.text(&val.ty, false)
         ));
+    }
+
+    /// The address of the running task's header block: the last word of the stack region that
+    /// holds this frame. The value is the same for the whole function, so the load sits in the
+    /// entry block and is made at most once.
+    pub fn task_hdr(&mut self) -> Val {
+        if let Some(h) = &self.hdr {
+            return h.clone();
+        }
+        let (frame, base, cell, hdr) = (
+            self.reserve(Ty::Ptr),
+            self.reserve(Ty::Ptr),
+            self.reserve(Ty::Ptr),
+            self.reserve(Ty::Ptr),
+        );
+        let _ = write!(
+            self.prologue,
+            "  {f} = call ptr @llvm.frameaddress.p0(i32 0)\n  {b} = call ptr @llvm.ptrmask.p0.i64(ptr {f}, i64 {mask})\n  {c} = getelementptr inbounds i8, ptr {b}, i64 {off}\n  {h} = load ptr, ptr {c}, align 8\n",
+            f = frame.text,
+            b = base.text,
+            c = cell.text,
+            h = hdr.text,
+            mask = !(ms_rt_abi::symbols::STACK_REGION - 1),
+            off = ms_rt_abi::symbols::STACK_REGION - 16,
+        );
+        self.hdr = Some(hdr.clone());
+        hdr
     }
 
     /// A stack slot for one `ty`, aligned for it; the `alloca` goes to the top of the entry block.
@@ -974,7 +1007,7 @@ impl<'t> FnBuilder<'t> {
             .split_once('\n')
             .expect("a body starts with a label");
         let rest = crate::llvm_lifetimes::mark(&self.allocas, rest);
-        format!("{first}\n{}{rest}}}\n\n", self.allocas)
+        format!("{first}\n{}{}{rest}}}\n\n", self.allocas, self.prologue)
     }
 }
 

@@ -4,14 +4,14 @@
 //! (`fn(obj)`, `fn(obj) -> obj`) and have no native twin.
 
 use super::{E, P, Sig, call_func, load_leaves, mem_layout, store_leaves};
-use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Types, Val};
+use crate::llvm_build::{FnBuilder, Ty as LTy, Types, Val};
 use crate::mir_llvm::Emitted;
 use crate::state::Gen;
 use crate::{CLOSURE_CAPTURES, CLOSURE_CODE, Glue};
 use ms_mir::ir::FuncKind;
 use ms_mir::layout::Leaf;
 use ms_mir::types::Ty;
-use ms_rt_abi::symbols::{ISOLATE_HDR_GUARDED, STACK_REGION};
+use ms_rt_abi::symbols::ISOLATE_HDR_GUARDED;
 
 /// Whether `kind` is one of the closure entries.
 pub fn is_closure(kind: Glue) -> bool {
@@ -57,33 +57,13 @@ impl E<'_, '_, '_> {
         }
     }
 
-    /// The running task's header block (see `ms_rt_abi::symbols::ISOLATE_HDR`): the last 16 bytes
-    /// of the stack's region point at it.
-    fn task_hdr(&mut self) -> Val {
-        let frame = self
-            .b
-            .call(
-                &LTy::Ptr,
-                "",
-                "llvm.frameaddress.p0",
-                &[(Val::new("0", LTy::I32), "")],
-            )
-            .expect("a pointer");
-        let sp = self.b.ptr_to_int(&frame);
-        let base = self.b.bin(Bin::And, &sp, &Val::int(!(STACK_REGION - 1)));
-        let cell = self.b.bin(Bin::Add, &base, &Val::int(STACK_REGION - 16));
-        let cell = self.b.int_to_ptr(&cell);
-        self.b.load(&LTy::I64, &cell, 8)
-    }
-
     /// Registers the release of the object from capture `k` on while a guarded task unwinds;
     /// returns the cleanup handle, 0 when no guard is open (its discard is a no-op).
     fn register_tail(&mut self, f: u32, k: u32, obj: &Val) -> Val {
         let tail = self.g.glue_symbol(Glue::ClosureDropFrom(f, k), Ty::UNIT);
         self.decls
             .push((tail.clone(), format!("declare void @\"{tail}\"(i64)")));
-        let hdr = self.task_hdr();
-        let hdr = self.b.int_to_ptr(&hdr);
+        let hdr = self.b.task_hdr();
         let flag = self.b.byte_ptr(&hdr, ISOLATE_HDR_GUARDED as u64);
         let guarded = self.b.load(&LTy::I8, &flag, 1);
         let guarded = self.test(&guarded);
