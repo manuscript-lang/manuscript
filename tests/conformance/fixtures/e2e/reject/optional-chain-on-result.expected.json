@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "`?.` needs an optional receiver, found Result[Int, Error]; `?.` is the Optional chain, not `?` followed by `.`; unwrap the Result first with `v := x?` or `(x?).member`",
+        "position": {
+          "file": "optional-chain-on-result.ms",
+          "line": 7,
+          "column": 10,
+          "offset": 118
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/optional-chain-on-result.ms:7:10: type: `?.` needs an optional receiver, found Result[Int, Error]; `?.` is the Optional chain, not `?` followed by `.`; unwrap the Result first with `v := x?` or `(x?).member`\n   |\n 7 |     n := load()?.abs()\n   |          ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}
