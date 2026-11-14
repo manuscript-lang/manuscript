@@ -110,7 +110,12 @@ fn String.fields_by(is_separator: fn(String) Bool) List[String]:
 // "STRASSE". This is not Unicode default case folding: the dotless "ı" (U+0131)
 // uppercases to "I" and so compares equal to "i" and "I".
 fn String.equal_fold(other: String) Bool:
-	return self.upper().lower() == other.upper().lower()
+	return fold_key(self) == fold_key(other)
+
+// Capital sharp s (U+1E9E) uppercases to itself but is the capital form of "ß", so it is
+// written as "ß" before the comparison.
+fn fold_key(text: String) String:
+	return text.replace("ẞ", "ß").upper().lower()
 
 // Removes every leading and trailing scalar that occurs in set.
 fn String.trim_chars(set: String) String:
@@ -180,27 +185,57 @@ fn String.split_after(separator: String) List[String]:
 
 	return out
 
-// Uppercases the first scalar and leaves the rest unchanged.
+// Uppercases the first scalar to its titlecase form (`ǆ` becomes `ǅ`, `ß` becomes `Ss`) and
+// leaves the rest unchanged.
 fn String.capitalize() String:
-	return self.take(1).upper().concat(self.drop(1))
+	return title_scalar(self.take(1)).concat(self.drop(1))
 
-// Capitalizes the first letter of each run of letters, digits and apostrophes and
-// lowercases the others.
+// Capitalizes the first letter of each run of letters, digits and apostrophes with its
+// titlecase form and lowercases the others; a word is lowercased whole, so a final sigma
+// stays final (`ΑΣ` becomes `Ας`).
 fn String.title() String:
 	var out = StringBuilder()
+	var word = StringBuilder()
 	var in_word = false
 
 	for c in self.chars():
-		word := is_word_scalar(c)
-
-		if word and in_word:
-			out.append(c.lower())
-		else if word:
-			out.append(c.upper())
+		if is_word_scalar(c):
+			word.append(c)
+			in_word = true
 		else:
+			if in_word: out.append(title_word(word.build()))
+			word = StringBuilder()
+			in_word = false
 			out.append(c)
 
-		in_word = word
+	if in_word: out.append(title_word(word.build()))
+	return out.build()
+
+// The word with its first scalar titlecased and the rest lowercased in context.
+fn title_word(word: String) String:
+	first := word.take(1)
+	lowered := word.lower()
+	head := first.lower()
+	if lowered.starts_with(head): return title_scalar(first).concat(lowered.drop(head.scalar_length()))
+	return title_scalar(first).concat(word.drop(1).lower())
+
+// The titlecase mapping of one scalar: the four digraph families map to their mixed-case
+// letter, and any other scalar takes its full uppercase mapping with every cased scalar
+// after the first lowercased (`ß` gives `Ss`, `ﬁ` gives `Fi`, `ŉ` gives `ʼN`).
+fn title_scalar(c: String) String:
+	code := c.scalar_at(0, -1)
+	if code >= 0x01C4 and code <= 0x01CC:
+		return "ǅǅǅǈǈǈǋǋǋ".chars()[code - 0x01C4].clone()
+	if code >= 0x01F1 and code <= 0x01F3: return "ǲ"
+	upper := c.upper()
+	var out = StringBuilder()
+	var seen_cased = false
+
+	for u in upper.chars():
+		cased := u.lower() != u or u.upper() != u
+		if cased and seen_cased: out.append(u.lower())
+		else: out.append(u)
+		if cased: seen_cased = true
 
 	return out.build()
 
