@@ -394,6 +394,33 @@ impl Walker<'_> {
         {
             self.facts.borrowed_reads.insert(e.id);
         }
+        // A native read that lends an element of its receiver cannot hand it to an owner: the
+        // collection keeps the element, so the new owner would be a second one. A resource has
+        // no copy and closes twice; a plain value needs `.clone()` (a value whose type is still
+        // generic is copied when the function is instantiated, as its bound allows).
+        if d == Demand::Move
+            && let Some((kind, recv)) = self.native_borrow_of(e)
+            && (kind != NativeBorrow::PayloadGet || self.native_borrow_receiver(recv).is_some())
+        {
+            let ty = self.cx.m.ty(e);
+            let class = self.class_of(e);
+            let owned_twice = class == Class::Resource
+                || (class == Class::Move
+                    && kind == NativeBorrow::ListGet
+                    && self.is_place(recv)
+                    && !holds_variable(&ty));
+            if owned_twice {
+                let (from, text) = (self.expr_text(recv), self.expr_text(e));
+                let advice = match clone_blocker(&ty) {
+                    Some(why) => format!("{why}, so use it in place"),
+                    None => format!("store `.{CLONE}()` of it, or use it in place"),
+                };
+                self.error(
+                    e.pos,
+                    format!("`{text}` reads an element that `{from}` keeps, and this position would own it too; {advice}"),
+                );
+            }
+        }
         // Results. A borrow-returning callee returns a reference into its arguments: holding it is a
         // borrow of them, storing or returning it needs a copy, and when a source is a
         // temporary the caller owns the result (lowering copies it out before the temporary
