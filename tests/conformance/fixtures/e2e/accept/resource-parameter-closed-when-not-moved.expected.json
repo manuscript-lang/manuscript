@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "keep none\nclose 1\ntrue\nkeep some\ntrue\nid_or_zero\nclose 3\n0\nclose 4\n4\nend\nclose 2\n",
+    "stderr": ""
+  }
+}
