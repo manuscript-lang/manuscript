@@ -86,7 +86,10 @@ pub fn spill_loop_cold(func: &mut Function) {
         return;
     }
     let blocks: Vec<Block> = func.layout.blocks().collect();
-    let index: HashMap<Block, usize> = blocks.iter().enumerate().map(|(i, b)| (*b, i)).collect();
+    let mut index = vec![0usize; func.dfg.num_blocks()];
+    for (i, b) in blocks.iter().enumerate() {
+        index[b.index()] = i;
+    }
     let nvals = func.dfg.num_values();
 
     // Definitions per block, and which results are cheap to recompute.
@@ -132,7 +135,7 @@ pub fn spill_loop_cold(func: &mut Function) {
         changed = false;
         for (i, &b) in blocks.iter().enumerate().rev() {
             for succ in cfg.succ_iter(b) {
-                let j = index[&succ];
+                let j = index[succ.index()];
                 if j == i {
                     continue;
                 }
@@ -153,7 +156,7 @@ pub fn spill_loop_cold(func: &mut Function) {
     let mut any = false;
     for l in loops.loops() {
         let h = loops.loop_header(l);
-        let live = &live_in[index[&h]];
+        let live = &live_in[index[h.index()]];
         if live.count() < MIN_LIVE_AT_HEADER {
             continue;
         }
