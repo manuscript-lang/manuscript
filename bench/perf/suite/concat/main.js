@@ -1,0 +1,10 @@
+let a = "";
+for (let i = 0; i < 50000; i++) a += String(i);
+let b = "";
+for (let i = 0; i < 50000; i++) b += `item-${i},`;
+let c = "";
+for (let i = 0; i < 50000; i++) c += "item,";
+const parts = [];
+for (let i = 0; i < 50000; i++) parts.push(`p${i}`);
+const d = parts.join(",");
+console.log(`${a.length} ${b.length} ${c.length} ${d.length}`);

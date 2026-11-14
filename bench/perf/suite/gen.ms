@@ -1,5 +1,5 @@
-// Deterministic inputs for the engineering-task benchmarks.
-// Usage: ms run bench/perf/engineering/gen.ms -- <output-directory> [scale]
+// Deterministic inputs for the text, data and file programs of the benchmark suite.
+// Usage: ms run bench/perf/suite/gen.ms -- <output-directory> [scale]
 // scale 1 makes about 25 MB per file; every file is a pure function of the scale.
 import (
 	arguments from "@std/os/env.ms",
