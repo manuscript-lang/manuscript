@@ -165,6 +165,9 @@ pub fn parse_int_radix(text: &[u8], radix: i64) -> Result<i64, u8> {
 
 /// `Numbers.parse_float` (decimal and exponent syntax only).
 pub fn parse_float(text: &[u8]) -> Result<f64, u8> {
+    if let Some(v) = parse_float_exact(text) {
+        return Ok(v);
+    }
     match text {
         b"NaN" => return Ok(f64::NAN),
         b"Infinity" | b"+Infinity" => return Ok(f64::INFINITY),
@@ -174,12 +177,95 @@ pub fn parse_float(text: &[u8]) -> Result<f64, u8> {
     if !float_syntax(text) {
         return Err(STATUS_INVALID_DATA);
     }
-    let s = core::str::from_utf8(text).map_err(|_| STATUS_INVALID_DATA)?;
+    // SAFETY: `float_syntax` accepted only ASCII digits, signs, `.` and `e`.
+    let s = unsafe { core::str::from_utf8_unchecked(text) };
     match s.parse::<f64>() {
         Ok(v) if v.is_infinite() => Err(STATUS_OUT_OF_RANGE),
         Ok(v) => Ok(v),
         Err(_) => Err(STATUS_INVALID_DATA),
     }
+}
+
+/// The value of a decimal literal whose mantissa is at most 2^53 and whose power of ten is at
+/// most 22 in magnitude, in one pass over the text: both operands are exact binary64 values, so
+/// the one multiplication or division rounds correctly (Clinger's fast path). Any other text,
+/// valid or not, is left to the general parser.
+fn parse_float_exact(t: &[u8]) -> Option<f64> {
+    const POW10: [f64; 23] = [
+        1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11, 1e12, 1e13, 1e14, 1e15, 1e16,
+        1e17, 1e18, 1e19, 1e20, 1e21, 1e22,
+    ];
+    let mut i = 0;
+    let negative = match t.first()? {
+        b'-' => {
+            i = 1;
+            true
+        }
+        b'+' => {
+            i = 1;
+            false
+        }
+        _ => false,
+    };
+    let (mut mantissa, mut digits, mut exp) = (0u64, 0u32, 0i32);
+    let start = i;
+    while let Some(d) = t.get(i).filter(|c| c.is_ascii_digit()) {
+        mantissa = mantissa * 10 + u64::from(d - b'0');
+        digits += 1;
+        i += 1;
+        if digits > 19 {
+            return None;
+        }
+    }
+    if i == start {
+        return None;
+    }
+    if t.get(i) == Some(&b'.') {
+        i += 1;
+        let fraction = i;
+        while let Some(d) = t.get(i).filter(|c| c.is_ascii_digit()) {
+            mantissa = mantissa * 10 + u64::from(d - b'0');
+            digits += 1;
+            exp -= 1;
+            i += 1;
+            if digits > 19 {
+                return None;
+            }
+        }
+        if i == fraction {
+            return None;
+        }
+    }
+    if matches!(t.get(i), Some(b'e' | b'E')) {
+        i += 1;
+        let down = t.get(i) == Some(&b'-');
+        if down || t.get(i) == Some(&b'+') {
+            i += 1;
+        }
+        let first = i;
+        let mut e = 0i32;
+        while let Some(d) = t.get(i).filter(|c| c.is_ascii_digit()) {
+            e = e * 10 + i32::from(d - b'0');
+            i += 1;
+            if e > 999 {
+                return None;
+            }
+        }
+        if i == first {
+            return None;
+        }
+        exp += if down { -e } else { e };
+    }
+    if i != t.len() || mantissa > 1 << 53 || !(-22..=22).contains(&exp) {
+        return None;
+    }
+    let v = mantissa as f64;
+    let v = if exp < 0 {
+        v / POW10[(-exp) as usize]
+    } else {
+        v * POW10[exp as usize]
+    };
+    Some(if negative { -v } else { v })
 }
 
 /// `^[+-]?[0-9]+(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?$`
@@ -346,65 +432,97 @@ fn split_scientific(mut s: Scientific) -> (Scientific, i32) {
     (s, exp)
 }
 
+/// A growing byte sink: a `Vec`, or a fixed buffer for text that has a known bound.
+trait Put {
+    fn put(&mut self, bytes: &[u8]);
+}
+
+impl Put for Vec<u8> {
+    fn put(&mut self, bytes: &[u8]) {
+        self.extend_from_slice(bytes);
+    }
+}
+
+/// The text of one float: a sign, at most 17 digits, up to 20 zeros or six leading zeros, a point,
+/// or `e`, a sign and three exponent digits all fit in 40 bytes.
+pub struct FloatText {
+    bytes: [u8; 40],
+    len: usize,
+}
+
+impl FloatText {
+    fn new() -> FloatText {
+        FloatText {
+            bytes: [0; 40],
+            len: 0,
+        }
+    }
+
+    pub fn as_slice(&self) -> &[u8] {
+        &self.bytes[..self.len]
+    }
+}
+
+impl Put for FloatText {
+    fn put(&mut self, bytes: &[u8]) {
+        self.bytes[self.len..self.len + bytes.len()].copy_from_slice(bytes);
+        self.len += bytes.len();
+    }
+}
+
 /// Renders shortest decimal digits: plain notation for exponents in -6..=20, else scientific.
-fn render_decimal(digits: &[u8], exponent: i32, negative: bool, out: &mut Vec<u8>) {
+fn render_decimal(digits: &[u8], exponent: i32, negative: bool, out: &mut impl Put) {
     let mut n = digits.len();
     while n > 1 && digits[n - 1] == b'0' {
         n -= 1;
     }
     let digits = &digits[..n];
+    const ZEROS: [u8; 24] = [b'0'; 24];
     if negative {
-        out.push(b'-');
+        out.put(b"-");
     }
     if (-6..=20).contains(&exponent) {
         let point = exponent + 1;
         if point <= 0 {
-            out.extend_from_slice(b"0.");
-            for _ in 0..-point {
-                out.push(b'0');
-            }
-            out.extend_from_slice(digits);
+            out.put(b"0.");
+            out.put(&ZEROS[..(-point) as usize]);
+            out.put(digits);
         } else if point as usize >= digits.len() {
-            out.extend_from_slice(digits);
-            for _ in 0..(point as usize - digits.len()) {
-                out.push(b'0');
-            }
+            out.put(digits);
+            out.put(&ZEROS[..point as usize - digits.len()]);
         } else {
-            out.extend_from_slice(&digits[..point as usize]);
-            out.push(b'.');
-            out.extend_from_slice(&digits[point as usize..]);
+            out.put(&digits[..point as usize]);
+            out.put(b".");
+            out.put(&digits[point as usize..]);
         }
         return;
     }
-    out.push(digits[0]);
+    out.put(&digits[..1]);
     if digits.len() > 1 {
-        out.push(b'.');
-        out.extend_from_slice(&digits[1..]);
+        out.put(b".");
+        out.put(&digits[1..]);
     }
-    out.push(b'e');
+    out.put(b"e");
     if exponent >= 0 {
-        out.push(b'+');
+        out.put(b"+");
     }
-    push_i64(out, exponent as i64);
+    out.put(format_i64(exponent as i64, &mut [0; 20]));
 }
 
 /// `Float.to_string`.
 pub fn float_to_string(v: f64) -> Vec<u8> {
-    let mut out = Vec::new();
+    float_text(v).as_slice().to_vec()
+}
+
+/// `Float.to_string` without an allocation.
+pub fn float_text(v: f64) -> FloatText {
+    let mut out = FloatText::new();
     if v.is_nan() {
-        out.extend_from_slice(b"NaN");
+        out.put(b"NaN");
     } else if v.is_infinite() {
-        out.extend_from_slice(if v > 0.0 {
-            b"Infinity".as_slice()
-        } else {
-            b"-Infinity".as_slice()
-        });
+        out.put(if v > 0.0 { b"Infinity" } else { b"-Infinity" });
     } else if v == 0.0 {
-        out.extend_from_slice(if v.is_sign_negative() {
-            b"-0".as_slice()
-        } else {
-            b"0".as_slice()
-        });
+        out.put(if v.is_sign_negative() { b"-0" } else { b"0" });
     } else if v.abs() < 9.007_199_254_740_992e15 && v == (v as i64) as f64 {
         // Integral values below 2^53: the digits are the integer itself.
         let mut tmp = [0u8; 20];
@@ -418,15 +536,20 @@ pub fn float_to_string(v: f64) -> Vec<u8> {
 }
 
 /// `Float32.to_string`: the shortest digits that round-trip through binary32.
-pub fn float32_to_string(v: f64) -> Vec<u8> {
+pub fn float32_text(v: f64) -> FloatText {
     let x = v as f32;
     if x.is_nan() || x.is_infinite() || x == 0.0 {
-        return float_to_string(f64::from(x));
+        return float_text(f64::from(x));
     }
-    let mut out = Vec::new();
+    let mut out = FloatText::new();
     let (digits, exp) = shortest32(x.abs());
     render_decimal(digits.as_slice(), exp, x < 0.0, &mut out);
     out
+}
+
+/// `Float32.to_string` as a vector.
+pub fn float32_to_string(v: f64) -> Vec<u8> {
+    float32_text(v).as_slice().to_vec()
 }
 
 /// `to_precision` (`'g'`, minimum 1), `to_exponential` (`'e'`), `to_fixed` (`'f'`).
@@ -1104,6 +1227,52 @@ mod tests {
     #[test]
     fn float_parsing() {
         let _g = crate::testutil::lock();
+        // The exact fast path agrees with the standard parser wherever it answers.
+        let mut x = 12345u64;
+        let mut answered = 0;
+        for _ in 0..20000 {
+            x = x
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
+            let whole = (x >> 40) % 100_000_000_000;
+            let frac = (x >> 8) % 1_000_000_000_000;
+            let e = ((x >> 3) % 60) as i32 - 30;
+            let sign = ["", "-", "+"][(x % 3) as usize];
+            let texts = [
+                std::format!("{sign}{whole}"),
+                std::format!("{sign}{whole}.{frac}"),
+                std::format!("{sign}{whole}.{frac}e{e}"),
+                std::format!("{sign}{whole}E{e}"),
+            ];
+            for t in texts {
+                if let Some(v) = parse_float_exact(t.as_bytes()) {
+                    assert_eq!(v.to_bits(), t.parse::<f64>().unwrap().to_bits(), "{t}");
+                    answered += 1;
+                }
+            }
+        }
+        assert!(answered > 20000, "{answered}");
+        for t in [
+            "-0",
+            "-0.0",
+            "0.1",
+            "9007199254740992",
+            "9007199254740993",
+            "1e22",
+            "1e23",
+            "5e-22",
+            "5e-23",
+            "123456789012345678901",
+        ] {
+            if let Some(v) = parse_float_exact(t.as_bytes()) {
+                assert_eq!(v.to_bits(), t.parse::<f64>().unwrap().to_bits(), "{t}");
+            }
+        }
+        for t in [
+            "", "+", "-", ".5", "5.", "1e", "1e+", "e5", "1.5x", " 1", "1 ", "0x10", "1_0",
+        ] {
+            assert_eq!(parse_float_exact(t.as_bytes()), None, "{t:?}");
+        }
         assert_eq!(parse_float(b"1.5e3"), Ok(1500.0));
         assert_eq!(parse_float(b"-0"), Ok(-0.0));
         assert_eq!(parse_float(b"1e400"), Err(STATUS_OUT_OF_RANGE));

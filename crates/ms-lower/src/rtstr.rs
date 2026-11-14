@@ -19,6 +19,8 @@ pub(crate) enum StrFn {
     ParseInt,
     ContainsByte,
     ScalarAt,
+    StartsWith,
+    EndsWith,
 }
 
 fn int(b: &mut FuncBuilder<'_>, op: Op, x: Value, y: i64) -> Value {
@@ -94,6 +96,16 @@ impl FnLower<'_> {
                 vec![param(MTy::STR), param(MTy::STR)],
                 MTy::BOOL,
             ),
+            StrFn::StartsWith => (
+                "starts_with",
+                vec![param(MTy::STR), param(MTy::STR)],
+                MTy::BOOL,
+            ),
+            StrFn::EndsWith => (
+                "ends_with",
+                vec![param(MTy::STR), param(MTy::STR)],
+                MTy::BOOL,
+            ),
             StrFn::ScalarAt => (
                 "scalar_at",
                 vec![
@@ -112,6 +124,8 @@ impl FnLower<'_> {
             StrFn::ParseInt => parse_int(&mut b),
             StrFn::ContainsByte => contains_byte(&mut b),
             StrFn::ScalarAt => scalar_at(&mut b),
+            StrFn::StartsWith => affix(&mut b, false),
+            StrFn::EndsWith => affix(&mut b, true),
         }
         let func = b.into_func();
         let fid = self.b.m.add_func(func);
@@ -134,6 +148,14 @@ impl FnLower<'_> {
                     return None;
                 }
                 let f = self.str_fn(StrFn::ContainsByte);
+                Some(self.b.call(f, args))
+            }
+            "msrt_string_starts_with" => {
+                let f = self.str_fn(StrFn::StartsWith);
+                Some(self.b.call(f, args))
+            }
+            "msrt_string_ends_with" => {
+                let f = self.str_fn(StrFn::EndsWith);
                 Some(self.b.call(f, args))
             }
             "msrt_string_scalar_at" => {
@@ -348,5 +370,122 @@ fn scalar_at(b: &mut FuncBuilder<'_>) {
     b.ret(Some(v));
     b.switch_to(slow);
     let r = b.call_rt(ext, &[text, index, has, default]);
+    b.ret(Some(r));
+}
+
+/// The bytes at `x` and `y` for `n` in `lo..=2 * lo` (`lo` of 1, 4 or 8 after the caller's
+/// dispatch): two overlapping reads of `w` bytes, the first at 0 and the last ending at `n`.
+/// Zero when every byte is equal.
+fn diff_overlapping(b: &mut FuncBuilder<'_>, x: Value, y: Value, n: Value, w: i64) -> Value {
+    let read = |b: &mut FuncBuilder<'_>, p: Value, at: Value| {
+        let q = b
+            .emit(Op::PtrAdd, &[p, at], Imm::None, Some(MTy::PTR))
+            .expect("ptr.add");
+        b.emit(Op::PtrLoadU, &[q], Imm::Int(w), Some(MTy::INT))
+            .expect("ptr.loadu")
+    };
+    let zero = b.iconst(0);
+    let back = int(b, Op::ISub, n, w);
+    let (a0, v0) = (read(b, x, zero), read(b, y, zero));
+    let (a1, v1) = (read(b, x, back), read(b, y, back));
+    let d0 = b.binop(Op::Xor, a0, v0);
+    let d1 = b.binop(Op::Xor, a1, v1);
+    b.binop(Op::Or, d0, d1)
+}
+
+/// `text.starts_with(affix)` and `text.ends_with(affix)`: an affix of up to sixteen bytes is
+/// compared with two overlapping reads (one to three bytes: three byte reads), so a short test
+/// needs no call and no `memcmp`; a longer affix calls the runtime.
+fn affix(b: &mut FuncBuilder<'_>, end: bool) {
+    let ps = b.params();
+    let (text, part) = (ps[0], ps[1]);
+    let sym = if end {
+        "msrt_string_ends_with"
+    } else {
+        "msrt_string_starts_with"
+    };
+    let ext = runtime_fn(b.m, sym, &[MTy::STR, MTy::STR], MTy::BOOL);
+    let (slow, fits, empty, wide, mid, tiny, no) = (
+        b.new_block(),
+        b.new_block(),
+        b.new_block(),
+        b.new_block(),
+        b.new_block(),
+        b.new_block(),
+        b.new_block(),
+    );
+    let s = slot_of(b, text);
+    let p = slot_of(b, part);
+    let (data, len) = bytes_of(b, s);
+    let (pdata, plen) = bytes_of(b, p);
+    let c16 = b.iconst(16);
+    let longer = b.icmp(Cc::Gt, plen, len);
+    let check = b.new_block();
+    b.br_if(longer, no, &[], check, &[]);
+    b.seal_block(no);
+    b.seal_block(check);
+    b.switch_to(check);
+    let big = b.icmp(Cc::Gt, plen, c16);
+    b.br_if(big, slow, &[], fits, &[]);
+    b.seal_block(slow);
+    b.seal_block(fits);
+    b.switch_to(fits);
+    // The window of the text to compare: its first or last `plen` bytes.
+    let at = if end {
+        b.binop(Op::ISub, len, plen)
+    } else {
+        b.iconst(0)
+    };
+    let window = b
+        .emit(Op::PtrAdd, &[data, at], Imm::None, Some(MTy::PTR))
+        .expect("ptr.add");
+    let zero = b.iconst(0);
+    let none = b.icmp(Cc::Eq, plen, zero);
+    b.br_if(none, empty, &[], mid, &[]);
+    b.seal_block(empty);
+    b.seal_block(mid);
+    b.switch_to(mid);
+    let c8 = b.iconst(8);
+    let c4 = b.iconst(4);
+    let eight = b.icmp(Cc::Ge, plen, c8);
+    let (four_check, four) = (b.new_block(), b.new_block());
+    b.br_if(eight, wide, &[], four_check, &[]);
+    b.seal_block(wide);
+    b.seal_block(four_check);
+    b.switch_to(four_check);
+    let is_four = b.icmp(Cc::Ge, plen, c4);
+    b.br_if(is_four, four, &[], tiny, &[]);
+    b.seal_block(four);
+    b.seal_block(tiny);
+    let verdict = |b: &mut FuncBuilder<'_>, diff: Value| {
+        let z = b.iconst(0);
+        let same = b.icmp(Cc::Eq, diff, z);
+        b.ret(Some(same));
+    };
+    b.switch_to(wide);
+    let d = diff_overlapping(b, window, pdata, plen, 8);
+    verdict(b, d);
+    b.switch_to(four);
+    let d = diff_overlapping(b, window, pdata, plen, 4);
+    verdict(b, d);
+    b.switch_to(tiny);
+    // One to three bytes: the first, the middle and the last.
+    let half = int(b, Op::Ushr, plen, 1);
+    let last = int(b, Op::ISub, plen, 1);
+    let mut diff = b.iconst(0);
+    for k in [zero, half, last] {
+        let (wb, pb) = (byte_at(b, window, k), byte_at(b, pdata, k));
+        let x = b.binop(Op::Xor, wb, pb);
+        diff = b.binop(Op::Or, diff, x);
+    }
+    verdict(b, diff);
+    b.switch_to(empty);
+    let yes = b.bconst(true);
+    b.ret(Some(yes));
+    b.switch_to(no);
+    let f = b.bconst(false);
+    b.ret(Some(f));
+    b.switch_to(slow);
+    let r = b.call_rt(ext, &[text, part]);
     b.ret(Some(r));
 }
