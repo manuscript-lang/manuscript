@@ -12,7 +12,7 @@
 //!   br_if (icmp.lt i, n), body, out
 //! ```
 //!
-//! The rewrite applies when the empty literal reaches the loop entry through `k` pushes
+//! The rewrite applies when the literal (empty, or with elements that become pushes) reaches the loop entry through `k` pushes
 //! in one block, the loop's only exit is the header's false edge, every back edge passes
 //! `i + 1`, and every path from the header to a back edge pushes the list at least once.
 //! Then the loop pushes at least `max(0, n - i0)` items (one more for `icmp.le`). Capacity
@@ -137,13 +137,13 @@ impl Cfg {
 
 /// The first literal in `f` that the pass can size.
 fn find(f: &Func) -> Option<Plan> {
-    // Only empty list literals can be replaced. Avoid building and querying
+    // Only list literals can be replaced. Avoid building and querying
     // the CFG when the function contains no candidate allocation.
-    if !f.blocks.iter().any(|b| {
-        b.insts
-            .iter()
-            .any(|i| i.op == Op::ListLit && i.args.is_empty())
-    }) {
+    if !f
+        .blocks
+        .iter()
+        .any(|b| b.insts.iter().any(|i| i.op == Op::ListLit))
+    {
         return None;
     }
     let cfg = Cfg::new(f);
@@ -320,7 +320,7 @@ fn literal_chain(
             return None;
         }
         match inst.op {
-            Op::ListLit if inst.args.is_empty() => return Some(((b, i), v, pushed)),
+            Op::ListLit => return Some(((b, i), v, pushed + inst.args.len() as i64)),
             Op::ListPush => {
                 pushed += 1;
                 v = inst.args[0];
@@ -368,13 +368,36 @@ fn apply(f: &mut Func, plan: Plan) {
     let runs = out.op(f, Op::ICmp, &[start, bound], Imm::Cc(cc), Ty::BOOL);
     let diff = out.op(f, Op::Select, &[runs, diff, zero], Imm::None, Ty::INT);
     let cap = out.op(f, Op::IAdd, &[diff, extra], Imm::None, Ty::INT);
+    // A literal with elements becomes the sized list and one push per element.
+    let elements = f.blocks[b].insts[i].args.clone();
+    let ty = f.ty(plan.lit);
+    let mut list = if elements.is_empty() {
+        plan.lit
+    } else {
+        f.new_value(ty)
+    };
     out.code.push(Inst {
         op: Op::ListNew,
         args: vec![cap],
         imm: Imm::None,
-        res: Some(plan.lit),
+        res: Some(list),
         loc: out.loc,
     });
+    for (k, e) in elements.iter().enumerate() {
+        let next = if k + 1 == elements.len() {
+            plan.lit
+        } else {
+            f.new_value(ty)
+        };
+        out.code.push(Inst {
+            op: Op::ListPush,
+            args: vec![list, *e],
+            imm: Imm::None,
+            res: Some(next),
+            loc: out.loc,
+        });
+        list = next;
+    }
     f.blocks[b].insts.splice(i..=i, out.code);
 }
 
