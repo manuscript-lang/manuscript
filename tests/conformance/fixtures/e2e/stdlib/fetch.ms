@@ -127,6 +127,7 @@ test "fetch enforces max_response_bytes":
 	url := "http://{server.address()}/big"
 	small := fetch(url, FetchOptions(max_response_bytes: 4)).wait()
 	expect_equal(small.is_error(), true)?
+	expect_equal(small.err().kind, "EOVERFLOW")?
 
 	whole := fetch(url, FetchOptions(max_response_bytes: 10)).wait()?
 	expect_equal(whole.body.length(), 10)?
