@@ -120,7 +120,8 @@ const _: () = assert!(LARGE_FUNCTION_LINES < HUGE_FUNCTION_LINES);
 /// call a generic function (12k lines, one block after optimization) took 2.3 s in `llc`,
 /// 400 took 6.5 s and 800 took 56 s, against 60 ms for the same `main` as `optnone`. Code with
 /// no loop runs once per call; the largest function of the benchmark suites is 9.3k lines and
-/// has loops.
+/// has loops. A workaround for LLVM's instruction selection, tracked in #3928 with its
+/// removal condition.
 const LOOPFREE_HUGE_FUNCTION_LINES: usize = 8_000;
 
 /// One LLVM module of the program.
