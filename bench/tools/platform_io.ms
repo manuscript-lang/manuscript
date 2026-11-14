@@ -3,12 +3,18 @@
 // `ms run bench/tools/platform_io.ms [-- files]`; MS names the `ms` binary. Prints one
 // line per measurement, nanoseconds per operation, min of three rounds.
 import (
+	Bytes from "@std/bytes.ms",
+	stdin, stdout_bytes from "@std/io/io.ms",
 	min from "@std/math/math.ms",
 	arguments from "@std/os/env.ms",
-	Bytes from "@std/bytes.ms",
-	create_directory, list, read_file, remove, rename, temporary_directory, write_file from "@std/os/fs.ms",
+	create_directory,
+	list,
+	read_file,
+	remove,
+	rename,
+	temporary_directory,
+	write_file from "@std/os/fs.ms",
 	RunOptions, SpawnOptions, run, spawn from "@std/os/process.ms",
-	stdin, stdout_bytes from "@std/io/io.ms",
 
 	capture, exe, fail, host, ms_binary, now_ns, usage from "./lib.ms",
 )
@@ -25,9 +31,11 @@ fn write_files(dir: String, n: Int) Unit!:
 
 fn read_files(dir: String, n: Int) Int!:
 	var total = 0
+
 	for i in 0..n:
 		data := read_file("{dir}/f{i}.txt").wait()?
 		total += data.length()
+
 	return ok(total)
 
 fn rename_files(dir: String, n: Int) Unit!:
@@ -36,10 +44,12 @@ fn rename_files(dir: String, n: Int) Unit!:
 
 fn walk(dir: String) Int!:
 	var found = 0
+
 	for entry in list(dir)?:
 		found += 1
 		if entry.directory:
 			found += walk("{dir}/{entry.name}")?
+
 	return ok(found)
 
 fn files(n: Int) Unit!:
@@ -77,11 +87,13 @@ fn files(n: Int) Unit!:
 
 fn spawns(program: String, n: Int) Unit!:
 	var best = 1000000000000
+
 	for round in 0..3:
 		start := now_ns()
 		for i in 0..n:
 			_done := run(program, ["--version"]).wait()?
 		best = min(best, now_ns() - start)
+
 	report("spawn and wait", best, n)
 
 // One request and reply over a child's stdin and stdout, `n` times.
@@ -93,14 +105,18 @@ fn round_trips(program: String, n: Int) Unit!:
 
 	for round in 0..3:
 		start := now_ns()
+
 		for i in 0..n:
 			input.write("ping\n".to_bytes())?
 			input.flush()?
+
 			_reply := output.next()?
+
 		best = min(best, now_ns() - start)
 
 	report("pipe round trip", best, n)
 	child.kill()
+
 	_ := child.wait()
 
 fn run_all(n: Int) Unit!:
@@ -109,21 +125,28 @@ fn run_all(n: Int) Unit!:
 
 	work := temporary_directory("platform-io-echo")?
 	write_file("{work}/echo.ms", ECHO).wait()?
-	built := capture(ms_binary(), ["build", "{work}/echo.ms", "-o", "{work}/echo{exe()}"])
+
+	built := capture(
+		ms_binary(),
+		["build", "{work}/echo.ms", "-o", "{work}/echo{exe()}"],
+	)
+
 	if built.ok and built.code == 0:
 		round_trips("{work}/echo{exe()}", 300)?
 	else:
 		print("{host()} pipe round trip skipped: {built.stderr}")
+
 	remove(work, true)?
 
 fn main() Int:
 	var n = 2000
 	args := arguments()
+
 	if args.length() > 1:
 		if parsed := args[1].parse_int(): n = parsed
 		else: return usage("usage: platform_io.ms [-- files]")
 
 	done := run_all(n)
-	if done.is_error():
-		return fail("platform_io: {done.err().message}")
+	if done.is_error(): return fail("platform_io: {done.err().message}")
+
 	return 0
