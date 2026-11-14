@@ -763,7 +763,7 @@ impl<'a> FnLower<'a> {
             // The callee wrapped the whole temporary (`ok(value)`): the caller's result owns that
             // temporary, moved into the ordinary alternative, so no resource is copied.
             if let Some(owned) = self.wrapped_temporary_result(c, owned_args, &vals, v, *how) {
-                return Ok(owned);
+                return owned;
             }
             // The checker recorded this as a clone of a part of the temporary (`OwnedBorrow::Clone`).
             let copy = self.clone_value(v);
@@ -799,7 +799,7 @@ impl<'a> FnLower<'a> {
         vals: &[Value],
         v: Value,
         how: ms_check::api::ownership::OwnedBorrow,
-    ) -> Option<Val> {
+    ) -> Option<Result<Val, Error>> {
         let ms_check::api::ownership::OwnedBorrow::Whole(source) = &how else {
             return None;
         };
@@ -823,8 +823,16 @@ impl<'a> FnLower<'a> {
             } else {
                 arg
             };
-            let out = self.b.opt_some(arg);
-            return Some(self.val(out, true));
+            // The callee may also return `none` on another path (`if flag: return x` then
+            // `return none`): the argument is the result only when the callee's result is some,
+            // and is dropped (closing a resource) otherwise.
+            let optty = self.ty_of(v);
+            let has = self.b.opt_is_some(v);
+            let out = self.two_ways(has, optty, &mut |s| Ok(Some(s.b.opt_some(arg))), &mut |s| {
+                s.drop_temp(arg);
+                Ok(Some(s.none_owned(optty)))
+            });
+            return Some(out);
         }
         let TyKind::Alt(a) = self.b.m.types.kind(self.ty_of(v)).clone() else {
             return None;
@@ -844,7 +852,7 @@ impl<'a> FnLower<'a> {
             arg
         };
         let out = self.b.alt_new(plain, case as u32, &[arg]);
-        Some(self.val(out, true))
+        Some(Ok(self.val(out, true)))
     }
 
     /// The ordinary alternative a borrowing variant `a` is a variant of.
