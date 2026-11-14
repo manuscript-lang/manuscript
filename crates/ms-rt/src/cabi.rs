@@ -508,7 +508,7 @@ pub unsafe extern "C-unwind" fn ms_object_drop_v1(o: *mut Obj) {
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn ms_fault_v1(text: *const c_char, len: usize) -> ! {
     // SAFETY: caller contract.
-    let text = unsafe { bytes(text as *const u8, len) };
+    let text = unsafe { bytes(text.cast::<u8>(), len) };
     crate::fault::fault(text)
 }
 
