@@ -275,8 +275,11 @@ impl FnLower<'_> {
         self.b.switch_to(slow);
         let s = self.b.use_var(tvar);
         let i = self.b.use_var(idx);
-        let ch = self.call_runtime("msrt_string_scalar_at_byte", &[s, i], MTy::INT)?;
-        let width = self.call_runtime("msrt_string_char_width", &[s, i], MTy::INT)?;
+        let step = self.call_runtime("msrt_string_scalar_step", &[s, i], MTy::INT)?;
+        let three = self.b.iconst(3);
+        let seven = self.b.iconst(7);
+        let ch = self.b.binop(Op::Ushr, step, three);
+        let width = self.b.binop(Op::And, step, seven);
         let next = self.b.binop(Op::IAdd, i, width);
         self.b.def_var(cur, ch);
         self.b.def_var(idx, next);

@@ -1533,12 +1533,21 @@ impl<'a> FnLower<'a> {
         self.enter(slow);
         let s = self.b.use_var(text_var);
         let i = self.b.use_var(idx);
-        let ch = if scalars {
-            self.call_runtime("msrt_string_scalar_at_byte", &[s, i], MTy::INT)?
+        let (ch, width) = if scalars {
+            // One decode gives both the value and the width.
+            let step = self.call_runtime("msrt_string_scalar_step", &[s, i], MTy::INT)?;
+            let three = self.b.iconst(3);
+            let seven = self.b.iconst(7);
+            (
+                self.b.binop(Op::Ushr, step, three),
+                self.b.binop(Op::And, step, seven),
+            )
         } else {
-            self.call_runtime("msrt_string_char_at", &[s, i], MTy::STR)?
+            (
+                self.call_runtime("msrt_string_char_at", &[s, i], MTy::STR)?,
+                self.call_runtime("msrt_string_char_width", &[s, i], MTy::INT)?,
+            )
         };
-        let width = self.call_runtime("msrt_string_char_width", &[s, i], MTy::INT)?;
         let next = self
             .b
             .emit(Op::IAdd, &[i, width], Imm::None, Some(MTy::INT))

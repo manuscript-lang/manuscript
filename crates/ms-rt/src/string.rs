@@ -2445,6 +2445,18 @@ pub unsafe extern "C-unwind" fn msrt_string_char_width(s: *const StrVal, at: i64
     unsafe { utf8::decode(&bytes(s)[at as usize..]).1 as i64 }
 }
 
+/// The scalar value and byte width of the character at byte `at` in one decode, as
+/// `scalar << 3 | width`, for the scalar loops that need both.
+#[unsafe(no_mangle)]
+// ms: leaf
+pub unsafe extern "C-unwind" fn msrt_string_scalar_step(s: *const StrVal, at: i64) -> i64 {
+    // SAFETY: caller passes a live string and an offset inside it.
+    unsafe {
+        let (c, w) = utf8::decode(&bytes(s)[at as usize..]);
+        ((c as i64) << 3) | w as i64
+    }
+}
+
 /// The Unicode scalar value of the character that starts at byte `at`.
 #[unsafe(no_mangle)]
 // ms: leaf

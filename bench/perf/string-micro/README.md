@@ -21,5 +21,5 @@ Compare numbers only from the same machine; treat them as a profiling guide.
 | `Float.to_string` | 150 | 110 | 1.3x | not a gap (an earlier 250 was noise) |
 | `for c in s.chars(): s += c.length()` | 91 | 9 | 10x | the loop builds a string per non-compared character; comparing against a literal stays a code point (20 ms) |
 | `length()` of 8 MB non-ASCII text | 17 per call | 1 | 17x | counts non-continuation bytes eight at a time instead of a validation pass plus a byte filter: 3 ms for both `length()` and `scalar_length()` |
-| `for c in s.chars(): if c == "世"` on non-ASCII text | 36 | 10 | 3.6x | open: each non-ASCII scalar decodes twice (value and width, about 97 instructions) |
+| `for c in s.chars(): if c == "世"` on non-ASCII text | 36, then 17 | 10 | 3.6x, then 1.7x | each non-ASCII scalar was decoded twice (value, then width; about 97 instructions); one runtime call now returns both, and two- and three-byte scalars take a short decode path |
 | `normalize("NFD")` per word | 176 | - | - | no Rust standard-library equivalent |
