@@ -8,7 +8,7 @@
 
 ## Status
 
-Evidence measured 2026-11-14 on `main` a8deb279 (release `ms`, callgrind, `ms check` of a one-line `print` program). Not started. Skeptical review: the independence claim holds; build with three changes (the lowering hook sits at the callee reads, effects scan every reached node before propagating, measure `ms build` and a larger program first); applied below.
+Evidence measured 2026-11-14 on `main` a8deb279 (release `ms`, callgrind, `ms check` of a one-line `print` program). Implemented 2026-11-14: hello `ms check` 317.5M to 167.7M instructions, `tools/conform.ms` 846M to 363M (`bench/perf/compile`). Skeptical review: the independence claim holds; build with three changes (the lowering hook sits at the callee reads, effects scan every reached node before propagating, measure `ms build` and a larger program first); applied below.
 
 ## Problem
 

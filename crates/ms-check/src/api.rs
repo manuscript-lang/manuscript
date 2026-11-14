@@ -33,7 +33,7 @@ pub mod hir {
 pub mod ownership {
     pub use crate::ownership::{
         Access, BindingFact, BindingFlags, BorrowKind, Class, Classifier, Fact, NativeBorrow,
-        NodeFacts, OwnedBorrow, OwnershipFacts, ParamMode, native_borrow,
+        NodeFacts, OwnedBorrow, OwnershipFacts, OwnershipShared, ParamMode, native_borrow,
         native_method_argument_modes,
     };
     pub use crate::std_ops::{collection_mutation, discards_entries, is_text_builder};

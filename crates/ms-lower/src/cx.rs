@@ -446,12 +446,23 @@ pub struct Cx {
     pub fixtures: HashMap<Name, ms_check::TestFixture>,
     /// What the ownership stage decided: moves, borrows, getters, captures, per-node and per-binding
     /// facts. Lowering reads these and decides none of them again.
-    pub ownership: Rc<ms_check::api::ownership::OwnershipFacts>,
+    pub ownership: ms_check::api::ownership::OwnershipFacts,
+    /// The analysis behind `ownership`: a bundled callable is analyzed when lowering first needs it
+    /// (`ensure_ownership`).
+    pub ownership_shared: Rc<ms_check::api::ownership::OwnershipShared>,
     /// Which types are resources, for the closers of types and collections that hold them.
     pub classes: ms_check::api::ownership::Classifier,
 }
 
 impl Cx {
+    /// Makes sure the ownership facts of `c` exist before they are read: a bundled callable is analyzed
+    /// the first time lowering reaches it.
+    pub fn ensure_ownership(&mut self, c: &Callable) {
+        if let Some(added) = self.ownership_shared.analyze(c) {
+            self.ownership.absorb(&added);
+        }
+    }
+
     /// Fails when lowering recorded an implicit copy of a borrow.
     pub fn check_strict_copies(&self) -> Result<(), crate::Error> {
         if self.copy_gaps.is_empty() {
@@ -520,7 +531,8 @@ impl Cx {
             method_index: MethodIndex::new(&program.methods),
             methods: program.methods.clone(),
             fixtures: program.test_fixtures.clone(),
-            ownership: program.ownership.clone(),
+            ownership: program.ownership_shared.tables(&program.ownership),
+            ownership_shared: program.ownership_shared.clone(),
             classes: ms_check::api::ownership::Classifier::new(program),
         }
     }

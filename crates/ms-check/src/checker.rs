@@ -102,7 +102,7 @@ pub struct Program {
     pub test_fixtures: HashMap<Name, TestFixture>,
     /// The effect scan: the project's callables and what they reach, and the rest of the library on demand
     /// (`Program::effects_of`).
-    pub effect_scan: RefCell<crate::effects::EffectScan>,
+    pub effect_scan: RefCell<crate::effect_reach::EffectScan>,
     /// `allow_effect` patterns in force per project callable (its own lines, else its file's);
     /// absent means no line, so the callable is pure.
     pub effect_permits: HashMap<Name, Vec<String>>,
@@ -120,6 +120,9 @@ pub struct Program {
     pub serial: usize,
     /// Ownership facts, filled by the ownership stage after the check succeeds.
     pub ownership: Rc<crate::ownership::OwnershipFacts>,
+    /// The ownership analysis behind `ownership`, which analyzes more callables on demand
+    /// (`OwnershipShared::analyze`), and the facts it added since.
+    pub ownership_shared: Rc<crate::ownership::OwnershipShared>,
 }
 
 /// A body-check result retained from an inference probe.

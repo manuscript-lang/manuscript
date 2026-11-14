@@ -125,9 +125,14 @@ pub fn check_in(
     if program.diagnostics.is_empty() {
         // Value semantics is part of the language: every program that type checks is also
         // checked for ownership and exclusivity.
-        let own = program.hir().ownership();
+        // Only the project's callables and what their analysis reads are analyzed here; lowering asks
+        // for the bundled callables it reaches (`Program::analyze_ownership`).
+        let mut engine = ownership::OwnershipEngine::new(&program.hir());
+        let roots = engine.project_keys();
+        let own = engine.analyze(&roots);
         program.ownership = Rc::new(own.tables);
         program.diagnostics.extend(own.diagnostics);
+        *program.ownership_shared.engine.borrow_mut() = Some(engine);
     }
     if program.diagnostics.is_empty() {
         program.diagnostics.extend(unused::check(syms, &program));

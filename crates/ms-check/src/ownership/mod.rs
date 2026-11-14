@@ -38,6 +38,7 @@ use crate::types::*;
 use modes::{Key, Summaries};
 use ms_syntax::Diagnostic;
 use ms_syntax::ast::NodeId;
+use std::rc::Rc;
 
 /// How a use treats the value it names.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -214,7 +215,7 @@ pub struct CallableOwnership {
 
 /// The ownership facts lowering and tooling read, in one value: the tables the ownership walk
 /// derives for a whole program, none of them recomputed by a later stage.
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct OwnershipFacts {
     /// Name expressions that move a closed resource binding, by binding.
     pub close_moves: HashMap<usize, HashSet<NodeId>>,
@@ -242,6 +243,61 @@ pub struct OwnershipFacts {
     pub getter_borrows: HashMap<(Name, NodeId), Vec<Name>>,
 }
 
+impl OwnershipFacts {
+    /// Adds the facts of other callables; every table is keyed by identities no two callables share.
+    pub fn absorb(&mut self, other: &OwnershipFacts) {
+        self.close_moves
+            .extend(other.close_moves.iter().map(|(k, v)| (*k, v.clone())));
+        self.resource_moves
+            .extend(other.resource_moves.iter().map(|(k, v)| (*k, v.clone())));
+        self.moves
+            .extend(other.moves.iter().map(|(k, v)| (*k, v.clone())));
+        self.borrowed_captures
+            .extend(other.borrowed_captures.iter().copied());
+        self.moving_params
+            .extend(other.moving_params.iter().map(|(k, v)| (*k, v.clone())));
+        self.node_facts.absorb(&other.node_facts);
+        self.binding_facts.absorb(&other.binding_facts);
+        self.owned_borrows
+            .extend(other.owned_borrows.iter().map(|(k, v)| (*k, *v)));
+        self.getter_borrows
+            .extend(other.getter_borrows.iter().map(|(k, v)| (*k, v.clone())));
+    }
+}
+
+/// The ownership analysis of a program, shared with lowering: the engine, and the facts it added
+/// after the first analysis.
+#[derive(Default)]
+pub struct OwnershipShared {
+    pub(crate) engine: std::cell::RefCell<Option<OwnershipEngine>>,
+    log: std::cell::RefCell<Vec<Rc<OwnershipFacts>>>,
+}
+
+impl OwnershipShared {
+    /// The facts of every callable analyzed so far: `first` and what was added since.
+    pub fn tables(&self, first: &OwnershipFacts) -> OwnershipFacts {
+        let mut tables = first.clone();
+        for extra in self.log.borrow().iter() {
+            tables.absorb(extra);
+        }
+        tables
+    }
+
+    /// Analyzes `c` and the callables whose summaries it reads, if they are not analyzed yet, and
+    /// returns the facts they add. Lowering calls this before it reads a callable's facts.
+    pub fn analyze(&self, c: &Callable) -> Option<Rc<OwnershipFacts>> {
+        let mut engine = self.engine.borrow_mut();
+        let engine = engine.as_mut()?;
+        let key = (c.module.file, c.id());
+        if !engine.pending(&key) {
+            return None;
+        }
+        let added = Rc::new(engine.analyze(&[key]).tables);
+        self.log.borrow_mut().push(added.clone());
+        Some(added)
+    }
+}
+
 /// Ownership of a whole program: the facts, per-callable detail, and the rejections found.
 pub struct Ownership {
     facts: HashMap<Key, CallableOwnership>,
@@ -259,76 +315,171 @@ impl Ownership {
 }
 
 impl Hir<'_> {
-    /// Checks ownership rules and computes move, borrow and drop facts for
-    /// every callable of the user's modules.
+    /// Checks ownership rules and computes move, borrow and drop facts for every callable of the
+    /// program's modules, the bundled standard source modules it imports included.
     pub fn ownership(&self) -> Ownership {
-        let classes = Classifier::new(self.program());
-        let modules: HashMap<Name, ModuleHir> = self.modules().map(|m| (m.data.file, m)).collect();
-        let callables: Vec<Callable> = self
+        let mut engine = OwnershipEngine::new(self);
+        let all: Vec<Key> = engine
+            .callables
+            .iter()
+            .map(|c| (c.module.file, c.id()))
+            .collect();
+        engine.analyze(&all)
+    }
+}
+
+/// The ownership analysis, kept so more callables can be analyzed later. A callable's facts are a
+/// function of its body and the summaries of the callables it calls, so they come out the same
+/// whenever it is analyzed: the standard library's callables are analyzed when something asks
+/// (the checker asks for the project's, lowering for each bundled callable it reaches) and the
+/// summaries read along the way join the set.
+pub struct OwnershipEngine {
+    classes: Classifier,
+    modules: HashMap<Name, ModuleHir>,
+    callables: Vec<Callable>,
+    index: HashMap<Key, usize>,
+    contract_methods: walk::ContractMethods,
+    summaries: Summaries,
+    escaped: HashMap<Key, HashSet<NodeId>>,
+    analyzed: HashSet<Key>,
+}
+
+impl OwnershipEngine {
+    /// An engine over every callable of `hir`; nothing is analyzed yet.
+    pub fn new(hir: &Hir) -> OwnershipEngine {
+        let modules: HashMap<Name, ModuleHir> = hir.modules().map(|m| (m.data.file, m)).collect();
+        let callables: Vec<Callable> = hir
             .callables()
             .into_iter()
             .filter(|c| modules.contains_key(&c.module.file))
             .collect();
-        let liveness: Vec<live::Liveness> = callables
+        let index = callables
             .iter()
-            .map(|c| live::liveness(&modules[&c.module.file], c))
+            .enumerate()
+            .map(|(i, c)| ((c.module.file, c.id()), i))
             .collect();
-        let mut summaries = Summaries::default();
-        let mut escaped: HashMap<Key, HashSet<NodeId>> = HashMap::default();
-        let mut outcomes: Vec<Option<walk::Outcome>> = callables.iter().map(|_| None).collect();
+        OwnershipEngine {
+            classes: Classifier::new(hir.program()),
+            modules,
+            callables,
+            index,
+            contract_methods: walk::ContractMethods::new(
+                ms_syntax::Names::global(),
+                &hir.program().methods,
+            ),
+            summaries: Summaries::default(),
+            escaped: HashMap::default(),
+            analyzed: HashSet::default(),
+        }
+    }
+
+    /// The keys of the callables of the project's modules (not the bundled standard library).
+    pub fn project_keys(&self) -> Vec<Key> {
+        self.callables
+            .iter()
+            .filter(|c| {
+                !crate::stdlib::is_bundled_source(ms_syntax::Names::global().str(c.module.file))
+            })
+            .map(|c| (c.module.file, c.id()))
+            .collect()
+    }
+
+    /// Whether the callable `key` is known and not analyzed yet.
+    pub fn pending(&self, key: &Key) -> bool {
+        self.index.contains_key(key) && !self.analyzed.contains(key)
+    }
+
+    /// Analyzes `roots` that are not analyzed yet, with every callable whose summary they read, and
+    /// returns the new callables' facts, rejections and tables.
+    pub fn analyze(&mut self, roots: &[Key]) -> Ownership {
+        let mut members: Vec<usize> = Vec::new();
+        let mut member: HashSet<usize> = HashSet::default();
+        for key in roots {
+            if let Some(&i) = self.index.get(key)
+                && !self.analyzed.contains(key)
+                && member.insert(i)
+            {
+                members.push(i);
+            }
+        }
+        let mut liveness: HashMap<usize, live::Liveness> = HashMap::default();
+        let mut outcomes: HashMap<usize, walk::Outcome> = HashMap::default();
         // The summaries each callable read in its last analysis. A later round re-analyzes it only
         // when one of them changed, or its own escaped lambdas did; its outcome is a function of
         // those inputs alone, so the kept one equals a fresh one.
-        let mut reads: Vec<HashSet<Key>> = vec![HashSet::default(); callables.len()];
+        let mut reads: HashMap<usize, HashSet<Key>> = HashMap::default();
         let mut changed_before: HashSet<Key> = HashSet::default();
         let mut escaped_before: HashSet<usize> = HashSet::default();
         // Parameter modes, closure escapes and result slots feed each other, and each step
         // carries a fact one call further, so a chain needs about one round per callable.
-        let rounds = callables.len() + 16;
-        let contract_methods =
-            walk::ContractMethods::new(ms_syntax::Names::global(), &self.program().methods);
-        for round in 0..=rounds {
+        let mut rounds = 0;
+        let mut round = 0;
+        loop {
             let mut changed_now: HashSet<Key> = HashSet::default();
             let mut escaped_now: HashSet<usize> = HashSet::default();
-            for (i, (c, l)) in callables.iter().zip(&liveness).enumerate() {
-                if round > 0
+            let mut at = 0;
+            while at < members.len() {
+                let i = members[at];
+                at += 1;
+                let first = !outcomes.contains_key(&i);
+                if !first
                     && !escaped_before.contains(&i)
-                    && !reads[i].iter().any(|k| changed_before.contains(k))
+                    && !reads[&i].iter().any(|k| changed_before.contains(k))
                 {
                     continue;
                 }
+                let c = &self.callables[i];
                 let key = (c.module.file, c.id());
-                let known = escaped.entry(key).or_default().clone();
+                let known = self.escaped.entry(key).or_default().clone();
+                let l = liveness
+                    .entry(i)
+                    .or_insert_with(|| live::liveness(&self.modules[&c.module.file], c));
                 let out = walk::analyze(&walk::Context {
-                    m: &modules[&c.module.file],
+                    m: &self.modules[&c.module.file],
                     c,
-                    classes: &classes,
-                    summaries: &summaries,
-                    methods: &contract_methods,
+                    classes: &self.classes,
+                    summaries: &self.summaries,
+                    methods: &self.contract_methods,
                     live: l,
                     escaped: &known,
                 });
-                reads[i] = summaries.take_reads();
+                let read = self.summaries.take_reads();
+                // A callee not analyzed yet joins the set: this callable's facts depend on its summary.
+                for k in &read {
+                    if let Some(&j) = self.index.get(k)
+                        && !self.analyzed.contains(k)
+                        && member.insert(j)
+                    {
+                        members.push(j);
+                    }
+                }
+                reads.insert(i, read);
                 // The last pass keeps the over-approximated summaries for every callee.
-                if round < rounds && summaries.decls.get(&key) != Some(&out.summary) {
-                    summaries.decls.insert(key, out.summary.clone());
+                if (rounds == 0 || round < rounds)
+                    && self.summaries.decls.get(&key) != Some(&out.summary)
+                {
+                    self.summaries.decls.insert(key, out.summary.clone());
                     changed_now.insert(key);
                 }
                 if out.escaped != known {
-                    escaped.insert(key, out.escaped.clone());
+                    self.escaped.insert(key, out.escaped.clone());
                     escaped_now.insert(i);
                 }
-                outcomes[i] = Some(out);
+                outcomes.insert(i, out);
+            }
+            if round == 0 {
+                rounds = members.len() + 16;
             }
             if changed_now.is_empty() && escaped_now.is_empty() {
                 break;
             }
             changed_before = changed_now;
             escaped_before = escaped_now;
+            round += 1;
+            if round > rounds {
+                break;
+            }
         }
-        let outcomes = outcomes
-            .into_iter()
-            .map(|o| o.expect("round 0 analyzes every callable"));
         let mut facts = HashMap::default();
         let mut diagnostics = Vec::new();
         let mut binding_facts = BindingFlags::default();
@@ -340,7 +491,11 @@ impl Hir<'_> {
         let mut owned_borrows = HashMap::default();
         let mut getter_borrows = HashMap::default();
         let mut node_facts = NodeFacts::default();
-        for (c, out) in callables.iter().zip(outcomes) {
+        let modules = &self.modules;
+        for i in members {
+            let c = &self.callables[i];
+            let out = outcomes.remove(&i).expect("round 0 analyzes every member");
+            self.analyzed.insert((c.module.file, c.id()));
             let file = c.module.file;
             for n in &out.facts.borrowed_matches {
                 node_facts.set(file, *n, Fact::BorrowedMatch);

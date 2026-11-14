@@ -7,6 +7,7 @@ mod callback_identity;
 mod clonable_agreement;
 mod constant_index;
 mod control_flow;
+mod demand_analysis;
 mod diagnostic_wording;
 mod error_values;
 mod follow_on_errors;

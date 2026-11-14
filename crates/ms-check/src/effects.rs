@@ -452,7 +452,10 @@ impl EffectScan {
 
     /// Scans what `id` reaches (once) and publishes.
     fn reach(&mut self, id: Name) {
-        let new = self.state.as_ref().is_some_and(|s| !s.scanned.contains(&id));
+        let new = self
+            .state
+            .as_ref()
+            .is_some_and(|s| !s.scanned.contains(&id));
         if new && self.scan(vec![id]) {
             self.publish();
         }
@@ -503,7 +506,11 @@ impl crate::checker::Program {
     /// Scans every callable, for a listing of the whole library.
     pub fn scan_all_effects(&self) {
         let mut scan = self.effect_scan.borrow_mut();
-        let all: Vec<Name> = scan.state.as_ref().map(|s| s.order.clone()).unwrap_or_default();
+        let all: Vec<Name> = scan
+            .state
+            .as_ref()
+            .map(|s| s.order.clone())
+            .unwrap_or_default();
         if scan.scan(all) {
             scan.publish();
         }

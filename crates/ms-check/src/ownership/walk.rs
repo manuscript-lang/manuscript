@@ -38,17 +38,17 @@ const CLONE: &str = "clone";
 
 /// Every method of the program that implements a contract, found by contract and receiver so a
 /// conversion does not scan all implementations of a widely implemented interface.
-pub struct ContractMethods<'a> {
-    by_receiver: HashMap<(Name, Name), Vec<&'a MethodRef>>,
+pub struct ContractMethods {
+    by_receiver: HashMap<(Name, Name), Vec<MethodRef>>,
     /// Receivers that are type variables match any source type.
-    by_variable: HashMap<Name, Vec<&'a MethodRef>>,
+    by_variable: HashMap<Name, Vec<MethodRef>>,
     /// Receiver methods match a contract by shape: they are candidates for every contract.
-    inherent: HashMap<Name, Vec<&'a MethodRef>>,
-    inherent_variable: Vec<&'a MethodRef>,
+    inherent: HashMap<Name, Vec<MethodRef>>,
+    inherent_variable: Vec<MethodRef>,
 }
 
-impl<'a> ContractMethods<'a> {
-    pub fn new(syms: ms_syntax::Names, methods: &'a [MethodRef]) -> Self {
+impl ContractMethods {
+    pub fn new(syms: ms_syntax::Names, methods: &[MethodRef]) -> Self {
         let mut index = ContractMethods {
             by_receiver: HashMap::default(),
             by_variable: HashMap::default(),
@@ -64,27 +64,35 @@ impl<'a> ContractMethods<'a> {
                     continue;
                 }
                 if m.variables.iter().any(|v| v.id == m.receiver.id) {
-                    index.inherent_variable.push(m);
+                    index.inherent_variable.push(m.clone());
                 } else {
-                    index.inherent.entry(m.receiver.id).or_default().push(m);
+                    index
+                        .inherent
+                        .entry(m.receiver.id)
+                        .or_default()
+                        .push(m.clone());
                 }
                 continue;
             }
             if m.variables.iter().any(|v| v.id == m.receiver.id) {
-                index.by_variable.entry(contract.id).or_default().push(m);
+                index
+                    .by_variable
+                    .entry(contract.id)
+                    .or_default()
+                    .push(m.clone());
             } else {
                 index
                     .by_receiver
                     .entry((contract.id, m.receiver.id))
                     .or_default()
-                    .push(m);
+                    .push(m.clone());
             }
         }
         index
     }
 
     /// The methods implementing `contract` whose receiver can match `receiver`.
-    pub fn of(&self, contract: Name, receiver: Name) -> impl Iterator<Item = &'a MethodRef> + '_ {
+    pub fn of(&self, contract: Name, receiver: Name) -> impl Iterator<Item = &MethodRef> + '_ {
         let exact = self.by_receiver.get(&(contract, receiver));
         let variable = self.by_variable.get(&contract);
         let own = self.inherent.get(&receiver);
@@ -94,7 +102,6 @@ impl<'a> ContractMethods<'a> {
             .chain(own)
             .flatten()
             .chain(&self.inherent_variable)
-            .copied()
     }
 }
 
@@ -104,7 +111,7 @@ pub struct Context<'a> {
     pub classes: &'a Classifier,
     pub summaries: &'a Summaries,
     /// The implementations an interface conversion uses.
-    pub methods: &'a ContractMethods<'a>,
+    pub methods: &'a ContractMethods,
     pub live: &'a Liveness,
     /// Lambdas known to escape, from the previous iteration.
     pub escaped: &'a HashSet<NodeId>,

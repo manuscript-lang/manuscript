@@ -37,7 +37,7 @@ pub enum Fact {
 }
 
 /// Fact flags by module file, then by node id.
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
 pub struct NodeFacts {
     files: HashMap<Name, Vec<u16>>,
 }
@@ -50,6 +50,19 @@ impl NodeFacts {
             flags.resize(id.index() + 1, 0);
         }
         flags[id.index()] |= fact as u16;
+    }
+
+    /// Adds the facts of `other`.
+    pub fn absorb(&mut self, other: &NodeFacts) {
+        for (file, flags) in &other.files {
+            let mine = self.files.entry(*file).or_default();
+            if mine.len() < flags.len() {
+                mine.resize(flags.len(), 0);
+            }
+            for (m, f) in mine.iter_mut().zip(flags) {
+                *m |= f;
+            }
+        }
     }
 
     /// Whether `fact` holds for `id` of module `file`.
@@ -83,7 +96,7 @@ pub enum BindingFact {
 
 /// Binding fact flags keyed by stable session binding identities. Only bindings with facts
 /// occupy storage: later programs may have arbitrarily large gaps before their own identities.
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
 pub struct BindingFlags {
     flags: HashMap<usize, u8>,
 }
@@ -92,6 +105,13 @@ impl BindingFlags {
     /// Records `fact` for binding `uid`.
     pub fn set(&mut self, uid: usize, fact: BindingFact) {
         *self.flags.entry(uid).or_default() |= fact as u8;
+    }
+
+    /// Adds the facts of `other`.
+    pub fn absorb(&mut self, other: &BindingFlags) {
+        for (uid, flags) in &other.flags {
+            *self.flags.entry(*uid).or_default() |= flags;
+        }
     }
 
     /// Whether `fact` holds for binding `uid`.
