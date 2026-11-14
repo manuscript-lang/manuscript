@@ -1699,6 +1699,7 @@ fn guard_exit(status: u8, message: Vec<u8>) -> ! {
         let f = guards_pop().unwrap_or_else(|| fatal(b"runtime invariant: no guard"));
         *FAULTING.ptr() = false;
         *UNWIND_DROPS.ptr() = false;
+        crate::dropq::reset();
         (*cur_hdr()).limit = f.limit;
         #[cfg(windows)]
         let teb = crate::task::segment_teb(f.seg);

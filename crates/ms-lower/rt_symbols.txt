@@ -61,6 +61,9 @@ msrt_cleanup_discard(handle: usize) @leaf
 msrt_cleanup_push(f: CleanupFn, arg: *mut u8) -> usize @leaf
 msrt_cleanup_remove(handle: usize) @leaf
 msrt_cleanup_run(handle: usize) @leaf
+msrt_drop_defer(run: RunDrop, block: *mut u8) @leaf
+msrt_drop_enter() -> u64 @leaf
+msrt_drop_leave()
 msrt_eq_enter(a: *const u8, b: *const u8) -> u8 @leaf
 msrt_eq_leave(a: *const u8, b: *const u8) @leaf
 msrt_exit_frees() -> u8 @domain=unwind @leaf
