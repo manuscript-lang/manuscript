@@ -1,0 +1,3 @@
+interface:
+  display_name: "Add Benchmark"
+  short_description: "Add a benchmark with matching ports and compared outputs"

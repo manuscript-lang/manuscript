@@ -58,3 +58,4 @@ Note on memory model: on 2026-10-19 the owner adopted value semantics for the Ru
 - [String.view is an explicit borrow; slice stays a copy](string-view-is-an-explicit-borrow-slice-stays-a-copy.md): O(1) substrings are checked borrows like `Bytes.view`, not lowering elision; storing a view needs `.clone()`.
 - [`String.split`, `lines` and `chars` lend their receiver](split-lines-and-chars-lend-their-receiver.md): results borrow under the `view` rules; keeping one needs `.clone()`.
 - [Write terse Manuscript](terse-manuscript-idioms.md): shortest existing form (`print`, `repeated`, `map`/`filter`, `if` expressions, `is_empty`, multi-line strings); conformance fixtures stay frozen.
+- [Optional chaining `?.` is for Optionals only](optional-chaining-is-for-optionals-only.md): `?.` stays an Optional operator; Results and errors use `?` and `match`.

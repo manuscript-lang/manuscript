@@ -1,0 +1,3 @@
+interface:
+  display_name: "CI Time"
+  short_description: "Cut PR CI time by removing redundant work"

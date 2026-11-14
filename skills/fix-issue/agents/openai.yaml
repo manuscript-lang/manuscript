@@ -1,0 +1,3 @@
+interface:
+  display_name: "Fix Issue"
+  short_description: "Fix a GitHub issue from label to verified close"
