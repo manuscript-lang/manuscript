@@ -105,9 +105,10 @@ export interface Commands:
 	// Starts `program` directly, without a shell, searching the PATH, and returns a
 	// live Subprocess that its scope closes. `arguments` follow the program name;
 	// `options.stdin`, `options.stdout`, and `options.stderr` each choose a pipe (the
-	// default), the parent's own stream, or the null device. Returns EINVAL, ENOENT (no such program or
-	// working directory), EACCES (not executable), or EIO when it cannot start. Closing the Subprocess, or cancelling the acquiring
-	// execution, kills the child's process group.
+	// default), the parent's own stream, or the null device. Returns EINVAL, ENOENT (no
+	// such program or working directory), EACCES (not executable), or EIO when it
+	// cannot start. Closing the Subprocess, or cancelling the acquiring execution,
+	// kills the child's process group.
 	// `options.cwd` and `options.env` behave as in `run`.
 	fn spawn(
 		program: String,
@@ -300,9 +301,10 @@ export fn run(
 // Starts `program` directly, without a shell, searching the PATH, and returns a live
 // Subprocess that its scope closes. `arguments` follow the program name;
 // `options.stdin`, `options.stdout`, and `options.stderr` each choose a pipe (the
-// default), the parent's own stream, or the null device. Returns EINVAL, ENOENT (no such program or working
-// directory), EACCES (not executable), or EIO when it cannot start. Closing the Subprocess, or cancelling the acquiring execution,
-// kills the child's process group.
+// default), the parent's own stream, or the null device. Returns EINVAL, ENOENT (no
+// such program or working directory), EACCES (not executable), or EIO when it cannot
+// start. Closing the Subprocess, or cancelling the acquiring execution, kills the
+// child's process group.
 // `options.cwd` and `options.env` behave as in `run`.
 // ms: effect std.process.run
 export fn spawn(
