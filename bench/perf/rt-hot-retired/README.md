@@ -17,17 +17,21 @@ Rerun: `ms build bench/perf/rt-hot-retired/hot.ms -o /tmp/hot && /tmp/hot` (prin
 
 `Map[String, Int].get` is 27.8M instructions on `main` and 27.2M here for 300k lookups.
 
-## Engineering suite (output byte-identical to `main` for all eight programs)
+## Engineering suite against `main` at ef253e785 (maps held in memory, #3867)
 
-| task | main (ms) | this change (ms) | instructions |
+Output is byte-identical to `main` for all eight programs. Instructions from callgrind, millions.
+
+| task | main | this change | change |
 | --- | --- | --- | --- |
-| logstats | 69.6 | n/a | 893M against 901M |
-| csvgroup | 173.4 | n/a | 2,564M against 2,543M (+0.8%, within wall-clock noise; cause not isolated) |
-| wordfreq | 270.1 | 233.8 | fewer |
-| sortrecords | 298.0 | 295.9 | equal |
-| grep | 36.1 | 35.1 | equal |
-| jsonsum | 160.5 | 160.7 | equal |
-| dedupe | 305.1 | 255.6 | fewer |
-| report | 174.7 | 173.4 | 1,757M against 1,791M |
+| logstats | 874.3 | 882.2 | +0.9% |
+| csvgroup | 2,485.3 | 2,545.5 | +2.4% |
+| wordfreq | 1,964.6 | 1,931.2 | -1.7% |
+| sortrecords | 2,010.5 | 2,036.5 | +1.3% |
+| grep | 244.2 | 246.2 | +0.8% |
+| jsonsum | 1,427.1 | 1,423.1 | -0.3% |
+| dedupe | 1,748.2 | 1,777.4 | +1.7% |
+| report | 1,761.6 | 1,752.6 | -0.5% |
 
-Keys of 16 bytes or more hash inline, and keys of 16 to 32 bytes compare with four overlapping word loads; `Bytes.int32_le` and the other fixed-width readers inline. The one remaining difference is csvgroup at +0.8% instructions.
+Keys of 16 bytes or more hash inline, keys of 16 to 32 bytes compare with four overlapping word loads, `Bytes` fixed-width readers inline, and a literal needle of two or more bytes calls the general `contains` directly.
+
+Open gap, 1 to 2.5% in the map-heavy programs: `msrt_map_entry_ptrs` (one step of a map `for` loop) was inlined with constant descriptors by the hot crate and is a call now, and `msrt_map_slot_lent` costs a few instructions more per call. Generating both as MIR from the descriptors is the follow-up.
