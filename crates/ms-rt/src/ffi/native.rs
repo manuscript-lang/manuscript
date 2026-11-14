@@ -852,6 +852,17 @@ impl IntoAbi for Vec<Vec<String>> {
         }
     }
 }
+impl IntoAbi for Vec<&str> {
+    type Raw = VecVal;
+    fn into_raw(self) -> VecVal {
+        let mut v = core::mem::MaybeUninit::<VecVal>::uninit();
+        // SAFETY: `write_string_list` initializes `v` and copies each piece.
+        unsafe {
+            crate::ffi::write_string_list(v.as_mut_ptr(), self);
+            v.assume_init()
+        }
+    }
+}
 impl IntoAbi for Vec<String> {
     type Raw = VecVal;
     fn into_raw(self) -> VecVal {

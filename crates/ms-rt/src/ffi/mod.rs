@@ -31,7 +31,7 @@ use std::vec::Vec;
 use crate::desc::{msrt_desc_bytes, msrt_desc_string};
 use crate::obj::msrt_alloc;
 use crate::string::{msrt_string_clone, msrt_string_free, msrt_string_from_bytes};
-use crate::vec::{msrt_list_new, msrt_list_push};
+use crate::vec::{msrt_list_new, msrt_list_push, msrt_list_reserve};
 
 // Faults unwind through the natives that raise them.
 use crate::fault::{msrt_fault, msrt_fault_int_overflow};
@@ -219,6 +219,12 @@ pub unsafe fn write_string_list<S: AsRef<str>>(
     // string whose ownership moves into the list.
     unsafe {
         msrt_list_new(out);
+        let items = items.into_iter();
+        // An exactly sized source sizes the list once instead of doubling it.
+        let known = items.size_hint().0;
+        if known > 0 {
+            msrt_list_reserve(out, &raw const msrt_desc_string, known as i64);
+        }
         for item in items {
             let s = new_string(item.as_ref());
             msrt_list_push(out, &raw const msrt_desc_string, (&raw const s).cast());

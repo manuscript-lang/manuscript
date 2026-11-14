@@ -1,6 +1,5 @@
 //! Unicode properties and UTF-8 validation, using Rust's character tables and validator.
 //! ms: domain unicode
-use alloc::string::String;
 use alloc::vec::Vec;
 use ms_rt::ffi::native;
 
@@ -14,8 +13,8 @@ native! {
         core::str::from_utf8(data).is_ok()
     }
 
-    fn msstd_unicode_fields(text: &str) -> out Vec<String> {
-        text.split_whitespace().map(String::from).collect()
+    fn msstd_unicode_fields(text: &str) -> out Vec<&str> {
+        text.split_whitespace().collect()
     }
 
     fn msstd_unicode_is_alphabetic(value: i64) -> bool {
