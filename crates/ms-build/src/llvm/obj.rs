@@ -166,6 +166,10 @@ fn compile(
         // 32-byte or cache-line boundary depending on where the linker put the function, which
         // slowed a five-instruction loop 2x when the runtime grew (#1871).
         llc.arg("-align-loops=32");
+        // Name the portable baseline CPU. LLVM's unnamed "generic" CPU dropped the tuning that
+        // guards a 64-bit divide with a cheap 32-bit one when both operands are small, which
+        // rustc and clang keep for `x86-64` (the trial-division loop in `workers` ran 1.4x slower).
+        llc.arg("-mcpu=x86-64");
     }
     run(llc, "llc (LLVM code generator)")?;
     Ok(this)

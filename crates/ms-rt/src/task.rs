@@ -195,6 +195,8 @@ struct Task {
     /// The monotonic time by which the deferred promise this task is running must finish
     /// (`msrt_promise_wait` with a timeout), or `i64::MAX`; waits inside it stop there.
     defer_deadline: i64,
+    /// When this promise task was taken from another thread's queue (monotonic ns), or 0.
+    stolen_at: i64,
     /// The promise this task runs (`promise::msrt_promise_start`), or 0; told when the task ends.
     promise: i64,
     /// The test output capture this task's standard output goes to, or 0 (`msrt_test_capture_set`);

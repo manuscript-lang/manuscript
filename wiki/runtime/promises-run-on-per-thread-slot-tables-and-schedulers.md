@@ -27,3 +27,5 @@ A promise has one cancel-signal registration. Applying a replacement must unregi
 
 Evidence: `crates/ms-rt/src/promise.rs` tests (spread, steal, remote cancel, remote fault, pool jobs from scheduler threads); `tools/leak-check.ms` on cancel and fault programs.
 Verify: `cargo test -p ms-rt --lib` repeated; leak-check clean after a dropped running promise.
+
+Verified (2026-11-14): 100k tiny promises on 4 threads ran slower than on 1 because thieves paid a task and three events per steal, and spun on the creator's queue (660 ms of CPU for 190 ms). `sched::steal_feedback` makes a thread that stole a promise that ran under 5 us pause stealing, doubling from 50 us to 2 ms (`steal_off_until`; `steal_wait_ns` includes it so an idle thread sleeps instead of spinning). Batch steals (64 per lock) and stealing the newest end did not help. Evidence: `bench/perf/small-promises/README.md`.
