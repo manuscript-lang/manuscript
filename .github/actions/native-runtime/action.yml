@@ -30,14 +30,27 @@ runs:
         path: |
           target/ms-native/*.a
           target/ms-native/*.ll
-        key: ms-native-${{ github.event_name == 'pull_request' && 'pr' || 'allocs' }}-${{ inputs.os }}-${{ inputs.arch }}-${{ steps.hash.outputs.value }}
+          target/leak-stats/*/release/libms_native.a
+        key: ms-native-leak-${{ github.event_name == 'pull_request' && 'pr' || 'allocs' }}-${{ inputs.os }}-${{ inputs.arch }}-${{ steps.hash.outputs.value }}
         restore-keys: |
-          ms-native-allocs-${{ inputs.os }}-${{ inputs.arch }}-${{ steps.hash.outputs.value }}
+          ms-native-leak-allocs-${{ inputs.os }}-${{ inputs.arch }}-${{ steps.hash.outputs.value }}
     - name: Build the native runtime
       if: steps.runtime.outputs.cache-matched-key == ''
       shell: bash
       run: cargo xtask runtime ${{ github.event_name == 'pull_request' && '' || '--alloc-profile' }}
+    # The leak-counting runtime (`tools/lib.ms` `use_stats_runtime`) is a second full build of the runtime, so
+    # main builds it with the others and a pull request restores it: `LEAK_STATS_PREBUILT` makes the tool use
+    # the restored archive. A pull request that changes the runtime sources builds it itself.
+    - name: Build the leak-counting runtime
+      if: steps.runtime.outputs.cache-matched-key == '' && github.event_name != 'pull_request' && inputs.os == 'linux'
+      shell: bash
+      env:
+        CARGO_TARGET_DIR: target/leak-stats
+        CARGO_PROFILE_RELEASE_DEBUG: '0'
+      run: |
+        host=$(rustc -vV | sed -n 's/^host: //p')
+        cargo build --release --locked -q -p ms-native --features ms-rt/stats,ms-native/entry --target "$host"
     - name: Mark the restored runtime as fresh
       if: steps.runtime.outputs.cache-matched-key != ''
       shell: bash
-      run: touch target/ms-native/*.a target/ms-native/*.ll
+      run: touch target/ms-native/*.a target/ms-native/*.ll target/leak-stats/*/release/libms_native.a 2>/dev/null || true

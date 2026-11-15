@@ -117,6 +117,14 @@ export fn use_stats_runtime() Int:
 			"{mingw}/bin/{arch}-w64-mingw32-clang",
 		).get()
 
+	// CI restores the archive main built for these runtime sources (the
+	// `native-runtime` action).
+	prebuilt := "{stats_target}/{release}/libms_native.a"
+
+	if env("LEAK_STATS_PREBUILT", "") != "" and canonicalize(prebuilt.clone()).is_ok():
+		set_environment("MS_RT_LIB", canonicalize(prebuilt).get()).get()
+		return 0
+
 	set_environment("CARGO_TARGET_DIR", stats_target).get()
 
 	var build = [
