@@ -295,6 +295,9 @@ fn type_alias(name: &str) -> Option<&'static str> {
         "str" | "Str" | "string" | "char" | "Char" | "Text" => "String",
         "boolean" | "Boolean" | "bool" => "Bool",
         "void" | "Void" | "None" | "NoneType" => "Unit",
+        "Vec" | "Vector" | "Array" | "ArrayList" | "array" => "List",
+        "Dict" | "Dictionary" | "HashMap" | "dict" | "TreeMap" => "Map",
+        "HashSet" | "TreeSet" => "Set",
         _ => return None,
     })
 }

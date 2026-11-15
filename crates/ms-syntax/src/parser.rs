@@ -949,6 +949,12 @@ impl<'a> Parser<'a> {
                 "",
             );
         }
+        if t.kind == Tok::LBrace {
+            return self.fail(
+                t,
+                "blocks are not braced and every fn declares its result type: write the result type, then ':' and an indented body, e.g. fn f() Unit: (Unit when it returns nothing), and remove the closing '}'",
+            );
+        }
         if t.kind == Tok::Colon || t.kind == Tok::Newline {
             if self.speculative > 0 {
                 return Err(self.dummy());
