@@ -70,3 +70,5 @@ Same VM and method, min of 5, milliseconds, 11.7 MB of text with 2-byte scalars.
 | `lower()` | 74 | 50 | 60 | as `upper()` |
 | `chars_scan_utf8` | 14 | 10 | 8 | the scalar step of `for c in text.chars()` and `scalar_values()` decodes inline instead of calling the runtime |
 | `utf8_case_reverse` | 133 | 75 | 81 | the two above |
+
+Also in this change: `capitalize()` of text that starts with an ASCII letter is one ASCII uppercase and a concat (54 to 30 ms for 1M words, Rust 39); it went through the general titlecase path. The `bytes_scan` row (13 vs 7) compared a copy (`as_bytes()` copies) with Rust's borrowed slice; the Rust twin now copies too. Round 4 sweep of other operations over 1M words and 11 MB texts (`lines`, `split`, `replace`, `count`, `contains`, `index_of`, `pad`, `chars`, `reverse`, `upper`, `compare`) found none over 1.2x of Rust except `lines` (17 vs 10, 1M owned strings in a list against a lazy iterator) and `contains_short` (21 vs 15), both unchanged.

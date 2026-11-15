@@ -31,7 +31,9 @@ fn main() {
     for c in text.chars() { if c >= '0' && c <= '9' { s += 1; } else if c == ' ' { s += 100; } }
     rep("chars_scan", t, s);
     t = Instant::now(); s = 0;
-    for &b in text.as_bytes() { if b == 32 { s += 1; } }
+    // `as_bytes()` in Manuscript copies the text, so the twin copies it too.
+    let bytes = text.as_bytes().to_vec();
+    for &b in &bytes { if b == 32 { s += 1; } }
     rep("bytes_scan", t, s);
     let utext = text.replace("w", "é");
     t = Instant::now(); s = 0;
