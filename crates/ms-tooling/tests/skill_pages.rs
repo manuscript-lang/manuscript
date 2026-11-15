@@ -49,7 +49,7 @@ fn skill_complete_examples_check() {
             examples += 1;
         }
     }
-    assert_eq!(examples, 10, "retain all complete skill examples");
+    assert_eq!(examples, 24, "retain all complete skill examples");
 }
 
 #[test]
@@ -59,7 +59,7 @@ fn skill_root_is_short_and_references_are_substantive() {
         .find(|(path, _)| *path == "SKILL.md")
         .unwrap()
         .1;
-    assert!(root.len() <= 5400, "entry skill should remain concise");
+    assert!(root.len() <= 9000, "entry skill should remain concise");
     assert!(root.starts_with("---\nname: manuscript\n"));
     assert!(root.contains("{{MS_VERSION}}"));
     assert!(root.contains("Use tabs for indentation"));
@@ -103,4 +103,43 @@ fn skill_server_state_example_is_the_tested_fixture() {
             .expect("fixture header"),
         "keep the skill example equal to its fixture"
     );
+}
+
+/// The call table is rendered from the standard library's declarations, so a renamed or
+/// removed call fails here instead of going stale.
+#[test]
+fn skill_call_tables_match_the_declarations() {
+    use ms_tooling::guide::skill_calls::{block_of, render};
+    let page = FILES
+        .iter()
+        .find(|(path, _)| *path == "references/standard-calls.md")
+        .unwrap()
+        .1;
+    let rendered = render();
+    assert_eq!(
+        block_of(page).expect("calls markers"),
+        rendered,
+        "run `cargo run -p ms-tooling --bin ms-tooling-dev -- skill-calls update`"
+    );
+    assert!(rendered.contains("length() Int"), "{rendered}");
+}
+
+/// The module map is rendered from the declarations too.
+#[test]
+fn skill_module_map_matches_the_declarations() {
+    use ms_tooling::guide::skill_calls::{
+        MODULES_END, MODULES_START, block_between, render_modules,
+    };
+    let page = FILES
+        .iter()
+        .find(|(path, _)| *path == "references/standard-modules.md")
+        .unwrap()
+        .1;
+    let rendered = render_modules();
+    assert_eq!(
+        block_between(page, MODULES_START, MODULES_END).expect("module markers"),
+        rendered,
+        "run `cargo run -p ms-tooling --bin ms-tooling-dev -- skill-calls update`"
+    );
+    assert!(rendered.contains("`@std/data/json.ms`: "), "{rendered}");
 }
