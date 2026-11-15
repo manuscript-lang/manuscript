@@ -69,6 +69,12 @@ fn main() Int:
 		if out.exit_code == 0:
 			print("{f.path}: '{old}' is accepted; a removed spelling must be an error")
 			failing += 1
+		else if (
+			fixed.starts_with("none:")
+			and fixed.slice(5, fixed.length()).get("").trim() == ""
+		):
+			print("{f.path}: 'fix: none:' needs a reason")
+			failing += 1
 		else if not text.contains(want):
 			print("{f.path}: the error for '{old}' does not name '{want}'")
 			failing += 1
