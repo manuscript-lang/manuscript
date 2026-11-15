@@ -12,6 +12,6 @@ fn describe(s: Shape, p: Point, items: List[String], maybe: Int?, depth: Int) In
 	if depth > 0: return describe(s, p, items, maybe, depth - 1)
 	return items.length() + p.x
 
-fn main() Unit:
+fn main() Void:
 	p := Point(1, 2.0, "pt")
 	print(describe(Shape.Rect(2, 3), p, ["a", "b"], 5, 1))

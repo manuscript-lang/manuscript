@@ -112,7 +112,7 @@ impl Builder<'_> {
                 .join(", ")
         };
         match self.m.types.kind(ty) {
-            TyKind::Unit => "Unit".into(),
+            TyKind::Void => "Void".into(),
             TyKind::Bool => "Bool".into(),
             TyKind::Int => "Int".into(),
             TyKind::Float => "Float".into(),
@@ -158,7 +158,7 @@ impl Builder<'_> {
         let leaves = self.layouts.leaves(ty);
         let base = |e| DebugKind::Base(e);
         match self.m.types.kind(ty).clone() {
-            TyKind::Unit => DebugKind::Struct(Vec::new()),
+            TyKind::Void => DebugKind::Struct(Vec::new()),
             TyKind::Bool => base(Encoding::Bool),
             TyKind::Int | TyKind::Int8 | TyKind::Int16 | TyKind::Int32 => base(Encoding::Signed),
             TyKind::UInt8 | TyKind::UInt16 | TyKind::UInt32 | TyKind::UInt64 => {
