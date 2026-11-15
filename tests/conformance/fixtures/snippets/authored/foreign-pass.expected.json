@@ -33,7 +33,7 @@
             "column": 9,
             "offset": 137
           },
-          "replacement": "unit"
+          "replacement": "void"
         }
       }
     ],
