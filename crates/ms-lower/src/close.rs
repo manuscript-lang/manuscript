@@ -1619,9 +1619,56 @@ impl FnLower<'_> {
     pub(crate) fn close_discarded_kind(&mut self, kind: &CloseKind, v: Value) -> Value {
         let mt = self.ty_of(v);
         let _ = self.call_runtime("msrt_shield_enter", &[], MTy::UNIT);
-        let v = close_owned(&mut self.b, kind, v, mt);
+        let v = if kind.writes_back() && self.b.m.needs_drop(mt) {
+            self.close_owned_in_owned_slot(kind, v, mt)
+        } else {
+            close_owned(&mut self.b, kind, v, mt)
+        };
         let _ = self.call_runtime("msrt_shield_exit", &[], MTy::UNIT);
         v
+    }
+
+    /// `close_owned` for a close that works on the value's storage: the storage is owned while
+    /// the close runs, so a fault inside it (a part's failed close) still frees what the close
+    /// put back in it.
+    fn close_owned_in_owned_slot(&mut self, kind: &CloseKind, v: Value, ty: MTy) -> Value {
+        let slot = self
+            .b
+            .emit(Op::Slot, &[], Imm::Ty(ty), Some(MTy::PTR))
+            .expect("slot");
+        self.b.emit(Op::Put, &[slot, v], Imm::None, None);
+        let thunk = self.drop_slot_thunk(ty);
+        self.own_raw_value(slot, thunk.index() as u32 + 2);
+        let r = close_at_result(&mut self.b, kind, slot, ty);
+        let after = self
+            .b
+            .emit(Op::Take, &[slot], Imm::Ty(ty), Some(ty))
+            .expect("take");
+        self.b.emit(Op::ScopeDisown, &[slot], Imm::None, None);
+        close_error_fault(&mut self.b, r, None);
+        after
+    }
+
+    /// A cleanup entry for a value of type `ty` held in memory that only drops it.
+    fn drop_slot_thunk(&mut self, ty: MTy) -> FuncId {
+        let key = HelperKey::DropSlot(ty);
+        if let Some(f) = self.cx.helpers.get(&key) {
+            return *f;
+        }
+        let ps = vec![Param {
+            ty: MTy::PTR,
+            mode: Mode::Borrow,
+        }];
+        let mut b = FuncBuilder::new(self.b.m, "drop_slot", ps, MTy::UNIT);
+        b.func_mut().linkage = Linkage::Internal;
+        b.func_mut().kind = FuncKind::Normal;
+        b.func_mut().slot_close = Some(ty);
+        let u = b.unit();
+        b.ret(Some(u));
+        let f = b.into_func();
+        let id = self.b.m.add_func(f);
+        self.cx.helpers.insert(key, id);
+        id
     }
 
     /// Starts deferring close failures: a mutator that discards entries closes them in place,

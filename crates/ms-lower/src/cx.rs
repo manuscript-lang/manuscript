@@ -99,6 +99,7 @@ pub enum HelperKey {
     ListTail(MTy, Option<crate::close::CloseKind>),
     /// The close of a field held in memory that never turns into a returning close.
     CloseField(MTy, crate::close::CloseKind),
+    DropSlot(MTy),
     /// What a type holds besides the resource fields at these paths, which other owners close.
     SplitRest(MTy, Vec<Vec<u32>>),
     /// How a failed scope-end close becomes the return of a function of the given type: the
