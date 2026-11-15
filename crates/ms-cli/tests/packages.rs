@@ -289,6 +289,13 @@ fn two_versions_of_one_package_are_named_when_their_types_meet() {
     );
 }
 
+/// `file:///C:/x` on Windows and `file:///x` elsewhere.
+fn file_uri(path: &Path) -> String {
+    let path = path.to_string_lossy().replace('\\', "/");
+    let slash = if path.starts_with('/') { "" } else { "/" };
+    format!("file://{slash}{path}")
+}
+
 /// Sends `requests` (id, method, params) to `ms lsp` after opening `file`, and returns the response to each.
 fn lsp(
     project: &Path,
@@ -299,7 +306,7 @@ fn lsp(
 ) -> Vec<String> {
     use std::io::{BufRead, Read, Write};
     use std::process::Stdio;
-    let uri = |p: &Path| format!("file://{}", p.to_string_lossy().replace('\\', "/"));
+    let uri = file_uri;
     let mut child = Command::new(env!("CARGO_BIN_EXE_ms"))
         .arg("lsp")
         .env("MS_PACKAGE_CACHE", cache)
@@ -372,7 +379,7 @@ fn the_editor_follows_imports_into_a_package() {
     assert!(fetch.status.success(), "{}", stderr(&fetch));
     let main = project.join("src/main.ms");
     let text = include_str!("packages/main.ms");
-    let uri = format!("file://{}", main.to_string_lossy().replace('\\', "/"));
+    let uri = file_uri(&main);
     let at = |line: u32, character: u32| {
         format!(
             r#"{{"textDocument":{{"uri":"{uri}"}},"position":{{"line":{line},"character":{character}}}}}"#
@@ -386,9 +393,16 @@ fn the_editor_follows_imports_into_a_package() {
         &[(2, "textDocument/definition", at(3, 12))],
     );
     // Definition lands in the cached copy of the package, which exists on disk.
-    let cached = cache.to_string_lossy().replace('\\', "/");
+    let stored = std::fs::read_dir(&cache)
+        .unwrap()
+        .flatten()
+        .find(|e| e.path().join("src/lib.ms").is_file())
+        .unwrap()
+        .file_name()
+        .to_string_lossy()
+        .into_owned();
     assert!(
-        answers[0].contains(&cached) && answers[0].contains("/src/lib.ms"),
+        answers[0].contains(&stored) && answers[0].contains("/src/lib.ms"),
         "{}",
         answers[0]
     );
