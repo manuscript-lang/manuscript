@@ -9,6 +9,12 @@ fn Money.to_string() String:
 type Plain:
     n: Int
 
+type Wallet:
+    owner: String
+    balance: Money
+    history: List[Money]
+    note: Money?
+
 enum Shape:
     Dot
     Line(len: Int)
@@ -31,4 +37,9 @@ fn main() Unit:
     print("{Line(4)}")
     print(Plain(2))
     print("{Plain(3)}")
-    print([m])
+    print([m.clone()])
+    print({"a": m.clone()})
+    maybe: Money? := m.clone()
+    print(maybe)
+    print("{[m.clone(), Money(5)]}")
+    print(Wallet("ada", m.clone(), [Money(5)], none))

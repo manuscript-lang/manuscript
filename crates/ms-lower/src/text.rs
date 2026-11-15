@@ -87,6 +87,40 @@ fn format_params(t: MTy) -> Vec<Param> {
 }
 
 impl Cx {
+    /// The function of the `fn T.to_string() String` a record or enum declares for `t`: its text
+    /// form wherever a value of `t` is shown, nested in a container too.
+    pub(crate) fn own_text_fn(&mut self, m: &mut Module, t: MTy) -> Result<Option<FuncId>, Error> {
+        if !matches!(m.types.kind(t), TyKind::Type(_) | TyKind::Alt(_)) {
+            return Ok(None);
+        }
+        let own: Vec<_> = self
+            .methods
+            .iter()
+            .filter(|c| {
+                c.native == ms_check::api::types::Native::Source
+                    && c.ty.params.is_empty()
+                    && c.variables.is_empty()
+                    && matches!(c.receiver.kind, Kind::Type | Kind::Alternative)
+                    && c.decl
+                        .as_ref()
+                        .is_some_and(|d| self.syms.str(d.name()) == "to_string")
+            })
+            .cloned()
+            .collect();
+        for c in own {
+            if self.lower_ty(m, &c.receiver).ok() != Some(t) {
+                continue;
+            }
+            let id = c.decl.as_ref().map(|d| d.id());
+            let callable = id
+                .and_then(|id| self.callables.get(&(c.module, id)).cloned())
+                .ok_or_else(|| Error::new("to_string not found"))?;
+            let f = self.function_for(m, &callable, &ms_check::api::types::Subst::default())?;
+            return Ok(Some(f));
+        }
+        Ok(None)
+    }
+
     /// The function formatting a value of `t` (reserved on first use); `repr` is the quoted form.
     pub(crate) fn format_fn(&mut self, m: &mut Module, t: MTy, repr: bool) -> FuncId {
         let key = HelperKey::Fmt(t, repr);
@@ -291,7 +325,14 @@ pub(crate) fn build_format(
         }
         _ => None,
     };
+    let own_text = cx.own_text_fn(b.m, t)?;
     match b.m.types.kind(t).clone() {
+        TyKind::Type(_) | TyKind::Alt(_) if own_text.is_some() => {
+            // The type's own `to_string`, declared next to it.
+            let f = own_text.expect("checked");
+            let text = b.call(f, &[x]);
+            b.ret(Some(text));
+        }
         TyKind::Type(_) if declared_text.is_some() => {
             // The type's own `to_string`, declared in its `.ms` file.
             let f = declared_text.expect("checked");
@@ -596,22 +637,10 @@ impl<'a> FnLower<'a> {
         if !matches!(t.kind, Kind::Type | Kind::Alternative) {
             return Ok(None);
         }
-        let own = self.cx.methods.iter().find(|m| {
-            m.receiver.id == t.id
-                && m.native == ms_check::api::types::Native::Source
-                && m.ty.params.is_empty()
-                && m.decl
-                    .as_ref()
-                    .is_some_and(|d| self.syms.str(d.name()) == "to_string")
-        });
-        let Some(method) = own.cloned() else {
+        let mty = self.cx.lower_ty(self.b.m, t)?;
+        let Some(f) = self.cx.own_text_fn(self.b.m, mty)? else {
             return Ok(None);
         };
-        let callable =
-            self.callable_of_decl(method.module, method.decl.as_ref().map(|d| d.id()))?;
-        let f =
-            self.cx
-                .function_for(self.b.m, &callable, &ms_check::api::types::Subst::default())?;
         let receiver = self.borrow(x);
         let text = self.b.call(f, &[receiver]);
         Ok(Some(Val { v: text, own: true }))
