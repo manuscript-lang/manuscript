@@ -14,7 +14,7 @@ type Token:
 	closed: Bool = false
 	fail: Bool = false
 
-fn var Token.close() Unit!:
+fn var Token.close() Void!:
 	if not self.closed:
 		self.closed = true
 		append_file(self.log, "close {self.id}\n").wait()?
@@ -41,11 +41,11 @@ type Pair:
 	second: Token
 	code: Int
 
-fn direct(log: String, action: Int) Unit!:
+fn direct(log: String, action: Int) Void!:
 	value := Pair(token(log, 1), token(log, 2), check(log, action)?)
 	append_file(log, "body {value.code}\n").wait()?
 
-fn labeled(log: String, action: Int) Unit!:
+fn labeled(log: String, action: Int) Void!:
 	value := Pair(
 		second: token(log, 2),
 		first: token(log, 1),
@@ -58,7 +58,7 @@ type Wrapped:
 	second: Token!
 	code: Int
 
-fn wrapped(log: String, action: Int) Unit!:
+fn wrapped(log: String, action: Int) Void!:
 	value := Wrapped(token(log, 1), ok(token(log, 2)), check(log, action)?)
 	append_file(log, "body {value.code}\n").wait()?
 
@@ -74,7 +74,7 @@ type Defaulted:
 	second: Token = token(log, 2)
 	code: Int = default_code(log, action)
 
-fn defaulted(log: String, action: Int) Unit!:
+fn defaulted(log: String, action: Int) Void!:
 	value := Defaulted(log.clone(), token(log, 1), action)
 	append_file(log, "body {value.code}\n").wait()?
 
@@ -83,7 +83,7 @@ type Nested:
 	last: Token
 	code: Int
 
-fn nested(log: String, action: Int) Unit!:
+fn nested(log: String, action: Int) Void!:
 	value := Nested(
 		Pair(token(log, 1), token(log, 2), 0),
 		token(log, 3),
@@ -91,7 +91,7 @@ fn nested(log: String, action: Int) Unit!:
 	)
 	append_file(log, "body {value.code}\n").wait()?
 
-fn moved_binding(log: String, action: Int) Unit!:
+fn moved_binding(log: String, action: Int) Void!:
 	_outer := token(log, 0)
 	first := token(log, 1)
 	value := Pair(first, token(log, 2), check(log, action)?)
@@ -108,10 +108,10 @@ fn outer_temporary(log: String) Int!:
 		)
 	)
 
-fn failing_cleanup(log: String) Unit!:
+fn failing_cleanup(log: String) Void!:
 	_value := Pair(token(log, 1), token(log, 2, fail: true), check(log, 1)?)
 
-fn wait_for_check(log: String) Unit!:
+fn wait_for_check(log: String) Void!:
 	for attempt in 0..1000:
 		if events(log).contains("check\n"): return ok(unit)
 

@@ -98,7 +98,7 @@ Discovered source filenames and visited directory names must be valid UTF-8. Inv
 
 ## Library projects and copied dependencies
 
-A library needs no placeholder `main`:
+A library needs no placeholder `main`. `ms init --lib greeter` creates one with `src/lib.ms` and a test:
 
 ```toml
 [project]

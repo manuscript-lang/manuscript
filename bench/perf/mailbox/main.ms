@@ -13,7 +13,7 @@ import (
 fn work(a: Int) Int!:
 	return ok(a * 2 + 1)
 
-fn main() Unit:
+fn main() Void:
 	args := arguments()
 	n := args[0].parse_int().get()
 	rounds := args[1].parse_int().get()

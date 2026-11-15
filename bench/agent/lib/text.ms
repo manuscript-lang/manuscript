@@ -25,7 +25,7 @@ export fn must_read(path: String) String:
 	return read_file(path).wait().get().decode_utf8().get("")
 
 // Replaces the file at `path`, creating its directory first.
-export fn write_text(path: String, text: String) Unit:
+export fn write_text(path: String, text: String) Void:
 	create_directory(dirname(path), recursive: true).get()
 	write_file(path, text, replace: true).wait().get()
 

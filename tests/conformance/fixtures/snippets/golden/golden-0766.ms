@@ -1,6 +1,6 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn operation() Unit: unit
+fn operation() Void: unit
 fn f() Result[Int, Error]:
     operation()?
     return ok(1)

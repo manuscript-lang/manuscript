@@ -21,7 +21,7 @@ fn pfib(n: Int, cutoff: Int) Int!:
 fn work(n: Int) Int!:
 	return ok(fib(n))
 
-fn main() Unit:
+fn main() Void:
 	args := arguments()
 	mode := args[0].clone()
 	n := args[1].parse_int().get()

@@ -80,7 +80,7 @@ fn maze(var rnd: Random, h: Int, w: Int, p: Float) String:
 		verdict := solve(t)
 		if "0123456789".contains(verdict.view(0, verdict.length().min(1))): return t
 
-export fn gen_c16() Unit:
+export fn gen_c16() Void:
 	var rnd = seeded(16)
 	open_big := maze(var rnd, 60, 60, 0.3)
 	examples := [

@@ -12,11 +12,11 @@ type Pair:
 	front: List[FileHandle] = []
 	back: List[FileHandle] = []
 
-fn shift(var from: List[FileHandle], var to: List[FileHandle]) Unit:
+fn shift(var from: List[FileHandle], var to: List[FileHandle]) Void:
 	if value := from.pop():
 		to.append(value)
 
-fn var Pair.rebalance() Unit:
+fn var Pair.rebalance() Void:
 	shift(var self.front, var self.back)
 
 type Words:
@@ -25,7 +25,7 @@ type Words:
 	count: Int = 0
 	c: List[String] = []
 
-fn move_word(var from: List[String], var to: List[String]) Unit:
+fn move_word(var from: List[String], var to: List[String]) Void:
 	if value := from.pop():
 		to.append(value)
 
@@ -34,12 +34,12 @@ fn tally(
 	var count: Int,
 	var to: List[String],
 	seen: List[String],
-) Unit:
+) Void:
 	count += seen.length()
 	if value := from.pop():
 		to.append(value)
 
-fn var Words.step() Unit:
+fn var Words.step() Void:
 	move_word(var self.a, var self.b)
 	tally(var self.a, var self.count, var self.c, self.b)
 

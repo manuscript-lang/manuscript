@@ -5,5 +5,5 @@ fn first_line(path: String) String!:
 	lines := file.read_lines(max_lines: 100)?
 	return ok(lines[0].clone())
 
-fn main() Unit:
+fn main() Void:
 	print(first_line("scope.ms").get("unreadable"))

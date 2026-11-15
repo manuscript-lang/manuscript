@@ -6,7 +6,7 @@ fn helper() Int: 1
 A := 1
 B: Int := A + 1
 
-fn main() Unit:
+fn main() Void:
     x := 1
     var (
         _a = 10

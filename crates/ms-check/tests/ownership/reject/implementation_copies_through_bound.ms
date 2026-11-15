@@ -3,7 +3,7 @@ import Closeable from "@std/core.ms"
 type Door:
     n: Int
 
-fn var Door.close() Unit!:
+fn var Door.close() Void!:
     return ok(unit)
 
 type Bag[U]:

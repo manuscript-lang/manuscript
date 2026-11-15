@@ -22,7 +22,7 @@ fn worker(url: String, nanos: Int) Int:
 	return n
 
 // Runs `conns` fetching promises; the runtime spreads them over its threads.
-fn main() Unit:
+fn main() Void:
 	args := arguments()
 	url := args.get(0)
 	conns := args.get(1).parse_int().get()

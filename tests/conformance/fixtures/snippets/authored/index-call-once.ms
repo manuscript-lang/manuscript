@@ -8,7 +8,7 @@ fn var Counter.next() Int:
     self.n += 1
     return self.n
 
-fn main() Unit:
+fn main() Void:
     var c = Counter(0)
     var xs = ["a", "b", "c", "d", "e", "f", "g"]
     one := xs[c.next()].clone()

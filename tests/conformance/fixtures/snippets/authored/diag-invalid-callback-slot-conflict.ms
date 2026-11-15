@@ -3,7 +3,7 @@
 // conform: origin=ms-check/tests/messages.rs
 fn broken(first: Missing, second: Int) Int: 1
 
-fn apply[T](callback: fn(T, String) Int) Unit: return
+fn apply[T](callback: fn(T, String) Int) Void: return
 
-fn exercise() Unit:
+fn exercise() Void:
     apply(broken)

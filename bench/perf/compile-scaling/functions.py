@@ -42,7 +42,7 @@ for i in range(n):
 	return t + xs[a%4]
 }}
 ''')
-ms.append('fn main() Unit:\n\tvar s = 0\n'+''.join(f'\ts += f{i}({i})\n' for i in range(n))+'\tprint(s)\n')
+ms.append('fn main() Void:\n\tvar s = 0\n'+''.join(f'\ts += f{i}({i})\n' for i in range(n))+'\tprint(s)\n')
 rs.append('fn main() {\n    let mut s = 0i64;\n'+''.join(f'    s += f{i}({i});\n' for i in range(n))+'    println!("{}", s);\n}\n')
 go.append('func main() {\n\ts := 0\n'+''.join(f'\ts += f{i}({i})\n' for i in range(n))+'\tfmt.Println(s)\n}\n')
 open(f'p{n}.ms','w').write('\n'.join(ms)); open(f'p{n}.rs','w').write('\n'.join(rs)); open(f'p{n}.go','w').write('\n'.join(go))

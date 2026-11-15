@@ -8,7 +8,7 @@ fn positive(value: Int) Int:
     else:
         panic("positive value required")
 
-fn discard(value: Int) Unit:
+fn discard(value: Int) Void:
     if not (value > 0):
         return panic("check failed")
 

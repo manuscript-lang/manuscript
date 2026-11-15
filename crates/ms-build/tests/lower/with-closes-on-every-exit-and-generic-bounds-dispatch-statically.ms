@@ -7,7 +7,7 @@ import Closeable from "@std/core.ms"
 type Res:
     n: Int
 
-fn Res.close() Unit!:
+fn Res.close() Void!:
     _x := self.n
 
 fn run[T: Closeable](r: T, early: Bool) Int:

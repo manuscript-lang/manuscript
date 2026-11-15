@@ -38,5 +38,5 @@ fn plain(row: Plain) String:
 
 type Empty:
 
-fn main() Unit:
+fn main() Void:
     return

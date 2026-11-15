@@ -22,7 +22,7 @@ import (
 PROGRAMS := ["interp", "strings", "lz", "graph"]
 COUNTS := "bench/perf/counts.txt"
 
-fn say(text: String) Unit:
+fn say(text: String) Void:
 	stdout().write(text).get()
 
 // Instructions `program` executed under callgrind, or -1 when it did not run.

@@ -37,7 +37,7 @@ import (
 
 extern type NativeHasher
 
-fn NativeHasher.update(data: Bytes) Unit:
+fn NativeHasher.update(data: Bytes) Void:
 	msstd_crypto_hasher_update(self, data)
 
 fn NativeHasher.finish() Bytes:
@@ -135,7 +135,7 @@ export enum Curve:
 // Incrementally hashes or authenticates data supplied in chunks.
 export interface Hasher:
 	// Appends data to the running hash.
-	fn update(data: Bytes) Unit
+	fn update(data: Bytes) Void
 	// Returns the digest of all data supplied since creation or the last finish, then
 	// resets the state.
 	fn finish() Bytes

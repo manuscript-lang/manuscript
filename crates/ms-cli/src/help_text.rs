@@ -334,20 +334,25 @@ Examples:
   ms review ms.toml --diff change.patch --explain 1 --json
 "#;
 
-pub const HELP_INIT: &str = r#"Usage: ms init [directory]
+pub const HELP_INIT: &str = r#"Usage: ms init [--lib] [directory]
 
 Create a runnable project in the directory (default: the current directory).
 Writes ms.toml, src/main.ms (a hello program), test.ms, and a .gitignore that
 excludes the .ms-cache/ build cache. An existing file is never overwritten; the
 command fails before writing anything when ms.toml, src/main.ms, or test.ms exist.
 
+--lib creates a library, which a package must be: its ms.toml has no entry, and
+src/lib.ms holds a function and a test in place of main.
+
 Keep .ms-cache/ out of version control.
 
 Options:
+  --lib       Create a library with no entry, for sharing as a package
   -h, --help  Show this help without creating files
 
 Examples:
   ms init
+  ms init --lib greeter
   ms init hello
   cd hello && ms run ms.toml -- first second
 "#;

@@ -7,7 +7,7 @@ fn checked(n: Int) Int:
 	if n > 1: panic("n too large: {n}")
 	return n
 
-fn main() Unit:
+fn main() Void:
 	_ := stdout().write("before\n")
 	_ := stdout().write("{checked(1)}\n")
 	_ := stdout().write("{checked(2)}\n")

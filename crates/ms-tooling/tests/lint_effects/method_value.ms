@@ -1,10 +1,10 @@
 type Logger:
     n: Int
 
-fn Logger.info() Unit: print("info")
+fn Logger.info() Void: print("info")
 fn Logger.quiet() Int: self.n
 
-fn stored_method() Unit:
+fn stored_method() Void:
     log := Logger(1)
     f := log.info
     f()

@@ -3,7 +3,7 @@
 // Deterministic; run: ms run bench/agent/gen.ms -- c53
 import Cases, build_oracle, write_cases from "../../lib/gen.ms"
 
-export fn gen_c53() Unit:
+export fn gen_c53() Void:
 	var cs = Cases(build_oracle("c53-markdown-html"))
 	cs.push(
 		"headings",

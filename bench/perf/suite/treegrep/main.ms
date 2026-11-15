@@ -28,7 +28,7 @@ fn scan(dir: String) Found:
 
 	return found
 
-fn main() Unit:
+fn main() Void:
 	found := scan(arguments()[0])
 	print("files: {found.files}")
 	print("matches: {found.matches}")

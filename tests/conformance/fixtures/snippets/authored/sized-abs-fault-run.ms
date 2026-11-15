@@ -3,6 +3,6 @@
 // conform: origin=sized numeric types stage 4
 import stdout from "@std/io/io.ms"
 
-fn main() Unit:
+fn main() Void:
     m: Int8 := -128
     _ := stdout().write("{m.abs()}\n")

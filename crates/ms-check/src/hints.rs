@@ -334,7 +334,7 @@ fn type_alias(name: &str) -> Option<&'static str> {
         "double" | "Double" | "f64" | "float64" => "Float",
         "str" | "Str" | "string" | "char" | "Char" | "Text" => "String",
         "boolean" | "Boolean" | "bool" => "Bool",
-        "void" | "Void" | "None" | "NoneType" => "Unit",
+        "void" | "None" | "NoneType" => "Void",
         "Vec" | "Vector" | "Array" | "ArrayList" | "array" => "List",
         "Dict" | "Dictionary" | "HashMap" | "dict" | "TreeMap" => "Map",
         "HashSet" | "TreeSet" => "Set",

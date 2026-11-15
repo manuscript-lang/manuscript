@@ -4,6 +4,6 @@
 fn f() Int:
     return 1
 
-fn main() Unit:
+fn main() Void:
     a, b := f()
     print(a)

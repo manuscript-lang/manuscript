@@ -32,7 +32,7 @@ export opaque type Histogram:
 
 // Adds one observation. A negative value faults: it is a caller error, not data to
 // clamp.
-fn var Histogram.record(value: Int) Unit:
+fn var Histogram.record(value: Int) Void:
 	if value < 0: panic("Histogram.record: value {value} must be at least 0")
 
 	index := bucket_of(value)
@@ -50,7 +50,7 @@ fn var Histogram.record(value: Int) Unit:
 		self.sum_wraps += 1
 
 // Adds one duration as nanoseconds. A negative duration faults like `record`.
-fn var Histogram.record_duration(elapsed: Duration) Unit:
+fn var Histogram.record_duration(elapsed: Duration) Void:
 	self.record(elapsed.to_nanoseconds())
 
 // Runs `work`, records how long it took in nanoseconds on the monotonic clock, and
@@ -104,7 +104,7 @@ fn Histogram.percentile(p: Float) Int?:
 	return self.high
 
 // Discards every observation and returns the histogram to its empty state.
-fn var Histogram.reset() Unit:
+fn var Histogram.reset() Void:
 	self.counts = zeros()
 	self.total = 0
 	self.sum = 0

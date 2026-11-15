@@ -1023,3 +1023,42 @@ fn optional_integer_conversion_handles_the_full_signed_range() {
     let src = include_str!("../../ms-mir/tests/fixtures/optional_int64.mir");
     assert_eq!(same(src, "optional_integer_full_range").code, 0);
 }
+
+/// A function's symbol does not depend on what is declared before it, so an object keeps the
+/// names an unrelated edit did not touch.
+#[test]
+fn symbols_do_not_shift_when_a_function_is_added() {
+    let body = r#"fn @sum(%n: int) -> int {
+b0:
+  %z: int = iconst 0
+  br b1(%z, %z)
+b1(%i: int, %acc: int):
+  %c: bool = icmp.lt %i, %n
+  br_if %c, b2(), b3()
+b2:
+  %a: int = iadd.chk %acc, %i
+  %one: int = iconst 1
+  %j: int = iadd %i, %one
+  br b1(%j, %a)
+b3:
+  ret %acc
+}
+"#;
+    let main = r#"fn @main() -> int {
+b0:
+  %n: int = iconst 10
+  %r: int = call @sum(%n)
+  ret %r
+}
+"#;
+    let extra = body.replace("@sum", "@other");
+    let build = |src: String| {
+        let m = module(&src);
+        compile(&m, &Options::default()).expect("compile")
+    };
+    let has = |object: &[u8], name: &str| object.windows(name.len()).any(|w| w == name.as_bytes());
+    let before = build(format!("module \"a\"\nentry @main\n{body}{main}"));
+    let after = build(format!("module \"a\"\nentry @main\n{extra}{body}{main}"));
+    assert!(has(&before, "sum#0") && has(&after, "sum#0"));
+    assert!(!has(&after, "sum#1") && has(&after, "other#0"));
+}

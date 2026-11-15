@@ -257,7 +257,7 @@ fn padded(key: Bytes, data: Bytes, block: Int) Bytes:
 		out.append(0)
 	return out.build()
 
-fn check(length: Int, key: Bytes, max: Int) Unit:
+fn check(length: Int, key: Bytes, max: Int) Void:
 	if length < 1 or length > max:
 		panic("blake2: digest length must be 1 through {max}")
 	if key.length() > max:

@@ -11,7 +11,7 @@ type Item:
 	log: String
 	fail: Bool
 
-fn var Item.close() Unit!:
+fn var Item.close() Void!:
 	append_file(self.log, "{self.id},").wait()?
 	if self.fail: return error(Error("close failed"))
 
@@ -19,21 +19,21 @@ fn events(log: String) String!:
 	bytes := read_file(log).wait()?
 	return ok(bytes.decode_utf8().get(""))
 
-fn list_remove(log: String) Unit:
+fn list_remove(log: String) Void:
 	var items = [Item(1, log.clone(), true)]
 	items.remove(0)
 
-fn map_add(log: String) Unit:
+fn map_add(log: String) Void:
 	var m = Map[String, Item]()
 	m.add("a", Item(1, log.clone(), true))
 	m.add("a", Item(2, log, false))
 
-fn map_remove(log: String) Unit:
+fn map_remove(log: String) Void:
 	var m = Map[String, Item]()
 	m.add("a", Item(1, log.clone(), true))
 	m.remove("a")
 
-fn list_splice(log: String) Unit:
+fn list_splice(log: String) Void:
 	var items = [Item(1, log.clone(), true), Item(5, log.clone(), false)]
 	items.splice(0, 1, [])
 
@@ -61,7 +61,7 @@ test "splice over an entry whose close fails closes each once":
 	_f := expect_fault(fn: list_splice(log.clone()))?
 	expect_equal(events(log)?, "1,5,")?
 
-fn list_set(log: String) Unit:
+fn list_set(log: String) Void:
 	var items = [Item(1, log.clone(), true)]
 	items.set(0, Item(2, log, false))
 

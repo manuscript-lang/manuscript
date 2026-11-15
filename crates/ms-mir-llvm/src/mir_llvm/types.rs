@@ -67,7 +67,7 @@ pub(super) fn is_narrow(l: Leaf) -> bool {
     )
 }
 
-/// Whether `ty` has no leaves (`Unit`): moving it through memory is nothing.
+/// Whether `ty` has no leaves (`Void`): moving it through memory is nothing.
 fn empty(lay: &Layouts, ty: Ty) -> bool {
     lay.leaves(ty).is_empty()
 }

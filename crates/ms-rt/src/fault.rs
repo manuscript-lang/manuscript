@@ -2179,6 +2179,10 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(
+        miri,
+        ignore = "an exhaustive sweep that takes over 200 s interpreted; native CI runs it"
+    )]
     fn source_frame_walk_keeps_deep_recursion_and_stops_at_native_boundary() {
         let mut chain = vec![[0usize, 0x1010usize]; MAX_STACK_WALK_FRAMES + 2];
         let base = chain.as_mut_ptr();

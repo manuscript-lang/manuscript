@@ -1,4 +1,4 @@
-fn make() fn() Unit:
+fn make() fn() Void:
     var xs = [0]
-    return fn() Unit:  // error: cannot be returned
+    return fn() Void:  // error: cannot be returned
         xs.append(1)

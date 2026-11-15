@@ -1,4 +1,4 @@
 import stdout from "@std/io/io.ms"
 
-fn main() Unit:
+fn main() Void:
     stdout().write("a").get()

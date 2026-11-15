@@ -117,7 +117,7 @@ impl<'a> FnLower<'a> {
             let slot = s.put_slot(old);
             let ks = s.borrow_slot(k);
             let vs = s.put_slot(v);
-            s.call_runtime(sym, &[slot, kd, vd, ks, vs], MTy::UNIT)?;
+            s.call_runtime(sym, &[slot, kd, vd, ks, vs], MTy::VOID)?;
             Ok(s.take_slot(slot, mt))
         })?;
         let u = self.b.unit();
@@ -398,7 +398,7 @@ impl<'a> FnLower<'a> {
             .emit(Op::Slot, &[], Imm::Ty(t), Some(MTy::PTR))
             .expect("slot");
         self.b.emit(Op::Put, &[slot, v], Imm::None, None);
-        self.call_runtime("msrt_map_stamp", &[slot, kd], MTy::UNIT)?;
+        self.call_runtime("msrt_map_stamp", &[slot, kd], MTy::VOID)?;
         Ok(self
             .b
             .emit(Op::Take, &[slot], Imm::Ty(t), Some(t))
@@ -578,7 +578,7 @@ impl<'a> FnLower<'a> {
         let slot = self.put_slot(empty);
         let data = self.b.bytes_lit(table);
         let data = self.borrow_slot(data);
-        self.call_runtime("msrt_map_add_table", &[slot, kd, vd, data], MTy::UNIT)?;
+        self.call_runtime("msrt_map_add_table", &[slot, kd, vd, data], MTy::VOID)?;
         Ok(Val {
             v: self.take_slot(slot, ty),
             own: true,
@@ -611,7 +611,7 @@ impl<'a> FnLower<'a> {
                 Some(head) => {
                     let into = self.put_slot(head);
                     let from = self.borrow_slot(part);
-                    self.call_runtime("msrt_map_merge", &[into, from, kd, vd], MTy::UNIT)?;
+                    self.call_runtime("msrt_map_merge", &[into, from, kd, vd], MTy::VOID)?;
                     self.drop_value(part);
                     self.take_slot(into, ty)
                 }
@@ -653,7 +653,7 @@ impl<'a> FnLower<'a> {
             };
             self.fill_slot(ks, k);
             self.fill_slot(vs, v);
-            self.call_runtime("msrt_map_add", &[slot, kd, vd, ks, vs], MTy::UNIT)?;
+            self.call_runtime("msrt_map_add", &[slot, kd, vd, ks, vs], MTy::VOID)?;
         }
         Ok(Val {
             v: self.take_slot(slot, ty),
@@ -674,7 +674,7 @@ impl<'a> FnLower<'a> {
         let ks = self.put_slot(key);
         let vs = self.put_slot(value);
         let vd = vd.ok_or_else(|| Error::new("a set literal is not supported"))?;
-        self.call_runtime("msrt_map_add", &[slot, kd, vd, ks, vs], MTy::UNIT)?;
+        self.call_runtime("msrt_map_add", &[slot, kd, vd, ks, vs], MTy::VOID)?;
         Ok(self.take_slot(slot, mt))
     }
 
@@ -735,7 +735,7 @@ impl<'a> FnLower<'a> {
                 ty: MTy::STR,
                 mode: ms_mir::ir::Mode::Borrow,
             }],
-            ret: MTy::UNIT,
+            ret: MTy::VOID,
             noreturn: true,
             pure_: false,
             fresh: false,
@@ -824,7 +824,7 @@ impl<'a> FnLower<'a> {
             };
             let element = self.put_slot(element);
             let slot = self.put_slot(old);
-            self.call_runtime("msrt_list_insert", &[slot, d, i, element], MTy::UNIT)?;
+            self.call_runtime("msrt_list_insert", &[slot, d, i, element], MTy::VOID)?;
             let new = self.take_slot(slot, mt);
             let result = copy_result.then(|| {
                 let v = self.clone_value(new);
@@ -848,7 +848,7 @@ impl<'a> FnLower<'a> {
             .collect();
         let slot = self.put_slot(old);
         let recv = Val { v: old, own: false };
-        self.rt_method_at(&sym, recv, Some(slot), decl, &args, MTy::UNIT)?;
+        self.rt_method_at(&sym, recv, Some(slot), decl, &args, MTy::VOID)?;
         let new = self.take_slot(slot, mt);
         let result = copy_result.then(|| {
             let v = self.clone_value(new);
@@ -996,7 +996,7 @@ impl<'a> FnLower<'a> {
             Some(slot),
             &add_decl,
             &[key, value],
-            MTy::UNIT,
+            MTy::VOID,
         )?;
         self.b.br(join, &[]);
         self.b.seal_block(join);

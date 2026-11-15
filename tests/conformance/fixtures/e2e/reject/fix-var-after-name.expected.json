@@ -1,0 +1,48 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "'var' goes before the parameter name, not its type; write var out: Type",
+        "position": {
+          "file": "fix-var-after-name.ms",
+          "line": 3,
+          "column": 8,
+          "offset": 70
+        },
+        "end": {
+          "file": "fix-var-after-name.ms",
+          "line": 3,
+          "column": 16,
+          "offset": 78
+        },
+        "fix": {
+          "position": {
+            "file": "fix-var-after-name.ms",
+            "line": 3,
+            "column": 8,
+            "offset": 70
+          },
+          "end": {
+            "file": "fix-var-after-name.ms",
+            "line": 3,
+            "column": 16,
+            "offset": 78
+          },
+          "replacement": "var out:"
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/fix-var-after-name.ms:3:8: parse: 'var' goes before the parameter name, not its type; write var out: Type\n   |\n 3 | fn add(out: var List[Int], n: Int) Unit:\n   |        ^^^^^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

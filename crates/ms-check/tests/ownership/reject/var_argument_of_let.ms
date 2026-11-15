@@ -1,6 +1,6 @@
-fn fill(var xs: List[Int]) Unit:
+fn fill(var xs: List[Int]) Void:
     xs.append(1)
 
-fn f() Unit:
+fn f() Void:
     xs := [1]
     fill(var xs)  // error: is an immutable binding

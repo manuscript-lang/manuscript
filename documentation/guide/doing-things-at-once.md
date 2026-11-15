@@ -24,7 +24,7 @@ fn run(paths: List[String]) Int!:
         rows += count_rows(text)
     return ok(rows)
 
-fn main() Unit!:
+fn main() Void!:
     rows := run(["a.csv", "b.csv"])?
     print("{rows} rows from 2 files")
 ```

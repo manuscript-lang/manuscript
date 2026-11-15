@@ -30,19 +30,19 @@ fn List[T].is_empty() Bool: ...
 
 // Inserts `value` at index 0 in place, shifting existing elements one position
 // later.
-fn var List[T].prepend(value: T) Unit: ...
+fn var List[T].prepend(value: T) Void: ...
 
 // Inserts value before index in place; negative indexes count from the end.
 // Requires -length() <= index <= length(); index length() appends, and invalid
 // indexes fault.
-fn var List[T].insert(index: Int, value: T) Unit: ...
+fn var List[T].insert(index: Int, value: T) Void: ...
 
 // Removes and returns the last element in place, or none for an empty list.
 fn var List[T].pop() T?: ...
 
 // Replaces an element in place; negative indexes count from the end.
 // Invalid indexes fault.
-fn var List[T].set(index: Int, value: T) Unit: ...
+fn var List[T].set(index: Int, value: T) Void: ...
 
 // Stores value at index in place and returns the element that was there, moving
 // both without copying. Negative indexes count from the end; invalid indexes fault.
@@ -50,22 +50,22 @@ fn var List[T].replace(index: Int, value: T) T: ...
 
 // Exchanges the elements at i and j in place without copying them; equal indexes
 // change nothing. Negative indexes count from the end; invalid indexes fault.
-fn var List[T].swap(i: Int, j: Int) Unit: ...
+fn var List[T].swap(i: Int, j: Int) Void: ...
 
 /*
 Removes an element in place; negative indexes count from the end.
 Invalid indexes fault.
 Shifts the suffix without clearing prior values retained in spare backing capacity.
 */
-fn var List[T].remove(index: Int) Unit: ...
+fn var List[T].remove(index: Int) Void: ...
 
 // Reverses this list in place.
-fn var List[T].reverse() Unit: ...
+fn var List[T].reverse() Void: ...
 
 // Sorts the list in place, stably, in the order of `compare`, as `sorted` does.
 // Comparable elements also have `sort()` without a comparator. Example:
 // `var xs = [3, 1, 2]` then `xs.sort(fn a, b: b - a)` leaves `[3, 2, 1]`.
-fn var List[T].sort(compare: fn(T, T) Int) Unit: ...
+fn var List[T].sort(compare: fn(T, T) Int) Void: ...
 
 // Returns the zero-based index of the first element for which `predicate` is True,
 // or none.
@@ -87,7 +87,7 @@ fn List[T].all(predicate: fn(T) Bool) Bool: ...
 // can affect later calls, and append does not extend traversal. A callback that
 // takes its parameter as `var` changes the element in place, and the receiver must
 // then be `var`; a reading callback works on any list.
-fn List[T].for_each(operation: fn(var T) Unit) Unit: ...
+fn List[T].for_each(operation: fn(var T) Void) Void: ...
 
 // Returns a new list holding `transform` applied to each element in order; the
 // receiver is unchanged.
@@ -104,17 +104,17 @@ fn List[T].fold[A](initial: A, step: fn(A, T) A) A: ...
 fn List[T].fold_right[A](initial: A, step: fn(A, T) A) A: ...
 
 /*
-Replaces delete_count elements starting at start in place, consuming the replacement list and returning Unit.
+Replaces delete_count elements starting at start in place, consuming the replacement list and returning Void.
 Requires 0 <= start <= length and 0 <= delete_count <= length - start; invalid bounds fault without clamping.
 Removed elements are dropped; replacement elements move into the receiver. Overlapping receiver and replacement arguments are rejected.
 */
-fn var List[T].splice(start: Int, delete_count: Int, replacement: List[T]) Unit: ...
+fn var List[T].splice(start: Int, delete_count: Int, replacement: List[T]) Void: ...
 
 // Returns a new list of the zero-based indexes 0 through length() - 1.
 fn List[T].keys() List[Int]: ...
 
 // Adds `value` at the end in place.
-fn var List[T].append(value: T) Unit: ...
+fn var List[T].append(value: T) Void: ...
 
 // Returns the number of elements.
 fn List[T].length() Int: ...
@@ -182,13 +182,13 @@ fn List[T: Clonable].find_last(predicate: fn(T) Bool) T?: ...
 // Sets elements in [start, end) to `value` in place. Bounds must satisfy 0 <= start
 // <= end <= length(); negative or larger bounds fault rather than counting from the
 // end, and an empty range changes nothing.
-fn var List[T: Clonable].fill(value: T, start: Int, end: Int) Unit: ...
+fn var List[T: Clonable].fill(value: T, start: Int, end: Int) Void: ...
 
 // Copies the elements in [start, end) to begin at index `target`, in place. The
 // list never grows: copying stops at the end of the list. Source bounds must
 // satisfy 0 <= start <= end <= length() and a target must be within 0 through
 // length(); otherwise the call faults.
-fn var List[T: Clonable].copy_within(target: Int, start: Int, end: Int) Unit: ...
+fn var List[T: Clonable].copy_within(target: Int, start: Int, end: Int) Void: ...
 
 // Returns a new list of `ListEntry` records pairing each zero-based index with its
 // element, in order.
@@ -271,7 +271,7 @@ fn List[T: Comparable & Clonable].sorted() List[T]:
 
 // Sorts the list in place, stably, in the same order as `sorted()`.
 // Example: `var xs = [3, 1, 2]` then `xs.sort()` leaves `[1, 2, 3]`.
-fn var List[T: Comparable].sort() Unit:
+fn var List[T: Comparable].sort() Void:
 	self.sort(fn a, b: a.compare(b))
 
 /*
@@ -363,7 +363,7 @@ Keeps only the elements for which `keep` is True, in place and in their original
 Dropped elements are dropped (closed when they are resources), kept ones are moved, not copied.
 Example: `var xs = [1, 2, 3, 4]` then `xs.retain(fn x: x % 2 == 0)` leaves `[2, 4]`.
 */
-fn var List[T].retain(keep: fn(T) Bool) Unit:
+fn var List[T].retain(keep: fn(T) Bool) Void:
 	var kept = 0
 
 	for i in 0..self.length():
@@ -378,7 +378,7 @@ Collapses each run of consecutive elements that `same` calls equal into its firs
 `same(previous, next)` gets the last kept element and the candidate, so it runs once per element after the first.
 Example: `var xs = [1, 1, 2, 1]` then `xs.compact_by(fn a, b: a == b)` leaves `[1, 2, 1]`.
 */
-fn var List[T].compact_by(same: fn(T, T) Bool) Unit:
+fn var List[T].compact_by(same: fn(T, T) Bool) Void:
 	if self.length() < 2: return
 
 	var kept = 1
@@ -395,7 +395,7 @@ Moves every element `by` places toward the front in place, wrapping the first on
 a negative `by` rotates toward the back and any magnitude is reduced modulo the length. An empty list is unchanged.
 Example: `var xs = [1, 2, 3, 4]` then `xs.rotate(1)` leaves `[2, 3, 4, 1]`.
 */
-fn var List[T].rotate(by: Int) Unit:
+fn var List[T].rotate(by: Int) Void:
 	size := self.length()
 	if size < 2: return
 
@@ -418,7 +418,7 @@ Collapses each run of consecutive equal elements into its first element, in plac
 Sort first to remove every duplicate; `distinct()` keeps the first of all equal elements without sorting.
 Example: `var xs = [1, 1, 2, 2, 1]` then `xs.compact()` leaves `[1, 2, 1]`.
 */
-fn var List[T: Equal].compact() Unit:
+fn var List[T: Equal].compact() Void:
 	self.compact_by(fn a, b: a.equals(b))
 
 // Reports whether the list is in ascending natural order, the order `sorted()`
@@ -441,7 +441,7 @@ fn List[T: Clonable].repeated(count: Int) List[T]: ...
 // Appends a copy of every element of `other`, in order, to this list in place;
 // `other` is unchanged. The argument cannot be the receiver. Example: after
 // `var xs = [1]`, `xs.extend([2, 3])` leaves `xs` as `[1, 2, 3]`.
-fn var List[T: Clonable].extend(other: List[T]) Unit: ...
+fn var List[T: Clonable].extend(other: List[T]) Void: ...
 
 // A mutable key-value collection. Keys use explicit `Hashable` value semantics.
 export extern type Map[T: Hashable, U]
@@ -467,14 +467,14 @@ fn Map[T, U].all(predicate: fn(T, U) Bool) Bool: ...
 
 // Inserts a default only when the key is absent.
 // The supplied value evaluates normally even when the key already exists.
-fn var Map[T, U].add_default(key: T, value: U) Unit: ...
+fn var Map[T, U].add_default(key: T, value: U) Void: ...
 
 // Creates and inserts a default only when the key is absent. Calls create(key:)
 // once for absence; an existing key leaves its value and position unchanged.
-fn var Map[T, U].add_default_from(key: T, create: fn(T) U) Unit: ...
+fn var Map[T, U].add_default_from(key: T, create: fn(T) U) Void: ...
 
 // Removes every entry in place.
-fn var Map[T, U].clear() Unit: ...
+fn var Map[T, U].clear() Void: ...
 
 // Returns a new list of the keys in insertion order.
 fn Map[T, U].keys() List[T]: ...
@@ -482,7 +482,7 @@ fn Map[T, U].keys() List[T]: ...
 // Calls operation(key:, value:) sequentially over the receiver in insertion order.
 // A callback that takes `value` as `var` changes it in place, and the receiver must
 // then be `var`.
-fn Map[T, U].for_each(operation: fn(T, var U) Unit) Unit: ...
+fn Map[T, U].for_each(operation: fn(T, var U) Void) Void: ...
 
 // Reports whether an equal key is present, using the key type's Hashable
 // implementation.
@@ -496,12 +496,12 @@ fn Map[T, U].length() Int: ...
 
 // Inserts or replaces a value; replacement keeps the original key and insertion
 // position.
-fn var Map[T, U].add(key: T, value: U) Unit: ...
+fn var Map[T, U].add(key: T, value: U) Void: ...
 
 // Removes an equal key in place; remaining entries retain insertion order. An
 // absent key leaves values and ordering unchanged; lookup uses the selected
 // Equal/Hashable scope.
-fn var Map[T, U].remove(key: T) Unit: ...
+fn var Map[T, U].remove(key: T) Void: ...
 
 // Returns a deep copy with independent map and nested value storage.
 fn Map[T: Hashable, U: Clonable].clone() Map[T, U]: ...
@@ -535,7 +535,7 @@ fn Map[T: Hashable, U: Clonable].entries() List[MapEntry[T, U]]: ...
 // Copies every entry of `other` into this map in place. Existing keys keep their
 // position and key but take the value from `other`; new keys append in `other`
 // order. `other` is unchanged.
-fn var Map[T: Hashable, U: Clonable].merge(other: Map[T, U]) Unit: ...
+fn var Map[T: Hashable, U: Clonable].merge(other: Map[T, U]) Void: ...
 
 // Stores `change` applied to the value for `key`, or to `initial` when the key is
 // absent. Looks the key up once; `initial` is evaluated eagerly and `change` runs
@@ -544,14 +544,14 @@ fn var Map[T: Hashable & Clonable, U: Clonable].update(
 	key: T,
 	initial: U,
 	change: fn(U) U
-) Unit: ...
+) Void: ...
 
 /*
 Keeps only the entries for which `keep(key, value)` is True, in place, like `List.retain`; the rest keep their insertion order.
 `keep` is called once per entry in insertion order, before any removal.
 Example: `cache.retain(fn key, hits: hits > 0)` evicts unused entries.
 */
-fn var Map[T: Hashable & Clonable, U].retain(keep: fn(T, U) Bool) Unit:
+fn var Map[T: Hashable & Clonable, U].retain(keep: fn(T, U) Bool) Void:
 	var doomed = List[T]()
 	self.for_each(
 		fn key,
@@ -629,13 +629,13 @@ fn Set[T].is_superset_of(other: Set[T]) Bool: ...
 fn Set[T].is_disjoint_from(other: Set[T]) Bool: ...
 
 // Removes all values in place.
-fn var Set[T].clear() Unit: ...
+fn var Set[T].clear() Void: ...
 
 // Returns an owned list containing copies of values in insertion order.
 fn Set[T].values() List[T]: ...
 
 // Calls operation(value:) sequentially over the receiver in insertion order.
-fn Set[T].for_each(operation: fn(T) Unit) Unit: ...
+fn Set[T].for_each(operation: fn(T) Void) Void: ...
 
 // Reports whether an equal value is present, using the element's Hashable
 // implementation.
@@ -645,14 +645,14 @@ fn Set[T].contains(value: T) Bool: ...
 fn Set[T].length() Int: ...
 
 // Adds a value in place; an equal value retains its original payload and position.
-fn var Set[T].add(value: T) Unit: ...
+fn var Set[T].add(value: T) Void: ...
 
 // Removes an equal value in place; an absent value leaves it unchanged.
-fn var Set[T].remove(value: T) Unit: ...
+fn var Set[T].remove(value: T) Void: ...
 
 // Keeps only the values for which `keep` is True, in place, like `List.retain`; the
 // rest keep their insertion order. Example: `seen.retain(fn n: n >= 0)`.
-fn var Set[T: Hashable & Clonable].retain(keep: fn(T) Bool) Unit:
+fn var Set[T: Hashable & Clonable].retain(keep: fn(T) Bool) Void:
 	var doomed = List[T]()
 	self.for_each(
 		fn value:
@@ -749,7 +749,7 @@ export fn flatten[T: Clonable](lists: List[List[T]]) List[T]:
 	return out
 
 // Reverses the elements of `items` in [start, end) in place; used by `rotate`.
-fn reverse_span[T](var items: List[T], start: Int, end: Int) Unit:
+fn reverse_span[T](var items: List[T], start: Int, end: Int) Void:
 	var low = start
 	var high = end - 1
 

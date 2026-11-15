@@ -7,7 +7,7 @@ weight = 5
 
 ## How memory works
 
-Strings, types and collections have one owner: a binding, a field, or a slot in another value. Scope exit releases values still owned there. Numbers, booleans and other primitives (`Int`, `Float`, `Bool`, `Unit`, enums without payloads) copy freely. `.clone()` on a scalar returns the same value. Use an explicit `.clone()` when you need independent owned data; borrowing lets functions work with existing data without a deep copy.
+Strings, types and collections have one owner: a binding, a field, or a slot in another value. Scope exit releases values still owned there. Numbers, booleans and other primitives (`Int`, `Float`, `Bool`, `Void`, enums without payloads) copy freely. `.clone()` on a scalar returns the same value. Use an explicit `.clone()` when you need independent owned data; borrowing lets functions work with existing data without a deep copy.
 
 Everything else, including strings, types, lists and maps, is handed around by reference until you put it somewhere that must own it:
 
@@ -52,6 +52,10 @@ fn grow(var b: Box) Int:
 - Non-escaping closures borrow captures; escaping closures own them, so a parameter captured by one is moved by the function (the caller passes `.clone()` to keep the value). Borrowed roots cannot be changed or moved while the borrow is live.
 
 See [bindings](../basics/bindings.md), [closure captures](../functions/function-values-and-closures.md), and [scope-end cleanup](../cleanup/scopes.md).
+
+## Index assignment
+
+`place[key] = value` is a call of the type's `set` (a Map's `add`). The checker takes the key at the store, after `value` has run, so `value` may read `key`: `counts[key] = counts.get_or(key, 0) + 1` and `sizes[k] = k.length()` are accepted. Reads only: `value` cannot move `key` or change it (`m[k] = bump(var k)`), and `key` cannot be used after the store unless it is a scalar or a `.clone()` is stored instead.
 
 ## Data copies
 

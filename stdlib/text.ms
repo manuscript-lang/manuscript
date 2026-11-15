@@ -162,7 +162,7 @@ fn var ScalarSource.next() String?!:
 	return ok(scalar)
 
 // Releases nothing; the bytes are owned by the source.
-fn var ScalarSource.close() Unit!:
+fn var ScalarSource.close() Void!:
 	return ok(unit)
 
 // Bytes in the scalar a lead byte starts.

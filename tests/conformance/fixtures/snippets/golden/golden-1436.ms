@@ -2,6 +2,6 @@
 // conform: phase=check
 import stderr from "@std/io/io.ms"
 
-fn main() Unit:
+fn main() Void:
     stream := stderr()
     chunk := "

@@ -1,5 +1,5 @@
 // conform: tags=closures,diagnostics,sets,tier-core
 // conform: phase=check
 // conform: origin=pkg/compiler/core_parity_test.go:19 TestCoreParityRejectsInvalidContracts
-fn wrong[U](value: Set[Int], transform: fn(Int) U) Unit:
+fn wrong[U](value: Set[Int], transform: fn(Int) U) Void:
     output := value.map(transform)

@@ -1,7 +1,7 @@
 // conform: tags=numbers,types,diagnostics,tier-core
 // conform: phase=check
 // conform: origin=unsigned integer types stage 1
-fn main() Unit:
+fn main() Void:
     a: UInt8 := 256
     b: UInt8 := -1
     c: UInt8 := 5

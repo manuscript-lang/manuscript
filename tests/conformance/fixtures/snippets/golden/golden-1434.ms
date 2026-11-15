@@ -4,5 +4,5 @@ import Closeable from "@std/cleanup.ms"
 type Resource:
     visits: List[Int]
 impl Closeable for Resource:
-    fn close() Unit:
+    fn close() Void:
         self.visits.append(1)

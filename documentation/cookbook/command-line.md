@@ -13,7 +13,7 @@ Save as `hello.ms`. `print` is available without an import and adds a newline.
 
 <!-- manuscript-example: {"mode":"run","stdout":"Hello, Manuscript!\n"} -->
 ```manuscript
-fn main() Unit:
+fn main() Void:
     print("Hello, Manuscript!")
 ```
 
@@ -25,7 +25,7 @@ ms run hello.ms
 Hello, Manuscript!
 ```
 
-`print` returns `Unit`. The next recipe uses `stdout().write(...)` and `stdout().flush()` to control text and flushing explicitly. These methods use the stream `Result` interface, but ordinary stdout does not expose native write errors through it. Use `stdout_bytes()` for byte output.
+`print` returns `Void`. The next recipe uses `stdout().write(...)` and `stdout().flush()` to control text and flushing explicitly. These methods use the stream `Result` interface, but ordinary stdout does not expose native write errors through it. Use `stdout_bytes()` for byte output.
 
 ## Read command-line arguments
 
@@ -36,12 +36,12 @@ Save as `args.ms`. `arguments()` excludes the executable; values after `--` reac
 import arguments from "@std/os/env.ms"
 import stdout from "@std/io/io.ms"
 
-fn run() Result[Unit, Error]:
+fn run() Result[Void, Error]:
     for name in arguments():
         stdout().write("Hello, {name}!\n")?
     return stdout().flush()
 
-fn main() Unit!:
+fn main() Void!:
     return run()
 ```
 

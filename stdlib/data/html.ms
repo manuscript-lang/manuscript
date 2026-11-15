@@ -286,7 +286,7 @@ fn var Parser.read_byte() Int:
 	self.raw_end += 1
 	return x
 
-fn var Parser.skip_white_space() Unit:
+fn var Parser.skip_white_space() Void:
 	if self.eof: return
 
 	while true:
@@ -297,7 +297,7 @@ fn var Parser.skip_white_space() Unit:
 			self.raw_end -= 1
 			return
 
-fn var Parser.set_raw_tag(tag: Int) Unit:
+fn var Parser.set_raw_tag(tag: Int) Void:
 	self.raw_tag = tag
 
 	match tag:
@@ -313,7 +313,7 @@ fn var Parser.set_raw_tag(tag: Int) Unit:
 		10: self.raw_name = "xmp".to_bytes()
 		_: self.raw_name = Bytes(values: [])
 
-fn var Parser.read_raw_or_rcdata() Unit:
+fn var Parser.read_raw_or_rcdata() Void:
 	if self.raw_tag == RAW_SCRIPT:
 		self.read_script()
 		self.text_is_raw = true
@@ -361,7 +361,7 @@ fn var Parser.read_raw_end_tag() Bool:
 	self.raw_end -= 1
 	return false
 
-fn var Parser.read_script() Unit:
+fn var Parser.read_script() Void:
 	var st = SC_DATA
 
 	while true:
@@ -531,7 +531,7 @@ fn var Parser.read_script() Unit:
 
 	self.data_end = self.raw_end
 
-fn var Parser.read_comment() Unit:
+fn var Parser.read_comment() Void:
 	self.data_start = self.raw_end
 
 	var dash_count = 0
@@ -595,7 +595,7 @@ fn Parser.byte_at(pos: Int) Int:
 	if pos < 0 or pos >= self.size: return -1
 	return self.src.get(pos).to_int()
 
-fn var Parser.read_until_close_angle() Unit:
+fn var Parser.read_until_close_angle() Void:
 	self.data_start = self.raw_end
 
 	idx := self.src.index_of_byte(62, self.raw_end)
@@ -748,7 +748,7 @@ fn var Parser.read_start_tag() Int:
 	return T_START
 
 // Records the pending attribute spans as the next attribute of the tag.
-fn var Parser.push_attr() Unit:
+fn var Parser.push_attr() Void:
 	n := self.attr_n
 
 	if n < self.attr_ks.length():
@@ -764,7 +764,7 @@ fn var Parser.push_attr() Unit:
 
 	self.attr_n = n + 1
 
-fn var Parser.read_tag(save_attr: Bool) Unit:
+fn var Parser.read_tag(save_attr: Bool) Void:
 	self.attr_n = 0
 	self.read_tag_name()
 	self.skip_white_space()
@@ -781,7 +781,7 @@ fn var Parser.read_tag(save_attr: Bool) Unit:
 		self.skip_white_space()
 		if self.eof: break
 
-fn var Parser.read_tag_name() Unit:
+fn var Parser.read_tag_name() Void:
 	self.data_start = self.raw_end - 1
 
 	while true:
@@ -800,7 +800,7 @@ fn var Parser.read_tag_name() Unit:
 			self.data_end = self.raw_end
 			return
 
-fn var Parser.read_tag_attr_key() Unit:
+fn var Parser.read_tag_attr_key() Void:
 	self.pk_s = self.raw_end
 
 	while true:
@@ -817,7 +817,7 @@ fn var Parser.read_tag_attr_key() Unit:
 			self.pk_e = self.raw_end
 			return
 
-fn var Parser.read_tag_attr_val() Unit:
+fn var Parser.read_tag_attr_val() Void:
 	self.pv_s = self.raw_end
 	self.pv_e = self.raw_end
 	self.skip_white_space()
@@ -996,7 +996,7 @@ fn var Parser.token_text() String:
 	return s
 
 // Fills the current token fields from the tokenizer's last token.
-fn var Parser.load_token() Unit:
+fn var Parser.load_token() Void:
 	self.tok_ty = self.tt
 	self.tok_atom = 0
 	self.tok_data = ""
@@ -1066,7 +1066,7 @@ fn var Parser.alloc(kind: Int, atom: Int, data: String) Int:
 	return id
 
 // Links `child` before `old` under `parent`; `old` of -1 appends.
-fn var Parser.insert_before(parent: Int, child: Int, old: Int) Unit:
+fn var Parser.insert_before(parent: Int, child: Int, old: Int) Void:
 	var before = self.last[parent]
 	var after = -1
 
@@ -1088,10 +1088,10 @@ fn var Parser.insert_before(parent: Int, child: Int, old: Int) Unit:
 	self.prev[child] = before
 	self.next[child] = after
 
-fn var Parser.append_child(parent: Int, child: Int) Unit:
+fn var Parser.append_child(parent: Int, child: Int) Void:
 	self.insert_before(parent, child, -1)
 
-fn var Parser.remove_child(parent: Int, child: Int) Unit:
+fn var Parser.remove_child(parent: Int, child: Int) Void:
 	before := self.prev[child]
 	after := self.next[child]
 	if self.first[parent] == child: self.first[parent] = after
@@ -1102,11 +1102,11 @@ fn var Parser.remove_child(parent: Int, child: Int) Unit:
 	self.prev[child] = -1
 	self.next[child] = -1
 
-fn var Parser.detach(child: Int) Unit:
+fn var Parser.detach(child: Int) Void:
 	p := self.parent[child]
 	if p >= 0: self.remove_child(p, child)
 
-fn var Parser.reparent_children(dst: Int, src: Int) Unit:
+fn var Parser.reparent_children(dst: Int, src: Int) Void:
 	while self.first[src] >= 0:
 		child := self.first[src]
 		self.remove_child(src, child)
@@ -1150,7 +1150,7 @@ fn Parser.oe_top_atom() Int:
 	return self.atom[self.oe[n - 1]]
 
 // Computes the scope marks of open element `i` from the entry below it.
-fn var Parser.mark(i: Int) Unit:
+fn var Parser.mark(i: Int) Void:
 	n := self.oe[i]
 	html := self.ns[n] == NS_HTML
 	a := self.atom[n]
@@ -1173,7 +1173,7 @@ fn var Parser.mark(i: Int) Unit:
 		self.oe_p.append(p)
 		self.oe_stop.append(stop)
 
-fn var Parser.oe_remark(start: Int) Unit:
+fn var Parser.oe_remark(start: Int) Void:
 	while self.oe_p.length() > start:
 		self.oe_p.pop()
 		self.oe_stop.pop()
@@ -1181,7 +1181,7 @@ fn var Parser.oe_remark(start: Int) Unit:
 	for i in start..self.oe.length():
 		self.mark(i)
 
-fn var Parser.oe_push(n: Int) Unit:
+fn var Parser.oe_push(n: Int) Void:
 	self.oe.append(n)
 	self.mark(self.oe.length() - 1)
 
@@ -1192,21 +1192,21 @@ fn var Parser.oe_pop() Int:
 	self.oe_stop.pop()
 	return self.oe.pop().get(-1)
 
-fn var Parser.oe_truncate(len: Int) Unit:
+fn var Parser.oe_truncate(len: Int) Void:
 	while self.oe.length() > len:
 		self.oe.pop()
 		self.oe_p.pop()
 		self.oe_stop.pop()
 
-fn var Parser.oe_insert(at: Int, n: Int) Unit:
+fn var Parser.oe_insert(at: Int, n: Int) Void:
 	self.oe.insert(at, n)
 	self.oe_remark(at)
 
-fn var Parser.oe_set(i: Int, n: Int) Unit:
+fn var Parser.oe_set(i: Int, n: Int) Void:
 	self.oe[i] = n
 	self.oe_remark(i)
 
-fn var Parser.oe_remove(n: Int) Unit:
+fn var Parser.oe_remove(n: Int) Void:
 	i := self.oe_index(n)
 
 	if i >= 0:
@@ -1234,7 +1234,7 @@ fn Parser.afe_index(n: Int) Int:
 
 	return -1
 
-fn var Parser.afe_remove(n: Int) Unit:
+fn var Parser.afe_remove(n: Int) Void:
 	i := self.afe_index(n)
 	if i >= 0: self.afe.remove(i)
 
@@ -1303,7 +1303,7 @@ fn var Parser.pop_until(s: Int, m1: Int, m2: Int, m3: Int) Bool:
 fn Parser.element_in_scope(s: Int, m1: Int, m2: Int, m3: Int) Bool:
 	return self.scope_index(s, m1, m2, m3) >= 0
 
-fn var Parser.clear_stack_to_context(s: Int) Unit:
+fn var Parser.clear_stack_to_context(s: Int) Void:
 	var i = self.oe.length() - 1
 
 	while i >= 0:
@@ -1329,13 +1329,13 @@ fn var Parser.clear_stack_to_context(s: Int) Unit:
 
 		i -= 1
 
-fn var Parser.parse_generic_raw_text_element() Unit:
+fn var Parser.parse_generic_raw_text_element() Void:
 	self.add_element()
 	self.original_im = self.im
 	self.im = IM_TEXT
 
 // Pops elements whose end tags are implied, stopping at `except` (an atom or -1).
-fn var Parser.generate_implied_end_tags(skip_atom: Int) Unit:
+fn var Parser.generate_implied_end_tags(skip_atom: Int) Void:
 	var i = self.oe.length()
 
 	while i > 0:
@@ -1350,7 +1350,7 @@ fn var Parser.generate_implied_end_tags(skip_atom: Int) Unit:
 
 	self.oe_truncate(i)
 
-fn var Parser.add_child(n: Int) Unit:
+fn var Parser.add_child(n: Int) Void:
 	if self.should_foster_parent():
 		self.foster_parent(n)
 	else:
@@ -1371,7 +1371,7 @@ fn Parser.oe_last_atom(atom: Int) Int:
 
 	return -1
 
-fn var Parser.foster_parent(n: Int) Unit:
+fn var Parser.foster_parent(n: Int) Void:
 	table_i := self.oe_last_atom(A_TABLE)
 	template_j := self.oe_last_atom(A_TEMPLATE)
 
@@ -1399,7 +1399,7 @@ fn var Parser.foster_parent(n: Int) Unit:
 
 	self.insert_before(parent, n, table)
 
-fn var Parser.add_text(text: String) Unit:
+fn var Parser.add_text(text: String) Void:
 	if text == "": return
 
 	if self.should_foster_parent():
@@ -1417,16 +1417,16 @@ fn var Parser.add_text(text: String) Unit:
 	n := self.alloc(K_TEXT, 0, text)
 	self.add_child(n)
 
-fn var Parser.add_comment() Unit:
+fn var Parser.add_comment() Void:
 	n := self.alloc(K_COMMENT, 0, self.tok_data.clone())
 	self.add_child(n)
 
-fn var Parser.append_doc_comment() Unit:
+fn var Parser.append_doc_comment() Void:
 	n := self.alloc(K_COMMENT, 0, self.tok_data.clone())
 	self.append_child(1, n)
 
 // Copies the current token's attributes onto node `id`, which has none yet.
-fn var Parser.set_token_attributes(id: Int) Unit:
+fn var Parser.set_token_attributes(id: Int) Void:
 	self.attr_start[id] = self.akey.length()
 
 	for i in 0..self.tok_n:
@@ -1436,7 +1436,7 @@ fn var Parser.set_token_attributes(id: Int) Unit:
 
 	self.attr_count[id] = self.tok_n
 
-fn var Parser.add_element() Unit:
+fn var Parser.add_element() Void:
 	var data = ""
 	if self.tok_atom == 0: data = self.tok_data.clone()
 
@@ -1467,7 +1467,7 @@ fn Parser.same_attributes(n: Int) Bool:
 
 	return true
 
-fn var Parser.add_formatting_element() Unit:
+fn var Parser.add_formatting_element() Void:
 	tag_atom := self.tok_atom
 	self.add_element()
 
@@ -1492,12 +1492,12 @@ fn var Parser.add_formatting_element() Unit:
 
 	self.afe.append(self.top())
 
-fn var Parser.clear_active_formatting_elements() Unit:
+fn var Parser.clear_active_formatting_elements() Void:
 	while true:
 		n := self.afe_truncate_pop()
 		if self.afe.length() == 0 or n < 0 or self.kind[n] == K_MARKER: return
 
-fn var Parser.reconstruct_active_formatting_elements() Unit:
+fn var Parser.reconstruct_active_formatting_elements() Void:
 	if self.afe.length() == 0: return
 
 	top := self.afe[self.afe.length() - 1]
@@ -1522,7 +1522,7 @@ fn var Parser.reconstruct_active_formatting_elements() Unit:
 		self.afe[i] = clone
 		if i == self.afe.length() - 1: break
 
-fn var Parser.reset_insertion_mode() Unit:
+fn var Parser.reset_insertion_mode() Void:
 	var i = self.oe.length() - 1
 
 	while i >= 0:
@@ -1616,7 +1616,7 @@ fn var Parser.reset_insertion_mode() Unit:
 		i -= 1
 
 // Adds the current token's attributes that node `dst` lacks, after its own.
-fn var Parser.copy_attributes(dst: Int) Unit:
+fn var Parser.copy_attributes(dst: Int) Void:
 	if self.tok_n == 0: return
 
 	count := self.attr_count[dst]
@@ -1662,10 +1662,10 @@ fn Parser.tok_has_attr(key: String) Bool:
 		if self.tok_keys[i] == key: return true
 	return false
 
-fn var Parser.next_is_not_raw_text() Unit:
+fn var Parser.next_is_not_raw_text() Void:
 	self.raw_tag = RAW_NONE
 
-fn var Parser.pop_p() Unit:
+fn var Parser.pop_p() Void:
 	_popped := self.pop_until(SCOPE_BUTTON, A_P, -1, -1)
 
 // Splits leading whitespace off a text token and adds it; true when nothing remains.
@@ -2153,7 +2153,7 @@ fn var Parser.in_body_start_tag() Bool:
 
 // The `li` / `dd` / `dt` loop of the start-tag rules: closes an open item of the same
 // kind.
-fn var Parser.close_list_item(a1: Int, a2: Int) Unit:
+fn var Parser.close_list_item(a1: Int, a2: Int) Void:
 	var i = self.oe.length() - 1
 
 	while i >= 0:
@@ -2230,7 +2230,7 @@ fn var Parser.in_body_end_tag() Bool:
 	return true
 
 // The adoption agency algorithm.
-fn var Parser.in_body_end_tag_formatting(tag_atom: Int, tag_name: String) Unit:
+fn var Parser.in_body_end_tag_formatting(tag_atom: Int, tag_name: String) Void:
 	current := self.oe_top()
 
 	if (
@@ -2343,7 +2343,7 @@ fn var Parser.in_body_end_tag_formatting(tag_atom: Int, tag_name: String) Unit:
 		if fi >= 0: place = fi + 1
 		self.oe_insert(place, clone)
 
-fn var Parser.in_body_end_tag_other(tag_atom: Int, tag_name: String) Unit:
+fn var Parser.in_body_end_tag_other(tag_atom: Int, tag_name: String) Void:
 	var i = self.oe.length() - 1
 
 	while i >= 0:
@@ -2857,7 +2857,7 @@ fn var Parser.in_select_in_table_im() Bool:
 
 	return self.in_select_im()
 
-fn var Parser.set_template_top(im: Int) Unit:
+fn var Parser.set_template_top(im: Int) Void:
 	_popped := self.template_stack.pop()
 	self.template_stack.append(im)
 	self.im = im
@@ -3039,17 +3039,17 @@ fn var Parser.after_after_frameset_im() Bool:
 
 // ---- foreign content ----
 
-fn var Parser.adjust_math_attributes() Unit:
+fn var Parser.adjust_math_attributes() Void:
 	for i in 0..self.tok_n:
 		if self.tok_keys[i] == "definitionurl": self.tok_keys[i] = "definitionURL"
 
-fn var Parser.adjust_svg_attributes() Unit:
+fn var Parser.adjust_svg_attributes() Void:
 	for i in 0..self.tok_n:
 		adjusted := svg_attribute(self.tok_keys[i])
 		if adjusted != "": self.tok_keys[i] = adjusted
 
 // Splits the prefix of the namespaced attribute names off into their namespace.
-fn var Parser.adjust_foreign_attributes() Unit:
+fn var Parser.adjust_foreign_attributes() Void:
 	for i in 0..self.tok_n:
 		key := self.tok_keys[i].clone()
 		if not key.starts_with("x") or not is_foreign_attribute(key): continue
@@ -3198,7 +3198,7 @@ fn Parser.in_foreign_content() Bool:
 
 // Parses a token the document implies, such as the `html` start tag, then restores the
 // real one.
-fn var Parser.parse_implied_token(ty: Int, atom: Int) Unit:
+fn var Parser.parse_implied_token(ty: Int, atom: Int) Void:
 	real_ty := self.tok_ty
 	real_atom := self.tok_atom
 	real_data := self.tok_data.clone()
@@ -3216,7 +3216,7 @@ fn var Parser.parse_implied_token(ty: Int, atom: Int) Unit:
 	self.tok_n = real_n
 	self.has_self_closing = self_closing
 
-fn var Parser.parse_current_token() Unit:
+fn var Parser.parse_current_token() Void:
 	if self.tok_ty == T_SELF_CLOSING:
 		self.has_self_closing = true
 		self.tok_ty = T_START
@@ -3231,7 +3231,7 @@ fn var Parser.parse_current_token() Unit:
 
 	self.has_self_closing = false
 
-fn var Parser.run() Unit:
+fn var Parser.run() Void:
 	while true:
 		n := self.oe_top()
 		self.allow_cdata = n >= 0 and self.ns[n] != NS_HTML

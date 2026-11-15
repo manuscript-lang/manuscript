@@ -42,7 +42,7 @@ fn common_result[T](result: T!) T!:
 		error(cause):
 			return error(cause)
 
-fn checked_expansion() Unit!:
+fn checked_expansion() Void!:
 	(
 		(
 			not (
@@ -150,7 +150,7 @@ test "list methods mutate explicit clones and remain typed":
 
 	var observed_original: List[Int] = []
 	original.for_each(
-		fn(value) Unit:
+		fn(value) Void:
 			observed_original.append(value)
 	)
 	observed_original | expect_equal(original)?
@@ -289,7 +289,7 @@ test "set algebra and enumeration preserve source values":
 
 	var observed_left: List[Int] = []
 	left.for_each(
-		fn(value) Unit:
+		fn(value) Void:
 			observed_left.append(value)
 	)
 	observed_left | expect_equal(left.values())?
@@ -432,7 +432,7 @@ test "grouping and lazy map defaults":
 	original.values() | expect_equal([1])?
 	calls.length() | expect_equal(0)?
 
-fn verify_text_and_numbers() Unit!:
+fn verify_text_and_numbers() Void!:
 	(
 		(common_result(result: "é".normalize(form: "NFC", max_bytes: 2))?)
 		| expect_equal("é")?
@@ -482,7 +482,7 @@ test "normalization, empty separators, and precision formatting":
 	"é".normalize(form: "invalid", max_bytes: 8) | expect_equal(invalid)?
 	"é".normalize(form: "NFD", max_bytes: 2) | expect_equal(limit)?
 
-fn verify_bigint_and_regex() Unit!:
+fn verify_bigint_and_regex() Void!:
 	a := from_int(value: 12)
 	b := from_int(value: 5)
 	a.add(other: b).to_string_radix(radix: 10) | expect_equal("17")?
@@ -546,7 +546,7 @@ test "generic native methods accept omitted single-parameter labels":
 
 	var observed_values: List[Int] = []
 	values.for_each(
-		fn(value) Unit:
+		fn(value) Void:
 			observed_values.append(value)
 	)
 	observed_values | expect_equal(values)?

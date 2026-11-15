@@ -4,8 +4,8 @@
 type Val:
     val: Int
 
-fn work(var value: Val) Unit:
-    callback := fn() Unit:
+fn work(var value: Val) Void:
+    callback := fn() Void:
         value.val = value.val + 1
     callback()
 

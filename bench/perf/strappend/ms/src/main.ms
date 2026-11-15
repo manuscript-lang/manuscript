@@ -24,7 +24,7 @@ fn fill(count: Int) Int:
 
 	return items.length()
 
-fn main() Unit:
+fn main() Void:
 	var piece = "x"
 
 	for size in [4, 16, 64, 256, 1024, 8192]:

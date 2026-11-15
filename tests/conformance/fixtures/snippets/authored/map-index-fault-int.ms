@@ -3,7 +3,7 @@
 // conform: origin=Map and Bytes indexing
 import stdout from "@std/io/io.ms"
 
-fn main() Unit:
+fn main() Void:
     counts := {1: 10}
     var bump = counts.clone()
     bump[1] += 5

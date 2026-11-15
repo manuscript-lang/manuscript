@@ -7,5 +7,5 @@ fn f(r: Token?!) Token!?:
 
     return none
 
-fn main() Unit:
+fn main() Void:
     return

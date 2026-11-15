@@ -403,7 +403,7 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
                         c.next();
                         parse_ty(&mut c, &mut m)?
                     } else {
-                        Ty::UNIT
+                        Ty::VOID
                     };
                     methods.push(MethodSig {
                         name: mname,
@@ -510,7 +510,7 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
                     c.next();
                     parse_ty(&mut c, &mut m)?
                 } else {
-                    Ty::UNIT
+                    Ty::VOID
                 };
                 let (mut noreturn, mut pure_, mut fresh) = (false, false, false);
                 let (mut leaf, mut reads) = (false, false);
@@ -580,7 +580,7 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
             c.next();
             parse_ty(&mut c, &mut m)?
         } else {
-            Ty::UNIT
+            Ty::VOID
         };
         let mut f = Func::new(&name, params, ret);
         loop {
@@ -691,7 +691,7 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
 fn parse_ty(c: &mut Cur, m: &mut Module) -> Result<Ty, ParseError> {
     let name = c.ident()?;
     Ok(match name.as_str() {
-        "unit" => Ty::UNIT,
+        "unit" => Ty::VOID,
         "bool" => Ty::BOOL,
         "int" => Ty::INT,
         "float" => Ty::FLOAT,
@@ -775,7 +775,7 @@ fn value(cx: &mut BodyCx, f: &mut Func, name: &str) -> Value {
     if let Some(v) = cx.vals.get(name) {
         return *v;
     }
-    let v = f.new_value(Ty::UNIT);
+    let v = f.new_value(Ty::VOID);
     cx.vals.insert(name.to_string(), v);
     v
 }

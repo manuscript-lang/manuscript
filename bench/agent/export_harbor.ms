@@ -53,7 +53,7 @@ fn task_toml(name: String, ch: Challenge, agent_timeout: Int) String:
 
 fn quote(text: String) String: dumps(JsonValue.StringValue(text.clone()), 0)
 
-fn put(from: String, to: String) Unit:
+fn put(from: String, to: String) Void:
 	create_directory(
 		to.split("/").take(to.split("/").length() - 1).join("/"),
 		recursive: true,
@@ -66,7 +66,7 @@ fn export_one(
 	out: String,
 	ms_binary: String,
 	agent_timeout: Int,
-) Unit:
+) Void:
 	name := "{ch.id}-{lang.id}"
 	d := "{out}/{name}"
 	remove(d, recursive: true).to_optional()

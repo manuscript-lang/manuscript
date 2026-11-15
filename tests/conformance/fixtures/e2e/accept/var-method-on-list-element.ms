@@ -7,7 +7,7 @@ type Bucket:
 	names: List[String] = []
 	size: Int = 0
 
-fn var Bucket.add(key: Int, name: String) Unit:
+fn var Bucket.add(key: Int, name: String) Void:
 	self.keys.append(key)
 	self.names.append(name)
 	self.size += 1
@@ -19,7 +19,7 @@ type Shelf:
 type Store:
 	shelf: Shelf = Shelf()
 
-fn var Store.put(at: Int, key: Int) Unit:
+fn var Store.put(at: Int, key: Int) Void:
 	self.shelf.buckets[at].add(key, "k{key}")
 
 test "var method on a list element changes only that element":

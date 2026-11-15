@@ -10,7 +10,7 @@ fn handle(request: HttpRequest) HttpResponse:
 fn make_fixture() ApiFixture:
     return ApiFixture(server: network().serve(address: "127.0.0.1:0", handler: handle).get())
 impl TestHooks for ApiFixture:
-    fn after_all() Unit:
+    fn after_all() Void:
         self.server.close()
 test "first request":
     response := expect_ok(network().request(method: HttpMethod.Get, url: "http://{fixture.server.address()}/", headers: headers(), body: ""))?

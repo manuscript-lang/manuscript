@@ -10,11 +10,11 @@ fn var C.bump() Int:
     self.n += 1
     return self.n
 
-fn main2() Unit:
+fn main2() Void:
     for i in 0..2:
         var o: C? = C(i)
         v := o?.bump()
         stdout().write("{v.get(0)}\n").get()
 
-fn main() Unit:
+fn main() Void:
     main2()

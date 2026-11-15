@@ -7,25 +7,25 @@ import Queue from "@std/collections/queue.ms"
 type Resource:
     state: Queue[Int]
 
-fn Resource.close() Unit!:
+fn Resource.close() Void!:
     self.state.dequeue()
 
 fn pure() Int:
     return 1
 
-fn direct(resource: Resource) Unit:
+fn direct(resource: Resource) Void:
     _item := resource
     return
 
-fn transitive(resource: Resource) Unit:
+fn transitive(resource: Resource) Void:
     direct(resource: resource)
 
-fn nested(resource: Resource) Unit:
-    callback := fn(item: Resource) Unit:
+fn nested(resource: Resource) Void:
+    callback := fn(item: Resource) Void:
         _held := item
         return
 
     callback(resource)
 
-fn indirect(callback: fn() Unit) Unit:
+fn indirect(callback: fn() Void) Void:
     callback()

@@ -35,10 +35,10 @@ fn add(
 	makefile: String,
 	files: List[String],
 	reqs: List[String],
-) Unit:
+) Void:
 	cs.push(name, mk(makefile, files, reqs))
 
-export fn gen_c56() Unit:
+export fn gen_c56() Void:
 	var cs = Cases(build_oracle("c56-make-lite"))
 	add(
 		var cs,

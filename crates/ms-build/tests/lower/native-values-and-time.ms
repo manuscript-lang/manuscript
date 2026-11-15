@@ -8,7 +8,7 @@ import Duration, parse_timestamp from "@std/time.ms"
 
 fn via(f: fn(Float) Float, x: Float) Float: f(x)
 
-fn main() Unit:
+fn main() Void:
     to_text: fn() String := 7.to_string
     d: Duration := 2.seconds()
     _t := parse_timestamp("2020-01-02T03:04:05Z")

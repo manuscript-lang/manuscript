@@ -41,7 +41,7 @@ fn measure(
 	directory: String,
 	rounds: Int,
 	filter: String,
-) Unit!:
+) Void!:
 	ensure_directory(directory)
 	ensure_directory("{directory}/inputs")
 
@@ -110,7 +110,7 @@ fn measure(
 				write_text("{directory}/samples.tsv", rows)
 				print("{round} {label} {file} {elapsed} ns")
 
-export fn main() Unit!:
+export fn main() Void!:
 	args := arguments()
 	if args.length() < 4 or args.length() > 5:
 		return invalid("expected BEFORE AFTER OUTPUT ROUNDS [FILTER]")

@@ -21,7 +21,7 @@ fn var Node.inc() Int:
     self.v += 1
     return self.v
 
-fn main2() Unit:
+fn main2() Void:
     var xs: List[Int]? = [1]
     xs?.append(2)
 
@@ -42,5 +42,5 @@ fn main2() Unit:
         if m := nn.next:
             stdout().write("{m.v}\n").get()
 
-fn main() Unit:
+fn main() Void:
     main2()

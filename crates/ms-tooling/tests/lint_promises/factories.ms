@@ -6,6 +6,6 @@ fn make(value: Int) Promise[Int]:
 type Factory:
     make: fn(Int) Promise[Int]
 
-fn main() Unit:
+fn main() Void:
     _factory := Factory(make: make)
     EXPRESSION

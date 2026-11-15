@@ -197,7 +197,7 @@ fn fix_wraps_expressions_to_convert_types() {
     let dir = std::env::temp_dir().join(format!("ms-cli-fix-wrap-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
-    let source = "fn say(text: String) Unit:\n\
+    let source = "fn say(text: String) Void:\n\
         \x20   return unit\n\
         \n\
         export fn main() Int:\n\

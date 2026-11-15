@@ -51,7 +51,7 @@ fn contracts_and_classifier_agree_on_clonable() {
     let mut disagreements = Vec::new();
     let mut seen = [false; 2];
     for ty in TYPES {
-        let probe = format!("{DECLS}\nfn probe(x: {ty}) Unit:\n    need(x)\n");
+        let probe = format!("{DECLS}\nfn probe(x: {ty}) Void:\n    need(x)\n");
         let program = run(&probe);
         let accepted = program.diagnostics.is_empty();
         if !accepted

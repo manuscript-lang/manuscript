@@ -8,7 +8,7 @@ import fail from "@std/test/test.ms"
 
 type Element:
     id: Int
-    on_equal: fn() Unit
+    on_equal: fn() Void
 
 fn Element.equals(other: Element) Bool:
     self.on_equal()
@@ -17,10 +17,10 @@ fn Element.equals(other: Element) Bool:
 type Visits:
     count: Int
 
-fn noop() Unit:
+fn noop() Void:
     return
 
-fn check_equality(side: String, mutation: String) Unit!:
+fn check_equality(side: String, mutation: String) Void!:
     var left: List[Element] = []
     var right: List[Element] = []
     calls := Visits(0)

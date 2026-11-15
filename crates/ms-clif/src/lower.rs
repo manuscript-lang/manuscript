@@ -470,7 +470,7 @@ impl<'a, 'm> Lower<'a, 'm> {
         for (i, p) in params.iter().enumerate() {
             self.b.ins().store(flags(), *p, block, (i * 8) as i32);
         }
-        let shim = self.g.glue(Glue::GrowShim(self.fid), Ty::UNIT);
+        let shim = self.g.glue(Glue::GrowShim(self.fid), Ty::VOID);
         let r = self.fref(shim);
         let fa = self.b.ins().func_addr(types::I64, r);
         self.rt_call("msrt_task_grow", &[fa, block]);
@@ -1016,7 +1016,7 @@ impl<'a, 'm> Lower<'a, 'm> {
         let previous_overflow = self.overflow_result.take();
         let res_ty = inst.res.map(|r| f.ty(r));
         let out: Vs = match inst.op {
-            Op::IConst | Op::FConst | Op::BConst | Op::UnitConst | Op::StrLit | Op::BytesLit => {
+            Op::IConst | Op::FConst | Op::BConst | Op::VoidConst | Op::StrLit | Op::BytesLit => {
                 self.constants(f, inst)
             }
             Op::IAdd | Op::ISub | Op::IMul | Op::INeg | Op::F32Round | Op::SDiv | Op::SRem => {

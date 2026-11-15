@@ -6,7 +6,7 @@ import (
 	Random, seeded from "../../lib/pyrandom.ms",
 )
 
-fn add(var cs: Cases, name: String, script: String) Unit:
+fn add(var cs: Cases, name: String, script: String) Void:
 	cs.push(name, script)
 
 // A registry of `n` packages p0..p{n-1}; package pI has `versions` releases and depends
@@ -40,7 +40,7 @@ fn random_registry(seed: Int, n: Int, versions: Int) String:
 	out += "list p0\n"
 	return out
 
-export fn gen_c61() Unit:
+export fn gen_c61() Void:
 	var cs = Cases(build_oracle("c61-dep-resolver"))
 	add(
 		var cs,

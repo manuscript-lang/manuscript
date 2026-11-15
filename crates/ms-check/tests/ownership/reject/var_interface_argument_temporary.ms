@@ -1,12 +1,12 @@
 interface Sink:
-    var fn push(x: Int) Unit
+    var fn push(x: Int) Void
 
 type Items:
     xs: List[Int]
 
-fn var Items.push(x: Int) Unit: self.xs.append(x)
+fn var Items.push(x: Int) Void: self.xs.append(x)
 
-fn fill(var s: Sink) Unit:
+fn fill(var s: Sink) Void:
     s.push(1)
 
 fn main() Int:

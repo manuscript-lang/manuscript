@@ -17,7 +17,7 @@ fn html_doc(count: Int) String:
 bench "html.parse":
 	html := html_doc(2000)
 
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		if parse(html).is_ok(): return keep(1)
 		return keep(0)
 

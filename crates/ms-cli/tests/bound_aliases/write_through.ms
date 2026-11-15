@@ -7,10 +7,10 @@ type Lists:
 type Counter:
     count: Int
 
-fn var Counter.bump(amount: Int = 1) Unit:
+fn var Counter.bump(amount: Int = 1) Void:
     self.count += amount
 
-fn var Counter.around(action: fn() Unit) Unit:
+fn var Counter.around(action: fn() Void) Void:
     self.count += 1
     action()
     self.count += 1
@@ -32,7 +32,7 @@ fn key(var calls: Int) String:
     calls += 1
     return "key-{calls}"
 
-fn main() Unit:
+fn main() Void:
     var calls = 0
     var rows = [[1], [2]]
     var first = rows[next(var calls)]

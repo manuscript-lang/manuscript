@@ -50,7 +50,7 @@ fn small() String:
 	doc.add("user", jobject(user))
 	return stringify(jobject(doc)).get("") + "\n"
 
-fn fetch_corpora() Unit!:
+fn fetch_corpora() Void!:
 	_dir := create_directory(DATA, recursive: true)
 
 	for f in ["twitter", "canada", "citm_catalog"]:

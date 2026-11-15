@@ -14,7 +14,7 @@ pub enum NativeBorrow {
     MapGet,
     /// `get()` on an `Optional` or `Result`: its payload.
     PayloadGet,
-    /// `view`, `split`, `lines`, `chars`, `keys`, `values`, `slice`: a new value whose parts
+    /// `view`, `view_bytes`, `split`, `lines`, `chars`, `keys`, `values`, `slice`: a new value whose parts
     /// borrow the receiver. Keeping it takes `.clone()`.
     Derived,
 }
@@ -27,6 +27,7 @@ pub fn native_borrow(recv: &Ty, name: &str, args: usize) -> Option<NativeBorrow>
         ("get", 1) if recv.is(Builtin::List) => ListGet,
         ("get", 0) if recv.is(Builtin::Optional) || recv.is(Builtin::Result) => PayloadGet,
         ("view", 2) if recv.is(Builtin::Bytes) || recv.is_string() => Derived,
+        ("view_bytes", 0) if recv.is_string() => Derived,
         ("split", 1 | 2) | ("lines", 0) | ("chars", 0) if recv.is_string() => Derived,
         ("keys" | "values", 0) if recv.is(Builtin::Map) => Derived,
         // A slice borrows only elements that own nothing: iterating it by value drops each

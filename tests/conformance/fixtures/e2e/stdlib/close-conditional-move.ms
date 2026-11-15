@@ -6,7 +6,7 @@ import Closeable from "@std/core.ms"
 type Door:
     name: String
 
-fn var Door.close() Unit!:
+fn var Door.close() Void!:
     print("closed {self.name}")
 
 fn Door.id() Int:
@@ -74,7 +74,7 @@ fn else_branch(c: Bool) Int:
     else:
         return consume(h)
 
-fn main() Unit:
+fn main() Void:
     ret_or_fall(true)
     print("--ret_or_fall false")
     ret_or_fall(false)

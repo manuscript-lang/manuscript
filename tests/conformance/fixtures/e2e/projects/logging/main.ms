@@ -10,7 +10,7 @@ import (
 type Service:
 	service: String
 
-fn exercise(mode: String, path: String) Unit!:
+fn exercise(mode: String, path: String) Void!:
 	if (mode == "file" or mode == "missing"):
 		var root = create(file_transport(path)?, LoggerOptions(timestamp: false))?
 		logger := root.child(Service("api"))?

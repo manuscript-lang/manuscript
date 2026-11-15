@@ -1,4 +1,4 @@
 // conform: tags=diagnostics
 // conform: phase=check
-], value: T) Unit: return
+], value: T) Void: return
 fn first(r: 

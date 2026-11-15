@@ -4,7 +4,7 @@ type Held[T]:
 fn Held[T].get() T:
 	return self.value
 
-fn var Held[T].close() Unit!:
+fn var Held[T].close() Void!:
 	return ok(unit)
 
 fn plain[T](x: T) T:

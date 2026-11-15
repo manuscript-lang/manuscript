@@ -32,7 +32,7 @@ type Detail:
 	checks: Int
 	error: String?
 
-fn main() Unit:
+fn main() Void:
 	args := arguments()
 	cases := parse[List[Case]](must_read(args[0])).get([])
 	build := args[1].clone()

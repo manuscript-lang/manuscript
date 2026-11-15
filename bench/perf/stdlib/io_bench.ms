@@ -20,7 +20,7 @@ fn var MemorySource.next() Bytes?!:
 	self.offset = end
 	return ok(chunk)
 
-fn var MemorySource.close() Unit!:
+fn var MemorySource.close() Void!:
 	self.offset = self.data.length()
 
 fn source_text() String:
@@ -32,7 +32,7 @@ fn source_text() String:
 bench "io.lines":
 	bytes := source_text().to_bytes()
 
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		var reader = lines(ReadStream[Bytes](MemorySource(bytes.clone(), 0)))
 		var count = 0
 
@@ -59,7 +59,7 @@ fn plus(x: Int) Int:
 bench "io.stages.map3_fold":
 	xs := counted(200000)
 
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		stream := map(map(map(from_list(xs.clone()), plus), plus), plus)
 		total := fold(stream, 0, fn(a: Int, b: Int) Int: return a + b)?
 		return keep(total)
@@ -70,7 +70,7 @@ bench "io.lines long fragmented":
 	text := "x".repeat(262144)?
 	data := "{text}\n".to_bytes()
 
-	fn work() Unit!:
+	fn work() Void!:
 		var input = lines(from_bytes(data.clone(), 64))
 		result := input.next()?
 		input.close()?

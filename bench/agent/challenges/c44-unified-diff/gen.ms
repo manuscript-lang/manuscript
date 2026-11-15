@@ -152,7 +152,7 @@ fn at(base: List[String], places: List[Int], values: List[String]) List[String]:
 	for k in 0..places.length(): out[places[k]] = values[k].clone()
 	return out
 
-export fn gen_c44() Unit:
+export fn gen_c44() Void:
 	var rnd = seeded(44)
 	nums := (1..41).map(fn i: "line {i}")
 	base20 := (1..21).map(fn i: "l{i}")

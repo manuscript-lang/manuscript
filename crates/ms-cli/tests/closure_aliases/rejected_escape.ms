@@ -1,4 +1,4 @@
-fn escape() fn() Unit:
+fn escape() fn() Void:
     var rows = [[1]]
     var first = rows[0]
     return fn: first.append(9)

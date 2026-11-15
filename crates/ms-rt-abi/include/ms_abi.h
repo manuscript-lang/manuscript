@@ -82,7 +82,7 @@ void ms_bytes_new(const uint8_t *data, size_t len, ms_bytes *out);
 typedef struct ms_object ms_object;
 typedef struct ms_list ms_list;
 typedef enum ms_kind {
-    MS_UNIT = 0, MS_BOOL = 1, MS_INT = 2, MS_UINT = 3, MS_FLOAT = 4,
+    MS_VOID = 0, MS_BOOL = 1, MS_INT = 2, MS_UINT = 3, MS_FLOAT = 4,
     MS_STRING = 5, MS_BYTES = 6, MS_OBJECT = 7, MS_LIST = 8, MS_FN = 9
 } ms_kind;
 typedef union ms_value_as {
@@ -130,7 +130,7 @@ MS_NORETURN void ms_fault(const char *text, size_t len);
 /* ---- 8. Calling Manuscript functions ------------------------------------------------- */
 /* A function argument (`f: fn(Int) Bool`) is a borrowed `ms_fn *`. Its parameters (at most
    6) are sized numbers, Bool, String, Bytes or extern types; its result one of those
-   but an extern type, or Unit. */
+   but an extern type, or Void. */
 typedef struct ms_fn ms_fn;
 /* Calls f on this thread with `count` arguments lent to it, as every function value is called:
    a string or bytes is copied in for the call, an object is passed as it is and stays the

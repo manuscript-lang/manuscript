@@ -3,7 +3,7 @@ import (
 	monotonic from "@std/time.ms",
 )
 
-fn main() Unit:
+fn main() Void:
 	t0 := monotonic().tick
 	var n = 0
 	for i in 0..20000:

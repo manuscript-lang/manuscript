@@ -1,6 +1,6 @@
 fn make() List[Int]:
     return [1]
 
-fn go() Unit:
+fn go() Void:
     make()[0] = 1  // error: an assignment target must be a variable
     [1, 2][0] = 3  // error: an assignment target must be a variable

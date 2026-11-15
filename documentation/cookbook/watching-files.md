@@ -42,7 +42,7 @@ Save as `reload.ms`. This program re-reads a file each time it changes and stops
 import arguments from "@std/os/env.ms"
 import read_file, watch from "@std/os/fs.ms"
 
-fn main() Unit!:
+fn main() Void!:
     path := arguments().get(0, default: "config.json")
     var events = watch(path)?
     for event in events:

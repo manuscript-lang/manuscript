@@ -25,7 +25,7 @@ fn initial(words: List[String]) String:
 		return c.clone()
 	return ""
 
-fn failed_scan(words: List[String]) Unit!:
+fn failed_scan(words: List[String]) Void!:
 	for c in first(words).chars():
 		expect_equal(c, "not the first character")?
 

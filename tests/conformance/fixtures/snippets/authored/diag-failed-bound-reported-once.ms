@@ -6,5 +6,5 @@ interface Named:
 
 fn describe[E: Named](item: E) String: item.name()
 
-fn main() Unit:
+fn main() Void:
     _message := describe("missing")

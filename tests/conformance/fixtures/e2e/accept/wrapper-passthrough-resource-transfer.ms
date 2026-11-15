@@ -11,7 +11,7 @@ type Marker:
 	log: String
 	closed: Bool = false
 
-fn var Marker.close() Unit!:
+fn var Marker.close() Void!:
 	if not self.closed:
 		self.closed = true
 		append_file(self.log, "{self.id},").wait()?
@@ -20,18 +20,18 @@ fn result(id: Int, log: String) Marker!Error: ok(Marker(id, log))
 
 fn optional(id: Int, log: String) Marker?: Marker(id, log)
 
-fn transfer_result_local(log: String) Unit:
+fn transfer_result_local(log: String) Void:
 	original := result(1, log)
 	_kept := original.or_else(fn cause: error(cause))
 
-fn transfer_result_temporary(log: String) Unit:
+fn transfer_result_temporary(log: String) Void:
 	_kept := result(2, log).or_else(fn cause: error(cause))
 
-fn transfer_optional_local(log: String) Unit:
+fn transfer_optional_local(log: String) Void:
 	original := optional(3, log)
 	_kept := original.or_else(fn: none)
 
-fn transfer_optional_temporary(log: String) Unit:
+fn transfer_optional_temporary(log: String) Void:
 	_kept := optional(4, log).or_else(fn: none)
 
 test "native wrapper passthrough transfers resources without duplicating owners":
@@ -45,13 +45,13 @@ test "native wrapper passthrough transfers resources without duplicating owners"
 	events := read_file(log).wait().get().decode_utf8().get("")
 	expect_equal(events, "1,2,3,4,")?
 
-fn recover_resource_error(log: String) Unit!:
+fn recover_resource_error(log: String) Void!:
 	original: Int!Marker := error(Marker(5, log))
 	recovered := original.or_else(fn cause: ok(cause.id))
 	expect_equal(original.is_error(), true)?
 	expect_equal(recovered.get(), 5)?
 
-fn bound_resource_error(log: String) Unit!:
+fn bound_resource_error(log: String) Void!:
 	original: Int!Marker := error(Marker(6, log))
 	recover := original.or_else
 	first := recover(fn cause: ok(cause.id))
@@ -77,17 +77,17 @@ fn result_callback(fail: Bool) (fn(Error) Marker!Error)!:
 	if fail: return error(Error("callback unavailable"))
 	return ok(fn cause: error(cause))
 
-fn held_result_temporary(id: Int, log: String, fail: Bool) Unit!:
+fn held_result_temporary(id: Int, log: String, fail: Bool) Void!:
 	_kept := result(id, log).or_else(result_callback(fail)?)
 
-fn held_result_local(id: Int, log: String, fail: Bool) Unit!:
+fn held_result_local(id: Int, log: String, fail: Bool) Void!:
 	original := result(id, log)
 	_kept := original.or_else(result_callback(fail)?)
 
-fn held_optional_temporary(id: Int, log: String, fail: Bool) Unit!:
+fn held_optional_temporary(id: Int, log: String, fail: Bool) Void!:
 	_kept := optional(id, log).or_else(optional_callback(fail)?)
 
-fn held_optional_local(id: Int, log: String, fail: Bool) Unit!:
+fn held_optional_local(id: Int, log: String, fail: Bool) Void!:
 	original := optional(id, log)
 	_kept := original.or_else(optional_callback(fail)?)
 
@@ -110,7 +110,7 @@ fn borrowed_error_callback(fail: Bool) (fn(Marker) Int!Marker)!:
 	if fail: return error(Error("callback unavailable"))
 	return ok(fn cause: ok(cause.id))
 
-fn borrowed_error_before_try(id: Int, log: String, fail: Bool) Unit!:
+fn borrowed_error_before_try(id: Int, log: String, fail: Bool) Void!:
 	original: Int!Marker := error(Marker(id, log))
 	recovered := original.or_else(borrowed_error_callback(fail)?)
 	expect_equal(original.is_error(), true)?

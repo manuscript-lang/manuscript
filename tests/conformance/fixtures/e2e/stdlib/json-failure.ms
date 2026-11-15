@@ -5,7 +5,7 @@ import (
 	expect_contains, expect_equal, expect_error from "@std/test/test.ms",
 )
 
-fn expect_syntax_error[T](actual: T!) Unit!:
+fn expect_syntax_error[T](actual: T!) Void!:
 	cause := expect_error(actual)?
 	expect_equal(cause.kind, "EBADMSG")?
 	expect_contains(cause.message, "JSON: invalid data: line ")?

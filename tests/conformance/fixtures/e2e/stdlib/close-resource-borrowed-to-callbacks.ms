@@ -7,10 +7,10 @@ import Closeable from "@std/core.ms"
 type Door:
     name: String
 
-fn var Door.close() Unit!:
+fn var Door.close() Void!:
     print("closed {self.name}")
 
-fn say(s: String) Unit:
+fn say(s: String) Void:
     print("{s}")
 
 fn maybe(n: String) Door?:
@@ -19,7 +19,7 @@ fn maybe(n: String) Door?:
 fn open(n: String) Door!Error:
     return ok(Door(n))
 
-fn main() Unit:
+fn main() Void:
     var doors = [Door("first")]
     doors.insert(0, Door("inserted"))
     say("--map")

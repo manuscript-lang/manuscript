@@ -152,7 +152,7 @@ fn row(name: String, old: Built, new: Built) String:
 fn runs_wanted() Int:
 	return env("RUNS", "5").parse_int().get(5)
 
-fn keep_min(var best: Map[String, Int], name: String, micros: Int) Unit:
+fn keep_min(var best: Map[String, Int], name: String, micros: Int) Void:
 	if not best.contains(name) or micros < best.get(name).get(micros):
 		best.add(name, micros)
 

@@ -50,7 +50,7 @@ export type Table:
 
 // Appends a row of exactly one cell per column. A wrong cell count or a cell with
 // controls returns EBADMSG.
-fn var Table.add(row: List[String]) Unit!:
+fn var Table.add(row: List[String]) Void!:
 	count := self.columns.length()
 	if row.length() != count:
 		return error(table_invalid("row has {row.length()} cells, expected {count}"))

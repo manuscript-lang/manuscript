@@ -13,7 +13,7 @@ Save this as `hello.ms`:
 
 <!-- manuscript-example: {"mode":"run","stdout":"Hello, Manuscript!\n"} -->
 ```manuscript
-fn main() Unit:
+fn main() Void:
     print("Hello, Manuscript!")
 ```
 

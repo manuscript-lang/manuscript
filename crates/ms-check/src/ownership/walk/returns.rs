@@ -367,7 +367,7 @@ impl Walker<'_> {
         self.close_error_return = true;
     }
 
-    /// Direct closes can return Error. A generated holder close returns Unit and faults on
+    /// Direct closes can return Error. A generated holder close returns Void and faults on
     /// failed parts, so it contributes no owned Result.error path to this callable.
     pub(super) fn close_returns_error(&self, ty: &Ty) -> bool {
         if ty.kind == Kind::Variable {
@@ -981,7 +981,9 @@ impl Walker<'_> {
             return None;
         };
         let ty = self.cx.m.ty(e);
-        if self.syms.str(name) != "view" || !(ty.is(Builtin::Bytes) || ty.is_string()) {
+        if !matches!(self.syms.str(name), "view" | "view_bytes")
+            || !(ty.is(Builtin::Bytes) || ty.is_string())
+        {
             return None;
         }
         let root = self.root_name(recv)?;

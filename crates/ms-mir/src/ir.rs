@@ -266,7 +266,7 @@ pub enum FaultKind {
 #[rustfmt::skip]
 pub enum Op {
     // Constants.
-    IConst, FConst, BConst, UnitConst, StrLit, BytesLit,
+    IConst, FConst, BConst, VoidConst, StrLit, BytesLit,
     // Integer arithmetic: wrapping, overflow-checked, and unchecked division.
     IAdd, ISub, IMul, INeg, IAddOverflow, IMulOverflow, IntOverflowIf, IAddChk, ISubChk, IMulChk, UAddChk, USubChk, UMulChk, INegChk, SDivChk, SRemChk, SDiv, SRem,
     // Sized integers: fault unless the value fits its type. `Float32`: round to binary32.
@@ -508,7 +508,7 @@ pub enum Term {
         /// Taken when no case matches.
         default: Target,
     },
-    /// Returns an owned value (or nothing for `Unit` functions).
+    /// Returns an owned value (or nothing for `Void` functions).
     Ret(Option<Value>),
     /// Aborts the program with a fault, running scope cleanups first.
     Fault(FaultKind),

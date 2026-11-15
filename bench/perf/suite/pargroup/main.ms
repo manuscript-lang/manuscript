@@ -50,7 +50,7 @@ fn summarize(path: String) Stats:
 
 	return s
 
-fn main() Unit:
+fn main() Void:
 	files := files_under(arguments()[0])
 	parts := map_concurrent(files, 4, summarize).get()
 	var t = Stats(0, 0, 0, 0, 0, 0)

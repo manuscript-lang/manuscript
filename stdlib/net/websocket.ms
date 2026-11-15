@@ -55,7 +55,7 @@ fn var WebSocketSource.next() WebSocketMessage?!:
 
 	return ok(none)
 
-fn var WebSocketSource.close() Unit!:
+fn var WebSocketSource.close() Void!:
 	msstd_websocket_close_if_last(self.native)
 
 type WebSocketSink:
@@ -63,16 +63,16 @@ type WebSocketSink:
 
 // Sends one message. Text must be valid UTF-8 or the call returns EBADMSG, and a
 // payload over `max_message_bytes` returns EOVERFLOW.
-fn var WebSocketSink.write(value: WebSocketMessage) Unit!:
+fn var WebSocketSink.write(value: WebSocketMessage) Void!:
 	match value.kind:
 		Text: return msstd_websocket_send_bytes(self.native, value.data, true)
 		Binary: return msstd_websocket_send_bytes(self.native, value.data, false)
 		Ping: return msstd_websocket_ping_bytes(self.native, value.data)
 
-fn var WebSocketSink.flush() Unit!:
+fn var WebSocketSink.flush() Void!:
 	return ok(unit)
 
-fn var WebSocketSink.close() Unit!:
+fn var WebSocketSink.close() Void!:
 	msstd_websocket_close_if_last(self.native)
 
 /*
@@ -90,7 +90,7 @@ export type WebSocket:
 	subprotocol: String
 
 // Closes both streams, and with them the connection.
-fn var WebSocket.close() Unit!:
+fn var WebSocket.close() Void!:
 	self.input.close()?
 	return self.output.close()
 

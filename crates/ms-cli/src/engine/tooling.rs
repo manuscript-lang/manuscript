@@ -221,13 +221,53 @@ fn analysis_each(syms: ms_syntax::Names, request: &AnalysisRequest, io: &mut Io)
 /// Rounds of `--fix` per run; fixes that regenerate each other stop here.
 const FIX_PASSES: u8 = 8;
 
-/// One run of the command, and the files that decide its result.
+/// One run of the command, and the files that decide its result. `--fix` reports its total once,
+/// however many rounds it took.
 fn analysis_once(
     syms: ms_syntax::Names,
     request: &AnalysisRequest,
     fix_passes: u8,
     fix_errors: &mut BTreeMap<String, CommandDiagnostic>,
     session: &std::rc::Rc<ms_check::Session>,
+    io: &mut Io,
+) -> (i32, Vec<String>) {
+    let mut applied = FixTotals::default();
+    let result = analysis_pass(
+        syms,
+        request,
+        fix_passes,
+        fix_errors,
+        session,
+        &mut applied,
+        io,
+    );
+    if applied.fixes > 0 {
+        let _ = writeln!(
+            io.stderr,
+            "ms: applied {} {} in {} {}",
+            applied.fixes,
+            plural(applied.fixes, "fix", "fixes"),
+            applied.files,
+            plural(applied.files, "file", "files")
+        );
+    }
+    result
+}
+
+/// Fixes written so far by the rounds of one `--fix` run.
+#[derive(Default)]
+struct FixTotals {
+    fixes: usize,
+    files: usize,
+}
+
+fn analysis_pass(
+    syms: ms_syntax::Names,
+    request: &AnalysisRequest,
+    fix_passes: u8,
+    fix_errors: &mut BTreeMap<String, CommandDiagnostic>,
+    session: &std::rc::Rc<ms_check::Session>,
+    applied_total: &mut FixTotals,
     io: &mut Io,
 ) -> (i32, Vec<String>) {
     let check = request.command == AnalysisCommand::Check;
@@ -322,24 +362,21 @@ fn analysis_once(
     if request.fix {
         let (applied, edited) = apply_fixes(fixes, fix_errors);
         if applied > 0 {
-            let _ = writeln!(
-                io.stderr,
-                "ms: applied {applied} {} in {edited} {}",
-                plural(applied, "fix", "fixes"),
-                plural(edited, "file", "files")
-            );
+            applied_total.fixes += applied;
+            applied_total.files += edited;
             // A fix that overlapped an applied one, or a diagnostic the checker only
             // reaches once an earlier one is gone, is found again on the rerun.
             let rerun = AnalysisRequest {
                 fix: fix_passes > 1,
                 ..request.clone()
             };
-            return analysis_once(
+            return analysis_pass(
                 syms,
                 &rerun,
                 fix_passes.saturating_sub(1),
                 fix_errors,
                 session,
+                applied_total,
                 io,
             );
         }

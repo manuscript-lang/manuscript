@@ -6,7 +6,7 @@
 //!
 //! | type | leaves |
 //! | --- | --- |
-//! | `Unit` | none |
+//! | `Void` | none |
 //! | `Bool` | `i8` |
 //! | `Int`, `Ptr`, closures | `i64` |
 //! | `Int8`, `Int16`, `Int32` | `i64` in registers, 1, 2, 4 bytes in memory |
@@ -345,7 +345,7 @@ impl<'m> Layouts<'m> {
         use Leaf::*;
         let plain = |leaves: Vec<Leaf>| Shape { leaves, alt: None };
         match self.m.types.kind(ty) {
-            TyKind::Unit => plain(vec![]),
+            TyKind::Void => plain(vec![]),
             TyKind::Bool => plain(vec![I8]),
             TyKind::Int | TyKind::Ptr | TyKind::Fn(..) => plain(vec![I64]),
             TyKind::Int8 => plain(vec![N8]),

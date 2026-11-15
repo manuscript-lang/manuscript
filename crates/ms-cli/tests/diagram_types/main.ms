@@ -29,5 +29,5 @@ fn echo(item: Item) Item:
 fn Box.first() Item:
     return self.items[0]
 
-fn main() Unit:
+fn main() Void:
     print(b_item())
