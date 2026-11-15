@@ -1,12 +1,12 @@
 import (
-	access, stat from "@std/os/fs.ms",
+	parse_dotenv from "@std/data/config.ms",
+	access, read_file, stat from "@std/os/fs.ms",
 	join from "@std/os/path.ms",
 	Os, os from "@std/os/system.ms",
 
 	msrt_args,
 	msstd_process_change_directory,
 	msstd_process_environment_map,
-	msstd_process_load_environment,
 	msstd_process_set_environment,
 	msstd_process_working_directory,
 	msstd_system_home_directory from "@std/internal/env.ms",
@@ -93,7 +93,17 @@ export fn set_environment(name: String, value: String?) Unit!:
 // ms: effect std.env.write
 // ms: effect std.fs.read
 export fn load_environment(path: String, max_bytes: Int? = none) Unit!:
-	return msstd_process_load_environment(path, max_bytes)
+	data := read_file(path, max_bytes).wait()?
+	text := data.decode_utf8()
+	if text.is_none(): return error(Error("environment: invalid data", kind: "EBADMSG"))
+
+	entries := parse_dotenv(text.get(""))?
+	existing := environment()?
+
+	for entry in entries.entries():
+		if existing.contains(entry.key): continue
+
+		set_environment(entry.key, entry.value)?
 
 // Reads the live process directory, preserving OS failures as `Error` values.
 // ms: effect std.env.read
