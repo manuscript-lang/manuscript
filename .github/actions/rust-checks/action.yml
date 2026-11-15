@@ -230,11 +230,11 @@ runs:
         MS_BACKEND: cranelift
       shell: bash
       run: target/debug/ms run tools/conform.ms
-    # The dev profile turns Cranelift's own debug assertions off for speed (Cargo.toml). Main and LLVM pull
-    # requests build `ms` once more with them on and replay the Cranelift run and test phases, so an assertion
+    # The dev profile turns Cranelift's own debug assertions off for speed (Cargo.toml). Main, scheduled and manual
+    # runs build `ms` once more with them on and replay the Cranelift run and test phases, so an assertion
     # that fires on the IR we generate is still caught.
     - name: Conformance corpus (Cranelift with its debug assertions on)
-      if: env.CRANELIFT == 'true' && env.LLVM == 'true' && runner.os == 'Linux'
+      if: env.CRANELIFT == 'true' && env.LLVM == 'true' && env.PR != 'true' && runner.os == 'Linux'
       env:
         MS_BACKEND: cranelift
       shell: bash
