@@ -2175,7 +2175,7 @@ pub unsafe extern "C-unwind" fn msrt_strbuilder_freeze(b: *mut VecVal, out: *mut
         if v.len > STR_INLINE_MAX && v.len <= string::MAX_BYTES {
             let mut ptr = v.ptr;
             if v.cap == v.len || v.cap > v.len + (v.len >> 2) + 1 {
-                ptr = alloc::trim(ptr, v.len + 1);
+                ptr = alloc::realloc(ptr, v.len + 1);
             }
             *ptr.add(v.len) = 0;
             // One vector scan flags an ASCII text, so `length`, `get` and `slice` on it do not

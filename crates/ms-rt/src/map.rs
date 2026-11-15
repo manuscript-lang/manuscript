@@ -973,8 +973,6 @@ pub unsafe fn drop_map(m: *mut MapVal, kd: &TypeDesc, vd: Option<&TypeDesc>) {
         if !plain {
             // String keys are the common case: release them without descriptor dispatch.
             let strings = kd.kind == KIND_STRING;
-            // A `String` value is released the same way; other values dispatch on the descriptor.
-            let value_strings = vd.is_some_and(|v| v.kind == KIND_STRING);
             for i in 0..m.used {
                 let p = slot(m, &l, i);
                 if slot_hash_of(p) & LIVE != 0 {
@@ -983,9 +981,7 @@ pub unsafe fn drop_map(m: *mut MapVal, kd: &TypeDesc, vd: Option<&TypeDesc>) {
                     } else {
                         slot_drop(kd, p.add(l.koff));
                     }
-                    if value_strings {
-                        crate::string::release(&*(p.add(l.voff) as *const StrVal));
-                    } else if let Some(vd) = vd {
+                    if let Some(vd) = vd {
                         slot_drop(vd, p.add(l.voff));
                     }
                 }
