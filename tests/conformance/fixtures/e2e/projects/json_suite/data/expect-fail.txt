@@ -1,0 +1,7 @@
+# Cases of JSONTestSuite the parser does not pass, with the reason.
+# A listed case must still fail, so fixing one means deleting its line; the list only shrinks.
+# The two below are a decision, not a gap: RFC 8259 only says names SHOULD be unique, and this
+# parser rejects a repeated name, as the YAML and TOML parsers do, so a duplicate can never
+# silently pick one of two values.
+y_object_duplicated_key.json duplicate object names are rejected on purpose
+y_object_duplicated_key_and_value.json duplicate object names are rejected on purpose
