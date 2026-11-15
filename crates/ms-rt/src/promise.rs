@@ -200,7 +200,7 @@ crate::isolate_static! {
 /// (the table is thread-local state), so a leak checker would see them as lost. A result nobody
 /// took is dropped.
 pub(crate) fn teardown() {
-    let t = table();
+    let mut t = table();
     for i in 0..t.cancel.len() {
         if t.cancel[i] != 0 {
             let id = ((sched::current() as i64) << 56)
@@ -219,9 +219,32 @@ pub(crate) fn teardown() {
     ends().jobs = VecDeque::new();
 }
 
-fn table() -> &'static mut Table {
-    // SAFETY: the table belongs to the calling isolate.
-    unsafe { &mut *TABLE.ptr() }
+/// The isolate's state `T`, reached through a raw pointer. Each access to a field makes its own short
+/// reference, so a handle kept across a call that fetches the state again stays valid; a long-lived
+/// `&'static mut` would be invalidated by that second fetch (Stacked Borrows, checked by Miri in the
+/// nightly safety job). A `&mut T` passed as an argument is alive for the whole callee, so a callee
+/// that takes one must not fetch the state again.
+struct Isolate<T>(*mut T);
+
+impl<T> core::ops::Deref for Isolate<T> {
+    type Target = T;
+    #[inline(always)]
+    fn deref(&self) -> &T {
+        // SAFETY: the state belongs to the calling isolate and this reference lasts one expression.
+        unsafe { &*self.0 }
+    }
+}
+
+impl<T> core::ops::DerefMut for Isolate<T> {
+    #[inline(always)]
+    fn deref_mut(&mut self) -> &mut T {
+        // SAFETY: as for `deref`.
+        unsafe { &mut *self.0 }
+    }
+}
+
+fn table() -> Isolate<Table> {
+    Isolate(TABLE.ptr())
 }
 
 /// Generations are 24 bits, above the 32-bit index.
@@ -242,7 +265,7 @@ fn index(t: &Table, id: i64) -> Option<usize> {
 }
 
 fn find(id: i64) -> usize {
-    index(table(), id).unwrap_or_else(|| fault::fault(b"promise: no such promise"))
+    index(&table(), id).unwrap_or_else(|| fault::fault(b"promise: no such promise"))
 }
 
 /// Whether promise `id` belongs to another scheduler thread's table.
@@ -335,11 +358,11 @@ fn missing() -> ! {
 /// when the promise changes. Registration never runs work: a wait on several promises must
 /// check all of them for an existing result before running any deferred callback.
 fn watch(id: i64, token: u64) -> Answer {
-    let t = table();
-    let Some(i) = index(t, id) else {
+    let mut t = table();
+    let Some(i) = index(&t, id) else {
         return Answer::Missing;
     };
-    match outcome(t, i) {
+    match outcome(&t, i) {
         Some(code) => Answer::Outcome(code),
         None => {
             t.watchers.push((i, token));
@@ -350,8 +373,8 @@ fn watch(id: i64, token: u64) -> Answer {
 
 /// Owner side: forgets `token` as a watcher of `id`.
 fn unwatch(id: i64, token: u64) -> Answer {
-    let t = table();
-    if let Some(i) = index(t, id) {
+    let mut t = table();
+    if let Some(i) = index(&t, id) {
         t.watchers.retain(|&w| w != (i, token));
     }
     Answer::Unit
@@ -426,7 +449,7 @@ fn release_result(t: &mut Table, i: usize) {
 /// Allocates a pending promise and returns its id.
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_promise_new() -> i64 {
-    let t = table();
+    let mut t = table();
     let i = match t.free.pop() {
         Some(i) => i,
         None => {
@@ -541,12 +564,12 @@ struct EndJob {
 /// the scheduler's event handling.
 fn end_remote(id: i64, status: u8, report: Vec<u8>) {
     let t = table();
-    let Some(i) = index(t, id) else { return };
+    let Some(i) = index(&t, id) else { return };
     if t.closure[i] == 0 {
         apply(Event::Ended { id, status, report });
         return;
     }
-    let ends = ends();
+    let mut ends = ends();
     ends.jobs.push_back(EndJob { id, status, report });
     if ends.enders < ENDERS {
         spawn_ender();
@@ -564,9 +587,8 @@ crate::isolate_static! {
     static ENDS: Ends = Ends { jobs: VecDeque::new(), enders: 0 };
 }
 
-fn ends() -> &'static mut Ends {
-    // SAFETY: the queue belongs to the calling isolate.
-    unsafe { &mut *ENDS.ptr() }
+fn ends() -> Isolate<Ends> {
+    Isolate(ENDS.ptr())
 }
 
 /// Tasks that drain the queue of ends. A drop that waits parks only its own task.
@@ -599,13 +621,13 @@ unsafe extern "C-unwind" fn ender_entry(_: *mut u8) {
 fn finish_end(job: EndJob) {
     let EndJob { id, status, report } = job;
     let t = table();
-    if let Some(i) = index(t, id) {
+    if let Some(i) = index(&t, id) {
         let closure = t.closure[i];
         if closure != 0 {
             // SAFETY: the closure handed over at start; the task is over, so this is its last use.
             // The slot keeps the closure until it is gone, so a result that arrives meanwhile waits.
             unsafe { crate::obj::drop_obj(closure as *mut ms_rt_abi::Obj) };
-            if let Some(i) = index(table(), id) {
+            if let Some(i) = index(&table(), id) {
                 table().closure[i] = 0;
             }
         }
@@ -624,14 +646,14 @@ fn drop_block(ptr: usize, desc: usize) {
 fn apply(event: Event) {
     match event {
         Event::Started { id, thread, task } => {
-            let t = table();
-            let Some(i) = index(t, id) else { return };
+            let mut t = table();
+            let Some(i) = index(&t, id) else { return };
             t.thread[i] = thread;
             t.task[i] = task;
             if t.flags[i] & WANT_CANCEL != 0 {
                 request_cancel(id);
             }
-            wake(table(), i);
+            wake(&mut table(), i);
         }
         Event::Done {
             id,
@@ -640,8 +662,8 @@ fn apply(event: Event) {
             desc,
             pipe,
         } => {
-            let t = table();
-            match index(t, id) {
+            let mut t = table();
+            match index(&t, id) {
                 // A held result is already accepted: a later completion is a duplicate.
                 Some(i) if t.state[i] == State::Pending && t.flags[i] & HELD == 0 => {
                     if ptr != 0 {
@@ -657,7 +679,7 @@ fn apply(event: Event) {
                         return;
                     }
                     t.state[i] = if failed { State::Error } else { State::Ok };
-                    wake(t, i);
+                    wake(&mut t, i);
                 }
                 _ if ptr == 0 => {}
                 _ if pipe != 0 => crate::pipe::unread(pipe, ptr, desc),
@@ -665,8 +687,8 @@ fn apply(event: Event) {
             }
         }
         Event::Ended { id, status, report } => {
-            let t = table();
-            let Some(i) = index(t, id) else { return };
+            let mut t = table();
+            let Some(i) = index(&t, id) else { return };
             let closure = core::mem::take(&mut t.closure[i]);
             if closure != 0 {
                 // SAFETY: the closure handed over at start; the task is over, so this is its last use.
@@ -687,7 +709,7 @@ fn apply(event: Event) {
                 t.state[i] = if t.flags[i] & HELD_ERROR == 0 {
                     State::Ok
                 } else if interrupted {
-                    release_result(t, i);
+                    release_result(&mut t, i);
                     State::Cancelled
                 } else {
                     State::Error
@@ -707,7 +729,7 @@ fn apply(event: Event) {
                     }
                 }
             }
-            wake(t, i);
+            wake(&mut t, i);
         }
         Event::Cancel { task } => {
             // SAFETY: a stale or finished handle is a no-op.
@@ -732,8 +754,8 @@ unsafe extern "C-unwind" fn call_entry(arg: *mut u8) {
 /// removed from its queue and ends here; work that has started is told to cancel on its thread;
 /// work that is between the two is cancelled as soon as it starts.
 fn request_cancel(id: i64) {
-    let t = table();
-    let Some(i) = index(t, id) else { return };
+    let mut t = table();
+    let Some(i) = index(&t, id) else { return };
     if t.closure[i] == 0 {
         return;
     }
@@ -878,8 +900,8 @@ pub unsafe extern "C-unwind" fn msrt_promise_take(
 
 /// Takes the result block out of promise `id` and marks it taken; null when there is none.
 fn take_block(id: i64) -> Result {
-    let t = table();
-    let Some(i) = index(t, id) else {
+    let mut t = table();
+    let Some(i) = index(&t, id) else {
         return NO_RESULT;
     };
     let r = core::mem::replace(&mut t.result[i], NO_RESULT);
@@ -895,14 +917,14 @@ pub extern "C-unwind" fn msrt_promise_done(id: i64) -> u8 {
     if is_foreign(id) {
         return match ask(id, move || {
             let t = table();
-            Answer::Flag(index(t, id).is_none_or(|i| t.state[i] != State::Pending))
+            Answer::Flag(index(&t, id).is_none_or(|i| t.state[i] != State::Pending))
         }) {
             Answer::Flag(done) => u8::from(done),
             _ => 1,
         };
     }
     let t = table();
-    match index(t, id) {
+    match index(&t, id) {
         Some(i) if t.state[i] == State::Pending => {
             if t.closure[i] != 0 {
                 // A task that has not started gets its turn, so polling `done` makes progress.
@@ -910,7 +932,7 @@ pub extern "C-unwind" fn msrt_promise_done(id: i64) -> u8 {
                 unsafe { task::pump() };
             }
             let t = table();
-            index(t, id).map_or(1, |i| u8::from(t.state[i] != State::Pending))
+            index(&t, id).map_or(1, |i| u8::from(t.state[i] != State::Pending))
         }
         Some(_) | None => 1,
     }
@@ -921,13 +943,13 @@ pub extern "C-unwind" fn msrt_promise_done(id: i64) -> u8 {
 /// costs far more than the call this makes.
 fn msrt_promise_run_unstarted(id: i64) -> u8 {
     let t = table();
-    let Some(i) = index(t, id) else { return 0 };
+    let Some(i) = index(&t, id) else { return 0 };
     if t.state[i] != State::Pending || t.closure[i] == 0 {
         return 0;
     }
     run_unstarted(id);
     let t = table();
-    index(t, id).map_or(1, |i| u8::from(t.state[i] != State::Pending))
+    index(&t, id).map_or(1, |i| u8::from(t.state[i] != State::Pending))
 }
 
 /// [`msrt_promise_run_unstarted`] for a waiter on `group`: while the promise runs here, a member of
@@ -1059,7 +1081,7 @@ fn complete_unit(t: &mut Table, i: usize) {
 pub extern "C-unwind" fn msrt_promise_sleep(ns: i64) -> i64 {
     let id = msrt_promise_new();
     let i = find(id);
-    let t = table();
+    let mut t = table();
     let deadline = crate::sys::monotonic_ns().saturating_add(ns.max(0));
     t.deadline[i] = deadline;
     t.timers.push(Reverse((deadline, id)));
@@ -1077,7 +1099,7 @@ pub extern "C-unwind" fn msrt_promise_ready(fd: i64, events: i64, timeout_ns: i6
     // SAFETY: single scheduler per isolate.
     let ready = unsafe { task::watch_fd_for_promise(fd, events, id) };
     let i = find(id);
-    let t = table();
+    let mut t = table();
     match ready {
         None => {
             msrt_promise_drop(id);
@@ -1085,7 +1107,7 @@ pub extern "C-unwind" fn msrt_promise_ready(fd: i64, events: i64, timeout_ns: i6
         }
         Some(true) => {
             put_int(
-                t,
+                &mut t,
                 i,
                 i64::from(events & (task::WAIT_READ | task::WAIT_WRITE)),
             );
@@ -1184,8 +1206,8 @@ pub(crate) fn io_done_block(id: i64, ptr: usize, desc: usize, pipe: i64) {
 /// Records `cancel` as the continuation that runs when pending promise `id` is dropped, with
 /// `state`. A pipe read uses it to leave the pipe's list of waiting readers.
 pub(crate) fn on_drop(id: i64, cancel: Retry, state: usize) {
-    let t = table();
-    if let Some(i) = index(t, id) {
+    let mut t = table();
+    if let Some(i) = index(&t, id) {
         t.retry[i] = Some(cancel);
         t.retry_state[i] = state;
         t.flags[i] |= REMOTE_WAKE;
@@ -1207,8 +1229,8 @@ pub fn io_on_ready(
 ) -> bool {
     // SAFETY: single scheduler per isolate.
     let ready = unsafe { task::watch_fd_for_promise(fd, events, id) };
-    let t = table();
-    let Some(i) = index(t, id) else { return false };
+    let mut t = table();
+    let Some(i) = index(&t, id) else { return false };
     match ready {
         None => false,
         Some(true) => {
@@ -1233,13 +1255,13 @@ pub fn io_on_ready(
 /// What readiness wait `id` asks for (0 when it is not one).
 pub(crate) fn fd_events(id: i64) -> u32 {
     let t = table();
-    index(t, id).map_or(0, |i| t.events[i])
+    index(&t, id).map_or(0, |i| t.events[i])
 }
 
 /// The poller saw `bits` on the descriptor of readiness wait `id`; answers whether it finished.
 pub(crate) fn fd_ready(id: i64, bits: u32) -> bool {
-    let t = table();
-    let Some(i) = index(t, id) else { return true };
+    let mut t = table();
+    let Some(i) = index(&t, id) else { return true };
     let wanted = bits & (t.events[i] | task::WAIT_HUP);
     if wanted == 0 || t.state[i] != State::Pending {
         return t.state[i] != State::Pending;
@@ -1250,15 +1272,15 @@ pub(crate) fn fd_ready(id: i64, bits: u32) -> bool {
         if !retry(id, state, wanted) {
             return false;
         }
-        let t = table();
-        if let Some(i) = index(t, id) {
+        let mut t = table();
+        if let Some(i) = index(&t, id) {
             t.fd[i] = -1;
             t.retry[i] = None;
         }
         return true;
     }
     t.fd[i] = -1;
-    put_int(t, i, i64::from(wanted));
+    put_int(&mut t, i, i64::from(wanted));
     true
 }
 
@@ -1266,7 +1288,7 @@ pub(crate) fn fd_ready(id: i64, bits: u32) -> bool {
 pub(crate) fn expire(now: i64) {
     expire_limits(now);
     loop {
-        let t = table();
+        let mut t = table();
         let Some(&Reverse((deadline, id))) = t.timers.peek() else {
             return;
         };
@@ -1274,7 +1296,7 @@ pub(crate) fn expire(now: i64) {
             return;
         }
         t.timers.pop();
-        let Some(i) = index(t, id) else { continue };
+        let Some(i) = index(&t, id) else { continue };
         if t.state[i] != State::Pending || t.deadline[i] != deadline {
             continue;
         }
@@ -1284,17 +1306,17 @@ pub(crate) fn expire(now: i64) {
             unsafe { task::unwatch_fd_for_promise(fd, id) };
             if let Some(retry) = core::mem::take(&mut t.retry[i]) {
                 retry(id, t.retry_state[i], task::WAIT_TIMEOUT);
-                let t = table();
-                if let Some(i) = index(t, id)
+                let mut t = table();
+                if let Some(i) = index(&t, id)
                     && t.state[i] == State::Pending
                 {
-                    put_int(t, i, i64::from(task::WAIT_TIMEOUT));
+                    put_int(&mut t, i, i64::from(task::WAIT_TIMEOUT));
                 }
             } else {
-                put_int(t, i, i64::from(task::WAIT_TIMEOUT));
+                put_int(&mut t, i, i64::from(task::WAIT_TIMEOUT));
             }
         } else {
-            complete_unit(t, i);
+            complete_unit(&mut t, i);
         }
     }
 }
@@ -1302,7 +1324,7 @@ pub(crate) fn expire(now: i64) {
 /// Ends the promises whose limit has passed at `now`.
 fn expire_limits(now: i64) {
     loop {
-        let t = table();
+        let mut t = table();
         let Some(&Reverse((limit, id))) = t.limits.peek() else {
             return;
         };
@@ -1310,7 +1332,7 @@ fn expire_limits(now: i64) {
             return;
         }
         t.limits.pop();
-        let Some(i) = index(t, id) else { continue };
+        let Some(i) = index(&t, id) else { continue };
         if t.state[i] == State::Pending && t.limit[i] == limit {
             t.flags[i] |= TIMED_OUT;
             t.limit[i] = i64::MAX;
@@ -1322,8 +1344,8 @@ fn expire_limits(now: i64) {
 /// Ends the unfinished promise `id` as cancelled, whatever it is doing: work that has a task is
 /// told to cancel (the task's end completes it), and a promise with no task is completed here.
 fn stop(id: i64) {
-    let t = table();
-    let Some(i) = index(t, id) else { return };
+    let mut t = table();
+    let Some(i) = index(&t, id) else { return };
     if t.state[i] != State::Pending {
         return;
     }
@@ -1346,12 +1368,12 @@ fn stop(id: i64) {
     if let Some(retry) = core::mem::take(&mut t.retry[i]) {
         retry(id, t.retry_state[i], task::WAIT_CANCELLED);
     }
-    let t = table();
-    if let Some(i) = index(t, id)
+    let mut t = table();
+    if let Some(i) = index(&t, id)
         && t.state[i] == State::Pending
     {
         t.state[i] = State::Cancelled;
-        wake(t, i);
+        wake(&mut t, i);
     }
 }
 
@@ -1378,8 +1400,8 @@ pub extern "C-unwind" fn msrt_promise_on_cancel(id: i64, cancel: i64) {
         });
         return;
     }
-    let t = table();
-    let Some(i) = index(t, id) else { return };
+    let mut t = table();
+    let Some(i) = index(&t, id) else { return };
     let previous = core::mem::replace(&mut t.cancel[i], cancel);
     if previous != 0 {
         crate::cancel::unregister(previous, id);
@@ -1406,8 +1428,8 @@ pub extern "C-unwind" fn msrt_promise_limit(id: i64, timeout_ns: i64) {
         });
         return;
     }
-    let t = table();
-    let Some(i) = index(t, id) else { return };
+    let mut t = table();
+    let Some(i) = index(&t, id) else { return };
     let limit = crate::sys::monotonic_ns().saturating_add(timeout_ns.max(0));
     t.limit[i] = limit;
     t.limits.push(Reverse((limit, id)));
@@ -1415,9 +1437,9 @@ pub extern "C-unwind" fn msrt_promise_limit(id: i64, timeout_ns: i64) {
 
 /// The earliest deadline of a live timer or limit, dropping stale entries on the way.
 pub(crate) fn next_deadline() -> Option<i64> {
-    let t = table();
+    let mut t = table();
     while let Some(&Reverse((limit, id))) = t.limits.peek() {
-        if let Some(i) = index(t, id)
+        if let Some(i) = index(&t, id)
             && t.state[i] == State::Pending
             && t.limit[i] == limit
         {
@@ -1427,7 +1449,7 @@ pub(crate) fn next_deadline() -> Option<i64> {
     }
     let limit = t.limits.peek().map(|&Reverse((l, _))| l);
     while let Some(&Reverse((deadline, id))) = t.timers.peek() {
-        if let Some(i) = index(t, id)
+        if let Some(i) = index(&t, id)
             && t.state[i] == State::Pending
             && t.deadline[i] == deadline
         {
@@ -1499,7 +1521,7 @@ enum Mode {
 
 unsafe fn start_on(id: i64, work: *mut ms_rt_abi::Closure, mode: Mode) {
     let i = find(id);
-    let t = table();
+    let mut t = table();
     if t.closure[i] != 0 || t.thread[i] != NOT_STARTED {
         fault::fault(b"promise: already started");
     }
@@ -1546,7 +1568,7 @@ unsafe fn start_on(id: i64, work: *mut ms_rt_abi::Closure, mode: Mode) {
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_promise_defer(id: i64, work: *mut ms_rt_abi::Closure) {
     let i = find(id);
-    let t = table();
+    let mut t = table();
     // The caller hands the closure over: the promise owns it until the work runs or it is dropped.
     t.flags[i] |= DEFERRED;
     t.retry_state[i] = work as usize;
@@ -1558,7 +1580,7 @@ pub unsafe extern "C-unwind" fn msrt_promise_defer(id: i64, work: *mut ms_rt_abi
 /// stop the work, so it leaves the promise to run as a task.
 fn run_unstarted(id: i64) {
     let t = table();
-    let Some(i) = index(t, id) else { return };
+    let Some(i) = index(&t, id) else { return };
     if t.closure[i] == 0 || t.thread[i] != NOT_STARTED || t.flags[i] & WANT_CANCEL != 0 {
         return;
     }
@@ -1581,8 +1603,8 @@ fn run_unstarted(id: i64) {
 
 /// Runs the deferred work of `id` if it has not run: the caller is the waiter.
 fn run_deferred(id: i64, deadline: Option<i64>) -> bool {
-    let t = table();
-    let Some(i) = index(t, id) else { return false };
+    let mut t = table();
+    let Some(i) = index(&t, id) else { return false };
     if t.flags[i] & DEFERRED == 0 {
         return false;
     }
@@ -1663,7 +1685,7 @@ pub unsafe fn start_native(entry: unsafe extern "C-unwind" fn(*mut u8), arg: *mu
 /// `msrt_promise_done` it never lets other tasks run. An id that no longer exists reads as over.
 pub fn work_over(id: i64) -> bool {
     let t = table();
-    index(t, id).is_none_or(|i| t.closure[i] == 0)
+    index(&t, id).is_none_or(|i| t.closure[i] == 0)
 }
 
 /// Asks the work of promise `id` to stop at its next wait. An id that no longer exists is ignored.
@@ -1691,12 +1713,12 @@ fn needs_remote_token(t: &Table, i: usize) -> bool {
 /// Parks until promise `id` changes (an event, a completion, a timeout, a cancellation) and
 /// returns how the park ended. The slot is looked up again afterwards, so the caller does too.
 fn park_on(id: i64, timeout_ns: i64) -> u32 {
-    let t = table();
-    let Some(i) = index(t, id) else {
+    let mut t = table();
+    let Some(i) = index(&t, id) else {
         return 0;
     };
     // The work may finish on another thread, so the scheduler must not call this a deadlock.
-    let flags = if needs_remote_token(t, i) {
+    let flags = if needs_remote_token(&t, i) {
         task::TOKEN_REMOTE
     } else {
         0
@@ -1707,8 +1729,8 @@ fn park_on(id: i64, timeout_ns: i64) -> u32 {
         t.token[i] = token;
         let mut value = 0;
         let woke = task::msrt_token_park(token, timeout_ns, &mut value);
-        let t = table();
-        if let Some(i) = index(t, id)
+        let mut t = table();
+        if let Some(i) = index(&t, id)
             && t.token[i] == token
         {
             t.token[i] = 0;
@@ -1729,7 +1751,7 @@ pub extern "C-unwind" fn msrt_promise_wait(id: i64, timeout_ns: i64) -> i64 {
     let own = (timeout_ns >= 0).then(|| crate::sys::monotonic_ns().saturating_add(timeout_ns));
     // The promise's own limit also bounds the wait, which is how deferred work (it runs on this
     // stack) notices it.
-    let limit = index(table(), id).map_or(i64::MAX, |i| table().limit[i]);
+    let limit = index(&table(), id).map_or(i64::MAX, |i| table().limit[i]);
     let own = match (own, limit) {
         (o, i64::MAX) => o,
         (Some(o), l) => Some(o.min(l)),
@@ -1750,7 +1772,7 @@ pub extern "C-unwind" fn msrt_promise_wait(id: i64, timeout_ns: i64) -> i64 {
         // `find` makes its own reference to the table; take `t` after it, not before.
         let i = find(id);
         let t = table();
-        if let Some(code) = outcome(t, i) {
+        if let Some(code) = outcome(&t, i) {
             return code;
         }
         let remaining = deadline.map_or(-1, |d| (d - crate::sys::monotonic_ns()).max(0));
@@ -1763,10 +1785,10 @@ pub extern "C-unwind" fn msrt_promise_wait(id: i64, timeout_ns: i64) -> i64 {
             fault::msrt_cancelled();
         }
         let t = table();
-        let Some(i) = index(t, id) else {
+        let Some(i) = index(&t, id) else {
             return CLOSED;
         };
-        if let Some(code) = outcome(t, i) {
+        if let Some(code) = outcome(&t, i) {
             return code;
         }
         if woke == task::WAIT_TIMEOUT {
@@ -1780,7 +1802,7 @@ pub extern "C-unwind" fn msrt_promise_wait(id: i64, timeout_ns: i64) -> i64 {
 /// takes each as it finishes instead of rescanning them all after every wake.
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_group_new() -> i64 {
-    let t = table();
+    let mut t = table();
     let g = t.free_groups.pop().unwrap_or_else(|| {
         t.groups.push(Group::default());
         t.groups.len() - 1
@@ -1794,9 +1816,9 @@ fn msrt_group_add(group: i64, id: i64, tag: i64) -> u8 {
     if is_foreign(id) {
         return 0;
     }
-    let t = table();
+    let mut t = table();
     let g = group as usize - 1;
-    match index(t, id) {
+    match index(&t, id) {
         Some(i) if t.state[i] == State::Pending => {
             if t.group[i] != 0 {
                 return 0;
@@ -1857,7 +1879,7 @@ pub extern "C-unwind" fn msrt_group_poll(group: i64) -> i64 {
 /// Frees `group`; its promises keep running and are no longer reported.
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_group_free(group: i64) {
-    let t = table();
+    let mut t = table();
     let g = group as usize - 1;
     let members = core::mem::take(&mut t.groups[g].members);
     for &slot in &members {
@@ -1898,7 +1920,7 @@ pub unsafe extern "C-unwind" fn msrt_promise_wait_any(
     let first_done = |list: &[i64]| {
         let t = table();
         list.iter()
-            .position(|&id| index(t, id).is_none_or(|i| t.state[i] != State::Pending))
+            .position(|&id| index(&t, id).is_none_or(|i| t.state[i] != State::Pending))
     };
     let deadline = (timeout_ns >= 0).then(|| crate::sys::monotonic_ns().saturating_add(timeout_ns));
     // Eager inputs cannot finish on this thread while this loop runs: their events and timers
@@ -1919,11 +1941,11 @@ pub unsafe extern "C-unwind" fn msrt_promise_wait_any(
         unsafe {
             let remote = list
                 .iter()
-                .any(|&id| index(table(), id).is_some_and(|i| needs_remote_token(table(), i)));
+                .any(|&id| index(&table(), id).is_some_and(|i| needs_remote_token(&table(), i)));
             let token = task::msrt_token_new(if remote { task::TOKEN_REMOTE } else { 0 });
-            let t = table();
+            let mut t = table();
             for &id in &list {
-                if let Some(i) = index(t, id) {
+                if let Some(i) = index(&t, id) {
                     if t.token[i] != 0 {
                         fault::fault(b"promise: another task is already waiting on this promise");
                     }
@@ -1933,9 +1955,9 @@ pub unsafe extern "C-unwind" fn msrt_promise_wait_any(
             let remaining = deadline.map_or(-1, |d| (d - crate::sys::monotonic_ns()).max(0));
             let mut value = 0;
             let woke = task::msrt_token_park(token, remaining, &mut value);
-            let t = table();
+            let mut t = table();
             for &id in &list {
-                if let Some(i) = index(t, id)
+                if let Some(i) = index(&t, id)
                     && t.token[i] == token
                 {
                     t.token[i] = 0;
@@ -2007,7 +2029,7 @@ fn wait_any_mixed(list: &[i64], timeout_ns: i64) -> i64 {
                 }
             } else {
                 let t = table();
-                index(t, id).is_none_or(|i| t.state[i] != State::Pending)
+                index(&t, id).is_none_or(|i| t.state[i] != State::Pending)
             };
             if done {
                 finished = Some(at);
@@ -2019,13 +2041,13 @@ fn wait_any_mixed(list: &[i64], timeout_ns: i64) -> i64 {
         if finished.is_none() {
             finished = list.iter().position(|&id| {
                 !is_foreign(id)
-                    && index(table(), id).is_none_or(|i| table().state[i] != State::Pending)
+                    && index(&table(), id).is_none_or(|i| table().state[i] != State::Pending)
             });
         }
         if finished.is_none() {
-            let t = table();
+            let mut t = table();
             for &id in list.iter().filter(|&&id| !is_foreign(id)) {
-                if let Some(i) = index(t, id) {
+                if let Some(i) = index(&t, id) {
                     if t.token[i] != 0 {
                         fault::fault(b"promise: another task is already waiting on this promise");
                     }
@@ -2036,9 +2058,9 @@ fn wait_any_mixed(list: &[i64], timeout_ns: i64) -> i64 {
             let mut value = 0;
             // SAFETY: single scheduler per isolate; the token is ours.
             let woke = unsafe { task::msrt_token_park(token, remaining, &mut value) };
-            let t = table();
+            let mut t = table();
             for &id in list.iter().filter(|&&id| !is_foreign(id)) {
-                if let Some(i) = index(t, id)
+                if let Some(i) = index(&t, id)
                     && t.token[i] == token
                 {
                     t.token[i] = 0;
@@ -2069,7 +2091,7 @@ fn first_done_mixed(list: &[i64], mut deferred: Option<&mut Vec<i64>>) -> Option
     for (at, &id) in list.iter().enumerate() {
         let inspect = move || {
             let t = table();
-            let i = index(t, id);
+            let i = index(&t, id);
             Answer::Readiness {
                 done: i.is_none_or(|i| t.state[i] != State::Pending),
                 deferred: i.is_some_and(|i| t.flags[i] & DEFERRED != 0),
@@ -2094,7 +2116,7 @@ fn first_done_mixed(list: &[i64], mut deferred: Option<&mut Vec<i64>>) -> Option
     }
     // A query of a foreign input parks, so earlier local inputs may have finished meanwhile.
     list.iter().position(|&id| {
-        !is_foreign(id) && index(table(), id).is_none_or(|i| table().state[i] != State::Pending)
+        !is_foreign(id) && index(&table(), id).is_none_or(|i| table().state[i] != State::Pending)
     })
 }
 
@@ -2110,7 +2132,7 @@ pub unsafe extern "C-unwind" fn msrt_promise_fault_report(id: i64, out: *mut ms_
         foreign = match ask(id, move || {
             let t = table();
             Answer::Bytes(
-                index(t, id)
+                index(&t, id)
                     .map(|i| t.report[i].clone())
                     .unwrap_or_default(),
             )
@@ -2120,7 +2142,7 @@ pub unsafe extern "C-unwind" fn msrt_promise_fault_report(id: i64, out: *mut ms_
         };
         foreign.as_slice()
     } else {
-        index(t, id).map(|i| t.report[i].as_slice()).unwrap_or(&[])
+        index(&t, id).map(|i| t.report[i].as_slice()).unwrap_or(&[])
     };
     // SAFETY: `out` is uninitialised memory for a string.
     unsafe { *out = crate::string::from_bytes(report) };
@@ -2137,8 +2159,8 @@ pub extern "C-unwind" fn msrt_promise_drop(id: i64) {
         });
         return;
     }
-    let t = table();
-    let Some(i) = index(t, id) else { return };
+    let mut t = table();
+    let Some(i) = index(&t, id) else { return };
     if t.cancel[i] != 0 {
         crate::cancel::unregister(core::mem::take(&mut t.cancel[i]), id);
     }
@@ -2166,7 +2188,7 @@ pub extern "C-unwind" fn msrt_promise_drop(id: i64) {
         fault::msrt_shield_enter();
         loop {
             let t = table();
-            match index(t, id) {
+            match index(&t, id) {
                 Some(i) if t.closure[i] != 0 => {
                     park_on(id, -1);
                 }
@@ -2175,9 +2197,9 @@ pub extern "C-unwind" fn msrt_promise_drop(id: i64) {
         }
         fault::msrt_shield_exit();
     }
-    let t = table();
-    let Some(i) = index(t, id) else { return };
-    release_result(t, i);
+    let mut t = table();
+    let Some(i) = index(&t, id) else { return };
+    release_result(&mut t, i);
     t.watchers.retain(|&(slot, _)| slot != i);
     t.group[i] = 0;
     t.state[i] = State::Free;
@@ -2281,8 +2303,8 @@ mod tests {
         // SAFETY: stores a stack Int the callee takes.
         unsafe {
             let id = *ID.ptr();
-            let t = table();
-            let i = index(t, id).expect("live promise");
+            let mut t = table();
+            let i = index(&t, id).expect("live promise");
             t.flags[i] |= TIMED_OUT;
             let mut v = 7i64;
             msrt_promise_put(id, (&raw mut v).cast(), &msrt_desc_int, 1);
