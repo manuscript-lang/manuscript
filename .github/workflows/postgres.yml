@@ -58,3 +58,5 @@ jobs:
           export $vars
           cd packages/postgres
           ../../target/release/ms test
+          # The package also works as a git dependency of another project.
+          MS=../../target/release/ms bash tests/consumer/run.sh

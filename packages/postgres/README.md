@@ -40,3 +40,7 @@ between tasks, so statements travel to the workers over pipes and rows travel ba
 `eval $(tests/start-postgres.sh /tmp/pg)` starts a throwaway server with the roles the tests need, then `ms test`.
 Settings come from `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD` and `PGDATABASE`. CI runs them nightly on Linux,
 macOS and Windows.
+
+## As a dependency
+
+The package declares `effects = "std.net.* std.clock.read std.random.read"`. A project adds it under `[dependencies]` and allows those effects under `[effects]`; `tests/consumer/run.sh` does this against a local git repository and runs a query.

@@ -1,6 +1,7 @@
 [project]
 name = "postgres"
 source = "./src"
+effects = "std.net.* std.clock.read std.random.read"
 
 [aliases]
 "@pg" = "./src"
