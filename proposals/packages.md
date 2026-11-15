@@ -23,11 +23,11 @@ The copy can change silently, has no recorded origin, and a library's own depend
 
 ## Design
 
-**Manifest.** A new `[dependencies]` table. Key is `@` plus one identifier, written like an alias. Value is a quoted string: a git URL, `#`, then a tag or a full 40-character commit.
+**Manifest.** A new `[dependencies]` table. Key is `@` plus one identifier, written like an alias. Value is a table: the git `url`, and a `tag` or a full 40-character `sha`.
 
 ```toml
 [dependencies]
-"@pg" = "https://github.com/manuscript-lang/ms-pg.git#<tag or 40-character commit>"
+"@pg" = { url = "https://github.com/manuscript-lang/ms-pg.git", tag = "v0.1.0" }
 ```
 
 - A branch name is rejected: it is not reproducible. A key cannot also be an alias, an `[embed]` name or `@std`.

@@ -39,7 +39,7 @@ entry = "./src/main.ms"
 - `name` names the project; `source` is its source directory.
 - `entry` is the executable entry file. Omit it for a library; an empty or invalid entry is an error. There is no default.
 - All manifest paths resolve relative to the directory containing `ms.toml` (the entry is not relative to `source`).
-- Only `[project]`, `[aliases]`, `[embed]`, `[dependencies]` and `[effects]` exist. Unknown or duplicate tables and keys are rejected. Values are double-quoted strings, except effects, which are lists of strings (`["std.net.*"]`, on one line or several); `#` starts a comment.
+- Only `[project]`, `[aliases]`, `[embed]`, `[dependencies]` and `[effects]` exist. Unknown or duplicate tables and keys are rejected. `ms.toml` is TOML: strings are quoted, effects are lists of strings (`["std.net.*"]`), and a dependency is a table (`{ url = "...", tag = "v1" }`). Keys that start with `@` are quoted.
 - Application modules are found by following imports from the entry, not listed in the manifest.
 - The compiler supplies the prelude and version-matched `@std` modules. To reuse other Manuscript source, use [packages](#packages).
 
@@ -112,11 +112,11 @@ Share library code as a [package](#packages).
 
 ## Packages
 
-A package is a library project in a git repository. Name it under `[dependencies]` with the repository URL, `#`, and a tag or a full commit. The name is written like an alias.
+A package is a library project in a git repository. Name it under `[dependencies]` with a table holding the repository `url` and either a `tag` or a full `sha`. The name is written like an alias.
 
 ```toml
 [dependencies]
-"@pg" = "https://github.com/manuscript-lang/ms-pg.git#<40-character commit>"
+"@pg" = { url = "https://github.com/manuscript-lang/ms-pg.git", sha = "<40-character commit>" }
 
 [effects]
 "@pg" = ["std.net.*", "std.clock.read", "std.random.read"]

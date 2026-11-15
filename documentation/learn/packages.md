@@ -9,7 +9,7 @@ A package is another project's source, fetched by name and version. `ms` pins it
 
 ## Name the package
 
-Add it to `ms.toml`. The value is a git URL, `#`, and a tag or a full commit. Pin a full commit when the repository has no tag you trust.
+Add it to `ms.toml`. A dependency is a table with the git `url` and either a `tag` or a full `sha`. Pin a `sha` when the repository has no tag you trust.
 
 ```toml
 [project]
@@ -18,7 +18,7 @@ source = "src"
 entry = "src/main.ms"
 
 [dependencies]
-"@pg" = "https://github.com/manuscript-lang/ms-pg.git#<40-character commit>"
+"@pg" = { url = "https://github.com/manuscript-lang/ms-pg.git", sha = "<40-character commit>" }
 
 [effects]
 "@pg" = ["std.net.*", "std.clock.read", "std.random.read"]
