@@ -63,10 +63,11 @@ jobs:
         with:
           os: linux
           arch: amd64
-      - run: sudo apt-get install -y --no-install-recommends valgrind
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends valgrind
       - name: Count instructions
         id: counts
         run: |
+          set -o pipefail
           make build
           make perf-counts | tee perf-counts.txt
       - name: Open an issue naming the commit range
