@@ -1,0 +1,10 @@
+[package]
+name = "postgres-bench"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio = { version = "1.54.1", features = ["rt-multi-thread", "macros"] }
+tokio-postgres = "0.7.18"
+
+[workspace]
