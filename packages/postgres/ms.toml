@@ -1,4 +1,6 @@
 [project]
 name = "postgres"
 source = "./src"
-entry = "./src/main.ms"
+
+[aliases]
+"@pg" = "./src"

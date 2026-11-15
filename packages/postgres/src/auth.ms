@@ -33,17 +33,23 @@ fn Scram.first_message() Bytes:
 
 fn attribute(parts: List[String], key: String) String?:
 	for part in parts:
-		if part.starts_with("{key}="): return part.slice(2, part.length()).get("")
+		if part.starts_with("{key}="): return part.slice(
+			key.length() + 1,
+			part.length(),
+		).to_optional()
 	return none
 
 // Answers the server-first message with the client-final message.
 fn var Scram.respond(server_first: String) Bytes!:
+	invalid := failed("server-first message is invalid")
 	parts := server_first.split(",")
-	combined := attribute(parts, "r").get("")
-	salt_text := attribute(parts, "s").get("")
-	count := attribute(parts, "i").get("0").parse_int().get(0)
-	if not combined.starts_with(self.nonce) or salt_text.is_empty() or count < 1:
-		return error(failed("server-first message is invalid"))
+	combined := attribute(parts, "r").ok_or(invalid.clone())?
+	salt_text := attribute(parts, "s").ok_or(invalid.clone())?
+	count_text := attribute(parts, "i").ok_or(invalid.clone())?
+	count := count_text.parse_int().ok_or(invalid.clone())?
+	if not combined.starts_with(self.nonce) or salt_text.is_empty() or count < 1: return error(
+		invalid
+	)
 
 	salt := base64_decode(salt_text, max_bytes: 1024)?
 	salted := HashAlgorithm.Sha256.derive_key(
@@ -65,11 +71,11 @@ fn var Scram.respond(server_first: String) Bytes!:
 // Checks the server-final message proves the server knows the password.
 fn Scram.verify(server_final: String) Unit!:
 	if server_final.starts_with("e="): return error(failed("rejected: {server_final}"))
+	if not server_final.starts_with("v="): return error(
+		failed("server-final message is invalid")
+	)
 
-	sent := base64_decode(
-		server_final.slice(2, server_final.length()).get(""),
-		max_bytes: 64,
-	)?
+	sent := base64_decode(server_final.slice(2, server_final.length())?, max_bytes: 64)?
 	if not constant_time_equal(sent, self.server_signature):
 		return error(failed("server signature mismatch"))
 

@@ -1,12 +1,8 @@
 name: Postgres client
 
-# The Postgres client in packages/postgres is tested against a real server. This runs when the package changes
-# and every night, so the two-job pull request budget in cicd.yml is untouched.
+# The Postgres client in packages/postgres is tested against a real server. It runs every night and on
+# dispatch only, not on pull requests, until the owner grants an exception to the PR time budget.
 on:
-  pull_request:
-    paths:
-      - packages/postgres/**
-      - .github/workflows/postgres.yml
   schedule:
     - cron: '23 3 * * *'
   workflow_dispatch:
@@ -52,4 +48,4 @@ jobs:
           vars=$(packages/postgres/tests/start-postgres.sh "$RUNNER_TEMP/pg")
           export $vars
           cd packages/postgres
-          ../../target/release/ms test tests/postgres.ms
+          ../../target/release/ms test

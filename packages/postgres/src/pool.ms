@@ -5,8 +5,8 @@ import (
 	Placement, Promise, PromiseOptions, promise from "@std/concurrency/promise.ms",
 	Pipe, ReadStream, WriteStream, pipe from "@std/io/io.ms",
 
-	Config, Conn, Rows, open from "./conn.ms",
-	Value from "./value.ms",
+	Config, Conn, Rows, open from "@pg/conn.ms",
+	Value from "@pg/value.ms",
 )
 
 // One statement and its parameters.

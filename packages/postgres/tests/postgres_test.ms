@@ -1,13 +1,15 @@
 import (
 	Bytes from "@std/bytes.ms",
+	Promise, promise from "@std/concurrency/promise.ms",
+	Connection, listen from "@std/net/net.ms",
 	environment from "@std/os/env.ms",
 	expect_equal, expect_error, expect_true from "@std/test/test.ms",
 
-	Config, Conn, open from "../src/conn.ms",
-	md5_password from "../src/auth.ms",
-	Backend, decode_message from "../src/wire.ms",
-	Pool, Statement, start from "../src/pool.ms",
-	Value from "../src/value.ms",
+	md5_password from "@pg/auth.ms",
+	Config, Conn, open from "@pg/conn.ms",
+	Pool, Statement, start from "@pg/pool.ms",
+	Value from "@pg/value.ms",
+	Backend, DATA_ROW, decode_message from "@pg/wire.ms",
 )
 
 // Connection settings come from PGHOST, PGPORT, PGUSER, PGPASSWORD and PGDATABASE.
@@ -25,12 +27,16 @@ fn config() Config!:
 
 test "md5 password response matches the server algorithm":
 	salt := Bytes([1, 2, 3, 4])
-	expect_equal(md5_password("postgres", "secret", salt), "md5bb41a296aab6baccb36ff243a562abff")?
+	expect_equal(
+		md5_password("postgres", "secret", salt),
+		"md5bb41a296aab6baccb36ff243a562abff",
+	)?
 
 test "a recorded DataRow decodes with a NULL column":
 	// two columns: "ab" and NULL
 	body := Bytes([0, 2, 0, 0, 0, 2, 97, 98, 255, 255, 255, 255])
-	match decode_message(68, body)?:
+
+	match decode_message(DATA_ROW, body)?:
 		Backend.DataRow(columns):
 			expect_equal(columns.length(), 2)?
 			expect_true(columns[1].is_none())?
@@ -40,7 +46,13 @@ test "extended query returns typed values":
 	var conn = open(config()?)?
 	rows := conn.query(
 		"select $1::int8 + 1, $2::text, $3::bool, $4::float8, null::int, $5::bytea",
-		[Value.Int(41), Value.Text("hi"), Value.Bool(true), Value.Float(1.5), Value.Bytes(Bytes([0, 255]))],
+		[
+			Value.Int(41),
+			Value.Text("hi"),
+			Value.Bool(true),
+			Value.Float(1.5),
+			Value.Bytes(Bytes([0, 255])),
+		],
 	)?
 	expect_equal(rows.rows[0][0], Value.Int(42))?
 	expect_equal(rows.rows[0][1], Value.Text("hi"))?
@@ -55,6 +67,7 @@ test "a server error carries its SQLSTATE and leaves the connection usable":
 	var conn = open(config()?)?
 	failure := expect_error(conn.query("select 1/0", []))?
 	expect_equal(failure.kind, "22012")?
+
 	rows := conn.query("select 7", [])?
 	expect_equal(rows.rows[0][0], Value.Int(7))?
 	conn.close()?
@@ -62,38 +75,56 @@ test "a server error carries its SQLSTATE and leaves the connection usable":
 test "a prepared statement runs repeatedly with typed results":
 	var conn = open(config()?)?
 	statement := conn.prepare("double", "select $1::int * 2 as twice")?
+
 	for n in 0..3:
 		rows := conn.run(statement, [Value.Int(n)])?
 		expect_equal(rows.rows[0][0], Value.Int(n * 2))?
 		expect_equal(rows.columns[0], "twice")?
+
 	conn.close()?
 
 test "transactions commit and roll back":
 	var conn = open(config()?)?
 	_ := conn.simple("create temp table t (n int)")?
 	conn.begin()?
+
 	_ := conn.query("insert into t values ($1)", [Value.Int(1)])?
 	conn.rollback()?
+
 	none_left := conn.query("select count(*) from t", [])?
 	expect_equal(none_left.rows[0][0], Value.Int(0))?
 	conn.begin()?
+
 	_ := conn.query("insert into t values ($1)", [Value.Int(1)])?
 	conn.commit()?
+
 	one_left := conn.query("select count(*) from t", [])?
 	expect_equal(one_left.rows[0][0], Value.Int(1))?
 	conn.close()?
 
 test "a wrong password is rejected":
 	cfg := config()?
-	failure := expect_error(open(Config(host: cfg.host.clone(), port: cfg.port, user: cfg.user.clone(), password: "wrong")))?
+	failure := expect_error(
+		open(
+			Config(
+				host: cfg.host.clone(),
+				port: cfg.port,
+				user: cfg.user.clone(),
+				password: "wrong",
+			)
+		)
+	)?
 	expect_equal(failure.kind, "28P01")?
 
 test "a pool runs statements concurrently and returns results in order":
 	var pool = start(config()?, 3)?
-	statements := (0..7).map(fn n: Statement("select $1::int, pg_sleep(0.05)", [Value.Int(n)]))
+	statements := (0..7).map(
+		fn n: Statement("select $1::int, pg_sleep(0.05)", [Value.Int(n)])
+	)
 	results := pool.query_all(statements)?
 	expect_equal(results.length(), 7)?
 	for n in 0..7: expect_equal(results[n].rows[0][0], Value.Int(n))?
+
 	single := pool.query("select 5::int")?
 	expect_equal(single.rows[0][0], Value.Int(5))?
 	pool.close()?
@@ -102,6 +133,65 @@ test "a pool reports a server error and keeps working":
 	var pool = start(config()?, 2)?
 	failure := expect_error(pool.query("select 1/0"))?
 	expect_equal(failure.kind, "22012")?
+
 	ok_rows := pool.query("select 1")?
 	expect_equal(ok_rows.rows[0][0], Value.Int(1))?
 	pool.close()?
+
+fn login(user: String, password: String, allow_md5: Bool) Conn!:
+	cfg := config()?
+	return open(
+		Config(
+			host: cfg.host.clone(),
+			port: cfg.port,
+			user: user,
+			password: password,
+			allow_md5: allow_md5,
+		)
+	)
+
+test "md5 login is refused unless allowed":
+	failure := expect_error(login("md5user", "md5pass", false))?
+	expect_equal(failure.kind, "EACCES")?
+
+	var conn = login("md5user", "md5pass", true)?
+	rows := conn.query("select current_user", [])?
+	expect_equal(rows.rows[0][0], Value.Text("md5user"))?
+	conn.close()?
+
+test "a cleartext password is refused without TLS":
+	failure := expect_error(login("clearuser", "clearpass", true))?
+	expect_equal(failure.kind, "EACCES")?
+
+fn impostor_accept(accepted: Promise[Connection]) Unit!:
+	var client = accepted.wait()?
+	return impostor(var client)
+
+// A server that offers SCRAM and then says "authenticated" without ever proving it
+// knows the password.
+fn impostor(var client: Connection) Unit!:
+	_ := client.input.next()?
+
+	// R, length 23, method 10, "SCRAM-SHA-256", two NULs
+	offer := Bytes(
+		[
+			82, 0, 0, 0, 23, 0, 0, 0, 10, 83, 67, 82, 65, 77, 45, 83, 72, 65, 45, 50,
+			53, 54, 0, 0
+		]
+	)
+	client.output.write(offer)?
+
+	_ := client.input.next()?
+	client.output.write(Bytes([82, 0, 0, 0, 8, 0, 0, 0, 0]))?
+	client.close()?
+	return ok(unit)
+
+test "a server that skips the SCRAM proof is rejected":
+	var listener = listen("127.0.0.1:0")?
+	accepted := listener.accept()
+	port := listener.address().split(":")[1].parse_int().ok_or(Error("bad address"))?
+	accepting := promise(fn: impostor_accept(accepted))
+	failure := expect_error(open(Config(port: port, password: "secret")))?
+	expect_equal(failure.kind, "EACCES")?
+	accepting.wait()?
+	listener.close()?

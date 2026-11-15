@@ -29,17 +29,29 @@ export fn encode_value(value: Value) Bytes?:
 
 	return text.get("").to_bytes()
 
-// Decodes one column from its text form, by the column's type OID.
+fn bad(type_name: String, text: String) Error:
+	return Error(
+		"postgres: invalid {type_name} value from server: {text}",
+		kind: "EBADMSG",
+	)
+
+// Decodes one column from its text form, by the column's type OID. A value that does
+// not parse is an error.
 export fn decode_value(type_oid: Int, raw: Bytes?) Value!:
 	if raw.is_none(): return ok(Value.Null)
 
-	text := raw.get(Bytes([])).decode_utf8().get("")
+	bytes := raw.get(Bytes([]))
+	text := bytes.decode_utf8().ok_or(
+		Error("postgres: column is not valid UTF-8", kind: "EBADMSG")
+	)?
 	if type_oid == 16: return ok(Value.Bool(text == "t"))
 	if type_oid == 20 or type_oid == 21 or type_oid == 23 or type_oid == 26:
-		return ok(Value.Int(text.parse_int().get(0)))
+		return ok(Value.Int(text.parse_int().ok_or(bad("integer", text))?))
 	if type_oid == 700 or type_oid == 701:
-		return ok(Value.Float(text.parse_float().get(0.0)))
+		return ok(Value.Float(text.parse_float().ok_or(bad("float", text))?))
+
 	if type_oid == 17:
+		if not text.starts_with("\\x"): return error(bad("bytea", text))
 		return ok(Value.Bytes(hex_decode(text.slice(2, text.length())?, none)?))
 
 	return ok(Value.Text(text))
