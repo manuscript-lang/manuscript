@@ -19,6 +19,21 @@
           "line": 5,
           "column": 9,
           "offset": 137
+        },
+        "fix": {
+          "position": {
+            "file": "foreign-pass.ms",
+            "line": 5,
+            "column": 5,
+            "offset": 133
+          },
+          "end": {
+            "file": "foreign-pass.ms",
+            "line": 5,
+            "column": 9,
+            "offset": 137
+          },
+          "replacement": "unit"
         }
       }
     ],
