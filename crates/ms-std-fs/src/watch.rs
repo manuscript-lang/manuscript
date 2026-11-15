@@ -738,9 +738,10 @@ mod tests {
         ops::write_file(&path::join(&dir, b"f"), b"x", false).unwrap();
         let mut changed = false;
         while !changed {
+            // A creation may arrive as an appearance or as a change, depending on the platform.
             changed = names(w.wait().unwrap())
                 .iter()
-                .any(|(p, r)| p.ends_with("/d/f") && !*r);
+                .any(|(p, _)| p.ends_with("/d/f"));
         }
         w.close();
         ops::remove(&root, true).unwrap();
