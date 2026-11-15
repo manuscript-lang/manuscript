@@ -23,7 +23,8 @@ export type Grade:
 export type BuildLog:
 	builds: Int
 	first_build_ok: Bool
-	// The first build passed, or would have after the language's machine fixes (`ms check --fix`).
+	// The first build passed, or would have after the language's machine fixes
+	// (`ms check --fix`).
 	first_build_fixed_ok: Bool
 	checks: Int
 	examples_pass: Bool
@@ -64,7 +65,10 @@ export fn make_workspace(ch: Challenge, lang: Lang, dest: String) String:
 	check := read_text("{root()}/check.sh.tmpl").replace(
 		"\{build\}",
 		lang.build,
-	).replace("\{run\}", lang.run).replace("\{codes\}", lang.codes).replace("\{fix\}", lang.fix)
+	).replace("\{run\}", lang.run).replace("\{codes\}", lang.codes).replace(
+		"\{fix\}",
+		lang.fix,
+	)
 	write_text("{dest}/check.sh", check)
 	chmod("{dest}/check.sh", 493).get()
 	for ctx in lang.context:
@@ -110,7 +114,15 @@ export fn read_log(ws: String) BuildLog:
 		for code in failed.codes.split(" "):
 			if not code.is_empty(): codes.append(code.clone())
 
-	return BuildLog(builds.length(), first_ok, fixed_ok, checks.length(), last_ok, codes, errors)
+	return BuildLog(
+		builds.length(),
+		first_ok,
+		fixed_ok,
+		checks.length(),
+		last_ok,
+		codes,
+		errors,
+	)
 
 // Builds the workspace's solution and runs the hidden cases.
 export fn grade(ch: Challenge, lang: Lang, ws: String) Grade:

@@ -72,7 +72,8 @@ export type Lang:
 	setup: String
 	// Shell command that prints the diagnostic codes of the last build, one per line.
 	codes: String
-	// Shell command applying the language's machine-applicable fixes in place; empty when it has none.
+	// Shell command applying the language's machine-applicable fixes in place; empty
+	// when it has none.
 	fix: String
 
 // The extension of the solution file, such as `.ms`.
