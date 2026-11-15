@@ -789,6 +789,24 @@ fn small_size(p: *mut u8) -> Option<usize> {
     page_word(p).map(|word| CLASS_SIZES[word as u8 as usize] as usize)
 }
 
+/// [`realloc`] for a block that is shrinking: a small block whose class already fits `new_size`
+/// (more than half used) stays where it is, decided by one page-table read without entering
+/// `realloc`.
+///
+/// # Safety
+/// `p` is a live block from this allocator.
+#[inline]
+pub unsafe fn trim(p: *mut u8, new_size: usize) -> *mut u8 {
+    if let Some(old) = small_size(p)
+        && new_size <= old
+        && new_size > old / 2
+    {
+        return p;
+    }
+    // SAFETY: caller contract.
+    unsafe { realloc(p, new_size) }
+}
+
 /// Resizes a block, preserving the common prefix.
 ///
 /// # Safety
