@@ -264,13 +264,21 @@ pub struct Checker {
 /// Maximum identity serial reservation per standard module check.
 use crate::stdlib::PRIMITIVE_NAMES;
 
+/// The package of `packages` holding `file`, by the longest matching prefix.
+pub(crate) fn package_holding<'a>(
+    packages: &'a [PackageScope],
+    file: &str,
+) -> Option<&'a PackageScope> {
+    packages
+        .iter()
+        .filter(|p| file.starts_with(&p.prefix))
+        .max_by_key(|p| p.prefix.len())
+}
+
 impl Checker {
     /// The package holding `file`, by the longest matching prefix.
     pub(crate) fn package_of(&self, file: &str) -> Option<&PackageScope> {
-        self.packages
-            .iter()
-            .filter(|p| file.starts_with(&p.prefix))
-            .max_by_key(|p| p.prefix.len())
+        package_holding(&self.packages, file)
     }
 
     /// A package holds source only: its native declarations are errors.

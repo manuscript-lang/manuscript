@@ -155,7 +155,7 @@ impl Walker<'_> {
         let ExprKind::Call { args, .. } = &e.kind else {
             return Vec::new();
         };
-        if !ty_holds_promise(self.syms, &self.cx.m.ty(e)) {
+        if !ty_holds_promise(&self.cx.m.ty(e)) {
             return Vec::new();
         }
         args.iter()

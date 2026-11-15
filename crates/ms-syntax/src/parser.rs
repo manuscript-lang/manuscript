@@ -15,6 +15,9 @@ pub const MAX_NESTING: usize = 1000;
 pub const MAX_CHAIN: usize = 10000;
 
 const IMPL_REMOVED: &str = "'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it";
+/// Binding power of the operand of a prefix `not` or `try`: comparisons and
+/// everything tighter bind into it, `and` and `or` do not.
+const PREFIX_OPERAND: u8 = 3;
 const TRY_REMOVED: &str = "'try' was replaced by a postfix '?': write f(x)? instead of try f(x), and x | step? instead of x | try step";
 
 /// Parses `source` strictly. The first error aborts the parse.
@@ -468,29 +471,29 @@ impl<'a> Parser<'a> {
     fn fail_try<T>(&mut self, t: Token) -> PResult<T> {
         self.at += 1;
         let start = self.peek();
-        let operand = self.expression(3);
+        let operand = self.expression(PREFIX_OPERAND);
         let mut d = Diagnostic::parse(self.file, t.pos, TRY_REMOVED);
         d.end = Some(t.end);
         let end = self.previous();
-        if operand.is_ok() && end.end.line > 0 && start.lo < end.hi {
+        // Only a name, call, member or index chain takes a postfix `?` unchanged.
+        let chain = operand.is_ok_and(|e| {
+            matches!(
+                e.kind,
+                ExprKind::Name(_)
+                    | ExprKind::Member { .. }
+                    | ExprKind::Call { .. }
+                    | ExprKind::Index { .. }
+                    | ExprKind::Apply { .. }
+            )
+        });
+        if chain && end.end.line > 0 && start.lo < end.hi {
             let text = &self.src[start.lo as usize..end.hi as usize];
-            let mut depth = 0i32;
-            let flat = text.chars().all(|c| {
-                match c {
-                    '(' | '[' | '{' => depth += 1,
-                    ')' | ']' | '}' => depth -= 1,
-                    _ => {}
-                }
-                depth > 0 || !(c.is_whitespace() || "+-*/%<>=&|".contains(c))
+            d.end = Some(end.end);
+            d.fix = Some(DiagnosticFix {
+                pos: t.pos,
+                end: end.end,
+                replacement: format!("{text}?"),
             });
-            if flat {
-                d.end = Some(end.end);
-                d.fix = Some(DiagnosticFix {
-                    pos: t.pos,
-                    end: end.end,
-                    replacement: format!("{text}?"),
-                });
-            }
         }
         Err(Box::new(d))
     }
@@ -2448,7 +2451,7 @@ impl<'a> Parser<'a> {
         }
         let mut e;
         if self.take(Tok::Not) {
-            let operand = self.expression(3)?;
+            let operand = self.expression(PREFIX_OPERAND)?;
             e = self.mk(
                 t.pos,
                 ExprKind::Unary {
