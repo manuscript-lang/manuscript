@@ -62,7 +62,7 @@ fn strip_zeros(mut d: u64, mut e: i32) -> (u64, i32) {
     (d, e)
 }
 
-fn to_decimal(q: i32, c: u64) -> (u64, i32) {
+pub fn to_decimal(q: i32, c: u64) -> (u64, i32) {
     let out = c & 1;
     let cb = c << 2;
     let cbr = cb + 2;
@@ -80,6 +80,8 @@ fn to_decimal(q: i32, c: u64) -> (u64, i32) {
     let vbr = round_to_odd(g1, g0, cbr << h);
 
     let s = vb >> 2;
+    #[cfg(test)]
+    eprintln!("DBG q={q} c={c} k={k} h={h} g={:#x},{:#x} vb={vb} vbl={vbl} vbr={vbr} s={s} out={out}", g1, g0);
     if s >= 10 {
         // A multiple of ten inside the interval gives one digit fewer than `s` does. (Java's
         // `Double.toString` starts at 100 because it always prints two digits; the shortest
@@ -103,4 +105,15 @@ fn to_decimal(q: i32, c: u64) -> (u64, i32) {
     let cmp = vb as i64 - ((s + t) << 1) as i64;
     let pick_s = cmp < 0 || (cmp == 0 && s & 1 == 0);
     (if pick_s { s } else { t }, k)
+}
+
+#[cfg(test)]
+mod dbg {
+    #[test]
+    fn dbg_five_e_minus_323() {
+        for c in [10u64, 11, 20, 49] {
+            let r = super::to_decimal(super::Q_MIN, c);
+            eprintln!("DBG result c={c} {r:?} flog10={} flog2={}", super::flog10_pow2(-1074), super::flog2_pow10(324));
+        }
+    }
 }
