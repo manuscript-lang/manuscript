@@ -162,7 +162,7 @@ export fn compile(source: String, html: Bool = false) Template!Error:
 	var builder = Builder(tokens: tokens, at: 0, html: html)
 	done := builder.block(0)?
 	if done.end != "": return error(
-		syntax_error(line: done.line, reason: "unexpected {done.end}")
+		syntax_error(line: done.line, reason: f"unexpected {done.end}")
 	)
 
 	return ok(Template(nodes: done.nodes, html: html))
@@ -222,7 +222,7 @@ fn tokenize(source: String) List[Token]!Error:
 
 	// Splitting once keeps lexing linear: each piece starts right after an opening
 	// delimiter.
-	pieces := source.split("\{\{")
+	pieces := source.split("{{")
 	var literal = pieces[0].clone()
 	var index = 1
 	var line = 1
@@ -242,7 +242,7 @@ fn tokenize(source: String) List[Token]!Error:
 			piece := pieces[index]
 			index += 1
 
-			close := piece.index_of("\}\}")
+			close := piece.index_of("}}")
 
 			if close.is_some():
 				chunks.append(piece.view(0, close.get(0)).clone())
@@ -259,7 +259,7 @@ fn tokenize(source: String) List[Token]!Error:
 			)
 		)
 
-		raw := chunks.join("\{\{")
+		raw := chunks.join("{{")
 		var body = raw.clone()
 		action_line := line + count_lines(literal)
 		trim_next = false
@@ -313,7 +313,7 @@ fn lex(text: String, line: Int) List[Tok]!Error:
 
 	while i < chars.length():
 		c := chars[i]
-		two := if i + 1 < chars.length(): "{c}{chars[i + 1]}" else: c.clone()
+		two := if i + 1 < chars.length(): f"{c}{chars[i + 1]}" else: c.clone()
 
 		if is_blank(c):
 			i += 1
@@ -360,7 +360,7 @@ fn lex(text: String, line: Int) List[Tok]!Error:
 			i += 1
 
 			while i < chars.length() and (is_digit(chars[i]) or chars[i] == "."):
-				out = "{out}{chars[i]}"
+				out = f"{out}{chars[i]}"
 				i += 1
 
 			toks.append(Tok(kind: "num", text: out))
@@ -376,7 +376,7 @@ fn lex(text: String, line: Int) List[Tok]!Error:
 					or chars[i] == "."
 				)
 			):
-				out = "{out}{chars[i]}"
+				out = f"{out}{chars[i]}"
 				i += 1
 
 			toks.append(Tok(kind: "word", text: out))
@@ -848,10 +848,10 @@ fn member(value: JsonValue, key: String) JsonValue?:
 
 fn loop_info(index: Int, length: Int) JsonValue:
 	var fields = Map[String, JsonValue]()
-	fields.add("index", JsonValue.NumberValue("{index}"))
+	fields.add("index", JsonValue.NumberValue(f"{index}"))
 	fields.add("first", JsonValue.BoolValue(index == 0))
 	fields.add("last", JsonValue.BoolValue(index == length - 1))
-	fields.add("length", JsonValue.NumberValue("{length}"))
+	fields.add("length", JsonValue.NumberValue(f"{length}"))
 	return JsonValue.ObjectValue(fields)
 
 // One variable frame per iteration: the list item, or an object's key and value.
@@ -869,7 +869,7 @@ fn rows_of(
 			if second.is_empty():
 				frame.add(first.clone(), items[i].clone())
 			else:
-				frame.add(first.clone(), JsonValue.NumberValue("{i}"))
+				frame.add(first.clone(), JsonValue.NumberValue(f"{i}"))
 				frame.add(second.clone(), items[i].clone())
 
 			rows.append(frame)
@@ -932,7 +932,7 @@ fn magnitude_sum(a: String, b: String, subtract: Bool) String:
 			digit -= 10
 			carry = 1
 
-		out.append("{digit}")
+		out.append(f"{digit}")
 		i -= 1
 		j -= 1
 
@@ -940,7 +940,7 @@ fn magnitude_sum(a: String, b: String, subtract: Bool) String:
 	return unsigned_digits(out.build().reverse())
 
 fn decimal_order(exponent: String, offset: Int) String:
-	if exponent == "0": return "{offset}"
+	if exponent == "0": return f"{offset}"
 
 	negative := exponent.starts_with("-")
 	magnitude := unsigned_digits(
@@ -949,7 +949,7 @@ fn decimal_order(exponent: String, offset: Int) String:
 			exponent.length(),
 		).clone() else: exponent.clone()
 	)
-	delta_text := "{offset}"
+	delta_text := f"{offset}"
 	delta := if offset < 0: delta_text.view(1, delta_text.length()).clone() else: delta_text.clone()
 	var result = ""
 	var result_negative = negative
@@ -962,7 +962,7 @@ fn decimal_order(exponent: String, offset: Int) String:
 		result = magnitude_sum(delta, magnitude, true)
 		result_negative = offset < 0
 
-	return if result_negative and result != "0": "-{result}" else: result
+	return if result_negative and result != "0": f"-{result}" else: result
 
 fn order_compare(a: String, b: String) Int:
 	an := a.starts_with("-")
@@ -1090,7 +1090,7 @@ fn coefficient_text(number: ExactNumber) String:
 // or out-of-range text continues through the general exact-number path.
 fn exact_integer(text: String) Int?:
 	if integer := text.parse_int():
-		if text == "{integer}" or text == "-0": return integer
+		if text == f"{integer}" or text == "-0": return integer
 	return none
 
 fn truthy(value: JsonValue) Bool:
@@ -1177,7 +1177,7 @@ fn apply_filter(name: String, input: JsonValue, args: List[JsonValue]) JsonValue
 	if name == "title": return ok(text_value(text.title()))
 	if name == "escape": return ok(text_value(escape(text)))
 	if name == "json": return ok(text_value(stringify(value: input).get("")))
-	if name == "length": return ok(JsonValue.NumberValue("{length_of(input)}"))
+	if name == "length": return ok(JsonValue.NumberValue(f"{length_of(input)}"))
 	if name == "reverse": return reverse_value(input)
 	if name == "first" or name == "last": return ok(end_of(input, name == "first"))
 	if name == "keys": return ok(keys_of(input))
@@ -1216,7 +1216,7 @@ fn truncated(text: String, limit: Int) String:
 	var end = limit
 	while end > 0 and raw.get(end).to_int() >= 128 and raw.get(end).to_int() < 192:
 		end -= 1
-	return "{text.view(0, end)}..."
+	return f"{text.view(0, end)}..."
 
 fn length_of(value: JsonValue) Int:
 	if list := value.as_list(): return list.length()
@@ -1266,28 +1266,28 @@ fn contains_value(haystack: JsonValue, needle: JsonValue) Bool:
 // never echoes values.
 fn syntax_error(line: Int, reason: String) Error:
 	return Error(
-		"template: line {line}: {reason}",
+		f"template: line {line}: {reason}",
 		kind: "EBADMSG",
-		details: {"line": "{line}"},
+		details: {"line": f"{line}"},
 	)
 
 fn missing_value_error(path: String) Error:
 	return Error(
-		"template: no value for {path}",
+		f"template: no value for {path}",
 		kind: "ENOENT",
 		details: {"path": path},
 	)
 
 fn invalid_filter_error(name: String, reason: String) Error:
 	return Error(
-		"template: filter {name}: {reason}",
+		f"template: filter {name}: {reason}",
 		kind: "EINVAL",
 		details: {"filter": name},
 	)
 
 fn unknown_partial_error(name: String) Error:
 	return Error(
-		"template: unknown partial {name}",
+		f"template: unknown partial {name}",
 		kind: "ENOENT",
 		details: {"partial": name},
 	)

@@ -166,7 +166,7 @@ fn Command.execute(argv: List[String]) Int:
 
 	if parsed.is_error():
 		stderr().write(
-			parsed.err().message + "\nRun '{self.name} --help' for usage.\n"
+			parsed.err().message + f"\nRun '{self.name} --help' for usage.\n"
 		).get()
 		return 2
 
@@ -287,10 +287,10 @@ fn decode[T: Data](matches: Matches) T!:
 	var members = matches.fields.entries().map(
 		fn entry: (stringify(entry.key.clone()).get() + ":" + entry.value)
 	)
-	parsed := parse[T]("\{" + members.join(",") + "\}")
+	parsed := parse[T]("{" + members.join(",") + "}")
 	return parsed.map_error(
 		fn cause: cli_invalid_schema(
-			"options record does not match the declared flags and arguments: {cause.message}"
+			f"options record does not match the declared flags and arguments: {cause.message}"
 		)
 	)
 
@@ -298,8 +298,8 @@ fn decode[T: Data](matches: Matches) T!:
 fn literal(kind: FlagKind, text: String) String:
 	match kind:
 		Bool: return text.clone()
-		Int: return "{text.parse_int().get()}"
-		Float: return "{text.parse_float().get()}"
+		Int: return f"{text.parse_int().get()}"
+		Float: return f"{text.parse_float().get()}"
 		_: return stringify(text.clone()).get()
 
 // Collects the JSON literal of every supplied flag and argument for `command`.
@@ -381,7 +381,7 @@ fn fits(flag: Flag, value: String) Bool:
 
 // Checks one flag name or short against names already seen.
 fn claim(var seen: List[String], key: String, label: String) Void!:
-	if seen.contains(key): return error(cli_invalid_schema("duplicate {label}"))
+	if seen.contains(key): return error(cli_invalid_schema(f"duplicate {label}"))
 
 	seen.append(key)
 
@@ -395,29 +395,29 @@ fn check_schema(node: Command, inherited: List[Flag], path: List[String]) Void!:
 
 	for flag in all:
 		if flag.name.is_empty(): return error(
-			cli_invalid_schema("empty flag name in {where}")
+			cli_invalid_schema(f"empty flag name in {where}")
 		)
 		if flag.name == "help": return error(
-			cli_invalid_schema("flag help is reserved in {where}")
+			cli_invalid_schema(f"flag help is reserved in {where}")
 		)
 
-		claim(var names, flag.name.clone(), "flag {flag.name} in {where}")?
+		claim(var names, flag.name.clone(), f"flag {flag.name} in {where}")?
 		if flag.short.is_empty(): continue
 		if flag.short.length() != 1 or flag.short == "h" or flag.short == "-":
 			return error(
 				cli_invalid_schema(
-					"bad short {flag.short} for {flag.name} in {where}"
+					f"bad short {flag.short} for {flag.name} in {where}"
 				)
 			)
 
-		claim(var shorts, flag.short.clone(), "short -{flag.short} in {where}")?
+		claim(var shorts, flag.short.clone(), f"short -{flag.short} in {where}")?
 
 	for flag in node.flags:
 		if text := flag.default:
 			if not fits(flag, text):
 				return error(
 					cli_invalid_schema(
-						"default {text} does not fit flag {flag.name}"
+						f"default {text} does not fit flag {flag.name}"
 					)
 				)
 
@@ -426,19 +426,19 @@ fn check_schema(node: Command, inherited: List[Flag], path: List[String]) Void!:
 
 	for arg in node.args:
 		if arg.name.is_empty() or names.contains(arg.name):
-			return error(cli_invalid_schema("argument {arg.name} clashes in {where}"))
+			return error(cli_invalid_schema(f"argument {arg.name} clashes in {where}"))
 
 		names.append(arg.name.clone())
 		if arg.rest and index != node.args.length() - 1:
 			return error(
 				cli_invalid_schema(
-					"rest argument {arg.name} must be last in {where}"
+					f"rest argument {arg.name} must be last in {where}"
 				)
 			)
 		if arg.required and optional_seen:
 			return error(
 				cli_invalid_schema(
-					"required argument {arg.name} follows an optional one in {where}"
+					f"required argument {arg.name} follows an optional one in {where}"
 				)
 			)
 
@@ -449,9 +449,13 @@ fn check_schema(node: Command, inherited: List[Flag], path: List[String]) Void!:
 
 	for child in node.children:
 		if child.name == "help" or child.name.is_empty():
-			return error(cli_invalid_schema("bad command name {child.name} in {where}"))
+			return error(
+				cli_invalid_schema(
+					f"bad command name {child.name} in {where}"
+				)
+			)
 
-		claim(var words, child.name.clone(), "command {child.name} in {where}")?
+		claim(var words, child.name.clone(), f"command {child.name} in {where}")?
 
 	below := inherited.concat(persistent_flags(node.flags))
 	for child in node.children:
@@ -648,12 +652,12 @@ fn fill(var values: Map[String, List[String]], flag: Flag) Void!:
 		values[flag.name.clone()] = []
 		return ok()
 
-	if flag.required: return error(cli_missing_required("--{flag.name}"))
+	if flag.required: return error(cli_missing_required(f"--{flag.name}"))
 
 // Renders usage, commands, arguments and flags for one node.
 fn render_help(node: Command, path: List[String], inherited: List[Flag]) String:
 	var out = ""
-	if not node.about.is_empty(): out += "{node.about}\n\n"
+	if not node.about.is_empty(): out += f"{node.about}\n\n"
 
 	var usage = "  " + path.join(" ")
 	if not node.children.is_empty(): usage += " <command>"
@@ -661,9 +665,9 @@ fn render_help(node: Command, path: List[String], inherited: List[Flag]) String:
 
 	for arg in node.args:
 		label := arg.name + (if arg.rest: "..." else: "")
-		usage += if arg.required: " <{label}>" else: " [{label}]"
+		usage += if arg.required: f" <{label}>" else: f" [{label}]"
 
-	out += "Usage:\n{usage}\n"
+	out += f"Usage:\n{usage}\n"
 
 	if not node.children.is_empty():
 		var commands = Table(columns: [Align.Left, Align.Left], indent: 2)
@@ -671,7 +675,7 @@ fn render_help(node: Command, path: List[String], inherited: List[Flag]) String:
 			var commands,
 			[child.name.clone(), child.about.clone()],
 		)
-		out += "\nCommands:\n{commands.render()}\n"
+		out += f"\nCommands:\n{commands.render()}\n"
 
 	if not node.args.is_empty():
 		var arguments = Table(columns: [Align.Left, Align.Left], indent: 2)
@@ -679,7 +683,7 @@ fn render_help(node: Command, path: List[String], inherited: List[Flag]) String:
 			var arguments,
 			[arg.name.clone(), arg.help.clone()],
 		)
-		out += "\nArguments:\n{arguments.render()}\n"
+		out += f"\nArguments:\n{arguments.render()}\n"
 
 	out += flag_section("Flags", node.flags.concat([help_flag()]))
 	out += flag_section("Global Flags", inherited)
@@ -696,16 +700,16 @@ fn flag_section(title: String, flags: List[Flag]) String:
 	var table = Table(columns: [Align.Left, Align.Left], indent: 2)
 
 	for flag in flags:
-		var label = if not flag.short.is_empty(): "-{flag.short}, " else: "    "
-		label += "--{flag.name}"
-		if not is_bool(flag.kind): label += " <{value_hint(flag)}>"
+		var label = if not flag.short.is_empty(): f"-{flag.short}, " else: "    "
+		label += f"--{flag.name}"
+		if not is_bool(flag.kind): label += f" <{value_hint(flag)}>"
 
 		var help = flag.help.clone()
-		if text := flag.default: help += " (default {text})"
+		if text := flag.default: help += f" (default {text})"
 		if flag.required: help += " (required)"
 		help_row(var table, [label, help])
 
-	return "\n{title}:\n{table.render()}\n"
+	return f"\n{title}:\n{table.render()}\n"
 
 // Adds a help row. Help text is single-line: tabs and line breaks become spaces; a row
 // with other controls is omitted.
@@ -714,22 +718,22 @@ fn help_row(var table: Table, row: List[String]) Void:
 	if table.add(cells).is_error(): return
 
 fn cli_unknown_flag(name: String) Error:
-	return Error("cli: unknown flag {name}", kind: "EINVAL")
+	return Error(f"cli: unknown flag {name}", kind: "EINVAL")
 
 fn cli_unknown_command(name: String, path: String) Error:
-	return Error("cli: unknown command {name} for {path}", kind: "EINVAL")
+	return Error(f"cli: unknown command {name} for {path}", kind: "EINVAL")
 
 fn cli_missing_value(name: String) Error:
-	return Error("cli: flag {name} needs a value", kind: "EINVAL")
+	return Error(f"cli: flag {name} needs a value", kind: "EINVAL")
 
 fn cli_invalid_value(name: String, value: String, expected: String) Error:
-	return Error("cli: flag {name}: {value} is not {expected}", kind: "EINVAL")
+	return Error(f"cli: flag {name}: {value} is not {expected}", kind: "EINVAL")
 
 fn cli_missing_required(name: String) Error:
-	return Error("cli: missing required {name}", kind: "EINVAL")
+	return Error(f"cli: missing required {name}", kind: "EINVAL")
 
 fn cli_too_many_arguments(value: String) Error:
-	return Error("cli: unexpected argument {value}", kind: "EINVAL")
+	return Error(f"cli: unexpected argument {value}", kind: "EINVAL")
 
 fn cli_invalid_schema(reason: String) Error:
-	return Error("cli: invalid command schema: {reason}", kind: "EINVAL")
+	return Error(f"cli: invalid command schema: {reason}", kind: "EINVAL")

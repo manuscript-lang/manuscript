@@ -207,10 +207,10 @@ fn syn(msg: String) Fail:
     return Fail(msg: msg, syntax: true)
 
 fn bad_form(name: String) Fail:
-    return syn("syntax error: bad form: {name}")
+    return syn(f"syntax error: bad form: {name}")
 
 fn type_fail(m: Machine, name: String, kind: String, v: Value) Fail:
-    return rt("{name}: expected {kind}, got {show(m, v, true)}")
+    return rt(f"{name}: expected {kind}, got {show(m, v, true)}")
 
 fn done_step(v: Value) Step:
     return Step(done: true, value: v, env: 0, call: false)
@@ -355,7 +355,7 @@ fn quote_str(s: String) String:
 
 fn show(m: Machine, v: Value, readable: Bool) String:
     if v.tag == TAG_NUM:
-        return "{v.num}"
+        return f"{v.num}"
 
     if v.tag == TAG_BOOL:
         if v.num == 1:
@@ -376,14 +376,14 @@ fn show(m: Machine, v: Value, readable: Bool) String:
     if v.tag == TAG_VOID:
         return "#<void>"
     if v.tag == TAG_PRIM:
-        return "#<builtin {m.prim_names.get(v.num)}>"
+        return f"#<builtin {m.prim_names.get(v.num)}>"
 
     if v.tag == TAG_CLO:
         name := m.clos.get(v.num).name
         if name == "":
             return "#<procedure>"
 
-        return "#<procedure {name}>"
+        return f"#<procedure {name}>"
 
     var out = "("
     var cur = v
@@ -531,7 +531,7 @@ fn read_atom(var m: Machine, var r: Reader) Result[Value, Fail]:
     if text == "#f":
         return ok(bool_v(false))
     if codes.get(0) == 35:
-        return error(syn("syntax error: bad token: {text}"))
+        return error(syn(f"syntax error: bad token: {text}"))
     if text == ".":
         return error(syn("syntax error: unexpected ."))
 
@@ -720,12 +720,12 @@ fn bind_args(var m: Machine, id: Int, args: List[Value]) Result[Int, Fail]:
         if name == "":
             name = "closure"
 
-        var expected = "{nparams}"
+        var expected = f"{nparams}"
         if rest:
-            expected = "at least {nparams}"
+            expected = f"at least {nparams}"
         return error(
             rt(
-                "wrong number of arguments to {name}: expected {expected}, got {n}"
+                f"wrong number of arguments to {name}: expected {expected}, got {n}"
             )
         )
 
@@ -748,7 +748,7 @@ fn apply_proc(var m: Machine, f: Value, args: List[Value], d: Int) Result[Value,
     if f.tag == TAG_PRIM:
         return call_prim(var m, f.num, args, d)
     if f.tag != TAG_CLO:
-        return error(rt("not a procedure: {show(m, f, true)}"))
+        return error(rt(f"not a procedure: {show(m, f, true)}"))
 
     fid := try bind_args(var m, f.num, args)
     if d >= MAX_DEPTH:
@@ -773,7 +773,7 @@ fn eval(var m: Machine, start_x: Value, start_env: Int, d0: Int, entered0: Bool)
             if v.tag != TAG_UNBOUND:
                 return ok(v)
 
-            return error(rt("unbound variable: {m.syms.get(x.num)}"))
+            return error(rt(f"unbound variable: {m.syms.get(x.num)}"))
 
         if x.tag != TAG_PAIR:
             if x.tag == TAG_NIL:
@@ -818,7 +818,7 @@ fn eval(var m: Machine, start_x: Value, start_env: Int, d0: Int, entered0: Bool)
             if f.tag == TAG_PRIM:
                 return call_prim(var m, f.num, args, depth)
             if f.tag != TAG_CLO:
-                return error(rt("not a procedure: {show(m, f, true)}"))
+                return error(rt(f"not a procedure: {show(m, f, true)}"))
 
             fid := try bind_args(var m, f.num, args)
             x = m.clos.get(f.num).body
@@ -938,7 +938,7 @@ fn sf_set(var m: Machine, items: List[Value], env: Int, d: Int) Result[Step, Fai
     sym := items.get(1).num
     v := try eval(var m, items.get(2), env, d, false)
     if not assign(var m, env, sym, v):
-        return error(rt("unbound variable: {m.syms.get(sym)}"))
+        return error(rt(f"unbound variable: {m.syms.get(sym)}"))
 
     return ok(done_step(void_v()))
 
@@ -1225,16 +1225,16 @@ fn call_prim(var m: Machine, op: Int, args: List[Value], d: Int) Result[Value, F
     hi := m.prim_max.get(op)
 
     if n < lo or (hi >= 0 and n > hi):
-        var expected = "{lo}"
+        var expected = f"{lo}"
 
         if hi < 0:
-            expected = "at least {lo}"
+            expected = f"at least {lo}"
         else if lo != hi:
-            expected = "{lo} to {hi}"
+            expected = f"{lo} to {hi}"
 
         return error(
             rt(
-                "wrong number of arguments to {name}: expected {expected}, got {n}"
+                f"wrong number of arguments to {name}: expected {expected}, got {n}"
             )
         )
 
@@ -1801,7 +1801,7 @@ fn string_prims(var m: Machine, op: Int, name: String, args: List[Value]) Result
 
     if op == P_NUM2STR:
         n := try int_arg(m, name, args.get(0))
-        return ok(str_v("{n}"))
+        return ok(str_v(f"{n}"))
 
     if op == P_STR2SYM:
         s := try str_arg(m, name, args.get(0))
@@ -1914,7 +1914,7 @@ fn new_machine() Machine:
 fn report(var m: Machine, failure: Fail) Unit:
     if not m.line_start:
         emit(var m, "\n")
-    emit(var m, "error: {failure.msg}\n")
+    emit(var m, f"error: {failure.msg}\n")
 
 export fn main() Int:
     var m = new_machine()

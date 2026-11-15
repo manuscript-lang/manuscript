@@ -6,39 +6,39 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     b1 := "MiXeD CaSe".starts_with("  padded  ")
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
     i2 := (25 * ((47 + (-15)) + (510192519324 / 26)))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     s3 := "x"
-    say("s3 = [{s3}]")
+    say(f"s3 = [{s3}]")
 
     i4 := (((i2 % (-33)) + (i2 % 48)) - (((-35) * (-306158)) * 295200371638))
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     l5 := [1, 2, 3].take(0)
-    say("l5 = {l5} len {l5.length()}")
+    say(f"l5 = {l5} len {l5.length()}")
 
     s6 := (("quote\"d" + "héllo") + s3.lower()).upper()
-    say("s6 = [{s6}]")
+    say(f"s6 = [{s6}]")
 
     i7 := i4
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
     l8 := [(-10), (-10), (-9), 16]
-    say("l8 = {l8} len {l8.length()}")
+    say(f"l8 = {l8} len {l8.length()}")
 
     l9 := l8.reversed()
-    say("l9 = {l9} len {l9.length()}")
+    say(f"l9 = {l9} len {l9.length()}")
     say(
-        "{(406012 - i2)} {((i7 - (-35)) + (420918078970 % i7))} {((406012 - i2) < ((i7 - (-35)) + (420918078970 % i7)))} sum {(406012 - i2) + ((i7 - (-35)) + (420918078970 % i7))}"
+        f"{(406012 - i2)} {((i7 - (-35)) + (420918078970 % i7))} {((406012 - i2) < ((i7 - (-35)) + (420918078970 % i7)))} sum {(406012 - i2) + ((i7 - (-35)) + (420918078970 % i7))}"
     )
 
     i10 := (((-15) + l9.get(3)) + 632911)
-    say("i10 = {i10}")
+    say(f"i10 = {i10}")
     return 0

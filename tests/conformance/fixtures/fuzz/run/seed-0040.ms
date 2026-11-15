@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -29,33 +29,33 @@ fn fact(n: Int) Int:
 
 export fn main() Int:
     i1 := (-(-49))
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     b2 := (not ((i1 + i1) != 901134))
-    say("b2 = {b2}")
+    say(f"b2 = {b2}")
 
     i3 := (10 * ((-i1) + ((-30) - 7)))
-    say("i3 = {i3}")
-    say("fib(49) = {fib(49)}")
+    say(f"i3 = {i3}")
+    say(f"fib(49) = {fib(49)}")
 
     s4 := "quote\"d"
-    say("s4 = [{s4}]")
+    say(f"s4 = [{s4}]")
 
     i5 := i3
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     b6 := (((604.880 + 653.800) * 0.0) != 494.586)
-    say("b6 = {b6}")
+    say(f"b6 = {b6}")
 
     i7 := ((i5 - (i5 / i5)) / (i3 - 49))
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
     i8 := ((-20) % i1)
-    say("i8 = {i8}")
-    say("fact(10) = {fact(10)}")
+    say(f"i8 = {i8}")
+    say(f"fact(10) = {fact(10)}")
 
     f9 := 124.823
-    say("f9 = {f9}")
+    say(f"f9 = {f9}")
 
     if (s4 + s4).is_empty():
         say("x".upper())
@@ -63,18 +63,18 @@ export fn main() Int:
         say("gamma".lower())
 
     l10 := [26, 10, (-27), 24, 1]
-    say("l10 = {l10} len {l10.length()}")
+    say(f"l10 = {l10} len {l10.length()}")
 
     f11 := (f9 * ((5.0e22 + 346.134) + (4.0e24 - 592.849)))
-    say("f11 = {f11}")
+    say(f"f11 = {f11}")
 
     i12 := (-l10.get(4))
-    say("i12 = {i12}")
+    say(f"i12 = {i12}")
 
     i13 := l10.length()
-    say("i13 = {i13}")
-    say("{i13} {265351} {(i13 < 265351)} sum {i13 + 265351}")
+    say(f"i13 = {i13}")
+    say(f"{i13} {265351} {(i13 < 265351)} sum {i13 + 265351}")
 
     l14 := l10.filter(fn x: x > 5)
-    say("l14 = {l14} len {l14.length()}")
+    say(f"l14 = {l14} len {l14.length()}")
     return 0

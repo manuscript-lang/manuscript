@@ -147,7 +147,7 @@ type Sym:
 	text: String
 	state: Int
 
-fn bad_op(t: String) Error: Error("invalid operand '{t}'")
+fn bad_op(t: String) Error: Error(f"invalid operand '{t}'")
 
 fn split_terms(inner: String) List[Term]:
 	var out = List[Term]()
@@ -269,12 +269,12 @@ type Asm:
 	cur_line: Int = 0
 
 fn var Asm.define(name: String, sym: Sym) Void!:
-	if reg_index(name) >= 0: return error(Error("reserved name '{name}'"))
-	if self.syms.get(name).is_some(): return error(Error("duplicate symbol '{name}'"))
+	if reg_index(name) >= 0: return error(Error(f"reserved name '{name}'"))
+	if self.syms.get(name).is_some(): return error(Error(f"duplicate symbol '{name}'"))
 
 	self.syms[name.clone()] = sym
 
-fn inval(disp: String) Error: Error("invalid expression '{disp}'")
+fn inval(disp: String) Error: Error(f"invalid expression '{disp}'")
 
 fn var Asm.sym_value(name: String) Int!:
 	var found = false
@@ -290,10 +290,10 @@ fn var Asm.sym_value(name: String) Int!:
 		value = s.value
 		text = s.text.clone()
 
-	if not found: return error(Error("undefined symbol '{name}'"))
+	if not found: return error(Error(f"undefined symbol '{name}'"))
 	if not is_equ: return ok(value)
 	if state == 2: return ok(value)
-	if state == 1: return error(Error("circular definition of '{name}'"))
+	if state == 1: return error(Error(f"circular definition of '{name}'"))
 
 	self.syms[name.clone()] = Sym(
 		is_equ: true,
@@ -531,7 +531,7 @@ fn var Asm.directive(line: Int, word: String, args: String) Void!:
 						kind: 2,
 						line: line,
 						idx: idx,
-						texts: [parts[1].clone(), "{n}"],
+						texts: [parts[1].clone(), f"{n}"],
 					)
 				)
 			return ok()
@@ -544,7 +544,7 @@ fn var Asm.directive(line: Int, word: String, args: String) Void!:
 
 		return ok()
 
-	return error(Error("unknown directive '{word}'"))
+	return error(Error(f"unknown directive '{word}'"))
 
 fn var Asm.line(line: Int, raw: String) Void!:
 	s := strip_comment(raw)
@@ -596,20 +596,20 @@ fn var Asm.line(line: Int, raw: String) Void!:
 	if self.in_data: return error(Error("instruction in data section"))
 
 	op := mnemonic(word)
-	if op < 0: return error(Error("unknown mnemonic '{word}'"))
+	if op < 0: return error(Error(f"unknown mnemonic '{word}'"))
 
 	texts := split_ops(args)
 	var ops = List[Opnd]()
 	for t in texts:
 		ops.append(parse_operand(t)?)
 	if ops.length() != expected_count(op): return error(
-		Error("wrong number of operands for '{word}'")
+		Error(f"wrong number of operands for '{word}'")
 	)
 
 	empty := Opnd(kind: -1, reg: -1, text: "", terms: List[Term]())
 	a := if ops.length() > 0: ops[0].clone() else: empty.clone()
 	b := if ops.length() > 1: ops[1].clone() else: empty.clone()
-	if not classes_ok(op, a, b): return error(Error("invalid operands for '{word}'"))
+	if not classes_ok(op, a, b): return error(Error(f"invalid operands for '{word}'"))
 
 	self.stmts.append(
 		Stmt(
@@ -684,14 +684,14 @@ fn var Vm.eff(r: Int, v: Int) Int:
 
 fn var Vm.load(addr: Int) Int:
 	if addr < 0 or addr >= 4096:
-		self.fail("memory access out of range: {addr}")
+		self.fail(f"memory access out of range: {addr}")
 		return 0
 
 	return self.mem[addr]
 
 fn var Vm.store(addr: Int, v: Int) Void:
 	if addr < 0 or addr >= 4096:
-		self.fail("memory access out of range: {addr}")
+		self.fail(f"memory access out of range: {addr}")
 		return
 
 	self.mem[addr] = v
@@ -844,7 +844,7 @@ fn var Vm.step() Void:
 		v := self.rd(ak, ar, av)
 		if self.trap != "": return
 
-		self.emit("{v}\n", 10)
+		self.emit(f"{v}\n", 10)
 	else if op == 31:
 		v := self.rd(ak, ar, av)
 		if self.trap != "": return
@@ -935,7 +935,7 @@ fn main() Void!:
 			errline = asm.cur_line
 
 	if err != "":
-		print("asm error line {errline}: {err}")
+		print(f"asm error line {errline}: {err}")
 		return
 
 	var op = List[Int]()
@@ -1027,16 +1027,16 @@ fn main() Void!:
 	if vm.wrote and vm.last != 10: print("")
 
 	if trap == "":
-		print("-- halted after {steps} steps")
+		print(f"-- halted after {steps} steps")
 	else:
-		ln := if trap == "pc out of range": "-" else: "{lines_of[trap_pc]}"
-		print("-- trap: {trap} (pc={trap_pc} line={ln}) after {steps} steps")
+		ln := if trap == "pc out of range": "-" else: f"{lines_of[trap_pc]}"
+		print(f"-- trap: {trap} (pc={trap_pc} line={ln}) after {steps} steps")
 
 	r := vm.regs
 	print(
-		"regs: r0={r[0]} r1={r[1]} r2={r[2]} r3={r[3]} r4={r[4]} r5={r[5]} r6={r[6]} r7={r[7]} sp={r[8]} bp={r[9]}"
+		f"regs: r0={r[0]} r1={r[1]} r2={r[2]} r3={r[3]} r4={r[4]} r5={r[5]} r6={r[6]} r7={r[7]} sp={r[8]} bp={r[9]}"
 	)
 
 	zf := if vm.zf: 1 else: 0
 	lf := if vm.lf: 1 else: 0
-	print("flags: Z={zf} L={lf}")
+	print(f"flags: Z={zf} L={lf}")

@@ -4,7 +4,7 @@
 import DomainFailure, BoxFailure, box_error from "./domain.ms"
 
 export fn first_error(cause: DomainFailure) Error:
-    return Error("first {cause.code}")
+    return Error(f"first {cause.code}")
 
 fn failure(cause: DomainFailure) Void!DomainFailure:
     return error(cause)
@@ -22,4 +22,4 @@ export fn first_generic(cause: DomainFailure) Error:
     return generic(cause, first_error)
 
 export fn first_box(cause: DomainFailure) Error:
-    return box_error(BoxFailure(cause), fn inner: "first {inner.code}")
+    return box_error(BoxFailure(cause), fn inner: f"first {inner.code}")

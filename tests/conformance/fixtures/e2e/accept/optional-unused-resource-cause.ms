@@ -10,7 +10,7 @@ type Marker:
 	id: Int
 	log: String
 
-fn var Marker.close() Void!: append_file(self.log, "{self.id},").wait()
+fn var Marker.close() Void!: append_file(self.log, f"{self.id},").wait()
 
 fn present() Int?: 7
 
@@ -52,7 +52,7 @@ fn explicit_wrapped_transfer(log: String) Void!:
 
 test "unused eager resource causes close immediately only when owned":
 	tmp := temporary("unused-cause-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	write_file(log, "").wait()?
 	owned(log.clone())?
 	expect_equal(read_file(log).wait().get().decode_utf8().get(""), "1,")?

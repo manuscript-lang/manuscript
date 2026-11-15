@@ -6,18 +6,18 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := (((33 * (-2)) % ((-7) + 4)) + 4)
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     l2 := [(-22), (-3), 0]
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     b3 := (
         ((8.5 * 321.074) < 843.25)
         and ("MiXeD CaSe".starts_with("héllo") and (true and true))
     )
-    say("b3 = {b3}")
+    say(f"b3 = {b3}")
     return 0

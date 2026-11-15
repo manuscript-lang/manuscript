@@ -36,25 +36,25 @@ test "every challenge is complete":
 
 		visible := ch.cases("examples").map(fn c: c.stdin.clone())
 		if not ch.cases("hidden").any(fn c: not visible.contains(c.stdin)): fail(
-			"{ch.id}: hidden cases add nothing"
+			f"{ch.id}: hidden cases add nothing"
 		)?
 
-		if access("{ch.dir}/oracle", 0).is_ok():
+		if access(f"{ch.dir}/oracle", 0).is_ok():
 			// Large challenges: Go oracle only, no per-language references.
-			if glob("{ch.dir}/oracle", GlobOptions(patterns: ["*.ref"])).get(
+			if glob(f"{ch.dir}/oracle", GlobOptions(patterns: ["*.ref"])).get(
 				[]
-			).is_empty(): fail("{ch.id}: empty oracle")?
+			).is_empty(): fail(f"{ch.id}: empty oracle")?
 			continue
 
 		for lang in langs:
-			if not access("{ch.solution(lang.template)}/{lang.reference()}", 0).is_ok(): fail(
-				"{ch.id}: missing {lang.id} reference solution"
+			if not access(f"{ch.solution(lang.template)}/{lang.reference()}", 0).is_ok(): fail(
+				f"{ch.id}: missing {lang.id} reference solution"
 			)?
 
 test "claude code parse":
 	lines := [
-		"\{\"type\": \"assistant\"\}",
-		"\{\"type\": \"result\", \"num_turns\": 7, \"total_cost_usd\": 0.5, \"usage\": \{\"input_tokens\": 10, \"output_tokens\": 20, \"cache_read_input_tokens\": 100, \"cache_creation_input_tokens\": 5\}\}"
+		"{\"type\": \"assistant\"}",
+		"{\"type\": \"result\", \"num_turns\": 7, \"total_cost_usd\": 0.5, \"usage\": {\"input_tokens\": 10, \"output_tokens\": 20, \"cache_read_input_tokens\": 100, \"cache_creation_input_tokens\": 5}}"
 	]
 	u := ClaudeCode().parse(lines.join("\n"))
 	expect_equal(u.tokens_in, 10)?
@@ -65,7 +65,7 @@ test "claude code parse":
 	expect_equal(u.cost_source, "harness")?
 
 test "codex parse sums turns and splits cache":
-	event := "\{\"type\": \"turn.completed\", \"usage\": \{\"input_tokens\": 100, \"cached_input_tokens\": 60, \"output_tokens\": 5\}\}"
+	event := "{\"type\": \"turn.completed\", \"usage\": {\"input_tokens\": 100, \"cached_input_tokens\": 60, \"output_tokens\": 5}}"
 	u := Codex().parse([event.clone(), event.clone()].join("\n"))
 	expect_equal(u.tokens_in, 80)?
 	expect_equal(u.tokens_cached, 120)?
@@ -89,15 +89,12 @@ test "random matches CPython's Mersenne Twister":
 	expect_equal(s.randrange(5, 50), 20)?
 
 test "json layout matches json.dumps":
-	doc := parse("[\{\"a\": \"é\\n\", \"b\": [], \"c\": \{\}\}, 1]").get(JsonValue.Null)
+	doc := parse("[{\"a\": \"é\\n\", \"b\": [], \"c\": {}}, 1]").get(JsonValue.Null)
 	expect_equal(
 		dumps(doc, 1),
-		"[\n \{\n  \"a\": \"\\u00e9\\n\",\n  \"b\": [],\n  \"c\": \{\}\n \},\n 1\n]",
+		"[\n {\n  \"a\": \"\\u00e9\\n\",\n  \"b\": [],\n  \"c\": {}\n },\n 1\n]",
 	)?
-	expect_equal(
-		dumps(doc, 0),
-		"[\{\"a\": \"\\u00e9\\n\", \"b\": [], \"c\": \{\}\}, 1]",
-	)?
+	expect_equal(dumps(doc, 0), "[{\"a\": \"\\u00e9\\n\", \"b\": [], \"c\": {}}, 1]")?
 
 test "number formats match CPython":
 	expect_equal(fixed(17.25, 1), "17.2")?

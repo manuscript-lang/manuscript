@@ -6,20 +6,20 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := (
         ((42 / (-699323)) - ((-36) + 30))
         - ((35 + 22) * (60016288632 + (-990024)))
     )
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     i2 := (((17 * i1) - (i1 / i1)) / (-i1))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     var acc3 = 0
     for i in 0..3:
         acc3 += i * 0
-    say("acc3 = {acc3}")
+    say(f"acc3 = {acc3}")
     return 0

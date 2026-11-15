@@ -146,33 +146,33 @@ test "combined lowering retains callable state and try boundaries":
 	temporary := temporary("manuscript-scalar-") | expect_ok?
 	dir := temporary.path()
 	expected := Result[Int, Error].error(Error("expected"))
-	expect_equal(nested_results("{dir}/nested"), expected)?
-	expect_true(closed("{dir}/nested"))?
-	expect_equal(statement_match_try("{dir}/statement"), expected)?
-	expect_true(closed("{dir}/statement"))?
-	expect_equal(value_match_loop_try("{dir}/loop"), expected)?
-	expect_true(closed("{dir}/loop"))?
+	expect_equal(nested_results(f"{dir}/nested"), expected)?
+	expect_true(closed(f"{dir}/nested"))?
+	expect_equal(statement_match_try(f"{dir}/statement"), expected)?
+	expect_true(closed(f"{dir}/statement"))?
+	expect_equal(value_match_loop_try(f"{dir}/loop"), expected)?
+	expect_true(closed(f"{dir}/loop"))?
 
 test "cleanup remains owned by its source callable":
 	temporary := temporary("manuscript-scalar-") | expect_ok?
 	dir := temporary.path()
-	expect_equal(conditional("{dir}/skipped", take: false), 8)?
-	expect_false(closed("{dir}/skipped"))?
-	expect_equal(conditional("{dir}/taken", take: true), 7)?
-	expect_true(closed("{dir}/taken"))?
-	expect_equal(matched("{dir}/matched"), 1)?
-	expect_true(closed("{dir}/matched"))?
-	expect_equal(defaulted("{dir}/default"), 2)?
-	expect_true(closed("{dir}/default"))?
-	expect_equal(defaulted("{dir}/supplied", 9), 9)?
-	expect_false(closed("{dir}/supplied"))?
-	nested("{dir}/nested")
-	expect_true(closed("{dir}/nested"))?
+	expect_equal(conditional(f"{dir}/skipped", take: false), 8)?
+	expect_false(closed(f"{dir}/skipped"))?
+	expect_equal(conditional(f"{dir}/taken", take: true), 7)?
+	expect_true(closed(f"{dir}/taken"))?
+	expect_equal(matched(f"{dir}/matched"), 1)?
+	expect_true(closed(f"{dir}/matched"))?
+	expect_equal(defaulted(f"{dir}/default"), 2)?
+	expect_true(closed(f"{dir}/default"))?
+	expect_equal(defaulted(f"{dir}/supplied", 9), 9)?
+	expect_false(closed(f"{dir}/supplied"))?
+	nested(f"{dir}/nested")
+	expect_true(closed(f"{dir}/nested"))?
 	expect_equal(
-		propagate("{dir}/propagated"),
+		propagate(f"{dir}/propagated"),
 		Result[Int, Error].error(Error("expected")),
 	)?
-	expect_true(closed("{dir}/propagated"))?
+	expect_true(closed(f"{dir}/propagated"))?
 	expect_equal(bare_propagate(), Result[Int, Error].error(Error("expected")))?
 	expect_equal(equality_propagate(), Result[Bool, Error].error(Error("expected")))?
 
@@ -181,13 +181,13 @@ test "cleanup remains owned by its source callable":
 	while index < 3:
 		index += 1
 
-		_resource := Resource("{dir}/loop{index}")
+		_resource := Resource(f"{dir}/loop{index}")
 		if index == 1: continue
 		if index == 2: break
 
-	expect_true(closed("{dir}/loop1"))?
-	expect_true(closed("{dir}/loop2"))?
-	expect_false(closed("{dir}/loop3"))?
+	expect_true(closed(f"{dir}/loop1"))?
+	expect_true(closed(f"{dir}/loop2"))?
+	expect_false(closed(f"{dir}/loop3"))?
 
 fn present[T](value: T) T?:
 	return value

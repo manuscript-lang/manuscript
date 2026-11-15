@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -35,26 +35,26 @@ export fn main() Int:
         stepacc1 += 1
         acc1 += stepacc1 * stepacc1 + 5
 
-    say("acc1 = {acc1}")
+    say(f"acc1 = {acc1}")
 
     l2 := [13, (-8), (-14), 14]
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
-    b3 := ("{(962533 - (-35))}:" + "MiXeD CaSe").is_empty()
-    say("b3 = {b3}")
+    b3 := (f"{(962533 - (-35))}:" + "MiXeD CaSe").is_empty()
+    say(f"b3 = {b3}")
 
     b4 := (201.25 > ((702.956 - 5.5) + 316.033))
-    say("b4 = {b4}")
+    say(f"b4 = {b4}")
 
     i5 := ((((-454271690340) - 843989) + (6 * (-8))) * 570086)
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     f6 := (7.5 + ((5.5 * 5.5) / (882.758 - 875.360)))
-    say("f6 = {f6}")
+    say(f"f6 = {f6}")
 
     f7 := (f6 / ((290.924 + 4.0e-1) + (794.25 * 608.680)))
-    say("f7 = {f7}")
-    say("fact(10) = {fact(10)}")
+    say(f"f7 = {f7}")
+    say(f"fact(10) = {fact(10)}")
 
     var acc8 = 0
 
@@ -64,33 +64,33 @@ export fn main() Int:
         else:
             acc8 -= 1
 
-    say("acc8 = {acc8}")
+    say(f"acc8 = {acc8}")
 
-    s9 := ("日本語".upper() + ("brace\{s\}" + "gamma")).lower()
-    say("s9 = [{s9}]")
+    s9 := ("日本語".upper() + ("brace{s}" + "gamma")).lower()
+    say(f"s9 = [{s9}]")
 
     i10 := ((24 * ((-5) + i5)) + (l2.length() + 70269))
-    say("i10 = {i10}")
+    say(f"i10 = {i10}")
 
     l11 := l2.drop(0)
-    say("l11 = {l11} len {l11.length()}")
+    say(f"l11 = {l11} len {l11.length()}")
 
     i12 := (-i5)
-    say("i12 = {i12}")
+    say(f"i12 = {i12}")
 
     if (("héllo" == s9) and (f6 > f6)):
         say(("beta" + "  padded  "))
     else:
         say("gamma")
 
-    say("fib(21) = {fib(21)}")
+    say(f"fib(21) = {fib(21)}")
 
     i13 := (-35)
-    say("i13 = {i13}")
+    say(f"i13 = {i13}")
 
     i14 := i10
-    say("i14 = {i14}")
+    say(f"i14 = {i14}")
 
     f15 := (2.0e-4 + ((f6 / 459.229) + (0.0 - 654.751)))
-    say("f15 = {f15}")
+    say(f"f15 = {f15}")
     return 0

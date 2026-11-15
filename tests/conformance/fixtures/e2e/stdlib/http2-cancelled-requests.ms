@@ -35,31 +35,31 @@ test "requests cancelled on a shared HTTP/2 connection release their streams":
 		) | expect_ok?
 	)
 	client := fetcher(FetcherOptions(tls: client_tls)) | expect_ok?
-	base := "https://{server.address()}"
-	first := client.fetch("{base}/ok", FetchOptions(timeout: none)).wait() | expect_ok?
+	base := f"https://{server.address()}"
+	first := client.fetch(f"{base}/ok", FetchOptions(timeout: none)).wait() | expect_ok?
 	first.head.protocol | expect_equal("HTTP/2.0")?
 
 	// Each cancelled request used to stay open on the connection, so the peer's stream
 	// limit filled and later requests failed.
 	for i in 0..400:
-		void client.fetch("{base}/hang", FetchOptions(timeout: none)).with(
+		void client.fetch(f"{base}/hang", FetchOptions(timeout: none)).with(
 			options: PromiseOptions(timeout: 1.milliseconds())
 		).wait()
 
 	after := (
-		client.fetch("{base}/ok", FetchOptions(timeout: 5.seconds())).wait()
+		client.fetch(f"{base}/ok", FetchOptions(timeout: 5.seconds())).wait()
 		| expect_ok?
 	)
 	(after.text() | expect_ok? | expect_equal("ok")?)
 
 	before := (memory_usage() | expect_ok?).heap_used
 	for i in 0..1000:
-		void client.fetch("{base}/hang", FetchOptions(timeout: none)).with(
+		void client.fetch(f"{base}/hang", FetchOptions(timeout: none)).with(
 			options: PromiseOptions(timeout: 1.milliseconds())
 		).wait()
 
 	// A cancelled stream's queue and headers leaked about 600 bytes each.
 	grown := (memory_usage() | expect_ok?).heap_used - before
 	if grown > 1000 * 64: return error(
-		Error("heap grew {grown} bytes over 1000 cancelled requests")
+		Error(f"heap grew {grown} bytes over 1000 cancelled requests")
 	)

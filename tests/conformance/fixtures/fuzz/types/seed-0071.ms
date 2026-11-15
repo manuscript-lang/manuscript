@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -23,8 +23,8 @@ fn fib(n: Int) Int:
 
 export fn main() Int:
     i1 := 14
-    say("i1 = {i1}")
-    say("fib(44) = {fib(44)}")
+    say(f"i1 = {i1}")
+    say(f"fib(44) = {fib(44)}")
 
     bad := missing_function(3)
     return 0

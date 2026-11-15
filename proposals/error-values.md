@@ -15,7 +15,7 @@ Implemented, 2026-11-01. Direction (Chinmay): "let's revamp the error mechanism 
 ```manuscript
 fn handle(cause: Error) String:
     match cause:                            // contract type pattern: narrowing
-        IoError(e): return "io {e.message()}"
+        IoError(e): return f"io {e.message()}"
         _: return cause.message()
 ```
 

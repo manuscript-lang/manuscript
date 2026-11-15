@@ -14,5 +14,5 @@ fn run(d: Deep, n: Int) Int:
 export fn main() Int:
 	node := Node(7)
 	got := run(node, 3000000)
-	print("{got}")
+	print(f"{got}")
 	return 0

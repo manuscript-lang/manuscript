@@ -9,7 +9,7 @@ import (
 
 fn hex4(code: Int) String:
 	digits := "0123456789abcdef"
-	return "\\u{digits.view(code / 4096, code / 4096 + 1)}{digits.view(code / 256 % 16, code / 256 % 16 + 1)}{digits.view(code / 16 % 16, code / 16 % 16 + 1)}{digits.view(code % 16, code % 16 + 1)}"
+	return f"\\u{digits.view(code / 4096, code / 4096 + 1)}{digits.view(code / 256 % 16, code / 256 % 16 + 1)}{digits.view(code / 16 % 16, code / 16 % 16 + 1)}{digits.view(code % 16, code % 16 + 1)}"
 
 fn quote(text: String) String:
 	var out = "\""
@@ -55,7 +55,7 @@ fn emit(value: JsonValue, indent: Int, level: Int) String:
 
 			return "[\n" + pad + parts.join(",\n" + pad) + "\n" + end + "]"
 		ObjectValue(members):
-			if members.is_empty(): return "\{\}"
+			if members.is_empty(): return "{}"
 
 			pad := " ".repeat((level + 1) * indent).get("")
 			end := " ".repeat(level * indent).get("")
@@ -68,9 +68,9 @@ fn emit(value: JsonValue, indent: Int, level: Int) String:
 						level + 1,
 					)
 				)
-			if indent == 0: return "\{" + parts.join(", ") + "\}"
+			if indent == 0: return "{" + parts.join(", ") + "}"
 
-			return "\{\n" + pad + parts.join(",\n" + pad) + "\n" + end + "\}"
+			return "{\n" + pad + parts.join(",\n" + pad) + "\n" + end + "}"
 
 // Lays `value` out as `json.dumps(value, indent=indent)` does; `indent` 0 means the
 // single-line form.

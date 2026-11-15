@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -16,23 +16,23 @@ fn gcd(a: Int, b: Int) Int:
 
 export fn main() Int:
     b1 := (("" + "").upper() != "emoji 😀")
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
     if (not (b1 and b1)):
         say("emoji 😀")
     else:
         say("alpha".reverse())
 
-    say("gcd(2, 668) = {gcd(2, 668)}")
+    say(f"gcd(2, 668) = {gcd(2, 668)}")
 
-    s2 := ("{(40 * 1)}:" + ("beta" + "Tab\there".lower()))
-    say("s2 = [{s2}]")
+    s2 := (f"{(40 * 1)}:" + ("beta" + "Tab\there".lower()))
+    say(f"s2 = [{s2}]")
 
     f3 := 402.25
-    say("f3 = {f3}")
+    say(f"f3 = {f3}")
 
     i4 := 47
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     fixed := 1
     fixed = 2

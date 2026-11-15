@@ -31,7 +31,7 @@ fn template_bench(count: Int) Result[Void, Error]:
 	expected := "123:word$ ".repeat(count)?
 
 	fn work() Result[Void, Error]:
-		out := re.replace_template(text, "$2:$\{word\}$$")?
+		out := re.replace_template(text, "$2:${word}$$")?
 		expect_equal(out, expected)?
 		return keep(out.length())
 

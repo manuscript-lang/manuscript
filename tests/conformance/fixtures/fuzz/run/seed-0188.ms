@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -29,37 +29,37 @@ fn gcd(a: Int, b: Int) Int:
 
 export fn main() Int:
     b1 := "hello world".is_empty()
-    say("b1 = {b1}")
-    say("fib(15) = {fib(15)}")
+    say(f"b1 = {b1}")
+    say(f"fib(15) = {fib(15)}")
 
     b2 := "delta".lower().is_empty()
-    say("b2 = {b2}")
+    say(f"b2 = {b2}")
 
     var acc3 = 0
     for i in 0..0:
         acc3 += i * 9
-    say("acc3 = {acc3}")
+    say(f"acc3 = {acc3}")
 
-    b4 := ("ms".replace("emoji 😀", "gamma").trim() == ("{47}:" + "x".trim()))
-    say("b4 = {b4}")
-    say("gcd(4254, 223) = {gcd(4254, 223)}")
+    b4 := ("ms".replace("emoji 😀", "gamma").trim() == (f"{47}:" + "x".trim()))
+    say(f"b4 = {b4}")
+    say(f"gcd(4254, 223) = {gcd(4254, 223)}")
 
     i5 := (
         ((-(-30962378499)) / (830591 % (-904185)))
         * (((-450656) + (-946849)) + ((-42) * (-214396)))
     )
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     i6 := (i5 - ((i5 * (-18)) + (-23)))
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     s7 := ("42".reverse() + "a")
-    say("s7 = [{s7}]")
+    say(f"s7 = [{s7}]")
 
     l8 := [1, 2, 3].take(0)
-    say("l8 = {l8} len {l8.length()}")
+    say(f"l8 = {l8} len {l8.length()}")
 
     b9 := (i6 >= ((i6 - i5) * ((-280635) - 9)))
-    say("b9 = {b9}")
-    say("{11} {l8.length()} {(11 < l8.length())} sum {11 + l8.length()}")
+    say(f"b9 = {b9}")
+    say(f"{11} {l8.length()} {(11 < l8.length())} sum {11 + l8.length()}")
     return 0

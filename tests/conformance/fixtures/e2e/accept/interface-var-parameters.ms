@@ -60,7 +60,7 @@ fn var Words.step(value: String, var out: List[String]) Void!:
 		out.append(word.clone())
 
 fn var Words.finish(var out: List[String]) Void!:
-	out.append("{self.count}")
+	out.append(f"{self.count}")
 
 test "a transform writes zero or more items per input and more at the end":
 	words := through[String, String](from_list(["a b", "", "c"]), Words(0))

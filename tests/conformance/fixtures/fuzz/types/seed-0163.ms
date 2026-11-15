@@ -6,21 +6,21 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     b1 := (0.5 < ((340.037 / 26.137) / (285.594 * 32.327)))
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
     bad := missing_function(3)
     b2 := (
         (28 <= (11 * (-840227201257)))
         or ((672.035 > 1.0e18) and "日本語".ends_with("ms"))
     )
-    say("b2 = {b2}")
+    say(f"b2 = {b2}")
 
     f3 := ((949.381 * (0.0 + 802.278)) / 0.0)
-    say("f3 = {f3}")
+    say(f"f3 = {f3}")
 
     if b1:
         say(("gamma" + "gamma"))

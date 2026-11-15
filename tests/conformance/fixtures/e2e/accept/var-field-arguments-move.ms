@@ -45,7 +45,7 @@ fn var Words.step() Void:
 
 test "native handles move between two fields of self":
 	root := temporary("manuscript-var-fields-") | expect_ok?
-	path := "{root.path()}/f"
+	path := f"{root.path()}/f"
 	_written := write_file(path, "x").wait() | expect_ok?
 	var pair = Pair()
 	pair.front.append(open(path, OpenMode.Read) | expect_ok?)
@@ -55,7 +55,7 @@ test "native handles move between two fields of self":
 
 test "native handles move between two fields of a local":
 	root := temporary("manuscript-var-fields-") | expect_ok?
-	path := "{root.path()}/f"
+	path := f"{root.path()}/f"
 	_written := write_file(path, "x").wait() | expect_ok?
 	var pair = Pair()
 	pair.front.append(open(path, OpenMode.Read) | expect_ok?)

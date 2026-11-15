@@ -6,42 +6,42 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     f1 := ((512.25 / 741.117) * (607.184 / (991.25 * 598.25)))
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
 
     b2 := "beta".reverse().starts_with("日本語")
-    say("b2 = {b2}")
+    say(f"b2 = {b2}")
 
     b3 := true
-    say("b3 = {b3}")
+    say(f"b3 = {b3}")
 
     b4 := b2
-    say("b4 = {b4}")
+    say(f"b4 = {b4}")
 
     i5 := ((-(-266164)) % (((-294362) / 40) / ((-18) + (-19))))
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
     say(
-        "{i5} {((-i5) - (510308 / 5))} {(i5 < ((-i5) - (510308 / 5)))} sum {i5 + ((-i5) - (510308 / 5))}"
+        f"{i5} {((-i5) - (510308 / 5))} {(i5 < ((-i5) - (510308 / 5)))} sum {i5 + ((-i5) - (510308 / 5))}"
     )
 
     b6 := ((-4) < (((-32) * 923607) + (32 + 20)))
-    say("b6 = {b6}")
+    say(f"b6 = {b6}")
 
     s7 := (("日本語" + "delta") + "line\nbreak".reverse()).reverse()
-    say("s7 = [{s7}]")
+    say(f"s7 = [{s7}]")
 
     i8 := (i5 + (i5 * (801645 % (-92268))))
-    say("i8 = {i8}")
+    say(f"i8 = {i8}")
 
     f9 := (f1 + 642.536)
-    say("f9 = {f9}")
+    say(f"f9 = {f9}")
 
     f10 := (((f1 + 277.922) * (f9 * 896.079)) + ((f9 + 5.0e2) - (952.199 * 342.462)))
-    say("f10 = {f10}")
+    say(f"f10 = {f10}")
 
     b11 := ((i5 / i5) == ((49 / (-472558)) % i8))
-    say("b11 = {b11}")
+    say(f"b11 = {b11}")
     return 0

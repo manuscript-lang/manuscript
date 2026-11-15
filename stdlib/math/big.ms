@@ -141,16 +141,16 @@ fn BigRat.to_fixed(digits: Int) String!:
 		text = text.pad_start(digits + 1, "0")
 
 		split_at := text.scalar_length() - digits
-		text = "{text.slice(0, split_at).get("")}.{text.slice(split_at, text.length()).get("")}"
+		text = f"{text.slice(0, split_at).get("")}.{text.slice(split_at, text.length()).get("")}"
 
-	if self.num.sign() < 0 and quotient.sign() != 0: return ok("-{text}")
+	if self.num.sign() < 0 and quotient.sign() != 0: return ok(f"-{text}")
 
 	return ok(text)
 
 // Formats as `a/b`, or just `a` for an integer; `parse_rat` reads the result back.
 fn BigRat.format() String:
 	if self.is_integer(): return self.num.to_string_radix(10)
-	return "{self.num.to_string_radix(10)}/{self.den.to_string_radix(10)}"
+	return f"{self.num.to_string_radix(10)}/{self.den.to_string_radix(10)}"
 
 // Returns `numerator / denominator` in lowest terms; a zero denominator returns EINVAL.
 export fn rat(numerator: BigInt, denominator: BigInt) BigRat!:
@@ -225,7 +225,7 @@ export fn parse_rat(text: String) BigRat!:
 			return error(Error("bigrat: invalid data", kind: "EBADMSG"))
 
 		fraction_digits = point[1].scalar_length()
-		joined = "{point[0]}{point[1]}"
+		joined = f"{point[0]}{point[1]}"
 
 	numerator := parse_digits(joined)?
 	scale := fraction_digits - exponent
@@ -414,7 +414,7 @@ fn BigFloat.to_fixed(digits: Int) String!:
 
 fn checked(precision: Int) Int:
 	if precision < 1 or precision > max_big_float_precision:
-		panic("precision must be 1 through 1000000, got {precision}")
+		panic(f"precision must be 1 through 1000000, got {precision}")
 	return precision
 
 fn make(value: Binary, precision: Int) BigFloat:

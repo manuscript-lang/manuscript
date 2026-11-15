@@ -6,25 +6,25 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     b1 := (false and (("alpha" == "naïve") and false))
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
     f2 := (3.0e2 - 9.0e-5)
-    say("f2 = {f2}")
+    say(f"f2 = {f2}")
 
     l3 := [11, (-28), (-8)]
-    say("l3 = {l3} len {l3.length()}")
+    say(f"l3 = {l3} len {l3.length()}")
 
     i4 := (((-254380644757) - 12) + 45)
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     f5 := (((f2 + 8.0e-9) + 622.782) / ((184.336 / 695.934) / (912.754 * 334.677)))
-    say("f5 = {f5}")
+    say(f"f5 = {f5}")
     say(
-        "{i4} {(i4 % (93060 % i4))} {(i4 < (i4 % (93060 % i4)))} sum {i4 + (i4 % (93060 % i4))}"
+        f"{i4} {(i4 % (93060 % i4))} {(i4 < (i4 % (93060 % i4)))} sum {i4 + (i4 % (93060 % i4))}"
     )
 
     var acc6 = 0
@@ -35,14 +35,14 @@ export fn main() Int:
         else:
             acc6 -= 1
 
-    say("acc6 = {acc6}")
+    say(f"acc6 = {acc6}")
 
     f7 := (((f5 + 880.037) * (f2 + f2)) * f5)
-    say("f7 = {f7}")
+    say(f"f7 = {f7}")
 
     l8 := l3.filter(fn x: x > 0)
-    say("l8 = {l8} len {l8.length()}")
+    say(f"l8 = {l8} len {l8.length()}")
 
-    s9 := ((("gamma" + "brace\{s\}") + "  padded  ") + "Tab\there".upper().upper())
-    say("s9 = [{s9}]")
+    s9 := ((("gamma" + "brace{s}") + "  padded  ") + "Tab\there".upper().upper())
+    say(f"s9 = [{s9}]")
     return 0

@@ -63,7 +63,7 @@ export fn measure(operations: Int, work: fn() Void!) Void!:
 	variance := deviations.fold(0.0, fn total, d: total + d) / n
 	last := sorted.length() - 1
 	median := (sorted[last / 2] + sorted[(last + 1) / 2]) / 2.0
-	line := "MSBENCH \{\"iterations\":{count},\"operations\":{operations},\"samples\":{config.samples},\"min_ns\":{sorted[0]},\"median_ns\":{median},\"mean_ns\":{mean},\"max_ns\":{sorted[last]},\"stddev_ns\":{sqrt(variance)}\}\n"
+	line := f"MSBENCH \{\"iterations\":{count},\"operations\":{operations},\"samples\":{config.samples},\"min_ns\":{sorted[0]},\"median_ns\":{median},\"mean_ns\":{mean},\"max_ns\":{sorted[last]},\"stddev_ns\":{sqrt(variance)}\}\n"
 	stdout().write(line).get()
 	set_environment(measured_flag, "1").get()
 

@@ -1,7 +1,7 @@
 {
   "format": 1,
   "phase": "run",
-  "oracle": "Manuscript 0.1.0",
+  "oracle": "Manuscript 2026.11.0",
   "expected": {
     "exit_code": 134,
     "stdout": "s1 = [line\nbreaknaïvealpha]\nb2 = true\nf3 = 103.367\nl4 = [] len 0\nacc5 = 84\ncollatz(1676) = 42\n",

@@ -6,11 +6,11 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     s1 := "42".trim()
-    say("s1 = [{s1}]")
+    say(f"s1 = [{s1}]")
 
     if (("MiXeD CaSe" + s1) != s1.upper()):
         say("beta")
@@ -18,7 +18,7 @@ export fn main() Int:
         say("42")
 
     f2 := (((774.25 + 15.936) + (833.25 / 747.876)) + 193.453)
-    say("f2 = {f2}")
+    say(f"f2 = {f2}")
 
     if ("" + "日本語").is_empty():
         say(s1)
@@ -26,15 +26,15 @@ export fn main() Int:
         say(s1)
 
     say(
-        "{(((-13) % (-288336)) % (-2))} {(-21)} {((((-13) % (-288336)) % (-2)) < (-21))} sum {(((-13) % (-288336)) % (-2)) + (-21)}"
+        f"{(((-13) % (-288336)) % (-2))} {(-21)} {((((-13) % (-288336)) % (-2)) < (-21))} sum {(((-13) % (-288336)) % (-2)) + (-21)}"
     )
 
     l3 := [1, 2, 3].take(0)
-    say("l3 = {l3} len {l3.length()}")
+    say(f"l3 = {l3} len {l3.length()}")
 
     b4 := (((s1 + s1) != "42".reverse()) or "Tab\there".is_empty())
-    say("b4 = {b4}")
+    say(f"b4 = {b4}")
     say(
-        "{(((-256213) - 597129107438) - (47 / (-25)))} {l3.length()} {((((-256213) - 597129107438) - (47 / (-25))) < l3.length())} sum {(((-256213) - 597129107438) - (47 / (-25))) + l3.length()}"
+        f"{(((-256213) - 597129107438) - (47 / (-25)))} {l3.length()} {((((-256213) - 597129107438) - (47 / (-25))) < l3.length())} sum {(((-256213) - 597129107438) - (47 / (-25))) + l3.length()}"
     )
     return 0

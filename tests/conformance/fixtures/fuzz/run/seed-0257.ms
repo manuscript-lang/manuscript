@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -24,36 +24,36 @@ fn collatz(start: Int) Int:
 
 export fn main() Int:
     i1 := (-704938)
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     l2 := [(-5)]
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     l3 := [(-17), (-28), 15, (-20)]
-    say("l3 = {l3} len {l3.length()}")
+    say(f"l3 = {l3} len {l3.length()}")
 
     s4 := (
-        ("  padded  ".replace("ms", "42") + ("alpha" + "brace\{s\}"))
+        ("  padded  ".replace("ms", "42") + ("alpha" + "brace{s}"))
         + "emoji 😀".reverse().lower()
     )
-    say("s4 = [{s4}]")
-    say("collatz(2631) = {collatz(2631)}")
+    say(f"s4 = [{s4}]")
+    say(f"collatz(2631) = {collatz(2631)}")
 
     l5 := l2.filter(fn x: x > (-4))
-    say("l5 = {l5} len {l5.length()}")
+    say(f"l5 = {l5} len {l5.length()}")
 
     s6 := "x"
-    say("s6 = [{s6}]")
+    say(f"s6 = [{s6}]")
 
     i7 := (((i1 / i1) + (16 * i1)) + (l2.get(0) + i1))
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
     l8 := l2.drop(0)
-    say("l8 = {l8} len {l8.length()}")
+    say(f"l8 = {l8} len {l8.length()}")
 
-    s9 := ("{i7}:" + s4)
-    say("s9 = [{s9}]")
+    s9 := (f"{i7}:" + s4)
+    say(f"s9 = [{s9}]")
 
     b10 := (not ("ms" != ("back\\slash" + s9)))
-    say("b10 = {b10}")
+    say(f"b10 = {b10}")
     return 0

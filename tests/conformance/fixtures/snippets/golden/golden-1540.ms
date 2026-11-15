@@ -3,7 +3,7 @@
 import TestHooks, expect_equal from "@std/test/test.ms"
 import stdout from "@std/io/io.ms"
 fn println(message: String) Void:
-    written := stdout().write("{message}\n").get()
+    written := stdout().write(f"{message}\n").get()
 
 type State:
     value: Int

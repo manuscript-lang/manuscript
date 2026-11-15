@@ -48,8 +48,8 @@ fn syntax(var items: List[Int], doc: Document, state: State) Int:
 	typed: fn(Int) Int := fn(value: Int) Int: value * 2
 	specialized := identity[List[Int]](items)
 	mapping := {"count": COUNT, "ratio": RATIO}
-	plain := "Literal \{braces\}, # text, \"quote\", \\, \t, \r, \n, \u{1F642}"
-	message := "\{escaped\} {mapping.get("count")} {"{callback(1)}"} \u{41}"
+	plain := "Literal {braces}, # text, \"quote\", \\, \t, \r, \n, \u{1F642}"
+	message := f"\{escaped\} {mapping.get("count")} {f"{callback(1)}"} \u{41}"
 	selected := if true and not false or as == 0: first else: second
 	var total = 0
 	total += 1

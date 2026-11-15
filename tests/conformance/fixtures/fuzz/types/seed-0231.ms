@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -22,22 +22,22 @@ fn fact(n: Int) Int:
 
 export fn main() Int:
     l1 := [(-7), (-7), (-29)]
-    say("l1 = {l1} len {l1.length()}")
+    say(f"l1 = {l1} len {l1.length()}")
 
     l2 := [30, 28, (-25), (-18), (-4)]
-    say("l2 = {l2} len {l2.length()}")
-    say("gcd(1452, 48) = {gcd(1452, 48)}")
+    say(f"l2 = {l2} len {l2.length()}")
+    say(f"gcd(1452, 48) = {gcd(1452, 48)}")
 
     bad := not 5
     var acc3 = 0
     for i in 0..0:
         acc3 += i * (-1)
-    say("acc3 = {acc3}")
-    say("fact(19) = {fact(19)}")
+    say(f"acc3 = {acc3}")
+    say(f"fact(19) = {fact(19)}")
 
     s4 := "back\\slash".lower()
-    say("s4 = [{s4}]")
+    say(f"s4 = [{s4}]")
 
     f5 := (426.25 * ((24.561 / 457.128) / (606.247 * 731.879)))
-    say("f5 = {f5}")
+    say(f"f5 = {f5}")
     return 0

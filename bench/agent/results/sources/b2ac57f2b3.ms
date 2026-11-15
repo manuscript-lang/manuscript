@@ -47,7 +47,7 @@ type Inline:
 	can_close: Bool = false
 	kids: List[Inline] = List[Inline]()
 
-PUNCT := "!\"#$%&'()*+,-./:;<=>?@[\\]^_`\{|\}~"
+PUNCT := "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~"
 DIGITS := "0123456789"
 
 // ---------------------------------------------------------------------------
@@ -569,7 +569,7 @@ fn parseList(lines: List[String], i: Int) Step:
 		if first.num == 1:
 			out = "<ol>\n"
 		else:
-			out = "<ol start=\"{first.num}\">\n"
+			out = f"<ol start=\"{first.num}\">\n"
 
 	for kids in items:
 		out += "<li>" + itemBody(kids, tight) + "</li>\n"
@@ -599,7 +599,7 @@ fn blockAt(lines: List[String], i: Int) Step:
 			content = rstrip(cut(content, 0, r))
 		return Step(
 			node: Block(
-				html: "<h{hl}>" + inlineHtml(content) + "</h{hl}>\n"
+				html: f"<h{hl}>" + inlineHtml(content) + f"</h{hl}>\n"
 			),
 			next: i + 1,
 		)

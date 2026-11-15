@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -29,7 +29,7 @@ fn fib(n: Int) Int:
 
 export fn main() Int:
     i1 := 31
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     b2 := (
         (("a" + "alpha") + ("héllo" + "a")) != (
@@ -37,40 +37,40 @@ export fn main() Int:
             + "a"
         )
     )
-    say("b2 = {b2}")
+    say(f"b2 = {b2}")
 
     i3 := i1
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
     say(
-        "{(((-15) * (-393159)) * (57735672287 + i1))} {(-(-481878))} {((((-15) * (-393159)) * (57735672287 + i1)) < (-(-481878)))} sum {(((-15) * (-393159)) * (57735672287 + i1)) + (-(-481878))}"
+        f"{(((-15) * (-393159)) * (57735672287 + i1))} {(-(-481878))} {((((-15) * (-393159)) * (57735672287 + i1)) < (-(-481878)))} sum {(((-15) * (-393159)) * (57735672287 + i1)) + (-(-481878))}"
     )
 
     i4 := ((((-641461) * i1) + i3) + ((i1 + i3) + (i3 * i1)))
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
-    s5 := ("{(i1 * 9)}:" + "42".reverse()).upper()
-    say("s5 = [{s5}]")
+    s5 := (f"{(i1 * 9)}:" + "42".reverse()).upper()
+    say(f"s5 = [{s5}]")
 
     l6 := [21, (-2), 11, 7]
-    say("l6 = {l6} len {l6.length()}")
+    say(f"l6 = {l6} len {l6.length()}")
 
     b7 := (s5.reverse().lower() == "gamma".upper())
-    say("b7 = {b7}")
+    say(f"b7 = {b7}")
 
     i8 := 22
-    say("i8 = {i8}")
-    say("gcd(2375, 3184) = {gcd(2375, 3184)}")
+    say(f"i8 = {i8}")
+    say(f"gcd(2375, 3184) = {gcd(2375, 3184)}")
 
     i9 := ((i3 - (i3 * (-1))) - i3)
-    say("i9 = {i9}")
+    say(f"i9 = {i9}")
 
     i10 := i8
-    say("i10 = {i10}")
-    say("fib(51) = {fib(51)}")
+    say(f"i10 = {i10}")
+    say(f"fib(51) = {fib(51)}")
 
     f11 := (324.25 * 537.417)
-    say("f11 = {f11}")
+    say(f"f11 = {f11}")
 
     l12 := l6.sorted(fn a, b: a.compare(b))
-    say("l12 = {l12} len {l12.length()}")
+    say(f"l12 = {l12} len {l12.length()}")
     return 0

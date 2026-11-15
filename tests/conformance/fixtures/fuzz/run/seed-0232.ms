@@ -6,42 +6,42 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     s1 := ("MiXeD CaSe".upper() + "日本語").upper()
-    say("s1 = [{s1}]")
+    say(f"s1 = [{s1}]")
 
     i2 := (s1.scalar_length() % ((27 % (-873517372493)) - (29 - 3)))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
-    s3 := ("{(-20)}:" + s1).upper()
-    say("s3 = [{s3}]")
+    s3 := (f"{(-20)}:" + s1).upper()
+    say(f"s3 = [{s3}]")
 
     s4 := (
-        ("{(i2 * 42)}:" + ("brace\{s\}" + "naïve"))
+        (f"{(i2 * 42)}:" + ("brace{s}" + "naïve"))
         + s3.upper().replace(s1, "日本語")
     )
-    say("s4 = [{s4}]")
+    say(f"s4 = [{s4}]")
 
     b5 := (not ((336.658 / 8.0e0) != (984.951 * 86.838)))
-    say("b5 = {b5}")
+    say(f"b5 = {b5}")
 
     f6 := 2.442
-    say("f6 = {f6}")
+    say(f"f6 = {f6}")
 
     i7 := s1.scalar_length()
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
     b8 := ("line\nbreak".reverse().is_empty() or ((i2 * i7) < (i7 * i7)))
-    say("b8 = {b8}")
+    say(f"b8 = {b8}")
 
     l9 := [1, 2, 3].take(0)
-    say("l9 = {l9} len {l9.length()}")
+    say(f"l9 = {l9} len {l9.length()}")
 
     s10 := "x".upper().replace("MiXeD CaSe", "delta").replace("x", "")
-    say("s10 = [{s10}]")
+    say(f"s10 = [{s10}]")
 
     i11 := (-36811410622)
-    say("i11 = {i11}")
+    say(f"i11 = {i11}")
     return 0

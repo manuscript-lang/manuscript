@@ -4,7 +4,7 @@ import read_line, stdin, stdout from "@std/io.ms"
 
 // Sentinel for a two-space hard break inside paragraph text; never occurs in input.
 HB := "§"
-PUNCT := "!\"#$%&'()*+,-./:;<=>?@[\\]^_`\{|\}~"
+PUNCT := "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~"
 DIGITS := "0123456789"
 
 type Blk:
@@ -638,7 +638,7 @@ fn renderList(b: Blk) String:
 	if b.ordered:
 		out = "<ol>\n"
 		if b.level != 1:
-			out = "<ol start=\"{b.level}\">\n"
+			out = f"<ol start=\"{b.level}\">\n"
 
 	for item in b.items:
 		out = out + "<li>" + renderItem(item, not b.loose) + "</li>\n"
@@ -653,7 +653,7 @@ fn renderBlock(b: Blk) String:
 			cls = " class=\"language-" + esc(b.lang) + "\""
 		return "<pre><code" + cls + ">" + esc(b.text) + "</code></pre>\n"
 
-	if b.kind == 1: return "<h{b.level}>" + inline(b.text) + "</h{b.level}>\n"
+	if b.kind == 1: return f"<h{b.level}>" + inline(b.text) + f"</h{b.level}>\n"
 	if b.kind == 2: return "<hr />\n"
 	if b.kind == 3:
 		return "<blockquote>\n" + renderBlocks(b.children) + "</blockquote>\n"

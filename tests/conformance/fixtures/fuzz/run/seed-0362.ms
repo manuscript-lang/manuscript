@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     if ((-16) >= 39):
@@ -15,17 +15,17 @@ export fn main() Int:
         say(("  padded  " + ""))
 
     l1 := [3, 10, 21]
-    say("l1 = {l1} len {l1.length()}")
+    say(f"l1 = {l1} len {l1.length()}")
 
     if (false and (false or true)):
         say("beta")
     else:
         say("alpha".upper())
 
-    s2 := ("{((-23) + (-46))}:" + "  padded  ")
-    say("s2 = [{s2}]")
-    say("{8} {66907} {(8 < 66907)} sum {8 + 66907}")
+    s2 := (f"{((-23) + (-46))}:" + "  padded  ")
+    say(f"s2 = [{s2}]")
+    say(f"{8} {66907} {(8 < 66907)} sum {8 + 66907}")
 
     i3 := (((16 * (-39)) % l1.get(0)) + ((-49) + ((-22) % 838420)))
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
     return 0

@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -26,25 +26,25 @@ export fn main() Int:
     if false:
         say("hello world".trim())
     else:
-        say(("{((-41734) / 46)}:" + ""))
+        say((f"{((-41734) / 46)}:" + ""))
 
-    say("collatz(1025) = {collatz(1025)}")
+    say(f"collatz(1025) = {collatz(1025)}")
 
     b1 := (((24 + 23) % (-9)) <= (-49))
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
     i2 := (-(((-39) * (-718708)) + (-35)))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     i3 := (-14)
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     bad := [1, "two"]
     var acc4 = 0
     for i in 0..2:
         acc4 += i * 5
-    say("acc4 = {acc4}")
+    say(f"acc4 = {acc4}")
 
     s5 := ("Tab\there" + "quote\"d".lower())
-    say("s5 = [{s5}]")
+    say(f"s5 = [{s5}]")
     return 0

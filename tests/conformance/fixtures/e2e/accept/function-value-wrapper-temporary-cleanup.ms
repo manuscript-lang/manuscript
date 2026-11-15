@@ -11,7 +11,7 @@ type Resource:
 	path: String
 
 fn var Resource.close() Void!:
-	append_file(self.path, "{self.id},").wait()?
+	append_file(self.path, f"{self.id},").wait()?
 	if self.id == 98: return error(Error("failed close"))
 
 	self.path = "closed"
@@ -58,7 +58,7 @@ fn failed_close(path: String) Void:
 
 test "lambda and source function aliases close temporary wrappers once":
 	directory := temporary("fn-wrapper-")?
-	path := "{directory.path()}/log"
+	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
 
 	reader := fn(value: Resource?) Bool: value.is_some()
@@ -75,7 +75,7 @@ test "lambda and source function aliases close temporary wrappers once":
 
 test "function arguments remain protected through later try and faults":
 	directory := temporary("fn-wrapper-")?
-	path := "{directory.path()}/log"
+	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
 
 	reader := fn(first: Resource?, second: Resource?, tail: Int) Bool:
@@ -88,7 +88,7 @@ test "function arguments remain protected through later try and faults":
 
 test "function dispatch errors and faults retain temporary cleanup":
 	directory := temporary("fn-wrapper-")?
-	path := "{directory.path()}/log"
+	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
 
 	reject := fn(value: Resource?) Void!:
@@ -105,7 +105,7 @@ test "function dispatch errors and faults retain temporary cleanup":
 
 test "function default adapters retain caller resource ownership":
 	directory := temporary("fn-wrapper-")?
-	path := "{directory.path()}/log"
+	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
 
 	reader := observed_default
@@ -119,7 +119,7 @@ test "function default adapters retain caller resource ownership":
 
 test "function failed temporary close retains older caller owner":
 	directory := temporary("fn-wrapper-")?
-	path := "{directory.path()}/log"
+	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
 
 	_fault := expect_fault(fn: failed_close(path))?
@@ -130,7 +130,7 @@ fn wrapped_result(path: String) Result[Resource, String]:
 
 test "function Result and loop condition temporaries close each time":
 	directory := temporary("fn-wrapper-")?
-	path := "{directory.path()}/log"
+	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
 
 	result := fn(value: Result[Resource, String]) Bool: value.is_ok()
@@ -160,7 +160,7 @@ fn named_conversion_calls(path: String) Void!:
 
 test "function Optional transport from a named payload remains a borrow":
 	directory := temporary("fn-wrapper-")?
-	path := "{directory.path()}/log"
+	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
 	named_conversion_calls(path)?
 	expect_equal(log_text(path)?, "110,")?

@@ -6,15 +6,15 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     s1 := "back\\slash"
-    say("s1 = [{s1}]")
+    say(f"s1 = [{s1}]")
 
     f2 := 0.0
-    say("f2 = {f2}")
+    say(f"f2 = {f2}")
 
     i3 := (s1.scalar_length() + (((-14) - 6) % (-38)))
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
     return 0

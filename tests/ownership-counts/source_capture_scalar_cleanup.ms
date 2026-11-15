@@ -16,7 +16,7 @@ type Marker:
 	id: Int
 
 fn var Marker.close() Void!:
-	print("close {self.id}")
+	print(f"close {self.id}")
 
 fn Marker.status() Int: self.id
 
@@ -53,7 +53,7 @@ fn borrow(value: Marker) Int:
 fn borrowed_owner() Void:
 	value := marker(4)
 	answer := borrow(value)
-	print("borrowed {answer}")
+	print(f"borrowed {answer}")
 
 	_still_present := value.id
 
@@ -65,19 +65,19 @@ fn shared(var value: Marker) Int:
 fn shared_owner() Void:
 	var value = marker(5)
 	answer := shared(var value)
-	print("shared {answer}")
+	print(f"shared {answer}")
 
 	_still_present := value.id
 
 fn main() Void:
 	a := ordinary()
-	print("ordinary {a}")
+	print(f"ordinary {a}")
 
 	b := defaulted()
-	print("default {b}")
+	print(f"default {b}")
 
 	c := generic()
-	print("generic {c}")
+	print(f"generic {c}")
 	borrowed_owner()
 	print("after borrowed")
 	shared_owner()

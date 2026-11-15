@@ -10,6 +10,6 @@ fn b(s: String) Result[Int, Error]:
     return s.parse_int().ok_or()
 
 fn main() Void:
-    stdout().write("{a("4").get(0)} {b("x").is_ok()}\n").get()
+    stdout().write(f"{a("4").get(0)} {b("x").is_ok()}\n").get()
     if e := a("x"):
-        stdout().write("ok {e}\n").get()
+        stdout().write(f"ok {e}\n").get()

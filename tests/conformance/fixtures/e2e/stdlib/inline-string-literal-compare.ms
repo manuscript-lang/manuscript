@@ -6,7 +6,7 @@ fn pad(n: Int) String:
 	return "x".repeat(n).get("")
 
 test "a short literal equals the same text built at run time":
-	built := "ab{1}"
+	built := f"ab{1}"
 	expect_equal(built == "ab1", true)?
 	expect_equal("ab1" == built, true)?
 	expect_equal(built != "ab2", true)?

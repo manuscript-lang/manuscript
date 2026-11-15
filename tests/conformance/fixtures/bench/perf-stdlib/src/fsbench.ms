@@ -14,7 +14,7 @@ fn run(fs: FileSystem, root: String) Void:
                 if (
                     fs
                     .write_file_bytes(
-                        "{root}/f{i}.bin", data, replace: true
+                        f"{root}/f{i}.bin", data, replace: true
                     )
                     .is_ok()
                 ):
@@ -28,7 +28,7 @@ fn run(fs: FileSystem, root: String) Void:
         fn() Int:
             var n = 0
             for i in 0..200:
-                if b := read_file("{root}/f{i}.bin").wait():
+                if b := read_file(f"{root}/f{i}.bin").wait():
                     n += b.length()
             return n
     )
@@ -39,7 +39,7 @@ fn run(fs: FileSystem, root: String) Void:
         fn() Int:
             var n = 0
             for i in 0..200:
-                if stat("{root}/f{i}.bin", follow_links: true).is_ok():
+                if stat(f"{root}/f{i}.bin", follow_links: true).is_ok():
                     n += 1
             return n
     )
@@ -69,7 +69,7 @@ fn log_many(logger: Logger) Void:
         fn() Int:
             var n = 0
             for i in 0..20000:
-                if logger.info("request {i} handled").is_ok():
+                if logger.info(f"request {i} handled").is_ok():
                     n += 1
             return n
     )
@@ -77,5 +77,5 @@ fn log_many(logger: Logger) Void:
 export fn bench_fs() Void:
     if var dir = temporary("ms-bench-"):
         run(fs, dir.path())
-        log_run("{dir.path()}/log.txt")
+        log_run(f"{dir.path()}/log.txt")
         dir.close().get(none)

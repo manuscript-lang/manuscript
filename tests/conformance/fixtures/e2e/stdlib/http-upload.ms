@@ -59,7 +59,7 @@ test "request_stream uploads each chunk of a ReadStream":
     client := http_client(HttpClientOptions())?
     upload := ReadStream[Bytes](Chunks(parts: ["alpha ", "beta ", "gamma"]))
     var response = client.request_stream(
-        HttpMethod.Post, "http://{server.address()}/", headers(), upload
+        HttpMethod.Post, f"http://{server.address()}/", headers(), upload
     )?
     expect_equal(response.metadata.status, 200)?
 
@@ -71,6 +71,6 @@ test "request_stream reports a failing ReadStream":
     client := http_client(HttpClientOptions())?
     upload := ReadStream[Bytes](Chunks(parts: ["partial"], failure: "disk gone"))
     sent := client.request_stream(
-        HttpMethod.Post, "http://{server.address()}/", headers(), upload
+        HttpMethod.Post, f"http://{server.address()}/", headers(), upload
     )
     expect_equal(sent.is_error(), true)?

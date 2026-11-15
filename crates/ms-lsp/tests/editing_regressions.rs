@@ -60,10 +60,10 @@ fn completion_survives_an_earlier_unmatched_opener() {
 #[test]
 fn completion_works_inside_fstring_interpolation() {
     for expression in [
-        "\"hello {name}\"",
-        "\"{name} and {name}\"",
-        "\"a {greet(name)}\"",
-        "\"a {id(\"x\")} {name}\"",
+        "f\"hello {name}\"",
+        "f\"{name} and {name}\"",
+        "f\"a {greet(name)}\"",
+        "f\"a {id(\"x\")} {name}\"",
     ] {
         let source = format!("fn greet(name: String) String:\n    return {expression}\n");
         let column = source.split('\n').nth(1).unwrap().rfind("name").unwrap() + 3;
@@ -84,7 +84,7 @@ fn completion_works_inside_fstring_interpolation() {
 
 #[test]
 fn completion_offers_members_inside_fstring_interpolation() {
-    let source = "fn greet(name: String) String:\n    return \"hello {name.}\"\n";
+    let source = "fn greet(name: String) String:\n    return f\"hello {name.}\"\n";
     let column = source.split('\n').nth(1).unwrap().find("name.").unwrap() + 5;
     let found = labels(source, 1, column);
     assert!(found.iter().any(|l| l == "len" || l == "trim"), "{found:?}");
@@ -735,7 +735,7 @@ fn checkout_stdlib_sources_report_no_diagnostics() {
 
 #[test]
 fn whitespace_actions_preserve_multiline_string_data() {
-    for raw in ["", "r"] {
+    for raw in ["", "f", "r"] {
         let source = format!(
             "fn text() String:  \n    return {raw}\"\"\"\n        é{{1 + 2}}  \t\n            \t\n        \"\"\"\n"
         );
@@ -755,7 +755,7 @@ fn whitespace_actions_preserve_multiline_string_data() {
 #[test]
 fn completion_distinguishes_multiline_payload_and_interpolation() {
     for newline in ["\n", "\r\n"] {
-        let source = "fn greet(name: String) String:\n    return \"\"\"\n        hello {name.}\n        \"\"\"\n".replace('\n', newline);
+        let source = "fn greet(name: String) String:\n    return f\"\"\"\n        hello {name.}\n        \"\"\"\n".replace('\n', newline);
         let found = labels(&source, 2, 20);
         assert!(found.iter().any(|l| l == "trim"), "{found:?}");
         let raw = "fn greet(name: String) String:\n    return r\"\"\"\n        {\"name\": name.member}\n        \"\"\"\n".replace('\n', newline);
@@ -769,7 +769,7 @@ fn completion_recovers_incomplete_multiline_interpolation() {
         for suffix in ["", "}\n        \"\"\"\nbroken := \""] {
             for prefix in ["", "broken := \"\n"] {
                 let source = format!(
-                "{prefix}fn greet(name: String) String:\n    return \"\"\"\n        hello {{name.{suffix}"
+                "{prefix}fn greet(name: String) String:\n    return f\"\"\"\n        hello {{name.{suffix}"
             )
             .replace('\n', newline);
                 let found = labels(&source, 2 + usize::from(!prefix.is_empty()), 20);

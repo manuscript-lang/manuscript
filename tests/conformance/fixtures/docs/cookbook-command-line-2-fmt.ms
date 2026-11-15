@@ -6,7 +6,7 @@ import stdout from "@std/io/io.ms"
 
 fn run() Result[Void, Error]:
     for name in arguments():
-        stdout().write("Hello, {name}!\n")?
+        stdout().write(f"Hello, {name}!\n")?
     return stdout().flush()
 
 fn main() Void!:

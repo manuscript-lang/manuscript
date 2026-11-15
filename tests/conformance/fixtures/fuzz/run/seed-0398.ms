@@ -6,71 +6,71 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := ((29 + (-593628)) - (-491899))
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     i2 := (-273212)
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     var acc3 = 0
     for i in 0..1:
         acc3 += i * 8
-    say("acc3 = {acc3}")
+    say(f"acc3 = {acc3}")
 
     l4 := [(-27), (-23), 19]
-    say("l4 = {l4} len {l4.length()}")
+    say(f"l4 = {l4} len {l4.length()}")
 
     l5 := l4.filter(fn x: x > 2)
-    say("l5 = {l5} len {l5.length()}")
+    say(f"l5 = {l5} len {l5.length()}")
 
     i6 := (-(i2 * l5.length()))
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     l7 := l4.concat(l5)
-    say("l7 = {l7} len {l7.length()}")
+    say(f"l7 = {l7} len {l7.length()}")
 
     i8 := i6
-    say("i8 = {i8}")
+    say(f"i8 = {i8}")
 
     var l9 = l5.clone()
     l9.append(22)
-    say("l9 = {l9} len {l9.length()}")
+    say(f"l9 = {l9} len {l9.length()}")
 
     i10 := (l5.length() * 38)
-    say("i10 = {i10}")
+    say(f"i10 = {i10}")
 
     b11 := "".reverse().is_empty()
-    say("b11 = {b11}")
+    say(f"b11 = {b11}")
 
     i12 := (((112314 - 244578) + ((-667385) + i10)) + (764829420200 + i2))
-    say("i12 = {i12}")
+    say(f"i12 = {i12}")
 
     i13 := (34 - (-i6))
-    say("i13 = {i13}")
+    say(f"i13 = {i13}")
 
     i14 := (l7.get(0) % (i10 - i6))
-    say("i14 = {i14}")
+    say(f"i14 = {i14}")
 
     i15 := i14
-    say("i15 = {i15}")
+    say(f"i15 = {i15}")
 
     var acc16 = 0
     for i in 0..1:
         acc16 += i * 8
-    say("acc16 = {acc16}")
+    say(f"acc16 = {acc16}")
     say(
-        "{((i12 + i8) * l9.get(1))} {i14} {(((i12 + i8) * l9.get(1)) < i14)} sum {((i12 + i8) * l9.get(1)) + i14}"
+        f"{((i12 + i8) * l9.get(1))} {i14} {(((i12 + i8) * l9.get(1)) < i14)} sum {((i12 + i8) * l9.get(1)) + i14}"
     )
 
-    s17 := ("{(i8 + i10)}:" + "日本語".trim())
-    say("s17 = [{s17}]")
+    s17 := (f"{(i8 + i10)}:" + "日本語".trim())
+    say(f"s17 = [{s17}]")
 
     l18 := l7.map(fn x: x + 2).filter(fn x: x % 2 == 0)
-    say("l18 = {l18} len {l18.length()}")
+    say(f"l18 = {l18} len {l18.length()}")
 
     big19 := (-i2) - (-i2)
-    say("{(-i2) / big19}")
+    say(f"{(-i2) / big19}")
     return 0

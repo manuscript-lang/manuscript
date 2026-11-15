@@ -6,30 +6,30 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := (-5)
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     l2 := [1, 2, 3].take(0)
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     i3 := i1
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     i4 := (((19 + (-38)) * (i1 + (-11))) - i1)
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     s5 := "42"
-    say("s5 = [{s5}]")
+    say(f"s5 = [{s5}]")
 
     s6 := (s5 + s5)
-    say("s6 = [{s6}]")
+    say(f"s6 = [{s6}]")
 
     i7 := (l2.length() + (((-31) + i3) - i1))
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
     big8 := -9223372036854775808
-    say("{big8 - 3}")
+    say(f"{big8 - 3}")
     return 0

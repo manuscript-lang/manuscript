@@ -6,17 +6,17 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     b1 := ((true and (not true)) and (((-44) <= 40) and true))
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
     b2 := (("delta" + "日本語").is_empty() and b1)
-    say("b2 = {b2}")
+    say(f"b2 = {b2}")
 
     b3 := ((-39) < 88459)
-    say("b3 = {b3}")
+    say(f"b3 = {b3}")
 
     bad := (1 < 2) < 3
     return 0

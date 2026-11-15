@@ -15,7 +15,7 @@ fn add(var cs: Cases, name: String, script: String) Void:
 
 // The entries of c56-make-lite's hidden cases.
 fn c56_inputs() List[JsonValue]:
-	doc := parse(read_text("{root()}/challenges/c56-make-lite/hidden/cases.json")).get(
+	doc := parse(read_text(f"{root()}/challenges/c56-make-lite/hidden/cases.json")).get(
 		JsonValue.Null
 	)
 	return doc.as_list().get([])
@@ -28,7 +28,7 @@ export fn gen_c65() Void:
 	for entry in c56_inputs():
 		name := entry.get("name").get(JsonValue.Null).as_string().get("")
 		stdin := entry.get("stdin").get(JsonValue.Null).as_string().get("")
-		add(var cs, "kept-{name}", stdin)
+		add(var cs, f"kept-{name}", stdin)
 
 	add(
 		var cs,

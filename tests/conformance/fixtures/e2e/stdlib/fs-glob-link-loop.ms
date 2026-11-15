@@ -17,9 +17,9 @@ fn matched_paths(root: String, options: GlobOptions) List[String]!:
 test "glob following links skips dangling and looping links like any link without a directory":
 	directory := temporary("manuscript-glob-loop-")?
 	root := directory.path()
-	write_file("{root}/a.txt", "file").wait()?
-	create_symlink("{root}/dangling", "{root}/nowhere")?
-	create_symlink("{root}/loop", "{root}/loop")?
+	write_file(f"{root}/a.txt", "file").wait()?
+	create_symlink(f"{root}/dangling", f"{root}/nowhere")?
+	create_symlink(f"{root}/loop", f"{root}/loop")?
 
 	for follow in [false, true]:
 		options := GlobOptions(patterns: ["*"], follow_links: follow)

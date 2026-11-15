@@ -69,9 +69,9 @@ fn first_and_last_line_breaks_are_dropped_and_blank_lines_kept() {
 
 #[test]
 fn escapes_quotes_and_interpolation_work_in_multiline_text() {
-    let out = parts("\"\"\"\n    say \"hi\"\\t\\{x\\}\n    n = {1 + 2}\n    \"\"\"");
+    let out = parts("f\"\"\"\n    say \"hi\"\\t\\{x\\}\n    n = {1 + 2}\n    \"\"\"");
     assert!(out.contains("say \\x22hi\\x22\\x09{x}\\x0an = "), "{out}");
-    // The interpolated `1` sits on line 4, column 10.
+    // The interpolated `1` sits on line 4, column 10 (the f prefix is on line 3).
     assert!(out.contains("(expr 4:10:"), "{out}");
 }
 
@@ -90,7 +90,7 @@ fn one_line_raw_text_is_literal() {
         r#"(part "C:\x5cnew {x}\x5cd+" nil)"#
     );
     assert_eq!(parts(r#"r"""#), r#"(part "" nil)"#);
-    assert!(parts(r#""{r"a{b"}""#).contains(r#"(part "a{b" nil)"#));
+    assert!(parts(r#"f"{r"a{b"}""#).contains(r#"(part "a{b" nil)"#));
     assert!(error("r\"abc\n").contains("unterminated raw text"));
     assert!(error("r\"abc").contains("unterminated raw text"));
     assert!(error("r\"a\tb\"").contains("control characters"));
@@ -110,22 +110,22 @@ fn multiline_text_needs_its_own_lines() {
 #[test]
 fn multiline_text_keeps_text_rules() {
     assert!(error("\"\"\"\n    \\q\n    \"\"\"").contains("unknown text escape"));
-    assert!(error("\"\"\"\n    }\n    \"\"\"").contains("unmatched closing brace"));
-    assert!(error("\"\"\"\n    {}\n    \"\"\"").contains("empty interpolation"));
-    assert!(error("\"\"\"\n    {1 +\n    2}\n    \"\"\"").contains("newlines"));
-    assert!(error("\"a{\"\"\"\n    b\n    \"\"\"}\"").contains("inside an interpolation"));
+    assert!(error("f\"\"\"\n    }\n    \"\"\"").contains("unmatched closing brace"));
+    assert!(error("f\"\"\"\n    {}\n    \"\"\"").contains("empty interpolation"));
+    assert!(error("f\"\"\"\n    {1 +\n    2}\n    \"\"\"").contains("newlines"));
+    assert!(error("f\"a{\"\"\"\n    b\n    \"\"\"}\"").contains("inside an interpolation"));
 }
 
 #[test]
 fn interpolation_errors_point_into_the_right_line() {
-    let message = error("\"\"\"\n    a\n    b {1 +} c\n    \"\"\"");
+    let message = error("f\"\"\"\n    a\n    b {1 +} c\n    \"\"\"");
     assert!(message.starts_with("4:"), "{message}");
 }
 
 #[test]
 fn formatting_is_idempotent_and_keeps_text() {
     let file: Arc<str> = Arc::from("m.ms");
-    let source = "fn f(n: Int) String:\n\tif n > 0:\n\t\treturn \"\"\"\n            a {n}\n              b\n            \"\"\"\n\treturn r\"\"\"\n        {\"x\": 1}\n        \"\"\"\n";
+    let source = "fn f(n: Int) String:\n\tif n > 0:\n\t\treturn f\"\"\"\n            a {n}\n              b\n            \"\"\"\n\treturn r\"\"\"\n        {\"x\": 1}\n        \"\"\"\n";
     let once = format(&file, source).unwrap();
     assert_eq!(once, source);
     assert_eq!(format(&file, &once).unwrap(), once);

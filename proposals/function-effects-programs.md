@@ -111,7 +111,7 @@ Verdict: both errors. Defaults must charge the caller, or a pure caller could hi
 
 ```manuscript
 fn price(item: Item) Decimal:
-    info("pricing {item.id}")            // error: log.ms reaches console.write
+    info(f"pricing {item.id}")            // error: log.ms reaches console.write
 ```
 Verdict: error, and every layer logs. Answer: `Logger` is an interface value made in `main` and passed down, so `price(log: Logger, item)` stays pure. Cost: a parameter per layer. Stage 0 counts how many functions log; if most do, the stdlib ships `Logger` first.
 

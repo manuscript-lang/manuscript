@@ -11,7 +11,7 @@ fn run() Result[Void, Error]:
         line := input.next()?
 
         if text := line:
-            stdout().write("{text}\n")?
+            stdout().write(f"{text}\n")?
         else:
             break
 

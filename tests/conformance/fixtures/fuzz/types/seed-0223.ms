@@ -6,14 +6,14 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := ((((-38) % (-24)) - 26) + (799462 - (-30)))
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     s2 := ("  padded  ".replace("42", "héllo") + "delta")
-    say("s2 = [{s2}]")
+    say(f"s2 = [{s2}]")
 
     bad := say(1, 2)
     return 0

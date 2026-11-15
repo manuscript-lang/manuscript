@@ -45,7 +45,7 @@ export fn decode_bmp(data: Bytes, max_pixels: Int?) Raster!:
 		and header != 108
 		and header != 124
 	):
-		return error(unsupported("BMP header size {header}"))
+		return error(unsupported(f"BMP header size {header}"))
 	if data.length() < 14 + header: return error(bad("truncated BMP header"))
 
 	var width = 0
@@ -71,9 +71,9 @@ export fn decode_bmp(data: Bytes, max_pixels: Int?) Raster!:
 	// BI_BITFIELDS (3) carries explicit channel masks and applies to 32-bit pixels
 	// only.
 	if compression != 0 and (compression != 3 or bits != 32):
-		return error(unsupported("BMP compression {compression}"))
+		return error(unsupported(f"BMP compression {compression}"))
 	if bits != 1 and bits != 4 and bits != 8 and bits != 24 and bits != 32:
-		return error(unsupported("BMP depth {bits}"))
+		return error(unsupported(f"BMP depth {bits}"))
 	if width < 1 or width > 2147483647 or height > 2147483647:
 		return error(bad("BMP dimensions out of range"))
 
@@ -94,7 +94,7 @@ export fn decode_bmp(data: Bytes, max_pixels: Int?) Raster!:
 	bitfields := compression == 3
 	palette_at := 14 + header + (if bitfields and header == 40: 12 else: 0)
 	if bitfields and header < 40: return error(
-		unsupported("BMP bit fields in a {header}-byte header")
+		unsupported(f"BMP bit fields in a {header}-byte header")
 	)
 	if palette_at + palette_size * entry > data.length():
 		return error(bad("truncated BMP palette"))

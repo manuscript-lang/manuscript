@@ -99,8 +99,8 @@ fn run(code: List[Op]) Int:
 			Halt:
 				break
 
-	print("steps {steps}")
+	print(f"steps {steps}")
 	return vars[0]
 
 fn main() Void:
-	print("total {run(program(3000, 2000))}")
+	print(f"total {run(program(3000, 2000))}")

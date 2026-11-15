@@ -11,9 +11,9 @@ test "text conversions and quoting":
 	parse_bool("YES") | expect_equal(true)?
 	parse_bool("x") | expect_equal(none)?
 	quote("a\"b\n") | expect_equal("\"a\\\"b\\n\"")?
-	quote_ascii("é🙂") | expect_equal("\"\\u\{e9\}\\u\{1f642\}\"")?
+	quote_ascii("é🙂") | expect_equal("\"\\u{e9}\\u{1f642}\"")?
 	(
-		unquote("\"a\\tb\\u\{e9\}\"")
+		unquote("\"a\\tb\\u{e9}\"")
 		| expect_ok?
 		| expect_equal("a\tbé")?
 	)
@@ -33,7 +33,7 @@ test "text conversions and quoting":
 		)?
 	)
 	(
-		unquote("\"\\u\{d800\}\"") | expect_error? | expect_equal(
+		unquote("\"\\u{d800}\"") | expect_error? | expect_equal(
 			Error("string: invalid input", kind: "EINVAL")
 		)?
 	)
@@ -58,28 +58,28 @@ test "parse_int radix 0 reads a prefix and others reject it":
 	expect_equal(parse_int("12", 2).is_error(), true)?
 
 test "text quoting escapes interpolation braces and literal controls":
-	quote("\{x\}") | expect_equal("\"\\\{x\\\}\"")?
+	quote("{x}") | expect_equal("\"\\{x\\}\"")?
 	(
-		unquote("\"\\\{x\\\}\"")
+		unquote("\"\\{x\\}\"")
 		| expect_ok?
-		| expect_equal("\{x\}")?
+		| expect_equal("{x}")?
 	)
-	quote("\}") | expect_equal("\"\\\}\"")?
+	quote("}") | expect_equal("\"\\}\"")?
 	(
-		unquote("\"\\\}\"")
+		unquote("\"\\}\"")
 		| expect_ok?
-		| expect_equal("\}")?
+		| expect_equal("}")?
 	)
-	quote("\\u\{41\}") | expect_equal("\"\\\\u\\\{41\\\}\"")?
+	quote("\\u{41}") | expect_equal("\"\\\\u\\{41\\}\"")?
 	(
-		unquote("\"\\\\u\\\{41\\\}\"")
+		unquote("\"\\\\u\\{41\\}\"")
 		| expect_ok?
-		| expect_equal("\\u\{41\}")?
+		| expect_equal("\\u{41}")?
 	)
 
 	for scalar in [0, 31, 127, 128, 133, 159, 8232, 8233, 8234, 8238, 8294, 8297]:
 		text := from_scalars([scalar])?
-		expected := "\"\\u\{" + scalar.to_string_radix(16) + "\}\""
+		expected := "\"\\u{" + scalar.to_string_radix(16) + "}\""
 		quote(text) | expect_equal(expected)?
 		(
 			unquote(quote(text))
@@ -89,10 +89,10 @@ test "text quoting escapes interpolation braces and literal controls":
 
 test "text Unicode escapes reject signs nonhex digits and excess width":
 	for text in [
-		"\"\\u\{\}\"", "\"\\u\{+41\}\"", "\"\\u\{-0\}\"", "\"\\u\{ 41\}\"",
-		"\"\\u\{41 \}\"", "\"\\u\{0x41\}\"", "\"\\u\{0000000\}\"",
-		"\"\\u\{00000041\}\"", "\"\\u\{g\}\"", "\"\\u\{d800\}\"", "\"\\u\{110000\}\"",
-		"\"\\u\{ffffffffffffffff\}\""
+		"\"\\u{}\"", "\"\\u{+41}\"", "\"\\u{-0}\"", "\"\\u{ 41}\"",
+		"\"\\u{41 }\"", "\"\\u{0x41}\"", "\"\\u{0000000}\"",
+		"\"\\u{00000041}\"", "\"\\u{g}\"", "\"\\u{d800}\"", "\"\\u{110000}\"",
+		"\"\\u{ffffffffffffffff}\""
 	]:
 		(
 			unquote(text)
@@ -102,15 +102,15 @@ test "text Unicode escapes reject signs nonhex digits and excess width":
 
 test "text Unicode escapes preserve scalar boundaries and leading zeros":
 	(
-		unquote("\"\\u\{000000\}\"")
+		unquote("\"\\u{000000}\"")
 		| expect_ok?
 		| expect_equal(from_scalars([0])?)?
 	)
-	(unquote("\"\\u\{000041\}\"") | expect_ok? | expect_equal(from_scalars([65])?)?)
-	(unquote("\"\\u\{d7ff\}\"") | expect_ok? | expect_equal(from_scalars([55295])?)?)
-	(unquote("\"\\u\{E000\}\"") | expect_ok? | expect_equal(from_scalars([57344])?)?)
+	(unquote("\"\\u{000041}\"") | expect_ok? | expect_equal(from_scalars([65])?)?)
+	(unquote("\"\\u{d7ff}\"") | expect_ok? | expect_equal(from_scalars([55295])?)?)
+	(unquote("\"\\u{E000}\"") | expect_ok? | expect_equal(from_scalars([57344])?)?)
 	(
-		unquote("\"\\u\{10FFFF\}\"") | expect_ok? | expect_equal(
+		unquote("\"\\u{10FFFF}\"") | expect_ok? | expect_equal(
 			from_scalars([1114111])?
 		)?
 	)

@@ -15,7 +15,7 @@ fn lcg(x: Int) Int:
 
 fn stop(name: String, t0: Int, chk: Int) Void:
 	now := monotonic().tick
-	print("{name} {(now - t0) / 1000} {chk}")
+	print(f"{name} {(now - t0) / 1000} {chk}")
 
 fn big_int_map() Int:
 	var m: Map[Int, Int] = {}
@@ -38,11 +38,11 @@ fn big_int_map() Int:
 fn string_key_map() Int:
 	var m: Map[String, Int] = {}
 	for i in 0..500000:
-		m["key-number-{i}"] = i
+		m[f"key-number-{i}"] = i
 
 	var t = 0
 	for i in 0..500000:
-		t += m["key-number-{i}"]
+		t += m[f"key-number-{i}"]
 	return t
 
 fn map_remove_churn() Int:
@@ -88,7 +88,7 @@ fn sort_strings() Int:
 
 	for i in 0..500000:
 		x = lcg(x)
-		xs.append("s{x}")
+		xs.append(f"s{x}")
 
 	xs.sort(fn a, b: a.compare(b))
 	return xs[0].length() + xs[250000].length()

@@ -37,5 +37,5 @@ fn main() Void:
         last.append(4)
 
     void stdout().write(
-        "{n} {cs[0].count} {cs[0].tags} {rows} {got} {m.get("a")} {xs}\n"
+        f"{n} {cs[0].count} {cs[0].tags} {rows} {got} {m.get("a")} {xs}\n"
     )

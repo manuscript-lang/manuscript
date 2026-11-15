@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -16,11 +16,11 @@ fn fact(n: Int) Int:
 
 export fn main() Int:
     f1 := (2.5 - (692.784 * 204.948))
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
 
     b2 := (false and (("beta" + "x") != "emoji 😀".replace("gamma", "gamma")))
-    say("b2 = {b2}")
-    say("fact(17) = {fact(17)}")
+    say(f"b2 = {b2}")
+    say(f"fact(17) = {fact(17)}")
 
     bad := (1 < 2) < 3
     return 0

@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -23,22 +23,22 @@ fn fib(n: Int) Int:
 
 export fn main() Int:
     i1 := 19
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     bad: Bool := 1
-    say("fib(22) = {fib(22)}")
+    say(f"fib(22) = {fib(22)}")
 
     i2 := (i1 + (-138927))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     i3 := (((i1 - i2) + (-24)) * (i2 - (44 % i1)))
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     i4 := i3
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
-    s5 := ("{(-22)}:" + "ms".replace("naïve", "beta")).upper()
-    say("s5 = [{s5}]")
+    s5 := (f"{(-22)}:" + "ms".replace("naïve", "beta")).upper()
+    say(f"s5 = [{s5}]")
 
     if ("日本語" + s5).ends_with("  padded  "):
         say("line\nbreak")

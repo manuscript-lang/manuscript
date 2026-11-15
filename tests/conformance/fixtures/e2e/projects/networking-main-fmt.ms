@@ -56,7 +56,7 @@ fn exercise() Void!:
     )
     var client = http_client(options: client_options)?
     response := client.request(
-        method: HttpMethod.Get, url: "http://{server.address()}/", headers: headers(),
+        method: HttpMethod.Get, url: f"http://{server.address()}/", headers: headers(),
         body: "", max_response_bytes: 1024, timeout: 2.seconds()
     )?
     response.metadata().status | expect_equal(200)?
@@ -82,7 +82,7 @@ fn exercise() Void!:
         max_message_bytes: 1024, timeout: 2.seconds(), tls: tls, compression: false
     )
     socket := web_socket(
-        url: "ws://{server.address()}/ws", headers: headers(), subprotocols: ["echo"],
+        url: f"ws://{server.address()}/ws", headers: headers(), subprotocols: ["echo"],
         options: websocket_options
     )?
     socket.subprotocol() | expect_equal("echo")?

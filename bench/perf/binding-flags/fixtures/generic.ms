@@ -37,4 +37,4 @@ fn main() Void:
 	held := optional(Pair(5, "retained"))
 	if x := held:
 		total += first(x)
-	print("{total}")
+	print(f"{total}")

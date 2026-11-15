@@ -262,7 +262,7 @@ fn wordfreq(n: Int) Int:
 fn timed(name: String, run: fn() Int) Void:
 	t := monotonic()
 	r := run()
-	say("{name} {monotonic().difference(t).to_nanoseconds() / 1000} {r}\n")
+	say(f"{name} {monotonic().difference(t).to_nanoseconds() / 1000} {r}\n")
 
 fn main() Int:
 	timed("sieve_5M", fn() Int: return sieve(5000000))

@@ -3,7 +3,7 @@
 import Deque from "@std/collections/deque.ms"
 
 fn say(s: String) Void:
-    print("{s}")
+    print(f"{s}")
 
 fn main() Void:
     var a = "hello"
@@ -20,7 +20,7 @@ fn main() Void:
     var d = Deque[String]()
     for i in 0..50:
         if i % 2 == 0:
-            d.push_back("b{i}")
+            d.push_back(f"b{i}")
     b += "!"
     m.add(a, b)
-    say("{cnt.get("a")} {d.length()} {m.get("hello")}")
+    say(f"{cnt.get("a")} {d.length()} {m.get("hello")}")

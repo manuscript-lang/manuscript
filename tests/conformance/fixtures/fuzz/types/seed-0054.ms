@@ -6,17 +6,17 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     if (((-6) * (-23)) <= (38 - 140655650668)):
-        say(("{(-4)}:" + "line\nbreak"))
+        say((f"{(-4)}:" + "line\nbreak"))
     else:
         say("Tab\there".upper())
 
     bad := 1 + "one"
     b1 := (((9223372036854775806 + (-48)) + (750609 % 33)) != 621648)
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
     if ((379.541 > 985.25) and (not false)):
         say("x".upper())
@@ -24,7 +24,7 @@ export fn main() Int:
         say("gamma".trim())
 
     l2 := [25]
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     var acc3 = 0
     var stepacc3 = 0
@@ -33,5 +33,5 @@ export fn main() Int:
         stepacc3 += 1
         acc3 += stepacc3 * stepacc3 + (-2)
 
-    say("acc3 = {acc3}")
+    say(f"acc3 = {acc3}")
     return 0

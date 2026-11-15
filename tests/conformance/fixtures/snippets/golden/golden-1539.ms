@@ -4,7 +4,7 @@ import TestHooks, expect_equal, fail, skip from "@std/test/test.ms"
 import stdout from "@std/io/io.ms"
 import panic from "@std/faults.ms"
 fn println(message: String) Void:
-    written := stdout().write("{message}\n").get()
+    written := stdout().write(f"{message}\n").get()
 
 type State:
     value: Int
@@ -20,7 +20,7 @@ impl TestHooks for State:
     fn after_each() Void:
         println("after_each")
     fn after_all() Void:
-        println("after_all {self.value}")
+        println(f"after_all {self.value}")
 test "first":
     expect_equal(fixture.value, 1)?
 test "second":

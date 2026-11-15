@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -16,50 +16,50 @@ fn fact(n: Int) Int:
 
 export fn main() Int:
     b1 := (not ("back\\slash" != "  padded  "))
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
     say(
-        "{36} {(((-21) - (-44)) + (-13))} {(36 < (((-21) - (-44)) + (-13)))} sum {36 + (((-21) - (-44)) + (-13))}"
+        f"{36} {(((-21) - (-44)) + (-13))} {(36 < (((-21) - (-44)) + (-13)))} sum {36 + (((-21) - (-44)) + (-13))}"
     )
 
     l2 := [27]
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
     say(
-        "{(((-48) + (-25)) - 21)} {((101581 - 8) + (-25))} {((((-48) + (-25)) - 21) < ((101581 - 8) + (-25)))} sum {(((-48) + (-25)) - 21) + ((101581 - 8) + (-25))}"
+        f"{(((-48) + (-25)) - 21)} {((101581 - 8) + (-25))} {((((-48) + (-25)) - 21) < ((101581 - 8) + (-25)))} sum {(((-48) + (-25)) - 21) + ((101581 - 8) + (-25))}"
     )
 
     b3 := true
-    say("b3 = {b3}")
+    say(f"b3 = {b3}")
 
     i4 := (-48)
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     l5 := l2.concat(l2)
-    say("l5 = {l5} len {l5.length()}")
-    say("fact(5) = {fact(5)}")
+    say(f"l5 = {l5} len {l5.length()}")
+    say(f"fact(5) = {fact(5)}")
 
     s6 := (
-        "{(30 / (-41))}:"
+        f"{(30 / (-41))}:"
         + (
             "héllo".replace("42", "MiXeD CaSe")
             + "beta".replace("line\nbreak", "  padded  ")
         )
     )
-    say("s6 = [{s6}]")
+    say(f"s6 = [{s6}]")
 
     i7 := 518250
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
     l8 := [(-20), (-30)]
-    say("l8 = {l8} len {l8.length()}")
+    say(f"l8 = {l8} len {l8.length()}")
 
     l9 := l8.map(fn x: x * 3)
-    say("l9 = {l9} len {l9.length()}")
+    say(f"l9 = {l9} len {l9.length()}")
 
     b10 := b3
-    say("b10 = {b10}")
+    say(f"b10 = {b10}")
 
     i11 := (((33 % i7) * l2.get(0)) + l2.length())
-    say("i11 = {i11}")
+    say(f"i11 = {i11}")
 
     if true:
         say((s6 + "beta"))

@@ -6,33 +6,33 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     l1 := [(-28)]
-    say("l1 = {l1} len {l1.length()}")
+    say(f"l1 = {l1} len {l1.length()}")
 
     s2 := "héllo"
-    say("s2 = [{s2}]")
+    say(f"s2 = [{s2}]")
 
     b3 := (
         "".trim().contains(s2)
         and ("emoji 😀".upper() != ("  padded  " + "line\nbreak"))
     )
-    say("b3 = {b3}")
+    say(f"b3 = {b3}")
 
     i4 := ((-758641) * l1.get(0))
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     i5 := (((-9) + (-30)) - (s2.scalar_length() - (-44)))
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     i6 := i4
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     f7 := (((732.154 + 5.5) + 412.875) - (9.5 - (433.944 * 169.043)))
-    say("f7 = {f7}")
+    say(f"f7 = {f7}")
 
     i8 := i4
-    say("i8 = {i8}")
+    say(f"i8 = {i8}")
     return 0

@@ -8,7 +8,7 @@ fn hold(label: String) Int:
     var parts: List[String] = []
 
     for i in 0..600:
-        parts.append("{label} {i}")
+        parts.append(f"{label} {i}")
 
         void sleep(milliseconds(100)).wait()
 
@@ -20,4 +20,4 @@ fn main() Void:
     first := wait_first([promise(fn: ok(hold("loser"))), promise(fn: ok(4))])
     pending := promise(fn: ok(hold("dropped")))
     void pending
-    print("{timed_out.is_error()} {first.get(0)}")
+    print(f"{timed_out.is_error()} {first.get(0)}")

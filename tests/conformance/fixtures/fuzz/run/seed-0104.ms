@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -37,30 +37,30 @@ fn fib(n: Int) Int:
 
 export fn main() Int:
     b1 := (
-        (("brace\{s\}" != "ms") and (699.599 == 5.5))
+        (("brace{s}" != "ms") and (699.599 == 5.5))
         and ("gamma".starts_with("gamma") and (2.5 == 985.259))
     )
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
     l2 := [(-14), 26]
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     l3 := l2.map(fn x: x + 4).filter(fn x: x % 2 == 0)
-    say("l3 = {l3} len {l3.length()}")
+    say(f"l3 = {l3} len {l3.length()}")
 
     l4 := [0, 5, (-24), 6]
-    say("l4 = {l4} len {l4.length()}")
+    say(f"l4 = {l4} len {l4.length()}")
 
     i5 := ((-722297) + (-((-47) - 41)))
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     l6 := [1, 2, 3].take(0)
-    say("l6 = {l6} len {l6.length()}")
+    say(f"l6 = {l6} len {l6.length()}")
 
     var acc7 = 0
     for i in 0..2:
         acc7 += i * 7
-    say("acc7 = {acc7}")
+    say(f"acc7 = {acc7}")
 
     var acc8 = 0
 
@@ -70,30 +70,30 @@ export fn main() Int:
         else:
             acc8 -= 1
 
-    say("acc8 = {acc8}")
-    say("collatz(1618) = {collatz(1618)}")
+    say(f"acc8 = {acc8}")
+    say(f"collatz(1618) = {collatz(1618)}")
 
     i9 := i5
-    say("i9 = {i9}")
+    say(f"i9 = {i9}")
 
     s10 := "  padded  "
-    say("s10 = [{s10}]")
+    say(f"s10 = [{s10}]")
 
     i11 := ((((-958003) - 646552948959) % (i5 * (-28))) + i5)
-    say("i11 = {i11}")
+    say(f"i11 = {i11}")
 
     i12 := i9
-    say("i12 = {i12}")
-    say("fib(38) = {fib(38)}")
+    say(f"i12 = {i12}")
+    say(f"fib(38) = {fib(38)}")
 
     if "42".replace(s10, s10).contains("naïve"):
-        say(("{(i9 + 945809)}:" + s10))
+        say((f"{(i9 + 945809)}:" + s10))
     else:
         say(s10)
 
     var l13 = l4.clone()
     l13.append(13)
-    say("l13 = {l13} len {l13.length()}")
+    say(f"l13 = {l13} len {l13.length()}")
 
     if (s10 + s10).is_empty():
         say(s10)
@@ -101,5 +101,5 @@ export fn main() Int:
         say("日本語")
 
     l14 := l4.map(fn x: x + 2).filter(fn x: x % 2 == 0)
-    say("l14 = {l14} len {l14.length()}")
+    say(f"l14 = {l14} len {l14.length()}")
     return 0

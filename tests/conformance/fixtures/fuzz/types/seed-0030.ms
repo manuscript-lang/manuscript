@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     if ("  padded  " + "MiXeD CaSe").starts_with("Tab\there"):
@@ -17,5 +17,5 @@ export fn main() Int:
     return "not an int"
 
     s1 := ("".upper().upper() + "naïve".lower())
-    say("s1 = [{s1}]")
+    say(f"s1 = [{s1}]")
     return 0

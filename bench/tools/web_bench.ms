@@ -55,7 +55,7 @@ fn background(argv: List[String], out: String) Subprocess!:
 	):
 		return ok(child)
 
-	return invalid("cannot start {argv[0]}")
+	return invalid(f"cannot start {argv[0]}")
 
 type Plan:
 	w: String
@@ -76,7 +76,7 @@ fn plan(w: String) Plan:
 	return Plan(w, server, load)
 
 fn load_cmd(p: Plan, port: Int, args: List[String]) List[String]:
-	return pinned(p.load_cpus.clone(), ["{p.w}/load/load", "{port}"].concat(args))
+	return pinned(p.load_cpus.clone(), [f"{p.w}/load/load", f"{port}"].concat(args))
 
 fn load(p: Plan, port: Int, args: List[String]) String:
 	return tail(raised(load_cmd(p, port, args)).stdout)
@@ -98,7 +98,7 @@ fn first_pid(pattern: String) String:
 fn syscalls(pid: String, seconds: Int, file: String) Int:
 	void capture(
 		"timeout",
-		["{seconds}", "strace", "-f", "-c", "-p", pid, "-o", file.clone()],
+		[f"{seconds}", "strace", "-f", "-c", "-p", pid, "-o", file.clone()],
 	)
 
 	for line in read_text(file).split("\n"):
@@ -112,7 +112,7 @@ fn rss_kb(pid: String) String:
 	return capture("ps", ["-o", "rss=", "-p", pid]).stdout.trim()
 
 fn threads(pid: String) Int:
-	return list("/proc/{pid}/task").get([]).length()
+	return list(f"/proc/{pid}/task").get([]).length()
 
 fn measure_server(
 	p: Plan,
@@ -121,10 +121,10 @@ fn measure_server(
 	seconds: Int,
 	ms_threads: String,
 ) Void!:
-	data := "{p.w}/data"
+	data := f"{p.w}/data"
 	var argv = pinned(
 		p.server_cpus.clone(),
-		["{p.w}/{name}/server", "{port}", data.clone()],
+		[f"{p.w}/{name}/server", f"{port}", data.clone()],
 	)
 	if name == "ms" or name == "c": argv.append(ms_threads.clone())
 
@@ -132,9 +132,9 @@ fn measure_server(
 
 	if not wait_started(p, port):
 		void server.close()
-		return invalid("{name} did not start")
+		return invalid(f"{name} did not start")
 
-	pid := first_pid("^{p.w}/{name}/server")
+	pid := first_pid(f"^{p.w}/{name}/server")
 
 	// The C server is the ceiling for the two tiny endpoints; it has no /top or /io.
 	paths := if name == "c": ["/health", "/user/42"] else: [
@@ -142,33 +142,33 @@ fn measure_server(
 	]
 	for path in paths:
 		for round in 0..2:
-			say("{name} {path} {load(p, port, ["64", "{seconds}", path.clone()])}")
+			say(f"{name} {path} {load(p, port, ["64", f"{seconds}", path.clone()])}")
 
 	if name == "c":
-		say("{name} threads {threads(pid.clone())} rss_kb {rss_kb(pid.clone())}")
+		say(f"{name} threads {threads(pid.clone())} rss_kb {rss_kb(pid.clone())}")
 		void server.close()
 		return ok()
 
 	if name != "rust":
 		for round in 0..2:
-			say("{name} io {load(p, port, ["64", "{seconds}", "/io?\{c\}"])}")
+			say(f"{name} io {load(p, port, ["64", f"{seconds}", "/io?{c}"])}")
 
 		var mixed = background(
-			load_cmd(p, port, ["32", "{seconds}", "/io?\{c\}"]),
-			"{p.w}/mixed",
+			load_cmd(p, port, ["32", f"{seconds}", "/io?{c}"]),
+			f"{p.w}/mixed",
 		)?
 		void sleep(milliseconds(200)).wait()
 
 		during := if seconds > 1: seconds - 1 else: 1
-		say("{name} health-during-io {load(p, port, ["32", "{during}", "/health"])}")
+		say(f"{name} health-during-io {load(p, port, ["32", f"{during}", "/health"])}")
 		mixed.wait().get(0)
-		say("{name} io-during-health {tail(read_text("{p.w}/mixed"))}")
+		say(f"{name} io-during-health {tail(read_text(f"{p.w}/mixed"))}")
 		void mixed.close()
 
-	say("{name} threads {threads(pid.clone())} rss_kb {rss_kb(pid.clone())}")
+	say(f"{name} threads {threads(pid.clone())} rss_kb {rss_kb(pid.clone())}")
 
 	if capture("strace", ["-V"]).code == 0:
-		say("{name} idle_syscalls_5s {syscalls(pid.clone(), 5, "{p.w}/idle")}")
+		say(f"{name} idle_syscalls_5s {syscalls(pid.clone(), 5, f"{p.w}/idle")}")
 
 		var busy = background(
 			[
@@ -180,7 +180,7 @@ fn measure_server(
 				"-p",
 				pid.clone(),
 				"-o",
-				"{p.w}/busy",
+				f"{p.w}/busy",
 			],
 			"/dev/null",
 		)?
@@ -196,48 +196,54 @@ fn measure_server(
 		void busy.close()
 
 		var total = 0
-		for line in read_text("{p.w}/busy").split("\n"):
+		for line in read_text(f"{p.w}/busy").split("\n"):
 			if line.contains(" total"): total = line.split(" ").filter(
 				fn c: c != ""
 			)[3].parse_int().get(0)
 
 		per := if reqs > 0: total.to_float() / reqs.to_float() else: 0.0
 		say(
-			"{name} syscalls_per_request {fixed(per, 2)} (requests under strace {reqs})"
+			f"{name} syscalls_per_request {fixed(per, 2)} (requests under strace {reqs})"
 		)
 
 	var idle = background(
 		pinned(
 			p.load_cpus.clone(),
-			["{p.w}/load/load", "idle", "{port}", "10000"],
+			[f"{p.w}/load/load", "idle", f"{port}", "10000"],
 		),
-		"{p.w}/idle.out",
+		f"{p.w}/idle.out",
 	)?
 	void sleep(milliseconds(200)).wait()
 
 	for poll in 0..120:
-		if read_text("{p.w}/idle.out").contains("holding"): break
+		if read_text(f"{p.w}/idle.out").contains("holding"): break
 
 		void sleep(milliseconds(500)).wait()
 
 	say(
-		"{name} idle_connections {tail(read_text("{p.w}/idle.out"))} rss_kb {rss_kb(pid.clone())}"
+		f"{name} idle_connections {tail(read_text(f"{p.w}/idle.out"))} rss_kb {rss_kb(pid.clone())}"
 	)
-	say("{name} /health-with-10k-idle {load(p, port, ["64", "{seconds}", "/health"])}")
+	say(
+		f"{name} /health-with-10k-idle {load(p, port, ["64", f"{seconds}", "/health"])}"
+	)
 	void idle.close()
 	void server.close()
 	return ok()
 
 fn prepare_run(here: String, w: String) List[String]!:
 	for dir in ["go", "ms", "load", "c"]:
-		copy("{here}/{dir}", "{w}/{dir}", CopyOptions(recursive: true, replace: true)).get()
-	create_directory("{w}/rust", recursive: true).get()
-	write_text("{w}/rust/Cargo.toml", read_text("{here}/rust/Cargo.toml"))
-	write_text("{w}/rust/Cargo.lock", read_text("{here}/rust/Cargo.lock"))
-	copy("{here}/rust/src", "{w}/rust/src", CopyOptions(recursive: true, replace: true)).get()
-	create_directory("{w}/data", recursive: true).get()
-	build_go("{w}/go", "{w}/go/server")?
-	build_go("{w}/load", "{w}/load/load")?
+		copy(f"{here}/{dir}", f"{w}/{dir}", CopyOptions(recursive: true, replace: true)).get()
+	create_directory(f"{w}/rust", recursive: true).get()
+	write_text(f"{w}/rust/Cargo.toml", read_text(f"{here}/rust/Cargo.toml"))
+	write_text(f"{w}/rust/Cargo.lock", read_text(f"{here}/rust/Cargo.lock"))
+	copy(
+		f"{here}/rust/src",
+		f"{w}/rust/src",
+		CopyOptions(recursive: true, replace: true),
+	).get()
+	create_directory(f"{w}/data", recursive: true).get()
+	build_go(f"{w}/go", f"{w}/go/server")?
+	build_go(f"{w}/load", f"{w}/load/load")?
 
 	var names = ["ms", "go"]
 
@@ -247,7 +253,7 @@ fn prepare_run(here: String, w: String) List[String]!:
 			[
 				"-c",
 				"cd \"$0\" && cargo build --release --locked -q && cp target/release/web-bench-rust server",
-				"{w}/rust"
+				f"{w}/rust"
 			],
 		)
 		void must("cargo build", ran)?
@@ -256,12 +262,12 @@ fn prepare_run(here: String, w: String) List[String]!:
 	if capture("cc", ["--version"]).code == 0:
 		ran := capture(
 			"cc",
-			["-O2", "-pthread", "-o", "{w}/c/server", "{w}/c/server.c"],
+			["-O2", "-pthread", "-o", f"{w}/c/server", f"{w}/c/server.c"],
 		)
 		void must("cc", ran)?
 		names = names.concat(["c"])
 
-	build_ms("{w}/ms", "{w}/ms/server")?
+	build_ms(f"{w}/ms", f"{w}/ms/server")?
 	return ok(names)
 
 fn run_all(here: String, seconds: Int) Void!:
@@ -283,10 +289,10 @@ fn cell(p: Plan, argv: List[String]) String:
 fn fetch_all(here: String, seconds: Int) Void!:
 	var tmp = temporary("web-fetch-").get()
 	w := tmp.path()
-	copy("{here}/fetch/go", "{w}/go", CopyOptions(recursive: true, replace: true)).get()
-	copy("{here}/fetch/ms", "{w}/ms", CopyOptions(recursive: true, replace: true)).get()
-	create_directory("{w}/data", recursive: true).get()
-	write_text("{w}/data/small", "ok\n")
+	copy(f"{here}/fetch/go", f"{w}/go", CopyOptions(recursive: true, replace: true)).get()
+	copy(f"{here}/fetch/ms", f"{w}/ms", CopyOptions(recursive: true, replace: true)).get()
+	create_directory(f"{w}/data", recursive: true).get()
+	write_text(f"{w}/data/small", "ok\n")
 
 	_big := must(
 		"big",
@@ -310,14 +316,14 @@ fn fetch_all(here: String, seconds: Int) Void!:
 			],
 		),
 	)?
-	build_go("{w}/go", "{w}/go/fetch")?
-	build_ms("{w}/ms", "{w}/ms/fetch")?
+	build_go(f"{w}/go", f"{w}/go/fetch")?
+	build_ms(f"{w}/ms", f"{w}/ms/fetch")?
 
 	p := plan(w.clone())
 	var server = background(
 		pinned(
 			p.server_cpus.clone(),
-			["{w}/go/fetch", "serve", "18950", "{w}/data"],
+			[f"{w}/go/fetch", "serve", "18950", f"{w}/data"],
 		),
 		"/dev/null",
 	)?
@@ -334,32 +340,32 @@ fn fetch_all(here: String, seconds: Int) Void!:
 	for row in fetches:
 		file := row[0].clone()
 		conns := row[1].clone()
-		url := "http://127.0.0.1:18950/{file}"
+		url := f"http://127.0.0.1:18950/{file}"
 		say(
-			"{file} connections={conns} go {cell(p, ["{w}/go/fetch", "get", url.clone(), conns.clone(), "{seconds}"])}"
+			f"{file} connections={conns} go {cell(p, [f"{w}/go/fetch", "get", url.clone(), conns.clone(), f"{seconds}"])}"
 		)
 		say(
-			"{file} connections={conns} ms {cell(p, ["{w}/ms/fetch", url.clone(), conns.clone(), "{seconds}"])}"
+			f"{file} connections={conns} ms {cell(p, [f"{w}/ms/fetch", url.clone(), conns.clone(), f"{seconds}"])}"
 		)
 		if conns == "8":
 			say(
-				"{file} connections={conns} ms threads=2 {cell(p, ["{w}/ms/fetch", url.clone(), conns.clone(), "{seconds}", "2"])}"
+				f"{file} connections={conns} ms threads=2 {cell(p, [f"{w}/ms/fetch", url.clone(), conns.clone(), f"{seconds}", "2"])}"
 			)
 
 	// Framings of the same 8 MiB: chunked (random) and gzip (compressible text), then a
 	// redirect hop and a cookie jar round trip on small bodies, one connection.
 	for path in ["chunked/big", "gzip/text", "redirect", "cookie"]:
-		url := "http://127.0.0.1:18950/{path}"
+		url := f"http://127.0.0.1:18950/{path}"
 		go := tail(
 			raised(
 				pinned(
 					p.load_cpus.clone(),
 					[
-						"{w}/go/fetch",
+						f"{w}/go/fetch",
 						"get",
 						url.clone(),
 						"1",
-						"{seconds}",
+						f"{seconds}",
 					],
 				)
 			).stdout
@@ -368,12 +374,17 @@ fn fetch_all(here: String, seconds: Int) Void!:
 			raised(
 				pinned(
 					p.load_cpus.clone(),
-					["{w}/ms/fetch", url.clone(), "1", "{seconds}"],
+					[
+						f"{w}/ms/fetch",
+						url.clone(),
+						"1",
+						f"{seconds}",
+					],
 				)
 			).stdout
 		)
-		say("{path} connections=1 go {go}")
-		say("{path} connections=1 ms {ms}")
+		say(f"{path} connections=1 go {go}")
+		say(f"{path} connections=1 ms {ms}")
 
 	void server.close()
 	void tmp.close()

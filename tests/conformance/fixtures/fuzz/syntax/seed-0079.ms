@@ -6,18 +6,18 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     s1 := (
-        ("{843165640928}:" + "line\nbreak").reverse()
-        + (("{(651481 + (-1))}:" + "naïve") + "gamma".reverse())
+        (f"{843165640928}:" + "line\nbreak").reverse()
+        + ((f"{(651481 + (-1))}:" + "naïve") + "gamma".reverse())
     )
-    say("s1  [{s1}]")
+    say(f"s1  [{s1}]")
 
     i2 := 26
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     l3 := [12, 6, 11, 20]
-    say("l3 = {l3} len {l3.length()}")
+    say(f"l3 = {l3} len {l3.length()}")
     return 0

@@ -415,12 +415,12 @@ impl Machine:
             if who == "":
                 who = "lambda"
 
-            var expected = "{n}"
+            var expected = f"{n}"
             if self.closures[id].rest >= 0:
-                expected = "at least {n}"
+                expected = f"at least {n}"
             return error(
                 runtime_error(
-                    "wrong number of arguments to {who}: expected {expected}, got {count}"
+                    f"wrong number of arguments to {who}: expected {expected}, got {count}"
                 )
             )
 
@@ -469,7 +469,7 @@ impl Machine:
 
                 return "#f"
             Num(n):
-                return "{n}"
+                return f"{n}"
             Text(s):
                 if write:
                     return self.write_string(s)
@@ -480,13 +480,13 @@ impl Machine:
             Cons(id):
                 return self.render_list(id, write)
             Prim(name):
-                return "#<builtin {name}>"
+                return f"#<builtin {name}>"
             Proc(id):
                 name := self.closures[id].name.clone()
                 if name == "":
                     return "#<procedure>"
 
-                return "#<procedure {name}>"
+                return f"#<procedure {name}>"
 
     var fn render_list(first: Int, write: Bool) String:
         var out = "("
@@ -1119,20 +1119,20 @@ impl Machine:
     // ---- argument helpers for builtins -------------------------------------------------
 
     var fn type_error(name: String, kind: String, v: Value) Fail:
-        return runtime_error("{name}: expected {kind}, got {self.render(v, true)}")
+        return runtime_error(f"{name}: expected {kind}, got {self.render(v, true)}")
 
     var fn want(name: String, count: Int, lo: Int, hi: Int) Result[Unit, Fail]:
         if count < lo or (hi >= 0 and count > hi):
-            var expected = "{lo}"
+            var expected = f"{lo}"
 
             if hi < 0:
-                expected = "at least {lo}"
+                expected = f"at least {lo}"
             else if lo != hi:
-                expected = "{lo} to {hi}"
+                expected = f"{lo} to {hi}"
 
             return error(
                 runtime_error(
-                    "wrong number of arguments to {name}: expected {expected}, got {count}"
+                    f"wrong number of arguments to {name}: expected {expected}, got {count}"
                 )
             )
 
@@ -1197,9 +1197,9 @@ impl Machine:
 
                 return "bf"
             Num(n):
-                return "n{n}"
+                return f"n{n}"
             Sym(id):
-                return "s{id}"
+                return f"s{id}"
             _:
                 return ""
 
@@ -1208,7 +1208,7 @@ impl Machine:
             Text(s):
                 return "t" + s
             Proc(id):
-                return "p{id}"
+                return f"p{id}"
             Prim(name):
                 return "q" + name
             Unspecified:
@@ -1792,7 +1792,7 @@ impl Machine:
         if name == "number->string":
             _c := try self.want(name, n, 1, 1)
             x := try self.need_int(name, args[0].clone())
-            return ok(Value.Text("{x}"))
+            return ok(Value.Text(f"{x}"))
 
         if name == "string->symbol":
             _c := try self.want(name, n, 1, 1)

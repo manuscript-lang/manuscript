@@ -6,42 +6,42 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := (-22)
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     f2 := (70.161 + 0.0)
-    say("f2 = {f2}")
+    say(f"f2 = {f2}")
 
     b3 := false
-    say("b3 = {b3}")
+    say(f"b3 = {b3}")
 
     i4 := (-8)
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     i5 := i1
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     i6 := (i5 + ((i4 - i5) + 31))
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     s7 := "gamma".trim().lower()
-    say("s7 = [{s7}]")
+    say(f"s7 = [{s7}]")
 
     f9 := (471.397 * (f2 - f2))
-    say("f9 = {f9}")
+    say(f"f9 = {f9}")
 
     i10 := ((i1 * (i5 % i4)) / ((i5 * (-22)) + (i1 * i4)))
-    say("i10 = {i10}")
+    say(f"i10 = {i10}")
 
     l11 := [(-16), 14]
-    say("l11 = {l11} len {l11.length()}")
+    say(f"l11 = {l11} len {l11.length()}")
 
     i12 := (((14 / i1) / (383232 + 8)) - (-(i10 % i6)))
-    say("i12 = {i12}")
+    say(f"i12 = {i12}")
 
     big13 := 9223372036854775807
-    say("{big13 * 2}")
+    say(f"{big13 * 2}")
     return 0

@@ -6,53 +6,53 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := (((-10) * ((-14) % (-853361))) + ((677165 * (-50)) - ((-47) - (-664052))))
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     l2 := [(-17), (-3), (-24)]
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     l3 := l2.reversed()
-    say("l3 = {l3} len {l3.length()}")
+    say(f"l3 = {l3} len {l3.length()}")
 
-    s4 := "  padded  ".trim().replace("brace\{s\}", "Tab\there").upper()
-    say("s4 = [{s4}]")
+    s4 := "  padded  ".trim().replace("brace{s}", "Tab\there").upper()
+    say(f"s4 = [{s4}]")
 
     b5 := (not (not "alpha".is_empty()))
-    say("b5 = {b5}")
+    say(f"b5 = {b5}")
 
     f6 := 736.967
-    say("f6 = {f6}")
+    say(f"f6 = {f6}")
 
     i7 := ((((-9) / (-8)) + (-31)) + l2.get(2))
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
     f8 := f6
-    say("f8 = {f8}")
+    say(f"f8 = {f8}")
 
     b9 := (((s4 == s4) and (600.930 != 222.340)) and ((11 + 12) != 10))
-    say("b9 = {b9}")
+    say(f"b9 = {b9}")
 
     i10 := ((-i7) + (-19))
-    say("i10 = {i10}")
+    say(f"i10 = {i10}")
 
     l11 := l2.take(0)
-    say("l11 = {l11} len {l11.length()}")
+    say(f"l11 = {l11} len {l11.length()}")
 
     f12 := (((f8 * 988.423) / 0.0) * ((f6 * f6) - (f6 + f8)))
-    say("f12 = {f12}")
+    say(f"f12 = {f12}")
 
     i13 := i1
-    say("i13 = {i13}")
+    say(f"i13 = {i13}")
 
     i14 := i10
-    say("i14 = {i14}")
+    say(f"i14 = {i14}")
 
     i15 := (i14 * ((i1 / (-1)) + ((-87679757737) * (-4))))
-    say("i15 = {i15}")
+    say(f"i15 = {i15}")
 
     var acc16 = 0
 
@@ -62,18 +62,18 @@ export fn main() Int:
         else:
             acc16 -= 1
 
-    say("acc16 = {acc16}")
+    say(f"acc16 = {acc16}")
 
     i17 := (i7 * l3.get(1))
-    say("i17 = {i17}")
+    say(f"i17 = {i17}")
 
     s18 := "x"
-    say("s18 = [{s18}]")
+    say(f"s18 = [{s18}]")
 
     var l19 = l2.clone()
     l19.append(95)
-    say("l19 = {l19} len {l19.length()}")
+    say(f"l19 = {l19} len {l19.length()}")
 
     big20 := 9223372036854775807
-    say("{big20 + 5}")
+    say(f"{big20 + 5}")
     return 0

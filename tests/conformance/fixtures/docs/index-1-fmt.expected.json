@@ -1,9 +1,9 @@
 {
   "format": 1,
   "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
+  "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import (\n\tstdout from \"@std/io/io.ms\",\n\targuments from \"@std/os/env.ms\",\n)\n\nfn main() Void!:\n\tname := arguments().get(0, default: \"world\")\n\tmessage := \"Hello, {name}!\\n\"\n\tstdout().write(message)?\n"
+    "fmt": "import (\n\tstdout from \"@std/io/io.ms\",\n\targuments from \"@std/os/env.ms\",\n)\n\nfn main() Void!:\n\tname := arguments().get(0, default: \"world\")\n\tmessage := f\"Hello, {name}!\\n\"\n\tstdout().write(message)?\n"
   }
 }

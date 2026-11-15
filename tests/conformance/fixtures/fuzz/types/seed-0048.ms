@@ -6,11 +6,11 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     l1 := [(-24)]
-    say("l1 = {l1} len {l1.length()}")
+    say(f"l1 = {l1} len {l1.length()}")
 
     bad := missing_function(3)
     var acc2 = 0
@@ -20,8 +20,8 @@ export fn main() Int:
         stepacc2 += 1
         acc2 += stepacc2 * stepacc2 + 9
 
-    say("acc2 = {acc2}")
+    say(f"acc2 = {acc2}")
 
     i3 := (-187444059179)
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
     return 0

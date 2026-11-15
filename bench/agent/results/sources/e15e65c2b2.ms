@@ -125,7 +125,7 @@ fn is_digit(c: String) Bool:
 	return c != "" and "0123456789".contains(c)
 
 fn is_punct(c: String) Bool:
-	return c.length() == 1 and "!\"#$%&'()*+,-./:;<=>?@[\\]^_`\{|\}~".contains(c)
+	return c.length() == 1 and "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~".contains(c)
 
 fn is_ws(c: String) Bool:
 	return c == "" or c == " " or c == "\n" or c == "\r"

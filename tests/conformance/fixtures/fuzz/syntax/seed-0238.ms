@@ -6,22 +6,22 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     if ((false and true) and "delta".is_empty()):
-        say(("{986672}:" + "brace\{s\}"))
+        say((f"{986672}:" + "brace{s}"))
     else:
         say("x".lower())
 
     i1 := ((-48) - ((-48) - (992388 / 5)))
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     f2 := (((6.5 / 0.0) / 7.0e-9) * 2.0e-4)
-    say("f2 = {f2}")
+    say(f"f2 = {f2}")
 
     i3 := i1
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     if (not "ms".contains("naïve")):
         say(("alpha" + "42"))

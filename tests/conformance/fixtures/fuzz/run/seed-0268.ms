@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     if ("ms".starts_with("gamma") and (not true)):
@@ -15,13 +15,13 @@ export fn main() Int:
         say("back\\slash".upper())
 
     i1 := (-43)
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     s2 := (("emoji 😀" + ("" + "alpha")) + "alpha".trim().lower())
-    say("s2 = [{s2}]")
+    say(f"s2 = [{s2}]")
 
     s3 := ("Tab\there" + s2)
-    say("s3 = [{s3}]")
+    say(f"s3 = [{s3}]")
 
     if false:
         say(s3.trim())
@@ -29,12 +29,12 @@ export fn main() Int:
         say("quote\"d".replace("42", "naïve"))
 
     say(
-        "{(-(732761 * i1))} {((i1 + (-12)) + (i1 - i1))} {((-(732761 * i1)) < ((i1 + (-12)) + (i1 - i1)))} sum {(-(732761 * i1)) + ((i1 + (-12)) + (i1 - i1))}"
+        f"{(-(732761 * i1))} {((i1 + (-12)) + (i1 - i1))} {((-(732761 * i1)) < ((i1 + (-12)) + (i1 - i1)))} sum {(-(732761 * i1)) + ((i1 + (-12)) + (i1 - i1))}"
     )
 
     b4 := (((false and false) and false) and (not (977.885 < 6.5)))
-    say("b4 = {b4}")
+    say(f"b4 = {b4}")
 
     i5 := (((35 * i1) / 17) - 30)
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
     return 0

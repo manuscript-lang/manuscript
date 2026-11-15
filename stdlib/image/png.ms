@@ -130,7 +130,7 @@ export fn decode_png(data: Bytes, max_pixels: Int?) Raster!:
 				return error(unsupported("PNG compression or filter method"))
 
 			method := data.get(body + 12).to_int()
-			if method > 1: return error(bad("PNG interlace method {method}"))
+			if method > 1: return error(bad(f"PNG interlace method {method}"))
 
 			interlaced = method == 1
 			if width < 1 or height < 1 or width > 2147483647 or height > 2147483647:
@@ -192,7 +192,7 @@ export fn decode_png(data: Bytes, max_pixels: Int?) Raster!:
 		)
 	)
 	if not valid: return error(
-		bad("PNG color type {color} cannot have bit depth {depth}")
+		bad(f"PNG color type {color} cannot have bit depth {depth}")
 	)
 	if width < 1 or height < 1 or width > 2147483647 or height > 2147483647:
 		return error(bad("PNG dimensions out of range"))
@@ -209,7 +209,7 @@ export fn decode_png(data: Bytes, max_pixels: Int?) Raster!:
 	// The inflate budget is the size the header implies, so a bomb stops at that bound.
 	raw := decompress(idat.build(), CompressionFormat.Zlib, expected)?
 	if raw.length() != expected: return error(
-		bad("PNG pixel data is {raw.length()} bytes, expected {expected}")
+		bad(f"PNG pixel data is {raw.length()} bytes, expected {expected}")
 	)
 
 	// Output layout. A tRNS chunk adds alpha to gray, RGB and indexed images.
@@ -235,7 +235,7 @@ export fn decode_png(data: Bytes, max_pixels: Int?) Raster!:
 
 		for row in 0..ph:
 			filter := raw.get(pos).to_int()
-			if filter > 4: return error(bad("PNG filter type {filter}"))
+			if filter > 4: return error(bad(f"PNG filter type {filter}"))
 
 			var cur = [0].repeated(row_bytes)
 
@@ -280,7 +280,7 @@ export fn decode_png(data: Bytes, max_pixels: Int?) Raster!:
 					if color == 3:
 						if v * 3 + 2 >= palette.length(): return error(
 							bad(
-								"PNG palette index {v} out of range"
+								f"PNG palette index {v} out of range"
 							)
 						)
 

@@ -41,7 +41,7 @@ fn row_list() List[Row]:
 		rows.append(
 			Row(
 				id: i,
-				name: "user{i}",
+				name: f"user{i}",
 				tags: ["a", "b"],
 				score: i.to_float() + 0.5,
 				ok: i % 2 == 0,
@@ -58,22 +58,22 @@ fn bench_records(budget: Int, runs: Int) Void:
 	rows := row_list()
 	size := records_body(rows.clone())()
 	s := median_ns(records_body(rows), budget, runs)
-	say("records\tstringify\t{s}\t{size}\n")
+	say(f"records\tstringify\t{s}\t{size}\n")
 
 fn bench_one(name: String, op: String, budget: Int, runs: Int) Void:
 	if name == "records":
 		bench_records(budget, runs)
 		return
 
-	read := read_file("bench/perf/json/data/{name}.json").wait()
+	read := read_file(f"bench/perf/json/data/{name}.json").wait()
 
 	if bytes := read:
 		if text := bytes.decode_utf8():
 			bench_text(name, op, text, bytes.length(), budget, runs)
 		else:
-			say("{name}\tnot utf-8\n")
+			say(f"{name}\tnot utf-8\n")
 	else:
-		say("{name}\tunreadable\n")
+		say(f"{name}\tunreadable\n")
 
 fn bench_text(
 	name: String,
@@ -86,17 +86,17 @@ fn bench_text(
 	if tree := parse(text):
 		if op == "doc":
 			d := median_ns(doc_body(text.clone()), budget, runs)
-			say("{name}\tdoc\t{d}\t{size}\n")
+			say(f"{name}\tdoc\t{d}\t{size}\n")
 
 		if op != "stringify" and op != "doc":
 			p := median_ns(parse_body(text.clone()), budget, runs)
-			say("{name}\tparse\t{p}\t{size}\n")
+			say(f"{name}\tparse\t{p}\t{size}\n")
 
 		if op != "parse" and op != "doc":
 			s := median_ns(stringify_body(tree), budget, runs)
-			say("{name}\tstringify\t{s}\t{size}\n")
+			say(f"{name}\tstringify\t{s}\t{size}\n")
 	else:
-		say("{name}\tinvalid json\n")
+		say(f"{name}\tinvalid json\n")
 
 // Decodes to a record with no fields, so only the document build and its release are
 // timed.

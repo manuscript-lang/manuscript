@@ -11,7 +11,7 @@ type Resource:
 	path: String
 
 fn var Resource.close() Void!:
-	append_file(self.path, "{self.id},").wait()?
+	append_file(self.path, f"{self.id},").wait()?
 	if self.id == 98: return error(Error("failed close"))
 
 	self.path = "closed"
@@ -81,7 +81,7 @@ fn failed_close(reader: Observer, path: String) Void:
 
 test "interface borrows intact temporary wrappers in written order":
 	directory := temporary("iface-wrapper-")?
-	path := "{directory.path()}/log"
+	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
 
 	reader: Observer := Reader(1)
@@ -100,7 +100,7 @@ test "interface borrows intact temporary wrappers in written order":
 
 test "interface arguments retain cleanup through later try and faults":
 	directory := temporary("iface-wrapper-")?
-	path := "{directory.path()}/log"
+	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
 
 	reader: Observer := Reader(1)
@@ -112,7 +112,7 @@ test "interface arguments retain cleanup through later try and faults":
 
 test "interface callee errors faults and new owners preserve cleanup":
 	directory := temporary("iface-wrapper-")?
-	path := "{directory.path()}/log"
+	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
 
 	reader: Observer := Reader(1)
@@ -124,7 +124,7 @@ test "interface callee errors faults and new owners preserve cleanup":
 
 test "interface resource var arguments preserve their owners":
 	directory := temporary("iface-wrapper-")?
-	path := "{directory.path()}/log"
+	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
 
 	reader: Observer := Reader(1)
@@ -135,7 +135,7 @@ test "interface resource var arguments preserve their owners":
 
 test "interface failed temporary close leaves older owner registered":
 	directory := temporary("iface-wrapper-")?
-	path := "{directory.path()}/log"
+	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
 
 	reader: Observer := Reader(1)
@@ -151,7 +151,7 @@ fn wrapped_result(path: String) Result[Resource, String]:
 
 test "interface var fault retains the caller cleanup":
 	directory := temporary("iface-wrapper-")?
-	path := "{directory.path()}/log"
+	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
 
 	reader: Observer := Reader(1)
@@ -160,7 +160,7 @@ test "interface var fault retains the caller cleanup":
 
 test "interface Result temporaries and loop conditions keep cleanup bounded":
 	directory := temporary("iface-wrapper-")?
-	path := "{directory.path()}/log"
+	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
 
 	reader: Observer := Reader(1)

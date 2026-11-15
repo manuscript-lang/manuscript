@@ -189,7 +189,7 @@ fn ini_value(value: String) String:
 // `details`.
 fn config_error(line: Int, reason: String) Error:
 	return Error(
-		"config: line {line}: {reason}",
+		f"config: line {line}: {reason}",
 		kind: "EBADMSG",
-		details: {"line": "{line}"},
+		details: {"line": f"{line}"},
 	)

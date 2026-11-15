@@ -6,13 +6,13 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := (-35)
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
     say(
-        "{(237817325094 + (i1 + (-34)))} {((i1 + 37) + (i1 + i1))} {((237817325094 + (i1 + (-34))) < ((i1 + 37) + (i1 + i1)))} sum {(237817325094 + (i1 + (-34))) + ((i1 + 37) + (i1 + i1))}"
+        f"{(237817325094 + (i1 + (-34)))} {((i1 + 37) + (i1 + i1))} {((237817325094 + (i1 + (-34))) < ((i1 + 37) + (i1 + i1)))} sum {(237817325094 + (i1 + (-34))) + ((i1 + 37) + (i1 + i1))}"
     )
 
     bad := missing_function(3)
@@ -29,14 +29,14 @@ export fn main() Int:
         stepacc2 += 1
         acc2 += stepacc2 * stepacc2 + 3
 
-    say("acc2 = {acc2}")
+    say(f"acc2 = {acc2}")
 
     l3 := [1, 2, 3].take(0)
-    say("l3 = {l3} len {l3.length()}")
+    say(f"l3 = {l3} len {l3.length()}")
 
     s4 := (("ms" + "日本語") + "a".upper()).lower()
-    say("s4 = [{s4}]")
+    say(f"s4 = [{s4}]")
 
     f5 := 0.0
-    say("f5 = {f5}")
+    say(f"f5 = {f5}")
     return 0

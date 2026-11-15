@@ -18,4 +18,4 @@ fn main() Void:
     f["x"] = 1.5
     if var x = f.get("x"):
         x += 1.0
-    stdout().write("{m.get_or("a", 0)} {m.get_or("b", 0)} {f.get_or("x", 0.0)}\n").get()
+    stdout().write(f"{m.get_or("a", 0)} {m.get_or("b", 0)} {f.get_or("x", 0.0)}\n").get()

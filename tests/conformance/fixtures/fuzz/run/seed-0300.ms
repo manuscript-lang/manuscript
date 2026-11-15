@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -29,7 +29,7 @@ fn fact(n: Int) Int:
 
 export fn main() Int:
     b1 := false
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
     if b1:
         say(("beta" + "back\\slash"))
@@ -37,13 +37,13 @@ export fn main() Int:
         say("Tab\there".trim())
 
     i2 := (108000 % (-318606))
-    say("i2 = {i2}")
-    say("fib(32) = {fib(32)}")
-    say("fact(14) = {fact(14)}")
+    say(f"i2 = {i2}")
+    say(f"fib(32) = {fib(32)}")
+    say(f"fact(14) = {fact(14)}")
 
     f3 := (
         ((894.071 + 553.967) / (710.334 / 733.760))
         * ((990.835 / 0.0) * (164.475 / 413.096))
     )
-    say("f3 = {f3}")
+    say(f"f3 = {f3}")
     return 0

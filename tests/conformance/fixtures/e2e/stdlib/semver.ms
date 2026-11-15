@@ -29,7 +29,7 @@ test "semver rejects malformed text":
 				"semver: invalid data",
 				kind: "EBADMSG",
 			)
-		): return fail("category {text}")
+		): return fail(f"category {text}")
 
 test "semver reports numbers beyond Int":
 	(
@@ -59,7 +59,7 @@ test "semver orders by precedence":
 				(parse(text: left) | expect_ok?).compare(
 					parse(text: right) | expect_ok?
 				) != expected
-			): return fail("order {left} {right}")
+			): return fail(f"order {left} {right}")
 
 			j += 1
 
@@ -110,11 +110,11 @@ test "semver reads and orders calendar versions":
 		earlier := (parse(text: ordered[i - 1]) | expect_ok?)
 		later := (parse(text: ordered[i]) | expect_ok?)
 		if earlier.compare(later) != -1: return fail(
-			"{ordered[i - 1]} before {ordered[i]}"
+			f"{ordered[i - 1]} before {ordered[i]}"
 		)
 		if later.compare(earlier) != 1: return fail(
-			"{ordered[i]} after {ordered[i - 1]}"
+			f"{ordered[i]} after {ordered[i - 1]}"
 		)
-		if later.compare(later) != 0: return fail("{ordered[i]} equals itself")
+		if later.compare(later) != 0: return fail(f"{ordered[i]} equals itself")
 
 		i += 1

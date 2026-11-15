@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -15,26 +15,26 @@ fn gcd(a: Int, b: Int) Int:
     return gcd(b, a % b)
 
 export fn main() Int:
-    say("gcd(1595, 4472) = {gcd(1595, 4472)}")
+    say(f"gcd(1595, 4472) = {gcd(1595, 4472)}")
 
     f1 := (0.0 + (853.128 + (722.595 * 325.494)))
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
 
     s2 := ("héllo".reverse() + "42").reverse()
-    say("s2 = [{s2}]")
+    say(f"s2 = [{s2}]")
 
     i3 := ((-18) + (s2.scalar_length() % (41 - (-3))))
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     s4 := s2.upper()
-    say("s4 = [{s4}]")
+    say(f"s4 = [{s4}]")
 
     s5 := (("line\nbreak" + "  padded  ").trim() + s4)
-    say("s5 = [{s5}]")
+    say(f"s5 = [{s5}]")
 
     s6 := (s5 + "hello world").lower().reverse()
-    say("s6 = [{s6}]")
+    say(f"s6 = [{s6}]")
 
     l7 := [(-17), (-19), (-3), (-25), (-26)]
-    say("l7 = {l7} len {l7.length()}")
+    say(f"l7 = {l7} len {l7.length()}")
     return 0

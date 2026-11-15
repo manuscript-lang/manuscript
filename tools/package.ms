@@ -13,7 +13,7 @@ import (
 )
 
 fn supported(target_os: String, target_arch: String) Bool:
-	key := "{target_os}/{target_arch}"
+	key := f"{target_os}/{target_arch}"
 	return [
 		"linux/amd64", "linux/arm64", "darwin/amd64", "darwin/arm64", "windows/amd64",
 		"windows/arm64"
@@ -32,7 +32,7 @@ fn main() Int:
 		return 2
 
 	if not supported(target_os, target_arch):
-		note("Unsupported distribution target: {target_os}/{target_arch}")
+		note(f"Unsupported distribution target: {target_os}/{target_arch}")
 		return 1
 
 	executable := if target_os == "windows": "ms.exe" else: "ms"
@@ -68,32 +68,32 @@ fn main() Int:
 	)
 	if code != 0: return code
 
-	name := "manuscript-rust-{target_os}-{target_arch}"
+	name := f"manuscript-rust-{target_os}-{target_arch}"
 	create_directory("dist", recursive: true).get()
 
 	staging := temporary("ms-package-").get()
-	bundle := "{staging.path()}/{name}"
-	create_directory("{bundle}/examples/hello/src", recursive: true).get()
-	copy("target/{triple}/release/{executable}", "{bundle}/{executable}").get()
-	copy("LICENSE", "{bundle}/LICENSE").get()
-	copy("examples/hello/ms.toml", "{bundle}/examples/hello/ms.toml").get()
-	copy("examples/hello/test.ms", "{bundle}/examples/hello/test.ms").get()
-	copy("examples/hello/src/main.ms", "{bundle}/examples/hello/src/main.ms").get()
+	bundle := f"{staging.path()}/{name}"
+	create_directory(f"{bundle}/examples/hello/src", recursive: true).get()
+	copy(f"target/{triple}/release/{executable}", f"{bundle}/{executable}").get()
+	copy("LICENSE", f"{bundle}/LICENSE").get()
+	copy("examples/hello/ms.toml", f"{bundle}/examples/hello/ms.toml").get()
+	copy("examples/hello/test.ms", f"{bundle}/examples/hello/test.ms").get()
+	copy("examples/hello/src/main.ms", f"{bundle}/examples/hello/src/main.ms").get()
 
 	// `copy` writes private modes; the archive carries the usual ones.
 	for dir in ["", "/examples", "/examples/hello", "/examples/hello/src"]:
-		chmod("{bundle}{dir}", 493).get()
-	chmod("{bundle}/{executable}", 493).get()
-	chmod("{bundle}/LICENSE", 420).get()
+		chmod(f"{bundle}{dir}", 493).get()
+	chmod(f"{bundle}/{executable}", 493).get()
+	chmod(f"{bundle}/LICENSE", 420).get()
 	for file in ["ms.toml", "test.ms", "src/main.ms"]:
-		chmod("{bundle}/examples/hello/{file}", 420).get()
+		chmod(f"{bundle}/examples/hello/{file}", 420).get()
 
-	var archive = "dist/{name}.tar.gz"
-	var archive_name = "{name}.tar.gz"
+	var archive = f"dist/{name}.tar.gz"
+	var archive_name = f"{name}.tar.gz"
 
 	if target_os == "windows":
-		archive = "dist/{name}.zip"
-		archive_name = "{name}.zip"
+		archive = f"dist/{name}.zip"
+		archive_name = f"{name}.zip"
 		void remove(archive.clone(), recursive: false)
 
 		root := working_directory().get()
@@ -104,7 +104,7 @@ fn main() Int:
 				"a",
 				"-tzip",
 				"-bso0",
-				"{root}/dist/{archive_name}",
+				f"{root}/dist/{archive_name}",
 				name.clone(),
 			],
 		)
@@ -120,6 +120,6 @@ fn main() Int:
 	if code != 0: return code
 
 	digest := file_sha256(archive)
-	write_file("{archive}.sha256", "{digest}  {archive_name}\n", replace: true).wait().get()
-	print("{archive}")
+	write_file(f"{archive}.sha256", f"{digest}  {archive_name}\n", replace: true).wait().get()
+	print(f"{archive}")
 	return 0

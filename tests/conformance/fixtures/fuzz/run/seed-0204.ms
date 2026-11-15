@@ -6,38 +6,38 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     f1 := 8.5
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
 
     l2 := [(-21), (-9)]
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
     say(
-        "{((-33) + ((-28) + (-6)))} {(-711827)} {(((-33) + ((-28) + (-6))) < (-711827))} sum {((-33) + ((-28) + (-6))) + (-711827)}"
+        f"{((-33) + ((-28) + (-6)))} {(-711827)} {(((-33) + ((-28) + (-6))) < (-711827))} sum {((-33) + ((-28) + (-6))) + (-711827)}"
     )
 
     f3 := (361.462 + ((166.25 / f1) / (574.743 - 252.130)))
-    say("f3 = {f3}")
+    say(f"f3 = {f3}")
 
     var l4 = l2.clone()
     l4.append(70)
-    say("l4 = {l4} len {l4.length()}")
+    say(f"l4 = {l4} len {l4.length()}")
 
     i5 := ((((-39) % 40) - ((-1) / 291528)) * 48)
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     l6 := l4.map(fn x: x * 7)
-    say("l6 = {l6} len {l6.length()}")
+    say(f"l6 = {l6} len {l6.length()}")
 
     var l7 = l2.clone()
     l7.append(58)
-    say("l7 = {l7} len {l7.length()}")
+    say(f"l7 = {l7} len {l7.length()}")
 
     f8 := (((f1 * f1) / (0.0 * 886.372)) + ((390.582 / 566.460) + (313.25 * f1)))
-    say("f8 = {f8}")
+    say(f"f8 = {f8}")
 
     big9 := -9223372036854775808
-    say("{big9 - 4}")
+    say(f"{big9 - 4}")
     return 0

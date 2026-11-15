@@ -6,7 +6,7 @@ import (
 bench "csv.stringify":
 	var rows: List[List[String]] = []
 	for i in 0..5000:
-		rows.append(["{i}", "name {i}", "a,b", "quote\"d"])
+		rows.append([f"{i}", f"name {i}", "a,b", "quote\"d"])
 
 	fn work() Result[Void, Error]:
 		if s := stringify(rows): return keep(s.length())
@@ -17,7 +17,7 @@ bench "csv.stringify":
 bench "csv.parse":
 	var rows: List[List[String]] = []
 	for i in 0..5000:
-		rows.append(["{i}", "name {i}", "a,b", "quote\"d"])
+		rows.append([f"{i}", f"name {i}", "a,b", "quote\"d"])
 
 	csv_text := stringify(rows).get("")
 
@@ -29,7 +29,7 @@ bench "csv.parse":
 
 bench "csv.parse escaped quote field":
 	value := "a\"".repeat(8000)?
-	text := "\"{value.replace("\"", "\"\"")}\"\n"
+	text := f"\"{value.replace("\"", "\"\"")}\"\n"
 
 	fn work() Void!:
 		rows := parse(text)?

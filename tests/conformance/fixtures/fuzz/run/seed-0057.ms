@@ -6,28 +6,28 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := (-49)
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     i2 := ((-17) * i1)
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     i3 := 20
-    say("i3 = {i3}")
-    say("{(i2 + i3)} {(-i3)} {((i2 + i3) < (-i3))} sum {(i2 + i3) + (-i3)}")
+    say(f"i3 = {i3}")
+    say(f"{(i2 + i3)} {(-i3)} {((i2 + i3) < (-i3))} sum {(i2 + i3) + (-i3)}")
 
     s4 := "Tab\there"
-    say("s4 = [{s4}]")
+    say(f"s4 = [{s4}]")
 
     b5 := false
-    say("b5 = {b5}")
+    say(f"b5 = {b5}")
 
     l6 := [1, 2, 3].take(0)
-    say("l6 = {l6} len {l6.length()}")
+    say(f"l6 = {l6} len {l6.length()}")
 
     f7 := (((978.25 / 5.0e19) * (0.0 * 824.895)) * 643.25)
-    say("f7 = {f7}")
+    say(f"f7 = {f7}")
     return 0

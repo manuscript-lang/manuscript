@@ -6,16 +6,16 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     bad := Map[Int, Int]().get(1, 2, 3)
     i2 := 39
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     s3 := "a"
-    say("s3 = [{s3}]")
+    say(f"s3 = [{s3}]")
 
-    s4 := ("{i2}:" + (s3 + "beta")).trim()
-    say("s4 = [{s4}]")
+    s4 := (f"{i2}:" + (s3 + "beta")).trim()
+    say(f"s4 = [{s4}]")
     return 0

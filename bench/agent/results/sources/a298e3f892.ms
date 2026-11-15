@@ -102,7 +102,7 @@ export fn main() Int:
     for category in totals.keys().sorted(compare_text):
         out.append(category + ": " + format_cents(totals.get(category).get()) + "\n")
     if skipped > 0:
-        out.append("skipped: {skipped}\n")
+        out.append(f"skipped: {skipped}\n")
     stdout().write(out.build()).get()
     stdout().flush().get()
     return 0

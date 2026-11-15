@@ -6,15 +6,15 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     l1 := [8, (-26), (-27)]
-    say("l1 = {l1} len {l1.length()}")
+    say(f"l1 = {l1} len {l1.length()}")
 
     bad := undefined_name + 1
     f2 := 802.975
-    say("f2 = {f2}")
+    say(f"f2 = {f2}")
 
     if ((f2 < 993.124) and false):
         say("beta".upper())
@@ -22,8 +22,8 @@ export fn main() Int:
         say("日本語")
 
     i3 := l1.get(1)
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     b4 := (((i3 % 696172565637) / ((-16) * i3)) != (i3 * i3))
-    say("b4 = {b4}")
+    say(f"b4 = {b4}")
     return 0

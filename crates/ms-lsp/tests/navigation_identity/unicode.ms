@@ -1,2 +1,2 @@
 export fn identity(value: Int) String:
-    return "😀é{value}"
+    return f"😀é{value}"

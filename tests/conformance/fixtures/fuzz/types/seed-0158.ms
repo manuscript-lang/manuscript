@@ -6,22 +6,22 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     f1 := (
         ((35.673 - 154.004) - (900.861 + 0.0))
         - ((309.491 + 711.365) * (6.5 * 7.0e-3))
     )
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
 
     bad := (1 < 2) < 3
     say(
-        "{((32 % 50) + (-9))} {(-782998)} {(((32 % 50) + (-9)) < (-782998))} sum {((32 % 50) + (-9)) + (-782998)}"
+        f"{((32 % 50) + (-9))} {(-782998)} {(((32 % 50) + (-9)) < (-782998))} sum {((32 % 50) + (-9)) + (-782998)}"
     )
 
     s2 := "a"
-    say("s2 = [{s2}]")
+    say(f"s2 = [{s2}]")
 
     if (not (false and false)):
         say("gamma".reverse())
@@ -29,8 +29,8 @@ export fn main() Int:
         say(s2)
 
     i3 := 9223372036854775806
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     i4 := (((547515 + 8) - i3) + s2.scalar_length())
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
     return 0

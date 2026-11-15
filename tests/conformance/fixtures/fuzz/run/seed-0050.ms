@@ -6,32 +6,32 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     f1 := (455.265 - 440.732)
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
 
     s2 := ("日本語" + "")
-    say("s2 = [{s2}]")
+    say(f"s2 = [{s2}]")
 
     f3 := (((9.0e9 / 62.770) / (0.0 * f1)) + (f1 - f1))
-    say("f3 = {f3}")
+    say(f"f3 = {f3}")
 
     i4 := 16
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     b5 := ((13 - (i4 - i4)) != (11 % s2.scalar_length()))
-    say("b5 = {b5}")
+    say(f"b5 = {b5}")
     say(
-        "{(657217 * 38)} {(-(-21))} {((657217 * 38) < (-(-21)))} sum {(657217 * 38) + (-(-21))}"
+        f"{(657217 * 38)} {(-(-21))} {((657217 * 38) < (-(-21)))} sum {(657217 * 38) + (-(-21))}"
     )
 
     l6 := [16, 22, 19, 20]
-    say("l6 = {l6} len {l6.length()}")
+    say(f"l6 = {l6} len {l6.length()}")
 
     b7 := (false and (f1 == (f1 - 927.166)))
-    say("b7 = {b7}")
+    say(f"b7 = {b7}")
 
     var acc8 = 0
     var stepacc8 = 0
@@ -40,11 +40,11 @@ export fn main() Int:
         stepacc8 += 1
         acc8 += stepacc8 * stepacc8 + 4
 
-    say("acc8 = {acc8}")
+    say(f"acc8 = {acc8}")
 
     b9 := false
-    say("b9 = {b9}")
+    say(f"b9 = {b9}")
 
     i10 := (((i4 / i4) * s2.scalar_length()) + ((31 + i4) - (44 * i4)))
-    say("i10 = {i10}")
+    say(f"i10 = {i10}")
     return 0

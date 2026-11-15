@@ -55,7 +55,7 @@ export fn decode_ppm(data: Bytes, max_pixels: Int?) Raster!:
 	height := tall[0]
 	maxval := peak[0]
 	if maxval < 1 or maxval > 65535: return error(
-		bad("PNM maxval {maxval} out of range")
+		bad(f"PNM maxval {maxval} out of range")
 	)
 
 	// Exactly one whitespace byte separates the header from the raster.
@@ -100,7 +100,7 @@ export fn encode_ppm(width: Int, height: Int, channels: Int, pixels: List[UInt8]
 
 	var out = BytesBuilder()
 	magic := if channels == 3: "P6" else: "P5"
-	out.append_bytes("{magic}\n{width} {height}\n255\n".to_bytes())
+	out.append_bytes(f"{magic}\n{width} {height}\n255\n".to_bytes())
 	for b in pixels:
 		out.append(b)
 	return ok(out.build())

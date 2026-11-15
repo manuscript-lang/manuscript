@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -16,22 +16,22 @@ fn gcd(a: Int, b: Int) Int:
 
 export fn main() Int:
     s1 := ("MiXeD CaSe" + "gamma").trim()
-    say("s1 = [{s1}]")
+    say(f"s1 = [{s1}]")
 
     f2 := (((379.113 * 0.0) + (0.0 - 378.25)) / 259.25)
-    say("f2 = {f2}")
+    say(f"f2 = {f2}")
 
     i3 := ((-704121) % ((-(-1)) + (-13)))
-    say("i3 = {i3}")
-    say("{15} {(-43)} {(15 < (-43))} sum {15 + (-43)}")
+    say(f"i3 = {i3}")
+    say(f"{15} {(-43)} {(15 < (-43))} sum {15 + (-43)}")
 
     i4 := i3
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     s5 := s1
-    say("s5 = [{s5}]")
-    say("gcd(4638, 1505) = {gcd(4638, 1505)}")
+    say(f"s5 = [{s5}]")
+    say(f"gcd(4638, 1505) = {gcd(4638, 1505)}")
 
     i6 := (-746264)
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
     return 0

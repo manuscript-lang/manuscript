@@ -11,9 +11,9 @@ fn trial(version: String, per: Int) List[String]:
 	for op in operations():
 		if version == "go" and op.name == "sorted_map_add_contains": continue
 
-		lines.append("{version} {op.name} {op.count} {per * op.count}")
+		lines.append(f"{version} {op.name} {op.count} {per * op.count}")
 
-	lines.append("{version} # end")
+	lines.append(f"{version} # end")
 	return lines
 
 fn trials(per: Int) List[String]:

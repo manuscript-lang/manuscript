@@ -78,24 +78,24 @@ export fn main() Int:
         totals[rec.path.clone()] = totals.get_or(rec.path, 0) + rec.latency
 
     var out = List[String]()
-    out.append("valid: {records.length()}")
-    out.append("malformed: {malformed}")
+    out.append(f"valid: {records.length()}")
+    out.append(f"malformed: {malformed}")
     for level in ["DEBUG", "INFO", "WARN", "ERROR"]:
-        out.append("{level}: {levels.get_or(level, 0)}")
+        out.append(f"{level}: {levels.get_or(level, 0)}")
 
     c2 := classes.get_or("2", 0)
     c3 := classes.get_or("3", 0)
     c4 := classes.get_or("4", 0)
     c5 := classes.get_or("5", 0)
     out.append(
-        "status: 2xx={c2} 3xx={c3} 4xx={c4} 5xx={c5} other={records.length() - c2 - c3 - c4 - c5}"
+        f"status: 2xx={c2} 3xx={c3} 4xx={c4} 5xx={c5} other={records.length() - c2 - c3 - c4 - c5}"
     )
     latencies.sort()
 
     n := latencies.length()
     var p95 = 0
     if n > 0: p95 = latencies[(95 * n + 99) / 100 - 1]
-    out.append("p95: {p95}")
+    out.append(f"p95: {p95}")
 
     var best = -1
     for i in 0..records.length():
@@ -103,7 +103,7 @@ export fn main() Int:
 
     if best >= 0:
         rec := records[best]
-        out.append("slowest: {rec.latency} {rec.method} {rec.path} {rec.timestamp}")
+        out.append(f"slowest: {rec.latency} {rec.method} {rec.path} {rec.timestamp}")
 
     var stats = List[PathStat]()
     for path in counts.keys():
@@ -119,7 +119,7 @@ export fn main() Int:
         if i >= 3: break
 
         s := stats[i]
-        out.append("{s.path} {s.count} avg={s.total / s.count}")
+        out.append(f"{s.path} {s.count} avg={s.total / s.count}")
 
     stdout().write(out.join("\n") + "\n").get()
     return 0

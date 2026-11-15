@@ -33,7 +33,7 @@ test "cancelling a recursive watch after a burst of events releases the watcher 
 	var ready = pipe[Int](4)
 	var reader = ready.reader()
 	switch := cancel_switch()
-	last := "{path}/d19"
+	last := f"{path}/d19"
 	work := promise(fn: follow(path.clone(), last.clone(), ready.writer())).with(
 		options: PromiseOptions(cancel: switch.signal())
 	)
@@ -41,7 +41,7 @@ test "cancelling a recursive watch after a burst of events releases the watcher 
 	var i = 0
 
 	while i < 20:
-		create_directory("{path}/d{i}/e/f", recursive: true)?
+		create_directory(f"{path}/d{i}/e/f", recursive: true)?
 		i += 1
 
 	_arrived := reader.next()?

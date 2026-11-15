@@ -17,7 +17,7 @@ fn main() Void:
         selected = fn(value: Int): value + 1
 
     n := selected(3)
-    _r := stdout().write("{lookup(1)} {n} {run(same)} {count(fn(x: Int): x > 4)}\n")
+    _r := stdout().write(f"{lookup(1)} {n} {run(same)} {count(fn(x: Int): x > 4)}\n")
 
 fn present[T](value: T) T?:
     return value

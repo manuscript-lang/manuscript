@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -36,19 +36,19 @@ fn fact(n: Int) Int:
 
 export fn main() Int:
     f1 := 656.722
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
 
     i2 := (-644929)
-    say("i2 = {i2}")
-    say("collatz(1577) = {collatz(1577)}")
+    say(f"i2 = {i2}")
+    say(f"collatz(1577) = {collatz(1577)}")
 
     l3 := [17]
-    say("l3 = {l3} len {l3.length()}")
-    say("gcd(965, 2836) = {gcd(965, 2836)}")
-    say("fact(17) = {fact(17)}")
+    say(f"l3 = {l3} len {l3.length()}")
+    say(f"gcd(965, 2836) = {gcd(965, 2836)}")
+    say(f"fact(17) = {fact(17)}")
 
     l4 := l3.concat(l3)
-    say("l4 = {l4} len {l4.length()}")
+    say(f"l4 = {l4} len {l4.length()}")
 
     var acc5 = 0
 
@@ -58,8 +58,8 @@ export fn main() Int:
         else:
             acc5 -= 1
 
-    say("acc5 = {acc5}")
-    say("collatz(470) = {collatz(470)}")
+    say(f"acc5 = {acc5}")
+    say(f"collatz(470) = {collatz(470)}")
 
     var acc6 = 0
     var stepacc6 = 0
@@ -68,10 +68,10 @@ export fn main() Int:
         stepacc6 += 1
         acc6 += stepacc6 * stepacc6 + 8
 
-    say("acc6 = {acc6}")
+    say(f"acc6 = {acc6}")
 
-    s7 := ("Tab\there" + (("{(-34)}:" + "naïve") + ("{(30 - i2)}:" + "Tab\there")))
-    say("s7 = [{s7}]")
+    s7 := ("Tab\there" + ((f"{(-34)}:" + "naïve") + (f"{(30 - i2)}:" + "Tab\there")))
+    say(f"s7 = [{s7}]")
 
     if ((false or true) and (631.501 != 36.463)):
         say(s7.lower())
@@ -79,23 +79,23 @@ export fn main() Int:
         say(("  padded  " + "日本語"))
 
     i8 := ((((-22) * (-32)) % 46390) - ((256779 + i2) - (-39)))
-    say("i8 = {i8}")
+    say(f"i8 = {i8}")
 
     i9 := l4.length()
-    say("i9 = {i9}")
+    say(f"i9 = {i9}")
 
     l10 := [15, (-10)]
-    say("l10 = {l10} len {l10.length()}")
+    say(f"l10 = {l10} len {l10.length()}")
 
-    s11 := ("{l4.length()}:" + s7.replace(s7, s7).replace("", "Tab\there"))
-    say("s11 = [{s11}]")
+    s11 := (f"{l4.length()}:" + s7.replace(s7, s7).replace("", "Tab\there"))
+    say(f"s11 = [{s11}]")
 
     i12 := (i2 + i2)
-    say("i12 = {i12}")
+    say(f"i12 = {i12}")
 
     f13 := (((f1 + f1) / 123.408) * ((4.707 - f1) / 263.975))
-    say("f13 = {f13}")
+    say(f"f13 = {f13}")
 
     i14 := ((i2 + (-i9)) * (i2 / (11 + i2)))
-    say("i14 = {i14}")
+    say(f"i14 = {i14}")
     return 0

@@ -103,9 +103,9 @@ fn answer(line: String) String:
 
 		a := tokens[1].to_bytes()
 		b := tokens[2].to_bytes()
-		if command == "lcs": return "{lcs(a, b)}"
+		if command == "lcs": return f"{lcs(a, b)}"
 
-		return "{edit(a, b)}"
+		return f"{edit(a, b)}"
 
 	if command == "knap":
 		if tokens.length() < 2: return BAD
@@ -127,7 +127,7 @@ fn answer(line: String) String:
 			ws.append(w)
 			vs.append(v)
 
-		return "{knap(cap, ws, vs)}"
+		return f"{knap(cap, ws, vs)}"
 
 	if command == "coins":
 		if tokens.length() < 3: return BAD
@@ -146,7 +146,7 @@ fn answer(line: String) String:
 		fewest := coins(amount, denoms)
 		if fewest > amount: return "impossible"
 
-		return "{fewest}"
+		return f"{fewest}"
 
 	return BAD
 

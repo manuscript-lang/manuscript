@@ -44,7 +44,7 @@ fn say(label: String) fn(var HttpExchange, RouteParams) Void!:
 fn show(var exchange: HttpExchange, params: RouteParams) Void!:
 	id := params.get_or("id", "-")
 	rest := params.get_or("rest", "-")
-	return reply(var exchange, text(200, "{id}|{rest}"))
+	return reply(var exchange, text(200, f"{id}|{rest}"))
 
 fn body_of(response: HttpResponse) String:
 	return response.body.decode_utf8().get("")
@@ -119,7 +119,7 @@ test "a streaming GET route answers HEAD, dropping the body writes":
 	client := http_client(HttpClientOptions())?
 	var over_socket = client.request(
 		HttpMethod.Head,
-		"http://{server.address()}/s",
+		f"http://{server.address()}/s",
 		headers(),
 	)?
 	expect_equal(over_socket.metadata.status, 200)?
@@ -238,7 +238,7 @@ fn small_reads(var exchange: HttpExchange, params: RouteParams) Void!:
 	end := exchange.read(1)?
 	a := first.get(Bytes([])).decode_utf8().get("")
 	b := second.get(Bytes([])).decode_utf8().get("")
-	return reply(var exchange, text(200, "{a}|{b}|{end.is_none()}"))
+	return reply(var exchange, text(200, f"{a}|{b}|{end.is_none()}"))
 
 test "in-process reads retain the unread body after a bounded chunk":
 	var r = Router()
@@ -262,7 +262,7 @@ fn read_sizes(var exchange: HttpExchange, params: RouteParams) Void!:
 	end := exchange.read(limit)?
 	a := first.get(Bytes([])).length()
 	b := second.get(Bytes([])).length()
-	return reply(var exchange, text(200, "{a}|{b}|{end.is_none()}"))
+	return reply(var exchange, text(200, f"{a}|{b}|{end.is_none()}"))
 
 test "in-process reads cap default and explicit chunks at 65536 bytes":
 	var r = Router()
@@ -272,7 +272,7 @@ test "in-process reads cap default and explicit chunks at 65536 bytes":
 		response := r.call(
 			HttpRequest(
 				method: HttpMethod.Post,
-				path: "/{mode}",
+				path: f"/{mode}",
 				query: "",
 				headers: headers(),
 				body: "x".repeat(65537).get("").to_bytes(),
@@ -283,7 +283,7 @@ test "in-process reads cap default and explicit chunks at 65536 bytes":
 fn read_empty(var exchange: HttpExchange, params: RouteParams) Void!:
 	first := exchange.read()?
 	second := exchange.read()?
-	return reply(var exchange, text(200, "{first.is_none()}|{second.is_none()}"))
+	return reply(var exchange, text(200, f"{first.is_none()}|{second.is_none()}"))
 
 test "in-process reads report EOF immediately for an empty body":
 	var r = Router()
@@ -321,7 +321,7 @@ test "the router serves over a socket":
 	client := http_client(HttpClientOptions())?
 	var response = client.request(
 		HttpMethod.Get,
-		"http://{server.address()}/users/9",
+		f"http://{server.address()}/users/9",
 		headers(),
 	)?
 	expect_equal(response.metadata.status, 200)?
@@ -331,7 +331,7 @@ test "the router serves over a socket":
 
 	missing := client.request(
 		HttpMethod.Delete,
-		"http://{server.address()}/users",
+		f"http://{server.address()}/users",
 		headers(),
 	)?
 	expect_equal(missing.metadata.status, 405)?
@@ -399,7 +399,7 @@ test "json and redirect build responses":
 
 	sent := r.call(get("/j"))?
 	expect_equal(sent.status, 201)?
-	expect_equal(body_of(sent), "\{\"name\":\"ok\",\"count\":2\}")?
+	expect_equal(body_of(sent), "{\"name\":\"ok\",\"count\":2}")?
 	expect_equal(sent.headers.values("Content-Type").join(","), "application/json")?
 
 	moved_to := r.call(get("/m"))?
@@ -460,7 +460,7 @@ fn logged(path: String) String:
 
 test "access_log writes one record per request":
 	dir := temporary("ms-router-log-") | expect_ok?
-	lines := "{dir.path()}/lines"
+	lines := f"{dir.path()}/lines"
 	logger := (create(Sink(path: lines.clone()), LoggerOptions(timestamp: false))).get()
 	var r = Router()
 	r.use(access_log(logger))
@@ -480,7 +480,7 @@ fn no_content(var exchange: HttpExchange, params: RouteParams) Void!:
 
 test "access_log counts only the body bytes that are sent":
 	dir := temporary("ms-router-log-head-") | expect_ok?
-	lines := "{dir.path()}/lines"
+	lines := f"{dir.path()}/lines"
 	logger := (create(Sink(path: lines.clone()), LoggerOptions(timestamp: false))).get()
 	var r = Router()
 	r.use(access_log(logger))

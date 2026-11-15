@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -16,7 +16,7 @@ fn gcd(a: Int, b: Int) Int:
 
 export fn main() Int:
     l1 := [24, (-19)]
-    say("l1 = {l1} len {l1.length()}")
+    say(f"l1 = {l1} len {l1.length()}")
 
     var acc2 = 0
     var stepacc2 = 0
@@ -25,16 +25,16 @@ export fn main() Int:
         stepacc2 += 1
         acc2 += stepacc2 * stepacc2 + (-5)
 
-    say("acc2 = {acc2}")
+    say(f"acc2 = {acc2}")
 
     i3 := (-29)
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
     say(
-        "{((i3 + i3) * ((-3) / i3))} {((-(-10)) / (i3 + i3))} {(((i3 + i3) * ((-3) / i3)) < ((-(-10)) / (i3 + i3)))} sum {((i3 + i3) * ((-3) / i3)) + ((-(-10)) / (i3 + i3))}"
+        f"{((i3 + i3) * ((-3) / i3))} {((-(-10)) / (i3 + i3))} {(((i3 + i3) * ((-3) / i3)) < ((-(-10)) / (i3 + i3)))} sum {((i3 + i3) * ((-3) / i3)) + ((-(-10)) / (i3 + i3))}"
     )
 
     s4 := "日本語".trim()
-    say("s4 = [{s4}]")
+    say(f"s4 = [{s4}]")
 
     if ((i3 + (-4)) >= (20 % i3)):
         say((s4 + "emoji 😀"))
@@ -46,38 +46,38 @@ export fn main() Int:
     else:
         say("hello world".replace("emoji 😀", "delta"))
 
-    say("gcd(3648, 1897) = {gcd(3648, 1897)}")
+    say(f"gcd(3648, 1897) = {gcd(3648, 1897)}")
 
     b5 := true
-    say("b5 = {b5}")
+    say(f"b5 = {b5}")
 
     i6 := 28
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     i7 := (-42)
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
     say(
-        "{((i6 + i3) * (731860 - i7))} {(-(i6 + i3))} {(((i6 + i3) * (731860 - i7)) < (-(i6 + i3)))} sum {((i6 + i3) * (731860 - i7)) + (-(i6 + i3))}"
+        f"{((i6 + i3) * (731860 - i7))} {(-(i6 + i3))} {(((i6 + i3) * (731860 - i7)) < (-(i6 + i3)))} sum {((i6 + i3) * (731860 - i7)) + (-(i6 + i3))}"
     )
 
     i8 := ((-(i7 + i7)) / i3)
-    say("i8 = {i8}")
+    say(f"i8 = {i8}")
     say(
-        "{((i6 + 210840) * i8)} {((-i3) - i8)} {(((i6 + 210840) * i8) < ((-i3) - i8))} sum {((i6 + 210840) * i8) + ((-i3) - i8)}"
+        f"{((i6 + 210840) * i8)} {((-i3) - i8)} {(((i6 + 210840) * i8) < ((-i3) - i8))} sum {((i6 + 210840) * i8) + ((-i3) - i8)}"
     )
 
     l9 := l1.take(0)
-    say("l9 = {l9} len {l9.length()}")
+    say(f"l9 = {l9} len {l9.length()}")
 
     i10 := l9.length()
-    say("i10 = {i10}")
+    say(f"i10 = {i10}")
 
     b11 := (("back\\slash".starts_with(s4) and true) or (s4 + "a").is_empty())
-    say("b11 = {b11}")
+    say(f"b11 = {b11}")
 
     i12 := (-i6)
-    say("i12 = {i12}")
+    say(f"i12 = {i12}")
 
     i13 := (-15)
-    say("i13 = {i13}")
+    say(f"i13 = {i13}")
     return 0

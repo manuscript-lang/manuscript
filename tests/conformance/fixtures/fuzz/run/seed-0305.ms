@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -23,7 +23,7 @@ fn fib(n: Int) Int:
 
 export fn main() Int:
     s1 := "42"
-    say("s1 = [{s1}]")
+    say(f"s1 = [{s1}]")
 
     if ((-18) != (-34)):
         say(s1.lower())
@@ -31,26 +31,26 @@ export fn main() Int:
         say("beta")
 
     f2 := (((0.0 - 511.25) - (3.0e1 + 1.5)) + (989.348 / (0.0 + 337.405)))
-    say("f2 = {f2}")
-    say("fib(59) = {fib(59)}")
+    say(f"f2 = {f2}")
+    say(f"fib(59) = {fib(59)}")
 
     b3 := (not ((s1 + s1) != (s1 + "ms")))
-    say("b3 = {b3}")
+    say(f"b3 = {b3}")
 
     f4 := (((f2 * f2) / f2) + ((f2 - f2) - (88.541 * f2)))
-    say("f4 = {f4}")
+    say(f"f4 = {f4}")
 
     i5 := (-(46 % (45 / (-32))))
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     l6 := [(-24)]
-    say("l6 = {l6} len {l6.length()}")
+    say(f"l6 = {l6} len {l6.length()}")
     say(
-        "{((i5 - i5) + (i5 * i5))} {s1.scalar_length()} {(((i5 - i5) + (i5 * i5)) < s1.scalar_length())} sum {((i5 - i5) + (i5 * i5)) + s1.scalar_length()}"
+        f"{((i5 - i5) + (i5 * i5))} {s1.scalar_length()} {(((i5 - i5) + (i5 * i5)) < s1.scalar_length())} sum {((i5 - i5) + (i5 * i5)) + s1.scalar_length()}"
     )
 
     f7 := ((f4 / f2) * ((7.5 + 0.0) + (239.558 / f2)))
-    say("f7 = {f7}")
+    say(f"f7 = {f7}")
 
     var acc8 = 0
 
@@ -60,11 +60,11 @@ export fn main() Int:
         else:
             acc8 -= 1
 
-    say("acc8 = {acc8}")
+    say(f"acc8 = {acc8}")
 
     b9 := b3
-    say("b9 = {b9}")
+    say(f"b9 = {b9}")
 
     f10 := (((f7 * f7) - (632.960 * 642.442)) - f4)
-    say("f10 = {f10}")
+    say(f"f10 = {f10}")
     return 0

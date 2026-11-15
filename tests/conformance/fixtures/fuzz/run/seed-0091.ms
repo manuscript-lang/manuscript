@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -18,35 +18,35 @@ export fn main() Int:
     if (false or false):
         say("x".lower())
     else:
-        say(("42" + "brace\{s\}"))
+        say(("42" + "brace{s}"))
 
     l1 := [1, 2, 3].take(0)
-    say("l1 = {l1} len {l1.length()}")
+    say(f"l1 = {l1} len {l1.length()}")
 
     i2 := ((((-47) * 8) + 24) + ((115902 + (-14)) - 632383438090))
-    say("i2 = {i2}")
-    say("{i2} {i2} {(i2 < i2)} sum {i2 + i2}")
+    say(f"i2 = {i2}")
+    say(f"{i2} {i2} {(i2 < i2)} sum {i2 + i2}")
 
     f3 := 539.333
-    say("f3 = {f3}")
-    say("{i2} {i2} {(i2 < i2)} sum {i2 + i2}")
+    say(f"f3 = {f3}")
+    say(f"{i2} {i2} {(i2 < i2)} sum {i2 + i2}")
 
     l4 := l1.drop(1)
-    say("l4 = {l4} len {l4.length()}")
+    say(f"l4 = {l4} len {l4.length()}")
 
     i5 := (((i2 - i2) / (9 + i2)) + (-41))
-    say("i5 = {i5}")
-    say("gcd(1352, 4833) = {gcd(1352, 4833)}")
+    say(f"i5 = {i5}")
+    say(f"gcd(1352, 4833) = {gcd(1352, 4833)}")
 
     f6 := 20.534
-    say("f6 = {f6}")
+    say(f"f6 = {f6}")
 
     l7 := [1, 2, 3].take(0)
-    say("l7 = {l7} len {l7.length()}")
+    say(f"l7 = {l7} len {l7.length()}")
 
     i8 := (i2 - l1.length())
-    say("i8 = {i8}")
+    say(f"i8 = {i8}")
 
     i9 := (-i2)
-    say("i9 = {i9}")
+    say(f"i9 = {i9}")
     return 0

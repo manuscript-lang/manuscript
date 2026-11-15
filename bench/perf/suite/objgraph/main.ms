@@ -73,14 +73,14 @@ fn main() Void:
 		x = lcg(x)
 		root.insert(x % 2000000000)
 
-	print("bst {root.count()} {root.height()} {root.sum() % 1000003}")
+	print(f"bst {root.count()} {root.height()} {root.sum() % 1000003}")
 
 	var nodes = 0
 	for round in 0..40:
 		nodes += count(make(16))
-	print("trees {nodes}")
+	print(f"trees {nodes}")
 
 	var head: Link? = none
 	for i in 0..1000000:
 		head = Link(i, head)
-	print("list {sum(head)}")
+	print(f"list {sum(head)}")

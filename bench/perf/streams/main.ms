@@ -20,7 +20,7 @@ fn say(text: String) Void:
 
 fn report(name: String, n: Int, start: Instant, sum: Int) Void:
 	ns := monotonic().difference(start).to_nanoseconds()
-	say("{name} {ns.to_float() / n.to_float()} {sum}\n")
+	say(f"{name} {ns.to_float() / n.to_float()} {sum}\n")
 
 // A list as a `Source`, read by index.
 type ListSource:
@@ -197,7 +197,7 @@ fn main() Void:
 	var builder = BytesBuilder()
 	rows := 1000000
 	for i in 0..rows:
-		builder.append_bytes("line number {i} of the log\n".to_bytes())
+		builder.append_bytes(f"line number {i} of the log\n".to_bytes())
 
 	data := builder.build()
 	t = monotonic()

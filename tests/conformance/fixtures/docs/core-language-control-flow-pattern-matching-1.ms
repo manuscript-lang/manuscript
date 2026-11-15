@@ -4,8 +4,8 @@
 fn describe(payment: Payment) String:
     match payment:
         Paid(receipt):
-            return "Paid: {receipt}"
+            return f"Paid: {receipt}"
         Declined(reason):
-            return "Declined: {reason}"
+            return f"Declined: {reason}"
         Pending(reference):
-            return "Pending: {reference}"
+            return f"Pending: {reference}"

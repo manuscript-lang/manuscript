@@ -45,7 +45,9 @@ fn main() Void:
 	t0 := monotonic().tick
 	b := a.sorted(fn p, q: p.kind - q.kind)
 	t1 := monotonic().tick
-	print("owned-dups-sorted {us(t0, t1)} {b[0].kind + b[n - 1].kind + b[1000].id % 7}")
+	print(
+		f"owned-dups-sorted {us(t0, t1)} {b[0].kind + b[n - 1].kind + b[1000].id % 7}"
+	)
 
 	var c = events(n, 1000)
 	t2 := monotonic().tick
@@ -53,7 +55,7 @@ fn main() Void:
 
 	t3 := monotonic().tick
 	print(
-		"owned-dups-inplace {us(t2, t3)} {c[0].kind + c[n - 1].kind + c[1000].id % 7}"
+		f"owned-dups-inplace {us(t2, t3)} {c[0].kind + c[n - 1].kind + c[1000].id % 7}"
 	)
 
 	d := events(n, 1000000000)
@@ -61,21 +63,23 @@ fn main() Void:
 	e := d.sorted(fn p, q: p.kind - q.kind)
 	t5 := monotonic().tick
 	print(
-		"owned-distinct-sorted {us(t4, t5)} {e[0].kind + e[n - 1].kind + e[1000].id % 7}"
+		f"owned-distinct-sorted {us(t4, t5)} {e[0].kind + e[n - 1].kind + e[1000].id % 7}"
 	)
 
 	f := plains(n, 1000)
 	t6 := monotonic().tick
 	g := f.sorted(fn p, q: p.kind - q.kind)
 	t7 := monotonic().tick
-	print("plain-dups-sorted {us(t6, t7)} {g[0].kind + g[n - 1].kind + g[1000].id % 7}")
+	print(
+		f"plain-dups-sorted {us(t6, t7)} {g[0].kind + g[n - 1].kind + g[1000].id % 7}"
+	)
 
 	h := plains(n, 1000000000)
 	t8 := monotonic().tick
 	i := h.sorted(fn p, q: p.kind - q.kind)
 	t9 := monotonic().tick
 	print(
-		"plain-distinct-sorted {us(t8, t9)} {i[0].kind + i[n - 1].kind + i[1000].id % 7}"
+		f"plain-distinct-sorted {us(t8, t9)} {i[0].kind + i[n - 1].kind + i[1000].id % 7}"
 	)
 
 	var s: List[Plain] = []
@@ -86,5 +90,5 @@ fn main() Void:
 	r := s.sorted(fn p, q: p.kind - q.kind)
 	t11 := monotonic().tick
 	print(
-		"plain-nearly-sorted {us(t10, t11)} {r[0].kind + r[n - 1].kind + r[1000].id % 7}"
+		f"plain-nearly-sorted {us(t10, t11)} {r[0].kind + r[n - 1].kind + r[1000].id % 7}"
 	)

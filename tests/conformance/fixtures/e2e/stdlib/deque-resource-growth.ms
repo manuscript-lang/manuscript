@@ -12,7 +12,7 @@ type Door:
 	log: String
 
 fn var Door.close() Void!:
-	append_file(self.log, "{self.id},").wait()?
+	append_file(self.log, f"{self.id},").wait()?
 
 fn events(log: String) String!:
 	return ok((read_file(log).wait()?).decode_utf8().get(""))
@@ -48,13 +48,13 @@ fn grow(log: String, front: Bool, wrapped: Bool) Void!:
 
 fn expect_once(log: String, ids: List[Int]) Void!:
 	actual := (events(log)?).split(",").filter(fn value: value != "").sorted()
-	expect_equal(actual, ids.map(fn id: "{id}").sorted())?
+	expect_equal(actual, ids.map(fn id: f"{id}").sorted())?
 
 test "deque growth moves resource owners from either end":
 	for front in [false, true]:
 		for wrapped in [false, true]:
 			tmp := temporary("deque-resource-")?
-			log := "{tmp.path()}/log"
+			log := f"{tmp.path()}/log"
 			append_file(log, "").wait()?
 			grow(log.clone(), front, wrapped)?
 			expect_once(log, if wrapped: [0, 1, 2, 3, 4, 5] else: [0, 1, 2, 3, 5])?
@@ -89,7 +89,7 @@ fn nested(log: String) Void!:
 
 test "deque growth keeps absent optional slots and nested resource owners":
 	tmp := temporary("deque-nested-")?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	append_file(log, "").wait()?
 	nested(log.clone())?
 	expect_once(log, [0, 1, 2, 3])?
@@ -107,14 +107,14 @@ fn interrupted(log: String, fault: Bool) Void!:
 
 test "grown resource deques close each owner once on error and fault exits":
 	tmp := temporary("deque-error-")?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	append_file(log, "").wait()?
 
 	failure := expect_error(interrupted(log.clone(), false))?
 	expect_equal(failure.message, "after deque growth")?
 	expect_once(log, [0, 1, 2, 3, 4, 5])?
 
-	other := "{tmp.path()}/fault"
+	other := f"{tmp.path()}/fault"
 	append_file(other, "").wait()?
 	expect_contains(
 		(expect_fault(fn: interrupted(other.clone(), true).get())?),
@@ -124,7 +124,7 @@ test "grown resource deques close each owner once on error and fault exits":
 
 test "wrapped growth leaves opaque native file handles usable":
 	tmp := temporary("deque-review-native-")?
-	path := "{tmp.path()}/data"
+	path := f"{tmp.path()}/data"
 	append_file(path, "still open").wait()?
 
 	for front in [false, true]:

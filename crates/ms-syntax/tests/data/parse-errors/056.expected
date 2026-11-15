@@ -1,1 +1,1 @@
-error parse 33:25:1231 "unterminated interpolation; add the closing } before the closing quote ('{' starts an interpolation; for literal braces write the text raw, r\x22...\x22, or escape them as \x5c{ and \x5c} when the text also interpolates)"
+error parse 33:17:1223 "unterminated text literal; add the closing '\x22' on the same line"

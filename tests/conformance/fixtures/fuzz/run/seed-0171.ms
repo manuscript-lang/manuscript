@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -24,59 +24,59 @@ fn collatz(start: Int) Int:
 
 export fn main() Int:
     i1 := ((-23) * (39 * (-9)))
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     i2 := i1
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     f3 := (((978.264 - 5.0e13) + (6.5 * 727.986)) / ((5.5 / 7.5) * 6.0e-9))
-    say("f3 = {f3}")
+    say(f"f3 = {f3}")
 
     i4 := (((10 / (-13)) - i1) / ((i2 + i2) + ((-18) - i1)))
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     b5 := "naïve".is_empty()
-    say("b5 = {b5}")
+    say(f"b5 = {b5}")
 
     l6 := [26, 26, (-4), 1, (-23)]
-    say("l6 = {l6} len {l6.length()}")
+    say(f"l6 = {l6} len {l6.length()}")
 
     s7 := "MiXeD CaSe"
-    say("s7 = [{s7}]")
+    say(f"s7 = [{s7}]")
 
     l8 := l6.filter(fn x: x > 1)
-    say("l8 = {l8} len {l8.length()}")
+    say(f"l8 = {l8} len {l8.length()}")
 
     l9 := [3]
-    say("l9 = {l9} len {l9.length()}")
+    say(f"l9 = {l9} len {l9.length()}")
 
     f10 := ((f3 + f3) / ((f3 + 3.0e0) / f3))
-    say("f10 = {f10}")
+    say(f"f10 = {f10}")
 
     f11 := ((f3 - 585.231) * ((f3 - f3) * (f3 * 149.857)))
-    say("f11 = {f11}")
+    say(f"f11 = {f11}")
 
     l12 := l6.sorted(fn a, b: a.compare(b))
-    say("l12 = {l12} len {l12.length()}")
+    say(f"l12 = {l12} len {l12.length()}")
 
     s13 := s7.upper().replace("42", "héllo").trim()
-    say("s13 = [{s13}]")
-    say("collatz(250) = {collatz(250)}")
+    say(f"s13 = [{s13}]")
+    say(f"collatz(250) = {collatz(250)}")
 
     var acc14 = 0
     for i in 0..5:
         acc14 += i * (-4)
-    say("acc14 = {acc14}")
+    say(f"acc14 = {acc14}")
 
     b15 := ((("héllo" + s13) == "beta") or (b5 and (32 > i1)))
-    say("b15 = {b15}")
+    say(f"b15 = {b15}")
 
     l16 := [(-20), 27, 17, 27, 14]
-    say("l16 = {l16} len {l16.length()}")
+    say(f"l16 = {l16} len {l16.length()}")
     say(
-        "{((-8) * (i4 + (-17)))} {((29 - 1) % (i2 + (-131617)))} {(((-8) * (i4 + (-17))) < ((29 - 1) % (i2 + (-131617))))} sum {((-8) * (i4 + (-17))) + ((29 - 1) % (i2 + (-131617)))}"
+        f"{((-8) * (i4 + (-17)))} {((29 - 1) % (i2 + (-131617)))} {(((-8) * (i4 + (-17))) < ((29 - 1) % (i2 + (-131617))))} sum {((-8) * (i4 + (-17))) + ((29 - 1) % (i2 + (-131617)))}"
     )
 
     s17 := ("日本語".trim() + "  padded  ").reverse()
-    say("s17 = [{s17}]")
+    say(f"s17 = [{s17}]")
     return 0

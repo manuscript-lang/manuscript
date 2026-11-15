@@ -28,27 +28,27 @@ fn expect_fs_error[T](outcome: T!, expected: Error) Void!:
 		error(cause):
 			// A failure names the path after the status words: "filesystem: <failure>:
 			// <path>".
-			named := cause.message.starts_with("{expected.message}: ")
+			named := cause.message.starts_with(f"{expected.message}: ")
 			if (
 				cause.kind != expected.kind
 				or (cause.message != expected.message and not named)
-			): return error(Error("wrong filesystem error: {cause}"))
+			): return error(Error(f"wrong filesystem error: {cause}"))
 
 test "glob queries reuse patterns without changing hidden paths limits or callbacks":
 	temporary := temporary("manuscript-glob-") | expect_ok?
 	root := temporary.path()
-	create_directory(path: "{root}/sub", recursive: false) | expect_ok?
+	create_directory(path: f"{root}/sub", recursive: false) | expect_ok?
 	for name in ["a.txt", "b.md", ".hidden.txt", "sub/c.txt"]:
-		write_file(path: "{root}/{name}", data: "", replace: false).wait() | expect_ok?
+		write_file(path: f"{root}/{name}", data: "", replace: false).wait() | expect_ok?
 
-	all := GlobOptions(patterns: ["**/*.\{txt,md\}"])
+	all := GlobOptions(patterns: ["**/*.{txt,md}"])
 	matches := glob(path: root, options: all.clone()) | expect_ok?
 	matches.map(fn e: e.path.clone()) | expect_equal(["a.txt", "b.md", "sub/c.txt"])?
 	(
 		glob(
 			path: root,
 			options: GlobOptions(
-				patterns: ["**/*.\{txt,md\}"],
+				patterns: ["**/*.{txt,md}"],
 				max_results: 2,
 			),
 		) | expect_fs_error(Error("filesystem: limit exceeded", kind: "EOVERFLOW"))?
@@ -56,7 +56,7 @@ test "glob queries reuse patterns without changing hidden paths limits or callba
 	(
 		glob(
 			path: root,
-			options: GlobOptions(patterns: ["\{a.txt,[\}"]),
+			options: GlobOptions(patterns: ["{a.txt,[}"]),
 		) | expect_fs_error(Error("filesystem: invalid input", kind: "EINVAL"))?
 	)
 
@@ -76,11 +76,11 @@ test "glob queries reuse patterns without changing hidden paths limits or callba
 
 test "ordinary filesystem misuse retains typed cases":
 	temporary := temporary("manuscript-errors-") | expect_ok?
-	directory := "{temporary.path()}/directory"
-	file := "{temporary.path()}/file"
+	directory := f"{temporary.path()}/directory"
+	file := f"{temporary.path()}/file"
 	_created := create_directory(path: directory, recursive: false) | expect_ok?
 	_child := (
-		write_file(path: "{directory}/child", data: "x", replace: false).wait()
+		write_file(path: f"{directory}/child", data: "x", replace: false).wait()
 		| expect_ok?
 	)
 	_written := write_file(path: file, data: "abc", replace: false).wait() | expect_ok?
@@ -125,7 +125,7 @@ test "filesystem scoped temporary directories and bounded file reads":
 	var temporary = temporary("manuscript-stdlib-") | expect_ok?
 	directory = temporary.path()
 
-	path := "{directory}/data.txt"
+	path := f"{directory}/data.txt"
 	_written := (
 		write_file(path: path, data: "hello", replace: false).wait()
 		| expect_ok?
@@ -162,7 +162,7 @@ test "filesystem scoped temporary directories and bounded file reads":
 
 test "file handles positional I/O stream adapters and closed errors":
 	temporary := temporary("manuscript-handles-") | expect_ok?
-	path := "{temporary.path()}/data.txt"
+	path := f"{temporary.path()}/data.txt"
 	_written := (
 		write_file(path: path, data: "abcdef", replace: false).wait()
 		| expect_ok?
@@ -207,9 +207,9 @@ test "empty paths are rejected instead of resolving to the working directory":
 test "rename and copy failures name source and destination":
 	temporary := temporary("manuscript-pair-") | expect_ok?
 	root := temporary.path()
-	from := "{root}/missing"
-	to := "{root}/target"
-	expected := "filesystem: file or directory not found: {from} -> {to}"
+	from := f"{root}/missing"
+	to := f"{root}/target"
+	expected := f"filesystem: file or directory not found: {from} -> {to}"
 
 	match rename(from, to):
 		ok(_): return fail("rename of a missing file succeeded")

@@ -12,11 +12,11 @@ fn show(r: Timestamp!) String:
 	if r.is_error(): return "E"
 
 	t := r.get()
-	return "{t.seconds}.{t.nanos}"
+	return f"{t.seconds}.{t.nanos}"
 
 fn show_diff(r: Duration!) String:
 	if r.is_error(): return "E"
-	return "{r.get().nanos}"
+	return f"{r.get().nanos}"
 
 test "timestamp checks its fields":
 	expect_equal(timestamp(0, 1000000000).is_error(), true)?
@@ -2760,7 +2760,7 @@ test "difference and compare match wide arithmetic for raw fields":
 	while at < rows.length():
 		a := Timestamp(seconds: rows[at], nanos: rows[at + 1])
 		b := Timestamp(seconds: rows[at + 2], nanos: rows[at + 3])
-		expect_equal("{show_diff(a.difference(b))}/{a.compare(b)}", expected[i])?
+		expect_equal(f"{show_diff(a.difference(b))}/{a.compare(b)}", expected[i])?
 		at += 4
 		i += 1
 

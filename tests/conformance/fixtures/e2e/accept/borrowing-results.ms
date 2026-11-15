@@ -42,30 +42,30 @@ fn main() Void:
     p := Person(name: "bob", tags: ["t1", "t2"])
     q := Person(name: "cat", tags: ["u1"])
     t := first_tag(p)
-    print("{t} {pick(p, q, false)} {pick(p, q, true)}")
+    print(f"{t} {pick(p, q, false)} {pick(p, q, true)}")
 
     rows := [[1, 2], [3]]
     h := head(rows)
-    print("{h.length()} {h[1]}")
+    print(f"{h.length()} {h[1]}")
 
     var team = Team(members: [p, q], label: "team")
-    print("{deep(team)} {members(team).length()}")
+    print(f"{deep(team)} {members(team).length()}")
 
     // A lend from a temporary is owned by the caller.
     fresh := first_tag(Person(name: "tmp", tags: ["owned"]))
     also := deep(make_team())
-    print("{fresh} {also}")
+    print(f"{fresh} {also}")
 
     // `var` of a lent part changes the origin.
     var ms = members(team)
     ms.append(Person(name: "dan", tags: []))
     (
         stdout().write(
-            "{team.members.length()} {recurse(value: team.label, count: 3)}\n"
+            f"{team.members.length()} {recurse(value: team.label, count: 3)}\n"
         ).get()
     )
 
     // Keeping a lent value is an explicit copy.
     var names: List[String] = []
     names.append(first_tag(team.members[0]).clone())
-    print("{names.length()} {names[0]}")
+    print(f"{names.length()} {names[0]}")

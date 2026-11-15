@@ -6,30 +6,30 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
-    b1 := ("{7}:" + "MiXeD CaSe").ends_with("ms")
-    say("b1 = {b1}")
+    b1 := (f"{7}:" + "MiXeD CaSe").ends_with("ms")
+    say(f"b1 = {b1}")
 
     fixed := 1
     fixed = 2
     say(
-        "{(((-48) / (-43)) * 647476542643)} {41} {((((-48) / (-43)) * 647476542643) < 41)} sum {(((-48) / (-43)) * 647476542643) + 41}"
+        f"{(((-48) / (-43)) * 647476542643)} {41} {((((-48) / (-43)) * 647476542643) < 41)} sum {(((-48) / (-43)) * 647476542643) + 41}"
     )
 
     i2 := (-615199)
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     l3 := [1, 2, 3].take(0)
-    say("l3 = {l3} len {l3.length()}")
+    say(f"l3 = {l3} len {l3.length()}")
 
-    s4 := ("{(i2 * i2)}:" + ("naïve" + ("delta" + "delta")))
-    say("s4 = [{s4}]")
+    s4 := (f"{(i2 * i2)}:" + ("naïve" + ("delta" + "delta")))
+    say(f"s4 = [{s4}]")
 
     i5 := (i2 / (8 + (i2 * i2)))
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     l6 := l3.filter(fn x: x > (-3))
-    say("l6 = {l6} len {l6.length()}")
+    say(f"l6 = {l6} len {l6.length()}")
     return 0

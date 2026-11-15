@@ -122,13 +122,13 @@ export fn main() Int:
 
 	var out = StringBuilder()
 	n := entries.length()
-	out.append("valid: {n}\n")
-	out.append("malformed: {malformed}\n")
-	out.append("DEBUG: {debug_n}\n")
-	out.append("INFO: {info_n}\n")
-	out.append("WARN: {warn_n}\n")
-	out.append("ERROR: {error_n}\n")
-	out.append("status: 2xx={s2} 3xx={s3} 4xx={s4} 5xx={s5} other={s_other}\n")
+	out.append(f"valid: {n}\n")
+	out.append(f"malformed: {malformed}\n")
+	out.append(f"DEBUG: {debug_n}\n")
+	out.append(f"INFO: {info_n}\n")
+	out.append(f"WARN: {warn_n}\n")
+	out.append(f"ERROR: {error_n}\n")
+	out.append(f"status: 2xx={s2} 3xx={s3} 4xx={s4} 5xx={s5} other={s_other}\n")
 
 	if n == 0:
 		out.append("p95: 0\n")
@@ -136,10 +136,10 @@ export fn main() Int:
 		lats.sort()
 
 		rank := (95 * n + 99) / 100
-		out.append("p95: {lats[rank - 1]}\n")
+		out.append(f"p95: {lats[rank - 1]}\n")
 
 		s := entries[slowest]
-		out.append("slowest: {s.latency} {s.method} {s.path} {s.ts}\n")
+		out.append(f"slowest: {s.latency} {s.method} {s.path} {s.ts}\n")
 
 	out.append("top:\n")
 
@@ -152,7 +152,7 @@ export fn main() Int:
 		if i >= stats.length(): break
 
 		st := stats[i]
-		out.append("{st.path} {st.count} avg={st.total / st.count}\n")
+		out.append(f"{st.path} {st.count} avg={st.total / st.count}\n")
 
 	stdout().write(out.build()).get()
 	return 0

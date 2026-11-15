@@ -92,7 +92,7 @@ fn coins(amount: Int, denominations: List[Int]) String:
 
 	if best[amount] >= unreachable: return "impossible"
 
-	return "{best[amount]}"
+	return f"{best[amount]}"
 
 fn run(line: String) String:
 	tokens := line.split(" ")
@@ -104,9 +104,9 @@ fn run(line: String) String:
 		a := tokens[1]
 		b := tokens[2]
 		if a.is_empty() or b.is_empty(): return "error: bad command"
-		if name == "lcs": return "{lcs(a.scalar_values(), b.scalar_values())}"
+		if name == "lcs": return f"{lcs(a.scalar_values(), b.scalar_values())}"
 
-		return "{edit(a.scalar_values(), b.scalar_values())}"
+		return f"{edit(a.scalar_values(), b.scalar_values())}"
 
 	if name == "knap":
 		if tokens.length() < 2: return "error: bad command"
@@ -128,7 +128,7 @@ fn run(line: String) String:
 			weights.append(w)
 			values.append(v)
 
-		return "{knap(cap, weights, values)}"
+		return f"{knap(cap, weights, values)}"
 
 	if name == "coins":
 		if tokens.length() < 3: return "error: bad command"

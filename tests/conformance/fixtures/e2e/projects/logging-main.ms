@@ -17,7 +17,7 @@ import emit from "./records.ms"
 fn exercise(mode: String, path: String) Void!:
     if (mode == "file" or mode == "missing"):
         var root = create(file_transport(path)?, timestamp: false)?
-        logger := root.child_json("\{\"service\":\"api\"\}")?
+        logger := root.child_json("{\"service\":\"api\"}")?
         emit(logger)?
         logger.flush()?
         root.close()?
@@ -28,12 +28,12 @@ fn exercise(mode: String, path: String) Void!:
         logger.info("too large")?
     else if mode == "closed":
         var root = create(stdout_transport())?
-        logger := root.child_json("\{\"service\":\"api\"\}")?
+        logger := root.child_json("{\"service\":\"api\"}")?
         root.close()?
         logger.info("closed")?
     else:
         root := create(stdout_transport())?
-        logger := root.child_json("\{\"service\":\"api\"\}")?
+        logger := root.child_json("{\"service\":\"api\"}")?
 
         if mode == "invalid":
             record(
@@ -55,7 +55,7 @@ export fn main() Int:
     result := exercise(mode, path)
 
     if result.is_error():
-        _ignored := stderr().write("{result.err().message}\n")
+        _ignored := stderr().write(f"{result.err().message}\n")
         return 1
 
     return 0

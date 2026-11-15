@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -16,54 +16,54 @@ fn fact(n: Int) Int:
 
 export fn main() Int:
     i1 := ((31 * ((-391652) + 36)) + (((-33) + (-13)) - (46 * 35)))
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     f2 := (((6.0e3 * 225.696) / (0.0 * 885.130)) * 9.0e-1)
-    say("f2 = {f2}")
+    say(f"f2 = {f2}")
 
     s3 := "naïve".trim()
-    say("s3 = [{s3}]")
+    say(f"s3 = [{s3}]")
 
     l4 := [1, 2, 3].take(0)
-    say("l4 = {l4} len {l4.length()}")
+    say(f"l4 = {l4} len {l4.length()}")
 
     f5 := (((630.861 / 342.316) - (9.5 / 1.5)) * 4.5)
-    say("f5 = {f5}")
+    say(f"f5 = {f5}")
 
     b6 := (not ((true and false) or false))
-    say("b6 = {b6}")
+    say(f"b6 = {b6}")
     say(
-        "{(-(34 * (-14)))} {(i1 + (49 - 50))} {((-(34 * (-14))) < (i1 + (49 - 50)))} sum {(-(34 * (-14))) + (i1 + (49 - 50))}"
+        f"{(-(34 * (-14)))} {(i1 + (49 - 50))} {((-(34 * (-14))) < (i1 + (49 - 50)))} sum {(-(34 * (-14))) + (i1 + (49 - 50))}"
     )
 
     l7 := l4.take(3)
-    say("l7 = {l7} len {l7.length()}")
+    say(f"l7 = {l7} len {l7.length()}")
 
     i8 := i1
-    say("i8 = {i8}")
-    say("fact(16) = {fact(16)}")
+    say(f"i8 = {i8}")
+    say(f"fact(16) = {fact(16)}")
 
     l9 := l4.reversed()
-    say("l9 = {l9} len {l9.length()}")
+    say(f"l9 = {l9} len {l9.length()}")
 
     i10 := l4.length()
-    say("i10 = {i10}")
+    say(f"i10 = {i10}")
 
     b11 := (s3 != "line\nbreak".lower())
-    say("b11 = {b11}")
+    say(f"b11 = {b11}")
 
     f12 := ((420.025 * (539.589 - 140.457)) + ((492.25 + 597.075) - f2))
-    say("f12 = {f12}")
+    say(f"f12 = {f12}")
 
     l13 := [22, 29, (-3), (-24)]
-    say("l13 = {l13} len {l13.length()}")
+    say(f"l13 = {l13} len {l13.length()}")
 
     b14 := "back\\slash".starts_with("")
-    say("b14 = {b14}")
+    say(f"b14 = {b14}")
 
     f15 := (f12 * 545.480)
-    say("f15 = {f15}")
+    say(f"f15 = {f15}")
 
-    s16 := ("{i10}:" + ("  padded  " + "".upper()))
-    say("s16 = [{s16}]")
+    s16 := (f"{i10}:" + ("  padded  " + "".upper()))
+    say(f"s16 = [{s16}]")
     return 0

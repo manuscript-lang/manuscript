@@ -119,7 +119,7 @@ export fn gen_c53() Void:
 	)
 	cs.push(
 		"fenced-code",
-		"```\nplain\n```\n\n```go\nfunc main() \{\}\n```\n\n~~~python extra words\nx = 1 < 2\n~~~\n\n````\n```\ninside\n```\n````\n\n```\nunclosed\n\nstill code\n",
+		"```\nplain\n```\n\n```go\nfunc main() {}\n```\n\n~~~python extra words\nx = 1 < 2\n~~~\n\n````\n```\ninside\n```\n````\n\n```\nunclosed\n\nstill code\n",
 	)
 	cs.push(
 		"fenced-edge",
@@ -176,12 +176,12 @@ export fn gen_c53() Void:
 
 	var inline = ""
 	for i in 0..30:
-		inline += "*a{i}* **b{i}** `c{i}` [d{i}](u{i}) ![e{i}](v{i}) \\*f_{i}_g\n"
+		inline += f"*a{i}* **b{i}** `c{i}` [d{i}](u{i}) ![e{i}](v{i}) \\*f_{i}_g\n"
 	cs.push("stress-inline", inline)
 
 	var nested = ""
 	for i in 0..40:
-		nested += "  ".repeat(i % 4).get("") + "- item {i}\n"
+		nested += "  ".repeat(i % 4).get("") + f"- item {i}\n"
 	cs.push("stress-nested-lists", nested)
 	cs.push(
 		"stress-quotes",

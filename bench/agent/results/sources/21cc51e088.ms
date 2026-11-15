@@ -965,7 +965,7 @@ fn vstr(v: Value) String:
         VNull:
             return "NULL"
         VInt(i):
-            return "{i}"
+            return f"{i}"
         VText(s):
             return s.clone()
         VBool(b):
@@ -1453,9 +1453,9 @@ fn resolve(srcs: List[Src], t: String, n: String) Result[Int, String]:
                 j := col_find_names(s.cols, n)
                 if j >= 0: return ok(s.off + j)
 
-                return error("no such column: {qual_name(t, n)}")
+                return error(f"no such column: {qual_name(t, n)}")
 
-        return error("no such column: {qual_name(t, n)}")
+        return error(f"no such column: {qual_name(t, n)}")
 
     var found = -1
     var count = 0
@@ -1467,8 +1467,8 @@ fn resolve(srcs: List[Src], t: String, n: String) Result[Int, String]:
             found = s.off + j
             count += 1
 
-    if count == 0: return error("no such column: {n}")
-    if count > 1: return error("ambiguous column: {n}")
+    if count == 0: return error(f"no such column: {n}")
+    if count > 1: return error(f"ambiguous column: {n}")
 
     return ok(found)
 
@@ -1480,7 +1480,7 @@ fn group_check(
     shown: String
 ) Result[Unit, String]:
     if aggq and not inagg and not gidx.contains(i):
-        return error("column {shown} must appear in GROUP BY")
+        return error(f"column {shown} must appear in GROUP BY")
 
 
 fn bind_call(
@@ -1501,9 +1501,9 @@ fn bind_call(
             if name == "COUNT" and not distinct:
                 return ok(Call(name.clone(), [], false, true))
 
-            return error("wrong number of arguments to {name}")
+            return error(f"wrong number of arguments to {name}")
 
-        if args.length() != 1: return error("wrong number of arguments to {name}")
+        if args.length() != 1: return error(f"wrong number of arguments to {name}")
 
         b := try bind(srcs, gidx, aggq, false, true, args[0])
         var bl: List[Expr] = []
@@ -1519,13 +1519,13 @@ fn bind_call(
     else if name == "COALESCE":
         need = -1
     else:
-        return error("no such function: {name}")
+        return error(f"no such function: {name}")
 
-    if star: return error("wrong number of arguments to {name}")
+    if star: return error(f"wrong number of arguments to {name}")
     if need >= 0 and args.length() != need:
-        return error("wrong number of arguments to {name}")
+        return error(f"wrong number of arguments to {name}")
     if need < 0 and args.length() < 1:
-        return error("wrong number of arguments to {name}")
+        return error(f"wrong number of arguments to {name}")
 
     var bl: List[Expr] = []
 
@@ -1671,17 +1671,17 @@ fn exec_select(db: List[Table], q: Query) Result[String, String]:
 
     if q.has_from:
         from_ti = table_index(db, q.from_t.name)
-        if from_ti < 0: return error("no such table: {q.from_t.name}")
+        if from_ti < 0: return error(f"no such table: {q.from_t.name}")
 
         srcs.append(make_src(db, from_ti, alias_of(q.from_t), off))
         off += db[from_ti].cols.length()
 
         for j in q.joins:
             tj := table_index(db, j.tref.name)
-            if tj < 0: return error("no such table: {j.tref.name}")
+            if tj < 0: return error(f"no such table: {j.tref.name}")
 
             aj := alias_of(j.tref)
-            if has_alias(srcs, aj): return error("duplicate alias: {aj}")
+            if has_alias(srcs, aj): return error(f"duplicate alias: {aj}")
 
             srcs.append(make_src(db, tj, aj, off))
             join_tis.append(tj)
@@ -1732,7 +1732,7 @@ fn exec_select(db: List[Table], q: Query) Result[String, String]:
                     found = si
                 si += 1
 
-            if found < 0: return error("no such table: {it.tbl}")
+            if found < 0: return error(f"no such table: {it.tbl}")
 
             s := srcs[found]
             var j = 0
@@ -1970,7 +1970,7 @@ fn exec_select(db: List[Table], q: Query) Result[String, String]:
         out = out + cells.join("|") + "\n"
         i += 1
 
-    out += "({last - first} rows)\n"
+    out += f"({last - first} rows)\n"
     return ok(out)
 
 // ---------------------------------------------------------------- DDL / DML
@@ -1982,7 +1982,7 @@ fn check_coldefs(cols: List[ColDef]) Result[Unit, String]:
     while i < cols.length():
         for j in 0..i:
             if cols[j].name == cols[i].name:
-                return error("duplicate column: {cols[i].name}")
+                return error(f"duplicate column: {cols[i].name}")
 
         if cols[i].pk:
             npk += 1
@@ -2010,9 +2010,9 @@ fn check_row(cols: List[ColDef], row: List[Value]) Result[Unit, String]:
 
         if kind(v) == 0:
             if cols[c].notnull:
-                return error("NOT NULL constraint failed: {cols[c].name}")
+                return error(f"NOT NULL constraint failed: {cols[c].name}")
         else if not type_ok(cols[c].ty, v):
-            return error("type mismatch in column {cols[c].name}")
+            return error(f"type mismatch in column {cols[c].name}")
 
         c += 1
 
@@ -2024,7 +2024,7 @@ fn first_dup(rows: List[List[Value]], p: Int) Result[Unit, String]:
 
         for i in 0..j:
             if same(rows[i][p], rows[j][p]):
-                return error("duplicate primary key: {vstr(rows[j][p])}")
+                return error(f"duplicate primary key: {vstr(rows[j][p])}")
 
         j += 1
 
@@ -2041,8 +2041,8 @@ fn insert_rows(
     if has_cols:
         for cn in cols:
             j := col_find_defs(tbl.cols, cn)
-            if j < 0: return error("no such column: {cn}")
-            if pos.contains(j): return error("duplicate column: {cn}")
+            if j < 0: return error(f"no such column: {cn}")
+            if pos.contains(j): return error(f"duplicate column: {cn}")
 
             pos.append(j)
     else:
@@ -2101,7 +2101,7 @@ fn update_rows(
 
     for s in sets:
         j := col_find_defs(tbl.cols, s.name)
-        if j < 0: return error("no such column: {s.name}")
+        if j < 0: return error(f"no such column: {s.name}")
 
         setpos.append(j)
 
@@ -2181,38 +2181,38 @@ fn delete_rows(tbl: Table, has_where: Bool, wh: Expr) Result[Changed, String]:
 fn run_stmt(var db: List[Table], st: Stmt) Result[String, String]:
     match st:
         SCreate(name, cols):
-            if table_index(db, name) >= 0: return error("table {name} already exists")
+            if table_index(db, name) >= 0: return error(f"table {name} already exists")
 
             try check_coldefs(cols)
             db.append(Table(name: name.clone(), cols: cols.clone(), rows: []))
             return ok("ok\n")
         SDrop(name):
             ti := table_index(db, name)
-            if ti < 0: return error("no such table: {name}")
+            if ti < 0: return error(f"no such table: {name}")
 
             db.remove(ti)
             return ok("ok\n")
         SInsert(name, has_cols, cols, rows):
             ti := table_index(db, name)
-            if ti < 0: return error("no such table: {name}")
+            if ti < 0: return error(f"no such table: {name}")
 
             ch := try insert_rows(db[ti].clone(), has_cols, cols, rows)
             db[ti].rows = ch.rows
-            return ok("inserted {ch.count}\n")
+            return ok(f"inserted {ch.count}\n")
         SUpdate(name, sets, has_where, where_e):
             ti := table_index(db, name)
-            if ti < 0: return error("no such table: {name}")
+            if ti < 0: return error(f"no such table: {name}")
 
             ch := try update_rows(db[ti].clone(), sets, has_where, where_e)
             db[ti].rows = ch.rows
-            return ok("updated {ch.count}\n")
+            return ok(f"updated {ch.count}\n")
         SDelete(name, has_where, where_e):
             ti := table_index(db, name)
-            if ti < 0: return error("no such table: {name}")
+            if ti < 0: return error(f"no such table: {name}")
 
             ch := try delete_rows(db[ti].clone(), has_where, where_e)
             db[ti].rows = ch.rows
-            return ok("deleted {ch.count}\n")
+            return ok(f"deleted {ch.count}\n")
         SSelect(q):
             return exec_select(db, q)
 
@@ -2226,7 +2226,7 @@ fn run_piece_r(var db: List[Table], cs: List[String]) Result[String, String]:
 
 fn run_piece(var db: List[Table], cs: List[String]) String:
     r := run_piece_r(var db, cs)
-    if r.is_error(): return "error: {r.err()}\n"
+    if r.is_error(): return f"error: {r.err()}\n"
 
     return r.get().clone()
 

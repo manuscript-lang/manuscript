@@ -10,4 +10,4 @@ fn rows(g: List[List[Int]]) Int:
     return t
 
 fn main() Void:
-    void stdout().write("{rows([[1, 2, 3], [4]])}\n")
+    void stdout().write(f"{rows([[1, 2, 3], [4]])}\n")

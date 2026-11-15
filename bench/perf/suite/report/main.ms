@@ -16,8 +16,8 @@ fn main() Void:
 		score := f[1].parse_int().get(0)
 		total += score
 		out.append(
-			"{f[0].pad_end(12, " ")} {score.to_string().pad_start(8, " ")} {score * 3 / 7}\n"
+			f"{f[0].pad_end(12, " ")} {score.to_string().pad_start(8, " ")} {score * 3 / 7}\n"
 		)
 
-	out.append("total {total}\n")
+	out.append(f"total {total}\n")
 	stdout().write(out.build()).get()

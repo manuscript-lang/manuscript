@@ -10,10 +10,10 @@ fn collect(fallback: Int = choose(1)) String:
             else:
                 return choose(4)
     ]
-    text := "{choose(5)}"
+    text := f"{choose(5)}"
     match fallback:
         _:
-            return "{choose(6)}"
+            return f"{choose(6)}"
 interface Read:
     fn read(value: Int) Int
 type Box:

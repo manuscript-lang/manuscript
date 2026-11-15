@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -35,21 +35,21 @@ export fn main() Int:
         say("日本語")
 
     if (("emoji 😀" != "") and (false and true)):
-        say(("{(-(-46))}:" + "quote\"d"))
+        say((f"{(-(-46))}:" + "quote\"d"))
     else:
         say("Tab\there".trim())
 
-    say("collatz(1545) = {collatz(1545)}")
-    say("fact(10) = {fact(10)}")
+    say(f"collatz(1545) = {collatz(1545)}")
+    say(f"fact(10) = {fact(10)}")
 
-    s1 := ("{(3 - (-41492))}:" + "brace\{s\}").replace("ms", "alpha").reverse()
-    say("s1 = [{s1}]")
+    s1 := (f"{(3 - (-41492))}:" + "brace{s}").replace("ms", "alpha").reverse()
+    say(f"s1 = [{s1}]")
 
     s2 := s1
-    say("s2 = [{s2}]")
+    say(f"s2 = [{s2}]")
 
     i3 := (-(-(848399 * 0)))
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     bad := "abc".no_such_method()
     return 0

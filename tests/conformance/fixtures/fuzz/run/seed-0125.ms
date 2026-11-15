@@ -6,23 +6,23 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := (((44 % 17) * (34 * 11)) - 25)
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     i2 := (-29)
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     l3 := [1, 2, 3].take(0)
-    say("l3 = {l3} len {l3.length()}")
+    say(f"l3 = {l3} len {l3.length()}")
 
     i4 := ((i1 - ((-13) * i1)) / (i2 - ((-18) * 11)))
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     s5 := ("42".upper() + "hello world".upper().trim())
-    say("s5 = [{s5}]")
+    say(f"s5 = [{s5}]")
 
     if (((-20) + 15) != ((-23) * i2)):
         say(("back\\slash" + "ms"))
@@ -30,8 +30,8 @@ export fn main() Int:
         say("naïve")
 
     f6 := 786.621
-    say("f6 = {f6}")
+    say(f"f6 = {f6}")
 
     i7 := (-(233761 - i1))
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
     return 0

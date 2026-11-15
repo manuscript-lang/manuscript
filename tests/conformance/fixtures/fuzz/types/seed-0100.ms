@@ -6,17 +6,17 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     f1 := (369.051 / ((950.520 * 846.25) / (771.074 * 346.063)))
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
 
     i2 := (19 - ((48 / 6) + ((-40) + 393806)))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     i3 := (((i2 / 148154) + (i2 - (-1))) % i2)
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     var acc4 = 0
     var stepacc4 = 0
@@ -25,10 +25,10 @@ export fn main() Int:
         stepacc4 += 1
         acc4 += stepacc4 * stepacc4 + 5
 
-    say("acc4 = {acc4}")
+    say(f"acc4 = {acc4}")
 
     l5 := [14]
-    say("l5 = {l5} len {l5.length()}")
+    say(f"l5 = {l5} len {l5.length()}")
 
     _bad := say
     return 0

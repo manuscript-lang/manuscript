@@ -26,7 +26,7 @@ fn var MemorySource.close() Void!:
 fn source_text() String:
 	var parts: List[String] = []
 	for i in 0..100000:
-		parts.append("line number {i} with some padding text\n")
+		parts.append(f"line number {i} with some padding text\n")
 	return parts.join("")
 
 bench "io.lines":
@@ -68,7 +68,7 @@ bench "io.stages.map3_fold":
 
 bench "io.lines long fragmented":
 	text := "x".repeat(262144)?
-	data := "{text}\n".to_bytes()
+	data := f"{text}\n".to_bytes()
 
 	fn work() Void!:
 		var input = lines(from_bytes(data.clone(), 64))

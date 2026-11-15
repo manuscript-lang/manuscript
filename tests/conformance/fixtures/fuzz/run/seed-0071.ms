@@ -6,25 +6,25 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := ((((-1) * 29) + (-322414)) * (-((-14) * (-38))))
-    say("i1 = {i1}")
-    say("{388625} {i1} {(388625 < i1)} sum {388625 + i1}")
+    say(f"i1 = {i1}")
+    say(f"{388625} {i1} {(388625 < i1)} sum {388625 + i1}")
     say(
-        "{i1} {(((-27184) + i1) * i1)} {(i1 < (((-27184) + i1) * i1))} sum {i1 + (((-27184) + i1) * i1)}"
+        f"{i1} {(((-27184) + i1) * i1)} {(i1 < (((-27184) + i1) * i1))} sum {i1 + (((-27184) + i1) * i1)}"
     )
 
     l2 := [23, (-6), (-20), 7, (-24)]
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     b3 := (9 > 36)
-    say("b3 = {b3}")
+    say(f"b3 = {b3}")
 
     b4 := b3
-    say("b4 = {b4}")
+    say(f"b4 = {b4}")
 
     i5 := i1
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
     return 0

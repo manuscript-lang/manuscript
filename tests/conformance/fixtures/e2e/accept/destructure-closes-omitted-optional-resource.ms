@@ -6,7 +6,7 @@ type Handle:
 	id: Int
 
 fn var Handle.close() Void!:
-	print("close {self.id}")
+	print(f"close {self.id}")
 
 type Job:
 	label: String
@@ -37,5 +37,5 @@ export fn main() Int:
 	keep(Job("c", Handle(5), Handle(6), [Handle(7)]), var out)
 	print("return")
 	moved := take(Job("d", Handle(8), Handle(9), []))
-	print("end {out.length()} {moved.id}")
+	print(f"end {out.length()} {moved.id}")
 	return 0

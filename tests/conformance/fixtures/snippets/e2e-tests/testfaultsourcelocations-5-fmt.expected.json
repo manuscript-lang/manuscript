@@ -1,7 +1,7 @@
 {
   "format": 1,
   "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
+  "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
     "fmt": "import (\n\tBytes from \"@std/bytes.ms\",\n\tReadStream, stdin from \"@std/io/io.ms\",\n)\n\nfn limit() Int:\n\treturn 1 / \"\".length()\n\nfn probe(input: ReadStream[Bytes]) Bool:\n\tif line := read_line(input, limit()): return not line.is_empty()\n\treturn false\n\nexport fn main() Int:\n\tif probe(stdin()): return 1\n\treturn 0\n\nfn read_line(input: ReadStream[Bytes], max_bytes: Int) String?:\n\treturn none\n"

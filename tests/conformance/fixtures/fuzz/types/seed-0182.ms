@@ -6,20 +6,20 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
-    s2 := ("{(36 - 44)}:" + "naïve")
-    say("s2 = [{s2}]")
+    s2 := (f"{(36 - 44)}:" + "naïve")
+    say(f"s2 = [{s2}]")
 
     l3 := [21, (-30), 7, 20, 28]
-    say("l3 = {l3} len {l3.length()}")
+    say(f"l3 = {l3} len {l3.length()}")
 
     i4 := (-8)
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     f5 := ((104.868 * (881.940 + 882.473)) - 782.592)
-    say("f5 = {f5}")
+    say(f"f5 = {f5}")
 
     if (((-5) >= i4) and s2.is_empty()):
         say((s2 + s2))
@@ -27,7 +27,7 @@ export fn main() Int:
         say(s2)
 
     i6 := i4
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     bad := 1 + "one"
     return 0

@@ -1,7 +1,7 @@
 {
   "format": 1,
   "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
+  "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
     "fmt": "import expect_equal, expect_true from \"@std/test/test.ms\"\n\ntest \"closures read the variable they borrow\":\n\tvar offset = 3\n\toffset = 99\n\n\tfirst := fn:\n\t\treturn offset\n\tsecond := fn:\n\t\treturn true\n\tfirst() | expect_equal(99)?\n\tsecond() | expect_true?\n"

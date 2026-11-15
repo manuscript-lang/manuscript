@@ -9,7 +9,7 @@ import (
 fn leaves_a_temporary() String!:
 	temporary := temporary("manuscript-owned-")?
 	path := temporary.path()
-	write_file("{path}/a.txt", "x", true).wait()?
+	write_file(f"{path}/a.txt", "x", true).wait()?
 	return ok(path)
 
 test "a temporary directory binding is removed when its scope ends":
@@ -31,8 +31,8 @@ fn counts_entries(path: String) Int!:
 test "a directory cursor reads its children and closes at scope end":
 	temporary := temporary("manuscript-owned-") | expect_ok?
 	path := temporary.path()
-	expect_true(write_file("{path}/a.txt", "x", true).wait().is_ok())?
-	expect_true(write_file("{path}/b.txt", "y", true).wait().is_ok())?
+	expect_true(write_file(f"{path}/a.txt", "x", true).wait().is_ok())?
+	expect_true(write_file(f"{path}/b.txt", "y", true).wait().is_ok())?
 	(
 		counts_entries(path)
 		| expect_ok?

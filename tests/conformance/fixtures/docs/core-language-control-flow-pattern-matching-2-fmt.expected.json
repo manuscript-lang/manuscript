@@ -1,7 +1,7 @@
 {
   "format": 1,
   "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
+  "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
     "fmt": "\nenum Cents:\n\tValid(amount: Int)\n\tInvalid\n\nfn total(cents: Cents) Result[Int, Error]:\n\tamount := match cents:\n\t\tValid(value):\n\t\t\tvalue\n\t\tInvalid:\n\t\t\treturn error(Error(\"Invalid amount\"))\n\n\treturn ok(amount)\n"

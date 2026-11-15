@@ -148,11 +148,11 @@ test "decoders never fault on mutated input":
 				rejected += 1
 
 	expect_equal(accepted + rejected, 300 * corpus.length())?
-	print("fuzz: {accepted} accepted, {rejected} rejected")
+	print(f"fuzz: {accepted} accepted, {rejected} rejected")
 
 fn expect_error(data: Bytes, kind: String) Void!:
 	result := decode_image(data)
-	if result.is_ok(): return fail("expected {kind}, decoded an image")
+	if result.is_ok(): return fail(f"expected {kind}, decoded an image")
 
 	expect_equal(result.err().kind, kind)?
 

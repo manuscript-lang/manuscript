@@ -28,7 +28,7 @@ export fn main() Int:
 			ch := cs[c]
 
 			if not (ch == "#" or ch == "." or ch == "S" or ch == "E"):
-				out("error: bad character at {r + 1},{c + 1}\n")
+				out(f"error: bad character at {r + 1},{c + 1}\n")
 				return 0
 
 	// 2. Ragged rows. Every character is now ASCII, so byte length equals scalar length.
@@ -121,6 +121,6 @@ export fn main() Int:
 	if dist[e] < 0:
 		out("no path\n")
 	else:
-		out("{dist[e]}\n")
+		out(f"{dist[e]}\n")
 
 	return 0

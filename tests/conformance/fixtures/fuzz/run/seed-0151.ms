@@ -6,18 +6,18 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     say(
-        "{614625866581} {((264604660221 + 24) + (-112479723327))} {(614625866581 < ((264604660221 + 24) + (-112479723327)))} sum {614625866581 + ((264604660221 + 24) + (-112479723327))}"
+        f"{614625866581} {((264604660221 + 24) + (-112479723327))} {(614625866581 < ((264604660221 + 24) + (-112479723327)))} sum {614625866581 + ((264604660221 + 24) + (-112479723327))}"
     )
 
     i1 := 0
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     f2 := 294.409
-    say("f2 = {f2}")
+    say(f"f2 = {f2}")
 
     if (("MiXeD CaSe" + "line\nbreak") == "delta".reverse()):
         say("42")
@@ -25,29 +25,29 @@ export fn main() Int:
         say("x".upper())
 
     l3 := [(-22), 14, (-17), 12, (-5)]
-    say("l3 = {l3} len {l3.length()}")
+    say(f"l3 = {l3} len {l3.length()}")
 
     i4 := ((l3.get(4) - ((-36) / (-588991927194))) * i1)
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     i5 := (-29)
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     i6 := l3.length()
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     f7 := (220.25 * ((945.25 + 574.25) * (0.0 + f2)))
-    say("f7 = {f7}")
+    say(f"f7 = {f7}")
 
     s8 := ("MiXeD CaSe" + "x").lower().replace("beta", "x")
-    say("s8 = [{s8}]")
+    say(f"s8 = [{s8}]")
     say(
-        "{(((-18) + i6) / 41)} {i1} {((((-18) + i6) / 41) < i1)} sum {(((-18) + i6) / 41) + i1}"
+        f"{(((-18) + i6) / 41)} {i1} {((((-18) + i6) / 41) < i1)} sum {(((-18) + i6) / 41) + i1}"
     )
 
     l9 := l3.drop(3)
-    say("l9 = {l9} len {l9.length()}")
+    say(f"l9 = {l9} len {l9.length()}")
 
     b10 := (("x".lower() != ("gamma" + s8)) or false)
-    say("b10 = {b10}")
+    say(f"b10 = {b10}")
     return 0

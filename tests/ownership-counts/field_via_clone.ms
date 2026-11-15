@@ -12,7 +12,7 @@ export fn main() Int:
 	var total = 0
 
 	for i in 0..20:
-		b := Box("a name that is long enough to live on the heap {i}")
+		b := Box(f"a name that is long enough to live on the heap {i}")
 		total += name_of(b).length()
 
 	return total - total

@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -29,30 +29,30 @@ fn gcd(a: Int, b: Int) Int:
     return gcd(b, a % b)
 
 export fn main() Int:
-    say("collatz(1528) = {collatz(1528)}")
+    say(f"collatz(1528) = {collatz(1528)}")
 
     f1 := ((735.008 + (729.607 - 0.0)) * (76.946 * 850.25))
-    say("f1 = {f1}")
-    say("gcd(4116, 2069) = {gcd(4116, 2069)}")
+    say(f"f1 = {f1}")
+    say(f"gcd(4116, 2069) = {gcd(4116, 2069)}")
 
-    b2 := "brace\{s\}".contains("delta")
-    say("b2 = {b2}")
-    say("gcd(3212, 2317) = {gcd(3212, 2317)}")
-    say("gcd(4823, 4386) = {gcd(4823, 4386)}")
+    b2 := "brace{s}".contains("delta")
+    say(f"b2 = {b2}")
+    say(f"gcd(3212, 2317) = {gcd(3212, 2317)}")
+    say(f"gcd(4823, 4386) = {gcd(4823, 4386)}")
 
     f3 := (421.944 + ((f1 * 5.5) / (f1 / 414.010)))
-    say("f3 = {f3}")
+    say(f"f3 = {f3}")
 
-    if "quote\"d".starts_with("brace\{s\}"):
+    if "quote\"d".starts_with("brace{s}"):
         say("beta".trim())
     else:
         say("ms".lower())
 
     i4 := (((-38) - (-31)) - (-21))
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     f5 := ((3.0e7 * f1) - f3)
-    say("f5 = {f5}")
+    say(f"f5 = {f5}")
 
     if ((false and true) and (b2 or true)):
         say("delta")
@@ -60,5 +60,5 @@ export fn main() Int:
         say("MiXeD CaSe")
 
     i6 := (31 * (((-35) + i4) + (i4 - i4)))
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
     return 0

@@ -6,33 +6,33 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     s1 := "quote\"d".trim()
-    say("s1 = [{s1}]")
+    say(f"s1 = [{s1}]")
 
     i3 := ((((-12) * (-13)) * 28) * (12 - ((-8) + 569642)))
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     l4 := [1, 2, 3].take(0)
-    say("l4 = {l4} len {l4.length()}")
+    say(f"l4 = {l4} len {l4.length()}")
 
     l5 := [16, (-4)]
-    say("l5 = {l5} len {l5.length()}")
+    say(f"l5 = {l5} len {l5.length()}")
 
     f6 := 362.884
-    say("f6 = {f6}")
+    say(f"f6 = {f6}")
 
-    s7 := ("ms" + ((s1 + "naïve") + (s1 + "brace\{s\}")))
-    say("s7 = [{s7}]")
+    s7 := ("ms" + ((s1 + "naïve") + (s1 + "brace{s}")))
+    say(f"s7 = [{s7}]")
 
     b8 := false
-    say("b8 = {b8}")
+    say(f"b8 = {b8}")
 
     i9 := (l4.length() * ((i3 % i3) + (i3 - 7)))
-    say("i9 = {i9}")
+    say(f"i9 = {i9}")
 
     s10 := (s1 + ("naïve" + "quote\"d").replace(s1, s1))
-    say("s10 = [{s10}]")
+    say(f"s10 = [{s10}]")
     return 0

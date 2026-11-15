@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -23,16 +23,16 @@ fn fib(n: Int) Int:
 
 export fn main() Int:
     i1 := (-34)
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     i2 := (i1 + 42)
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     s3 := "quote\"d"
-    say("s3 = [{s3}]")
+    say(f"s3 = [{s3}]")
 
     s4 := "  padded  "
-    say("s4 = [{s4}]")
+    say(f"s4 = [{s4}]")
 
     if true:
         say("beta".upper())
@@ -40,20 +40,20 @@ export fn main() Int:
         say(s4.upper())
 
     s5 := "beta"
-    say("s5 = [{s5}]")
+    say(f"s5 = [{s5}]")
 
     b6 := false
-    say("b6 = {b6}")
+    say(f"b6 = {b6}")
 
     var acc7 = 0
     for i in 0..4:
         acc7 += i * 7
-    say("acc7 = {acc7}")
+    say(f"acc7 = {acc7}")
 
     b8 := (not b6)
-    say("b8 = {b8}")
-    say("fib(28) = {fib(28)}")
+    say(f"b8 = {b8}")
+    say(f"fib(28) = {fib(28)}")
 
     i9 := ((((-50) - (-27)) + ((-40) * (-13))) - (s3.scalar_length() - i1))
-    say("i9 = {i9}")
+    say(f"i9 = {i9}")
     return 0

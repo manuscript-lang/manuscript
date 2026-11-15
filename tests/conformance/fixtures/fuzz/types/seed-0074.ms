@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -28,23 +28,23 @@ fn gcd(a: Int, b: Int) Int:
     return gcd(b, a % b)
 
 export fn main() Int:
-    say("fib(28) = {fib(28)}")
-    say("gcd(3181, 3274) = {gcd(3181, 3274)}")
+    say(f"fib(28) = {fib(28)}")
+    say(f"gcd(3181, 3274) = {gcd(3181, 3274)}")
 
     i1 := (-0)
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
     say(
-        "{(i1 + (216835 / (-50)))} {i1} {((i1 + (216835 / (-50))) < i1)} sum {(i1 + (216835 / (-50))) + i1}"
+        f"{(i1 + (216835 / (-50)))} {i1} {((i1 + (216835 / (-50))) < i1)} sum {(i1 + (216835 / (-50))) + i1}"
     )
 
     bad := 1.5 + 2
     say(
-        "{((i1 % 6) - i1)} {(((-29) / 528576467809) * 16)} {(((i1 % 6) - i1) < (((-29) / 528576467809) * 16))} sum {((i1 % 6) - i1) + (((-29) / 528576467809) * 16)}"
+        f"{((i1 % 6) - i1)} {(((-29) / 528576467809) * 16)} {(((i1 % 6) - i1) < (((-29) / 528576467809) * 16))} sum {((i1 % 6) - i1) + (((-29) / 528576467809) * 16)}"
     )
 
     l2 := [(-26), (-23), (-12), 10, 26]
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     b3 := ("back\\slash" + ("back\\slash" + "")).ends_with("back\\slash")
-    say("b3 = {b3}")
+    say(f"b3 = {b3}")
     return 0

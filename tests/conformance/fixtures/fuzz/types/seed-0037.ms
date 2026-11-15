@@ -6,25 +6,25 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     l1 := [(-11), 30, (-27), (-29), (-10)]
-    say("l1 = {l1} len {l1.length()}")
+    say(f"l1 = {l1} len {l1.length()}")
 
     b2 := (not (not "日本語".is_empty()))
-    say("b2 = {b2}")
+    say(f"b2 = {b2}")
 
     f3 := 284.25
-    say("f3 = {f3}")
+    say(f"f3 = {f3}")
 
     bad := (1 < 2) < 3
     say(
-        "{((-27) % ((-45) / (-43)))} {(-25)} {(((-27) % ((-45) / (-43))) < (-25))} sum {((-27) % ((-45) / (-43))) + (-25)}"
+        f"{((-27) % ((-45) / (-43)))} {(-25)} {(((-27) % ((-45) / (-43))) < (-25))} sum {((-27) % ((-45) / (-43))) + (-25)}"
     )
 
     f4 := ((665.963 * 853.633) + ((0.0 + 6.5) * (f3 + f3)))
-    say("f4 = {f4}")
+    say(f"f4 = {f4}")
 
     var acc5 = 0
 
@@ -34,8 +34,8 @@ export fn main() Int:
         else:
             acc5 -= 1
 
-    say("acc5 = {acc5}")
+    say(f"acc5 = {acc5}")
 
     b6 := (not b2)
-    say("b6 = {b6}")
+    say(f"b6 = {b6}")
     return 0

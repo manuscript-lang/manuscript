@@ -6,30 +6,30 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     s1 := "quote\"d"
-    say("s1 = [{s1}]")
+    say(f"s1 = [{s1}]")
 
     b2 := "naïve".upper().ends_with("MiXeD CaSe")
-    say("b2 = {b2}")
+    say(f"b2 = {b2}")
 
     bad: Bool := 1
     b3 := true
-    say("b3 = {b3}")
+    say(f"b3 = {b3}")
 
     s4 := "  padded  ".upper()
-    say("s4 = [{s4}]")
+    say(f"s4 = [{s4}]")
 
     l5 := [(-29), (-19), 25, 9, 11]
-    say("l5 = {l5} len {l5.length()}")
+    say(f"l5 = {l5} len {l5.length()}")
 
     if ((not false) or ((-11) < (-26))):
-        say(("brace\{s\}" + s1))
+        say(("brace{s}" + s1))
     else:
         say("gamma")
 
     i6 := (s4.scalar_length() + s1.scalar_length())
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
     return 0

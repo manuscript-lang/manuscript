@@ -6,24 +6,24 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     s1 := ("ms" + ("gamma" + "gamma"))
-    say("s1 = [{s1}]")
+    say(f"s1 = [{s1}]")
 
     f2 := (((8.0e18 + 0.0) * 391.207) * (0.0 + (7.0e6 + 629.311)))
-    say("f2 = {f2}")
+    say(f"f2 = {f2}")
 
     l3 := [28, (-7)]
-    say("l3 = {l3} len {l3.length()}")
+    say(f"l3 = {l3} len {l3.length()}")
 
     f4 := (((3.0e18 + f2) + (325.796 / 0.0)) - ((492.181 / f2) * (975.873 * f2)))
-    say("f4 = {f4}")
+    say(f"f4 = {f4}")
 
     f5 := f2
-    say("f5 = {f5}")
+    say(f"f5 = {f5}")
 
-    s6 := (s1 + (s1 + "delta")).replace("brace\{s\}", s1)
-    say("s6 = [{s6}]")
+    s6 := (s1 + (s1 + "delta")).replace("brace{s}", s1)
+    say(f"s6 = [{s6}]")
     return 0

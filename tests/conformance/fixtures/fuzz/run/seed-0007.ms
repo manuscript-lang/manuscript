@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -36,29 +36,29 @@ fn collatz(start: Int) Int:
 
 export fn main() Int:
     i1 := 38
-    say("i1 = {i1}")
-    say("fact(5) = {fact(5)}")
+    say(f"i1 = {i1}")
+    say(f"fact(5) = {fact(5)}")
 
     i2 := (((-12) * ((-267334) / i1)) + (i1 / (i1 - (-47))))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     i3 := (-25)
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     f4 := 0.0
-    say("f4 = {f4}")
+    say(f"f4 = {f4}")
 
     l5 := [(-14), (-26), 17, (-19)]
-    say("l5 = {l5} len {l5.length()}")
+    say(f"l5 = {l5} len {l5.length()}")
 
     i6 := ((-(47 + i2)) - i1)
-    say("i6 = {i6}")
-    say("gcd(4993, 3262) = {gcd(4993, 3262)}")
+    say(f"i6 = {i6}")
+    say(f"gcd(4993, 3262) = {gcd(4993, 3262)}")
 
-    b7 := ("{((-19) % (-811483988226))}:" + "alpha").starts_with("emoji 😀")
-    say("b7 = {b7}")
-    say("collatz(2309) = {collatz(2309)}")
+    b7 := (f"{((-19) % (-811483988226))}:" + "alpha").starts_with("emoji 😀")
+    say(f"b7 = {b7}")
+    say(f"collatz(2309) = {collatz(2309)}")
 
     f8 := (523.206 * (630.635 / (f4 * 934.25)))
-    say("f8 = {f8}")
+    say(f"f8 = {f8}")
     return 0

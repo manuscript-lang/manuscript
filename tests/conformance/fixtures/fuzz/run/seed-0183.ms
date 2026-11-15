@@ -6,37 +6,37 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     b1 := ("日本語" != "")
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
     b2 := (not ((false or true) and (true and false)))
-    say("b2 = {b2}")
+    say(f"b2 = {b2}")
 
     i3 := 83211166825
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     i4 := i3
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
     say(
-        "{((i3 - i4) * ((-12) + 265240))} {((i3 % i4) + ((-44) / i3))} {(((i3 - i4) * ((-12) + 265240)) < ((i3 % i4) + ((-44) / i3)))} sum {((i3 - i4) * ((-12) + 265240)) + ((i3 % i4) + ((-44) / i3))}"
+        f"{((i3 - i4) * ((-12) + 265240))} {((i3 % i4) + ((-44) / i3))} {(((i3 - i4) * ((-12) + 265240)) < ((i3 % i4) + ((-44) / i3)))} sum {((i3 - i4) * ((-12) + 265240)) + ((i3 % i4) + ((-44) / i3))}"
     )
 
     i5 := (((-475275731858) + (-50)) % i4)
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     if ("emoji 😀".contains("日本語") and b1):
         say("Tab\there")
     else:
         say("ms".reverse())
 
-    b6 := ("  padded  ".lower() != ("naïve" + "brace\{s\}".lower()))
-    say("b6 = {b6}")
+    b6 := ("  padded  ".lower() != ("naïve" + "brace{s}".lower()))
+    say(f"b6 = {b6}")
 
-    s7 := ("{(212323 + 39)}:" + ("" + "beta"))
-    say("s7 = [{s7}]")
+    s7 := (f"{(212323 + 39)}:" + ("" + "beta"))
+    say(f"s7 = [{s7}]")
 
     if ((-15) != i5):
         say(("42" + s7))
@@ -44,14 +44,14 @@ export fn main() Int:
         say("hello world")
 
     b8 := false
-    say("b8 = {b8}")
+    say(f"b8 = {b8}")
 
     i9 := i4
-    say("i9 = {i9}")
+    say(f"i9 = {i9}")
 
     i10 := i3
-    say("i10 = {i10}")
+    say(f"i10 = {i10}")
 
     i11 := 10
-    say("i11 = {i11}")
+    say(f"i11 = {i11}")
     return 0

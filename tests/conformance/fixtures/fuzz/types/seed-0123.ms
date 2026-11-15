@@ -6,22 +6,22 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     b1 := true
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
     f2 := (
         ((109.644 - 318.794) + (802.354 / 750.761))
         + ((966.287 - 3.5) + (797.353 * 450.425))
     )
-    say("f2 = {f2}")
+    say(f"f2 = {f2}")
 
     bad := undefined_name + 1
     b3 := (352.328 < ((f2 - f2) + (457.836 - f2)))
-    say("b3 = {b3}")
+    say(f"b3 = {b3}")
 
     f4 := (((0.0 / f2) + (f2 * f2)) / ((f2 + f2) / (f2 * 21.055)))
-    say("f4 = {f4}")
+    say(f"f4 = {f4}")
     return 0

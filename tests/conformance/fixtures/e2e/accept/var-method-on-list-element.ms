@@ -20,7 +20,7 @@ type Store:
 	shelf: Shelf = Shelf()
 
 fn var Store.put(at: Int, key: Int) Void:
-	self.shelf.buckets[at].add(key, "k{key}")
+	self.shelf.buckets[at].add(key, f"k{key}")
 
 test "var method on a list element changes only that element":
 	var store = Store()

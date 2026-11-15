@@ -219,7 +219,7 @@ fn fix_wraps_expressions_to_convert_types() {
     assert!(fixed.contains("_b: Float := (n + m).to_float()"), "{fixed}");
     assert!(fixed.contains("_d: Float := 7.0"), "{fixed}");
     assert!(fixed.contains("1.5 * n.to_float()"), "{fixed}");
-    assert!(fixed.contains("say(text: \"{n + 1}\")"), "{fixed}");
+    assert!(fixed.contains("say(text: f\"{n + 1}\")"), "{fixed}");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

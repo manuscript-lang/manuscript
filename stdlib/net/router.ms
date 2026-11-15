@@ -259,7 +259,7 @@ fn insert(var routes: List[Route], route: Route) Void!:
 		if existing.method == route.method and shape_of(existing.segments) == shape:
 			return error(
 				Error(
-					"router: duplicate route {route.method} {route.pattern}",
+					f"router: duplicate route {route.method} {route.pattern}",
 					kind: "EEXIST",
 					details: {
 						"method": route.method.clone(),
@@ -297,7 +297,7 @@ fn in_order[T](var from: List[T]) List[T]:
 
 fn invalid_pattern(pattern: String) Error:
 	return Error(
-		"router: invalid pattern {pattern}",
+		f"router: invalid pattern {pattern}",
 		kind: "EINVAL",
 		details: {"pattern": pattern.clone()},
 	)
@@ -351,7 +351,7 @@ fn shape_of(segments: List[Segment]) String:
 
 fn shape_text(segment: Segment) String:
 	match segment:
-		Literal(text): return "={text}"
+		Literal(text): return f"={text}"
 		Param(_): return ":"
 		Rest(_): return "*"
 

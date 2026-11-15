@@ -259,7 +259,7 @@ fn normalize_in(windows: Bool, raw: String) String:
 		text := slash(true, raw)
 		if is_device(text) and text.view(4, text.length()).starts_with("/"): return normalize_core(
 			true,
-			"{text.view(0, 4)}{trim_start_slashes(text.view(4, text.length()))}",
+			f"{text.view(0, 4)}{trim_start_slashes(text.view(4, text.length()))}",
 		)
 
 		return normalize_core(true, text)
@@ -369,14 +369,14 @@ fn normalize_core(windows: Bool, text: String) String:
 	var value = out.build().decode_utf8().get("")
 	if not windows: return value
 
-	if root.length() == 2 and stack.is_empty(): value = "{root}."
+	if root.length() == 2 and stack.is_empty(): value = f"{root}."
 
 	// A relative first component shaped like a drive ("./C:") must not become a
 	// drive-relative path once the leading "." is removed.
 	if root.is_empty() and not stack.is_empty():
 		first := stack[0]
 		head := data.view(span_start(first), span_end(first)).decode_utf8().get("")
-		if root_of(true, head) != "": value = "./{value}"
+		if root_of(true, head) != "": value = f"./{value}"
 
 	return native(true, value)
 
@@ -509,14 +509,14 @@ fn resolve_inner(windows: Bool, base: String, parts: List[String]) String?:
 				device = part_device.clone()
 
 			if not absolute:
-				tail = "{part.view(root.length(), part.length())}/{tail}"
+				tail = f"{part.view(root.length(), part.length())}/{tail}"
 				absolute = is_absolute_in(true, part)
 
 			if absolute and not device.is_empty(): break
 
 		if not absolute: return none
 
-		value = "{device}/{tail}"
+		value = f"{device}/{tail}"
 	else:
 		// Only the last absolute part and its following tails survive resolution.
 		var start = parts.length()
@@ -624,7 +624,7 @@ fn join_in(windows: Bool, items: List[String]) String:
 			and first.starts_with("//")
 			and first.scalar_at(2, -1) != 47
 		)
-		if not unc: joined = "/{trim_start_slashes(slash(true, joined))}"
+		if not unc: joined = f"/{trim_start_slashes(slash(true, joined))}"
 
 	return normalize_in(windows, joined)
 
@@ -679,14 +679,14 @@ fn format_in(windows: Bool, parts: PathParts) String:
 		extension := parts.extension
 
 		if not extension.is_empty() and not extension.starts_with("."):
-			base = "{parts.name}.{extension}"
+			base = f"{parts.name}.{extension}"
 		else:
-			base = "{parts.name}{extension}"
+			base = f"{parts.name}{extension}"
 
 	if directory.is_empty(): return base
-	if directory == parts.root: return "{directory}{base}"
+	if directory == parts.root: return f"{directory}{base}"
 
-	return "{directory}{native(windows, "/")}{base}"
+	return f"{directory}{native(windows, "/")}{base}"
 
 fn namespaced_in(windows: Bool, text: String) String:
 	root := root_in(windows, text)
@@ -702,9 +702,9 @@ fn namespaced_in(windows: Bool, text: String) String:
 	if resolved.is_none(): return text.clone()
 
 	value := resolved.get("")
-	if value.starts_with("\\\\"): return "\\\\?\\UNC\\{value.view(2, value.length())}"
+	if value.starts_with("\\\\"): return f"\\\\?\\UNC\\{value.view(2, value.length())}"
 
-	return "\\\\?\\{value}"
+	return f"\\\\?\\{value}"
 
 fn glob_in(windows: Bool, path: String, pattern: String) Bool!:
 	return msstd_path_matches_glob(windows, path, pattern)

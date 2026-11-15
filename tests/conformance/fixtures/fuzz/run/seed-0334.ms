@@ -6,28 +6,28 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     var acc1 = 0
     for i in 0..2:
         acc1 += i * 0
-    say("acc1 = {acc1}")
+    say(f"acc1 = {acc1}")
 
     b2 := (not ((816.120 == 619.936) and ("gamma" != "delta")))
-    say("b2 = {b2}")
+    say(f"b2 = {b2}")
 
     b3 := ((false or (not b2)) or "Tab\there".upper().is_empty())
-    say("b3 = {b3}")
+    say(f"b3 = {b3}")
 
     i4 := ((188962474228 + 42) + ((-2) * (-839457)))
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
     say(
-        "{(((-424858808943) / i4) + (-100444))} {i4} {((((-424858808943) / i4) + (-100444)) < i4)} sum {(((-424858808943) / i4) + (-100444)) + i4}"
+        f"{(((-424858808943) / i4) + (-100444))} {i4} {((((-424858808943) / i4) + (-100444)) < i4)} sum {(((-424858808943) / i4) + (-100444)) + i4}"
     )
 
     l5 := [1, 2, 3].take(0)
-    say("l5 = {l5} len {l5.length()}")
+    say(f"l5 = {l5} len {l5.length()}")
 
     if b2:
         say("MiXeD CaSe".upper())
@@ -35,16 +35,16 @@ export fn main() Int:
         say("Tab\there")
 
     l6 := [(-5), 11, 7, (-19)]
-    say("l6 = {l6} len {l6.length()}")
+    say(f"l6 = {l6} len {l6.length()}")
     say(
-        "{(-(-i4))} {(i4 + (i4 + i4))} {((-(-i4)) < (i4 + (i4 + i4)))} sum {(-(-i4)) + (i4 + (i4 + i4))}"
+        f"{(-(-i4))} {(i4 + (i4 + i4))} {((-(-i4)) < (i4 + (i4 + i4)))} sum {(-(-i4)) + (i4 + (i4 + i4))}"
     )
 
     if ("  padded  " + "MiXeD CaSe").is_empty():
         say(("" + "42"))
     else:
-        say(("{(i4 - i4)}:" + ""))
+        say((f"{(i4 - i4)}:" + ""))
 
     i7 := l6.get(2)
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
     return 0

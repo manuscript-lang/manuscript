@@ -6,11 +6,11 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := (((24 / (-956912)) + (-27)) + ((-44) + (45 % (-854129970545))))
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     if false:
         say("ms".replace("emoji 😀", "  padded  "))
@@ -23,17 +23,17 @@ export fn main() Int:
         say("quote\"d")
 
     say(
-        "{(((-507558) + (-30)) / 21)} {(((-285493) + 9) + 30)} {((((-507558) + (-30)) / 21) < (((-285493) + 9) + 30))} sum {(((-507558) + (-30)) / 21) + (((-285493) + 9) + 30)}"
+        f"{(((-507558) + (-30)) / 21)} {(((-285493) + 9) + 30)} {((((-507558) + (-30)) / 21) < (((-285493) + 9) + 30))} sum {(((-507558) + (-30)) / 21) + (((-285493) + 9) + 30)}"
     )
 
     l2 := [(-15), 27]
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     f3 := 948.190
-    say("f3 = {f3}")
+    say(f"f3 = {f3}")
 
     s4 := "quote\"d"
-    say("s4 = [{s4}]")
+    say(f"s4 = [{s4}]")
 
     bad := say(1, 2)
     return 0

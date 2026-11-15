@@ -17,10 +17,10 @@ export fn main() Int:
     key = "zzz"
     c.hits += 10
     bump(var c, "x")
-    print("{by["a"].hits} {by["a"].names} {key}")
+    print(f"{by["a"].hits} {by["a"].names} {key}")
     var nested = Map[Int, Map[String, List[Int]]]()
     nested[1] = {"k": [1]}
     var inner = nested[1]["k"]
     inner.append(2)
-    print("{nested}")
+    print(f"{nested}")
     return 0

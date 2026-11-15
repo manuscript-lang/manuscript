@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -16,47 +16,47 @@ fn gcd(a: Int, b: Int) Int:
 
 export fn main() Int:
     f1 := 118.790
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
 
     b2 := ((-29) >= (((-46) + 20) * (-567069)))
-    say("b2 = {b2}")
+    say(f"b2 = {b2}")
 
     f3 := (f1 + ((11.022 + f1) * (731.380 - f1)))
-    say("f3 = {f3}")
+    say(f"f3 = {f3}")
 
     b4 := ("back\\slash" + "  padded  ".lower()).contains("emoji 😀")
-    say("b4 = {b4}")
+    say(f"b4 = {b4}")
 
     if ("beta".is_empty() or (b2 or true)):
         say(("ms" + "ms"))
     else:
-        say("brace\{s\}")
+        say("brace{s}")
 
     s5 := "back\\slash"
-    say("s5 = [{s5}]")
+    say(f"s5 = [{s5}]")
 
     i6 := ((-46) * (((-41) + 622583) - ((-36) - (-8))))
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     i7 := s5.scalar_length()
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
-    s8 := ("{((-831649) % (-28))}:" + ("{(i7 - (-14))}:" + ("{48}:" + s5)))
-    say("s8 = [{s8}]")
-    say("{(i6 * 36)} {15} {((i6 * 36) < 15)} sum {(i6 * 36) + 15}")
+    s8 := (f"{((-831649) % (-28))}:" + (f"{(i7 - (-14))}:" + (f"{48}:" + s5)))
+    say(f"s8 = [{s8}]")
+    say(f"{(i6 * 36)} {15} {((i6 * 36) < 15)} sum {(i6 * 36) + 15}")
 
     i9 := (-i6)
-    say("i9 = {i9}")
+    say(f"i9 = {i9}")
 
     i10 := (((-i7) + (i6 * i6)) % ((i6 % i9) + (i6 * i7)))
-    say("i10 = {i10}")
+    say(f"i10 = {i10}")
 
     if s5.is_empty():
         say("back\\slash".upper())
     else:
         say("emoji 😀".reverse())
 
-    if "a".contains("brace\{s\}"):
+    if "a".contains("brace{s}"):
         say(s5.reverse())
     else:
         say((s8 + s5))
@@ -66,5 +66,5 @@ export fn main() Int:
     else:
         say((s5 + s5))
 
-    say("gcd(1969, 3256) = {gcd(1969, 3256)}")
+    say(f"gcd(1969, 3256) = {gcd(1969, 3256)}")
     return 0

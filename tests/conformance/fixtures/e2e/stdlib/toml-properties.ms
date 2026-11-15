@@ -35,12 +35,12 @@ fn table(var rng: Rng, depth: Int) TomlValue:
 
 fn check_round_trip(seed: Int, original: TomlValue) Void!:
 	rendered := stringify(original)?
-	if (parse(rendered)?) != original: return fail("seed {seed}: changed\n{rendered}")
+	if (parse(rendered)?) != original: return fail(f"seed {seed}: changed\n{rendered}")
 
 fn check_stable(seed: Int, mutated: String, first: TomlValue) Void!:
 	again := stringify(first)?
 	if (parse(again)?) != first: return fail(
-		"seed {seed}: reparsed value changed\n{mutated}\n---\n{again}"
+		f"seed {seed}: reparsed value changed\n{mutated}\n---\n{again}"
 	)
 
 test "TOML stringify then parse preserves generated documents":

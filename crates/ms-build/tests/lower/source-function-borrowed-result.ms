@@ -4,5 +4,5 @@ fn identity(value: String) String:
 
 export fn main() Int:
     f := identity
-    value := f("value-{17}")
+    value := f(f"value-{17}")
     return if value == "value-17": 0 else: 1

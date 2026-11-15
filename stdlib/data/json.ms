@@ -224,7 +224,7 @@ fn Event.to_json() JsonValue:
 fn tagged(kind: String, id: Int) JsonValue:
     var fields = Map[String, JsonValue]()
     fields.add("type", JsonValue.StringValue(kind))
-    fields.add("id", JsonValue.NumberValue("{id}"))
+    fields.add("id", JsonValue.NumberValue(f"{id}"))
     return JsonValue.ObjectValue(fields)
 ```
 */
@@ -482,7 +482,7 @@ type JsonLines[T: Data]:
 
 fn var JsonLines[T].write(value: T) Void!:
 	text := stringify[T](value, StringifyOptions(max_bytes: self.max_bytes))?
-	return self.output.write("{text}\n".to_bytes())
+	return self.output.write(f"{text}\n".to_bytes())
 
 fn var JsonLines[T].flush() Void!:
 	return self.output.flush()

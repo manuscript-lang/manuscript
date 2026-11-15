@@ -30,8 +30,8 @@ fn get(url: String) String!:
 
 test "a handler can wrap a buffered handler it captured":
 	server := serve(address: "127.0.0.1:0", handler: routed()) | expect_ok?
-	base := "http://{server.address()}"
+	base := f"http://{server.address()}"
 
-	own := get("{base}/health")?
-	if own != "ok": return error(Error("own route: {own}"))
-	if get("{base}/x/y")? != "/x/y": return error(Error("delegated route"))
+	own := get(f"{base}/health")?
+	if own != "ok": return error(Error(f"own route: {own}"))
+	if get(f"{base}/x/y")? != "/x/y": return error(Error("delegated route"))

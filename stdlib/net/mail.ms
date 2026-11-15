@@ -34,9 +34,9 @@ fn Address.to_text() String:
 
 	if specials:
 		escaped := self.name.replace("\\", "\\\\").replace("\"", "\\\"")
-		return "\"{escaped}\" <{self.address}>"
+		return f"\"{escaped}\" <{self.address}>"
 
-	return "{self.name} <{self.address}>"
+	return f"{self.name} <{self.address}>"
 
 // A parsed message: header fields and the body after the first blank line.
 export type Message:
@@ -251,7 +251,7 @@ fn q_decode(payload: String) Bytes:
 		if c == "_":
 			out.append(32)
 		else if c == "=" and i + 2 < chars.length():
-			value := parse_int("{chars[i + 1]}{chars[i + 2]}", 16)
+			value := parse_int(f"{chars[i + 1]}{chars[i + 2]}", 16)
 
 			if value.is_ok():
 				out.append(value.get(0).to_uint8().get(0))

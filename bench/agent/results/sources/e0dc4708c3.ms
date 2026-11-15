@@ -115,7 +115,7 @@ fn knapsack(tokens: List[String]) String:
 				c := cap - k
 				best.set(c, max2(best.get(c), best.get(c - w) + v))
 
-	return "{best.get(cap)}"
+	return f"{best.get(cap)}"
 
 fn coin_change(tokens: List[String]) String:
 	amount := parse_num(tokens.get(1))
@@ -141,7 +141,7 @@ fn coin_change(tokens: List[String]) String:
 
 	if fewest.get(amount) >= unreachable: return "impossible"
 
-	return "{fewest.get(amount)}"
+	return f"{fewest.get(amount)}"
 
 fn answer(line: String) String:
 	tokens := line.split(" ")
@@ -152,14 +152,14 @@ fn answer(line: String) String:
 		and non_empty(tokens.get(1))
 		and non_empty(tokens.get(2))
 	):
-		return "{lcs_length(tokens.get(1).to_bytes(), tokens.get(2).to_bytes())}"
+		return f"{lcs_length(tokens.get(1).to_bytes(), tokens.get(2).to_bytes())}"
 	if (
 		cmd == "edit"
 		and tokens.length() == 3
 		and non_empty(tokens.get(1))
 		and non_empty(tokens.get(2))
 	):
-		return "{edit_distance(tokens.get(1).to_bytes(), tokens.get(2).to_bytes())}"
+		return f"{edit_distance(tokens.get(1).to_bytes(), tokens.get(2).to_bytes())}"
 	if cmd == "knap" and tokens.length() >= 2: return knapsack(tokens)
 	if cmd == "coins" and tokens.length() >= 3: return coin_change(tokens)
 
@@ -173,7 +173,7 @@ export fn main() Int:
 	while reading:
 		if line := read_line(input).get():
 			if not is_blank(line):
-				output.write("{answer(line)}\n").get()
+				output.write(f"{answer(line)}\n").get()
 		else:
 			reading = false
 

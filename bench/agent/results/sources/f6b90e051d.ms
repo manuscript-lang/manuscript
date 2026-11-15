@@ -44,8 +44,8 @@ fn valid_id(s: String) Bool:
 
 fn money(c: Int) String:
 	whole := c / 100
-	frac := "{c % 100}".pad_start(2, "0")
-	return "{whole}.{frac}"
+	frac := f"{c % 100}".pad_start(2, "0")
+	return f"{whole}.{frac}"
 
 fn process(var st: State, line: String) Unit:
 	var only_spaces = true
@@ -81,7 +81,7 @@ fn process(var st: State, line: String) Unit:
 
 		now := st.stock.get_or(sku, 0) + q
 		st.stock[sku.clone()] = now
-		print("ok {sku} stock={now}")
+		print(f"ok {sku} stock={now}")
 		return
 
 	if cmd == "price":
@@ -97,7 +97,7 @@ fn process(var st: State, line: String) Unit:
 			return
 
 		if not st.stock.contains(sku):
-			print("error: unknown sku {sku}")
+			print(f"error: unknown sku {sku}")
 			return
 
 		st.price[sku.clone()] = p
@@ -125,11 +125,11 @@ fn process(var st: State, line: String) Unit:
 				or num(kv[1]) < 1
 				or num(kv[1]) > 100000
 			):
-				print("error: bad item {t}")
+				print(f"error: bad item {t}")
 				return
 
 		if st.status.contains(id):
-			print("error: order {id} already exists")
+			print(f"error: order {id} already exists")
 			return
 
 		var parts = List[Line]()
@@ -142,17 +142,17 @@ fn process(var st: State, line: String) Unit:
 			qty := num(kv[1])
 
 			if seen.contains(sku):
-				print("error: duplicate sku {sku}")
+				print(f"error: duplicate sku {sku}")
 				return
 
 			if not st.stock.contains(sku):
-				print("error: unknown sku {sku}")
+				print(f"error: unknown sku {sku}")
 				return
 
 			have := st.stock.get_or(sku, 0)
 
 			if qty > have:
-				print("error: insufficient stock for {sku} (have {have}, need {qty})")
+				print(f"error: insufficient stock for {sku} (have {have}, need {qty})")
 				return
 
 			seen.append(sku.clone())
@@ -168,7 +168,7 @@ fn process(var st: State, line: String) Unit:
 		st.status[id.clone()] = "placed"
 		st.total[id.clone()] = total
 		st.items[id.clone()] = parts
-		print("ok {id} total={money(total)}")
+		print(f"ok {id} total={money(total)}")
 		return
 
 	if cmd == "cancel":
@@ -179,17 +179,17 @@ fn process(var st: State, line: String) Unit:
 		id := toks[1]
 
 		if not st.status.contains(id):
-			print("error: unknown order {id}")
+			print(f"error: unknown order {id}")
 			return
 
 		s := st.status.get_or(id, "")
 
 		if s == "shipped":
-			print("error: order {id} already shipped")
+			print(f"error: order {id} already shipped")
 			return
 
 		if s == "cancelled":
-			print("error: order {id} already cancelled")
+			print(f"error: order {id} already cancelled")
 			return
 
 		if ps := st.items.get(id):
@@ -207,17 +207,17 @@ fn process(var st: State, line: String) Unit:
 		id := toks[1]
 
 		if not st.status.contains(id):
-			print("error: unknown order {id}")
+			print(f"error: unknown order {id}")
 			return
 
 		s := st.status.get_or(id, "")
 
 		if s == "shipped":
-			print("error: order {id} already shipped")
+			print(f"error: order {id} already shipped")
 			return
 
 		if s == "cancelled":
-			print("error: order {id} is cancelled")
+			print(f"error: order {id} is cancelled")
 			return
 
 		st.status[id.clone()] = "shipped"
@@ -251,10 +251,10 @@ fn process(var st: State, line: String) Unit:
 			s := st.stock.get_or(sku, 0)
 			p := st.price.get_or(sku, 0)
 			r := reserved.get_or(sku, 0)
-			print("{sku} stock={s} price={money(p)} reserved={r}")
+			print(f"{sku} stock={s} price={money(p)} reserved={r}")
 
-		print("orders placed={placed} shipped={shipped} cancelled={cancelled}")
-		print("revenue={money(revenue)}")
+		print(f"orders placed={placed} shipped={shipped} cancelled={cancelled}")
+		print(f"revenue={money(revenue)}")
 		return
 
 	print("error: unknown command")

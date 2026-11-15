@@ -50,7 +50,7 @@ fn report(mir: String) List[String]:
 				ty := line.slice(colon + 2, line.length()).get("")
 				shown := ty.slice(0, ty.index_of(" = copy").get(ty.length())).get("")
 				src := if words.length() > 1: words[1].clone() else: ""
-				key := "{shown} <- {defs.get_or(src, "?")}"
+				key := f"{shown} <- {defs.get_or(src, "?")}"
 				counts.add(key.clone(), counts.get_or(key, 0) + 1)
 
 	// uniq -c | sort -rn: count descending, ties in descending text order.
@@ -60,7 +60,7 @@ fn report(mir: String) List[String]:
 			a.text
 		)
 	)
-	return rows.map(fn r: right("{r.count}", 7) + " " + r.text)
+	return rows.map(fn r: right(f"{r.count}", 7) + " " + r.text)
 
 type Row:
 	count: Int
@@ -71,14 +71,14 @@ fn main() Int:
 	if targets.is_empty(): return usage("usage: copy_report.ms -- <ms.toml|file.ms>...")
 
 	tmp := temporary("copy-report-").get()
-	out := "{tmp.path()}/out.mir"
+	out := f"{tmp.path()}/out.mir"
 	if env("RAW", "0") != "1": set_environment("MS_EMIT_OPT", "1").get()
 
 	for target in targets:
 		ran := capture(ms_binary(), ["emit", target.clone(), "-o", out.clone()])
-		if not ran.ok or ran.code != 0: return finish(must("ms emit {target}", ran))
+		if not ran.ok or ran.code != 0: return finish(must(f"ms emit {target}", ran))
 
-		print("== {target}")
+		print(f"== {target}")
 		for row in report(read_text(out)):
 			print(row)
 

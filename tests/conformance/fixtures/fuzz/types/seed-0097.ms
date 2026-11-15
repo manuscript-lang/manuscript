@@ -6,19 +6,19 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     f1 := (604.387 + ((551.326 - 2.5) * (730.980 * 0.0)))
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
 
     bad := 1 and 2
     f2 := f1
-    say("f2 = {f2}")
+    say(f"f2 = {f2}")
 
     i3 := 47
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     l4 := [10, (-2), 16, (-17), 17]
-    say("l4 = {l4} len {l4.length()}")
+    say(f"l4 = {l4} len {l4.length()}")
     return 0

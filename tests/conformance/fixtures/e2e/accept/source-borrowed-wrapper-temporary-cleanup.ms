@@ -11,7 +11,7 @@ type Resource:
 	path: String
 
 fn var Resource.close() Void!:
-	append_file(self.path, "{self.id},").wait()?
+	append_file(self.path, f"{self.id},").wait()?
 	self.path = "closed"
 
 fn present(path: String, id: Int) Resource?: Resource(id, path.clone())
@@ -50,7 +50,7 @@ fn error_exit(path: String) Void!:
 
 test "borrowed source helpers close intact owned wrapper temporaries once":
 	directory := temporary("source-wrapper-")?
-	path := "{directory.path()}/log"
+	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
 	expect_equal(observed(present(path, 1)), true)?
 	expect_equal(mapped(present(path, 2)), 2)?
@@ -62,14 +62,14 @@ test "borrowed source helpers close intact owned wrapper temporaries once":
 
 test "whole borrowed results transfer temporary ownership and named borrows do not close":
 	directory := temporary("source-wrapper-")?
-	path := "{directory.path()}/log"
+	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
 	retained(path)?
 	expect_equal(log_text(path)?, "7,")?
 
 test "borrowed wrapper temporaries close on expected errors and source faults":
 	directory := temporary("source-wrapper-")?
-	path := "{directory.path()}/log"
+	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
 	expect_equal(error_exit(path).is_error(), true)?
 
@@ -90,7 +90,7 @@ fn transfer_first(path: String) Void!:
 
 test "whole transfer keeps newer argument cleanups active until statement end":
 	directory := temporary("source-wrapper-")?
-	path := "{directory.path()}/log"
+	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
 
 	_fault := expect_fault(fn: transferred_then_faulted(path))?
@@ -103,7 +103,7 @@ fn resource_path(value: Resource?) String: value.get().path
 
 test "borrowed parts are copied before their temporary owner closes":
 	directory := temporary("source-wrapper-")?
-	path := "{directory.path()}/log"
+	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
 
 	saved := resource_path(present(path, 14))
@@ -123,7 +123,7 @@ fn branched_transfers(path: String) Void!:
 
 test "nested whole transfers stay path local across branches and loops":
 	directory := temporary("source-wrapper-")?
-	path := "{directory.path()}/log"
+	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
 	branched_transfers(path)?
 	expect_equal(result_observed(success(path, 23)), true)?
@@ -150,7 +150,7 @@ fn number() Int!: ok(1)
 
 test "later successful try preserves source temporary ownership":
 	directory := temporary("source-wrapper-")?
-	path := "{directory.path()}/log"
+	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
 	expect_equal(extra(present(path, 30), number()?), true)?
 	expect_equal(log_text(path)?, "30,")?
@@ -161,7 +161,7 @@ fn named_transferred_fault(path: String) Void:
 
 test "whole transferred locals retain their fault cleanup":
 	directory := temporary("source-wrapper-")?
-	path := "{directory.path()}/log"
+	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
 
 	_fault := expect_fault(fn: named_transferred_fault(path))?
@@ -176,7 +176,7 @@ fn fresh_then_faulted(path: String) Void:
 
 test "retiring a borrowed input does not erase an unrelated result owner":
 	directory := temporary("source-wrapper-")?
-	path := "{directory.path()}/log"
+	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
 
 	_fault := expect_fault(fn: fresh_then_faulted(path))?
@@ -184,7 +184,7 @@ test "retiring a borrowed input does not erase an unrelated result owner":
 
 test "source-reader temporaries finish on each loop condition and short circuit":
 	directory := temporary("source-wrapper-")?
-	path := "{directory.path()}/log"
+	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
 
 	var count = 0
@@ -215,7 +215,7 @@ fn default_fault(path: String) Void:
 
 test "later argument errors and default faults close acquired wrapper owners":
 	directory := temporary("source-wrapper-")?
-	path := "{directory.path()}/log"
+	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
 	expect_equal(later_try_fails(path).is_error(), true)?
 
@@ -224,7 +224,7 @@ test "later argument errors and default faults close acquired wrapper owners":
 
 test "named borrowed arguments close in reverse acquisition order":
 	directory := temporary("source-wrapper-")?
-	path := "{directory.path()}/log"
+	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
 	expect_equal(
 		pair_observed(second: present(path, 80), first: present(path, 81)),
@@ -250,7 +250,7 @@ fn close_fault(path: String) Void:
 
 test "a failed temporary close leaves older lexical cleanup registered":
 	directory := temporary("source-wrapper-")?
-	path := "{directory.path()}/log"
+	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
 
 	_fault := expect_fault(fn: close_fault(path))?
@@ -282,7 +282,7 @@ fn borrowed_conversion_calls(path: String) Void!:
 
 test "borrowed payload optional conversions do not acquire close duty":
 	directory := temporary("source-wrapper-")?
-	path := "{directory.path()}/log"
+	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
 	borrowed_conversion_calls(path)?
 	expect_equal(log_text(path)?, "121,122,120,")?
@@ -299,7 +299,7 @@ fn borrowed_conversion_fault(path: String) Void:
 
 test "borrowed optional transport copies leave fault cleanup with original owner":
 	directory := temporary("source-wrapper-")?
-	path := "{directory.path()}/log"
+	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
 	expect_equal(borrowed_conversion_error(path).is_error(), true)?
 
@@ -332,7 +332,7 @@ fn named_default_reads(path: String) Void!:
 
 test "optional conversion provenance distinguishes retained moves from borrowed defaults":
 	directory := temporary("source-wrapper-")?
-	path := "{directory.path()}/log"
+	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
 	retained_conversion(path)?
 

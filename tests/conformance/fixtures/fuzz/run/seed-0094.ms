@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -23,43 +23,43 @@ fn fib(n: Int) Int:
 
 export fn main() Int:
     i1 := (-(9 + (935188 * 9)))
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     i2 := (-963035)
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     i3 := (((40 + i1) + (i1 + (-31))) % (6 + (i2 % (-29))))
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
-    s4 := "brace\{s\}"
-    say("s4 = [{s4}]")
+    s4 := "brace{s}"
+    say(f"s4 = [{s4}]")
 
     s5 := "quote\"d"
-    say("s5 = [{s5}]")
+    say(f"s5 = [{s5}]")
 
     i6 := (-4)
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     f7 := (((30.261 + 9.0e19) - (0.0 + 2.0e15)) / (0.0 * 239.826))
-    say("f7 = {f7}")
-    say("fib(34) = {fib(34)}")
+    say(f"f7 = {f7}")
+    say(f"fib(34) = {fib(34)}")
 
     i8 := (9 * i6)
-    say("i8 = {i8}")
+    say(f"i8 = {i8}")
 
     l9 := [(-18), (-17), (-16)]
-    say("l9 = {l9} len {l9.length()}")
+    say(f"l9 = {l9} len {l9.length()}")
 
     f10 := 581.004
-    say("f10 = {f10}")
+    say(f"f10 = {f10}")
 
     l11 := l9.filter(fn x: x > 4)
-    say("l11 = {l11} len {l11.length()}")
+    say(f"l11 = {l11} len {l11.length()}")
 
     var l12 = l11.clone()
     l12.append(98)
-    say("l12 = {l12} len {l12.length()}")
+    say(f"l12 = {l12} len {l12.length()}")
 
     i13 := s4.scalar_length()
-    say("i13 = {i13}")
+    say(f"i13 = {i13}")
     return 0

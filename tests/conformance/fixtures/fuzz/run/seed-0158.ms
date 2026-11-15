@@ -6,20 +6,20 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := (8 + ((42 / (-38)) + 3))
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     b2 := not "beta".is_empty()
-    say("b2 = {b2}")
+    say(f"b2 = {b2}")
 
     b3 := (
-        "hello world".replace("beta", "brace\{s\}").is_empty()
+        "hello world".replace("beta", "brace{s}").is_empty()
         and ((not b2) and (false and b2))
     )
-    say("b3 = {b3}")
+    say(f"b3 = {b3}")
 
     if ("MiXeD CaSe".ends_with("42") and (true or false)):
         say("gamma".lower())
@@ -27,16 +27,16 @@ export fn main() Int:
         say("MiXeD CaSe".trim())
 
     f4 := (368.318 * ((925.209 + 4.5) * (586.25 + 6.0e18)))
-    say("f4 = {f4}")
+    say(f"f4 = {f4}")
 
     b5 := (114.290 > ((f4 * 787.641) / (f4 * 7.5)))
-    say("b5 = {b5}")
+    say(f"b5 = {b5}")
 
     l6 := [(-16), (-3), (-7)]
-    say("l6 = {l6} len {l6.length()}")
+    say(f"l6 = {l6} len {l6.length()}")
 
     s7 := "quote\"d"
-    say("s7 = [{s7}]")
+    say(f"s7 = [{s7}]")
 
     var acc8 = 0
     var stepacc8 = 0
@@ -45,8 +45,8 @@ export fn main() Int:
         stepacc8 += 1
         acc8 += stepacc8 * stepacc8 + (-2)
 
-    say("acc8 = {acc8}")
+    say(f"acc8 = {acc8}")
 
-    s9 := ("{(i1 * (-45))}:" + "gamma").trim()
-    say("s9 = [{s9}]")
+    s9 := (f"{(i1 * (-45))}:" + "gamma").trim()
+    say(f"s9 = [{s9}]")
     return 0

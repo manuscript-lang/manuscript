@@ -1,2 +1,2 @@
 fn repeat(value: String) String:
-    return "😀:{value}:{value}"
+    return f"😀:{value}:{value}"

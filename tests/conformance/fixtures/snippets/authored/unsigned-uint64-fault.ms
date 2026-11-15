@@ -8,4 +8,4 @@ fn main() Void:
     one: UInt64 := 1
     void stdout().write("before\n")
     c := top + one
-    void stdout().write("{c}\n")
+    void stdout().write(f"{c}\n")

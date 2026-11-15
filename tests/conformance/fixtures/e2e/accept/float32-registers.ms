@@ -44,7 +44,7 @@ test "Float32 compares and formats":
 	b: Float32 := 0.2
 	expect_equal(a < b, true)?
 	expect_equal(a == b, false)?
-	expect_equal("{a}", "0.1")?
+	expect_equal(f"{a}", "0.1")?
 
 	widened := a.to_float()
 	expect_equal(widened > 0.1, true)?

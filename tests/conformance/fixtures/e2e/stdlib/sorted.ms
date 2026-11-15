@@ -6,7 +6,7 @@ import SortedMap, SortedSet from "@std/collections/sorted.ms"
 test "add get replace remove":
     var map = SortedMap[Int, String]()
     for key in [5, 1, 9, 3, 7]:
-        map.add(key, "v{key}")
+        map.add(key, f"v{key}")
     expect_equal(map.keys(), [1, 3, 5, 7, 9])?
     expect_equal(map.values(), ["v1", "v3", "v5", "v7", "v9"])?
     expect_equal(map.get(3), "v3")?

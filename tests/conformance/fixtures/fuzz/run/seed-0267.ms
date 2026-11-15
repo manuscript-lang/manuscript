@@ -6,56 +6,56 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     s1 := "x"
-    say("s1 = [{s1}]")
+    say(f"s1 = [{s1}]")
 
     i2 := (-16)
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     s3 := "a"
-    say("s3 = [{s3}]")
+    say(f"s3 = [{s3}]")
 
     s4 := "alpha".lower()
-    say("s4 = [{s4}]")
+    say(f"s4 = [{s4}]")
 
     i5 := i2
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     f6 := (
         (731.409 * (693.605 - 601.098))
         + ((75.25 + 107.656) * (355.491 * 89.868))
     )
-    say("f6 = {f6}")
+    say(f"f6 = {f6}")
 
     i7 := (-((536968 + i2) * i5))
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
     say(
-        "{s4.scalar_length()} {((29 + i7) - i5)} {(s4.scalar_length() < ((29 + i7) - i5))} sum {s4.scalar_length() + ((29 + i7) - i5)}"
+        f"{s4.scalar_length()} {((29 + i7) - i5)} {(s4.scalar_length() < ((29 + i7) - i5))} sum {s4.scalar_length() + ((29 + i7) - i5)}"
     )
 
     i8 := ((((-2) + i2) % (i5 - i7)) + ((i5 * 38) * (8 / 617721)))
-    say("i8 = {i8}")
+    say(f"i8 = {i8}")
 
     i9 := ((s3.scalar_length() * i7) + i8)
-    say("i9 = {i9}")
+    say(f"i9 = {i9}")
 
     b10 := ((i5 < (i5 + i9)) or (not (false or true)))
-    say("b10 = {b10}")
+    say(f"b10 = {b10}")
 
     var acc11 = 0
     for i in 0..6:
         acc11 += i * (-1)
-    say("acc11 = {acc11}")
+    say(f"acc11 = {acc11}")
     say(
-        "{(-(i9 * i5))} {((i7 - i7) * (i2 + 31))} {((-(i9 * i5)) < ((i7 - i7) * (i2 + 31)))} sum {(-(i9 * i5)) + ((i7 - i7) * (i2 + 31))}"
+        f"{(-(i9 * i5))} {((i7 - i7) * (i2 + 31))} {((-(i9 * i5)) < ((i7 - i7) * (i2 + 31)))} sum {(-(i9 * i5)) + ((i7 - i7) * (i2 + 31))}"
     )
 
     i12 := ((i8 / (i8 - (-857227351663))) - ((i7 + 119867) + ((-24) * i9)))
-    say("i12 = {i12}")
+    say(f"i12 = {i12}")
     say(
-        "{(i2 - 749560)} {418181} {((i2 - 749560) < 418181)} sum {(i2 - 749560) + 418181}"
+        f"{(i2 - 749560)} {418181} {((i2 - 749560) < 418181)} sum {(i2 - 749560) + 418181}"
     )
     return 0

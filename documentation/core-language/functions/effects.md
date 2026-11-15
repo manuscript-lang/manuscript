@@ -10,7 +10,7 @@ A function is pure unless a comment permits what it reaches. `ms lint` reports a
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn total(prices: List[Int]) Int:
-    print("summing {prices.length()} prices")
+    print(f"summing {prices.length()} prices")
     sum := prices.sum()
     return sum
 
@@ -67,10 +67,10 @@ type ConsoleLogger:
 
 // ms: allow_effect std.console.write
 fn ConsoleLogger.info(message: String) Void:
-    print("{self.prefix}{message}")
+    print(f"{self.prefix}{message}")
 
 fn total(log: Logger, prices: List[Int]) Int:
-    log.info("summing {prices.length()} prices")
+    log.info(f"summing {prices.length()} prices")
     sum := prices.sum()
     return sum
 
@@ -95,10 +95,10 @@ fn save(order: String) Void!:
 
 // ms: allow_effect db.*
 fn checkout(total: Int) Void!:
-    return save("order {total}")
+    return save(f"order {total}")
 
 fn audit(total: Int) Void!:
-    return save("audit {total}")
+    return save(f"audit {total}")
 
 fn main() Void:
     return

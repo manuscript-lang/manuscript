@@ -34,7 +34,7 @@ test "regex rejects invalid expressions and exhausted budgets":
 	expect_equal(regex.replace_all("1", "long", 3), output_limit)?
 
 test "regex captures groups spans and splits":
-	date := compile("(?P<y>[0-9]\{4\})-(?P<m>[0-9]\{2\})")?
+	date := compile("(?P<y>[0-9]{4})-(?P<m>[0-9]{2})")?
 	expect_equal(date.captures("on 2026-10 ok"), ["2026-10", "2026", "10"])?
 	expect_equal(date.captures("none"), [])?
 	expect_equal(date.named_captures("2026-10")["y"], "2026")?
@@ -52,7 +52,7 @@ test "regex captures groups spans and splits":
 
 	swap := compile("(\\w+)@(?P<host>\\w+)")?
 	expect_equal(
-		(swap.replace_template("me@home x@y", "$\{host\}:$1 $$")?),
+		(swap.replace_template("me@home x@y", "${host}:$1 $$")?),
 		"home:me $ y:x $",
 	)?
 
@@ -77,7 +77,7 @@ test "regex repeated captures clear absent groups and preserve budgets":
 test "regex repeated template expansion preserves byte budgets":
 	re := compile("(?P<a>a+)|(b+)")?
 	expect_equal(
-		(re.replace_template("aaaaaaaa b a", "$\{a\}:$\{2\}$$", 18)?),
+		(re.replace_template("aaaaaaaa b a", "${a}:${2}$$", 18)?),
 		"aaaaaaaa:$ :b$ a:$",
 	)?
 	expect_equal((re.replace_template("a b", "$$", 3)?), "$ $")?
@@ -91,10 +91,10 @@ test "regex repeated template expansion preserves byte budgets":
 
 test "regex capped templates preserve Unicode references and malformed syntax":
 	re := compile("(?P<word>é)(?P<名字>🙂)(x)?")?
-	template := "$\{名字\}:$\{+1\}:$$:$3"
+	template := "${名字}:${+1}:$$:$3"
 	expect_equal((re.replace_template("é🙂", template, 10)?), "🙂:é:$:")?
-	expect_equal((re.replace_template("é🙂", "$3$\{missing\}", 0)?), "")?
-	expect_equal((re.replace_template("é🙂", "$\{open $1", 9)?), "$\{open é")?
+	expect_equal((re.replace_template("é🙂", "$3${missing}", 0)?), "")?
+	expect_equal((re.replace_template("é🙂", "${open $1", 9)?), "${open é")?
 
 	limited: String! := error(
 		Error("regular expression: limit exceeded", kind: "EOVERFLOW")

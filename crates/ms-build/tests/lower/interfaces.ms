@@ -27,7 +27,7 @@ fn twice(n: Int) Result[Int, Error]:
     return ok(v * 2)
 
 fn show(n: Int) Result[Void, Error]:
-    stdout().write("{n}\n")?
+    stdout().write(f"{n}\n")?
     stdout().flush()?
 
 fn main() Void:

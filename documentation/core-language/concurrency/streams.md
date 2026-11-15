@@ -44,7 +44,7 @@ import WriteStream from "@std/io/io.ms"
 
 fn dump(rows: List[String], var out: WriteStream[String]) Void!:
     for row in rows:
-        out.write("{row}\n")?
+        out.write(f"{row}\n")?
     return out.flush()
 ```
 

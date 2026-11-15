@@ -6,7 +6,7 @@ import stdout from "@std/io/io.ms"
 import stderr from "@std/io/io.ms"
 
 fn write_line(text: String) Void!:
-    stdout().write("{text}\n")?
+    stdout().write(f"{text}\n")?
 
 fn exercise() Int!:
     args := arguments()
@@ -22,7 +22,7 @@ export fn main() Int:
     match exercise():
         ok(status): return status
         error(cause):
-            _written := stderr().write("{cause.message}\n")
+            _written := stderr().write(f"{cause.message}\n")
             return 1
 
 test "selected=a=b":

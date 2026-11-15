@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -23,29 +23,29 @@ fn fib(n: Int) Int:
 
 export fn main() Int:
     s1 := "42".replace("beta", "Tab\there")
-    say("s1 = [{s1}]")
+    say(f"s1 = [{s1}]")
 
     i2 := ((((-35) - (-40)) - (-32)) / (-40))
-    say("i2 = {i2}")
-    say("fib(52) = {fib(52)}")
+    say(f"i2 = {i2}")
+    say(f"fib(52) = {fib(52)}")
 
     f3 := (706.113 / ((785.826 + 461.275) * (664.559 + 741.377)))
-    say("f3 = {f3}")
+    say(f"f3 = {f3}")
 
     f4 := 18.25
-    say("f4 = {f4}")
+    say(f"f4 = {f4}")
 
     f5 := f3
-    say("f5 = {f5}")
+    say(f"f5 = {f5}")
 
     i7 := i2
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
     i8 := (26 - (i7 + (i7 + i2)))
-    say("i8 = {i8}")
+    say(f"i8 = {i8}")
 
     b9 := (true and ((610.25 * f3) > f4))
-    say("b9 = {b9}")
+    say(f"b9 = {b9}")
 
     var acc10 = 0
     var stepacc10 = 0
@@ -54,24 +54,24 @@ export fn main() Int:
         stepacc10 += 1
         acc10 += stepacc10 * stepacc10 + 4
 
-    say("acc10 = {acc10}")
+    say(f"acc10 = {acc10}")
 
     b11 := (s1.trim() + "".trim()).is_empty()
-    say("b11 = {b11}")
+    say(f"b11 = {b11}")
 
     b12 := false
-    say("b12 = {b12}")
+    say(f"b12 = {b12}")
 
     f13 := 4.0e21
-    say("f13 = {f13}")
-    say("fib(26) = {fib(26)}")
+    say(f"f13 = {f13}")
+    say(f"fib(26) = {fib(26)}")
 
     f14 := f4
-    say("f14 = {f14}")
+    say(f"f14 = {f14}")
 
     b15 := true
-    say("b15 = {b15}")
+    say(f"b15 = {b15}")
 
     big16 := (i8 + (i7 + 50)) - (i8 + (i7 + 50))
-    say("{(i8 + (i7 + 50)) / big16}")
+    say(f"{(i8 + (i7 + 50)) / big16}")
     return 0
