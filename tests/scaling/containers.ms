@@ -122,7 +122,7 @@ fn string_scan(n: Int) Int:
 
 	var sum = 0
 	for i in 0..n:
-		sum += s.get(i * 3).length()
+		sum += s.view(i * 3, i * 3 + 1).length()
 	report("string_scan", t)
 	return words + sum
 
