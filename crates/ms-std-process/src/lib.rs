@@ -245,6 +245,10 @@ native! {
         fs_status(control::set_environment(name.as_bytes(), value), &err)
     }
 
+    fn msstd_process_environment_is_set(name: &str) -> bool {
+        control::environment_is_set(name.as_bytes())
+    }
+
     fn msstd_process_working_directory(; err: ErrOut) -> Result<Text, StatusCode> {
         fs_status(control::working_directory(), &err).map(Text)
     }

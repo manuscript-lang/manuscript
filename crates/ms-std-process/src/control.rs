@@ -253,6 +253,11 @@ pub fn environment() -> Res<Vec<(Vec<u8>, Vec<u8>)>> {
     Ok(out)
 }
 
+/// Whether a variable is set, whatever its value; an invalid name is not set.
+pub fn environment_is_set(name: &[u8]) -> bool {
+    !name.contains(&b'=') && os_str(name).is_some_and(|key| std::env::var_os(key).is_some())
+}
+
 pub fn set_environment(name: &[u8], value: Option<&[u8]>) -> Res<()> {
     if name.contains(&b'=') || value.is_some_and(|v| v.contains(&0)) {
         return Err(Fail::invalid());
