@@ -574,8 +574,11 @@ fn both_backends_describe_value_types_once() {
         for name in ["Point", "Shape payload", "List[String]", "Int?"] {
             let found = info.matches(&format!("DW_AT_name\t(\"{name}\")")).count();
             assert_eq!(
-                found, 1,
-                "{backend} units={units}: {name} appears {found} times"
+                found,
+                1,
+                "{backend} units={units}: {name} appears {found} times in {}:\n{}",
+                debug_image(&out).display(),
+                info.chars().take(6000).collect::<String>()
             );
         }
     }
@@ -620,7 +623,12 @@ fn cranelift_locates_parameters_for_a_debugger() {
             .find(&format!(
                 "DW_TAG_formal_parameter\n                  DW_AT_name\t(\"{name}\")"
             ))
-            .unwrap_or_else(|| panic!("no parameter {name}"));
+            .unwrap_or_else(|| {
+                panic!(
+                    "no parameter {name} in:\n{}",
+                    info.chars().take(6000).collect::<String>()
+                )
+            });
         let rest = &info[at..];
         let entry = &rest[..rest.find("\n0x").unwrap_or(rest.len())];
         assert!(entry.contains("DW_AT_location"), "{name} has no location");
