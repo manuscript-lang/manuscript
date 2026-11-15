@@ -84,7 +84,9 @@ pub mod sweep {
         if hit {
             crate::fault::set_live_task_cancel(1);
         }
-        hit
+        // A shielded park (a close, a cleanup) does not see a cancel: the request stays pending
+        // and the next unshielded park reports it, as for a real cancel that arrives meanwhile.
+        hit && !crate::fault::live_shielded()
     }
 
     /// Parks made so far.
