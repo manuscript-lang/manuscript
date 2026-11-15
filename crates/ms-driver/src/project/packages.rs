@@ -289,6 +289,15 @@ fn attach_in(project: &mut Project, cache: &Path) -> Result<(), ProjectError> {
     if project.dependencies.is_empty() {
         return Ok(());
     }
+    // Package files are named `@name/...`; a project path with that spelling would be mistaken
+    // for package code.
+    for alias in project.dependencies.keys() {
+        if Path::new(&project.root).join(alias).exists() {
+            return Err(ProjectError::msg(format!(
+                "the project has a file or directory named {alias}, which is also a dependency name; rename it, names starting with @ are reserved for packages"
+            )));
+        }
+    }
     let lock = read_lock(&project.root)?;
     let mut packages = Vec::new();
     resolve(project, "", &lock, cache, &mut packages, &mut Vec::new())?;

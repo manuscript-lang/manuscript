@@ -99,6 +99,17 @@ fn fetch_pins_a_package_and_checks_work_offline() {
     let checked = ms(&project, &cache, &["check", "ms.toml"]);
     assert!(checked.status.success(), "{}", stderr(&checked));
 
+    // A project path spelled like a package name could pass for package code.
+    std::fs::create_dir(project.join("@lib")).unwrap();
+    let clash = ms(&project, &cache, &["check", "ms.toml"]);
+    assert!(!clash.status.success());
+    assert!(
+        stderr(&clash).contains("names starting with @"),
+        "{}",
+        stderr(&clash)
+    );
+    std::fs::remove_dir(project.join("@lib")).unwrap();
+
     let found = ms(&project, &cache, &["search_symbol", "greet"]);
     assert!(
         String::from_utf8_lossy(&found.stdout).contains("greet  fn"),
