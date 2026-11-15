@@ -5,7 +5,7 @@ use crate::llvm_build::{Bin, FnBuilder, Meta, Range, Tbaa, Ty as LTy, Val};
 use ms_mir::ir::{FaultKind, Func, Imm, Inst, Module, Op, Term};
 use ms_mir::layout::{Layouts, Leaf, mem_layout};
 use ms_mir::types::{Ty, TyKind};
-use ms_rt_abi::{STR_INLINE, STR_INLINE_LEN_SHIFT, STR_INLINE_MAX, STR_STATIC};
+use ms_rt_abi::STR_STATIC;
 
 pub(super) const AREA: Area = Area {
     handles,
@@ -120,18 +120,7 @@ fn pre(
         // and the length carries the static tag.
         Op::StrLit => {
             let Imm::Str(id) = inst.imm else { return None };
-            let bytes = m.strings[id.0 as usize].as_bytes();
-            let len = bytes.len();
-            if len <= STR_INLINE_MAX {
-                // A short literal is an inline string, as in the Cranelift backend: constant
-                // words, so equality, hashing and views decide from them with no memory read.
-                let bits = bytes
-                    .iter()
-                    .enumerate()
-                    .fold(0u128, |acc, (i, b)| acc | (*b as u128) << (8 * i));
-                let hi = (bits >> 64) as u64 as usize | STR_INLINE | (len << STR_INLINE_LEN_SHIFT);
-                return Some(vec![Val::int(bits as u64 as i64), Val::int(hi as i64)]);
-            }
+            let len = m.strings[id.0 as usize].len();
             Some(vec![
                 Val::new(
                     format!("ptrtoint (ptr @\"ms.lit.{}\" to i64)", id.0),
