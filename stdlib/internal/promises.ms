@@ -13,8 +13,6 @@ export extern fn msrt_promise_take[T](id: Int) T?
 
 export extern fn msrt_promise_done(id: Int) Bool
 
-export extern fn msrt_promise_run_unstarted(id: Int) Bool
-
 export extern fn msrt_promise_start(id: Int, work: fn() Unit) Unit
 
 // As `msrt_promise_start`, but always on the calling thread.
@@ -61,9 +59,26 @@ export extern fn msrt_promise_wait_any(ids: List[Int], timeout_ns: Int) Int
 // is left.
 export extern fn msrt_group_new() Int
 
-export extern fn msrt_group_add(group: Int, id: Int, tag: Int) Bool
-
 export extern fn msrt_group_next(group: Int) Int
+
+// Runs promise `id` on the waiter's own stack if no thread has taken it. The waiter's
+// promises have the ids `ids`: while the promise runs, one of them that fails ends the
+// run at its next wait (the run ends as cancelled), and those from index `from` on join
+// `group` when the run first waits. Answers 0 when nothing ran, 1 when a promise ran, 2
+// when a failure ended the run.
+export extern fn msrt_promise_run_watched(
+	id: Int,
+	group: Int,
+	ids: List[Int],
+	from: Int,
+) Int
+
+// Adds the promises of `ids` from index `from` on to `group`, tagged by index, unless
+// that was done; answers 1 when all joined, 2 when some belong to another thread.
+export extern fn msrt_group_join(group: Int, ids: List[Int], from: Int) Int
+
+// The tag of a finished promise not reported yet, or -1; never waits.
+export extern fn msrt_group_poll(group: Int) Int
 
 export extern fn msrt_group_free(group: Int) Unit
 

@@ -1302,7 +1302,9 @@ mod tests {
         let _g = lock();
         let before = live_blocks();
         let mut v = std::vec::Vec::new();
-        for i in 0..20000usize {
+        // Miri interprets every step; 2000 blocks still span many pages.
+        let count = if cfg!(miri) { 2000 } else { 20000 };
+        for i in 0..count as usize {
             let p = alloc(16 + (i % 17) * 16);
             // SAFETY: freshly allocated block.
             unsafe { *p = i as u8 };

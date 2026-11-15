@@ -15,6 +15,9 @@ pub const MAX_NESTING: usize = 1000;
 pub const MAX_CHAIN: usize = 10000;
 
 const IMPL_REMOVED: &str = "'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it";
+/// Binding power of the operand of a prefix `not` or `try`: comparisons and
+/// everything tighter bind into it, `and` and `or` do not.
+const PREFIX_OPERAND: u8 = 3;
 const TRY_REMOVED: &str = "'try' was replaced by a postfix '?': write f(x)? instead of try f(x), and x | step? instead of x | try step";
 
 /// Parses `source` strictly. The first error aborts the parse.
@@ -468,31 +471,52 @@ impl<'a> Parser<'a> {
     fn fail_try<T>(&mut self, t: Token) -> PResult<T> {
         self.at += 1;
         let start = self.peek();
-        let operand = self.expression(3);
+        let operand = self.expression(PREFIX_OPERAND);
         let mut d = Diagnostic::parse(self.file, t.pos, TRY_REMOVED);
         d.end = Some(t.end);
         let end = self.previous();
-        if operand.is_ok() && end.end.line > 0 && start.lo < end.hi {
+        // Only a name, call, member or index chain takes a postfix `?` unchanged.
+        let chain = operand.is_ok_and(|e| {
+            matches!(
+                e.kind,
+                ExprKind::Name(_)
+                    | ExprKind::Member { .. }
+                    | ExprKind::Call { .. }
+                    | ExprKind::Index { .. }
+                    | ExprKind::Apply { .. }
+            )
+        });
+        if chain && end.end.line > 0 && start.lo < end.hi {
             let text = &self.src[start.lo as usize..end.hi as usize];
-            let mut depth = 0i32;
-            let flat = text.chars().all(|c| {
-                match c {
-                    '(' | '[' | '{' => depth += 1,
-                    ')' | ']' | '}' => depth -= 1,
-                    _ => {}
-                }
-                depth > 0 || !(c.is_whitespace() || "+-*/%<>=&|".contains(c))
+            d.end = Some(end.end);
+            d.fix = Some(DiagnosticFix {
+                pos: t.pos,
+                end: end.end,
+                replacement: format!("{text}?"),
             });
-            if flat {
-                d.end = Some(end.end);
-                d.fix = Some(DiagnosticFix {
-                    pos: t.pos,
-                    end: end.end,
-                    replacement: format!("{text}?"),
-                });
-            }
         }
         Err(Box::new(d))
+    }
+
+    /// `const NAME = v` or `const NAME: T = v` on one line: the range from the
+    /// word through `=` and its replacement `NAME :=` (`NAME: T :=`).
+    fn constant_fix(&self, word: Token) -> Option<(Token, Token, String)> {
+        let name = self.ahead(1);
+        if name.kind != Tok::Name || name.pos.line != word.pos.line {
+            return None;
+        }
+        let mut n = 2;
+        loop {
+            let t = self.ahead(n);
+            if t.pos.line != word.pos.line || matches!(t.kind, Tok::Newline | Tok::Eof) {
+                return None;
+            }
+            if t.kind == Tok::Assign {
+                let head = self.src.get(name.lo as usize..t.lo as usize)?.trim_end();
+                return Some((word, t, format!("{head} :=")));
+            }
+            n += 1;
+        }
     }
 
     /// Fails on `t` with a machine-applicable replacement of exactly its range.
@@ -854,7 +878,8 @@ impl<'a> Parser<'a> {
                             "'var' goes before the parameter name, not its type; write var {}: Type",
                             self.text(name)
                         );
-                        return self.fail(t, msg);
+                        let replacement = format!("var {}:", self.text(name));
+                        return self.fail_fix_range(name, t, msg, &replacement);
                     }
                     ty = Some(self.typ()?);
                 } else if !inferred || self.kind() == Tok::Name {
@@ -1404,6 +1429,13 @@ impl<'a> Parser<'a> {
             }
             _ => {
                 if let Some((msg, replacement)) = foreign_declaration(token, self.text(token)) {
+                    if replacement.is_none()
+                        && matches!(self.text(token), "const" | "val" | "final")
+                        && let Some(fix) = self.constant_fix(token)
+                    {
+                        let (first, last, text) = fix;
+                        return self.fail_fix_range(first, last, msg, &text);
+                    }
                     return match replacement {
                         Some(r) => self.fail_fix(token, msg, r),
                         None => self.fail(token, msg),
@@ -2117,7 +2149,7 @@ impl<'a> Parser<'a> {
             if !self.inline_return && !is_call && !try_call && !allow_value {
                 if let ExprKind::Name(n) = &e.kind {
                     match self.names.str(*n) {
-                        "pass" => return self.fail(t, "'pass' is not a keyword; write 'unit' for an empty block or match arm"),
+                        "pass" => return self.fail_fix(t, "'pass' is not a keyword; write 'unit' for an empty block or match arm", "unit"),
                         "const" | "val" | "final" => {
                             return self.fail(t, format!("'{n_t}' is not a keyword; write 'name := ...' for a binding that is not reassigned, or 'var name = ...' when it changes", n_t = self.names.str(n)));
                         }
@@ -2448,7 +2480,7 @@ impl<'a> Parser<'a> {
         }
         let mut e;
         if self.take(Tok::Not) {
-            let operand = self.expression(3)?;
+            let operand = self.expression(PREFIX_OPERAND)?;
             e = self.mk(
                 t.pos,
                 ExprKind::Unary {

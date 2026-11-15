@@ -718,6 +718,18 @@ pub(crate) fn set_defer_deadline(at: i64) -> i64 {
     unsafe { core::mem::replace(&mut (*ensure_init()).defer_deadline, at) }
 }
 
+/// What the running task's inline run watches (`promise::msrt_promise_run_watched`), or null.
+pub(crate) fn watch() -> *mut crate::promise::Watch {
+    // SAFETY: single threaded scheduler; the running task's record is live.
+    unsafe { (*ensure_init()).watch }
+}
+
+/// Sets that and returns the one it replaces.
+pub(crate) fn set_watch(watch: *mut crate::promise::Watch) -> *mut crate::promise::Watch {
+    // SAFETY: single threaded scheduler; the running task's record is live.
+    unsafe { core::mem::replace(&mut (*ensure_init()).watch, watch) }
+}
+
 /// Lets a promise that has not started begin, then lets the ready tasks run: polling `done`
 /// makes progress even when the polling task never waits.
 pub(crate) unsafe fn pump() {

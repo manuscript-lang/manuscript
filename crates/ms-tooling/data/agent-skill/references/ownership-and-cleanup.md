@@ -46,4 +46,6 @@ fn has(items: List[String], want: String) Bool:
 	return false
 ```
 
+Pieces of a value are borrows too: `line.split(" ")`, `s.slice(a, b)` and `xs[i]` borrow their source, so store them with `.clone()`: `out.append(line.split(" ").clone())`. A map store `m[key] = v` takes `key`, so read what you need first, or store a copy: `n := counts.get_or(w, 0)`, then `counts[w.clone()] = n + 1`.
+
 Fields move the same way: `out.append(user.name.clone())`, never `out.append(user.name)`. A list parameter changes only if declared `var xs: List[Int]` and called `add(var xs)`; otherwise copy it into a `var` local first.

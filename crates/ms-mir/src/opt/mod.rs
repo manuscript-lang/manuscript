@@ -108,6 +108,7 @@ pub fn optimize(m: &mut Module, level: Level, verify: bool) {
     if level == Level::None {
         // A copy whose source dies right after it is a move; keeping the copies makes rebuilding a
         // value from itself, or unwrapping a nested `try` result, quadratic in the depth.
+        inline::run_small(m);
         simplify::run_phis(m);
         strfuse::run_append(m);
         copyelim::run(m);

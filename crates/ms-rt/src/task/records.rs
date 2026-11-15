@@ -62,6 +62,7 @@ pub(super) unsafe fn new_task(ctx: Ctx) -> *mut Task {
             started_by: Vec::new(),
             timed_out: false,
             defer_deadline: i64::MAX,
+            watch: null_mut(),
             stolen_at: 0,
             promise: 0,
             capture: 0,

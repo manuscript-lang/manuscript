@@ -1,0 +1,11 @@
+[Wiki](../index.md) › [Runtime](index.md)
+
+# Runtime state is reached through short-lived borrows (Miri, Stacked Borrows)
+
+Verified: the nightly Miri job found aliasing bugs where a `&mut` to per-isolate state stayed alive across a call that fetched the same state again (`alloc_slow` and `grow_resize` in the allocator, `msrt_promise_wait` in the promise table). Each fetch retags, so the older reference is invalid, and a `&mut` passed as an argument is protected for the whole callee. `grow_resize` runs in production, not only in tests.
+
+Rules: do not keep a `&mut State` across a call that may reach the state again; read it again afterwards. `promise::table()` and `ends()` return an `Isolate<T>` handle (a raw pointer that makes one short reference per access), so a handle held across calls stays valid; a function that takes `&mut Table` must not call anything that fetches the table. Store function and data pointers in `AtomicPtr`, and copy slots that may hold pointers in pointer-typed words (`*mut u8`), not `u64`: an integer copy drops provenance. Keep Stacked Borrows on; Tree Borrows accepts more but was not chosen.
+
+Miri has no `mmap` or inline assembly, and exhaustive differential sweeps take minutes interpreted. 31 tests (task stacks, readiness waits, memory copy bodies, sweeps) cannot finish or run under Miri; ignoring them under Miri needs the owner's approval (no test is gated without it), so the nightly Miri run stays red on them until that is decided.
+
+Verify: `MIRIFLAGS=-Zmiri-ignore-leaks cargo +nightly miri test -p ms-rt --lib` (about half an hour; run one test with `-- --exact name`). The nightly safety workflow runs it on `main`.

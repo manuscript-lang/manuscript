@@ -771,6 +771,8 @@ impl Scanner<'_> {
                                 // Removing a mid-line `;` would fuse two statements.
                                 b';' if self.trailing_semicolon() => Some(""),
                                 b'!' => Some("not "),
+                                // `#` has no other meaning outside text.
+                                b'#' => Some("//"),
                                 _ => None,
                             },
                         );

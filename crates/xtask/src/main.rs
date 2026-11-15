@@ -4,6 +4,8 @@
 //! archive at `target/ms-native/libms_native.a`, where `ms-cli`'s build script embeds it.
 //! `runtime --alloc-profile` also builds `libms_native_allocs.a`, the same runtime with allocation
 //! sampling for `ms profile --allocs`; release packaging asks for it, pull request CI does not.
+//! `runtime --sched-stress` builds `libms_native_stress.a`, the runtime with the scheduler stress mode,
+//! which only `make stress-sched` embeds (in a separate `ms`).
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
@@ -11,7 +13,11 @@ use std::process::{Command, ExitCode};
 fn main() -> ExitCode {
     match std::env::args().nth(1).as_deref() {
         Some("runtime") => {
-            match runtime(std::env::args().nth(2).as_deref() == Some("--alloc-profile")) {
+            let flag = std::env::args().nth(2);
+            match runtime(
+                flag.as_deref() == Some("--alloc-profile"),
+                flag.as_deref() == Some("--sched-stress"),
+            ) {
                 Ok(archive) => {
                     println!("{}", archive.display());
                     ExitCode::SUCCESS
@@ -37,7 +43,7 @@ fn main() -> ExitCode {
         }
         _ => {
             eprintln!(
-                "usage: cargo xtask runtime [--alloc-profile] | cargo xtask symbols [--check]"
+                "usage: cargo xtask runtime [--alloc-profile | --sched-stress] | cargo xtask symbols [--check]"
             );
             ExitCode::from(2)
         }
@@ -400,7 +406,7 @@ fn strip_paths(ty: &str) -> String {
 
 /// Builds `ms-native` in release mode, whatever the profile of `ms` itself, and returns the archive.
 /// On Linux it also leaves `libms_native_musl.a` beside it, the runtime of `ms build --static`.
-fn runtime(alloc_profile: bool) -> Result<PathBuf, String> {
+fn runtime(alloc_profile: bool, sched_stress: bool) -> Result<PathBuf, String> {
     // Cargo can reuse this executable from another checkout when target directories are shared.
     // Its runtime environment names the active package; the compiled path may name the old one.
     let manifest = std::env::var_os("CARGO_MANIFEST_DIR")
@@ -437,6 +443,17 @@ fn runtime(alloc_profile: bool) -> Result<PathBuf, String> {
             triple.as_deref(),
             "libms_native_allocs.a",
             "entry,alloc-profile",
+        )?;
+    }
+    if sched_stress {
+        // The scheduler stress mode, for `make stress-sched`; never part of a shipped `ms`.
+        build_archive(
+            &root,
+            &out,
+            &out.join("build-stress"),
+            triple.as_deref(),
+            "libms_native_stress.a",
+            "entry,sched-stress",
         )?;
     }
     if std::env::consts::OS == "linux" {
