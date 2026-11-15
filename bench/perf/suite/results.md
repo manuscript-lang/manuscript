@@ -1,5 +1,39 @@
 # Suite results
 
+## 2026-11-15, regression check on `71487c98`
+
+Release `ms` from `make build` on `71487c98` (main after #3996), same 4 vCPU VM, min of 5, Manuscript column only (process start and I/O included, compile excluded). Compared with the 2026-11-14 tables below (`d4006e73` and `81a9844b`). The VM varies 10 to 20% between runs, so only moves beyond that count.
+
+| program | 2026-11-14 | now |
+|---|---:|---:|
+| interp | 215 | 134 |
+| graph | 221 | 234 |
+| objgraph | 261 | 227 |
+| sim | 187 | 146 |
+| dispatch | 256 | 202 |
+| hashing | 143 | 140 |
+| lz | 186 | 159 |
+| exprparse | 793 | 488 |
+| regex | 342 | 293 |
+| jsonrt | 554 | 535 |
+| strings | 227 | 143 |
+| concat | 483 | 9 |
+| workers | 944 | 38 |
+| logstats | 63 | 66 |
+| csvgroup | 173 | 134 |
+| wordfreq | 267 | 209 |
+| sortrecords | 281 | 188 |
+| grep | 35 | 36 |
+| treegrep | 93 | 32 |
+| pargroup | 47 | 21 |
+| jsonsum | 185 | 144 |
+| dedupe | 299 | 253 |
+| report | 167 | 122 |
+
+No program is slower beyond noise (`graph` +6%, `logstats` +5%, `grep` +3%). `concat` and `workers` changed workload or fixed their gap since the baseline, so their large drops are not comparable.
+
+Instruction counts (callgrind, deterministic, 3 to 14 s each under valgrind) for the candidate PR perf check: interp 2,983.6M, strings 1,757.3M, lz 618.3M, graph 635.2M.
+
 ## 2026-11-14, Go and Node for the text, data and file programs
 
 `81a9844b`, same machine and method (min of 2). The ten programs that moved in from `engineering/` now have Go and Node versions; every output matches the C and Rust output. Go and Node use their standard libraries (`encoding/json`, `JSON.parse`, `strings`, `Map`), so `jsonsum` compares Manuscript's typed parse against their generic parse.
