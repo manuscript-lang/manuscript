@@ -4,7 +4,7 @@
 use super::handler::Program;
 use super::http_client::{chunk, limit};
 use super::tls::tls_options;
-use super::{ExchH, HeadersH, ServingH, WorkerH, opt, report};
+use super::{ExchH, HeadersH, ServingH, SpecH, WorkerH, opt, report};
 use crate::bound::Bound;
 use crate::conn::Listener;
 use crate::error::HttpErr;
@@ -107,19 +107,41 @@ fn server_options(opts: &HttpServerOptionsWire) -> Result<Options, HttpErr> {
     })
 }
 
-/// What every connection of one `serve` call shares.
-pub struct Serving {
+/// What the workers of one `serve` call share: the options and the handler closure. Workers hold
+/// it through an `Arc`, so the count is atomic, and the last one to end drops the handler.
+pub struct Shared {
     options: Options,
-    /// The handler closure, which the serving owns until it drops (`serve` hands it over).
+    /// The handler closure `serve` handed over, dropped once with the last share.
     handler: *mut Obj,
+}
+
+// SAFETY: the options are atomics and `Arc`s, and the handler closure is only read and called
+// (workers already run it on their own threads), so a share may move to and be read from any
+// thread.
+#[allow(unsafe_code)]
+unsafe impl Send for Shared {}
+// SAFETY: as above.
+#[allow(unsafe_code)]
+unsafe impl Sync for Shared {}
+
+impl Drop for Shared {
+    fn drop(&mut self) {
+        // SAFETY: the closure `serve` handed over, dropped once here.
+        unsafe { ms_rt::obj::msrt_obj_drop(self.handler) };
+    }
+}
+
+/// What the accept loop owns: the listener, and the shared part the workers take a share of. The
+/// listener never leaves the accept loop's thread.
+pub struct Serving {
+    shared: std::sync::Arc<Shared>,
     listener: Rc<Listener>,
 }
 
 impl Serving {
     fn new(options: Options, handler: *mut Obj, listener: Rc<Listener>) -> Serving {
         Serving {
-            options,
-            handler,
+            shared: std::sync::Arc::new(Shared { options, handler }),
             listener,
         }
     }
@@ -128,8 +150,6 @@ impl Serving {
 impl Drop for Serving {
     fn drop(&mut self) {
         self.listener.close();
-        // SAFETY: the closure `serve` handed over, dropped once here.
-        unsafe { ms_rt::obj::msrt_obj_drop(self.handler) };
     }
 }
 
@@ -170,13 +190,13 @@ native! {
         let options = report(server_options(opts), &err)?;
         let root = crate::net::root();
         let listener = report(root.listen(address), &err)?;
-        out.write(Object(ServingH(Rc::new(Serving::new(options, owned.keep(), listener)))));
+        out.write(Object(ServingH(Serving::new(options, owned.keep(), listener))));
         Ok(())
     }
 
-    /// Another handle on the same serving, for a connection promise to own.
-    fn msstd_http_serving_share(s: ObjRef<ServingH>) -> Object<ServingH> {
-        Object(ServingH(s.0.0.clone()))
+    /// A share of what the workers use, for one worker promise to own.
+    fn msstd_http_serving_spec(s: ObjRef<ServingH>) -> Object<SpecH> {
+        Object(SpecH(s.shared.clone()))
     }
 
     /// The bound address of the serving's listener.
@@ -194,7 +214,7 @@ native! {
     /// `worker_adopt` here, and its handle closes (drains) it. The handler is only borrowed from
     /// the serving, which the worker keeps alive.
     fn msstd_http_serving_worker(
-        s: ObjRef<ServingH>,
+        s: ObjRef<SpecH>,
         out: Out<Object<WorkerH>>,
         err: ErrOut,
     ) -> Result<(), StatusCode> {
