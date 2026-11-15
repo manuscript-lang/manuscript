@@ -742,7 +742,9 @@ export fn temporary_root() String!:
 	return ok(msstd_fs_temporary_root())
 
 // Creates a new directory under the host temp root; the caller must remove it.
-// Prefix must be nonempty and contain no slash, backslash, or NUL.
+// Prefix must be nonempty and contain no slash, backslash, or NUL. The name is the
+// prefix followed by random digits; the last `*` in the prefix marks where the digits go
+// instead, so `"build-*.tmp"` makes `build-4123.tmp`.
 // ms: effect std.fs.write
 export fn temporary_directory(prefix: String) String!:
 	return msstd_fs_temporary_directory(prefix)
