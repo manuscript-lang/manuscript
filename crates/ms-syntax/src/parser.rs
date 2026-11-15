@@ -2927,8 +2927,8 @@ impl<'a> Parser<'a> {
                     _ => "write a value, name, call, or literal here",
                 };
                 let word = &self.src[t.lo as usize..t.hi as usize];
-                // Words that read as names (`ref`, `type`, `test`) are the ones written as variables.
-                let reserved = matches!(t.kind, Tok::Ref | Tok::Test | Tok::Type | Tok::Fixture);
+                // Words that read as names (`type`, `test`) are the ones written as variables.
+                let reserved = matches!(t.kind, Tok::Test | Tok::Type | Tok::Fixture);
                 let msg = if reserved {
                     format!(
                         "expected an expression, found {}; '{word}' is a reserved word and cannot be used as a name: pick another name for the variable, field or parameter",

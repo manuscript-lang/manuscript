@@ -2,7 +2,7 @@
 
 Immutable: `x := value`, or `x: Int := value`. Mutable: `var x = value`; assignments require var. Name a deliberately unused binding with a leading `_`, such as `_i`; a bare `_` is not a name, so `for _ in xs` fails.
 
-Types: Int, Float, Bool, String, Void. Literals: `true`, `false`, `void`. Numeric conversions are explicit. `"hello {name}"` interpolates; `\{`/`\}` escape braces. Raw `r"\d+"` keeps backslashes literal, including before a quote.
+Types: Int, Float, Bool, String, Void. Literals: `true`, `false`, `void`. Numeric conversions are explicit. `"hello {name}"` interpolates. Text with literal braces and nothing to interpolate is raw: `r"{"`, `r"\d+"` (no escapes, no interpolation); use `r"""` on its own lines for JSON with quotes. `\{`/`\}` escape braces only in text that also interpolates.
 
 <!-- complete: control.ms -->
 ```manuscript
