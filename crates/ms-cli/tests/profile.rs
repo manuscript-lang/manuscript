@@ -1,14 +1,18 @@
-#![cfg(unix)]
-//! `ms profile` end to end with a fake build function: the "executable" is a
-//! shell script that writes folded stacks to `$MS_PROFILE`.
+//! `ms profile` end to end. Most tests use a fake build function whose "executable" is a shell
+//! script that writes folded stacks to `$MS_PROFILE`, so they need a Unix shell; the last test
+//! builds a real program and runs on every platform.
 
 // Links the msrt_* runtime symbols that the standard-library crates reference.
 use ms_rt as _;
+#[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 
+#[cfg(unix)]
 use ms_cli::backend::{BackendResult, BuildRequest, Io};
+#[cfg(unix)]
 use ms_cli::invocation::{parse_invocation, validate};
 
+#[cfg(unix)]
 fn script_build(request: &BuildRequest, _io: &mut Io) -> BackendResult {
     let script = "#!/bin/sh\nprintf '# hz=99\\nmain;work 30\\nmain;io 10\\n' > \"$MS_PROFILE\"\nif [ -n \"$MS_PROFILE_ALLOCS\" ]; then\nprintf 'main;work;[runtime] 256\\nmain;io 128\\n# period 128\\n' > \"$MS_PROFILE_ALLOCS\"\nprintf 'main;work;[runtime] 8192\\nmain;io 128\\n# period 128\\n' > \"$MS_PROFILE_ALLOCS.bytes\"\nfi\necho hello \"$@\"\nexit 3\n";
     std::fs::write(&request.output, script).unwrap();
@@ -16,6 +20,7 @@ fn script_build(request: &BuildRequest, _io: &mut Io) -> BackendResult {
     Ok(0)
 }
 
+#[cfg(unix)]
 /// `Err` carries the status of an invocation that was rejected before the profile ran.
 fn profile(args: &[String], io: &mut Io) -> Result<i32, i32> {
     let mut inv = parse_invocation(args, io)?;
@@ -28,6 +33,7 @@ fn profile(args: &[String], io: &mut Io) -> Result<i32, i32> {
     ))
 }
 
+#[cfg(unix)]
 fn ms(args: &[&str]) -> (i32, String, String) {
     let args: Vec<String> = args.iter().map(|a| a.to_string()).collect();
     let (mut out, mut err) = (Vec::new(), Vec::new());
@@ -47,6 +53,7 @@ fn ms(args: &[&str]) -> (i32, String, String) {
     )
 }
 
+#[cfg(unix)]
 #[test]
 fn bundle_and_exit_status() {
     let dir = std::env::temp_dir().join(format!("ms-profile-test-{}", std::process::id()));
@@ -92,6 +99,7 @@ fn bundle_and_exit_status() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+#[cfg(unix)]
 #[test]
 fn allocations_are_opt_in_and_name_the_allocating_function() {
     let dir = std::env::temp_dir().join(format!("ms-profile-allocs-{}", std::process::id()));
@@ -135,7 +143,6 @@ fn allocations_are_opt_in_and_name_the_allocating_function() {
 
 /// With the allocation-profiling runtime (release builds, the scheduled run) a real program's
 /// allocations are attributed to the Manuscript function that makes them (`words` is inlined into `main`); without it `--allocs` says why.
-#[cfg(target_os = "linux")]
 #[test]
 fn allocs_with_the_real_runtime() {
     let dir = std::env::temp_dir().join(format!("ms-profile-real-{}", std::process::id()));
@@ -143,6 +150,17 @@ fn allocs_with_the_real_runtime() {
     std::fs::create_dir_all(&dir).unwrap();
     let source = dir.join("main.ms");
     std::fs::write(&source, include_str!("profile/words.ms")).unwrap();
+    let plain = dir.join("plain");
+    let status = std::process::Command::new(env!("CARGO_BIN_EXE_ms"))
+        .args(["profile", source.to_str().unwrap(), "--out-dir"])
+        .arg(&plain)
+        .status()
+        .unwrap();
+    assert!(status.success());
+    assert!(
+        !plain.join("allocs.folded").exists(),
+        "allocation sampling is off unless asked for"
+    );
     let out = dir.join("capture");
     let output = std::process::Command::new(env!("CARGO_BIN_EXE_ms"))
         .args([
