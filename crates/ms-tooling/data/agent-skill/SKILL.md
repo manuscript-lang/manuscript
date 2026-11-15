@@ -46,6 +46,8 @@ Every row is a shape agents wrote that fails; the right column compiles.
 | `for _ in xs`, `unit := e` | `for _i in xs`; `unit` is a literal, never a name |
 | `(String, Int)`, `[A, B]` tuples | a record: `type Pair:` with fields |
 | `f(x)?` as a statement on a non-Void result | `_ := f(x)?` |
+| `s.parse_int()?` (it returns `Int?`, not a Result) | `s.parse_int().ok_or(Error("bad number"))?` or `s.parse_int().get(0)` |
+| `List<Int>`, `Map<K, V>` | `List[Int]`, `Map[K, V]` |
 | `r?.abs()` on a Result | `(r?).abs()`; `?.` is for Optionals only |
 | `m.contains_key(k)`, `xs.remove_last()` | `m.contains(k)`, `xs.pop()` |
 | `xs.sort_by(f)`, `for b in s.as_bytes()` | `xs.sort(fn a, b: a.compare(b))`, `for b in values(s.as_bytes())` with `import values from "@std/bytes.ms"` |
