@@ -58,7 +58,7 @@ fn echo(var exchange: HttpExchange) Void!:
 			)?
 		)
 		socket.close().get(none)
-		return ok(unit)
+		return ok(void)
 
 	var chain_1 = Map[String, List[String]]()
 	chain_1.add(key: "X-Test", value: ["manuscript"])
@@ -270,7 +270,7 @@ fn silent(var exchange: HttpExchange) Void!:
 			)
 		)?
 	)
-	_ := sleep(30.seconds()).wait()
+	void sleep(30.seconds()).wait()
 
 test "a WebSocket read cancelled by its timeout leaves the socket closable":
 	server := serve(address: "127.0.0.1:0", handler: silent) | expect_ok?

@@ -22,39 +22,39 @@ fn main() Void:
     if var item = entries[key(var count)]?:
         item.append(9)
 
-    _ := stdout().write("{count} {entries}\n")
+    void stdout().write("{count} {entries}\n")
     count = 2
 
     if var item = entries[key(var count)]?:
         item.append(99)
     else:
-        _ := stdout().write("missing {count}\n")
+        void stdout().write("missing {count}\n")
 
     count = 0
     early(var entries, var count)
 
-    _ := stdout().write("early {count} {entries}\n")
+    void stdout().write("early {count} {entries}\n")
     count = 0
     for value in [4, 5, 6]:
         if var item = entries[key(var count)]?:
             item.append(value)
 
-    _ := stdout().write("loop {count} {entries}\n")
+    void stdout().write("loop {count} {entries}\n")
     var rows = [[[1]], [[2]]]
     count = 0
     if var item = rows[next(var count)][0]?:
         item.append(9)
 
-    _ := stdout().write("{count} {rows}\n")
+    void stdout().write("{count} {rows}\n")
     count = 0
     if var item = rows[next(var count)][0]?:
         item.append(10)
 
-    _ := stdout().write("{count} {rows}\n")
+    void stdout().write("{count} {rows}\n")
     var empty: List[List[List[Int]]] = [[], [[2]]]
     count = 0
 
     if var item = empty[next(var count)][0]?:
         item.append(99)
     else:
-        _ := stdout().write("empty {count} {empty}\n")
+        void stdout().write("empty {count} {empty}\n")

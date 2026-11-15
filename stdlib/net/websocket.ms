@@ -70,7 +70,7 @@ fn var WebSocketSink.write(value: WebSocketMessage) Void!:
 		Ping: return msstd_websocket_ping_bytes(self.native, value.data)
 
 fn var WebSocketSink.flush() Void!:
-	return ok(unit)
+	return ok(void)
 
 fn var WebSocketSink.close() Void!:
 	msstd_websocket_close_if_last(self.native)

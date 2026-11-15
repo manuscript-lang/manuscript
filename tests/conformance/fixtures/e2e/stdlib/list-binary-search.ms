@@ -32,7 +32,7 @@ type Counted:
 	comparisons: String
 
 fn Counted.compare(other: Counted) Int:
-	_ := append_file(self.comparisons, "x").wait()
+	void append_file(self.comparisons, "x").wait()
 	return self.value.compare(other.value)
 
 test "binary search reports the first duplicate or insertion position":

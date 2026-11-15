@@ -147,7 +147,7 @@ fn tree_size(value: YamlValue) Int:
 			for item in values: total += tree_size(item)
 		ObjectValue(values):
 			for entry in values: total += tree_size(entry.value.clone())
-		_: unit
+		_: void
 
 	return total
 
@@ -535,7 +535,7 @@ fn merge(
 					entry.key.clone(),
 					entry.value.clone(),
 				)
-			return ok(unit)
+			return ok(void)
 		ArrayValue(values): values
 		_: return error(
 			yaml_invalid(
@@ -561,7 +561,7 @@ fn merge(
 				)
 			)
 
-	return ok(unit)
+	return ok(void)
 
 // A plain scalar continued across lines folds each break into one space; blank lines
 // stay breaks.
@@ -744,7 +744,7 @@ fn flow_entry(
 			target: var entries,
 			value: value,
 		):
-			ok(_): return ok(unit)
+			ok(_): return ok(void)
 			error(cause): cause
 
 		if cause.kind != "EBADMSG": return error(cause)
@@ -766,7 +766,7 @@ fn flow_entry(
 	else:
 		entries.add(name.clone(), value)
 
-	return ok(unit)
+	return ok(void)
 
 // A flow container suspended while its child is read.
 type FlowFrame:
@@ -2137,7 +2137,7 @@ fn sequence_items(
 				)?
 			)
 
-	return ok(unit)
+	return ok(void)
 
 // Whether `text` starts with the indicator `code` followed by a blank or the end.
 fn indicator(text: String, code: Int) Bool:
@@ -2560,7 +2560,7 @@ fn validate(var context: Context, value: YamlValue, depth: Int) Void!:
 			for item in values: validate(var context, item, (depth + 1))?
 		ObjectValue(values):
 			for entry in values: validate(var context, entry.value, (depth + 1))?
-		_: unit
+		_: void
 
 fn open_stream(text: String, options: YamlOptions) Context!:
 	for limit in [options.max_bytes, options.max_depth, options.max_values]:
@@ -2824,7 +2824,7 @@ fn emit_block(var out: StringBuilder, value: YamlValue, indent: String) Result[
 					out.append(text)
 					out.append("\n")
 
-			return ok(unit)
+			return ok(void)
 		ObjectValue(values):
 			for entry in values.entries():
 				out.append(indent)
@@ -2839,8 +2839,8 @@ fn emit_block(var out: StringBuilder, value: YamlValue, indent: String) Result[
 					out.append(text)
 					out.append("\n")
 
-			return ok(unit)
-		_: return ok(unit)
+			return ok(void)
+		_: return ok(void)
 
 // Serializes a YAML value in block style with double-quoted strings.
 export fn stringify(value: YamlValue, max_bytes: Int? = none) String!:

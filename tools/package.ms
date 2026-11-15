@@ -95,7 +95,7 @@ fn main() Int:
 		archive = "dist/{name}.zip"
 		archive_name = "{name}.zip"
 
-		_ := remove(archive.clone(), recursive: false)
+		void remove(archive.clone(), recursive: false)
 		root := working_directory().get()
 		change_directory(staging.path()).get()
 		code = run_program(

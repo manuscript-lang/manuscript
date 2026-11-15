@@ -87,7 +87,7 @@ fn wait_started(p: Plan, port: Int) Bool:
 		ran := raised(load_cmd(p, port, ["1", "1", "/health"]))
 		if ran.ok and ran.code == 0: return true
 
-		_ := sleep(milliseconds(100)).wait()
+		void sleep(milliseconds(100)).wait()
 
 	return false
 
@@ -96,7 +96,7 @@ fn first_pid(pattern: String) String:
 
 // Total system calls of all threads while strace is attached for `seconds`.
 fn syscalls(pid: String, seconds: Int, file: String) Int:
-	_ := capture(
+	void capture(
 		"timeout",
 		["{seconds}", "strace", "-f", "-c", "-p", pid, "-o", file.clone()],
 	)
@@ -131,7 +131,7 @@ fn measure_server(
 	var server = background(argv, "/dev/null")?
 
 	if not wait_started(p, port):
-		server.close().get(unit)
+		server.close().get(void)
 		return invalid("{name} did not start")
 
 	pid := first_pid("^{p.w}/{name}/server")
@@ -146,8 +146,8 @@ fn measure_server(
 
 	if name == "c":
 		say("{name} threads {threads(pid.clone())} rss_kb {rss_kb(pid.clone())}")
-		server.close().get(unit)
-		return ok(unit)
+		server.close().get(void)
+		return ok(void)
 
 	if name != "rust":
 		for round in 0..2:
@@ -157,12 +157,12 @@ fn measure_server(
 			load_cmd(p, port, ["32", "{seconds}", "/io?\{c\}"]),
 			"{p.w}/mixed",
 		)?
-		_ := sleep(milliseconds(200)).wait()
+		void sleep(milliseconds(200)).wait()
 		during := if seconds > 1: seconds - 1 else: 1
 		say("{name} health-during-io {load(p, port, ["32", "{during}", "/health"])}")
 		mixed.wait().get(0)
 		say("{name} io-during-health {tail(read_text("{p.w}/mixed"))}")
-		mixed.close().get(unit)
+		mixed.close().get(void)
 
 	say("{name} threads {threads(pid.clone())} rss_kb {rss_kb(pid.clone())}")
 
@@ -183,7 +183,7 @@ fn measure_server(
 			],
 			"/dev/null",
 		)?
-		_ := sleep(milliseconds(500)).wait()
+		void sleep(milliseconds(500)).wait()
 		reqs := (
 			load(p, port, ["64", "2", "/health"]).split(" ")[
 				1
@@ -191,7 +191,7 @@ fn measure_server(
 			* 2
 		)
 		busy.wait().get(0)
-		busy.close().get(unit)
+		busy.close().get(void)
 
 		var total = 0
 		for line in read_text("{p.w}/busy").split("\n"):
@@ -211,20 +211,20 @@ fn measure_server(
 		),
 		"{p.w}/idle.out",
 	)?
-	_ := sleep(milliseconds(200)).wait()
+	void sleep(milliseconds(200)).wait()
 
 	for poll in 0..120:
 		if read_text("{p.w}/idle.out").contains("holding"): break
 
-		_ := sleep(milliseconds(500)).wait()
+		void sleep(milliseconds(500)).wait()
 
 	say(
 		"{name} idle_connections {tail(read_text("{p.w}/idle.out"))} rss_kb {rss_kb(pid.clone())}"
 	)
 	say("{name} /health-with-10k-idle {load(p, port, ["64", "{seconds}", "/health"])}")
-	idle.close().get(unit)
-	server.close().get(unit)
-	return ok(unit)
+	idle.close().get(void)
+	server.close().get(void)
+	return ok(void)
 
 fn prepare_run(here: String, w: String) List[String]!:
 	for dir in ["go", "ms", "load", "c"]:
@@ -248,7 +248,7 @@ fn prepare_run(here: String, w: String) List[String]!:
 				"{w}/rust"
 			],
 		)
-		_ := must("cargo build", ran)?
+		void must("cargo build", ran)?
 		names = ["ms", "go", "rust"]
 
 	if capture("cc", ["--version"]).code == 0:
@@ -256,7 +256,7 @@ fn prepare_run(here: String, w: String) List[String]!:
 			"cc",
 			["-O2", "-pthread", "-o", "{w}/c/server", "{w}/c/server.c"],
 		)
-		_ := must("cc", ran)?
+		void must("cc", ran)?
 		names = names.concat(["c"])
 
 	build_ms("{w}/ms", "{w}/ms/server")?
@@ -273,7 +273,7 @@ fn run_all(here: String, seconds: Int) Void!:
 		measure_server(p, name, port, seconds, env("MS_THREADS", "2"))?
 		port += 1
 
-	tmp.close().get(unit)
+	tmp.close().get(void)
 
 fn cell(p: Plan, argv: List[String]) String:
 	return tail(raised(pinned(p.load_cpus.clone(), argv)).stdout)
@@ -319,7 +319,7 @@ fn fetch_all(here: String, seconds: Int) Void!:
 		),
 		"/dev/null",
 	)?
-	_ := sleep(milliseconds(1000)).wait()
+	void sleep(milliseconds(1000)).wait()
 	fetches := [
 		["small", "1"],
 		["small", "8"],
@@ -372,8 +372,8 @@ fn fetch_all(here: String, seconds: Int) Void!:
 		say("{path} connections=1 go {go}")
 		say("{path} connections=1 ms {ms}")
 
-	server.close().get(unit)
-	tmp.close().get(unit)
+	server.close().get(void)
+	tmp.close().get(void)
 
 fn main() Int:
 	args := arguments()

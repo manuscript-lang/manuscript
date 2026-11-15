@@ -59,7 +59,7 @@ One decoded terminal input event. `Text` carries printable characters typed
 together. `Key` names a non-printing or modified key: `enter`, `tab`,
 `backspace`, `escape`, `space`, `up`, `down`, `left`, `right`, `home`, `end`,
 `insert`, `delete`, `page_up`, `page_down`, `f1` to `f12`, or a letter with
-`ctrl` or `alt` set. `Paste` carries text pasted as one unit, line breaks as `\n`. `Resize`
+`ctrl` or `alt` set. `Paste` carries text pasted as one void, line breaks as `\n`. `Resize`
 carries the new size.
 */
 export enum TerminalEvent:
@@ -504,7 +504,7 @@ fn var TerminalEvents.next() TerminalEvent?!:
 	return ok(none)
 
 fn var TerminalEvents.close() Void!:
-	return ok(unit)
+	return ok(void)
 
 esc := "\u{1b}"
 // Cursor positions beyond this are refused: older terminals cannot take larger numbers.
@@ -574,7 +574,7 @@ fn RawTerminal.move_by(rows: Int, columns: Int) Void!:
 	if rows > 0: out = "{out}{esc}[{rows}B"
 	if columns > 0: out = "{out}{esc}[{columns}C"
 	if columns < 0: out = "{out}{esc}[{0 - columns}D"
-	if out.is_empty(): return ok(unit)
+	if out.is_empty(): return ok(void)
 
 	return self.write(out)
 

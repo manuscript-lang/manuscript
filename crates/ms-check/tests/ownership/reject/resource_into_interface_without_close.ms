@@ -4,7 +4,7 @@ type Door:
     n: Int
 
 fn var Door.close() Void!:
-    return ok(unit)
+    return ok(void)
 
 interface Numbered:
     fn number() Int

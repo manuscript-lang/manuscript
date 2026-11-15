@@ -20,7 +20,7 @@ fn run(step: Step) Void!:
             double(n)
         Check(n):
             checked(n)?
-    return ok(unit)
+    return ok(void)
 
 export fn main() Int:
     for step in [Step.Show("shown"), Step.Count(2), Step.Check(3)]:

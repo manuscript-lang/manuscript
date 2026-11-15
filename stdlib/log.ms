@@ -64,7 +64,7 @@ fn level_at(value: Int) LogLevel:
 
 	return LogLevel.Silent
 
-// Milliseconds since the Unix epoch, the unit of the `time` field.
+// Milliseconds since the Unix epoch, the void of the `time` field.
 fn now_ms() Int:
 	now := now()
 	return now.unix_seconds() * 1000 + now.nanoseconds() / 1000000
@@ -215,7 +215,7 @@ fn Logger.log[F: Data = Void](level: LogLevel, message: String, fields: F? = non
 	if level == LogLevel.Silent: return error(
 		Error("logging: invalid input", kind: "EINVAL")
 	)
-	if not self.enabled(level): return ok(unit)
+	if not self.enabled(level): return ok(void)
 
 	if value := fields:
 		text := encode_fields(value)?

@@ -33,7 +33,7 @@ On `ok`, `value` holds the `Decimal`. On `error`, the function returns that erro
 ```manuscript
 import expect_equal from "@std/test/test.ms"
 
-fn prepare() Void!: ok(unit)
+fn prepare() Void!: ok(void)
 
 fn ready_label() String!:
     prepare()?
@@ -51,7 +51,7 @@ PASS ready_test.ms::prepare before returning a label
 
 Standalone `call()?` requires a `Void` success. Otherwise bind it (`name := call()?`) or `return call()?`.
 
-Omitting `?` discards the Result, which the checker rejects. To ignore it deliberately, use [`_ :=`](results.md#discarding-a-result).
+Omitting `?` discards the Result, which the checker rejects. To ignore it deliberately, use [`void`](results.md#discarding-a-result).
 
 ## Propagation in a pipe flow
 

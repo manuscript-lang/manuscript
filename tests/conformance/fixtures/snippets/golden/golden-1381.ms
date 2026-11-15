@@ -11,4 +11,4 @@ test "fails":
     return panic(message: "distribution failure")
 
 test "after":
-    return unit
+    return void

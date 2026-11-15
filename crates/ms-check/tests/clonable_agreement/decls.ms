@@ -21,7 +21,7 @@ type Res:
     n: Int
 
 fn var Res.close() Void!:
-    return ok(unit)
+    return ok(void)
 
 type HoldsRes:
     r: Res

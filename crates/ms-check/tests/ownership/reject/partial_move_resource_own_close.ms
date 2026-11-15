@@ -4,7 +4,7 @@ type Door:
     id: Int
 
 fn var Door.close() Void!:
-    return ok(unit)
+    return ok(void)
 
 type Room:
     door: Door
@@ -14,7 +14,7 @@ type Guard:
     door: Door
 
 fn var Guard.close() Void!:
-    return ok(unit)
+    return ok(void)
 
 fn keep(d: Door) List[Door]:
     var xs: List[Door] = []

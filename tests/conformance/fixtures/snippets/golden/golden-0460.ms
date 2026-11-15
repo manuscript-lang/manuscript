@@ -2,6 +2,6 @@
 // conform: phase=check
 import HashAlgorithm from "@std/crypto/crypto.ms"
 fn choose(algorithm: HashAlgorithm) Void:
-    return unit
+    return void
 fn wrong() Void:
     choose("sha256")

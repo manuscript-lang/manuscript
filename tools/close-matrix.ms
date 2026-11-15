@@ -180,22 +180,22 @@ fn constructs() List[Construct]:
 		c(
 			"cancel_borrowed",
 			"fn hold(x: @TY@) Void!:\n    sleep(milliseconds(60000)).wait()?\n    return ok(unit)",
-			"x: @TY@ := @M1@\n    p := promise(fn: hold(x))\n    p.cancel()\n    _ := p.wait()",
+			"x: @TY@ := @M1@\n    p := promise(fn: hold(x))\n    p.cancel()\n    void p.wait()",
 		),
 		c(
 			"cancel_owned",
 			"fn hold(x: @TY@) Void!:\n    sleep(milliseconds(60000)).wait()?\n    return ok(unit)",
-			"p := promise(fn: hold(@M1@))\n    p.cancel()\n    _ := p.wait()",
+			"p := promise(fn: hold(@M1@))\n    p.cancel()\n    void p.wait()",
 		),
 		c(
 			"cancel_local",
 			"fn hold() Void!:\n    x: @TY@ := @M1@\n    sleep(milliseconds(60000)).wait()?\n    see(x)\n    return ok(unit)",
-			"p := promise(fn: hold())\n    p.cancel()\n    _ := p.wait()",
+			"p := promise(fn: hold())\n    p.cancel()\n    void p.wait()",
 		),
 		c(
 			"cancel_dropped",
 			"fn hold() Void!:\n    x: @TY@ := @M1@\n    sleep(milliseconds(60000)).wait()?\n    see(x)\n    return ok(unit)",
-			"_ := promise(fn: hold())",
+			"void promise(fn: hold())",
 		),
 		c("fn_value_temporary", "", "f := see\n    f(@M1@)"),
 		c("fn_value_lambda", "", "f := fn (v: @TY@): see(v)\n    f(@M1@)"),
@@ -346,7 +346,7 @@ fn constructs() List[Construct]:
 		c(
 			"promise_result_dropped",
 			"fn produce() @TY@!: return ok(@M1@)",
-			"p := promise(fn: produce())\n    _ := p.wait()",
+			"p := promise(fn: produce())\n    void p.wait()",
 		),
 		only(
 			"explicit_close",
@@ -410,7 +410,7 @@ fn program(shape: Shape, construct: Construct) String:
 	see := "fn see(x: @TY@) Void: return\n\nfn see_all(xs: List[@TY@]) Void: return\n\nfn seeok(x: @TY@) Void!: return ok(unit)\n\nfn see_marker(m: Marker) Void: return\n\nfn fail_int() Int!: return error(Error(\"x\"))\n"
 	m1 := shape.make.replace("@ID@", "1")
 	m2 := shape.make.replace("@ID@", "2")
-	var text = "{HEADER}\n{see}\n{construct.defs}\n\nfn body() Void!:\n    {construct.body}\n    return ok(unit)\n\nfn run() Void:\n    _ := body()\n\nexport fn main() Int:\n    run()\n    return 0\n"
+	var text = "{HEADER}\n{see}\n{construct.defs}\n\nfn body() Void!:\n    {construct.body}\n    return ok(unit)\n\nfn run() Void:\n    void body()\n\nexport fn main() Int:\n    run()\n    return 0\n"
 	text = text.replace("@TY@", shape.ty).replace("@M1@", m1).replace("@M2@", m2)
 	return text
 

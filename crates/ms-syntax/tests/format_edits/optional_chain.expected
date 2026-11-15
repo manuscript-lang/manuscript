@@ -5,4 +5,4 @@ fn work() Void:
 		.remove_legacy_separators()
 		._whitespace_abcdef()
 	)
-	return unit
+	return void

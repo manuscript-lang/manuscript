@@ -4,7 +4,7 @@ type Res:
     id: Int
 
 fn var Res.close() Void!:
-    return ok(unit)
+    return ok(void)
 
 // An unconstrained element may be a resource, so a copy could be closed twice.
 fn copy[T](items: List[T]) List[T]:

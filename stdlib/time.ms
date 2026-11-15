@@ -31,7 +31,7 @@ import (
 
 // A span of elapsed time, counted in signed nanoseconds.
 export type Duration:
-	// The signed count of nanoseconds; `nanoseconds(n)` and the unit constructors build
+	// The signed count of nanoseconds; `nanoseconds(n)` and the void constructors build
 	// one.
 	nanos: Int
 
@@ -376,7 +376,7 @@ fn duration_decimal(whole: Int, frac: Int, width: Int) String:
 
 	return "{whole}.{digits}"
 
-// Constructs a duration of `n` nanoseconds, the unit `Duration` counts in; `n` may be
+// Constructs a duration of `n` nanoseconds, the void `Duration` counts in; `n` may be
 // negative.
 export fn nanoseconds(n: Int) Duration:
 	return Duration(nanos: n)
@@ -617,7 +617,7 @@ fn Deadline.expired() Bool:
 // Suspends the current task until the deadline passes. Returns at once if it
 // already has.
 fn Deadline.wait() Void:
-	sleep(self.remaining()).wait().get(unit)
+	sleep(self.remaining()).wait().get(void)
 
 // Returns a deadline `duration` from now.
 // ms: effect std.clock.read
@@ -650,7 +650,7 @@ fn var TickSource.next() Instant?!:
 	return ok(tick)
 
 fn var TickSource.close() Void!:
-	return ok(unit)
+	return ok(void)
 
 // Returns a ticker whose first tick comes one `period` from now. A period of zero or
 // less is a programming fault.

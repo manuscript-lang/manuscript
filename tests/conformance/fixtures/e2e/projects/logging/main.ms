@@ -17,7 +17,7 @@ fn exercise(mode: String, path: String) Void!:
 		emit(logger)?
 		logger.flush()?
 		root.close()?
-		return ok(unit)
+		return ok(void)
 
 	if mode == "limit":
 		logger := create(stdout_transport(), LoggerOptions(max_bytes: 1))?

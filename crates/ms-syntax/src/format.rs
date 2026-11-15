@@ -2111,6 +2111,8 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
                         start += 1;
                     }
                 }
+                // `void value` is a binding of `_` with no `:=` token; only the value wraps.
+                StmtKind::Bind { .. } if tokens[start].kind == Tok::Void => start += 1,
                 StmtKind::Bind { .. } | StmtKind::Assign { .. } | StmtKind::For { .. } => {
                     let is_for = matches!(s.kind, StmtKind::For { .. });
                     while !(if is_for {

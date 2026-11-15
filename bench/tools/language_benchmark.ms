@@ -29,10 +29,10 @@ import (
 
 fn execute(binary: String, cpu: String) Result[Void, Error]:
 	if cpu == "":
-		_ := must(binary, capture(binary, []))?
-		return ok(unit)
+		void must(binary, capture(binary, []))?
+		return ok(void)
 
-	_ := must(binary, capture("taskset", ["-c", cpu.clone(), binary.clone()]))?
+	void must(binary, capture("taskset", ["-c", cpu.clone(), binary.clone()]))?
 
 fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
 	out := absolute(opts.get_or("output", ""))

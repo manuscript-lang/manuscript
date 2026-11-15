@@ -35,7 +35,7 @@ fn var ListSource.next() Int?!:
 	return ok(v)
 
 fn var ListSource.close() Void!:
-	return ok(unit)
+	return ok(void)
 
 // `f` over another `Source`, called through the interface.
 type MapSource:

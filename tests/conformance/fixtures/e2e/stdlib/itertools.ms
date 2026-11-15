@@ -63,7 +63,7 @@ test "product is the cartesian product":
 	expect_equal(product([[1], List[Int]()]), List[List[Int]]())?
 
 fn discard[T](value: T) Void:
-	return unit
+	return void
 
 test "invalid sizes fault":
 	_first := expect_fault(fn: discard(permutations([1, 2], 3)))?

@@ -21,7 +21,7 @@ fn var Chunks.next() Bytes?!:
 	return ok(piece)
 
 fn var Chunks.close() Void!:
-	return ok(unit)
+	return ok(void)
 
 type Case:
 	name: String

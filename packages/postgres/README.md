@@ -29,7 +29,7 @@ fn main() Void!:
     rows := conn.query("select $1::int8 + 1", [Value.Int(41)])?
     print("{rows.rows[0][0]}")
     conn.close()?
-    return ok(unit)
+    return ok(void)
 ```
 
 `Pool` (`@pg/pool.ms`) runs statements on worker tasks that each own one connection. A connection cannot move

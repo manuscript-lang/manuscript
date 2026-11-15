@@ -32,7 +32,7 @@ fn var Tokens.next() Token?!:
 	return ok(none)
 
 fn var Tokens.close() Void!:
-	return ok(unit)
+	return ok(void)
 
 fn events(log: String) String:
 	if bytes := read_file(log).wait(): return bytes.decode_utf8().get("")
@@ -87,7 +87,7 @@ fn walk(log: String, action: Int) Void!:
 		token := item
 		use_token(token)?
 		if action == 1: break
-		if action == 2: return ok(unit)
+		if action == 2: return ok(void)
 		if action == 3: return error(Error("body failed", kind: "EBODY"))
 		if action == 4: continue
 
@@ -186,7 +186,7 @@ fn var OptionalTokens.next() Token??!:
 	return ok(inner)
 
 fn var OptionalTokens.close() Void!:
-	return ok(unit)
+	return ok(void)
 
 fn optional_payload(log: String) Void!:
 	var input = ReadStream[Token?](OptionalTokens(log.clone()))
@@ -214,7 +214,7 @@ fn var ResultTokens.next() Result[Result[Token, Error]?, Error]:
 	return ok(inner)
 
 fn var ResultTokens.close() Void!:
-	return ok(unit)
+	return ok(void)
 
 fn result_payload(log: String) Void!:
 	var input = ReadStream[Token!](ResultTokens(log.clone()))
@@ -233,9 +233,9 @@ test "a nested result payload transfers its resource":
 // failed handshake.
 fn wait_for_event(log: String, expected: String) Void!:
 	for attempt in 0..1000:
-		if events(log).contains(expected): return ok(unit)
+		if events(log).contains(expected): return ok(void)
 
-		_ := sleep(milliseconds(10)).wait()
+		void sleep(milliseconds(10)).wait()
 
 	return error(Error("resource handshake timed out", kind: "ETIMEDOUT"))
 
@@ -246,7 +246,7 @@ fn wait_cancelled(log: String) Void!:
 		token := item
 		use_token(token)?
 
-		_ := sleep(milliseconds(60000)).wait()
+		void sleep(milliseconds(60000)).wait()
 
 test "cancelling an active body closes the delivered item once":
 	dir := temporary("resource-body-cancel-") | expect_ok?
@@ -266,11 +266,11 @@ fn var PendingTokens.next() Token?!:
 	token := Token(1, self.log.clone())
 	append_file(self.log, "ready\n").wait()?
 
-	_ := sleep(milliseconds(60000)).wait()
+	void sleep(milliseconds(60000)).wait()
 	return ok(token)
 
 fn var PendingTokens.close() Void!:
-	return ok(unit)
+	return ok(void)
 
 fn next_cancelled(log: String) Void!:
 	var input = ReadStream[Token](PendingTokens(log.clone()))

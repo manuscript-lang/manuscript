@@ -20,7 +20,7 @@ fn var Reporter.close() Void!:
 
 fn handle(request: HttpRequest) HttpResponse:
     var _reporter = Reporter("handler")
-    _ := sleep(nanoseconds(30000000000)).wait()
+    void sleep(nanoseconds(30000000000)).wait()
     _reporter.close().get(none)
     return HttpResponse(200, headers(), "late\n".to_bytes())
 
@@ -32,9 +32,9 @@ export fn main() Int:
             _sent := send(var conn, "GET /slow HTTP/1.1\r\nHost: t\r\n\r\n")
 
             // Let the handler start, then leave without waiting for the response.
-            _ := sleep(nanoseconds(100000000)).wait()
+            void sleep(nanoseconds(100000000)).wait()
             conn.close().get(none)
-            _ := sleep(nanoseconds(500000000)).wait()
+            void sleep(nanoseconds(500000000)).wait()
 
             _done := stdout().write("done\n")
             server.close().get(none)

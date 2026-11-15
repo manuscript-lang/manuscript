@@ -1,5 +1,5 @@
 fn clone() Void:
-	return unit
+	return void
 
 fn ordinary() Void:
-	return unit
+	return void

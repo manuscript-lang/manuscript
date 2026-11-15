@@ -19,13 +19,13 @@ test "writing to a closed connection returns an error":
 	var attempts = 0
 
 	while attempts < 200:
-		_ := sleep(10.milliseconds()).wait()
+		void sleep(10.milliseconds()).wait()
 		written := send(var accepted, "ping")
 
 		if _sent := written:
 			attempts += 0
 		else:
-			return ok(unit)
+			return ok(void)
 
 		attempts += 1
 

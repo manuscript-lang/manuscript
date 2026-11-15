@@ -1921,6 +1921,52 @@ impl<'a> Parser<'a> {
         let t = self.peek();
         let pos = t.pos;
         let kind = match t.kind {
+            // `void call()` runs the call and drops its result on purpose; it is the `_ := call()`
+            // binding underneath, so the checker and both backends see one form. A bare `void` is
+            // the Void value.
+            Tok::Void
+                if !matches!(
+                    self.ahead(1).kind,
+                    Tok::Newline
+                        | Tok::Indent
+                        | Tok::Dedent
+                        | Tok::Eof
+                        | Tok::Comma
+                        | Tok::RParen
+                        | Tok::RBracket
+                        | Tok::RBrace
+                ) =>
+            {
+                self.at += 1;
+                let value = self.expression(0)?;
+                self.end()?;
+                let id = self.id();
+                let pattern_id = self.id();
+                return Ok(Stmt {
+                    id,
+                    pos,
+                    kind: StmtKind::Bind {
+                        mutable: false,
+                        pattern: Pattern {
+                            id: pattern_id,
+                            pos,
+                            kind: PatternKind::Name(self.names.intern("_")),
+                        },
+                        ty: None,
+                        value,
+                        group: None,
+                    },
+                });
+            }
+            Tok::Underscore if self.ahead(1).kind == Tok::ColonAssign => {
+                let eq = self.ahead(1);
+                return self.fail_fix_range(
+                    t,
+                    eq,
+                    "'_ := value' was removed; write 'void value' to run an expression and drop its result on purpose",
+                    "void",
+                );
+            }
             Tok::Name | Tok::Underscore | Tok::LBracket | Tok::LBrace if self.binding_ahead() => {
                 let s = self.binding(false, None, pos)?;
                 self.end()?;
@@ -2149,7 +2195,7 @@ impl<'a> Parser<'a> {
             if !self.inline_return && !is_call && !try_call && !allow_value {
                 if let ExprKind::Name(n) = &e.kind {
                     match self.names.str(*n) {
-                        "pass" => return self.fail_fix(t, "'pass' is not a keyword; write 'unit' for an empty block or match arm", "unit"),
+                        "pass" => return self.fail_fix(t, "'pass' is not a keyword; write 'void' for an empty block or match arm", "void"),
                         "const" | "val" | "final" => {
                             return self.fail(t, format!("'{n_t}' is not a keyword; write 'name := ...' for a binding that is not reassigned, or 'var name = ...' when it changes", n_t = self.names.str(n)));
                         }
@@ -2373,7 +2419,7 @@ impl<'a> Parser<'a> {
     fn pattern_inner(&mut self) -> PResult<Pattern> {
         let t = self.peek();
         if t.kind == Tok::Void {
-            return self.fail(t, "unit is a reserved value keyword, not a binding name; choose another name such as code_unit, and use unit for the Void value");
+            return self.fail(t, "void is a reserved value keyword, not a binding name; choose another name such as code_unit, and use void for the Void value");
         }
         if self.take(Tok::Name) {
             let id = self.id();
@@ -2754,7 +2800,7 @@ impl<'a> Parser<'a> {
             }
             Tok::Void => self.mk(t.pos, ExprKind::Void),
             Tok::LParen if self.kind() == Tok::RParen => {
-                return self.fail(t, "'()' is not a value; the Void value is written 'unit'");
+                return self.fail(t, "'()' is not a value; the Void value is written 'void'");
             }
             Tok::LParen => {
                 let e = self.expression(0)?;

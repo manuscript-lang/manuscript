@@ -51,9 +51,9 @@ fn main() Int:
 
 		// Both compilers build the same directory, so no path differs between the
 		// outputs.
-		remove("{w}/p", recursive: true).get(unit)
+		remove("{w}/p", recursive: true).get(void)
 		copy(dir, "{w}/p", CopyOptions(recursive: true, replace: true)).get()
-		remove("{w}/p/ms.lock").get(unit)
+		remove("{w}/p/ms.lock").get(void)
 
 		lowers := (
 			ok_status(base, ["emit", "ms.toml", "-o", "{w}/a.mir"], "{w}/p")
@@ -69,10 +69,10 @@ fn main() Int:
 			skipped += 1
 			continue
 
-		remove("{w}/p/ms.lock").get(unit)
+		remove("{w}/p/ms.lock").get(void)
 
 		_a := ok_status(base, ["build", "ms.toml", "-o", "{w}/a.bin"], "{w}/p")
-		remove("{w}/p/ms.lock").get(unit)
+		remove("{w}/p/ms.lock").get(void)
 
 		_b := ok_status(head, ["build", "ms.toml", "-o", "{w}/b.bin"], "{w}/p")
 

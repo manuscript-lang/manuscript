@@ -134,7 +134,7 @@ fn var Decoder.apply(line: String) Void:
 
 // Lines without a colon name a field with an empty value; other names are ignored.
 fn var Decoder.apply_other(line: String) Void:
-	if line.index_of(":").is_some(): return unit
+	if line.index_of(":").is_some(): return void
 
 	if line == "data": self.data.append("")
 	else if line == "event": self.event_type = ""
@@ -143,13 +143,13 @@ fn var Decoder.apply_other(line: String) Void:
 
 // An ID containing NUL is ignored, so it neither replaces nor clears the last ID.
 fn var Decoder.identify(value: String) Void:
-	if value.to_bytes().contains("\u{0}".to_bytes()): return unit
+	if value.to_bytes().contains("\u{0}".to_bytes()): return void
 
 	self.last_id = value
 
 // Only ASCII digits form a retry time; overflow and signs are ignored.
 fn var Decoder.reconnect(value: String) Void:
-	if (value.is_empty() or value.starts_with("-") or value.starts_with("+")): return unit
+	if (value.is_empty() or value.starts_with("-") or value.starts_with("+")): return void
 
 	milliseconds := value.parse_int()
 	if milliseconds.is_some(): self.retry_ms = milliseconds
@@ -233,13 +233,13 @@ fn end_line(
 
 	if from == end:
 		dispatch(var decoder, var events)
-		return ok(unit)
+		return ok(void)
 
 	line := bytes.decode_utf8_range(
 		from,
 		end,
 	).ok_or(Error("SSE line is not valid UTF-8", kind: "EBADMSG"))?
-	if line.starts_with(":"): return ok(unit)
+	if line.starts_with(":"): return ok(void)
 
 	decoder.event_bytes += end - from
 	if exceeds(decoder.event_bytes, decoder.limits.max_event_bytes): return error(
@@ -248,7 +248,7 @@ fn end_line(
 
 	decoder.open_block = true
 	decoder.apply(line)
-	return ok(unit)
+	return ok(void)
 
 // The value after the colon, skipping one leading space when `spaced`.
 fn value_after(line: String, colon_end: Int, spaced: Bool) String:

@@ -112,7 +112,7 @@ test "Result preserves unconstrained payloads and success-only composition":
 	nested := success.clone().map(fn(n: Int) Int?: n)
 	expect_equal(nested.get().get(), 0)?
 
-	unit_result: Void!Error := ok(unit)
+	unit_result: Void!Error := ok(void)
 	expect_false(not (unit_result.is_ok()))?
 
 	bool_result: Bool!Error := ok(false)

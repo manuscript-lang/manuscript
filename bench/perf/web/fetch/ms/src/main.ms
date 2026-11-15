@@ -34,4 +34,4 @@ fn main() Void:
 	for r in wait_all(running).get():
 		total += r
 
-	_ := stdout().write("req/s {total / secs}\n")
+	void stdout().write("req/s {total / secs}\n")

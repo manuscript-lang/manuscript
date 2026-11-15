@@ -4,7 +4,7 @@ type Door:
     n: Int
 
 fn var Door.close() Void!:
-    return ok(unit)
+    return ok(void)
 
 fn f() Int:
     wrap := fn(d: Door) Door?: d  // error: cannot move `d` out: a function value only borrows

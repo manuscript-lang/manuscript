@@ -16,7 +16,7 @@ test "a Void mutation of a temporary list returns Void":
 	append_temporary()
 
 	unit_value: Void := [0].set(0, 9)
-	expect_equal(unit_value, unit)?
+	expect_equal(unit_value, void)?
 
 test "a mutation of a temporary list keeps its extra result":
 	expect_equal(pop_temporary(), 4)?

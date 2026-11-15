@@ -24,7 +24,7 @@ fn var Chunks.next() Bytes?!:
 	return ok(none)
 
 fn var Chunks.close() Void!:
-	return ok(unit)
+	return ok(void)
 
 fn chunks(parts: List[Bytes]) ReadStream[Bytes]:
 	return ReadStream[Bytes](Chunks(parts, 0, none))

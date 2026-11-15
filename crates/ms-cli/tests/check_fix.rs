@@ -112,7 +112,7 @@ fn fix_renames_misspellings_and_adds_imports() {
         \x20   return sumn\n\
         \n\
         fn main() Int:\n\
-        \x20   _ := stdout().write(\"hi\\n\")\n\
+        \x20   void stdout().write(\"hi\\n\")\n\
         \x20   return total(itemz: [1])\n\
         ";
     std::fs::write(dir.join("a.ms"), source).unwrap();
@@ -198,7 +198,7 @@ fn fix_wraps_expressions_to_convert_types() {
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let source = "fn say(text: String) Void:\n\
-        \x20   return unit\n\
+        \x20   return void\n\
         \n\
         export fn main() Int:\n\
         \x20   n := 3\n\

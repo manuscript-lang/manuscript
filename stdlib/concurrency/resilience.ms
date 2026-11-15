@@ -63,7 +63,7 @@ export fn retry[T, E: Clonable](
 		if result.is_error():
 			if accepts := retryable:
 				if not accepts(result.err()): return result
-			sleep(jittered(policy, attempt)).wait().get(unit)
+			sleep(jittered(policy, attempt)).wait().get(void)
 			attempt += 1
 		else:
 			return result
@@ -83,7 +83,7 @@ A token bucket: holds up to `burst` tokens and gains one every `interval`. Each 
 var limiter = rate_limiter(10, burst: 20)
 for url in urls:
     limiter.acquire()
-    _ := fetch(url).wait()?
+    void fetch(url).wait()?
 ```
 */
 export type RateLimiter:
@@ -100,7 +100,7 @@ export type RateLimiter:
 fn var RateLimiter.refill() Void:
 	now := monotonic()
 	earned := now.difference(self.stamp).nanos / self.interval.nanos.max(1)
-	if earned <= 0: return unit
+	if earned <= 0: return void
 
 	// Compare with remaining room before adding: a valid large burst can overflow
 	// the sum.
@@ -124,7 +124,7 @@ fn var RateLimiter.try_acquire() Bool:
 fn var RateLimiter.acquire() Void:
 	while not self.try_acquire():
 		ready := self.stamp.shift(self.interval)
-		sleep(ready.difference(monotonic()).max(Duration(nanos: 1))).wait().get(unit)
+		sleep(ready.difference(monotonic()).max(Duration(nanos: 1))).wait().get(void)
 
 // A rate limiter that allows `count` uses per second with room for `burst` at once; it
 // starts full. `count` and `burst` must be at least 1.
@@ -267,6 +267,6 @@ fn var Throttle.wait() Void:
 	if previous := self.last:
 		remaining := self.interval.subtract(monotonic().difference(previous))
 		if remaining.nanos > 0:
-			sleep(remaining).wait().get(unit)
+			sleep(remaining).wait().get(void)
 
 	self.last = monotonic()

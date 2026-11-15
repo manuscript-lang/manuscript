@@ -361,7 +361,7 @@ type MultipartParts:
 	done: Bool
 
 fn var MultipartParts.step(value: Bytes, var out: List[Part]) Void!:
-	if self.done: return ok(unit)
+	if self.done: return ok(void)
 
 	self.buffer = self.buffer.concat(value)
 
@@ -438,7 +438,7 @@ fn var MultipartParts.step(value: Bytes, var out: List[Part]) Void!:
 		self.in_part = true
 
 fn var MultipartParts.finish(var out: List[Part]) Void!:
-	if self.done: return ok(unit)
+	if self.done: return ok(void)
 	return error(Error("MIME: invalid multipart body", kind: "EBADMSG"))
 
 /*

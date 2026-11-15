@@ -37,7 +37,7 @@ fn generic_remove(path: String) Void!:
 
 fn rejected(result: Void!) Void!:
 	match result:
-		error(_): return ok(unit)
+		error(_): return ok(void)
 		ok(_): return error(Error("exclusive or nonrecursive operation succeeded"))
 
 fn text(path: String) String!:

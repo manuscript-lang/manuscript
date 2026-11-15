@@ -19,7 +19,7 @@ b0:
   %raw: ptr = slot MapRaw
   %k: ptr = slot int
   %v: ptr = slot int
-  %u0: unit = call.rt @msrt_map_new (%m)
+  %u0: void = call.rt @msrt_map_new (%m)
   br loop(%zero)
 loop(%i: int):
   poll
@@ -34,7 +34,7 @@ body:
   br_if %isn, add(), bump()
 add:
   store %v, %one
-  %u1: unit = call.rt @msrt_map_add (%m, %kd, %vd, %k, %v)
+  %u1: void = call.rt @msrt_map_add (%m, %kd, %vd, %k, %v)
   br next()
 bump:
   %old: int = load int %p
@@ -47,14 +47,14 @@ next:
 done:
   %lp: ptr = ptr.field MapRaw.len %m
   %len: int = load int %lp
-  %u2: unit = call.rt @msrt_slot_drop (%mt, %m)
+  %u2: void = call.rt @msrt_slot_drop (%mt, %m)
   ret %len
 }
 fn @main() -> int {
 b0:
   %n: int = iconst 2000000
   %r: int = call @count (%n)
-  %u: unit = call.rt @msrt_print_int (%r)
+  %u: void = call.rt @msrt_print_int (%r)
   %z: int = iconst 0
   ret %z
 }

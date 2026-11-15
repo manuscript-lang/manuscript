@@ -477,10 +477,10 @@ fn store(var values: Map[String, List[String]], flag: Flag, value: String) Resul
 		var items = values.get_or(flag.name, [])
 		items.append(value)
 		values[flag.name.clone()] = items
-		return ok(unit)
+		return ok(void)
 
 	values[flag.name.clone()] = [value]
-	return ok(unit)
+	return ok(void)
 
 // Resolves subcommands, flags and positionals from `argv`.
 fn walk(root: Command, argv: List[String]) Parsed!:
@@ -630,23 +630,23 @@ fn bind(
 			return error(cli_unknown_command(words[next].clone(), path.join(" ")))
 		return error(cli_too_many_arguments(words[next].clone()))
 
-	return ok(unit)
+	return ok(void)
 
 // Applies the default of an absent flag or reports a missing required one.
 fn fill(var values: Map[String, List[String]], flag: Flag) Void!:
-	if values.contains(flag.name): return ok(unit)
+	if values.contains(flag.name): return ok(void)
 
 	if text := flag.default:
 		values[flag.name.clone()] = [text.clone()]
-		return ok(unit)
+		return ok(void)
 
 	if is_bool(flag.kind):
 		values[flag.name.clone()] = ["false"]
-		return ok(unit)
+		return ok(void)
 
 	if is_list(flag.kind):
 		values[flag.name.clone()] = []
-		return ok(unit)
+		return ok(void)
 
 	if flag.required: return error(cli_missing_required("--{flag.name}"))
 

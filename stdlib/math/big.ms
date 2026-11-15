@@ -474,7 +474,7 @@ fn smaller(left: Int, right: Int) Int:
 	return right
 
 // Adds a nonzero value too small to reach `prec` bits of `leading`: nudges `leading` by
-// a quarter unit toward the small value's sign.
+// a quarter void toward the small value's sign.
 fn absorb(leading: BigInt, exp: Int, nudge: Int, prec: Int) Binary:
 	padding := prec + 4 - bit_length(leading)
 	var widened = leading.clone()

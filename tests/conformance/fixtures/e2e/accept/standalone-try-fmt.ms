@@ -65,7 +65,7 @@ test "standalone in? closure returns from that closure":
     callback := fn() Void!Failure:
         var inner = State(0, "")
         if true: operation(var inner, fail: true)?
-        return ok(unit)
+        return ok(void)
 
     outcome := callback()
     expect_false(outcome.is_ok())?

@@ -48,7 +48,7 @@ test "seeded weighted_choice follows the weights":
 	expect_true(heavy > 140)?
 
 fn discard[T](value: T) Void:
-	return unit
+	return void
 
 test "seeded invalid arguments fault":
 	var rng = seeded(1)

@@ -112,7 +112,7 @@ fn FetchResponse.json[T: Data](ignore_unknown_fields: Bool = true) T!:
 // Succeeds when the status is 200 through 299 and otherwise returns `Status`, so
 // `response.check_status()?` rejects error responses.
 fn FetchResponse.check_status() Void!:
-	if self.ok(): return ok(unit)
+	if self.ok(): return ok(void)
 	return error(
 		Error(
 			"fetch: unexpected status {self.head.status}",

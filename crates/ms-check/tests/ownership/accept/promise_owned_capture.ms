@@ -5,7 +5,7 @@ type Door:
     count: Int
 
 fn var Door.close() Void!:
-    return ok(unit)
+    return ok(void)
 
 fn size(door: Door) Int!:
     return ok(door.count)

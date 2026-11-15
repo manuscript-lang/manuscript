@@ -147,7 +147,7 @@ fn weight_total(count: Int, weights: List[Float]) Float:
 
 	return total
 
-// Selects a positive-weight position from a unit draw, keeping ordinary sums on their
+// Selects a positive-weight position from a void draw, keeping ordinary sums on their
 // original scale.
 fn weighted_position(weights: List[Float], unit_draw: Float, total: Float) Int:
 	if not total.is_finite() or total < 2.2250738585072014e-308:

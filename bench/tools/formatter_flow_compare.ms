@@ -102,7 +102,7 @@ fn compare(
 		)
 
 	write_text(out, rows.join("\n") + "\n")
-	return ok(unit)
+	return ok(void)
 
 fn main() Int:
 	args := arguments()

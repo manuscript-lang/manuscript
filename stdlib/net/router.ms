@@ -629,7 +629,7 @@ fn var TestExchange.send(status: Int, headers: HttpHeaders, body: Bytes) Void!:
 
 	var guard = hold[TestState](self.state)
 	guard.items[0].complete = true
-	if self.request.method.text() == "HEAD" or not has_body(status): return ok(unit)
+	if self.request.method.text() == "HEAD" or not has_body(status): return ok(void)
 
 	guard.items[0].body.append_bytes(body)
 
@@ -654,7 +654,7 @@ fn var TestExchange.write_bytes(data: Bytes) Void!:
 	if not has_body(guard.items[0].status): return error(
 		Error("I/O: invalid input", kind: "EINVAL")
 	)
-	if self.request.method.text() == "HEAD": return ok(unit)
+	if self.request.method.text() == "HEAD": return ok(void)
 
 	guard.items[0].body.append_bytes(data)
 
@@ -777,7 +777,7 @@ fn with_extra(sent: HttpHeaders, extra: HttpHeaders) HttpHeaders:
 	for name in extra.names():
 		if not all.contains(name):
 			for value in extra.values(name):
-				all.append(name, value).get(unit)
+				all.append(name, value).get(void)
 	return all
 
 // Middleware that gives every request an id: the request's own `X-Request-Id` when it

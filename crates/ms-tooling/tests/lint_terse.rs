@@ -96,7 +96,7 @@ fn a_map_entry_rebuilt_from_its_lookup_is_updated_in_place() {
 #[test]
 fn a_final_return_the_end_already_makes_is_dropped() {
     let got = findings(include_str!("lint_terse/endings.ms"));
-    let expected: Vec<(&str, &str)> = vec![("    return ok(unit)\n", ""), ("    return\n", "")];
+    let expected: Vec<(&str, &str)> = vec![("    return ok(void)\n", ""), ("    return\n", "")];
     assert_eq!(
         got.iter()
             .map(|(a, b)| (a.as_str(), b.as_str()))

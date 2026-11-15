@@ -113,7 +113,7 @@ fn failing_cleanup(log: String) Void!:
 
 fn wait_for_check(log: String) Void!:
 	for attempt in 0..1000:
-		if events(log).contains("check\n"): return ok(unit)
+		if events(log).contains("check\n"): return ok(void)
 
 		sleep(milliseconds(1)).wait()?
 
@@ -145,7 +145,7 @@ test "intact Optional and Result constructor fields close on try failure":
 test "partial construction closes reverse written acquisition order":
 	dir := temporary("constructor-label-failure-") | expect_ok?
 	log := "{dir.path()}/events"
-	_ := labeled(log, 1) | expect_error?
+	void labeled(log, 1) | expect_error?
 	expect_equal(events(log), "acquire 2\nacquire 1\ncheck\nclose 1\nclose 2\n")?
 
 test "complete construction closes reverse declaration order":
@@ -180,13 +180,13 @@ test "a faulting default closes both provided and default resources":
 	dir := temporary("constructor-default-fault-") | expect_ok?
 	log := "{dir.path()}/events"
 	work := promise(fn: defaulted(log, 2))
-	_ := work.wait() | expect_error?
+	void work.wait() | expect_error?
 	expect_equal(events(log), "acquire 1\nacquire 2\ndefault\nclose 2\nclose 1\n")?
 
 test "nested acquired holders close depth first on an error":
 	dir := temporary("constructor-nested-") | expect_ok?
 	log := "{dir.path()}/events"
-	_ := nested(log, 1) | expect_error?
+	void nested(log, 1) | expect_error?
 	expect_equal(
 		events(log),
 		"acquire 1\nacquire 2\nacquire 3\ncheck\nclose 3\nclose 2\nclose 1\n",
@@ -196,7 +196,7 @@ test "moving a prior binding into a partial holder preserves one owner":
 	dir := temporary("constructor-move-") | expect_ok?
 	log := "{dir.path()}/events"
 	work := promise(fn: moved_binding(log, 2))
-	_ := work.wait() | expect_error?
+	void work.wait() | expect_error?
 	expect_equal(
 		events(log),
 		"acquire 0\nacquire 1\nacquire 2\ncheck\nclose 2\nclose 1\nclose 0\n",
@@ -205,7 +205,7 @@ test "moving a prior binding into a partial holder preserves one owner":
 test "pending constructor fields close before an older call temporary":
 	dir := temporary("constructor-outer-temp-") | expect_ok?
 	log := "{dir.path()}/events"
-	_ := outer_temporary(log) | expect_error?
+	void outer_temporary(log) | expect_error?
 	expect_equal(
 		events(log),
 		"acquire 0\nacquire 1\nacquire 2\ncheck\nclose 2\nclose 1\nclose 0\n",

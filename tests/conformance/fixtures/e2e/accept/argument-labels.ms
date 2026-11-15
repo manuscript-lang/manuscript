@@ -63,7 +63,7 @@ test "optional labels on single-parameter functions":
 	identity(7) | expect_equal(7)?
 	identity[Int](7) | expect_equal(7)?
 	(identity(true)) | expect_true?
-	identity(unit) | expect_equal(unit)?
+	identity(void) | expect_equal(void)?
 	(absent(none)) | expect_true?
 	"{increment(3)}" | expect_equal("4")?
 	select()(5) | expect_equal(6)?

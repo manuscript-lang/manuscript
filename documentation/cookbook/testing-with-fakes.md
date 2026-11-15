@@ -31,7 +31,7 @@ type FakeMailer:
 fn FakeMailer.send(to: String, subject: String) Void!:
     if self.broken.contains(to):
         return error(Error("mailbox full", kind: "EDQUOT"))
-    return ok(unit)
+    return ok(void)
 
 test "every user gets a message":
     failed := notify_all(FakeMailer(), ["ada", "sam"])

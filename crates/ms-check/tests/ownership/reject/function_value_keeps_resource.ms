@@ -4,7 +4,7 @@ type Door:
     n: Int
 
 fn var Door.close() Void!:
-    return ok(unit)
+    return ok(void)
 
 fn wrap(d: Door) Door?:
     return d

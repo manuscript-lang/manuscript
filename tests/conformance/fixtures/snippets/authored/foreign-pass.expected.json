@@ -7,7 +7,7 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "'pass' is not a keyword; write 'unit' for an empty block or match arm",
+        "message": "'pass' is not a keyword; write 'void' for an empty block or match arm",
         "position": {
           "file": "foreign-pass.ms",
           "line": 5,

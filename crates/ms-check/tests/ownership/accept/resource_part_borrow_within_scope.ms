@@ -8,7 +8,7 @@ type Holder:
     all: List[Res]
 
 fn var Res.close() Void!:
-    return ok(unit)
+    return ok(void)
 
 // Parts are closed at scope end; borrows of them used before then are fine.
 fn held() Int:

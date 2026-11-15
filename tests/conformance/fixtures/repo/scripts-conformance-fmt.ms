@@ -152,7 +152,7 @@ fn run_file(ms: String, file: String) Result[Void, Error]:
     stderr := output.stderr.decode_utf8() | expect_some?
 
     match check_output(output.exit_code, text):
-        ok(_): return ok(unit)
+        ok(_): return ok(void)
         error(cause):
             emit("{text}\n{stderr}")?
             return error(cause)

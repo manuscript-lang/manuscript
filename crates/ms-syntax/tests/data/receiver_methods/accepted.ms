@@ -5,7 +5,7 @@ fn Held[T].get() T:
 	return self.value
 
 fn var Held[T].close() Void!:
-	return ok(unit)
+	return ok(void)
 
 fn plain[T](x: T) T:
 	return x

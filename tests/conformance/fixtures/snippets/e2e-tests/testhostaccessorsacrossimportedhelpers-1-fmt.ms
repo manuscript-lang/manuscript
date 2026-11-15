@@ -9,4 +9,4 @@ export fn now() Instant:
     return monotonic()
 
 export fn close_output() Void:
-    _ := stdout().close()
+    void stdout().close()

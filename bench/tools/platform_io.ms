@@ -68,7 +68,7 @@ fn files(n: Int) Void!:
 		best_write = min(best_write, now_ns() - start)
 
 		start2 := now_ns()
-		_ := read_files(dir, n)?
+		void read_files(dir, n)?
 		best_read = min(best_read, now_ns() - start2)
 
 		start3 := now_ns()
@@ -76,7 +76,7 @@ fn files(n: Int) Void!:
 		best_rename = min(best_rename, now_ns() - start3)
 
 		start4 := now_ns()
-		_ := walk(root)?
+		void walk(root)?
 		best_walk = min(best_walk, now_ns() - start4)
 
 	report("write_file", best_write, n)
@@ -123,7 +123,7 @@ fn round_trips(program: String, n: Int) Void!:
 	report("pipe round trip", best, n)
 	child.kill()
 
-	_ := child.wait()
+	void child.wait()
 
 fn run_all(n: Int) Void!:
 	files(n)?

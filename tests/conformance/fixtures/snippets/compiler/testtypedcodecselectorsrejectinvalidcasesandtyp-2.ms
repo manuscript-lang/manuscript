@@ -4,7 +4,7 @@
 import NormalizationForm from "@std/string.ms"
 
 fn choose(form: NormalizationForm) Void:
-    return unit
+    return void
 
 fn wrong() Void:
     choose("NFC")

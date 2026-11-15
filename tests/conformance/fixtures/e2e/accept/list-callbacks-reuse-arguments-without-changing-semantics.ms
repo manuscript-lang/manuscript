@@ -5,7 +5,7 @@ import expect_true from "@std/test/test.ms"
 
 fn keep(var list: List[fn() Int], value: Int) Void:
     list.append(value: fn() Int: value)
-    return unit
+    return void
 
 fn grow(var list: List[Int], value: Int) Int:
     list.append(value: value)

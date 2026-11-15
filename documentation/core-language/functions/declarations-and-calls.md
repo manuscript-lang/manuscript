@@ -85,7 +85,7 @@ fn example() Int:
 
 - Defaults may precede required parameters; skip one by labeling a later argument. `fn choose(first: Int = 1, second: Int) Int: second` accepts `choose(second: 2)`, while `choose(2)` supplies `first` and misses `second`.
 - A default is checked against its parameter type in the function's scope. It may use imports, module declarations, earlier parameters, and `self`; current and later parameters are not in scope. Anonymous functions may use captures.
-- Evaluation: the callable and supplied arguments run first in written order, then omitted defaults run once each in declaration order, before the body. Defaults run afresh per call. `none`, `unit`, `false`, and zero are supplied values.
+- Evaluation: the callable and supplied arguments run first in written order, then omitted defaults run once each in declaration order, before the body. Defaults run afresh per call. `none`, `void`, `false`, and zero are supplied values.
 - A failing default stops later defaults and the body. `?` in a default propagates under the function's result type.
 - Named functions, closures, and methods may declare defaults; function types and enum payloads cannot. Interface signatures permit only `= none` on Optional parameters. A concrete default wins; an interface view uses the interface's.
 - Fields have their own [defaults](../types/named-types.md#construction). Omitted arguments give no generic type evidence.
@@ -122,7 +122,7 @@ A failed or nonreturning argument prevents later arguments and the call. Constru
 
 ## Void and Never
 
-`Void` is a value type with exactly one value, written `unit`; it is not an uninhabited type (that is `Never`). A `Void` function may `return`, `return unit`, or fall off the end. A function returning `Void!` (or `Void!E`) may fall off the end too, or write a bare `return`; both return `ok(unit)`. Other functions must return a compatible value on every reachable exit; bare `return` and reachable fallthrough are errors. Multiline bodies need explicit `return`.
+`Void` is a value type with exactly one value, written `void`; it is not an uninhabited type (that is `Never`). A `Void` function may `return`, `return void`, or fall off the end. A function returning `Void!` (or `Void!E`) may fall off the end too, or write a bare `return`; both return `ok(void)`. Other functions must return a compatible value on every reachable exit; bare `return` and reachable fallthrough are errors. Multiline bodies need explicit `return`.
 
 ```manuscript
 import panic from "@std/core.ms"

@@ -78,10 +78,10 @@ fn heap_omitted() Void:
 fn mixed() Void:
 	value := Full(Token(7), Token(8), Token(9), 0)
 
-	_ := match value:
+	void match value:
 		Full(first, _, third, _):
 			print("kept {first.id} {third.id}")
-		Empty: unit
+		Empty: void
 
 fn borrowed() Void:
 	value := Full(Token(10), Token(11), Token(12), 9)
@@ -96,7 +96,7 @@ fn borrowed() Void:
 
 	print("borrowed {code - original} {original}")
 
-	_ := match value:
+	void match value:
 		Full(first, _, _, _): first.id
 		Empty: 0
 

@@ -11,4 +11,4 @@ test "second=fails":
     return fail("expected failure")
 
 test "third=after":
-    return unit
+    return void

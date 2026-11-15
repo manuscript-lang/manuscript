@@ -427,14 +427,14 @@ fn append_table(var reader: Reader, parent: Int, key: String, next: Int) Result[
 	if existing.is_none():
 		allocate(var reader)?
 		put_array(var reader, parent, key, next)
-		return ok(unit)
+		return ok(void)
 
 	node := existing.get()
 
 	match node:
 		TableArray(slot):
 			reader.arrays[slot].append(next)
-			return ok(unit)
+			return ok(void)
 		_: return error(invalid(reader, "table array conflicts with value"))
 
 fn assign(var reader: Reader, parent: Int, keys: List[String], value: Node) Result[
@@ -475,7 +475,7 @@ fn assign_one(var reader: Reader, parent: Int, key: String, value: Node) Result[
 		invalid(reader, "duplicate or closed key")
 	)
 
-	return ok(unit)
+	return ok(void)
 
 // Reads `key =` when the key is one plain bare word; otherwise leaves the cursor where
 // it was.
@@ -515,7 +515,7 @@ fn seal(var reader: Reader, value: Node) Void:
 	match value:
 		TableNode(id):
 			var state = flags(reader, id).clone()
-			if state.sealed: return unit
+			if state.sealed: return void
 
 			state.sealed = true
 			store_flags(var reader, id, state)
@@ -525,7 +525,7 @@ fn seal(var reader: Reader, value: Node) Void:
 			)
 		ArrayNode(values):
 			for item in values: seal(var reader, item)
-		_: return unit
+		_: return void
 
 fn digits(text: String, alphabet: String) Bool:
 	if text == "": return false
@@ -1117,7 +1117,7 @@ fn emit_header(var writer: Writer, header: String) Void:
 fn all_tables(values: List[TomlValue]) Bool:
 	for item in values:
 		match item:
-			TableValue(_): unit
+			TableValue(_): void
 			_: return false
 
 	return true
@@ -1174,7 +1174,7 @@ fn emit_table(var writer: Writer, path: List[String], values: Map[String, TomlVa
 						brackets: "[[",
 						table: table,
 					)
-			_: unit
+			_: void
 
 fn datetimes_valid(value: TomlValue) Bool:
 	match value:

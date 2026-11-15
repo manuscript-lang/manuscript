@@ -4,7 +4,7 @@ type P:
 	n: Int
 
 fn run(f: fn(P) Void) Void:
-	_ := f
+	void f
 
 fn changes(var p: P) Void:
 	p.n = 1

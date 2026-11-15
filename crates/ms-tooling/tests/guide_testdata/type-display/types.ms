@@ -6,4 +6,4 @@ fn signatures(
     optional_result: Result[Int, Error]?,
     result_optional: Result[Int?, Error]
 ) Void:
-    return unit
+    return void

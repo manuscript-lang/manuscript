@@ -19,7 +19,7 @@ test "direct append preserves checked argument conversions":
     expect_false(flags.get(0).is_none() or flags.get(0).get())?
 
     var units: List[Void?] = []
-    units.append(unit)
+    units.append(void)
     expect_false(units.get(0).is_none())?
 
     inner: Int? := none
