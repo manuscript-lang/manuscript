@@ -441,13 +441,28 @@ struct Compiled {
     absolute: bool,
 }
 
+/// A pattern with its `.` and empty segments removed, so `./a`, `a/./b` and `a//b` match as the
+/// cleaned path does. A leading `/` stays; `..` segments stay.
+fn without_dot_segments(text: &str) -> String {
+    let kept: Vec<&str> = text
+        .split('/')
+        .filter(|s| !s.is_empty() && *s != ".")
+        .collect();
+    let joined = kept.join("/");
+    if text.starts_with('/') {
+        alloc::format!("/{joined}")
+    } else {
+        joined
+    }
+}
+
 fn compile(patterns: &[&[u8]]) -> Option<Vec<Compiled>> {
     patterns
         .iter()
         .map(|p| {
             let text = core::str::from_utf8(p).ok()?;
             Some(Compiled {
-                glob: Glob::new(text)?,
+                glob: Glob::new(&without_dot_segments(text))?,
                 absolute: text.starts_with('/'),
             })
         })
@@ -574,7 +589,11 @@ impl GlobState {
         {
             return Ok(());
         }
-        if patterns.iter().any(|c| c.glob.matches(target(c)))
+        // The root is not an entry inside itself: `.*` must not list it.
+        let is_root = rel.as_slice() == b".";
+        if patterns
+            .iter()
+            .any(|c| !(is_root && !c.absolute) && c.glob.matches(target(c)))
             && !self.items.contains_key(&value.path)
         {
             if self.items.len() as i64 >= o.max_results {

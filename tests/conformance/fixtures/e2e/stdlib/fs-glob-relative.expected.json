@@ -13,19 +13,24 @@
           "index": 0,
           "name": "fs-glob-relative.ms::glob keeps dot named and parent query results relative to their root",
           "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "fs-glob-relative.ms::glob patterns ignore dot segments and never match the root",
+          "status": "passed"
         }
       ],
       "summary": {
-        "available": 1,
-        "selected": 1,
-        "passed": 1,
+        "available": 2,
+        "selected": 2,
+        "passed": 2,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN fs-glob-relative.ms::glob keeps dot named and parent query results relative to their root\nPASS fs-glob-relative.ms::glob keeps dot named and parent query results relative to their root\n1 tests, 0 failed\n",
+      "stdout": "RUN fs-glob-relative.ms::glob keeps dot named and parent query results relative to their root\nPASS fs-glob-relative.ms::glob keeps dot named and parent query results relative to their root\nRUN fs-glob-relative.ms::glob patterns ignore dot segments and never match the root\nPASS fs-glob-relative.ms::glob patterns ignore dot segments and never match the root\n2 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [
