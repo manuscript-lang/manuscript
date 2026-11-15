@@ -604,13 +604,17 @@ impl Scan<'_> {
         );
     }
 
-    /// `ok(unit)`.
+    /// `ok()` or `ok(void)`.
     fn ok_unit(&self, e: &Expr) -> bool {
         let ExprKind::Call { callee, args } = &e.kind else {
             return false;
         };
         matches!(&callee.kind, ExprKind::Name(n) if self.syms.str(n) == "ok")
-            && matches!(args.as_slice(), [a] if a.name.is_none() && matches!(a.value.kind, ExprKind::Void))
+            && match args.as_slice() {
+                [] => true,
+                [a] => a.name.is_none() && matches!(a.value.kind, ExprKind::Void),
+                _ => false,
+            }
     }
 
     /// `let x = e` directly followed by `return x` is `return e`.
