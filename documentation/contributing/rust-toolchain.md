@@ -105,7 +105,7 @@ Use `ms emit main.ms` or `ms emit ms.toml -o main.mir` to inspect lowered MIR. F
 ### Runtime and platform behavior
 
 - Values follow the [ownership rules](../core-language/types/references.md); concurrency follows the [promise and stream contracts](../core-language/concurrency/_index.md).
-- A fault exits 67, SIGINT 130, SIGTERM 143; `ms run` and `ms test` return 128 plus the signal for a signalled child.
+- A fault exits as a C program does: 134 (the shell's 128 + SIGABRT; 3 on Windows), or 139 (SIGSEGV; the NT status on Windows) for a stack overflow or out of memory. SIGINT exits 130 and SIGTERM 143; `ms run` and `ms test` return 128 plus the signal for a signalled child.
 - `@std/math` calls the host libm; results can differ between hosts in the last bit (for example `sin(2.0)`). `round` (ties toward positive infinity), `sign`, and `is_integer` are defined by the language.
 - `ms test --shuffle` uses a seeded generator for repeatable ordering. Each selected test and repetition runs with its own fixture; see [testing](../learn/testing.md#shared-setup-and-teardown).
 - Windows standard modules use synthetic errnos, emulated `pread`/`pwrite`, a subset of `FileConstants`, and `SendSignal` terminating the child. Windows and macOS run in the full scheduled/manual matrix; pull requests run Linux. See [continuous integration](development.md#continuous-integration).

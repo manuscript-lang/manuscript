@@ -146,7 +146,7 @@ pub(super) extern "C" fn task_main() -> ! {
 /// Starts `entry(arg)` as a new task and returns its handle. The task first runs when the
 /// caller parks or yields. Every task gets a `SLOT` of address space, committed lazily; the
 /// runtime's own `ROOT_STACK` request gives a main task a region (256 MiB). With
-/// `SPAWN_DETACHED` nobody joins the task and a fault in it ends the process (exit 67);
+/// `SPAWN_DETACHED` nobody joins the task and a fault in it ends the process (exit 134);
 /// otherwise the fault is returned by `msrt_task_join`.
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_task_spawn(

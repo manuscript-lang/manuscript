@@ -8,7 +8,7 @@ use ms_build::Lower;
 use super::{Engine, TempDir, compile};
 use crate::backend::{BackendResult, Io, RunRequest};
 use crate::diagnostic::{CommandDiagnostic, Position};
-use crate::fault::{EXIT_FAULT, Fault, RecordFile};
+use crate::fault::{Fault, RecordFile, is_fault_status};
 use crate::json::Json;
 use crate::process::{Stops, exit_code, wait_supervised, wait_with_signals};
 use crate::util::emit_json;
@@ -192,7 +192,7 @@ fn run_structured(
         String::from_utf8_lossy(&err).into_owned(),
     );
     let mut json = document(source_root, status, &out, &err);
-    if status == EXIT_FAULT
+    if is_fault_status(status)
         && let Some(fault) = record
             .read(pid)
             .map(Fault::from_record)

@@ -50,7 +50,7 @@ fn llvm_release_matches_cranelift_fault_frames() {
         );
     }
     let _ = std::fs::remove_dir_all(&dir);
-    assert_eq!(llvm.0, Some(67), "{}", llvm.1);
+    assert_eq!(llvm.0, Some(ms_rt_abi::EXIT_ABORT), "{}", llvm.1);
     assert_eq!(llvm, cranelift);
     assert!(
         llvm.1.contains("overflow_frames.ms:2 in add_one"),
@@ -76,7 +76,7 @@ fn llvm_units_keep_fault_frames() {
     let whole = build_and_run_units("llvm", "1", &dir.join("whole"));
     let split = build_and_run_units("llvm", "4", &dir.join("split"));
     let _ = std::fs::remove_dir_all(&dir);
-    assert_eq!(split.0, Some(67), "{}", split.1);
+    assert_eq!(split.0, Some(ms_rt_abi::EXIT_ABORT), "{}", split.1);
     assert_eq!(split, whole);
 }
 

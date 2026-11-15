@@ -35,7 +35,7 @@ The native process starts a grace timer after its first stop signal (SIGINT or S
 | Grace period after the stop request | 30 seconds |
 | A second stop request during the grace period | Escalates immediately |
 
-On escalation, `crates/ms-rt/src/start.rs` writes an `incomplete cleanup: <reason>` diagnostic to stderr and an incomplete-cleanup fault record, then exits 67 without further cleanup. It does not report each outstanding operation separately. The grace period is fixed. Test both the grace-expiry and second-request paths when changing shutdown handling; see [cleanup faults](../core-language/cleanup/cleanup-faults.md).
+On escalation, `crates/ms-rt/src/start.rs` writes an `incomplete cleanup: <reason>` diagnostic to stderr and an incomplete-cleanup fault record, then exits with the fault status (134) without further cleanup. It does not report each outstanding operation separately. The grace period is fixed. Test both the grace-expiry and second-request paths when changing shutdown handling; see [cleanup faults](../core-language/cleanup/cleanup-faults.md).
 
 ## Verifying
 
