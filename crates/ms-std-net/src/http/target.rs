@@ -15,6 +15,36 @@ pub struct Target {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BadTarget(pub &'static str);
 
+/// Whether `value` is a valid `Host` or `:authority` field value: a registered name, IPv4 or
+/// bracketed IPv6 literal with an optional port (RFC 9112 section 3.2). Userinfo, spaces, path
+/// delimiters and non-ASCII bytes are not allowed. An empty value is valid.
+pub fn valid_authority(value: &str) -> bool {
+    value.bytes().all(|b| {
+        b.is_ascii_alphanumeric()
+            || matches!(
+                b,
+                b'-' | b'.'
+                    | b'_'
+                    | b'~'
+                    | b'%'
+                    | b'!'
+                    | b'$'
+                    | b'&'
+                    | b'\''
+                    | b'('
+                    | b')'
+                    | b'*'
+                    | b'+'
+                    | b','
+                    | b';'
+                    | b'='
+                    | b':'
+                    | b'['
+                    | b']'
+            )
+    })
+}
+
 fn hex(b: u8) -> Option<u8> {
     (b as char).to_digit(16).map(|d| d as u8)
 }
@@ -117,6 +147,9 @@ pub fn parse(target: &str) -> Result<Target, BadTarget> {
         .or_else(|| target.strip_prefix("https://"))
     {
         let end = after.find(['/', '?']).unwrap_or(after.len());
+        if !valid_authority(&after[..end]) {
+            return Err(BadTarget("invalid Host"));
+        }
         host = Some(after[..end].to_string());
         &after[end..]
     } else {
@@ -172,6 +205,17 @@ mod tests {
         assert_eq!(clean("//a///b"), "/a/b");
         assert_eq!(clean("/"), "/");
         assert_eq!(clean("a/.."), ".");
+    }
+
+    #[test]
+    fn authorities_reject_userinfo_and_delimiters() {
+        for ok in ["", "t", "example.com:8080", "[::1]:80", "127.0.0.1"] {
+            assert!(valid_authority(ok), "{ok}");
+        }
+        for bad in ["a b", "u@a", "a/b", "a?b", "a#b", "a\tb", "é.com", "a\\b"] {
+            assert!(!valid_authority(bad), "{bad}");
+        }
+        assert_eq!(parse("http://u@h/p"), Err(BadTarget("invalid Host")));
     }
 
     #[test]
