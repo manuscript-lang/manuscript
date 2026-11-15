@@ -4,7 +4,7 @@
 //! `ucontext`, walks the frame-pointer chain inside the stack bounds recorded at
 //! start and stores the pcs in a preallocated ring (no allocation, async-signal-safe).
 //! At exit the pcs are resolved through the function table and aggregated.
-#[cfg(unix)]
+#[cfg(any(unix, feature = "alloc-profile"))]
 use crate::fault::segment_state;
 use crate::fault::{TABLES, find_func, segment_of};
 use crate::global::Process;
