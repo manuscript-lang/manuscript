@@ -15,9 +15,12 @@ of each executable on the suite's generated input (scale 1). Intel Xeon 2.10 GHz
 | Executable size (includes the DWARF) | mean +0.39%, largest +1.00% (`pargroup`); `strings` +0.00% |
 | `llc` plus `opt` time for `tools/llvm-direct/yaml.ms` (5 alternating builds, median) | 2.65 s with variables, 2.54 s without: about +4% |
 
-The instruction counts do not move, so the variables stay on for every build and are not gated on the debug
-build type. The compile cost is the one number that moved; the whole-program build times in the table are not
-comparable because the second build of each program reuses cached unit objects.
+The instruction counts do not move, but the compile cost (+4%) is over the project's 1% line for debug info, so
+LLVM release builds do not emit parameter variables; only Cranelift (debug) builds do. The whole-program build
+times of the two builds are not comparable because the second build of each program reuses cached unit objects.
+
+Cranelift debug builds (`--build-type debug`, which emit the variables): 200 builds of eight suite programs with and
+without the variables, CPU time per `ms build`: mean 0.140 s with, 0.140 s without, **+0.21%**.
 
 Reproduce: build each program as above and compare `callgrind` totals; the per-program table is
 `bench/perf/suite/manifest.txt` order.

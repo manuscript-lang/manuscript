@@ -8,7 +8,7 @@
 
 ## Status
 
-Stage 1 implemented 2026-11-15. Stage 2 slice 1 (parameters on both backends: `Func.names`; Cranelift value labels with `DW_TAG_formal_parameter` location lists; LLVM `dbg.value` fragments with full debug info, and the type nodes repeated in each unit that has variables) implemented 2026-11-15; locals remain. Stage 3 is done.
+Stage 1 implemented 2026-11-15. Stage 2 slice 1 (parameters in Cranelift debug builds: `Func.names`, value labels, `DW_TAG_formal_parameter` location lists) implemented 2026-11-15; locals remain. LLVM release builds describe types only: variables there cost about 4% of compile time and 0.4% of size for no change in the generated code ([measurement](../bench/perf/debug-variables-2026-11-15.md)), over the 1% line, so they stay out of release builds. Stage 3 is done.
 
 ## Problem
 

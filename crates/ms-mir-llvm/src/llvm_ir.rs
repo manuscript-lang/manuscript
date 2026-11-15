@@ -52,13 +52,6 @@ pub struct LlvmModule {
     /// The module's types as a debugger shows them (`ms_mir::debug_types`); written once, in the
     /// first unit, since every unit's debug info would otherwise repeat them.
     pub debug_types: Vec<ms_mir::debug_types::DebugType>,
-    /// The index in `debug_types` of each MIR type, and the first metadata id reserved for the
-    /// type nodes, so a variable can name its type before the nodes are written.
-    debug_ty_of: Vec<usize>,
-    type_base: usize,
-    /// Whether any function has variables: then every unit carries the type nodes (a unit's
-    /// variables name them) and the compile unit asks for full debug information.
-    has_vars: bool,
     /// Fault call sites numbered so far (unique across the module).
     sites: u32,
     /// Function definitions in emission order.
@@ -210,9 +203,6 @@ pub(crate) struct DirectEnv<'a> {
     sp: usize,
     sp_file: u32,
     locs: DirectLocs<'a>,
-    debug_ty_of: &'a [usize],
-    type_base: usize,
-    has_vars: &'a mut bool,
 }
 
 /// How a direct function's source locations resolve: the symbol tables and the source-location
@@ -224,20 +214,6 @@ pub(crate) struct DirectLocs<'a> {
 }
 
 impl DirectEnv<'_> {
-    /// A `DILocalVariable` for parameter `arg` (1-based) `name` of MIR type `ty`, or `None` when
-    /// the module has no type descriptions.
-    pub fn variable(&mut self, name: &str, ty: ms_mir::types::Ty, arg: u32) -> Option<usize> {
-        let index = *self.debug_ty_of.get(ty.0 as usize)?;
-        *self.has_vars = true;
-        let file = self.di.file_node(self.sp_file);
-        Some(self.di.push(format!(
-            "!DILocalVariable(name: \"{}\", arg: {arg}, scope: !{}, file: !{file}, type: !{})",
-            metadata_string(name),
-            self.sp,
-            self.type_base + index
-        )))
-    }
-
     /// The `DILocation` node for MIR location `loc`: its source line, and the chain of inlined
     /// callees it sits in, like a translated instruction's. The function itself when unknown.
     pub fn at(&mut self, loc: ms_mir::ir::Loc) -> usize {
@@ -415,9 +391,6 @@ impl LlvmModule {
         let nfiles = files.len();
         let mut m = LlvmModule {
             debug_types: Vec::new(),
-            debug_ty_of: Vec::new(),
-            type_base: 0,
-            has_vars: false,
             sites: 0,
             di: DebugInfo {
                 meta: Vec::new(),
@@ -466,21 +439,6 @@ fn fault_function(name: &str) -> bool {
 }
 
 impl LlvmModule {
-    /// Sets the module's type descriptions and reserves their metadata ids (`type_metadata`
-    /// writes the nodes under them).
-    pub fn set_debug_types(
-        &mut self,
-        types: Vec<ms_mir::debug_types::DebugType>,
-        of_ty: Vec<usize>,
-    ) {
-        self.type_base = self.di.meta.len();
-        self.di
-            .meta
-            .resize(self.type_base + types.len(), String::new());
-        self.debug_types = types;
-        self.debug_ty_of = of_ty;
-    }
-
     /// Adds a function emitted straight from MIR (see `mir_llvm`). `emit` receives the id of the
     /// function's `DILocation` node, which every call it writes must carry, and returns the
     /// finished text. The function gets its own subprogram like a translated one.
@@ -510,9 +468,6 @@ impl LlvmModule {
             sp,
             sp_file,
             locs,
-            debug_ty_of: &self.debug_ty_of,
-            type_base: self.type_base,
-            has_vars: &mut self.has_vars,
         };
         let out = emit(&mut env);
         for (callee, decl) in out.decls {
@@ -773,24 +728,14 @@ impl LlvmModule {
         tail.push_str("attributes #4 = { \"frame-pointer\"=\"all\" nounwind noinline optnone }\n");
         tail.push_str("attributes #5 = { \"frame-pointer\"=\"all\" nounwind optsize }\n");
         tail.push_str("attributes #2 = { \"frame-pointer\"=\"all\" nounwind noimplicitfloat }\n");
-        // Debug metadata: line tables, and parameters with their types when a function has them.
+        // Debug metadata: line tables only (no variables, types or inline frames).
         let first_file = self.di.files.iter().position(Option::is_some).unwrap_or(0);
         tail.push_str("!llvm.dbg.cu = !{!0}\n!llvm.module.flags = !{!1, !2}\n");
         let _ = writeln!(
             tail,
-            "!0 = distinct !DICompileUnit(language: DW_LANG_C99, file: !{}, producer: \"Manuscript\", isOptimized: true, runtimeVersion: 0, emissionKind: {}{RETAINED_TYPES})",
-            FIRST_FILE + first_file,
-            if self.has_vars {
-                "FullDebug"
-            } else {
-                "LineTablesOnly"
-            }
+            "!0 = distinct !DICompileUnit(language: DW_LANG_C99, file: !{}, producer: \"Manuscript\", isOptimized: true, runtimeVersion: 0, emissionKind: LineTablesOnly{RETAINED_TYPES})",
+            FIRST_FILE + first_file
         );
-        if self.has_vars {
-            tail.push_str(
-                "declare void @llvm.dbg.value(metadata, metadata, metadata)\ndeclare void @llvm.dbg.declare(metadata, metadata, metadata)\n",
-            );
-        }
         tail.push_str("!1 = !{i32 2, !\"Debug Info Version\", i32 3}\n");
         tail.push_str("!2 = !{i32 7, !\"Dwarf Version\", i32 4}\n");
         tail.push_str("!3 = !{}\n!4 = !DISubroutineType(types: !3)\n");
@@ -827,9 +772,7 @@ impl LlvmModule {
             .enumerate()
             .skip(FIRST_FILE + self.di.files.len())
         {
-            if !n.is_empty() {
-                let _ = writeln!(tail, "!{i} = {n}");
-            }
+            let _ = writeln!(tail, "!{i} = {n}");
         }
         let mut out = Vec::with_capacity(units);
         for (gi, (members, unoptimized)) in groups.iter().enumerate() {
@@ -927,16 +870,10 @@ impl LlvmModule {
                     s.push('\n');
                 }
             }
-            // Variables name types, so each unit that may have some carries the nodes; an unnamed
-            // type is dropped from a unit's debug info, and only the first retains them all.
-            let retained = if (gi == 0 || self.has_vars) && !self.debug_types.is_empty() {
-                let (nodes, list) = self.type_metadata(self.type_base, self.di.meta.len());
+            let retained = if gi == 0 && !self.debug_types.is_empty() {
+                let (nodes, list) = self.type_metadata(self.di.meta.len());
                 s.push_str(&nodes);
-                if gi == 0 {
-                    format!(", retainedTypes: !{list}")
-                } else {
-                    String::new()
-                }
+                format!(", retainedTypes: !{list}")
             } else {
                 String::new()
             };
@@ -951,10 +888,10 @@ impl LlvmModule {
 
     /// The metadata nodes describing `debug_types`, numbered from `base`, and the id of the list
     /// of them that the compile unit retains (a type no variable names is dropped otherwise).
-    fn type_metadata(&self, base: usize, first_free: usize) -> (String, usize) {
+    fn type_metadata(&self, base: usize) -> (String, usize) {
         use ms_mir::debug_types::{DebugKind, Encoding};
         let types = &self.debug_types;
-        let mut next = first_free;
+        let mut next = base + types.len();
         let mut out = String::new();
         let bits = |bytes: u32| u64::from(bytes) * 8;
         let members = |out: &mut String,

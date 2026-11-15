@@ -539,10 +539,10 @@ fn debug_image(program: &std::path::Path) -> std::path::PathBuf {
     images.next().expect("a linked DWARF image")
 }
 
-/// Both backends describe Manuscript types to a debugger: once per program, except that each LLVM
-/// unit whose functions have variables carries the types those variables name.
+/// Both backends describe Manuscript types to a debugger, once per program: with several LLVM
+/// units only the first carries them.
 #[test]
-fn both_backends_describe_value_types() {
+fn both_backends_describe_value_types_once() {
     let source = format!("{}/tests/llvm/value_types.ms", env!("CARGO_MANIFEST_DIR"));
     let dir = std::env::temp_dir().join(format!("ms-types-test-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
@@ -574,13 +574,9 @@ fn both_backends_describe_value_types() {
         let info = String::from_utf8_lossy(&info.stdout);
         for name in ["Point", "Shape payload", "List[String]", "Int?"] {
             let found = info.matches(&format!("DW_AT_name\t(\"{name}\")")).count();
-            let most = if backend == "llvm" {
-                units.parse::<usize>().unwrap()
-            } else {
-                1
-            };
-            assert!(
-                (1..=most).contains(&found),
+            assert_eq!(
+                found,
+                1,
                 "{backend} units={units}: {name} appears {found} times in {}:\n{}",
                 debug_image(&out).display(),
                 info.chars().take(6000).collect::<String>()

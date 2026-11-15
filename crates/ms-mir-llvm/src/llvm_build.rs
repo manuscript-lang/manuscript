@@ -865,27 +865,6 @@ impl<'t> FnBuilder<'t> {
         )
     }
 
-    /// Tells the debugger that `v` holds the bits `fragment` (offset, size in bits) of variable
-    /// `var`, or all of it.
-    pub fn dbg_value(&mut self, v: &Val, var: usize, fragment: Option<(u64, u64)>) {
-        let expr = fragment.map_or_else(String::new, |(offset, size)| {
-            format!("DW_OP_LLVM_fragment, {offset}, {size}")
-        });
-        self.line(format!(
-            "call void @llvm.dbg.value(metadata {} {}, metadata !{var}, metadata !DIExpression({expr}))",
-            self.types.text(&v.ty),
-            v.text
-        ));
-    }
-
-    /// Tells the debugger that variable `var` lives in the memory at `slot`.
-    pub fn dbg_declare(&mut self, slot: &Val, var: usize) {
-        self.line(format!(
-            "call void @llvm.dbg.declare(metadata ptr {}, metadata !{var}, metadata !DIExpression())",
-            slot.text
-        ));
-    }
-
     /// Copies `len` bytes from `src` (aligned to `src_align`) to `dst` (aligned to `dst_align`),
     /// non-overlapping.
     pub fn memcpy(&mut self, dst: (&Val, u64), src: (&Val, u64), len: &Val) {

@@ -621,38 +621,6 @@ fn block_label(bb: usize, split: usize) -> String {
     }
 }
 
-/// Tells a debugger where each named parameter lives: its register leaves as fragments of the
-/// variable, or the slot that holds it.
-fn describe_params(b: &mut FnBuilder, lay: &Layouts, f: &Func, vals: &Vals, env: &mut DirectEnv) {
-    for (i, p) in f.blocks[0].params.iter().enumerate() {
-        let Some((_, name)) = f.names.iter().find(|(v, _)| *v == p.value) else {
-            continue;
-        };
-        let ty = f.ty(p.value);
-        let Some(own) = vals.get(&p.value.index()) else {
-            continue;
-        };
-        let Some(var) = env.variable(name, ty, i as u32 + 1) else {
-            continue;
-        };
-        if types::is_mem(lay, ty) {
-            if let [slot] = own.as_slice() {
-                b.dbg_declare(slot, var);
-            }
-            continue;
-        }
-        let (leaves, mem) = (lay.leaves(ty), lay.mem(ty));
-        if own.len() != leaves.len() {
-            continue;
-        }
-        let whole = leaves.len() == 1 && mem.offsets[0] == 0 && leaves[0].size() == mem.size;
-        for ((v, leaf), offset) in own.iter().zip(&leaves).zip(&mem.offsets) {
-            let fragment = (!whole).then(|| (u64::from(*offset) * 8, u64::from(leaf.size()) * 8));
-            b.dbg_value(v, var, fragment);
-        }
-    }
-}
-
 /// The values of one MIR value: one per register leaf.
 type Vals = HashMap<usize, Vec<Val>>;
 
@@ -780,7 +748,6 @@ pub fn emit(
         b.label(&format!("b{}", bb.index()));
         if bb.index() == 0 {
             types::emit_entry(&mut b, lay, std::mem::take(&mut entry));
-            describe_params(&mut b, lay, f, &vals, env);
         } else {
             for (j, p) in bd.params.iter().enumerate() {
                 if types::is_mem(lay, f.ty(p.value)) {
