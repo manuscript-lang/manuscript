@@ -27,8 +27,8 @@ test "CLI test roots have empty arguments and host metadata agrees":
 	expect_false(
 		(
 			info.cpu_count <= 0
-			or info.os.byte_length() == 0
-			or info.architecture.byte_length() == 0
+			or info.os.length() == 0
+			or info.architecture.length() == 0
 		)
 	)?
 
@@ -43,7 +43,7 @@ test "CLI test roots have empty arguments and host metadata agrees":
 	expect_true(endianness() == Endianness.Little or endianness() == Endianness.Big)?
 	expect_false(end_of_line() != "\n" and end_of_line() != "\r\n")?
 	expect_not_equal(os(), Os.Other)?
-	expect_not_equal(dev_null().byte_length(), 0)?
+	expect_not_equal(dev_null().length(), 0)?
 
 test "process environment reflects live changes":
 	name := "MANUSCRIPT_STDLIB_CONFORMANCE"

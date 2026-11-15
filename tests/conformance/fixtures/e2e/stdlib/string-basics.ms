@@ -102,7 +102,7 @@ test "String basic bound methods capture immutable receiver values":
 	compare := snapshot.compare
 	text = "changed"
 	expect_false(chars() != ["é", "\n", "🙂", "\n"] or lines() != ["é", "🙂"])?
-	expect_false((reverse() != "\n🙂\né" or length() != 4 or empty()))?
+	expect_false((reverse() != "\n🙂\né" or length() != 8 or empty()))?
 	expect_equal(compare("é\n🙂\n"), 0)?
 
 	var first = lines()

@@ -197,7 +197,7 @@ fn Logger.emit(level: Int, message: String, data: String?) Unit!:
 	if text := data: line = "{line},\"data\":{text}"
 	line = "{line}\}\n"
 	if max := self.max_bytes:
-		if line.byte_length() > max: return error(
+		if line.length() > max: return error(
 			Error("logging: limit exceeded", kind: "EOVERFLOW")
 		)
 	return self.transport.write(line)

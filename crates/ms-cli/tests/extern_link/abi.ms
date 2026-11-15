@@ -135,7 +135,7 @@ export fn main() Int:
 
     if mode == "string-length":
         for text in ["", "x", "123456789012345", "1234567890123456", "é🙂\u{0}é"]:
-            if abi_string_length(text) != text.byte_length(): return 1
+            if abi_string_length(text) != text.length(): return 1
 
         owned := "ab".repeat(20).get()
         if abi_string_length(owned) != 40: return 2

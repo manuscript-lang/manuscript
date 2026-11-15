@@ -53,9 +53,9 @@ test "TOML quoting preserves escaped control and Unicode text":
 test "TOML quoting retains exact and invalid output budgets":
 	root := table("é🙂")
 	text := stringify(root)?
-	stringify(root, max_bytes: text.byte_length()) | expect_equal(ok(text.clone()))?
+	stringify(root, max_bytes: text.length()) | expect_equal(ok(text.clone()))?
 	(
-		stringify(root, max_bytes: text.byte_length() - 1) | expect_equal(
+		stringify(root, max_bytes: text.length() - 1) | expect_equal(
 			error(Error("TOML limit exceeded", kind: "EOVERFLOW"))
 		)?
 	)

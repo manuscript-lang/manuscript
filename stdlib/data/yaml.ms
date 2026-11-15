@@ -1986,7 +1986,7 @@ export fn parse(text: String, options: YamlOptions = YamlOptions()) YamlValue!:
 	for limit in [options.max_bytes, options.max_depth, options.max_values]:
 		if value := limit:
 			if value < 0: return error(Error("invalid YAML input", kind: "EINVAL"))
-	if not within(text.byte_length(), options.max_bytes): return error(
+	if not within(text.length(), options.max_bytes): return error(
 		Error("YAML limit exceeded", kind: "EOVERFLOW")
 	)
 
@@ -2226,7 +2226,7 @@ export fn stringify(value: YamlValue, max_bytes: Int? = none) String!:
 		out.append(text.concat("\n"))
 
 	text := out.build()
-	if not within(text.byte_length(), max_bytes): return error(
+	if not within(text.length(), max_bytes): return error(
 		Error("YAML limit exceeded", kind: "EOVERFLOW")
 	)
 

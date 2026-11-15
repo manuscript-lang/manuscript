@@ -5,7 +5,7 @@ import Bytes from "@std/bytes.ms"
 import ReadStream, stdin from "@std/io/io.ms"
 
 fn limit() Int:
-    return 1 / "".byte_length()
+    return 1 / "".length()
 
 fn probe(input: ReadStream[Bytes]) Bool:
     if line := read_line(input, limit()):

@@ -40,11 +40,11 @@ test "ASCII decoding rejects valid non-ASCII UTF-8":
 test "ASCII decoding preserves large offset views and rejects high byte tails":
 	expected := "Az09 \n\u{0}\u{7f}".repeat(4096)?
 	padded := ("é" + expected + "é").to_bytes()
-	data := padded.slice(2, 2 + expected.byte_length())?
+	data := padded.slice(2, 2 + expected.length())?
 	decode: fn(Bytes) String! := ascii_decode
 	expect_equal(decode(data)?, expected)?
 	expect_equal(decode(data)?, data.decode_utf8().get())?
-	expect_equal(data.length(), expected.byte_length())?
+	expect_equal(data.length(), expected.length())?
 
 	invalid: String! := error(Error("encoding: invalid data", kind: "EBADMSG"))
 	high := Bytes([128])

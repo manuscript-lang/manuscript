@@ -40,7 +40,7 @@ fn var Door.close() Unit!:
 
 fn captured(label: String) fn() Int:
 	door := Door(label, true)
-	return fn: door.label.byte_length()
+	return fn: door.label.length()
 
 type Envelope:
 	label: String

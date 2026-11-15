@@ -682,7 +682,7 @@ type Run:
 	html: Bool
 
 fn var Run.write(text: String) Unit!Error:
-	self.written += text.byte_length()
+	self.written += text.length()
 	if self.written > self.limit: return error(
 		Error("template: output limit exceeded", kind: "EOVERFLOW")
 	)

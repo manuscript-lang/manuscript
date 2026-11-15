@@ -95,7 +95,7 @@ const RT: &[(&str, &str, &str)] = &[
     ("msrt_drop_leave", "", ""),
     ("msrt_slot_copy_grown", "iii", ""),
     ("msrt_start", "iiii", "i"),
-    ("msrt_string_length", "i", "i"),
+    ("msrt_string_scalar_length", "i", "i"),
     ("msrt_slot_drop", "ii", ""),
     ("msrt_slot_copy", "iii", ""),
 ];

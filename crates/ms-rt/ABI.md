@@ -191,8 +191,8 @@ presence is `(ptr | (tagged ^ STR_STATIC)) != 0`, because an inline string can h
 word. A view is only handed out where the source outlives it
 unchanged: `trim`, `split` lists that the block reads only in place over a read-only parameter
 (`msrt_string_split_view`), `for` loops over the keys or values of such a map
-(`msrt_map_keys_view`, `msrt_map_values_view`). Language-level indices and lengths count Unicode
-scalars; `byte_length` is the length. Invalid UTF-8 (only from a compiler bug) decodes as U+FFFD of
+(`msrt_map_keys_view`, `msrt_map_values_view`). Language-level positions and `length()` are
+byte offsets and bytes. Invalid UTF-8 (only from a compiler bug) decodes as U+FFFD of
 width 1. `msrt_string_empty(out)` writes a static.
 
 ## 4. Owned aggregates

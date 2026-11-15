@@ -69,7 +69,7 @@ fn bench_string() Int:
 
     built := sb.build()
     report("string_append_50k", 50000, t)
-    return built.byte_length()
+    return built.length()
 
 fn bench_read_line() Unit:
     t := monotonic()

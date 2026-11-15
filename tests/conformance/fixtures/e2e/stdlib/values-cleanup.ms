@@ -58,7 +58,7 @@ test "Result propagation and Error views preserve concrete causes":
 	expect_equal(propagate(success), expected)?
 
 	view: Error := Error("JSON: invalid data", kind: "EBADMSG")
-	expect_not_equal(view.message.byte_length(), 0)?
+	expect_not_equal(view.message.length(), 0)?
 	expect_equal(view.kind, "EBADMSG")?
 
 test "custom equality and hashing define map key identity":

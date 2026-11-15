@@ -29,7 +29,6 @@ fn handles(op: Op) -> bool {
             op,
             Op::StrLit
                 | Op::StrByte
-                | Op::StrAsciiAt
                 | Op::StrAsciiLen
                 | Op::StrBytes
                 | Op::StrEqLit
@@ -67,7 +66,6 @@ fn splits(lay: &Layouts, f: &Func, i: &Inst, checks: bool) -> usize {
         _ if checked(op) => usize::from(checks),
         Op::ListDropLast if i.imm != Imm::Int(1) => drops(),
         Op::StrByte
-        | Op::StrAsciiAt
         | Op::StrEqLit
         | Op::StrAsciiLen
         | Op::ListNew
@@ -191,7 +189,7 @@ fn elem_ok(m: &Module, lay: &Layouts, f: &Func, i: &Inst, list: usize) -> bool {
 fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     match inst.op {
         Op::ListLen | Op::StrLit | Op::BytesLit => {}
-        Op::StrByte | Op::StrAsciiAt => str_byte(cx, inst, vals, b),
+        Op::StrByte => str_byte(cx, inst, vals, b),
         Op::ListNew | Op::ListLit | Op::ListPush => list_build(cx, inst, vals, b),
         Op::ListDropLast => {
             let out = &vals[&inst.res.expect("list result").index()];
@@ -399,12 +397,10 @@ fn elem_meta(elem: &TyKind, k: usize) -> Meta {
 /// Bytes in one word of an inline string, which holds its bytes in two words.
 const WORD_BYTES: i64 = 8;
 
-/// `StrByte` and `StrAsciiAt`: the byte at an index of a string. An inline string keeps its
-/// bytes in its two words, little-endian, so the byte is a shift and mask; any other string loads
-/// it from memory. `StrAsciiAt` yields -1 unless the string is flagged ASCII and the index is in
-/// range, and the caller then takes the general path.
+/// `StrByte`: the byte at an index of a string. An inline string keeps its bytes in its two
+/// words, little-endian, so the byte is a shift and mask; any other string loads it from memory.
 fn str_byte(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
-    use ms_rt_abi::{STR_ASCII, STR_INLINE, STR_LEN_MASK};
+    use ms_rt_abi::STR_INLINE;
     let s = &vals[&inst.args[0].index()];
     let i = vals[&inst.args[1].index()][0].clone();
     let out = vals[&inst.res.expect("string byte result").index()][0].clone();
@@ -418,22 +414,6 @@ fn str_byte(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         let byte = b.load(&LTy::I8, &at, 1);
         b.zext(&byte, LTy::I64)
     };
-    if inst.op == Op::StrAsciiAt {
-        // Flagged ASCII and not inline: the ASCII bit is set and the inline bit is clear.
-        let flags = b.bin(Bin::And, &s[1], &Val::int((STR_INLINE | STR_ASCII) as i64));
-        let ascii = b.icmp("eq", &flags, &Val::int(STR_ASCII as i64));
-        let len = b.bin(Bin::And, &s[1], &Val::int(STR_LEN_MASK as i64));
-        let below = b.icmp("ult", &i, &len);
-        let ok = b.bin(Bin::And, &ascii, &below);
-        let head = block_label(bb, split);
-        b.cond_br(&ok, &load, &join);
-        b.label(&load);
-        let byte = load_byte(b, &i);
-        b.br(&join);
-        b.label(&join);
-        b.phi(&out, &[(Val::int(-1), head), (byte, load)]);
-        return;
-    }
     // The top two bits are `01` for an inline string (`STR_INLINE` set, `STR_BORROWED` clear).
     let tag = b.bin(Bin::And, &s[1], &Val::int((3usize << 62) as i64));
     let inline = b.icmp("eq", &tag, &Val::int(STR_INLINE as i64));
@@ -665,10 +645,10 @@ fn str_len(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         let at = b.field_ptr(&pair, &slot, k);
         b.store(w, &at, 8);
     }
-    super::rt::declare(cx, "msrt_string_length");
+    super::rt::declare(cx, "msrt_string_scalar_length");
     let addr = b.ptr_to_int(&slot);
     b.name_next(out);
-    b.call(&LTy::I64, "", "msrt_string_length", &[(addr, "")]);
+    b.call(&LTy::I64, "", "msrt_string_scalar_length", &[(addr, "")]);
 }
 
 /// `StrAsciiLen`: the byte length of an inline string whose bytes are all below 0x80 or of a string

@@ -14,7 +14,7 @@ export fn bench_string() Unit:
 			var sb = StringBuilder()
 			for i in 0..100000:
 				sb.append("x")
-			return sb.build().byte_length()
+			return sb.build().length()
 	)
 
 	bench(

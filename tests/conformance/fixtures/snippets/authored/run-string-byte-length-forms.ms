@@ -6,10 +6,10 @@ export fn main() Int:
     a := "héllo"
     b := "plain ascii text that is also longer than fifteen bytes"
     c := a + b
-    print(a.byte_length())
-    print(b.byte_length())
-    print(c.byte_length())
-    print("".byte_length())
+    print(a.length())
+    print(b.length())
+    print(c.length())
+    print("".length())
     print(a.is_empty())
     print("".is_empty())
     print(c.is_empty())

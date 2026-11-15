@@ -141,7 +141,7 @@ fn bench_string(n: Int) Int:
 	joined := parts.join("-")
 	replaced := joined.replace("word", "w")
 	report("string_build_split_join_replace", n, t)
-	return replaced.byte_length() + parts.length()
+	return replaced.length() + parts.length()
 
 fn bench_bytes(n: Int) Int:
 	t := monotonic()

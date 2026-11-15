@@ -5,7 +5,7 @@ import panic from "@std/core.ms"
 import Bytes from "@std/bytes.ms"
 
 test "explicit byte conversion":
-    if not ("é".byte_length() == 2):
+    if not ("é".length() == 2):
         return panic("check failed")
     if not ("é".to_bytes().decode_utf8() == "é"):
         return panic("check failed")

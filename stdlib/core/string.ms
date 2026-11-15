@@ -168,7 +168,12 @@ fn String.split_after(separator: String) List[String]:
 // Uppercases the first scalar to its titlecase form (`ǆ` becomes `ǅ`, `ß` becomes `Ss`)
 // and leaves the rest unchanged.
 fn String.capitalize() String:
-	n := scalar_width(self.scalar_at(0, -1))
+	first := self.scalar_at(0, -1)
+	if first >= 0 and first < 128: return self.view(0, 1).upper().concat(
+		self.view(1, self.length())
+	)
+
+	n := scalar_width(first)
 	return title_scalar(self.view(0, n)).concat(self.view(n, self.length()))
 
 // Capitalizes the first letter of each run of letters, digits and apostrophes with its

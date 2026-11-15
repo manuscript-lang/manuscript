@@ -13,7 +13,7 @@ test "replace changes every nonoverlapping match and replace_first changes one":
 	expect_equal("abcabc".replace("b", ""), "acac")?
 	expect_equal("a-b-c".replace(old: "-", new: "+"), "a+b+c")?
 	expect_equal("a-b-c".replace_first(old: "-", new: "+"), "a+b-c")?
-	expect_equal("a".replace("a", "世界").byte_length(), 6)?
+	expect_equal("a".replace("a", "世界").length(), 6)?
 
 test "empty patterns use Unicode scalar boundaries without normalization":
 	expect_equal("ab".replace("", "-"), "-a-b-")?
@@ -55,13 +55,13 @@ test "replacing long text with a shorter or equal string trims, shares or inline
 		"WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD",
 	)?
 	expect_equal(long.replace("word ", ""), "word")?
-	expect_equal(long.replace("word", "").byte_length(), 9)?
+	expect_equal(long.replace("word", "").length(), 9)?
 	expect_equal(long.replace("missing", "x"), long)?
 	expect_equal(long.replace("word word", "ww"), "ww ww ww ww ww")?
 
 	wide := "é-é-é-é-é-é-é-é-é-é-é-é-é-é-é-é-é-é-é-é"
 	expect_equal(wide.replace("é", "e"), "e-e-e-e-e-e-e-e-e-e-e-e-e-e-e-e-e-e-e-e")?
-	expect_equal(wide.replace("-", "").byte_length(), 40)?
+	expect_equal(wide.replace("-", "").length(), 40)?
 
 test "join sizes its result exactly across the inline and heap boundary":
 	empty: List[String] := []
@@ -70,9 +70,9 @@ test "join sizes its result exactly across the inline and heap boundary":
 	expect_equal(["", ""].join(""), "")?
 	expect_equal(["", ""].join(","), ",")?
 	expect_equal(["ab", "cd", "ef"].join(""), "abcdef")?
-	expect_equal(["abcdefg", "hijklmn"].join(", ").byte_length(), 16)?
+	expect_equal(["abcdefg", "hijklmn"].join(", ").length(), 16)?
 	expect_equal(["abcdefg", "hijklmn"].join(", "), "abcdefg, hijklmn")?
-	expect_equal(["abcdefgh", "ijklmno"].join(", ").byte_length(), 17)?
+	expect_equal(["abcdefgh", "ijklmno"].join(", ").length(), 17)?
 	expect_equal(["abcdefgh", "ijklmno"].join(", "), "abcdefgh, ijklmno")?
 	expect_equal(["é", "世界", "😀"].join("·"), "é·世界·😀")?
 	expect_equal(

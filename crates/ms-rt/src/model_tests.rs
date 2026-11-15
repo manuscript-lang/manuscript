@@ -499,7 +499,10 @@ fn string_ops_match_char_model(seed: u64) {
             let s = &sv;
             let chars: std::vec::Vec<char> = model.chars().collect();
             let n = chars.len();
-            assert_eq!(super::string::msrt_string_length(s as *const _), n as i64);
+            assert_eq!(
+                super::string::msrt_string_scalar_length(s as *const _),
+                n as i64
+            );
             let starts: std::vec::Vec<usize> = model
                 .char_indices()
                 .map(|(i, _)| i)
@@ -518,7 +521,7 @@ fn string_ops_match_char_model(seed: u64) {
                     chars[a..b].iter().collect::<std::string::String>()
                 );
                 assert_eq!(
-                    super::string::msrt_string_length(&out as *const _),
+                    super::string::msrt_string_scalar_length(&out as *const _),
                     (b - a) as i64
                 );
                 string::release(&out);
@@ -575,7 +578,7 @@ fn string_ops_match_char_model(seed: u64) {
             string::msrt_string_concat(s, ns, &mut cat);
             assert_eq!(text(&cat), std::format!("{model}{needle}"));
             assert_eq!(
-                super::string::msrt_string_length(&cat as *const _),
+                super::string::msrt_string_scalar_length(&cat as *const _),
                 (n + needle.chars().count()) as i64
             );
             string::release(&cat);

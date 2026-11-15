@@ -11,9 +11,9 @@ test "network interfaces describe each address and include a loopback":
         var loopback = false
 
         for item in items:
-            expect_false(item.name.byte_length() == 0)?
-            expect_false(item.address.byte_length() == 0)?
-            expect_false(item.netmask.byte_length() == 0)?
+            expect_false(item.name.length() == 0)?
+            expect_false(item.address.length() == 0)?
+            expect_false(item.netmask.length() == 0)?
             expect_true(item.scope_id > 0)?
             expect_equal(item.family == IpFamily.IPv6, item.address.contains(":"))?
 

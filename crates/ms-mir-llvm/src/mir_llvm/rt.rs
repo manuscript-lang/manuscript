@@ -56,7 +56,7 @@ fn text(name: &str) -> Option<&'static str> {
         "msrt_alloc" | "msrt_alloc_zeroed" | "msrt_realloc" | "msrt_free" => {
             return heap_decl(name);
         }
-        "msrt_string_length" => "declare i64 @\"msrt_string_length\"(i64) nounwind",
+        "msrt_string_scalar_length" => "declare i64 @\"msrt_string_scalar_length\"(i64) nounwind",
         "msrt_task_grow" => "declare void @\"msrt_task_grow\"(i64, i64) nounwind",
         "msrt_cleanup_push" => "declare i64 @\"msrt_cleanup_push\"(i64, i64) nounwind",
         "msrt_obj_clone" => "declare i64 @\"msrt_obj_clone\"(i64) nounwind",

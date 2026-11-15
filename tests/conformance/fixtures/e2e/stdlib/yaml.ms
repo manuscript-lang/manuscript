@@ -181,7 +181,7 @@ test "YAML blank line folding retains byte node and malformed input contracts":
 				parse(
 					text: text,
 					options: limits(
-						bytes: text.byte_length(),
+						bytes: text.length(),
 						depth: 2,
 						values: 2,
 					),
@@ -196,7 +196,7 @@ test "YAML blank line folding retains byte node and malformed input contracts":
 			parse(
 				text: text,
 				options: limits(
-					bytes: text.byte_length() - 1,
+					bytes: text.length() - 1,
 					depth: none,
 					values: none,
 				),

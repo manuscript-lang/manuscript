@@ -615,15 +615,6 @@ pub unsafe extern "C-unwind" fn msrt_string_eq(a: *const StrVal, b: *const StrVa
     unsafe { equal(a, b) as u8 }
 }
 
-/// C view: `msrt_string_length(s: *const StrVal) -> i64`
-/// `byte_length()` for a bound method value; direct calls read the length inline (`str.bytes`).
-#[unsafe(no_mangle)]
-// ms: leaf pure domain=string
-pub unsafe extern "C-unwind" fn msrt_string_byte_length(s: *const StrVal) -> i64 {
-    // SAFETY: caller passes a live string.
-    unsafe { (*s).len() as i64 }
-}
-
 /// `is_empty()` for a bound method value; direct calls read the length inline (`str.bytes`).
 #[unsafe(no_mangle)]
 // ms: leaf pure domain=string
@@ -632,9 +623,18 @@ pub unsafe extern "C-unwind" fn msrt_string_is_empty(s: *const StrVal) -> u8 {
     unsafe { (*s).is_empty() as u8 }
 }
 
+/// `length()` for a bound method value: the byte length. Direct calls read it inline (`str.bytes`).
 #[unsafe(no_mangle)]
 // ms: leaf pure domain=string
 pub unsafe extern "C-unwind" fn msrt_string_length(s: *const StrVal) -> i64 {
+    // SAFETY: caller passes a live string.
+    unsafe { (*s).len() as i64 }
+}
+
+/// `scalar_length()`: the scalar count, also the `str.len` operation and bound method values.
+#[unsafe(no_mangle)]
+// ms: leaf pure domain=string
+pub unsafe extern "C-unwind" fn msrt_string_scalar_length(s: *const StrVal) -> i64 {
     // SAFETY: caller passes a live string.
     unsafe { scalar_count(s) as i64 }
 }
@@ -1212,17 +1212,26 @@ unsafe fn msrt_string_reverse_val(a: *const StrVal) -> StrVal {
                 }
             });
         }
-        // Reversing whole scalars keeps each one's width, so the result has the same length.
+        // Reversing whole scalars keeps each one's width, so the result has the same length. Each
+        // scalar's bytes move as they are: a String is valid UTF-8, so a scalar is a lead byte and
+        // its continuation bytes, and no decode or encode is needed.
         build_exact(text.len(), false, |dst| {
             let mut at = 0;
             let mut end = text.len();
-            let mut tmp = [0u8; 4];
             while end > 0 {
-                let (c, w) = utf8::decode_last(&text[..end]);
-                let n = utf8::encode(c, &mut tmp);
-                dst[at..at + n].copy_from_slice(&tmp[..n]);
-                at += n;
-                end -= w;
+                let mut start = end - 1;
+                while start > 0 && end - start < 4 && text[start] & 0xC0 == 0x80 {
+                    start -= 1;
+                }
+                let w = end - start;
+                match w {
+                    1 => dst[at] = text[start],
+                    2 => dst[at..at + 2].copy_from_slice(&text[start..end]),
+                    3 => dst[at..at + 3].copy_from_slice(&text[start..end]),
+                    _ => dst[at..at + 4].copy_from_slice(&text[start..end]),
+                }
+                at += w;
+                end = start;
             }
         })
     }
@@ -1421,6 +1430,61 @@ unsafe fn msrt_string_trim_end_val(s: *const StrVal) -> StrVal {
     unsafe { trimmed(s, false, true) }
 }
 
+/// `upper` or `lower` of non-ASCII `text` written straight into a result of the same size, or
+/// `None` when the text is short, has a final-sigma context (lowercasing needs the whole-string
+/// rule) or maps to more bytes than it has: the caller then maps it through `str`.
+///
+/// # Safety
+/// The result allocation is private to this call until it is returned.
+unsafe fn map_case_in_place(text: &str, upper: bool) -> Option<StrVal> {
+    let len = text.len();
+    if len <= STR_INLINE_MAX || (!upper && text.contains('\u{3a3}')) {
+        return None;
+    }
+    let r = alloc_str(len);
+    // SAFETY: `r` owns `len + 1` writable bytes.
+    let dst = unsafe { core::slice::from_raw_parts_mut(r.ptr_word, len) };
+    let mut at = 0;
+    let mut tmp = [0u8; 4];
+    for c in text.chars() {
+        if c.is_ascii() {
+            if at == len {
+                // SAFETY: `r` is owned and unused after this.
+                unsafe { free_owned(r.ptr_word) };
+                return None;
+            }
+            dst[at] = if upper {
+                c.to_ascii_uppercase()
+            } else {
+                c.to_ascii_lowercase()
+            } as u8;
+            at += 1;
+            continue;
+        }
+        let mut put = |m: char| -> bool {
+            let n = m.encode_utf8(&mut tmp).len();
+            if at + n > len {
+                return false;
+            }
+            dst[at..at + n].copy_from_slice(&tmp[..n]);
+            at += n;
+            true
+        };
+        let fits = if upper {
+            c.to_uppercase().all(&mut put)
+        } else {
+            c.to_lowercase().all(&mut put)
+        };
+        if !fits {
+            // SAFETY: `r` is owned and unused after this.
+            unsafe { free_owned(r.ptr_word) };
+            return None;
+        }
+    }
+    // SAFETY: `r` owns `len + 1` bytes and `at <= len` of them are written.
+    Some(unsafe { finish_owned(r.ptr_word, at, false) })
+}
+
 /// `upper` or `lower` of the string `s`: ASCII text is copied once into its result and mapped
 /// there; other text maps scalar by scalar.
 ///
@@ -1441,6 +1505,9 @@ unsafe fn map_case(s: *const StrVal, upper: bool) -> StrVal {
             });
         }
         let text = core::str::from_utf8(text).expect("String contains valid UTF-8");
+        if let Some(r) = map_case_in_place(text, upper) {
+            return r;
+        }
         if upper {
             from_buf(text.to_uppercase().into_bytes())
         } else {
@@ -3671,11 +3738,12 @@ mod tests {
     }
 
     #[test]
-    fn length_counts_scalars_and_scalar_at_takes_byte_offsets() {
+    fn scalar_length_counts_scalars_and_scalar_at_takes_byte_offsets() {
         let _g = testutil::lock();
         unsafe {
             let s = st("héllo");
-            assert_eq!(msrt_string_length(s), 5);
+            assert_eq!(msrt_string_scalar_length(s), 5);
+            assert_eq!(msrt_string_length(s), 6);
             assert_eq!((*s).len() as i64, 6);
             assert_eq!(msrt_string_scalar_at(s, 1, HasRaw(0), 0), 0xE9);
             assert_eq!(msrt_string_scalar_at(s, 3, HasRaw(0), 0), 'l' as i64);
@@ -3887,6 +3955,51 @@ mod tests {
                 let got =
                     ret(|o| unsafe { msrt_string_trim_chars(st(&text), st(set), start, end, o) });
                 assert_eq!(got, expected, "{text:?} {set:?} {start} {end}");
+            }
+        }
+    }
+
+    #[test]
+    fn case_mapping_and_reverse_of_long_non_ascii_text_match_str() {
+        let _g = testutil::lock();
+        let atoms = [
+            "a",
+            "Z",
+            "\u{e9}",
+            "\u{c9}",
+            "\u{df}",
+            "\u{3a3}",
+            "\u{3c3}",
+            "\u{130}",
+            "\u{212a}",
+            "\u{17f}",
+            "\u{20ac}",
+            "\u{1d11e}",
+            "\u{1f642}",
+            " ",
+            "\u{149}",
+            "\u{1c5}",
+        ];
+        let mut x = 7u64;
+        for _ in 0..400 {
+            let mut text = String::new();
+            for _ in 0..(8 + x % 24) {
+                x = x
+                    .wrapping_mul(6364136223846793005)
+                    .wrapping_add(1442695040888963407);
+                text.push_str(atoms[(x >> 33) as usize % atoms.len()]);
+            }
+            unsafe {
+                let up = ret(|o| msrt_string_upper(st(&text), o));
+                assert_eq!(up, text.to_uppercase(), "upper {text:?}");
+                let low = ret(|o| msrt_string_lower(st(&text), o));
+                assert_eq!(low, text.to_lowercase(), "lower {text:?}");
+                let rev = ret(|o| msrt_string_reverse(st(&text), o));
+                assert_eq!(
+                    rev,
+                    text.chars().rev().collect::<String>(),
+                    "reverse {text:?}"
+                );
             }
         }
     }

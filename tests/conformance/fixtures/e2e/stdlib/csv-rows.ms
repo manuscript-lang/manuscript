@@ -71,9 +71,9 @@ test "large fragmented records preserve rows and exact record budgets":
 	encoded := "\"{field.replace("\"", "\"\"")}\",tail\r"
 	text := "first,row\n{encoded}\nlast,row"
 	expected := [["first", "row"], [field, "tail"], ["last", "row"]]
-	limit := encoded.byte_length()
+	limit := encoded.length()
 
-	for size in [1, 2, 7, 64, 4096, text.byte_length()]:
+	for size in [1, 2, 7, 64, 4096, text.length()]:
 		expect_equal(read_rows(text, size, max_record_bytes: limit)?, expected)?
 		expect_equal(
 			read_rows(text, size, max_record_bytes: limit - 1).err().kind,
@@ -248,7 +248,7 @@ test "rows and parse agree on malformed and odd inputs under every chunk size":
 
 test "oversized EOF records stay rejected after a failed read":
 	for text in ["abcd", "\"ab\"", "é日", "\"a\nb\"", "\"\""]:
-		bytes := text.byte_length()
+		bytes := text.length()
 
 		for size in [1, 2, bytes]:
 			var rows = csv_rows(

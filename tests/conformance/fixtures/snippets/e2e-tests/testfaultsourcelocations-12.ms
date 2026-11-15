@@ -3,7 +3,7 @@
 // conform: origin=tests/e2e/fault_locations_test.go:111 TestFaultSourceLocations
 
 fn crash(cause: Error) Int:
-    return 1 / "".byte_length()
+    return 1 / "".length()
 
 export fn main() Int:
     value: Int!Error := error(Error("expected failure"))

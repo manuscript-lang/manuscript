@@ -48,10 +48,10 @@ fn read(item: Case) Int!:
 	if row.length() != 1 or row[0] != item.expected: return error(Error("wrong row"))
 	if (rows.next()?).is_some(): return error(Error("extra row"))
 
-	return ok(row[0].byte_length())
+	return ok(row[0].length())
 
 fn measure(item: Case) Unit!:
-	length := if item.malformed: item.data.length() else: item.expected.byte_length()
+	length := if item.malformed: item.data.length() else: item.expected.length()
 
 	for sample in 0..6:
 		started := monotonic()

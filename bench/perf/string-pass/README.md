@@ -50,3 +50,27 @@ Positions in `String` are byte offsets (`proposals/byte-offset-strings.md`). Sam
 | `chars_scan_utf8` | 14 | 14 | 8 | unchanged |
 
 `length()` is now a field read (it counted scalars before: O(n) on text that was not flagged ASCII). `utf8_case_reverse` (150 vs 89) is unchanged by this change and still open.
+
+## 2026-11-15: inline scalar decode
+
+`scalar_at` decodes two-, three- and four-byte scalars in the generated MIR (a string is valid UTF-8, so the lead byte fixes the length and the continuation bytes are in bounds); only a continuation byte or an offset outside the text calls the runtime. Same VM and method, min of 5, milliseconds.
+
+| operation | before | after | rust | change |
+|---|---:|---:|---:|---|
+| `utf8_offset_walk` | 19 | 12 | 11 | no runtime call per non-ASCII scalar |
+
+## 2026-11-15: non-ASCII case mapping, reverse and scalar walks
+
+Same VM and method, min of 5, milliseconds, 11.7 MB of text with 2-byte scalars.
+
+| operation | before | after | rust | change |
+|---|---:|---:|---:|---|
+| `reverse()` | 50 | 20 | 34 | each scalar's bytes move whole; no decode and encode |
+| `upper()` | 71 | 50 | 53 | scalars map straight into the result; no `String`, UTF-8 check or copy. Text that grows (`ß`), or lowercase text with a final-sigma context, takes the `str` path |
+| `lower()` | 74 | 50 | 60 | as `upper()` |
+| `chars_scan_utf8` | 14 | 10 | 8 | the scalar step of `for c in text.chars()` and `scalar_values()` decodes inline instead of calling the runtime |
+| `utf8_case_reverse` | 133 | 75 | 81 | the two above |
+
+Also in this change: `capitalize()` of text that starts with an ASCII letter is one ASCII uppercase and a concat (54 to 30 ms for 1M words, Rust 39); it went through the general titlecase path. The `bytes_scan` row (13 vs 7) compared a copy (`as_bytes()` copies) with Rust's borrowed slice; the Rust twin now copies too. Round 4 sweep of other operations over 1M words and 11 MB texts (`lines`, `split`, `replace`, `count`, `contains`, `index_of`, `pad`, `chars`, `reverse`, `upper`, `compare`) found none over 1.2x of Rust except `lines` (17 vs 10, 1M owned strings in a list against a lazy iterator) and `contains_short` (21 vs 15), both unchanged.
+
+Follow-up check: `lines()` of 1M lines is 17 ms against 15 to 21 ms for Rust's `lines().collect::<Vec<&str>>()` (the 10 ms figure counted lazily without building a list), so it is at parity. `contains` of a six-byte literal in a 40-byte path stays at about 21 against 15: callgrind shows 225 instructions per call (the search is 170 of them); a two-byte SWAR filter over eight positions per step (first and last needle byte) measured 177 for the search itself, no better than the existing memchr-then-compare, so it was not kept.

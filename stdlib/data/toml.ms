@@ -926,7 +926,7 @@ export fn parse(text: String, options: TomlOptions = TomlOptions()) TomlValue!:
 	for limit in [options.max_bytes, options.max_depth, options.max_values]:
 		if value := limit:
 			if value < 0: return error(Error("invalid TOML input", kind: "EINVAL"))
-	if not within(text.byte_length(), options.max_bytes): return error(
+	if not within(text.length(), options.max_bytes): return error(
 		Error("TOML limit exceeded", kind: "EOVERFLOW")
 	)
 
@@ -1208,7 +1208,7 @@ export fn stringify(value: TomlValue, max_bytes: Int? = none) String!:
 
 	{out} := writer
 	text := out.build()
-	if not within(text.byte_length(), max_bytes): return error(
+	if not within(text.length(), max_bytes): return error(
 		Error("TOML limit exceeded", kind: "EOVERFLOW")
 	)
 

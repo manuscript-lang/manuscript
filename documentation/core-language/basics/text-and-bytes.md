@@ -92,7 +92,7 @@ There is no `text[index]`, and no integer scalar index into a String. Positions 
 
 - `index_of` and `last_index_of` return the byte offset of the first or last match, or `none`. An empty search matches at 0 (`index_of`) or `length()` (`last_index_of`).
 - `scalar_at(offset, default:)` returns the code point that starts at byte `offset` as an Int. An offset that is out of range or inside another scalar gives the default, or a fault without one.
-- `length()` counts bytes in constant time (`byte_length()` is the same); `scalar_length()` counts scalars in linear time; `is_empty()` tests for zero.
+- `length()` counts bytes in constant time; `scalar_length()` counts scalars in linear time; `is_empty()` tests for zero.
 - `chars()` returns a `List[String]` that borrows the receiver, like `split` and `lines`; `scalar_values()` returns code points.
 - `reverse()` reverses scalars without normalization: `"e\u{301}".reverse()` is `"\u{301}e"`.
 - `compare(other:)` returns `-1`, `0`, or `1` by scalar order, case-sensitive, a prefix first: `"Z".compare("a")` is `-1`; `"é".compare("e\u{301}")` is `1`.
@@ -125,7 +125,7 @@ For example, `"draft draft".replace("draft", "ready")` produces `"ready ready"`,
 
 | Receiver or constructor | Signature/result |
 | --- | --- |
-| `String` | `byte_length() Int`; `to_bytes() Bytes`; `parse_int() Int?`; `parse_float() Float?` |
+| `String` | `to_bytes() Bytes`; `parse_int() Int?`; `parse_float() Float?` |
 | `Bytes(values: List[UInt8])` | Immutable bytes; `Bytes([104, 105])` types its literals as `UInt8`, so a value outside 0–255 is a compile error |
 | `Bytes` | `length() Int`; `get(index: Int, default: UInt8?) UInt8`; `[index] UInt8`; `concat(other: Bytes) Bytes` |
 | `Bytes` | `decode_utf8() String?`; `decode_utf8_range(start: Int, end: Int) String?` |
@@ -145,7 +145,7 @@ import panic from "@std/core.ms"
 import Bytes from "@std/bytes.ms"
 
 test "explicit byte conversion":
-    if not ("é".byte_length() == 2):
+    if not ("é".length() == 2):
         return panic("check failed")
     if not ("é".to_bytes().decode_utf8() == "é"):
         return panic("check failed")

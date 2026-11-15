@@ -33,6 +33,6 @@ bench "csv.parse escaped quote field":
 
 	fn work() Unit!:
 		rows := parse(text)?
-		return keep(rows[0][0].byte_length())
+		return keep(rows[0][0].length())
 
 	measure(1, work)?

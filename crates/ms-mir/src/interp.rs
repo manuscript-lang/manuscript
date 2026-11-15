@@ -626,7 +626,6 @@ impl<'m> Interp<'m> {
             | Op::OptAddr
             | Op::StrLen
             | Op::StrByte
-            | Op::StrAsciiAt
             | Op::StrAsciiLen
             | Op::StrBytes
             | Op::StrEqLit

@@ -7,7 +7,7 @@ fn sum_lines(text: String) Int:
 	lines := text.lines()
 	var checksum = lines.length() * 17
 	for line in lines:
-		checksum += line.byte_length()
+		checksum += line.length()
 	return checksum
 
 fn measure(name: String, text: String, expected: Int, iterations: Int) Int:
@@ -22,7 +22,7 @@ fn measure(name: String, text: String, expected: Int, iterations: Int) Int:
 	if checksum != expected * iterations: return 1
 
 	_written := stdout().write(
-		"{name},{text.byte_length()},{iterations},{elapsed},{checksum}\n"
+		"{name},{text.length()},{iterations},{elapsed},{checksum}\n"
 	)
 	return 0
 

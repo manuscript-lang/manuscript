@@ -37,7 +37,7 @@ test "CSV quoted empty fields respect exact row cell and byte budgets":
 		options := CsvOptions(",", ending.clone())
 		rows := [[""], ["a"], [""]]
 		text := "\"\"{ending}a{ending}\"\"{ending}"
-		bytes := text.byte_length()
+		bytes := text.length()
 		expect_equal((stringify(rows, options, bytes)?), text)?
 
 		limited_text: String! := error(Error("CSV: limit exceeded", kind: "EOVERFLOW"))
@@ -186,7 +186,7 @@ test "CSV quote scanning preserves Unicode and exact backslash dot":
 					stringify(
 						[[field.clone(), "tail"]],
 						options,
-						text.byte_length(),
+						text.length(),
 					)?
 				),
 				text,
@@ -197,7 +197,7 @@ test "CSV quote scanning preserves Unicode and exact backslash dot":
 				stringify(
 					[[field.clone(), "tail"]],
 					options,
-					text.byte_length() - 1,
+					text.length() - 1,
 				),
 				failure,
 			)?

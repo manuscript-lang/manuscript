@@ -416,8 +416,8 @@ export fn stringify(
 	var used = 0
 	crlf := options.line_ending == "\r\n"
 	delimiter := options.delimiter.clone()
-	delimiter_size := delimiter.byte_length()
-	ending_size := options.line_ending.byte_length()
+	delimiter_size := delimiter.length()
+	ending_size := options.line_ending.length()
 
 	for row in rows:
 		if row.length() == 1 and row[0] == "":
@@ -435,11 +435,11 @@ export fn stringify(
 
 				if not needs_quotes(field, delimiter):
 					out.append(field)
-					used += field.byte_length()
+					used += field.length()
 				else:
 					quoted := quote_field(field, crlf)
 					out.append(quoted)
-					used += quoted.byte_length()
+					used += quoted.length()
 
 		out.append(options.line_ending)
 		used += ending_size

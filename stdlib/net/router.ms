@@ -740,7 +740,7 @@ fn var Tap.upgrade(
 
 fn var Tap.write(data: String) Unit!:
 	self.inner.write(data)?
-	counted(self.state, 0, self.sent_length(self.status_so_far(), data.byte_length()))
+	counted(self.state, 0, self.sent_length(self.status_so_far(), data.length()))
 
 fn var Tap.write_bytes(data: Bytes) Unit!:
 	self.inner.write_bytes(data)?

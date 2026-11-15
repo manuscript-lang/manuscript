@@ -273,7 +273,7 @@ fn normalize_core(windows: Bool, text: String) String:
 	if text.is_empty(): return "."
 
 	root := root_of(windows, text)
-	root_bytes := root.byte_length()
+	root_bytes := root.length()
 
 	// A UNC root without a trailing separator gets one in the result.
 	unc_open := windows and root.starts_with("//") and not root.ends_with("/")
@@ -368,7 +368,7 @@ fn parse_in(windows: Bool, original: String) PathParts:
 // Splits by byte positions, so every field is one view of `original` decoded; `text` is
 // `original` with backslashes read as slashes (the same positions).
 fn parse_core(windows: Bool, text: String, original: String) PathParts:
-	root_len := root_of(windows, text).byte_length()
+	root_len := root_of(windows, text).length()
 	data := text.to_bytes()
 	source := original.to_bytes()
 	var end = data.length()

@@ -10,7 +10,7 @@ fn run(piece: String, count: Int) Int:
 	var sb = StringBuilder()
 	for i in 0..count:
 		sb.append(piece)
-	return sb.build().byte_length()
+	return sb.build().length()
 
 // Builds a list of `count` Ints with append in a `while` loop, so growth is by
 // doubling, the path every list shares with the builder.

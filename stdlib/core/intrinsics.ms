@@ -134,8 +134,6 @@ interface StringOperations:
 	// which cannot change while the view is used; `.clone()` keeps the text. `slice`
 	// copies instead.
 	fn view(start: Int, end: Int) String
-	// Returns the UTF-8 encoded byte length.
-	fn byte_length() Int
 	// Encodes the string as UTF-8 bytes.
 	fn to_bytes() Bytes
 	// Parses signed ASCII decimal digits; invalid text or Int overflow returns none.

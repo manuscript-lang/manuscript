@@ -236,9 +236,9 @@ fn line(
 
 // Records `text` as the output of `key` (a test index, or `f` and a file number).
 fn output(results: String, key: String, text: String) Unit:
-	if text.byte_length() == 0: return unit
+	if text.length() == 0: return unit
 
-	record(results, "\u{1}MSOUT {key} {text.byte_length()}\n{text}\n")
+	record(results, "\u{1}MSOUT {key} {text.length()}\n{text}\n")
 
 fn record(results: String, text: String) Unit:
 	msrt_test_record(results, text)

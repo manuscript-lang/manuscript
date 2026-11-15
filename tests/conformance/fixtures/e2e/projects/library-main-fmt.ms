@@ -48,7 +48,7 @@ fn exercise(path: String) Unit!:
     bytes.length() | expect_equal(16)?
 
     identifier := common_result(result: uuid_v4())?
-    identifier.byte_length() | expect_equal(36)?
+    identifier.length() | expect_equal(36)?
 
     random := common_result(result: secure_int(min: -2, max_exclusive: 3))?
     (random >= -2 and random < 3) | expect_true?
