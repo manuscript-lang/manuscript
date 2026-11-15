@@ -1,0 +1,28 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [
+      {
+        "code": "MS1002",
+        "phase": "parse",
+        "message": "blocks are not braced and every fn declares its result type: write the result type, then ':' and an indented body, e.g. fn f() Unit: (Unit when it returns nothing), and remove the closing '}'",
+        "position": {
+          "file": "foreign-brace-fn-no-result.ms",
+          "line": 4,
+          "column": 11,
+          "offset": 126
+        },
+        "end": {
+          "file": "foreign-brace-fn-no-result.ms",
+          "line": 4,
+          "column": 12,
+          "offset": 127
+        }
+      }
+    ],
+    "fmt": null,
+    "fmt_exit_code": 1
+  }
+}

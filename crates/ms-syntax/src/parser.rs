@@ -949,6 +949,12 @@ impl<'a> Parser<'a> {
                 "",
             );
         }
+        if t.kind == Tok::LBrace {
+            return self.fail(
+                t,
+                "blocks are not braced and every fn declares its result type: write the result type, then ':' and an indented body, e.g. fn f() Unit: (Unit when it returns nothing), and remove the closing '}'",
+            );
+        }
         if t.kind == Tok::Colon || t.kind == Tok::Newline {
             if self.speculative > 0 {
                 return Err(self.dummy());
@@ -2076,6 +2082,9 @@ impl<'a> Parser<'a> {
                         "go" => return self.fail(t, "'go' is not a keyword; start concurrent work with promise(fn: ...) from \"@std/concurrency/promise.ms\": result := promise(fn: work()), then result.wait()"),
                         _ => {}
                     }
+                }
+                if self.kind() == Tok::Comma {
+                    return self.fail(t, "a statement cannot start with a comma-separated list of names: write one binding per line ('a := f()'), or destructure one value with '[a, b] := value'");
                 }
                 return self.fail(t, "only a call, a call followed by '?', or match can be a standalone expression statement; use 'name := ...' to keep the value, 'return' to return it, or call a function");
             }

@@ -1,0 +1,28 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "a statement cannot start with a comma-separated list of names: write one binding per line ('a := f()'), or destructure one value with '[a, b] := value'",
+        "position": {
+          "file": "foreign-multi-binding.ms",
+          "line": 8,
+          "column": 5,
+          "offset": 162
+        },
+        "end": {
+          "file": "foreign-multi-binding.ms",
+          "line": 8,
+          "column": 6,
+          "offset": 163
+        }
+      }
+    ],
+    "fmt": null,
+    "fmt_exit_code": 1
+  }
+}
