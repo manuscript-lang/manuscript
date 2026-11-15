@@ -4,7 +4,7 @@
 #
 # It downloads the release archive for this machine, checks its SHA-256, copies `ms.exe`
 # into a bin directory and adds that directory to your user PATH. Settings, all optional:
-#   $env:MS_VERSION      a release such as 0.1.0 (default: the latest release)
+#   $env:MS_VERSION      a release such as 2026.11.0 (default: the latest release)
 #   $env:MS_INSTALL_DIR  where `ms.exe` goes (default: $HOME\.ms\bin)
 #   $env:MS_RELEASE_URL  a directory URL that holds the archives (default: GitHub releases)
 $ErrorActionPreference = 'Stop'
