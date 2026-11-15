@@ -5,12 +5,12 @@ use super::{Event, sleep_slice, valid_native};
 use crate::err::{Fail, Res};
 use crate::ops::poll_cancel;
 use crate::path;
-use crate::sys;
+use crate::sys::{self, CPath};
 use alloc::boxed::Box;
 use alloc::collections::VecDeque;
 use alloc::vec::Vec;
 use core::sync::atomic::{AtomicBool, Ordering};
-use ms_rt_abi::{STATUS_CLOSED, STATUS_LIMIT_EXCEEDED, STATUS_UNSUPPORTED};
+use ms_rt_abi::{STATUS_CLOSED, STATUS_LIMIT_EXCEEDED, STATUS_NONE, STATUS_UNSUPPORTED};
 use std::fs::OpenOptions;
 use std::os::windows::fs::OpenOptionsExt;
 use std::os::windows::io::AsRawHandle;
@@ -49,6 +49,8 @@ pub struct Native {
     pending: bool,
     queue: VecDeque<Event>,
     terminal: Option<Fail>,
+    /// The watched file or directory is gone: the stream ends after the queue drains.
+    ended: bool,
 }
 
 impl Native {
@@ -91,6 +93,7 @@ impl Native {
             pending: false,
             queue: VecDeque::new(),
             terminal: None,
+            ended: false,
         };
         n.issue()?;
         Ok(n)
@@ -155,6 +158,10 @@ impl Native {
                 } else {
                     path::join(&self.root, name.as_bytes())
                 };
+                // Watching one file through its parent: its removal or rename ends the stream.
+                if self.only.is_some() && (action == 2 || action == 4) {
+                    self.ended = true;
+                }
                 self.push(Event {
                     path: full,
                     rename: RENAMES.contains(&action),
@@ -175,6 +182,9 @@ impl Native {
             if let Some(e) = self.queue.pop_front() {
                 return Ok(alloc::vec![e]);
             }
+            if self.ended {
+                return Err(Fail::status(STATUS_NONE));
+            }
             poll_cancel()?;
             if closed.load(Ordering::Relaxed) {
                 return Err(Fail::status(STATUS_CLOSED));
@@ -191,7 +201,14 @@ impl Native {
                     continue;
                 }
                 self.pending = false;
-                return Err(Fail::raw(sys::errno()));
+                let errno = sys::errno();
+                // A removed directory fails its pending request: that is the end, not an error.
+                let root_gone = CPath::new(&self.root)
+                    .is_some_and(|c| sys::stat(&c, false).is_err_and(sys::is_not_found));
+                if root_gone {
+                    return Err(Fail::status(STATUS_NONE));
+                }
+                return Err(Fail::raw(errno));
             }
             self.pending = false;
             // Copy the records out and ask again at once, so changes during decoding are kept.

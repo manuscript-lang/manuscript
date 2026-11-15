@@ -92,7 +92,7 @@ export extern fn msstd_fs_directory_path(dir: NativeDirectory) String
 
 export extern fn msstd_fs_directory_close(dir: NativeDirectory) Unit
 
-export extern fn msstd_fs_watch_next(watcher: NativeWatcher) List[FileEvent]!
+export extern fn msstd_fs_watch_next(watcher: NativeWatcher) List[FileEvent]?!
 
 export extern fn msstd_fs_watch_close(watcher: NativeWatcher) Unit
 

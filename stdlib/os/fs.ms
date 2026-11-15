@@ -439,13 +439,17 @@ type WatchSource:
 	watcher: RawWatcher
 	pending: List[FileEvent]
 
-// Waits for the next change. A closed watcher is `EBADF`; a native watcher that
+// Waits for the next change. none once the watched path itself has been removed (its
+// removal event comes first). A closed watcher is `EBADF`; a native watcher that
 // overflowed with policy `error` is `EOVERFLOW`.
 fn var WatchSource.next() FileEvent?!:
 	while true:
 		if event := self.pending.pop(): return ok(event)
 
-		var batch = msstd_fs_watch_next(self.watcher.native)?
+		next := msstd_fs_watch_next(self.watcher.native)?
+		var batch = next.get(List[FileEvent]())
+		if batch.is_empty(): return ok(none)
+
 		batch.reverse()
 		self.pending = batch
 
@@ -1012,6 +1016,8 @@ fn move_by_copy(source: String, destination: String, cause: Error) Unit!:
 
 /*
 Watches `path` for changes and returns the changes as a stream, one event per item. Dropping the stream stops the watcher.
+When `path` itself is removed or moved away, the stream delivers that event and then ends (`next` returns none).
+With `recursive`, a directory that appears is watched at once and its existing entries are reported as `rename` events.
 Without `options.interval` it uses native OS events (inotify on Linux, kqueue on macOS, ReadDirectoryChangesW on Windows).
 With an interval it compares snapshots of the tree every `interval`, which must be positive, and can miss transient changes;
 `max_events` and `overflow` apply only to native events and return EINVAL together with an interval.

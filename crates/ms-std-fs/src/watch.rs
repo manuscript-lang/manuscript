@@ -11,7 +11,9 @@ use alloc::collections::BTreeMap;
 use alloc::collections::VecDeque;
 use alloc::vec::Vec;
 use core::sync::atomic::{AtomicBool, Ordering};
-use ms_rt_abi::{STATUS_CLOSED, STATUS_LIMIT_EXCEEDED, STATUS_UNSUPPORTED};
+use ms_rt_abi::{STATUS_CLOSED, STATUS_LIMIT_EXCEEDED, STATUS_NONE, STATUS_UNSUPPORTED};
+#[cfg(target_os = "linux")]
+use std::sync::{Arc, Mutex};
 
 const SLICE_MS: i32 = 50;
 
@@ -131,6 +133,8 @@ pub struct Poll {
     interval_ns: i64,
     max: i64,
     before: BTreeMap<Vec<u8>, Stamp>,
+    /// The root disappeared and its removal was reported: the stream has ended.
+    gone: bool,
 }
 
 impl Poll {
@@ -145,11 +149,15 @@ impl Poll {
             interval_ns,
             max,
             before,
+            gone: false,
         })
     }
 
     /// Every difference seen after one interval, sorted by path; waits until there is one.
     fn next(&mut self, closed: &AtomicBool) -> Res<Vec<Event>> {
+        if self.gone {
+            return Err(Fail::status(STATUS_NONE));
+        }
         loop {
             let mut waited = 0i64;
             while waited < self.interval_ns {
@@ -162,7 +170,10 @@ impl Poll {
             }
             let now = match snapshot(&self.root, self.recursive, self.max) {
                 Ok(s) => s,
-                Err(f) if f.status == ms_rt_abi::STATUS_NOT_FOUND => BTreeMap::new(),
+                Err(f) if f.status == ms_rt_abi::STATUS_NOT_FOUND => {
+                    self.gone = true;
+                    BTreeMap::new()
+                }
                 Err(f) => return Err(f),
             };
             let events = diff(&self.before, &now);
@@ -174,15 +185,44 @@ impl Poll {
     }
 }
 
+/// What the reader thread hands to `wait`.
+#[cfg(target_os = "linux")]
+struct State {
+    queue: VecDeque<Event>,
+    terminal: Option<Fail>,
+    /// The watched root is gone: after the queue drains, the stream ends.
+    ended: bool,
+}
+
+#[cfg(target_os = "linux")]
+type Shared = Arc<Mutex<State>>;
+
+/// A native watcher. A reader thread owns the inotify descriptor and registers every new
+/// directory as soon as the kernel reports it, so nothing that happens in it waits for the next
+/// `wait`. The thread touches no runtime state; it tells `wait` about new events through an
+/// eventfd that `wait` parks on like any other descriptor.
 #[cfg(target_os = "linux")]
 pub struct Native {
+    shared: Shared,
+    /// Written by the reader after it queues something; `wait` parks on it.
+    wake: i32,
+    /// Written on drop to end the reader.
+    stop: i32,
+    reader: Option<std::thread::JoinHandle<()>>,
+}
+
+#[cfg(target_os = "linux")]
+struct Reader {
     fd: i32,
+    root: Vec<u8>,
     recursive: bool,
     ignore_overflow: bool,
     capacity: usize,
     watches: BTreeMap<i32, Vec<u8>>,
-    queue: VecDeque<Event>,
-    terminal: Option<Fail>,
+    shared: Shared,
+    wake: i32,
+    /// True until the thread starts: only the caller's thread may poll the runtime for a stop.
+    on_caller: bool,
 }
 
 #[cfg(target_os = "linux")]
@@ -194,6 +234,30 @@ const MASK: u32 = (libc::IN_MOVED_TO
     | libc::IN_MOVE_SELF
     | libc::IN_DELETE
     | libc::IN_DELETE_SELF) as u32;
+
+#[cfg(target_os = "linux")]
+fn eventfd() -> Res<i32> {
+    // SAFETY: plain system call.
+    let fd = unsafe { libc::eventfd(0, libc::EFD_CLOEXEC | libc::EFD_NONBLOCK) };
+    if fd < 0 {
+        return Err(Fail::raw(sys::errno()));
+    }
+    Ok(fd)
+}
+
+#[cfg(target_os = "linux")]
+fn signal(fd: i32) {
+    let one = 1u64.to_ne_bytes();
+    // SAFETY: `one` is readable for 8 bytes. A full counter already means "awake".
+    unsafe { libc::write(fd, one.as_ptr().cast(), one.len()) };
+}
+
+#[cfg(target_os = "linux")]
+fn lock(shared: &Shared) -> std::sync::MutexGuard<'_, State> {
+    shared
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+}
 
 #[cfg(target_os = "linux")]
 impl Native {
@@ -211,17 +275,140 @@ impl Native {
         if fd < 0 {
             return Err(Fail::raw(sys::errno()));
         }
-        let mut n = Native {
+        let shared: Shared = Arc::new(Mutex::new(State {
+            queue: VecDeque::new(),
+            terminal: None,
+            ended: false,
+        }));
+        let (wake, stop) = match (eventfd(), eventfd()) {
+            (Ok(wake), Ok(stop)) => (wake, stop),
+            (wake, stop) => {
+                for fd in [wake, stop].into_iter().flatten() {
+                    // SAFETY: the descriptors are ours.
+                    unsafe { libc::close(fd) };
+                }
+                // SAFETY: the descriptor is ours.
+                unsafe { libc::close(fd) };
+                return Err(Fail::raw(sys::errno()));
+            }
+        };
+        let mut reader = Reader {
             fd,
+            root: root.to_vec(),
             recursive,
             ignore_overflow: overflow == b"ignore",
             capacity: events as usize,
             watches: BTreeMap::new(),
-            queue: VecDeque::new(),
-            terminal: None,
+            shared: shared.clone(),
+            wake,
+            on_caller: true,
         };
-        n.add_tree(root)?;
-        Ok(n)
+        let mut native = Native {
+            shared,
+            wake,
+            stop,
+            reader: None,
+        };
+        // Errors surface here, before the thread exists; `native`'s drop closes the eventfds and
+        // `reader`'s drop the inotify descriptor.
+        reader.add_tree(root)?;
+        reader.on_caller = false;
+        native.reader = Some(
+            std::thread::Builder::new()
+                .name("ms-fs-watch".into())
+                .spawn(move || reader.run(stop))
+                .map_err(|_| Fail::status(STATUS_UNSUPPORTED))?,
+        );
+        Ok(native)
+    }
+
+    pub fn wait(&mut self, closed: &AtomicBool) -> Res<Vec<Event>> {
+        loop {
+            if closed.load(Ordering::Relaxed) {
+                return Err(Fail::status(STATUS_CLOSED));
+            }
+            {
+                let mut state = lock(&self.shared);
+                if let Some(f) = state.terminal.take() {
+                    return Err(f);
+                }
+                if let Some(e) = state.queue.pop_front() {
+                    return Ok(alloc::vec![e]);
+                }
+                if state.ended {
+                    return Err(Fail::status(STATUS_NONE));
+                }
+            }
+            poll_cancel()?;
+            wait_events(self.wake);
+            let mut count = [0u8; 8];
+            // SAFETY: `count` is writable for 8 bytes; the descriptor is non-blocking.
+            unsafe { libc::read(self.wake, count.as_mut_ptr().cast(), count.len()) };
+        }
+    }
+}
+
+#[cfg(target_os = "linux")]
+impl Drop for Native {
+    fn drop(&mut self) {
+        signal(self.stop);
+        if let Some(reader) = self.reader.take() {
+            let _ = reader.join();
+        }
+        // SAFETY: the descriptors are ours and the reader has stopped.
+        unsafe {
+            libc::close(self.wake);
+            libc::close(self.stop);
+        }
+    }
+}
+
+#[cfg(target_os = "linux")]
+impl Drop for Reader {
+    fn drop(&mut self) {
+        // SAFETY: the descriptor is ours.
+        unsafe { libc::close(self.fd) };
+    }
+}
+
+#[cfg(target_os = "linux")]
+impl Reader {
+    /// Reads and handles what the kernel reports until `stop` is signalled.
+    fn run(mut self, stop: i32) {
+        let mut fds = [
+            libc::pollfd {
+                fd: self.fd,
+                events: libc::POLLIN,
+                revents: 0,
+            },
+            libc::pollfd {
+                fd: stop,
+                events: libc::POLLIN,
+                revents: 0,
+            },
+        ];
+        loop {
+            // SAFETY: two valid `pollfd`s.
+            let ready = unsafe { libc::poll(fds.as_mut_ptr(), 2, -1) };
+            if ready < 0 && sys::errno() != libc::EINTR {
+                self.fail(Fail::raw(sys::errno()));
+                return;
+            }
+            if fds[1].revents != 0 {
+                return;
+            }
+            self.drain();
+            signal(self.wake);
+        }
+    }
+
+    fn fail(&self, f: Fail) {
+        let mut state = lock(&self.shared);
+        if state.terminal.is_none() {
+            state.terminal = Some(f);
+        }
+        drop(state);
+        signal(self.wake);
     }
 
     fn add_tree(&mut self, root: &[u8]) -> Res<()> {
@@ -229,7 +416,9 @@ impl Native {
     }
 
     fn add_dir(&mut self, root: &[u8], p: &[u8]) -> Res<()> {
-        poll_cancel()?;
+        if self.on_caller {
+            poll_cancel()?;
+        }
         if core::str::from_utf8(p).is_err() {
             return Err(Fail::status(STATUS_UNSUPPORTED));
         }
@@ -279,14 +468,15 @@ impl Native {
         }
     }
 
-    fn push(&mut self, e: Event) {
-        if self.queue.len() >= self.capacity {
-            if !self.ignore_overflow && self.terminal.is_none() {
-                self.terminal = Some(Fail::status(STATUS_LIMIT_EXCEEDED));
+    fn push(&self, e: Event) {
+        let mut state = lock(&self.shared);
+        if state.queue.len() >= self.capacity {
+            if !self.ignore_overflow && state.terminal.is_none() {
+                state.terminal = Some(Fail::status(STATUS_LIMIT_EXCEEDED));
             }
             return;
         }
-        self.queue.push_back(e);
+        state.queue.push_back(e);
     }
 
     /// Reads and decodes what the kernel has queued.
@@ -314,8 +504,9 @@ impl Native {
 
     fn event(&mut self, wd: i32, mask: u32, name: &[u8]) {
         if mask & libc::IN_Q_OVERFLOW as u32 != 0 {
-            if !self.ignore_overflow && self.terminal.is_none() {
-                self.terminal = Some(Fail::status(STATUS_LIMIT_EXCEEDED));
+            let mut state = lock(&self.shared);
+            if !self.ignore_overflow && state.terminal.is_none() {
+                state.terminal = Some(Fail::status(STATUS_LIMIT_EXCEEDED));
             }
             return;
         }
@@ -331,9 +522,8 @@ impl Native {
         } else {
             path::join(&dir, name)
         };
-        if mask & (libc::IN_DELETE_SELF | libc::IN_MOVE_SELF) as u32 != 0
-            || mask & (libc::IN_DELETE | libc::IN_MOVED_FROM) as u32 != 0
-        {
+        let gone_self = mask & (libc::IN_DELETE_SELF | libc::IN_MOVE_SELF) as u32 != 0;
+        if gone_self || mask & (libc::IN_DELETE | libc::IN_MOVED_FROM) as u32 != 0 {
             let prefix = {
                 let mut p = full.clone();
                 p.push(b'/');
@@ -352,13 +542,13 @@ impl Native {
                 Ok(()) => fresh = true,
                 Err(f) if f.status == ms_rt_abi::STATUS_NOT_FOUND => {}
                 Err(f) => {
-                    self.terminal = Some(f);
+                    self.fail(f);
                     return;
                 }
             }
         }
         if core::str::from_utf8(&full).is_err() {
-            self.terminal = Some(Fail::status(STATUS_UNSUPPORTED));
+            self.fail(Fail::status(STATUS_UNSUPPORTED));
             return;
         }
         let rename = mask
@@ -377,31 +567,10 @@ impl Native {
         if fresh {
             self.report_existing(&full);
         }
-    }
-
-    pub fn wait(&mut self, closed: &AtomicBool) -> Res<Vec<Event>> {
-        loop {
-            if closed.load(Ordering::Relaxed) {
-                return Err(Fail::status(STATUS_CLOSED));
-            }
-            self.drain();
-            if let Some(f) = self.terminal.take() {
-                return Err(f);
-            }
-            if let Some(e) = self.queue.pop_front() {
-                return Ok(alloc::vec![e]);
-            }
-            poll_cancel()?;
-            wait_events(self.fd);
+        // The root itself was removed or moved away: nothing more can happen under that name.
+        if gone_self && full == self.root {
+            lock(&self.shared).ended = true;
         }
-    }
-}
-
-#[cfg(target_os = "linux")]
-impl Drop for Native {
-    fn drop(&mut self) {
-        // SAFETY: the descriptor is ours.
-        unsafe { libc::close(self.fd) };
     }
 }
 
@@ -541,5 +710,62 @@ mod tests {
         }
         w.close();
         ops::remove(&root, true).unwrap();
+    }
+
+    #[test]
+    fn polling_ends_after_the_root_is_removed() {
+        let root = ops::temporary_directory(b"msfs-poll-gone-").unwrap();
+        let mut w = Watcher::poll(Poll::new(&root, true, 10_000_000, 100).unwrap());
+        ops::remove(&root, true).unwrap();
+        let got = names(w.wait().unwrap());
+        assert!(
+            got.iter()
+                .any(|(p, r)| p.as_bytes() == root.as_slice() && *r)
+        );
+        for _ in 0..2 {
+            assert_eq!(w.wait().err().map(|f| f.status), Some(STATUS_NONE));
+        }
+    }
+
+    #[test]
+    fn native_watches_a_new_directory_before_the_next_wait() {
+        let root = ops::temporary_directory(b"msfs-native-new-").unwrap();
+        let mut w = Watcher::native(Native::new(&root, true, 100, 100, b"error").unwrap());
+        let dir = path::join(&root, b"d");
+        ops::create_directory(&dir, false).unwrap();
+        // Nothing reads events yet: the directory must already be watched on its own.
+        std::thread::sleep(std::time::Duration::from_millis(300));
+        ops::write_file(&path::join(&dir, b"f"), b"x", false).unwrap();
+        let mut changed = false;
+        while !changed {
+            changed = names(w.wait().unwrap())
+                .iter()
+                .any(|(p, r)| p.ends_with("/d/f") && !*r);
+        }
+        w.close();
+        ops::remove(&root, true).unwrap();
+    }
+
+    #[test]
+    fn native_ends_after_the_root_is_removed() {
+        let root = ops::temporary_directory(b"msfs-native-gone-").unwrap();
+        let mut w = Watcher::native(Native::new(&root, true, 100, 100, b"error").unwrap());
+        ops::remove(&root, true).unwrap();
+        let mut seen_root = false;
+        loop {
+            match w.wait() {
+                Ok(events) => {
+                    seen_root |= names(events)
+                        .iter()
+                        .any(|(p, r)| p.as_bytes() == root.as_slice() && *r);
+                }
+                Err(f) => {
+                    assert_eq!(f.status, STATUS_NONE);
+                    break;
+                }
+            }
+        }
+        assert!(seen_root);
+        assert_eq!(w.wait().err().map(|f| f.status), Some(STATUS_NONE));
     }
 }
