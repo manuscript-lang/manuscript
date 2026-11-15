@@ -222,6 +222,8 @@ runs:
       env:
         MS_BACKEND: cranelift
         CONFORM_ALL_PHASES: '1'
+        CONFORM_LEAKS: '1'
+        LEAK_STATS_PREBUILT: '1'
       shell: bash
       run: target/debug/ms run tools/conform.ms
     - name: Conformance corpus (Cranelift)

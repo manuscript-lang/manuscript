@@ -42,7 +42,7 @@ runs:
     # main builds it with the others and a pull request restores it: `LEAK_STATS_PREBUILT` makes the tool use
     # the restored archive. A pull request that changes the runtime sources builds it itself.
     - name: Build the leak-counting runtime
-      if: steps.runtime.outputs.cache-matched-key == '' && github.event_name != 'pull_request' && inputs.os == 'linux'
+      if: steps.runtime.outputs.cache-matched-key == '' && inputs.os == 'linux'
       shell: bash
       env:
         CARGO_TARGET_DIR: target/leak-stats
