@@ -1,10 +1,11 @@
 import (
-	parse from "@std/data/csv.ms",
+	parse, stringify from "@std/data/csv.ms",
 	stdout from "@std/io/io.ms",
 	monotonic from "@std/time.ms",
 )
 
-// Parses 5000 rows 200 times and prints the best run in microseconds.
+// Parses 5000 rows 200 times, then writes them back 200 times, and prints each best
+// run in microseconds.
 // The "quoted" shape has quoted and escaped cells; "plain" has none.
 fn rows_of(shape: String) String:
 	var text = ""
@@ -32,4 +33,18 @@ fn main() Unit:
 
 		_written := stdout().write(
 			"manuscript {shape} rows={count} best_us={best / 1000}\n"
+		)
+		rows := parse(text).get()
+		var best_write = 9223372036854775807
+		var written = 0
+
+		for _round in 0..200:
+			started := monotonic()
+			encoded := stringify(rows)
+			elapsed := monotonic().difference(started).to_nanoseconds()
+			written = encoded.get().byte_length()
+			if elapsed < best_write: best_write = elapsed
+
+		_wrote := stdout().write(
+			"manuscript {shape}-write bytes={written} best_us={best_write / 1000}\n"
 		)

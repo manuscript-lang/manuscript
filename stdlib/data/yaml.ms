@@ -1180,6 +1180,11 @@ fn document_marker(text: String) Bool:
 		or text.starts_with("...\t")
 	)
 
+// A document-start marker followed by a space or tab, so content may follow on its
+// line.
+fn inline_start(text: String) Bool:
+	return text.starts_with("--- ") or text.starts_with("---\t")
+
 fn sequence(text: String) Bool:
 	if text.scalar_at(0, default: 0) != 45: return false
 	return (text == "-" or text.starts_with("- ") or text.starts_with("-\t"))
@@ -2037,14 +2042,14 @@ export fn parse(text: String, options: YamlOptions = YamlOptions()) YamlValue!:
 			context.index >= context.lines.length()
 			or (
 				uncomment(context.lines[context.index]) != "---"
-				and not context.lines[context.index].starts_with("--- ")
+				and not inline_start(context.lines[context.index])
 			)
 		): return error(invalid(context, "directive requires document start"))
 
 	// Content after the marker on the same line starts the document body.
 	if (
 		context.index < context.lines.length()
-		and context.lines[context.index].starts_with("--- ")
+		and inline_start(context.lines[context.index])
 	):
 		line := context.lines[context.index]
 		rest := line.slice(4, line.length()).get("")

@@ -770,6 +770,8 @@ test "inline flow and scalar document content stays supported":
 	expect_equal((parse("--- \{value: word\}\n")?), (parse("value: word\n")?))?
 	expect_equal((parse("--- [word]\n")?), (parse("- word\n")?))?
 	expect_equal((parse("--- |\n  word\n")?), YamlValue.StringValue("word\n"))?
+	expect_equal((parse("---\tword\n")?), YamlValue.StringValue("word"))?
+	expect_equal((parse("---\t\{value: word\}\n")?), (parse("value: word\n")?))?
 
 test "anchored inline flow collection stays supported":
 	expect_equal((parse("--- &name \{value: word\}\n")?), (parse("value: word\n")?))?
