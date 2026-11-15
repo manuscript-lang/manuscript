@@ -19,6 +19,23 @@ use ms_mir::ir::{Cc, FuncId, Imm, Mode, Module, Op, Param, Value};
 use ms_mir::types::{Ty as MTy, TyKind};
 use std::rc::Rc;
 
+/// A standard type whose JSON text is made by regular functions of its stdlib module: `decode` is
+/// `fn(String) T!`, `encode` is `fn(T) String!`. A type joins the list when its code is in
+/// Manuscript; the test `text_forms_resolve` checks the names and signatures.
+pub(crate) struct SourceTextForm {
+    pub(crate) module: &'static str,
+    pub(crate) ty: &'static str,
+    pub(crate) decode: &'static str,
+    pub(crate) encode: &'static str,
+}
+
+pub(crate) const SOURCE_TEXT_FORMS: &[SourceTextForm] = &[SourceTextForm {
+    module: "@std/net/url.ms",
+    ty: "Url",
+    decode: "parse",
+    encode: "format",
+}];
+
 const KIND_NULL: i64 = 0;
 const KIND_BOOL: i64 = 1;
 const KIND_NUMBER: i64 = 2;
@@ -440,6 +457,29 @@ impl FnLower<'_> {
             self.jfinish(r);
             return Ok(());
         }
+        // A standard type whose text form is a regular function of its stdlib module.
+        if let Some(form) = self.source_text_form(t) {
+            self.jexpect_kind(doc, id, KIND_STRING)?;
+            let text = self.jtext(doc, id)?;
+            let f = self.text_form_fn(form.module, form.decode)?;
+            let r = self.b.call(f, &[text]);
+            self.drop_value(text);
+            let TyKind::Alt(a) = self.b.m.types.kind(self.ty_of(r)).clone() else {
+                return Err(Error::new("a text form decoder returns a Result"));
+            };
+            let tag = self.b.alt_tag(r);
+            let ok_tag = self.b.iconst(ms_mir::types::Std::OK as i64);
+            let ok = self.b.icmp(Cc::Eq, tag, ok_tag);
+            self.jrequire(ok, &[r], &[]);
+            let v = self.take_alt_field_through(
+                a,
+                ms_mir::types::Std::OK as u32,
+                0,
+                Val { v: r, own: true },
+            );
+            self.jfinish(v);
+            return Ok(());
+        }
         // Standard value types read from their JSON text.
         let parsed = if t.is(Builtin::Duration) {
             Some((KIND_NUMBER, "msstd_json_dec_int", TextArgs::Plain))
@@ -451,8 +491,6 @@ impl FnLower<'_> {
                 "msstd_encoding_base64_decode",
                 TextArgs::Base64,
             ))
-        } else if t.is_source_type(self.syms, "@std/net/url.ms", "Url") {
-            Some((KIND_STRING, "msstd_url_parse", TextArgs::Plain))
         } else if t.is_source_type(self.syms, "@std/net/ip.ms", "IpAddress") {
             Some((KIND_STRING, "msstd_json_dec_ip", TextArgs::Plain))
         } else if t.is_source_type(self.syms, "@std/net/ip.ms", "Cidr") {
@@ -1131,9 +1169,10 @@ impl FnLower<'_> {
             self.drop_value(text);
             return Ok(self.jwritten());
         }
-        // A URL is its formatted text.
-        if t.is_source_type(self.syms, "@std/net/url.ms", "Url") {
-            return self.jencode_url(w, value);
+        // A standard type whose text form is a regular function of its stdlib module; a value the
+        // function rejects has no JSON form.
+        if let Some(form) = self.source_text_form(t) {
+            return self.jencode_source_text(form, w, value);
         }
         // An address or network is its text.
         for (name, sym) in [
@@ -1247,31 +1286,67 @@ impl FnLower<'_> {
         self.callable_of_decl(m.module, Some(decl.id())).ok()
     }
 
-    /// `Url` as the string `url.format` makes; a URL that cannot be formatted has no JSON form.
-    fn jencode_url(&mut self, w: Value, value: Value) -> Result<Value, Error> {
-        let slot = self
-            .b
-            .emit(Op::Slot, &[], Imm::Ty(MTy::STR), Some(MTy::PTR))
-            .expect("slot");
-        let code = self.status_code("msstd_url_format", &[value, slot])?;
-        let zero = self.b.iconst(0);
-        let good = self.b.icmp(Cc::Eq, code, zero);
+    /// The text form of `t`, when it is a standard type declared in `SOURCE_TEXT_FORMS`.
+    fn source_text_form(&self, t: &ct::Ty) -> Option<&'static SourceTextForm> {
+        SOURCE_TEXT_FORMS
+            .iter()
+            .find(|f| t.is_source_type(self.syms, f.module, f.ty))
+    }
+
+    /// The instance of the exported function `name` of the bundled module `module`.
+    pub(crate) fn text_form_fn(&mut self, module: &str, name: &str) -> Result<FuncId, Error> {
+        let sym = self.syms.intern(name);
+        let c = self
+            .cx
+            .session
+            .standard_exports(module)
+            .get(&sym)
+            .and_then(|s| {
+                let id = s.decl.as_ref()?.id();
+                self.callable_of_decl(s.module, Some(id)).ok()
+            })
+            .ok_or_else(|| Error::new(format!("text form function {module} {name} not found")))?;
+        if self.cx.owned_mask(&c).is_some() {
+            return Err(Error::new("a text form function borrows its argument"));
+        }
+        self.cx.function_for(self.b.m, &c, &ct::Subst::default())
+    }
+
+    /// Writes the string the form's encoder makes of the borrowed `value`; an error result means
+    /// the value has no JSON form.
+    fn jencode_source_text(
+        &mut self,
+        form: &SourceTextForm,
+        w: Value,
+        value: Value,
+    ) -> Result<Value, Error> {
+        let f = self.text_form_fn(form.module, form.encode)?;
+        let r = self.b.call(f, &[value]);
+        let TyKind::Alt(a) = self.b.m.types.kind(self.ty_of(r)).clone() else {
+            return Err(Error::new("a text form encoder returns a Result"));
+        };
+        let tag = self.b.alt_tag(r);
+        let ok_tag = self.b.iconst(ms_mir::types::Std::OK as i64);
+        let good = self.b.icmp(Cc::Eq, tag, ok_tag);
         let out = self.b.declare_var(MTy::INT, Mode::Borrow);
         let (yes, no, join) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
         self.b.br_if(good, yes, &[], no, &[]);
         self.b.seal_block(yes);
         self.b.seal_block(no);
         self.b.switch_to(yes);
-        let text = self
-            .b
-            .emit(Op::Take, &[slot], Imm::Ty(MTy::STR), Some(MTy::STR))
-            .expect("take");
+        let text = self.take_alt_field_through(
+            a,
+            ms_mir::types::Std::OK as u32,
+            0,
+            Val { v: r, own: true },
+        );
         self.jw("msstd_json_w_string", &[w, text])?;
         self.drop_value(text);
         let written = self.jwritten();
         self.b.def_var(out, written);
         self.b.br(join, &[]);
         self.b.switch_to(no);
+        self.drop_value(r);
         let none = self.jno_form(w)?;
         self.b.def_var(out, none);
         self.b.br(join, &[]);
@@ -1948,4 +2023,47 @@ enum TextArgs {
     Base64,
     /// A radix of 10 and a digit budget.
     DecimalDigits,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Every function a text form names exists with the expected shape, so a rename in the stdlib
+    /// fails here and not in a user's build.
+    #[test]
+    fn text_forms_resolve() {
+        let syms = ms_check::api::Names::global();
+        let session = ms_check::Session::new();
+        for form in SOURCE_TEXT_FORMS {
+            let exports = session.standard_exports(form.module);
+            let ty = exports
+                .get(&syms.intern(form.ty))
+                .unwrap_or_else(|| panic!("{} exports no type {}", form.module, form.ty))
+                .ty(syms);
+            let function = |name: &str| {
+                exports
+                    .get(&syms.intern(name))
+                    .unwrap_or_else(|| panic!("{} exports no function {name}", form.module))
+                    .ty(syms)
+            };
+            let is_result = |t: &ct::Ty| t.is(Builtin::Result);
+            let decode = function(form.decode);
+            assert!(decode.params.len() == 1 && decode.params[0].ty.is(Builtin::String));
+            let out = decode.result_ty();
+            assert!(
+                is_result(&out) && out.args[0].id == ty.id,
+                "{}",
+                form.decode
+            );
+            let encode = function(form.encode);
+            assert!(encode.params.len() == 1 && encode.params[0].ty.id == ty.id);
+            let out = encode.result_ty();
+            assert!(
+                is_result(&out) && out.args[0].is(Builtin::String),
+                "{}",
+                form.encode
+            );
+        }
+    }
 }
