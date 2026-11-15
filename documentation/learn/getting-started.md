@@ -129,7 +129,7 @@ The command succeeds silently and writes `code-map.html`. Open it in a browser t
 
 ## Compiler versions and setup
 
-Manuscript is in alpha. These guides follow `main`; for a published release, use the documentation in its source tag. [Build current source](https://github.com/manuscript-lang/manuscript/blob/main/documentation/contributing/rust-toolchain.md#build-and-run) to try the latest features. For a preconfigured or disconnected build environment, see [build tools and local setup](../developer-tooling/how-it-works.md#build-tools-and-local-setup).
+Manuscript is in beta. These guides follow `main`; for a published release, use the documentation in its source tag. [Build current source](https://github.com/manuscript-lang/manuscript/blob/main/documentation/contributing/rust-toolchain.md#build-and-run) to try the latest features. For a preconfigured or disconnected build environment, see [build tools and local setup](../developer-tooling/how-it-works.md#build-tools-and-local-setup).
 
 ## Keep going
 
