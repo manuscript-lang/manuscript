@@ -733,3 +733,33 @@ fn registrations_grow_linearly_with_the_owners_a_function_holds() {
         count(&m, "main", Op::CleanupPush)
     );
 }
+
+/// Owners that stay live across branches are registered once, where they are born: a block does
+/// not register them again, and a branch that makes a value of its own discards only that.
+#[test]
+fn registrations_cross_branches_instead_of_repeating_per_block() {
+    const OWNERS: usize = 40;
+    let mut body =
+        String::from("fn @main() -> int {\nb0:\n  %n: int = iconst 5\n  %c: bool = bconst true\n");
+    let mut at = 0;
+    for i in 0..OWNERS {
+        body.push_str(&format!(
+            "  %k{i}: str = str \"held\"\n  %l{i}: str = clone %k{i}\n  %r{i}: int = call.rt @msrt_task_sleep (%n)\n  br_if %c, b{}(), b{}()\nb{}:\n  %s{i}: int = call.rt @msrt_task_sleep (%n)\n  br b{}()\nb{}:\n",
+            at + 1, at + 2, at + 1, at + 2, at + 2
+        ));
+        at += 2;
+    }
+    for i in (0..OWNERS).rev() {
+        body.push_str(&format!("  drop %l{i}\n"));
+    }
+    body.push_str("  ret %n\n}\n");
+    let (m, changed) = rewrite(&body, true);
+    assert!(changed);
+    // One per owner and the sleep result needs none; a registration per block would be
+    // quadratic.
+    assert!(
+        count(&m, "main", Op::CleanupPush) <= 2 * OWNERS,
+        "{} registrations for {OWNERS} owners",
+        count(&m, "main", Op::CleanupPush)
+    );
+}

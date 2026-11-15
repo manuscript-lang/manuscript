@@ -713,6 +713,11 @@ struct Walk {
     entry: Vec<Option<BTreeSet<u32>>>,
     plans: Vec<Vec<Window>>,
     at_fault: Vec<Vec<Value>>,
+    /// Per plain block: the owners to hold at each instruction that can park or fault, and at
+    /// the end of a block that terminates in a fault. Only the blocks `plan_flow` may carry a
+    /// registration across use them.
+    events: Vec<Vec<(usize, Vec<Value>)>>,
+    plain: Vec<bool>,
 }
 
 /// Walks `f` in reverse post-order tracking which owned values are live, and plans a
@@ -727,11 +732,13 @@ fn analyze(
     holes: &[u32],
     hoisted: &[BTreeSet<u32>],
 ) -> Walk {
+    let plain = plain_blocks(f, cx, holes);
     let mut entry: Vec<Option<BTreeSet<u32>>> = vec![None; f.blocks.len()];
     // Per block: the instruction run `first..=last` to cover and the values to register for it.
     let mut plans: Vec<Vec<Window>> = vec![Vec::new(); f.blocks.len()];
     // Per block: values to register before a terminating fault, which never returns.
     let mut at_fault: Vec<Vec<Value>> = vec![Vec::new(); f.blocks.len()];
+    let mut events: Vec<Vec<(usize, Vec<Value>)>> = vec![Vec::new(); f.blocks.len()];
     for b in f.rpo() {
         let bi = b.index();
         let blk = &f.blocks[bi];
@@ -777,6 +784,22 @@ fn analyze(
                     .is_some_and(|a| cx.cells.contains_key(&a.0))
             {
                 live.remove(&inst.args[0].0);
+            }
+            if plain[bi]
+                && (exits_at(m, cx, inst)
+                    || (inst.op == Op::Drop
+                        && inst
+                            .args
+                            .first()
+                            .is_some_and(|a| !m.drops_plain_memory(f.ty(*a))))
+                    || (inst.op == Op::CallRt
+                        && k + 1 == blk.insts.len()
+                        && matches!(blk.term, Term::Unreachable)))
+            {
+                let target = coverable(&live, closed_by_with, &hoisted[bi]);
+                if events[bi].last().is_none_or(|(_, t)| *t != target) {
+                    events[bi].push((k, target));
+                }
             }
             if open > 0 || matches!(inst.op, Op::CleanupPush | Op::CleanupRun) {
                 // A window across a hole would drop a half-emptied owner, and one across a
@@ -832,6 +855,9 @@ fn analyze(
         }
         if open == 0 && matches!(blk.term, Term::Fault(_)) {
             at_fault[bi] = coverable(&live, closed_by_with, &hoisted[bi]);
+            if plain[bi] {
+                events[bi].push((blk.insts.len(), at_fault[bi].clone()));
+            }
         }
         let mut edges: Vec<Target> = Vec::new();
         blk.term.for_each_target(|t| edges.push(t.clone()));
@@ -852,6 +878,8 @@ fn analyze(
         entry,
         plans,
         at_fault,
+        events,
+        plain,
     }
 }
 
@@ -1270,12 +1298,22 @@ fn function(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
     let Walk {
         plans,
         mut at_fault,
+        events,
+        plain,
         ..
     } = analyze(m, cx, f, &owned_def, &closed_by_with, &holes, &hoisted);
     if plans.iter().all(|p| p.is_empty()) && at_fault.iter().all(|v| v.is_empty()) {
         return wrapped || covered_shields || covered_closes || hoists;
     }
-    for bi in 0..f.blocks.len() {
+    let flow = plan_flow(f, &events, &plain);
+    // The handle of each registration a flow block made, by the block and push that made it.
+    let mut handles: HashMap<(u32, u32), Value> = HashMap::new();
+    for b in f.rpo() {
+        let bi = b.index();
+        if flow.carries(bi) {
+            rewrite_flow_block(m, cx, f, bi, &events[bi], &flow, &mut handles);
+            continue;
+        }
         let plan = &plans[bi];
         if plan.is_empty() && at_fault[bi].is_empty() {
             continue;
@@ -1339,6 +1377,97 @@ fn function(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
         f.blocks[bi].insts = out;
     }
     true
+}
+
+/// Rewrites a block that carries registrations across its edges: it starts with the ones its
+/// predecessors left open, brings each owner up to date before an instruction that can park or
+/// fault, and discards what is held beyond what its successors take over.
+fn rewrite_flow_block(
+    m: &mut Module,
+    cx: &mut Cx,
+    f: &mut Func,
+    bi: usize,
+    events: &[(usize, Vec<Value>)],
+    flow: &Flow,
+    handles: &mut HashMap<(u32, u32), Value>,
+) {
+    let mut stack: Vec<(Value, Value)> = flow.entry[bi]
+        .iter()
+        .map(|&(v, blk, seq)| (Value(v), handles[&(blk, seq)]))
+        .collect();
+    let old = std::mem::take(&mut f.blocks[bi].insts);
+    let end_loc = old.last().map(|i| i.loc).unwrap_or_default();
+    let len = old.len();
+    let mut out: Vec<Inst> = Vec::with_capacity(old.len());
+    let mut next = events.iter().peekable();
+    let mut seq = 0;
+    for (k, inst) in old.into_iter().enumerate() {
+        let loc = inst.loc;
+        let mut inst = Some(inst);
+        // The recursion check stays first in its block, as in `function`.
+        if inst.as_ref().is_some_and(|i| i.op == Op::DepthEnter) {
+            out.extend(inst.take());
+        }
+        if let Some((_, target)) = next.next_if(|(at, _)| *at == k) {
+            sync_stack(
+                m,
+                cx,
+                f,
+                &mut out,
+                &mut stack,
+                target,
+                loc,
+                (bi as u32, &mut seq),
+                handles,
+            );
+        }
+        out.extend(inst);
+    }
+    if let Some((_, target)) = next.next_if(|(at, _)| *at == len) {
+        sync_stack(
+            m,
+            cx,
+            f,
+            &mut out,
+            &mut stack,
+            target,
+            end_loc,
+            (bi as u32, &mut seq),
+            handles,
+        );
+    }
+    // A fault never returns, and its cleanups run newest first: nothing to discard.
+    if !matches!(f.blocks[bi].term, Term::Fault(_)) && stack.len() > flow.trim[bi] {
+        out.push(discard_inst(f, cx, stack[flow.trim[bi]].1, end_loc));
+    }
+    f.blocks[bi].insts = out;
+}
+
+/// Brings `stack` to the owners in `target`: pops from the first one that died, and registers
+/// the owners that are not held, recording each handle under the block and push that made it.
+#[allow(clippy::too_many_arguments)]
+fn sync_stack(
+    m: &mut Module,
+    cx: &mut Cx,
+    f: &mut Func,
+    out: &mut Vec<Inst>,
+    stack: &mut Vec<(Value, Value)>,
+    target: &[Value],
+    loc: crate::ir::Loc,
+    (block, seq): (u32, &mut u32),
+    handles: &mut HashMap<(u32, u32), Value>,
+) {
+    let (cut, added) = reconcile_plan(stack, |e| e.0.0, target);
+    if let Some(c) = cut {
+        out.push(discard_inst(f, cx, stack[c].1, loc));
+        stack.truncate(c);
+    }
+    let pushed = push_each(m, cx, f, out, &added, loc);
+    for (v, h) in added.into_iter().zip(pushed) {
+        handles.insert((block, *seq), h);
+        *seq += 1;
+        stack.push((v, h));
+    }
 }
 
 /// The results of `take`s from a local slot whose scope close is registered and not yet
@@ -1462,6 +1591,179 @@ fn only_borrowed_until_put(m: &Module, f: &Func, taken: Value, slot: Value) -> b
         }
     }
     true
+}
+
+/// A registered owner of a block's cleanup stack: the value, and the block and push that
+/// registered it. Two stacks that agree on all three hold the same registrations, so a block
+/// that follows both may keep using the handles.
+type Entry = (u32, u32, u32);
+
+/// Brings `stack` to the owners in `target` (sorted): a discard pops the first entry whose
+/// owner died and every newer one, and the owners above it that live are registered again.
+/// Returns the position of the first entry to pop and the owners to register.
+fn reconcile_plan<T>(
+    stack: &[T],
+    owner: impl Fn(&T) -> u32,
+    target: &[Value],
+) -> (Option<usize>, Vec<Value>) {
+    let alive = |v: u32| target.binary_search_by_key(&v, |t| t.0).is_ok();
+    let cut = stack.iter().position(|e| !alive(owner(e)));
+    let kept = &stack[..cut.unwrap_or(stack.len())];
+    let held: BTreeSet<u32> = kept.iter().map(&owner).collect();
+    let added = target
+        .iter()
+        .filter(|v| !held.contains(&v.0))
+        .copied()
+        .collect();
+    (cut, added)
+}
+
+/// Where a block's registrations come from and go to.
+struct Flow {
+    /// The registrations a block starts with: the ones all its predecessors leave open.
+    entry: Vec<Vec<Entry>>,
+    /// How many registrations a block leaves open for its successors; it discards the rest.
+    trim: Vec<usize>,
+}
+
+impl Flow {
+    /// Whether the block takes registrations over or leaves some open, so it is rewritten
+    /// against the whole function's stack instead of by itself.
+    fn carries(&self, bi: usize) -> bool {
+        !self.entry[bi].is_empty() || (self.trim[bi] > 0 && self.trim[bi] != usize::MAX)
+    }
+}
+
+/// Decides which registrations cross block edges, so a branchy function registers an owner once
+/// instead of once per block.
+///
+/// A plain block (see `plain_blocks`) starts with the registrations all its predecessors leave
+/// open, the longest prefix they share, provided every predecessor is plain and precedes it in
+/// reverse post-order (a loop header starts empty). The registrations a block leaves open are the
+/// prefix of its own end state that every successor starts with; it discards the rest, one
+/// discard covering all of them, so a branch that registered a value of its own does not hold up
+/// the join. A block that cannot continue (return, or a successor that is not plain) leaves
+/// nothing open. Each registration is named by the block and push that made it, so equal names
+/// mean the same handle, and that push dominates every block that holds it.
+fn plan_flow(f: &Func, events: &[Vec<(usize, Vec<Value>)>], plain: &[bool]) -> Flow {
+    let n = f.blocks.len();
+    let rpo = f.rpo();
+    let mut pos = vec![usize::MAX; n];
+    for (i, b) in rpo.iter().enumerate() {
+        pos[b.index()] = i;
+    }
+    let mut preds: Vec<Vec<usize>> = vec![Vec::new(); n];
+    let mut succs: Vec<Vec<usize>> = vec![Vec::new(); n];
+    for b in &rpo {
+        f.blocks[b.index()].term.for_each_target(|t| {
+            let ti = t.block.index();
+            if !succs[b.index()].contains(&ti) {
+                succs[b.index()].push(ti);
+            }
+            if !preds[ti].contains(&b.index()) {
+                preds[ti].push(b.index());
+            }
+        });
+    }
+    let can: Vec<bool> = (0..n)
+        .map(|b| {
+            b != 0
+                && plain[b]
+                && !preds[b].is_empty()
+                && preds[b].iter().all(|&p| plain[p] && pos[p] < pos[b])
+        })
+        .collect();
+    let mut trim: Vec<usize> = plain
+        .iter()
+        .map(|p| if *p { usize::MAX } else { 0 })
+        .collect();
+    let none = || Flow {
+        entry: vec![Vec::new(); n],
+        trim: vec![0; n],
+    };
+    // Each pass lowers some trim, so this ends; the bound only guards a mistake.
+    for _ in 0..n * 4 + 8 {
+        let mut entry: Vec<Vec<Entry>> = vec![Vec::new(); n];
+        let mut full: Vec<Vec<Entry>> = vec![Vec::new(); n];
+        let mut left: Vec<Vec<Entry>> = vec![Vec::new(); n];
+        for b in &rpo {
+            let bi = b.index();
+            if !plain[bi] {
+                continue;
+            }
+            let mut stack: Vec<Entry> = Vec::new();
+            if can[bi] {
+                stack = left[preds[bi][0]].clone();
+                for &p in &preds[bi][1..] {
+                    let keep = stack
+                        .iter()
+                        .zip(&left[p])
+                        .take_while(|(a, b)| a == b)
+                        .count();
+                    stack.truncate(keep);
+                }
+            }
+            entry[bi] = stack.clone();
+            let mut seq = 0;
+            for (_, target) in &events[bi] {
+                let (cut, added) = reconcile_plan(&stack, |e| e.0, target);
+                if let Some(c) = cut {
+                    stack.truncate(c);
+                }
+                for v in added {
+                    stack.push((v.0, bi as u32, seq));
+                    seq += 1;
+                }
+            }
+            left[bi] = stack.clone();
+            left[bi].truncate(trim[bi]);
+            full[bi] = stack;
+        }
+        let mut changed = false;
+        for bi in 0..n {
+            if !plain[bi] {
+                continue;
+            }
+            let want = match f.blocks[bi].term {
+                Term::Fault(_) => usize::MAX,
+                Term::Ret(_) | Term::Unreachable => 0,
+                _ => succs[bi]
+                    .iter()
+                    .map(|&s| {
+                        full[bi]
+                            .iter()
+                            .zip(&entry[s])
+                            .take_while(|(a, b)| a == b)
+                            .count()
+                    })
+                    .min()
+                    .unwrap_or(0),
+            };
+            if want < trim[bi] {
+                trim[bi] = want;
+                changed = true;
+            }
+        }
+        if !changed {
+            return Flow { entry, trim };
+        }
+    }
+    none()
+}
+
+/// The blocks the cleanup stack may stay open across: no scope open or close, no discard and no
+/// moved-out projection, which a registration across would break.
+fn plain_blocks(f: &Func, cx: &Cx, holes: &[u32]) -> Vec<bool> {
+    (0..f.blocks.len())
+        .map(|bi| {
+            holes[bi] == 0
+                && !f.blocks[bi].insts.iter().any(|i| match (i.op, i.imm) {
+                    (Op::CleanupPush | Op::CleanupRun | Op::MoveOut, _) => true,
+                    (Op::CallRt, Imm::Ext(e)) => e == cx.discard,
+                    _ => false,
+                })
+        })
+        .collect()
 }
 
 /// A run of instructions `first..=last` of one block covered by one registration of `values`.
