@@ -8,6 +8,7 @@ use crate::fxmap::HashSet;
 use crate::stdlib;
 use crate::types::*;
 use ms_syntax::ast::Import;
+use ms_syntax::{DiagnosticFix, Pos};
 use std::rc::Rc;
 
 /// Returns the candidate most similar to `name`, or "" when none is near
@@ -184,6 +185,40 @@ fn import_hint_for(session: &Rc<crate::stdlib::Session>, name: &str, types_only:
 /// Standard modules that were renamed, with the module that replaces each.
 const RENAMED_MODULES: &[(&str, &str)] =
     &[("@std/concurrency/flow.ms", "@std/concurrency/resilience.ms")];
+
+/// The module that replaces the renamed standard module `path`.
+pub fn renamed_module(path: &str) -> Option<&'static str> {
+    RENAMED_MODULES
+        .iter()
+        .find(|(old, _)| *old == path)
+        .map(|(_, new)| *new)
+}
+
+/// Rewrites the quoted module path `old` that the import clause starting at `from` names, in
+/// place, to `new`. `None` unless the quoted path is on the clause's first line.
+pub(crate) fn rename_module_path(
+    source: &str,
+    from: Pos,
+    old: &str,
+    new: &str,
+) -> Option<DiagnosticFix> {
+    let start = from.offset as usize;
+    let rest = source.get(start..)?;
+    let line_len = rest.find('\n').unwrap_or(rest.len());
+    let quoted = format!("\"{old}\"");
+    let at = rest[..line_len].find(&quoted)?;
+    let offset = (start + at) as u32;
+    let column = from.column + at as u32;
+    Some(DiagnosticFix {
+        pos: Pos::new(offset, from.line, column),
+        end: Pos::new(
+            offset + quoted.len() as u32,
+            from.line,
+            column + quoted.len() as u32,
+        ),
+        replacement: format!("\"{new}\""),
+    })
+}
 
 const MEMBER_SYNONYMS: &[(&str, &[&str])] = &[
     ("byte_length", &["length"]),
@@ -906,7 +941,7 @@ impl Checker {
             if !self.session.is_native_module(pn)
                 && self.session.standard_source_module(pn).is_none()
             {
-                if let Some((_, new)) = RENAMED_MODULES.iter().find(|(old, _)| *old == path) {
+                if let Some(new) = renamed_module(path) {
                     return format!(
                         "unknown standard module {path}; it was renamed: import '{new}'"
                     );

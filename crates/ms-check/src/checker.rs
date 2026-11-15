@@ -839,6 +839,9 @@ impl Checker {
                     item.name_pos.column + self.syms.str(item.name).len() as u32,
                 );
                 let message = self.export_message(item);
+                let fix = crate::hints::renamed_module(path).and_then(|new| {
+                    crate::hints::rename_module_path(&module.source, item.clause, path, new)
+                });
                 self.p.diagnostics.push(Diagnostic {
                     cause: Default::default(),
                     opener_line: 0,
@@ -847,7 +850,7 @@ impl Checker {
                     phase: Phase::Resolution,
                     message,
                     end: Some(end),
-                    fix: None,
+                    fix,
                 });
                 continue;
             };
