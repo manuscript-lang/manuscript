@@ -275,6 +275,7 @@ runs:
         # (the oracle needs agent tooling), on the debug binary built above.
         ms="$PWD/target/debug/ms"
         for t in $(find bench/perf -name ms.toml | sort); do (cd "$(dirname "$t")" && "$ms" check ms.toml); done
+        (cd packages/postgres && "$ms" check bench/main.ms)
         for t in bench/tools/*.ms bench/agent/run.ms; do "$ms" check "$t"; done
         for t in bench/tools/*_test.ms bench/agent/core_test.ms; do "$ms" test "$t"; done
     - name: Package and run the distribution on a hello project

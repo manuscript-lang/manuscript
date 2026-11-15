@@ -7,7 +7,7 @@ sh packages/postgres/tests/start-postgres.sh   # prints the PG* variables to exp
 MS=./target/release/ms ms run bench/tools/postgres_bench.ms -- 9
 ```
 
-The driver copies `packages/postgres/src` into `ms/pg` (a project keeps its imports inside its root), builds the three programs into `.build/`, creates the table, and runs them in rotating order, reporting medians. `WORKERS` and `QUERIES` change the shape.
+The Manuscript program is `packages/postgres/bench/main.ms`, inside the package project so `@pg` is the package's own source (a project keeps its imports inside its root). The driver builds the three programs into `.build/`, creates the table, and runs them in rotating order, reporting medians. `WORKERS` and `QUERIES` change the shape.
 
 Designs match: one connection per worker, one prepared statement, strictly sequential lookups. Differences that are not the language: pgx and tokio-postgres fetch results in the binary format, while the Manuscript client uses text; the server runs on the same machine and shares its 4 cores with the clients; `tokio-postgres` spawns a task per connection on a multi-thread runtime.
 

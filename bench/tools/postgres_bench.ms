@@ -5,11 +5,9 @@
 // bench/tools/postgres_bench.ms -- <samples>
 import (
 	arguments from "@std/os/env.ms",
-	CopyOptions, copy, remove from "@std/os/fs.ms",
 
 	absolute,
 	build_go,
-	build_ms,
 	ensure_directory,
 	env,
 	finish,
@@ -17,6 +15,7 @@ import (
 	invalid,
 	left,
 	median,
+	ms_binary,
 	must,
 	now_ns,
 	repeats,
@@ -44,15 +43,13 @@ fn measure(samples: Int) String!:
 	root := absolute("bench/perf/postgres")
 	ensure_directory("{root}/.build")
 
-	// The benchmark project keeps its imports inside its root, so it gets a copy of the
-	// package.
-	_stale := remove("{root}/ms/pg", recursive: true)
-	copy(
-		absolute("packages/postgres/src"),
-		"{root}/ms/pg",
-		CopyOptions(recursive: true),
-	)?
-	build_ms("{root}/ms", "{root}/.build/ms")?
+	// The program lives in the package project, so `@pg` is the package's own source.
+	ran := run_in(
+		absolute("packages/postgres"),
+		ms_binary(),
+		["build", "bench/main.ms", "-o", "{root}/.build/ms"],
+	)
+	_built_ms := must("ms build packages/postgres/bench", ran)?
 	build_go("{root}/go", "{root}/.build/go")?
 
 	cargo := run_in(
