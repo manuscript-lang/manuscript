@@ -8,6 +8,8 @@ The counting runtime also counts Rust's own heap (`ms-rt rust heap at exit: bloc
 
 A park inside a shield (a scope close, a promise's task-end drop) is not cancelled: a real cancel stays pending under a shield, so the injection records the request and the next unshielded park reports it (`task::sweep::cancel_here`). Cancelling shielded parks had made every `close` that parks look like a leak (about 100 of the 145 first-night hits, 2026-11-15, #4052): the shielded close runs with its owner uncovered, which a real cancel never interrupts.
 
+An implicit close is always shielded, including the close of a discarded statement result (`xs.pop()` as a statement, `drop_unused`) and of a pending temporary (`close_temp`): they were the two that were not, so a cancel arriving during such a close made it fail and then fault (`implicit-close-shielded.ms`).
+
 Apply when: adding a park, a cleanup, or an `rt::Parked`; run the sweep on the touched fixture (`ms run tools/cancel-sweep.ms -- <file>`).
 
 Found by the first sweep (baseline, not cancellation): `http-hardening.ms` "close cancels a handler parked on a request body" ends with one 16 B block even with no cancellation (a client read after the server closed the connection triggers it); the sweep compares against that baseline, and `make leak-check` owned the fix (#3083, covered by the MIR unwind pass).
