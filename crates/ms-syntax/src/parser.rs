@@ -3260,7 +3260,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Lexes and parses the expression inside one `{...}` of a text literal.
-    /// Failures also state the escape for a literal brace.
+    /// Failures also say how to write a literal brace (a raw string first).
     fn interpolation(
         &mut self,
         token: Token,
@@ -3268,28 +3268,7 @@ impl<'a> Parser<'a> {
         source: &str,
         position: Pos,
     ) -> PResult<Expr> {
-        let mut d = match self.interpolation_checked(token, at, source, position) {
-            Ok(e) => return Ok(e),
-            Err(d) => d,
-        };
-        // Braces that are not a valid expression are literal text, as in JSON.
-        let escaped = source.replace('{', "\\{").replace('}', "\\}");
-        // Only content that cannot start an expression (a quote, as in JSON) is
-        // certainly literal; `{total +}` is a typo and keeps its error.
-        let json_like = source.trim_start().starts_with('"');
-        if d.fix.is_none() && json_like && position.offset > 0 && !source.contains('\n') {
-            let len = source.len() as u32;
-            d.fix = Some(DiagnosticFix {
-                pos: Pos::new(position.offset - 1, position.line, position.column - 1),
-                end: Pos::new(
-                    position.offset + len + 1,
-                    position.line,
-                    position.column + len + 1,
-                ),
-                replacement: format!("\\{{{escaped}\\}}"),
-            });
-        }
-        Err(d)
+        self.interpolation_checked(token, at, source, position)
     }
 
     fn interpolation_checked(
@@ -3300,7 +3279,7 @@ impl<'a> Parser<'a> {
         position: Pos,
     ) -> PResult<Expr> {
         let suffix = format!(
-            " ('{{' at column {} starts an interpolation; write \\{{ and \\}} for literal braces)",
+            " ('{{' at column {} starts an interpolation; for literal braces write the text raw, r\"...\", or escape them as \\{{ and \\}} when the text also interpolates)",
             position.column - 1
         );
         let origin = self.source_origin + token.lo as usize + at;
@@ -3708,7 +3687,7 @@ impl<'a> Parser<'a> {
     fn interpolation_wrapped(&mut self, token: Token, at: usize, source: &str) -> PResult<Expr> {
         let full = self.text(token);
         let suffix = format!(
-            " ('{{' at column {} starts an interpolation; write \\{{ and \\}} for literal braces)",
+            " ('{{' at column {} starts an interpolation; for literal braces write the text raw, r\"...\", or escape them as \\{{ and \\}} when the text also interpolates)",
             text_pos(token.pos, full, at - 1, self.boundaries).column
         );
         let wrapped = format!("({source})");
