@@ -19,3 +19,8 @@ Assertions return Results; `?` fails the test on error. Tests need no main. `ben
 Test success, failure and boundary inputs. Never expect exceptions. Avoid undeclared assignment, `try`/`await`, unwrap-style calls, `def`, enum `case`, or methods inside type bodies. Use `:=`, postfix `?`, `fn Type.method` and explicit returns instead.
 
 For additional APIs, inspect `ms search_symbol` signatures/imports. Report compiled, executed and untested checks separately.
+
+## Habits from other languages
+
+- Methods always take parentheses, even with no arguments: `xs.length()`, `name.length()`, `opt.is_none()`; `xs.length` is a method value, not an Int. Test absence with `x.is_none()` or `x.is_some()`, never `x == none`. Write `not x` (no `!x`), `f(x)?` (no `try`), `fn f() Result[Int, Error]:` (no `->`), `"\{ \}"` for literal braces in text, and `else:` only after an indented `if` block.
+

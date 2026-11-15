@@ -37,7 +37,7 @@ fn main() Unit!:
 - Control: `if`/`else if`/`else`, `while`, `for x in xs:`, `for i in 0..n:` (excludes n), `break`, `continue`; `and or not`. Prefer early exits: `if c: return x`. Expression: `if c: a else: b`.
 - Import `name` with `import name from "./other.ms"`; `export` shares declarations. Standard paths start `@std/`. Construct records `Counter()` or `Counter(n: 2)`. Receiver methods satisfy matching interfaces; no impl blocks.
 - `enum Choice:` declares cases `Empty` and `Value(n: Int)`. Construct `Choice.Value(2)`. `match choice:` uses arms `Empty:`, `Value(n):`, or `_:`; match exhaustively and keep it flat.
-- Methods always take parentheses, even with no arguments: `xs.length()`, `name.length()`, `opt.is_none()`; `xs.length` is a method value, not an Int. Test absence with `x.is_none()` or `x.is_some()`, never `x == none`. Write `not x` (no `!x`), `f(x)?` (no `try`), `fn f() Result[Int, Error]:` (no `->`), `"\{ \}"` for literal braces in text, and `else:` only after an indented `if` block.
+- Methods always take parentheses: `xs.length()`, `opt.is_none()` (never `x == none`); see [habits](references/validation.md).
 - Prelude collections: `[1, 2]`, `Map[String, Int]()`, `Set[Int]()`. List pipeline: `xs | .filter(fn x: x > 0) | .map(fn x: x * 2) | .sum()`. `x | f(a)` passes x first; `x | .m()` calls a method. Map `.get(k)` returns Optional; `.get_or(k, default)` supplies a fallback.
 
 ### Absence, errors and ownership
@@ -60,4 +60,4 @@ fn main() Unit!:
 
 ## Verify
 
-Run `ms check --fix <file>` before the first build: it applies mechanical repairs (`length()`, `is_none()`, `not`, `?`, literal braces, imports, `var` at calls), then lists what remains. Run applicable `ms check`, `ms run` and `ms test` commands after editing. Check behavior, not just compilation; report unrun checks. Include imports. Prelude collections, Optional, Result, Error and print need none. For additional APIs, `ms search_symbol <words>` supplies signatures/imports; do not guess.
+Run `ms check --fix <file>` first; it applies mechanical repairs. Run applicable `ms check`, `ms run` and `ms test` commands after editing. Check behavior, not just compilation; report unrun checks. Include imports. Prelude collections, Optional, Result, Error and print need none. For additional APIs, `ms search_symbol <words>` supplies signatures/imports; do not guess.
