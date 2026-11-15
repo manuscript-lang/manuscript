@@ -150,6 +150,13 @@ struct Group {
     token: u64,
     /// Slots of the promises added, to detach them when the group is freed.
     members: Vec<u32>,
+    /// How the waiter's promises joined the group (`msrt_group_join`): 0 not yet, 1 all, 2 some
+    /// belong to another thread and are not reported.
+    joined: u8,
+    /// The token of the waiter's park while it runs a promise inline for the group, or 0.
+    interrupt: u64,
+    /// A member that did not end with a value has finished and the inline run was not told yet.
+    failed: bool,
 }
 
 impl Table {
@@ -804,6 +811,15 @@ fn wake(t: &mut Table, i: usize) {
         t.group[i] = 0;
         g.done.push_back(t.group_tag[i]);
         g.pending -= 1;
+        if matches!(t.state[i], State::Error | State::Failed | State::Cancelled) {
+            g.failed = true;
+            // The waiter is parked inside a promise it runs inline: end that run, so the failure
+            // is reported without waiting for the promise to finish.
+            let interrupt = core::mem::take(&mut g.interrupt);
+            if interrupt != 0 {
+                task::msrt_token_post_remote(interrupt, 0);
+            }
+        }
         let token = core::mem::take(&mut g.token);
         if token != 0 {
             task::msrt_token_post_remote(token, 1);
@@ -913,6 +929,107 @@ pub extern "C-unwind" fn msrt_promise_run_unstarted(id: i64) -> u8 {
     run_unstarted(id);
     let t = table();
     index(t, id).map_or(1, |i| u8::from(t.state[i] != State::Pending))
+}
+
+/// [`msrt_promise_run_unstarted`] for a waiter on `group`: while the promise runs here, a member of
+/// the group that ends without a value interrupts the run at its park, so the waiter can report
+/// that failure instead of waiting for this promise. `ids` lists the waiter's promises; those
+/// from index `from` on join the group when the run first parks (see [`park_begin`]), so a run
+/// that never parks pays nothing to watch the others. Answers 0 when nothing ran, 1 when a
+/// promise ran, 2 when it ran and the others joined.
+///
+/// # Safety
+/// `ids` points to a list of `Int` promise ids that outlives the call.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_promise_run_watched(
+    id: i64,
+    group: i64,
+    ids: *const ms_rt_abi::VecVal,
+    from: i64,
+) -> i64 {
+    let mut watch = Watch {
+        group,
+        ids,
+        from: from as usize,
+        parked: false,
+        interrupted: false,
+    };
+    let before = task::set_watch(&mut watch);
+    let ran = msrt_promise_run_unstarted(id);
+    task::set_watch(before);
+    if watch.interrupted { 2 } else { i64::from(ran) }
+}
+
+/// What an inline run (`msrt_promise_run_watched`) reports failures to: the group, the waiter's
+/// promise ids it adds to it at its first park, and whether it has parked. Lives on the stack of
+/// the call.
+pub(crate) struct Watch {
+    group: i64,
+    ids: *const ms_rt_abi::VecVal,
+    from: usize,
+    parked: bool,
+    /// A promise of the group failed, and the run was ended for it.
+    interrupted: bool,
+}
+
+/// Adds the promises of `ids` (a list of `Int` promise ids) from index `from` on to `group`, tagged
+/// by their index, unless that was done; answers how they joined: 1 all, 2 some belong to another
+/// thread and must be polled.
+///
+/// # Safety
+/// `ids` points to a list of `Int` promise ids.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_group_join(
+    group: i64,
+    ids: *const ms_rt_abi::VecVal,
+    from: i64,
+) -> i64 {
+    let joined = table().groups[group as usize - 1].joined;
+    if joined != 0 {
+        return i64::from(joined);
+    }
+    // SAFETY: forwarded contract; the list is borrowed for the call.
+    let list = unsafe { core::slice::from_raw_parts((*ids).ptr.cast::<i64>(), (*ids).len) };
+    let mut mode = 1;
+    for (at, &id) in list.iter().enumerate().skip(from as usize) {
+        if msrt_group_add(group, id, at as i64) == 0 {
+            mode = 2;
+        }
+    }
+    table().groups[group as usize - 1].joined = mode;
+    i64::from(mode)
+}
+
+/// Called by a park of the running task on `token`, before it blocks, while a promise runs inline
+/// for a group (`msrt_promise_run_watched`). Adds the group's members (once), then answers whether
+/// a member already failed, in which case the park must end at once; else the park is armed to
+/// end when one fails.
+pub(crate) fn park_begin(token: u64) -> bool {
+    // SAFETY: the run that set the watch is still on this task's stack.
+    let w = unsafe { &mut *task::watch() };
+    let g = w.group as usize - 1;
+    if !w.parked {
+        w.parked = true;
+        // SAFETY: the waiter lent the list for the run this park is part of.
+        unsafe { msrt_group_join(w.group, w.ids, w.from as i64) };
+    }
+    let grp = &mut table().groups[g];
+    if core::mem::take(&mut grp.failed) {
+        w.interrupted = true;
+        return true;
+    }
+    grp.interrupt = token;
+    false
+}
+
+/// Called when that park returns: answers whether a failure ended it.
+pub(crate) fn park_end() -> bool {
+    // SAFETY: as in `park_begin`.
+    let w = unsafe { &mut *task::watch() };
+    let grp = &mut table().groups[w.group as usize - 1];
+    grp.interrupt = 0;
+    w.interrupted = core::mem::take(&mut grp.failed);
+    w.interrupted
 }
 
 /// Completes `i` with no value (a finished sleep): `wait` answers 0 and nothing is left to take.
@@ -1675,7 +1792,12 @@ pub extern "C-unwind" fn msrt_group_add(group: i64, id: i64, tag: i64) -> u8 {
             t.groups[g].members.push(i as u32);
             t.groups[g].pending += 1;
         }
-        _ => t.groups[g].done.push_back(tag as u32),
+        Some(i) => {
+            let failed = matches!(t.state[i], State::Error | State::Failed | State::Cancelled);
+            t.groups[g].failed |= failed;
+            t.groups[g].done.push_back(tag as u32);
+        }
+        None => t.groups[g].done.push_back(tag as u32),
     }
     1
 }
@@ -1709,6 +1831,15 @@ pub extern "C-unwind" fn msrt_group_next(group: i64) -> i64 {
     }
 }
 
+/// The tag of a promise of `group` that has finished and was not reported, or -1; never waits.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_group_poll(group: i64) -> i64 {
+    table().groups[group as usize - 1]
+        .done
+        .pop_front()
+        .map_or(-1, i64::from)
+}
+
 /// Frees `group`; its promises keep running and are no longer reported.
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_group_free(group: i64) {
@@ -1724,6 +1855,9 @@ pub extern "C-unwind" fn msrt_group_free(group: i64) {
     grp.done.clear();
     grp.pending = 0;
     grp.token = 0;
+    grp.interrupt = 0;
+    grp.failed = false;
+    grp.joined = 0;
     grp.members = members;
     grp.members.clear();
     t.free_groups.push(g);

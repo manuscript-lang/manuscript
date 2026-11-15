@@ -65,6 +65,20 @@ export extern fn msrt_group_add(group: Int, id: Int, tag: Int) Bool
 
 export extern fn msrt_group_next(group: Int) Int
 
+// Like `msrt_promise_run_unstarted`, for a waiter on `group` whose promises have the ids
+// `ids`: while the promise runs, one of them that fails ends the run at its next wait (the
+// run ends as cancelled). The promises from index `from` on join the group when the run first
+// waits. Answers 0 when nothing ran, 1 when a promise ran, 2 when the run was ended by a
+// failure.
+export extern fn msrt_promise_run_watched(id: Int, group: Int, ids: List[Int], from: Int) Int
+
+// Adds the promises of `ids` from index `from` on to `group`, tagged by index, unless that
+// was done; answers 1 when all joined, 2 when some belong to another thread.
+export extern fn msrt_group_join(group: Int, ids: List[Int], from: Int) Int
+
+// The tag of a finished promise not reported yet, or -1; never waits.
+export extern fn msrt_group_poll(group: Int) Int
+
 export extern fn msrt_group_free(group: Int) Unit
 
 export extern fn msrt_promise_fault_report(id: Int) String

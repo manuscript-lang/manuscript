@@ -151,6 +151,12 @@ pub unsafe extern "C-unwind" fn msrt_token_park(
         if cancel_flag().load(Ordering::Relaxed) != 0 || super::sweep::cancel_here() {
             return WAIT_CANCELLED;
         }
+        // A shielded cleanup is not cancelled, so a failure elsewhere does not end it either.
+        let watched = !(*cur).watch.is_null() && !fault::live_shielded();
+        if watched && crate::promise::park_begin(id) {
+            crate::promise::park_end();
+            return WAIT_CANCELLED;
+        }
         let mut s = sched();
         let k = token_mut(&mut s, id)
             .unwrap_or_else(|| fault::fault(b"park on a token that does not exist"));
@@ -166,6 +172,10 @@ pub unsafe extern "C-unwind" fn msrt_token_park(
         let result = (*cur).wait_result;
         if result == 0 && !take(value_out) {
             fault::fatal(b"runtime invariant: woken token without a post");
+        }
+        // A promise this task runs inline for `wait_all` ends here when another one failed.
+        if watched && crate::promise::park_end() {
+            return WAIT_CANCELLED;
         }
         result
     }
