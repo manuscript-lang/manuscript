@@ -281,7 +281,7 @@ pub(super) unsafe fn freeze(t: *mut Task) {
         // 3 KiB stack up to a 4 KiB block, which would give back nothing.
         let copy = sys::malloc(len.max(1)) as *mut u8;
         if copy.is_null() {
-            fault::fatal(b"out of memory");
+            fault::out_of_memory(len.max(1));
         }
         core::ptr::copy_nonoverlapping(sp as *const u8, copy, len);
         (*t).frozen = copy;

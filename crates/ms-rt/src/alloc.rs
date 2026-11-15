@@ -599,7 +599,7 @@ fn alloc_large(s: &mut State, size: usize) -> *mut u8 {
     // SAFETY: plain malloc.
     let p = unsafe { sys::malloc(request) } as *mut u8;
     if p.is_null() {
-        crate::fault::fatal(b"out of memory");
+        crate::fault::out_of_memory(request);
     }
     #[cfg(any(test, feature = "stats"))]
     {
@@ -826,7 +826,7 @@ pub unsafe fn realloc(p: *mut u8, new_size: usize) -> *mut u8 {
             // SAFETY: `p` came from malloc/realloc.
             let q = unsafe { sys::realloc(p.cast(), new_size) } as *mut u8;
             if q.is_null() {
-                crate::fault::fatal(b"out of memory");
+                crate::fault::out_of_memory(new_size);
             }
             return q;
         }
