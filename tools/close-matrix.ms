@@ -11,12 +11,12 @@
 // constructs() below. MS names the ms that runs the programs (default
 // target/release/ms). Usage: ms run tools/close-matrix.ms [-- name-filter]
 import (
+	map_concurrent from "@std/concurrency/resilience.ms",
 	stdout from "@std/io/io.ms",
 	arguments, working_directory from "@std/os/env.ms",
 	temporary, write_file from "@std/os/fs.ms",
 	run from "@std/os/process.ms",
 	metrics from "@std/os/system.ms",
-	map_concurrent from "@std/concurrency/resilience.ms",
 
 	tool_ms from "./lib.ms",
 )
@@ -426,7 +426,8 @@ fn count(lines: List[String], prefix: String) Map[String, Int]:
 
 	return counts
 
-// One combination to try and what happened when it ran: counts, and the lines to print in order.
+// One combination to try and what happened when it ran: counts, and the lines to print
+// in order.
 type Cell:
 	shape: Shape
 	construct: Construct
@@ -438,8 +439,8 @@ type Tally:
 	failures: Int
 	lines: List[String]
 
-// Runs one combination: `ms check`, then the program in Debug and Release. Independent of every other
-// combination, so the matrix runs them concurrently.
+// Runs one combination: `ms check`, then the program in Debug and Release. Independent
+// of every other combination, so the matrix runs them concurrently.
 fn verify(ms: String, scratch: String, cell: Cell, show: Bool, filter: String) Tally:
 	var tally = Tally(0, 0, 0, [])
 	name := cell.name.clone()
@@ -450,6 +451,7 @@ fn verify(ms: String, scratch: String, cell: Cell, show: Bool, filter: String) T
 
 	if verdict.is_error() or verdict.get().exit_code != 0:
 		tally.rejected += 1
+
 		why := verdict.get().stderr.decode_utf8().get("")
 
 		if why.contains(": parse:"):
@@ -475,8 +477,13 @@ fn verify(ms: String, scratch: String, cell: Cell, show: Bool, filter: String) T
 
 		if child.exit_code != 0:
 			tally.failures += 1
+
 			why := child.stderr.decode_utf8().get("")
-			tally.lines.append("exit: {name} ({build}) passed `ms check` but failed: {why}\n")
+			(
+				tally.lines.append(
+					"exit: {name} ({build}) passed `ms check` but failed: {why}\n"
+				)
+			)
 			continue
 
 		made := count(lines, "made-")
@@ -491,8 +498,12 @@ fn verify(ms: String, scratch: String, cell: Cell, show: Bool, filter: String) T
 
 		if wrong:
 			tally.failures += 1
-			tally.lines.append(
-				"ownership: {name} ({build}) made {made.length()} ids and closed {closed.length()}; each resource must close once ({file})\n"
+			(
+				tally
+				.lines
+				.append(
+					"ownership: {name} ({build}) made {made.length()} ids and closed {closed.length()}; each resource must close once ({file})\n"
+				)
 			)
 
 	return tally
@@ -519,15 +530,21 @@ fn main() Int:
 
 			cells.append(Cell(shape.clone(), construct.clone(), name))
 
-	// Each combination compiles and links two programs, so the matrix is bound by the build, not by this
+	// Each combination compiles and links two programs, so the matrix is bound by the
+	// build, not by this
 	// loop: run as many at a time as there are cores.
 	scratch_path := scratch.path()
 	tallies := map_concurrent(
 		cells,
 		metrics().get().available_parallelism,
-		fn cell: verify(ms.clone(), scratch_path.clone(), cell, show, filter.clone()),
+		fn cell: verify(
+			ms.clone(),
+			scratch_path.clone(),
+			cell,
+			show,
+			filter.clone(),
+		)
 	).get()
-
 	var checked = 0
 	var rejected = 0
 	var failures = 0
@@ -536,7 +553,6 @@ fn main() Int:
 		checked += tally.checked
 		rejected += tally.rejected
 		failures += tally.failures
-
 		for line in tally.lines:
 			stdout().write(line).get()
 
