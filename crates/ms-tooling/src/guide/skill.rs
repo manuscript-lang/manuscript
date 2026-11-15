@@ -35,6 +35,10 @@ pub const FILES: &[(&str, &str)] = &[
         include_str!("../../data/agent-skill/references/servers-and-state.md"),
     ),
     (
+        "references/idioms.md",
+        include_str!("../../data/agent-skill/references/idioms.md"),
+    ),
+    (
         "references/standard-calls.md",
         include_str!("../../data/agent-skill/references/standard-calls.md"),
     ),
