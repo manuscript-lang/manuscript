@@ -8,7 +8,7 @@ BENCHFILTER ?=
 BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
 CONFORM_SHARD ?= 0/1
 
-.PHONY: runtime doctor verify verify-full check repo-check workflow-check unit test build conform conform-llvm drift-check llvm-report leak-check cancel-sweep scaling-check count-check resource-matrix close-matrix copy-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench vscode-package vscode-install
+.PHONY: runtime doctor verify verify-full check repo-check workflow-check unit test build conform conform-llvm drift-check llvm-report leak-check cancel-sweep perf-counts scaling-check count-check resource-matrix close-matrix copy-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench vscode-package vscode-install
 
 doctor: build
 	HUGO="$(HUGO)" $(MS) run tools/doctor.ms
@@ -82,6 +82,10 @@ drift-check: build
 count-check: build
 	$(MS) run tools/count-check.ms
 	MS=$(MS) $(MS) run tools/count-check-selftest.ms
+
+# Instructions executed by four suite programs under callgrind against bench/perf/counts.txt; fails when one is over 3% higher.
+perf-counts: build
+	$(MS) run tools/perf-counts.ms
 
 # Generated inputs at 1k/10k/100k units; fails when the 100k/10k time ratio of linear work exceeds SCALING_BOUND.
 scaling-check: build
