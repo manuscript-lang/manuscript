@@ -9,34 +9,19 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type Vec; did you mean 'List'?",
+        "message": "unknown type Vec; declare it with 'type Vec:' / 'enum Vec:' / 'interface Vec:', declare it as a type parameter, or import it",
         "position": {
           "file": "foreign-vec-type.ms",
           "line": 5,
           "column": 9,
-          "offset": 141
-        },
-        "fix": {
-          "position": {
-            "file": "foreign-vec-type.ms",
-            "line": 5,
-            "column": 9,
-            "offset": 141
-          },
-          "end": {
-            "file": "foreign-vec-type.ms",
-            "line": 5,
-            "column": 12,
-            "offset": 144
-          },
-          "replacement": "List"
+          "offset": 139
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/foreign-vec-type.ms:5:9: resolution: unknown type Vec; did you mean 'List'?\n   |\n 5 |     xs: Vec[Int] := []\n   |         ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/foreign-vec-type.ms:5:9: resolution: unknown type Vec; declare it with 'type Vec:' / 'enum Vec:' / 'interface Vec:', declare it as a type parameter, or import it\n   |\n 5 |     xs: Vec[Int] := []\n   |         ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }
