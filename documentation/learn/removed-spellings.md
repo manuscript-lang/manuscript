@@ -5,7 +5,7 @@ weight = 6
 
 # Removed spellings
 
-When Manuscript removes or renames something, the old spelling does not fail quietly. The compiler reports an error that names the new spelling, and `ms check --fix` applies the change when it is mechanical.
+When Manuscript removes or renames something, the old spelling does not fail quietly. The compiler reports an error that names the new spelling, and `ms check --fix` applies the change when it is mechanical. Both stay for two minor releases.
 
 | Old | New |
 | --- | --- |
