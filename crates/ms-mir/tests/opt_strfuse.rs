@@ -420,7 +420,7 @@ fn many_fusions_in_one_function_take_linear_time() {
     assert_eq!(text.matches("@msrt_string_fmt2 (").count(), n, "{text}");
 }
 
-/// `n` independent `out.append("row {i}\n")` calls on one builder in one function.
+/// `n` independent `out.append(f"row {i}\n")` calls on one builder in one function.
 fn many_appends(n: usize) -> String {
     let mut s = String::from(
         r#"module "main"

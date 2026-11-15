@@ -15,6 +15,7 @@ use ms_driver::project::packages::{
 };
 use ms_driver::project::pathops;
 use ms_driver::project::resolve::{Fetched, Remote, resolve};
+use ms_driver::project::workspace;
 
 use crate::backend::Io;
 
@@ -80,10 +81,30 @@ fn install_manifest(
 ) -> Result<BTreeMap<String, Vec<String>>, String> {
     let mut project = Project::default();
     read_manifest(manifest, &mut project).map_err(|e| e.to_string())?;
-    let old = read_lock(&project.root).map_err(|e| e.to_string())?;
-    let resolved = resolve(&[("the project", &project)], &old, &update, &mut Git)?;
+    // A workspace installs every member's dependencies into one lock at its root; a copy that
+    // two members share is fetched and pinned once.
+    let workspace = workspace::find(manifest).map_err(|e| e.to_string())?;
+    let (lock_root, members) = match &workspace {
+        None => (
+            project.root.clone(),
+            vec![("the project".to_string(), project.clone())],
+        ),
+        Some(workspace) => {
+            let mut members = Vec::new();
+            for member in &workspace.members {
+                let mut scope = Project::default();
+                read_manifest(&workspace::Workspace::manifest(member), &mut scope)
+                    .map_err(|e| e.to_string())?;
+                members.push((member.name.clone(), scope));
+            }
+            (workspace.root.clone(), members)
+        }
+    };
+    let roots: Vec<(&str, &Project)> = members.iter().map(|(n, p)| (n.as_str(), p)).collect();
+    let old = read_lock(&lock_root).map_err(|e| e.to_string())?;
+    let resolved = resolve(&roots, &old, &update, &mut Git)?;
     let lock = resolved.lock();
-    let path = pathops::join(&[&project.root, "ms.lock"]);
+    let path = pathops::join(&[&lock_root, "ms.lock"]);
     let text = lock_text(&lock);
     if lock.is_empty() {
         let _ = std::fs::remove_file(&path);
@@ -195,6 +216,7 @@ fn add(args: &[String], io: &mut Io<'_>) -> Result<(), String> {
         })?,
     };
     let manifest = find_project()?;
+    not_a_workspace_root(&manifest, "add")?;
     let original =
         std::fs::read_to_string(&manifest).map_err(|e| format!("read {manifest}: {e}"))?;
     let pin = match kind {
@@ -242,6 +264,7 @@ fn remove(args: &[String], io: &mut Io<'_>) -> Result<(), String> {
         return Err("name one package: ms remove @name".to_string());
     };
     let manifest = find_project()?;
+    not_a_workspace_root(&manifest, "remove")?;
     let original =
         std::fs::read_to_string(&manifest).map_err(|e| format!("read {manifest}: {e}"))?;
     let edited = remove_dependency(&original, name)?;
@@ -251,6 +274,21 @@ fn remove(args: &[String], io: &mut Io<'_>) -> Result<(), String> {
         return Err(message);
     }
     let _ = writeln!(io.stdout, "removed {name}");
+    Ok(())
+}
+
+/// `ms add` and `ms remove` edit one project's `[dependencies]`, so they refuse a workspace
+/// root that has no `[project]` of its own.
+fn not_a_workspace_root(manifest: &str, command: &str) -> Result<(), String> {
+    let mut project = Project::default();
+    if read_manifest(manifest, &mut project).is_ok()
+        && project.members.is_some()
+        && project.name.is_empty()
+    {
+        return Err(format!(
+            "{manifest} is a workspace root; run ms {command} inside a member directory"
+        ));
+    }
     Ok(())
 }
 

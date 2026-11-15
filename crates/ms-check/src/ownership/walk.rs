@@ -816,12 +816,14 @@ impl Walker<'_> {
                     facts.push((b.uid, CaptureMode::Copy));
                 } else {
                     let resolved = self.resolve(&Place::local(b.uid));
-                    self.capture_move(e, b, &resolved);
+                    self.capture_move(e, b, &resolved, true);
                     facts.push((b.uid, CaptureMode::Move));
                 }
             } else if concurrent && class == Class::Resource {
+                // Not returned or stored: the promise ends before the call does, so a `var`
+                // parameter it changes is still the caller's when the call returns.
                 let resolved = self.resolve(&Place::local(b.uid));
-                self.capture_move(e, b, &resolved);
+                self.capture_move(e, b, &resolved, false);
                 facts.push((b.uid, CaptureMode::Move));
             } else {
                 let place = Place::local(b.uid);
@@ -873,10 +875,30 @@ impl Walker<'_> {
         held
     }
 
-    fn capture_move(&mut self, e: &Expr, b: &BindingRef, resolved: &[Place]) {
-        let perm = self.meta[&b.uid].perm;
+    fn capture_move(&mut self, e: &Expr, b: &BindingRef, resolved: &[Place], escapes: bool) {
+        let (perm, parameter, receiver) = {
+            let m = &self.meta[&b.uid];
+            (m.perm, m.parameter, m.is_receiver)
+        };
         let name = b.name;
-        if matches!(
+        if escapes && perm == Perm::Mutable && (parameter.is_some() || receiver) {
+            // The caller keeps a `var` parameter or receiver and drops it when its call returns,
+            // so a closure or promise that outlives the call cannot take it over.
+            let name_t = self.syms.str(name);
+            let why = if self.cx.classes.class(self.syms, &b.ty) == Class::Resource {
+                "a resource cannot be cloned, so take it as a plain parameter and move it into the closure at the call".to_string()
+            } else if let Some(why) = clone_blocker(&b.ty) {
+                format!(
+                    "{why}, so take it as a plain parameter and move it into the closure at the call"
+                )
+            } else {
+                format!("capture `{name_t}.{CLONE}()` or take it as a plain parameter")
+            };
+            self.error(
+                e.pos,
+                format!("this closure outlives the call but captures the `var` {} `{name_t}`, which the caller keeps and drops; {why}", if receiver { "receiver" } else { "parameter" }),
+            );
+        } else if matches!(
             perm,
             Perm::Borrowed | Perm::MutBorrowed | Perm::ClosureOwned
         ) {
