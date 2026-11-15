@@ -116,7 +116,7 @@ runs:
     - name: Build the native runtime
       if: steps.runtime.outputs.cache-hit != 'true'
       shell: bash
-      run: cargo xtask runtime ${{ github.event_name == 'pull_request' && '' || '--alloc-profile' }}
+      run: cargo xtask runtime ${{ github.event_name != 'pull_request' && '--alloc-profile' || '' }}
     - name: Mark the restored runtime as fresh
       if: steps.runtime.outputs.cache-hit == 'true'
       shell: bash

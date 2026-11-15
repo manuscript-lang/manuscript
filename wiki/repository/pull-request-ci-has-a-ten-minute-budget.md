@@ -13,6 +13,7 @@ Decision (Chinmay, 2026-11-14): a pull request's CI must finish in under 10 minu
 - Decision (Chinmay, 2026-11-14): meet the budget by removing redundant work (shared sessions, one build, work another test already does), not by shrinking test inputs or dropping coverage. The Cranelift IR verifier stays on in PR CI. See [ci-time](../../skills/ci-time/SKILL.md).
 - Measured on a PR run (4 cores): setup 46 s, test build 166 s, Rust tests 214 s, corpus 189 s, lint 50 s, so the fixed costs alone exceed 300 s on amd64; each `ms run|test` corpus fixture compiles its own program (about 0.5 s), only `check` is batched.
 - CI reports it: the `Time budget` job in `cicd.yml` fails a pull request whose Linux job ran over 600 s, and `Platform checks` requires it, so an over-budget PR cannot merge until a test or step is cut.
+- A `${{ cond && '' || x }}` expression always yields `x`, because an empty string is falsy: the runtime build step passed `--alloc-profile` on pull requests (about 50 s more per leg whenever a runtime source changed). Write `${{ !cond && x || '' }}`.
 
 Apply when: adding or changing a test, a CI step or a workflow.
 Evidence: [cicd.yml](../../.github/workflows/cicd.yml), [rust-scope](../../.github/actions/rust-scope/action.yml), [AGENTS.md](../../AGENTS.md).
