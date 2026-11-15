@@ -487,9 +487,10 @@ mod tests {
 
     #[test]
     fn a_calendar_version_tag_round_trips_through_the_lock() {
-        let text = format!("\"@pg\" = \"https://h/x.git#v2026.11.0 {COMMIT} sha256:{HASH}\"\n");
+        let text =
+            format!("\"h/x@v2026.11.0\" = \"https://h/x.git#v2026.11.0 {COMMIT} sha256:{HASH}\"\n");
         let entries = lock(&text).expect("lock");
-        assert_eq!(entries["@pg"].spec, "https://h/x.git#v2026.11.0");
+        assert_eq!(entries["h/x@v2026.11.0"].spec, "https://h/x.git#v2026.11.0");
         assert!(lock_text(&entries).ends_with(&text));
     }
 
