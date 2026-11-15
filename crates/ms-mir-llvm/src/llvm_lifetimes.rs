@@ -16,6 +16,9 @@ use std::collections::{HashMap, HashSet};
 pub const DECLARES: &str = "declare void @llvm.lifetime.start.p0(ptr captures(none))\n\
                             declare void @llvm.lifetime.end.p0(ptr captures(none))\n";
 
+/// The mark `alloca_pinned` leaves after a slot's `alloca`: such a slot gets no lifetime markers.
+pub const PINNED: &str = " ; pinned";
+
 /// Runtime calls that keep a pointer argument after they return, so its slot outlives the block.
 const RETAINS: [&str; 4] = [
     "msrt_cleanup_push",
@@ -31,6 +34,7 @@ const DERIVES: [&str; 5] = ["getelementptr", "ptrtoint", "inttoptr", "add", "sub
 pub fn mark(allocas: &str, body: &str) -> String {
     let slots: Vec<&str> = allocas
         .lines()
+        .filter(|l| !l.ends_with(PINNED))
         .filter_map(|l| l.trim_start().split_once(" = alloca").map(|(name, _)| name))
         .collect();
     if slots.is_empty() {

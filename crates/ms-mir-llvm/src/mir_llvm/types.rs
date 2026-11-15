@@ -1294,12 +1294,26 @@ pub(super) fn spill(b: &mut FnBuilder, lay: &Layouts, ty: Ty, vals: &Vals, v: Va
 
 /// [`spill`] of the held values `own` of a `ty`.
 pub(super) fn spill_of(b: &mut FnBuilder, lay: &Layouts, ty: Ty, own: &[Val]) -> Val {
+    spill_in(b, lay, ty, own, false)
+}
+
+/// [`spill`] into a slot that keeps its place for the whole function, for a call whose result may
+/// point into the spilled value.
+pub(super) fn spill_pinned(b: &mut FnBuilder, lay: &Layouts, ty: Ty, vals: &Vals, v: Value) -> Val {
+    spill_in(b, lay, ty, &vals[&v.index()], true)
+}
+
+fn spill_in(b: &mut FnBuilder, lay: &Layouts, ty: Ty, own: &[Val], pinned: bool) -> Val {
     if is_mem(lay, ty) {
         return own[0].clone();
     }
     let leaves = abi_leaves_of(b, lay, ty, own, Abi::Native);
     let st = super::aggregate(b.types(), lay, ty);
-    let slot = b.alloca(&st);
+    let slot = if pinned {
+        b.alloca_pinned(&st)
+    } else {
+        b.alloca(&st)
+    };
     store_regs(b, lay, ty, &st, &slot, &leaves);
     slot
 }

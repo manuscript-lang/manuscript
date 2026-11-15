@@ -3035,20 +3035,21 @@ pub unsafe extern "C-unwind" fn msrt_string_to_bytes(s: *const StrVal, out: *mut
 
 /// `String.view_bytes()`: the UTF-8 bytes of the text borrowed from the receiver, nothing copied
 /// (`cap == 0` marks a view, which is never freed). Valid while the receiver is neither changed nor
-/// dropped (the borrow check guarantees that). A text of up to [`STR_INLINE_MAX`] bytes may live in
-/// a spill slot that does not outlive the call, as in [`view_of`], so it is copied; the result is
-/// always owned and releasing a view is a no-op.
+/// dropped (the borrow check guarantees that). The bytes of an inline text are the receiver's own
+/// storage, which is why the function is declared `borrows`: the backends keep the argument's slot
+/// for the whole function.
 #[unsafe(no_mangle)]
-// ms: leaf pure domain=string
+// ms: leaf pure borrows domain=string
 pub unsafe extern "C-unwind" fn msrt_string_view_bytes(s: *const StrVal, out: *mut VecVal) {
     // SAFETY: caller passes a live string and a writable out.
     unsafe {
         let text = bytes(s);
-        if text.len() <= STR_INLINE_MAX {
-            return msrt_string_to_bytes(s, out);
-        }
         *out = VecVal {
-            ptr: text.as_ptr() as *mut u8,
+            ptr: if text.is_empty() {
+                null_mut()
+            } else {
+                text.as_ptr() as *mut u8
+            },
             len: text.len(),
             cap: 0,
         };

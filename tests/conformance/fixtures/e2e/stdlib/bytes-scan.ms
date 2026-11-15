@@ -77,3 +77,19 @@ test "view_bytes borrows the text without copying":
 test "view_bytes of a temporary is owned":
 	bytes := "hello world".upper().view_bytes()
 	expect_equal(bytes, "HELLO WORLD".to_bytes())?
+
+test "view_bytes of short text survives later statements and blocks":
+	short := "héy"
+	bytes := short.view_bytes()
+	var total = 0
+
+	for i in 0..4:
+		other := "x{i}y".view_bytes()
+		if other.length() > 2: total += other.length()
+		else: total += 1
+
+		expect_equal(bytes == short.to_bytes(), true)?
+
+	expect_equal(total, 12)?
+	expect_equal(bytes.length(), 4)?
+	expect_equal(bytes.view(1, 3).clone(), "é".to_bytes())?

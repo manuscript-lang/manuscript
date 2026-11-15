@@ -40,6 +40,8 @@ pub(crate) struct RtFlags {
     pub reads: bool,
     /// The result borrows none of the arguments.
     pub fresh: bool,
+    /// The result may point into the storage of an argument passed by value (`// ms: borrows`).
+    pub borrows: bool,
     /// Starts a task that runs code of the program (`// ms: spawns`).
     pub spawns: bool,
     /// Has a `<name>_take` twin that reuses the first argument when it dies at the call
@@ -61,6 +63,7 @@ pub(crate) fn rt_flags(sym: &str) -> RtFlags {
         leaf: bits & 1 != 0,
         reads: bits & 2 != 0,
         fresh: bits & 4 != 0,
+        borrows: bits & 64 != 0,
         spawns: bits & 16 != 0,
         takes_self: bits & 32 != 0,
         op: (!op.is_empty()).then_some(op),
@@ -161,6 +164,7 @@ pub(crate) fn extern_role(sym: &str) -> ms_mir::ir::ExternRole {
         | "msrt_map_keys_view"
         | "msrt_map_values_view"
         | "msrt_list_slice_view" => R::ViewResult,
+        s if rt_flags(s).borrows => R::BorrowsArgument,
         s if rt_flags(s).spawns => R::SpawnsTask,
         s if rt_flags(s).takes_self => R::TakesDying,
         _ => R::None,

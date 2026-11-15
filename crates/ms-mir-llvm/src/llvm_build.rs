@@ -757,6 +757,17 @@ impl<'t> FnBuilder<'t> {
         );
     }
 
+    /// A stack slot that keeps its place for the whole function: it gets no lifetime markers, so
+    /// a pointer into it that a call returned stays valid after the statement.
+    pub fn alloca_pinned(&mut self, ty: &Ty) -> Val {
+        let v = self.reserve(Ty::Ptr);
+        self.alloca_as(&v, ty);
+        if let Some(line) = self.allocas.strip_suffix('\n') {
+            self.allocas = format!("{line}{}\n", crate::llvm_lifetimes::PINNED);
+        }
+        v
+    }
+
     /// A call to a callee that cannot fault (a runtime helper, an intrinsic); `ret` is `Ty::Void`
     /// for none. `args` carry their parameter attributes (same length), such as `" zeroext"`.
     /// LLVM may sink or merge it like any call with the same effects. Use

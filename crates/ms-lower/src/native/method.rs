@@ -347,17 +347,24 @@ impl<'a> FnLower<'a> {
                 Ok(Val { v, own: false })
             }
             (TyKind::Str, "view_bytes") => {
-                // A borrow of the receiver's text, or a copy when the text is short or a
-                // temporary (dropped after the call); releasing a borrowed view is a no-op, so
-                // the result is always an owned value.
+                // A borrow of the receiver's text (`msrt_string_view_bytes` is declared
+                // `borrows`, so an inline text's slot lives as long as the function), or a copy
+                // of a temporary's.
                 let r = self.borrow(recv);
-                let sym = if recv.own {
-                    "msrt_string_to_bytes"
-                } else {
-                    "msrt_string_view_bytes"
-                };
-                let v = self.call_runtime(sym, &[r], MTy::BYTES)?;
-                Ok(Val { v, own: true })
+                if recv.own {
+                    let v = self.call_runtime("msrt_string_to_bytes", &[r], MTy::BYTES)?;
+                    return Ok(Val { v, own: true });
+                }
+                let slot = self
+                    .b
+                    .emit(Op::Slot, &[], Imm::Ty(MTy::BYTES), Some(MTy::PTR))
+                    .expect("slot");
+                self.call_runtime("msrt_string_view_bytes", &[r, slot], MTy::VOID)?;
+                let v = self
+                    .b
+                    .emit(Op::Load, &[slot], Imm::Ty(MTy::BYTES), Some(MTy::BYTES))
+                    .expect("load");
+                Ok(Val { v, own: false })
             }
             (TyKind::List(_) | TyKind::Bytes, "is_empty") => {
                 let r = self.borrow(recv);
