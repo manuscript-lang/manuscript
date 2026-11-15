@@ -7,7 +7,7 @@ type Stat:
     count: Int
     total: Int
 
-fn main() Unit:
+fn main() Void:
     data := read_all(stdin(), none).get()
     var valid = 0
     var bad = 0

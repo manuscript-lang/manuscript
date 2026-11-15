@@ -4,10 +4,10 @@ type Big:
 fn make() Big?!:
     return ok(Big(items: [1]))
 
-fn collect(var out: List[Big]) Unit!:
+fn collect(var out: List[Big]) Void!:
     r := make()
     if found := r?: out.append(found)
 
-fn forward(var out: List[Big]) Unit:
+fn forward(var out: List[Big]) Void:
     r := make()
     if found := r.get(): out.append(found)

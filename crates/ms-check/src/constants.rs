@@ -52,7 +52,7 @@ impl Checker {
     fn constant_expression(&mut self, e: &Expr) -> bool {
         let reject = "a constant takes literals, operators, collections, and other constants; compute this value in a function";
         match &e.kind {
-            ExprKind::Number(_) | ExprKind::Bool(_) | ExprKind::Unit => true,
+            ExprKind::Number(_) | ExprKind::Bool(_) | ExprKind::Void => true,
             // A failed part stops the walk: one diagnostic per constant.
             ExprKind::Text(parts) => parts.iter().all(|p| match p {
                 TextPart::Lit(_) => true,

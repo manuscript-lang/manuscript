@@ -1,6 +1,6 @@
 // Building one long string by appending: `+=` with a number, an interpolation and a
 // literal, and `join`.
-fn main() Unit:
+fn main() Void:
 	var a = ""
 	for i in 0..50000:
 		a += i.to_string()

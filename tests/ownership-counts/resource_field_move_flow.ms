@@ -39,7 +39,7 @@ import (
 type Door:
 	name: String
 
-fn var Door.close() Unit!:
+fn var Door.close() Void!:
 	stdout().write("close {self.name}\n").get()
 
 type Room:
@@ -49,7 +49,7 @@ type Room:
 type Oops:
 	why: String
 
-fn say(s: String) Unit:
+fn say(s: String) Void:
 	stdout().write("{s}\n").get()
 
 fn check(fail: Bool) Int!Oops:

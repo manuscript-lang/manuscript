@@ -1,8 +1,8 @@
-fn both(var a: Int, var b: Int) Unit:
+fn both(var a: Int, var b: Int) Void:
     a += 1
     b += 2
 
-fn f(i: Int) Unit:
+fn f(i: Int) Void:
     var xs = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
     both(var xs[0xd], var xs[13])  // error: overlaps
     both(var xs[0xe], var xs[0xE])  // error: overlaps

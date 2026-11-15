@@ -6,7 +6,7 @@ fn singleton(var values: List[Int]) List[Int]:
 	values.append(1)
 	return values.clone()
 
-fn bump(var values: List[Int]) Unit:
+fn bump(var values: List[Int]) Void:
 	values.append(1)
 
 test "closure direct":
@@ -17,13 +17,13 @@ test "closure direct":
 
 test "closure unit":
 	var values: List[Int] = []
-	callback := fn() Unit: bump(var values)
+	callback := fn() Void: bump(var values)
 	callback()
 	values.length() | expect_equal(1)?
 
 test "closure append":
 	var values: List[Int] = []
-	callback := fn() Unit: values.append(1)
+	callback := fn() Void: values.append(1)
 	callback()
 	values.length() | expect_equal(1)?
 

@@ -10,18 +10,18 @@ type Item:
 	id: Int
 	log: String
 
-fn var Item.close() Unit!:
+fn var Item.close() Void!:
 	append_file(self.log, "{self.id},").wait()?
 
-fn set_out(log: String) Unit:
+fn set_out(log: String) Void:
 	var items = [Item(1, log.clone())]
 	items.set(10, Item(2, log))
 
-fn insert_out(log: String) Unit:
+fn insert_out(log: String) Void:
 	var items = [Item(1, log.clone())]
 	items.insert(10, Item(2, log))
 
-fn replace_out(log: String) Unit:
+fn replace_out(log: String) Void:
 	var items = [Item(1, log.clone())]
 	_old := items.replace(10, Item(2, log))
 
@@ -53,7 +53,7 @@ test "replace bounds fault closes the incoming resource first":
 fn failing_index(log: String) Int:
 	panic("index operand failed")
 
-fn set_operand_fault(log: String) Unit:
+fn set_operand_fault(log: String) Void:
 	var items = [Item(1, log.clone())]
 	items.set(value: Item(2, log.clone()), index: failing_index(log))
 
@@ -72,7 +72,7 @@ test "set with a negative named index closes the old entry then stores":
 	expect_equal(events(log)?, "2,")?
 	expect_equal(items.length(), 2)?
 
-fn remove_out(log: String) Unit:
+fn remove_out(log: String) Void:
 	var items = [Item(1, log)]
 	items.remove(10)
 

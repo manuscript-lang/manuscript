@@ -254,7 +254,7 @@ type DeviationSum:
 	total: Float = 0.0
 	correction: Float = 0.0
 
-fn var DeviationSum.add(value: Float) Unit:
+fn var DeviationSum.add(value: Float) Void:
 	next := self.total + value
 
 	if self.total.abs() >= value.abs():

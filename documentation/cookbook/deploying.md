@@ -13,7 +13,7 @@ Save as `app.ms`.
 
 <!-- manuscript-example: {"mode":"run","stdout":"hello from a single file\n"} -->
 ```manuscript
-fn main() Unit:
+fn main() Void:
     print("hello from a single file")
 ```
 

@@ -23,7 +23,7 @@ fn var Counter.next() Int?!:
 	self.at += 1
 	return ok(self.at)
 
-fn var Counter.close() Unit!:
+fn var Counter.close() Void!:
 	self.closes.write(self.at)?
 
 test "a loop that breaks hands the source back to its stream":

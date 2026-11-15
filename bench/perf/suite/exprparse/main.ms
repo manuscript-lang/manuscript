@@ -17,7 +17,7 @@ type Parser:
 fn lcg(x: Int) Int:
 	return (x * 1103515245 + 12345) % 2147483648
 
-fn gen(depth: Int, var x: Int, var out: StringBuilder) Unit:
+fn gen(depth: Int, var x: Int, var out: StringBuilder) Void:
 	x = lcg(x)
 
 	if depth == 0 or x % 5 == 0:
@@ -90,7 +90,7 @@ fn eval(e: Expr) Int:
 
 			return if b == 0: a else: a % b
 
-fn main() Unit:
+fn main() Void:
 	var x = 3
 	var total = 0
 	var tokens = 0

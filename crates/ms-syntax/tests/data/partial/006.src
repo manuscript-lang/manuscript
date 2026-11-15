@@ -23,5 +23,5 @@ fn generated(rng: Rng, depth: Int) YamlValue:
         entries.add(text(rng), generated(rng, depth + 1))
     return YamlValue.ObjectValue(entries)
 
-fn check_round_trip(seed: Int, original: YamlValue) Result[Unit, Error]:
+fn check_round_trip(seed: Int, original: YamlValue) Result[Void, Error]:
     rendered := try stringify(or

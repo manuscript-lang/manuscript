@@ -17,14 +17,14 @@ import arguments from "@std/os/env.ms"
 import read_file from "@std/os/fs.ms"
 import stdout from "@std/io/io.ms"
 
-fn run() Result[Unit, Error]:
+fn run() Result[Void, Error]:
     path := arguments().first().ok_or(Error("missing path", kind: "EINVAL"))?
     text := read_file(path, max_bytes: 1048576).wait()?
         | .decode_utf8().ok_or(Error("not UTF-8", kind: "EBADMSG"))?
     stdout().write(text)?
     return stdout().flush()
 
-fn main() Unit!:
+fn main() Void!:
     return run()
 ```
 
@@ -48,11 +48,11 @@ Save as `write.ms`. `replace: false` fails if the file exists.
 import arguments from "@std/os/env.ms"
 import write_file from "@std/os/fs.ms"
 
-fn run() Result[Unit, Error]:
+fn run() Result[Void, Error]:
     path := arguments().first().ok_or(Error("missing path", kind: "EINVAL"))?
     return write_file(path, "saved notes\n", replace: false).wait()
 
-fn main() Unit!:
+fn main() Void!:
     return run()
 ```
 
@@ -76,7 +76,7 @@ Save as `lines.ms`. `lines` wraps a byte stream as a stream of lines; `next()` r
 import stdin, stdout from "@std/io/io.ms"
 import lines from "@std/io/streams.ms"
 
-fn run() Result[Unit, Error]:
+fn run() Result[Void, Error]:
     var input = lines(stdin())
     while true:
         line := input.next()?
@@ -86,7 +86,7 @@ fn run() Result[Unit, Error]:
             break
     return stdout().flush()
 
-fn main() Unit!:
+fn main() Void!:
     return run()
 ```
 

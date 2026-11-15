@@ -354,7 +354,7 @@ impl Walker<'_> {
             self.adapter_copies(e, &src);
         }
         match &e.kind {
-            ExprKind::Number(_) | ExprKind::Bool(_) | ExprKind::Unit => {}
+            ExprKind::Number(_) | ExprKind::Bool(_) | ExprKind::Void => {}
             ExprKind::Probe(_) => self.error(
                 e.pos,
                 "`?` after an index is only written as `if var name = place[key]?`, where it borrows the entry in place",

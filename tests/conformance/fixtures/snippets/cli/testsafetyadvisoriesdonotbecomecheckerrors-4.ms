@@ -5,7 +5,7 @@ import serve from "@std/net/net.ms"
 import HttpResponse, buffered from "@std/net/http.ms"
 import panic from "@std/core.ms"
 
-fn use() Unit:
+fn use() Void:
     shared := Map[Int, Int]()
 
     handle := fn(request) HttpResponse:

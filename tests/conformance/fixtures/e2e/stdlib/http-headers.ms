@@ -81,7 +81,7 @@ test "one header type preserves repeated values through buffered requests":
 	metadata.headers.values("X-Dup") | expect_equal(["first", "second", "third"])?
 	expect_false(((response.metadata().headers.values("X-Dup")) != ["first", "second"]))?
 
-fn echo_headers(var exchange: HttpExchange) Unit!:
+fn echo_headers(var exchange: HttpExchange) Void!:
 	received := exchange.headers()
 	if received.values("X-DUP") != ["first", "second"]: return error(
 		Error("HTTP: invalid data", kind: "EBADMSG")
@@ -162,7 +162,7 @@ test "empty options and an omitted request body use checked defaults":
 	)
 	response.metadata.status | expect_equal(200)?
 
-fn cookie_handler(var exchange: HttpExchange) Unit!:
+fn cookie_handler(var exchange: HttpExchange) Void!:
 	var fields = headers()
 
 	if exchange.path() == "/set":

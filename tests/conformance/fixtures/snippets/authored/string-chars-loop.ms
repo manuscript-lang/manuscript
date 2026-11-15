@@ -3,7 +3,7 @@
 // conform: origin=for over String.chars scans bytes: ASCII, multibyte, break, continue, return, nesting
 import stdout from "@std/io/io.ms"
 
-fn show(s: String) Unit:
+fn show(s: String) Void:
     var out = ""
     var n = 0
 
@@ -24,7 +24,7 @@ fn first_o(s: String) Int:
 
     return -1
 
-fn main() Unit:
+fn main() Void:
     show("héllo wörld ✓ 😀!")
     show("")
     show("abc")

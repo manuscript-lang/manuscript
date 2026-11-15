@@ -571,7 +571,7 @@ impl Cx {
                     Some(Builtin::Float32) => Ok(MTy::FLOAT32),
                     Some(Builtin::Bool) => Ok(MTy::BOOL),
                     Some(Builtin::String) => Ok(MTy::STR),
-                    Some(Builtin::Unit | Builtin::Never) => Ok(MTy::UNIT),
+                    Some(Builtin::Void | Builtin::Never) => Ok(MTy::VOID),
                     _ => Err(Error::new(format!(
                         "unsupported primitive type {}",
                         self.syms.str(t.id)

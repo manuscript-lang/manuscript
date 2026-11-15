@@ -7,10 +7,10 @@ type Resource:
 	label: String
 	output: WriteStream[String]
 
-fn var Resource.close() Unit!:
+fn var Resource.close() Void!:
 	_ignored := self.output.write("close {self.label}\n")
 
-fn main() Unit:
+fn main() Void:
 	var output = stdout()
 	var _resource = Resource("parent", stdout())
 	_child := Resource("child", stdout())

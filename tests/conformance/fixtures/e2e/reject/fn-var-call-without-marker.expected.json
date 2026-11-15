@@ -9,7 +9,7 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "argument 1 of `change` is var in its type `fn(var List[Int]) Unit`, so the call must say so; write `var values`",
+        "message": "argument 1 of `change` is var in its type `fn(var List[Int]) Void`, so the call must say so; write `var values`",
         "position": {
           "file": "fn-var-call-without-marker.ms",
           "line": 11,
@@ -36,7 +36,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/fn-var-call-without-marker.ms:11:12: type: argument 1 of `change` is var in its type `fn(var List[Int]) Unit`, so the call must say so; write `var values`\n    |\n 11 |     change(values)\n    |               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/fn-var-call-without-marker.ms:11:12: type: argument 1 of `change` is var in its type `fn(var List[Int]) Void`, so the call must say so; write `var values`\n    |\n 11 |     change(values)\n    |               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

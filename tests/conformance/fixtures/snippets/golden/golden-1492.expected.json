@@ -9,7 +9,7 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "every fn declares its result type after the parameter list, e.g. fn f() Unit:",
+        "message": "every fn declares its result type after the parameter list, e.g. fn f() Void:",
         "position": {
           "file": "golden-1492.ms",
           "line": 6,
@@ -27,7 +27,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1492.ms:6:17: parse: every fn declares its result type after the parameter list, e.g. fn f() Unit:\n   |\n 6 | export fn main()\n   |                 ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1492.ms:6:17: parse: every fn declares its result type after the parameter list, e.g. fn f() Void:\n   |\n 6 | export fn main()\n   |                 ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

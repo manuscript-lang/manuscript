@@ -11,15 +11,15 @@ type Lanes:
 	counts: List[Int] = []
 
 // Moves the last handle of one list onto another, changing both lists and a third.
-fn hand_over(var from: List[FileHandle], var to: List[FileHandle], var counts: List[Int]) Unit:
+fn hand_over(var from: List[FileHandle], var to: List[FileHandle], var counts: List[Int]) Void:
 	if handle := from.pop():
 		to.append(handle)
 		counts.append(to.length())
 
-fn var Lanes.shift() Unit:
+fn var Lanes.shift() Void:
 	hand_over(var self.left, var self.right, var self.counts)
 
-fn var Lanes.shift_back() Unit:
+fn var Lanes.shift_back() Void:
 	hand_over(var self.right, var self.left, var self.counts)
 
 test "changed fields of one record keep their owners without copying":

@@ -14,28 +14,28 @@ import (
 	expect_equal, expect_error, expect_ok, expect_true from "@std/test/test.ms",
 )
 
-fn expect_limit(outcome: Unit!) Unit!:
+fn expect_limit(outcome: Void!) Void!:
 	cause := expect_error(outcome)?
 	expect_equal(cause.kind, "EOVERFLOW")?
 	if not cause.message.starts_with("filesystem: limit exceeded"):
 		return error(Error("wrong limit message: {cause.message}"))
 
-fn generic_write(path: String, data: String) Unit!:
+fn generic_write(path: String, data: String) Void!:
 	return write_file(path, data).wait()
 
-fn generic_copy(source: String, destination: String) Unit!:
+fn generic_copy(source: String, destination: String) Void!:
 	return copy(source, destination)
 
-fn generic_tree(source: String, destination: String) Unit!:
+fn generic_tree(source: String, destination: String) Void!:
 	return copy(source, destination, CopyOptions(recursive: true))
 
-fn generic_directory(path: String) Unit!:
+fn generic_directory(path: String) Void!:
 	return create_directory(path)
 
-fn generic_remove(path: String) Unit!:
+fn generic_remove(path: String) Void!:
 	return remove(path)
 
-fn rejected(result: Unit!) Unit!:
+fn rejected(result: Void!) Void!:
 	match result:
 		error(_): return ok(unit)
 		ok(_): return error(Error("exclusive or nonrecursive operation succeeded"))
@@ -138,7 +138,7 @@ test "filesystem tree copies default to no replacement with distinct budgets":
 		) | expect_limit?
 	)
 
-	invalid: Unit! := error(Error("filesystem: invalid input", kind: "EINVAL"))
+	invalid: Void! := error(Error("filesystem: invalid input", kind: "EINVAL"))
 	(
 		copy(
 			source,

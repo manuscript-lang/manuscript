@@ -8,7 +8,7 @@ fn apply(value: Int, transform: fn(Int) Int) Int:
 
 test "function suite boundaries":
     var calls: List[Int] = []
-    _dormant := fn() Unit:
+    _dormant := fn() Void:
         calls.append(1)
 
     grouped := apply(

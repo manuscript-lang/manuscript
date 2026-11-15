@@ -22,7 +22,7 @@ fn area(s: Shape) Int:
         Box(w, h, c): return (w.to_int64() + c.to_int64() + h.truncate_to_int().get(0))
         Big(v): return v
 
-fn main() Unit:
+fn main() Void:
     var l: List[Int8] = []
     for i in 0..10:
         l.append((i * 3 - 12).to_int8().get(0))

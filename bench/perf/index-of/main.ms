@@ -1,6 +1,6 @@
 import monotonic from "@std/time.ms"
 
-fn main() Unit:
+fn main() Void:
 	var xs: List[String] = []
 	for i in 0..2000:
 		xs.append("item-number-{i}")

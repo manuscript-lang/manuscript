@@ -23,7 +23,7 @@ fn encoded_length(value: JsonValue) Int:
 	if text := stringify(value): return text.length()
 	return 0
 
-export fn bench_json() Unit:
+export fn bench_json() Void:
 	doc := json_doc(5000)
 
 	bench(

@@ -6,7 +6,7 @@ import (
 )
 
 bench "path.join_normalize":
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		var n = 0
 		for i in 0..50000:
 			n += (
@@ -19,7 +19,7 @@ bench "path.join_normalize":
 	measure(50000, work)?
 
 bench "path.basename":
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		var n = 0
 		for i in 0..100000:
 			n += basename("/a/b/c/file.txt").length()
@@ -28,7 +28,7 @@ bench "path.basename":
 	measure(100000, work)?
 
 bench "url.parse":
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		address := "https://example.com:8080/a/b?x=1&y=2#frag"
 		var n = 0
 		for i in 0..20000:
@@ -38,7 +38,7 @@ bench "url.parse":
 	measure(20000, work)?
 
 bench "url.encode_component":
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		var n = 0
 		for i in 0..50000:
 			n += encode_component("a b&c=d/é").length()
@@ -47,7 +47,7 @@ bench "url.encode_component":
 	measure(50000, work)?
 
 bench "math.sqrt_sin":
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		var acc = 0.0
 		for i in 0..1000000:
 			acc += sqrt(2.0) + sin(1.0)

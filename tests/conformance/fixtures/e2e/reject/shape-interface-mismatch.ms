@@ -9,11 +9,11 @@ type Counted:
 fn var Counted.next() Int?:
 	return none
 
-fn var Counted.close() Unit!:
+fn var Counted.close() Void!:
 	return ok(unit)
 
 fn drain(s: Source[Int]) Int:
 	return 1
 
-fn main() Unit:
+fn main() Void:
 	drain(Counted("x"))

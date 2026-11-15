@@ -20,7 +20,7 @@ fn measure(
 	directory: String,
 	rounds: Int,
 	filter: String,
-) Unit!:
+) Void!:
 	ensure_directory(directory)
 	set_environment("MS_CACHE", "off")?
 
@@ -77,7 +77,7 @@ fn measure(
 					write_text("{directory}/samples.tsv", rows)
 					print("{round} {label} {file} {elapsed} ns")
 
-export fn main() Unit!:
+export fn main() Void!:
 	args := arguments()
 	if args.length() < 5 or args.length() > 6:
 		return invalid("expected BEFORE AFTER INPUTS OUTPUT ROUNDS [FILTER]")

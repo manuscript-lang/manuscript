@@ -7,7 +7,7 @@ use ms_mir::ir::{Cc, Func, FuncId, FuncKind, Imm, Linkage, Mode, Module, Op, Par
 use ms_mir::types::{Ty as MTy, TyKind};
 
 /// One entry per bench that calls `driver(closure over the bench, operations per iteration)`. The
-/// driver takes the body as a `fn() Result[Unit, Error]` and returns that `Result`, so the
+/// driver takes the body as a `fn() Result[Void, Error]` and returns that `Result`, so the
 /// entries run as tests do.
 pub(crate) fn bench_entries(
     m: &mut Module,
@@ -168,7 +168,7 @@ pub(crate) fn build_file_runners(
                 let (hook_params, hook_ret) = fn_parts(m, types[2 + i])?;
                 let hook = *hook;
                 let thunk = closure_fn(m, "hook", &hook_params, hook_ret, |b, ps| match hook {
-                    Some(h) if b.m.funcs[h.index()].ret == MTy::UNIT => {
+                    Some(h) if b.m.funcs[h.index()].ret == MTy::VOID => {
                         b.call(h, ps);
                         ok_unit(b, hook_ret)
                     }
@@ -231,7 +231,7 @@ pub(crate) fn build_file_runners(
     Ok(m.add_func(f))
 }
 
-/// Builds `main`: argument `i` selects test `i`, which must return `Result[Unit, Error]`.
+/// Builds `main`: argument `i` selects test `i`, which must return `Result[Void, Error]`.
 /// A failed test reports its message and site through `msrt_test_failure` and exits with 1.
 pub(crate) fn build_runner(m: &mut Module, tests: &[FuncId]) -> Result<FuncId, Error> {
     let mut b = FuncBuilder::new(m, "main", Vec::new(), MTy::INT);
@@ -252,7 +252,7 @@ pub(crate) fn build_runner(m: &mut Module, tests: &[FuncId]) -> Result<FuncId, E
         b.seal_block(run);
         b.seal_block(miss);
         b.switch_to(run);
-        let consume = runtime_fn(b.m, "msrt_args_consume", &[], MTy::UNIT);
+        let consume = runtime_fn(b.m, "msrt_args_consume", &[], MTy::VOID);
         b.call_rt(consume, &[]);
         let r = b.call(*t, &[]);
         let TyKind::Alt(a) = b.m.types.kind(b.ty(r)).clone() else {
@@ -279,7 +279,7 @@ pub(crate) fn build_runner(m: &mut Module, tests: &[FuncId]) -> Result<FuncId, E
             .expect("copy");
         let details = b.type_get(er, 2, payload);
         let details_ty = b.ty(details);
-        let report = runtime_fn(b.m, "msrt_test_failure", &[MTy::STR, details_ty], MTy::UNIT);
+        let report = runtime_fn(b.m, "msrt_test_failure", &[MTy::STR, details_ty], MTy::VOID);
         b.call_rt(report, &[message, details]);
         for v in [message, r] {
             b.emit(Op::Drop, &[v], Imm::None, None);
@@ -303,7 +303,7 @@ pub(crate) fn build_runner(m: &mut Module, tests: &[FuncId]) -> Result<FuncId, E
     Ok(m.add_func(f))
 }
 
-/// Wraps a `main` that returns `Unit`, `Result[Unit, Error]` or `Result[Int?, Error]` in the `Int`
+/// Wraps a `main` that returns `Void`, `Result[Void, Error]` or `Result[Int?, Error]` in the `Int`
 /// entry the runtime expects: success exits 0 (or the `Int?` payload), and an error prints `error: <message>` to standard error and exits 1.
 pub(crate) fn build_main_wrapper(m: &mut Module, user: FuncId) -> Result<Func, Error> {
     let ret = m.funcs[user.index()].ret;
@@ -316,7 +316,7 @@ pub(crate) fn build_main_wrapper(m: &mut Module, user: FuncId) -> Result<Func, E
     };
     let err = b.m.alts[a.index()]
         .error_case()
-        .ok_or_else(|| Error::new("main must return Unit, Unit!, or Int"))?;
+        .ok_or_else(|| Error::new("main must return Void, Void!, or Int"))?;
     let tag = b.alt_tag(r);
     let k = b.iconst(err as i64);
     let failed = b.icmp(Cc::Eq, tag, k);
@@ -330,7 +330,7 @@ pub(crate) fn build_main_wrapper(m: &mut Module, user: FuncId) -> Result<Func, E
         return Err(Error::new("main's error must be an Error"));
     };
     let message = b.type_get(er, 0, payload);
-    let write = runtime_fn(b.m, "msrt_io_write_stderr", &[MTy::STR], MTy::UNIT);
+    let write = runtime_fn(b.m, "msrt_io_write_stderr", &[MTy::STR], MTy::VOID);
     for text in ["error: ", "\n"] {
         let lit = b.str_lit(text);
         b.call_rt(write, &[lit]);

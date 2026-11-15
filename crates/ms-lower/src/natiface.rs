@@ -233,7 +233,7 @@ impl Cx {
         }
         let iface_name = self.syms.str(ity.name).to_string();
         let data_ty = if UNIT_DATA.contains(&(module, iface_name.as_str())) {
-            MTy::UNIT
+            MTy::VOID
         } else {
             handle_ty(m)
         };
@@ -316,7 +316,7 @@ fn forward(fl: &mut FnLower<'_>, job: &MethodJob, args: &[ms_mir::ir::Value]) ->
     let Some(sym) = &job.sym else {
         let msg =
             fl.b.str_lit(&format!("{} is not available in this build yet", job.name));
-        let ext = runtime_fn(fl.b.m, "msrt_fault_string", &[MTy::STR], MTy::UNIT);
+        let ext = runtime_fn(fl.b.m, "msrt_fault_string", &[MTy::STR], MTy::VOID);
         fl.b.call_rt(ext, &[msg]);
         fl.b.unreachable();
         return Ok(());
@@ -419,13 +419,13 @@ fn forward_ms(
 }
 
 /// Adapts a runtime call that cannot fail, or whose status is of no interest, to the declared
-/// return: a plain value becomes `ok(value)`, and any result of a `Unit` operation is dropped.
+/// return: a plain value becomes `ok(value)`, and any result of a `Void` operation is dropped.
 fn fit_result(fl: &mut FnLower<'_>, r: Val, ret: MTy) -> Result<Val, Error> {
     let got = fl.ty_of(r.v);
     if got == ret {
         return Ok(r);
     }
-    if ret == MTy::UNIT {
+    if ret == MTy::VOID {
         if r.own {
             fl.drop_value(r.v);
         }

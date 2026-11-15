@@ -86,7 +86,7 @@ fn generate(shape: String, n: Int) String:
 	return out.build()
 
 // The program every test shape starts with.
-TEST_PRELUDE := "fn sink(n: Int) Unit:\n    if n > 1000000: sink(n - 1)\n\nfn opaque(a: Int) Int:\n    if a > 1000000: return opaque(a - 1)\n    return a % 7\n\nfn run(g: fn() Unit) Unit:\n    g()\n\ntest \"scaling\":\n"
+TEST_PRELUDE := "fn sink(n: Int) Void:\n    if n > 1000000: sink(n - 1)\n\nfn opaque(a: Int) Int:\n    if a > 1000000: return opaque(a - 1)\n    return a % 7\n\nfn run(g: fn() Void) Void:\n    g()\n\ntest \"scaling\":\n"
 // Extra measurements of a shape whose ratio is over the bound.
 RETRIES := 2
 SHAPES := [
@@ -147,7 +147,7 @@ fn growth(base: Float, mid: Float, big: Float, floor: Float) Float:
 	if denominator < floor: denominator = floor
 	return (big - base) / denominator
 
-fn say(text: String) Unit:
+fn say(text: String) Void:
 	stdout().write(text).get()
 
 fn show(ratio: Float) String:

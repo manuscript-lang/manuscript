@@ -1,6 +1,6 @@
 import bench, words from "./harness.ms"
 
-export fn bench_map_set() Unit:
+export fn bench_map_set() Void:
     bench(
         "map.int_put_get",
         200000,

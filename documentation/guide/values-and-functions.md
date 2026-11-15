@@ -22,7 +22,7 @@ fn money(cents: Int) String:
     pad := if rest < 10: "0" else: ""
     return "{cents / 100}.{pad}{rest}"
 
-fn main() Unit:
+fn main() Void:
     prices := [1250, 800, 2500]
     var subtotal = 0
     for price in prices:

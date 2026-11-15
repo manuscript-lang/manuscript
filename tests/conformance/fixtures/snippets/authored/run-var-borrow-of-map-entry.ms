@@ -5,7 +5,7 @@ type Cell:
     hits: Int
     names: List[String]
 
-fn bump(var c: Cell, who: String) Unit:
+fn bump(var c: Cell, who: String) Void:
     c.hits += 1
     c.names.append(who)
 

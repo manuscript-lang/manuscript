@@ -14,7 +14,7 @@ fn var Src.next() String?!:
 	self.at += 1
 	return ok("x")
 
-fn var Src.close() Unit!:
+fn var Src.close() Void!:
 	return ok(unit)
 
 fn make() ReadStream[String]:

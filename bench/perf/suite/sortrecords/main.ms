@@ -7,7 +7,7 @@ type Rec:
 	name: String
 	score: Int
 
-fn main() Unit:
+fn main() Void:
 	data := read_all(stdin(), none).get().decode_utf8().get("")
 	var recs = List[Rec]()
 

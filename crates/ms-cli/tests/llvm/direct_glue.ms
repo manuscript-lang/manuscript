@@ -15,7 +15,7 @@ type Bag:
     grid: List[List[String]]
     raw: List[Int]
 
-fn say(text: String) Unit:
+fn say(text: String) Void:
     _ := stdout().write("{text}\n")
 
 fn build(k: Int) Bag:

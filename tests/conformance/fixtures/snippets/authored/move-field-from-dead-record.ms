@@ -22,7 +22,7 @@ fn make(n: Int) Pair:
 
     return Pair(l, r, "t{n}")
 
-fn main() Unit:
+fn main() Void:
     l := left_of(make(3))
     t := tag_of(make(2))
     stdout().write("{l.join(",")} {t}\n").get()

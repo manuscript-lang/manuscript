@@ -35,8 +35,8 @@ An extern follows `crates/ms-rt-abi/include/ms_abi.h`, which a C shim includes.
 | `Bytes` | `const ms_bytes *`, borrowed | trailing `ms_bytes *out` |
 | `List[T]`, `T` one of the types above or an extern type | `const ms_list *`, borrowed | trailing `ms_list *out` |
 | an `extern type` | `ms_object *`, borrowed | `ms_object *`, owned by the program |
-| `fn(A, B) R`, each `A` a number, `Bool`, `String`, `Bytes` or extern type, `R` one of those but an extern type, or `Unit` | `ms_fn *`, borrowed | not allowed |
-| `Unit` | not allowed | `void` |
+| `fn(A, B) R`, each `A` a number, `Bool`, `String`, `Bytes` or extern type, `R` one of those but an extern type, or `Void` | `ms_fn *`, borrowed | not allowed |
+| `Void` | not allowed | `void` |
 | `Result[T, E]` | not allowed | `uint8_t` status, `T` through `out`, then `code_out`, `message_out` |
 
 Any other type is rejected by `ms check`. A type, enum, map or optional is converted in an ordinary Manuscript function around the extern.
@@ -91,9 +91,9 @@ import Closeable from "@std/core.ms"
 export extern type Connection
 
 extern fn lib_connect(address: String) Connection
-extern fn lib_disconnect(connection: Connection) Unit
+extern fn lib_disconnect(connection: Connection) Void
 
-fn var Connection.close() Unit!:
+fn var Connection.close() Void!:
     lib_disconnect(self)
 ```
 
@@ -106,7 +106,7 @@ A native that keeps a function past the call, for a library that calls back late
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 // Calls `visit` once for each entry the library finds.
-extern fn lib_walk(root: String, visit: fn(String, Int) Unit) Unit
+extern fn lib_walk(root: String, visit: fn(String, Int) Void) Void
 ```
 
 ```c

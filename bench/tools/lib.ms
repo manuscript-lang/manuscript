@@ -16,7 +16,7 @@ import (
 )
 
 // Prints `message` and a newline to standard error.
-export fn note(message: String) Unit:
+export fn note(message: String) Void:
 	stderr().write("{message}\n").get()
 
 // Reports `message` on standard error and returns the status a driver passes back from
@@ -175,13 +175,13 @@ export fn ms_binary() String:
 
 // Builds the Manuscript project in `dir` to `out` (a file name inside `dir`'s parent is
 // fine; pass an absolute path).
-export fn build_ms(dir: String, out: String) Unit!:
+export fn build_ms(dir: String, out: String) Void!:
 	_stale := remove("{dir}/ms.lock")
 	ran := run_in(dir, ms_binary(), ["build", "ms.toml", "-o", out])
 	_ := must("ms build {dir}", ran)?
 
 // Builds the Go module in `dir` as a static binary.
-export fn build_go(dir: String, out: String) Unit!:
+export fn build_go(dir: String, out: String) Void!:
 	set_environment("CGO_ENABLED", "0").get()
 
 	go := env("GO", "go")
@@ -196,7 +196,7 @@ export fn build_go(dir: String, out: String) Unit!:
 	_ := must("go build {dir}", ran)?
 
 // Compiles one Rust source at the usual release settings plus `flags`.
-export fn build_rust(source: String, out: String, flags: List[String]) Unit!:
+export fn build_rust(source: String, out: String, flags: List[String]) Void!:
 	var args = ["--edition", "2021", "-C", "opt-level=3", "-C", "codegen-units=1"]
 	args = args.concat(flags)
 	args = args.concat(["-o", out.clone(), source.clone()])
@@ -261,11 +261,11 @@ export fn permutations[T: Clonable](items: List[T]) List[List[T]]:
 	return out
 
 // Creates `path` and its parents; an existing directory is fine.
-export fn ensure_directory(path: String) Unit:
+export fn ensure_directory(path: String) Void:
 	create_directory(path, recursive: true).get()
 
 // Writes `text` to `path`.
-export fn write_text(path: String, text: String) Unit:
+export fn write_text(path: String, text: String) Void:
 	write_file(path, text, replace: true).wait().get()
 
 // Whether `path` exists.

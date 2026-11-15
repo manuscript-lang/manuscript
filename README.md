@@ -25,7 +25,7 @@ import serve from "@std/net/net.ms"
 fn handle(request: HttpRequest) HttpResponse:
     return HttpResponse(200, headers(), "hello {request.path}".to_bytes())
 
-fn main() Unit!:
+fn main() Void!:
     server := serve("127.0.0.1:0", buffered(handle))?
     print("{server.address()}")
     server.wait()?
@@ -36,7 +36,7 @@ HTTP/1.1, HTTP/2 and TLS work too, and each connection runs as its own promise a
 ## Ownership without annotations
 
 ```rust
-fn main() Unit:
+fn main() Void:
     var names = List[String]()
     first := "ada"
     names.append(first)
@@ -58,7 +58,7 @@ import promise, wait_all from "@std/concurrency/promise.ms"
 fn fib(n: Int) Int:
     return if n < 2: n else: fib(n - 1) + fib(n - 2)
 
-fn main() Unit:
+fn main() Void:
     tasks := [36, 36, 36, 36].map(fn n: promise(fn: ok(fib(n))))
     print(wait_all(tasks).get(List[Int]()).length())
 ```
@@ -72,10 +72,10 @@ import write_file from "@std/os/fs.ms"
 
 // ms: effect db.write
 // ms: allow_effect std.fs.write
-fn save(order: String) Unit!:
+fn save(order: String) Void!:
     return write_file("orders.log", order).wait()
 
-fn audit(total: Int) Unit!:
+fn audit(total: Int) Void!:
     return save("audit {total}")
 ```
 

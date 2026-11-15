@@ -67,7 +67,7 @@ fn solve(s: String) String:
 
 fn mk(name: String, s: String) GenCase: make_case(name, s, solve(s))
 
-export fn gen_c09() Unit:
+export fn gen_c09() Void:
 	var rnd = seeded(9)
 	alpha := (LETTERS + "      .,!?" + DIGITS).chars()
 	var big = List[String]()

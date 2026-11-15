@@ -978,14 +978,14 @@ impl<'a> Parser<'a> {
         if t.kind == Tok::Arrow {
             return self.fail_fix(
                 t,
-                "result types follow the parameter list without an arrow; remove '->', e.g. fn f() Unit:",
+                "result types follow the parameter list without an arrow; remove '->', e.g. fn f() Void:",
                 "",
             );
         }
         if t.kind == Tok::LBrace {
             return self.fail(
                 t,
-                "blocks are not braced and every fn declares its result type: write the result type, then ':' and an indented body, e.g. fn f() Unit: (Unit when it returns nothing), and remove the closing '}'",
+                "blocks are not braced and every fn declares its result type: write the result type, then ':' and an indented body, e.g. fn f() Void: (Void when it returns nothing), and remove the closing '}'",
             );
         }
         if t.kind == Tok::Colon || t.kind == Tok::Newline {
@@ -994,7 +994,7 @@ impl<'a> Parser<'a> {
             }
             return self.fail(
                 t,
-                "every fn declares its result type after the parameter list, e.g. fn f() Unit:",
+                "every fn declares its result type after the parameter list, e.g. fn f() Void:",
             );
         }
         self.no_ref()?;
@@ -1056,7 +1056,7 @@ impl<'a> Parser<'a> {
             let mut params = Vec::new();
             if !self.take(Tok::RParen) {
                 loop {
-                    // `fn(var List[Int]) Unit`: a parameter the function changes in place.
+                    // `fn(var List[Int]) Void`: a parameter the function changes in place.
                     let mutable = self.take(Tok::Var);
                     let ty = self.typ()?;
                     let id = self.id();
@@ -2112,7 +2112,7 @@ impl<'a> Parser<'a> {
             let try_call = matches!(&e.kind, ExprKind::Unary { op: UnaryOp::Try, operand } if matches!(operand.kind, ExprKind::Call { .. }));
             let is_call = matches!(
                 e.kind,
-                ExprKind::Call { .. } | ExprKind::Match { .. } | ExprKind::Unit
+                ExprKind::Call { .. } | ExprKind::Match { .. } | ExprKind::Void
             );
             if !self.inline_return && !is_call && !try_call && !allow_value {
                 if let ExprKind::Name(n) = &e.kind {
@@ -2340,8 +2340,8 @@ impl<'a> Parser<'a> {
 
     fn pattern_inner(&mut self) -> PResult<Pattern> {
         let t = self.peek();
-        if t.kind == Tok::Unit {
-            return self.fail(t, "unit is a reserved value keyword, not a binding name; choose another name such as code_unit, and use unit for the Unit value");
+        if t.kind == Tok::Void {
+            return self.fail(t, "unit is a reserved value keyword, not a binding name; choose another name such as code_unit, and use unit for the Void value");
         }
         if self.take(Tok::Name) {
             let id = self.id();
@@ -2720,9 +2720,9 @@ impl<'a> Parser<'a> {
                 let parts = self.text_parts_of(t)?;
                 self.mk(t.pos, ExprKind::Text(parts))
             }
-            Tok::Unit => self.mk(t.pos, ExprKind::Unit),
+            Tok::Void => self.mk(t.pos, ExprKind::Void),
             Tok::LParen if self.kind() == Tok::RParen => {
-                return self.fail(t, "'()' is not a value; the Unit value is written 'unit'");
+                return self.fail(t, "'()' is not a value; the Void value is written 'unit'");
             }
             Tok::LParen => {
                 let e = self.expression(0)?;
@@ -3411,7 +3411,7 @@ impl<'a> Parser<'a> {
         Ok(arms)
     }
 
-    /// An arm's final expression supplies its value; a statement-only arm yields Unit.
+    /// An arm's final expression supplies its value; a statement-only arm yields Void.
     fn value_arm(&mut self, a: &mut Arm) -> PResult<()> {
         let (outer, outer_return) = (self.inline_statement, self.inline_return);
         let r = self.value_arm_inner(a);

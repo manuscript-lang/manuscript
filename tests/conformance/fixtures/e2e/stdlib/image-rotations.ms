@@ -8,7 +8,7 @@ fn sample(width: Int, height: Int, mode: ColorMode) Image:
 		image.pixels[i] = ((i * 73 + i / 7) % 256).to_uint8().get()
 	return image
 
-fn check_equal(a: Image, b: Image) Unit!:
+fn check_equal(a: Image, b: Image) Void!:
 	if (
 		a.width != b.width
 		or a.height != b.height

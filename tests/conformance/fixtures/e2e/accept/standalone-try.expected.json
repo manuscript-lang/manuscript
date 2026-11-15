@@ -11,7 +11,7 @@
       "tests": [
         {
           "index": 0,
-          "name": "standalone-try.ms::standalone evaluates? once and continues on Unit success",
+          "name": "standalone-try.ms::standalone evaluates? once and continues on Void success",
           "status": "passed"
         },
         {
@@ -40,7 +40,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN standalone-try.ms::standalone evaluates? once and continues on Unit success\nPASS standalone-try.ms::standalone evaluates? once and continues on Unit success\nRUN standalone-try.ms::standalone propagates? and cleans up before returning\nPASS standalone-try.ms::standalone propagates? and cleans up before returning\nRUN standalone-try.ms::standalone converts? errors explicitly at Error boundaries\nPASS standalone-try.ms::standalone converts? errors explicitly at Error boundaries\nRUN standalone-try.ms::standalone in? closure returns from that closure\nPASS standalone-try.ms::standalone in? closure returns from that closure\n4 tests, 0 failed\n",
+      "stdout": "RUN standalone-try.ms::standalone evaluates? once and continues on Void success\nPASS standalone-try.ms::standalone evaluates? once and continues on Void success\nRUN standalone-try.ms::standalone propagates? and cleans up before returning\nPASS standalone-try.ms::standalone propagates? and cleans up before returning\nRUN standalone-try.ms::standalone converts? errors explicitly at Error boundaries\nPASS standalone-try.ms::standalone converts? errors explicitly at Error boundaries\nRUN standalone-try.ms::standalone in? closure returns from that closure\nPASS standalone-try.ms::standalone in? closure returns from that closure\n4 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

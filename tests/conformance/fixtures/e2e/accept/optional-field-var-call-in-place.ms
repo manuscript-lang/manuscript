@@ -7,7 +7,7 @@ type Node:
 	left: Node?
 	right: Node?
 
-fn var Node.insert(key: Int) Unit:
+fn var Node.insert(key: Int) Void:
 	if key < self.key:
 		if self.left.is_none():
 			self.left = Node(key, none, none)
@@ -22,7 +22,7 @@ fn var Node.insert(key: Int) Unit:
 
 	self.right?.insert(key)
 
-fn var Node.rename(delta: Int) Unit:
+fn var Node.rename(delta: Int) Void:
 	self.key += delta
 
 fn count(node: Node?) Int:
@@ -31,7 +31,7 @@ fn count(node: Node?) Int:
 	n := node.get()
 	return 1 + count(n.left) + count(n.right)
 
-fn keys(node: Node?, var out: List[Int]) Unit:
+fn keys(node: Node?, var out: List[Int]) Void:
 	if node.is_none(): return
 
 	n := node.get()
@@ -43,7 +43,7 @@ type Tag:
 	label: String
 	next: Tag?
 
-fn var Tag.append_label(s: String) Unit:
+fn var Tag.append_label(s: String) Void:
 	self.label += s
 
 test "inserts through boxed optional fields":

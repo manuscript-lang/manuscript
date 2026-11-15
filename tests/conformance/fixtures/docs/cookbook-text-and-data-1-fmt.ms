@@ -5,10 +5,10 @@ import arguments from "@std/os/env.ms"
 import parse from "@std/data/json.ms"
 import stdout from "@std/io/io.ms"
 
-fn run() Result[Unit, Error]:
+fn run() Result[Void, Error]:
     text := parse[String](arguments().get(0, default: "\"hello\""))?
     stdout().write("{text}\n")?
     return stdout().flush()
 
-fn main() Unit!:
+fn main() Void!:
     run()?

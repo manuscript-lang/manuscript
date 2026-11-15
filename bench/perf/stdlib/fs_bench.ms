@@ -9,7 +9,7 @@ fn block() Bytes:
 	return "0123456789abcdef".repeat(4096).get("").to_bytes()
 
 // Writes the 200 files that the read, stat, and list cases use.
-fn populate(root: String) Unit:
+fn populate(root: String) Void:
 	data := block()
 	for i in 0..200:
 		_written := write_file("{root}/f{i}.bin", data, replace: true).wait()
@@ -20,7 +20,7 @@ bench "fs.write_file_64k":
 	if var dir = temporary("ms-bench-"):
 		root := dir.path()
 
-		fn work() Result[Unit, Error]:
+		fn work() Result[Void, Error]:
 			var n = 0
 			for i in 0..200:
 				if write_file("{root}/f{i}.bin", data, replace: true).wait().is_ok():
@@ -35,7 +35,7 @@ bench "fs.read_file_64k":
 		root := dir.path()
 		populate(root)
 
-		fn work() Result[Unit, Error]:
+		fn work() Result[Void, Error]:
 			var n = 0
 			for i in 0..200:
 				if b := read_file("{root}/f{i}.bin").wait():
@@ -50,7 +50,7 @@ bench "fs.stat":
 		root := dir.path()
 		populate(root)
 
-		fn work() Result[Unit, Error]:
+		fn work() Result[Void, Error]:
 			var n = 0
 			for i in 0..200:
 				if stat("{root}/f{i}.bin", follow_links: true).is_ok():
@@ -65,7 +65,7 @@ bench "fs.list_200":
 		root := dir.path()
 		populate(root)
 
-		fn work() Result[Unit, Error]:
+		fn work() Result[Void, Error]:
 			if entries := list(root): return keep(entries.length())
 			return keep(0)
 
@@ -76,7 +76,7 @@ bench "log.info":
 	if var dir = temporary("ms-bench-"):
 		if transport := file_transport("{dir.path()}/log.txt"):
 			if logger := create(transport, LoggerOptions(timestamp: false)):
-				fn work() Result[Unit, Error]:
+				fn work() Result[Void, Error]:
 					var n = 0
 					for i in 0..20000:
 						if logger.info("request {i} handled").is_ok():

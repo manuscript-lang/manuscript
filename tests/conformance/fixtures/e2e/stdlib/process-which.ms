@@ -18,7 +18,7 @@ type SearchEnvironment:
 	extensions: String?
 	directory: String
 
-fn var SearchEnvironment.close() Unit!:
+fn var SearchEnvironment.close() Void!:
 	set_environment("PATH", self.path.clone())?
 	set_environment("PATHEXT", self.extensions.clone())?
 	change_directory(self.directory)?
@@ -42,7 +42,7 @@ fn save_search_environment() SearchEnvironment!:
 		)
 	)
 
-fn make_program(path: String) Unit!:
+fn make_program(path: String) Void!:
 	write_file(path, "#!/bin/sh\nexit 0\n", false).wait()?
 	chmod(path, 493)?
 

@@ -36,11 +36,11 @@ fn command_omitted() Result[CommandOutput, Error]:
 fn command_bind() fn(String, List[String], RunOptions) Promise[CommandOutput]:
 	return run
 
-fn filesystem_explicit(data: Bytes) Result[Unit, Error]:
+fn filesystem_explicit(data: Bytes) Result[Void, Error]:
 	return write_file("", data, false).wait()
 
-fn filesystem_omitted(data: Bytes) Result[Unit, Error]:
+fn filesystem_omitted(data: Bytes) Result[Void, Error]:
 	return write_file("", data).wait()
 
-fn filesystem_bind() fn(String, Writable, Bool) Promise[Unit]:
+fn filesystem_bind() fn(String, Writable, Bool) Promise[Void]:
 	return write_file

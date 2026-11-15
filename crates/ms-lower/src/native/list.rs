@@ -20,7 +20,7 @@ impl<'a> FnLower<'a> {
         let old = self.move_out(slot, rty);
         let (new, r) = self.mutate_any(&name, old, &m.ty.params, args, true, result)?;
         self.move_into(slot, new);
-        if result == MTy::UNIT {
+        if result == MTy::VOID {
             if let Some(r) = r.filter(|r| r.own) {
                 self.drop_value(r.v);
             }
@@ -56,7 +56,7 @@ impl<'a> FnLower<'a> {
             let b = self.borrow(recv);
             let old = self.owned_boundary(Val { v: b, own: false });
             let (new, r) = self.mutate_any(&name, old, &m.ty.params, args, true, result)?;
-            if result == MTy::UNIT {
+            if result == MTy::VOID {
                 self.drop_value(new);
                 if let Some(r) = r.filter(|r| r.own) {
                     self.drop_value(r.v);
@@ -403,7 +403,7 @@ impl<'a> FnLower<'a> {
             self.prepare_place(recv_expr)?;
             if self.dead {
                 self.finish_place(recv_expr);
-                return Ok(self.dummy(MTy::UNIT));
+                return Ok(self.dummy(MTy::VOID));
             }
         }
         if !discards && let Some(done) = self.borrowed_key_add(e, view, m, recv_expr, name)? {
@@ -414,7 +414,7 @@ impl<'a> FnLower<'a> {
         let mut args = self.native_args_borrowing(view, protect_list, borrowed)?;
         if self.dead {
             self.finish_place(recv_expr);
-            return Ok(self.dummy(MTy::UNIT));
+            return Ok(self.dummy(MTy::VOID));
         }
         if let Some(key) = receiver_resource {
             return self.mutate_computed_resource_list(name, key, &args, recv_expr);
@@ -422,7 +422,7 @@ impl<'a> FnLower<'a> {
         if matches!(name, "insert" | "replace" | "remove") && self.is_place(recv_expr) {
             self.precheck_list_index(recv_expr, name, &args[0])?;
             if self.dead {
-                return Ok(self.dummy(MTy::UNIT));
+                return Ok(self.dummy(MTy::VOID));
             }
         }
         if discards {
@@ -447,7 +447,7 @@ impl<'a> FnLower<'a> {
             self.close_discarded_entry(recv_expr, name, &args)?;
             if self.dead {
                 self.finish_place(recv_expr);
-                return Ok(self.dummy(MTy::UNIT));
+                return Ok(self.dummy(MTy::VOID));
             }
             for (i, resource) in held.into_iter().rev() {
                 let key = args[i].val.v;
@@ -479,7 +479,7 @@ impl<'a> FnLower<'a> {
                     r
                 }
                 // The updated temporary is the result only when the method returns its receiver;
-                // a Unit method releases it, as the place branch below does.
+                // a Void method releases it, as the place branch below does.
                 None if result_ty.is(Builtin::List)
                     || result_ty.is(Builtin::Map)
                     || result_ty.is(Builtin::Set) =>
@@ -983,7 +983,7 @@ impl<'a> FnLower<'a> {
                 };
                 3
             ],
-            ret: MTy::UNIT,
+            ret: MTy::VOID,
             noreturn: true,
             pure_: false,
             fresh: false,

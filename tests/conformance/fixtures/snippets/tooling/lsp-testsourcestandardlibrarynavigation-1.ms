@@ -3,5 +3,5 @@
 // conform: origin=pkg/tooling/lsp/navigation_test.go:163 TestSourceStandardLibraryNavigation
 import parse, TomlValue from "@std/data/toml.ms"
 
-fn read() Unit:
+fn read() Void:
     _result := parse(text: "a=1")

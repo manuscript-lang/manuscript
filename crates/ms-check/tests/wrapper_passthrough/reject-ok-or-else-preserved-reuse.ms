@@ -3,9 +3,9 @@ import Closeable from "@std/core.ms"
 type Marker:
     id: Int
 
-fn var Marker.close() Unit!: ok(unit)
+fn var Marker.close() Void!: ok(unit)
 
-fn bad() Unit:
+fn bad() Void:
     value: Marker? := Marker(1)
     kept := value.ok_or_else(fn: "failure")
     again := value.ok_or_else(fn: "failure")

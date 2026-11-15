@@ -14,7 +14,7 @@ fn yaml_length(value: YamlValue) Int:
 
     return 0
 
-export fn bench_yaml() Unit:
+export fn bench_yaml() Void:
     yaml := yaml_doc(2000)
 
     bench(

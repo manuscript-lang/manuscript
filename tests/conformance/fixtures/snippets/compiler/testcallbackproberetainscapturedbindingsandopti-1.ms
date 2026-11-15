@@ -1,11 +1,11 @@
 // conform: tags=closures,diagnostics,generics,optional,tier-core
 // conform: phase=check
 // conform: origin=pkg/compiler/callback_work_test.go:93 TestCallbackProbeRetainsCapturedBindingsAndOptionalMetadata
-fn wrap[T](callback: (fn(Int) T)?) Unit: return
+fn wrap[T](callback: (fn(Int) T)?) Void: return
 
 fn apply[T, U](value: T, transform: fn(T) U) U: transform(value)
 
-fn first() Unit:
+fn first() Void:
     offset := 7
     _result := apply(
         value: 1,

@@ -558,9 +558,9 @@ fn inline_at(f: &mut Func, bi: usize, ii: usize, callee: &Func, ret_own: bool) -
                 let arg = match v {
                     Some(v) => mv(*v),
                     None => {
-                        let u = f.new_value(Ty::UNIT);
+                        let u = f.new_value(Ty::VOID);
                         insts.push(Inst {
-                            op: Op::UnitConst,
+                            op: Op::VoidConst,
                             args: Vec::new(),
                             imm: Imm::None,
                             res: Some(u),

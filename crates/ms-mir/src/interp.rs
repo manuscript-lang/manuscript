@@ -54,7 +54,7 @@ const MAX_FRAMES: usize = 2_000_000;
 pub enum Val {
     /// The unit value (also the state of a moved-out or undefined register).
     #[default]
-    Unit,
+    Void,
     /// A boolean.
     Bool(bool),
     /// A signed 64-bit integer.
@@ -99,7 +99,7 @@ impl Val {
 impl PartialEq for Val {
     fn eq(&self, o: &Val) -> bool {
         match (self, o) {
-            (Val::Unit, Val::Unit) => true,
+            (Val::Void, Val::Void) => true,
             (Val::Bool(a), Val::Bool(b)) => a == b,
             (Val::Int(a), Val::Int(b)) => a == b,
             (Val::Float(a), Val::Float(b)) => a == b,
@@ -368,7 +368,7 @@ impl<'m> Interp<'m> {
                     .map(|f| self.default_val(f.1))
                     .collect(),
             )),
-            _ => Val::Unit,
+            _ => Val::Void,
         }
     }
 
@@ -382,7 +382,7 @@ impl<'m> Interp<'m> {
                 args.len()
             )));
         }
-        let mut regs = vec![Val::Unit; f.values.len()];
+        let mut regs = vec![Val::Void; f.values.len()];
         for (bp, a) in f.blocks[0].params.iter().zip(args) {
             regs[bp.value.index()] = a;
         }
@@ -438,7 +438,7 @@ impl<'m> Interp<'m> {
                 Term::Ret(v) => {
                     let val = match v {
                         Some(v) => std::mem::take(&mut frames[top].regs[v.index()]),
-                        None => Val::Unit,
+                        None => Val::Void,
                     };
                     let done = frames.pop().expect("frame");
                     match frames.last_mut() {
@@ -532,7 +532,7 @@ impl<'m> Interp<'m> {
             Op::IConst
             | Op::FConst
             | Op::BConst
-            | Op::UnitConst
+            | Op::VoidConst
             | Op::StrLit
             | Op::BytesLit
             | Op::IAdd
@@ -752,7 +752,7 @@ fn fault_message(m: &Module, k: FaultKind) -> String {
 
 fn show(v: &Val) -> String {
     match v {
-        Val::Unit => "()".into(),
+        Val::Void => "()".into(),
         Val::Bool(b) => b.to_string(),
         Val::Int(i) => i.to_string(),
         Val::Float(x) => format!("{x}"),
@@ -764,5 +764,5 @@ fn show(v: &Val) -> String {
 fn print(out: &mut String, a: &[Val]) -> Result<Val, String> {
     out.push_str(&a.first().map(show).unwrap_or_default());
     out.push('\n');
-    Ok(Val::Unit)
+    Ok(Val::Void)
 }

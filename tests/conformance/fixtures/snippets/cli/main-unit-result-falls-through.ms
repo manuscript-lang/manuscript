@@ -1,11 +1,11 @@
 // conform: tags=functions,tier-core
 // conform: phase=run
-fn step(n: Int) Unit!:
+fn step(n: Int) Void!:
     if n > 2:
         return error(Error("too big"))
     print("step {n}")
 
-fn main() Unit!:
+fn main() Void!:
     step(1)?
     step(2)?
     step(3)?

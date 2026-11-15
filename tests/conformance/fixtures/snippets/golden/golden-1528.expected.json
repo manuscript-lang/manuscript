@@ -42,7 +42,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown or ambiguous member remove on Unit; this type has no fields or operations",
+        "message": "unknown or ambiguous member remove on Void; this type has no fields or operations",
         "position": {
           "file": "golden-1528.ms",
           "line": 27,
@@ -54,7 +54,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1528.ms:20:27: type: too many positional arguments; every parameter is already supplied, so remove this argument\n    |\n 20 |     \"a\".replace(\"a\", \"b\", -1)\n    |                           ^\n<DIR>/golden-1528.ms:22:33: type: too many positional arguments; every parameter is already supplied, so remove this argument\n    |\n 22 |     \"a\".replace_first(\"a\", \"b\", -1)\n    |                                 ^\n<DIR>/golden-1528.ms:25:21: type: too many positional arguments; every parameter is already supplied, so remove this argument\n    |\n 25 |     first(\"a\", \"b\", -1)\n    |                     ^\n<DIR>/golden-1528.ms:27:29: resolution: unknown or ambiguous member remove on Unit; this type has no fields or operations\n    |\n 27 |     result := [1].set(0, 2).remove(0)\n    |                             ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1528.ms:20:27: type: too many positional arguments; every parameter is already supplied, so remove this argument\n    |\n 20 |     \"a\".replace(\"a\", \"b\", -1)\n    |                           ^\n<DIR>/golden-1528.ms:22:33: type: too many positional arguments; every parameter is already supplied, so remove this argument\n    |\n 22 |     \"a\".replace_first(\"a\", \"b\", -1)\n    |                                 ^\n<DIR>/golden-1528.ms:25:21: type: too many positional arguments; every parameter is already supplied, so remove this argument\n    |\n 25 |     first(\"a\", \"b\", -1)\n    |                     ^\n<DIR>/golden-1528.ms:27:29: resolution: unknown or ambiguous member remove on Void; this type has no fields or operations\n    |\n 27 |     result := [1].set(0, 2).remove(0)\n    |                             ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

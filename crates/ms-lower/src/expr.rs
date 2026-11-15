@@ -77,7 +77,7 @@ impl<'a> FnLower<'a> {
             ) && let Some(shape) = self.borrowed_shape(e)?
             {
                 let Some((present, entry)) = self.borrowed_read(shape, e)? else {
-                    return Ok(self.dummy(MTy::UNIT));
+                    return Ok(self.dummy(MTy::VOID));
                 };
                 return self.borrowed_optional(present, &entry);
             }
@@ -160,7 +160,7 @@ impl<'a> FnLower<'a> {
 
     pub(crate) fn expr_value(&mut self, e: &Expr) -> Result<Val, Error> {
         if self.dead {
-            return Ok(self.dummy(MTy::UNIT));
+            return Ok(self.dummy(MTy::VOID));
         }
         self.at(e.pos);
         match &e.kind {
@@ -169,7 +169,7 @@ impl<'a> FnLower<'a> {
                 let v = self.b.bconst(*b);
                 Ok(Val { v, own: false })
             }
-            ExprKind::Unit => {
+            ExprKind::Void => {
                 let v = self.b.unit();
                 Ok(Val { v, own: false })
             }

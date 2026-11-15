@@ -7,7 +7,7 @@
       {
         "code": "MS1002",
         "phase": "parse",
-        "message": "blocks are not braced and every fn declares its result type: write the result type, then ':' and an indented body, e.g. fn f() Unit: (Unit when it returns nothing), and remove the closing '}'",
+        "message": "blocks are not braced and every fn declares its result type: write the result type, then ':' and an indented body, e.g. fn f() Void: (Void when it returns nothing), and remove the closing '}'",
         "position": {
           "file": "foreign-brace-fn-no-result.ms",
           "line": 4,

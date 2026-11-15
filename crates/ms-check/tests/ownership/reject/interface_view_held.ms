@@ -10,7 +10,7 @@ fn first_error(cause: Cause) Reportable:
 fn relay(e: Reportable) Reportable:
     return e
 
-fn keep(var xs: List[Reportable], e: Reportable) Unit:
+fn keep(var xs: List[Reportable], e: Reportable) Void:
     xs.append(e)
 
 fn store_local(cause: Cause) List[Reportable]:
@@ -22,10 +22,10 @@ fn change_held(var cause: Cause) Reportable:
     cause.code = 2  // error: cannot change `cause.code` while `e` borrows it (binding of a view of it, at 21:5)
     return e
 
-fn store_call(var xs: List[Reportable], cause: Cause) Unit:
+fn store_call(var xs: List[Reportable], cause: Cause) Void:
     xs.append(first_error(cause))  // error: `first_error` returns a reference into `cause`, which this position would keep
 
-fn pass_on(var xs: List[Reportable], cause: Cause) Unit:
+fn pass_on(var xs: List[Reportable], cause: Cause) Void:
     keep(var xs, first_error(cause))  // error: `first_error` returns a reference into `cause`, which this position would keep
 
 fn caller_change() String:

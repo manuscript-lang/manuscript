@@ -30,7 +30,7 @@ test "the standard sum is the same method":
 	expect_equal([1, 2, 3].sum(), 6)?
 	expect_equal([1.5, 2.5].sum(), 4.0)?
 
-fn overflow() Unit:
+fn overflow() Void:
 	small: List[Int8] := [100, 28]
 	_ := total(small)
 

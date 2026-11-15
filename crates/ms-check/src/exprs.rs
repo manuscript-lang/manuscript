@@ -336,7 +336,7 @@ impl Checker {
                 );
             }
             ExprKind::Bool(_) => i.ty = Some(bool_()),
-            ExprKind::Unit => i.ty = Some(unit()),
+            ExprKind::Void => i.ty = Some(unit()),
             ExprKind::Text(parts) => return self.infer_text(parts, i),
             ExprKind::Name(name) => return self.infer_name(e, *name, expected, i),
             ExprKind::Index { left, index } => return self.index(e, left, index),

@@ -14,7 +14,7 @@ recorded here before it is committed.)_
 - **Unsigned binary32 conversion (ABI_VERSION unchanged).** `msrt_uint_to_float32(v: i64) -> f64` treats the input as a `UInt64` bit pattern, rounds directly to binary32, then widens the result for the runtime scalar ABI. Going through `msrt_uint_to_float` first can double-round near binary32 midpoints.
 - **`ms_abi.h` v1 functions (ABI_VERSION unchanged).** A function argument of a user extern crosses as an `ms_fn`: `msrt_fn_new(closure, sig)` makes an object (closure at offset 16, signature word at 24) around a generated closure that takes its arguments from 24-byte cells and puts its result in the cell after the last parameter slot (`CALL_MAX_PARAMS` = 6). `ms_call_v1` converts `ms_value` arguments into the cells, calls the closure through its code pointer (two pointer parameters, the platform C convention), and converts the result. `ms_on_stop_v1` hooks run from `stop_requested` (`start.rs`), after the main task's cancel is raised.
 - **`ms_abi.h` v1 (ABI_VERSION unchanged).** User `extern fn` shims follow `crates/ms-rt-abi/include/ms_abi.h` instead of the runtime conventions: sized numbers cross as the same-width C types (`signext`/`zeroext`), `Bytes` as `const ms_bytes *`, `List[T]` as an `ms_list` (`ListRef`: the list's address and an `ELEM_*` element code), a user `extern type` as an object from `ms_object_new_v1` (payload at offset 32, the shim's drop at 16). Outputs (`out`, `code_out`, `message_out`) are filled with empty values before the call and dropped after it, unlike the uninitialised `out` below. `ms-rt` exports the header's functions as `ms_*_v1` (`cabi.rs`).
-- **extern (ABI_VERSION unchanged).** `extern fn` declarations call a native symbol of the same name under the conventions below, for scalars, borrowed `String` arguments, and `Int`/`Float`/`Bool`/`String`/`Unit` results, or `Result[T, E]` as a `u8` status (`n` names the `n`th case of a payload-free `E`) plus `out` (`documentation/core-language/functions/native-functions.md`). `crates/ms-rt-abi/include/ms_abi.h` is the C view of `StrVal` for such natives; `msrt_string_from_bytes` is how they build owned string results.
+- **extern (ABI_VERSION unchanged).** `extern fn` declarations call a native symbol of the same name under the conventions below, for scalars, borrowed `String` arguments, and `Int`/`Float`/`Bool`/`String`/`Void` results, or `Result[T, E]` as a `u8` status (`n` names the `n`th case of a payload-free `E`) plus `out` (`documentation/core-language/functions/native-functions.md`). `crates/ms-rt-abi/include/ms_abi.h` is the C view of `StrVal` for such natives; `msrt_string_from_bytes` is how they build owned string results.
 - **v3 (collection creator evidence).** `MapVal` appends a static key descriptor pointer (56 bytes).
   `msrt_map_stamp` captures creator-module equality and hashing without replacing existing evidence;
   clone, clear, and derived Set operations retain it. Descriptor-neutral native maps keep a null
@@ -100,7 +100,7 @@ recorded here before it is committed.)_
 - 64-bit targets only (x86_64 and aarch64 Linux first). All functions are
   `extern "C"` (declared `C-unwind` in Rust so tests can intercept faults; the ABI
   is identical), named `msrt_<module>_<name>`. Data symbols are `msrt_*` too.
-- Scalars: `Int` = `i64`, `Float` = `f64`, `Bool` = `u8` (0/1), `Unit` is never passed.
+- Scalars: `Int` = `i64`, `Float` = `f64`, `Bool` = `u8` (0/1), `Void` is never passed.
 - **No struct by value, ever.** Refcounted objects are passed as a pointer to the
   header. Owned aggregates (`String`, `List`, `Bytes`, `Map`, `Set`,
   `StringBuilder`) are passed as a **pointer to the value** (`*const StrVal` / `*const VecVal` /
@@ -118,7 +118,7 @@ recorded here before it is committed.)_
 - **Ownership.**
   - Value arguments are **borrowed** (read, not consumed) unless marked _consumes_.
     Mutators (`push`, `insert`, `set`, `remove`, `map_add`, `sort_in_place`...) take
-    `*mut` to the receiver, return nothing (Unit), and **consume** their element/key/value
+    `*mut` to the receiver, return nothing (Void), and **consume** their element/key/value
     slot arguments (ownership moves into the collection; the compiler copies first if
     it still needs the value).
   - Probe slots of search operations (`contains`, `index_of`, `map_get`, `map_remove`...)

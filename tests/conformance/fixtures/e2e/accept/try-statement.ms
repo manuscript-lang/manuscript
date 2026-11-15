@@ -18,7 +18,7 @@ fn reassigned(n: Int) Int!Error:
     total = parse(n)?
     return ok(total * 2)
 
-fn check(n: Int) Unit!Error:
+fn check(n: Int) Void!Error:
     if n < 0:
         return error(Error("neg"))
 

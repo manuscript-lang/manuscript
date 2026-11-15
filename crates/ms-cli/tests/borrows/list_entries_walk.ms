@@ -7,7 +7,7 @@ type Row:
 fn show(e: ListEntry[String]) String:
     return "{e.index}={e.value}"
 
-fn main() Unit:
+fn main() Void:
     names := ["a", "bb", "ccc"]
     rows := [Row(name: "x", n: 1), Row(name: "y", n: 2)]
     var out = ""

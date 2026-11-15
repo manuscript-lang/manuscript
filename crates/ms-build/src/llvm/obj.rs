@@ -2,7 +2,7 @@
 
 use ms_clif::link::llvm_tools;
 use ms_clif::{BuildOptions, Error};
-use ms_mir_llvm::Unit;
+use ms_mir_llvm::Void;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -41,7 +41,7 @@ impl Drop for LlvmObject {
 
 /// Optimizes and assembles each of `irs` at `-O<level>`, one thread per module.
 pub fn compile_all(
-    irs: &[Unit],
+    irs: &[Void],
     level: &str,
     build: &BuildOptions,
 ) -> Result<Vec<LlvmObject>, Error> {
@@ -51,7 +51,7 @@ pub fn compile_all(
 /// Like [`compile_all`] for modules numbered from `first` in the program (their names and kept
 /// IR files must not collide with the earlier ones).
 pub fn compile_numbered(
-    irs: &[Unit],
+    irs: &[Void],
     level: &str,
     build: &BuildOptions,
     first: usize,
@@ -76,7 +76,7 @@ pub fn compile_numbered(
 
 /// Optimizes and assembles `ir`, unit number `unit` of the program, at `-O<level>`.
 fn compile(
-    module: &Unit,
+    module: &Void,
     level: &str,
     build: &BuildOptions,
     unit: usize,
@@ -128,7 +128,7 @@ fn compile(
     };
     // A unit of `optnone` functions is code generated at `-O0` (fast instruction selection and
     // register allocation, linear in the function's size); `llc -O2` would still run the greedy
-    // allocator, which is superlinear (`Unit::unoptimized`).
+    // allocator, which is superlinear (`Void::unoptimized`).
     let codegen = if module.unoptimized { "-O0" } else { codegen };
     let bitcode = dir.join("m.bc");
     let tool =

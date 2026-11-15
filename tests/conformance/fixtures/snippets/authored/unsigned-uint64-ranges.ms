@@ -39,7 +39,7 @@ fn mix(seed: UInt64) UInt64:
 
     return h
 
-fn main() Unit:
+fn main() Void:
     top: UInt64 := 18446744073709551615
     near: UInt64 := 9223372036854775806
     _ := stdout().write(

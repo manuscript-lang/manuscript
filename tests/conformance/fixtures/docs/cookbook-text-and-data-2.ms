@@ -9,12 +9,12 @@ type Config:
     name: String
     enabled: Bool = true
 
-fn run() Result[Unit, Error]:
+fn run() Result[Void, Error]:
     text := arguments().get(0, default: "\{\"name\":\"Sam\"\}")
     encoded := parse[Config](text)?
         | stringify?
     stdout().write("{encoded}\n")?
     return stdout().flush()
 
-fn main() Unit!:
+fn main() Void!:
     run()?

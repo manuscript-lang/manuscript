@@ -11,7 +11,7 @@ type Resource:
 	id: Int
 
 // Close records itself by writing a marker file named after the resource.
-fn var Resource.close() Unit!:
+fn var Resource.close() Void!:
 	_ := write_file("{self.dir}/{self.id}", "closed", true).wait()
 
 fn closed(dir: String, id: Int) Bool:

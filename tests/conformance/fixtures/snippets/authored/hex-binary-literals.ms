@@ -3,7 +3,7 @@
 // conform: origin=hex, binary and separator literals
 import stdout from "@std/io/io.ms"
 
-fn main() Unit:
+fn main() Void:
     a := 0xFF_FF
     b := 0b1010_0101
     c := 1_000_000

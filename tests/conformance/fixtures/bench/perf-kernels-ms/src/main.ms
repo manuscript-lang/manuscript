@@ -21,7 +21,7 @@ enum Tree:
 	Leaf
 	Node(left: Tree, right: Tree)
 
-fn say(text: String) Unit:
+fn say(text: String) Void:
 	_ignored := stdout().write(text)
 
 fn sieve(n: Int) Int:
@@ -260,7 +260,7 @@ fn wordfreq(n: Int) Int:
 
 	return m.length()
 
-fn timed(name: String, run: fn() Int) Unit:
+fn timed(name: String, run: fn() Int) Void:
 	t := monotonic()
 	r := run()
 	say("{name} {monotonic().difference(t).to_nanoseconds() / 1000} {r}\n")

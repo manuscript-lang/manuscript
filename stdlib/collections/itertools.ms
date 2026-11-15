@@ -119,7 +119,7 @@ fn extend_permutations[T: Clonable](
 	var used: List[Bool],
 	var chosen: List[Int],
 	var out: List[List[T]],
-) Unit:
+) Void:
 	if chosen.length() == k:
 		out.append(chosen.map(fn i: values[i].clone()))
 		return

@@ -37,8 +37,8 @@ id_type!(
 /// The shape of a type. Every type is monomorphic.
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum TyKind {
-    /// Zero-sized `Unit`; never stored in memory.
-    Unit,
+    /// Zero-sized `Void`; never stored in memory.
+    Void,
     /// `Bool`, one byte holding 0 or 1.
     Bool,
     /// `Int`, a signed 64-bit integer.
@@ -155,8 +155,8 @@ impl Ty {
 }
 
 impl Ty {
-    /// `Unit`.
-    pub const UNIT: Ty = Ty(0);
+    /// `Void`.
+    pub const VOID: Ty = Ty(0);
     /// `Bool`.
     pub const BOOL: Ty = Ty(1);
     /// `Int`.
@@ -220,7 +220,7 @@ impl TyTable {
             index: HashMap::new(),
         };
         for k in [
-            TyKind::Unit,
+            TyKind::Void,
             TyKind::Bool,
             TyKind::Int,
             TyKind::Float,
@@ -315,7 +315,7 @@ impl TyTable {
     /// Whether values of `ty` own storage that must be dropped.
     pub fn is_rc(&self, ty: Ty) -> bool {
         match self.kind(ty) {
-            TyKind::Unit | TyKind::Bool | TyKind::Ptr => false,
+            TyKind::Void | TyKind::Bool | TyKind::Ptr => false,
             k if Self::scalar_kind(k) => false,
             TyKind::Opt(inner) => self.is_rc(*inner),
             _ => true,

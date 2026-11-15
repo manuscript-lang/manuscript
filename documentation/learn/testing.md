@@ -234,7 +234,7 @@ type Counter:
 fn make_fixture() Counter:
     return Counter(0)
 
-fn var Counter.before_each() Unit!:
+fn var Counter.before_each() Void!:
     self.count = 0
 
 test "increments":
@@ -258,7 +258,7 @@ PASS test.ms::starts fresh
 A file's tests share one fixture: `make_fixture` and `before_all` run once before the file's first test, `before_each` and `after_each` around each test, and `after_all` after the last, so `before_each` above resets the `Counter` that the second test reads. Each `--repeat` round runs the file again on a new fixture.
 
 - One instance per file and run; a fault in a test still runs `after_each` and `after_all`, and the file's later tests are reported not run.
-- Optional hooks (use `self`, no arguments, return `Unit!`): `before_all`, `before_each`, `after_each`, `after_all`. A hook's error fails the tests it guards; `skip(reason)?` skips them.
+- Optional hooks (use `self`, no arguments, return `Void!`): `before_all`, `before_each`, `after_each`, `after_all`. A hook's error fails the tests it guards; `skip(reason)?` skips them.
 - Build in `make_fixture`, reset in `before_each`, release in `after_all`.
 
 ## Run tests only on some platforms
@@ -289,7 +289,7 @@ type WindowsOnly:
 fn make_fixture() WindowsOnly:
     return WindowsOnly(os() == Os.Windows)
 
-fn var WindowsOnly.before_all() Unit!:
+fn var WindowsOnly.before_all() Void!:
     if not self.ok:
         skip("Windows only")?
 ```

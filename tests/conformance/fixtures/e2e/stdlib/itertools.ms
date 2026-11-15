@@ -62,7 +62,7 @@ test "product is the cartesian product":
 	expect_equal(product(List[List[Int]]()), [List[Int]()])?
 	expect_equal(product([[1], List[Int]()]), List[List[Int]]())?
 
-fn discard[T](value: T) Unit:
+fn discard[T](value: T) Void:
 	return unit
 
 test "invalid sizes fault":

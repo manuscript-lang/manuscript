@@ -5,7 +5,7 @@ import HttpExchange from "@std/net/http.ms"
 import serve from "@std/net/net.ms"
 import milliseconds, sleep from "@std/time.ms"
 
-fn faulting(var exchange: HttpExchange) Unit!:
+fn faulting(var exchange: HttpExchange) Void!:
     xs: List[Int] := []
     n := xs[5]
     if n > 5: return ok(unit)
@@ -18,7 +18,7 @@ fn status() Int:
     ).wait()
     return reply.get().head.status
 
-fn main() Unit:
+fn main() Void:
     print(status())
 
     _ := sleep(milliseconds(300)).wait()

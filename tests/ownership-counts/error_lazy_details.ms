@@ -20,7 +20,7 @@ fn fails(i: Int) Int!:
 	if i % 2 == 0: return error(plain())
 	return error(detailed())
 
-fn main() Unit:
+fn main() Void:
 	empty := plain()
 	print(empty.details.length())
 

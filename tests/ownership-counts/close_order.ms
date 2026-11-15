@@ -10,7 +10,7 @@ import (
 type Res:
 	id: Int
 
-fn var Res.close() Unit!:
+fn var Res.close() Void!:
 	stdout().write("close {self.id}\n").get()
 
 type Pair:

@@ -3,7 +3,7 @@
 // conform: origin=unsigned integer types stage 1
 import stdout from "@std/io/io.ms"
 
-fn main() Unit:
+fn main() Void:
     a: UInt8 := 5
     b: UInt8 := 6
     _ := stdout().write("before\n")

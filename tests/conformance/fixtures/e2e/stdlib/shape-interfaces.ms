@@ -12,13 +12,13 @@ type Counted:
 fn var Counted.next() Int?!:
 	return ok(none)
 
-fn var Counted.write(value: Int) Unit!:
+fn var Counted.write(value: Int) Void!:
 	return ok(unit)
 
-fn var Counted.flush() Unit!:
+fn var Counted.flush() Void!:
 	return ok(unit)
 
-fn var Counted.close() Unit!:
+fn var Counted.close() Void!:
 	_ := append_file(self.log, "x").wait()
 
 fn closes(log: String) String:

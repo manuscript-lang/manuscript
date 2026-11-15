@@ -3,7 +3,7 @@ import (
 	read_all from "@std/io/streams.ms",
 )
 
-fn main() Unit:
+fn main() Void:
 	data := read_all(stdin(), none).get().decode_utf8().get("")
 	var lines = Map[String, Int]()
 	var names = Map[String, Int]()

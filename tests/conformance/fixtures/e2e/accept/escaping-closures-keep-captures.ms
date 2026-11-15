@@ -6,13 +6,13 @@ type Box:
 	f: fn() Int
 
 interface Sink:
-	var fn put(f: fn() Int) Unit
+	var fn put(f: fn() Int) Void
 	fn total() Int
 
 type ListSink:
 	fs: List[fn() Int]
 
-fn var ListSink.put(f: fn() Int) Unit:
+fn var ListSink.put(f: fn() Int) Void:
 	self.fs.append(f)
 
 fn ListSink.total() Int:

@@ -1,3 +1,3 @@
-fn f() Unit:
+fn f() Void:
     value := none
     print(value)

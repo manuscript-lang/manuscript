@@ -34,10 +34,10 @@ test "an indexed receiver runs before the arguments of a changing method":
 	expect_equal(rows[0][0], 9)?
 	expect_equal(events, [1, 2])?
 
-fn bump(var x: Int) Unit:
+fn bump(var x: Int) Void:
 	x += 1
 
-fn bump_both(var a: Int, var b: Int) Unit:
+fn bump_both(var a: Int, var b: Int) Void:
 	a += 1
 	b += 10
 

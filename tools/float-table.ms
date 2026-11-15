@@ -36,7 +36,7 @@ fn entry(k: Int) BigInt:
 fn hex16(value: BigInt) String:
 	return "0x{value.to_string_radix(16).pad_start(16, "0")}"
 
-fn main() Unit:
+fn main() Void:
 	mask := from_int(1).shift_left(63).get().subtract(from_int(1))
 	print(
 		"//! Generated table for `float_digits.rs`: for each decimal exponent `k` from -324 through 292,"

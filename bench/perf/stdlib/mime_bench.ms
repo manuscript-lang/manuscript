@@ -7,7 +7,7 @@ import (
 
 // Input construction is outside measure; each operation includes the source's owned
 // body copy.
-fn consume(body: Bytes, chunk: Int, count: Int, size: Int) Unit!:
+fn consume(body: Bytes, chunk: Int, count: Int, size: Int) Void!:
 	var parts = multipart_parts(from_bytes(body.clone(), chunk), "XyZ", none)
 	var seen = 0
 	var bytes = 0
@@ -61,7 +61,7 @@ bench "multipart.100_small_parts_single_chunk":
 bench "multipart.fragmented_limit_rejection":
 	data := body(65536)
 
-	fn reject() Unit!:
+	fn reject() Void!:
 		var parts = multipart_parts(from_bytes(data.clone(), 1024), "XyZ", 4096)
 		if parts.next().err().kind != "EOVERFLOW": return error(
 			Error("wrong multipart error")

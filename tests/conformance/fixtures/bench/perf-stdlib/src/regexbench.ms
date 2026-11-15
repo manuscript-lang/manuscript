@@ -1,7 +1,7 @@
 import bench, words from "./harness.ms"
 import compile, Regex from "@std/regex.ms"
 
-fn run(re: Regex) Unit:
+fn run(re: Regex) Void:
     text := words(2000).join(" ")
 
     bench(
@@ -34,6 +34,6 @@ fn run(re: Regex) Unit:
             return 0
     )
 
-export fn bench_regex() Unit:
+export fn bench_regex() Void:
     if re := compile("word[0-9]+"):
         run(re)

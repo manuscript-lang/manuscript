@@ -11,13 +11,13 @@ type Rec:
 	key: Int
 	id: Int
 
-fn say(text: String) Unit:
+fn say(text: String) Void:
 	_ignored := stdout().write(text)
 
 fn since(started: Instant) Int:
 	return monotonic().difference(started).to_nanoseconds()
 
-fn report(name: String, ops: Int, started: Instant) Unit:
+fn report(name: String, ops: Int, started: Instant) Void:
 	say("{name} {ops} {since(started)}\n")
 
 fn next_rand(x: Int) Int:

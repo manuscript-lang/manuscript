@@ -5,6 +5,6 @@ fn absent[T]() T?: none
 
 fn transform[T, U](callback: fn(T) U) fn(T) U: callback
 
-fn answer() Unit:
+fn answer() Void:
     _empty: Int? := absent()
     _callback: fn(Int) String := transform(fn item: item.to_string())

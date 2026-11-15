@@ -17,7 +17,7 @@ Accept source per the [normative grammar](../../../core-language/basics/grammar.
 | Names and scopes | Collect module signatures, reject duplicates, resolve locals in order, fix mutable binding types |
 | Operators | Closed precedence and operand table; Bool conditions, short-circuiting, no implicit numeric conversion |
 | Function values | Keep parameter order, mutability and exact types; require explicit generic specialization and contextual anonymous types |
-| Return completeness | Allow Unit and `Unit!` fallthrough (the end returns `unit` or `ok(unit)`) and bare returns; reject reachable non-Unit fallthrough; track Never and loop/return boundaries |
+| Return completeness | Allow Void and `Void!` fallthrough (the end returns `unit` or `ok(unit)`) and bare returns; reject reachable non-Void fallthrough; track Never and loop/return boundaries |
 | Argument labels | Bind labels and positional arguments left to right to unfilled parameters, never by spelling; same rule for constructors, methods, function values; reject unknown labels, duplicates, excess positional, missing required |
 | List literals | Canonical prelude List; homogeneous elements; annotations or expected type for empty lists |
 | Destructuring bindings | Check arity, fields, renaming, nesting, duplicates; infer each local; see [destructuring bindings](../../../core-language/types/destructuring.md) |
@@ -34,6 +34,6 @@ Accept source per the [normative grammar](../../../core-language/basics/grammar.
 | Result propagation | Recognize the canonical `Result`; `?` needs the same exact error type as the current function; never infer missing operand arguments backward |
 | String literals | Validate escapes and scalars, allow universal conversion, keep left-to-right evaluation |
 
-Rules derive from the [core language guide](../../../core-language/_index.md); fixtures are `tests/conformance/fixtures/e2e/accept/cl-*.ms`. They fix observable inference and compatibility, not checker internals. A module-level `test` body follows `Result[Unit, Error]` return rules, with normal completion succeeding; discovery and running are separate tooling contracts.
+Rules derive from the [core language guide](../../../core-language/_index.md); fixtures are `tests/conformance/fixtures/e2e/accept/cl-*.ms`. They fix observable inference and compatibility, not checker internals. A module-level `test` body follows `Result[Void, Error]` return rules, with normal completion succeeding; discovery and running are separate tooling contracts.
 
 Type information feeds [typed IR](typed-ir.md) and [generated representations](../lowering/value-representations.md).

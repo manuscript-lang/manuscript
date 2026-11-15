@@ -3,5 +3,5 @@
 type Data:
     value: Int
 impl Equal for Data:
-    fn compare() Unit:
+    fn compare() Void:
         return

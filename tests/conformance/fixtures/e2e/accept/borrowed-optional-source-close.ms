@@ -9,12 +9,12 @@ import (
 type Resource:
 	path: String
 
-fn var Resource.close() Unit!:
+fn var Resource.close() Void!:
 	append_file(self.path, "closed,").wait()?
 
 fn observed(value: Resource?) Bool: value.is_some()
 
-fn use_named(path: String) Unit!:
+fn use_named(path: String) Void!:
 	named := Resource(path.clone())
 	expect_equal(observed(named), true)?
 

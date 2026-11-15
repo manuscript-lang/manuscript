@@ -75,7 +75,7 @@ fn identities() Map[String, Identity]:
 
 	return rows
 
-fn run(paths: Map[String, String], out: String, cpu: String) Result[Unit, Error]:
+fn run(paths: Map[String, String], out: String, cpu: String) Result[Void, Error]:
 	fresh_directory(out)?
 
 	expected := identities()

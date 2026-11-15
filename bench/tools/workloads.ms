@@ -51,7 +51,7 @@ fn largest_input(path: String) String!:
 	copies := if 3000000 / size > 1: 3000000 / size else: 1
 	return ok(best.repeat(copies).get(""))
 
-fn evidence(dir: String, name: String, n: Int, input: String, measured: Measured) Unit:
+fn evidence(dir: String, name: String, n: Int, input: String, measured: Measured) Void:
 	var samples = List[JsonValue]()
 
 	for s in measured.samples:

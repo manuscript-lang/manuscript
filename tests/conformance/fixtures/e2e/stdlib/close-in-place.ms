@@ -15,7 +15,7 @@ type Latch:
 	id: Int
 	open: Bool
 
-fn var Latch.close() Unit!:
+fn var Latch.close() Void!:
 	if self.open:
 		self.open = false
 
@@ -77,13 +77,13 @@ fn map_values(log: String) Int:
 	m.add("a", latch(log, 8))
 	return m.length()
 
-fn fault_through_holder(log: String) Unit:
+fn fault_through_holder(log: String) Void:
 	holder := Holder(latch(log, 9), 0)
 	panic("holder fault")
 
 	_ := holder.tag
 
-fn fault_plain(log: String) Unit:
+fn fault_plain(log: String) Void:
 	one := latch(log, 10)
 	panic("plain fault")
 
@@ -104,7 +104,7 @@ fn destructured_list(log: String) Int:
 type Maker:
 	made: Int
 
-fn var Maker.close() Unit!:
+fn var Maker.close() Void!:
 	return ok(unit)
 
 fn var Maker.make(log: String, id: Int) Latch:

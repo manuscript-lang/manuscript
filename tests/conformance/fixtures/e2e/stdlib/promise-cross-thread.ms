@@ -73,13 +73,13 @@ test "wait_all and wait_first accept promises of several threads":
 	first := wait_first(more)?
 	expect_equal(first >= base, true)?
 
-fn long_sleep() Promise[Unit]!:
+fn long_sleep() Promise[Void]!:
 	return ok(sleep(60.seconds()))
 
-fn deferred_error() Promise[Unit]!:
+fn deferred_error() Promise[Void]!:
 	return ok(
-		deferred[Unit](
-			fn id: complete[Unit](id, error(Error("should stay deferred")))
+		deferred[Void](
+			fn id: complete[Void](id, error(Error("should stay deferred")))
 		)
 	)
 
@@ -93,7 +93,7 @@ test "wait_first runs a local deferred input beside a foreign promise":
 		expect_equal(busy >= 0, true)?
 
 		remote := (outer.wait()?).with(options: PromiseOptions(timeout: 1.seconds()))
-		local := deferred[Unit](fn id: complete[Unit](id, ok(unit)))
+		local := deferred[Void](fn id: complete[Void](id, ok(unit)))
 		wait_first([local, remote])?
 
 test "wait_first returns a ready input before foreign deferred work":
@@ -103,7 +103,7 @@ test "wait_first returns a ready input before foreign deferred work":
 		expect_equal(busy >= 0, true)?
 
 		remote := outer.wait()?
-		ready := promise[Unit](fn: ok(unit))
+		ready := promise[Void](fn: ok(unit))
 		while not ready.done():
 			continue
 		wait_first([remote, ready])?

@@ -11,14 +11,14 @@ type Door:
 	id: Int
 	log: String
 
-fn var Door.close() Unit!:
+fn var Door.close() Void!:
 	append_file(self.log, "{self.id},").wait()?
 
 fn events(log: String) String!:
 	return ok((read_file(log).wait()?).decode_utf8().get(""))
 
 // A nonzero start is required to exercise the old copying growth path.
-fn grow(log: String, front: Bool, wrapped: Bool) Unit!:
+fn grow(log: String, front: Bool, wrapped: Bool) Void!:
 	var queue = Deque[Door]()
 	for id in 0..4:
 		queue.push_back(Door(id, log.clone()))
@@ -46,7 +46,7 @@ fn grow(log: String, front: Bool, wrapped: Bool) Unit!:
 	expect_equal(first.id, if front: 5 else: (if wrapped: 1 else: 0))?
 	expect_equal(last.id, if front: (if wrapped: 4 else: 3) else: 5)?
 
-fn expect_once(log: String, ids: List[Int]) Unit!:
+fn expect_once(log: String, ids: List[Int]) Void!:
 	actual := (events(log)?).split(",").filter(fn value: value != "").sorted()
 	expect_equal(actual, ids.map(fn id: "{id}").sorted())?
 
@@ -63,7 +63,7 @@ type Holder:
 	door: Door
 	label: String
 
-fn nested(log: String) Unit!:
+fn nested(log: String) Void!:
 	var queue = Deque[Holder?]()
 	queue.push_back(Holder(Door(0, log.clone()), "first"))
 	queue.push_back(none)
@@ -94,7 +94,7 @@ test "deque growth keeps absent optional slots and nested resource owners":
 	nested(log.clone())?
 	expect_once(log, [0, 1, 2, 3])?
 
-fn interrupted(log: String, fault: Bool) Unit!:
+fn interrupted(log: String, fault: Bool) Void!:
 	var queue = Deque[Door]()
 	for id in 0..4:
 		queue.push_front(Door(id, log.clone()))

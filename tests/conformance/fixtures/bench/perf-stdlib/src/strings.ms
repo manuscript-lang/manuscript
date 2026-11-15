@@ -4,7 +4,7 @@ import (
 	bench, words from "./harness.ms",
 )
 
-export fn bench_string() Unit:
+export fn bench_string() Void:
 	text := words(2000).join(" ")
 
 	bench(

@@ -9,7 +9,7 @@ type Cell:
 	y: Int
 
 bench "map.int_put_get":
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		var m = Map[Int, Int]()
 		for i in 0..100000:
 			m.add(i, i * 2)
@@ -22,7 +22,7 @@ bench "map.int_put_get":
 	measure(200000, work)?
 
 bench "map.record_key_get":
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		var m = Map[Cell, Int]()
 		for i in 0..100000:
 			m.add(Cell(x: i, y: i * 2), i)
@@ -35,7 +35,7 @@ bench "map.record_key_get":
 	measure(200000, work)?
 
 bench "map.string_put_get":
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		keys := words(50000)
 		var m = Map[String, Int]()
 		for k in keys:
@@ -49,7 +49,7 @@ bench "map.string_put_get":
 	measure(100000, work)?
 
 bench "map.get_let":
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		keys := words(50000)
 		var m = Map[String, String]()
 		for k in keys:
@@ -67,7 +67,7 @@ bench "map.get_let":
 	measure(100000, work)?
 
 bench "map.get_if_let":
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		keys := words(50000)
 		var m = Map[String, String]()
 		for k in keys:
@@ -82,7 +82,7 @@ bench "map.get_if_let":
 	measure(100000, work)?
 
 bench "map.get_chain":
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		keys := words(50000)
 		var m = Map[String, String]()
 		for k in keys:
@@ -96,7 +96,7 @@ bench "map.get_chain":
 	measure(100000, work)?
 
 bench "map.get_or":
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		keys := words(50000)
 		var m = Map[String, String]()
 		for k in keys:
@@ -110,7 +110,7 @@ bench "map.get_or":
 	measure(100000, work)?
 
 bench "map.iterate_entries":
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		var m = Map[Int, Int]()
 		for i in 0..100000:
 			m.add(i, i)
@@ -123,7 +123,7 @@ bench "map.iterate_entries":
 	measure(100000, work)?
 
 bench "set.add_contains":
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		var s = Set[Int]()
 		for i in 0..100000:
 			s.add(i)

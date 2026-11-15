@@ -3,7 +3,7 @@
 // conform: origin=issues 2164 and 2168
 import stdout from "@std/io/io.ms"
 
-fn main() Unit:
+fn main() Void:
     var m = Map[String, List[Int]]()
     m.add("a", List[Int]())
 

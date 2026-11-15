@@ -129,7 +129,7 @@ fn direct_function(g: &mut Gen, i: usize, f: &Func) {
         .iter()
         .flat_map(|b| &b.insts)
         .any(|inst| inst.op == Op::DepthEnter)
-        .then(|| g.glue_symbol(Glue::GrowShim(i as u32), Ty::UNIT));
+        .then(|| g.glue_symbol(Glue::GrowShim(i as u32), Ty::VOID));
     g.locs.add_scopes(f);
     let mut bits = HashMap::new();
     let locs = f
@@ -219,7 +219,7 @@ fn direct_plan(g: &mut Gen, f: &Func) -> Plan {
                     }
                 }
                 (Op::CleanupPush, Imm::Func(c)) => {
-                    let sym = g.glue_symbol(Glue::CleanupThunk(c.0), Ty::UNIT);
+                    let sym = g.glue_symbol(Glue::CleanupThunk(c.0), Ty::VOID);
                     plan.cleanup.insert(c.index(), sym);
                 }
                 (Op::TypeDesc, Imm::Ty(t)) => {
@@ -230,14 +230,14 @@ fn direct_plan(g: &mut Gen, f: &Func) -> Plan {
                     let framed = i
                         .res
                         .is_some_and(|r| plan.framed_closures.contains(&r.index()));
-                    let clone = g.glue_symbol(Glue::ClosureClone(c.0), Ty::UNIT);
+                    let clone = g.glue_symbol(Glue::ClosureClone(c.0), Ty::VOID);
                     let drop = g.glue_symbol(
                         if framed {
                             Glue::ClosureDropFramed(c.0)
                         } else {
                             Glue::ClosureDrop(c.0)
                         },
-                        Ty::UNIT,
+                        Ty::VOID,
                     );
                     plan.closures
                         .insert((c.index(), framed), ClosureSyms { clone, drop });

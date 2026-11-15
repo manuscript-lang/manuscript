@@ -3,7 +3,7 @@ import Closeable from "@std/core.ms"
 type Handle:
     items: List[Int]
 
-fn var Handle.close() Unit!:
+fn var Handle.close() Void!:
     return ok(unit)
 
 fn keep(xs: List[Int]) List[Int]:

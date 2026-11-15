@@ -52,7 +52,7 @@ fn nested(g: List[List[Int]]) Int:
 fn checked(a: List[Int], i: Int) Int:
     return a.get(index: i, default: -1)
 
-fn main() Unit:
+fn main() Void:
     a := [3, 1, 4, 1, 5, 9, 2, 6]
     _ := stdout().write(
         "{next_sum(a.clone())} {mirror(a.clone())} {stride(a.clone())}\n"

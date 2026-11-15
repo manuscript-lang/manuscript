@@ -20,7 +20,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown or ambiguous member length on Unit; this type has no fields or operations",
+        "message": "unknown or ambiguous member length on Void; this type has no fields or operations",
         "position": {
           "file": "golden-1461.ms",
           "line": 8,
@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1461.ms:4:14: type: division by zero always faults; guard the divisor or use a nonzero constant\n   |\n 4 |     return 1 / 0\n   |              ^\n<DIR>/golden-1461.ms:8:40: resolution: unknown or ambiguous member length on Unit; this type has no fields or operations\n   |\n 8 |     return add(value: crash(), key: 1).length()\n   |                                        ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1461.ms:4:14: type: division by zero always faults; guard the divisor or use a nonzero constant\n   |\n 4 |     return 1 / 0\n   |              ^\n<DIR>/golden-1461.ms:8:40: resolution: unknown or ambiguous member length on Void; this type has no fields or operations\n   |\n 8 |     return add(value: crash(), key: 1).length()\n   |                                        ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

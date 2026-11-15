@@ -16,7 +16,7 @@ fn checked(var events: List[Int], fail: Bool) Int!:
 
 	return ok(9)
 
-fn set_with_try(var events: List[Int], fail: Bool) Unit!:
+fn set_with_try(var events: List[Int], fail: Bool) Void!:
 	receiver(var events).set(0, checked(var events, fail)?)
 	events.append(3)
 

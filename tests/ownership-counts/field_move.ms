@@ -41,7 +41,7 @@ fn reinit(b: Big) Int:
 fn nested(w: Wrap) List[Int]:
 	return w.inner.items
 
-fn main() Unit:
+fn main() Void:
 	name := "a name that is long enough to live on the heap"
 	total := (
 		items_of(Big(name: name.clone(), items: [1, 2, 3])).length()

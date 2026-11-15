@@ -6,9 +6,9 @@ fn call[T](operation: fn() T) T:
 
 fn get() Int!: return ok(value: 1)
 
-fn note() Unit: return unit
+fn note() Void: return unit
 
-fn run() Unit:
+fn run() Void:
     call(
         operation: fn() Int:
             match get():

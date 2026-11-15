@@ -1,7 +1,7 @@
 // conform: tags=numbers,types,diagnostics,tier-core
 // conform: phase=check
 // conform: origin=sized numeric types stage 1
-fn main() Unit:
+fn main() Void:
     a: Int32 := 1
     b: Int64 := 2
     mixed := a + b

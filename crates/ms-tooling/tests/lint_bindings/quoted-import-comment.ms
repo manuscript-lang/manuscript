@@ -5,7 +5,7 @@ import (
     sin
 ) from "@std/math/math.ms"  // a trailing "note"
 
-fn main() Unit:
+fn main() Void:
     return
 
 export fn value() Float:

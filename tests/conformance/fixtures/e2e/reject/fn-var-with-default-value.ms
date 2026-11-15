@@ -1,6 +1,6 @@
 // conform: tags=testing,tier-core
 // conform: phase=check
-fn push(var values: List[Int], value: Int = 1) Unit:
+fn push(var values: List[Int], value: Int = 1) Void:
 	values.append(value)
 
 export fn main() Int:
