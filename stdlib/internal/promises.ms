@@ -114,6 +114,13 @@ export extern fn msrt_pipe_ended(pipe: Int) Int
 // is gone.
 export extern fn msrt_pipe_flush(pipe: Int) Int
 
+// Reserves a writing end for a ticket (1), or 0 when the pipe is gone; the reservation
+// keeps the reader open until it is claimed or the reader closes.
+export extern fn msrt_pipe_reserve(pipe: Int) Int
+
+// Turns one reservation into a writer (1), or 0 when none is left.
+export extern fn msrt_pipe_claim(pipe: Int) Int
+
 export extern fn msrt_pipe_close_writer(pipe: Int) Void
 
 export extern fn msrt_pipe_close_reader(pipe: Int) Void

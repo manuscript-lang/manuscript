@@ -200,11 +200,13 @@ msrt_obj_clone(o: *mut Obj) -> *mut Obj
 msrt_obj_drop(o: *mut Obj)
 msrt_pipe_add_writer(pipe: i64) @domain=pipe
 msrt_pipe_close_reader(pipe: i64) @domain=pipe
+msrt_pipe_claim(pipe: i64) -> i64 @domain=pipe
 msrt_pipe_close_writer(pipe: i64) @domain=pipe
 msrt_pipe_ended(pipe: i64) -> i64 @domain=pipe
 msrt_pipe_flush(pipe: i64) -> i64 @domain=pipe
 msrt_pipe_new(capacity: i64) -> i64 @domain=pipe
 msrt_pipe_read(pipe: i64) -> i64 @domain=pipe
+msrt_pipe_reserve(pipe: i64) -> i64 @domain=pipe
 msrt_pipe_try(pipe: i64, d: ValueDesc, out: *mut u8) -> u8 @domain=pipe
 msrt_pipe_write(pipe: i64, value: *mut u8, d: ValueDesc) -> i64 @domain=pipe @takes:value
 msrt_process_exit(code: i64) -> !

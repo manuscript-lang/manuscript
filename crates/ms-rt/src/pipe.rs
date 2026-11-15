@@ -60,6 +60,8 @@ struct Pipe {
     queue: VecDeque<Item>,
     capacity: usize,
     writers: u32,
+    /// Writers reserved by a ticket and not yet opened; they count in `writers`.
+    reserved: u32,
     reader_open: bool,
     /// Flush promises waiting for the queue to fall to `capacity`.
     flushes: Vec<i64>,
@@ -245,6 +247,7 @@ impl Cell {
                 queue: VecDeque::new(),
                 capacity: 0,
                 writers: 0,
+                reserved: 0,
                 reader_open: false,
                 flushes: Vec::new(),
             }),
@@ -572,6 +575,7 @@ pub extern "C-unwind" fn msrt_pipe_new(capacity: i64) -> i64 {
     p.live = true;
     p.capacity = capacity.max(0) as usize;
     p.writers = 1;
+    p.reserved = 0;
     p.reader_open = true;
     p.flushes.clear();
     cell.shared.capacity.store(p.capacity, Ordering::Relaxed);
@@ -593,6 +597,37 @@ pub extern "C-unwind" fn msrt_pipe_add_writer(pipe: i64) {
         p.writers += 1;
         cell.shared.multi.store(true, Ordering::Release);
     }
+}
+
+/// Reserves a writing end for a ticket: counts as a writer, so the reader does not end, until
+/// `msrt_pipe_claim` turns it into a writer or the reader closes. Answers 1, or 0 when the pipe
+/// is gone.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_pipe_reserve(pipe: i64) -> i64 {
+    let Some((cell, mut p)) = locked(pipe) else {
+        return 0;
+    };
+    if !p.reader_open {
+        return 0;
+    }
+    p.writers += 1;
+    p.reserved += 1;
+    cell.shared.multi.store(true, Ordering::Release);
+    1
+}
+
+/// Claims one reservation, which becomes a writer of the caller. Answers 1, or 0 when none is
+/// left (opened already, or the reader closed and released them) or the pipe is gone.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_pipe_claim(pipe: i64) -> i64 {
+    let Some((_cell, mut p)) = locked(pipe) else {
+        return 0;
+    };
+    if p.reserved == 0 {
+        return 0;
+    }
+    p.reserved -= 1;
+    1
 }
 
 /// Moves `value` into the pipe and answers `WRITTEN` (`FULL` when the queue now exceeds the capacity), or `CLOSED` (the value is dropped) when the
@@ -900,6 +935,9 @@ pub extern "C-unwind" fn msrt_pipe_close_reader(pipe: i64) {
             return;
         };
         p.reader_open = false;
+        // Tickets nobody opened no longer keep the pipe alive: their writers are released.
+        p.writers = p.writers.saturating_sub(p.reserved);
+        p.reserved = 0;
         cell.shared.reader_open.store(false, Ordering::Release);
         cell.shared.waiting.store(0, Ordering::Release);
         for item in p.queue.drain(..) {

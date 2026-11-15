@@ -1,0 +1,70 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 2026.11.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "pipe-ticket.ms::a running task writes to a pipe made after it started, through a ticket",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "pipe-ticket.ms::a ticket opens once",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "pipe-ticket.ms::a ticket keeps the reader waiting until it is opened and closed",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "pipe-ticket.ms::closing the reader releases tickets nobody opened",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 4,
+        "selected": 4,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN pipe-ticket.ms::a running task writes to a pipe made after it started, through a ticket\nPASS pipe-ticket.ms::a running task writes to a pipe made after it started, through a ticket\nRUN pipe-ticket.ms::a ticket opens once\nPASS pipe-ticket.ms::a ticket opens once\nRUN pipe-ticket.ms::a ticket keeps the reader waiting until it is opened and closed\nPASS pipe-ticket.ms::a ticket keeps the reader waiting until it is opened and closed\nRUN pipe-ticket.ms::closing the reader releases tickets nobody opened\nPASS pipe-ticket.ms::closing the reader releases tickets nobody opened\n4 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

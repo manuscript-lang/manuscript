@@ -10,12 +10,14 @@ import (
 	msrt_io_write_stderr,
 	msrt_io_write_stdout,
 	msrt_pipe_add_writer,
+	msrt_pipe_claim,
 	msrt_pipe_close_reader,
 	msrt_pipe_close_writer,
 	msrt_pipe_ended,
 	msrt_pipe_flush,
 	msrt_pipe_new,
 	msrt_pipe_read,
+	msrt_pipe_reserve,
 	msrt_pipe_try,
 	msrt_pipe_write,
 	msrt_promise_drop,
@@ -396,6 +398,14 @@ fn Pipe[T].writer() WriteStream[T]:
 	msrt_pipe_add_writer(self.id)
 	return WriteStream[T](PipeSink[T](self.id, self.capacity))
 
+// Reserves a writing end for another task: send the ticket to it, and it calls `open`.
+// Fails when the reader has already closed.
+fn Pipe[T].ticket() Ticket[T]!:
+	if msrt_pipe_reserve(self.id) == 0: return error(
+		Error("pipe: the reader is gone", kind: "EBADF")
+	)
+	return ok(Ticket[T](self.id, self.capacity))
+
 // The reading end. A pipe has one: later calls return a stream that is already at
 // its end.
 fn var Pipe[T].reader() ReadStream[T]:
@@ -414,6 +424,25 @@ fn Pipe[T].receive() T?!:
 fn var Pipe[T].close() Void!:
 	if not self.taken:
 		msrt_pipe_close_reader(self.id)
+
+// A reserved writing end, as plain data: it can be written to another pipe, so a task
+// that is already running can write to this pipe. It keeps the pipe's reader waiting,
+// like an unclosed writer, until `open` turns it into a writer, or the reader closes.
+// Open every ticket you receive, including on a failure path.
+export opaque type Ticket[T: Clonable]:
+	id: Int
+	capacity: Int
+
+// Turns the ticket into a writing end; close it when done. A ticket opens once: a
+// second open, or one after the reader closed, fails with `EBADF`.
+fn Ticket[T].open() WriteStream[T]!:
+	if msrt_pipe_claim(self.id) == 0: return error(
+		Error(
+			"pipe: the ticket was opened already or the reader is gone",
+			kind: "EBADF",
+		)
+	)
+	return ok(WriteStream[T](PipeSink[T](self.id, self.capacity)))
 
 // Makes an in-memory pipe whose writers wait while more than `capacity` values are
 // queued.

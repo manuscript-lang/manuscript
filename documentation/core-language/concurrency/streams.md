@@ -123,5 +123,6 @@ The producer closes its writer after sending the values, allowing the reader's l
 - `capacity` is the level above which a writer's `write` and `flush` wait.
 - The reader ends when every writer is closed, after it has read what was sent. Closing the reader makes writers fail with `"EBADF"`.
 - `write` is a `var fn`, so two promises cannot share one writer; each takes its own. Make one `var` writer per producer before starting the promises: the promise takes it over and may pass it on or write to it, so any number of producers can feed one reader.
+- `ticket()` reserves one writing end as plain data, a `Ticket[T]`. A ticket is copied through a pipe to a task that is already running, which calls `open()` once to get its `WriteStream[T]`; a second `open` fails with `"EBADF"`. That is how a caller makes a pipe, keeps the reader, and lets a long-lived worker write to it. Closing the reader releases unopened tickets, a ticket nobody opens keeps the reader waiting, and a task opens and closes every ticket it receives.
 
 `json_reader[T]` and `json_writer[T]` give a typed view of a byte stream, for example to send newline-delimited JSON over a socket.
