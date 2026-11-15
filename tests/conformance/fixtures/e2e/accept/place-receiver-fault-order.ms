@@ -69,7 +69,7 @@ type Door:
 	id: Int
 
 fn var Door.close() Void!:
-	return ok(unit)
+	return ok()
 
 fn at(var events: List[Int]) Int:
 	events.append(1)

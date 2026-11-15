@@ -12,7 +12,7 @@ type Tracked:
 	id: Int
 
 fn var Tracked.close() Void!:
-	_ := append_file(self.log, "{self.id},").wait()
+	void append_file(self.log, "{self.id},").wait()
 
 fn track(log: String, id: Int) Tracked:
 	return Tracked(log, id)
@@ -40,7 +40,7 @@ type Wrapper:
 	inner: Tracked
 
 fn var Wrapper.close() Void!:
-	_ := append_file(self.log, "wrapper,").wait()
+	void append_file(self.log, "wrapper,").wait()
 
 fn holds_fields(log: String) Int:
 	p := Pair(track(log.clone(), 1), track(log, 2))

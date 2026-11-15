@@ -407,7 +407,7 @@ b0:
   %s: int = call @apply(%f, %x) !0:14:1
   drop %f
   %t: int = iadd %r, %s !0:15:1
-  %u: unit = call.rt @msrt_print_int(%t) !0:16:1
+  %u: void = call.rt @msrt_print_int(%t) !0:16:1
   ret %t
 }
 "#;
@@ -476,7 +476,7 @@ b0:
   %f: int = call @framed(%five, %two) !0:26:1
   %af: int = iadd %a, %f !0:27:1
   %t: int = iadd %af, %p !0:24:1
-  %u: unit = call.rt @msrt_print_int(%t) !0:25:1
+  %u: void = call.rt @msrt_print_int(%t) !0:25:1
   ret %t
 }
 "#;

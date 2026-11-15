@@ -25,10 +25,10 @@ Dependabot groups weekly updates (Cargo, npm, GitHub Actions) into PRs with norm
 
 Contracts: syntax, standard signatures, CLI flags and statuses, diagnostic codes and JSON schemas, project configuration, and artifact metadata. Diagnostic wording may change if the code keeps its meaning. Crate structure and generated symbol names are internal.
 
-- Before 1.0, incompatible public changes go in a minor release; patches stay compatible. From 1.0, they need a major release.
+- Versions are dates, `YYYY.MM.PATCH` with no leading zero on the month.
 - State the affected source or command and its migration in the PR.
 - A deprecation documents the replacement and removal release, and tests both.
-- Every removed or renamed spelling (syntax, method, module, flag) adds a snippet to `tests/removed/` in the same change, and stays for two minor releases. It starts with `// removed: <old spelling>`, `// use: <text the error must contain>` and `// fix: <text the file holds after `ms check --fix`>`. `make removed-check` fails unless `ms check` rejects the snippet with an error naming the replacement and `--fix` rewrites it so `ms check` passes. A removal no mechanical edit can carry writes `// fix: none: <why>`; reviewers should question each one. Fix the diagnostic, not the snippet, when the check fails.
+- Every removed or renamed spelling (syntax, method, module, flag) adds a snippet to `tests/removed/` in the same change. It starts with `// removed: <old spelling>`, `// use: <text the error must contain>` and `// fix: <text the file holds after `ms check --fix`>`. `make removed-check` fails unless `ms check` rejects the snippet with an error naming the replacement and `--fix` rewrites it so `ms check` passes. A removal no mechanical edit can carry writes `// fix: none: <why>`; reviewers should question each one. Fix the diagnostic, not the snippet, when the check fails.
 - Add the release to `CHANGELOG.md` and list breaking changes with their migration. The user-facing list of frozen contracts is [what is frozen](../core-language/stability.md).
 - Explicit user-directed removals win; this policy does not restore retired APIs.
 - Compiler, runtime, or target changes alter build identity. Do not claim cross-environment binary reproducibility.

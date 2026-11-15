@@ -72,7 +72,7 @@ fn ticker(rounds: Int) Void!:
     for n in 1..rounds + 1:
         print("tick {n}")
         sleep(milliseconds(20)).wait()?
-    return ok(unit)
+    return ok()
 
 fn main() Void!:
     background := promise(fn: ticker(3))

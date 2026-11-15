@@ -8,5 +8,5 @@ fn main() Void:
     var bump = counts.clone()
     bump[1] += 5
 
-    _ := stdout().write("{bump[1]}\n")
-    _ := stdout().write("{counts[2]}\n")
+    void stdout().write("{bump[1]}\n")
+    void stdout().write("{counts[2]}\n")

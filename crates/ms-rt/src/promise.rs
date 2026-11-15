@@ -2813,6 +2813,47 @@ mod tests {
         task::teardown();
     }
 
+    /// Answers its thread after waiting a while, as a promise does that blocks on a reply.
+    unsafe extern "C-unwind" fn answer_after_wait(closure: *mut Closure) {
+        // SAFETY: called from a running task with the closure `start_with_id` made.
+        unsafe {
+            task::msrt_task_sleep(30_000_000);
+            let mut v = sched::current() as i64;
+            msrt_promise_put(id_of(closure), (&raw mut v).cast(), &msrt_desc_int, 0);
+        }
+    }
+
+    /// Promises that wait must each get a thread while there are threads to give: their creator,
+    /// parked on the first, does not start the others itself, and every idle thread is woken. A
+    /// thread the operating system does not schedule for a while makes one round fall short, so
+    /// most rounds must, not all.
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn waiting_promises_each_get_a_thread() {
+        let _g = lock();
+        sched::msrt_runtime_set_threads(4);
+        sched::warm(4);
+        let mut spread = 0;
+        for _round in 0..6 {
+            let ids: Vec<i64> = (0..4).map(|_| msrt_promise_new()).collect();
+            for &id in &ids {
+                start_with_id(id, answer_after_wait);
+            }
+            let mut threads = std::collections::BTreeSet::new();
+            for &id in &ids {
+                assert_eq!(msrt_promise_wait(id, -1), OK);
+                threads.insert(take_int(id));
+            }
+            spread += usize::from(threads.len() == 4);
+            for id in ids {
+                msrt_promise_drop(id);
+            }
+        }
+        assert!(spread >= 4, "only {spread} of 6 rounds used four threads");
+        sched::shutdown();
+        task::teardown();
+    }
+
     #[test]
     #[cfg_attr(miri, ignore = "context switches use inline assembly")]
     fn ends_from_other_threads_drain_through_a_few_tasks() {

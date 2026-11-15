@@ -12,7 +12,7 @@ type Tracked:
 	id: Int
 
 fn var Tracked.close() Void!:
-	_ := append_file(self.log, "{self.id},").wait()
+	void append_file(self.log, "{self.id},").wait()
 
 fn track(log: String, id: Int) Tracked:
 	return Tracked(log, id)

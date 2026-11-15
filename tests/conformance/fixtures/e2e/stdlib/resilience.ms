@@ -108,7 +108,7 @@ test "circuit opens after threshold and recovers after cooldown":
 	third := expect_error(breaker.call(fine))?
 	expect_equal(third, CircuitError[String].Open)?
 
-	_ := sleep(milliseconds(30)).wait()
+	void sleep(milliseconds(30)).wait()
 	value := expect_ok(breaker.call(fine))?
 	expect_equal(value, 1)?
 
@@ -124,7 +124,7 @@ test "throttle allows one action per interval":
 	expect_true(spacing.allow())?
 	expect_true(not spacing.allow())?
 
-	_ := sleep(milliseconds(30)).wait()
+	void sleep(milliseconds(30)).wait()
 	expect_true(spacing.allow())?
 
 	start := monotonic()

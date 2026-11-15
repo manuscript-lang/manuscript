@@ -427,17 +427,17 @@ fn many_appends(n: usize) -> String {
 file 0 "a.ms"
 extern @msrt_int_to_string(int) -> str fresh int_to_string
 extern @msrt_string_concat(str, str) -> str fresh string_concat
-extern @msrt_strbuilder_append(ptr, str) -> unit strbuilder_append
+extern @msrt_strbuilder_append(ptr, str) -> void strbuilder_append
 entry @main
 
-fn @fill(%0: ptr, %1: int) -> unit inline(never) {
+fn @fill(%0: ptr, %1: int) -> void inline(never) {
 b0:
 "#,
     );
     let mut v = 2;
     for _ in 0..n {
         s.push_str(&format!(
-            "  %{v}: str = str \"row \"\n  %{}: str = call.rt @msrt_int_to_string (%1)\n  %{}: str = call.rt @msrt_string_concat (%{v}, %{})\n  drop %{}\n  %{}: unit = call.rt @msrt_strbuilder_append (%0, %{})\n  drop %{}\n",
+            "  %{v}: str = str \"row \"\n  %{}: str = call.rt @msrt_int_to_string (%1)\n  %{}: str = call.rt @msrt_string_concat (%{v}, %{})\n  drop %{}\n  %{}: void = call.rt @msrt_strbuilder_append (%0, %{})\n  drop %{}\n",
             v + 1,
             v + 2,
             v + 1,
@@ -448,7 +448,7 @@ b0:
         ));
         v += 4;
     }
-    s.push_str(&format!("  %{v}: unit = unit\n  ret %{v}\n}}\n"));
+    s.push_str(&format!("  %{v}: void = void\n  ret %{v}\n}}\n"));
     s.push_str("\nfn @main() -> int export {\nb0:\n  %0: int = iconst 0\n  ret %0\n}\n");
     s
 }

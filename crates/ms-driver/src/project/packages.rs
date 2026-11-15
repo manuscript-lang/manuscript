@@ -430,6 +430,14 @@ mod tests {
     }
 
     #[test]
+    fn a_calendar_version_tag_round_trips_through_the_lock() {
+        let text = format!("\"@pg\" = \"https://h/x.git#v2026.11.0 {COMMIT} sha256:{HASH}\"\n");
+        let entries = lock(&text).expect("lock");
+        assert_eq!(entries["@pg"].spec, "https://h/x.git#v2026.11.0");
+        assert!(lock_text(&entries).ends_with(&text));
+    }
+
+    #[test]
     fn a_well_formed_lock_line_is_read() {
         let text = format!("\"@pg/@wire\" = \"https://h/x.git#v1 {COMMIT} sha256:{HASH}\"\n");
         assert_eq!(lock(&text).unwrap()["@pg/@wire"].revision, COMMIT);
@@ -527,6 +535,9 @@ mod tests {
             assert!(check_spec(bad).is_err(), "{bad}");
         }
         assert!(check_spec("https://h/x.git#v1.0.0").is_ok());
+        // A tag is an opaque name to the resolver, so calendar versions need no special case.
+        assert!(check_spec("https://h/x.git#v2026.11.0").is_ok());
+        assert!(check_spec("https://h/x.git#v2027.1.3").is_ok());
         assert!(check_spec("file:///tmp/x#v1").is_ok());
     }
 }

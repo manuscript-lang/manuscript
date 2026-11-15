@@ -16,7 +16,7 @@ fn make(p: Pipe[Int]) Handlers:
         out.write(n)?
         out.close()?
         total += n
-        return ok(unit)
+        return ok()
     )
     return h
 
@@ -25,6 +25,6 @@ export fn main() Int:
     h := make(p)
     var total = 0
     for f in h.items:
-        f(var total, 5).get_or_else(fn e: unit)
+        f(var total, 5).get_or_else(fn e: void)
     print("{total}")
     return 0

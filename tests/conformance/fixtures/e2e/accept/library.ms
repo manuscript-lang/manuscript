@@ -114,37 +114,37 @@ fn verify_archive() Void!:
 test "expanded packages run through compiler":
     match verify_json():
         ok(_):
-            _verified := unit
+            _verified := void
         error(_):
             return fail(message: "json failed")
 
     match verify_encoding():
         ok(_):
-            _verified := unit
+            _verified := void
         error(_):
             return fail(message: "encoding failed")
 
     match verify_url():
         ok(_):
-            _verified := unit
+            _verified := void
         error(_):
             return fail(message: "url failed")
 
     match verify_binary():
         ok(_):
-            _verified := unit
+            _verified := void
         error(_):
             return fail(message: "binary failed")
 
     match verify_compression():
         ok(_):
-            _verified := unit
+            _verified := void
         error(_):
             return fail(message: "compression failed")
 
     match verify_archive():
         ok(_):
-            _verified := unit
+            _verified := void
         error(_):
             return fail(message: "archive failed")
 

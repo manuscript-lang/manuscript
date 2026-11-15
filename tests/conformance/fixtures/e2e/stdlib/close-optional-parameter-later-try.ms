@@ -21,5 +21,5 @@ fn attempt() Void!:
     take(Door("temp"), fails()?)
 
 fn main() Void:
-    _ := attempt()
+    void attempt()
     print("end")

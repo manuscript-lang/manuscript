@@ -26,9 +26,9 @@ test "closing a standard stream flushes it and leaves the process stream open":
 	var out = stdout()
 	out.write("")?
 
-	_ := out.close()
+	void out.close()
 	expect_true(stdout().write("").is_ok())?
 
 	var err = stderr()
-	_ := err.close()
+	void err.close()
 	expect_true(stderr().write("").is_ok())?

@@ -155,13 +155,13 @@ To turn absence into an error, use [Optional.ok_or or ok_or_else](../types/optio
 
 ## Discarding a result
 
-A standalone call such as `discount(price: 20d, percent: 10d)` discards both outcomes, and the checker rejects it, including for `Result[Void, E]`. Handle it with `if v := x`, `?`, or return it. To ignore it deliberately, bind it to `_`:
+A standalone call such as `discount(price: 20d, percent: 10d)` discards both outcomes, and the checker rejects it, including for `Result[Void, E]`. Handle it with `if v := x`, `?`, or return it. To ignore it deliberately, put `void` in front:
 
 ```manuscript
-_ := discount(price: 20d, percent: 10d)
+void discount(price: 20d, percent: 10d)
 ```
 
-The initializer still runs and the outcome is dropped unread. Several `_ :=` may share a scope. This does not handle an error or stop a fault.
+The initializer still runs and the outcome is dropped unread. Several `void` statements may share a scope. This does not handle an error or stop a fault.
 
 ## Converting a domain error to Error
 

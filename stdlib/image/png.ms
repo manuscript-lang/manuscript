@@ -138,7 +138,7 @@ export fn decode_png(data: Bytes, max_pixels: Int?) Raster!:
 
 			// Reject oversized images from the header alone, before reading any
 			// further.
-			_ := pixel_count(width, height, max_pixels)?
+			void pixel_count(width, height, max_pixels)?
 			have_header = true
 		else if kind == CHUNK_PLTE:
 			if idat_seen or length % 3 != 0 or length == 0 or length > 768:

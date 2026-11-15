@@ -94,8 +94,8 @@ fn main() Int:
 	if target_os == "windows":
 		archive = "dist/{name}.zip"
 		archive_name = "{name}.zip"
+		void remove(archive.clone(), recursive: false)
 
-		_ := remove(archive.clone(), recursive: false)
 		root := working_directory().get()
 		change_directory(staging.path()).get()
 		code = run_program(

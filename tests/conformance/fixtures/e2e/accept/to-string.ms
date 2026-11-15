@@ -48,7 +48,7 @@ test "every scalar has to_string":
 	(check(value: "hello".to_string(), expected: "hello")?)
 	(check(value: true.to_string(), expected: "true")?)
 	(check(value: false.to_string(), expected: "false")?)
-	(check(value: unit.to_string(), expected: "unit")?)
+	(check(value: void.to_string(), expected: "void")?)
 	(check(value: (42).to_string(), expected: "42")?)
 	(check(value: (-7).to_string(), expected: "-7")?)
 	(check(value: (1.5).to_string(), expected: "1.5")?)

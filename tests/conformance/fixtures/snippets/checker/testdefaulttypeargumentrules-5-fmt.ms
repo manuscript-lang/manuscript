@@ -4,4 +4,4 @@
 type Trio[A, B, C = A]:
     first: A
 
-fn use(t: Trio[Int]) Void: unit
+fn use(t: Trio[Int]) Void: void

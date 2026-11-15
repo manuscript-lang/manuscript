@@ -51,7 +51,7 @@ test "an earlier map fault prevents a later index":
 test "an earlier receiver fault precedes a later try exit":
 	var rows = [[0]]
 	var events: List[Int] = []
-	_ := expect_fault(fn: _ := nested_try(var rows, var events))?
+	void expect_fault(fn: void nested_try(var rows, var events))?
 	expect_equal(events, [])?
 
 test "a changing source receiver selects its cell once":
@@ -130,7 +130,7 @@ test "an indexed map fast path evaluates its receiver before its key":
 test "an indexed map fast path faults before evaluating its key":
 	var maps: List[Map[String, Int]] = [{}]
 	var events: List[Int] = []
-	_ := expect_fault(fn: maps[9].add(key(var events), 9))?
+	void expect_fault(fn: maps[9].add(key(var events), 9))?
 	expect_equal(events, [])?
 
 fn owned_key(var calls: Int) String:

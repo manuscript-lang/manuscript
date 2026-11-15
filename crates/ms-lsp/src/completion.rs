@@ -629,7 +629,7 @@ impl Completer<'_> {
             }
         }
         if !c.type_context {
-            for word in ["true", "false", "unit", "fn", "not"] {
+            for word in ["true", "false", "void", "fn", "not"] {
                 self.add(syms, word, 14, None, 5, word, Json::Null);
             }
         }
@@ -722,13 +722,13 @@ impl Completer<'_> {
 fn keyword_template(word: &str) -> Option<&'static str> {
     Some(match word {
         "interface" => "interface ${1:Name}:\n    ${0:fn operation() Void}",
-        "fn" => "fn ${1:name}(${2}) ${3:Void}:\n    ${0:return unit}",
+        "fn" => "fn ${1:name}(${2}) ${3:Void}:\n    ${0:return}",
         "type" => "type ${1:Name}:\n    ${0:field: String}",
         "enum" => "enum ${1:Name}:\n    ${0:Ready}",
         "if" => "if ${1:condition}:\n    $0",
         "for" => "for ${1:item} in ${2:items}:\n    $0",
-        "test" => "test \"${1:name}\":\n    ${0:return unit}",
-        "bench" => "bench \"${1:name}\":\n    ${0:return unit}",
+        "test" => "test \"${1:name}\":\n    ${0:return}",
+        "bench" => "bench \"${1:name}\":\n    ${0:return}",
         _ => return None,
     })
 }

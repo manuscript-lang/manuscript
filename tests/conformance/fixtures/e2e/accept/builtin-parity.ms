@@ -337,7 +337,7 @@ test "string methods use Unicode scalars":
 
 	match checked_expansion():
 		ok(_):
-			_completed := unit
+			_completed := void
 		error(cause):
 			return fail(message: cause.message)
 
@@ -465,7 +465,7 @@ fn verify_text_and_numbers() Void!:
 test "normalization, empty separators, and precision formatting":
 	match verify_text_and_numbers():
 		ok(_):
-			_completed := unit
+			_completed := void
 		error(cause):
 			return fail(message: cause.message)
 
@@ -530,7 +530,7 @@ fn verify_bigint_and_regex() Void!:
 test "BigInt and Regex share function implementations with methods":
 	match verify_bigint_and_regex():
 		ok(_):
-			_completed := unit
+			_completed := void
 		error(cause):
 			return fail(message: cause.message)
 

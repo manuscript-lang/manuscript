@@ -51,9 +51,9 @@ export fn main() Int:
     _p := Point(x: 1, y: 2)
     values := [1, 2, 3]
     for v in values:
-        _ := say("{v}")
+        void say("{v}")
     for tick in Counter(n: 2):
-        _ := say("{tick}")
+        void say("{tick}")
 
     result := add(1, 2)
     return result

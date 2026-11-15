@@ -163,7 +163,7 @@ const isType=e=>['type','alternative','interface'].includes(e.kind);
 const isFn=e=>['fn','method','test','bench'].includes(e.kind);
 const KI={fn:'ƒ',method:'ƒ',type:'T',alternative:'T',interface:'I',constant:'c',test:'✓',bench:'»',impl:'i'};
 const isCheck=e=>e.kind==='test'||e.kind==='bench';
-const KW=new Set('and break continue else enum export extern false fixture fn for if impl import in interface let match not or ref return self test true try type unit var while'.split(' '));
+const KW=new Set('and break continue else enum export extern false fixture fn for if impl import in interface let match not or ref return self test true try type void var while'.split(' '));
 const TK=/(\/\/.*)|("(?:\\.|[^"\\])*")|(\b\d[\d_.]*[a-zA-Z]*)|([A-Za-z_]\w*)|(\s+|.)/g;
 function hl(line,sym){let o='',m;TK.lastIndex=0;
   while((m=TK.exec(line))){const t=m[0];

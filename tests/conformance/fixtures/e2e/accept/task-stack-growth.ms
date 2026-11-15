@@ -73,7 +73,7 @@ fn faulting_depth(n: Int) Void:
 
 fn parked_depth(n: Int) Int:
 	if n == 0:
-		sleep(microseconds(10)).wait().get(unit)
+		void sleep(microseconds(10)).wait()
 		return 0
 
 	return parked_depth(n - 1) + 1

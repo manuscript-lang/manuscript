@@ -15,6 +15,9 @@ use crate::nav::{self, Navigate};
 use crate::rename::rename;
 use crate::semantic::{TOKEN_TYPES, semantic_tokens};
 use crate::symbols::document_symbols;
+
+/// The toolchain release this server ships in: `.msversion`, the file the CLI's `--version` reads too.
+const SERVER_VERSION: &str = include_str!("../../../.msversion").trim_ascii();
 use crate::text::{self, Position, Range};
 use crate::transport::{FrameError, Incoming, Transport};
 use crate::uri;
@@ -888,7 +891,10 @@ impl Server<'_> {
             ),
             (
                 "serverInfo",
-                obj([("name", "manuscript".into()), ("version", "0.1.0".into())]),
+                obj([
+                    ("name", "manuscript".into()),
+                    ("version", SERVER_VERSION.into()),
+                ]),
             ),
         ])
     }

@@ -4,4 +4,4 @@ fn work() Int!:
     return ok(1)
 
 fn main() Void:
-    _ := promise(fn: work())
+    void promise(fn: work())

@@ -1,5 +1,5 @@
 // conform: tags=diagnostics
 // conform: phase=check
 fn bad() Void:
-   unit
+   void
 import ListBuilder, List from "@std/collections/collections.ms"
