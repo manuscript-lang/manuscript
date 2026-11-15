@@ -21,6 +21,8 @@ const MAX_BYTES: u64 = 64 << 20;
 pub struct Package {
     /// The path from the project in the lock file, such as `@pg` or `@pg/@wire`.
     pub key: String,
+    /// The manifest value the lock pinned, `url#tag`.
+    pub spec: String,
     /// The canonical cache directory holding the package files.
     pub root: String,
     /// The package's own manifest, with its dependencies resolved.
@@ -386,6 +388,7 @@ fn resolve(
         chain.pop();
         packages.push(Package {
             key,
+            spec: entry.spec.clone(),
             root,
             project: package,
             files,

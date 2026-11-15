@@ -27,7 +27,7 @@ The copy can change silently, has no recorded origin, and a library's own depend
 
 ```toml
 [dependencies]
-"@pg" = "https://github.com/manuscript-lang/postgres.git#v0.1.0"
+"@pg" = "https://github.com/manuscript-lang/ms-pg.git#<tag or 40-character commit>"
 ```
 
 - A branch name is rejected: it is not reproducible. A key cannot also be an alias, an `[embed]` name or `@std`.
@@ -41,7 +41,7 @@ import connect from "@pg/client.ms"
 
 - A package's own `[dependencies]` names are private to it. The consumer cannot import them, and two packages may use the same name for different packages.
 - A package cannot import its consumer, and cannot declare `extern fn` (no C in packages).
-- Different tags of one repository are different modules with different types. There is no version solver and no ranges; the consumer picks the tags.
+- Different tags of one repository are different modules with different types; when they meet in one expression the error says two versions of the package are in the tree and names both paths and both tags. There is no version solver and no ranges; the consumer picks the tags.
 
 **Lock file.** `ms.lock` beside `ms.toml`, committed. One line per package, in sorted order. A transitive package is keyed by its path from the project.
 
@@ -74,7 +74,7 @@ import connect from "@pg/client.ms"
 - A package's own dependencies must use `https://`: `file://` would read the machine that runs `ms fetch`.
 - The checker rejects `extern fn` and `extern type` in any module of a package.
 
-**Tooling.** `ms search_symbol` indexes fetched packages; modules show as `@pg/client.ms`, with the tag. `ms diagram` draws each package as one node labelled `@pg v0.1.0` in the module view. The LSP resolves `@pg/...` through the lock.
+**Tooling.** `ms search_symbol` indexes fetched packages; modules show as `@pg/client.ms`, with the tag. `ms diagram` draws each package as one node labelled `@pg v0.1.0` in the module view. The language server resolves `@pg/...` through the lock: definitions open the cached file, and completion offers dependency names, package files and exports.
 
 **Checked.** The manifest, `ms fetch`, the import and the offline check run against a `file://` repository in `crates/ms-cli/tests/packages.rs`. The checker rejects natives and undeclared effects in a package; the lock reader and the git calls are covered by unit tests and an end-to-end test with a tampered lock.
 
@@ -86,7 +86,7 @@ import connect from "@pg/client.ms"
 | `crates/ms-driver/src/imports.rs`, `load.rs` | resolve `@name/` per package; private names | conformance: two versions, private name |
 | `crates/ms-cli` | `ms fetch`, hashing (reuse `ms-tooling` `sha256.rs`), cache | e2e on a `file://` repo, all platforms |
 | `crates/ms-check` | package scope: reject `extern`, cap reachable effects at the declaration | `crates/ms-cli/tests/packages.rs` |
-| `packages/postgres` | first package: Postgres client over `@std/net` TCP and TLS | e2e against a database |
+| `manuscript-lang/ms-pg` | first package: Postgres client over `@std/net` TCP and TLS, in its own repository so it is a repository-root package | e2e against a database, nightly |
 | `crates/ms-tooling`, `ms-lsp` | search_symbol, diagram, lint across packages | existing suites plus one case each |
 | `documentation/` | replace "copied dependencies" with packages | doc example tests |
 
@@ -106,4 +106,4 @@ import connect from "@pg/client.ms"
 
 ## Open questions
 
-- None. Decided: the Postgres client is the first package, in this repository under `packages/postgres`, not in the standard library.
+- None. Decided: the Postgres client is the first package, in `manuscript-lang/ms-pg`, not in the standard library. A package is a repository root; there is no subdirectory form (`url//dir`).

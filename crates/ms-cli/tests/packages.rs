@@ -255,3 +255,166 @@ fn a_tampered_lock_never_reaches_git_and_nested_packages_must_use_https() {
         stderr(&fetched)
     );
 }
+
+#[test]
+fn two_versions_of_one_package_are_named_when_their_types_meet() {
+    let dir = scratch("packages-versions");
+    let cache = dir.join("cache");
+    let core = dir.join("core");
+    let old = package(&core, "", include_str!("packages/id_v1.ms"));
+    std::fs::write(core.join("src/lib.ms"), include_str!("packages/id_v2.ms")).unwrap();
+    git(&core, &["commit", "-q", "-am", "second"]);
+    git(&core, &["tag", "v2.0.0"]);
+    let new = old.replace("#v1.0.0", "#v2.0.0");
+    let project = dir.join("app");
+    app(
+        &project,
+        &format!("[dependencies]\n\"@old\" = \"{old}\"\n\"@new\" = \"{new}\"\n"),
+    );
+    std::fs::write(
+        project.join("src/main.ms"),
+        include_str!("packages/two_versions.ms"),
+    )
+    .unwrap();
+    let fetch = ms(&project, &cache, &["fetch"]);
+    assert!(fetch.status.success(), "{}", stderr(&fetch));
+    let check = ms(&project, &cache, &["check", "ms.toml"]);
+    assert!(!check.status.success());
+    let message = stderr(&check);
+    assert!(
+        message.contains("two versions of the package")
+            && message.contains("@old at v1.0.0")
+            && message.contains("@new at v2.0.0"),
+        "{message}"
+    );
+}
+
+/// Sends `requests` (id, method, params) to `ms lsp` after opening `file`, and returns the response to each.
+fn lsp(
+    project: &Path,
+    cache: &Path,
+    file: &Path,
+    text: &str,
+    requests: &[(u32, &str, String)],
+) -> Vec<String> {
+    use std::io::{BufRead, Read, Write};
+    use std::process::Stdio;
+    let uri = |p: &Path| format!("file://{}", p.to_string_lossy().replace('\\', "/"));
+    let mut child = Command::new(env!("CARGO_BIN_EXE_ms"))
+        .arg("lsp")
+        .env("MS_PACKAGE_CACHE", cache)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let mut stdin = child.stdin.take().unwrap();
+    let mut stdout = std::io::BufReader::new(child.stdout.take().unwrap());
+    let mut send = |body: String| {
+        let framed = format!("Content-Length: {}\r\n\r\n{body}", body.len());
+        stdin.write_all(framed.as_bytes()).unwrap();
+        stdin.flush().unwrap();
+    };
+    let escaped = text
+        .replace('\\', "\\\\")
+        .replace('"', "\\\"")
+        .replace('\n', "\\n");
+    send(format!(
+        r#"{{"jsonrpc":"2.0","id":1,"method":"initialize","params":{{"rootUri":"{}","capabilities":{{}}}}}}"#,
+        uri(project)
+    ));
+    send(r#"{"jsonrpc":"2.0","method":"initialized","params":{}}"#.into());
+    send(format!(
+        r#"{{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{{"textDocument":{{"uri":"{}","languageId":"manuscript","version":1,"text":"{escaped}"}}}}}}"#,
+        uri(file)
+    ));
+    let mut read = || -> String {
+        loop {
+            let mut header = String::new();
+            stdout.read_line(&mut header).unwrap();
+            let length: usize = header
+                .trim()
+                .strip_prefix("Content-Length: ")
+                .unwrap()
+                .parse()
+                .unwrap();
+            stdout.read_line(&mut header).unwrap();
+            let mut body = vec![0; length];
+            stdout.read_exact(&mut body).unwrap();
+            let body = String::from_utf8(body).unwrap();
+            if body.contains("\"id\":") && !body.contains("\"method\"") {
+                return body;
+            }
+        }
+    };
+    let _ = read();
+    let mut answers = Vec::new();
+    for (id, method, params) in requests {
+        send(format!(
+            r#"{{"jsonrpc":"2.0","id":{id},"method":"{method}","params":{params}}}"#
+        ));
+        answers.push(read());
+    }
+    send(r#"{"jsonrpc":"2.0","id":99,"method":"shutdown"}"#.into());
+    send(r#"{"jsonrpc":"2.0","method":"exit"}"#.into());
+    drop(stdin);
+    let _ = child.wait();
+    answers
+}
+
+#[test]
+fn the_editor_follows_imports_into_a_package() {
+    let dir = scratch("packages-editor");
+    let cache = dir.join("cache");
+    let url = package(&dir.join("lib"), "", include_str!("packages/greet.ms"));
+    let project = dir.join("app");
+    app(&project, &format!("[dependencies]\n\"@lib\" = \"{url}\"\n"));
+    let fetch = ms(&project, &cache, &["fetch"]);
+    assert!(fetch.status.success(), "{}", stderr(&fetch));
+    let main = project.join("src/main.ms");
+    let text = include_str!("packages/main.ms");
+    let uri = format!("file://{}", main.to_string_lossy().replace('\\', "/"));
+    let at = |line: u32, character: u32| {
+        format!(
+            r#"{{"textDocument":{{"uri":"{uri}"}},"position":{{"line":{line},"character":{character}}}}}"#
+        )
+    };
+    let answers = lsp(
+        &project,
+        &cache,
+        &main,
+        text,
+        &[(2, "textDocument/definition", at(3, 12))],
+    );
+    // Definition lands in the cached copy of the package, which exists on disk.
+    let cached = cache.to_string_lossy().replace('\\', "/");
+    assert!(
+        answers[0].contains(&cached) && answers[0].contains("/src/lib.ms"),
+        "{}",
+        answers[0]
+    );
+    // Completion offers the dependency name, the package's files, and its exports.
+    let names = lsp(
+        &project,
+        &cache,
+        &main,
+        "import greet from \"@\"\n",
+        &[(2, "textDocument/completion", at(0, 20))],
+    );
+    assert!(names[0].contains("\"@lib/\""), "{}", names[0]);
+    let files = lsp(
+        &project,
+        &cache,
+        &main,
+        "import greet from \"@lib/\"\n",
+        &[(2, "textDocument/completion", at(0, 24))],
+    );
+    assert!(files[0].contains("@lib/lib.ms"), "{}", files[0]);
+    let symbols = lsp(
+        &project,
+        &cache,
+        &main,
+        "import  from \"@lib/lib.ms\"\n",
+        &[(2, "textDocument/completion", at(0, 7))],
+    );
+    assert!(symbols[0].contains("\"greet\""), "{}", symbols[0]);
+}

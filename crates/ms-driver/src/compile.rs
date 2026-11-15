@@ -12,6 +12,8 @@ use crate::load::Graph;
 pub struct Checked {
     pub source_root: String,
     pub project_root: String,
+    /// Each fetched package's module-name prefix and the directory holding its files.
+    pub package_roots: Vec<(String, String)>,
     pub configuration: String,
     pub entry: String,
     /// The checked program; absent when loading failed before checking.
@@ -70,6 +72,7 @@ pub fn check_graph_in(
     let mut checked = Checked {
         source_root: graph.source_root.clone(),
         project_root: graph.project_root.clone(),
+        package_roots: graph.package_roots.clone(),
         configuration: graph.configuration.clone(),
         entry: graph.entry.clone(),
         program: None,

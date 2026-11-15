@@ -328,7 +328,7 @@ pub struct EffectScan {
     /// Declared effects (`// ms: effect`) callers see, by callable id, for the scanned callables.
     declared: HashMap<Name, Vec<String>>,
     /// Fetched packages: what each may reach.
-    packages: Vec<crate::checker::PackageScope>,
+    packages: Vec<crate::types::PackageScope>,
 }
 
 struct State {

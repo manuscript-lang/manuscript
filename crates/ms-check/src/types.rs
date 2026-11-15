@@ -1632,8 +1632,24 @@ pub fn result_use_hint(actual: &Ty, expected: &Ty) -> String {
     "unwrap it with a trailing '?' inside a function that returns a compatible Result, with 'if value := x', or with '.get()'".to_string()
 }
 
+/// A fetched package the checker holds to its manifest.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct PackageScope {
+    /// The module-name prefix of its files, such as `@pg/`.
+    pub prefix: String,
+    /// What the lock pinned: the git URL, `#`, and the tag or commit.
+    pub spec: String,
+    /// The package's declared effect patterns; empty means pure.
+    pub effects: Vec<String>,
+}
+
 /// "expected X, found Y" plus a result hint.
-pub fn format_mismatch(syms: ms_syntax::Names, actual: &Ty, expected: &Ty) -> String {
+pub fn format_mismatch(
+    syms: ms_syntax::Names,
+    packages: &[PackageScope],
+    actual: &Ty,
+    expected: &Ty,
+) -> String {
     let mut message = format!(
         "expected {expected_t}, found {actual_t}",
         expected_t = expected.display(syms),
@@ -1644,7 +1660,7 @@ pub fn format_mismatch(syms: ms_syntax::Names, actual: &Ty, expected: &Ty) -> St
         message.push_str("; ");
         message.push_str(&hint);
     }
-    if let Some(note) = same_name_note(syms, actual, expected) {
+    if let Some(note) = same_name_note(syms, packages, actual, expected) {
         message.push_str("; ");
         message.push_str(&note);
     }
@@ -1652,26 +1668,76 @@ pub fn format_mismatch(syms: ms_syntax::Names, actual: &Ty, expected: &Ty) -> St
 }
 
 /// Explains a mismatch whose two sides print alike: distinct types that share a name because
-/// they are declared in different modules.
-fn same_name_note(syms: ms_syntax::Names, actual: &Ty, expected: &Ty) -> Option<String> {
+/// they are declared in different modules, or in two copies of one package.
+fn same_name_note(
+    syms: ms_syntax::Names,
+    packages: &[PackageScope],
+    actual: &Ty,
+    expected: &Ty,
+) -> Option<String> {
     if expected.display(syms).to_string() != actual.display(syms).to_string() {
         return None;
     }
-    let expected_module = declaring_module(syms, expected)?;
-    let actual_module = declaring_module(syms, actual)?;
+    let expected_file = declaring_file(syms, expected)?;
+    let actual_file = declaring_file(syms, actual)?;
+    let in_package = |file: &str| {
+        packages
+            .iter()
+            .filter(|p| file.starts_with(&p.prefix))
+            .max_by_key(|p| p.prefix.len())
+    };
+    if let (Some(e), Some(a)) = (in_package(&expected_file), in_package(&actual_file))
+        && e.prefix != a.prefix
+    {
+        return Some(two_copies(e, a));
+    }
+    let (expected_module, actual_module) =
+        (module_label(&expected_file), module_label(&actual_file));
     Some(format!(
         "these are different types with one name: the expected one is declared in {expected_module} and the found one in {actual_module}; import only one of them or rename one"
     ))
 }
 
-/// The file that declares the first source-declared type inside `ty`, by file name.
-fn declaring_module(syms: ms_syntax::Names, ty: &Ty) -> Option<String> {
-    if let Some(symbol) = ty.def.as_ref().and_then(|def| def.symbol()) {
-        let file = syms.str(symbol.module);
-        let name = std::path::Path::new(file).file_name()?.to_string_lossy();
-        return Some(name.into_owned());
+/// The message for one package that reaches the program twice, under two paths.
+fn two_copies(expected: &PackageScope, found: &PackageScope) -> String {
+    let split = |spec: &str| match spec.rsplit_once('#') {
+        Some((url, tag)) => (url.to_string(), tag.to_string()),
+        None => (spec.to_string(), String::new()),
+    };
+    let (expected_url, expected_tag) = split(&expected.spec);
+    let (found_url, found_tag) = split(&found.spec);
+    let (expected_path, found_path) = (
+        expected.prefix.trim_end_matches('/'),
+        found.prefix.trim_end_matches('/'),
+    );
+    if expected_url == found_url && expected_tag == found_tag {
+        return format!(
+            "these are different types: the package {expected_url} at {expected_tag} is in the tree twice, as {expected_path} and as {found_path}, and each copy has its own types; have every dependent reach it through one path"
+        );
     }
-    ty.args.iter().find_map(|arg| declaring_module(syms, arg))
+    if expected_url == found_url {
+        return format!(
+            "these are different types: two versions of the package {expected_url} are in the tree, {expected_path} at {expected_tag} and {found_path} at {found_tag}, and each version has its own types; depend on one tag"
+        );
+    }
+    format!(
+        "these are different types with one name: the expected one is declared in {expected_path} ({expected_url} at {expected_tag}) and the found one in {found_path} ({found_url} at {found_tag})"
+    )
+}
+
+/// The module file that declares the first source-declared type inside `ty`.
+fn declaring_file(syms: ms_syntax::Names, ty: &Ty) -> Option<String> {
+    if let Some(symbol) = ty.def.as_ref().and_then(|def| def.symbol()) {
+        return Some(syms.str(symbol.module).to_string());
+    }
+    ty.args.iter().find_map(|arg| declaring_file(syms, arg))
+}
+
+/// A module by its file name, which is how a type's home reads in a diagnostic.
+fn module_label(file: &str) -> String {
+    std::path::Path::new(file)
+        .file_name()
+        .map_or_else(|| file.to_string(), |n| n.to_string_lossy().into_owned())
 }
 
 /// Minimum positional arity: only a fully defaulted trailing suffix may be omitted.

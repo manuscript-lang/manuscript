@@ -18,6 +18,7 @@ use ms_check::api::types::{Kind, Name, SymKind, SymRef, Ty, cases, constructor_s
 use ms_check::fxmap::{HashMap, HashSet};
 use ms_driver::project::pathops;
 use ms_syntax::ast::DeclKind;
+use std::collections::BTreeMap;
 use std::rc::Rc;
 
 /// One completion item before JSON encoding.
@@ -150,7 +151,22 @@ fn standard_paths(syms: ms_syntax::Names, session: &Rc<Session>) -> Vec<String> 
 
 fn editor_project(d: &Document) -> Option<ms_driver::project::Project> {
     let manifest = ms_driver::project::find_manifest(&d.path())?;
-    ms_driver::project::read_project(&manifest).ok()
+    // A project whose packages are not fetched still has its aliases to complete.
+    Some(ms_driver::project::read_project_partial(&manifest).0)
+}
+
+/// The `@` names an import in `d` may start with, mapped to their directories: the manifest's
+/// aliases and the source directories of its fetched packages.
+fn import_names(project: Option<&ms_driver::project::Project>) -> BTreeMap<String, String> {
+    let Some(project) = project else {
+        return BTreeMap::new();
+    };
+    project
+        .aliases
+        .iter()
+        .chain(&project.deps)
+        .map(|(name, directory)| (name.clone(), directory.clone()))
+        .collect()
 }
 
 struct Completer<'a> {
@@ -888,10 +904,7 @@ fn import_completion(
             }
         }
         let project = editor_project(d);
-        let aliases = project
-            .as_ref()
-            .map(|p| p.aliases.clone())
-            .unwrap_or_default();
+        let aliases = import_names(project.as_ref());
         for (alias, target) in &aliases {
             let mut candidate = alias.clone();
             if std::fs::metadata(target).is_ok_and(|m| m.is_dir()) {
@@ -920,9 +933,13 @@ fn import_completion(
                 if !directory.is_empty()
                     && let Ok(canonical) = pathops::eval_symlinks(&directory)
                 {
-                    let root = project
-                        .as_ref()
-                        .map_or_else(|| pathops::dir(&d.path()), |p| p.root.clone());
+                    let root = project.as_ref().map_or_else(
+                        || pathops::dir(&d.path()),
+                        |p| {
+                            p.confinement_root(&d.path(), prefix, &canonical)
+                                .to_string()
+                        },
+                    );
                     let inside = pathops::rel(&root, &canonical)
                         .map(|r| !pathops::escapes(&r))
                         .unwrap_or(false);
@@ -984,8 +1001,9 @@ fn import_completion(
             let mut file = pathops::clean(&pathops::join(&[&pathops::dir(&d.path()), &path]));
             if path.starts_with('@') {
                 let (alias, remainder) = path.split_once('/').unwrap_or((&path, ""));
-                file = match editor_project(d)
-                    .and_then(|p| p.aliases.get(alias).cloned())
+                file = match import_names(editor_project(d).as_ref())
+                    .get(alias)
+                    .cloned()
                     .filter(|b| !b.is_empty())
                 {
                     Some(base) => pathops::join(&[&base, remainder]),

@@ -82,15 +82,6 @@ pub struct CheckOptions {
     pub packages: Vec<PackageScope>,
 }
 
-/// A fetched package the checker holds to its manifest.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct PackageScope {
-    /// The module-name prefix of its files, such as `@pg/`.
-    pub prefix: String,
-    /// The package's declared effect patterns; empty means pure.
-    pub effects: Vec<String>,
-}
-
 /// The concrete fixture injected into tests of a module.
 #[derive(Clone)]
 pub struct TestFixture {
