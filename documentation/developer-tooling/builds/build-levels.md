@@ -11,7 +11,7 @@ Save this entrypoint as `main.ms`:
 
 <!-- manuscript-example: {"mode":"run","stdout":"ready\n"} -->
 ```manuscript
-fn main() Unit:
+fn main() Void:
     print("ready")
 ```
 

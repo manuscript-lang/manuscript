@@ -5,7 +5,7 @@ description: Write, check, test, and revise idiomatic Manuscript programs. Use f
 
 # Write Manuscript
 
-Generated for Manuscript {{MS_VERSION}}. Compare with `ms --version`; regenerate this skill with the matching compiler when stale. Manuscript is in alpha: syntax and APIs may change.
+Generated for Manuscript {{MS_VERSION}}. Compare with `ms --version`; regenerate this skill with the matching compiler when stale. Manuscript is in beta: what the stability page lists is frozen until 1.0; everything else may change.
 
 ## Core language
 
@@ -16,13 +16,13 @@ Use tabs for indentation. A trailing `:` opens a body; dedent ends it. A module 
 type Counter:
 	n: Int = 0
 
-fn var Counter.add(value: Int) Unit:
+fn var Counter.add(value: Int) Void:
 	self.n += value
 
 fn Counter.value() Int: self.n
 
 // ms: allow_effect std.console.write
-fn main() Unit!:
+fn main() Void!:
 	value := "42".parse_int().ok_or(Error("expected an integer"))?
 	var counter = Counter()
 	counter.add(value)
@@ -41,8 +41,8 @@ fn main() Unit!:
 
 ### Syntax and data
 
-- Immutable: `x := e`, or `x: T := e`. Mutable: `var x = e`; assignment and content mutation require var. Basic types: Int, Float, Bool, String, Unit; literals: `true`, `false`, `unit`. Strings interpolate `"hello {name}"`.
-- Functions declare parameter/return types: `fn f(x: Int, n: Int = 1) Int:`. Call `f(2, n: 3)`. Inline bodies return expressions; multiline bodies use `return`. Unit/Unit! may fall through. Main returns Unit, Int status, or Unit!.
+- Immutable: `x := e`, or `x: T := e`. Mutable: `var x = e`; assignment and content mutation require var. Basic types: Int, Float, Bool, String, Void; literals: `true`, `false`, `unit`. Strings interpolate `"hello {name}"`.
+- Functions declare parameter/return types: `fn f(x: Int, n: Int = 1) Int:`. Call `f(2, n: 3)`. Inline bodies return expressions; multiline bodies use `return`. Void/Void! may fall through. Main returns Void, Int status, or Void!.
 - Generics: `fn identity[T](x: T) T: x`. Callback: `fn(Int) Int`; closure: `fn x: x + 1`.
 - Control: `if`/`else if`/`else`, `while`, `for x in xs:`, `for i in 0..n:` (excludes n), `break`, `continue`; `and or not`. Prefer early exits: `if c: return x`. Expression: `if c: a else: b`.
 - Import `name` with `import name from "./other.ms"`; `export` shares declarations. Standard paths start `@std/`. Construct records `Counter()` or `Counter(n: 2)`. Receiver methods satisfy matching interfaces; no impl blocks.
@@ -53,7 +53,7 @@ fn main() Unit!:
 
 - `T?` is Optional: values convert, `none` is absent. Extract with `if x := optional:` or `.get(default)`. `a?.field` chains absence; postfix `?` is for Results only.
 - `T!` is Result[T, Error]. Return `ok(value)`/`error(Error("message"))`; `r?` extracts success or returns the error from a compatible Result-returning function. Otherwise `if x := r:` handles success; in else, `r.err()` yields the error directly (`.message` reads its text). Never call it on success or accidentally drop a Result.
-- Int/Float/Bool copy. Owned values can be borrowed by reads and moved into storage. Clone only for an independent owner, e.g. `names.append(user.name.clone())`. `fn add(var xs: List[Int]) Unit` is called `add(var xs)`; return parts of parameters by borrow without a marker. Closeable cleans up at scope end unless moved; no GC.
+- Int/Float/Bool copy. Owned values can be borrowed by reads and moved into storage. Clone only for an independent owner, e.g. `names.append(user.name.clone())`. `fn add(var xs: List[Int]) Void` is called `add(var xs)`; return parts of parameters by borrow without a marker. Closeable cleans up at scope end unless moved; no GC.
 - `p.wait()` on Promise[T] returns T! once; no async/await keywords. Keep mutable state with one owner. Effects use narrow directives above functions, as shown; directives do not execute effects.
 
 ## Deep dives
@@ -64,7 +64,8 @@ fn main() Unit!:
 - [Errors and optionals](references/errors-and-optionals.md): absence versus failure, propagation, nested results.
 - [Ownership and cleanup](references/ownership-and-cleanup.md): borrows, moves, clones, mutation, cleanup, borrow errors.
 - [Collections and pipelines](references/collections-and-pipelines.md): construction, lookup, mutation, method and function pipelines.
-- [Effects and concurrency](references/effects-and-concurrency.md): effects, promises, streams, waiting, capture.
+- [Effects and concurrency](references/effects-and-concurrency.md): effects, promises, streams, capture.
+- [Servers and state](references/servers-and-state.md): `serve` handlers cannot share mutable state; one owner promise and a pipe.
 - [Validation](references/validation.md): checks, tests, diagnostics, habits from other languages.
 
 ## Verify

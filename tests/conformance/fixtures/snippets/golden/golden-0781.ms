@@ -1,4 +1,4 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn café() Unit:
+fn café() Void:
     return

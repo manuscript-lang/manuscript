@@ -3,7 +3,7 @@
 // conform: origin=bench/lists/repro-cleared-tail.ms
 import panic from "@std/core.ms"
 
-fn main() Unit:
+fn main() Void:
     var values = [1, 2, 3]
     var total = 0
     var count = 0

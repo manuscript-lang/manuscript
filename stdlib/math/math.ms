@@ -384,7 +384,7 @@ export fn shift_right_unsigned(value: Int, count: Int) Int:
 	check_shift_count("shift_right_unsigned", count)
 	return msrt_bits_shift_right_unsigned(value, count)
 
-fn check_shift_count(operation: String, count: Int) Unit:
+fn check_shift_count(operation: String, count: Int) Void:
 	if count < 0 or count > 63:
 		panic("{operation}: count must be between 0 and 63, found {count}")
 

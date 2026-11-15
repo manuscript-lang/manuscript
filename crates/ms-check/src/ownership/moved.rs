@@ -207,7 +207,7 @@ impl Pass<'_> {
             must.extend(bindings);
         }
         match &e.kind {
-            ExprKind::Number(_) | ExprKind::Bool(_) | ExprKind::Unit => {}
+            ExprKind::Number(_) | ExprKind::Bool(_) | ExprKind::Void => {}
             ExprKind::Text(parts) => {
                 for part in parts.iter().rev() {
                     if let TextPart::Interp(i) = part {

@@ -130,7 +130,7 @@ export opaque type Subprocess:
 
 // Kills the process group, joins the child, kills leftover group members, and
 // closes all three streams. Idempotent; scope exit calls it.
-fn var Subprocess.close() Unit!:
+fn var Subprocess.close() Void!:
 	msstd_process_subprocess_close(self.native)
 
 // The child's standard input as a WriteStream; writes block when the pipe is full.
@@ -166,11 +166,11 @@ fn Subprocess.max_resident_bytes() Int:
 
 // Sends SIGTERM to the child's process group on Unix; Windows has no SIGTERM, so it
 // kills the direct process. Does not wait.
-fn Subprocess.terminate() Unit:
+fn Subprocess.terminate() Void:
 	return msstd_process_subprocess_terminate(self.native)
 
 // Sends SIGKILL to the child's process group. Does not wait.
-fn Subprocess.kill() Unit:
+fn Subprocess.kill() Void:
 	return msstd_process_subprocess_kill(self.native)
 
 // Identity and invocation details for the current process.
@@ -249,7 +249,7 @@ fn var SignalSource.next() Int?!:
 	return ok(msstd_process_signal_next(self.signals)?)
 
 // Stops observing signals and wakes a pending read with EBADF.
-fn var SignalSource.close() Unit!:
+fn var SignalSource.close() Void!:
 	msstd_process_signal_close(self.signals)
 
 // The names of an environment map, in the order of its values.
@@ -344,7 +344,7 @@ export fn title() String!:
 // Sets the process title shown by tools such as `ps`. A title with NUL or newline
 // returns EINVAL, and platforms that cannot rename a process return ENOTSUP.
 // ms: effect std.process.write
-export fn set_title(title: String) Unit!:
+export fn set_title(title: String) Void!:
 	return msstd_process_set_title(title)
 
 // Replaces the supplementary group list with the groups of `username` from the account
@@ -352,7 +352,7 @@ export fn set_title(title: String) Unit!:
 // `gid` outside 0 through 2147483647 returns EINVAL, and a lack of privilege returns
 // EACCES.
 // ms: effect std.process.write
-export fn initialize_groups(username: String, gid: Int) Unit!:
+export fn initialize_groups(username: String, gid: Int) Void!:
 	return msstd_process_initialize_groups(username, gid)
 
 // Replaces the running process image with `program` using exactly the given `arguments`
@@ -364,7 +364,7 @@ export fn replace(
 	program: String,
 	arguments: List[String],
 	environment: Map[String, String],
-) Unit!:
+) Void!:
 	var names: List[String] = []
 	var values: List[String] = []
 
@@ -390,7 +390,7 @@ export fn cpu_usage() CpuUsage!:
 // numbers/permissions. Signal 0 checks existence; Windows positive PIDs support 0 and
 // forced INT/KILL/TERM termination. A pid that names no process returns ENOENT.
 // ms: effect std.process.signal
-export fn send_signal(pid: Int, signal: Int) Unit!:
+export fn send_signal(pid: Int, signal: Int) Void!:
 	return msstd_process_send_signal(pid, signal)
 
 // Returns the numeric ids of the supplementary groups of the process.
@@ -413,7 +413,7 @@ export fn umask(mask: Int) Int!:
 // Sets the real or effective user or group id to `id`, 0..2147483647; other ids return
 // EINVAL. Identity changes require OS permission and are ENOTSUP on Windows.
 // ms: effect std.process.write
-export fn set_identity(kind: IdentityKind, id: Int) Unit!:
+export fn set_identity(kind: IdentityKind, id: Int) Void!:
 	if kind == IdentityKind.Uid: return msstd_process_set_identity("uid", id)
 	if kind == IdentityKind.Gid: return msstd_process_set_identity("gid", id)
 	if kind == IdentityKind.Euid: return msstd_process_set_identity("euid", id)
@@ -424,7 +424,7 @@ export fn set_identity(kind: IdentityKind, id: Int) Unit!:
 // 2147483647. Requires privilege. Invalid ids return EINVAL, a lack of privilege
 // returns EACCES, and Windows returns ENOTSUP.
 // ms: effect std.process.write
-export fn set_groups(groups: List[Int]) Unit!:
+export fn set_groups(groups: List[Int]) Void!:
 	return msstd_process_set_groups(groups)
 
 // Returns the scheduling priority of process `pid` (0 means the calling process) as a
@@ -438,5 +438,5 @@ export fn get_priority(pid: Int) Int!:
 // Accepts pid 0..2147483647 and priority -20..19 (lower is higher priority).
 // Unix uses nice values; Windows maps ranges to native priority classes.
 // ms: effect std.process.write
-export fn set_priority(pid: Int, priority: Int) Unit!:
+export fn set_priority(pid: Int, priority: Int) Void!:
 	return msstd_system_set_priority(pid, priority)

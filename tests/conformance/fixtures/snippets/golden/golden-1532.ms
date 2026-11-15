@@ -2,5 +2,5 @@
 // conform: phase=check
 type Node:
     next: Node?
-fn main() Unit:
+fn main() Void:
     node := Node(node)

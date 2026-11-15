@@ -8,7 +8,7 @@ fn toml_doc(count: Int) String:
         sb.append("[item{i}]\nid = {i}\nname = \"user{i}\"\ntags = [\"a\", \"b\"]\n")
     return sb.build()
 
-export fn bench_toml() Unit:
+export fn bench_toml() Void:
     toml := toml_doc(2000)
 
     bench(

@@ -515,7 +515,7 @@ fn dated_token(name: String, number: String) String!:
 	claims.add(name.clone(), JsonValue.NumberValue(number.clone()))
 	return sign_token(JsonValue.ObjectValue(claims), "secret".to_bytes())
 
-fn expect_date_order(number: String, at: Int, order: Int) Unit!:
+fn expect_date_order(number: String, at: Int, order: Int) Void!:
 	secret := "secret".to_bytes()
 	exp := dated_token("exp", number)?
 	nbf := dated_token("nbf", number)?

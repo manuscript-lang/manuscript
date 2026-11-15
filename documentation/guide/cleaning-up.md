@@ -19,7 +19,7 @@ fn count_orders(path: String) Int!:
         return error(Error("{path} is empty", kind: "EBADMSG"))
     return ok(rows.length() - 1)
 
-fn main() Unit!:
+fn main() Void!:
     count := count_orders("orders.csv")?
     print("{count} orders")
 ```

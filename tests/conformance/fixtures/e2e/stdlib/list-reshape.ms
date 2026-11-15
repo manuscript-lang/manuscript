@@ -103,7 +103,7 @@ test "Deque rotate turns the ring":
 	ring.rotate(6)
 	expect_equal(ring.to_list(), [3, 4, 1, 2])?
 
-fn repeat_negative_empty() Unit:
+fn repeat_negative_empty() Void:
 	_result := List[Int]().repeated(-1)
 
 test "repeated empty lists return without traversing the count":

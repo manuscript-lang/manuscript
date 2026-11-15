@@ -10,7 +10,7 @@ type Door:
 	id: Int
 	log: String
 
-fn var Door.close() Unit!:
+fn var Door.close() Void!:
 	_ := append_file(self.log, "{self.id},").wait()
 
 type Slot:
@@ -22,10 +22,10 @@ fn logged(path: String) String:
 
 	return ""
 
-fn put(var slot: Slot, door: Door) Unit:
+fn put(var slot: Slot, door: Door) Void:
 	slot.door = door
 
-fn stash(var doors: List[Door], door: Door) Unit:
+fn stash(var doors: List[Door], door: Door) Void:
 	doors.append(door)
 
 test "a temporary passed to a var-parameter function that keeps it closes once, later":

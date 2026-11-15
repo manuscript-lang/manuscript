@@ -8,10 +8,10 @@ import (
 type Cell:
 	value: Int
 
-fn var Cell.add(value: Int) Unit:
+fn var Cell.add(value: Int) Void:
 	self.value += value
 
-fn var Cell.add_both(value: Int, var other: Int) Unit:
+fn var Cell.add_both(value: Int, var other: Int) Void:
 	self.value += value
 	other += 10
 
@@ -32,10 +32,10 @@ fn fail(var events: List[Int]) Int!:
 	events.append(2)
 	return error(Error("later argument"))
 
-fn bump(var value: Int, amount: Int) Unit:
+fn bump(var value: Int, amount: Int) Void:
 	value += amount
 
-fn nested_try(var rows: List[List[Int]], var events: List[Int]) Unit!:
+fn nested_try(var rows: List[List[Int]], var events: List[Int]) Void!:
 	rows[9].set(mark(var events, 1), fail(var events)?)
 
 test "an earlier list fault prevents a later index":
@@ -92,12 +92,12 @@ test "a source receiver fault precedes its argument":
 	expect_contains(message, "out of range")?
 
 interface Change:
-	fn apply(var value: Int, amount: Int) Unit
+	fn apply(var value: Int, amount: Int) Void
 
 type Adder:
 	unused: Bool = false
 
-fn Adder.apply(var value: Int, amount: Int) Unit:
+fn Adder.apply(var value: Int, amount: Int) Void:
 	value += amount
 
 test "a contract var argument retains its changing index":
@@ -109,7 +109,7 @@ test "a contract var argument retains its changing index":
 	expect_equal(values, [6, 20])?
 
 test "a function value var argument retains its changing index":
-	change: fn(var Int, Int) Unit := bump
+	change: fn(var Int, Int) Void := bump
 	var values = [1, 20]
 	var calls = 0
 	change(var values[next(var calls)], 5)

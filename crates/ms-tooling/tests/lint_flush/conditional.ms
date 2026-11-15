@@ -3,11 +3,11 @@ import Closeable from "@std/core.ms"
 type Journal:
     lines: Int
 
-fn var Journal.close() Unit!:
+fn var Journal.close() Void!:
     _ := self.lines
     return ok(unit)
 
-fn var Journal.flush() Result[Unit, Error]:
+fn var Journal.flush() Result[Void, Error]:
     return ok(unit)
 
 type Holder:

@@ -236,7 +236,7 @@ impl ImplDecl {
     }
 }
 
-/// `test "name":` or `bench "name":` block; it implicitly returns `Unit`.
+/// `test "name":` or `bench "name":` block; it implicitly returns `Void`.
 #[derive(Debug, Clone)]
 pub struct TestDecl {
     /// Test or benchmark name (plain text, no interpolation).
@@ -375,7 +375,7 @@ pub enum ExprKind {
     /// `true` / `false`.
     Bool(bool),
     /// `unit`.
-    Unit,
+    Void,
     /// Text literal; at least one part (an empty literal is one empty part).
     Text(Vec<TextPart>),
     /// A name, including `self`, `fixture` and the arm path `_`.
@@ -631,7 +631,7 @@ pub struct Arm {
     pub bindings: Vec<ArmBinding>,
     /// Statements before the arm's value.
     pub body: Vec<Stmt>,
-    /// The arm's final expression; `None` yields `Unit`.
+    /// The arm's final expression; `None` yields `Void`.
     pub value: Option<Expr>,
     /// The arm is a branch of an `if` expression written `if c: a else: b`.
     pub from_if: bool,

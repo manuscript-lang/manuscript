@@ -7,13 +7,13 @@ import expect_equal from "@std/test/test.ms"
 // sees it.
 
 interface Counter:
-	var fn bump() Unit
+	var fn bump() Void
 	fn count() Int
 
 type Box:
 	n: Int
 
-fn var Box.bump() Unit:
+fn var Box.bump() Void:
 	self.n += 1
 
 fn Box.count() Int:
@@ -24,23 +24,23 @@ type Wrap:
 	inner: Counter
 	calls: Int
 
-fn var Wrap.bump() Unit:
+fn var Wrap.bump() Void:
 	self.inner.bump()
 	self.calls += 1
 
 fn Wrap.count() Int:
 	return self.inner.count() * 10 + self.calls
 
-fn twice(var c: Counter) Unit:
+fn twice(var c: Counter) Void:
 	c.bump()
 	c.bump()
 
-fn wrapped(var c: Counter, next: fn(var Counter) Unit) Unit:
+fn wrapped(var c: Counter, next: fn(var Counter) Void) Void:
 	// The wrapper owns the counter it was handed and takes its place.
 	c = Wrap(inner: c, calls: 0)
 	next(var c)
 
-fn rewrap(var xs: List[Int]) Unit:
+fn rewrap(var xs: List[Int]) Void:
 	xs = [xs.length(), xs[0]]
 
 test "a var parameter of an interface type is wrapped in place":

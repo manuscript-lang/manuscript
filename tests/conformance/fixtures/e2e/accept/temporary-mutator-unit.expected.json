@@ -11,7 +11,7 @@
       "tests": [
         {
           "index": 0,
-          "name": "temporary-mutator-unit.ms::a Unit mutation of a temporary list returns Unit",
+          "name": "temporary-mutator-unit.ms::a Void mutation of a temporary list returns Void",
           "status": "passed"
         },
         {
@@ -30,7 +30,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN temporary-mutator-unit.ms::a Unit mutation of a temporary list returns Unit\nPASS temporary-mutator-unit.ms::a Unit mutation of a temporary list returns Unit\nRUN temporary-mutator-unit.ms::a mutation of a temporary list keeps its extra result\nPASS temporary-mutator-unit.ms::a mutation of a temporary list keeps its extra result\n2 tests, 0 failed\n",
+      "stdout": "RUN temporary-mutator-unit.ms::a Void mutation of a temporary list returns Void\nPASS temporary-mutator-unit.ms::a Void mutation of a temporary list returns Void\nRUN temporary-mutator-unit.ms::a mutation of a temporary list keeps its extra result\nPASS temporary-mutator-unit.ms::a mutation of a temporary list keeps its extra result\n2 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

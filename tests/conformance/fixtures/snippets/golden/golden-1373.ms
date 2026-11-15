@@ -2,7 +2,7 @@
 // conform: phase=check
 import stdout from "@std/io/io.ms"
 
-fn say(text: String) Result[Unit, Error]:
+fn say(text: String) Result[Void, Error]:
     stdout().write("{text}\n")?
     return stdout().flush()
 

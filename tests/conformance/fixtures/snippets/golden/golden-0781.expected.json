@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0781.ms:3:7: parse: unexpected source character 'é'; non-ASCII characters are only allowed inside text and comments, and identifiers are ASCII\n   |\n 3 | fn café() Unit:\n   |       ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0781.ms:3:7: parse: unexpected source character 'é'; non-ASCII characters are only allowed inside text and comments, and identifiers are ASCII\n   |\n 3 | fn café() Void:\n   |       ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

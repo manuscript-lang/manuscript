@@ -8,7 +8,7 @@ type Total:
 	rows: Int
 	cents: Int
 
-fn main() Unit:
+fn main() Void:
 	data := read_all(stdin(), none).get().decode_utf8().get("")
 	rows := parse(data).get()
 	var regions = Map[String, Total]()

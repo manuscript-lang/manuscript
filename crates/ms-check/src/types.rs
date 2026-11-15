@@ -70,7 +70,7 @@ pub struct Param {
     /// Type.
     pub ty: Ty,
     /// A `var` parameter: the callee changes the caller's variable in place, so a call marks the
-    /// argument `var`. Part of a function type's identity (`fn(var List[Int]) Unit`); never set
+    /// argument `var`. Part of a function type's identity (`fn(var List[Int]) Void`); never set
     /// on a field.
     pub mutable: bool,
     /// The parameter of a written function type (`fn(Int) Int`), which has no source label: calls
@@ -226,8 +226,8 @@ pub enum Builtin {
     Bool,
     /// `String`.
     String,
-    /// `Unit`.
-    Unit,
+    /// `Void`.
+    Void,
     /// `Never`.
     Never,
     /// `Timestamp`.
@@ -272,7 +272,7 @@ impl Builtin {
             "Float64" => Some(Builtin::Float64),
             "Bool" => Some(Builtin::Bool),
             "String" => Some(Builtin::String),
-            "Unit" => Some(Builtin::Unit),
+            "Void" => Some(Builtin::Void),
             "Never" => Some(Builtin::Never),
             _ => None,
         }
@@ -887,7 +887,7 @@ impl Method {
     }
 
     /// Whether the method releases its receiver: a `Closeable` implementation, or a type's own
-    /// `fn var Type.close() Unit!`, which satisfies `Closeable` by shape.
+    /// `fn var Type.close() Void!`, which satisfies `Closeable` by shape.
     pub fn closes(&self, syms: ms_syntax::Names) -> bool {
         if self
             .contract
@@ -1014,7 +1014,7 @@ impl Prims {
             float: p("Float"),
             bool_: p("Bool"),
             string: p("String"),
-            unit: p("Unit"),
+            unit: p("Void"),
             never: p("Never"),
             invalid: Rc::new(Type::with_builtin(
                 n("<invalid>"),
@@ -1039,7 +1039,7 @@ pub fn primitive(name: &str) -> Ty {
         "Float" => p.float.clone(),
         "Bool" => p.bool_.clone(),
         "String" => p.string.clone(),
-        "Unit" => p.unit.clone(),
+        "Void" => p.unit.clone(),
         "Never" => p.never.clone(),
         other => Rc::new(Type::with_builtin(
             n(other),
@@ -1119,9 +1119,9 @@ pub fn bool_() -> Ty {
 pub fn string() -> Ty {
     primitive("String")
 }
-/// `Unit`.
+/// `Void`.
 pub fn unit() -> Ty {
-    primitive("Unit")
+    primitive("Void")
 }
 /// `Never`.
 pub fn never() -> Ty {
@@ -1165,11 +1165,11 @@ pub fn with_args(t: &Ty, args: Vec<Ty>) -> Ty {
     Rc::new(r)
 }
 
-/// Whether `t` is `Result[Unit, Error]`, the result of every `close`.
+/// Whether `t` is `Result[Void, Error]`, the result of every `close`.
 pub fn is_close_result(syms: ms_syntax::Names, t: &Ty) -> bool {
     t.is(Builtin::Result)
         && t.args.len() == 2
-        && syms.str(t.args[0].id) == "Unit"
+        && syms.str(t.args[0].id) == "Void"
         && t.args[1].is(Builtin::Error)
 }
 

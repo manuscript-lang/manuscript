@@ -3,7 +3,7 @@
 // conform: origin=sized numeric types stage 4
 import stdout from "@std/io/io.ms"
 
-fn main() Unit:
+fn main() Void:
     a: Int8 := -100
     b: Int32 := -70000
     c: Int := -5

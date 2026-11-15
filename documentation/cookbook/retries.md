@@ -22,7 +22,7 @@ fn flaky(attempt: Int) Int!:
         return error(Error("temporarily unavailable", kind: "EAGAIN"))
     return ok(attempt)
 
-fn main() Unit!:
+fn main() Void!:
     policy := RetryPolicy(attempts: 5, delay: milliseconds(10), jitter: false)
     attempts := retry(policy, flaky)?
     print("succeeded after {attempts} attempts")
@@ -48,7 +48,7 @@ import seconds from "@std/time.ms"
 fn down() Int!:
     return error(Error("down", kind: "ECONNREFUSED"))
 
-fn main() Unit:
+fn main() Void:
     var breaker = CircuitBreaker(threshold: 2, cooldown: seconds(30))
     for round in 0..3:
         result := breaker.call(down)

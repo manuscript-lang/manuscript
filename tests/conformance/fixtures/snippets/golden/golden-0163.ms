@@ -12,7 +12,7 @@ func (c *pollProbeContext) Err() error {
     if c.calls == c.stop { return pollcontext.Canceled }
     return nil
 }
-func checkPoll(fn func(*rt.Execution, *rt.List[int], int) rt.Unit, start, stop, count, last int) {
+func checkPoll(fn func(*rt.Execution, *rt.List[int], int) rt.Void, start, stop, count, last int) {
     c := &pollProbeContext{Context: pollcontext.Background(), stop: stop}
     log := rt.NewList[int]()
     cancelled := false

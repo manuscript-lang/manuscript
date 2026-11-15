@@ -7,7 +7,7 @@ fn long() Int:
         _ := sleep(nanoseconds(100000000)).wait()
     return 0
 
-fn main() Unit:
+fn main() Void:
     w := promise(fn: ok(long()))
     print("joining")
 

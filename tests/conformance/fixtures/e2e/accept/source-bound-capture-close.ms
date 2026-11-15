@@ -11,7 +11,7 @@ type Marker:
 	log: String
 	closed: Bool = false
 
-fn var Marker.close() Unit!:
+fn var Marker.close() Void!:
 	if not self.closed:
 		self.closed = true
 		append_file(self.log, "{self.id},").wait()?
@@ -28,17 +28,17 @@ fn var Marker.bump(delta: Int = 1) Int:
 
 fn marker(id: Int, log: String) Marker: Marker(id, log)
 
-fn ordinary(log: String) Unit!:
+fn ordinary(log: String) Void!:
 	status := marker(1, log).status
 	expect_equal(status(), 1)?
 	expect_equal(status(), 1)?
 
-fn defaulted(log: String) Unit!:
+fn defaulted(log: String) Void!:
 	status := marker(2, log).with_default
 	expect_equal(status(), 12)?
 	expect_equal(status(20), 22)?
 
-fn generic(log: String) Unit!:
+fn generic(log: String) Void!:
 	status := marker(3, log).generic[Int]
 	expect_equal(status(10), 3)?
 	expect_equal(status(20), 3)?
@@ -47,19 +47,19 @@ fn escaped(log: String) fn() Int:
 	value := marker(4, log)
 	return value.status
 
-fn escaping(log: String) Unit!:
+fn escaping(log: String) Void!:
 	status := escaped(log.clone())
 	expect_equal(read_file(log).wait().get().decode_utf8().get(""), "1,2,3,")?
 	expect_equal(status(), 4)?
 	expect_equal(status(), 4)?
 
-fn borrow(value: Marker) Unit!:
+fn borrow(value: Marker) Void!:
 	status := value.status
 	with_default := value.with_default
 	expect_equal(status(), 5)?
 	expect_equal(with_default(), 15)?
 
-fn borrowed(log: String) Unit!:
+fn borrowed(log: String) Void!:
 	value := marker(5, log.clone())
 	borrow(value)?
 	expect_equal(read_file(log).wait().get().decode_utf8().get(""), "1,2,3,4,")?
@@ -76,12 +76,12 @@ test "nonmutating source default and generic method captures close their owners"
 	borrowed(log.clone())?
 	expect_equal(read_file(log).wait().get().decode_utf8().get(""), "1,2,3,4,5,")?
 
-fn shared_default(var value: Marker) Unit!:
+fn shared_default(var value: Marker) Void!:
 	bump := value.bump
 	expect_equal(bump(), 8)?
 	expect_equal(bump(2), 10)?
 
-fn shared_owner(log: String) Unit!:
+fn shared_owner(log: String) Void!:
 	var value = marker(7, log.clone())
 	shared_default(var value)?
 	expect_equal(read_file(log).wait().get().decode_utf8().get(""), "")?

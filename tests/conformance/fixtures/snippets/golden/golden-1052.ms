@@ -1,4 +1,4 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn work() Unit:
+fn work() Void:
     send(payload: incoming_request_payload.normalize_whitespace().remove_legacy_separators().trim_whitespace())

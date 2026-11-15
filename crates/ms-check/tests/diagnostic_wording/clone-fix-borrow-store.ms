@@ -1,4 +1,4 @@
-fn main() Unit:
+fn main() Void:
     xs := ["a"]
     var out = ["b"]
     first := xs[0]

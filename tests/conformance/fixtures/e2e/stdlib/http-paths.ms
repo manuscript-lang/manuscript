@@ -37,14 +37,14 @@ fn route(request: HttpRequest) HttpResponse:
 		body: "{request.path}|{request.query}".to_bytes(),
 	)
 
-fn stream_route(var exchange: HttpExchange) Unit!:
+fn stream_route(var exchange: HttpExchange) Void!:
 	var chain_1 = Map[String, List[String]]()
 	chain_1.add(key: "Set-Cookie", value: ["a=1", "b=2"])
 
 	_sent := exchange.send_headers(status: 200, headers: (list_headers(chain_1)?))?
 	_written := (http_result(exchange.write("{exchange.path()}|{exchange.query()}"))?)
 
-fn check_route(url: String, expected: String) Unit!:
+fn check_route(url: String, expected: String) Void!:
 	response := (
 		request(
 			method: HttpMethod.Get,
@@ -62,7 +62,7 @@ fn check_route(url: String, expected: String) Unit!:
 		Error("#257 repeated cookies regressed")
 	)
 
-fn check_rejected(url: String) Unit!:
+fn check_rejected(url: String) Void!:
 	response := (
 		request(
 			method: HttpMethod.Get,
@@ -77,7 +77,7 @@ fn check_rejected(url: String) Unit!:
 		Error("unsafe or invalid path was dispatched")
 	)
 
-fn check_paths(base: String) Unit!:
+fn check_paths(base: String) Void!:
 	(check_route(url: "{base}/a%20b", expected: "/a b|")?)
 	(check_route(url: "{base}/%2e%2e/x?y=%2F", expected: "/x|y=%2F")?)
 	(check_route(url: "{base}/a/../b/", expected: "/b/|")?)
@@ -100,7 +100,7 @@ test "streaming routes validate original input and decode once":
 	)
 	(check_paths("http://{server.address()}")?)
 
-fn expect_http_error[T](outcome: T!) Unit!:
+fn expect_http_error[T](outcome: T!) Void!:
 	match outcome:
 		ok(_): return error(Error("invalid URL succeeded"))
 		error(cause):

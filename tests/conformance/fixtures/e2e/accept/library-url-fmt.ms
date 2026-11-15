@@ -8,7 +8,7 @@ import encode_component from "@std/net/url.ms"
 import decode_component from "@std/net/url.ms"
 import resolve from "@std/net/url.ms"
 
-fn verify_url() Unit!:
+fn verify_url() Void!:
     url := parse(text: "https://EXAMPLE.COM/a%2Fb?q=x#frag")?
     (format(value: url)?) | expect_equal("https://example.com/a%2Fb?q=x#frag")?
 

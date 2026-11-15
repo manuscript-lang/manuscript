@@ -442,7 +442,7 @@ impl Walker<'_> {
             let closable = self.closable(s, &b.ty);
             self.resources.push((b.uid, b.name, pattern.pos, closable));
         }
-        if ty_holds_promise(self.syms, &b.ty) {
+        if ty_holds_promise(&b.ty) {
             self.take_carried(b.uid, b.name);
         }
         if self.entry_call(value) || self.holds_lambda_promises(value) {
@@ -577,7 +577,7 @@ impl Walker<'_> {
         }
     }
 
-    /// A method used as a value (`xs.append`, `re.find`, or specialized, `log.error[Unit]`):
+    /// A method used as a value (`xs.append`, `re.find`, or specialized, `log.error[Void]`):
     /// the method and its receiver expression.
     pub(super) fn method_value_parts<'e>(&self, e: &'e Expr) -> Option<(MethodRef, &'e Expr)> {
         let member = method_callee(self.syms, self.cx.m, e);

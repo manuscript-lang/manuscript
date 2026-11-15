@@ -162,7 +162,7 @@ impl<'a> FnLower<'a> {
                 };
                 // A bare `return` (or `return unit`) in a test ends it successfully.
                 let in_test = matches!(self.b.m.types.kind(self.result_ty()), TyKind::Alt(_));
-                let x = if in_test && !self.dead && self.ty_of(x.v) == MTy::UNIT {
+                let x = if in_test && !self.dead && self.ty_of(x.v) == MTy::VOID {
                     let u = self.b.unit();
                     let ok = self.testing_ok(self.result_ty(), u)?;
                     Val { v: ok, own: true }
@@ -371,7 +371,7 @@ impl<'a> FnLower<'a> {
                     self.b.m,
                     "msrt_fault_destructure",
                     &[MTy::INT, MTy::INT],
-                    MTy::UNIT,
+                    MTy::VOID,
                 );
                 self.b.m.externs[ext.index()].noreturn = true;
                 self.b.call_rt(ext, &[want, len]);

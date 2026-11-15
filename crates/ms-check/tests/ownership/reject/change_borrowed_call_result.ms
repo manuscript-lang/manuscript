@@ -6,7 +6,7 @@ fn Bag.view() List[Int]: self.items
 fn same(bag: Bag) Bag:
     return bag
 
-fn go(bag: Bag) Unit:
+fn go(bag: Bag) Void:
     bag.view().append(2)  // error: cannot change the result of
     bag.view()[0] = 1  // error: cannot change the result of
     same(bag).items.append(3)  // error: cannot change the result of

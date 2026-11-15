@@ -22,10 +22,10 @@ fn ordered(
 ) Int:
 	return second * 10 + 5 + third
 
-fn unit_default() Unit:
+fn unit_default() Void:
 	return unit
 
-fn unit_value(value: Unit = unit_default()) Unit:
+fn unit_value(value: Void = unit_default()) Void:
 	return value
 
 fn optional(value: Int? = 3) Int?:

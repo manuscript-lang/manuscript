@@ -4,7 +4,7 @@
 
 import stdout from "@std/io/io.ms"
 
-fn main() Unit:
+fn main() Void:
     var total = 0
     for x in [1, 2, 3]:
         total += x

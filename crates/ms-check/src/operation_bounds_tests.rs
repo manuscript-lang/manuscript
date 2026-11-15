@@ -171,14 +171,14 @@ interface Reader[A]:
     fn read[T: Relation[A]](value: T) Int
 ";
 
-const USE: &str = "\nfn use_reader[R: Reader[Int]](r: R) Unit:\n    return\n\nfn run(s: Source) Unit:\n    use_reader(s)\n";
+const USE: &str = "\nfn use_reader[R: Reader[Int]](r: R) Void:\n    return\n\nfn run(s: Source) Void:\n    use_reader(s)\n";
 
 #[test]
 fn implementations_compare_bounds_after_interface_substitution() {
     for source in [
         // A concrete argument, with the operation parameter renamed.
-        "type Source:\n    number: Int\n\nfn Source.read[T: Relation[Int]](value: T) Int:\n    return self.number\n\nfn use_reader[R: Reader[Int]](r: R) Unit:\n    return\n\nfn run(s: Source) Unit:\n    use_reader(s)\n",
-        "type Source:\n    number: Int\n\nfn Source.read[U: Relation[Int]](value: U) Int:\n    return self.number\n\nfn use_reader[R: Reader[Int]](r: R) Unit:\n    return\n\nfn run(s: Source) Unit:\n    use_reader(s)\n",
+        "type Source:\n    number: Int\n\nfn Source.read[T: Relation[Int]](value: T) Int:\n    return self.number\n\nfn use_reader[R: Reader[Int]](r: R) Void:\n    return\n\nfn run(s: Source) Void:\n    use_reader(s)\n",
+        "type Source:\n    number: Int\n\nfn Source.read[U: Relation[Int]](value: U) Int:\n    return self.number\n\nfn use_reader[R: Reader[Int]](r: R) Void:\n    return\n\nfn run(s: Source) Void:\n    use_reader(s)\n",
         // A generic receiver passing its own parameter.
         "type Source[B]:\n    number: Int\n\nfn Source[B].read[T: Relation[B]](value: T) Int:\n    return self.number\n",
     ] {

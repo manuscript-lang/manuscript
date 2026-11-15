@@ -11,7 +11,7 @@ type Token:
 	log: String
 	id: Int
 
-fn var Token.close() Unit!:
+fn var Token.close() Void!:
 	append_file(self.log, "close {self.id}\n").wait()?
 
 type Tokens:
@@ -24,7 +24,7 @@ fn var Tokens.next() Token?!:
 
 	return ok(none)
 
-fn var Tokens.close() Unit!:
+fn var Tokens.close() Void!:
 	return ok(unit)
 
 type Forward[T]:
@@ -37,7 +37,7 @@ fn var Forward[T].next() T!?:
 
 	return none
 
-fn first_body(log: String) Unit!:
+fn first_body(log: String) Void!:
 	for item in Forward[Token](Tokens(log.clone())):
 		token := item?
 		append_file(log, "body {token.id}\n").wait()?

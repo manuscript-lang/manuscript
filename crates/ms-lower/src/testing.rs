@@ -48,7 +48,7 @@ impl FnLower<'_> {
     ) -> Result<Val, Error> {
         let args = self.native_args(view)?;
         if self.dead {
-            return Ok(self.dummy(MTy::UNIT));
+            return Ok(self.dummy(MTy::VOID));
         }
         self.at(e.pos);
         let operand = self.borrow(args[0].val);

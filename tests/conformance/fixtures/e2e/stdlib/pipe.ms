@@ -41,7 +41,7 @@ test "each writer is its own end like dup: the reader ends after the last one cl
 		seen.append(item)
 	expect_equal(seen, ["a", "b", "c"])?
 
-fn fill(p: Pipe[Int], count: Int) Unit!:
+fn fill(p: Pipe[Int], count: Int) Void!:
 	var out = p.writer()
 	for i in 0..count:
 		out.write(i)?
@@ -99,13 +99,13 @@ test "a promise that owns a pipe writes to it through a writer of its own":
 	gate.close()?
 	expect_equal(drain(var input)?, [0, 1, 2, 3, 4])?
 
-fn produce(p: Pipe[Int], count: Int) Unit!:
+fn produce(p: Pipe[Int], count: Int) Void!:
 	var out = p.writer()
 	for i in 0..count:
 		out.write(i)?
 	return out.close()
 
-fn send_range(var out: WriteStream[Int], base: Int) Unit!:
+fn send_range(var out: WriteStream[Int], base: Int) Void!:
 	for i in 0..5:
 		out.write(base + i)?
 	return out.close()
@@ -128,7 +128,7 @@ test "several promises each move a writer of their own into a fan-in":
 	expect_equal(seen[0], 0)?
 	expect_equal(seen[14], 204)?
 
-fn start_sender(p: Pipe[Int]) Promise[Unit]:
+fn start_sender(p: Pipe[Int]) Promise[Void]:
 	var w = p.writer()
 	return promise(fn: send_range(var w, 0))
 
@@ -143,7 +143,7 @@ test "a promise keeps the writer it captured after its maker returns":
 	expect_equal(drain(var input)?, [0, 1, 2, 3, 4])?
 	sender.wait()?
 
-fn send_many(var out: WriteStream[Int], from: Int, count: Int) Unit!:
+fn send_many(var out: WriteStream[Int], from: Int, count: Int) Void!:
 	for i in from..from + count:
 		out.write(i)?
 	out.flush()?
@@ -170,7 +170,7 @@ test "a reader takes queued values directly and still waits and ends in order":
 	expect_equal(count, 10000)?
 	expect_equal(total, 49995000)?
 
-fn endless(var out: WriteStream[Int]) Unit!:
+fn endless(var out: WriteStream[Int]) Void!:
 	var i = 0
 
 	while true:

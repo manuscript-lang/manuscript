@@ -7,7 +7,7 @@ fn work(
 ) (Map[String, String]?)!ApplicationError:
     return error(cause)
 
-fn main() Unit:
+fn main() Void:
     a := g()(1)
     b := g(1)   (2)
     c: fn(Int)(fn() Int) := x

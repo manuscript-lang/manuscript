@@ -2,7 +2,7 @@ import stdout from "@std/io/io.ms"
 import arguments from "@std/os/env.ms"
 
 // The test replaces the one-element literal with 20000 runtime elements.
-fn main() Unit:
+fn main() Void:
     var o = stdout()
     n := arguments().length()
     xs := [n + 0]

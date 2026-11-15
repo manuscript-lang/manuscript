@@ -1,10 +1,10 @@
 // Lowered and verified by tests/lower.rs; each expect line is checked against the printed MIR.
 // A closure that passes a captured `var` on hands over the shared slot: no copy in, no write back.
 // expect-mir-order: "fn @<anonymous>" "closure.cap 0" "call @resize (%2, %1)"
-fn resize(var out: List[Int], n: Int) Unit:
+fn resize(var out: List[Int], n: Int) Void:
     out.append(n)
 
-fn each(f: fn(Int) Unit) Unit:
+fn each(f: fn(Int) Void) Void:
     f(1)
     f(2)
 

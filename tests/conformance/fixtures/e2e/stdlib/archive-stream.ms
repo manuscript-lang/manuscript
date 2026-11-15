@@ -34,7 +34,7 @@ fn var Chunks.next() Bytes?!:
 	self.at = end
 	return ok(piece)
 
-fn var Chunks.close() Unit!:
+fn var Chunks.close() Void!:
 	return ok(unit)
 
 fn chunked(data: Bytes, size: Int) ReadStream[Bytes]:
@@ -180,7 +180,7 @@ fn var HeaderThenFail.next() Bytes?!:
 	self.sent = true
 	return ok(self.head.clone())
 
-fn var HeaderThenFail.close() Unit!:
+fn var HeaderThenFail.close() Void!:
 	return ok(unit)
 
 test "tar entries refuse an oversized member from its header":

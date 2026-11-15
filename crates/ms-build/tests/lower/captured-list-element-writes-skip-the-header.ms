@@ -2,7 +2,7 @@
 // expect-mir: "list.addr.u"
 // expect-mir: "store "
 // expect-mir-count: 1 "load list<int>"
-fn fill(f: fn(Int) Unit) Unit:
+fn fill(f: fn(Int) Void) Void:
     f(0)
     f(1)
 

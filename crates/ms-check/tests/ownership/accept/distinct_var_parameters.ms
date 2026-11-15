@@ -1,4 +1,4 @@
-fn both(var a: List[Int], var b: List[Int]) Unit:
+fn both(var a: List[Int], var b: List[Int]) Void:
     a.append(1)
     b.append(2)
 

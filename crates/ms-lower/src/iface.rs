@@ -137,7 +137,7 @@ impl Cx {
             let op_vars = self.iface_op_vars(iface, &s.name);
             // A hook a `TestHooks` implementation leaves out has no body: it does nothing.
             let missing = native == ct::Native::Source
-                && s.ret == MTy::UNIT
+                && s.ret == MTy::VOID
                 && !self.callables.contains_key(&(module, id));
             if missing {
                 let mut b = FuncBuilder::new(m, &format!("vt.{}", s.name), ps, s.ret);

@@ -16,13 +16,13 @@ type Cart:
 fn summary(cart: Cart) String:
     return "{cart.owner} has {cart.items.length()} items"
 
-fn add_gift(var cart: Cart) Unit:
+fn add_gift(var cart: Cart) Void:
     cart.items.append("gift card")
 
-fn archive(cart: Cart, var history: List[Cart]) Unit:
+fn archive(cart: Cart, var history: List[Cart]) Void:
     history.append(cart)
 
-fn main() Unit:
+fn main() Void:
     var cart = Cart("Sam", ["pen", "ink"])
     print(summary(cart))
     add_gift(var cart)

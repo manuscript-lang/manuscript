@@ -40,7 +40,7 @@ Decimal literals need `import Decimal from "@std/math/decimal.ms"`. Integer lite
 - The default types remain `Int`/`Int64` and `Float`/`Float64`; choose a sized type explicitly when storage or precision matters.
 
 ```manuscript
-fn literals() Unit:
+fn literals() Void:
     smallest: Int := -9223372036854775808
     exponent: Float := 1e3
     mask: Int := 0xFF_00
@@ -55,7 +55,7 @@ fn literals() Unit:
 `Int8`, `Int16`, `Int32` and `Float32` occupy 1, 2, 4 and 4 bytes in lists, user types, optionals, enums, maps and sets; locals and arguments keep full-width registers, so only storage shrinks. A `List[Int8]` of fifty million elements takes one eighth of the memory of a `List[Int]`. Arithmetic needs both operands to have the same type, so `Int8 + Int32` is rejected, and an `Int8` operation that leaves -128 to 127 faults:
 
 ```manuscript
-fn sized() Unit:
+fn sized() Void:
     a: Int8 := 100
     wide: Int32 := 2000000000
     ratio: Float32 := 0.1

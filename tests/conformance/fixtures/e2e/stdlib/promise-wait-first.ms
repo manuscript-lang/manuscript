@@ -10,10 +10,10 @@ import (
 	milliseconds, monotonic, sleep from "@std/time.ms",
 )
 
-fn immediate(id: Int) Unit:
+fn immediate(id: Int) Void:
 	complete[Int](id, ok(1))
 
-fn delayed(id: Int) Unit:
+fn delayed(id: Int) Void:
 	_ := sleep(milliseconds(5000)).wait()
 	complete[Int](id, ok(1))
 

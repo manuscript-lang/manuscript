@@ -5,24 +5,24 @@ import expect_equal from "@std/test/test.ms"
 // A function type may take a parameter `var`: a call through the value passes the
 // caller's variable by address, and the callee changes it in place.
 
-fn push_one(var values: List[Int]) Unit:
+fn push_one(var values: List[Int]) Void:
 	values.append(1)
 
-fn bump(var count: Int, by: Int) Unit:
+fn bump(var count: Int, by: Int) Void:
 	count += by
 
 type Hooks:
-	change: fn(var List[Int]) Unit
+	change: fn(var List[Int]) Void
 
 type Bag:
 	items: List[Int]
 
-fn apply(change: fn(var List[Int]) Unit, var values: List[Int]) Unit:
+fn apply(change: fn(var List[Int]) Void, var values: List[Int]) Void:
 	change(var values)
 
 test "a named function with a var parameter is a function value":
 	var values: List[Int] = []
-	change: fn(var List[Int]) Unit := push_one
+	change: fn(var List[Int]) Void := push_one
 	change(var values)
 	change(var values)
 	values | expect_equal([1, 1])?
@@ -50,7 +50,7 @@ test "a var parameter passes through a function parameter":
 
 test "a var parameter changes a field in place":
 	var bag = Bag(items: [])
-	change: fn(var List[Int]) Unit := push_one
+	change: fn(var List[Int]) Void := push_one
 	change(var bag.items)
 	bag.items | expect_equal([1])?
 
@@ -60,7 +60,7 @@ test "a function value in a field takes a var argument":
 	hooks.change(var values)
 	values | expect_equal([1])?
 
-fn twice(change: fn(var List[Int]) Unit, var values: List[Int]) Unit:
+fn twice(change: fn(var List[Int]) Void, var values: List[Int]) Void:
 	// `values` is this function's own var parameter, passed on by address again.
 	change(var values)
 	change(var values)

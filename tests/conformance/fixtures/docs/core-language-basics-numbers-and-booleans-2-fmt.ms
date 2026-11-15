@@ -1,7 +1,7 @@
 // conform: tags=decimal,formatter,numbers,parser,tier-core
 // conform: phase=parse
 // conform: origin=documentation/core-language/basics/numbers-and-booleans.md:36
-fn literals() Unit:
+fn literals() Void:
     smallest: Int := -9223372036854775808
     exponent: Float := 1e3
     precise: Decimal := 1e3d

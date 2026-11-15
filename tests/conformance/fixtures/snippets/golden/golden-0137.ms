@@ -1,7 +1,7 @@
 // conform: tags=diagnostics
 // conform: phase=check
 import filesystem from "@std/os/fs.ms"
-fn explicit() Unit:
+fn explicit() Void:
     fs := filesystem()
     fs.write_file("", "", false)
     fs.copy_file("", "", true)

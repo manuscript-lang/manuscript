@@ -1,6 +1,6 @@
 import bench, ints, Point from "./harness.ms"
 
-export fn bench_list() Unit:
+export fn bench_list() Void:
     data := ints(100000)
 
     bench(

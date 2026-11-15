@@ -18,7 +18,7 @@ fn name(s: Shape) String:
         Circle(_): return "circle"
         Dot: return "dot"
 
-fn main() Unit:
+fn main() Void:
     p := Pair(Circle(1), Dot)
     q := Pair(Dot, 2)
     stdout().write("{name(id(Dot))} {name(p.a)} {name(p.b)} {name(q.a)} {q.b}\n").get()

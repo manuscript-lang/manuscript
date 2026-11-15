@@ -27,13 +27,13 @@ fn discounted_label(price: Decimal, percent: Decimal) Result[String, DiscountErr
 
 On `ok`, `value` holds the `Decimal`. On `error`, the function returns that error immediately. Success types may differ (decimal versus text); the error type is forwarded unchanged.
 
-`Result[Unit, E]` can be propagated as a statement. Save this complete test as `ready_test.ms` and run `ms test ready_test.ms`:
+`Result[Void, E]` can be propagated as a statement. Save this complete test as `ready_test.ms` and run `ms test ready_test.ms`:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
 import expect_equal from "@std/test/test.ms"
 
-fn prepare() Unit!: ok(unit)
+fn prepare() Void!: ok(unit)
 
 fn ready_label() String!:
     prepare()?
@@ -49,7 +49,7 @@ PASS ready_test.ms::prepare before returning a label
 1 tests, 0 failed
 ```
 
-Standalone `call()?` requires a `Unit` success. Otherwise bind it (`name := call()?`) or `return call()?`.
+Standalone `call()?` requires a `Void` success. Otherwise bind it (`name := call()?`) or `return call()?`.
 
 Omitting `?` discards the Result, which the checker rejects. To ignore it deliberately, use [`_ :=`](results.md#discarding-a-result).
 
@@ -76,7 +76,7 @@ The compiler rejects `?` when:
 
 - its expression is not a Result;
 - its error type differs from the function's;
-- the enclosing function or test returns Unit.
+- the enclosing function or test returns Void.
 
 See [type compatibility](../types/compatibility.md).
 

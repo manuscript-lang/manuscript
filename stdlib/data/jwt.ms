@@ -231,7 +231,7 @@ fn verify_bytes(
 
 	return ok(verify(key, data, signature))
 
-fn check_claims(claims: JsonValue, check: JwtCheck) Unit!:
+fn check_claims(claims: JsonValue, check: JwtCheck) Void!:
 	match claims:
 		ObjectValue(_): unit
 		_: return error(Error("jwt: claims must be an object", kind: "EBADMSG"))

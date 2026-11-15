@@ -7,14 +7,14 @@ import Closeable from "@std/core.ms"
 type Door:
     name: String
 
-fn var Door.close() Unit!:
+fn var Door.close() Void!:
     print("closed {self.name}")
 
 fn nested(n: String) Door??:
     inner: Door? := Door(n)
     return inner
 
-fn main() Unit:
+fn main() Void:
     bound := nested("bound")
     present := nested("temporary").is_some()
     print("end {bound.is_some()} {present}")

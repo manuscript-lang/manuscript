@@ -450,7 +450,7 @@ impl FnLower<'_> {
                     let handler = input
                         .val
                         .ok_or_else(|| Error::new(format!("{sym}: missing handler")))?;
-                    // The handler's type names the exchange interface: `fn(var HttpExchange) Unit!`.
+                    // The handler's type names the exchange interface: `fn(var HttpExchange) Void!`.
                     let exchange = decl
                         .iter()
                         .find(|d| d.ty.kind == ms_check::api::types::Kind::Function)
@@ -589,7 +589,7 @@ impl FnLower<'_> {
             let done = self.b.bytes_push(vals[0], vals[1]);
             let r = self.two_ways_mode(
                 done,
-                MTy::UNIT,
+                MTy::VOID,
                 ms_mir::ir::Mode::Borrow,
                 &mut |s| Ok(Some(s.b.unit())),
                 &mut |s| {
@@ -806,14 +806,14 @@ impl FnLower<'_> {
             "i64" => Some(MTy::INT),
             "f64" => Some(MTy::FLOAT),
             "u8" => Some(MTy::BOOL),
-            "" | "()" => Some(MTy::UNIT),
+            "" | "()" => Some(MTy::VOID),
             _ => None,
         };
         // A string comes back through a trailing `out: *mut StrVal` and no status.
         let body =
             sig.params.len() - usize::from(sig.params.last().is_some_and(|p| p.ty == "ErrSlot"));
         let string_ret = has_out
-            && direct(&sig.ret) == Some(MTy::UNIT)
+            && direct(&sig.ret) == Some(MTy::VOID)
             && sig.params[..body]
                 .last()
                 .is_some_and(|p| p.ty == "*mut StrVal");
@@ -841,11 +841,11 @@ impl FnLower<'_> {
                 return Ok(Val { v, own: true });
             }
             if ret == MTy::BOOL && matches!(self.b.m.types.kind(result), TyKind::Alt(_)) {
-                // A bare status: `Result[Unit, E]`.
+                // A bare status: `Result[Void, E]`.
                 self.push_err_slot(sig, &mut vals);
                 let code = self.status_code(sym, &vals)?;
                 if self.ok_payload_is_optional_unit(result) {
-                    // `Result[Unit?, E]`: `STATUS_NONE` is none, a zero status is some.
+                    // `Result[Void?, E]`: `STATUS_NONE` is none, a zero status is some.
                     let take = &mut |s: &mut Self| Ok(s.b.unit());
                     return self.status_optional_result(sym, code, take, result);
                 }
@@ -870,8 +870,8 @@ impl FnLower<'_> {
                 let v = self.b.alt_new(a, ok as u32, &[text]);
                 return Ok(Val { v, own: true });
             }
-            if ret == MTy::BOOL && result == MTy::UNIT {
-                // A status the interface ignores: `Unit`.
+            if ret == MTy::BOOL && result == MTy::VOID {
+                // A status the interface ignores: `Void`.
                 self.call_runtime(sym, &vals, MTy::BOOL)?;
                 return Ok(Val {
                     v: self.b.unit(),
@@ -902,7 +902,7 @@ impl FnLower<'_> {
             let owned = self.needs_drop(ret);
             return Ok(Val { v: out, own: owned });
         }
-        if ret == MTy::UNIT {
+        if ret == MTy::VOID {
             // The constructed value returns through the trailing out pointer.
             let out = self.call_runtime(sym, &vals, result)?;
             return Ok(Val { v: out, own: true });
@@ -1244,7 +1244,7 @@ impl FnLower<'_> {
             .expect("copy")
     }
 
-    /// Whether the `ok` payload of `result` is `Unit?`.
+    /// Whether the `ok` payload of `result` is `Void?`.
     fn ok_payload_is_optional_unit(&self, result: MTy) -> bool {
         let TyKind::Alt(a) = self.b.m.types.kind(result) else {
             return false;
@@ -1253,7 +1253,7 @@ impl FnLower<'_> {
             return false;
         };
         let payload = self.b.m.alts[a.index()].cases[ok].fields[0].1;
-        matches!(self.b.m.types.kind(payload), TyKind::Opt(t) if *t == MTy::UNIT)
+        matches!(self.b.m.types.kind(payload), TyKind::Opt(t) if *t == MTy::VOID)
     }
 
     /// `ok(value)` when the status is zero, else the error case the status names.

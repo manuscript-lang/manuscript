@@ -30,9 +30,9 @@ type Source:
     value: Int
 fn Source.convert(cause: Error?) Result[Int, Error]: ok(if cause.is_none(): self.value else: 8)
 fn Source.ok_or(cause: Error? = none) Result[Int, Error]: ok(if cause.is_none(): self.value else: 8)
-fn generic[T](value: T?) Unit:
+fn generic[T](value: T?) Void:
     _generic_native := value.ok_or[Error]
-fn sample(value: Int?, flag: Bool) Unit:
+fn sample(value: Int?, flag: Bool) Void:
     _native := value.ok_or[Error]
     _alias := _native
     _nested := fn: _alias()
@@ -183,7 +183,7 @@ fn invocation_defaults_do_not_survive_callable_erasure_or_joins() {
     let prefix = r#"
 fn ordinary(cause: Error? = none) Result[Int, Error]: ok(if cause.is_none(): 7 else: 8)
 fn relay[T](value: T) T: value
-fn sample(flag: Bool) Unit:
+fn sample(flag: Bool) Void:
     absent: Int? := none
 "#;
     for body in [

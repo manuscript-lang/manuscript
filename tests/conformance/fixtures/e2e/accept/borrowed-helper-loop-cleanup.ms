@@ -10,7 +10,7 @@ type Door:
 	id: Int
 	log: String
 
-fn var Door.close() Unit!:
+fn var Door.close() Void!:
 	append_file(self.log, "{self.id},").wait()?
 
 fn first[T](rows: List[List[T]]) List[T]:
@@ -20,7 +20,7 @@ fn logged(path: String) String:
 	if bytes := read_file(path).wait(): return bytes.decode_utf8().get("")
 	return ""
 
-fn break_borrowed(log: String) Unit!:
+fn break_borrowed(log: String) Void!:
 	rows := [[Door(1, log.clone()), Door(2, log.clone())]]
 
 	for door in first(rows):
@@ -35,7 +35,7 @@ fn return_borrowed(rows: List[List[Door]]) Int:
 		return door.id
 	return -1
 
-fn use_after_return(log: String) Unit!:
+fn use_after_return(log: String) Void!:
 	rows := [[Door(1, log.clone()), Door(2, log.clone())]]
 	return_borrowed(rows) | expect_equal(1)?
 	logged(log.clone()) | expect_equal("")?
@@ -59,15 +59,15 @@ test "a helper called with a temporary owner keeps its result alive":
 		total += number
 	total | expect_equal(3)?
 
-fn fail() Unit!:
+fn fail() Void!:
 	return error(Error("stop"))
 
-fn try_borrowed(rows: List[List[Door]]) Unit!:
+fn try_borrowed(rows: List[List[Door]]) Void!:
 	for door in first(rows):
 		door.id | expect_equal(1)?
 		fail()?
 
-fn use_after_try(log: String) Unit!:
+fn use_after_try(log: String) Void!:
 	rows := [[Door(1, log.clone()), Door(2, log.clone())]]
 	try_borrowed(rows).is_error() | expect_equal(true)?
 	logged(log.clone()) | expect_equal("")?

@@ -11,7 +11,7 @@ Save as `stock.ms` and run `ms run stock.ms`:
 
 <!-- manuscript-example: {"mode":"run","stdout":"2 of 3 left\n"} -->
 ```manuscript
-fn main() Unit:
+fn main() Void:
     count := 3
     var remaining = count
     remaining -= 1
@@ -65,10 +65,10 @@ Unpack positions or named fields:
 - Every local needs an initial value. The name is visible only after its initializer.
 - Locals are visible in source order; module declaration signatures may refer forward.
 - A `var` keeps the type from its annotation or initializer; later values must fit it.
-- Assignment targets a `var` binding or a field reached through mutable storage. `:=` is immutable including contents; mutation through a parameter or receiver requires `var`. Collection methods that mutate require a mutable receiver and return Unit.
+- Assignment targets a `var` binding or a field reached through mutable storage. `:=` is immutable including contents; mutation through a parameter or receiver requires `var`. Collection methods that mutate require a mutable receiver and return Void.
 
 ```manuscript
-fn example() Unit:
+fn example() Void:
     var remaining = 3
     remaining = 2
     remaining = 2.0  // Rejected: Float cannot replace Int.

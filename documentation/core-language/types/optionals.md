@@ -14,7 +14,7 @@ Save as `greeting.ms` and run `ms run greeting.ms`:
 fn greeting(name: String?) String:
     return "Hello, {name.get("guest")}!"
 
-fn main() Unit:
+fn main() Void:
     print(greeting("Ada"))
     print(greeting())
 ```
@@ -49,7 +49,7 @@ An argument for a standard `T?` parameter may be a plain `T`; it is wrapped as t
 ```manuscript
 import Queue from "@std/collections/queue.ms"
 
-fn main() Unit:
+fn main() Void:
     var _bounded = Queue[Int](capacity: 4)
     var _unbounded = Queue[Int]()
 ```

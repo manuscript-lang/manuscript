@@ -28,7 +28,7 @@ import win32 from "@std/os/path.ms"
 
 fn common_result[T](result: T!) T!: result
 
-fn exercise(path: String) Unit!:
+fn exercise(path: String) Void!:
     _written := common_result(
         result: write_file(path: path, data: "hello", replace: false).wait()
     )?

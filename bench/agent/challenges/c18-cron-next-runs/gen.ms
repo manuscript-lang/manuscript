@@ -247,7 +247,7 @@ fn rand_line(var rnd: Random) String:
 	when := stamp(rnd.randint(0, 60 * 24 * 365 * 129), "T")
 	return "{when} {rnd.randint(1, 20)} {checked.join(" ")}"
 
-export fn gen_c18() Unit:
+export fn gen_c18() Void:
 	var rnd = seeded(18)
 	examples := [
 		mk(

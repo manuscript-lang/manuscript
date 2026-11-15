@@ -16,10 +16,10 @@ fn echo(request: HttpRequest) HttpResponse:
 
 // A handler that answers one route itself and hands every other request to a buffered
 // handler it captured: the closure calls another closure with its `var` exchange.
-fn routed() fn(var HttpExchange) Unit!:
+fn routed() fn(var HttpExchange) Void!:
 	inner := buffered(echo)
 
-	return fn(var exchange: HttpExchange) Unit!:
+	return fn(var exchange: HttpExchange) Void!:
 		if exchange.path() == "/health": return exchange.send(200, headers(), "ok".to_bytes())
 		return inner(var exchange)
 

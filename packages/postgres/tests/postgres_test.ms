@@ -165,13 +165,13 @@ test "a cleartext password is refused without TLS":
 	failure := expect_error(login("clearuser", "clearpass", true))?
 	expect_equal(failure.kind, "EACCES")?
 
-fn impostor_accept(accepted: Promise[Connection]) Unit!:
+fn impostor_accept(accepted: Promise[Connection]) Void!:
 	var client = accepted.wait()?
 	return impostor(var client)
 
 // A server that offers SCRAM and then says "authenticated" without ever proving it
 // knows the password.
-fn impostor(var client: Connection) Unit!:
+fn impostor(var client: Connection) Void!:
 	_ := client.input.next()?
 
 	// R, length 23, method 10, "SCRAM-SHA-256", two NULs
@@ -235,13 +235,13 @@ test "TLS login upgrades the socket after an SSLRequest":
 	conn.close()?
 
 // A server that answers the SSL request with `N`: no TLS here.
-fn refuser(var client: Connection) Unit!:
+fn refuser(var client: Connection) Void!:
 	_ := client.input.next()?
 	client.output.write(Bytes([78]))?
 	client.close()?
 	return ok(unit)
 
-fn refuser_accept(accepted: Promise[Connection]) Unit!:
+fn refuser_accept(accepted: Promise[Connection]) Void!:
 	var client = accepted.wait()?
 	return refuser(var client)
 

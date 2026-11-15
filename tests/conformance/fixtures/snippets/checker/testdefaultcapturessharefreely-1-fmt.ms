@@ -7,7 +7,7 @@ fn run[T](operation: fn() T) T:
 interface Read:
     fn get() Int
 
-fn call(view: Read) Unit:
+fn call(view: Read) Void:
     callback := fn(value: Int = view.get()) Int:
         return value
     task := fn() Int:

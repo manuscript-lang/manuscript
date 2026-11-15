@@ -17,7 +17,7 @@ fn run() Bool:
     ).wait()
     return slow.is_error()
 
-fn main() Unit:
+fn main() Void:
     print(if run(): "timed out" else: "answered")
 
     _ := sleep(milliseconds(500)).wait()

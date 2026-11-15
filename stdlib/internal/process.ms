@@ -47,27 +47,27 @@ export extern fn msstd_process_subprocess_wait(
 
 export extern fn msstd_process_subprocess_max_resident(handle: NativeSubprocess) Int
 
-export extern fn msstd_process_subprocess_terminate(handle: NativeSubprocess) Unit
+export extern fn msstd_process_subprocess_terminate(handle: NativeSubprocess) Void
 
-export extern fn msstd_process_subprocess_kill(handle: NativeSubprocess) Unit
+export extern fn msstd_process_subprocess_kill(handle: NativeSubprocess) Void
 
-export extern fn msstd_process_subprocess_close(handle: NativeSubprocess) Unit
+export extern fn msstd_process_subprocess_close(handle: NativeSubprocess) Void
 
 export extern fn msstd_process_cpu_usage() CpuUsage!
 
 export extern fn msstd_process_groups() List[Int]!
 
-export extern fn msstd_process_initialize_groups(username: String, gid: Int) Unit!
+export extern fn msstd_process_initialize_groups(username: String, gid: Int) Void!
 
 export extern fn msstd_process_resource_usage() ResourceUsage!
 
-export extern fn msstd_process_send_signal(pid: Int, signal: Int) Unit!
+export extern fn msstd_process_send_signal(pid: Int, signal: Int) Void!
 
-export extern fn msstd_process_set_groups(groups: List[Int]) Unit!
+export extern fn msstd_process_set_groups(groups: List[Int]) Void!
 
-export extern fn msstd_process_set_identity(kind: String, id: Int) Unit!
+export extern fn msstd_process_set_identity(kind: String, id: Int) Void!
 
-export extern fn msstd_process_set_title(title: String) Unit!
+export extern fn msstd_process_set_title(title: String) Void!
 
 export extern fn msstd_process_title() String!
 
@@ -80,17 +80,17 @@ export extern fn msstd_process_watch_signals(
 
 export extern fn msstd_process_signal_next(signals: NativeSignals) Int!
 
-export extern fn msstd_process_signal_close(signals: NativeSignals) Unit
+export extern fn msstd_process_signal_close(signals: NativeSignals) Void
 
 export extern fn msstd_system_get_priority(pid: Int) Int!
 
-export extern fn msstd_system_set_priority(pid: Int, priority: Int) Unit!
+export extern fn msstd_system_set_priority(pid: Int, priority: Int) Void!
 
 export extern fn msstd_process_replace(
 	program: String,
 	arguments: List[String],
 	env_names: List[String],
 	env_values: List[String],
-) Unit!
+) Void!
 
 export extern fn msstd_process_info() ProcessInfo!

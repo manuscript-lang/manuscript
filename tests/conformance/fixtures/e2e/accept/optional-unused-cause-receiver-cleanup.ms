@@ -11,13 +11,13 @@ type Marker:
 	log: String
 	fail: Bool
 
-fn var Marker.close() Unit!:
+fn var Marker.close() Void!:
 	append_file(self.log, "{self.id},").wait()?
 	if self.fail: return error(Error("cause close failed"))
 
 fn source(log: String) Marker?: Marker(1, log, false)
 
-fn discard(log: String) Unit:
+fn discard(log: String) Void:
 	_kept := source(log.clone()).ok_or(Marker(2, log, true))
 
 test "closing an unused cause does not lose the retained receiver on fault":
@@ -28,7 +28,7 @@ test "closing an unused cause does not lose the retained receiver on fault":
 	_fault := expect_fault(fn: discard(log.clone()))?
 	expect_equal(read_file(log).wait().get().decode_utf8().get(""), "2,1,")?
 
-fn normal_transfer(log: String) Unit!:
+fn normal_transfer(log: String) Void!:
 	kept := source(log.clone()).ok_or(Marker(2, log.clone(), false))
 	expect_equal(read_file(log).wait().get().decode_utf8().get(""), "2,")?
 	expect_equal(kept.get().id, 1)?
@@ -44,7 +44,7 @@ fn failing_callback(log: String) fn() Marker:
 	captured := Marker(2, log, true)
 	return fn: Marker(3, captured.log.clone(), false)
 
-fn discard_callback(log: String) Unit:
+fn discard_callback(log: String) Void:
 	_kept := source(log.clone()).ok_or_else(failing_callback(log))
 
 // Capture closer thunks discard returned close errors; this is a cleanup control, not a

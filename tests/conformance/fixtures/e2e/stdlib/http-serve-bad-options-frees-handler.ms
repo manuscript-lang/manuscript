@@ -13,7 +13,7 @@ fn ok_route(request: HttpRequest) HttpResponse:
     return HttpResponse(status: 200, headers: headers(), body: "ok".to_bytes())
 
 // A serve call that fails in the runtime, here on a zero request timeout, still releases the handler it was given.
-fn main() Unit:
+fn main() Void:
     started := serve(
         "127.0.0.1:0", buffered(ok_route), HttpServerOptions(timeout: 0.seconds())
     )

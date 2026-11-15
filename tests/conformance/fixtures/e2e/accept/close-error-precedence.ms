@@ -13,7 +13,7 @@ type Failing:
 	closed: Bool = false
 	fail: Bool = true
 
-fn var Failing.close() Unit!:
+fn var Failing.close() Void!:
 	if not self.closed:
 		self.closed = true
 		append_file(self.log, "close {self.id}\n").wait()?
@@ -345,7 +345,7 @@ test "overlapping borrowed errors normalize without copying borrowed success":
 type OwnHolder:
 	resource: Failing
 
-fn var OwnHolder.close() Unit!:
+fn var OwnHolder.close() Void!:
 	return ok(unit)
 
 fn own_holder_result[T](log: String, source: T!) T!:

@@ -56,12 +56,12 @@ func got_line(ctx *rt.Execution, input rt.ReadStream) bool {
 	return false
 }
 //line generated.go:1
-func say(ctx *rt.Execution, text string) rt.Unit {
+func say(ctx *rt.Execution, text string) rt.Void {
 //line src/main.ms:29
 	t1 := rt.Io_Stdout(ctx)
 	/*line src/main.ms:29*/_ignored := t1.Write(ctx, text)
 	_ = _ignored
-	return rt.Unit{}
+	return rt.Void{}
 }
 //line generated.go:1
 func since(ctx *rt.Execution, started rt.Instant) int {
@@ -72,10 +72,10 @@ func since(ctx *rt.Execution, started rt.Instant) int {
 	/*line src/main.ms:32*/return rt.Duration_ToNanoseconds(ctx, t3)
 }
 //line generated.go:1
-func report(ctx *rt.Execution, name string, ops int, started rt.Instant) rt.Unit {
+func report(ctx *rt.Execution, name string, ops int, started rt.Instant) rt.Void {
 //line src/main.ms:35
 	say(ctx, name+" "+rt.FormatInt(ops)+" "+rt.FormatInt(since(ctx, started))+"\n")
-	return rt.Unit{}
+	return rt.Void{}
 }
 //line generated.go:1
 func checked(ctx *rt.Execution, n int) rt.Result[int, *rt.TextError] {
@@ -143,7 +143,7 @@ func bench_string(ctx *rt.Execution) int {
 	return rt.String_ByteLength(ctx, built)
 }
 //line generated.go:1
-func bench_read_line(ctx *rt.Execution) rt.Unit {
+func bench_read_line(ctx *rt.Execution) rt.Void {
 //line src/main.ms:77
 	t1 := rt.Time_Clock(ctx)
 	/*line src/main.ms:77*/t := t1.Now(ctx)
@@ -170,7 +170,7 @@ func bench_read_line(ctx *rt.Execution) rt.Unit {
 	}
 //line src/main.ms:88
 	report(ctx, "read_line", lines, t)
-	return rt.Unit{}
+	return rt.Void{}
 }
 //line generated.go:1
 func bench_map(ctx *rt.Execution) int {

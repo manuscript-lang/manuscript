@@ -10,6 +10,6 @@ type Box[T]:
 fn Box[T].f(x: I[List[T]]) Int:
     return 1
 
-fn main() Unit:
+fn main() Void:
     b := Box[Int](v: 1)
     i := I[Int](value: b)

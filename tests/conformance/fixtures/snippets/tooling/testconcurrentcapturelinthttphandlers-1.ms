@@ -4,5 +4,5 @@
 import HttpResponse, HttpServerOptions from "@std/net/http.ms"
 import panic from "@std/core.ms"
 
-fn run() Unit:
+fn run() Void:
     _values := [0]

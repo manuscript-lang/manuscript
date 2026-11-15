@@ -3,6 +3,6 @@
 // conform: origin=ms-check/tests/messages.rs
 fn source(value: Int) Int: value
 
-fn apply[T](callback: fn(String) T) Unit: return
+fn apply[T](callback: fn(String) T) Void: return
 
-fn exercise() Unit: apply(source)
+fn exercise() Void: apply(source)

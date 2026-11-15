@@ -1,4 +1,4 @@
 import files from "@assets"
 
-fn main() Unit:
+fn main() Void:
     _tree := files()

@@ -8,7 +8,7 @@ import (
 
 // Regressions: block key.
 
-fn invalid_block_key(source: String) Unit!:
+fn invalid_block_key(source: String) Void!:
 	cause := parse(source) | expect_error?
 	if cause.kind == "EBADMSG": return ok(unit)
 
@@ -95,7 +95,7 @@ test "YAML flow colon separators retain quoted and empty values":
 	)
 	parse("\{a:]\}").is_error() | expect_true?
 
-fn invalid_colon(source: String) Unit!:
+fn invalid_colon(source: String) Void!:
 	cause := parse(source) | expect_error?
 	if cause.kind != "EBADMSG": return fail("expected malformed YAML, got {cause}")
 
@@ -131,7 +131,7 @@ test "YAML block scalar rejects a separator before a folded paragraph break":
 
 // Regressions: comment continuation.
 
-fn rejects_continuation(text: String) Unit!Error:
+fn rejects_continuation(text: String) Void!Error:
 	cause := parse(text) | expect_error?
 	if cause.kind != "EBADMSG": return fail("expected InvalidData, got {cause}")
 
@@ -231,7 +231,7 @@ test "YAML quoted and flow hashes retain their scalar behavior":
 		)?
 	)
 
-fn rejects_flow_continuation(text: String, reason: String) Unit!Error:
+fn rejects_flow_continuation(text: String, reason: String) Void!Error:
 	cause := parse(text) | expect_error?
 	if cause.kind != "EBADMSG": return fail("expected InvalidData, got {cause}")
 
@@ -355,7 +355,7 @@ test "YAML flow mappings retain existing empty-key forms":
 
 // Regressions: error location.
 
-fn error_at(text: String, line: Int, column: Int) Unit!Error:
+fn error_at(text: String, line: Int, column: Int) Void!Error:
 	cause := parse(text) | expect_error?
 	if cause.kind != "EBADMSG": return fail("expected InvalidData, got {cause}")
 
@@ -397,7 +397,7 @@ test "YAML compact tab rewrites retain original scalar columns":
 	error_at("- \t key: [one", 1, 14)?
 	error_at("-\t\tkey: ok\n- key: [one", 2, 12)?
 
-fn unsupported_at(text: String, line: Int) Unit!Error:
+fn unsupported_at(text: String, line: Int) Void!Error:
 	cause := parse(text) | expect_error?
 	if cause.kind != "ENOTSUP": return fail("expected UnsupportedFeature, got {cause}")
 
@@ -654,10 +654,10 @@ test "YAML flow comment offsets remain scalar based":
 
 // Regressions: block indentation.
 
-fn text(source: String, expected: String) Unit!:
+fn text(source: String, expected: String) Void!:
 	expect_equal((parse(source)?), YamlValue.StringValue(expected))?
 
-fn field(source: String, expected: String) Unit!:
+fn field(source: String, expected: String) Void!:
 	want := YamlValue.ObjectValue({"value": YamlValue.StringValue(expected)})
 	expect_equal((parse(source)?), want)?
 
@@ -875,7 +875,7 @@ test "YAML scalar keys become their text and collection keys are rejected":
 	unsupported_at("\{[a]: 1\}", 1)?
 	unsupported_at("a: 1\n\{b: c\}: d", 2)?
 
-fn count(text: String, want: Int) Unit!:
+fn count(text: String, want: Int) Void!:
 	docs := parse_all(text)?
 	expect_equal(docs.length(), want)?
 

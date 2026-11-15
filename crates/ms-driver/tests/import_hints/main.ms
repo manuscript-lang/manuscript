@@ -1,2 +1,2 @@
-export fn take(_value: Bytes) Unit:
+export fn take(_value: Bytes) Void:
     return

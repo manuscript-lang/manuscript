@@ -135,7 +135,7 @@ fn var Countdown.next() Int?:
     self.left -= 1
     return self.left + 1
 
-fn main() Unit:
+fn main() Void:
     for n in Countdown(3):
         print(n)
 ```
@@ -157,7 +157,7 @@ A type that implements `Iterable[T]` from `@std/collections/iterable.ms` (`fn le
 ```manuscript
 import Deque from "@std/collections/deque.ms"
 
-fn main() Unit:
+fn main() Void:
     var steps = Deque[Int]()
     steps.push_back(11)
     steps.push_back(12)

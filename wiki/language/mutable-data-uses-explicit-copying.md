@@ -6,4 +6,4 @@ Decision (user, under reference semantics): ordinary record fields and collectio
 
 Apply when: changing fields, collection updates, copies, or equality.
 Evidence: [record contract](../../documentation/core-language/types/named-types.md#mutation-and-cloning); [collection contract](../../documentation/core-language/types/collections.md#mutation-and-copies); [mutation fixture](../../tests/conformance/fixtures/e2e/accept/mutation.ms); [ownership notes](../../crates/ms-check/OWNERSHIP.md).
-Verify: the counter's Unit-returning method updates `self.val`; a `.clone()` is independent of its source; copying a native resource is rejected. Do not restore removed sharing bounds.
+Verify: the counter's Void-returning method updates `self.val`; a `.clone()` is independent of its source; copying a native resource is rejected. Do not restore removed sharing bounds.

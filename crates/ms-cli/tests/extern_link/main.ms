@@ -13,7 +13,7 @@ extern fn greet_divide(left: Int, right: Int) Result[Int, DivideError]
 
 extern fn greet_shout(name: String) Result[String, DivideError]
 
-extern fn greet_check(value: Int) Result[Unit, DivideError]
+extern fn greet_check(value: Int) Result[Void, DivideError]
 
 extern fn greet_double(value: Int) Int
 
@@ -35,7 +35,7 @@ fn shout(result: Result[String, DivideError]) String:
 
     return "error {text(result.err())}"
 
-fn main() Unit:
+fn main() Void:
     var out = stdout()
     _ := out.write(greet_double(21).to_string() + "\n")
     _ := out.write(greet_scale(1.5, 4.0).to_string() + "\n")

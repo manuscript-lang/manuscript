@@ -35,11 +35,11 @@ fn command_omitted() CommandOutput!:
 fn command_bind() fn(String, List[String], Bytes, Int?, Duration?) CommandOutput!:
     return run
 
-fn filesystem_explicit(data: Bytes) Unit!:
+fn filesystem_explicit(data: Bytes) Void!:
     return write_file_bytes("", data, false).wait()
 
-fn filesystem_omitted(data: Bytes) Unit!:
+fn filesystem_omitted(data: Bytes) Void!:
     return write_file_bytes("", data).wait()
 
-fn filesystem_bind() fn(String, Bytes, Bool) Unit!:
+fn filesystem_bind() fn(String, Bytes, Bool) Void!:
     return fs.write_file

@@ -57,7 +57,7 @@ pub fn prelude_function_import(path: &str, name: &str) -> Import {
 /// The built-in types every module sees without an import.
 pub const PRIMITIVE_NAMES: [&str; 16] = [
     "Bool", "Int", "Float", "Int8", "Int16", "Int32", "Int64", "UInt8", "UInt16", "UInt32",
-    "UInt64", "Float32", "Float64", "String", "Unit", "Never",
+    "UInt64", "Float32", "Float64", "String", "Void", "Never",
 ];
 
 /// Generic interfaces in `intrinsics.ms` that primitives share, with the primitives that have them.
@@ -1688,7 +1688,7 @@ impl Session {
         sym.ty(self.syms)
     }
 
-    /// `TestOutcome`: the implicit `Result[Unit, Error]` of a test block.
+    /// `TestOutcome`: the implicit `Result[Void, Error]` of a test block.
     pub fn test_outcome(self: &Rc<Self>) -> Ty {
         self.standard("Result", vec![unit(), self.standard("Error", vec![])])
     }

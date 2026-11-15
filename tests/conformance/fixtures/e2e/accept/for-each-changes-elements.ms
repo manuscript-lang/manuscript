@@ -32,7 +32,7 @@ test "a reading callback works on a let list":
 	xs.for_each(fn n: total += n)
 	expect_equal(total, 6)?
 
-fn bump(var p: P) Unit:
+fn bump(var p: P) Void:
 	p.n += 1
 
 test "a named function with a var parameter":

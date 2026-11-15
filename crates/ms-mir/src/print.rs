@@ -27,7 +27,7 @@ pub fn ty_str(m: &Module, t: Ty) -> String {
 
 fn write_ty(m: &Module, t: Ty, out: &mut String) {
     match m.types.kind(t) {
-        TyKind::Unit => out.push_str("unit"),
+        TyKind::Void => out.push_str("unit"),
         TyKind::Bool => out.push_str("bool"),
         TyKind::Int => out.push_str("int"),
         TyKind::Float => out.push_str("float"),

@@ -20,13 +20,13 @@ fn inputs(
     f: Float,
     g: Int,
     h: Bool,
-    i: Unit,
+    i: Void,
     j: Flag,
     k: Number,
     item: Item,
     count: Count,
     var changed: Int
-) Unit:
+) Void:
     return unit
 
 fn item_name(item: Item) String:

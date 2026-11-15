@@ -6,7 +6,7 @@ import Closeable from "@std/core.ms"
 type Door:
     name: String
 
-fn var Door.close() Unit!:
+fn var Door.close() Void!:
     print("closed {self.name}")
 
 fn Door.id() Int:
@@ -51,7 +51,7 @@ fn captured(c: Bool) fn() Int:
 
     return fn: 0
 
-fn main() Unit:
+fn main() Void:
     var_unmoved()
     print("--var_moved true")
     var_moved(true)

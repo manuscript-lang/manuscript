@@ -45,7 +45,7 @@ test "closure mutates capture":
 	var total = 0
 	var box = Box(n: 1)
 
-	add := fn(x: Int) Unit:
+	add := fn(x: Int) Void:
 		total += x
 		box.n += x
 

@@ -6,10 +6,10 @@ import listen, Listener, Connection from "@std/net/net.ms"
 import watch_signals from "@std/os/process.ms"
 import Duration, sleep from "@std/time.ms"
 
-fn flush_within(var out: WriteStream[Bytes], limit: Duration) Unit!:
+fn flush_within(var out: WriteStream[Bytes], limit: Duration) Void!:
     return promise(fn: out.flush()).with(options: PromiseOptions(timeout: limit)).wait()
 
-fn say(text: String) Unit:
+fn say(text: String) Void:
     _written := stdout().write(text)
 
     // Piped stdout is buffered until exit; flush so a parent sees each line when it is printed.
@@ -18,7 +18,7 @@ fn say(text: String) Unit:
 type WorkerCleanup:
     label: String
 
-fn var WorkerCleanup.close() Unit!:
+fn var WorkerCleanup.close() Void!:
     say("{self.label} stopped\n")
     return ok(unit)
 
@@ -27,7 +27,7 @@ type Server:
     client: Connection
     closed: Bool = false
 
-fn var Server.close() Unit!:
+fn var Server.close() Void!:
     if self.closed:
         return ok(unit)
 
@@ -48,7 +48,7 @@ fn var Server.close() Unit!:
     self.client.close()?
     return ok(unit)
 
-fn serve() Result[Unit, Error]:
+fn serve() Result[Void, Error]:
     var signals = watch_signals([2, 15])?
     listener := listen("127.0.0.1:0")?
     say("{listener.address()}\n")

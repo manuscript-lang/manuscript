@@ -1,5 +1,5 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn run() Unit:
+fn run() Void:
     number := 10
     pair := 

@@ -3,7 +3,7 @@ import Closeable from "@std/core.ms"
 type Gate:
     id: Int
 
-fn var Gate.close() Unit!:
+fn var Gate.close() Void!:
     print("close {self.id}")
 
 type Holder:
@@ -14,7 +14,7 @@ fn relay[T](source: T!) T!:
     _holder := Holder(gate)
     return source
 
-fn main() Unit:
+fn main() Void:
     original: String! := error(Error("body", kind: "EBODY"))
     returned := relay(original)
     print(returned.err().kind.get(""))

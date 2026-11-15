@@ -7,4 +7,4 @@ impl T:
     fn f(self) Int:
         return 1
 
-fn main() Unit!:
+fn main() Void!:

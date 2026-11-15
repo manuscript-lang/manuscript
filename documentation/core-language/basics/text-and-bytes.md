@@ -119,6 +119,8 @@ All slice operations include `start` and exclude `end`. Let `n` be the receiver'
 
 `String.view(start, end)` takes the same byte bounds as `slice` and borrows the range without copying, like `Bytes.view`. A bound outside the string, or inside a scalar, raises a fault, not an `Error`. The receiver must stay unchanged while the view is used; storing or returning a view is rejected, so call `.clone()` on it to keep an independent `String`. Use `slice` when you want an owned copy or an `ERANGE` error.
 
+`String.view_bytes()` borrows the UTF-8 bytes of the whole text as `Bytes` without copying, where `to_bytes()` copies them. It follows the same rule as `view`: the text must stay unchanged while the bytes are used, storing or returning them is rejected, and `.clone()` keeps an independent `Bytes`. A text of at most 15 bytes, or a temporary, is copied instead because it has no stable storage to borrow; the result behaves the same.
+
 Equal bounds give an empty range. Bounds are never clamped or swapped; `text.slice(start: 0, end: n + 1)` is an `"ERANGE"` error, not a fault. `"aé🙂z".slice(start: -5, end: 7)` is `ok("🙂")`; `slice(start: 3, end: 1)`, `slice(start: 2, end: 7)` (inside `é`) and `slice(start: 1, end: 12)` are errors of kind `"ERANGE"`. See the [String](../../standard-library/reference/prelude.md#string), [collection](../../standard-library/reference/collections/collections.ms.md), and [Bytes](../../standard-library/reference/bytes.ms.md) references.
 
 `Bytes.view(start, end)` uses the same byte bounds and borrows the range without copying. Invalid bounds raise a fault. The receiver must stay available while the view is used; call `.clone()` on the view to keep an independent value.
@@ -205,7 +207,7 @@ Interpolation and direct `to_string()` conversion use the forms below, independe
 | --- | --- |
 | String | Contents unchanged; inserted braces/quotes are ordinary output characters and are not parsed again |
 | Bool | `true` or `false` |
-| Unit | `unit` |
+| Void | `unit` |
 | Int | Base-ten digits, optional leading minus, no separators or leading zeros |
 | Float | Shortest round-trip decimal under the rule below; signed zero retains its sign |
 | Decimal | Exact numerical decimal value, normalized as below; no significance/scale padding |

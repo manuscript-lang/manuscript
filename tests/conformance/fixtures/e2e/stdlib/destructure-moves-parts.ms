@@ -17,7 +17,7 @@ fn var Count.next() Int?!:
 
 	return ok(self.n)
 
-fn var Count.close() Unit!:
+fn var Count.close() Void!:
 	return ok(unit)
 
 type Box:

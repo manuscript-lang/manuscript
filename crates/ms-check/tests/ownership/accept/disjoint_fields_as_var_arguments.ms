@@ -2,7 +2,7 @@ type Pair:
     left: List[Int]
     right: List[Int]
 
-fn fill(var xs: List[Int]) Unit:
+fn fill(var xs: List[Int]) Void:
     xs.append(1)
 
 fn f() Int:

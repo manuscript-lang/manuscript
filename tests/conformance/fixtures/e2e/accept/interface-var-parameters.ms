@@ -11,12 +11,12 @@ type Acc:
 
 // An interface operation changes a caller's value through a `var` parameter.
 interface Step:
-	var fn step(value: Int, var out: Acc) Unit!
+	var fn step(value: Int, var out: Acc) Void!
 
 type Doubler:
 	count: Int
 
-fn var Doubler.step(value: Int, var out: Acc) Unit!:
+fn var Doubler.step(value: Int, var out: Acc) Void!:
 	self.count += 1
 	out.items.append(value * 2)
 
@@ -24,7 +24,7 @@ fn var Doubler.step(value: Int, var out: Acc) Unit!:
 type Reader:
 	seen: Int
 
-fn var Reader.step(value: Int, var out: Acc) Unit!:
+fn var Reader.step(value: Int, var out: Acc) Void!:
 	self.seen += out.items.length() + value
 
 type Holder:
@@ -32,7 +32,7 @@ type Holder:
 	acc: Acc
 
 // The argument is a field of the receiver's owner: it changes in place.
-fn var Holder.run(value: Int) Unit!:
+fn var Holder.run(value: Int) Void!:
 	return self.step.step(value, var self.acc)
 
 test "a var parameter on an interface operation writes back to a local":
@@ -54,12 +54,12 @@ test "a var field argument writes back to its record":
 type Words:
 	count: Int
 
-fn var Words.step(value: String, var out: List[String]) Unit!:
+fn var Words.step(value: String, var out: List[String]) Void!:
 	for word in value.split(" "):
 		self.count += 1
 		out.append(word.clone())
 
-fn var Words.finish(var out: List[String]) Unit!:
+fn var Words.finish(var out: List[String]) Void!:
 	out.append("{self.count}")
 
 test "a transform writes zero or more items per input and more at the end":
@@ -70,11 +70,11 @@ test "a transform writes zero or more items per input and more at the end":
 type Checked:
 	unused: Bool = false
 
-fn var Checked.step(value: Int, var out: List[Int]) Unit!:
+fn var Checked.step(value: Int, var out: List[Int]) Void!:
 	out.append(value)
 	if value < 0: return error(Error("negative", kind: "EBADMSG"))
 
-fn var Checked.finish(var out: List[Int]) Unit!:
+fn var Checked.finish(var out: List[Int]) Void!:
 	return ok(unit)
 
 test "a failed step's partial output is dropped and the failure is the next item":

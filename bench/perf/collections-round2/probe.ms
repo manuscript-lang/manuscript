@@ -11,7 +11,7 @@ type Rec:
 fn lcg(x: Int) Int:
 	return (x * 1103515245 + 12345) % 2147483648
 
-fn stop(name: String, t0: Int, chk: Int) Unit:
+fn stop(name: String, t0: Int, chk: Int) Void:
 	now := monotonic().tick
 	print("{name} {(now - t0) / 1000} {chk}")
 
@@ -146,7 +146,7 @@ fn l_flatten() Int:
 		ll.append([i, i + 1, i + 2, i + 3])
 	return ll.flat_map(fn r: r).length()
 
-fn main() Unit:
+fn main() Void:
 	t_l_distinct := monotonic().tick
 	stop("l_distinct", t_l_distinct, l_distinct())
 

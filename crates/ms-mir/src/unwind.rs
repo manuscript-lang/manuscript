@@ -44,7 +44,7 @@ pub fn run(m: &mut Module) -> bool {
             ty: Ty::INT,
             mode: Mode::Borrow,
         }],
-        ret: Ty::UNIT,
+        ret: Ty::VOID,
         noreturn: false,
         pure_: false,
         fresh: false,
@@ -227,7 +227,7 @@ fn raw_closer(m: &mut Module, cx: &mut Cx, ty: Ty) -> FuncId {
             ty,
             mode: Mode::Move,
         }],
-        ret: Ty::UNIT,
+        ret: Ty::VOID,
         noreturn: false,
         pure_: false,
         fresh: false,
@@ -242,7 +242,7 @@ fn raw_closer(m: &mut Module, cx: &mut Cx, ty: Ty) -> FuncId {
             ty,
             mode: Mode::Move,
         }],
-        Ty::UNIT,
+        Ty::VOID,
     );
     b.func_mut().linkage = Linkage::Internal;
     b.func_mut().unwind_only = true;
@@ -279,7 +279,7 @@ fn closer(m: &mut Module, cx: &mut Cx, ty: Ty) -> FuncId {
             ty,
             mode: Mode::Move,
         }],
-        Ty::UNIT,
+        Ty::VOID,
     );
     b.func_mut().linkage = Linkage::Internal;
     b.func_mut().unwind_only = true;
@@ -309,7 +309,7 @@ fn with_closer(m: &mut Module, cx: &mut Cx, close: FuncId) -> Option<FuncId> {
         return slot_with_closer(m, cx, close, ty);
     }
     // Closing that moving_params the value, or yields one that needs a drop, leaves nothing to add.
-    if param.mode == Mode::Move || callee.ret != Ty::UNIT {
+    if param.mode == Mode::Move || callee.ret != Ty::VOID {
         return None;
     }
     let ty = param.ty;
@@ -334,7 +334,7 @@ fn with_closer(m: &mut Module, cx: &mut Cx, close: FuncId) -> Option<FuncId> {
             ty,
             mode: Mode::Move,
         }],
-        Ty::UNIT,
+        Ty::VOID,
     );
     b.func_mut().linkage = Linkage::Internal;
     let v = b.params()[0];
@@ -379,7 +379,7 @@ fn slot_with_closer(m: &mut Module, cx: &mut Cx, close: FuncId, ty: Ty) -> Optio
             ty: Ty::PTR,
             mode: Mode::Borrow,
         }],
-        Ty::UNIT,
+        Ty::VOID,
     );
     b.func_mut().linkage = Linkage::Internal;
     let p = b.params()[0];
@@ -446,7 +446,7 @@ fn slot_dropper(m: &mut Module, cx: &mut Cx, ty: Ty) -> FuncId {
             ty: Ty::PTR,
             mode: Mode::Borrow,
         }],
-        Ty::UNIT,
+        Ty::VOID,
     );
     b.func_mut().linkage = Linkage::Internal;
     let p = b.params()[0];
@@ -580,7 +580,7 @@ fn cover_shielded_slots(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
                 let loc = f.blocks[bi].insts[k].loc;
                 let dropper = slot_dropper(m, cx, ty);
                 let handle = f.new_value(Ty::INT);
-                let unit = f.new_value(Ty::UNIT);
+                let unit = f.new_value(Ty::VOID);
                 f.blocks[bi].insts.insert(
                     k + 1,
                     Inst {
@@ -678,7 +678,7 @@ fn cover_inline_closes(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
                 }
             }
             for (b, at) in ends {
-                let unit = f.new_value(Ty::UNIT);
+                let unit = f.new_value(Ty::VOID);
                 f.blocks[b].insts.insert(
                     at,
                     Inst {
@@ -1031,7 +1031,7 @@ fn hoist_loops(
             op: Op::CallRt,
             args: vec![first],
             imm: Imm::Ext(cx.discard),
-            res: Some(f.new_value(Ty::UNIT)),
+            res: Some(f.new_value(Ty::VOID)),
             loc,
         };
         // Every way out discards the registrations first.
@@ -1776,7 +1776,7 @@ fn discard_inst(f: &mut Func, cx: &Cx, handle: Value, loc: crate::ir::Loc) -> In
         op: Op::CallRt,
         args: vec![handle],
         imm: Imm::Ext(cx.discard),
-        res: Some(f.new_value(Ty::UNIT)),
+        res: Some(f.new_value(Ty::VOID)),
         loc,
     }
 }

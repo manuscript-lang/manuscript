@@ -4,10 +4,10 @@
 import arguments from "@std/os/env.ms"
 import stdout from "@std/io/io.ms"
 
-fn run() Result[Unit, Error]:
+fn run() Result[Void, Error]:
     for name in arguments():
         stdout().write("Hello, {name}!\n")?
     return stdout().flush()
 
-fn main() Unit!:
+fn main() Void!:
     run()?

@@ -29,7 +29,7 @@ fn resolve_hashes(oracle: String, script: String) String:
 
 	return resolved
 
-fn add(var cs: Cases, name: String, script: String) Unit:
+fn add(var cs: Cases, name: String, script: String) Void:
 	cs.push(name, resolve_hashes(cs.oracle, strip_nl(script)))
 
 fn strip_nl(text: String) String:
@@ -46,7 +46,7 @@ fn W(name: String, lines: List[String] = []) String:
 	if lines.is_empty(): return "write {name}\n.\n"
 	return "write {name}\n" + lines.join("\n") + "\n.\n"
 
-export fn gen_c58() Unit:
+export fn gen_c58() Void:
 	var cs = Cases(build_oracle("c58-mini-vcs"))
 	BASE := (
 		W("a.txt", ["one", "two", "three", "four", "five"])

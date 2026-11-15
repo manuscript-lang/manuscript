@@ -4,5 +4,5 @@
 type Callback:
     value: fn(Int) Int
 
-fn example() Unit:
+fn example() Void:
     _callback := Callback(fn value: value + 1)

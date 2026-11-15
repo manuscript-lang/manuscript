@@ -310,7 +310,7 @@ impl<'a> FnLower<'a> {
                     .b
                     .emit(Op::Slot, &[], Imm::Ty(MTy::BYTES), Some(MTy::PTR))
                     .expect("slot");
-                self.call_runtime("msrt_bytes_view", &[r, start, end, slot], MTy::UNIT)?;
+                self.call_runtime("msrt_bytes_view", &[r, start, end, slot], MTy::VOID)?;
                 // Loading the header from the slot gives a value the MIR does not own.
                 let v = self
                     .b
@@ -331,7 +331,7 @@ impl<'a> FnLower<'a> {
                     .b
                     .emit(Op::Slot, &[], Imm::Ty(MTy::STR), Some(MTy::PTR))
                     .expect("slot");
-                self.call_runtime("msrt_string_view", &[r, start, end, slot], MTy::UNIT)?;
+                self.call_runtime("msrt_string_view", &[r, start, end, slot], MTy::VOID)?;
                 let v = self
                     .b
                     .emit(Op::Load, &[slot], Imm::Ty(MTy::STR), Some(MTy::STR))
@@ -345,6 +345,19 @@ impl<'a> FnLower<'a> {
                 // result is a borrow of it, so an immutable `let` holds it without a copy.
                 self.views.insert(v);
                 Ok(Val { v, own: false })
+            }
+            (TyKind::Str, "view_bytes") => {
+                // A borrow of the receiver's text, or a copy when the text is short or a
+                // temporary (dropped after the call); releasing a borrowed view is a no-op, so
+                // the result is always an owned value.
+                let r = self.borrow(recv);
+                let sym = if recv.own {
+                    "msrt_string_to_bytes"
+                } else {
+                    "msrt_string_view_bytes"
+                };
+                let v = self.call_runtime(sym, &[r], MTy::BYTES)?;
+                Ok(Val { v, own: true })
             }
             (TyKind::List(_) | TyKind::Bytes, "is_empty") => {
                 let r = self.borrow(recv);

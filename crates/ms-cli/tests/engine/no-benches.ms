@@ -1,2 +1,2 @@
-fn main() Unit:
+fn main() Void:
     return

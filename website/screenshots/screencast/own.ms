@@ -1,4 +1,4 @@
-fn main() Unit:
+fn main() Void:
 	var names = List[String]()
 	first := "ada"
 	names.append(first)

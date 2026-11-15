@@ -73,7 +73,7 @@ fn handles(op: Op) -> bool {
 /// Anything else crosses as the address of a copy.
 fn passes_directly(lay: &Layouts, t: Ty) -> bool {
     match lay.m.types.kind(t) {
-        TyKind::Unit
+        TyKind::Void
         | TyKind::Bool
         | TyKind::Int
         | TyKind::Int8

@@ -150,7 +150,7 @@ fn faulting(a: Entry, b: Entry) Int:
 test "a comparator that faults mid-sort leaves the original list whole":
 	original := entries(7, 5000)
 	message := expect_fault(
-		fn() Unit:
+		fn() Void:
 			original.sorted(compare: faulting)
 	)?
 	expect_equal(message.length() > 0, true)?

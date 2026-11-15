@@ -106,12 +106,12 @@ fn PriorityQueue[T].before(a: Int, b: Int) Bool:
 	return order < 0 or (order == 0 and first.order < second.order)
 
 // Exchanges the heap entries at `a` and `b`.
-fn var PriorityQueue[T].swap_entries(a: Int, b: Int) Unit:
+fn var PriorityQueue[T].swap_entries(a: Int, b: Int) Void:
 	self.heap.swap(a, b)
 
 // Moves the entry at `start` up, but no higher than `floor`, while it dequeues
 // before its parent.
-fn var PriorityQueue[T].sift_up(start: Int, floor: Int) Unit:
+fn var PriorityQueue[T].sift_up(start: Int, floor: Int) Void:
 	var at = start
 
 	while at > floor:
@@ -126,7 +126,7 @@ Moves the entry at `start` down the path of earlier children to the bottom, then
 one comparison per level on the way down instead of two, since a displaced last entry usually belongs near the bottom.
 The loop runs while the entry has a left child, and the guards on `at` let the compiler prove every index in range.
 */
-fn var PriorityQueue[T].sift_down(start: Int) Unit:
+fn var PriorityQueue[T].sift_down(start: Int) Void:
 	size := self.heap.length()
 	parents := size / 2
 	var at = start

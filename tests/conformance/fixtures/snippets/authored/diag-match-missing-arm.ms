@@ -10,5 +10,5 @@ fn f(s: S) Int:
         A:
             return 1
 
-fn main() Unit:
+fn main() Void:
     return

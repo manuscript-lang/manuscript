@@ -13,7 +13,7 @@ mod program;
 mod state;
 mod tables;
 
-pub use llvm_ir::{TEXT_ANCHOR, Unit};
+pub use llvm_ir::{TEXT_ANCHOR, Void};
 pub use program::emit;
 pub use state::ENTRY_SYMBOL;
 pub use tables::{TableFn, tables_unit};
@@ -33,7 +33,7 @@ pub enum Glue {
     Drop,
     /// Clones a value (takes and returns the value's leaves).
     Clone,
-    /// Closure object destructor `fn(obj)`; the `Ty` is unused (`Ty::UNIT`) and the key carries the function id.
+    /// Closure object destructor `fn(obj)`; the `Ty` is unused (`Ty::VOID`) and the key carries the function id.
     ClosureDrop(u32),
     /// Like `ClosureDrop` for an object in a stack frame: drops the captures, frees nothing.
     ClosureDropFramed(u32),
@@ -107,7 +107,7 @@ pub struct FuncInfo {
 
 /// The LLVM modules of a program.
 pub struct Program {
-    pub units: Vec<Unit>,
+    pub units: Vec<Void>,
     /// Every function defined, source functions in order and then glue.
     pub funcs: Vec<FuncInfo>,
     /// The functions have no visible symbol: the single unit defines [`TEXT_ANCHOR`] and the

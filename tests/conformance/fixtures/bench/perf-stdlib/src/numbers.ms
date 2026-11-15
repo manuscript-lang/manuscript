@@ -6,7 +6,7 @@ import compress, decompress from "@std/io/archive.ms"
 import parse_timestamp from "@std/time.ms"
 import PriorityQueue, Queue from "@std/collections/queue.ms"
 
-export fn bench_numbers() Unit:
+export fn bench_numbers() Void:
     rate: Decimal := 1.12345d
 
     bench(

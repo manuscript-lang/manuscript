@@ -15,7 +15,7 @@ test "same display names keep nested resource cleanup":
 	_cleaned := remove(path, false)
 	seen.length() | expect_equal(1)?
 
-fn expect_closed(path: String) Unit!:
+fn expect_closed(path: String) Void!:
 	seen := read_file(path.clone(), none).wait()?
 	_cleaned := remove(path, false)
 	expect_equal(seen.length(), 1)?

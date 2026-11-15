@@ -9,7 +9,7 @@ fn positive(value: Int) Int:
     else:
         panic(message: "positive value required")
 
-fn discard(value: Int) Unit:
+fn discard(value: Int) Void:
     return
 
 test "return contracts":

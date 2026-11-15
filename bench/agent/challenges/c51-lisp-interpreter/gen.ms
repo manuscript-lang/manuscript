@@ -3,7 +3,7 @@
 // Deterministic; run: ms run bench/agent/gen.ms -- c51
 import Cases, build_oracle, write_cases from "../../lib/gen.ms"
 
-export fn gen_c51() Unit:
+export fn gen_c51() Void:
 	var cs = Cases(build_oracle("c51-lisp-interpreter"))
 	cs.push(
 		"arith",

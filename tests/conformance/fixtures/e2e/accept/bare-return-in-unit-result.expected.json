@@ -11,7 +11,7 @@
       "tests": [
         {
           "index": 0,
-          "name": "bare-return-in-unit-result.ms::bare return in a Unit! function is ok(unit)",
+          "name": "bare-return-in-unit-result.ms::bare return in a Void! function is ok(unit)",
           "status": "passed"
         }
       ],
@@ -25,7 +25,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN bare-return-in-unit-result.ms::bare return in a Unit! function is ok(unit)\nPASS bare-return-in-unit-result.ms::bare return in a Unit! function is ok(unit)\n1 tests, 0 failed\n",
+      "stdout": "RUN bare-return-in-unit-result.ms::bare return in a Void! function is ok(unit)\nPASS bare-return-in-unit-result.ms::bare return in a Void! function is ok(unit)\n1 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

@@ -7,7 +7,7 @@ fn fallback(var calls: Int) List[Int]?:
 fn choose[T: Clonable](value: List[T]?, default: List[T]?) List[T]:
     return value.get(default).clone()
 
-fn main() Unit:
+fn main() Void:
     missing: List[Int]? := none
     present: List[Int]? := [1]
     failure: Result[List[Int], Error] := error(Error("bad"))

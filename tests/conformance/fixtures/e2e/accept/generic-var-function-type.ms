@@ -5,20 +5,20 @@ import expect_equal from "@std/test/test.ms"
 fn identity[T](value: T) T:
 	return value
 
-fn increment(var value: Int) Unit:
+fn increment(var value: Int) Void:
 	value += 1
 
 fn peek(value: Int) Int:
 	return value
 
 test "an explicit generic argument can be a function type with a var parameter":
-	change := identity[fn(var Int) Unit](increment)
+	change := identity[fn(var Int) Void](increment)
 	var value = 1
 	change(var value)
 	expect_equal(value, 2)?
 
 test "a var function type nests inside another generic argument":
-	boxed: List[fn(var Int) Unit] := identity[List[fn(var Int) Unit]]([increment])
+	boxed: List[fn(var Int) Void] := identity[List[fn(var Int) Void]]([increment])
 	var value = 1
 	boxed[0](var value)
 	expect_equal(value, 2)?

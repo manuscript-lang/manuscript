@@ -41,7 +41,7 @@ type P:
 	vx: Int
 	vy: Int
 
-fn say(text: String) Unit:
+fn say(text: String) Void:
 	_ignored := stdout().write(text)
 
 fn fib(n: Int) Int:
@@ -273,7 +273,7 @@ fn chars(n: Int) Int:
 
 	return total
 
-fn timed(name: String, run: fn() Int) Unit:
+fn timed(name: String, run: fn() Int) Void:
 	t := monotonic()
 	r := run()
 	say("{name} {monotonic().difference(t).to_nanoseconds() / 1000} {r}\n")

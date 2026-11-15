@@ -1,11 +1,11 @@
 import promise from "@std/concurrency/promise.ms"
 import pipe, WriteStream from "@std/io/io.ms"
 
-fn produce(var out: WriteStream[Int], base: Int) Unit!:
+fn produce(var out: WriteStream[Int], base: Int) Void!:
     out.write(base)?
     return out.close()
 
-fn f() Unit!:
+fn f() Void!:
     var p = pipe[Int](4)
     var first = p.writer()
     var second = p.writer()

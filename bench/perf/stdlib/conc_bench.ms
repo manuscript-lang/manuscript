@@ -4,7 +4,7 @@ import (
 )
 
 bench "promise.spawn_wait_all_1000":
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		var running: List[Promise[Int]] = []
 		for i in 0..1000:
 			running.append(promise(fn: ok(i * 2)))
@@ -15,7 +15,7 @@ bench "promise.spawn_wait_all_1000":
 	measure(1000, work)?
 
 bench "promise.spawn_wait_each_1000":
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		var n = 0
 
 		for i in 0..1000:
@@ -27,7 +27,7 @@ bench "promise.spawn_wait_each_1000":
 	measure(1000, work)?
 
 bench "promise.spawn_then_wait_5000":
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		var running: List[Promise[Int]] = []
 		for i in 0..5000:
 			running.append(promise(fn: ok(i)))

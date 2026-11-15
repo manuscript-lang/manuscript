@@ -39,7 +39,7 @@ fn Shape.area() Int:
         Circle(r): return r * r * 3
         Square(s): return s * s
 
-fn check(ok: Bool, name: String) Unit:
+fn check(ok: Bool, name: String) Void:
     if not ok:
         return panic(message: name)
 

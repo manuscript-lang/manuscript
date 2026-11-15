@@ -83,7 +83,7 @@ fn protocol(what: String) Error:
 
 // Makes at least `count` unread bytes available, joining chunks once so a large message
 // costs linear time.
-fn var Conn.need(count: Int) Unit!:
+fn var Conn.need(count: Int) Void!:
 	if self.buffer.length() - self.pos >= count: return ok(unit)
 
 	var joined = BytesBuilder()
@@ -136,7 +136,7 @@ fn var Conn.read() Backend!:
 
 	return error(protocol("unreachable"))
 
-fn var Conn.send(data: Bytes) Unit!:
+fn var Conn.send(data: Bytes) Void!:
 	self.net.output.write(data)?
 
 // Asks for TLS on the plain connection (SSLRequest), then upgrades the same socket. The
@@ -179,7 +179,7 @@ export fn open(config: Config) Conn!:
 	conn.authenticate(config)?
 	return ok(conn)
 
-fn var Conn.authenticate(config: Config) Unit!:
+fn var Conn.authenticate(config: Config) Void!:
 	var scram = scram_start(config.password.clone())?
 	var in_scram = false
 	var server_verified = false
@@ -313,19 +313,19 @@ fn var Conn.query(sql: String, params: List[Value]) Rows!:
 	self.send(out.build())?
 	return self.collect([])
 
-fn var Conn.begin() Unit!:
+fn var Conn.begin() Void!:
 	_ := self.simple("BEGIN")?
 	return ok(unit)
 
-fn var Conn.commit() Unit!:
+fn var Conn.commit() Void!:
 	_ := self.simple("COMMIT")?
 	return ok(unit)
 
-fn var Conn.rollback() Unit!:
+fn var Conn.rollback() Void!:
 	_ := self.simple("ROLLBACK")?
 	return ok(unit)
 
-fn var Conn.close() Unit!:
+fn var Conn.close() Void!:
 	_ := self.send(terminate()?)
 	return self.net.close()
 

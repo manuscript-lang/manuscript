@@ -121,6 +121,10 @@ fn a_deadlocked_join_releases_the_targets_joiner() {
 
 #[test]
 #[cfg(unix)]
+#[cfg_attr(
+    miri,
+    ignore = "task stacks need real address-space reservations (mmap, munmap, guard pages)"
+)]
 fn idle_trim_keeps_the_newest_pooled_stacks_warm() {
     let _g = lock();
     teardown();
@@ -156,6 +160,10 @@ fn idle_trim_keeps_the_newest_pooled_stacks_warm() {
 
 #[test]
 #[cfg(unix)]
+#[cfg_attr(
+    miri,
+    ignore = "task stacks need real address-space reservations (mmap, munmap, guard pages)"
+)]
 fn teardown_unmaps_pooled_task_stacks() {
     let _g = lock();
     teardown();
@@ -224,6 +232,10 @@ unsafe extern "C-unwind" fn park_on_token(arg: *mut u8) {
 }
 
 #[test]
+#[cfg_attr(
+    miri,
+    ignore = "task stacks need real address-space reservations (mmap, munmap, guard pages)"
+)]
 fn parked_tasks_hibernate_and_resume_on_the_same_stack() {
     let _g = lock();
     teardown();
@@ -295,6 +307,10 @@ fn raw_socket(stream: &std::net::TcpStream) -> i32 {
 }
 
 #[test]
+#[cfg_attr(
+    miri,
+    ignore = "task stacks need real address-space reservations (mmap, munmap, guard pages)"
+)]
 fn a_hibernating_task_sees_its_cancellation() {
     let _g = lock();
     teardown();
@@ -353,6 +369,10 @@ unsafe extern "C-unwind" fn start_promise_then_park(arg: *mut u8) {
 }
 
 #[test]
+#[cfg_attr(
+    miri,
+    ignore = "task stacks need real address-space reservations (mmap, munmap, guard pages)"
+)]
 fn a_task_whose_promise_still_runs_does_not_hibernate() {
     let _g = lock();
     teardown();
@@ -459,6 +479,10 @@ unsafe extern "C-unwind" fn on_segment(block: *mut u8) {
 }
 
 #[test]
+#[cfg_attr(
+    miri,
+    ignore = "task stacks need real address-space reservations (mmap, munmap, guard pages)"
+)]
 fn a_task_grows_onto_segments_and_comes_back() {
     let _g = lock();
     teardown();
@@ -475,6 +499,10 @@ fn a_task_grows_onto_segments_and_comes_back() {
 }
 
 #[test]
+#[cfg_attr(
+    miri,
+    ignore = "task stacks need real address-space reservations (mmap, munmap, guard pages)"
+)]
 fn a_task_whose_stack_is_lent_out_does_not_hibernate() {
     let _g = lock();
     teardown();
@@ -858,6 +886,7 @@ mod fd_waits {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore = "readiness waits need real file descriptors")]
     fn timers_of_woken_waits_do_not_pile_up() {
         let _g = lock();
         teardown();
@@ -908,6 +937,10 @@ mod fd_waits {
     }
 
     #[test]
+    #[cfg_attr(
+        miri,
+        ignore = "task stacks need real address-space reservations (mmap, munmap, guard pages)"
+    )]
     fn wakes_on_readable_then_stays_ready() {
         let _g = lock();
         teardown();
@@ -984,6 +1017,10 @@ mod fd_waits {
     }
 
     #[test]
+    #[cfg_attr(
+        miri,
+        ignore = "task stacks need real address-space reservations (mmap, munmap, guard pages)"
+    )]
     fn times_out_when_nothing_arrives() {
         let _g = lock();
         teardown();
@@ -996,6 +1033,10 @@ mod fd_waits {
     }
 
     #[test]
+    #[cfg_attr(
+        miri,
+        ignore = "task stacks need real address-space reservations (mmap, munmap, guard pages)"
+    )]
     fn writable_end_is_ready() {
         let _g = lock();
         teardown();

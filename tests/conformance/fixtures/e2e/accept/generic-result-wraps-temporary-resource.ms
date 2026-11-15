@@ -10,7 +10,7 @@ type Resource:
 	id: Int
 	path: String
 
-fn var Resource.close() Unit!:
+fn var Resource.close() Void!:
 	append_file(self.path, "{self.id},").wait()?
 
 fn wrapped[T](value: T) Result[T, String]:
@@ -23,17 +23,17 @@ fn log_text(path: String) String!:
 	bytes := read_file(path).wait()?
 	return ok(expect_some(bytes.decode_utf8())?)
 
-fn use_temporary(path: String) Unit!:
+fn use_temporary(path: String) Void!:
 	result := wrapped(Resource(1, path.clone()))
 	expect_equal(result.is_ok(), true)?
 	expect_equal(log_text(path)?, "")?
 
-fn use_error_case(path: String) Unit!:
+fn use_error_case(path: String) Void!:
 	result := rejected(Resource(2, path.clone()))
 	expect_equal(result.is_error(), true)?
 	expect_equal(log_text(path)?, "")?
 
-fn use_named(path: String) Unit!:
+fn use_named(path: String) Void!:
 	named := Resource(3, path.clone())
 	result := wrapped(named)
 	expect_equal(result.is_ok(), true)?

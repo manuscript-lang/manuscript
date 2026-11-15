@@ -4,7 +4,7 @@
 import stdin, stdout from "@std/io/io.ms"
 import lines from "@std/io/streams.ms"
 
-fn run() Result[Unit, Error]:
+fn run() Result[Void, Error]:
     var input = lines(stdin())
 
     while true:
@@ -17,5 +17,5 @@ fn run() Result[Unit, Error]:
 
     return stdout().flush()
 
-fn main() Unit!:
+fn main() Void!:
     run()?

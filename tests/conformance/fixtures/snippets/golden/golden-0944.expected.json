@@ -27,7 +27,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0944.ms:3:21: parse: expected an expression, found 'return'; write a value, name, call, or literal here\n   |\n 3 | fn f() Unit: return return\n   |                     ^^^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0944.ms:3:21: parse: expected an expression, found 'return'; write a value, name, call, or literal here\n   |\n 3 | fn f() Void: return return\n   |                     ^^^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

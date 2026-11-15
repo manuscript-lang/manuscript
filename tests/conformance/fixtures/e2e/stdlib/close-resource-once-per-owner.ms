@@ -7,13 +7,13 @@ import Closeable from "@std/core.ms"
 type Door:
     name: String
 
-fn var Door.close() Unit!:
+fn var Door.close() Void!:
     print("closed {self.name}")
 
 type Pair:
     door: Door
 
-fn say(s: String) Unit:
+fn say(s: String) Void:
     print("{s}")
 
 fn doors() Map[String, Door]:
@@ -33,7 +33,7 @@ fn collect() List[Door]!Error:
     say("read {(second?).name}")
     return ok(found)
 
-fn main() Unit:
+fn main() Void:
     count := doors().length()
     say("--result")
 

@@ -35,7 +35,7 @@ test "bmp round trip":
 	expect_equal(back.pixel(4, 2).get().alpha, 200)?
 	expect_equal(back.pixel(0, 0).get().alpha, 255)?
 
-fn expect_pixel(hex: String, red: Int, green: Int, blue: Int) Unit!:
+fn expect_pixel(hex: String, red: Int, green: Int, blue: Int) Void!:
 	px := decode_image(hex_decode(hex, none).get()).get().pixel(0, 0).get()
 	return expect_equal([px.red, px.green, px.blue], [red, green, blue])
 

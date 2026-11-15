@@ -9,7 +9,7 @@ type Count:
 type Watch:
     count: Count
 
-fn Watch.close() Unit!:
+fn Watch.close() Void!:
     self.count.total += 10
 
 fn next(count: Count) Int:

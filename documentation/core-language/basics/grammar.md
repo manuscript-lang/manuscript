@@ -25,7 +25,7 @@ unit var while
 - `try` is reserved only to report that it was replaced: write a postfix `?` (`f(x)?`) to propagate a Result error.
 - `opaque` is contextual: it modifies a `type` declaration only directly before `type` (`export opaque type Name:`), so `opaque := 1` is valid.
 - `from` ends an import's names and `bench` starts a benchmark only before a string literal at a module item; both are contextual, so `from := 2` and `bench := 3` are valid.
-- Words from other languages (`def`, `lambda`, `elif`, `True`, `False`, `None`, `class`, `except`, `raise`, `finally`, `async`, `await`, `yield`, `global`, `nonlocal`, `del`, `is`, `pass`, `throw`, `catch`, `null`, `undefined`, `new`, `this`, `function`) and Python spellings (`f"..."`, `from "p" import x`, `Callable[[Int], Int]`, `a if c else b`, `case` arms, `()` for Unit) are not syntax and get a targeted diagnostic naming the Manuscript form (`fn`, `else if`, `true`, `none`, `unit`, `try expr`, and so on).
+- Words from other languages (`def`, `lambda`, `elif`, `True`, `False`, `None`, `class`, `except`, `raise`, `finally`, `async`, `await`, `yield`, `global`, `nonlocal`, `del`, `is`, `pass`, `throw`, `catch`, `null`, `undefined`, `new`, `this`, `function`) and Python spellings (`f"..."`, `from "p" import x`, `Callable[[Int], Int]`, `a if c else b`, `case` arms, `()` for Void) are not syntax and get a targeted diagnostic naming the Manuscript form (`fn`, `else if`, `true`, `none`, `unit`, `try expr`, and so on).
 - `fixture` names the file fixture inside test blocks when a local `make_fixture` factory returns a concrete `TestHooks` implementer. `fixture` and `self` (the implementation receiver) cannot be declared as parameters or bindings.
 - Built-in type names and alternative constructors are not keywords.
 - `//` starts a comment through the end of the line. `/* ... */` is a block comment: it starts its own line (after indentation), ends at the first `*/`, and only blanks or a `//` comment may follow the `*/`. Block comments do not nest (a `/*` inside one is an error), an unterminated block is an error at its opening `/*`, and the block counts as comment-only lines for layout, so its contents are free-form. `#` is not syntax.
@@ -145,7 +145,7 @@ ExternDeclaration = "extern", "fn", Name, "(", [ FunctionParameters ], ")", Resu
                   | "extern", "type", Name, [ TypeParameters ], NEWLINE ;
 FunctionSuite = ":", ("...", NEWLINE | Expression | SimpleStatement | NEWLINE, INDENT, { Statement }, DEDENT) ;
 TestDeclaration = "test", PlainStringLiteral, Suite ;
-(* A test body behaves as if it returns Result[Unit, Error]: completing, bare return, or `return unit` succeeds; a postfix `?` or return error(...) fails it. *)
+(* A test body behaves as if it returns Result[Void, Error]: completing, bare return, or `return unit` succeeds; a postfix `?` or return error(...) fails it. *)
 (* Only canonical TestHooks implementations may omit operations; missing hooks are no-ops. *)
 BenchDeclaration = "bench", PlainStringLiteral, [ "per", PositiveInteger ], Suite ;
 (* `bench` is contextual: it starts a declaration only before a string literal. The body is one iteration (`per N` says it performs N operations, and `ms bench` then reports per operation), with a test body's result rules and no `fixture`; `ms bench` repeats and times it. *)
@@ -217,7 +217,7 @@ RecordPattern = "{", RecordEntry, { ",", RecordEntry }, [ "," ], "}" ;
 RecordEntry   = Name, [ ":", BindingPattern ] ;
 ```
 
-- `CallStatement` accepts a call or match and discards the result, or `call()?` when the success type is `Unit` ([propagation](../errors/propagation.md)). Bare names and arithmetic are not statements.
+- `CallStatement` accepts a call or match and discards the result, or `call()?` when the success type is `Void` ([propagation](../errors/propagation.md)). Bare names and arithmetic are not statements.
 - Assignment replaces a `var` or record field. `target op= value` means `target = target op (value)`; write the operator and `=` adjacent. The target is mutable storage: a name, field path (`box.inner.count += 1`), list index (`values[i] += 1`), or map entry (`stock[line.sku] -= line.qty`). The index of a compound target is a name, field path or literal, so it is read twice without effect; the store takes a clone of the key and the name stays usable. Calls cannot be assignment targets. `+=` appends text; `-=` on text is an error.
 - Only a simple name takes a type annotation. Positional patterns may be empty; empty record patterns are rejected. `_` discards a binding or match payload and is the wildcard match arm; it cannot be read as a value.
 - Inline suites (functions, methods, tests, branches, loops) hold one simple statement, no nested compound statements. Functions and methods alone may hold one expression, which is returned:
