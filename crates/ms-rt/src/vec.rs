@@ -1726,6 +1726,15 @@ pub unsafe extern "C-unwind" fn msrt_bytes_view(
     }
 }
 
+/// `a == b` for two `Bytes`: the lengths and then the bytes, without the descriptor dispatch of
+/// `msrt_slot_eq`.
+#[unsafe(no_mangle)]
+// ms: leaf pure
+pub unsafe extern "C-unwind" fn msrt_bytes_eq(a: *const VecVal, b: *const VecVal) -> u8 {
+    // SAFETY: caller contract.
+    unsafe { (bslice(a) == bslice(b)) as u8 }
+}
+
 #[unsafe(no_mangle)]
 // ms: leaf domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_reversed(b: *const VecVal, out: *mut VecVal) {
