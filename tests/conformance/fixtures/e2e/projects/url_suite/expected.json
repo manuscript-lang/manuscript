@@ -25,7 +25,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN conformance_test.ms::Go net/url tables agree with the parser except for the listed cases\n220 cases, 40 not passing, 36 unsupported by design\nPASS conformance_test.ms::Go net/url tables agree with the parser except for the listed cases\n1 tests, 0 failed\n",
+      "stdout": "RUN conformance_test.ms::Go net/url tables agree with the parser except for the listed cases\n220 cases, 36 not passing, 36 unsupported by design\nPASS conformance_test.ms::Go net/url tables agree with the parser except for the listed cases\n1 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

@@ -248,6 +248,8 @@ fn parse_inner(raw: &[u8], via_request: bool) -> Result<Url, Bad> {
     if !rest.starts_with(b"/") {
         if !url.scheme.is_empty() {
             url.opaque = rest.to_vec();
+            // No `//` was written; with an empty opaque part this is `mailto:?subject=hi`.
+            url.omit_host = true;
             return Ok(url);
         }
         if via_request {
