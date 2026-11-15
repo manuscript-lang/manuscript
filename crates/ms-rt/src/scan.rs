@@ -508,10 +508,6 @@ mod json_short_tests {
     }
 
     #[test]
-    #[cfg_attr(
-        miri,
-        ignore = "an exhaustive sweep that takes over 200 s interpreted; native CI runs it"
-    )]
     fn simple_numbers_agree_with_the_grammar() {
         // The grammar, written out byte by byte as the oracle.
         let oracle = |s: &[u8]| {

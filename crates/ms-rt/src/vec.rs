@@ -2297,10 +2297,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(
-        miri,
-        ignore = "an exhaustive sweep that takes over 200 s interpreted; native CI runs it"
-    )]
     fn word_sort_is_stable_and_total_for_every_size() {
         let mut seed = 0x2545_f491_4f6c_dd1du64;
         let mut next = move || {

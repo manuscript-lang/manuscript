@@ -457,7 +457,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(miri, ignore = "memory copy bodies use inline assembly")]
     fn each_memcpy_body_copies_every_size_exactly() {
         let mut bodies: Vec<CopyFn> = vec![memcpy_sse];
         if probe_avx2() {
@@ -504,7 +503,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(miri, ignore = "memory copy bodies use inline assembly")]
     fn copies_every_small_size_at_every_offset() {
         for n in 0..=130 {
             for off in 0..8 {
@@ -566,10 +564,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(
-        miri,
-        ignore = "an exhaustive sweep that takes over 200 s interpreted; native CI runs it"
-    )]
     fn backward_copies_match_snapshot_at_every_small_size_and_shift() {
         for n in 0..=130 {
             for shift in 0..=130 {
@@ -581,10 +575,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(
-        miri,
-        ignore = "an exhaustive sweep that takes over 200 s interpreted; native CI runs it"
-    )]
     fn backward_copies_match_snapshot_across_large_boundaries() {
         for n in [255, 256, 257, 1023, 1024, 1025, 24576, 73728] {
             for shift in [

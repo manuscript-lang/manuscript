@@ -254,10 +254,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(
-        miri,
-        ignore = "an exhaustive sweep that takes over 200 s interpreted; native CI runs it"
-    )]
     fn decode_matches_std_for_every_scalar_and_replaces_malformed_prefixes() {
         for c in (0..=0x10FFFFu32).filter_map(char::from_u32) {
             let mut buf = [0u8; 4];
