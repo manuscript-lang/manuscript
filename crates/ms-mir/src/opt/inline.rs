@@ -35,6 +35,20 @@ pub const SPECIALIZE_BUDGET: usize = 2000;
 /// Rounds of specialization (a clone that forwards its closure to another call needs one more).
 const SPECIALIZE_ROUNDS: usize = 4;
 
+/// Largest callee, in instructions, that an unoptimized build inlines.
+pub const DEBUG_THRESHOLD: usize = 16;
+
+/// The unoptimized build's inlining: a callee of at most [`DEBUG_THRESHOLD`] instructions
+/// without a loop, so that a small stdlib function costs no call and a closure it is given is
+/// called directly. Recursion checks stay: a callee on a cycle is never inlined, and the
+/// copy of any other drops its own check. Returns whether anything changed.
+pub fn run_small(m: &mut Module) -> bool {
+    let mut changed = inline_calls(m, true);
+    changed |= inline_closures(m);
+    changed |= remove_dead(m);
+    changed
+}
+
 /// Runs the pass over the whole module; returns whether anything changed.
 pub fn run(m: &mut Module) -> bool {
     let mut changed = specialize_sort_thunks(m);
@@ -42,7 +56,7 @@ pub fn run(m: &mut Module) -> bool {
     changed |= specialize_closure_args(m);
     // A recursive cycle keeps one check; the unchecked functions on it then inline like any other.
     changed |= strip_depth(m, true);
-    changed |= inline_calls(m);
+    changed |= inline_calls(m, false);
     changed |= inline_closures(m);
     changed |= strip_depth(m, false);
     changed |= remove_dead(m);
@@ -265,7 +279,7 @@ fn direct_graph(m: &Module) -> Vec<Vec<usize>> {
         .collect()
 }
 
-fn inline_calls(m: &mut Module) -> bool {
+fn inline_calls(m: &mut Module, small: bool) -> bool {
     let adj = direct_graph(m);
     let cyc = cyclic(&adj);
     let mut sites = vec![0usize; m.funcs.len()];
@@ -277,7 +291,7 @@ fn inline_calls(m: &mut Module) -> bool {
     let mut changed = false;
     for comp in sccs(&adj) {
         for fi in comp {
-            changed |= inline_into(m, fi, &cyc, &sites);
+            changed |= inline_into(m, fi, &cyc, &sites, small);
         }
     }
     changed
@@ -345,19 +359,30 @@ fn has_check(f: &Func) -> bool {
         .is_some_and(|i| i.op == Op::DepthEnter)
 }
 
-fn inline_into(m: &mut Module, fi: usize, cyc: &[bool], sites: &[usize]) -> bool {
-    let mut changed = inline_sites(m, fi, cyc, sites, false);
+fn inline_into(m: &mut Module, fi: usize, cyc: &[bool], sites: &[usize], small: bool) -> bool {
+    let mut changed = inline_sites(m, fi, cyc, sites, false, small);
     // Inlining a sibling on the cycle can leave the function directly self-recursive and small.
-    if m.funcs[fi].inline == InlineHint::Auto && self_unroll_source(m, fi).is_some() {
-        changed |= inline_sites(m, fi, cyc, sites, true);
+    if !small && m.funcs[fi].inline == InlineHint::Auto && self_unroll_source(m, fi).is_some() {
+        changed |= inline_sites(m, fi, cyc, sites, true, false);
     }
     changed
 }
 
 /// Inlines the call sites of `fi` its heuristics choose; with `only_self`, only its own calls
 /// (the unrolling).
-fn inline_sites(m: &mut Module, fi: usize, cyc: &[bool], sites: &[usize], only_self: bool) -> bool {
-    let unroll = self_unroll_source(m, fi);
+fn inline_sites(
+    m: &mut Module,
+    fi: usize,
+    cyc: &[bool],
+    sites: &[usize],
+    only_self: bool,
+    small: bool,
+) -> bool {
+    let unroll = if small {
+        None
+    } else {
+        self_unroll_source(m, fi)
+    };
     let budget = m.funcs[fi].inst_count() * GROWTH_FACTOR + GROWTH_SLACK;
     let mut consts: ValueSet = const_values(&m.funcs[fi].blocks).collect();
     let mut grown = 0usize;
@@ -394,7 +419,10 @@ fn inline_sites(m: &mut Module, fi: usize, cyc: &[bool], sites: &[usize], only_s
             let size = callee.inst_count();
             let ok = match callee.inline {
                 InlineHint::Never => false,
-                InlineHint::Always => true,
+                InlineHint::Always => !small || size <= DEBUG_THRESHOLD,
+                InlineHint::Auto if small => {
+                    size <= DEBUG_THRESHOLD && !has_loop(callee) && grown + size <= budget
+                }
                 // A callee with a loop only pays for the call when the call itself repeats.
                 InlineHint::Auto if has_loop(callee) && !blocks_in_loops(&m.funcs[fi])[bi] => false,
                 InlineHint::Auto => {
