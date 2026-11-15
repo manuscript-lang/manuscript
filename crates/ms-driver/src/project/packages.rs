@@ -1,6 +1,6 @@
 //! Package dependencies: the lock file, the read-only package cache and the content hash.
 //!
-//! `ms fetch` (in `ms-cli`) is the only code that uses the network. Everything here reads the
+//! `ms install` (in `ms-cli`) is the only code that uses the network. Everything here reads the
 //! lock and the cache, so a locked project builds offline.
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -21,6 +21,8 @@ const MAX_BYTES: u64 = 64 << 20;
 pub struct Package {
     /// The path from the project in the lock file, such as `@pg` or `@pg/@wire`.
     pub key: String,
+    /// The manifest value the lock pinned, `url#tag`.
+    pub spec: String,
     /// The canonical cache directory holding the package files.
     pub root: String,
     /// The package's own manifest, with its dependencies resolved.
@@ -39,7 +41,7 @@ pub fn is_hex(text: &str, len: usize) -> bool {
 
 /// A dependency value is `url#tag`: an `https://` or `file://` URL, never one that starts with
 /// `-` or names another git transport, and a tag or commit that is not an option or a path.
-/// Nested packages may use `https://` only; `ms fetch` checks that where the depth is known.
+/// Nested packages may use `https://` only; `ms install` checks that where the depth is known.
 pub fn check_spec(spec: &str) -> Result<(), String> {
     let bad = || {
         format!(
@@ -120,7 +122,7 @@ pub fn read_lock(root: &str) -> Result<BTreeMap<String, LockEntry>, ProjectError
         }
         let bad = || {
             ProjectError::msg(format!(
-                "ms.lock line {} is not `\"@name\" = \"url#tag revision sha256:hash\"`; run ms fetch to rewrite it",
+                "ms.lock line {} is not `\"@name\" = \"url#tag revision sha256:hash\"`; run ms install to rewrite it",
                 index + 1
             ))
         };
@@ -137,7 +139,7 @@ pub fn read_lock(root: &str) -> Result<BTreeMap<String, LockEntry>, ProjectError
         let hash = hash.strip_prefix("sha256:").ok_or_else(bad)?;
         if !is_hex(revision, 40) || !is_hex(hash, 64) {
             return Err(ProjectError::msg(format!(
-                "ms.lock line {} must hold a 40-digit commit and a 64-digit sha256, both lowercase hexadecimal; run ms fetch to rewrite it",
+                "ms.lock line {} must hold a 40-digit commit and a 64-digit sha256, both lowercase hexadecimal; run ms install to rewrite it",
                 index + 1
             )));
         }
@@ -158,7 +160,7 @@ pub fn read_lock(root: &str) -> Result<BTreeMap<String, LockEntry>, ProjectError
 /// The text of `ms.lock` for `entries`, in key order.
 pub fn lock_text(entries: &BTreeMap<String, LockEntry>) -> String {
     let mut text = String::from(
-        "# Written by `ms fetch`. Commit it: it pins each package to a commit and a content hash.\n",
+        "# Written by `ms install`. Commit it: it pins each package to a commit and a content hash.\n",
     );
     for (key, e) in entries {
         text.push_str(&format!(
@@ -215,11 +217,11 @@ pub fn verify_file(package: &Package, relative: &str, bytes: &[u8]) -> Result<()
     match package.files.get(relative) {
         Some(expected) if *expected == sha256::hex(bytes) => Ok(()),
         Some(_) => Err(ProjectError::msg(format!(
-            "{}/{relative} in the cache does not match ms.lock; delete {} and run `ms fetch`",
+            "{}/{relative} in the cache does not match ms.lock; delete {} and run `ms install`",
             package.key, package.root
         ))),
         None => Err(ProjectError::msg(format!(
-            "{}/{relative} is not in the locked package; delete {} and run `ms fetch`",
+            "{}/{relative} is not in the locked package; delete {} and run `ms install`",
             package.key, package.root
         ))),
     }
@@ -274,10 +276,11 @@ pub fn pattern_covers(allowed: &str, declared: &str) -> bool {
 }
 
 /// An effect in `declared` that no pattern in `allowed` covers.
-pub fn uncovered<'a>(allowed: &str, declared: &'a str) -> Option<&'a str> {
+pub fn uncovered<'a>(allowed: &[String], declared: &'a [String]) -> Option<&'a str> {
     declared
-        .split_whitespace()
-        .find(|d| !allowed.split_whitespace().any(|a| pattern_covers(a, d)))
+        .iter()
+        .find(|d| !allowed.iter().any(|a| pattern_covers(a, d)))
+        .map(String::as_str)
 }
 
 /// Resolve every dependency of `project` through its lock and the cache, recursively.
@@ -323,13 +326,13 @@ fn resolve(
         let key = format!("{prefix}{alias}");
         let entry = lock.get(&key).filter(|e| e.spec == spec).ok_or_else(|| {
             ProjectError::msg(format!(
-                "ms.lock has no entry for {key} = {spec:?}; run `ms fetch` to resolve and pin it"
+                "ms.lock has no entry for {key} = {spec:?}; run `ms install` to resolve and pin it"
             ))
         })?;
         let directory = cache.join(&entry.sha256);
         if !directory.is_dir() {
             return Err(ProjectError::msg(format!(
-                "package {key} ({}) is not in the cache {}; run `ms fetch` to download it",
+                "package {key} ({}) is not in the cache {}; run `ms install` to download it",
                 entry.spec,
                 directory.display()
             )));
@@ -355,11 +358,14 @@ fn resolve(
             )));
         }
         if let Some(missing) = uncovered(
-            scope.allowed_effects.get(&alias).map_or("", String::as_str),
+            scope
+                .allowed_effects
+                .get(&alias)
+                .map_or(&[][..], Vec::as_slice),
             &package.effects,
         ) {
             return Err(ProjectError::msg(format!(
-                "package {key} may use {missing}, which this project does not allow; add `{alias} = \"{missing}\"` under [effects] in ms.toml if you trust it"
+                "package {key} may use {missing}, which this project does not allow; add `{alias} = [\"{missing}\"]` under [effects] in ms.toml if you trust it"
             )));
         }
         if !prefix.is_empty()
@@ -386,6 +392,7 @@ fn resolve(
         chain.pop();
         packages.push(Package {
             key,
+            spec: entry.spec.clone(),
             root,
             project: package,
             files,
@@ -406,7 +413,7 @@ fn read_index(
         .map_err(|e| ProjectError::path("open", &path.to_string_lossy(), &e))?;
     if hash_index(&text) != hash {
         return Err(ProjectError::msg(format!(
-            "the index of package {key} does not match ms.lock; delete {} and {} and run `ms fetch`",
+            "the index of package {key} does not match ms.lock; delete {} and {} and run `ms install`",
             directory.display(),
             path.display()
         )));
@@ -492,9 +499,9 @@ mod tests {
         std::fs::create_dir_all(&cache).unwrap();
         std::fs::create_dir_all(project_dir.join("src")).unwrap();
         let header = "[project]\nname = \"p\"\nsource = \"src\"\n";
-        let inner = stored(&cache, &format!("{header}effects = \"std.net.*\"\n"));
+        let inner = stored(&cache, &format!("{header}effects = [\"std.net.*\"]\n"));
         let outer_manifest = format!(
-            "{header}\n[dependencies]\n\"@inner\" = \"https://h/x.git#v1\"\n\n[effects]\n\"@inner\" = \"std.net.*\"\n"
+            "{header}\n[dependencies]\n\"@inner\" = {{ url = \"https://h/x.git\", tag = \"v1\" }}\n\n[effects]\n\"@inner\" = [\"std.net.*\"]\n"
         );
         let outer = stored(&cache, &outer_manifest);
         let lock = BTreeMap::from([
@@ -504,7 +511,7 @@ mod tests {
         std::fs::write(project_dir.join("ms.lock"), lock_text(&lock)).unwrap();
         std::fs::write(
             project_dir.join("ms.toml"),
-            "[project]\nname = \"a\"\nsource = \"src\"\n\n[dependencies]\n\"@outer\" = \"https://h/x.git#v1\"\n\n[effects]\n\"@outer\" = \"std.net.*\"\n",
+            "[project]\nname = \"a\"\nsource = \"src\"\n\n[dependencies]\n\"@outer\" = { url = \"https://h/x.git\", tag = \"v1\" }\n\n[effects]\n\"@outer\" = [\"std.net.*\"]\n",
         )
         .unwrap();
         let mut project = Project::default();

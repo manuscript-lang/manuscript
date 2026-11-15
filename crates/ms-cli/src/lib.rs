@@ -69,7 +69,9 @@ pub fn run<L: Lower>(
     match args[0].as_str() {
         "help" => commands::run_help(&args[1..], io),
         "init" => init::run_init(&args[1..], io),
-        "fetch" => fetch::run_fetch(&args[1..], io),
+        "install" => fetch::run_install(&args[1..], io),
+        "add" => fetch::run_add(&args[1..], io),
+        "remove" => fetch::run_remove(&args[1..], io),
         "skill" => skill::run_skill(&args[1..], io),
         "verify" => verify::run_verify(syms, &args[1..], engine, io),
         "fmt" => fmt::run_format(syms, &args[1..], io),

@@ -20,6 +20,7 @@
 //! `ms.lock` handling and build-cache file locks belong to the build driver, not here.
 
 pub mod discovery;
+pub mod edit;
 pub mod embed;
 pub mod error;
 pub mod manifest;

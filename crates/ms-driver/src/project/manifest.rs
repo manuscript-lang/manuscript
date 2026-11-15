@@ -1,8 +1,7 @@
-//! `ms.toml` reading: the supported subset is `[project]`, `[aliases]` and
-//! `[embed]` tables holding double-quoted string values. Diagnostics, locations and their
-//! order are pinned by the project tests.
-
-use std::collections::{BTreeMap, BTreeSet};
+//! `ms.toml` reading: a TOML 1.0 document with the tables `[project]`, `[aliases]`, `[embed]`,
+//! `[dependencies]` and `[effects]`. Diagnostics, locations and their order are pinned by the
+//! project tests.
+use std::collections::BTreeMap;
 
 use crate::project::error::{Location, ProjectError};
 use crate::project::overlay::Overlay;
@@ -34,9 +33,9 @@ pub struct Project {
     /// `[dependencies]`: package names mapped to `url#tag`.
     pub dependencies: BTreeMap<String, String>,
     /// `[effects]`: for each dependency, the effects this project allows it.
-    pub allowed_effects: BTreeMap<String, String>,
+    pub allowed_effects: BTreeMap<String, Vec<String>>,
     /// `[project] effects`: the effects this project, as a package, may use.
-    pub effects: String,
+    pub effects: Vec<String>,
     /// Dependency names mapped to the source directory of the fetched package.
     pub deps: BTreeMap<String, String>,
     /// Every fetched package this project reaches, directly or not. Empty in a package.
@@ -151,219 +150,137 @@ fn read_into(filename: &str, p: &mut Project) -> Result<(), ProjectError> {
     let configuration = p.configuration.clone();
     let fail = Failure;
 
-    let mut section = String::new();
-    let mut tables: BTreeSet<&'static str> = BTreeSet::new();
-    let mut seen: BTreeSet<String> = BTreeSet::new();
-    let (mut line_number, mut offset) = (0usize, 0usize);
-    let mut location;
-    while offset < configuration.len() {
-        line_number += 1;
-        let line_start_offset = offset;
-        let newline = configuration[offset..].find('\n');
-        let raw_end = newline.map_or(configuration.len(), |i| offset + i);
-        if raw_end - offset > MAX_LINE {
-            location = Location {
-                file: file_name.clone(),
-                line: line_number,
-                column: 1,
-                offset,
-            };
-            return Err(fail.at(
-                &location,
-                "line too long; keep each ms.toml line under 64 KiB",
-            ));
-        }
-        let mut raw = &configuration[offset..raw_end];
-        offset = newline.map_or(configuration.len(), |i| offset + i + 1);
-        raw = raw.strip_suffix('\r').unwrap_or(raw);
-        let mut line_start = line_start_offset;
-        if line_number == 1
-            && let Some(rest) = raw.strip_prefix('\u{feff}')
-        {
-            line_start += '\u{feff}'.len_utf8();
-            raw = rest;
-        }
-        let content = manifest_line(raw);
-        let mut line = content.trim();
-        let leading = content.len() - content.trim_start().len();
-        location = Location {
+    if let Some(line) = configuration.split('\n').position(|l| l.len() > MAX_LINE) {
+        let location = Location {
             file: file_name.clone(),
-            line: line_number,
-            column: leading + 1,
-            offset: line_start + leading,
+            line: line + 1,
+            column: 1,
+            offset: 0,
         };
-        if line.is_empty() || line.starts_with('#') {
-            continue;
+        return Err(fail.at(
+            &location,
+            "line too long; keep each ms.toml line under 64 KiB",
+        ));
+    }
+    // A byte-order mark is not part of the document.
+    let bom = if configuration.starts_with('\u{feff}') {
+        '\u{feff}'.len_utf8()
+    } else {
+        0
+    };
+    let text = &configuration[bom..];
+    let at = |offset: usize| locate(&configuration, &file_name, offset + bom);
+    let document = match toml_edit::Document::parse(text) {
+        Ok(document) => document,
+        Err(error) => {
+            let start = error.span().map_or(0, |s| s.start);
+            return Err(fail.at(&at(start), format!("invalid ms.toml: {}", error.message())));
         }
-        let header;
-        if line.starts_with('[') {
-            if line.ends_with(']') && !line.starts_with("[[") {
-                header = format!("[{}]", line[1..line.len() - 1].trim());
-                line = &header;
-            }
-            let table = match line {
-                "[project]" => "project",
-                "[aliases]" => "aliases",
-                "[embed]" => "embed",
-                "[dependencies]" => "dependencies",
-                "[effects]" => "effects",
-                _ => {
-                    let advice = if !line.ends_with(']') {
-                        "close the header with ']'"
-                    } else if line.starts_with("[[") {
-                        "array tables are not supported"
-                    } else if line == "[package]" {
-                        "rename it to [project] with name, source, and entry"
-                    } else {
-                        "ms.toml has no other tables"
-                    };
-                    return Err(fail.at(&location, format!("unsupported manifest table {line}; ms.toml supports only [project], [aliases], [embed], [dependencies] and [effects]: {advice}")));
-                }
-            };
-            if !tables.insert(table) {
-                return Err(fail.at(
-                    &location,
-                    format!("duplicate manifest table {line}; merge its keys into the first one"),
-                ));
-            }
-            section = table.to_string();
-            if table == "project" {
-                p.location = location.clone();
-            }
-            continue;
-        }
-        let (key, value, ok);
-        if line.starts_with('"') {
-            let Some((quoted, rest)) = quoted_prefix(line) else {
-                return Err(fail.at(&location, "unterminated quoted key; close the key's double quote, e.g. \"name\" = \"value\""));
-            };
-            let Some(unquoted) = quoting::unquote(quoted) else {
-                return Err(fail.at(
-                    &location,
-                    format!("invalid quoted key {quoted}: invalid syntax; escape backslashes and quotes inside the key"),
-                ));
-            };
-            key = unquoted;
-            match rest.trim().strip_prefix('=') {
-                Some(v) => (value, ok) = (v, true),
-                None => (value, ok) = ("", false),
-            }
-        } else {
-            match line.split_once('=') {
-                Some((k, v)) => (key, value, ok) = (k.trim().to_string(), v, true),
-                None => (key, value, ok) = (String::new(), "", false),
-            }
-        }
-        if !ok || section.is_empty() {
-            let advice = if section.is_empty() {
-                "this line is before any table header, so start the file with [project] and put name = \"app\" and source = \"src\" under it"
-            } else {
-                "this line has no '=', so write key = \"value\" (values are double-quoted strings)"
-            };
-            return Err(fail.at(&location, format!("invalid manifest assignment; {advice}")));
-        }
-        let key_location = location.clone();
-        let value = value.trim();
-        let value_start = line.len() - value.len();
-        location.column += value_start;
-        location.offset += value_start;
-        if value.len() < 2 || !value.starts_with('"') || !value.ends_with('"') {
+    };
+    let mut location;
+    for (name, item) in document.as_table().iter() {
+        let header = item
+            .as_table()
+            .and_then(toml_edit::Table::span)
+            .map_or(0, |s| s.start);
+        location = at(header);
+        let Some(table) = item.as_table_like() else {
             return Err(fail.at(
                 &location,
-                format!(
-                    "manifest values must be double-quoted strings; write {} = \"{}\"",
-                    key.trim(),
-                    value.trim_matches(['"', '\'', ' '])
-                ),
-            ));
-        }
-        let Some(value) = quoting::unquote(value) else {
-            return Err(fail.at(
-                &location,
-                "manifest values must be quoted strings: invalid syntax; escape backslashes and quotes inside the value",
+                format!("invalid manifest assignment; {name} is not a table, so put it under a [project] table header: ms.toml starts with [project] and name = \"app\" and source = \"src\" under it"),
             ));
         };
-        if value.chars().any(|c| (c as u32) < 0x20 || c as u32 == 0x7f) {
-            return Err(fail.at(
-                &location,
-                format!("manifest value for {key} contains a NUL or control character; remove it"),
-            ));
-        }
-        let id = format!("{section}.{key}");
-        if !seen.insert(id.clone()) {
-            return Err(fail.at(
-                &key_location,
-                format!("duplicate manifest key {id}; each key may be set once"),
-            ));
-        }
-        p.assignments.insert(
-            id,
-            Assignment {
-                key: key_location.clone(),
-                value: location.clone(),
-            },
-        );
+        let section = match name {
+            "project" => "project",
+            "aliases" => "aliases",
+            "embed" => "embed",
+            "dependencies" => "dependencies",
+            "effects" => "effects",
+            _ => {
+                let advice = if name == "package" {
+                    "rename it to [project] with name, source, and entry"
+                } else {
+                    "ms.toml has no other tables"
+                };
+                return Err(fail.at(&location, format!("unsupported manifest table [{name}]; ms.toml supports only [project], [aliases], [embed], [dependencies] and [effects]: {advice}")));
+            }
+        };
         if section == "project" {
-            match key.as_str() {
-                "name" => p.name = value,
-                "source" => p.source = value,
-                "entry" => p.entry = value,
-                "effects" => p.effects = value,
-                _ => {
-                    return Err(fail.at(
-                        &key_location,
-                        format!(
-                            "unknown project key {key}; [project] accepts name, source, entry, and effects"
-                        ),
-                    ));
+            p.location = location.clone();
+        }
+        for (key, value) in table.iter() {
+            let (key_span, value_span) = table.get_key_value(key).map_or((0..0, 0..0), |(k, v)| {
+                (k.span().unwrap_or(0..0), v.span().unwrap_or(0..0))
+            });
+            let key_location = at(key_span.start);
+            location = at(value_span.start);
+            let key = key.to_string();
+            let id = format!("{section}.{key}");
+            p.assignments.insert(
+                id,
+                Assignment {
+                    key: key_location.clone(),
+                    value: location.clone(),
+                },
+            );
+            match section {
+                "effects" => {
+                    let list = string_list(value)
+                        .map_err(|e| fail.at(&location, format!("{key}: {e}")))?;
+                    check_package_name(&fail, &key, &key_location)?;
+                    p.allowed_effects.insert(key, list);
                 }
-            }
-        } else if section == "dependencies" || section == "effects" {
-            if !valid_alias(&key) || key == "@std" {
-                return Err(fail.at(
-                    &key_location,
-                    format!("invalid or reserved package name {key}; names look like @pg (start with @, letters/digits/underscore) and cannot be @std"),
-                ));
-            }
-            if section == "effects" {
-                p.allowed_effects.insert(key, value);
-            } else {
-                match value.split_once('#') {
-                    Some((url, tag))
-                        if !url.is_empty()
-                            && !tag.is_empty()
-                            && !value.contains(char::is_whitespace) => {}
-                    _ => {
-                        return Err(fail.at(
-                            &location,
-                            format!("invalid dependency {value:?}; write \"<git url>#<tag or commit>\", for example \"https://github.com/acme/pg.git#v1.0.0\""),
-                        ));
+                "dependencies" => {
+                    check_package_name(&fail, &key, &key_location)?;
+                    let spec = dependency(value)
+                        .map_err(|e| fail.at(&location, format!("dependency {key}: {e}")))?;
+                    p.dependencies.insert(key, spec);
+                }
+                "project" if key == "effects" => {
+                    p.effects = string_list(value)
+                        .map_err(|e| fail.at(&location, format!("effects: {e}")))?;
+                }
+                _ => {
+                    let value = text_value(&fail, &location, &key, value)?;
+                    match section {
+                        "project" => match key.as_str() {
+                            "name" => p.name = value,
+                            "source" => p.source = value,
+                            "entry" => p.entry = value,
+                            _ => {
+                                return Err(fail.at(
+                                    &key_location,
+                                    format!("unknown project key {key}; [project] accepts name, source, entry, and effects"),
+                                ));
+                            }
+                        },
+                        "embed" => {
+                            if !valid_alias(&key) || key == "@std" {
+                                return Err(fail.at(
+                                    &key_location,
+                                    format!("invalid or reserved embed name {key}; embed names look like @assets (start with @, letters/digits/underscore) and cannot be @std"),
+                                ));
+                            }
+                            if value.starts_with('@') {
+                                return Err(fail.at(&location, format!("invalid embed target {value}; map it to a project-local directory, not an alias")));
+                            }
+                            p.embed.insert(key, value);
+                        }
+                        _ => {
+                            if !valid_alias(&key) || key == "@std" {
+                                return Err(fail.at(
+                                    &key_location,
+                                    format!("invalid or reserved alias {key}{}; aliases look like @lib (start with @, letters/digits/underscore), cannot be @std, and must map to a path, not another alias", if key != "std" && valid_alias(&format!("@{key}")) { format!(" (did you mean @{key}?)") } else { String::new() }),
+                                ));
+                            }
+                            if value.starts_with('@') {
+                                return Err(fail.at(&location, format!("invalid alias target {value}; map it to a project-local path, not another alias")));
+                            }
+                            p.aliases.insert(key, value);
+                        }
                     }
                 }
-                p.dependencies.insert(key, value);
             }
-        } else if section == "embed" {
-            if !valid_alias(&key) || key == "@std" {
-                return Err(fail.at(
-                    &key_location,
-                    format!("invalid or reserved embed name {key}; embed names look like @assets (start with @, letters/digits/underscore) and cannot be @std"),
-                ));
-            }
-            if value.starts_with('@') {
-                return Err(fail.at(&location, format!("invalid embed target {value}; map it to a project-local directory, not an alias")));
-            }
-            p.embed.insert(key, value);
-        } else {
-            if !valid_alias(&key) || key == "@std" {
-                return Err(fail.at(
-                    &key_location,
-                    format!("invalid or reserved alias {key}{}; aliases look like @lib (start with @, letters/digits/underscore), cannot be @std, and must map to a path, not another alias", if key != "std" && valid_alias(&format!("@{key}")) { format!(" (did you mean @{key}?)") } else { String::new() }),
-                ));
-            }
-            if value.starts_with('@') {
-                return Err(fail.at(&location, format!("invalid alias target {value}; map it to a project-local path, not another alias")));
-            }
-            p.aliases.insert(key, value);
         }
     }
     location = p.location.clone();
@@ -495,39 +412,113 @@ pub(crate) fn valid_alias(key: &str) -> bool {
         .all(|(i, c)| c.is_ascii_alphabetic() || c == '_' || (i > 0 && c.is_ascii_digit()))
 }
 
-/// Strip a `#` comment that is not inside a double-quoted string.
-fn manifest_line(line: &str) -> &str {
-    let (mut quoted, mut escaped) = (false, false);
-    for (i, c) in line.char_indices() {
-        if escaped {
-            escaped = false;
-            continue;
-        }
-        if quoted && c == '\\' {
-            escaped = true;
-            continue;
-        }
-        if c == '"' {
-            quoted = !quoted;
-        }
-        if c == '#' && !quoted {
-            return &line[..i];
-        }
+/// The position of the byte `offset` in the manifest text.
+fn locate(text: &str, file: &str, offset: usize) -> Location {
+    let offset = offset.min(text.len());
+    let before = &text[..offset];
+    let line_start = before.rfind('\n').map_or(0, |i| i + 1);
+    Location {
+        file: file.to_string(),
+        line: before.matches('\n').count() + 1,
+        column: offset - line_start + 1,
+        offset,
     }
-    line
 }
 
-/// Split a leading double-quoted string, honoring backslash escapes.
-fn quoted_prefix(line: &str) -> Option<(&str, &str)> {
-    let bytes = line.as_bytes();
-    let mut i = 1;
-    while i < bytes.len() {
-        match bytes[i] {
-            b'\\' => i += 1,
-            b'"' => return Some((&line[..=i], &line[i + 1..])),
-            _ => {}
-        }
-        i += 1;
+/// A string value, or what shape the key wants.
+fn text_value(
+    fail: &Failure,
+    location: &Location,
+    key: &str,
+    item: &toml_edit::Item,
+) -> Result<String, ProjectError> {
+    let Some(value) = item.as_str() else {
+        return Err(fail.at(
+            location,
+            format!(
+                "{key} must be a string; write {key} = \"{}\"",
+                item.as_value().map_or(String::new(), |v| v
+                    .to_string()
+                    .trim()
+                    .trim_matches('"')
+                    .to_string())
+            ),
+        ));
+    };
+    if value.chars().any(|c| (c as u32) < 0x20 || c as u32 == 0x7f) {
+        return Err(fail.at(
+            location,
+            format!("manifest value for {key} contains a NUL or control character; remove it"),
+        ));
     }
-    None
+    Ok(value.to_string())
+}
+
+/// An array of strings, such as the effects `["std.net.*", "std.fs.read"]`.
+fn string_list(item: &toml_edit::Item) -> Result<Vec<String>, String> {
+    let shape = "effects are a list of strings: [\"std.net.*\", \"std.fs.read\"]";
+    let array = item.as_array().ok_or_else(|| shape.to_string())?;
+    let mut list = Vec::new();
+    for entry in array {
+        let text = entry.as_str().ok_or_else(|| shape.to_string())?;
+        if text.is_empty() || text.chars().any(|c| c.is_whitespace() || c.is_control()) {
+            return Err(format!(
+                "invalid effect {text:?}; write one pattern per string, such as \"std.net.*\""
+            ));
+        }
+        if list.iter().any(|seen| seen == text) {
+            return Err(format!("effect {text} is listed twice; remove one"));
+        }
+        list.push(text.to_string());
+    }
+    Ok(list)
+}
+
+fn check_package_name(fail: &Failure, key: &str, at: &Location) -> Result<(), ProjectError> {
+    if valid_alias(key) && key != "@std" {
+        return Ok(());
+    }
+    Err(fail.at(
+        at,
+        format!("invalid or reserved package name {key}; names look like @pg (start with @, letters/digits/underscore) and cannot be @std"),
+    ))
+}
+
+/// A dependency is a table, `{ url = "https://...", tag = "v1" }` or `{ url = "...", sha = "<40 hex>" }`.
+/// Returns the `url#reference` form the lock file records.
+fn dependency(item: &toml_edit::Item) -> Result<String, String> {
+    let shape = "write { url = \"https://github.com/acme/pg.git\", tag = \"v1.0.0\" }, or sha = \"<40-digit commit>\" in place of tag";
+    let table = item
+        .as_table_like()
+        .ok_or_else(|| format!("a dependency is a table; {shape}"))?;
+    let (mut url, mut tag, mut sha) = (None, None, None);
+    for (field, value) in table.iter() {
+        let text = value
+            .as_str()
+            .ok_or_else(|| format!("{field} must be a string; {shape}"))?;
+        match field {
+            "url" => url = Some(text),
+            "tag" => tag = Some(text),
+            "sha" => sha = Some(text),
+            _ => {
+                return Err(format!(
+                    "unknown field {field}; a dependency has url and one of tag or sha"
+                ));
+            }
+        }
+    }
+    let url = url.ok_or_else(|| format!("url is missing; {shape}"))?;
+    let reference = match (tag, sha) {
+        (Some(tag), None) => tag,
+        (None, Some(sha)) => {
+            if !crate::project::packages::is_hex(sha, 40) {
+                return Err("sha must be the full 40-digit lowercase commit".to_string());
+            }
+            sha
+        }
+        _ => return Err(format!("name exactly one of tag and sha; {shape}")),
+    };
+    let spec = format!("{url}#{reference}");
+    crate::project::packages::check_spec(&spec)?;
+    Ok(spec)
 }

@@ -33,7 +33,6 @@ fn alias_diagnostic_key_and_value_locations() {
         "\u{feff}# café\r\n  [project]\r\nname = \"library\"\r\nsource = \"src\"\r\n[aliases]\r\n";
     let cases = [
         ("  \"@std\" = \"src\" # invalid key\r\n", "\"@std\"", 3),
-        ("\u{2003}\"@std\" = \"src\"\r\n", "\"@std\"", 4),
         (
             "  \"@bad\" = \"@other\" # invalid value\r\n",
             "\"@other\"",

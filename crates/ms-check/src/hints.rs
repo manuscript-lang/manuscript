@@ -1024,7 +1024,7 @@ impl Checker {
                 expected_t = expected.display(self.syms)
             );
         }
-        let message = format_mismatch(self.syms, actual, expected);
+        let message = format_mismatch(self.syms, &self.packages, actual, expected);
         for hint in [
             optional_use_hint(self.syms, actual, expected),
             number_conversion_hint(self.syms, actual, expected),
