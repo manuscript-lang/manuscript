@@ -908,30 +908,37 @@ pub unsafe fn address_ordered_tables(t: *const Tables) -> *const Tables {
     Box::into_raw(Box::new(out))
 }
 
-/// Return addresses of the calling frames, innermost first, for a later [`describe_started`].
+/// Calls `f` with the return addresses of the frames calling this function, innermost first,
+/// until it returns false or the source frames end. Does not allocate.
 #[inline(never)]
-pub fn capture_frames() -> Vec<usize> {
-    // Typical depth; growing from empty reallocates three times per promise started.
-    let mut out = Vec::with_capacity(16);
+pub fn visit_frames<F: FnMut(usize) -> bool>(f: F) {
     // SAFETY: tables pointer is set once at start.
     let t = unsafe { *TABLES.ptr() };
     if t.is_null() {
-        return out;
+        return;
     }
     // SAFETY: non-null table installed by `msrt_start`; the frame pointer is this thread's live
     // chain, and on Windows the anchor is this function, as `fault_vec` is for a fault.
     unsafe {
         walk_fault_frames(
             frame_pointer(),
-            capture_frames as *const () as usize,
+            visit_frames::<F> as *const () as usize,
             &*t,
             &Cell::new(MAX_STACK_WALK_FRAMES),
-            |ret| {
-                out.push(ret);
-                out.len() < 2 * MAX_FAULT_FRAMES
-            },
+            f,
         );
     }
+}
+
+/// Return addresses of the calling frames, innermost first, for a later [`describe_started`].
+#[inline(never)]
+pub fn capture_frames() -> Vec<usize> {
+    // Typical depth; growing from empty reallocates three times per promise started.
+    let mut out = Vec::with_capacity(16);
+    visit_frames(|ret| {
+        out.push(ret);
+        out.len() < 2 * MAX_FAULT_FRAMES
+    });
     out
 }
 
