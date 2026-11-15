@@ -283,7 +283,13 @@ pub fn load_environment(path: &[u8], max: i64) -> Res<()> {
     let data = ops::read_file(path, max)?;
     let text = core::str::from_utf8(&data).map_err(|_| Fail::status(STATUS_INVALID_DATA))?;
     let entries = envfile::parse(text).ok_or_else(|| Fail::status(STATUS_INVALID_DATA))?;
-    for (key, value) in entries {
+    // A later duplicate name replaces the earlier one (as `parse_dotenv` does), so walk the
+    // entries backwards and apply each name once.
+    let mut seen = alloc::collections::BTreeSet::new();
+    for (key, value) in entries.into_iter().rev() {
+        if !seen.insert(key.clone()) {
+            continue;
+        }
         let k = os_str(key.as_bytes()).ok_or_else(Fail::invalid)?;
         if std::env::var_os(&k).is_none() {
             set_environment(key.as_bytes(), Some(value.as_bytes()))?;
@@ -569,6 +575,18 @@ mod tests {
         );
         assert!(set_environment(b"", Some(b"x")).is_err());
         assert!(set_environment(b"A=B", None).is_err());
+    }
+
+    #[test]
+    fn load_environment_takes_the_last_duplicate() {
+        let _guard = crate::environment_guard();
+        let path = alloc::format!("/tmp/msproc-env-dup-{}", info().unwrap().pid);
+        ms_std_fs::ops::write_file(path.as_bytes(), b"MS_LOAD_D=1\nMS_LOAD_D='2'\n", true).unwrap();
+        set_environment(b"MS_LOAD_D", None).unwrap();
+        load_environment(path.as_bytes(), i64::MAX).unwrap();
+        let env = environment().unwrap();
+        assert!(env.contains(&(b"MS_LOAD_D".to_vec(), b"2".to_vec())));
+        set_environment(b"MS_LOAD_D", None).unwrap();
     }
 
     #[test]

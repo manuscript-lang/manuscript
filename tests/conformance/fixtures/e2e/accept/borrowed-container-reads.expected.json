@@ -43,19 +43,24 @@
           "index": 6,
           "name": "borrowed-container-reads.ms::if let over a borrowed optional lends its payload",
           "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "borrowed-container-reads.ms::an entry read from a temporary map is an owned copy",
+          "status": "passed"
         }
       ],
       "summary": {
-        "available": 7,
-        "selected": 7,
-        "passed": 7,
+        "available": 8,
+        "selected": 8,
+        "passed": 8,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN borrowed-container-reads.ms::let and if let of a map entry read it in place\nPASS borrowed-container-reads.ms::let and if let of a map entry read it in place\nRUN borrowed-container-reads.ms::a lent entry of a local var map ends at its last use\nPASS borrowed-container-reads.ms::a lent entry of a local var map ends at its last use\nRUN borrowed-container-reads.ms::first and last lend the element\nPASS borrowed-container-reads.ms::first and last lend the element\nRUN borrowed-container-reads.ms::a temporary container lives as long as its lent entry\nPASS borrowed-container-reads.ms::a temporary container lives as long as its lent entry\nRUN borrowed-container-reads.ms::get_or reads through the entry\nPASS borrowed-container-reads.ms::get_or reads through the entry\nRUN borrowed-container-reads.ms::an entry whose optional is boxed is still read correctly\nPASS borrowed-container-reads.ms::an entry whose optional is boxed is still read correctly\nRUN borrowed-container-reads.ms::if let over a borrowed optional lends its payload\nPASS borrowed-container-reads.ms::if let over a borrowed optional lends its payload\n7 tests, 0 failed\n",
+      "stdout": "RUN borrowed-container-reads.ms::let and if let of a map entry read it in place\nPASS borrowed-container-reads.ms::let and if let of a map entry read it in place\nRUN borrowed-container-reads.ms::a lent entry of a local var map ends at its last use\nPASS borrowed-container-reads.ms::a lent entry of a local var map ends at its last use\nRUN borrowed-container-reads.ms::first and last lend the element\nPASS borrowed-container-reads.ms::first and last lend the element\nRUN borrowed-container-reads.ms::a temporary container lives as long as its lent entry\nPASS borrowed-container-reads.ms::a temporary container lives as long as its lent entry\nRUN borrowed-container-reads.ms::get_or reads through the entry\nPASS borrowed-container-reads.ms::get_or reads through the entry\nRUN borrowed-container-reads.ms::an entry whose optional is boxed is still read correctly\nPASS borrowed-container-reads.ms::an entry whose optional is boxed is still read correctly\nRUN borrowed-container-reads.ms::if let over a borrowed optional lends its payload\nPASS borrowed-container-reads.ms::if let over a borrowed optional lends its payload\nRUN borrowed-container-reads.ms::an entry read from a temporary map is an owned copy\nPASS borrowed-container-reads.ms::an entry read from a temporary map is an owned copy\n8 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

@@ -323,6 +323,11 @@ impl<'a> FnLower<'a> {
         if b.mutable || self.slotted.contains(&b.uid) || self.cx.exclusive(b.uid) {
             return Ok(None);
         }
+        // Only a binding the checker holds as a borrow may point into the container. A read
+        // of a temporary (`make().get(k)`) leaves the binding owned, so the entry is copied.
+        if !self.cx.shared(b.uid) {
+            return Ok(None);
+        }
         Ok(self.borrowed_shape(value)?.map(|shape| (b, shape)))
     }
 
