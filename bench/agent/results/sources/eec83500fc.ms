@@ -78,7 +78,7 @@ fn key_of(v: Value) String:
         VInt(n):
             return "I{n};"
         VText(s):
-            return "T{s.length()}:{s}"
+            return "T{s.byte_length()}:{s}"
         VBool(b):
             if b:
                 return "B1"
@@ -296,7 +296,7 @@ fn substr(t: String, start: Int, count: Int) String:
     if count <= 0:
         return ""
 
-    size := t.length()
+    size := t.byte_length()
     var begin = start
     if begin < 1:
         begin = 1
@@ -1351,7 +1351,7 @@ fn eval_scalar(
         if rank(vals[0]) != 3:
             return error(type_error())
 
-        return ok(Value.VInt(v: text_of(vals[0]).length()))
+        return ok(Value.VInt(v: text_of(vals[0]).byte_length()))
 
     if name == "ABS":
         if rank(vals[0]) != 1:

@@ -10,7 +10,7 @@ fn bad() Int:
 	return -1
 
 fn parse_num(text: String) Int:
-	if text.is_empty() or text.length() > 6: return bad()
+	if text.is_empty() or text.byte_length() > 6: return bad()
 
 	for ch in text.scalar_values():
 		if ch < 48 or ch > 57: return bad()

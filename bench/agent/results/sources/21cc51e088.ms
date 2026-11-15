@@ -1212,7 +1212,7 @@ fn scalar_fn(name: String, vals: List[Value]) Result[Value, String]:
     if name == "UPPER": return ok(VText(ascii_case(sval(v), true)))
     if name == "LOWER": return ok(VText(ascii_case(sval(v), false)))
 
-    return ok(VInt(sval(v).length()))
+    return ok(VInt(sval(v).byte_length()))
 
 fn agg_eval(
     name: String,
