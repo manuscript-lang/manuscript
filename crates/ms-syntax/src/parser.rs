@@ -1992,12 +1992,17 @@ impl<'a> Parser<'a> {
                 let mut mutable = false;
                 if self.kind() == Tok::Name
                     && self.text(self.peek()) == "let"
-                    && self.ahead(1).kind == Tok::Name
+                    && matches!(
+                        self.ahead(1).kind,
+                        Tok::Name | Tok::Underscore | Tok::LBracket | Tok::LBrace
+                    )
                 {
                     let l = self.peek();
                     let message = "'if let' was removed; write 'if value := optional:' (or 'if var value = optional:' for a mutable binding)";
+                    // `if let v = o:` becomes `if v := o:`. A pattern after `let` has no single
+                    // mechanical rewrite, so it gets the message alone.
                     let (name, eq) = (self.ahead(1), self.ahead(2));
-                    if eq.kind == Tok::Assign {
+                    if name.kind == Tok::Name && eq.kind == Tok::Assign {
                         let replacement = format!("{} :=", self.text(name));
                         return self.fail_fix_range(l, eq, message, &replacement);
                     }

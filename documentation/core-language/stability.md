@@ -28,9 +28,6 @@ From 0.1.0, these parts of Manuscript are frozen. A change that breaks one ships
 
 ## When something is removed
 
-Every removal from now on leaves two things behind, and keeps both for two minor releases:
-
-- An error that names the replacement.
-- A fix that `ms check --fix` applies.
+Every removal from now on leaves an error that names the replacement, and keeps it for two minor releases. When the rewrite is mechanical, it also leaves a fix that `ms check --fix` applies, kept just as long. When the replacement depends on the program, such as moving the methods of an `impl` block, there is no fix and the error shows the new form.
 
 The list of removed spellings is in [removed spellings](removed-spellings.md).
