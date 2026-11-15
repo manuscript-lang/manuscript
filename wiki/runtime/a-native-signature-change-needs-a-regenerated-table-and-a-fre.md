@@ -18,6 +18,8 @@ or clean the affected package before rebuilding, confirm the changed crate
 actually compiles, and probe the new behavior through the resulting archive.
 A successful Cargo exit alone does not prove a copied cache is current.
 
+Example of the `err: ErrSlot` role in `ms-rt` itself: `msrt_string_slice`, `msrt_string_repeat` and `msrt_list_slice` store the failing values (`slice(2, 10) of a string with 5 bytes`) there, and lowering appends them after the status words (`string: value out of range: ...`). The native must initialize the slot (`string::init_err`) on every path, since lowering may read it for any failure status.
+
 Apply when: changing the parameters of any `ms-std-*` or `ms-rt` export.
 Evidence: [table](../../crates/ms-lower/rt_symbols.txt), [Stdio default](../../crates/ms-lower/src/call.rs), [called source check](../../tests/conformance/fixtures/e2e/stdlib/host.ms).
 Verify: run `cargo xtask symbols`, `make runtime` and rebuild `ms-cli`, then run a compiled program that calls the native, not only crate tests; `runtime_symbol_catalogue_matches_archive` checks names, not parameters.
