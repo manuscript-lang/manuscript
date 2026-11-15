@@ -105,22 +105,21 @@ fn skill_server_state_example_is_the_tested_fixture() {
     );
 }
 
-/// The call tables of the entry page are rendered from the committed counts and the standard
-/// library's declarations, so a renamed or removed call fails here instead of going stale.
+/// The call table is rendered from the standard library's declarations, so a renamed or
+/// removed call fails here instead of going stale.
 #[test]
 fn skill_call_tables_match_the_declarations() {
-    use ms_tooling::guide::skill_calls::{Counts, block_of, render};
-    let root = FILES
+    use ms_tooling::guide::skill_calls::{block_of, render};
+    let page = FILES
         .iter()
-        .find(|(path, _)| *path == "SKILL.md")
+        .find(|(path, _)| *path == "references/standard-calls.md")
         .unwrap()
         .1;
-    let counts = Counts::parse(include_str!("../data/agent-skill/call-counts.tsv"));
-    let rendered = render(&counts);
+    let rendered = render();
     assert_eq!(
-        block_of(root).expect("calls markers"),
+        block_of(page).expect("calls markers"),
         rendered,
         "run `cargo run -p ms-tooling --bin ms-tooling-dev -- skill-calls update`"
     );
-    assert!(rendered.contains("- String: length() Int;"), "{rendered}");
+    assert!(rendered.contains("length() Int"), "{rendered}");
 }

@@ -29,29 +29,15 @@ fn main() Void!:
 	print(counter.value())
 ```
 
-### Not Manuscript
+### Rules
 
-Every row is a shape agents wrote that fails; the right column compiles.
+Five rules cover the errors agents hit most. Apply them before writing; a compiler error that names one is that rule. Wrong and right shapes side by side: [Validation](references/validation.md).
 
-| Not | Write |
-| --- | --- |
-| `!x`, `a ?? b`, `try f()`, `x or return y` | `not x`, `a.get(b)`, `f()?`, `if v := x:` then use `v` |
-| `x.len`, `x.length`, `x == none` | `x.length()`, `x.is_none()` |
-| `const X = 1`, `# note`, `pass` | `X := 1`, `// note`, `void` |
-| `a if c else b`, `-> T` | `if c: a else: b`, `fn f() T:` |
-| `if c: f() else: g()` as a statement | `if c:` and `else:` on their own lines, bodies indented |
-| `fn f(out: var T)`, `x: T = e` | `fn f(var out: T)`, `x: T := e` |
-| `"total {n}"` (plain text never interpolates) | `f"total {n}"` |
-| `"""text"""` on one line | `"""` ends its line; the text starts on the next line and the closing `"""` stands alone (`r"""` the same, braces literal) |
-| `for _ in xs` | `for _i in xs`; a bare `_` is not a name |
-| `(String, Int)`, `[A, B]` tuples | a record: `type Pair:` with fields |
-| `f(x)?` as a statement on a non-Void result | `_done := f(x)?` (a leading `_` marks it unused) |
-| `s.parse_int()?` (it returns `Int?`, not a Result) | `s.parse_int().ok_or(Error("bad number"))?` or `s.parse_int().get(0)` |
-| `List<Int>`, `Map<K, V>` | `List[Int]`, `Map[K, V]` |
-| `r?.abs()` on a Result | `(r?).abs()`; `?.` is for Optionals only |
-| `m.contains_key(k)`, `xs.remove_last()` | `m.contains(k)`, `xs.pop()` |
-| `xs.sort_by(f)`, `for b in s.as_bytes()` | `xs.sort(fn a, b: a.compare(b))`, `for b in values(s.as_bytes())` with `import values from "@std/bytes.ms"` |
-| `set.insert(x)`, `r.is_err()`, `s.find(t)` | `set.add(x)`, `r.is_error()`, `s.index_of(t)` |
+1. **One owner.** A String, List, Map or record has one owner. Reading, comparing and passing as an argument borrow it. Storing it (`m.add(k, v)`, `xs.append(x)`, `m[k] = v`, `Node(name: x)`) moves it, so a name used again after the store is stored as `x.clone()`: `price.add(sku.clone(), 0)` then `stock.add(sku, n)`. While a binding borrows from `xs` (`it := xs.get(0, d)`, `for x in xs`), do not change `xs`.
+2. **Absence and failure are values.** `T?` is unwrapped with `if v := o:` or `o.get(default)`. `T!` is unwrapped with `r?` inside a function that returns a Result, else `if v := r:`. `?` is only for Results: `s.parse_int()` is `Int?`, so write `s.parse_int().ok_or(Error("bad number"))?`. A Result is never dropped: `_done := f(x)?` when its value is unused.
+3. **Names are exact.** Use the calls in [Standard calls](references/standard-calls.md), which lists every String, List, Map, Set, Optional, Result, Int and Float call; for any other, run `ms search_symbol <words>`. Never translate from another language (`contains_key`, `is_err`, `sort_by`, `.len`).
+4. **Shapes are fixed.** A `:` ends a header and the body is the indented lines after it; `if c: a else: b` is an expression only. `x := e` binds, `var x = e` changes. A parameter the callee changes is `var x: T` in the declaration and `f(var x)` at the call. `for _i in xs` (a bare `_` is no name), records not tuples, `List[Int]` not `List<Int>`, `not x`, `x.length()`, `x.is_none()`.
+5. **Text has four forms.** `"plain"` never interpolates, so braces are literal; `f"total {n}"` interpolates; `r"\d+"` is raw; `"""` and `r"""` open multi-line text that starts on the next line and closes on a line of its own.
 
 ### Syntax and data
 
@@ -65,34 +51,10 @@ Every row is a shape agents wrote that fails; the right column compiles.
 
 ### Absence, errors and ownership
 
-- `T?` is Optional: values convert, `none` is absent. Extract with `if x := optional:` or `.get(default)`. `a?.field` chains absence; postfix `?` is for Results only.
-- `T!` is Result[T, Error]. Return `ok(value)`/`error(Error("message"))`; `r?` extracts success or returns the error from a compatible Result-returning function. Otherwise `if x := r:` handles success; in else, `r.err()` yields the error directly (`.message` reads its text). Never call it on success or accidentally drop a Result.
-- Int/Float/Bool copy. Reads and ordinary arguments borrow. Storing a String, List or record (`m.add(k, v)`, `xs.append(x)`, `m[k] = v`, `Node(name: x)`) moves it, so a name used again after the store is stored as `x.clone()`: `price.add(sku.clone(), 0)` then `stock.add(sku, n)`. `fn add(var xs: List[Int]) Void` is called `add(var xs)`; return parts of parameters by borrow without a marker. A binding made from part of `xs` (`it := xs.get(0, d)`, `for x in xs`) borrows `xs`: do not change `xs` while it lives, or end the initializer with `.clone()`. Closeable cleans up at scope end unless moved; no GC.
+- `T?` is Optional: values convert, `none` is absent; `a?.field` chains absence. `T!` is Result[T, Error]: return `ok(value)` or `error(Error("message"))`; `r?` returns the error from a compatible function. In an else branch of `if x := r:`, `r.err()` yields the error (`.message` is its text). `x?` on a Result in `r?.abs()` needs parentheses: `(r?).abs()`.
+- Int/Float/Bool copy. `fn add(var xs: List[Int]) Void` is called `add(var xs)`; a function returns a part of its parameters by borrow with no marker, else a new value (`.clone()`). Closeable cleans up at scope end unless moved; no GC.
 - `p.wait()` on Promise[T] returns T! once; no async/await keywords. Keep mutable state with one owner. Effects use narrow directives above functions, as shown; directives do not execute effects.
 
-### Standard calls
-
-<!-- calls:start -->
-Exact calls, most used first (from the declarations; `ms search_symbol <name>` shows the rest):
-
-- String: length() Int; parse_int() Int?; split(String, Int?) List[String]; chars() List[String]; contains(String) Bool; slice(Int, Int) Result[String, Error]; starts_with(String) Bool; trim() String; fields() List[String]; index_of(String) Int?; trim_end() String; replace(String, String) String; ends_with(String) Bool; lines() List[String]
-- List: get(Int, T?) T; length() Int; append(T) Void; clone() List[T]; contains(T) Bool; slice(Int, Int) Result[List[T], Error]; join(String) String; sort() Void | sort(fn(T, T) Int) Void; entries() List[ListEntry[T]]; remove(Int) Void; index_of(T) Int?; keys() List[Int]; sorted() List[T] | sorted(fn(T, T) Int) List[T]; replace(Int, T) T
-- Map: get(T) U?; length() Int; clone() Map[T, U]; contains(T) Bool; get_or(T, U) U; add(T, U) Void; entries() List[MapEntry[T, U]]; remove(T) Void; keys() List[T]
-- Set: length() Int; clone() Set[T]; contains(T) Bool; add(T) Void; remove(T) Void
-- Optional: get(T?) T; is_none() Bool; is_some() Bool; ok_or(E?) Result[T, E]; map(fn(T) U) U?
-- Result: get(T?) T; err() E; map(fn(T) U) Result[U, E]; is_ok() Bool; is_error() Bool
-- Int: to_int() Int; compare(Int) Int; abs() Int; to_float() Float
-- Float: compare(Float) Int; abs() Float; to_string() String
-
-Reserved words are never names (a variable called `ref`, `type` or `test` fails): and break continue else enum export extern false fixture fn for if impl import in interface match not or return self test true try type var void while.
-
-Imports (a name must be imported unless it is in the prelude):
-
-- `import stdin, stdout from "@std/io/io.ms"`
-- `import collect, lines, read_all from "@std/io/streams.ms"`
-- `import bit_and, bit_not, bit_or, bit_xor, floor, pow, shift_right, shift_right_unsigned, wrapping_add, wrapping_multiply from "@std/math/math.ms"`
-- `import Bytes from "@std/bytes.ms"`
-<!-- calls:end -->
 
 ## Deep dives
 
@@ -104,6 +66,7 @@ Imports (a name must be imported unless it is in the prelude):
 - [Collections and pipelines](references/collections-and-pipelines.md): construction, lookup, mutation, method and function pipelines.
 - [Effects and concurrency](references/effects-and-concurrency.md): effects, promises, streams, capture.
 - [Servers and state](references/servers-and-state.md): `serve` handlers cannot share mutable state; one owner promise and a pipe.
+- [Standard calls](references/standard-calls.md): every String, List, Map, Set, Optional, Result, Int and Float call, exact.
 - [Validation](references/validation.md): checks, tests, diagnostics, habits from other languages.
 
 ## Verify
