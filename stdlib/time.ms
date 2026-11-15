@@ -182,6 +182,47 @@ fn Instant.clamp(low: Instant, high: Instant) Instant:
 
 	return self
 
+fn out_of_range() Error:
+	return Error("time: value out of range", kind: "ERANGE")
+
+// Whole seconds and a nanosecond remainder of a nanosecond count, which may lie
+// outside 0 through 999999999 because Timestamp's fields are public.
+type Split:
+	whole: Int
+	rest: Int
+
+// Splits nanos so the remainder is in 0 through 999999999 and nothing overflows.
+fn floor_split(nanos: Int) Split:
+	if nanos >= 0 and nanos < 1000000000: return Split(0, nanos)
+
+	whole := nanos / 1000000000
+	rest := nanos % 1000000000
+	if rest < 0: return Split(whole - 1, rest + 1000000000)
+
+	return Split(whole, rest)
+
+// The duration whole * 1e9 + rest, or ERANGE when it does not fit an Int. The bounds
+// are the Int range, -9223372036854775808 through 9223372036854775807, in seconds
+// and nanoseconds.
+fn duration_of(whole: Int, rest: Int) Duration!:
+	// Align the signs so the two parts count the same way.
+	var w = whole
+	var r = rest
+
+	if w > 0 and r < 0:
+		w -= 1
+		r += 1000000000
+
+	if w < 0 and r > 0:
+		w += 1
+		r -= 1000000000
+
+	if w > 9223372036 or w < -9223372036: return error(out_of_range())
+	if w == 9223372036 and r > 854775807: return error(out_of_range())
+	if w == -9223372036 and r < -854775808: return error(out_of_range())
+
+	return ok(Duration(nanos: w * 1000000000 + r))
+
 // A wall-clock time with Unix seconds and nanoseconds.
 export type Timestamp:
 	// Whole seconds since the Unix epoch.
@@ -203,98 +244,48 @@ fn Timestamp.nanoseconds() Int:
 
 // Adds a duration to this wall-clock timestamp.
 fn Timestamp.shift(duration: Duration) Timestamp!:
-	// Split both nanosecond counts so no sum overflows: raw fields need not be
-	// normalized.
-	whole := self.nanos / 1000000000 + duration.nanos / 1000000000
-	rest := self.nanos % 1000000000 + duration.nanos % 1000000000
-	var carry = whole
-	var nanos = rest
+	// A start beyond this can never land in the calendar range: the carry below is at
+	// most about 2e10 seconds. It also keeps the sum from overflowing.
+	if self.seconds > 300000000000 or self.seconds < -300000000000:
+		return error(out_of_range())
 
-	if nanos < 0:
-		nanos += 1000000000
-		carry -= 1
+	left := floor_split(self.nanos)
+	right := floor_split(duration.nanos)
+	var carry = left.whole + right.whole
+	var nanos = left.rest + right.rest
 
 	if nanos >= 1000000000:
 		nanos -= 1000000000
 		carry += 1
 
-	if nanos < 0:
-		nanos += 1000000000
-		carry -= 1
-
-	// A carry is under 3e10 seconds, so a start further out than that can never land in
-	// range.
-	if self.seconds > 253432300799 or self.seconds < -62165596800:
-		return error(Error("time: value out of range", kind: "ERANGE"))
-
 	seconds := self.seconds + carry
-	if seconds > 253402300799 or seconds < -62135596800:
-		return error(Error("time: value out of range", kind: "ERANGE"))
+	if seconds > 253402300799 or seconds < -62135596800: return error(out_of_range())
 
 	return ok(Timestamp(seconds: seconds, nanos: nanos))
 
 // Returns `self - right` as a duration.
 fn Timestamp.difference(other: Timestamp) Duration!:
-	// Fields of timestamps built by this module: the subtraction and product cannot
-	// overflow.
-	if (
-		self.nanos >= 0
-		and self.nanos < 1000000000
-		and other.nanos >= 0
-		and other.nanos < 1000000000
-	):
-		if (
-			self.seconds < 4000000000000
-			and self.seconds > -4000000000000
-			and other.seconds < 4000000000000
-			and other.seconds > -4000000000000
-		):
-			close := self.seconds - other.seconds
-			if close > -9000000000 and close < 9000000000:
-				return ok(
-					Duration(
-						nanos: close * 1000000000 + self.nanos - other.nanos
-					)
-				)
-
-	// The result is (sd + q) * 1e9 + r with the nanosecond parts split so nothing
-	// overflows before the range test; raw fields need not be normalized.
+	// Seconds of opposite sign can overflow when subtracted; the result would be far
+	// outside a Duration anyway.
 	if (
 		self.seconds >= 0
 		and other.seconds < 0
 		and self.seconds > 9223372036854775807 + other.seconds
 	):
-		return error(Error("time: value out of range", kind: "ERANGE"))
+		return error(out_of_range())
 	if (
 		self.seconds < 0
 		and other.seconds > 0
 		and self.seconds < -9223372036854775807 + other.seconds - 1
 	):
-		return error(Error("time: value out of range", kind: "ERANGE"))
+		return error(out_of_range())
 
 	sd := self.seconds - other.seconds
-	if sd > 100000000000 or sd < -100000000000:
-		return error(Error("time: value out of range", kind: "ERANGE"))
+	if sd > 100000000000 or sd < -100000000000: return error(out_of_range())
 
-	var whole = sd + self.nanos / 1000000000 - other.nanos / 1000000000
-	var rest = self.nanos % 1000000000 - other.nanos % 1000000000
-
-	if whole > 0 and rest < 0:
-		whole -= 1
-		rest += 1000000000
-
-	if whole < 0 and rest > 0:
-		whole += 1
-		rest -= 1000000000
-
-	if whole > 9223372036 or whole < -9223372036:
-		return error(Error("time: value out of range", kind: "ERANGE"))
-	if whole == 9223372036 and rest > 854775807:
-		return error(Error("time: value out of range", kind: "ERANGE"))
-	if whole == -9223372036 and rest < -854775808:
-		return error(Error("time: value out of range", kind: "ERANGE"))
-
-	return ok(Duration(nanos: whole * 1000000000 + rest))
+	left := floor_split(self.nanos)
+	right := floor_split(other.nanos)
+	return duration_of(sd + left.whole - right.whole, left.rest - right.rest)
 
 // Returns -1, 0, or 1 across the full calendar range.
 fn Timestamp.compare(other: Timestamp) Int:
@@ -584,8 +575,8 @@ export fn local_zone() String:
 // pause the current task for at least that long. The timer has no task of its own, and
 // dropping the promise cancels it.
 // ms: effect std.clock.sleep
-export fn sleep(duration: Duration) Promise[Unit]:
-	return adopt[Unit](msrt_promise_sleep(duration.nanos))
+export fn sleep(duration: Duration) Promise[Void]:
+	return adopt[Void](msrt_promise_sleep(duration.nanos))
 
 // Constructs a timestamp from Unix seconds and a nanosecond adjustment.
 export fn timestamp(seconds: Int, nanoseconds: Int) Timestamp!:
@@ -625,7 +616,7 @@ fn Deadline.expired() Bool:
 
 // Suspends the current task until the deadline passes. Returns at once if it
 // already has.
-fn Deadline.wait() Unit:
+fn Deadline.wait() Void:
 	sleep(self.remaining()).wait().get(unit)
 
 // Returns a deadline `duration` from now.
@@ -658,7 +649,7 @@ fn var TickSource.next() Instant?!:
 	self.due = current.shift(nanoseconds(period - elapsed % period))
 	return ok(tick)
 
-fn var TickSource.close() Unit!:
+fn var TickSource.close() Void!:
 	return ok(unit)
 
 // Returns a ticker whose first tick comes one `period` from now. A period of zero or

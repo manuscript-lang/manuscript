@@ -1,7 +1,7 @@
 // conform: tags=diagnostics
 // conform: phase=check
 import HashAlgorithm from "@std/crypto/crypto.ms"
-fn choose(algorithm: HashAlgorithm) Unit:
+fn choose(algorithm: HashAlgorithm) Void:
     return unit
-fn wrong() Unit:
+fn wrong() Void:
     choose("sha256")

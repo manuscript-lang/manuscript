@@ -19,12 +19,12 @@ fn var Counter.step() Int:
 	self.n += 10
 	return self.n
 
-fn drain(var xs: List[Int]) Unit:
+fn drain(var xs: List[Int]) Void:
 	push := xs.append
 	push(7)
 	push(8)
 
-fn each(f: fn(Int) Unit) Unit:
+fn each(f: fn(Int) Void) Void:
 	f(100)
 
 test "a method value that changes its receiver borrows the variable":

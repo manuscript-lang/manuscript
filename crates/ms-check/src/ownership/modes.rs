@@ -335,7 +335,7 @@ fn call_modes_declared(
 }
 
 /// The modes of a call through a function value: its type says which parameters it changes
-/// (`fn(var List[Int]) Unit`); the rest it borrows.
+/// (`fn(var List[Int]) Void`); the rest it borrows.
 fn function_value_modes(
     m: &ModuleHir,
     call: &Expr,

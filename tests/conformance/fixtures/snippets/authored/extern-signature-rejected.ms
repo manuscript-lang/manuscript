@@ -9,10 +9,10 @@ enum Wrong:
 enum Fine:
     Failed(code: Int, message: String)
 
-extern fn takes_map(values: Map[String, Int]) Unit
+extern fn takes_map(values: Map[String, Int]) Void
 extern fn returns_optional() Int?
-extern fn nested_list(values: List[List[Int]]) Unit
+extern fn nested_list(values: List[List[Int]]) Void
 extern fn wrong_error() Handle!Wrong
-extern fn takes_closure(f: fn(Map[String, Int]) Int) Unit
-extern fn returns_handle(f: fn() Handle) Unit
+extern fn takes_closure(f: fn(Map[String, Int]) Int) Void
+extern fn returns_handle(f: fn() Handle) Void
 extern fn fine(h: Handle, data: List[Handle], each: fn(Handle, Int8) String) Handle!Fine

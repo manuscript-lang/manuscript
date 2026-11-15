@@ -13,7 +13,7 @@ Save as `names.ms` and run `ms run names.ms`:
 
 <!-- manuscript-example: {"mode":"run","stdout":"Ada and Grace\n"} -->
 ```manuscript
-fn main() Unit:
+fn main() Void:
     names := ["Ada", "Grace"]
     [first_name, second_name] := names
     print("{first_name} and {second_name}")

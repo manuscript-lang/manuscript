@@ -148,7 +148,7 @@ test "regression stays finite and exact at large and tiny scales and with a larg
 	expect_equal(flat.slope, 0.0)?
 	expect_equal(flat.intercept, 5.0)?
 
-fn discard[T](value: T) Unit:
+fn discard[T](value: T) Void:
 	return unit
 
 test "invalid arguments fault":

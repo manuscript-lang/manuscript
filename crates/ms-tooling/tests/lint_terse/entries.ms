@@ -2,7 +2,7 @@ type Item:
     sku: String
     qty: Int
 
-fn apply(var stock: Map[String, Int], items: List[Item]) Unit:
+fn apply(var stock: Map[String, Int], items: List[Item]) Void:
     for item in items:
         stock[item.sku.clone()] = stock.get(item.sku).get() - item.qty
     for item in items:

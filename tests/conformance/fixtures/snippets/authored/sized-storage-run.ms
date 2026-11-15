@@ -21,7 +21,7 @@ fn kind(t: Tok) Int:
         Word(text, k): return text.length() + k.to_int64()
         End: return 0
 
-fn main() Unit:
+fn main() Void:
     var l: List[Int32] = []
     for i in 0..1000:
         l.append((1000 - i).to_int32().get(0))

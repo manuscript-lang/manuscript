@@ -7,7 +7,7 @@ fn choose[T](left: T, _right: T) T: left
 fn callback[T](_value: fn(T) T, _argument: T) Int: 0
 fn identity(value: Int) Int: value
 
-fn exercise() Unit:
+fn exercise() Void:
     chain := Chain[Chain[Int]](0)
     _nested: Int := nested(chain)
     plain := 1

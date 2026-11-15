@@ -40,7 +40,7 @@ fn visit(request: HttpRequest) HttpResponse:
 
 	return text(200, "visit {result.get()}\n")
 
-fn main() Unit!:
+fn main() Void!:
 	server := serve("127.0.0.1:8080", buffered(visit))?
 	print("listening on http://{server.address()}/")
 	server.wait()?

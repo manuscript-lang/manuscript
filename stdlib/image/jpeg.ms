@@ -150,7 +150,7 @@ fn jpeg_block(
 	dc: JpegHuffman,
 	ac: JpegHuffman,
 	scan: JpegScan,
-) Unit:
+) Void:
 	if not scan.progressive:
 		t := bits.symbol(data, dc)
 

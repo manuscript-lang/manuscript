@@ -76,6 +76,18 @@ fn llm_tokens(path: String) Int?:
 fn reference_for(ch: Challenge, lang: Lang) String:
 	return "{ch.solution(lang.template)}/{lang.reference()}"
 
+// Whether a trial hit a compiler crash. Such a trial keeps its whole workspace,
+// so the crash has a reproducer: the transcript, the last build output, or the
+// grading build mentions an internal error or a Rust panic.
+fn keep_ice(said: String, ws: String, g: Grade) Bool:
+	last := read_text("{ws}/.bench/build.out")
+	text := "{said}\n{last}\n{g.error.get("")}"
+	return (
+		text.contains("internal error")
+		or text.contains("internal compiler error")
+		or text.contains("panicked at")
+	)
+
 fn run_one(
 	ch: Challenge,
 	lang: Lang,
@@ -152,6 +164,27 @@ fn run_one(
 		g.pass,
 	)
 	append_file(out_file, dumps_data(rec, 0) + "\n").wait().get()
+
+	if keep_ice(said, ws, g):
+		saved := "{root()}/results/ice/{run_id}"
+		create_directory("{root()}/results/ice", recursive: true).get()
+		bash(
+			"cp -r \"{ws}\" \"{saved}\" && rm -rf \"{saved}/target\" \"{saved}/node_modules\" \"{saved}/.git\"",
+			".",
+			120,
+			"",
+		)
+		print("  internal compiler error; workspace saved: {saved}")
+
+	if stat("{ws}/.bench/first-build.out").is_ok():
+		first := "{root()}/results/first-builds/{run_id}"
+		create_directory("{root()}/results/first-builds", recursive: true).get()
+		bash(
+			"mkdir -p \"{first}\" && cp \"{ws}/.bench/first-build.out\" \"{first}/error.txt\" && cp -r \"{ws}/.bench/first-src\" \"{first}/src\"",
+			".",
+			120,
+			"",
+		)
 
 	if keep:
 		print("  workspace kept: {ws}")

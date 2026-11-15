@@ -2,6 +2,6 @@
 // conform: phase=check
 import SetBuilder from "@std/collections/collections.ms"
 import CsvOptions from "@std/data/csv.ms"
-fn example() Unit:
+fn example() Void:
     SetBuilder[String]()
     CsvOptions(delimiter: ",", line_ending: "\n")

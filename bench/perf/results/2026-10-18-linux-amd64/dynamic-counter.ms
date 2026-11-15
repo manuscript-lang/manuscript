@@ -17,7 +17,7 @@ fn measure(start: Int) Int:
 	ignored := stdout().write(line.to_bytes())
 	return hits
 
-fn main() Unit:
+fn main() Void:
 	measure(-137)
 	measure(0)
 	measure(5)

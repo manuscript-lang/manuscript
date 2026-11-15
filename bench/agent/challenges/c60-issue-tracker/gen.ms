@@ -22,13 +22,13 @@ fn strip_nl(text: String) String:
 fn seeded(extra: String) String:
 	return SEED + strip_nl(extra)
 
-fn add(var cs: Cases, name: String, script: String) Unit:
+fn add(var cs: Cases, name: String, script: String) Void:
 	cs.push(name, strip_nl(script))
 
-fn adds(var cs: Cases, name: String, extra: String) Unit:
+fn adds(var cs: Cases, name: String, extra: String) Void:
 	cs.push(name, seeded(extra))
 
-export fn gen_c60() Unit:
+export fn gen_c60() Void:
 	var cs = Cases(build_oracle("c60-issue-tracker"))
 	add(var cs, "wf-basic", WF + "create a\nshow 1\n")
 	add(

@@ -73,7 +73,7 @@ fn report(issues: &mut Vec<String>, path: &str, code: &str, first_line: usize, f
             .collect();
         module = parse(
             &file,
-            &format!("fn fragment() Unit:\n{}\n", body.join("\n")),
+            &format!("fn fragment() Void:\n{}\n", body.join("\n")),
         )
         .ok();
     }

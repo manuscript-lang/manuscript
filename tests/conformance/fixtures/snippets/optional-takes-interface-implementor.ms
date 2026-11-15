@@ -24,7 +24,7 @@ fn take(x: Shape?) Int:
 
     return -1
 
-fn main() Unit:
+fn main() Void:
     h := Holder(Sq(4))
     t: Shape? := Sq(5)
     var v: Shape? = none

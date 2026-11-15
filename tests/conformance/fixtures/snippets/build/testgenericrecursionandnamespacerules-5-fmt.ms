@@ -4,5 +4,5 @@
 type Data:
     value: Int
 
-fn Data.compare() Unit:
+fn Data.compare() Void:
     return

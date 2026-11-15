@@ -25,7 +25,7 @@ type Document:
 fn Document.text() String:
 	return self.value
 
-fn var Document.replace(value: String) Unit:
+fn var Document.replace(value: String) Void:
 	self.value = value
 
 export fn identity[T](value: T) T:
@@ -95,4 +95,4 @@ test "fixture and unit":
 	empty := unit
 	check(empty)
 
-fn runtime_bound() Unit: ...
+fn runtime_bound() Void: ...

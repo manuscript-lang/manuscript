@@ -313,11 +313,11 @@ impl Checker {
         match value {
             None => {
                 let result = self.result_ty();
-                // A bare `return` means `ok(unit)` in a function returning `Unit!`, as
+                // A bare `return` means `ok(unit)` in a function returning `Void!`, as
                 // finishing the body does.
                 let unit_ok = result.is(Builtin::Result)
-                    && result.args.first().is_some_and(|a| a.is(Builtin::Unit));
-                if !result.is(Builtin::Unit) && !unit_ok && !in_test {
+                    && result.args.first().is_some_and(|a| a.is(Builtin::Void));
+                if !result.is(Builtin::Void) && !unit_ok && !in_test {
                     let example = if result.is(Builtin::Result) {
                         "'return ok(value)' for success or 'return error(e)' for failure"
                     } else {
@@ -326,12 +326,12 @@ impl Checker {
                     self.type_error(
                         s.pos,
                         format!(
-                            "bare return requires Unit or Unit!; this function returns {result_t}, so write {example}"
+                            "bare return requires Void or Void!; this function returns {result_t}, so write {example}"
                         , result_t = result.display(self.syms)),
                     );
                 }
             }
-            Some(v) if matches!(v.kind, ExprKind::Unit) && in_test => {
+            Some(v) if matches!(v.kind, ExprKind::Void) && in_test => {
                 self.expression(v, None); // returning unit from a test is success
             }
             Some(v) => {
@@ -364,11 +364,11 @@ impl Checker {
             }
         ) {
             let t = i.t();
-            if !t.is(Builtin::Unit) && !t.is_invalid() {
+            if !t.is(Builtin::Void) && !t.is_invalid() {
                 self.type_error(
                     value.pos,
                     format!(
-                        "a standalone '?' requires a Unit success value, found {t_t}; use 'name := call()?' to keep the value or 'return call()?' to return it"
+                        "a standalone '?' requires a Void success value, found {t_t}; use 'name := call()?' to keep the value or 'return call()?' to return it"
                     , t_t = t.display(self.syms)),
                 );
             }
@@ -488,7 +488,7 @@ impl Checker {
             self.type_error(
                 s.pos,
                 format!(
-                    "for requires List, Set, Map, a ReadStream, an Iterator, or an Iterable, found {t_t}; iterate a collection, e.g. a list literal [1, 2, 3], or implement ReadStream with 'var fn next() T?!' and 'var fn close() Unit!', Iterator with 'var fn next() T?', or Iterable with 'fn length() Int' and 'fn at(index: Int) T?'"
+                    "for requires List, Set, Map, a ReadStream, an Iterator, or an Iterable, found {t_t}; iterate a collection, e.g. a list literal [1, 2, 3], or implement ReadStream with 'var fn next() T?!' and 'var fn close() Void!', Iterator with 'var fn next() T?', or Iterable with 'fn length() Int' and 'fn at(index: Int) T?'"
                 , t_t = t.display(self.syms)),
             );
         }
@@ -813,7 +813,7 @@ impl Checker {
         self.block(&expansion, false)
     }
 
-    /// The `close() -> Result[Unit, Error]` operations of `t`: the standard `Closeable` one when it has it.
+    /// The `close() -> Result[Void, Error]` operations of `t`: the standard `Closeable` one when it has it.
     /// Records the close operation a parameter or loop variable of a closeable type gets at
     /// scope end, when it turns out to own its value.
     pub(crate) fn record_cleanup(&mut self, b: &BindingRef) {
@@ -1781,7 +1781,7 @@ impl Checker {
                 self.type_error(
                     arm.pos,
                     format!(
-                        "match arm requires a final value of type {r_t}; this arm produces Unit; end the arm with a value of the required type",
+                        "match arm requires a final value of type {r_t}; this arm produces Void; end the arm with a value of the required type",
                         r_t = r.display(self.syms)
                     ),
                 );

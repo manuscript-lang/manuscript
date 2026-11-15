@@ -20,7 +20,7 @@ fn var Chunks.next() Bytes?!:
 	self.at = end
 	return ok(piece)
 
-fn var Chunks.close() Unit!:
+fn var Chunks.close() Void!:
 	return ok(unit)
 
 type Case:
@@ -50,7 +50,7 @@ fn read(item: Case) Int!:
 
 	return ok(row[0].length())
 
-fn measure(item: Case) Unit!:
+fn measure(item: Case) Void!:
 	length := if item.malformed: item.data.length() else: item.expected.length()
 
 	for sample in 0..6:
@@ -66,7 +66,7 @@ fn measure(item: Case) Unit!:
 			"{item.name},{item.chunk},{item.data.length()},{item.operations},{sample},{ns},{checksum}"
 		)
 
-fn main() Unit:
+fn main() Void:
 	for chunk in [1, 64, 1000000]:
 		for length in [4096, 8192, 16384, 32768, 65536]:
 			expected := "x".repeat(length).get()

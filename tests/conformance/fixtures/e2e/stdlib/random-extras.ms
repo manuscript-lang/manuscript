@@ -47,7 +47,7 @@ test "seeded weighted_choice follows the weights":
 			heavy += 1
 	expect_true(heavy > 140)?
 
-fn discard[T](value: T) Unit:
+fn discard[T](value: T) Void:
 	return unit
 
 test "seeded invalid arguments fault":
@@ -83,7 +83,7 @@ test "secure_int covers wide and empty ranges":
 	expect_equal(choice(empty)?, none)?
 	expect_equal(shuffle([5])?, [5])?
 
-fn draw_wide(min: Int, max_exclusive: Int) Unit:
+fn draw_wide(min: Int, max_exclusive: Int) Void:
 	var rng = seeded(1)
 	discard(rng.int(min, max_exclusive))
 

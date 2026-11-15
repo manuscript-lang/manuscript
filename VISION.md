@@ -26,7 +26,7 @@ Token efficiency must preserve meaning. We want code that is economical to gener
 
 ## Where things stand
 
-Manuscript is in alpha. The capabilities below describe current source; published archives may lag behind. The longer-term vision remains the direction:
+Manuscript is in beta. The capabilities below describe current source; published archives may lag behind. The longer-term vision remains the direction:
 
 - **A small, regular language.** A simple type system with generics, no `any` escape hatch and no runtime reflection API keeps types visible to compiler analysis. It includes `:=`/`var`, nominal records (`type`) and tagged unions (`enum`), exhaustive `match`, `Optional`, `Result` with `?`, generics, receiver methods, and sized numerics (`Int8` to `Int64`, `Float32`). Indented blocks, `fn` declarations and explicit imports give programs a consistent shape (`fn add(a: Int, b: Int) Int:`).
 - **Ownership without a collector.** Values have one owner, move at their last use and are dropped deterministically; `var` marks mutation, `.clone()` marks copies, borrows are lexical, and a scope closes the resources bound in it.

@@ -60,7 +60,7 @@ impl E<'_, '_, '_> {
     /// Registers the release of the object from capture `k` on while a guarded task unwinds;
     /// returns the cleanup handle, 0 when no guard is open (its discard is a no-op).
     fn register_tail(&mut self, f: u32, k: u32, obj: &Val) -> Val {
-        let tail = self.g.glue_symbol(Glue::ClosureDropFrom(f, k), Ty::UNIT);
+        let tail = self.g.glue_symbol(Glue::ClosureDropFrom(f, k), Ty::VOID);
         self.decls
             .push((tail.clone(), format!("declare void @\"{tail}\"(i64)")));
         let hdr = self.b.task_hdr();
@@ -145,7 +145,7 @@ impl E<'_, '_, '_> {
             let to = self.at(&obj, at);
             self.b.store(&word, &to, 8);
         }
-        let drop = self.g.glue_symbol(Glue::ClosureDrop(f), Ty::UNIT);
+        let drop = self.g.glue_symbol(Glue::ClosureDrop(f), Ty::VOID);
         self.decls
             .push((drop.clone(), format!("declare void @\"{drop}\"(i64)")));
         let slot = self.at(&obj, 8);

@@ -28,7 +28,7 @@ type ScalarCase:
 	text: String
 	expected: String
 
-fn scalar(text: String, expected: String) Unit!:
+fn scalar(text: String, expected: String) Void!:
 	root := (
 		parse(text: text)
 		| expect_ok?

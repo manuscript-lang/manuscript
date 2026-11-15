@@ -613,7 +613,7 @@ crate::isolate_static! {
 
 // ---- closure tasks (`@std/concurrency/promise.ms`) ----
 
-/// Entry of a task that runs a `fn() Unit`: calls the closure with itself as its
+/// Entry of a task that runs a `fn() Void`: calls the closure with itself as its
 /// environment, as every closure call does.
 pub(crate) unsafe extern "C-unwind" fn closure_entry(arg: *mut u8) {
     let closure = arg as *mut ms_rt_abi::Closure;

@@ -8,22 +8,22 @@ import (
 // A temporary that owns a resource, followed by a `try` in a later argument of the same
 // call, is moved into the consumed parameter rather than copied.
 interface Gate:
-	var fn put(value: Int) Unit!
-	var fn close() Unit!
+	var fn put(value: Int) Void!
+	var fn close() Void!
 
 type Door:
 	unused: Bool = false
 
-fn var Door.put(value: Int) Unit!:
+fn var Door.put(value: Int) Void!:
 	return ok(unit)
 
-fn var Door.close() Unit!:
+fn var Door.close() Void!:
 	return ok(unit)
 
 type Holder:
 	gate: Gate
 
-fn var Holder.close() Unit!:
+fn var Holder.close() Void!:
 	return self.gate.close()
 
 fn make() Holder!:

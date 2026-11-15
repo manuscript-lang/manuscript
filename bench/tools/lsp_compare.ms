@@ -126,7 +126,7 @@ fn compare(
 	out: String,
 	samples: Int,
 	cpu: String,
-) Result[Unit, Error]:
+) Result[Void, Error]:
 	cases := if suite == "hover": hover_cases() else: if suite == "outline": outline_cases() else: semantic_cases()
 	var paths = Map[String, String]()
 	paths.add("before", before.clone())

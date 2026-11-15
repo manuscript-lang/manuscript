@@ -28,7 +28,7 @@ fn parse_line(line: String) Rec?:
         if cents := parse_amount(amount): return Rec(cat, cents)
     return none
 
-fn main() Unit:
+fn main() Void:
     var totals = Map[String, Int]()
     var bad = 0
     if ls := stdin() | lines | collect(none):

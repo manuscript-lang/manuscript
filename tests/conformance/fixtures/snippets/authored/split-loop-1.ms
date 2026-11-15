@@ -3,7 +3,7 @@
 // conform: origin=perf: split loops yield pieces one at a time; a kept piece must stay intact
 import stdout from "@std/io/io.ms"
 
-fn say(text: String) Unit:
+fn say(text: String) Void:
     _ignored := stdout().write(text)
 
 fn keep(text: String) List[String]:
@@ -30,7 +30,7 @@ fn count(text: String) Int:
 
     return n
 
-fn main() Unit:
+fn main() Void:
     a := keep("aa,bbbb,c,,dddddd,eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee,f")
     for x in a:
         say("[{x}]")

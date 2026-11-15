@@ -23,7 +23,7 @@ export fn dir(id: String) String: "{root()}/challenges/{id}"
 
 // Writes examples/cases.json and hidden/cases.json for challenge `id` as
 // `json.dumps(cases, indent=1)` does.
-export fn write_cases(id: String, examples: List[GenCase], hidden: List[GenCase]) Unit:
+export fn write_cases(id: String, examples: List[GenCase], hidden: List[GenCase]) Void:
 	names := hidden.map(fn c: c.name.clone())
 	if names.distinct().length() != names.length(): panic("duplicate case names")
 	write_text("{dir(id)}/examples/cases.json", dumps_data(examples, 1) + "\n")
@@ -64,7 +64,7 @@ export type Cases:
 	list: List[GenCase] = []
 
 // Appends a case whose expected output is the oracle's answer for `stdin`.
-fn var Cases.push(name: String, stdin: String) Unit:
+fn var Cases.push(name: String, stdin: String) Void:
 	self.list.append(make_case(name, stdin, solve_with(self.oracle, stdin)))
 
 // The case made from `stdin` without recording it, for the example lists.

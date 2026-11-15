@@ -10,7 +10,7 @@ import (
 	read_text from "../../lib/text.ms",
 )
 
-fn add(var cs: Cases, name: String, script: String) Unit:
+fn add(var cs: Cases, name: String, script: String) Void:
 	cs.push(name, script)
 
 // The `stdin` of every hidden case of c13-inventory-orders, by case name.
@@ -20,7 +20,7 @@ fn c13_inputs() List[JsonValue]:
 	).get(JsonValue.Null)
 	return doc.as_list().get([])
 
-export fn gen_c63() Unit:
+export fn gen_c63() Void:
 	var cs = Cases(build_oracle("c63-inventory-returns"))
 
 	for entry in c13_inputs():

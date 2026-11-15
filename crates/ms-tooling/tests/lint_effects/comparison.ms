@@ -43,5 +43,5 @@ fn equality_only(a: Rank, b: Rank) Bool:
 fn plain(items: List[Key]) Int:
     return items.length()
 
-fn main() Unit:
+fn main() Void:
     return

@@ -6,11 +6,11 @@ fn DomainFailure.message() String:
 export fn first_error(cause: DomainFailure) Error:
 	return cause
 
-fn failure(cause: DomainFailure) Result[Unit, DomainFailure]:
+fn failure(cause: DomainFailure) Result[Void, DomainFailure]:
 	return error(cause)
 	return failure(cause)
 
-export fn first_propagated(cause: DomainFailure) Result[Unit, Error]:
+export fn first_propagated(cause: DomainFailure) Result[Void, Error]:
 	failure(cause)?
 
 fn generic[T: Error](cause: T) Error:

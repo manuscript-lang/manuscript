@@ -240,7 +240,7 @@ impl<'m> FuncBuilder<'m> {
     }
     /// `unit`.
     pub fn unit(&mut self) -> Value {
-        self.val(Op::UnitConst, &[], Imm::None, Ty::UNIT)
+        self.val(Op::VoidConst, &[], Imm::None, Ty::VOID)
     }
     /// A string literal (borrowed static object).
     pub fn str_lit(&mut self, s: &str) -> Value {

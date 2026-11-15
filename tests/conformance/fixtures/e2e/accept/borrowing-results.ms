@@ -38,7 +38,7 @@ fn recurse(value: String, count: Int) String:
 fn make_team() Team:
     return Team(members: [Person(name: "ann", tags: ["x", "y"])], label: "L")
 
-fn main() Unit:
+fn main() Void:
     p := Person(name: "bob", tags: ["t1", "t2"])
     q := Person(name: "cat", tags: ["u1"])
     t := first_tag(p)

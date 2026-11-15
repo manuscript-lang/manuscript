@@ -1,4 +1,4 @@
-// expect-debug: allocs=17 alloc_bytes=182
+// expect-debug: allocs=16 alloc_bytes=174
 // expect-release: allocs=13 alloc_bytes=126
 // expect-stdout: 6
 // expect-stdout: 3
@@ -41,7 +41,7 @@ fn reinit(b: Big) Int:
 fn nested(w: Wrap) List[Int]:
 	return w.inner.items
 
-fn main() Unit:
+fn main() Void:
 	name := "a name that is long enough to live on the heap"
 	total := (
 		items_of(Big(name: name.clone(), items: [1, 2, 3])).length()

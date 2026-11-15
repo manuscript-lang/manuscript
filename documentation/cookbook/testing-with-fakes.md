@@ -16,7 +16,7 @@ Save as `notify_test.ms` and run `ms test notify_test.ms`. `notify_all` depends 
 import expect_equal from "@std/test/test.ms"
 
 interface Mailer:
-    fn send(to: String, subject: String) Unit!
+    fn send(to: String, subject: String) Void!
 
 fn notify_all(mailer: Mailer, users: List[String]) List[String]:
     var failed: List[String] = []
@@ -28,7 +28,7 @@ fn notify_all(mailer: Mailer, users: List[String]) List[String]:
 type FakeMailer:
     broken: Set[String] = Set[String]()
 
-fn FakeMailer.send(to: String, subject: String) Unit!:
+fn FakeMailer.send(to: String, subject: String) Void!:
     if self.broken.contains(to):
         return error(Error("mailbox full", kind: "EDQUOT"))
     return ok(unit)

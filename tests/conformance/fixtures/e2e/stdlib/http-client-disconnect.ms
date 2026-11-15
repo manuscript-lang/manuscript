@@ -8,14 +8,14 @@ import stdout from "@std/io/io.ms"
 import Connection, connect, serve from "@std/net/net.ms"
 import nanoseconds, sleep from "@std/time.ms"
 
-fn send(var conn: Connection, text: String) Unit!:
+fn send(var conn: Connection, text: String) Void!:
     conn.output.write(text.to_bytes())?
     return conn.output.flush()
 
 type Reporter:
     name: String
 
-fn var Reporter.close() Unit!:
+fn var Reporter.close() Void!:
     _line := stdout().write("{self.name} cleanup ran\n")
 
 fn handle(request: HttpRequest) HttpResponse:

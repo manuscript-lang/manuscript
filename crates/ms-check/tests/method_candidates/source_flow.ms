@@ -8,7 +8,7 @@ fn Counter.next() Counter: Counter(self.value + 1)
 fn stop() Int:
 	Counter(panic("stop")).next()
 
-fn exit_loop(input: Int?) Unit:
+fn exit_loop(input: Int?) Void:
 	while true:
 		Counter(
 			match input:

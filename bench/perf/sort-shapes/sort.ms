@@ -39,7 +39,7 @@ fn plains(n: Int, m: Int) List[Plain]:
 
 	return xs
 
-fn main() Unit:
+fn main() Void:
 	n := 1000000
 	a := events(n, 1000)
 	t0 := monotonic().tick

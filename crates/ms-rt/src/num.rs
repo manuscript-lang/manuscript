@@ -925,6 +925,10 @@ mod tests {
     /// The Schubfach digits agree with the standard formatter's, tie rule included, over every
     /// binary exponent, the edges of each binade, random bit patterns and decimal literals.
     #[test]
+    #[cfg_attr(
+        miri,
+        ignore = "an exhaustive sweep that takes over 200 s interpreted; native CI runs it"
+    )]
     fn fixed_notation_matches_the_standard_formatter() {
         let mut x = 0x2545_f491_4f6c_dd1du64;
         let mut next = || {
@@ -981,6 +985,10 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(
+        miri,
+        ignore = "an exhaustive sweep that takes over 200 s interpreted; native CI runs it"
+    )]
     fn shortest_digits_match_the_standard_formatter() {
         let check = |v: f64| {
             if !(v.is_finite() && v > 0.0) {
@@ -1202,6 +1210,10 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(
+        miri,
+        ignore = "an exhaustive sweep that takes over 200 s interpreted; native CI runs it"
+    )]
     fn shortest_float_strings_match_the_previous_formatter() {
         let _g = crate::testutil::lock();
         // Independent storage/extraction oracle: the former implementation used
@@ -1311,6 +1323,10 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(
+        miri,
+        ignore = "an exhaustive sweep that takes over 200 s interpreted; native CI runs it"
+    )]
     fn float_precision_matches_previous_formatting() {
         let _g = crate::testutil::lock();
         // Independent oracle: the old path formats the original binary value
@@ -1424,6 +1440,10 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(
+        miri,
+        ignore = "an exhaustive sweep that takes over 200 s interpreted; native CI runs it"
+    )]
     fn float_parsing() {
         let _g = crate::testutil::lock();
         // The exact fast path agrees with the standard parser wherever it answers.

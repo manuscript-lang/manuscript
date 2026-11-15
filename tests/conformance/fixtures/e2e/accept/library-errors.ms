@@ -16,10 +16,10 @@ fn describe_error(cause: Error) String:
 
 	return cause.message.clone()
 
-fn decode_generically() Unit!:
+fn decode_generically() Void!:
 	_bytes := hex_decode(text: "zz", max_bytes: 10)?
 
-fn propagate_generic() Unit!:
+fn propagate_generic() Void!:
 	_completed := decode_generically()?
 
 test "library errors carry a kind callers can branch on":
@@ -60,10 +60,10 @@ type ReadError:
 	attempt: Int
 	retryable: Bool
 
-fn failed_read() Unit!ReadError:
+fn failed_read() Void!ReadError:
 	return error(ReadError(path: "settings.json", attempt: 2, retryable: true))
 
-fn propagate_read() Unit!ReadError:
+fn propagate_read() Void!ReadError:
 	_completed := failed_read()?
 
 test "a domain record is still a legal error value":
@@ -80,10 +80,10 @@ test "a domain record is still a legal error value":
 		) | expect_false?
 	)
 
-fn read_failure(cause: ReadError) Unit!ReadError:
+fn read_failure(cause: ReadError) Void!ReadError:
 	return error(cause)
 
-fn general_read(cause: ReadError) Unit!:
+fn general_read(cause: ReadError) Void!:
 	failed := read_failure(cause)
 	if failed.is_error():
 		return error(

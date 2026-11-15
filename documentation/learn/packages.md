@@ -39,7 +39,7 @@ Commit `ms.lock`. Everyone who builds the project gets the same bytes: a changed
 import Config, open from "@pg/conn.ms"
 import Value from "@pg/value.ms"
 
-fn main() Unit!:
+fn main() Void!:
     var conn = open(Config(password: "secret"))?
     rows := conn.query("select $1::int8 + 1", [Value.Int(41)])?
     print("{rows.rows[0][0]}")

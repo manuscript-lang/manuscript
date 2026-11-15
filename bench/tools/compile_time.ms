@@ -241,7 +241,7 @@ fn rs_fn(p: Int, f: Int, k: Int, d: List[Dep]) String:
 	b.append("›")
 	return q(b.join("\n")) + "\n"
 
-fn generate(out: String, packages: Int, files: Int, fns: Int) Unit:
+fn generate(out: String, packages: Int, files: Int, fns: Int) Void:
 	var rng = seeded(1)
 	create_directory("{out}/ms/src", recursive: true).get()
 	create_directory("{out}/go", recursive: true).get()
@@ -355,17 +355,17 @@ fn timed(
 	dir: String,
 	program: String,
 	args: List[String],
-) Result[Unit, Error]:
+) Result[Void, Error]:
 	start := now_ns()
 	_ := must(label, run_in(dir, program, args))?
 	seconds := (now_ns() - start).to_float() / 1000000000.0
 	print("{label} {seconds.to_fixed(2)} s")
 	return ok(unit)
 
-fn drop_cache(dir: String) Unit:
+fn drop_cache(dir: String) Void:
 	remove("{dir}/.ms-cache", recursive: true).get(unit)
 
-fn run(out: String, p: Int, f: Int, k: Int) Result[Unit, Error]:
+fn run(out: String, p: Int, f: Int, k: Int) Result[Void, Error]:
 	generate(out, p, f, k)
 
 	ms := ms_binary()
@@ -402,7 +402,7 @@ fn rust_timed(
 	out: String,
 	cargo: String,
 	args: List[String],
-) Result[Unit, Error]:
+) Result[Void, Error]:
 	remove("{out}/rs/target", recursive: true).get(unit)
 	return timed(label, "{out}/rs", cargo, args)
 

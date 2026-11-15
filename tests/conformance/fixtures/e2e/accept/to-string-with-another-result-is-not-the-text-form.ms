@@ -6,7 +6,7 @@ type P:
 fn P.to_string() Int:
     return self.n
 
-fn main() Unit:
+fn main() Void:
     p := P(n: 7)
     print(p.to_string())
     print("{p}")

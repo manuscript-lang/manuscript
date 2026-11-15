@@ -1,3 +1,3 @@
 // ms: allow_effect std.fs.read
-fn a() Unit:
+fn a() Void:
     return unit

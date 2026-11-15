@@ -1,4 +1,4 @@
 import greet from "@lib/lib.ms"
 
-fn main() Unit:
+fn main() Void:
     print(greet("x"))

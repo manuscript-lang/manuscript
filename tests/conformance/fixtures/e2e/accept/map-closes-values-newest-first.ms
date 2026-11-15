@@ -10,7 +10,7 @@ type Item:
 	id: Int
 	log: String
 
-fn var Item.close() Unit!:
+fn var Item.close() Void!:
 	_ := append_file(self.log, "{self.id},").wait()
 
 fn logged(path: String) String:
@@ -19,7 +19,7 @@ fn logged(path: String) String:
 
 	return ""
 
-fn fill(log: String) Unit:
+fn fill(log: String) Void:
 	var items: Map[String, Item] = {}
 	items.add("a", Item(id: 1, log: log.clone()))
 	items.add("b", Item(id: 2, log: log.clone()))

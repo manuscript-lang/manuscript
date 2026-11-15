@@ -3,8 +3,8 @@
 // conform: origin=pkg/compiler/codec_selectors_test.go:14 TestTypedCodecSelectorsRejectInvalidCasesAndTypes
 import NormalizationForm from "@std/string.ms"
 
-fn choose(form: NormalizationForm) Unit:
+fn choose(form: NormalizationForm) Void:
     return unit
 
-fn wrong() Unit:
+fn wrong() Void:
     choose("NFC")

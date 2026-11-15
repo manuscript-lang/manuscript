@@ -133,7 +133,7 @@ fn rexpr(var rnd: Random, d: Int) String:
 	op := rnd.choice([" + ", "-", " * ", "/", " - "])
 	return left + op + rexpr(var rnd, d - 1)
 
-export fn gen_c05() Unit:
+export fn gen_c05() Void:
 	var rnd = seeded(5)
 	examples := [mk("basic", "1 + 2 * 3\n(1+2)*3\n10 / (5 - 5)\n2 +\n-7 / 2\n")]
 	var good = List[String]()

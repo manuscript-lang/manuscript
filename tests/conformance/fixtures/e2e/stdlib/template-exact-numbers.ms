@@ -6,7 +6,7 @@ import (
 	compile from "@std/text/template.ms",
 )
 
-fn check(expression: String, data: String, expected: String) Unit!:
+fn check(expression: String, data: String, expected: String) Void!:
 	template := compile("\{\{ if {expression} \}\}yes\{\{ else \}\}no\{\{ end \}\}")?
 	expect_equal((template.render(parse(data)?)?), expected)?
 

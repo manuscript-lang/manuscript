@@ -1,4 +1,4 @@
-fn fill(var xs: List[Int], count: Int) Unit:
+fn fill(var xs: List[Int], count: Int) Void:
     var i = 0
 
     while i < count:

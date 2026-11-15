@@ -94,7 +94,7 @@ fn missing_arm_values_explain_the_required_type_at_the_arm() {
         assert_eq!(got[0].pos.column, 9);
         assert_eq!(
             got[0].message,
-            "match arm requires a final value of type Int; this arm produces Unit; end the arm with a value of the required type"
+            "match arm requires a final value of type Int; this arm produces Void; end the arm with a value of the required type"
         );
         // Apply the suggested repair to the offending arm, preserving its statements.
         let repaired = source.replace("_marker := 1", "_marker := 1\n\t\t\t_marker");

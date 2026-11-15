@@ -20,7 +20,7 @@ fn make_text(lines: Int) String:
 
 	return sb.build()
 
-fn main() Unit:
+fn main() Void:
 	text := make_text(120000)
 	emails := compile("[a-z]+[0-9]*@[a-z]+[0-9]*\\.com").get()
 	ips := compile("([0-9]+)\\.([0-9]+)\\.([0-9]+)\\.([0-9]+)").get()

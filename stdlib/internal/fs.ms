@@ -20,15 +20,15 @@ import (
 
 export extern fn msstd_fs_filesystem() FileSystem
 
-export extern fn msstd_io_close(file: NativeFile) Unit!
+export extern fn msstd_io_close(file: NativeFile) Void!
 
 export extern fn msstd_fs_file_clone(file: NativeFile) FileHandle!
 
 export extern fn msstd_io_read(file: NativeFile, max_bytes: Int?) Bytes?!
 
-export extern fn msstd_io_write(file: NativeFile, data: String) Unit!
+export extern fn msstd_io_write(file: NativeFile, data: String) Void!
 
-export extern fn msstd_io_write_bytes(file: NativeFile, data: Bytes) Unit!
+export extern fn msstd_io_write_bytes(file: NativeFile, data: Bytes) Void!
 
 export extern fn msstd_fs_file_read_at(
 	file: NativeFile,
@@ -40,7 +40,7 @@ export extern fn msstd_fs_file_write_at(
 	file: NativeFile,
 	offset: Int,
 	data: Bytes,
-) Unit!
+) Void!
 
 export extern fn msstd_fs_file_read_file(file: NativeFile, max_bytes: Int?) Bytes!
 
@@ -54,31 +54,31 @@ export extern fn msstd_fs_file_write_vectors(
 	file: NativeFile,
 	buffers: List[Bytes],
 	offset: Int,
-) Unit!
+) Void!
 
 export extern fn msstd_fs_file_seek(file: NativeFile, offset: Int, origin: Int) Int!
 
 export extern fn msstd_fs_file_stat(file: NativeFile) FileInfo!
 
-export extern fn msstd_fs_file_truncate(file: NativeFile, size: Int) Unit!
+export extern fn msstd_fs_file_truncate(file: NativeFile, size: Int) Void!
 
-export extern fn msstd_fs_file_sync(file: NativeFile) Unit!
+export extern fn msstd_fs_file_sync(file: NativeFile) Void!
 
-export extern fn msstd_fs_file_data_sync(file: NativeFile) Unit!
+export extern fn msstd_fs_file_data_sync(file: NativeFile) Void!
 
 export extern fn msstd_fs_file_try_lock(file: NativeFile, exclusive: Bool) Int!
 
-export extern fn msstd_fs_file_unlock(file: NativeFile) Unit!
+export extern fn msstd_fs_file_unlock(file: NativeFile) Void!
 
-export extern fn msstd_fs_file_chmod(file: NativeFile, mode: Int) Unit!
+export extern fn msstd_fs_file_chmod(file: NativeFile, mode: Int) Void!
 
-export extern fn msstd_fs_file_chown(file: NativeFile, uid: Int, gid: Int) Unit!
+export extern fn msstd_fs_file_chown(file: NativeFile, uid: Int, gid: Int) Void!
 
 export extern fn msstd_fs_file_set_times(
 	file: NativeFile,
 	accessed: Timestamp,
 	modified: Timestamp,
-) Unit!
+) Void!
 
 export extern fn msstd_fs_file_read_lines(
 	file: NativeFile,
@@ -90,51 +90,51 @@ export extern fn msstd_fs_directory_read(dir: NativeDirectory) DirectoryEntry?!
 
 export extern fn msstd_fs_directory_path(dir: NativeDirectory) String
 
-export extern fn msstd_fs_directory_close(dir: NativeDirectory) Unit
+export extern fn msstd_fs_directory_close(dir: NativeDirectory) Void
 
 export extern fn msstd_fs_watch_next(watcher: NativeWatcher) List[FileEvent]?!
 
-export extern fn msstd_fs_watch_close(watcher: NativeWatcher) Unit
+export extern fn msstd_fs_watch_close(watcher: NativeWatcher) Void
 
 export extern fn msstd_fs_temporary_path(temporary: NativeTemporary) String
 
-export extern fn msstd_fs_temporary_close(temporary: NativeTemporary) Unit!
+export extern fn msstd_fs_temporary_close(temporary: NativeTemporary) Void!
 
 export extern fn msstd_fs_canonicalize(path: String) String!
 
-export extern fn msstd_fs_create_directory(path: String, recursive: Bool) Unit!
+export extern fn msstd_fs_create_directory(path: String, recursive: Bool) Void!
 
-export extern fn msstd_fs_create_link(path: String, target: String) Unit!
+export extern fn msstd_fs_create_link(path: String, target: String) Void!
 
 export extern fn msstd_fs_read_file(path: String, max_bytes: Int?) Bytes!
 
 export extern fn msstd_fs_read_link(path: String) String!
 
-export extern fn msstd_fs_remove(path: String, recursive: Bool) Unit!
+export extern fn msstd_fs_remove(path: String, recursive: Bool) Void!
 
-export extern fn msstd_fs_rename(source: String, destination: String) Unit!
+export extern fn msstd_fs_rename(source: String, destination: String) Void!
 
 export extern fn msstd_fs_temporary_root() String
 
 export extern fn msstd_fs_temporary_directory(prefix: String) String!
 
-export extern fn msstd_fs_write_file(path: String, data: Bytes, replace: Bool) Unit!
+export extern fn msstd_fs_write_file(path: String, data: Bytes, replace: Bool) Void!
 
-export extern fn msstd_fs_access(path: String, mode: Int) Unit!
+export extern fn msstd_fs_access(path: String, mode: Int) Void!
 
-export extern fn msstd_fs_append_file(path: String, data: Bytes) Unit!
+export extern fn msstd_fs_append_file(path: String, data: Bytes) Void!
 
-export extern fn msstd_fs_chmod(path: String, mode: Int, follow: Bool) Unit!
+export extern fn msstd_fs_chmod(path: String, mode: Int, follow: Bool) Void!
 
-export extern fn msstd_fs_chown(path: String, uid: Int, gid: Int, follow: Bool) Unit!
+export extern fn msstd_fs_chown(path: String, uid: Int, gid: Int, follow: Bool) Void!
 
 export extern fn msstd_fs_admit(bytes: Int) Bool
 
-export extern fn msstd_fs_release() Unit
+export extern fn msstd_fs_release() Void
 
-export extern fn msstd_fs_truncate(path: String, size: Int) Unit!
+export extern fn msstd_fs_truncate(path: String, size: Int) Void!
 
-export extern fn msstd_fs_hard_link(source: String, destination: String) Unit!
+export extern fn msstd_fs_hard_link(source: String, destination: String) Void!
 
 export extern fn msstd_fs_open(path: String, flags: String, mode: Int) FileHandle!
 
@@ -151,7 +151,7 @@ export extern fn msstd_fs_set_times(
 	accessed: Timestamp,
 	modified: Timestamp,
 	follow: Bool,
-) Unit!
+) Void!
 
 export extern fn msstd_fs_stat_filesystem(path: String) FileSystemInfo!
 

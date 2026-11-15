@@ -1,11 +1,11 @@
 // conform: tags=testing,tier-core
 // conform: phase=check
-fn push_one(var values: List[Int]) Unit:
+fn push_one(var values: List[Int]) Void:
 	values.append(1)
 
 export fn main() Int:
 	var values: List[Int] = []
-	change: fn(var List[Int]) Unit := push_one
+	change: fn(var List[Int]) Void := push_one
 
 	// The function type changes its parameter, so the call must say so.
 	change(values)

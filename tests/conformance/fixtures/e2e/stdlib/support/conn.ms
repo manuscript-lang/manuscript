@@ -7,12 +7,12 @@ import (
 )
 
 // Writes `text` to the connection and waits until it is handed to the socket.
-export fn send(var connection: Connection, text: String) Unit!:
+export fn send(var connection: Connection, text: String) Void!:
 	connection.output.write(text.to_bytes())?
 	return connection.output.flush()
 
 // Writes `data` to the connection and waits until it is handed to the socket.
-export fn send_bytes(var connection: Connection, data: Bytes) Unit!:
+export fn send_bytes(var connection: Connection, data: Bytes) Void!:
 	connection.output.write(data)?
 	return connection.output.flush()
 

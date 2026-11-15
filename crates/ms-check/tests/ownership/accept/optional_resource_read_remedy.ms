@@ -3,7 +3,7 @@ import Closeable from "@std/core.ms"
 type Item:
     id: Int
 
-fn var Item.close() Unit!:
+fn var Item.close() Void!:
     return ok(unit)
 
 fn read(items: List[Item]) Int:

@@ -10,7 +10,7 @@ type Version:
 fn Version.compare(other: Version) Int:
     return self.major - other.major
 
-fn main() Unit:
+fn main() Void:
     a := Version(1)
     b := Version(2)
     c: Result[Int, Error] := ok(1)

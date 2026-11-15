@@ -71,7 +71,7 @@ export fn seeded(seed: Int) Random:
 	mt[0] = 0x80000000
 	return Random(mt, N)
 
-fn twist(var mt: List[Int]) Unit:
+fn twist(var mt: List[Int]) Void:
 	for kk in 0..N:
 		y := bit_and(mt[kk], 0x80000000) + bit_and(mt[(kk + 1) % N], 0x7FFFFFFF)
 		var next = bit_xor(mt[(kk + 397) % N], shift_right(y, 1))

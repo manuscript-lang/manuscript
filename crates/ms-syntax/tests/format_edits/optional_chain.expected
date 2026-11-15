@@ -1,4 +1,4 @@
-fn work() Unit:
+fn work() Void:
 	send(
 		payload: incoming_request_payload
 		.normalize_white?.space()

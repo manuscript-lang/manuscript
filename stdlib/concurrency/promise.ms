@@ -77,7 +77,7 @@ fn Promise[T].with(options: PromiseOptions = PromiseOptions()) Promise[T]:
 // Asks the work to stop at its next wait; `wait` then reports `ECANCELED`. It
 // returns at once, and dropping the promise joins the work. A finished promise is
 // unchanged.
-fn Promise[T].cancel() Unit:
+fn Promise[T].cancel() Void:
 	msrt_promise_cancel(self.id)
 
 // Whether the work has finished, however it ended. It never waits.
@@ -86,7 +86,7 @@ fn Promise[T].done() Bool:
 
 // Dropping a promise ends it: unfinished work is cancelled and waited for, and a
 // result nobody took is dropped.
-fn var Promise[T].close() Unit!:
+fn var Promise[T].close() Void!:
 	msrt_promise_drop(self.id)
 
 // Which thread runs a promise's work.
@@ -127,12 +127,12 @@ fn Cancel.signal() Signal:
 
 // Cancels every promise made with a signal of this switch, now and later. Safe to
 // call again.
-fn Cancel.cancel() Unit:
+fn Cancel.cancel() Void:
 	msrt_cancel_fire(self.id)
 
 // Frees the switch. Promises made with its signals keep running; they just cannot
 // be cancelled by it any more.
-fn var Cancel.close() Unit!:
+fn var Cancel.close() Void!:
 	msrt_cancel_free(self.id)
 
 // A new switch that has not fired.
@@ -176,7 +176,7 @@ fn outcome(id: Int, code: Int) Error:
 	)
 
 // Applies `options` to the promise `id`.
-fn limit(id: Int, options: PromiseOptions) Unit:
+fn limit(id: Int, options: PromiseOptions) Void:
 	if options.timeout.is_some():
 		msrt_promise_limit(id, nanos(options.timeout))
 	if signal := options.cancel:
@@ -188,7 +188,7 @@ fn limit(id: Int, options: PromiseOptions) Unit:
 export fn set_options[T](
 	target: Promise[T],
 	options: PromiseOptions = PromiseOptions(),
-) Unit:
+) Void:
 	limit(target.id, options)
 
 // The result in the slot of `id`, moved out; `EBADF` when it is gone.
@@ -209,7 +209,7 @@ fn failure(id: Int, code: Int) Error:
 	return outcome(id, code)
 
 // Stores how `entry` ended in the promise `id`.
-export fn complete[U](id: Int, result: U!) Unit:
+export fn complete[U](id: Int, result: U!) Void:
 	match result:
 		ok(value):
 			msrt_promise_put(id, value, 0)
@@ -243,7 +243,7 @@ opaque type WaitSet:
 	// The runtime group.
 	id: Int
 
-fn var WaitSet.close() Unit!:
+fn var WaitSet.close() Void!:
 	msrt_group_free(self.id)
 
 // The error `wait_all` reports when the run of the promise at `head` was ended by a
@@ -374,7 +374,7 @@ export fn wait_first[T](promises: List[Promise[T]]) T!:
 // with no task of its own. The work may wait itself. `make` receives the new promise's
 // id and returns the work; it ends with `complete(id, ...)`. For stream
 // implementations: dropping the promise first discards the work unrun.
-export fn deferred[U](work: fn(Int) Unit) Promise[U]:
+export fn deferred[U](work: fn(Int) Void) Promise[U]:
 	id := msrt_promise_new()
 	msrt_promise_defer(id, fn: work(id))
 	return Promise[U](id: id)

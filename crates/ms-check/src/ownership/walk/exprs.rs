@@ -155,7 +155,7 @@ impl Walker<'_> {
         let ExprKind::Call { args, .. } = &e.kind else {
             return Vec::new();
         };
-        if !ty_holds_promise(self.syms, &self.cx.m.ty(e)) {
+        if !ty_holds_promise(&self.cx.m.ty(e)) {
             return Vec::new();
         }
         args.iter()
@@ -354,7 +354,7 @@ impl Walker<'_> {
             self.adapter_copies(e, &src);
         }
         match &e.kind {
-            ExprKind::Number(_) | ExprKind::Bool(_) | ExprKind::Unit => {}
+            ExprKind::Number(_) | ExprKind::Bool(_) | ExprKind::Void => {}
             ExprKind::Probe(_) => self.error(
                 e.pos,
                 "`?` after an index is only written as `if var name = place[key]?`, where it borrows the entry in place",

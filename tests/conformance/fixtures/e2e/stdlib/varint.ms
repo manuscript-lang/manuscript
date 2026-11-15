@@ -15,7 +15,7 @@ fn signed(value: Int) Bytes:
 	out.append_varint(value)
 	return out.build()
 
-fn expect_varint_error(data: Bytes, at: Int, expected: Error) Unit!:
+fn expect_varint_error(data: Bytes, at: Int, expected: Error) Void!:
 	unsigned_result := data.uvarint(at)
 	expect_true(unsigned_result.is_error())?
 	expect_equal(unsigned_result.err(), expected)?

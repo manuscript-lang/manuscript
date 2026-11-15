@@ -41,7 +41,7 @@ export extern fn msstd_tls_verify_certificates(
 	roots_pem: String,
 	server_name: String,
 	now: Timestamp,
-) Unit!
+) Void!
 
 export extern fn msstd_url_decode_component(text: String) String!
 
@@ -58,13 +58,13 @@ export extern fn msstd_url_parse_query(
 
 export extern fn msstd_url_resolve(base: Url, reference: String) Url!
 
-export extern fn msstd_net_connection_close(handle: NativeConnection) Unit
+export extern fn msstd_net_connection_close(handle: NativeConnection) Void
 
 export extern fn msstd_net_connection_share(handle: NativeConnection) NativeConnection
 
 export extern fn msstd_net_connection_alias(handle: NativeConnection) NativeConnection
 
-export extern fn msstd_net_connection_close_if_last(handle: NativeConnection) Unit
+export extern fn msstd_net_connection_close_if_last(handle: NativeConnection) Void
 
 export extern fn msstd_net_connection_local_address(handle: NativeConnection) String
 
@@ -76,7 +76,7 @@ export extern fn msstd_net_connection_read(
 	timeout: Duration?,
 ) Bytes?!
 
-export extern fn msstd_net_connection_shutdown_write(handle: NativeConnection) Unit!
+export extern fn msstd_net_connection_shutdown_write(handle: NativeConnection) Void!
 
 export extern fn msstd_net_connection_start_tls(
 	handle: NativeConnection,
@@ -96,17 +96,17 @@ export extern fn msstd_net_connection_write_bytes(
 	handle: NativeConnection,
 	data: Bytes,
 	timeout: Duration?,
-) Unit!
+) Void!
 
 export extern fn msstd_net_datagram_address(handle: NativeDatagramSocket) String
 
-export extern fn msstd_net_datagram_close(handle: NativeDatagramSocket) Unit
+export extern fn msstd_net_datagram_close(handle: NativeDatagramSocket) Void
 
 export extern fn msstd_net_datagram_share(
 	handle: NativeDatagramSocket
 ) NativeDatagramSocket
 
-export extern fn msstd_net_datagram_close_if_last(handle: NativeDatagramSocket) Unit
+export extern fn msstd_net_datagram_close_if_last(handle: NativeDatagramSocket) Void
 
 export extern fn msstd_net_datagram_receive(
 	handle: NativeDatagramSocket,
@@ -119,7 +119,7 @@ export extern fn msstd_net_datagram_send_bytes(
 	data: Bytes,
 	address: String,
 	timeout: Duration?,
-) Unit!
+) Void!
 
 export extern fn msstd_net_listener_accept(
 	handle: NativeListener,
@@ -132,17 +132,17 @@ export extern fn msstd_net_listener_share(handle: NativeListener) NativeListener
 
 export extern fn msstd_net_listener_address(handle: NativeListener) String
 
-export extern fn msstd_net_listener_close(handle: NativeListener) Unit
+export extern fn msstd_net_listener_close(handle: NativeListener) Void
 
-export extern fn msstd_websocket_close(handle: NativeWebSocket) Unit
+export extern fn msstd_websocket_close(handle: NativeWebSocket) Void
 
 export extern fn msstd_websocket_share(handle: NativeWebSocket) NativeWebSocket
 
-export extern fn msstd_websocket_close_if_last(handle: NativeWebSocket) Unit
+export extern fn msstd_websocket_close_if_last(handle: NativeWebSocket) Void
 
-export extern fn msstd_websocket_ping(handle: NativeWebSocket, data: String) Unit!
+export extern fn msstd_websocket_ping(handle: NativeWebSocket, data: String) Void!
 
-export extern fn msstd_websocket_ping_bytes(handle: NativeWebSocket, data: Bytes) Unit!
+export extern fn msstd_websocket_ping_bytes(handle: NativeWebSocket, data: Bytes) Void!
 
 export extern fn msstd_websocket_receive(handle: NativeWebSocket) RawWebSocketMessage?!
 
@@ -150,7 +150,7 @@ export extern fn msstd_websocket_send_bytes(
 	handle: NativeWebSocket,
 	data: Bytes,
 	text: Bool,
-) Unit!
+) Void!
 
 export extern fn msstd_websocket_subprotocol(handle: NativeWebSocket) String
 
@@ -159,7 +159,7 @@ export extern fn msstd_net_network_bind_datagram(
 	address: String,
 ) NativeDatagramSocket!
 
-export extern fn msstd_net_network_close(net: NativeNetwork) Unit
+export extern fn msstd_net_network_close(net: NativeNetwork) Void
 
 export extern fn msstd_net_network_connect(
 	net: NativeNetwork,

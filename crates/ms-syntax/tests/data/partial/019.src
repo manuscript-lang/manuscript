@@ -5,7 +5,7 @@ fn apply(value: Int, transform: fn(value: Int) Int) Int:
 
 test "function suite boundaries":
     calls: List[Int] := []
-    dormant := fn() Unit:
+    dormant := fn() Void:
         calls.append(1)
     grouped := apply(
         transform: (

@@ -4,7 +4,7 @@ type Box:
     n: Int
     xs: List[Int]
 
-fn bump(var b: Box) Unit:
+fn bump(var b: Box) Void:
     var _n = b.n
     _n += 1
     _n = _n * 2
@@ -17,7 +17,7 @@ fn var Box.mixed() Int:
     z = z * 10
     return z
 
-fn main() Unit:
+fn main() Void:
     var b = Box(n: 1, xs: [1])
     bump(var b)
 

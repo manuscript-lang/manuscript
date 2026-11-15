@@ -27,7 +27,7 @@ test "buffered response metadata is already an independent copy":
 fn early_return() Int:
 	return 7
 
-fn error_return() Unit!:
+fn error_return() Void!:
 	return error(Error("expected"))
 
 test "histogram times normal early returns and error Results":

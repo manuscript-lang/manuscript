@@ -4,5 +4,5 @@ fn compute(value: Int) Int:
 fn flag() Bool:
     return true
 
-fn empty() Unit:
+fn empty() Void:
     return unit

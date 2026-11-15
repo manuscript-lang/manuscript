@@ -128,6 +128,6 @@ export extern fn msstd_crypto_hmac_hasher_new(
 	key: Bytes,
 ) NativeHasher
 
-export extern fn msstd_crypto_hasher_update(hasher: NativeHasher, data: Bytes) Unit
+export extern fn msstd_crypto_hasher_update(hasher: NativeHasher, data: Bytes) Void
 
 export extern fn msstd_crypto_hasher_finish(hasher: NativeHasher) Bytes

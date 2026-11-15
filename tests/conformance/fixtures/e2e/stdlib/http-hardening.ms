@@ -107,7 +107,7 @@ test "close cancels a handler parked on a request body and releases its stream":
 			Error("handler finished instead of being cancelled")
 		)
 
-fn expect_file_reply(var conn: Connection) Unit!:
+fn expect_file_reply(var conn: Connection) Void!:
 	reply := recv(var conn, 10.seconds()) | expect_ok?
 	text := reply.get(Bytes([])).decode_utf8().get("")
 	if not text.starts_with("HTTP/1.1 200"): return error(
@@ -149,7 +149,7 @@ test "serve answers requests while handlers read and write files":
 	server.close()?
 	dir.close()?
 
-fn oversized(var exchange: HttpExchange) Unit!:
+fn oversized(var exchange: HttpExchange) Void!:
 	return reply(var exchange, text(200, "z".repeat(5000).get("")))
 
 test "serve answers 500 when a whole response exceeds max_response_bytes":

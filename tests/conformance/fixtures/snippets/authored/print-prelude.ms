@@ -5,7 +5,7 @@ type Point:
     x: Int
     y: Int
 
-fn main() Unit:
+fn main() Void:
     print("hello")
     print(42)
     print(Point(1, 2))

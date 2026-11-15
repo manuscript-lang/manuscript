@@ -331,13 +331,13 @@ export fn decode_png(data: Bytes, max_pixels: Int?) Raster!:
 
 	return ok(Raster(width, height, m, pixels))
 
-fn put_be32(var out: BytesBuilder, value: Int) Unit:
+fn put_be32(var out: BytesBuilder, value: Int) Void:
 	out.append(byte(bit_and(shift_right_unsigned(value, 24), 255)))
 	out.append(byte(bit_and(shift_right_unsigned(value, 16), 255)))
 	out.append(byte(bit_and(shift_right_unsigned(value, 8), 255)))
 	out.append(byte(bit_and(value, 255)))
 
-fn png_chunk(var out: BytesBuilder, kind: String, body: Bytes) Unit:
+fn png_chunk(var out: BytesBuilder, kind: String, body: Bytes) Void:
 	put_be32(var out, body.length())
 
 	tag := kind.to_bytes()

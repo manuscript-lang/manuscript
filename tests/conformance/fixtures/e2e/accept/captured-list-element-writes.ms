@@ -2,7 +2,7 @@
 // conform: phase=test
 import expect_contains, expect_equal, expect_fault from "@std/test/test.ms"
 
-fn each(n: Int, f: fn(Int) Unit) Unit:
+fn each(n: Int, f: fn(Int) Void) Void:
 	for i in 0..n:
 		f(i)
 
@@ -28,7 +28,7 @@ test "elements of a captured list of lists":
 
 test "the closure and its owner share the list":
 	var out: List[Int] = [0, 0]
-	write: fn(Int) Unit := fn r: out[r] = 4
+	write: fn(Int) Void := fn r: out[r] = 4
 	write(1)
 	out[0] = 3
 	out | expect_equal([3, 4])?

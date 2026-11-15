@@ -1,6 +1,6 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn f() Unit:
+fn f() Void:
     var outer = 1
     callback := fn(value: Int = (fn() Int:
         outer = 2

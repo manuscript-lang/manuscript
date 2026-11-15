@@ -22,7 +22,7 @@ fn sse_stream(count: Int) Bytes:
         parts.append("event: tick\nid: {i}\ndata: payload {i}\ndata: second line\n\n")
     return parts.join("").to_bytes()
 
-fn bench_archive() Unit:
+fn bench_archive() Void:
     list := entries(2000)
 
     bench(
@@ -48,7 +48,7 @@ fn bench_archive() Unit:
     if packed := pack(list, "zip"):
         bench_unpack(packed)
 
-fn bench_unpack(packed: Bytes) Unit:
+fn bench_unpack(packed: Bytes) Void:
     bench(
         "archive.zip_unpack",
         2000,
@@ -59,7 +59,7 @@ fn bench_unpack(packed: Bytes) Unit:
             return 0
     )
 
-fn bench_sse() Unit:
+fn bench_sse() Void:
     stream := sse_stream(2000)
 
     bench(
@@ -79,7 +79,7 @@ fn var Whole.next() Bytes?!:
     self.done = true
     return ok(self.data.clone())
 
-fn var Whole.close() Unit!:
+fn var Whole.close() Void!:
     return ok(unit)
 
 fn count_events(data: Bytes) Int:
@@ -94,7 +94,7 @@ fn count_events(data: Bytes) Int:
 
     return count
 
-export fn bench_host() Unit:
+export fn bench_host() Void:
     bench_archive()
     bench_sse()
 

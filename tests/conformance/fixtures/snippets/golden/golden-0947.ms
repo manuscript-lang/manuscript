@@ -1,6 +1,6 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn f() Unit:
+fn f() Void:
     use(fn(value, other: Int):
         return value + other
     )

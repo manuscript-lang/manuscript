@@ -259,7 +259,7 @@ fn apply(m: &mut Module, fi: usize, plans: Vec<(usize, usize, Plan)>) {
                     mode: Mode::Borrow,
                 },
             ],
-            ret: Ty::UNIT,
+            ret: Ty::VOID,
             noreturn: false,
             pure_: false,
             fresh: false,
@@ -274,7 +274,7 @@ fn apply(m: &mut Module, fi: usize, plans: Vec<(usize, usize, Plan)>) {
             let res = if k == last {
                 app.res
             } else {
-                Some(f.new_value(Ty::UNIT))
+                Some(f.new_value(Ty::VOID))
             };
             let (ext, arg) = match p {
                 Piece::Int(x) => (int_ext, *x),

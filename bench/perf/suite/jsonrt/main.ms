@@ -41,7 +41,7 @@ fn walk(v: JsonValue) Int:
 				t += e.key.length() + walk(e.value)
 			return t
 
-fn main() Unit:
+fn main() Void:
 	text := make_text(120000)
 	var total = 0
 	var out_len = 0

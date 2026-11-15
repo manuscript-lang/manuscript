@@ -28,7 +28,7 @@ import (
 	write_text from "./lib.ms",
 )
 
-fn say(text: String) Unit:
+fn say(text: String) Void:
 	print(text)
 
 fn tail(text: String) String:
@@ -120,7 +120,7 @@ fn measure_server(
 	port: Int,
 	seconds: Int,
 	ms_threads: String,
-) Unit!:
+) Void!:
 	data := "{p.w}/data"
 	var argv = pinned(
 		p.server_cpus.clone(),
@@ -262,7 +262,7 @@ fn prepare_run(here: String, w: String) List[String]!:
 	build_ms("{w}/ms", "{w}/ms/server")?
 	return ok(names)
 
-fn run_all(here: String, seconds: Int) Unit!:
+fn run_all(here: String, seconds: Int) Void!:
 	var tmp = temporary("web-bench-").get()
 	w := tmp.path()
 	names := prepare_run(here, w)?
@@ -278,7 +278,7 @@ fn run_all(here: String, seconds: Int) Unit!:
 fn cell(p: Plan, argv: List[String]) String:
 	return tail(raised(pinned(p.load_cpus.clone(), argv)).stdout)
 
-fn fetch_all(here: String, seconds: Int) Unit!:
+fn fetch_all(here: String, seconds: Int) Void!:
 	var tmp = temporary("web-fetch-").get()
 	w := tmp.path()
 	copy("{here}/fetch/go", "{w}/go", CopyOptions(recursive: true, replace: true)).get()

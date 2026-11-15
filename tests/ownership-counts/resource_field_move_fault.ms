@@ -12,20 +12,20 @@ import (
 type Door:
 	name: String
 
-fn var Door.close() Unit!:
+fn var Door.close() Void!:
 	stdout().write("close {self.name}\n").get()
 
 type Room:
 	first: Door
 	second: Door
 
-fn faulting() Unit:
+fn faulting() Void:
 	r := Room(Door("one"), Door("two"))
 	var xs: List[Door] = []
 	xs.append(r.first)
 	panic("fault after the move")
 
-fn main() Unit:
+fn main() Void:
 	work := promise(fn: ok(faulting()))
 	waited := work.wait()
 	stdout().write("waited: {waited.is_error()}\n").get()

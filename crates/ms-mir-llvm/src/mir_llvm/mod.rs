@@ -64,7 +64,7 @@ pub struct ClosureSyms {
 
 /// A finished function: pieces of the `define` line, the body, and the callees it declares.
 pub struct Emitted {
-    /// Return type with its attributes (`void` for `Unit`).
+    /// Return type with its attributes (`void` for `Void`).
     pub ret: String,
     /// Parameter list.
     pub params: String,

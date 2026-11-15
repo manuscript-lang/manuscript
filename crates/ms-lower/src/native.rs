@@ -133,7 +133,7 @@ impl<'a> FnLower<'a> {
         if let Some(op) = crate::rtcall::rt_flags(symbol).op {
             let args = self.native_args(view)?;
             if self.dead {
-                return Ok(self.dummy(MTy::UNIT));
+                return Ok(self.dummy(MTy::VOID));
             }
             let result = self.emty(e)?;
             self.at(e.pos);
@@ -146,7 +146,7 @@ impl<'a> FnLower<'a> {
         // A bundled extern is a runtime symbol; its convention comes from the runtime's declaration.
         let args = self.native_args(view)?;
         if self.dead {
-            return Ok(self.dummy(MTy::UNIT));
+            return Ok(self.dummy(MTy::VOID));
         }
         let result = self.emty(e)?;
         self.at(e.pos);
@@ -166,7 +166,7 @@ impl<'a> FnLower<'a> {
             "collections/range" => {
                 let args = self.native_args(view)?;
                 if self.dead {
-                    return Ok(self.dummy(MTy::UNIT));
+                    return Ok(self.dummy(MTy::VOID));
                 }
                 let vals: Vec<Value> = args.iter().map(|a| self.borrow(a.val)).collect();
                 let lt = self.emty(e)?;
@@ -176,7 +176,7 @@ impl<'a> FnLower<'a> {
             "core/panic" => {
                 let args = self.native_args(view)?;
                 if self.dead {
-                    return Ok(self.dummy(MTy::UNIT));
+                    return Ok(self.dummy(MTy::VOID));
                 }
                 let m = self.borrow(args[0].val);
                 let ext = self.b.m.add_extern(ms_mir::ir::ExternDef {
@@ -185,7 +185,7 @@ impl<'a> FnLower<'a> {
                         ty: MTy::STR,
                         mode: Mode::Borrow,
                     }],
-                    ret: MTy::UNIT,
+                    ret: MTy::VOID,
                     noreturn: true,
                     pure_: false,
                     fresh: false,
@@ -195,12 +195,12 @@ impl<'a> FnLower<'a> {
                 });
                 self.at(e.pos);
                 self.b.call_rt(ext, &[m]);
-                Ok(self.dummy(MTy::UNIT))
+                Ok(self.dummy(MTy::VOID))
             }
             "json/parse" | "json/stringify" => {
                 let mut args = self.native_args(view)?;
                 if self.dead {
-                    return Ok(self.dummy(MTy::UNIT));
+                    return Ok(self.dummy(MTy::VOID));
                 }
                 let func = sym.decl.as_ref().and_then(|d| d.func());
                 self.fill_native_defaults(sym.module, func, params, &mut args)?;
@@ -235,7 +235,7 @@ impl<'a> FnLower<'a> {
             "collections/map_from_entries" => {
                 let args = self.native_args(view)?;
                 if self.dead {
-                    return Ok(self.dummy(MTy::UNIT));
+                    return Ok(self.dummy(MTy::VOID));
                 }
                 let result = self.emty(e)?;
                 self.at(e.pos);
@@ -278,7 +278,7 @@ impl<'a> FnLower<'a> {
                 }
                 let mut args = self.native_args(view)?;
                 if self.dead {
-                    return Ok(self.dummy(MTy::UNIT));
+                    return Ok(self.dummy(MTy::VOID));
                 }
                 let func = sym.decl.as_ref().and_then(|d| d.func());
                 self.fill_native_defaults(sym.module, func, params, &mut args)?;

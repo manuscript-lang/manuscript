@@ -49,7 +49,7 @@ fn compare(
 	out: String,
 	samples: Int,
 	cpu: String,
-) Result[Unit, Error]:
+) Result[Void, Error]:
 	var paths = Map[String, String]()
 	paths.add("before", before.clone())
 	paths.add("after", after.clone())

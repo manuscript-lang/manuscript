@@ -3,7 +3,7 @@
 // conform: origin=tests/e2e/testdata/accept/direct-collection-conversions.ms
 import expect_equal, expect_false from "@std/test/test.ms"
 
-fn append_generic[T](var values: List[T?], value: T) Unit:
+fn append_generic[T](var values: List[T?], value: T) Void:
     values.append(value)
 
 test "direct append preserves checked argument conversions":
@@ -18,7 +18,7 @@ test "direct append preserves checked argument conversions":
     flags.append(false)
     expect_false(flags.get(0).is_none() or flags.get(0).get())?
 
-    var units: List[Unit?] = []
+    var units: List[Void?] = []
     units.append(unit)
     expect_false(units.get(0).is_none())?
 

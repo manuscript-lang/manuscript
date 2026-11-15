@@ -16,5 +16,5 @@ fn go(n: Int) Result[Int, Error]:
     _s := "abc {n}".replace("a", (one()?))
     return ok(0)
 
-fn main() Unit:
+fn main() Void:
     _r := go(1)

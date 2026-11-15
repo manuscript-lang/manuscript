@@ -33,7 +33,7 @@ type Held[T]:
 	items: List[T]
 	held: Bool
 
-fn var Held[T].close() Unit!:
+fn var Held[T].close() Void!:
 	if self.held:
 		self.held = false
 		if value := self.items.pop():
@@ -89,7 +89,7 @@ export type Route:
 	// first, as positions in `Router.groups`.
 	around: List[Int]
 	// Runs when the route matches, with the values the pattern captured.
-	handler: fn(var HttpExchange, RouteParams) Unit!
+	handler: fn(var HttpExchange, RouteParams) Void!
 
 // Routes requests by method and path and wraps them in middleware.
 //
@@ -101,10 +101,10 @@ export type Router:
 	// Registered routes in registration order.
 	routes: List[Route] = []
 	// Middleware in the order it wraps requests: the first one added runs outermost.
-	middleware: List[fn(var HttpExchange, fn(var HttpExchange) Unit!) Unit!] = []
+	middleware: List[fn(var HttpExchange, fn(var HttpExchange) Void!) Void!] = []
 	// The middleware of each mounted router, in mount order; a route names the groups
 	// around it.
-	groups: List[List[fn(var HttpExchange, fn(var HttpExchange) Unit!) Unit!]] = []
+	groups: List[List[fn(var HttpExchange, fn(var HttpExchange) Void!) Void!]] = []
 
 // Registers `handler` for `method` and `pattern`. A route also answers HEAD when
 // `method` is GET and no HEAD route matches. Registering the same method and
@@ -112,8 +112,8 @@ export type Router:
 fn var Router.route(
 	method: HttpMethod,
 	pattern: String,
-	handler: fn(var HttpExchange, RouteParams) Unit!
-) Unit!:
+	handler: fn(var HttpExchange, RouteParams) Void!
+) Void!:
 	segments := parse_pattern(pattern.clone())?
 	return insert(
 		var self.routes,
@@ -130,56 +130,56 @@ fn var Router.route(
 // `route(HttpMethod.Get, pattern, handler)`.
 fn var Router.get(
 	pattern: String,
-	handler: fn(var HttpExchange, RouteParams) Unit!
-) Unit!:
+	handler: fn(var HttpExchange, RouteParams) Void!
+) Void!:
 	return self.route(HttpMethod.Get, pattern, handler)
 
 // Registers `handler` for HEAD requests to `pattern`; shorthand for
 // `route(HttpMethod.Head, pattern, handler)`.
 fn var Router.head(
 	pattern: String,
-	handler: fn(var HttpExchange, RouteParams) Unit!
-) Unit!:
+	handler: fn(var HttpExchange, RouteParams) Void!
+) Void!:
 	return self.route(HttpMethod.Head, pattern, handler)
 
 // Registers `handler` for POST requests to `pattern`; shorthand for
 // `route(HttpMethod.Post, pattern, handler)`.
 fn var Router.post(
 	pattern: String,
-	handler: fn(var HttpExchange, RouteParams) Unit!
-) Unit!:
+	handler: fn(var HttpExchange, RouteParams) Void!
+) Void!:
 	return self.route(HttpMethod.Post, pattern, handler)
 
 // Registers `handler` for PUT requests to `pattern`; shorthand for
 // `route(HttpMethod.Put, pattern, handler)`.
 fn var Router.put(
 	pattern: String,
-	handler: fn(var HttpExchange, RouteParams) Unit!
-) Unit!:
+	handler: fn(var HttpExchange, RouteParams) Void!
+) Void!:
 	return self.route(HttpMethod.Put, pattern, handler)
 
 // Registers `handler` for PATCH requests to `pattern`; shorthand for
 // `route(HttpMethod.Patch, pattern, handler)`.
 fn var Router.patch(
 	pattern: String,
-	handler: fn(var HttpExchange, RouteParams) Unit!
-) Unit!:
+	handler: fn(var HttpExchange, RouteParams) Void!
+) Void!:
 	return self.route(HttpMethod.Patch, pattern, handler)
 
 // Registers `handler` for DELETE requests to `pattern`; shorthand for
 // `route(HttpMethod.Delete, pattern, handler)`.
 fn var Router.delete(
 	pattern: String,
-	handler: fn(var HttpExchange, RouteParams) Unit!
-) Unit!:
+	handler: fn(var HttpExchange, RouteParams) Void!
+) Void!:
 	return self.route(HttpMethod.Delete, pattern, handler)
 
 // Registers `handler` for OPTIONS requests to `pattern`; shorthand for
 // `route(HttpMethod.Options, pattern, handler)`.
 fn var Router.options(
 	pattern: String,
-	handler: fn(var HttpExchange, RouteParams) Unit!
-) Unit!:
+	handler: fn(var HttpExchange, RouteParams) Void!
+) Void!:
 	return self.route(HttpMethod.Options, pattern, handler)
 
 // Moves every route of `routes` under `prefix`, wrapped in that router's own
@@ -187,7 +187,7 @@ fn var Router.options(
 // may hold parameters. The mounted router's `/` route answers `prefix` itself. A
 // router holds functions, which have one owner, so `routes` is taken: build it
 // again to mount it elsewhere.
-fn var Router.mount(prefix: String, routes: Router) Unit!:
+fn var Router.mount(prefix: String, routes: Router) Void!:
 	if prefix.ends_with("/") and prefix != "/": return error(invalid_pattern(prefix))
 
 	var mounted = routes
@@ -212,8 +212,8 @@ fn var Router.mount(prefix: String, routes: Router) Unit!:
 // the exchange it is given, so a middleware can pass on a wrapped one (see
 // `request_id` and `access_log`).
 fn var Router.use(
-	middleware: fn(var HttpExchange, fn(var HttpExchange) Unit!) Unit!
-) Unit:
+	middleware: fn(var HttpExchange, fn(var HttpExchange) Void!) Void!
+) Void:
 	self.middleware.append(middleware)
 
 // Returns the function to pass to `serve`; it takes the router, so register every
@@ -221,7 +221,7 @@ fn var Router.use(
 // answers 405 with
 // `Allow`, and OPTIONS on a known path answers 204 with `Allow`. `OPTIONS *` answers 204 with
 // the `Allow` of every registered method.
-fn Router.handler() fn(var HttpExchange) Unit!:
+fn Router.handler() fn(var HttpExchange) Void!:
 	return fn(var exchange: HttpExchange): dispatch(
 		self.routes,
 		self.middleware,
@@ -253,7 +253,7 @@ fn Router.call(request: HttpRequest) HttpResponse!:
 	return outcome
 
 // Adds a route unless one with the same method and shape exists.
-fn insert(var routes: List[Route], route: Route) Unit!:
+fn insert(var routes: List[Route], route: Route) Void!:
 	shape := shape_of(route.segments)
 	for existing in routes:
 		if existing.method == route.method and shape_of(existing.segments) == shape:
@@ -271,7 +271,7 @@ fn insert(var routes: List[Route], route: Route) Unit!:
 
 // Rewrites a route moved out of a mounted router: its pattern under `base`, the mounted
 // router's middleware group `own` outermost, and its own groups moved up by `offset`.
-fn remount(var route: Route, base: String, own: Int, offset: Int) Unit!:
+fn remount(var route: Route, base: String, own: Int, offset: Int) Void!:
 	tail := if route.pattern == "/": "" else: route.pattern.clone()
 	pattern := if not (base + tail).is_empty(): base + tail else: "/"
 	route.segments = parse_pattern(pattern.clone())?
@@ -449,10 +449,10 @@ type Target:
 // nothing.
 fn dispatch(
 	routes: List[Route],
-	middleware: List[fn(var HttpExchange, fn(var HttpExchange) Unit!) Unit!],
-	groups: List[List[fn(var HttpExchange, fn(var HttpExchange) Unit!) Unit!]],
+	middleware: List[fn(var HttpExchange, fn(var HttpExchange) Void!) Void!],
+	groups: List[List[fn(var HttpExchange, fn(var HttpExchange) Void!) Void!]],
 	var exchange: HttpExchange,
-) Unit!:
+) Void!:
 	method := exchange.method().text()
 	found := lookup(routes, method, split_path(exchange.path()))
 	var every: List[String] = []
@@ -469,11 +469,11 @@ fn dispatch(
 
 // Runs `middleware` from `at` on, then `last`.
 fn chain(
-	middleware: List[fn(var HttpExchange, fn(var HttpExchange) Unit!) Unit!],
+	middleware: List[fn(var HttpExchange, fn(var HttpExchange) Void!) Void!],
 	at: Int,
 	var exchange: HttpExchange,
-	last: fn(var HttpExchange) Unit!
-) Unit!:
+	last: fn(var HttpExchange) Void!
+) Void!:
 	if at >= middleware.length(): return last(var exchange)
 	return middleware[at](
 		var exchange,
@@ -482,12 +482,12 @@ fn chain(
 
 // Runs the middleware groups `around` from `at` on, then `last`.
 fn chain_groups(
-	groups: List[List[fn(var HttpExchange, fn(var HttpExchange) Unit!) Unit!]],
+	groups: List[List[fn(var HttpExchange, fn(var HttpExchange) Void!) Void!]],
 	around: List[Int],
 	at: Int,
 	var exchange: HttpExchange,
-	last: fn(var HttpExchange) Unit!
-) Unit!:
+	last: fn(var HttpExchange) Void!
+) Void!:
 	if at >= around.length(): return last(var exchange)
 	return chain(
 		groups[around[at]],
@@ -505,10 +505,10 @@ fn chain_groups(
 // Runs the matched route, or answers 404, 405 or the OPTIONS listing.
 fn finish(
 	routes: List[Route],
-	groups: List[List[fn(var HttpExchange, fn(var HttpExchange) Unit!) Unit!]],
+	groups: List[List[fn(var HttpExchange, fn(var HttpExchange) Void!) Void!]],
 	target: Target,
 	var exchange: HttpExchange,
-) Unit!:
+) Void!:
 	method := target.method
 	found := target.found
 
@@ -558,7 +558,7 @@ type TestExchange:
 	request: HttpRequest
 	state: Int
 
-fn var TestExchange.close() Unit:
+fn var TestExchange.close() Void:
 	var guard = hold[TestState](self.state)
 	guard.items[0].closed = true
 
@@ -600,7 +600,7 @@ fn var TestExchange.read(max_bytes: Int?) Bytes?!:
 
 	return ok(none)
 
-fn var TestExchange.send_headers(status: Int, headers: HttpHeaders) Unit!:
+fn var TestExchange.send_headers(status: Int, headers: HttpHeaders) Void!:
 	if status < 200 or status > 599: return error(
 		Error("HTTP: invalid input", kind: "EINVAL")
 	)
@@ -624,7 +624,7 @@ fn var TestExchange.send_headers(status: Int, headers: HttpHeaders) Unit!:
 	guard.items[0].head = headers.clone()
 	guard.items[0].sent = true
 
-fn var TestExchange.send(status: Int, headers: HttpHeaders, body: Bytes) Unit!:
+fn var TestExchange.send(status: Int, headers: HttpHeaders, body: Bytes) Void!:
 	self.send_headers(status, headers)?
 
 	var guard = hold[TestState](self.state)
@@ -640,10 +640,10 @@ fn var TestExchange.upgrade(
 ) WebSocket!:
 	return error(Error("router: WebSocket upgrades need a server", kind: "ENOTSUP"))
 
-fn var TestExchange.write(data: String) Unit!:
+fn var TestExchange.write(data: String) Void!:
 	return self.write_bytes(data.to_bytes())
 
-fn var TestExchange.write_bytes(data: Bytes) Unit!:
+fn var TestExchange.write_bytes(data: Bytes) Void!:
 	var guard = hold[TestState](self.state)
 	if guard.items[0].closed: return error(
 		Error("I/O: resource is closed", kind: "EBADF")
@@ -702,7 +702,7 @@ fn Tap.status_so_far() Int:
 
 	return 200
 
-fn var Tap.close() Unit:
+fn var Tap.close() Void:
 	self.inner.close()
 
 fn Tap.headers() HttpHeaders:
@@ -723,11 +723,11 @@ fn Tap.query() String:
 fn var Tap.read(max_bytes: Int?) Bytes?!:
 	return self.inner.read(max_bytes)
 
-fn var Tap.send_headers(status: Int, headers: HttpHeaders) Unit!:
+fn var Tap.send_headers(status: Int, headers: HttpHeaders) Void!:
 	self.inner.send_headers(status, with_extra(headers, self.extra))?
 	counted(self.state, status, 0)
 
-fn var Tap.send(status: Int, headers: HttpHeaders, body: Bytes) Unit!:
+fn var Tap.send(status: Int, headers: HttpHeaders, body: Bytes) Void!:
 	self.inner.send(status, with_extra(headers, self.extra), body)?
 	counted(self.state, status, self.sent_length(status, body.length()))
 
@@ -738,11 +738,11 @@ fn var Tap.upgrade(
 ) WebSocket!:
 	return self.inner.upgrade(allowed_origins, subprotocols, max_message_bytes)
 
-fn var Tap.write(data: String) Unit!:
+fn var Tap.write(data: String) Void!:
 	self.inner.write(data)?
 	counted(self.state, 0, self.sent_length(self.status_so_far(), data.length()))
 
-fn var Tap.write_bytes(data: Bytes) Unit!:
+fn var Tap.write_bytes(data: Bytes) Void!:
 	self.inner.write_bytes(data)?
 	counted(self.state, 0, self.sent_length(self.status_so_far(), data.length()))
 
@@ -758,10 +758,10 @@ fn new_tap(
 // Replaces `exchange` with one whose `headers()` reports `request` and everything else
 // passes through. Middleware uses it to hand later layers changed request headers,
 // since a received header set is a copy.
-export fn with_request_headers(var exchange: HttpExchange, request: HttpHeaders) Unit:
+export fn with_request_headers(var exchange: HttpExchange, request: HttpHeaders) Void:
 	exchange = new_tap(exchange, headers(), request)
 
-fn counted(slot: Int?, status: Int, bytes: Int) Unit:
+fn counted(slot: Int?, status: Int, bytes: Int) Void:
 	if state := slot:
 		var guard = hold[TapState](state)
 		if status != 0: guard.items[0].status = status
@@ -784,13 +784,13 @@ fn with_extra(sent: HttpHeaders, extra: HttpHeaders) HttpHeaders:
 // is 1 to 128 printable ASCII characters, otherwise a new UUID. The id is set on the
 // request headers the wrapped exchange reports, where handlers and later middleware
 // read it, and added to the response as `X-Request-Id`.
-export fn request_id() fn(var HttpExchange, fn(var HttpExchange) Unit!) Unit!:
-	return fn(var exchange: HttpExchange, next: fn(var HttpExchange) Unit!): with_request_id(
+export fn request_id() fn(var HttpExchange, fn(var HttpExchange) Void!) Void!:
+	return fn(var exchange: HttpExchange, next: fn(var HttpExchange) Void!): with_request_id(
 		var exchange,
 		next,
 	)
 
-fn with_request_id(var exchange: HttpExchange, next: fn(var HttpExchange) Unit!) Unit!:
+fn with_request_id(var exchange: HttpExchange, next: fn(var HttpExchange) Void!) Void!:
 	var request = exchange.headers()
 	var id = request.values("X-Request-Id").first().get("")
 
@@ -832,8 +832,8 @@ type AccessEntry:
 // fails before sending as 500. A logging failure never fails the request.
 export fn access_log(
 	logger: Logger
-) fn(var HttpExchange, fn(var HttpExchange) Unit!) Unit!:
-	return fn(var exchange: HttpExchange, next: fn(var HttpExchange) Unit!): with_access_log(
+) fn(var HttpExchange, fn(var HttpExchange) Void!) Void!:
+	return fn(var exchange: HttpExchange, next: fn(var HttpExchange) Void!): with_access_log(
 		logger,
 		var exchange,
 		next,
@@ -842,8 +842,8 @@ export fn access_log(
 fn with_access_log(
 	logger: Logger,
 	var exchange: HttpExchange,
-	next: fn(var HttpExchange) Unit!
-) Unit!:
+	next: fn(var HttpExchange) Void!
+) Void!:
 	started := monotonic()
 	method := exchange.method().text()
 	path := exchange.path()
@@ -892,11 +892,11 @@ fn take_slot[T](slot: Int) T:
 	msrt_promise_drop(read)
 	return value
 
-fn put_slot[T](slot: Int, value: T) Unit:
+fn put_slot[T](slot: Int, value: T) Void:
 	_written := msrt_pipe_write(slot, value)
 
 // Ends the pipe of `slot`; call it once, when the last holder is done.
-fn release_slot(slot: Int) Unit:
+fn release_slot(slot: Int) Void:
 	msrt_pipe_close_writer(slot)
 	msrt_pipe_close_reader(slot)
 

@@ -20,7 +20,7 @@ enum Payload:
 type Res:
     n: Int
 
-fn var Res.close() Unit!:
+fn var Res.close() Void!:
     return ok(unit)
 
 type HoldsRes:
@@ -39,5 +39,5 @@ enum Recur:
     Leaf
     Node(next: List[Recur])
 
-fn need[T: Clonable](x: T) Unit:
+fn need[T: Clonable](x: T) Void:
     print("")

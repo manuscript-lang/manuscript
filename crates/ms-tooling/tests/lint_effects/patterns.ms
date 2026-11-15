@@ -6,8 +6,8 @@ import read_file, write_file from "@std/os/fs.ms"
 fn r(path: String) Bytes!:
     return read_file(path).wait()
 
-fn w(path: String) Unit!:
+fn w(path: String) Void!:
     return write_file(path, "x").wait()
 
-fn main() Unit:
+fn main() Void:
     return

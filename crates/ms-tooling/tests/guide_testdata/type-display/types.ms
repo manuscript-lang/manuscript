@@ -5,5 +5,5 @@ fn signatures(
     returning_optional: fn(Int) String?,
     optional_result: Result[Int, Error]?,
     result_optional: Result[Int?, Error]
-) Unit:
+) Void:
     return unit

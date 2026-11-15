@@ -118,7 +118,7 @@ pub struct Mem {
 /// How one parameter is passed.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum Pass {
-    /// One parameter per register; empty for `Unit`.
+    /// One parameter per register; empty for `Void`.
     Scalars(Vec<Reg>),
     /// A pointer to the value's slot, with the access the callee has to it.
     Indirect(Mode, Mem),

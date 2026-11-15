@@ -974,7 +974,7 @@ fn role_text(role: Role, perm: Perm) -> &'static str {
 }
 
 /// Whether `t` is, or holds as a type argument, a `Promise`.
-fn ty_holds_promise(_syms: ms_syntax::Names, t: &Ty) -> bool {
+fn ty_holds_promise(t: &Ty) -> bool {
     t.is(Builtin::Promise)
         || t.args
             .iter()
@@ -1047,12 +1047,12 @@ mod type_query_tests {
     fn promise_search_bounds_shared_arguments_and_keeps_source_identity() {
         let syms = ms_syntax::Names::global();
         let negative = shared(syms, int(), 30);
-        assert!(!ty_holds_promise(syms, &negative));
+        assert!(!ty_holds_promise(&negative));
         let (foreign, _foreign_symbol) = promise(syms, "application.ms");
-        assert!(!ty_holds_promise(syms, &foreign));
+        assert!(!ty_holds_promise(&foreign));
         let (promise, _promise_symbol) = promise(syms, "@std/concurrency/promise.ms");
-        assert!(ty_holds_promise(syms, &promise));
-        assert!(ty_holds_promise(syms, &pair(syms, negative, promise)));
+        assert!(ty_holds_promise(&promise));
+        assert!(ty_holds_promise(&pair(syms, negative, promise)));
     }
 
     #[test]
@@ -1064,8 +1064,8 @@ mod type_query_tests {
             .params
             .push(Param::new(n("value"), promise.clone()));
         function.result = Some(promise.clone());
-        assert!(!ty_holds_promise(syms, &Rc::new(function.clone())));
+        assert!(!ty_holds_promise(&Rc::new(function.clone())));
         function.args.push(promise);
-        assert!(ty_holds_promise(syms, &Rc::new(function)));
+        assert!(ty_holds_promise(&Rc::new(function)));
     }
 }

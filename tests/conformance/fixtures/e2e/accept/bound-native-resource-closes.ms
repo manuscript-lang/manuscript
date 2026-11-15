@@ -11,7 +11,7 @@ type Marker:
 	id: Int
 	log: String
 
-fn var Marker.close() Unit!:
+fn var Marker.close() Void!:
 	append_file(self.log, "{self.id},").wait()?
 
 fn failed(id: Int, log: String) Int!Marker:
@@ -20,7 +20,7 @@ fn failed(id: Int, log: String) Int!Marker:
 fn events(log: String) String:
 	return read_file(log).wait().get().decode_utf8().get("")
 
-fn call_twice(log: String) Unit!:
+fn call_twice(log: String) Void!:
 	status := failed(1, log.clone()).is_error
 	expect_equal(status(), true)?
 	expect_equal(status(), true)?
@@ -32,7 +32,7 @@ test "a bound native method owns its temporary receiver and closes it once":
 	call_twice(log.clone())?
 	expect_equal(events(log), "1,")?
 
-fn named(log: String) Unit!:
+fn named(log: String) Void!:
 	held := failed(2, log.clone())
 	status := held.is_error
 	expect_equal(status(), true)?
@@ -53,7 +53,7 @@ type Tag:
 fn tag_log(id: Int) String!:
 	return ok("{ temporary_root()?}/ms-bound-native-tag-{id}")
 
-fn var Tag.close() Unit!:
+fn var Tag.close() Void!:
 	append_file(tag_log(self.id)?, "closed,").wait()?
 
 fn borrowed_status(result: Int!Tag) Bool:
@@ -67,7 +67,7 @@ test "a method value over a borrowed scalar resource leaves the close to its own
 	expect_equal(events(log.clone()), "closed,")?
 	remove(log)?
 
-fn borrow_then_check(id: Int, log: String) Unit!:
+fn borrow_then_check(id: Int, log: String) Void!:
 	result: Int!Tag := error(Tag(id))
 	expect_equal(borrowed_status(result), true)?
 	expect_equal(read_file(log.clone()).wait().is_error(), true)?

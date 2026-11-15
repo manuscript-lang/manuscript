@@ -4,7 +4,7 @@ import (
 	StringBuilder from "@std/string_builder.ms",
 )
 
-fn main() Unit:
+fn main() Void:
 	data := read_all(stdin(), none).get().decode_utf8().get("")
 	var out = StringBuilder()
 	var total = 0

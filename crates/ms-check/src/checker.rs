@@ -255,6 +255,17 @@ pub struct Checker {
 /// Maximum identity serial reservation per standard module check.
 use crate::stdlib::PRIMITIVE_NAMES;
 
+/// The package of `packages` holding `file`, by the longest matching prefix.
+pub(crate) fn package_holding<'a>(
+    packages: &'a [PackageScope],
+    file: &str,
+) -> Option<&'a PackageScope> {
+    packages
+        .iter()
+        .filter(|p| file.starts_with(&p.prefix))
+        .max_by_key(|p| p.prefix.len())
+}
+
 impl Checker {
     /// The package holding `file`, by the longest matching prefix.
     pub(crate) fn package_of(&self, file: &str) -> Option<&PackageScope> {
@@ -1722,7 +1733,7 @@ impl Checker {
     }
 
     /// An `extern fn` crosses the native ABI of `ms_abi.h`: the types [`crosses_native`]
-    /// accepts, `Unit` results, and `Result`s whose error cases carry a code and a message.
+    /// accepts, `Void` results, and `Result`s whose error cases carry a code and a message.
     fn check_extern_signature(&mut self, name: &str, f: &ms_syntax::ast::Func, t: &Ty, pos: Pos) {
         // Bundled modules cross any type the runtime defines a convention for; lowering rejects the rest.
         if self
@@ -1763,7 +1774,7 @@ impl Checker {
                 if !crosses_callback(self.syms, &ty.ty) {
                     self.type_error(
                         p.pos,
-                        format!("extern parameter {} has type {}, which cannot cross the native boundary; a function an extern takes has at most {MAX_CALLBACK_PARAMS} parameters of sized numbers, Bool, String, Bytes or extern types this program declares, and returns a number, Bool, String, Bytes or Unit", self.syms.str(p.name), ty.ty.display(self.syms)),
+                        format!("extern parameter {} has type {}, which cannot cross the native boundary; a function an extern takes has at most {MAX_CALLBACK_PARAMS} parameters of sized numbers, Bool, String, Bytes or extern types this program declares, and returns a number, Bool, String, Bytes or Void", self.syms.str(p.name), ty.ty.display(self.syms)),
                     );
                 }
             } else if !ty.ty.is_invalid() && !crosses_native(self.syms, &ty.ty) {
@@ -1787,10 +1798,10 @@ impl Checker {
                             && f.ty.is(Builtin::String))
                 })
             };
-            if !ok.is(Builtin::Unit) && !crosses_native(self.syms, ok) {
+            if !ok.is(Builtin::Void) && !crosses_native(self.syms, ok) {
                 self.type_error(
                     f.result.pos,
-                    format!("extern Result value has type {}, which cannot cross the native boundary; an extern Result holds {CROSSES}, or Unit", self.syms.str(ok.name)),
+                    format!("extern Result value has type {}, which cannot cross the native boundary; an extern Result holds {CROSSES}, or Void", self.syms.str(ok.name)),
                 );
             } else if cases.is_empty() || !cases.iter().all(reported) {
                 self.type_error(
@@ -1798,10 +1809,10 @@ impl Checker {
                     format!("extern error type {} must be an alternative whose cases carry nothing, `code: Int`, `message: String`, or both; the native returns the status 1 + the case index and fills code_out and message_out", self.syms.str(error.name)),
                 );
             }
-        } else if !result.is(Builtin::Unit) && !crosses_native(self.syms, &result) {
+        } else if !result.is(Builtin::Void) && !crosses_native(self.syms, &result) {
             self.type_error(
                 f.result.pos,
-                format!("extern result has type {}, which cannot cross the native boundary; an extern returns {CROSSES}, Unit, or a Result of one", self.syms.str(result.name)),
+                format!("extern result has type {}, which cannot cross the native boundary; an extern returns {CROSSES}, Void, or a Result of one", self.syms.str(result.name)),
             );
         }
     }
@@ -1919,15 +1930,15 @@ impl Checker {
             };
             fall = self.block(body, false).0;
         }
-        // A function returning `Unit` or `Unit!` may end without a `return`: the end returns `unit`
+        // A function returning `Void` or `Void!` may end without a `return`: the end returns `unit`
         // or `ok(unit)`.
         let unit_result = result_ty.is(Builtin::Result)
             && result_ty.args.len() == 2
-            && self.syms.str(result_ty.args[0].id) == "Unit";
+            && self.syms.str(result_ty.args[0].id) == "Void";
         if fall
             && !is_test
             && !unit_result
-            && !result_ty.is(Builtin::Unit)
+            && !result_ty.is(Builtin::Void)
             && !result_ty.is_invalid()
         {
             self.type_error(
@@ -2051,7 +2062,7 @@ impl Checker {
         {
             self.type_error(
                 decl.pos(),
-                "make_fixture must return a concrete type implementing @std/test/test.ms TestHooks; return your fixture type and declare any of fn var Fixture.before_all(), before_each(), after_each() and after_all() with no arguments returning Unit!",
+                "make_fixture must return a concrete type implementing @std/test/test.ms TestHooks; return your fixture type and declare any of fn var Fixture.before_all(), before_each(), after_each() and after_all() with no arguments returning Void!",
             );
             return;
         }
@@ -2200,7 +2211,7 @@ pub(crate) const MAX_CALLBACK_PARAMS: usize = 6;
 /// Whether the function type `t` can be passed to a user extern as an `ms_fn`.
 fn crosses_callback(syms: ms_syntax::Names, t: &Ty) -> bool {
     let result_ok = t.result.as_ref().is_none_or(|r| {
-        r.is(Builtin::Unit) || (crosses_element(syms, r) && !is_user_extern_type(syms, r))
+        r.is(Builtin::Void) || (crosses_element(syms, r) && !is_user_extern_type(syms, r))
     });
     t.params.len() <= MAX_CALLBACK_PARAMS
         && t.params.iter().all(|p| crosses_element(syms, &p.ty))

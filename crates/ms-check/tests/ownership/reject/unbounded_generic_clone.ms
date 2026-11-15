@@ -3,7 +3,7 @@ import Closeable from "@std/core.ms"
 type Res:
     id: Int
 
-fn var Res.close() Unit!:
+fn var Res.close() Void!:
     return ok(unit)
 
 // An unconstrained element may be a resource, so a copy could be closed twice.

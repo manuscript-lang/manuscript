@@ -12,7 +12,7 @@ import Closeable from "@std/core.ms"
 type Token:
 	id: Int
 
-fn var Token.close() Unit!:
+fn var Token.close() Void!:
 	print("close {self.id}")
 
 type Wrapped:
@@ -24,10 +24,10 @@ fn check(fail: Bool) Int!:
 	if fail: return error(Error("field failed"))
 	return ok(42)
 
-fn build(fail: Bool) Unit!:
+fn build(fail: Bool) Void!:
 	value := Wrapped(Token(1), ok(Token(2)), check(fail)?)
 	print("body {value.code}")
 
-fn main() Unit:
+fn main() Void:
 	print(build(false).is_error())
 	print(build(true).is_error())

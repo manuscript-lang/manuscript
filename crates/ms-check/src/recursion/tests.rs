@@ -55,7 +55,7 @@ const ERROR: &str = "recursive generic applications must preserve their paramete
 #[test]
 fn ancestor_context_and_failure_order_are_preserved() {
     let syms = ms_syntax::Names::global();
-    let source = "fn root[T](n: Int) Unit:\n    b[Int](n)\n    a[List[T]](n)\n\nfn a[T](n: Int) Unit:\n    b[Int](n)\n\nfn b[T](n: Int) Unit:\n    a[Int](n)\n";
+    let source = "fn root[T](n: Int) Void:\n    b[Int](n)\n    a[List[T]](n)\n\nfn a[T](n: Int) Void:\n    b[Int](n)\n\nfn b[T](n: Int) Void:\n    a[Int](n)\n";
     assert_eq!(
         diagnostics(syms, &[("ancestors.ms", source)]),
         vec![
@@ -68,7 +68,7 @@ fn ancestor_context_and_failure_order_are_preserved() {
 #[test]
 fn reused_success_does_not_hide_a_later_changing_specialization() {
     let syms = ms_syntax::Names::global();
-    let source = "fn root[T](n: Int) Unit:\n    fixed[Int](n)\n    fixed[T](n)\n    fixed[Int](n)\n    fixed[T](n)\n\nfn fixed[T](n: Int) Unit:\n    fixed[Int](n)\n";
+    let source = "fn root[T](n: Int) Void:\n    fixed[Int](n)\n    fixed[T](n)\n    fixed[Int](n)\n    fixed[T](n)\n\nfn fixed[T](n: Int) Void:\n    fixed[Int](n)\n";
     // The public frontend result deduplicates identical diagnostics; the graph oracle
     // below also checks the pre-deduplication sequence, including repeated failures.
     assert_eq!(

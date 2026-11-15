@@ -7,7 +7,7 @@ type Flag:
     fn close(flag: Bool) Int
 
 interface Disposable:
-    fn close() Unit
+    fn close() Void
 
 type Resource:
     closed: Flag
@@ -19,18 +19,18 @@ impl OtherClose for Resource:
         return 0
 
 impl Closeable for Resource:
-    fn close() Unit:
+    fn close() Void:
         self.closed.value = true
 
 impl Disposable for Resource:
-    fn close() Unit:
+    fn close() Void:
         self.closed.value = true
 
-fn bound_cleanup[T: Disposable](resource: T) Unit:
+fn bound_cleanup[T: Disposable](resource: T) Void:
     with item = resource:
         completed := unit
 
-fn canonical_cleanup[T: Closeable](resource: T) Unit:
+fn canonical_cleanup[T: Closeable](resource: T) Void:
     with item = resource:
         completed := unit
 

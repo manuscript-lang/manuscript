@@ -31,7 +31,7 @@ fn Shape.to_string() String:
 fn show[V](v: V) String:
     return v.to_string()
 
-fn main() Unit:
+fn main() Void:
     m := Money(1250)
     print(m.to_string())
     convert: fn() String := m.to_string

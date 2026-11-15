@@ -4,7 +4,7 @@ type Pair[A, B]:
 fn double[T: Clonable](_value: T) Pair[T, T]:
     return Pair[T, T](0)
 
-fn main() Unit:
+fn main() Void:
     v0 := 1
     v1 := double(v0)
     v2 := double(v1)

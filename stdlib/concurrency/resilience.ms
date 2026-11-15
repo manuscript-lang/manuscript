@@ -97,7 +97,7 @@ export type RateLimiter:
 	stamp: Instant
 
 // Adds the tokens earned since the last refill.
-fn var RateLimiter.refill() Unit:
+fn var RateLimiter.refill() Void:
 	now := monotonic()
 	earned := now.difference(self.stamp).nanos / self.interval.nanos.max(1)
 	if earned <= 0: return unit
@@ -121,7 +121,7 @@ fn var RateLimiter.try_acquire() Bool:
 
 // Waits until a token is available, then takes it. The wait ends when the task is
 // cancelled.
-fn var RateLimiter.acquire() Unit:
+fn var RateLimiter.acquire() Void:
 	while not self.try_acquire():
 		ready := self.stamp.shift(self.interval)
 		sleep(ready.difference(monotonic()).max(Duration(nanos: 1))).wait().get(unit)
@@ -263,7 +263,7 @@ fn var Throttle.allow() Bool:
 
 // Waits until an action may happen, then counts it. The wait ends when the task is
 // cancelled.
-fn var Throttle.wait() Unit:
+fn var Throttle.wait() Void:
 	if previous := self.last:
 		remaining := self.interval.subtract(monotonic().difference(previous))
 		if remaining.nanos > 0:

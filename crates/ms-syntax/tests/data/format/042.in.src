@@ -24,7 +24,7 @@ fn guarded(value: Int) Int:
     result := adjusted * 2
     return result
 
-fn sections() Unit:
+fn sections() Void:
     first := 1
     // Explain the next stage.
     second := first + 1
@@ -32,7 +32,7 @@ fn sections() Unit:
     // Report its result.
     record(first + second)
 
-fn callbacks() Unit:
+fn callbacks() Void:
     record(0)
     transform := fn(value: Int) Int:
         adjusted := value + 1

@@ -585,7 +585,9 @@ unsafe fn swap_slots(a: *mut u8, b: *mut u8, size: usize) {
             core::ptr::swap_nonoverlapping(a, b, size);
             return;
         }
-        let (a, b) = (a as *mut u64, b as *mut u64);
+        // Words typed as pointers, not `u64`: a slot may hold a pointer (an owned string's bytes), and an
+        // integer copy drops its provenance, which Miri reports once the pointer is used.
+        let (a, b) = (a as *mut *mut u8, b as *mut *mut u8);
         for k in 0..size / 8 {
             let t = a.add(k).read_unaligned();
             a.add(k).write_unaligned(b.add(k).read_unaligned());
@@ -2250,7 +2252,7 @@ mod tests {
                     let s = out.assume_init();
                     assert_eq!(string::bytes(&s), &want[..]);
                     if len > STR_INLINE_MAX {
-                        assert_eq!(*string::bytes(&s).as_ptr().add(len), 0);
+                        assert_eq!(*s.data().add(len), 0);
                         assert!(s.flagged_ascii(), "long ASCII text carries the flag");
                     }
                     assert!(b.ptr.is_null());
@@ -2295,6 +2297,10 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(
+        miri,
+        ignore = "an exhaustive sweep that takes over 200 s interpreted; native CI runs it"
+    )]
     fn word_sort_is_stable_and_total_for_every_size() {
         let mut seed = 0x2545_f491_4f6c_dd1du64;
         let mut next = move || {

@@ -30,7 +30,7 @@ export fn labeled(label: String, path: String) Labeled:
 
 // Creates `path` and fails when it already exists (a study never overwrites earlier
 // evidence).
-export fn fresh_directory(path: String) Unit!:
+export fn fresh_directory(path: String) Void!:
 	if exists(path): return invalid("{path} already exists")
 
 	create_directory(path, recursive: true).get()
@@ -87,10 +87,10 @@ export fn distribution(values: List[Float]) JsonValue:
 	return jobject(d)
 
 // One JSON line appended to `path`.
-export fn append_json_line(path: String, value: JsonValue) Unit:
+export fn append_json_line(path: String, value: JsonValue) Void:
 	append_file(path, stringify(value).get("") + "\n").wait().get()
 
-export fn write_json(path: String, value: JsonValue) Unit:
+export fn write_json(path: String, value: JsonValue) Void:
 	write_text(path, dump(value))
 
 // `{label: {path, sha256}}` for binaries.json / environment.json.

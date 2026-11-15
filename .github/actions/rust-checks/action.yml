@@ -230,11 +230,11 @@ runs:
         MS_BACKEND: cranelift
       shell: bash
       run: target/debug/ms run tools/conform.ms
-    # The dev profile turns Cranelift's own debug assertions off for speed (Cargo.toml). Main and LLVM pull
-    # requests build `ms` once more with them on and replay the Cranelift run and test phases, so an assertion
+    # The dev profile turns Cranelift's own debug assertions off for speed (Cargo.toml). Main, scheduled and manual
+    # runs build `ms` once more with them on and replay the Cranelift run and test phases, so an assertion
     # that fires on the IR we generate is still caught.
     - name: Conformance corpus (Cranelift with its debug assertions on)
-      if: env.CRANELIFT == 'true' && env.LLVM == 'true' && runner.os == 'Linux'
+      if: env.CRANELIFT == 'true' && env.LLVM == 'true' && env.PR != 'true' && runner.os == 'Linux'
       env:
         MS_BACKEND: cranelift
       shell: bash
@@ -274,6 +274,8 @@ runs:
         # The same checks as `make bench-check` and the type-check half of `make agent-bench-check`
         # (the oracle needs agent tooling), on the debug binary built above.
         ms="$PWD/target/debug/ms"
+        # The Postgres benchmark imports a copy of the client that its driver makes (ms/pg, untracked).
+        rm -rf bench/perf/postgres/ms/pg && cp -R packages/postgres/src bench/perf/postgres/ms/pg
         for t in $(find bench/perf -name ms.toml | sort); do (cd "$(dirname "$t")" && "$ms" check ms.toml); done
         for t in bench/tools/*.ms bench/agent/run.ms; do "$ms" check "$t"; done
         for t in bench/tools/*_test.ms bench/agent/core_test.ms; do "$ms" test "$t"; done

@@ -15,7 +15,7 @@ import Closeable, print from "@std/core.ms"
 type Marker:
 	id: Int
 
-fn var Marker.close() Unit!:
+fn var Marker.close() Void!:
 	print("close {self.id}")
 
 fn Marker.status() Int: self.id
@@ -50,7 +50,7 @@ fn borrow(value: Marker) Int:
 	first := read()
 	return first + read()
 
-fn borrowed_owner() Unit:
+fn borrowed_owner() Void:
 	value := marker(4)
 	answer := borrow(value)
 	print("borrowed {answer}")
@@ -62,14 +62,14 @@ fn shared(var value: Marker) Int:
 	first := bump()
 	return first + bump(1)
 
-fn shared_owner() Unit:
+fn shared_owner() Void:
 	var value = marker(5)
 	answer := shared(var value)
 	print("shared {answer}")
 
 	_still_present := value.id
 
-fn main() Unit:
+fn main() Void:
 	a := ordinary()
 	print("ordinary {a}")
 

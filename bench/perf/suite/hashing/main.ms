@@ -129,7 +129,7 @@ fn sha256(k: List[Int], data: List[Int]) Int:
 
 	return bit_xor(h[0], h[7])
 
-fn main() Unit:
+fn main() Void:
 	var data = List[Int]()
 	var x = 5
 

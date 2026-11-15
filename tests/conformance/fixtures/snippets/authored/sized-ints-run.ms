@@ -9,7 +9,7 @@ fn total(values: List[Int8]) Int8:
         sum = sum + v
     return sum
 
-fn main() Unit:
+fn main() Void:
     low: Int8 := -128
     high: Int8 := 127
     wide: Int32 := 2000000000

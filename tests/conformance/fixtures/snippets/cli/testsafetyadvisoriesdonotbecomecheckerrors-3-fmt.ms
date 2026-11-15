@@ -5,5 +5,5 @@
 fn fail() Int!Error:
     return error(Error("boom"))
 
-fn use() Unit:
+fn use() Void:
     _ := fail()

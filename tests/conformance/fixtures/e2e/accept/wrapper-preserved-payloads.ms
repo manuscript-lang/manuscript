@@ -10,50 +10,50 @@ type Marker:
 	id: Int
 	log: String
 
-fn var Marker.close() Unit!: append_file(self.log, "{self.id},").wait()
+fn var Marker.close() Void!: append_file(self.log, "{self.id},").wait()
 
-fn optional_cause(log: String) Unit:
+fn optional_cause(log: String) Void:
 	value: Marker? := Marker(1, log)
 	_kept := value.ok_or("failure")
 
-fn optional_callback(log: String) Unit:
+fn optional_callback(log: String) Void:
 	value: Marker? := Marker(2, log)
 	_kept := value.ok_or_else(fn: "failure")
 
-fn result_error_map(log: String) Unit:
+fn result_error_map(log: String) Void:
 	value: Marker!Int := ok(Marker(3, log))
 	_kept := value.map_error(fn cause: cause + 1)
 
-fn result_optional(log: String) Unit:
+fn result_optional(log: String) Void:
 	value: Marker!Int := ok(Marker(4, log))
 	_kept := value.to_optional()
 
-fn result_map(log: String) Unit:
+fn result_map(log: String) Void:
 	value: Int!Marker := error(Marker(5, log))
 	_kept := value.map(fn item: item + 1)
 
-fn result_then(log: String) Unit:
+fn result_then(log: String) Void:
 	value: Int!Marker := error(Marker(6, log))
 	_kept := value.and_then(fn item: ok(item + 1))
 
 fn error_result(id: Int, log: String) Int!Marker: error(Marker(id, log))
 
-fn discarded_error(log: String) Unit:
+fn discarded_error(log: String) Void:
 	_kept := error_result(7, log).to_optional()
 
-fn transformed_success(log: String) Unit!:
+fn transformed_success(log: String) Void!:
 	value: Marker!Int := ok(Marker(8, log.clone()))
 	mapped := value.map(fn item: Marker(item.id + 1, log.clone()))
 	expect_equal(value.get().id, 8)?
 	expect_equal(mapped.get().id, 9)?
 
-fn transformed_error(log: String) Unit!:
+fn transformed_error(log: String) Void!:
 	value: Int!Marker := error(Marker(10, log.clone()))
 	mapped := value.map_error(fn item: Marker(item.id + 1, log.clone()))
 	expect_equal(value.is_error(), true)?
 	expect_equal(mapped.is_error(), true)?
 
-fn transformed_then(log: String) Unit!:
+fn transformed_then(log: String) Void!:
 	value: Marker!Int := ok(Marker(12, log.clone()))
 	mapped: Marker!Int := value.and_then(fn item: ok(Marker(item.id + 1, log.clone())))
 	expect_equal(value.get().id, 12)?
@@ -79,7 +79,7 @@ test "preserved resource payloads transfer exactly once":
 		"1,2,3,4,5,6,7,8,9,11,10,12,13,",
 	)?
 
-fn bound_transform(log: String) Unit!:
+fn bound_transform(log: String) Void!:
 	value: Marker!Int := ok(Marker(20, log.clone()))
 	transform: fn(fn(Marker) Marker) Marker!Int := value.map[Marker]
 	first := transform(fn item: Marker(item.id + 1, log.clone()))
@@ -114,7 +114,7 @@ test "empty and transformed branches do not manufacture retained payloads":
 	expect_equal(success.map(fn item: item + 1).get(), 6)?
 	expect_equal(success.and_then(fn item: ok(item + 2)).get(), 7)?
 
-fn borrowed_error(log: String) Unit!:
+fn borrowed_error(log: String) Void!:
 	value := error_result(31, log.clone())
 	absent := value.to_optional()
 	expect_equal(absent.is_none(), true)?
@@ -138,7 +138,7 @@ fn specialized_optional[T](value: T?, create: fn() Int) T!Int:
 fn specialized_error[T](value: Int!T) String!T:
 	return value.map[String](fn item: "{item}")
 
-fn specialized_transfers(log: String) Unit:
+fn specialized_transfers(log: String) Void:
 	present: Marker? := Marker(60, log.clone())
 	_first := specialized_optional(present, fn: 0)
 	failed: Int!Marker := error(Marker(61, log))

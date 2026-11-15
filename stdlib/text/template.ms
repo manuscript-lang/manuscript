@@ -204,7 +204,7 @@ export fn render_to(
 	data: JsonValue,
 	var output: WriteStream[String],
 	options: RenderOptions = RenderOptions(),
-) Unit!Error:
+) Void!Error:
 	text := template.render(data, options)?
 	return output.write(text)
 
@@ -681,7 +681,7 @@ type Run:
 	limit: Int
 	html: Bool
 
-fn var Run.write(text: String) Unit!Error:
+fn var Run.write(text: String) Void!Error:
 	self.written += text.length()
 	if self.written > self.limit: return error(
 		Error("template: output limit exceeded", kind: "EOVERFLOW")
@@ -748,11 +748,11 @@ fn Run.call(name: String, args: List[TemplateExpr], strict: Bool) JsonValue!Erro
 		values.append(self.eval(args[i].clone(), strict)?)
 	return apply_filter(name, input, values)
 
-fn var Run.nodes(items: List[TemplateNode], depth: Int) Unit!Error:
+fn var Run.nodes(items: List[TemplateNode], depth: Int) Void!Error:
 	for node in items:
 		self.node(node, depth)?
 
-fn var Run.node(node: TemplateNode, depth: Int) Unit!Error:
+fn var Run.node(node: TemplateNode, depth: Int) Void!Error:
 	match node:
 		Text(text): return self.write(text)
 		Emit(expr, escape_output): return self.emit(expr, escape_output)
@@ -767,7 +767,7 @@ fn var Run.node(node: TemplateNode, depth: Int) Unit!Error:
 		)
 		Include(name): return self.include(name, depth)
 
-fn var Run.emit(expr: TemplateExpr, escape_output: Bool) Unit!Error:
+fn var Run.emit(expr: TemplateExpr, escape_output: Bool) Void!Error:
 	value := self.eval(expr, self.strict)?
 	text := to_text(value)
 	if escape_output: return self.write(escape(text))
@@ -778,7 +778,7 @@ fn var Run.branch(
 	branches: List[TemplateBranch],
 	otherwise: List[TemplateNode],
 	depth: Int,
-) Unit!Error:
+) Void!Error:
 	for branch in branches:
 		verdict := self.eval(branch.cond.clone(), false)?
 		if truthy(verdict): return self.nodes(branch.body.clone(), depth + 1)
@@ -792,7 +792,7 @@ fn var Run.each(
 	body: List[TemplateNode],
 	otherwise: List[TemplateNode],
 	depth: Int,
-) Unit!Error:
+) Void!Error:
 	collection := self.eval(source, false)?
 	rows := rows_of(collection, first, second)
 	if rows.is_empty(): return self.nodes(otherwise, depth + 1)
@@ -808,7 +808,7 @@ fn var Run.each(
 
 	return ok(unit)
 
-fn var Run.include(name: TemplateExpr, depth: Int) Unit!Error:
+fn var Run.include(name: TemplateExpr, depth: Int) Void!Error:
 	key := to_text(self.eval(name, true)?)
 	if depth > MAX_DEPTH: return error(unknown_partial_error(name: key))
 

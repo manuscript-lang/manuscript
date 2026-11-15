@@ -111,7 +111,7 @@ pub fn walk_stmt<V: Visitor>(v: &mut V, s: &Stmt) {
 pub fn walk_expr<V: Visitor>(v: &mut V, e: &Expr) {
     v.expr(e);
     match &e.kind {
-        ExprKind::Number(_) | ExprKind::Bool(_) | ExprKind::Unit | ExprKind::Name(_) => {}
+        ExprKind::Number(_) | ExprKind::Bool(_) | ExprKind::Void | ExprKind::Name(_) => {}
         ExprKind::Text(parts) => {
             for part in parts {
                 if let TextPart::Interp(x) = part {

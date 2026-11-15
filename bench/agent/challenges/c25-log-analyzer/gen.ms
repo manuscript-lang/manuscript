@@ -145,7 +145,7 @@ fn rand_log(var rnd: Random, n: Int, bad: Float) String:
 
 	return ls.join("\n") + "\n"
 
-export fn gen_c25() Unit:
+export fn gen_c25() Void:
 	var rnd = seeded(25)
 	examples := [
 		mk(

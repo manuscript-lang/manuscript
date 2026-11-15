@@ -34,7 +34,7 @@ fn tls_options() TlsOptions:
 		require_client_certificate: false,
 	)
 
-fn echo(var exchange: HttpExchange) Unit!:
+fn echo(var exchange: HttpExchange) Void!:
 	if exchange.path() == "/ws":
 		var socket = (
 			http_result(
@@ -122,7 +122,7 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
 	((body.body.next() | expect_ok?).is_none()) | expect_true?
 	client.close()?
 
-	_limited: Unit! := error(Error("HTTP: limit exceeded", kind: "EOVERFLOW"))
+	_limited: Void! := error(Error("HTTP: limit exceeded", kind: "EOVERFLOW"))
 
 	match request(
 		method: HttpMethod.Get,
@@ -215,7 +215,7 @@ test "WebSocket upgrades need HTTP/1.1 and one key":
 		"HTTP/1.1 400 Bad Request",
 	)?
 
-fn report_host(var exchange: HttpExchange) Unit!:
+fn report_host(var exchange: HttpExchange) Void!:
 	hosts := exchange.headers().values("Host")
 	_started := exchange.send_headers(status: 200, headers: headers())?
 	_written := (http_result(exchange.write(hosts.join(",")))?)
@@ -259,7 +259,7 @@ test "HTTP requests reject an empty method":
 		error(cause):
 			expect_equal(cause, Error("network: invalid input", kind: "EINVAL"))?
 
-fn silent(var exchange: HttpExchange) Unit!:
+fn silent(var exchange: HttpExchange) Void!:
 	var _socket = (
 		http_result(
 			upgrade(
@@ -289,7 +289,7 @@ test "a promise cancelled while it owns a WebSocket closes it without ending the
 	).wait()
 	expect_true(read.is_error())?
 
-fn direct(var exchange: HttpExchange) Unit!:
+fn direct(var exchange: HttpExchange) Void!:
 	var socket = http_result(
 		exchange.upgrade(
 			allowed_origins: [],

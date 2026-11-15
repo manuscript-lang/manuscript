@@ -8,7 +8,7 @@ type Node:
 fn lcg(x: Int) Int:
 	return (x * 1103515245 + 12345) % 2147483648
 
-fn var Node.insert(key: Int) Unit:
+fn var Node.insert(key: Int) Void:
 	if key == self.key: return
 
 	if key < self.key:
@@ -65,7 +65,7 @@ fn sum(l: Link?) Int:
 	if x := l: return x.value + sum(x.next)
 	return 0
 
-fn main() Unit:
+fn main() Void:
 	var root = Node(1000000000, none, none)
 	var x = 11
 
