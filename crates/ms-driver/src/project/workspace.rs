@@ -161,3 +161,17 @@ fn rel_or(root: &str, dir: &str) -> String {
         .filter(|r| r != ".")
         .unwrap_or_else(|| dir.to_string())
 }
+
+/// The members of `manifest` when it is a workspace root with no `[project]` of its own, so a
+/// command aimed at it means "every member". `Ok(None)` for any other manifest or file.
+pub fn root_members(manifest: &str) -> Result<Option<Workspace>, ProjectError> {
+    if pathops::base(manifest) != "ms.toml" || !std::path::Path::new(manifest).is_file() {
+        return Ok(None);
+    }
+    let mut root = Project::default();
+    crate::project::manifest::read_manifest(manifest, &mut root)?;
+    if root.members.is_none() || !root.name.is_empty() {
+        return Ok(None);
+    }
+    read(&root).map(Some)
+}

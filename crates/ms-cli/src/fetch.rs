@@ -14,6 +14,7 @@ use ms_driver::project::packages::{
     LockEntry, cache_dir, hash_index, index_path, index_tree, lock_text, read_lock,
 };
 use ms_driver::project::pathops;
+use ms_driver::project::workspace;
 
 use crate::backend::Io;
 
@@ -48,6 +49,8 @@ struct Run<'a, 'b> {
     update: BTreeSet<String>,
     /// The effects each top-level package declares.
     declared: BTreeMap<String, Vec<String>>,
+    /// Whether the member being walked is the project the command was run in.
+    record: bool,
     io: &'a mut Io<'b>,
 }
 
@@ -88,14 +91,35 @@ fn install_manifest(
 ) -> Result<BTreeMap<String, Vec<String>>, String> {
     let mut project = Project::default();
     read_manifest(manifest, &mut project).map_err(|e| e.to_string())?;
+    // A workspace installs every member and shares the lock at its root; lock keys start with
+    // the member name so members may use one alias for different packages.
+    let workspace = workspace::find(manifest).map_err(|e| e.to_string())?;
+    let lock_root = workspace
+        .as_ref()
+        .map_or(project.root.clone(), |w| w.root.clone());
     let mut run = Run {
-        old: read_lock(&project.root).map_err(|e| e.to_string())?,
+        old: read_lock(&lock_root).map_err(|e| e.to_string())?,
         new: BTreeMap::new(),
         update,
         declared: BTreeMap::new(),
+        record: false,
         io,
     };
-    walk(&mut run, &project, "", 0)?;
+    match &workspace {
+        None => {
+            run.record = true;
+            walk(&mut run, &project, "", 0)?;
+        }
+        Some(workspace) => {
+            for member in &workspace.members {
+                let mut scope = Project::default();
+                read_manifest(&workspace::Workspace::manifest(member), &mut scope)
+                    .map_err(|e| e.to_string())?;
+                run.record = member.root == project.root;
+                walk(&mut run, &scope, &format!("{}/", member.name), 0)?;
+            }
+        }
+    }
     for name in &run.update {
         if !run
             .new
@@ -105,7 +129,7 @@ fn install_manifest(
             return Err(format!("--update {name}: no such dependency"));
         }
     }
-    let path = pathops::join(&[&project.root, "ms.lock"]);
+    let path = pathops::join(&[&lock_root, "ms.lock"]);
     let text = lock_text(&run.new);
     if run.new.is_empty() {
         let _ = std::fs::remove_file(&path);
@@ -145,6 +169,7 @@ fn add(args: &[String], io: &mut Io<'_>) -> Result<(), String> {
         })?,
     };
     let manifest = find_project()?;
+    not_a_workspace_root(&manifest, "add")?;
     let original =
         std::fs::read_to_string(&manifest).map_err(|e| format!("read {manifest}: {e}"))?;
     let pin = if sha {
@@ -184,11 +209,22 @@ fn add(args: &[String], io: &mut Io<'_>) -> Result<(), String> {
     Ok(())
 }
 
+/// A workspace root without `[project]` has no dependencies of its own to edit.
+fn not_a_workspace_root(manifest: &str, command: &str) -> Result<(), String> {
+    match workspace::root_members(manifest).map_err(|e| e.to_string())? {
+        Some(_) => Err(format!(
+            "{manifest} is a workspace root, which has no dependencies of its own; run `ms {command}` inside a member directory"
+        )),
+        None => Ok(()),
+    }
+}
+
 fn remove(args: &[String], io: &mut Io<'_>) -> Result<(), String> {
     let [name] = args else {
         return Err("name one package: ms remove @name".to_string());
     };
     let manifest = find_project()?;
+    not_a_workspace_root(&manifest, "remove")?;
     let original =
         std::fs::read_to_string(&manifest).map_err(|e| format!("read {manifest}: {e}"))?;
     let edited = remove_dependency(&original, name)?;
@@ -242,8 +278,8 @@ fn walk(run: &mut Run<'_, '_>, scope: &Project, prefix: &str, depth: usize) -> R
         } else {
             package.effects.join(" ")
         };
-        if depth == 0 {
-            run.declared.insert(key.clone(), package.effects.clone());
+        if depth == 0 && run.record {
+            run.declared.insert(alias.clone(), package.effects.clone());
         }
         let _ = writeln!(
             run.io.stdout,

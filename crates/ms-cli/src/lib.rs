@@ -199,6 +199,47 @@ pub fn unknown_command(io: &mut Io, name: &str) {
     );
 }
 
+/// A target that is a workspace root without `[project]` stands for its members: `check`, `lint`,
+/// `fmt`, `verify` and `test` run on each, and other commands ask for one member by name.
+fn expand_workspace(inv: &mut invocation::Invocation, io: &mut Io) -> Result<(), i32> {
+    let each = inv.is_one_of(&["check", "lint", "fmt", "verify", "test"]);
+    let mut targets = Vec::new();
+    let mut expanded = false;
+    for target in std::mem::take(&mut inv.targets) {
+        let found = ms_driver::project::workspace::root_members(&target).map_err(|e| {
+            let _ = writeln!(io.stderr, "ms {}: {e}", inv.command);
+            1
+        })?;
+        let Some(workspace) = found else {
+            targets.push(target);
+            continue;
+        };
+        let manifests: Vec<String> = workspace
+            .members
+            .iter()
+            .map(ms_driver::project::workspace::Workspace::manifest)
+            .collect();
+        if !each {
+            let names: Vec<&str> = workspace.members.iter().map(|m| m.name.as_str()).collect();
+            let _ = writeln!(
+                io.stderr,
+                "ms {}: {target} is a workspace root; name one member's ms.toml instead, such as {} (members: {})",
+                inv.command,
+                manifests.first().map_or("app/ms.toml", String::as_str),
+                names.join(", ")
+            );
+            return Err(2);
+        }
+        expanded = true;
+        targets.extend(manifests);
+    }
+    if expanded && let Some(first) = targets.first() {
+        inv.filename = first.clone();
+    }
+    inv.targets = targets;
+    Ok(())
+}
+
 /// A command that takes a source file or project: parse and validate its
 /// options, then hand the request to the engine.
 fn run_source_command<L: Lower>(
@@ -221,6 +262,9 @@ fn run_source_command<L: Lower>(
         Ok(inv) => inv,
         Err(status) => return status,
     };
+    if let Err(status) = expand_workspace(&mut inv, io) {
+        return status;
+    }
     let plan = match validate(&mut inv, io) {
         Ok(plan) => plan,
         Err(status) => return status,
