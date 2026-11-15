@@ -160,8 +160,8 @@ fn var Conn.authenticate(config: Config) Unit!:
 
 // Reads messages up to ReadyForQuery, collecting rows. The first error is returned
 // after the server has finished, so the connection stays usable.
-fn var Conn.collect() Rows!:
-	var fields = List[Field]()
+fn var Conn.collect(known: List[Field]) Rows!:
+	var fields = known.clone()
 	var rows = List[List[Value]]()
 	var command = ""
 	var failure: Error? = none
@@ -196,7 +196,7 @@ fn var Conn.collect() Rows!:
 // statements.
 fn var Conn.simple(sql: String) Rows!:
 	self.send(query(sql))?
-	return self.collect()
+	return self.collect([])
 
 // Runs one statement with parameters in a single round trip.
 fn var Conn.query(sql: String, params: List[Value]) Rows!:
@@ -207,7 +207,7 @@ fn var Conn.query(sql: String, params: List[Value]) Rows!:
 	out.append_bytes(execute("", 0))
 	out.append_bytes(sync())
 	self.send(out.build())?
-	return self.collect()
+	return self.collect([])
 
 fn var Conn.begin() Unit!:
 	_ := self.simple("BEGIN")?
@@ -224,3 +224,46 @@ fn var Conn.rollback() Unit!:
 fn var Conn.close() Unit!:
 	_ := self.send(terminate())
 	return self.net.close()
+
+// A statement parsed once on the server and run many times.
+export type Prepared:
+	name: String
+	columns: List[Field]
+
+// Parses `sql` under `name` and learns its result columns.
+fn var Conn.prepare(name: String, sql: String) Prepared!:
+	var out = BytesBuilder()
+	out.append_bytes(parse(name, sql, []))
+	out.append_bytes(describe(83, name))
+	out.append_bytes(sync())
+	self.send(out.build())?
+
+	var columns = List[Field]()
+	var failure: Error? = none
+
+	while true:
+		message := self.read()
+
+		if message.is_error():
+			failure = message.err().clone()
+			continue
+
+		match message?:
+			Backend.RowDescription(found): columns = found.clone()
+			Backend.ReadyForQuery(status):
+				self.status = status
+				break
+			_: continue
+
+	if f := failure: return error(f)
+
+	return ok(Prepared(name.clone(), columns))
+
+// Runs a prepared statement: bind, execute and sync in one round trip.
+fn var Conn.run(statement: Prepared, params: List[Value]) Rows!:
+	var out = BytesBuilder()
+	out.append_bytes(bind("", statement.name, params.map(fn p: encode_value(p)), false))
+	out.append_bytes(execute("", 0))
+	out.append_bytes(sync())
+	self.send(out.build())?
+	return self.collect(statement.columns)

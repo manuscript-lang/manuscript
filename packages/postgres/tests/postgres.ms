@@ -6,6 +6,7 @@ import (
 	Config, Conn, open from "../src/conn.ms",
 	md5_password from "../src/auth.ms",
 	Backend, decode_message from "../src/wire.ms",
+	Pool, Statement, start from "../src/pool.ms",
 	Value from "../src/value.ms",
 )
 
@@ -58,6 +59,15 @@ test "a server error carries its SQLSTATE and leaves the connection usable":
 	expect_equal(rows.rows[0][0], Value.Int(7))?
 	conn.close()?
 
+test "a prepared statement runs repeatedly with typed results":
+	var conn = open(config()?)?
+	statement := conn.prepare("double", "select $1::int * 2 as twice")?
+	for n in 0..3:
+		rows := conn.run(statement, [Value.Int(n)])?
+		expect_equal(rows.rows[0][0], Value.Int(n * 2))?
+		expect_equal(rows.columns[0], "twice")?
+	conn.close()?
+
 test "transactions commit and roll back":
 	var conn = open(config()?)?
 	_ := conn.simple("create temp table t (n int)")?
@@ -77,3 +87,21 @@ test "a wrong password is rejected":
 	cfg := config()?
 	failure := expect_error(open(Config(host: cfg.host.clone(), port: cfg.port, user: cfg.user.clone(), password: "wrong")))?
 	expect_equal(failure.kind, "28P01")?
+
+test "a pool runs statements concurrently and returns results in order":
+	var pool = start(config()?, 3)?
+	statements := (0..7).map(fn n: Statement("select $1::int, pg_sleep(0.05)", [Value.Int(n)]))
+	results := pool.query_all(statements)?
+	expect_equal(results.length(), 7)?
+	for n in 0..7: expect_equal(results[n].rows[0][0], Value.Int(n))?
+	single := pool.query("select 5::int")?
+	expect_equal(single.rows[0][0], Value.Int(5))?
+	pool.close()?
+
+test "a pool reports a server error and keeps working":
+	var pool = start(config()?, 2)?
+	failure := expect_error(pool.query("select 1/0"))?
+	expect_equal(failure.kind, "22012")?
+	ok_rows := pool.query("select 1")?
+	expect_equal(ok_rows.rows[0][0], Value.Int(1))?
+	pool.close()?
