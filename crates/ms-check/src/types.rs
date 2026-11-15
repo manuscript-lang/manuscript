@@ -1643,6 +1643,14 @@ pub struct PackageScope {
     pub effects: Vec<String>,
 }
 
+/// The package holding the module file `file`, by the longest matching prefix.
+pub fn package_holding<'a>(packages: &'a [PackageScope], file: &str) -> Option<&'a PackageScope> {
+    packages
+        .iter()
+        .filter(|p| file.starts_with(&p.prefix))
+        .max_by_key(|p| p.prefix.len())
+}
+
 /// "expected X, found Y" plus a result hint.
 pub fn format_mismatch(
     syms: ms_syntax::Names,
@@ -1680,14 +1688,10 @@ fn same_name_note(
     }
     let expected_file = declaring_file(syms, expected)?;
     let actual_file = declaring_file(syms, actual)?;
-    let in_package = |file: &str| {
-        packages
-            .iter()
-            .filter(|p| file.starts_with(&p.prefix))
-            .max_by_key(|p| p.prefix.len())
-    };
-    if let (Some(e), Some(a)) = (in_package(&expected_file), in_package(&actual_file))
-        && e.prefix != a.prefix
+    if let (Some(e), Some(a)) = (
+        package_holding(packages, &expected_file),
+        package_holding(packages, &actual_file),
+    ) && e.prefix != a.prefix
     {
         return Some(two_copies(e, a));
     }
@@ -1721,7 +1725,7 @@ fn two_copies(expected: &PackageScope, found: &PackageScope) -> String {
         );
     }
     format!(
-        "these are different types with one name: the expected one is declared in {expected_path} ({expected_url} at {expected_tag}) and the found one in {found_path} ({found_url} at {found_tag})"
+        "these are different types with one name: the expected one is declared in {expected_path} ({expected_url} at {expected_tag}) and the found one in {found_path} ({found_url} at {found_tag}); import only one of them, or convert at the boundary"
     )
 }
 
