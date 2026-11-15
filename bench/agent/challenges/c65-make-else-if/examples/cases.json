@@ -1,0 +1,12 @@
+[
+ {
+  "name": "ex-chain",
+  "stdin": "ifeq ($(MODE),debug)\nX = debug\nelse ifeq ($(MODE),release)\nX = release\nelse\nX = other\nendif\nall:\n\t@echo $(X)\n====\n====\ndry MODE=release\n",
+  "stdout": "> dry MODE=release\necho release\n"
+ },
+ {
+  "name": "ex-chain-error",
+  "stdin": "ifdef A\nX=1\nelse ifeq bad\nX=2\nendif\nall:\n\t@echo $(X)\n====\n====\ndry\ndry A=1\n",
+  "stdout": "> dry\nMakefile:3: *** invalid syntax in conditional.  Stop.\n> dry A=1\necho 1\n"
+ }
+]
