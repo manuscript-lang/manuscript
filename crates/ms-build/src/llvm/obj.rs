@@ -158,12 +158,6 @@ fn compile(
     .arg(&bitcode)
     .arg("-o")
     .arg(&obj);
-    if !ir.contains("DILocalVariable") {
-        // With line tables only there are no variables, so tracking variable locations is dead
-        // work: object bytes are identical and `llc` runs about 18% faster. With variables the
-        // pass must run: Machine Copy Propagation crashes on DBG_VALUEs it left unresolved.
-        llc.arg("-live-debug-variables=false");
-    }
     if cfg!(target_arch = "x86_64") {
         // Start every loop on a 32-byte boundary. At the default 16 a small loop may straddle a
         // 32-byte or cache-line boundary depending on where the linker put the function, which
