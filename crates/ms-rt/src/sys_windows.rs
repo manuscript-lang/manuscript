@@ -335,10 +335,34 @@ pub fn map_anon(len: usize) -> *mut u8 {
 /// `SeLockMemoryPrivilege` and cannot be demand-committed); see `sys::prefer_huge_pages` and #3710.
 pub fn prefer_huge_pages(_p: *mut u8, _len: usize) {}
 
+/// Where the next aligned stack region is tried: 32 TiB, far above the heap and images, below
+/// the top of the 47-bit user address space of both x86-64 and Arm64 Windows.
+static NEXT_REGION: core::sync::atomic::AtomicUsize =
+    core::sync::atomic::AtomicUsize::new(0x2000_0000_0000);
+const REGION_LIMIT: usize = 0x6000_0000_0000;
+
 /// Reserves `len` bytes of address space aligned to `len` (a power of two), holding stacks.
-/// Windows cannot trim a reservation, so an aligned one is found by reserving twice the size,
-/// releasing it and reserving the aligned part again. Null on failure.
+///
+/// Every thread claims addresses from one shared cursor and reserves exactly that range, so the
+/// kernel arbitrates between threads and a taken range only moves the cursor on. Reserving a
+/// double-size block, releasing it and reserving its aligned part again (the fallback, for a
+/// cursor past its limit) loses to another thread's reservation of the freed range: threads
+/// starting tasks at the same moment each took the other's range until all eight attempts
+/// failed and the program died with "too many tasks at once". Null on failure.
 pub fn map_region(len: usize) -> *mut u8 {
+    use core::sync::atomic::Ordering::Relaxed;
+    for _ in 0..256 {
+        let hint = NEXT_REGION.fetch_add(len, Relaxed);
+        if hint % len != 0 || hint + len > REGION_LIMIT {
+            break;
+        }
+        // SAFETY: a fresh reservation at an address nothing else may hold; the kernel refuses an
+        // occupied range.
+        let p = unsafe { VirtualAlloc(hint as *mut c_void, len, MEM_RESERVE, PAGE_NOACCESS) };
+        if !p.is_null() {
+            return p.cast();
+        }
+    }
     for _ in 0..8 {
         let raw = map_anon(2 * len);
         if raw.is_null() {
