@@ -25,7 +25,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN conformance_test.ms::the official YAML suite agrees with the parser except for the listed cases\nPASS conformance_test.ms::the official YAML suite agrees with the parser except for the listed cases\n1 tests, 0 failed\n",
+      "stdout": "RUN conformance_test.ms::the official YAML suite agrees with the parser except for the listed cases\n402 cases, 87 not passing, 6 unsupported by design\nPASS conformance_test.ms::the official YAML suite agrees with the parser except for the listed cases\n1 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

@@ -1,4 +1,10 @@
 // Configuration-oriented YAML 1.2 parser implemented in Manuscript.
+//
+// Mapping keys are strings. A scalar key (a number, boolean or null spelling, a quoted
+// string, an empty key, or an alias to a scalar) becomes the text of that scalar, so `1` and
+// `"1"` in one mapping are a duplicate key, which is an error. A sequence or mapping used as
+// a key is rejected with an error that names its position. Tags other than `!` and `!!str`
+// are read and ignored; those two make the node a string.
 import (
 	Bytes from "@std/bytes.ms",
 	quote_text from "@std/data/quote.ms",
@@ -495,6 +501,17 @@ fn tag_token(var flow: Flow) String!:
 		if prefix := handles.get("!"): return ok("{prefix}{name}")
 	return ok("!{name}")
 
+// The mapping key a scalar node stands for: its text. A collection cannot be a key.
+fn key_text(value: YamlValue) String?:
+	match value:
+		StringValue(text): return text.clone()
+		NumberValue(text): return text.clone()
+		BoolValue(flag):
+			if flag: return "true"
+			return "false"
+		Null: return "null"
+		_: return none
+
 // Whether a tag makes a scalar a string whatever its spelling.
 fn string_tag(tag: String) Bool:
 	return tag == "!" or tag == "tag:yaml.org,2002:str"
@@ -779,7 +796,7 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!:
 							flow,
 							flow.pos,
 						).line,
-						reason: "complex mapping keys are unsupported",
+						reason: "mapping keys must be scalars, not a collection",
 					)
 				)
 
@@ -876,19 +893,18 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!:
 
 				key_start := flow.pos
 				parsed_key := flow_value(var flow, level, key: true)?
-
-				match parsed_key:
-					StringValue(text): name = text
-					_: return error(
-						yaml_unsupported(
-							line: flow_position(
-								flow,
-								key_start,
-							).line,
-							reason: "mapping keys must be strings",
-						)
+				flow_key := key_text(parsed_key)
+				if flow_key.is_none(): return error(
+					yaml_unsupported(
+						line: flow_position(
+							flow,
+							key_start,
+						).line,
+						reason: "mapping keys must be scalars, not a collection",
 					)
+				)
 
+				name = flow_key.get("")
 				flow_space(var flow)
 
 				// A key with no colon, as in `{a, b: 1}`, maps to null.
@@ -1977,6 +1993,7 @@ fn block(var context: Context, base: Int, depth: Int, scalar_base: Int) YamlValu
 				had_properties = true
 
 			quoted_key := key_start == 34 or key_start == 39
+			var plain_key = name != ""
 
 			if quoted_key:
 				var flow = Flow(
@@ -1996,24 +2013,46 @@ fn block(var context: Context, base: Int, depth: Int, scalar_base: Int) YamlValu
 				if flow.pos != flow.chars.length(): return error(
 					invalid(context, "invalid quoted key")
 				)
-			else if (
-				(name == "" and not had_properties)
-				or key_start == 91
-				or key_start == 123
-				or key_start == 42
-			):
+			else if key_start == 91 or key_start == 123:
 				return error(
 					yaml_unsupported(
 						line: source_line(
 							context,
 							context.index,
 						),
-						reason: "mapping keys must be strings",
+						reason: "mapping keys must be scalars, not a collection",
+					)
+				)
+			else if key_start == 42:
+				// An alias key stands for the scalar it names.
+				if had_properties: return error(
+					invalid(
+						context,
+						"an alias cannot have node properties",
 					)
 				)
 
+				alias_name := name.slice(1, name.length()).get("")
+				aliased := context.anchors.get(alias_name)
+				if aliased.is_none(): return error(invalid(context, "unknown anchor"))
+
+				alias_text := key_text(aliased.get(YamlValue.Null))
+				if alias_text.is_none(): return error(
+					yaml_unsupported(
+						line: source_line(
+							context,
+							context.index,
+						),
+						reason: "mapping keys must be scalars, not a collection",
+					)
+				)
+
+				name = alias_text.get("")
+				plain_key = false
+
 			if (
 				not quoted_key
+				and plain_key
 				and (
 					not plain_may_start(name)
 					or key_start == 124

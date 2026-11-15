@@ -878,3 +878,14 @@ test "YAML tags resolve strings and are otherwise ignored":
 	expect_equal(value.to_string(), want.to_string())?
 
 	_ := parse("top: &a\n  &b value\n") | expect_error?
+
+test "YAML scalar keys become their text and collection keys are rejected":
+	_ := parse("&k x: e\n*k : f\n") | expect_error?
+	keys := parse("1: a\ntrue: b\nnull: c\n: d\n&k x: e\n")?
+	want := parse("\"1\": a\n\"true\": b\n\"null\": c\n\"\": d\nx: e\n")?
+	expect_equal(keys.to_string(), want.to_string())?
+
+	_ := parse("1: a\n\"1\": b\n") | expect_error?
+	unsupported_at("[a]: 1", 1)?
+	unsupported_at("\{[a]: 1\}", 1)?
+	unsupported_at("a: 1\n\{b: c\}: d", 2)?

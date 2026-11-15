@@ -79,6 +79,12 @@ test "the official YAML suite agrees with the parser except for the listed cases
 		name := line.split(" ").get(0, "")
 		if name != "" and not name.starts_with("#"): expected.append(name.clone())
 
+	var by_design = 0
+	for line in listed.split("\n"):
+		if line.contains(" by design:"): by_design += 1
 	expected.sort()
+	print(
+		"{cases.length()} cases, {expected.length()} not passing, {by_design} unsupported by design"
+	)
 	cases.length() | expect_equal(cases.length())?
 	failing | expect_equal(expected)?
