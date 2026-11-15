@@ -74,3 +74,10 @@ Restriction checks must intersect listening permission as well as host and CIDR 
 Apply when: adding native network APIs or declaring a networking change complete.
 Evidence: [architecture](../../documentation/contributing/architecture.md), [networking project](../../tests/conformance/fixtures/e2e/projects/networking), [network fixture](../../tests/conformance/fixtures/e2e/stdlib/net.ms).
 Verify: run relevant cases for blocked I/O cancellation, concurrent close, bounded input/output, and shutdown joining. Check the actual request's protocol scope; retain implementation limits explicitly when a path remains uncooperative.
+
+## STARTTLS moves the descriptor, it does not wrap the connection
+
+Verified: `start_tls` and `accept_tls` (`@std/net/net.ms`) take the socket out of an idle plain `Connection` (`Io::take_plain`), mark that connection closed without shutting the socket, and handshake on a new `Connection`. The `Connection` record keeps a non-stream `native` handle for this, so closing the socket when the last stream end closes counts `ends` in Rust, not `Rc::strong_count`. Busy, closed or already-TLS connections return EINVAL/EBADF and stay usable; a failed handshake consumes the socket.
+
+Apply when: adding a stream wrapper or changing connection close rules.
+Evidence: `start_tls upgrades a plain connection in place on both sides` in [tls.ms](../../tests/conformance/fixtures/e2e/stdlib/tls.ms).
