@@ -8,7 +8,7 @@ use crate::json::Json;
 use crate::sha256;
 use crate::walk::walk_module;
 use ms_check::api::syntax::{DeclRef, FuncRef};
-use ms_check::api::types::{BindingRef, MethodRef, n, show};
+use ms_check::api::types::{BindingRef, Builtin, MethodRef, n, show};
 use ms_check::{ModuleData, Program};
 use ms_syntax::Pos;
 use ms_syntax::ast::*;
@@ -413,11 +413,8 @@ impl Sites<'_> {
             }
             if let Some(method) = &info.method {
                 site.kind = "operation".to_string();
-                site.spawn =
-                    method
-                        .receiver
-                        .is_source_type(syms, "@std/concurrency/tasks.ms", "TaskGroup")
-                        && method.name().is_some_and(|n| syms.str(n) == "spawn");
+                site.spawn = method.receiver.is(Builtin::TaskGroup)
+                    && method.name().is_some_and(|n| syms.str(n) == "spawn");
                 site.target = match self.method_ids.get(syms.str(method.id)) {
                     Some(id) => id.clone(),
                     None => format!(

@@ -324,7 +324,7 @@ impl FnLower<'_> {
         let (doc, id, strict) = (p[0], p[1], p[2]);
         self.jnode = Some((doc, id, t.display(self.syms).to_string()));
         let mt = self.jmty(t)?;
-        if t.is_source_type(self.syms, "@std/data/json.ms", "JsonValue") {
+        if t.is(Builtin::JsonValue) {
             return self.jdecode_tree(t, mt, doc, id, strict);
         }
         match t.builtin {
@@ -451,11 +451,11 @@ impl FnLower<'_> {
                 "msstd_encoding_base64_decode",
                 TextArgs::Base64,
             ))
-        } else if t.is_source_type(self.syms, "@std/net/url.ms", "Url") {
+        } else if t.is(Builtin::Url) {
             Some((KIND_STRING, "msstd_url_parse", TextArgs::Plain))
-        } else if t.is_source_type(self.syms, "@std/net/ip.ms", "IpAddress") {
+        } else if t.is(Builtin::IpAddress) {
             Some((KIND_STRING, "msstd_json_dec_ip", TextArgs::Plain))
-        } else if t.is_source_type(self.syms, "@std/net/ip.ms", "Cidr") {
+        } else if t.is(Builtin::Cidr) {
             Some((KIND_STRING, "msstd_json_dec_cidr", TextArgs::Plain))
         } else if t.is(Builtin::Decimal) {
             Some((KIND_NUMBER, "msstd_decimal_parse", TextArgs::Plain))
@@ -1009,7 +1009,7 @@ impl FnLower<'_> {
     /// Writes `value` (borrowed) to the writer `w`; 0, or -1 when it has no JSON form and nothing
     /// was written.
     fn jencode(&mut self, t: &ct::Ty, mt: MTy, w: Value, value: Value) -> Result<Value, Error> {
-        if t.is_source_type(self.syms, "@std/data/json.ms", "JsonValue") {
+        if t.is(Builtin::JsonValue) {
             return self.jencode_tree(t, mt, w, value);
         }
         match t.builtin {
@@ -1132,15 +1132,15 @@ impl FnLower<'_> {
             return Ok(self.jwritten());
         }
         // A URL is its formatted text.
-        if t.is_source_type(self.syms, "@std/net/url.ms", "Url") {
+        if t.is(Builtin::Url) {
             return self.jencode_url(w, value);
         }
         // An address or network is its text.
-        for (name, sym) in [
-            ("IpAddress", "msstd_net_ip_address_text"),
-            ("Cidr", "msstd_net_cidr_text"),
+        for (tag, sym) in [
+            (Builtin::IpAddress, "msstd_net_ip_address_text"),
+            (Builtin::Cidr, "msstd_net_cidr_text"),
         ] {
-            if t.is_source_type(self.syms, "@std/net/ip.ms", name) {
+            if t.is(tag) {
                 let text = self.call_runtime(sym, &[value], MTy::STR)?;
                 self.jw("msstd_json_w_string", &[w, text])?;
                 self.drop_value(text);
@@ -1228,21 +1228,22 @@ impl FnLower<'_> {
             .session
             .sole_operation("@std/data/json.ms", "JsonEncode");
         let to_json = |m: &ct::MethodRef| m.name().is_some() && m.name() == to_json_name;
-        let m =
-            self.cx
-                .methods
-                .iter()
-                .find(|m| {
-                    m.contract.as_ref().is_some_and(|c| {
-                        c.is_source_type(self.syms, "@std/data/json.ms", "JsonEncode")
-                    }) && tys.shape(&m.receiver) == key
+        let m = self
+            .cx
+            .methods
+            .iter()
+            .find(|m| {
+                m.contract
+                    .as_ref()
+                    .is_some_and(|c| c.is(Builtin::JsonEncode))
+                    && tys.shape(&m.receiver) == key
+            })
+            // A type's own `to_json` encodes it without an `impl JsonEncode`.
+            .or_else(|| {
+                self.cx.methods.iter().find(|m| {
+                    m.is_inherent(self.syms) && to_json(m) && tys.shape(&m.receiver) == key
                 })
-                // A type's own `to_json` encodes it without an `impl JsonEncode`.
-                .or_else(|| {
-                    self.cx.methods.iter().find(|m| {
-                        m.is_inherent(self.syms) && to_json(m) && tys.shape(&m.receiver) == key
-                    })
-                })?;
+            })?;
         let decl = m.decl.as_ref()?;
         self.callable_of_decl(m.module, Some(decl.id())).ok()
     }
@@ -1486,7 +1487,7 @@ impl FnLower<'_> {
             .map(|a| a.val);
         let flat = self.jlimits(limits)?;
         // An untyped parse is built by the runtime while scanning, without a document.
-        let tree = t.is_source_type(self.syms, "@std/data/json.ms", "JsonValue");
+        let tree = t.is(Builtin::JsonValue);
         let doc_ty = self.jdoc_ty();
         let mut vals = vec![text];
         vals.extend(flat);

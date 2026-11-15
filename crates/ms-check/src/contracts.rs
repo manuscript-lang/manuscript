@@ -746,7 +746,7 @@ impl Checker {
             if seen.contains(&op.name) {
                 continue;
             }
-            if contract.is_test_hooks(self.syms) {
+            if contract.is(Builtin::TestHooks) {
                 // This standard lifecycle contract has no-op defaults; retain ordinary
                 // checked methods so interface calls and generic bounds use normal dispatch.
                 let decl_id = self.m().facts_mut().fresh_id();
@@ -1099,14 +1099,16 @@ impl Checker {
     fn has_json_encoder(&self, t: &Ty) -> bool {
         self.p.methods.iter().any(|m| {
             self.method_visible(m)
-                && (m.contract.as_ref().is_some_and(|c| {
-                    c.is_source_type(self.syms, "@std/data/json.ms", "JsonEncode")
-                }) || (m.is_inherent(self.syms)
-                    && m.name().is_some()
-                    && m.name()
-                        == self
-                            .session
-                            .sole_operation("@std/data/json.ms", "JsonEncode")))
+                && (m
+                    .contract
+                    .as_ref()
+                    .is_some_and(|c| c.is(Builtin::JsonEncode))
+                    || (m.is_inherent(self.syms)
+                        && m.name().is_some()
+                        && m.name()
+                            == self
+                                .session
+                                .sole_operation("@std/data/json.ms", "JsonEncode")))
                 && {
                     let mut s = Subst::default();
                     unify(&m.receiver, t, &variable_set(&m.variables), &mut s)

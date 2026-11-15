@@ -139,12 +139,7 @@ impl Walker<'_> {
         {
             return false;
         }
-        if !self
-            .cx
-            .m
-            .ty(e)
-            .is_source_type(self.syms, PROMISE_MODULE, "Promise")
-        {
+        if !self.cx.m.ty(e).is(Builtin::Promise) {
             return false;
         }
         match self.cx.m.resolution(e) {

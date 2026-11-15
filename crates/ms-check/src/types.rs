@@ -234,6 +234,22 @@ pub enum Builtin {
     Instant,
     /// `Duration`.
     Duration,
+    /// `Url` of `@std/net/url.ms`.
+    Url,
+    /// `IpAddress` of `@std/net/ip.ms`.
+    IpAddress,
+    /// `Cidr` of `@std/net/ip.ms`.
+    Cidr,
+    /// `JsonValue` of `@std/data/json.ms`.
+    JsonValue,
+    /// `JsonEncode` of `@std/data/json.ms`.
+    JsonEncode,
+    /// `Promise` of `@std/concurrency/promise.ms`.
+    Promise,
+    /// `TaskGroup` of `@std/concurrency/tasks.ms`.
+    TaskGroup,
+    /// `TestHooks` of `@std/test/test.ms`.
+    TestHooks,
 }
 
 impl Builtin {
@@ -266,6 +282,14 @@ impl Builtin {
             ("@std/time.ms", "Timestamp") => Some(Builtin::Timestamp),
             ("@std/time.ms", "Instant") => Some(Builtin::Instant),
             ("@std/time.ms", "Duration") => Some(Builtin::Duration),
+            ("@std/net/url.ms", "Url") => Some(Builtin::Url),
+            ("@std/net/ip.ms", "IpAddress") => Some(Builtin::IpAddress),
+            ("@std/net/ip.ms", "Cidr") => Some(Builtin::Cidr),
+            ("@std/data/json.ms", "JsonValue") => Some(Builtin::JsonValue),
+            ("@std/data/json.ms", "JsonEncode") => Some(Builtin::JsonEncode),
+            ("@std/concurrency/promise.ms", "Promise") => Some(Builtin::Promise),
+            ("@std/concurrency/tasks.ms", "TaskGroup") => Some(Builtin::TaskGroup),
+            ("@std/test/test.ms", "TestHooks") => Some(Builtin::TestHooks),
             _ => None,
         }
     }
@@ -530,16 +554,6 @@ impl Type {
     /// Whether this is the built-in standard type `b`.
     pub fn is(&self, b: Builtin) -> bool {
         self.builtin == Some(b)
-    }
-
-    /// Whether this is `TestHooks` of `@std/test/test.ms`.
-    pub fn is_test_hooks(&self, syms: ms_syntax::Names) -> bool {
-        self.is_source_type(syms, "@std/test/test.ms", "TestHooks")
-    }
-
-    /// Whether this is the type `name` declared by the bundled source module `module`.
-    pub fn is_source_type(&self, syms: ms_syntax::Names, module: &str, name: &str) -> bool {
-        syms.str(self.name) == name && self.symbol().is_some_and(|s| syms.str(s.module) == module)
     }
 
     /// The nominal definition's symbol, if any.

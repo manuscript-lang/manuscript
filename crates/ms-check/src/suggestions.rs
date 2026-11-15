@@ -5,18 +5,15 @@
 //! the diagnostic also carries it as a `DiagnosticFix`.
 
 use crate::checker::Checker;
-use crate::types::{Ty, same};
+use crate::types::{Builtin, Ty, same};
 use ms_syntax::Cause;
 use ms_syntax::ast::{Expr, ExprKind};
 use ms_syntax::{DiagnosticFix, Phase, Pos};
 
-/// The module that declares `Promise`.
-pub(crate) const PROMISE_MODULE: &str = "@std/concurrency/promise.ms";
-
 /// Whether a `Promise[T]` used where `expected` is required gets its value from `wait()`:
 /// `expected` is `T!`, which is what `wait` returns.
 pub(crate) fn promise_wait_fits(syms: ms_syntax::Names, actual: &Ty, expected: &Ty) -> bool {
-    actual.is_source_type(syms, PROMISE_MODULE, "Promise")
+    actual.is(Builtin::Promise)
         && actual.args.len() == 1
         && expected.is_std(syms, "Result")
         && expected.args.len() == 2
