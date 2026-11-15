@@ -99,6 +99,12 @@ fn fetch_pins_a_package_and_checks_work_offline() {
     let checked = ms(&project, &cache, &["check", "ms.toml"]);
     assert!(checked.status.success(), "{}", stderr(&checked));
 
+    let found = ms(&project, &cache, &["search_symbol", "greet"]);
+    assert!(
+        String::from_utf8_lossy(&found.stdout).contains("greet  fn"),
+        "{found:?}"
+    );
+
     // A cached file edited after the fetch no longer matches the lock.
     let lib_file = std::fs::read_dir(&cache)
         .unwrap()
