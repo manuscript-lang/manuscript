@@ -168,6 +168,14 @@ fn field_chain<'a>(m: &ModuleHir, e: &'a Expr) -> Option<(&'a Expr, BindingRef, 
     }
 }
 
+/// Whether the call is an index assignment `place[key] = value`, which the
+/// parser writes as `place.[]=(key, value)`.
+pub(super) fn is_index_store(callee: &Expr, args: &[ms_syntax::ast::Argument]) -> bool {
+    args.len() == 2
+        && matches!(&callee.kind, ExprKind::Member { name, .. }
+            if ms_syntax::Names::global().str(*name) == ms_syntax::parser::INDEX_SET)
+}
+
 fn join(into: &mut Live, from: &Live) {
     for (key, node) in from.iter() {
         into.merge(&key, node);
@@ -431,8 +439,16 @@ impl Pass<'_> {
             }
             ExprKind::Lambda(l) => self.lambda(e, l, live),
             ExprKind::Call { callee, args } => {
-                for a in args.iter().rev() {
-                    self.expr(&a.value, live);
+                if is_index_store(callee, args) {
+                    // `m[k] = v` consumes `k` at the store, after `v` ran, so `v` may read
+                    // `k`. Walking backwards, the key is the later use.
+                    for a in args {
+                        self.expr(&a.value, live);
+                    }
+                } else {
+                    for a in args.iter().rev() {
+                        self.expr(&a.value, live);
+                    }
                 }
                 self.expr(callee, live);
             }

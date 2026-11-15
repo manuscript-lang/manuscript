@@ -317,7 +317,15 @@ impl Walker<'_> {
             }
         }
         let starts_promise = self.entry_call(e);
-        for (i, a) in args.iter().enumerate() {
+        // The key of an index store is consumed after the value is evaluated, so the value
+        // is walked first and may read the key.
+        let mut order: Vec<usize> = (0..args.len()).collect();
+        let is_store = crate::ownership::live::is_index_store(callee, args);
+        if is_store {
+            order.reverse();
+        }
+        for i in order {
+            let a = &args[i];
             let mut mode = modes.arguments.get(i).copied().unwrap_or(ParamMode::Borrow);
             if mode == ParamMode::Borrow && modes.retained.get(i).copied().unwrap_or(false) {
                 // A native that wraps this argument in its result (`ok_or(cause)`) or may hand it back (`get(default)`) cannot copy a value that has no `clone`: the argument moves into the result.
@@ -331,6 +339,10 @@ impl Walker<'_> {
                 }
             }
             let mut held = self.held(&a.value, mode);
+            if i == 0 && is_store {
+                // The key is held in place until the store, so the value cannot change it.
+                held.extend(self.held(&a.value, ParamMode::Borrow));
+            }
             if starts_promise && let ExprKind::Lambda(l) = &a.value.kind {
                 // The entry of a promise reads what it captures, in place, while the promise lives;
                 // one that is returned owns them (`returned_promises_own_captures`).

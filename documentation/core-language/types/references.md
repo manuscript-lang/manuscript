@@ -53,6 +53,10 @@ fn grow(var b: Box) Int:
 
 See [bindings](../basics/bindings.md), [closure captures](../functions/function-values-and-closures.md), and [scope-end cleanup](../cleanup/scopes.md).
 
+## Index assignment
+
+`place[key] = value` is a call of the type's `set` (a Map's `add`). The checker takes the key at the store, after `value` has run, so `value` may read `key`: `counts[key] = counts.get_or(key, 0) + 1` and `sizes[k] = k.length()` are accepted. Reads only: `value` cannot move `key` or change it (`m[k] = bump(var k)`), and `key` cannot be used after the store unless it is a scalar or a `.clone()` is stored instead.
+
 ## Data copies
 
 `.clone()` is a deep copy of nested values. Opaque handles and function values have no clone and are never copied, and a value that holds one is not `Clonable` either. See [mutation and cloning](named-types.md#mutation-and-cloning).
