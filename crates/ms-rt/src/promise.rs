@@ -935,7 +935,7 @@ fn msrt_promise_run_unstarted(id: i64) -> u8 {
 /// that failure instead of waiting for this promise. `ids` lists the waiter's promises; those
 /// from index `from` on join the group when the run first parks (see [`park_begin`]), so a run
 /// that never parks pays nothing to watch the others. Answers 0 when nothing ran, 1 when a
-/// promise ran, 2 when it ran and the others joined.
+/// promise ran, 2 when a failure ended the run.
 ///
 /// # Safety
 /// `ids` points to a list of `Int` promise ids that outlives the call.
@@ -956,8 +956,23 @@ pub unsafe extern "C-unwind" fn msrt_promise_run_watched(
     let before = task::set_watch(&mut watch);
     let ran = msrt_promise_run_unstarted(id);
     task::set_watch(before);
-    if watch.interrupted { 2 } else { i64::from(ran) }
+    if watch.interrupted {
+        RUN_INTERRUPTED
+    } else if ran != 0 {
+        RUN_RAN
+    } else {
+        RUN_NOTHING
+    }
 }
+
+/// Results of [`msrt_promise_run_watched`]; `wait_all` in `stdlib/concurrency/promise.ms` names the same.
+const RUN_NOTHING: i64 = 0;
+const RUN_RAN: i64 = 1;
+const RUN_INTERRUPTED: i64 = 2;
+
+/// Results of [`msrt_group_join`]: every promise joined, or some belong to another thread.
+const JOINED_ALL: u8 = 1;
+const JOINED_PARTLY: u8 = 2;
 
 /// What an inline run (`msrt_promise_run_watched`) reports failures to: the group, the waiter's
 /// promise ids it adds to it at its first park, and whether it has parked. Lives on the stack of
@@ -989,10 +1004,10 @@ pub unsafe extern "C-unwind" fn msrt_group_join(
     }
     // SAFETY: forwarded contract; the list is borrowed for the call.
     let list = unsafe { core::slice::from_raw_parts((*ids).ptr.cast::<i64>(), (*ids).len) };
-    let mut mode = 1;
+    let mut mode = JOINED_ALL;
     for (at, &id) in list.iter().enumerate().skip(from as usize) {
         if msrt_group_add(group, id, at as i64) == 0 {
-            mode = 2;
+            mode = JOINED_PARTLY;
         }
     }
     table().groups[group as usize - 1].joined = mode;

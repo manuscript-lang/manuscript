@@ -268,6 +268,15 @@ fn first_failure[T](
 
 	return Error("promise: cancelled")
 
+// Results of `msrt_promise_run_watched`: nothing ran, a promise ran, a failure ended
+// the run.
+fn ran_nothing(result: Int) Bool: result == 0
+
+fn run_interrupted(result: Int) Bool: result == 2
+
+// Result of `msrt_group_join`: some promises belong to another thread and are polled.
+fn joined_partly(result: Int) Bool: result == 2
+
 // Waits for every promise and returns the results in order. The first promise to fail,
 // in time rather than list order, ends the wait: the promises still running are
 // cancelled and waited for before `wait_all` returns its error.
@@ -307,17 +316,19 @@ export fn wait_all[T](promises: List[Promise[T]]) List[T]!:
 		var ran = 0
 		if fresh:
 			ran = msrt_promise_run_watched(pending[head].id, set.id, members, head)
-		if ran == 2: return error(first_failure(set.id, pending, taken, head))
+		if run_interrupted(ran): return error(
+			first_failure(set.id, pending, taken, head)
+		)
 
-		if ran > 0 or pending[head].done():
+		if not ran_nothing(ran) or pending[head].done():
 			value := pending[head].wait()?
 			slots[head] = ok(value)
 			taken[head] = true
 			head += 1
-		else if mode != 2:
+		else if not joined_partly(mode):
 			mode = msrt_group_join(set.id, members, head)
 
-			if mode != 2:
+			if not joined_partly(mode):
 				at := msrt_group_next(set.id)
 
 				if at >= 0 and not taken[at]:
