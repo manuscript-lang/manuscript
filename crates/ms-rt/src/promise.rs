@@ -919,8 +919,7 @@ pub extern "C-unwind" fn msrt_promise_done(id: i64) -> u8 {
 /// Runs promise `id` on the calling task's own stack if it is one of this thread's and no thread has
 /// taken it; answers whether it ran. For a waiter that is about to wait on it anyway: a task start
 /// costs far more than the call this makes.
-#[unsafe(no_mangle)]
-pub extern "C-unwind" fn msrt_promise_run_unstarted(id: i64) -> u8 {
+fn msrt_promise_run_unstarted(id: i64) -> u8 {
     let t = table();
     let Some(i) = index(t, id) else { return 0 };
     if t.state[i] != State::Pending || t.closure[i] == 0 {
@@ -1775,8 +1774,7 @@ pub extern "C-unwind" fn msrt_group_new() -> i64 {
 
 /// Adds promise `id` to `group`, reporting `tag` when it finishes (at once if it already has).
 /// Answers 0 when the promise cannot join: it belongs to another thread or to another group.
-#[unsafe(no_mangle)]
-pub extern "C-unwind" fn msrt_group_add(group: i64, id: i64, tag: i64) -> u8 {
+fn msrt_group_add(group: i64, id: i64, tag: i64) -> u8 {
     if is_foreign(id) {
         return 0;
     }

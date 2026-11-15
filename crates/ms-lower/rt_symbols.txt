@@ -93,7 +93,6 @@ msrt_float_to_string(v: f64, out: *mut StrVal) @domain=string @leaf
 msrt_float_truncate_to_int(v: f64, out: *mut i64) -> u8 @domain=number @leaf
 msrt_fn_new(closure: *mut Obj, sig: u64) -> *mut Obj @keeps:closure
 msrt_free(p: *mut u8)
-msrt_group_add(group: i64, id: i64, tag: i64) -> u8 @domain=promise
 msrt_group_free(group: i64) @domain=promise
 msrt_group_join(group: i64, ids: *const VecVal, from: i64) -> i64 @domain=promise
 msrt_group_new() -> i64 @domain=promise
@@ -220,7 +219,6 @@ msrt_promise_new() -> i64 @domain=promise
 msrt_promise_on_cancel(id: i64, cancel: i64) @domain=promise
 msrt_promise_put(id: i64, value: *mut u8, d: ValueDesc, failed: i64) @domain=promise @takes:value
 msrt_promise_ready(fd: i64, events: i64, timeout_ns: i64) -> i64 @domain=promise
-msrt_promise_run_unstarted(id: i64) -> u8 @domain=promise
 msrt_promise_run_watched(id: i64, group: i64, ids: *const VecVal, from: i64) -> i64 @domain=promise
 msrt_promise_sleep(ns: i64) -> i64 @domain=promise
 msrt_promise_start(id: i64, work: *mut Closure) @domain=promise @keeps:work @spawns
@@ -296,6 +294,7 @@ msrt_string_free(s: *const StrVal) @domain=string @leaf
 msrt_string_from_bytes(ptr: *const u8, len: usize, out: *mut StrVal) @domain=string @leaf
 msrt_string_from_scalars(values: *const VecVal, out: *mut StrVal) -> u8 @domain=string @leaf
 msrt_string_hash(s: *const StrVal) -> i64 @domain=map @leaf @pure
+msrt_string_index_any(s: *const StrVal, set: *const StrVal, out: *mut i64) -> u8 @domain=string @leaf @pure
 msrt_string_index_of(a: *const StrVal, v: *const StrVal, out: *mut i64) -> u8 @domain=string @leaf @pure
 msrt_string_is_empty(s: *const StrVal) -> u8 @domain=string @leaf @pure
 msrt_string_last_index_of(a: *const StrVal, v: *const StrVal, out: *mut i64) -> u8 @domain=string @leaf
@@ -327,7 +326,6 @@ msrt_string_split_view(s: *const StrVal, sep: *const StrVal, has_max: HasRaw, ma
 msrt_string_starts_with(a: *const StrVal, v: *const StrVal) -> u8 @domain=string @leaf @pure
 msrt_string_to_bytes(s: *const StrVal, out: *mut VecVal) @domain=string @leaf
 msrt_string_trim(s: *const StrVal, out: *mut StrVal) @domain=string @fresh @leaf @takes_self
-msrt_string_index_any(s: *const StrVal, set: *const StrVal, out: *mut i64) -> u8 @domain=string @leaf @pure
 msrt_string_trim_chars(s: *const StrVal, set: *const StrVal, from_start: u8, from_end: u8, out: *mut StrVal) @domain=string @leaf
 msrt_string_trim_end(s: *const StrVal, out: *mut StrVal) @domain=string @fresh @leaf @takes_self
 msrt_string_trim_end_take(s: *mut StrVal, out: *mut StrVal) @domain=string @leaf

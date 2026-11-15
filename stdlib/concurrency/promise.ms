@@ -6,8 +6,8 @@ import (
 	msrt_cancel_fired,
 	msrt_cancel_free,
 	msrt_cancel_new,
-	msrt_group_join,
 	msrt_group_free,
+	msrt_group_join,
 	msrt_group_new,
 	msrt_group_next,
 	msrt_group_poll,
@@ -246,8 +246,8 @@ opaque type WaitSet:
 fn var WaitSet.close() Unit!:
 	msrt_group_free(self.id)
 
-// The error `wait_all` reports when the run of the promise at `head` was ended by a failure:
-// that of the first promise of the set to fail.
+// The error `wait_all` reports when the run of the promise at `head` was ended by a
+// failure: that of the first promise of the set to fail.
 fn first_failure[T](
 	set: Int,
 	pending: List[Promise[T]],
@@ -255,14 +255,17 @@ fn first_failure[T](
 	head: Int,
 ) Error:
 	var at = msrt_group_poll(set)
+
 	while at >= 0:
 		if not taken[at] and at != head:
 			result := pending[at].wait()
+
 			match result:
 				ok(_): at = msrt_group_poll(set)
 				error(cause): return cause.clone()
 		else:
 			at = msrt_group_poll(set)
+
 	return Error("promise: cancelled")
 
 // Waits for every promise and returns the results in order. The first promise to fail,
@@ -281,12 +284,12 @@ export fn wait_all[T](promises: List[Promise[T]]) List[T]!:
 		taken.append(false)
 		members.append(pending[at].id)
 
-	// In list order, take what is finished. A promise that has not started runs here, and
-	// when it first waits the rest join the set (`mode` 1; 2 when one cannot join and is
-	// polled with `wait_any` instead), so a failure behind a slow promise ends that run and
-	// the wait without waiting for the slow one. A run that never waits costs nothing for
-	// watching. When the next promise is not finished, block until anything finishes and
-	// take it. The set reports each finished promise once.
+	// In list order, take what is finished. A promise that has not started runs here,
+	// and when it first waits the rest join the set (`mode` 1; 2 when one cannot join
+	// and is polled with `wait_any` instead), so a failure behind a slow promise ends
+	// that run and the wait without waiting for the slow one. A run that never waits
+	// costs nothing for watching. When the next promise is not finished, block until
+	// anything finishes and take it. The set reports each finished promise once.
 	var head = 0
 	var tried = -1
 	var mode = 0
@@ -304,9 +307,7 @@ export fn wait_all[T](promises: List[Promise[T]]) List[T]!:
 		var ran = 0
 		if fresh:
 			ran = msrt_promise_run_watched(pending[head].id, set.id, members, head)
-
-		if ran == 2:
-			return error(first_failure(set.id, pending, taken, head))
+		if ran == 2: return error(first_failure(set.id, pending, taken, head))
 
 		if ran > 0 or pending[head].done():
 			value := pending[head].wait()?
