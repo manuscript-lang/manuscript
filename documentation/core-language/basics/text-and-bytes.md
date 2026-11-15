@@ -228,7 +228,7 @@ Interpolation and direct `to_string()` conversion use the forms below, independe
 | Regex | Pattern text |
 | Other opaque native values, authorities, and resources | `[object]`; internal state and addresses are not inspected |
 
-Type and enum names omit modules and type arguments. Nested Strings are unquoted. Empty values keep their delimiters: `[]`, `Map()`, `Type()`. These forms are for display, not serialization. At nesting depth 64 conversion emits `...`; the outer value is depth 0, and each field, payload, item, key/value, or interface receiver adds one.
+Type and enum names omit modules and type arguments. Nested Strings are unquoted, except an empty String, which shows as `""` so `[""]` is not read as `[]`. Empty values keep their delimiters: `[]`, `Map()`, `Type()`. These forms are for display, not serialization. At nesting depth 64 conversion emits `...`; the outer value is depth 0, and each field, payload, item, key/value, or interface receiver adds one.
 
 **Float.** Choose the shortest decimal that converts back to the same binary64 (nearest, ties to even); among equal lengths take the closest to the exact value, then the even final digit. Strip trailing zeros. Zero is `0`, negative zero `-0`.
 
