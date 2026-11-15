@@ -88,7 +88,7 @@ export fn set_environment(name: String, value: String?) Unit!:
 // lines, `#` comments, an `export ` prefix, and single-, double-, or backtick-quoted
 // values spanning lines are accepted. The whole file is validated first, so a malformed
 // or non-UTF-8 file returns EBADMSG and changes nothing. A file larger than `max_bytes`
-// returns EOVERFLOW.
+// returns EOVERFLOW, and a directory returns EINVAL, as for `read_file`.
 // ms: effect std.env.write
 // ms: effect std.fs.read
 export fn load_environment(path: String, max_bytes: Int? = none) Unit!:
