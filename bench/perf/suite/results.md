@@ -1,5 +1,9 @@
 # Suite results
 
+## 2026-11-15, after the wave of merges (`d85da123`)
+
+Rerun on `d85da123` (main after #4034, with #4008, #4009, #4010, #4012 and #4013 merged; #4003 and #4004 still open), same VM, min of 5. Wall times were 0 to 50% higher than the `71487c98` run an hour earlier (`interp` 134 to 202 ms), but the callgrind instruction counts of `interp`, `strings`, `lz` and `graph` are unchanged to the instruction (within 1,000 of 2.98G, 1.76G, 618M and 635M), so the generated code and runtime path of these programs did not change; the wall-clock moves are VM load. Not rerun under callgrind: the other 19 programs. Open risk: #4032 (`wait_all` ends at the first failure) costs about 40% more on 100,000 trivial promises in its own debug-build numbers; rerun `workers` and `bench/perf/wait-all` in release when it merges.
+
 ## 2026-11-15, regression check on `71487c98`
 
 Same-machine A/B: release `ms` built from `d4006e73` (2026-11-13 22:42 -0800, the commit of the 2026-11-14 baseline below) and from `71487c98` (main after #3996), both built and run in one session on this 4 vCPU Xeon 2.1 GHz VM, Manuscript column only, min of 5 (process start and I/O included, compile excluded). The 2026-11-14 tables below came from another session, so their absolute times are not compared; the speedups below are within this one session. `pargroup` did not build on `d4006e73` in this harness (it imports `resilience.ms`, renamed from `flow.ms` in #3959), so it has no base time.
