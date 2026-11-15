@@ -9,6 +9,7 @@ import (
 	parse from "@std/data/json.ms",
 	stderr, stdout from "@std/io/io.ms",
 	arguments from "@std/os/env.ms",
+	compile from "@std/regex.ms",
 
 	root from "./core/model.ms",
 	fmt_g, mean_scaled, pct0 from "./lib/pyfmt.ms",
@@ -36,6 +37,7 @@ type Run:
 	builds: Int = 0
 	first_build_ok: Bool
 	build_codes: List[String] = []
+	build_errors: List[String] = []
 	pass: Bool
 
 type CodeStat:
@@ -113,6 +115,32 @@ fn codes_table(runs: List[Run], lang: String) String:
 
 	return out
 
+// The first diagnostic line of failed builds with the location and quoted names
+// removed, so equal mistakes group together, most frequent first.
+fn cut(text: String, limit: Int) String:
+	if text.length() <= limit: return text.clone()
+	return text.slice(0, limit).get("")
+
+fn errors_table(runs: List[Run], lang: String) String:
+	place := compile("^\\S+:\\d+:\\d+: ").get()
+	quoted := compile("'[^']*'").get()
+	mine := runs.filter(fn r: r.language == lang)
+	all := mine.flat_map(
+		fn r: r.build_errors.map(
+			fn e: quoted.replace_all(
+				place.replace_all(e, "", none).get(e),
+				"'X'",
+				none,
+			).get(e)
+		)
+	)
+	stats := all.distinct().map(fn m: CodeStat(m.clone(), all.count(fn x: x == m)))
+	var out = "\n### {lang}: most common first error line of failed builds\n\n"
+	out += "| message | occurrences |\n|---|---:|\n"
+	for entry in stats.sorted_by_key(fn s: 0 - s.count).take(15):
+		out += "| {cut(entry.code, 110)} | {entry.count} |\n"
+	return out
+
 fn main() Int:
 	args := arguments()
 	paths := if args.is_empty(): ["{root()}/results/runs.jsonl"] else: args
@@ -134,8 +162,12 @@ fn main() Int:
 	text += table(runs, "By language and category", fn r: "{r.language} / {r.category}")
 	text += table(runs, "By language and tier", fn r: "{r.language} / tier {r.tier}")
 	text += matrix(runs)
+
 	for lang in runs.map(fn r: r.language.clone()).distinct().sorted():
 		if runs.any(fn r: r.language == lang and not r.build_codes.is_empty()):
 			text += codes_table(runs, lang)
+		if runs.any(fn r: r.language == lang and not r.build_errors.is_empty()):
+			text += errors_table(runs, lang)
+
 	stdout().write(text).get()
 	return 0

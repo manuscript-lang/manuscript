@@ -27,11 +27,14 @@ export type BuildLog:
 	examples_pass: Bool
 	// Diagnostic codes seen in the agent's failed builds, one entry per occurrence.
 	build_codes: List[String]
+	// The first diagnostic line of each failed build.
+	build_errors: List[String]
 
 type LogRow:
 	phase: String
 	ok: Bool
 	codes: String = ""
+	msg: String = ""
 
 // Creates `dest` with the language template, spec, examples and `check.sh`. Returns the
 // agent prompt.
@@ -83,7 +86,7 @@ export fn read_log(ws: String) BuildLog:
 	for line in read_text("{ws}/.bench/log.jsonl").split("\n"):
 		if line.trim().is_empty(): continue
 
-		rows.append(parse[LogRow](line).get(LogRow("", false, "")))
+		rows.append(parse[LogRow](line).get(LogRow("", false, "", "")))
 
 	builds := rows.filter(fn r: r.phase == "build")
 	checks := rows.filter(fn r: r.phase == "check")
@@ -94,10 +97,14 @@ export fn read_log(ws: String) BuildLog:
 	if last := checks.last(): last_ok = last.ok
 
 	var codes = List[String]()
+	var errors = List[String]()
+
 	for failed in builds.filter(fn r: not r.ok):
+		if not failed.msg.is_empty(): errors.append(failed.msg.clone())
 		for code in failed.codes.split(" "):
 			if not code.is_empty(): codes.append(code.clone())
-	return BuildLog(builds.length(), first_ok, checks.length(), last_ok, codes)
+
+	return BuildLog(builds.length(), first_ok, checks.length(), last_ok, codes, errors)
 
 // Builds the workspace's solution and runs the hidden cases.
 export fn grade(ch: Challenge, lang: Lang, ws: String) Grade:
