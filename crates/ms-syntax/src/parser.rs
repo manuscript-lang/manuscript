@@ -1154,6 +1154,7 @@ impl<'a> Parser<'a> {
         generics: bool,
         body: bool,
         mutating: bool,
+        var_at: Pos,
     ) -> PResult<Method> {
         let type_params = if generics {
             self.type_params()?
@@ -1171,6 +1172,7 @@ impl<'a> Parser<'a> {
         Ok(Method {
             id,
             pos: name.pos,
+            var_at,
             func: Func {
                 name: self.sym(name),
                 type_params,
@@ -1272,7 +1274,8 @@ impl<'a> Parser<'a> {
                 };
                 self.need(Tok::Dot)?;
                 let name = self.need(Tok::Name)?;
-                let method = self.method_signature(name, true, true, mutating)?;
+                let method =
+                    self.method_signature(name, true, true, mutating, receiver_name.pos)?;
                 DeclKind::Impl(ImplDecl {
                     contract: None,
                     receiver,
@@ -1570,14 +1573,14 @@ impl<'a> Parser<'a> {
                 || (self.kind() == Tok::Var && self.ahead(1).kind == Tok::Fn)
             {
                 let mutating = self.take(Tok::Var);
-                self.need(Tok::Fn)?;
+                let fn_pos = self.need(Tok::Fn)?.pos;
                 if token.kind == Tok::Type {
                     let t = self.previous();
                     let names = type_param_names(self.names, &type_params);
                     return self.fail(t, format!("a type declares only fields; write its methods after it as 'fn {name_t}{names}.name(...)'", name_t = self.names.str(name)));
                 }
                 let mname = self.need(Tok::Name)?;
-                let m = self.method_signature(mname, true, false, mutating)?;
+                let m = self.method_signature(mname, true, false, mutating, fn_pos)?;
                 self.end()?;
                 methods.push(m);
             } else {
