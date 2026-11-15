@@ -15,7 +15,7 @@ export fn main() Int:
     s2 := "back\\slash"
     say("s2 = [{s2}]")
 
-    i3 := ((i1 * s2.length()) + i1)
+    i3 := ((i1 * s2.scalar_length()) + i1)
     say("i3 = {i3}")
 
     f4 := (6.0e4 + ((812.525 * 600.051) / (56.182 / 131.920)))

@@ -50,7 +50,7 @@ export fn main() Int:
     l9 := l3.map(fn x: x * 6)
     say("l9 = {l9} len {l9.length()}")
     say(
-        "{s1.length()} {((902445856851 + (-31)) % l3.get(0))} {(s1.length() < ((902445856851 + (-31)) % l3.get(0)))} sum {s1.length() + ((902445856851 + (-31)) % l3.get(0))}"
+        "{s1.scalar_length()} {((902445856851 + (-31)) % l3.get(0))} {(s1.scalar_length() < ((902445856851 + (-31)) % l3.get(0)))} sum {s1.scalar_length() + ((902445856851 + (-31)) % l3.get(0))}"
     )
 
     var acc10 = 0
@@ -58,7 +58,7 @@ export fn main() Int:
         acc10 += i * 2
     say("acc10 = {acc10}")
 
-    i11 := s1.length()
+    i11 := s1.scalar_length()
     say("i11 = {i11}")
 
     f12 := f7

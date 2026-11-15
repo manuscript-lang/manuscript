@@ -74,7 +74,7 @@ export fn main() Int:
         say((s5 + "emoji 😀"))
 
     say(
-        "{(i4 / (i4 * i2))} {((i2 + 908316178682) + s5.length())} {((i4 / (i4 * i2)) < ((i2 + 908316178682) + s5.length()))} sum {(i4 / (i4 * i2)) + ((i2 + 908316178682) + s5.length())}"
+        "{(i4 / (i4 * i2))} {((i2 + 908316178682) + s5.scalar_length())} {((i4 / (i4 * i2)) < ((i2 + 908316178682) + s5.scalar_length()))} sum {(i4 / (i4 * i2)) + ((i2 + 908316178682) + s5.scalar_length())}"
     )
 
     i12 := l9.get(0)

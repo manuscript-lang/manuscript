@@ -73,10 +73,26 @@ fn main() Unit:
 		if c == "é": s += 1
 	report("chars_scan_utf8", t, s)
 	t = monotonic()
-	s = utext.length() + utext.index_of("é99999").get(-1) + utext.count("é1")
+
+	at := utext.index_of("é99999")
+	before := if at.is_some(): utext.view(0, at.get(0)).scalar_length() else: -1
+	s = utext.scalar_length() + before + utext.count("é1")
 	report("utf8_len_index_count", t, s)
 	t = monotonic()
-	s = utext.upper().length() + utext.reverse().length()
+	s = 0
+
+	var offset = 0
+
+	while offset < utext.length():
+		code := utext.scalar_at(offset, 0)
+		s += code
+		offset += (
+			if code < 128: 1 else: if code < 2048: 2 else: if code < 65536: 3 else: 4
+		)
+
+	report("utf8_offset_walk", t, s)
+	t = monotonic()
+	s = utext.upper().scalar_length() + utext.reverse().scalar_length()
 	report("utf8_case_reverse", t, s)
 
 	// per-word ops

@@ -15,10 +15,10 @@ export fn main() Int:
     l2 := [26, (-30), (-12)]
     say("l2 = {l2} len {l2.length()}")
     say(
-        "{(s1.length() + 7)} {s1.length()} {((s1.length() + 7) < s1.length())} sum {(s1.length() + 7) + s1.length()}"
+        "{(s1.scalar_length() + 7)} {s1.scalar_length()} {((s1.scalar_length() + 7) < s1.scalar_length())} sum {(s1.scalar_length() + 7) + s1.scalar_length()}"
     )
 
     bad := 1 and 2
-    i3 := ((((-5) + (-895229)) * s1.length()) * (-1))
+    i3 := ((((-5) + (-895229)) * s1.scalar_length()) * (-1))
     say("i3 = {i3}")
     return 0

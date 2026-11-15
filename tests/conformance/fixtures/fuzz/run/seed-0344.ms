@@ -38,7 +38,7 @@ export fn main() Int:
     if ((f2 * f2) < (f2 * 166.25)):
         say(s5.replace(s5, "emoji 😀"))
     else:
-        say(("{s5.length()}:" + s5))
+        say(("{s5.scalar_length()}:" + s5))
 
     b8 := (((f2 + f2) * (284.25 + 289.366)) > (f2 - (f2 / 67.534)))
     say("b8 = {b8}")

@@ -70,7 +70,7 @@ export fn main() Int:
 
     say("acc15 = {acc15}")
 
-    b16 := ((s13.length() > ((-872862) - i1)) or b8)
+    b16 := ((s13.scalar_length() > ((-872862) - i1)) or b8)
     say("b16 = {b16}")
 
     i17 := ((-15) * (-154495288910))

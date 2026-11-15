@@ -62,7 +62,7 @@ export fn main() Int:
     s12 := "MiXeD CaSe".lower()
     say("s12 = [{s12}]")
 
-    i13 := ((-43) * (i5 - s12.length()))
+    i13 := ((-43) * (i5 - s12.scalar_length()))
     say("i13 = {i13}")
 
     i14 := i10
@@ -75,6 +75,6 @@ export fn main() Int:
     f16 := f4
     say("f16 = {f16}")
 
-    big17 := s12.length() - s12.length()
-    say("{s12.length() % big17}")
+    big17 := s12.scalar_length() - s12.scalar_length()
+    say("{s12.scalar_length() % big17}")
     return 0

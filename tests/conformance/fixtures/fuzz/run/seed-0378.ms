@@ -18,7 +18,7 @@ export fn main() Int:
     f3 := (((370.25 * 119.702) * 451.25) * ((247.539 * 5.5) + (533.917 * 397.098)))
     say("f3 = {f3}")
     say(
-        "{(21 * (i1 + i1))} {(s2.length() + (43 + i1))} {((21 * (i1 + i1)) < (s2.length() + (43 + i1)))} sum {(21 * (i1 + i1)) + (s2.length() + (43 + i1))}"
+        "{(21 * (i1 + i1))} {(s2.scalar_length() + (43 + i1))} {((21 * (i1 + i1)) < (s2.scalar_length() + (43 + i1)))} sum {(21 * (i1 + i1)) + (s2.scalar_length() + (43 + i1))}"
     )
 
     if false:

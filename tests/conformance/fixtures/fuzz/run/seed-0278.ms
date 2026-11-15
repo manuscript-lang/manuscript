@@ -56,7 +56,7 @@ export fn main() Int:
     say("f6 = {f6}")
     say("fact(10) = {fact(10)}")
 
-    s7 := (("{s3.length()}:" + "alpha") + s3.lower()).lower()
+    s7 := (("{s3.scalar_length()}:" + "alpha") + s3.lower()).lower()
     say("s7 = [{s7}]")
 
     s8 := ("{(i4 + i4)}:" + "Tab\there").upper().trim()

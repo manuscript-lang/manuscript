@@ -29,7 +29,7 @@ export fn main() Int:
         say(s2.reverse())
 
     say(
-        "{i1} {(s2.length() % s2.length())} {(i1 < (s2.length() % s2.length()))} sum {i1 + (s2.length() % s2.length())}"
+        "{i1} {(s2.scalar_length() % s2.scalar_length())} {(i1 < (s2.scalar_length() % s2.scalar_length()))} sum {i1 + (s2.scalar_length() % s2.scalar_length())}"
     )
 
     f5 := 309.25
@@ -58,5 +58,5 @@ export fn main() Int:
 
     l13 := l9.concat(l9)
     say("l13 = {l13} len {l13.length()}")
-    say("{s2.length()} {i7} {(s2.length() < i7)} sum {s2.length() + i7}")
+    say("{s2.scalar_length()} {i7} {(s2.scalar_length() < i7)} sum {s2.scalar_length() + i7}")
     return 0

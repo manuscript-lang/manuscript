@@ -61,7 +61,7 @@ export fn main() Int:
     b9 := "Tab\there".is_empty()
     say("b9 = {b9}")
     say(
-        "{s3.length()} {((i6 - i6) / (i6 * (-41)))} {(s3.length() < ((i6 - i6) / (i6 * (-41))))} sum {s3.length() + ((i6 - i6) / (i6 * (-41)))}"
+        "{s3.scalar_length()} {((i6 - i6) / (i6 * (-41)))} {(s3.scalar_length() < ((i6 - i6) / (i6 * (-41))))} sum {s3.scalar_length() + ((i6 - i6) / (i6 * (-41)))}"
     )
 
     big10 := 9223372036854775807

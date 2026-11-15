@@ -59,3 +59,4 @@ Note on memory model: on 2026-10-19 the owner adopted value semantics for the Ru
 - [`String.split`, `lines` and `chars` lend their receiver](split-lines-and-chars-lend-their-receiver.md): results borrow under the `view` rules; keeping one needs `.clone()`.
 - [Write terse Manuscript](terse-manuscript-idioms.md): shortest existing form (`print`, `repeated`, `map`/`filter`, `if` expressions, `is_empty`, multi-line strings); conformance fixtures stay frozen.
 - [Optional chaining `?.` is for Optionals only](optional-chaining-is-for-optionals-only.md): `?.` stays an Optional operator; Results and errors use `?` and `match`.
+- [String positions are byte offsets](string-positions-are-byte-offsets.md): `length`, `slice`, `view`, `index_of`, `scalar_at` use bytes; no scalar index; `get`/`take`/`drop`/`slice_scalars` removed.

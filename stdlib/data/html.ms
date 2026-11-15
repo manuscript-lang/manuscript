@@ -1674,17 +1674,17 @@ fn var Parser.add_leading_whitespace() Bool:
 	cut := trim_left_len(d)
 
 	if cut > 0:
-		ws := d.take(cut)
+		ws := d.view(0, cut).clone()
 		self.add_text(ws)
 		if cut == d.byte_length(): return true
 
-		self.tok_data = d.drop(cut)
+		self.tok_data = d.view(cut, d.length()).clone()
 
 	return false
 
 fn var Parser.trim_tok_left() Bool:
 	cut := trim_left_len(self.tok_data)
-	if cut > 0: self.tok_data = self.tok_data.drop(cut)
+	if cut > 0: self.tok_data = self.tok_data.view(cut, self.tok_data.length()).clone()
 	return self.tok_data == ""
 
 fn var Parser.run_im(im: Int) Bool:
@@ -3058,8 +3058,8 @@ fn var Parser.adjust_foreign_attributes() Unit:
 
 		if colon.is_some():
 			at := colon.get(0)
-			self.tok_nss[i] = key.take(at)
-			self.tok_keys[i] = key.drop(at + 1)
+			self.tok_nss[i] = key.view(0, at).clone()
+			self.tok_keys[i] = key.view(at + 1, key.length()).clone()
 
 fn Parser.html_integration_point(n: Int) Bool:
 	if self.kind[n] != K_ELEMENT: return false
@@ -3478,8 +3478,8 @@ fn trim_left_len(text: String) Int:
 // Removes the first scalars of `text` that are a leading CR and then LF.
 fn strip_leading_newline(text: String) String:
 	var d = text
-	if d.starts_with("\r"): d = d.drop(1)
-	if d.starts_with("\n"): d = d.drop(1)
+	if d.starts_with("\r"): d = d.view(1, d.length()).clone()
+	if d.starts_with("\n"): d = d.view(1, d.length()).clone()
 	return d
 
 // Whether the text has no scalar other than HTML whitespace.

@@ -38,3 +38,15 @@ Rust's `HashMap` uses SipHash, so the `freq_*` and `lookup_long` rows are not a 
 ## Round 3 check (2026-11-14): builders, concatenation, interpolation
 
 No change needed. Min of 3, ms, same VM: `builder_mixed` 33 (Rust 26 to 39), `concat3` 23 (Rust 59), `interp_strings` 41 (Rust 123), `plus_equals` 16 (Rust 18), `int_hex` 30 (Rust 40). The remaining `trim_chars` gap (15 vs 7) is an owned result against Rust's borrowed slice; closing it needs the checker's borrowed-result rule for `trim` extended to `trim_chars`, which is keyed on the method name today (`ms-lower/src/call.rs`), so it waits for the general borrowed-results design (`proposals/borrowed-results.md`).
+
+## 2026-11-15: byte-offset positions
+
+Positions in `String` are byte offsets (`proposals/byte-offset-strings.md`). Same VM and method, min of 5, milliseconds, Release `ms`, rustc `-O`. Revision: this change on top of `main` after round 3.
+
+| operation | before | after | rust | change |
+|---|---:|---:|---:|---|
+| `utf8_offset_walk`: `scalar_at(offset)` over every scalar of 11.5 MB of non-ASCII text (new row) | quadratic: `scalar_at(i)` and `get(i)` over every index of a 189k-scalar text took 5,938 and 5,521 ms | 19 | 11 | an offset is O(1); there is no scalar index to scan for. Each non-ASCII scalar still calls the runtime decoder (inline only for ASCII), which is the remaining gap |
+| `utf8_len_index_count` | 6 | 6 | 12 | `scalar_length` and `index_of` unchanged; the match position is now a byte offset |
+| `chars_scan_utf8` | 14 | 14 | 8 | unchanged |
+
+`length()` is now a field read (it counted scalars before: O(n) on text that was not flagged ASCII). `utf8_case_reverse` (150 vs 89) is unchanged by this change and still open.

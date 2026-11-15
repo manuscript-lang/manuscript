@@ -308,7 +308,7 @@ test "DOCTYPE public identifiers accept only XML PubidChar scalars":
 
 	for quote in ["\"", "'"]:
 		for invalid in ["[", "]", "<", ">", "&", "\t", "é", "😀", "\"", "\\", "\{", "\}"]:
-			expect_equal(invalid.length(), 1)?
+			expect_equal(invalid.scalar_length(), 1)?
 			if invalid == quote: continue
 
 			source := "<!DOCTYPE a PUBLIC {quote}{invalid}{quote} 'unused'><a/>"

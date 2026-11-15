@@ -83,7 +83,7 @@ fn run_one(
 	out_file: String,
 	tag: String,
 ) RunRecord:
-	run_id := uuid_v4().get("").replace("-", "").take(10)
+	run_id := uuid_v4().get("").replace("-", "").view(0, 10).clone()
 	base := temporary_directory("agent-bench-").get()
 	ws := "{base}/ws"
 	prompt := make_workspace(ch, lang, ws)

@@ -28,7 +28,7 @@ export fn fixed(x: Float, places: Int) String:
 	var kept = wide.slice(0, cut).get("")
 	if places == 0: kept = wide.slice(0, at).get("")
 
-	last := kept.get(kept.length() - 1).parse_int().get(0)
+	last := kept.view(kept.length() - 1, kept.length()).parse_int().get(0)
 	if last % 2 == 1: return x.to_fixed(places)
 
 	return if x < 0.0: "-" + kept else: kept

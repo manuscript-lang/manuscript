@@ -17,13 +17,19 @@ fn String.as_bytes() Bytes:
 // Removes one exact prefix, or returns none when absent; an empty prefix succeeds
 // unchanged.
 fn String.cut_prefix(prefix: String) String?:
-	if self.starts_with(prefix): return self.drop(prefix.length())
+	if self.starts_with(prefix): return self.view(
+		prefix.length(),
+		self.length(),
+	).clone()
 	return none
 
 // Removes one exact suffix, or returns none when absent; an empty suffix succeeds
 // unchanged.
 fn String.cut_suffix(suffix: String) String?:
-	if self.ends_with(suffix): return self.take(self.length() - suffix.length())
+	if self.ends_with(suffix): return self.view(
+		0,
+		self.length() - suffix.length(),
+	).clone()
 	return none
 
 // The four Unicode normalization forms, selected without runtime string spelling
@@ -61,9 +67,14 @@ fn String.fields() List[String]:
 fn String.display_width() Int!:
 	return msstd_unicode_display_width(self)
 
-// Scalars read per step by the prefix scans below; each step doubles, so a scan costs
-// its distance.
-SCAN_WINDOW := 32
+// Bytes of the UTF-8 encoding of the scalar value `code`; zero for a negative value.
+fn scalar_width(code: Int) Int:
+	if code < 0: return 0
+	if code < 0x80: return 1
+	if code < 0x800: return 2
+	if code < 0x10000: return 3
+
+	return 4
 
 // Splits around runs of characters (one-scalar strings) the predicate accepts; no
 // empty items.
@@ -134,7 +145,7 @@ fn String.trim_end_chars(set: String) String:
 fn String.contains_any(set: String) Bool:
 	return self.index_any(set).is_some()
 
-// Scalar index of the first scalar that occurs in set, or none.
+// Byte offset of the first scalar that occurs in set, or none.
 fn String.index_any(set: String) Int?:
 	return self.find_char(fn c: set.contains(c))
 
@@ -157,7 +168,8 @@ fn String.split_after(separator: String) List[String]:
 // Uppercases the first scalar to its titlecase form (`ǆ` becomes `ǅ`, `ß` becomes `Ss`)
 // and leaves the rest unchanged.
 fn String.capitalize() String:
-	return title_scalar(self.take(1)).concat(self.drop(1))
+	n := scalar_width(self.scalar_at(0, -1))
+	return title_scalar(self.view(0, n)).concat(self.view(n, self.length()))
 
 // Capitalizes the first letter of each run of letters, digits and apostrophes with its
 // titlecase form and lowercases the others; a word is lowercased whole, so a final
@@ -182,14 +194,15 @@ fn String.title() String:
 
 // The word with its first scalar titlecased and the rest lowercased in context.
 fn title_word(word: String) String:
-	first := word.take(1)
+	n := scalar_width(word.scalar_at(0, -1))
+	first := word.view(0, n)
 	lowered := word.lower()
 	head := first.lower()
 	if lowered.starts_with(head): return title_scalar(first).concat(
-		lowered.drop(head.scalar_length())
+		lowered.view(head.length(), lowered.length())
 	)
 
-	return title_scalar(first).concat(word.drop(1).lower())
+	return title_scalar(first).concat(word.view(n, word.length()).lower())
 
 // The titlecase mapping of one scalar: the four digraph families map to their
 // mixed-case letter, and any other scalar takes its full uppercase mapping with every
@@ -222,19 +235,16 @@ fn String.map_chars(transform: fn(String) String) String:
 		out.append(transform(c))
 	return out.build()
 
-// Scalar index of the first scalar the predicate accepts, or none.
+// Byte offset of the first scalar the predicate accepts, or none.
 fn String.find_char(predicate: fn(String) Bool) Int?:
-	var from = 0
-	var window = SCAN_WINDOW
+	var at = 0
+	n := self.length()
 
-	while true:
-		cs := self.take(from + window).drop(from).chars()
-		for i in 0..cs.length():
-			if predicate(cs[i]): return from + i
-		if cs.length() < window: return none
+	while at < n:
+		width := scalar_width(self.scalar_at(at))
+		if predicate(self.view(at, at + width)): return at
 
-		from += window
-		window *= 2
+		at += width
 
 	return none
 

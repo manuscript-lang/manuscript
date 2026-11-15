@@ -31,6 +31,6 @@ export fn main() Int:
     i3 := 9223372036854775806
     say("i3 = {i3}")
 
-    i4 := (((547515 + 8) - i3) + s2.length())
+    i4 := (((547515 + 8) - i3) + s2.scalar_length())
     say("i4 = {i4}")
     return 0

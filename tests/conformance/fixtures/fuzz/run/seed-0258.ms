@@ -40,7 +40,7 @@ export fn main() Int:
     l4 := [19, (-11)]
     say("l4 = {l4} len {l4.length()}")
 
-    i5 := s2.length()
+    i5 := s2.scalar_length()
     say("i5 = {i5}")
 
     l6 := l4.reversed()

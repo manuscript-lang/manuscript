@@ -18,10 +18,10 @@ export fn main() Int:
     s3 := ("hello world".upper() + ("quote\"d" + "  padded  ")).upper()
     say("s3 = [{s3}]")
 
-    i4 := (s3.length() % (50 - ((-34) % 12)))
+    i4 := (s3.scalar_length() % (50 - ((-34) % 12)))
     say("i4 = {i4}")
 
-    i5 := (i4 + (27 - s3.length()))
+    i5 := (i4 + (27 - s3.scalar_length()))
     say("i5 = {i5}")
 
     i6 := (((i5 * i5) / ((-667) + i5)) + (-(i5 + (-37861157045))))

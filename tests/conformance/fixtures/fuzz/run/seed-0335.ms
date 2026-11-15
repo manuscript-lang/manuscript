@@ -39,7 +39,7 @@ export fn main() Int:
     i7 := (-39)
     say("i7 = {i7}")
 
-    i9 := ((-15) + (s4.length() + s4.length()))
+    i9 := ((-15) + (s4.scalar_length() + s4.scalar_length()))
     say("i9 = {i9}")
 
     f10 := 374.332

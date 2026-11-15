@@ -46,7 +46,7 @@ export fn main() Int:
     l6 := [(-24)]
     say("l6 = {l6} len {l6.length()}")
     say(
-        "{((i5 - i5) + (i5 * i5))} {s1.length()} {(((i5 - i5) + (i5 * i5)) < s1.length())} sum {((i5 - i5) + (i5 * i5)) + s1.length()}"
+        "{((i5 - i5) + (i5 * i5))} {s1.scalar_length()} {(((i5 - i5) + (i5 * i5)) < s1.scalar_length())} sum {((i5 - i5) + (i5 * i5)) + s1.scalar_length()}"
     )
 
     f7 := ((f4 / f2) * ((7.5 + 0.0) + (239.558 / f2)))

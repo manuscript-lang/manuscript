@@ -24,7 +24,7 @@ export fn main() Int:
     i4 := ((-758641) * l1.get(0))
     say("i4 = {i4}")
 
-    i5 := (((-9) + (-30)) - (s2.length() - (-44)))
+    i5 := (((-9) + (-30)) - (s2.scalar_length() - (-44)))
     say("i5 = {i5}")
 
     i6 := i4

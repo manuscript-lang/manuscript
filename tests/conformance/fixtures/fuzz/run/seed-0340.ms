@@ -54,7 +54,7 @@ export fn main() Int:
     else:
         say("ms".reverse())
 
-    i10 := s6.length()
+    i10 := s6.scalar_length()
     say("i10 = {i10}")
 
     b11 := (("alpha" + s4).is_empty() and ((142.768 + f5) == f5))

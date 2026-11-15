@@ -11,7 +11,7 @@
       "tests": [
         {
           "index": 0,
-          "name": "string-view.ms::view borrows a range of scalars without copying",
+          "name": "string-view.ms::view borrows a range of bytes without copying",
           "status": "passed"
         },
         {
@@ -40,7 +40,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN string-view.ms::view borrows a range of scalars without copying\nPASS string-view.ms::view borrows a range of scalars without copying\nRUN string-view.ms::view agrees with slice\nPASS string-view.ms::view agrees with slice\nRUN string-view.ms::a kept view is a copy made with clone\nPASS string-view.ms::a kept view is a copy made with clone\nRUN string-view.ms::view of a temporary is owned\nPASS string-view.ms::view of a temporary is owned\n4 tests, 0 failed\n",
+      "stdout": "RUN string-view.ms::view borrows a range of bytes without copying\nPASS string-view.ms::view borrows a range of bytes without copying\nRUN string-view.ms::view agrees with slice\nPASS string-view.ms::view agrees with slice\nRUN string-view.ms::a kept view is a copy made with clone\nPASS string-view.ms::a kept view is a copy made with clone\nRUN string-view.ms::view of a temporary is owned\nPASS string-view.ms::view of a temporary is owned\n4 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

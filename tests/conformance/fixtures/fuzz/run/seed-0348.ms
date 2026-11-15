@@ -21,10 +21,10 @@ export fn main() Int:
     f4 := ((970.25 - (433.194 - 362.523)) - (5.0e-9 * (0.0 / 666.818)))
     say("f4 = {f4}")
 
-    i5 := s1.length()
+    i5 := s1.scalar_length()
     say("i5 = {i5}")
 
-    s6 := (("{s1.length()}:" + s1) + s1)
+    s6 := (("{s1.scalar_length()}:" + s1) + s1)
     say("s6 = [{s6}]")
 
     f7 := ((709.084 + (f4 / f4)) + ((f4 / f4) + (f4 * f4)))

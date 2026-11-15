@@ -49,6 +49,6 @@ export fn main() Int:
     l12 := l9.sorted(fn a, b: a.compare(b))
     say("l12 = {l12} len {l12.length()}")
 
-    i13 := (-((i8 % (-559552)) * s4.length()))
+    i13 := (-((i8 % (-559552)) * s4.scalar_length()))
     say("i13 = {i13}")
     return 0

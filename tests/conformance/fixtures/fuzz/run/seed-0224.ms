@@ -69,7 +69,7 @@ export fn main() Int:
     else:
         say((s3 + "Tab\there"))
 
-    i16 := (((i15 + i12) % (633373 % (-35))) * (((-28) - 21) / s7.length()))
+    i16 := (((i15 + i12) % (633373 % (-35))) * (((-28) - 21) / s7.scalar_length()))
     say("i16 = {i16}")
     say("fact(0) = {fact(0)}")
     return 0

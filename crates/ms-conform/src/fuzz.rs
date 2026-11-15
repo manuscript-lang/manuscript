@@ -192,7 +192,7 @@ impl Gen {
                 if let Some(s) = self.pick_str() {
                     let v = s.chars.map(|n| n as i64);
                     self.tags.push("strings");
-                    (format!("{}.length()", s.name), v)
+                    (format!("{}.scalar_length()", s.name), v)
                 } else {
                     self.int_leaf()
                 }

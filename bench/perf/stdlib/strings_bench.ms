@@ -91,7 +91,7 @@ bench "string.index_char_at":
 	fn work() Result[Unit, Error]:
 		var n = 0
 		for i in 0..100000:
-			n += text.get(i % 5000, default: "").length()
+			n += text.scalar_at(i % 5000, 0)
 		return keep(n)
 
 	measure(100000, work)?

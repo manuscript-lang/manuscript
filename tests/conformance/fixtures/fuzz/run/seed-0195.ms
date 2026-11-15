@@ -33,7 +33,7 @@ export fn main() Int:
     l5 := [4, (-26)]
     say("l5 = {l5} len {l5.length()}")
 
-    i6 := s3.length()
+    i6 := s3.scalar_length()
     say("i6 = {i6}")
 
     s7 := "x".lower()

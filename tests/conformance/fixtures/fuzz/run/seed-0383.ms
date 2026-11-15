@@ -53,7 +53,7 @@ export fn main() Int:
     say("i9 = {i9}")
     say("{l6.get(0)} {i9} {(l6.get(0) < i9)} sum {l6.get(0) + i9}")
 
-    i10 := ((i9 * s3.length()) + ((i9 * 46) % (50 + i9)))
+    i10 := ((i9 * s3.scalar_length()) + ((i9 * 46) % (50 + i9)))
     say("i10 = {i10}")
 
     s11 := ("delta".replace(s3, s3).reverse() + "back\\slash".lower())

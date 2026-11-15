@@ -2,10 +2,10 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-test "view borrows a range of scalars without copying":
+test "view borrows a range of bytes without copying":
 	text := "banana héllo wörld, a long string that is not inline"
 	expect_equal(text.view(2, 6), "nana")?
-	expect_equal(text.view(7, 12), "héllo")?
+	expect_equal(text.view(7, 13), "héllo")?
 	expect_equal(text.view(-6, text.length()), "inline")?
 	expect_equal(text.view(0, text.length()), text)?
 	expect_equal(text.view(3, 3).length(), 0)?

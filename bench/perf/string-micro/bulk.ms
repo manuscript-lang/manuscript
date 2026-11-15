@@ -25,17 +25,17 @@ fn main() Unit:
 	var i = 0
 
 	while i < 2000000:
-		s += text.get(i).length()
+		s += text.scalar_at(i, 0)
 		i += 1
 
-	report("get_index", t, s)
+	report("scalar_at", t, s)
 	t = monotonic()
 	s = 0
 	for k in 0..1000000: s += text.slice(k, k + 5).get("").length()
 	report("slice", t, s)
 	t = monotonic()
 	s = 0
-	for w in words: s += w.take(3).length() + w.drop(2).length()
+	for w in words: s += w.view(0, 3).length() + w.view(2, w.length()).length()
 	report("take_drop", t, s)
 	t = monotonic()
 

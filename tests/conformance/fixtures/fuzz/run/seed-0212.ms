@@ -38,7 +38,7 @@ export fn main() Int:
     b7 := (not b3)
     say("b7 = {b7}")
     say(
-        "{(((-7) * i2) + s4.length())} {(i2 - (-i2))} {((((-7) * i2) + s4.length()) < (i2 - (-i2)))} sum {(((-7) * i2) + s4.length()) + (i2 - (-i2))}"
+        "{(((-7) * i2) + s4.scalar_length())} {(i2 - (-i2))} {((((-7) * i2) + s4.scalar_length()) < (i2 - (-i2)))} sum {(((-7) * i2) + s4.scalar_length()) + (i2 - (-i2))}"
     )
 
     big8 := 9223372036854775807

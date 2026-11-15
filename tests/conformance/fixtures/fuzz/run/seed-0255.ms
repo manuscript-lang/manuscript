@@ -49,10 +49,10 @@ export fn main() Int:
     i11 := (i5 / (((-39) * i5) - (-211509)))
     say("i11 = {i11}")
 
-    i12 := s4.length()
+    i12 := s4.scalar_length()
     say("i12 = {i12}")
     say(
-        "{(s4.length() + (i1 * i5))} {(-5)} {((s4.length() + (i1 * i5)) < (-5))} sum {(s4.length() + (i1 * i5)) + (-5)}"
+        "{(s4.scalar_length() + (i1 * i5))} {(-5)} {((s4.scalar_length() + (i1 * i5)) < (-5))} sum {(s4.scalar_length() + (i1 * i5)) + (-5)}"
     )
 
     i13 := (-26)

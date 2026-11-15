@@ -4,11 +4,8 @@ import expect_equal from "@std/test/test.ms"
 
 fn classify(text: String) Int:
 	var n = 0
-	var i = 0
 
-	while i < text.length():
-		c := text.get(i)
-
+	for c in text.chars():
 		if c == "é":
 			n += 100
 		else if c >= "a" and c <= "z":
@@ -16,12 +13,10 @@ fn classify(text: String) Int:
 		else if "0" < c:
 			n += 10
 
-		i += 1
-
 	return n
 
 fn echo(text: String) String:
-	c := text.get(0)
+	c := text.chars()[0].clone()
 	if c == "x": return c
 
 	return c + "!"
@@ -42,9 +37,9 @@ fn keep(text: String) List[String]:
 
 test "get compared with one-character literals":
 	classify("abé9 Z") | expect_equal(122)?
-	("aé".get(-1) == "é") | expect_equal(true)?
-	("€".get(0) > "z") | expect_equal(true)?
-	("a".get(0) <= "a") | expect_equal(true)?
+	("aé".chars()[1] == "é") | expect_equal(true)?
+	("€".chars()[0] > "z") | expect_equal(true)?
+	("a".chars()[0] <= "a") | expect_equal(true)?
 
 test "a name that is also used as a String stays a String":
 	echo("xy") | expect_equal("x")?
@@ -56,17 +51,14 @@ test "chars elements compared and kept":
 
 fn digits(text: String) Int:
 	var n = 0
-	var i = 0
 
-	while i < text.length():
-		c := text.get(i)
+	for c in text.chars():
 		n = n * 10 + c.parse_int().get(0)
-		i += 1
 
 	return n
 
 fn both(text: String) Int:
-	c := text.get(0)
+	c := text.chars()[0].clone()
 	if c == "7": return c.parse_int().get(-1) + c.length()
 
 	return -1
@@ -76,4 +68,4 @@ test "parse_int of a one-character string":
 	digits("1a2") | expect_equal(102)?
 	digits("é+") | expect_equal(0)?
 	both("7") | expect_equal(8)?
-	"x5".get(1).parse_int() | expect_equal(5)?
+	"x5".chars()[1].parse_int() | expect_equal(5)?

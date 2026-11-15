@@ -29,7 +29,7 @@ test "text interpolation":
     expect_true(("{n}" == "42"))?
     expect_true(("{s}{s}" == "hihi"))?
     expect_true(("".length() == 0))?
-    expect_true(("héllo {n}".length() == 8))?
+    expect_true(("héllo {n}".scalar_length() == 8))?
     expect_true(("{halve(n: 8)}" == "{halve(n: 8)}"))?
 
     var items = List[Int]()

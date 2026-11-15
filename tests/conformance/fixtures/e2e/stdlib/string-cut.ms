@@ -39,19 +39,22 @@ test "large affix cuts preserve text and reject missing affixes":
 	text.cut_prefix("absent") | expect_none?
 	text.cut_suffix("absent") | expect_none?
 
-// Independent scalar comparisons verify exact matching without normalization.
+// Independent byte comparisons verify exact matching without normalization: a valid
+// UTF-8 affix starts on a scalar boundary, so a byte match is a scalar match.
 fn check_affix(text: String, affix: String, prefix: Bool) Unit!:
 	actual := if prefix: text.cut_prefix(affix) else: text.cut_suffix(affix)
 	if affix.length() > text.length(): return actual | expect_none
 
+	text_bytes := text.to_bytes()
+	affix_bytes := affix.to_bytes()
 	start := if prefix: 0 else: text.length() - affix.length()
 	for offset in 0..affix.length():
-		if text.scalar_at(start + offset) != affix.scalar_at(offset):
+		if text_bytes[start + offset] != affix_bytes[offset]:
 			return actual | expect_none
 
 	kept_start := if prefix: affix.length() else: 0
 	kept_end := if prefix: text.length() else: start
-	expected := text.slice_scalars(kept_start, kept_end) | expect_ok?
+	expected := text.slice(kept_start, kept_end) | expect_ok?
 	return (
 		actual
 		| expect_some?

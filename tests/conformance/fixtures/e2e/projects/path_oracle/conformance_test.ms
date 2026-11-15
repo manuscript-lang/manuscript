@@ -13,7 +13,7 @@ import (
 // separated by spaces.
 
 fn text(token: String) String:
-	digits := token.drop(1)
+	digits := token.view(1, token.length())
 	bytes := hex_decode(digits, none) | .get("".to_bytes())
 	return bytes.decode_utf8().get("")
 

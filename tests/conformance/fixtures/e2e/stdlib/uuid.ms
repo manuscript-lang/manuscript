@@ -84,7 +84,7 @@ test "ulid starts with the current time in milliseconds":
 	alphabet := "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
 	id := (ulid() | expect_ok?)
 	var millis = 0
-	for ch in id.take(10).chars():
+	for ch in id.view(0, 10).chars():
 		millis = millis * 32 + alphabet.index_of(ch).get(0)
 
 	moment := now()

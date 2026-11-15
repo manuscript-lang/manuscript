@@ -500,7 +500,7 @@ fn is_space(c: String) Bool:
 fn is_version(text: String) Bool:
 	if not text.starts_with("1.") or text.length() <= 2: return false
 
-	for code in text.drop(2).scalar_values():
+	for code in text.view(2, text.length()).scalar_values():
 		if code < 0x30 or code > 0x39: return false
 	return true
 
@@ -578,7 +578,7 @@ fn decode(text: String) String!:
 		end := tail.index_of(";")
 		if end.is_none(): return error(Error("XML: invalid data", kind: "EBADMSG"))
 
-		entity := tail.take(end.get(0))
+		entity := tail.view(0, end.get(0))
 
 		if entity == "lt": out.append("<")
 		else if entity == "gt": out.append(">")
@@ -586,13 +586,13 @@ fn decode(text: String) String!:
 		else if entity == "quot": out.append("\"")
 		else if entity == "apos": out.append("'")
 		else if entity.starts_with("#x"):
-			out.append(scalar(digits(entity.drop(2), 16))?)
+			out.append(scalar(digits(entity.view(2, entity.length()), 16))?)
 		else if entity.starts_with("#"):
-			out.append(scalar(digits(entity.drop(1), 10))?)
+			out.append(scalar(digits(entity.view(1, entity.length()), 10))?)
 		else:
 			return error(Error("XML: invalid data", kind: "EBADMSG"))
 
-		out.append(tail.drop(end.get(0) + 1))
+		out.append(tail.view(end.get(0) + 1, tail.length()))
 
 	return ok(out.build())
 

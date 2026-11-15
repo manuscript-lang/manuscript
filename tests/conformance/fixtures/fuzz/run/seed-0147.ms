@@ -60,7 +60,7 @@ export fn main() Int:
         "{i5} {(i5 * (i5 - (-42)))} {(i5 < (i5 * (i5 - (-42))))} sum {i5 + (i5 * (i5 - (-42)))}"
     )
 
-    i8 := ((l3.length() * s6.length()) + (-25))
+    i8 := ((l3.length() * s6.scalar_length()) + (-25))
     say("i8 = {i8}")
 
     i9 := i5

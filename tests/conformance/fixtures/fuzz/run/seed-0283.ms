@@ -63,7 +63,7 @@ export fn main() Int:
     s12 := (s3 + "naïve")
     say("s12 = [{s12}]")
 
-    i13 := (i6 + (s12.length() - ((-22) * i9)))
+    i13 := (i6 + (s12.scalar_length() - ((-22) * i9)))
     say("i13 = {i13}")
 
     f14 := 746.927

@@ -46,5 +46,6 @@ test "map and set members":
 
 test "string at":
 	text := "héllo"
-	expect_equal(text.get(1), "é")?
-	expect_equal(text.get(10, default: ""), "")?
+	expect_equal(text.scalar_at(1, -1), 233)?
+	expect_equal(text.scalar_at(10, -1), -1)?
+	expect_equal(text.scalar_at(2, -1), -1)?

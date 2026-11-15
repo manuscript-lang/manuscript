@@ -39,7 +39,7 @@ export fn main() Int:
     s8 := ("a" + "日本語")
     say("s8 = [{s8}]")
 
-    i9 := ((49 + (i6 * 49)) - s8.length())
+    i9 := ((49 + (i6 * 49)) - s8.scalar_length())
     say("i9 = {i9}")
     say("{i9} {(i5 - (i9 + i9))} {(i9 < (i5 - (i9 + i9)))} sum {i9 + (i5 - (i9 + i9))}")
     return 0

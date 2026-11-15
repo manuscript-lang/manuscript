@@ -21,7 +21,7 @@ export fn main() Int:
     i4 := 16
     say("i4 = {i4}")
 
-    b5 := ((13 - (i4 - i4)) != (11 % s2.length()))
+    b5 := ((13 - (i4 - i4)) != (11 % s2.scalar_length()))
     say("b5 = {b5}")
     say(
         "{(657217 * 38)} {(-(-21))} {((657217 * 38) < (-(-21)))} sum {(657217 * 38) + (-(-21))}"
@@ -45,6 +45,6 @@ export fn main() Int:
     b9 := false
     say("b9 = {b9}")
 
-    i10 := (((i4 / i4) * s2.length()) + ((31 + i4) - (44 * i4)))
+    i10 := (((i4 / i4) * s2.scalar_length()) + ((31 + i4) - (44 * i4)))
     say("i10 = {i10}")
     return 0

@@ -23,7 +23,7 @@ fn cents(amt: String) Int?:
 			or not fraction.chars().all(fn c: "0123456789".contains(c))
 		): return none
 
-	return whole.parse_int().get(0) * 100 + "{fraction}00".take(2).parse_int().get(0)
+	return whole.parse_int().get(0) * 100 + "{fraction}00".view(0, 2).parse_int().get(0)
 
 type Row:
 	category: String

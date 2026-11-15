@@ -141,7 +141,7 @@ fn BigRat.to_fixed(digits: Int) String!:
 		text = text.pad_start(digits + 1, "0")
 
 		split_at := text.scalar_length() - digits
-		text = "{text.slice(0, split_at).get("")}.{text.slice(split_at, text.scalar_length()).get("")}"
+		text = "{text.slice(0, split_at).get("")}.{text.slice(split_at, text.length()).get("")}"
 
 	if self.num.sign() < 0 and quotient.sign() != 0: return ok("-{text}")
 

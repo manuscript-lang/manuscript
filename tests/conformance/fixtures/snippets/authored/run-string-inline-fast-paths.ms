@@ -40,12 +40,13 @@ export fn main() Int:
         print(b.contains(ch))
     c := "héllo"
     d := "hello"
-    print(d.scalar_at(0))
-    print(d.scalar_at(4))
+    print(d.scalar_at(0, -1))
+    print(d.scalar_at(4, -1))
     print(d.scalar_at(5, -1))
-    print(d.scalar_at(-1))
+    print(d.scalar_at(-1, -1))
     print(d.scalar_at(-6, -2))
-    print(c.scalar_at(1))
-    print(c.scalar_at(2))
-    print(b.scalar_at(3))
+    print(c.scalar_at(1, -1))
+    print(c.scalar_at(2, -1))
+    print(c.scalar_at(3, -1))
+    print(b.scalar_at(3, -1))
     return 0

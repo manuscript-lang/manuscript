@@ -67,7 +67,7 @@ export fn main() Int:
     l14 := l5.filter(fn x: x > 2)
     say("l14 = {l14} len {l14.length()}")
 
-    i15 := s9.length()
+    i15 := s9.scalar_length()
     say("i15 = {i15}")
 
     b16 := (

@@ -42,7 +42,7 @@ export fn main() Int:
     )
     say("b5 = {b5}")
 
-    i6 := (l4.length() + s3.length())
+    i6 := (l4.length() + s3.scalar_length())
     say("i6 = {i6}")
 
     s7 := s2.reverse().lower()

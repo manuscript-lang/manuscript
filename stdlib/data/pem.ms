@@ -48,9 +48,10 @@ export fn parse(text: String) List[PemBlock]!:
 				and line.ends_with(DASHES)
 				and line.length() >= 16
 			):
-				label = line.drop(BEGIN.length()).take(
-					line.length() - BEGIN.length() - DASHES.length()
-				)
+				label = line.view(
+					BEGIN.length(),
+					line.length() - DASHES.length(),
+				).clone()
 				open = true
 				body = ""
 				headers = Map[String, String]()
@@ -59,7 +60,7 @@ export fn parse(text: String) List[PemBlock]!:
 			continue
 
 		if line.starts_with(END):
-			closing := line.drop(END.length())
+			closing := line.view(END.length(), line.length())
 			if closing != "{label}{DASHES}": return error(
 				Error("PEM: invalid armor", kind: "EBADMSG")
 			)
@@ -85,7 +86,10 @@ export fn parse(text: String) List[PemBlock]!:
 
 		if in_headers and line.contains(":"):
 			at := line.index_of(":").get(0)
-			headers.add(line.take(at).trim(), line.drop(at + 1).trim())
+			headers.add(
+				line.view(0, at).trim().clone(),
+				line.view(at + 1, line.length()).trim().clone(),
+			)
 			continue
 
 		in_headers = false

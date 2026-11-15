@@ -145,8 +145,8 @@ export fn parse_media_type(text: String) MediaType!:
 			Error("MIME: invalid media type", kind: "EBADMSG")
 		)
 
-		name := piece.take(at.get(0)).trim().lower()
-		raw := piece.drop(at.get(0) + 1).trim()
+		name := piece.view(0, at.get(0)).trim().lower()
+		raw := piece.view(at.get(0) + 1, piece.length()).trim()
 		if name.is_empty(): return error(
 			Error("MIME: invalid media type", kind: "EBADMSG")
 		)
@@ -202,7 +202,7 @@ fn unquote(raw: String) String?:
 	var escaped = false
 	var closed = false
 
-	for c in raw.drop(1).chars():
+	for c in raw.view(1, raw.length()).chars():
 		if closed: return none
 
 		if escaped:
@@ -258,8 +258,8 @@ export fn parse_headers(text: String) Headers!:
 
 		fields.append(
 			HeaderField(
-				name: line.take(at.get(0)).trim(),
-				value: line.drop(at.get(0) + 1).trim(),
+				name: line.view(0, at.get(0)).trim().clone(),
+				value: line.view(at.get(0) + 1, line.length()).trim(),
 			)
 		)
 
@@ -316,7 +316,7 @@ fn make_part(section: Bytes) Part!:
 
 	if disposition := part.headers.get("Content-Disposition"):
 		media := parse_media_type(
-			"x/x{disposition.drop(disposition.index_of(";").get(disposition.length()))}"
+			"x/x{disposition.view(disposition.index_of(";").get(disposition.length()), disposition.length())}"
 		)
 
 		if media.is_ok():

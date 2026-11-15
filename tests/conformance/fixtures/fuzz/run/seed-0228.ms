@@ -54,7 +54,7 @@ export fn main() Int:
         say("42")
 
     say(
-        "{((-i1) - i1)} {(l2.length() - s6.length())} {(((-i1) - i1) < (l2.length() - s6.length()))} sum {((-i1) - i1) + (l2.length() - s6.length())}"
+        "{((-i1) - i1)} {(l2.length() - s6.scalar_length())} {(((-i1) - i1) < (l2.length() - s6.scalar_length()))} sum {((-i1) - i1) + (l2.length() - s6.scalar_length())}"
     )
 
     b11 := ((not (not b4)) or (not (b4 and b4)))

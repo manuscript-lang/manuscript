@@ -1580,7 +1580,7 @@ impl Checker {
             info.ty = Some(primitive("UInt8"));
         } else {
             let hint = if rt.is(Builtin::String) {
-                "indexing a String by scalar position is not supported; use s.get(index) or for c in s.chars()"
+                "indexing a String by integer is not supported; use for c in s.chars(), s.scalar_at(offset, default) at a byte offset, or s.slice(start, end)"
             } else {
                 "indexing requires List[T], Map[K, V] or Bytes; use the receiver's lookup method for other types"
             };

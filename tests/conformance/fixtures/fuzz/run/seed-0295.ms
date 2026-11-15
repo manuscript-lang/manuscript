@@ -54,6 +54,6 @@ export fn main() Int:
     say("b8 = {b8}")
     say("fib(28) = {fib(28)}")
 
-    i9 := ((((-50) - (-27)) + ((-40) * (-13))) - (s3.length() - i1))
+    i9 := ((((-50) - (-27)) + ((-40) * (-13))) - (s3.scalar_length() - i1))
     say("i9 = {i9}")
     return 0

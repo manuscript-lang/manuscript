@@ -13,5 +13,5 @@ export fn main() Int:
     print(a.is_empty())
     print("".is_empty())
     print(c.is_empty())
-    print(b.take(0).is_empty())
+    print(b.view(0, 0).is_empty())
     return 0

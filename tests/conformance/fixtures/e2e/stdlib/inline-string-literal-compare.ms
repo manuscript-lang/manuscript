@@ -26,4 +26,4 @@ test "a captured short literal is found in a list":
 	expect_equal(words.find_index(fn(w: String) Bool: w == "k3").get(-1), 2)?
 	expect_equal(words.contains("k1"), true)?
 	expect_equal(words.contains("k4"), false)?
-	expect_equal("héllo".length(), 5)?
+	expect_equal("héllo".scalar_length(), 5)?

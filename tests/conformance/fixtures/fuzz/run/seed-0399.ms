@@ -22,7 +22,7 @@ export fn main() Int:
     s1 := (("delta" + "line\nbreak") + "brace\{s\}").lower()
     say("s1 = [{s1}]")
 
-    i2 := ((s1.length() + (10 * (-4))) + 16)
+    i2 := ((s1.scalar_length() + (10 * (-4))) + 16)
     say("i2 = {i2}")
 
     f4 := (445.25 + 0.0)

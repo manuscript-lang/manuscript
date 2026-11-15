@@ -101,8 +101,8 @@ export fn split_max(text: String, separator: String, splits: Int) List[String]:
 export fn strip_spaces(text: String) String:
 	var start = 0
 	var end = text.length()
-	while start < end and text.get(start) == " ": start += 1
-	while end > start and text.get(end - 1) == " ": end -= 1
+	while start < end and text.scalar_at(start, -1) == 32: start += 1
+	while end > start and text.scalar_at(end - 1, -1) == 32: end -= 1
 	return text.slice(start, end).get("")
 
 // Whether the regular expression `pattern` matches all of `text`, as Python's

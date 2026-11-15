@@ -18,6 +18,6 @@ export fn main() Int:
     say("s1 = [{s1}]")
 
     bad := missing_function(3)
-    i2 := (6 * (s1.length() - (-11)))
+    i2 := (6 * (s1.scalar_length() - (-11)))
     say("i2 = {i2}")
     return 0

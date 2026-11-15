@@ -137,8 +137,8 @@ fn host_windows() Bool:
 fn invalid_input() Error:
 	return Error("path: invalid input", kind: "EINVAL")
 
-fn is_letter(c: String) Bool:
-	code := c.scalar_at(0, none)
+fn is_letter(text: String) Bool:
+	code := text.scalar_at(0, -1)
 	return (code >= 65 and code <= 90) or (code >= 97 and code <= 122)
 
 // The path with every backslash read as a slash under Windows rules; POSIX text is
@@ -155,7 +155,7 @@ fn native(windows: Bool, text: String) String:
 // Removes every trailing slash.
 fn trim_end_slashes(text: String) String:
 	if not text.ends_with("/"): return text.clone()
-	if not text.ends_with("//"): return text.take(text.length() - 1)
+	if not text.ends_with("//"): return text.view(0, text.length() - 1).clone()
 
 	data := text.to_bytes()
 	var end = data.length()
@@ -165,7 +165,7 @@ fn trim_end_slashes(text: String) String:
 // Removes every leading slash.
 fn trim_start_slashes(text: String) String:
 	if not text.starts_with("/"): return text.clone()
-	if not text.starts_with("//"): return text.drop(1)
+	if not text.starts_with("//"): return text.view(1, text.length()).clone()
 
 	data := text.to_bytes()
 	var start = 0
@@ -179,13 +179,9 @@ fn root_of(windows: Bool, text: String) String:
 	if windows:
 		count := text.length()
 
-		if (
-			count >= 2
-			and is_letter(text.get(0, none))
-			and text.scalar_at(1, none) == 58
-		):
-			if count > 2 and text.scalar_at(2, none) == 47: return text.take(3)
-			return text.take(2)
+		if (count >= 2 and is_letter(text) and text.scalar_at(1, -1) == 58):
+			if count > 2 and text.scalar_at(2, -1) == 47: return text.view(0, 3).clone()
+			return text.view(0, 2).clone()
 
 		if text.starts_with("//"):
 			unc := unc_root(text)
@@ -363,7 +359,7 @@ fn extension_of_base(base: String) String:
 	at := dot.get(0)
 	if at == 0 or base == "..": return ""
 
-	return base.drop(at)
+	return base.view(at, base.length()).clone()
 
 fn parse_in(windows: Bool, original: String) PathParts:
 	if windows: return parse_core(true, slash(true, original), original)
@@ -430,7 +426,10 @@ fn extension_in(windows: Bool, text: String) String:
 
 	trimmed := trim_end_slashes(text)
 	slash_at := trimmed.last_index_of("/")
-	base := if slash_at.is_none(): trimmed else: trimmed.drop(slash_at.get(0) + 1)
+	base := if slash_at.is_none(): trimmed else: trimmed.view(
+		slash_at.get(0) + 1,
+		trimmed.length(),
+	)
 	return extension_of_base(base)
 
 fn equal_fold(left: String, right: String) Bool:
@@ -480,7 +479,7 @@ fn resolve_inner(windows: Bool, base: String, parts: List[String]) String?:
 				device = part_device.clone()
 
 			if not absolute:
-				tail = "{part.drop(root.length())}/{tail}"
+				tail = "{part.view(root.length(), part.length())}/{tail}"
 				absolute = is_absolute_in(true, part)
 
 			if absolute and not device.is_empty(): break
@@ -542,18 +541,18 @@ fn basename_inner(windows: Bool, raw: String, suffix: String, strip: Bool) Strin
 	if (
 		windows
 		and text.length() >= 2
-		and text.scalar_at(1, none) == 58
-		and is_letter(text.get(0, none))
+		and text.scalar_at(1, -1) == 58
+		and is_letter(text)
 	):
 		prefix = 2
-		text = text.drop(2)
+		text = text.view(2, text.length()).clone()
 
 	var base = trim_end_slashes(text)
-	if at := base.last_index_of("/"): base = base.drop(at + 1)
+	if at := base.last_index_of("/"): base = base.view(at + 1, base.length()).clone()
 
 	if strip and not suffix.is_empty() and suffix.length() <= raw.length():
 		if raw == suffix: return ""
-		if base.is_empty(): return raw.drop(prefix)
+		if base.is_empty(): return raw.view(prefix, raw.length()).clone()
 
 		if suffix != base:
 			if stripped := base.cut_suffix(suffix): base = stripped.clone()
@@ -568,11 +567,11 @@ fn dirname_in(windows: Bool, original: String) String:
 
 	if at.is_none():
 		if root.is_empty(): return "."
-		return original.take(root.length())
+		return original.view(0, root.length()).clone()
 
-	if at.get(0) < root.length(): return original.take(root.length())
+	if at.get(0) < root.length(): return original.view(0, root.length()).clone()
 
-	return original.take(at.get(0))
+	return original.view(0, at.get(0)).clone()
 
 fn join_in(windows: Bool, items: List[String]) String:
 	var out = BytesBuilder()
@@ -593,7 +592,7 @@ fn join_in(windows: Bool, items: List[String]) String:
 		unc := (
 			first.length() > 2
 			and first.starts_with("//")
-			and first.scalar_at(2, none) != 47
+			and first.scalar_at(2, -1) != 47
 		)
 		if not unc: joined = "/{trim_start_slashes(slash(true, joined))}"
 
@@ -673,7 +672,7 @@ fn namespaced_in(windows: Bool, text: String) String:
 	if resolved.is_none(): return text.clone()
 
 	value := resolved.get("")
-	if value.starts_with("\\\\"): return "\\\\?\\UNC\\{value.drop(2)}"
+	if value.starts_with("\\\\"): return "\\\\?\\UNC\\{value.view(2, value.length())}"
 
 	return "\\\\?\\{value}"
 

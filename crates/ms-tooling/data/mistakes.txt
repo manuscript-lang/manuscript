@@ -45,7 +45,7 @@ body: xs := [0];;n := {}
 diag: no len() function
 
 wrong: s[0]
-right: s.get(0)
+right: s.scalar_at(0, -1)
 body: s := "abc";;c := {}
 diag: indexing a String
 

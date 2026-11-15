@@ -41,7 +41,7 @@ export fn main() Int:
     )
     say("s6 = [{s6}]")
 
-    b7 := (s4.length() >= i2)
+    b7 := (s4.scalar_length() >= i2)
     say("b7 = {b7}")
 
     l8 := l3.filter(fn x: x > (-4))

@@ -40,7 +40,7 @@ fn main() Unit:
 
     var t = 0
     for q in "héllo wörld".split(""):
-        t += q.length()
+        t += q.scalar_length()
     for q in "a,b,c,d".split(",", max_parts: 2):
         say("<{q}>")
     for q in "".split(","):

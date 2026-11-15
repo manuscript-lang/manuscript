@@ -43,6 +43,15 @@ fn main() {
         + utext.matches("é1").count() as i64;
     rep("utf8_len_index_count", t, s);
     t = Instant::now();
+    s = 0;
+    let mut offset = 0;
+    while offset < utext.len() {
+        let c = utext[offset..].chars().next().unwrap();
+        s += c as i64;
+        offset += c.len_utf8();
+    }
+    rep("utf8_offset_walk", t, s);
+    t = Instant::now();
     s = utext.to_uppercase().chars().count() as i64 + utext.chars().rev().collect::<String>().chars().count() as i64;
     rep("utf8_case_reverse", t, s);
     t = Instant::now(); s = 0;

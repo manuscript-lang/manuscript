@@ -237,16 +237,6 @@ impl<'a> FnLower<'a> {
             self.aliases.insert(b.uid, alias);
             return Ok(());
         }
-        if let PatternKind::Name(_) = pattern.kind
-            && let Some(b) = self.hir.pattern_binding(pattern)
-            && self.scalar_eligible(&b)
-            && let Some(code) = self.get_scalar(value)?
-        {
-            if !self.dead {
-                self.scalar_locals.insert(b.uid, code.v);
-            }
-            return Ok(());
-        }
         let mark = self.temps.len();
         if let Some((b, shape)) = self.borrowable(Some(pattern), value)? {
             // A lexical borrow of the container (the checker rejects changing it while the

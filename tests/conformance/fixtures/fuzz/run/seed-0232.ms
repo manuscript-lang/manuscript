@@ -12,7 +12,7 @@ export fn main() Int:
     s1 := ("MiXeD CaSe".upper() + "日本語").upper()
     say("s1 = [{s1}]")
 
-    i2 := (s1.length() % ((27 % (-873517372493)) - (29 - 3)))
+    i2 := (s1.scalar_length() % ((27 % (-873517372493)) - (29 - 3)))
     say("i2 = {i2}")
 
     s3 := ("{(-20)}:" + s1).upper()
@@ -30,7 +30,7 @@ export fn main() Int:
     f6 := 2.442
     say("f6 = {f6}")
 
-    i7 := s1.length()
+    i7 := s1.scalar_length()
     say("i7 = {i7}")
 
     b8 := ("line\nbreak".reverse().is_empty() or ((i2 * i7) < (i7 * i7)))

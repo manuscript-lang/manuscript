@@ -55,7 +55,7 @@ export fn main() Int:
     l11 := l2.take(0)
     say("l11 = {l11} len {l11.length()}")
 
-    i12 := (s4.length() - (-(i10 % (-49))))
+    i12 := (s4.scalar_length() - (-(i10 % (-49))))
     say("i12 = {i12}")
 
     s13 := "  padded  "

@@ -12,7 +12,7 @@ export fn main() Int:
     s1 := "back\\slash"
     say("s1 = [{s1}]")
 
-    i2 := s1.length()
+    i2 := s1.scalar_length()
     say("i2 = {i2}")
 
     l3 := [(-7)]

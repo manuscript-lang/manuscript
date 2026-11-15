@@ -28,7 +28,7 @@ fn invalid_at(bytes: Bytes, at: Int, reason: String) Error:
 			start = i + 1
 
 	before := bytes.decode_utf8_range(start, at).get("")
-	column := before.length() + 1
+	column := before.scalar_length() + 1
 	return Error(
 		"CSV {line}:{column}: {reason}",
 		kind: "EBADMSG",
@@ -450,7 +450,7 @@ fn needs_quotes(field: String, delimiter: String) Bool:
 	): return true
 
 	first := field.scalar_at(0)
-	if first <= 32 or first >= 127: return field.get(0).trim() == ""
+	if first <= 32 or first >= 127: return field.chars()[0].trim() == ""
 
 	return field == "\\."
 
