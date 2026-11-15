@@ -16,4 +16,6 @@ These chapters define how Manuscript programs behave. New readers should start w
 7. [Managing resources](cleanup/_index.md): closing files and connections when their scope ends.
 8. [Concurrent tasks](concurrency/_index.md): running work at once with promises.
 
+Two short pages cover change: [what is frozen before 1.0](stability.md) and [removed spellings](removed-spellings.md).
+
 Find declarations in the generated [standard-library API reference](../standard-library/reference/_index.md).

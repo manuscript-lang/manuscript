@@ -252,6 +252,12 @@ runs:
       run: |
         MS=target/debug/ms target/debug/ms run tools/count-check.ms
         MS=target/debug/ms target/debug/ms run tools/count-check-selftest.ms
+    # Runs with the Cranelift corpus: on pull requests that is linux-amd64, which has room in the
+    # 10 minute budget (linux-arm64 does not), and on main it covers every platform that runs it.
+    - name: Removed spellings name their replacement
+      if: env.CRANELIFT == 'true'
+      shell: bash
+      run: MS=target/debug/ms target/debug/ms run tools/removed-check.ms
     - name: Every accepted resource operation closes each resource once
       if: env.GATES == 'true'
       shell: bash
