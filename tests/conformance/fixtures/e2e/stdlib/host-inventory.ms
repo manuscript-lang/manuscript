@@ -35,14 +35,12 @@ test "cpus report non-negative cumulative times":
             expect_true(cpu.system >= 0 and cpu.idle >= 0 and cpu.irq >= 0)?
 
 test "metrics report memory, uptime, load averages and parallelism":
-    found := metrics()
-
-    if m := found:
-        expect_true(m.total_memory > 0)?
-        expect_true(m.free_memory <= m.total_memory)?
-        expect_true(m.available_memory <= m.total_memory)?
-        expect_true(m.uptime.to_nanoseconds() > 0)?
-        expect_equal(m.load_average.length(), 3)?
-        for load in m.load_average:
-            expect_true(load >= 0.0)?
-        expect_true(m.available_parallelism >= 1)?
+    m := metrics()?
+    expect_true(m.total_memory > 0)?
+    expect_true(m.free_memory <= m.total_memory)?
+    expect_true(m.available_memory <= m.total_memory)?
+    expect_true(m.uptime.to_nanoseconds() > 0)?
+    expect_equal(m.load_average.length(), 3)?
+    for load in m.load_average:
+        expect_true(load >= 0.0)?
+    expect_true(m.available_parallelism >= 1)?

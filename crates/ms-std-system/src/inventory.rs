@@ -1,8 +1,9 @@
 //! Host inventories behind `System.network_interfaces`, `cpus` and `metrics`.
 //!
 //! Each call takes a snapshot that `lib.rs` hands out as one record, or a list of them.
-//! Network interfaces work on every unix host; CPU and memory figures come from `/proc`, so
-//! `cpus` and `metrics` answer `Unsupported` off Linux.
+//! Network interfaces work on every unix host; CPU figures come from `/proc`, so `cpus`
+//! answers `Unsupported` off Linux. `metrics` reads `sysinfo` on Linux, the Mach host
+//! statistics on macOS and `GlobalMemoryStatusEx` on Windows.
 #![allow(unsafe_code)] // libc `getifaddrs` and friends
 
 use alloc::vec::Vec;
@@ -283,7 +284,145 @@ pub fn cpus() -> Result<Vec<Cpu>, Failure> {
     Err(STATUS_UNSUPPORTED.into())
 }
 
-#[cfg(not(any(target_os = "linux", target_os = "android")))]
+/// A `u64` sysctl value by name.
+#[cfg(target_os = "macos")]
+fn sysctl_u64(name: &core::ffi::CStr) -> Result<u64, Failure> {
+    let mut value = 0u64;
+    let mut len = core::mem::size_of::<u64>();
+    // SAFETY: `value` is writable for `len` bytes and `name` is NUL-terminated.
+    let rc = unsafe {
+        libc::sysctlbyname(
+            name.as_ptr(),
+            (&raw mut value).cast(),
+            &mut len,
+            core::ptr::null_mut(),
+            0,
+        )
+    };
+    if rc == 0 && len == core::mem::size_of::<u64>() {
+        Ok(value)
+    } else {
+        Err(Failure::failed("cannot read host statistics"))
+    }
+}
+
+/// Memory from the Mach host statistics, uptime from the boot time, and the load averages
+/// from `getloadavg`. Free memory is what the VM reports free; available adds the inactive
+/// pages the kernel gives back on demand.
+#[cfg(target_os = "macos")]
+pub fn metrics() -> Result<Metrics, Failure> {
+    let total = sysctl_u64(c"hw.memsize")?;
+    let mut stats: libc::vm_statistics64 = unsafe { core::mem::zeroed() };
+    let mut count = libc::HOST_VM_INFO64_COUNT;
+    // SAFETY: `stats` is writable for `count` integers and the host port is the caller's own.
+    let rc = unsafe {
+        libc::host_statistics64(
+            libc::mach_host_self(),
+            libc::HOST_VM_INFO64,
+            (&raw mut stats).cast(),
+            &mut count,
+        )
+    };
+    if rc != libc::KERN_SUCCESS {
+        return Err(Failure::failed("cannot read host statistics"));
+    }
+    // SAFETY: plain system call.
+    let page = u64::try_from(unsafe { libc::sysconf(libc::_SC_PAGESIZE) }).unwrap_or(4096);
+    let bytes = |pages: u32| i64::try_from(u64::from(pages) * page).unwrap_or(i64::MAX);
+    let total = i64::try_from(total).unwrap_or(i64::MAX);
+    let free = bytes(stats.free_count.saturating_sub(stats.speculative_count));
+    let available = bytes(stats.free_count.saturating_add(stats.inactive_count));
+    let mut boot: libc::timeval = unsafe { core::mem::zeroed() };
+    let mut len = core::mem::size_of::<libc::timeval>();
+    // SAFETY: `boot` is writable for `len` bytes and the name is NUL-terminated.
+    let rc = unsafe {
+        libc::sysctlbyname(
+            c"kern.boottime".as_ptr(),
+            (&raw mut boot).cast(),
+            &mut len,
+            core::ptr::null_mut(),
+            0,
+        )
+    };
+    if rc != 0 {
+        return Err(Failure::failed("cannot read host statistics"));
+    }
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| i64::try_from(d.as_secs()).unwrap_or(i64::MAX));
+    let uptime = now.saturating_sub(i64::from(boot.tv_sec)).max(0);
+    let mut load = [0.0f64; 3];
+    // SAFETY: `load` holds the three samples requested.
+    if unsafe { libc::getloadavg(load.as_mut_ptr(), 3) } != 3 {
+        load = [0.0; 3];
+    }
+    Ok(Metrics {
+        total_memory: total,
+        free_memory: free.min(total),
+        available_memory: available.min(total).max(free.min(total)),
+        uptime_ns: uptime.saturating_mul(1_000_000_000),
+        load,
+        parallelism: crate::imp::cpu_count(),
+    })
+}
+
+/// Memory from `GlobalMemoryStatusEx` and uptime from `GetTickCount64`; Windows has no load
+/// average, so the three figures are zero. The OS counts cached pages as available, so free
+/// and available memory are the same figure.
+#[cfg(windows)]
+pub fn metrics() -> Result<Metrics, Failure> {
+    #[repr(C)]
+    struct MemoryStatusEx {
+        length: u32,
+        memory_load: u32,
+        total_phys: u64,
+        avail_phys: u64,
+        total_page_file: u64,
+        avail_page_file: u64,
+        total_virtual: u64,
+        avail_virtual: u64,
+        avail_extended_virtual: u64,
+    }
+    unsafe extern "system" {
+        fn GlobalMemoryStatusEx(buffer: *mut MemoryStatusEx) -> i32;
+        fn GetTickCount64() -> u64;
+    }
+    let mut status = MemoryStatusEx {
+        length: core::mem::size_of::<MemoryStatusEx>() as u32,
+        memory_load: 0,
+        total_phys: 0,
+        avail_phys: 0,
+        total_page_file: 0,
+        avail_page_file: 0,
+        total_virtual: 0,
+        avail_virtual: 0,
+        avail_extended_virtual: 0,
+    };
+    // SAFETY: `status` is a writable MEMORYSTATUSEX with its length set.
+    if unsafe { GlobalMemoryStatusEx(&mut status) } == 0 {
+        return Err(Failure::failed("cannot read host statistics"));
+    }
+    // SAFETY: a kernel32 call that takes no arguments.
+    let ticks = unsafe { GetTickCount64() };
+    let bytes = |n: u64| i64::try_from(n).unwrap_or(i64::MAX);
+    let total = bytes(status.total_phys);
+    let free = bytes(status.avail_phys).min(total);
+    Ok(Metrics {
+        total_memory: total,
+        free_memory: free,
+        available_memory: free,
+        uptime_ns: bytes(ticks).saturating_mul(1_000_000),
+        load: [0.0; 3],
+        parallelism: crate::imp::cpu_count(),
+    })
+}
+
+#[cfg(not(any(
+    target_os = "linux",
+    target_os = "android",
+    target_os = "macos",
+    windows
+)))]
 pub fn metrics() -> Result<Metrics, Failure> {
     Err(STATUS_UNSUPPORTED.into())
 }
