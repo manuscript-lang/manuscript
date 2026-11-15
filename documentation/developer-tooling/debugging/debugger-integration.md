@@ -123,7 +123,29 @@ With [GDB](https://sourceware.org/gdb/current/onlinedocs/gdb.html/Sample-Session
 
 ## What source information is available {#source-attribution}
 
-Native builds retain frame pointers and DWARF file/line mappings. These support source breakpoints, stack attribution and stepping; optimized code can reorder or remove operations. The emitted debug information does not describe Manuscript local variables, types or inline call frames. Use source-level `print` calls or a focused test to inspect a value, rather than relying on a debugger expression evaluator to understand it.
+Native builds retain frame pointers and DWARF file/line mappings. These support source breakpoints, stack attribution and stepping; optimized code can reorder or remove operations. It also describes every Manuscript type as a structure (`String`, `List[Int]`, `Int?`, records, enums), with member names and offsets, on both backends. In a Cranelift build (`--build-type debug`) a frame's parameters are named and located, so `info args` and `frame variable` show them; a part with no location at the current instruction reads `<optimized out>`. Release builds (LLVM) describe the types but not variables, because variable debug info costs release compile time (about 4%) and size. Local variables are not described yet: use source-level `print` calls or a focused test, and read a value you can address (a pointer from a register, a member, a stack slot) through its type, as below.
+
+## Print a value as Manuscript shows it {#print-values}
+
+In GDB, `ptype struct Point` lists a record's fields, and `print *(struct Shape*)$rsp` reads the bytes at an address as that type. Load the display helper from the repository to print strings as text, lists with their elements, optionals as `some` or `none`, and enums as the case with its fields:
+
+```text
+source tools/debugger/manuscript_gdb.py
+print *(struct Shape*)$rsp
+```
+
+```text
+$1 = Rect = {w = 2, h = 3}
+```
+
+A string is two words (an address, or the bytes themselves when short, and a tagged length); a list is an address, a length and a capacity; an enum is a case number followed by a payload shared by every case; an optional is a present flag followed by the value. The structure names (`struct "List[String]"`) are those of the types in your source. In LLDB, load the matching helper after creating the target (it finds enums and optionals by their shape, and `manuscript-refresh` repeats that for programs loaded later):
+
+```text
+command script import tools/debugger/manuscript_lldb.py
+expression -- *(struct Shape*)$sp
+```
+
+On Windows, GDB and LLDB read the DWARF in the `.exe` and use the same helpers. Debuggers that need a PDB (Visual Studio, WinDbg) cannot read the type information, because the compiler does not emit a PDB. The decoding rules live in `tools/debugger/manuscript_values.py`, which `tools/debugger/test_values.py` tests without a debugger. In LLDB, name a list type with the script API (`frame variable`, `expression`), not a cast, since the name contains brackets.
 
 On macOS, keep the adjacent `words.dSYM` bundle with the executable. `ms build` creates it when `dsymutil` is available; without it the executable runs but source line lookup is unavailable. On Windows, name the output `words.exe` and use a debugger that can read its DWARF information; the compiler does not emit a PDB. Linux keeps the line information in the executable itself.
 

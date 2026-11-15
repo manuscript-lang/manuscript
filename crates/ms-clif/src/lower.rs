@@ -1,6 +1,6 @@
 //! Lowering of one MIR function (or glue function) to Cranelift IR.
 
-use crate::cg::{CLOSURE_CAPTURES, CLOSURE_CODE, Gen, Glue, leaf_type, mem_type};
+use crate::cg::{CLOSURE_CAPTURES, CLOSURE_CODE, Gen, Glue, LocalVar, leaf_type, mem_type};
 use crate::layout::{AltRepr, Leaf, mem_layout};
 use cranelift_codegen::ir::condcodes::{CondCode, FloatCC, IntCC};
 use cranelift_codegen::ir::{
@@ -47,6 +47,8 @@ struct Home {
 }
 
 pub struct Lower<'a, 'm> {
+    /// Named values that a debugger can show; see [`LocalVar`].
+    pub vars: Vec<LocalVar>,
     g: &'a mut Gen<'m>,
     b: FunctionBuilder<'a>,
     frefs: HashMap<FuncId, FuncRef>,
@@ -122,6 +124,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             blocks: Vec::new(),
             unsupported: None,
             temps: Vec::new(),
+            vars: Vec::new(),
         }
     }
 
@@ -712,8 +715,32 @@ impl<'a, 'm> Lower<'a, 'm> {
         ms_mir::frames::framed_closure_objects(self.g.m, f)
     }
 
+    /// Labels the register leaves of `v` with its source name, so Cranelift tracks where they live.
+    fn name_value(&mut self, f: &Func, v: ms_mir::ir::Value) {
+        let Some((_, name)) = f.names.iter().find(|(n, _)| *n == v) else {
+            return;
+        };
+        let ty = f.ty(v);
+        let offsets = self.g.lay.mem(ty).offsets;
+        let leaves = self.g.lay.leaves(ty);
+        let first: usize = self.vars.iter().map(|x| x.pieces.len()).sum();
+        let mut pieces = Vec::new();
+        for ((leaf, &value), offset) in leaves.iter().zip(&self.vals[v.index()]).zip(offsets) {
+            let label = ir::ValueLabel::from_u32((first + pieces.len()) as u32);
+            self.b.set_val_label(value, label);
+            pieces.push((offset, leaf.size(), label));
+        }
+        self.vars.push(LocalVar {
+            name: name.clone(),
+            ty,
+            pieces,
+        });
+    }
+
     pub fn lower_func(&mut self, fi: usize, f: &Func) {
         self.fid = fi as u32;
+        self.b.func.dfg.collect_debug_info();
+        self.vars.clear();
         let rpo = f.rpo();
         self.g.add_scopes(f);
         self.blocks = vec![None; f.blocks.len()];
@@ -769,6 +796,9 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let w = self.g.lay.width(ty);
                 self.vals[p.value.index()] = params[at..at + w].to_vec();
                 at += w;
+                if b.index() == 0 {
+                    self.name_value(f, p.value);
+                }
                 if b.index() == 0 && self.is_wide(ty) {
                     let leaves = self.g.lay.leaves(ty);
                     let size = self.g.lay.mem(ty).size;
