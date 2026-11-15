@@ -41,12 +41,14 @@ Every row is a shape agents wrote that fails; the right column compiles.
 | `a if c else b`, `-> T` | `if c: a else: b`, `fn f() T:` |
 | `if c: f() else: g()` as a statement | `if c:` and `else:` on their own lines, bodies indented |
 | `fn f(out: var T)`, `x: T = e` | `fn f(var out: T)`, `x: T := e` |
-| `"\"{x}\""`, `"{"`, `"\x01"` | plain quotes inside `{}`, `"\{"`, `"\u{1}"` |
+| `"\"{x}\""`, `"\x01"` | plain quotes inside `{}`, `"\u{1}"` |
+| `"{"`, `"}"` (a brace character) | `"\{"`, `"\}"`: every literal brace in a string is escaped, so a parser writes `c == "\{"` |
 | `for _ in xs`, `unit := e` | `for _i in xs`; `unit` is a literal, never a name |
 | `(String, Int)`, `[A, B]` tuples | a record: `type Pair:` with fields |
 | `f(x)?` as a statement on a non-Void result | `_ := f(x)?` |
 | `r?.abs()` on a Result | `(r?).abs()`; `?.` is for Optionals only |
 | `m.contains_key(k)`, `xs.remove_last()` | `m.contains(k)`, `xs.pop()` |
+| `xs.sort_by(f)`, `for b in s.as_bytes()` | `xs.sort(fn a, b: a.compare(b))`, `for b in values(s.as_bytes())` with `import values from "@std/bytes.ms"` |
 | `set.insert(x)`, `r.is_err()`, `s.find(t)` | `set.add(x)`, `r.is_error()`, `s.index_of(t)` |
 
 ### Syntax and data
@@ -72,13 +74,15 @@ Every row is a shape agents wrote that fails; the right column compiles.
 Exact calls, most used first (from the declarations; `ms search_symbol <name>` shows the rest):
 
 - String: length() Int; parse_int() Int?; split(String, Int?) List[String]; chars() List[String]; contains(String) Bool; slice(Int, Int) Result[String, Error]; starts_with(String) Bool; trim() String; fields() List[String]; index_of(String) Int?; trim_end() String; replace(String, String) String; ends_with(String) Bool; lines() List[String]
-- List: get(Int, T?) T; length() Int; append(T) Void; clone() List[T]; contains(T) Bool; slice(Int, Int) Result[List[T], Error]; join(String) String; sort() Void; entries() List[ListEntry[T]]; remove(Int) Void; index_of(T) Int?; keys() List[Int]; sorted() List[T]; replace(Int, T) T
+- List: get(Int, T?) T; length() Int; append(T) Void; clone() List[T]; contains(T) Bool; slice(Int, Int) Result[List[T], Error]; join(String) String; sort() Void | sort(fn(T, T) Int) Void; entries() List[ListEntry[T]]; remove(Int) Void; index_of(T) Int?; keys() List[Int]; sorted() List[T] | sorted(fn(T, T) Int) List[T]; replace(Int, T) T
 - Map: get(T) U?; length() Int; clone() Map[T, U]; contains(T) Bool; get_or(T, U) U; add(T, U) Void; entries() List[MapEntry[T, U]]; remove(T) Void; keys() List[T]
 - Set: length() Int; clone() Set[T]; contains(T) Bool; add(T) Void; remove(T) Void
 - Optional: get(T?) T; is_none() Bool; is_some() Bool; ok_or(E?) Result[T, E]; map(fn(T) U) U?
 - Result: get(T?) T; err() E; map(fn(T) U) Result[U, E]; is_ok() Bool; is_error() Bool
 - Int: to_int() Int; compare(Int) Int; abs() Int; to_float() Float
 - Float: compare(Float) Int; abs() Float; to_string() String
+
+Reserved words are never names (a variable called `ref`, `type` or `test` fails): and break continue else enum export extern false fixture fn for if impl import in interface match not or ref return self test true try type unit var while.
 
 Imports (a name must be imported unless it is in the prelude):
 

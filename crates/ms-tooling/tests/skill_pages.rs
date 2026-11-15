@@ -59,7 +59,7 @@ fn skill_root_is_short_and_references_are_substantive() {
         .find(|(path, _)| *path == "SKILL.md")
         .unwrap()
         .1;
-    assert!(root.len() <= 8200, "entry skill should remain concise");
+    assert!(root.len() <= 9000, "entry skill should remain concise");
     assert!(root.starts_with("---\nname: manuscript\n"));
     assert!(root.contains("{{MS_VERSION}}"));
     assert!(root.contains("Use tabs for indentation"));

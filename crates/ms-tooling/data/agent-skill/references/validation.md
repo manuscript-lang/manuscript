@@ -29,6 +29,8 @@ The right-hand forms of the entry page's Not Manuscript table, in one compiling 
 
 <!-- complete: skill-habits.ms -->
 ```manuscript
+import values from "@std/bytes.ms"
+
 type Pair:
 	name: String
 	count: Int
@@ -54,9 +56,12 @@ fn total(var counts: Map[String, Int], items: List[Pair]) Int:
 
 fn main() Void!:
 	flag: List[Bool] := []
-	brace := "\{"
+	brace := "\{\}"
 	esc := "\u{1}"
-	var stack = [1, 2]
+	var stack = [2, 1]
+	stack.sort(fn a, b: a.compare(b))
+	for b in values("ab".as_bytes()):
+		_ := b
 	_ := stack.pop()
 	for _i in 0..2:
 		var seen = Set[String]()

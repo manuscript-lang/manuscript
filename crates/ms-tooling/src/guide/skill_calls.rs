@@ -155,16 +155,16 @@ pub fn render_with(counts: &Counts, modules: &[ApiModule]) -> String {
         else {
             continue;
         };
-        // One entry per name: the shortest signature, so a name with overloads shows its plain form.
-        let mut by_name: BTreeMap<&str, &str> = BTreeMap::new();
+        // Every signature of a name, so an overload such as `sort(fn(T, T) Int)` is shown too.
+        let mut by_name: BTreeMap<&str, Vec<&str>> = BTreeMap::new();
         for operation in &declaration.operations {
             let Some((name, signature)) = operation.split_once(": ") else {
                 continue;
             };
             let name = name.split('[').next().unwrap_or(name);
-            let entry = by_name.entry(name).or_insert(signature);
-            if signature.len() < entry.len() {
-                *entry = signature;
+            let signatures = by_name.entry(name).or_default();
+            if !signatures.contains(&signature) {
+                signatures.push(signature);
             }
         }
         let mut ranked: Vec<(&str, usize)> = by_name
@@ -178,13 +178,23 @@ pub fn render_with(counts: &Counts, modules: &[ApiModule]) -> String {
         let calls: Vec<String> = ranked
             .into_iter()
             .take(*limit)
-            .map(|(name, _)| format!("{name}{}", shape(by_name[name])))
+            .map(|(name, _)| {
+                let shapes: Vec<String> = by_name[name]
+                    .iter()
+                    .map(|s| format!("{name}{}", shape(s)))
+                    .collect();
+                shapes.join(" | ")
+            })
             .collect();
         if !calls.is_empty() {
             out.push_str(&format!("- {type_name}: {}\n", calls.join("; ")));
         }
     }
     out.push('\n');
+    out.push_str(&format!(
+        "Reserved words are never names (a variable called `ref`, `type` or `test` fails): {}.\n\n",
+        ms_syntax::token::KEYWORDS.join(" ")
+    ));
     out.push_str("Imports (a name must be imported unless it is in the prelude):\n\n");
     let mut ranked: Vec<(&(String, String), usize)> = counts
         .imports
