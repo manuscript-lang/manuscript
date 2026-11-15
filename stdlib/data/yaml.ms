@@ -70,6 +70,8 @@ type Context:
 	ind: List[Int]
 	col: List[Int]
 	// Diagnostic projection for virtual lines; parsing continues to use the same bases.
+	// Prefixes declared by %TAG directives, keyed by handle (`!`, `!!`, `!name!`).
+	tag_handles: Map[String, String] = Map[String, String]()
 	split_line: Int = -1
 	shift_row: Int = -1
 	shift_column: Int = 0
@@ -473,10 +475,24 @@ fn tag_token(var flow: Flow) String!:
 	var name = ""
 	while peek(flow) != "" and not " \t\n,[]\{\}".contains(peek(flow)):
 		name = name.concat(advance(var flow))
-	if name.starts_with("!"): return ok(
-		"tag:yaml.org,2002:{name.slice(1, name.length()).get("")}"
-	)
 
+	handles := flow.context.tag_handles
+
+	// `!!name` and `!handle!name` expand through the declared prefixes.
+	if name.starts_with("!"):
+		var prefix = "tag:yaml.org,2002:"
+		if declared := handles.get("!!"): prefix = declared.clone()
+		return ok("{prefix}{name.slice(1, name.length()).get("")}")
+
+	if bang := name.index_of("!"):
+		handle := "!{name.slice(0, bang + 1).get("")}"
+		if prefix := handles.get(handle):
+			return ok("{prefix}{name.slice(bang + 1, name.length()).get("")}")
+
+		return error(flow_invalid(flow, "undeclared tag handle"))
+
+	if name != "":
+		if prefix := handles.get("!"): return ok("{prefix}{name}")
 	return ok("!{name}")
 
 // Whether a tag makes a scalar a string whatever its spelling.
@@ -2058,6 +2074,67 @@ fn block(var context: Context, base: Int, depth: Int, scalar_base: Int) YamlValu
 		block_base: scalar_base
 	)
 
+// Reads the directive lines before a document. `%YAML` accepts any 1.x version (the
+// spec asks a 1.2 parser to read it with a warning), `%TAG` declares a tag handle
+// prefix, and an unknown directive is ignored.
+fn directives(var context: Context) Unit!:
+	var seen_version = false
+
+	while (
+		context.index < context.lines.length()
+		and context.lines[context.index].starts_with("%")
+	):
+		var words: List[String] = []
+		for word in uncomment(context.lines[context.index]).replace(
+			"\t",
+			" ",
+		).split(" "):
+			if word != "": words.append(word.clone())
+
+		line := source_line(context, context.index)
+
+		if words[0] == "%YAML":
+			if seen_version: return error(invalid(context, "duplicate %YAML directive"))
+
+			seen_version = true
+
+			var parts: List[String] = []
+			if words.length() == 2: parts = words[1].split(".").clone()
+			if (
+				parts.length() != 2
+				or parts[0].parse_int().is_none()
+				or parts[1].parse_int().is_none()
+			): return error(invalid(context, "invalid %YAML directive"))
+			if parts[0] != "1": return error(
+				yaml_unsupported(
+					line: line,
+					reason: "only YAML 1.x documents are supported",
+				)
+			)
+		else if words[0] == "%TAG":
+			if words.length() != 3: return error(
+				invalid(context, "invalid %TAG directive")
+			)
+
+			handle := words[1]
+			if not (
+				handle == "!"
+				or handle == "!!"
+				or (
+					handle.length() > 2
+					and handle.starts_with("!")
+					and handle.ends_with("!")
+				)
+			): return error(invalid(context, "invalid %TAG handle"))
+			if context.tag_handles.contains(handle): return error(
+				invalid(context, "duplicate %TAG directive")
+			)
+
+			context.tag_handles.add(handle.clone(), words[2].clone())
+
+		context.index += 1
+		skip(var context)
+
 // A flow value needs only the limits, counters and anchors, so it gets a context
 // without the document lines and per-line facts (copying them for every value made
 // parsing quadratic).
@@ -2076,6 +2153,7 @@ fn flow_context(context: Context) Context:
 		dash: [],
 		ind: [],
 		col: [],
+		tag_handles: context.tag_handles.clone(),
 	)
 
 fn validate(var context: Context, value: YamlValue, depth: Int) Unit!:
@@ -2150,15 +2228,7 @@ export fn parse(text: String, options: YamlOptions = YamlOptions()) YamlValue!:
 		context.index < context.lines.length()
 		and context.lines[context.index].starts_with("%")
 	):
-		if uncomment(context.lines[context.index]) != "%YAML 1.2": return error(
-			yaml_unsupported(
-				line: source_line(context, context.index),
-				reason: "only the YAML 1.2 directive is supported",
-			)
-		)
-
-		context.index += 1
-		skip(var context)
+		directives(var context)?
 		if (
 			context.index >= context.lines.length()
 			or (

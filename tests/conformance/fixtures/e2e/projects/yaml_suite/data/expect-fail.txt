@@ -2,7 +2,6 @@
 # A listed case must still fail, so fixing one means deleting its line; the list only shrinks.
 26DV mapping keys must be strings
 2JQS mapping keys must be strings
-2LFX only the YAML 1.2 directive is supported
 2SXE mapping keys must be strings
 2XXW tag handling gap (%TAG handles, tags on unusual nodes)
 35KP tag handling gap (%TAG handles, tags on unusual nodes)
@@ -15,8 +14,6 @@
 5WE3 explicit mapping keys are unsupported
 6BFJ mapping keys must be strings
 6CA3 tabs cannot indent YAML
-6CK3 only the YAML 1.2 directive is supported
-6LVF only the YAML 1.2 directive is supported
 6M2F explicit mapping keys are unsupported
 6PBE explicit mapping keys are unsupported
 6WLZ tag handling gap (%TAG handles, tags on unusual nodes)
@@ -34,10 +31,7 @@
 9WXW tag handling gap (%TAG handles, tags on unusual nodes)
 A2M4 explicit mapping keys are unsupported
 AB8U unexpected indented collection
-BEC7 only the YAML 1.2 directive is supported
 BU8L tag handling gap (%TAG handles, tags on unusual nodes)
-C4HZ only the YAML 1.2 directive is supported
-CC74 only the YAML 1.2 directive is supported
 CFD4 unexpected mapping colon
 CN3R unexpected mapping colon
 CT4Q unexpected mapping colon
@@ -67,15 +61,9 @@ M2N8/01 explicit mapping keys are unsupported
 M5C3 tag handling gap (%TAG handles, tags on unusual nodes)
 M5DY explicit mapping keys are unsupported
 M7A3 unexpected indentation or additional document
-MUS6/02 only the YAML 1.2 directive is supported
-MUS6/03 only the YAML 1.2 directive is supported
-MUS6/04 only the YAML 1.2 directive is supported
-MUS6/05 only the YAML 1.2 directive is supported
-MUS6/06 only the YAML 1.2 directive is supported
 NHX8 mapping keys must be strings
 NJ66 an implicit mapping key must stay on one line
 NKF9 mapping keys must be strings
-P76L only the YAML 1.2 directive is supported
 PUW8 unexpected indentation or additional document
 PW8X mapping keys must be strings
 Q5MG tabs cannot indent YAML
@@ -90,7 +78,6 @@ S9E8 explicit mapping keys are unsupported
 SBG9 complex mapping keys are unsupported
 SKE5 unexpected indentation or additional document
 SM9W/01 mapping keys must be strings
-U3C3 only the YAML 1.2 directive is supported
 U9NS unexpected indentation or additional document
 UKK6/00 mapping keys must be strings
 UT92 an implicit mapping key must stay on one line
@@ -105,5 +92,5 @@ Y79Y/000 accepts invalid input
 Y79Y/003 accepts invalid input
 Y79Y/004 accepts invalid input
 Y79Y/005 accepts invalid input
-Z9M4 only the YAML 1.2 directive is supported
 ZWK4 unexpected indentation or additional document
+

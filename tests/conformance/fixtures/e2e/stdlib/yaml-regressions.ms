@@ -759,7 +759,14 @@ test "YAML version directive composes with same-line document content":
 		expect_equal(parse("{header}\nword\n").is_error(), true)?
 		expect_equal(parse("{header}\n---word\n").is_error(), true)?
 
-	expect_equal(parse("%YAML 1.1\n--- word\n").is_error(), true)?
+	text("%YAML 1.1\n--- word\n", "word")?
+	text("%FOO bar\n%YAML  1.3 # minor versions are read\n--- word\n", "word")?
+	text("%TAG !e! tag:example.com,2000:\n---\n!e!str word\n", "word")?
+	for bad in [
+		"%YAML 2.0\n---\nx", "%YAML 1.2\n%YAML 1.2\n---\nx",
+		"%TAG !e! a\n%TAG !e! b\n---\nx", "%YAML 1.2\n!x!y z\n", "%YAML\n---\nx"
+	]:
+		expect_equal(parse(bad).is_error(), true)?
 
 // Regressions: document boundaries.
 
