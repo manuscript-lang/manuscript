@@ -29,6 +29,16 @@ fn main() Unit!:
 	print(counter.value())
 ```
 
+### Not Manuscript
+
+| Not | Write |
+| --- | --- |
+| `!x`, `a ?? b`, `try f()` | `not x`, `a.get(b)`, `f()?` |
+| `x.len`, `x.length`, `x == none` | `x.length()`, `x.is_none()` |
+| `const X = 1`, `# note`, `pass` | `X := 1`, `// note`, `unit` |
+| `a if c else b`, `-> T` | `if c: a else: b`, `fn f() T:` |
+| `out: var T`, `"\"{x}\""` | `var out: T`, plain quotes inside `{}` |
+
 ### Syntax and data
 
 - Immutable: `x := e`, or `x: T := e`. Mutable: `var x = e`; assignment and content mutation require var. Basic types: Int, Float, Bool, String, Unit; literals: `true`, `false`, `unit`. Strings interpolate `"hello {name}"`.
@@ -37,7 +47,6 @@ fn main() Unit!:
 - Control: `if`/`else if`/`else`, `while`, `for x in xs:`, `for i in 0..n:` (excludes n), `break`, `continue`; `and or not`. Prefer early exits: `if c: return x`. Expression: `if c: a else: b`.
 - Import `name` with `import name from "./other.ms"`; `export` shares declarations. Standard paths start `@std/`. Construct records `Counter()` or `Counter(n: 2)`. Receiver methods satisfy matching interfaces; no impl blocks.
 - `enum Choice:` declares cases `Empty` and `Value(n: Int)`. Construct `Choice.Value(2)`. `match choice:` uses arms `Empty:`, `Value(n):`, or `_:`; match exhaustively and keep it flat.
-- Methods always take parentheses: `xs.length()`, `opt.is_none()` (never `x == none`); see [habits](references/validation.md).
 - Prelude collections: `[1, 2]`, `Map[String, Int]()`, `Set[Int]()`. List pipeline: `xs | .filter(fn x: x > 0) | .map(fn x: x * 2) | .sum()`. `x | f(a)` passes x first; `x | .m()` calls a method. Map `.get(k)` returns Optional; `.get_or(k, default)` supplies a fallback.
 
 ### Absence, errors and ownership
@@ -49,14 +58,14 @@ fn main() Unit!:
 
 ## Deep dives
 
-- [Program structure](references/program-structure.md) covers modules, imports and main. Shows indentation, types and receiver methods. Use for file-layout details.
-- [Values and control](references/values-and-control.md) covers bindings and literals. Shows branches, loops and range bounds. Use for control-flow details.
-- [Types and functions](references/types-and-functions.md) covers signatures, generics and callbacks. Shows enums and interfaces. Use for reusable-operation details.
-- [Errors and optionals](references/errors-and-optionals.md) separates absence from failure. Shows propagation and explicit handling. Use for nested-result details.
-- [Ownership and cleanup](references/ownership-and-cleanup.md) explains borrows, moves and clones. Shows mutation and cleanup. Use for resource-lifetime details.
-- [Collections and pipelines](references/collections-and-pipelines.md) covers construction, lookup and mutation. Distinguishes method and function pipelines. Use for collection-operation details.
-- [Effects and concurrency](references/effects-and-concurrency.md) covers effects, promises and streams. Explains waiting and capture rules. Use for concurrent and streaming work.
-- [Validation](references/validation.md) covers checks, tests and diagnostics. Includes a complete assertion. Use for testing and repair details.
+- [Program structure](references/program-structure.md): modules, imports, main, types, receiver methods.
+- [Values and control](references/values-and-control.md): bindings, literals, branches, loops, ranges.
+- [Types and functions](references/types-and-functions.md): signatures, generics, callbacks, enums, interfaces.
+- [Errors and optionals](references/errors-and-optionals.md): absence versus failure, propagation, nested results.
+- [Ownership and cleanup](references/ownership-and-cleanup.md): borrows, moves, clones, mutation, cleanup, borrow errors.
+- [Collections and pipelines](references/collections-and-pipelines.md): construction, lookup, mutation, method and function pipelines.
+- [Effects and concurrency](references/effects-and-concurrency.md): effects, promises, streams, waiting, capture.
+- [Validation](references/validation.md): checks, tests, diagnostics, habits from other languages.
 
 ## Verify
 
