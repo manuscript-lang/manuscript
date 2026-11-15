@@ -591,6 +591,18 @@ pub fn native_method_argument_modes(syms: ms_syntax::Names, method: &MethodRef) 
     .arguments
 }
 
+/// Whether the declaration bounds a type parameter by `Clonable` (or `Data`, `Hashable`): the
+/// method copies elements instead of taking them.
+fn copies_elements(syms: ms_syntax::Names, method: &MethodRef) -> bool {
+    let Some(DeclKind::Impl(i)) = method.decl.as_ref().map(|d| &d.decl.decl().kind) else {
+        return false;
+    };
+    i.bounds.iter().flat_map(|p| &p.bounds).any(|b| {
+        matches!(&b.kind, TypeKind::Named { name, .. }
+            if matches!(syms.str(*name), "Clonable" | "Data" | "Hashable"))
+    })
+}
+
 fn native_method_modes(
     syms: ms_syntax::Names,
     method: &MethodRef,
@@ -615,8 +627,12 @@ fn native_method_modes(
                 Some(inner) if p.ty.is(Builtin::Optional) => inner,
                 _ => &p.ty,
             };
+            // A collection of the receiver's own type is stored whole (`splice`'s replacement)
+            // unless the method needs `Clonable` elements: those methods copy from it
+            // (`extend`, `merge`) and the caller keeps the argument.
+            let copies = copies_elements(syms, method);
             let stored = p.ty.kind == Kind::Variable
-                || same(&p.ty, receiver)
+                || (!copies && same(&p.ty, receiver))
                 || receiver.args.iter().any(|a| same(a, &p.ty));
             let value = held.kind == Kind::Variable
                 || same(held, &result)

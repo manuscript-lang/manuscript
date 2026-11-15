@@ -441,9 +441,7 @@ fn List[T: Clonable].repeated(count: Int) List[T]: ...
 // Appends a copy of every element of `other`, in order, to this list in place;
 // `other` is unchanged. The argument cannot be the receiver. Example: after
 // `var xs = [1]`, `xs.extend([2, 3])` leaves `xs` as `[1, 2, 3]`.
-fn var List[T: Clonable].extend(other: List[T]) Unit:
-	for x in other:
-		self.append(x.clone())
+fn var List[T: Clonable].extend(other: List[T]) Unit: ...
 
 // A mutable key-value collection. Keys use explicit `Hashable` value semantics.
 export extern type Map[T: Hashable, U]
@@ -741,7 +739,13 @@ export fn map_from_entries[K: Hashable, V](entries: List[MapEntry[K, V]]) Map[K,
 // Copies the inner lists' elements in order into one new list; elements must be
 // Clonable. Example: `flatten([[1, 2], [3]])` returns `[1, 2, 3]`.
 export fn flatten[T: Clonable](lists: List[List[T]]) List[T]:
-	return msrt_list_flatten(lists)
+	var total = 0
+	for inner in lists:
+		total += inner.length()
+	var out = List[T](reserve: total)
+	for inner in lists:
+		out.extend(inner)
+	return out
 
 // Reverses the elements of `items` in [start, end) in place; used by `rotate`.
 fn reverse_span[T](var items: List[T], start: Int, end: Int) Unit:
@@ -758,7 +762,6 @@ import (
 	StringBuilder from "@std/string_builder.ms",
 
 	msrt_list_distinct,
-	msrt_list_flatten,
 	msrt_list_range_by from "@std/internal/collections.ms",
 )
 
