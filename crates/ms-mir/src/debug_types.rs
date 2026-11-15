@@ -52,6 +52,11 @@ pub struct DebugType {
 
 /// Describes every type the module declares or uses, once each.
 pub fn debug_types(m: &Module) -> Vec<DebugType> {
+    debug_types_by_ty(m).0
+}
+
+/// [`debug_types`], and the list index of each MIR type (indexed by `Ty`).
+pub fn debug_types_by_ty(m: &Module) -> (Vec<DebugType>, Vec<usize>) {
     let mut b = Builder {
         m,
         layouts: Layouts::new(m),
@@ -59,10 +64,8 @@ pub fn debug_types(m: &Module) -> Vec<DebugType> {
         ids: HashMap::new(),
         leaves: HashMap::new(),
     };
-    for i in 0..m.types.len() {
-        b.ty(Ty(i as u32));
-    }
-    b.out
+    let of_ty = (0..m.types.len()).map(|i| b.ty(Ty(i as u32))).collect();
+    (b.out, of_ty)
 }
 
 struct Builder<'m> {
@@ -226,7 +229,7 @@ impl Builder<'_> {
             && idx
                 .iter()
                 .zip(&own.offsets)
-                .all(|(i, o)| offsets[*i] - first == *o);
+                .all(|(i, o)| i64::from(offsets[*i]) - i64::from(first) == i64::from(*o));
         if whole {
             let ty = self.ty(fty);
             members.push(Member {

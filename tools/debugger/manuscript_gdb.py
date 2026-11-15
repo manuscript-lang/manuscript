@@ -94,7 +94,45 @@ class EnumPrinter:
             yield field.name, payload[field.name]
 
 
+class Guarded:
+    """Shows `<optimized out>` where a part of the value has no location at this pc."""
+
+    def __init__(self, printer):
+        self.printer = printer
+
+    def to_string(self):
+        try:
+            return self.printer.to_string()
+        except gdb.error:
+            return "<optimized out>"
+
+    def display_hint(self):
+        hint = getattr(self.printer, "display_hint", None)
+        return hint() if hint else None
+
+
+class GuardedChildren(Guarded):
+    def children(self):
+        try:
+            yield from self.printer.children()
+        except gdb.error:
+            return
+
+
+def guard(printer):
+    if printer is None:
+        return None
+    return (GuardedChildren if hasattr(printer, "children") else Guarded)(printer)
+
+
 def lookup(value):
+    try:
+        return guard(find(value))
+    except gdb.error:
+        return None
+
+
+def find(value):
     kind = value.type.strip_typedefs()
     if kind.code != gdb.TYPE_CODE_STRUCT or kind.tag is None:
         return None

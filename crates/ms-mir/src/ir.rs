@@ -730,6 +730,11 @@ pub struct Func {
     /// `fn(move close error, move pending return) -> ret`, the latter keeping an error the
     /// function was already returning (consumed by `elaborate`).
     pub close_exit: Option<(FuncId, FuncId)>,
+    /// Source names of values for a debugger: a parameter, later a local. Keyed by value, so a
+    /// pass that moves or removes parameters leaves the others named; an entry whose value no
+    /// longer exists is ignored. Not part of the text format, and no pass reads it: the code
+    /// generators show the value under its name while it is alive.
+    pub names: Vec<(Value, String)>,
 }
 
 impl Func {
@@ -759,6 +764,7 @@ impl Func {
             slot_close: None,
             slot_result: None,
             close_exit: None,
+            names: Vec::new(),
         };
         for p in params {
             let v = f.new_value(p.ty);

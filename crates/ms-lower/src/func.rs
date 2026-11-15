@@ -2034,6 +2034,15 @@ impl<'a> FnLower<'a> {
         // that moves a parameter is the copying adapter for the borrowed signature: its copies
         // are the declared adaptation, not hidden ones.
         self.adapter = !self.variant.owned && self.cx.owned_mask(c).is_some();
+        // A `var` parameter is the address of the caller's slot, not the value, so it has no name here.
+        let names = bindings
+            .iter()
+            .zip(&params)
+            .enumerate()
+            .filter(|(i, _)| !vars.contains(i))
+            .map(|(_, (b, v))| (*v, self.syms.str(b.name).to_string()))
+            .collect();
+        self.b.func_mut().names = names;
         for (i, (b, v)) in bindings.iter().zip(params).enumerate() {
             if vars.contains(&i) {
                 self.bind_var_parameter(b, v)?;

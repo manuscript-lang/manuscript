@@ -123,7 +123,7 @@ With [GDB](https://sourceware.org/gdb/current/onlinedocs/gdb.html/Sample-Session
 
 ## What source information is available {#source-attribution}
 
-Native builds retain frame pointers and DWARF file/line mappings. These support source breakpoints, stack attribution and stepping; optimized code can reorder or remove operations. It also describes every Manuscript type as a structure (`String`, `List[Int]`, `Int?`, records, enums), with member names and offsets, on both backends. It does not yet describe local variables or inline call frames, so a debugger cannot show `p` in a frame: use source-level `print` calls or a focused test for that, and read a value you can address (a pointer from a register, a member, a stack slot) through its type, as below.
+Native builds retain frame pointers and DWARF file/line mappings. These support source breakpoints, stack attribution and stepping; optimized code can reorder or remove operations. It also describes every Manuscript type as a structure (`String`, `List[Int]`, `Int?`, records, enums), with member names and offsets, on both backends. On the Cranelift backend (`--build-type debug`) a frame's parameters are named and located, so `info args` and `frame variable` show them; a part with no location at the current instruction reads `<optimized out>`. Local variables, inline call frames and the LLVM backend's variables are not described yet: use source-level `print` calls or a focused test, and read a value you can address (a pointer from a register, a member, a stack slot) through its type, as below.
 
 ## Print a value as Manuscript shows it {#print-values}
 

@@ -1,18 +1,19 @@
 //! Minimal DWARF4: source attribution, and a DIE for every Manuscript type (`debug_types`) so a
-//! debugger can print a `String`, list, map, record, enum or optional at an address. No variables
-//! or inline frame DIEs.
+//! debugger can print a `String`, list, map, record, enum or optional at an address, and a
+//! parameter DIE per named function parameter with a location list. No inline frame DIEs.
 //! The runtime's independent fault/profile tables remain unchanged.
 
 use crate::Error;
-use crate::cg::FuncDbg;
+use crate::cg::{FuncDbg, VarDbg, VarLoc};
 use cranelift_object::ObjectProduct;
 use cranelift_object::object::{
     BinaryFormat, RelocationEncoding, RelocationFlags, RelocationKind, SectionKind,
     write::{Relocation, StandardSegment},
 };
 use gimli::write::{
-    Address, AttributeValue, DwarfUnit, EndianVec, LineProgram, LineString, Range, RangeList,
-    RelocateWriter, Relocation as DwarfRelocation, RelocationTarget, Sections,
+    Address, AttributeValue, DwarfUnit, EndianVec, Expression, LineProgram, LineString, Location,
+    LocationList, Range, RangeList, RelocateWriter, Relocation as DwarfRelocation,
+    RelocationTarget, Sections,
 };
 use gimli::{Encoding, Format, LineEncoding, RunTimeEndian};
 use ms_mir::ir::Module;
@@ -38,9 +39,14 @@ impl RelocateWriter for Section {
 }
 
 /// One DIE per [`ms_mir::debug_types::DebugType`], referring to each other as the list does.
-fn emit_types(dwarf: &mut DwarfUnit, root: gimli::write::UnitEntryId, m: &Module) {
-    use ms_mir::debug_types::{DebugKind, Encoding as Enc, debug_types};
-    let types = debug_types(m);
+/// Returns the DIE of each MIR type, by `Ty` index.
+fn emit_types(
+    dwarf: &mut DwarfUnit,
+    root: gimli::write::UnitEntryId,
+    m: &Module,
+) -> Vec<gimli::write::UnitEntryId> {
+    use ms_mir::debug_types::{DebugKind, Encoding as Enc, debug_types_by_ty};
+    let (types, of_ty) = debug_types_by_ty(m);
     let tags = |t: &ms_mir::debug_types::DebugType| match &t.kind {
         DebugKind::Base(_) => gimli::DW_TAG_base_type,
         DebugKind::Struct(_) => gimli::DW_TAG_structure_type,
@@ -101,6 +107,89 @@ fn emit_types(dwarf: &mut DwarfUnit, root: gimli::write::UnitEntryId, m: &Module
             }
         }
     }
+    of_ty.into_iter().map(|i| ids[i]).collect()
+}
+
+/// Describes the named values of `f` as parameter DIEs, each located by a list over the function.
+fn emit_vars(
+    dwarf: &mut DwarfUnit,
+    subprogram: gimli::write::UnitEntryId,
+    symbol: usize,
+    size: u32,
+    vars: &[VarDbg],
+    type_dies: &[gimli::write::UnitEntryId],
+) {
+    let mut frame = Expression::new();
+    frame.op(gimli::DW_OP_call_frame_cfa);
+    dwarf
+        .unit
+        .get_mut(subprogram)
+        .set(gimli::DW_AT_frame_base, AttributeValue::Exprloc(frame));
+    let at = |offset: u32| Address::Symbol {
+        symbol,
+        addend: i64::from(offset),
+    };
+    for v in vars {
+        // Split the code at every point where any leaf changes place, so each segment's
+        // expression names one place per leaf.
+        let mut cuts: Vec<u32> = v
+            .pieces
+            .iter()
+            .flat_map(|p| p.ranges.iter().flat_map(|r| [r.0, r.1]))
+            .filter(|&c| c <= size)
+            .collect();
+        cuts.sort_unstable();
+        cuts.dedup();
+        let mut list = Vec::new();
+        for w in cuts.windows(2) {
+            let (begin, end) = (w[0], w[1]);
+            let mut expr = Expression::new();
+            let mut known = false;
+            let mut next = 0;
+            for p in &v.pieces {
+                if p.offset > next {
+                    expr.op_piece(u64::from(p.offset - next));
+                }
+                match p.ranges.iter().find(|r| r.0 <= begin && end <= r.1) {
+                    Some((_, _, VarLoc::Reg(r))) => {
+                        expr.op_reg(gimli::Register(*r));
+                        known = true;
+                    }
+                    Some((_, _, VarLoc::Cfa(o))) => {
+                        expr.op_fbreg(*o);
+                        known = true;
+                    }
+                    None => {}
+                }
+                expr.op_piece(u64::from(p.size));
+                next = p.offset + p.size;
+            }
+            if known {
+                list.push(Location::StartEnd {
+                    begin: at(begin),
+                    end: at(end),
+                    data: expr,
+                });
+            }
+        }
+        let param_id = dwarf.unit.add(subprogram, gimli::DW_TAG_formal_parameter);
+        let param = dwarf.unit.get_mut(param_id);
+        param.set(
+            gimli::DW_AT_name,
+            AttributeValue::String(v.name.clone().into_bytes()),
+        );
+        param.set(
+            gimli::DW_AT_type,
+            AttributeValue::UnitRef(type_dies[v.ty.0 as usize]),
+        );
+        if !list.is_empty() {
+            let id = dwarf.unit.locations.add(LocationList(list));
+            dwarf
+                .unit
+                .get_mut(param_id)
+                .set(gimli::DW_AT_location, AttributeValue::LocationListRef(id));
+        }
+    }
 }
 
 /// Emits relocatable source lines and enough CU/range metadata for addr2line.
@@ -144,14 +233,12 @@ pub fn emit(
     let mut symbols = Vec::new();
     let mut ranges = Vec::new();
     let root = dwarf.unit.root();
-    if product.object.format() == BinaryFormat::MachO {
-        // dsymutil needs an explicit original CU base to relocate its range
-        // list into the linked image, even when that original base is zero.
-        dwarf.unit.get_mut(root).set(
-            gimli::DW_AT_low_pc,
-            AttributeValue::Address(Address::Constant(0)),
-        );
-    }
+    // Range and location lists hold absolute addresses, so the base is zero. dsymutil needs the
+    // explicit original CU base to relocate its range list into the linked image.
+    dwarf.unit.get_mut(root).set(
+        gimli::DW_AT_low_pc,
+        AttributeValue::Address(Address::Constant(0)),
+    );
     dwarf.unit.get_mut(root).set(
         gimli::DW_AT_name,
         AttributeValue::String(first_file.as_bytes().to_vec()),
@@ -164,7 +251,7 @@ pub fn emit(
         gimli::DW_AT_producer,
         AttributeValue::String(b"Manuscript Cranelift".to_vec()),
     );
-    emit_types(&mut dwarf, root, m);
+    let type_dies = emit_types(&mut dwarf, root, m);
     for f in funcs {
         if f.dwarf_ranges.is_empty() {
             continue;
@@ -189,6 +276,7 @@ pub fn emit(
             gimli::DW_AT_high_pc,
             AttributeValue::Udata(u64::from(f.size)),
         );
+        emit_vars(&mut dwarf, entry, symbol, f.size, &f.vars, &type_dies);
         let mut end = None;
         for &(start, stop, file, line) in &f.dwarf_ranges {
             let Some(Some(file)) = files.get(file as usize) else {

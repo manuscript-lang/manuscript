@@ -570,3 +570,47 @@ fn both_backends_describe_value_types_once() {
     }
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// Cranelift names each parameter for a debugger and says where its parts live, in a list that
+/// `llvm-dwarfdump --verify` accepts.
+#[test]
+fn cranelift_locates_parameters_for_a_debugger() {
+    let source = format!("{}/tests/llvm/value_types.ms", env!("CARGO_MANIFEST_DIR"));
+    let dir = std::env::temp_dir().join(format!("ms-params-test-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let out = dir.join("prog");
+    let built = Command::new(env!("CARGO_BIN_EXE_ms"))
+        .env("MS_BACKEND", "cranelift")
+        .args(["build", &source, "--build-type", "debug", "-o"])
+        .arg(&out)
+        .output()
+        .unwrap();
+    assert!(
+        built.status.success(),
+        "{}",
+        String::from_utf8_lossy(&built.stderr)
+    );
+    let dwarfdump = std::env::var("LLVM_DWARFDUMP").unwrap_or_else(|_| "llvm-dwarfdump".into());
+    let run = |flag: &str| {
+        let o = Command::new(&dwarfdump)
+            .arg(flag)
+            .arg(&out)
+            .output()
+            .unwrap();
+        assert!(o.status.success(), "{}", String::from_utf8_lossy(&o.stderr));
+        String::from_utf8_lossy(&o.stdout).into_owned()
+    };
+    assert!(run("--verify").contains("No errors"));
+    let info = run("--debug-info");
+    let _ = std::fs::remove_dir_all(&dir);
+    for name in ["s", "p", "items", "maybe"] {
+        let at = info
+            .find(&format!(
+                "DW_TAG_formal_parameter\n                  DW_AT_name\t(\"{name}\")"
+            ))
+            .unwrap_or_else(|| panic!("no parameter {name}"));
+        let rest = &info[at..];
+        let entry = &rest[..rest.find("\n0x").unwrap_or(rest.len())];
+        assert!(entry.contains("DW_AT_location"), "{name} has no location");
+    }
+}

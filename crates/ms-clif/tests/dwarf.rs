@@ -114,10 +114,9 @@ fn check_lines(path: &Path, absolute: &Path, optimized: bool) {
         };
         let got = location(path, address);
         let suffix = match line {
-            10 | 12 => format!("{}:{line}", absolute.display()).replace('\\', "/"),
-            30 | 31 | 40 => format!("relative/nested/first.ms:{line}"),
-            70 => "inline/origin.ms:70".into(),
-            90 => "relative/nested/first.ms:90".into(),
+            9 | 10 | 12 => format!("{}:{line}", absolute.display()).replace('\\', "/"),
+            29 | 30 | 31 | 40 | 89 | 90 => format!("relative/nested/first.ms:{line}"),
+            69 | 70 => format!("inline/origin.ms:{line}"),
             _ => panic!("unexpected line {line}: {row} ({got})"),
         };
         assert!(
