@@ -434,7 +434,8 @@ fn edge_state(m: &Module, f: &Func, cx: &Ctx, st: &State, t: &Target) -> Result<
 }
 
 fn merge(old: &State, new: &State) -> Result<State, String> {
-    if std::rc::Rc::ptr_eq(&old.0, &new.0) {
+    // Equal states are the common join; compare in place instead of rebuilding.
+    if old == new {
         return Ok(old.clone());
     }
     let mut out = State::default();
