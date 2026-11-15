@@ -30,10 +30,11 @@ fn own_to_string_returning_string_is_accepted() {
 }
 
 #[test]
-fn own_to_string_with_another_result_is_rejected() {
-    let got = diagnostics(&format!("{TYPE}fn P.to_string() Int: self.n\n"));
-    assert_eq!(got.len(), 1, "{got:?}");
-    assert!(got[0].contains("Stringable"), "{got:?}");
+fn own_to_string_with_another_result_is_an_ordinary_method() {
+    let got = diagnostics(&format!(
+        "{TYPE}fn P.to_string() Int: self.n\nfn run(p: P) Int: p.to_string()\n"
+    ));
+    assert!(got.is_empty(), "{got:?}");
 }
 
 #[test]
