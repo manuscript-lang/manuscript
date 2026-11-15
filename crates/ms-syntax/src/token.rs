@@ -25,7 +25,7 @@ tokens! {
     Export => "export", Extern => "extern", False => "false", Fixture => "fixture", Fn => "fn",
     For => "for", If => "if", Impl => "impl", Import => "import", In => "in",
     Interface => "interface", Match => "match", Not => "not",
-    Or => "or", Ref => "ref", Return => "return", SelfKw => "self", Test => "test", True => "true", Try => "try",
+    Or => "or", Return => "return", SelfKw => "self", Test => "test", True => "true", Try => "try",
     Type => "type", Void => "void", Var => "var", While => "while", Underscore => "_",
     LParen => "(", RParen => ")", LBracket => "[", RBracket => "]", LBrace => "{", RBrace => "}",
     Colon => ":", Comma => ",", Dot => ".", Plus => "+", Minus => "-", Star => "*", Slash => "/",
@@ -56,7 +56,6 @@ impl Tok {
             "match" => Tok::Match,
             "not" => Tok::Not,
             "or" => Tok::Or,
-            "ref" => Tok::Ref,
             "return" => Tok::Return,
             "self" => Tok::SelfKw,
             "test" => Tok::Test,
@@ -90,7 +89,6 @@ impl Tok {
                 | Tok::In
                 | Tok::Interface
                 | Tok::Match
-                | Tok::Ref
                 | Tok::Return
                 | Tok::Test
                 | Tok::Type
@@ -126,7 +124,6 @@ pub const KEYWORDS: &[&str] = &[
     "match",
     "not",
     "or",
-    "ref",
     "return",
     "self",
     "test",

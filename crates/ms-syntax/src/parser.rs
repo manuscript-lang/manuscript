@@ -230,8 +230,6 @@ fn need_hint(kind: &str, found: Tok, found_text: &str) -> String {
                 "; give it a name, e.g. fn add(a: Int, b: Int) Int:".into()
             } else if found_text == "_" {
                 "; '_' is a reserved word and cannot be used as a name: loops, parameters and bindings need a real name such as item, unused or ignored".into()
-            } else if found == Tok::Ref {
-                "; 'ref' was removed: a function that returns part of a parameter returns a borrow of it, with no marker".into()
             } else if found.as_str() == found_text && found_text.starts_with(|c: char| c.is_ascii_alphabetic()) {
                 format!("; '{}' is a reserved word and cannot be used as a name", found_text)
             } else {
@@ -866,7 +864,6 @@ impl<'a> Parser<'a> {
         let mut params = Vec::new();
         if !self.take(Tok::RParen) {
             loop {
-                self.no_ref()?;
                 let mutable = self.take(Tok::Var);
                 let name = self.need(Tok::Name)?;
                 let mut ty = None;
@@ -1022,7 +1019,6 @@ impl<'a> Parser<'a> {
                 "every fn declares its result type after the parameter list, e.g. fn f() Void:",
             );
         }
-        self.no_ref()?;
         self.typ()
     }
 
@@ -1651,7 +1647,6 @@ impl<'a> Parser<'a> {
             } else {
                 let fname = self.need(Tok::Name)?;
                 self.need_name_colon(fname)?;
-                self.no_ref()?;
                 let ty = self.typ()?;
                 let default = if self.take(Tok::Assign) {
                     Some(self.expression(0)?)
@@ -1794,23 +1789,6 @@ impl<'a> Parser<'a> {
         Ok(body)
     }
 
-    /// Rejects `ref`, which the language no longer has: a function that returns part of a
-    /// parameter returns a borrow of it, a field owns its value, and a binding of a place already borrows it.
-    fn no_ref(&mut self) -> PResult<()> {
-        if self.kind() == Tok::Ref {
-            let at = self.peek();
-            let message = "`ref` was removed: drop it; a function that returns part of a parameter returns a borrow of it, with no marker, and a field owns its value";
-            // The edit replaces `ref` and the word after it with that word, so no space is left behind.
-            let next = self.ahead(1);
-            if next.pos.line == at.pos.line && next.kind != Tok::Newline {
-                let replacement = self.text(next).to_string();
-                return self.fail_fix_range(at, next, message, &replacement);
-            }
-            return self.fail_fix(at, message, "");
-        }
-        Ok(())
-    }
-
     /// `let pattern = hidden`: the first statement of a `for` body or lambda whose
     /// parameter is a pattern. Checking, ownership, and lowering see an ordinary
     /// binding of the hidden name, which borrows the element.
@@ -1875,7 +1853,6 @@ impl<'a> Parser<'a> {
     /// Parses a binding: `var pattern [: Type] = value` after `var`, or an
     /// immutable `name := value`, `name: Type := value`, or `pattern := value`.
     fn binding(&mut self, mutable: bool, group: Option<Pos>, pos: Pos) -> PResult<Stmt> {
-        self.no_ref()?;
         let pattern = self.pattern()?;
         let mut ty = None;
         let named = matches!(pattern.kind, PatternKind::Name(_));
@@ -2139,7 +2116,6 @@ impl<'a> Parser<'a> {
                     let c = self.peek();
                     return self.fail(c, "for does not take parentheses or a counter clause; write 'for item in items:' to visit a List, or 'for i in 0..n:' to count");
                 }
-                self.no_ref()?;
                 let (name, pattern) = if matches!(self.kind(), Tok::LBracket | Tok::LBrace) {
                     (self.names.intern(HIDDEN_ITEM), Some(self.pattern()?))
                 } else {
@@ -2828,7 +2804,6 @@ impl<'a> Parser<'a> {
                 self.mk(t.pos, ExprKind::List(items))
             }
             Tok::Match => {
-                self.no_ref()?;
                 let scrutinee = self.expression(0)?;
                 let arms = self.match_arms(t)?;
                 self.mk(

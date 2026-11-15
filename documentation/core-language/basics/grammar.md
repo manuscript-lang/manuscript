@@ -21,7 +21,7 @@ import in interface match not or return self test true try type
 void var while
 ```
 
-- Most keywords are reserved only where they mean something. After `.`, and as a `name:` label that starts a line or follows `(` or `,` (a record or enum field, a parameter, an argument label), these are ordinary names: `break continue enum export extern fixture for if import in interface match ref return test type while`. So `type Options:` can declare `continue: Bool` and `if: Int`, `Options(continue: true)` sets it, and `opts.continue` reads it. A binding or function still cannot use these words, and `and`, `or`, `not`, `else`, `fn`, `try`, `var`, `self`, `void`, `true` and `false` stay reserved everywhere.
+- Most keywords are reserved only where they mean something. After `.`, and as a `name:` label that starts a line or follows `(` or `,` (a record or enum field, a parameter, an argument label), these are ordinary names: `break continue enum export extern fixture for if import in interface match return test type while`. So `type Options:` can declare `continue: Bool` and `if: Int`, `Options(continue: true)` sets it, and `opts.continue` reads it. A binding or function still cannot use these words, and `and`, `or`, `not`, `else`, `fn`, `try`, `var`, `self`, `void`, `true` and `false` stay reserved everywhere.
 - `try` is reserved only to report that it was replaced: write a postfix `?` (`f(x)?`) to propagate a Result error.
 - `opaque` is contextual: it modifies a `type` declaration only directly before `type` (`export opaque type Name:`), so `opaque := 1` is valid.
 - `from` ends an import's names and `bench` starts a benchmark only before a string literal at a module item; both are contextual, so `from := 2` and `bench := 3` are valid.
