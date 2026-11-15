@@ -6,54 +6,54 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := 50
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     b2 := (((i1 * (-18)) + i1) < i1)
-    say("b2 = {b2}")
+    say(f"b2 = {b2}")
 
     f3 := 5.0e-1
-    say("f3 = {f3}")
+    say(f"f3 = {f3}")
 
     l4 := [(-5), (-28), (-19), (-18), 7]
-    say("l4 = {l4} len {l4.length()}")
+    say(f"l4 = {l4} len {l4.length()}")
 
     i5 := (-(-19))
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     i6 := i1
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
     say(
-        "{((26 + (-19)) * i5)} {((i1 % i5) + (i5 * i1))} {(((26 + (-19)) * i5) < ((i1 % i5) + (i5 * i1)))} sum {((26 + (-19)) * i5) + ((i1 % i5) + (i5 * i1))}"
+        f"{((26 + (-19)) * i5)} {((i1 % i5) + (i5 * i1))} {(((26 + (-19)) * i5) < ((i1 % i5) + (i5 * i1)))} sum {((26 + (-19)) * i5) + ((i1 % i5) + (i5 * i1))}"
     )
 
     b7 := (("héllo".is_empty() and true) or ("a".trim() == ("" + "")))
-    say("b7 = {b7}")
+    say(f"b7 = {b7}")
 
     f8 := (((f3 - f3) - f3) + ((97.164 + 926.338) * (860.011 + f3)))
-    say("f8 = {f8}")
+    say(f"f8 = {f8}")
 
     i9 := l4.length()
-    say("i9 = {i9}")
+    say(f"i9 = {i9}")
 
     l10 := l4.map(fn x: x * 4)
-    say("l10 = {l10} len {l10.length()}")
+    say(f"l10 = {l10} len {l10.length()}")
 
     i11 := (-21)
-    say("i11 = {i11}")
+    say(f"i11 = {i11}")
     say(
-        "{((i11 + i5) * (i6 + i9))} {((i6 - 50) * (i6 + 780521729378))} {(((i11 + i5) * (i6 + i9)) < ((i6 - 50) * (i6 + 780521729378)))} sum {((i11 + i5) * (i6 + i9)) + ((i6 - 50) * (i6 + 780521729378))}"
+        f"{((i11 + i5) * (i6 + i9))} {((i6 - 50) * (i6 + 780521729378))} {(((i11 + i5) * (i6 + i9)) < ((i6 - 50) * (i6 + 780521729378)))} sum {((i11 + i5) * (i6 + i9)) + ((i6 - 50) * (i6 + 780521729378))}"
     )
 
     i12 := (-(-(-28436468300)))
-    say("i12 = {i12}")
+    say(f"i12 = {i12}")
 
     l13 := l10.sorted(fn a, b: a.compare(b))
-    say("l13 = {l13} len {l13.length()}")
+    say(f"l13 = {l13} len {l13.length()}")
 
     i14 := (((i5 + 25) - (i9 * i12)) - ((i12 * i11) % (i9 + (-24))))
-    say("i14 = {i14}")
+    say(f"i14 = {i14}")
     return 0

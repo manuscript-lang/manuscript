@@ -6,16 +6,16 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     s1 := (("a".lower() + "42".upper()) + "hello world")
-    say("s1 = [{s1}]")
+    say(f"s1 = [{s1}]")
 
     var acc2 = 0
     for i in 0..5:
         acc2 += i * 2
-    say("acc2 = {acc2}")
+    say(f"acc2 = {acc2}")
 
     var acc3 = 0
     var stepacc3 = 0
@@ -24,32 +24,32 @@ export fn main() Int:
         stepacc3 += 1
         acc3 += stepacc3 * stepacc3 + 4
 
-    say("acc3 = {acc3}")
+    say(f"acc3 = {acc3}")
 
     l4 := [26, (-10)]
-    say("l4 = {l4} len {l4.length()}")
+    say(f"l4 = {l4} len {l4.length()}")
 
     f5 := (((0.0 - 389.268) * 1.5) + 361.513)
-    say("f5 = {f5}")
+    say(f"f5 = {f5}")
 
     i6 := (
         ((710712 * 24) / (44 * 461400))
         % (((-24) - (-469329246152)) % s1.scalar_length())
     )
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     i7 := i6
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
     b8 := (true and (not (true or true)))
-    say("b8 = {b8}")
+    say(f"b8 = {b8}")
 
     f9 := (71.25 - ((617.676 / f5) + (749.950 / f5)))
-    say("f9 = {f9}")
+    say(f"f9 = {f9}")
 
     i10 := i6
-    say("i10 = {i10}")
+    say(f"i10 = {i10}")
 
     l11 := l4.filter(fn x: x > 5)
-    say("l11 = {l11} len {l11.length()}")
+    say(f"l11 = {l11} len {l11.length()}")
     return 0

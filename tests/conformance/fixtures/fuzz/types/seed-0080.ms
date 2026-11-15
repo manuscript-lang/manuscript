@@ -6,19 +6,19 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     b1 := ("gamma".ends_with("x") and ("gamma" + "naïve").is_empty())
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
     _bad := say
     i2 := 26
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     i3 := (((i2 + 4) * (i2 * 391206)) * (i2 % 9))
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     i4 := (((375998945411 % (-10)) - (i3 + 15)) / (-(i3 + (-44))))
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
     return 0

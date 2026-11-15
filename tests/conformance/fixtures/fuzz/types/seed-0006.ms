@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -23,15 +23,15 @@ fn collatz(start: Int) Int:
     return steps
 
 export fn main() Int:
-    say("collatz(2269) = {collatz(2269)}")
+    say(f"collatz(2269) = {collatz(2269)}")
 
     if (277.421 != (0.0 - 20.281)):
-        say(("{(-6)}:" + "ms"))
+        say((f"{(-6)}:" + "ms"))
     else:
         say(("日本語" + "ms"))
 
     l1 := [21, 2, (-30)]
-    say("l1 = {l1} len {l1.length()}")
+    say(f"l1 = {l1} len {l1.length()}")
 
     var acc2 = 0
     var stepacc2 = 0
@@ -40,7 +40,7 @@ export fn main() Int:
         stepacc2 += 1
         acc2 += stepacc2 * stepacc2 + (-4)
 
-    say("acc2 = {acc2}")
+    say(f"acc2 = {acc2}")
 
     var acc3 = 0
 
@@ -50,13 +50,13 @@ export fn main() Int:
         else:
             acc3 -= 1
 
-    say("acc3 = {acc3}")
+    say(f"acc3 = {acc3}")
 
     i4 := (-871890)
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     if "  padded  ".reverse().is_empty():
-        say(("{(i4 / i4)}:" + "héllo"))
+        say((f"{(i4 / i4)}:" + "héllo"))
     else:
         say("  padded  ")
 

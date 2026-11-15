@@ -14,7 +14,7 @@ fn say(text: String) Void:
 	_ignored := stdout().write(text)
 
 fn report(name: String, started: Instant) Void:
-	say("{name} {monotonic().difference(started).to_nanoseconds()}\n")
+	say(f"{name} {monotonic().difference(started).to_nanoseconds()}\n")
 
 fn next(x: Int) Int:
 	return (x * 1103515245 + 12345) % 2147483648
@@ -61,11 +61,11 @@ fn map_string(n: Int) Int:
 	t := monotonic()
 	var m = Map[String, Int]()
 	for i in 0..n:
-		m["key{i}"] = i
+		m[f"key{i}"] = i
 
 	var hits = 0
 	for i in 0..n:
-		if m.contains("key{i}"):
+		if m.contains(f"key{i}"):
 			hits += 1
 	report("map_string", t)
 	return hits

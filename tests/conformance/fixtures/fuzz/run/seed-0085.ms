@@ -6,43 +6,43 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
-    say("{(-8)} {(-((-8) * 11))} {((-8) < (-((-8) * 11)))} sum {(-8) + (-((-8) * 11))}")
+    say(f"{(-8)} {(-((-8) * 11))} {((-8) < (-((-8) * 11)))} sum {(-8) + (-((-8) * 11))}")
 
     b1 := (
         ("MiXeD CaSe" == "quote\"d".replace("gamma", "Tab\there"))
         or (not (40 == 0))
     )
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
     l2 := [(-6), (-23)]
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
     say(
-        "{16} {(((-34) - (-8)) - ((-671717686406) + 11))} {(16 < (((-34) - (-8)) - ((-671717686406) + 11)))} sum {16 + (((-34) - (-8)) - ((-671717686406) + 11))}"
+        f"{16} {(((-34) - (-8)) - ((-671717686406) + 11))} {(16 < (((-34) - (-8)) - ((-671717686406) + 11)))} sum {16 + (((-34) - (-8)) - ((-671717686406) + 11))}"
     )
 
     i3 := (-37)
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     i4 := (((i3 / (-898917)) + (i3 + 25)) - (i3 + 3))
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     s5 := "hello world"
-    say("s5 = [{s5}]")
+    say(f"s5 = [{s5}]")
 
     if ("a" + s5).is_empty():
         say(("ms" + s5))
     else:
-        say(("{(-12)}:" + "a"))
+        say((f"{(-12)}:" + "a"))
 
     i6 := (l2.length() / (-8))
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     i7 := i3
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
     i8 := l2.get(1)
-    say("i8 = {i8}")
+    say(f"i8 = {i8}")
     return 0

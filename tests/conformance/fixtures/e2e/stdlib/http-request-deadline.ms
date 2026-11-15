@@ -26,19 +26,19 @@ fn send(var conn: Connection, text: String) Void!:
 fn handle(request: HttpRequest) HttpResponse:
     if request.path == "/slow":
         void sleep(nanoseconds(3000000000)).wait()
-    return HttpResponse(200, headers(), "ok {request.path}\n".to_bytes())
+    return HttpResponse(200, headers(), f"ok {request.path}\n".to_bytes())
 
 fn fetch(address: String, path: String) String:
     if var conn = connect(address).wait():
         _sent := send(
-            var conn, "GET {path} HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n"
+            var conn, f"GET {path} HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n"
         )
         var text = ""
 
         while true:
             if chunk := within(var conn.input, nanoseconds(5000000000)):
                 if data := chunk:
-                    text = "{text}{data.decode_utf8().get("?")}"
+                    text = f"{text}{data.decode_utf8().get("?")}"
                     continue
 
             break
@@ -62,10 +62,10 @@ fn run(label: String, grace_ms: Int) Bool:
         elapsed_ms := monotonic().difference(start).to_milliseconds()
         fast := fetch(server.address(), "/fast")
         _slow := stdout().write(
-            "{label} slow: {slow.starts_with("HTTP/1.1 504")} prompt: {elapsed_ms < 2000}\n"
+            f"{label} slow: {slow.starts_with("HTTP/1.1 504")} prompt: {elapsed_ms < 2000}\n"
         )
         _fast := stdout().write(
-            "{label} fast: {fast.starts_with("HTTP/1.1 200 OK")}\n"
+            f"{label} fast: {fast.starts_with("HTTP/1.1 200 OK")}\n"
         )
         server.close().get(none)
         return true

@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -24,23 +24,23 @@ fn collatz(start: Int) Int:
 
 export fn main() Int:
     i1 := ((-24) - 9)
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     b2 := ((i1 != i1) and ((i1 + i1) >= i1))
-    say("b2 = {b2}")
+    say(f"b2 = {b2}")
 
-    s3 := "brace\{s\}"
-    say("s3 = [{s3}]")
+    s3 := "brace{s}"
+    say(f"s3 = [{s3}]")
     say(
-        "{(-(561425718816 * i1))} {(((-9) * i1) - i1)} {((-(561425718816 * i1)) < (((-9) * i1) - i1))} sum {(-(561425718816 * i1)) + (((-9) * i1) - i1)}"
+        f"{(-(561425718816 * i1))} {(((-9) * i1) - i1)} {((-(561425718816 * i1)) < (((-9) * i1) - i1))} sum {(-(561425718816 * i1)) + (((-9) * i1) - i1)}"
     )
 
     s4 := "Tab\there"
-    say("s4 = [{s4}]")
-    say("collatz(1715) = {collatz(1715)}")
+    say(f"s4 = [{s4}]")
+    say(f"collatz(1715) = {collatz(1715)}")
 
     i5 := (((-39) % (i1 / i1)) - ((i1 + 259558) + ((-23) + i1)))
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     if ((805.25 * 15.424) != (936.257 - 789.25)):
         say(("emoji 😀" + s3))
@@ -48,13 +48,13 @@ export fn main() Int:
         say("42")
 
     l6 := [2, 25]
-    say("l6 = {l6} len {l6.length()}")
+    say(f"l6 = {l6} len {l6.length()}")
 
     i7 := ((-((-11) + i1)) * i5)
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
-    s8 := ((s4 + s4).trim() + ("{((-35) * i7)}:" + (s4 + "日本語")))
-    say("s8 = [{s8}]")
+    s8 := ((s4 + s4).trim() + (f"{((-35) * i7)}:" + (s4 + "日本語")))
+    say(f"s8 = [{s8}]")
 
     if ((false or true) and (b2 or false)):
         say(s4.upper())
@@ -62,5 +62,5 @@ export fn main() Int:
         say("  padded  ".reverse())
 
     f9 := ((0.0 - (780.575 / 872.25)) / ((6.0e24 - 102.342) * (83.717 / 3.5)))
-    say("f9 = {f9}")
+    say(f"f9 = {f9}")
     return 0

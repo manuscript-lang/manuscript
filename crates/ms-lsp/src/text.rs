@@ -330,7 +330,10 @@ pub(crate) fn multiline_string_spans(source: &str) -> Option<Vec<LiteralSpan>> {
             at += source[at + 2..]
                 .find("*/")
                 .map_or(bytes.len() - at, |n| n + 4);
-        } else if bytes[at] == b'"' || bytes[at..].starts_with(b"r\"\"\"") {
+        } else if bytes[at] == b'"'
+            || bytes[at..].starts_with(b"r\"\"\"")
+            || bytes[at..].starts_with(b"f\"")
+        {
             let span = literal_span(bytes, at);
             at = span.end;
             spans.push(span);
@@ -357,14 +360,27 @@ fn literal_span(bytes: &[u8], start: usize) -> LiteralSpan {
     // This intentionally tolerates unfinished/invalid text; indentation, escape
     // validity and interpolation restrictions remain the compiler's decisions.
     enum Mode {
-        Text { multiline: bool, raw: bool },
-        Expression { groups: Vec<u8>, from: usize },
+        Text {
+            multiline: bool,
+            raw: bool,
+            formatted: bool,
+        },
+        Expression {
+            groups: Vec<u8>,
+            from: usize,
+        },
     }
     let raw = bytes[start] == b'r';
-    let multiline = raw || bytes[start..].starts_with(b"\"\"\"");
-    let mut modes = vec![Mode::Text { multiline, raw }];
+    let formatted = bytes[start] == b'f';
+    let body = start + usize::from(formatted);
+    let multiline = raw || bytes[body..].starts_with(b"\"\"\"");
+    let mut modes = vec![Mode::Text {
+        multiline,
+        raw,
+        formatted,
+    }];
     let mut contexts = vec![(start, None)];
-    let mut at = start
+    let mut at = body
         + if raw {
             4
         } else if multiline {
@@ -375,7 +391,11 @@ fn literal_span(bytes: &[u8], start: usize) -> LiteralSpan {
     while at < bytes.len() {
         let top_level = modes.len() == 1;
         match modes.last_mut().expect("literal mode") {
-            Mode::Text { multiline, raw } => {
+            Mode::Text {
+                multiline,
+                raw,
+                formatted,
+            } => {
                 if top_level && !*multiline && matches!(bytes[at], b'\n' | b'\r') {
                     // A broken single-line literal cannot consume a later
                     // declaration's multiline opener.
@@ -408,7 +428,7 @@ fn literal_span(bytes: &[u8], start: usize) -> LiteralSpan {
                             contexts,
                         };
                     }
-                } else if bytes[at] == b'{' && !*raw {
+                } else if bytes[at] == b'{' && *formatted {
                     modes.push(Mode::Expression {
                         groups: Vec::new(),
                         from: at + 1,
@@ -429,12 +449,16 @@ fn literal_span(bytes: &[u8], start: usize) -> LiteralSpan {
                         at += 1;
                     }
                     at = (at + 2).min(bytes.len());
-                } else if bytes[at] == b'"' {
+                } else if bytes[at] == b'"'
+                    || (bytes[at..].starts_with(b"f\"") && (at == 0 || !identifier(bytes[at - 1])))
+                {
+                    let formatted = bytes[at] == b'f';
                     modes.push(Mode::Text {
                         multiline: false,
                         raw: false,
+                        formatted,
                     });
-                    at += 1;
+                    at += 1 + usize::from(formatted);
                 } else if matches!(bytes[at], b'{' | b'(' | b'[') {
                     groups.push(bytes[at]);
                     at += 1;
@@ -535,8 +559,8 @@ pub fn editor_tokens(source: &str) -> Vec<EditorToken<'_>> {
             at = close;
             continue;
         }
-        if b == b'"' {
-            at += 1;
+        if b == b'"' || bytes[at..].starts_with(b"f\"") {
+            at += 1 + usize::from(b == b'f');
             while at < bytes.len() {
                 if bytes[at] == b'\\' {
                     at += 1;
@@ -680,7 +704,7 @@ mod tests {
 
     #[test]
     fn a_diagnostic_in_an_interpolation_covers_the_name_not_the_rest_of_the_literal() {
-        let source = "print(\"😀 {missing.x} tail\")\nprint(\"whole\")";
+        let source = "print(f\"😀 {missing.x} tail\")\nprint(\"whole\")";
         let at = source.find("missing").unwrap();
         let range = diagnostic_range(source, at);
         assert_eq!(range.end.character - range.start.character, 7);

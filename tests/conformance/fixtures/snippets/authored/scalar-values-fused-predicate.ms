@@ -20,8 +20,8 @@ export fn main() Int:
 	limit := 100
 	var total = 0
 	for i in 0..50:
-		text := "row {i} é"
+		text := f"row {i} é"
 		total += text.scalar_values().count(fn c: c < limit)
 	print(total)
-	print("{"abc".scalar_values().all(fn c: c >= 97)} {"abc".clone().scalar_values().count(fn c: c == 98)}")
+	print(f"{"abc".scalar_values().all(fn c: c >= 97)} {"abc".clone().scalar_values().count(fn c: c == 98)}")
 	return 0

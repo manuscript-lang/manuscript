@@ -15,7 +15,7 @@ fn make_text(lines: Int) String:
 	for i in 0..lines:
 		x = lcg(x)
 		sb.append(
-			"user{x % 5000}@host{x / 3 % 90}.com 10.{x % 256}.{x / 5 % 256}.{x / 7 % 256} GET /api/v{x % 4}/items/{x / 11 % 100000} {200 + x % 3 * 100} took {x % 900}ms\n"
+			f"user{x % 5000}@host{x / 3 % 90}.com 10.{x % 256}.{x / 5 % 256}.{x / 7 % 256} GET /api/v{x % 4}/items/{x / 11 % 100000} {200 + x % 3 * 100} took {x % 900}ms\n"
 		)
 
 	return sb.build()
@@ -39,5 +39,5 @@ fn main() Void:
 	versions_found := versions.find_all(text, none).get().length()
 	pieces := compile(" +").get().split(text, none).get().length()
 	print(
-		"emails {email_count} octets {octet_total} took {took_total} masked {masked.length()} versions {versions_found} pieces {pieces}"
+		f"emails {email_count} octets {octet_total} took {took_total} masked {masked.length()} versions {versions_found} pieces {pieces}"
 	)

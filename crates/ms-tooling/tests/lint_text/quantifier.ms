@@ -1,2 +1,2 @@
 fn main() Void:
-    print("\\d{4}-\\d{2}")
+    print(f"\\d{4}-\\d{2}")

@@ -26,4 +26,4 @@ export fn level(m: Mode) Int:
 		Wild(level): return level
 
 fn Approved.label() String:
-	return "approved:{self.entity}"
+	return f"approved:{self.entity}"

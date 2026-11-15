@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -23,25 +23,25 @@ fn fib(n: Int) Int:
 
 export fn main() Int:
     b1 := false
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
     s2 := ("ms" + "beta")
-    say("s2 = [{s2}]")
+    say(f"s2 = [{s2}]")
 
     var acc4 = 0
     for i in 0..1:
         acc4 += i * 9
-    say("acc4 = {acc4}")
+    say(f"acc4 = {acc4}")
 
     s5 := s2.upper().trim()
-    say("s5 = [{s5}]")
+    say(f"s5 = [{s5}]")
 
     f6 := 9.5
-    say("f6 = {f6}")
-    say("fib(12) = {fib(12)}")
+    say(f"f6 = {f6}")
+    say(f"fib(12) = {fib(12)}")
 
     l7 := [21, (-30), (-19), (-7), 9]
-    say("l7 = {l7} len {l7.length()}")
+    say(f"l7 = {l7} len {l7.length()}")
 
     if (s5.replace(s2, "x") != ("hello world" + "gamma")):
         say(s2)

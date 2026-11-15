@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -30,14 +30,14 @@ fn collatz(start: Int) Int:
 
 export fn main() Int:
     l1 := [1, 2, 3].take(0)
-    say("l1 = {l1} len {l1.length()}")
+    say(f"l1 = {l1} len {l1.length()}")
 
     l2 := l1.map(fn x: x * 7)
-    say("l2 = {l2} len {l2.length()}")
-    say("gcd(2865, 4945) = {gcd(2865, 4945)}")
+    say(f"l2 = {l2} len {l2.length()}")
+    say(f"gcd(2865, 4945) = {gcd(2865, 4945)}")
 
     i3 := 47
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     if ("Tab\there" != "alpha"):
         say("line\nbreak")
@@ -45,23 +45,23 @@ export fn main() Int:
         say("a".reverse())
 
     i4 := i3
-    say("i4 = {i4}")
-    say("collatz(1579) = {collatz(1579)}")
+    say(f"i4 = {i4}")
+    say(f"collatz(1579) = {collatz(1579)}")
 
     i5 := i3
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     i6 := l1.length()
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     i7 := 807145
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
     i8 := l1.length()
-    say("i8 = {i8}")
+    say(f"i8 = {i8}")
 
     b9 := (false and false)
-    say("b9 = {b9}")
+    say(f"b9 = {b9}")
 
     if ("héllo".lower() == ("beta" + "hello world")):
         say("".lower())

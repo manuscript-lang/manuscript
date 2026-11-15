@@ -65,5 +65,5 @@ fn main() Int:
 	cpu := codec_bench_cpu_ns() - cpu_start
 	if cpu <= 0: return 6
 
-	print("{size} {rounds} {shape} {checksum} {elapsed} {cpu}")
+	print(f"{size} {rounds} {shape} {checksum} {elapsed} {cpu}")
 	return 0

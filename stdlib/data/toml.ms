@@ -167,7 +167,7 @@ fn locate(data: Bytes, pos: Int) List[Int]:
 // A malformed-input error at a one-based source position.
 fn toml_invalid(line: Int, column: Int, reason: String) Error:
 	return Error(
-		"TOML {line}:{column}: {reason}",
+		f"TOML {line}:{column}: {reason}",
 		kind: "EBADMSG",
 		details: {"line": line.to_string(), "column": column.to_string()},
 	)
@@ -1089,9 +1089,9 @@ fn inline_value(value: TomlValue) String:
 					inline_value(entry.value.clone())
 				)
 			)
-			if parts.is_empty(): return "\{\}"
+			if parts.is_empty(): return "{}"
 
-			return "\{ ".concat(parts.join(", ")).concat(" \}")
+			return "{ ".concat(parts.join(", ")).concat(" }")
 
 fn table_items(values: List[TomlValue]) List[Map[String, TomlValue]]:
 	var tables: List[Map[String, TomlValue]] = []

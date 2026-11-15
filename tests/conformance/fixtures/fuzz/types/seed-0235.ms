@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -16,16 +16,16 @@ fn fact(n: Int) Int:
 
 export fn main() Int:
     if true:
-        say(("42" + "brace\{s\}"))
+        say(("42" + "brace{s}"))
     else:
         say("delta".upper())
 
-    say("fact(10) = {fact(10)}")
+    say(f"fact(10) = {fact(10)}")
 
-    s1 := ("{(504893 + (-34))}:" + "line\nbreak")
-    say("s1 = [{s1}]")
+    s1 := (f"{(504893 + (-34))}:" + "line\nbreak")
+    say(f"s1 = [{s1}]")
 
     bad := missing_function(3)
     f3 := (((262.25 * 7.0e-8) + 142.034) - 115.823)
-    say("f3 = {f3}")
+    say(f"f3 = {f3}")
     return 0

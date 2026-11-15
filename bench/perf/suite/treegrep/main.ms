@@ -12,7 +12,7 @@ fn scan(dir: String) Found:
 	var found = Found(0, 0)
 
 	for entry in list(dir).get():
-		path := "{dir}/{entry.name}"
+		path := f"{dir}/{entry.name}"
 
 		if entry.directory:
 			inner := scan(path)
@@ -30,5 +30,5 @@ fn scan(dir: String) Found:
 
 fn main() Void:
 	found := scan(arguments()[0])
-	print("files: {found.files}")
-	print("matches: {found.matches}")
+	print(f"files: {found.files}")
+	print(f"matches: {found.matches}")

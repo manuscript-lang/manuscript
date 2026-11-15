@@ -4,7 +4,7 @@ import (
 )
 
 fn report(msg: String) Unit:
-	stdout().write("{msg}\n").get()
+	stdout().write(f"{msg}\n").get()
 
 export fn main() Int:
 	lines := read_lines(stdin()).get()
@@ -24,7 +24,7 @@ export fn main() Int:
 			ch := grid[r][c]
 
 			if ch != "#" and ch != "." and ch != "S" and ch != "E":
-				report("error: bad character at {r + 1},{c + 1}")
+				report(f"error: bad character at {r + 1},{c + 1}")
 				return 0
 
 	// 2. Ragged rows.
@@ -117,6 +117,6 @@ export fn main() Int:
 	if dist[eIdx] < 0:
 		report("no path")
 	else:
-		report("{dist[eIdx]}")
+		report(f"{dist[eIdx]}")
 
 	return 0

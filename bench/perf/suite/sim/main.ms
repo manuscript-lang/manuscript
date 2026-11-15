@@ -66,6 +66,6 @@ fn norms(count: Int) Int:
 	return (total).truncate_to_int().get(0)
 
 fn main() Void:
-	print("heat {heat(500, 120)}")
-	print("mandelbrot {mandelbrot(700, 200)}")
-	print("norms {norms(20000000)}")
+	print(f"heat {heat(500, 120)}")
+	print(f"mandelbrot {mandelbrot(700, 200)}")
+	print(f"norms {norms(20000000)}")

@@ -363,7 +363,7 @@ fn eval_number(body: String, ctx: String) Ev:
 
 	while i < n:
 		d := digit_val(cc(cs[i]), base)
-		if d < 0: return ev_err("invalid expression '{ctx}'")
+		if d < 0: return ev_err(f"invalid expression '{ctx}'")
 
 		v = v * base + d
 		if v > MASK32:
@@ -377,30 +377,30 @@ fn eval_number(body: String, ctx: String) Ev:
 fn eval_term(body: String, ctx: String, var syms: Map[String, Sym]) Ev:
 	cs := body.chars()
 	n := cs.length()
-	if n == 0: return ev_err("invalid expression '{ctx}'")
+	if n == 0: return ev_err(f"invalid expression '{ctx}'")
 
 	k := cc(cs[0])
 	if is_digit(k): return eval_number(body, ctx)
 
 	if cs[0] == "'":
 		L := lit_len(cs, 0)
-		if L == 0 or L != n: return ev_err("invalid expression '{ctx}'")
+		if L == 0 or L != n: return ev_err(f"invalid expression '{ctx}'")
 
 		var v = -1
 		if L == 3 and cc(cs[1]) < 128:
 			v = cc(cs[1])
 		if L == 4:
 			v = esc_value(cs[2])
-		if v < 0: return ev_err("invalid expression '{ctx}'")
+		if v < 0: return ev_err(f"invalid expression '{ctx}'")
 
 		return ev_ok(v)
 
 	if is_ident_start(k):
-		if not is_ident(body): return ev_err("invalid expression '{ctx}'")
+		if not is_ident(body): return ev_err(f"invalid expression '{ctx}'")
 
 		if s := syms.get(body):
 			if s.kind == 2:
-				if s.busy: return ev_err("circular definition '{body}'")
+				if s.busy: return ev_err(f"circular definition '{body}'")
 
 				e := s.expr.clone()
 				syms.remove(body.clone())
@@ -421,14 +421,14 @@ fn eval_term(body: String, ctx: String, var syms: Map[String, Sym]) Ev:
 
 			return ev_ok(s.value)
 
-		return ev_err("undefined symbol '{body}'")
+		return ev_err(f"undefined symbol '{body}'")
 
-	return ev_err("invalid expression '{ctx}'")
+	return ev_err(f"invalid expression '{ctx}'")
 
 fn eval_expr(text: String, var syms: Map[String, Sym]) Ev:
 	t := text.trim()
 	terms := split_terms(t.chars())
-	if terms.length() == 0: return ev_err("invalid expression '{t}'")
+	if terms.length() == 0: return ev_err(f"invalid expression '{t}'")
 
 	var acc = 0
 
@@ -521,8 +521,8 @@ fn empty_opnd() Opnd:
 	return Opnd(kind: 0, reg: -1, text: "", base: -1, val: 0)
 
 fn define(var syms: Map[String, Sym], name: String, kind: Int, value: Int, expr: String) String:
-	if reg_of(name) >= 0: return "reserved name '{name}'"
-	if syms.contains(name): return "duplicate symbol '{name}'"
+	if reg_of(name) >= 0: return f"reserved name '{name}'"
+	if syms.contains(name): return f"duplicate symbol '{name}'"
 
 	syms.add(name, Sym(kind: kind, value: value, expr: expr, busy: false))
 	return ""
@@ -531,16 +531,16 @@ fn pass1_ins(var prog: Prog, lineno: Int, word: String, args: String) String:
 	if prog.in_data: return "instruction in data section"
 
 	op := opcode(word)
-	if op < 0: return "unknown mnemonic '{word}'"
+	if op < 0: return f"unknown mnemonic '{word}'"
 
 	ops := split_operands(args)
 
 	for t in ops:
 		if t == "": return "invalid operand ''"
-		if t.starts_with("[") and not check_mem(t): return "invalid operand '{t}'"
+		if t.starts_with("[") and not check_mem(t): return f"invalid operand '{t}'"
 
 	want := nops(op)
-	if ops.length() != want: return "wrong number of operands for '{word}'"
+	if ops.length() != want: return f"wrong number of operands for '{word}'"
 
 	var k0 = 0
 	var k1 = 0
@@ -557,7 +557,7 @@ fn pass1_ins(var prog: Prog, lineno: Int, word: String, args: String) String:
 		k1 = classify(t1)
 		b = mk_opnd(t1.clone(), k1)
 
-	if not valid_classes(op, k0, k1, want): return "invalid operands for '{word}'"
+	if not valid_classes(op, k0, k1, want): return f"invalid operands for '{word}'"
 
 	prog.ins.append(Ins(op: op, line: lineno, nops: want, a: a, b: b))
 	return ""
@@ -603,7 +603,7 @@ fn data_dir(
 	count_text := ops[0].clone()
 	r := eval_expr(count_text, var syms)
 	if not r.good: return r.err
-	if r.val < 0: return "invalid operand '{count_text}'"
+	if r.val < 0: return f"invalid operand '{count_text}'"
 	if prog.dsize + r.val > MEM_SIZE: return "data section too large"
 
 	var fill = "0"
@@ -622,13 +622,13 @@ fn pass1_dir(
 	args: String,
 ) String:
 	if word == ".text":
-		if args != "": return "invalid operand '{args}'"
+		if args != "": return f"invalid operand '{args}'"
 
 		prog.in_data = false
 		return ""
 
 	if word == ".data":
-		if args != "": return "invalid operand '{args}'"
+		if args != "": return f"invalid operand '{args}'"
 
 		prog.in_data = true
 		return ""
@@ -638,13 +638,13 @@ fn pass1_dir(
 		if ops.length() != 2: return "wrong number of operands for '.equ'"
 
 		name := ops[0]
-		if not is_ident(name): return "invalid operand '{name}'"
+		if not is_ident(name): return f"invalid operand '{name}'"
 
 		return define(var syms, name.clone(), 2, 0, ops[1].clone())
 
 	if word == ".budget":
 		v := parse_budget(args)
-		if v < 0: return "invalid operand '{args}'"
+		if v < 0: return f"invalid operand '{args}'"
 
 		prog.budget = v
 		return ""
@@ -653,7 +653,7 @@ fn pass1_dir(
 		if not prog.in_data: return "data directive in text section"
 		return data_dir(var syms, var mem, var prog, lineno, word, args)
 
-	return "unknown directive '{word}'"
+	return f"unknown directive '{word}'"
 
 fn pass1_line(
 	var syms: Map[String, Sym],
@@ -772,7 +772,7 @@ fn ea(var m: Machine, o: Opnd) Int:
 
 	addr := wrap32(base + o.val)
 	if addr < 0 or addr >= MEM_SIZE:
-		m.trap = "memory access out of range: {addr}"
+		m.trap = f"memory access out of range: {addr}"
 	return addr
 
 fn wr(var m: Machine, o: Opnd, v: Int) Unit:
@@ -881,7 +881,7 @@ fn exec(var m: Machine, ins: Ins, pc: Int) Int:
 		m.regs[8] = ns
 
 		if ns < 0 or ns >= MEM_SIZE:
-			m.trap = "memory access out of range: {ns}"
+			m.trap = f"memory access out of range: {ns}"
 			return pc
 
 		m.mem[ns] = v
@@ -895,7 +895,7 @@ fn exec(var m: Machine, ins: Ins, pc: Int) Int:
 			return pc
 
 		if sp < 0:
-			m.trap = "memory access out of range: {sp}"
+			m.trap = f"memory access out of range: {sp}"
 			return pc
 
 		v := m.mem[sp]
@@ -915,7 +915,7 @@ fn exec(var m: Machine, ins: Ins, pc: Int) Int:
 			m.regs[8] = ns
 
 			if ns < 0 or ns >= MEM_SIZE:
-				m.trap = "memory access out of range: {ns}"
+				m.trap = f"memory access out of range: {ns}"
 				return pc
 
 			m.mem[ns] = pc + 1
@@ -950,7 +950,7 @@ fn exec(var m: Machine, ins: Ins, pc: Int) Int:
 			return pc
 
 		if sp < 0:
-			m.trap = "memory access out of range: {sp}"
+			m.trap = f"memory access out of range: {sp}"
 			return pc
 
 		v := m.mem[sp]
@@ -971,7 +971,7 @@ fn exec(var m: Machine, ins: Ins, pc: Int) Int:
 		v := rd(var m, a)
 		if m.trap != "": return pc
 
-		m.out.append("{v}\n")
+		m.out.append(f"{v}\n")
 		m.last_nl = true
 		return pc + 1
 
@@ -1098,7 +1098,7 @@ export fn main() Int:
 		e := pass1_line(var syms, var mem, var prog, ln, l)
 
 		if e != "":
-			stdout().write("asm error line {ln}: {e}\n").get()
+			stdout().write(f"asm error line {ln}: {e}\n").get()
 			return 0
 
 	var code = List[Ins]()
@@ -1115,7 +1115,7 @@ export fn main() Int:
 			e := pass2_ins(ins.clone(), var syms, n, var code)
 
 			if e != "":
-				stdout().write("asm error line {ins.line}: {e}\n").get()
+				stdout().write(f"asm error line {ins.line}: {e}\n").get()
 				return 0
 
 			ii += 1
@@ -1124,7 +1124,7 @@ export fn main() Int:
 			e := pass2_item(it, var syms, var mem)
 
 			if e != "":
-				stdout().write("asm error line {it.line}: {e}\n").get()
+				stdout().write(f"asm error line {it.line}: {e}\n").get()
 				return 0
 
 			di += 1
@@ -1178,7 +1178,7 @@ export fn main() Int:
 			is_trap = true
 			trap_msg = "budget exceeded"
 			trap_pc = pc
-			trap_line = "{ins.line}"
+			trap_line = f"{ins.line}"
 			break
 
 		next := exec(var m, ins, pc)
@@ -1187,7 +1187,7 @@ export fn main() Int:
 			is_trap = true
 			trap_msg = m.trap
 			trap_pc = pc
-			trap_line = "{ins.line}"
+			trap_line = f"{ins.line}"
 			break
 
 		steps += 1
@@ -1201,15 +1201,15 @@ export fn main() Int:
 
 	if is_trap:
 		text = text.concat(
-			"-- trap: {trap_msg} (pc={trap_pc} line={trap_line}) after {steps} steps\n"
+			f"-- trap: {trap_msg} (pc={trap_pc} line={trap_line}) after {steps} steps\n"
 		)
 	else:
-		text = text.concat("-- halted after {steps} steps\n")
+		text = text.concat(f"-- halted after {steps} steps\n")
 
 	names := REG_NAMES
 	var line = "regs:"
 	for i in 0..10:
-		line = line.concat(" {names[i]}={m.regs[i]}")
+		line = line.concat(f" {names[i]}={m.regs[i]}")
 	text = text.concat(line + "\n")
 
 	var zb = 0
@@ -1219,6 +1219,6 @@ export fn main() Int:
 	var lb = 0
 	if m.l:
 		lb = 1
-	text = text.concat("flags: Z={zb} L={lb}\n")
+	text = text.concat(f"flags: Z={zb} L={lb}\n")
 	stdout().write(text).get()
 	return 0

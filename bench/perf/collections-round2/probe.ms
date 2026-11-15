@@ -13,7 +13,7 @@ fn lcg(x: Int) Int:
 
 fn stop(name: String, t0: Int, chk: Int) Void:
 	now := monotonic().tick
-	print("{name} {(now - t0) / 1000} {chk}")
+	print(f"{name} {(now - t0) / 1000} {chk}")
 
 fn base() List[Int]:
 	var xs: List[Int] = []
@@ -40,7 +40,7 @@ fn l_contains() Int:
 fn l_clone_nested() Int:
 	var rs: List[Rec] = []
 	for i in 0..200000:
-		rs.append(Rec(i, "name-{i}", ["a", "b", "c"]))
+		rs.append(Rec(i, f"name-{i}", ["a", "b", "c"]))
 
 	var t = 0
 
@@ -69,7 +69,7 @@ fn l_sort_records_str() Int:
 
 	for i in 0..300000:
 		x = lcg(x)
-		rs.append(Rec(i, "user-name-{x}", []))
+		rs.append(Rec(i, f"user-name-{x}", []))
 
 	rs.sort(fn a, b: a.name.compare(b.name))
 	return rs[0].id + rs[299999].id
@@ -81,7 +81,7 @@ fn l_group_words() Int:
 	for i in 0..1000000:
 		x = lcg(x)
 
-		k := "w{x % 20000}"
+		k := f"w{x % 20000}"
 		if not m.contains(k): m[k.clone()] = []
 		m[k].append(i)
 
@@ -114,7 +114,7 @@ fn l_pq() Int:
 fn l_join_split() Int:
 	var parts: List[String] = []
 	for i in 0..500000:
-		parts.append("item{i}")
+		parts.append(f"item{i}")
 
 	s := parts.join(",")
 	back := s.split(",")
@@ -137,7 +137,7 @@ fn l_enumerate_zip() Int:
 fn l_set_strings() Int:
 	var s = Set[String]()
 	for i in 0..500000:
-		s.add("str-{i % 100000}")
+		s.add(f"str-{i % 100000}")
 	return s.length()
 
 fn l_flatten() Int:

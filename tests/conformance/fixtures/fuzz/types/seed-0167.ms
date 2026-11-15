@@ -6,29 +6,29 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     b1 := ("  padded  ".upper().lower() == "ms".lower())
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
     if (not ("日本語" != "back\\slash")):
         say("  padded  ")
     else:
         say(("MiXeD CaSe" + "x"))
 
-    s2 := ("" + (("42" + "42") + ("{(14 + (-17))}:" + "emoji 😀")))
-    say("s2 = [{s2}]")
+    s2 := ("" + (("42" + "42") + (f"{(14 + (-17))}:" + "emoji 😀")))
+    say(f"s2 = [{s2}]")
 
     var acc3 = 0
     for i in 0..4:
         acc3 += i * (-5)
-    say("acc3 = {acc3}")
+    say(f"acc3 = {acc3}")
 
     i4 := 32
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     bad := 1.5 + 2
     b5 := ((85.718 + (108.964 - 744.869)) != ((162.181 / 253.25) * 759.307))
-    say("b5 = {b5}")
+    say(f"b5 = {b5}")
     return 0

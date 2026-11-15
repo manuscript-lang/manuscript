@@ -68,4 +68,4 @@ fn main() Void:
 
     var f = [[0], [0]]
     moving_index(var f)
-    print("{a}\n{b}\n{c}\n{d}\n{e}\n{boxes}\n{f}")
+    print(f"{a}\n{b}\n{c}\n{d}\n{e}\n{boxes}\n{f}")

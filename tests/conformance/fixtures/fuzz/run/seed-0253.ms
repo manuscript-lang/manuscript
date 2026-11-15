@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -16,26 +16,26 @@ fn gcd(a: Int, b: Int) Int:
 
 export fn main() Int:
     b1 := ((-(161877 - (-32))) <= 639566104417)
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
     i2 := (900191350281 % (-10))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     b3 := (not (not "gamma".contains("a")))
-    say("b3 = {b3}")
+    say(f"b3 = {b3}")
 
     i4 := ((((-1) * (-15)) * (i2 + i2)) * ((-45) - (i2 / i2)))
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     l5 := [27, 27, (-10)]
-    say("l5 = {l5} len {l5.length()}")
+    say(f"l5 = {l5} len {l5.length()}")
 
     l6 := l5.sorted(fn a, b: a.compare(b))
-    say("l6 = {l6} len {l6.length()}")
+    say(f"l6 = {l6} len {l6.length()}")
 
     s7 := "hello world"
-    say("s7 = [{s7}]")
-    say("gcd(358, 3875) = {gcd(358, 3875)}")
+    say(f"s7 = [{s7}]")
+    say(f"gcd(358, 3875) = {gcd(358, 3875)}")
 
     if (s7.reverse() == "line\nbreak".replace(s7, s7)):
         say("ms")
@@ -43,13 +43,13 @@ export fn main() Int:
         say(("alpha" + "MiXeD CaSe"))
 
     s8 := (s7 + (("ms" + s7) + "42".lower()))
-    say("s8 = [{s8}]")
+    say(f"s8 = [{s8}]")
 
     l9 := l6.reversed()
-    say("l9 = {l9} len {l9.length()}")
+    say(f"l9 = {l9} len {l9.length()}")
 
     f10 := 21.298
-    say("f10 = {f10}")
+    say(f"f10 = {f10}")
 
     var acc11 = 0
     var stepacc11 = 0
@@ -58,14 +58,14 @@ export fn main() Int:
         stepacc11 += 1
         acc11 += stepacc11 * stepacc11 + 6
 
-    say("acc11 = {acc11}")
+    say(f"acc11 = {acc11}")
 
     i12 := ((s7.scalar_length() + s7.scalar_length()) / ((i2 + i2) - (i4 - i4)))
-    say("i12 = {i12}")
+    say(f"i12 = {i12}")
 
-    b13 := (("{(i12 / i4)}:" + "back\\slash").is_empty() and b3)
-    say("b13 = {b13}")
+    b13 := ((f"{(i12 / i4)}:" + "back\\slash").is_empty() and b3)
+    say(f"b13 = {b13}")
 
     s14 := ("ms" + s8)
-    say("s14 = [{s14}]")
+    say(f"s14 = [{s14}]")
     return 0

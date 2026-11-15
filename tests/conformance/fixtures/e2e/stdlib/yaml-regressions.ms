@@ -12,21 +12,21 @@ fn invalid_block_key(source: String) Void!:
 	cause := parse(source) | expect_error?
 	if cause.kind == "EBADMSG": return ok()
 
-	return fail("expected malformed YAML, got {cause}")
+	return fail(f"expected malformed YAML, got {cause}")
 
 test "YAML unquoted block keys reject reserved leading indicators":
-	for key in ["]key", "\}key", ",key", "@key", "`key", "|key", ">key"]:
-		invalid_block_key("{key}: value")?
-		invalid_block_key("good: value\n{key}: value")?
+	for key in ["]key", "}key", ",key", "@key", "`key", "|key", ">key"]:
+		invalid_block_key(f"{key}: value")?
+		invalid_block_key(f"good: value\n{key}: value")?
 
 	invalid_block_key("good: value\n%key: value")?
 
 test "YAML quoted block keys preserve indicator prefixes":
-	for key in ["]key", "\}key", ",key", "@key", "`key", "|key", ">key"]:
+	for key in ["]key", "}key", ",key", "@key", "`key", "|key", ">key"]:
 		var values = Map[String, YamlValue]()
 		values.add(key.clone(), YamlValue.StringValue("value"))
 		(
-			parse("\"{key}\": value") | expect_ok? | expect_equal(
+			parse(f"\"{key}\": value") | expect_ok? | expect_equal(
 				YamlValue.ObjectValue(values)
 			)?
 		)
@@ -40,7 +40,7 @@ test "YAML collection mapping keys remain unsupported":
 	for source in ["? - key\n: value", "[key]: value"]:
 		cause := parse(source) | expect_error?
 		if cause.kind != "ENOTSUP":
-			return fail("expected unsupported mapping key, got {cause}")
+			return fail(f"expected unsupported mapping key, got {cause}")
 
 // Regressions: colon.
 
@@ -50,14 +50,14 @@ fn object(keys: List[String], values: List[YamlValue]) YamlValue:
 	return YamlValue.ObjectValue(result)
 
 test "YAML flow plain keys retain nonseparating colons":
-	source := "\{a:1, key:\"word\", url:http://example.org\}"
+	source := "{a:1, key:\"word\", url:http://example.org}"
 	expected := object(
 		["a:1", "key:\"word\"", "url:http://example.org"],
 		[YamlValue.Null, YamlValue.Null, YamlValue.Null],
 	)
 	(parse(source) | expect_ok? | expect_equal(expected)?)
 	(
-		parse("\{http://example.org/path: value\}") | expect_ok? | expect_equal(
+		parse("{http://example.org/path: value}") | expect_ok? | expect_equal(
 			object(
 				["http://example.org/path"],
 				[YamlValue.StringValue("value")],
@@ -67,21 +67,21 @@ test "YAML flow plain keys retain nonseparating colons":
 
 test "YAML flow colon separators retain quoted and empty values":
 	for source in [
-		"\{a: word\}", "\{a:\tword\}", "\{a:\n word\}", "\{\"a\":word\}", "\{'a':word\}"
+		"{a: word}", "{a:\tword}", "{a:\n word}", "{\"a\":word}", "{'a':word}"
 	]:
 		(
 			parse(source)
 			| expect_ok?
 			| expect_equal(object(["a"], [YamlValue.StringValue("word")]))?
 		)
-	for source in ["\{a:\}", "\{a:,\}"]:
+	for source in ["{a:}", "{a:,}"]:
 		(
 			parse(source)
 			| expect_ok?
 			| expect_equal(object(["a"], [YamlValue.Null]))?
 		)
 	(
-		parse("\{a:[1]\}") | expect_ok? | expect_equal(
+		parse("{a:[1]}") | expect_ok? | expect_equal(
 			object(
 				["a"],
 				[YamlValue.ArrayValue([YamlValue.NumberValue("1")])],
@@ -89,26 +89,26 @@ test "YAML flow colon separators retain quoted and empty values":
 		)?
 	)
 	(
-		parse("\{a:\{b: 2\}\}") | expect_ok? | expect_equal(
+		parse("{a:{b: 2}}") | expect_ok? | expect_equal(
 			object(["a"], [object(["b"], [YamlValue.NumberValue("2")])])
 		)?
 	)
-	parse("\{a:]\}").is_error() | expect_true?
+	parse("{a:]}").is_error() | expect_true?
 
 fn invalid_colon(source: String) Void!:
 	cause := parse(source) | expect_error?
-	if cause.kind != "EBADMSG": return fail("expected malformed YAML, got {cause}")
+	if cause.kind != "EBADMSG": return fail(f"expected malformed YAML, got {cause}")
 
 	cause.details["reason"] | expect_equal("unexpected mapping colon")?
 
 test "YAML flow scalar rejects a colon before tab":
-	invalid_colon("\{a: x:\tb\}")?
+	invalid_colon("{a: x:\tb}")?
 
 test "YAML flow scalar rejects a colon before newline":
-	invalid_colon("\{a: x:\nb\}")?
+	invalid_colon("{a: x:\nb}")?
 
 test "YAML flow scalar rejects a colon before a closing mapping":
-	invalid_colon("\{a: x:\}")?
+	invalid_colon("{a: x:}")?
 
 test "YAML block scalar rejects an embedded mapping separator":
 	invalid_colon("a: x:\tb")?
@@ -117,9 +117,9 @@ test "YAML block scalar rejects a trailing mapping separator":
 	invalid_colon("a: x:")?
 
 test "YAML block plain scalars retain nonseparating colons and punctuation":
-	for text in ["http://example.org/path", "x:]", "x:[word]", "x:\{word\}"]:
+	for text in ["http://example.org/path", "x:]", "x:[word]", "x:{word}"]:
 		(
-			parse("a: {text}")
+			parse(f"a: {text}")
 			| expect_ok?
 			| expect_equal(
 				object(["a"], [YamlValue.StringValue(text.clone())])
@@ -133,7 +133,7 @@ test "YAML block scalar rejects a separator before a folded paragraph break":
 
 fn rejects_continuation(text: String) Void!Error:
 	cause := parse(text) | expect_error?
-	if cause.kind != "EBADMSG": return fail("expected InvalidData, got {cause}")
+	if cause.kind != "EBADMSG": return fail(f"expected InvalidData, got {cause}")
 
 	return expect_equal(
 		cause.details["reason"],
@@ -233,7 +233,7 @@ test "YAML quoted and flow hashes retain their scalar behavior":
 
 fn rejects_flow_continuation(text: String, reason: String) Void!Error:
 	cause := parse(text) | expect_error?
-	if cause.kind != "EBADMSG": return fail("expected InvalidData, got {cause}")
+	if cause.kind != "EBADMSG": return fail(f"expected InvalidData, got {cause}")
 
 	return expect_equal(cause.details["reason"], reason)
 
@@ -246,7 +246,7 @@ test "YAML flow sequence comments terminate plain scalar text":
 		rejects_flow_continuation(source, "expected sequence comma")?
 
 test "YAML flow mapping comments terminate plain scalar values":
-	for source in ["\{a: first # comment\n next\}", "\{a: first\n # comment\n next\}"]:
+	for source in ["{a: first # comment\n next}", "{a: first\n # comment\n next}"]:
 		rejects_flow_continuation(source, "expected mapping comma")?
 
 test "YAML flow comments preserve comma and closing boundaries":
@@ -265,7 +265,7 @@ test "YAML flow comments preserve comma and closing boundaries":
 	values.add("a", YamlValue.StringValue("first"))
 	values.add("b", YamlValue.StringValue("next"))
 	(
-		parse("\{a: first # comment\n , b: next\}") | expect_ok? | expect_equal(
+		parse("{a: first # comment\n , b: next}") | expect_ok? | expect_equal(
 			YamlValue.ObjectValue(values)
 		)?
 	)
@@ -280,7 +280,7 @@ test "YAML comments before flow values preserve empty starts":
 	var values = Map[String, YamlValue]()
 	values.add("a", YamlValue.StringValue("first"))
 	(
-		parse("\{a: # comment\n first\}") | expect_ok? | expect_equal(
+		parse("{a: # comment\n first}") | expect_ok? | expect_equal(
 			YamlValue.ObjectValue(values)
 		)?
 	)
@@ -288,18 +288,18 @@ test "YAML comments before flow values preserve empty starts":
 	var empty = Map[String, YamlValue]()
 	empty.add("a", YamlValue.Null)
 	(
-		parse("\{a: # comment\n\}") | expect_ok? | expect_equal(
+		parse("{a: # comment\n}") | expect_ok? | expect_equal(
 			YamlValue.ObjectValue(empty.clone())
 		)?
 	)
 	(
-		parse("\{a # comment\n\}") | expect_ok? | expect_equal(
+		parse("{a # comment\n}") | expect_ok? | expect_equal(
 			YamlValue.ObjectValue(empty.clone())
 		)?
 	)
 	empty.add("b", YamlValue.Null)
 	(
-		parse("\{a # comment\n , b\}") | expect_ok? | expect_equal(
+		parse("{a # comment\n , b}") | expect_ok? | expect_equal(
 			YamlValue.ObjectValue(empty)
 		)?
 	)
@@ -325,12 +325,12 @@ test "YAML flow comment stops follow quoted and alias nodes":
 
 test "YAML flow mappings reject empty comma entries":
 	for source in [
-		"\{,\}", "\{, key: value\}", "\{key: value,, next: value\}", "[\{,\}]",
-		"\{key,,\}"
+		"{,}", "{, key: value}", "{key: value,, next: value}", "[{,}]",
+		"{key,,}"
 	]:
 		cause := parse(source) | expect_error?
 		if cause.kind != "EBADMSG":
-			return fail("expected malformed flow entry, got {cause}")
+			return fail(f"expected malformed flow entry, got {cause}")
 
 		cause.details["reason"] | expect_equal("expected flow mapping key")?
 
@@ -338,17 +338,17 @@ test "YAML flow mappings retain legal trailing commas":
 	var values = Map[String, YamlValue]()
 	values.add("key", YamlValue.StringValue("value"))
 	(
-		parse("\{key: value,\}") | expect_ok? | expect_equal(
+		parse("{key: value,}") | expect_ok? | expect_equal(
 			YamlValue.ObjectValue(values)
 		)?
 	)
 
 	var nulls = Map[String, YamlValue]()
 	nulls.add("key", YamlValue.Null)
-	(parse("\{key,\}") | expect_ok? | expect_equal(YamlValue.ObjectValue(nulls))?)
+	(parse("{key,}") | expect_ok? | expect_equal(YamlValue.ObjectValue(nulls))?)
 
 test "YAML flow mappings retain existing empty-key forms":
-	for source in ["\{\"\": value\}", "\{: value\}"]:
+	for source in ["{\"\": value}", "{: value}"]:
 		var values = Map[String, YamlValue]()
 		values.add("", YamlValue.StringValue("value"))
 		(parse(source) | expect_ok? | expect_equal(YamlValue.ObjectValue(values))?)
@@ -357,7 +357,7 @@ test "YAML flow mappings retain existing empty-key forms":
 
 fn error_at(text: String, line: Int, column: Int) Void!Error:
 	cause := parse(text) | expect_error?
-	if cause.kind != "EBADMSG": return fail("expected InvalidData, got {cause}")
+	if cause.kind != "EBADMSG": return fail(f"expected InvalidData, got {cause}")
 
 	expect_equal(cause.details["line"], line.to_string())?
 	expect_equal(cause.details["column"], column.to_string())?
@@ -399,16 +399,16 @@ test "YAML compact tab rewrites retain original scalar columns":
 
 fn unsupported_at(text: String, line: Int) Void!Error:
 	cause := parse(text) | expect_error?
-	if cause.kind != "ENOTSUP": return fail("expected UnsupportedFeature, got {cause}")
+	if cause.kind != "ENOTSUP": return fail(f"expected UnsupportedFeature, got {cause}")
 
 	expect_equal(cause.details["line"], line.to_string())?
 
 test "YAML flow merge failures retain their source origin":
-	error_at("key: \{<<: 1\}", 1, 12)?
-	error_at("key: \{\n  <<: 1\n\}", 2, 8)?
+	error_at("key: {<<: 1}", 1, 12)?
+	error_at("key: {\n  <<: 1\n}", 2, 8)?
 
 test "YAML unsupported flow nodes report their physical source line":
-	unsupported_at("key: \{\n [one]: x\}", 2)?
+	unsupported_at("key: {\n [one]: x}", 2)?
 	unsupported_at("key: [first,\n ? [unsupported]: x]", 2)?
 
 test "YAML invalid controls report their physical source position":
@@ -419,7 +419,7 @@ test "YAML invalid controls report their physical source position":
 
 test "YAML inline document headers and merges retain source origins":
 	error_at("--- |bad\n  x", 1, 6)?
-	error_at("--- \{<<: 1\}", 1, 11)?
+	error_at("--- {<<: 1}", 1, 11)?
 
 test "YAML source projection preserves compact document values":
 	var values = Map[String, YamlValue]()
@@ -440,7 +440,7 @@ test "YAML block header origins distinguish identical quoted key text":
 
 test "YAML flow mapping keys may span physical lines":
 	for source in [
-		"\{key\n next: value\}", "\{'key\n next': value\}", "\{key\n: value\}"
+		"{key\n next: value}", "{'key\n next': value}", "{key\n: value}"
 	]:
 		void parse(source) | expect_ok?
 
@@ -448,18 +448,18 @@ test "YAML quoted implicit keys may contain escaped newline text":
 	var values = Map[String, YamlValue]()
 	values.add("key\nnext", YamlValue.StringValue("value"))
 	(
-		parse("\{\"key\\nnext\": value\}") | expect_ok? | expect_equal(
+		parse("{\"key\\nnext\": value}") | expect_ok? | expect_equal(
 			YamlValue.ObjectValue(values)
 		)?
 	)
 
 test "YAML omitted flow values retain multiline node and entry separation":
-	for source in ["\{key\n next\}", "\{\"key\n next\"\}"]:
+	for source in ["{key\n next}", "{\"key\n next\"}"]:
 		var values = Map[String, YamlValue]()
 		values.add("key next", YamlValue.Null)
 		(parse(source) | expect_ok? | expect_equal(YamlValue.ObjectValue(values))?)
 
-	for source in ["\{key\n, next: value\}", "\{\"key\"\n, next: value\}"]:
+	for source in ["{key\n, next: value}", "{\"key\"\n, next: value}"]:
 		var values = Map[String, YamlValue]()
 		values.add("key", YamlValue.Null)
 		values.add("next", YamlValue.StringValue("value"))
@@ -469,7 +469,7 @@ test "YAML flow values can begin on the line after their colon":
 	var values = Map[String, YamlValue]()
 	values.add("key", YamlValue.StringValue("value"))
 	(
-		parse("\{key:\n value\}") | expect_ok? | expect_equal(
+		parse("{key:\n value}") | expect_ok? | expect_equal(
 			YamlValue.ObjectValue(values)
 		)?
 	)
@@ -513,7 +513,7 @@ test "YAML quoted nodes retain comment markers with adjacent values":
 	var values = Map[String, YamlValue]()
 	values.add("key", YamlValue.StringValue("hash # kept"))
 	(
-		parse("\{\"key\":\"hash # kept\"\}") | expect_ok? | expect_equal(
+		parse("{\"key\":\"hash # kept\"}") | expect_ok? | expect_equal(
 			YamlValue.ObjectValue(values)
 		)?
 	)
@@ -530,7 +530,7 @@ test "YAML anchor properties preserve quoted comment markers":
 	for source in ["a: &x 1\nb: &y *x", "[&x 1, &y *x]"]:
 		invalid_block_key(source)?
 	invalid_block_key("[a, b,#c\n]")?
-	invalid_block_key("\{a: 1,#c\n\}")?
+	invalid_block_key("{a: 1,#c\n}")?
 	(
 		parse("[a, b, #c\n]")
 		| expect_ok?
@@ -552,7 +552,7 @@ test "YAML comment contents do not open quotes or containers":
 	values.add("next", YamlValue.StringValue("value"))
 	(
 		parse(
-			"a: [1, # '\"[\{ unmatched\n 2]\nnext: value"
+			"a: [1, # '\"[{ unmatched\n 2]\nnext: value"
 		) | expect_ok? | expect_equal(YamlValue.ObjectValue(values))?
 	)
 
@@ -576,7 +576,7 @@ test "YAML brackets inside block plain text stay ordinary characters":
 	)
 
 test "YAML plain closing brackets do not hide malformed nested values":
-	cause := parse("word] [text]: \{value: 1\}\}") | expect_error?
+	cause := parse("word] [text]: {value: 1}}") | expect_error?
 	cause.kind | expect_equal("EBADMSG")?
 
 // Regressions: incremental flow.
@@ -592,7 +592,7 @@ test "YAML long multiline flow retains every scalar":
 
 	for i in 0..2000:
 		if i > 0: source.append(",")
-		source.append("\n{i}")
+		source.append(f"\n{i}")
 		expected.append(YamlValue.NumberValue(i.to_string()))
 
 	source.append("]")
@@ -663,8 +663,8 @@ fn field(source: String, expected: String) Void!:
 
 test "YAML root indentation indicators start at column zero":
 	for prefix in ["", "  ", "---\n", "&anchor "]:
-		text("{prefix}|2\n  one\n  two\n", "one\ntwo\n")?
-		text("{prefix}>2\n  one\n  two\n", "one two\n")?
+		text(f"{prefix}|2\n  one\n  two\n", "one\ntwo\n")?
+		text(f"{prefix}>2\n  one\n  two\n", "one two\n")?
 
 	text("&anchor\n|2\n  one\n", "one\n")?
 	text("|1-\n one\n", "one")?
@@ -716,9 +716,9 @@ test "YAML block content must exceed its containing indentation":
 
 test "YAML implicit indentation rejects overindented leading empty lines":
 	for style in ["|", ">", "|-", ">+"]:
-		expect_equal(parse("{style}\n  \n a\n").is_error(), true)?
-		expect_equal(parse("value: {style}\n   \n  a\n").is_error(), true)?
-		expect_equal(parse("- {style}\n   \n  a\n").is_error(), true)?
+		expect_equal(parse(f"{style}\n  \n a\n").is_error(), true)?
+		expect_equal(parse(f"value: {style}\n   \n  a\n").is_error(), true)?
+		expect_equal(parse(f"- {style}\n   \n  a\n").is_error(), true)?
 
 	text("|\n \n  a\n", "\na\n")?
 	text("|\n  \n  a\n", "\na\n")?
@@ -736,13 +736,13 @@ test "YAML implicit indentation rejects overindented leading empty lines":
 
 test "YAML version directive composes with same-line document content":
 	for header in ["%YAML 1.2", "%YAML 1.2 # supported"]:
-		text("{header}\n--- word\n", "word")?
-		field("{header}\n--- \{value: word\}\n", "word")?
-		text("{header}\n--- |2\n  word\n", "word\n")?
-		text("{header}\n--- # comment\nword\n", "word")?
-		text("{header}\n---\nword\n", "word")?
-		expect_equal(parse("{header}\nword\n").is_error(), true)?
-		expect_equal(parse("{header}\n---word\n").is_error(), true)?
+		text(f"{header}\n--- word\n", "word")?
+		field(f"{header}\n--- \{value: word\}\n", "word")?
+		text(f"{header}\n--- |2\n  word\n", "word\n")?
+		text(f"{header}\n--- # comment\nword\n", "word")?
+		text(f"{header}\n---\nword\n", "word")?
+		expect_equal(parse(f"{header}\nword\n").is_error(), true)?
+		expect_equal(parse(f"{header}\n---word\n").is_error(), true)?
 
 	text("%YAML 1.1\n--- word\n", "word")?
 	text("%FOO bar\n%YAML  1.3 # minor versions are read\n--- word\n", "word")?
@@ -760,30 +760,30 @@ test "same-line document content cannot be a block collection":
 		"value: word", "- word", "-", "\"key\": word", "&name value: word",
 		"  value: word", "  - word"
 	]:
-		expect_equal(parse("--- {body}\n").is_error(), true)?
-		expect_equal(parse("%YAML 1.2\n--- {body}\n").is_error(), true)?
+		expect_equal(parse(f"--- {body}\n").is_error(), true)?
+		expect_equal(parse(f"%YAML 1.2\n--- {body}\n").is_error(), true)?
 
 test "inline flow and scalar document content stays supported":
 	for body in ["word", "\"word\"", "'word'", "&name word"]:
-		expect_equal((parse("--- {body}\n")?), YamlValue.StringValue("word"))?
+		expect_equal((parse(f"--- {body}\n")?), YamlValue.StringValue("word"))?
 	expect_equal(
 		(parse("--- \"value: word\"\n")?),
 		YamlValue.StringValue("value: word"),
 	)?
 	expect_equal((parse("--- \"- word\"\n")?), YamlValue.StringValue("- word"))?
-	expect_equal((parse("--- \{value: word\}\n")?), (parse("value: word\n")?))?
+	expect_equal((parse("--- {value: word}\n")?), (parse("value: word\n")?))?
 	expect_equal((parse("--- [word]\n")?), (parse("- word\n")?))?
 	expect_equal((parse("--- |\n  word\n")?), YamlValue.StringValue("word\n"))?
 	expect_equal((parse("---\tword\n")?), YamlValue.StringValue("word"))?
-	expect_equal((parse("---\t\{value: word\}\n")?), (parse("value: word\n")?))?
+	expect_equal((parse("---\t{value: word}\n")?), (parse("value: word\n")?))?
 
 test "anchored inline flow collection stays supported":
-	expect_equal((parse("--- &name \{value: word\}\n")?), (parse("value: word\n")?))?
+	expect_equal((parse("--- &name {value: word}\n")?), (parse("value: word\n")?))?
 
 test "block collections following the physical marker line stay supported":
 	for prefix in ["---\n", "--- # comment\n", "--- &name\n", "%YAML 1.2\n--- &name\n"]:
-		expect_equal((parse("{prefix}value: word\n")?), (parse("value: word\n")?))?
-		expect_equal((parse("{prefix}- word\n")?), (parse("- word\n")?))?
+		expect_equal((parse(f"{prefix}value: word\n")?), (parse("value: word\n")?))?
+		expect_equal((parse(f"{prefix}- word\n")?), (parse("- word\n")?))?
 
 test "same-line block collection errors retain physical locations":
 	first := parse("--- value: word\n")
@@ -799,9 +799,9 @@ test "same-line block collection errors retain physical locations":
 test "document markers cannot continue flow collections or quoted scalars":
 	for marker in ["---", "..."]:
 		for suffix in ["", " ", " # boundary", "\t# boundary"]:
-			for prefix in ["[", "[word,", "\{key:", "\"word", "'word"]:
-				closing := if prefix == "'word": "'" else if prefix == "\"word": "\"" else if prefix == "\{key:": "\}" else: "]"
-				cause := parse("{prefix}\n{marker}{suffix}\n{closing}") | expect_error?
+			for prefix in ["[", "[word,", "{key:", "\"word", "'word"]:
+				closing := if prefix == "'word": "'" else if prefix == "\"word": "\"" else if prefix == "{key:": "}" else: "]"
+				cause := parse(f"{prefix}\n{marker}{suffix}\n{closing}") | expect_error?
 				expect_equal(cause.kind, "EBADMSG")?
 				expect_equal(cause.details["line"], "2")?
 				expect_equal(cause.details["column"], "1")?
@@ -820,7 +820,7 @@ test "quoted escapes and normalized line endings retain document boundaries":
 	for ending in ["\n", "\r\n", "\r"]:
 		for prefix in ["\"word", "\"word\\", "'word"]:
 			closing := if prefix == "'word": "'" else: "\""
-			source := "{prefix}\n---\n{closing}".replace("\n", ending)
+			source := f"{prefix}\n---\n{closing}".replace("\n", ending)
 			cause := parse(source) | expect_error?
 			expect_equal(cause.kind, "EBADMSG")?
 			expect_equal(cause.details["line"], "2")?
@@ -828,38 +828,38 @@ test "quoted escapes and normalized line endings retain document boundaries":
 
 test "tab separated document markers end plain scalar continuation":
 	for marker in ["---", "..."]:
-		cause := parse("word\n{marker}\tmore\n") | expect_error?
+		cause := parse(f"word\n{marker}\tmore\n") | expect_error?
 		expect_equal(cause.kind, "EBADMSG")?
 		expect_equal(cause.details["line"], "2")?
 
 test "indented markers and marker prefixes remain scalar content":
 	for marker in ["---", "..."]:
 		expect_equal(
-			(parse("[\n {marker}\n]")?),
+			(parse(f"[\n {marker}\n]")?),
 			YamlValue.ArrayValue([YamlValue.StringValue(marker.clone())]),
 		)?
 		for quote in ["'", "\""]:
 			expect_equal(
-				(parse("{quote}word\n {marker}\n end{quote}")?),
-				YamlValue.StringValue("word {marker} end"),
+				(parse(f"{quote}word\n {marker}\n end{quote}")?),
+				YamlValue.StringValue(f"word {marker} end"),
 			)?
 		for suffix in ["word", "#literal", "\u{a0}word"]:
 			expect_equal(
-				(parse("[\n{marker}{suffix}\n]")?),
+				(parse(f"[\n{marker}{suffix}\n]")?),
 				YamlValue.ArrayValue(
-					[YamlValue.StringValue("{marker}{suffix}")]
+					[YamlValue.StringValue(f"{marker}{suffix}")]
 				),
 			)?
 		expect_equal(
-			(parse("[\n{marker}]")?),
+			(parse(f"[\n{marker}]")?),
 			YamlValue.ArrayValue([YamlValue.StringValue(marker.clone())]),
 		)?
 
 test "YAML tags resolve strings and are otherwise ignored":
 	value := parse(
-		"a: !!str 12\nb: !local x\nc: !!str\n!!str d: &k e\nf: [!!str true, !x \{g: h\}]\n"
+		"a: !!str 12\nb: !local x\nc: !!str\n!!str d: &k e\nf: [!!str true, !x {g: h}]\n"
 	)?
-	want := parse("a: \"12\"\nb: x\nc: \"\"\nd: e\nf: [\"true\", \{g: h\}]\n")?
+	want := parse("a: \"12\"\nb: x\nc: \"\"\nd: e\nf: [\"true\", {g: h}]\n")?
 	expect_equal(value.to_string(), want.to_string())?
 
 	void parse("top: &a\n  &b value\n") | expect_error?
@@ -872,8 +872,8 @@ test "YAML scalar keys become their text and collection keys are rejected":
 
 	void parse("1: a\n\"1\": b\n") | expect_error?
 	unsupported_at("[a]: 1", 1)?
-	unsupported_at("\{[a]: 1\}", 1)?
-	unsupported_at("a: 1\n\{b: c\}: d", 2)?
+	unsupported_at("{[a]: 1}", 1)?
+	unsupported_at("a: 1\n{b: c}: d", 2)?
 
 fn count(text: String, want: Int) Void!:
 	docs := parse_all(text)?
@@ -907,10 +907,10 @@ test "YAML continuation lines are indented past their parent and tabs only separ
 
 test "YAML flow sequences hold single-pair entries and flow keys may precede their colon line":
 	value := parse("[a: b, \"k\":v, : e, c, x: [1, 2]]")?
-	want := parse("[\{a: b\}, \{k: v\}, \{\"\": e\}, c, \{x: [1, 2]\}]")?
+	want := parse("[{a: b}, {k: v}, {\"\": e}, c, {x: [1, 2]}]")?
 	expect_equal(value.to_string(), want.to_string())?
 
-	void parse("\{\"key\"\n: value\}")?
+	void parse("{\"key\"\n: value}")?
 	unsupported_at("[[a]: b]", 1)?
 
 	void parse("[a: b: c]") | expect_error?
@@ -942,9 +942,9 @@ test "YAML flow collections hold explicit keys and anchored keys":
 			YamlValue.ArrayValue([YamlValue.ObjectValue(seq)])
 		)?
 	)
-	(parse("\{? a : b, ?\}") | expect_ok? | expect_equal(YamlValue.ObjectValue(flow))?)
+	(parse("{? a : b, ?}") | expect_ok? | expect_equal(YamlValue.ObjectValue(flow))?)
 
-	void parse("\{ &e e: f \}") | expect_ok?
+	void parse("{ &e e: f }") | expect_ok?
 
 test "YAML plain continuation lines may start with a sequence dash":
 	var values = Map[String, YamlValue]()

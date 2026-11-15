@@ -37,7 +37,7 @@ export fn dist_arch() String:
 
 // Prints `message` and a newline to standard error.
 export fn note(message: String) Void:
-	stderr().write("{message}\n").get()
+	stderr().write(f"{message}\n").get()
 
 // The value of environment variable `name`, or `fallback`.
 export fn env(name: String, fallback: String) String:
@@ -66,7 +66,7 @@ export fn run_program(program: String, arguments: List[String]) Int:
 	):
 		return status(child.wait().get(125))
 
-	note("cannot start {program}")
+	note(f"cannot start {program}")
 	return 125
 
 // Runs `program` and returns its standard output; empty when it cannot run or fails.
@@ -105,16 +105,16 @@ export fn use_stats_runtime() Int:
 	arch := rust_arch()
 
 	if host() == "linux":
-		target = "{arch}-unknown-linux-gnu"
-		release = "{target}/release"
+		target = f"{arch}-unknown-linux-gnu"
+		release = f"{target}/release"
 	else if host() == "windows":
-		target = "{arch}-pc-windows-gnullvm"
-		release = "{target}/release"
+		target = f"{arch}-pc-windows-gnullvm"
+		release = f"{target}/release"
 
 		mingw := env("MS_MINGW", "target/llvm-bundle/mingw")
 		set_environment(
-			"CC_{target.replace("-", "_")}",
-			"{mingw}/bin/{arch}-w64-mingw32-clang",
+			f"CC_{target.replace("-", "_")}",
+			f"{mingw}/bin/{arch}-w64-mingw32-clang",
 		).get()
 
 	set_environment("CARGO_TARGET_DIR", stats_target).get()
@@ -132,7 +132,7 @@ export fn use_stats_runtime() Int:
 	code = run_program("cargo", ["xtask", "runtime"])
 	if code != 0: return code
 
-	lib := canonicalize("{stats_target}/{release}/libms_native.a").get()
+	lib := canonicalize(f"{stats_target}/{release}/libms_native.a").get()
 	set_environment("MS_RT_LIB", lib).get()
 	return 0
 
@@ -140,7 +140,7 @@ export fn use_stats_runtime() Int:
 // relative), else target/release/ms.
 export fn tool_ms(root: String) String:
 	named := env("MS", "")
-	if named == "": return "{root}/target/release/ms{exe()}"
+	if named == "": return f"{root}/target/release/ms{exe()}"
 	if named.starts_with("/") or named.contains(":"): return named
 
-	return "{root}/{named}{exe()}"
+	return f"{root}/{named}{exe()}"

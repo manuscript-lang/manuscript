@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -16,57 +16,57 @@ fn fact(n: Int) Int:
 
 export fn main() Int:
     s1 := "beta"
-    say("s1 = [{s1}]")
+    say(f"s1 = [{s1}]")
 
     b2 := (("MiXeD CaSe" + "42").replace("delta", "back\\slash") == s1)
-    say("b2 = {b2}")
+    say(f"b2 = {b2}")
 
     l3 := [(-7)]
-    say("l3 = {l3} len {l3.length()}")
+    say(f"l3 = {l3} len {l3.length()}")
 
     f4 := (
         ((0.0 * 87.369) + (357.028 - 891.25))
         * ((6.078 / 884.320) + (838.993 + 508.25))
     )
-    say("f4 = {f4}")
+    say(f"f4 = {f4}")
     say(
-        "{(l3.length() + ((-36) + (-36)))} {(((-20) - 607209652637) + (-7))} {((l3.length() + ((-36) + (-36))) < (((-20) - 607209652637) + (-7)))} sum {(l3.length() + ((-36) + (-36))) + (((-20) - 607209652637) + (-7))}"
+        f"{(l3.length() + ((-36) + (-36)))} {(((-20) - 607209652637) + (-7))} {((l3.length() + ((-36) + (-36))) < (((-20) - 607209652637) + (-7)))} sum {(l3.length() + ((-36) + (-36))) + (((-20) - 607209652637) + (-7))}"
     )
 
     var l5 = l3.clone()
     l5.append(53)
-    say("l5 = {l5} len {l5.length()}")
+    say(f"l5 = {l5} len {l5.length()}")
 
     l6 := l3.take(3)
-    say("l6 = {l6} len {l6.length()}")
-    say("fact(10) = {fact(10)}")
+    say(f"l6 = {l6} len {l6.length()}")
+    say(f"fact(10) = {fact(10)}")
 
     f7 := (((f4 + f4) + (1.5 * 0.0)) + ((f4 + f4) + 639.420))
-    say("f7 = {f7}")
+    say(f"f7 = {f7}")
 
     b8 := (not ((32 % 57088824011) < 1))
-    say("b8 = {b8}")
+    say(f"b8 = {b8}")
 
     l9 := l3.map(fn x: x * 6)
-    say("l9 = {l9} len {l9.length()}")
+    say(f"l9 = {l9} len {l9.length()}")
     say(
-        "{s1.scalar_length()} {((902445856851 + (-31)) % l3.get(0))} {(s1.scalar_length() < ((902445856851 + (-31)) % l3.get(0)))} sum {s1.scalar_length() + ((902445856851 + (-31)) % l3.get(0))}"
+        f"{s1.scalar_length()} {((902445856851 + (-31)) % l3.get(0))} {(s1.scalar_length() < ((902445856851 + (-31)) % l3.get(0)))} sum {s1.scalar_length() + ((902445856851 + (-31)) % l3.get(0))}"
     )
 
     var acc10 = 0
     for i in 0..5:
         acc10 += i * 2
-    say("acc10 = {acc10}")
+    say(f"acc10 = {acc10}")
 
     i11 := s1.scalar_length()
-    say("i11 = {i11}")
+    say(f"i11 = {i11}")
 
     f12 := f7
-    say("f12 = {f12}")
+    say(f"f12 = {f12}")
     say(
-        "{(i11 * (i11 * i11))} {(-1)} {((i11 * (i11 * i11)) < (-1))} sum {(i11 * (i11 * i11)) + (-1)}"
+        f"{(i11 * (i11 * i11))} {(-1)} {((i11 * (i11 * i11)) < (-1))} sum {(i11 * (i11 * i11)) + (-1)}"
     )
 
     i13 := (-9223372036854775808)
-    say("i13 = {i13}")
+    say(f"i13 = {i13}")
     return 0

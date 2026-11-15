@@ -144,7 +144,7 @@ fn evaluate(line: String) String:
 	if not r.ok or r.pos != toks.length(): return "error: syntax"
 	if r.dz: return "error: division by zero"
 
-	return "{r.v}"
+	return f"{r.v}"
 
 // ms: allow_effect std.console.read
 // ms: allow_effect std.console.write
@@ -154,7 +154,7 @@ fn process() Int!:
 	for line in lines(stdin()):
 		s := evaluate(line)
 		if s != "":
-			try out.write("{s}\n")
+			try out.write(f"{s}\n")
 
 	try out.flush()
 	return ok(0)

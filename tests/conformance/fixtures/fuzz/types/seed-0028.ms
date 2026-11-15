@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -22,9 +22,9 @@ fn gcd(a: Int, b: Int) Int:
 
 export fn main() Int:
     s1 := "日本語"
-    say("s1 = [{s1}]")
-    say("fact(16) = {fact(16)}")
-    say("gcd(378, 4850) = {gcd(378, 4850)}")
+    say(f"s1 = [{s1}]")
+    say(f"fact(16) = {fact(16)}")
+    say(f"gcd(378, 4850) = {gcd(378, 4850)}")
 
     _bad := say
     return 0

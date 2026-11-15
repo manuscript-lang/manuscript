@@ -12,7 +12,7 @@ import serve from "@std/net/net.ms"
 import stdout from "@std/io/io.ms"
 
 fn handle(request: HttpRequest) HttpResponse:
-    return HttpResponse(200, headers(), "hello {request.path}".to_bytes())
+    return HttpResponse(200, headers(), f"hello {request.path}".to_bytes())
 
 export fn main() Int:
     options := HttpServerOptions(
@@ -24,7 +24,7 @@ export fn main() Int:
         address: "127.0.0.1:0", handler: buffered(handle), options: options
     ):
         server := acquired
-        if stdout().write("{server.address()}\n").is_error():
+        if stdout().write(f"{server.address()}\n").is_error():
             return 1
 
         _ignored := server.wait()

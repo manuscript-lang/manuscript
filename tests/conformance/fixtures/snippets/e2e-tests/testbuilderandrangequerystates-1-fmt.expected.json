@@ -1,7 +1,7 @@
 {
   "format": 1,
   "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
+  "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
     "fmt": "import (\n\tCloseable from \"@std/core.ms\",\n\tStringBuilder from \"@std/string_builder.ms\",\n)\n\ntype Resource:\n\tvisits: List[Int]\n\nfn var Resource.close() Void!:\n\tself.visits.append(1)\n"

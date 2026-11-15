@@ -9,15 +9,15 @@ type Holder:
 	text: String
 
 fn quoted(t: Titled) String:
-	return "{t.title}"
+	return f"{t.title}"
 
 test "a lone interpolation of a borrowed string is a new string wherever it is owned":
 	t := Titled("a")
 	var xs = List[String]()
-	xs.append("{t.title}")
+	xs.append(f"{t.title}")
 
-	h := Holder("{t.title}")
-	f := fn: "{t.title}"
+	h := Holder(f"{t.title}")
+	f := fn: f"{t.title}"
 	expect_equal(quoted(t), "a")?
 	expect_equal(xs, ["a"])?
 	expect_equal(h.text, "a")?

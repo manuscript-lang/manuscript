@@ -32,7 +32,7 @@ fn main() Void:
     (
         stdout()
         .write(
-            "{take(pick(true))} {take(pick(false))} {take(Sq(2))} {take(h.s)} {take(t)} {take(v)}\n"
+            f"{take(pick(true))} {take(pick(false))} {take(Sq(2))} {take(h.s)} {take(t)} {take(v)}\n"
         )
         .get()
     )

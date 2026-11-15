@@ -195,7 +195,7 @@ fn parse_number_text(t: String) Float?:
 
 	sign := if neg: "-" else: ""
 	sgn := if eneg: "-" else: "+"
-	return "{sign}{a}.{b}e{sgn}{e2}".parse_float()
+	return f"{sign}{a}.{b}e{sgn}{e2}".parse_float()
 
 // Value of constant text (already trimmed, non-empty, not starting with "=").
 fn classify(raw: String) Value:
@@ -436,7 +436,7 @@ fn key_row(k: Int) Int:
 	return k / COLS + 1
 
 fn name_of(k: Int) String:
-	return "{col_name(key_col(k))}{key_row(k)}"
+	return f"{col_name(key_col(k))}{key_row(k)}"
 
 // Command-line cell argument: one letter, one to three digits, no $.
 fn cell_arg(t: String) Int?:
@@ -2012,7 +2012,7 @@ fn ref_text(r: Ref) String:
 	s = s.concat(col_name(r.col))
 	if r.abs_row:
 		s = s.concat("$")
-	return s.concat("{r.row}")
+	return s.concat(f"{r.row}")
 
 fn shift_token(t: Tok, cs: List[String], dc: Int, dr: Int) String:
 	if t.kind == T_REF:
@@ -2024,7 +2024,7 @@ fn shift_token(t: Tok, cs: List[String], dc: Int, dr: Int) String:
 	if not (t.r1.valid and t.r2.valid): return slice_chars(cs, t.start, t.stop)
 
 	if a := shifted_ref(t.r1, dc, dr):
-		if b := shifted_ref(t.r2, dc, dr): return "{ref_text(a)}:{ref_text(b)}"
+		if b := shifted_ref(t.r2, dc, dr): return f"{ref_text(a)}:{ref_text(b)}"
 	return "#REF!"
 
 // Shifts the references of a formula source by (dc, dr); unchanged if it cannot be
@@ -2128,7 +2128,7 @@ fn csv_field(t: String) String:
 		or t.starts_with(" ")
 		or t.ends_with(" ")
 	):
-		return "\"{t.replace("\"", "\"\"")}\""
+		return f"\"{t.replace("\"", "\"\"")}\""
 	return t.clone()
 
 fn export_rect(sh: Sheet, rc: Rect, formulas: Bool) Unit:
@@ -2173,10 +2173,10 @@ fn used_rect(sh: Sheet) Rect?:
 	return Rect(c1: 0, r1: 1, c2: maxc, r2: maxr)
 
 fn bad_cell(t: String) Unit:
-	print("error: bad cell reference '{t}'")
+	print(f"error: bad cell reference '{t}'")
 
 fn bad_range(t: String) Unit:
-	print("error: bad range '{t}'")
+	print(f"error: bad range '{t}'")
 
 // ---------------------------------------------------------------- commands
 
@@ -2252,7 +2252,7 @@ fn do_import(var sh: Sheet, ws: List[String], block: List[String]) Unit:
 		ri += 1
 
 	m := sh.recalc(changed)
-	print("imported {rows} rows, {cols} columns; recalc {m}")
+	print(f"imported {rows} rows, {cols} columns; recalc {m}")
 
 fn do_copy(var sh: Sheet, ws: List[String]) Unit:
 	if ws.length() != 3:
@@ -2287,7 +2287,7 @@ fn do_copy(var sh: Sheet, ws: List[String]) Unit:
 			changed.append(dk)
 
 		m := sh.recalc(changed)
-		print("recalc {m}")
+		print(f"recalc {m}")
 		return
 
 	bad_range(ws[2])
@@ -2379,7 +2379,7 @@ fn exec(var sh: Sheet, line: String) Unit:
 		sh.put(k, rest_after(line, 2))
 
 		m := sh.recalc([k])
-		print("recalc {m}")
+		print(f"recalc {m}")
 		return
 
 	if cmd == "clear":
@@ -2396,7 +2396,7 @@ fn exec(var sh: Sheet, line: String) Unit:
 		sh.put(k, "")
 
 		m := sh.recalc([k])
-		print("recalc {m}")
+		print(f"recalc {m}")
 		return
 
 	if cmd == "get":
@@ -2431,17 +2431,17 @@ fn exec(var sh: Sheet, line: String) Unit:
 		name := name_of(k)
 
 		if sh.raws[k] == "":
-			print("{name}: (empty)")
+			print(f"{name}: (empty)")
 		else if sh.forms.contains(k):
-			print("{name}: {sh.raws[k]} => {display(sh.vals[k])}")
+			print(f"{name}: {sh.raws[k]} => {display(sh.vals[k])}")
 		else:
-			print("{name}: {sh.raws[k]}")
+			print(f"{name}: {sh.raws[k]}")
 
 		return
 
 	if cmd == "precedents" or cmd == "dependents":
 		if n != 2:
-			print("error: usage: {cmd} CELL")
+			print(f"error: usage: {cmd} CELL")
 			return
 
 		k := cell_or_neg(ws[1])
@@ -2474,10 +2474,10 @@ fn exec(var sh: Sheet, line: String) Unit:
 		for k in 0..GRID:
 			if sh.raws[k] != "":
 				nonempty += 1
-		print("cells {nonempty} formulas {sh.forms.length()} evals {sh.evals}")
+		print(f"cells {nonempty} formulas {sh.forms.length()} evals {sh.evals}")
 		return
 
-	print("error: unknown command '{cmd}'")
+	print(f"error: unknown command '{cmd}'")
 
 fn gather() Result[List[String], Error]:
 	var all = List[String]()
@@ -2497,7 +2497,7 @@ export fn main() Int:
 		t := line.trim()
 		if t == "" or t.starts_with("#"): continue
 
-		print("> {line.trim_end()}")
+		print(f"> {line.trim_end()}")
 
 		ws := words(line)
 

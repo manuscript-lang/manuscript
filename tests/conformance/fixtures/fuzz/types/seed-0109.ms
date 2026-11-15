@@ -6,19 +6,19 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     f1 := 954.25
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
     return "not an int"
 
     l2 := [23, 10, 19, 28, (-1)]
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     if ("  padded  ".replace("quote\"d", "line\nbreak") != "alpha".trim()):
         say("line\nbreak")
     else:
-        say(("ms" + "brace\{s\}"))
+        say(("ms" + "brace{s}"))
 
     return 0

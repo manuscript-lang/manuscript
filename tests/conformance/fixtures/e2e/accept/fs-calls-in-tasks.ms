@@ -17,27 +17,27 @@ import (
 // With several tasks alive, file-system calls run on the blocking pool; the results
 // must match the single-task behaviour.
 fn churn(root: String, name: String) Int:
-	dir := "{root}/{name}"
+	dir := f"{root}/{name}"
 	made := create_directory(dir)
-	if made.is_error(): print("create_directory: {made.err()}")
+	if made.is_error(): print(f"create_directory: {made.err()}")
 
-	path := "{dir}/a.txt"
+	path := f"{dir}/a.txt"
 	written := write_file(path, name).wait()
-	if written.is_error(): print("write_file: {written.err()}")
+	if written.is_error(): print(f"write_file: {written.err()}")
 
 	appended := append_file(path, "!").wait()
-	if appended.is_error(): print("append_file: {appended.err()}")
+	if appended.is_error(): print(f"append_file: {appended.err()}")
 
-	renamed := rename(path, "{dir}/b.txt")
-	if renamed.is_error(): print("rename: {renamed.err()}")
+	renamed := rename(path, f"{dir}/b.txt")
+	if renamed.is_error(): print(f"rename: {renamed.err()}")
 
-	copied := copy("{dir}/b.txt", "{dir}/c.txt")
-	if copied.is_error(): print("copy: {copied.err()}")
+	copied := copy(f"{dir}/b.txt", f"{dir}/c.txt")
+	if copied.is_error(): print(f"copy: {copied.err()}")
 
 	listed := list(dir)
 	if names := listed: return names.length()
 
-	print("list: {listed.err()}")
+	print(f"list: {listed.err()}")
 	return -1
 
 test "file-system calls from concurrent tasks":
@@ -49,7 +49,7 @@ test "file-system calls from concurrent tasks":
 	a.wait()? | expect_equal(2)?
 	b.wait()? | expect_equal(2)?
 
-	text := read_file("{root}/one/c.txt").wait()?
+	text := read_file(f"{root}/one/c.txt").wait()?
 	text | expect_equal("one!".to_bytes())?
 
 	_gone := remove(root, true)

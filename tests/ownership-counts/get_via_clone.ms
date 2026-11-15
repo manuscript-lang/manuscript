@@ -14,5 +14,5 @@ fn total(names: List[String]) Int:
 export fn main() Int:
 	var names = List[String]()
 	for i in 0..20:
-		names.append("a name that is long enough to live on the heap {i}")
+		names.append(f"a name that is long enough to live on the heap {i}")
 	return total(names) - total(names)

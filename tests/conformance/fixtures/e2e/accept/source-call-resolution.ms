@@ -9,7 +9,7 @@ fn Counter.next(amount: Int = 1) Counter: Counter(self.value + amount)
 
 fn Counter.identity[T](value: T) T: value
 
-fn Counter.to_string(prefix: String) String: "{prefix}{self.value}"
+fn Counter.to_string(prefix: String) String: f"{prefix}{self.value}"
 
 fn make(create: fn() Int) Counter: Counter(create())
 

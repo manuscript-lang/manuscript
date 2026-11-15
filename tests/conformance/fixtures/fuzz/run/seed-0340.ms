@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -16,38 +16,38 @@ fn gcd(a: Int, b: Int) Int:
 
 export fn main() Int:
     l1 := [(-26)]
-    say("l1 = {l1} len {l1.length()}")
+    say(f"l1 = {l1} len {l1.length()}")
 
     b2 := (
         "back\\slash".upper().ends_with("héllo")
         and ("ms" != "42".replace("beta", ""))
     )
-    say("b2 = {b2}")
-    say("gcd(1287, 4784) = {gcd(1287, 4784)}")
+    say(f"b2 = {b2}")
+    say(f"gcd(1287, 4784) = {gcd(1287, 4784)}")
 
     i3 := l1.length()
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     s4 := "Tab\there"
-    say("s4 = [{s4}]")
+    say(f"s4 = [{s4}]")
 
     f5 := (
         ((676.859 / 713.111) + (954.25 / 901.034))
         * ((258.956 * 2.0e4) + (939.25 + 0.0))
     )
-    say("f5 = {f5}")
+    say(f"f5 = {f5}")
 
     s6 := ("beta".lower() + "line\nbreak").upper()
-    say("s6 = [{s6}]")
+    say(f"s6 = [{s6}]")
 
     i7 := i3
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
     f8 := f5
-    say("f8 = {f8}")
+    say(f"f8 = {f8}")
 
     f9 := ((347.102 / (799.955 + 0.0)) + ((8.5 * f8) * (f8 - 204.25)))
-    say("f9 = {f9}")
+    say(f"f9 = {f9}")
 
     if (("  padded  " == s4) and (false and b2)):
         say(s6)
@@ -55,16 +55,16 @@ export fn main() Int:
         say("ms".reverse())
 
     i10 := s6.scalar_length()
-    say("i10 = {i10}")
+    say(f"i10 = {i10}")
 
     b11 := (("alpha" + s4).is_empty() and ((142.768 + f5) == f5))
-    say("b11 = {b11}")
+    say(f"b11 = {b11}")
 
     if "gamma".contains("x"):
         say("line\nbreak")
     else:
-        say(("{37}:" + s6))
+        say((f"{37}:" + s6))
 
     i12 := (l1.get(0) + ((i7 * i7) / (8 - (-803866))))
-    say("i12 = {i12}")
+    say(f"i12 = {i12}")
     return 0

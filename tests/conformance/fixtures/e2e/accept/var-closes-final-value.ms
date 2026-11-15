@@ -13,7 +13,7 @@ type Counter:
 	log: String
 
 fn var Counter.close() Void!:
-	void append_file(self.log, "{self.value},").wait()
+	void append_file(self.log, f"{self.value},").wait()
 
 fn logged(path: String) String:
 	read := read_file(path).wait()
@@ -31,7 +31,7 @@ fn count_then_wait(log: String) Int:
 
 test "a var binding closes the value it ended with":
 	tmp := temporary("ms-log-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	var counter = Counter(value: 0, log: log.clone())
 	counter.value = 5
 	counter.close()?
@@ -45,6 +45,6 @@ fn cancel_counter(log: String) Void:
 
 test "a cancelled var binding closes the value it had reached":
 	tmp := temporary("ms-log-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	cancel_counter(log.clone())
 	logged(log.clone()) | expect_equal("7,")?

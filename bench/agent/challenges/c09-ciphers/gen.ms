@@ -77,7 +77,7 @@ export fn gen_c09() Void:
 		var k = ""
 
 		if c == "caesar":
-			k = "{rnd.randint(-100, 100)}"
+			k = f"{rnd.randint(-100, 100)}"
 		else:
 			n := rnd.randint(1, 8)
 			for _m in 0..n: k += rnd.choice(["a", "b", "c", "X", "Y", "Z"])
@@ -89,7 +89,7 @@ export fn gen_c09() Void:
 
 		var trimmed = strip_spaces(text)
 		if trimmed.is_empty(): trimmed = "x"
-		big.append("{c} {mode} {k} {trimmed}")
+		big.append(f"{c} {mode} {k} {trimmed}")
 
 	examples := [
 		mk(

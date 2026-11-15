@@ -188,7 +188,7 @@ fn with_modifiers(event: TerminalEvent, modifier: Int) TerminalEvent:
 		Resize(_columns, _rows): return event.clone()
 		Paste(_text): return event.clone()
 
-ascii := " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz\{|\}~"
+ascii := " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
 
 // The key a Unicode code point reported by `CSI u` or modifyOtherKeys names.
 fn code_key(code: Int) TerminalEvent?:
@@ -564,16 +564,16 @@ fn RawTerminal.write(text: String) Void!:
 fn RawTerminal.move_cursor(row: Int, column: Int) Void!:
 	if row < 0 or column < 0 or row > max_position or column > max_position:
 		return error(Error("terminal: position out of range", kind: "EINVAL"))
-	return self.write("{esc}[{row + 1};{column + 1}H")
+	return self.write(f"{esc}[{row + 1};{column + 1}H")
 
 // Moves the cursor down by `rows` and right by `columns`; negative values move up
 // and left. The cursor stops at the screen edge.
 fn RawTerminal.move_by(rows: Int, columns: Int) Void!:
 	var out = ""
-	if rows < 0: out = "{out}{esc}[{0 - rows}A"
-	if rows > 0: out = "{out}{esc}[{rows}B"
-	if columns > 0: out = "{out}{esc}[{columns}C"
-	if columns < 0: out = "{out}{esc}[{0 - columns}D"
+	if rows < 0: out = f"{out}{esc}[{0 - rows}A"
+	if rows > 0: out = f"{out}{esc}[{rows}B"
+	if columns > 0: out = f"{out}{esc}[{columns}C"
+	if columns < 0: out = f"{out}{esc}[{0 - columns}D"
 	if out.is_empty(): return ok()
 
 	return self.write(out)
@@ -582,39 +582,39 @@ fn RawTerminal.move_by(rows: Int, columns: Int) Void!:
 fn RawTerminal.move_to_column(column: Int) Void!:
 	if column < 0 or column > max_position:
 		return error(Error("terminal: position out of range", kind: "EINVAL"))
-	return self.write("{esc}[{column + 1}G")
+	return self.write(f"{esc}[{column + 1}G")
 
 // Remembers the cursor position for `restore_cursor`.
 fn RawTerminal.save_cursor() Void!:
-	return self.write("{esc}7")
+	return self.write(f"{esc}7")
 
 // Returns to the position remembered by `save_cursor`.
 fn RawTerminal.restore_cursor() Void!:
-	return self.write("{esc}8")
+	return self.write(f"{esc}8")
 
 // Shows or hides the cursor until the terminal is restored on close.
 fn RawTerminal.show_cursor(visible: Bool) Void!:
-	return self.write(if visible: "{esc}[?25h" else: "{esc}[?25l")
+	return self.write(if visible: f"{esc}[?25h" else: f"{esc}[?25l")
 
 // Erases the selected screen region without moving the cursor.
 fn RawTerminal.erase(region: EraseRegion) Void!:
 	match region:
-		Screen: return self.write("{esc}[2J")
-		Line: return self.write("{esc}[2K")
-		LineEnd: return self.write("{esc}[K")
-		LineStart: return self.write("{esc}[1K")
-		ScreenEnd: return self.write("{esc}[J")
-		ScreenStart: return self.write("{esc}[1J")
-		Scrollback: return self.write("{esc}[3J")
+		Screen: return self.write(f"{esc}[2J")
+		Line: return self.write(f"{esc}[2K")
+		LineEnd: return self.write(f"{esc}[K")
+		LineStart: return self.write(f"{esc}[1K")
+		ScreenEnd: return self.write(f"{esc}[J")
+		ScreenStart: return self.write(f"{esc}[1J")
+		Scrollback: return self.write(f"{esc}[3J")
 
 // Erases the screen and moves the cursor to the top left.
 fn RawTerminal.clear() Void!:
-	return self.write("{esc}[2J{esc}[H")
+	return self.write(f"{esc}[2J{esc}[H")
 
 // Sets the window title; control characters are removed first.
 fn RawTerminal.set_title(title: String) Void!:
 	clean := title.replace("\u{7}", "").replace(esc, "").replace("\u{9c}", "")
-	return self.write("{esc}]2;{clean}\u{7}")
+	return self.write(f"{esc}]2;{clean}\u{7}")
 
 // What the native `raw_mode` returns: the runtime handle itself.
 export opaque type RawHandle:
@@ -650,14 +650,17 @@ export fn terminal_size() TerminalSize!:
 // ms: effect std.console.write
 export fn raw_mode(alternate_screen: Bool = false) RawTerminal!:
 	native := msstd_terminal_raw_mode()?
-	leave := if alternate_screen: "{esc}[?1049l" else: ""
-	enter := if alternate_screen: "{esc}[?1049h" else: ""
+	leave := if alternate_screen: f"{esc}[?1049l" else: ""
+	enter := if alternate_screen: f"{esc}[?1049h" else: ""
 
 	// The restore text runs on close, at scope exit and at process exit: cursor, key
 	// protocols, paste, screen.
 	msstd_terminal_raw_terminal_set_restore(
 		native,
-		"{esc}[?25h{esc}[<u{esc}[>4;0m{esc}[?2004l{leave}",
+		f"{esc}[?25h{esc}[<u{esc}[>4;0m{esc}[?2004l{leave}",
 	)
-	msstd_terminal_raw_terminal_write(native, "{enter}{esc}[?2004h{esc}[>4;2m{esc}[>1u")?
+	msstd_terminal_raw_terminal_write(
+		native,
+		f"{enter}{esc}[?2004h{esc}[>4;2m{esc}[>1u",
+	)?
 	return ok(RawTerminal(handle: RawHandle(native)))

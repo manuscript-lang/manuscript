@@ -60,7 +60,7 @@ test "one header type preserves repeated values through buffered requests":
 	response := (
 		request(
 			method: HttpMethod.Get,
-			url: "http://{server.address()}/",
+			url: f"http://{server.address()}/",
 			options: RequestOptions(headers: (repeated_headers()?)),
 		) | expect_ok?
 	)
@@ -103,7 +103,7 @@ test "streaming proxy uses the same byte-valued header type":
 	response := (
 		request(
 			method: HttpMethod.Get,
-			url: "http://{server.address()}/",
+			url: f"http://{server.address()}/",
 			options: RequestOptions(headers: (repeated_headers()?)),
 		) | expect_ok?
 	)
@@ -155,7 +155,7 @@ test "empty options and an omitted request body use checked defaults":
 	response := (
 		client.request(
 			method: HttpMethod.Get,
-			url: "http://{server.address()}/",
+			url: f"http://{server.address()}/",
 			headers: (repeated_headers()?),
 		)
 		| expect_ok?
@@ -199,9 +199,9 @@ test "legacy Expires removes a cookie before the next request":
 		HttpServerOptions(timeout: 3.seconds()),
 	)?
 	client := http_client(HttpClientOptions(cookies: true))?
-	url := "http://{server.address()}"
+	url := f"http://{server.address()}"
 
 	for path in ["/rfc850", "/asctime"]:
-		_set := echoed_cookie(client, "{url}/set")?
-		(echoed_cookie(client, "{url}{path}")?) | expect_equal("a=live")?
-		(echoed_cookie(client, "{url}/echo")?) | expect_equal("")?
+		_set := echoed_cookie(client, f"{url}/set")?
+		(echoed_cookie(client, f"{url}{path}")?) | expect_equal("a=live")?
+		(echoed_cookie(client, f"{url}/echo")?) | expect_equal("")?

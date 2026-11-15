@@ -17,11 +17,11 @@ test "numeric boundary rules":
 
     infinity := 1.0 / 0.0
     nan := 0.0 / 0.0
-    expect_equal("{infinity}", "Infinity")?
+    expect_equal(f"{infinity}", "Infinity")?
     expect_not_equal(nan, nan)?
 
     third := 1d / 3d
-    expect_equal("{third}", "0.3333333333333333333333333333333333")?
+    expect_equal(f"{third}", "0.3333333333333333333333333333333333")?
 
     absent: Int? := none
     expect_equal(1e300.truncate_to_int(), absent)?

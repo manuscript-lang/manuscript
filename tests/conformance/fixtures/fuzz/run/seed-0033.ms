@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -24,47 +24,47 @@ fn collatz(start: Int) Int:
 
 export fn main() Int:
     f1 := ((106.798 - (0.0 / 682.586)) * 663.585)
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
 
     i2 := ((-33) - (-9223372036854775807))
-    say("i2 = {i2}")
-    say("collatz(1437) = {collatz(1437)}")
+    say(f"i2 = {i2}")
+    say(f"collatz(1437) = {collatz(1437)}")
 
     i3 := i2
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     s4 := ("a".trim() + ("" + "日本語")).reverse()
-    say("s4 = [{s4}]")
+    say(f"s4 = [{s4}]")
 
     i5 := ((-45) - ((6 + (-17)) + ((-50) + (-46))))
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
     say(
-        "{i2} {((i5 / 673887) / i5)} {(i2 < ((i5 / 673887) / i5))} sum {i2 + ((i5 / 673887) / i5)}"
+        f"{i2} {((i5 / 673887) / i5)} {(i2 < ((i5 / 673887) / i5))} sum {i2 + ((i5 / 673887) / i5)}"
     )
 
     s6 := (s4 + "".upper().upper())
-    say("s6 = [{s6}]")
+    say(f"s6 = [{s6}]")
 
     b7 := true
-    say("b7 = {b7}")
+    say(f"b7 = {b7}")
 
     i8 := ((-754299) - ((63423838202 % (-7)) - (459422 / i3)))
-    say("i8 = {i8}")
+    say(f"i8 = {i8}")
 
     b9 := (
-        ("brace\{s\}".replace(s4, "brace\{s\}") == (s4 + s6))
+        ("brace{s}".replace(s4, "brace{s}") == (s4 + s6))
         and ((i2 != i3) and (false or b7))
     )
-    say("b9 = {b9}")
+    say(f"b9 = {b9}")
 
     var acc10 = 0
     for i in 0..3:
         acc10 += i * (-1)
-    say("acc10 = {acc10}")
+    say(f"acc10 = {acc10}")
     say(
-        "{(((-50) * 30) % (19 + 31))} {((i2 % i3) * ((-38) - (-9)))} {((((-50) * 30) % (19 + 31)) < ((i2 % i3) * ((-38) - (-9))))} sum {(((-50) * 30) % (19 + 31)) + ((i2 % i3) * ((-38) - (-9)))}"
+        f"{(((-50) * 30) % (19 + 31))} {((i2 % i3) * ((-38) - (-9)))} {((((-50) * 30) % (19 + 31)) < ((i2 % i3) * ((-38) - (-9))))} sum {(((-50) * 30) % (19 + 31)) + ((i2 % i3) * ((-38) - (-9)))}"
     )
 
     big11 := 9223372036854775807
-    say("{big11 * 6}")
+    say(f"{big11 * 6}")
     return 0

@@ -126,7 +126,7 @@ fn coins(amount: Int, ds: List[String]) String:
 
 	if dp[amount] >= inf: return "impossible"
 
-	return "{dp[amount]}"
+	return f"{dp[amount]}"
 
 fn item_ok(s: String) Bool:
 	p := s.split(":")
@@ -140,9 +140,9 @@ fn answer(line: String) String:
 	n := t.length()
 	bad := "error: bad command"
 	if t[0] == "lcs" and n == 3 and not t[1].is_empty() and not t[2].is_empty():
-		return "{lcs(codes(t[1]), codes(t[2]))}"
+		return f"{lcs(codes(t[1]), codes(t[2]))}"
 	if t[0] == "edit" and n == 3 and not t[1].is_empty() and not t[2].is_empty():
-		return "{edit(codes(t[1]), codes(t[2]))}"
+		return f"{edit(codes(t[1]), codes(t[2]))}"
 
 	if t[0] == "knap" and n >= 2 and is_num(t[1]):
 		var ok = true
@@ -154,7 +154,7 @@ fn answer(line: String) String:
 		var items = List[String]()
 		for k in 2..n:
 			items.append(t[k].clone())
-		return "{knap(num(t[1]), items)}"
+		return f"{knap(num(t[1]), items)}"
 
 	if t[0] == "coins" and n >= 3 and is_num(t[1]):
 		var ok = true

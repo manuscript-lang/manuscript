@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -30,54 +30,54 @@ fn fact(n: Int) Int:
 
 export fn main() Int:
     s1 := ("MiXeD CaSe" + "naïve").upper().replace("back\\slash", "delta")
-    say("s1 = [{s1}]")
-    say("collatz(1681) = {collatz(1681)}")
+    say(f"s1 = [{s1}]")
+    say(f"collatz(1681) = {collatz(1681)}")
 
     i3 := ((-49) - (-30))
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     f4 := 504.404
-    say("f4 = {f4}")
+    say(f"f4 = {f4}")
 
     i5 := i3
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     i6 := ((((-33) / i5) * (-i3)) + (i5 - i5))
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     b7 := (not (not "héllo".ends_with(s1)))
-    say("b7 = {b7}")
+    say(f"b7 = {b7}")
 
     b9 := (
-        ("brace\{s\}" + ("delta" + "日本語")) == (
+        ("brace{s}" + ("delta" + "日本語")) == (
             ("  padded  " + "42")
             + "a".reverse()
         )
     )
-    say("b9 = {b9}")
+    say(f"b9 = {b9}")
 
     f10 := 0.0
-    say("f10 = {f10}")
-    say("{i3} {(-i3)} {(i3 < (-i3))} sum {i3 + (-i3)}")
+    say(f"f10 = {f10}")
+    say(f"{i3} {(-i3)} {(i3 < (-i3))} sum {i3 + (-i3)}")
 
     i11 := ((((-794473890676) * i5) / (i3 + 301744)) - (-32))
-    say("i11 = {i11}")
+    say(f"i11 = {i11}")
 
     s12 := "MiXeD CaSe"
-    say("s12 = [{s12}]")
+    say(f"s12 = [{s12}]")
 
     i13 := i3
-    say("i13 = {i13}")
+    say(f"i13 = {i13}")
 
     f14 := f4
-    say("f14 = {f14}")
-    say("fact(2) = {fact(2)}")
+    say(f"f14 = {f14}")
+    say(f"fact(2) = {fact(2)}")
 
     var acc15 = 0
     for i in 0..0:
         acc15 += i * (-2)
-    say("acc15 = {acc15}")
+    say(f"acc15 = {acc15}")
 
     s16 := ("héllo".reverse() + s12.trim()).trim()
-    say("s16 = [{s16}]")
+    say(f"s16 = [{s16}]")
     return 0

@@ -6,8 +6,8 @@ import (
 
 // Formats a hunk range: `start`, `start,length`, or `start,0`.
 fn span(start: Int, length: Int) String:
-	if length == 1: return "{start}"
-	return "{start},{length}"
+	if length == 1: return f"{start}"
+	return f"{start},{length}"
 
 export fn main() Int:
 	lines := read_lines(stdin()).get()
@@ -96,8 +96,8 @@ export fn main() Int:
 		b_before.append(b_before[k] + db)
 
 	var out = List[String]()
-	out.append("--- {name_a}")
-	out.append("+++ {name_b}")
+	out.append(f"--- {name_a}")
+	out.append(f"+++ {name_b}")
 
 	var g = 0
 
@@ -127,23 +127,23 @@ export fn main() Int:
 			sa += 1
 		if lb > 0:
 			sb += 1
-		out.append("@@ -{span(sa, la)} +{span(sb, lb)} @@")
+		out.append(f"@@ -{span(sa, la)} +{span(sb, lb)} @@")
 
 		for k in range(start, end + 1):
 			text := texts[k]
 
 			if kinds[k] == 0:
-				out.append(" {text}")
+				out.append(f" {text}")
 			else:
 				if kinds[k] == 1:
-					out.append("-{text}")
+					out.append(f"-{text}")
 				else:
-					out.append("+{text}")
+					out.append(f"+{text}")
 
 		g = h
 
 	body := out.join("\n")
-	stdout().write("{body}\n").get()
+	stdout().write(f"{body}\n").get()
 	return 0
 
 fn max_of_two(a: Int, b: Int) Int:

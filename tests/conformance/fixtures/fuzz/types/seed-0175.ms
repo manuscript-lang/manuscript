@@ -6,20 +6,20 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     s1 := (
-        "{(-9223372036854775808)}:"
+        f"{(-9223372036854775808)}:"
         + ("gamma".replace("Tab\there", "héllo") + "  padded  ".lower())
     )
-    say("s1 = [{s1}]")
+    say(f"s1 = [{s1}]")
 
     i2 := (((3 - (-227493)) * ((-104102) / (-134668976553))) - (-404755481940))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     s3 := "x".replace("alpha", s1)
-    say("s3 = [{s3}]")
+    say(f"s3 = [{s3}]")
 
     bad := "abc".no_such_method()
 

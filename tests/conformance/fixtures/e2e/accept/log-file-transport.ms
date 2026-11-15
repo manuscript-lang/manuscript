@@ -17,7 +17,7 @@ fn lines(path: String) String!:
 
 test "levels filter, fields nest under data, and bound fields merge":
     directory := temporary("manuscript-log-")?
-    path := "{directory.path()}/events.ndjson"
+    path := f"{directory.path()}/events.ndjson"
     var logger = create(
         file_transport(path)?, LoggerOptions(level: LogLevel.Warn, timestamp: false)
     )?
@@ -36,13 +36,13 @@ test "levels filter, fields nest under data, and bound fields merge":
     logger.flush()?
     logger.close()?
 
-    expected := "\{\"level\":40,\"msg\":\"warn\"\}\n\{\"level\":50,\"msg\":\"n\",\"data\":7\}\n\{\"level\":60,\"msg\":\"l\",\"data\":[\"a\",\"b\"]\}\n\{\"level\":40,\"msg\":\"child\",\"context\":\{\"service\":\"api\",\"request\":7\},\"data\":\{\"service\":\"worker\"\}\}\n\{\"level\":10,\"msg\":\"trace\"\}\n"
+    expected := "{\"level\":40,\"msg\":\"warn\"}\n{\"level\":50,\"msg\":\"n\",\"data\":7}\n{\"level\":60,\"msg\":\"l\",\"data\":[\"a\",\"b\"]}\n{\"level\":40,\"msg\":\"child\",\"context\":{\"service\":\"api\",\"request\":7},\"data\":{\"service\":\"worker\"}}\n{\"level\":10,\"msg\":\"trace\"}\n"
     expect_equal(lines(path)?, expected)?
 
 test "limits, invalid levels, and closed transports are errors":
     directory := temporary("manuscript-log-")?
-    path := "{directory.path()}/events.ndjson"
-    line := "\{\"level\":30,\"msg\":\"x\"\}\n"
+    path := f"{directory.path()}/events.ndjson"
+    line := "{\"level\":30,\"msg\":\"x\"}\n"
     var logger = create(
         file_transport(path)?,
         LoggerOptions(timestamp: false, max_bytes: line.to_bytes().length())
@@ -71,10 +71,10 @@ test "limits, invalid levels, and closed transports are errors":
 test "a missing directory is a filesystem error":
     directory := temporary("manuscript-log-")?
     missing := expect_error(
-        file_transport("{directory.path()}/missing/events.ndjson")
+        file_transport(f"{directory.path()}/missing/events.ndjson")
     )?
     expect_equal(missing.kind, "ENOENT")?
     expect_equal(
         missing.message,
-        "filesystem: file or directory not found: {directory.path()}/missing/events.ndjson"
+        f"filesystem: file or directory not found: {directory.path()}/missing/events.ndjson"
     )?

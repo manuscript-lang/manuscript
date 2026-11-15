@@ -26,5 +26,5 @@ export fn main() Int:
     var total = 0
     for f in h.items:
         f(var total, 5).get_or_else(fn e: void)
-    print("{total}")
+    print(f"{total}")
     return 0

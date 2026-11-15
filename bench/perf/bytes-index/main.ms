@@ -21,7 +21,7 @@ fn measure(name: String, data: Bytes, start: Int, expected: Int, iterations: Int
 	if checksum != expected * iterations: return 1
 
 	_written := stdout().write(
-		"{name},{data.length()},{iterations},{elapsed},{checksum}\n"
+		f"{name},{data.length()},{iterations},{elapsed},{checksum}\n"
 	)
 	return 0
 
@@ -71,6 +71,6 @@ fn main() Int:
 			var iterations = 67108864 / work
 			if iterations < 256: iterations = 256
 			if iterations > 1000000: iterations = 1000000
-			if measure("{kind}_{n}", data, start, expected, iterations) != 0: return 1
+			if measure(f"{kind}_{n}", data, start, expected, iterations) != 0: return 1
 
 	return 0

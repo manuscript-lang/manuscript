@@ -11,6 +11,6 @@ fn main() Void:
     f: Float32 := -2.5
     g: Float := -0.0
     void stdout().write(
-        "{a.abs()} {b.abs()} {c.abs()} {a.sign()} {z.sign()} {b.sign()} {c.sign()}\n"
+        f"{a.abs()} {b.abs()} {c.abs()} {a.sign()} {z.sign()} {b.sign()} {c.sign()}\n"
     )
-    void stdout().write("{f.abs()} {f.sign()} {g.abs()} {g.sign()} {(0.5).sign()}\n")
+    void stdout().write(f"{f.abs()} {f.sign()} {g.abs()} {g.sign()} {(0.5).sign()}\n")

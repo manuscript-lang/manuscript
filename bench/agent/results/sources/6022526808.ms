@@ -41,8 +41,8 @@ fn parse_num(s: String, lo: Int, hi: Int) Int:
 // Formats cents as dollars with two decimals.
 fn money(c: Int) String:
 	r := c % 100
-	frac := if r < 10: "0{r}" else: "{r}"
-	return "{c / 100}.{frac}"
+	frac := if r < 10: f"0{r}" else: f"{r}"
+	return f"{c / 100}.{frac}"
 
 type Shop:
 	stock: Map[String, Int]
@@ -72,14 +72,14 @@ impl Shop:
 			self.skus.append(sku.clone())
 
 		self.stock[sku.clone()] = self.stock[sku] + qty
-		return "ok {sku} stock={self.stock[sku]}"
+		return f"ok {sku} stock={self.stock[sku]}"
 
 	var fn set_price(args: List[String]) String:
 		cents := parse_num(args[2], 0, 10000000)
 		if cents < 0: return "error: bad price"
 
 		sku := args[1]
-		if not self.stock.contains(sku): return "error: unknown sku {sku}"
+		if not self.stock.contains(sku): return f"error: unknown sku {sku}"
 
 		self.price[sku.clone()] = cents
 		return "ok"
@@ -95,24 +95,24 @@ impl Shop:
 		for i in 2..args.length():
 			parts := args[i].split(":")
 			if parts.length() != 2 or not is_sku(parts[0]):
-				return "error: bad item {args[i]}"
+				return f"error: bad item {args[i]}"
 
 			qty := parse_num(parts[1], 1, 100000)
-			if qty < 0: return "error: bad item {args[i]}"
+			if qty < 0: return f"error: bad item {args[i]}"
 
 			skus.append(parts[0].clone())
 			qtys.append(qty)
 
-		if self.status.contains(id): return "error: order {id} already exists"
+		if self.status.contains(id): return f"error: order {id} already exists"
 
 		// Examine items in the order given; the first problem wins.
 		for i in 0..skus.length():
 			sku := skus[i]
 			for j in 0..i:
-				if skus[j] == sku: return "error: duplicate sku {sku}"
-			if not self.stock.contains(sku): return "error: unknown sku {sku}"
+				if skus[j] == sku: return f"error: duplicate sku {sku}"
+			if not self.stock.contains(sku): return f"error: unknown sku {sku}"
 			if qtys[i] > self.stock[sku]:
-				return "error: insufficient stock for {sku} (have {self.stock[sku]}, need {qtys[i]})"
+				return f"error: insufficient stock for {sku} (have {self.stock[sku]}, need {qtys[i]})"
 
 		var total = 0
 
@@ -126,15 +126,15 @@ impl Shop:
 		self.order_skus[id.clone()] = skus
 		self.order_qtys[id.clone()] = qtys
 		self.order_ids.append(id.clone())
-		return "ok {id} total={money(total)}"
+		return f"ok {id} total={money(total)}"
 
 	var fn cancel(args: List[String]) String:
 		id := args[1]
-		if not self.status.contains(id): return "error: unknown order {id}"
+		if not self.status.contains(id): return f"error: unknown order {id}"
 
 		st := self.status[id]
-		if st == SHIPPED: return "error: order {id} already shipped"
-		if st == CANCELLED: return "error: order {id} already cancelled"
+		if st == SHIPPED: return f"error: order {id} already shipped"
+		if st == CANCELLED: return f"error: order {id} already cancelled"
 
 		self.status[id.clone()] = CANCELLED
 
@@ -146,11 +146,11 @@ impl Shop:
 
 	var fn ship(args: List[String]) String:
 		id := args[1]
-		if not self.status.contains(id): return "error: unknown order {id}"
+		if not self.status.contains(id): return f"error: unknown order {id}"
 
 		st := self.status[id]
-		if st == SHIPPED: return "error: order {id} already shipped"
-		if st == CANCELLED: return "error: order {id} is cancelled"
+		if st == SHIPPED: return f"error: order {id} already shipped"
+		if st == CANCELLED: return f"error: order {id} is cancelled"
 
 		self.status[id.clone()] = SHIPPED
 		return "ok"
@@ -169,7 +169,7 @@ impl Shop:
 						if skus[i] == sku: reserved += qtys[i]
 
 			out.append(
-				"{sku} stock={self.stock[sku]} price={money(self.price[sku])} reserved={reserved}"
+				f"{sku} stock={self.stock[sku]} price={money(self.price[sku])} reserved={reserved}"
 			)
 
 		var placed = 0
@@ -186,8 +186,8 @@ impl Shop:
 				revenue += self.totals[id]
 			else: cancelled += 1
 
-		out.append("orders placed={placed} shipped={shipped} cancelled={cancelled}")
-		out.append("revenue={money(revenue)}")
+		out.append(f"orders placed={placed} shipped={shipped} cancelled={cancelled}")
+		out.append(f"revenue={money(revenue)}")
 		return out.join("\n")
 
 	var fn handle(line: String) String:

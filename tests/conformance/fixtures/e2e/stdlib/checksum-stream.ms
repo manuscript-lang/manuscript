@@ -55,7 +55,7 @@ test "digest of a stream matches the hasher":
 				(
 					digest(chunked(data.clone(), size), algorithm)?
 				) != algorithm.digest(data.clone())
-			): return fail("size {size}")
+			): return fail(f"size {size}")
 
 test "an empty stream has the empty checksum":
 	expect_equal(crc32_of(chunked("".to_bytes(), 4))?, 0)?

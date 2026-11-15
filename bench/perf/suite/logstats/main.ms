@@ -21,13 +21,15 @@ fn main() Void:
 		classes[cls] += 1
 		paths.update(f[3].clone(), 0, fn v: v + 1)
 
-	print("lines: {rows}")
-	print("status: 2xx={classes[0]} 3xx={classes[1]} 4xx={classes[2]} 5xx={classes[3]}")
-	print("latency: {latency}")
+	print(f"lines: {rows}")
+	print(
+		f"status: 2xx={classes[0]} 3xx={classes[1]} 4xx={classes[2]} 5xx={classes[3]}"
+	)
+	print(f"latency: {latency}")
 
 	ranked := paths.entries().sorted(
 		fn a,
 		b: if a.value != b.value: b.value - a.value else: a.key.compare(b.key)
 	)
 	for e in ranked.slice(0, 5).get():
-		print("{e.key} {e.value}")
+		print(f"{e.key} {e.value}")

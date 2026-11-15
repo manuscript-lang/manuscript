@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -15,14 +15,14 @@ fn gcd(a: Int, b: Int) Int:
     return gcd(b, a % b)
 
 export fn main() Int:
-    if ("emoji 😀" + "brace\{s\}").is_empty():
+    if ("emoji 😀" + "brace{s}").is_empty():
         say("back\\slash".lower())
     else:
-        say(("brace\{s\}" + ""))
+        say(("brace{s}" + ""))
 
-    say("gcd(3181, 1800) = {gcd(3181, 1800)}")
+    say(f"gcd(3181, 1800) = {gcd(3181, 1800)}")
     return "not an int"
 
     f1 := ((772.25 - 0.0) * 277.25)
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
     return 0

@@ -15,7 +15,7 @@ fn add(var cs: Cases, name: String, script: String) Void:
 
 // The entries of c60-issue-tracker's hidden cases.
 fn c60_inputs() List[JsonValue]:
-	doc := parse(read_text("{root()}/challenges/c60-issue-tracker/hidden/cases.json")).get(
+	doc := parse(read_text(f"{root()}/challenges/c60-issue-tracker/hidden/cases.json")).get(
 		JsonValue.Null
 	)
 	return doc.as_list().get([])
@@ -28,7 +28,7 @@ export fn gen_c67() Void:
 	for entry in c60_inputs():
 		name := entry.get("name").get(JsonValue.Null).as_string().get("")
 		stdin := entry.get("stdin").get(JsonValue.Null).as_string().get("")
-		add(var cs, "kept-{name}", stdin)
+		add(var cs, f"kept-{name}", stdin)
 
 	add(var cs, "block-basic", WF + "block 1 2\nblock #1 #3\nshow 1\nshow 2\nlog\n")
 	add(

@@ -6,42 +6,42 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := 35
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     i2 := (((i1 - 25) + 958912816336) * 26)
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     i3 := (i1 - 15)
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
-    s4 := ("{(i2 / (-13))}:" + ("{i3}:" + "x")).reverse()
-    say("s4 = [{s4}]")
+    s4 := (f"{(i2 / (-13))}:" + (f"{i3}:" + "x")).reverse()
+    say(f"s4 = [{s4}]")
 
     f5 := (((6.5 + 1.5) + (9.0e12 * 122.262)) + (85.25 + (764.839 * 125.304)))
-    say("f5 = {f5}")
+    say(f"f5 = {f5}")
 
     i6 := i2
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     f7 := 5.5
-    say("f7 = {f7}")
+    say(f"f7 = {f7}")
 
     b8 := false
-    say("b8 = {b8}")
+    say(f"b8 = {b8}")
 
     i9 := 783852101768
-    say("i9 = {i9}")
+    say(f"i9 = {i9}")
 
     i10 := i2
-    say("i10 = {i10}")
+    say(f"i10 = {i10}")
 
     l11 := [(-25), 2, (-26), 18]
-    say("l11 = {l11} len {l11.length()}")
+    say(f"l11 = {l11} len {l11.length()}")
 
     i12 := 587809683922
-    say("i12 = {i12}")
+    say(f"i12 = {i12}")
     return 0

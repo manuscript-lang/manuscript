@@ -38,18 +38,18 @@ fn base_image(lang_id: String) String:
 fn dockerfile(lang_id: String) String:
 	install := "apt-get update && apt-get install -y --no-install-recommends ca-certificates curl git && rm -rf /var/lib/apt/lists/*"
 	return [
-		"FROM {base_image(lang_id)}", "RUN {install}", "COPY ms /usr/local/bin/ms",
+		f"FROM {base_image(lang_id)}", f"RUN {install}", "COPY ms /usr/local/bin/ms",
 		"WORKDIR /app", "COPY workspace /app", ""
 	].join("\n")
 
 fn task_toml(name: String, ch: Challenge, agent_timeout: Int) String:
-	return read_text("{root()}/harbor/task.toml.tmpl").replace(
-		"\{name\}",
-		name,
-	).replace("\{title\}", ch.title).replace("\{category\}", ch.category).replace(
-		"\{tier\}",
-		"{ch.tier}",
-	).replace("\{agent_timeout\}", "{agent_timeout}.0")
+	return read_text(f"{root()}/harbor/task.toml.tmpl").replace("{name}", name).replace(
+		"{title}",
+		ch.title,
+	).replace("{category}", ch.category).replace("{tier}", f"{ch.tier}").replace(
+		"{agent_timeout}",
+		f"{agent_timeout}.0",
+	)
 
 fn quote(text: String) String: dumps(JsonValue.StringValue(text.clone()), 0)
 
@@ -67,54 +67,54 @@ fn export_one(
 	ms_binary: String,
 	agent_timeout: Int,
 ) Void:
-	name := "{ch.id}-{lang.id}"
-	d := "{out}/{name}"
+	name := f"{ch.id}-{lang.id}"
+	d := f"{out}/{name}"
 	remove(d, recursive: true).to_optional()
-	create_directory("{d}/environment", recursive: true).get()
+	create_directory(f"{d}/environment", recursive: true).get()
 
-	prompt := make_workspace(ch, lang, "{d}/environment/workspace")
-	write_text("{d}/instruction.md", prompt + "\n\n---\n\n" + ch.spec())
-	write_text("{d}/task.toml", task_toml(name, ch, agent_timeout))
-	write_text("{d}/environment/Dockerfile", dockerfile(lang.id))
+	prompt := make_workspace(ch, lang, f"{d}/environment/workspace")
+	write_text(f"{d}/instruction.md", prompt + "\n\n---\n\n" + ch.spec())
+	write_text(f"{d}/task.toml", task_toml(name, ch, agent_timeout))
+	write_text(f"{d}/environment/Dockerfile", dockerfile(lang.id))
 
 	if ms_binary == "":
 		(
 			stderr()
 			.write(
-				"  note: {name} needs --ms-binary for its Docker image (the verifier runs `ms`; the local-process env uses PATH)\n"
+				f"  note: {name} needs --ms-binary for its Docker image (the verifier runs `ms`; the local-process env uses PATH)\n"
 			)
 			.get()
 		)
 	else:
-		put(ms_binary, "{d}/environment/ms")
+		put(ms_binary, f"{d}/environment/ms")
 
 	// The verifier and the modules it imports keep their relative layout under /tests.
 	for file in ["grade.ms", "core/model.ms", "core/codetokens.ms", "lib/text.ms"]:
-		put("{root()}/{file}", "{d}/tests/{file}")
-	put("{ch.dir}/hidden/cases.json", "{d}/tests/cases.json")
+		put(f"{root()}/{file}", f"{d}/tests/{file}")
+	put(f"{ch.dir}/hidden/cases.json", f"{d}/tests/cases.json")
 	write_text(
-		"{d}/tests/test.sh",
-		"#!/bin/bash\nms run /tests/grade.ms -- /tests/cases.json {quote(lang.build)} {quote(lang.run)} {ch.timeout_s} {lang.suffix()}\n",
+		f"{d}/tests/test.sh",
+		f"#!/bin/bash\nms run /tests/grade.ms -- /tests/cases.json {quote(lang.build)} {quote(lang.run)} {ch.timeout_s} {lang.suffix()}\n",
 	)
 
-	reference := "{ch.solution(lang.template)}/{lang.reference()}"
+	reference := f"{ch.solution(lang.template)}/{lang.reference()}"
 
 	if stat(reference).is_ok():
-		put(reference, "{d}/solution/reference")
+		put(reference, f"{d}/solution/reference")
 		write_text(
-			"{d}/solution/solve.sh",
-			"#!/bin/bash\nmkdir -p \"$(dirname /app/{lang.solution})\"\ncp \"$(dirname \"$0\")/reference\" /app/{lang.solution}\n",
+			f"{d}/solution/solve.sh",
+			f"#!/bin/bash\nmkdir -p \"$(dirname /app/{lang.solution})\"\ncp \"$(dirname \"$0\")/reference\" /app/{lang.solution}\n",
 		)
 	else:
 		// Large challenges are oracle-validated in Go only; the oracle agent has
 		// nothing to apply.
 		write_text(
-			"{d}/solution/solve.sh",
+			f"{d}/solution/solve.sh",
 			"#!/bin/bash\necho 'no reference solution for this language' >&2\nexit 1\n",
 		)
 
-	chmod("{d}/tests/test.sh", 493).get()
-	chmod("{d}/solution/solve.sh", 493).get()
+	chmod(f"{d}/tests/test.sh", 493).get()
+	chmod(f"{d}/solution/solve.sh", 493).get()
 
 fn split_ids(text: String) List[String]:
 	return text.split(",").filter(fn x: not x.is_empty())
@@ -129,7 +129,7 @@ fn run_export(o: Options) Int!:
 			export_one(ch, lang, o.out, o.ms_binary, o.agent_timeout)
 			n += 1
 
-	print("exported {n} tasks to {o.out}")
+	print(f"exported {n} tasks to {o.out}")
 	return ok(0)
 
 fn main() Int:

@@ -53,10 +53,10 @@ fn sweep(ms: String, files: List[String]) List[String]:
 
 		if test_run(ms.clone(), f.clone(), false) == 0:
 			lines.append(
-				"stress: {f} fails under MS_SCHED_STRESS=1 and passes without it"
+				f"stress: {f} fails under MS_SCHED_STRESS=1 and passes without it"
 			)
 		else:
-			lines.append("plain: {f} fails without stress too")
+			lines.append(f"plain: {f} fails without stress too")
 
 	return lines
 
@@ -84,7 +84,7 @@ fn main() Int:
 	if files.is_empty() and since != "": files = changed(since)
 	else if files.is_empty():
 		for f in glob(fixtures, GlobOptions(patterns: ["*.ms"])).get([]):
-			files.append("{fixtures}/{f.path}")
+			files.append(f"{fixtures}/{f.path}")
 
 	var tests = List[String]()
 
@@ -117,9 +117,13 @@ fn main() Int:
 			if line == "ran": ran += 1
 			else:
 				if line.starts_with("stress: "): broken += 1
-				print("{line}")
+				print(f"{line}")
 
-	stdout().write("stress-sched: {ran} files, {broken} fail only under stress\n").get()
+	(
+		stdout().write(
+			f"stress-sched: {ran} files, {broken} fail only under stress\n"
+		).get()
+	)
 	if broken > 0: return 1
 
 	return 0

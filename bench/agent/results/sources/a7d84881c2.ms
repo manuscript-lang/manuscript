@@ -191,15 +191,15 @@ fn find_col(cs: List[String]) Int:
         if depth == 0 and c == ";":
             return -1
 
-        if c == "$" and k + 1 < n and (cs[k + 1] == "(" or cs[k + 1] == "\{"):
+        if c == "$" and k + 1 < n and (cs[k + 1] == "(" or cs[k + 1] == "{"):
             depth += 1
             k += 2
             continue
 
         if depth > 0:
-            if c == "(" or c == "\{":
+            if c == "(" or c == "{":
                 depth += 1
-            else if c == ")" or c == "\}":
+            else if c == ")" or c == "}":
                 depth -= 1
         else if c == ":":
             return k
@@ -336,9 +336,9 @@ fn split_args(raw: String) List[String]:
     var depth = 0
 
     for c in raw.chars():
-        if c == "(" or c == "\{":
+        if c == "(" or c == "{":
             depth += 1
-        else if c == ")" or c == "\}":
+        else if c == ")" or c == "}":
             depth -= 1
 
         if c == "," and depth == 0:
@@ -446,9 +446,9 @@ type Make:
 impl Make:
     fn fail(msg: String) Fail:
         if self.line > 0:
-            return Fail(text: "Makefile:{self.line}: *** {msg}.  Stop.")
+            return Fail(text: f"Makefile:{self.line}: *** {msg}.  Stop.")
 
-        return Fail(text: "make: *** {msg}.  Stop.")
+        return Fail(text: f"make: *** {msg}.  Stop.")
 
     fn is_phony(name: String) Bool:
         return self.phony.contains(name)
@@ -506,7 +506,7 @@ impl Make:
         parts.append(name.clone())
 
         chain := parts.join(" -> ")
-        return Fail(text: "make: *** Circular dependency detected: {chain}.  Stop.")
+        return Fail(text: f"make: *** Circular dependency detected: {chain}.  Stop.")
 
     var fn reset_parse() Unit:
         self.vars = Map[String, VarDef]()
@@ -531,7 +531,7 @@ impl Make:
         if self.stack.contains(name.clone()):
             return error(
                 self.fail(
-                    "Recursive variable '{name}' references itself (eventually)"
+                    f"Recursive variable '{name}' references itself (eventually)"
                 )
             )
 
@@ -578,10 +578,10 @@ impl Make:
             else if cs[i + 1] == "$":
                 out = out + "$"
                 i += 2
-            else if cs[i + 1] == "(" or cs[i + 1] == "\{":
+            else if cs[i + 1] == "(" or cs[i + 1] == "{":
                 opener := cs[i + 1].clone()
 
-                closer := if opener == "(": ")" else: "\}"
+                closer := if opener == "(": ")" else: "}"
 
                 j := match_close(cs.clone(), i + 2, opener, closer)
                 if j < 0:
@@ -756,7 +756,7 @@ impl Make:
             return ok("")
 
         if fname == "words":
-            return ok("{words(a0).length()}")
+            return ok(f"{words(a0).length()}")
 
         if fname == "firstword":
             ws := words(a0)
@@ -848,7 +848,7 @@ impl Make:
                 dst := ws[2].clone()
 
                 if not self.table.contains(src.clone()):
-                    emit("cp: cannot stat '{src}': No such file or directory")
+                    emit(f"cp: cannot stat '{src}': No such file or directory")
                     return 1
 
                 self.clock += 1
@@ -1009,9 +1009,9 @@ impl Make:
 
             if status != 0:
                 if ignore:
-                    emit("make: [Makefile:{line.no}: {name}] Error {status} (ignored)")
+                    emit(f"make: [Makefile:{line.no}: {name}] Error {status} (ignored)")
                 else:
-                    emit("make: *** [Makefile:{line.no}: {name}] Error {status}")
+                    emit(f"make: *** [Makefile:{line.no}: {name}] Error {status}")
                     return error(Fail(text: ""))
 
         self.line = 0
@@ -1043,13 +1043,13 @@ impl Make:
             if parent == "":
                 return error(
                     Fail(
-                        text: "make: *** No rule to make target '{name}'.  Stop."
+                        text: f"make: *** No rule to make target '{name}'.  Stop."
                     )
                 )
 
             return error(
                 Fail(
-                    text: "make: *** No rule to make target '{name}', needed by '{parent}'.  Stop."
+                    text: f"make: *** No rule to make target '{name}', needed by '{parent}'.  Stop."
                 )
             )
 
@@ -1141,7 +1141,7 @@ impl Make:
             if self.open_recipe.length() > 0:
                 if self.recipe_of(t.clone()).length() > 0:
                     emit(
-                        "Makefile:{self.open_no}: warning: overriding recipe for target '{t}'"
+                        f"Makefile:{self.open_no}: warning: overriding recipe for target '{t}'"
                     )
                 self.recipes.add(t.clone(), self.open_recipe.clone())
 
@@ -1382,7 +1382,7 @@ impl Make:
 
         if top >= 0:
             f := self.frames[top].clone()
-            return error(Fail(text: "Makefile:{f.line}: *** missing 'endif'.  Stop."))
+            return error(Fail(text: f"Makefile:{f.line}: *** missing 'endif'.  Stop."))
 
         self.line = 0
         return ok(unit)
@@ -1406,7 +1406,7 @@ impl Make:
                 try self.parse(self.mk_lines.clone())
 
                 v := try self.expand(text)
-                emit("[{v}]")
+                emit(f"[{v}]")
                 return ok(unit)
 
             for k in 1..ws.length():
@@ -1485,9 +1485,9 @@ impl Make:
                     )
 
                     if res.recipe.length() > 0 or is_file:
-                        emit("make: '{g}' is up to date.")
+                        emit(f"make: '{g}' is up to date.")
                     else:
-                        emit("make: Nothing to be done for '{g}'.")
+                        emit(f"make: Nothing to be done for '{g}'.")
 
             return ok(unit)
 
@@ -1496,7 +1496,7 @@ impl Make:
             if names.length() == 0:
                 emit("(no files)")
             for n in names:
-                emit("{n} {self.table.get(n.clone()).get(0)}")
+                emit(f"{n} {self.table.get(n.clone()).get(0)}")
             return ok(unit)
 
         if cmd == "touch":

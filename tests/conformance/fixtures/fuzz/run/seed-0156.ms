@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -22,34 +22,34 @@ fn gcd(a: Int, b: Int) Int:
 
 export fn main() Int:
     b2 := true
-    say("b2 = {b2}")
-    say("fact(5) = {fact(5)}")
+    say(f"b2 = {b2}")
+    say(f"fact(5) = {fact(5)}")
 
     l3 := [9, 10, 0]
-    say("l3 = {l3} len {l3.length()}")
+    say(f"l3 = {l3} len {l3.length()}")
     say(
-        "{((13 + 20) + 30)} {(-5)} {(((13 + 20) + 30) < (-5))} sum {((13 + 20) + 30) + (-5)}"
+        f"{((13 + 20) + 30)} {(-5)} {(((13 + 20) + 30) < (-5))} sum {((13 + 20) + 30) + (-5)}"
     )
-    say("gcd(110, 3342) = {gcd(110, 3342)}")
+    say(f"gcd(110, 3342) = {gcd(110, 3342)}")
 
     f4 := ((202.733 + (112.645 * 758.485)) / (870.849 * 993.25))
-    say("f4 = {f4}")
+    say(f"f4 = {f4}")
 
     i5 := (((-(-46)) + (-148327)) / (((-40) + 37) + 31))
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     i6 := (((-818867286454) * (i5 + i5)) + ((i5 % 671574654047) - (36 * i5)))
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     b7 := ("日本語" + "back\\slash".lower()).starts_with("42")
-    say("b7 = {b7}")
+    say(f"b7 = {b7}")
 
     l8 := l3.map(fn x: x * 7)
-    say("l8 = {l8} len {l8.length()}")
+    say(f"l8 = {l8} len {l8.length()}")
 
     i9 := i6
-    say("i9 = {i9}")
+    say(f"i9 = {i9}")
 
     l10 := l8.concat(l8)
-    say("l10 = {l10} len {l10.length()}")
+    say(f"l10 = {l10} len {l10.length()}")
     return 0

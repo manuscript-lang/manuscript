@@ -6,20 +6,20 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := 18
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     l2 := [2, 14, (-12), 29, 21]
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     s3 := "日本語".reverse()
-    say("s3 = [{s3}]")
+    say(f"s3 = [{s3}]")
 
     l4 := l2.concat(l2)
-    say("l4 = {l4} len {l4.length()}")
+    say(f"l4 = {l4} len {l4.length()}")
 
     var acc5 = 0
     var stepacc5 = 0
@@ -28,11 +28,11 @@ export fn main() Int:
         stepacc5 += 1
         acc5 += stepacc5 * stepacc5 + 3
 
-    say("acc5 = {acc5}")
-    say("{18} {(i1 * (i1 + i1))} {(18 < (i1 * (i1 + i1)))} sum {18 + (i1 * (i1 + i1))}")
+    say(f"acc5 = {acc5}")
+    say(f"{18} {(i1 * (i1 + i1))} {(18 < (i1 * (i1 + i1)))} sum {18 + (i1 * (i1 + i1))}")
 
     i6 := (((-i1) * (i1 + i1)) + ((i1 - i1) * (-29)))
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     if true:
         say(s3.trim())
@@ -47,7 +47,7 @@ export fn main() Int:
         else:
             acc7 -= 1
 
-    say("acc7 = {acc7}")
+    say(f"acc7 = {acc7}")
 
     var acc8 = 0
     var stepacc8 = 0
@@ -56,14 +56,14 @@ export fn main() Int:
         stepacc8 += 1
         acc8 += stepacc8 * stepacc8 + (-4)
 
-    say("acc8 = {acc8}")
+    say(f"acc8 = {acc8}")
 
     b9 := "Tab\there".is_empty()
-    say("b9 = {b9}")
+    say(f"b9 = {b9}")
     say(
-        "{s3.scalar_length()} {((i6 - i6) / (i6 * (-41)))} {(s3.scalar_length() < ((i6 - i6) / (i6 * (-41))))} sum {s3.scalar_length() + ((i6 - i6) / (i6 * (-41)))}"
+        f"{s3.scalar_length()} {((i6 - i6) / (i6 * (-41)))} {(s3.scalar_length() < ((i6 - i6) / (i6 * (-41))))} sum {s3.scalar_length() + ((i6 - i6) / (i6 * (-41)))}"
     )
 
     big10 := 9223372036854775807
-    say("{big10 * 2}")
+    say(f"{big10 * 2}")
     return 0

@@ -120,11 +120,11 @@ test "match expressions preserve returns and cleanup":
 
 	var temporary = temporary("manuscript-match-") | expect_ok?
 	dir := temporary.path()
-	parsed := amount(text: "3", marker: "{dir}/parsed")
+	parsed := amount(text: "3", marker: f"{dir}/parsed")
 	(parsed != Result[Int, Error].ok(value: 4)) | expect_false?
-	closed("{dir}/parsed") | expect_true?
+	closed(f"{dir}/parsed") | expect_true?
 
-	invalid := amount(text: "invalid", marker: "{dir}/invalid")
+	invalid := amount(text: "invalid", marker: f"{dir}/invalid")
 	(
 		(
 			invalid != Result[Int, Error].error(
@@ -132,7 +132,7 @@ test "match expressions preserve returns and cleanup":
 			)
 		) | expect_false?
 	)
-	closed("{dir}/invalid") | expect_true?
+	closed(f"{dir}/invalid") | expect_true?
 	temporary.close()?
 
 	nested := match present:

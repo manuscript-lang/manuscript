@@ -24,5 +24,5 @@ fn echo(var exchange: HttpExchange) Void!:
 
 fn main() Void!:
 	server := serve(address: "127.0.0.1:8080", handler: echo)?
-	print("websocket echo on ws://{server.address()}/")
+	print(f"websocket echo on ws://{server.address()}/")
 	server.wait()?

@@ -6,26 +6,26 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     f1 := (
         ((1.5 - 519.197) + (2.0e-9 - 8.5))
         * ((708.795 + 679.332) + (3.0e13 * 260.137))
     )
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
 
     i2 := 399967
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     i3 := ((13 * (i2 + (-5))) * i2)
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     b4 := ((-21) >= ((-603781) - ((-9223372036854775807) / 582451)))
-    say("b4 = {b4}")
+    say(f"b4 = {b4}")
 
     l5 := [(-19), (-17)]
-    say("l5 = {l5} len {l5.length()}")
+    say(f"l5 = {l5} len {l5.length()}")
 
     if (("日本語" != "back\\slash") or (false and b4)):
         say("gamma")
@@ -34,8 +34,8 @@ export fn main() Int:
 
     var l6 = l5.clone()
     l6.append(17)
-    say("l6 = {l6} len {l6.length()}")
+    say(f"l6 = {l6} len {l6.length()}")
 
     big7 := -9223372036854775808
-    say("{big7 - 4}")
+    say(f"{big7 - 4}")
     return 0

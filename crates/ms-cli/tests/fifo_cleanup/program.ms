@@ -20,7 +20,7 @@ fn cancel_read(path: String) Int:
 fn open_on(path: String) Int:
     var count = 0
     for entry in list("/proc/self/fd").get():
-        if read_symlink("/proc/self/fd/{entry.name}").get("") == path: count += 1
+        if read_symlink(f"/proc/self/fd/{entry.name}").get("") == path: count += 1
     return count
 
 fn main() Void:
@@ -38,4 +38,4 @@ fn main() Void:
         waited += 1
         open = open_on(path.clone())
 
-    print("{cancelled} {open}")
+    print(f"{cancelled} {open}")

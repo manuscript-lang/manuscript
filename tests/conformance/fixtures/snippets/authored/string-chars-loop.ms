@@ -8,10 +8,10 @@ fn show(s: String) Void:
     var n = 0
 
     for c in s.chars():
-        out = "{out}[{c}]"
+        out = f"{out}[{c}]"
         n += 1
 
-    _i := stdout().write("{out} {n}\n")
+    _i := stdout().write(f"{out} {n}\n")
 
 fn first_o(s: String) Int:
     var at = 0
@@ -29,7 +29,7 @@ fn main() Void:
     show("")
     show("abc")
 
-    _i := stdout().write("{first_o("héllo wörld")} {first_o("xyz")}\n")
+    _i := stdout().write(f"{first_o("héllo wörld")} {first_o("xyz")}\n")
     var kept: List[String] = []
 
     for c in "añb".chars():
@@ -37,7 +37,7 @@ fn main() Void:
         if c == "b":
             break
 
-    _j := stdout().write("{kept.length()} {kept.get(1)}\n")
+    _j := stdout().write(f"{kept.length()} {kept.get(1)}\n")
     var total = 0
 
     for a in "ab".chars():
@@ -47,4 +47,4 @@ fn main() Void:
 
             total += 1
 
-    _k := stdout().write("{total}\n")
+    _k := stdout().write(f"{total}\n")

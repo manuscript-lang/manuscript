@@ -55,12 +55,12 @@ fn checked(a: List[Int], i: Int) Int:
 fn main() Void:
     a := [3, 1, 4, 1, 5, 9, 2, 6]
     void stdout().write(
-        "{next_sum(a.clone())} {mirror(a.clone())} {stride(a.clone())}\n"
+        f"{next_sum(a.clone())} {mirror(a.clone())} {stride(a.clone())}\n"
     )
     void stdout().write(
-        "{search([1, 3, 5, 7, 9, 11], 7)} {search([1, 3, 5, 7, 9, 11], 4)} {search([], 1)}\n"
+        f"{search([1, 3, 5, 7, 9, 11], 7)} {search([1, 3, 5, 7, 9, 11], 4)} {search([], 1)}\n"
     )
-    void stdout().write("{nested([[1, 2, 3], [], [4, 5]])} {nested([])}\n")
+    void stdout().write(f"{nested([[1, 2, 3], [], [4, 5]])} {nested([])}\n")
     void stdout().write(
-        "{next_sum([])} {next_sum([5])} {stride([1, 2])} {checked(a.clone(), 7)}\n"
+        f"{next_sum([])} {next_sum([5])} {stride([1, 2])} {checked(a.clone(), 7)}\n"
     )

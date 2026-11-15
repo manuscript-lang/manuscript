@@ -6,35 +6,35 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := (((12 - (-25)) + ((-903641) + 3)) - (-41))
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     i2 := (i1 - 410358948939)
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     var acc3 = 0
     for i in 0..0:
         acc3 += i * 7
-    say("acc3 = {acc3}")
+    say(f"acc3 = {acc3}")
 
     i4 := (-358586)
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     i5 := (-19)
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
     say(
-        "{((-36) % (i2 * (-12)))} {i5} {(((-36) % (i2 * (-12))) < i5)} sum {((-36) % (i2 * (-12))) + i5}"
+        f"{((-36) % (i2 * (-12)))} {i5} {(((-36) % (i2 * (-12))) < i5)} sum {((-36) % (i2 * (-12))) + i5}"
     )
 
     l6 := [1, 2, 3].take(0)
-    say("l6 = {l6} len {l6.length()}")
+    say(f"l6 = {l6} len {l6.length()}")
 
     l7 := l6.map(fn x: x + 3).filter(fn x: x % 2 == 0)
-    say("l7 = {l7} len {l7.length()}")
+    say(f"l7 = {l7} len {l7.length()}")
 
     i8 := l6.length()
-    say("i8 = {i8}")
+    say(f"i8 = {i8}")
     return 0

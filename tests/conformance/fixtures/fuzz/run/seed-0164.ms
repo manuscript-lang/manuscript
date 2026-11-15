@@ -6,20 +6,20 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     l1 := [22, (-21), 15, (-6), 18]
-    say("l1 = {l1} len {l1.length()}")
+    say(f"l1 = {l1} len {l1.length()}")
 
     l2 := l1.concat(l1)
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     l3 := [19, 10]
-    say("l3 = {l3} len {l3.length()}")
+    say(f"l3 = {l3} len {l3.length()}")
 
     l4 := l1.filter(fn x: x > (-3))
-    say("l4 = {l4} len {l4.length()}")
+    say(f"l4 = {l4} len {l4.length()}")
 
     if (not (true and true)):
         say(("delta" + "Tab\there"))
@@ -27,18 +27,18 @@ export fn main() Int:
         say(("back\\slash" + "x"))
 
     b5 := (not false)
-    say("b5 = {b5}")
+    say(f"b5 = {b5}")
 
     i6 := ((22 * ((-11) - 868321)) % (l3.length() - (-39)))
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
-    s7 := "brace\{s\}".lower()
-    say("s7 = [{s7}]")
+    s7 := "brace{s}".lower()
+    say(f"s7 = [{s7}]")
 
     f8 := (((614.265 / 389.300) / (6.5 / 162.802)) + 433.053)
-    say("f8 = {f8}")
+    say(f"f8 = {f8}")
 
-    if ("x" != "brace\{s\}".trim()):
+    if ("x" != "brace{s}".trim()):
         say(s7.reverse())
     else:
         say("  padded  ")

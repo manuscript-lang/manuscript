@@ -20,14 +20,14 @@ test "serve caps the request header block":
 	server := serve(address: "127.0.0.1:0", handler: buffered(ok_route)) | expect_ok?
 	var client = connect(server.address(), timeout: 2.seconds()).wait() | expect_ok?
 	filler := "a".repeat(2000000) | expect_ok?
-	head := "GET / HTTP/1.1\r\nHost: t\r\nConnection: close\r\nX: {filler}\r\n\r\n"
+	head := f"GET / HTTP/1.1\r\nHost: t\r\nConnection: close\r\nX: {filler}\r\n\r\n"
 
 	// The server may answer and close before the whole head is written.
 	_written := send(var client, head)
 	reply := recv(var client, 5.seconds()) | expect_ok?
 	text := reply.get().decode_utf8().get("")
 	if not text.starts_with("HTTP/1.1 431"): return error(
-		Error("oversized header block was not rejected: {text}")
+		Error(f"oversized header block was not rejected: {text}")
 	)
 
 test "serve timeout closes idle connections":

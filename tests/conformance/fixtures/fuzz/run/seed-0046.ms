@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -24,23 +24,23 @@ fn collatz(start: Int) Int:
 
 export fn main() Int:
     i1 := 470836
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     b2 := "x".is_empty()
-    say("b2 = {b2}")
+    say(f"b2 = {b2}")
 
     i3 := i1
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     b4 := ((-16) <= ((i3 / i3) / (i3 / i1)))
-    say("b4 = {b4}")
+    say(f"b4 = {b4}")
 
     i5 := ((((-10) + 50) * (-43)) * 6)
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     l6 := [25, (-19), (-21), 27]
-    say("l6 = {l6} len {l6.length()}")
-    say("collatz(2401) = {collatz(2401)}")
+    say(f"l6 = {l6} len {l6.length()}")
+    say(f"collatz(2401) = {collatz(2401)}")
 
     if (false or (5 > (-15))):
         say("héllo".reverse())
@@ -48,17 +48,17 @@ export fn main() Int:
         say("beta")
 
     f7 := (411.902 * (278.254 / 317.904))
-    say("f7 = {f7}")
+    say(f"f7 = {f7}")
 
     s8 := "日本語".reverse().lower()
-    say("s8 = [{s8}]")
+    say(f"s8 = [{s8}]")
 
     i9 := ((48 / (i5 + (-2))) % (-(i5 + i5)))
-    say("i9 = {i9}")
+    say(f"i9 = {i9}")
 
     f10 := (((f7 + f7) / (605.335 + 458.123)) * 365.25)
-    say("f10 = {f10}")
+    say(f"f10 = {f10}")
 
     big11 := ((i5 % i3) + (i3 - i5)) - ((i5 % i3) + (i3 - i5))
-    say("{((i5 % i3) + (i3 - i5)) % big11}")
+    say(f"{((i5 % i3) + (i3 - i5)) % big11}")
     return 0

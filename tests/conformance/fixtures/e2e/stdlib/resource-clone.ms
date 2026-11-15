@@ -10,7 +10,7 @@ import (
 
 test "a cloned file handle writes through its own descriptor after the original closes":
 	temporary := temporary("manuscript-dup-") | expect_ok?
-	path := "{temporary.path()}/a.txt"
+	path := f"{temporary.path()}/a.txt"
 	var file = open(path, OpenMode.Write, OpenOptions(permissions: 420)) | expect_ok?
 	var copy = file.clone() | expect_ok?
 	file.write("one ")?

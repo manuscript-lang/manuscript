@@ -30,7 +30,7 @@ fn since(started: Instant) Int:
     return monotonic().difference(started).to_nanoseconds()
 
 fn report(name: String, ops: Int, started: Instant) Void:
-    say("{name} {ops} {since(started)}\n")
+    say(f"{name} {ops} {since(started)}\n")
 
 fn ident[T](x: T) T:
     return x
@@ -215,4 +215,4 @@ fn main() Void:
     ma := bench_match()
     ln := bench_length()
     fs := bench_for_list()
-    say("# sink {built} {sum} {hits} {g} {total} {tr} {ma} {ln} {fs}\n")
+    say(f"# sink {built} {sum} {hits} {g} {total} {tr} {ma} {ln} {fs}\n")

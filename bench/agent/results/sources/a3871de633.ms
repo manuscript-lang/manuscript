@@ -62,8 +62,8 @@ fn edit_script(a: List[String], b: List[String]) Script:
 	return Script(kinds: kinds, texts: texts)
 
 fn range_text(start: Int, length: Int) String:
-	if length == 1: return "{start}"
-	return "{start},{length}"
+	if length == 1: return f"{start}"
+	return f"{start},{length}"
 
 export fn main() Int:
 	lines := read_lines(stdin()).get()
@@ -91,8 +91,8 @@ export fn main() Int:
 	if changes.length() == 0: return 0
 
 	var out = List[String]()
-	out.append("--- {name_a}")
-	out.append("+++ {name_b}")
+	out.append(f"--- {name_a}")
+	out.append(f"+++ {name_b}")
 
 	var g = 0
 
@@ -127,15 +127,15 @@ export fn main() Int:
 
 		start_a := if len_a > 0: a_before + 1 else: a_before
 		start_b := if len_b > 0: b_before + 1 else: b_before
-		out.append("@@ -{range_text(start_a, len_a)} +{range_text(start_b, len_b)} @@")
+		out.append(f"@@ -{range_text(start_a, len_a)} +{range_text(start_b, len_b)} @@")
 
 		for p in s..e + 1:
 			if kinds[p] == 0:
-				out.append(" {texts[p]}")
+				out.append(f" {texts[p]}")
 			else if kinds[p] == 1:
-				out.append("-{texts[p]}")
+				out.append(f"-{texts[p]}")
 			else:
-				out.append("+{texts[p]}")
+				out.append(f"+{texts[p]}")
 
 		g = h
 

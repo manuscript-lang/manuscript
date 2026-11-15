@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -23,10 +23,10 @@ fn fib(n: Int) Int:
 
 export fn main() Int:
     f1 := ((228.023 * (154.682 * 184.169)) + (517.609 * 696.722))
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
 
     l2 := [7, (-26), (-27), 5]
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     var acc3 = 0
 
@@ -36,23 +36,23 @@ export fn main() Int:
         else:
             acc3 -= 1
 
-    say("acc3 = {acc3}")
+    say(f"acc3 = {acc3}")
 
     s4 := "gamma"
-    say("s4 = [{s4}]")
+    say(f"s4 = [{s4}]")
 
     i5 := (-4)
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     b6 := (s4 == "line\nbreak")
-    say("b6 = {b6}")
-    say("fib(47) = {fib(47)}")
+    say(f"b6 = {b6}")
+    say(f"fib(47) = {fib(47)}")
 
     b7 := ("hello world".replace(s4, "back\\slash") + (s4 + "MiXeD CaSe")).starts_with(
-        "brace\{s\}"
+        "brace{s}"
     )
-    say("b7 = {b7}")
+    say(f"b7 = {b7}")
 
     f8 := (f1 + ((552.993 * 92.811) + (76.026 * 964.25)))
-    say("f8 = {f8}")
+    say(f"f8 = {f8}")
     return 0

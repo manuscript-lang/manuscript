@@ -20,8 +20,8 @@ fn gate(root: String, compiler: String, fixture: String) Gate:
 	settings["MS"] = compiler.clone()
 
 	arguments := [
-		"run", "{root}/tools/count-check.ms", "--build-type", "Debug", "--",
-		"tools/count-check-selftest/{fixture}"
+		"run", f"{root}/tools/count-check.ms", "--build-type", "Debug", "--",
+		f"tools/count-check-selftest/{fixture}"
 	]
 
 	if out := run(
@@ -35,7 +35,7 @@ fn gate(root: String, compiler: String, fixture: String) Gate:
 	return Gate(125, "cannot start the gate\n")
 
 fn expect(var failures: List[String], what: String, held: Bool, shown: Gate) Void:
-	if not held: failures.append("{what}\n{shown.output}")
+	if not held: failures.append(f"{what}\n{shown.output}")
 
 fn main() Int:
 	root := working_directory().get()
@@ -46,8 +46,8 @@ fn main() Int:
 	for profile in ["debug", "release"]:
 		expect(
 			var failures,
-			"the {profile} run must report its exit status",
-			failed.output.contains("({profile}) exited 7"),
+			f"the {profile} run must report its exit status",
+			failed.output.contains(f"({profile}) exited 7"),
 			failed,
 		)
 
@@ -80,7 +80,7 @@ fn main() Int:
 		rejected,
 	)
 
-	unavailable := gate(root.clone(), "{root}/target/missing-ms", "success.ms")
+	unavailable := gate(root.clone(), f"{root}/target/missing-ms", "success.ms")
 	expect(
 		var failures,
 		"a missing compiler must fail without a leak report",
@@ -89,7 +89,7 @@ fn main() Int:
 		) and not unavailable.output.contains("leak:"),
 		unavailable,
 	)
-	for message in failures: note("FAIL {message}")
+	for message in failures: note(f"FAIL {message}")
 	if not failures.is_empty(): return 1
 
 	stdout().write("count-check-selftest: 4 cases passed\n").get()

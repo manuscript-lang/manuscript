@@ -5,7 +5,7 @@ fn lcg(x: Int) Int:
 
 fn stop(name: String, t0: Int, chk: Int) Void:
 	now := monotonic().tick
-	print("{name} {(now - t0) / 1000} {chk}")
+	print(f"{name} {(now - t0) / 1000} {chk}")
 
 fn n_sort_floats() Int:
 	var xs: List[Float] = []
@@ -24,7 +24,7 @@ fn n_sort_strings_default() Int:
 
 	for i in 0..300000:
 		x = lcg(x)
-		xs.append("name-{x % 100000}-suffix")
+		xs.append(f"name-{x % 100000}-suffix")
 
 	ys := xs.sorted()
 	return ys[0].length() + ys[299999].length()
@@ -32,11 +32,11 @@ fn n_sort_strings_default() Int:
 fn n_index_of_strings() Int:
 	var xs: List[String] = []
 	for i in 0..2000:
-		xs.append("item-number-{i}")
+		xs.append(f"item-number-{i}")
 
 	var t = 0
 	for i in 0..20000:
-		t += xs.index_of("item-number-{i % 2000}").get(0)
+		t += xs.index_of(f"item-number-{i % 2000}").get(0)
 	return t
 
 fn n_remove_front() Int:
@@ -126,8 +126,8 @@ fn n_string_set_ops() Int:
 	var b = Set[String]()
 
 	for i in 0..200000:
-		a.add("s{i}")
-		b.add("s{i * 2}")
+		a.add(f"s{i}")
+		b.add(f"s{i * 2}")
 
 	return a.intersection(b).length() + a.union(b).length()
 

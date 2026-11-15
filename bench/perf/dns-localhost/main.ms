@@ -10,4 +10,4 @@ fn main() Void:
 		n += lookup("localhost").get().length()
 
 	t1 := monotonic().tick
-	print("lookup {(t1 - t0) / 20000} ns/call {n}")
+	print(f"lookup {(t1 - t0) / 20000} ns/call {n}")

@@ -9,14 +9,14 @@ import (
 
 fn bench(name: String, status: String, ops: String, median: String) String:
 	return j(
-		"<'name':'m.ms::{name}','status':'{status}','stats':<'operations':{ops},'median_ns':{median}>>"
+		f"<'name':'m.ms::{name}','status':'{status}','stats':<'operations':{ops},'median_ns':{median}>>"
 	)
 
 fn j(text: String) String:
-	return text.replace("'", "\"").replace("<", "\{").replace(">", "\}")
+	return text.replace("'", "\"").replace("<", "{").replace(">", "}")
 
 fn document(cases: List[String]) String:
-	return j("<'benches':[{cases.join(",")}],'diagnostics':[]>")
+	return j(f"<'benches':[{cases.join(",")}],'diagnostics':[]>")
 
 test "invalid numeric fields are rejected":
 	texts := [
@@ -54,7 +54,7 @@ test "invalid numeric fields are rejected":
 test "huge exponents and non-finite constants are rejected, finite zero is not":
 	for token in ["1e999", "NaN", "Infinity", "-Infinity"]:
 		text := j(
-			"<'benches':[<'name':'a','status':'passed','stats':<'operations':1,'median_ns':{token}>>]>"
+			f"<'benches':[<'name':'a','status':'passed','stats':<'operations':1,'median_ns':{token}>>]>"
 		)
 		_cause := expect_error(read_cases(text))?
 
@@ -161,7 +161,7 @@ test "a failed producer yields no report":
 	failed := Ran(
 		true,
 		42,
-		"{document([bench("a", "passed", "10", "2")])}",
+		f"{document([bench("a", "passed", "10", "2")])}",
 		"producer detail",
 	)
 	_cause := expect_error(must("producer", failed))?

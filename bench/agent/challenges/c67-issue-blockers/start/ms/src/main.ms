@@ -242,7 +242,7 @@ fn prio_rank(s: String) Int:
 fn opt_s(x: String?) String: x.get("-")
 
 fn opt_i(x: Int?) String:
-	if v := x: return "{v}"
+	if v := x: return f"{v}"
 	return "-"
 
 fn labels_s(l: List[String]) String:
@@ -252,17 +252,17 @@ fn labels_s(l: List[String]) String:
 fn parse_id_syntax(arg: String) Int!:
 	var a = arg.clone()
 	if a.starts_with("#"): a = rest_after_hash(arg)
-	if a.length() == 0: return error(Error("bad issue id '{arg}'"))
+	if a.length() == 0: return error(Error(f"bad issue id '{arg}'"))
 
 	var v = 0
 
 	for c in a.chars():
 		d := digit(c)
-		if d < 0: return error(Error("bad issue id '{arg}'"))
+		if d < 0: return error(Error(f"bad issue id '{arg}'"))
 
 		if v < 1000000000000: v = v * 10 + d
 
-	if v < 1: return error(Error("bad issue id '{arg}'"))
+	if v < 1: return error(Error(f"bad issue id '{arg}'"))
 
 	return ok(v)
 
@@ -281,7 +281,7 @@ fn apply_token(var f: Fields, tok: String) Void!:
 			eq = i
 			break
 
-	if eq <= 0: return error(Error("expected field=value, got '{tok}'"))
+	if eq <= 0: return error(Error(f"expected field=value, got '{tok}'"))
 
 	name := join_range(cs, 0, eq)
 	value := join_range(cs, eq + 1, cs.length())
@@ -295,7 +295,7 @@ fn apply_token(var f: Fields, tok: String) Void!:
 
 	if name == "priority":
 		r := prio_rank(value)
-		if r < 0: return error(Error("bad priority '{value}'"))
+		if r < 0: return error(Error(f"bad priority '{value}'"))
 
 		f.priority = r
 		return ok()
@@ -317,7 +317,7 @@ fn apply_token(var f: Fields, tok: String) Void!:
 			f.points = none
 			return ok()
 
-		if not valid_int(value): return error(Error("bad points '{value}'"))
+		if not valid_int(value): return error(Error(f"bad points '{value}'"))
 
 		f.points = to_int(value)
 		return ok()
@@ -327,7 +327,7 @@ fn apply_token(var f: Fields, tok: String) Void!:
 			f.due = none
 			return ok()
 
-		if not valid_date(value): return error(Error("bad date '{value}'"))
+		if not valid_date(value): return error(Error(f"bad date '{value}'"))
 
 		f.due = value
 		return ok()
@@ -340,14 +340,14 @@ fn apply_token(var f: Fields, tok: String) Void!:
 		f.labels = norm_labels(value.split(","))?
 		return ok()
 
-	return error(Error("unknown field '{name}'"))
+	return error(Error(f"unknown field '{name}'"))
 
 fn norm_labels(parts: List[String]) List[String]!:
 	var out = List[String]()
 
 	for p in parts:
 		l := p.lower()
-		if not valid_label(l): return error(Error("bad label '{l}'"))
+		if not valid_label(l): return error(Error(f"bad label '{l}'"))
 
 		out.append(l)
 
@@ -374,27 +374,29 @@ fn copy_fields(f: Fields) Fields:
 
 fn diff_fields(a: Fields, b: Fields) List[String]:
 	var out = List[String]()
-	if a.title != b.title: out.append("title: {a.title} -> {b.title}")
+	if a.title != b.title: out.append(f"title: {a.title} -> {b.title}")
 	if a.priority != b.priority: out.append(
-		"priority: {prio_name(a.priority)} -> {prio_name(b.priority)}"
+		f"priority: {prio_name(a.priority)} -> {prio_name(b.priority)}"
 	)
 	if (
 		opt_s(a.assignee) != opt_s(b.assignee)
 		or a.assignee.is_some() != b.assignee.is_some()
 	):
-		out.append("assignee: {opt_s(a.assignee)} -> {opt_s(b.assignee)}")
+		out.append(f"assignee: {opt_s(a.assignee)} -> {opt_s(b.assignee)}")
 	if opt_i(a.points) != opt_i(b.points): out.append(
-		"points: {opt_i(a.points)} -> {opt_i(b.points)}"
+		f"points: {opt_i(a.points)} -> {opt_i(b.points)}"
 	)
-	if opt_s(a.due) != opt_s(b.due): out.append("due: {opt_s(a.due)} -> {opt_s(b.due)}")
+	if opt_s(a.due) != opt_s(b.due): out.append(
+		f"due: {opt_s(a.due)} -> {opt_s(b.due)}"
+	)
 	if labels_s(a.labels) != labels_s(b.labels): out.append(
-		"labels: {labels_s(a.labels)} -> {labels_s(b.labels)}"
+		f"labels: {labels_s(a.labels)} -> {labels_s(b.labels)}"
 	)
 	if (
 		opt_s(a.reporter) != opt_s(b.reporter)
 		or a.reporter.is_some() != b.reporter.is_some()
 	):
-		out.append("reporter: {opt_s(a.reporter)} -> {opt_s(b.reporter)}")
+		out.append(f"reporter: {opt_s(a.reporter)} -> {opt_s(b.reporter)}")
 	return out
 
 // ---------- query ----------
@@ -426,7 +428,7 @@ fn split_query(text: String) QSpec!:
 			s -= 1
 
 		if join_range(cs, s, q) == "limit":
-			if not valid_int(arg): return error(Error("bad limit '{arg}'"))
+			if not valid_int(arg): return error(Error(f"bad limit '{arg}'"))
 
 			limit = to_int(arg)
 			filter_end = s
@@ -462,7 +464,7 @@ fn parse_sort(text: String) List[SortKey]!:
 			name = rest_after_hash(w)
 
 		fi := sort_field(name)
-		if fi < 0: return error(Error("bad sort field '{name}'"))
+		if fi < 0: return error(Error(f"bad sort field '{name}'"))
 
 		keys.append(SortKey(fi, desc))
 
@@ -639,7 +641,7 @@ fn parse_filter(
 	p.advance()?
 
 	root := p.parse_or(st, var nodes, var refs)?
-	if p.kind != 7: return error(Error("query: unexpected token '{p.text}'"))
+	if p.kind != 7: return error(Error(f"query: unexpected token '{p.text}'"))
 
 	return ok(root)
 
@@ -687,7 +689,7 @@ fn var Parser.parse_not(st: State, var nodes: List[Node], var refs: List[String]
 
 		e := self.parse_or(st, var nodes, var refs)?
 		if self.kind == 7: return error(Error("query: unexpected end of query"))
-		if self.kind != 1: return error(Error("query: unexpected token '{self.text}'"))
+		if self.kind != 1: return error(Error(f"query: unexpected token '{self.text}'"))
 
 		self.advance()?
 		return ok(e)
@@ -708,7 +710,7 @@ fn var Parser.parse_not(st: State, var nodes: List[Node], var refs: List[String]
 
 	if self.kind == 7: return error(Error("query: unexpected end of query"))
 
-	return error(Error("query: unexpected token '{self.text}'"))
+	return error(Error(f"query: unexpected token '{self.text}'"))
 
 fn build_term(
 	st: State,
@@ -721,14 +723,14 @@ fn build_term(
 	var refs: List[String],
 ) Int!:
 	fc := field_code(fname)
-	if fc < 0: return error(Error("query: unknown field '{fname}'"))
+	if fc < 0: return error(Error(f"query: unknown field '{fname}'"))
 	if not op_ok(fc, op): return error(
-		Error("query: bad operator '{opt}' for field '{fname}'")
+		Error(f"query: bad operator '{opt}' for field '{fname}'")
 	)
 
 	if fc == 14:
 		q := st.views.get(value)
-		if q.is_none(): return error(Error("query: unknown view '{value}'"))
+		if q.is_none(): return error(Error(f"query: unknown view '{value}'"))
 
 		qs := split_query(q.get(""))?
 		root := parse_filter(st, qs.filter, var nodes, var refs)?
@@ -747,38 +749,38 @@ fn build_term(
 	for v in alts:
 		if fc <= 2:
 			if not valid_int(v): return error(
-				Error("query: bad value '{v}' for field '{fname}'")
+				Error(f"query: bad value '{v}' for field '{fname}'")
 			)
 
 			vals.append(v.clone())
 		else if fc == 3:
 			if not (valid_int(v) or (v == "none" and op <= 1)): return error(
-				Error("query: bad value '{v}' for field '{fname}'")
+				Error(f"query: bad value '{v}' for field '{fname}'")
 			)
 
 			vals.append(v.clone())
 		else if fc == 8:
 			if st.wf.states.find_index(fn x: x == v).is_none(): return error(
-				Error("query: bad value '{v}' for field '{fname}'")
+				Error(f"query: bad value '{v}' for field '{fname}'")
 			)
 
 			vals.append(v.clone())
 		else if fc == 9:
 			if prio_rank(v) < 0: return error(
-				Error("query: bad value '{v}' for field '{fname}'")
+				Error(f"query: bad value '{v}' for field '{fname}'")
 			)
 
 			vals.append(v.clone())
 		else if fc == 10:
 			okv := valid_date(v) or (v == "none" and op <= 1)
 			if not okv: return error(
-				Error("query: bad value '{v}' for field '{fname}'")
+				Error(f"query: bad value '{v}' for field '{fname}'")
 			)
 
 			vals.append(v.clone())
 		else if fc == 12:
 			if not (v == "open" or v == "final" or v == "overdue" or v == "unassigned"): return error(
-				Error("query: bad value '{v}' for field '{fname}'")
+				Error(f"query: bad value '{v}' for field '{fname}'")
 			)
 
 			vals.append(v.clone())
@@ -790,7 +792,7 @@ fn build_term(
 				or v == "labels"
 				or v == "comments"
 				or v == "reporter"
-			): return error(Error("query: bad value '{v}' for field '{fname}'"))
+			): return error(Error(f"query: bad value '{v}' for field '{fname}'"))
 
 			vals.append(v.clone())
 		else:
@@ -955,7 +957,7 @@ fn cmp_issue(keys: List[SortKey], a: Issue, b: Issue) Int:
 	return cmp_int(a.id, b.id)
 
 fn issue_line(st: State, iss: Issue) String:
-	return "#{iss.id} | {st.wf.states[iss.state]} | {prio_name(iss.f.priority)} | {opt_s(iss.f.assignee)} | {opt_i(iss.f.points)} | {opt_s(iss.f.due)} | {labels_s(iss.f.labels)} | {iss.f.title}"
+	return f"#{iss.id} | {st.wf.states[iss.state]} | {prio_name(iss.f.priority)} | {opt_s(iss.f.assignee)} | {opt_i(iss.f.points)} | {opt_s(iss.f.due)} | {labels_s(iss.f.labels)} | {iss.f.title}"
 
 fn State.select(filter: String) List[Int]!:
 	var nodes = List[Node]()
@@ -992,7 +994,7 @@ fn State.run_list(
 		lines.append(issue_line(self, self.issues[i]))
 		count += 1
 
-	lines.append(if count == 1: "(1 issue)" else: "({count} issues)")
+	lines.append(if count == 1: "(1 issue)" else: f"({count} issues)")
 	return ok(lines.join("\n"))
 
 // ---------- state ops ----------
@@ -1005,7 +1007,7 @@ fn State.find(id: Int) Int:
 
 fn State.id_arg(arg: String) Int!:
 	id := parse_id_syntax(arg)?
-	if self.find(id) < 0: return error(Error("no such issue #{id}"))
+	if self.find(id) < 0: return error(Error(f"no such issue #{id}"))
 
 	return ok(id)
 
@@ -1015,21 +1017,25 @@ fn var State.add_log(id: Int, detail: String) Void:
 fn State.final_check(idx: Int) Void!:
 	iss := self.issues[idx]
 	if self.wf.finals[iss.state]:
-		return error(Error("#{iss.id} is in final state '{self.wf.states[iss.state]}'"))
+		return error(
+			Error(
+				f"#{iss.id} is in final state '{self.wf.states[iss.state]}'"
+			)
+		)
 
 	return ok()
 
 fn var State.commit_edit(idx: Int, nf: Fields) String:
 	changes := diff_fields(self.issues[idx].f, nf)
 	id := self.issues[idx].id
-	if changes.length() == 0: return "#{id} unchanged"
+	if changes.length() == 0: return f"#{id} unchanged"
 
 	self.clock += 1
 	self.issues[idx].f = nf.clone()
 	self.issues[idx].updated = self.clock
 	for c in changes:
 		self.add_log(id, c)
-	return "updated #{id}"
+	return f"updated #{id}"
 
 fn var State.do_edit(id: Int, toks: List[String]) String!:
 	idx := self.find(id)
@@ -1056,7 +1062,7 @@ fn var State.do_label(id: Int, items: List[String]) String!:
 			name = rest_after_hash(it)
 
 		l := name.lower()
-		if not valid_label(l): return error(Error("bad label '{l}'"))
+		if not valid_label(l): return error(Error(f"bad label '{l}'"))
 
 		if sign == "-":
 			var nl = List[String]()
@@ -1075,10 +1081,10 @@ fn var State.do_move(id: Int, target: String, comment: String) String!:
 	self.final_check(idx)?
 
 	ti := self.wf.states.find_index(fn x: x == target).get(-1)
-	if ti < 0: return error(Error("unknown state '{target}'"))
+	if ti < 0: return error(Error(f"unknown state '{target}'"))
 
 	cur := self.issues[idx].state
-	if ti == cur: return error(Error("already in state '{target}'"))
+	if ti == cur: return error(Error(f"already in state '{target}'"))
 
 	var found = -1
 
@@ -1090,7 +1096,7 @@ fn var State.do_move(id: Int, target: String, comment: String) String!:
 			break
 
 	curname := self.wf.states[cur].clone()
-	if found < 0: return error(Error("transition '{curname} -> {target}' not allowed"))
+	if found < 0: return error(Error(f"transition '{curname} -> {target}' not allowed"))
 
 	var missing = List[String]()
 	f := self.issues[idx].f.clone()
@@ -1109,7 +1115,7 @@ fn var State.do_move(id: Int, target: String, comment: String) String!:
 	if missing.length() > 0:
 		return error(
 			Error(
-				"cannot move #{id} to {target}: missing {missing.join(", ")}"
+				f"cannot move #{id} to {target}: missing {missing.join(", ")}"
 			)
 		)
 
@@ -1118,15 +1124,15 @@ fn var State.do_move(id: Int, target: String, comment: String) String!:
 	self.issues[idx].updated = self.clock
 	self.issues[idx].hist_t.append(self.clock)
 	self.issues[idx].hist_s.append(ti)
-	self.add_log(id, "state: {curname} -> {target}")
+	self.add_log(id, f"state: {curname} -> {target}")
 
 	if comment != "":
 		self.issues[idx].comments.append(
 			Comment(self.clock, self.actor.clone(), comment.clone())
 		)
-		self.add_log(id, "comment: {comment}")
+		self.add_log(id, f"comment: {comment}")
 
-	return ok("moved #{id}: {curname} -> {target}")
+	return ok(f"moved #{id}: {curname} -> {target}")
 
 // ---------- commands ----------
 
@@ -1151,7 +1157,7 @@ fn var State.cmd_create(rest: String) String!:
 	iss.hist_t.append(self.clock)
 	iss.hist_s.append(self.wf.initial)
 	self.issues.append(iss)
-	self.add_log(id, "created \"{first}\"")
+	self.add_log(id, f"created \"{first}\"")
 
 	var rep_given = false
 	for i in 1..toks.length():
@@ -1161,7 +1167,7 @@ fn var State.cmd_create(rest: String) String!:
 	if not rep_given: def.reporter = nf.reporter.clone()
 	for c in diff_fields(def, nf):
 		self.add_log(id, c)
-	return ok("created #{id}")
+	return ok(f"created #{id}")
 
 fn var State.cmd_edit(rest: String) String!:
 	toks := tokenize(rest)?
@@ -1182,7 +1188,7 @@ fn var State.cmd_assign(rest: String) String!:
 	if toks.length() != 2: return error(Error("usage: assign ID NAME"))
 
 	id := self.id_arg(toks[0].clone())?
-	return self.do_edit(id, ["assignee={toks[1]}"])
+	return self.do_edit(id, [f"assignee={toks[1]}"])
 
 fn var State.cmd_move(rest: String) String!:
 	ws := rest.fields()
@@ -1203,8 +1209,8 @@ fn var State.cmd_comment(rest: String) String!:
 	self.issues[idx].comments.append(
 		Comment(self.clock, self.actor.clone(), text.clone())
 	)
-	self.add_log(id, "comment: {text}")
-	return ok("commented #{id}")
+	self.add_log(id, f"comment: {text}")
+	return ok(f"commented #{id}")
 
 fn var State.cmd_delete(rest: String) String!:
 	ws := rest.fields()
@@ -1215,7 +1221,7 @@ fn var State.cmd_delete(rest: String) String!:
 	self.clock += 1
 	self.add_log(id, "deleted")
 	self.issues.remove(idx)
-	return ok("deleted #{id}")
+	return ok(f"deleted #{id}")
 
 fn State.cmd_show(rest: String) String!:
 	ws := rest.fields()
@@ -1225,18 +1231,20 @@ fn State.cmd_show(rest: String) String!:
 	iss := self.issues[self.find(id)]
 	f := iss.f
 	var lines = List[String]()
-	lines.append("#{iss.id} {f.title}")
-	lines.append("  state: {self.wf.states[iss.state]}")
-	lines.append("  priority: {prio_name(f.priority)}")
-	lines.append("  assignee: {opt_s(f.assignee)}")
-	lines.append("  points: {opt_i(f.points)}")
-	lines.append("  due: {opt_s(f.due)}")
-	lines.append("  labels: {if f.labels.length() == 0: "-" else: f.labels.join(", ")}")
-	lines.append("  reporter: {opt_s(f.reporter)}")
-	lines.append("  created: t={iss.created}, updated: t={iss.updated}")
-	lines.append("  comments: {iss.comments.length()}")
+	lines.append(f"#{iss.id} {f.title}")
+	lines.append(f"  state: {self.wf.states[iss.state]}")
+	lines.append(f"  priority: {prio_name(f.priority)}")
+	lines.append(f"  assignee: {opt_s(f.assignee)}")
+	lines.append(f"  points: {opt_i(f.points)}")
+	lines.append(f"  due: {opt_s(f.due)}")
+	lines.append(
+		f"  labels: {if f.labels.length() == 0: "-" else: f.labels.join(", ")}"
+	)
+	lines.append(f"  reporter: {opt_s(f.reporter)}")
+	lines.append(f"  created: t={iss.created}, updated: t={iss.updated}")
+	lines.append(f"  comments: {iss.comments.length()}")
 	for c in iss.comments:
-		lines.append("    [t={c.t} {c.actor}] {c.text}")
+		lines.append(f"    [t={c.t} {c.actor}] {c.text}")
 	return ok(lines.join("\n"))
 
 fn State.cmd_list(rest: String) String!:
@@ -1252,12 +1260,12 @@ fn var State.cmd_log(rest: String) String!:
 
 	if ws.length() > 0 and ws[0] != "tail":
 		id = parse_id_syntax(ws[0])?
-		if id >= self.next_id: return error(Error("no such issue #{id}"))
+		if id >= self.next_id: return error(Error(f"no such issue #{id}"))
 
 		p = 1
 
 	if ws.length() == p + 2 and ws[p] == "tail":
-		if not valid_int(ws[p + 1]): return error(Error("bad tail '{ws[p + 1]}'"))
+		if not valid_int(ws[p + 1]): return error(Error(f"bad tail '{ws[p + 1]}'"))
 
 		tail = to_int(ws[p + 1])
 	else if ws.length() != p:
@@ -1266,7 +1274,7 @@ fn var State.cmd_log(rest: String) String!:
 	var sel = List[String]()
 	for e in self.log:
 		if id < 0 or e.id == id:
-			sel.append("t={e.t} {e.actor} #{e.id} {e.detail}")
+			sel.append(f"t={e.t} {e.actor} #{e.id} {e.detail}")
 
 	var start = 0
 	if tail >= 0 and tail < sel.length(): start = sel.length() - tail
@@ -1307,33 +1315,33 @@ fn var State.cmd_view(rest: String) String!:
 
 		var lines = List[String]()
 		for n in names:
-			lines.append("{n}: {self.views.get(n).get("")}")
+			lines.append(f"{n}: {self.views.get(n).get("")}")
 		return ok(lines.join("\n"))
 
 	if sub == "show":
 		if ws.length() != 2: return error(Error("usage: view show NAME"))
 
 		q := self.views.get(ws[1])
-		if q.is_none(): return error(Error("unknown view '{ws[1]}'"))
+		if q.is_none(): return error(Error(f"unknown view '{ws[1]}'"))
 
-		return ok("{ws[1]}: {q.get("")}")
+		return ok(f"{ws[1]}: {q.get("")}")
 
 	if sub == "delete":
 		if ws.length() != 2: return error(Error("usage: view delete NAME"))
 
 		name := ws[1]
-		if self.views.get(name).is_none(): return error(Error("unknown view '{name}'"))
+		if self.views.get(name).is_none(): return error(Error(f"unknown view '{name}'"))
 
 		for m in self.sorted_views():
 			if m == name: continue
 
 			refs := view_refs(self, m, self.views.get(m).get(""))
 			if refs.contains(name): return error(
-				Error("view '{name}' is used by '{m}'")
+				Error(f"view '{name}' is used by '{m}'")
 			)
 
 		self.views.remove(name.clone())
-		return ok("deleted view {name}")
+		return ok(f"deleted view {name}")
 
 	if sub == "run":
 		if ws.length() < 2: return error(
@@ -1342,12 +1350,12 @@ fn var State.cmd_view(rest: String) String!:
 
 		name := ws[1]
 		q := self.views.get(name)
-		if q.is_none(): return error(Error("unknown view '{name}'"))
+		if q.is_none(): return error(Error(f"unknown view '{name}'"))
 
 		spec := split_query(q.get(""))?
 		extra := split_query(rest_after(rest, 2))?
 		if extra.filter.trim() != "": return error(
-			Error("unexpected '{extra.filter.trim()}'")
+			Error(f"unexpected '{extra.filter.trim()}'")
 		)
 
 		var sort_t: String? = spec.sort.clone()
@@ -1361,7 +1369,7 @@ fn var State.cmd_view(rest: String) String!:
 
 		name := ws[1]
 		valid := valid_view_name(name)
-		if not valid: return error(Error("bad view name '{name}'"))
+		if not valid: return error(Error(f"bad view name '{name}'"))
 
 		query := rest_after(rest, 2).trim()
 		spec := split_query(query)?
@@ -1371,10 +1379,10 @@ fn var State.cmd_view(rest: String) String!:
 		if s := spec.sort:
 			_keys := parse_sort(s)?
 		if refs.contains(name) and self.views.get(name).is_some():
-			return error(Error("view '{name}' would reference itself"))
+			return error(Error(f"view '{name}' would reference itself"))
 
 		self.views[name.clone()] = query.clone()
-		return ok("saved view {name}")
+		return ok(f"saved view {name}")
 
 	return error(Error(usage))
 
@@ -1431,7 +1439,7 @@ fn var State.cmd_bulk(rest: String) String!:
 			Error("usage: bulk set field=value... where QUERY")
 		)
 	else:
-		return error(Error("unknown bulk action '{act}'"))
+		return error(Error(f"unknown bulk action '{act}'"))
 
 	idxs := self.select(query)?
 	var ids = List[Int]()
@@ -1447,7 +1455,7 @@ fn var State.cmd_bulk(rest: String) String!:
 		var r: String! = ok("")
 
 		if act == "move": r = self.do_move(id, toks[1], "")
-		else if act == "assign": r = self.do_edit(id, ["assignee={toks[1]}"])
+		else if act == "assign": r = self.do_edit(id, [f"assignee={toks[1]}"])
 		else if act == "label": r = self.do_label(id, rest_toks)
 		else: r = self.do_edit(id, rest_toks)
 
@@ -1455,10 +1463,10 @@ fn var State.cmd_bulk(rest: String) String!:
 			lines.append(v.clone())
 			okc += 1
 		else:
-			lines.append("#{id} error: {r.err().message}")
+			lines.append(f"#{id} error: {r.err().message}")
 			failc += 1
 
-	lines.append("bulk: {okc} ok, {failc} failed")
+	lines.append(f"bulk: {okc} ok, {failc} failed")
 	return ok(lines.join("\n"))
 
 // ---------- reports ----------
@@ -1506,21 +1514,21 @@ fn State.cmd_report(rest: String) String!:
 
 		var lines = List[String]()
 		total := self.issues.length()
-		lines.append("issues: {total} (open {open_n}, final {total - open_n})")
+		lines.append(f"issues: {total} (open {open_n}, final {total - open_n})")
 		lines.append("by state:")
 		for i in 0..self.wf.states.length():
-			lines.append("  {self.wf.states[i]}: {by_state[i]}")
+			lines.append(f"  {self.wf.states[i]}: {by_state[i]}")
 		lines.append("by priority:")
 
 		var p = 3
 
 		while p >= 0:
-			lines.append("  {prio_name(p)}: {by_prio[p]}")
+			lines.append(f"  {prio_name(p)}: {by_prio[p]}")
 			p -= 1
 
-		lines.append("unassigned: {unass}")
-		lines.append("overdue: {overdue}")
-		lines.append("open points: {open_pts}")
+		lines.append(f"unassigned: {unass}")
+		lines.append(f"overdue: {overdue}")
+		lines.append(f"open points: {open_pts}")
 		return ok(lines.join("\n"))
 
 	if sub == "workload":
@@ -1555,9 +1563,9 @@ fn State.cmd_report(rest: String) String!:
 
 		var lines = List[String]()
 		for g in groups:
-			lines.append("{g.name}: {g.n} {issues_word(g.n)}, {g.pts} points")
+			lines.append(f"{g.name}: {g.n} {issues_word(g.n)}, {g.pts} points")
 		if un_n > 0: lines.append(
-			"unassigned: {un_n} {issues_word(un_n)}, {un_p} points"
+			f"unassigned: {un_n} {issues_word(un_n)}, {un_p} points"
 		)
 		return ok(lines.join("\n"))
 
@@ -1580,7 +1588,7 @@ fn State.cmd_report(rest: String) String!:
 
 		var lines = List[String]()
 		for c in counts:
-			lines.append("{c.name}: {c.n}")
+			lines.append(f"{c.name}: {c.n}")
 		return ok(lines.join("\n"))
 
 	if sub == "timeline":
@@ -1595,7 +1603,7 @@ fn State.cmd_report(rest: String) String!:
 			to := if i + 1 < n: iss.hist_t[i + 1] else: self.clock
 			from := iss.hist_t[i]
 			lines.append(
-				"{self.wf.states[iss.hist_s[i]]}: t={from}..{to} ({to - from})"
+				f"{self.wf.states[iss.hist_s[i]]}: t={from}..{to} ({to - from})"
 			)
 
 		return ok(lines.join("\n"))
@@ -1633,7 +1641,7 @@ fn parse_workflow(block: List[String]) Wf!:
 		if line.starts_with("initial:"):
 			name := rest_after_hash_n(line, 8).trim()
 			if not valid_state_name(name): return error(
-				Error("workflow: bad state name '{name}'")
+				Error(f"workflow: bad state name '{name}'")
 			)
 			if initial >= 0: return error(
 				Error("workflow: initial state defined twice")
@@ -1644,7 +1652,7 @@ fn parse_workflow(block: List[String]) Wf!:
 			for part in rest_after_hash_n(line, 6).split(","):
 				name := part.trim()
 				if not valid_state_name(name): return error(
-					Error("workflow: bad state name '{name}'")
+					Error(f"workflow: bad state name '{name}'")
 				)
 
 				finals.append(reg(var states, name))
@@ -1652,7 +1660,7 @@ fn parse_workflow(block: List[String]) Wf!:
 			pos := line.index_of("->").get(0)
 			src := (line.slice(0, pos)?).trim()
 			if not valid_state_name(src): return error(
-				Error("workflow: bad state name '{src}'")
+				Error(f"workflow: bad state name '{src}'")
 			)
 
 			si := reg(var states, src)
@@ -1662,17 +1670,17 @@ fn parse_workflow(block: List[String]) Wf!:
 				ws := entry.fields()
 				if ws.length() == 0: return error(Error("workflow: bad state name ''"))
 				if not valid_state_name(ws[0]): return error(
-					Error("workflow: bad state name '{ws[0]}'")
+					Error(f"workflow: bad state name '{ws[0]}'")
 				)
 
 				var guards = List[String]()
 				if ws.length() == 2 or ws.length() > 3: return error(
-					Error("workflow: bad line '{line}'")
+					Error(f"workflow: bad line '{line}'")
 				)
 
 				if ws.length() == 3:
 					if ws[1] != "requires": return error(
-						Error("workflow: bad line '{line}'")
+						Error(f"workflow: bad line '{line}'")
 					)
 
 					for g in ws[2].split("+"):
@@ -1683,14 +1691,14 @@ fn parse_workflow(block: List[String]) Wf!:
 							or g == "labels"
 							or g == "reporter"
 						):
-							return error(Error("workflow: bad guard field '{g}'"))
+							return error(Error(f"workflow: bad guard field '{g}'"))
 
 						guards.append(g.clone())
 
 				di := reg(var states, ws[0])
 				trans.append(Trans(si, di, guards))
 		else:
-			return error(Error("workflow: bad line '{line}'"))
+			return error(Error(f"workflow: bad line '{line}'"))
 
 	if initial < 0: return error(Error("workflow: initial state missing"))
 
@@ -1702,7 +1710,7 @@ fn parse_workflow(block: List[String]) Wf!:
 	for t in trans:
 		if fl[t.src]: return error(
 			Error(
-				"workflow: '{states[t.src]}' is final and cannot have transitions"
+				f"workflow: '{states[t.src]}' is final and cannot have transitions"
 			)
 		)
 	return ok(Wf(states, fl, initial, trans))
@@ -1717,7 +1725,7 @@ fn var State.finish(r: String!) Void:
 	if v := r:
 		self.emit(v)
 	else:
-		self.emit("error: {r.err().message}")
+		self.emit(f"error: {r.err().message}")
 
 fn var State.run_workflow(lines: List[String], start: Int) Int:
 	var i = start
@@ -1740,9 +1748,9 @@ fn var State.run_workflow(lines: List[String], start: Int) Int:
 		var cnt = w.trans.length()
 		var sc = w.states.length()
 		self.wf = w.clone()
-		self.emit("workflow ok: {sc} states, {cnt} transitions")
+		self.emit(f"workflow ok: {sc} states, {cnt} transitions")
 	else:
-		self.emit("error: {r.err().message}")
+		self.emit(f"error: {r.err().message}")
 
 	return i
 
@@ -1757,15 +1765,15 @@ fn var State.exec(line: String) Void:
 			self.emit("error: usage: actor NAME")
 		else:
 			self.actor = ws[1].clone()
-			self.emit("actor is {ws[1]}")
+			self.emit(f"actor is {ws[1]}")
 	else if cmd == "today":
 		if ws.length() != 2:
 			self.emit("error: usage: today DATE")
 		else if not valid_date(ws[1]):
-			self.emit("error: bad date '{ws[1]}'")
+			self.emit(f"error: bad date '{ws[1]}'")
 		else:
 			self.today = ws[1].clone()
-			self.emit("today is {ws[1]}")
+			self.emit(f"today is {ws[1]}")
 	else if cmd == "create": self.finish(self.cmd_create(rest))
 	else if cmd == "edit": self.finish(self.cmd_edit(rest))
 	else if cmd == "label": self.finish(self.cmd_label(rest))
@@ -1779,7 +1787,7 @@ fn var State.exec(line: String) Void:
 	else if cmd == "bulk": self.finish(self.cmd_bulk(rest))
 	else if cmd == "log": self.finish(self.cmd_log(rest))
 	else if cmd == "report": self.finish(self.cmd_report(rest))
-	else: self.emit("error: unknown command '{cmd}'")
+	else: self.emit(f"error: unknown command '{cmd}'")
 
 // ms: allow_effect std.console.read
 // ms: allow_effect std.console.write
@@ -1797,7 +1805,7 @@ fn main() Void!:
 		t := line.trim()
 		if t == "" or t.starts_with("#"): continue
 
-		print("> {line}")
+		print(f"> {line}")
 
 		if t.fields()[0] == "workflow":
 			i = st.run_workflow(lines, i)

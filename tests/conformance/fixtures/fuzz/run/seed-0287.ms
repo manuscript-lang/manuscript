@@ -6,45 +6,45 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     f1 := 528.694
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
 
     f2 := (f1 + f1)
-    say("f2 = {f2}")
+    say(f"f2 = {f2}")
 
-    if ("beta" + "brace\{s\}").ends_with("42"):
+    if ("beta" + "brace{s}").ends_with("42"):
         say("héllo".trim())
     else:
         say("Tab\there")
 
     f3 := (((668.335 / f2) / 847.245) * (f2 - (239.039 - f1)))
-    say("f3 = {f3}")
+    say(f"f3 = {f3}")
 
     var acc4 = 0
     for i in 0..0:
         acc4 += i * (-1)
-    say("acc4 = {acc4}")
+    say(f"acc4 = {acc4}")
 
     i5 := (-26)
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     s6 := "héllo"
-    say("s6 = [{s6}]")
+    say(f"s6 = [{s6}]")
 
     b7 := true
-    say("b7 = {b7}")
+    say(f"b7 = {b7}")
 
     if ((b7 and true) and s6.contains("back\\slash")):
         say(s6)
     else:
-        say(("{(-11)}:" + "quote\"d"))
+        say((f"{(-11)}:" + "quote\"d"))
 
     f8 := 63.285
-    say("f8 = {f8}")
+    say(f"f8 = {f8}")
 
     s9 := s6
-    say("s9 = [{s9}]")
+    say(f"s9 = [{s9}]")
     return 0

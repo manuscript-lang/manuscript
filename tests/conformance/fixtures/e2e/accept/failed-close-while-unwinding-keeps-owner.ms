@@ -16,7 +16,7 @@ type Item:
 	fail: Bool
 
 fn var Item.close() Void!:
-	append_file(self.log, "{self.id},").wait()?
+	append_file(self.log, f"{self.id},").wait()?
 	if self.fail: return error(Error("close failed"))
 
 fn events(log: String) String!:
@@ -37,14 +37,14 @@ fn list_then_fault(log: String) Void:
 
 test "a failed close of a deque element while unwinding keeps the body fault":
 	temp := temporary("failed-close-")?
-	log := "{temp.path()}/log"
+	log := f"{temp.path()}/log"
 	message := expect_fault(fn: deque_then_fault(log.clone()))?
 	expect_equal(message, "body fault")?
 	expect_equal(events(log)?, "2,1,")?
 
 test "a failed close of an optional element while unwinding keeps the body fault":
 	temp := temporary("failed-close-")?
-	log := "{temp.path()}/log"
+	log := f"{temp.path()}/log"
 	message := expect_fault(fn: list_then_fault(log.clone()))?
 	expect_equal(message, "body fault")?
 	expect_equal(events(log)?, "2,1,")?

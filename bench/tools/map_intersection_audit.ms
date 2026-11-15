@@ -49,7 +49,7 @@ fn run(args: List[String]) String!:
 			if args.length() > 6 and args[6] != pattern: continue
 
 			for n in [0, 1, 8, 128, 4096, 65536]:
-				if args.length() > 7 and args[7] != "{n}": continue
+				if args.length() > 7 and args[7] != f"{n}": continue
 
 				count := if n > 0: work / n else: work
 				repeats := if count < 1: 1 else: count
@@ -66,14 +66,14 @@ fn run(args: List[String]) String!:
 							args[version],
 							[
 								mode.clone(),
-								"{n}",
-								"{repeats}",
+								f"{n}",
+								f"{repeats}",
 								pattern.clone(),
 							],
 						)
 						wall := monotonic().difference(start).to_nanoseconds()
 						if not ran.ok or ran.code != 0 or ran.stderr != "": return invalid(
-							"producer failed: {mode} {pattern} {n}: {ran.code} {ran.stderr}"
+							f"producer failed: {mode} {pattern} {n}: {ran.code} {ran.stderr}"
 						)
 
 						parts := ran.stdout.trim().split(" ")
@@ -84,19 +84,19 @@ fn run(args: List[String]) String!:
 						elapsed := parts[0].parse_int().get(0)
 						actual := parts[1].parse_int().get(-1)
 						if elapsed <= 0 or actual != want: return invalid(
-							"invalid timing or checksum: {mode} {pattern} {n}"
+							f"invalid timing or checksum: {mode} {pattern} {n}"
 						)
 
 						rows.append(
-							"{mode},{pattern},{n},{repeats},{sample - 1},{version},{elapsed},{wall},{actual}"
+							f"{mode},{pattern},{n},{repeats},{sample - 1},{version},{elapsed},{wall},{actual}"
 						)
 
-				write_text("{out}/samples.csv", rows.join("\n") + "\n")
+				write_text(f"{out}/samples.csv", rows.join("\n") + "\n")
 
 	if rows.length() == 1: return invalid("no cases matched")
 
-	write_text("{out}/complete.txt", "all producers and checksums passed\n")
-	return ok("completed {rows.length() - 1} validated producer runs")
+	write_text(f"{out}/complete.txt", "all producers and checksums passed\n")
+	return ok(f"completed {rows.length() - 1} validated producer runs")
 
 fn main() Int:
 	return finish(run(arguments()))

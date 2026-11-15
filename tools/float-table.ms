@@ -34,7 +34,7 @@ fn entry(k: Int) BigInt:
 	return whole.add(from_int(1))
 
 fn hex16(value: BigInt) String:
-	return "0x{value.to_string_radix(16).pad_start(16, "0")}"
+	return f"0x{value.to_string_radix(16).pad_start(16, "0")}"
 
 fn main() Void:
 	mask := from_int(1).shift_left(63).get().subtract(from_int(1))
@@ -54,6 +54,6 @@ fn main() Void:
 
 	for k in - 324..293:
 		g := entry(k)
-		print("    ({hex16(g.shift_right(63).get())}, {hex16(g.bit_and(mask))}),")
+		print(f"    ({hex16(g.shift_right(63).get())}, {hex16(g.bit_and(mask))}),")
 
 	print("];")

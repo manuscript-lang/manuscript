@@ -135,12 +135,12 @@ fn parse_field(text: String, low: Int, high: Int) List[Bool]:
 
 // Formats a run as YYYY-MM-DD HH:MM.
 fn two(n: Int) String:
-	return "{n}".pad_start(2, "0")
+	return f"{n}".pad_start(2, "0")
 
 fn format_run(year: Int, month: Int, day: Int, minute_of_day: Int) String:
 	hour := minute_of_day / 60
 	minute := minute_of_day % 60
-	return "{year}-{two(month)}-{two(day)} {two(hour)}:{two(minute)}"
+	return f"{year}-{two(month)}-{two(day)} {two(hour)}:{two(minute)}"
 
 fn find_runs(
 	start_year: Int,
@@ -179,7 +179,7 @@ fn find_runs(
 	return runs
 
 fn describe(line: String, line_no: Int) String:
-	prefix := "line {line_no}: "
+	prefix := f"line {line_no}: "
 	tokens := line.split(" ")
 	if tokens.length() != 7: return prefix + "error: bad line\n"
 
@@ -221,7 +221,7 @@ fn describe(line: String, line_no: Int) String:
 	)
 	if runs.length() == 0: return prefix + "never\n"
 
-	var out = prefix + "{runs.length()} runs\n"
+	var out = prefix + f"{runs.length()} runs\n"
 	for run in runs:
 		out += run + "\n"
 	return out

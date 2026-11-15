@@ -113,7 +113,7 @@ export fn main() Int:
 		if line := got:
 			if not is_blank(line):
 				result := run_line(line)
-				stdout().write("{result}\n").get()
+				stdout().write(f"{result}\n").get()
 		else:
 			more = false
 

@@ -6,18 +6,18 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     b1 := (not ((7 <= 914516) and ("alpha" == "héllo")))
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
     var acc2 = 0
     for i in 0..0:
         acc2 += i * 8
-    say("acc2 = {acc2}")
+    say(f"acc2 = {acc2}")
 
     bad := [1, "two"]
     l3 := [(-23), 28]
-    say("l3 = {l3} len {l3.length()}")
+    say(f"l3 = {l3} len {l3.length()}")
     return 0

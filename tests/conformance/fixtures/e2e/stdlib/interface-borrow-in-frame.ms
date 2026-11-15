@@ -10,13 +10,13 @@ type Tag:
 	n: Int
 
 fn Tag.label() String:
-	return "{self.name}-{self.n}"
+	return f"{self.name}-{self.n}"
 
 fn describe(x: Named) String:
 	return x.label()
 
 fn twice(x: Named) String:
-	return "{x.label()}{x.label()}"
+	return f"{x.label()}{x.label()}"
 
 fn keep(x: Named) Named:
 	return x
@@ -25,7 +25,7 @@ test "a borrowed value passed as an interface is read in place":
 	tag := Tag("a-name-longer-than-twenty-two-bytes", 7)
 	var out = ""
 	for i in 0..3:
-		out = "{out}{describe(tag)}|"
+		out = f"{out}{describe(tag)}|"
 	expect_equal(out, "a-name-longer-than-twenty-two-bytes-7|a-name-longer-than-twenty-two-bytes-7|a-name-longer-than-twenty-two-bytes-7|")?
 	expect_equal(twice(tag).length(), 74)?
 

@@ -9,25 +9,25 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "expected an expression, found 'type'; 'type' is a reserved word and cannot be used as a name: pick another name for the variable, field or parameter ('{' at column 27 starts an interpolation; for literal braces write the text raw, r\"...\", or escape them as \\{ and \\} when the text also interpolates)",
+        "message": "expected an expression, found 'type'; 'type' is a reserved word and cannot be used as a name: pick another name for the variable, field or parameter ('{' at column 28 starts an interpolation in f\"...\" text; write \\{ and \\} for literal braces, or drop the f)",
         "position": {
           "file": "reserved-word-as-variable-name.ms",
           "line": 6,
-          "column": 28,
-          "offset": 262
+          "column": 29,
+          "offset": 263
         },
         "end": {
           "file": "reserved-word-as-variable-name.ms",
           "line": 6,
-          "column": 32,
-          "offset": 266
+          "column": 33,
+          "offset": 267
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/reserved-word-as-variable-name.ms:6:28: parse: expected an expression, found 'type'; 'type' is a reserved word and cannot be used as a name: pick another name for the variable, field or parameter ('{' at column 27 starts an interpolation; for literal braces write the text raw, r\"...\", or escape them as \\{ and \\} when the text also interpolates)\n   |\n 6 |     return \"unknown kind '{type}'\"\n   |                               ^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/reserved-word-as-variable-name.ms:6:29: parse: expected an expression, found 'type'; 'type' is a reserved word and cannot be used as a name: pick another name for the variable, field or parameter ('{' at column 28 starts an interpolation in f\"...\" text; write \\{ and \\} for literal braces, or drop the f)\n   |\n 6 |     return f\"unknown kind '{type}'\"\n   |                                ^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

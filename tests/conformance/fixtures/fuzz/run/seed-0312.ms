@@ -6,26 +6,26 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := (
         ((33 + 41) - (1 + (-127738)))
         + (((-804482) - (-754211789283)) + (581713 - 835975))
     )
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     l2 := [(-1), (-22)]
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     i3 := 48
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
-    b4 := ((false or false) and ("gamma".upper() != ("{i3}:" + "a")))
-    say("b4 = {b4}")
+    b4 := ((false or false) and ("gamma".upper() != (f"{i3}:" + "a")))
+    say(f"b4 = {b4}")
 
     l5 := [16]
-    say("l5 = {l5} len {l5.length()}")
+    say(f"l5 = {l5} len {l5.length()}")
 
     if "a".ends_with("alpha"):
         say(("quote\"d" + "日本語"))
@@ -33,5 +33,5 @@ export fn main() Int:
         say(("beta" + "emoji 😀"))
 
     f6 := (71.052 + ((569.273 / 255.25) * (621.171 - 544.25)))
-    say("f6 = {f6}")
+    say(f"f6 = {f6}")
     return 0

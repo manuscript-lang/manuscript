@@ -12,10 +12,10 @@ fn main() Void:
 		total += 1
 		counts.update(word.clone(), 0, fn v: v + 1)
 
-	print("words: {total}")
-	print("distinct: {counts.length()}")
+	print(f"words: {total}")
+	print(f"distinct: {counts.length()}")
 	for e in counts.entries().sorted(
 		fn a,
 		b: if a.value != b.value: b.value - a.value else: a.key.compare(b.key)
 	).slice(0, 10).get():
-		print("{e.key} {e.value}")
+		print(f"{e.key} {e.value}")

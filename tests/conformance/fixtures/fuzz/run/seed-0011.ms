@@ -6,26 +6,26 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     s1 := "delta"
-    say("s1 = [{s1}]")
+    say(f"s1 = [{s1}]")
 
     var acc2 = 0
     for i in 0..7:
         acc2 += i * (-4)
-    say("acc2 = {acc2}")
+    say(f"acc2 = {acc2}")
 
     i4 := 7
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     i5 := i4
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     f6 := (
         ((0.0 - 805.25) + (526.012 - 546.113))
         * ((879.25 * 624.307) * (0.254 - 83.116))
     )
-    say("f6 = {f6}")
+    say(f"f6 = {f6}")
     return 0

@@ -135,7 +135,7 @@ test "an indexed map fast path faults before evaluating its key":
 
 fn owned_key(var calls: Int) String:
 	calls += 1
-	return "key{calls}"
+	return f"key{calls}"
 
 test "an owned map key survives through changing receiver writeback":
 	var cells = {"key1": Cell(1), "key2": Cell(20)}

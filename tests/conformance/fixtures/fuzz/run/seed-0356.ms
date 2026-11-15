@@ -6,24 +6,24 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     b1 := "beta".upper().starts_with("delta")
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
-    b2 := (not ("Tab\there" != ("{(-1)}:" + "alpha")))
-    say("b2 = {b2}")
+    b2 := (not ("Tab\there" != (f"{(-1)}:" + "alpha")))
+    say(f"b2 = {b2}")
 
     s3 := ("hello world".upper() + ("quote\"d" + "  padded  ")).upper()
-    say("s3 = [{s3}]")
+    say(f"s3 = [{s3}]")
 
     i4 := (s3.scalar_length() % (50 - ((-34) % 12)))
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     i5 := (i4 + (27 - s3.scalar_length()))
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     i6 := (((i5 * i5) / ((-667) + i5)) + (-(i5 + (-37861157045))))
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
     return 0

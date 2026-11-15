@@ -66,4 +66,4 @@ fn main_run() Int:
     return sum
 
 fn main() Void:
-    _w := stdout().write("{main_run()}\n")
+    _w := stdout().write(f"{main_run()}\n")

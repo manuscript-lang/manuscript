@@ -33,7 +33,7 @@ export opaque type Histogram:
 // Adds one observation. A negative value faults: it is a caller error, not data to
 // clamp.
 fn var Histogram.record(value: Int) Void:
-	if value < 0: panic("Histogram.record: value {value} must be at least 0")
+	if value < 0: panic(f"Histogram.record: value {value} must be at least 0")
 
 	index := bucket_of(value)
 	self.counts[index] += 1
@@ -88,7 +88,7 @@ fn Histogram.mean() Float:
 // `maximum`. A `p` outside the range faults.
 fn Histogram.percentile(p: Float) Int?:
 	if not (p >= 0.0 and p <= 100.0): panic(
-		"Histogram.percentile: p {p} must be within 0.0 and 100.0"
+		f"Histogram.percentile: p {p} must be within 0.0 and 100.0"
 	)
 	if self.total == 0: return none
 

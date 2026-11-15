@@ -6,22 +6,22 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     b1 := true
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
     l2 := [12, 8]
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     s3 := ""
-    say("s3 = [{s3}]")
+    say(f"s3 = [{s3}]")
 
     l4 := [30, (-8)]
-    say("l4 = {l4} len {l4.length()}")
+    say(f"l4 = {l4} len {l4.length()}")
     say(
-        "{(-48)} {(((-820821075565) / 3) * ((-21) + (-2)))} {((-48) < (((-820821075565) / 3) * ((-21) + (-2))))} sum {(-48) + (((-820821075565) / 3) * ((-21) + (-2)))}"
+        f"{(-48)} {(((-820821075565) / 3) * ((-21) + (-2)))} {((-48) < (((-820821075565) / 3) * ((-21) + (-2))))} sum {(-48) + (((-820821075565) / 3) * ((-21) + (-2)))}"
     )
 
     var acc5 = 0
@@ -32,10 +32,10 @@ export fn main() Int:
         else:
             acc5 -= 1
 
-    say("acc5 = {acc5}")
+    say(f"acc5 = {acc5}")
 
     b6 := ((s3.is_empty() and true) and (not (s3 == s3)))
-    say("b6 = {b6}")
+    say(f"b6 = {b6}")
 
     var acc7 = 0
 
@@ -45,5 +45,5 @@ export fn main() Int:
         else:
             acc7 -= 1
 
-    say("acc7 = {acc7}")
+    say(f"acc7 = {acc7}")
     return 0

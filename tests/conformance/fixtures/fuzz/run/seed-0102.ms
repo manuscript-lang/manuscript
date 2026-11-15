@@ -6,50 +6,50 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := 39
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     f2 := (((151.156 / 0.0) * 0.0) * ((2.0e12 + 2.5) * (477.650 * 0.0)))
-    say("f2 = {f2}")
+    say(f"f2 = {f2}")
 
     f3 := ((f2 * (f2 / f2)) / (f2 * (0.747 + 12.329)))
-    say("f3 = {f3}")
+    say(f"f3 = {f3}")
 
     i4 := (i1 + ((-626565) + (i1 % 169867)))
-    say("i4 = {i4}")
-    say("{5} {(-23)} {(5 < (-23))} sum {5 + (-23)}")
+    say(f"i4 = {i4}")
+    say(f"{5} {(-23)} {(5 < (-23))} sum {5 + (-23)}")
 
     i5 := i4
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     l6 := [(-29), 5, 22, (-28), (-21)]
-    say("l6 = {l6} len {l6.length()}")
+    say(f"l6 = {l6} len {l6.length()}")
 
     i7 := l6.length()
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
     i8 := (((i4 - i4) - i7) / (-(-i4)))
-    say("i8 = {i8}")
-    say("{l6.length()} {i8} {(l6.length() < i8)} sum {l6.length() + i8}")
+    say(f"i8 = {i8}")
+    say(f"{l6.length()} {i8} {(l6.length() < i8)} sum {l6.length() + i8}")
 
     i9 := ((i4 * (-i1)) * ((i4 - i8) + i7))
-    say("i9 = {i9}")
+    say(f"i9 = {i9}")
 
     if false:
-        say("brace\{s\}".replace("delta", "naïve"))
+        say("brace{s}".replace("delta", "naïve"))
     else:
         say(("naïve" + "alpha"))
 
     i10 := (i5 + (l6.get(4) * (i4 % i9)))
-    say("i10 = {i10}")
+    say(f"i10 = {i10}")
 
     var acc11 = 0
     for i in 0..0:
         acc11 += i * 6
-    say("acc11 = {acc11}")
+    say(f"acc11 = {acc11}")
 
     var acc12 = 0
 
@@ -59,14 +59,14 @@ export fn main() Int:
         else:
             acc12 -= 1
 
-    say("acc12 = {acc12}")
+    say(f"acc12 = {acc12}")
 
     l13 := l6.sorted(fn a, b: a.compare(b))
-    say("l13 = {l13} len {l13.length()}")
+    say(f"l13 = {l13} len {l13.length()}")
     say(
-        "{((-i10) * i8)} {355222} {(((-i10) * i8) < 355222)} sum {((-i10) * i8) + 355222}"
+        f"{((-i10) * i8)} {355222} {(((-i10) * i8) < 355222)} sum {((-i10) * i8) + 355222}"
     )
 
     i14 := (((i7 * i7) * 28) % (l6.length() + 29))
-    say("i14 = {i14}")
+    say(f"i14 = {i14}")
     return 0

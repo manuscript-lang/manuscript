@@ -18,7 +18,7 @@ fn make_text(n: Int) String:
 		x = lcg(x)
 		if i > 0: sb.append(",")
 		sb.append(
-			"\{\"id\":{i},\"name\":\"item-{x % 1000}\",\"score\":{x / 7 % 10000},\"tags\":[\"t{x % 7}\",\"t{x % 11}\"],\"nested\":\{\"a\":{x % 5},\"b\":[{x % 3},{x % 13}]\}\}"
+			f"\{\"id\":{i},\"name\":\"item-{x % 1000}\",\"score\":{x / 7 % 10000},\"tags\":[\"t{x % 7}\",\"t{x % 11}\"],\"nested\":\{\"a\":{x % 5},\"b\":[{x % 3},{x % 13}]\}\}"
 		)
 
 	sb.append("]")
@@ -51,4 +51,4 @@ fn main() Void:
 		total += walk(doc)
 		out_len += stringify(doc).get("").length()
 
-	print("text {text.length()} walk {total} out {out_len}")
+	print(f"text {text.length()} walk {total} out {out_len}")

@@ -304,7 +304,7 @@ fn pts_text(p: Int) String:
     if p < 0:
         return "-"
 
-    return "{p}"
+    return f"{p}"
 
 fn labels_text(labels: List[String], sep: String) String:
     if labels.length() == 0:
@@ -316,13 +316,13 @@ fn issues_text(n: Int) String:
     if n == 1:
         return "1 issue"
 
-    return "{n} issues"
+    return f"{n} issues"
 
 fn count_text(n: Int) String:
     if n == 1:
         return "(1 issue)"
 
-    return "({n} issues)"
+    return f"({n} issues)"
 
 fn normalize_labels(items: List[String]) Result[List[String], Failure]:
     var out = List[String]()
@@ -330,7 +330,7 @@ fn normalize_labels(items: List[String]) Result[List[String], Failure]:
     for raw in items:
         l := raw.lower()
         if not valid_label(l):
-            return fail("bad label '{l}'")
+            return fail(f"bad label '{l}'")
 
         if not out.contains(l):
             out.append(l)
@@ -345,16 +345,16 @@ fn parse_id(arg: String) Result[Int, Failure]:
     if arg.starts_with("#"):
         digits = sub_from(arg, 1)
     if digits.length() == 0 or not all_in(digits, "0123456789"):
-        return fail("bad issue id '{arg}'")
+        return fail(f"bad issue id '{arg}'")
 
     while digits.length() > 1 and digits.starts_with("0"):
         digits = sub_from(digits, 1)
 
     v := digits.parse_int()
     if v.is_none():
-        return fail("no such issue #{digits}")
+        return fail(f"no such issue #{digits}")
     if v.get(0) == 0:
-        return fail("bad issue id '{arg}'")
+        return fail(f"bad issue id '{arg}'")
 
     return ok(v.get(0))
 
@@ -362,7 +362,7 @@ fn index_of_id(st: Store, id: Int) Result[Int, Failure]:
     for k in 0..st.issues.length():
         if st.issues[k].id == id:
             return ok(k)
-    return fail("no such issue #{id}")
+    return fail(f"no such issue #{id}")
 
 fn is_final_state(st: Store, s: String) Bool:
     return st.wf.finals.contains(s)
@@ -390,7 +390,7 @@ fn parse_patch(toks: List[String], start: Int) Result[Patch, Failure]:
 
         parts := tok.split("=")
         if parts.length() < 2 or parts[0].length() == 0:
-            return fail("expected field=value, got '{tok}'")
+            return fail(f"expected field=value, got '{tok}'")
 
         field := parts[0].clone()
         value := tail_list(parts, 1).join("=")
@@ -405,7 +405,7 @@ fn parse_patch(toks: List[String], start: Int) Result[Patch, Failure]:
         else if field == "priority":
             r := prio_rank(value)
             if r < 0:
-                return fail("bad priority '{value}'")
+                return fail(f"bad priority '{value}'")
 
             p.priority = some(r)
         else if field == "assignee":
@@ -421,14 +421,14 @@ fn parse_patch(toks: List[String], start: Int) Result[Patch, Failure]:
             else:
                 v := int_value(value)
                 if v.is_none():
-                    return fail("bad points '{value}'")
+                    return fail(f"bad points '{value}'")
 
                 p.points = v
         else if field == "due":
             if value == "none":
                 p.due = some("")
             else if not valid_date(value):
-                return fail("bad date '{value}'")
+                return fail(f"bad date '{value}'")
             else:
                 p.due = some(value)
         else if field == "labels":
@@ -448,7 +448,7 @@ fn parse_patch(toks: List[String], start: Int) Result[Patch, Failure]:
             else:
                 p.reporter = some(value)
         else:
-            return fail("unknown field '{field}'")
+            return fail(f"unknown field '{field}'")
 
     return ok(p)
 
@@ -473,22 +473,22 @@ fn apply_patch(old: Issue, p: Patch) Issue:
 fn diff_lines(a: Issue, b: Issue) List[String]:
     var out = List[String]()
     if a.title != b.title:
-        out.append("title: {a.title} -> {b.title}")
+        out.append(f"title: {a.title} -> {b.title}")
     if a.priority != b.priority:
-        out.append("priority: {prio_name(a.priority)} -> {prio_name(b.priority)}")
+        out.append(f"priority: {prio_name(a.priority)} -> {prio_name(b.priority)}")
     if a.assignee != b.assignee:
-        out.append("assignee: {dash(a.assignee)} -> {dash(b.assignee)}")
+        out.append(f"assignee: {dash(a.assignee)} -> {dash(b.assignee)}")
     if a.points != b.points:
-        out.append("points: {pts_text(a.points)} -> {pts_text(b.points)}")
+        out.append(f"points: {pts_text(a.points)} -> {pts_text(b.points)}")
     if a.due != b.due:
-        out.append("due: {dash(a.due)} -> {dash(b.due)}")
+        out.append(f"due: {dash(a.due)} -> {dash(b.due)}")
 
     la := labels_text(a.labels, ",")
     lb := labels_text(b.labels, ",")
     if la != lb:
-        out.append("labels: {la} -> {lb}")
+        out.append(f"labels: {la} -> {lb}")
     if a.reporter != b.reporter:
-        out.append("reporter: {dash(a.reporter)} -> {dash(b.reporter)}")
+        out.append(f"reporter: {dash(a.reporter)} -> {dash(b.reporter)}")
     return out
 
 fn apply_edit(var st: Store, idx: Int, p: Patch) Result[String, Failure]:
@@ -496,7 +496,7 @@ fn apply_edit(var st: Store, idx: Int, p: Patch) Result[String, Failure]:
     details := diff_lines(st.issues[idx], after)
     id := st.issues[idx].id
     if details.length() == 0:
-        return ok("#{id} unchanged")
+        return ok(f"#{id} unchanged")
 
     st.clock += 1
 
@@ -505,7 +505,7 @@ fn apply_edit(var st: Store, idx: Int, p: Patch) Result[String, Failure]:
     st.issues[idx] = it
     for d in details:
         log_add(var st, id, d)
-    return ok("updated #{id}")
+    return ok(f"updated #{id}")
 
 fn op_edit(var st: Store, id: Int, toks: List[String], start: Int) Result[
     String, Failure
@@ -513,7 +513,7 @@ fn op_edit(var st: Store, id: Int, toks: List[String], start: Int) Result[
     idx := try index_of_id(st, id)
     state := st.issues[idx].state.clone()
     if is_final_state(st, state):
-        return fail("#{id} is in final state '{state}'")
+        return fail(f"#{id} is in final state '{state}'")
 
     p := try parse_patch(toks, start)
     if toks.length() <= start:
@@ -529,7 +529,7 @@ fn op_label(var st: Store, id: Int, ops: List[String]) Result[String, Failure]:
     idx := try index_of_id(st, id)
     state := st.issues[idx].state.clone()
     if is_final_state(st, state):
-        return fail("#{id} is in final state '{state}'")
+        return fail(f"#{id} is in final state '{state}'")
 
     var labels = st.issues[idx].labels.clone()
 
@@ -545,7 +545,7 @@ fn op_label(var st: Store, id: Int, ops: List[String]) Result[String, Failure]:
 
         l := name.lower()
         if not valid_label(l):
-            return fail("bad label '{l}'")
+            return fail(f"bad label '{l}'")
 
         if adding:
             if not labels.contains(l):
@@ -561,11 +561,11 @@ fn op_move(var st: Store, id: Int, to: String, comment: String) Result[String, F
     idx := try index_of_id(st, id)
     from := st.issues[idx].state.clone()
     if is_final_state(st, from):
-        return fail("#{id} is in final state '{from}'")
+        return fail(f"#{id} is in final state '{from}'")
     if not has_state(st, to):
-        return fail("unknown state '{to}'")
+        return fail(f"unknown state '{to}'")
     if from == to:
-        return fail("already in state '{to}'")
+        return fail(f"already in state '{to}'")
 
     var guards = List[String]()
     var allowed = false
@@ -577,7 +577,7 @@ fn op_move(var st: Store, id: Int, to: String, comment: String) Result[String, F
             break
 
     if not allowed:
-        return fail("transition '{from} -> {to}' not allowed")
+        return fail(f"transition '{from} -> {to}' not allowed")
 
     var missing = List[String]()
 
@@ -601,14 +601,14 @@ fn op_move(var st: Store, id: Int, to: String, comment: String) Result[String, F
 
     if missing.length() > 0:
         names := missing.join(", ")
-        return fail("cannot move #{id} to {to}: missing {names}")
+        return fail(f"cannot move #{id} to {to}: missing {names}")
 
     st.clock += 1
 
     t := st.clock
     st.issues[idx].state = to.clone()
     st.issues[idx].updated = t
-    log_add(var st, id, "state: {from} -> {to}")
+    log_add(var st, id, f"state: {from} -> {to}")
 
     if comment.length() > 0:
         st.issues[idx].comments.append(
@@ -616,9 +616,9 @@ fn op_move(var st: Store, id: Int, to: String, comment: String) Result[String, F
                 t: t, actor: st.actor.clone(), text: comment.clone()
             )
         )
-        log_add(var st, id, "comment: {comment}")
+        log_add(var st, id, f"comment: {comment}")
 
-    return ok("moved #{id}: {from} -> {to}")
+    return ok(f"moved #{id}: {from} -> {to}")
 
 // ---------- workflow ----------
 
@@ -647,7 +647,7 @@ fn cmd_workflow(var st: Store, block: List[String]) Result[String, Failure]:
         if line.starts_with("initial:"):
             name := sub_from(line, 8).trim()
             if not valid_state(name):
-                return fail("workflow: bad state name '{name}'")
+                return fail(f"workflow: bad state name '{name}'")
             if have_initial:
                 return fail("workflow: initial state defined twice")
 
@@ -658,59 +658,59 @@ fn cmd_workflow(var st: Store, block: List[String]) Result[String, Failure]:
             for part in sub_from(line, 6).split(","):
                 name := part.trim()
                 if not valid_state(name):
-                    return fail("workflow: bad state name '{name}'")
+                    return fail(f"workflow: bad state name '{name}'")
 
                 add_state(var states, name)
                 finals.append(name.clone())
         else if line.contains("->"):
             parts := line.split("->")
             if parts.length() != 2:
-                return fail("workflow: bad line '{line}'")
+                return fail(f"workflow: bad line '{line}'")
 
             src := parts[0].trim()
             if not valid_state(src):
-                return fail("workflow: bad state name '{src}'")
+                return fail(f"workflow: bad state name '{src}'")
 
             add_state(var states, src)
 
             for entry in parts[1].split(","):
                 ws := words(entry)
                 if ws.length() == 0:
-                    return fail("workflow: bad line '{line}'")
+                    return fail(f"workflow: bad line '{line}'")
 
                 dst := ws[0].clone()
                 if not valid_state(dst):
-                    return fail("workflow: bad state name '{dst}'")
+                    return fail(f"workflow: bad state name '{dst}'")
 
                 var guards = List[String]()
 
                 if ws.length() == 3 and ws[1] == "requires":
                     for g in ws[2].split("+"):
                         if not valid_guard(g):
-                            return fail("workflow: bad guard field '{g}'")
+                            return fail(f"workflow: bad guard field '{g}'")
 
                         guards.append(g.clone())
                 else if ws.length() != 1:
-                    return fail("workflow: bad line '{line}'")
+                    return fail(f"workflow: bad line '{line}'")
 
                 add_state(var states, dst)
                 trans.append(Trans(src: src.clone(), dst: dst, guards: guards))
         else:
-            return fail("workflow: bad line '{line}'")
+            return fail(f"workflow: bad line '{line}'")
 
     if not have_initial:
         return fail("workflow: initial state missing")
 
     for tr in trans:
         if finals.contains(tr.src):
-            return fail("workflow: '{tr.src}' is final and cannot have transitions")
+            return fail(f"workflow: '{tr.src}' is final and cannot have transitions")
 
     n_states := states.length()
     n_trans := trans.length()
     st.wf = Workflow(
         defined: true, states: states, initial: initial, finals: finals, trans: trans
     )
-    return ok("workflow ok: {n_states} states, {n_trans} transitions")
+    return ok(f"workflow ok: {n_states} states, {n_trans} transitions")
 
 // ---------- filter language ----------
 
@@ -824,7 +824,7 @@ fn lex(text: String) List[Tok]:
         else if word == "NOT":
             out.append(tok_punct(K_NOT, word))
         else:
-            out.append(tok_bad("query: unexpected token '{word}'"))
+            out.append(tok_bad(f"query: unexpected token '{word}'"))
 
         i = end
 
@@ -896,9 +896,9 @@ fn check_term(
 ) Result[Unit, Failure]:
     ops := field_ops(field)
     if ops.length() == 0:
-        return fail("query: unknown field '{field}'")
+        return fail(f"query: unknown field '{field}'")
     if not ops.contains(op):
-        return fail("query: bad operator '{op}' for field '{field}'")
+        return fail(f"query: bad operator '{op}' for field '{field}'")
 
     ordering := op == "<" or op == "<=" or op == ">" or op == ">="
     var alts = List[String]()
@@ -910,15 +910,15 @@ fn check_term(
 
     for alt in alts:
         if not value_ok(st, field, op, alt):
-            return fail("query: bad value '{alt}' for field '{field}'")
+            return fail(f"query: bad value '{alt}' for field '{field}'")
     return ok(unit)
 
 fn build_term(st: Store, t: Tok) Result[Node, Failure]:
     if t.field == "view":
         if t.op != ":":
-            return fail("query: bad operator '{t.op}' for field 'view'")
+            return fail(f"query: bad operator '{t.op}' for field 'view'")
         if not st.views.contains(t.value):
-            return fail("query: unknown view '{t.value}'")
+            return fail(f"query: unknown view '{t.value}'")
 
         cl := try split_query(st.views.get_or(t.value, ""))
         inner := try parse_filter(st, cl.filter)
@@ -994,7 +994,7 @@ fn parse_primary(var p: Parser, st: Store) Result[Node, Failure]:
     if t.kind == K_BAD:
         return fail(t.text.clone())
 
-    return fail("query: unexpected token '{t.text}'")
+    return fail(f"query: unexpected token '{t.text}'")
 
 fn parse_filter(st: Store, text: String) Result[Node, Failure]:
     if is_blank(text):
@@ -1185,7 +1185,7 @@ fn split_query(text: String) Result[Clauses, Failure]:
             lim := chars_to_str(cs, j, n)
             v := int_value(lim)
             if v.is_none():
-                return fail("bad limit '{lim}'")
+                return fail(f"bad limit '{lim}'")
 
             limit = v.get(0)
             body = chars_to_str(cs, 0, m).trim()
@@ -1215,7 +1215,7 @@ fn sort_keys(text: String) Result[List[SortKey], Failure]:
             "id", "created", "updated", "priority", "points", "state", "title",
             "assignee", "reporter", "due"
         ].contains(name):
-            return fail("bad sort field '{name}'")
+            return fail(f"bad sort field '{name}'")
 
         keys.append(SortKey(field: name, desc: desc))
 
@@ -1285,7 +1285,7 @@ fn compare_issues(a: Issue, b: Issue, keys: List[SortKey], states: List[String])
 
 fn issue_line(it: Issue) String:
     labels := labels_text(it.labels, ",")
-    return "#{it.id} | {it.state} | {prio_name(it.priority)} | {dash(it.assignee)} | {pts_text(it.points)} | {dash(it.due)} | {labels} | {it.title}"
+    return f"#{it.id} | {it.state} | {prio_name(it.priority)} | {dash(it.assignee)} | {pts_text(it.points)} | {dash(it.due)} | {labels} | {it.title}"
 
 fn run_list(
     st: Store,
@@ -1344,27 +1344,27 @@ fn reaches(st: Store, text: String, target: String, depth: Int) Bool:
 
 fn view_save(var st: Store, name: String, query: String) Result[String, Failure]:
     if not valid_view_name(name):
-        return fail("bad view name '{name}'")
+        return fail(f"bad view name '{name}'")
 
     cl := try split_query(query)
     _node := try parse_filter(st, cl.filter)
     _keys := try sort_keys(cl.sort)
     text := query.trim()
     if reaches(st, text, name, 0):
-        return fail("view '{name}' would reference itself")
+        return fail(f"view '{name}' would reference itself")
 
     st.views[name.clone()] = text.clone()
-    return ok("saved view {name}")
+    return ok(f"saved view {name}")
 
 fn view_run(st: Store, name: String, extra: String) Result[String, Failure]:
     if not st.views.contains(name):
-        return fail("unknown view '{name}'")
+        return fail(f"unknown view '{name}'")
 
     stored := st.views.get_or(name, "")
     base := try split_query(stored)
     more := try split_query(extra)
     if more.filter.length() > 0:
-        return fail("unexpected '{more.filter}'")
+        return fail(f"unexpected '{more.filter}'")
 
     base_limit := base.limit
     var limit = base_limit
@@ -1391,19 +1391,19 @@ fn view_list(st: Store) String:
 
 fn view_show(st: Store, name: String) Result[String, Failure]:
     if not st.views.contains(name):
-        return fail("unknown view '{name}'")
+        return fail(f"unknown view '{name}'")
 
     return ok(name + ": " + st.views.get_or(name, ""))
 
 fn view_delete(var st: Store, name: String) Result[String, Failure]:
     if not st.views.contains(name):
-        return fail("unknown view '{name}'")
+        return fail(f"unknown view '{name}'")
 
     for other in st.views.keys().sorted():
         if other != name and reaches(st, st.views.get_or(other, ""), name, 0):
-            return fail("view '{name}' is used by '{other}'")
+            return fail(f"view '{name}' is used by '{other}'")
     st.views.remove(name.clone())
-    return ok("deleted view {name}")
+    return ok(f"deleted view {name}")
 
 fn cmd_view(var st: Store, rest: String) Result[String, Failure]:
     w := words(rest)
@@ -1453,17 +1453,17 @@ fn cmd_actor(var st: Store, rest: String) Result[String, Failure]:
         return fail("usage: actor NAME")
 
     st.actor = w[0].clone()
-    return ok("actor is {st.actor}")
+    return ok(f"actor is {st.actor}")
 
 fn cmd_today(var st: Store, rest: String) Result[String, Failure]:
     w := words(rest)
     if w.length() != 1:
         return fail("usage: today DATE")
     if not valid_date(w[0]):
-        return fail("bad date '{w[0]}'")
+        return fail(f"bad date '{w[0]}'")
 
     st.today = w[0].clone()
-    return ok("today is {st.today}")
+    return ok(f"today is {st.today}")
 
 fn cmd_create(var st: Store, rest: String) Result[String, Failure]:
     if not st.wf.defined:
@@ -1491,7 +1491,7 @@ fn cmd_create(var st: Store, rest: String) Result[String, Failure]:
     for d in details:
         log_add(var st, id, d)
     st.issues.append(made)
-    return ok("created #{id}")
+    return ok(f"created #{id}")
 
 fn tokenize(text: String) Result[List[String], Failure]:
     cs := text.chars()
@@ -1584,8 +1584,8 @@ fn cmd_comment(var st: Store, rest: String) Result[String, Failure]:
         IssueComment(t: st.clock, actor: st.actor.clone(), text: text.clone())
     )
     st.issues[idx].updated = st.clock
-    log_add(var st, id, "comment: {text}")
-    return ok("commented #{id}")
+    log_add(var st, id, f"comment: {text}")
+    return ok(f"commented #{id}")
 
 fn cmd_delete(var st: Store, rest: String) Result[String, Failure]:
     w := words(rest)
@@ -1597,7 +1597,7 @@ fn cmd_delete(var st: Store, rest: String) Result[String, Failure]:
     st.issues.remove(idx)
     st.clock += 1
     log_add(var st, id, "deleted")
-    return ok("deleted #{id}")
+    return ok(f"deleted #{id}")
 
 fn cmd_show(st: Store, rest: String) Result[String, Failure]:
     w := words(rest)
@@ -1609,18 +1609,18 @@ fn cmd_show(st: Store, rest: String) Result[String, Failure]:
     it := st.issues[idx]
     lt := labels_text(it.labels, ", ")
     var lines = List[String]()
-    lines.append("#{it.id} {it.title}")
-    lines.append("  state: {it.state}")
-    lines.append("  priority: {prio_name(it.priority)}")
-    lines.append("  assignee: {dash(it.assignee)}")
-    lines.append("  points: {pts_text(it.points)}")
-    lines.append("  due: {dash(it.due)}")
-    lines.append("  labels: {lt}")
-    lines.append("  reporter: {dash(it.reporter)}")
-    lines.append("  created: t={it.created}, updated: t={it.updated}")
-    lines.append("  comments: {it.comments.length()}")
+    lines.append(f"#{it.id} {it.title}")
+    lines.append(f"  state: {it.state}")
+    lines.append(f"  priority: {prio_name(it.priority)}")
+    lines.append(f"  assignee: {dash(it.assignee)}")
+    lines.append(f"  points: {pts_text(it.points)}")
+    lines.append(f"  due: {dash(it.due)}")
+    lines.append(f"  labels: {lt}")
+    lines.append(f"  reporter: {dash(it.reporter)}")
+    lines.append(f"  created: t={it.created}, updated: t={it.updated}")
+    lines.append(f"  comments: {it.comments.length()}")
     for c in it.comments:
-        lines.append("    [t={c.t} {c.actor}] {c.text}")
+        lines.append(f"    [t={c.t} {c.actor}] {c.text}")
     return ok(lines.join("\n"))
 
 fn cmd_log(st: Store, rest: String) Result[String, Failure]:
@@ -1637,18 +1637,18 @@ fn cmd_log(st: Store, rest: String) Result[String, Failure]:
 
         v := int_value(w[1])
         if v.is_none():
-            return fail("bad tail '{w[1]}'")
+            return fail(f"bad tail '{w[1]}'")
 
         tail = v.get(0)
     else:
         id = try parse_id(w[0])
         if id >= st.next_id:
-            return fail("no such issue #{id}")
+            return fail(f"no such issue #{id}")
 
         if w.length() == 3 and w[1] == "tail":
             v := int_value(w[2])
             if v.is_none():
-                return fail("bad tail '{w[2]}'")
+                return fail(f"bad tail '{w[2]}'")
 
             tail = v.get(0)
         else if w.length() != 1:
@@ -1657,7 +1657,7 @@ fn cmd_log(st: Store, rest: String) Result[String, Failure]:
     var lines = List[String]()
     for e in st.log:
         if id < 0 or e.id == id:
-            lines.append("t={e.t} {e.actor} #{e.id} {e.detail}")
+            lines.append(f"t={e.t} {e.actor} #{e.id} {e.detail}")
 
     var start = 0
     if tail >= 0 and lines.length() > tail:
@@ -1714,7 +1714,7 @@ fn cmd_bulk(var st: Store, rest: String) Result[String, Failure]:
         if args.length() == 0:
             return fail("usage: bulk set field=value... where QUERY")
     else:
-        return fail("unknown bulk action '{verb}'")
+        return fail(f"unknown bulk action '{verb}'")
 
     node := try parse_filter(st, query)
     var ids = List[Int]()
@@ -1733,10 +1733,10 @@ fn cmd_bulk(var st: Store, rest: String) Result[String, Failure]:
             out.append(r.get().clone())
             ok_n += 1
         else:
-            out.append("#{id} error: {r.err().message()}")
+            out.append(f"#{id} error: {r.err().message()}")
             bad_n += 1
 
-    out.append("bulk: {ok_n} ok, {bad_n} failed")
+    out.append(f"bulk: {ok_n} ok, {bad_n} failed")
     return ok(out.join("\n"))
 
 // ---------- reports ----------
@@ -1775,23 +1775,23 @@ fn report_summary(st: Store) String:
     total := st.issues.length()
     open_n := total - fin
     var lines = List[String]()
-    lines.append("issues: {total} (open {open_n}, final {fin})")
+    lines.append(f"issues: {total} (open {open_n}, final {fin})")
     lines.append("by state:")
 
     for s in st.wf.states:
         n := count_state(st, s)
-        lines.append("  {s}: {n}")
+        lines.append(f"  {s}: {n}")
 
     lines.append("by priority:")
 
     for r in [3, 2, 1, 0]:
         n := count_priority(st, r)
         name := prio_name(r)
-        lines.append("  {name}: {n}")
+        lines.append(f"  {name}: {n}")
 
-    lines.append("unassigned: {unassigned}")
-    lines.append("overdue: {overdue}")
-    lines.append("open points: {open_pts}")
+    lines.append(f"unassigned: {unassigned}")
+    lines.append(f"overdue: {overdue}")
+    lines.append(f"open points: {open_pts}")
     return lines.join("\n")
 
 fn cmp_group(a: Group, b: Group) Int:
@@ -1837,9 +1837,9 @@ fn report_workload(st: Store) String:
 
     var lines = List[String]()
     for g in groups:
-        lines.append("{g.name}: {issues_text(g.count)}, {g.points} points")
+        lines.append(f"{g.name}: {issues_text(g.count)}, {g.points} points")
     if un_n > 0:
-        lines.append("unassigned: {issues_text(un_n)}, {un_p} points")
+        lines.append(f"unassigned: {issues_text(un_n)}, {un_p} points")
     return lines.join("\n")
 
 fn cmp_label(a: LabelCount, b: LabelCount) Int:
@@ -1872,7 +1872,7 @@ fn report_labels(st: Store, filter: String) Result[String, Failure]:
 
     var lines = List[String]()
     for g in groups:
-        lines.append("{g.name}: {g.count}")
+        lines.append(f"{g.name}: {g.count}")
     return ok(lines.join("\n"))
 
 fn report_timeline(st: Store, idx: Int) String:
@@ -1886,12 +1886,12 @@ fn report_timeline(st: Store, idx: Int) String:
         if e.id == it.id and e.detail.starts_with("state: "):
             parts := e.detail.split(" -> ")
             dur := e.t - since
-            lines.append("{cur}: t={since}..{e.t} ({dur})")
+            lines.append(f"{cur}: t={since}..{e.t} ({dur})")
             cur = parts[1].clone()
             since = e.t
 
     dur := st.clock - since
-    lines.append("{cur}: t={since}..{st.clock} ({dur})")
+    lines.append(f"{cur}: t={since}..{st.clock} ({dur})")
     return lines.join("\n")
 
 fn cmd_report(st: Store, rest: String) Result[String, Failure]:
@@ -1961,7 +1961,7 @@ fn dispatch(var st: Store, word: String, rest: String) Result[String, Failure]:
     if word == "report":
         return cmd_report(st, rest)
 
-    return fail("unknown command '{word}'")
+    return fail(f"unknown command '{word}'")
 
 export fn main() Int:
     lines := read_lines(stdin()).get()

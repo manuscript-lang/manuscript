@@ -6,22 +6,22 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     l1 := [11, 17, (-21)]
-    say("l1 = {l1} len {l1.length()}")
+    say(f"l1 = {l1} len {l1.length()}")
 
-    s2 := ("  padded  " + ("{(188356 * 23)}:" + "naïve".trim()))
-    say("s2 = [{s2}]")
+    s2 := ("  padded  " + (f"{(188356 * 23)}:" + "naïve".trim()))
+    say(f"s2 = [{s2}]")
 
     s3 := "42"
-    say("s3 = [{s3}]")
+    say(f"s3 = [{s3}]")
 
     _l4 := [8]
     s5 := "alpha"
-    say("s5 = [{s5}]")
+    say(f"s5 = [{s5}]")
 
     i6 := (-738812)
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
     return 0

@@ -18,7 +18,7 @@ fn since(started: Instant) Int:
 	return monotonic().difference(started).to_nanoseconds()
 
 fn report(name: String, ops: Int, started: Instant) Void:
-	say("{name} {ops} {since(started)}\n")
+	say(f"{name} {ops} {since(started)}\n")
 
 fn next_rand(x: Int) Int:
 	return (x * 1103515245 + 12345) % 2147483648
@@ -95,7 +95,7 @@ fn bench_map_int(n: Int) Int:
 fn bench_map_str(n: Int) Int:
 	var keys: List[String] = []
 	for i in 0..n:
-		keys.append("key{i}")
+		keys.append(f"key{i}")
 
 	t := monotonic()
 	var m = Map[String, Int]()

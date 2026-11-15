@@ -12,7 +12,7 @@ type Marker:
 	log: String
 
 fn var Marker.close() Void!:
-	append_file(self.log, "{self.id},").wait()?
+	append_file(self.log, f"{self.id},").wait()?
 
 fn failed(id: Int, log: String) Int!Marker:
 	return error(Marker(id, log))
@@ -28,7 +28,7 @@ fn call_twice(log: String) Void!:
 
 test "a bound native method owns its temporary receiver and closes it once":
 	tmp := temporary("bound-native-close-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	call_twice(log.clone())?
 	expect_equal(events(log), "1,")?
 
@@ -39,7 +39,7 @@ fn named(log: String) Void!:
 
 test "a bound native method over a named receiver closes it once, not twice":
 	tmp := temporary("bound-native-named-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	named(log.clone())?
 	expect_equal(events(log), "2,")?
 
@@ -51,7 +51,7 @@ type Tag:
 
 // The host temp root, since a hard-coded /tmp does not exist on Windows.
 fn tag_log(id: Int) String!:
-	return ok("{ temporary_root()?}/ms-bound-native-tag-{id}")
+	return ok(f"{ temporary_root()?}/ms-bound-native-tag-{id}")
 
 fn var Tag.close() Void!:
 	append_file(tag_log(self.id)?, "closed,").wait()?

@@ -19,7 +19,8 @@ fn nested_fstrings_keep_braces_inside_nested_text() {
     let file: Arc<str> = Arc::from("nested.ms");
     for literal in ["}", "{", "é}🦀", "a{b}c"] {
         let escaped = literal.replace('{', "\\{").replace('}', "\\}");
-        let source = format!("fn text() String: return \"{{\"{{identity(\"{escaped}\")}}\"}}\"\n");
+        let source =
+            format!("fn text() String: return f\"{{f\"{{identity(f\"{escaped}\")}}\"}}\"\n");
         for source in [source.clone(), source.replace('\n', "\r\n")] {
             let module = ms_syntax::parser::parse(&file, &source).unwrap();
             let mut texts = Texts(Vec::new());
@@ -61,7 +62,7 @@ fn check_deeply_nested_fstrings() {
 
     let file: Arc<str> = Arc::from("nested.ms");
     for depth in [64, 128, 256] {
-        let source = format!("text := {}1{}\n", "\"{".repeat(depth), "}\"".repeat(depth));
+        let source = format!("text := {}1{}\n", "f\"{".repeat(depth), "}\"".repeat(depth));
         let module = ms_syntax::parser::parse(&file, &source).unwrap();
         let mut count = Count(0);
         for decl in &module.decls {
@@ -76,23 +77,23 @@ fn check_deeply_nested_fstrings() {
 #[test]
 fn nested_interpolation_errors_keep_their_original_positions_and_hints() {
     let file: Arc<str> = Arc::from("nested.ms");
-    for source in ["x := \"{\"{1 + }\"}\"\n", "x := \"{\"{1 + }\"}\"\r\n"] {
+    for source in ["x := f\"{f\"{1 + }\"}\"\n", "x := f\"{f\"{1 + }\"}\"\r\n"] {
         let error = ms_syntax::parser::parse(&file, source).unwrap_err();
         assert_eq!(
             (error.pos.offset, error.pos.line, error.pos.column),
-            (13, 1, 14)
+            (15, 1, 16)
         );
-        assert_eq!(error.end.unwrap().offset, 13);
+        assert_eq!(error.end.unwrap().offset, 15);
         assert_eq!(
             error.message,
-            "expected an expression, found end of line; write a value, name, call, or literal here ('{' at column 9 starts an interpolation; for literal braces write the text raw, r\"...\", or escape them as \\{ and \\} when the text also interpolates) ('{' at column 7 starts an interpolation; for literal braces write the text raw, r\"...\", or escape them as \\{ and \\} when the text also interpolates)"
+            "expected an expression, found end of line; write a value, name, call, or literal here ('{' at column 11 starts an interpolation in f\"...\" text; write \\{ and \\} for literal braces, or drop the f) ('{' at column 8 starts an interpolation in f\"...\" text; write \\{ and \\} for literal braces, or drop the f)"
         );
     }
-    let error = ms_syntax::parser::parse(&file, "x := \"{1)}\"\n").unwrap_err();
-    assert_eq!(error.pos.offset, 9);
+    let error = ms_syntax::parser::parse(&file, "x := f\"{1)}\"\n").unwrap_err();
+    assert_eq!(error.pos.offset, 10);
     assert!(error.message.starts_with("unmatched closing delimiter ')'"));
-    let error = ms_syntax::parser::parse(&file, "x := \"{)(}\"\n").unwrap_err();
-    assert_eq!(error.pos.offset, 7);
+    let error = ms_syntax::parser::parse(&file, "x := f\"{)(}\"\n").unwrap_err();
+    assert_eq!(error.pos.offset, 8);
     assert!(
         error
             .message
@@ -104,7 +105,8 @@ fn nested_interpolation_errors_keep_their_original_positions_and_hints() {
 fn nested_interpolations_inside_multiline_functions_keep_expression_forms() {
     let file: Arc<str> = Arc::from("nested.ms");
     for ending in ["\n", "\r\n"] {
-        let source = format!("fn get() String:\n    x := \"{{\"{{fn x: x}}\"}} {{1..2}}\"{ending}");
+        let source =
+            format!("fn get() String:\n    x := f\"{{f\"{{fn x: x}}\"}} {{1..2}}\"{ending}");
         let module = ms_syntax::parser::parse(&file, &source).unwrap();
         assert_eq!(module.decls.len(), 1);
         let formatted = ms_syntax::format(&file, &source).unwrap();

@@ -8,4 +8,4 @@ fn main() Void:
     xs := [n + 0]
     var t = 0
     for i in 0..xs.length(): t = (t * 31 + xs[i]) % 1000003
-    o.write("{t} {xs.length()}\n").get()
+    o.write(f"{t} {xs.length()}\n").get()

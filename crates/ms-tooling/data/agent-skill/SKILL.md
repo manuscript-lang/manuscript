@@ -41,8 +41,8 @@ Every row is a shape agents wrote that fails; the right column compiles.
 | `a if c else b`, `-> T` | `if c: a else: b`, `fn f() T:` |
 | `if c: f() else: g()` as a statement | `if c:` and `else:` on their own lines, bodies indented |
 | `fn f(out: var T)`, `x: T = e` | `fn f(var out: T)`, `x: T := e` |
-| `"\"{x}\""`, `"\x01"` | plain quotes inside `{}`, `"\u{1}"` |
 | `c == "{"`, JSON or a template in `"..."` | `c == r"{"`; JSON and templates in `r"..."` or `r"""`. A string with literal braces and nothing to interpolate is written raw; use `\{` and `\}` only when the same string also interpolates |
+| `"total {n}"` (plain text never interpolates) | `f"total {n}"`; quotes inside `{}` are plain: `f"{xs.join(", ")}"` |
 | `for _ in xs` | `for _i in xs`; a bare `_` is not a name |
 | `(String, Int)`, `[A, B]` tuples | a record: `type Pair:` with fields |
 | `f(x)?` as a statement on a non-Void result | `_done := f(x)?` (a leading `_` marks it unused) |
@@ -55,7 +55,7 @@ Every row is a shape agents wrote that fails; the right column compiles.
 
 ### Syntax and data
 
-- Immutable: `x := e`, or `x: T := e`. Mutable: `var x = e`; assignment and content mutation require var. Basic types: Int, Float, Bool, String, Void; literals: `true`, `false`, `void`. Strings interpolate `"hello {name}"`.
+- Immutable: `x := e`, or `x: T := e`. Mutable: `var x = e`; assignment and content mutation require var. Basic types: Int, Float, Bool, String, Void; literals: `true`, `false`, `void`. `f"hello {name}"` interpolates; plain `"{"` keeps braces.
 - Functions declare parameter/return types: `fn f(x: Int, n: Int = 1) Int:`. Call `f(2, n: 3)`. Inline bodies return expressions; multiline bodies use `return`. Void/Void! may fall through. Main returns Void, Int status, or Void!.
 - Generics: `fn identity[T](x: T) T: x`. Callback: `fn(Int) Int`; closure: `fn x: x + 1`.
 - Control: `if`/`else if`/`else`, `while`, `for x in xs:`, `for i in 0..n:` (excludes n), `break`, `continue`; `and or not`. Prefer early exits: `if c: return x`. Expression: `if c: a else: b`.

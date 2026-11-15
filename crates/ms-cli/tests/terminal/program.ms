@@ -9,8 +9,8 @@ import (
 fn describe(e: TerminalEvent) String:
 	match e:
 		Text(t): return "text:" + t
-		Key(n, c, a, s): return "key:" + n + " ctrl={c} alt={a} shift={s}"
-		Resize(c, r): return "resize:{c}x{r}"
+		Key(n, c, a, s): return "key:" + n + f" ctrl={c} alt={a} shift={s}"
+		Resize(c, r): return f"resize:{c}x{r}"
 		Paste(t): return "paste:" + t.replace("\n", "|")
 
 fn next_event(var events: ReadStream[TerminalEvent], limit: Duration) TerminalEvent?!:
@@ -29,7 +29,7 @@ export fn main() Int:
 		void term.move_by(-1, 2)
 		void term.set_title("t")
 		if size := term.size():
-			void stdout().write("size {size.columns}x{size.rows}\r\n")
+			void stdout().write(f"size {size.columns}x{size.rows}\r\n")
 
 		var events = term.events()
 		var done = false

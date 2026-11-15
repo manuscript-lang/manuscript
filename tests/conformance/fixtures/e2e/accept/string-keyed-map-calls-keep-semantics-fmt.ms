@@ -25,7 +25,7 @@ test "string map":
     var seen = 0
 
     for entry in m.clone():
-        m.add(key: "x{seen}", value: seen)
+        m.add(key: f"x{seen}", value: seen)
         seen = seen + 1
 
     expect_true((seen == 3 and m.length() == 6))?

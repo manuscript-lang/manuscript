@@ -13,7 +13,7 @@ fn label(text: String) String!:
 	return ok(text | double? | stringify)
 
 fn stringify(value: Int) String:
-	return "n={value}"
+	return f"n={value}"
 
 fn check_positive(value: Int) Void!:
 	if value < 0: return error(Error("negative"))

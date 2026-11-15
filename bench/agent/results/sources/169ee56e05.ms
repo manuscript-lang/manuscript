@@ -132,6 +132,6 @@ export fn main() Int:
         if is_blank(line):
             continue
 
-        stdout().write("{process(line)}\n").get()
+        stdout().write(f"{process(line)}\n").get()
 
     return 0

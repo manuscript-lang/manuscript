@@ -8,7 +8,7 @@ K_DELIM := 2
 K_BRACKET := 3
 // Marks a two-space hard break inside paragraph text; never occurs in the input.
 SENT := "\u{1}"
-PUNCT := "!\"#$%&'()*+,-./:;<=>?@[\\]^_`\{|\}~"
+PUNCT := "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~"
 DIGITS := "0123456789"
 
 type Blk:
@@ -400,7 +400,7 @@ fn parseOne(lines: List[String], i: Int) Step:
         return Step(
             nxt: i + 1,
             blk: Blk(
-                para: false, text: "<h{lvl}>" + inline(atxText(line)) + "</h{lvl}>\n"
+                para: false, text: f"<h{lvl}>" + inline(atxText(line)) + f"</h{lvl}>\n"
             )
         )
     if isHr(line):
@@ -610,7 +610,7 @@ fn parseList(lines: List[String], start: Int, first: Marker) Step:
     var close = "</ul>\n"
 
     if first.ordered:
-        html = if first.num == 1: "<ol>\n" else: "<ol start=\"{first.num}\">\n"
+        html = if first.num == 1: "<ol>\n" else: f"<ol start=\"{first.num}\">\n"
 
         close = "</ol>\n"
 

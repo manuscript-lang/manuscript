@@ -52,7 +52,7 @@ test "dotenv accepts empty text and a byte-order mark":
 test "dotenv rejects malformed lines with their line number":
 	bad := ["=x", "A B=1", "1A=2", "A='open", "A='x' junk", "NOEQUALS", "export  =bad"]
 	for text in bad:
-		if _ := parse_dotenv(text): return fail("accepted {text}")
+		if _ := parse_dotenv(text): return fail(f"accepted {text}")
 
 	result := parse_dotenv("A=1\n\nB='x' junk\n")
 	if _ := result: return fail("accepted trailing text")
@@ -86,7 +86,7 @@ test "ini reads sections, both separators, comments and quotes":
 
 test "ini rejects malformed lines":
 	for text in ["[open", "just words", "= value"]:
-		if _ := parse_ini(text): return fail("accepted {text}")
+		if _ := parse_ini(text): return fail(f"accepted {text}")
 
 	result := parse_ini("a=1\nbad")
 	if _ := result: return fail("accepted")
@@ -105,15 +105,15 @@ test "ini rejects malformed lines":
 
 test "dotenv multi-line quotes stay linear":
 	lines := "x\n".repeat(200000).get()
-	values := (parse_dotenv("A=\"{lines}end\" # c\nB=1") | expect_ok?)
+	values := (parse_dotenv(f"A=\"{lines}end\" # c\nB=1") | expect_ok?)
 	values.get_or("B", "") | expect_equal("1")?
 	values.get_or("A", "").scalar_length() | expect_equal(400003)?
-	expect_true(parse_dotenv("A=\"{lines}").is_error())?
+	expect_true(parse_dotenv(f"A=\"{lines}").is_error())?
 
 test "ini detects comments before trimming empty assignment values":
 	for separator in ["=", ":"]:
 		for marker in ["#", ";"]:
-			text := "empty{separator} {marker} optional\n[設定]\nkey{separator}old\nkey{separator}   {marker} replaced\nplain{separator}\n"
+			text := f"empty{separator} {marker} optional\n[設定]\nkey{separator}old\nkey{separator}   {marker} replaced\nplain{separator}\n"
 			ini := parse_ini(text)?
 			ini.get("").get().get("empty").get() | expect_equal("")?
 

@@ -6,20 +6,20 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     l1 := [24, (-24), (-16)]
-    say("l1 = {l1} len {l1.length()}")
+    say(f"l1 = {l1} len {l1.length()}")
 
     l2 := l1.map(fn x: x + 3).filter(fn x: x % 2 == 0)
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     f3 := ((559.724 * 329.840) / ((839.150 / 0.0) - (547.347 + 67.159)))
-    say("f3 = {f3}")
+    say(f"f3 = {f3}")
 
     i4 := ((-968323683883) + (-31))
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     var acc5 = 0
 
@@ -29,7 +29,7 @@ export fn main() Int:
         else:
             acc5 -= 1
 
-    say("acc5 = {acc5}")
+    say(f"acc5 = {acc5}")
 
     bad := 1.5 + 2
 

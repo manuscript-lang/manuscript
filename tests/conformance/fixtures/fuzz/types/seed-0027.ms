@@ -6,27 +6,27 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := (-8)
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     fixed := 1
     fixed = 2
 
-    s2 := "brace\{s\}"
-    say("s2 = [{s2}]")
+    s2 := "brace{s}"
+    say(f"s2 = [{s2}]")
 
     i3 := (50 * (((-12) / 690122) * i1))
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     s4 := "".trim()
-    say("s4 = [{s4}]")
+    say(f"s4 = [{s4}]")
 
     f5 := (804.374 * ((342.052 - 923.397) + (163.920 + 706.265)))
-    say("f5 = {f5}")
+    say(f"f5 = {f5}")
 
     l6 := [8]
-    say("l6 = {l6} len {l6.length()}")
+    say(f"l6 = {l6} len {l6.length()}")
     return 0

@@ -33,21 +33,21 @@ fn count(text: String) Int:
 fn main() Void:
     a := keep("aa,bbbb,c,,dddddd,eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee,f")
     for x in a:
-        say("[{x}]")
+        say(f"[{x}]")
     say(
-        "\n{first_long("a,bbbbb,cc")} {first_long("a,b")} {count("ab,skip,cde,stop,zzz")}\n"
+        f"\n{first_long("a,bbbbb,cc")} {first_long("a,b")} {count("ab,skip,cde,stop,zzz")}\n"
     )
 
     var t = 0
     for q in "héllo wörld".split(""):
         t += q.scalar_length()
     for q in "a,b,c,d".split(",", max_parts: 2):
-        say("<{q}>")
+        say(f"<{q}>")
     for q in "".split(","):
-        say("<{q}>")
-    say("\n{t}\n")
+        say(f"<{q}>")
+    say(f"\n{t}\n")
     say(
-        "{let_form("ab,c,,defgh")} {let_kept("ab,c")} {nested("a,bb;ccc,dddd,e;")} {closure_keeps("x,yyyy,zz,wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww")}\n"
+        f"{let_form("ab,c,,defgh")} {let_kept("ab,c")} {nested("a,bb;ccc,dddd,e;")} {closure_keeps("x,yyyy,zz,wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww")}\n"
     )
     for q in "a,b".split(",", max_parts: 0):
         say("never")
@@ -57,7 +57,7 @@ fn main() Void:
             if q == "q":
                 break
 
-            say("{q}{r} ")
+            say(f"{q}{r} ")
 
     say("\n")
 

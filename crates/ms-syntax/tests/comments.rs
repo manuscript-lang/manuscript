@@ -111,11 +111,11 @@ fn trailing_documentation_skips_nested_interpolated_text() {
 
 #[test]
 fn trailing_documentation_tolerates_incomplete_surrounding_code() {
-    let complete_text = "fn unfinished(text: String = \"{\"http://x\"}\", // argument note";
+    let complete_text = "fn unfinished(text: String = f\"{\"http://x\"}\", // argument note";
     assert_eq!(
         ms_syntax::doc::trailing_comment(complete_text, 0),
         "argument note"
     );
-    let incomplete_text = "fn unfinished(text: String = \"{\"http://x\"} // still text";
+    let incomplete_text = "fn unfinished(text: String = f\"{\"http://x\"} // still text";
     assert_eq!(ms_syntax::doc::trailing_comment(incomplete_text, 0), "");
 }

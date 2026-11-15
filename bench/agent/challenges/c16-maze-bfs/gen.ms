@@ -13,7 +13,7 @@ fn solve(s: String) String:
 	for r in 0..rows.length():
 		cells := rows[r].chars()
 		for c in 0..cells.length():
-			if not "#.SE".contains(cells[c]): return "error: bad character at {r + 1},{c + 1}\n"
+			if not "#.SE".contains(cells[c]): return f"error: bad character at {r + 1},{c + 1}\n"
 
 	if rows.map(fn r: r.length()).distinct().length() > 1: return "error: ragged grid\n"
 
@@ -43,7 +43,7 @@ fn solve(s: String) String:
 
 		r := at / w
 		c := at % w
-		if cells[r][c] == "E": return "{dist.get_or(at, 0)}\n"
+		if cells[r][c] == "E": return f"{dist.get_or(at, 0)}\n"
 
 		for step in [[1, 0], [-1, 0], [0, 1], [0, -1]]:
 			nr := r + step[0]

@@ -8,7 +8,7 @@ type Counter:
     id: Int
 
 fn var Counter.close() Void!:
-    print("closed {self.id}")
+    print(f"closed {self.id}")
 
 fn Counter.value() Int:
     return self.id
@@ -18,4 +18,4 @@ fn open_counter(id: Int) Counter:
 
 fn main() Void:
     a := open_counter(7).value()
-    print("read {a}")
+    print(f"read {a}")

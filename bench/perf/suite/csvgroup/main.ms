@@ -23,12 +23,12 @@ fn main() Void:
 		products[r[2].clone()] = products.get_or(r[2], 0) + cents
 		if r[5].contains(","): quoted += 1
 
-	print("rows: {rows.length() - 1}")
-	print("quoted: {quoted}")
+	print(f"rows: {rows.length() - 1}")
+	print(f"quoted: {quoted}")
 	for e in regions.entries().sorted(fn a, b: a.key.compare(b.key)):
-		print("{e.key} {e.value.rows} {e.value.cents}")
+		print(f"{e.key} {e.value.rows} {e.value.cents}")
 	for e in products.entries().sorted(
 		fn a,
 		b: if a.value != b.value: b.value - a.value else: a.key.compare(b.key)
 	).slice(0, 5).get():
-		print("{e.key} {e.value}")
+		print(f"{e.key} {e.value}")

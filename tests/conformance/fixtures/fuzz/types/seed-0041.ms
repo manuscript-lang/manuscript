@@ -6,14 +6,14 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     s1 := "line\nbreak"
-    say("s1 = [{s1}]")
+    say(f"s1 = [{s1}]")
 
     b2 := (not true)
-    say("b2 = {b2}")
+    say(f"b2 = {b2}")
 
     bad := missing_function(3)
     return 0

@@ -30,11 +30,11 @@ test "a for loop walks a map's entries, values and keys in insertion order":
 
 	var seen = List[String]()
 	for e in m.entries():
-		seen.append("{e.key}={e.value}")
+		seen.append(f"{e.key}={e.value}")
 	for e in m:
 		seen.append(e.key.clone())
 	for v in m.values():
-		seen.append("{v}")
+		seen.append(f"{v}")
 
 	for k in m.keys():
 		if k == "c": break
@@ -48,7 +48,7 @@ test "a walk over a map the body changes still sees a snapshot":
 	m.add(key: "x", value: 1)
 	m.add(key: "y", value: 2)
 	for e in m.entries():
-		m.add(key: "{e.key}{e.key}", value: e.value * 10)
+		m.add(key: f"{e.key}{e.key}", value: e.value * 10)
 	expect_equal(m.length(), 4)?
 	expect_equal(m.get_or(key: "yy", fallback: 0), 20)?
 
@@ -80,7 +80,7 @@ test "walks borrow record values and sets without copying them":
 
 	var words = List[String]()
 	for e in flags.entries():
-		words.append("{e.key}:{e.value}")
+		words.append(f"{e.key}:{e.value}")
 	expect_equal(words, ["true:yes", "false:no"])?
 
 test "if var changes a map entry in place":

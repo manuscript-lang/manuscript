@@ -14,23 +14,23 @@ import (
 fn run(work: String, n: Int) Result[String, Error]:
 	copy(
 		"bench/perf/strappend/ms",
-		"{work}/ms",
+		f"{work}/ms",
 		CopyOptions(recursive: true, replace: true),
 	)?
-	build_ms("{work}/ms", "{work}/ms/bench{exe()}")?
+	build_ms(f"{work}/ms", f"{work}/ms/bench{exe()}")?
 
 	var flags = List[String]()
 	linker := env("RUSTC_LINKER", "")
-	if linker != "": flags = ["-C", "linker={linker}"]
-	build_rust("bench/perf/strappend/rust/main.rs", "{work}/rust{exe()}", flags)?
+	if linker != "": flags = ["-C", f"linker={linker}"]
+	build_rust("bench/perf/strappend/rust/main.rs", f"{work}/rust{exe()}", flags)?
 
 	var raw = List[String]()
 
 	for i in 0..n:
 		for v in ["ms", "rust"]:
-			path := if v == "ms": "{work}/ms/bench{exe()}" else: "{work}/rust{exe()}"
+			path := if v == "ms": f"{work}/ms/bench{exe()}" else: f"{work}/rust{exe()}"
 			for line in (sample(path, [])?).split("\n"):
-				if line != "": raw.append("{i} {v} {line}")
+				if line != "": raw.append(f"{i} {v} {line}")
 
 	return summarize(raw, n)
 

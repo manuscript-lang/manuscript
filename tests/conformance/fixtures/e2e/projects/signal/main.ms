@@ -8,7 +8,7 @@ type Resource:
 	output: WriteStream[String]
 
 fn var Resource.close() Void!:
-	_ignored := self.output.write("close {self.label}\n")
+	_ignored := self.output.write(f"close {self.label}\n")
 
 fn main() Void:
 	var output = stdout()

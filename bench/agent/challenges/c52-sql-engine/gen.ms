@@ -25,8 +25,8 @@ fn gen_big() String:
 		it := items[x / 4 % 6]
 		qty := x % 13 + 1
 		price := x / 7 % 50 + 5
-		note := if x % 9 == 0: "NULL" else: "'n{x % 5}'"
-		vals.append("({i}, '{r}', '{it}', {qty}, {price}, {note})")
+		note := if x % 9 == 0: "NULL" else: f"'n{x % 5}'"
+		vals.append(f"({i}, '{r}', '{it}', {qty}, {price}, {note})")
 
 	var i = 0
 

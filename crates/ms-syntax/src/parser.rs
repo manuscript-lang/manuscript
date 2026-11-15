@@ -192,10 +192,6 @@ fn describe_kind(kind: &str) -> String {
     }
 }
 
-/// Adds the usual fix for the punctuation that is most often missing.
-/// Text interpolates by default, so Python's `f"..."` prefix is a stray name.
-const F_STRING_HINT: &str = "; there is no f-string prefix: text interpolates by default, so write \"...{value}...\" and escape literal braces as \\{ and \\}";
-
 /// The unspellable name a destructuring `for` or lambda binds before its pattern.
 const HIDDEN_ITEM: &str = "for item";
 
@@ -410,15 +406,7 @@ impl<'a> Parser<'a> {
                 ":",
             );
         }
-        let glued_f = t.kind == Tok::String
-            && self.at > 0
-            && self.text(self.previous()) == "f"
-            && self.previous().end.offset == t.pos.offset;
-        let hint = if glued_f {
-            F_STRING_HINT.to_string()
-        } else {
-            need_hint(k.as_str(), t.kind, self.text(t))
-        };
+        let hint = need_hint(k.as_str(), t.kind, self.text(t));
         let msg = format!(
             "expected {}, found {}{hint}",
             describe_kind(k.as_str()),
@@ -656,8 +644,6 @@ impl<'a> Parser<'a> {
         } else {
             ""
         };
-        let glued_text =
-            t.kind == Tok::String && self.at > 0 && self.previous().end.offset == t.pos.offset;
         let hint = match t.kind {
             _ if prev_word == "def" && t.kind == Tok::Name => {
                 "; there is no 'def': declare a function with 'fn name(a: Int) Int:'"
@@ -668,7 +654,6 @@ impl<'a> Parser<'a> {
             _ if prev_word == "elif" => {
                 "; there is no 'elif': write 'else if <condition>:' for a further branch"
             }
-            _ if prev_word == "f" && glued_text => F_STRING_HINT,
             Tok::Name if self.text(t) == "is" => {
                 "; there is no 'is' operator: write '==' to compare values, or 'match value:' to test which alternative a value is"
             }
@@ -3133,32 +3118,47 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
-    /// Decodes a text token into literal and interpolated parts.
+    /// Decodes a text token into literal and interpolated parts. Only `f"..."`
+    /// and `f"""` text interpolates; braces are plain in the other forms.
     fn text_parts_of(&mut self, token: Token) -> PResult<Vec<TextPart>> {
         let full = self.text(token);
         if let Some(body) = full.strip_prefix("r\"\"\"") {
             let (content, indent, _) = multiline_body(&body[..body.len() - 3]);
             return Ok(vec![TextPart::Lit(dedent(content, indent).into())]);
         }
+        if let Some(body) = full.strip_prefix("f\"\"\"") {
+            return self.text_parts(token, &body[..body.len() - 3], 4, true);
+        }
         if full.starts_with("\"\"\"") {
-            return self.text_parts(token, &full[3..full.len() - 3], 3);
+            return self.text_parts(token, &full[3..full.len() - 3], 3, false);
         }
         if let Some(body) = full.strip_prefix("r\"") {
             return Ok(vec![TextPart::Lit(body[..body.len() - 1].into())]);
         }
+        if let Some(body) = full.strip_prefix("f\"") {
+            return self.text_parts(token, &body[..body.len() - 1], 2, true);
+        }
         let raw = &full[1..full.len() - 1];
-        if !raw.bytes().any(|b| b == b'\\' || b == b'{') {
+        if !raw.bytes().any(|b| b == b'\\') {
             return Ok(vec![TextPart::Lit(raw.into())]);
         }
-        self.text_parts(token, raw, 1)
+        self.text_parts(token, raw, 1, false)
     }
 
-    /// `quotes` is the width of the opening delimiter; `raw` excludes both
-    /// delimiters. A multi-line body drops its first and last line break and
-    /// the closing line's indentation from every line.
-    fn text_parts(&mut self, token: Token, raw: &str, quotes: usize) -> PResult<Vec<TextPart>> {
+    /// `open` is the width of the opening delimiter including any `f`; `raw`
+    /// excludes both delimiters. A multi-line body (`open` of 3 or 4) drops its
+    /// first and last line break and the closing line's indentation from every
+    /// line. Only `interpolating` text opens `{expression}` parts.
+    fn text_parts(
+        &mut self,
+        token: Token,
+        raw: &str,
+        open: usize,
+        interpolating: bool,
+    ) -> PResult<Vec<TextPart>> {
+        let quotes = open;
         let rb = raw.as_bytes();
-        let (first, end, indent) = if quotes == 3 {
+        let (first, end, indent) = if quotes >= 3 {
             let (content, indent, first) = multiline_body(raw);
             (first, first + content.len(), indent)
         } else {
@@ -3210,7 +3210,7 @@ impl<'a> Parser<'a> {
                 }
                 continue;
             }
-            if c != b'{' {
+            if !(interpolating && c == b'{') {
                 literal.push(c);
                 line_start = c == b'\n' && indent > 0;
                 continue;
@@ -3244,8 +3244,7 @@ impl<'a> Parser<'a> {
         Ok(parts)
     }
 
-    /// Lexes and parses the expression inside one `{...}` of a text literal.
-    /// Failures also say how to write a literal brace (a raw string first).
+    /// Lexes and parses the expression inside one `{...}` of `f` text.
     fn interpolation(
         &mut self,
         token: Token,
@@ -3253,18 +3252,8 @@ impl<'a> Parser<'a> {
         source: &str,
         position: Pos,
     ) -> PResult<Expr> {
-        self.interpolation_checked(token, at, source, position)
-    }
-
-    fn interpolation_checked(
-        &mut self,
-        token: Token,
-        at: usize,
-        source: &str,
-        position: Pos,
-    ) -> PResult<Expr> {
         let suffix = format!(
-            " ('{{' at column {} starts an interpolation; for literal braces write the text raw, r\"...\", or escape them as \\{{ and \\}} when the text also interpolates)",
+            " ('{{' at column {} starts an interpolation in f\"...\" text; write \\{{ and \\}} for literal braces, or drop the f)",
             position.column - 1
         );
         let origin = self.source_origin + token.lo as usize + at;
@@ -3672,7 +3661,7 @@ impl<'a> Parser<'a> {
     fn interpolation_wrapped(&mut self, token: Token, at: usize, source: &str) -> PResult<Expr> {
         let full = self.text(token);
         let suffix = format!(
-            " ('{{' at column {} starts an interpolation; for literal braces write the text raw, r\"...\", or escape them as \\{{ and \\}} when the text also interpolates)",
+            " ('{{' at column {} starts an interpolation in f\"...\" text; write \\{{ and \\}} for literal braces, or drop the f)",
             text_pos(token.pos, full, at - 1, self.boundaries).column
         );
         let wrapped = format!("({source})");

@@ -30,11 +30,11 @@ fn parse_num(s: String) Int:
 	return s.parse_int().get(-1)
 
 fn pad2(n: Int) String:
-	if n < 10: return "0{n}"
-	return "{n}"
+	if n < 10: return f"0{n}"
+	return f"{n}"
 
 fn money(c: Int) String:
-	return "{c / 100}.{pad2(c % 100)}"
+	return f"{c / 100}.{pad2(c % 100)}"
 
 type Store:
 	stk: Map[String, Int]
@@ -91,12 +91,12 @@ impl Store:
 
 		now := self.stk.get_or(sku, 0) + q
 		self.stk[sku.clone()] = now
-		return "ok {sku} stock={now}"
+		return f"ok {sku} stock={now}"
 
 	var fn do_price(sku: String, cents: String) String:
 		c := parse_num(cents)
 		if c < 0 or c > 10000000: return "error: bad price"
-		if not self.stk.contains(sku): return "error: unknown sku {sku}"
+		if not self.stk.contains(sku): return f"error: unknown sku {sku}"
 
 		self.prc[sku.clone()] = c
 		return "ok"
@@ -114,9 +114,9 @@ impl Store:
 				or parse_num(parts[1]) < 1
 				or parse_num(parts[1]) > 100000
 			):
-				return "error: bad item {tokens[i]}"
+				return f"error: bad item {tokens[i]}"
 
-		if self.state.contains(id): return "error: order {id} already exists"
+		if self.state.contains(id): return f"error: order {id} already exists"
 
 		// Semantic checks, item by item in the order given.
 		var seen = List[String]()
@@ -125,11 +125,11 @@ impl Store:
 			parts := tokens[i].split(":")
 			sku := parts[0]
 			q := parse_num(parts[1])
-			if seen.contains(sku): return "error: duplicate sku {sku}"
-			if not self.stk.contains(sku): return "error: unknown sku {sku}"
+			if seen.contains(sku): return f"error: duplicate sku {sku}"
+			if not self.stk.contains(sku): return f"error: unknown sku {sku}"
 
 			have := self.stk.get_or(sku, 0)
-			if q > have: return "error: insufficient stock for {sku} (have {have}, need {q})"
+			if q > have: return f"error: insufficient stock for {sku} (have {have}, need {q})"
 
 			seen.append(sku.clone())
 
@@ -151,20 +151,20 @@ impl Store:
 
 			self.stk[sku.clone()] = self.stk.get_or(sku, 0) - q
 			self.resv[sku.clone()] = self.resv.get_or(sku, 0) + q
-			spec.append("{sku}:{q}")
+			spec.append(f"{sku}:{q}")
 
 		self.state[id.clone()] = 0
 		self.tot[id.clone()] = total
 		self.items[id.clone()] = spec.join(" ")
 		self.placed_n += 1
-		return "ok {id} total={money(total)}"
+		return f"ok {id} total={money(total)}"
 
 	var fn do_cancel(id: String) String:
-		if not self.state.contains(id): return "error: unknown order {id}"
+		if not self.state.contains(id): return f"error: unknown order {id}"
 
 		st := self.state.get_or(id, 0)
-		if st == 1: return "error: order {id} already shipped"
-		if st == 2: return "error: order {id} already cancelled"
+		if st == 1: return f"error: order {id} already shipped"
+		if st == 2: return f"error: order {id} already cancelled"
 
 		for t in self.items.get_or(id, "").split(" "):
 			parts := t.split(":")
@@ -179,11 +179,11 @@ impl Store:
 		return "ok"
 
 	var fn do_ship(id: String) String:
-		if not self.state.contains(id): return "error: unknown order {id}"
+		if not self.state.contains(id): return f"error: unknown order {id}"
 
 		st := self.state.get_or(id, 0)
-		if st == 1: return "error: order {id} already shipped"
-		if st == 2: return "error: order {id} is cancelled"
+		if st == 1: return f"error: order {id} already shipped"
+		if st == 2: return f"error: order {id} is cancelled"
 
 		for t in self.items.get_or(id, "").split(" "):
 			parts := t.split(":")
@@ -204,12 +204,12 @@ impl Store:
 			s := self.stk.get_or(sku, 0)
 			p := self.prc.get_or(sku, 0)
 			r := self.resv.get_or(sku, 0)
-			out.append("{sku} stock={s} price={money(p)} reserved={r}")
+			out.append(f"{sku} stock={s} price={money(p)} reserved={r}")
 
 		out.append(
-			"orders placed={self.placed_n} shipped={self.shipped_n} cancelled={self.cancelled_n}"
+			f"orders placed={self.placed_n} shipped={self.shipped_n} cancelled={self.cancelled_n}"
 		)
-		out.append("revenue={money(self.revenue)}")
+		out.append(f"revenue={money(self.revenue)}")
 		return out.join("\n")
 
 fn is_blank(line: String) Bool:

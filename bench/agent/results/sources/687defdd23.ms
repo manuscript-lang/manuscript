@@ -118,12 +118,12 @@ fn evaluate(line: String) Optional[String]:
     if calc.div_zero:
         return some("error: division by zero")
 
-    return some("{v}")
+    return some(f"{v}")
 
 export fn main() Int:
     var out = stdout()
     for line in read_lines(stdin()).get():
         if text := evaluate(line):
-            out.write("{text}\n").get()
+            out.write(f"{text}\n").get()
     out.flush().get()
     return 0

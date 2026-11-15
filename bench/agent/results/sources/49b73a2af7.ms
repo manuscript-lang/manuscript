@@ -72,8 +72,8 @@ fn hunk_start(before: Int, length: Int) Int:
 	return before
 
 fn hunk_span(start: Int, length: Int) String:
-	if length == 1: return "{start}"
-	return "{start},{length}"
+	if length == 1: return f"{start}"
+	return f"{start},{length}"
 
 export fn main() Int:
 	lines := read_lines(stdin()).get()
@@ -131,7 +131,7 @@ export fn main() Int:
 	if starts.length() == 0: return 0
 
 	var out: List[String] = []
-	out.append("--- {name_a}\n+++ {name_b}\n")
+	out.append(f"--- {name_a}\n+++ {name_b}\n")
 
 	for h in range(0, starts.length()):
 		var lo = starts[h] - ctx
@@ -144,17 +144,17 @@ export fn main() Int:
 		lb := bpre[hi] - bpre[lo]
 		sa := hunk_span(hunk_start(apre[lo], la), la)
 		sb := hunk_span(hunk_start(bpre[lo], lb), lb)
-		out.append("@@ -{sa} +{sb} @@\n")
+		out.append(f"@@ -{sa} +{sb} @@\n")
 
 		for p in range(lo, hi):
 			op := ops[p]
 
 			if op.kind == 0:
-				out.append(" {op.text}\n")
+				out.append(f" {op.text}\n")
 			else if op.kind == 1:
-				out.append("-{op.text}\n")
+				out.append(f"-{op.text}\n")
 			else:
-				out.append("+{op.text}\n")
+				out.append(f"+{op.text}\n")
 
 	stdout().write(out.join("")).get()
 	return 0

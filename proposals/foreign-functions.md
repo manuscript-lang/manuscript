@@ -305,7 +305,7 @@ export type UvError:
 impl Error for UvError:
     fn message() String:
         match self:
-            Failed(message): return "libuv: {message}"
+            Failed(message): return f"libuv: {message}"
 
 extern fn msuv_loop_new() Loop!UvError
 extern fn msuv_loop_run(loop: Loop) Unit!UvError

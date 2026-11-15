@@ -50,14 +50,14 @@ fn main() Void:
 	)
 	(
 		stdout().write(
-			"{total + branch(Big(name: name.clone(), items: [1]), true)}\n"
+			f"{total + branch(Big(name: name.clone(), items: [1]), true)}\n"
 		).get()
 	)
 	(
 		stdout()
 		.write(
-			"{nested(Wrap(inner: Big(name: name.clone(), items: [1, 2, 3]), tag: 1)).length()}\n"
+			f"{nested(Wrap(inner: Big(name: name.clone(), items: [1, 2, 3]), tag: 1)).length()}\n"
 		)
 		.get()
 	)
-	stdout().write("{reinit(Big(name: name.clone(), items: [7]))}\n").get()
+	stdout().write(f"{reinit(Big(name: name.clone(), items: [7]))}\n").get()

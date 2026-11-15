@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -24,12 +24,12 @@ fn collatz(start: Int) Int:
 
 export fn main() Int:
     b1 := true
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
     i2 := (-2)
-    say("i2 == {i2}")
+    say(f"i2 == {i2}")
 
     f3 := ((7.710 - (687.182 - 5.5)) - ((505.25 / 103.043) - (588.285 + 73.092)))
-    say("f3 = {f3}")
-    say("collatz(342) = {collatz(342)}")
+    say(f"f3 = {f3}")
+    say(f"collatz(342) = {collatz(342)}")
     return 0

@@ -149,7 +149,7 @@ fn main() Int:
 		ran += 1
 
 	if ran == 0:
-		stderr().write("unknown challenge {which}\n").get()
+		stderr().write(f"unknown challenge {which}\n").get()
 		return 2
 
 	return 0

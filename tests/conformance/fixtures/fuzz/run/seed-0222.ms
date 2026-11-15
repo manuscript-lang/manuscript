@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     var acc1 = 0
@@ -16,20 +16,20 @@ export fn main() Int:
         stepacc1 += 1
         acc1 += stepacc1 * stepacc1 + 4
 
-    say("acc1 = {acc1}")
+    say(f"acc1 = {acc1}")
 
     l2 := [(-17), 21, 4, 14]
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     l3 := l2.sorted(fn a, b: a.compare(b))
-    say("l3 = {l3} len {l3.length()}")
+    say(f"l3 = {l3} len {l3.length()}")
 
     i4 := 35
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     i5 := i4
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     f6 := (((4.5 - 221.370) - (935.047 + 307.25)) * 245.25)
-    say("f6 = {f6}")
+    say(f"f6 = {f6}")
     return 0

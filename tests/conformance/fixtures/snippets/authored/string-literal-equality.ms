@@ -22,4 +22,4 @@ fn score(s: String) Int:
 fn main() Void:
     all := ["a", "", "héllo", "abcdefgh", "abcde", "abcdef", "b", "é", "abcdefghi"]
     for s in all:
-        _i := stdout().write("{score(s)} ")
+        _i := stdout().write(f"{score(s)} ")

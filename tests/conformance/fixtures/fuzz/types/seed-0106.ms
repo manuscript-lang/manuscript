@@ -6,14 +6,14 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := (((-0) + 12) - ((5 * (-38)) * ((-15) % 47)))
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     b2 := "ms".trim().is_empty()
-    say("b2 = {b2}")
+    say(f"b2 = {b2}")
 
     bad := Map[Int, Int]().get(1, 2, 3)
     return 0

@@ -44,7 +44,7 @@ test "TOML multiline strings Unicode escapes arrays and inline tables":
 		entries(
 			(
 				parse(
-					text: "basic = \"\"\"\nhello \\\n    world\\u0021\"\"\"\nliteral = '''\nraw\\text\nnext'''\narray = [1, # first\n true, \{name = 'Ada', meta.age = 37\},]\n"
+					text: "basic = \"\"\"\nhello \\\n    world\\u0021\"\"\"\nliteral = '''\nraw\\text\nnext'''\narray = [1, # first\n true, {name = 'Ada', meta.age = 37},]\n"
 				)
 				| expect_ok?
 			)
@@ -111,7 +111,7 @@ test "TOML implicit parents dotted keys and arrays of tables":
 test "TOML parses a long array of tables in order":
 	var source = ""
 	for i in 0..30000:
-		source += "[[items]]\nid = {i}\n"
+		source += f"[[items]]\nid = {i}\n"
 
 	root := (
 		parse(text: source)
@@ -157,14 +157,14 @@ test "TOML untouched implicit parents can still receive table headers":
 
 test "TOML rejects malformed data redefinitions and closed inline tables":
 	for text in [
-		"a=1\na=2", "[a]\n[a]", "a=1\n[a]", "a=\{b=1\}\na.c=2", "a.b=1\n[a]", "a=[1 2]",
-		"a=[,]", "a=\{b=1,\}", "a=\{b=1\nb=2\}", "a=01", "a=1_", "a=_1", "a=1__2",
+		"a=1\na=2", "[a]\n[a]", "a=1\n[a]", "a={b=1}\na.c=2", "a.b=1\n[a]", "a=[1 2]",
+		"a=[,]", "a={b=1,}", "a={b=1\nb=2}", "a=01", "a=1_", "a=_1", "a=1__2",
 		"a=+0x1", "a=1.", "a=.1", "a=1e", "a=9223372036854775808", "a=2023-02-29",
 		"a=24:00:00", "a='unterminated", "a=\"\\uD800\"", "a=\"\\q\"", "a=true false",
 		"a=1\rb=2", "[a.b.c]\nz=9\n[a]\nb.c.t=1", "[[a.b]]\n[a]\nb.y=2"
 	]:
 		cause := match parse(text: text):
-			ok(_): return fail("invalid TOML accepted: {text}")
+			ok(_): return fail(f"invalid TOML accepted: {text}")
 			error(cause): cause
 
 		cause.kind | expect_equal("EBADMSG")?
@@ -284,7 +284,7 @@ test "TOML option fields default to none or the depth and value guards":
 	parse(text: "a=1", options: TomlOptions()) | expect_equal(parse(text: "a=1"))?
 
 test "TOML stringify round trips scalars tables and arrays of tables":
-	source := "title = \"é🙂 \\\"q\\\" \\t tab\\u0001\"\nint = -42\nfloat = 3.0\nbig = 1e+21\nflag = true\ndate = 1979-05-27\nmixed = [1, \"two\", [3.5], \{a = 1\}]\nempty = []\n\"odd key\" = 1\n\n[server]\nhost = \"h\"\n\n[server.limits]\nmax = 5\n\n[[products]]\nname = \"a\"\n\n[[products]]\nname = \"b\"\n[products.tags]\nx = 1\n"
+	source := "title = \"é🙂 \\\"q\\\" \\t tab\\u0001\"\nint = -42\nfloat = 3.0\nbig = 1e+21\nflag = true\ndate = 1979-05-27\nmixed = [1, \"two\", [3.5], {a = 1}]\nempty = []\n\"odd key\" = 1\n\n[server]\nhost = \"h\"\n\n[server.limits]\nmax = 5\n\n[[products]]\nname = \"a\"\n\n[[products]]\nname = \"b\"\n[products.tags]\nx = 1\n"
 	parsed := (parse(text: source) | expect_ok?)
 	text := (stringify(value: parsed) | expect_ok?)
 	(parse(text: text) | expect_ok? | expect_equal(parsed)?)
@@ -297,8 +297,8 @@ test "TOML stringify round trips scalars tables and arrays of tables":
 	// Classification must keep empty and mixed arrays inline, including a
 	// non-table after a table prefix. Only nonempty all-table arrays get headers.
 	for control in [
-		"empty = []\n", "early = [1, \{x = 2\}]\n", "late = [\{x = 2\}, 1]\n",
-		"nested = [[\{x = 2\}], [3]]\n", "[[single]]\nx = 2\n", "[[empty_table]]\n",
+		"empty = []\n", "early = [1, {x = 2}]\n", "late = [{x = 2}, 1]\n",
+		"nested = [[{x = 2}], [3]]\n", "[[single]]\nx = 2\n", "[[empty_table]]\n",
 		"[[items]]\nname = 'é🙂'\n[items.child]\nx = 2\n[[items]]\nname = 'second'\n"
 	]:
 		value := parse(control)?
@@ -308,7 +308,7 @@ test "TOML stringify round trips scalars tables and arrays of tables":
 		expect_true(stringify(value, encoded.length() - 1).is_error())?
 
 	expect_equal(stringify(parse("empty = []")?)?, "empty = []\n")?
-	expect_equal(stringify(parse("late = [\{x=2\},1]")?)?, "late = [\{ x = 2 \}, 1]\n")?
+	expect_equal(stringify(parse("late = [{x=2},1]")?)?, "late = [{ x = 2 }, 1]\n")?
 	expect_equal(stringify(parse("[[single]]\nx=2")?)?, "[[single]]\nx = 2\n")?
 
 test "TOML stringify requires a table root and honors max_bytes":
@@ -335,7 +335,7 @@ fn repeated(text: String, count: Int) String:
 test "TOML long strings parse and stringify in linear time":
 	long := repeated(text: "x\\n", count: 150000)
 	expected := repeated(text: "x\n", count: 150000)
-	root := (parse(text: "a = \"{long}\"\nb = '''{expected}'''") | expect_ok?)
+	root := (parse(text: f"a = \"{long}\"\nb = '''{expected}'''") | expect_ok?)
 	table := (entries(root.clone())?)
 	table["a"] | expect_equal(TomlValue.StringValue(expected.clone()))?
 	table["b"] | expect_equal(TomlValue.StringValue(expected))?
@@ -361,13 +361,13 @@ test "TOML stringify rejects invalid date-time text":
 
 test "TOML deeply nested inline tables parse in linear time":
 	n := 6000
-	text := "a = " + "\{ b = ".repeat(n).get() + "1" + " \}".repeat(n).get()
+	text := "a = " + "{ b = ".repeat(n).get() + "1" + " }".repeat(n).get()
 	started := monotonic()
 	parsed := parse(text, TomlOptions())
 	elapsed := monotonic().difference(started).to_milliseconds()
 	value := parsed?
 	expect_true(entries(value).is_ok())?
-	if elapsed > 3000: return fail("nested inline tables took {elapsed} ms")
+	if elapsed > 3000: return fail(f"nested inline tables took {elapsed} ms")
 
 test "TOML parse without options stops deep nesting and none lifts it":
 	deep := "a = " + "[".repeat(20000).get() + "]".repeat(20000).get()

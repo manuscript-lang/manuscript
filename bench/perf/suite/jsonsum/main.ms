@@ -28,13 +28,13 @@ fn main() Void:
 			active += 1
 		name_bytes += r.name.length()
 
-	print("records: {recs.length()}")
-	print("active: {active}")
-	print("name bytes: {name_bytes}")
+	print(f"records: {recs.length()}")
+	print(f"active: {active}")
+	print(f"name bytes: {name_bytes}")
 	for e in scores.entries().sorted(
 		fn a,
 		b: if a.value != b.value: b.value - a.value else: a.key.compare(b.key)
 	).slice(0, 5).get():
-		print("{e.key} {e.value}")
+		print(f"{e.key} {e.value}")
 	for e in tags.entries().sorted(fn a, b: a.key.compare(b.key)):
-		print("{e.key} {e.value}")
+		print(f"{e.key} {e.value}")

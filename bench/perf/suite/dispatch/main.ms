@@ -92,6 +92,6 @@ fn generics(n: Int) Int:
 	return t + fold_with(s.items, 0, fn(a: Int, x: Int) Int: return a + x * 2)
 
 fn main() Void:
-	print("shapes {shapes(1000000)}")
-	print("closures {closures(15000000)}")
-	print("generics {generics(20000000)}")
+	print(f"shapes {shapes(1000000)}")
+	print(f"closures {closures(15000000)}")
+	print(f"generics {generics(20000000)}")

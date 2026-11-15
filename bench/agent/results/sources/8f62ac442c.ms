@@ -127,21 +127,21 @@ fn run(line: String) String:
     cmd := tokens.get(0)
     if cmd == "lcs" and tokens.length() == 3:
         if not tokens.get(1).is_empty() and not tokens.get(2).is_empty():
-            return "{lcs(tokens.get(1), tokens.get(2))}"
+            return f"{lcs(tokens.get(1), tokens.get(2))}"
     if cmd == "edit" and tokens.length() == 3:
         if not tokens.get(1).is_empty() and not tokens.get(2).is_empty():
-            return "{edit(tokens.get(1), tokens.get(2))}"
+            return f"{edit(tokens.get(1), tokens.get(2))}"
     if cmd == "knap" and tokens.length() >= 2:
         if cap := parse_num(tokens.get(1), 0):
             if items := parse_items(tokens):
-                return "{knap(cap, items)}"
+                return f"{knap(cap, items)}"
 
     if cmd == "coins" and tokens.length() >= 3:
         if amount := parse_num(tokens.get(1), 0):
             if denoms := parse_nums(tokens, 2, 1):
                 fewest := fewest_coins(amount, denoms)
 
-                return if fewest < 0: "impossible" else: "{fewest}"
+                return if fewest < 0: "impossible" else: f"{fewest}"
 
     return "error: bad command"
 
@@ -152,5 +152,5 @@ export fn main() Int:
     var out = stdout()
     for line in read_lines(stdin()).get():
         if not is_blank(line):
-            out.write("{run(line)}\n").get()
+            out.write(f"{run(line)}\n").get()
     return 0

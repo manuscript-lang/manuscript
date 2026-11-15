@@ -61,7 +61,7 @@ export fn which(name: String) String?:
 
 		for extension in extensions:
 			if extension == "": continue
-			if runnable("{candidate}{extension}", windows): return "{candidate}{extension}"
+			if runnable(f"{candidate}{extension}", windows): return f"{candidate}{extension}"
 
 	return none
 

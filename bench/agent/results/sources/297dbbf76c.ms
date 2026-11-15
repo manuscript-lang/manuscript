@@ -82,7 +82,7 @@ fn esc(s: String) String:
     )
 
 fn is_punct(c: String) Bool:
-    return c.length() == 1 and "!\"#$%&'()*+,-./:;<=>?@[\\]^_`\{|\}~".contains(c)
+    return c.length() == 1 and "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~".contains(c)
 
 fn is_space_char(c: String) Bool:
     return c == " " or c == "\n" or c == HARD
@@ -267,7 +267,7 @@ fn try_atx(lines: List[String], i: Int) Optional[Taken]:
     if k < content.length() and (k == 0 or at(content, k - 1) == " "):
         content = sub(content, 0, k).trim()
 
-    html := "<h{level}>{inline_html(content)}</h{level}>\n"
+    html := f"<h{level}>{inline_html(content)}</h{level}>\n"
     return Taken(block: Block(html: html, inner: "", para: false), next: i + 1)
 
 fn starts_quote(line: String) Bool:
@@ -422,9 +422,9 @@ fn try_list(lines: List[String], i: Int) Optional[Taken]:
 fn render_list(items: List[Parsed], loose: Bool, ordered: Bool, start: Int) String:
     tag := if ordered: "ol" else: "ul"
 
-    var html = "<{tag}>\n"
+    var html = f"<{tag}>\n"
     if ordered and start != 1:
-        html = "<ol start=\"{start}\">\n"
+        html = f"<ol start=\"{start}\">\n"
 
     for item in items:
         var body = ""
@@ -439,7 +439,7 @@ fn render_list(items: List[Parsed], loose: Bool, ordered: Bool, start: Int) Stri
 
         html += "<li>" + body + "</li>\n"
 
-    return html + "</{tag}>\n"
+    return html + f"</{tag}>\n"
 
 fn try_indented(lines: List[String], i: Int) Optional[Taken]:
     if indent_of(lines[i]) < 4:

@@ -2,7 +2,7 @@ type Cause:
     code: Int
     text: String
 
-fn Cause.message() String: "cause {self.code}: {self.text}"
+fn Cause.message() String: f"cause {self.code}: {self.text}"
 
 type Holder:
     err: Reportable
@@ -87,7 +87,7 @@ fn demo(var c: Cause) String:
     two := first_failure(c)
     e: Reportable := c
     r := relay(c)
-    text := "{one.message()} {two.err().message()} {e.message()} {r.message()} {held(c)} {through(c).message()} {lend_then_relay(c).message()} {lend_id(c).message()} {rebound(c).message()} {rebound_result(c).err().message()} {rebound_alias_relay(c).message()}"
+    text := f"{one.message()} {two.err().message()} {e.message()} {r.message()} {held(c)} {through(c).message()} {lend_then_relay(c).message()} {lend_id(c).message()} {rebound(c).message()} {rebound_result(c).err().message()} {rebound_alias_relay(c).message()}"
     c.code = 5
     return text
 

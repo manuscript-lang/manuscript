@@ -20,7 +20,7 @@ type Endpoint:
 test "JSON payloadless cases are their names and round-trip":
     swatch := Swatch(Color.Green, Color.Red)
     text := stringify(swatch)?
-    expect_equal(text, "\{\"color\":\"Green\",\"shade\":\"Red\"\}")?
+    expect_equal(text, "{\"color\":\"Green\",\"shade\":\"Red\"}")?
 
     back := parse[Swatch](text)?
     expect_equal(stringify(back)?, text)?
@@ -41,15 +41,15 @@ test "JSON writes and reads IpAddress and Cidr as strings":
     text := stringify(endpoint)?
     expect_equal(
         text,
-        "\{\"host\":\"::1\",\"network\":\"10.0.0.0/8\",\"fallback\":\"192.0.2.7\"\}"
+        "{\"host\":\"::1\",\"network\":\"10.0.0.0/8\",\"fallback\":\"192.0.2.7\"}"
     )?
 
     back := parse[Endpoint](text)?
     expect_equal(stringify(back)?, text)?
 
-    bare := parse[Endpoint]("\{\"host\":\"127.0.0.1\",\"network\":\"::/0\"\}")?
+    bare := parse[Endpoint]("{\"host\":\"127.0.0.1\",\"network\":\"::/0\"}")?
     expect_equal(
-        stringify(bare)?, "\{\"host\":\"127.0.0.1\",\"network\":\"::/0\"\}"
+        stringify(bare)?, "{\"host\":\"127.0.0.1\",\"network\":\"::/0\"}"
     )?
 
 test "JSON rejects malformed IpAddress and Cidr text":

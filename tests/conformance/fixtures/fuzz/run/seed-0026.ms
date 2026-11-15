@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -29,25 +29,25 @@ fn gcd(a: Int, b: Int) Int:
     return gcd(b, a % b)
 
 export fn main() Int:
-    say("collatz(1597) = {collatz(1597)}")
+    say(f"collatz(1597) = {collatz(1597)}")
 
     s1 := ("héllo" + ("alpha" + "gamma")).lower()
-    say("s1 = [{s1}]")
+    say(f"s1 = [{s1}]")
 
     f2 := (((289.064 / 477.073) * 1.0e22) + (193.963 / (31.449 - 9.5)))
-    say("f2 = {f2}")
+    say(f"f2 = {f2}")
 
     var acc3 = 0
     for i in 0..4:
         acc3 += i * 2
-    say("acc3 = {acc3}")
-    say("gcd(1432, 1558) = {gcd(1432, 1558)}")
+    say(f"acc3 = {acc3}")
+    say(f"gcd(1432, 1558) = {gcd(1432, 1558)}")
 
     l4 := [1, 2, 3].take(0)
-    say("l4 = {l4} len {l4.length()}")
+    say(f"l4 = {l4} len {l4.length()}")
 
     l5 := l4.sorted(fn a, b: a.compare(b))
-    say("l5 = {l5} len {l5.length()}")
+    say(f"l5 = {l5} len {l5.length()}")
 
     var acc6 = 0
     var stepacc6 = 0
@@ -56,5 +56,5 @@ export fn main() Int:
         stepacc6 += 1
         acc6 += stepacc6 * stepacc6 + (-4)
 
-    say("acc6 = {acc6}")
+    say(f"acc6 = {acc6}")
     return 0

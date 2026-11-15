@@ -5,7 +5,7 @@ import flatten from "@std/collections/collections.ms"
 fn solve(rows: List[List[String]]) String:
     for r in 0..rows.length():
         for c in 0..rows[r].length():
-            if not "#.SE".contains(rows[r][c]): return "error: bad character at {r + 1},{c + 1}"
+            if not "#.SE".contains(rows[r][c]): return f"error: bad character at {r + 1},{c + 1}"
     if rows.any(fn r: r.length() != rows[0].length()): return "error: ragged grid"
     flat := flatten(rows)
     s := flat.count(fn x: x == "S")
@@ -19,7 +19,7 @@ fn solve(rows: List[List[String]]) String:
     for h in 0..flat.length():
         if h >= q.length(): break
         cur := q[h]
-        if flat[cur] == "E": return "{dist[cur]}"
+        if flat[cur] == "E": return f"{dist[cur]}"
         for d in [[1, 0], [-1, 0], [0, 1], [0, -1]]:
             r := cur / w + d[0]
             c := cur % w + d[1]

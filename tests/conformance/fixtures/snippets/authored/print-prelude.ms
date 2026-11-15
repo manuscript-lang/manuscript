@@ -12,4 +12,4 @@ fn main() Void:
     print([1, 2, 3])
 
     name := "ms"
-    print("name: {name}")
+    print(f"name: {name}")

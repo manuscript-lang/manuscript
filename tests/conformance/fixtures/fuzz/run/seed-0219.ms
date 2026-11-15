@@ -6,35 +6,35 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := 34
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     l2 := [15, 16, 12, 20]
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     s3 := "ms"
-    say("s3 = [{s3}]")
+    say(f"s3 = [{s3}]")
 
     f4 := (0.0 * 645.364)
-    say("f4 = {f4}")
+    say(f"f4 = {f4}")
     say(
-        "{i1} {((-368247279510) / (i1 * 729192))} {(i1 < ((-368247279510) / (i1 * 729192)))} sum {i1 + ((-368247279510) / (i1 * 729192))}"
+        f"{i1} {((-368247279510) / (i1 * 729192))} {(i1 < ((-368247279510) / (i1 * 729192)))} sum {i1 + ((-368247279510) / (i1 * 729192))}"
     )
 
     l5 := [4, (-24)]
-    say("l5 = {l5} len {l5.length()}")
+    say(f"l5 = {l5} len {l5.length()}")
 
     i6 := (l5.length() * ((i1 % (-31)) - (-i1)))
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     s7 := (s3.upper() + ((s3 + "quote\"d") + "x".reverse()))
-    say("s7 = [{s7}]")
+    say(f"s7 = [{s7}]")
 
     b8 := true
-    say("b8 = {b8}")
+    say(f"b8 = {b8}")
 
     var acc9 = 0
 
@@ -44,7 +44,7 @@ export fn main() Int:
         else:
             acc9 -= 1
 
-    say("acc9 = {acc9}")
+    say(f"acc9 = {acc9}")
 
     if (b8 and b8):
         say("gamma")
@@ -52,7 +52,7 @@ export fn main() Int:
         say("日本語")
 
     i10 := (27 + s3.scalar_length())
-    say("i10 = {i10}")
+    say(f"i10 = {i10}")
 
     if true:
         say((s7 + s7))
@@ -60,11 +60,11 @@ export fn main() Int:
         say((s3 + s3))
 
     l11 := l5.take(0)
-    say("l11 = {l11} len {l11.length()}")
+    say(f"l11 = {l11} len {l11.length()}")
     say(
-        "{(-(i6 * (-105865780886)))} {((495705 - i6) * (i10 - i10))} {((-(i6 * (-105865780886))) < ((495705 - i6) * (i10 - i10)))} sum {(-(i6 * (-105865780886))) + ((495705 - i6) * (i10 - i10))}"
+        f"{(-(i6 * (-105865780886)))} {((495705 - i6) * (i10 - i10))} {((-(i6 * (-105865780886))) < ((495705 - i6) * (i10 - i10)))} sum {(-(i6 * (-105865780886))) + ((495705 - i6) * (i10 - i10))}"
     )
 
     b12 := ((("beta" + "x") == s7.lower()) and (not (false or true)))
-    say("b12 = {b12}")
+    say(f"b12 = {b12}")
     return 0

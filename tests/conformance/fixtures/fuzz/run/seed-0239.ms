@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -37,28 +37,28 @@ fn fib(n: Int) Int:
 
 export fn main() Int:
     b1 := (829.865 < ((541.717 - 732.202) + 777.840))
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
     s2 := "42"
-    say("s2 = [{s2}]")
+    say(f"s2 = [{s2}]")
 
     s3 := (("42" + s2) + "MiXeD CaSe").replace("héllo", "ms")
-    say("s3 = [{s3}]")
+    say(f"s3 = [{s3}]")
 
     f4 := (
         ((194.949 - 564.425) * (643.511 / 37.440))
         - ((395.462 * 9.0e20) + (526.25 + 413.769))
     )
-    say("f4 = {f4}")
+    say(f"f4 = {f4}")
 
     l5 := [1, 2, 3].take(0)
-    say("l5 = {l5} len {l5.length()}")
-    say("collatz(2371) = {collatz(2371)}")
-    say("fib(37) = {fib(37)}")
+    say(f"l5 = {l5} len {l5.length()}")
+    say(f"collatz(2371) = {collatz(2371)}")
+    say(f"fib(37) = {fib(37)}")
 
     big6 := (
         ((763003567524 - (-11)) - ((-38) + (-38)))
         - ((763003567524 - (-11)) - ((-38) + (-38)))
     )
-    say("{((763003567524 - (-11)) - ((-38) + (-38))) / big6}")
+    say(f"{((763003567524 - (-11)) - ((-38) + (-38))) / big6}")
     return 0

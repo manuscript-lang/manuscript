@@ -13,8 +13,8 @@ fn read_input() List[String]!:
 
 // Renders a hunk range: `start`, or `start,len` unless len is exactly 1.
 fn range_text(start: Int, len: Int) String:
-	if len == 1: return "{start}"
-	return "{start},{len}"
+	if len == 1: return f"{start}"
+	return f"{start},{len}"
 
 export fn main() Int:
 	var input = read_input().get()
@@ -114,8 +114,8 @@ export fn main() Int:
 			dist[q] = nxt - q
 
 	var out = List[String]()
-	out.append("--- {head[0]}")
-	out.append("+++ {head[1]}")
+	out.append(f"--- {head[0]}")
+	out.append(f"+++ {head[1]}")
 
 	var p = 0
 	var ca = 0
@@ -140,17 +140,17 @@ export fn main() Int:
 			sb := if lb > 0: cb + 1 else: cb
 			ra := range_text(sa, la)
 			rb := range_text(sb, lb)
-			out.append("@@ -{ra} +{rb} @@")
+			out.append(f"@@ -{ra} +{rb} @@")
 
 			for q in p..e:
 				t := input[refs[q]]
 
 				if kinds[q] == 0:
-					out.append(" {t}")
+					out.append(f" {t}")
 				else if kinds[q] == 1:
-					out.append("-{t}")
+					out.append(f"-{t}")
 				else:
-					out.append("+{t}")
+					out.append(f"+{t}")
 
 			for q in p..e:
 				if kinds[q] != 2:

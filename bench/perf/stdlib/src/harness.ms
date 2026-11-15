@@ -12,5 +12,5 @@ export fn ints(count: Int) List[Int]:
 export fn words(count: Int) List[String]:
 	var out: List[String] = []
 	for i in 0..count:
-		out.append("word{i % 977}")
+		out.append(f"word{i % 977}")
 	return out

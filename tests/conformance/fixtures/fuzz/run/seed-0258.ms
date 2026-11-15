@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -24,13 +24,13 @@ fn collatz(start: Int) Int:
 
 export fn main() Int:
     i1 := ((-((-5) * (-42))) * ((-43) * ((-825982) + (-26))))
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     s2 := "日本語"
-    say("s2 = [{s2}]")
+    say(f"s2 = [{s2}]")
 
-    s3 := ("{(243873 / (-8))}:" + "Tab\there")
-    say("s3 = [{s3}]")
+    s3 := (f"{(243873 / (-8))}:" + "Tab\there")
+    say(f"s3 = [{s3}]")
 
     if (20 != (i1 / 46)):
         say("quote\"d")
@@ -38,12 +38,12 @@ export fn main() Int:
         say(s2.reverse())
 
     l4 := [19, (-11)]
-    say("l4 = {l4} len {l4.length()}")
+    say(f"l4 = {l4} len {l4.length()}")
 
     i5 := s2.scalar_length()
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     l6 := l4.reversed()
-    say("l6 = {l6} len {l6.length()}")
-    say("collatz(1262) = {collatz(1262)}")
+    say(f"l6 = {l6} len {l6.length()}")
+    say(f"collatz(1262) = {collatz(1262)}")
     return 0

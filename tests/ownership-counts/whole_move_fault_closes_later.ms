@@ -13,7 +13,7 @@ type Door:
 	name: String
 
 fn var Door.close() Void!:
-	stdout().write("close {self.name}\n").get()
+	stdout().write(f"close {self.name}\n").get()
 
 fn faulting() Void:
 	var xs: List[Door] = []
@@ -27,4 +27,4 @@ fn faulting() Void:
 fn main() Void:
 	work := promise(fn: ok(faulting()))
 	waited := work.wait()
-	stdout().write("waited: {waited.is_error()}\n").get()
+	stdout().write(f"waited: {waited.is_error()}\n").get()

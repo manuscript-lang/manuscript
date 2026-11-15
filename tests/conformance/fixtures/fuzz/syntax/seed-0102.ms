@@ -6,14 +6,14 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     f1 := (((3.0e-2 * 81.564) - 91.238) * (18.084 - 334.498))
-    say("f1 == {f1}")
+    say(f"f1 == {f1}")
 
     f2 := f1
-    say("f2 = {f2}")
+    say(f"f2 = {f2}")
 
     if (48 != ((-14) % (-476303))):
         say("hello world".upper())

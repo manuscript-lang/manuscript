@@ -69,8 +69,8 @@ export fn draw_uuid() String!:
 		if i == 8:
 			byte = bit_or(bit_and(byte, 63), 128)
 		if i == 4 or i == 6 or i == 8 or i == 10:
-			out = "{out}-"
-		out = "{out}{digits[byte / 16]}{digits[byte % 16]}"
+			out = f"{out}-"
+		out = f"{out}{digits[byte / 16]}{digits[byte % 16]}"
 
 	return ok(out)
 

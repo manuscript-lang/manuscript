@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -22,39 +22,39 @@ fn fact(n: Int) Int:
 
 export fn main() Int:
     f1 := (((9.5 * 538.144) + (996.25 * 950.431)) - 30.197)
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
 
     b2 := true
-    say("b2 = {b2}")
+    say(f"b2 = {b2}")
 
     l3 := [(-16), (-24)]
-    say("l3 = {l3} len {l3.length()}")
-    say("gcd(3568, 322) = {gcd(3568, 322)}")
+    say(f"l3 = {l3} len {l3.length()}")
+    say(f"gcd(3568, 322) = {gcd(3568, 322)}")
 
     f4 := ((47.576 * 804.318) + 298.136)
-    say("f4 = {f4}")
+    say(f"f4 = {f4}")
 
     l5 := l3.concat(l3)
-    say("l5 = {l5} len {l5.length()}")
-    say("{33} {(-232734280815)} {(33 < (-232734280815))} sum {33 + (-232734280815)}")
+    say(f"l5 = {l5} len {l5.length()}")
+    say(f"{33} {(-232734280815)} {(33 < (-232734280815))} sum {33 + (-232734280815)}")
 
     i6 := (-(348011 * ((-37) * 10)))
-    say("i6 = {i6}")
-    say("{i6} {i6} {(i6 < i6)} sum {i6 + i6}")
+    say(f"i6 = {i6}")
+    say(f"{i6} {i6} {(i6 < i6)} sum {i6 + i6}")
 
     i7 := ((-20) + i6)
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
     s8 := ""
-    say("s8 = [{s8}]")
+    say(f"s8 = [{s8}]")
 
     s9 := ("hello world".trim() + s8.trim())
-    say("s9 = [{s9}]")
+    say(f"s9 = [{s9}]")
 
     b10 := false
-    say("b10 = {b10}")
+    say(f"b10 = {b10}")
 
     l11 := l3.concat(l3)
-    say("l11 = {l11} len {l11.length()}")
-    say("fact(7) = {fact(7)}")
+    say(f"l11 = {l11} len {l11.length()}")
+    say(f"fact(7) = {fact(7)}")
     return 0

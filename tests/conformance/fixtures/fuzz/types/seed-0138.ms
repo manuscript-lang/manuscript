@@ -6,13 +6,13 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     f1 := (2.5 - 155.758)
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
 
     bad := true + 1
-    b2 := ("emoji 😀".trim() == ("{((-118341) + (-987488))}:" + "x").upper())
-    say("b2 = {b2}")
+    b2 := ("emoji 😀".trim() == (f"{((-118341) + (-987488))}:" + "x").upper())
+    say(f"b2 = {b2}")
     return 0

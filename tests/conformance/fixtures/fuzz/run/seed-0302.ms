@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -26,29 +26,29 @@ export fn main() Int:
         ((803.719 + 0.0) * (454.657 - 990.152))
         - ((502.442 * 172.343) + (311.770 + 160.463))
     )
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
 
     i2 := (21 * ((35 / 31) / ((-42) - (-8))))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     b3 := ((-325657337052) != 38)
-    say("b3 = {b3}")
-    say("fib(54) = {fib(54)}")
+    say(f"b3 = {b3}")
+    say(f"fib(54) = {fib(54)}")
 
     i5 := i2
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     b6 := true
-    say("b6 = {b6}")
+    say(f"b6 = {b6}")
 
     l7 := [(-6), (-26), (-9), 21, 25]
-    say("l7 = {l7} len {l7.length()}")
+    say(f"l7 = {l7} len {l7.length()}")
 
     s8 := "MiXeD CaSe"
-    say("s8 = [{s8}]")
+    say(f"s8 = [{s8}]")
 
     l9 := [(-15), 10, 13]
-    say("l9 = {l9} len {l9.length()}")
+    say(f"l9 = {l9} len {l9.length()}")
 
     if (s8 + "quote\"d").is_empty():
         say(s8)
@@ -56,10 +56,10 @@ export fn main() Int:
         say("42")
 
     b10 := ((s8 != s8) or false)
-    say("b10 = {b10}")
+    say(f"b10 = {b10}")
 
     l11 := l7.map(fn x: x + 1).filter(fn x: x % 2 == 0)
-    say("l11 = {l11} len {l11.length()}")
+    say(f"l11 = {l11} len {l11.length()}")
 
     if ((-44) >= (48 * i2)):
         say("beta")
@@ -67,5 +67,5 @@ export fn main() Int:
         say("42".replace(s8, s8))
 
     i12 := (i2 + (-826947))
-    say("i12 = {i12}")
+    say(f"i12 = {i12}")
     return 0

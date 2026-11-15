@@ -6,19 +6,19 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     say(
-        "{19} {(-((-18126) / 14))} {(19 < (-((-18126) / 14)))} sum {19 + (-((-18126) / 14))}"
+        f"{19} {(-((-18126) / 14))} {(19 < (-((-18126) / 14)))} sum {19 + (-((-18126) / 14))}"
     )
 
     s1 := (
         "alpha".upper().upper()
         + "back\\slash".replace("héllo", "quote\"d").trim()
     )
-    say("s1 = [{s1}]")
+    say(f"s1 = [{s1}]")
 
     i2 := ((12 % (521515579054 - (-28))) + ((8 + (-20)) - ((-29) * (-12))))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
     return 0

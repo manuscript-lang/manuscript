@@ -97,7 +97,7 @@ test "List distinct handles large Int and String lists":
 
 	for index in 0..60000:
 		numbers.append(index % 30000)
-		words.append("w{index % 20000}")
+		words.append(f"w{index % 20000}")
 
 	unique := numbers.distinct()
 	expect_false(

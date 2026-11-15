@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -37,13 +37,13 @@ fn collatz(start: Int) Int:
 
 export fn main() Int:
     f1 := 774.888
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
 
     l2 := [1, 2, 3].take(0)
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     f3 := f1
-    say("f3 = {f3}")
+    say(f"f3 = {f3}")
 
     if ((-(-628601)) != (-17)):
         say("ms".trim())
@@ -51,20 +51,20 @@ export fn main() Int:
         say(("  padded  " + "ms"))
 
     f4 := (((f3 * f1) - (9.0e-1 - f1)) / ((180.151 + f1) + (421.396 + 300.903)))
-    say("f4 = {f4}")
+    say(f"f4 = {f4}")
 
     f5 := (271.695 - ((f3 + 84.723) - (f1 + 876.154)))
-    say("f5 = {f5}")
+    say(f"f5 = {f5}")
 
     l6 := l2.reversed()
-    say("l6 = {l6} len {l6.length()}")
+    say(f"l6 = {l6} len {l6.length()}")
 
     l7 := [13, (-2), (-18), 29, (-20)]
-    say("l7 = {l7} len {l7.length()}")
-    say("fib(40) = {fib(40)}")
+    say(f"l7 = {l7} len {l7.length()}")
+    say(f"fib(40) = {fib(40)}")
 
     i8 := 22
-    say("i8 = {i8}")
+    say(f"i8 = {i8}")
 
     if "héllo".upper().is_empty():
         say("gamma")
@@ -72,8 +72,8 @@ export fn main() Int:
         say("quote\"d".reverse())
 
     i9 := (-i8)
-    say("i9 = {i9}")
-    say("collatz(2162) = {collatz(2162)}")
+    say(f"i9 = {i9}")
+    say(f"collatz(2162) = {collatz(2162)}")
 
     if true:
         say("  padded  ")
@@ -88,5 +88,5 @@ export fn main() Int:
         else:
             acc10 -= 1
 
-    say("acc10 = {acc10}")
+    say(f"acc10 = {acc10}")
     return 0

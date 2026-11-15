@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -23,10 +23,10 @@ fn fib(n: Int) Int:
 
 export fn main() Int:
     f1 := 0.0
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
 
     l2 := [28, 2, 4, 14, (-14)]
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     if ("emoji 😀".is_empty() and (not true)):
         say(("emoji 😀" + "MiXeD CaSe"))
@@ -34,36 +34,36 @@ export fn main() Int:
         say("back\\slash")
 
     f3 := (((f1 * f1) + 219.118) * f1)
-    say("f3 = {f3}")
+    say(f"f3 = {f3}")
 
     l4 := l2.map(fn x: x + 2).filter(fn x: x % 2 == 0)
-    say("l4 = {l4} len {l4.length()}")
+    say(f"l4 = {l4} len {l4.length()}")
 
     i5 := (((5 - (-22)) + (27 - (-3))) + (-22))
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     l6 := l2.take(0)
-    say("l6 = {l6} len {l6.length()}")
+    say(f"l6 = {l6} len {l6.length()}")
 
     i7 := (l6.length() - l2.get(3))
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
     f8 := 0.0
-    say("f8 = {f8}")
+    say(f"f8 = {f8}")
 
     b9 := false
-    say("b9 = {b9}")
-    say("fib(3) = {fib(3)}")
+    say(f"b9 = {b9}")
+    say(f"fib(3) = {fib(3)}")
 
     f10 := 137.603
-    say("f10 = {f10}")
+    say(f"f10 = {f10}")
 
     i11 := (((i7 * i5) + (-44)) * i5)
-    say("i11 = {i11}")
+    say(f"i11 = {i11}")
 
     i12 := (-((i5 + i11) % ((-8) + i11)))
-    say("i12 = {i12}")
+    say(f"i12 = {i12}")
 
     i13 := (29 + ((27 * i7) + ((-247732088004) + i12)))
-    say("i13 = {i13}")
+    say(f"i13 = {i13}")
     return 0

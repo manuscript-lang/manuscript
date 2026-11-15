@@ -15,5 +15,5 @@ fn tally(words: List[String]) Map[String, Int]:
 fn main() Void:
     m := tally(["a", "b", "a", "c", "a", "b"])
     void stdout().write(
-        "{m.length()} {m.get_or("a", 0)} {m.get_or("b", 0)} {m.get_or("c", 0)}\n"
+        f"{m.length()} {m.get_or("a", 0)} {m.get_or("b", 0)} {m.get_or("c", 0)}\n"
     )

@@ -11,9 +11,9 @@ enum ParseError:
 
 fn text(cause: ParseError) String:
     match cause:
-        Failed(code, message): return "failed at {code}: {message}"
+        Failed(code, message): return f"failed at {code}: {message}"
         Empty: return "empty"
-        Unknown(code): return "unknown {code}"
+        Unknown(code): return f"unknown {code}"
 
 extern fn abi_i8(x: Int8) Int8
 
@@ -97,24 +97,24 @@ extern fn abi_wait_for_stop() Int
 
 fn describe(result: Counter!ParseError) String:
     if counter := result:
-        return "ok {abi_counter_bump(counter)}"
+        return f"ok {abi_counter_bump(counter)}"
 
-    return "error {text(result.err())}"
+    return f"error {text(result.err())}"
 
 fn callbacks() Void:
     var out = stdout()
     step := 5
-    void out.write("{abi_twice(fn(x: Int) Int: x * 2 + step, 1)}\n")
+    void out.write(f"{abi_twice(fn(x: Int) Int: x * 2 + step, 1)}\n")
     void out.write(
         abi_describe(
-            fn(s: String, i: Int8, b: Bool, f: Float32, data: Bytes) String: "{s} {i} {b} {f} {data.length()}"
+            fn(s: String, i: Int8, b: Bool, f: Float32, data: Bytes) String: f"{s} {i} {b} {f} {data.length()}"
         )
         + "\n"
     )
     label := "fired"
     abi_keep(
         fn(c: Counter) Void:
-            void stdout().write("{label} {abi_counter_bump(c)}\n")
+            void stdout().write(f"{label} {abi_counter_bump(c)}\n")
     )
 
     c := abi_counter(40)
@@ -127,7 +127,7 @@ fn counters() Void:
     b := a
     void abi_counter_bump(b)
     list := [a, abi_counter(10)]
-    void stdout().write("total {abi_total(list)}\n")
+    void stdout().write(f"total {abi_total(list)}\n")
 
 export fn main() Int:
     var out = stdout()
@@ -175,31 +175,31 @@ export fn main() Int:
     if mode == "stop":
         abi_arm_stop()
 
-        void out.write("hooks {abi_wait_for_stop()}\n")
+        void out.write(f"hooks {abi_wait_for_stop()}\n")
         return 0
 
     void out.write(
-        "{abi_i8(-128)} {abi_i16(-32768)} {abi_i32(-2147483648)} {abi_u8(255)} {abi_u16(65535)} {abi_u32(4294967295)} {abi_u64(18446744073709551615)}\n"
+        f"{abi_i8(-128)} {abi_i16(-32768)} {abi_i32(-2147483648)} {abi_u8(255)} {abi_u16(65535)} {abi_u32(4294967295)} {abi_u64(18446744073709551615)}\n"
     )
     void out.write(
-        "{abi_f32(3.0)} {abi_not(true)} {abi_mixed(-1, 255, -1, 65535, -1, 4294967295, 2.5)}\n"
+        f"{abi_f32(3.0)} {abi_not(true)} {abi_mixed(-1, 255, -1, 65535, -1, 4294967295, 2.5)}\n"
     )
     reversed := abi_reverse("abc".to_bytes())
     void out.write(
-        "{reversed.decode_utf8().get("")} {abi_cstring_length("hello")} {abi_cstring_length("a\u{0}b")}\n"
+        f"{reversed.decode_utf8().get("")} {abi_cstring_length("hello")} {abi_cstring_length("a\u{0}b")}\n"
     )
     void out.write(
-        "{abi_double([1, -2, 1000000000])} {abi_sum([200, 100, 255])} {abi_shout(["hi", "there"])}\n"
+        f"{abi_double([1, -2, 1000000000])} {abi_sum([200, 100, 255])} {abi_shout(["hi", "there"])}\n"
     )
     counters()
 
-    void out.write("drops {abi_drops()}\n")
+    void out.write(f"drops {abi_drops()}\n")
     void out.write(
-        "{describe(abi_parse("42"))} {describe(abi_parse("4x"))} {describe(abi_parse(""))} {describe(abi_parse("?"))}\n"
+        f"{describe(abi_parse("42"))} {describe(abi_parse("4x"))} {describe(abi_parse(""))} {describe(abi_parse("?"))}\n"
     )
-    void out.write("drops {abi_drops()}\n")
-    void out.write("{abi_noisy().get("")} [{abi_lazy().get("x")}]\n")
+    void out.write(f"drops {abi_drops()}\n")
+    void out.write(f"{abi_noisy().get("")} [{abi_lazy().get("x")}]\n")
     callbacks()
 
-    void out.write("drops {abi_drops()}\n")
+    void out.write(f"drops {abi_drops()}\n")
     return 0

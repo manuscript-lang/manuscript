@@ -4,7 +4,7 @@ type Money:
     cents: Int
 
 fn Money.to_string() String:
-    return "{self.cents / 100}.{self.cents % 100}"
+    return f"{self.cents / 100}.{self.cents % 100}"
 
 type Plain:
     n: Int
@@ -36,19 +36,19 @@ fn main() Void:
     print(m.to_string())
     convert: fn() String := m.to_string
     print(convert())
-    print("{m}")
+    print(f"{m}")
     print(m)
     print(show(m))
     print(Dot.to_string())
-    print("{Line(4)}")
+    print(f"{Line(4)}")
     print(Plain(2))
-    print("{Plain(3)}")
+    print(f"{Plain(3)}")
     print(Box(1).to_string())
-    print("{Box("x")}")
+    print(f"{Box("x")}")
     print([Box(1), Box(2)])
     print([m.clone()])
     print({"a": m.clone()})
     maybe: Money? := m.clone()
     print(maybe)
-    print("{[m.clone(), Money(5)]}")
+    print(f"{[m.clone(), Money(5)]}")
     print(Wallet("ada", m.clone(), [Money(5)], none))

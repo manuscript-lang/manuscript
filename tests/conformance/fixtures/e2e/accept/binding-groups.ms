@@ -5,7 +5,7 @@ import expect_equal, expect_false from "@std/test/test.ms"
 
 LOW := 1
 HIGH: Int := LOW + 9
-export LABEL := "range {LOW}..{HIGH}"
+export LABEL := f"range {LOW}..{HIGH}"
 
 test "a constant group declares each constant":
     expect_false(not (HIGH == 10 and LABEL == "range 1..10"))?

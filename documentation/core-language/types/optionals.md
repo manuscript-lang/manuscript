@@ -12,7 +12,7 @@ Save as `greeting.ms` and run `ms run greeting.ms`:
 <!-- manuscript-example: {"mode":"run","stdout":"Hello, Ada!\nHello, guest!\n"} -->
 ```manuscript
 fn greeting(name: String?) String:
-    return "Hello, {name.get("guest")}!"
+    return f"Hello, {name.get("guest")}!"
 
 fn main() Void:
     print(greeting("Ada"))

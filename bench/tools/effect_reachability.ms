@@ -40,7 +40,7 @@ type Sample:
 	wall_ns: Int
 
 fn report(out: String, name: String) Void!:
-	rows := parse[List[Sample]](read_text("{out}/{name}-samples.json"))?
+	rows := parse[List[Sample]](read_text(f"{out}/{name}-samples.json"))?
 	var baseline = Map[Int, Float]()
 	var candidate = Map[Int, Float]()
 
@@ -74,11 +74,11 @@ fn report(out: String, name: String) Void!:
 			"slower_pairs": jint(slower)
 		}
 	)
-	write_text("{out}/{name}-summary.json", dump(result))
+	write_text(f"{out}/{name}-summary.json", dump(result))
 	print(stringify(result).get())
 
 fn padded(i: Int) String:
-	return "{i}".pad_start(6, "0")
+	return f"{i}".pad_start(6, "0")
 
 // A shared wide graph and the neighboring shapes that must not regress.
 export fn probe(size: Int, mode: String) String:
@@ -90,17 +90,17 @@ export fn probe(size: Int, mode: String) String:
 
 			if mode == "many":
 				lines.append(
-					"// ms: effect probe.e{suffix}\nfn sink_{suffix}() Int:\n    return 1\n"
+					f"// ms: effect probe.e{suffix}\nfn sink_{suffix}() Int:\n    return 1\n"
 				)
-				lines.append("fn root_{suffix}() Int:\n    return sink_{suffix}()\n")
+				lines.append(f"fn root_{suffix}() Int:\n    return sink_{suffix}()\n")
 			else:
 				lines.append(
-					"// ms: effect probe.io\nfn root_{suffix}() Int:\n    return leaf_{suffix}()\n"
+					f"// ms: effect probe.io\nfn root_{suffix}() Int:\n    return leaf_{suffix}()\n"
 				)
-				lines.append("fn leaf_{suffix}() Int:\n    return root_{suffix}()\n")
+				lines.append(f"fn leaf_{suffix}() Int:\n    return root_{suffix}()\n")
 
 		result := if mode == "many": "root_000000() - 1" else: "0"
-		lines.append("fn main() Int:\n    return {result}\n")
+		lines.append(f"fn main() Int:\n    return {result}\n")
 		return lines.join("\n")
 
 	if mode == "allowed" or mode == "sparse":
@@ -110,13 +110,13 @@ export fn probe(size: Int, mode: String) String:
 
 	for i in 0..size:
 		suffix := padded(i)
-		lines.append("fn leaf_{suffix}() Int:\n    return sink()\n")
+		lines.append(f"fn leaf_{suffix}() Int:\n    return sink()\n")
 
 	lines.append("fn hub() Int:")
 
 	for i in 0..size:
 		suffix := padded(i)
-		lines.append("    leaf_{suffix}()")
+		lines.append(f"    leaf_{suffix}()")
 
 	lines.append("    return 1\n")
 
@@ -125,7 +125,7 @@ export fn probe(size: Int, mode: String) String:
 		if mode == "sparse" and i == 0: lines.append("// ms: allow_effect probe.none")
 
 		target := if mode == "direct" or (mode == "sparse" and i == 0): "sink" else: "hub"
-		lines.append("fn root_{suffix}() Int:\n    return {target}()\n")
+		lines.append(f"fn root_{suffix}() Int:\n    return {target}()\n")
 
 	lines.append("fn main() Int:\n    return root_000000() - 1\n")
 	return lines.join("\n")
@@ -152,7 +152,7 @@ fn measure(
 	var expected_stdout = ""
 	var expected_stderr = ""
 	labels := ["baseline", "candidate"]
-	executable := "{out}/native-program{exe()}"
+	executable := f"{out}/native-program{exe()}"
 
 	for round in 0..(repeats + 1):
 		for pass in 0..2:
@@ -176,35 +176,35 @@ fn measure(
 			elapsed := now_ns() - started
 
 			if not ran.ok or ran.code != 0:
-				write_text("{out}/{name}-{label}-{trial}.failed.stdout", ran.stdout)
-				write_text("{out}/{name}-{label}-{trial}.failed.stderr", ran.stderr)
+				write_text(f"{out}/{name}-{label}-{trial}.failed.stdout", ran.stdout)
+				write_text(f"{out}/{name}-{label}-{trial}.failed.stderr", ran.stderr)
 
 			if not ran.ok or ran.code != 0: return invalid(
-				"{name}: {binary}: {ran.stderr}"
+				f"{name}: {binary}: {ran.stderr}"
 			)
 
-			write_text("{out}/{name}-{label}-{trial}.stderr", ran.stderr)
+			write_text(f"{out}/{name}-{label}-{trial}.stderr", ran.stderr)
 
 			if round == 0 and pass == 0:
 				expected_stdout = ran.stdout.clone()
 				expected_stderr = ran.stderr.clone()
-				write_text("{out}/{name}.stdout", ran.stdout)
+				write_text(f"{out}/{name}.stdout", ran.stdout)
 
 			if ran.stdout != expected_stdout or ran.stderr != expected_stderr:
-				return invalid("{name}: output mismatch at {label} trial {trial}")
+				return invalid(f"{name}: output mismatch at {label} trial {trial}")
 
 			if action == "build":
 				execution := capture(executable, [])
 				if not execution.ok or execution.code != 0: return invalid(
-					"{name}: native execution failed"
+					f"{name}: native execution failed"
 				)
 
 				write_text(
-					"{out}/{name}-{label}-{trial}.native.stdout",
+					f"{out}/{name}-{label}-{trial}.native.stdout",
 					execution.stdout,
 				)
 				write_text(
-					"{out}/{name}-{label}-{trial}.native.stderr",
+					f"{out}/{name}-{label}-{trial}.native.stderr",
 					execution.stderr,
 				)
 				if (
@@ -214,7 +214,7 @@ fn measure(
 						or execution.stderr != ""
 					)
 				):
-					return invalid("{name}: unexpected native output")
+					return invalid(f"{name}: unexpected native output")
 				if (
 					name == "hello"
 					and (
@@ -228,12 +228,12 @@ fn measure(
 				var count = 0
 
 				for d in doc.diagnostics:
-					if d.severity == "error": return invalid("{name}: compiler error")
+					if d.severity == "error": return invalid(f"{name}: compiler error")
 
 					if d.code == "MSL116": count += 1
 
 				if count != wanted: return invalid(
-					"{name}: effect count {count}, expected {wanted}"
+					f"{name}: effect count {count}, expected {wanted}"
 				)
 
 			samples.append(
@@ -257,9 +257,9 @@ fn measure(
 					}
 				)
 			)
-			write_text("{out}/{name}-samples.json", stringify(samples).get())
+			write_text(f"{out}/{name}-samples.json", stringify(samples).get())
 
-	print("{name}: {repeats} exact-output pairs passed")
+	print(f"{name}: {repeats} exact-output pairs passed")
 	report(out, name)?
 
 fn run(args: List[String]) String!:
@@ -273,7 +273,7 @@ fn run(args: List[String]) String!:
 		action := args[6].slice(8, args[6].length()).get()
 		for size in args[4].split(","):
 			for mode in args[5].split(","):
-				report(out, "{mode}-{size}-{action}")?
+				report(out, f"{mode}-{size}-{action}")?
 		return ok("summaries written")
 
 	binaries := [absolute(args[1].clone()), absolute(args[2].clone())]
@@ -282,7 +282,7 @@ fn run(args: List[String]) String!:
 
 	ensure_directory(out)
 	write_text(
-		"{out}/metadata.json",
+		f"{out}/metadata.json",
 		dump(
 			jobject(
 				{
@@ -344,10 +344,10 @@ fn run(args: List[String]) String!:
 			if not ["none", "allowed", "pure", "direct", "sparse", "many", "cyclic"].contains(
 				mode
 			):
-				return invalid("unknown mode {mode}")
+				return invalid(f"unknown mode {mode}")
 
-			name := "{mode}-{size}-{action}"
-			input := "{out}/{name}.ms"
+			name := f"{mode}-{size}-{action}"
+			input := f"{out}/{name}.ms"
 			write_text(input, probe(size, mode))
 			measure(
 				out,

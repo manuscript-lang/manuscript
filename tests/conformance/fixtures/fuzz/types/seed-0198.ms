@@ -6,16 +6,16 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     b1 := true
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
     _bad := say
     l2 := [(-7)]
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     s3 := "line\nbreak"
-    say("s3 = [{s3}]")
+    say(f"s3 = [{s3}]")
     return 0

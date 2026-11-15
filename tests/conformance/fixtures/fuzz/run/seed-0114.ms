@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -22,22 +22,22 @@ fn fib(n: Int) Int:
     return a
 
 export fn main() Int:
-    say("fib(23) = {fib(23)}")
+    say(f"fib(23) = {fib(23)}")
 
     i1 := ((((-935825) - (-20)) - 45) + (-24))
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     f2 := 0.0
-    say("f2 = {f2}")
+    say(f"f2 = {f2}")
 
     l3 := [(-16), (-2), 22, 15]
-    say("l3 = {l3} len {l3.length()}")
+    say(f"l3 = {l3} len {l3.length()}")
 
     i4 := i1
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     i5 := i1
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     var acc6 = 0
     var stepacc6 = 0
@@ -46,9 +46,9 @@ export fn main() Int:
         stepacc6 += 1
         acc6 += stepacc6 * stepacc6 + (-3)
 
-    say("acc6 = {acc6}")
+    say(f"acc6 = {acc6}")
     say(
-        "{((-i5) / (i1 + i5))} {((-i1) + (i1 / (-992105874148)))} {(((-i5) / (i1 + i5)) < ((-i1) + (i1 / (-992105874148))))} sum {((-i5) / (i1 + i5)) + ((-i1) + (i1 / (-992105874148)))}"
+        f"{((-i5) / (i1 + i5))} {((-i1) + (i1 / (-992105874148)))} {(((-i5) / (i1 + i5)) < ((-i1) + (i1 / (-992105874148))))} sum {((-i5) / (i1 + i5)) + ((-i1) + (i1 / (-992105874148)))}"
     )
 
     var acc7 = 0
@@ -58,22 +58,22 @@ export fn main() Int:
         stepacc7 += 1
         acc7 += stepacc7 * stepacc7 + 9
 
-    say("acc7 = {acc7}")
+    say(f"acc7 = {acc7}")
 
     b8 := "emoji 😀".trim().replace("Tab\there", "日本語").contains("line\nbreak")
-    say("b8 = {b8}")
+    say(f"b8 = {b8}")
 
     f9 := ((206.25 / 669.345) + f2)
-    say("f9 = {f9}")
+    say(f"f9 = {f9}")
 
     i10 := (((i5 - i5) + (i1 * i5)) - (i1 * (-24)))
-    say("i10 = {i10}")
+    say(f"i10 = {i10}")
 
     l11 := l3.concat(l3)
-    say("l11 = {l11} len {l11.length()}")
+    say(f"l11 = {l11} len {l11.length()}")
 
     i12 := ((l3.get(1) / i5) + ((-i5) + i5))
-    say("i12 = {i12}")
+    say(f"i12 = {i12}")
 
     var acc13 = 0
     var stepacc13 = 0
@@ -82,11 +82,11 @@ export fn main() Int:
         stepacc13 += 1
         acc13 += stepacc13 * stepacc13 + 1
 
-    say("acc13 = {acc13}")
+    say(f"acc13 = {acc13}")
 
     s14 := "a".trim()
-    say("s14 = [{s14}]")
+    say(f"s14 = [{s14}]")
 
     l15 := [3, 27, (-7), 6, (-20)]
-    say("l15 = {l15} len {l15.length()}")
+    say(f"l15 = {l15} len {l15.length()}")
     return 0

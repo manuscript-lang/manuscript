@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -15,13 +15,13 @@ fn fact(n: Int) Int:
     return n * fact(n - 1)
 
 export fn main() Int:
-    say("fact(11) = {fact(11)}")
+    say(f"fact(11) = {fact(11)}")
     say(
-        "{((31 % (-23)) - ((-94368) + (-751008)))} {(-28)} {(((31 % (-23)) - ((-94368) + (-751008))) < (-28))} sum {((31 % (-23)) - ((-94368) + (-751008))) + (-28)}"
+        f"{((31 % (-23)) - ((-94368) + (-751008)))} {(-28)} {(((31 % (-23)) - ((-94368) + (-751008))) < (-28))} sum {((31 % (-23)) - ((-94368) + (-751008))) + (-28)}"
     )
 
     b1 := false
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
     bad := (1 < 2) < 3
     return 0

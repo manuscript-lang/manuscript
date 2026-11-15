@@ -154,7 +154,7 @@ fn evaluate(line: String) String:
     if parsed.div_zero:
         return "error: division by zero"
 
-    return "{parsed.value}"
+    return f"{parsed.value}"
 
 export fn main() Int:
     lines := read_lines(stdin()).get()

@@ -86,7 +86,7 @@ FUNCS := [
 // ---------------------------------------------------------------- output and string helpers
 
 fn out(s: String) Unit:
-	stdout().write("{s}\n").get()
+	stdout().write(f"{s}\n").get()
 
 fn sub(cs: List[String], a: Int, b: Int) String:
 	var acc = ""
@@ -190,15 +190,15 @@ fn strip_tabs(s: String) String:
 	return sub(cs, a, cs.length())
 
 fn fatal(line: Int, msg: String) Fatal:
-	if line > 0: return Fatal(msg: "Makefile:{line}: *** {msg}.  Stop.")
-	return Fatal(msg: "make: *** {msg}.  Stop.")
+	if line > 0: return Fatal(msg: f"Makefile:{line}: *** {msg}.  Stop.")
+	return Fatal(msg: f"make: *** {msg}.  Stop.")
 
 fn errtext(r: Result[Unit, Fatal]) String:
 	if _v := r: return ""
 	return r.err().message()
 
 fn bracket(r: Result[String, Fatal]) String:
-	if v := r: return "[{v}]"
+	if v := r: return f"[{v}]"
 	return r.err().message()
 
 fn env(line: Int) Env:
@@ -379,7 +379,7 @@ fn lookup(name: String, e: Env, st: St) Result[String, Fatal]:
 				return error(
 					fatal(
 						e.line,
-						"Recursive variable '{name}' references itself (eventually)",
+						f"Recursive variable '{name}' references itself (eventually)",
 					)
 				)
 
@@ -431,10 +431,10 @@ fn expand(s: String, e: Env, st: St) Result[String, Fatal]:
 		else if cs[i + 1] == "$":
 			acc += "$"
 			i += 2
-		else if cs[i + 1] == "(" or cs[i + 1] == "\{":
+		else if cs[i + 1] == "(" or cs[i + 1] == "{":
 			var closer = ")"
-			if cs[i + 1] == "\{":
-				closer = "\}"
+			if cs[i + 1] == "{":
+				closer = "}"
 
 			j := find_close(cs, i + 2, cs[i + 1], closer)
 			if j < 0: return error(fatal(e.line, "unterminated variable reference"))
@@ -504,10 +504,10 @@ fn split_args(s: String) List[String]:
 	var depth = 0
 
 	for c in s.chars():
-		if c == "(" or c == "\{":
+		if c == "(" or c == "{":
 			depth += 1
 			cur += c
-		else if c == ")" or c == "\}":
+		else if c == ")" or c == "}":
 			depth -= 1
 			cur += c
 		else if c == "," and depth == 0:
@@ -652,7 +652,7 @@ fn call_fn(name: String, args: List[String], e: Env, st: St) Result[String, Fata
 
 	if name == "words":
 		ws := words(try xa(args, 0, e, st))
-		return ok("{ws.length()}")
+		return ok(f"{ws.length()}")
 
 	if name == "firstword":
 		ws := words(try xa(args, 0, e, st))
@@ -772,9 +772,9 @@ fn eval_ifeq(eq: Bool, rest: String, num: Int, st: St) Result[Bool, Fatal]:
 	while i < ic.length():
 		c := ic[i]
 
-		if c == "(" or c == "\{":
+		if c == "(" or c == "{":
 			depth += 1
-		else if c == ")" or c == "\}":
+		else if c == ")" or c == "}":
 			depth -= 1
 		else if c == "," and depth == 0:
 			count += 1
@@ -853,13 +853,13 @@ fn find_col(cs: List[String]) Int:
 		c := cs[i]
 
 		if depth > 0:
-			if c == "(" or c == "\{":
+			if c == "(" or c == "{":
 				depth += 1
-			else if c == ")" or c == "\}":
+			else if c == ")" or c == "}":
 				depth -= 1
 
 			i += 1
-		else if c == "$" and i + 1 < n and (cs[i + 1] == "(" or cs[i + 1] == "\{"):
+		else if c == "$" and i + 1 < n and (cs[i + 1] == "(" or cs[i + 1] == "{"):
 			depth = 1
 			i += 2
 		else if c == "$" and i + 1 < n:
@@ -1017,7 +1017,7 @@ fn close_rule(var st: St) Unit:
 			if st.orecipe.length() > 0:
 				if old.recipe.length() > 0:
 					out(
-						"Makefile:{st.oline}: warning: overriding recipe for target '{t}'"
+						f"Makefile:{st.oline}: warning: overriding recipe for target '{t}'"
 					)
 				rec = st.orecipe.clone()
 
@@ -1210,7 +1210,7 @@ fn run_cmd(var st: St, cmd: String) Int:
 	if w0 == "cp":
 		if rest.length() == 2:
 			if not st.files.contains(rest[0]):
-				out("cp: cannot stat '{rest[0]}': No such file or directory")
+				out(f"cp: cannot stat '{rest[0]}': No such file or directory")
 				return 1
 
 			st.clock += 1
@@ -1288,11 +1288,11 @@ fn run_recipe(
 
 			if status != 0:
 				if ign:
-					out("make: [Makefile:{rl.line}: {t}] Error {status} (ignored)")
+					out(f"make: [Makefile:{rl.line}: {t}] Error {status} (ignored)")
 				else:
 					return error(
 						Fatal(
-							msg: "make: *** [Makefile:{rl.line}: {t}] Error {status}"
+							msg: f"make: *** [Makefile:{rl.line}: {t}] Error {status}"
 						)
 					)
 
@@ -1323,7 +1323,7 @@ fn cycle_error(stk: List[String], t: String, idx: Int) Fatal:
 
 	parts.append(t.clone())
 	return Fatal(
-		msg: "make: *** Circular dependency detected: {parts.join(" -> ")}.  Stop."
+		msg: f"make: *** Circular dependency detected: {parts.join(" -> ")}.  Stop."
 	)
 
 fn update(var st: St, t: String, needed: String) Result[Bool, Fatal]:
@@ -1348,11 +1348,11 @@ fn update(var st: St, t: String, needed: String) Result[Bool, Fatal]:
 			return ok(true)
 
 		if needed == "":
-			return error(Fatal(msg: "make: *** No rule to make target '{t}'.  Stop."))
+			return error(Fatal(msg: f"make: *** No rule to make target '{t}'.  Stop."))
 
 		return error(
 			Fatal(
-				msg: "make: *** No rule to make target '{t}', needed by '{needed}'.  Stop."
+				msg: f"make: *** No rule to make target '{t}', needed by '{needed}'.  Stop."
 			)
 		)
 
@@ -1423,9 +1423,9 @@ fn cmd_build(var st: St, goals: List[String]) Result[Unit, Fatal]:
 				r.recipe.length() > 0
 				or (not st.phony.contains(g) and st.files.contains(g))
 			):
-				out("make: '{g}' is up to date.")
+				out(f"make: '{g}' is up to date.")
 			else:
-				out("make: Nothing to be done for '{g}'.")
+				out(f"make: Nothing to be done for '{g}'.")
 
 	return ok(unit)
 
@@ -1478,7 +1478,7 @@ fn rule_line(head: String, normal: List[String], order: List[String]) String:
 fn cmd_targets(st: St) Unit:
 	d := default_goal(st)
 	if d != "":
-		out("default: {d}")
+		out(f"default: {d}")
 
 	for n in st.names:
 		r := rule_or_empty(st, n)
@@ -1581,7 +1581,7 @@ fn handle(var st: St, mk: List[String], line: String) Unit:
 		if ks.length() == 0:
 			out("(no files)")
 		for k in ks:
-			out("{k} {st.files.get(k).get(0)}")
+			out(f"{k} {st.files.get(k).get(0)}")
 	else if cmd == "touch":
 		if args.length() == 1:
 			st.clock += 1
@@ -1599,7 +1599,7 @@ fn handle(var st: St, mk: List[String], line: String) Unit:
 		for a in args:
 			st.files.remove(a)
 	else:
-		out("unknown request: {cmd}")
+		out(f"unknown request: {cmd}")
 
 	return
 

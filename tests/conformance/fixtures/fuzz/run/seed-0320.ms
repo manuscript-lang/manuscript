@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -29,38 +29,38 @@ export fn main() Int:
         say(("" + "line\nbreak"))
 
     i1 := ((((-706232) * (-19)) - ((-17) + (-38))) / (-37))
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     f2 := (((256.192 * 793.433) / (407.876 + 0.0)) / 7.0e0)
-    say("f2 = {f2}")
+    say(f"f2 = {f2}")
 
     i3 := (-i1)
-    say("i3 = {i3}")
-    say("collatz(1031) = {collatz(1031)}")
+    say(f"i3 = {i3}")
+    say(f"collatz(1031) = {collatz(1031)}")
 
     b4 := (("line\nbreak" + "héllo").is_empty() or "  padded  ".trim().is_empty())
-    say("b4 = {b4}")
+    say(f"b4 = {b4}")
 
     s5 := ("alpha".upper() + ("delta" + "hello world")).trim()
-    say("s5 = [{s5}]")
+    say(f"s5 = [{s5}]")
 
     l6 := [(-17), 14, 12, 0, (-15)]
-    say("l6 = {l6} len {l6.length()}")
+    say(f"l6 = {l6} len {l6.length()}")
 
     l7 := l6.filter(fn x: x > 4)
-    say("l7 = {l7} len {l7.length()}")
+    say(f"l7 = {l7} len {l7.length()}")
 
     if b4:
-        say(("{32}:" + "line\nbreak"))
+        say((f"{32}:" + "line\nbreak"))
     else:
         say(("quote\"d" + "line\nbreak"))
 
     i8 := ((43 * ((-37) % i1)) * ((i1 + i3) + (i1 % i1)))
-    say("i8 = {i8}")
+    say(f"i8 = {i8}")
 
     l9 := [(-24), (-1), 9, (-13)]
-    say("l9 = {l9} len {l9.length()}")
+    say(f"l9 = {l9} len {l9.length()}")
 
     b10 := ((((-30) == i3) and b4) or ((223.286 * f2) < (961.591 - 202.896)))
-    say("b10 = {b10}")
+    say(f"b10 = {b10}")
     return 0

@@ -12,7 +12,7 @@ type Item:
 	fail: Bool
 
 fn var Item.close() Void!:
-	append_file(self.log, "{self.id},").wait()?
+	append_file(self.log, f"{self.id},").wait()?
 	if self.fail: return error(Error("close failed"))
 
 fn events(log: String) String!:
@@ -39,25 +39,25 @@ fn list_splice(log: String) Void:
 
 test "remove whose close fails closes the entry once":
 	temp := temporary("w1-")?
-	log := "{temp.path()}/log"
+	log := f"{temp.path()}/log"
 	_f := expect_fault(fn: list_remove(log.clone()))?
 	expect_equal(events(log)?, "1,")?
 
 test "map add over an entry whose close fails closes each once":
 	temp := temporary("w2-")?
-	log := "{temp.path()}/log"
+	log := f"{temp.path()}/log"
 	_f := expect_fault(fn: map_add(log.clone()))?
 	expect_equal(events(log)?, "1,2,")?
 
 test "map remove whose close fails closes the entry once":
 	temp := temporary("w3-")?
-	log := "{temp.path()}/log"
+	log := f"{temp.path()}/log"
 	_f := expect_fault(fn: map_remove(log.clone()))?
 	expect_equal(events(log)?, "1,")?
 
 test "splice over an entry whose close fails closes each once":
 	temp := temporary("w4-")?
-	log := "{temp.path()}/log"
+	log := f"{temp.path()}/log"
 	_f := expect_fault(fn: list_splice(log.clone()))?
 	expect_equal(events(log)?, "1,5,")?
 
@@ -67,7 +67,7 @@ fn list_set(log: String) Void:
 
 test "set over an entry whose close fails closes each once":
 	temp := temporary("w5-")?
-	log := "{temp.path()}/log"
+	log := f"{temp.path()}/log"
 	fault := expect_fault(fn: list_set(log.clone()))?
 	expect_contains(fault, "could not be closed")?
 	expect_equal(events(log)?, "1,2,")?

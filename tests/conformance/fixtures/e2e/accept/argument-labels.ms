@@ -65,7 +65,7 @@ test "optional labels on single-parameter functions":
 	(identity(true)) | expect_true?
 	identity(void) | expect_equal(void)?
 	(absent(none)) | expect_true?
-	"{increment(3)}" | expect_equal("4")?
+	f"{increment(3)}" | expect_equal("4")?
 	select()(5) | expect_equal(6)?
 
 	specialized := identity[Int]

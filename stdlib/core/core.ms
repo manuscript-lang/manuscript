@@ -58,7 +58,7 @@ It returns `Void`. Output to a terminal is flushed at each newline and output to
 
 <!-- manuscript-example: {"mode":"fragment"} -->
 ```manuscript
-print("total: {total}")
+print(f"total: {total}")
 print(order)
 ```
 */

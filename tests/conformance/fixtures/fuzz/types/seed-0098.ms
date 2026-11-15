@@ -6,28 +6,28 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := (((-25) % ((-38) * 10)) + (29 / (-9)))
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     bad := "abc".no_such_method()
     f2 := (((5.5 * 733.683) + 456.230) - (434.949 + 2.0e9))
-    say("f2 = {f2}")
+    say(f"f2 = {f2}")
 
     s3 := "back\\slash"
-    say("s3 = [{s3}]")
+    say(f"s3 = [{s3}]")
 
     b4 := (((f2 + f2) != (f2 + 500.034)) or (805012554059 != (960134 * i1)))
-    say("b4 = {b4}")
+    say(f"b4 = {b4}")
 
     i5 := (i1 / (-(-21)))
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     i6 := (((i5 + 25) + ((-43) % i1)) / (179431065481 + i1))
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     i7 := i5
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
     return 0

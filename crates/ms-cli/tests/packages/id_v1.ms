@@ -5,4 +5,4 @@ export fn make() Id:
     return Id(n: 1)
 
 export fn show(id: Id) String:
-    return "id {id.n}"
+    return f"id {id.n}"

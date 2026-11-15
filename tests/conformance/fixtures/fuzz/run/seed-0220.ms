@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -23,53 +23,53 @@ fn fib(n: Int) Int:
 
 export fn main() Int:
     i1 := ((((-48) * (-29)) + ((-3) * 242812849975)) % 46)
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     b2 := (
         (("hello world" + "x") != "naïve".lower())
         or ((true or false) or "MiXeD CaSe".is_empty())
     )
-    say("b2 = {b2}")
+    say(f"b2 = {b2}")
 
     if true:
-        say(("{(23 / 837703)}:" + "beta"))
+        say((f"{(23 / 837703)}:" + "beta"))
     else:
         say(("héllo" + "MiXeD CaSe"))
 
     i3 := 39
-    say("i3 = {i3}")
-    say("{17} {(i3 * (45 + i3))} {(17 < (i3 * (45 + i3)))} sum {17 + (i3 * (45 + i3))}")
+    say(f"i3 = {i3}")
+    say(f"{17} {(i3 * (45 + i3))} {(17 < (i3 * (45 + i3)))} sum {17 + (i3 * (45 + i3))}")
 
     i4 := 9
-    say("i4 = {i4}")
-    say("fib(56) = {fib(56)}")
+    say(f"i4 = {i4}")
+    say(f"fib(56) = {fib(56)}")
 
     i5 := (-11)
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     var acc7 = 0
     for i in 0..5:
         acc7 += i * 4
-    say("acc7 = {acc7}")
+    say(f"acc7 = {acc7}")
 
     i8 := (((-6) * (i1 + i4)) * ((-7) * i5))
-    say("i8 = {i8}")
+    say(f"i8 = {i8}")
 
     i9 := (-79436469542)
-    say("i9 = {i9}")
+    say(f"i9 = {i9}")
 
     b10 := (("line\nbreak" + "alpha").is_empty() and true)
-    say("b10 = {b10}")
+    say(f"b10 = {b10}")
 
     s11 := "héllo".trim()
-    say("s11 = [{s11}]")
+    say(f"s11 = [{s11}]")
 
     i12 := (i3 + (-((-314931) + i4)))
-    say("i12 = {i12}")
+    say(f"i12 = {i12}")
 
     l13 := [(-7), 10, 21, 11]
-    say("l13 = {l13} len {l13.length()}")
+    say(f"l13 = {l13} len {l13.length()}")
 
     i14 := (((i3 - (-22)) * l13.get(0)) - ((34 % i3) * i12))
-    say("i14 = {i14}")
+    say(f"i14 = {i14}")
     return 0

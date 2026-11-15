@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -42,37 +42,37 @@ export fn main() Int:
         say("line\nbreak")
 
     b1 := "line\nbreak".is_empty()
-    say("b1 = {b1}")
-    say("fib(43) = {fib(43)}")
+    say(f"b1 = {b1}")
+    say(f"fib(43) = {fib(43)}")
 
     f2 := (325.916 + (0.0 * (23.800 + 330.587)))
-    say("f2 = {f2}")
+    say(f"f2 = {f2}")
 
-    s3 := ("{(10 % 22984204386)}:" + "x")
-    say("s3 = [{s3}]")
+    s3 := (f"{(10 % 22984204386)}:" + "x")
+    say(f"s3 = [{s3}]")
 
     l4 := [(-28), 5, 2, 4]
-    say("l4 = {l4} len {l4.length()}")
-    say("collatz(739) = {collatz(739)}")
+    say(f"l4 = {l4} len {l4.length()}")
+    say(f"collatz(739) = {collatz(739)}")
 
     i5 := (-(31 * 48))
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     f6 := f2
-    say("f6 = {f6}")
+    say(f"f6 = {f6}")
 
     i7 := (-((i5 / i5) * ((-19) / i5)))
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
     b8 := ((l4.length() + l4.length()) <= ((i5 + 46) % i5))
-    say("b8 = {b8}")
+    say(f"b8 = {b8}")
 
-    s9 := (("{l4.length()}:" + s3) + ("{(i7 * (-30))}:" + "brace\{s\}").lower())
-    say("s9 = [{s9}]")
+    s9 := ((f"{l4.length()}:" + s3) + (f"{(i7 * (-30))}:" + "brace{s}").lower())
+    say(f"s9 = [{s9}]")
 
     f10 := f2
-    say("f10 = {f10}")
+    say(f"f10 = {f10}")
 
     s11 := ("Tab\there" + s9).replace("日本語", s9).upper()
-    say("s11 = [{s11}]")
+    say(f"s11 = [{s11}]")
     return 0

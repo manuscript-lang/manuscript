@@ -24,7 +24,7 @@ fn var Lanes.shift_back() Void:
 
 test "changed fields of one record keep their owners without copying":
 	tmp := temporary("var-fields-")?
-	path := "{tmp.path()}/data"
+	path := f"{tmp.path()}/data"
 	append_file(path, "x").wait()?
 
 	var lanes = Lanes()

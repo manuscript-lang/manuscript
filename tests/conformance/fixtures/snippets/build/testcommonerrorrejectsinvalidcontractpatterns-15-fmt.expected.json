@@ -1,7 +1,7 @@
 {
   "format": 1,
   "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
+  "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
     "fmt": "type Box[T]:\n\titem: T\n\ninterface Named:\n\tfn name() String\n\nfn Box[T].name() String:\n\treturn \"box\"\n\nfn wrong(item: Named) String:\n\tmatch item:\n\t\tBox(value):\n\t\t\treturn value.name()\n\t\t_:\n\t\t\treturn item.name()\n"

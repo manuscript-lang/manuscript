@@ -1,7 +1,7 @@
 {
   "format": 1,
   "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
+  "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
     "fmt": "import expect_equal, skip from \"@std/test/test.ms\"\n\ntest \"passing\":\n\texpect_equal(2 + 2, 4)?\n\ntest \"skipped\":\n\tskip(\"fixture unavailable\")?\n\ntest \"failing\":\n\texpect_equal(1, 2)?\n\ntest \"later\":\n\texpect_equal(true, true)?\n"

@@ -3,8 +3,8 @@
 // Deterministic; run: ms run bench/agent/gen.ms -- c55
 import Cases, build_oracle, write_cases from "../../lib/gen.ms"
 
-PEOPLE := "[\{\"name\":\"Alice\",\"age\":30,\"tags\":[\"a\",\"b\"],\"addr\":\{\"city\":\"Paris\",\"zip\":\"75001\"\}\},\{\"name\":\"Bob\",\"age\":25,\"tags\":[],\"addr\":\{\"city\":\"Rome\",\"zip\":null\}\},\{\"name\":\"Carol\",\"age\":35,\"tags\":[\"c\"],\"addr\":null\}]"
-ORDERS := "\{\"orders\":[\{\"id\":1,\"items\":[\{\"sku\":\"a\",\"qty\":2,\"price\":3.5\},\{\"sku\":\"b\",\"qty\":1,\"price\":10\}],\"status\":\"paid\"\},\{\"id\":2,\"items\":[\{\"sku\":\"a\",\"qty\":5,\"price\":3.5\}],\"status\":\"open\"\},\{\"id\":3,\"items\":[],\"status\":\"paid\"\}]\}"
+PEOPLE := "[{\"name\":\"Alice\",\"age\":30,\"tags\":[\"a\",\"b\"],\"addr\":{\"city\":\"Paris\",\"zip\":\"75001\"}},{\"name\":\"Bob\",\"age\":25,\"tags\":[],\"addr\":{\"city\":\"Rome\",\"zip\":null}},{\"name\":\"Carol\",\"age\":35,\"tags\":[\"c\"],\"addr\":null}]"
+ORDERS := "{\"orders\":[{\"id\":1,\"items\":[{\"sku\":\"a\",\"qty\":2,\"price\":3.5},{\"sku\":\"b\",\"qty\":1,\"price\":10}],\"status\":\"paid\"},{\"id\":2,\"items\":[{\"sku\":\"a\",\"qty\":5,\"price\":3.5}],\"status\":\"open\"},{\"id\":3,\"items\":[],\"status\":\"paid\"}]}"
 
 fn add(
 	var cs: Cases,
@@ -23,7 +23,7 @@ export fn gen_c55() Void:
 		var cs,
 		"field-access",
 		".a, .b.c, .b.c.d, .x, .a.y",
-		"\{\"a\":\{\"y\":1\},\"b\":\{\"c\":\{\"d\":[1]\}\}\}",
+		"{\"a\":{\"y\":1},\"b\":{\"c\":{\"d\":[1]}}}",
 	)
 	add(
 		var cs,
@@ -37,9 +37,9 @@ export fn gen_c55() Void:
 		".[1:3], .[:2], .[-2:], .[2:], .[1:-1], .[5:], .[-10:2], .[1.5:3.2]",
 		"[0,1,2,3,4]",
 	)
-	add(var cs, "iterate", ".[], .[]?", "[1,[2],\{\"a\":3\}]")
-	add(var cs, "iterate-object", ".[], keys, [.[]]", "\{\"b\":2,\"a\":1,\"c\":[3]\}")
-	add(var cs, "recurse-dots", "[..]", "[1,[2,\{\"a\":3\}],\{\"b\":[4]\}]")
+	add(var cs, "iterate", ".[], .[]?", "[1,[2],{\"a\":3}]")
+	add(var cs, "iterate-object", ".[], keys, [.[]]", "{\"b\":2,\"a\":1,\"c\":[3]}")
+	add(var cs, "recurse-dots", "[..]", "[1,[2,{\"a\":3}],{\"b\":[4]}]")
 	add(
 		var cs,
 		"array-construct",
@@ -49,31 +49,26 @@ export fn gen_c55() Void:
 	add(
 		var cs,
 		"object-construct",
-		"\{a: 1, \"b\": 2, (.k): 3, \"c\\(.k)\": 4, name, \"age\": .age\}",
-		"\{\"k\":\"kk\",\"name\":\"N\",\"age\":5\}",
+		"{a: 1, \"b\": 2, (.k): 3, \"c\\(.k)\": 4, name, \"age\": .age}",
+		"{\"k\":\"kk\",\"name\":\"N\",\"age\":5}",
 	)
 	add(
 		var cs,
 		"object-generators",
-		"\{a: (1,2), b: (3,4)\}, \{(.k,\"z\"): 1\}, \{a: .l[]\}",
-		"\{\"k\":\"q\",\"l\":[7,8]\}",
+		"{a: (1,2), b: (3,4)}, {(.k,\"z\"): 1}, {a: .l[]}",
+		"{\"k\":\"q\",\"l\":[7,8]}",
 	)
-	add(
-		var cs,
-		"pipes-commas",
-		".a | (.b, .c) | . + 1",
-		"\{\"a\":\{\"b\":1,\"c\":2\}\}",
-	)
+	add(var cs, "pipes-commas", ".a | (.b, .c) | . + 1", "{\"a\":{\"b\":1,\"c\":2}}")
 	add(
 		var cs,
 		"arith-numbers",
 		".a + .b, .a - .b, .a * .b, .a / .b, .a % .b, -.a, (.a + .b * 2 - 1), (10 / 4), (7 % 3), (-7 % 3), (7 % -3), (5.9 % 3.2)",
-		"\{\"a\":7,\"b\":2\}",
+		"{\"a\":7,\"b\":2}",
 	)
 	add(
 		var cs,
 		"arith-errors",
-		"(try (1 + \"a\") catch .), (try (\{\} - 1) catch .), (try ([] * 2) catch .), (try (\"a\" / 1) catch .), (try (1 / 0) catch .), (try (1 % 0) catch .), (try (null - 1) catch .), (try (-\"a\") catch .), (try (\{\} + []) catch .)",
+		"(try (1 + \"a\") catch .), (try ({} - 1) catch .), (try ([] * 2) catch .), (try (\"a\" / 1) catch .), (try (1 / 0) catch .), (try (1 % 0) catch .), (try (null - 1) catch .), (try (-\"a\") catch .), (try ({} + []) catch .)",
 		"null",
 	)
 	add(
@@ -92,7 +87,7 @@ export fn gen_c55() Void:
 		var cs,
 		"alternative",
 		".a // \"d\", .b // \"d\", .c // \"d\", (.d // empty), ([.e[] // 5]), (empty // 1), ((null, false) // 2), ((1, null, 2) // 3), (error(\"x\") // 4), (.a // .b // 9)",
-		"\{\"a\":0,\"b\":null,\"c\":false,\"e\":[null,false]\}",
+		"{\"a\":0,\"b\":null,\"c\":false,\"e\":[null,false]}",
 	)
 	add(
 		var cs,
@@ -110,13 +105,13 @@ export fn gen_c55() Void:
 		var cs,
 		"map-values",
 		"map_values(. + 1), map(. * 2), (map_values(empty)), (map(select(. > 1)))",
-		"\{\"a\":1,\"b\":2,\"c\":3\}",
+		"{\"a\":1,\"b\":2,\"c\":3}",
 	)
 	add(
 		var cs,
 		"keys-has",
 		"keys, keys_unsorted, has(\"b\"), has(\"z\"), (.b | keys), (.b | has(1), has(2), has(-1)), length, (.b | length), (.s | length), (.n | length), (null | length), (.t | try length catch .)",
-		"\{\"b\":[5,6],\"a\":1,\"s\":\"héllo\",\"n\":-4.5,\"t\":true\}",
+		"{\"b\":[5,6],\"a\":1,\"s\":\"héllo\",\"n\":-4.5,\"t\":true}",
 	)
 	add(
 		var cs,
@@ -140,7 +135,7 @@ export fn gen_c55() Void:
 		var cs,
 		"type-selectors",
 		"[.[] | type], [.[] | numbers], [.[] | strings], [.[] | arrays], [.[] | objects], [.[] | booleans], [.[] | nulls], [.[] | values], [.[] | iterables], [.[] | scalars]",
-		"[1,\"a\",[2],\{\"b\":3\},true,null,false]",
+		"[1,\"a\",[2],{\"b\":3},true,null,false]",
 	)
 	add(
 		var cs,
@@ -158,72 +153,72 @@ export fn gen_c55() Void:
 		var cs,
 		"sort-group-unique",
 		"sort, (map(.n) | sort), sort_by(.n), sort_by(.n, .s), sort_by(.s | length), group_by(.g), unique_by(.g), (map(.g) | unique), min_by(.n), max_by(.n), (map(.n) | min, max), ([] | min, max, sort, unique), min_by(.z)",
-		"[\{\"n\":3,\"s\":\"cc\",\"g\":\"x\"\},\{\"n\":1,\"s\":\"a\",\"g\":\"y\"\},\{\"n\":3,\"s\":\"b\",\"g\":\"x\"\},\{\"n\":2,\"s\":\"dd\",\"g\":\"z\"\}]",
+		"[{\"n\":3,\"s\":\"cc\",\"g\":\"x\"},{\"n\":1,\"s\":\"a\",\"g\":\"y\"},{\"n\":3,\"s\":\"b\",\"g\":\"x\"},{\"n\":2,\"s\":\"dd\",\"g\":\"z\"}]",
 	)
 	add(
 		var cs,
 		"sort-errors",
-		"try (\{\} | sort) catch ., try (1 | sort_by(.)) catch ., try (\"a\" | min) catch ., try (null | unique) catch .",
+		"try ({} | sort) catch ., try (1 | sort_by(.)) catch ., try (\"a\" | min) catch ., try (null | unique) catch .",
 		"null",
 	)
 	add(
 		var cs,
 		"to-from-entries",
-		"to_entries, (to_entries | from_entries), with_entries(.value += 1), with_entries(select(.value > 1)), with_entries(.key |= ascii_upcase), ([\{\"name\":\"a\",\"value\":1\},\{\"k\":\"b\",\"v\":2\},\{\"Key\":\"c\",\"Value\":3\},\{\"key\":1,\"value\":4\},\{\"key\":null,\"value\":5\},\{\"key\":false\},\{\"name\":\"z\"\}] | from_entries), ([] | from_entries), (try (1 | to_entries) catch .)",
-		"\{\"a\":1,\"b\":2,\"c\":3\}",
+		"to_entries, (to_entries | from_entries), with_entries(.value += 1), with_entries(select(.value > 1)), with_entries(.key |= ascii_upcase), ([{\"name\":\"a\",\"value\":1},{\"k\":\"b\",\"v\":2},{\"Key\":\"c\",\"Value\":3},{\"key\":1,\"value\":4},{\"key\":null,\"value\":5},{\"key\":false},{\"name\":\"z\"}] | from_entries), ([] | from_entries), (try (1 | to_entries) catch .)",
+		"{\"a\":1,\"b\":2,\"c\":3}",
 	)
 	add(
 		var cs,
 		"paths-getpath",
 		"[paths], [paths(type == \"number\")], [leaf_paths], getpath([\"a\",\"b\"]), getpath([\"a\",\"x\",\"y\"]), getpath([\"z\"]), [getpath([\"a\",\"b\"], [\"c\"])], (try getpath([\"c\",\"d\"]) catch .), path(.a.b), [path(..)], [path(.c[])], (try path(1) catch .), (try path(.a | tostring) catch .), [path(.a, .c[0])], (path(.a | select(.b))), [path(.a | if .b then .b else empty end)], [path(.z // .a)], [path(first(.c[]))], [path(limit(1; .c[]))], [path(.c | last)]",
-		"\{\"a\":\{\"b\":1\},\"c\":[true,null]\}",
+		"{\"a\":{\"b\":1},\"c\":[true,null]}",
 	)
 	add(
 		var cs,
 		"setpath-delpaths",
 		"setpath([\"a\",\"b\"]; 9), setpath([\"n\"]; 1), setpath([\"l\",2]; \"x\"), setpath([]; 5), (try setpath([\"a\",\"b\",\"c\"]; 1) catch .), (try setpath([0]; 1) catch .), delpaths([[\"a\",\"b\"]]), delpaths([[\"l\",0],[\"l\",1]]), delpaths([[\"zz\"]]), delpaths([[\"l\",-1]]), delpaths([[]]), delpaths([]), (try delpaths(1) catch .), (try delpaths([[\"a\",\"b\",\"c\"]]) catch .), (null | setpath([\"x\",1,\"y\"]; 1)), (try setpath([\"l\",-5]; 1) catch .)",
-		"\{\"a\":\{\"b\":1\},\"l\":[1,2,3]\}",
+		"{\"a\":{\"b\":1},\"l\":[1,2,3]}",
 	)
 	add(
 		var cs,
 		"del",
 		"del(.a), del(.l[0]), del(.l[]), del(.a, .l), del(.l[] | select(. > 1)), del(.[]), del(.nope), del(.l[5]), del(.l[0,2]), del(.a.b), del(.. | select(. == 1))",
-		"\{\"a\":\{\"b\":1\},\"l\":[1,2,3]\}",
+		"{\"a\":{\"b\":1},\"l\":[1,2,3]}",
 	)
 	add(
 		var cs,
 		"assign-simple",
 		".a = 1, (.b.c = 2), (.l[1] = \"x\"), (.l[5] = 0), (.[] = 0), (.a = (.l | length)), (.l[] = (1,2)), (.n = .a), (.z.y.x = 1), (.l[-1] = 9)",
-		"\{\"a\":10,\"l\":[1,2,3],\"b\":null\}",
+		"{\"a\":10,\"l\":[1,2,3],\"b\":null}",
 	)
 	add(
 		var cs,
 		"assign-update",
 		".a |= . + 1, (.l[] |= . * 2), (.l |= map(. + 1)), (.a |= empty), (.l[] |= empty), (.l[] |= select(. > 1)), (.b |= 5), (.s |= ascii_upcase), (.l |= sort_by(-.)), ((.a, .l[0]) |= 0), (.l[] |= (., .)), (.a |= (1, 2))",
-		"\{\"a\":1,\"l\":[1,2,3],\"b\":null,\"s\":\"hi\"\}",
+		"{\"a\":1,\"l\":[1,2,3],\"b\":null,\"s\":\"hi\"}",
 	)
 	add(
 		var cs,
 		"assign-precedence",
 		".a = 1 | .b = 2, (.a = 1, .b = 2), (.a = .b + 1), (.a = 1 // 2), (.n = (.a | . + 1)), ((.a = 5) | .a), (.a = .b | .a)",
-		"\{\"a\":null,\"b\":10,\"n\":0\}",
+		"{\"a\":null,\"b\":10,\"n\":0}",
 	)
 	add(
 		var cs,
 		"variables-as",
-		"(. as $x | $x[0] + 1), (1 as $a | 2 as $b | [$a, $b, $a + $b]), (.[0] as $first | $first), ([.[] as $v | $v * $v]), (. as [$a, $b] | \{$a, $b\}), (. as [$a] | $a), ([.[] as $x | $x | . as $y | $y + 1])",
+		"(. as $x | $x[0] + 1), (1 as $a | 2 as $b | [$a, $b, $a + $b]), (.[0] as $first | $first), ([.[] as $v | $v * $v]), (. as [$a, $b] | {$a, $b}), (. as [$a] | $a), ([.[] as $x | $x | . as $y | $y + 1])",
 		"[5,6]",
 	)
 	add(
 		var cs,
 		"destructuring",
-		". as \{a: $x, b: [$y, \{c: $z\}]\} | [$x, $y, $z], (. as \{$a\} | $a), (. as \{\"a\": $q\} | $q), (. as \{(\"a\",\"b\"): $k\} | $k), (. as \{b: [$p]\} | $p), ([.b] | .[] as [$m, \{c: $n\}] | [$m, $n])",
-		"\{\"a\":1,\"b\":[2,\{\"c\":3\}]\}",
+		". as {a: $x, b: [$y, {c: $z}]} | [$x, $y, $z], (. as {$a} | $a), (. as {\"a\": $q} | $q), (. as {(\"a\",\"b\"): $k} | $k), (. as {b: [$p]} | $p), ([.b] | .[] as [$m, {c: $n}] | [$m, $n])",
+		"{\"a\":1,\"b\":[2,{\"c\":3}]}",
 	)
 	add(
 		var cs,
 		"reduce",
-		"reduce .[] as $x (0; . + $x), (reduce .[] as $x ([]; [$x] + .)), (reduce range(5) as $i (1; . * 2)), (reduce empty as $x (7; . + 1)), (reduce .[] as $x (0; empty)), (reduce .[] as $x (0; ., 100)), (reduce (1,2) as $x (0, 10; . + $x)), (reduce .[] as $x (\{\}; .[\"k\\($x)\"] = $x)), (reduce .[] as $x (null; . + $x)), ([reduce .[] as $x (0; . + 1, . + 2)])",
+		"reduce .[] as $x (0; . + $x), (reduce .[] as $x ([]; [$x] + .)), (reduce range(5) as $i (1; . * 2)), (reduce empty as $x (7; . + 1)), (reduce .[] as $x (0; empty)), (reduce .[] as $x (0; ., 100)), (reduce (1,2) as $x (0, 10; . + $x)), (reduce .[] as $x ({}; .[\"k\\($x)\"] = $x)), (reduce .[] as $x (null; . + $x)), ([reduce .[] as $x (0; . + 1, . + 2)])",
 		"[1,2,3]",
 	)
 	add(
@@ -235,14 +230,14 @@ export fn gen_c55() Void:
 	add(
 		var cs,
 		"until-while-repeat",
-		"[.[] | until(. > 100; . * 2)], [1 | while(. < 50; . * 3)], [limit(5; 1 | repeat(. * 2))], [2 | recurse(if . < 20 then . * . else empty end)], [.[0] | recurse(if . < 3 then . + 1 else empty end)], ([\{\"c\":[\{\"c\":[]\}]\}] | [recurse(.[]?.c?) ] | length)",
+		"[.[] | until(. > 100; . * 2)], [1 | while(. < 50; . * 3)], [limit(5; 1 | repeat(. * 2))], [2 | recurse(if . < 20 then . * . else empty end)], [.[0] | recurse(if . < 3 then . + 1 else empty end)], ([{\"c\":[{\"c\":[]}]}] | [recurse(.[]?.c?) ] | length)",
 		"[1,5,50]",
 	)
 	add(
 		var cs,
 		"walk",
 		"walk(if type == \"number\" then . + 1 else . end), walk(if type == \"array\" then sort else . end), walk(if type == \"object\" then del(.x) else . end), walk(select(. != null)), walk(.)",
-		"[3,\{\"x\":1,\"y\":[2,1]\},null,[5,4]]",
+		"[3,{\"x\":1,\"y\":[2,1]},null,[5,4]]",
 	)
 	add(
 		var cs,
@@ -259,7 +254,7 @@ export fn gen_c55() Void:
 	add(
 		var cs,
 		"try-catch",
-		"[.[] | try (if . == 2 then error(\"two\") else . end) catch \"caught\"], (try error(\"x\") catch .), (try error(\{a:1\}) catch .a), (try error(null) catch .), [.[] | (if . == 2 then error(\"e\") else . end)?], (try (1, error(\"x\"), 3) catch \"c\"), ([.[] | try error catch .]), (try (try error(\"in\") catch error(\"out\")) catch .), (try error catch .)",
+		"[.[] | try (if . == 2 then error(\"two\") else . end) catch \"caught\"], (try error(\"x\") catch .), (try error({a:1}) catch .a), (try error(null) catch .), [.[] | (if . == 2 then error(\"e\") else . end)?], (try (1, error(\"x\"), 3) catch \"c\"), ([.[] | try error catch .]), (try (try error(\"in\") catch error(\"out\")) catch .), (try error catch .)",
 		"[1,2,3]",
 	)
 	add(
@@ -278,22 +273,22 @@ export fn gen_c55() Void:
 		var cs,
 		"error-builtin-types",
 		".[] | try length catch .",
-		"[true, \{\}, [], \"\", 0]",
+		"[true, {}, [], \"\", 0]",
 	)
 	add(
 		var cs,
 		"error-messages",
 		".[] | try (.a) catch ., try (.[0]) catch ., try (.[]) catch ., try (keys) catch ., try has(\"a\") catch ., try has(0) catch .",
-		"[1,\"s\",true,[1],\{\"a\":1\}]",
+		"[1,\"s\",true,[1],{\"a\":1}]",
 	)
-	add(var cs, "error-compile", ".a | nosuch(1)", "\{\"a\":1\}")
-	add(var cs, "error-compile-var", ".a as $x | $y", "\{\"a\":1\}")
-	add(var cs, "compile-before-input", ".a | missing", "\{\"a\":1\} \{\"a\":2\}")
+	add(var cs, "error-compile", ".a | nosuch(1)", "{\"a\":1}")
+	add(var cs, "error-compile-var", ".a as $x | $y", "{\"a\":1}")
+	add(var cs, "compile-before-input", ".a | missing", "{\"a\":1} {\"a\":2}")
 	add(var cs, "error-syntax-1", ".a +", "1")
 	add(var cs, "error-syntax-5", "if 1 then 2", "1")
-	add(var cs, "object-value-expr", "\{a:1 + 2\}", "1")
+	add(var cs, "object-value-expr", "{a:1 + 2}", "1")
 	add(var cs, "error-syntax-20", "", "1")
-	add(var cs, "error-invalid-json", ".", "\{\"a\":1\} \{bad\} 3")
+	add(var cs, "error-invalid-json", ".", "{\"a\":1} {bad} 3")
 	add(
 		var cs,
 		"json-numbers-strings",
@@ -305,12 +300,12 @@ export fn gen_c55() Void:
 		var cs,
 		"opt-raw",
 		".[]",
-		"[\"a\\nb\", 1, null, \{\"a\":\"x\"\}, [\"s\"], \"é\", \"\"]",
+		"[\"a\\nb\", 1, null, {\"a\":\"x\"}, [\"s\"], \"é\", \"\"]",
 		opts: "-r",
 	)
 	add(var cs, "opt-slurp", "., length, map(. * 2)", "1 2 3", opts: "-s")
 	add(var cs, "opt-slurp-raw", ".[] | strings", "\"a\" 1 \"b\"", opts: "-r -s")
-	add(var cs, "opt-null-input", "[1,2] | add", "ignored \{bad json", opts: "-n")
+	add(var cs, "opt-null-input", "[1,2] | add", "ignored {bad json", opts: "-n")
 	add(
 		var cs,
 		"multi-input-errors",
@@ -321,31 +316,31 @@ export fn gen_c55() Void:
 		var cs,
 		"string-interp",
 		"\"a\\(.x)b\", \"\\(.x)\", \"\\(.x + 1) and \\(.y)\", \"\\(.l)\", \"\\(\"nested \\(.x)\")\", \"\\(.x, .x + 1)-\\(10, 20)\", \"\\(null)\", \"no interp\", \"\", \"\\(.s)\", \"q\\\"uote\", \"t\\tb\\nn\\\\\"",
-		"\{\"x\":1,\"y\":\"two\",\"l\":[1,\{\"a\":null\}],\"s\":\"str\"\}",
+		"{\"x\":1,\"y\":\"two\",\"l\":[1,{\"a\":null}],\"s\":\"str\"}",
 	)
 	add(
 		var cs,
 		"formats",
 		"(.l | @csv), (.l | @tsv), (.s | @html), (.s | @uri), (.s | @base64), (.s | @base64 | @base64d), (.o | @json), (.l | @text), (.s | @json), (.l | @json), @json \"v=\\(.l)\", @csv \"r:\\(.l)\", @html \"<b>\\(.s)</b>\", @uri \"q=\\(.s)\", @base64 \"\\(.s)\", @text \"\\(.o)\", (.n | @text, @json)",
-		"\{\"l\":[1,\"a,b\",\"q\\\"r\",\"t\\tx\",null,true,2.5],\"s\":\"<a&b> 'x' \\\"y\\\" ~z-_.é\",\"o\":\{\"k\":[1]\},\"n\":12\}",
+		"{\"l\":[1,\"a,b\",\"q\\\"r\",\"t\\tx\",null,true,2.5],\"s\":\"<a&b> 'x' \\\"y\\\" ~z-_.é\",\"o\":{\"k\":[1]},\"n\":12}",
 	)
 	add(
 		var cs,
 		"format-errors",
-		"(try ([\{\}] | @csv) catch .), (try (\{\} | @csv) catch .), (try (\"a\" | @tsv) catch .), (try ([[1]] | @tsv) catch .), (try (\"!!\" | @base64d) catch .), (1 | @html), (null | @uri), ([1,[2]] | @html), (true | @base64)",
+		"(try ([{}] | @csv) catch .), (try ({} | @csv) catch .), (try (\"a\" | @tsv) catch .), (try ([[1]] | @tsv) catch .), (try (\"!!\" | @base64d) catch .), (1 | @html), (null | @uri), ([1,[2]] | @html), (true | @base64)",
 		"null",
 	)
 	add(
 		var cs,
 		"complex-orders",
-		"(.orders | map(select(.status == \"paid\") | \{id, total: (.items | map(.qty * .price) | add // 0)\})), ([.orders[].items[]] | group_by(.sku) | map(\{sku: .[0].sku, qty: (map(.qty) | add)\})), (.orders | map(.items | length) | max), ([.orders[] | select(.items | length > 0) | .id]), (.orders | map(\{(.id | tostring): .status\}) | add), ([.orders[] | .items[] | select(.price > 5) | .sku] | unique)",
+		"(.orders | map(select(.status == \"paid\") | {id, total: (.items | map(.qty * .price) | add // 0)})), ([.orders[].items[]] | group_by(.sku) | map({sku: .[0].sku, qty: (map(.qty) | add)})), (.orders | map(.items | length) | max), ([.orders[] | select(.items | length > 0) | .id]), (.orders | map({(.id | tostring): .status}) | add), ([.orders[] | .items[] | select(.price > 5) | .sku] | unique)",
 		ORDERS,
 	)
 	add(
 		var cs,
 		"complex-transform",
 		"to_entries | map(select(.value | type == \"number\")) | sort_by(-.value) | map(\"\\(.key): \\(.value)\") | .[]",
-		"\{\"a\":3,\"b\":\"x\",\"c\":10,\"d\":1.5,\"e\":null\}",
+		"{\"a\":3,\"b\":\"x\",\"c\":10,\"d\":1.5,\"e\":null}",
 	)
 	add(
 		var cs,
@@ -356,19 +351,19 @@ export fn gen_c55() Void:
 	add(
 		var cs,
 		"complex-flatten-paths",
-		"[paths(scalars) as $p | \{path: ($p | map(tostring) | join(\".\")), value: getpath($p)\}]",
-		"\{\"a\":\{\"b\":[1,\{\"c\":2\}],\"d\":\"x\"\},\"e\":null\}",
+		"[paths(scalars) as $p | {path: ($p | map(tostring) | join(\".\")), value: getpath($p)}]",
+		"{\"a\":{\"b\":[1,{\"c\":2}],\"d\":\"x\"},\"e\":null}",
 	)
 	add(
 		var cs,
 		"complex-pivot",
-		"group_by(.region) | map(\{region: .[0].region, total: (map(.amt) | add), items: map(.item) | sort\}) | sort_by(.region)",
-		"[\{\"region\":\"n\",\"item\":\"b\",\"amt\":5\},\{\"region\":\"s\",\"item\":\"a\",\"amt\":2\},\{\"region\":\"n\",\"item\":\"a\",\"amt\":7\},\{\"region\":\"s\",\"item\":\"c\",\"amt\":1.5\}]",
+		"group_by(.region) | map({region: .[0].region, total: (map(.amt) | add), items: map(.item) | sort}) | sort_by(.region)",
+		"[{\"region\":\"n\",\"item\":\"b\",\"amt\":5},{\"region\":\"s\",\"item\":\"a\",\"amt\":2},{\"region\":\"n\",\"item\":\"a\",\"amt\":7},{\"region\":\"s\",\"item\":\"c\",\"amt\":1.5}]",
 	)
 	add(
 		var cs,
 		"complex-stats",
-		"(add / length) as $mean | (map(. - $mean | . * .) | add / length) as $var | \{mean: $mean, variance: $var, sorted: sort, median: (sort | if length % 2 == 1 then .[length / 2 | floor] else (.[length / 2 - 1] + .[length / 2]) / 2 end)\}",
+		"(add / length) as $mean | (map(. - $mean | . * .) | add / length) as $var | {mean: $mean, variance: $var, sorted: sort, median: (sort | if length % 2 == 1 then .[length / 2 | floor] else (.[length / 2 - 1] + .[length / 2]) / 2 end)}",
 		"[2,4,4,4,5,5,7,9]",
 	)
 	add(
@@ -387,11 +382,11 @@ export fn gen_c55() Void:
 	examples := [
 		cs.make(
 			"basic",
-			".users | map(select(.age >= 18) | \{name, adult: true\})\n\{\"users\":[\{\"name\":\"A\",\"age\":20\},\{\"name\":\"B\",\"age\":10\},\{\"name\":\"C\",\"age\":33\}]\}\n",
+			".users | map(select(.age >= 18) | {name, adult: true})\n{\"users\":[{\"name\":\"A\",\"age\":20},{\"name\":\"B\",\"age\":10},{\"name\":\"C\",\"age\":33}]}\n",
 		),
 		cs.make(
 			"reduce-and-format",
-			"reduce .[] as $x (\{\}; .[$x.k] += $x.v) | to_entries[] | \"\\(.key)=\\(.value)\"\n[\{\"k\":\"a\",\"v\":1\},\{\"k\":\"b\",\"v\":2\},\{\"k\":\"a\",\"v\":3\}]\n",
+			"reduce .[] as $x ({}; .[$x.k] += $x.v) | to_entries[] | \"\\(.key)=\\(.value)\"\n[{\"k\":\"a\",\"v\":1},{\"k\":\"b\",\"v\":2},{\"k\":\"a\",\"v\":3}]\n",
 		),
 		cs.make(
 			"errors",
