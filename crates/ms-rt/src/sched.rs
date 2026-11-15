@@ -18,9 +18,7 @@
 use crate::isolate;
 use std::collections::VecDeque;
 use std::sync::Mutex;
-use std::sync::atomic::{
-    AtomicBool, AtomicI64, AtomicU8, AtomicU32, AtomicU64, AtomicUsize, Ordering,
-};
+use std::sync::atomic::{AtomicBool, AtomicI64, AtomicU32, AtomicU64, AtomicUsize, Ordering};
 
 /// Most scheduler threads. The thread index lives in six bits of a promise id.
 pub const MAX_THREADS: usize = 63;
@@ -280,8 +278,17 @@ pub(crate) fn started() -> usize {
 
 /// Whether the stress mode is on (`MS_SCHED_STRESS` set to anything but empty or `0`). It exists to
 /// expose one-in-N timing bugs deterministically: a promise never starts on its creator, and the
-/// first idle thread takes it (see `submit_stress`). The environment is read once.
+/// first idle thread takes it (see `submit_stress`). The environment is read once. Only a runtime
+/// built with the `sched-stress` feature has the mode; the shipped runtime never reads the variable.
+#[cfg(not(feature = "sched-stress"))]
+#[inline(always)]
+pub(crate) const fn stress() -> bool {
+    false
+}
+
+#[cfg(feature = "sched-stress")]
 pub(crate) fn stress() -> bool {
+    use core::sync::atomic::AtomicU8;
     static STRESS: AtomicU8 = AtomicU8::new(0);
     match STRESS.load(Ordering::Relaxed) {
         0 => {
@@ -372,6 +379,7 @@ pub(crate) fn submit(start: Start) -> u64 {
     if me == NONE {
         unreachable!("submit is for scheduler threads");
     }
+    #[cfg(feature = "sched-stress")]
     if stress() {
         return submit_stress(me, start);
     }
@@ -406,6 +414,7 @@ pub(crate) fn submit(start: Start) -> u64 {
 /// index), else the next thread after it in turn, already aged so any idle thread may take it.
 /// It is never queued on the creator, so `remove_pending` finds nothing and the waiter parks until
 /// the work runs elsewhere. Answers 0: the start has no place in the creator's queue.
+#[cfg(feature = "sched-stress")]
 fn submit_stress(me: usize, start: Start) -> u64 {
     let mut started = STARTED.load(Ordering::Acquire);
     if started < 2 {
