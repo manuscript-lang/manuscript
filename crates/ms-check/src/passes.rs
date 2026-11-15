@@ -353,11 +353,18 @@ pub fn desugar_inherent_impls(
             _ => None,
         })
         .collect();
+    // Only forms of one type under the same bounds can overlap, so each is compared with the
+    // later forms of its own group rather than with every form in the module.
+    let mut groups: HashMap<(Name, &str), Vec<usize>> = HashMap::default();
+    let mut rank: Vec<usize> = Vec::with_capacity(forms.len());
+    for (x, (_, name, bounds)) in forms.iter().enumerate() {
+        let group = groups.entry((*name, bounds.as_str())).or_default();
+        rank.push(group.len());
+        group.push(x);
+    }
     for (x, (i, name_i, bounds_i)) in forms.iter().enumerate() {
-        for (j, name_j, bounds_j) in &forms[x + 1..] {
-            if name_i != name_j || bounds_i != bounds_j {
-                continue;
-            }
+        for &y in &groups[&(*name_i, bounds_i.as_str())][rank[x] + 1..] {
+            let (j, _, _) = &forms[y];
             let (DeclKind::Impl(a), DeclKind::Impl(b)) = (&out[*i].kind, &out[*j].kind) else {
                 continue;
             };
