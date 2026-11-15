@@ -657,16 +657,6 @@ type ServingHandle:
 fn var ServingHandle.close() Void!:
 	msstd_http_serving_release(self.serving)
 
-// A worker's share of the serving: its options and the handler, which the last share
-// drops. It has a `close` only so the checker treats it as a resource the worker
-// promise owns: a promise stored in a record's list reads a loop-body local that is
-// freed first (#4148).
-type WorkerShare:
-	spec: NativeWorkerSpec
-
-fn var WorkerShare.close() Void!:
-	return ok()
-
 // One worker's HTTP engine, which owns its connections as poller registrations rather
 // than as tasks. Closing it drains them.
 type WorkerHandle:
@@ -703,13 +693,8 @@ fn accept_loop(listening: ServingHandle, count: Int) Void!:
 		queue := pipe[Int](1024)
 		accepting.deals.append(queue.writer())
 
-		share := WorkerShare(spec: msstd_http_serving_spec(listening.serving))
-		accepting.workers.append(
-			promise(
-				fn: serve_worker(share, queue),
-				options: PromiseOptions(placement: Placement.Spread)
-			)
-		)
+		spec := msstd_http_serving_spec(listening.serving)
+		accepting.workers.append(start_worker(spec, queue))
 		i += 1
 
 	var next = 0
@@ -726,10 +711,19 @@ fn accept_loop(listening: ServingHandle, count: Int) Void!:
 		void accepting.deals[next].write(accepted.get())
 		next = (next + 1) % count
 
+// Starts one worker on the least loaded thread. A returned promise owns what it
+// captures, so the share of the serving and the pipe belong to the worker for as long
+// as it runs.
+fn start_worker(spec: NativeWorkerSpec, input: Pipe[Int]) Promise[Void]:
+	return promise(
+		fn: serve_worker(spec, input),
+		options: PromiseOptions(placement: Placement.Spread)
+	)
+
 // Runs one worker on the thread the runtime placed this promise on: it adopts each
 // connection it is dealt, and the poller drives them from there.
-fn serve_worker(share: WorkerShare, input: Pipe[Int]) Void!:
-	engine := WorkerHandle(worker: msstd_http_serving_worker(share.spec)?)
+fn serve_worker(spec: NativeWorkerSpec, input: Pipe[Int]) Void!:
+	engine := WorkerHandle(worker: msstd_http_serving_worker(spec)?)
 
 	while true:
 		item := input.receive()
