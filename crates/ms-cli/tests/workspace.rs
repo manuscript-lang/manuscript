@@ -254,3 +254,54 @@ fn members_share_one_lock_and_one_copy() {
     assert!(!add.status.success());
     assert!(err(&add).contains("workspace root"), "{}", err(&add));
 }
+
+#[test]
+fn fmt_test_and_verify_at_the_root_run_on_every_member() {
+    let root = scratch("workspace-each-member");
+    let cache = root.join("cache");
+    workspace(&root, "\"@util\" = { path = \"../libs/util\" }\n");
+    file(&root, "app/test.ms", "test \"passes\":\n    return\n");
+    file(
+        &root,
+        "libs/util/test.ms",
+        "test \"fails\":\n    return error(Error(\"nope\"))\n",
+    );
+
+    // The fixtures are not canonical, so the check names the files of every member.
+    let unformatted = ms(&root, &cache, &["fmt", "--check", "ms.toml"]);
+    let text = err(&unformatted);
+    assert!(
+        !unformatted.status.success()
+            && text.contains("app/test.ms")
+            && text.contains("libs/util/test.ms"),
+        "{text}"
+    );
+    let fmt = ms(&root, &cache, &["fmt", "ms.toml"]);
+    assert!(fmt.status.success(), "{}", err(&fmt));
+    let fmt = ms(&root, &cache, &["fmt", "--check", "ms.toml"]);
+    assert!(fmt.status.success(), "{}", err(&fmt));
+
+    // Every member runs, so the failure of one member does not hide the other's result.
+    let test = ms(&root, &cache, &["test", "ms.toml"]);
+    assert!(!test.status.success());
+    let text = out(&test);
+    assert!(
+        text.contains("PASS test.ms::passes") && text.contains("FAIL test.ms::fails"),
+        "{text}"
+    );
+
+    let json = ms(&root, &cache, &["test", "ms.toml", "--json"]);
+    let text = out(&json);
+    assert!(
+        text.contains("\"members\"") && text.contains("libs/util/ms.toml"),
+        "{text}"
+    );
+
+    let verify = ms(&root, &cache, &["verify", "ms.toml"]);
+    assert!(!verify.status.success());
+    assert!(
+        err(&verify).contains("test.ms::fails: nope"),
+        "{}",
+        err(&verify)
+    );
+}

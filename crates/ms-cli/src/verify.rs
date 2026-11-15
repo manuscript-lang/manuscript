@@ -228,7 +228,15 @@ fn print_findings(step: &Step, io: &mut Io) -> usize {
     if !step.error.is_empty() {
         findings.push(step.error.clone());
     }
+    // A workspace root reports one result per member.
+    let mut results: Vec<&Json> = Vec::new();
     if let Some(result) = &step.result {
+        match result.get("members").and_then(Json::as_array) {
+            Some(members) => results.extend(members.iter().filter_map(|m| m.get("result"))),
+            None => results.push(result),
+        }
+    }
+    for result in results {
         if let Some(diagnostics) = result.get("diagnostics").and_then(Json::as_array) {
             for d in diagnostics {
                 let position = d.get("position");

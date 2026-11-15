@@ -65,6 +65,24 @@ pub fn run_format(syms: ms_syntax::Names, args: &[String], io: &mut Io) -> i32 {
         );
         return 2;
     }
+    // A workspace root without `[project]` stands for its members.
+    let mut expanded = Vec::new();
+    for target in std::mem::take(&mut targets) {
+        match ms_driver::project::workspace::root_members(&target) {
+            Ok(Some(workspace)) => expanded.extend(
+                workspace
+                    .members
+                    .iter()
+                    .map(ms_driver::project::workspace::Workspace::manifest),
+            ),
+            Ok(None) => expanded.push(target),
+            Err(error) => {
+                let _ = writeln!(io.stderr, "ms fmt: {error}");
+                return 1;
+            }
+        }
+    }
+    targets = expanded;
     let cwd = match format_cwd() {
         Ok(cwd) => cwd,
         Err(error) => {

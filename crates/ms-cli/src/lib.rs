@@ -32,8 +32,8 @@ pub mod verify;
 pub use ms_driver::project::quoting::quote;
 
 use backend::{
-    AnalysisCommand, AnalysisRequest, BuildRequest, DiagramRequest, Io, OutputRequest, RunRequest,
-    TestRequest, finish,
+    AnalysisCommand, AnalysisRequest, BackendResult, BuildRequest, DiagramRequest, Io,
+    OutputRequest, RunRequest, TestRequest, finish,
 };
 use engine::Engine;
 use invocation::{parse_invocation, requests_help, validate};
@@ -201,7 +201,7 @@ pub fn unknown_command(io: &mut Io, name: &str) {
 
 /// A target that is a workspace root without `[project]` stands for its members: `check`, `lint`,
 /// `fmt`, `verify` and `test` run on each, and other commands ask for one member by name.
-fn expand_workspace(inv: &mut invocation::Invocation, io: &mut Io) -> Result<(), i32> {
+fn expand_workspace(inv: &mut invocation::Invocation, io: &mut Io) -> Result<bool, i32> {
     let each = inv.is_one_of(&["check", "lint", "fmt", "verify", "test"]);
     let mut targets = Vec::new();
     let mut expanded = false;
@@ -237,7 +237,63 @@ fn expand_workspace(inv: &mut invocation::Invocation, io: &mut Io) -> Result<(),
         inv.filename = first.clone();
     }
     inv.targets = targets;
-    Ok(())
+    Ok(expanded)
+}
+
+/// `ms test` on a workspace root: each member is its own project, so run them one at a time.
+/// Text output names each member before its results; `--json` is one document holding every
+/// member's result.
+fn test_members<L: Lower>(
+    syms: ms_syntax::Names,
+    inv: &invocation::Invocation,
+    plan: &invocation::Plan,
+    engine: &Engine<L>,
+    io: &mut Io,
+) -> BackendResult {
+    let mut status = 0;
+    let mut members = Vec::new();
+    for manifest in &inv.targets {
+        let request = TestRequest {
+            filename: manifest.clone(),
+            extra: Vec::new(),
+            build_type: plan.build_type,
+            link: inv.link.clone(),
+            json: inv.structured,
+            watch: inv.watch,
+            arguments: inv.arguments.clone(),
+        };
+        if !inv.structured {
+            let _ = writeln!(io.stdout, "== {manifest}");
+            status = status.max(finish(engine.test(syms, &request, io), io));
+            continue;
+        }
+        let (mut out, mut err): (Vec<u8>, Vec<u8>) = (Vec::new(), Vec::new());
+        let code = {
+            let mut member_io = Io {
+                stdin: &mut *io.stdin,
+                stdout: &mut out,
+                stderr: &mut err,
+            };
+            finish(engine.test(syms, &request, &mut member_io), &mut member_io)
+        };
+        status = status.max(code);
+        let _ = io.stderr.write_all(&err);
+        let result = json::parse(String::from_utf8_lossy(&out).trim()).unwrap_or(json::Json::Null);
+        members.push(
+            json::Json::object()
+                .with("manifest", json::Json::str(manifest))
+                .with("exit_code", json::Json::int(i64::from(code)))
+                .with("result", result),
+        );
+    }
+    if inv.structured {
+        let document = json::Json::object()
+            .with("format", json::Json::int(1))
+            .with("exit_code", json::Json::int(i64::from(status)))
+            .with("members", json::Json::Arr(members));
+        return Ok(util::emit_json(io, &document, status));
+    }
+    Ok(status)
 }
 
 /// A command that takes a source file or project: parse and validate its
@@ -262,13 +318,17 @@ fn run_source_command<L: Lower>(
         Ok(inv) => inv,
         Err(status) => return status,
     };
-    if let Err(status) = expand_workspace(&mut inv, io) {
-        return status;
-    }
+    let workspace = match expand_workspace(&mut inv, io) {
+        Ok(expanded) => expanded,
+        Err(status) => return status,
+    };
     let plan = match validate(&mut inv, io) {
         Ok(plan) => plan,
         Err(status) => return status,
     };
+    if workspace && inv.command == "test" {
+        return finish(test_members(syms, &inv, &plan, engine, io), io);
+    }
     engine.set_static_libc(inv.static_libc);
     engine.set_profile_allocs(inv.allocs);
     let result = match inv.command.as_str() {

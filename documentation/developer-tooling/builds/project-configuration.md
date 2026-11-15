@@ -175,7 +175,7 @@ entry = "src/main.ms"
 - A `{ path = "..." }` dependency names another member and is imported like a package: `import greet from "@util/greet.ms"`. It is never written to `ms.lock`, a member's own dependency names are private to it, and a cycle between members is an error. A member may declare `extern`, since it is your own code.
 - A member follows the same effect rule as a fetched package: it declares `effects` under `[project]`, and the importing member allows them under `[effects]`.
 - One `ms.lock` beside the root `ms.toml` pins every url dependency of every member. Members that name the same repository and version share one copy; two members may use one name for different packages. `ms install` installs every member; `ms add` and `ms remove` act on the member whose directory you are in.
-- Run `ms run`, `ms build` and the other commands from a member, or pass its `ms.toml`. At a root with no `[project]`, `ms check`, `ms lint`, `ms fmt`, `ms verify` and `ms test` run on every member; a command that makes one program asks you to name a member. A root may also hold its own `[project]`, and then it is a member too.
+- Run `ms run`, `ms build` and the other commands from a member, or pass its `ms.toml`. At a root with no `[project]`, `ms check`, `ms lint`, `ms fmt`, `ms verify` and `ms test` run on every member; a command that makes one program asks you to name a member. `ms test` prints `== <member>/ms.toml` before each member's results, and `ms test --json` at a root reports `{ "format": 1, "exit_code": N, "members": [{ "manifest", "exit_code", "result" }] }` with each member's usual document as `result`. A root may also hold its own `[project]`, and then it is a member too.
 
 ## Resolving an import
 
