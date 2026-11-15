@@ -350,6 +350,11 @@ export type HttpResponse:
 // of one `serve` call shares.
 export extern type NativeServing
 
+// What one `serve` worker takes from the serving: its options and a borrow of the
+// handler. The serving outlives every worker, which the accept loop joins before
+// releasing it.
+export extern type NativeWorkerSpec
+
 // One worker thread's HTTP engine: the connections it adopted, driven by the poller
 // without a task each.
 export extern type NativeWorker

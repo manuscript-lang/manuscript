@@ -557,8 +557,8 @@ msstd_http_serving_accept(handle s: *const ObjCell<ServingH>, out: *mut i64, err
 msstd_http_serving_address(handle s: *const ObjCell<ServingH>, out: *mut StrVal) @domain=HTTP
 msstd_http_serving_new(address: *const StrVal, opts: *const HttpServerOptionsWire, env: *mut Obj, out: *mut *mut ObjCell<ServingH>, err: ErrSlot) -> u8 @domain=HTTP @keeps:env
 msstd_http_serving_release(handle s: *const ObjCell<ServingH>) @domain=HTTP
-msstd_http_serving_share(handle s: *const ObjCell<ServingH>) -> *mut ObjCell<ServingH> @handle @domain=HTTP
-msstd_http_serving_worker(handle s: *const ObjCell<ServingH>, out: *mut *mut ObjCell<WorkerH>, err: ErrSlot) -> u8 @domain=HTTP
+msstd_http_serving_spec(handle s: *const ObjCell<ServingH>) -> *mut ObjCell<SpecH> @handle @domain=HTTP
+msstd_http_serving_worker(handle s: *const ObjCell<SpecH>, out: *mut *mut ObjCell<WorkerH>, err: ErrSlot) -> u8 @domain=HTTP
 msstd_http_worker_adopt(handle w: *const ObjCell<WorkerH>, connection: i64) @domain=HTTP
 msstd_http_worker_close(handle w: *const ObjCell<WorkerH>) @domain=HTTP
 msstd_io_close(handle h: *mut ObjCell<Stream>, err: ErrSlot) -> u8 @domain=I/O

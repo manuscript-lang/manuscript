@@ -354,11 +354,11 @@ impl Walker<'_> {
             }
             operands.push((Operand::Argument(&a.value), held, Vec::new()));
         }
-        // A promise handed to a local container (`tasks.append(promise(fn: ...))`) is kept by that
-        // local: it reads its captures until the container's scope ends.
+        // A promise handed to a container (`tasks.append(promise(fn: ...))`, or a list inside a
+        // record, `acc.tasks.append(...)`) is kept by the local that owns the container: it reads
+        // its captures until that local's scope ends.
         if let Some(r) = receiver_expr
-            && let ExprKind::Name(_) = &r.kind
-            && let Resolution::Local(holder) = self.cx.m.resolution(r)
+            && let Some(holder) = self.container_root(r)
         {
             self.take_carried(holder.uid, holder.name);
             for a in args {

@@ -18,6 +18,7 @@ import (
 	HttpServerOptions,
 	NativeServing,
 	NativeWorker,
+	NativeWorkerSpec,
 	headers from "@std/net/http.ms",
 	Cidr, DnsKind, DnsRecord, IpAddress from "@std/net/ip.ms",
 	TlsInfo, TlsOptions from "@std/net/tls.ms",
@@ -33,7 +34,7 @@ import (
 	msstd_http_serving_address,
 	msstd_http_serving_new,
 	msstd_http_serving_release,
-	msstd_http_serving_share,
+	msstd_http_serving_spec,
 	msstd_http_serving_worker,
 	msstd_http_worker_adopt,
 	msstd_http_worker_close from "@std/internal/http.ms",
@@ -633,12 +634,12 @@ export fn serve(
 
 	serving := msstd_http_serving_new(address, options, handler)?
 	bound := msstd_http_serving_address(serving)
-	listening := ServingHandle(serving: serving, listener: true)
+	listening := ServingHandle(serving: serving)
 	if cores := options.cores:
 		msrt_runtime_set_threads(cores)
 
-	// The accept loop owns the listener; each worker owns a share of the serving and a
-	// pipe of accepted connections.
+	// The accept loop owns the listener; each worker owns a share of the options and
+	// handler and a pipe of accepted connections.
 	workers := workers_for(options)
 	accepting := promise(fn: accept_loop(listening, workers))
 	return ok(HttpServer(accepting: accepting, bound: bound, stopped: false))
@@ -647,15 +648,14 @@ export fn serve(
 fn workers_for(options: HttpServerOptions) Int:
 	return options.cores.get(msrt_runtime_limit())
 
-// A handle on a serving, which a promise owns and closes when it ends. The accept
-// loop's handle also releases the listener.
+// The serving, which the accept loop owns and releases (and so closes the listener)
+// when it ends. Workers get a share of what they use, so the listener never leaves its
+// thread.
 type ServingHandle:
 	serving: NativeServing
-	listener: Bool
 
 fn var ServingHandle.close() Void!:
-	if self.listener:
-		msstd_http_serving_release(self.serving)
+	msstd_http_serving_release(self.serving)
 
 // One worker's HTTP engine, which owns its connections as poller registrations rather
 // than as tasks. Closing it drains them.
@@ -693,16 +693,8 @@ fn accept_loop(listening: ServingHandle, count: Int) Void!:
 		queue := pipe[Int](1024)
 		accepting.deals.append(queue.writer())
 
-		mine := ServingHandle(
-			serving: msstd_http_serving_share(listening.serving),
-			listener: false,
-		)
-		accepting.workers.append(
-			promise(
-				fn: serve_worker(mine, queue),
-				options: PromiseOptions(placement: Placement.Spread)
-			)
-		)
+		spec := msstd_http_serving_spec(listening.serving)
+		accepting.workers.append(start_worker(spec, queue))
 		i += 1
 
 	var next = 0
@@ -719,10 +711,19 @@ fn accept_loop(listening: ServingHandle, count: Int) Void!:
 		void accepting.deals[next].write(accepted.get())
 		next = (next + 1) % count
 
+// Starts one worker on the least loaded thread. A returned promise owns what it
+// captures, so the share of the serving and the pipe belong to the worker for as long
+// as it runs.
+fn start_worker(spec: NativeWorkerSpec, input: Pipe[Int]) Promise[Void]:
+	return promise(
+		fn: serve_worker(spec, input),
+		options: PromiseOptions(placement: Placement.Spread)
+	)
+
 // Runs one worker on the thread the runtime placed this promise on: it adopts each
 // connection it is dealt, and the poller drives them from there.
-fn serve_worker(handle: ServingHandle, input: Pipe[Int]) Void!:
-	engine := WorkerHandle(worker: msstd_http_serving_worker(handle.serving)?)
+fn serve_worker(spec: NativeWorkerSpec, input: Pipe[Int]) Void!:
+	engine := WorkerHandle(worker: msstd_http_serving_worker(spec)?)
 
 	while true:
 		item := input.receive()
