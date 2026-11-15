@@ -2,92 +2,77 @@
 
 ## Summary
 
-- Problem: after any edit, the language server re-parses and re-checks every module of the project. Cost is linear in project size: about 0.6 ms per 54-line module, 163 ms at 200 modules, 555 ms at 800.
-- Change: make the checked program a set of flat per-module tables that an edit patches. Re-check the edited module, and re-check an importer only when the edited module's interface changed (early cutoff). No hashed result cache.
-- Decision requested: build Stage 0 (measure real projects, no behavior change) now; build Stages 1 to 3 only if the gate in Stages passes.
+- Problem: after an edit, the language server re-parses and re-checks every module of the project, so cost grows with project size (0.44 to 0.6 ms per module in a warm session).
+- Finding: no real project reaches the cost where this matters. Warm body-edit re-checks measure 7 to 48 ms, against a 100 ms gate. Stage 0 is done and the proposal is parked.
+- Decision requested: none now. Reopen if a real project passes the gate. The first fix for users and agents is the fixed standard-library floor of a fresh process (separate proposal).
 
 ## Status
 
-Proposal, 2026-11-15, checked against `7d4b8c2f`. Direction (Chinmay): "caching is cope for a slow design" (see `checker-type-interning.md`); caches only when a redesign cannot match them. Review outcome: pending.
+Parked at Stage 0, 2026-11-15, checked against `7d4b8c2f`. Direction (lead): Stage 0 only; build Stage 1 only if a real, non-generated project has a median body-edit re-check over 100 ms in the language server. Owner rule: no caches until a redesign cannot match them (`checker-type-interning.md`). Review outcome: pending.
 
 ## Problem
 
-Measured on `7d4b8c2f`, release `ms`, 4 cores, median of 7 runs, `ms check` of generated projects (module `i` imports `i-1..i-3`; each has a record, one method, 10 functions):
+`ms check` and `ms build` are fresh processes, which this cannot speed up. Only the language server keeps a `Session`, so it is the only beneficiary. It keeps a result only for graphs that never read the changed file (`invalidate_document`, `ms-lsp/src/server.rs`); an import chain always misses.
 
-| Project | Time | Instructions |
+Stage 0 measurements. Harness: a throwaway `crates/ms-lsp/examples/replay.rs` (not committed) calls `analyze_options` with one shared `Session`, alternating a one-literal body edit, 15 times, median. Release `ms`, 4 cores, `7d4b8c2f`.
+
+| Project | Lines | Modules | Warm body-edit re-check |
+| --- | --- | --- | --- |
+| `tools/conform.ms` (+ `lib.ms`) | 109+ | 2 | 7.0 ms |
+| `bench/agent/report.ms` | 141+ | 5 | 30.7 ms |
+| `stdlib/data/html.ms` (largest stdlib file, as a file) | 5053 | 1 | 33.5 ms |
+| largest agent-written program in `bench/agent/results/sources` | 2579 | 1 | 48.3 ms (52 diagnostics, so ownership is skipped: an underestimate) |
+| generated, chain imports (not a gate input) | 10.8k / 43k | 200 / 800 | 89 / 479 ms |
+| hello | 3 | 1 | 1.3 ms |
+
+- No real project reaches 100 ms. The gate fails, so Stage 1 is not built. The 800-module generated project is not a gate input.
+- Cheap alternatives, measured. Skipping the fixed standard-library setup in a live server: already done by the shared `Session` (hello is 96 ms cold, 1.3 ms warm). Skipping re-parse of unchanged files: parse is about 7% of a project check (callgrind: 37M of 520M instructions on the 200-module project), so about 6 ms of 89.
+- A fresh process pays 46 ms for hello. That is `ensure_standard` (15% at 200 modules, 35% of hello) and bundled body checks. It helps every `ms check` and every agent, and is the next proposal.
+
+## Design (if the gate is ever passed)
+
+One rule: **a module's result is a function of its text and the interfaces of what it imports, so an edit re-runs a module only when its text or an imported interface changed.**
+
+- Flat tables indexed by `ModId(u32)`: `text_version`, import adjacency in CSR plus its transpose, per-module diagnostics, and an interface record (exported names and kinds, signatures as `TyId`s from `tytable.rs`, type definitions and fields, impl set, omittable parameters, constant types). Early cutoff compares the new record with the old one for equality. No hash.
+- Phases split at `check_module` (`checker.rs:689`): interface (`import_symbols` through `implementation`), then bodies (`check_defaults`, `check_bodies`, `declaration_checks`).
+
+How a body reaches an importer, and the coverage of each:
+
+| Path | Where | Covered by |
 | --- | --- | --- |
-| hello | 46 ms | 168M (PR #3958) |
-| 200 modules (10.8k lines) | 163 ms | 687M |
-| 800 modules (43k lines) | 555 ms | not run |
+| Inferred effects | `effects.rs`, `effect_reach.rs` | Re-scan changed callables, propagate on reverse edges while summaries change; not in the interface record |
+| Ownership summaries | `ownership/modes.rs` (`Summaries.reads`) | Re-analyze changed callables and readers whose read summary changed |
+| Generic bodies | checked once with bounds; instantiated at lowering (`ms-lower`) | Check unaffected; lowering reads the new body, and it is not part of checking |
+| Constant values | `constants.rs` (uses check as a call), `constfaults.rs` | Constant type in the interface record; value is read at use by lowering and folding, so a constant edit re-checks importers that use it |
+| Default arguments | `ParameterDefaults` (`types.rs:95`) holds only omittable names | Names in the interface record; default expressions are checked in their own module |
+| Inferred result types | none: a named function's result type is mandatory (`ast.rs:138`) | Nothing needed (an unannotated constant is above) |
+| Unused bindings | `unused.rs` is per module, local bindings only | Per module |
+| Global method clashes | `add_method`, `contracts.rs:512` | Impl set in the interface record; a clash re-checks the impls of both modules |
+| `finite_applications`, `finite_type_applications` | `recursion.rs:199`, `:371` | Whole program over generic bodies; stays global until measured |
 
-Where the 687M goes (callgrind, inclusive): `check_modules` 48% (`check_bodies` 23%), ownership 21%, `ensure_standard` 15% (fixed, paid by hello too), load and parse 13%, effects 8%.
+Hazard found: ownership and effect tables are keyed by `(file, NodeId)` (`ownership/modes.rs:120`, `constfaults.rs`), and a reparse renumbers nodes. Callable identity must become the declaration index in its module.
 
-- The language server (`crates/ms-lsp/src/server.rs`, `invalidate_document`) keeps a cached result only for graphs that never read the changed file. A chain of imports always misses, so one edit pays the whole table above.
-- `ms check` and `ms build` are one process per run. Nothing here speeds them up; `ms build` already has the mtime short cut (`incremental-builds.md`).
-- The cost a fresh process pays before it reads any project code is the 40 ms hello floor. That is lazy declarations of the standard library, a separate proposal that builds on `TyTable`.
-
-## Design
-
-One rule: **a module's result is a function of its text and the interfaces of what it imports, so an edit re-runs only modules whose inputs changed, and stops where an interface is unchanged.**
-
-Data, flat and indexed by `ModId(u32)` (dense, assigned at load):
-
-- `text_version: Vec<u32>`, bumped by the server on `didChange` and by file watches. No source hashing.
-- `imports: CSR` (start offsets plus targets) and its transpose, `importers`. Rebuilt only when a module's import list changes.
-- `interface_fp: Vec<u64>`: hash of the module's exported surface, canonical in `TyId`s (`tytable.rs`): exported names and kinds, signatures, type definitions and fields, and its impl set (methods are global but visible by import, `contracts.rs:1483`). Bodies are never in it.
-- `diagnostics: Vec<Vec<Diagnostic>>` per module; the program's list is their concatenation in module order, so output order is unchanged.
-- Facts stay where they are: per-module tables indexed by node id (`syntax.rs`, `Facts`). A re-check clears that module's tables only.
-
-Phases per module, split at the line `check_module` already has (`checker.rs:689`):
-
-1. Parse (`text_version` changed).
-2. Interface: `import_symbols` through `implementation`. Compute `interface_fp`.
-3. Bodies: `check_defaults`, `check_bodies`, `declaration_checks`, plus the module's ownership, effect and unused results.
-
-Edit flow: parse the module, run its interface phase, compare `interface_fp`. Equal: run bodies of this module only. Different: also re-run interface and bodies of each direct importer; an importer whose own `interface_fp` is unchanged stops the walk there.
-
-Stable symbol slots, the main risk. Importers hold `Rc<Sym>` and `Rc<Definition>` of the old revision. When the set of declared names is unchanged, the new revision writes into the existing symbol cells (`Sym::ty`, `Definition` fields are already `RefCell`) and swaps `decl` to the new syntax, so importers need no pointer fix. When names change, `interface_fp` changes and importers re-import anyway. Stage 1 starts by counting every `Rc` into a module that outlives its check; if an uncovered one exists the design changes before code is written.
-
-Whole-program passes follow the same cut:
-
-- Ownership: `Summaries` and `reads` already record who read which callable's summary. Re-analyze the callables of re-checked modules; re-analyze a reader only if a summary it read changed.
-- Effects: `EffectScan` nodes are per callable; re-scan nodes of re-checked modules, then propagate along reverse edges until summaries stop changing.
-- `unused::check` and `finish_modules` run per re-checked module. `finite_applications` is whole program; Stage 1 measures it before touching it.
-
-Estimates (hypothesis, to be measured in Stage 0): a body edit costs one module's parse, interface and bodies (about 0.4 ms from the table) plus O(modules) bookkeeping at roughly 1 to 3 us per module. So about 1 ms at 200 modules and 3 ms at 800, 150x and 180x faster. A signature edit also re-checks direct importers, about 4 modules, so 2 to 5 ms.
+Pointers that outlive a module's check: every importer expression fact holds a `Ty` whose `def` is the declaring module's `Rc<Definition>` (`types.rs:336`); importers copy `SymRef`s into their name tables; `Program::methods` holds `MethodRef`s with `DeclRef`; `Program::symbols`, effect nodes and the language server's occurrence index hold `ModRef`. That is six families and the first scales with every importer fact, so it is not small. In-place patching of symbol cells is rejected. If this is built, importers hold `TyId` and `(ModId, decl index)` into the flat tables, which also serves lazy standard-library declarations.
 
 ## Components touched
 
-| Component | Change | Test |
-| --- | --- | --- |
-| `ms-driver/src/load.rs`, `compile.rs` | `ModId` tables, reparse changed modules only, graph patch | unit: import add and remove patch the CSR |
-| `ms-check/src/checker.rs`, `syntax.rs` | interface and body split, per-module diagnostics, stable symbol slots, `interface_fp` | differential test below |
-| `ms-check/src/ownership`, `effects.rs`, `unused.rs` | re-run from changed callables with summary cutoff | differential test |
-| `ms-lsp/src/server.rs`, `analysis.rs` | patch the session instead of `cache.clear()` | LSP edit-replay test |
-| `bench/perf/compile` | project generator in `.ms`, edit-replay timings | dated result |
-| `ms-cli`, `ms-lower`, `ms-build` | unchanged | |
+Unchanged until the gate is passed. If built: `ms-driver` (`ModId` tables, reparse), `ms-check` (phase split, interface record, callable identity), `ms-lsp` (patch the session), `bench/perf/compile` (edit-replay harness in `.ms`).
 
 ## Alternatives
 
-- Do nothing: costs 0.6 ms per module per edit. Current real projects are small (`tools/conform.ms` checks in 86 ms), so today's gain is smaller than the generated numbers; the do-nothing case wins until a real project passes the gate.
-- Keep the whole-result reuse (today): helps only graphs that never read the edited file; imports chains always miss.
-- Result cache keyed by hashed inputs, in memory or on disk: a cache by another name, and an on-disk form needs a serialization of the `Rc` type graph, which `analyze-the-standard-library-on-demand.md` already rejected.
-- A generic query framework (salsa-style): a new dependency and memo tables of closures; this design needs only two edges and one fingerprint per module.
-- Parallel checking: the checker is `Rc`-based; it would not reduce work.
+- Do nothing: wins on the evidence above.
+- Skip re-parse of unchanged files: about 7%, cheap, and the first step if anything is done.
+- Result cache keyed by hashed inputs, in memory or on disk: a cache by another name; an on-disk form needs a serialization of the `Rc` type graph (`analyze-the-standard-library-on-demand.md`).
+- A query framework: a new dependency; this needs two edges and one record per module.
+- Parallel checking: the checker is `Rc`-based.
 
 ## Stages
 
-0. Measure: the generator, edit-replay through the language server (comment, body, signature, new import), and real project sizes from `bench/agent`. Gate: build Stage 1 only if the median body-edit re-check of a real project is over 100 ms, or the 800-module replay is the shape users reach. No behavior change.
-1. Symbol-slot audit, interface and body split, `interface_fp`, per-module diagnostics. Still re-checks everything; output byte-identical. Check: conformance corpus unchanged.
-2. Patch on edit in the checker for body-only edits and the language server. Check: differential test, plus the replay timings.
-3. Interface-change cutoff, ownership and effects summary cutoff.
+0. Done: the table above. The harness stays out of the tree until a later stage needs it.
+1. Gated. Index design: callable identity, interface record, `ModId` tables. Output byte-identical.
+2. and 3. Patch on edit and early cutoff, ship as one PR.
 
-Each stage is one PR; Stage 2 and 3 report the replay numbers against the Stage 0 baseline. Platform parity: no platform-specific code; replay runs on all six scheduled platforms.
-
-## Verification
-
-- Differential: for each conformance fixture and project, apply a random sequence of edits (body, signature, add or remove import, delete a module, syntax error and repair). After each edit the incremental diagnostics, emitted MIR and `ms inspect` effects must equal a from-scratch check. A mismatch fails the test; this is the gate that matters, since a wrong incremental result is worse than a slow one.
-- Timing: instruction counts (callgrind) for one edit, and median of many runs for the server loop, per `perf-bash`.
+Gate for every stage after 0: the differential test. For each conformance fixture, apply random edits (body, signature, add or remove import, delete a module, syntax error and repair) and compare incremental diagnostics, emitted MIR and `ms inspect` effects with a from-scratch check. The edit set must include edits that change an effect or an ownership summary without changing a signature (a body starts calling `print`; a body starts moving a parameter).
 
 ## Open questions
 
