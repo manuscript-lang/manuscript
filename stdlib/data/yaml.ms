@@ -1,10 +1,11 @@
 // Configuration-oriented YAML 1.2 parser implemented in Manuscript.
 //
 // Mapping keys are strings. A scalar key (a number, boolean or null spelling, a quoted
-// string, an empty key, or an alias to a scalar) becomes the text of that scalar, so `1` and
+// string, an empty key, or an alias to a scalar) becomes the text of that scalar, so
+// `1` and
 // `"1"` in one mapping are a duplicate key, which is an error. A sequence or mapping used as
-// a key is rejected with an error that names its position. Tags other than `!` and `!!str`
-// are read and ignored; those two make the node a string.
+// a key is rejected with an error that names its position. Tags other than `!` and
+// `!!str` are read and ignored; those two make the node a string.
 import (
 	Bytes from "@std/bytes.ms",
 	quote_text from "@std/data/quote.ms",
