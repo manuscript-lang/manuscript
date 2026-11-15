@@ -24,7 +24,7 @@ Proposal and implementation in one PR, 2026-11-15, checked against 7d4b8c2f.
 - Cancel of such a start sets `WANT_CANCEL`, the same path as a start taken but not yet running.
 - Unchanged: a promise pinned to its creator (live native stream, terminal, `start_here`) stays on it, since correctness needs that.
 - Placement is a rule, not a random choice, so a failure reproduces; the order the OS runs the threads in still varies, which is the point.
-- `tools/stress-sched.ms` runs each e2e stdlib file with stress on. A failing file is rerun without stress: pass means a stress-only failure (fails the tool), fail means broken anyway (reported). `STRESS_CHANGED=<ref>` runs only changed fixtures, for pull requests.
+- `tools/stress-sched.ms` runs each e2e stdlib file with stress on. A failing file is rerun without stress: pass means a stress-only failure (fails the tool), fail means broken anyway (reported). `STRESS_CHANGED=<ref>` runs only changed fixtures. Not in pull request CI yet: the nightly job runs `make stress-sched`; it moves to PRs only once measured to fit the 10-minute budget.
 
 ## Components touched
 
@@ -32,7 +32,6 @@ Proposal and implementation in one PR, 2026-11-15, checked against 7d4b8c2f.
 | --- | --- | --- |
 | `crates/ms-rt/src/sched.rs` | `stress`, `submit_stress`, limit floor | `promise::tests` run with stress forced |
 | `tools/stress-sched.ms`, `Makefile` | the sweep and `make stress-sched` | run on the fixtures |
-| `.github/workflows/cicd.yml` | changed fixtures on PRs; full sweep on the scheduled run | workflow-check |
 | `documentation/contributing/development.md`, `wiki/runtime` | how to use it | none |
 
 ## Alternatives

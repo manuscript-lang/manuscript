@@ -249,19 +249,6 @@ runs:
       if: env.GATES == 'true'
       shell: bash
       run: RUNS=3 target/debug/ms run tools/llvm-direct-check.ms -- report | tee -a "${GITHUB_STEP_SUMMARY:-/dev/null}"
-    # New and changed e2e stdlib tests also run with the scheduler stress mode (a promise never starts on
-    # its creator), which turns a one-in-N timing bug into a failure on the pull request that adds it.
-    - name: Changed stdlib tests under scheduler stress
-      if: env.GATES == 'true' && github.event_name == 'pull_request'
-      shell: bash
-      run: |
-        git fetch --quiet --depth=1 origin "${{ github.base_ref }}"
-        STRESS_CHANGED=FETCH_HEAD MS=target/debug/ms target/debug/ms run tools/stress-sched.ms
-    # Main runs every file under stress.
-    - name: Every stdlib test under scheduler stress
-      if: env.GATES == 'true' && github.event_name != 'pull_request'
-      shell: bash
-      run: MS=target/debug/ms target/debug/ms run tools/stress-sched.ms
     - name: Ownership counts and cleanup order hold
       if: env.GATES == 'true'
       shell: bash

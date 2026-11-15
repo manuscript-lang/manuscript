@@ -7,8 +7,8 @@
 // plain is reported and left to the ordinary suites. STRESS_JOBS sets the parallel runs
 // (default: the CPU count); MS names the ms to run (default target/release/ms).
 // Arguments name the files to run (default: tests/conformance/fixtures/e2e/stdlib);
-// `STRESS_CHANGED=<git ref>` runs only the test files changed since that ref, which is
-// how pull requests use it. Usage: ms run tools/stress-sched.ms [-- files]
+// `STRESS_CHANGED=<git ref>` runs only the test files changed since that ref.
+// Usage: ms run tools/stress-sched.ms [-- files]
 import (
 	Promise, promise from "@std/concurrency/promise.ms",
 	stdout from "@std/io/io.ms",

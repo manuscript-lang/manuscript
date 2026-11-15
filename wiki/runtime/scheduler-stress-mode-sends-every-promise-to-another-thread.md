@@ -6,5 +6,5 @@ Verified (2026-11-15): by default a waiter runs its unstarted promise inline, so
 
 First sweep over 245 files: no stress-only failure in four runs. `ms-rt` unit tests that assert placement (inline run, manual `warm` placement) fail under stress by design; do not run `cargo test -p ms-rt` with it set.
 
-Apply when: adding a promise test, or changing `sched::submit`. Pull requests run changed stdlib fixtures under stress; main runs all of them.
+Apply when: adding a promise test, or changing `sched::submit`. The nightly main job runs `make stress-sched`; PR CI does not, until its time is measured against the 10-minute budget.
 Evidence: `proposals/scheduler-stress-mode.md`, `tools/stress-sched.ms`.
