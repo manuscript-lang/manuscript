@@ -2083,6 +2083,9 @@ impl<'a> Parser<'a> {
                         _ => {}
                     }
                 }
+                if self.kind() == Tok::Comma {
+                    return self.fail(t, "a statement cannot start with a comma-separated list of names: write one binding per line ('a := f()'), or destructure one value with '[a, b] := value'");
+                }
                 return self.fail(t, "only a call, a call followed by '?', or match can be a standalone expression statement; use 'name := ...' to keep the value, 'return' to return it, or call a function");
             }
             if self.inline_return {
