@@ -17,7 +17,7 @@ Verified in `crates/ms-clif/src/dwarf.rs` and `crates/ms-mir-llvm/src/llvm_ir.rs
 ## Design
 
 1. **One description** (`ms_mir::debug_types`): `String` is `{ptr, tagged}`, `List[T]` is `{ptr: T*, len, cap}`, `T?` is `{present, value}` (or a pointer, or the string layout, as `Layouts` decides), a record has its fields at memory offsets, an enum is `{tag, payload: union of cases}`. A case field spread over separate payload slots shows each leaf. Cyclic types end at the entry already made.
-2. **Two renderers**: gimli DIEs in Cranelift; `DIBasicType`/`DICompositeType`/`DIDerivedType` listed in the compile unit's `retainedTypes` in the first LLVM unit only.
+2. **Two renderers**: gimli DIEs in Cranelift; `DIBasicType`/`DICompositeType`/`DIDerivedType` held by the `ms.debug_types` anchor global (a union with one member per type) in the first LLVM unit only.
 3. **Display helper** `tools/debugger/manuscript_gdb.py`: decodes the string tag bits, list length, optional and enum case from the struct names and shapes above.
 
 Stage 2 (variables): lowering records a name per MIR value and parameter; the inliner and optimizer keep it; Cranelift value labels and LLVM `dbg.value` give locations per leaf, joined with `DW_OP_piece`. Stage 3 (done with stage 1's follow-up): lldb formatters on the same decoding module; no natvis, since no PDB is emitted and Windows gdb and lldb read the DWARF.

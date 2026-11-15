@@ -573,7 +573,16 @@ fn both_backends_describe_value_types_once() {
             .unwrap();
         let info = String::from_utf8_lossy(&info.stdout);
         for name in ["Point", "Shape payload", "List[String]", "Int?"] {
-            let found = info.matches(&format!("DW_AT_name\t(\"{name}\")")).count();
+            // Type entries only: the `ms.debug_types` union lists each type again as a member.
+            let wanted = format!("DW_AT_name\t(\"{name}\")");
+            let found = info
+                .split("\n\n")
+                .filter(|die| {
+                    let mut lines = die.trim_start().lines();
+                    lines.next().is_some_and(|tag| tag.contains("_type"))
+                        && lines.any(|l| l.trim() == wanted)
+                })
+                .count();
             assert_eq!(
                 found,
                 1,

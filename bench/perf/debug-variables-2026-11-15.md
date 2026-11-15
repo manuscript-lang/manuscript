@@ -22,6 +22,10 @@ times of the two builds are not comparable because the second build of each prog
 Cranelift debug builds (`--build-type debug`, which emit the variables): 200 builds of eight suite programs with and
 without the variables, CPU time per `ms build`: mean 0.140 s with, 0.140 s without, **+0.21%**.
 
+LLVM release builds keep the types alive with the `ms.debug_types` anchor global instead (one constant, no
+variables, no live-variable pass): 40 builds of five programs with and without it, CPU time: -1.1% (noise); no
+change to the generated code.
+
 Reproduce: build each program as above and compare `callgrind` totals; the per-program table is
 `bench/perf/suite/manifest.txt` order.
 
