@@ -163,8 +163,10 @@ fn name_hash(text: &str) -> u64 {
     })
 }
 
-/// Makes symbol names unique without depending on declaration order: the `k`th use of a base
-/// name is `base#k`, so adding an unrelated item renames nothing.
+/// Makes symbol names unique without depending on declaration order. A function's base holds
+/// its declaring file (the logical module path such as `src/a.ms` or `@pg/x.ms`), so a name is
+/// package, module and function name; only a repeat of one base (a generic instance, a lambda)
+/// takes a `.k` suffix, so adding an unrelated item renames nothing.
 #[derive(Default)]
 pub struct StableNames(HashMap<String, u32>);
 
@@ -173,7 +175,11 @@ impl StableNames {
         let n = self.0.entry(base.to_string()).or_insert(0);
         let k = *n;
         *n += 1;
-        format!("{base}#{k}")
+        if k == 0 {
+            base.to_string()
+        } else {
+            format!("{base}.{k}")
+        }
     }
 }
 
@@ -711,7 +717,12 @@ fn compile_with_isa(
                 } else if exported {
                     f.name.clone()
                 } else {
-                    g.names.unique(&sym_safe(&f.name))
+                    let file = m.files.get(f.loc.file as usize).map_or("", String::as_str);
+                    g.names.unique(&format!(
+                        "{}#{:08x}",
+                        sym_safe(&f.name),
+                        name_hash(file) as u32
+                    ))
                 };
                 g.func_syms.push(name.clone());
                 let id = g

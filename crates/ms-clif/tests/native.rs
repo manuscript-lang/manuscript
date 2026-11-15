@@ -1059,6 +1059,11 @@ b0:
     let has = |object: &[u8], name: &str| object.windows(name.len()).any(|w| w == name.as_bytes());
     let before = build(format!("module \"a\"\nentry @main\n{body}{main}"));
     let after = build(format!("module \"a\"\nentry @main\n{extra}{body}{main}"));
-    assert!(has(&before, "sum#0") && has(&after, "sum#0"));
-    assert!(!has(&after, "sum#1") && has(&after, "other#0"));
+    assert!(has(&before, "sum#") && has(&after, "sum#") && has(&after, "other#"));
+    // Both objects name `sum` the same way; adding `other` before it changes nothing.
+    let name = |object: &[u8]| {
+        let at = object.windows(4).position(|w| w == b"sum#").unwrap();
+        object[at..at + 12].to_vec()
+    };
+    assert_eq!(name(&before), name(&after));
 }
