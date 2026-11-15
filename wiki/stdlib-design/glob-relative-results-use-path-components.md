@@ -18,3 +18,5 @@ Verify: `relative_paths_keep_whole_components` covers component boundaries and
 the host volume root; `glob_relative_roots_match_the_same_files_as_absolute_roots`
 uses a child process with an isolated cwd; `fs-glob-relative.ms` exercises the
 public API. Never mutate the parallel Rust test runner's process cwd.
+
+Patterns are cleaned of `.` and empty segments before compiling (`./a`, `a//b`, trailing `/`), and relative patterns never match the root entry itself, so `.*` lists only dotfiles (#3983).

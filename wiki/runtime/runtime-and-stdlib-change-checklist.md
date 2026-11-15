@@ -36,6 +36,7 @@ Use for `crates/ms-rt`, `ms-rt-abi`, `ms-std-*`, `ms-native`, `stdlib/*.ms`, or 
 - `environment()` skips entries that are not valid UTF-8. Failing the whole map made the test runner (which reads `MS_TEST_RESULTS` from it) exit 0 without running tests and made `which` find nothing whenever one such variable existed; `control.rs` has the unit test.
 - Preserve declared error types/cases/causes and checked binding identities.
 - Filesystem prechecks must keep the same error kind as the equivalent host failure. `Directory::open` used a generic `EIO` for a regular file while `open_directory` promises `EINVAL`; `fs-kinds-and-sources.ms` checks file, missing-path, non-directory ancestor and valid-directory controls through the public API.
+- A recursive copy that follows links (`dereference`) must refuse any source directory that contains the destination root, not only the starting source: the destination grows inside the tree being read, so the ancestor-cycle check never matches. `copy_dereferencing_a_link_to_an_ancestor_of_the_destination_fails` in `walk.rs` pins it (#3974).
 - Rational powers must propagate fallible integer powers: numeric defaults turn a size-limit error into a successful but wrong fraction. `big-rat-power-limits.ms` checks oversized numerator/denominator powers with either exponent sign and retains zero/unit controls (#3334).
 - Modular square-root nonresidue searches cannot use a fixed attempt cutoff:
   valid primes can have no nonresidue among the first thousand candidates.

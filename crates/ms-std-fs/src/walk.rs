@@ -173,10 +173,13 @@ struct Copier<'a, 'b> {
     o: CopyOptions,
     filter: Option<Filter<'b>>,
     ancestors: Vec<Vec<u8>>,
+    /// The destination root with its existing ancestors resolved through links.
+    destination: Vec<u8>,
     _marker: core::marker::PhantomData<&'a ()>,
 }
 
-fn copy_check_destination(source: &[u8], dest: &[u8], follow: bool) -> Res<()> {
+/// Rejects a destination inside the source and returns the destination with links resolved.
+fn copy_check_destination(source: &[u8], dest: &[u8], follow: bool) -> Res<Vec<u8>> {
     let mut canonical = ops::eval_symlinks(source).map_err(|e| Fail::errno(e, "lstat", source));
     if !follow
         && let Ok(info) = lstat(source)
@@ -191,7 +194,7 @@ fn copy_check_destination(source: &[u8], dest: &[u8], follow: bool) -> Res<()> {
     if within_path(&canonical, &canonical_dest) {
         return Err(Fail::invalid());
     }
-    Ok(())
+    Ok(canonical_dest)
 }
 
 fn chtimes(dest: &[u8], info: &sys::Stat) -> Res<()> {
@@ -298,7 +301,9 @@ impl Copier<'_, '_> {
             return Err(Fail::status(STATUS_ALREADY_EXISTS));
         }
         let canonical = ops::eval_symlinks(source).map_err(|e| Fail::errno(e, "lstat", source))?;
-        if self.ancestors.contains(&canonical) {
+        // A followed link can lead to a directory that holds the destination; copying it would
+        // read the tree being written and never end.
+        if self.ancestors.contains(&canonical) || within_path(&canonical, &self.destination) {
             return Err(Fail::invalid());
         }
         self.ancestors.push(canonical);
@@ -398,11 +403,12 @@ pub fn copy(
     options: CopyOptions,
     filter: Option<Filter<'_>>,
 ) -> Res<()> {
-    copy_check_destination(source, destination, options.dereference)?;
+    let destination_root = copy_check_destination(source, destination, options.dereference)?;
     let mut c = Copier {
         o: options,
         filter,
         ancestors: Vec::new(),
+        destination: destination_root,
         _marker: core::marker::PhantomData,
     };
     c.copy(source, destination)
@@ -435,13 +441,28 @@ struct Compiled {
     absolute: bool,
 }
 
+/// A pattern with its `.` and empty segments removed, so `./a`, `a/./b` and `a//b` match as the
+/// cleaned path does. A leading `/` stays; `..` segments stay.
+fn without_dot_segments(text: &str) -> String {
+    let kept: Vec<&str> = text
+        .split('/')
+        .filter(|s| !s.is_empty() && *s != ".")
+        .collect();
+    let joined = kept.join("/");
+    if text.starts_with('/') {
+        alloc::format!("/{joined}")
+    } else {
+        joined
+    }
+}
+
 fn compile(patterns: &[&[u8]]) -> Option<Vec<Compiled>> {
     patterns
         .iter()
         .map(|p| {
             let text = core::str::from_utf8(p).ok()?;
             Some(Compiled {
-                glob: Glob::new(text)?,
+                glob: Glob::new(&without_dot_segments(text))?,
                 absolute: text.starts_with('/'),
             })
         })
@@ -568,7 +589,11 @@ impl GlobState {
         {
             return Ok(());
         }
-        if patterns.iter().any(|c| c.glob.matches(target(c)))
+        // The root is not an entry inside itself: `.*` must not list it.
+        let is_root = rel.as_slice() == b".";
+        if patterns
+            .iter()
+            .any(|c| !(is_root && !c.absolute) && c.glob.matches(target(c)))
             && !self.items.contains_key(&value.path)
         {
             if self.items.len() as i64 >= o.max_results {
@@ -1018,6 +1043,24 @@ mod tests {
             entries: UNLIMITED,
             bytes: UNLIMITED,
         }
+    }
+
+    #[test]
+    fn copy_dereferencing_a_link_to_an_ancestor_of_the_destination_fails() {
+        let root = ops::temporary_directory(b"msfs-copy-loop-").unwrap();
+        let source = path::join(&root, b"real");
+        ops::create_directory(&source, false).unwrap();
+        ops::create_link(&path::join(&source, b"up"), &root).unwrap();
+        let dest = path::join(&root, b"c3");
+        let copy_options = CopyOptions {
+            dereference: true,
+            ..options()
+        };
+        assert_eq!(
+            copy(&source, &dest, copy_options, None).unwrap_err().status,
+            STATUS_INVALID_INPUT
+        );
+        ops::remove(&root, true).unwrap();
     }
 
     #[test]

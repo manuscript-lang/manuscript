@@ -3,9 +3,9 @@ use crate::envfile;
 #[cfg(unix)]
 use alloc::string::String;
 use alloc::vec::Vec;
-use ms_rt_abi::{STATUS_INVALID_DATA, STATUS_LIMIT_EXCEEDED, STATUS_NOT_FOUND, STATUS_UNSUPPORTED};
+use ms_rt_abi::{STATUS_INVALID_DATA, STATUS_NOT_FOUND, STATUS_UNSUPPORTED};
 use ms_std_fs::err::{Fail, Res};
-use ms_std_fs::ops::read_bounded;
+use ms_std_fs::ops::{self, read_bounded};
 use ms_std_fs::sys::{self, CPath};
 
 /// The group id type `getgrouplist` takes: `int` on macOS, `gid_t` elsewhere.
@@ -278,16 +278,9 @@ fn os_str_value(bytes: &[u8]) -> Option<std::ffi::OsString> {
 }
 
 pub fn load_environment(path: &[u8], max: i64) -> Res<()> {
-    let p = CPath::new(path).ok_or_else(Fail::invalid)?;
-    let fd = sys::open(&p, sys::O_RDONLY, 0).map_err(|e| Fail::errno(e, "open", path))?;
-    let data = read_bounded(fd, max);
-    let _ = sys::close(fd);
-    let data = match data {
-        Ok(d) => d,
-        // `readBounded`'s own codes: a read error is InvalidData here, a stall is a bare Failed.
-        Err(f) if f.status == STATUS_LIMIT_EXCEEDED => return Err(f),
-        Err(_) => return Err(Fail::status(STATUS_INVALID_DATA)),
-    };
+    // The shared file read keeps the filesystem's error kinds (a directory is invalid input, not
+    // malformed data) and does not block the process on a named pipe.
+    let data = ops::read_file(path, max)?;
     let text = core::str::from_utf8(&data).map_err(|_| Fail::status(STATUS_INVALID_DATA))?;
     let entries = envfile::parse(text).ok_or_else(|| Fail::status(STATUS_INVALID_DATA))?;
     for (key, value) in entries {
@@ -592,7 +585,12 @@ mod tests {
         assert!(env.contains(&(b"MS_LOAD_B".to_vec(), b"two".to_vec())));
         assert_eq!(
             load_environment(path.as_bytes(), 3).unwrap_err().status,
-            STATUS_LIMIT_EXCEEDED
+            ms_rt_abi::STATUS_LIMIT_EXCEEDED
+        );
+        // A directory is invalid input, as for `read_file`, not malformed data.
+        assert_eq!(
+            load_environment(b"/", i64::MAX).unwrap_err().status,
+            ms_rt_abi::STATUS_INVALID_INPUT
         );
         ms_std_fs::ops::write_file(path.as_bytes(), b"bad line", true).unwrap();
         assert_eq!(
