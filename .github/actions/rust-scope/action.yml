@@ -39,11 +39,11 @@ runs:
           rust=false
         fi
         # Pull requests build programs with Cranelift (the Debug backend). Only code that is specific to the
-        # LLVM release path also runs the LLVM corpus and the release gates, as main does: the lowering (its leaks are counted only
-        # in the LLVM run, #4066), the LLVM backend and its glue, the LLVM driver in ms-build, the LLVM tests, and the pinned LLVM and lld tools.
+        # LLVM release path also runs the LLVM corpus and the release gates, as main does: the LLVM backend
+        # and its glue, the LLVM driver in ms-build, the LLVM tests, and the pinned LLVM and lld tools.
         # Shared code (front end, runtime, build driver, CI files) is covered by main within 30 minutes.
         llvm=false
-        if git diff --name-only "$BASE" "$GITHUB_SHA" | grep -qE '^(crates/ms-lower/|crates/ms-mir-llvm/|crates/ms-build/src/llvm|crates/ms-clif/tests/llvm_|crates/ms-cli/tests/llvm|toolchain/)'; then
+        if git diff --name-only "$BASE" "$GITHUB_SHA" | grep -qE '^(crates/ms-mir-llvm/|crates/ms-build/src/llvm|crates/ms-clif/tests/llvm_|crates/ms-cli/tests/llvm|toolchain/)'; then
           llvm=true
         fi
         # The tutorial and stdlib examples are tested only when the files that hold them change; main runs them
