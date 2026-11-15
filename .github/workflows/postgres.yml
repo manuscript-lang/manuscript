@@ -19,9 +19,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - {os: linux, runner: ubuntu-24.04, arch: amd64, pg_bin: /usr/lib/postgresql/16/bin}
-          - {os: darwin, runner: macos-15, arch: arm64, pg_bin: /opt/homebrew/opt/postgresql@16/bin}
-          - {os: windows, runner: windows-2025, arch: amd64, pg_bin: 'C:\Program Files\PostgreSQL\16\bin'}
+          - {os: linux, runner: ubuntu-24.04, arch: amd64}
+          - {os: darwin, runner: macos-15, arch: arm64}
+          - {os: windows, runner: windows-2025, arch: amd64}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -41,9 +41,18 @@ jobs:
           cargo build --release --locked -p ms-cli
       - name: Test against a real server
         shell: bash
-        env:
-          PG_BIN: ${{ matrix.pg_bin }}
         run: |
+          # Each runner image ships PostgreSQL somewhere different; take the newest installed.
+          if [ "$RUNNER_OS" = Windows ] && ! ls -d "/c/Program Files/PostgreSQL/"*/bin > /dev/null 2>&1; then
+            choco install postgresql16 --params '/Password:unused' -y --no-progress
+          fi
+          case "$RUNNER_OS" in
+            Windows) PG_BIN=$(ls -d "/c/Program Files/PostgreSQL/"*/bin | sort -V | tail -1) ;;
+            Linux) PG_BIN=$(ls -d /usr/lib/postgresql/*/bin | sort -V | tail -1) ;;
+            macOS) PG_BIN="$(brew --prefix postgresql@16)/bin" ;;
+          esac
+          export PG_BIN
+          "$PG_BIN/postgres" --version
           # initdb refuses to run as root; the hosted runners are not root.
           vars=$(packages/postgres/tests/start-postgres.sh "$RUNNER_TEMP/pg")
           export $vars
