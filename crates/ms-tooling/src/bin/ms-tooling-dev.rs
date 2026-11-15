@@ -128,7 +128,10 @@ fn inspect(syms: ms_syntax::Names, files: &[String]) -> i32 {
 
 /// `skill-calls update` renders the standard-call table into `references/standard-calls.md`.
 fn skill_calls(args: &[String]) -> i32 {
-    use ms_tooling::guide::skill_calls::{block_of, render, splice};
+    use ms_tooling::guide::skill_calls::{
+        MODULES_END, MODULES_START, block_between, block_of, render, render_modules, splice,
+        splice_between,
+    };
     let data = Path::new(env!("CARGO_MANIFEST_DIR")).join("data/agent-skill");
     match args.first() {
         Some(mode) if mode == "update" => {
@@ -138,8 +141,19 @@ fn skill_calls(args: &[String]) -> i32 {
                 eprintln!("standard-calls.md has no calls:start and calls:end markers");
                 return 2;
             };
-            let changed = block_of(&page) != block_of(&updated);
+            let mut changed = block_of(&page) != block_of(&updated);
             std::fs::write(&path, updated).expect("write standard calls page");
+            let path = data.join("references/standard-modules.md");
+            let page = std::fs::read_to_string(&path).expect("standard modules page");
+            let Some(updated) =
+                splice_between(&page, MODULES_START, MODULES_END, &render_modules())
+            else {
+                eprintln!("standard-modules.md has no modules:start and modules:end markers");
+                return 2;
+            };
+            changed |= block_between(&page, MODULES_START, MODULES_END)
+                != block_between(&updated, MODULES_START, MODULES_END);
+            std::fs::write(&path, updated).expect("write standard modules page");
             eprintln!("{}", if changed { "updated" } else { "unchanged" });
             0
         }

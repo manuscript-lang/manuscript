@@ -14,6 +14,10 @@ use std::collections::BTreeMap;
 pub const START: &str = "<!-- calls:start -->";
 pub const END: &str = "<!-- calls:end -->";
 
+/// Marks the generated module map in `references/standard-modules.md`.
+pub const MODULES_START: &str = "<!-- modules:start -->";
+pub const MODULES_END: &str = "<!-- modules:end -->";
+
 /// Prelude types in table order.
 const TYPES: &[&str] = &[
     "String", "List", "Map", "Set", "Optional", "Result", "Int", "Float",
@@ -79,17 +83,55 @@ pub fn render_with(modules: &[ApiModule]) -> String {
     out
 }
 
+/// `page` with the block between `start` and `end` replaced by `block`; none when a marker is missing.
+pub fn splice_between(page: &str, start: &str, end: &str, block: &str) -> Option<String> {
+    let from = page.find(start)?;
+    let to = page.find(end)? + end.len();
+    let rest = page[to..].strip_prefix('\n').unwrap_or(&page[to..]);
+    Some(format!("{}{}{}", &page[..from], block, rest))
+}
+
+/// The block between `start` and `end` as it stands in `page`.
+pub fn block_between(page: &str, start: &str, end: &str) -> Option<String> {
+    let from = page.find(start)?;
+    let to = page.find(end)? + end.len();
+    Some(format!("{}\n", &page[from..to]))
+}
+
 /// `skill` with its generated block replaced by `block`; none when the markers are missing.
 pub fn splice(skill: &str, block: &str) -> Option<String> {
-    let start = skill.find(START)?;
-    let end = skill.find(END)? + END.len();
-    let tail = skill[end..].strip_prefix('\n').unwrap_or(&skill[end..]);
-    Some(format!("{}{}{}", &skill[..start], block, tail))
+    splice_between(skill, START, END, block)
 }
 
 /// The generated block as it stands in `skill`.
 pub fn block_of(skill: &str) -> Option<String> {
-    let start = skill.find(START)?;
-    let end = skill.find(END)? + END.len();
-    Some(format!("{}\n", &skill[start..end]))
+    block_between(skill, START, END)
+}
+
+/// Every standard module with the names it exports, so an agent finds the import it needs.
+pub fn render_modules() -> String {
+    render_modules_with(standard_library(ms_syntax::Names::global()))
+}
+
+pub fn render_modules_with(modules: &[ApiModule]) -> String {
+    let mut out = String::new();
+    out.push_str(MODULES_START);
+    out.push('\n');
+    for module in modules {
+        if !module.path.starts_with("@std/") || module.path.contains("/internal/") {
+            continue;
+        }
+        let names: Vec<&str> = module
+            .declarations
+            .iter()
+            .map(|d| d.name.as_str())
+            .collect();
+        if names.is_empty() {
+            continue;
+        }
+        out.push_str(&format!("- `{}`: {}\n", module.path, names.join(", ")));
+    }
+    out.push_str(MODULES_END);
+    out.push('\n');
+    out
 }

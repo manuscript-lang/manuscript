@@ -7,7 +7,7 @@ description: Write, check, test, and revise idiomatic Manuscript programs. Use f
 
 Generated for Manuscript {{MS_VERSION}}. Compare with `ms --version`; regenerate this skill with the matching compiler when stale. Manuscript is in beta: what the stability page lists is frozen; everything else may change.
 
-Manuscript is small, explicit and value-oriented: records and enums hold data, functions hold behavior, errors and absence are values, and every value has one owner. Read [Idioms](references/idioms.md) before writing: it holds six complete programs to copy. Use exact names from [Standard calls](references/standard-calls.md).
+Manuscript is small, explicit and value-oriented: records and enums hold data, functions hold behavior, errors and absence are values, and every value has one owner. Read [Idioms](references/idioms.md) before writing: it holds thirteen complete programs to copy. Use exact names from [Standard calls](references/standard-calls.md).
 
 ## Write it this way
 
@@ -60,7 +60,7 @@ Four rules cover most compiler errors; an error that names one is that rule.
 
 ## References by task
 
-- Start here: [Idioms](references/idioms.md) (six complete programs), [Standard calls](references/standard-calls.md) (every prelude call, exact).
+- Start here: [Idioms](references/idioms.md) (thirteen complete programs), [Standard calls](references/standard-calls.md) (every prelude call, exact), [Standard modules](references/standard-modules.md) (which `@std` module exports which names, for imports).
 - Language: [Program structure](references/program-structure.md), [Values and control](references/values-and-control.md), [Types and functions](references/types-and-functions.md).
 - Data and failure: [Collections and pipelines](references/collections-and-pipelines.md), [Errors and optionals](references/errors-and-optionals.md), [Ownership and cleanup](references/ownership-and-cleanup.md).
 - Concurrency and services: [Effects and concurrency](references/effects-and-concurrency.md), [Servers and state](references/servers-and-state.md).

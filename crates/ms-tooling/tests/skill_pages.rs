@@ -49,7 +49,7 @@ fn skill_complete_examples_check() {
             examples += 1;
         }
     }
-    assert_eq!(examples, 17, "retain all complete skill examples");
+    assert_eq!(examples, 24, "retain all complete skill examples");
 }
 
 #[test]
@@ -122,4 +122,24 @@ fn skill_call_tables_match_the_declarations() {
         "run `cargo run -p ms-tooling --bin ms-tooling-dev -- skill-calls update`"
     );
     assert!(rendered.contains("length() Int"), "{rendered}");
+}
+
+/// The module map is rendered from the declarations too.
+#[test]
+fn skill_module_map_matches_the_declarations() {
+    use ms_tooling::guide::skill_calls::{
+        MODULES_END, MODULES_START, block_between, render_modules,
+    };
+    let page = FILES
+        .iter()
+        .find(|(path, _)| *path == "references/standard-modules.md")
+        .unwrap()
+        .1;
+    let rendered = render_modules();
+    assert_eq!(
+        block_between(page, MODULES_START, MODULES_END).expect("module markers"),
+        rendered,
+        "run `cargo run -p ms-tooling --bin ms-tooling-dev -- skill-calls update`"
+    );
+    assert!(rendered.contains("`@std/data/json.ms`: "), "{rendered}");
 }
