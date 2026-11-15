@@ -3,9 +3,14 @@ use crate::envfile;
 #[cfg(unix)]
 use alloc::string::String;
 use alloc::vec::Vec;
-use ms_rt_abi::{STATUS_INVALID_DATA, STATUS_NOT_FOUND, STATUS_UNSUPPORTED};
+#[cfg(unix)]
+use ms_rt_abi::STATUS_NOT_FOUND;
+use ms_rt_abi::{STATUS_INVALID_DATA, STATUS_UNSUPPORTED};
 use ms_std_fs::err::{Fail, Res};
-use ms_std_fs::ops::{self, read_bounded};
+use ms_std_fs::ops;
+#[cfg(unix)]
+use ms_std_fs::ops::read_bounded;
+#[cfg(unix)]
 use ms_std_fs::sys::{self, CPath};
 
 /// The group id type `getgrouplist` takes: `int` on macOS, `gid_t` elsewhere.
