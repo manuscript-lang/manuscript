@@ -447,9 +447,10 @@ fn var WatchSource.next() FileEvent?!:
 		if event := self.pending.pop(): return ok(event)
 
 		next := msstd_fs_watch_next(self.watcher.native)?
-		var batch = next.get(List[FileEvent]())
-		if batch.is_empty(): return ok(none)
+		if next.is_none(): return ok(none)
 
+		// An empty batch only means nothing changed yet; only none ends the stream.
+		var batch = next.get(List[FileEvent]())
 		batch.reverse()
 		self.pending = batch
 

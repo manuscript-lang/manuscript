@@ -280,18 +280,17 @@ impl Native {
             terminal: None,
             ended: false,
         }));
-        let (wake, stop) = match (eventfd(), eventfd()) {
-            (Ok(wake), Ok(stop)) => (wake, stop),
-            (wake, stop) => {
-                for fd in [wake, stop].into_iter().flatten() {
-                    // SAFETY: the descriptors are ours.
-                    unsafe { libc::close(fd) };
-                }
-                // SAFETY: the descriptor is ours.
-                unsafe { libc::close(fd) };
-                return Err(Fail::raw(sys::errno()));
-            }
+        // `eventfd` captures its errno before anything is closed, so the failure it returns is the
+        // right one to report.
+        let close = |fd: i32| {
+            // SAFETY: the descriptor is ours.
+            unsafe { libc::close(fd) };
         };
+        let wake = eventfd().inspect_err(|_| close(fd))?;
+        let stop = eventfd().inspect_err(|_| {
+            close(wake);
+            close(fd);
+        })?;
         let mut reader = Reader {
             fd,
             root: root.to_vec(),
@@ -732,16 +731,24 @@ mod tests {
         let root = ops::temporary_directory(b"msfs-native-new-").unwrap();
         let mut w = Watcher::native(Native::new(&root, true, 100, 100, b"error").unwrap());
         let dir = path::join(&root, b"d");
+        let file = path::join(&dir, b"f");
         ops::create_directory(&dir, false).unwrap();
-        // Nothing reads events yet: the directory must already be watched on its own.
+        ops::write_file(&file, b"x", false).unwrap();
+        // Nothing reads events yet: the directory must already be watched on its own, so a change
+        // made after the pause is reported as a change, which a late registration would miss.
         std::thread::sleep(std::time::Duration::from_millis(300));
-        ops::write_file(&path::join(&dir, b"f"), b"x", false).unwrap();
+        let mut appeared = false;
+        while !appeared {
+            appeared = names(w.wait().unwrap())
+                .iter()
+                .any(|(p, r)| p.ends_with("/d/f") && *r);
+        }
+        ops::append_file(&file, b"y").unwrap();
         let mut changed = false;
         while !changed {
-            // A creation may arrive as an appearance or as a change, depending on the platform.
             changed = names(w.wait().unwrap())
                 .iter()
-                .any(|(p, _)| p.ends_with("/d/f"));
+                .any(|(p, r)| p.ends_with("/d/f") && !*r);
         }
         w.close();
         ops::remove(&root, true).unwrap();
