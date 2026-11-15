@@ -927,8 +927,8 @@ fn complete_unit(t: &mut Table, i: usize) {
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_promise_sleep(ns: i64) -> i64 {
     let id = msrt_promise_new();
-    let t = table();
     let i = find(id);
+    let t = table();
     let deadline = crate::sys::monotonic_ns().saturating_add(ns.max(0));
     t.deadline[i] = deadline;
     t.timers.push(Reverse((deadline, id)));
@@ -945,8 +945,8 @@ pub extern "C-unwind" fn msrt_promise_ready(fd: i64, events: i64, timeout_ns: i6
     let id = msrt_promise_new();
     // SAFETY: single scheduler per isolate.
     let ready = unsafe { task::watch_fd_for_promise(fd, events, id) };
-    let t = table();
     let i = find(id);
+    let t = table();
     match ready {
         None => {
             msrt_promise_drop(id);
@@ -1616,8 +1616,9 @@ pub extern "C-unwind" fn msrt_promise_wait(id: i64, timeout_ns: i64) -> i64 {
     }
     run_deferred(id, deadline);
     loop {
-        let t = table();
+        // `find` makes its own reference to the table; take `t` after it, not before.
         let i = find(id);
+        let t = table();
         if let Some(code) = outcome(t, i) {
             return code;
         }
