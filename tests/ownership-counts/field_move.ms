@@ -6,8 +6,9 @@
 // `items_of` lends a field of its parameter; over a temporary (`items_of(Big(..))`) the caller owns a
 // copy of that field in Debug (one 24-byte list), and copyelim moves it out of the
 // dying record in Release (type.release). A field of an owned record moves out at its
-// last use; the rest of the record is still cleaned up exactly once. Debug builds inline small
-// callees (`branch` and `size`), so `ys := xs` in `size` moves the dying record's one-element
+// last use; the rest of the record is still cleaned up exactly once. Debug builds
+// inline small callees (`branch` and `size`), so `ys := xs` in `size` moves the dying
+// record's one-element
 // `items` instead of copying it: one 8-byte allocation fewer than before inlining.
 import stdout from "@std/io/io.ms"
 

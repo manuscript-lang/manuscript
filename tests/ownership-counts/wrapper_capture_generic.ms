@@ -1,7 +1,8 @@
 // expect-debug: allocs=4 alloc_bytes=192
 // expect-release: allocs=2 alloc_bytes=128
 // Nested wrappers, a generic pass-through and a capture: the baseline that
-// owned-argument and return-slot work must not raise. Debug builds inline `cap` into `main`, so
+// owned-argument and return-slot work must not raise. Debug builds inline `cap` into
+// `main`, so
 // `p` moves into the closure's capture at its last use instead of being copied: one 64-byte
 // list copy (8 ints) fewer than before inlining.
 type Big:
