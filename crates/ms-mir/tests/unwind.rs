@@ -707,3 +707,29 @@ fn keeps_per_iteration_windows_for_a_list_that_grows_in_the_loop() {
         print_module(&m)
     );
 }
+
+/// Many owners that stay live while a short-lived one comes and goes around each parking call
+/// need one registration per owner and per temporary, not a fresh one for every live owner at
+/// every call.
+#[test]
+fn registrations_grow_linearly_with_the_owners_a_function_holds() {
+    const OWNERS: usize = 60;
+    let mut body = String::from("fn @main() -> int {\nb0:\n  %n: int = iconst 5\n");
+    for i in 0..OWNERS {
+        body.push_str(&format!(
+            "  %l{i}: str = str \"held\"\n  %a{i}: str = clone %l{i}\n  %t{i}: str = clone %l{i}\n  %r{i}: int = call.rt @msrt_task_sleep (%n)\n  drop %t{i}\n"
+        ));
+    }
+    for i in (0..OWNERS).rev() {
+        body.push_str(&format!("  drop %a{i}\n"));
+    }
+    body.push_str("  ret %n\n}\n");
+    let (m, changed) = rewrite(&body, true);
+    assert!(changed);
+    // The owners, and the temporary of each call.
+    assert!(
+        count(&m, "main", Op::CleanupPush) <= 2 * OWNERS,
+        "{} registrations for {OWNERS} owners",
+        count(&m, "main", Op::CleanupPush)
+    );
+}

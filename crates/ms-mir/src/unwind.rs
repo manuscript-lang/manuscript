@@ -748,14 +748,16 @@ fn analyze(
         let mut open = holes[bi];
         // The values of the window that the latest instruction may still extend.
         let mut reach: Option<Vec<Value>> = None;
-        // Whether the window's registrations may sit below entries another discard popped: an
-        // extra pushed after that would not be popped by the window's own discard.
-        let mut stack_moved = false;
+        // Whether the instruction that opened the window pops cleanup entries itself: the
+        // window's own registrations sit above the ones it removes, so the window stays as it
+        // is.
+        let mut opened_by_discard = false;
         for (k, inst) in blk.insts.iter().enumerate() {
             let discards =
                 matches!((inst.op, inst.imm), (Op::CallRt, Imm::Ext(e)) if e == cx.discard);
             if discards {
-                stack_moved = true;
+                // The discard may pop entries the window pushed.
+                reach = None;
             }
             let modes = crate::verify::arg_modes(m, inst);
             let consumed: Vec<u32> = inst
@@ -780,7 +782,7 @@ fn analyze(
                 // A window across a hole would drop a half-emptied owner, and one across a
                 // scope open or close would discard an entry that is not its own.
                 reach = None;
-            } else if !live.is_empty()
+            } else if (!live.is_empty() || reach.is_some())
                 && (exits_at(m, cx, inst)
                     // Dropping a closure, interface value or handle can run a close that faults.
                     || (inst.op == Op::Drop
@@ -792,31 +794,24 @@ fn analyze(
                 let drops = coverable(&live, closed_by_with, &hoisted[bi]);
                 match (&mut reach, plans[bi].last_mut()) {
                     (Some(set), Some(w)) if *set == drops => w.last = k,
-                    // Values born since the last exit point join the open window with a push
-                    // of their own, so earlier values are not registered again; the window's
-                    // single discard pops them all.
-                    (Some(set), Some(w))
-                        if !stack_moved
-                            && drops.len() > set.len()
-                            && set.iter().all(|v| drops.contains(v)) =>
-                    {
-                        let added: Vec<Value> =
-                            drops.iter().filter(|v| !set.contains(v)).copied().collect();
+                    // The live owners changed: the window follows them, so a value that died is
+                    // discarded and one born since is registered, and the owners that stay are
+                    // not registered again.
+                    (Some(set), Some(w)) if !opened_by_discard => {
                         w.last = k;
-                        w.extras.push((k, added));
+                        w.steps.push((k, drops.clone()));
                         *set = drops;
                     }
                     _ => {
                         reach = None;
-                        // The instruction that opens the window may itself pop entries.
-                        stack_moved = discards;
+                        opened_by_discard = discards;
                         if !drops.is_empty() {
                             reach = Some(drops.clone());
                             plans[bi].push(Window {
                                 first: k,
                                 last: k,
                                 values: drops,
-                                extras: Vec::new(),
+                                steps: Vec::new(),
                             });
                         }
                     }
@@ -1288,8 +1283,10 @@ fn function(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
         let old = std::mem::take(&mut f.blocks[bi].insts);
         let mut out: Vec<Inst> = Vec::with_capacity(old.len() + plan.len() * 3);
         let mut next = plan.iter().peekable();
-        let mut open_window: Option<(usize, Value, Option<crate::ir::Loc>)> = None;
-        let mut extras: std::slice::Iter<'_, (usize, Vec<Value>)> = [].iter();
+        // The window's open registrations, oldest first, each with its handle.
+        let mut stack: Vec<(Value, Value)> = Vec::new();
+        let mut open_window: Option<usize> = None;
+        let mut steps: std::slice::Iter<'_, (usize, Vec<Value>)> = [].iter();
         let end_loc = old.last().map(|i| i.loc);
         for (k, inst) in old.into_iter().enumerate() {
             let loc = inst.loc;
@@ -1300,25 +1297,36 @@ fn function(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
                 out.extend(inst.take());
             }
             if let Some(w) = next.next_if(|w| w.first == k) {
-                let first = push_all(m, cx, f, &mut out, &w.values, loc);
-                open_window = Some((w.last, first, Some(loc)));
-                extras = w.extras.iter();
+                let handles = push_each(m, cx, f, &mut out, &w.values, loc);
+                stack = w.values.iter().copied().zip(handles).collect();
+                open_window = Some(w.last);
+                steps = w.steps.iter();
             }
-            if let Some((_, added)) = extras.as_slice().first().filter(|(at, _)| *at == k) {
-                push_all(m, cx, f, &mut out, added, loc);
-                extras.next();
+            if let Some((_, target)) = steps.as_slice().first().filter(|(at, _)| *at == k) {
+                // A discard pops its entry and every newer one, so the owners above the first
+                // one that died are registered again.
+                let alive = |v: &Value| target.binary_search_by_key(&v.0, |t| t.0).is_ok();
+                if let Some(i) = stack.iter().position(|(v, _)| !alive(v)) {
+                    out.push(discard_inst(f, cx, stack[i].1, loc));
+                    stack.truncate(i);
+                }
+                let held: BTreeSet<u32> = stack.iter().map(|(v, _)| v.0).collect();
+                let added: Vec<Value> = target
+                    .iter()
+                    .filter(|v| !held.contains(&v.0))
+                    .copied()
+                    .collect();
+                let handles = push_each(m, cx, f, &mut out, &added, loc);
+                stack.extend(added.into_iter().zip(handles));
+                steps.next();
             }
             out.extend(inst);
-            if let Some((last, first, loc)) = open_window
-                && last == k
-            {
-                out.push(Inst {
-                    op: Op::CallRt,
-                    args: vec![first],
-                    imm: Imm::Ext(cx.discard),
-                    res: Some(f.new_value(Ty::UNIT)),
-                    loc: loc.expect("window location"),
-                });
+            if open_window == Some(k) {
+                // The first entry's handle discards them all.
+                if let Some((_, first)) = stack.first() {
+                    out.push(discard_inst(f, cx, *first, loc));
+                }
+                stack.clear();
                 open_window = None;
             }
         }
@@ -1462,8 +1470,9 @@ struct Window {
     first: usize,
     last: usize,
     values: Vec<Value>,
-    /// Values registered mid-window, by the instruction they precede, on top of `values`.
-    extras: Vec<(usize, Vec<Value>)>,
+    /// The owners the window covers from an instruction on, where they differ from the ones
+    /// before it, by the instruction they precede.
+    steps: Vec<(usize, Vec<Value>)>,
 }
 
 /// The live values a registration may cover: a scope close sees its own values undropped, and a
@@ -1479,6 +1488,17 @@ fn coverable(
         .collect()
 }
 
+/// The instruction that discards the registration behind `handle` and every newer one.
+fn discard_inst(f: &mut Func, cx: &Cx, handle: Value, loc: crate::ir::Loc) -> Inst {
+    Inst {
+        op: Op::CallRt,
+        args: vec![handle],
+        imm: Imm::Ext(cx.discard),
+        res: Some(f.new_value(Ty::UNIT)),
+        loc,
+    }
+}
+
 /// Appends one cleanup registration per value; returns the first handle, which discards all.
 fn push_all(
     m: &mut Module,
@@ -1488,7 +1508,19 @@ fn push_all(
     values: &[Value],
     loc: crate::ir::Loc,
 ) -> Value {
-    let mut first = None;
+    push_each(m, cx, f, out, values, loc)[0]
+}
+
+/// Appends one cleanup registration per value; returns their handles in order.
+fn push_each(
+    m: &mut Module,
+    cx: &mut Cx,
+    f: &mut Func,
+    out: &mut Vec<Inst>,
+    values: &[Value],
+    loc: crate::ir::Loc,
+) -> Vec<Value> {
+    let mut handles = Vec::with_capacity(values.len());
     for v in values {
         let mut held = *v;
         let mut ty = f.ty(*v);
@@ -1517,9 +1549,9 @@ fn push_all(
             res: Some(h),
             loc,
         });
-        first.get_or_insert(h);
+        handles.push(h);
     }
-    first.expect("a registered value")
+    handles
 }
 
 /// Moves-out of a projection that are not yet filled back, at the start of each block. The
