@@ -1026,7 +1026,6 @@ mod tests {
         }
     }
 
-    #[cfg(unix)]
     #[test]
     fn copy_dereferencing_a_link_to_an_ancestor_of_the_destination_fails() {
         let root = ops::temporary_directory(b"msfs-copy-loop-").unwrap();
