@@ -11,6 +11,6 @@ Not every published suite fits: `@std/net/url` is a port of Go's `net/url` with 
 Apply when: changing a format parser in `stdlib/data/`, or adding a format suite.
 Decision: JSON rejects a repeated object name even though RFC 8259 only says names SHOULD be unique, so two JSONTestSuite `y_` cases are listed as intentional.
 
-Suites in the repository: `yaml_suite` (yaml-test-suite), `json_suite` (JSONTestSuite `y_` and `n_`; the `i_` implementation-defined files are not run), `csv_suite` (csv-spectrum; a CRLF inside a quoted cell reading as LF is intentional).
+Suites in the repository: `yaml_suite` (yaml-test-suite), `json_suite` (JSONTestSuite `y_` and `n_`; the `i_` implementation-defined files are not run), `csv_suite` (csv-spectrum; a CRLF inside a quoted cell reading as LF is intentional), `xml_suite` (1216 cases of the W3C XML suite that need no external entities; all 358 failures are `by design`: a DOCTYPE is skipped without checking its declarations, and UTF-16 input cannot be a String). Everything without a DOCTYPE agrees with the suite.
 Evidence: [yaml_suite](../../tests/conformance/fixtures/e2e/projects/yaml_suite/conformance_test.ms), [json_suite](../../tests/conformance/fixtures/e2e/projects/json_suite/conformance_test.ms).
 Verify: `ms test tests/conformance/fixtures/e2e/projects/<format>_suite/ms.toml`.
