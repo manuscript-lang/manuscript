@@ -182,25 +182,6 @@ fn Instant.clamp(low: Instant, high: Instant) Instant:
 
 	return self
 
-// A wall-clock time with Unix seconds and nanoseconds.
-export type Timestamp:
-	// Whole seconds since the Unix epoch.
-	seconds: Int
-	// The nanosecond within the second, 0 through 999999999.
-	nanos: Int
-
-// Formats this timestamp in RFC 3339 form.
-fn Timestamp.to_string() String:
-	return msstd_time_timestamp_to_string(self)
-
-// Returns the whole Unix seconds represented by this timestamp.
-fn Timestamp.unix_seconds() Int:
-	return self.seconds
-
-// Returns this timestamp's nanosecond component.
-fn Timestamp.nanoseconds() Int:
-	return self.nanos
-
 fn out_of_range() Error:
 	return Error("time: value out of range", kind: "ERANGE")
 
@@ -219,27 +200,6 @@ fn floor_split(nanos: Int) Split:
 	if rest < 0: return Split(whole - 1, rest + 1000000000)
 
 	return Split(whole, rest)
-
-// Adds a duration to this wall-clock timestamp.
-fn Timestamp.shift(duration: Duration) Timestamp!:
-	// A start beyond this can never land in the calendar range: the carry below is at
-	// most about 2e10 seconds. It also keeps the sum from overflowing.
-	if self.seconds > 300000000000 or self.seconds < -300000000000:
-		return error(out_of_range())
-
-	left := floor_split(self.nanos)
-	right := floor_split(duration.nanos)
-	var carry = left.whole + right.whole
-	var nanos = left.rest + right.rest
-
-	if nanos >= 1000000000:
-		nanos -= 1000000000
-		carry += 1
-
-	seconds := self.seconds + carry
-	if seconds > 253402300799 or seconds < -62135596800: return error(out_of_range())
-
-	return ok(Timestamp(seconds: seconds, nanos: nanos))
 
 // The duration whole * 1e9 + rest, or ERANGE when it does not fit an Int. The bounds
 // are the Int range, -9223372036854775808 through 9223372036854775807, in seconds
@@ -262,6 +222,46 @@ fn duration_of(whole: Int, rest: Int) Duration!:
 	if w == -9223372036 and r < -854775808: return error(out_of_range())
 
 	return ok(Duration(nanos: w * 1000000000 + r))
+
+// A wall-clock time with Unix seconds and nanoseconds.
+export type Timestamp:
+	// Whole seconds since the Unix epoch.
+	seconds: Int
+	// The nanosecond within the second, 0 through 999999999.
+	nanos: Int
+
+// Formats this timestamp in RFC 3339 form.
+fn Timestamp.to_string() String:
+	return msstd_time_timestamp_to_string(self)
+
+// Returns the whole Unix seconds represented by this timestamp.
+fn Timestamp.unix_seconds() Int:
+	return self.seconds
+
+// Returns this timestamp's nanosecond component.
+fn Timestamp.nanoseconds() Int:
+	return self.nanos
+
+// Adds a duration to this wall-clock timestamp.
+fn Timestamp.shift(duration: Duration) Timestamp!:
+	// A start beyond this can never land in the calendar range: the carry below is at
+	// most about 2e10 seconds. It also keeps the sum from overflowing.
+	if self.seconds > 300000000000 or self.seconds < -300000000000:
+		return error(out_of_range())
+
+	left := floor_split(self.nanos)
+	right := floor_split(duration.nanos)
+	var carry = left.whole + right.whole
+	var nanos = left.rest + right.rest
+
+	if nanos >= 1000000000:
+		nanos -= 1000000000
+		carry += 1
+
+	seconds := self.seconds + carry
+	if seconds > 253402300799 or seconds < -62135596800: return error(out_of_range())
+
+	return ok(Timestamp(seconds: seconds, nanos: nanos))
 
 // Returns `self - right` as a duration.
 fn Timestamp.difference(other: Timestamp) Duration!:
