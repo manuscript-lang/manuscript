@@ -1,6 +1,6 @@
 +++
 title = "Removed spellings"
-weight = 6
+weight = 91
 +++
 
 # Removed spellings
