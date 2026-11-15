@@ -416,27 +416,34 @@ export fn stringify(
 	var used = 0
 	crlf := options.line_ending == "\r\n"
 	delimiter := options.delimiter.clone()
+	delimiter_size := delimiter.byte_length()
+	ending_size := options.line_ending.byte_length()
 
 	for row in rows:
-		var line = ""
-
 		if row.length() == 1 and row[0] == "":
-			line = "\"\""
+			out.append("\"\"")
+			used += 2
 		else:
-			var pieces = List[String]()
+			var first = true
+
 			for field in row:
-				pieces.append(encode_field(field, delimiter, crlf))
-			line = pieces.join(options.delimiter)
+				if not first:
+					out.append(delimiter)
+					used += delimiter_size
 
-		line = "{line}{options.line_ending}"
+				first = false
 
-		size := line.byte_length()
-		if size > limit - used: return error(
-			Error("CSV: limit exceeded", kind: "EOVERFLOW")
-		)
+				if not needs_quotes(field, delimiter):
+					out.append(field)
+					used += field.byte_length()
+				else:
+					quoted := quote_field(field, crlf)
+					out.append(quoted)
+					used += quoted.byte_length()
 
-		used += size
-		out.append(line)
+		out.append(options.line_ending)
+		used += ending_size
+		if used > limit: return error(Error("CSV: limit exceeded", kind: "EOVERFLOW"))
 
 	return ok(out.build())
 
@@ -457,9 +464,7 @@ fn needs_quotes(field: String, delimiter: String) Bool:
 fn replaced(text: String, old: String, new: String) String:
 	return text.replace(old, new)
 
-fn encode_field(field: String, delimiter: String, crlf: Bool) String:
-	if not needs_quotes(field, delimiter): return field.clone()
-
+fn quote_field(field: String, crlf: Bool) String:
 	var quoted = replaced(field, "\"", "\"\"")
 	if crlf: quoted = replaced(replaced(quoted, "\r\n", "\n"), "\n", "\r\n")
 	return "\"{quoted}\""
