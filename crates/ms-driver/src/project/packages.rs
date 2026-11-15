@@ -30,6 +30,9 @@ pub struct Package {
     pub project: Project,
     /// The expected SHA-256 of each file by `/` path, from the verified index.
     pub files: BTreeMap<String, String>,
+    /// A workspace member: its files are the project's own, so they are not hashed or locked
+    /// and may declare natives.
+    pub member: bool,
 }
 
 /// Whether `text` is `len` lowercase hexadecimal digits.
@@ -221,6 +224,9 @@ fn parse_index(text: &str) -> BTreeMap<String, String> {
 
 /// Whether `bytes`, read from `relative` in this package, are what the lock pinned.
 pub fn verify_file(package: &Package, relative: &str, bytes: &[u8]) -> Result<(), ProjectError> {
+    if package.member {
+        return Ok(());
+    }
     match package.files.get(relative) {
         Some(expected) if *expected == sha256::hex(bytes) => Ok(()),
         Some(_) => Err(ProjectError::msg(format!(
@@ -297,21 +303,34 @@ pub fn attach(project: &mut Project) -> Result<(), ProjectError> {
 }
 
 fn attach_in(project: &mut Project, cache: &Path) -> Result<(), ProjectError> {
-    if project.dependencies.is_empty() {
+    if project.dependencies.is_empty() && project.path_dependencies.is_empty() {
         return Ok(());
     }
+    let workspace = crate::project::workspace::find(&pathops::join(&[&project.root, "ms.toml"]))?;
     // Package files are named `@name/...`; a project path with that spelling would be mistaken
     // for package code.
-    for alias in project.dependencies.keys() {
+    for alias in project
+        .dependencies
+        .keys()
+        .chain(project.path_dependencies.keys())
+    {
         if Path::new(&project.root).join(alias).exists() {
             return Err(ProjectError::msg(format!(
                 "the project has a file or directory named {alias}, which is also a dependency name; rename it, names starting with @ are reserved for packages"
             )));
         }
     }
-    let lock = read_lock(&project.root)?;
+    // A workspace shares the lock at its root.
+    let lock = read_lock(workspace.as_ref().map_or(&project.root, |w| &w.root))?;
     let mut loaded = BTreeMap::new();
-    wire(project, "", &lock, cache, &mut loaded, &mut Vec::new())?;
+    let mut run = Wiring {
+        workspace: workspace.as_ref(),
+        lock: &lock,
+        cache,
+        loaded: &mut loaded,
+        chain: Vec::new(),
+    };
+    run.wire(project, "")?;
     project.packages = loaded.into_values().collect();
     Ok(())
 }
@@ -340,114 +359,185 @@ fn locked<'a>(
     })
 }
 
-fn wire(
-    scope: &mut Project,
-    asker: &str,
-    lock: &BTreeMap<String, LockEntry>,
-    cache: &Path,
-    loaded: &mut BTreeMap<String, Package>,
-    chain: &mut Vec<String>,
-) -> Result<(), ProjectError> {
-    if chain.len() >= MAX_DEPTH {
-        return Err(ProjectError::msg(format!(
-            "packages nest more than {MAX_DEPTH} deep at {asker}"
-        )));
-    }
-    for (alias, dep) in scope.dependencies.clone() {
-        let (id, entry) = locked(&alias, &dep, lock)?;
-        if chain.contains(id) {
-            return Err(ProjectError::msg(format!("package {id} depends on itself")));
-        }
-        if !loaded.contains_key(id) {
-            let package = load_copy(id, entry, cache, lock, loaded, chain)?;
-            loaded.insert(id.clone(), package);
-        }
-        let package = &loaded[id];
-        if let Some(missing) = uncovered(
-            scope
-                .allowed_effects
-                .get(&alias)
-                .map_or(&[][..], Vec::as_slice),
-            &package.project.effects,
-        ) {
-            return Err(ProjectError::msg(if asker.is_empty() {
-                format!(
-                    "package {id} may use {missing}, which this project does not allow; add `{alias} = [\"{missing}\"]` under [effects] in ms.toml if you trust it"
-                )
-            } else {
-                format!(
-                    "package {id} may use {missing}, which {asker} does not allow for {alias}; {asker} would have to allow it under [effects], so ask its author, or require a version of {id} that does not use {missing}"
-                )
-            }));
-        }
-        if !asker.is_empty()
-            && let Some(missing) = uncovered(&scope.effects, &package.project.effects)
-        {
-            return Err(ProjectError::msg(format!(
-                "package {id} may use {missing}, but {asker} declares only {:?}; a package cannot hand a dependency effects it does not have itself",
-                scope.effects
-            )));
-        }
-        scope
-            .deps
-            .insert(alias.clone(), package.project.source.clone());
-    }
-    Ok(())
+struct Wiring<'a> {
+    workspace: Option<&'a crate::project::workspace::Workspace>,
+    lock: &'a BTreeMap<String, LockEntry>,
+    cache: &'a Path,
+    loaded: &'a mut BTreeMap<String, Package>,
+    /// The copies and members on the path from the project, to catch cycles.
+    chain: Vec<String>,
 }
 
-/// Read and check one locked copy, and wire its own dependencies.
-fn load_copy(
-    id: &str,
-    entry: &LockEntry,
-    cache: &Path,
-    lock: &BTreeMap<String, LockEntry>,
-    loaded: &mut BTreeMap<String, Package>,
-    chain: &mut Vec<String>,
-) -> Result<Package, ProjectError> {
-    let key = format!("@{id}");
-    let directory = cache.join(&entry.sha256);
-    if !directory.is_dir() {
-        return Err(ProjectError::msg(format!(
-            "package {id} ({}) is not in the cache {}; run `ms install` to download it",
-            entry.spec,
-            directory.display()
-        )));
+impl Wiring<'_> {
+    fn wire(&mut self, scope: &mut Project, asker: &str) -> Result<(), ProjectError> {
+        if self.chain.len() >= MAX_DEPTH {
+            return Err(ProjectError::msg(format!(
+                "packages nest more than {MAX_DEPTH} deep at {asker}"
+            )));
+        }
+        for (alias, dep) in scope.dependencies.clone() {
+            let (id, entry) = locked(&alias, &dep, self.lock)?;
+            if self.chain.contains(id) {
+                return Err(ProjectError::msg(format!("package {id} depends on itself")));
+            }
+            if !self.loaded.contains_key(id) {
+                let package = self.load_copy(id, entry)?;
+                self.loaded.insert(id.clone(), package);
+            }
+            let package = &self.loaded[id];
+            check_effects(scope, &alias, id, asker, &package.project)?;
+            scope
+                .deps
+                .insert(alias.clone(), package.project.source.clone());
+        }
+        for (alias, dir) in scope.path_dependencies.clone() {
+            let id = self.member(&alias, &dir)?;
+            let package = &self.loaded[&id];
+            check_effects(scope, &alias, &id, asker, &package.project)?;
+            scope
+                .deps
+                .insert(alias.clone(), package.project.source.clone());
+        }
+        Ok(())
     }
-    let files = read_index(cache, &directory, &entry.sha256, id)?;
-    let root = pathops::eval_symlinks(&directory.to_string_lossy())?;
-    let manifest = pathops::join(&[&root, "ms.toml"]);
-    let manifest_text =
-        std::fs::read(&manifest).map_err(|e| ProjectError::path("open", &manifest, &e))?;
-    let check = Package {
-        key: key.clone(),
-        root: root.clone(),
-        files: files.clone(),
-        ..Package::default()
-    };
-    verify_file(&check, "ms.toml", &manifest_text)?;
-    let mut package = Project::default();
-    crate::project::manifest::read_manifest(&manifest, &mut package)
+
+    /// Loads the workspace member at `dir` once and returns its id.
+    fn member(&mut self, alias: &str, dir: &str) -> Result<String, ProjectError> {
+        let Some(workspace) = self.workspace else {
+            return Err(ProjectError::msg(format!(
+                "{alias} is a path dependency, but no ancestor ms.toml has [workspace] members listing this project; add a workspace root or use a url dependency"
+            )));
+        };
+        let Some(member) = workspace.member_at(dir) else {
+            return Err(ProjectError::msg(format!(
+                "{alias} points at {dir}, which is not a workspace member; list it under [workspace] members in {}/ms.toml",
+                workspace.root
+            )));
+        };
+        let id = format!("workspace/{}", member.name);
+        if self.chain.contains(&id) {
+            return Err(ProjectError::msg(format!(
+                "workspace member {} depends on itself through {alias}; members cannot form a cycle",
+                member.name
+            )));
+        }
+        if self.loaded.contains_key(&id) {
+            return Ok(id);
+        }
+        let mut package = Project::default();
+        crate::project::manifest::read_manifest(
+            &crate::project::workspace::Workspace::manifest(member),
+            &mut package,
+        )
         .map_err(|e| ProjectError::msg(format!("package {id}: {e}")))?;
-    if !package.embed.is_empty() {
+        self.chain.push(id.clone());
+        let wired = self.wire(&mut package, &id);
+        self.chain.pop();
+        wired?;
+        self.loaded.insert(
+            id.clone(),
+            Package {
+                key: format!("@{id}"),
+                spec: format!("workspace member {}", member.name),
+                root: member.root.clone(),
+                project: package,
+                files: BTreeMap::new(),
+                member: true,
+            },
+        );
+        Ok(id)
+    }
+
+    /// Read and check one locked copy, and wire its own dependencies.
+    fn load_copy(&mut self, id: &str, entry: &LockEntry) -> Result<Package, ProjectError> {
+        let cache = self.cache;
+        let key = format!("@{id}");
+        let directory = cache.join(&entry.sha256);
+        if !directory.is_dir() {
+            return Err(ProjectError::msg(format!(
+                "package {id} ({}) is not in the cache {}; run `ms install` to download it",
+                entry.spec,
+                directory.display()
+            )));
+        }
+        let files = read_index(cache, &directory, &entry.sha256, id)?;
+        let root = pathops::eval_symlinks(&directory.to_string_lossy())?;
+        let manifest = pathops::join(&[&root, "ms.toml"]);
+        let manifest_text =
+            std::fs::read(&manifest).map_err(|e| ProjectError::path("open", &manifest, &e))?;
+        let check = Package {
+            key: key.clone(),
+            root: root.clone(),
+            files: files.clone(),
+            ..Package::default()
+        };
+        verify_file(&check, "ms.toml", &manifest_text)?;
+        let mut package = Project::default();
+        crate::project::manifest::read_manifest(&manifest, &mut package)
+            .map_err(|e| ProjectError::msg(format!("package {id}: {e}")))?;
+        if !package.embed.is_empty() {
+            return Err(ProjectError::msg(format!(
+                "package {id} declares [embed]; a package holds source only"
+            )));
+        }
+        if let Some((url, reference)) = entry.spec.split_once('#') {
+            crate::project::resolve::check_version_agrees("package", url, reference, &package)
+                .map_err(ProjectError::msg)?;
+        }
+        if !package.path_dependencies.is_empty() || package.members.is_some() {
+            return Err(ProjectError::msg(format!(
+                "package {id} uses a path dependency or [workspace]; a fetched package depends on urls only"
+            )));
+        }
+        self.chain.push(id.to_string());
+        let wired = self.wire(&mut package, id);
+        self.chain.pop();
+        wired?;
+        Ok(Package {
+            key,
+            spec: entry.spec.clone(),
+            root,
+            project: package,
+            files,
+            member: false,
+        })
+    }
+}
+
+/// What a project allows a dependency, and what a package may hand on.
+fn check_effects(
+    scope: &Project,
+    alias: &str,
+    id: &str,
+    asker: &str,
+    package: &Project,
+) -> Result<(), ProjectError> {
+    if let Some(missing) = uncovered(
+        scope
+            .allowed_effects
+            .get(alias)
+            .map_or(&[][..], Vec::as_slice),
+        &package.effects,
+    ) {
+        return Err(ProjectError::msg(if asker.is_empty() {
+            format!(
+                "package {id} may use {missing}, which this project does not allow; add `{alias} = [\"{missing}\"]` under [effects] in ms.toml if you trust it"
+            )
+        } else {
+            format!(
+                "package {id} may use {missing}, which {asker} does not allow for {alias}; {asker} would have to allow it under [effects], so ask its author, or require a version of {id} that does not use {missing}"
+            )
+        }));
+    }
+    if !asker.is_empty()
+        && let Some(missing) = uncovered(&scope.effects, &package.effects)
+    {
         return Err(ProjectError::msg(format!(
-            "package {id} declares [embed]; a package holds source only"
+            "package {id} may use {missing}, but {asker} declares only {:?}; a package cannot hand a dependency effects it does not have itself",
+            scope.effects
         )));
     }
-    if let Some((url, reference)) = entry.spec.split_once('#') {
-        crate::project::resolve::check_version_agrees("package", url, reference, &package)
-            .map_err(ProjectError::msg)?;
-    }
-    chain.push(id.to_string());
-    let wired = wire(&mut package, id, lock, cache, loaded, chain);
-    chain.pop();
-    wired?;
-    Ok(Package {
-        key,
-        spec: entry.spec.clone(),
-        root,
-        project: package,
-        files,
-    })
+    Ok(())
 }
 
 /// Reads the stored index and checks it is the one the lock names, then checks the manifest.
