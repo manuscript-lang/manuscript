@@ -848,7 +848,7 @@ void ms_bytes_new(const uint8_t *data, size_t len, ms_bytes *out);
 typedef struct ms_object ms_object;
 typedef struct ms_list ms_list;
 typedef enum ms_kind {{
-    MS_VOID = {unit}, MS_BOOL = {bool_}, MS_INT = {int}, MS_UINT = {uint}, MS_FLOAT = {float},
+    MS_VOID = {void}, MS_BOOL = {bool_}, MS_INT = {int}, MS_UINT = {uint}, MS_FLOAT = {float},
     MS_STRING = {string}, MS_BYTES = {bytes}, MS_OBJECT = {object}, MS_LIST = {list}, MS_FN = {fn_}
 }} ms_kind;
 typedef union ms_value_as {{
@@ -934,7 +934,7 @@ void msrt_string_from_bytes(const uint8_t *ptr, size_t len, ms_str *out);
             str_len_mask = STR_LEN_MASK,
             inline_tag = STR_INLINE >> 62,
             inline_shift = STR_INLINE_LEN_SHIFT,
-            unit = VALUE_VOID,
+            void = VALUE_VOID,
             bool_ = VALUE_BOOL,
             int = VALUE_INT,
             uint = VALUE_UINT,

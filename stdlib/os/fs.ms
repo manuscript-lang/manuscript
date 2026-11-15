@@ -475,7 +475,7 @@ export opaque type TemporaryDirectory:
 // Removes the directory and everything inside it.
 // Safe to call repeatedly.
 fn var TemporaryDirectory.close() Void!:
-	_ := msstd_fs_temporary_close(self.native)
+	void msstd_fs_temporary_close(self.native)
 
 // Returns the absolute path of the directory, created under the host's temporary
 // root.

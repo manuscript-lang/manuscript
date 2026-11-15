@@ -6,7 +6,7 @@ import serve from "@std/net/net.ms"
 import milliseconds, sleep from "@std/time.ms"
 
 fn route(request: HttpRequest) HttpResponse:
-    _ := sleep(milliseconds(2000)).wait()
+    void sleep(milliseconds(2000)).wait()
     return HttpResponse(status: 200, headers: headers(), body: "ok".to_bytes())
 
 // The client gives up while the handler sleeps, and dropping the server cancels the accept loop, whose cleanup frees what it owns.
@@ -20,4 +20,4 @@ fn run() Bool:
 fn main() Void:
     print(if run(): "timed out" else: "answered")
 
-    _ := sleep(milliseconds(500)).wait()
+    void sleep(milliseconds(500)).wait()

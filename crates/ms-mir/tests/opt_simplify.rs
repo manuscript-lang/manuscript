@@ -279,12 +279,12 @@ fn reuses_dominating_checked_arithmetic_across_io() {
         };
         let m = check(&format!(
             "module \"checked_cse\"
-extern @msrt_print_int(int) -> unit
+extern @msrt_print_int(int) -> void
 entry @main
 fn @calc(%x: int, %y: int) -> int {{
 b0:
   %a: int = {op} {args} !0:10:1
-  %out: unit = call.rt @msrt_print_int(%a)
+  %out: void = call.rt @msrt_print_int(%a)
   %b: int = {op} {repeated} !0:12:1
   %sum: int = iadd %a, %b
   ret %sum

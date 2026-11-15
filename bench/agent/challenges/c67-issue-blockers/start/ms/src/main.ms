@@ -272,7 +272,7 @@ fn rest_after_hash(s: String) String:
 
 // ---------- fields ----------
 
-fn apply_token(var f: Fields, tok: String) Unit!:
+fn apply_token(var f: Fields, tok: String) Void!:
 	cs := tok.chars()
 	var eq = -1
 
@@ -291,54 +291,54 @@ fn apply_token(var f: Fields, tok: String) Unit!:
 		if value.trim() == "": return error(Error("empty title"))
 
 		f.title = value
-		return ok(unit)
+		return ok()
 
 	if name == "priority":
 		r := prio_rank(value)
 		if r < 0: return error(Error("bad priority '{value}'"))
 
 		f.priority = r
-		return ok(unit)
+		return ok()
 
 	if name == "assignee":
 		if value.trim() == "": return error(Error("empty assignee"))
 
 		f.assignee = if value == "none": none else: value
-		return ok(unit)
+		return ok()
 
 	if name == "reporter":
 		if value.trim() == "": return error(Error("empty reporter"))
 
 		f.reporter = if value == "none": none else: value
-		return ok(unit)
+		return ok()
 
 	if name == "points":
 		if value == "none":
 			f.points = none
-			return ok(unit)
+			return ok()
 
 		if not valid_int(value): return error(Error("bad points '{value}'"))
 
 		f.points = to_int(value)
-		return ok(unit)
+		return ok()
 
 	if name == "due":
 		if value == "none":
 			f.due = none
-			return ok(unit)
+			return ok()
 
 		if not valid_date(value): return error(Error("bad date '{value}'"))
 
 		f.due = value
-		return ok(unit)
+		return ok()
 
 	if name == "labels":
 		if value == "none":
 			f.labels = []
-			return ok(unit)
+			return ok()
 
 		f.labels = norm_labels(value.split(","))?
-		return ok(unit)
+		return ok()
 
 	return error(Error("unknown field '{name}'"))
 
@@ -496,7 +496,7 @@ fn op_ok(field: Int, op: Int) Bool:
 
 	return op == 0
 
-fn var Parser.advance() Unit!:
+fn var Parser.advance() Void!:
 	n := self.cs.length()
 	var i = self.pos
 	while i < n and is_ws(self.cs[i]):
@@ -505,7 +505,7 @@ fn var Parser.advance() Unit!:
 	if i >= n:
 		self.kind = 7
 		self.pos = i
-		return ok(unit)
+		return ok()
 
 	c := self.cs[i]
 
@@ -513,13 +513,13 @@ fn var Parser.advance() Unit!:
 		self.kind = 0
 		self.text = "("
 		self.pos = i + 1
-		return ok(unit)
+		return ok()
 
 	if c == ")":
 		self.kind = 1
 		self.text = ")"
 		self.pos = i + 1
-		return ok(unit)
+		return ok()
 
 	var j = i
 	while j < n and is_lower_or_us(self.cs[j]):
@@ -608,7 +608,7 @@ fn var Parser.advance() Unit!:
 			self.value = join_range(self.cs, s, k)
 
 		self.pos = k
-		return ok(unit)
+		return ok()
 
 	var k = i
 	while k < n and not is_ws(self.cs[k]) and self.cs[k] != "(" and self.cs[k] != ")":
@@ -623,7 +623,7 @@ fn var Parser.advance() Unit!:
 	else if w == "NOT": self.kind = 4
 	else: self.kind = 6
 
-	return ok(unit)
+	return ok()
 
 fn is_lower_or_us(c: String) Bool: is_lower(c) or c == "_"
 
@@ -997,7 +997,7 @@ fn State.run_list(
 
 // ---------- state ops ----------
 
-fn var State.emit(s: String) Unit:
+fn var State.emit(s: String) Void:
 	self.out.append(s.clone())
 
 fn State.find(id: Int) Int:
@@ -1009,15 +1009,15 @@ fn State.id_arg(arg: String) Int!:
 
 	return ok(id)
 
-fn var State.add_log(id: Int, detail: String) Unit:
+fn var State.add_log(id: Int, detail: String) Void:
 	self.log.append(Entry(self.clock, self.actor.clone(), id, detail.clone()))
 
-fn State.final_check(idx: Int) Unit!:
+fn State.final_check(idx: Int) Void!:
 	iss := self.issues[idx]
 	if self.wf.finals[iss.state]:
 		return error(Error("#{iss.id} is in final state '{self.wf.states[iss.state]}'"))
 
-	return ok(unit)
+	return ok()
 
 fn var State.commit_edit(idx: Int, nf: Fields) String:
 	changes := diff_fields(self.issues[idx].f, nf)
@@ -1713,7 +1713,7 @@ fn rest_after_hash_n(s: String, n: Int) String:
 
 // ---------- dispatch ----------
 
-fn var State.finish(r: String!) Unit:
+fn var State.finish(r: String!) Void:
 	if v := r:
 		self.emit(v)
 	else:
@@ -1746,7 +1746,7 @@ fn var State.run_workflow(lines: List[String], start: Int) Int:
 
 	return i
 
-fn var State.exec(line: String) Unit:
+fn var State.exec(line: String) Void:
 	t := line.trim()
 	ws := t.fields()
 	cmd := ws[0]
@@ -1783,7 +1783,7 @@ fn var State.exec(line: String) Unit:
 
 // ms: allow_effect std.console.read
 // ms: allow_effect std.console.write
-fn main() Unit!:
+fn main() Void!:
 	bytes := read_all(stdin(), none)?
 	text := bytes.decode_utf8().get("")
 	lines := text.lines()

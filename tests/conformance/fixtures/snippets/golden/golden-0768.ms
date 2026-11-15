@@ -3,6 +3,6 @@
 test "bare":
     return
 test "unit":
-    return unit
+    return
 test "fall":
     x := 1

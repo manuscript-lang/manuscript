@@ -87,7 +87,7 @@ export interface Closeable:
 	/*
     Releases the implementation's resource state; with calls this on every scope exit.
     Cleanup runs during return, expected errors, faults, and cancellation too. A type whose release cannot
-    fail returns `ok(unit)`.
+    fail returns `ok()`.
     */
 	var fn close() Void!
 

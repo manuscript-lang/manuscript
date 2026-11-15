@@ -77,7 +77,7 @@ export fn run_bench_block(body: fn() Void!, operations: Int) Void!:
 	body()?
 
 	environment := environment().get(Map[String, String]())
-	if environment.get_or(measured_flag, "") == "1": return ok(unit)
+	if environment.get_or(measured_flag, "") == "1": return ok()
 
 	return measure(operations, body)
 

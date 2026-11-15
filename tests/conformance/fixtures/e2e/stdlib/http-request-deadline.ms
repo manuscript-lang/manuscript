@@ -25,7 +25,7 @@ fn send(var conn: Connection, text: String) Void!:
 
 fn handle(request: HttpRequest) HttpResponse:
     if request.path == "/slow":
-        _ := sleep(nanoseconds(3000000000)).wait()
+        void sleep(nanoseconds(3000000000)).wait()
     return HttpResponse(200, headers(), "ok {request.path}\n".to_bytes())
 
 fn fetch(address: String, path: String) String:

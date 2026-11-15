@@ -166,7 +166,7 @@ return a decoded `Request` in a `Result` (`?` passes no expected type, so write 
 apply to the document before decoding.
 
 - A record is an object. Members may appear in any order. An absent member takes the field's default,
-  else `none` for an `Optional` field. An absent `Void` field becomes `unit`; any other absent
+  else `none` for an `Optional` field. An absent `Void` field becomes `void`; any other absent
   required field returns `EBADMSG`. A member that is not a field is ignored, unless
   `ignore_unknown_fields` is `false`, which makes it return `EBADMSG`.
 - An alternative case without payload is its name as a string; one with payload is externally tagged,
@@ -407,7 +407,7 @@ fn var JsonReading[T].finish(var out: List[T]) Void!:
 	if failure := self.failure: return error(failure.clone())
 
 	self.finished = true
-	if self.mode == 0: return ok(unit)
+	if self.mode == 0: return ok()
 	if self.mode != 3: return self.fail(Error("JSON: invalid data", kind: "EBADMSG"))
 
 	completed := self.complete()

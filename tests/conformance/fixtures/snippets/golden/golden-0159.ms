@@ -10,6 +10,6 @@ fn forwarded() Result[Void, Error]:
     return failed()
 fn propagated() Result[Void, Error]:
     bytes := hex_decode(text: "zz")?
-    return ok(value: unit)
+    return ok(value: void)
 fn constructed() Result[Void, Error]:
     return error(cause: JsonError.InvalidData)

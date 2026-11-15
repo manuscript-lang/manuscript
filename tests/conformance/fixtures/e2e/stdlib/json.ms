@@ -270,11 +270,11 @@ type Holder:
 	done: Void
 
 test "JSON stringify omits a Void field and rejects a Void root":
-	holder := Holder(unit)
+	holder := Holder(void)
 	expect_equal((encoded(holder)?), "\{\}")?
 
 	invalid: String! := error(Error("JSON: invalid data", kind: "EBADMSG"))
-	expect_equal(stringify(unit), invalid)?
+	expect_equal(stringify(void), invalid)?
 
 	failed: Int! := error(Error("JSON: limit exceeded", kind: "EOVERFLOW"))
 	expect_equal(

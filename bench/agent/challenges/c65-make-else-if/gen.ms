@@ -10,7 +10,7 @@ import (
 	read_text from "../../lib/text.ms",
 )
 
-fn add(var cs: Cases, name: String, script: String) Unit:
+fn add(var cs: Cases, name: String, script: String) Void:
 	cs.push(name, script)
 
 // The entries of c56-make-lite's hidden cases.
@@ -22,7 +22,7 @@ fn c56_inputs() List[JsonValue]:
 
 CHAIN := "ifeq ($(MODE),debug)\nX = debug\nelse ifeq ($(MODE),release)\nX = release\nelse ifdef FAST\nX = fast\nelse ifneq ($(Y),)\nX = y\nelse\nX = none\nendif\nall:\n\t@echo $(X)\n====\n====\n"
 
-export fn gen_c65() Unit:
+export fn gen_c65() Void:
 	var cs = Cases(build_oracle("c65-make-else-if"))
 
 	for entry in c56_inputs():

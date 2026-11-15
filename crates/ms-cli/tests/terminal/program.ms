@@ -23,13 +23,13 @@ export fn main() Int:
 
 	if t := raw:
 		var term = t
-		_ := term.move_cursor(1, 2)
-		_ := term.show_cursor(false)
-		_ := term.erase(EraseRegion.LineEnd)
-		_ := term.move_by(-1, 2)
-		_ := term.set_title("t")
+		void term.move_cursor(1, 2)
+		void term.show_cursor(false)
+		void term.erase(EraseRegion.LineEnd)
+		void term.move_by(-1, 2)
+		void term.set_title("t")
 		if size := term.size():
-			_ := stdout().write("size {size.columns}x{size.rows}\r\n")
+			void stdout().write("size {size.columns}x{size.rows}\r\n")
 
 		var events = term.events()
 		var done = false
@@ -39,16 +39,16 @@ export fn main() Int:
 
 			if maybe := next:
 				if e := maybe:
-					_ := stdout().write(describe(e.clone()) + "\r\n")
+					void stdout().write(describe(e.clone()) + "\r\n")
 					done = describe(e) == "text:q"
 				else:
 					done = true
 			else:
-				_ := stdout().write("timeout\r\n")
+				void stdout().write("timeout\r\n")
 				done = true
 
 		term.close().get(none)
 		return 0
 
-	_ := stdout().write("no raw mode\n")
+	void stdout().write("no raw mode\n")
 	return 1

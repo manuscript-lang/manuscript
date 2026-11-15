@@ -46,7 +46,7 @@ fn ratio(n: Int) Float!Error:
 
 fn nothing(flag: Bool) Void!Error:
     if flag:
-        return ok(unit)
+        return ok()
 
     return error(Error("no"))
 

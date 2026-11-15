@@ -10,7 +10,7 @@ import (
 	read_text from "../../lib/text.ms",
 )
 
-fn add(var cs: Cases, name: String, script: String) Unit:
+fn add(var cs: Cases, name: String, script: String) Void:
 	cs.push(name, script)
 
 // The entries of c52-sql-engine's hidden cases.
@@ -22,7 +22,7 @@ fn c52_inputs() List[JsonValue]:
 
 SETUP := "CREATE TABLE t (id INT PRIMARY KEY, n INT, s TEXT, g TEXT);\nINSERT INTO t VALUES (1, 5, 'apple', 'x'), (2, NULL, 'bee', 'x'), (3, 12, 'cat', 'y'), (4, 0, NULL, 'y'), (5, 7, 'dog', 'z');\n"
 
-export fn gen_c66() Unit:
+export fn gen_c66() Void:
 	var cs = Cases(build_oracle("c66-sql-case"))
 
 	for entry in c52_inputs():

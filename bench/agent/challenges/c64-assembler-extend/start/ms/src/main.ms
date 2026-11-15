@@ -268,7 +268,7 @@ type Asm:
 	budget: Int = 100000
 	cur_line: Int = 0
 
-fn var Asm.define(name: String, sym: Sym) Unit!:
+fn var Asm.define(name: String, sym: Sym) Void!:
 	if reg_index(name) >= 0: return error(Error("reserved name '{name}'"))
 	if self.syms.get(name).is_some(): return error(Error("duplicate symbol '{name}'"))
 
@@ -458,26 +458,26 @@ fn parse_string(t: String) List[Int]!:
 
 	return ok(out)
 
-fn var Asm.add_data(count: Int, value: Int) Unit!:
+fn var Asm.add_data(count: Int, value: Int) Void!:
 	if self.data.length() + count > 4096: return error(Error("data section too large"))
 
 	for _k in 0..count:
 		self.data.append(value)
-	return ok(unit)
+	return ok()
 
-fn var Asm.directive(line: Int, word: String, args: String) Unit!:
+fn var Asm.directive(line: Int, word: String, args: String) Void!:
 	if word == ".text" or word == ".data":
 		if args != "": return error(bad_op(args))
 
 		self.in_data = word == ".data"
-		return ok(unit)
+		return ok()
 
 	if word == ".budget":
 		v := parse_digits(args)
 		if v < 1 or v > 10000000: return error(bad_op(args))
 
 		self.budget = v
-		return ok(unit)
+		return ok()
 
 	if word == ".equ":
 		parts := split_ops(args)
@@ -498,7 +498,7 @@ fn var Asm.directive(line: Int, word: String, args: String) Unit!:
 				state: 0,
 			),
 		)?
-		return ok(unit)
+		return ok()
 
 	if word == ".word" or word == ".ascii" or word == ".asciz" or word == ".space":
 		if not self.in_data: return error(Error("data directive in text section"))
@@ -512,7 +512,7 @@ fn var Asm.directive(line: Int, word: String, args: String) Unit!:
 			idx := self.data.length()
 			self.add_data(parts.length(), 0)?
 			self.stmts.append(Stmt(kind: 1, line: line, idx: idx, texts: parts))
-			return ok(unit)
+			return ok()
 
 		if word == ".space":
 			parts := split_ops(args)
@@ -534,7 +534,7 @@ fn var Asm.directive(line: Int, word: String, args: String) Unit!:
 						texts: [parts[1].clone(), "{n}"],
 					)
 				)
-			return ok(unit)
+			return ok()
 
 		vals := parse_string(args)?
 		for v in vals:
@@ -542,11 +542,11 @@ fn var Asm.directive(line: Int, word: String, args: String) Unit!:
 		if word == ".asciz": self.data.append(0)
 		if self.data.length() > 4096: return error(Error("data section too large"))
 
-		return ok(unit)
+		return ok()
 
 	return error(Error("unknown directive '{word}'"))
 
-fn var Asm.line(line: Int, raw: String) Unit!:
+fn var Asm.line(line: Int, raw: String) Void!:
 	s := strip_comment(raw)
 	n := s.length()
 	var pos = 0
@@ -584,7 +584,7 @@ fn var Asm.line(line: Int, raw: String) Unit!:
 		break
 
 	rest := sub(s, pos, n).trim()
-	if rest == "": return ok(unit)
+	if rest == "": return ok()
 
 	var we = 0
 	while we < rest.length() and not is_ws(cat(rest, we)):
@@ -620,9 +620,9 @@ fn var Asm.line(line: Int, raw: String) Unit!:
 		)
 	)
 	self.instrs.append(Instr(op: op, line: line, a: a, b: b))
-	return ok(unit)
+	return ok()
 
-fn var Asm.pass2(var av: List[Int], var bv: List[Int]) Unit!:
+fn var Asm.pass2(var av: List[Int], var bv: List[Int]) Void!:
 	for st in self.stmts.clone():
 		self.cur_line = st.line
 
@@ -650,7 +650,7 @@ fn var Asm.pass2(var av: List[Int], var bv: List[Int]) Unit!:
 					Error("invalid jump target")
 				)
 
-	return ok(unit)
+	return ok()
 
 type Vm:
 	op: List[Int]
@@ -675,7 +675,7 @@ type Vm:
 	last: Int = 10
 	wrote: Bool = false
 
-fn var Vm.fail(msg: String) Unit:
+fn var Vm.fail(msg: String) Void:
 	if self.trap == "": self.trap = msg
 
 fn var Vm.eff(r: Int, v: Int) Int:
@@ -689,7 +689,7 @@ fn var Vm.load(addr: Int) Int:
 
 	return self.mem[addr]
 
-fn var Vm.store(addr: Int, v: Int) Unit:
+fn var Vm.store(addr: Int, v: Int) Void:
 	if addr < 0 or addr >= 4096:
 		self.fail("memory access out of range: {addr}")
 		return
@@ -702,7 +702,7 @@ fn var Vm.rd(k: Int, r: Int, v: Int) Int:
 
 	return self.load(self.eff(r, v))
 
-fn var Vm.push(v: Int) Unit:
+fn var Vm.push(v: Int) Void:
 	if self.regs[8] <= 0:
 		self.fail("stack overflow")
 		return
@@ -721,7 +721,7 @@ fn var Vm.pop() Int:
 	self.regs[8] += 1
 	return v
 
-fn var Vm.emit(s: String, lastc: Int) Unit:
+fn var Vm.emit(s: String, lastc: Int) Void:
 	self.out.append(s)
 	self.last = lastc
 	self.wrote = true
@@ -763,7 +763,7 @@ fn var Vm.alu(op: Int, d: Int, s: Int) Int:
 
 	return bit_not(bit_not(d) / p)
 
-fn var Vm.step() Unit:
+fn var Vm.step() Void:
 	pc := self.pc
 	op := self.op[pc]
 	ak := self.ak[pc]
@@ -887,7 +887,7 @@ fn parse_input(lines: List[String]) List[Int]:
 
 // ms: allow_effect std.console.write
 // ms: allow_effect std.console.read
-fn main() Unit!:
+fn main() Void!:
 	bytes := read_all(stdin())?
 	text := bytes.decode_utf8().get("")
 	all := text.lines()

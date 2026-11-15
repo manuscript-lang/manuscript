@@ -1,5 +1,5 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn before() Void: unit
+fn before() Void: void
 fn broken() Void: ...
     

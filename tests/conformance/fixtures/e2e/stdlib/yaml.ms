@@ -416,8 +416,8 @@ test "YAML plain scalars cannot start with an indicator":
 	]:
 		expect_true(parse(text: text).is_error())?
 
-	_ := expect_ok(parse(text: "a: -1\nb: -a\nc: ?x\nd: [-1, ?y, :z]\n"))?
-	_ := expect_ok(parse(text: "\{? a : 1\}\n"))?
+	void expect_ok(parse(text: "a: -1\nb: -a\nc: ?x\nd: [-1, ?y, :z]\n"))?
+	void expect_ok(parse(text: "\{? a : 1\}\n"))?
 
 test "YAML rejects duplicates invalid indentation malformed flow and aliases":
 	for text in [
@@ -763,13 +763,13 @@ test "YAML flow mapping keys without a colon map to null":
 
 	match parse(text: "\{x, x\}"):
 		ok(_): return fail("duplicate null keys")
-		error(_): _ignored := unit
+		error(_): _ignored := void
 
 	limited := limits(bytes: none, depth: none, values: 2)
 
 	match parse(text: "\{a, b, c\}", options: limited):
 		ok(_): return fail("null keys count against the value limit")
-		error(_): _ignored := unit
+		error(_): _ignored := void
 
 test "YAML long quoted block and multi-line scalars decode and stringify in linear time":
 	long := repeated(text: "x", count: 300000)

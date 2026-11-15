@@ -4,7 +4,7 @@ type Res:
     id: Int
 
 fn var Res.close() Void!:
-    return ok(unit)
+    return ok()
 
 enum Holder:
     Has(r: Res)

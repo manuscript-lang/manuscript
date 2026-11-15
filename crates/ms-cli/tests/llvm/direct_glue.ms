@@ -16,7 +16,7 @@ type Bag:
     raw: List[Int]
 
 fn say(text: String) Void:
-    _ := stdout().write("{text}\n")
+    void stdout().write("{text}\n")
 
 fn build(k: Int) Bag:
     var items: List[Item] = []

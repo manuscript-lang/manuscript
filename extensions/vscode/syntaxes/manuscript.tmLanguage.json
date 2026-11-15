@@ -93,7 +93,7 @@
     },
     {
       "name": "constant.language.manuscript",
-      "match": "\\b(true|false|unit)\\b"
+      "match": "\\b(true|false|void)\\b"
     },
     {
       "name": "constant.numeric.manuscript",

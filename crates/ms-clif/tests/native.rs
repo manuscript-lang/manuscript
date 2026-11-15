@@ -740,7 +740,7 @@ fn random_program(seed: u64) -> String {
         g.rng.below(2001) as i64 - 1000,
     );
     src.push_str(&format!(
-        "fn @main() -> int {{\nb0:\n  %x: int = iconst {x}\n  %y: int = iconst {y}\n  %r: int = call @f(%x, %y)\n  %u: unit = call.rt @msrt_print_int (%r)\n  %z: int = iconst 0\n  ret %z\n}}\n"
+        "fn @main() -> int {{\nb0:\n  %x: int = iconst {x}\n  %y: int = iconst {y}\n  %r: int = call @f(%x, %y)\n  %u: void = call.rt @msrt_print_int (%r)\n  %z: int = iconst 0\n  ret %z\n}}\n"
     ));
     src
 }
@@ -806,7 +806,7 @@ extern @msrt_print_int(int)
 entry @main
 fn @close(%x: int) {{
 b0:
-  %u: unit = call.rt @msrt_print_int(%x)
+  %u: void = call.rt @msrt_print_int(%x)
   ret
 }}
 fn @choose(%x: int, %y: int, %c: bool) -> int !0:2:1 {{
@@ -832,7 +832,7 @@ b0:
   %h1: int = cleanup.push @close %one
   %h2: int = cleanup.push @close %two
   %r: int = call @choose(%x, %y, %c) !0:41:1
-  %u: unit = call.rt @msrt_print_int(%r)
+  %u: void = call.rt @msrt_print_int(%r)
   cleanup.run %h1
   %z: int = iconst 0
   ret %z

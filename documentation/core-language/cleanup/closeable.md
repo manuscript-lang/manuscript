@@ -49,7 +49,7 @@ A similarly named method whose signature is not `fn var close() Void!` does not 
 
 ## A close returns a Result
 
-`close()` returns `Void!`, which is `Result[Void, Error]`: releasing a resource can fail, and the failure is a value. A type whose release cannot fail returns `ok(unit)`.
+`close()` returns `Void!`, which is `Result[Void, Error]`: releasing a resource can fail, and the failure is a value. A type whose release cannot fail returns `ok()`.
 
 ```manuscript
 import Closeable from "@std/core.ms"
@@ -71,7 +71,7 @@ This example reports the release failure once; a later close succeeds without re
 The scope-end close behaves like `gate.close()?`: a failed close becomes the function's error, after the other bindings of the scopes it leaves have closed. This holds for every exit, including `break`, `continue` and `return`.
 
 - If the scope is already returning an error, that error is kept and a close error after it is dropped.
-- Call `close()` yourself to handle the failure; the scope end then closes the binding once more, which `close()` being idempotent makes harmless, and drops that second result, so a failure you handled is not returned again. Like any `Result`, the call needs `?`, `if v := x` or `_ :=`.
+- Call `close()` yourself to handle the failure; the scope end then closes the binding once more, which `close()` being idempotent makes harmless, and drops that second result, so a failure you handled is not returned again. Like any `Result`, the call needs `?`, `if v := x` or `void`.
 - A close with nowhere to return its error is a fault, never silently ignored: a function that does not return `Result[_, Error]`, a part of a holder, a replaced or temporary value.
 - A fault or cancellation runs each close and discards its result; the failure being reported takes precedence.
 

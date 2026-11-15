@@ -8,7 +8,7 @@ fn checked(n: Int) Int:
 	return n
 
 fn main() Void:
-	_ := stdout().write("before\n")
-	_ := stdout().write("{checked(1)}\n")
-	_ := stdout().write("{checked(2)}\n")
-	_ := stdout().write("unreachable\n")
+	void stdout().write("before\n")
+	void stdout().write("{checked(1)}\n")
+	void stdout().write("{checked(2)}\n")
+	void stdout().write("unreachable\n")

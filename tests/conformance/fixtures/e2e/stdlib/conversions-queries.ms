@@ -114,7 +114,7 @@ test "conversions retain unconstrained payloads nesting and lazy counts":
 	false_value: Bool? := false
 	false_value.ok_or(Error("absent")).to_optional().get() | expect_false?
 
-	unit_value: Void? := unit
+	unit_value: Void? := void
 	(unit_value.ok_or(Error("absent")).to_optional().is_some()) | expect_true?
 
 	nested_inner: Int!Error := error(Error("nested"))

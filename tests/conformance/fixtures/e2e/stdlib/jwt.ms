@@ -265,7 +265,7 @@ test "verify rejects registered claims of the wrong type":
 			secret,
 		) | expect_ok?
 	)
-	_ := (
+	void (
 		verify_token(
 			fine,
 			secret,
@@ -527,9 +527,9 @@ fn expect_date_order(number: String, at: Int, order: Int) Void!:
 			| expect_equal(Error("jwt: token expired", kind: "EBADMSG"))?
 		)
 
-		_ := verify_token(nbf, secret, check)?
+		void verify_token(nbf, secret, check)?
 	else:
-		_ := verify_token(exp, secret, check)?
+		void verify_token(exp, secret, check)?
 		(
 			(failure(verify_token(nbf, secret, check))?)
 			| expect_equal(
@@ -537,7 +537,7 @@ fn expect_date_order(number: String, at: Int, order: Int) Void!:
 			)?
 		)
 
-	return ok(unit)
+	return ok()
 
 test "numeric dates retain consecutive integer and fractional ordering":
 	expect_date_order("9007199254740993", 9007199254740992, 1)?
@@ -583,9 +583,9 @@ test "numeric date leeway is exact across Int boundaries":
 
 	for number in ["9007199254740993", "9007199254740992.0000001"]:
 		exp := dated_token("exp", number)?
-		_ := verify_token(exp, secret, JwtCheck(at: 9007199254740993, leeway: 1))?
+		void verify_token(exp, secret, JwtCheck(at: 9007199254740993, leeway: 1))?
 		nbf := dated_token("nbf", number)?
-		_ := verify_token(nbf, secret, JwtCheck(at: 9007199254740992, leeway: 1))?
+		void verify_token(nbf, secret, JwtCheck(at: 9007199254740992, leeway: 1))?
 
 	exp_limit := dated_token("exp", "18446744073709551615")?
 	(
@@ -605,13 +605,13 @@ test "numeric date leeway is exact across Int boundaries":
 	)
 
 	exp_later := dated_token("exp", "18446744073709551615.0000001")?
-	_ := verify_token(
+	void verify_token(
 		exp_later,
 		secret,
 		JwtCheck(at: 9223372036854775807, leeway: -9223372036854775808),
 	)?
 	nbf_limit := dated_token("nbf", "-18446744073709551616")?
-	_ := verify_token(
+	void verify_token(
 		nbf_limit,
 		secret,
 		JwtCheck(at: -9223372036854775808, leeway: -9223372036854775808),
@@ -652,7 +652,7 @@ test "numeric date leeway is exact across Int boundaries":
 	)
 
 	nbf_late := dated_token("nbf", "18446744073709551614")?
-	_ := verify_token(
+	void verify_token(
 		nbf_late,
 		secret,
 		JwtCheck(at: 9223372036854775807, leeway: 9223372036854775807),

@@ -226,7 +226,7 @@ impl InstCheck<'_, '_> {
             }
             Op::VoidConst => {
                 self.arity(0)?;
-                self.want(self.res == Some(Ty::VOID), "unit yields unit")
+                self.want(self.res == Some(Ty::VOID), "void yields void")
             }
             Op::StrLit => {
                 self.arity(0)?;

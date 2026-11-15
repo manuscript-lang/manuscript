@@ -119,7 +119,7 @@ fn var ListSource[T].next() T?!:
 	return ok(self.items.pop())
 
 fn var ListSource[T].close() Void!:
-	return ok(unit)
+	return ok()
 
 // A stream that yields copies of the items of `items` in order and then ends; the items
 // must be Clonable, since a resource has one owner and cannot be copied (move it into a
@@ -146,7 +146,7 @@ fn var BytesSource.next() Bytes?!:
 	return ok(piece)
 
 fn var BytesSource.close() Void!:
-	return ok(unit)
+	return ok()
 
 // A stream that yields `data` in chunks of at most `chunk_bytes` bytes and then ends. A
 // `chunk_bytes` below 1 makes the first read fail with `EINVAL`.

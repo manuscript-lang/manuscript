@@ -19,7 +19,7 @@ fn var Latch.close() Void!:
 	if self.open:
 		self.open = false
 
-		_ := append_file(self.log, "{self.id},").wait()
+		void append_file(self.log, "{self.id},").wait()
 
 fn latch(log: String, id: Int) Latch:
 	return Latch(log, id, true)
@@ -81,13 +81,13 @@ fn fault_through_holder(log: String) Void:
 	holder := Holder(latch(log, 9), 0)
 	panic("holder fault")
 
-	_ := holder.tag
+	void holder.tag
 
 fn fault_plain(log: String) Void:
 	one := latch(log, 10)
 	panic("plain fault")
 
-	_ := one.id
+	void one.id
 
 fn destructured_record(log: String) Int:
 	holder := Holder(latch(log, 13), 3)
@@ -105,7 +105,7 @@ type Maker:
 	made: Int
 
 fn var Maker.close() Void!:
-	return ok(unit)
+	return ok()
 
 fn var Maker.make(log: String, id: Int) Latch:
 	self.made += 1

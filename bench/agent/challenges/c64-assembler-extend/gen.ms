@@ -11,7 +11,7 @@ import (
 	read_text from "../../lib/text.ms",
 )
 
-fn add(var cs: Cases, name: String, script: String) Unit:
+fn add(var cs: Cases, name: String, script: String) Void:
 	cs.push(name, script)
 
 // The entries of c57-assembler-vm's hidden cases.
@@ -21,7 +21,7 @@ fn c57_inputs() List[JsonValue]:
 	)
 	return doc.as_list().get([])
 
-export fn gen_c64() Unit:
+export fn gen_c64() Void:
 	var cs = Cases(build_oracle("c64-assembler-extend"))
 
 	for entry in c57_inputs():

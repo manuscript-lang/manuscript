@@ -5,4 +5,4 @@ fn main() Void:
     print("first")
 
     _flushed := stdout().flush()
-    _ := sleep(nanoseconds(3000000000)).wait()
+    void sleep(nanoseconds(3000000000)).wait()

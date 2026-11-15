@@ -33,7 +33,7 @@ impl Op {
             Op::IConst => ("iconst", K::Int, true, effects!()),
             Op::FConst => ("fconst", K::Float, true, effects!()),
             Op::BConst => ("bconst", K::Bool, true, effects!()),
-            Op::VoidConst => ("unit", K::None, true, effects!()),
+            Op::VoidConst => ("void", K::None, true, effects!()),
             Op::StrLit => ("str", K::Str, true, effects!()),
             Op::BytesLit => ("bytes", K::Int, true, effects!()),
             Op::IAdd => ("iadd", K::None, true, effects!()),

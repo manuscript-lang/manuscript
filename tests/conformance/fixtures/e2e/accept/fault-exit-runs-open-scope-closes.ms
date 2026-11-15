@@ -7,9 +7,9 @@ type Marker:
 	name: String
 
 fn var Marker.close() Void!:
-	_ := stdout().write("closed {self.name}\n")
+	void stdout().write("closed {self.name}\n")
 
 fn main() Void:
-	_ := stdout().write("start\n")
+	void stdout().write("start\n")
 	marker := Marker("outer")
 	panic("boom {marker.name}")
