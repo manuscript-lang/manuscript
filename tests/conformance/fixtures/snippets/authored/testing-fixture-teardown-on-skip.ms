@@ -31,4 +31,4 @@ test "a failed assertion still tears down":
 
 test "a fault still tears down":
     numbers: List[Int] := []
-    _ := numbers[1]
+    void numbers[1]

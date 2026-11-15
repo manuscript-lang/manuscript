@@ -419,7 +419,7 @@ fn literal_entries(n: usize) -> String {
         r#"module "t"
 file 0 "t.ms"
 extern @msrt_coll_new() -> list<int>
-extern @msrt_coll_add(ptr, ptr, str) -> unit
+extern @msrt_coll_add(ptr, ptr, str) -> void
 entry @main
 
 fn @main() -> int export {
@@ -433,7 +433,7 @@ b0:
     let mut copies = Vec::new();
     for i in 0..n {
         s.push_str(&format!(
-            "  %{v}: str = str \"k{i}\"\n  %{c}: str = clone %{v}\n  %{t}: list<int> = take list<int> %1\n  %{sl}: ptr = slot list<int>\n  put %{sl}, %{t}\n  %{d}: ptr = typedesc str\n  %{u}: unit = call.rt @msrt_coll_add (%{sl}, %{d}, %{c})\n  %{b}: list<int> = take list<int> %{sl}\n  put %1, %{b}\n",
+            "  %{v}: str = str \"k{i}\"\n  %{c}: str = clone %{v}\n  %{t}: list<int> = take list<int> %1\n  %{sl}: ptr = slot list<int>\n  put %{sl}, %{t}\n  %{d}: ptr = typedesc str\n  %{u}: void = call.rt @msrt_coll_add (%{sl}, %{d}, %{c})\n  %{b}: list<int> = take list<int> %{sl}\n  put %1, %{b}\n",
             c = v + 1,
             t = v + 2,
             sl = v + 3,

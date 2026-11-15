@@ -13,7 +13,7 @@ fn handle(request: HttpRequest) HttpResponse:
     print("started")
 
     _flushed := stdout().flush()
-    _ := sleep(nanoseconds(600000000)).wait()
+    void sleep(nanoseconds(600000000)).wait()
     return HttpResponse(200, headers(), "done".to_bytes())
 
 export fn main() Int:

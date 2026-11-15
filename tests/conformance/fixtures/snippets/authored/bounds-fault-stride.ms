@@ -10,4 +10,4 @@ fn stride(a: List[Int]) Int:
     return t
 
 fn main() Void:
-    _ := stdout().write("{stride([1, 2, 3, 4, 5, 6, 7])}\n")
+    void stdout().write("{stride([1, 2, 3, 4, 5, 6, 7])}\n")

@@ -92,7 +92,7 @@ fn syntax(var items: List[Int], doc: Document, state: State) Int:
 test "fixture and unit":
 	fixture.setup()
 
-	empty := unit
+	empty := void
 	check(empty)
 
 fn runtime_bound() Void: ...

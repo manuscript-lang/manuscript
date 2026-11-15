@@ -15,6 +15,7 @@ Run a program, learn the language, then build something useful. The same `ms` co
 2. **[Read the guide](../guide/_index.md).** Small order-processing programs, chapter by chapter: values, data, errors, ownership, cleanup, concurrency, modules, tests, working with an agent.
 3. **[Test your code](testing.md).** Write tests and run the cases you want.
 4. **[Build a small tool](../cookbook/_index.md).** Start from a complete arguments, files, JSON, or HTTP recipe.
+5. **[Use a package](packages.md).** Depend on another project's source, pinned and checked.
 
 Read in order with **Next**.
 

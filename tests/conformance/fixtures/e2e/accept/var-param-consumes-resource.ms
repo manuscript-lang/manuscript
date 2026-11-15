@@ -11,7 +11,7 @@ type Door:
 	log: String
 
 fn var Door.close() Void!:
-	_ := append_file(self.log, "{self.id},").wait()
+	void append_file(self.log, "{self.id},").wait()
 
 type Slot:
 	door: Door

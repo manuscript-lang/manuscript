@@ -24,9 +24,9 @@ type Holder:
 // Close records itself by writing a marker file named after the holder.
 fn var Holder.close() Void!:
 	if self.pause:
-		_ := sleep(nanoseconds(5000000)).wait()
+		void sleep(nanoseconds(5000000)).wait()
 
-	_ := write_file("{self.dir}/{self.id}", "closed", true).wait()
+	void write_file("{self.dir}/{self.id}", "closed", true).wait()
 	if self.breaks:
 		panic("close fault")
 
@@ -35,24 +35,24 @@ fn closed(dir: String, id: Int) Bool:
 
 fn hold_and_wait(dir: String, id: Int, pause: Bool) Int:
 	holder := Holder(dir, id, pause, false)
-	_ := sleep(nanoseconds(5000000000)).wait()
+	void sleep(nanoseconds(5000000000)).wait()
 	return holder.id
 
 fn hold_and_fault(dir: String, id: Int) Void:
 	holder := Holder(dir, id, false, false)
 	panic("body fault")
 
-	_ := holder.id
+	void holder.id
 
 fn hold_then_break(dir: String, id: Int) Void:
 	holder := Holder(dir, id, false, true)
-	_ := holder.id
+	void holder.id
 
 fn hold_fault_and_break(dir: String, id: Int) Void:
 	holder := Holder(dir, id, false, true)
 	panic("body fault")
 
-	_ := holder.id
+	void holder.id
 
 fn cancel_a_holder(dir: String, id: Int, pause: Bool) Void:
 	work := promise(fn: ok(hold_and_wait(dir.clone(), id, pause)))
@@ -64,7 +64,7 @@ fn cancel_a_holder(dir: String, id: Int, pause: Bool) Void:
 fn pop_and_discard(dir: String, id: Int) Int:
 	var held = [Holder(dir, id, true, false)]
 	held.pop()
-	_ := sleep(nanoseconds(5000000000)).wait()
+	void sleep(nanoseconds(5000000000)).wait()
 	return held.length()
 
 fn cancel_a_discard(dir: String, id: Int) Void:

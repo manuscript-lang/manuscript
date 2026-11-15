@@ -63,7 +63,7 @@ pub(crate) fn scalar_text(
         }
         return Some((v, false));
     } else if t == MTy::VOID {
-        let s = b.str_lit("unit");
+        let s = b.str_lit("void");
         return Some((s, false));
     } else {
         return None;

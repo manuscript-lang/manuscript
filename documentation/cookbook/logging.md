@@ -30,7 +30,7 @@ fn main() Void!:
     log.debug("not shown at the default level")?
     handler := log.child(Request(request: 7))?
     handler.warn("slow request", Slow(ms: 950))?
-    return ok(unit)
+    return ok()
 ```
 
 ```sh

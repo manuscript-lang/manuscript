@@ -19,16 +19,16 @@ fn handled() Void!:
 fn branchy(explicit: Bool) Void!:
     var g = Gate(0)
     if explicit:
-        _ := g.close()
+        void g.close()
 
 fn relocked(second_fails: Bool) Void!:
     var g = Gate(0)
-    _ := g.close()
+    void g.close()
     g = Gate(0)
     if second_fails:
-        return ok(unit)
+        return ok()
 
-    _ := g.close()
+    void g.close()
 
 fn ok_of(r: Void!) Bool:
     if _ok := r:

@@ -47,15 +47,15 @@ fn rebound(address: String) Int:
 
 fn cancel_accept(address: String) Void:
     work := promise(fn: ok(accept_one(address.clone())))
-    _ := work.with(options: PromiseOptions(timeout: nanoseconds(2000000))).wait()
+    void work.with(options: PromiseOptions(timeout: nanoseconds(2000000))).wait()
 
 fn cancel_read(address: String) Void:
     work := promise(fn: ok(read_one(address.clone())))
-    _ := work.with(options: PromiseOptions(timeout: nanoseconds(2000000))).wait()
+    void work.with(options: PromiseOptions(timeout: nanoseconds(2000000))).wait()
 
 fn cancel_receive(address: String) Void:
     work := promise(fn: ok(receive_one(address.clone())))
-    _ := work.with(options: PromiseOptions(timeout: nanoseconds(2000000))).wait()
+    void work.with(options: PromiseOptions(timeout: nanoseconds(2000000))).wait()
 
 fn main() Void:
     var first = listen("127.0.0.1:0").get()

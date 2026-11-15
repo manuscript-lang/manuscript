@@ -18,6 +18,7 @@ use ms_check::api::types::{Kind, Name, SymKind, SymRef, Ty, cases, constructor_s
 use ms_check::fxmap::{HashMap, HashSet};
 use ms_driver::project::pathops;
 use ms_syntax::ast::DeclKind;
+use std::collections::BTreeMap;
 use std::rc::Rc;
 
 /// One completion item before JSON encoding.
@@ -150,7 +151,22 @@ fn standard_paths(syms: ms_syntax::Names, session: &Rc<Session>) -> Vec<String> 
 
 fn editor_project(d: &Document) -> Option<ms_driver::project::Project> {
     let manifest = ms_driver::project::find_manifest(&d.path())?;
-    ms_driver::project::read_project(&manifest).ok()
+    // A project whose packages are not fetched still has its aliases to complete.
+    Some(ms_driver::project::read_project_partial(&manifest).0)
+}
+
+/// The `@` names an import in `d` may start with, mapped to their directories: the manifest's
+/// aliases and the source directories of its fetched packages.
+fn import_names(project: Option<&ms_driver::project::Project>) -> BTreeMap<String, String> {
+    let Some(project) = project else {
+        return BTreeMap::new();
+    };
+    project
+        .aliases
+        .iter()
+        .chain(&project.deps)
+        .map(|(name, directory)| (name.clone(), directory.clone()))
+        .collect()
 }
 
 struct Completer<'a> {
@@ -629,7 +645,7 @@ impl Completer<'_> {
             }
         }
         if !c.type_context {
-            for word in ["true", "false", "unit", "fn", "not"] {
+            for word in ["true", "false", "void", "fn", "not"] {
                 self.add(syms, word, 14, None, 5, word, Json::Null);
             }
         }
@@ -722,13 +738,13 @@ impl Completer<'_> {
 fn keyword_template(word: &str) -> Option<&'static str> {
     Some(match word {
         "interface" => "interface ${1:Name}:\n    ${0:fn operation() Void}",
-        "fn" => "fn ${1:name}(${2}) ${3:Void}:\n    ${0:return unit}",
+        "fn" => "fn ${1:name}(${2}) ${3:Void}:\n    ${0:return}",
         "type" => "type ${1:Name}:\n    ${0:field: String}",
         "enum" => "enum ${1:Name}:\n    ${0:Ready}",
         "if" => "if ${1:condition}:\n    $0",
         "for" => "for ${1:item} in ${2:items}:\n    $0",
-        "test" => "test \"${1:name}\":\n    ${0:return unit}",
-        "bench" => "bench \"${1:name}\":\n    ${0:return unit}",
+        "test" => "test \"${1:name}\":\n    ${0:return}",
+        "bench" => "bench \"${1:name}\":\n    ${0:return}",
         _ => return None,
     })
 }
@@ -888,10 +904,7 @@ fn import_completion(
             }
         }
         let project = editor_project(d);
-        let aliases = project
-            .as_ref()
-            .map(|p| p.aliases.clone())
-            .unwrap_or_default();
+        let aliases = import_names(project.as_ref());
         for (alias, target) in &aliases {
             let mut candidate = alias.clone();
             if std::fs::metadata(target).is_ok_and(|m| m.is_dir()) {
@@ -920,9 +933,13 @@ fn import_completion(
                 if !directory.is_empty()
                     && let Ok(canonical) = pathops::eval_symlinks(&directory)
                 {
-                    let root = project
-                        .as_ref()
-                        .map_or_else(|| pathops::dir(&d.path()), |p| p.root.clone());
+                    let root = project.as_ref().map_or_else(
+                        || pathops::dir(&d.path()),
+                        |p| {
+                            p.confinement_root(&d.path(), prefix, &canonical)
+                                .to_string()
+                        },
+                    );
                     let inside = pathops::rel(&root, &canonical)
                         .map(|r| !pathops::escapes(&r))
                         .unwrap_or(false);
@@ -984,8 +1001,9 @@ fn import_completion(
             let mut file = pathops::clean(&pathops::join(&[&pathops::dir(&d.path()), &path]));
             if path.starts_with('@') {
                 let (alias, remainder) = path.split_once('/').unwrap_or((&path, ""));
-                file = match editor_project(d)
-                    .and_then(|p| p.aliases.get(alias).cloned())
+                file = match import_names(editor_project(d).as_ref())
+                    .get(alias)
+                    .cloned()
                     .filter(|b| !b.is_empty())
                 {
                     Some(base) => pathops::join(&[&base, remainder]),

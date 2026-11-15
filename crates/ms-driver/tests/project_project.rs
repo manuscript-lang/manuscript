@@ -31,7 +31,7 @@ fn malformed_manifests() {
         (
             "missing assignment",
             "[project]\nname\n".into(),
-            "invalid manifest assignment",
+            "ms.toml:2:5: invalid ms.toml: key with no value",
         ),
         (
             "unknown table",
@@ -41,12 +41,12 @@ fn malformed_manifests() {
         (
             "duplicate table",
             format!("{m}[project]\n"),
-            "duplicate manifest table",
+            "ms.toml:5:2: invalid ms.toml: duplicate key",
         ),
         (
             "duplicate key",
             format!("{m}name = \"other\"\n"),
-            "duplicate manifest key",
+            "ms.toml:5:1: invalid ms.toml: duplicate key",
         ),
         (
             "unknown key",
@@ -61,22 +61,22 @@ fn malformed_manifests() {
         (
             "unquoted value",
             m.replacen("\"sample\"", "sample", 1),
-            "double-quoted",
+            "ms.toml:2:8: invalid ms.toml: string values must be quoted",
         ),
         (
             "raw Go literal",
             m.replacen("\"sample\"", "`sample`", 1),
-            "double-quoted",
+            "string values must be quoted",
         ),
         (
             "broken quote",
             m.replacen("\"sample\"", "\"sample", 1),
-            "double-quoted",
+            "invalid basic string",
         ),
         (
             "bad escape",
             m.replacen("sample", r"\q", 1),
-            "quoted strings",
+            "missing escaped value",
         ),
         (
             "source is file",
@@ -116,7 +116,7 @@ fn malformed_manifests() {
         (
             "duplicate alias",
             format!("{m}[aliases]\n\"@one\" = \"src\"\n\"@one\" = \"src\"\n"),
-            "duplicate manifest key",
+            "ms.toml:7:1: invalid ms.toml: duplicate key",
         ),
         (
             "reserved embed name",
@@ -146,12 +146,12 @@ fn malformed_manifests() {
         (
             "unterminated quoted key",
             "[project]\n\"nam = \"x\"\n".into(),
-            "ms.toml:2:1: invalid manifest assignment",
+            "ms.toml:2:9: invalid ms.toml: key with no value",
         ),
         (
             "unterminated quoted key line",
             "[project]\n\"nam\n".into(),
-            "ms.toml:2:1: unterminated quoted key",
+            "ms.toml:2:5: invalid ms.toml: key with no value",
         ),
         (
             "NUL in value",
@@ -354,48 +354,31 @@ fn link_components_follow_link_chains_and_stop_on_loops() {
 }
 
 #[test]
-fn manifest_byte_escapes_must_not_select_replacement_character_paths() {
+fn manifest_escapes_that_are_not_unicode_are_toml_errors() {
     let dir = TempDir::new();
     write(dir.path(), "src/�.ms", "");
-    write(dir.path(), "�/value.ms", "");
-    for escaped in [r"\xff", r"\377", r"\xc3", r"\xed\xa0\x80", r"\xc0\xaf"] {
-        for source in [
-            format!(
-                "[project]\nname = \"bytes\"\nsource = \"src\"\nentry = \"src/{escaped}.ms\"\n"
-            ),
-            format!("[project]\nname = \"bytes\"\nsource = \"{escaped}\"\n"),
-            format!(
-                "[project]\nname = \"bytes\"\nsource = \"src\"\n[aliases]\n\"@value\" = \"src/{escaped}.ms\"\n"
-            ),
-        ] {
-            let manifest = write(dir.path(), "ms.toml", &source);
-            let error = read_project(&manifest).unwrap_err().to_string();
-            assert!(error.contains("invalid syntax"), "{source}: {error}");
-        }
+    // TOML strings are Unicode: an octal byte or a surrogate never selects a path.
+    for escaped in [r"\377", r"\ud800"] {
         let manifest = write(
             dir.path(),
             "ms.toml",
             &format!(
-                "[project]\nname = \"bytes\"\nsource = \"src\"\n[aliases]\n\"@{escaped}\" = \"src/�.ms\"\n"
+                "[project]\nname = \"bytes\"\nsource = \"src\"\nentry = \"src/{escaped}.ms\"\n"
             ),
         );
-        assert!(
-            read_project(&manifest)
-                .unwrap_err()
-                .to_string()
-                .contains("invalid quoted key")
-        );
+        let error = read_project(&manifest).unwrap_err().to_string();
+        assert!(error.contains("ms.toml:4:"), "{escaped}: {error}");
+        assert!(error.contains("invalid ms.toml"), "{escaped}: {error}");
     }
 }
 
 #[test]
-fn manifest_valid_byte_escapes_keep_their_exact_paths() {
+fn manifest_unicode_escapes_keep_their_exact_paths() {
     let dir = TempDir::new();
     let accented = write(dir.path(), "src/é.ms", "");
     let replacement = write(dir.path(), "src/�.ms", "");
     for (escaped, expected) in [
-        (r"\xc3\xa9", &accented),
-        (r"\303\251", &accented),
+        (r"\xe9", &accented),
         (r"\u00e9", &accented),
         ("é", &accented),
         (r"\ufffd", &replacement),

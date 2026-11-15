@@ -74,7 +74,7 @@ fn defaulted(
 	value: Int = match present(2):
 		number:
 			var _resource = Resource(marker.clone())
-			_used := unit
+			_used := void
 			_resource.close().get(none)
 			number
 		none: 0

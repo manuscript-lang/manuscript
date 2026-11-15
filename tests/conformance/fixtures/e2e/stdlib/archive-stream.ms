@@ -35,7 +35,7 @@ fn var Chunks.next() Bytes?!:
 	return ok(piece)
 
 fn var Chunks.close() Void!:
-	return ok(unit)
+	return ok()
 
 fn chunked(data: Bytes, size: Int) ReadStream[Bytes]:
 	return ReadStream[Bytes](Chunks(data, size, 0))
@@ -181,7 +181,7 @@ fn var HeaderThenFail.next() Bytes?!:
 	return ok(self.head.clone())
 
 fn var HeaderThenFail.close() Void!:
-	return ok(unit)
+	return ok()
 
 test "tar entries refuse an oversized member from its header":
 	archive := pack(

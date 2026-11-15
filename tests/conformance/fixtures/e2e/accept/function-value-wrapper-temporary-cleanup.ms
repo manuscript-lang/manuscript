@@ -93,7 +93,7 @@ test "function dispatch errors and faults retain temporary cleanup":
 
 	reject := fn(value: Resource?) Void!:
 		if value.is_some(): return error(Error("expected"))
-		return ok(unit)
+		return ok()
 
 	broken := fn(value: Resource?) Void:
 		if value.is_some(): _bad := [1].get(3)

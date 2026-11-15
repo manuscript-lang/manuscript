@@ -39,7 +39,7 @@ entry = "./src/main.ms"
 - `name` names the project; `source` is its source directory.
 - `entry` is the executable entry file. Omit it for a library; an empty or invalid entry is an error. There is no default.
 - All manifest paths resolve relative to the directory containing `ms.toml` (the entry is not relative to `source`).
-- Only `[project]`, `[aliases]`, `[embed]`, `[dependencies]` and `[effects]` exist. Unknown or duplicate tables and keys are rejected. Values are double-quoted strings; `#` starts a comment.
+- Only `[project]`, `[aliases]`, `[embed]`, `[dependencies]` and `[effects]` exist. Unknown or duplicate tables and keys are rejected. `ms.toml` is TOML: strings are quoted, effects are lists of strings (`["std.net.*"]`), and a dependency is a table (`{ url = "...", tag = "v1" }`). Keys that start with `@` are quoted.
 - Application modules are found by following imports from the entry, not listed in the manifest.
 - The compiler supplies the prelude and version-matched `@std` modules. To reuse other Manuscript source, use [packages](#packages).
 
@@ -112,29 +112,29 @@ Share library code as a [package](#packages).
 
 ## Packages
 
-A package is a library project in a git repository. Name it under `[dependencies]` with the repository URL, `#`, and a tag or a full commit. The name is written like an alias.
+A package is a library project in a git repository. Name it under `[dependencies]` with a table holding the repository `url` and either a `tag` or a full `sha`. The name is written like an alias.
 
 ```toml
 [dependencies]
-"@pg" = "https://github.com/manuscript-lang/manuscript.git#v2026.11.0"
+"@pg" = { url = "https://github.com/manuscript-lang/ms-pg.git", sha = "<40-character commit>" }
 
 [effects]
-"@pg" = "std.net.*"
+"@pg" = ["std.net.*", "std.clock.read", "std.random.read"]
 ```
 
-Run `ms fetch` once. It downloads each package with `git`, records the commit and a content hash in `ms.lock`, and prints what each package may reach. Commit `ms.lock`.
+`ms add <url> --tag <tag>` (or `--sha <commit>`) writes the dependency into `ms.toml` and installs it; `ms remove @name` takes it out again. `ms install` downloads what `ms.toml` names. Installing downloads each package with `git`, records the commit and a content hash in `ms.lock`, and prints what each package may reach. Commit `ms.lock`.
 
 ```manuscript
-import connect from "@pg/client.ms"
+import Config, open from "@pg/conn.ms"
 ```
 
 - `@name/path.ms` resolves under the package's `source` directory, as a directory alias does.
-- `check`, `build`, `run`, `test` and `lint` never use the network. A missing lock entry or missing cache entry is an error that says to run `ms fetch`. A locked build works offline.
-- `ms fetch --update @pg` resolves the tag again and rewrites that entry. A tag that moved, or changed content, fails against the lock until you update it.
+- `check`, `build`, `run`, `test` and `lint` never use the network. A missing lock entry or missing cache entry is an error that says to run `ms install`. A locked build works offline.
+- `ms install --update @pg` resolves the tag again and rewrites that entry. A tag that moved, or changed content, fails against the lock until you update it.
 - Packages are cached read-only outside the project, in a directory named by the content hash: `$XDG_CACHE_HOME/ms/packages` (or `$HOME/.cache/ms/packages`, `%LOCALAPPDATA%\ms\packages` on Windows). `MS_PACKAGE_CACHE` overrides it.
 - The hash is the SHA-256 of an index listing each file's path and own SHA-256, stored beside the package. A build checks the index once and each file as it is read, so a cached file changed after the fetch is an error. Symbolic links and non-UTF-8 names are errors.
-- A package's own dependencies are private to it: importing `@name` there does not give the project that name. Two tags of one repository are two packages with different types.
-- A package declares what it may reach with `effects = "std.net.*"` under `[project]`, using the patterns of [`allow_effect`](../../core-language/functions/effects.md). Without the key it is pure. The project must allow each declared effect under `[effects]`, or the package is rejected and the error names the effect. The checker holds the package to its declaration: if any function in it, or in a dependency it calls, reaches an effect it did not declare, `check` and `build` fail. The declaration is the default permit for the package's functions; an `allow_effect` line there can only narrow it. A package cannot give a dependency effects it does not declare itself.
+- A package's own dependencies are private to it: importing `@name` there does not give the project that name. Two tags of one repository are two packages with different types; when they meet in one expression the error names both paths and both tags.
+- A package declares what it may reach with `effects = ["std.net.*"]` under `[project]`, using the patterns of [`allow_effect`](../../core-language/functions/effects.md). Without the key it is pure. The project must allow each declared effect under `[effects]`, or the package is rejected and the error names the effect. The checker holds the package to its declaration: if any function in it, or in a dependency it calls, reaches an effect it did not declare, `check` and `build` fail. The declaration is the default permit for the package's functions; an `allow_effect` line there can only narrow it. A package cannot give a dependency effects it does not declare itself.
 - Packages hold source only: no `entry`, no `[embed]`, no `extern` declarations (the checker rejects them), no build scripts. Nothing runs when a package is fetched.
 - A dependency is `https://` or, for the project's own dependencies only, `file://`. A package's own dependencies must use `https://`. `ms.lock` is validated as untrusted input: 40-digit commits, 64-digit hashes, and the same URL rules.
 

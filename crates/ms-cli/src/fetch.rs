@@ -1,12 +1,15 @@
-//! `ms fetch`: resolve `[dependencies]`, download them with `git`, and write `ms.lock`.
-//! This is the only command that uses the network; every other command reads the lock and the
+//! `ms install`, `ms add` and `ms remove`: resolve `[dependencies]`, download them with `git`, and
+//! write `ms.lock`. These are the only commands that use the network; every other command reads the lock and the
 //! package cache.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 use std::process::Command;
 
-use ms_driver::project::manifest::{Project, read_manifest};
+use ms_driver::project::edit::{
+    Pin, add_dependency, allow_effects, default_name, remove_dependency,
+};
+use ms_driver::project::manifest::{Project, find_manifest, read_manifest};
 use ms_driver::project::packages::{
     LockEntry, cache_dir, hash_index, index_path, index_tree, lock_text, read_lock,
 };
@@ -14,11 +17,26 @@ use ms_driver::project::pathops;
 
 use crate::backend::Io;
 
-pub fn run_fetch(args: &[String], io: &mut Io) -> i32 {
-    match fetch(args, io) {
+/// `ms install`: download what `[dependencies]` names and pin it in `ms.lock`.
+pub fn run_install(args: &[String], io: &mut Io) -> i32 {
+    report("install", install(args, io).map(|_| ()), io)
+}
+
+/// `ms add <url> --tag T | --sha S`: add a dependency to `ms.toml` and install it.
+pub fn run_add(args: &[String], io: &mut Io) -> i32 {
+    report("add", add(args, io), io)
+}
+
+/// `ms remove @name`: drop a dependency from `ms.toml` and `ms.lock`.
+pub fn run_remove(args: &[String], io: &mut Io) -> i32 {
+    report("remove", remove(args, io), io)
+}
+
+fn report(command: &str, result: Result<(), String>, io: &mut Io) -> i32 {
+    match result {
         Ok(()) => 0,
         Err(message) => {
-            let _ = writeln!(io.stderr, "ms fetch: {message}");
+            let _ = writeln!(io.stderr, "ms {command}: {message}");
             1
         }
     }
@@ -28,12 +46,21 @@ struct Run<'a, 'b> {
     old: BTreeMap<String, LockEntry>,
     new: BTreeMap<String, LockEntry>,
     update: BTreeSet<String>,
+    /// The effects each top-level package declares.
+    declared: BTreeMap<String, Vec<String>>,
     io: &'a mut Io<'b>,
 }
 
-fn fetch(args: &[String], io: &mut Io<'_>) -> Result<(), String> {
+/// The nearest `ms.toml` from the working directory.
+fn find_project() -> Result<String, String> {
+    let here = std::env::current_dir().map_err(|e| e.to_string())?;
+    find_manifest(&here.join("x").to_string_lossy())
+        .ok_or_else(|| "no ms.toml here or above; run `ms init` first".to_string())
+}
+
+fn install(args: &[String], io: &mut Io<'_>) -> Result<BTreeMap<String, Vec<String>>, String> {
     let mut update = BTreeSet::new();
-    let mut manifest = "ms.toml".to_string();
+    let mut manifest = None;
     let mut iter = args.iter();
     while let Some(arg) = iter.next() {
         if arg == "--update" {
@@ -42,17 +69,30 @@ fn fetch(args: &[String], io: &mut Io<'_>) -> Result<(), String> {
                 .ok_or("--update needs a package name such as @pg")?;
             update.insert(name.clone());
         } else if arg.starts_with('-') {
-            return Err(format!("unknown option {arg}; see ms fetch --help"));
+            return Err(format!("unknown option {arg}; see ms install --help"));
         } else {
-            manifest = arg.clone();
+            manifest = Some(arg.clone());
         }
     }
+    let manifest = match manifest {
+        Some(manifest) => manifest,
+        None => find_project()?,
+    };
+    install_manifest(&manifest, update, io)
+}
+
+fn install_manifest(
+    manifest: &str,
+    update: BTreeSet<String>,
+    io: &mut Io<'_>,
+) -> Result<BTreeMap<String, Vec<String>>, String> {
     let mut project = Project::default();
-    read_manifest(&manifest, &mut project).map_err(|e| e.to_string())?;
+    read_manifest(manifest, &mut project).map_err(|e| e.to_string())?;
     let mut run = Run {
         old: read_lock(&project.root).map_err(|e| e.to_string())?,
         new: BTreeMap::new(),
         update,
+        declared: BTreeMap::new(),
         io,
     };
     walk(&mut run, &project, "", 0)?;
@@ -72,6 +112,92 @@ fn fetch(args: &[String], io: &mut Io<'_>) -> Result<(), String> {
     } else if std::fs::read_to_string(&path).ok().as_deref() != Some(&text) {
         std::fs::write(&path, text).map_err(|e| format!("write {path}: {e}"))?;
     }
+    Ok(run.declared)
+}
+
+fn add(args: &[String], io: &mut Io<'_>) -> Result<(), String> {
+    let (mut url, mut pin, mut name, mut allow) = (None, None, None, false);
+    let mut iter = args.iter();
+    while let Some(arg) = iter.next() {
+        let mut value = |what: &str| {
+            iter.next()
+                .cloned()
+                .ok_or_else(|| format!("{arg} needs {what}"))
+        };
+        match arg.as_str() {
+            "--tag" => pin = Some((false, value("a tag")?)),
+            "--sha" => pin = Some((true, value("a full commit")?)),
+            "--as" => name = Some(value("a package name such as @pg")?),
+            "--allow" => allow = true,
+            _ if arg.starts_with('-') => {
+                return Err(format!("unknown option {arg}; see ms add --help"));
+            }
+            _ if url.is_none() => url = Some(arg.clone()),
+            _ => return Err("one repository URL at a time".to_string()),
+        }
+    }
+    let url = url.ok_or("name a repository URL: ms add <url> --tag <tag>")?;
+    let (sha, reference) = pin.ok_or("name the version: --tag <tag> or --sha <full commit>")?;
+    let name = match name {
+        Some(name) => name,
+        None => default_name(&url).ok_or_else(|| {
+            format!("cannot make a package name from {url}; give one with --as @name")
+        })?,
+    };
+    let manifest = find_project()?;
+    let original =
+        std::fs::read_to_string(&manifest).map_err(|e| format!("read {manifest}: {e}"))?;
+    let pin = if sha {
+        Pin::Sha(&reference)
+    } else {
+        Pin::Tag(&reference)
+    };
+    let edited = add_dependency(&original, &name, &url, &pin)?;
+    std::fs::write(&manifest, &edited).map_err(|e| format!("write {manifest}: {e}"))?;
+    let declared = match install_manifest(&manifest, BTreeSet::new(), io) {
+        Ok(declared) => declared,
+        Err(message) => {
+            // A dependency that cannot be installed is not left in the manifest.
+            let _ = std::fs::write(&manifest, &original);
+            return Err(message);
+        }
+    };
+    let effects = declared.get(&name).cloned().unwrap_or_default();
+    if effects.is_empty() {
+        return Ok(());
+    }
+    if allow {
+        let allowed = allow_effects(&edited, &name, &effects)?;
+        std::fs::write(&manifest, allowed).map_err(|e| format!("write {manifest}: {e}"))?;
+        let _ = writeln!(io.stdout, "{name} is allowed {}", effects.join(" "));
+    } else {
+        let list = effects
+            .iter()
+            .map(|e| format!("{e:?}"))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let _ = writeln!(
+            io.stdout,
+            "{name} declares effects. Allow them to build: add to [effects]\n  {name:?} = [{list}]\nor run `ms add --allow` next time."
+        );
+    }
+    Ok(())
+}
+
+fn remove(args: &[String], io: &mut Io<'_>) -> Result<(), String> {
+    let [name] = args else {
+        return Err("name one package: ms remove @name".to_string());
+    };
+    let manifest = find_project()?;
+    let original =
+        std::fs::read_to_string(&manifest).map_err(|e| format!("read {manifest}: {e}"))?;
+    let edited = remove_dependency(&original, name)?;
+    std::fs::write(&manifest, &edited).map_err(|e| format!("write {manifest}: {e}"))?;
+    if let Err(message) = install_manifest(&manifest, BTreeSet::new(), io) {
+        let _ = std::fs::write(&manifest, &original);
+        return Err(message);
+    }
+    let _ = writeln!(io.stdout, "removed {name}");
     Ok(())
 }
 
@@ -114,8 +240,11 @@ fn walk(run: &mut Run<'_, '_>, scope: &Project, prefix: &str, depth: usize) -> R
         let effects = if package.effects.is_empty() {
             "none".to_string()
         } else {
-            package.effects.clone()
+            package.effects.join(" ")
         };
+        if depth == 0 {
+            run.declared.insert(key.clone(), package.effects.clone());
+        }
         let _ = writeln!(
             run.io.stdout,
             "{key} {spec} {} (effects: {effects})",
@@ -368,7 +497,7 @@ fn remove_all(dir: &Path) -> Result<(), String> {
     std::fs::remove_dir_all(dir).map_err(|e| format!("remove {}: {e}", dir.display()))
 }
 
-pub const HELP: &str = r#"Usage: ms fetch [--update @name]... [ms.toml]
+pub const HELP_INSTALL: &str = r#"Usage: ms install [--update @name]... [ms.toml]
 
 Download the packages under [dependencies] with git and pin them in ms.lock.
 Without a lock entry it resolves the tag to a commit and records the commit and a
@@ -380,4 +509,28 @@ the lock and the cache.
 Options:
   --update @name  Resolve that package's tag again and rewrite its lock entry
   -h, --help      Show this help
+"#;
+
+pub const HELP_ADD: &str = r#"Usage: ms add <url> (--tag <tag> | --sha <commit>) [--as @name] [--allow]
+
+Add a git dependency to ms.toml and install it. The package name defaults to the
+repository name without a leading ms- (https://github.com/acme/ms-pg.git is @pg).
+The package declares the effects it may use; ms prints them, and --allow writes
+them under [effects] so the project accepts them.
+
+Options:
+  --tag <tag>     The tag to depend on
+  --sha <commit>  The full 40-digit commit to depend on
+  --as @name      The name imports use (@name/file.ms)
+  --allow         Allow the effects the package declares
+  -h, --help      Show this help
+"#;
+
+pub const HELP_REMOVE: &str = r#"Usage: ms remove @name
+
+Remove a dependency from [dependencies] and [effects] in ms.toml and from ms.lock.
+The cached copy stays in the package cache.
+
+Options:
+  -h, --help  Show this help
 "#;

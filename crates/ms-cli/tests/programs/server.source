@@ -20,7 +20,7 @@ type WorkerCleanup:
 
 fn var WorkerCleanup.close() Void!:
     say("{self.label} stopped\n")
-    return ok(unit)
+    return ok()
 
 type Server:
     listener: Listener
@@ -29,11 +29,11 @@ type Server:
 
 fn var Server.close() Void!:
     if self.closed:
-        return ok(unit)
+        return ok()
 
     self.closed = true
     self.listener.close()?
-    _ := sleep(10.milliseconds()).wait()
+    void sleep(10.milliseconds()).wait()
 
     var farewell = self.client.output.write("farewell\n".to_bytes())
     if farewell.is_ok():
@@ -46,7 +46,7 @@ fn var Server.close() Void!:
         say("farewell sent\n")
 
     self.client.close()?
-    return ok(unit)
+    return ok()
 
 fn serve() Result[Void, Error]:
     var signals = watch_signals([2, 15])?
@@ -59,7 +59,7 @@ fn serve() Result[Void, Error]:
     say("ready\n")
 
     _observed := signals.next()
-    return ok(unit)
+    return ok()
 
 export fn main() Int:
     served := serve()

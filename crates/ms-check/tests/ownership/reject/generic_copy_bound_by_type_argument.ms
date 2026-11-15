@@ -4,7 +4,7 @@ type Door:
     n: Int
 
 fn var Door.close() Void!:
-    return ok(unit)
+    return ok()
 
 interface Sink[T]:
     fn put(d: T) Int

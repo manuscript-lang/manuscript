@@ -4,11 +4,11 @@ type Journal:
     lines: Int
 
 fn var Journal.close() Void!:
-    _ := self.lines
-    return ok(unit)
+    void self.lines
+    return ok()
 
 fn var Journal.flush() Result[Void, Error]:
-    return ok(unit)
+    return ok()
 
 export fn forgets() Int:
     journal := Journal(1)

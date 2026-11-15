@@ -14,4 +14,4 @@ fn discard(value: Int) Void:
 
 test "return contracts":
     positive(value: 3) | expect_equal(expected: 3)?
-    discard(value: 1) | expect_equal(expected: unit)?
+    discard(value: 1) | expect_equal(expected: void)?

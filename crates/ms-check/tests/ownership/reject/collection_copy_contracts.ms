@@ -5,7 +5,7 @@ type Token:
     id: Int
 
 fn var Token.close() Void!:
-    return ok(unit)
+    return ok()
 
 fn Token.equals(other: Token) Bool:
     return self.id == other.id

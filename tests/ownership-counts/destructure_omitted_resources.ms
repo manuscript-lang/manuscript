@@ -49,16 +49,16 @@ type NamedTriple:
 fn local() Void:
 	tokens := Triple(Token(1), Token(2), Token(3))
 	{first: kept} := tokens
-	_ := kept.id
+	void kept.id
 
 fn temporary() Void:
 	{first: kept} := Triple(Token(4), Token(5), Token(6))
-	_ := kept.id
+	void kept.id
 
 fn nested() Void:
 	tokens := Nested(Token(7), Triple(Token(8), Token(9), Token(10)))
 	{kept: kept} := tokens
-	_ := kept.id
+	void kept.id
 
 fn with_storage() Void:
 	tokens := NamedTriple(
@@ -67,7 +67,7 @@ fn with_storage() Void:
 		NamedToken(13, "third-heap-allocated-name"),
 	)
 	{first: kept} := tokens
-	_ := kept.name.length()
+	void kept.name.length()
 
 fn main() Void:
 	local()

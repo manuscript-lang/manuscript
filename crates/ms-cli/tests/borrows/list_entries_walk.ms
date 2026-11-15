@@ -25,4 +25,4 @@ fn main() Void:
         for f in names.entries():
             out += "{e.value + f.index} "
     fns := names.entries().map(fn e: e.index + e.value.length())
-    _ := stdout().write("{out}{fns}\n")
+    void stdout().write("{out}{fns}\n")

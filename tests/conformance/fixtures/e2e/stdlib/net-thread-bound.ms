@@ -26,7 +26,7 @@ test "http headers used in a promise on another thread fault with the cause":
 		n += i % 7
 
 	cause := p.wait() | expect_error?
-	_ := expect_true(n > 0)?
+	void expect_true(n > 0)?
 	return expect_contains(cause.message, "different thread")
 
 test "a network used in a promise on another thread keeps working":
@@ -37,5 +37,5 @@ test "a network used in a promise on another thread keeps working":
 		n += i % 7
 
 	address := p.wait() | expect_ok?
-	_ := expect_true(n > 0)?
+	void expect_true(n > 0)?
 	return expect_contains(address, "127.0.0.1:")

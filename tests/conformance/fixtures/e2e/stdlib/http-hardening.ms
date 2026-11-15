@@ -22,7 +22,7 @@ fn ok_route(request: HttpRequest) HttpResponse:
 	return HttpResponse(status: 200, headers: headers(), body: "ok".to_bytes())
 
 fn slow_route(request: HttpRequest) HttpResponse:
-	_ := sleep(30.seconds()).wait()
+	void sleep(30.seconds()).wait()
 	return HttpResponse(status: 200, headers: headers(), body: "late".to_bytes())
 
 test "serve ends a connection that trickles its request head":
@@ -40,7 +40,7 @@ test "serve ends a connection that trickles its request head":
 	var sent = 0
 
 	while sent < 30:
-		_ := sleep(100.milliseconds()).wait()
+		void sleep(100.milliseconds()).wait()
 		written := send(var client, "a")
 		if written.is_error(): break
 
@@ -67,7 +67,7 @@ test "close cancels a handler that outlives the grace period":
 	var client = connect(server.address(), timeout: 2.seconds()).wait() | expect_ok?
 	send(var client, "GET / HTTP/1.1\r\nHost: t\r\n\r\n") | expect_ok?
 
-	_ := sleep(100.milliseconds()).wait()
+	void sleep(100.milliseconds()).wait()
 	server.close()?
 
 	// An error here is the connection ending (a reset on macOS); only a served reply
@@ -98,7 +98,7 @@ test "close cancels a handler parked on a request body and releases its stream":
 		) | expect_ok?
 	)
 
-	_ := sleep(100.milliseconds()).wait()
+	void sleep(100.milliseconds()).wait()
 	server.close()?
 
 	if reply := recv(var client, 5.seconds()):
