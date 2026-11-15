@@ -105,11 +105,19 @@ fn emit_parts(b: &mut FuncBuilder<'_>, ptr: Value, shape: Shape) {
                     (0..n as u32).map(|j| b.alt_take(a, c, j, v)).collect();
                 let mask = if n >= 32 { u32::MAX } else { (1u32 << n) - 1 };
                 b.alt_release(a, c, mask, v);
+                // Every part is closed, the value is whole in its place again, and only then does
+                // a failed close fault: the cleanup that owns the place never sees a hole.
+                let mut failed = Vec::new();
                 for (j, ft, k) in parts {
-                    fields[j as usize] = close_owned(b, &k, fields[j as usize], ft);
+                    let (v, r) = close_owned_result(b, &k, fields[j as usize], ft);
+                    fields[j as usize] = v;
+                    failed.push(r);
                 }
                 let rebuilt = b.alt_new(a, c, &fields);
                 b.emit(Op::Put, &[ptr, rebuilt], Imm::None, None);
+                for r in failed {
+                    close_error_fault(b, r, None);
+                }
                 b.br(exit, &[]);
             }
             b.seal_block(exit);
@@ -129,9 +137,12 @@ fn emit_parts(b: &mut FuncBuilder<'_>, ptr: Value, shape: Shape) {
                 .emit(Op::Take, &[ptr], Imm::Ty(opt_ty), Some(opt_ty))
                 .expect("take");
             let x = b.opt_unbox(v);
-            let x = close_owned(b, &k, x, inner);
+            // The payload goes back before a failed close faults, so the place is never left
+            // holding a hole for the cleanup that owns it.
+            let (x, r) = close_owned_result(b, &k, x, inner);
             let rebuilt = b.opt_some(x);
             b.emit(Op::Put, &[ptr, rebuilt], Imm::None, None);
+            close_error_fault(b, r, None);
             b.br(exit, &[]);
             b.seal_block(exit);
             b.switch_to(exit);
