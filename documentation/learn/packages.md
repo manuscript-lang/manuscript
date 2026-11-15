@@ -1,6 +1,6 @@
 +++
 title = "Use a package"
-weight = 4
+weight = 7
 +++
 
 # Use a package
