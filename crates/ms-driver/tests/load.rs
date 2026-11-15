@@ -279,3 +279,24 @@ fn nested_project_editor_buffers_do_not_contaminate_parent_graphs() {
         assert_eq!(graph.modules.len(), 1);
     }
 }
+
+#[test]
+fn same_named_types_from_two_modules_say_where_each_is_declared() {
+    let syms = ms_syntax::Names::global();
+    let dir = scratch("same-named-types");
+    write(&dir, "one.ms", include_str!("same_named_types/one.ms"));
+    write(&dir, "two.ms", include_str!("same_named_types/two.ms"));
+    let entry = write(&dir, "main.ms", include_str!("same_named_types/main.ms"));
+    let checked = check_graph(
+        syms,
+        load_file(syms, &entry, LoadOptions::default()),
+        CheckRequest::default(),
+    );
+    let message = &checked.diagnostics[0].message;
+    assert!(
+        message.contains("expected T, found T")
+            && message.contains("expected one is declared in one.ms")
+            && message.contains("found one in two.ms"),
+        "{message}"
+    );
+}
