@@ -3430,6 +3430,10 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(
+        miri,
+        ignore = "an exhaustive sweep that takes over 200 s interpreted; native CI runs it"
+    )]
     fn needle_find_matches_a_naive_search_near_the_window_edge() {
         let mut seed = 0x9e37_79b9_7f4a_7c15u64;
         let mut next = || {
@@ -3707,6 +3711,10 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(
+        miri,
+        ignore = "an exhaustive sweep that takes over 200 s interpreted; native CI runs it"
+    )]
     fn find_matches_naive_search() {
         let mut seed = 0x2545_f491_4f6c_dd1du64;
         let mut next = || {
@@ -3729,6 +3737,10 @@ mod tests {
         }
     }
     #[test]
+    #[cfg_attr(
+        miri,
+        ignore = "an exhaustive sweep that takes over 200 s interpreted; native CI runs it"
+    )]
     fn substring_search_matches_exhaustive_byte_model() {
         // Include NUL and invalid UTF-8; these helpers also implement Bytes search.
         fn words(max_len: usize) -> Vec<Vec<u8>> {
@@ -3770,6 +3782,10 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(
+        miri,
+        ignore = "an exhaustive sweep that takes over 200 s interpreted; native CI runs it"
+    )]
     fn substring_search_repetitive_near_matches() {
         for n in [4096, 65_536, 262_144] {
             let mut hay = vec![b'a'; n];
@@ -4011,6 +4027,10 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(
+        miri,
+        ignore = "an exhaustive sweep that takes over 200 s interpreted; native CI runs it"
+    )]
     fn fields_match_the_standard_whitespace_split() {
         let _g = testutil::lock();
         let atoms = [
@@ -4058,6 +4078,10 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(
+        miri,
+        ignore = "an exhaustive sweep that takes over 200 s interpreted; native CI runs it"
+    )]
     fn trim_chars_match_the_standard_trim_matches() {
         let _g = testutil::lock();
         let atoms = [
@@ -4103,6 +4127,10 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(
+        miri,
+        ignore = "an exhaustive sweep that takes over 200 s interpreted; native CI runs it"
+    )]
     fn case_mapping_and_reverse_of_long_non_ascii_text_match_str() {
         let _g = testutil::lock();
         let atoms = [
