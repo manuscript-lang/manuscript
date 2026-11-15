@@ -15,6 +15,8 @@ import (
 	arguments, working_directory from "@std/os/env.ms",
 	temporary, write_file from "@std/os/fs.ms",
 	run from "@std/os/process.ms",
+	metrics from "@std/os/system.ms",
+	map_concurrent from "@std/concurrency/resilience.ms",
 
 	tool_ms from "./lib.ms",
 )
@@ -424,6 +426,77 @@ fn count(lines: List[String], prefix: String) Map[String, Int]:
 
 	return counts
 
+// One combination to try and what happened when it ran: counts, and the lines to print in order.
+type Cell:
+	shape: Shape
+	construct: Construct
+	name: String
+
+type Tally:
+	checked: Int
+	rejected: Int
+	failures: Int
+	lines: List[String]
+
+// Runs one combination: `ms check`, then the program in Debug and Release. Independent of every other
+// combination, so the matrix runs them concurrently.
+fn verify(ms: String, scratch: String, cell: Cell, show: Bool, filter: String) Tally:
+	var tally = Tally(0, 0, 0, [])
+	name := cell.name.clone()
+	file := "{scratch}/{name}.ms"
+	write_file(file, program(cell.shape.clone(), cell.construct.clone())).wait().get()
+
+	verdict := run(ms.clone(), ["check", file.clone()]).wait()
+
+	if verdict.is_error() or verdict.get().exit_code != 0:
+		tally.rejected += 1
+		why := verdict.get().stderr.decode_utf8().get("")
+
+		if why.contains(": parse:"):
+			tally.failures += 1
+			tally.lines.append("generated: {name} does not parse: {why}\n")
+		else if show or filter != "":
+			tally.lines.append("rejected {name}: {why.split("\n")[0]}\n")
+
+		return tally
+
+	for build in ["debug", "release"]:
+		tally.checked += 1
+
+		ran := run(ms.clone(), ["run", file.clone(), "--build-type", build.clone()]).wait()
+
+		if ran.is_error():
+			tally.failures += 1
+			tally.lines.append("run: {name} ({build}) could not run {ms}\n")
+			continue
+
+		child := ran.get()
+		lines := child.stdout.decode_utf8().get("").split("\n")
+
+		if child.exit_code != 0:
+			tally.failures += 1
+			why := child.stderr.decode_utf8().get("")
+			tally.lines.append("exit: {name} ({build}) passed `ms check` but failed: {why}\n")
+			continue
+
+		made := count(lines, "made-")
+		closed := count(lines, "closed-")
+		var wrong = false
+
+		for key in made.keys():
+			id := key.slice(5, key.length()).get("")
+			if made.get_or(key.clone(), 0) != closed.get_or("closed-{id}", 0): wrong = true
+
+		if closed.length() != made.length(): wrong = true
+
+		if wrong:
+			tally.failures += 1
+			tally.lines.append(
+				"ownership: {name} ({build}) made {made.length()} ids and closed {closed.length()}; each resource must close once ({file})\n"
+			)
+
+	return tally
+
 fn main() Int:
 	root := working_directory().get()
 	ms := tool_ms(root)
@@ -435,9 +508,7 @@ fn main() Int:
 		if a == "rejects": show = true
 		else: filter = a.clone()
 
-	var checked = 0
-	var rejected = 0
-	var failures = 0
+	var cells: List[Cell] = []
 
 	for shape in shapes():
 		for construct in constructs():
@@ -446,77 +517,28 @@ fn main() Int:
 			name := "{construct.name}_{shape.name}"
 			if filter != "" and not name.contains(filter): continue
 
-			file := "{scratch.path()}/{name}.ms"
-			write_file(file, program(shape.clone(), construct.clone())).wait().get()
+			cells.append(Cell(shape.clone(), construct.clone(), name))
 
-			verdict := run(ms.clone(), ["check", file.clone()]).wait()
+	// Each combination compiles and links two programs, so the matrix is bound by the build, not by this
+	// loop: run as many at a time as there are cores.
+	scratch_path := scratch.path()
+	tallies := map_concurrent(
+		cells,
+		metrics().get().available_parallelism,
+		fn cell: verify(ms.clone(), scratch_path.clone(), cell, show, filter.clone()),
+	).get()
 
-			if verdict.is_error() or verdict.get().exit_code != 0:
-				rejected += 1
+	var checked = 0
+	var rejected = 0
+	var failures = 0
 
-				why := verdict.get().stderr.decode_utf8().get("")
+	for tally in tallies:
+		checked += tally.checked
+		rejected += tally.rejected
+		failures += tally.failures
 
-				if why.contains(": parse:"):
-					failures += 1
-					print("generated: {name} does not parse: {why}")
-				else if show or filter != "":
-					print("rejected {name}: {why.split("\n")[0]}")
-
-				continue
-
-			for build in ["debug", "release"]:
-				checked += 1
-
-				ran := run(
-					ms.clone(),
-					[
-						"run",
-						file.clone(),
-						"--build-type",
-						build.clone(),
-					],
-				).wait()
-
-				if ran.is_error():
-					failures += 1
-					print("run: {name} ({build}) could not run {ms}")
-					continue
-
-				child := ran.get()
-				lines := child.stdout.decode_utf8().get("").split("\n")
-
-				if child.exit_code != 0:
-					failures += 1
-
-					why := child.stderr.decode_utf8().get("")
-					(
-						stdout()
-						.write(
-							"exit: {name} ({build}) passed `ms check` but failed: {why}\n"
-						)
-						.get()
-					)
-					continue
-
-				made := count(lines, "made-")
-				closed := count(lines, "closed-")
-				var wrong = false
-
-				for key in made.keys():
-					id := key.slice(5, key.length()).get("")
-					if made.get_or(key.clone(), 0) != closed.get_or("closed-{id}", 0): wrong = true
-
-				if closed.length() != made.length(): wrong = true
-
-				if wrong:
-					failures += 1
-					(
-						stdout()
-						.write(
-							"ownership: {name} ({build}) made {made.length()} ids and closed {closed.length()}; each resource must close once ({file})\n"
-						)
-						.get()
-					)
+		for line in tally.lines:
+			stdout().write(line).get()
 
 	(
 		stdout()
