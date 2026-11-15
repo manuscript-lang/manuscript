@@ -1,0 +1,21 @@
++++
+title = "Removed spellings"
+weight = 6
++++
+
+# Removed spellings
+
+When Manuscript removes or renames something, the old spelling does not fail quietly. The compiler reports an error that names the new spelling, and `ms check --fix` applies the change when it is mechanical.
+
+| Old | New |
+| --- | --- |
+| `let x = 1` | `x := 1` |
+| `if let v = opt:` | `if v := opt:` |
+| `x: Int = 1` | `x: Int := 1` |
+| `impl Type:` with methods inside | `fn Type.name(...)`, one per method |
+| `fn f(ref x: T)` | `fn f(x: T)`; a result that is part of a parameter borrows it with no marker |
+| `filesystem()` and other host getters | import the operation, such as `read_file` from `@std/os/fs.ms` |
+| `@std/concurrency/flow.ms` | `@std/concurrency/resilience.ms` |
+| `text.byte_length()` | `text.length()`, which counts bytes |
+
+Each row has a test in `tests/removed/`, run by `make removed-check`. A change that removes or renames a spelling adds its row and its test.

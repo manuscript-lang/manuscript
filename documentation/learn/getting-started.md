@@ -10,9 +10,21 @@ Create a project, run it, change it, and build a native executable. `ms` include
 
 ## 1. Get the compiler and run
 
-For the latest implementation, [build from source](https://github.com/manuscript-lang/manuscript/blob/main/documentation/contributing/rust-toolchain.md#build-and-run) with `make build`. Alternatively, extract a [release archive](https://github.com/manuscript-lang/manuscript/releases) for your operating system and architecture.
+Install the latest release. On Linux and macOS:
 
-Add the directory containing the compiler to your `PATH`: the checkout's `target/release` directory for a source build, or the extracted archive directory. Use the full path to that directory so the command still works after changing directories. On Windows, the compiler is `ms.exe`. Open a new terminal if your PATH settings require it, then confirm:
+```sh
+curl -fsSL https://manuscript-lang.github.io/manuscript/install.sh | sh
+```
+
+On Windows, in PowerShell:
+
+```powershell
+irm https://manuscript-lang.github.io/manuscript/install.ps1 | iex
+```
+
+The script downloads the archive for your system, checks its SHA-256, and puts `ms` in `~/.local/bin` (`%USERPROFILE%\.ms\bin` on Windows, which it adds to your user PATH). `MS_VERSION=0.1.0` picks a release and `MS_INSTALL_DIR` picks the directory. You can also extract a [release archive](https://github.com/manuscript-lang/manuscript/releases) yourself, or [build from source](https://github.com/manuscript-lang/manuscript/blob/main/documentation/contributing/rust-toolchain.md#build-and-run) with `make build` for the latest development version.
+
+If `ms` is not found afterwards, add its directory to your `PATH` (for a manual archive or a source build, the extracted directory or the checkout's `target/release`; use the full path so it works from any directory). On Windows, the compiler is `ms.exe`. Open a new terminal if your PATH settings require it, then confirm:
 
 ```sh
 ms --version

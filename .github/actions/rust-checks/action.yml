@@ -255,6 +255,10 @@ runs:
       run: |
         MS=target/debug/ms target/debug/ms run tools/count-check.ms
         MS=target/debug/ms target/debug/ms run tools/count-check-selftest.ms
+    - name: Removed spellings name their replacement
+      if: env.GATES == 'true'
+      shell: bash
+      run: MS=target/debug/ms target/debug/ms run tools/removed-check.ms
     - name: Every accepted resource operation closes each resource once
       if: env.GATES == 'true'
       shell: bash

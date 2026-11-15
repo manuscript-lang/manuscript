@@ -181,7 +181,12 @@ fn import_hint_for(session: &Rc<crate::stdlib::Session>, name: &str, types_only:
     String::new()
 }
 
+/// Standard modules that were renamed, with the module that replaces each.
+const RENAMED_MODULES: &[(&str, &str)] =
+    &[("@std/concurrency/flow.ms", "@std/concurrency/resilience.ms")];
+
 const MEMBER_SYNONYMS: &[(&str, &[&str])] = &[
+    ("byte_length", &["length"]),
     ("len", &["length", "scalar_length"]),
     ("size", &["length", "scalar_length"]),
     ("count", &["length", "scalar_length"]),
@@ -901,6 +906,11 @@ impl Checker {
             if !self.session.is_native_module(pn)
                 && self.session.standard_source_module(pn).is_none()
             {
+                if let Some((_, new)) = RENAMED_MODULES.iter().find(|(old, _)| *old == path) {
+                    return format!(
+                        "unknown standard module {path}; it was renamed: import '{new}'"
+                    );
+                }
                 let stem = |p: &str| stdlib::module_stem(p).to_string();
                 let names = self.session.standard_module_names();
                 let stems: Vec<String> = names.iter().map(|s| stem(s)).collect();

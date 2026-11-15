@@ -28,6 +28,8 @@ Contracts: syntax, standard signatures, CLI flags and statuses, diagnostic codes
 - Before 1.0, incompatible public changes go in a minor release; patches stay compatible. From 1.0, they need a major release.
 - State the affected source or command and its migration in the PR.
 - A deprecation documents the replacement and removal release, and tests both.
+- Every removed or renamed spelling (syntax, method, module, flag) adds a snippet to `tests/removed/` in the same change. It starts with `// removed: <old spelling>` and `// use: <text the error must contain>`; `make removed-check` fails unless `ms check` rejects the snippet with an error naming the replacement. Fix the diagnostic, not the snippet, when the check fails.
+- Add the release to `CHANGELOG.md` and list breaking changes with their migration. The user-facing list of frozen contracts is [what is frozen](../learn/stability.md).
 - Explicit user-directed removals win; this policy does not restore retired APIs.
 - Compiler, runtime, or target changes alter build identity. Do not claim cross-environment binary reproducibility.
 
@@ -35,9 +37,10 @@ Contracts: syntax, standard signatures, CLI flags and statuses, diagnostic codes
 
 1. Update `.msversion`, which the CLI, build identity, and book read, and keep `extensions/vscode/package.json` at the same version; `make repo-check` fails when they disagree.
 2. Run `make verify-full`, extension packaging, and review the six-target distribution workflow.
-3. Merge, then tag `v<version>`. Tagging publishes only after all six binaries pass standalone verification, including an exact copy of the repository `LICENSE` in each archive. Review the generated release notes.
+3. Add the `CHANGELOG.md` section, and when a newer release replaces the book of an older one, add that release to `website/data/docs_versions.toml` (its `manuscript-docs` archive is built and attached by the release workflow).
+4. Merge, then tag `v<version>`. Tagging publishes only after all six binaries pass standalone verification, including an exact copy of the repository `LICENSE` in each archive. Review the generated release notes.
 
-A version update creates no tag. Documentation archives are separate preserved sites; a dropdown entry creates none.
+A version update creates no tag. The release workflow also attaches the release's book as `manuscript-docs-<version>.tar.gz`; a dropdown entry only links to it.
 
 ## Keep the feedback loop healthy
 

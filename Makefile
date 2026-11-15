@@ -8,7 +8,7 @@ BENCHFILTER ?=
 BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
 CONFORM_SHARD ?= 0/1
 
-.PHONY: runtime doctor verify verify-full check repo-check workflow-check unit test build conform conform-llvm drift-check llvm-report leak-check cancel-sweep scaling-check count-check resource-matrix close-matrix copy-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench vscode-package vscode-install
+.PHONY: runtime doctor verify verify-full check repo-check workflow-check unit test build conform conform-llvm drift-check llvm-report leak-check cancel-sweep scaling-check count-check resource-matrix close-matrix copy-check removed-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench vscode-package vscode-install
 
 doctor: build
 	HUGO="$(HUGO)" $(MS) run tools/doctor.ms
@@ -25,7 +25,7 @@ vscode-install: vscode-package
 # Routine feedback excludes native distributions. The merge gate adds the conformance corpus and the book.
 verify: check repo-check workflow-check bench-check unit docs-check licenses-check
 
-verify-full: verify conform book-check dist-check
+verify-full: verify conform removed-check book-check dist-check
 
 # Builds the native runtime (ms-native) into target/ms-native; every build of ms-cli embeds it.
 runtime:
@@ -105,6 +105,10 @@ close-matrix: build
 copy-check: build
 	$(MS) run tools/copy-check.ms
 
+# Every removed or renamed spelling in tests/removed/ must fail `ms check` with an error that names its replacement.
+removed-check: build
+	$(MS) run tools/removed-check.ms
+
 # The dependency license inventory: crate licenses from cargo metadata plus bundled notice hashes.
 licenses:
 	cargo run --release --locked -q -p ms-repo-check -- licenses
@@ -122,8 +126,9 @@ docs-check:
 docs-coverage:
 	cargo run -q --release --locked -p ms-tooling --bin ms-docgen -- -check -coverage .artifacts/stdlib-doc-coverage.json
 
+# BOOK_BASEURL moves the site to another address, as a release's archived copy under versions/v<version>/.
 book: docs
-	"$(HUGO)" --source website --minify --panicOnWarning --cleanDestinationDir
+	"$(HUGO)" --source website --minify --panicOnWarning --cleanDestinationDir $(if $(BOOK_BASEURL),--baseURL "$(BOOK_BASEURL)")
 
 book-check: docs-check docs
 	node --test tests/docs/highlighting.test.cjs
