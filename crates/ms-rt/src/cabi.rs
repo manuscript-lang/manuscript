@@ -12,7 +12,7 @@ use crate::obj::{clone_obj, drop_obj, new_obj};
 use crate::sys::{free, malloc};
 use crate::vec::{bytes_from, msrt_bytes_drop, push};
 use core::ffi::{c_char, c_void};
-use core::sync::atomic::{AtomicUsize, Ordering};
+use core::sync::atomic::{AtomicPtr, Ordering};
 use ms_rt_abi::{
     CALL_MAX_PARAMS, CLOSURE_CODE_OFFSET, ELEM_BOOL, ELEM_BYTES, ELEM_FLOAT32, ELEM_FLOAT64,
     ELEM_INT8, ELEM_INT16, ELEM_INT32, ELEM_INT64, ELEM_OBJECT, ELEM_STRING, ELEM_UINT8,
@@ -656,20 +656,24 @@ pub unsafe extern "C-unwind" fn ms_fn_drop_v1(f: *mut Obj) {
     unsafe { drop_obj(f) }
 }
 
-/// The stop hooks `ms_on_stop` registered: a function word (0 for a free slot) and its
-/// argument. A signal handler reads them, so they are atomics written in order.
+/// The stop hooks `ms_on_stop` registered: a function pointer (null for a free slot) and its
+/// argument. A signal handler reads them, so they are atomics written in order. They are pointers,
+/// not integers, so the function keeps its provenance.
 static STOP_HOOKS: [StopHook; STOP_HOOKS_MAX] = [const { StopHook::new() }; STOP_HOOKS_MAX];
 
 struct StopHook {
-    func: AtomicUsize,
-    arg: AtomicUsize,
+    func: AtomicPtr<c_void>,
+    arg: AtomicPtr<c_void>,
 }
+
+/// The `func` of a slot that `ms_on_stop` is filling.
+const FILLING: *mut c_void = core::ptr::without_provenance_mut(1);
 
 impl StopHook {
     const fn new() -> StopHook {
         StopHook {
-            func: AtomicUsize::new(0),
-            arg: AtomicUsize::new(0),
+            func: AtomicPtr::new(core::ptr::null_mut()),
+            arg: AtomicPtr::new(core::ptr::null_mut()),
         }
     }
 }
@@ -679,13 +683,12 @@ impl StopHook {
 pub(crate) fn run_stop_hooks() {
     for h in &STOP_HOOKS {
         let func = h.func.load(Ordering::Acquire);
-        // 0 is a free slot, 1 one that `ms_on_stop` is filling.
-        if func > 1 {
+        if !func.is_null() && func != FILLING {
             let arg = h.arg.load(Ordering::Relaxed);
             // SAFETY: `ms_on_stop` stored a function of this type.
             let func: unsafe extern "C" fn(*mut c_void) = unsafe { core::mem::transmute(func) };
             // SAFETY: the shim's contract: async-signal-safe.
-            unsafe { func(arg as *mut c_void) };
+            unsafe { func(arg) };
         }
     }
 }
@@ -703,11 +706,16 @@ pub unsafe extern "C-unwind" fn ms_on_stop_v1(
     for (i, h) in STOP_HOOKS.iter().enumerate() {
         // Claim a free slot with a placeholder, publish the argument, then the function.
         if h.func
-            .compare_exchange(0, 1, Ordering::Acquire, Ordering::Relaxed)
+            .compare_exchange(
+                core::ptr::null_mut(),
+                FILLING,
+                Ordering::Acquire,
+                Ordering::Relaxed,
+            )
             .is_ok()
         {
-            h.arg.store(arg as usize, Ordering::Relaxed);
-            h.func.store(func as usize, Ordering::Release);
+            h.arg.store(arg, Ordering::Relaxed);
+            h.func.store(func as *mut c_void, Ordering::Release);
             return (i + 1) as *mut c_void;
         }
     }
@@ -722,7 +730,9 @@ pub unsafe extern "C-unwind" fn ms_on_stop_v1(
 pub unsafe extern "C-unwind" fn ms_on_stop_remove_v1(h: *mut c_void) {
     let i = h as usize;
     if (1..=STOP_HOOKS_MAX).contains(&i) {
-        STOP_HOOKS[i - 1].func.store(0, Ordering::Release);
+        STOP_HOOKS[i - 1]
+            .func
+            .store(core::ptr::null_mut(), Ordering::Release);
     }
 }
 

@@ -23,12 +23,8 @@ import (
 	msstd_time_instant_unshift,
 	msstd_time_local_zone,
 	msstd_time_parse_timestamp,
-	msstd_time_timestamp,
 	msstd_time_timestamp_calendar,
-	msstd_time_timestamp_compare,
-	msstd_time_timestamp_difference,
 	msstd_time_timestamp_format,
-	msstd_time_timestamp_shift,
 	msstd_time_timestamp_to_string,
 	msstd_time_wall_clock_now from "@std/internal/time.ms",
 )
@@ -207,16 +203,105 @@ fn Timestamp.nanoseconds() Int:
 
 // Adds a duration to this wall-clock timestamp.
 fn Timestamp.shift(duration: Duration) Timestamp!:
-	return msstd_time_timestamp_shift(self, duration.nanos)
+	// Split both nanosecond counts so no sum overflows: raw fields need not be
+	// normalized.
+	whole := self.nanos / 1000000000 + duration.nanos / 1000000000
+	rest := self.nanos % 1000000000 + duration.nanos % 1000000000
+	var carry = whole
+	var nanos = rest
+
+	if nanos < 0:
+		nanos += 1000000000
+		carry -= 1
+
+	if nanos >= 1000000000:
+		nanos -= 1000000000
+		carry += 1
+
+	if nanos < 0:
+		nanos += 1000000000
+		carry -= 1
+
+	// A carry is under 3e10 seconds, so a start further out than that can never land in
+	// range.
+	if self.seconds > 253432300799 or self.seconds < -62165596800:
+		return error(Error("time: value out of range", kind: "ERANGE"))
+
+	seconds := self.seconds + carry
+	if seconds > 253402300799 or seconds < -62135596800:
+		return error(Error("time: value out of range", kind: "ERANGE"))
+
+	return ok(Timestamp(seconds: seconds, nanos: nanos))
 
 // Returns `self - right` as a duration.
 fn Timestamp.difference(other: Timestamp) Duration!:
-	nanos := msstd_time_timestamp_difference(self, other)?
-	return ok(Duration(nanos: nanos))
+	// Fields of timestamps built by this module: the subtraction and product cannot
+	// overflow.
+	if (
+		self.nanos >= 0
+		and self.nanos < 1000000000
+		and other.nanos >= 0
+		and other.nanos < 1000000000
+	):
+		if (
+			self.seconds < 4000000000000
+			and self.seconds > -4000000000000
+			and other.seconds < 4000000000000
+			and other.seconds > -4000000000000
+		):
+			close := self.seconds - other.seconds
+			if close > -9000000000 and close < 9000000000:
+				return ok(
+					Duration(
+						nanos: close * 1000000000 + self.nanos - other.nanos
+					)
+				)
+
+	// The result is (sd + q) * 1e9 + r with the nanosecond parts split so nothing
+	// overflows before the range test; raw fields need not be normalized.
+	if (
+		self.seconds >= 0
+		and other.seconds < 0
+		and self.seconds > 9223372036854775807 + other.seconds
+	):
+		return error(Error("time: value out of range", kind: "ERANGE"))
+	if (
+		self.seconds < 0
+		and other.seconds > 0
+		and self.seconds < -9223372036854775807 + other.seconds - 1
+	):
+		return error(Error("time: value out of range", kind: "ERANGE"))
+
+	sd := self.seconds - other.seconds
+	if sd > 100000000000 or sd < -100000000000:
+		return error(Error("time: value out of range", kind: "ERANGE"))
+
+	var whole = sd + self.nanos / 1000000000 - other.nanos / 1000000000
+	var rest = self.nanos % 1000000000 - other.nanos % 1000000000
+
+	if whole > 0 and rest < 0:
+		whole -= 1
+		rest += 1000000000
+
+	if whole < 0 and rest > 0:
+		whole += 1
+		rest -= 1000000000
+
+	if whole > 9223372036 or whole < -9223372036:
+		return error(Error("time: value out of range", kind: "ERANGE"))
+	if whole == 9223372036 and rest > 854775807:
+		return error(Error("time: value out of range", kind: "ERANGE"))
+	if whole == -9223372036 and rest < -854775808:
+		return error(Error("time: value out of range", kind: "ERANGE"))
+
+	return ok(Duration(nanos: whole * 1000000000 + rest))
 
 // Returns -1, 0, or 1 across the full calendar range.
 fn Timestamp.compare(other: Timestamp) Int:
-	return msstd_time_timestamp_compare(self, other)
+	if self.seconds != other.seconds: return if self.seconds > other.seconds: 1 else: -1
+	if self.nanos != other.nanos: return if self.nanos > other.nanos: 1 else: -1
+
+	return 0
 
 // Returns the lesser of this value and `other`, or this value when they compare
 // equal.
@@ -504,7 +589,12 @@ export fn sleep(duration: Duration) Promise[Unit]:
 
 // Constructs a timestamp from Unix seconds and a nanosecond adjustment.
 export fn timestamp(seconds: Int, nanoseconds: Int) Timestamp!:
-	return msstd_time_timestamp(seconds, nanoseconds)
+	if nanoseconds < 0 or nanoseconds >= 1000000000:
+		return error(Error("time: value out of range", kind: "ERANGE"))
+	if seconds < -62135596800 or seconds > 253402300799:
+		return error(Error("time: value out of range", kind: "ERANGE"))
+
+	return ok(Timestamp(seconds: seconds, nanos: nanoseconds))
 
 // Returns the current reading of the monotonic clock, for measuring elapsed time.
 // Readings are only comparable with others from this clock and do not correspond to a

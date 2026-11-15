@@ -105,11 +105,19 @@ fn emit_parts(b: &mut FuncBuilder<'_>, ptr: Value, shape: Shape) {
                     (0..n as u32).map(|j| b.alt_take(a, c, j, v)).collect();
                 let mask = if n >= 32 { u32::MAX } else { (1u32 << n) - 1 };
                 b.alt_release(a, c, mask, v);
+                // Every part is closed, the value is whole in its place again, and only then does
+                // a failed close fault: the cleanup that owns the place never sees a hole.
+                let mut failed = Vec::new();
                 for (j, ft, k) in parts {
-                    fields[j as usize] = close_owned(b, &k, fields[j as usize], ft);
+                    let (v, r) = close_owned_result(b, &k, fields[j as usize], ft);
+                    fields[j as usize] = v;
+                    failed.push(r);
                 }
                 let rebuilt = b.alt_new(a, c, &fields);
                 b.emit(Op::Put, &[ptr, rebuilt], Imm::None, None);
+                for r in failed {
+                    close_error_fault(b, r, None);
+                }
                 b.br(exit, &[]);
             }
             b.seal_block(exit);
@@ -129,9 +137,12 @@ fn emit_parts(b: &mut FuncBuilder<'_>, ptr: Value, shape: Shape) {
                 .emit(Op::Take, &[ptr], Imm::Ty(opt_ty), Some(opt_ty))
                 .expect("take");
             let x = b.opt_unbox(v);
-            let x = close_owned(b, &k, x, inner);
+            // The payload goes back before a failed close faults, so the place is never left
+            // holding a hole for the cleanup that owns it.
+            let (x, r) = close_owned_result(b, &k, x, inner);
             let rebuilt = b.opt_some(x);
             b.emit(Op::Put, &[ptr, rebuilt], Imm::None, None);
+            close_error_fault(b, r, None);
             b.br(exit, &[]);
             b.seal_block(exit);
             b.switch_to(exit);
@@ -492,7 +503,7 @@ impl FnLower<'_> {
         let Some(kind) = self.temp_closer(mt) else {
             return v;
         };
-        close_owned(&mut self.b, &kind, v, mt)
+        self.close_discarded_kind(&kind, v)
     }
 
     /// Whether the temporary `v` closes before it drops.
@@ -654,11 +665,11 @@ impl FnLower<'_> {
     }
 
     /// Drops a discarded statement result, closing it first when it holds a resource nothing
-    /// took: unlike a pending temporary it may be a wrapper (`xs.pop()` is an `Optional`).
+    /// took, shielded like any implicit close: unlike a pending temporary it may be a wrapper
+    /// (`xs.pop()` is an `Optional`).
     pub(crate) fn drop_unused(&mut self, v: Value, ty: &ct::Ty) {
-        let mt = self.b.ty(v);
         let v = match self.part_closer(ty) {
-            Ok(Some(kind)) => close_owned(&mut self.b, &kind, v, mt),
+            Ok(Some(kind)) => self.close_discarded_kind(&kind, v),
             _ => v,
         };
         self.drop_value(v);
@@ -1608,9 +1619,56 @@ impl FnLower<'_> {
     pub(crate) fn close_discarded_kind(&mut self, kind: &CloseKind, v: Value) -> Value {
         let mt = self.ty_of(v);
         let _ = self.call_runtime("msrt_shield_enter", &[], MTy::UNIT);
-        let v = close_owned(&mut self.b, kind, v, mt);
+        let v = if kind.writes_back() && self.b.m.needs_drop(mt) {
+            self.close_owned_in_owned_slot(kind, v, mt)
+        } else {
+            close_owned(&mut self.b, kind, v, mt)
+        };
         let _ = self.call_runtime("msrt_shield_exit", &[], MTy::UNIT);
         v
+    }
+
+    /// `close_owned` for a close that works on the value's storage: the storage is owned while
+    /// the close runs, so a fault inside it (a part's failed close) still frees what the close
+    /// put back in it.
+    fn close_owned_in_owned_slot(&mut self, kind: &CloseKind, v: Value, ty: MTy) -> Value {
+        let slot = self
+            .b
+            .emit(Op::Slot, &[], Imm::Ty(ty), Some(MTy::PTR))
+            .expect("slot");
+        self.b.emit(Op::Put, &[slot, v], Imm::None, None);
+        let thunk = self.drop_slot_thunk(ty);
+        self.own_raw_value(slot, thunk.index() as u32 + 2);
+        let r = close_at_result(&mut self.b, kind, slot, ty);
+        let after = self
+            .b
+            .emit(Op::Take, &[slot], Imm::Ty(ty), Some(ty))
+            .expect("take");
+        self.b.emit(Op::ScopeDisown, &[slot], Imm::None, None);
+        close_error_fault(&mut self.b, r, None);
+        after
+    }
+
+    /// A cleanup entry for a value of type `ty` held in memory that only drops it.
+    fn drop_slot_thunk(&mut self, ty: MTy) -> FuncId {
+        let key = HelperKey::DropSlot(ty);
+        if let Some(f) = self.cx.helpers.get(&key) {
+            return *f;
+        }
+        let ps = vec![Param {
+            ty: MTy::PTR,
+            mode: Mode::Borrow,
+        }];
+        let mut b = FuncBuilder::new(self.b.m, "drop_slot", ps, MTy::UNIT);
+        b.func_mut().linkage = Linkage::Internal;
+        b.func_mut().kind = FuncKind::Normal;
+        b.func_mut().slot_close = Some(ty);
+        let u = b.unit();
+        b.ret(Some(u));
+        let f = b.into_func();
+        let id = self.b.m.add_func(f);
+        self.cx.helpers.insert(key, id);
+        id
     }
 
     /// Starts deferring close failures: a mutator that discards entries closes them in place,

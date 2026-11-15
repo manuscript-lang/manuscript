@@ -409,7 +409,7 @@ test "YAML flow merge failures retain their source origin":
 
 test "YAML unsupported flow nodes report their physical source line":
 	unsupported_at("key: \{\n [one]: x\}", 2)?
-	unsupported_at("key: [first,\n ? unsupported\n tail]", 2)?
+	unsupported_at("key: [first,\n ? [unsupported]: x]", 2)?
 
 test "YAML invalid controls report their physical source position":
 	error_at("first: ok\nsecond: bad\u{1}", 2, 12)?
@@ -438,27 +438,11 @@ test "YAML block header origins distinguish identical quoted key text":
 
 // Regressions: key line.
 
-fn invalid_key_line(source: String) Unit!:
-	cause := parse(source) | expect_error?
-	if cause.kind != "EBADMSG":
-		return fail("expected malformed implicit key, got {cause}")
-
-	(
-		cause.details["reason"] | expect_equal(
-			"an implicit mapping key must stay on one line"
-		)?
-	)
-
-test "YAML plain implicit keys cannot span physical lines":
-	for source in ["\{key\n next: value\}", "\{key\n: value\}"]:
-		invalid_key_line(source)?
-
-test "YAML quoted implicit keys cannot span physical lines":
+test "YAML flow mapping keys may span physical lines":
 	for source in [
-		"\{'key\n next': value\}", "\{\"key\n next\": value\}",
-		"\{\"key\\\n next\": value\}"
+		"\{key\n next: value\}", "\{'key\n next': value\}", "\{key\n: value\}"
 	]:
-		invalid_key_line(source)?
+		_ := parse(source) | expect_ok?
 
 test "YAML quoted implicit keys may contain escaped newline text":
 	var values = Map[String, YamlValue]()
@@ -937,3 +921,85 @@ test "YAML explicit keys read scalar keys with optional values":
 	expect_equal(value.to_string(), want.to_string())?
 
 	_ := parse("? a\n: 1\n? a\n: 2\n") | expect_error?
+
+test "YAML flow collections hold explicit keys and anchored keys":
+	var one = Map[String, YamlValue]()
+	one.add("foo bar", YamlValue.StringValue("baz"))
+
+	var seq = Map[String, YamlValue]()
+	seq.add("", YamlValue.Null)
+
+	var flow = Map[String, YamlValue]()
+	flow.add("a", YamlValue.StringValue("b"))
+	flow.add("", YamlValue.Null)
+	(
+		parse("[\n? foo\n bar : baz\n]") | expect_ok? | expect_equal(
+			YamlValue.ArrayValue([YamlValue.ObjectValue(one)])
+		)?
+	)
+	(
+		parse("[? ]") | expect_ok? | expect_equal(
+			YamlValue.ArrayValue([YamlValue.ObjectValue(seq)])
+		)?
+	)
+	(parse("\{? a : b, ?\}") | expect_ok? | expect_equal(YamlValue.ObjectValue(flow))?)
+
+	_ := parse("\{ &e e: f \}") | expect_ok?
+
+test "YAML plain continuation lines may start with a sequence dash":
+	var values = Map[String, YamlValue]()
+	values.add("a", YamlValue.StringValue("x\n- y"))
+	(parse("a: x\n\n  - y") | expect_ok? | expect_equal(YamlValue.ObjectValue(values))?)
+	(
+		parse("- one\n - two") | expect_ok? | expect_equal(
+			YamlValue.ArrayValue([YamlValue.StringValue("one - two")])
+		)?
+	)
+
+test "YAML anchor and alias names may contain colons":
+	var values = Map[String, YamlValue]()
+	values.add("key", YamlValue.StringValue("value"))
+	values.add("foo", YamlValue.StringValue("key"))
+	(
+		parse("&a: key: &a value\nfoo:\n  *a:") | expect_ok? | expect_equal(
+			YamlValue.ObjectValue(values)
+		)?
+	)
+
+test "YAML properties on their own line bind the node after them":
+	var values = Map[String, YamlValue]()
+	values.add("seq", YamlValue.ArrayValue([YamlValue.StringValue("a")]))
+	(
+		parse("seq:\n &anchor\n- a") | expect_ok? | expect_equal(
+			YamlValue.ObjectValue(values)
+		)?
+	)
+
+	var folded = Map[String, YamlValue]()
+	folded.add("f", YamlValue.StringValue("value\n"))
+	(
+		parse("f:\n   !foo\n  >1\n value\n") | expect_ok? | expect_equal(
+			YamlValue.ObjectValue(folded)
+		)?
+	)
+
+test "YAML block scalars keep the break of an unterminated blank last line and reject a leading tab":
+	(
+		parse("- |+\n   ")
+		| expect_ok?
+		| expect_equal(YamlValue.ArrayValue([YamlValue.StringValue("\n")]))?
+	)
+
+	_ := parse("foo: |\n\t\nbar: 1") | expect_error?
+
+test "YAML empty documents and commented explicit keys":
+	docs := parse_all("---\n---\n") | expect_ok?
+	docs | expect_equal([YamlValue.Null, YamlValue.Null])?
+
+	var commented = Map[String, YamlValue]()
+	commented.add("key", YamlValue.Null)
+	(
+		parse("? key # note\n") | expect_ok? | expect_equal(
+			YamlValue.ObjectValue(commented)
+		)?
+	)

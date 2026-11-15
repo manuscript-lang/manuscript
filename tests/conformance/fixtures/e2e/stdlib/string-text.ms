@@ -51,6 +51,18 @@ test "replace_each without replacements preserves exact text":
 	"🦀é🦀".replace_each({"🦀": "x", "é": "y"}) | expect_equal("xyx")?
 	"ab".replace_each({"a": "ab"}) | expect_equal("abb")?
 
+test "replace_each scans bytes with map order, multibyte keys and unmatched runs":
+	"a&b<c>\"d'e".replace_each(
+		{"&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;"}
+	) | expect_equal("a&amp;b&lt;c&gt;&quot;d&#39;e")?
+	"abcabc".replace_each({"abd": "x", "ab": "y", "c": "z"}) | expect_equal("yzyz")?
+	"ab".replace_each({"a": "1", "ab": "2"}) | expect_equal("1b")?
+	"ab".replace_each({"ab": "2", "a": "1"}) | expect_equal("2")?
+	"aé🦀é".replace_each({"é": "e", "🦀": "crab", "": "x"}) | expect_equal("aecrabe")?
+	"ééa".replace_each({"éa": "!"}) | expect_equal("é!")?
+	"aaa".replace_each({"aaaa": "x"}) | expect_equal("aaa")?
+	"tail a".replace_each({"a": "b"}) | expect_equal("tbil b")?
+
 // The reference walks every scalar, so it shares nothing with the windowed scans.
 fn reference_start(text: String, set: String) Int:
 	var count = 0

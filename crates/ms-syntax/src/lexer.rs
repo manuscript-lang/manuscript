@@ -1414,8 +1414,9 @@ impl Scanner<'_> {
         )
     }
 
-    /// Rewrites `{ ... }` holding a backslash as literal braces: the braces
-    /// inside and around it are escaped. None when the matching `}` is not
+    /// Rewrites `{ ... }` holding a backslash: `\"` inside an expression
+    /// becomes `"`, and JSON-like content becomes literal braces, escaping the
+    /// braces inside and around it. None when the matching `}` is not
     /// found before the end of the line or the closing quote.
     fn literal_braces_fix(&self, open: Pos, body: usize) -> Option<DiagnosticFix> {
         let bytes = self.src;
@@ -1440,6 +1441,26 @@ impl Scanner<'_> {
             return None;
         }
         let inner = self.text.get(body..at)?;
+        if !inner.trim_start().starts_with(['"', '\\']) {
+            // `{xs.join(\", \")}`: a quote cannot be escaped inside an
+            // expression, so `\"` means `"`. Any other backslash is a typo.
+            let escaped_quotes = inner.matches("\\\"").count();
+            if escaped_quotes == 0 || inner.matches('\\').count() != escaped_quotes {
+                return None;
+            }
+            let len = inner.len() as u32;
+            let mut start = open;
+            start.offset += 1;
+            start.column += 1;
+            let mut end = start;
+            end.offset += len;
+            end.column += len;
+            return Some(DiagnosticFix {
+                pos: start,
+                end,
+                replacement: inner.replace("\\\"", "\""),
+            });
+        }
         let escaped = inner.replace('{', "\\{").replace('}', "\\}");
         let len = (at + 1 - body + 1) as u32;
         let mut end = open;

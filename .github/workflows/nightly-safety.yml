@@ -5,6 +5,7 @@ name: Nightly safety
 #   miri          runtime memory safety under Miri (needs nightly; see documentation/contributing/rust-toolchain.md)
 #   cancel-sweep  cancels every e2e stdlib test at each park and fails when cancellation leaks heap blocks
 #   drift-check   runs the corpus under LLVM and Cranelift and fails on any difference
+#   stress-sched  runs the stdlib sweep under the scheduler stress mode
 #   perf-counts   instructions of four suite programs under callgrind against bench/perf/counts.txt; opens an issue when one is over 3% higher
 
 on:
@@ -42,7 +43,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        check: [cancel-sweep, drift-check]
+        check: [cancel-sweep, drift-check, stress-sched]
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/rust-env
@@ -63,10 +64,11 @@ jobs:
         with:
           os: linux
           arch: amd64
-      - run: sudo apt-get install -y --no-install-recommends valgrind
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends valgrind
       - name: Count instructions
         id: counts
         run: |
+          set -o pipefail
           make build
           make perf-counts | tee perf-counts.txt
       - name: Open an issue naming the commit range

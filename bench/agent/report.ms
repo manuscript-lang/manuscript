@@ -93,17 +93,18 @@ fn matrix(runs: List[Run]) String:
 	return out
 
 // Diagnostic codes in failed builds, most frequent first. "Runs" counts runs that hit
-// the code at least once; "extra turns" is those runs' mean turns minus the mean turns
-// of runs whose first build succeeded, a rough price of the code.
+// the code at least once; the last two columns are those runs' mean turns and builds,
+// to compare with the language's mean over all runs (challenge mix confounds the
+// comparison, so read it as a rough price, not a measurement).
 fn codes_table(runs: List[Run], lang: String) String:
 	mine := runs.filter(fn r: r.language == lang)
-	clean := mine.filter(fn r: r.first_build_ok).map(fn r: r.usage.turns.to_float())
-	base := if clean.is_empty(): 0.0 else: mean_ci(clean).mid
+	overall := mean_ci(mine.map(fn r: r.usage.turns.to_float())).mid
+	overall_builds := mean_ci(mine.map(fn r: r.builds.to_float())).mid
 	failing := mine.filter(fn r: not r.first_build_ok).length()
 	var out = "\n### {lang}: diagnostic codes in failed builds\n\n"
 	out += "{failing} of {mine.length()} runs failed their first build. "
-	out += "Baseline: {fmt_g(base, 3)} turns when it succeeds.\n\n"
-	out += "| code | occurrences | runs | extra turns per run |\n|---|---:|---:|---:|\n"
+	out += "All runs average {fmt_g(overall, 3)} turns and {fmt_g(overall_builds, 3)} builds.\n\n"
+	out += "| code | occurrences | runs | turns in those runs | builds in those runs |\n|---|---:|---:|---:|---:|\n"
 
 	all := mine.flat_map(fn r: r.build_codes.clone())
 	stats := all.distinct().map(fn c: CodeStat(c.clone(), all.count(fn x: x == c)))
@@ -113,16 +114,17 @@ fn codes_table(runs: List[Run], lang: String) String:
 		code := entry.code
 		hit := mine.filter(fn r: r.build_codes.contains(code))
 		turns := mean_ci(hit.map(fn r: r.usage.turns.to_float())).mid
-		out += "| {code} | {entry.count} | {hit.length()} | {fmt_g(turns - base, 2)} |\n"
+		builds := mean_ci(hit.map(fn r: r.builds.to_float())).mid
+		out += "| {code} | {entry.count} | {hit.length()} | {fmt_g(turns, 3)} | {fmt_g(builds, 3)} |\n"
 
 	return out
 
-// The first diagnostic line of failed builds with the location and quoted names
-// removed, so equal mistakes group together, most frequent first.
 fn cut(text: String, limit: Int) String:
 	if text.length() <= limit: return text.clone()
 	return text.slice(0, limit).get("")
 
+// The first diagnostic line of failed builds with the location and quoted names
+// removed, so equal mistakes group together, most frequent first.
 fn errors_table(runs: List[Run], lang: String) String:
 	place := compile("^\\S+:\\d+:\\d+: ").get()
 	quoted := compile("'[^']*'").get()

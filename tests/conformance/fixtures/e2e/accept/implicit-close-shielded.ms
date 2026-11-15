@@ -60,6 +60,19 @@ fn cancel_a_holder(dir: String, id: Int, pause: Bool) Unit:
 		options: PromiseOptions(timeout: nanoseconds(20000000))
 	).wait()
 
+// A statement that discards a popped resource closes it in place, shielded too.
+fn pop_and_discard(dir: String, id: Int) Int:
+	var held = [Holder(dir, id, true, false)]
+	held.pop()
+	_ := sleep(nanoseconds(5000000000)).wait()
+	return held.length()
+
+fn cancel_a_discard(dir: String, id: Int) Unit:
+	work := promise(fn: ok(pop_and_discard(dir.clone(), id)))
+	_ignored := work.with(
+		options: PromiseOptions(timeout: nanoseconds(1000000))
+	).wait()
+
 fn faulting_holder(dir: String, id: Int) Unit!:
 	hold_and_fault(dir, id)
 
@@ -102,3 +115,9 @@ test "a fault in close does not replace a pending fault":
 	message := expect_fault(fn: hold_fault_and_break(dir.clone(), 6))?
 	expect_equal(message, "body fault")?
 	expect_true(closed(dir, 6))?
+
+test "cancellation does not interrupt the close of a discarded result":
+	temporary := temporary("manuscript-shield-") | expect_ok?
+	dir := temporary.path()
+	cancel_a_discard(dir.clone(), 7)
+	expect_true(closed(dir, 7))?

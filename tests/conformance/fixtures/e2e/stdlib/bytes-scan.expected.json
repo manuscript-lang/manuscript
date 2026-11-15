@@ -33,19 +33,24 @@
           "index": 4,
           "name": "bytes-scan.ms::view of a temporary is owned",
           "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "bytes-scan.ms::view agrees with slice and equality compares the bytes",
+          "status": "passed"
         }
       ],
       "summary": {
-        "available": 5,
-        "selected": 5,
-        "passed": 5,
+        "available": 6,
+        "selected": 6,
+        "passed": 6,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN bytes-scan.ms::index_of_byte finds a byte at or after start\nPASS bytes-scan.ms::index_of_byte finds a byte at or after start\nRUN bytes-scan.ms::index_of_byte handles out-of-range arguments\nPASS bytes-scan.ms::index_of_byte handles out-of-range arguments\nRUN bytes-scan.ms::decode_utf8_range decodes a byte range\nPASS bytes-scan.ms::decode_utf8_range decodes a byte range\nRUN bytes-scan.ms::view borrows a range without copying\nPASS bytes-scan.ms::view borrows a range without copying\nRUN bytes-scan.ms::view of a temporary is owned\nPASS bytes-scan.ms::view of a temporary is owned\n5 tests, 0 failed\n",
+      "stdout": "RUN bytes-scan.ms::index_of_byte finds a byte at or after start\nPASS bytes-scan.ms::index_of_byte finds a byte at or after start\nRUN bytes-scan.ms::index_of_byte handles out-of-range arguments\nPASS bytes-scan.ms::index_of_byte handles out-of-range arguments\nRUN bytes-scan.ms::decode_utf8_range decodes a byte range\nPASS bytes-scan.ms::decode_utf8_range decodes a byte range\nRUN bytes-scan.ms::view borrows a range without copying\nPASS bytes-scan.ms::view borrows a range without copying\nRUN bytes-scan.ms::view of a temporary is owned\nPASS bytes-scan.ms::view of a temporary is owned\nRUN bytes-scan.ms::view agrees with slice and equality compares the bytes\nPASS bytes-scan.ms::view agrees with slice and equality compares the bytes\n6 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

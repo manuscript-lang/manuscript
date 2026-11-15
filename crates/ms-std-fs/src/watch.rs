@@ -1,7 +1,11 @@
 //! `FileWatcher`: a polling watcher (snapshot comparison) and a native one (inotify on Linux,
 //! kqueue on macOS, `ReadDirectoryChangesW` on Windows).
-//! Both are driven from `next`, which waits in short slices and polls
-//! for cancellation between them, so no worker thread is needed.
+//! The polling, kqueue and Windows watchers are driven from `next`, which waits in short slices
+//! and polls for cancellation between them, so they need no worker thread. Only inotify has one:
+//! it reports a new directory without watching it, so a reader thread (using no runtime calls,
+//! waking `next` through an eventfd) must register it at once or changes inside it are lost.
+//! kqueue registers new paths in the same snapshot diff that reports them, and
+//! `ReadDirectoryChangesW` covers new directories itself, so neither has that window.
 use crate::err::{Fail, Res};
 use crate::ops::poll_cancel;
 use crate::path;
