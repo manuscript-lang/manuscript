@@ -5,7 +5,7 @@ Not the performance benchmark: for compiler/runtime speed against hand-written G
 Agent benchmark: measures how effectively coding agents solve the same programming challenges in TypeScript, Go, Rust and
 Manuscript. Per run it records pass/fail against hidden tests, tokens, turns, wall time and cost.
 
-Status: 20 challenges: 10 small programs (c03-c44, with reference solutions in all four languages) and 10 large applications of roughly 3-5k lines (c51-c60), which have no reference solutions and are validated only through the Go oracle in each challenge's `oracle/` directory (see its `gen.py`, which derives the expected outputs deterministically). Run each cell at least three times (`--repeat 3`); the report gives 95% confidence intervals, and a cell with one trial proves nothing. Runs through Harbor (preferred) or the built-in runner.
+Status: 22 challenges: 10 small programs (c03-c44, with reference solutions in all four languages), one mid-size program (c61, a dependency resolver of about 300 lines in Go), one edit task (c63, below) and 10 large applications of roughly 3-5k lines (c51-c60), which have no reference solutions and are validated only through the Go oracle in each challenge's `oracle/` directory (see its `gen.py`, which derives the expected outputs deterministically). Run each cell at least three times (`--repeat 3`); the report gives 95% confidence intervals, and a cell with one trial proves nothing. Runs through Harbor (preferred) or the built-in runner.
 
 Report source size as LLM tokens (`llm_tokens` in each run, from `pip install tiktoken`; final sources are saved under `results/sources/`), never lexical tokens (`code_tokens`). `ms run bench/agent/tokens.ms` compares the reference solutions per language.
 
@@ -74,6 +74,8 @@ cases and first-build success. Harbor records tokens and cost per trial. Use `-a
 
 - **Challenge**: add `challenges/cNN-name/` with the files above. Contract: stdin to stdout, exact output. Run
   `ms run bench/agent/gen.ms -- cNN` (add the challenge to `gen.ms`), write all four reference solutions, then `ms run bench/agent/run.ms -- oracle`.
+- **Edit challenge**: the agent changes an existing program instead of writing one. Put the starting program for each language in `challenges/cNN-name/start/<language>/` (laid out as in the workspace, such as `src/main.rs`); it is copied over the template and the prompt tells the agent to change it, keeping other behavior. `spec.md` is the change ticket. Generate the cases from a Go oracle that implements the changed program (see c63, which starts from c13's reference solutions), and check that the starting programs fail most hidden cases. An edit agent may never run `./check.sh`; the report leaves such runs out of the first-build rate.
+- **Long challenge**: a challenge that needs more than the run's agent limit sets `agent_timeout_s` in its `challenge.json` (c55 uses 3600).
 - **Language**: add an entry to `languages.json`, a `templates/<id>/` dir, and a reference solution per challenge.
 - **Harness**: implement the `Harness` interface from `harnesses/harness.ms` in a new file (`command()` builds argv, `parse()` returns `Usage`) and register it
   in `harnesses/all.ms`. If the CLI reports no cost, leave `cost_source` as `none` and the base class estimates it.

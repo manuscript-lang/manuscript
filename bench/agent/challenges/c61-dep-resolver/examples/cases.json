@@ -1,0 +1,12 @@
+[
+ {
+  "name": "ex-basic",
+  "stdin": "pkg a 1.0.0 b:^1.0.0 c:>=1.0.0,<3.0.0\npkg b 1.2.0 c:^2.0.0\npkg b 1.0.0\npkg c 2.5.1\npkg c 3.1.0\nresolve a *\nlist b\nresolve a =9.9.9\nresolve z *\n",
+  "stdout": "ok\nok\nok\nok\nok\nresolved 3\na 1.0.0\nb 1.2.0\nc 2.5.1\nb: 1.0.0 1.2.0\nerror: cannot resolve a =9.9.9\nerror: unknown package z\n"
+ },
+ {
+  "name": "ex-backtrack",
+  "stdin": "pkg app 1.0.0 lib:* util:^1.0.0\npkg lib 2.0.0 util:^2.0.0\npkg lib 1.0.0 util:^1.0.0\npkg util 2.0.0\npkg util 1.0.0\nresolve app *\nresolve lib ^2.0.0\npkg x 1.0.0 y:*\nresolve x *\n",
+  "stdout": "ok\nok\nok\nok\nok\nresolved 3\napp 1.0.0\nlib 1.0.0\nutil 1.0.0\nresolved 2\nlib 2.0.0\nutil 2.0.0\nok\nerror: unknown package y\n"
+ }
+]

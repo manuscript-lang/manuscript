@@ -1,10 +1,11 @@
 // Summarize benchmark runs as Markdown tables with 95% confidence intervals.
 //
-// Pass and first-build rates cover every run (Wilson intervals). Tokens, turns, time
-// and cost average over PASSING runs only, so a cheap wrong answer never improves a
-// language's numbers (mean with a normal-approximation interval). The last tables rank
-// the diagnostic codes agents hit in failed builds. Usage (from the repository root):
-// ms run bench/agent/report.ms [-- path/to/runs.jsonl ...]
+// The pass rate covers every run and the first-build rates every run that built at
+// least once (Wilson intervals). Tokens, turns, time and cost average over PASSING runs
+// only, so a cheap wrong answer never improves a language's numbers (mean with a
+// normal-approximation interval). The last tables rank the diagnostic codes agents hit
+// in failed builds. Usage (from the repository root): ms run bench/agent/report.ms [--
+// path/to/runs.jsonl ...]
 import (
 	parse from "@std/data/json.ms",
 	stderr, stdout from "@std/io/io.ms",
@@ -46,6 +47,8 @@ type CodeStat:
 	count: Int
 
 fn rate(ok: Int, n: Int) String:
+	if n == 0: return "-"
+
 	w := wilson(ok, n)
 	return "{pct0(w.mid)} ({pct0(w.low)}-{pct0(w.high)})"
 
@@ -67,9 +70,14 @@ fn table(runs: List[Run], title: String, key: fn(Run) String) String:
 		rs := runs.filter(fn r: key(r) == k)
 		ok := rs.filter(fn r: r.pass)
 		n := rs.length()
-		first_ok := rs.filter(fn r: r.first_build_ok).length()
-		fixed_ok := rs.filter(fn r: r.first_build_ok or r.first_build_fixed_ok).length()
-		out += "| {k} | {n} | {rate(ok.length(), n)} | {rate(first_ok, n)} | {rate(fixed_ok, n)} "
+
+		// Runs whose agent never ran ./check.sh have no first build to count.
+		built := rs.filter(fn r: r.builds > 0)
+		first_ok := built.filter(fn r: r.first_build_ok).length()
+		fixed_ok := built.filter(
+			fn r: r.first_build_ok or r.first_build_fixed_ok
+		).length()
+		out += "| {k} | {n} | {rate(ok.length(), n)} | {rate(first_ok, built.length())} | {rate(fixed_ok, built.length())} "
 		out += "| {mean_text(ok.map(tokens_of), 3)} | {mean_text(ok.map(fn r: r.usage.turns.to_float()), 3)} "
 		out += "| {mean_text(ok.map(fn r: r.wall_s), 3)} | {mean_text(ok.map(fn r: r.usage.cost_usd), 3)} |\n"
 

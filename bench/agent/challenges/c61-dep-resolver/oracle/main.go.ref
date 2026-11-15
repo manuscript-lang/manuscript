@@ -1,0 +1,307 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"sort"
+	"strings"
+)
+
+type version [3]int
+
+func (a version) cmp(b version) int {
+	for i := 0; i < 3; i++ {
+		if a[i] != b[i] {
+			if a[i] < b[i] {
+				return -1
+			}
+			return 1
+		}
+	}
+	return 0
+}
+
+func (v version) String() string { return fmt.Sprintf("%d.%d.%d", v[0], v[1], v[2]) }
+
+// parseNum parses 1 to 6 ASCII digits without a leading zero (a lone 0 is fine).
+func parseNum(s string) (int, bool) {
+	if s == "" || len(s) > 6 || (len(s) > 1 && s[0] == '0') {
+		return 0, false
+	}
+	n := 0
+	for i := 0; i < len(s); i++ {
+		if s[i] < '0' || s[i] > '9' {
+			return 0, false
+		}
+		n = n*10 + int(s[i]-'0')
+	}
+	return n, true
+}
+
+func parseVersion(s string) (version, bool) {
+	p := strings.Split(s, ".")
+	if len(p) != 3 {
+		return version{}, false
+	}
+	var v version
+	for i := 0; i < 3; i++ {
+		n, ok := parseNum(p[i])
+		if !ok {
+			return version{}, false
+		}
+		v[i] = n
+	}
+	return v, true
+}
+
+type clause struct {
+	op string
+	v  version
+}
+
+type constraint struct {
+	text    string
+	clauses []clause
+}
+
+func (c constraint) matches(v version) bool {
+	for _, cl := range c.clauses {
+		k := v.cmp(cl.v)
+		ok := false
+		switch cl.op {
+		case "=":
+			ok = k == 0
+		case ">":
+			ok = k > 0
+		case ">=":
+			ok = k >= 0
+		case "<":
+			ok = k < 0
+		case "<=":
+			ok = k <= 0
+		}
+		if !ok {
+			return false
+		}
+	}
+	return true
+}
+
+func parseConstraint(s string) (constraint, bool) {
+	c := constraint{text: s}
+	if s == "" {
+		return c, false
+	}
+	for _, part := range strings.Split(s, ",") {
+		switch {
+		case part == "*":
+			// matches everything: no clause
+		case strings.HasPrefix(part, "^") || strings.HasPrefix(part, "~"):
+			v, ok := parseVersion(part[1:])
+			if !ok {
+				return c, false
+			}
+			var hi version
+			switch {
+			case part[0] == '~':
+				hi = version{v[0], v[1] + 1, 0}
+			case v[0] > 0:
+				hi = version{v[0] + 1, 0, 0}
+			case v[1] > 0:
+				hi = version{0, v[1] + 1, 0}
+			default:
+				hi = version{0, 0, v[2] + 1}
+			}
+			c.clauses = append(c.clauses, clause{">=", v}, clause{"<", hi})
+		default:
+			op := "="
+			rest := part
+			for _, o := range []string{">=", "<=", ">", "<", "="} {
+				if strings.HasPrefix(part, o) {
+					op, rest = o, part[len(o):]
+					break
+				}
+			}
+			v, ok := parseVersion(rest)
+			if !ok {
+				return c, false
+			}
+			c.clauses = append(c.clauses, clause{op, v})
+		}
+	}
+	return c, true
+}
+
+type dep struct {
+	name string
+	c    constraint
+}
+
+type release struct {
+	v    version
+	deps []dep // sorted by name
+}
+
+var registry = map[string][]release{} // each list sorted by version ascending
+
+func validName(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if !((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-') {
+			return false
+		}
+	}
+	return true
+}
+
+type resolver struct {
+	chosen  map[string]version
+	missing string
+	steps   int
+}
+
+const maxSteps = 200000
+
+func (r *resolver) solve(pending []dep) bool {
+	if r.missing != "" {
+		return false
+	}
+	if len(pending) == 0 {
+		return true
+	}
+	r.steps++
+	if r.steps > maxSteps {
+		return false
+	}
+	head, rest := pending[0], pending[1:]
+	if v, ok := r.chosen[head.name]; ok {
+		return head.c.matches(v) && r.solve(rest)
+	}
+	rels, known := registry[head.name]
+	if !known {
+		r.missing = head.name
+		return false
+	}
+	for i := len(rels) - 1; i >= 0; i-- {
+		rel := rels[i]
+		if !head.c.matches(rel.v) {
+			continue
+		}
+		r.chosen[head.name] = rel.v
+		next := append(append([]dep{}, rel.deps...), rest...)
+		if r.solve(next) {
+			return true
+		}
+		delete(r.chosen, head.name)
+		if r.missing != "" {
+			return false
+		}
+	}
+	return false
+}
+
+func exec(line string) []string {
+	t := strings.Fields(line)
+	switch t[0] {
+	case "pkg":
+		if len(t) < 3 {
+			return []string{"error: usage"}
+		}
+		if !validName(t[1]) {
+			return []string{"error: bad name '" + t[1] + "'"}
+		}
+		v, ok := parseVersion(t[2])
+		if !ok {
+			return []string{"error: bad version '" + t[2] + "'"}
+		}
+		var deps []dep
+		seen := map[string]bool{}
+		for _, tok := range t[3:] {
+			k := strings.IndexByte(tok, ':')
+			if k < 0 || !validName(tok[:k]) {
+				return []string{"error: bad dependency '" + tok + "'"}
+			}
+			c, ok := parseConstraint(tok[k+1:])
+			if !ok {
+				return []string{"error: bad constraint '" + tok[k+1:] + "'"}
+			}
+			if seen[tok[:k]] {
+				return []string{"error: duplicate dependency '" + tok[:k] + "'"}
+			}
+			seen[tok[:k]] = true
+			deps = append(deps, dep{tok[:k], c})
+		}
+		for _, rel := range registry[t[1]] {
+			if rel.v == v {
+				return []string{"error: duplicate " + t[1] + " " + v.String()}
+			}
+		}
+		sort.Slice(deps, func(i, j int) bool { return deps[i].name < deps[j].name })
+		rels := append(registry[t[1]], release{v, deps})
+		sort.Slice(rels, func(i, j int) bool { return rels[i].v.cmp(rels[j].v) < 0 })
+		registry[t[1]] = rels
+		return []string{"ok"}
+	case "list":
+		if len(t) != 2 {
+			return []string{"error: usage"}
+		}
+		rels, ok := registry[t[1]]
+		if !ok {
+			return []string{"error: unknown package " + t[1]}
+		}
+		var vs []string
+		for _, r := range rels {
+			vs = append(vs, r.v.String())
+		}
+		return []string{t[1] + ": " + strings.Join(vs, " ")}
+	case "resolve":
+		if len(t) != 3 {
+			return []string{"error: usage"}
+		}
+		c, ok := parseConstraint(t[2])
+		if !ok {
+			return []string{"error: bad constraint '" + t[2] + "'"}
+		}
+		r := &resolver{chosen: map[string]version{}}
+		if r.solve([]dep{{t[1], c}}) {
+			var names []string
+			for n := range r.chosen {
+				names = append(names, n)
+			}
+			sort.Strings(names)
+			out := []string{fmt.Sprintf("resolved %d", len(names))}
+			for _, n := range names {
+				out = append(out, n+" "+r.chosen[n].String())
+			}
+			return out
+		}
+		if r.missing != "" {
+			return []string{"error: unknown package " + r.missing}
+		}
+		if r.steps > maxSteps {
+			return []string{"error: search limit reached"}
+		}
+		return []string{"error: cannot resolve " + t[1] + " " + t[2]}
+	}
+	return []string{"error: unknown command"}
+}
+
+func main() {
+	sc := bufio.NewScanner(os.Stdin)
+	sc.Buffer(make([]byte, 1<<20), 1<<24)
+	w := bufio.NewWriter(os.Stdout)
+	defer w.Flush()
+	for sc.Scan() {
+		l := sc.Text()
+		if strings.TrimSpace(l) == "" {
+			continue
+		}
+		for _, o := range exec(l) {
+			fmt.Fprintln(w, o)
+		}
+	}
+}
