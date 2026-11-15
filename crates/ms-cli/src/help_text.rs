@@ -395,21 +395,23 @@ Examples:
   ms search_symbol json.parse
 "#;
 
-pub const HELP_SKILL: &str = r#"Usage: ms skill [-o <directory>]
+pub const HELP_SKILL: &str = r#"Usage: ms skill [-o <directory>]...
 
 Print the versioned Manuscript agent skill with all references inlined as one
 Markdown document. Pipe it to an agent or redirect it to a file.
-With -o, write SKILL.md and reference files into <directory>/manuscript/ instead.
+With -o, write SKILL.md and reference files into <directory>/manuscript/ instead;
+repeat -o to install in several agent folders (Claude Code reads .claude/skills,
+Codex and other agents read .agents/skills).
 Works offline without this repository; existing skill directories are never overwritten.
 
 Options:
-  -o, --output <directory>  Parent directory for the skill files
+  -o, --output <directory>  Parent directory for the skill files; may repeat
   -h, --help               Show this help without writing files
 
 Examples:
   ms skill
   ms skill > manuscript-skill.md
-  ms skill -o ./agents/skills
+  ms skill -o .claude/skills -o .agents/skills
 "#;
 
 pub const HELP_EXPLAIN: &str = r#"Usage: ms explain <code...> [--json]

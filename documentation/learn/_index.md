@@ -50,4 +50,4 @@ It also lists matching fields and related functions. Search includes project sym
 
 ## Working with a coding agent?
 
-Install its writing reference with `ms skill -o .agents/skills`; this creates a self-contained `manuscript` skill with concept references and the compiler version. Use `ms verify` for type checking, formatting checks, lint, and tests together; `ms check --json` gives structured diagnostics, and `ms check --fix` applies available mechanical fixes. See [commands for agents](../developer-tooling/implementation.md#commands-for-agents).
+Install its writing reference with `ms skill -o .claude/skills -o .agents/skills`; this creates a self-contained `manuscript` skill with concept references and the compiler version. Use `ms verify` for type checking, formatting checks, lint, and tests together; `ms check --json` gives structured diagnostics, and `ms check --fix` applies available mechanical fixes. See [commands for agents](../developer-tooling/implementation.md#commands-for-agents).
