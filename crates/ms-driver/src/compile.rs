@@ -86,6 +86,7 @@ pub fn check_graph_in(
         graph.imports,
         CheckOptions {
             scope_marker: scope_marker.map(str::to_string),
+            packages: graph.packages,
             ..CheckOptions::default()
         },
     );

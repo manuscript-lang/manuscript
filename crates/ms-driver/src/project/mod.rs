@@ -24,6 +24,7 @@ pub mod embed;
 pub mod error;
 pub mod manifest;
 pub mod overlay;
+pub mod packages;
 pub mod pathops;
 pub mod paths;
 pub mod quoting;

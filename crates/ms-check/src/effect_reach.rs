@@ -31,6 +31,9 @@ pub struct ReachNode {
     pub allow_fn: Option<Vec<String>>,
     /// `allow_effect` lines in the file header, or `None`.
     pub allow_file: Option<Vec<String>>,
+    /// For a fetched package's callable, the effects its manifest declares: no `allow_effect`
+    /// line can widen them, and with no line of its own the callable may reach exactly these.
+    pub cap: Option<Vec<String>>,
     /// Referenced callables with the position of the first reference.
     pub edges: Vec<(Name, Pos)>,
 }
@@ -168,7 +171,11 @@ pub fn resolve(nodes: &[ReachNode]) -> Reach {
         let none = node.allow_fn.is_none() && node.allow_file.is_none();
         for bit in inner.bits(i) {
             let effect = names[bit];
-            if !none && permitted(&node.allow_fn, effect) && permitted(&node.allow_file, effect) {
+            if !none
+                && permitted(&node.cap, effect)
+                && permitted(&node.allow_fn, effect)
+                && permitted(&node.allow_file, effect)
+            {
                 continue;
             }
             if pending.is_empty() {
@@ -359,6 +366,7 @@ mod tests {
             declared: declared.iter().map(|s| s.to_string()).collect(),
             allow_fn: None,
             allow_file: None,
+            cap: None,
             edges: edges.iter().map(|e| (n(e), Pos::default())).collect(),
         }
     }

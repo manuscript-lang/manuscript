@@ -15,7 +15,7 @@ pub mod lint;
 pub mod mark;
 pub mod report;
 pub mod review;
-pub mod sha256;
+pub use ms_driver::sha256;
 pub mod tree;
 pub mod views;
 mod walk;
