@@ -35,7 +35,7 @@ fn generate(shape: String, n: Int) String:
 		for i in 1..n: out.append(f"    a{i} := a{i - 1} + 1\n")
 		out.append(f"    return a{n - 1} % 256\n")
 	else if shape == "long_interpolation":
-		out.append("export fn main() Int:\n    x := 1\n    s := \"")
+		out.append("export fn main() Int:\n    x := 1\n    s := f\"")
 		for i in 0..n: out.append("{x}a")
 		out.append("\"\n    return s.length() % 256\n")
 	else if shape == "many_impls":

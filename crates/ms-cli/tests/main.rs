@@ -46,3 +46,4 @@ mod test_many_files;
 mod vectorized_loops;
 mod verify;
 mod watch;
+mod workspace;

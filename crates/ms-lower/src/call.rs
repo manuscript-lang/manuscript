@@ -1699,7 +1699,12 @@ impl<'a> FnLower<'a> {
                         .zip(&vals)
                         .map(|(p, v)| (p.name, *v))
                         .collect();
-                    let v = self.field_default(&t, case, i, &earlier)?;
+                    // An omitted Void payload, as in `ok()`.
+                    let v = if params[i].ty.is(Builtin::Void) {
+                        self.b.unit()
+                    } else {
+                        self.field_default(&t, case, i, &earlier)?
+                    };
                     if defaults_left > 0
                         && let Some(key) = self.hold_resource_temp(v)?
                     {
