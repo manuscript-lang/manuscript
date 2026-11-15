@@ -995,6 +995,11 @@ mod tests {
                 v.to_bits()
             );
         };
+        // Every small subnormal: its integer significand is under 100 digits' worth, where a
+        // one-digit form (5e-323, not 4.9e-323) can exist.
+        for bits in 1u64..5000 {
+            check(f64::from_bits(bits));
+        }
         let mut x = 0x9e37_79b9_7f4a_7c15u64;
         let mut next = || {
             x ^= x << 13;

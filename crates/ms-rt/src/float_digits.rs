@@ -80,8 +80,10 @@ fn to_decimal(q: i32, c: u64) -> (u64, i32) {
     let vbr = round_to_odd(g1, g0, cbr << h);
 
     let s = vb >> 2;
-    if s >= 100 {
-        // A multiple of ten inside the interval gives one digit fewer than `s` does.
+    if s >= 10 {
+        // A multiple of ten inside the interval gives one digit fewer than `s` does. (Java's
+        // `Double.toString` starts at 100 because it always prints two digits; the shortest
+        // form of a small subnormal such as 5e-323 has one.)
         let sp10 = 10 * (s / 10);
         let tp10 = sp10 + 10;
         let up_in = vbl + out <= sp10 << 2;
