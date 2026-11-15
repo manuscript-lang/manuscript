@@ -18,6 +18,10 @@ Manuscript is small, explicit and value-oriented: records and enums hold data, f
 - **Waiting:** no `async`. A waiting call returns a Promise already running; start several, `wait_all` them. Streams are read with `for line in stream | lines`. Share state through one owner and a pipe.
 - **Tests:** `test "name":` blocks beside the code, run by `ms test`.
 
+## Changing existing code
+
+Read the file, its tests and `ms.toml` first, and match the style around you. Add an enum case, then let `ms check` list every `match` that must handle it. Change a signature, then fix each call the checker reports. Keep the change small, run `ms check --fix`, `ms test`, then `ms verify`. Add a `test` for the behavior you changed.
+
 ## Syntax card
 
 Use tabs for indentation. A trailing `:` opens a body; dedent ends it. A module contains imports and declarations; `main` is its entry point. Fields belong inside `type`; methods sit beside it with implicit `self`; `fn var` permits receiver mutation.
