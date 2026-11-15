@@ -1,0 +1,131 @@
+name: Release rehearsal
+
+# Rehearses a release without a tag and without publishing anything. It builds the six
+# archives through rust-dist.yml, serves them from a local web server, and runs the real
+# install scripts against them on every platform through MS_RELEASE_URL, then builds the
+# docs bundle the release workflow attaches. Run it by hand before cutting a release:
+#   gh workflow run release-rehearsal.yml --ref <branch>
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dist:
+    name: Archives
+    uses: ./.github/workflows/rust-dist.yml
+
+  install:
+    name: Install on ${{ matrix.os }}-${{ matrix.arch }}
+    needs: dist
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: linux, arch: amd64, runner: ubuntu-24.04 }
+          - { os: linux, arch: arm64, runner: ubuntu-24.04-arm }
+          - { os: darwin, arch: amd64, runner: macos-15-intel }
+          - { os: darwin, arch: arm64, runner: macos-15 }
+          - { os: windows, arch: amd64, runner: windows-2025 }
+          - { os: windows, arch: arm64, runner: windows-11-arm }
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/download-artifact@v8
+        with:
+          name: manuscript-rust-${{ matrix.os }}-${{ matrix.arch }}
+          path: release
+      - name: Install from the archives and run a project
+        env:
+          OS: ${{ matrix.os }}
+        run: |
+          set -eu
+          python3 -m http.server 8765 --bind 127.0.0.1 --directory release >server.log 2>&1 &
+          server=$!
+          trap 'kill $server' EXIT
+          sleep 2
+          export MS_RELEASE_URL=http://127.0.0.1:8765
+          expected="$(cat .msversion)"
+          install_dir="$RUNNER_TEMP/ms-install"
+
+          if [ "$OS" = windows ]; then
+            ms="$install_dir/ms.exe"
+            installer() { MS_INSTALL_DIR="$(cygpath -w "$install_dir")" pwsh -NoProfile -File website/static/install.ps1; }
+          else
+            ms="$install_dir/ms"
+            installer() { MS_INSTALL_DIR="$install_dir" sh website/static/install.sh; }
+          fi
+
+          # A checksum that does not match must stop the installer and leave no binary.
+          name="manuscript-rust-$OS-${{ matrix.arch }}"
+          suffix=tar.gz; if [ "$OS" = windows ]; then suffix=zip; fi
+          cp "release/$name.$suffix.sha256" "$RUNNER_TEMP/good.sha256"
+          echo "0000000000000000000000000000000000000000000000000000000000000000  $name.$suffix" > "release/$name.$suffix.sha256"
+          if installer; then echo "the installer accepted a bad checksum"; exit 1; fi
+          test ! -e "$ms" || { echo "a binary was installed after a bad checksum"; exit 1; }
+          cp "$RUNNER_TEMP/good.sha256" "release/$name.$suffix.sha256"
+
+          installer
+          "$ms" --version | tee version.txt
+          grep -q "$expected" version.txt
+
+          # Installing again replaces the binary in place.
+          installer
+          "$ms" --version
+
+          cd "$RUNNER_TEMP"
+          "$ms" init rehearsal-app
+          cd rehearsal-app
+          test "$("$ms" run ms.toml -- first second | tr -d '\r')" = "Arguments: 2"
+          "$ms" test
+
+      - name: The shell installer refuses Windows
+        if: matrix.os == 'windows'
+        run: |
+          if MS_RELEASE_URL=http://127.0.0.1:1 sh website/static/install.sh; then exit 1; fi
+
+  docs:
+    name: Docs bundle
+    needs: dist
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+      - uses: ./.github/actions/rust-env
+        with:
+          os: linux
+          arch: amd64
+      - uses: peaceiris/actions-hugo@v3
+        with:
+          hugo-version: '0.146.7'
+          extended: true
+      - name: Build the bundle the release attaches and unpack it as the Pages job does
+        run: |
+          set -eu
+          version="$(cat .msversion)"
+          tag="v$version"
+          make book BOOK_BASEURL="https://manuscript-lang.github.io/manuscript/versions/$tag/"
+          archive="manuscript-docs-$version.tar.gz"
+          tar -C .artifacts/book -czf "$archive" .
+          rm -rf site && mkdir -p "site/versions/$tag"
+          tar -xzf "$archive" -C "site/versions/$tag"
+          test -f "site/versions/$tag/index.html"
+          # Every absolute link in the archived book stays under its own versions/ path.
+          if grep -rhoE 'https://manuscript-lang.github.io/manuscript/[^"]*' "site/versions/$tag" --include=index.html | grep -v "/versions/$tag/" | grep -v '\.\(css\|js\|png\|svg\|ico\|json\|txt\|md\)'; then
+            echo "the archived book links outside its own path"; exit 1
+          fi
+      - uses: actions/upload-artifact@v7
+        with:
+          name: manuscript-docs-rehearsal
+          path: manuscript-docs-*.tar.gz
+          if-no-files-found: error
