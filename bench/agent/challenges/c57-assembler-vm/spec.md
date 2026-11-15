@@ -27,7 +27,7 @@ Labels in the text section take the index of the next instruction. Labels in the
 The assembler starts in the text section. Directives (the first word starts with `.`):
 
 - `.text`, `.data`: switch section (no operands; otherwise `invalid operand 'TEXT'`).
-- `.equ NAME, expr`: defines a constant (exactly two comma-separated operands, else `wrong number of operands for '.equ'`; NAME must be an identifier, else `invalid operand 'NAME'`). The expression is evaluated lazily when used, so it may refer to constants and labels defined anywhere; a circular definition is the error `circular definition of 'NAME'`.
+- `.equ NAME, expr`: defines a constant (exactly two comma-separated operands, else `wrong number of operands for '.equ'`; NAME must be an identifier, else `invalid operand 'NAME'`). The expression is evaluated lazily when used, so it may refer to constants and labels defined anywhere; a circular definition is the error `circular definition of 'NAME'`, reported on the line of the first use that evaluates it (the `.equ` lines themselves are not evaluated).
 - `.budget N`: sets the instruction budget (decimal integer 1..10000000, else `invalid operand 'TEXT'`). Default 100000. The last one wins. Allowed in either section.
 - Data directives, only in the data section (in the text section: `data directive in text section`):
   - `.word e1, e2, ...`: one word per expression (at least one operand, else `wrong number of operands for '.word'`).
