@@ -2,7 +2,7 @@
 
 claude-code (`claude -p`) + claude-sonnet-5-5, 19 challenges in ts, go, rust and ms, three trials per challenge and language (228 runs), `--jobs 4` on a 4-core cloud VM, 1800 s agent limit. `ms` is a release build of main at `87813684`, so this is the baseline before the `ms check --fix` repairs of #4018. The Manuscript workspace has the shipped skill installed (`ms skill -o .claude/skills`); every transcript of the first batch invokes it. Raw runs: `trials-2026-11-15-sonnet.jsonl`; `trials-2026-11-15-sonnet-interrupted.jsonl` holds 15 runs of unfinished cells from before the runner was restarted and is not counted. Reproduce the tables with `ms run bench/agent/report.ms -- bench/agent/results/trials-2026-11-15-sonnet.jsonl`.
 
-c55-jq-lite is left out: its reference solution is 68 KB against 17 to 38 KB for the other large challenges, and it timed out in all four languages on 2026-10-31. Cost as reported by the harness: about $68 for the 228 runs.
+c55-jq-lite is left out: its reference solution is 68 KB against 17 to 38 KB for the other large challenges, and it timed out in all four languages on 2026-10-31. Final sources are not committed this time (several Manuscript ones fail `make repo-check`). Cost as reported by the harness: about $68 for the 228 runs.
 
 | | pass (95% CI) | first build ok (95% CI) | turns | cost per passing run |
 |---|---:|---:|---:|---:|
