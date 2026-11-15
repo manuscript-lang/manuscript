@@ -12,14 +12,12 @@
 5MUD an implicit mapping key must stay on one line
 5WE3 explicit mapping keys are unsupported
 6BFJ by design: a collection cannot be a mapping key (keys are scalars, kept as their text)
-6CA3 tabs cannot indent YAML
 6M2F explicit mapping keys are unsupported
 6PBE explicit mapping keys are unsupported
 6XDY value differs from the suite
 7W2P explicit mapping keys are unsupported
 87E4 expected sequence comma
 8UDB unexpected mapping colon
-9C9N accepts invalid input
 9KAX tag handling gap (%TAG handles, tags on unusual nodes)
 9MMW unexpected mapping colon
 9SA2 an implicit mapping key must stay on one line
@@ -31,12 +29,9 @@ CN3R unexpected mapping colon
 CT4Q unexpected mapping colon
 DFF7 explicit mapping keys are unsupported
 DK3J unexpected indentation or additional document
-DK95/00 tabs cannot indent YAML
-DK95/01 accepts invalid input
 FP8R unexpected indentation or additional document
 FRK4 explicit mapping keys are unsupported
 GH63 explicit mapping keys are unsupported
-HS5T tabs cannot indent YAML
 JEF9/02 value differs from the suite
 JTV5 explicit mapping keys are unsupported
 K3WX an implicit mapping key must stay on one line
@@ -53,9 +48,7 @@ M5DY explicit mapping keys are unsupported
 M7A3 unexpected indentation or additional document
 NJ66 an implicit mapping key must stay on one line
 PW8X mapping keys must be strings
-Q5MG tabs cannot indent YAML
 Q9WF by design: a collection cannot be a mapping key (keys are scalars, kept as their text)
-QB6E accepts invalid input
 QF4Y unexpected mapping colon
 RR7F unexpected indentation or additional document
 RZP5 unexpected indentation or additional document
@@ -63,7 +56,6 @@ S9E8 explicit mapping keys are unsupported
 SBG9 by design: a collection cannot be a mapping key (keys are scalars, kept as their text)
 SKE5 unexpected indentation or additional document
 UT92 an implicit mapping key must stay on one line
-UV7Q tabs cannot indent YAML
 V9D5 explicit mapping keys are unsupported
 VJP3/01 an implicit mapping key must stay on one line
 W4TN unexpected indentation or additional document
@@ -71,10 +63,8 @@ X38W by design: a collection cannot be a mapping key (keys are scalars, kept as 
 X8DW explicit mapping keys are unsupported
 XW4D unexpected indentation or additional document
 Y79Y/000 accepts invalid input
-Y79Y/003 accepts invalid input
-Y79Y/004 accepts invalid input
-Y79Y/005 accepts invalid input
 ZWK4 unexpected indentation or additional document
+
 
 
 

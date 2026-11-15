@@ -214,7 +214,7 @@ test "YAML blank line folding retains byte node and malformed input contracts":
 
 	for malformed in [
 		"a: 'x\n\n  y", "a: \"x\n\n  y", "a: \"x\\\n\n  y\\q\"", "a: x\n\n  b: y",
-		"a: x\n\n  - y", "a: x\n\n \ty", "a: x\n # comment\n  y", "a: >--\n\n  x",
+		"a: x\n\n  - y", "a: x\n # comment\n  y", "a: >--\n\n  x",
 		"a: >\n  x\n \t\n  y", "a: >2\n  x\n y"
 	]:
 		cause := match parse(text: malformed):

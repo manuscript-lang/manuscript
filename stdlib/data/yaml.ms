@@ -1179,9 +1179,19 @@ fn indent(text: String) Int:
 
 fn indentation(context: Context, text: String) Int!:
 	spaces := indent(text)
-	if text.scalar_at(spaces, -1) == 9: return error(
-		invalid(context, "tabs cannot indent YAML")
-	)
+
+	// Indentation is spaces only. A tab after it is separation, allowed before a scalar
+	// or a flow collection but not before a block sequence entry, key or explicit key.
+	if text.scalar_at(spaces, -1) == 9:
+		rest := blank_trim_start(text)
+		if (
+			rest != ""
+			and (
+				sequence(rest)
+				or rest.starts_with("?")
+				or boundary(rest, colon: true) >= 0
+			)
+		): return error(invalid(context, "tabs cannot indent YAML"))
 
 	return ok(spaces)
 
@@ -1303,6 +1313,7 @@ fn inline_value(
 	line: Int,
 	column: Int,
 	as_string: Bool = false,
+	parent: Int = -1,
 ) Result[YamlValue, Error]:
 	// A plain scalar needs no character scan: only its trimmed text and a count.
 	if (
@@ -1351,6 +1362,29 @@ fn inline_value(
 		if document_marker(context.lines[context.index]): return error(
 			invalid(context, "unexpected document marker in flow node")
 		)
+
+		// A continuation line of a node inside a collection is indented past that
+		// collection; the common `key: [` layout may still close the bracket at the
+		// parent's column.
+		if (
+			parent >= 0
+			and blank_trim(context.lines[context.index]) != ""
+			and not (
+				state.quote == 0
+				and blank_trim_start(
+					context.lines[context.index]
+				).starts_with("#")
+			)
+		):
+			row := context.lines[context.index]
+			lead := blank_trim_start(row).scalar_at(0, default: 0)
+			closes := state.quote == 0 and (lead == 93 or lead == 125)
+			if indent(row) <= parent and not closes: return error(
+				invalid(
+					context,
+					"a continuation line must be indented past its parent",
+				)
+			)
 
 		next := "\n".concat(context.lines[context.index])
 		scan := scan_structure_part(next, "#", var state)
@@ -1677,6 +1711,7 @@ fn block_value(
 			start_line,
 			origin,
 			as_string,
+			parent: base,
 		)?
 	else:
 		skip(var context)
@@ -1780,6 +1815,19 @@ fn sequence_items(
 				).get("")
 			)
 			compact = sequence(item) or boundary(item, colon: true) >= 0
+
+			// A tab cannot indent a nested sequence: `-<tab>- x` is invalid.
+			after := blank_trim_start(line).slice(
+				1,
+				blank_trim_start(line).length(),
+			).get("")
+			gap := after.slice(0, after.length() - item.length()).get("")
+			if gap.contains("\t") and sequence(item): return error(
+				invalid(
+					context,
+					"a tab cannot indent a nested sequence",
+				)
+			)
 
 		var chain: List[Int] = []
 		if item.starts_with("-"): chain = nested_columns(line, base)

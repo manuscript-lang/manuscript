@@ -395,7 +395,6 @@ test "YAML inline document content retains its source row":
 test "YAML compact tab rewrites retain original scalar columns":
 	error_at("-\t\tkey: [one", 1, 13)?
 	error_at("- \t key: [one", 1, 14)?
-	error_at("-\t\t-\t\tkey: [one", 1, 16)?
 	error_at("-\t\tkey: ok\n- key: [one", 2, 12)?
 
 fn unsupported_at(text: String, line: Int) Unit!Error:
@@ -429,11 +428,9 @@ test "YAML source projection preserves compact document values":
 	expected := YamlValue.ArrayValue([YamlValue.ObjectValue(values)])
 	(parse("-\t\tkey: value") | expect_ok? | expect_equal(expected)?)
 	(parse("---\n-\t\tkey: value") | expect_ok? | expect_equal(expected)?)
-	(
-		parse("-\t\t-\t\tkey: value") | expect_ok? | expect_equal(
-			YamlValue.ArrayValue([expected.clone()])
-		)?
-	)
+
+	// A tab cannot indent a nested sequence.
+	_ := parse("-\t\t-\t\tkey: value") | expect_error?
 
 test "YAML block header origins distinguish identical quoted key text":
 	error_at("\"|bad\": |bad\n  x", 1, 10)?
@@ -909,3 +906,13 @@ test "YAML streams read one value per document":
 	_ := parse_all("---\n&a x\n---\n*a\n") | expect_error?
 	_ := parse_all("a: 1\n%YAML 1.2\n---\nb: 2\n") | expect_error?
 	_ := parse("one\n---\ntwo\n") | expect_error?
+
+test "YAML continuation lines are indented past their parent and tabs only separate":
+	// The common layout closes a bracket at the parent's column; content may not.
+	_ := parse("key: [\n  a,\n  b\n]\n")?
+	_ := parse("key: [\n  a,\nb]\n") | expect_error?
+	_ := parse("quoted: \"a\nb\"\n") | expect_error?
+	_ := parse("-\t- x\n") | expect_error?
+	_ := parse("a:\n\tb: 1\n") | expect_error?
+	_ := parse("a:\n \tword\n")?
+	_ := parse("\t[x]\n")?
