@@ -59,6 +59,12 @@ fn table(spec: &str) -> String {
     format!("{{ url = \"{url}\", {field} = \"{reference}\" }}")
 }
 
+/// A dependency on the repository of `spec` by version requirement.
+fn ranged(spec: &str, requirement: &str) -> String {
+    let (url, _) = spec.split_once('#').unwrap();
+    format!("{{ url = \"{url}\", version = \"{requirement}\" }}")
+}
+
 fn app(dir: &Path, dependencies: &str) {
     std::fs::create_dir_all(dir.join("src")).unwrap();
     std::fs::write(
@@ -104,7 +110,7 @@ fn fetch_pins_a_package_and_checks_work_offline() {
     assert!(fetched.status.success(), "{}", stderr(&fetched));
     let lock = std::fs::read_to_string(project.join("ms.lock")).unwrap();
     assert!(
-        lock.contains("\"@lib\" = ") && lock.contains(" sha256:"),
+        lock.contains("@v1.0.0\" = ") && lock.contains(" sha256:"),
         "{lock}"
     );
 
@@ -301,8 +307,8 @@ fn two_versions_of_one_package_are_named_when_their_types_meet() {
         &project,
         &format!(
             "[dependencies]\n\"@old\" = {}\n\"@new\" = {}\n",
-            table(&old),
-            table(&new)
+            ranged(&old, "1"),
+            ranged(&new, "2")
         ),
     );
     std::fs::write(
@@ -317,8 +323,9 @@ fn two_versions_of_one_package_are_named_when_their_types_meet() {
     let message = stderr(&check);
     assert!(
         message.contains("two versions of the package")
-            && message.contains("@old at v1.0.0")
-            && message.contains("@new at v2.0.0"),
+            && message.contains("@v1.0.0 at v1.0.0")
+            && message.contains("@v2.0.0 at v2.0.0")
+            && message.contains("separate copy"),
         "{message}"
     );
 }
@@ -544,4 +551,135 @@ fn sha_of(dir: &Path) -> String {
         .output()
         .unwrap();
     String::from_utf8(output.stdout).unwrap().trim().to_string()
+}
+
+/// Stores a package in `cache` as `ms install` would, and returns its lock line.
+fn stash(cache: &Path, url: &str, tag: &str, files: &[(&str, &str)]) -> String {
+    use ms_driver::project::packages::{hash_index, index_path, index_tree};
+    let scratch = cache.join("scratch");
+    let _ = std::fs::remove_dir_all(&scratch);
+    for (name, text) in files {
+        let path = scratch.join(name);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, text).unwrap();
+    }
+    let index = index_tree(&scratch).unwrap();
+    let hash = hash_index(&index);
+    std::fs::write(index_path(cache, &hash), index).unwrap();
+    std::fs::rename(&scratch, cache.join(&hash)).unwrap();
+    let repo = url.trim_start_matches("https://").trim_end_matches(".git");
+    format!(
+        "\"{repo}@{tag}\" = \"{url}#{tag} {} sha256:{hash}\"\n",
+        "1".repeat(40)
+    )
+}
+
+const WIRE_URL: &str = "https://github.com/acme/wire.git";
+
+/// An app that uses `@a` and `@b`, which both depend on wire; the lock and cache hold one copy of wire.
+fn diamond(dir: &Path, wire_manifest: &str, b_effects: &str) -> std::path::PathBuf {
+    let cache = dir.join("cache");
+    std::fs::create_dir_all(&cache).unwrap();
+    let wire = stash(
+        &cache,
+        WIRE_URL,
+        "v1.4.2",
+        &[
+            ("ms.toml", wire_manifest),
+            ("src/lib.ms", include_str!("packages/id_v1.ms")),
+        ],
+    );
+    let wire_dep = format!("{{ url = \"{WIRE_URL}\", version = \"1\" }}");
+    let a = stash(
+        &cache,
+        "https://github.com/acme/a.git",
+        "v1.0.0",
+        &[
+            (
+                "ms.toml",
+                &format!(
+                    "[project]\nname = \"a\"\nsource = \"src\"\n\n[dependencies]\n\"@wire\" = {wire_dep}\n"
+                ),
+            ),
+            ("src/lib.ms", include_str!("packages/diamond_a.ms")),
+        ],
+    );
+    let b = stash(
+        &cache,
+        "https://github.com/acme/b.git",
+        "v1.0.0",
+        &[
+            (
+                "ms.toml",
+                &format!(
+                    "[project]\nname = \"b\"\nsource = \"src\"\n\n[dependencies]\n\"@wire\" = {wire_dep}\n{b_effects}"
+                ),
+            ),
+            ("src/lib.ms", include_str!("packages/diamond_b.ms")),
+        ],
+    );
+    let project = dir.join("app");
+    app(
+        &project,
+        "[dependencies]\n\"@a\" = { url = \"https://github.com/acme/a.git\", version = \"1\" }\n\"@b\" = { url = \"https://github.com/acme/b.git\", version = \"1\" }\n",
+    );
+    std::fs::write(
+        project.join("src/main.ms"),
+        include_str!("packages/diamond_main.ms"),
+    )
+    .unwrap();
+    std::fs::write(project.join("ms.lock"), format!("{wire}{a}{b}")).unwrap();
+    project
+}
+
+const WIRE_MANIFEST: &str = "[project]\nname = \"wire\"\nsource = \"src\"\nversion = \"1.4.2\"\n";
+
+#[test]
+fn packages_that_share_a_dependency_share_one_copy_and_its_types() {
+    let dir = scratch("packages-diamond");
+    let project = diamond(&dir, WIRE_MANIFEST, "");
+    let cache = dir.join("cache");
+    // A value made through @a is accepted by @b: they reach one copy of wire.
+    let check = ms(&project, &cache, &["check", "ms.toml"]);
+    assert!(check.status.success(), "{}", stderr(&check));
+    // The lock satisfies every requirement, so installing needs no network.
+    let install = ms(&project, &cache, &["install"]);
+    assert!(install.status.success(), "{}", stderr(&install));
+    let lock = std::fs::read_to_string(project.join("ms.lock")).unwrap();
+    assert_eq!(
+        lock.matches("github.com/acme/wire@v1.4.2\" = ").count(),
+        1,
+        "{lock}"
+    );
+}
+
+#[test]
+fn a_tag_and_the_version_in_its_manifest_must_agree() {
+    let dir = scratch("packages-mistagged");
+    let wrong = WIRE_MANIFEST.replace("1.4.2", "1.4.1");
+    let project = diamond(&dir, &wrong, "");
+    let check = ms(&project, &dir.join("cache"), &["check", "ms.toml"]);
+    assert!(!check.status.success());
+    let message = stderr(&check);
+    assert!(
+        message.contains("holds ms.toml version 1.4.1, not 1.4.2")
+            && message.contains("ask the author to fix the tag"),
+        "{message}"
+    );
+}
+
+#[test]
+fn a_unified_copy_may_not_use_effects_a_dependent_did_not_allow() {
+    let dir = scratch("packages-widened");
+    let wide = format!("{WIRE_MANIFEST}effects = [\"std.fs.write\"]\n");
+    let project = diamond(&dir, &wide, "");
+    let check = ms(&project, &dir.join("cache"), &["check", "ms.toml"]);
+    assert!(!check.status.success());
+    let message = stderr(&check);
+    assert!(
+        message.contains("may use std.fs.write")
+            && message.contains("does not allow for @wire")
+            && message.contains("ask its author"),
+        "{message}"
+    );
 }

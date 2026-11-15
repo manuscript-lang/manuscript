@@ -13,9 +13,9 @@ A package is another project's source, fetched by name and version. `ms` pins it
 ms add https://github.com/manuscript-lang/ms-pg.git --sha <40-character commit> --allow
 ```
 
-`ms add` writes the dependency into `ms.toml`, downloads it with `git`, records the commit and a content hash in `ms.lock`, and prints what the package may reach. The name defaults to the repository name without a leading `ms-`, so this is `@pg`; `--as @name` picks another. Pass `--tag v1.0.0` instead of `--sha` when the repository has a tag you trust.
+`ms add` writes the dependency into `ms.toml`, downloads it with `git`, records the commit and a content hash in `ms.lock`, and prints what the package may reach. The name defaults to the repository name without a leading `ms-`, so this is `@pg`; `--as @name` picks another. ms-pg has no release tag yet, so this pins a commit. For a repository that tags releases, `--version 1` means any 1.x tag, as in Cargo, and `--tag v1.0.0` means exactly one tag.
 
-The result in `ms.toml` is a table with the git `url` and a `tag` or a full `sha`:
+The result in `ms.toml` is a table with the git `url` and one of `sha`, `tag` or `version`:
 
 ```toml
 [dependencies]
@@ -56,9 +56,13 @@ ms install --update @pg
 ms remove @pg
 ```
 
-`--update` resolves one dependency again and rewrites its lock line. To move to a new commit, edit the value in `ms.toml` and run `ms install`. `ms remove` takes the dependency out of `ms.toml` and `ms.lock`; the cached copy stays in the package cache.
+`--update` picks the highest matching version again and rewrites its lock line; without it, `ms install` keeps what the lock holds. To move to another commit, tag or major version, edit the value in `ms.toml` and run `ms install`. `ms remove` takes the dependency out of `ms.toml` and `ms.lock`; the cached copy stays in the package cache.
 
-Two versions of one repository can sit in a project under two names. Their types are different, and the checker says so when they meet: it names both paths and both tags.
+If two of your dependencies need the same repository, `ms install` builds one copy for every requirement in a compatible range (`^1.2` and `^1.4` share the highest 1.x). A different major version is another copy with its own types; when the two meet the checker names both versions. See [project configuration](../developer-tooling/builds/project-configuration.md#resolution).
+
+## Publish a package
+
+A package is a repository whose `ms.toml` has `source` and no `entry`. Give it a `version` and tag each release with the same version: `version = "1.2.0"` in `ms.toml` goes with the tag `v1.2.0` (the `v` is optional). A tag and a manifest version that disagree fail the build of everyone who uses that release, and the error names both.
 
 ## Rules in short
 
