@@ -928,6 +928,10 @@ impl Checker {
         });
         let def = Definition::new(&s, Kind::Native);
         let mut t = Type::new(self.syms, name, id, Kind::Native);
+        t.builtin = t.builtin.or(Builtin::source(
+            self.syms.str(module.file),
+            self.syms.str(name),
+        ));
         t.def = Some(def);
         *s.ty.borrow_mut() = Some(Rc::new(t));
         self.add_symbol(name, s, d.pos());

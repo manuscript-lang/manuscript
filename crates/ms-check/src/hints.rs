@@ -319,9 +319,8 @@ pub fn promise_use_hint(syms: ms_syntax::Names, actual: &Ty, expected: &Ty) -> S
         return "a call that waits returns a Promise; call wait() on it to get the result"
             .to_string();
     }
-    let is_promise = actual.is_source_type(syms, crate::suggestions::PROMISE_MODULE, "Promise")
-        && actual.args.len() == 1;
-    if !is_promise || expected.is_source_type(syms, crate::suggestions::PROMISE_MODULE, "Promise") {
+    let is_promise = actual.is(Builtin::Promise) && actual.args.len() == 1;
+    if !is_promise || expected.is(Builtin::Promise) {
         return String::new();
     }
     format!(
@@ -1043,9 +1042,9 @@ impl Checker {
 }
 
 /// Names the conversion when an arithmetic or comparison mixes Int and Float.
-pub fn int_float_mix_hint(syms: ms_syntax::Names, a: &Ty, b: &Ty) -> String {
-    let (i, f) = (a.display(syms).to_string(), b.display(syms).to_string());
-    let mixed = (i == "Int" && f == "Float") || (i == "Float" && f == "Int");
+pub fn int_float_mix_hint(a: &Ty, b: &Ty) -> String {
+    let mixed = (a.is(Builtin::Int) && b.is(Builtin::Float))
+        || (a.is(Builtin::Float) && b.is(Builtin::Int));
     if mixed {
         "convert the Int with value.to_float(), or the Float with value.truncate_to_int() (returns Int?)".to_string()
     } else {
@@ -1054,9 +1053,10 @@ pub fn int_float_mix_hint(syms: ms_syntax::Names, a: &Ty, b: &Ty) -> String {
 }
 
 /// Names the method that repeats text when `*` joins a String and an Int.
-pub fn text_repeat_hint(syms: ms_syntax::Names, a: &Ty, b: &Ty) -> String {
-    let (a, b) = (a.display(syms).to_string(), b.display(syms).to_string());
-    if (a == "String" && b == "Int") || (a == "Int" && b == "String") {
+pub fn text_repeat_hint(a: &Ty, b: &Ty) -> String {
+    if (a.is(Builtin::String) && b.is(Builtin::Int))
+        || (a.is(Builtin::Int) && b.is(Builtin::String))
+    {
         "to repeat text write text.repeat(count), which returns a Result (append '?' to propagate it)".to_string()
     } else {
         String::new()

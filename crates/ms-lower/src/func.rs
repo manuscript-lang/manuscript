@@ -5,6 +5,7 @@ use crate::{Error, Options};
 use ms_check::Program;
 use ms_check::api::Pos;
 use ms_check::api::hir::{Callable, CallableKind, ModuleHir};
+use ms_check::api::types::Builtin;
 use ms_check::api::types::{self as ct, BindingRef, Subst};
 use ms_check::fxmap::{HashMap, HashSet};
 use ms_mir::builder::{FuncBuilder, Var};
@@ -423,8 +424,7 @@ impl Cx {
             ms_check::api::ownership::Fact::ReturnsView,
         );
         // A function that returns a promise from a closure it is given keeps that closure alive.
-        f.keeps_scoped = result.is_source_type(self.syms, "@std/concurrency/promise.ms", "Promise")
-            && takes_function;
+        f.keeps_scoped = result.is(Builtin::Promise) && takes_function;
         let id = m.add_func(f);
         self.insts.insert(key, id);
         self.queue.push(Job {

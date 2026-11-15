@@ -163,6 +163,30 @@ pub(crate) fn self_binding(syms: ms_syntax::Names, contract: &Ty, implementor: &
     s
 }
 
+impl Method {
+    /// Whether the method supplies the sole operation of the interface `contract`: it implements
+    /// the interface, or it is a type's own method with that operation's name and exact
+    /// signature, `Self` being the receiver. The interface declares the name and the types.
+    pub fn supplies(&self, syms: ms_syntax::Names, contract: &Ty) -> bool {
+        if self.contract.as_ref().is_some_and(|c| c.id == contract.id) {
+            return true;
+        }
+        let Some(def) = &contract.def else {
+            return false;
+        };
+        let ops = def.operations.borrow();
+        let [op] = ops.as_slice() else {
+            return false;
+        };
+        self.is_inherent(syms)
+            && self.name() == Some(op.name)
+            && same(
+                &sub(&op.ty, &self_binding(syms, contract, &self.receiver)),
+                &self.ty,
+            )
+    }
+}
+
 /// Fixes receiver-dependent bounds and defaults while keeping method variables open.
 fn instantiate_operation_variables(variables: &[Ty], bindings: &Subst) -> Vec<Ty> {
     if bindings.is_empty() {
@@ -214,6 +238,7 @@ fn contract_operation(
         ),
         decl: op.decl.clone(),
         native: Native::Contract,
+        copies_elements: false,
     }))
 }
 
@@ -708,6 +733,8 @@ impl Checker {
                     index: Some(index),
                 }),
                 native: Native::Source,
+                // The bounds are resolved here, before a call substitutes the variables away.
+                copies_elements: vars.iter().any(|v| v.bounds().iter().any(implies_clonable)),
             };
             for v in &own {
                 self.scope.types.borrow_mut().remove(&v.name);
@@ -740,13 +767,14 @@ impl Checker {
                 variables: vars.clone(),
                 decl: None,
                 native: Native::Source,
+                copies_elements: false,
             }));
         }
         for op in &ops {
             if seen.contains(&op.name) {
                 continue;
             }
-            if contract.is_test_hooks(self.syms) {
+            if contract.is(Builtin::TestHooks) {
                 // This standard lifecycle contract has no-op defaults; retain ordinary
                 // checked methods so interface calls and generic bounds use normal dispatch.
                 let decl_id = self.m().facts_mut().fresh_id();
@@ -784,6 +812,7 @@ impl Checker {
                     variables: vars.clone(),
                     decl: Some(FuncRef::of_decl(decl)),
                     native: Native::Source,
+                    copies_elements: false,
                 };
                 self.add_method(Rc::new(m));
             } else {
@@ -1099,14 +1128,16 @@ impl Checker {
     fn has_json_encoder(&self, t: &Ty) -> bool {
         self.p.methods.iter().any(|m| {
             self.method_visible(m)
-                && (m.contract.as_ref().is_some_and(|c| {
-                    c.is_source_type(self.syms, "@std/data/json.ms", "JsonEncode")
-                }) || (m.is_inherent(self.syms)
-                    && m.name().is_some()
-                    && m.name()
-                        == self
-                            .session
-                            .sole_operation("@std/data/json.ms", "JsonEncode")))
+                && (m
+                    .contract
+                    .as_ref()
+                    .is_some_and(|c| c.is(Builtin::JsonEncode))
+                    || (m.is_inherent(self.syms)
+                        && m.name().is_some()
+                        && m.name()
+                            == self
+                                .session
+                                .sole_operation("@std/data/json.ms", "JsonEncode")))
                 && {
                     let mut s = Subst::default();
                     unify(&m.receiver, t, &variable_set(&m.variables), &mut s)
@@ -1400,19 +1431,28 @@ impl Checker {
         result
     }
 
+    /// The standard interface whose sole operation is `name` and which a type's own method
+    /// replaces on the built-in one: `Clonable` for `clone`, `Stringable` for `to_string`.
+    pub(crate) fn replaceable_contract(&self, name: Name) -> Option<Ty> {
+        ["Clonable", "Stringable"]
+            .into_iter()
+            .find(|c| self.session.sole_operation("@std/core.ms", c) == Some(name))
+            .map(|c| self.session.standard(c, vec![]))
+    }
+
     /// Methods named `name` available on `receiver`.
     pub(crate) fn methods(&self, receiver: &Ty, name: Name) -> Vec<MethodRef> {
-        // A type's own `clone` replaces the structural one: a resource's clone duplicates its
-        // handle and returns a `Result`. Its own `to_string` replaces the built-in text form.
-        if matches!(self.syms.str(name), "clone" | "to_string")
-            && matches!(receiver.kind, Kind::Type | Kind::Alternative)
+        // A type's own implementation of `Clonable` or `Stringable` replaces the built-in
+        // operation; the interface names the operation and, for `Stringable`, its signature.
+        if matches!(receiver.kind, Kind::Type | Kind::Alternative)
+            && self.replaceable_contract(name).is_some()
         {
             let mut own = self.implemented_methods(receiver, name);
-            if self.syms.str(name) == "to_string" {
-                // Only the no-argument form is the text conversion; `to_string(prefix)` is a
-                // method of its own that leaves the built-in one in place.
-                own.retain(|m| m.ty.params.is_empty());
-            }
+            // A resource's `clone` duplicates its handle and returns a `Result`, so only the
+            // arguments are fixed; `to_string(prefix)` is a method of its own that leaves the
+            // built-in text form in place. A `to_string()` of another result type is called
+            // as written but is not the text form (`Method::supplies` decides that).
+            own.retain(|m| m.ty.params.is_empty());
             if !own.is_empty() {
                 return own;
             }
@@ -1474,6 +1514,7 @@ impl Checker {
                 variables: Vec::new(),
                 decl: stdlib::standard_method_declaration(&contract, name),
                 native: Native::Builtin(name),
+                copies_elements: false,
             })];
         }
         result
@@ -1813,6 +1854,7 @@ pub(crate) fn native_method(
             variables,
             decl,
             native: Native::Builtin(native),
+            copies_elements: false,
         };
     if syms.str(name) == "clone"
         && (matches!(t.kind, Kind::Type | Kind::Alternative)
@@ -1879,9 +1921,8 @@ fn native_method_of(
         let operations = def.operations.borrow();
         for operation in operations.iter() {
             if operation.name == name {
-                let native = name;
                 return Some(native_of(
-                    native,
+                    name,
                     t,
                     sub(&operation.ty, &bindings),
                     instantiate_operation_variables(&session.operation_variables(&key), &bindings),

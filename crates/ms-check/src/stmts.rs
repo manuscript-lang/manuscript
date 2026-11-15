@@ -983,7 +983,7 @@ impl Checker {
             );
             return (true, false);
         }
-        if matches!(self.syms.str(t.id), "Int" | "String" | "Bool") {
+        if t.is(Builtin::Int) || t.is(Builtin::String) || t.is(Builtin::Bool) {
             return self.match_literals(pos, &t, arms, &info, body);
         }
         if t.kind != Kind::Alternative {
