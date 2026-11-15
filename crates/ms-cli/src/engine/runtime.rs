@@ -108,15 +108,28 @@ fn extract_at(
     })();
     // Windows publication and cleanup require the owned handle to be closed on every path.
     drop(file);
-    if let Err(error) = written.and_then(|()| std::fs::rename(&staged, &path)) {
-        let _ = std::fs::remove_file(&staged);
-        // Windows refuses to replace a library another thread is publishing or loading right now.
-        // Every publisher writes the same bytes, so a complete library already in place is a success.
+    let published = written.and_then(|()| publish(&staged, &path, len));
+    let _ = std::fs::remove_file(&staged);
+    if let Err(error) = published {
+        // Another thread may have published the same bytes while this one failed.
         if !std::fs::metadata(&path).is_ok_and(|m| m.len() == len) {
             return Err(failed("write", error));
         }
     }
     Ok(path)
+}
+
+/// Puts the complete `staged` file at `path` without replacing a complete file already there:
+/// Windows refuses to replace a file another thread is reading or loading, and fails that
+/// reader instead, so a library that is in place stays untouched. A missing or wrong-sized file is
+/// replaced by rename, and a filesystem without hard links falls back to rename as well.
+fn publish(staged: &Path, path: &Path, len: u64) -> std::io::Result<()> {
+    match std::fs::hard_link(staged, path) {
+        Ok(()) => return Ok(()),
+        Err(_) if std::fs::metadata(path).is_ok_and(|m| m.len() == len) => return Ok(()),
+        Err(_) => {}
+    }
+    std::fs::rename(staged, path)
 }
 
 /// `$XDG_CACHE_HOME`, else `$HOME/.cache`, else the temporary directory.
