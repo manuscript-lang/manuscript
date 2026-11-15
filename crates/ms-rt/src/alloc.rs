@@ -248,6 +248,9 @@ struct State {
     grow_committed: usize,
     #[cfg(any(test, feature = "stats"))]
     live: isize,
+    /// Allocations left before the allocation profiler takes its next sample; `i64::MAX` when
+    /// it is off, so the check in [`alloc`] never fires.
+    sample_left: i64,
     /// Allocations requested and bytes asked for since start (`stats` builds).
     #[cfg(feature = "stats")]
     requested: [u64; 2],
@@ -265,6 +268,7 @@ impl State {
             large_cached: 0,
             grow_chunk: usize::MAX,
             grow_committed: 0,
+            sample_left: i64::MAX,
             #[cfg(any(test, feature = "stats"))]
             live: 0,
             #[cfg(feature = "stats")]
@@ -506,6 +510,10 @@ pub fn alloc(size: usize) -> *mut u8 {
         s.requested[0] += 1;
         s.requested[1] += size as u64;
     }
+    s.sample_left -= 1;
+    if s.sample_left <= 0 {
+        sample_alloc(s, size);
+    }
     if size <= MAX_SMALL {
         let class = class_of(size.max(1));
         let head = s.free[class];
@@ -521,6 +529,19 @@ pub fn alloc(size: usize) -> *mut u8 {
         }
     }
     alloc_slow(size)
+}
+
+/// Hands the allocation profiler one sample and arms the next. `s` is the calling thread's state.
+#[cold]
+#[inline(never)]
+fn sample_alloc(s: &mut State, size: usize) {
+    s.sample_left = crate::profile::alloc_sample(size);
+}
+
+/// Starts allocation sampling on the calling thread: every `period`th allocation is a sample.
+pub fn sample_every(period: i64) {
+    // SAFETY: this thread's allocator state.
+    unsafe { (*STATE.ptr()).sample_left = period };
 }
 
 #[inline(never)]

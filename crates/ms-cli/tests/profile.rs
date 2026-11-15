@@ -10,7 +10,7 @@ use ms_cli::backend::{BackendResult, BuildRequest, Io};
 use ms_cli::invocation::{parse_invocation, validate};
 
 fn script_build(request: &BuildRequest, _io: &mut Io) -> BackendResult {
-    let script = "#!/bin/sh\nprintf '# hz=99\\nmain;work 30\\nmain;io 10\\n' > \"$MS_PROFILE\"\necho hello \"$@\"\nexit 3\n";
+    let script = "#!/bin/sh\nprintf '# hz=99\\nmain;work 30\\nmain;io 10\\n' > \"$MS_PROFILE\"\nif [ -n \"$MS_PROFILE_ALLOCS\" ]; then\nprintf 'main;work;[runtime] 256\\nmain;io 128\\n# period 128\\n' > \"$MS_PROFILE_ALLOCS\"\nprintf 'main;work;[runtime] 8192\\nmain;io 128\\n# period 128\\n' > \"$MS_PROFILE_ALLOCS.bytes\"\nfi\necho hello \"$@\"\nexit 3\n";
     std::fs::write(&request.output, script).unwrap();
     std::fs::set_permissions(&request.output, std::fs::Permissions::from_mode(0o755)).unwrap();
     Ok(0)
@@ -89,5 +89,46 @@ fn bundle_and_exit_status() {
     ]);
     assert_eq!(status, 1);
     assert!(stderr.contains("must be new"), "{stderr}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn allocations_are_opt_in_and_name_the_allocating_function() {
+    let dir = std::env::temp_dir().join(format!("ms-profile-allocs-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let source = dir.join("main.ms");
+    std::fs::write(&source, "fn main() Int { return 0 }\n").unwrap();
+
+    let plain = dir.join("plain");
+    ms(&[
+        "profile",
+        source.to_str().unwrap(),
+        "--out-dir",
+        plain.to_str().unwrap(),
+    ]);
+    assert!(
+        !plain.join("allocs.folded").exists(),
+        "off unless asked for"
+    );
+
+    let out = dir.join("capture");
+    let (status, stdout, _) = ms(&[
+        "profile",
+        source.to_str().unwrap(),
+        "--out-dir",
+        out.to_str().unwrap(),
+        "--allocs",
+    ]);
+    assert_eq!(status, 3);
+    // `[runtime];main;work` allocates through the runtime: the owner is `work`, not `[runtime]`.
+    let report = std::fs::read_to_string(out.join("allocs.txt")).unwrap();
+    assert!(report.contains("about 384 (8320 bytes)"), "{report}");
+    let work = report.lines().find(|l| l.ends_with("work")).unwrap();
+    assert!(work.contains("256") && work.contains("8192"), "{work}");
+    assert!(
+        stdout.contains("Allocations on the main thread"),
+        "{stdout}"
+    );
     let _ = std::fs::remove_dir_all(&dir);
 }

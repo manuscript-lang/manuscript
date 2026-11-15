@@ -66,6 +66,16 @@ The bundle keeps the executable and data for further investigation:
 | `profile.pb` | Open the profile in a pprof-compatible viewer. |
 | `manifest.json` | Find artifact names, sampling frequency and sample count. |
 
+## Count allocations {#profiling-allocations}
+
+CPU samples show where time goes, not who asks for memory. Add `--allocs` to also sample allocations:
+
+```sh
+ms profile words.ms --out-dir capture --allocs
+```
+
+The report then lists the functions that allocate most, in allocations and bytes, and the bundle adds `allocs.txt`, `allocs.folded` (stacks weighted by allocation count) and `allocs.folded.bytes` (weighted by bytes). A sample is a stack walk on every 128th allocation (set `MS_PROFILE_ALLOC_PERIOD` to change it; `1` counts every allocation), so counts are scaled estimates. Only the program's main thread is sampled. Without `--allocs` nothing is recorded.
+
 Use `--json` when another tool needs the versioned result instead of terminal prose. On Linux, the command also prints a `perf record` invocation for the executable; using it requires an installed `perf` and permission to sample processes.
 
 ## Stop at a source line with LLDB
