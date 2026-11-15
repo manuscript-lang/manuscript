@@ -49,9 +49,13 @@ pub fn members(
         checker.module = Some(Rc::new(ModuleData::empty(file)));
     }
     let mut candidates: BTreeSet<Name> = BTreeSet::new();
-    candidates.insert(n("to_string"));
-    if native_method(syms, &program.session, receiver, n("clone")).is_some() {
-        candidates.insert(n("clone"));
+    let text = program.session.sole_operation("@std/core.ms", "Stringable");
+    let clone = program.session.sole_operation("@std/core.ms", "Clonable");
+    candidates.extend(text);
+    if let Some(clone) = clone
+        && native_method(syms, &program.session, receiver, clone).is_some()
+    {
+        candidates.insert(clone);
     }
     let mut seen: Vec<Ty> = Vec::new();
     let mut collect = |t: &Ty, candidates: &mut BTreeSet<Name>| {
@@ -80,7 +84,7 @@ pub fn members(
         .is_some_and(|declaring| module != Some(declaring));
     if receiver.kind == Kind::Type && !hidden {
         for field in fields(receiver) {
-            if field.name == n("to_string") {
+            if Some(field.name) == text {
                 continue;
             }
             field_names.insert(field.name);

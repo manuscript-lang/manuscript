@@ -228,6 +228,14 @@ is `Data` by declaration, so a dynamic JSON object travels as a `JsonValue`.
 */
 export interface Data: ...
 
+// A type with its own text form. `"{value}"`, `print` and a container's text use
+// `to_string` when a record or alternative has one; the operation must return a
+// `String`. Every standard type with a text form meets this interface the same way, by
+// declaring `to_string`.
+export interface Stringable:
+	// Returns this value as text.
+	fn to_string() String
+
 // A type with a stable hash consistent with its `Equal` implementation.
 export interface Hashable:
 	// Returns a stable hash consistent with `equals` for the same value.

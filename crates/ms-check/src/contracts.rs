@@ -1402,19 +1402,66 @@ impl Checker {
         result
     }
 
+    /// The standard interface whose sole operation is `name` and which a type's own method
+    /// replaces on the built-in one: `Clonable` for `clone`, `Stringable` for `to_string`.
+    pub(crate) fn replaceable_contract(&self, name: Name) -> Option<Ty> {
+        ["Clonable", "Stringable"]
+            .into_iter()
+            .find(|c| self.session.sole_operation("@std/core.ms", c) == Some(name))
+            .map(|c| self.session.standard(c, vec![]))
+    }
+
+    /// Reports a type's own `to_string()` that does not return a `String`: it would meet the
+    /// `Stringable` operation by name only, so it is rejected instead of being ignored.
+    fn check_text_form(&mut self, module: &ModRef) {
+        let contract = self.session.standard("Stringable", vec![]);
+        let Some(op) = self.session.sole_operation("@std/core.ms", "Stringable") else {
+            return;
+        };
+        let mut bad: Vec<(ms_syntax::Pos, String)> = Vec::new();
+        for m in &self.p.methods {
+            let Some(decl) = &m.decl else { continue };
+            if m.module != module.file
+                || !m.is_inherent(self.syms)
+                || m.name() != Some(op)
+                || !m.ty.params.is_empty()
+                || !matches!(m.receiver.kind, Kind::Type | Kind::Alternative)
+                || m.supplies(self.syms, &contract)
+            {
+                continue;
+            }
+            bad.push((
+                decl.pos(),
+                format!(
+                    "{} must be declared as fn {}() String, the operation of Stringable",
+                    self.syms.str(op),
+                    self.syms.str(op)
+                ),
+            ));
+        }
+        for (pos, message) in bad {
+            self.type_error(pos, message);
+        }
+    }
+
     /// Methods named `name` available on `receiver`.
     pub(crate) fn methods(&self, receiver: &Ty, name: Name) -> Vec<MethodRef> {
-        // A type's own `clone` replaces the structural one: a resource's clone duplicates its
-        // handle and returns a `Result`. Its own `to_string` replaces the built-in text form.
-        if matches!(self.syms.str(name), "clone" | "to_string")
-            && matches!(receiver.kind, Kind::Type | Kind::Alternative)
+        // A type's own implementation of `Clonable` or `Stringable` replaces the built-in
+        // operation; the interface names the operation and, for `Stringable`, its signature.
+        if matches!(receiver.kind, Kind::Type | Kind::Alternative)
+            && let Some(contract) = self.replaceable_contract(name)
         {
             let mut own = self.implemented_methods(receiver, name);
-            if self.syms.str(name) == "to_string" {
-                // Only the no-argument form is the text conversion; `to_string(prefix)` is a
-                // method of its own that leaves the built-in one in place.
-                own.retain(|m| m.ty.params.is_empty());
-            }
+            // A resource's `clone` duplicates its handle and returns a `Result`, so only the
+            // arguments are fixed; `to_string(prefix)` is a method of its own that leaves the
+            // built-in text form in place.
+            own.retain(|m| {
+                if contract.is(Builtin::Stringable) {
+                    m.supplies(self.syms, &contract)
+                } else {
+                    m.ty.params.is_empty()
+                }
+            });
             if !own.is_empty() {
                 return own;
             }
@@ -1553,6 +1600,7 @@ impl Checker {
     }
 
     fn declaration_checks_inner(&mut self, module: &ModRef) {
+        self.check_text_form(module);
         for d in &module.decls {
             if matches!(d.decl().kind, DeclKind::Test(_) | DeclKind::Impl(_)) {
                 continue;

@@ -175,6 +175,8 @@ pub enum Builtin {
     Closeable,
     /// `Hashable`.
     Hashable,
+    /// `Stringable`.
+    Stringable,
     /// `Comparable`.
     Comparable,
     /// `Equal`.
@@ -329,6 +331,7 @@ impl Builtin {
             "Error" => Some(Builtin::Error),
             "Closeable" => Some(Builtin::Closeable),
             "Hashable" => Some(Builtin::Hashable),
+            "Stringable" => Some(Builtin::Stringable),
             "Comparable" => Some(Builtin::Comparable),
             "Equal" => Some(Builtin::Equal),
             "Data" => Some(Builtin::Data),
@@ -921,6 +924,31 @@ impl Method {
             }
             _ => false,
         }
+    }
+
+    /// Whether the method supplies the sole operation of the interface `contract`: it implements
+    /// the interface, or it is a type's own method with that operation's name and exact
+    /// signature, `Self` being the receiver. The interface declares the name and the types.
+    pub fn supplies(&self, syms: ms_syntax::Names, contract: &Ty) -> bool {
+        if self.contract.as_ref().is_some_and(|c| c.id == contract.id) {
+            return true;
+        }
+        let Some(def) = &contract.def else {
+            return false;
+        };
+        let ops = def.operations.borrow();
+        let [op] = ops.as_slice() else {
+            return false;
+        };
+        self.is_inherent(syms)
+            && self.name() == Some(op.name)
+            && same(
+                &sub(
+                    &op.ty,
+                    &crate::contracts::self_binding(syms, contract, &self.receiver),
+                ),
+                &self.ty,
+            )
     }
 
     /// The operation name.

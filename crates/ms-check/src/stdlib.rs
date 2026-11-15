@@ -23,8 +23,9 @@ use std::sync::Arc;
 include!(concat!(env!("OUT_DIR"), "/std_sources.rs"));
 
 /// Source-backed prelude types retain their standard declaration identities.
-pub const STANDARD_PRELUDE_NAMES: [&str; 12] = [
+pub const STANDARD_PRELUDE_NAMES: [&str; 13] = [
     "Equal",
+    "Stringable",
     "Comparable",
     "Hashable",
     "Clonable",
@@ -556,6 +557,9 @@ impl Loader<'_> {
         });
         let def = Definition::new(&s, Kind::Native);
         let mut t = Type::new(syms, name, id, Kind::Native);
+        t.builtin = t
+            .builtin
+            .or(Builtin::source(syms.str(module.file), syms.str(name)));
         t.def = Some(def);
         *s.ty.borrow_mut() = Some(Rc::new(t));
         if self.c.session.world(|w| w.symbols.contains_key(&name)) {
