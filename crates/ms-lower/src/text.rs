@@ -87,36 +87,38 @@ fn format_params(t: MTy) -> Vec<Param> {
 }
 
 impl Cx {
-    /// The function of the `fn T.to_string() String` a record or enum declares for `t`: its text
-    /// form wherever a value of `t` is shown, nested in a container too.
-    pub(crate) fn own_text_fn(&mut self, m: &mut Module, t: MTy) -> Result<Option<FuncId>, Error> {
-        if !matches!(m.types.kind(t), TyKind::Type(_) | TyKind::Alt(_)) {
+    /// The function of the `fn T.to_string() String` a record or enum declares for `concrete`
+    /// (specialized for a generic type's arguments): its text form wherever a value of that type
+    /// is shown, nested in a container too.
+    pub(crate) fn own_text_fn(
+        &mut self,
+        m: &mut Module,
+        concrete: &ms_check::api::types::Ty,
+    ) -> Result<Option<FuncId>, Error> {
+        use ms_check::api::types as ct;
+        if !matches!(concrete.kind, Kind::Type | Kind::Alternative) {
             return Ok(None);
         }
-        let own: Vec<_> = self
-            .methods
-            .iter()
-            .filter(|c| {
-                c.native == ms_check::api::types::Native::Source
-                    && c.ty.params.is_empty()
-                    && c.variables.is_empty()
-                    && matches!(c.receiver.kind, Kind::Type | Kind::Alternative)
-                    && c.decl
-                        .as_ref()
-                        .is_some_and(|d| self.syms.str(d.name()) == "to_string")
-            })
-            .cloned()
-            .collect();
-        for c in own {
-            if self.lower_ty(m, &c.receiver).ok() != Some(t) {
+        for at in self
+            .method_index
+            .candidates(concrete.id, ct::n("to_string"))
+        {
+            let c = &self.methods[at];
+            let Some(decl) = &c.decl else { continue };
+            if c.native != ct::Native::Source || !c.ty.params.is_empty() {
                 continue;
             }
-            let id = c.decl.as_ref().map(|d| d.id());
-            let callable = id
-                .and_then(|id| self.callables.get(&(c.module, id)).cloned())
+            let mut subst = ct::Subst::default();
+            let vars = ct::variable_set(&c.variables);
+            if !ct::unify(&c.receiver, concrete, &vars, &mut subst) {
+                continue;
+            }
+            let callable = self
+                .callables
+                .get(&(c.module, decl.id()))
+                .cloned()
                 .ok_or_else(|| Error::new("to_string not found"))?;
-            let f = self.function_for(m, &callable, &ms_check::api::types::Subst::default())?;
-            return Ok(Some(f));
+            return Ok(Some(self.function_for(m, &callable, &subst)?));
         }
         Ok(None)
     }
@@ -325,7 +327,10 @@ pub(crate) fn build_format(
         }
         _ => None,
     };
-    let own_text = cx.own_text_fn(b.m, t)?;
+    let own_text = match cx.source_tys.get(t.0 as usize).cloned() {
+        Some(concrete) => cx.own_text_fn(b.m, &concrete)?,
+        None => None,
+    };
     match b.m.types.kind(t).clone() {
         TyKind::Type(_) | TyKind::Alt(_) if own_text.is_some() => {
             // The type's own `to_string`, declared next to it.
@@ -637,8 +642,7 @@ impl<'a> FnLower<'a> {
         if !matches!(t.kind, Kind::Type | Kind::Alternative) {
             return Ok(None);
         }
-        let mty = self.cx.lower_ty(self.b.m, t)?;
-        let Some(f) = self.cx.own_text_fn(self.b.m, mty)? else {
+        let Some(f) = self.cx.own_text_fn(self.b.m, t)? else {
             return Ok(None);
         };
         let receiver = self.borrow(x);

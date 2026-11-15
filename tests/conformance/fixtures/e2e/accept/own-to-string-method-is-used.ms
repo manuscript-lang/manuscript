@@ -9,6 +9,12 @@ fn Money.to_string() String:
 type Plain:
     n: Int
 
+type Box[T]:
+    value: T
+
+fn Box[T].to_string() String:
+    return "box"
+
 type Wallet:
     owner: String
     balance: Money
@@ -37,6 +43,9 @@ fn main() Unit:
     print("{Line(4)}")
     print(Plain(2))
     print("{Plain(3)}")
+    print(Box(1).to_string())
+    print("{Box("x")}")
+    print([Box(1), Box(2)])
     print([m.clone()])
     print({"a": m.clone()})
     maybe: Money? := m.clone()
