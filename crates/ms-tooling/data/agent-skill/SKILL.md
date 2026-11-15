@@ -65,7 +65,7 @@ Four rules cover most compiler errors; an error that names one is that rule.
 ## References by task
 
 - Start here: [Idioms](references/idioms.md) (thirteen complete programs), [Standard calls](references/standard-calls.md) (every prelude call, exact), [Standard modules](references/standard-modules.md) (which `@std` module exports which names, for imports).
-- Language: [Program structure](references/program-structure.md), [Values and control](references/values-and-control.md), [Types and functions](references/types-and-functions.md).
+- Language: [Program structure](references/program-structure.md), [Projects, ms.toml and packages](references/projects-and-packages.md), [Values and control](references/values-and-control.md), [Types and functions](references/types-and-functions.md).
 - Data and failure: [Collections and pipelines](references/collections-and-pipelines.md), [Errors and optionals](references/errors-and-optionals.md), [Ownership and cleanup](references/ownership-and-cleanup.md).
 - Concurrency and services: [Effects and concurrency](references/effects-and-concurrency.md), [Servers and state](references/servers-and-state.md).
 - Checking: [Validation](references/validation.md) (tests, diagnostics, a wrong/right table of habits from other languages).

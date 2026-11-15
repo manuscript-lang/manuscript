@@ -241,6 +241,8 @@ pub struct Gen<'m> {
     pub scope_base: u32,
     /// Per compiled source function: the data for fault traces and profiles.
     pub dbg: Vec<FuncDbg>,
+    /// Named values of the functions lowered but not yet defined, by function index.
+    pub vars: HashMap<usize, Vec<LocalVar>>,
     /// Static type descriptors by type.
     pub desc_ids: HashMap<Ty, DataId>,
     /// Shared read-only blocks for payloadless cases of boxed alternatives, by `(alternative, case)`.
@@ -270,6 +272,39 @@ impl Gen<'_> {
     }
 }
 
+/// A named value of a function and the Cranelift labels of its register leaves.
+pub struct LocalVar {
+    pub name: String,
+    pub ty: ms_mir::types::Ty,
+    /// `(byte offset in the value, size, label)` per leaf.
+    pub pieces: Vec<(u32, u32, cranelift_codegen::ir::ValueLabel)>,
+}
+
+/// Where a leaf lives over a range of code offsets.
+#[derive(Clone, Copy)]
+pub enum VarLoc {
+    /// A register, by DWARF number.
+    Reg(u16),
+    /// A frame slot, as an offset from the canonical frame address.
+    Cfa(i64),
+}
+
+/// One leaf of a named value and its places over the code.
+pub struct VarPiece {
+    /// Byte offset in the value.
+    pub offset: u32,
+    pub size: u32,
+    /// `(start, end, place)` code ranges.
+    pub ranges: Vec<(u32, u32, VarLoc)>,
+}
+
+/// A named value with the places each of its leaves lives in.
+pub struct VarDbg {
+    pub name: String,
+    pub ty: ms_mir::types::Ty,
+    pub pieces: Vec<VarPiece>,
+}
+
 /// Debug facts about one compiled function.
 pub struct FuncDbg {
     pub id: FuncId,
@@ -281,6 +316,8 @@ pub struct FuncDbg {
     pub ranges: Vec<(u32, u32, u32, u32)>,
     /// Exact known source spans `(start, end, file, line)`; gaps stay unmapped in DWARF.
     pub dwarf_ranges: Vec<(u32, u32, u32, u32)>,
+    /// Parameters and locals a debugger can show.
+    pub vars: Vec<VarDbg>,
 }
 
 impl<'m> Gen<'m> {
@@ -726,6 +763,7 @@ fn compile_with_isa(
         scopes: Vec::new(),
         scope_base: 0,
         dbg: Vec::new(),
+        vars: HashMap::new(),
         tables: None,
         desc_ids: HashMap::new(),
         unit_blocks: HashMap::new(),
@@ -818,7 +856,9 @@ fn compile_with_isa(
                         if let Some(u) = l.unsupported.clone() {
                             return Err(Error(format!("{}: unsupported: {u}", f.name)));
                         }
+                        let vars = std::mem::take(&mut l.vars);
                         temps = l.finish();
+                        g.vars.insert(i, vars);
                     }
                     crate::slotshare::share(&mut ctx.func, &temps);
                     let fid = g.funcs[i];
@@ -964,7 +1004,7 @@ fn define_with(
     g.module
         .define_function(id, ctx)
         .map_err(|e| Error(format!("{name}: {e:?}")))?;
-    finish(g, ctx, id, name, source)
+    finish(g, ctx, id, name, source, Vec::new())
 }
 
 /// Lowered functions in flight at once; bounds the contexts held.
@@ -1079,7 +1119,8 @@ impl Pipeline {
         g.module
             .define_function_bytes(id, alignment, cc.buffer.data(), &relocs)
             .map_err(|e| Error(format!("{}: {e:?}", f.name)))?;
-        finish(g, &mut ctx, id, &f.name, Some(f))
+        let vars = g.vars.remove(&i).unwrap_or_default();
+        finish(g, &mut ctx, id, &f.name, Some(f), vars)
     }
 }
 
@@ -1122,6 +1163,7 @@ fn finish(
     id: FuncId,
     name: &str,
     source: Option<&Func>,
+    vars: Vec<LocalVar>,
 ) -> Result<(), Error> {
     {
         let cc = ctx.compiled_code().expect("function compiled");
@@ -1156,10 +1198,19 @@ fn finish(
                 (first.unwrap_or(u32::MAX), 0)
             }
         };
+        // The prologue belongs to the declaration, so a debugger's breakpoint on the function
+        // lands after the parameters are in place: at the first row of the body.
+        if let (Some(f), Some(&(first, ..))) = (source, dwarf_ranges.first())
+            && !f.loc.is_none()
+            && first > 0
+        {
+            dwarf_ranges.insert(0, (0, first, f.loc.file, f.loc.line));
+        }
         if source.is_none() && ranges.is_empty() {
             g.module.clear_context(ctx);
             return Ok(());
         }
+        let vars = vars.iter().map(|v| var_dbg(g, cc, v)).collect::<Vec<_>>();
         g.dbg.push(FuncDbg {
             id,
             name: source.map_or_else(|| name.to_string(), |f| f.name.clone()),
@@ -1168,10 +1219,50 @@ fn finish(
             size: cc.code_buffer().len() as u32,
             ranges,
             dwarf_ranges,
+            vars,
         });
     }
     g.module.clear_context(ctx);
     Ok(())
+}
+
+/// Where the leaves of `v` live, from the ranges Cranelift tracked for their labels.
+fn var_dbg(g: &Gen, cc: &cranelift_codegen::CompiledCode, v: &LocalVar) -> VarDbg {
+    use cranelift_codegen::ValueLocRange;
+    let isa = g.module.isa();
+    let pieces = v
+        .pieces
+        .iter()
+        .map(|&(offset, size, label)| {
+            let ranges = cc
+                .value_labels_ranges
+                .get(&label)
+                .map(|rs| {
+                    rs.iter()
+                        .filter_map(|r: &ValueLocRange| {
+                            let loc = match r.loc {
+                                cranelift_codegen::LabelValueLoc::Reg(reg) => {
+                                    VarLoc::Reg(isa.map_regalloc_reg_to_dwarf(reg).ok()?)
+                                }
+                                cranelift_codegen::LabelValueLoc::CFAOffset(o) => VarLoc::Cfa(o),
+                            };
+                            Some((r.start, r.end, loc))
+                        })
+                        .collect()
+                })
+                .unwrap_or_default();
+            VarPiece {
+                offset,
+                size,
+                ranges,
+            }
+        })
+        .collect();
+    VarDbg {
+        name: v.name.clone(),
+        ty: v.ty,
+        pieces,
+    }
 }
 
 /// Emits the C `main(argc, argv)` that hands the entry function to the runtime.

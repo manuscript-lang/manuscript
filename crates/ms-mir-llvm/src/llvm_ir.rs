@@ -49,6 +49,9 @@ const READS_ONLY: &str = " nounwind willreturn nofree nosync memory(read)";
 /// An LLVM module under construction.
 pub struct LlvmModule {
     di: DebugInfo,
+    /// The module's types as a debugger shows them (`ms_mir::debug_types`); written once, in the
+    /// first unit, since every unit's debug info would otherwise repeat them.
+    pub debug_types: Vec<ms_mir::debug_types::DebugType>,
     /// Fault call sites numbered so far (unique across the module).
     sites: u32,
     /// Function definitions in emission order.
@@ -312,6 +315,10 @@ impl DebugInfo {
     }
 }
 
+/// Placeholder in the compile unit's node for `globals`, which only the first unit has: the
+/// anchor that keeps the Manuscript types in the debug info (see `type_metadata`).
+const RETAINED_TYPES: &str = "@@RETAINED@@";
+
 /// Metadata ids fixed by [`LlvmModule::finish`]: compile unit, two module flags, the empty
 /// type list and the subroutine type; file `i` is `FIRST_FILE + i`.
 const FIRST_FILE: usize = 5;
@@ -384,6 +391,7 @@ impl LlvmModule {
         }
         let nfiles = files.len();
         let mut m = LlvmModule {
+            debug_types: Vec::new(),
             sites: 0,
             di: DebugInfo {
                 meta: Vec::new(),
@@ -726,7 +734,7 @@ impl LlvmModule {
         tail.push_str("!llvm.dbg.cu = !{!0}\n!llvm.module.flags = !{!1, !2}\n");
         let _ = writeln!(
             tail,
-            "!0 = distinct !DICompileUnit(language: DW_LANG_C99, file: !{}, producer: \"Manuscript\", isOptimized: true, runtimeVersion: 0, emissionKind: LineTablesOnly)",
+            "!0 = distinct !DICompileUnit(language: DW_LANG_C99, file: !{}, producer: \"Manuscript\", isOptimized: true, runtimeVersion: 0, emissionKind: LineTablesOnly{RETAINED_TYPES})",
             FIRST_FILE + first_file
         );
         tail.push_str("!1 = !{i32 2, !\"Debug Info Version\", i32 3}\n");
@@ -863,13 +871,145 @@ impl LlvmModule {
                     s.push('\n');
                 }
             }
-            s.push_str(&tail);
+            let retained = if gi == 0 && !self.debug_types.is_empty() {
+                let first_file = self.di.files.iter().position(Option::is_some).unwrap_or(0);
+                let (nodes, globals) =
+                    self.type_metadata(self.di.meta.len(), FIRST_FILE + first_file);
+                s.push_str(&nodes);
+                s.push_str(
+                    "@\"ms.debug_types\" = hidden constant i8 0, !dbg !DEBUG_TYPES_GLOBAL\n\
+                     @llvm.used = appending global [1 x ptr] [ptr @\"ms.debug_types\"], section \"llvm.metadata\"\n",
+                );
+                // The global's expression node id is only known once the nodes are numbered.
+                let at = s.rfind("!DEBUG_TYPES_GLOBAL").expect("anchor written");
+                s.replace_range(at..at + "!DEBUG_TYPES_GLOBAL".len(), &format!("!{globals}"));
+                format!(", globals: !{{!{globals}}}")
+            } else {
+                String::new()
+            };
+            s.push_str(&tail.replace(RETAINED_TYPES, &retained));
             out.push(Void {
                 ir: s,
                 unoptimized: *unoptimized,
             });
         }
         out
+    }
+
+    /// The metadata nodes describing `debug_types`, numbered from `base`, and the id of the global
+    /// variable expression that anchors them. The anchor is the constant `ms.debug_types`, a union
+    /// with one member per type: a debugger can `ptype` it for any Manuscript type, and the
+    /// types stay alive in the linked image (macOS `dsymutil` drops a type no live entry refers
+    /// to, and the line-tables-only unit has no variables that would).
+    fn type_metadata(&self, base: usize, file: usize) -> (String, usize) {
+        use ms_mir::debug_types::{DebugKind, Encoding};
+        let types = &self.debug_types;
+        let mut next = base + types.len();
+        let mut out = String::new();
+        let bits = |bytes: u32| u64::from(bytes) * 8;
+        let members = |out: &mut String,
+                       next: &mut usize,
+                       owner: usize,
+                       list: &[ms_mir::debug_types::Member]| {
+            if list.is_empty() {
+                return 3;
+            }
+            let ids: Vec<usize> = list
+                .iter()
+                .map(|member| {
+                    let id = *next;
+                    *next += 1;
+                    let _ = writeln!(
+                        out,
+                        "!{id} = !DIDerivedType(tag: DW_TAG_member, name: \"{}\", scope: !{owner}, baseType: !{}, size: {}, offset: {})",
+                        metadata_string(&member.name),
+                        base + member.ty,
+                        bits(types[member.ty].size),
+                        bits(member.offset)
+                    );
+                    id
+                })
+                .collect();
+            let elements = *next;
+            *next += 1;
+            let refs: Vec<String> = ids.iter().map(|i| format!("!{i}")).collect();
+            let _ = writeln!(out, "!{elements} = !{{{}}}", refs.join(", "));
+            elements
+        };
+        for (i, t) in types.iter().enumerate() {
+            let id = base + i;
+            let name = metadata_string(&t.name);
+            let size = bits(t.size);
+            match &t.kind {
+                DebugKind::Base(e) => {
+                    let enc = match e {
+                        Encoding::Bool => "DW_ATE_boolean",
+                        Encoding::Signed => "DW_ATE_signed",
+                        Encoding::Unsigned => "DW_ATE_unsigned",
+                        Encoding::Float => "DW_ATE_float",
+                    };
+                    let _ = writeln!(
+                        out,
+                        "!{id} = !DIBasicType(name: \"{name}\", size: {size}, encoding: {enc})"
+                    );
+                }
+                DebugKind::Pointer(target) => {
+                    let target = target.map_or(", baseType: null".to_string(), |t| {
+                        format!(", baseType: !{}", base + t)
+                    });
+                    let _ = writeln!(
+                        out,
+                        "!{id} = !DIDerivedType(tag: DW_TAG_pointer_type, name: \"{name}\"{target}, size: 64)"
+                    );
+                }
+                DebugKind::Struct(list) | DebugKind::Union(list) => {
+                    let tag = if matches!(t.kind, DebugKind::Struct(_)) {
+                        "DW_TAG_structure_type"
+                    } else {
+                        "DW_TAG_union_type"
+                    };
+                    let elements = members(&mut out, &mut next, id, list);
+                    let _ = writeln!(
+                        out,
+                        "!{id} = distinct !DICompositeType(tag: {tag}, name: \"{name}\", size: {size}, elements: !{elements})"
+                    );
+                }
+            }
+        }
+        // The anchor: a union of every type as a member, a global of that type, and its expression.
+        let anchor = next;
+        let member_ids: Vec<String> = (0..types.len())
+            .map(|i| format!("!{}", anchor + 1 + i))
+            .collect();
+        let size = types.iter().map(|t| bits(t.size)).max().unwrap_or(0);
+        let _ = writeln!(
+            out,
+            "!{anchor} = distinct !DICompositeType(tag: DW_TAG_union_type, name: \"ms.types\", size: {size}, elements: !{})",
+            anchor + 1 + types.len()
+        );
+        for (i, t) in types.iter().enumerate() {
+            let _ = writeln!(
+                out,
+                "!{} = !DIDerivedType(tag: DW_TAG_member, name: \"{}\", scope: !{anchor}, baseType: !{}, size: {})",
+                anchor + 1 + i,
+                metadata_string(&t.name),
+                base + i,
+                bits(t.size)
+            );
+        }
+        let elements = anchor + 1 + types.len();
+        let _ = writeln!(out, "!{elements} = !{{{}}}", member_ids.join(", "));
+        let var = elements + 1;
+        let _ = writeln!(
+            out,
+            "!{var} = distinct !DIGlobalVariable(name: \"ms.debug_types\", linkageName: \"ms.debug_types\", scope: !{file}, file: !{file}, line: 1, type: !{anchor}, isLocal: false, isDefinition: true)"
+        );
+        let expr = var + 1;
+        let _ = writeln!(
+            out,
+            "!{expr} = !DIGlobalVariableExpression(var: !{var}, expr: !DIExpression())"
+        );
+        (out, expr)
     }
 
     /// Writes `available_externally` copies of the small functions other units define that this
