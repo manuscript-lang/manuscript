@@ -67,3 +67,12 @@ test "POSIX resolution handles long relative tails and absolute resets":
 	for unused in 0..512:
 		parents.append("a/..")
 	expect_equal((paths.resolve("/base/", parents)?), "/base")?
+
+test "windows namespace prefixes join and normalize without doubled separators":
+	paths := win32()
+	expect_equal(paths.join(["\\\\?\\", "x"]), "\\\\?\\x")?
+	expect_equal(paths.join(["\\\\.\\", "pipe", "name"]), "\\\\.\\pipe\\name")?
+	expect_equal(paths.normalize("\\\\?\\"), "\\\\?\\")?
+	expect_equal(paths.normalize("\\\\?\\."), "\\\\?\\")?
+	expect_equal(paths.normalize("\\\\?\\a"), "\\\\?\\a")?
+	expect_equal(paths.normalize("\\\\?\\C:\\a\\..\\b"), "\\\\?\\C:\\b")?

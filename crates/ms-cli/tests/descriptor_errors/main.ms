@@ -21,7 +21,8 @@ fn check_failed_writer(size: Int) Unit!:
     for unused in 0..2:
         failure := writer.flush() | expect_error?
         expect_equal(failure.kind, "EIO")?
-        expect_equal(failure.message.starts_with("write: os error "), true)?
+        expect_equal(failure.message.starts_with("write: "), true)?
+        expect_equal(failure.message.contains("os error"), false)?
 
     // A failed descriptor never queues more bytes or reports a later empty flush as successful.
     repeated := writer.write("again".to_bytes()) | expect_error?

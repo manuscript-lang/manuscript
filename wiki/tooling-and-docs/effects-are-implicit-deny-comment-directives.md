@@ -6,5 +6,7 @@ Decision: the owner chose a function effect system with no grammar change. A fun
 
 Apply when: touching effect directives, MSL116, stdlib tags or `ms review` effect rows. Authority is charged where obtained (closure literal, function value, interface conversion, generic instantiation), not where called. A function's own lines only tighten its file header. Rollout is a warning first, an error at a later release.
 
+Implicit dispatch is charged too: `==` and `!=` charge the operand type's own `equals`, and a method whose receiver declares an `Equal`, `Hashable` or `Comparable` bound on a type argument (a `Set` or `Map` key included) charges that type's own `equals`, `hash` or `compare` (#3977). Ordering operators take no user type.
+
 Evidence: [proposal](../../proposals/function-effects.md), `crates/ms-check/src/effect_reach.rs`, `crates/ms-tooling/tests/lint_effects.rs`.
 Verify: `cargo test -p ms-tooling --test it lint_effects`; `ms lint` on a helper that calls `print` reports MSL116 with the path.
