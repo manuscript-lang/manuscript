@@ -303,10 +303,10 @@ fn var Parser.accept_op(o: String) Bool:
 
 	return false
 
-fn var Parser.expect_kw(w: String) Unit!:
+fn var Parser.expect_kw(w: String) Void!:
 	if not self.accept_kw(w): return error(syn())
 
-fn var Parser.expect_op(o: String) Unit!:
+fn var Parser.expect_op(o: String) Void!:
 	if not self.accept_op(o): return error(syn())
 
 fn var Parser.name() String!:
@@ -756,7 +756,7 @@ fn has_agg(nodes: List[Node], id: Int) Bool:
 		if has_agg(nodes, a): return true
 	return false
 
-fn resolve(var nodes: List[Node], id: Int, rc: Rctx, in_agg: Bool) Unit!:
+fn resolve(var nodes: List[Node], id: Int, rc: Rctx, in_agg: Bool) Void!:
 	kind := nodes[id].kind
 	if kind == LIT: return
 
@@ -1426,7 +1426,7 @@ fn order_cmp(a: OutRow, b: OutRow, ords: List[OrderSpec]) Int:
 	return 0
 
 // ---------- DML ----------
-fn check_row(t: Table, row: List[Val]) Unit!:
+fn check_row(t: Table, row: List[Val]) Void!:
 	var i = 0
 
 	while i < t.cols.length():
@@ -1439,7 +1439,7 @@ fn check_row(t: Table, row: List[Val]) Unit!:
 
 		i += 1
 
-fn check_pk(t: Table, rows: List[List[Val]]) Unit!:
+fn check_pk(t: Table, rows: List[List[Val]]) Void!:
 	if t.pk < 0: return
 
 	var seen = Set[String]()
@@ -1643,7 +1643,7 @@ fn run_chunk(var db: Map[String, Table], ch: Chunk) String!:
 
 // ms: allow_effect std.console.read
 // ms: allow_effect std.console.write
-fn main() Unit!:
+fn main() Void!:
 	data := read_all(stdin())?
 	chunks := lex(data)
 	var db = Map[String, Table]()

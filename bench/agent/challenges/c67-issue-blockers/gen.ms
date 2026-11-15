@@ -10,7 +10,7 @@ import (
 	read_text from "../../lib/text.ms",
 )
 
-fn add(var cs: Cases, name: String, script: String) Unit:
+fn add(var cs: Cases, name: String, script: String) Void:
 	cs.push(name, script)
 
 // The entries of c60-issue-tracker's hidden cases.
@@ -22,7 +22,7 @@ fn c60_inputs() List[JsonValue]:
 
 WF := "workflow\ninitial: todo\ntodo -> doing, done, wontfix\ndoing -> review requires assignee, todo\nreview -> done requires labels, doing\nfinal: done, wontfix\nend\ncreate A\ncreate B\ncreate C\ncreate D\n"
 
-export fn gen_c67() Unit:
+export fn gen_c67() Void:
 	var cs = Cases(build_oracle("c67-issue-blockers"))
 
 	for entry in c60_inputs():

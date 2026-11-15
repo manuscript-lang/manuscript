@@ -553,7 +553,7 @@ fn var Ctx.call_func(fname: String, rest: String) String!:
 
 // ---------- parsing ----------
 
-fn var Ctx.setup(cv: Map[String, String]) Unit:
+fn var Ctx.setup(cv: Map[String, String]) Void:
 	self.vars = Map[String, Var]()
 	self.cmdvars = Set[String]()
 	self.rules = Map[String, Rule]()
@@ -572,7 +572,7 @@ fn var Ctx.setup(cv: Map[String, String]) Unit:
 		self.vars[e.key.clone()] = Var(e.value.clone(), false)
 		self.cmdvars.add(e.key.clone())
 
-fn var Ctx.close_rule() Unit:
+fn var Ctx.close_rule() Void:
 	if not self.rule_open: return
 
 	self.rule_open = false
@@ -654,7 +654,7 @@ fn split_cond(s: String) List[String]?:
 
 	return parts
 
-fn var Ctx.parse(src: List[String]) Unit!:
+fn var Ctx.parse(src: List[String]) Void!:
 	n := src.length()
 	var i = 0
 
@@ -883,7 +883,7 @@ fn var Ctx.parse(src: List[String]) Unit!:
 		return error(self.fatal("missing 'endif'"))
 
 	self.line = 0
-	return ok(unit)
+	return ok()
 
 fn Ctx.default_goal() String:
 	for t in self.order:
@@ -1009,7 +1009,7 @@ fn var Ctx.run_recipe(
 	pre: List[String],
 	was_in: Bool,
 	mt: Int,
-) Unit!:
+) Void!:
 	self.ran += 1
 
 	var upd = List[String]()
@@ -1072,7 +1072,7 @@ fn var Ctx.run_recipe(
 		tv := self.tick()
 		self.files[t.clone()] = tv
 
-	return ok(unit)
+	return ok()
 
 fn var Ctx.update(t: String, needed: String) Bool!:
 	if self.memo.contains(t): return ok(self.memo.get_or(t, false))
@@ -1141,7 +1141,7 @@ fn var Ctx.update(t: String, needed: String) Bool!:
 	self.memo[t.clone()] = changed
 	return ok(changed)
 
-fn var Ctx.do_build(goals_in: List[String]) Unit!:
+fn var Ctx.do_build(goals_in: List[String]) Void!:
 	var goals = goals_in.clone()
 
 	if goals.length() == 0:
@@ -1172,9 +1172,9 @@ fn var Ctx.do_build(goals_in: List[String]) Unit!:
 			else:
 				self.out.append("make: Nothing to be done for '{g}'.")
 
-	return ok(unit)
+	return ok()
 
-fn var Ctx.deps_visit(t: String, path: List[String]) Unit!:
+fn var Ctx.deps_visit(t: String, path: List[String]) Void!:
 	r := self.resolve(t)
 	var all = dedup(r.pre)
 	for p in dedup(r.oo): all.append(p.clone())
@@ -1204,7 +1204,7 @@ fn var Ctx.deps_visit(t: String, path: List[String]) Unit!:
 		self.deps_visit(p, np)?
 		self.dres.append(p.clone())
 
-	return ok(unit)
+	return ok()
 
 // ---------- driver ----------
 
@@ -1229,7 +1229,7 @@ fn fmt_rule(name: String, pre: List[String], oo: List[String]) String:
 
 // ms: allow_effect std.console.read
 // ms: allow_effect std.console.write
-fn main() Unit!:
+fn main() Void!:
 	b := read_all(stdin())?
 	text := b.decode_utf8().get("")
 	all := text.lines()
@@ -1292,7 +1292,7 @@ fn main() Unit!:
 				r := ctx.do_build(goals)
 
 				if _u := r:
-					unit
+					void
 				else:
 					ctx.out.append(r.err().message)
 
