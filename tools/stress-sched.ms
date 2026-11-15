@@ -23,7 +23,12 @@ import (
 
 fixtures := "tests/conformance/fixtures/e2e/stdlib"
 
+// Whether `ms test` is the fixture's own phase: a file declaring another phase (parse,
+// check, run) is not meant to pass `ms test`.
 fn has_tests(source: String) Bool:
+	if source.contains("// conform: phase="): return source.contains(
+		"// conform: phase=test\n"
+	)
 	return source.starts_with("test \"") or source.contains("\ntest \"")
 
 // One `ms test` run of `file`: its exit status and the last lines of its output.
