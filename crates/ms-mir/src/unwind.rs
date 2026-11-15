@@ -1341,21 +1341,7 @@ fn function(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
                 steps = w.steps.iter();
             }
             if let Some((_, target)) = steps.as_slice().first().filter(|(at, _)| *at == k) {
-                // A discard pops its entry and every newer one, so the owners above the first
-                // one that died are registered again.
-                let alive = |v: &Value| target.binary_search_by_key(&v.0, |t| t.0).is_ok();
-                if let Some(i) = stack.iter().position(|(v, _)| !alive(v)) {
-                    out.push(discard_inst(f, cx, stack[i].1, loc));
-                    stack.truncate(i);
-                }
-                let held: BTreeSet<u32> = stack.iter().map(|(v, _)| v.0).collect();
-                let added: Vec<Value> = target
-                    .iter()
-                    .filter(|v| !held.contains(&v.0))
-                    .copied()
-                    .collect();
-                let handles = push_each(m, cx, f, &mut out, &added, loc);
-                stack.extend(added.into_iter().zip(handles));
+                sync_stack(m, cx, f, &mut out, &mut stack, target, loc);
                 steps.next();
             }
             out.extend(inst);
@@ -1401,6 +1387,14 @@ fn rewrite_flow_block(
     let mut out: Vec<Inst> = Vec::with_capacity(old.len());
     let mut next = events.iter().peekable();
     let mut seq = 0;
+    // Each registration is named by this block and its push, which the blocks after it use to
+    // find the handle.
+    let mut record = |seq: &mut u32, pushed: Vec<Value>| {
+        for h in pushed {
+            handles.insert((bi as u32, *seq), h);
+            *seq += 1;
+        }
+    };
     for (k, inst) in old.into_iter().enumerate() {
         let loc = inst.loc;
         let mut inst = Some(inst);
@@ -1409,32 +1403,14 @@ fn rewrite_flow_block(
             out.extend(inst.take());
         }
         if let Some((_, target)) = next.next_if(|(at, _)| *at == k) {
-            sync_stack(
-                m,
-                cx,
-                f,
-                &mut out,
-                &mut stack,
-                target,
-                loc,
-                (bi as u32, &mut seq),
-                handles,
-            );
+            let pushed = sync_stack(m, cx, f, &mut out, &mut stack, target, loc);
+            record(&mut seq, pushed);
         }
         out.extend(inst);
     }
     if let Some((_, target)) = next.next_if(|(at, _)| *at == len) {
-        sync_stack(
-            m,
-            cx,
-            f,
-            &mut out,
-            &mut stack,
-            target,
-            end_loc,
-            (bi as u32, &mut seq),
-            handles,
-        );
+        let pushed = sync_stack(m, cx, f, &mut out, &mut stack, target, end_loc);
+        record(&mut seq, pushed);
     }
     // A fault never returns, and its cleanups run newest first: nothing to discard.
     if !matches!(f.blocks[bi].term, Term::Fault(_)) && stack.len() > flow.trim[bi] {
@@ -1443,9 +1419,9 @@ fn rewrite_flow_block(
     f.blocks[bi].insts = out;
 }
 
-/// Brings `stack` to the owners in `target`: pops from the first one that died, and registers
-/// the owners that are not held, recording each handle under the block and push that made it.
-#[allow(clippy::too_many_arguments)]
+/// Brings `stack` to the owners in `target`: a discard pops the first entry whose owner died and
+/// every newer one, and the owners above it that live, and the ones not yet held, are registered.
+/// Returns the handles of the registrations it made, in order.
 fn sync_stack(
     m: &mut Module,
     cx: &mut Cx,
@@ -1454,20 +1430,15 @@ fn sync_stack(
     stack: &mut Vec<(Value, Value)>,
     target: &[Value],
     loc: crate::ir::Loc,
-    (block, seq): (u32, &mut u32),
-    handles: &mut HashMap<(u32, u32), Value>,
-) {
+) -> Vec<Value> {
     let (cut, added) = reconcile_plan(stack, |e| e.0.0, target);
     if let Some(c) = cut {
         out.push(discard_inst(f, cx, stack[c].1, loc));
         stack.truncate(c);
     }
     let pushed = push_each(m, cx, f, out, &added, loc);
-    for (v, h) in added.into_iter().zip(pushed) {
-        handles.insert((block, *seq), h);
-        *seq += 1;
-        stack.push((v, h));
-    }
+    stack.extend(added.into_iter().zip(pushed.iter().copied()));
+    pushed
 }
 
 /// The results of `take`s from a local slot whose scope close is registered and not yet
@@ -1606,14 +1577,22 @@ fn reconcile_plan<T>(
     owner: impl Fn(&T) -> u32,
     target: &[Value],
 ) -> (Option<usize>, Vec<Value>) {
-    let alive = |v: u32| target.binary_search_by_key(&v, |t| t.0).is_ok();
-    let cut = stack.iter().position(|e| !alive(owner(e)));
+    let place = |v: u32| target.binary_search_by_key(&v, |t| t.0).ok();
+    let cut = stack.iter().position(|e| place(owner(e)).is_none());
     let kept = &stack[..cut.unwrap_or(stack.len())];
-    let held: BTreeSet<u32> = kept.iter().map(&owner).collect();
+    // The target owners no kept entry holds; both lists are small slices of one sorted target, so
+    // marking by position needs no set.
+    let mut held = vec![false; target.len()];
+    for e in kept {
+        if let Some(i) = place(owner(e)) {
+            held[i] = true;
+        }
+    }
     let added = target
         .iter()
-        .filter(|v| !held.contains(&v.0))
-        .copied()
+        .zip(&held)
+        .filter(|(_, held)| !**held)
+        .map(|(v, _)| *v)
         .collect();
     (cut, added)
 }
@@ -1748,6 +1727,7 @@ fn plan_flow(f: &Func, events: &[Vec<(usize, Vec<Value>)>], plain: &[bool]) -> F
             return Flow { entry, trim };
         }
     }
+    debug_assert!(false, "the cleanup flow did not settle");
     none()
 }
 
