@@ -42,7 +42,7 @@ fn main() Unit:
 			started := monotonic()
 			encoded := stringify(rows)
 			elapsed := monotonic().difference(started).to_nanoseconds()
-			written = encoded.get().byte_length()
+			written = encoded.get().length()
 			if elapsed < best_write: best_write = elapsed
 
 		_wrote := stdout().write(
