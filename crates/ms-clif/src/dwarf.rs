@@ -367,6 +367,12 @@ pub fn emit(
                     )
                 }
                 RelocationTarget::Symbol(i) => (symbols[i], RelocationKind::Absolute, r.addend),
+                // clang writes a reference from one debug section to another as a plain offset on
+                // Darwin, and dsymutil reads loclist and range offsets as such (a section
+                // relocation would add the section's address to them, past the end of the data).
+                RelocationTarget::Section(_) if product.object.format() == BinaryFormat::MachO => {
+                    return Ok(());
+                }
                 RelocationTarget::Section(id) => {
                     let target = ids
                         .get(&id)
