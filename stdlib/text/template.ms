@@ -245,8 +245,8 @@ fn tokenize(source: String) List[Token]!Error:
 			close := piece.index_of("\}\}")
 
 			if close.is_some():
-				chunks.append(piece.take(close.get(0)))
-				tail = piece.drop(close.get(0) + 2)
+				chunks.append(piece.view(0, close.get(0)).clone())
+				tail = piece.view(close.get(0) + 2, piece.length()).clone()
 				closed = true
 				break
 
@@ -264,19 +264,16 @@ fn tokenize(source: String) List[Token]!Error:
 		action_line := line + count_lines(literal)
 		trim_next = false
 
-		if body.starts_with("-") and (body.length() == 1 or is_blank(body.get(1))):
+		if body.starts_with("-") and (body.length() == 1 or is_blank_at(body, 1)):
 			text = text.trim_end()
-			body = body.drop(1)
+			body = body.view(1, body.length()).clone()
 
 		if (
 			body.ends_with("-")
-			and (
-				body.length() == 1
-				or is_blank(body.get(body.length() - 2))
-			)
+			and (body.length() == 1 or is_blank_at(body, body.length() - 2))
 		):
 			trim_next = true
-			body = body.take(body.length() - 1)
+			body = body.view(0, body.length() - 1).clone()
 
 		if not text.is_empty(): tokens.append(
 			Token(action: false, body: text, line: line)
@@ -294,6 +291,11 @@ fn tokenize(source: String) List[Token]!Error:
 		)
 	)
 	return ok(tokens)
+
+// Whether the scalar that starts at byte `at` is a space, tab or line break.
+fn is_blank_at(text: String, at: Int) Bool:
+	code := text.scalar_at(at, -1)
+	return code == 32 or code == 9 or code == 10 or code == 13
 
 fn is_blank(c: String) Bool:
 	return c == " " or c == "\t" or c == "\n" or c == "\r"
@@ -617,26 +619,26 @@ fn var Builder.for_block(header: String, line: Int, depth: Int) TemplateNode!Err
 		syntax_error(line: line, reason: "for needs `name in value`")
 	)
 
-	names := header.take(at.get(0)).split(",")
+	names := header.view(0, at.get(0)).split(",")
 	if names.length() > 2: return error(
 		syntax_error(line: line, reason: "for takes one or two names")
 	)
 
 	first := names[0].trim()
 	second := if names.length() == 2: names[1].trim() else: ""
-	if first.is_empty() or not is_word_start(first.take(1)) or first.contains("."):
+	if first.is_empty() or not is_word_start(first.chars()[0]) or first.contains("."):
 		return error(syntax_error(line: line, reason: "bad loop name"))
 	if (
 		names.length() == 2
 		and (
 			second.is_empty()
 			or second.contains(".")
-			or not is_word_start(second.take(1))
+			or not is_word_start(second.view(0, 1))
 		)
 	):
 		return error(syntax_error(line: line, reason: "bad loop name"))
 
-	source := parse_expr(header.drop(at.get(0) + 4), line)?
+	source := parse_expr(header.view(at.get(0) + 4, header.length()), line)?
 	body := self.block(depth + 1)?
 	var otherwise = List[TemplateNode]()
 
@@ -656,7 +658,7 @@ fn first_word(body: String) String:
 	return body.split(" ")[0].trim()
 
 fn after_word(body: String) String:
-	return body.drop(first_word(body).length()).trim()
+	return body.view(first_word(body).length(), body.length()).trim().clone()
 
 fn trailing_filter(expr: TemplateExpr) String:
 	match expr:
@@ -902,7 +904,7 @@ fn unsigned_digits(text: String) String:
 	chars := text.chars()
 	var first = 0
 	while first < chars.length() and chars[first] == "0": first += 1
-	return if first == chars.length(): "0" else: text.drop(first)
+	return if first == chars.length(): "0" else: text.view(first, text.length()).clone()
 
 fn magnitude_compare(a: String, b: String) Int:
 	if a.length() != b.length(): return if a.length() < b.length(): -1 else: 1
@@ -942,12 +944,13 @@ fn decimal_order(exponent: String, offset: Int) String:
 
 	negative := exponent.starts_with("-")
 	magnitude := unsigned_digits(
-		if negative or exponent.starts_with("+"): exponent.drop(
-			1
-		) else: exponent.clone()
+		if negative or exponent.starts_with("+"): exponent.view(
+			1,
+			exponent.length(),
+		).clone() else: exponent.clone()
 	)
 	delta_text := "{offset}"
-	delta := if offset < 0: delta_text.drop(1) else: delta_text.clone()
+	delta := if offset < 0: delta_text.view(1, delta_text.length()).clone() else: delta_text.clone()
 	var result = ""
 	var result_negative = negative
 
@@ -967,8 +970,8 @@ fn order_compare(a: String, b: String) Int:
 	if an != bn: return if an: -1 else: 1
 
 	comparison := magnitude_compare(
-		if an: a.drop(1) else: a.clone(),
-		if bn: b.drop(1) else: b.clone(),
+		if an: a.view(1, a.length()).clone() else: a.clone(),
+		if bn: b.view(1, b.length()).clone() else: b.clone(),
 	)
 	return if an: -comparison else: comparison
 
@@ -1018,7 +1021,7 @@ fn exact_number(text: String) ExactNumber?:
 		while at < chars.length() and number_digit(chars.get(at)): at += 1
 		if at == digits_start or at != chars.length(): return none
 
-		exponent = text.drop(exponent_start)
+		exponent = text.view(exponent_start, text.length()).clone()
 
 	var first = start
 	var leading_zeros = 0
@@ -1200,7 +1203,7 @@ fn apply_filter(name: String, input: JsonValue, args: List[JsonValue]) JsonValue
 		)
 
 		n := limit.get(0)
-		return ok(text_value(if text.length() > n: "{text.take(n)}..." else: text))
+		return ok(text_value(if text.length() > n: "{text.view(0, n)}..." else: text))
 
 	// `raw` and any other registered name pass through; unknown names fail at compile time.
 	return ok(input.clone())

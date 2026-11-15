@@ -59,7 +59,7 @@ export fn parse_address(text: String) Address!:
 			Error("mail: invalid address", kind: "EBADMSG")
 		)
 
-		name = trimmed.take(open).trim()
+		name = trimmed.view(0, open).trim().clone()
 		address = trimmed.slice(open + 1, trimmed.length() - 1).get("").trim()
 	else if trimmed.contains(">"):
 		return error(Error("mail: invalid address", kind: "EBADMSG"))
@@ -84,8 +84,8 @@ fn valid_address(address: String) Bool:
 	at := address.last_index_of("@")
 	if at.is_none(): return false
 
-	local := address.take(at.get(0))
-	domain := address.drop(at.get(0) + 1)
+	local := address.view(0, at.get(0))
+	domain := address.view(at.get(0) + 1, address.length())
 	if local.is_empty() or domain.is_empty(): return false
 
 	return not address.contains_any(" \t<>,;")
@@ -155,8 +155,8 @@ export fn parse_message(raw: String) Message!:
 			skip = 2
 
 	if at >= 0:
-		head = raw.take(at)
-		body = raw.drop(at + skip)
+		head = raw.view(0, at).clone()
+		body = raw.view(at + skip, raw.length()).clone()
 	else:
 		head = raw.clone()
 
@@ -191,7 +191,7 @@ export fn decode_words(text: String) String:
 			seg = fields[index].clone()
 			continue
 
-		head.append(seg.take(seg.scalar_length() - 1))
+		head.append(seg.view(0, seg.length() - 1))
 
 		literal := head.drain()
 		var decoded: String? = none
@@ -214,7 +214,7 @@ export fn decode_words(text: String) String:
 		if not (previous_encoded and literal.trim().is_empty()): out.append(literal)
 		out.append(decoded.get(""))
 		previous_encoded = true
-		seg = fields[index + 4].drop(1)
+		seg = fields[index + 4].view(1, fields[index + 4].length()).clone()
 		index += 4
 
 	out.append(head.drain())

@@ -123,7 +123,12 @@ fn control(b: Int, alt: Bool) TerminalEvent:
 	if b == 0: return key("space", true, alt, false)
 
 	letters := "abcdefghijklmnopqrstuvwxyz[\\]^_"
-	return key(letters.get(b - 1, default: "?"), true, alt, false)
+	return key(ascii_at(letters, b - 1, "?"), true, alt, false)
+
+// The character at byte `index` of the ASCII `table`, or `fallback` outside it.
+fn ascii_at(table: String, index: Int, fallback: String) String:
+	if index < 0 or index >= table.length(): return fallback.clone()
+	return table.view(index, index + 1).clone()
 
 fn tilde_key(n: Int) String:
 	var names = Map[Int, String]()
@@ -197,7 +202,7 @@ fn code_key(code: Int) TerminalEvent?:
 	// Printable ASCII only; other code points are not reported as keys.
 	if code > 126: return none
 
-	return plain(ascii.get(code - 32, default: " "))
+	return plain(ascii_at(ascii, code - 32, " "))
 
 // The first colon-separated sub-parameter of a CSI parameter, as a number.
 fn first_number(part: String) Int:

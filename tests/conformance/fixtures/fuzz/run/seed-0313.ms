@@ -70,7 +70,7 @@ export fn main() Int:
     f13 := f5
     say("f13 = {f13}")
 
-    i14 := (s2.length() % ((653680 / 13) + (34 + 47)))
+    i14 := (s2.scalar_length() % ((653680 / 13) + (34 + 47)))
     say("i14 = {i14}")
 
     i15 := i14

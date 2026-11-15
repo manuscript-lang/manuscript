@@ -16,6 +16,6 @@ export fn main() Int:
     l2 := [(-27), 8, 1, (-9), 0]
     say("l2 = {l2} len {l2.length()}")
 
-    i3 := (((1 * 2) / (9 + 2)) + s1.length())
+    i3 := (((1 * 2) / (9 + 2)) + s1.scalar_length())
     say("i3 = {i3}")
     return 0

@@ -53,7 +53,7 @@ export fn main() Int:
     say("i7 = {i7}")
     say("gcd(1334, 1596) = {gcd(1334, 1596)}")
 
-    i8 := ((((-1) - i7) * l1.length()) - (s4.length() % s6.length()))
+    i8 := ((((-1) - i7) * l1.length()) - (s4.scalar_length() % s6.scalar_length()))
     say("i8 = {i8}")
     say("fib(10) = {fib(10)}")
     return 0

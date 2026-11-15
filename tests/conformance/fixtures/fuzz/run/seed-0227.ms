@@ -41,7 +41,7 @@ export fn main() Int:
     say("i6 = {i6}")
     say("fib(19) = {fib(19)}")
 
-    i7 := s5.length()
+    i7 := s5.scalar_length()
     say("i7 = {i7}")
     say("fib(43) = {fib(43)}")
 

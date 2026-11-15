@@ -68,7 +68,7 @@ export fn main() Int:
     l14 := l7.reversed()
     say("l14 = {l14} len {l14.length()}")
     say(
-        "{(2 + ((-37) * i8))} {s11.length()} {((2 + ((-37) * i8)) < s11.length())} sum {(2 + ((-37) * i8)) + s11.length()}"
+        "{(2 + ((-37) * i8))} {s11.scalar_length()} {((2 + ((-37) * i8)) < s11.scalar_length())} sum {(2 + ((-37) * i8)) + s11.scalar_length()}"
     )
 
     f15 := (((0.0 + 0.0) / (37.659 - f4)) * (f4 + f1))

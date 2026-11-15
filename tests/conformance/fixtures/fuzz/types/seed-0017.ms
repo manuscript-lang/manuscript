@@ -29,7 +29,7 @@ export fn main() Int:
     s2 := "beta".upper()
     say("s2 = [{s2}]")
     say(
-        "{(((-36) * 954458) * 301954)} {s2.length()} {((((-36) * 954458) * 301954) < s2.length())} sum {(((-36) * 954458) * 301954) + s2.length()}"
+        "{(((-36) * 954458) * 301954)} {s2.scalar_length()} {((((-36) * 954458) * 301954) < s2.scalar_length())} sum {(((-36) * 954458) * 301954) + s2.scalar_length()}"
     )
 
     bad := not 5

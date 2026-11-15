@@ -33,13 +33,13 @@ export fn main() Int:
     i7 := (-((536968 + i2) * i5))
     say("i7 = {i7}")
     say(
-        "{s4.length()} {((29 + i7) - i5)} {(s4.length() < ((29 + i7) - i5))} sum {s4.length() + ((29 + i7) - i5)}"
+        "{s4.scalar_length()} {((29 + i7) - i5)} {(s4.scalar_length() < ((29 + i7) - i5))} sum {s4.scalar_length() + ((29 + i7) - i5)}"
     )
 
     i8 := ((((-2) + i2) % (i5 - i7)) + ((i5 * 38) * (8 / 617721)))
     say("i8 = {i8}")
 
-    i9 := ((s3.length() * i7) + i8)
+    i9 := ((s3.scalar_length() * i7) + i8)
     say("i9 = {i9}")
 
     b10 := ((i5 < (i5 + i9)) or (not (false or true)))

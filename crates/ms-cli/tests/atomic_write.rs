@@ -24,8 +24,9 @@ fn atomic_write_names_and_failure_order() {
     let dir = common::scratch("atomic-write-helpers");
     let file = dir.join("main.ms");
     let source = format!(
-        "{}\n{}\n{}",
+        "{}\n{}\n{}\n{}",
         include_str!("atomic_write/main.ms"),
+        helper("leading_scalars"),
         helper("temporary_name"),
         helper("finish_atomic"),
     );

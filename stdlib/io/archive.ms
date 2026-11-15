@@ -364,7 +364,7 @@ fn var TarEntries.admit(path: String, directory: Bool) Unit!:
 		slash := dir.last_index_of("/")
 		if slash.is_none(): break
 
-		dir = dir.take(slash.get())
+		dir = dir.view(0, slash.get()).clone()
 		if self.files.contains(dir.clone()): return invalid
 
 		self.parents.add(dir.clone())

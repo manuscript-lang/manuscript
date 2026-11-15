@@ -88,11 +88,11 @@ The built-in method wins over any field or interface operation named `to_string`
 
 ## Indexing and character boundaries
 
-There is no `text[index]` or slice syntax: scalar position is not a constant-time offset in UTF-8, so use `get(index)` or `for c in text.chars()`. Each `get(index)` walks the text from the start, so a loop over indexes of long non-ASCII text is quadratic; `scalars(text)` from `@std/text.ms` is a stream that yields each scalar in constant time. Byte positions, scalars, and graphemes differ: `"é"` is two UTF-8 bytes; `"e\u{301}"` is two scalars and may display as one grapheme. Grapheme indexing is unsupported.
+There is no `text[index]`, and no integer scalar index into a String. Positions are **byte offsets**, as in Rust: `length()` is the byte count in constant time, and `slice`, `view`, `index_of`, `last_index_of` and `scalar_at` all speak bytes, so a position found by one can be passed to another. Walk characters with `for c in text.chars()` or the `scalars(text)` stream from `@std/text.ms`; nothing walks the text from the start on every access. Bytes, scalars, and graphemes differ: `"é"` is two UTF-8 bytes; `"e\u{301}"` is two scalars and may display as one grapheme. Grapheme indexing is unsupported.
 
-- `get`, `scalar_at`, `index_of`, `last_index_of`, `slice`, and `slice_scalars` use scalar indexes. `get(index, default:)` returns a one-scalar String; `scalar_at(index, default:)` its code point as an Int. Negative indexes count from the end; out of range gives the default, or a fault without one.
-- Searches return the first or last scalar index or `none`. An empty search matches at 0 (`index_of`) or `scalar_length()` (`last_index_of`).
-- `length()` and `scalar_length()` count scalars; `is_empty()` tests for zero.
+- `index_of` and `last_index_of` return the byte offset of the first or last match, or `none`. An empty search matches at 0 (`index_of`) or `length()` (`last_index_of`).
+- `scalar_at(offset, default:)` returns the code point that starts at byte `offset` as an Int. An offset that is out of range or inside another scalar gives the default, or a fault without one.
+- `length()` counts bytes in constant time (`byte_length()` is the same); `scalar_length()` counts scalars in linear time; `is_empty()` tests for zero.
 - `chars()` returns a `List[String]` that borrows the receiver, like `split` and `lines`; `scalar_values()` returns code points.
 - `reverse()` reverses scalars without normalization: `"e\u{301}".reverse()` is `"\u{301}e"`.
 - `compare(other:)` returns `-1`, `0`, or `1` by scalar order, case-sensitive, a prefix first: `"Z".compare("a")` is `-1`; `"é".compare("e\u{301}")` is `1`.
@@ -101,18 +101,17 @@ There is no `text[index]` or slice syntax: scalar position is not a constant-tim
 
 ### Half-open slices
 
-All slice operations include `start` and exclude `end`. Let `n` be the receiver's scalar, element, or byte length:
+All slice operations include `start` and exclude `end`. Let `n` be the receiver's element or byte length (for a String, its byte length):
 
 | Operation | Bounds and result |
 | --- | --- |
-| `String.slice(start:, end:)` | Add `n` to each negative bound, then require `0 <= start <= end <= n`. Invalid bounds return an `Error` of kind `"ERANGE"`. |
-| `String.slice_scalars(start:, end:)` | Require `0 <= start <= end <= n` with no relative negative bounds; invalid bounds return an `Error` of kind `"ERANGE"`. |
+| `String.slice(start:, end:)` | Add `n` to each negative bound, then require `0 <= start <= end <= n` with both bounds on scalar boundaries. Invalid bounds, or a bound inside a scalar, return an `Error` of kind `"ERANGE"`. |
 | `List.slice(start:, end:)` | Add `n` to each negative bound, then require `0 <= start <= end <= n`. Invalid bounds return an `Error` of kind `"ERANGE"`; success is a new owned List with independent storage. |
 | `Bytes.slice(start:, end:)` | Add `n` to each negative bound, then require `0 <= start <= end <= n`. Invalid bounds return an `Error` of kind `"ERANGE"`; success is an owned copy of the selected bytes. |
 
-`String.view(start, end)` takes the same scalar bounds as `slice` and borrows the range without copying, like `Bytes.view`. A bound outside the string raises a fault, not an `Error`. The receiver must stay unchanged while the view is used; storing or returning a view is rejected, so call `.clone()` on it to keep an independent `String`. Use `slice` when you want an owned copy or an `ERANGE` error.
+`String.view(start, end)` takes the same byte bounds as `slice` and borrows the range without copying, like `Bytes.view`. A bound outside the string, or inside a scalar, raises a fault, not an `Error`. The receiver must stay unchanged while the view is used; storing or returning a view is rejected, so call `.clone()` on it to keep an independent `String`. Use `slice` when you want an owned copy or an `ERANGE` error.
 
-Equal bounds give an empty range. Bounds are never clamped or swapped; `text.slice(start: 0, end: n + 1)` is an `"ERANGE"` error, not a fault. `"aé🙂z".slice(start: -2, end: 4)` is `ok("🙂z")`; `slice(start: 3, end: 1)` and `slice(start: 1, end: 10)` are errors of kind `"ERANGE"`. See the [String](../../standard-library/reference/prelude.md#string), [collection](../../standard-library/reference/collections/collections.ms.md), and [Bytes](../../standard-library/reference/bytes.ms.md) references.
+Equal bounds give an empty range. Bounds are never clamped or swapped; `text.slice(start: 0, end: n + 1)` is an `"ERANGE"` error, not a fault. `"aé🙂z".slice(start: -5, end: 7)` is `ok("🙂")`; `slice(start: 3, end: 1)`, `slice(start: 2, end: 7)` (inside `é`) and `slice(start: 1, end: 12)` are errors of kind `"ERANGE"`. See the [String](../../standard-library/reference/prelude.md#string), [collection](../../standard-library/reference/collections/collections.ms.md), and [Bytes](../../standard-library/reference/bytes.ms.md) references.
 
 `Bytes.view(start, end)` uses the same byte bounds and borrows the range without copying. Invalid bounds raise a fault. The receiver must stay available while the view is used; call `.clone()` on the view to keep an independent value.
 

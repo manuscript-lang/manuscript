@@ -89,7 +89,7 @@ fn checked_expansion() Unit!:
 	"x".pad_end(target_length: 4, padding: "é🙂") | expect_equal("xé🙂é")?
 	(not ("aba".replace(old: "a", new: "é") == "ébé")) | expect_false?
 	(not ("é🙂".replace(old: "", new: "-") == "-é-🙂-")) | expect_false?
-	(common_result(result: "é🙂".slice_scalars(start: 0, end: 1))?) | expect_equal("é")?
+	(common_result(result: "é🙂".slice(start: 0, end: 2))?) | expect_equal("é")?
 	(common_result(result: "é".repeat(count: 3, max_bytes: 6))?) | expect_equal("ééé")?
 
 test "list methods mutate explicit clones and remain typed":
@@ -300,21 +300,23 @@ test "set algebra and enumeration preserve source values":
 	left.values() | expect_equal([1, 2, 3])?
 
 test "string methods use Unicode scalars":
-	"é🙂é".get(index: -1) | expect_equal("é")?
-	"é🙂é".scalar_at(index: 1) | expect_equal(128578)?
+	"é🙂é".view(start: -2, end: 8) | expect_equal("é")?
+	"é🙂é".scalar_at(offset: 2) | expect_equal(128578)?
 
 	_missing: String? := none
-	"".get(index: 0, default: "?") | expect_equal("?")?
-	"é".get(index: -9223372036854775808, default: "?") | expect_equal("?")?
-	"é🙂é".index_of(value: "🙂") | expect_equal(1)?
-	"é🙂é".last_index_of(value: "é") | expect_equal(2)?
-	"é🙂é".last_index_of(value: "") | expect_equal(3)?
+	"".scalar_at(offset: 0, default: 63) | expect_equal(63)?
+	"é".scalar_at(offset: -9223372036854775808, default: 63) | expect_equal(63)?
+	"é".scalar_at(offset: 1, default: 63) | expect_equal(63)?
+	"é🙂é".index_of(value: "🙂") | expect_equal(2)?
+	"é🙂é".last_index_of(value: "é") | expect_equal(6)?
+	"é🙂é".last_index_of(value: "") | expect_equal(8)?
 	"é🙂é".index_of(value: "") | expect_equal(0)?
 
 	absent: Int? := none
 	"é🙂é".index_of(value: "z") | expect_equal(absent)?
 	"é🙂é".last_index_of(value: "z") | expect_equal(absent)?
-	"é🙂é".slice(start: -2, end: 3).get() | expect_equal("🙂é")?
+	"é🙂é".slice(start: 2, end: 8).get() | expect_equal("🙂é")?
+	("é🙂é".slice(start: 1, end: 8).is_error()) | expect_true?
 	("é🙂é".slice(start: 2, end: 1).is_error()) | expect_true?
 	("é🙂é".slice(start: -99, end: 1).is_error()) | expect_true?
 	"é🙂".scalar_length() | expect_equal(2)?

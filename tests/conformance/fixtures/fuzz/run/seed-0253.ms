@@ -60,7 +60,7 @@ export fn main() Int:
 
     say("acc11 = {acc11}")
 
-    i12 := ((s7.length() + s7.length()) / ((i2 + i2) - (i4 - i4)))
+    i12 := ((s7.scalar_length() + s7.scalar_length()) / ((i2 + i2) - (i4 - i4)))
     say("i12 = {i12}")
 
     b13 := (("{(i12 / i4)}:" + "back\\slash").is_empty() and b3)

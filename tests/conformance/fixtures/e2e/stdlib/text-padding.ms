@@ -29,8 +29,8 @@ test "a padded result past the inline size keeps its text and length":
 
 	wide := "é".pad_start(30, "🙂")
 	expect_equal(wide, "🙂".repeat(29).get() + "é")?
-	expect_equal(wide.length(), 30)?
-	expect_equal(wide.get(29), "é")?
+	expect_equal(wide.scalar_length(), 30)?
+	expect_equal(wide.view(wide.length() - 2, wide.length()), "é")?
 
 test "a short target, negative target or empty padding leaves the text unchanged":
 	expect_equal("abc".pad_start(2, "-"), "abc")?

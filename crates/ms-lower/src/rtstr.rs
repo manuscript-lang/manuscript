@@ -328,48 +328,39 @@ fn contains_byte(b: &mut FuncBuilder<'_>) {
     b.ret(Some(r));
 }
 
-/// `String.scalar_at(index, default)` of an ASCII inline string with the index inside it is one
-/// byte; every other case calls the runtime.
+/// `String.scalar_at(offset, default)`: an offset inside the text whose byte is ASCII is that
+/// byte (it is its own scalar); every other case calls the runtime.
 fn scalar_at(b: &mut FuncBuilder<'_>) {
     let ps = b.params();
-    let (text, index, has, default) = (ps[0], ps[1], ps[2], ps[3]);
+    let (text, offset, has, default) = (ps[0], ps[1], ps[2], ps[3]);
     let ext = runtime_fn(
         b.m,
         "msrt_string_scalar_at",
         &[MTy::STR, MTy::INT, MTy::BOOL, MTy::INT],
         MTy::INT,
     );
-    let (slow, check, read) = (b.new_block(), b.new_block(), b.new_block());
-    let s = slot_of(b, text);
-    let w1 = load(b, s, 8, MTy::INT);
-    let tag = int(b, Op::Ushr, w1, 62);
-    let one = b.iconst(1);
-    let inline = b.icmp(Cc::Eq, tag, one);
-    b.br_if(inline, check, &[], slow, &[]);
-    b.seal_block(check);
-    b.switch_to(check);
-    let w0 = load(b, s, 0, MTy::INT);
-    let low = int(b, Op::And, w1, (1 << 56) - 1);
-    let hi0 = int(b, Op::And, w0, 0x8080_8080_8080_8080_u64 as i64);
-    let hi1 = int(b, Op::And, low, 0x0080_8080_8080_8080);
-    let bits = b.binop(Op::Or, hi0, hi1);
+    let (slow, read, fast) = (b.new_block(), b.new_block(), b.new_block());
+    let n = b.str_bytes(text);
     let zero = b.iconst(0);
-    let ascii = b.icmp(Cc::Eq, bits, zero);
-    let n = int(b, Op::Ushr, w1, 56);
-    let n = int(b, Op::And, n, 15);
-    let ge0 = b.icmp(Cc::Ge, index, zero);
-    let lt = b.icmp(Cc::Lt, index, n);
+    let ge0 = b.icmp(Cc::Ge, offset, zero);
+    let lt = b.icmp(Cc::Lt, offset, n);
     let no = b.bconst(false);
     let inside = b.select(ge0, lt, no);
-    let ok = b.select(ascii, inside, no);
-    b.br_if(ok, read, &[], slow, &[]);
+    b.br_if(inside, read, &[], slow, &[]);
     b.seal_block(read);
-    b.seal_block(slow);
     b.switch_to(read);
-    let v = byte_at(b, s, index);
-    b.ret(Some(v));
+    let byte = b
+        .emit(Op::StrByte, &[text, offset], Imm::None, Some(MTy::INT))
+        .expect("byte");
+    let limit = b.iconst(128);
+    let ascii = b.icmp(Cc::Lt, byte, limit);
+    b.br_if(ascii, fast, &[], slow, &[]);
+    b.seal_block(fast);
+    b.seal_block(slow);
+    b.switch_to(fast);
+    b.ret(Some(byte));
     b.switch_to(slow);
-    let r = b.call_rt(ext, &[text, index, has, default]);
+    let r = b.call_rt(ext, &[text, offset, has, default]);
     b.ret(Some(r));
 }
 

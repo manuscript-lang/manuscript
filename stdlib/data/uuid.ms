@@ -99,4 +99,4 @@ fn format_uuid(source: Bytes, version: Int) String:
 		raw.append(byte.to_uint8().get(0))
 
 	hex := hex_encode(raw.build())
-	return "{hex.take(8)}-{hex.drop(8).take(4)}-{hex.drop(12).take(4)}-{hex.drop(16).take(4)}-{hex.drop(20)}"
+	return "{hex.view(0, 8)}-{hex.view(8, 12)}-{hex.view(12, 16)}-{hex.view(16, 20)}-{hex.view(20, 32)}"

@@ -561,9 +561,10 @@ fn date_number(text: String, minimum: Int, maximum: Int) Bool:
 
 fn date_valid(text: String) Bool:
 	if (
-		text.scalar_length() != 10
-		or text.get(4, default: "") != "-"
-		or text.get(7, default: "") != "-"
+		text.length() != 10
+		or text.scalar_length() != 10
+		or text.view(4, 5) != "-"
+		or text.view(7, 8) != "-"
 	): return false
 
 	year := text.slice(0, 4).get("")
@@ -585,18 +586,19 @@ fn date_valid(text: String) Bool:
 
 fn time_valid(text: String) Bool:
 	if (
-		text.scalar_length() < 8
-		or text.get(2, default: "") != ":"
-		or text.get(5, default: "") != ":"
+		text.length() < 8
+		or text.scalar_length() != text.length()
+		or text.view(2, 3) != ":"
+		or text.view(5, 6) != ":"
 	): return false
 	if not date_number(text.slice(0, 2).get(""), 0, 23): return false
 	if not date_number(text.slice(3, 5).get(""), 0, 59): return false
 	if not date_number(text.slice(6, 8).get(""), 0, 60): return false
-	if text.scalar_length() == 8: return true
+	if text.length() == 8: return true
 
-	fraction := text.slice(9, text.scalar_length()).get("")
+	fraction := text.slice(9, text.length()).get("")
 	return (
-		text.get(8, default: "") == "."
+		text.view(8, 9) == "."
 		and decimal_digits(fraction)
 		and not fraction.contains("_")
 	)
@@ -604,21 +606,25 @@ fn time_valid(text: String) Bool:
 fn datetime_valid(text: String) Bool:
 	if date_valid(text): return true
 	if time_valid(text): return true
-	if (text.scalar_length() < 19 or not date_valid((text.slice(0, 10).get("")))): return false
+	if (
+		text.length() < 19
+		or text.scalar_length() != text.length()
+		or not date_valid((text.slice(0, 10).get("")))
+	): return false
 
-	separator := text.get(10, default: "")
+	separator := text.view(10, 11)
 	if (separator != "T" and separator != "t" and separator != " "): return false
 
-	var rest = text.slice(11, text.scalar_length()).get("")
+	var rest = text.slice(11, text.length()).get("")
 
 	if rest.ends_with("Z") or rest.ends_with("z"):
-		rest = rest.slice(0, rest.scalar_length() - 1).get("")
+		rest = rest.slice(0, rest.length() - 1).get("")
 	else if rest.contains("+") or rest.contains("-"):
 		var index = rest.index_of("+").get(-1)
 		if index < 0: index = rest.index_of("-").get(-1)
 
-		zone := rest.slice(index + 1, rest.scalar_length()).get("")
-		if zone.scalar_length() != 5 or zone.get(2, default: "") != ":": return false
+		zone := rest.slice(index + 1, rest.length()).get("")
+		if zone.length() != 5 or zone.view(2, 3) != ":": return false
 		if not date_number(zone.slice(0, 2).get(""), 0, 23): return false
 		if not date_number(zone.slice(3, 5).get(""), 0, 59): return false
 
@@ -636,7 +642,7 @@ fn scalar(reader: Reader, text: String, at: Int) Node!:
 
 	if clean.starts_with("+") or clean.starts_with("-"):
 		signed = true
-		clean = clean.slice(1, clean.scalar_length()).get("")
+		clean = clean.slice(1, clean.length()).get("")
 
 	var radix = 10
 	var alphabet = "0123456789"
@@ -652,21 +658,10 @@ fn scalar(reader: Reader, text: String, at: Int) Node!:
 		alphabet = "01"
 
 	if radix != 10:
-		if (
-			signed
-			or not digits(
-				clean.slice(2, clean.scalar_length()).get(""),
-				alphabet,
-			)
-		):
+		if (signed or not digits(clean.slice(2, clean.length()).get(""), alphabet)):
 			return error(invalid_at(reader, at, "invalid integer"))
 		if value := parse_int(
-			(
-				clean
-				.slice(2, clean.scalar_length())
-				.get("")
-				.replace("_", "")
-			),
+			(clean.slice(2, clean.length()).get("").replace("_", "")),
 			radix,
 		): return ok(Node.Leaf(TomlValue.IntValue(value)))
 
@@ -677,7 +672,7 @@ fn scalar(reader: Reader, text: String, at: Int) Node!:
 	if (
 		clean != "inf"
 		and clean != "nan"
-		and not "0123456789".contains(clean.get(0, default: "x"))
+		and (clean.scalar_at(0, -1) < 48 or clean.scalar_at(0, -1) > 57)
 	): return error(invalid_at(reader, at, "invalid value"))
 
 	if (
@@ -695,7 +690,7 @@ fn scalar(reader: Reader, text: String, at: Int) Node!:
 				var exponent = parts[1].clone()
 				if exponent.starts_with("+") or exponent.starts_with("-"): exponent = (
 					exponent
-					.slice(1, exponent.scalar_length())
+					.slice(1, exponent.length())
 					.get("")
 				)
 				if not decimal_digits(exponent): return error(

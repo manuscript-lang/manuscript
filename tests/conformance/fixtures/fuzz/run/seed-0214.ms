@@ -32,7 +32,7 @@ export fn main() Int:
     s3 := "Tab\there"
     say("s3 = [{s3}]")
 
-    i4 := ((i1 + (-361295)) / (s3.length() * (471503 - 1)))
+    i4 := ((i1 + (-361295)) / (s3.scalar_length() * (471503 - 1)))
     say("i4 = {i4}")
 
     if (not (i1 != 28)):

@@ -18,7 +18,7 @@ export fn main() Int:
     s3 := "x"
     say("s3 = [{s3}]")
 
-    i4 := (i1 - ((594675 - i2) * s3.length()))
+    i4 := (i1 - ((594675 - i2) * s3.scalar_length()))
     say("i4 = {i4}")
 
     i5 := i4

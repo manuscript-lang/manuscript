@@ -30,6 +30,6 @@ export fn main() Int:
     else:
         say("gamma")
 
-    i6 := (s4.length() + s1.length())
+    i6 := (s4.scalar_length() + s1.scalar_length())
     say("i6 = {i6}")
     return 0

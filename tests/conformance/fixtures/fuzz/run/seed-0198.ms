@@ -27,7 +27,7 @@ export fn main() Int:
     l6 := [(-7), (-15), 20, 18, (-12)]
     say("l6 = {l6} len {l6.length()}")
 
-    i7 := s2.length()
+    i7 := s2.scalar_length()
     say("i7 = {i7}")
 
     f8 := ((550.584 * (0.0 + f1)) / ((393.300 * 97.203) * (0.0 + f5)))
@@ -37,10 +37,10 @@ export fn main() Int:
     l9.append(27)
     say("l9 = {l9} len {l9.length()}")
 
-    i10 := ((s2.length() + ((-11) / (-570102))) - ((i3 % 49) - (-i3)))
+    i10 := ((s2.scalar_length() + ((-11) / (-570102))) - ((i3 % 49) - (-i3)))
     say("i10 = {i10}")
 
-    i11 := s2.length()
+    i11 := s2.scalar_length()
     say("i11 = {i11}")
 
     f12 := (f1 * ((f8 * f5) / 312.113))

@@ -23,6 +23,6 @@ export fn main() Int:
     if 1:
         say("truthy")
 
-    i5 := (s4.length() + ((i2 / 183121) - 12))
+    i5 := (s4.scalar_length() + ((i2 / 183121) - 12))
     say("i5 = {i5}")
     return 0

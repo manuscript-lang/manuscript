@@ -51,7 +51,7 @@ export fn main() Int:
     else:
         say(s5)
 
-    i6 := ((((-30) + (-33)) * i2) - s5.length())
+    i6 := ((((-30) + (-33)) * i2) - s5.scalar_length())
     say("i6 = {i6}")
 
     var l7 = l1.clone()

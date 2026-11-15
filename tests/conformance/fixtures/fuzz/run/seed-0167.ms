@@ -56,7 +56,7 @@ export fn main() Int:
     i9 := ((778187142396 + l4.get(0)) + (i2 - l5.length()))
     say("i9 = {i9}")
 
-    i10 := s6.length()
+    i10 := s6.scalar_length()
     say("i10 = {i10}")
 
     f11 := (((830.839 / f1) - f1) + f3)

@@ -53,7 +53,7 @@ export fn main() Int:
     s9 := "x"
     say("s9 = [{s9}]")
 
-    i10 := s8.length()
+    i10 := s8.scalar_length()
     say("i10 = {i10}")
 
     s11 := "MiXeD CaSe"

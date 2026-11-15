@@ -21,7 +21,7 @@ export fn main() Int:
     s3 := "a".reverse().reverse()
     say("s3 = [{s3}]")
     say(
-        "{((i2 - i1) / s3.length())} {(-737741393135)} {(((i2 - i1) / s3.length()) < (-737741393135))} sum {((i2 - i1) / s3.length()) + (-737741393135)}"
+        "{((i2 - i1) / s3.scalar_length())} {(-737741393135)} {(((i2 - i1) / s3.scalar_length()) < (-737741393135))} sum {((i2 - i1) / s3.scalar_length()) + (-737741393135)}"
     )
 
     l4 := [(-2)]

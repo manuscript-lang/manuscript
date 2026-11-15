@@ -17,8 +17,8 @@ fn zeros(count: Int) Bytes:
 
 fn decode_case(length: Int, limit: Int?, bad: Int = 0) Unit!:
 	var text = "0".repeat(length)?
-	if bad == 1: text = "z" + text.drop(1)
-	if bad == 2: text = text.take(length - 1) + "z"
+	if bad == 1: text = "z" + text.view(1, text.length())
+	if bad == 2: text = text.view(0, length - 1) + "z"
 
 	maximum := limit.get(9223372036854775807)
 	var expected: Bytes! = ok(Bytes([]))

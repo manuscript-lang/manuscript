@@ -34,7 +34,7 @@ export fn main() Int:
     i6 := (468648 * 31)
     say("i6 = {i6}")
 
-    i7 := (s2.length() * (i6 * i6))
+    i7 := (s2.scalar_length() * (i6 * i6))
     say("i7 = {i7}")
 
     i8 := i6

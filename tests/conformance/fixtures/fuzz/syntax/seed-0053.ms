@@ -15,6 +15,6 @@ export fn main() Int:
     f2 := 0.0
     say("f2 = {f2}")
 
-    i3 := (s1.length() + (((-14) - 6) % (-38)))
+    i3 := (s1.scalar_length() + (((-14) - 6) % (-38)))
     say("i3 = {i3}")
     return 0

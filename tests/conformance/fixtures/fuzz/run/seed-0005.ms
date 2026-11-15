@@ -63,6 +63,6 @@ export fn main() Int:
     b12 := s4.is_empty()
     say("b12 = {b12}")
 
-    b13 := ((s4.length() + (i5 - (-36))) >= (s11.length() * s4.length()))
+    b13 := ((s4.scalar_length() + (i5 - (-36))) >= (s11.scalar_length() * s4.scalar_length()))
     say("b13 = {b13}")
     return 0

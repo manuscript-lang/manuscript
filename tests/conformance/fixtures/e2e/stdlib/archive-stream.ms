@@ -250,7 +250,7 @@ fn members(paths: List[String]) Bytes!:
 
 	for path in paths:
 		directory := path.ends_with("/")
-		name := if directory: path.take(path.length() - 1) else: path
+		name := if directory: path.view(0, path.length() - 1).clone() else: path
 		archive = archive.concat(member(name, directory)?)
 
 	var end = BytesBuilder()

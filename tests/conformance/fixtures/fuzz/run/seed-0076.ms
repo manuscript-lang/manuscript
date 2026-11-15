@@ -12,7 +12,7 @@ export fn main() Int:
     s1 := "hello world"
     say("s1 = [{s1}]")
     say(
-        "{((-8) - 1)} {s1.length()} {(((-8) - 1) < s1.length())} sum {((-8) - 1) + s1.length()}"
+        "{((-8) - 1)} {s1.scalar_length()} {(((-8) - 1) < s1.scalar_length())} sum {((-8) - 1) + s1.scalar_length()}"
     )
 
     i2 := ((-27) + 10)

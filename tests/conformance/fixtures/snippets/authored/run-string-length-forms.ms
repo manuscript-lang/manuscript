@@ -8,10 +8,10 @@ export fn main() Int:
     heap_ascii := "plain ascii text that is also longer than fifteen bytes"
     heap_wide := "h\u{e9}llo w\u{f6}rld, this one is long enough to not be inline"
     built := inline + "-" + inline_wide
-    print(inline.length())
-    print(inline_wide.length())
-    print(heap_ascii.length())
-    print(heap_wide.length())
-    print(built.length())
-    print("".length())
+    print(inline.scalar_length())
+    print(inline_wide.scalar_length())
+    print(heap_ascii.scalar_length())
+    print(heap_wide.scalar_length())
+    print(built.scalar_length())
+    print("".scalar_length())
     return 0

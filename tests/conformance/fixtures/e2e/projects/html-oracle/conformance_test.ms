@@ -19,7 +19,7 @@ fn hx(text: String) String:
 	return hex_encode(text.to_bytes())
 
 fn unhex(token: String) String:
-	h := token.drop(1)
+	h := token.view(1, token.length()).clone()
 	if h == "": return ""
 	if bytes := hex_decode(h, none): return bytes.decode_utf8().get("")
 
@@ -77,7 +77,7 @@ test "parse matches the recorded Go html trees":
 		)
 		got := render(parse(unhex(f[1]), options))
 		if got != f[f.length() - 1]: return fail(
-			"case {cases}: {line.take(160)}\n  want {f[f.length() - 1].take(300)}\n  got  {got.take(300)}"
+			"case {cases}: {line.view(0, line.length().min(160))}\n  want {f[f.length() - 1].view(0, f[f.length() - 1].length().min(300))}\n  got  {got.view(0, got.length().min(300))}"
 		)
 
 		cases += 1

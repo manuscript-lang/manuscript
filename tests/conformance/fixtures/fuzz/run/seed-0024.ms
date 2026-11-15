@@ -21,10 +21,10 @@ export fn main() Int:
     s3 := "alpha"
     say("s3 = [{s3}]")
 
-    i4 := (i2 * (s3.length() - (3 + i1)))
+    i4 := (i2 * (s3.scalar_length() - (3 + i1)))
     say("i4 = {i4}")
     say(
-        "{((i1 % (-802159)) * s3.length())} {s3.length()} {(((i1 % (-802159)) * s3.length()) < s3.length())} sum {((i1 % (-802159)) * s3.length()) + s3.length()}"
+        "{((i1 % (-802159)) * s3.scalar_length())} {s3.scalar_length()} {(((i1 % (-802159)) * s3.scalar_length()) < s3.scalar_length())} sum {((i1 % (-802159)) * s3.scalar_length()) + s3.scalar_length()}"
     )
 
     f5 := 288.561

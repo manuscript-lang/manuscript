@@ -41,14 +41,14 @@ interface SignedIntegerOperations[T]:
 	fn sign() Int
 
 /*
-String receiver operations use UTF-8 text. Methods named `scalar_*` count Unicode
-scalar values; ordinary indices and lengths count Unicode scalar positions unless
-the method explicitly refers to bytes.
+String receiver operations use UTF-8 text. Lengths, offsets and slice bounds count bytes and
+every offset a method returns starts a scalar, so they are constant time; methods named
+`scalar_*` count Unicode scalar values and scan the text. Walk characters with `chars()`.
 */
 interface StringOperations:
-	// Counts Unicode scalars, with the same unit as scalar_length.
+	// The UTF-8 byte length, in constant time.
 	fn length() Int
-	// Reports whether the text contains no scalars.
+	// Reports whether the text contains no bytes.
 	fn is_empty() Bool
 	// Returns a list with one String for each Unicode scalar, in order. The result
 	// borrows the receiver: use it in place, or `.clone()` it to keep it.
@@ -86,20 +86,10 @@ interface StringOperations:
     Output beyond the string limit faults like concat; use Regex.replace_all for a bounded replacement.
     */
 	fn replace(old: String, new: String) String
-	// Returns the number of Unicode scalar values in the string.
+	// Counts the Unicode scalar values by scanning the text.
 	fn scalar_length() Int
 	// Returns each Unicode scalar value as an integer.
 	fn scalar_values() List[Int]
-	// Selects [start, end) in Unicode scalars; requires 0 <= start <= end <=
-	// scalar_length(). Negative, inverted, or out-of-range bounds return an `Error` of
-	// kind `ERANGE`.
-	fn slice_scalars(start: Int, end: Int) String!
-	// Returns the first min(count, scalar_length()) Unicode scalars; a negative count
-	// is a programming fault.
-	fn take(count: Int) String
-	// Returns the scalars after the first min(count, scalar_length()); a negative count
-	// is a programming fault.
-	fn drop(count: Int) String
 	// Splits exact separators, truncating parts to a supplied nonnegative cap; zero
 	// returns [], negatives fault. Empty text with a nonempty separator yields [""]; an
 	// empty separator splits into scalars. The pieces borrow the receiver: use them in
@@ -113,19 +103,15 @@ interface StringOperations:
 	// Returns locale-independent full Unicode uppercase mapping; the scalar length can
 	// change.
 	fn upper() String
-	// Returns a one-scalar String; negative indexes are relative to the end. An invalid
-	// index returns `default`, and without one raises a fault.
-	fn get(index: Int, default: String?) String
-	// Returns an integer scalar code point; negative indexes are relative to the end.
-	// An invalid index returns `default`, and without one raises a fault.
-	fn scalar_at(index: Int, default: Int?) Int
+	// Returns the Unicode scalar value that starts at byte `offset`. An offset outside
+	// the text or inside a scalar returns `default`, and without one raises a fault.
+	fn scalar_at(offset: Int, default: Int?) Int
 	// Counts non-overlapping occurrences; an empty part counts the scalars plus one.
 	fn count(part: String) Int
-	// Returns the first matching Unicode scalar index or none; empty value matches at
-	// zero.
+	// Returns the byte offset of the first match or none; empty value matches at zero.
 	fn index_of(value: String) Int?
-	// Returns the last matching Unicode scalar index or none; empty value matches at
-	// scalar_length().
+	// Returns the byte offset of the last match or none; empty value matches at
+	// length().
 	fn last_index_of(value: String) Int?
 	fn trim_start() String  // Removes Unicode whitespace at the start.
 	fn trim_end() String  // Removes Unicode whitespace at the end.
@@ -137,14 +123,16 @@ interface StringOperations:
 	fn pad_start(target_length: Int, padding: String) String
 	// Pads on the right like `pad_start`. Example: `"id".pad_end(5, ".")` is `"id..."`.
 	fn pad_end(target_length: Int, padding: String) String
-	// Selects [start, end) in Unicode scalars; negative bounds are relative to the end.
-	// Bounds outside 0 <= start <= end <= scalar_length() return an `Error` of kind
+	// Selects the bytes [start, end); negative bounds are relative to the end. Bounds
+	// outside 0 <= start <= end <= length(), or inside a scalar, return an `Error` of
+	// kind
 	// `ERANGE`; the receiver is unchanged.
 	fn slice(start: Int, end: Int) String!
-	// Borrows the scalars [start, end) of the receiver without copying; negative bounds
-	// are relative to the end. Bounds outside 0 <= start <= end <= scalar_length()
-	// raise a fault. Like `Bytes.view`, the result borrows the receiver, which cannot
-	// change while the view is used; `.clone()` keeps the text. `slice` copies instead.
+	// Borrows the bytes [start, end) of the receiver without copying; negative bounds
+	// are relative to the end. Bounds outside 0 <= start <= end <= length(), or inside
+	// a scalar, raise a fault. Like `Bytes.view`, the result borrows the receiver,
+	// which cannot change while the view is used; `.clone()` keeps the text. `slice`
+	// copies instead.
 	fn view(start: Int, end: Int) String
 	// Returns the UTF-8 encoded byte length.
 	fn byte_length() Int

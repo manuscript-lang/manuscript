@@ -108,7 +108,10 @@ export fn parse(text: String) Version!:
 // Splits at the first separator only; `String.split` with a part cap drops the rest
 // instead of keeping it.
 fn split_first(text: String, separator: String) List[String]:
-	if at := text.index_of(separator): return [text.take(at), text.drop(at + 1)]
+	if at := text.index_of(separator): return [
+		text.view(0, at).clone(),
+		text.view(at + 1, text.length()).clone(),
+	]
 	return [text.clone()]
 
 fn compare_ints(left: Int, right: Int) Int:

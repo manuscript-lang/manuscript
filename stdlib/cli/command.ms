@@ -527,14 +527,14 @@ fn walk_from(
 		if token.starts_with("-") and token.length() > 1:
 			flags := inherited.concat(node.flags)
 			long := token.starts_with("--")
-			body := token.drop(if long: 2 else: 1)
+			body := token.view(if long: 2 else: 1, token.length())
 			cut := body.index_of("=")
-			key := body.take(cut.get(body.length()))
+			key := body.view(0, cut.get(body.length()))
 			var flag = find_flag(flags, key, long)
 			var negated = false
 
 			if long and flag.is_none() and key.starts_with("no-"):
-				positive := find_flag(flags, key.drop(3), true)
+				positive := find_flag(flags, key.view(3, key.length()), true)
 
 				if positive.is_some() and is_bool(positive.get().kind):
 					flag = positive
@@ -550,15 +550,20 @@ fn walk_from(
 					store(
 						var values,
 						chosen,
-						if cut.is_some(): body.drop(
-							cut.get() + 1
-						) else: "true",
+						if cut.is_some(): body.view(
+							cut.get() + 1,
+							body.length(),
+						).clone() else: "true",
 					)?
 
 				continue
 
 			if cut.is_some():
-				store(var values, chosen, body.drop(cut.get() + 1))?
+				store(
+					var values,
+					chosen,
+					body.view(cut.get() + 1, body.length()).clone(),
+				)?
 				continue
 
 			if index >= argv.length(): return error(cli_missing_value(token))

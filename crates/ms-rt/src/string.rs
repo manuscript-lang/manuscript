@@ -415,43 +415,6 @@ pub unsafe fn scalar_count(s: *const StrVal) -> usize {
     }
 }
 
-/// Byte offset of scalar `n` (0..=count).
-unsafe fn scalar_offset(s: *const StrVal, n: usize) -> usize {
-    // SAFETY: `s` live.
-    unsafe { utf8::offset_of(bytes(s), n) }
-}
-
-/// Substring by scalar range (callers validated `0 <= a <= b <= count`).
-unsafe fn sub_scalars(s: *const StrVal, a: usize, b: usize) -> StrVal {
-    // SAFETY: `s` live; range validated.
-    unsafe {
-        let (text, n) = (bytes(s), scalar_count(s));
-        if a == 0 && b == n {
-            return cloned(&*s);
-        }
-        if n == text.len() {
-            return from_bytes(&text[a..b]);
-        }
-        let (ao, bo) = (scalar_offset(s, a), scalar_offset(s, b));
-        from_bytes(&text[ao..bo])
-    }
-}
-
-/// Substring by nonnegative scalar bounds `a <= b` on a string not known to be ASCII, found by
-/// walking the text once; `None` when `b` exceeds the scalar length. No whole-string count.
-unsafe fn walk_sub_scalars(s: *const StrVal, a: usize, b: usize) -> Option<StrVal> {
-    // SAFETY: `s` live.
-    unsafe {
-        let text = bytes(s);
-        let ao = utf8::advance(text, 0, a)?;
-        let bo = utf8::advance(text, ao, b - a)?;
-        if ao == 0 && bo == text.len() {
-            return Some(cloned(&*s));
-        }
-        Some(from_bytes(&text[ao..bo]))
-    }
-}
-
 #[unsafe(no_mangle)]
 // ms: leaf pure domain=string
 pub unsafe extern "C-unwind" fn msrt_string_starts_with(a: *const StrVal, v: *const StrVal) -> u8 {
@@ -620,24 +583,24 @@ pub unsafe extern "C-unwind" fn msrt_string_parse_int(s: *const StrVal, out: *mu
     }
 }
 
-/// `String.scalar_at` of an ASCII text with an index inside it is one byte read.
+/// `String.scalar_at(offset, default)`: an ASCII byte is its own scalar, one read; anything else
+/// is decoded or rejected by [`msrt_string_scalar_at_slow`].
 #[unsafe(no_mangle)]
 // ms: leaf pure domain=string
 pub unsafe extern "C-unwind" fn msrt_string_scalar_at(
     s: *const StrVal,
-    index: i64,
+    offset: i64,
     has_default: HasRaw,
     default: i64,
 ) -> i64 {
     // SAFETY: caller passes a live string.
     unsafe {
-        let text = bytes(s);
-        let n = text.len() as i64;
-        let at = if index < 0 { n + index } else { index };
-        if let Some(&b) = text.get(at as usize).filter(|_| short_ascii(s) && at >= 0) {
+        if let Some(&b) = usize::try_from(offset).ok().and_then(|i| bytes(s).get(i))
+            && b < 0x80
+        {
             return b as i64;
         }
-        msrt_string_scalar_at_slow(s, index, has_default, default)
+        msrt_string_scalar_at_slow(s, offset, has_default, default)
     }
 }
 
@@ -676,121 +639,31 @@ pub unsafe extern "C-unwind" fn msrt_string_length(s: *const StrVal) -> i64 {
     unsafe { scalar_count(s) as i64 }
 }
 
-/// Resolves a possibly negative index against `count`; `None` when out of range.
-fn relative(count: usize, index: i64) -> Option<usize> {
-    let i = if index < 0 {
-        count as i64 + index
-    } else {
-        index
-    };
-    if i < 0 || i as usize >= count {
-        None
-    } else {
-        Some(i as usize)
-    }
+/// Whether byte offset `i` of `text` starts a scalar (or is the end).
+#[inline(always)]
+fn is_boundary(text: &[u8], i: usize) -> bool {
+    i == text.len() || text[i] & 0xC0 != 0x80
 }
 
-/// `String.get(index, default)`: a one-scalar string. `default` is borrowed and may be absent.
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_get(
-    s: *const StrVal,
-    index: i64,
-    has_default: HasRaw,
-    default: *const StrVal,
-    out: *mut StrVal,
-) {
-    // SAFETY: caller passes a writable `out` and live arguments.
-    unsafe { (string_get(s, index, has_default.is_set(), default)).write_to(out) }
-}
-
-unsafe fn string_get(
-    s: *const StrVal,
-    index: i64,
-    has_default: bool,
-    default: *const StrVal,
-) -> StrVal {
-    // SAFETY: caller passes live strings (default may be absent).
-    unsafe {
-        let text = bytes(s);
-        let off = if index >= 0 && !(*s).flagged_ascii() {
-            // Non-ASCII text: walk to the scalar instead of counting the whole string first.
-            utf8::advance(text, 0, index as usize).filter(|&o| o < text.len())
-        } else if index < 0 && !(*s).flagged_ascii() {
-            // Negative index: walk back from the end, again without a whole-string count.
-            utf8::retreat(text, text.len(), index.unsigned_abs() as usize)
-        } else {
-            let n = scalar_count(s);
-            relative(n, index).map(|i| {
-                if n == text.len() {
-                    i
-                } else {
-                    scalar_offset(s, i)
-                }
-            })
-        };
-        let Some(off) = off else {
-            if !has_default {
-                fault::msrt_index_fault(index, scalar_count(s) as i64);
-            }
-            return cloned(&*default);
-        };
-        if (*s).flagged_ascii() {
-            return from_bytes(&text[off..off + 1]);
-        }
-        let (c, w) = utf8::decode(&text[off..]);
-        if c == 0xFFFD && w == 1 {
-            return from_bytes("\u{FFFD}".as_bytes());
-        }
-        from_bytes(&text[off..off + w])
-    }
-}
-
-/// `String.scalar_at(index, default)`.
+/// `String.scalar_at(offset, default)`: the scalar that starts at byte `offset`. An offset outside
+/// the text or inside a scalar gives `default`, or a fault without one.
 pub unsafe fn msrt_string_scalar_at_slow(
     s: *const StrVal,
-    index: i64,
+    offset: i64,
     has_default: HasRaw,
     default: i64,
 ) -> i64 {
     // SAFETY: caller passes a live string.
     unsafe {
-        // All-ASCII text: a scalar index is a byte index.
-        if (*s).flagged_ascii()
-            && let Some(&byte) = usize::try_from(index).ok().and_then(|i| bytes(s).get(i))
-        {
-            return i64::from(byte);
-        }
-        scalar_at_slow(s, index, has_default.is_set(), default)
-    }
-}
-
-#[inline(never)]
-unsafe fn scalar_at_slow(s: *const StrVal, index: i64, has_default: bool, default: i64) -> i64 {
-    // SAFETY: caller passes a live string.
-    unsafe {
         let text = bytes(s);
-        let off = if index >= 0 && !(*s).flagged_ascii() {
-            utf8::advance(text, 0, index as usize).filter(|&o| o < text.len())
-        } else if index < 0 && !(*s).flagged_ascii() {
-            utf8::retreat(text, text.len(), index.unsigned_abs() as usize)
-        } else {
-            let n = scalar_count(s);
-            relative(n, index).map(|i| {
-                if n == text.len() {
-                    i
-                } else {
-                    scalar_offset(s, i)
-                }
-            })
-        };
-        let Some(off) = off else {
-            if !has_default {
-                fault::msrt_index_fault(index, scalar_count(s) as i64);
-            }
-            return default;
-        };
-        utf8::decode(&text[off..]).0 as i64
+        match usize::try_from(offset) {
+            Ok(i) if i < text.len() && is_boundary(text, i) => utf8::decode(&text[i..]).0 as i64,
+            _ if has_default.is_set() => default,
+            _ => fault::fault_fmt(format_args!(
+                "String.scalar_at: offset {offset} does not start a scalar of the {} byte text; pass a default",
+                text.len()
+            )),
+        }
     }
 }
 
@@ -882,10 +755,6 @@ impl<'a> Needle<'a> {
     }
 }
 
-/// Longest string `slice` checks for ASCII by scanning when it carries no flag: the scan costs less
-/// than walking scalars to the bounds.
-const SHORT_SCAN: usize = 256;
-
 /// Bytes scanned as words before a long haystack goes to a vector searcher (below [`SHORT_HAY`]).
 const NEAR: usize = 16;
 
@@ -941,20 +810,6 @@ pub unsafe extern "C-unwind" fn msrt_string_contains_multi(
     unsafe { find(bytes(a), bytes(v)).is_some() as u8 }
 }
 
-/// The scalar index of byte offset `at` in `text`, the bytes of `s`: a string flagged ASCII needs no
-/// scan of the prefix.
-///
-/// # Safety
-/// `s` is live and `text` is its bytes.
-unsafe fn scalar_index(s: *const StrVal, text: &[u8], at: usize) -> usize {
-    // SAFETY: caller passes a live string.
-    if unsafe { (*s).flagged_ascii() } {
-        at
-    } else {
-        utf8::count(&text[..at])
-    }
-}
-
 /// Non-overlapping occurrences of `v` in `a`; an empty `v` counts the scalars plus one.
 #[unsafe(no_mangle)]
 // ms: leaf
@@ -977,7 +832,7 @@ pub unsafe fn msrt_string_index_of_long(a: *const StrVal, v: *const StrVal, out:
         match find(text, bytes(v)) {
             None => 0,
             Some(i) => {
-                *out = scalar_index(a, text, i) as i64;
+                *out = i as i64;
                 1
             }
         }
@@ -997,7 +852,7 @@ pub unsafe extern "C-unwind" fn msrt_string_last_index_of(
         match rfind(text, bytes(v)) {
             None => 0,
             Some(i) => {
-                *out = scalar_index(a, text, i) as i64;
+                *out = i as i64;
                 1
             }
         }
@@ -2151,56 +2006,6 @@ pub unsafe extern "C-unwind" fn msrt_string_pad_end(
 // Slicing
 // ---------------------------------------------------------------------------
 
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_slice_scalars(
-    s: *const StrVal,
-    start: i64,
-    end: i64,
-    out: *mut StrVal,
-) -> u8 {
-    // SAFETY: caller passes a live string and a writable out.
-    unsafe {
-        if start >= 0 && end >= start && !known_ascii(s) {
-            return match walk_sub_scalars(s, start as usize, end as usize) {
-                Some(r) => {
-                    *out = r;
-                    STATUS_OK
-                }
-                None => STATUS_OUT_OF_RANGE,
-            };
-        }
-        let n = scalar_count(s) as i64;
-        if start < 0 || end < start || end > n {
-            return STATUS_OUT_OF_RANGE;
-        }
-        *out = sub_scalars(s, start as usize, end as usize);
-        STATUS_OK
-    }
-}
-
-/// Faults on a negative `count`.
-fn check_count(name: &str, count: i64) {
-    if count < 0 {
-        fault::fault_fmt(format_args!(
-            "String.{name}: count must be nonnegative, found {count}"
-        ));
-    }
-}
-
-/// Byte offset after the first `count` scalars, clamped to the end of the text. Walks only that
-/// prefix (no whole-string count) unless the string is known to be ASCII, where it is the count.
-unsafe fn offset_after(s: *const StrVal, count: usize) -> usize {
-    // SAFETY: `s` live.
-    unsafe {
-        let text = bytes(s);
-        if known_ascii(s) {
-            return count.min(text.len());
-        }
-        utf8::advance(text, 0, count).unwrap_or(text.len())
-    }
-}
-
 /// A copy of `text[a..b]`, sharing nothing; the whole string is cloned when the range covers it.
 unsafe fn sub_bytes(s: *const StrVal, a: usize, b: usize) -> StrVal {
     // SAFETY: `s` live; `a <= b <= len`.
@@ -2213,30 +2018,27 @@ unsafe fn sub_bytes(s: *const StrVal, a: usize, b: usize) -> StrVal {
     }
 }
 
-/// `take(count)`: the first `count` scalars, clamped to the string.
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_take(s: *const StrVal, count: i64, out: *mut StrVal) {
-    // SAFETY: caller passes a live string and a writable out.
+/// The byte range `[start, end)` with the bounds of `slice` (a negative bound counts back from the
+/// byte length); `None` unless `0 <= start <= end <= length` and both ends start a scalar.
+unsafe fn byte_range(s: *const StrVal, start: i64, end: i64) -> Option<(usize, usize)> {
+    // SAFETY: caller passes a live string.
     unsafe {
-        check_count("take", count);
-        let end = offset_after(s, count as usize);
-        *out = sub_bytes(s, 0, end);
+        let text = bytes(s);
+        let n = text.len() as i64;
+        let (a, b) = (
+            if start < 0 { n + start } else { start },
+            if end < 0 { n + end } else { end },
+        );
+        if a < 0 || b < a || b > n {
+            return None;
+        }
+        let (a, b) = (a as usize, b as usize);
+        (is_boundary(text, a) && is_boundary(text, b)).then_some((a, b))
     }
 }
 
-/// `drop(count)`: the text after the first `count` scalars.
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_drop(s: *const StrVal, count: i64, out: *mut StrVal) {
-    // SAFETY: caller passes a live string and a writable out.
-    unsafe {
-        check_count("drop", count);
-        let start = offset_after(s, count as usize);
-        *out = sub_bytes(s, start, bytes(s).len());
-    }
-}
-
+/// `String.slice(start, end)`: an owned copy of the bytes `[start, end)`; `ERANGE` when a bound is
+/// outside the text or inside a scalar.
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_slice(
@@ -2247,95 +2049,20 @@ pub unsafe extern "C-unwind" fn msrt_string_slice(
 ) -> u8 {
     // SAFETY: caller passes a live string and a writable out.
     unsafe {
-        // ASCII text with in-range bounds: a scalar index is a byte index.
-        let n = (*s).len();
-        if start >= 0
-            && end >= start
-            && end as u64 <= n as u64
-            && (known_ascii(s) || (n <= SHORT_SCAN && is_ascii(&*s)))
-        {
-            let (a, b) = (start as usize, end as usize);
-            *out = if a == 0 && b == n {
-                cloned(&*s)
-            } else {
-                from_bytes(&bytes(s)[a..b])
-            };
-            return STATUS_OK;
-        }
-        if start >= 0 && end >= start && !known_ascii(s) {
-            return match walk_sub_scalars(s, start as usize, end as usize) {
-                Some(r) => {
-                    *out = r;
-                    STATUS_OK
-                }
-                None => STATUS_OUT_OF_RANGE,
-            };
-        }
-        if (start < 0 || end < 0) && !known_ascii(s) {
-            // A bound from the end walks back from the end, one from the start walks forward; offsets
-            // grow with scalar positions, so `a <= b` is the same check on bytes.
-            let text = bytes(s);
-            let offset = |bound: i64| {
-                if bound < 0 {
-                    utf8::retreat(text, text.len(), bound.unsigned_abs() as usize)
-                } else {
-                    utf8::advance(text, 0, bound as usize)
-                }
-            };
-            return match (offset(start), offset(end)) {
-                (Some(a), Some(b)) if a <= b => {
-                    *out = sub_bytes(s, a, b);
-                    STATUS_OK
-                }
-                _ => STATUS_OUT_OF_RANGE,
-            };
-        }
-        let n = scalar_count(s) as i64;
-        let (a, b) = (
-            if start < 0 { n + start } else { start },
-            if end < 0 { n + end } else { end },
-        );
-        if a < 0 || b < a || b > n {
+        let Some((a, b)) = byte_range(s, start, end) else {
             return STATUS_OUT_OF_RANGE;
-        }
-        *out = sub_scalars(s, a as usize, b as usize);
+        };
+        *out = sub_bytes(s, a, b);
         STATUS_OK
     }
 }
 
-/// The byte range of scalars `[start, end)` with the bounds of `slice` (negative bounds count from
-/// the end); `None` when they fall outside `0 <= start <= end <= scalar length`.
-unsafe fn scalar_range(s: *const StrVal, start: i64, end: i64) -> Option<(usize, usize)> {
-    // SAFETY: caller passes a live string.
-    unsafe {
-        let text = bytes(s);
-        if (*s).flagged_ascii() {
-            let n = text.len() as i64;
-            let (a, b) = (
-                if start < 0 { n + start } else { start },
-                if end < 0 { n + end } else { end },
-            );
-            return (a >= 0 && b >= a && b <= n).then_some((a as usize, b as usize));
-        }
-        // Offsets grow with scalar positions, so `a <= b` on bytes is the same check on scalars.
-        let offset = |bound: i64| {
-            if bound < 0 {
-                utf8::retreat(text, text.len(), bound.unsigned_abs() as usize)
-            } else {
-                utf8::advance(text, 0, bound as usize)
-            }
-        };
-        let (a, b) = (offset(start)?, offset(end)?);
-        (a <= b).then_some((a, b))
-    }
-}
-
-/// `String.view(start, end)`: the scalars `[start, end)` borrowed from the receiver, nothing
-/// allocated. Bounds as in `slice`; a bound outside the string faults. Valid while the receiver is
-/// neither changed nor dropped (the borrow check guarantees that).
+/// `String.view(start, end)`: the bytes `[start, end)` borrowed from the receiver, nothing
+/// allocated. Bounds as in `slice`; a bound outside the text or inside a scalar faults. Valid while
+/// the receiver is neither changed nor dropped (the borrow check guarantees that).
 ///
-/// A flagged-ASCII text with bounds inside it is the whole fast path: scalar bounds are byte
-/// offsets, and a short piece is copied inline. Everything else is [`view_general`].
+/// A flagged-ASCII text with bounds inside it is decided inline by the compiler (`view_guard`);
+/// everything else, including an inline text, comes here.
 #[unsafe(no_mangle)]
 // ms: leaf pure domain=string
 pub unsafe extern "C-unwind" fn msrt_string_view(
@@ -2346,40 +2073,16 @@ pub unsafe extern "C-unwind" fn msrt_string_view(
 ) {
     // SAFETY: caller passes a live string and a writable `out`.
     unsafe {
-        let sv = &*s;
-        if sv.flagged_ascii() && 0 <= start && start <= end && end as usize <= sv.len() {
-            let p = sv.ptr_word.add(start as usize);
-            return view_of(p, (end - start) as usize).write_to(out);
-        }
-        view_general(s, start, end, out)
-    }
-}
-
-/// The view of text not known to be ASCII, of an inline text, or with bounds counted from the end
-/// or outside the text (a fault).
-#[inline(never)]
-unsafe fn view_general(s: *const StrVal, start: i64, end: i64, out: *mut StrVal) {
-    // SAFETY: caller passes a live string and a writable `out`.
-    unsafe {
-        let text = bytes(s);
-        let n = text.len() as i64;
-        let (a, b) = (
-            if start < 0 { n + start } else { start },
-            if end < 0 { n + end } else { end },
-        );
-        if short_ascii(s) && a >= 0 && b >= a && b <= n {
-            return view_of(text.as_ptr().add(a as usize), (b - a) as usize).write_to(out);
-        }
-        let Some((a, b)) = scalar_range(s, start, end) else {
+        let Some((a, b)) = byte_range(s, start, end) else {
             fault::fault_fmt(format_args!(
-                "String.view: bounds {start}..{end} are outside the string"
+                "String.view: bounds {start}..{end} are outside the text or inside a scalar"
             ));
         };
         let view = if a == b {
             // An empty result borrows nothing.
             StrVal::literal((&raw mut EMPTY).cast(), 0)
         } else {
-            view_of(text[a..b].as_ptr(), b - a)
+            view_of(bytes(s)[a..b].as_ptr(), b - a)
         };
         view.write_to(out)
     }
@@ -3446,7 +3149,7 @@ mod tests {
     }
 
     #[test]
-    fn slicing_inline_ascii_and_non_ascii_by_scalars() {
+    fn slicing_inline_ascii_and_non_ascii_by_bytes() {
         let _g = crate::testutil::lock();
         // SAFETY: the strings are live for the whole test.
         unsafe {
@@ -3454,12 +3157,13 @@ mod tests {
                 ("Rent,133.47", 5, 11, Some("133.47")),
                 ("Rent,133.47", 0, 11, Some("Rent,133.47")),
                 ("Rent,133.47", 5, 12, None),
-                ("café,1", 3, 4, Some("é")),
-                ("café,1", 4, 6, Some(",1")),
+                ("café,1", 3, 5, Some("é")),
+                ("café,1", 5, 7, Some(",1")),
+                ("café,1", 4, 5, None),
             ] {
                 let s = from_bytes(text.as_bytes());
                 let mut out = empty();
-                let status = msrt_string_slice_scalars(&s, a, b, &mut out);
+                let status = msrt_string_slice(&s, a, b, &mut out);
                 match want {
                     Some(w) => {
                         assert_eq!(status, STATUS_OK, "{text:?}[{a}..{b}]");
@@ -3930,7 +3634,7 @@ mod tests {
     }
 
     #[test]
-    fn walking_index_and_slice_match_scalar_lists() {
+    fn slice_and_scalar_at_follow_byte_offsets() {
         let _g = testutil::lock();
         let texts = [
             "",
@@ -3940,51 +3644,46 @@ mod tests {
             "a😀b😀c😀d😀e😀f😀g😀h😀i",
         ];
         for text in texts {
-            let chars: std::vec::Vec<S> = text.chars().map(S::from).collect();
-            let n = chars.len() as i64;
+            let n = text.len() as i64;
             for i in 0..n + 2 {
-                let mut o = NO_STR;
-                let want_ok = i < n;
-                // SAFETY: `st` creates live strings and `o` is writable.
-                let got = unsafe { msrt_string_slice(st(text), i, (i + 1).min(n + 1), &mut o) };
-                let ok = i < n;
-                assert_eq!(got == STATUS_OK, ok, "slice {text:?} {i}");
-                if want_ok {
-                    assert_eq!(txt(&o), chars[i as usize]);
-                    // SAFETY: as above.
-                    let g =
-                        unsafe { ret(|out| msrt_string_get(st(text), i, HasRaw(1), &NO_STR, out)) };
-                    assert_eq!(g, chars[i as usize]);
-                }
                 for j in i..n + 2 {
                     let mut o = NO_STR;
-                    // SAFETY: as above.
-                    let got = unsafe { msrt_string_slice_scalars(st(text), i, j, &mut o) };
-                    if j <= n {
-                        assert_eq!(got, STATUS_OK, "{text:?} {i}..{j}");
-                        assert_eq!(txt(&o), chars[i as usize..j as usize].concat());
-                    } else {
-                        assert_eq!(got, STATUS_OUT_OF_RANGE, "{text:?} {i}..{j}");
+                    // SAFETY: `st` creates live strings and `o` is writable.
+                    let got = unsafe { msrt_string_slice(st(text), i, j, &mut o) };
+                    let want = text.get(i as usize..j as usize).filter(|_| j <= n);
+                    match want {
+                        Some(w) => {
+                            assert_eq!(got, STATUS_OK, "{text:?} {i}..{j}");
+                            assert_eq!(txt(&o), w);
+                        }
+                        None => assert_eq!(got, STATUS_OUT_OF_RANGE, "{text:?} {i}..{j}"),
                     }
                 }
+                // SAFETY: as above.
+                let at = unsafe { msrt_string_scalar_at(st(text), i, HasRaw(1), -1) };
+                let want = text
+                    .get(i as usize..)
+                    .and_then(|rest| rest.chars().next())
+                    .map_or(-1, |c| c as i64);
+                assert_eq!(at, want, "scalar_at {text:?} {i}");
             }
         }
     }
 
     #[test]
-    fn length_and_get_follow_scalars() {
+    fn length_counts_scalars_and_scalar_at_takes_byte_offsets() {
         let _g = testutil::lock();
         unsafe {
             let s = st("héllo");
             assert_eq!(msrt_string_length(s), 5);
             assert_eq!((*s).len() as i64, 6);
-            assert_eq!(ret(|o| msrt_string_get(s, 1, HasRaw(0), st(""), o)), "é");
-            assert_eq!(ret(|o| msrt_string_get(s, -1, HasRaw(0), st(""), o)), "o");
             assert_eq!(msrt_string_scalar_at(s, 1, HasRaw(0), 0), 0xE9);
+            assert_eq!(msrt_string_scalar_at(s, 3, HasRaw(0), 0), 'l' as i64);
+            assert_eq!(msrt_string_scalar_at(s, 2, HasRaw(1), -1), -1);
             testutil::assert_fault(
-                "index 9 out of range for length 5; pass a default: get(index:, default: ...)",
+                "String.scalar_at: offset 2 does not start a scalar of the 6 byte text; pass a default",
                 || {
-                    ret(|o| msrt_string_get(s, 9, HasRaw(0), st(""), o));
+                    msrt_string_scalar_at(s, 2, HasRaw(0), 0);
                 },
             );
         }

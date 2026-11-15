@@ -9,7 +9,7 @@ import (
 
 fn hex4(code: Int) String:
 	digits := "0123456789abcdef"
-	return "\\u{digits.get(code / 4096)}{digits.get(code / 256 % 16)}{digits.get(code / 16 % 16)}{digits.get(code % 16)}"
+	return "\\u{digits.view(code / 4096, code / 4096 + 1)}{digits.view(code / 256 % 16, code / 256 % 16 + 1)}{digits.view(code / 16 % 16, code / 16 % 16 + 1)}{digits.view(code % 16, code % 16 + 1)}"
 
 fn quote(text: String) String:
 	var out = "\""

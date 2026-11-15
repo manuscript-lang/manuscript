@@ -57,7 +57,7 @@ export fn main() Int:
     )
     say("b12 = {b12}")
 
-    i13 := ((i6 * (-(-165919))) - s9.length())
+    i13 := ((i6 * (-(-165919))) - s9.scalar_length())
     say("i13 = {i13}")
 
     i14 := i3
@@ -69,6 +69,6 @@ export fn main() Int:
     b18 := b8
     say("b18 = {b18}")
 
-    big19 := (s9.length() % i6) - (s9.length() % i6)
-    say("{(s9.length() % i6) / big19}")
+    big19 := (s9.scalar_length() % i6) - (s9.scalar_length() % i6)
+    say("{(s9.scalar_length() % i6) / big19}")
     return 0

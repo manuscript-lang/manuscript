@@ -52,7 +52,9 @@ export fn build_oracle(id: String) String:
 // The oracle's output for `stdin`.
 export fn solve_with(oracle: String, stdin: String) String:
 	ran := bash("\"{oracle}\"", ".", 120, stdin)
-	if ran.code != 0: panic("oracle failed (exit {ran.code}): {ran.err.take(500)}")
+	if ran.code != 0: panic(
+		"oracle failed (exit {ran.code}): {ran.err.slice(0, 500).get(ran.err)}"
+	)
 	return ran.out
 
 // The cases of a large challenge: inputs supplied by the generator, outputs from its Go

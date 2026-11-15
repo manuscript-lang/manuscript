@@ -60,6 +60,6 @@ export fn main() Int:
     l12.append(98)
     say("l12 = {l12} len {l12.length()}")
 
-    i13 := s4.length()
+    i13 := s4.scalar_length()
     say("i13 = {i13}")
     return 0

@@ -500,12 +500,17 @@ fn string_ops_match_char_model(seed: u64) {
             let chars: std::vec::Vec<char> = model.chars().collect();
             let n = chars.len();
             assert_eq!(super::string::msrt_string_length(s as *const _), n as i64);
+            let starts: std::vec::Vec<usize> = model
+                .char_indices()
+                .map(|(i, _)| i)
+                .chain([model.len()])
+                .collect();
             for _ in 0..8 {
                 let a = r.below(n + 1);
                 let b = a + r.below(n + 1 - a);
                 let mut out = NO_STR;
                 assert_eq!(
-                    string::msrt_string_slice_scalars(s, a as i64, b as i64, &mut out),
+                    string::msrt_string_slice(s, starts[a] as i64, starts[b] as i64, &mut out),
                     STATUS_OK
                 );
                 assert_eq!(
@@ -520,12 +525,8 @@ fn string_ops_match_char_model(seed: u64) {
             }
             for _ in 0..n.min(6) {
                 let i = r.below(n);
-                let mut got = NO_STR;
-                string::msrt_string_get(s, i as i64, HasRaw(0), s, &mut got);
-                assert_eq!(text(&got), chars[i].to_string());
-                string::release(&got);
                 assert_eq!(
-                    string::msrt_string_scalar_at(s, i as i64 - n as i64, HasRaw(0), 0),
+                    string::msrt_string_scalar_at(s, starts[i] as i64, HasRaw(0), 0),
                     chars[i] as i64
                 );
             }
@@ -534,14 +535,10 @@ fn string_ops_match_char_model(seed: u64) {
             let ns = &nv;
             let mut at = 0i64;
             let found = string::msrt_string_index_of(s, ns, &mut at) != 0;
-            let want = model
-                .find(&needle)
-                .map(|b| model[..b].chars().count() as i64);
+            let want = model.find(&needle).map(|b| b as i64);
             assert_eq!(found.then_some(at), want);
             let found = string::msrt_string_last_index_of(s, ns, &mut at) != 0;
-            let want = model
-                .rfind(&needle)
-                .map(|b| model[..b].chars().count() as i64);
+            let want = model.rfind(&needle).map(|b| b as i64);
             assert_eq!(found.then_some(at), want);
             if !needle.is_empty() {
                 let rep = &new_str("<>");

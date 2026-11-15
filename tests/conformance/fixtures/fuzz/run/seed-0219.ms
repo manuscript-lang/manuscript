@@ -51,7 +51,7 @@ export fn main() Int:
     else:
         say("日本語")
 
-    i10 := (27 + s3.length())
+    i10 := (27 + s3.scalar_length())
     say("i10 = {i10}")
 
     if true:

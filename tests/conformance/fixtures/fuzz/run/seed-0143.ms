@@ -38,7 +38,7 @@ export fn main() Int:
     s3 := "MiXeD CaSe".upper().reverse()
     say("s3 = [{s3}]")
 
-    i4 := s3.length()
+    i4 := s3.scalar_length()
     say("i4 = {i4}")
 
     i5 := (19 * 27)

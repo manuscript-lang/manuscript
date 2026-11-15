@@ -895,8 +895,21 @@ fn temporary_name(path: String, stamp: String) String:
 		if slash + 1 > split: split = slash + 1
 
 	directory := path.slice(0, split).get("")
-	name := path.drop(split)
-	return "{directory}.{name.take(32)}.{stamp}.tmp"
+	name := path.view(split, path.length())
+	return "{directory}.{leading_scalars(name, 32)}.{stamp}.tmp"
+
+// The first `count` scalars of `text`.
+fn leading_scalars(text: String, count: Int) String:
+	var end = 0
+	var seen = 0
+
+	for c in text.chars():
+		if seen == count: break
+
+		end += c.length()
+		seen += 1
+
+	return text.view(0, end).clone()
 
 fn replace_atomically(link: String, data: Bytes) Unit!:
 	path := through_links(link)

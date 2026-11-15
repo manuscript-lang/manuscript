@@ -11,7 +11,8 @@ test "Unicode lowercase sigma ignores combining marks and format characters":
 		expect_equal(lower(), "aσ{mark}a")?
 
 test "String basic counterparts are callable":
-	expect_equal("é🙂".length(), 2)?
+	expect_equal("é🙂".scalar_length(), 2)?
+	expect_equal("é🙂".length(), 6)?
 	expect_false(not ("".is_empty()) or "a".is_empty())?
 	expect_equal("é🙂".chars(), ["é", "🙂"])?
 	expect_equal("é🙂".reverse(), "🙂é")?
@@ -26,9 +27,9 @@ test "String basic counterparts are callable":
 
 test "length and chars use scalars and preserve text boundaries":
 	text := "é🙂e\u{301}"
-	expect_false(text.length() != 4 or text.length() != text.scalar_length())?
+	expect_false(text.scalar_length() != 4 or text.length() != 9)?
 	expect_equal(text.chars(), ["é", "🙂", "e", "\u{301}"])?
-	expect_equal("👩\u{200d}🚀".length(), 3)?
+	expect_equal("👩\u{200d}🚀".scalar_length(), 3)?
 	expect_equal("a\u{0}b".chars(), ["a", "\u{0}", "b"])?
 	expect_false(not ("".chars().is_empty()) or "".length() != 0)?
 

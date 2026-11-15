@@ -78,7 +78,7 @@ fn maze(var rnd: Random, h: Int, w: Int, p: Float) String:
 
 		t := g.map(fn r: r.join("")).join("\n") + "\n"
 		verdict := solve(t)
-		if "0123456789".contains(verdict.take(1)): return t
+		if "0123456789".contains(verdict.view(0, verdict.length().min(1))): return t
 
 export fn gen_c16() Unit:
 	var rnd = seeded(16)

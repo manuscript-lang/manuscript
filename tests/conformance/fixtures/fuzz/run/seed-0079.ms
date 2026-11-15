@@ -26,7 +26,7 @@ export fn main() Int:
     l2 := [(-14), 21, 23, 17, 18]
     say("l2 = {l2} len {l2.length()}")
     say(
-        "{(-6)} {(((-32) + (-15)) * s1.length())} {((-6) < (((-32) + (-15)) * s1.length()))} sum {(-6) + (((-32) + (-15)) * s1.length())}"
+        "{(-6)} {(((-32) + (-15)) * s1.scalar_length())} {((-6) < (((-32) + (-15)) * s1.scalar_length()))} sum {(-6) + (((-32) + (-15)) * s1.scalar_length())}"
     )
 
     s3 := "back\\slash"
@@ -48,7 +48,7 @@ export fn main() Int:
     i8 := (-i5)
     say("i8 = {i8}")
 
-    i9 := s3.length()
+    i9 := s3.scalar_length()
     say("i9 = {i9}")
 
     i10 := ((((-872438) - 45) % (i5 + i7)) + (684518 - (i7 + 130014366003)))

@@ -24,7 +24,7 @@ export fn main() Int:
     f3 := 0.0
     say("f3 = {f3}")
 
-    i4 := s2.length()
+    i4 := s2.scalar_length()
     say("i4 = {i4}")
     say("fact(8) = {fact(8)}")
 

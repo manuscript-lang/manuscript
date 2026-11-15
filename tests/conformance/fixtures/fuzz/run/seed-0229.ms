@@ -45,7 +45,7 @@ export fn main() Int:
     s6 := (s4.lower() + s1)
     say("s6 = [{s6}]")
 
-    b7 := (i3 < ((895859 + i5) + s6.length()))
+    b7 := (i3 < ((895859 + i5) + s6.scalar_length()))
     say("b7 = {b7}")
 
     l8 := [2, 12]
@@ -67,7 +67,7 @@ export fn main() Int:
     )
     say("b10 = {b10}")
 
-    i11 := s6.length()
+    i11 := s6.scalar_length()
     say("i11 = {i11}")
 
     l12 := [9]

@@ -15,7 +15,7 @@ export fn main() Int:
     i2 := (37 + ((12 * (-33)) * (0 - 44)))
     say("i2 = {i2}")
 
-    i3 := ((s1.length() - (i2 + (-16))) - s1.length())
+    i3 := ((s1.scalar_length() - (i2 + (-16))) - s1.scalar_length())
     say("i3 = {i3}")
 
     bad := (1 < 2) < 3

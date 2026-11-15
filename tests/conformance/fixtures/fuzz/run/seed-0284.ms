@@ -23,7 +23,7 @@ export fn main() Int:
     s2 := ("héllo".reverse() + "42").reverse()
     say("s2 = [{s2}]")
 
-    i3 := ((-18) + (s2.length() % (41 - (-3))))
+    i3 := ((-18) + (s2.scalar_length() % (41 - (-3))))
     say("i3 = {i3}")
 
     s4 := s2.upper()

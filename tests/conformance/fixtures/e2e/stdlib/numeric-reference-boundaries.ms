@@ -184,9 +184,10 @@ test "to_fixed matches the exact decimal expansion":
 
 				// A negative value that rounds to zero prints as `-0`, as in C; compare
 				// it without the sign.
-				unsigned := if actual.starts_with("-") and not expected.starts_with("-"): actual.drop(
-					1
-				) else: actual
+				unsigned := if actual.starts_with("-") and not expected.starts_with("-"): actual.view(
+					1,
+					actual.length(),
+				).clone() else: actual
 				expect_equal(unsigned, expected)?
 
 test "truncate_to_int is exact inside the Int range and none outside it":

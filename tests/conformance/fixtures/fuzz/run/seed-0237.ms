@@ -31,7 +31,7 @@ export fn main() Int:
 
     say("acc4 = {acc4}")
     say(
-        "{(((-13) * (-32)) / s2.length())} {(-32)} {((((-13) * (-32)) / s2.length()) < (-32))} sum {(((-13) * (-32)) / s2.length()) + (-32)}"
+        "{(((-13) * (-32)) / s2.scalar_length())} {(-32)} {((((-13) * (-32)) / s2.scalar_length()) < (-32))} sum {(((-13) * (-32)) / s2.scalar_length()) + (-32)}"
     )
 
     f5 := f1
@@ -43,7 +43,7 @@ export fn main() Int:
     )
     say("i6 = {i6}")
 
-    i8 := (s2.length() + s2.length())
+    i8 := (s2.scalar_length() + s2.scalar_length())
     say("i8 = {i8}")
 
     s9 := "alpha"
@@ -55,6 +55,6 @@ export fn main() Int:
     i11 := ((((-110998) - i6) + (i8 - i8)) * ((i8 + 9) / 44))
     say("i11 = {i11}")
 
-    i12 := ((i8 - s9.length()) + ((9 + 16) - s9.length()))
+    i12 := ((i8 - s9.scalar_length()) + ((9 + 16) - s9.scalar_length()))
     say("i12 = {i12}")
     return 0

@@ -74,7 +74,7 @@ export fn main() Int:
     s13 := "héllo"
     say("s13 = [{s13}]")
 
-    i14 := (s13.length() - 15)
+    i14 := (s13.scalar_length() - 15)
     say("i14 = {i14}")
 
     b15 := (not false)

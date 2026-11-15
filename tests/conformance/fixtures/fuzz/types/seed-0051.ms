@@ -12,7 +12,7 @@ export fn main() Int:
     s1 := "x"
     say("s1 = [{s1}]")
 
-    i2 := (s1.length() % s1.length())
+    i2 := (s1.scalar_length() % s1.scalar_length())
     say("i2 = {i2}")
 
     bad := missing_function(3)

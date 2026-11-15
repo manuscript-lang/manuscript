@@ -7,7 +7,5 @@ fn main() Unit:
     var out = stdout()
     s := "héllo"
     out.write(
-        s.take(2) + "|" + s.drop(2) + "|" + s.take(99) + "|" + s.drop(
-            99
-        ) + "|" + s.drop(0) + "\n"
+        s.view(0, 3) + "|" + s.view(3, s.length()) + "|" + s.view(0, s.length()) + "|" + s.view(s.length(), s.length()) + "|" + s.view(0, s.length()) + "\n"
     ).get()

@@ -182,10 +182,10 @@ fn import_hint_for(session: &Rc<crate::stdlib::Session>, name: &str, types_only:
 }
 
 const MEMBER_SYNONYMS: &[(&str, &[&str])] = &[
-    ("len", &["length", "byte_length", "scalar_length"]),
-    ("size", &["length", "byte_length", "scalar_length"]),
-    ("count", &["length", "byte_length", "scalar_length"]),
-    ("length", &["byte_length", "scalar_length"]),
+    ("len", &["length", "scalar_length"]),
+    ("size", &["length", "scalar_length"]),
+    ("count", &["length", "scalar_length"]),
+    ("length", &["scalar_length"]),
     ("push", &["append", "add"]),
     ("add", &["append"]),
     ("insert", &["append", "add"]),
@@ -199,8 +199,8 @@ const MEMBER_SYNONYMS: &[(&str, &[&str])] = &[
     ("find_index", &["index_of"]),
     ("reduce", &["fold"]),
     ("each", &["for_each"]),
-    ("substring", &["slice", "slice_scalars"]),
-    ("substr", &["slice", "slice_scalars"]),
+    ("substring", &["slice", "view"]),
+    ("substr", &["slice", "view"]),
     ("charAt", &["scalar_at"]),
     ("char_at", &["scalar_at"]),
     ("sort", &["sorted"]),
@@ -533,7 +533,7 @@ impl Checker {
             }
             "len" => {
                 return format!(
-                    "{message}; there is no {name_t}() function: call the length member, e.g. xs.length() (String also has byte_length and scalar_length)",
+                    "{message}; there is no {name_t}() function: call the length member, e.g. xs.length() (String length is bytes; scalar_length counts scalars)",
                     name_t = self.syms.str(name)
                 );
             }

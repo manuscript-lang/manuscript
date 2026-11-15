@@ -58,7 +58,7 @@ export fn main() Int:
         say(s3.replace("emoji 😀", "back\\slash"))
 
     say(
-        "{(((-46) % i1) % (i5 - i1))} {s3.length()} {((((-46) % i1) % (i5 - i1)) < s3.length())} sum {(((-46) % i1) % (i5 - i1)) + s3.length()}"
+        "{(((-46) % i1) % (i5 - i1))} {s3.scalar_length()} {((((-46) % i1) % (i5 - i1)) < s3.scalar_length())} sum {(((-46) % i1) % (i5 - i1)) + s3.scalar_length()}"
     )
 
     f7 := (131.631 * ((152.238 + f4) * (f2 * f4)))
