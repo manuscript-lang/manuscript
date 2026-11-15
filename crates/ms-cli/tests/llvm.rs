@@ -595,7 +595,7 @@ fn cranelift_locates_parameters_for_a_debugger() {
     let out = dir.join("prog");
     let built = Command::new(env!("CARGO_BIN_EXE_ms"))
         .env("MS_BACKEND", "cranelift")
-        .args(["build", &source, "--build-type", "debug", "-o"])
+        .args(["build", &source, "-o"])
         .arg(&out)
         .output()
         .unwrap();
@@ -613,8 +613,14 @@ fn cranelift_locates_parameters_for_a_debugger() {
             .arg(&out)
             .output()
             .unwrap();
-        assert!(o.status.success(), "{}", String::from_utf8_lossy(&o.stderr));
-        String::from_utf8_lossy(&o.stdout).into_owned()
+        let text = String::from_utf8_lossy(&o.stdout).into_owned();
+        assert!(
+            o.status.success(),
+            "{flag}: {}{}",
+            text.chars().take(6000).collect::<String>(),
+            String::from_utf8_lossy(&o.stderr)
+        );
+        text
     };
     assert!(run("--verify").contains("No errors"));
     let info = run("--debug-info");
