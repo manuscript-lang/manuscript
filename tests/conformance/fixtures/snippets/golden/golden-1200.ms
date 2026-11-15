@@ -2,4 +2,4 @@
 // conform: phase=check
 fn work() Void:
     // Que|
-    unit
+    void

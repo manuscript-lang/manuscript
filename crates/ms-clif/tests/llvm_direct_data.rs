@@ -1086,10 +1086,10 @@ entry @main
 file 0 "d.ms"
 fn @f(%a: int) -> int !0:1:1 {
 b0:
-  %s: ptr = slot unit !0:2:1
-  %u: unit = unit !0:3:1
+  %s: ptr = slot void !0:2:1
+  %u: void = void !0:3:1
   store %s, %u !0:4:1
-  %v: unit = load unit %s !0:5:1
+  %v: void = load void %s !0:5:1
   %r: int = iadd %a, %a !0:6:1
   ret %r
 }

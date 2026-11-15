@@ -50,42 +50,42 @@ fn result_branch() Int:
 test "nonreturning conditions cannot reach branch breaks":
 	then_branch_fault := expect_fault(
 		fn:
-			_ := then_branch()
+			void then_branch()
 	)?
 	expect_contains(then_branch_fault, "stop")?
 
 	else_branch_fault := expect_fault(
 		fn:
-			_ := else_branch()
+			void else_branch()
 	)?
 	expect_contains(else_branch_fault, "stop")?
 
 	optional_then_branch_fault := expect_fault(
 		fn:
-			_ := optional_then_branch()
+			void optional_then_branch()
 	)?
 	expect_contains(optional_then_branch_fault, "stop")?
 
 	optional_else_branch_fault := expect_fault(
 		fn:
-			_ := optional_else_branch()
+			void optional_else_branch()
 	)?
 	expect_contains(optional_else_branch_fault, "stop")?
 
 	nested_loop_fault := expect_fault(
 		fn:
-			_ := nested_loop()
+			void nested_loop()
 	)?
 	expect_contains(nested_loop_fault, "stop")?
 
 	callback_fault := expect_fault(
 		fn:
-			_ := callback()
+			void callback()
 	)?
 	expect_contains(callback_fault, "stop")?
 
 	result_branch_fault := expect_fault(
 		fn:
-			_ := result_branch()
+			void result_branch()
 	)?
 	expect_contains(result_branch_fault, "stop")?

@@ -28,11 +28,11 @@ impl Disposable for Resource:
 
 fn bound_cleanup[T: Disposable](resource: T) Void:
     with item = resource:
-        completed := unit
+        completed := void
 
 fn canonical_cleanup[T: Closeable](resource: T) Void:
     with item = resource:
-        completed := unit
+        completed := void
 
 test "cleanup uses the selected contract":
     closed := Flag(value: false)

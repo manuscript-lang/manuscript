@@ -2,7 +2,7 @@
 
 Immutable: `x := value`, or `x: Int := value`. Mutable: `var x = value`; assignments require var. Prefix deliberately unused names with `_`.
 
-Types: Int, Float, Bool, String, Void. Literals: `true`, `false`, `unit`. Numeric conversions are explicit. `"hello {name}"` interpolates; `\{`/`\}` escape braces. Raw `r"\d+"` keeps backslashes literal, including before a quote.
+Types: Int, Float, Bool, String, Void. Literals: `true`, `false`, `void`. Numeric conversions are explicit. `"hello {name}"` interpolates; `\{`/`\}` escape braces. Raw `r"\d+"` keeps backslashes literal, including before a quote.
 
 <!-- complete: control.ms -->
 ```manuscript

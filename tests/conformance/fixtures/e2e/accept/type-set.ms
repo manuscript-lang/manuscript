@@ -32,7 +32,7 @@ test "the standard sum is the same method":
 
 fn overflow() Void:
 	small: List[Int8] := [100, 28]
-	_ := total(small)
+	void total(small)
 
 test "sized integers keep their overflow fault":
 	message := expect_fault(overflow)?

@@ -637,16 +637,16 @@ pub fn query_editor(
             let body = if current.trim().starts_with("match ") {
                 vec![
                     format!("{}_:", " ".repeat(indent + 4)),
-                    format!("{}return unit", " ".repeat(indent + 8)),
+                    format!("{}return", " ".repeat(indent + 8)),
                 ]
             } else {
-                vec![format!("{}return unit", " ".repeat(indent + 4))]
+                vec![format!("{}return", " ".repeat(indent + 4))]
             };
             for (i, row) in body.into_iter().enumerate() {
                 lines.insert(line + 1 + i, row);
             }
         } else {
-            lines[line] = format!("{}return unit", " ".repeat(indent));
+            lines[line] = format!("{}return", " ".repeat(indent));
             if lines[line] == current {
                 break;
             }

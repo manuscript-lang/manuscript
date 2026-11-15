@@ -42,12 +42,12 @@ fn mix(seed: UInt64) UInt64:
 fn main() Void:
     top: UInt64 := 18446744073709551615
     near: UInt64 := 9223372036854775806
-    _ := stdout().write(
+    void stdout().write(
         "{count(near, near + 4)} {count(top - 3, top)} {countdown(5)}\n"
     )
-    _ := stdout().write(
+    void stdout().write(
         "{clamp_sub(3, 5)} {clamp_sub(top, 1)} {clamp_sub(top, top)}\n"
     )
-    _ := stdout().write("{mix(1)} {mix(0)}\n")
-    _ := stdout().write("{near + near} {near * 2 + 1} {top / 3 * 3}\n")
-    _ := stdout().write("{mix(top / 1000)}\n")
+    void stdout().write("{mix(1)} {mix(0)}\n")
+    void stdout().write("{near + near} {near * 2 + 1} {top / 3 * 3}\n")
+    void stdout().write("{mix(top / 1000)}\n")

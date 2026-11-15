@@ -1,8 +1,8 @@
 # Changelog
 
-Each release lists what changed for people who write Manuscript. Before 1.0, a change that breaks existing programs ships in a minor release and names its migration; patch releases stay compatible. See [what is frozen before 1.0](documentation/core-language/stability.md).
+Each release lists what changed for people who write Manuscript. Versions are dates (`YYYY.MM.PATCH`). See [what is frozen](documentation/core-language/stability.md).
 
-## 0.1.0 (first public release, beta)
+## 2026.11.0 (first public release, beta)
 
 The first release. It ships one binary, `ms`, for Linux, macOS and Windows on amd64 and arm64.
 
@@ -14,7 +14,7 @@ The first release. It ships one binary, `ms`, for Linux, macOS and Windows on am
 - Enums, interfaces matched by shape, generics, pattern matching, and promises that run across all cores.
 - A function's effects (files, network, processes) are tracked and checked by the compiler.
 - Compiler errors name the fix. `ms check --fix` applies the mechanical ones, and `--json` gives the same diagnostics as data.
-- Removed spellings fail with an error that names the replacement, kept for two minor releases. See [removed spellings](documentation/core-language/removed-spellings.md).
+- Removed spellings fail with an error that names the replacement. See [removed spellings](documentation/core-language/removed-spellings.md).
 
 ### Standard library
 

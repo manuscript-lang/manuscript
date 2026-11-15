@@ -13,7 +13,7 @@ type Counter:
 	log: String
 
 fn var Counter.close() Void!:
-	_ := append_file(self.log, "{self.value},").wait()
+	void append_file(self.log, "{self.value},").wait()
 
 fn logged(path: String) String:
 	read := read_file(path).wait()
@@ -25,7 +25,7 @@ fn count_then_wait(log: String) Int:
 	var counter = Counter(value: 0, log: log.clone())
 	counter.value = 7
 
-	_ := sleep(nanoseconds(5000000000)).wait()
+	void sleep(nanoseconds(5000000000)).wait()
 	counter.close().get(none)
 	return 0
 

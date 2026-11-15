@@ -26,7 +26,7 @@ tokens! {
     For => "for", If => "if", Impl => "impl", Import => "import", In => "in",
     Interface => "interface", Match => "match", Not => "not",
     Or => "or", Ref => "ref", Return => "return", SelfKw => "self", Test => "test", True => "true", Try => "try",
-    Type => "type", Void => "unit", Var => "var", While => "while", Underscore => "_",
+    Type => "type", Void => "void", Var => "var", While => "while", Underscore => "_",
     LParen => "(", RParen => ")", LBracket => "[", RBracket => "]", LBrace => "{", RBrace => "}",
     Colon => ":", Comma => ",", Dot => ".", Plus => "+", Minus => "-", Star => "*", Slash => "/",
     Percent => "%", Lt => "<", Gt => ">", Assign => "=", Amp => "&", Pipe => "|", Ellipsis => "...", DotDot => "..", Question => "?", Bang => "!",
@@ -63,8 +63,8 @@ impl Tok {
             "true" => Tok::True,
             "try" => Tok::Try,
             "type" => Tok::Type,
-            "unit" => Tok::Void,
             "var" => Tok::Var,
+            "void" => Tok::Void,
             "while" => Tok::While,
             "_" => Tok::Underscore,
             _ => Tok::Name,
@@ -133,8 +133,8 @@ pub const KEYWORDS: &[&str] = &[
     "true",
     "try",
     "type",
-    "unit",
     "var",
+    "void",
     "while",
 ];
 

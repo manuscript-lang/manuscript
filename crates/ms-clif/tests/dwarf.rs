@@ -201,10 +201,10 @@ b0:
 fn @first(%x: int) -> int export inline(never) !0:9:1 {{
 b0:
   %r: int = call @origin(%x) !0:10:3
-  %u: unit = call.rt @msrt_print_int(%r) !0:12:3
-  %unknown: unit = call.rt @msrt_print_int(%r)
-  %invalid: unit = call.rt @msrt_print_int(%r) !3:123:1
-  %again: unit = call.rt @msrt_print_int(%r) !1:40:3
+  %u: void = call.rt @msrt_print_int(%r) !0:12:3
+  %unknown: void = call.rt @msrt_print_int(%r)
+  %invalid: void = call.rt @msrt_print_int(%r) !3:123:1
+  %again: void = call.rt @msrt_print_int(%r) !1:40:3
   ret %r
 }}
 fn @second(%y: int) -> int export inline(never) !1:29:1 {{

@@ -85,6 +85,6 @@ b0:
   %v: int = opt.get %o
   %zero: int = iconst 0
   %res: int = select %p, %v, %zero
-  %u: unit = call.rt @msrt_print_int (%res)
+  %u: void = call.rt @msrt_print_int (%res)
   ret %zero
 }

@@ -691,7 +691,7 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
 fn parse_ty(c: &mut Cur, m: &mut Module) -> Result<Ty, ParseError> {
     let name = c.ident()?;
     Ok(match name.as_str() {
-        "unit" => Ty::VOID,
+        "void" => Ty::VOID,
         "bool" => Ty::BOOL,
         "int" => Ty::INT,
         "float" => Ty::FLOAT,

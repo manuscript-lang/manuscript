@@ -48,7 +48,7 @@ fn main() Void!:
     for event in events:
         text := read_file(event.path).wait()?
         print("{event.path} changed, {text.length()} bytes")
-    return ok(unit)
+    return ok()
 ```
 
 ```sh

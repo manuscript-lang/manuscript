@@ -5,7 +5,7 @@
 #
 # It downloads the release archive for this machine, checks its SHA-256, and copies `ms`
 # into a bin directory. Settings, all optional:
-#   MS_VERSION      a release such as 0.1.0 (default: the latest release)
+#   MS_VERSION      a release such as 2026.11.0 (default: the latest release)
 #   MS_INSTALL_DIR  where `ms` goes (default: $HOME/.local/bin)
 #   MS_RELEASE_URL  a directory URL that holds the archives (default: GitHub releases)
 set -eu

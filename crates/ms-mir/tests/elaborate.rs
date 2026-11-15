@@ -22,7 +22,7 @@ fn @close(%r: move list<int>) -> int {
 b0:
   %z: int = iconst 0
   %id: int = list.get %r, %z
-  %u: unit = call.rt @msrt_print_int (%id)
+  %u: void = call.rt @msrt_print_int (%id)
   drop %r
   ret %id
 }
@@ -436,17 +436,17 @@ fn a_value_an_inner_scope_owns_again_stays_the_outer_scopes_on_the_other_path() 
 /// still hold it.
 fn infallible(keep: bool) -> String {
     format!(
-        r#"fn @shut(%r: list<int>) -> unit {{
+        r#"fn @shut(%r: list<int>) -> void {{
 b0:
   %z: int = iconst 0
   %id: int = list.get %r, %z
-  %u: unit = call.rt @msrt_print_int (%id)
+  %u: void = call.rt @msrt_print_int (%id)
   ret %u
 }}
-fn @sink(%r: move list<int>) -> unit {{
+fn @sink(%r: move list<int>) -> void {{
 b0:
   drop %r
-  %u: unit = unit
+  %u: void = void
   ret %u
 }}
 fn @main() -> int {{
@@ -460,7 +460,7 @@ b0:
 b1():
   br b3()
 b2():
-  %u: unit = call @sink (%a)
+  %u: void = call @sink (%a)
   br b3()
 b3():
   scope.end 1 0
@@ -485,12 +485,12 @@ fn an_infallible_owner_is_closed_shielded_only_where_it_is_still_held() {
 #[test]
 fn a_memory_slot_owner_is_closed_in_place_at_the_scope_end() {
     let (_, out, text) = elaborate_and_run_text(
-        r#"fn @shut(%p: ptr) -> unit {
+        r#"fn @shut(%p: ptr) -> void {
 b0:
   %r: list<int> = load list<int> %p
   %z: int = iconst 0
   %id: int = list.get %r, %z
-  %u: unit = call.rt @msrt_print_int (%id)
+  %u: void = call.rt @msrt_print_int (%id)
   ret %u
 }
 fn @main() -> int {
@@ -517,12 +517,12 @@ b0:
 fn a_conditionally_moved_slot_owner_closes_only_where_it_still_holds_the_value() {
     for (cond, want) in [(1, "x\n~\n"), (0, "~\n7\n")] {
         let (_, out, text) = elaborate_and_run_text(&format!(
-            r#"fn @shut(%p: ptr) -> unit {{
+            r#"fn @shut(%p: ptr) -> void {{
 b0:
   %r: list<int> = load list<int> %p
   %z: int = iconst 0
   %id: int = list.get %r, %z
-  %u: unit = call.rt @msrt_print_int (%id)
+  %u: void = call.rt @msrt_print_int (%id)
   ret %u
 }}
 fn @main() -> int {{
@@ -562,12 +562,12 @@ b3():
 fn a_refilled_slot_owner_is_closed_again_at_the_scope_end() {
     for (cond, want) in [(1, "x\n~\n9\n"), (0, "7\n~\n9\n")] {
         let (_, out, text) = elaborate_and_run_text(&format!(
-            r#"fn @shut(%p: ptr) -> unit {{
+            r#"fn @shut(%p: ptr) -> void {{
 b0:
   %r: list<int> = load list<int> %p
   %z: int = iconst 0
   %id: int = list.get %r, %z
-  %u: unit = call.rt @msrt_print_int (%id)
+  %u: void = call.rt @msrt_print_int (%id)
   ret %u
 }}
 fn @main() -> int {{
@@ -610,12 +610,12 @@ b3():
 fn a_slot_owner_closed_by_hand_on_some_paths_is_still_released_at_the_scope_end() {
     for (cond, want) in [(1, "7\n~\n7\n"), (0, "~\n7\n")] {
         let (_, out, text) = elaborate_and_run_text(&format!(
-            r#"fn @shut(%p: ptr) -> unit {{
+            r#"fn @shut(%p: ptr) -> void {{
 b0:
   %r: list<int> = load list<int> %p
   %z: int = iconst 0
   %id: int = list.get %r, %z
-  %u: unit = call.rt @msrt_print_int (%id)
+  %u: void = call.rt @msrt_print_int (%id)
   ret %u
 }}
 fn @main() -> int {{
@@ -631,7 +631,7 @@ b0:
   %c: bool = icmp.eq %k, %one
   br_if %c, b1(), b2()
 b1():
-  %u: unit = call @shut (%s)
+  %u: void = call @shut (%s)
   scope.mark 1 %s
   br b3()
 b2():
@@ -653,12 +653,12 @@ b3():
 fn a_slot_owner_closed_by_hand_on_one_path_and_moved_on_another_is_released_once() {
     for (cond, want) in [(1, "7\n~\n7\n"), (0, "x\n~\n")] {
         let (_, out, text) = elaborate_and_run_text(&format!(
-            r#"fn @shut(%p: ptr) -> unit {{
+            r#"fn @shut(%p: ptr) -> void {{
 b0:
   %r: list<int> = load list<int> %p
   %z: int = iconst 0
   %id: int = list.get %r, %z
-  %u: unit = call.rt @msrt_print_int (%id)
+  %u: void = call.rt @msrt_print_int (%id)
   ret %u
 }}
 fn @main() -> int {{
@@ -674,7 +674,7 @@ b0:
   %c: bool = icmp.eq %k, %one
   br_if %c, b1(), b2()
 b1():
-  %u: unit = call @shut (%s)
+  %u: void = call @shut (%s)
   scope.mark 1 %s
   br b3()
 b2():
@@ -700,12 +700,12 @@ b3():
 fn a_slot_owner_handed_to_the_enclosing_scope_is_closed_once_on_every_path() {
     for (cond, want) in [(1, "~\n7\n"), (0, "x\n~\n7\n")] {
         let (_, out, text) = elaborate_and_run_text(&format!(
-            r#"fn @shut(%p: ptr) -> unit {{
+            r#"fn @shut(%p: ptr) -> void {{
 b0:
   %r: list<int> = load list<int> %p
   %z: int = iconst 0
   %id: int = list.get %r, %z
-  %u: unit = call.rt @msrt_print_int (%id)
+  %u: void = call.rt @msrt_print_int (%id)
   ret %u
 }}
 fn @main() -> int {{
@@ -751,7 +751,7 @@ b0:
   %r: list<int> = load list<int> %p
   %z: int = iconst 0
   %id: int = list.get %r, %z
-  %u: unit = call.rt @msrt_print_int (%id)
+  %u: void = call.rt @msrt_print_int (%id)
   %bad: bool = icmp.ne %id, %z
   br_if %bad, b1(), b2()
 b1():
@@ -763,9 +763,9 @@ b2():
   %o: Res = alt.new Res.Ok %po
   ret %o
 }}
-fn @thunk(%p: ptr) -> unit {{
+fn @thunk(%p: ptr) -> void {{
 b0:
-  %u: unit = unit
+  %u: void = void
   ret %u
 }}
 fn @exit0(%e: move Res) -> Res {{
@@ -795,7 +795,7 @@ fn @main() -> int {{
 b0:
   %r: Res = call @work ()
   %t: int = alt.tag %r
-  %u: unit = call.rt @msrt_print_int (%t)
+  %u: void = call.rt @msrt_print_int (%t)
   drop %r
   %z: int = iconst 0
   ret %z

@@ -516,7 +516,7 @@ const PLACEHOLDERS: [&str; 7] = [
     "documentation goes here",
 ];
 
-const IGNORED: &str = "a an the this that these those it its s of for to from with without and or in on at by as is are be can may will field member method function operation case type declaration public exported native standard api value data object property describes describing represents returns holds provides gets sets has about information description documentation named called contains containing stores stored storing reports whether behavior behaviour contract fn record interface int int64 float float64 bool unit never string bytes optional result list map set payload";
+const IGNORED: &str = "a an the this that these those it its s of for to from with without and or in on at by as is are be can may will field member method function operation case type declaration public exported native standard api value data object property describes describing represents returns holds provides gets sets has about information description documentation named called contains containing stores stored storing reports whether behavior behaviour contract fn record interface int int64 float float64 bool void never string bytes optional result list map set payload";
 
 fn description_problem(entry: &DocumentationEntry, doc: &str) -> String {
     let raw = doc.trim();

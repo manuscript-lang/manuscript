@@ -1,6 +1,6 @@
 fn f(n: Int) Int:
     if n > 1:
-        unit
+        void
     else:
         return 0
 

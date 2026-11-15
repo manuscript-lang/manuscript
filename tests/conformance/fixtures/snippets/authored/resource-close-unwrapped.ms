@@ -33,7 +33,7 @@ fn via_passthrough() Void:
     print("body {r.name}")
 
 fn main() Void:
-    _ := via_try()
+    void via_try()
     via_get()
     via_optional_get()
     via_passthrough()

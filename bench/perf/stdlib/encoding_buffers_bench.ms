@@ -115,7 +115,7 @@ fn decode85(
 		return keep(if actual.is_ok(): data.length() else: 1)
 
 	measure(1, work)?
-	return ok(unit)
+	return ok()
 
 fn zero_budget85() Void!:
 	text := ascii85_encode(sample(4096))

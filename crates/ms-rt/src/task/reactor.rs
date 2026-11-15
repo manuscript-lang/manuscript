@@ -309,6 +309,13 @@ pub(super) unsafe fn reactor_wait() {
                 crate::sched::set_idle(false);
                 continue;
             }
+            // A start queued before the flag above was set did not kick this thread, and one that
+            // is not old enough to take yet does not count as work: bound the sleep by the time
+            // until it can be taken, as the timeout computed earlier did not know of it.
+            let steal = crate::sched::steal_wait_ns();
+            if steal >= 0 && (timeout_ns < 0 || steal < timeout_ns) {
+                timeout_ns = steal;
+            }
             trim_idle_stacks();
             hibernate_idle();
             // Output buffered for a pipe or file must be visible before the program blocks.

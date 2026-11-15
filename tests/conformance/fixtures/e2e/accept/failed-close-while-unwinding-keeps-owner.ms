@@ -33,7 +33,7 @@ fn list_then_fault(log: String) Void:
 	var items: List[Item?] = [Item(1, log.clone(), true), none, Item(2, log.clone(), false)]
 	panic("body fault")
 
-	_ := items.length()
+	void items.length()
 
 test "a failed close of a deque element while unwinding keeps the body fault":
 	temp := temporary("failed-close-")?

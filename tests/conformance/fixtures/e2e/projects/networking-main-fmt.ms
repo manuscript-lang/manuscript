@@ -22,10 +22,10 @@ fn echo(var exchange: HttpExchange) Void!:
                     data: message.data, text: message.text
                 )?
             none:
-                return ok(unit)
+                return ok()
 
         socket.close()?
-        return ok(unit)
+        return ok()
 
     var fields = headers()
     _appended := fields.append("X-Test", "stream")?
@@ -33,7 +33,7 @@ fn echo(var exchange: HttpExchange) Void!:
 
     match exchange.write("hello from streaming Manuscript"):
         ok(_):
-            return ok(unit)
+            return ok()
         error(_):
             return error(Error("write failed", kind: "EIO"))
 

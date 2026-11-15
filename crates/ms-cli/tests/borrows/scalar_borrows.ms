@@ -35,4 +35,4 @@ fn main() Void:
     var scratch = before
     scratch += 100
 
-    _ := stdout().write("{b.n} {mixed} {m.get("a")} {cs} {scratch}\n")
+    void stdout().write("{b.n} {mixed} {m.get("a")} {cs} {scratch}\n")

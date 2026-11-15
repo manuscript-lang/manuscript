@@ -3,7 +3,7 @@ import Closeable from "@std/core.ms"
 type Marker:
     id: Int
 
-fn var Marker.close() Void!: ok(unit)
+fn var Marker.close() Void!: ok()
 
 fn observe(value: Marker, changed: Int) Int: value.id + changed
 
