@@ -42,7 +42,7 @@ CI splits each platform into tests and conformance jobs. Pull requests run the L
 
 The conformance corpus in `tests/conformance/` holds programs with frozen expected output. `make conform` replays it against the Rust binary (CI runs it on linux-amd64, darwin-arm64, and windows-amd64). See the [corpus guide](https://github.com/manuscript-lang/manuscript/blob/main/tests/conformance/README.md).
 
-Runtime memory safety is checked under Miri, which needs a nightly toolchain and is not part of CI:
+Runtime memory safety is checked under Miri, which needs a nightly toolchain. It is not part of pull request CI; the [nightly safety workflow](https://github.com/manuscript-lang/manuscript/blob/main/.github/workflows/nightly-safety.yml) runs it on `main` every night, with `make cancel-sweep` and `make drift-check`:
 
 ```sh
 rustup toolchain install nightly --profile minimal -c miri

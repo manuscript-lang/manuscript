@@ -47,6 +47,8 @@ pub struct Engine<L: Lower> {
     build: ms_build::BuildOptions,
     /// `--static` of the current command: link static musl.
     static_libc: std::cell::Cell<bool>,
+    /// `ms profile --allocs` of the current command: link the allocation-sampling runtime.
+    profile_allocs: std::cell::Cell<bool>,
 }
 
 impl<L: Lower> Engine<L> {
@@ -56,12 +58,18 @@ impl<L: Lower> Engine<L> {
             runtime: None,
             build: options::from_env(),
             static_libc: std::cell::Cell::new(false),
+            profile_allocs: std::cell::Cell::new(false),
         }
     }
 
     /// Select static musl (`--static`) or glibc for the commands that follow.
     pub fn set_static_libc(&self, on: bool) {
         self.static_libc.set(on);
+    }
+
+    /// Link the allocation-sampling runtime for the commands that follow (`ms profile --allocs`).
+    pub fn set_profile_allocs(&self, on: bool) {
+        self.profile_allocs.set(on);
     }
 
     /// The build settings of the current command.
@@ -86,6 +94,12 @@ impl<L: Lower> Engine<L> {
         let build = self.build_options();
         if let Some(runtime) = ms_build::runtime_override(&build)? {
             return Ok(runtime);
+        }
+        if self.profile_allocs.get() {
+            if build.static_musl {
+                return Err("--allocs does not support --static; profile the glibc build".into());
+            }
+            return runtime::embedded_allocs();
         }
         runtime::embedded(build.static_musl)
     }

@@ -37,6 +37,8 @@ import (
 	msstd_http_serving_worker,
 	msstd_http_worker_adopt,
 	msstd_http_worker_close from "@std/internal/http.ms",
+	msstd_net_connection_accept_tls,
+	msstd_net_connection_alias,
 	msstd_net_connection_close,
 	msstd_net_connection_close_if_last,
 	msstd_net_connection_local_address,
@@ -44,6 +46,7 @@ import (
 	msstd_net_connection_read,
 	msstd_net_connection_share,
 	msstd_net_connection_shutdown_write,
+	msstd_net_connection_start_tls,
 	msstd_net_connection_tls_info,
 	msstd_net_connection_write_bytes,
 	msstd_net_datagram_address,
@@ -132,6 +135,8 @@ export type Connection:
 	output: WriteStream[Bytes]
 	// Addresses and TLS details.
 	info: ConnectionInfo
+	// The runtime handle that `start_tls` and `accept_tls` upgrade.
+	native: NativeConnection
 
 // Closes both streams, and with them the socket.
 fn var Connection.close() Unit!:
@@ -149,11 +154,49 @@ fn connection(native: NativeConnection) Connection:
 		error(_): tls = none
 
 	other := msstd_net_connection_share(native)
+	upgradable := msstd_net_connection_alias(native)
 	return Connection(
 		input: ReadStream[Bytes](ConnectionSource(native)),
 		output: WriteStream[Bytes](ConnectionSink(other)),
 		info: ConnectionInfo(local, peer, tls),
+		native: upgradable,
 	)
+
+/*
+Upgrades a plain TCP connection to TLS in place, as a protocol's STARTTLS step does (Postgres `SSLRequest`, SMTP and IMAP
+`STARTTLS`). It runs the client handshake on the same socket and returns the TLS connection. The plain connection is
+consumed (`plain`): it is closed without closing the socket, and the returned connection owns the socket. Use the returned value
+from here on.
+
+The connection must be plain and idle: no read or write may be waiting on it, and the peer must send no application
+bytes before it agrees to TLS. `options` is read as for `connect`: `server_name` is required and verified against
+`roots_pem` (the system roots when empty), with at least TLS 1.2. `timeout` bounds the handshake. EINVAL is returned when
+the connection is already TLS, is busy, or `options` is invalid, with the connection left usable; EBADF when it is
+closed; ETIMEDOUT when `timeout` elapses; and EIO when the handshake or verification fails, which consumes the
+connection.
+*/
+export fn start_tls(
+	var plain: Connection,
+	options: TlsOptions = TlsOptions(),
+	timeout: Duration? = none,
+) Connection!:
+	if options.server_name.is_empty():
+		return error(Error("network: invalid input", kind: "EINVAL"))
+
+	upgraded := msstd_net_connection_start_tls(plain.native, options, timeout)?
+	return ok(connection(upgraded))
+
+// Upgrades a plain TCP connection to TLS in place on the server side: it accepts the
+// client's handshake with the certificate and key in `options`, then returns the TLS
+// connection, consuming `plain` as `start_tls` does.
+// `options` must hold a certificate and key, otherwise EINVAL is returned; the other errors match `start_tls`.
+export fn accept_tls(
+	var plain: Connection,
+	options: TlsOptions = TlsOptions(),
+	timeout: Duration? = none,
+) Connection!:
+	upgraded := msstd_net_connection_accept_tls(plain.native, options, timeout)?
+	return ok(connection(upgraded))
 
 // One datagram. Received, `address` is where it came from; written, where it goes.
 export type Datagram:

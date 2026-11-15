@@ -57,6 +57,11 @@ pub trait Io {
     fn tls_details(&self) -> Option<TlsDetails> {
         None
     }
+    /// Hands the descriptor of an unencrypted stream to a new owner, leaving this one empty.
+    /// Streams that are encrypted or already emptied return none.
+    fn take_plain(&self) -> Option<Socket> {
+        None
+    }
     /// Whether a read that filled less than its buffer emptied the socket, so the next
     /// arrival raises a fresh readiness edge without a read that would block first.
     fn short_read_drains(&self) -> bool {
@@ -80,6 +85,12 @@ impl<T> Owned<T> {
         // SAFETY: tasks share one thread and no reference to the socket outlives an operation;
         // owners release only with no operation parked and refuse new ones.
         drop(unsafe { (*self.0.get()).take() });
+    }
+
+    /// Removes the socket without closing it; none once released or taken.
+    pub fn take(&self) -> Option<T> {
+        // SAFETY: see `release`.
+        unsafe { (*self.0.get()).take() }
     }
 
     /// The socket, if it was not released.
@@ -177,6 +188,10 @@ impl Io for Plain {
 
     fn release(&self) {
         self.sock.release();
+    }
+
+    fn take_plain(&self) -> Option<Socket> {
+        self.sock.take()
     }
 }
 
@@ -276,6 +291,8 @@ pub struct Connection {
     closed: Cell<bool>,
     /// Operations parked on `io`; the descriptor is released once a closed connection has none.
     busy: Cell<u32>,
+    /// Stream ends of the `Connection` record still open; the socket closes with the last.
+    ends: Cell<u32>,
     local: String,
     peer: String,
     pin: ms_rt::sched::Pin,
@@ -294,6 +311,7 @@ impl Connection {
             io,
             closed: Cell::new(false),
             busy: Cell::new(0),
+            ends: Cell::new(1),
             local,
             peer,
             pin: ms_rt::sched::Pin::new(),
@@ -314,6 +332,19 @@ impl Connection {
 
     pub fn is_closed(&self) -> bool {
         self.closed.get()
+    }
+
+    /// Counts one more open stream end.
+    pub fn add_end(&self) {
+        self.ends.set(self.ends.get() + 1);
+    }
+
+    /// Closes the socket when no stream end is left open.
+    pub fn close_end(&self) {
+        self.ends.set(self.ends.get().saturating_sub(1));
+        if self.ends.get() == 0 {
+            self.close();
+        }
     }
 
     /// Closes the socket; later reads and writes report `Closed`. Idempotent. The descriptor is
@@ -465,6 +496,52 @@ impl Connection {
 
     pub fn tls_info(&self) -> Result<TlsDetails, TlsErr> {
         self.io.tls_details().ok_or(TlsErr::InvalidInput)
+    }
+
+    /// Moves an idle unencrypted connection onto a new stream made by `wrap` (a TLS handshake),
+    /// closing this one without closing the descriptor. The descriptor belongs to the new
+    /// connection even when `wrap` fails, which closes it. A connection that is closed, busy,
+    /// already encrypted, or not a stream socket returns `InvalidInput` and stays as it was.
+    pub fn upgrade(&self, wrap: Wrap) -> Result<Rc<Connection>, NetErr> {
+        if self.closed.get() {
+            return Err(NetErr::Closed);
+        }
+        if self.busy.get() != 0 {
+            return Err(NetErr::InvalidInput);
+        }
+        let sock = self.io.take_plain().ok_or(NetErr::InvalidInput)?;
+        self.closed.set(true);
+        let io = wrap(sock)?;
+        self.owner
+            .adopt_io(io, self.local.clone(), self.peer.clone())
+    }
+}
+
+impl Connection {
+    /// Client side of STARTTLS: runs a TLS handshake for `options.server_name` on this
+    /// unencrypted connection and returns the encrypted one, which replaces it.
+    pub fn start_tls(
+        &self,
+        options: &TlsOptions,
+        timeout: Option<i64>,
+    ) -> Result<Rc<Connection>, NetErr> {
+        let deadline = Deadline::from_nanos(timeout).map_err(|_| NetErr::InvalidInput)?;
+        let config = tls::client_config(options, true)?;
+        let name = options.server_name.clone();
+        self.upgrade(Box::new(move |s| tls::connect(s, config, &name, deadline)))
+    }
+
+    /// Server side of STARTTLS: accepts a TLS handshake with the certificate of `options` on
+    /// this unencrypted connection and returns the encrypted one, which replaces it.
+    pub fn accept_tls(
+        &self,
+        options: &TlsOptions,
+        timeout: Option<i64>,
+    ) -> Result<Rc<Connection>, NetErr> {
+        let deadline = Deadline::from_nanos(timeout).map_err(|_| NetErr::InvalidInput)?;
+        let config = tls::stream_server_config(options)?;
+        let clients = !options.roots_pem.is_empty() || options.require_client_certificate;
+        self.upgrade(Box::new(move |s| tls::accept(s, config, deadline, clients)))
     }
 }
 

@@ -62,6 +62,8 @@ export extern fn msstd_net_connection_close(handle: NativeConnection) Unit
 
 export extern fn msstd_net_connection_share(handle: NativeConnection) NativeConnection
 
+export extern fn msstd_net_connection_alias(handle: NativeConnection) NativeConnection
+
 export extern fn msstd_net_connection_close_if_last(handle: NativeConnection) Unit
 
 export extern fn msstd_net_connection_local_address(handle: NativeConnection) String
@@ -75,6 +77,18 @@ export extern fn msstd_net_connection_read(
 ) Bytes?!
 
 export extern fn msstd_net_connection_shutdown_write(handle: NativeConnection) Unit!
+
+export extern fn msstd_net_connection_start_tls(
+	handle: NativeConnection,
+	options: TlsOptions,
+	timeout: Duration?,
+) NativeConnection!
+
+export extern fn msstd_net_connection_accept_tls(
+	handle: NativeConnection,
+	options: TlsOptions,
+	timeout: Duration?,
+) NativeConnection!
 
 export extern fn msstd_net_connection_tls_info(handle: NativeConnection) TlsInfo!
 

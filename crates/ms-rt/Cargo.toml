@@ -12,6 +12,9 @@ crate-type = ["rlib"]
 [features]
 # Allocation counters (always on in unit tests).
 stats = []
+# Allocation sampling for `ms profile --allocs`: one countdown per allocation. Off in the default
+# runtime, which pays nothing; release packaging builds a second archive with it.
+alloc-profile = []
 
 [dependencies]
 memchr = "2.8.3"

@@ -1,7 +1,7 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
 import (
-	YamlValue, parse from "@std/data/yaml.ms",
+	YamlValue, parse, parse_all from "@std/data/yaml.ms",
 	StringBuilder from "@std/string_builder.ms",
 	expect_equal, expect_error, expect_ok, expect_true, fail from "@std/test/test.ms",
 )
@@ -409,7 +409,6 @@ test "YAML flow merge failures retain their source origin":
 	error_at("key: \{\n  <<: 1\n\}", 2, 8)?
 
 test "YAML unsupported flow nodes report their physical source line":
-	unsupported_at("key: [one,\n !example x]", 2)?
 	unsupported_at("key: \{\n [one]: x\}", 2)?
 	unsupported_at("key: [first,\n ? unsupported\n tail]", 2)?
 
@@ -760,7 +759,14 @@ test "YAML version directive composes with same-line document content":
 		expect_equal(parse("{header}\nword\n").is_error(), true)?
 		expect_equal(parse("{header}\n---word\n").is_error(), true)?
 
-	expect_equal(parse("%YAML 1.1\n--- word\n").is_error(), true)?
+	text("%YAML 1.1\n--- word\n", "word")?
+	text("%FOO bar\n%YAML  1.3 # minor versions are read\n--- word\n", "word")?
+	text("%TAG !e! tag:example.com,2000:\n---\n!e!str word\n", "word")?
+	for bad in [
+		"%YAML 2.0\n---\nx", "%YAML 1.2\n%YAML 1.2\n---\nx",
+		"%TAG !e! a\n%TAG !e! b\n---\nx", "%YAML 1.2\n!x!y z\n", "%YAML\n---\nx"
+	]:
+		expect_equal(parse(bad).is_error(), true)?
 
 // Regressions: document boundaries.
 
@@ -863,3 +869,43 @@ test "indented markers and marker prefixes remain scalar content":
 			(parse("[\n{marker}]")?),
 			YamlValue.ArrayValue([YamlValue.StringValue(marker.clone())]),
 		)?
+
+test "YAML tags resolve strings and are otherwise ignored":
+	value := parse(
+		"a: !!str 12\nb: !local x\nc: !!str\n!!str d: &k e\nf: [!!str true, !x \{g: h\}]\n"
+	)?
+	want := parse("a: \"12\"\nb: x\nc: \"\"\nd: e\nf: [\"true\", \{g: h\}]\n")?
+	expect_equal(value.to_string(), want.to_string())?
+
+	_ := parse("top: &a\n  &b value\n") | expect_error?
+
+test "YAML scalar keys become their text and collection keys are rejected":
+	_ := parse("&k x: e\n*k : f\n") | expect_error?
+	keys := parse("1: a\ntrue: b\nnull: c\n: d\n&k x: e\n")?
+	want := parse("\"1\": a\n\"true\": b\n\"null\": c\n\"\": d\nx: e\n")?
+	expect_equal(keys.to_string(), want.to_string())?
+
+	_ := parse("1: a\n\"1\": b\n") | expect_error?
+	unsupported_at("[a]: 1", 1)?
+	unsupported_at("\{[a]: 1\}", 1)?
+	unsupported_at("a: 1\n\{b: c\}: d", 2)?
+
+fn count(text: String, want: Int) Unit!:
+	docs := parse_all(text)?
+	expect_equal(docs.length(), want)?
+
+test "YAML streams read one value per document":
+	docs := parse_all("a: 1\n---\n- x\n...\n--- word\n---\n...\n%YAML 1.2\n---\nlast\n")?
+	expect_equal(docs.length(), 5)?
+	expect_equal(docs[3], YamlValue.Null)?
+	expect_equal(docs[4], YamlValue.StringValue("last"))?
+	count("", 0)?
+	count("# only a comment\n", 0)?
+	count("...\n", 0)?
+	count("one\n...\ntwo\n", 2)?
+
+	// Anchors end with their document, and a directive needs the previous document
+	// closed.
+	_ := parse_all("---\n&a x\n---\n*a\n") | expect_error?
+	_ := parse_all("a: 1\n%YAML 1.2\n---\nb: 2\n") | expect_error?
+	_ := parse("one\n---\ntwo\n") | expect_error?
