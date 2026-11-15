@@ -362,18 +362,24 @@ impl Walker<'_> {
         {
             self.take_carried(holder.uid, holder.name);
             for a in args {
-                if !self.entry_call(&a.value) {
-                    continue;
-                }
-                let origins = self.entry_places(&a.value);
-                if !origins.is_empty() {
-                    self.active.push(Borrow {
-                        holder: holder.uid,
-                        holder_name: holder.name,
-                        origins: origins.into_iter().map(|p| (p, false)).collect(),
-                        pos: a.value.pos,
-                        why: PROMISE_WHY.to_string(),
-                    });
+                let mut parts = Vec::new();
+                collect_parts(
+                    &a.value,
+                    &|c| matches!(self.cx.m.resolution(c), Resolution::Constructor { .. }),
+                    &mut parts,
+                );
+                let starts: Vec<&Expr> = parts.into_iter().filter(|p| self.entry_call(p)).collect();
+                for part in starts {
+                    let origins = self.entry_places(part);
+                    if !origins.is_empty() {
+                        self.active.push(Borrow {
+                            holder: holder.uid,
+                            holder_name: holder.name,
+                            origins: origins.into_iter().map(|p| (p, false)).collect(),
+                            pos: part.pos,
+                            why: PROMISE_WHY.to_string(),
+                        });
+                    }
                 }
             }
         }
