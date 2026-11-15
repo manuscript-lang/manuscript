@@ -346,6 +346,19 @@ impl<'a> FnLower<'a> {
                 self.views.insert(v);
                 Ok(Val { v, own: false })
             }
+            (TyKind::Str, "view_bytes") => {
+                // A borrow of the receiver's text, or a copy when the text is short or a
+                // temporary (dropped after the call); releasing a borrowed view is a no-op, so
+                // the result is always an owned value.
+                let r = self.borrow(recv);
+                let sym = if recv.own {
+                    "msrt_string_to_bytes"
+                } else {
+                    "msrt_string_view_bytes"
+                };
+                let v = self.call_runtime(sym, &[r], MTy::BYTES)?;
+                Ok(Val { v, own: true })
+            }
             (TyKind::List(_) | TyKind::Bytes, "is_empty") => {
                 let r = self.borrow(recv);
                 let n = self.b.list_len(r);

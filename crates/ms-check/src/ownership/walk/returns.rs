@@ -981,7 +981,9 @@ impl Walker<'_> {
             return None;
         };
         let ty = self.cx.m.ty(e);
-        if self.syms.str(name) != "view" || !(ty.is(Builtin::Bytes) || ty.is_string()) {
+        if !matches!(self.syms.str(name), "view" | "view_bytes")
+            || !(ty.is(Builtin::Bytes) || ty.is_string())
+        {
             return None;
         }
         let root = self.root_name(recv)?;

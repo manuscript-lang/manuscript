@@ -134,6 +134,10 @@ interface StringOperations:
 	// which cannot change while the view is used; `.clone()` keeps the text. `slice`
 	// copies instead.
 	fn view(start: Int, end: Int) String
+	// Borrows the UTF-8 bytes of the text without copying. Like `view`, the result
+	// borrows the receiver, which cannot change while the bytes are used; `.clone()`
+	// keeps them. `to_bytes` copies instead.
+	fn view_bytes() Bytes
 	// Encodes the string as UTF-8 bytes.
 	fn to_bytes() Bytes
 	// Parses signed ASCII decimal digits; invalid text or Int overflow returns none.
