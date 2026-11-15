@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -16,18 +16,18 @@ fn gcd(a: Int, b: Int) Int:
 
 export fn main() Int:
     i1 := (-(((-9) + (-2)) / (257788 * 47)))
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     l2 := [5]
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     i3 := (i1 + ((i1 - 15) + (i1 * 859413570503)))
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     b4 := ((617.807 > (0.0 + 657.452)) and ("alpha" + "delta").is_empty())
-    say("b4 = {b4}")
+    say(f"b4 = {b4}")
 
-    b5 := (not (("{(i3 % 36)}:" + "line\nbreak") == ("{i1}:" + "delta")))
-    say("b5 = {b5}")
-    say("gcd(320, 1357) = {gcd(320, 137)}")
+    b5 := (not ((f"{(i3 % 36)}:" + "line\nbreak") == (f"{i1}:" + "delta")))
+    say(f"b5 = {b5}")
+    say(f"gcd(320, 1357) = {gcd(320, 137)}")
     return 0

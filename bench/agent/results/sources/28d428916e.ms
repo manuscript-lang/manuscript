@@ -126,7 +126,7 @@ fn evaluate(line: String) String:
 	if not r.ok or r.pos != toks.length(): return "error: syntax"
 	if r.div0: return "error: division by zero"
 
-	return "{r.value}"
+	return f"{r.value}"
 
 export fn main() Int:
 	var out = stdout()
@@ -135,6 +135,6 @@ export fn main() Int:
 		text := line.trim()
 		if text.length() == 0: continue
 
-		out.write("{evaluate(text)}\n").get()
+		out.write(f"{evaluate(text)}\n").get()
 
 	return 0

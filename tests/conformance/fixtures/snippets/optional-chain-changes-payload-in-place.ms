@@ -33,14 +33,14 @@ fn main2() Void:
     n?.inc()
     n?.next?.inc()
     if l := xs:
-        stdout().write("{l.length()}\n").get()
+        stdout().write(f"{l.length()}\n").get()
     if bb := b:
-        stdout().write("{bb.a} {bb.s}\n").get()
+        stdout().write(f"{bb.a} {bb.s}\n").get()
 
     if nn := n:
-        stdout().write("{nn.v}\n").get()
+        stdout().write(f"{nn.v}\n").get()
         if m := nn.next:
-            stdout().write("{m.v}\n").get()
+            stdout().write(f"{m.v}\n").get()
 
 fn main() Void:
     main2()

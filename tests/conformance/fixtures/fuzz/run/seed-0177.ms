@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -44,49 +44,49 @@ export fn main() Int:
     var acc1 = 0
     for i in 0..2:
         acc1 += i * 9
-    say("acc1 = {acc1}")
+    say(f"acc1 = {acc1}")
 
-    s2 := ("{138580478251}:" + "gamma")
-    say("s2 = [{s2}]")
+    s2 := (f"{138580478251}:" + "gamma")
+    say(f"s2 = [{s2}]")
 
     s3 := ((s2 + "  padded  ").upper() + (("quote\"d" + s2) + (s2 + "Tab\there")))
-    say("s3 = [{s3}]")
+    say(f"s3 = [{s3}]")
 
     i4 := (789846354915 % 15)
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     s5 := (s2.trim() + s2)
-    say("s5 = [{s5}]")
+    say(f"s5 = [{s5}]")
 
     l6 := [4, 22, 17, (-29), 28]
-    say("l6 = {l6} len {l6.length()}")
-    say("fib(31) = {fib(31)}")
-    say("collatz(2205) = {collatz(2205)}")
+    say(f"l6 = {l6} len {l6.length()}")
+    say(f"fib(31) = {fib(31)}")
+    say(f"collatz(2205) = {collatz(2205)}")
 
     i7 := i4
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
     i8 := (24 + (i7 - i7))
-    say("i8 = {i8}")
+    say(f"i8 = {i8}")
 
-    s9 := ("{(i8 - (-27))}:" + s3)
-    say("s9 = [{s9}]")
+    s9 := (f"{(i8 - (-27))}:" + s3)
+    say(f"s9 = [{s9}]")
 
-    s10 := ("{i8}:" + s5).reverse().lower()
-    say("s10 = [{s10}]")
+    s10 := (f"{i8}:" + s5).reverse().lower()
+    say(f"s10 = [{s10}]")
 
-    s11 := ("{((-5) / i8)}:" + ("ms" + "").lower())
-    say("s11 = [{s11}]")
+    s11 := (f"{((-5) / i8)}:" + ("ms" + "").lower())
+    say(f"s11 = [{s11}]")
 
     b12 := true
-    say("b12 = {b12}")
+    say(f"b12 = {b12}")
 
     i13 := ((-2) + l6.get(4))
-    say("i13 = {i13}")
+    say(f"i13 = {i13}")
 
     i14 := (((i4 + i4) - (i4 - i8)) * l6.get(0))
-    say("i14 = {i14}")
+    say(f"i14 = {i14}")
 
     s15 := "gamma"
-    say("s15 = [{s15}]")
+    say(f"s15 = [{s15}]")
     return 0

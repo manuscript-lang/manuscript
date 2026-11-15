@@ -308,7 +308,7 @@ fn parse_labels(value: String) Result[List[String], Fail]:
     for raw in value.split(","):
         l := raw.lower()
         if not valid_label(l):
-            return error(Fail(msg: "bad label '{l}'"))
+            return error(Fail(msg: f"bad label '{l}'"))
 
         if not out.contains(l):
             out.append(l)
@@ -395,7 +395,7 @@ fn show_points(p: Int) String:
     if p < 0:
         return "-"
 
-    return "{p}"
+    return f"{p}"
 
 fn labels_csv(l: List[String]) String:
     if l.length() == 0:
@@ -421,7 +421,7 @@ fn parse_id(arg: String) Result[Int, Fail]:
         if v >= 1:
             return ok(v)
 
-    return error(Fail(msg: "bad issue id '{arg}'"))
+    return error(Fail(msg: f"bad issue id '{arg}'"))
 
 fn find_id(st: Tracker, id: Int) Optional[Int]:
     for i in 0..st.issues.length():
@@ -434,7 +434,7 @@ fn live_index(st: Tracker, arg: String) Result[Int, Fail]:
     if i := find_id(st, id):
         return ok(i)
 
-    return error(Fail(msg: "no such issue #{id}"))
+    return error(Fail(msg: f"no such issue #{id}"))
 
 fn is_final(st: Tracker, state: String) Bool:
     return st.wf.finals.contains(state)
@@ -459,7 +459,7 @@ fn set_field(var iss: Issue, field: String, value: String) Result[Unit, Fail]:
     else if field == "priority":
         rank := PRIORITIES.index_of(value).get(-1)
         if rank < 0:
-            return error(Fail(msg: "bad priority '{value}'"))
+            return error(Fail(msg: f"bad priority '{value}'"))
 
         iss.priority = rank
     else if field == "assignee":
@@ -475,14 +475,14 @@ fn set_field(var iss: Issue, field: String, value: String) Result[Unit, Fail]:
         else if int_text(value):
             iss.points = int_of(value)
         else:
-            return error(Fail(msg: "bad points '{value}'"))
+            return error(Fail(msg: f"bad points '{value}'"))
     else if field == "due":
         if value == "none":
             iss.due = ""
         else if valid_date(value):
             iss.due = value.clone()
         else:
-            return error(Fail(msg: "bad date '{value}'"))
+            return error(Fail(msg: f"bad date '{value}'"))
     else if field == "labels":
         if value == "none":
             iss.labels = List[String]()
@@ -497,7 +497,7 @@ fn set_field(var iss: Issue, field: String, value: String) Result[Unit, Fail]:
         else:
             iss.reporter = value.clone()
     else:
-        return error(Fail(msg: "unknown field '{field}'"))
+        return error(Fail(msg: f"unknown field '{field}'"))
 
     return ok(unit)
 
@@ -508,7 +508,7 @@ fn apply_fields(var iss: Issue, toks: List[String], from: Int) Result[Unit, Fail
         tok := toks[k].clone()
         at := tok.index_of("=").get(-1)
         if at <= 0:
-            return error(Fail(msg: "expected field=value, got '{tok}'"))
+            return error(Fail(msg: f"expected field=value, got '{tok}'"))
 
         field := sub(tok, 0, at)
         value := sub(tok, at + 1, tok.scalar_length())
@@ -521,19 +521,19 @@ fn apply_fields(var iss: Issue, toks: List[String], from: Int) Result[Unit, Fail
 fn changes(old: Issue, next: Issue) List[String]:
     var out = List[String]()
     if old.title != next.title:
-        out.append("title: {old.title} -> {next.title}")
+        out.append(f"title: {old.title} -> {next.title}")
     if old.priority != next.priority:
-        out.append("priority: {prio_name(old.priority)} -> {prio_name(next.priority)}")
+        out.append(f"priority: {prio_name(old.priority)} -> {prio_name(next.priority)}")
     if old.assignee != next.assignee:
-        out.append("assignee: {show_text(old.assignee)} -> {show_text(next.assignee)}")
+        out.append(f"assignee: {show_text(old.assignee)} -> {show_text(next.assignee)}")
     if old.points != next.points:
-        out.append("points: {show_points(old.points)} -> {show_points(next.points)}")
+        out.append(f"points: {show_points(old.points)} -> {show_points(next.points)}")
     if old.due != next.due:
-        out.append("due: {show_text(old.due)} -> {show_text(next.due)}")
+        out.append(f"due: {show_text(old.due)} -> {show_text(next.due)}")
     if old.labels.join(",") != next.labels.join(","):
-        out.append("labels: {labels_csv(old.labels)} -> {labels_csv(next.labels)}")
+        out.append(f"labels: {labels_csv(old.labels)} -> {labels_csv(next.labels)}")
     if old.reporter != next.reporter:
-        out.append("reporter: {show_text(old.reporter)} -> {show_text(next.reporter)}")
+        out.append(f"reporter: {show_text(old.reporter)} -> {show_text(next.reporter)}")
     return out
 
 fn record(var st: Tracker, id: Int, detail: String) Unit:
@@ -548,7 +548,7 @@ fn commit(var st: Tracker, idx: Int, old: Issue, next: Issue) Unit:
     ch := changes(old, next)
 
     if ch.length() == 0:
-        say("#{old.id} unchanged")
+        say(f"#{old.id} unchanged")
         return
 
     var fresh = next.clone()
@@ -559,14 +559,14 @@ fn commit(var st: Tracker, idx: Int, old: Issue, next: Issue) Unit:
     st.issues[idx] = fresh
     for c in ch:
         record(var st, id, c)
-    say("updated #{id}")
+    say(f"updated #{id}")
 
 fn edit_issue(var st: Tracker, idx: Int, toks: List[String], from: Int) Result[
     Unit, Fail
 ]:
     old := st.issues[idx].clone()
     if is_final(st, old.state):
-        return error(Fail(msg: "#{old.id} is in final state '{old.state}'"))
+        return error(Fail(msg: f"#{old.id} is in final state '{old.state}'"))
     if from >= toks.length():
         return error(Fail(msg: "usage: edit ID field=value..."))
 
@@ -580,7 +580,7 @@ fn label_issue(var st: Tracker, idx: Int, ops: List[String], from: Int) Result[
 ]:
     old := st.issues[idx].clone()
     if is_final(st, old.state):
-        return error(Fail(msg: "#{old.id} is in final state '{old.state}'"))
+        return error(Fail(msg: f"#{old.id} is in final state '{old.state}'"))
 
     var labels = old.labels.clone()
     var k = from
@@ -598,7 +598,7 @@ fn label_issue(var st: Tracker, idx: Int, ops: List[String], from: Int) Result[
 
         l := name.lower()
         if not valid_label(l):
-            return error(Fail(msg: "bad label '{l}'"))
+            return error(Fail(msg: f"bad label '{l}'"))
 
         if remove:
             var kept = List[String]()
@@ -642,15 +642,15 @@ fn move_issue(var st: Tracker, idx: Int, target: String, comment: String) Result
     id := st.issues[idx].id
     cur := st.issues[idx].state.clone()
     if is_final(st, cur):
-        return error(Fail(msg: "#{id} is in final state '{cur}'"))
+        return error(Fail(msg: f"#{id} is in final state '{cur}'"))
     if not st.wf.states.contains(target):
-        return error(Fail(msg: "unknown state '{target}'"))
+        return error(Fail(msg: f"unknown state '{target}'"))
     if cur == target:
-        return error(Fail(msg: "already in state '{target}'"))
+        return error(Fail(msg: f"already in state '{target}'"))
 
     ti := find_transition(st.wf, cur, target)
     if ti < 0:
-        return error(Fail(msg: "transition '{cur} -> {target}' not allowed"))
+        return error(Fail(msg: f"transition '{cur} -> {target}' not allowed"))
 
     var missing = List[String]()
     for g in st.wf.transitions[ti].guards:
@@ -659,7 +659,7 @@ fn move_issue(var st: Tracker, idx: Int, target: String, comment: String) Result
 
     if missing.length() > 0:
         miss := missing.join(", ")
-        return error(Fail(msg: "cannot move #{id} to {target}: missing {miss}"))
+        return error(Fail(msg: f"cannot move #{id} to {target}: missing {miss}"))
 
     var next = st.issues[idx].clone()
     st.clock += 1
@@ -672,10 +672,10 @@ fn move_issue(var st: Tracker, idx: Int, target: String, comment: String) Result
             )
         )
     st.issues[idx] = next
-    record(var st, id, "state: {cur} -> {target}")
+    record(var st, id, f"state: {cur} -> {target}")
     if comment != "":
-        record(var st, id, "comment: {comment}")
-    say("moved #{id}: {cur} -> {target}")
+        record(var st, id, f"comment: {comment}")
+    say(f"moved #{id}: {cur} -> {target}")
     return ok(unit)
 
 fn add_comment(var st: Tracker, idx: Int, text: String) Unit:
@@ -689,8 +689,8 @@ fn add_comment(var st: Tracker, idx: Int, text: String) Unit:
 
     id := next.id
     st.issues[idx] = next
-    record(var st, id, "comment: {text}")
-    say("commented #{id}")
+    record(var st, id, f"comment: {text}")
+    say(f"commented #{id}")
 
 // ---------- workflow definition ----------
 
@@ -718,7 +718,7 @@ fn parse_workflow(lines: List[String], start: Int, stop: Int) Result[Workflow, F
         if line.starts_with("initial:"):
             name := line.drop(8).trim()
             if not valid_state_name(name):
-                return error(Fail(msg: "workflow: bad state name '{name}'"))
+                return error(Fail(msg: f"workflow: bad state name '{name}'"))
             if has_initial:
                 return error(Fail(msg: "workflow: initial state defined twice"))
 
@@ -729,7 +729,7 @@ fn parse_workflow(lines: List[String], start: Int, stop: Int) Result[Workflow, F
             for part in line.drop(6).split(","):
                 name := part.trim()
                 if not valid_state_name(name):
-                    return error(Fail(msg: "workflow: bad state name '{name}'"))
+                    return error(Fail(msg: f"workflow: bad state name '{name}'"))
 
                 add_state(var states, name)
                 if not finals.contains(name):
@@ -738,25 +738,25 @@ fn parse_workflow(lines: List[String], start: Int, stop: Int) Result[Workflow, F
             arrow := line.index_of("->").get(0)
             src := sub(line, 0, arrow).trim()
             if not valid_state_name(src):
-                return error(Fail(msg: "workflow: bad state name '{src}'"))
+                return error(Fail(msg: f"workflow: bad state name '{src}'"))
 
             add_state(var states, src)
 
             for entry in sub(line, arrow + 2, line.scalar_length()).split(","):
                 ws := words(entry)
                 if ws.length() != 1 and not (ws.length() == 3 and ws[1] == "requires"):
-                    return error(Fail(msg: "workflow: bad line '{line}'"))
+                    return error(Fail(msg: f"workflow: bad line '{line}'"))
 
                 dst := ws[0].clone()
                 if not valid_state_name(dst):
-                    return error(Fail(msg: "workflow: bad state name '{dst}'"))
+                    return error(Fail(msg: f"workflow: bad state name '{dst}'"))
 
                 var guards = List[String]()
 
                 if ws.length() == 3:
                     for g in ws[2].split("+"):
                         if not is_guard_field(g):
-                            return error(Fail(msg: "workflow: bad guard field '{g}'"))
+                            return error(Fail(msg: f"workflow: bad guard field '{g}'"))
 
                         guards.append(g.clone())
 
@@ -767,7 +767,7 @@ fn parse_workflow(lines: List[String], start: Int, stop: Int) Result[Workflow, F
                     )
                 )
         else:
-            return error(Fail(msg: "workflow: bad line '{line}'"))
+            return error(Fail(msg: f"workflow: bad line '{line}'"))
 
     if not has_initial:
         return error(Fail(msg: "workflow: initial state missing"))
@@ -776,7 +776,7 @@ fn parse_workflow(lines: List[String], start: Int, stop: Int) Result[Workflow, F
         if finals.contains(t.src):
             return error(
                 Fail(
-                    msg: "workflow: '{t.src}' is final and cannot have transitions"
+                    msg: f"workflow: '{t.src}' is final and cannot have transitions"
                 )
             )
     return ok(
@@ -803,7 +803,7 @@ fn define_workflow(var st: Tracker, lines: List[String], start: Int) Int:
 
     if w := r:
         say(
-            "workflow ok: {w.states.length()} states, {w.transitions.length()} transitions"
+            f"workflow ok: {w.states.length()} states, {w.transitions.length()} transitions"
         )
         st.wf = w
 
@@ -1018,28 +1018,28 @@ fn make_term(st: Tracker, raw: String) Result[Term, Fail]:
         j += 1
 
     if field == "" or op == "":
-        return error(Fail(msg: "query: unexpected token '{raw}'"))
+        return error(Fail(msg: f"query: unexpected token '{raw}'"))
     if not FILTER_FIELDS.contains(field):
-        return error(Fail(msg: "query: unknown field '{field}'"))
+        return error(Fail(msg: f"query: unknown field '{field}'"))
     if not op_allowed(field, op):
-        return error(Fail(msg: "query: bad operator '{op}' for field '{field}'"))
+        return error(Fail(msg: f"query: bad operator '{op}' for field '{field}'"))
 
     alts := split_alts(sub(raw, j, n))
     text := alts.join("|")
 
     if field == "view":
         if not st.views.contains(text):
-            return error(Fail(msg: "query: unknown view '{text}'"))
+            return error(Fail(msg: f"query: unknown view '{text}'"))
 
         return ok(Term(field: field, op: op, text: text, alts: alts))
 
     if is_ordered(op):
         if alts.length() > 1 or not ordered_ok(field, text):
-            return error(Fail(msg: "query: bad value '{text}' for field '{field}'"))
+            return error(Fail(msg: f"query: bad value '{text}' for field '{field}'"))
     else:
         for alt in alts:
             if not alt_ok(st, field, alt):
-                return error(Fail(msg: "query: bad value '{alt}' for field '{field}'"))
+                return error(Fail(msg: f"query: bad value '{alt}' for field '{field}'"))
 
     return ok(Term(field: field, op: op, text: text, alts: alts))
 
@@ -1102,7 +1102,7 @@ fn parse_primary(var p: Parser, st: Tracker) Result[Unit, Fail]:
         if after == -1:
             return error(Fail(msg: "query: unexpected end of query"))
         if after != TK_RPAREN:
-            return error(Fail(msg: "query: unexpected token '{p.toks[p.pos].text}'"))
+            return error(Fail(msg: f"query: unexpected token '{p.toks[p.pos].text}'"))
 
         p.pos += 1
         return ok(unit)
@@ -1116,7 +1116,7 @@ fn parse_primary(var p: Parser, st: Tracker) Result[Unit, Fail]:
         p.clauses.append(Clause(kind: CL_TERM, term: term))
         return ok(unit)
 
-    return error(Fail(msg: "query: unexpected token '{text}'"))
+    return error(Fail(msg: f"query: unexpected token '{text}'"))
 
 fn compile_filter(st: Tracker, text: String) Result[Filter, Fail]:
     toks := try lex_query(text)
@@ -1126,7 +1126,7 @@ fn compile_filter(st: Tracker, text: String) Result[Filter, Fail]:
     var p = Parser(toks: toks, pos: 0, clauses: List[Clause](), refs: List[String]())
     try parse_or(var p, st)
     if p.pos < p.toks.length():
-        return error(Fail(msg: "query: unexpected token '{p.toks[p.pos].text}'"))
+        return error(Fail(msg: f"query: unexpected token '{p.toks[p.pos].text}'"))
 
     return ok(Filter(clauses: p.clauses.clone(), refs: p.refs.clone()))
 
@@ -1139,7 +1139,7 @@ fn split_query(raw: String) Result[Parts, Fail]:
     if last_word(before) == "limit":
         v := last_word(text)
         if not int_text(v):
-            return error(Fail(msg: "bad limit '{v}'"))
+            return error(Fail(msg: f"bad limit '{v}'"))
 
         limit = int_of(v)
         text = drop_last_word(before)
@@ -1168,7 +1168,7 @@ fn sort_keys(names: List[String]) Result[List[SortKey], Fail]:
             name = w.drop(1)
 
         if not SORT_FIELDS.contains(name):
-            return error(Fail(msg: "bad sort field '{name}'"))
+            return error(Fail(msg: f"bad sort field '{name}'"))
 
         keys.append(SortKey(field: name, desc: desc))
 
@@ -1444,7 +1444,7 @@ fn sort_indices(st: Tracker, keys: List[SortKey], idxs: List[Int]) List[Int]:
 
 fn issue_line(iss: Issue) String:
     pr := prio_name(iss.priority)
-    return "#{iss.id} | {iss.state} | {pr} | {show_text(iss.assignee)} | {show_points(iss.points)} | {show_text(iss.due)} | {labels_csv(iss.labels)} | {iss.title}"
+    return f"#{iss.id} | {iss.state} | {pr} | {show_text(iss.assignee)} | {show_points(iss.points)} | {show_text(iss.due)} | {labels_csv(iss.labels)} | {iss.title}"
 
 fn print_matches(st: Tracker, f: Filter, keys: List[SortKey], limit: Int) Unit:
     var matched = List[Int]()
@@ -1465,7 +1465,7 @@ fn print_matches(st: Tracker, f: Filter, keys: List[SortKey], limit: Int) Unit:
     if shown == 1:
         say("(1 issue)")
     else:
-        say("({shown} issues)")
+        say(f"({shown} issues)")
 
 // ---------- commands ----------
 
@@ -1475,7 +1475,7 @@ fn cmd_actor(var st: Tracker, rest: String) Result[Unit, Fail]:
         return error(Fail(msg: "usage: actor NAME"))
 
     st.actor = ws[0].clone()
-    say("actor is {ws[0]}")
+    say(f"actor is {ws[0]}")
     return ok(unit)
 
 fn cmd_today(var st: Tracker, rest: String) Result[Unit, Fail]:
@@ -1483,10 +1483,10 @@ fn cmd_today(var st: Tracker, rest: String) Result[Unit, Fail]:
     if ws.length() != 1:
         return error(Fail(msg: "usage: today DATE"))
     if not valid_date(ws[0]):
-        return error(Fail(msg: "bad date '{ws[0]}'"))
+        return error(Fail(msg: f"bad date '{ws[0]}'"))
 
     st.today = ws[0].clone()
-    say("today is {ws[0]}")
+    say(f"today is {ws[0]}")
     return ok(unit)
 
 fn cmd_create(var st: Tracker, rest: String) Result[Unit, Fail]:
@@ -1518,7 +1518,7 @@ fn cmd_create(var st: Tracker, rest: String) Result[Unit, Fail]:
     record(var st, id, "created \"" + toks[0] + "\"")
     for c in ch:
         record(var st, id, c)
-    say("created #{id}")
+    say(f"created #{id}")
     return ok(unit)
 
 fn cmd_edit(var st: Tracker, rest: String) Result[Unit, Fail]:
@@ -1574,7 +1574,7 @@ fn cmd_delete(var st: Tracker, rest: String) Result[Unit, Fail]:
     id := st.issues[idx].id
     st.issues.remove(idx)
     record(var st, id, "deleted")
-    say("deleted #{id}")
+    say(f"deleted #{id}")
     return ok(unit)
 
 fn cmd_show(st: Tracker, rest: String) Result[Unit, Fail]:
@@ -1585,18 +1585,18 @@ fn cmd_show(st: Tracker, rest: String) Result[Unit, Fail]:
     idx := try live_index(st, ws[0])
     iss := st.issues[idx].clone()
     pr := prio_name(iss.priority)
-    say("#{iss.id} {iss.title}")
-    say("  state: {iss.state}")
-    say("  priority: {pr}")
-    say("  assignee: {show_text(iss.assignee)}")
-    say("  points: {show_points(iss.points)}")
-    say("  due: {show_text(iss.due)}")
-    say("  labels: {labels_list(iss.labels)}")
-    say("  reporter: {show_text(iss.reporter)}")
-    say("  created: t={iss.created}, updated: t={iss.updated}")
-    say("  comments: {iss.comments.length()}")
+    say(f"#{iss.id} {iss.title}")
+    say(f"  state: {iss.state}")
+    say(f"  priority: {pr}")
+    say(f"  assignee: {show_text(iss.assignee)}")
+    say(f"  points: {show_points(iss.points)}")
+    say(f"  due: {show_text(iss.due)}")
+    say(f"  labels: {labels_list(iss.labels)}")
+    say(f"  reporter: {show_text(iss.reporter)}")
+    say(f"  created: t={iss.created}, updated: t={iss.updated}")
+    say(f"  comments: {iss.comments.length()}")
     for c in iss.comments:
-        say("    [t={c.t} {c.who}] {c.text}")
+        say(f"    [t={c.t} {c.who}] {c.text}")
     return ok(unit)
 
 fn cmd_list(st: Tracker, rest: String) Result[Unit, Fail]:
@@ -1613,17 +1613,17 @@ fn view_save(var st: Tracker, r2: String) Result[Unit, Fail]:
 
     name := ws[0].clone()
     if not valid_view_name(name):
-        return error(Fail(msg: "bad view name '{name}'"))
+        return error(Fail(msg: f"bad view name '{name}'"))
 
     query := rest_after(r2, 1)
     parts := try split_query(query)
     f := try compile_filter(st, parts.filter.clone())
     _keys := try sort_keys(parts.sort_words)
     if refs_reach(st, f.refs, name):
-        return error(Fail(msg: "view '{name}' would reference itself"))
+        return error(Fail(msg: f"view '{name}' would reference itself"))
 
     st.views[name.clone()] = query.clone()
-    say("saved view {name}")
+    say(f"saved view {name}")
     return ok(unit)
 
 fn view_run(st: Tracker, r2: String) Result[Unit, Fail]:
@@ -1633,7 +1633,7 @@ fn view_run(st: Tracker, r2: String) Result[Unit, Fail]:
 
     name := ws[0].clone()
     if not st.views.contains(name):
-        return error(Fail(msg: "unknown view '{name}'"))
+        return error(Fail(msg: f"unknown view '{name}'"))
 
     var parts = try split_query(st.views.get(name).get(""))
     var sort_names = parts.sort_words.clone()
@@ -1657,12 +1657,12 @@ fn view_run(st: Tracker, r2: String) Result[Unit, Fail]:
             if i + 1 >= ws.length():
                 return error(Fail(msg: "usage: view run NAME [sort FIELDS] [limit N]"))
             if not int_text(ws[i + 1]):
-                return error(Fail(msg: "bad limit '{ws[i + 1]}'"))
+                return error(Fail(msg: f"bad limit '{ws[i + 1]}'"))
 
             limit = int_of(ws[i + 1])
             i += 2
         else:
-            return error(Fail(msg: "unexpected '{ws[i]}'"))
+            return error(Fail(msg: f"unexpected '{ws[i]}'"))
 
     f := try compile_filter(st, parts.filter.clone())
     keys := try sort_keys(sort_names)
@@ -1678,7 +1678,7 @@ fn view_list(st: Tracker) Unit:
 
     names.sort()
     for n in names:
-        say("{n}: {st.views.get(n).get("")}")
+        say(f"{n}: {st.views.get(n).get("")}")
 
 fn view_show(st: Tracker, r2: String) Result[Unit, Fail]:
     ws := words(r2)
@@ -1687,9 +1687,9 @@ fn view_show(st: Tracker, r2: String) Result[Unit, Fail]:
 
     name := ws[0].clone()
     if not st.views.contains(name):
-        return error(Fail(msg: "unknown view '{name}'"))
+        return error(Fail(msg: f"unknown view '{name}'"))
 
-    say("{name}: {st.views.get(name).get("")}")
+    say(f"{name}: {st.views.get(name).get("")}")
     return ok(unit)
 
 fn view_delete(var st: Tracker, r2: String) Result[Unit, Fail]:
@@ -1699,15 +1699,15 @@ fn view_delete(var st: Tracker, r2: String) Result[Unit, Fail]:
 
     name := ws[0].clone()
     if not st.views.contains(name):
-        return error(Fail(msg: "unknown view '{name}'"))
+        return error(Fail(msg: f"unknown view '{name}'"))
 
     var names = st.views.keys()
     names.sort()
     for u in names:
         if u != name and view_uses(st, u, name):
-            return error(Fail(msg: "view '{name}' is used by '{u}'"))
+            return error(Fail(msg: f"view '{name}' is used by '{u}'"))
     st.views.remove(name.clone())
-    say("deleted view {name}")
+    say(f"deleted view {name}")
     return ok(unit)
 
 fn cmd_view(var st: Tracker, rest: String) Result[Unit, Fail]:
@@ -1751,7 +1751,7 @@ fn cmd_bulk_check(toks: List[String]) Result[Unit, Fail]:
         if n < 2:
             return error(Fail(msg: "usage: bulk set field=value... where QUERY"))
     else:
-        return error(Fail(msg: "unknown bulk action '{act}'"))
+        return error(Fail(msg: f"unknown bulk action '{act}'"))
 
     return ok(unit)
 
@@ -1793,12 +1793,12 @@ fn cmd_bulk(var st: Tracker, rest: String) Result[Unit, Fail]:
         r := bulk_apply(var st, idx, toks)
 
         if r.is_error():
-            say("#{id} error: {r.err().message()}")
+            say(f"#{id} error: {r.err().message()}")
             bad_count += 1
         else:
             ok_count += 1
 
-    say("bulk: {ok_count} ok, {bad_count} failed")
+    say(f"bulk: {ok_count} ok, {bad_count} failed")
     return ok(unit)
 
 fn cmd_log(st: Tracker, rest: String) Result[Unit, Fail]:
@@ -1809,7 +1809,7 @@ fn cmd_log(st: Tracker, rest: String) Result[Unit, Fail]:
     if ws.length() >= 1 and ws[0] != "tail":
         fid = try parse_id(ws[0])
         if fid >= st.next_id:
-            return error(Fail(msg: "no such issue #{fid}"))
+            return error(Fail(msg: f"no such issue #{fid}"))
 
         i = 1
 
@@ -1817,7 +1817,7 @@ fn cmd_log(st: Tracker, rest: String) Result[Unit, Fail]:
 
     if ws.length() - i == 2 and ws[i] == "tail":
         if not int_text(ws[i + 1]):
-            return error(Fail(msg: "bad tail '{ws[i + 1]}'"))
+            return error(Fail(msg: f"bad tail '{ws[i + 1]}'"))
 
         tail = int_of(ws[i + 1])
     else if ws.length() - i != 0:
@@ -1838,7 +1838,7 @@ fn cmd_log(st: Tracker, rest: String) Result[Unit, Fail]:
 
     for k in start..sel.length():
         e := st.journal[sel[k]]
-        say("t={e.t} {e.who} #{e.id} {e.detail}")
+        say(f"t={e.t} {e.who} #{e.id} {e.detail}")
 
     return ok(unit)
 
@@ -1885,7 +1885,7 @@ fn report_summary(st: Tracker) Unit:
                 open_points += iss.points
 
     final_count := total - open_count
-    say("issues: {total} (open {open_count}, final {final_count})")
+    say(f"issues: {total} (open {open_count}, final {final_count})")
     say("by state:")
 
     for s in st.wf.states:
@@ -1893,7 +1893,7 @@ fn report_summary(st: Tracker) Unit:
         for iss in st.issues:
             if iss.state == s:
                 n += 1
-        say("  {s}: {n}")
+        say(f"  {s}: {n}")
 
     say("by priority:")
 
@@ -1904,12 +1904,12 @@ fn report_summary(st: Tracker) Unit:
         for iss in st.issues:
             if iss.priority == rk:
                 n += 1
-        say("  {prio_name(rk)}: {n}")
+        say(f"  {prio_name(rk)}: {n}")
         rk -= 1
 
-    say("unassigned: {unassigned}")
-    say("overdue: {overdue}")
-    say("open points: {open_points}")
+    say(f"unassigned: {unassigned}")
+    say(f"overdue: {overdue}")
+    say(f"open points: {open_points}")
 
 fn report_workload(st: Tracker) Unit:
     var groups = List[Group]()
@@ -1953,12 +1953,12 @@ fn report_workload(st: Tracker) Unit:
     for g in sort_groups(groups):
         noun := if g.count == 1: "issue" else: "issues"
 
-        say("{g.name}: {g.count} {noun}, {g.points} points")
+        say(f"{g.name}: {g.count} {noun}, {g.points} points")
 
     if unassigned > 0:
         noun := if unassigned == 1: "issue" else: "issues"
 
-        say("unassigned: {unassigned} {noun}, {unassigned_points} points")
+        say(f"unassigned: {unassigned} {noun}, {unassigned_points} points")
 
 fn report_labels(st: Tracker, f: Filter) Unit:
     var groups = List[Group]()
@@ -1986,7 +1986,7 @@ fn report_labels(st: Tracker, f: Filter) Unit:
         return
 
     for g in sort_groups(groups):
-        say("{g.name}: {g.count}")
+        say(f"{g.name}: {g.count}")
 
 fn report_timeline(st: Tracker, idx: Int) Unit:
     var iss = st.issues[idx].clone()
@@ -1998,12 +1998,12 @@ fn report_timeline(st: Tracker, idx: Int) Unit:
         if e.id == iss.id and e.detail.starts_with("state: "):
             parts := e.detail.split(" -> ")
             dur := e.t - since
-            say("{cur}: t={since}..{e.t} ({dur})")
+            say(f"{cur}: t={since}..{e.t} ({dur})")
             cur = parts[parts.length() - 1].clone()
             since = e.t
 
     last := st.clock - since
-    say("{cur}: t={since}..{st.clock} ({last})")
+    say(f"{cur}: t={since}..{st.clock} ({last})")
 
 fn cmd_report(st: Tracker, rest: String) Result[Unit, Fail]:
     ws := words(rest)
@@ -2074,7 +2074,7 @@ fn run_command(var st: Tracker, cmd: String, rest: String) Result[Unit, Fail]:
     if cmd == "report":
         return cmd_report(st, rest)
 
-    return error(Fail(msg: "unknown command '{cmd}'"))
+    return error(Fail(msg: f"unknown command '{cmd}'"))
 
 export fn main() Int:
     var lines = List[String]()

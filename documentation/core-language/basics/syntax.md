@@ -16,7 +16,7 @@ export type Customer:
 
 export fn welcome(customer: Customer) String:
     if customer.active:
-        return "Welcome, {customer.name}!"
+        return f"Welcome, {customer.name}!"
 
     return "Your account is inactive."
 ```
@@ -55,8 +55,8 @@ fn check(rows: List[String], limit: Int) String:
     blanks := rows.count(fn r: r.is_empty())
     kind := if blanks == 0: "dense" else: "sparse"
     for i in 0..rows.length():
-        if rows[i] == "stop": return "stopped at {i}"
-    print("{kind} {blanks}")
+        if rows[i] == "stop": return f"stopped at {i}"
+    print(f"{kind} {blanks}")
     return kind
 ```
 

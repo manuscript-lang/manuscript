@@ -48,7 +48,7 @@ export fn main() Int:
 	result := exercise(mode, path)
 
 	if result.is_error():
-		_ignored := stderr().write("{result.err().message}\n")
+		_ignored := stderr().write(f"{result.err().message}\n")
 		return 1
 
 	return 0

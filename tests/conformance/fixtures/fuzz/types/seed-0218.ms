@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -16,23 +16,23 @@ fn fact(n: Int) Int:
 
 export fn main() Int:
     say(
-        "{624131} {(-(7 - (-46)))} {(624131 < (-(7 - (-46))))} sum {624131 + (-(7 - (-46)))}"
+        f"{624131} {(-(7 - (-46)))} {(624131 < (-(7 - (-46))))} sum {624131 + (-(7 - (-46)))}"
     )
 
-    s1 := "brace\{s\}".lower().reverse()
-    say("s1 = [{s1}]")
-    say("fact(4) = {fact(4)}")
+    s1 := "brace{s}".lower().reverse()
+    say(f"s1 = [{s1}]")
+    say(f"fact(4) = {fact(4)}")
 
     s2 := "delta"
-    say("s2 = [{s2}]")
+    say(f"s2 = [{s2}]")
 
     bad := [1, "two"]
     i3 := 10
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     b4 := s2.replace(s2, s1).ends_with(s1)
-    say("b4 = {b4}")
+    say(f"b4 = {b4}")
 
     i5 := i3
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
     return 0

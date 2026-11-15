@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -23,39 +23,39 @@ fn fib(n: Int) Int:
 
 export fn main() Int:
     s1 := "日本語"
-    say("s1 = [{s1}]")
+    say(f"s1 = [{s1}]")
 
     i2 := (((-21) * (45 + (-22))) + ((818656 - 41) + (-562737689021)))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     s3 := "emoji 😀"
-    say("s3 = [{s3}]")
+    say(f"s3 = [{s3}]")
 
     b4 := (s3 == ("quote\"d".replace(s3, s1) + s1))
-    say("b4 = {b4}")
+    say(f"b4 = {b4}")
 
     b5 := s1.replace(s3, s3).reverse().is_empty()
-    say("b5 = {b5}")
+    say(f"b5 = {b5}")
 
     l6 := [(-1), 6, (-4), 10, 5]
-    say("l6 = {l6} len {l6.length()}")
+    say(f"l6 = {l6} len {l6.length()}")
     say(
-        "{(((-27) - i2) / (-i2))} {s3.scalar_length()} {((((-27) - i2) / (-i2)) < s3.scalar_length())} sum {(((-27) - i2) / (-i2)) + s3.scalar_length()}"
+        f"{(((-27) - i2) / (-i2))} {s3.scalar_length()} {((((-27) - i2) / (-i2)) < s3.scalar_length())} sum {(((-27) - i2) / (-i2)) + s3.scalar_length()}"
     )
 
     i7 := (i2 + ((i2 + 3) + (-i2)))
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
     i8 := (s1.scalar_length() + ((-(-717610)) % ((-41) % 19)))
-    say("i8 = {i8}")
+    say(f"i8 = {i8}")
 
     i9 := (((37 + 864678) + (i7 / 48)) * ((830270 - i8) + l6.get(3)))
-    say("i9 = {i9}")
+    say(f"i9 = {i9}")
 
     i10 := (i2 % (i9 + (i7 - i7)))
-    say("i10 = {i10}")
+    say(f"i10 = {i10}")
 
     s11 := (s1.upper() + "hello world")
-    say("s11 = [{s11}]")
-    say("fib(48) = {fib(48)}")
+    say(f"s11 = [{s11}]")
+    say(f"fib(48) = {fib(48)}")
     return 0

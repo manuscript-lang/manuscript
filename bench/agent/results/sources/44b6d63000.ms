@@ -57,9 +57,9 @@ fn price_cents(text: String) Optional[Int]:
 fn money(cents: Int) String:
     rest := cents % 100
     if rest < 10:
-        return "{cents / 100}.0{rest}"
+        return f"{cents / 100}.0{rest}"
 
-    return "{cents / 100}.{rest}"
+    return f"{cents / 100}.{rest}"
 
 fn line_cost(qty: Int, price: Int) Int:
     if qty >= 10:
@@ -89,7 +89,7 @@ impl Store:
             stock: old.stock + qty, price: old.price, reserved: old.reserved
         )
         self.skus[sku.clone()] = updated
-        return "ok {sku} stock={updated.stock}"
+        return f"ok {sku} stock={updated.stock}"
 
     var fn set_price(sku: String, cents: Int) String:
         old := self.skus[sku.clone()]
@@ -101,13 +101,13 @@ impl Store:
             line := lines[i].clone()
             for j in 0..i:
                 if lines[j].sku == line.sku:
-                    return "error: duplicate sku {line.sku}"
+                    return f"error: duplicate sku {line.sku}"
             if not self.skus.contains(line.sku.clone()):
-                return "error: unknown sku {line.sku}"
+                return f"error: unknown sku {line.sku}"
 
             sku := self.skus[line.sku.clone()]
             if line.qty > sku.stock:
-                return "error: insufficient stock for {line.sku} (have {sku.stock}, need {line.qty})"
+                return f"error: insufficient stock for {line.sku} (have {sku.stock}, need {line.qty})"
 
         var total = 0
 
@@ -120,14 +120,14 @@ impl Store:
             total += line_cost(line.qty, sku.price)
 
         self.orders[id.clone()] = Order(status: "placed", total: total, lines: lines)
-        return "ok {id} total={money(total)}"
+        return f"ok {id} total={money(total)}"
 
     var fn cancel(id: String) String:
         order := self.orders[id.clone()].clone()
         if order.status == "cancelled":
-            return "error: order {id} already cancelled"
+            return f"error: order {id} already cancelled"
         if order.status == "shipped":
-            return "error: order {id} already shipped"
+            return f"error: order {id} already shipped"
 
         for line in order.lines:
             sku := self.skus[line.sku.clone()]
@@ -144,9 +144,9 @@ impl Store:
     var fn ship(id: String) String:
         order := self.orders[id.clone()].clone()
         if order.status == "shipped":
-            return "error: order {id} already shipped"
+            return f"error: order {id} already shipped"
         if order.status == "cancelled":
-            return "error: order {id} is cancelled"
+            return f"error: order {id} is cancelled"
 
         for line in order.lines:
             sku := self.skus[line.sku.clone()]
@@ -165,7 +165,7 @@ impl Store:
         for sku in self.skus.keys().sorted():
             s := self.skus[sku.clone()]
             out.append(
-                "{sku} stock={s.stock} price={money(s.price)} reserved={s.reserved}"
+                f"{sku} stock={s.stock} price={money(s.price)} reserved={s.reserved}"
             )
 
         var placed = 0
@@ -184,8 +184,8 @@ impl Store:
             else:
                 cancelled += 1
 
-        out.append("orders placed={placed} shipped={shipped} cancelled={cancelled}")
-        out.append("revenue={money(revenue)}")
+        out.append(f"orders placed={placed} shipped={shipped} cancelled={cancelled}")
+        out.append(f"revenue={money(revenue)}")
         return out.join("\n")
 
 fn run(var store: Store, tokens: List[String]) String:
@@ -208,7 +208,7 @@ fn run(var store: Store, tokens: List[String]) String:
 
         if cents := price_cents(tokens[2].clone()):
             if not store.skus.contains(tokens[1].clone()):
-                return "error: unknown sku {tokens[1]}"
+                return f"error: unknown sku {tokens[1]}"
 
             return store.set_price(tokens[1].clone(), cents)
 
@@ -220,7 +220,7 @@ fn run(var store: Store, tokens: List[String]) String:
         if not valid_id(tokens[1].clone()):
             return "error: bad order id"
         if store.orders.contains(tokens[1].clone()):
-            return "error: order {tokens[1]} already exists"
+            return f"error: order {tokens[1]} already exists"
 
         var lines = List[Line]()
 
@@ -228,7 +228,7 @@ fn run(var store: Store, tokens: List[String]) String:
             if line := parse_item(tokens[i].clone()):
                 lines.append(line)
             else:
-                return "error: bad item {tokens[i]}"
+                return f"error: bad item {tokens[i]}"
 
         return store.place(tokens[1].clone(), lines)
 
@@ -236,7 +236,7 @@ fn run(var store: Store, tokens: List[String]) String:
         if count != 2:
             return "error: usage"
         if not store.orders.contains(tokens[1].clone()):
-            return "error: unknown order {tokens[1]}"
+            return f"error: unknown order {tokens[1]}"
 
         return store.cancel(tokens[1].clone())
 
@@ -244,7 +244,7 @@ fn run(var store: Store, tokens: List[String]) String:
         if count != 2:
             return "error: usage"
         if not store.orders.contains(tokens[1].clone()):
-            return "error: unknown order {tokens[1]}"
+            return f"error: unknown order {tokens[1]}"
 
         return store.ship(tokens[1].clone())
 
@@ -266,6 +266,6 @@ export fn main() Int:
                 continue
 
             reply := run(var store, line.split(" "))
-            out.write("{reply}\n").get()
+            out.write(f"{reply}\n").get()
 
     return 0

@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -24,33 +24,33 @@ fn collatz(start: Int) Int:
 
 export fn main() Int:
     l1 := [1]
-    say("l1 = {l1} len {l1.length()}")
+    say(f"l1 = {l1} len {l1.length()}")
 
     i2 := (49 + (33 + (-35)))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     s3 := (
-        ("{(i2 * 8)}:" + ("{(-24)}:" + "alpha"))
+        (f"{(i2 * 8)}:" + (f"{(-24)}:" + "alpha"))
         + (("line\nbreak" + "beta") + "back\\slash")
     )
-    say("s3 = [{s3}]")
+    say(f"s3 = [{s3}]")
 
     l4 := [(-26), (-26), (-21), (-26), 16]
-    say("l4 = {l4} len {l4.length()}")
+    say(f"l4 = {l4} len {l4.length()}")
 
     b5 := (i2 <= (-(-(-793245))))
-    say("b5 = {b5}")
+    say(f"b5 = {b5}")
 
     i6 := ((-11) + ((41 % i2) % (-28)))
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
     say(
-        "{i6} {((i6 % i6) - (i2 % i2))} {(i6 < ((i6 % i6) - (i2 % i2)))} sum {i6 + ((i6 % i6) - (i2 % i2))}"
+        f"{i6} {((i6 % i6) - (i2 % i2))} {(i6 < ((i6 % i6) - (i2 % i2)))} sum {i6 + ((i6 % i6) - (i2 % i2))}"
     )
 
     b7 := ("back\\slash".lower() + "").contains(s3)
-    say("b7 = {b7}")
+    say(f"b7 = {b7}")
 
     b8 := true
-    say("b8 = {b8}")
-    say("collatz(815) = {collatz(815)}")
+    say(f"b8 = {b8}")
+    say(f"collatz(815) = {collatz(815)}")
     return 0

@@ -5,7 +5,7 @@ import (
 	full_match from "../../lib/text.ms",
 )
 
-NUM := "[0-9]\{1,6\}"
+NUM := "[0-9]{1,6}"
 
 fn lcs(a: String, b: String) Int:
 	ys := b.chars()
@@ -70,7 +70,7 @@ fn coins(amount: Int, cs: List[Int]) String:
 	for a in 1..amount + 1:
 		for c in cs:
 			if c <= a and best[a - c] + 1 < best[a]: best[a] = best[a - c] + 1
-	return if best[amount] >= inf: "impossible" else: "{best[amount]}"
+	return if best[amount] >= inf: "impossible" else: f"{best[amount]}"
 
 fn solve_line(line: String) String:
 	t := line.split(" ")
@@ -79,7 +79,7 @@ fn solve_line(line: String) String:
 
 	if cmd == "lcs" or cmd == "edit":
 		if t.length() != 3 or t[1] == "" or t[2] == "": return bad
-		return "{if cmd == "lcs": lcs(t[1], t[2]) else: edit(t[1], t[2])}"
+		return f"{if cmd == "lcs": lcs(t[1], t[2]) else: edit(t[1], t[2])}"
 
 	if cmd == "knap":
 		if t.length() < 2 or not full_match(NUM, t[1]): return bad
@@ -97,7 +97,7 @@ fn solve_line(line: String) String:
 
 			items.append(Thing(p[0].parse_int().get(0), p[1].parse_int().get(0)))
 
-		return "{knap(t[1].parse_int().get(0), items)}"
+		return f"{knap(t[1].parse_int().get(0), items)}"
 
 	if cmd == "coins":
 		if t.length() < 3: return bad
@@ -134,7 +134,7 @@ export fn gen_c14() Void:
 
 	for _i in 0..50:
 		w := rnd.randint(1, 60)
-		parts.append("{w}:{rnd.randint(0, 500)}")
+		parts.append(f"{w}:{rnd.randint(0, 500)}")
 
 	items := parts.join(" ")
 	examples := [
@@ -144,7 +144,7 @@ export fn gen_c14() Void:
 		),
 		mk("small", "lcs abc abc\nedit abc xyz\ncoins 0 7\nknap 0 1:1\n"),
 	]
-	big_strings := "lcs {word(var rnd, 300, acgt)} {word(var rnd, 300, acgt)}\nedit {word(var rnd, 250, acgt)} {word(var rnd, 250, acgt)}\nedit {word(var rnd, 300, ab)} {word(var rnd, 10, ab)}\n"
+	big_strings := f"lcs {word(var rnd, 300, acgt)} {word(var rnd, 300, acgt)}\nedit {word(var rnd, 250, acgt)} {word(var rnd, 250, acgt)}\nedit {word(var rnd, 300, ab)} {word(var rnd, 10, ab)}\n"
 	hidden := examples.concat(
 		[
 			mk(
@@ -178,7 +178,7 @@ export fn gen_c14() Void:
 			mk("unknown", "foo a b\nfib 10\n lcs a b\n"),
 			mk("blank-lines", "\n  \nlcs ab ab\n\n  \nedit a b\n"),
 			mk("big-strings", big_strings),
-			mk("big-knap", "knap 800 {items}\nknap 3000 {items}\n"),
+			mk("big-knap", f"knap 800 {items}\nknap 3000 {items}\n"),
 			mk(
 				"big-coins",
 				"coins 9999 7 13 29 101\ncoins 10000 3 7 11 17 23\ncoins 99999 1000 3\n",

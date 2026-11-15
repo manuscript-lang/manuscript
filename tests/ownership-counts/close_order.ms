@@ -11,7 +11,7 @@ type Res:
 	id: Int
 
 fn var Res.close() Void!:
-	stdout().write("close {self.id}\n").get()
+	stdout().write(f"close {self.id}\n").get()
 
 type Pair:
 	a: Res

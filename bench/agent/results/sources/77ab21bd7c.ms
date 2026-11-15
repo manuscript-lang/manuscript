@@ -247,54 +247,54 @@ fn find_runs(
 
 fn pad2(value: Int) String:
     if value < 10:
-        return "0{value}"
+        return f"0{value}"
 
-    return "{value}"
+    return f"{value}"
 
 fn format_moment(moment: Moment) String:
-    return "{moment.year}-{pad2(moment.month)}-{pad2(moment.day)} {pad2(moment.hour)}:{pad2(moment.minute)}"
+    return f"{moment.year}-{pad2(moment.month)}-{pad2(moment.day)} {pad2(moment.hour)}:{pad2(moment.minute)}"
 
 fn report(number: Int, text: String) String:
     tokens := text.split(" ")
     if tokens.length() != 7:
-        return "line {number}: error: bad line\n"
+        return f"line {number}: error: bad line\n"
 
     start := parse_start(tokens.get(0))
     if start.is_none():
-        return "line {number}: error: bad start\n"
+        return f"line {number}: error: bad start\n"
 
     count := parse_count(tokens.get(1))
     if count.is_none():
-        return "line {number}: error: bad count\n"
+        return f"line {number}: error: bad count\n"
 
     minutes := parse_field(tokens.get(2), 0, 59)
     if minutes.is_none():
-        return "line {number}: error: bad minute\n"
+        return f"line {number}: error: bad minute\n"
 
     hours := parse_field(tokens.get(3), 0, 23)
     if hours.is_none():
-        return "line {number}: error: bad hour\n"
+        return f"line {number}: error: bad hour\n"
 
     days := parse_field(tokens.get(4), 1, 31)
     if days.is_none():
-        return "line {number}: error: bad day-of-month\n"
+        return f"line {number}: error: bad day-of-month\n"
 
     months := parse_field(tokens.get(5), 1, 12)
     if months.is_none():
-        return "line {number}: error: bad month\n"
+        return f"line {number}: error: bad month\n"
 
     weekdays := parse_field(tokens.get(6), 0, 6)
     if weekdays.is_none():
-        return "line {number}: error: bad day-of-week\n"
+        return f"line {number}: error: bad day-of-week\n"
 
     runs := find_runs(
         start.get(), count.get(), minutes.get().clone(), hours.get().clone(),
         days.get().clone(), months.get().clone(), weekdays.get().clone()
     )
     if runs.is_empty():
-        return "line {number}: never\n"
+        return f"line {number}: never\n"
 
-    var out = "line {number}: {runs.length()} runs\n"
+    var out = f"line {number}: {runs.length()} runs\n"
 
     for run in runs:
         out = out.concat(format_moment(run))

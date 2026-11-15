@@ -89,8 +89,8 @@ fn run_command(line: String) String:
 
 	for index in range(3, parts.length()):
 		if index > 3:
-			text = "{text} "
-		text = "{text}{parts.get(index)}"
+			text = f"{text} "
+		text = f"{text}{parts.get(index)}"
 
 	if text == "": return "error: bad command"
 	if cipher != "caesar" and cipher != "vigenere": return "error: bad cipher"
@@ -120,7 +120,7 @@ export fn main() Int:
 
 		if line := next:
 			if not is_blank(line):
-				output.write("{run_command(line)}\n").get()
+				output.write(f"{run_command(line)}\n").get()
 		else:
 			more = false
 

@@ -5,7 +5,7 @@ import (
 )
 
 fn say(text: String) Result[Unit, Error]:
-	return stdout().write("{text}\n")
+	return stdout().write(f"{text}\n")
 
 export fn main() Int:
 	lines := read_lines(stdin()).get()
@@ -22,7 +22,7 @@ export fn main() Int:
 			ch := grid[r][c]
 
 			if ch != "#" and ch != "." and ch != "S" and ch != "E":
-				say("error: bad character at {r + 1},{c + 1}").get()
+				say(f"error: bad character at {r + 1},{c + 1}").get()
 				return 0
 
 	var width = 0
@@ -105,6 +105,6 @@ export fn main() Int:
 	if dist[end] < 0:
 		say("no path").get()
 	else:
-		say("{dist[end]}").get()
+		say(f"{dist[end]}").get()
 
 	return 0

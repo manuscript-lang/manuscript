@@ -138,5 +138,5 @@ fn main() Void:
 		data.append(shift_right_unsigned(x, 16) % 256)
 
 	table := crc_table()
-	print("crc32 {crc32(table, data)}")
-	print("sha256 {sha256(round_constants(), data)}")
+	print(f"crc32 {crc32(table, data)}")
+	print(f"sha256 {sha256(round_constants(), data)}")

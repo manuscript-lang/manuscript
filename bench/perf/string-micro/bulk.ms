@@ -8,7 +8,7 @@ fn lcg(x: Int) Int:
 
 fn report(name: String, t0: Instant, sum: Int) Void:
 	ns := monotonic().difference(t0).to_nanoseconds()
-	print("{name} {ns / 1000000} ms {sum}")
+	print(f"{name} {ns / 1000000} ms {sum}")
 
 fn main() Void:
 	n := 1000000
@@ -17,7 +17,7 @@ fn main() Void:
 
 	for i in 0..n:
 		x = lcg(x)
-		words.append("w{x % 100000}-{x / 7 % 977}")
+		words.append(f"w{x % 100000}-{x / 7 % 977}")
 
 	text := words.join(" ")
 	var t = monotonic()

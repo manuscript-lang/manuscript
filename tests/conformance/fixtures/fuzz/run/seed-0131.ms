@@ -6,20 +6,20 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     s1 := ("beta".trim() + "日本語").replace("héllo", "ms")
-    say("s1 = [{s1}]")
+    say(f"s1 = [{s1}]")
 
     f2 := 694.25
-    say("f2 = {f2}")
+    say(f"f2 = {f2}")
 
     i3 := (((-(-45)) - ((-25) % (-528309))) % (47 % 946057754598))
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     l4 := [(-8), (-15), (-24), (-19)]
-    say("l4 = {l4} len {l4.length()}")
+    say(f"l4 = {l4} len {l4.length()}")
 
     var acc5 = 0
     var stepacc5 = 0
@@ -28,11 +28,11 @@ export fn main() Int:
         stepacc5 += 1
         acc5 += stepacc5 * stepacc5 + 9
 
-    say("acc5 = {acc5}")
+    say(f"acc5 = {acc5}")
 
     l6 := [(-8), (-30)]
-    say("l6 = {l6} len {l6.length()}")
+    say(f"l6 = {l6} len {l6.length()}")
 
     f7 := f2
-    say("f7 = {f7}")
+    say(f"f7 = {f7}")
     return 0

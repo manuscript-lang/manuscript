@@ -42,7 +42,7 @@ import Value from "@pg/value.ms"
 fn main() Void!:
     var conn = open(Config(password: "secret"))?
     rows := conn.query("select $1::int8 + 1", [Value.Int(41)])?
-    print("{rows.rows[0][0]}")
+    print(f"{rows.rows[0][0]}")
     conn.close()?
     return ok()
 ```

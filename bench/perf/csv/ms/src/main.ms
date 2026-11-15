@@ -12,9 +12,9 @@ fn rows_of(shape: String) String:
 
 	for i in 0..5000:
 		if shape == "quoted": text = text.concat(
-			"{i},name {i},\"a,b\",\"quote\"\"d\"\n"
+			f"{i},name {i},\"a,b\",\"quote\"\"d\"\n"
 		)
-		else: text = text.concat("{i},name {i},alpha,beta,gamma\n")
+		else: text = text.concat(f"{i},name {i},alpha,beta,gamma\n")
 
 	return text
 
@@ -32,7 +32,7 @@ fn main() Void:
 			if elapsed < best: best = elapsed
 
 		_written := stdout().write(
-			"manuscript {shape} rows={count} best_us={best / 1000}\n"
+			f"manuscript {shape} rows={count} best_us={best / 1000}\n"
 		)
 		rows := parse(text).get()
 		var best_write = 9223372036854775807
@@ -46,5 +46,5 @@ fn main() Void:
 			if elapsed < best_write: best_write = elapsed
 
 		_wrote := stdout().write(
-			"manuscript {shape}-write bytes={written} best_us={best_write / 1000}\n"
+			f"manuscript {shape}-write bytes={written} best_us={best_write / 1000}\n"
 		)

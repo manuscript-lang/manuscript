@@ -5,4 +5,4 @@ import stdout from "@std/io/io.ms"
 
 fn main() Void:
     m: Int8 := -128
-    void stdout().write("{m.abs()}\n")
+    void stdout().write(f"{m.abs()}\n")

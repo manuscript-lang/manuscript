@@ -6,20 +6,20 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := ((66566 - (677997516286 % (-43))) * (-861270183527))
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
-    s2 := ("{(i1 - 887614976910)}:" + "ms".upper())
-    say("s2 = [{s2}]")
+    s2 := (f"{(i1 - 887614976910)}:" + "ms".upper())
+    say(f"s2 = [{s2}]")
 
     b3 := (not ((not false) or "alpha".is_empty()))
-    say("b3 = {b3}")
+    say(f"b3 = {b3}")
 
     l4 := [(-22), (-18)]
-    say("l4 = {l4} len {l4.length()}")
+    say(f"l4 = {l4} len {l4.length()}")
 
     if b3:
         say("")
@@ -27,28 +27,28 @@ export fn main() Int:
         say("gamma".trim())
 
     f5 := 3.0e7
-    say("f5 = {f5}")
+    say(f"f5 = {f5}")
 
     i6 := i1
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     if ((true and b3) or (100.647 == 336.205)):
-        say("brace\{s\}".upper())
+        say("brace{s}".upper())
     else:
         say((s2 + "  padded  "))
 
     s7 := s2
-    say("s7 = [{s7}]")
+    say(f"s7 = [{s7}]")
 
     i8 := l4.get(1)
-    say("i8 = {i8}")
+    say(f"i8 = {i8}")
 
     f9 := ((f5 + (153.711 * f5)) + ((f5 + 44.25) / (0.5 * 0.0)))
-    say("f9 = {f9}")
+    say(f"f9 = {f9}")
 
     l10 := l4.filter(fn x: x > 5)
-    say("l10 = {l10} len {l10.length()}")
+    say(f"l10 = {l10} len {l10.length()}")
 
     f11 := (f9 + ((f5 * 837.305) * (f5 / f9)))
-    say("f11 = {f11}")
+    say(f"f11 = {f11}")
     return 0

@@ -47,10 +47,10 @@ fn solve(s: String) String:
 				b := bal.get_or(k, 0)
 				tb += b
 				out.append(
-					"{k} balance={b} limit={lim.get_or(k, 0)} ops={ops.get_or(k, 0)} rejected={rej.get_or(k, 0)} frozen={if frozen.contains(k): "yes" else: "no"}"
+					f"{k} balance={b} limit={lim.get_or(k, 0)} ops={ops.get_or(k, 0)} rejected={rej.get_or(k, 0)} frozen={if frozen.contains(k): "yes" else: "no"}"
 				)
 
-			out.append("total balance={tb} fees={fees}")
+			out.append(f"total balance={tb} fees={fees}")
 			continue
 
 		if c == "open":
@@ -59,7 +59,7 @@ fn solve(s: String) String:
 				continue
 
 			if bal.contains(t[1]):
-				out.append("error: account exists {t[1]}")
+				out.append(f"error: account exists {t[1]}")
 				continue
 
 			names.append(t[1].clone())
@@ -72,7 +72,7 @@ fn solve(s: String) String:
 
 		if c == "freeze" or c == "unfreeze":
 			if not bal.contains(t[1]):
-				out.append("error: unknown account {t[1]}")
+				out.append(f"error: unknown account {t[1]}")
 				continue
 
 			if c == "freeze":
@@ -90,7 +90,7 @@ fn solve(s: String) String:
 			if unknown == "" and not bal.contains(i): unknown = i.clone()
 
 		if unknown != "":
-			out.append("error: unknown account {unknown}")
+			out.append(f"error: unknown account {unknown}")
 			continue
 
 		if c == "transfer" and ids[0] == ids[1]:
@@ -109,7 +109,7 @@ fn solve(s: String) String:
 
 		if fz != "":
 			rej[fz.clone()] = rej.get_or(fz, 0) + 1
-			out.append("error: account frozen {fz}")
+			out.append(f"error: account frozen {fz}")
 			continue
 
 		n := amount.parse_int().get(0)
@@ -119,7 +119,7 @@ fn solve(s: String) String:
 		if c == "deposit":
 			bal[from.clone()] = bal.get_or(from, 0) + n
 			ops[from.clone()] = ops.get_or(from, 0) + 1
-			out.append("ok {bal.get_or(from, 0)}")
+			out.append(f"ok {bal.get_or(from, 0)}")
 			continue
 
 		var new = bal.get_or(from, 0) - n
@@ -130,22 +130,22 @@ fn solve(s: String) String:
 
 		if new < 0 - lim.get_or(from, 0):
 			rej[from.clone()] = rej.get_or(from, 0) + 1
-			out.append("error: overdraft limit exceeded {from}")
+			out.append(f"error: overdraft limit exceeded {from}")
 			continue
 
 		bal[from.clone()] = new
 		ops[from.clone()] = ops.get_or(from, 0) + 1
 		fees += fee
 
-		sfx := if fee > 0: " fee={fee}" else: ""
+		sfx := if fee > 0: f" fee={fee}" else: ""
 
 		if c == "withdraw":
-			out.append("ok {new}{sfx}")
+			out.append(f"ok {new}{sfx}")
 		else:
 			to := ids[1].clone()
 			bal[to.clone()] = bal.get_or(to, 0) + n
 			ops[to.clone()] = ops.get_or(to, 0) + 1
-			out.append("ok {new} {bal.get_or(to, 0)}{sfx}")
+			out.append(f"ok {new} {bal.get_or(to, 0)}{sfx}")
 
 	return out.map(fn o: o + "\n").join("")
 
@@ -156,7 +156,7 @@ fn rand_script(var rnd: Random, n: Int, ids: List[String]) String:
 
 	for i in ids:
 		limit := ["0", "0", "10", "50", "200"][rnd.below(5)]
-		lines.append("open {i} {limit}")
+		lines.append(f"open {i} {limit}")
 
 	for _k in 0..n:
 		r := rnd.random()
@@ -173,20 +173,20 @@ fn rand_script(var rnd: Random, n: Int, ids: List[String]) String:
 			)
 		else:
 			v := rnd.randint(1, 120)
-			amt = "{["{v}"][rnd.below(1)]}"
+			amt = f"{[f"{v}"][rnd.below(1)]}"
 
 		if r < 0.25:
-			lines.append("deposit {a} {amt}")
+			lines.append(f"deposit {a} {amt}")
 		else if r < 0.5:
-			lines.append("withdraw {a} {amt}")
+			lines.append(f"withdraw {a} {amt}")
 		else if r < 0.8:
-			lines.append("transfer {a} {b} {amt}")
+			lines.append(f"transfer {a} {b} {amt}")
 		else if r < 0.82:
-			lines.append("freeze {a}")
+			lines.append(f"freeze {a}")
 		else if r < 0.9:
-			lines.append("unfreeze {a}")
+			lines.append(f"unfreeze {a}")
 		else if r < 0.92:
-			lines.append("deposit zz {amt}")
+			lines.append(f"deposit zz {amt}")
 		else if r < 0.95:
 			lines.append("report")
 		else:
@@ -205,7 +205,7 @@ export fn gen_c36() Void:
 	]
 	small := rand_script(var rnd, 60, ["a", "b", "c"])
 	var accounts = List[String]()
-	for i in 0..12: accounts.append("acct{i}")
+	for i in 0..12: accounts.append(f"acct{i}")
 
 	large := rand_script(var rnd, 1500, accounts)
 	hidden := examples.concat(

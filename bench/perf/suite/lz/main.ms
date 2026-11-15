@@ -94,4 +94,4 @@ fn main() Void:
 		if unpacked != data: print("MISMATCH")
 		checksum += packed.length()
 
-	print("input {data.length()} tokens {checksum}")
+	print(f"input {data.length()} tokens {checksum}")

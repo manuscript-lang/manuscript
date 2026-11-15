@@ -12,7 +12,7 @@ type TextOwner:
 	id: Int
 
 fn var TextOwner.close() Void!:
-	append_file(self.log, "{self.id},").wait()?
+	append_file(self.log, f"{self.id},").wait()?
 	self.text = "closed"
 
 fn TextOwner.read() String: self.text
@@ -20,7 +20,7 @@ fn TextOwner.read() String: self.text
 fn TextOwner.read_default(_tag: Int = 0) String: self.text
 
 fn owner(id: Int, log: String) TextOwner:
-	return TextOwner("payload-{id}", log, id)
+	return TextOwner(f"payload-{id}", log, id)
 
 fn ordinary(log: String) String:
 	read := owner(1, log).read
@@ -48,7 +48,7 @@ fn repeated_default(log: String) List[String]:
 
 test "borrowed String method results outlive their owning source environments":
 	tmp := temporary("source-capture-string-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	write_file(log, "").wait()?
 
 	first := ordinary(log.clone())

@@ -2,7 +2,7 @@ import stdin from "@std/io/io.ms"
 import lines, collect from "@std/io/streams.ms"
 import range_by from "@std/collections/collections.ms"
 
-fn pad2(n: Int) String: return if n < 10: "0{n}" else: "{n}"
+fn pad2(n: Int) String: return if n < 10: f"0{n}" else: f"{n}"
 
 // Parses s when it is lo to hi ASCII digits.
 fn digits(s: String, lo: Int, hi: Int) Int?:
@@ -60,7 +60,7 @@ fn schedule(count: Int, start: List[Int], sets: List[List[Bool]]) List[String]:
             if not sets[1][h]: continue
             for m in 0..60:
                 if not sets[0][m] or (k == 0 and h * 60 + m <= start[1]): continue
-                runs.append("{ymd[0]}-{pad2(ymd[1])}-{pad2(ymd[2])} {pad2(h)}:{pad2(m)}")
+                runs.append(f"{ymd[0]}-{pad2(ymd[1])}-{pad2(ymd[2])} {pad2(h)}:{pad2(m)}")
                 if runs.length() == count: return runs
     return runs
 
@@ -74,11 +74,11 @@ fn solve(t: List[String]) String:
     count := digits(t[1], 1, 2).get(0)
     if count < 1 or count > 20: return "error: bad count"
     sets := (0..5).map(fn i: parse_field(t[2 + i], lows[i], highs[i]))
-    if bad := sets.index_of(none): return "error: bad {names[bad]}"
+    if bad := sets.index_of(none): return f"error: bad {names[bad]}"
     runs := schedule(count, start, sets.map(fn s: s.get([])))
-    return if runs.is_empty(): "never" else: "{runs.length()} runs\n{runs.join("\n")}"
+    return if runs.is_empty(): "never" else: f"{runs.length()} runs\n{runs.join("\n")}"
 
 fn main() Void:
     if ls := stdin() | lines | collect(none):
         for i in 0..ls.length():
-            if not ls[i].replace(" ", "").is_empty(): print("line {i + 1}: {solve(ls[i].split(" "))}")
+            if not ls[i].replace(" ", "").is_empty(): print(f"line {i + 1}: {solve(ls[i].split(" "))}")

@@ -39,7 +39,7 @@ fn sum_by[T](items: List[T], price: fn(T) Int) Int:
 fn main() Void:
     cart := [Item.Book(pages: 200), Item.Coffee(grams: 250)]
     total := sum_by(cart, fn item: item.cents())
-    print("{total} cents")
+    print(f"{total} cents")
 ```
 
 ```text

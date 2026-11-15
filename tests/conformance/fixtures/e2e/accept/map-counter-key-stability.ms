@@ -12,7 +12,7 @@ fn replace_number(var key: Int) Int:
 
 test "a counter retains its explicitly cloned mutable key":
 	var values = {"long-dynamic-map-key-1": 1, "long-dynamic-map-key-2": 20}
-	var key = "long-dynamic-map-key-{1}"
+	var key = f"long-dynamic-map-key-{1}"
 	values.add(key.clone(), values.get_or(key, 0) + replace_text(var key))
 	expect_equal(values["long-dynamic-map-key-1"], 6)?
 	expect_equal(values["long-dynamic-map-key-2"], 20)?
@@ -32,7 +32,7 @@ test "a counter reads its old scalar key before the next operand":
 	expect_equal(values[2], 20)?
 
 test "immutable dynamic keys keep counter arithmetic":
-	key := "long-dynamic-map-key-{1}"
+	key := f"long-dynamic-map-key-{1}"
 	var values: Map[String, Int] = Map()
 	values.add(key.clone(), values.get_or(key, 3) + 2)
 	values.add(key.clone(), values.get_or(key, 0) * 4)
@@ -74,19 +74,19 @@ fn consume_text(key: String) Int:
 
 test "an immutable counter key can be consumed after its lookup":
 	var values = {"long-dynamic-map-key-1": 1}
-	key := "long-dynamic-map-key-{1}"
+	key := f"long-dynamic-map-key-{1}"
 	values.add(key.clone(), values.get_or(key, 0) + consume_text(key))
 	expect_equal(values["long-dynamic-map-key-1"], 6)?
 
 test "a map add retains its cloned key while its source is consumed":
 	var values: Map[String, Int] = Map()
-	key := "long-dynamic-map-key-{1}"
+	key := f"long-dynamic-map-key-{1}"
 	values.add(key.clone(), consume_text(key))
 	expect_equal(values["long-dynamic-map-key-1"], 5)?
 
 test "a map add default retains its key while its source is consumed":
 	var values: Map[String, Int] = Map()
-	key := "long-dynamic-map-key-{1}"
+	key := f"long-dynamic-map-key-{1}"
 	values.add_default(key.clone(), consume_text(key))
 	expect_equal(values["long-dynamic-map-key-1"], 5)?
 
@@ -96,15 +96,15 @@ fn consume_keys(keys: List[String]) Int:
 
 test "an indexed key clone survives consuming its container":
 	var values: Map[String, Int] = Map()
-	keys := ["long-dynamic-map-key-{1}"]
+	keys := [f"long-dynamic-map-key-{1}"]
 	values.add(keys[0].clone(), consume_keys(keys))
 	expect_equal(values["long-dynamic-map-key-1"], 5)?
 
 test "literal increments keep stable mutable-key counters":
-	var key = "long-dynamic-map-key-{1}"
+	var key = f"long-dynamic-map-key-{1}"
 	var values: Map[String, Int] = Map()
 	values.add(key.clone(), values.get_or(key, 0) + 1)
-	key = "long-dynamic-map-key-{2}"
+	key = f"long-dynamic-map-key-{2}"
 	values.add(key.clone(), values.get_or(key, 0) + 1)
 	expect_equal(values["long-dynamic-map-key-1"], 1)?
 	expect_equal(values["long-dynamic-map-key-2"], 1)?
@@ -133,7 +133,7 @@ fn add_failed_value(var values: Map[String, Int], key: String) Void!:
 	values.add(key.clone(), failed_value()?)
 
 test "an owned native argument transfers after a later try succeeds":
-	key := "long-dynamic-map-key-{1}"
+	key := f"long-dynamic-map-key-{1}"
 	var values: Map[String, Int] = Map()
 
 	// Referencing the owner prevents borrowed-key elision, as in TOML materialization.
@@ -142,14 +142,14 @@ test "an owned native argument transfers after a later try succeeds":
 	expect_equal(values[key], key.length())?
 
 test "a moved native argument survives a later try without rereading its source":
-	key := "long-dynamic-map-key-{1}"
+	key := f"long-dynamic-map-key-{1}"
 	var values: Map[String, Int] = Map()
 	values.add(key, successful_value(7)?)
 	expect_equal(values["long-dynamic-map-key-1"], 7)?
 
 test "a later failing try leaves its map unchanged":
 	var values: Map[String, Int] = Map()
-	result := add_failed_value(var values, "long-dynamic-map-key-{1}")
+	result := add_failed_value(var values, f"long-dynamic-map-key-{1}")
 	expect_equal(result.is_error(), true)?
 	expect_equal(values.length(), 0)?
 
@@ -167,7 +167,7 @@ test "counter fusion preserves faults from an equal-valued source clone":
 	expect_contains(message, "overflow")?
 
 test "native borrowers retain owned arguments after a later try":
-	separator := "long-dynamic-map-key-{1}"
+	separator := f"long-dynamic-map-key-{1}"
 	pieces := "before-long-dynamic-map-key-1-after".split(
 		separator.clone(),
 		max_parts: successful_value(2)?,

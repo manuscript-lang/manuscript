@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -37,23 +37,23 @@ fn collatz(start: Int) Int:
 
 export fn main() Int:
     i1 := ((28 % 42) - ((16 / 22939) * (498108 + 862282)))
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     i2 := (i1 + (-(i1 - i1)))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
-    s3 := ("{(-i1)}:" + "日本語".replace("hello world", "quote\"d")).lower()
-    say("s3 = [{s3}]")
+    s3 := (f"{(-i1)}:" + "日本語".replace("hello world", "quote\"d")).lower()
+    say(f"s3 = [{s3}]")
 
     l4 := [(-20)]
-    say("l4 = {l4} len {l4.length()}")
-    say("fib(26) = {fib(26)}")
+    say(f"l4 = {l4} len {l4.length()}")
+    say(f"fib(26) = {fib(26)}")
 
     i5 := ((i1 * (i1 - i1)) - ((i1 + i2) / l4.get(0)))
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     s6 := s3
-    say("s6 = [{s6}]")
+    say(f"s6 = [{s6}]")
 
     var acc7 = 0
     var stepacc7 = 0
@@ -62,24 +62,24 @@ export fn main() Int:
         stepacc7 += 1
         acc7 += stepacc7 * stepacc7 + (-5)
 
-    say("acc7 = {acc7}")
+    say(f"acc7 = {acc7}")
 
     l8 := l4.map(fn x: x + 3).filter(fn x: x % 2 == 0)
-    say("l8 = {l8} len {l8.length()}")
+    say(f"l8 = {l8} len {l8.length()}")
 
     f9 := 252.799
-    say("f9 = {f9}")
-    say("collatz(1415) = {collatz(1415)}")
+    say(f"f9 = {f9}")
+    say(f"collatz(1415) = {collatz(1415)}")
 
     f10 := (((f9 - 521.337) * (f9 * 92.644)) * 987.845)
-    say("f10 = {f10}")
+    say(f"f10 = {f10}")
 
     b11 := ((s6.lower() == "MiXeD CaSe".lower()) and ((f10 > 210.25) and true))
-    say("b11 = {b11}")
+    say(f"b11 = {b11}")
 
     s12 := s6
-    say("s12 = [{s12}]")
+    say(f"s12 = [{s12}]")
 
     i13 := (-24)
-    say("i13 = {i13}")
+    say(f"i13 = {i13}")
     return 0

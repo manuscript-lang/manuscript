@@ -24,7 +24,7 @@ fn samples() String:
 	var text = "round\tlabel\tinput\twall_ns\tmax_resident_bytes\tinput_sha256\tuser_ns\tsystem_ns\n"
 	for round in 1..7:
 		for label in ["before", "after"]:
-			text += "{round}\t{label}\tinput\t100\t0\thash\t80\t20\n"
+			text += f"{round}\t{label}\tinput\t100\t0\thash\t80\t20\n"
 	return text
 
 test "paired summaries require complete consistent finite measurements":

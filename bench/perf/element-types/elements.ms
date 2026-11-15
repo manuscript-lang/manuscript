@@ -46,7 +46,14 @@ fn us(a: Int, b: Int) Int:
 fn list_records() Int:
 	var xs: List[Event] = []
 	for i in 0..1000000:
-		xs.append(Event(i, i % 7, "an-event-name-over-sixteen-bytes-{i % 100}", i % 13))
+		xs.append(
+			Event(
+				i,
+				i % 7,
+				f"an-event-name-over-sixteen-bytes-{i % 100}",
+				i % 13,
+			)
+		)
 
 	var t = 0
 	for r in 0..5:
@@ -101,7 +108,7 @@ fn map_groups() Int:
 	for i in 0..1000000:
 		x = lcg(x)
 
-		k := "k{x % 5000}"
+		k := f"k{x % 5000}"
 		if not m.contains(k): m[k.clone()] = []
 		m[k].append(i)
 
@@ -168,7 +175,7 @@ fn first_of[A: Clonable, B](xs: List[Pair[A, B]]) List[A]:
 fn generic_pairs() Int:
 	var xs: List[Pair[Int, String]] = []
 	for i in 0..1000000:
-		xs.append(Pair[Int, String](i, "v{i % 10}"))
+		xs.append(Pair[Int, String](i, f"v{i % 10}"))
 
 	var t = 0
 	for r in 0..5:
@@ -231,7 +238,7 @@ fn records_of_lists() Int:
 		var lines: List[Pair[Int, Int]] = []
 		for k in 0..4:
 			lines.append(Pair[Int, Int](k, i % 7))
-		orders.append(Order(i, ["a{i % 3}", "b"], lines))
+		orders.append(Order(i, [f"a{i % 3}", "b"], lines))
 
 	var t = 0
 	for r in 0..5:
@@ -316,7 +323,7 @@ fn map_enums() Int:
 fn string_chains() Int:
 	var lines: List[String] = []
 	for i in 0..200000:
-		lines.append("  key{i % 500} = {i % 97}  ")
+		lines.append(f"  key{i % 500} = {i % 97}  ")
 
 	var m: Map[String, Int] = {}
 	var bad = 0
@@ -342,64 +349,64 @@ fn main() Void:
 	t0 := monotonic().tick
 	a := list_records()
 	t1 := monotonic().tick
-	print("list-records {us(t0, t1)} {a}")
+	print(f"list-records {us(t0, t1)} {a}")
 
 	b := list_enums()
 	t2 := monotonic().tick
-	print("list-enums {us(t1, t2)} {b}")
+	print(f"list-enums {us(t1, t2)} {b}")
 
 	c := map_records()
 	t3 := monotonic().tick
-	print("map-records {us(t2, t3)} {c}")
+	print(f"map-records {us(t2, t3)} {c}")
 
 	d := map_groups()
 	t4 := monotonic().tick
-	print("map-groups {us(t3, t4)} {d}")
+	print(f"map-groups {us(t3, t4)} {d}")
 
 	e := optional_records()
 	t5 := monotonic().tick
-	print("optional-records {us(t4, t5)} {e}")
+	print(f"optional-records {us(t4, t5)} {e}")
 
 	f := deque_records()
 	t6 := monotonic().tick
-	print("deque-records {us(t5, t6)} {f}")
+	print(f"deque-records {us(t5, t6)} {f}")
 
 	g := pq_records()
 	t7 := monotonic().tick
-	print("pq-records {us(t6, t7)} {g}")
+	print(f"pq-records {us(t6, t7)} {g}")
 
 	h := generic_pairs()
 	t8 := monotonic().tick
-	print("generic-pairs {us(t7, t8)} {h}")
+	print(f"generic-pairs {us(t7, t8)} {h}")
 
 	i := results()
 	t9 := monotonic().tick
-	print("result-records {us(t8, t9)} {i}")
+	print(f"result-records {us(t8, t9)} {i}")
 
 	j := set_records()
 	t10 := monotonic().tick
-	print("set-records {us(t9, t10)} {j}")
+	print(f"set-records {us(t9, t10)} {j}")
 
 	k := sort_records()
 	t11 := monotonic().tick
-	print("sort-records {us(t10, t11)} {k}")
+	print(f"sort-records {us(t10, t11)} {k}")
 
 	l := records_of_lists()
 	t12 := monotonic().tick
-	print("records-of-lists {us(t11, t12)} {l}")
+	print(f"records-of-lists {us(t11, t12)} {l}")
 
 	n := nested_generics()
 	t13 := monotonic().tick
-	print("nested-generics {us(t12, t13)} {n}")
+	print(f"nested-generics {us(t12, t13)} {n}")
 
 	o := generic_stack()
 	t14 := monotonic().tick
-	print("generic-stack {us(t13, t14)} {o}")
+	print(f"generic-stack {us(t13, t14)} {o}")
 
 	p := map_enums()
 	t15 := monotonic().tick
-	print("map-enums {us(t14, t15)} {p}")
+	print(f"map-enums {us(t14, t15)} {p}")
 
 	q := string_chains()
 	t16 := monotonic().tick
-	print("string-chains {us(t15, t16)} {q}")
+	print(f"string-chains {us(t15, t16)} {q}")

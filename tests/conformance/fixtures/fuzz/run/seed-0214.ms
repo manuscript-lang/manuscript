@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -24,59 +24,59 @@ fn collatz(start: Int) Int:
 
 export fn main() Int:
     i1 := (38 - (869359 - ((-15) - 238578)))
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     l2 := [1, 2, 3].take(0)
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     s3 := "Tab\there"
-    say("s3 = [{s3}]")
+    say(f"s3 = [{s3}]")
 
     i4 := ((i1 + (-361295)) / (s3.scalar_length() * (471503 - 1)))
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     if (not (i1 != 28)):
         say(("naïve" + "Tab\there"))
     else:
-        say(("{i4}:" + "日本語"))
+        say((f"{i4}:" + "日本語"))
 
-    s5 := (s3 + ("{(i1 + (-180662))}:" + s3)).lower()
-    say("s5 = [{s5}]")
+    s5 := (s3 + (f"{(i1 + (-180662))}:" + s3)).lower()
+    say(f"s5 = [{s5}]")
 
     l6 := [(-4), 19, 11, (-6), (-15)]
-    say("l6 = {l6} len {l6.length()}")
+    say(f"l6 = {l6} len {l6.length()}")
 
     l7 := [16, (-14), (-3)]
-    say("l7 = {l7} len {l7.length()}")
+    say(f"l7 = {l7} len {l7.length()}")
 
     f8 := 0.0
-    say("f8 = {f8}")
+    say(f"f8 = {f8}")
 
     i9 := (i1 * ((i1 * 1) + (35 - i4)))
-    say("i9 = {i9}")
+    say(f"i9 = {i9}")
     say(
-        "{((i9 - i4) % (11 - (-950344)))} {15} {(((i9 - i4) % (11 - (-950344))) < 15)} sum {((i9 - i4) % (11 - (-950344))) + 15}"
+        f"{((i9 - i4) % (11 - (-950344)))} {15} {(((i9 - i4) % (11 - (-950344))) < 15)} sum {((i9 - i4) % (11 - (-950344))) + 15}"
     )
 
     f10 := ((f8 - (f8 - 889.958)) / ((f8 + 932.592) * (9.5 - f8)))
-    say("f10 = {f10}")
+    say(f"f10 = {f10}")
 
     i11 := ((l2.length() / (616246 % 6)) + l2.length())
-    say("i11 = {i11}")
+    say(f"i11 = {i11}")
 
     s12 := "gamma".upper()
-    say("s12 = [{s12}]")
+    say(f"s12 = [{s12}]")
 
     i13 := i11
-    say("i13 = {i13}")
+    say(f"i13 = {i13}")
 
     l14 := l7.filter(fn x: x > 2)
-    say("l14 = {l14} len {l14.length()}")
+    say(f"l14 = {l14} len {l14.length()}")
 
     f15 := (503.026 - ((f10 - f10) / f8))
-    say("f15 = {f15}")
-    say("collatz(679) = {collatz(679)}")
+    say(f"f15 = {f15}")
+    say(f"collatz(679) = {collatz(679)}")
 
     l16 := l7.reversed()
-    say("l16 = {l16} len {l16.length()}")
+    say(f"l16 = {l16} len {l16.length()}")
     return 0

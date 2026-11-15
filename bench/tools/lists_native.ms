@@ -33,9 +33,9 @@ type Workload:
 
 fn body(w: Workload) String:
 	last := (w.n - 1) * 7919 % 100003
-	var text = "export fn main() Int:\n    values := build({w.n})\n    if values.length() != {w.n}: return 1\n    if values.first().get() != 0: return 2\n    if values.last().get() != {last}: return 3\n"
+	var text = f"export fn main() Int:\n    values := build({w.n})\n    if values.length() != {w.n}: return 1\n    if values.first().get() != 0: return 2\n    if values.last().get() != {last}: return 3\n"
 	if w.name == "sort":
-		text += "    result := sorted(values)\n    if result.length() != {w.n}: return 4\n    if result.first().get() != 0: return 5\n    if result.last().get() != 100002: return 6\n    if values.last().get() != {last}: return 7\n"
+		text += f"    result := sorted(values)\n    if result.length() != {w.n}: return 4\n    if result.first().get() != 0: return 5\n    if result.last().get() != 100002: return 6\n    if values.last().get() != {last}: return 7\n"
 	return text + "    return 0\n"
 
 fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
@@ -52,11 +52,11 @@ fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
 		Workload("append", 4000000),
 		Workload("sort", 200000),
 	]:
-		label := "{w.name}-{w.n}"
-		program := "{out}/{label}.ms"
+		label := f"{w.name}-{w.n}"
+		program := f"{out}/{label}.ms"
 		write_text(program, source.replace("export fn main() Int: return 0\n", body(w)))
 
-		binary := "{out}/{label}"
+		binary := f"{out}/{label}"
 		_build := must(
 			"ms build",
 			capture(
@@ -75,7 +75,7 @@ fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
 			"ms emit",
 			capture(
 				cli.clone(),
-				["emit", program.clone(), "-o", "{out}/{label}.mir"],
+				["emit", program.clone(), "-o", f"{out}/{label}.mir"],
 			),
 		)?
 		_warm := must(label, capture(binary.clone(), []))?
@@ -97,7 +97,7 @@ fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
 			sample.add("seconds", jfloat(elapsed))
 			sample.add("peak_rss_kib", jint(measured.kib))
 			samples.append(jobject(sample))
-			print("{label} {elapsed.to_fixed(6)}s {measured.kib} KiB")
+			print(f"{label} {elapsed.to_fixed(6)}s {measured.kib} KiB")
 
 		var result = Map[String, JsonValue]()
 		result.add("name", jstr(w.name.clone()))
@@ -115,7 +115,7 @@ fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
 	report.add("results", jlist(results))
 
 	text := dump(jobject(report))
-	write_text("{out}/results.json", text)
+	write_text(f"{out}/results.json", text)
 	return ok(text)
 
 fn main() Int:

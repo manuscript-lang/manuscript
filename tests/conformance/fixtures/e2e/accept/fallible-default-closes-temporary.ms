@@ -11,7 +11,7 @@ type Resource:
 	path: String
 
 fn var Resource.close() Void!:
-	append_file(self.path, "{self.id},").wait()?
+	append_file(self.path, f"{self.id},").wait()?
 
 fn accepted() Int!: ok(1)
 
@@ -29,21 +29,21 @@ fn log_text(path: String) String!:
 
 test "a temporary passed to a call with a fallible default closes once":
 	directory := temporary("fallible-default-")?
-	path := "{directory.path()}/log"
+	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
 	expect_equal(observed(Resource(3, path.clone()))?, true)?
 	expect_equal(log_text(path)?, "3,")?
 
 test "a temporary closes when the fallible default fails":
 	directory := temporary("fallible-default-fails-")?
-	path := "{directory.path()}/log"
+	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
 	expect_equal(refused(Resource(4, path.clone())).is_error(), true)?
 	expect_equal(log_text(path)?, "4,")?
 
 test "a named resource lent to a call with a fallible default is not closed early":
 	directory := temporary("fallible-default-named-")?
-	path := "{directory.path()}/log"
+	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
 
 	named := Resource(5, path.clone())

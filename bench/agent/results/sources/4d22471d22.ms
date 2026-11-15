@@ -50,7 +50,7 @@ fn parse_record(line: String) Optional[Record]:
 fn format_cents(cents: Int) String:
     frac := cents % 100
     pad := if frac < 10: "0" else: ""
-    return "{cents / 100}.{pad}{frac}"
+    return f"{cents / 100}.{pad}{frac}"
 
 export fn main() Int:
     var totals = Map[String, Int]()
@@ -65,8 +65,8 @@ export fn main() Int:
                 skipped += 1
     var out = ""
     for category in totals.keys().sorted():
-        out += "{category}: {format_cents(totals.get(category).get(0))}\n"
+        out += f"{category}: {format_cents(totals.get(category).get(0))}\n"
     if skipped > 0:
-        out += "skipped: {skipped}\n"
+        out += f"skipped: {skipped}\n"
     stdout().write(out).get()
     return 0

@@ -31,12 +31,12 @@ fn measure(
 
 		for count in [1, 8, 18]:
 			for mode in ["source-chain", "source-flat", "native-chain"]:
-				file := "{inputs}/{mode}-{count}.ms"
-				if filter != "" and not file.ends_with("/{filter}"): continue
+				file := f"{inputs}/{mode}-{count}.ms"
+				if filter != "" and not file.ends_with(f"/{filter}"): continue
 
 				for label in order:
 					binary := if label == "before": before else: after
-					prefix := "{directory}/round-{round}-{label}-{mode}-{count}"
+					prefix := f"{directory}/round-{round}-{label}-{mode}-{count}"
 					command := [
 						"60",
 						"taskset",
@@ -48,34 +48,34 @@ fn measure(
 						"--build-type",
 						"Release",
 						"-o",
-						"{directory}/program",
+						f"{directory}/program",
 					]
 					started := now_ns()
 					measured := timed("timeout", command)?
 					ran := measured.result
 					elapsed := now_ns() - started
-					write_text("{prefix}.command", "MS_CACHE=off\n" + measured.command)
-					write_text("{prefix}.stdout", ran.stdout)
-					write_text("{prefix}.stderr", ran.stderr)
-					write_text("{prefix}.status", "{ran.code}\n")
+					write_text(f"{prefix}.command", "MS_CACHE=off\n" + measured.command)
+					write_text(f"{prefix}.stdout", ran.stdout)
+					write_text(f"{prefix}.stderr", ran.stderr)
+					write_text(f"{prefix}.status", f"{ran.code}\n")
 					if not ran.ok or ran.code != 0: return invalid(
-						"build failed: {file}: {ran.stderr}"
+						f"build failed: {file}: {ran.stderr}"
 					)
 
-					native := capture("{directory}/program", [])
-					write_text("{prefix}.native.stdout", native.stdout)
-					write_text("{prefix}.native.stderr", native.stderr)
-					write_text("{prefix}.native.status", "{native.code}\n")
+					native := capture(f"{directory}/program", [])
+					write_text(f"{prefix}.native.stdout", native.stdout)
+					write_text(f"{prefix}.native.stderr", native.stderr)
+					write_text(f"{prefix}.native.status", f"{native.code}\n")
 					if (
 						not native.ok
 						or native.code != 0
-						or native.stdout != "{count}\n"
+						or native.stdout != f"{count}\n"
 						or native.stderr != ""
-					): return invalid("native output mismatch: {file}")
+					): return invalid(f"native output mismatch: {file}")
 
-					rows += "{round}\t{label}\t{file}\t{elapsed}\t{ran.max_resident_bytes}\t{file_sha256(file)}\t{measured.user_ns}\t{measured.system_ns}\n"
-					write_text("{directory}/samples.tsv", rows)
-					print("{round} {label} {file} {elapsed} ns")
+					rows += f"{round}\t{label}\t{file}\t{elapsed}\t{ran.max_resident_bytes}\t{file_sha256(file)}\t{measured.user_ns}\t{measured.system_ns}\n"
+					write_text(f"{directory}/samples.tsv", rows)
+					print(f"{round} {label} {file} {elapsed} ns")
 
 export fn main() Void!:
 	args := arguments()

@@ -6,14 +6,14 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     l1 := [1, 15]
-    say("l1 = {l1} len {l1.length()}")
+    say(f"l1 = {l1} len {l1.length()}")
 
     s2 := ("gamma".lower().reverse() + "beta")
-    say("s2 = [{s2}]")
+    say(f"s2 = [{s2}]")
 
     var acc3 = 0
 
@@ -23,26 +23,26 @@ export fn main() Int:
         else:
             acc3 -= 1
 
-    say("acc3 = {acc3}")
+    say(f"acc3 = {acc3}")
 
     i4 := 18
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     i5 := i4
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     i6 := (468648 * 31)
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     i7 := (s2.scalar_length() * (i6 * i6))
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
     i8 := i6
-    say("i8 = {i8}")
+    say(f"i8 = {i8}")
 
     b9 := (s2 == ("Tab\there" + s2).lower())
-    say("b9 = {b9}")
+    say(f"b9 = {b9}")
 
     b10 := ((l1.get(1) + 963306) < ((50 * i4) + (i6 + i4)))
-    say("b10 = {b10}")
+    say(f"b10 = {b10}")
     return 0

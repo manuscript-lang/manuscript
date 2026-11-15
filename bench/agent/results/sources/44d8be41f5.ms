@@ -4,7 +4,7 @@ import (
 )
 
 fn say(msg: String) Int:
-	stdout().write("{msg}\n").get()
+	stdout().write(f"{msg}\n").get()
 	return 0
 
 export fn main() Int:
@@ -24,7 +24,7 @@ export fn main() Int:
 		for c in 0..grid[r].length():
 			ch := grid[r][c]
 			if ch != "#" and ch != "." and ch != "S" and ch != "E":
-				return say("error: bad character at {r + 1},{c + 1}")
+				return say(f"error: bad character at {r + 1},{c + 1}")
 
 	width := grid[0].length()
 	for r in 0..n:
@@ -84,4 +84,4 @@ export fn main() Int:
 
 	if dist[e] < 0: return say("no path")
 
-	return say("{dist[e]}")
+	return say(f"{dist[e]}")

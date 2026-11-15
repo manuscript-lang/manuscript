@@ -1,7 +1,7 @@
 {
   "format": 1,
   "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
+  "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
     "fmt": "test \"interruptible\":\n\tprintln(\"READY\")\n\twhile true:\n\t\texpect_equal(1, 1)?\n\ntest \"later\":\n\tfail(\"must not run\")?\n"

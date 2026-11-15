@@ -121,7 +121,7 @@ fn evaluate(toks: List[String]) String:
     if p.div_zero:
         return "error: division by zero"
 
-    return "{v}"
+    return f"{v}"
 
 export fn main() Int:
     lines := read_lines(stdin()).get()
@@ -129,7 +129,7 @@ export fn main() Int:
     for line in lines:
         if toks := tokenize(line):
             if toks.length() > 0:
-                stdout().write("{evaluate(toks)}\n").get()
+                stdout().write(f"{evaluate(toks)}\n").get()
         else:
             stdout().write("error: syntax\n").get()
 

@@ -1,4 +1,4 @@
 // conform: tags=diagnostics,tier-core
 // conform: phase=check
-fn show() Void:
-	print("{ \"a\": 1 }")
+fn show(xs: List[String]) Void:
+	print(f"{xs.join(\", \")}")

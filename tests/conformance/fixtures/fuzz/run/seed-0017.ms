@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -30,13 +30,13 @@ fn collatz(start: Int) Int:
 
 export fn main() Int:
     f1 := 796.916
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
 
     i2 := (((41854649050 - 31) / (970808 / (-34))) / ((49 * 45) % (34 + (-1))))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     l3 := [(-13), 18, 27]
-    say("l3 = {l3} len {l3.length()}")
+    say(f"l3 = {l3} len {l3.length()}")
 
     if ("ms" + "Tab\there").starts_with("delta"):
         say("back\\slash")
@@ -44,29 +44,29 @@ export fn main() Int:
         say(("beta" + "MiXeD CaSe"))
 
     i4 := (i2 + i2)
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     s5 := ("emoji 😀" + "quote\"d".lower().reverse())
-    say("s5 = [{s5}]")
+    say(f"s5 = [{s5}]")
 
     b6 := (((i2 <= i4) and ((-830770) > i2)) and (not (false and true)))
-    say("b6 = {b6}")
-    say("fact(11) = {fact(11)}")
+    say(f"b6 = {b6}")
+    say(f"fact(11) = {fact(11)}")
 
     f7 := 0.5
-    say("f7 = {f7}")
+    say(f"f7 = {f7}")
 
     l8 := l3.sorted(fn a, b: a.compare(b))
-    say("l8 = {l8} len {l8.length()}")
+    say(f"l8 = {l8} len {l8.length()}")
 
     l9 := l8.map(fn x: x + 2).filter(fn x: x % 2 == 0)
-    say("l9 = {l9} len {l9.length()}")
+    say(f"l9 = {l9} len {l9.length()}")
 
     l10 := l9.concat(l9)
-    say("l10 = {l10} len {l10.length()}")
+    say(f"l10 = {l10} len {l10.length()}")
 
     f11 := f7
-    say("f11 = {f11}")
+    say(f"f11 = {f11}")
 
     if ((i4 != (-4)) and (false or b6)):
         say(("delta" + s5))
@@ -74,13 +74,13 @@ export fn main() Int:
         say((s5 + "emoji 😀"))
 
     say(
-        "{(i4 / (i4 * i2))} {((i2 + 908316178682) + s5.scalar_length())} {((i4 / (i4 * i2)) < ((i2 + 908316178682) + s5.scalar_length()))} sum {(i4 / (i4 * i2)) + ((i2 + 908316178682) + s5.scalar_length())}"
+        f"{(i4 / (i4 * i2))} {((i2 + 908316178682) + s5.scalar_length())} {((i4 / (i4 * i2)) < ((i2 + 908316178682) + s5.scalar_length()))} sum {(i4 / (i4 * i2)) + ((i2 + 908316178682) + s5.scalar_length())}"
     )
 
     i12 := l9.get(0)
-    say("i12 = {i12}")
-    say("collatz(2820) = {collatz(2820)}")
+    say(f"i12 = {i12}")
+    say(f"collatz(2820) = {collatz(2820)}")
 
     s13 := ("quote\"d" + "alpha").lower().upper()
-    say("s13 = [{s13}]")
+    say(f"s13 = [{s13}]")
     return 0

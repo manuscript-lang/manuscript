@@ -25,7 +25,7 @@ fn show(value: Int) Void:
     if outcome.is_error():
         print(outcome.err().message)
         return
-    print("Quantity: {outcome.get()}")
+    print(f"Quantity: {outcome.get()}")
 
 fn main() Void:
     show(3)
@@ -77,7 +77,7 @@ fn find_user(id: Int) String!:
 fn describe(id: Int) String:
     outcome := find_user(id)
     if outcome.is_ok(): return outcome.get()
-    if outcome.err().kind == "ENOENT": return "missing {outcome.err().details["id"]}"
+    if outcome.err().kind == "ENOENT": return f"missing {outcome.err().details["id"]}"
     return outcome.err().message.clone()
 ```
 
@@ -112,7 +112,7 @@ This continues the declarations above:
 ```manuscript
 fn discount_message(price: Decimal, percent: Decimal) String:
     if value := discount(price, percent):
-        return "Discounted price: {value}"
+        return f"Discounted price: {value}"
     return "Discount could not be calculated."
 ```
 

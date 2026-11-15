@@ -34,7 +34,7 @@ fn main() Void:
     (
         stdout()
         .write(
-            "{w.items} {p.items} {q.items} {r.items} {s} {t.items} {pass(mk(1)).items}\n"
+            f"{w.items} {p.items} {q.items} {r.items} {s} {t.items} {pass(mk(1)).items}\n"
         )
         .get()
     )

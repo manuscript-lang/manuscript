@@ -10,7 +10,7 @@ fn grow(value: String!String) String!String:
 	return ok(output + "x")
 
 fn heap(label: String, n: Int) String:
-	return "{label}-a-string-long-enough-to-live-on-the-heap-{n}-aaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	return f"{label}-a-string-long-enough-to-live-on-the-heap-{n}-aaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
 fn by_match(value: String!String) Int:
 	match grow(value):
@@ -33,7 +33,7 @@ fn pass_on(value: String!String) String!String:
 	return ok(text)
 
 fn describe(value: String!String) String:
-	return "{grow(value)}"
+	return f"{grow(value)}"
 
 test "a borrowing result reads and drops only the cases it owns":
 	good: String!String := ok(heap("ok", 1))
@@ -53,4 +53,4 @@ test "try relays a borrowed error and takes an owned ok payload":
 
 test "a borrowing result is passed to a reader as an ordinary Result":
 	bad: String!String := error(heap("bad", 5))
-	describe(bad) | expect_equal("error({heap("bad", 5)})")?
+	describe(bad) | expect_equal(f"error({heap("bad", 5)})")?

@@ -197,7 +197,7 @@ test "float flags reject NaN and infinities":
 	for text in ["NaN", "Infinity", "-Infinity"]:
 		(
 			(ratio.parse(["--ratio", text.clone()]) | expect_error?).message
-			| expect_equal("cli: flag ratio: {text} is not a number")?
+			| expect_equal(f"cli: flag ratio: {text} is not a number")?
 		)
 
 	void expect_ok(ratio.parse(["--ratio", "1e5"]))?

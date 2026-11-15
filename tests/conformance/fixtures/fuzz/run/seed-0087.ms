@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -23,20 +23,20 @@ fn collatz(start: Int) Int:
     return steps
 
 export fn main() Int:
-    say("collatz(1330) = {collatz(1330)}")
+    say(f"collatz(1330) = {collatz(1330)}")
 
     l1 := [16, (-30), 16]
-    say("l1 = {l1} len {l1.length()}")
+    say(f"l1 = {l1} len {l1.length()}")
 
     i2 := (-35)
-    say("i2 = {i2}")
-    say("{i2} {i2} {(i2 < i2)} sum {i2 + i2}")
+    say(f"i2 = {i2}")
+    say(f"{i2} {i2} {(i2 < i2)} sum {i2 + i2}")
 
     s3 := "a"
-    say("s3 = [{s3}]")
+    say(f"s3 = [{s3}]")
 
     b4 := (((i2 + 27070) >= (i2 - i2)) or (not (true and true)))
-    say("b4 = {b4}")
+    say(f"b4 = {b4}")
 
     if true:
         say((s3 + s3))
@@ -44,7 +44,7 @@ export fn main() Int:
         say("ms")
 
     s5 := "emoji 😀"
-    say("s5 = [{s5}]")
+    say(f"s5 = [{s5}]")
 
     if ((i2 / (-708236)) != (i2 * 40)):
         say(("a" + s5))
@@ -52,30 +52,30 @@ export fn main() Int:
         say(s5)
 
     i6 := ((((-30) + (-33)) * i2) - s5.scalar_length())
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     var l7 = l1.clone()
     l7.append(23)
-    say("l7 = {l7} len {l7.length()}")
+    say(f"l7 = {l7} len {l7.length()}")
 
     l8 := l7.take(1)
-    say("l8 = {l8} len {l8.length()}")
+    say(f"l8 = {l8} len {l8.length()}")
 
     s9 := "emoji 😀"
-    say("s9 = [{s9}]")
+    say(f"s9 = [{s9}]")
     say(
-        "{(l8.get(0) + (38 % i2))} {((48 - (-47)) * (9223372036854775807 % (-6)))} {((l8.get(0) + (38 % i2)) < ((48 - (-47)) * (9223372036854775807 % (-6))))} sum {(l8.get(0) + (38 % i2)) + ((48 - (-47)) * (9223372036854775807 % (-6)))}"
+        f"{(l8.get(0) + (38 % i2))} {((48 - (-47)) * (9223372036854775807 % (-6)))} {((l8.get(0) + (38 % i2)) < ((48 - (-47)) * (9223372036854775807 % (-6))))} sum {(l8.get(0) + (38 % i2)) + ((48 - (-47)) * (9223372036854775807 % (-6)))}"
     )
 
-    s10 := ("{(i6 * i2)}:" + "delta")
-    say("s10 = [{s10}]")
+    s10 := (f"{(i6 * i2)}:" + "delta")
+    say(f"s10 = [{s10}]")
 
     l11 := l8.drop(3)
-    say("l11 = {l11} len {l11.length()}")
+    say(f"l11 = {l11} len {l11.length()}")
 
     i12 := l7.get(2)
-    say("i12 = {i12}")
+    say(f"i12 = {i12}")
 
     big13 := -9223372036854775808
-    say("{-big13}")
+    say(f"{-big13}")
     return 0

@@ -87,7 +87,7 @@ fn coins(amount: Int, cs: List[Int]) String:
 
 	if dp[amount] < 0: return "impossible"
 
-	return "{dp[amount]}"
+	return f"{dp[amount]}"
 
 fn run(line: String) String:
 	t := line.split(" ")
@@ -95,9 +95,9 @@ fn run(line: String) String:
 
 	if cmd == "lcs" or cmd == "edit":
 		if t.length() != 3 or t[1].length() == 0 or t[2].length() == 0: return BAD
-		if cmd == "lcs": return "{lcs(t[1], t[2])}"
+		if cmd == "lcs": return f"{lcs(t[1], t[2])}"
 
-		return "{edit(t[1], t[2])}"
+		return f"{edit(t[1], t[2])}"
 
 	if cmd == "knap":
 		if t.length() < 2: return BAD
@@ -119,7 +119,7 @@ fn run(line: String) String:
 			ws.append(w)
 			vs.append(v)
 
-		return "{knap(cap, ws, vs)}"
+		return f"{knap(cap, ws, vs)}"
 
 	if cmd == "coins":
 		if t.length() < 3: return BAD
@@ -151,6 +151,6 @@ export fn main() Int:
 		for line in lines:
 			if is_blank(line): continue
 
-			out.write("{run(line)}\n").get()
+			out.write(f"{run(line)}\n").get()
 
 	return 0

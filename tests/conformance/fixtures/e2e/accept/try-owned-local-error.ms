@@ -8,7 +8,7 @@ type Door:
 	name: String
 
 fn heap(label: String, n: Int) String:
-	return "{label}-a-string-long-enough-to-live-on-the-heap-{n}-aaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	return f"{label}-a-string-long-enough-to-live-on-the-heap-{n}-aaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
 fn open(name: String, fail: Bool) Door!String:
 	if fail: return error(heap("failed", 1))

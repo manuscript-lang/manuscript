@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -29,22 +29,22 @@ fn gcd(a: Int, b: Int) Int:
 
 export fn main() Int:
     say(
-        "{942572} {((-29) - ((-26) - 16))} {(942572 < ((-29) - ((-26) - 16)))} sum {942572 + ((-29) - ((-26) - 16))}"
+        f"{942572} {((-29) - ((-26) - 16))} {(942572 < ((-29) - ((-26) - 16)))} sum {942572 + ((-29) - ((-26) - 16))}"
     )
 
     i1 := (((29 % (-208730)) + 11) - ((24 % 33) + 440667))
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     i3 := 750717620551
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
-    if ("{(77725 + i1)}:" + "").starts_with("hello world"):
+    if (f"{(77725 + i1)}:" + "").starts_with("hello world"):
         say(("42" + "42"))
     else:
         say(("quote\"d" + "x"))
 
-    say("fib(14) = {fib(14)}")
-    say("gcd(3780, 1849) = {gcd(3780, 1849)}")
+    say(f"fib(14) = {fib(14)}")
+    say(f"gcd(3780, 1849) = {gcd(3780, 1849)}")
 
     if ("a" + "42").is_empty():
         say("quote\"d")
@@ -57,11 +57,11 @@ export fn main() Int:
         say("emoji 😀")
 
     s4 := "naïve"
-    say("s4 = [{s4}]")
+    say(f"s4 = [{s4}]")
 
     s5 := "日本語".trim()
-    say("s5 = [{s5}]")
+    say(f"s5 = [{s5}]")
 
     l6 := [1, 2, 3].take(0)
-    say("l6 = {l6} len {l6.length()}")
+    say(f"l6 = {l6} len {l6.length()}")
     return 0

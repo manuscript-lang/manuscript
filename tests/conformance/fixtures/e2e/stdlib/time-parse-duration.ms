@@ -136,15 +136,15 @@ test "duration parser rejects malformed input and gives syntax errors precedence
 
 test "duration parsing stays exact for long leading zeros and fractions":
 	zeros := "0".repeat(10000)?
-	expect_equal(parse_duration("{zeros}1ns"), ok(nanoseconds(1)))?
-	expect_equal(parse_duration("1.{zeros}1s"), ok(nanoseconds(1000000000)))?
-	expect_equal(parse_duration("0.{zeros}1h"), ok(nanoseconds(0)))?
+	expect_equal(parse_duration(f"{zeros}1ns"), ok(nanoseconds(1)))?
+	expect_equal(parse_duration(f"1.{zeros}1s"), ok(nanoseconds(1000000000)))?
+	expect_equal(parse_duration(f"0.{zeros}1h"), ok(nanoseconds(0)))?
 
 	invalid: Duration! := error(Error("time: invalid data", kind: "EBADMSG"))
-	expect_equal(parse_duration("0.{zeros}1h!"), invalid)?
+	expect_equal(parse_duration(f"0.{zeros}1h!"), invalid)?
 
 	nines := "9".repeat(10000)?
-	expect_equal(parse_duration("{nines}ns!"), invalid)?
+	expect_equal(parse_duration(f"{nines}ns!"), invalid)?
 
 	overflow: Duration! := error(Error("time: value out of range", kind: "ERANGE"))
-	expect_equal(parse_duration("{nines}ns"), overflow)?
+	expect_equal(parse_duration(f"{nines}ns"), overflow)?

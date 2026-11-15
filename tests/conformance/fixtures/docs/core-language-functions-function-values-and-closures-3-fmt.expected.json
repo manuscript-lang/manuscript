@@ -1,7 +1,7 @@
 {
   "format": 1,
   "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
+  "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
     "fmt": "fn make_headline() fn() String:\n\tvar subject = \"Weekly update\"\n\theadline := fn:\n\t\treturn subject.clone()\n\tsubject = \"Launch announcement\"\n\treturn headline\n// make_headline()() returns \"Weekly update\".\n"

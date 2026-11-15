@@ -15,10 +15,10 @@ fn var Hooks.before_all() Void!:
 
 fn var Hooks.before_each() Void!:
     self.runs += 1
-    stdout().write("before_each {self.runs}\n").get()
+    stdout().write(f"before_each {self.runs}\n").get()
 
 fn var Hooks.after_each() Void!:
-    stdout().write("after_each {self.runs}\n").get()
+    stdout().write(f"after_each {self.runs}\n").get()
 
 fn var Hooks.after_all() Void!:
     stdout().write("after_all\n").get()

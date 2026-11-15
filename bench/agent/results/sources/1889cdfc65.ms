@@ -45,7 +45,7 @@ C_t := 116
 C_w := 119
 C_W := 87
 C_x := 120
-PRINTABLE := " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz\{|\}~"
+PRINTABLE := " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
 HEX := "0123456789abcdef"
 COMMANDS := ["test", "match", "full", "find-all", "split", "replace"]
 // Instruction opcodes for the matcher.
@@ -308,7 +308,7 @@ impl Parser:
 
         while is_word_byte(self.peek()):
             ch := printable(self.peek())
-            name = "{name}{ch}"
+            name = f"{name}{ch}"
             self.pos += 1
 
         return name
@@ -978,7 +978,7 @@ fn escape_byte(b: Int) String:
     if b == C_CR:
         return "\\r"
     if b < 32 or b > 126:
-        return "\\x{HEX.get(b / 16)}{HEX.get(b % 16)}"
+        return f"\\x{HEX.get(b / 16)}{HEX.get(b % 16)}"
 
     return printable(b)
 
@@ -992,13 +992,13 @@ fn quoted(bytes: List[Int], from: Int, to: Int) String:
 
 fn match_line(subject: List[Int], m: List[Int]) String:
     q := quoted(subject, m[0], m[1])
-    return "{m[0]}..{m[1]} {q}"
+    return f"{m[0]}..{m[1]} {q}"
 
 fn group_label(names: List[String], g: Int) String:
     if names[g] == "":
-        return "{g}"
+        return f"{g}"
 
-    return "{g} ({names[g]})"
+    return f"{g} ({names[g]})"
 
 fn group_lines(names: List[String], subject: List[Int], regs: List[Int]) List[String]:
     var lines = List[String]()
@@ -1010,9 +1010,9 @@ fn group_lines(names: List[String], subject: List[Int], regs: List[Int]) List[St
 
         if e >= 0:
             q := quoted(subject, s, e)
-            lines.append("{label}: {s}..{e} {q}")
+            lines.append(f"{label}: {s}..{e} {q}")
         else:
-            lines.append("{label}: unset")
+            lines.append(f"{label}: unset")
 
     return lines
 
@@ -1036,7 +1036,7 @@ fn name_of(repl: List[Int], from: Int, to: Int) String:
             return ""
 
         ch := printable(c)
-        name = "{name}{ch}"
+        name = f"{name}{ch}"
 
     return name
 
@@ -1105,7 +1105,7 @@ fn run_prog(cmd: String, prog: Prog, subject: List[Int], repl: List[Int]) List[S
         var lines = List[String]()
         for m in found:
             lines.append(match_line(subject, m))
-        lines.append("({found.length()} matches)")
+        lines.append(f"({found.length()} matches)")
         return lines
 
     if cmd == "split":
@@ -1120,7 +1120,7 @@ fn run_prog(cmd: String, prog: Prog, subject: List[Int], repl: List[Int]) List[S
                 kept += 1
 
         pieces.append(quoted(subject, prev, subject.length()))
-        pieces.append("({kept + 1} pieces)")
+        pieces.append(f"({kept + 1} pieces)")
         return pieces
 
     var out = List[Int]()
@@ -1187,7 +1187,7 @@ fn run_command(
 
     if compiled.is_error():
         msg := compiled.err().message()
-        return ["error: {msg}"]
+        return [f"error: {msg}"]
 
     return run_prog(cmd, compiled.get(), subject, repl)
 
@@ -1217,6 +1217,6 @@ export fn main() Int:
         for line in lines:
             if line != "":
                 for text in run_line(line):
-                    out.append("{text}\n")
+                    out.append(f"{text}\n")
     stdout().write(out.join("")).get()
     return 0

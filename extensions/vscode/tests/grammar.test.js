@@ -2,9 +2,14 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const grammar = require('../syntaxes/manuscript.tmLanguage.json');
 
-test('strings scope escapes and nest interpolation with nested strings', () => {
-  const string = grammar.repository.string;
+test('plain strings never interpolate; f strings scope escapes and nest interpolation', () => {
+  const plain = grammar.repository.string;
   assert.equal(grammar.patterns.filter(p => p.include === '#string').length, 1);
+  assert.ok(!plain.patterns.some(p => p.name === 'meta.interpolation.manuscript'));
+  const plainEscape = new RegExp(plain.patterns.find(p => p.name === 'constant.character.escape.manuscript').match);
+  for (const bad of ['\\{', '\\}', '\\q']) assert.ok(!plainEscape.test(bad), bad);
+  const string = grammar.repository['f-string'];
+  assert.equal(string.begin, '\\bf"');
   const escape = new RegExp(string.patterns.find(p => p.name === 'constant.character.escape.manuscript').match);
   for (const ok of ['\\n', '\\"', '\\{', '\\}', '\\u{41}', '\\u{10FFFF}']) assert.ok(escape.test(ok), ok);
   for (const bad of ['\\q', '\\u41']) assert.ok(!escape.test(bad), bad);
@@ -25,11 +30,12 @@ test('opaque is a keyword only before type', () => {
 
 test('multi-line and raw strings are scoped before the one-line rule', () => {
   const order = grammar.patterns.map(p => p.include).filter(Boolean);
-  assert.deepEqual(order.slice(0, 4), ['#raw-multiline-string', '#multiline-string', '#raw-string', '#string']);
+  assert.deepEqual(order.slice(0, 6), ['#raw-multiline-string', '#f-multiline-string', '#multiline-string', '#raw-string', '#f-string', '#string']);
   assert.equal(new RegExp(grammar.repository['raw-string'].match).exec('x := r"\\d+{}" + "a"')[0], 'r"\\d+{}"');
-  const multiline = grammar.repository['multiline-string'];
-  assert.equal(multiline.begin, '"""');
+  const multiline = grammar.repository['f-multiline-string'];
+  assert.equal(multiline.begin, '\\bf"""');
   assert.ok(multiline.patterns.some(p => p.name === 'meta.interpolation.manuscript'));
+  assert.ok(!grammar.repository['multiline-string'].patterns.some(p => p.name === 'meta.interpolation.manuscript'));
   const raw = grammar.repository['raw-multiline-string'];
   assert.equal(raw.begin, 'r"""');
   assert.equal(raw.patterns, undefined);

@@ -112,8 +112,8 @@ fn parse_field(text: String, lo: Int, hi: Int) List[Bool]:
 	return set
 
 fn pad2(n: Int) String:
-	if n < 10: return "0{n}"
-	return "{n}"
+	if n < 10: return f"0{n}"
+	return f"{n}"
 
 // Day of week with 0 = Sunday; 1970-01-01 was a Thursday.
 fn day_of_week(y: Int, m: Int, d: Int) Int:
@@ -156,9 +156,9 @@ fn search(
 				mi := t % 60
 
 				if hours[h] and mins[mi] and (day > 0 or t > start_min):
-					ds := "{y}-{pad2(mo)}-{pad2(d)}"
-					ts := "{pad2(h)}:{pad2(mi)}"
-					res.append("{ds} {ts}")
+					ds := f"{y}-{pad2(mo)}-{pad2(d)}"
+					ts := f"{pad2(h)}:{pad2(mi)}"
+					res.append(f"{ds} {ts}")
 
 				t += 1
 
@@ -183,58 +183,58 @@ fn process(line: String, n: Int, var out: List[String]) Unit:
 	toks := line.split(" ")
 
 	if toks.length() != 7:
-		out.append("line {n}: error: bad line")
+		out.append(f"line {n}: error: bad line")
 		return unit
 
 	start := parse_start(toks[0])
 
 	if start.is_empty():
-		out.append("line {n}: error: bad start")
+		out.append(f"line {n}: error: bad start")
 		return unit
 
 	count := digits_value(toks[1], 1, 2)
 
 	if count < 1 or count > 20:
-		out.append("line {n}: error: bad count")
+		out.append(f"line {n}: error: bad count")
 		return unit
 
 	mins := parse_field(toks[2], 0, 59)
 
 	if mins.is_empty():
-		out.append("line {n}: error: bad minute")
+		out.append(f"line {n}: error: bad minute")
 		return unit
 
 	hours := parse_field(toks[3], 0, 23)
 
 	if hours.is_empty():
-		out.append("line {n}: error: bad hour")
+		out.append(f"line {n}: error: bad hour")
 		return unit
 
 	doms := parse_field(toks[4], 1, 31)
 
 	if doms.is_empty():
-		out.append("line {n}: error: bad day-of-month")
+		out.append(f"line {n}: error: bad day-of-month")
 		return unit
 
 	months := parse_field(toks[5], 1, 12)
 
 	if months.is_empty():
-		out.append("line {n}: error: bad month")
+		out.append(f"line {n}: error: bad month")
 		return unit
 
 	dows := parse_field(toks[6], 0, 6)
 
 	if dows.is_empty():
-		out.append("line {n}: error: bad day-of-week")
+		out.append(f"line {n}: error: bad day-of-week")
 		return unit
 
 	res := search(start, count, mins, hours, doms, months, dows)
 
 	if res.is_empty():
-		out.append("line {n}: never")
+		out.append(f"line {n}: never")
 		return unit
 
-	out.append("line {n}: {res.length()} runs")
+	out.append(f"line {n}: {res.length()} runs")
 	for r in res:
 		out.append(r)
 
@@ -249,6 +249,6 @@ export fn main() Int:
 
 	if not out.is_empty():
 		text := out.join("\n")
-		stdout().write("{text}\n").get()
+		stdout().write(f"{text}\n").get()
 
 	return 0

@@ -2,7 +2,7 @@ type Cause:
     code: Int
     text: String
 
-fn Cause.message() String: "cause {self.code}: {self.text}"
+fn Cause.message() String: f"cause {self.code}: {self.text}"
 
 fn first_error(cause: Cause) Reportable:
     return cause

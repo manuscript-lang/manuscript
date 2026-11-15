@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -29,20 +29,20 @@ fn collatz(start: Int) Int:
     return steps
 
 export fn main() Int:
-    say("fact(7) = {fact(7)}")
+    say(f"fact(7) = {fact(7)}")
 
     i1 := (((-(-4)) + ((-23) / 35)) + (((-580576040681) - (-6)) + (776008 * 48)))
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     s2 := "back\\slash"
-    say("s2 = [{s2}]")
-    say("collatz(402) = {collatz(402)}")
+    say(f"s2 = [{s2}]")
+    say(f"collatz(402) = {collatz(402)}")
 
     s3 := ("a".reverse() + (s2 + s2).trim())
-    say("s3 = [{s3}]")
-    say("collatz(2715) = {collatz(2715)}")
+    say(f"s3 = [{s3}]")
+    say(f"collatz(2715) = {collatz(2715)}")
     say(
-        "{((i1 - i1) * 41)} {(-9)} {(((i1 - i1) * 41) < (-9))} sum {((i1 - i1) * 41) + (-9)}"
+        f"{((i1 - i1) * 41)} {(-9)} {(((i1 - i1) * 41) < (-9))} sum {((i1 - i1) * 41) + (-9)}"
     )
 
     if "hello world".is_empty():
@@ -51,23 +51,23 @@ export fn main() Int:
         say(("line\nbreak" + "beta"))
 
     s4 := "quote\"d"
-    say("s4 = [{s4}]")
+    say(f"s4 = [{s4}]")
 
     i5 := (-32)
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     b6 := true
-    say("b6 = {b6}")
+    say(f"b6 = {b6}")
 
     i7 := (4 - (i1 - (i5 + i5)))
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
     s8 := s4.trim().reverse()
-    say("s8 = [{s8}]")
+    say(f"s8 = [{s8}]")
 
     i9 := ((((-36) * i5) * (i1 + (-47))) + s4.scalar_length())
-    say("i9 = {i9}")
+    say(f"i9 = {i9}")
 
     f10 := (931.008 + ((627.133 * 984.269) * (492.149 / 872.883)))
-    say("f10 = {f10}")
+    say(f"f10 = {f10}")
     return 0

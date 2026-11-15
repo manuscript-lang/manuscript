@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -28,16 +28,16 @@ export fn main() Int:
         say("日本語".reverse())
 
     f1 := 220.298
-    say("f1 = {f1}")
-    say("fib(9) = {fib(9)}")
+    say(f"f1 = {f1}")
+    say(f"fib(9) = {fib(9)}")
 
     f2 := (((f1 + f1) + (f1 + 0.0)) * (6.0e11 / 561.411))
-    say("f2 = {f2}")
+    say(f"f2 = {f2}")
 
     var acc3 = 0
     for i in 0..7:
         acc3 += i * 4
-    say("acc3 = {acc3}")
+    say(f"acc3 = {acc3}")
 
     var acc4 = 0
     var stepacc4 = 0
@@ -46,11 +46,11 @@ export fn main() Int:
         stepacc4 += 1
         acc4 += stepacc4 * stepacc4 + (-3)
 
-    say("acc4 = {acc4}")
+    say(f"acc4 = {acc4}")
 
-    s5 := "brace\{s\}".lower().upper()
-    say("s5 = [{s5}]")
+    s5 := "brace{s}".lower().upper()
+    say(f"s5 = [{s5}]")
 
     big6 := -9223372036854775808
-    say("{-big6}")
+    say(f"{-big6}")
     return 0

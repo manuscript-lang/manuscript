@@ -32,8 +32,8 @@ fn source(count: Int, mode: String) String:
 
 	var text = header + "export fn main() Int:\n    step0 := Counter(0)\n"
 	for i in 0..count:
-		text += "    step{i + 1} := step{i}.next()\n"
-	return text + "    print(step{count}.value)\n    return 0\n"
+		text += f"    step{i + 1} := step{i}.next()\n"
+	return text + f"    print(step{count}.value)\n    return 0\n"
 
 fn measure(
 	before: String,
@@ -43,13 +43,13 @@ fn measure(
 	filter: String,
 ) Void!:
 	ensure_directory(directory)
-	ensure_directory("{directory}/inputs")
+	ensure_directory(f"{directory}/inputs")
 
 	var files = List[String]()
 
 	for count in [0, 1, 4, 8, 10, 12, 14, 16, 18]:
 		for mode in ["source-chain", "source-flat", "native-chain"]:
-			file := "{directory}/inputs/{mode}-{count}.ms"
+			file := f"{directory}/inputs/{mode}-{count}.ms"
 			write_text(file, source(count, mode))
 			files.append(file.clone())
 
@@ -57,12 +57,12 @@ fn measure(
 		"examples/hello/ms.toml", "tools/conform.ms", "bench/perf/stdlib/ms.toml"
 	]:
 		files.append(absolute(file.clone()))
-	if filter != "": files = files.filter(fn file: file.ends_with("/{filter}"))
+	if filter != "": files = files.filter(fn file: file.ends_with(f"/{filter}"))
 	if files.is_empty(): return invalid("no matching inputs")
 
 	write_text(
-		"{directory}/binaries.txt",
-		"before {before} {file_sha256(before)}\nafter {after} {file_sha256(after)}\n",
+		f"{directory}/binaries.txt",
+		f"before {before} {file_sha256(before)}\nafter {after} {file_sha256(after)}\n",
 	)
 
 	var rows = "round\tlabel\tinput\twall_ns\tmax_resident_bytes\tinput_sha256\tuser_ns\tsystem_ns\n"
@@ -90,25 +90,25 @@ fn measure(
 				measured := timed("timeout", command)?
 				ran := measured.result
 				elapsed := now_ns() - started
-				prefix := "{directory}/round-{round}-{label}-{i}"
-				write_text("{prefix}.command", measured.command)
-				write_text("{prefix}.stdout", ran.stdout)
-				write_text("{prefix}.stderr", ran.stderr)
-				write_text("{prefix}.status", "{ran.code}\n")
+				prefix := f"{directory}/round-{round}-{label}-{i}"
+				write_text(f"{prefix}.command", measured.command)
+				write_text(f"{prefix}.stdout", ran.stdout)
+				write_text(f"{prefix}.stderr", ran.stderr)
+				write_text(f"{prefix}.status", f"{ran.code}\n")
 				if not ran.ok or ran.code != 0: return invalid(
-					"check failed: {file}: {ran.stderr}"
+					f"check failed: {file}: {ran.stderr}"
 				)
 
 				if previous := expected.get(file):
 					if previous != ran.stdout: return invalid(
-						"checker output changed: {file}"
+						f"checker output changed: {file}"
 					)
 				else:
 					expected.add(file.clone(), ran.stdout.clone())
 
-				rows += "{round}\t{label}\t{file}\t{elapsed}\t{ran.max_resident_bytes}\t{file_sha256(file)}\t{measured.user_ns}\t{measured.system_ns}\n"
-				write_text("{directory}/samples.tsv", rows)
-				print("{round} {label} {file} {elapsed} ns")
+				rows += f"{round}\t{label}\t{file}\t{elapsed}\t{ran.max_resident_bytes}\t{file_sha256(file)}\t{measured.user_ns}\t{measured.system_ns}\n"
+				write_text(f"{directory}/samples.tsv", rows)
+				print(f"{round} {label} {file} {elapsed} ns")
 
 export fn main() Void!:
 	args := arguments()

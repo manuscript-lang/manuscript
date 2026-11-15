@@ -31,7 +31,7 @@ fn amount_cents(s: String) String:
 
 	for k in 0..int_len:
 		if not is_digit(s.get(k)): return ""
-	if int_len == n: return "{s}00"
+	if int_len == n: return f"{s}00"
 
 	// there is a dot at int_len
 	frac := s.slice(int_len + 1, n).get()
@@ -41,10 +41,10 @@ fn amount_cents(s: String) String:
 	for m in 0..fl:
 		if not is_digit(frac.get(m)): return ""
 
-	var padded = "{frac}"
+	var padded = f"{frac}"
 	if fl == 1:
-		padded = "{frac}0"
-	return "{s.slice(0, int_len).get()}{padded}"
+		padded = f"{frac}0"
+	return f"{s.slice(0, int_len).get()}{padded}"
 
 // Parses one non-blank line into a record.
 fn parse_line(line: String) Record:
@@ -99,7 +99,7 @@ fn add_digits(a: String, b: String) String:
 			d += digit_value(b.get(j))
 			j -= 1
 
-		out = "{d % 10}{out}"
+		out = f"{d % 10}{out}"
 		carry = d / 10
 
 	return out
@@ -110,10 +110,10 @@ fn format_total(cents: String) String:
 	while s.length() > 1 and s.get(0) == "0":
 		s = s.slice(1, s.length()).get()
 	while s.length() < 3:
-		s = "0{s}"
+		s = f"0{s}"
 
 	cut := s.length() - 2
-	return "{s.slice(0, cut).get()}.{s.slice(cut, s.length()).get()}"
+	return f"{s.slice(0, cut).get()}.{s.slice(cut, s.length()).get()}"
 
 export fn main() Int:
 	var totals = Map[String, String]()
@@ -133,7 +133,7 @@ export fn main() Int:
 		totals[rec.category] = add_digits(prev, rec.amount)
 
 	for key in totals.keys().sorted():
-		stdout().write("{key}: {format_total(totals[key].clone())}\n").get()
+		stdout().write(f"{key}: {format_total(totals[key].clone())}\n").get()
 	if skipped > 0:
-		stdout().write("skipped: {skipped}\n").get()
+		stdout().write(f"skipped: {skipped}\n").get()
 	return 0

@@ -45,13 +45,13 @@ type LogRow:
 export fn make_workspace(ch: Challenge, lang: Lang, dest: String) String:
 	create_directory(dest, recursive: true).get()
 	copy(
-		"{root()}/templates/{lang.template}",
+		f"{root()}/templates/{lang.template}",
 		dest,
 		CopyOptions(recursive: true, replace: true),
 	).get()
 
 	// An edit challenge ships the program to change in `start/<language>/`.
-	start := "{ch.dir}/start/{lang.template}"
+	start := f"{ch.dir}/start/{lang.template}"
 	is_edit := access(start, 0).is_ok()
 	if is_edit: copy(start, dest, CopyOptions(recursive: true, replace: true)).get()
 
@@ -60,46 +60,46 @@ export fn make_workspace(ch: Challenge, lang: Lang, dest: String) String:
 	for c in ch.cases("examples"):
 		n += 1
 
-		name := "{n}".pad_start(2, "0")
-		write_text("{dest}/examples/{name}.in", c.stdin)
-		write_text("{dest}/examples/{name}.out", c.stdout)
+		name := f"{n}".pad_start(2, "0")
+		write_text(f"{dest}/examples/{name}.in", c.stdin)
+		write_text(f"{dest}/examples/{name}.out", c.stdout)
 
-	write_text("{dest}/TASK.md", ch.spec())
+	write_text(f"{dest}/TASK.md", ch.spec())
 	if not lang.setup.is_empty(): bash(lang.setup, dest, 120, "")
 
-	check := read_text("{root()}/check.sh.tmpl").replace(
-		"\{build\}",
+	check := read_text(f"{root()}/check.sh.tmpl").replace(
+		"{build}",
 		lang.build,
-	).replace("\{run\}", lang.run).replace("\{codes\}", lang.codes).replace(
-		"\{fix\}",
+	).replace("{run}", lang.run).replace("{codes}", lang.codes).replace(
+		"{fix}",
 		lang.fix,
 	)
-	write_text("{dest}/check.sh", check)
-	chmod("{dest}/check.sh", 493).get()
+	write_text(f"{dest}/check.sh", check)
+	chmod(f"{dest}/check.sh", 493).get()
 	for ctx in lang.context:
 		if ctx.starts_with("@repo/"):
 			copy(
-				"{repo()}/{ctx.slice(6, ctx.length()).get("")}",
-				"{dest}/docs",
+				f"{repo()}/{ctx.slice(6, ctx.length()).get("")}",
+				f"{dest}/docs",
 				CopyOptions(recursive: true, replace: true),
 			).get()
 
 	task := (
-		if is_edit: "{lang.solution} already holds a working {lang.name} program; change it as TASK.md describes, keeping every behavior TASK.md does not change. " else: "Implement the program described in TASK.md in {lang.name}. "
+		if is_edit: f"{lang.solution} already holds a working {lang.name} program; change it as TASK.md describes, keeping every behavior TASK.md does not change. " else: f"Implement the program described in TASK.md in {lang.name}. "
 	)
 	return (
 		task
-		+ "Edit {lang.solution}; it reads stdin and writes stdout. "
+		+ f"Edit {lang.solution}; it reads stdin and writes stdout. "
 		+ "Run ./check.sh to build and test against the examples in examples/. "
 		+ "The final grading uses additional hidden cases of the same format, so handle the edge cases the spec describes. "
-		+ "{lang.notes} Work autonomously and stop when the program is correct."
+		+ f"{lang.notes} Work autonomously and stop when the program is correct."
 	)
 
 // Reads the build and check counts the workspace's `./check.sh` logged.
 export fn read_log(ws: String) BuildLog:
 	var rows = List[LogRow]()
 
-	for line in read_text("{ws}/.bench/log.jsonl").split("\n"):
+	for line in read_text(f"{ws}/.bench/log.jsonl").split("\n"):
 		if line.trim().is_empty(): continue
 
 		rows.append(parse[LogRow](line).get(LogRow("", false, "", "", "")))

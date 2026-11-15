@@ -78,7 +78,7 @@ fn main() Void:
     names := ["ann", "bo", "cy"]
     scores := [90, 72]
     for pair in names.zip(scores):
-        print("{pair.first}: {pair.second}")
+        print(f"{pair.first}: {pair.second}")
     for part in [1, 2, 3, 4, 5].chunks(2):
         print(part.length())
 ```

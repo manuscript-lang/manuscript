@@ -311,8 +311,8 @@ fn Complex.atan() Complex:
 
 // Formats as `a+bi` or `a-bi` using the Float text of each part, e.g. `1.5-2i`.
 fn Complex.format() String:
-	if sign_bit(self.im): return "{self.re}-{(-self.im)}i"
-	return "{self.re}+{self.im}i"
+	if sign_bit(self.im): return f"{self.re}-{(-self.im)}i"
+	return f"{self.re}+{self.im}i"
 
 // Returns the complex number `re + im*i`.
 export fn complex(re: Float, im: Float) Complex:

@@ -123,7 +123,7 @@ fn eval_line(line: String) String:
 	if p.bad or p.pos != p.codes.length(): return "error: syntax"
 	if p.div0: return "error: division by zero"
 
-	return "{v}"
+	return f"{v}"
 
 fn run() Unit!:
 	for line in stdin() | lines:

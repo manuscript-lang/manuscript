@@ -197,13 +197,13 @@ fn jump(e: V, env: Int, depth: Int, tail: Bool) Step:
     )
 
 fn syn_err(msg: String) Fail:
-    return Fail("syntax error: {msg}", true)
+    return Fail(f"syntax error: {msg}", true)
 
 fn rt_err(msg: String) Fail:
     return Fail(msg, false)
 
 fn bad_form(h: Heap, sid: Int) Fail:
-    return Fail("syntax error: bad form: {h.syms[sid]}", true)
+    return Fail(f"syntax error: bad form: {h.syms[sid]}", true)
 
 fn key(frame: Int, sym: Int) Int:
     return frame * FRAME_SHIFT + sym
@@ -294,7 +294,7 @@ fn quote_str(s: String) String:
     b := a.split("\"").join("\\\"")
     c := b.split("\n").join("\\n")
     d := c.split("\t").join("\\t")
-    return "\"{d}\""
+    return f"\"{d}\""
 
 fn atom_text(h: Heap, v: V, readable: Bool) String:
     if v.kind == K_INT:
@@ -319,13 +319,13 @@ fn atom_text(h: Heap, v: V, readable: Bool) String:
     if v.kind == K_VOID:
         return "#<void>"
     if v.kind == K_PRIM:
-        return "#<builtin {h.pnames[v.n]}>"
+        return f"#<builtin {h.pnames[v.n]}>"
 
     name := h.clos[v.n].name
     if name < 0:
         return "#<procedure>"
 
-    return "#<procedure {h.syms[name]}>"
+    return f"#<procedure {h.syms[name]}>"
 
 fn put(h: Heap, v: V, readable: Bool, var parts: List[String]) Unit:
     if v.kind != K_PAIR:
@@ -364,25 +364,25 @@ fn emit(var h: Heap, s: String) Unit:
 fn report_error(var h: Heap, msg: String) Unit:
     if h.out_any and not h.out_nl:
         emit(var h, "\n")
-    emit(var h, "error: {msg}\n")
+    emit(var h, f"error: {msg}\n")
 
 // ---- Argument checks for primitives ----
 
 fn tyerr(h: Heap, code: Int, kind: String, v: V) Fail:
-    return Fail("{h.pnames[code]}: expected {kind}, got {show(h, v, true)}", false)
+    return Fail(f"{h.pnames[code]}: expected {kind}, got {show(h, v, true)}", false)
 
 fn arity_err(h: Heap, code: Int, n: Int) Fail:
     lo := h.pmin[code]
     hi := h.pmax[code]
-    var expected = "{lo}"
+    var expected = f"{lo}"
 
     if hi < 0:
-        expected = "at least {lo}"
+        expected = f"at least {lo}"
     else if hi != lo:
-        expected = "{lo} to {hi}"
+        expected = f"{lo} to {hi}"
 
     return Fail(
-        "wrong number of arguments to {h.pnames[code]}: expected {expected}, got {n}",
+        f"wrong number of arguments to {h.pnames[code]}: expected {expected}, got {n}",
         false
     )
 
@@ -544,12 +544,12 @@ fn bind_call(var h: Heap, ci: Int, args: List[V]) Result[Int, Fail]:
         if name >= 0:
             who = h.syms[name].clone()
 
-        var expected = "{nreq}"
+        var expected = f"{nreq}"
         if rest:
-            expected = "at least {nreq}"
+            expected = f"at least {nreq}"
         return error(
             rt_err(
-                "wrong number of arguments to {who}: expected {expected}, got {nargs}"
+                f"wrong number of arguments to {who}: expected {expected}, got {nargs}"
             )
         )
 
@@ -742,7 +742,7 @@ fn sf_set(var h: Heap, x: V, len: Int, env: Int, depth: Int) Result[Step, Fail]:
     v := try eval_expr(var h, expr, env, depth, false)
     frame := find_frame(h, env, target.n)
     if frame < 0:
-        return error(rt_err("unbound variable: {h.syms[target.n]}"))
+        return error(rt_err(f"unbound variable: {h.syms[target.n]}"))
 
     h.binds.add(key(frame, target.n), v)
     return ok(finish(void_v()))
@@ -928,7 +928,7 @@ fn apply_proc(var h: Heap, f: V, args: List[V], depth: Int) Result[V, Fail]:
     if f.kind == K_PRIM:
         return prim_apply(var h, f.n, args, depth)
     if f.kind != K_CLO:
-        return error(rt_err("not a procedure: {show(h, f, true)}"))
+        return error(rt_err(f"not a procedure: {show(h, f, true)}"))
 
     frame := try bind_call(var h, f.n, args)
     nd := try call_depth(depth, false)
@@ -952,7 +952,7 @@ fn eval_expr(var h: Heap, expr: V, env0: Int, depth0: Int, tail0: Bool) Result[V
             if v := lookup(h, env, x.n):
                 return ok(v)
 
-            return error(rt_err("unbound variable: {h.syms[x.n]}"))
+            return error(rt_err(f"unbound variable: {h.syms[x.n]}"))
 
         if x.kind == K_NIL:
             return error(syn_err("empty application"))
@@ -986,7 +986,7 @@ fn eval_expr(var h: Heap, expr: V, env0: Int, depth0: Int, tail0: Bool) Result[V
             if f.kind == K_PRIM:
                 return prim_apply(var h, f.n, args, depth)
             if f.kind != K_CLO:
-                return error(rt_err("not a procedure: {show(h, f, true)}"))
+                return error(rt_err(f"not a procedure: {show(h, f, true)}"))
 
             frame := try bind_call(var h, f.n, args)
             nd := try call_depth(depth, tail)
@@ -1799,7 +1799,7 @@ fn atom_value(var h: Heap, t: String) Result[V, Fail]:
     if t == "#f":
         return ok(vbool(false))
     if t.starts_with("#"):
-        return error(syn_err("bad token: {t}"))
+        return error(syn_err(f"bad token: {t}"))
     if t == ".":
         return error(syn_err("unexpected ."))
 

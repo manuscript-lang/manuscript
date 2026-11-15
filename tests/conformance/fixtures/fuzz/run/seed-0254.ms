@@ -6,27 +6,27 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     s1 := (
         "alpha".trim().upper()
-        + ("{(-969468989409)}:" + ("back\\slash" + "  padded  "))
+        + (f"{(-969468989409)}:" + ("back\\slash" + "  padded  "))
     )
-    say("s1 = [{s1}]")
+    say(f"s1 = [{s1}]")
 
     i2 := ((((-30) + (-845579)) * (45 / 25)) / ((-4) % (-25)))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     i3 := ((12 / i2) * i2)
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     l4 := [2]
-    say("l4 = {l4} len {l4.length()}")
+    say(f"l4 = {l4} len {l4.length()}")
 
     l5 := l4.map(fn x: x + 3).filter(fn x: x % 2 == 0)
-    say("l5 = {l5} len {l5.length()}")
+    say(f"l5 = {l5} len {l5.length()}")
 
     b6 := s1.is_empty()
-    say("b6 = {b6}")
+    say(f"b6 = {b6}")
     return 0

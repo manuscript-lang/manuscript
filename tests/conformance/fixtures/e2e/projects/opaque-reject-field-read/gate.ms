@@ -10,7 +10,7 @@ export opaque enum Mode:
 	Wild(level: Int)
 
 fn Approved.label() String:
-	return "approved:{self.entity}"
+	return f"approved:{self.entity}"
 
 fn var Counter.bump() Void:
 	self.count += 1

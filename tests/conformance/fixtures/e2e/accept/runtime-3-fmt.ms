@@ -36,7 +36,7 @@ fn describe(outcome: Int!Code) Int!Error:
         ok(value):
             return ok(value)
         error(cause):
-            return error(Error("Error {cause.number}"))
+            return error(Error(f"Error {cause.number}"))
 
 test "explicit error conversion":
     failed: Int!Code := error(Code(7))

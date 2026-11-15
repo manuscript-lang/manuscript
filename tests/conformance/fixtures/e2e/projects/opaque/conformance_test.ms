@@ -14,7 +14,7 @@ import (
 )
 
 fn show[T](value: T) String:
-	return "{value}"
+	return f"{value}"
 
 test "module functions and methods work on an opaque value":
 	a := approve("u1")
@@ -37,7 +37,7 @@ test "an opaque value copies, clones and compares":
 
 test "an opaque value prints only its type name":
 	a := approve("u1")
-	"{a}" | expect_equal("Approved")?
+	f"{a}" | expect_equal("Approved")?
 	a.to_string() | expect_equal("Approved")?
 	show(a) | expect_equal("Approved")?
 	show([a, approve("u2")]) | expect_equal("[Approved, Approved]")?

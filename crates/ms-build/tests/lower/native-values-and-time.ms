@@ -13,5 +13,5 @@ fn main() Void:
     d: Duration := 2.seconds()
     _t := parse_timestamp("2020-01-02T03:04:05Z")
     _r := stdout().write(
-        "{to_text()} {via(sqrt, 4.0)} {max(left: 1, right: 2)} {d.to_milliseconds()}\n"
+        f"{to_text()} {via(sqrt, 4.0)} {max(left: 1, right: 2)} {d.to_milliseconds()}\n"
     )

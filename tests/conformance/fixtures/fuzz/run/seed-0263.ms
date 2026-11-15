@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     b1 := (
@@ -15,28 +15,28 @@ export fn main() Int:
             + (38.978 / 942.604)
         )
     )
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
     s2 := "emoji 😀"
-    say("s2 = [{s2}]")
+    say(f"s2 = [{s2}]")
 
     i3 := (((29 + (-29)) + 14) + (((-184917) + 509111) - (25 - 48)))
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     f4 := ((2.0e12 * (540.578 + 282.25)) * 0.0)
-    say("f4 = {f4}")
+    say(f"f4 = {f4}")
 
-    s5 := "brace\{s\}"
-    say("s5 = [{s5}]")
+    s5 := "brace{s}"
+    say(f"s5 = [{s5}]")
 
     l6 := [1, 2, 3].take(0)
-    say("l6 = {l6} len {l6.length()}")
+    say(f"l6 = {l6} len {l6.length()}")
 
     b7 := s2.is_empty()
-    say("b7 = {b7}")
+    say(f"b7 = {b7}")
 
     i8 := l6.length()
-    say("i8 = {i8}")
+    say(f"i8 = {i8}")
 
     if ((822.25 == 345.057) and false):
         say("")
@@ -44,10 +44,10 @@ export fn main() Int:
         say("42".reverse())
 
     b9 := (625629373324 <= ((i3 - i8) / ((-3) + i3)))
-    say("b9 = {b9}")
+    say(f"b9 = {b9}")
 
     i10 := (-(494517450107 * (i3 * i8)))
-    say("i10 = {i10}")
+    say(f"i10 = {i10}")
 
     if (not (false and false)):
         say("emoji 😀".reverse())
@@ -55,18 +55,18 @@ export fn main() Int:
         say(("x" + s5))
 
     i11 := (((i10 / (-22)) + (33 % i3)) / (-(934889 % (-37))))
-    say("i11 = {i11}")
+    say(f"i11 = {i11}")
 
     f12 := (((942.333 * f4) / 0.0) * ((f4 * f4) / (f4 * 65.976)))
-    say("f12 = {f12}")
+    say(f"f12 = {f12}")
 
     var acc13 = 0
     for i in 0..0:
         acc13 += i * 5
-    say("acc13 = {acc13}")
+    say(f"acc13 = {acc13}")
 
     var acc14 = 0
     for i in 0..4:
         acc14 += i * (-4)
-    say("acc14 = {acc14}")
+    say(f"acc14 = {acc14}")
     return 0

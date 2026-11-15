@@ -4,7 +4,7 @@ import (
 )
 
 fn emit(text: String) Unit:
-	stdout().write("{text}\n").get()
+	stdout().write(f"{text}\n").get()
 
 export fn main() Int:
 	lines := read_lines(stdin()).get()
@@ -25,7 +25,7 @@ export fn main() Int:
 			ch := cells[c]
 
 			if ch != "#" and ch != "." and ch != "S" and ch != "E":
-				emit("error: bad character at {r + 1},{c + 1}")
+				emit(f"error: bad character at {r + 1},{c + 1}")
 				return 0
 
 		grid.append(cells)
@@ -103,6 +103,6 @@ export fn main() Int:
 	if dist[end] < 0:
 		emit("no path")
 	else:
-		emit("{dist[end]}")
+		emit(f"{dist[end]}")
 
 	return 0

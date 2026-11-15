@@ -6,37 +6,37 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     f1 := 703.852
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
 
     l2 := [8, 27]
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     i3 := (8 + 22)
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     i4 := i3
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     f5 := (((1.5 + f1) * (71.756 / f1)) * ((753.213 + f1) * f1))
-    say("f5 = {f5}")
+    say(f"f5 = {f5}")
 
     if false:
-        say("brace\{s\}".upper())
+        say("brace{s}".upper())
     else:
         say("quote\"d".reverse())
 
     i6 := i4
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     f7 := 3.0e11
-    say("f7 = {f7}")
+    say(f"f7 = {f7}")
 
     i8 := i6
-    say("i8 = {i8}")
+    say(f"i8 = {i8}")
 
     if (not (false and false)):
         say("Tab\there".reverse())
@@ -49,14 +49,14 @@ export fn main() Int:
         say("MiXeD CaSe".replace("ms", "back\\slash"))
 
     s9 := "héllo"
-    say("s9 = [{s9}]")
+    say(f"s9 = [{s9}]")
 
     l10 := l2.sorted(fn a, b: a.compare(b))
-    say("l10 = {l10} len {l10.length()}")
+    say(f"l10 = {l10} len {l10.length()}")
 
     f11 := (((f7 + 8.0e8) * (0.0 + 490.066)) - ((7.5 / f7) - (89.010 + f1)))
-    say("f11 = {f11}")
+    say(f"f11 = {f11}")
 
     big12 := -9223372036854775808
-    say("{-big12}")
+    say(f"{-big12}")
     return 0

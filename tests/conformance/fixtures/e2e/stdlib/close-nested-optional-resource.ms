@@ -8,7 +8,7 @@ type Door:
     name: String
 
 fn var Door.close() Void!:
-    print("closed {self.name}")
+    print(f"closed {self.name}")
 
 fn nested(n: String) Door??:
     inner: Door? := Door(n)
@@ -17,4 +17,4 @@ fn nested(n: String) Door??:
 fn main() Void:
     bound := nested("bound")
     present := nested("temporary").is_some()
-    print("end {bound.is_some()} {present}")
+    print(f"end {bound.is_some()} {present}")

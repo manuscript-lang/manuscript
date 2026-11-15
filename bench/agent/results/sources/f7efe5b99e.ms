@@ -117,20 +117,20 @@ fn report(entries: List[Entry], malformed: Int) Unit:
         counts.add(entry.path, counts.get_or(entry.path, 0) + 1)
         totals.add(entry.path, totals.get_or(entry.path, 0) + entry.latency)
 
-    out("valid: {entries.length()}\n")
-    out("malformed: {malformed}\n")
-    out("DEBUG: {debug}\n")
-    out("INFO: {info}\n")
-    out("WARN: {warn}\n")
-    out("ERROR: {error}\n")
+    out(f"valid: {entries.length()}\n")
+    out(f"malformed: {malformed}\n")
+    out(f"DEBUG: {debug}\n")
+    out(f"INFO: {info}\n")
+    out(f"WARN: {warn}\n")
+    out(f"ERROR: {error}\n")
     out(
-        "status: 2xx={status_2xx} 3xx={status_3xx} 4xx={status_4xx} 5xx={status_5xx} other={status_other}\n"
+        f"status: 2xx={status_2xx} 3xx={status_3xx} 4xx={status_4xx} 5xx={status_5xx} other={status_other}\n"
     )
-    out("p95: {p95(latencies.sorted(compare_int))}\n")
+    out(f"p95: {p95(latencies.sorted(compare_int))}\n")
 
     if slowest.is_some():
         slow := slowest.get()
-        out("slowest: {slow.latency} {slow.method} {slow.path} {slow.timestamp}\n")
+        out(f"slowest: {slow.latency} {slow.method} {slow.path} {slow.timestamp}\n")
 
     var stats: List[PathStat] = []
     for path in counts.keys():
@@ -148,7 +148,7 @@ fn report(entries: List[Entry], malformed: Int) Unit:
             break
 
         stat := ranked.get(i)
-        out("{stat.path} {stat.count} avg={stat.total / stat.count}\n")
+        out(f"{stat.path} {stat.count} avg={stat.total / stat.count}\n")
 
 export fn main() Int:
     var entries: List[Entry] = []

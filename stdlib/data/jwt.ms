@@ -84,10 +84,10 @@ export fn sign_token[T: Data](
 
 	head := base64_encode(header.get("").to_bytes(), url_safe: true, padded: false)
 	body := base64_encode(payload.get("").to_bytes(), url_safe: true, padded: false)
-	signing_input := "{head}.{body}"
+	signing_input := f"{head}.{body}"
 	signature := sign_bytes(algorithm, key, signing_input.to_bytes())?
 	return ok(
-		"{signing_input}.{base64_encode(signature, url_safe: true, padded: false)}"
+		f"{signing_input}.{base64_encode(signature, url_safe: true, padded: false)}"
 	)
 
 /*
@@ -138,7 +138,7 @@ export fn verify_token[T: Data = JsonValue](
 		Error("jwt: malformed token", kind: "EBADMSG")
 	)
 
-	signing_input := "{parts[0]}.{parts[1]}"
+	signing_input := f"{parts[0]}.{parts[1]}"
 	genuine := verify_bytes(
 		check.algorithm,
 		key,
@@ -292,7 +292,7 @@ fn numeric_date(claim: JsonValue, name: String) String!:
 		NumberValue(text): return ok(text)
 		_: void
 
-	return error(Error("jwt: {name} must be a number", kind: "EBADMSG"))
+	return error(Error(f"jwt: {name} must be a number", kind: "EBADMSG"))
 
 // Both inputs come from validated JSON or an exact integer conversion. The
 // boundary is moment +/- leeway: at most 20 magnitude digits, even at Int limits.

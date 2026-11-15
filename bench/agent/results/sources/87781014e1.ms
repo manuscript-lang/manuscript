@@ -152,9 +152,9 @@ export fn main() Int:
 
 	for cat in cats.sorted():
 		total := format_cents(totals.get_or(cat, "0"))
-		out += "{cat}: {total}\n"
+		out += f"{cat}: {total}\n"
 
 	if skipped > 0:
-		out += "skipped: {skipped}\n"
+		out += f"skipped: {skipped}\n"
 	stdout().write(out).get()
 	return 0

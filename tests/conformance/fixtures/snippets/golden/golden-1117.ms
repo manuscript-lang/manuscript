@@ -6,7 +6,7 @@ fn example(
         second: 2
     )
 ) Int:
-    text := "# if value: return {value}"
+    text := f"# if value: return {value}"
     next := choose(
         first: value,
         // Explain this argument.

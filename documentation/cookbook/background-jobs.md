@@ -20,7 +20,7 @@ fn square(n: Int) Int:
 
 fn main() Void!:
     squares := map_concurrent([1, 2, 3, 4, 5, 6], 3, square)?
-    print("{squares}")
+    print(f"{squares}")
 ```
 
 ## Feed a worker through a queue
@@ -52,7 +52,7 @@ fn main() Void!:
         jobs.write(job)?
     jobs.close()?
     done := worker.wait()?
-    print("processed {done.jobs} jobs, total {done.total}")
+    print(f"processed {done.jobs} jobs, total {done.total}")
 ```
 
 - The queue holds up to `capacity` jobs; `write` waits when it is full, so a fast producer cannot outrun a slow worker without bound.
@@ -70,7 +70,7 @@ import milliseconds, sleep from "@std/time.ms"
 
 fn ticker(rounds: Int) Void!:
     for n in 1..rounds + 1:
-        print("tick {n}")
+        print(f"tick {n}")
         sleep(milliseconds(20)).wait()?
     return ok()
 

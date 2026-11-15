@@ -50,7 +50,7 @@ export fn summarize(lines: List[String], repeats: Int) String!:
 	for line in lines:
 		parts := line.trim().split(" ").filter(fn p: p != "")
 		if parts.length() < 2 or not VERSIONS.contains(parts[0]):
-			return invalid("invalid sample: {line.trim()}")
+			return invalid(f"invalid sample: {line.trim()}")
 
 		version := parts[0].clone()
 		name := parts[1].clone()
@@ -61,9 +61,9 @@ export fn summarize(lines: List[String], repeats: Int) String!:
 			for p in parts.slice(3, parts.length()).get([]):
 				sink.append(p.parse_int().get(-1))
 			if parts.length() < 3 or parts[2] != "sink" or sink != SINK:
-				return invalid("incorrect {version} checksum")
+				return invalid(f"incorrect {version} checksum")
 			if pending.get_or(version, Set[String]()).length() != ops().length():
-				return invalid("incomplete {version} sample")
+				return invalid(f"incomplete {version} sample")
 
 			pending.add(version.clone(), Set[String]())
 			sinks.add(version.clone(), sinks.get_or(version, 0) + 1)
@@ -75,14 +75,14 @@ export fn summarize(lines: List[String], repeats: Int) String!:
 			or want.is_none()
 			or pending.get_or(version, Set[String]()).contains(name)
 		):
-			return invalid("invalid operation: {line.trim()}")
+			return invalid(f"invalid operation: {line.trim()}")
 
 		count := parts[2].parse_int().get(-1)
 		elapsed := parts[3].parse_int().get(-1)
 		if count != want.get(0) or elapsed <= 0:
-			return invalid("incorrect work count or timing: {line.trim()}")
+			return invalid(f"incorrect work count or timing: {line.trim()}")
 
-		key := "{version} {name}"
+		key := f"{version} {name}"
 		var list = samples.get_or(key, List[Float]())
 		list.append(elapsed.to_float() / count.to_float())
 		samples.add(key.clone(), list)
@@ -104,31 +104,31 @@ export fn summarize(lines: List[String], repeats: Int) String!:
 			not pending.get_or(v, Set[String]()).is_empty()
 			or sinks.get_or(v, 0) != repeats
 		):
-			return invalid("expected {repeats} complete {v} samples")
+			return invalid(f"expected {repeats} complete {v} samples")
 
 	others := seen.filter(fn v: v != "ms" and v != "go")
 	order := ["ms", "go"].concat(others)
 	var heads = order.map(fn v: title(v))
 	heads.append("ms / Go")
 	for v in others:
-		heads.append("ms / {title(v)}")
+		heads.append(f"ms / {title(v)}")
 
 	var rows = List[String]()
 
 	for op in ops():
 		var med = Map[String, Float]()
 		for v in seen:
-			med.add(v.clone(), median(samples.get_or("{v} {op.name}", [])))
+			med.add(v.clone(), median(samples.get_or(f"{v} {op.name}", [])))
 
 		var cells = order.map(fn v: fixed(med.get_or(v, 0.0), 2))
 		ms := med.get_or("ms", 0.0)
 		cells.append(fixed(ms / med.get_or("go", 1.0), 2) + "x")
 		for v in others:
 			cells.append(fixed(ms / med.get_or(v, 1.0), 2) + "x")
-		rows.append("| {op.name} | {op.count} | " + cells.join(" | ") + " |")
+		rows.append(f"| {op.name} | {op.count} | " + cells.join(" | ") + " |")
 
 	rule := heads.map(fn _h: "---:|").join("")
-	return ok("""
+	return ok(f"""
         Median of {repeats} alternating runs; ns/op. Checksums and operation counts verified.
 
         | operation | ops | {heads.join(" | ")} |

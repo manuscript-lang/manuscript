@@ -42,7 +42,7 @@ fn main() Void:
 			if elapsed < best:
 				best = elapsed
 
-		_ignored := stdout().write("append{size}\t{best / 1000}\t# {checksum}\n")
+		_ignored := stdout().write(f"append{size}\t{best / 1000}\t# {checksum}\n")
 
 	for count in [10000, 100000, 1000000]:
 		var best = 1000000000000
@@ -56,4 +56,4 @@ fn main() Void:
 			if elapsed < best:
 				best = elapsed
 
-		_ignored := stdout().write("list{count}\t{best / 1000}\t# {checksum}\n")
+		_ignored := stdout().write(f"list{count}\t{best / 1000}\t# {checksum}\n")

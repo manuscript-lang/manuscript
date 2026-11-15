@@ -52,7 +52,7 @@ export fn retry[T, E: Clonable](
 	retryable: (fn(E) Bool)? = none
 ) T!E:
 	if policy.attempts < 1:
-		panic("retry: attempts must be at least 1, found {policy.attempts}")
+		panic(f"retry: attempts must be at least 1, found {policy.attempts}")
 
 	var attempt = 1
 
@@ -131,7 +131,7 @@ fn var RateLimiter.acquire() Void:
 export fn rate_limiter(count: Int, burst: Int) RateLimiter:
 	if count < 1 or burst < 1:
 		panic(
-			"rate_limiter: count and burst must be at least 1, found {count} and {burst}"
+			f"rate_limiter: count and burst must be at least 1, found {count} and {burst}"
 		)
 	return RateLimiter(
 		burst: burst,
@@ -206,7 +206,7 @@ fn var CircuitBreaker.call[T: Clonable, E: Clonable](
 // ```
 export fn map_concurrent[T, U](items: List[T], limit: Int, work: fn(T) U) List[U]!:
 	if limit < 1:
-		panic("map_concurrent: limit must be at least 1, found {limit}")
+		panic(f"map_concurrent: limit must be at least 1, found {limit}")
 
 	stripes := limit.min(items.length())
 	var running: List[Promise[List[U]]] = []

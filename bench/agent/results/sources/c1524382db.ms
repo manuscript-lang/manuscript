@@ -113,13 +113,13 @@ export fn main() Int:
 		lats.append(r.latency)
 
 	n := valid.length()
-	print("valid: {n}")
-	print("malformed: {malformed}")
-	print("DEBUG: {debug}")
-	print("INFO: {info}")
-	print("WARN: {warn}")
-	print("ERROR: {error}")
-	print("status: 2xx={s2} 3xx={s3} 4xx={s4} 5xx={s5} other={sother}")
+	print(f"valid: {n}")
+	print(f"malformed: {malformed}")
+	print(f"DEBUG: {debug}")
+	print(f"INFO: {info}")
+	print(f"WARN: {warn}")
+	print(f"ERROR: {error}")
+	print(f"status: 2xx={s2} 3xx={s3} 4xx={s4} 5xx={s5} other={sother}")
 
 	var p95 = 0
 
@@ -129,7 +129,7 @@ export fn main() Int:
 		rank := (95 * n + 99) / 100
 		p95 = lats[rank - 1]
 
-	print("p95: {p95}")
+	print(f"p95: {p95}")
 
 	if n > 0:
 		var best = 0
@@ -137,7 +137,7 @@ export fn main() Int:
 			if valid[i].latency > valid[best].latency: best = i
 
 		b := valid[best]
-		print("slowest: {b.latency_text} {b.method} {b.path} {b.timestamp}")
+		print(f"slowest: {b.latency_text} {b.method} {b.path} {b.timestamp}")
 
 	print("top:")
 
@@ -157,7 +157,7 @@ export fn main() Int:
 	for s in stats:
 		if shown >= 3: break
 
-		print("{s.path} {s.count} avg={s.total / s.count}")
+		print(f"{s.path} {s.count} avg={s.total / s.count}")
 		shown += 1
 
 	return 0

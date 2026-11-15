@@ -65,11 +65,11 @@ test "compression streams round trip all formats under every chunk size":
 		for size in [1, 5, 64]:
 			packed := read_all(compressed(chunked(text.clone(), size), format))?
 			if (decompress(packed.clone(), format)?) != text: return fail(
-				"whole decode, size {size}"
+				f"whole decode, size {size}"
 			)
 
 			restored := read_all(decompressed(chunked(packed.clone(), size), format))?
-			if restored != text: return fail("stream round trip, size {size}")
+			if restored != text: return fail(f"stream round trip, size {size}")
 
 test "decompressed streams preserve lines across decoder output batches":
 	data := "archive line input\n".repeat(3500).get("").to_bytes()
@@ -146,7 +146,7 @@ test "tar entries match unpack under every chunk size":
 
 	for size in [1, 100, 511, 512, 513, 4096]:
 		got := read_entries(chunked(archive.clone(), size))?
-		if got != expected: return fail("chunk size {size}")
+		if got != expected: return fail(f"chunk size {size}")
 
 test "tar entries enforce limits and report truncation":
 	archive := pack(sample(), ArchiveFormat.Tar)?
@@ -395,7 +395,7 @@ fn outcome(entries: List[ArchiveEntry]!) String:
 
 	var text = "ok"
 	for entry in entries.get():
-		text += " {entry.path}:{entry.data.length()}:{entry.directory}"
+		text += f" {entry.path}:{entry.data.length()}:{entry.directory}"
 	return text
 
 test "tar entries and unpack agree on corrupted and truncated archives":
@@ -425,5 +425,5 @@ test "tar entries and unpack agree on corrupted and truncated archives":
 		for size in [1, 97, 512, 4096]:
 			got := outcome(read_entries(chunked(cases[index].clone(), size)))
 			if got != expected: return fail(
-				"case {index}, chunk {size}: unpack {expected}, stream {got}"
+				f"case {index}, chunk {size}: unpack {expected}, stream {got}"
 			)

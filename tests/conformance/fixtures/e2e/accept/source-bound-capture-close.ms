@@ -14,7 +14,7 @@ type Marker:
 fn var Marker.close() Void!:
 	if not self.closed:
 		self.closed = true
-		append_file(self.log, "{self.id},").wait()?
+		append_file(self.log, f"{self.id},").wait()?
 
 fn Marker.status() Int: self.id
 
@@ -67,7 +67,7 @@ fn borrowed(log: String) Void!:
 
 test "nonmutating source default and generic method captures close their owners":
 	tmp := temporary("source-bound-close-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	write_file(log, "").wait()?
 	ordinary(log.clone())?
 	defaulted(log.clone())?
@@ -89,7 +89,7 @@ fn shared_owner(log: String) Void!:
 
 test "shared source default method captures do not close the borrowed receiver":
 	tmp := temporary("source-bound-shared-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	write_file(log, "").wait()?
 	shared_owner(log.clone())?
 	expect_equal(read_file(log).wait().get().decode_utf8().get(""), "10,")?

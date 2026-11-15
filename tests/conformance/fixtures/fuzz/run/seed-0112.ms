@@ -6,32 +6,32 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := (-(((-48) + 579330) - (-222784)))
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     i2 := 266954744164
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     i3 := (-9223372036854775807)
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     f4 := ((6.0e-9 * 383.741) * 550.841)
-    say("f4 = {f4}")
+    say(f"f4 = {f4}")
 
-    b5 := ("{(i1 + (-182904))}:" + "alpha").trim().ends_with("x")
-    say("b5 = {b5}")
+    b5 := (f"{(i1 + (-182904))}:" + "alpha").trim().ends_with("x")
+    say(f"b5 = {b5}")
 
     i6 := 1
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     i7 := (i3 % (-i6))
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
     i8 := ((-19) + (-((-19) / i6)))
-    say("i8 = {i8}")
+    say(f"i8 = {i8}")
 
     if b5:
         say("Tab\there")
@@ -39,5 +39,5 @@ export fn main() Int:
         say("x")
 
     i9 := (i3 % ((-61124) + ((-18) * 48)))
-    say("i9 = {i9}")
+    say(f"i9 = {i9}")
     return 0

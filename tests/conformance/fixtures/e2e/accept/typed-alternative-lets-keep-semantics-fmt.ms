@@ -47,13 +47,13 @@ fn results(n: Int) String:
 
     match parsed:
         ok(v):
-            return "ok {v}"
+            return f"ok {v}"
         error(cause):
             return cause.message
 
 fn formatted(n: Int) String:
     found := halve(n: n)
-    return "{found}"
+    return f"{found}"
 
 fn captured(n: Int) Int:
     found := halve(n: n)

@@ -20,14 +20,14 @@ fn vbool(b: Bool) Val: Val(k: 3, n: if b: 1 else: 0)
 
 fn val_str(v: Val) String:
 	if v.k == 0: return "NULL"
-	if v.k == 1: return "{v.n}"
+	if v.k == 1: return f"{v.n}"
 	if v.k == 2: return v.s.clone()
 	if v.n == 1: return "true"
 
 	return "false"
 
 fn vkey(v: Val) String:
-	return "{v.k}:{v.n}:{v.s.length()}:{v.s}|"
+	return f"{v.k}:{v.n}:{v.s.length()}:{v.s}|"
 
 fn rowkey(row: List[Val], idxs: List[Int]) String:
 	var out = ""
@@ -734,7 +734,7 @@ type Table:
 
 fn get_table(db: Map[String, Table], name: String) Table!:
 	if t := db.get(name): return ok(t.clone())
-	return error(err("no such table: {name}"))
+	return error(err(f"no such table: {name}"))
 
 // ---------- resolve ----------
 type ScopeCol:
@@ -773,13 +773,13 @@ fn resolve(var nodes: List[Node], id: Int, rc: Rctx, in_agg: Bool) Void!:
 				cnt += 1
 				found = sc.idx
 
-		shown := if qual == "": name.clone() else: "{qual}.{name}"
-		if cnt == 0: return error(err("no such column: {shown}"))
-		if cnt > 1: return error(err("ambiguous column: {name}"))
+		shown := if qual == "": name.clone() else: f"{qual}.{name}"
+		if cnt == 0: return error(err(f"no such column: {shown}"))
+		if cnt > 1: return error(err(f"ambiguous column: {name}"))
 
 		nodes[id].col = found
 		if rc.aggregated and not in_agg and not rc.gb.contains(found):
-			return error(err("column {shown} must appear in GROUP BY"))
+			return error(err(f"column {shown} must appear in GROUP BY"))
 
 		return
 
@@ -787,7 +787,7 @@ fn resolve(var nodes: List[Node], id: Int, rc: Rctx, in_agg: Bool) Void!:
 		opn := nodes[id].op.clone()
 		if not rc.allow_agg or in_agg: return error(err("misuse of aggregate"))
 		if not nodes[id].star and args.length() != 1:
-			return error(err("wrong number of arguments to {opn}"))
+			return error(err(f"wrong number of arguments to {opn}"))
 
 		for a in args:
 			resolve(var nodes, a, rc, true)?
@@ -798,13 +798,13 @@ fn resolve(var nodes: List[Node], id: Int, rc: Rctx, in_agg: Bool) Void!:
 		n := args.length()
 
 		if opn == "UPPER" or opn == "LOWER" or opn == "LENGTH" or opn == "ABS":
-			if n != 1: return error(err("wrong number of arguments to {opn}"))
+			if n != 1: return error(err(f"wrong number of arguments to {opn}"))
 		else if opn == "SUBSTR":
-			if n != 3: return error(err("wrong number of arguments to {opn}"))
+			if n != 3: return error(err(f"wrong number of arguments to {opn}"))
 		else if opn == "COALESCE":
-			if n < 1: return error(err("wrong number of arguments to {opn}"))
+			if n < 1: return error(err(f"wrong number of arguments to {opn}"))
 		else:
-			return error(err("no such function: {opn}"))
+			return error(err(f"no such function: {opn}"))
 
 	for a in args:
 		resolve(var nodes, a, rc, in_agg)?
@@ -1167,7 +1167,7 @@ fn exec_select(db: Map[String, Table], var st: Stmt) String!:
 	for tr in st.trefs:
 		t := get_table(db, tr.name)?
 		for a in st.trefs.slice(0, ti).get([]):
-			if a.alias == tr.alias: return error(err("duplicate alias: {tr.alias}"))
+			if a.alias == tr.alias: return error(err(f"duplicate alias: {tr.alias}"))
 
 		var ci = 0
 
@@ -1234,7 +1234,7 @@ fn exec_select(db: Map[String, Table], var st: Stmt) String!:
 					outnames.append(c.name.clone())
 					starflags.append(true)
 
-			if not matched: return error(err("no such table: {it.qual}"))
+			if not matched: return error(err(f"no such table: {it.qual}"))
 		else:
 			outn.append(it.expr)
 
@@ -1411,7 +1411,7 @@ fn exec_select(db: Map[String, Table], var st: Stmt) String!:
 			cells.append(val_str(v))
 		lines.append(cells.join("|"))
 
-	lines.append("({count} rows)")
+	lines.append(f"({count} rows)")
 	return ok(lines.join("\n"))
 
 fn order_cmp(a: OutRow, b: OutRow, ords: List[OrderSpec]) Int:
@@ -1433,9 +1433,9 @@ fn check_row(t: Table, row: List[Val]) Void!:
 		v := row[i]
 
 		if v.k == 0:
-			if t.nn[i]: return error(err("NOT NULL constraint failed: {t.cols[i]}"))
+			if t.nn[i]: return error(err(f"NOT NULL constraint failed: {t.cols[i]}"))
 		else if v.k != t.types[i]:
-			return error(err("type mismatch in column {t.cols[i]}"))
+			return error(err(f"type mismatch in column {t.cols[i]}"))
 
 		i += 1
 
@@ -1447,7 +1447,7 @@ fn check_pk(t: Table, rows: List[List[Val]]) Void!:
 	for r in rows:
 		key := vkey(r[t.pk])
 		if seen.contains(key): return error(
-			err("duplicate primary key: {val_str(r[t.pk])}")
+			err(f"duplicate primary key: {val_str(r[t.pk])}")
 		)
 
 		seen.add(key)
@@ -1479,8 +1479,8 @@ fn exec_insert(var db: Map[String, Table], var st: Stmt) String!:
 	if st.hascols:
 		for c in st.cols:
 			i := col_index(t, c)
-			if i < 0: return error(err("no such column: {c}"))
-			if colmap.contains(i): return error(err("duplicate column: {c}"))
+			if i < 0: return error(err(f"no such column: {c}"))
+			if colmap.contains(i): return error(err(f"duplicate column: {c}"))
 
 			colmap.append(i)
 	else:
@@ -1521,7 +1521,7 @@ fn exec_insert(var db: Map[String, Table], var st: Stmt) String!:
 	var nt = t.clone()
 	nt.rows = all
 	db[st.table.clone()] = nt
-	return ok("inserted {n}")
+	return ok(f"inserted {n}")
 
 fn exec_update(var db: Map[String, Table], var st: Stmt) String!:
 	t := get_table(db, st.table)?
@@ -1529,7 +1529,7 @@ fn exec_update(var db: Map[String, Table], var st: Stmt) String!:
 
 	for c in st.setcols:
 		i := col_index(t, c)
-		if i < 0: return error(err("no such column: {c}"))
+		if i < 0: return error(err(f"no such column: {c}"))
 
 		idxs.append(i)
 
@@ -1570,7 +1570,7 @@ fn exec_update(var db: Map[String, Table], var st: Stmt) String!:
 	var nt = t.clone()
 	nt.rows = newrows
 	db[st.table.clone()] = nt
-	return ok("updated {count}")
+	return ok(f"updated {count}")
 
 fn exec_delete(var db: Map[String, Table], var st: Stmt) String!:
 	t := get_table(db, st.table)?
@@ -1597,16 +1597,16 @@ fn exec_delete(var db: Map[String, Table], var st: Stmt) String!:
 	var nt = t.clone()
 	nt.rows = newrows
 	db[st.table.clone()] = nt
-	return ok("deleted {count}")
+	return ok(f"deleted {count}")
 
 fn exec_create(var db: Map[String, Table], st: Stmt) String!:
-	if db.contains(st.table): return error(err("table {st.table} already exists"))
+	if db.contains(st.table): return error(err(f"table {st.table} already exists"))
 
 	var t = Table()
 	var i = 0
 
 	for c in st.colnames:
-		if t.cols.contains(c): return error(err("duplicate column: {c}"))
+		if t.cols.contains(c): return error(err(f"duplicate column: {c}"))
 
 		t.cols.append(c.clone())
 		t.types.append(st.coltypes[i])
@@ -1623,7 +1623,7 @@ fn exec_create(var db: Map[String, Table], st: Stmt) String!:
 	return ok("ok")
 
 fn exec_drop(var db: Map[String, Table], st: Stmt) String!:
-	if not db.contains(st.table): return error(err("no such table: {st.table}"))
+	if not db.contains(st.table): return error(err(f"no such table: {st.table}"))
 
 	db.remove(st.table)
 	return ok("ok")
@@ -1656,4 +1656,4 @@ fn main() Void!:
 		if s := r:
 			print(s)
 		else:
-			print("error: {r.err().message}")
+			print(f"error: {r.err().message}")

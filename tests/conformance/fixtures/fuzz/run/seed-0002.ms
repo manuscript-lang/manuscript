@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -30,57 +30,57 @@ fn gcd(a: Int, b: Int) Int:
 
 export fn main() Int:
     i1 := ((-43) - 318711)
-    say("i1 = {i1}")
-    say("collatz(813) = {collatz(813)}")
+    say(f"i1 = {i1}")
+    say(f"collatz(813) = {collatz(813)}")
 
     i2 := 39
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     l3 := [21, 17, 7, (-21), 22]
-    say("l3 = {l3} len {l3.length()}")
+    say(f"l3 = {l3} len {l3.length()}")
 
     var l4 = l3.clone()
     l4.append(31)
-    say("l4 = {l4} len {l4.length()}")
+    say(f"l4 = {l4} len {l4.length()}")
 
     s5 := (("日本語" + "line\nbreak").reverse() + "日本語")
-    say("s5 = [{s5}]")
+    say(f"s5 = [{s5}]")
 
     i6 := i1
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     i7 := (-i1)
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
     s8 := s5.reverse().reverse().lower()
-    say("s8 = [{s8}]")
+    say(f"s8 = [{s8}]")
 
     if (not (408.436 == 359.458)):
-        say(("{(i7 % (-50))}:" + "ms"))
+        say((f"{(i7 % (-50))}:" + "ms"))
     else:
         say("x")
 
     b9 := true
-    say("b9 = {b9}")
+    say(f"b9 = {b9}")
 
     i10 := (((-39) + (14 + i7)) - ((i7 + i7) + i1))
-    say("i10 = {i10}")
+    say(f"i10 = {i10}")
     say(
-        "{i7} {((i10 + i6) * (i1 / i1))} {(i7 < ((i10 + i6) * (i1 / i1)))} sum {i7 + ((i10 + i6) * (i1 / i1))}"
+        f"{i7} {((i10 + i6) * (i1 / i1))} {(i7 < ((i10 + i6) * (i1 / i1)))} sum {i7 + ((i10 + i6) * (i1 / i1))}"
     )
 
     i11 := (((14 / 49) * (i10 * 7)) * ((i10 - (-20)) - (i2 % (-2))))
-    say("i11 = {i11}")
+    say(f"i11 = {i11}")
 
     var acc12 = 0
     for i in 0..3:
         acc12 += i * (-1)
-    say("acc12 = {acc12}")
+    say(f"acc12 = {acc12}")
 
     s13 := s8
-    say("s13 = [{s13}]")
-    say("gcd(1036, 1576) = {gcd(1036, 1576)}")
+    say(f"s13 = [{s13}]")
+    say(f"gcd(1036, 1576) = {gcd(1036, 1576)}")
 
     f14 := 866.604
-    say("f14 = {f14}")
+    say(f"f14 = {f14}")
     return 0

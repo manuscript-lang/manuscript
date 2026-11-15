@@ -249,7 +249,7 @@ fn pts_text(x: Int?) String:
 	v := x.get(-1)
 	if v < 0: return "-"
 
-	return "{v}"
+	return f"{v}"
 
 fn labels_text(xs: List[String]) String:
 	if xs.length() == 0: return "-"
@@ -273,7 +273,7 @@ fn norm_labels(xs: List[String]) List[String]:
 
 fn plural_issues(n: Int) String:
 	if n == 1: return "1 issue"
-	return "{n} issues"
+	return f"{n} issues"
 
 fn blank_issue() Issue:
 	return Issue(
@@ -1216,7 +1216,7 @@ impl App:
 	fn resolve(arg: String) Ref:
 		v := parse_id_arg(arg)
 		if v < 0: return Ref(id: 0, err: "bad issue id '" + arg + "'")
-		if self.load(v).id != v: return Ref(id: 0, err: "no such issue #{v}")
+		if self.load(v).id != v: return Ref(id: 0, err: f"no such issue #{v}")
 
 		return Ref(id: v, err: "")
 
@@ -1472,14 +1472,14 @@ impl App:
 		if cnt == 1:
 			self.emit("(1 issue)")
 		else:
-			self.emit("({cnt} issues)")
+			self.emit(f"({cnt} issues)")
 
 		return ""
 
 	var fn core_move(id: Int, to: String, comment: String) Out:
 		var iss = self.load(id)
 		if self.is_final(iss.state):
-			return Out(ok: false, text: "#{id} is in final state '" + iss.state + "'")
+			return Out(ok: false, text: f"#{id} is in final state '" + iss.state + "'")
 		if not self.wf.states.contains(to):
 			return Out(ok: false, text: "unknown state '" + to + "'")
 		if iss.state == to: return Out(ok: false, text: "already in state '" + to + "'")
@@ -1506,7 +1506,7 @@ impl App:
 		if missing.length() > 0:
 			return Out(
 				ok: false,
-				text: "cannot move #{id} to " + to + ": missing " + missing.join(
+				text: f"cannot move #{id} to " + to + ": missing " + missing.join(
 					", "
 				),
 			)
@@ -1528,12 +1528,12 @@ impl App:
 			self.log_add(id, "comment: " + comment)
 
 		self.issues[id] = iss
-		return Out(ok: true, text: "moved #{id}: " + prev + " -> " + to)
+		return Out(ok: true, text: f"moved #{id}: " + prev + " -> " + to)
 
 	var fn core_edit(id: Int, fields: List[String]) Out:
 		var iss = self.load(id)
 		if self.is_final(iss.state):
-			return Out(ok: false, text: "#{id} is in final state '" + iss.state + "'")
+			return Out(ok: false, text: f"#{id} is in final state '" + iss.state + "'")
 		if fields.length() == 0:
 			return Out(ok: false, text: "usage: edit ID field=value...")
 
@@ -1544,19 +1544,19 @@ impl App:
 			if e != "": return Out(ok: false, text: e)
 
 		changes := diff(old, iss)
-		if changes.length() == 0: return Out(ok: true, text: "#{id} unchanged")
+		if changes.length() == 0: return Out(ok: true, text: f"#{id} unchanged")
 
 		self.clock += 1
 		iss.updated = self.clock
 		for c in changes:
 			self.log_add(id, c)
 		self.issues[id] = iss
-		return Out(ok: true, text: "updated #{id}")
+		return Out(ok: true, text: f"updated #{id}")
 
 	var fn core_label(id: Int, toks: List[String]) Out:
 		var iss = self.load(id)
 		if self.is_final(iss.state):
-			return Out(ok: false, text: "#{id} is in final state '" + iss.state + "'")
+			return Out(ok: false, text: f"#{id} is in final state '" + iss.state + "'")
 
 		var labels = iss.labels.clone()
 
@@ -1585,14 +1585,14 @@ impl App:
 		nl := norm_labels(labels)
 		before := labels_text(iss.labels)
 		after := labels_text(nl)
-		if before == after: return Out(ok: true, text: "#{id} unchanged")
+		if before == after: return Out(ok: true, text: f"#{id} unchanged")
 
 		iss.labels = nl
 		self.clock += 1
 		iss.updated = self.clock
 		self.log_add(id, "labels: " + before + " -> " + after)
 		self.issues[id] = iss
-		return Out(ok: true, text: "updated #{id}")
+		return Out(ok: true, text: f"updated #{id}")
 
 	var fn core_comment(id: Int, text: String) Out:
 		var iss = self.load(id)
@@ -1607,13 +1607,13 @@ impl App:
 		iss.updated = self.clock
 		self.log_add(id, "comment: " + text)
 		self.issues[id] = iss
-		return Out(ok: true, text: "commented #{id}")
+		return Out(ok: true, text: f"commented #{id}")
 
 	var fn core_delete(id: Int) Out:
 		self.clock += 1
 		self.issues.remove(id)
 		self.log_add(id, "deleted")
-		return Out(ok: true, text: "deleted #{id}")
+		return Out(ok: true, text: f"deleted #{id}")
 
 	var fn run_action(kind: String, it: List[String], id: Int) Out:
 		if kind == "move": return self.core_move(id, it[1].clone(), "")
@@ -1637,7 +1637,7 @@ impl App:
 
 		self.wf = r.wf
 		self.emit(
-			"workflow ok: {self.wf.states.length()} states, {self.wf.ntrans} transitions"
+			f"workflow ok: {self.wf.states.length()} states, {self.wf.ntrans} transitions"
 		)
 
 	var fn cmd_actor(ws: List[String]) Unit:
@@ -1714,7 +1714,7 @@ impl App:
 			self.log_add(id, c)
 		self.issues[id] = iss
 		self.next_id += 1
-		self.emit("created #{id}")
+		self.emit(f"created #{id}")
 
 	var fn cmd_edit(s: String) Unit:
 		tk := tokens(rest_after(s, 1))
@@ -1830,7 +1830,7 @@ impl App:
 			return
 
 		iss := self.load(r.id)
-		self.emit("#{iss.id} " + iss.title)
+		self.emit(f"#{iss.id} " + iss.title)
 		self.emit("  state: " + iss.state)
 		self.emit("  priority: " + iss.priority)
 		self.emit("  assignee: " + dash(iss.assignee.get("")))
@@ -1838,10 +1838,10 @@ impl App:
 		self.emit("  due: " + dash(iss.due.get("")))
 		self.emit("  labels: " + labels_show(iss.labels))
 		self.emit("  reporter: " + dash(iss.reporter.get("")))
-		self.emit("  created: t={iss.created}, updated: t={iss.updated}")
-		self.emit("  comments: {iss.comments.length()}")
+		self.emit(f"  created: t={iss.created}, updated: t={iss.updated}")
+		self.emit(f"  comments: {iss.comments.length()}")
 		for c in iss.comments:
-			self.emit("    [t={c.t} " + c.actor + "] " + c.text)
+			self.emit(f"    [t={c.t} " + c.actor + "] " + c.text)
 
 	var fn cmd_list(s: String) Unit:
 		lim := split_limit(rest_after(s, 1))
@@ -1922,9 +1922,9 @@ impl App:
 				self.emit(o.text)
 			else:
 				bad += 1
-				self.emit("#{id} error: " + o.text)
+				self.emit(f"#{id} error: " + o.text)
 
-		self.emit("bulk: {good} ok, {bad} failed")
+		self.emit(f"bulk: {good} ok, {bad} failed")
 
 	var fn cmd_log(ws: List[String]) Unit:
 		var idx = 1
@@ -1939,7 +1939,7 @@ impl App:
 				return
 
 			if v >= self.next_id:
-				self.emit("error: no such issue #{v}")
+				self.emit(f"error: no such issue #{v}")
 				return
 
 			sel = v
@@ -1966,7 +1966,7 @@ impl App:
 		var lines = List[String]()
 		for e in self.log:
 			if sel == 0 or e.id == sel:
-				lines.append("t={e.t} " + e.actor + " #{e.id} " + e.detail)
+				lines.append(f"t={e.t} " + e.actor + f" #{e.id} " + e.detail)
 
 		if tail >= 0:
 			n := lines.length()
@@ -2021,7 +2021,7 @@ impl App:
 					overdue += 1
 				openpts += iss.points.get(0)
 
-		self.emit("issues: {all.length()} (open {open}, final {fin})")
+		self.emit(f"issues: {all.length()} (open {open}, final {fin})")
 		self.emit("by state:")
 
 		for st in self.wf.states.clone():
@@ -2029,7 +2029,7 @@ impl App:
 			for iss in all:
 				if iss.state == st:
 					n += 1
-			self.emit("  " + st + ": {n}")
+			self.emit("  " + st + f": {n}")
 
 		self.emit("by priority:")
 
@@ -2038,11 +2038,11 @@ impl App:
 			for iss in all:
 				if iss.priority == p:
 					n += 1
-			self.emit("  " + p + ": {n}")
+			self.emit("  " + p + f": {n}")
 
-		self.emit("unassigned: {unassigned}")
-		self.emit("overdue: {overdue}")
-		self.emit("open points: {openpts}")
+		self.emit(f"unassigned: {unassigned}")
+		self.emit(f"overdue: {overdue}")
+		self.emit(f"open points: {openpts}")
 
 	var fn report_workload() Unit:
 		all := self.all_issues()
@@ -2105,11 +2105,11 @@ impl App:
 		for g in order:
 			pl := plural_issues(counts[g])
 			pp := pts[g]
-			self.emit(names[g] + ": " + pl + ", {pp} points")
+			self.emit(names[g] + ": " + pl + f", {pp} points")
 
 		if un_n > 0:
 			pl := plural_issues(un_n)
-			self.emit("unassigned: " + pl + ", {un_p} points")
+			self.emit("unassigned: " + pl + f", {un_p} points")
 
 	var fn report_labels(filter: String) Unit:
 		q := compile_query(filter, self.view_names(), self.wf.states)
@@ -2164,7 +2164,7 @@ impl App:
 			order.insert(pos, g)
 
 		for g in order:
-			self.emit(names[g] + ": {counts[g]}")
+			self.emit(names[g] + f": {counts[g]}")
 
 	var fn report_timeline(ws: List[String]) Unit:
 		if ws.length() != 3:
@@ -2186,12 +2186,12 @@ impl App:
 			if e.id == r.id and e.detail.starts_with("state: "):
 				parts := e.detail.split(" -> ")
 				stop := e.t
-				self.emit("{state}: t={start}..{stop} ({stop - start})")
+				self.emit(f"{state}: t={start}..{stop} ({stop - start})")
 				state = parts[1].clone()
 				start = e.t
 
 		stop := self.clock
-		self.emit("{state}: t={start}..{stop} ({stop - start})")
+		self.emit(f"{state}: t={start}..{stop} ({stop - start})")
 
 	var fn view_save(s: String, ws: List[String]) Unit:
 		if ws.length() < 3:
@@ -2400,7 +2400,7 @@ fn issue_row(iss: Issue) String:
 	d := dash(iss.due.get(""))
 	l := labels_text(iss.labels)
 	return (
-		"#{iss.id} | "
+		f"#{iss.id} | "
 		+ iss.state
 		+ " | "
 		+ iss.priority

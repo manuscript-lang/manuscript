@@ -219,10 +219,10 @@ fn line_steps(old: List[String], new: List[String]) List[Step]:
 	return steps
 
 fn hunk_range(start: Int, length: Int) String:
-	if length == 1: return "{start + 1}"
-	if length == 0: return "{start},0"
+	if length == 1: return f"{start + 1}"
+	if length == 0: return f"{start},0"
 
-	return "{start + 1},{length}"
+	return f"{start + 1},{length}"
 
 // Settings for `unified_diff`.
 export type UnifiedDiffOptions:
@@ -270,7 +270,7 @@ export fn unified_diff(
 	if not any_change: return ""
 
 	var out = StringBuilder()
-	out.append("--- {old_name}\n+++ {new_name}\n")
+	out.append(f"--- {old_name}\n+++ {new_name}\n")
 
 	var i = 0
 
@@ -293,7 +293,7 @@ export fn unified_diff(
 				new_length += 1
 
 		out.append(
-			"@@ -{hunk_range(steps[i].old_at, old_length)} +{hunk_range(steps[i].new_at, new_length)} @@\n"
+			f"@@ -{hunk_range(steps[i].old_at, old_length)} +{hunk_range(steps[i].new_at, new_length)} @@\n"
 		)
 
 		for j in i..end:
@@ -304,7 +304,7 @@ export fn unified_diff(
 			else if steps[j].kind == 2:
 				mark = "+"
 
-			out.append("{mark}{steps[j].text}\n")
+			out.append(f"{mark}{steps[j].text}\n")
 
 		i = end
 

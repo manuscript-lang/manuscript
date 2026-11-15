@@ -6,32 +6,32 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     f1 := 898.425
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
 
     f2 := 0.0
-    say("f2 = {f2}")
+    say(f"f2 = {f2}")
 
     var acc3 = 0
     for i in 0..0:
         acc3 += i * (-5)
-    say("acc3 = {acc3}")
+    say(f"acc3 = {acc3}")
 
     f4 := 0.0
-    say("f4 = {f4}")
+    say(f"f4 = {f4}")
 
     i5 := (22 * 836288)
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     s7 := ("日本語" + "")
-    say("s7 = [{s7}]")
+    say(f"s7 = [{s7}]")
 
     i8 := i5
-    say("i8 = {i8}")
+    say(f"i8 = {i8}")
 
     b9 := s7.contains(s7)
-    say("b9 = {b9}")
+    say(f"b9 = {b9}")
     return 0

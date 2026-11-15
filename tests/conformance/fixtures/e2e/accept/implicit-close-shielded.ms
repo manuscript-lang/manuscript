@@ -25,12 +25,12 @@ type Holder:
 fn var Holder.close() Void!:
 	if self.pause:
 		void sleep(nanoseconds(5000000)).wait()
-	void write_file("{self.dir}/{self.id}", "closed", true).wait()
+	void write_file(f"{self.dir}/{self.id}", "closed", true).wait()
 	if self.breaks:
 		panic("close fault")
 
 fn closed(dir: String, name: String) Bool:
-	return read_file("{dir}/{name}").wait().is_ok()
+	return read_file(f"{dir}/{name}").wait().is_ok()
 
 fn hold_and_wait(dir: String, id: Int, pause: Bool) Int:
 	holder := Holder(dir, id, pause, false)
@@ -61,7 +61,7 @@ fn cancel_a_holder(dir: String, id: Int, pause: Bool) Void:
 // marker `started` says the body is running, so the cancel below lands during the close
 // and not before the body began.
 fn pop_and_discard(dir: String, id: Int) Int:
-	void write_file("{dir}/started", "started", true).wait()
+	void write_file(f"{dir}/started", "started", true).wait()
 
 	var held = [Holder(dir, id, true, false)]
 	held.pop()

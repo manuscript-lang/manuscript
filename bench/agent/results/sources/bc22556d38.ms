@@ -86,7 +86,7 @@ fn cmd_open(var led: Ledger, toks: List[String]) String:
 	id := toks[1]
 	lim := toks[2]
 	if not is_digits(lim): return "error: invalid limit"
-	if led.accts.contains(id): return "error: account exists {id}"
+	if led.accts.contains(id): return f"error: account exists {id}"
 
 	led.ids.append(id.clone())
 	led.accts.add(
@@ -102,7 +102,7 @@ fn cmd_open(var led: Ledger, toks: List[String]) String:
 	return "ok"
 
 fn cmd_freeze(var led: Ledger, id: String, flag: Bool) String:
-	if not led.accts.contains(id): return "error: unknown account {id}"
+	if not led.accts.contains(id): return f"error: unknown account {id}"
 
 	if var a = led.accts.get(id):
 		a.frozen = flag
@@ -110,9 +110,9 @@ fn cmd_freeze(var led: Ledger, id: String, flag: Bool) String:
 
 fn cmd_deposit(var led: Ledger, toks: List[String]) String:
 	id := toks[1]
-	if not led.accts.contains(id): return "error: unknown account {id}"
+	if not led.accts.contains(id): return f"error: unknown account {id}"
 	if not valid_amount(toks[2]): return reject(var led, id, "error: invalid amount")
-	if is_frozen(led, id): return reject(var led, id, "error: account frozen {id}")
+	if is_frozen(led, id): return reject(var led, id, f"error: account frozen {id}")
 
 	amt := value_of(toks[2])
 
@@ -120,47 +120,47 @@ fn cmd_deposit(var led: Ledger, toks: List[String]) String:
 		a.balance += amt
 		a.ops += 1
 
-	return "ok {bal(led, id)}"
+	return f"ok {bal(led, id)}"
 
 fn cmd_withdraw(var led: Ledger, toks: List[String]) String:
 	id := toks[1]
-	if not led.accts.contains(id): return "error: unknown account {id}"
+	if not led.accts.contains(id): return f"error: unknown account {id}"
 	if not valid_amount(toks[2]): return reject(var led, id, "error: invalid amount")
-	if is_frozen(led, id): return reject(var led, id, "error: account frozen {id}")
+	if is_frozen(led, id): return reject(var led, id, f"error: account frozen {id}")
 
 	fee := take(var led, id, value_of(toks[2]))
-	if fee < 0: return reject(var led, id, "error: overdraft limit exceeded {id}")
+	if fee < 0: return reject(var led, id, f"error: overdraft limit exceeded {id}")
 
 	bump_ops(var led, id)
-	if fee > 0: return "ok {bal(led, id)} fee={fee}"
+	if fee > 0: return f"ok {bal(led, id)} fee={fee}"
 
-	return "ok {bal(led, id)}"
+	return f"ok {bal(led, id)}"
 
 fn cmd_transfer(var led: Ledger, toks: List[String]) String:
 	from := toks[1]
 	to := toks[2]
-	if not led.accts.contains(from): return "error: unknown account {from}"
-	if not led.accts.contains(to): return "error: unknown account {to}"
+	if not led.accts.contains(from): return f"error: unknown account {from}"
+	if not led.accts.contains(to): return f"error: unknown account {to}"
 	if from == to: return reject(var led, from, "error: same account")
 	if not valid_amount(toks[3]): return reject(var led, from, "error: invalid amount")
 	if is_frozen(led, from): return reject(
 		var led,
 		from,
-		"error: account frozen {from}",
+		f"error: account frozen {from}",
 	)
-	if is_frozen(led, to): return reject(var led, to, "error: account frozen {to}")
+	if is_frozen(led, to): return reject(var led, to, f"error: account frozen {to}")
 
 	amt := value_of(toks[3])
 	fee := take(var led, from, amt)
-	if fee < 0: return reject(var led, from, "error: overdraft limit exceeded {from}")
+	if fee < 0: return reject(var led, from, f"error: overdraft limit exceeded {from}")
 
 	if var b = led.accts.get(to):
 		b.balance += amt
 	bump_ops(var led, from)
 	bump_ops(var led, to)
-	if fee > 0: return "ok {bal(led, from)} {bal(led, to)} fee={fee}"
+	if fee > 0: return f"ok {bal(led, from)} {bal(led, to)} fee={fee}"
 
-	return "ok {bal(led, from)} {bal(led, to)}"
+	return f"ok {bal(led, from)} {bal(led, to)}"
 
 fn cmd_report(led: Ledger) String:
 	var out = List[String]()
@@ -172,10 +172,10 @@ fn cmd_report(led: Ledger) String:
 
 			fz := if a.frozen: "yes" else: "no"
 			out.append(
-				"{id} balance={a.balance} limit={a.limit} ops={a.ops} rejected={a.rejected} frozen={fz}"
+				f"{id} balance={a.balance} limit={a.limit} ops={a.ops} rejected={a.rejected} frozen={fz}"
 			)
 
-	out.append("total balance={total} fees={led.fees}")
+	out.append(f"total balance={total} fees={led.fees}")
 	return out.join("\n")
 
 // Returns the output text for one command line (without trailing newline).
@@ -221,7 +221,7 @@ fn run() Unit!:
 		if toks.is_empty(): continue
 
 		text := handle(var led, toks)
-		stdout().write("{text}\n").get()
+		stdout().write(f"{text}\n").get()
 
 export fn main() Int:
 	run().get()

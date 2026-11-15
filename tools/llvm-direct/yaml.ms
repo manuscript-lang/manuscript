@@ -4,7 +4,7 @@
 import parse, stringify from "@std/data/yaml.ms"
 
 fn main() Int:
-	text := "name: demo\nitems:\n  - 1\n  - two\n  - \{three: 3, four: [4, 4]\}\nflag: true\n"
+	text := "name: demo\nitems:\n  - 1\n  - two\n  - {three: 3, four: [4, 4]}\nflag: true\n"
 
 	if value := parse(text):
 		print(stringify(value).get(""))

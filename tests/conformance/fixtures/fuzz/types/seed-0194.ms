@@ -6,23 +6,23 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := (-35)
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     f2 := (
         ((862.264 - 73.308) / (588.283 * 745.25))
         * ((915.694 + 201.519) + 896.25)
     )
-    say("f2 = {f2}")
+    say(f"f2 = {f2}")
 
     s3 := "quote\"d"
-    say("s3 = [{s3}]")
+    say(f"s3 = [{s3}]")
 
-    if (s3 != s3.replace("brace\{s\}", "hello world")):
-        say("brace\{s\}")
+    if (s3 != s3.replace("brace{s}", "hello world")):
+        say("brace{s}")
     else:
         say(s3)
 

@@ -11,7 +11,7 @@ type Item:
 	log: String
 
 fn var Item.close() Void!:
-	append_file(self.log, "{self.id},").wait()?
+	append_file(self.log, f"{self.id},").wait()?
 
 interface Sink:
 	fn put(item: Item, n: Int) Int
@@ -44,21 +44,21 @@ fn interface_call(log: String) Void:
 
 test "a failing later operand closes a borrowed resource argument":
 	temp := temporary("call-borrowed-")?
-	log := "{temp.path()}/log"
+	log := f"{temp.path()}/log"
 	fault := expect_fault(fn: borrowed_call(log.clone()))?
 	expect_contains(fault, "operand failed")?
 	expect_equal(events(log)?, "2,")?
 
 test "a failing later operand closes a consumed resource argument":
 	temp := temporary("call-consumed-")?
-	log := "{temp.path()}/log"
+	log := f"{temp.path()}/log"
 	fault := expect_fault(fn: consuming_call(log.clone()))?
 	expect_contains(fault, "operand failed")?
 	expect_equal(events(log)?, "3,")?
 
 test "a failing later operand closes an interface call argument":
 	temp := temporary("call-interface-")?
-	log := "{temp.path()}/log"
+	log := f"{temp.path()}/log"
 	fault := expect_fault(fn: interface_call(log.clone()))?
 	expect_contains(fault, "operand failed")?
 	expect_equal(events(log)?, "4,")?

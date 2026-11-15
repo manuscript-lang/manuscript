@@ -58,7 +58,7 @@ fn yes_no(flag: Bool) String:
 
 fn fee_suffix(charged: Bool) String:
     if charged:
-        return " fee={OVERDRAFT_FEE}"
+        return f" fee={OVERDRAFT_FEE}"
 
     return ""
 
@@ -85,7 +85,7 @@ fn debit(account: Account, amount: Int) Debit:
 fn open_account(var ledger: Ledger, id: String, limit_text: String) String:
     if limit := parse_digits(limit_text):
         if ledger.accounts.contains(id):
-            return "error: account exists {id}"
+            return f"error: account exists {id}"
 
         ledger.accounts.add(
             id,
@@ -104,33 +104,33 @@ fn set_frozen(var ledger: Ledger, id: String, frozen: Bool) String:
         ledger.accounts.add(id, updated)
         return "ok"
 
-    return "error: unknown account {id}"
+    return f"error: unknown account {id}"
 
 fn deposit(var ledger: Ledger, id: String, amount_text: String) String:
     if account := ledger.accounts.get(id):
         if amount := parse_amount(amount_text):
             if account.frozen:
-                return reject(var ledger, id, "error: account frozen {id}")
+                return reject(var ledger, id, f"error: account frozen {id}")
 
             var updated = account
             updated.balance += amount
             updated.ops += 1
             ledger.accounts.add(id, updated)
-            return "ok {updated.balance}"
+            return f"ok {updated.balance}"
 
         return reject(var ledger, id, "error: invalid amount")
 
-    return "error: unknown account {id}"
+    return f"error: unknown account {id}"
 
 fn withdraw(var ledger: Ledger, id: String, amount_text: String) String:
     if account := ledger.accounts.get(id):
         if amount := parse_amount(amount_text):
             if account.frozen:
-                return reject(var ledger, id, "error: account frozen {id}")
+                return reject(var ledger, id, f"error: account frozen {id}")
 
             result := debit(account, amount)
             if not result.ok:
-                return reject(var ledger, id, "error: overdraft limit exceeded {id}")
+                return reject(var ledger, id, f"error: overdraft limit exceeded {id}")
 
             var updated = account
             updated.balance = result.balance
@@ -138,17 +138,17 @@ fn withdraw(var ledger: Ledger, id: String, amount_text: String) String:
             ledger.accounts.add(id, updated)
             if result.charged:
                 ledger.fees += OVERDRAFT_FEE
-            return "ok {result.balance}{fee_suffix(result.charged)}"
+            return f"ok {result.balance}{fee_suffix(result.charged)}"
 
         return reject(var ledger, id, "error: invalid amount")
 
-    return "error: unknown account {id}"
+    return f"error: unknown account {id}"
 
 fn transfer(var ledger: Ledger, from_id: String, to_id: String, amount_text: String) String:
     if not ledger.accounts.contains(from_id):
-        return "error: unknown account {from_id}"
+        return f"error: unknown account {from_id}"
     if not ledger.accounts.contains(to_id):
-        return "error: unknown account {to_id}"
+        return f"error: unknown account {to_id}"
     if from_id == to_id:
         return reject(var ledger, from_id, "error: same account")
 
@@ -160,14 +160,14 @@ fn transfer(var ledger: Ledger, from_id: String, to_id: String, amount_text: Str
             to_id
         ).get(Account(balance: 0, limit: 0, ops: 0, rejected: 0, frozen: false))
         if source.frozen:
-            return reject(var ledger, from_id, "error: account frozen {from_id}")
+            return reject(var ledger, from_id, f"error: account frozen {from_id}")
         if target.frozen:
-            return reject(var ledger, to_id, "error: account frozen {to_id}")
+            return reject(var ledger, to_id, f"error: account frozen {to_id}")
 
         result := debit(source, amount)
         if not result.ok:
             return reject(
-                var ledger, from_id, "error: overdraft limit exceeded {from_id}"
+                var ledger, from_id, f"error: overdraft limit exceeded {from_id}"
             )
 
         var from_updated = source
@@ -181,7 +181,7 @@ fn transfer(var ledger: Ledger, from_id: String, to_id: String, amount_text: Str
         ledger.accounts.add(to_id, to_updated)
         if result.charged:
             ledger.fees += OVERDRAFT_FEE
-        return "ok {result.balance} {to_updated.balance}{fee_suffix(result.charged)}"
+        return f"ok {result.balance} {to_updated.balance}{fee_suffix(result.charged)}"
 
     return reject(var ledger, from_id, "error: invalid amount")
 
@@ -201,10 +201,10 @@ fn report(var ledger: Ledger) List[String]:
         ).get(Account(balance: 0, limit: 0, ops: 0, rejected: 0, frozen: false))
         total += account.balance
         lines.append(
-            "{id} balance={account.balance} limit={account.limit} ops={account.ops} rejected={account.rejected} frozen={yes_no(account.frozen)}"
+            f"{id} balance={account.balance} limit={account.limit} ops={account.ops} rejected={account.rejected} frozen={yes_no(account.frozen)}"
         )
 
-    lines.append("total balance={total} fees={ledger.fees}")
+    lines.append(f"total balance={total} fees={ledger.fees}")
     return lines
 
 fn handle(var ledger: Ledger, tokens: List[String]) List[String]:
@@ -235,6 +235,6 @@ export fn main() Int:
         tokens := tokenize(line)
         if tokens.length() > 0:
             for text in handle(var ledger, tokens):
-                out.write("{text}\n").get()
+                out.write(f"{text}\n").get()
 
     return 0

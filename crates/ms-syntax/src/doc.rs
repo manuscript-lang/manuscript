@@ -152,10 +152,15 @@ pub fn trailing_comment(source: &str, offset: usize) -> String {
     while i < bytes.len() {
         match bytes[i] {
             b'"' => {
-                let Some(end) = crate::lexer::quoted_text_end(&line[i..]) else {
+                // An `f` right before the quote makes it interpolating text.
+                let formatted = i > 0
+                    && bytes[i - 1] == b'f'
+                    && (i == 1 || !(bytes[i - 2].is_ascii_alphanumeric() || bytes[i - 2] == b'_'));
+                let start = i - usize::from(formatted);
+                let Some(end) = crate::lexer::quoted_text_end(&line[start..]) else {
                     return String::new();
                 };
-                i += end;
+                i = start + end;
                 continue;
             }
             b'/' if bytes.get(i + 1) == Some(&b'/') => {

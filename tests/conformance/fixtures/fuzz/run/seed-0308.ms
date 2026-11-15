@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -24,40 +24,40 @@ fn collatz(start: Int) Int:
 
 export fn main() Int:
     i1 := 28
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     s2 := "beta"
-    say("s2 = [{s2}]")
+    say(f"s2 = [{s2}]")
 
     b3 := ((s2 + s2).is_empty() and (0.0 > 687.720))
-    say("b3 = {b3}")
+    say(f"b3 = {b3}")
 
     i4 := (-i1)
-    say("i4 = {i4}")
-    say("collatz(1230) = {collatz(1230)}")
+    say(f"i4 = {i4}")
+    say(f"collatz(1230) = {collatz(1230)}")
 
     i5 := ((i4 - ((-14) * 49)) % (i4 + (i4 % i4)))
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     i6 := i1
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     s7 := "MiXeD CaSe"
-    say("s7 = [{s7}]")
+    say(f"s7 = [{s7}]")
 
     f8 := (938.963 - ((4.0e12 * 0.0) + (622.384 + 209.374)))
-    say("f8 = {f8}")
+    say(f"f8 = {f8}")
 
     i9 := (((1 + i1) - i4) + ((316623 / 6) - i6))
-    say("i9 = {i9}")
+    say(f"i9 = {i9}")
 
     f10 := 748.105
-    say("f10 = {f10}")
-    say("{i6} {i5} {(i6 < i5)} sum {i6 + i5}")
+    say(f"f10 = {f10}")
+    say(f"{i6} {i5} {(i6 < i5)} sum {i6 + i5}")
 
     b11 := b3
-    say("b11 = {b11}")
+    say(f"b11 = {b11}")
     say(
-        "{i9} {(i1 * (i6 + 885498))} {(i9 < (i1 * (i6 + 885498)))} sum {i9 + (i1 * (i6 + 885498))}"
+        f"{i9} {(i1 * (i6 + 885498))} {(i9 < (i1 * (i6 + 885498)))} sum {i9 + (i1 * (i6 + 885498))}"
     )
     return 0

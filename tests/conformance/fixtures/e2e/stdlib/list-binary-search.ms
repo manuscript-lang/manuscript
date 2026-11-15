@@ -113,7 +113,7 @@ fn count(path: String) Int:
 
 test "binary search uses logarithmically many comparisons":
 	tmp := temporary("ms-bs-") | expect_ok?
-	comparisons := "{tmp.path()}/count"
+	comparisons := f"{tmp.path()}/count"
 
 	for length in [0, 1, 2, 3, 4, 7, 8, 31, 32, 255, 1024, 65536]:
 		values := (0..length).map(fn i: Counted(i / 3 * 2, comparisons.clone()))

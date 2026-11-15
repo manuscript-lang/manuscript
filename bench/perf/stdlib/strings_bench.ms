@@ -27,7 +27,7 @@ bench "string.append_interpolated":
 	fn work() Result[Void, Error]:
 		var s = ""
 		for i in 0..20000:
-			s += "item-{i},"
+			s += f"item-{i},"
 		return keep(s.length())
 
 	measure(20000, work)?
@@ -120,7 +120,7 @@ bench "string.interpolate":
 	fn work() Result[Void, Error]:
 		var n = 0
 		for i in 0..100000:
-			n += "item {i} of {n}".length()
+			n += f"item {i} of {n}".length()
 		return keep(n)
 
 	measure(100000, work)?

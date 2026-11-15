@@ -57,9 +57,9 @@ fn parse_num(text: String, lo: Int, hi: Int) Optional[Int]:
 fn money(cents: Int) String:
     frac := cents % 100
     if frac < 10:
-        return "{cents / 100}.0{frac}"
+        return f"{cents / 100}.0{frac}"
 
-    return "{cents / 100}.{frac}"
+    return f"{cents / 100}.{frac}"
 
 fn line_cost(qty: Int, price: Int) Int:
     if qty >= 10:
@@ -81,7 +81,7 @@ impl Shop:
 
             now := self.stock.get(sku).get(0) + qty
             self.stock[sku.clone()] = now
-            return "ok {sku} stock={now}"
+            return f"ok {sku} stock={now}"
 
         return "error: bad quantity"
 
@@ -92,7 +92,7 @@ impl Shop:
         if cents := parse_num(parts[2], 0, 10000000):
             sku := parts[1]
             if not self.price.contains(sku):
-                return "error: unknown sku {sku}"
+                return f"error: unknown sku {sku}"
 
             self.price[sku.clone()] = cents
             return "ok"
@@ -112,29 +112,29 @@ impl Shop:
         for i in 2..parts.length():
             pieces := parts[i].split(":")
             if pieces.length() != 2 or not valid_sku(pieces[0]):
-                return "error: bad item {parts[i]}"
+                return f"error: bad item {parts[i]}"
 
             if qty := parse_num(pieces[1], 1, 100000):
                 items.append(Item(pieces[0].clone(), qty))
             else:
-                return "error: bad item {parts[i]}"
+                return f"error: bad item {parts[i]}"
 
         if self.orders.contains(id):
-            return "error: order {id} already exists"
+            return f"error: order {id} already exists"
 
         var seen = Set[String]()
 
         for it in items:
             if seen.contains(it.sku):
-                return "error: duplicate sku {it.sku}"
+                return f"error: duplicate sku {it.sku}"
 
             seen.add(it.sku.clone())
             if not self.price.contains(it.sku):
-                return "error: unknown sku {it.sku}"
+                return f"error: unknown sku {it.sku}"
 
             have := self.stock.get(it.sku).get(0)
             if it.qty > have:
-                return "error: insufficient stock for {it.sku} (have {have}, need {it.qty})"
+                return f"error: insufficient stock for {it.sku} (have {have}, need {it.qty})"
 
         var total = 0
         for it in items:
@@ -142,7 +142,7 @@ impl Shop:
         for it in items:
             self.stock[it.sku.clone()] = self.stock.get(it.sku).get(0) - it.qty
         self.orders[id.clone()] = Order("placed", items, total)
-        return "ok {id} total={money(total)}"
+        return f"ok {id} total={money(total)}"
 
     var fn cancel_cmd(parts: List[String]) String:
         if parts.length() != 2:
@@ -152,16 +152,16 @@ impl Shop:
 
         if o := self.orders.get(id).clone():
             if o.status == "shipped":
-                return "error: order {id} already shipped"
+                return f"error: order {id} already shipped"
             if o.status == "cancelled":
-                return "error: order {id} already cancelled"
+                return f"error: order {id} already cancelled"
 
             for it in o.items:
                 self.stock[it.sku.clone()] = self.stock.get(it.sku).get(0) + it.qty
             self.orders[id.clone()] = Order("cancelled", o.items.clone(), o.total)
             return "ok"
 
-        return "error: unknown order {id}"
+        return f"error: unknown order {id}"
 
     var fn ship_cmd(parts: List[String]) String:
         if parts.length() != 2:
@@ -171,14 +171,14 @@ impl Shop:
 
         if o := self.orders.get(id).clone():
             if o.status == "shipped":
-                return "error: order {id} already shipped"
+                return f"error: order {id} already shipped"
             if o.status == "cancelled":
-                return "error: order {id} is cancelled"
+                return f"error: order {id} is cancelled"
 
             self.orders[id.clone()] = Order("shipped", o.items.clone(), o.total)
             return "ok"
 
-        return "error: unknown order {id}"
+        return f"error: unknown order {id}"
 
     fn report() String:
         var lines = List[String]()
@@ -204,11 +204,11 @@ impl Shop:
                         if it.sku == sku:
                             reserved += it.qty
             lines.append(
-                "{sku} stock={self.stock.get(sku).get(0)} price={money(self.price.get(sku).get(0))} reserved={reserved}"
+                f"{sku} stock={self.stock.get(sku).get(0)} price={money(self.price.get(sku).get(0))} reserved={reserved}"
             )
 
-        lines.append("orders placed={placed} shipped={shipped} cancelled={cancelled}")
-        lines.append("revenue={money(revenue)}")
+        lines.append(f"orders placed={placed} shipped={shipped} cancelled={cancelled}")
+        lines.append(f"revenue={money(revenue)}")
         return lines.join("\n")
 
     var fn handle(parts: List[String]) String:
@@ -247,6 +247,6 @@ export fn main() Int:
             continue
 
         out := shop.handle(parts)
-        stdout().write("{out}\n").get()
+        stdout().write(f"{out}\n").get()
 
     return 0

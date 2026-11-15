@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -24,7 +24,7 @@ fn collatz(start: Int) Int:
 
 export fn main() Int:
     l1 := [21, (-10), 21, 14, (-28)]
-    say("l1 = {l1} len {l1.length()}")
+    say(f"l1 = {l1} len {l1.length()}")
 
     if "naïve".reverse().is_empty():
         say("quote\"d")
@@ -33,32 +33,32 @@ export fn main() Int:
 
     b2 := (
         "quote\"d".contains("hello world")
-        and ("{((-20) - (-791243))}:" + "hello world").is_empty()
+        and (f"{((-20) - (-791243))}:" + "hello world").is_empty()
     )
-    say("b2 = {b2}")
+    say(f"b2 = {b2}")
 
     f3 := (
         ((634.122 - 18.199) + (989.817 - 0.0))
         / ((854.935 + 736.807) + (258.460 * 0.0))
     )
-    say("f3 = {f3}")
+    say(f"f3 = {f3}")
 
     i4 := (-11)
-    say("i4 = {i4}")
-    say("collatz(183) = {collatz(183)}")
+    say(f"i4 = {i4}")
+    say(f"collatz(183) = {collatz(183)}")
 
     s5 := "quote\"d"
-    say("s5 = [{s5}]")
+    say(f"s5 = [{s5}]")
     say(
-        "{((11 - i4) - (i4 % i4))} {(s5.scalar_length() * (i4 - i4))} {(((11 - i4) - (i4 % i4)) < (s5.scalar_length() * (i4 - i4)))} sum {((11 - i4) - (i4 % i4)) + (s5.scalar_length() * (i4 - i4))}"
+        f"{((11 - i4) - (i4 % i4))} {(s5.scalar_length() * (i4 - i4))} {(((11 - i4) - (i4 % i4)) < (s5.scalar_length() * (i4 - i4)))} sum {((11 - i4) - (i4 % i4)) + (s5.scalar_length() * (i4 - i4))}"
     )
     say(
-        "{(((-20) + i4) * (21 * i4))} {(-757397)} {((((-20) + i4) * (21 * i4)) < (-757397))} sum {(((-20) + i4) * (21 * i4)) + (-757397)}"
+        f"{(((-20) + i4) * (21 * i4))} {(-757397)} {((((-20) + i4) * (21 * i4)) < (-757397))} sum {(((-20) + i4) * (21 * i4)) + (-757397)}"
     )
 
     s6 := s5
-    say("s6 = [{s6}]")
+    say(f"s6 = [{s6}]")
 
     l7 := l1.map(fn x: x + 4).filter(fn x: x % 2 == 0)
-    say("l7 = {l7} len {l7.length()}")
+    say(f"l7 = {l7} len {l7.length()}")
     return 0

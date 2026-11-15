@@ -6,14 +6,14 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := (995046 - (((-441650) * (-48)) - (46 - 0)))
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     b2 := ((("ms" + "日本語") + "héllo") == ("héllo" + "").upper())
-    say("b2 = {b2}")
+    say(f"b2 = {b2}")
 
     var acc3 = 0
     var stepacc3 = 0
@@ -22,31 +22,31 @@ export fn main() Int:
         stepacc3 += 1
         acc3 += stepacc3 * stepacc3 + 0
 
-    say("acc3 = {acc3}")
+    say(f"acc3 = {acc3}")
 
     i5 := ((i1 % 282906) + (-16))
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     i6 := ((-(i5 - (-23))) - 5)
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     b7 := (false or ((i6 + i1) > (i6 + i6)))
-    say("b7 = {b7}")
+    say(f"b7 = {b7}")
 
     s8 := "ms".upper().trim()
-    say("s8 = [{s8}]")
+    say(f"s8 = [{s8}]")
     say(
-        "{((-674997) - (-39))} {(i1 + i1)} {(((-674997) - (-39)) < (i1 + i1))} sum {((-674997) - (-39)) + (i1 + i1)}"
+        f"{((-674997) - (-39))} {(i1 + i1)} {(((-674997) - (-39)) < (i1 + i1))} sum {((-674997) - (-39)) + (i1 + i1)}"
     )
 
     s9 := s8
-    say("s9 = [{s9}]")
+    say(f"s9 = [{s9}]")
 
     var acc10 = 0
     for i in 0..2:
         acc10 += i * 1
-    say("acc10 = {acc10}")
+    say(f"acc10 = {acc10}")
 
-    b11 := ("{((-589415) / i1)}:" + "line\nbreak").trim().contains("  padded  ")
-    say("b11 = {b11}")
+    b11 := (f"{((-589415) / i1)}:" + "line\nbreak").trim().contains("  padded  ")
+    say(f"b11 = {b11}")
     return 0

@@ -29,7 +29,7 @@ fn closes(log: String) String:
 
 test "a read stream closes its source once":
 	dir := temporary("stream-close-") | expect_ok?
-	log := "{dir.path()}/r.log"
+	log := f"{dir.path()}/r.log"
 	void append_file(log, "").wait()
 	var by_hand = ReadStream[Int](Counted(log.clone()))
 	by_hand.close()?
@@ -37,7 +37,7 @@ test "a read stream closes its source once":
 
 test "a write stream closes its sink once":
 	dir := temporary("stream-close-") | expect_ok?
-	log := "{dir.path()}/w.log"
+	log := f"{dir.path()}/w.log"
 	void append_file(log, "").wait()
 	var out = WriteStream[Int](Counted(log.clone()))
 	out.close()?

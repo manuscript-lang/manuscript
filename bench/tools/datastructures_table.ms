@@ -62,12 +62,12 @@ export fn summarize(lines: List[String], repeats: Int) String!:
 	for line in lines:
 		parts := line.trim().split(" ").filter(fn p: p != "")
 		if parts.length() < 2 or not versions().contains(parts[0]):
-			return invalid("invalid sample: {line.trim()}")
+			return invalid(f"invalid sample: {line.trim()}")
 
 		version := parts[0].clone()
 		name := parts[1].clone()
 		if active != "" and version != active: return invalid(
-			"unterminated {active} trial"
+			f"unterminated {active} trial"
 		)
 
 		active = version.clone()
@@ -78,7 +78,7 @@ export fn summarize(lines: List[String], repeats: Int) String!:
 				pending.length() != need.length()
 				or not need.all(fn n: pending.contains(n))
 			):
-				return invalid("incomplete {version} trial")
+				return invalid(f"incomplete {version} trial")
 
 			trials.add(version.clone(), trials.get_or(version, 0) + 1)
 			active = ""
@@ -90,7 +90,7 @@ export fn summarize(lines: List[String], repeats: Int) String!:
 			or not required(version).contains(name)
 			or pending.contains(name)
 		):
-			return invalid("invalid operation: {line.trim()}")
+			return invalid(f"invalid operation: {line.trim()}")
 
 		ops := parts[2].parse_int()
 		ns := parts[3].parse_int()
@@ -100,9 +100,9 @@ export fn summarize(lines: List[String], repeats: Int) String!:
 			or ops.get(0) != count_of(name)
 			or ns.get(0) < 0
 		):
-			return invalid("invalid count or timing: {line.trim()}")
+			return invalid(f"invalid count or timing: {line.trim()}")
 
-		key := "{name} {version}"
+		key := f"{name} {version}"
 		now := ns.get(0).to_float()
 
 		if prior := best.get(key):
@@ -113,10 +113,10 @@ export fn summarize(lines: List[String], repeats: Int) String!:
 		pending.add(name.clone())
 
 	if active != "" or versions().any(fn v: trials.get_or(v, 0) != repeats):
-		return invalid("expected {repeats} complete trials of every version")
+		return invalid(f"expected {repeats} complete trials of every version")
 
 	var rows = [
-		"Minimum of {repeats} rotating trials; ns/op. Complete trials and operation counts verified.",
+		f"Minimum of {repeats} rotating trials; ns/op. Complete trials and operation counts verified.",
 		"Missing comparisons and zero timings have no ratio. Producers do not report checksums.\n",
 		left("operation", 34) + right("ms", 9) + right("go", 9) + right(
 			"rust",
@@ -126,11 +126,11 @@ export fn summarize(lines: List[String], repeats: Int) String!:
 
 	for op in operations():
 		n := op.count.to_float()
-		m := best.get_or("{op.name} ms", 0.0) / n
+		m := best.get_or(f"{op.name} ms", 0.0) / n
 		var g: Float? = none
-		if t := best.get("{op.name} go"): g = t / n
+		if t := best.get(f"{op.name} go"): g = t / n
 
-		r := best.get_or("{op.name} rs", 0.0) / n
+		r := best.get_or(f"{op.name} rs", 0.0) / n
 		rows.append(
 			left(op.name, 34) + cell(m) + cell(g) + cell(r) + right(
 				ratio(m, g),

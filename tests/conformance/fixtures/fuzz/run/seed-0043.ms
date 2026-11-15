@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -23,32 +23,32 @@ fn fib(n: Int) Int:
 
 export fn main() Int:
     i1 := ((732622 * 31) + (((-27) - (-18)) + (-326409)))
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     s2 := "ms"
-    say("s2 = [{s2}]")
+    say(f"s2 = [{s2}]")
 
     i3 := (i1 % (i1 + (i1 % i1)))
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     f4 := 168.25
-    say("f4 = {f4}")
+    say(f"f4 = {f4}")
 
     i5 := (i1 - i1)
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     s6 := "emoji 😀"
-    say("s6 = [{s6}]")
+    say(f"s6 = [{s6}]")
 
     i7 := i1
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
     f8 := ((836.531 - (f4 + f4)) + f4)
-    say("f8 = {f8}")
+    say(f"f8 = {f8}")
 
     i9 := (((-35) - 6) - ((i7 + (-22)) % (419460323299 * 35)))
-    say("i9 = {i9}")
-    say("fib(28) = {fib(28)}")
+    say(f"i9 = {i9}")
+    say(f"fib(28) = {fib(28)}")
 
     if ((-7) == (i9 + i3)):
         say("x".replace(s2, s6))
@@ -56,14 +56,14 @@ export fn main() Int:
         say(s6)
 
     l10 := [(-13)]
-    say("l10 = {l10} len {l10.length()}")
+    say(f"l10 = {l10} len {l10.length()}")
 
     s11 := s2.clone()
-    say("s11 = [{s11}]")
+    say(f"s11 = [{s11}]")
 
     f12 := (543.245 - ((598.022 * f4) - 442.882))
-    say("f12 = {f12}")
+    say(f"f12 = {f12}")
 
     b13 := ("gamma".upper().starts_with("x") and (s2 == "Tab\there"))
-    say("b13 = {b13}")
+    say(f"b13 = {b13}")
     return 0

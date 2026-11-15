@@ -113,18 +113,18 @@ export fn main() Int:
 		counts.add(r.path.clone(), counts.get_or(r.path, 0) + 1)
 		totals.add(r.path.clone(), totals.get_or(r.path, 0) + r.lat)
 
-	stdout().write("valid: {n}\n").get()
-	stdout().write("malformed: {malformed}\n").get()
-	stdout().write("DEBUG: {debug}\n").get()
-	stdout().write("INFO: {info}\n").get()
-	stdout().write("WARN: {warn}\n").get()
-	stdout().write("ERROR: {error}\n").get()
-	stdout().write("status: 2xx={s2} 3xx={s3} 4xx={s4} 5xx={s5} other={other}\n").get()
-	stdout().write("p95: {p95}\n").get()
+	stdout().write(f"valid: {n}\n").get()
+	stdout().write(f"malformed: {malformed}\n").get()
+	stdout().write(f"DEBUG: {debug}\n").get()
+	stdout().write(f"INFO: {info}\n").get()
+	stdout().write(f"WARN: {warn}\n").get()
+	stdout().write(f"ERROR: {error}\n").get()
+	stdout().write(f"status: 2xx={s2} 3xx={s3} 4xx={s4} 5xx={s5} other={other}\n").get()
+	stdout().write(f"p95: {p95}\n").get()
 
 	if best >= 0:
 		r := recs[best]
-		stdout().write("slowest: {r.lat_text} {r.method} {r.path} {r.ts}\n").get()
+		stdout().write(f"slowest: {r.lat_text} {r.method} {r.path} {r.ts}\n").get()
 
 	stdout().write("top:\n").get()
 
@@ -154,7 +154,7 @@ export fn main() Int:
 		p := paths[pick]
 		c := counts.get_or(p, 0)
 		avg := totals.get_or(p, 0) / c
-		stdout().write("{p} {c} avg={avg}\n").get()
+		stdout().write(f"{p} {c} avg={avg}\n").get()
 		k += 1
 
 	return 0

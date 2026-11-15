@@ -14,7 +14,7 @@ type Marker:
 fn var Marker.close() Void!:
 	if not self.closed:
 		self.closed = true
-		append_file(self.log, "{self.id},").wait()?
+		append_file(self.log, f"{self.id},").wait()?
 
 fn result(id: Int, log: String) Marker!Error: ok(Marker(id, log))
 
@@ -36,7 +36,7 @@ fn transfer_optional_temporary(log: String) Void:
 
 test "native wrapper passthrough transfers resources without duplicating owners":
 	tmp := temporary("wrapper-passthrough-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	transfer_result_local(log.clone())
 	transfer_result_temporary(log.clone())
 	transfer_optional_local(log.clone())
@@ -62,7 +62,7 @@ fn bound_resource_error(log: String) Void!:
 
 test "or_else only borrows a resource error while preserving copyable successes":
 	tmp := temporary("wrapper-error-borrow-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	recover_resource_error(log.clone())?
 	bound_resource_error(log.clone())?
 
@@ -93,7 +93,7 @@ fn held_optional_local(id: Int, log: String, fail: Bool) Void!:
 
 test "owned native receivers stay closeable until later try arguments succeed":
 	tmp := temporary("wrapper-held-receiver-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	held_result_temporary(1, log.clone(), false)?
 	held_result_local(2, log.clone(), false)?
 	held_optional_temporary(3, log.clone(), false)?
@@ -118,7 +118,7 @@ fn borrowed_error_before_try(id: Int, log: String, fail: Bool) Void!:
 
 test "later try does not take ownership of a genuinely borrowed native receiver":
 	tmp := temporary("wrapper-borrowed-receiver-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	borrowed_error_before_try(9, log.clone(), false)?
 	expect_equal(borrowed_error_before_try(10, log.clone(), true).is_error(), true)?
 

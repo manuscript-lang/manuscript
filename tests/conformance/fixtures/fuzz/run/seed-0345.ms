@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -24,17 +24,17 @@ fn collatz(start: Int) Int:
 
 export fn main() Int:
     s1 := "gamma"
-    say("s1 = [{s1}]")
-    say("collatz(2449) = {collatz(2449)}")
+    say(f"s1 = [{s1}]")
+    say(f"collatz(2449) = {collatz(2449)}")
 
     l2 := [26, (-17), (-26), 11, 4]
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     i3 := (l2.length() + (-29))
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     b4 := ("héllo" == (s1 + "delta").upper())
-    say("b4 = {b4}")
+    say(f"b4 = {b4}")
 
     if (s1 + s1).is_empty():
         say(s1.replace("42", "alpha"))
@@ -42,40 +42,40 @@ export fn main() Int:
         say(s1)
 
     i5 := (i3 + ((i3 + i3) % (i3 + 12)))
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     f6 := (297.25 + (3.0e14 + 493.893))
-    say("f6 = {f6}")
+    say(f"f6 = {f6}")
 
     s7 := ("beta".trim() + "").upper()
-    say("s7 = [{s7}]")
+    say(f"s7 = [{s7}]")
 
     i8 := 39
-    say("i8 = {i8}")
+    say(f"i8 = {i8}")
 
-    s9 := "line\nbreak".reverse().replace("brace\{s\}", s1).reverse()
-    say("s9 = [{s9}]")
+    s9 := "line\nbreak".reverse().replace("brace{s}", s1).reverse()
+    say(f"s9 = [{s9}]")
 
     if ("x".reverse() == "Tab\there"):
-        say(("{((-1) - i5)}:" + "日本語"))
+        say((f"{((-1) - i5)}:" + "日本語"))
     else:
         say(("gamma" + s9))
 
     i10 := ((l2.length() - (i5 / i5)) + (((-45) + i5) + (i5 + 41)))
-    say("i10 = {i10}")
+    say(f"i10 = {i10}")
 
     f11 := (((560.117 + f6) + f6) - ((3.5 + 0.0) / f6))
-    say("f11 = {f11}")
+    say(f"f11 = {f11}")
 
-    b12 := ("{(i10 + i10)}:" + s1).reverse().is_empty()
-    say("b12 = {b12}")
+    b12 := (f"{(i10 + i10)}:" + s1).reverse().is_empty()
+    say(f"b12 = {b12}")
 
     i13 := i10
-    say("i13 = {i13}")
+    say(f"i13 = {i13}")
 
     s14 := s9
-    say("s14 = [{s14}]")
+    say(f"s14 = [{s14}]")
 
     f15 := f11
-    say("f15 = {f15}")
+    say(f"f15 = {f15}")
     return 0

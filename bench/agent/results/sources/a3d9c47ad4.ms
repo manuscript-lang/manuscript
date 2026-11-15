@@ -69,8 +69,8 @@ fn format_cents(cents: BigInt) String:
     whole := (cents / hundred).to_string_radix(10)
     fraction := (cents % hundred).to_int().get(0)
     if fraction < 10:
-        return "{whole}.0{fraction}"
-    return "{whole}.{fraction}"
+        return f"{whole}.0{fraction}"
+    return f"{whole}.{fraction}"
 
 export fn main() Int:
     var totals = Map[String, BigInt]()
@@ -87,8 +87,8 @@ export fn main() Int:
     var categories = totals.keys()
     categories.sort()
     for category in categories:
-        output += "{category}: {format_cents(totals.get(category).get(from_int(0)))}\n"
+        output += f"{category}: {format_cents(totals.get(category).get(from_int(0)))}\n"
     if skipped > 0:
-        output += "skipped: {skipped}\n"
+        output += f"skipped: {skipped}\n"
     stdout().write(output).get()
     return 0

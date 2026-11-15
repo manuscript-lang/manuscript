@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     if true:
@@ -15,12 +15,12 @@ export fn main() Int:
         say(("  padded  " + ""))
 
     i1 := (-23)
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     f2 := 0.0
-    say("f2 = {f2}")
+    say(f"f2 = {f2}")
 
     bad := 1.5 + 2
     i3 := 281655265031
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
     return 0

@@ -11,7 +11,7 @@ type Door:
 	log: String
 
 fn var Door.close() Void!:
-	void append_file(self.log, "{self.id},").wait()
+	void append_file(self.log, f"{self.id},").wait()
 
 fn logged(path: String) String:
 	read := read_file(path).wait()
@@ -21,7 +21,7 @@ fn logged(path: String) String:
 
 test "a list moved on one path closes on the path that keeps it":
 	tmp := temporary("ms-log-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	block(log.clone(), 1)
 	logged(log.clone()) | expect_equal("1,")?
 
@@ -34,7 +34,7 @@ fn block(log: String, id: Int) Void:
 
 test "an optional resource reassigned after a conditional move closes the new value":
 	tmp := temporary("ms-log-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	reassign(log.clone())
 	logged(log.clone()) | expect_equal("1,2,")?
 
@@ -57,13 +57,13 @@ fn walk(log: String, stop: Int) Void:
 
 test "a loop over owned resources closes each element it does not move":
 	tmp := temporary("ms-log-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	walk(log.clone(), 99)
 	logged(log.clone()) | expect_equal("2,3,1,")?
 
 test "a break closes the elements the loop never reached":
 	tmp := temporary("ms-log-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	walk(log.clone(), 1)
 	logged(log.clone()) | expect_equal("1,2,3,")?
 
@@ -74,7 +74,7 @@ fn wrap(door: Door, log: String) List[Door]:
 
 test "a binding built from a call that consumes a resource closes it":
 	tmp := temporary("ms-log-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	block_wrap(log.clone())
 	logged(log.clone()) | expect_equal("1,9,")?
 
@@ -91,7 +91,7 @@ fn shape(log: String) Shape:
 
 test "a match on a temporary resource closes it when the match ends":
 	tmp := temporary("ms-log-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	var seen = 0
 
 	match shape(log.clone()):

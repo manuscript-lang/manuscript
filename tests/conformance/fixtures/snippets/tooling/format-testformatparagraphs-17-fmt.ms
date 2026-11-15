@@ -2,7 +2,7 @@
 // conform: phase=parse
 // conform: origin=pkg/tooling/format/format_paragraphs_test.go:254 TestFormatParagraphs
 fn example(value: Int = choose(first: 1, second: 2)) Int:
-    text := "# if value: return {value}"
+    text := f"# if value: return {value}"
     next := choose(
         first: value,
         // Explain this argument.

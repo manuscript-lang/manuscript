@@ -23,7 +23,7 @@ export type BitSet:
 // Adds an index; faults when it is negative or above 1073741823.
 fn var BitSet.add(index: Int) Void:
 	if index < 0 or index > 1073741823:
-		panic("BitSet: index must be between 0 and 1073741823, found {index}")
+		panic(f"BitSet: index must be between 0 and 1073741823, found {index}")
 
 	word := index / 64
 	while self.words.length() <= word:

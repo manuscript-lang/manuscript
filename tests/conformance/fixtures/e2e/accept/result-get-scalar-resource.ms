@@ -15,7 +15,7 @@ type Tag:
 
 // The host temp root, since a hard-coded /tmp does not exist on Windows.
 fn tag_log(id: Int) String!:
-	return ok("{ temporary_root()?}/ms-result-get-tag-{id}")
+	return ok(f"{ temporary_root()?}/ms-result-get-tag-{id}")
 
 fn var Tag.close() Void!:
 	append_file(tag_log(self.id)?, "closed,").wait()?

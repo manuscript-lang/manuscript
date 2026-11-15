@@ -153,7 +153,7 @@ fn to_values(bits: List[Bool]) List[Int]:
 	return out
 
 fn pad(v: Int, w: Int) String:
-	var s = "{v}"
+	var s = f"{v}"
 	while s.length() < w:
 		s = "0" + s
 	return s
@@ -202,7 +202,7 @@ fn find_runs(sp: Spec, st: Stamp, count: Int) List[String]:
 	return out
 
 fn error_line(n: Int, msg: String) String:
-	return "line {n}: error: {msg}\n"
+	return f"line {n}: error: {msg}\n"
 
 fn process_line(line: String, n: Int) String:
 	toks := line.split(" ")
@@ -238,9 +238,9 @@ fn process_line(line: String, n: Int) String:
 		dows: dows,
 	)
 	runs := find_runs(sp, st, cnt)
-	if runs.is_empty(): return "line {n}: never\n"
+	if runs.is_empty(): return f"line {n}: never\n"
 
-	var out = "line {n}: {runs.length()} runs\n"
+	var out = f"line {n}: {runs.length()} runs\n"
 	for r in runs:
 		out += r + "\n"
 	return out

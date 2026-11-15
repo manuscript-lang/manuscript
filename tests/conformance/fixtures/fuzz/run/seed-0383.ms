@@ -6,20 +6,20 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     l1 := [(-19), (-3), 15]
-    say("l1 = {l1} len {l1.length()}")
+    say(f"l1 = {l1} len {l1.length()}")
 
     f2 := (
         ((0.0 * 232.544) + (683.559 * 647.261))
         + ((65.469 * 733.25) - (621.888 + 2.0e9))
     )
-    say("f2 = {f2}")
+    say(f"f2 = {f2}")
 
     s3 := "42"
-    say("s3 = [{s3}]")
+    say(f"s3 = [{s3}]")
 
     var acc4 = 0
 
@@ -29,13 +29,13 @@ export fn main() Int:
         else:
             acc4 -= 1
 
-    say("acc4 = {acc4}")
+    say(f"acc4 = {acc4}")
 
     i5 := (-147596)
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     l6 := l1.map(fn x: x * 5)
-    say("l6 = {l6} len {l6.length()}")
+    say(f"l6 = {l6} len {l6.length()}")
 
     var acc7 = 0
     var stepacc7 = 0
@@ -44,20 +44,20 @@ export fn main() Int:
         stepacc7 += 1
         acc7 += stepacc7 * stepacc7 + (-1)
 
-    say("acc7 = {acc7}")
+    say(f"acc7 = {acc7}")
 
     f8 := ((5.0e15 * (87.921 * f2)) + (f2 / (4.5 + f2)))
-    say("f8 = {f8}")
+    say(f"f8 = {f8}")
 
     i9 := (((-i5) / (i5 * 34)) - i5)
-    say("i9 = {i9}")
-    say("{l6.get(0)} {i9} {(l6.get(0) < i9)} sum {l6.get(0) + i9}")
+    say(f"i9 = {i9}")
+    say(f"{l6.get(0)} {i9} {(l6.get(0) < i9)} sum {l6.get(0) + i9}")
 
     i10 := ((i9 * s3.scalar_length()) + ((i9 * 46) % (50 + i9)))
-    say("i10 = {i10}")
+    say(f"i10 = {i10}")
 
     s11 := ("delta".replace(s3, s3).reverse() + "back\\slash".lower())
-    say("s11 = [{s11}]")
+    say(f"s11 = [{s11}]")
 
     if (false or (28 > i10)):
         say("back\\slash".reverse())
@@ -65,7 +65,7 @@ export fn main() Int:
         say(s3)
 
     i12 := l1.get(2)
-    say("i12 = {i12}")
+    say(f"i12 = {i12}")
 
     var acc13 = 0
 
@@ -75,22 +75,22 @@ export fn main() Int:
         else:
             acc13 -= 1
 
-    say("acc13 = {acc13}")
+    say(f"acc13 = {acc13}")
 
     if ((i9 >= i9) and "x".contains(s11)):
-        say(("{656166}:" + "back\\slash"))
+        say((f"{656166}:" + "back\\slash"))
     else:
         say(s11)
 
     s14 := (s3 + "x").trim()
-    say("s14 = [{s14}]")
+    say(f"s14 = [{s14}]")
 
     i15 := (-((-5) * (-33)))
-    say("i15 = {i15}")
+    say(f"i15 = {i15}")
 
     i16 := (-(-19))
-    say("i16 = {i16}")
+    say(f"i16 = {i16}")
 
     big17 := ((i16 - (-35)) + (i10 + 21)) - ((i16 - (-35)) + (i10 + 21))
-    say("{((i16 - (-35)) + (i10 + 21)) / big17}")
+    say(f"{((i16 - (-35)) + (i10 + 21)) / big17}")
     return 0

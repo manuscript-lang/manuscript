@@ -32,7 +32,7 @@ fn table(rng: Rng, depth: Int) TomlValue:
 
 fn check_round_trip(seed: Int, original: TomlValue) Result[Void, Error]:
 	rendered := stringify(original)?
-	if (parse(rendered)?) != original: return fail("seed {seed}: changed\n{rendered}")
+	if (parse(rendered)?) != original: return fail(f"seed {seed}: changed\n{rendered}")
 
 fn check_stable(seed: Int, mutated: String, first: TomlValue) Result[Void, Error]:
 	again := str?

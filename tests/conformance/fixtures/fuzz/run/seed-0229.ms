@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -24,32 +24,32 @@ fn collatz(start: Int) Int:
 
 export fn main() Int:
     s1 := "emoji 😀".upper().lower()
-    say("s1 = [{s1}]")
-    say("collatz(1275) = {collatz(1275)}")
+    say(f"s1 = [{s1}]")
+    say(f"collatz(1275) = {collatz(1275)}")
 
     i2 := (
         (((-26) * (-405936271935)) - (-944831251255))
         + (-((-47) * (-710768722292)))
     )
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     i3 := (((i2 - 35) - (i2 + (-25))) % (i2 / (-(-14))))
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     s4 := "naïve"
-    say("s4 = [{s4}]")
+    say(f"s4 = [{s4}]")
 
     i5 := i2
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     s6 := (s4.lower() + s1)
-    say("s6 = [{s6}]")
+    say(f"s6 = [{s6}]")
 
     b7 := (i3 < ((895859 + i5) + s6.scalar_length()))
-    say("b7 = {b7}")
+    say(f"b7 = {b7}")
 
     l8 := [2, 12]
-    say("l8 = {l8} len {l8.length()}")
+    say(f"l8 = {l8} len {l8.length()}")
 
     var acc9 = 0
 
@@ -59,20 +59,20 @@ export fn main() Int:
         else:
             acc9 -= 1
 
-    say("acc9 = {acc9}")
+    say(f"acc9 = {acc9}")
 
     b10 := (
         (s4.is_empty() and "  padded  ".is_empty())
         or ("line\nbreak" + "delta").starts_with("alpha")
     )
-    say("b10 = {b10}")
+    say(f"b10 = {b10}")
 
     i11 := s6.scalar_length()
-    say("i11 = {i11}")
+    say(f"i11 = {i11}")
 
     l12 := [9]
-    say("l12 = {l12} len {l12.length()}")
+    say(f"l12 = {l12} len {l12.length()}")
     say(
-        "{9223372036854775806} {(-903656)} {(9223372036854775806 < (-903656))} sum {9223372036854775806 + (-903656)}"
+        f"{9223372036854775806} {(-903656)} {(9223372036854775806 < (-903656))} sum {9223372036854775806 + (-903656)}"
     )
     return 0

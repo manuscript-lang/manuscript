@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     var acc1 = 0
@@ -16,10 +16,10 @@ export fn main() Int:
         stepacc1 += 1
         acc1 += stepacc1 * stepacc1 + (-5)
 
-    say("ac1 = {acc1}")
+    say(f"ac1 = {acc1}")
 
     i2 := (46 * ((18 - (-297318)) / (291313 + 535757)))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     if "héllo".contains("a"):
         say("ms")
@@ -27,5 +27,5 @@ export fn main() Int:
         say(("a" + "ms"))
 
     b3 := (((not false) and ("back\\slash" != "a")) and false)
-    say("b3 = {b3}")
+    say(f"b3 = {b3}")
     return 0

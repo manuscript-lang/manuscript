@@ -19,7 +19,7 @@ fn main() Void:
     other: Float32 := 0.2
     exact: Float64 := 0.1
     exact_other: Float64 := 0.2
-    void stdout().write("{low} {high} {wide} {mid} {same}\n")
-    void stdout().write("{half + other} {exact + exact_other}\n")
-    void stdout().write("{total([100, 20, 7])} {low / 2} {high % 10} {-high}\n")
-    void stdout().write("{low < high} {wide == wide} {half == half}\n")
+    void stdout().write(f"{low} {high} {wide} {mid} {same}\n")
+    void stdout().write(f"{half + other} {exact + exact_other}\n")
+    void stdout().write(f"{total([100, 20, 7])} {low / 2} {high % 10} {-high}\n")
+    void stdout().write(f"{low < high} {wide == wide} {half == half}\n")

@@ -49,10 +49,10 @@ export fn main() Int:
             malformed += 1
 
     var out = List[String]()
-    out.append("valid: {valid.length()}")
-    out.append("malformed: {malformed}")
+    out.append(f"valid: {valid.length()}")
+    out.append(f"malformed: {malformed}")
     for level in ["DEBUG", "INFO", "WARN", "ERROR"]:
-        out.append("{level}: {valid.filter(fn e: e.level == level).length()}")
+        out.append(f"{level}: {valid.filter(fn e: e.level == level).length()}")
 
     class_2xx := valid.filter(fn e: e.status.get(0) == "2").length()
     class_3xx := valid.filter(fn e: e.status.get(0) == "3").length()
@@ -60,7 +60,7 @@ export fn main() Int:
     class_5xx := valid.filter(fn e: e.status.get(0) == "5").length()
     other := valid.length() - class_2xx - class_3xx - class_4xx - class_5xx
     out.append(
-        "status: 2xx={class_2xx} 3xx={class_3xx} 4xx={class_4xx} 5xx={class_5xx} other={other}"
+        f"status: 2xx={class_2xx} 3xx={class_3xx} 4xx={class_4xx} 5xx={class_5xx} other={other}"
     )
 
     n := valid.length()
@@ -70,7 +70,7 @@ export fn main() Int:
         sorted := valid.map(fn e: e.latency).sorted()
         p95 = sorted[(95 * n + 99) / 100 - 1]
 
-    out.append("p95: {p95}")
+    out.append(f"p95: {p95}")
 
     if n > 0:
         var slowest = 0
@@ -78,7 +78,7 @@ export fn main() Int:
             if valid[i].latency > valid[slowest].latency: slowest = i
 
         s := valid[slowest]
-        out.append("slowest: {s.latency} {s.method} {s.path} {s.timestamp}")
+        out.append(f"slowest: {s.latency} {s.method} {s.path} {s.timestamp}")
 
     out.append("top:")
 
@@ -95,7 +95,7 @@ export fn main() Int:
 
     for i in 0..(if ranked.length() > 3: 3 else: ranked.length()):
         row := ranked[i]
-        out.append("{row.key} {row.value} avg={totals.get_or(row.key, 0) / row.value}")
+        out.append(f"{row.key} {row.value} avg={totals.get_or(row.key, 0) / row.value}")
 
     stdout().write(out.join("\n") + "\n").get()
     return 0

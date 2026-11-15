@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -22,17 +22,17 @@ export fn main() Int:
         stepacc1 += 1
         acc1 += stepacc1 * stepacc1 + (-3)
 
-    say("acc1 = {acc1}")
-    say("fact(6) = {fact(6)}")
+    say(f"acc1 = {acc1}")
+    say(f"fact(6) = {fact(6)}")
 
     i2 := (
         ((-65539056238) + ((-25) * 452085854779))
         * ((-19) + ((-590347) - (-311501)))
     )
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     l3 := [(-29), 20, (-28), (-10), 16]
-    say("l3 = {l3} len {l3.length()}")
+    say(f"l3 = {l3} len {l3.length()}")
 
     if ((false and true) and "quote\"d".is_empty()):
         say("  padded  ".upper())
@@ -40,8 +40,8 @@ export fn main() Int:
         say("emoji 😀".trim())
 
     i4 := (((i2 - i2) * ((-38) - i2)) + ((50 + i2) + (i2 - i2)))
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     b5 := true
-    say("b5 = {b5}")
+    say(f"b5 = {b5}")
     return 0

@@ -6,4 +6,4 @@ export fn make() Id:
     return Id(n: 1, tag: "t")
 
 export fn show(id: Id) String:
-    return "id {id.n}"
+    return f"id {id.n}"

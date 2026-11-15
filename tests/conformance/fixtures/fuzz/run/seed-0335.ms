@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -16,34 +16,34 @@ fn gcd(a: Int, b: Int) Int:
 
 export fn main() Int:
     f1 := (679.444 / ((552.906 / 320.585) + (597.381 + 305.505)))
-    say("f1 = {f1}")
-    say("gcd(1969, 3746) = {gcd(1969, 3746)}")
+    say(f"f1 = {f1}")
+    say(f"gcd(1969, 3746) = {gcd(1969, 3746)}")
 
     i2 := (-43)
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     var acc3 = 0
     for i in 0..6:
         acc3 += i * (-1)
-    say("acc3 = {acc3}")
+    say(f"acc3 = {acc3}")
 
     s4 := "emoji 😀"
-    say("s4 = [{s4}]")
+    say(f"s4 = [{s4}]")
 
     f5 := (((890.953 * f1) * (f1 * 7.0e-6)) - 8.0e13)
-    say("f5 = {f5}")
+    say(f"f5 = {f5}")
 
     i6 := ((-23) % ((28 + 33) / ((-38) - i2)))
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     i7 := (-39)
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
     i9 := ((-15) + (s4.scalar_length() + s4.scalar_length()))
-    say("i9 = {i9}")
+    say(f"i9 = {i9}")
 
     f10 := 374.332
-    say("f10 = {f10}")
+    say(f"f10 = {f10}")
 
     if true:
         say((s4 + "naïve"))
@@ -51,11 +51,11 @@ export fn main() Int:
         say(s4.reverse())
 
     f11 := ((f10 * f10) / (f10 * (f5 + 929.25)))
-    say("f11 = {f11}")
+    say(f"f11 = {f11}")
 
     i12 := ((34 + (i7 % i7)) * ((-30) / (i7 % 614105799569)))
-    say("i12 = {i12}")
+    say(f"i12 = {i12}")
 
     big13 := 9223372036854775807
-    say("{big13 + 5}")
+    say(f"{big13 + 5}")
     return 0

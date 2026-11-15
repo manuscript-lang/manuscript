@@ -1,7 +1,7 @@
 {
   "format": 1,
   "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
+  "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
     "fmt": "fn work(enabled: Bool) Int:\n\tcount := 2\n\tif enabled:\n\t\trun(count)\n\tfor item in [1, 2]:\n\t\trun(item)\n\n\tvar resource = acquire()\n\trun(resource)\n\tresource.close()\n\treturn count\n"

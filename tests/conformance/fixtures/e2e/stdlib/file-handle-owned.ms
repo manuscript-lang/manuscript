@@ -14,7 +14,7 @@ fn view_of(path: String) ReadStream[Bytes]!:
 
 test "a file handle binding is closed when its scope ends":
 	temporary := temporary("manuscript-owned-") | expect_ok?
-	path := "{temporary.path()}/a.txt"
+	path := f"{temporary.path()}/a.txt"
 	expect_true(write_file(path, "x", true).wait().is_ok())?
 
 	var view = view_of(path) | expect_ok?
@@ -22,7 +22,7 @@ test "a file handle binding is closed when its scope ends":
 
 test "closing a file handle by hand is allowed once more at scope end":
 	temporary := temporary("manuscript-owned-") | expect_ok?
-	path := "{temporary.path()}/b.txt"
+	path := f"{temporary.path()}/b.txt"
 	var file = open(path, OpenMode.Write, OpenOptions(permissions: 420)) | expect_ok?
 	expect_true(file.write("hello").is_ok())?
 	file.close()?

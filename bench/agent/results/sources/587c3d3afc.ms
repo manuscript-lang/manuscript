@@ -49,7 +49,7 @@ fn number(text: String, low: Int, high: Int) Int:
 	return v
 
 fn money(cents: Int) String:
-	return "{cents / 100}." + (cents % 100).to_string().pad_start(2, "0")
+	return f"{cents / 100}." + (cents % 100).to_string().pad_start(2, "0")
 
 fn stock_cmd(var s: Store, t: List[String]) String:
 	if t.length() != 3: return "error: usage"
@@ -66,7 +66,7 @@ fn stock_cmd(var s: Store, t: List[String]) String:
 
 	now := s.stock.get(sku).get(0) + qty
 	s.stock.add(sku.clone(), now)
-	return "ok {sku} stock={now}"
+	return f"ok {sku} stock={now}"
 
 fn price_cmd(var s: Store, t: List[String]) String:
 	if t.length() != 3: return "error: usage"
@@ -74,7 +74,7 @@ fn price_cmd(var s: Store, t: List[String]) String:
 	sku := t[1].clone()
 	cents := number(t[2], 0, 10000000)
 	if cents < 0: return "error: bad price"
-	if not s.stock.contains(sku): return "error: unknown sku {sku}"
+	if not s.stock.contains(sku): return f"error: unknown sku {sku}"
 
 	s.price.add(sku, cents)
 	return "ok"
@@ -84,16 +84,16 @@ fn order_cmd(var s: Store, t: List[String]) String:
 
 	id := t[1].clone()
 	if not id_ok(id): return "error: bad order id"
-	if s.orders.contains(id): return "error: order {id} already exists"
+	if s.orders.contains(id): return f"error: order {id} already exists"
 
 	var lines = List[Line]()
 
 	for i in 2..t.length():
 		parts := t[i].split(":")
-		if parts.length() != 2 or not sku_ok(parts[0]): return "error: bad item {t[i]}"
+		if parts.length() != 2 or not sku_ok(parts[0]): return f"error: bad item {t[i]}"
 
 		qty := number(parts[1], 1, 100000)
-		if qty < 0: return "error: bad item {t[i]}"
+		if qty < 0: return f"error: bad item {t[i]}"
 
 		lines.append(Line(sku: parts[0].clone(), qty: qty))
 
@@ -103,11 +103,11 @@ fn order_cmd(var s: Store, t: List[String]) String:
 		sku := lines[i].sku.clone()
 		qty := lines[i].qty
 		for j in 0..i:
-			if lines[j].sku == sku: return "error: duplicate sku {sku}"
-		if not s.stock.contains(sku): return "error: unknown sku {sku}"
+			if lines[j].sku == sku: return f"error: duplicate sku {sku}"
+		if not s.stock.contains(sku): return f"error: unknown sku {sku}"
 
 		have := s.stock.get(sku).get(0)
-		if qty > have: return "error: insufficient stock for {sku} (have {have}, need {qty})"
+		if qty > have: return f"error: insufficient stock for {sku} (have {have}, need {qty})"
 
 		cost := qty * s.price.get(sku).get(0)
 
@@ -117,7 +117,7 @@ fn order_cmd(var s: Store, t: List[String]) String:
 	for line in lines:
 		s.stock.add(line.sku.clone(), s.stock.get(line.sku).get(0) - line.qty)
 	s.orders.add(id.clone(), Order(status: "placed", total: total, lines: lines))
-	return "ok {id} total={money(total)}"
+	return f"ok {id} total={money(total)}"
 
 fn cancel_cmd(var s: Store, t: List[String]) String:
 	if t.length() != 2: return "error: usage"
@@ -125,8 +125,8 @@ fn cancel_cmd(var s: Store, t: List[String]) String:
 	id := t[1].clone()
 
 	if o := s.orders.get(id):
-		if o.status == "shipped": return "error: order {id} already shipped"
-		if o.status == "cancelled": return "error: order {id} already cancelled"
+		if o.status == "shipped": return f"error: order {id} already shipped"
+		if o.status == "cancelled": return f"error: order {id} already cancelled"
 
 		total := o.total
 		lines := o.lines.clone()
@@ -135,7 +135,7 @@ fn cancel_cmd(var s: Store, t: List[String]) String:
 		s.orders.add(id.clone(), Order(status: "cancelled", total: total, lines: lines))
 		return "ok"
 
-	return "error: unknown order {id}"
+	return f"error: unknown order {id}"
 
 fn ship_cmd(var s: Store, t: List[String]) String:
 	if t.length() != 2: return "error: usage"
@@ -143,15 +143,15 @@ fn ship_cmd(var s: Store, t: List[String]) String:
 	id := t[1].clone()
 
 	if o := s.orders.get(id):
-		if o.status == "shipped": return "error: order {id} already shipped"
-		if o.status == "cancelled": return "error: order {id} is cancelled"
+		if o.status == "shipped": return f"error: order {id} already shipped"
+		if o.status == "cancelled": return f"error: order {id} is cancelled"
 
 		total := o.total
 		lines := o.lines.clone()
 		s.orders.add(id.clone(), Order(status: "shipped", total: total, lines: lines))
 		return "ok"
 
-	return "error: unknown order {id}"
+	return f"error: unknown order {id}"
 
 fn report_cmd(var s: Store, t: List[String]) String:
 	if t.length() != 1: return "error: usage"
@@ -178,11 +178,11 @@ fn report_cmd(var s: Store, t: List[String]) String:
 		stock := s.stock.get(sku).get(0)
 		price := money(s.price.get(sku).get(0))
 		lines.append(
-			"{sku} stock={stock} price={price} reserved={reserved.get(sku).get(0)}"
+			f"{sku} stock={stock} price={price} reserved={reserved.get(sku).get(0)}"
 		)
 
-	lines.append("orders placed={placed} shipped={shipped} cancelled={cancelled}")
-	lines.append("revenue={money(revenue)}")
+	lines.append(f"orders placed={placed} shipped={shipped} cancelled={cancelled}")
+	lines.append(f"revenue={money(revenue)}")
 	return lines.join("\n")
 
 fn run(var s: Store, t: List[String]) String:

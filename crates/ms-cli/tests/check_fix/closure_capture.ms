@@ -4,5 +4,5 @@ type Hook:
 export fn main() Int:
     items: List[Int] := [1]
     hook := Hook(fn: items.length())
-    print("{items.length()}")
+    print(f"{items.length()}")
     return hook.run()

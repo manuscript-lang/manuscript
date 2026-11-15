@@ -18,8 +18,8 @@ LANGS := ["ts", "rust", "go", "ms"]
 // Token counts of `paths` from one tiktoken process; none when tiktoken is unavailable.
 fn count_tokens(paths: List[String]) List[Int]?:
 	program := "import sys, tiktoken; e = tiktoken.get_encoding('o200k_base'); [print(len(e.encode(open(p, encoding='utf-8').read()))) for p in sys.argv[1:]]"
-	quoted := paths.map(fn p: "'{p}'").join(" ")
-	ran := bash("python3 -c \"{program}\" {quoted}", ".", 600, "")
+	quoted := paths.map(fn p: f"'{p}'").join(" ")
+	ran := bash(f"python3 -c \"{program}\" {quoted}", ".", 600, "")
 	if ran.code != 0: return none
 
 	return ran.out.trim().split("\n").map(fn n: n.parse_int().get(0))
@@ -36,11 +36,11 @@ fn main() Int:
 		var row = List[String]()
 
 		for lang in LANGS:
-			refs := glob("{ch.dir}/solutions/{lang}", GlobOptions(patterns: ["*.ref"])).get(
+			refs := glob(f"{ch.dir}/solutions/{lang}", GlobOptions(patterns: ["*.ref"])).get(
 				[]
 			)
 			if not refs.is_empty(): row.append(
-				"{ch.dir}/solutions/{lang}/{refs[0].path}"
+				f"{ch.dir}/solutions/{lang}/{refs[0].path}"
 			)
 
 		if row.length() == LANGS.length():
@@ -73,16 +73,16 @@ fn main() Int:
 		out = (
 			out
 			+ names[i].pad_end(26, " ")
-			+ row.map(fn n: "{n}".pad_start(8, " ")).join("")
-			+ "  {ratio(row[3], row[0])}\n"
+			+ row.map(fn n: f"{n}".pad_start(8, " ")).join("")
+			+ f"  {ratio(row[3], row[0])}\n"
 		)
 
 	out = (
 		out
 		+ "total".pad_end(26, " ")
-		+ totals.map(fn n: "{n}".pad_start(8, " ")).join("")
-		+ "  {ratio(totals[3], totals[0])}\n"
+		+ totals.map(fn n: f"{n}".pad_start(8, " ")).join("")
+		+ f"  {ratio(totals[3], totals[0])}\n"
 	)
-	out += "ms/rust {ratio(totals[3], totals[1])}\n"
+	out += f"ms/rust {ratio(totals[3], totals[1])}\n"
 	stdout().write(out).get()
 	return 0

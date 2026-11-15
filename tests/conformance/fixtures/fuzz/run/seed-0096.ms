@@ -6,36 +6,36 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     l1 := [17]
-    say("l1 = {l1} len {l1.length()}")
+    say(f"l1 = {l1} len {l1.length()}")
 
     f2 := (
         ((355.715 / 0.0) - (0.0 * 558.789))
         / ((558.25 * 2.5) * (235.552 * 801.347))
     )
-    say("f2 = {f2}")
+    say(f"f2 = {f2}")
 
     b3 := (
-        "  padded  ".upper().starts_with("brace\{s\}")
+        "  padded  ".upper().starts_with("brace{s}")
         and "héllo".trim().starts_with("quote\"d")
     )
-    say("b3 = {b3}")
+    say(f"b3 = {b3}")
 
     f4 := f2
-    say("f4 = {f4}")
+    say(f"f4 = {f4}")
 
     i5 := (31 * (75780 * l1.length()))
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     i6 := l1.get(0)
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
-    s7 := ("{(50 * i5)}:" + "日本語".reverse().upper())
-    say("s7 = [{s7}]")
+    s7 := (f"{(50 * i5)}:" + "日本語".reverse().upper())
+    say(f"s7 = [{s7}]")
 
     s8 := (("Tab\there" + s7).upper() + ("quote\"d" + s7).lower())
-    say("s8 = [{s8}]")
+    say(f"s8 = [{s8}]")
     return 0

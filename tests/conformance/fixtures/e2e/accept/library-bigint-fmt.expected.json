@@ -1,7 +1,7 @@
 {
   "format": 1,
   "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
+  "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
     "fmt": "import (\n\tBigInt, parse from \"@std/math/math.ms\",\n\texpect_false from \"@std/test/test.ms\",\n)\n\nfn verify_bigint() Void!:\n\tlarge := parse(text: \"18446744073709551616\", radix: 10, max_digits: 30)?\n\t(\n\t\t(\n\t\t\tnot (\n\t\t\t\t((large).multiply(other: large)).to_string_radix(\n\t\t\t\t\tradix: 10\n\t\t\t\t) == \"340282366920938463463374607431768211456\"\n\t\t\t)\n\t\t)\n\t\t| expect_false?\n\t)\n\ntest \"large integers are exact\":\n\tverify_bigint()?\n"

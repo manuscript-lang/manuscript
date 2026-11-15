@@ -6,51 +6,51 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     b1 := "quote\"d".contains("MiXeD CaSe")
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
-    s2 := ("{(17 * (-11))}:" + "back\\slash".upper()).upper()
-    say("s2 = [{s2}]")
+    s2 := (f"{(17 * (-11))}:" + "back\\slash".upper()).upper()
+    say(f"s2 = [{s2}]")
 
     b3 := (((true or true) or "MiXeD CaSe".is_empty()) and (not (not b1)))
-    say("b3 = {b3}")
+    say(f"b3 = {b3}")
 
     i4 := ((-49) * ((430056 + 25) * ((-48) + (-25))))
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     i5 := (-10)
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     f6 := (((664.540 + 0.0) + 566.628) * ((68.839 / 539.375) / (9.0e5 + 710.25)))
-    say("f6 = {f6}")
+    say(f"f6 = {f6}")
 
     s7 := s2.clone()
-    say("s7 = [{s7}]")
+    say(f"s7 = [{s7}]")
 
     f8 := (8.5 + (800.554 - (f6 + 890.25)))
-    say("f8 = {f8}")
+    say(f"f8 = {f8}")
 
     l9 := [(-9), (-7)]
-    say("l9 = {l9} len {l9.length()}")
+    say(f"l9 = {l9} len {l9.length()}")
 
     s10 := (s2 + s2).upper().reverse()
-    say("s10 = [{s10}]")
+    say(f"s10 = [{s10}]")
 
     s11 := s7
-    say("s11 = [{s11}]")
+    say(f"s11 = [{s11}]")
     say(
-        "{((i4 / i5) * ((-16) / i5))} {i4} {(((i4 / i5) * ((-16) / i5)) < i4)} sum {((i4 / i5) * ((-16) / i5)) + i4}"
+        f"{((i4 / i5) * ((-16) / i5))} {i4} {(((i4 / i5) * ((-16) / i5)) < i4)} sum {((i4 / i5) * ((-16) / i5)) + i4}"
     )
 
     i12 := (((39 * (-582672814795)) + (i4 / 43)) + (((-25) / i4) + 226076))
-    say("i12 = {i12}")
+    say(f"i12 = {i12}")
 
     l13 := [22, 26, 19, 7]
-    say("l13 = {l13} len {l13.length()}")
+    say(f"l13 = {l13} len {l13.length()}")
     say(
-        "{(29 + l13.get(3))} {i4} {((29 + l13.get(3)) < i4)} sum {(29 + l13.get(3)) + i4}"
+        f"{(29 + l13.get(3))} {i4} {((29 + l13.get(3)) < i4)} sum {(29 + l13.get(3)) + i4}"
     )
     return 0

@@ -6,29 +6,29 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     f1 := (((837.088 * 361.160) * 701.228) * (6.5 * (347.25 + 522.25)))
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
 
     i2 := (((-4) + ((-3) - 880774)) - ((-6) - ((-9) - (-7))))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     l3 := [1, 2, 3].take(0)
-    say("l3 = {l3} len {l3.length()}")
+    say(f"l3 = {l3} len {l3.length()}")
 
     bad := [1, "two"]
     say(
-        "{(i2 * (i2 * i2))} {(((-40) - i2) + l3.length())} {((i2 * (i2 * i2)) < (((-40) - i2) + l3.length()))} sum {(i2 * (i2 * i2)) + (((-40) - i2) + l3.length())}"
+        f"{(i2 * (i2 * i2))} {(((-40) - i2) + l3.length())} {((i2 * (i2 * i2)) < (((-40) - i2) + l3.length()))} sum {(i2 * (i2 * i2)) + (((-40) - i2) + l3.length())}"
     )
 
     i4 := ((l3.length() - l3.length()) - ((i2 * (-9)) * (i2 + i2)))
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     b5 := (not ("beta".is_empty() and (true or false)))
-    say("b5 = {b5}")
+    say(f"b5 = {b5}")
 
     f6 := f1
-    say("f6 = {f6}")
+    say(f"f6 = {f6}")
     return 0

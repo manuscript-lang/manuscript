@@ -45,14 +45,14 @@ fn decode(input: Bytes, size: Int, limits: JsonOptions = JsonOptions()) List[Str
 	return ok(out)
 
 test "values split at every chunk size are preserved":
-	source := "\{\"a\":\"é🙂\\u00e9\\\"x\}\{\",\"n\":9007199254740993,\"l\":[1,[true,null]]\}\n\"s\"[1]\{\"b\":2\}  42"
+	source := "{\"a\":\"é🙂\\u00e9\\\"x}{\",\"n\":9007199254740993,\"l\":[1,[true,null]]}\n\"s\"[1]{\"b\":2}  42"
 	expected := [
-		"\{\"a\":\"é🙂é\\\"x\}\{\",\"n\":9007199254740993,\"l\":[1,[true,null]]\}",
-		"\"s\"", "[1]", "\{\"b\":2\}", "42"
+		"{\"a\":\"é🙂é\\\"x}{\",\"n\":9007199254740993,\"l\":[1,[true,null]]}",
+		"\"s\"", "[1]", "{\"b\":2}", "42"
 	]
 	input := source.to_bytes()
 	for size in 1..input.length() + 1:
-		if (decode(input.clone(), size)?) != expected: return fail("chunk size {size}")
+		if (decode(input.clone(), size)?) != expected: return fail(f"chunk size {size}")
 
 test "typed values decode as parse does":
 	var numbers = json_reader[Int](chunked("1 2\n3".to_bytes(), 2))
@@ -69,10 +69,10 @@ test "typed values decode as parse does":
 	expect_equal(sum, 6)?
 
 test "truncated and malformed input fails the read":
-	for text in ["\{\"a\":[1", "\"open", "x", "[1]]", "truex y"]:
-		outcome := decode("{text} ".to_bytes(), 3)
+	for text in ["{\"a\":[1", "\"open", "x", "[1]]", "truex y"]:
+		outcome := decode(f"{text} ".to_bytes(), 3)
 
-		if text == "\{\"a\":[1" or text == "\"open":
+		if text == "{\"a\":[1" or text == "\"open":
 			cut := decode(text.to_bytes(), 3)
 			expect_equal(cut.err().kind, "EBADMSG")?
 		else:
@@ -98,6 +98,6 @@ test "negative limits fail the first read with EINVAL for every input":
 		JsonOptions(max_depth: -1),
 		JsonOptions(max_values: -1),
 	]:
-		for input in ["", "  ", "1", "\{\}", "\{\"a\":[1"]:
+		for input in ["", "  ", "1", "{}", "{\"a\":[1"]:
 			outcome := decode(input.to_bytes(), 2, limits.clone())
 			expect_equal(outcome.err().kind, "EINVAL")?

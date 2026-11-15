@@ -24,7 +24,7 @@ fn main() Void:
 	var check = 0
 	for i in 0..sorted.length():
 		check = (check * 31 + sorted[i].score + i) % 1000000007
-	print("records: {sorted.length()}")
-	print("checksum: {check}")
+	print(f"records: {sorted.length()}")
+	print(f"checksum: {check}")
 	for i in [0, 1, 2, sorted.length() - 1]:
-		print("{sorted[i].name} {sorted[i].score}")
+		print(f"{sorted[i].name} {sorted[i].score}")

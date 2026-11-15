@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -16,35 +16,35 @@ fn gcd(a: Int, b: Int) Int:
 
 export fn main() Int:
     f1 := (((4.5 + 361.506) + (8.0e7 + 494.188)) / (494.148 / (210.114 + 599.582)))
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
 
     f2 := (3.0e16 - ((890.505 + f1) - (7.0e13 + 852.447)))
-    say("f2 = {f2}")
+    say(f"f2 = {f2}")
 
     f3 := (((f1 - f2) + (644.25 - f2)) + ((f2 / 9.5) / (f1 * 745.538)))
-    say("f3 = {f3}")
+    say(f"f3 = {f3}")
 
     f4 := (9.5 * ((4.5 + f1) / (857.850 - f1)))
-    say("f4 = {f4}")
-    say("gcd(1574, 1491) = {gcd(1574, 1491)}")
+    say(f"f4 = {f4}")
+    say(f"gcd(1574, 1491) = {gcd(1574, 1491)}")
 
     f5 := f2
-    say("f5 = {f5}")
+    say(f"f5 = {f5}")
 
     s6 := "日本語"
-    say("s6 = [{s6}]")
+    say(f"s6 = [{s6}]")
     say(
-        "{((-726765) - (664995348821 + 713713))} {(-44)} {(((-726765) - (664995348821 + 713713)) < (-44))} sum {((-726765) - (664995348821 + 713713)) + (-44)}"
+        f"{((-726765) - (664995348821 + 713713))} {(-44)} {(((-726765) - (664995348821 + 713713)) < (-44))} sum {((-726765) - (664995348821 + 713713)) + (-44)}"
     )
 
     f8 := (f3 * (f1 * f3))
-    say("f8 = {f8}")
+    say(f"f8 = {f8}")
 
     f9 := (((f1 - f4) + (f8 + f4)) * f3)
-    say("f9 = {f9}")
+    say(f"f9 = {f9}")
 
     l10 := [20, 30, (-10), 8]
-    say("l10 = {l10} len {l10.length()}")
+    say(f"l10 = {l10} len {l10.length()}")
 
     var acc11 = 0
 
@@ -54,7 +54,7 @@ export fn main() Int:
         else:
             acc11 -= 1
 
-    say("acc11 = {acc11}")
+    say(f"acc11 = {acc11}")
 
     if ((398.25 * f5) < 625.325):
         say("quote\"d")
@@ -64,8 +64,8 @@ export fn main() Int:
     var acc12 = 0
     for i in 0..2:
         acc12 += i * 9
-    say("acc12 = {acc12}")
+    say(f"acc12 = {acc12}")
 
     big13 := -9223372036854775808
-    say("{-big13}")
+    say(f"{-big13}")
     return 0

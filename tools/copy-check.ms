@@ -35,11 +35,11 @@ fn main() Int:
 			"tests/ownership-counts"
 		]:
 			for f in glob(dir, GlobOptions(patterns: ["**/*.ms"])).get([]):
-				files.append("{dir}/{f.path}")
+				files.append(f"{dir}/{f.path}")
 
 	ms := tool_ms(root.clone())
 	scratch := temporary("ms-copy-").get()
-	binary := "{scratch.path()}/program"
+	binary := f"{scratch.path()}/program"
 	var env = Map[String, String]()
 	env.add("MS_COPY_PROBE", "1")
 	env.add("MS_CACHE", "off")
@@ -49,7 +49,7 @@ fn main() Int:
 	var failing = 0
 
 	for f in files:
-		absolute := "{root}/{f}"
+		absolute := f"{root}/{f}"
 		source := read_file(absolute.clone()).wait().get().decode_utf8().get("")
 		var command = List[String]()
 
@@ -72,10 +72,10 @@ fn main() Int:
 
 			failing += 1
 			total += sites.length()
-			for site in sites: print("copy: {f}\t{site}")
+			for site in sites: print(f"copy: {f}\t{site}")
 
 	change_directory(root).get()
-	print("swept {swept} programs, {total} object copies in {failing}")
+	print(f"swept {swept} programs, {total} object copies in {failing}")
 
 	if swept == 0:
 		print("no program was built")

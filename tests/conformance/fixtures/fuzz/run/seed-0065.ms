@@ -6,32 +6,32 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     f1 := 521.25
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
 
     i2 := ((36 - ((-9) * 363069819608)) * (-46))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     b3 := (((f1 * f1) != 5.5) and (not true))
-    say("b3 = {b3}")
+    say(f"b3 = {b3}")
 
     i4 := i2
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     s5 := "日本語"
-    say("s5 = [{s5}]")
+    say(f"s5 = [{s5}]")
 
     b6 := (((112.386 * f1) * (f1 * f1)) == 0.0)
-    say("b6 = {b6}")
+    say(f"b6 = {b6}")
 
     l7 := [1, 2, 3].take(0)
-    say("l7 = {l7} len {l7.length()}")
+    say(f"l7 = {l7} len {l7.length()}")
 
     f8 := (((1.0e-2 - f1) * (889.146 + f1)) - f1)
-    say("f8 = {f8}")
+    say(f"f8 = {f8}")
 
     if (s5 == "hello world"):
         say(s5)
@@ -39,26 +39,26 @@ export fn main() Int:
         say("line\nbreak".replace("hello world", "日本語"))
 
     l9 := l7.map(fn x: x + 1).filter(fn x: x % 2 == 0)
-    say("l9 = {l9} len {l9.length()}")
+    say(f"l9 = {l9} len {l9.length()}")
 
     i10 := i2
-    say("i10 = {i10}")
+    say(f"i10 = {i10}")
 
     f11 := ((7.25 / (606.498 / 0.0)) + ((729.787 * f1) + 8.5))
-    say("f11 = {f11}")
+    say(f"f11 = {f11}")
 
     i12 := 854935
-    say("i12 = {i12}")
+    say(f"i12 = {i12}")
 
     s13 := ("x" + s5.lower()).trim()
-    say("s13 = [{s13}]")
+    say(f"s13 = [{s13}]")
 
     i14 := (((-48) * (i2 + i2)) - ((i10 + i2) + (i4 - i4)))
-    say("i14 = {i14}")
+    say(f"i14 = {i14}")
 
     b15 := ((-((-3) - i14)) == ((-i12) - ((-31) % 35)))
-    say("b15 = {b15}")
+    say(f"b15 = {b15}")
 
     big16 := -9223372036854775808
-    say("{big16 - 3}")
+    say(f"{big16 - 3}")
     return 0

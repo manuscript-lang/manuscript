@@ -74,8 +74,8 @@ test "tail Results evaluate once and retain payload identity":
 test "tail Results preserve cleanup on success and failure":
 	var visits: List[Int] = []
 	temporary := temporary("manuscript-tail-") | expect_ok?
-	first := "{temporary.path()}/first"
-	second := "{temporary.path()}/second"
+	first := f"{temporary.path()}/first"
+	second := f"{temporary.path()}/second"
 	(
 		tail_cleanup(Result[Int, Error].ok(42), var visits, first.clone()).get()
 		| expect_equal(42)?

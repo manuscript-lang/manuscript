@@ -25,15 +25,15 @@ extern fn greet_hello(name: String) String
 
 fn describe(result: Result[Int, DivideError]) String:
     if value := result:
-        return "ok {value}"
+        return f"ok {value}"
 
-    return "error {text(result.err())}"
+    return f"error {text(result.err())}"
 
 fn shout(result: Result[String, DivideError]) String:
     if value := result:
         return value.clone()
 
-    return "error {text(result.err())}"
+    return f"error {text(result.err())}"
 
 fn main() Void:
     var out = stdout()

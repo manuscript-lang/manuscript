@@ -78,13 +78,13 @@ export fn main() Int:
         else: s_other += 1
 
     var lines = List[String]()
-    lines.append("valid: {records.length()}")
-    lines.append("malformed: {malformed}")
-    lines.append("DEBUG: {levels.get_or("DEBUG", 0)}")
-    lines.append("INFO: {levels.get_or("INFO", 0)}")
-    lines.append("WARN: {levels.get_or("WARN", 0)}")
-    lines.append("ERROR: {levels.get_or("ERROR", 0)}")
-    lines.append("status: 2xx={s2} 3xx={s3} 4xx={s4} 5xx={s5} other={s_other}")
+    lines.append(f"valid: {records.length()}")
+    lines.append(f"malformed: {malformed}")
+    lines.append(f"DEBUG: {levels.get_or("DEBUG", 0)}")
+    lines.append(f"INFO: {levels.get_or("INFO", 0)}")
+    lines.append(f"WARN: {levels.get_or("WARN", 0)}")
+    lines.append(f"ERROR: {levels.get_or("ERROR", 0)}")
+    lines.append(f"status: 2xx={s2} 3xx={s3} 4xx={s4} 5xx={s5} other={s_other}")
 
     if records.length() == 0:
         lines.append("p95: 0")
@@ -92,14 +92,14 @@ export fn main() Int:
         sorted_records := records.sorted(fn a, b: a.latency - b.latency)
         n := sorted_records.length()
         rank_index := (95 * n + 99) / 100 - 1
-        lines.append("p95: {sorted_records[rank_index].latency_text}")
+        lines.append(f"p95: {sorted_records[rank_index].latency_text}")
 
         var slowest = 0
         for i in 0..records.length():
             if records[i].latency > records[slowest].latency: slowest = i
 
         s := records[slowest]
-        lines.append("slowest: {s.latency_text} {s.method} {s.path} {s.timestamp}")
+        lines.append(f"slowest: {s.latency_text} {s.method} {s.path} {s.timestamp}")
 
     lines.append("top:")
 
@@ -125,7 +125,7 @@ export fn main() Int:
 
         for i in 0..shown:
             s := stats[i]
-            lines.append("{s.path} {s.count} avg={s.total / s.count}")
+            lines.append(f"{s.path} {s.count} avg={s.total / s.count}")
 
     stdout().write(lines.join("\n") + "\n").get()
     return 0

@@ -94,7 +94,7 @@ fn text_build_parse(n: Int) Int:
 	var i = 0
 
 	while i < n:
-		b.append("{i * 31 % 1000},")
+		b.append(f"{i * 31 % 1000},")
 		i += 1
 
 	parts := b.build().split(",")
@@ -108,7 +108,7 @@ fn word_map(n: Int) Int:
 	var i = 0
 
 	while i < 1000:
-		words.append("word{i}")
+		words.append(f"word{i}")
 		i += 1
 
 	var m = Map[String, Int]()
@@ -148,7 +148,7 @@ fn records(n: Int) Int:
 	var i = 0
 
 	while i < n:
-		items.append(Item(i * 7919 % 10007, "n{i % 100}"))
+		items.append(Item(i * 7919 % 10007, f"n{i % 100}"))
 		i += 1
 
 	var total = 0
@@ -276,7 +276,7 @@ fn chars(n: Int) Int:
 fn timed(name: String, run: fn() Int) Void:
 	t := monotonic()
 	r := run()
-	say("{name} {monotonic().difference(t).to_nanoseconds() / 1000} {r}\n")
+	say(f"{name} {monotonic().difference(t).to_nanoseconds() / 1000} {r}\n")
 
 fn main() Int:
 	timed("call_fib_36", fn() Int: return fib(36))

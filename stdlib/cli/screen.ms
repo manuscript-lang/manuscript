@@ -52,44 +52,44 @@ fn var Screen.render(rows: List[String], cursor_row: Int, cursor_column: Int) St
 		not self.previous.is_empty()
 		and diff < self.previous.length() - self.height
 	)
-	var out = "{esc}[?2026h"
+	var out = f"{esc}[?2026h"
 	var at = self.cursor_row
 
 	if unreachable:
 		// A changed row scrolled out of reach: clear screen and scrollback and draw
 		// everything.
-		out = "{out}{esc}[2J{esc}[3J{esc}[H"
+		out = f"{out}{esc}[2J{esc}[3J{esc}[H"
 		at = 0
 		diff = 0
 	else:
 		target := if diff > last: last else: diff
 		target_row := if target < 0: 0 else: target
-		out = "{out}{vertical(at, target_row)}"
+		out = f"{out}{vertical(at, target_row)}"
 		at = target_row
 
 		if diff > last and last >= 0 and diff < rows.length():
 			// Only new rows: step below the last drawn one.
-			out = "{out}\r\n"
+			out = f"{out}\r\n"
 			at = diff
 
 	var i = diff
 
 	while i < rows.length():
-		out = "{out}{esc}[2K{rows[i]}"
+		out = f"{out}{esc}[2K{rows[i]}"
 		at = i
 
 		if i < rows.length() - 1:
-			out = "{out}\r\n"
+			out = f"{out}\r\n"
 			at = i + 1
 
 		i += 1
 
-	out = "{out}{esc}[J"
+	out = f"{out}{esc}[J"
 
 	goal := if cursor_row < 0: 0 else: cursor_row
-	out = "{out}{vertical(at, goal)}"
-	if cursor_column > 0: out = "{out}{esc}[{cursor_column}C"
-	out = "{out}{esc}[?2026l"
+	out = f"{out}{vertical(at, goal)}"
+	if cursor_column > 0: out = f"{out}{esc}[{cursor_column}C"
+	out = f"{out}{esc}[?2026l"
 	self.previous = rows.clone()
 	self.cursor_row = goal
 	return out
@@ -124,7 +124,7 @@ fn first_difference(before: List[String], after: List[String]) Int:
 // The sequence moving the cursor from row `from` to row `to` within the block, then to
 // the line start.
 fn vertical(from: Int, to: Int) String:
-	if from > to: return "{esc}[{from - to}A\r"
-	if from < to: return "{esc}[{to - from}B\r"
+	if from > to: return f"{esc}[{from - to}A\r"
+	if from < to: return f"{esc}[{to - from}B\r"
 
 	return "\r"

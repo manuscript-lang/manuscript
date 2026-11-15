@@ -9,4 +9,4 @@ test "string conversion":
     convert: fn() String := count.to_string
     _direct := count.to_string()
     _bound := convert()
-    _embedded := "{count}"
+    _embedded := f"{count}"

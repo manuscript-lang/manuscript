@@ -10,5 +10,5 @@ fn main() Int:
 	if r.is_ok():
 		void e.write("flush ok\n")
 	else:
-		void e.write("flush failed: {r.err().message} {r.err().kind}\n")
+		void e.write(f"flush failed: {r.err().message} {r.err().kind}\n")
 	return 0

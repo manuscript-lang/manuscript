@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -16,48 +16,48 @@ fn gcd(a: Int, b: Int) Int:
 
 export fn main() Int:
     i1 := ((-852995482478) * (((-12) + (-11)) + ((-9) - 46)))
-    say("i1 = {i1}")
-    say("gcd(3431, 2601) = {gcd(3431, 2601)}")
+    say(f"i1 = {i1}")
+    say(f"gcd(3431, 2601) = {gcd(3431, 2601)}")
 
     f2 := 3.0e2
-    say("f2 = {f2}")
+    say(f"f2 = {f2}")
 
     i3 := (i1 + (-(i1 % i1)))
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     s4 := "a".reverse().lower().lower()
-    say("s4 = [{s4}]")
+    say(f"s4 = [{s4}]")
 
     i5 := (-47)
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     f6 := (f2 * ((2.734 + f2) + (50.270 * f2)))
-    say("f6 = {f6}")
+    say(f"f6 = {f6}")
 
     l7 := [1, 2, 3].take(0)
-    say("l7 = {l7} len {l7.length()}")
+    say(f"l7 = {l7} len {l7.length()}")
 
     b8 := ((-(i1 * i5)) == ((i3 / i5) - ((-9) + (-8))))
-    say("b8 = {b8}")
+    say(f"b8 = {b8}")
 
     i9 := (((i3 - 32) - ((-48) * i1)) % i1)
-    say("i9 = {i9}")
+    say(f"i9 = {i9}")
 
     l10 := [21, 5]
-    say("l10 = {l10} len {l10.length()}")
+    say(f"l10 = {l10} len {l10.length()}")
 
     i11 := (i5 / (((-39) * i5) - (-211509)))
-    say("i11 = {i11}")
+    say(f"i11 = {i11}")
 
     i12 := s4.scalar_length()
-    say("i12 = {i12}")
+    say(f"i12 = {i12}")
     say(
-        "{(s4.scalar_length() + (i1 * i5))} {(-5)} {((s4.scalar_length() + (i1 * i5)) < (-5))} sum {(s4.scalar_length() + (i1 * i5)) + (-5)}"
+        f"{(s4.scalar_length() + (i1 * i5))} {(-5)} {((s4.scalar_length() + (i1 * i5)) < (-5))} sum {(s4.scalar_length() + (i1 * i5)) + (-5)}"
     )
 
     i13 := (-26)
-    say("i13 = {i13}")
+    say(f"i13 = {i13}")
 
     f14 := ((f6 + (f2 + f2)) + ((133.398 / f2) + f2))
-    say("f14 = {f14}")
+    say(f"f14 = {f14}")
     return 0

@@ -6,20 +6,20 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     b1 := "naïve".upper().is_empty()
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
     s2 := "42"
-    say("s2 = [{s2}]")
+    say(f"s2 = [{s2}]")
 
     b3 := (s2.upper().ends_with("日本語") and ((-19) > (-18)))
-    say("b3 = {b3}")
+    say(f"b3 = {b3}")
 
     l4 := [28, 26]
-    say("l4 = {l4} len {l4.length()}")
+    say(f"l4 = {l4} len {l4.length()}")
 
     bad := undefined_name + 1
     return 0

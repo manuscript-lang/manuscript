@@ -6,16 +6,16 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     var acc1 = 0
     for i in 0..3:
         acc1 += i * (-5)
-    say("acc1 = {acc1}")
+    say(f"acc1 = {acc1}")
 
     f2 := ((522.194 * 924.132) * ((4.0e24 - 54.955) - (125.094 / 495.250)))
-    say("f2 = {f2}")
+    say(f"f2 = {f2}")
 
     _bad := say
     return 0

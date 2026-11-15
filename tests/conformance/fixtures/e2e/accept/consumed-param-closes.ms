@@ -11,7 +11,7 @@ type Door:
 	log: String
 
 fn var Door.close() Void!:
-	void append_file(self.log, "{self.id},").wait()
+	void append_file(self.log, f"{self.id},").wait()
 
 fn logged(path: String) String:
 	read := read_file(path).wait()
@@ -25,7 +25,7 @@ fn keep_if(d: Door, keep: Bool) Door?:
 
 test "a parameter the callee drops on some path is closed there":
 	tmp := temporary("ms-log-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	kept := keep_if(Door(1, log.clone()), true)
 	logged(log.clone()) | expect_equal("")?
 
@@ -36,7 +36,7 @@ test "a parameter the callee drops on some path is closed there":
 
 test "a bound resource passed to such a callee closes once":
 	tmp := temporary("ms-log-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	door := Door(3, log.clone())
 	dropped := keep_if(door, false)
 	logged(log.clone()) | expect_equal("3,")?

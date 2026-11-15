@@ -6,16 +6,16 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     s1 := (
         "line\nbreak".upper().replace("ms", "")
         + (("ms" + "beta") + "delta".lower())
     )
-    say("s1 = [{s1}]")
+    say(f"s1 = [{s1}]")
 
     i2 := (-((-3) * (768748 + (-19))))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
     return "not an int"
     return 0

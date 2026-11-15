@@ -6,27 +6,27 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := (-(21 / ((-48) + (-15))))
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     bad := [1, 2].get("x")
     var acc2 = 0
     for i in 0..5:
         acc2 += i * 0
-    say("acc2 = {acc2}")
+    say(f"acc2 = {acc2}")
 
     l3 := [(-23), 10, (-1), 8]
-    say("l3 = {l3} len {l3.length()}")
+    say(f"l3 = {l3} len {l3.length()}")
 
     i4 := l3.length()
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     i5 := (i1 - l3.length())
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     i6 := i1
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
     return 0

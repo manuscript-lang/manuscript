@@ -87,7 +87,7 @@ test "verify rejects a wrong key, a tampered body and a different algorithm":
 			secret,
 		) | expect_ok?
 	)
-	swapped := "{parts[0]}.{forged.split(".")[1]}.{parts[2]}"
+	swapped := f"{parts[0]}.{forged.split(".")[1]}.{parts[2]}"
 	(
 		(failure(verify_token[Session](swapped, secret))?)
 		| expect_equal(Error("jwt: bad signature", kind: "EBADMSG"))?
@@ -240,9 +240,9 @@ test "verify rejects registered claims of the wrong type":
 	secret := "secret".to_bytes()
 	wrong := Error("jwt: nbf must be a number", kind: "EBADMSG")
 	cases := [
-		"\{\"nbf\":\"tomorrow\"\}", "\{\"nbf\":null\}", "\{\"exp\":\"never\"\}",
-		"\{\"exp\":[1]\}", "\{\"aud\":[123]\}", "\{\"aud\":[123,\"wanted\"]\}",
-		"\{\"aud\":7\}"
+		"{\"nbf\":\"tomorrow\"}", "{\"nbf\":null}", "{\"exp\":\"never\"}",
+		"{\"exp\":[1]}", "{\"aud\":[123]}", "{\"aud\":[123,\"wanted\"]}",
+		"{\"aud\":7}"
 	]
 
 	for text in cases:
@@ -253,7 +253,7 @@ test "verify rejects registered claims of the wrong type":
 
 	nbf := (
 		sign_token(
-			(parse("\{\"nbf\":\"tomorrow\"\}") | expect_ok?),
+			(parse("{\"nbf\":\"tomorrow\"}") | expect_ok?),
 			secret,
 		) | expect_ok?
 	)
@@ -261,7 +261,7 @@ test "verify rejects registered claims of the wrong type":
 
 	fine := (
 		sign_token(
-			(parse("\{\"aud\":[\"wanted\"],\"exp\":200\}") | expect_ok?),
+			(parse("{\"aud\":[\"wanted\"],\"exp\":200}") | expect_ok?),
 			secret,
 		) | expect_ok?
 	)

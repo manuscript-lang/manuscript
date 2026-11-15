@@ -14,10 +14,10 @@ right: print("hi")
 setup: import stdout from "@std/io/io.ms"
 diag: this statement discards
 
-wrong: f"n={n}"
-right: "n={n}"
+wrong: "n={n}"
+right: f"n={n}"
 body: n := 1;;print({})
-diag: no f-string prefix
+diag: -
 
 wrong: elif c:
 right: else if c:

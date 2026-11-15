@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -23,17 +23,17 @@ fn fib(n: Int) Int:
 
 export fn main() Int:
     if ((64.225 + 397.315) != (7.0e24 - 129.189)):
-        say(("{(40 % (-386194))}:" + "x"))
+        say((f"{(40 % (-386194))}:" + "x"))
     else:
         say("alpha".upper())
 
-    say("fib(56) = {fib(56)}")
+    say(f"fib(56) = {fib(56)}")
 
     l1 := [1, 2, 3].take(0)
-    say("l1 = {l1} len {l1.length()}")
+    say(f"l1 = {l1} len {l1.length()}")
 
     i2 := ((((-4) - (-15)) - (784513 - 239163325225)) % (-49))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     bad := Map[Int, Int]().get(1, 2, 3)
 
@@ -43,5 +43,5 @@ export fn main() Int:
         say("42".reverse())
 
     b3 := false
-    say("b3 = {b3}")
+    say(f"b3 = {b3}")
     return 0

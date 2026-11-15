@@ -9,7 +9,7 @@ fn churn(n: Int) Int:
 	var t = 0
 
 	for i in 0..n:
-		z := "junk{i}" + "padding padding padding"
+		z := f"junk{i}" + "padding padding padding"
 		t += z.length()
 
 	return t

@@ -6,14 +6,14 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     s1 := "line\nbreak"
-    say("s1 = [{s1}]")
+    say(f"s1 = [{s1}]")
 
     i2 := (-(-6))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     var acc3 = 0
     var stepacc3 = 0
@@ -22,44 +22,44 @@ export fn main() Int:
         stepacc3 += 1
         acc3 += stepacc3 * stepacc3 + (-2)
 
-    say("acc3 = {acc3}")
+    say(f"acc3 = {acc3}")
 
     b4 := s1.trim().upper().starts_with("  padded  ")
-    say("b4 = {b4}")
+    say(f"b4 = {b4}")
 
     i5 := (((i2 - i2) + ((-37) % i2)) + i2)
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     f6 := (((778.180 * 781.549) / (8.5 * 882.635)) * 327.425)
-    say("f6 = {f6}")
+    say(f"f6 = {f6}")
 
     i7 := (-598705)
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
     s8 := ("x".lower().replace("back\\slash", s1) + s1.trim())
-    say("s8 = [{s8}]")
+    say(f"s8 = [{s8}]")
     say(
-        "{((34 - i2) / (-i2))} {(18 % (i7 + (-65337)))} {(((34 - i2) / (-i2)) < (18 % (i7 + (-65337))))} sum {((34 - i2) / (-i2)) + (18 % (i7 + (-65337)))}"
+        f"{((34 - i2) / (-i2))} {(18 % (i7 + (-65337)))} {(((34 - i2) / (-i2)) < (18 % (i7 + (-65337))))} sum {((34 - i2) / (-i2)) + (18 % (i7 + (-65337)))}"
     )
 
     i9 := s1.scalar_length()
-    say("i9 = {i9}")
+    say(f"i9 = {i9}")
 
     l10 := [(-5)]
-    say("l10 = {l10} len {l10.length()}")
+    say(f"l10 = {l10} len {l10.length()}")
 
     i11 := (i9 + i9)
-    say("i11 = {i11}")
+    say(f"i11 = {i11}")
 
     b12 := ((l10.get(0) < l10.length()) or ("日本語" + s1).starts_with(s8))
-    say("b12 = {b12}")
+    say(f"b12 = {b12}")
 
     l13 := l10.concat(l10)
-    say("l13 = {l13} len {l13.length()}")
+    say(f"l13 = {l13} len {l13.length()}")
 
     l14 := [(-24), 20]
-    say("l14 = {l14} len {l14.length()}")
+    say(f"l14 = {l14} len {l14.length()}")
 
     big15 := -9223372036854775808
-    say("{-big15}")
+    say(f"{-big15}")
     return 0

@@ -131,7 +131,7 @@ test "HTTPS trusts only the explicitly supplied local test root":
 	var response = (
 		client.request(
 			method: HttpMethod.Get,
-			url: "https://{server.address()}/",
+			url: f"https://{server.address()}/",
 			headers: (text_headers(Map[String, String]())?),
 			body: "",
 			timeout: 2.seconds(),
@@ -194,7 +194,7 @@ test "HTTP/2 negotiates through ALPN and reports the protocol on both sides":
 	var response = (
 		client.request(
 			method: HttpMethod.Get,
-			url: "https://{server.address()}/",
+			url: f"https://{server.address()}/",
 			headers: (text_headers(Map[String, String]())?),
 			body: "",
 			timeout: 2.seconds(),

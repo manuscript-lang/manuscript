@@ -102,7 +102,7 @@ type Tracked:
 fn var Tracked.close() Void!:
     if not self.closed:
         self.closed = true
-        print("close {self.name}")
+        print(f"close {self.name}")
 
 fn work() Void!:
     _first := Tracked("first")

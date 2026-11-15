@@ -59,7 +59,7 @@ type Options:
 	timeout: Int = 900
 	keep: Bool = false
 	tag: String = ""
-	out: String = "{root()}/results/runs.jsonl"
+	out: String = f"{root()}/results/runs.jsonl"
 
 fn split_ids(text: String) List[String]:
 	return text.split(",").filter(fn x: not x.is_empty())
@@ -68,20 +68,20 @@ fn split_ids(text: String) List[String]:
 // without tiktoken.
 fn llm_tokens(path: String) Int?:
 	program := "import sys, tiktoken; print(len(tiktoken.get_encoding('o200k_base').encode(open(sys.argv[1], errors='replace').read(), disallowed_special=())))"
-	ran := bash("python3 -c \"{program}\" \"{path}\"", ".", 60, "")
+	ran := bash(f"python3 -c \"{program}\" \"{path}\"", ".", 60, "")
 	if ran.code != 0: return none
 
 	return ran.out.trim().parse_int()
 
 fn reference_for(ch: Challenge, lang: Lang) String:
-	return "{ch.solution(lang.template)}/{lang.reference()}"
+	return f"{ch.solution(lang.template)}/{lang.reference()}"
 
 // Whether a trial hit a compiler crash. Such a trial keeps its whole workspace,
 // so the crash has a reproducer: the transcript, the last build output, or the
 // grading build mentions an internal error or a Rust panic.
 fn keep_ice(said: String, ws: String, g: Grade) Bool:
-	last := read_text("{ws}/.bench/build.out")
-	text := "{said}\n{last}\n{g.error.get("")}"
+	last := read_text(f"{ws}/.bench/build.out")
+	text := f"{said}\n{last}\n{g.error.get("")}"
 	return (
 		text.contains("internal error")
 		or text.contains("internal compiler error")
@@ -100,22 +100,26 @@ fn run_one(
 ) RunRecord:
 	run_id := uuid_v4().get("").replace("-", "").view(0, 10).clone()
 	base := temporary_directory("agent-bench-").get()
-	ws := "{base}/ws"
+	ws := f"{base}/ws"
 	prompt := make_workspace(ch, lang, ws)
-	transcripts := "{root()}/results/transcripts"
+	transcripts := f"{root()}/results/transcripts"
 	create_directory(transcripts, recursive: true).get()
 
-	transcript := "{transcripts}/{run_id}.log"
+	transcript := f"{transcripts}/{run_id}.log"
 	var agent = AgentRun(Usage(), 0.0, 0, false)
 
 	if h.name() == "oracle":
 		src := reference_for(ch, lang)
 		size := stat(src).to_optional()
 		create_directory(
-			"{ws}/{lang.solution.split("/").take(lang.solution.split("/").length() - 1).join("/")}",
+			f"{ws}/{lang.solution.split("/").take(lang.solution.split("/").length() - 1).join("/")}",
 			recursive: true,
 		).get()
-		if size.is_some(): copy(src, "{ws}/{lang.solution}", CopyOptions(replace: true)).get()
+		if size.is_some(): copy(
+			src,
+			f"{ws}/{lang.solution}",
+			CopyOptions(replace: true),
+		).get()
 	else:
 		limit := if ch.agent_timeout_s > timeout_s: ch.agent_timeout_s else: timeout_s
 		agent = run_agent(h, prompt, model, ws, limit, transcript)
@@ -130,11 +134,11 @@ fn run_one(
 		or said.contains("hidden/cases.json")
 	)
 	var g = grade(ch, lang, ws)
-	sol := "{ws}/{lang.solution}"
+	sol := f"{ws}/{lang.solution}"
 
 	if stat(sol).is_ok() and h.name() != "oracle":
-		copied := "{root()}/results/sources/{run_id}{lang.suffix()}"
-		create_directory("{root()}/results/sources", recursive: true).get()
+		copied := f"{root()}/results/sources/{run_id}{lang.suffix()}"
+		create_directory(f"{root()}/results/sources", recursive: true).get()
 		copy(sol, copied, CopyOptions(replace: true)).get()
 		g.llm_tokens = llm_tokens(sol)
 
@@ -166,28 +170,28 @@ fn run_one(
 	append_file(out_file, dumps_data(rec, 0) + "\n").wait().get()
 
 	if keep_ice(said, ws, g):
-		saved := "{root()}/results/ice/{run_id}"
-		create_directory("{root()}/results/ice", recursive: true).get()
+		saved := f"{root()}/results/ice/{run_id}"
+		create_directory(f"{root()}/results/ice", recursive: true).get()
 		bash(
-			"cp -r \"{ws}\" \"{saved}\" && rm -rf \"{saved}/target\" \"{saved}/node_modules\" \"{saved}/.git\"",
+			f"cp -r \"{ws}\" \"{saved}\" && rm -rf \"{saved}/target\" \"{saved}/node_modules\" \"{saved}/.git\"",
 			".",
 			120,
 			"",
 		)
-		print("  internal compiler error; workspace saved: {saved}")
+		print(f"  internal compiler error; workspace saved: {saved}")
 
-	if stat("{ws}/.bench/first-build.out").is_ok():
-		first := "{root()}/results/first-builds/{run_id}"
-		create_directory("{root()}/results/first-builds", recursive: true).get()
+	if stat(f"{ws}/.bench/first-build.out").is_ok():
+		first := f"{root()}/results/first-builds/{run_id}"
+		create_directory(f"{root()}/results/first-builds", recursive: true).get()
 		bash(
-			"mkdir -p \"{first}\" && cp \"{ws}/.bench/first-build.out\" \"{first}/error.txt\" && cp -r \"{ws}/.bench/first-src\" \"{first}/src\"",
+			f"mkdir -p \"{first}\" && cp \"{ws}/.bench/first-build.out\" \"{first}/error.txt\" && cp -r \"{ws}/.bench/first-src\" \"{first}/src\"",
 			".",
 			120,
 			"",
 		)
 
 	if keep:
-		print("  workspace kept: {ws}")
+		print(f"  workspace kept: {ws}")
 	else:
 		remove(base, recursive: true).get()
 
@@ -217,7 +221,7 @@ fn work(items: List[Job], harness: String, o: Options, tag: String) Int:
 		(
 			stdout()
 			.write(
-				"{verdict} {item.challenge.id} {item.language.id} {rec.grade.passed}/{rec.grade.total} turns={rec.usage.turns} cost=${rec.usage.cost_usd.to_fixed(3)} {rec.wall_s}s\n"
+				f"{verdict} {item.challenge.id} {item.language.id} {rec.grade.passed}/{rec.grade.total} turns={rec.usage.turns} cost=${rec.usage.cost_usd.to_fixed(3)} {rec.wall_s}s\n"
 			)
 			.get()
 		)
@@ -230,23 +234,23 @@ fn cmd_list(o: Options) Int!:
 		(
 			stdout()
 			.write(
-				"{c.id.pad_end(28, " ")} {c.category.pad_end(14, " ")} tier {c.tier}\n"
+				f"{c.id.pad_end(28, " ")} {c.category.pad_end(14, " ")} tier {c.tier}\n"
 			)
 			.get()
 		)
 	(
 		stdout().write(
-			"languages: {load_languages([]).map(fn l: l.id.clone()).join(", ")}\n"
+			f"languages: {load_languages([]).map(fn l: l.id.clone()).join(", ")}\n"
 		).get()
 	)
-	print("harnesses: {names().join(", ")}")
+	print(f"harnesses: {names().join(", ")}")
 	return ok(0)
 
 fn cmd_run(opts: Options, oracle: Bool) Int!:
 	var o = opts.clone()
 
 	if oracle:
-		o.out = "{root()}/results/oracle.jsonl"
+		o.out = f"{root()}/results/oracle.jsonl"
 		remove(o.out, recursive: false).to_optional()
 
 	chs := load_challenges(split_ids(o.challenges))
@@ -260,7 +264,7 @@ fn cmd_run(opts: Options, oracle: Bool) Int!:
 				(
 					stdout()
 					.write(
-						"SKIP {ch.id} {lang.id} (no reference solution; cases come from the challenge's Go oracle)\n"
+						f"SKIP {ch.id} {lang.id} (no reference solution; cases come from the challenge's Go oracle)\n"
 					)
 					.get()
 				)
@@ -323,7 +327,7 @@ fn main() Int:
 				help: "free-form label stored with each run",
 				default: "",
 			),
-			Flag("out", default: "{root()}/results/runs.jsonl"),
+			Flag("out", default: f"{root()}/results/runs.jsonl"),
 		]
 	)
 	root := Command(

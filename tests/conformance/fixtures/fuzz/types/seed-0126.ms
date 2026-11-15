@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     if ((424271 - (-18)) != 39):
@@ -16,11 +16,11 @@ export fn main() Int:
 
     _bad := say
     b1 := (true and ((39 * (-12)) != ((-19) - (-35))))
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
     i2 := (-700357)
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     i3 := i2
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
     return 0

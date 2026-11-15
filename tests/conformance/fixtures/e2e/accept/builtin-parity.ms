@@ -27,7 +27,7 @@ fn total(accumulator: Int, value: Int) Int:
 	return accumulator + value
 
 fn ordered(accumulator: String, value: Int) String:
-	return "{accumulator}{value}"
+	return f"{accumulator}{value}"
 
 fn compare(left: Int, right: Int) Int:
 	if left < right: return -1

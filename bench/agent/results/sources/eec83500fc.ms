@@ -76,9 +76,9 @@ fn key_of(v: Value) String:
         VNull:
             return "N"
         VInt(n):
-            return "I{n};"
+            return f"I{n};"
         VText(s):
-            return "T{s.byte_length()}:{s}"
+            return f"T{s.byte_length()}:{s}"
         VBool(b):
             if b:
                 return "B1"
@@ -1126,9 +1126,9 @@ fn find_slot(sc: Scope, qual: String, name: String) Result[Int, SqlError]:
     if count == 1:
         return ok(found)
     if count > 1:
-        return error(sql_error("ambiguous column: {name}"))
+        return error(sql_error(f"ambiguous column: {name}"))
 
-    return error(sql_error("no such column: {qualified(qual, name)}"))
+    return error(sql_error(f"no such column: {qualified(qual, name)}"))
 
 fn slot_of(e: Expr) Int:
     match e:
@@ -1146,7 +1146,7 @@ fn resolve(e: Expr, sc: Scope, in_agg: Bool) Result[Expr, SqlError]:
             if sc.grouped and not in_agg and not sc.group_slots.contains(slot):
                 return error(
                     sql_error(
-                        "column {qualified(qual, name)} must appear in GROUP BY"
+                        f"column {qualified(qual, name)} must appear in GROUP BY"
                     )
                 )
 
@@ -1203,7 +1203,7 @@ fn resolve(e: Expr, sc: Scope, in_agg: Bool) Result[Expr, SqlError]:
 
                 if star:
                     if name != "COUNT" or distinct:
-                        return error(sql_error("wrong number of arguments to {name}"))
+                        return error(sql_error(f"wrong number of arguments to {name}"))
 
                     return ok(
                         Expr.ECall(
@@ -1213,7 +1213,7 @@ fn resolve(e: Expr, sc: Scope, in_agg: Bool) Result[Expr, SqlError]:
                     )
 
                 if args.length() != 1:
-                    return error(sql_error("wrong number of arguments to {name}"))
+                    return error(sql_error(f"wrong number of arguments to {name}"))
 
                 a := try resolve(args[0], sc, true)
                 var one = List[Expr]()
@@ -1226,13 +1226,13 @@ fn resolve(e: Expr, sc: Scope, in_agg: Bool) Result[Expr, SqlError]:
 
             want := scalar_arity(name)
             if want == -1:
-                return error(sql_error("no such function: {name}"))
+                return error(sql_error(f"no such function: {name}"))
             if (
                 star
                 or (want == -2 and args.length() == 0)
                 or (want >= 0 and args.length() != want)
             ):
-                return error(sql_error("wrong number of arguments to {name}"))
+                return error(sql_error(f"wrong number of arguments to {name}"))
 
             var rs = List[Expr]()
 
@@ -1561,7 +1561,7 @@ fn fetch(db: Map[String, Table], name: String) Result[Table, SqlError]:
     if t := db.get(name):
         return ok(t.clone())
 
-    return error(sql_error("no such table: {name}"))
+    return error(sql_error(f"no such table: {name}"))
 
 fn group_rows(rows: List[List[Value]], slots: List[Int]) List[List[List[Value]]]:
     var groups = List[List[List[Value]]]()
@@ -1624,13 +1624,13 @@ fn run_select(db: Map[String, Table], q: Query) Result[String, SqlError]:
         refs.append(j.table.clone())
     for r in refs:
         if not db.contains(r.name):
-            return error(sql_error("no such table: {r.name}"))
+            return error(sql_error(f"no such table: {r.name}"))
 
     var aliases = Set[String]()
 
     for r in refs:
         if aliases.contains(r.alias):
-            return error(sql_error("duplicate alias: {r.alias}"))
+            return error(sql_error(f"duplicate alias: {r.alias}"))
 
         aliases.add(r.alias.clone())
 
@@ -1681,7 +1681,7 @@ fn run_select(db: Map[String, Table], q: Query) Result[String, SqlError]:
                     if sources[k].alias == tname:
                         idx = k
                 if idx < 0:
-                    return error(sql_error("no such table: {tname}"))
+                    return error(sql_error(f"no such table: {tname}"))
 
                 for c in sources[idx].cols:
                     pend.append(
@@ -1869,7 +1869,7 @@ fn run_select(db: Map[String, Table], q: Query) Result[String, SqlError]:
     lines.append(names.join("|"))
     for i in begin..finish:
         lines.append(outs[i].vals.map(fn v: show(v)).join("|"))
-    lines.append("({finish - begin} rows)")
+    lines.append(f"({finish - begin} rows)")
     return ok(lines.join("\n") + "\n")
 
 // ---------- DDL and DML ----------
@@ -1893,11 +1893,11 @@ fn check_row(cols: List[ColDef], vals: List[Value]) Result[Unit, SqlError]:
     for j in 0..cols.length():
         if rank(vals[j]) == 0:
             if cols[j].not_null:
-                return error(sql_error("NOT NULL constraint failed: {cols[j].name}"))
+                return error(sql_error(f"NOT NULL constraint failed: {cols[j].name}"))
         else if cols[j].is_int and rank(vals[j]) != 1:
-            return error(sql_error("type mismatch in column {cols[j].name}"))
+            return error(sql_error(f"type mismatch in column {cols[j].name}"))
         else if not cols[j].is_int and rank(vals[j]) != 3:
-            return error(sql_error("type mismatch in column {cols[j].name}"))
+            return error(sql_error(f"type mismatch in column {cols[j].name}"))
 
     return ok(unit)
 
@@ -1921,7 +1921,7 @@ fn check_primary(
     for r in added:
         k := key_of(r[pk])
         if seen.contains(k):
-            return error(sql_error("duplicate primary key: {show(r[pk])}"))
+            return error(sql_error(f"duplicate primary key: {show(r[pk])}"))
 
         seen.add(k)
 
@@ -1931,14 +1931,14 @@ fn create_table(var db: Map[String, Table], name: String, cols: List[ColDef]) Re
     String, SqlError
 ]:
     if db.contains(name):
-        return error(sql_error("table {name} already exists"))
+        return error(sql_error(f"table {name} already exists"))
 
     var seen = Set[String]()
     var pk_count = 0
 
     for c in cols:
         if seen.contains(c.name):
-            return error(sql_error("duplicate column: {c.name}"))
+            return error(sql_error(f"duplicate column: {c.name}"))
 
         seen.add(c.name.clone())
         if c.primary:
@@ -1952,7 +1952,7 @@ fn create_table(var db: Map[String, Table], name: String, cols: List[ColDef]) Re
 
 fn drop_table(var db: Map[String, Table], name: String) Result[String, SqlError]:
     if not db.contains(name):
-        return error(sql_error("no such table: {name}"))
+        return error(sql_error(f"no such table: {name}"))
 
     db.remove(name)
     return ok("ok\n")
@@ -1972,9 +1972,9 @@ fn insert_rows(
         for c in cols:
             j := col_index(tbl.cols, c)
             if j < 0:
-                return error(sql_error("no such column: {c}"))
+                return error(sql_error(f"no such column: {c}"))
             if seen.contains(c):
-                return error(sql_error("duplicate column: {c}"))
+                return error(sql_error(f"duplicate column: {c}"))
 
             seen.add(c.clone())
             positions.append(j)
@@ -2007,7 +2007,7 @@ fn insert_rows(
     for r in added:
         updated.rows.append(r.clone())
     db.add(name.clone(), updated)
-    return ok("inserted {count}\n")
+    return ok(f"inserted {count}\n")
 
 fn update_rows(
     var db: Map[String, Table], name: String, sets: List[Assign], cond: Optional[Expr]
@@ -2018,7 +2018,7 @@ fn update_rows(
     for a in sets:
         j := col_index(tbl.cols, a.col)
         if j < 0:
-            return error(sql_error("no such column: {a.col}"))
+            return error(sql_error(f"no such column: {a.col}"))
 
         idxs.append(j)
 
@@ -2065,7 +2065,7 @@ fn update_rows(
 
     try check_primary(tbl.cols, List[List[Value]](), out)
     db.add(name.clone(), Table(cols: tbl.cols.clone(), rows: out))
-    return ok("updated {updated}\n")
+    return ok(f"updated {updated}\n")
 
 fn delete_rows(var db: Map[String, Table], name: String, cond: Optional[Expr]) Result[
     String, SqlError
@@ -2095,7 +2095,7 @@ fn delete_rows(var db: Map[String, Table], name: String, cond: Optional[Expr]) R
             kept.append(row.clone())
 
     db.add(name.clone(), Table(cols: tbl.cols.clone(), rows: kept))
-    return ok("deleted {deleted}\n")
+    return ok(f"deleted {deleted}\n")
 
 fn execute(var db: Map[String, Table], st: Stmt) Result[String, SqlError]:
     match st:
@@ -2131,7 +2131,7 @@ export fn main() Int:
         r := run_statement(var db, toks)
 
         if r.is_error():
-            out.append("error: {r.err().message()}\n")
+            out.append(f"error: {r.err().message()}\n")
         else:
             out.append(r.get().clone())
 

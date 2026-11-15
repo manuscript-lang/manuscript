@@ -11,16 +11,16 @@ test "big rational oversized decimal exponents are limit errors":
 		"9223372036854775808", "-9223372036854775809",
 		"+999999999999999999999999999999", "-999999999999999999999999999999"
 	]:
-		expect_equal(parse_rat("1e{exponent}").err().kind, "EOVERFLOW")?
-		expect_equal(parse_big_float("1e{exponent}", 53).err().kind, "EOVERFLOW")?
+		expect_equal(parse_rat(f"1e{exponent}").err().kind, "EOVERFLOW")?
+		expect_equal(parse_big_float(f"1e{exponent}", 53).err().kind, "EOVERFLOW")?
 
 test "big rational malformed exponents stay data errors even after many digits":
 	for exponent in [
 		"", "+", "--1", "+-1", "1_0", "999999999999999999999999999999x",
 		"-999999999999999999999999999999 ", "１２"
 	]:
-		expect_equal(parse_rat("1e{exponent}").err().kind, "EBADMSG")?
-		expect_equal(parse_big_float("1e{exponent}", 53).err().kind, "EBADMSG")?
+		expect_equal(parse_rat(f"1e{exponent}").err().kind, "EBADMSG")?
+		expect_equal(parse_big_float(f"1e{exponent}", 53).err().kind, "EBADMSG")?
 
 	expect_equal((parse_rat("1e+0002")?).format(), "100")?
 	expect_equal((parse_rat("1e-0002")?).format(), "1/100")?

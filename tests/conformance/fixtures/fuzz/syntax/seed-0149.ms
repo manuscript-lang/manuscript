@@ -6,22 +6,22 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := ((-5) - ((6 + (-29)) % ((-9223372036854775807) / 46)))
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     i2 := (-38)
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     if ((true or false) and "a".is_empty()):
         say("naïve")
     else:
-        say(("x" + "brace\{s\}"))
+        say(("x" + "brace{s}"))
 
     b3 := true
-    say("b3 = {b3}")
+    say(f"b3 = {b3}")
 
     if true:
         say("back\\slash")

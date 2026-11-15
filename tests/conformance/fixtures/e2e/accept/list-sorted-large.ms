@@ -33,7 +33,7 @@ test "sorting a large list is ordered and leaves the source unchanged":
 test "sorting is stable for equal keys":
     var entries: List[Entry] = []
     for i in 0..1000:
-        entries.append(Entry(i % 7, "e{i}"))
+        entries.append(Entry(i % 7, f"e{i}"))
 
     sorted := entries.sorted(by_key)
     var previous = sorted.get(0).clone()

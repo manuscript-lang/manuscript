@@ -22,7 +22,7 @@ fn var Queue[T].enqueue(value: T) Bool:
 	if limit := self.capacity:
 		if limit <= 0:
 			panic(
-				"Queue: capacity must be between 1 and 9223372036854775807, found {limit}"
+				f"Queue: capacity must be between 1 and 9223372036854775807, found {limit}"
 			)
 		if self.length() >= limit: return false
 
@@ -150,7 +150,7 @@ fn var PriorityQueue[T].enqueue(value: T) Bool:
 	if limit := self.capacity:
 		if limit <= 0:
 			panic(
-				"PriorityQueue: capacity must be between 1 and 9223372036854775807, found {limit}"
+				f"PriorityQueue: capacity must be between 1 and 9223372036854775807, found {limit}"
 			)
 		if self.heap.length() >= limit: return false
 

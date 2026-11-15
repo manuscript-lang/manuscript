@@ -124,7 +124,7 @@ fn invalid_at(chars: List[String], at: Int, reason: String) Error:
 			column += 1
 
 	return Error(
-		"XML {line}:{column}: {reason}",
+		f"XML {line}:{column}: {reason}",
 		kind: "EBADMSG",
 		details: {
 			"line": line.to_string(),
@@ -161,7 +161,7 @@ fn var Reader.skip_space() Void:
 
 // Consumes `literal` or fails.
 fn var Reader.expect(literal: String) Void!:
-	if not self.looking_at(literal): return error(self.invalid("expected `{literal}`"))
+	if not self.looking_at(literal): return error(self.invalid(f"expected `{literal}`"))
 
 	self.at += literal.chars().length()
 
@@ -186,7 +186,7 @@ fn var Reader.take_until(stop: String, what: String, opened: Int) String!:
 		out.append(self.peek())
 		self.at += 1
 
-	return error(invalid_at(self.chars, opened, "unterminated {what}"))
+	return error(invalid_at(self.chars, opened, f"unterminated {what}"))
 
 // XML comments cannot contain a double hyphen or end with a hyphen.
 fn var Reader.comment() String!:
@@ -312,7 +312,7 @@ fn var Reader.declaration() Void!:
 				invalid_at(
 					self.chars,
 					attribute_at,
-					"unexpected `{attribute.name}` in the XML declaration",
+					f"unexpected `{attribute.name}` in the XML declaration",
 				)
 			)
 
@@ -517,7 +517,7 @@ fn var Reader.element(depth: Int) XmlNode!:
 					invalid_at(
 						self.chars,
 						name_at,
-						"duplicate attribute `{attribute_name}`",
+						f"duplicate attribute `{attribute_name}`",
 					)
 				)
 		else:
@@ -528,7 +528,7 @@ fn var Reader.element(depth: Int) XmlNode!:
 				invalid_at(
 					self.chars,
 					name_at,
-					"duplicate attribute `{attribute_name}`",
+					f"duplicate attribute `{attribute_name}`",
 				)
 			)
 
@@ -545,7 +545,7 @@ fn var Reader.element(depth: Int) XmlNode!:
 
 	while true:
 		if self.done(): return error(
-			self.invalid("the element `{name}` is never closed")
+			self.invalid(f"the element `{name}` is never closed")
 		)
 
 		if self.looking_at("</"):
@@ -557,7 +557,7 @@ fn var Reader.element(depth: Int) XmlNode!:
 				invalid_at(
 					self.chars,
 					closing_at,
-					"closing tag `{closing}` does not match `{name}`",
+					f"closing tag `{closing}` does not match `{name}`",
 				)
 			)
 
@@ -718,7 +718,7 @@ fn decode(text: String, chars: List[String], start: Int) String!:
 				)?
 			)
 		else:
-			return error(invalid_at(chars, here, "unknown entity `&{entity};`"))
+			return error(invalid_at(chars, here, f"unknown entity `&{entity};`"))
 
 		out.append(tail.view(end.get(0) + 1, tail.length()))
 
@@ -785,7 +785,7 @@ export fn parse(text: String, max_depth: Int = 1000) XmlNode!:
 			invalid_at(
 				chars,
 				index,
-				"invalid character U+{code.to_string_radix(16).pad_start(4, "0").upper()}",
+				f"invalid character U+{code.to_string_radix(16).pad_start(4, "0").upper()}",
 			)
 		)
 
@@ -834,14 +834,14 @@ fn write(node: XmlNode, indent: String, level: Int, var out: StringBuilder) Void
 
 	match node:
 		XmlText(text): out.append(escape_text(text))
-		XmlComment(text): out.append("{pad}<!--{text}-->{newline}")
+		XmlComment(text): out.append(f"{pad}<!--{text}-->{newline}")
 		XmlElement(name, attributes, children):
-			out.append("{pad}<{name}")
+			out.append(f"{pad}<{name}")
 			for attribute in attributes:
-				out.append(" {attribute.name}=\"{escape_attribute(attribute.value)}\"")
+				out.append(f" {attribute.name}=\"{escape_attribute(attribute.value)}\"")
 
 			if children.is_empty():
-				out.append("/>{newline}")
+				out.append(f"/>{newline}")
 				return
 
 			var has_text = false
@@ -856,9 +856,9 @@ fn write(node: XmlNode, indent: String, level: Int, var out: StringBuilder) Void
 				out.append(">")
 				for child in children:
 					write(child, "", 0, var out)
-				out.append("</{name}>{newline}")
+				out.append(f"</{name}>{newline}")
 			else:
-				out.append(">{newline}")
+				out.append(f">{newline}")
 				for child in children:
 					write(child, indent, level + 1, var out)
-				out.append("{pad}</{name}>{newline}")
+				out.append(f"{pad}</{name}>{newline}")

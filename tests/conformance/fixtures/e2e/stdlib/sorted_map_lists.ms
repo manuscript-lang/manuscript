@@ -11,7 +11,7 @@ fn filled(count: Int) SortedMap[Int, String]:
 	// Insert from both ends so the chunks split in more than one place.
 	for i in 0..count:
 		key := if i % 2 == 0: i else: count * 2 - i
-		map.add(key, "v{key}")
+		map.add(key, f"v{key}")
 
 	return map
 
@@ -28,7 +28,7 @@ test "keys and values join every chunk in key order":
 
 		while index < keys.length():
 			expect_equal(keys[index] > previous, true)?
-			expect_equal(values[index], "v{keys[index]}")?
+			expect_equal(values[index], f"v{keys[index]}")?
 			previous = keys[index]
 			index += 1
 

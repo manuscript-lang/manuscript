@@ -15,7 +15,7 @@ type Customer:
 
 fn customer_name(customer: Customer) String:
     {id: {value}, name: display_name} := customer
-    return "{value}: {display_name}"
+    return f"{value}: {display_name}"
 
 test "nominal record and nested binding":
     customer := Customer(CustomerId("c1"), "Ada")

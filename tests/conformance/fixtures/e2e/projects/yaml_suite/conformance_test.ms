@@ -17,19 +17,19 @@ fn canon(value: YamlValue) String:
 	match value:
 		Null: return "n"
 		BoolValue(flag): return if flag: "t" else: "f"
-		NumberValue(text): return "N{number(text)}"
-		StringValue(text): return "s{text.length()}:{text}"
+		NumberValue(text): return f"N{number(text)}"
+		StringValue(text): return f"s{text.length()}:{text}"
 		ArrayValue(items):
 			var parts: List[String] = []
 			for item in items:
 				parts.append(canon(item))
-			return "[{parts.join(",")}]"
+			return f"[{parts.join(",")}]"
 		ObjectValue(members):
 			var parts: List[String] = []
 			for entry in members.entries():
-				parts.append("{entry.key.length()}:{entry.key}={canon(entry.value)}")
+				parts.append(f"{entry.key.length()}:{entry.key}={canon(entry.value)}")
 			parts.sort()
-			return "\{{parts.join(",")}\}"
+			return f"\{{parts.join(",")}\}"
 
 // The value of a YAML core-schema number spelling.
 fn number(text: String) Float:
@@ -46,13 +46,13 @@ fn exists(tree: FileTree, path: String) Bool:
 
 // Whether the parser agrees with the suite on one case directory.
 fn passes(tree: FileTree, id: String) Bool:
-	text := tree.read("{id}/in.yaml", none).get("".to_bytes()).decode_utf8().get("")
+	text := tree.read(f"{id}/in.yaml", none).get("".to_bytes()).decode_utf8().get("")
 	parsed := parse_all(text)
-	if exists(tree, "{id}/error"): return parsed.is_error()
+	if exists(tree, f"{id}/error"): return parsed.is_error()
 	if parsed.is_error(): return false
-	if not exists(tree, "{id}/in.json"): return true
+	if not exists(tree, f"{id}/in.json"): return true
 
-	json := tree.read("{id}/in.json", none).get("".to_bytes()).decode_utf8().get("")
+	json := tree.read(f"{id}/in.json", none).get("".to_bytes()).decode_utf8().get("")
 	want := canon_json_stream(json)
 	if want.is_error(): return false
 
@@ -87,7 +87,7 @@ test "the official YAML suite agrees with the parser except for the listed cases
 		if line.contains(" by design:"): by_design += 1
 	expected.sort()
 	print(
-		"{cases.length()} cases, {expected.length()} not passing, {by_design} unsupported by design"
+		f"{cases.length()} cases, {expected.length()} not passing, {by_design} unsupported by design"
 	)
 	cases.length() | expect_equal(cases.length())?
 	failing | expect_equal(expected)?

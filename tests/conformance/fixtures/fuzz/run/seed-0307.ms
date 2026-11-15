@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -26,11 +26,11 @@ export fn main() Int:
     if true:
         say("ms".upper())
     else:
-        say(("{28}:" + "naïve"))
+        say((f"{28}:" + "naïve"))
 
     i1 := ((12 * (-72803)) + (-24506))
-    say("i1 = {i1}")
-    say("collatz(1197) = {collatz(1197)}")
+    say(f"i1 = {i1}")
+    say(f"collatz(1197) = {collatz(1197)}")
 
     if ((true or false) and "gamma".is_empty()):
         say(("a" + "  padded  "))
@@ -38,20 +38,20 @@ export fn main() Int:
         say(("" + "alpha"))
 
     say(
-        "{((i1 * 17) * (19 % i1))} {((9 + i1) % i1)} {(((i1 * 17) * (19 % i1)) < ((9 + i1) % i1))} sum {((i1 * 17) * (19 % i1)) + ((9 + i1) % i1)}"
+        f"{((i1 * 17) * (19 % i1))} {((9 + i1) % i1)} {(((i1 * 17) * (19 % i1)) < ((9 + i1) % i1))} sum {((i1 * 17) * (19 % i1)) + ((9 + i1) % i1)}"
     )
 
     i2 := (((i1 + i1) + ((-643286) + 38)) / ((i1 * i1) / (-40)))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     l3 := [1, 2, 3].take(0)
-    say("l3 = {l3} len {l3.length()}")
+    say(f"l3 = {l3} len {l3.length()}")
     say(
-        "{((-i1) * (i2 + i1))} {((i2 + i2) % ((-2272) - i1))} {(((-i1) * (i2 + i1)) < ((i2 + i2) % ((-2272) - i1)))} sum {((-i1) * (i2 + i1)) + ((i2 + i2) % ((-2272) - i1))}"
+        f"{((-i1) * (i2 + i1))} {((i2 + i2) % ((-2272) - i1))} {(((-i1) * (i2 + i1)) < ((i2 + i2) % ((-2272) - i1)))} sum {((-i1) * (i2 + i1)) + ((i2 + i2) % ((-2272) - i1))}"
     )
 
     i4 := l3.length()
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     var acc5 = 0
 
@@ -61,20 +61,20 @@ export fn main() Int:
         else:
             acc5 -= 1
 
-    say("acc5 = {acc5}")
+    say(f"acc5 = {acc5}")
 
     i6 := (-((i1 * 708313) * (-28)))
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     i7 := ((6 + (i4 % 24)) + (-(i4 - (-3))))
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
     s8 := "42".trim().lower()
-    say("s8 = [{s8}]")
+    say(f"s8 = [{s8}]")
 
     l9 := l3.take(4)
-    say("l9 = {l9} len {l9.length()}")
+    say(f"l9 = {l9} len {l9.length()}")
 
     big10 := l3.length() - l3.length()
-    say("{l3.length() % big10}")
+    say(f"{l3.length() % big10}")
     return 0

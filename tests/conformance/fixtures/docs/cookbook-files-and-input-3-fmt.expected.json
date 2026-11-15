@@ -1,9 +1,9 @@
 {
   "format": 1,
   "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
+  "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import (\n\tstdout from \"@std/io/io.ms\",\n\targuments from \"@std/os/env.ms\",\n)\n\nfn show(number: Int) Result[Void, Error]:\n\tstdout().write(\"{number}\\n\")?\n\treturn stdout().flush()\n\nexport fn main() Int:\n\tnumber := arguments().get(0, default: \"42\").parse_int()\n\tif value := number:\n\t\tif show(value).is_ok(): return 0\n\treturn 1\n"
+    "fmt": "import (\n\tstdout from \"@std/io/io.ms\",\n\targuments from \"@std/os/env.ms\",\n)\n\nfn show(number: Int) Result[Void, Error]:\n\tstdout().write(f\"{number}\\n\")?\n\treturn stdout().flush()\n\nexport fn main() Int:\n\tnumber := arguments().get(0, default: \"42\").parse_int()\n\tif value := number:\n\t\tif show(value).is_ok(): return 0\n\treturn 1\n"
   }
 }

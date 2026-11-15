@@ -15,18 +15,18 @@ import (
 )
 
 fn echo(request: HttpRequest) HttpResponse:
-	return text(201, "{request.path}:{request.body.decode_utf8().get("")}")
+	return text(201, f"{request.path}:{request.body.decode_utf8().get("")}")
 
 fn exchange_echo(var exchange: HttpExchange) Void!:
 	body := read_body(var exchange, 8)?
-	return reply(var exchange, text(200, "{body.length()}"))
+	return reply(var exchange, text(200, f"{body.length()}"))
 
 test "buffered adapts a request-to-response handler":
 	server := serve("127.0.0.1:0", buffered(echo))?
 	client := http_client()?
 	var response = client.request(
 		HttpMethod.Post,
-		"http://{server.address()}/x",
+		f"http://{server.address()}/x",
 		headers(),
 		"abc",
 	)?
@@ -42,7 +42,7 @@ test "read_body bounds the body by its limit":
 	client := http_client()?
 	small := client.request(
 		HttpMethod.Post,
-		"http://{server.address()}/",
+		f"http://{server.address()}/",
 		headers(),
 		"12345",
 	)?
@@ -50,7 +50,7 @@ test "read_body bounds the body by its limit":
 
 	large := client.request(
 		HttpMethod.Post,
-		"http://{server.address()}/",
+		f"http://{server.address()}/",
 		headers(),
 		"123456789",
 	)?
@@ -62,7 +62,7 @@ fn bare(request: HttpRequest) HttpResponse:
 test "serve, the client and a response take their defaults":
 	server := serve("127.0.0.1:0", buffered(bare))?
 	client := http_client()?
-	var response = client.request(HttpMethod.Get, "http://{server.address()}/")?
+	var response = client.request(HttpMethod.Get, f"http://{server.address()}/")?
 	expect_equal(response.metadata.status, 200)?
 
 	var got = ""

@@ -16,5 +16,5 @@ fn main() Void:
         empty += 1
 
     void stdout().write(
-        "{total(4)} {xs.length()} {xs[0]} {empty} {(2..2).length()}\n"
+        f"{total(4)} {xs.length()} {xs[0]} {empty} {(2..2).length()}\n"
     )

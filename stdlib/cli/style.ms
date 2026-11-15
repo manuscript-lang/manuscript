@@ -11,7 +11,7 @@ fn main() Void!:
     warning := Style(foreground: Color.Ansi(3), bold: true)
     text := paint("careful", warning, 16)
     width := visible_width(text)?
-    print("{width}")
+    print(f"{width}")
 ```
 */
 import (
@@ -66,7 +66,7 @@ export type Style:
 	strikethrough: Bool = false
 
 esc := "\u{1b}"
-csi_final := "@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz\{|\}~"
+csi_final := "@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
 
 fn clamp(value: Int, low: Int, high: Int) Int:
 	if value < low: return low
@@ -145,19 +145,19 @@ fn color_codes(color: Color, base: Int, colors: Int) String:
 		Default: return ""
 		Ansi(index):
 			i := clamp(index, 0, 15)
-			if i < 8: return "{base + i}"
+			if i < 8: return f"{base + i}"
 
-			return "{base + 60 + i - 8}"
+			return f"{base + 60 + i - 8}"
 		Indexed(index):
 			i := clamp(index, 0, 255)
-			if colors >= 256: return "{base + 8};5;{i}"
+			if colors >= 256: return f"{base + 8};5;{i}"
 
 			return color_codes(Color.Ansi(indexed_to_ansi(i)), base, colors)
 		Rgb(red, green, blue):
 			r := clamp(red, 0, 255)
 			g := clamp(green, 0, 255)
 			b := clamp(blue, 0, 255)
-			if colors >= 16777216: return "{base + 8};2;{r};{g};{b}"
+			if colors >= 16777216: return f"{base + 8};2;{r};{g};{b}"
 
 			return color_codes(Color.Indexed(rgb_to_indexed(r, g, b)), base, colors)
 
@@ -180,7 +180,7 @@ export fn style_start(style: Style, colors: Int) String:
 	if not background.is_empty(): codes.append(background)
 	if codes.is_empty(): return ""
 
-	return "{esc}[{codes.join(";")}m"
+	return f"{esc}[{codes.join(";")}m"
 
 // Wraps `text` in `style` and a reset. Returns `text` unchanged when `colors` is 0 or
 // the style is plain.
@@ -188,7 +188,7 @@ export fn paint(text: String, style: Style, colors: Int) String:
 	start := style_start(style, colors)
 	if start.is_empty() or text.is_empty(): return text.clone()
 
-	return "{start}{text}{esc}[0m"
+	return f"{start}{text}{esc}[0m"
 
 // Like `paint`, using the color count of the current terminal.
 // ms: effect std.console.read
@@ -197,7 +197,7 @@ export fn styled(text: String, style: Style) String:
 
 fn escape_pattern() Regex:
 	// CSI sequences, OSC sequences ending in BEL or ST, and two-byte escapes.
-	pattern := "{esc}\\[[0-?]*[ -/]*[@-~]|{esc}\\][^\u{7}{esc}]*(\u{7}|{esc}\\\\)|{esc}[@-Z\\\\-_]"
+	pattern := f"{esc}\\[[0-?]*[ -/]*[@-~]|{esc}\\][^\u{7}{esc}]*(\u{7}|{esc}\\\\)|{esc}[@-Z\\\\-_]"
 	return compile(pattern).get(none)
 
 // Removes escape sequences from `text`.
@@ -230,16 +230,16 @@ export fn wrap_text(text: String, width: Int) List[String]:
 
 		for c in line.chars():
 			if in_sequence:
-				sequence = "{sequence}{c}"
+				sequence = f"{sequence}{c}"
 
 				if csi_final.contains(c) and sequence.length() > 2 or c == "\u{7}":
 					in_sequence = false
-					row = "{row}{sequence}"
+					row = f"{row}{sequence}"
 
-					if sequence == "{esc}[0m" or sequence == "{esc}[m":
+					if sequence == f"{esc}[0m" or sequence == f"{esc}[m":
 						active = ""
 					else:
-						active = "{active}{sequence}"
+						active = f"{active}{sequence}"
 
 				continue
 
@@ -251,12 +251,12 @@ export fn wrap_text(text: String, width: Int) List[String]:
 			w := char_width(c)
 
 			if used + w > room and used > 0:
-				suffix := if active.is_empty(): "" else: "{esc}[0m"
-				out.append("{row}{suffix}")
+				suffix := if active.is_empty(): "" else: f"{esc}[0m"
+				out.append(f"{row}{suffix}")
 				row = active.clone()
 				used = 0
 
-			row = "{row}{c}"
+			row = f"{row}{c}"
 			used += w
 
 		out.append(row)

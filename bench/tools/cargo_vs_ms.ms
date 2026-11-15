@@ -12,8 +12,8 @@ fn main() Int:
 	if args.length() != 1 or (args[0] != "toml" and args[0] != "csv"):
 		return usage("usage: cargo_vs_ms.ms -- <toml|csv>")
 
-	dir := "bench/perf/{args[0]}"
-	first := run_inherit("{dir}/ms", ms_binary(), ["run", "src/main.ms"])
+	dir := f"bench/perf/{args[0]}"
+	first := run_inherit(f"{dir}/ms", ms_binary(), ["run", "src/main.ms"])
 	if first != 0: return first
 
-	return run_inherit("{dir}/rust", "cargo", ["run", "--release", "--quiet"])
+	return run_inherit(f"{dir}/rust", "cargo", ["run", "--release", "--quiet"])

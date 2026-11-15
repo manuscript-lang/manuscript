@@ -6,26 +6,26 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     f1 := ((466.176 / 9.0e20) * ((8.0e-5 + 620.839) - (0.0 * 50.500)))
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
 
     l2 := [1, 2, 3].take(0)
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
     say(
-        "{(((-47) + (-13)) + (-48))} {(-31)} {((((-47) + (-13)) + (-48)) < (-31))} sum {(((-47) + (-13)) + (-48)) + (-31)}"
+        f"{(((-47) + (-13)) + (-48))} {(-31)} {((((-47) + (-13)) + (-48)) < (-31))} sum {(((-47) + (-13)) + (-48)) + (-31)}"
     )
 
     i3 := 898874413709
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     i4 := i3
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     i5 := (((-(-21)) * l2.length()) * (i3 * (i4 - i4)))
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     bad: Bool := 1
     return 0

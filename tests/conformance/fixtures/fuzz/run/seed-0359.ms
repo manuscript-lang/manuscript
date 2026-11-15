@@ -6,42 +6,42 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     s1 := ""
-    say("s1 = [{s1}]")
+    say(f"s1 = [{s1}]")
 
     i2 := 305927379624
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     b3 := true
-    say("b3 = {b3}")
+    say(f"b3 = {b3}")
 
     i4 := (((45 - (-36)) - (i2 / (-24))) - i2)
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     l5 := [(-22)]
-    say("l5 = {l5} len {l5.length()}")
+    say(f"l5 = {l5} len {l5.length()}")
 
     f6 := (612.085 / (861.692 * (822.25 * 456.229)))
-    say("f6 = {f6}")
+    say(f"f6 = {f6}")
 
     f7 := (f6 - ((763.549 / f6) - (155.646 * f6)))
-    say("f7 = {f7}")
+    say(f"f7 = {f7}")
 
     l8 := [(-15), 4, 17]
-    say("l8 = {l8} len {l8.length()}")
+    say(f"l8 = {l8} len {l8.length()}")
 
     i9 := i2
-    say("i9 = {i9}")
+    say(f"i9 = {i9}")
 
     i10 := ((s1.scalar_length() + ((-37) - i9)) - (23 / ((-23) - 31)))
-    say("i10 = {i10}")
+    say(f"i10 = {i10}")
 
     f11 := (((13.660 * 271.25) + 536.434) + ((f6 * 185.682) + (805.565 / 151.550)))
-    say("f11 = {f11}")
+    say(f"f11 = {f11}")
 
     l12 := l8.concat(l8)
-    say("l12 = {l12} len {l12.length()}")
+    say(f"l12 = {l12} len {l12.length()}")
     return 0

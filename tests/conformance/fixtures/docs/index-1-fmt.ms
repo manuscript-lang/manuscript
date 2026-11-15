@@ -6,5 +6,5 @@ import stdout from "@std/io/io.ms"
 
 fn main() Void!:
     name := arguments().get(0, default: "world")
-    message := "Hello, {name}!\n"
+    message := f"Hello, {name}!\n"
     stdout().write(message)?

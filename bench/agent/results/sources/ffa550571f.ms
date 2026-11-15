@@ -4,7 +4,7 @@ import (
 )
 
 fn fail(msg: String) Int:
-	stdout().write("error: {msg}\n").get()
+	stdout().write(f"error: {msg}\n").get()
 	return 0
 
 export fn main() Int:
@@ -22,7 +22,7 @@ export fn main() Int:
 		for c in 0..chars.length():
 			ch := chars[c]
 			if ch != "#" and ch != "." and ch != "S" and ch != "E":
-				return fail("bad character at {r + 1},{c + 1}")
+				return fail(f"bad character at {r + 1},{c + 1}")
 
 	width := rows[0].scalar_length()
 	for r in 0..n:
@@ -80,7 +80,7 @@ export fn main() Int:
 			dist[nb] = dist[cur] + 1
 
 			if nb == goal:
-				stdout().write("{dist[nb]}\n").get()
+				stdout().write(f"{dist[nb]}\n").get()
 				return 0
 
 			queue.append(nb)

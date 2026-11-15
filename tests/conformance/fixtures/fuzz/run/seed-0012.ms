@@ -6,36 +6,36 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     b1 := (((3.5 * 563.022) - (107.25 * 396.25)) != 285.863)
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
     i2 := 31
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     l3 := [(-10)]
-    say("l3 = {l3} len {l3.length()}")
+    say(f"l3 = {l3} len {l3.length()}")
 
     b4 := not "  padded  ".ends_with("")
-    say("b4 = {b4}")
+    say(f"b4 = {b4}")
 
     i5 := i2
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     l6 := l3.concat(l3)
-    say("l6 = {l6} len {l6.length()}")
+    say(f"l6 = {l6} len {l6.length()}")
 
     b7 := ("hello world" + "naïve").is_empty()
-    say("b7 = {b7}")
+    say(f"b7 = {b7}")
 
     b8 := b1
-    say("b8 = {b8}")
+    say(f"b8 = {b8}")
 
     f9 := 4.0e7
-    say("f9 = {f9}")
+    say(f"f9 = {f9}")
 
     i10 := (((-(-28)) * i5) - ((-24) - (i2 - i5)))
-    say("i10 = {i10}")
+    say(f"i10 = {i10}")
     return 0

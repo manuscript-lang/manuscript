@@ -6,13 +6,13 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     s1 := "naïve"
-    say("s1 = [{s1}]")
+    say(f"s1 = [{s1}]")
 
     i2 := 11
     i3 := (42472865360 / (i2 + (i2 * 623891)))
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
     return 0

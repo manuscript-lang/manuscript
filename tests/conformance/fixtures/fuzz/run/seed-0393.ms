@@ -6,23 +6,23 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     b1 := (
         ("42" + "line\nbreak").contains("MiXeD CaSe")
         and "MiXeD CaSe".contains("  padded  ")
     )
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
     i2 := (((-43) + (-9)) - (760613727108 + 49))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     i3 := (((-4) + (i2 / i2)) + ((-27) - (-34)))
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     i4 := ((((-688700497710) + (-25)) % 350441) * ((-8) % (i2 + i2)))
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     if "alpha".is_empty():
         say("a".lower())
@@ -30,9 +30,9 @@ export fn main() Int:
         say("alpha")
 
     l6 := [14, (-21)]
-    say("l6 = {l6} len {l6.length()}")
+    say(f"l6 = {l6} len {l6.length()}")
 
     l7 := l6.filter(fn x: x > (-5))
-    say("l7 = {l7} len {l7.length()}")
-    say("{(i4 * i3)} {l7.get(0)} {((i4 * i3) < l7.get(0))} sum {(i4 * i3) + l7.get(0)}")
+    say(f"l7 = {l7} len {l7.length()}")
+    say(f"{(i4 * i3)} {l7.get(0)} {((i4 * i3) < l7.get(0))} sum {(i4 * i3) + l7.get(0)}")
     return 0

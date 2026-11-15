@@ -64,7 +64,7 @@ const WORDS: &[&str] = &[
     "line\\nbreak",
     "quote\\\"d",
     "back\\\\slash",
-    "brace\\{s\\}",
+    "brace{s}",
     "héllo",
     "日本語",
     "naïve",
@@ -282,7 +282,7 @@ impl Gen {
             7 => {
                 let (n, nv) = self.safe_int(1);
                 let _ = nv;
-                (format!("(\"{{{n}}}:\" + {a})"), None)
+                (format!("(f\"{{{n}}}:\" + {a})"), None)
             }
             _ => {
                 let (b, _) = self.str_expr(0);
@@ -443,7 +443,7 @@ impl Gen {
                 let (code, v) = self.safe_int(3);
                 let name = self.id("i");
                 self.out.push(format!("    {name} := {code}"));
-                self.out.push(format!("    say(\"{name} = {{{name}}}\")"));
+                self.out.push(format!("    say(f\"{name} = {{{name}}}\")"));
                 self.ints.push(IntVar { name, value: v });
                 self.tags.push("numbers");
             }
@@ -451,7 +451,7 @@ impl Gen {
                 let code = self.float_expr(3);
                 let name = self.id("f");
                 self.out.push(format!("    {name} := {code}"));
-                self.out.push(format!("    say(\"{name} = {{{name}}}\")"));
+                self.out.push(format!("    say(f\"{name} = {{{name}}}\")"));
                 self.floats.push(name);
                 self.tags.push("numbers");
             }
@@ -459,7 +459,8 @@ impl Gen {
                 let (code, len) = self.str_expr(3);
                 let name = self.id("s");
                 self.out.push(format!("    {name} := {code}"));
-                self.out.push(format!("    say(\"{name} = [{{{name}}}]\")"));
+                self.out
+                    .push(format!("    say(f\"{name} = [{{{name}}}]\")"));
                 self.strs.push(StrVar { name, chars: len });
                 self.tags.push("strings");
                 self.tags.push("interpolation");
@@ -468,7 +469,7 @@ impl Gen {
                 let code = self.bool_expr(3);
                 let name = self.id("b");
                 self.out.push(format!("    {name} := {code}"));
-                self.out.push(format!("    say(\"{name} = {{{name}}}\")"));
+                self.out.push(format!("    say(f\"{name} = {{{name}}}\")"));
                 self.bools.push(name);
             }
             10 | 11 => {
@@ -476,7 +477,7 @@ impl Gen {
                 let name = self.id("l");
                 self.out.push(format!("    {name} := {code}"));
                 self.out.push(format!(
-                    "    say(\"{name} = {{{name}}} len {{{name}.length()}}\")"
+                    "    say(f\"{name} = {{{name}}} len {{{name}.length()}}\")"
                 ));
                 self.lists.push(ListVar { name, items });
                 self.tags.push("lists");
@@ -488,7 +489,7 @@ impl Gen {
                 let (a, _) = self.safe_int(2);
                 let (b, _) = self.safe_int(2);
                 self.out.push(format!(
-                    "    say(\"{{{a}}} {{{b}}} {{({a} < {b})}} sum {{{a} + {b}}}\")"
+                    "    say(f\"{{{a}}} {{{b}}} {{({a} < {b})}} sum {{{a} + {b}}}\")"
                 ));
                 self.tags.push("interpolation");
             }
@@ -507,7 +508,7 @@ impl Gen {
                 self.out.push(format!("    for i in 0..{n}:"));
                 self.out
                     .push(format!("        {name} += i * {}", int_code(k)));
-                self.out.push(format!("    say(\"{name} = {{{name}}}\")"));
+                self.out.push(format!("    say(f\"{name} = {{{name}}}\")"));
             }
             1 => {
                 self.out.push(format!("    var {name} = 0"));
@@ -518,7 +519,7 @@ impl Gen {
                     "        {name} += step{name} * step{name} + {}",
                     int_code(k)
                 ));
-                self.out.push(format!("    say(\"{name} = {{{name}}}\")"));
+                self.out.push(format!("    say(f\"{name} = {{{name}}}\")"));
             }
             _ => {
                 if self.lists.is_empty() {
@@ -532,7 +533,7 @@ impl Gen {
                 self.out.push(format!("            {name} += x"));
                 self.out.push("        else:".to_string());
                 self.out.push(format!("            {name} -= 1"));
-                self.out.push(format!("    say(\"{name} = {{{name}}}\")"));
+                self.out.push(format!("    say(f\"{name} = {{{name}}}\")"));
                 let _ = total;
             }
         }
@@ -556,25 +557,25 @@ impl Gen {
                 let n = self.rng.range(0, 20);
                 self.helpers.push(HELPER_FACT.to_string());
                 self.out
-                    .push(format!("    say(\"fact({n}) = {{fact({n})}}\")"));
+                    .push(format!("    say(f\"fact({n}) = {{fact({n})}}\")"));
             }
             1 => {
                 let n = self.rng.range(0, 60);
                 self.helpers.push(HELPER_FIB.to_string());
                 self.out
-                    .push(format!("    say(\"fib({n}) = {{fib({n})}}\")"));
+                    .push(format!("    say(f\"fib({n}) = {{fib({n})}}\")"));
             }
             2 => {
                 let (a, b) = (self.rng.range(1, 5000), self.rng.range(1, 5000));
                 self.helpers.push(HELPER_GCD.to_string());
                 self.out
-                    .push(format!("    say(\"gcd({a}, {b}) = {{gcd({a}, {b})}}\")"));
+                    .push(format!("    say(f\"gcd({a}, {b}) = {{gcd({a}, {b})}}\")"));
             }
             _ => {
                 let n = self.rng.range(1, 3000);
                 self.helpers.push(HELPER_COLLATZ.to_string());
                 self.out
-                    .push(format!("    say(\"collatz({n}) = {{collatz({n})}}\")"));
+                    .push(format!("    say(f\"collatz({n}) = {{collatz({n})}}\")"));
             }
         }
     }
@@ -588,44 +589,44 @@ impl Gen {
         let lines: Vec<String> = match kind {
             0 => vec![
                 format!("    {big} := 9223372036854775807"),
-                format!("    say(\"{{{big} + {k}}}\")"),
+                format!("    say(f\"{{{big} + {k}}}\")"),
             ],
             1 => vec![
                 format!("    {big} := 9223372036854775807"),
-                format!("    say(\"{{{big} * {}}}\")", k + 1),
+                format!("    say(f\"{{{big} * {}}}\")", k + 1),
             ],
             2 => vec![
                 format!("    {big} := -9223372036854775808"),
-                format!("    say(\"{{{big} - {k}}}\")"),
+                format!("    say(f\"{{{big} - {k}}}\")"),
             ],
             3 => vec![
                 format!("    {big} := -9223372036854775808"),
-                format!("    say(\"{{-{big}}}\")"),
+                format!("    say(f\"{{-{big}}}\")"),
             ],
             4 => {
                 let (a, _) = self.safe_int(2);
                 vec![
                     format!("    {big} := {a} - {a}"),
-                    format!("    say(\"{{{a} / {big}}}\")"),
+                    format!("    say(f\"{{{a} / {big}}}\")"),
                 ]
             }
             5 => {
                 let (a, _) = self.safe_int(2);
                 vec![
                     format!("    {big} := {a} - {a}"),
-                    format!("    say(\"{{{a} % {big}}}\")"),
+                    format!("    say(f\"{{{a} % {big}}}\")"),
                 ]
             }
             _ => {
                 if self.lists.is_empty() {
                     vec![
                         format!("    {big} := [1, 2, 3]"),
-                        format!("    say(\"{{{big}.get({})}}\")", 3 + k),
+                        format!("    say(f\"{{{big}.get({})}}\")", 3 + k),
                     ]
                 } else {
                     let l = self.rng.pick(&self.lists).clone();
                     vec![format!(
-                        "    say(\"{{{}.get({})}}\")",
+                        "    say(f\"{{{}.get({})}}\")",
                         l.name,
                         l.items.len() as i64 + k
                     )]
@@ -661,7 +662,7 @@ fn assemble(g: Gen, seed: u64) -> Generated {
     source.push_str(&format!("// Generated by ms-conform fuzz, seed {seed}.\n"));
     source.push_str("import stdout from \"@std/io/io.ms\"\n");
     source.push_str(
-        "\nfn say(text: String) Void:\n    _written := stdout().write(\"{text}\\n\")\n\n",
+        "\nfn say(text: String) Void:\n    _written := stdout().write(f\"{text}\\n\")\n\n",
     );
     let mut seen = Vec::new();
     for h in &g.helpers {

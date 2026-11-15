@@ -68,7 +68,7 @@ fn add_digits(a: String, b: String) String:
 
     while i <= n or carry > 0:
         d := digit_at(a, i) + digit_at(b, i) + carry
-        result = "{d % 10}" + result
+        result = f"{d % 10}" + result
         carry = d / 10
         i += 1
 
@@ -105,5 +105,5 @@ export fn main() Int:
     for category in totals.keys().sorted(fn a, b: a.compare(b)):
         out.write(category + ": " + money(totals.get_or(category, "0")) + "\n").get()
     if skipped > 0:
-        out.write("skipped: {skipped}\n").get()
+        out.write(f"skipped: {skipped}\n").get()
     return 0
