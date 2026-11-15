@@ -274,6 +274,8 @@ runs:
         # The same checks as `make bench-check` and the type-check half of `make agent-bench-check`
         # (the oracle needs agent tooling), on the debug binary built above.
         ms="$PWD/target/debug/ms"
+        # The Postgres benchmark imports a copy of the client that its driver makes (ms/pg, untracked).
+        rm -rf bench/perf/postgres/ms/pg && cp -R packages/postgres/src bench/perf/postgres/ms/pg
         for t in $(find bench/perf -name ms.toml | sort); do (cd "$(dirname "$t")" && "$ms" check ms.toml); done
         for t in bench/tools/*.ms bench/agent/run.ms; do "$ms" check "$t"; done
         for t in bench/tools/*_test.ms bench/agent/core_test.ms; do "$ms" test "$t"; done
