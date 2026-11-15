@@ -86,6 +86,9 @@ pub fn run_format(syms: ms_syntax::Names, args: &[String], io: &mut Io) -> i32 {
     // Resolve and deduplicate before writing. Physical identity also determines
     // display spelling, regardless of how a file was selected.
     let mut files: BTreeMap<String, String> = BTreeMap::new();
+    targets = members_of_workspace_roots(targets, &mut |target, error| {
+        report(io, target, FmtError::Project(error));
+    });
     targets.sort();
     for target in &targets {
         let paths = match format_paths(target) {
@@ -173,6 +176,27 @@ pub fn sort_diagnostics(issues: &mut [CommandDiagnostic]) {
                 &b.message,
             ))
     });
+}
+
+/// A workspace root without `[project]` stands for its members, as in the other commands.
+fn members_of_workspace_roots(
+    targets: Vec<String>,
+    fail: &mut dyn FnMut(&str, ProjectError),
+) -> Vec<String> {
+    let mut expanded = Vec::new();
+    for target in targets {
+        match ms_driver::project::workspace::root_members(&target) {
+            Ok(Some(workspace)) => expanded.extend(
+                workspace
+                    .members
+                    .iter()
+                    .map(ms_driver::project::workspace::Workspace::manifest),
+            ),
+            Ok(None) => expanded.push(target),
+            Err(error) => fail(&target, error),
+        }
+    }
+    expanded
 }
 
 fn format_paths(target: &str) -> Result<Vec<String>, ProjectError> {
