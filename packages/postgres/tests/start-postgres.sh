@@ -6,6 +6,7 @@ dir="${1:-$(mktemp -d)}"
 port="${PGPORT:-5433}"
 bin="${PG_BIN:-}"
 [ -n "$bin" ] && export PATH="$bin:$PATH"
+mkdir -p "$dir"
 printf 'secret' > "$dir/pw"
 initdb -D "$dir/data" -A scram-sha-256 --pwfile="$dir/pw" -U postgres > /dev/null
 # Roles that log in by md5 and by cleartext password, to test that the client refuses them by default.
