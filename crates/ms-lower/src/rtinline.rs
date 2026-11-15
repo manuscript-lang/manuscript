@@ -409,6 +409,10 @@ impl FnLower<'_> {
             let f = self.view_fn();
             return Some(self.b.call(f, args));
         }
+        if sym == "msrt_bytes_view" && args.len() == 4 {
+            let f = self.bytes_view_fn(self.ty_of(args[0]));
+            return Some(self.b.call(f, args));
+        }
         let (shape, result) = probe_of(sym)?;
         let f = self.probe_fn(shape, result);
         let map = args[0];
@@ -577,6 +581,84 @@ fn view_guard(b: &mut FuncBuilder<'_>, s: Value, start: Value, end: Value, slow:
 
 impl FnLower<'_> {
     /// The generated `String.view`: parameters the string, `start` and `end`.
+    /// `Bytes.view(start, end)` with `0 < end - start` and `0 <= start <= end <= len`: a view
+    /// `{ptr + start, end - start, 0}` stored to `out` with no call; an empty range, a negative
+    /// bound or a fault continues in the runtime.
+    fn bytes_view_fn(&mut self, bytes_ty: MTy) -> FuncId {
+        let key = HelperKey::BytesView(bytes_ty);
+        if let Some(f) = self.cx.helpers.get(&key) {
+            return *f;
+        }
+        let param = |ty| Param {
+            ty,
+            mode: Mode::Borrow,
+        };
+        let params = vec![
+            param(bytes_ty),
+            param(MTy::INT),
+            param(MTy::INT),
+            param(MTy::PTR),
+        ];
+        let ext = runtime_fn(
+            self.b.m,
+            "msrt_bytes_view",
+            &[bytes_ty, MTy::INT, MTy::INT, MTy::PTR],
+            MTy::UNIT,
+        );
+        let mut b = FuncBuilder::new(self.b.m, "bytes_view", params, MTy::UNIT);
+        b.func_mut().linkage = Linkage::Internal;
+        b.func_mut().inline = InlineHint::Always;
+        let ps = b.params();
+        let (bytes, start, end, out) = (ps[0], ps[1], ps[2], ps[3]);
+        let (fast, slow, join) = (b.new_block(), b.new_block(), b.new_block());
+        // A `Bytes` held in memory arrives as its address; a value is stored to a slot to be
+        // read through its memory form.
+        let s = if bytes_ty == MTy::PTR {
+            bytes
+        } else {
+            let slot = b
+                .emit(Op::Slot, &[], Imm::Ty(bytes_ty), Some(MTy::PTR))
+                .expect("slot");
+            b.emit(Op::Store, &[slot, bytes], Imm::None, None);
+            slot
+        };
+        let len = load(&mut b, s, 8, MTy::INT);
+        let zero = b.iconst(0);
+        let (a, c, d) = (
+            b.icmp(Cc::Ge, start, zero),
+            b.icmp(Cc::Lt, start, end),
+            b.icmp(Cc::Le, end, len),
+        );
+        let mut ok = b.binop(Op::And, a, c);
+        ok = b.binop(Op::And, ok, d);
+        b.br_if(ok, fast, &[], slow, &[]);
+        b.seal_block(fast);
+        b.seal_block(slow);
+        b.switch_to(fast);
+        let data = load(&mut b, s, 0, MTy::PTR);
+        let p = b
+            .emit(Op::PtrAdd, &[data, start], Imm::None, Some(MTy::PTR))
+            .expect("ptr.add");
+        let n = b.binop(Op::ISub, end, start);
+        b.emit(Op::Store, &[out, p], Imm::None, None);
+        let out8 = add(&mut b, out, 8);
+        b.emit(Op::Store, &[out8, n], Imm::None, None);
+        let out16 = add(&mut b, out, 16);
+        b.emit(Op::Store, &[out16, zero], Imm::None, None);
+        b.br(join, &[]);
+        b.switch_to(slow);
+        b.call_rt(ext, &[bytes, start, end, out]);
+        b.br(join, &[]);
+        b.seal_block(join);
+        b.switch_to(join);
+        let unit = b.unit();
+        b.ret(Some(unit));
+        let func = b.into_func();
+        let fid = self.b.m.add_func(func);
+        self.cx.helpers.insert(key, fid);
+        fid
+    }
+
     fn view_fn(&mut self) -> FuncId {
         let key = HelperKey::StringView;
         if let Some(f) = self.cx.helpers.get(&key) {

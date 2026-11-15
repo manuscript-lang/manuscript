@@ -16,7 +16,6 @@ pub mod control;
 #[cfg(windows)]
 #[allow(unsafe_code)]
 mod control_windows;
-pub mod envfile;
 #[cfg(unix)]
 #[path = "signals_unix.rs"]
 #[allow(unsafe_code)] // libc signal handling
@@ -246,12 +245,8 @@ native! {
         fs_status(control::set_environment(name.as_bytes(), value), &err)
     }
 
-    fn msstd_process_load_environment(
-        path: &str,
-        has_max: Has,
-        max: i64; err: ErrOut) -> Result<(), StatusCode> {
-        fs_status(ms_std_fs::ops::limit(*has_max, max)
-            .and_then(|m| control::load_environment(path.as_bytes(), m)), &err)
+    fn msstd_process_environment_is_set(name: &str) -> bool {
+        control::environment_is_set(name.as_bytes())
     }
 
     fn msstd_process_working_directory(; err: ErrOut) -> Result<Text, StatusCode> {

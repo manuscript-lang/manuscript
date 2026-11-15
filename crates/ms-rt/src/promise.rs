@@ -1043,8 +1043,8 @@ fn complete_unit(t: &mut Table, i: usize) {
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_promise_sleep(ns: i64) -> i64 {
     let id = msrt_promise_new();
-    let t = table();
     let i = find(id);
+    let t = table();
     let deadline = crate::sys::monotonic_ns().saturating_add(ns.max(0));
     t.deadline[i] = deadline;
     t.timers.push(Reverse((deadline, id)));
@@ -1061,8 +1061,8 @@ pub extern "C-unwind" fn msrt_promise_ready(fd: i64, events: i64, timeout_ns: i6
     let id = msrt_promise_new();
     // SAFETY: single scheduler per isolate.
     let ready = unsafe { task::watch_fd_for_promise(fd, events, id) };
-    let t = table();
     let i = find(id);
+    let t = table();
     match ready {
         None => {
             msrt_promise_drop(id);
@@ -1732,8 +1732,9 @@ pub extern "C-unwind" fn msrt_promise_wait(id: i64, timeout_ns: i64) -> i64 {
     }
     run_deferred(id, deadline);
     loop {
-        let t = table();
+        // `find` makes its own reference to the table; take `t` after it, not before.
         let i = find(id);
+        let t = table();
         if let Some(code) = outcome(t, i) {
             return code;
         }
@@ -2196,13 +2197,27 @@ mod tests {
     }
 
     fn start(id: i64, code: unsafe extern "C-unwind" fn(*mut Closure)) {
+        start_with(id, code, msrt_promise_start);
+    }
+
+    /// Starts the work on this thread: work that reads this thread's promise table must not be
+    /// stolen by another scheduler thread, whose table has no such promise.
+    fn start_here(id: i64, code: unsafe extern "C-unwind" fn(*mut Closure)) {
+        start_with(id, code, msrt_promise_start_here);
+    }
+
+    fn start_with(
+        id: i64,
+        code: unsafe extern "C-unwind" fn(*mut Closure),
+        begin: unsafe extern "C-unwind" fn(i64, *mut Closure),
+    ) {
         // SAFETY: the capture-free closure is handed to the promise, which drops it when the task ends.
         unsafe {
             *ID.ptr() = id;
             let closure =
                 crate::obj::new_obj(size_of::<Closure>(), None, drop_closure).cast::<Closure>();
             (*closure).code = code as *const u8;
-            msrt_promise_start(id, closure);
+            begin(id, closure);
         }
     }
 
@@ -2264,7 +2279,7 @@ mod tests {
     fn an_error_returned_after_the_limit_passed_reports_the_timeout() {
         let _g = lock();
         let id = msrt_promise_new();
-        start(id, fails_after_its_limit);
+        start_here(id, fails_after_its_limit);
         assert_eq!(msrt_promise_wait(id, -1), TIMEOUT);
         msrt_promise_drop(id);
         task::teardown();

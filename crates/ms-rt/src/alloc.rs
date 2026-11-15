@@ -558,11 +558,12 @@ pub fn sample_every(period: i64) {
 
 #[inline(never)]
 fn alloc_slow(size: usize) -> *mut u8 {
-    // SAFETY: this thread's allocator state.
-    let s = unsafe { &mut *STATE.ptr() };
-    if cfg!(test) && s.heap == NO_HEAP {
+    // Claim before borrowing the state: `claim_heap` borrows it too, which would invalidate `s`.
+    if cfg!(test) && !has_heap() {
         claim_heap();
     }
+    // SAFETY: this thread's allocator state.
+    let s = unsafe { &mut *STATE.ptr() };
     if size <= MAX_SMALL && s.heap != NO_HEAP {
         if !REMOTE[s.heap as usize].load(Ordering::Relaxed).is_null() {
             drain_remote(s);
@@ -789,6 +790,24 @@ fn small_size(p: *mut u8) -> Option<usize> {
     page_word(p).map(|word| CLASS_SIZES[word as u8 as usize] as usize)
 }
 
+/// [`realloc`] for a block that is shrinking: a small block whose class already fits `new_size`
+/// (more than half used) stays where it is, decided by one page-table read without entering
+/// `realloc`.
+///
+/// # Safety
+/// `p` is a live block from this allocator.
+#[inline]
+pub unsafe fn trim(p: *mut u8, new_size: usize) -> *mut u8 {
+    if let Some(old) = small_size(p)
+        && new_size <= old
+        && new_size > old / 2
+    {
+        return p;
+    }
+    // SAFETY: caller contract.
+    unsafe { realloc(p, new_size) }
+}
+
 /// Resizes a block, preserving the common prefix.
 ///
 /// # Safety
@@ -801,7 +820,7 @@ pub unsafe fn realloc(p: *mut u8, new_size: usize) -> *mut u8 {
     let s = unsafe { &mut *STATE.ptr() };
     if let Some(chunk) = grow_chunk_of(p) {
         if chunk == s.grow_chunk {
-            return grow_resize(s, p, new_size);
+            return grow_resize(p, new_size);
         }
         // Another heap's growing buffer: the bytes move out and its chunk is freed.
         let old = GROW_LEN[chunk].load(Ordering::Acquire);
@@ -937,16 +956,25 @@ fn grow_release(s: &mut State, chunk: usize) {
 }
 
 /// Resizes the block in this heap's growth chunk: in place while it stays big, otherwise out of it.
-fn grow_resize(s: &mut State, p: *mut u8, new_size: usize) -> *mut u8 {
-    if (GROW_MIN..=GROW_SIZE).contains(&new_size) && grow_commit(s, new_size) {
-        GROW_LEN[s.grow_chunk].store(new_size, Ordering::Release);
-        return p;
-    }
-    let old = GROW_LEN[s.grow_chunk].load(Ordering::Acquire);
+fn grow_resize(p: *mut u8, new_size: usize) -> *mut u8 {
+    // The state is borrowed in scopes that end before `alloc`, which borrows it again; a borrow
+    // passed in as an argument would be live across that call.
+    let chunk = {
+        // SAFETY: this thread's allocator state.
+        let s = unsafe { &mut *STATE.ptr() };
+        if (GROW_MIN..=GROW_SIZE).contains(&new_size) && grow_commit(s, new_size) {
+            GROW_LEN[s.grow_chunk].store(new_size, Ordering::Release);
+            return p;
+        }
+        s.grow_chunk
+    };
+    let old = GROW_LEN[chunk].load(Ordering::Acquire);
     let q = alloc(new_size);
     // SAFETY: `q` holds `new_size` bytes and `p` holds `old`; the blocks are disjoint.
     unsafe { core::ptr::copy_nonoverlapping(p, q, old.min(new_size)) };
-    grow_release(s, s.grow_chunk);
+    // SAFETY: this thread's allocator state.
+    let s = unsafe { &mut *STATE.ptr() };
+    grow_release(s, chunk);
     #[cfg(any(test, feature = "stats"))]
     {
         live_add(s, -1);
@@ -1148,6 +1176,24 @@ mod tests {
         assert_eq!(live_blocks(), before);
     }
 
+    /// Every byte of a 4 KiB page of a test block holds the page's tag, so a block can be filled
+    /// with `write_bytes` (Miri runs a byte loop over megabytes for minutes) and still tell
+    /// pages apart.
+    fn tag(i: usize) -> u8 {
+        (i / 4096 % 250) as u8 + 1
+    }
+
+    /// Fills `[from, to)` of `p` with the tags; `from` is a multiple of the page or zero.
+    ///
+    /// # Safety
+    /// `p` must be valid for `to` bytes.
+    unsafe fn fill(p: *mut u8, from: usize, to: usize) {
+        for lo in (from..to).step_by(4096) {
+            // SAFETY: the caller's range.
+            unsafe { p.add(lo).write_bytes(tag(lo), (lo + 4096).min(to) - lo) };
+        }
+    }
+
     #[test]
     fn growing_a_big_block_keeps_its_bytes() {
         let _g = lock();
@@ -1156,19 +1202,15 @@ mod tests {
         let mut p = alloc(size);
         // SAFETY: each block is live and holds `size` bytes when written and read.
         unsafe {
-            for i in 0..size {
-                *p.add(i) = (i % 251) as u8;
-            }
+            fill(p, 0, size);
             for _ in 0..6 {
                 let old = size;
                 size *= 2;
                 p = realloc(p, size);
                 for i in (0..old).step_by(97) {
-                    assert_eq!(*p.add(i), (i % 251) as u8);
+                    assert_eq!(*p.add(i), tag(i));
                 }
-                for i in old..size {
-                    *p.add(i) = (i % 251) as u8;
-                }
+                fill(p, old, size);
             }
             free(p);
         }
@@ -1184,9 +1226,7 @@ mod tests {
         let mut p = alloc(size);
         // SAFETY: each block is live and holds `size` bytes when written and read.
         unsafe {
-            for i in 0..size {
-                *p.add(i) = (i % 251) as u8;
-            }
+            fill(p, 0, size);
             let mut home: *mut u8 = null_mut();
             while size < 8 << 20 {
                 let old = size;
@@ -1200,11 +1240,9 @@ mod tests {
                     assert_eq!(usable_size(p), size);
                 }
                 for i in (0..old).step_by(89) {
-                    assert_eq!(*p.add(i), (i % 251) as u8, "byte {i} at {size}");
+                    assert_eq!(*p.add(i), tag(i), "byte {i} at {size}");
                 }
-                for i in old..size {
-                    *p.add(i) = (i % 251) as u8;
-                }
+                fill(p, old, size);
             }
             // A second big block does not get the region while the first lives.
             let other = realloc(alloc(GROW_MIN / 2), GROW_MIN);
@@ -1214,7 +1252,7 @@ mod tests {
             let q = realloc(p, 1000);
             assert_ne!(q, home);
             for i in (0..1000).step_by(7) {
-                assert_eq!(*q.add(i), (i % 251) as u8);
+                assert_eq!(*q.add(i), tag(i));
             }
             let again = realloc(alloc(GROW_MIN / 2), GROW_MIN);
             assert_eq!(again, home, "the region is free again");

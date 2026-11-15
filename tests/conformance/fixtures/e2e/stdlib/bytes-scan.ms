@@ -40,3 +40,24 @@ test "view borrows a range without copying":
 test "view of a temporary is owned":
 	tail := "hello".to_bytes().view(1, 5)
 	expect_equal(tail, "ello".to_bytes())?
+
+test "view agrees with slice and equality compares the bytes":
+	data := "aé🙂z héllo wörld and a longer tail".to_bytes()
+	n := data.length()
+	var a = -n
+
+	while a <= n:
+		var b = a
+
+		while b <= n:
+			want := data.slice(a, b)
+			if want.is_ok():
+				expect_equal(data.view(a, b).clone(), want.get())?
+				expect_equal(data.view(a, b) == want.get(), true)?
+			b += 3
+
+		a += 4
+
+	expect_equal(data.view(1, 4) == data.view(1, 5), false)?
+	expect_equal(data.view(0, 0) == Bytes([]), true)?
+	expect_equal(Bytes([1, 2, 3]) == Bytes([1, 2, 4]), false)?
