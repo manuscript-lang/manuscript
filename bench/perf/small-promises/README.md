@@ -33,3 +33,15 @@ Tried and dropped: a thief taking up to 64 starts per steal into its own queue (
 ## 2026-11-14, second step: a paused thief reads no other thread's queue
 
 While paused, `steal_wait_ns` (polled in the idle spin) now returns the end of the pause without reading the other threads' `front_at`, the line the creator rewrites on every pop. 100k promises, `MS_THREADS=4`, 11 interleaved runs each, before / after: min 115 / 88 ms, median 146 / 125 ms (1 thread: 64 ms, 2 threads about 100 ms). Controls on 4 threads: primes chunks 232 to 218 ms best, `promise-tree tree 36 10` 49 ms, `tree 36 5` 432 ms. What is left is the creator running slower with several threads started (user CPU about equals wall time), not stealing.
+
+## 2026-11-15: more threads are no longer slower (#3900)
+
+x86-64 Linux sandbox, 4 cores, release `ms` at c4dbcc59 (includes #3972, which finds an unstarted promise by sequence number instead of scanning the queue, and waits through a wait group). 100,000 promises, create plus `wait_all`, median of 21 runs of the built program, `MS_THREADS` 1 / 2 / 4:
+
+| work per promise | 1 | 2 | 4 |
+| --- | --- | --- | --- |
+| none (`ok(i * 2)`) | 39 ms | 41 ms | 42 ms |
+| about 0.3 us | 53 ms | 53 ms | 53 ms |
+| about 0.6 us | 92 ms | 93 ms | 90 ms |
+
+1,000,000 promises of about 0.3 us: 537 ms on 1 thread, 545 ms on 4. The run is flat in threads: a promise this small costs a thief more to take than the work, so the steal pause and waiters running their own unstarted promises keep it on one thread, and more threads add no cost. Before #3972 the same program at 4 threads measured 50 ms against 15 ms at 1 thread (none), because a waiter whose promise a thief had taken scanned the whole queue of 100k under the lock the thieves need (1,700 futex calls against 12 in `strace -c -f`). Not claimed: that tiny promises speed up with threads; they do not.
