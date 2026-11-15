@@ -1535,7 +1535,12 @@ fn block_string(
 			)
 		)
 
-	var content_indent = base + explicit
+	// A root block scalar may start at column zero; an indentation indicator still
+	// counts from column zero.
+	var content_indent = explicit
+	if explicit > 0 and base >= 0: content_indent = base + explicit
+	if explicit == 0: content_indent = base + explicit
+
 	scan_start := context.index
 	var probe = scan_start
 
@@ -1579,6 +1584,7 @@ fn block_string(
 		spaces := indent(line)
 		if (line.slice(spaces, line.length()).get("") != "" and spaces < content_indent):
 			break
+		if spaces == 0 and document_marker(line): break
 
 		parts.append(line.slice(content_indent, line.length()).get(""))
 		context.index += 1
@@ -1814,8 +1820,10 @@ fn block_value(
 				next_content := blank_trim_start(line)
 				next_lead := next_content.scalar_at(0, default: 0)
 				if (
-					(anchor != "" or tagged)
-					and (next_lead == 38 or next_lead == 33)
+					(
+						(anchor != "" and next_lead == 38)
+						or (tagged and next_lead == 33)
+					)
 					and boundary(next_content, colon: true) < 0
 				): return error(
 					invalid(
@@ -2020,6 +2028,89 @@ fn sequence_items(
 
 	return ok(unit)
 
+// Whether `text` starts with the indicator `code` followed by a blank or the end.
+fn indicator(text: String, code: Int) Bool:
+	if text.scalar_at(0, default: 0) != code: return false
+
+	second := text.scalar_at(1, default: 0)
+	return second == 0 or second == 32 or second == 9
+
+type ExplicitEntry:
+	name: String
+	value: YamlValue
+
+// One `? key` and `: value` pair of a block mapping, either part optional. The key must
+// be a scalar; a missing value is null and a missing key is the empty string.
+fn explicit_entry(var context: Context, base: Int, depth: Int) ExplicitEntry!:
+	var name = ""
+	var value = YamlValue.Null
+	start := context.lines[context.index].clone()
+	lead := blank_trim_start(start).clone()
+
+	if lead.scalar_at(0, default: 0) == 63:
+		var rest = blank_trim_start(lead.slice(1, lead.length()).get(""))
+		column := start.scalar_length() - rest.scalar_length() + 1
+		if rest.starts_with("#"): rest = ""
+		if sequence(rest) or (rest != "" and boundary(rest, colon: true) >= 0): return error(
+			yaml_unsupported(
+				line: source_line(context, context.index),
+				reason: "mapping keys must be scalars, not a collection",
+			)
+		)
+
+		context.index += 1
+
+		node := block_value(
+			context: var context,
+			text: rest,
+			base: base,
+			depth: (depth + 1),
+			indentless: false,
+			column: column,
+		)?
+		scalar := key_text(node)
+		if scalar.is_none(): return error(
+			yaml_unsupported(
+				line: source_line(context, context.index - 1),
+				reason: "mapping keys must be scalars, not a collection",
+			)
+		)
+
+		if rest != "" or node != YamlValue.Null: name = scalar.get("")
+		skip(var context)
+
+	if context.index >= context.lines.length(): return ok(
+		ExplicitEntry(name: name, value: value)
+	)
+
+	row := context.lines[context.index].clone()
+	value_lead := blank_trim_start(row).clone()
+	if indent(row) != base or not indicator(value_lead, 58): return ok(
+		ExplicitEntry(name: name, value: value)
+	)
+
+	var text = blank_trim_start(value_lead.slice(1, value_lead.length()).get(""))
+	column := row.scalar_length() - text.scalar_length() + 1
+	if text.starts_with("#"): text = ""
+
+	// A collection may start on the indicator's line, as in `: - one`.
+	if sequence(text) or (text != "" and boundary(text, colon: true) >= 0):
+		context.simple.set(context.index, false)
+		context.lines.set(context.index, pad(base + 2).concat(text))
+		value = block(var context, base + 2, depth + 1, scalar_base: base)?
+	else:
+		context.index += 1
+		value = block_value(
+			context: var context,
+			text: text,
+			base: base,
+			depth: (depth + 1),
+			indentless: true,
+			column: column,
+		)?
+
+	return ok(ExplicitEntry(name: name, value: value))
+
 fn block(var context: Context, base: Int, depth: Int, scalar_base: Int) YamlValue!:
 	skip(var context)
 
@@ -2032,15 +2123,11 @@ fn block(var context: Context, base: Int, depth: Int, scalar_base: Int) YamlValu
 		has_colon = not is_sequence and context.col[context.index] >= 0
 	else:
 		first = blank_trim_start(uncomment(context.lines[context.index]))
-		if first.starts_with("?") and not plain_may_start(first): return error(
-			yaml_unsupported(
-				line: source_line(context, context.index),
-				reason: "explicit mapping keys are unsupported",
-			)
-		)
-
 		is_sequence = sequence(first)
-		has_colon = not is_sequence and boundary(first, colon: true) >= 0
+		has_colon = (
+			not is_sequence
+			and (boundary(first, colon: true) >= 0 or indicator(first, 63))
+		)
 
 	if (
 		context.split_line >= 0
@@ -2074,6 +2161,22 @@ fn block(var context: Context, base: Int, depth: Int, scalar_base: Int) YamlValu
 		while context.index < context.lines.length():
 			skip(var context)
 			if context.index >= context.lines.length(): break
+
+			marker_row := context.lines[context.index].clone()
+			marker := blank_trim_start(marker_row).clone()
+
+			if (
+				indent(marker_row) == base
+				and (indicator(marker, 63) or indicator(marker, 58))
+			):
+				entry := explicit_entry(var context, base, depth)?
+				if explicit.contains(entry.name): return error(
+					invalid(context, "duplicate mapping key")
+				)
+
+				explicit.add(entry.name.clone())
+				values.add(entry.name.clone(), entry.value.clone())
+				continue
 
 			var line_indent = 0
 			var name = ""
@@ -2457,7 +2560,7 @@ fn document(var context: Context, options: YamlOptions) YamlValue!:
 			var context,
 			indentation(context, (context.lines[context.index]))?,
 			1,
-			scalar_base: 0,
+			scalar_base: -1,
 		)?
 
 	skip(var context)

@@ -444,7 +444,7 @@ test "YAML rejects duplicates invalid indentation malformed flow and aliases":
 		)
 		((cause.message.starts_with("YAML ")) | expect_true?)
 
-	for text in ["? complex\n: value", "[a]: 1"]:
+	for text in ["? - complex\n: value", "[a]: 1"]:
 		cause := match parse(text: text):
 			ok(_): return fail("unsupported YAML accepted")
 			error(cause): cause

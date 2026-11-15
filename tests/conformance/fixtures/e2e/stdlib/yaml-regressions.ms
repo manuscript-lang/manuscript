@@ -36,8 +36,8 @@ test "YAML a question mark followed by a letter is a plain block key":
 	values.add("?key", YamlValue.StringValue("value"))
 	(parse("?key: value") | expect_ok? | expect_equal(YamlValue.ObjectValue(values))?)
 
-test "YAML explicit and complex mapping keys remain unsupported":
-	for source in ["? key\n: value", "[key]: value"]:
+test "YAML collection mapping keys remain unsupported":
+	for source in ["? - key\n: value", "[key]: value"]:
 		cause := parse(source) | expect_error?
 		if cause.kind != "ENOTSUP":
 			return fail("expected unsupported mapping key, got {cause}")
@@ -723,8 +723,12 @@ test "YAML automatic indentation and plain continuations stay unchanged":
 	field("value:\n  |\n    one\n", "one\n")?
 
 test "YAML block content must exceed its containing indentation":
-	for source in ["|\na\n", "value:\n  |\na\n", "-\n  |\na\n"]:
+	for source in ["value:\n  |\na\n", "-\n  |\na\n"]:
 		expect_equal(parse(source).is_error(), true)?
+
+	// A root block scalar may start at column zero.
+	text("|\na\n", "a\n")?
+	text("--- >\nline1\nline2\n", "line1 line2\n")?
 
 test "YAML implicit indentation rejects overindented leading empty lines":
 	for style in ["|", ">", "|-", ">+"]:
@@ -926,3 +930,10 @@ test "YAML flow sequences hold single-pair entries and flow keys may precede the
 	unsupported_at("[[a]: b]", 1)?
 
 	_ := parse("[a: b: c]") | expect_error?
+
+test "YAML explicit keys read scalar keys with optional values":
+	value := parse("? a\n: 1\n? b\n? |\n  block\n: - x\n  - y\nc: d\n")?
+	want := parse("a: 1\nb: null\n\"block\\n\":\n  - x\n  - y\nc: d\n")?
+	expect_equal(value.to_string(), want.to_string())?
+
+	_ := parse("? a\n: 1\n? a\n: 2\n") | expect_error?
