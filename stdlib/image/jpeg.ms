@@ -376,7 +376,7 @@ export fn decode_jpeg(data: Bytes, max_pixels: Int?) Raster!:
 		else if marker == 216:
 			return error(bad("nested JPEG start marker"))
 		else if marker == 1 or (marker >= 208 and marker <= 215) or marker == 0:
-			unit
+			void
 		else:
 			if at + 2 > n: return error(bad("truncated JPEG segment"))
 

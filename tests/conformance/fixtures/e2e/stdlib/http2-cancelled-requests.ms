@@ -16,7 +16,7 @@ import (
 fn handler(var exchange: HttpExchange) Void!:
 	if exchange.path() == "/hang":
 		sleep(30.seconds()).wait()?
-		return ok(unit)
+		return ok()
 
 	return reply(var exchange, text(200, "ok"))
 
@@ -42,7 +42,7 @@ test "requests cancelled on a shared HTTP/2 connection release their streams":
 	// Each cancelled request used to stay open on the connection, so the peer's stream
 	// limit filled and later requests failed.
 	for i in 0..400:
-		_ := client.fetch("{base}/hang", FetchOptions(timeout: none)).with(
+		void client.fetch("{base}/hang", FetchOptions(timeout: none)).with(
 			options: PromiseOptions(timeout: 1.milliseconds())
 		).wait()
 
@@ -54,7 +54,7 @@ test "requests cancelled on a shared HTTP/2 connection release their streams":
 
 	before := (memory_usage() | expect_ok?).heap_used
 	for i in 0..1000:
-		_ := client.fetch("{base}/hang", FetchOptions(timeout: none)).with(
+		void client.fetch("{base}/hang", FetchOptions(timeout: none)).with(
 			options: PromiseOptions(timeout: 1.milliseconds())
 		).wait()
 

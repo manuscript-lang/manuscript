@@ -4,7 +4,7 @@ type Res:
     name: String
 
 fn var Res.close() Void!:
-    return ok(unit)
+    return ok()
 
 // Methods that return an owned collection or element built from the receiver's elements copy them.
 fn main() Int:

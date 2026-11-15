@@ -79,4 +79,4 @@ fn Scram.verify(server_final: String) Void!:
 	if not constant_time_equal(sent, self.server_signature):
 		return error(failed("server signature mismatch"))
 
-	return ok(unit)
+	return ok()

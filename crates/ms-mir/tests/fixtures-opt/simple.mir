@@ -9,14 +9,14 @@ b0:
 }
 fn @show(%x: int) {
 b0:
-  %u: unit = call.rt @msrt_print_int (%x)
+  %u: void = call.rt @msrt_print_int (%x)
   ret
 }
 fn @main() -> int {
 b0:
   %a: int = iconst 41
   %b: int = call @add1 (%a)
-  %u: unit = call @show (%b)
+  %u: void = call @show (%b)
   %c: int = call @add1 (%b)
   ret %c
 }

@@ -75,7 +75,7 @@ fn var Checked.step(value: Int, var out: List[Int]) Void!:
 	if value < 0: return error(Error("negative", kind: "EBADMSG"))
 
 fn var Checked.finish(var out: List[Int]) Void!:
-	return ok(unit)
+	return ok()
 
 test "a failed step's partial output is dropped and the failure is the next item":
 	var s = through[Int, Int](from_list([1, -2, 3]), Checked())

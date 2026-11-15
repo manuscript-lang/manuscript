@@ -56,11 +56,11 @@ fn run_range(
 	selected: List[Int],
 	results: String,
 ) Void:
-	if high - low <= 0: return unit
+	if high - low <= 0: return
 
 	if high - low == 1:
 		run_file(files, low, selected, results)
-		return unit
+		return
 
 	middle := (low + high) / 2
 	upper := promise(
@@ -100,7 +100,7 @@ fn run_captured(
 ) Void!:
 	msrt_test_capture_set(capture)
 	files[position](selected, results)
-	return ok(unit)
+	return ok()
 
 // The fault report (message and the test's frames, without the runner's) on one record
 // line: newlines become U+0002.
@@ -214,13 +214,13 @@ fn report(results: String, index: Int, started: Instant, outcome: Void!) Void:
 
 	if not outcome.is_error():
 		line(results, index, "pass", nanos, "", "")
-		return unit
+		return
 
 	cause := outcome.err()
 
 	if cause.kind == "ESKIP":
 		line(results, index, "skip", nanos, cause.message, "")
-		return unit
+		return
 
 	line(results, index, "fail", nanos, cause.message, cause.details.get_or("site", ""))
 
@@ -236,7 +236,7 @@ fn line(
 
 // Records `text` as the output of `key` (a test index, or `f` and a file number).
 fn output(results: String, key: String, text: String) Void:
-	if text.length() == 0: return unit
+	if text.length() == 0: return
 
 	record(results, "\u{1}MSOUT {key} {text.length()}\n{text}\n")
 

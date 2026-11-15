@@ -3,7 +3,7 @@ import Closeable from "@std/core.ms"
 type Marker:
     id: Int
 
-fn var Marker.close() Void!: ok(unit)
+fn var Marker.close() Void!: ok()
 
 fn inspect(value: Marker?) Int:
     get := value.get  // error: this method value keeps its receiver for repeated calls, so it clones `Marker`, which has one owner and cannot be cloned; use it in place

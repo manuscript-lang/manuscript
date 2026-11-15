@@ -12,25 +12,24 @@ type Resource:
 // Idempotent, as the Closeable contract requires: the block that ends early closes by
 // hand and the scope closes again.
 fn var Resource.close() Void!:
-	if self.done: return ok(unit)
+	if self.done: return ok()
 
 	self.done = true
-
-	_ := self.output.write(value: "close {self.label}\n")
+	void self.output.write(value: "close {self.label}\n")
 
 type Pair:
 	first: Int
 	second: Int
 
 fn report(var output: WriteStream[String], label: String, value: Int) Int:
-	_ := output.write(value: "{label}\n")
+	void output.write(value: "{label}\n")
 	return value
 
 fn combine(first: Int, second: Int) Int:
 	return first + second
 
 fn select(var output: WriteStream[String]) fn(Int, Int) Int:
-	_ := output.write(value: "callable\n")
+	void output.write(value: "callable\n")
 	return combine
 
 fn early(var output: WriteStream[String]) Int:
@@ -47,7 +46,7 @@ fn propagate(output: WriteStream[String]) Int!Error:
 	return ok(number)
 
 fn iterable(var output: WriteStream[String]) List[Int]:
-	_ := output.write(value: "iterable\n")
+	void output.write(value: "iterable\n")
 	return [1, 2]
 
 fn exercise() Int!:
@@ -73,10 +72,10 @@ fn exercise() Int!:
 	(pair.first + pair.second) | expect_equal(3)?
 
 	var _resource = Resource(label: "normal", output: stdout())
-	_completed := unit
+	_completed := void
 	_resource.close()?
+	void stdout().write(value: "after normal\n")
 
-	_ := stdout().write(value: "after normal\n")
 	var count = 0
 
 	while count < 2:
@@ -94,12 +93,11 @@ fn exercise() Int!:
 		ok(_):
 			fail(message: "Unexpected case")?
 		error(_):
-			_completed := unit
+			_completed := void
 
 	var early_out = stdout()
 	early(output: var early_out) | expect_equal(5)?
-
-	_ := stdout().write(value: "finished\n")
+	void stdout().write(value: "finished\n")
 	return ok(0)
 
 export fn main() Int:

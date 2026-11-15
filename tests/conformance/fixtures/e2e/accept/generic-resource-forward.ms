@@ -25,7 +25,7 @@ fn var Tokens.next() Token?!:
 	return ok(none)
 
 fn var Tokens.close() Void!:
-	return ok(unit)
+	return ok()
 
 type Forward[T]:
 	source: Source[T]

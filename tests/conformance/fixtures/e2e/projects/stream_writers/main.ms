@@ -21,7 +21,7 @@ fn var Echo.flush() Void!:
 	return self.out.flush()
 
 fn var Echo.close() Void!:
-	return ok(unit)
+	return ok()
 
 fn echo() WriteStream[Bytes]:
 	return WriteStream[Bytes](Echo(stdout()))

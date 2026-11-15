@@ -4,7 +4,7 @@
 import HashAlgorithm from "@std/crypto/crypto.ms"
 
 fn choose(algorithm: HashAlgorithm) Void:
-    return unit
+    return
 
 fn wrong() Void:
     choose("sha256")

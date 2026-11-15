@@ -21,7 +21,7 @@ fn fallback_hover_preserves_literal_operator_and_empty_ranges() {
             ("123", "Int"),
             ("+", "Int"),
             ("true", "Bool"),
-            ("unit", "Void"),
+            ("void", "Void"),
         ] {
             let start = source.find(token).unwrap();
             for byte in start..start + token.len() {

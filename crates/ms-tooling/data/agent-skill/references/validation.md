@@ -23,7 +23,7 @@ For additional APIs, inspect `ms search_symbol` signatures/imports. Report compi
 ## Habits from other languages
 
 - Methods always take parentheses, even with no arguments: `xs.length()`, `name.length()`, `opt.is_none()`; `xs.length` is a method value, not an Int. Test absence with `x.is_none()` or `x.is_some()`, never `x == none`. Write `not x` (no `!x`), `f(x)?` (no `try`), `fn f() Result[Int, Error]:` (no `->`), `"\{ \}"` for literal braces in text, and `else:` only after an indented `if` block.
-- Inside `{}` of a string, write quotes plainly: `"{xs.join(", ")}"`, never `\"`. `?.` chains an Optional only; to use a Result's value write `(r?).abs()`. In a `Void!` function a bare `return` means `return ok(unit)`; other Result functions need `ok(value)` or `error(e)`.
+- Inside `{}` of a string, write quotes plainly: `"{xs.join(", ")}"`, never `\"`. `?.` chains an Optional only; to use a Result's value write `(r?).abs()`. In a `Void!` function a bare `return` means `return ok()`; other Result functions need `ok(value)` or `error(e)`.
 
 The right-hand forms of the entry page's Not Manuscript table, in one compiling program:
 
@@ -57,10 +57,10 @@ fn main() Void!:
 	brace := "\{"
 	esc := "\u{1}"
 	var stack = [1, 2]
-	_ := stack.pop()
+	void stack.pop()
 	for _i in 0..2:
 		var seen = Set[String]()
-		_ := bump(var seen, "a")
+		void bump(var seen, "a")
 	r: Int! := ok(3)
 	if r.is_error(): return error(Error("bad"))
 	print("{brace}{esc}{flag.length()}")

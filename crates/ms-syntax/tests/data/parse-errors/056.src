@@ -19,7 +19,7 @@ fn stream_events(exchange: HttpExchange) Result[Void, HttpError]:
     exchange.write_bytes("é".to_bytes().slice(0, 1).get()).get()
     exchange.write_bytes("\u{e9}!\r".to_bytes().slice(1, 4).get()).get()
     exchange.write("\n\r\n: keepalive\n\ndata: second\n\n").get()
-    return ok(unit)
+    return ok()
 
 test "HTTP response bodies decode as SSE without being closed by the reader":
     with server = try network().serve_stream(

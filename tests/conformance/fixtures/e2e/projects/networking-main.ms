@@ -21,10 +21,10 @@ fn echo(var exchange: HttpExchange) Void!:
             message:
                 socket.output.write(message)?
             none:
-                return ok(unit)
+                return ok()
 
         socket.close()?
-        return ok(unit)
+        return ok()
 
     var fields = headers()
     _appended := fields.append("X-Test", "stream")?

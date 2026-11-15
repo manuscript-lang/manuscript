@@ -24,7 +24,7 @@ b2():
   %s: str = str "ab"
   %slot: ptr = slot bytes
   put %slot, %buf
-  %u: unit = call.rt @msrt_strbuilder_append (%slot, %s)
+  %u: void = call.rt @msrt_strbuilder_append (%slot, %s)
   %next: bytes = take bytes %slot
   %i2: int = iadd %i, %one
   br b1(%i2, %next)

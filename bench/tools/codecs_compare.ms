@@ -236,7 +236,7 @@ fn json_failure(
 	manifest.add("producer_executions", jint(cases.length() * 2 * (pairs + 1)))
 	write_json("{out}/manifest.json", jobject(manifest))
 	print(summary.join("\n"))
-	return ok(unit)
+	return ok()
 
 fn main() Int:
 	args := arguments()

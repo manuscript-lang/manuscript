@@ -37,12 +37,12 @@ Every row is a shape agents wrote that fails; the right column compiles.
 | --- | --- |
 | `!x`, `a ?? b`, `try f()`, `x or return y` | `not x`, `a.get(b)`, `f()?`, `if v := x:` then use `v` |
 | `x.len`, `x.length`, `x == none` | `x.length()`, `x.is_none()` |
-| `const X = 1`, `# note`, `pass` | `X := 1`, `// note`, `unit` |
+| `const X = 1`, `# note`, `pass` | `X := 1`, `// note`, `void` |
 | `a if c else b`, `-> T` | `if c: a else: b`, `fn f() T:` |
 | `if c: f() else: g()` as a statement | `if c:` and `else:` on their own lines, bodies indented |
 | `fn f(out: var T)`, `x: T = e` | `fn f(var out: T)`, `x: T := e` |
 | `"\"{x}\""`, `"{"`, `"\x01"` | plain quotes inside `{}`, `"\{"`, `"\u{1}"` |
-| `for _ in xs`, `unit := e` | `for _i in xs`; `unit` is a literal, never a name |
+| `for _ in xs`, `void := e` | `for _i in xs`; `void` is a keyword, never a name |
 | `(String, Int)`, `[A, B]` tuples | a record: `type Pair:` with fields |
 | `f(x)?` as a statement on a non-Void result | `_ := f(x)?` |
 | `r?.abs()` on a Result | `(r?).abs()`; `?.` is for Optionals only |
@@ -51,7 +51,7 @@ Every row is a shape agents wrote that fails; the right column compiles.
 
 ### Syntax and data
 
-- Immutable: `x := e`, or `x: T := e`. Mutable: `var x = e`; assignment and content mutation require var. Basic types: Int, Float, Bool, String, Void; literals: `true`, `false`, `unit`. Strings interpolate `"hello {name}"`.
+- Immutable: `x := e`, or `x: T := e`. Mutable: `var x = e`; assignment and content mutation require var. Basic types: Int, Float, Bool, String, Void; literals: `true`, `false`, `void`. Strings interpolate `"hello {name}"`.
 - Functions declare parameter/return types: `fn f(x: Int, n: Int = 1) Int:`. Call `f(2, n: 3)`. Inline bodies return expressions; multiline bodies use `return`. Void/Void! may fall through. Main returns Void, Int status, or Void!.
 - Generics: `fn identity[T](x: T) T: x`. Callback: `fn(Int) Int`; closure: `fn x: x + 1`.
 - Control: `if`/`else if`/`else`, `while`, `for x in xs:`, `for i in 0..n:` (excludes n), `break`, `continue`; `and or not`. Prefer early exits: `if c: return x`. Expression: `if c: a else: b`.

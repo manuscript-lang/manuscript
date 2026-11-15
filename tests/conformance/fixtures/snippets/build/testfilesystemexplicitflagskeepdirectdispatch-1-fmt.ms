@@ -4,8 +4,8 @@
 import copy, CopyOptions, create_directory, remove, write_file from "@std/os/fs.ms"
 
 fn explicit() Void:
-    _ := write_file("", "", false).wait()
-    _ := copy("", "", CopyOptions(replace: true))
-    _ := copy("", "", CopyOptions(recursive: true, max_bytes: 3))
-    _ := create_directory("", true)
-    _ := remove("", false)
+    void write_file("", "", false).wait()
+    void copy("", "", CopyOptions(replace: true))
+    void copy("", "", CopyOptions(recursive: true, max_bytes: 3))
+    void create_directory("", true)
+    void remove("", false)
