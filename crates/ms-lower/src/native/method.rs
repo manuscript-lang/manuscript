@@ -577,7 +577,13 @@ impl<'a> FnLower<'a> {
                 Ok(Val { v: out, own: true })
             }
             (_, "to_string") if m.receiver.is(Builtin::Duration) => self.duration_text(recv),
-            (_, "to_string") => self.format_value(recv),
+            (_, "to_string") => {
+                let receiver = ms_check::api::types::sub(&m.receiver, &self.subst);
+                match self.own_to_string(&receiver, recv)? {
+                    Some(text) => Ok(text),
+                    None => self.format_value(recv),
+                }
+            }
             (_, "clone") => {
                 let v = self.clone_value(recv.v);
                 if recv.own {

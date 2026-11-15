@@ -150,3 +150,10 @@ test "if let over a borrowed optional lends its payload":
 	if t := text:
 		expect_equal(t.length(), 5)?
 	expect_equal(text.get(), "hello")?
+
+test "an entry read from a temporary map is an owned copy":
+	var kept = Map[String, Order]()
+	if o := build().get("b"):
+		kept.add("b", o)
+	expect_equal(kept.get("b").get().id, "b")?
+	expect_equal(kept.get("b").get().items.length(), 3)?

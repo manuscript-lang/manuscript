@@ -321,7 +321,7 @@ fn unguarded_sort_restores_owners_before_explicit_cleanup() {
         panic!("expected unguarded comparator exit");
     }
     for count in [3, 13, 40] {
-        for (exit, code) in [("fault", 67), ("cancel", 130)] {
+        for (exit, code) in [("fault", ms_rt_abi::EXIT_ABORT), ("cancel", 130)] {
             let output = std::process::Command::new(std::env::current_exe().unwrap())
                 .args([
                     "--exact",

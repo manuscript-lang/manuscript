@@ -53,7 +53,7 @@ export fn panic(message: String) Never: ...
 extern fn msrt_io_write_stdout_line(text: String, end: String) Unit
 
 /*
-Writes `value` as text and `end` (a newline unless given) to standard output; `print(chunk, end: "")` streams text without a newline. Generic printing can show a record structurally; pass `value.to_string()` or an interpolated string for its type-specific formatting.
+Writes `value` as text and `end` (a newline unless given) to standard output; `print(chunk, end: "")` streams text without a newline. A type that declares its own `to_string()` prints that text, also when nested in a list or map; other records print structurally.
 It returns `Unit`. Output to a terminal is flushed at each newline and output to a pipe or file is flushed when the program blocks or exits, so a line printed before a wait is visible while it waits. Use `stdout()` from `@std/io/io.ms` for text without an appended newline, or `stdout_bytes()` for bytes.
 
 <!-- manuscript-example: {"mode":"fragment"} -->

@@ -52,6 +52,18 @@ Only literals and arithmetic over literals are folded. Values that arrive throug
 - A fault trace keeps its innermost 32 frames.
 - `==` and `!=` recurse through nested values; past 250,000 the fault is `equality depth limit exceeded (250000 nested values)`.
 
+## Out of memory
+
+<<<<<<< HEAD
+When the system refuses an allocation, the fault is `out of memory: could not allocate N bytes; hold less data at once, or process it in chunks or as a stream`, with the source frames and cleanup of any other fault, and exit status 139. A program the operating system kills for lack of memory after overcommit never reaches this report.
+
+## Exit status
+
+A fault reports, runs cleanup, then ends the process the way a C program ends: status 134 (what a shell reports for `abort`, 128 plus SIGABRT), or 139 (SIGSEGV) for a stack overflow or out of memory. Windows uses the C runtime's 3 for an abort and the native `STATUS_STACK_OVERFLOW` and `STATUS_NO_MEMORY` codes. The process exits normally after the report, so no core dump or crash dialog appears. `main` may return only 0 to 125, so a fault status never collides with a program's own.
+=======
+When the system refuses an allocation, the fault is `out of memory: could not allocate N bytes; hold less data at once, or process it in chunks or as a stream`, with the source frames and cleanup of any other fault, and exit status 67. A program the operating system kills for lack of memory after overcommit never reaches this report.
+>>>>>>> origin/main
+
 ## Cleanup and observation
 
 Cleanup runs after a fault. A cleanup fault can replace a pending return, domain error, or cancellation; secondary faults are kept as diagnostics. See [lexical cleanup](../cleanup/_index.md).

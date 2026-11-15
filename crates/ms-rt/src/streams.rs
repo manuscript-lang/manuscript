@@ -239,8 +239,21 @@ pub extern "C-unwind" fn msrt_streams_open(fd: i64, flags: i64) -> i64 {
     (i64::from(e.generation) << 32) | (i as i64 + 1)
 }
 
+/// Records a failure as `what: reason`, with the reason in the lower-case wording the other
+/// runtime errors use (`broken pipe`, not `Broken pipe (os error 32)`). A code of 0 means the
+/// descriptor accepted no bytes.
 fn fail(e: &mut Entry, what: &str, code: i32) {
-    e.error = format!("{what}: os error {code}").into_bytes();
+    let reason = if code == 0 {
+        "accepted no bytes".to_string()
+    } else {
+        let text = std::io::Error::from_raw_os_error(code).to_string();
+        let text = text.split(" (os error ").next().unwrap_or(&text);
+        let mut chars = text.chars();
+        chars.next().map_or_else(String::new, |first| {
+            first.to_lowercase().chain(chars).collect()
+        })
+    };
+    e.error = format!("{what}: {reason}").into_bytes();
 }
 
 enum Step {
@@ -556,7 +569,8 @@ mod tests {
         let stream = msrt_streams_open(i64::from(i32::MAX), WRITES);
         write(stream, &vec![0; AUTO_DRAIN]);
         let error = slot(&mut streams(), stream).unwrap().error.clone();
-        assert!(error.starts_with(b"write: os error "));
+        assert!(error.starts_with(b"write: "));
+        assert!(!error.windows(8).any(|w| w == b"os error"));
         assert_eq!(msrt_streams_buffered(stream), 0);
 
         for _ in 0..2 {
@@ -569,6 +583,28 @@ mod tests {
     }
 
     #[test]
+    fn failures_read_as_lower_case_reasons() {
+        let mut entry = Entry {
+            generation: 0,
+            live: true,
+            fd: -1,
+            flags: 0,
+            out: Vec::new(),
+            out_start: 0,
+            reading: None,
+            error: Vec::new(),
+            flushes: Vec::new(),
+        };
+        fail(&mut entry, "write", 0);
+        assert_eq!(entry.error, b"write: accepted no bytes");
+        #[cfg(unix)]
+        {
+            fail(&mut entry, "write", libc::EPIPE);
+            assert_eq!(entry.error, b"write: broken pipe");
+        }
+    }
+
+    #[test]
     fn retried_write_failures_survive_later_flushes() {
         let _guard = crate::testutil::lock();
         let stream = msrt_streams_open(i64::from(i32::MAX), WRITES);
@@ -577,7 +613,8 @@ mod tests {
         assert!(write_retry(promise, stream as usize, task::WAIT_WRITE));
         promise::msrt_promise_drop(promise);
         let error = slot(&mut streams(), stream).unwrap().error.clone();
-        assert!(error.starts_with(b"write: os error "));
+        assert!(error.starts_with(b"write: "));
+        assert!(!error.windows(8).any(|w| w == b"os error"));
         flush(stream);
         assert_eq!(slot(&mut streams(), stream).unwrap().error, error);
         msrt_streams_close(stream);

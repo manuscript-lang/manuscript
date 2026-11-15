@@ -3,7 +3,7 @@
   "phase": "run",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "exit_code": 67,
+    "exit_code": 134,
     "stdout": "",
     "stderr": "Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt\n  at testfaultsourcelocations-4.ms:11 in Cell.bump\n  at testfaultsourcelocations-4.ms:17 in probe\n  at testfaultsourcelocations-4.ms:21 in main\n"
   }

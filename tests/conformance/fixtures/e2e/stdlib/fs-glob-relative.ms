@@ -56,3 +56,16 @@ test "glob keeps dot named and parent query results relative to their root":
 		selected.map(fn(entry: PathEntry) String: entry.path.clone()),
 		["a.txt", "café.txt"],
 	)?
+
+test "glob patterns ignore dot segments and never match the root":
+	directory := temporary("manuscript-glob-dots-")?
+	root := directory.path()
+	create_directory("{root}/a", recursive: true)?
+	for name in ["x.ms", ".dot.ms", "a/z.ms"]:
+		write_file("{root}/{name}", "file").wait()?
+
+	expect_equal(matched_paths(root, GlobOptions(patterns: [".*"]))?, [".dot.ms"])?
+	expect_equal(matched_paths(root, GlobOptions(patterns: ["**/.*"]))?, [".dot.ms"])?
+	expect_equal(matched_paths(root, GlobOptions(patterns: ["./*.ms"]))?, ["x.ms"])?
+	expect_equal(matched_paths(root, GlobOptions(patterns: ["a/./z.ms"]))?, ["a/z.ms"])?
+	expect_equal(matched_paths(root, GlobOptions(patterns: ["a//z.ms"]))?, ["a/z.ms"])?

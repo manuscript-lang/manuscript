@@ -914,7 +914,7 @@ b0:
     let exe = d.join("inline-flags");
     link_all(&objp, &[real_runtime().path()], &exe).unwrap();
     let out = Command::new(exe).output().unwrap();
-    assert_eq!(out.status.code(), Some(67));
+    assert_eq!(out.status.code(), Some(ms_rt_abi::EXIT_ABORT));
     let err = String::from_utf8_lossy(&out.stderr);
     assert!(
         err.contains("choose") && err.contains("inline_flags.ms:10"),
@@ -975,7 +975,7 @@ b0:
         let exe = d.join(format!("real-callback-{opt_level}"));
         ms_clif::link::link_all(&obj, &[&shim, real_runtime().path()], &exe).unwrap();
         let out = Command::new(exe).output().unwrap();
-        assert_eq!(out.status.code(), Some(67));
+        assert_eq!(out.status.code(), Some(ms_rt_abi::EXIT_ABORT));
         let err = String::from_utf8_lossy(&out.stderr);
         assert!(err.contains("callback.ms:12 in callback"), "{err}");
         if cfg!(windows) {

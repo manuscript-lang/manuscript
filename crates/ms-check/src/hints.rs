@@ -295,6 +295,9 @@ fn type_alias(name: &str) -> Option<&'static str> {
         "str" | "Str" | "string" | "char" | "Char" | "Text" => "String",
         "boolean" | "Boolean" | "bool" => "Bool",
         "void" | "Void" | "None" | "NoneType" => "Unit",
+        "Vec" | "Vector" | "Array" | "ArrayList" | "array" => "List",
+        "Dict" | "Dictionary" | "HashMap" | "dict" | "TreeMap" => "Map",
+        "HashSet" | "TreeSet" => "Set",
         _ => return None,
     })
 }
@@ -1045,6 +1048,16 @@ pub fn int_float_mix_hint(syms: ms_syntax::Names, a: &Ty, b: &Ty) -> String {
     let mixed = (i == "Int" && f == "Float") || (i == "Float" && f == "Int");
     if mixed {
         "convert the Int with value.to_float(), or the Float with value.truncate_to_int() (returns Int?)".to_string()
+    } else {
+        String::new()
+    }
+}
+
+/// Names the method that repeats text when `*` joins a String and an Int.
+pub fn text_repeat_hint(syms: ms_syntax::Names, a: &Ty, b: &Ty) -> String {
+    let (a, b) = (a.display(syms).to_string(), b.display(syms).to_string());
+    if (a == "String" && b == "Int") || (a == "Int" && b == "String") {
+        "to repeat text write text.repeat(count), which returns a Result (append '?' to propagate it)".to_string()
     } else {
         String::new()
     }

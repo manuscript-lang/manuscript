@@ -1403,10 +1403,16 @@ impl Checker {
     /// Methods named `name` available on `receiver`.
     pub(crate) fn methods(&self, receiver: &Ty, name: Name) -> Vec<MethodRef> {
         // A type's own `clone` replaces the structural one: a resource's clone duplicates its
-        // handle and returns a `Result`.
-        if self.syms.str(name) == "clone" && matches!(receiver.kind, Kind::Type | Kind::Alternative)
+        // handle and returns a `Result`. Its own `to_string` replaces the built-in text form.
+        if matches!(self.syms.str(name), "clone" | "to_string")
+            && matches!(receiver.kind, Kind::Type | Kind::Alternative)
         {
-            let own = self.implemented_methods(receiver, name);
+            let mut own = self.implemented_methods(receiver, name);
+            if self.syms.str(name) == "to_string" {
+                // Only the no-argument form is the text conversion; `to_string(prefix)` is a
+                // method of its own that leaves the built-in one in place.
+                own.retain(|m| m.ty.params.is_empty());
+            }
             if !own.is_empty() {
                 return own;
             }

@@ -476,6 +476,29 @@ pub fn fatal(msg: &[u8]) -> ! {
     fatal_kind(FaultKind::Fault, msg)
 }
 
+/// An allocation the system refused: the full fault path (source frames, cleanups, exit 67)
+/// with the size asked for. If reporting needs memory too and fails, the nested call falls back
+/// to the bare message, since nothing more can be allocated.
+#[cold]
+#[inline(never)]
+pub fn out_of_memory(bytes: usize) -> ! {
+    // SAFETY: single threaded access to the fault state.
+    unsafe {
+        if core::mem::replace(&mut *OOM_REPORTING.ptr(), true) {
+            fatal_kind(FaultKind::OutOfMemory, b"out of memory");
+        }
+    }
+    let mut msg = Vec::new();
+    msg.extend_from_slice(b"out of memory: could not allocate ");
+    crate::num::push_i64(&mut msg, i64::try_from(bytes).unwrap_or(i64::MAX));
+    msg.extend_from_slice(
+        b" bytes; hold less data at once, or process it in chunks or as a stream",
+    );
+    // SAFETY: single threaded access to the fault state.
+    unsafe { *NEXT_KIND.ptr() = FaultKind::OutOfMemory };
+    fault_vec(msg)
+}
+
 /// [`fatal`] for a failure of a specific family, which the structured record names.
 pub fn fatal_kind(kind: FaultKind, msg: &[u8]) -> ! {
     #[cfg(test)]
@@ -492,7 +515,7 @@ pub fn fatal_kind(kind: FaultKind, msg: &[u8]) -> ! {
         sys::write_all(sys::STDERR, b"\n");
         write_record(&Record::new(kind, msg));
         // SAFETY: terminating the process.
-        unsafe { sys::_exit(ms_rt_abi::EXIT_FAULT) }
+        unsafe { sys::_exit(kind.exit_status()) }
     }
 }
 
@@ -1106,7 +1129,7 @@ fn run_one_cleanup() -> bool {
     }
 }
 
-/// The full fault path: trace, cleanups LIFO, report, exit 67.
+/// The full fault path: trace, cleanups LIFO, report, exit with the kind's status.
 #[cold]
 #[inline(never)]
 pub fn fault(msg: &[u8]) -> ! {
@@ -1131,6 +1154,11 @@ pub fn fault_fmt_kind(kind: FaultKind, args: fmt::Arguments) -> ! {
     // SAFETY: single threaded access to the fault state.
     unsafe { *NEXT_KIND.ptr() = kind };
     fault_fmt(args)
+}
+
+crate::isolate_static! {
+    /// An out-of-memory report is being built; cleared when the report is finished.
+    static OOM_REPORTING: bool = false;
 }
 
 crate::isolate_static! {
@@ -1166,7 +1194,7 @@ pub fn take_record(msg: &ms_rt_abi::StrVal) -> Option<Record> {
 /// Writes the last fault's record for the report `text` just printed. A record that does not
 /// describe `text` (an earlier recovered fault) is replaced by one holding only the text.
 #[cfg(not(test))]
-fn write_last_record(text: &[u8], started: Frames) {
+fn write_last_record(text: &[u8], started: Frames) -> i32 {
     let taken = LAST_RECORD.lock().ok().and_then(|mut r| r.take());
     let mut record = match taken {
         Some(r) if text.starts_with(&r.message) => r,
@@ -1174,6 +1202,7 @@ fn write_last_record(text: &[u8], started: Frames) {
     };
     record.frames.extend(started.list);
     write_record(&record);
+    record.kind.exit_status()
 }
 
 /// [`fault`] with the message already in an owned buffer, which becomes the report: a guarded
@@ -1238,6 +1267,7 @@ fn finish_report(primary: Option<Vec<u8>>) -> ! {
             }
         }
         *FAULTING.ptr() = false;
+        *OOM_REPORTING.ptr() = false;
     }
     #[cfg(test)]
     {
@@ -1253,8 +1283,8 @@ fn finish_report(primary: Option<Vec<u8>>) -> ! {
         report.push(b'\n');
         crate::io::flush_stdout();
         sys::write_all(sys::STDERR, report.as_slice());
-        write_last_record(&report, Frames::default());
-        crate::process::exit(ms_rt_abi::EXIT_FAULT)
+        let status = write_last_record(&report, Frames::default());
+        crate::process::exit(status)
     }
 }
 
@@ -1295,8 +1325,8 @@ pub fn exit_with_report(msg: &ms_rt_abi::StrVal, started: &[usize]) {
         report.push(b'\n');
         crate::io::flush_stdout();
         sys::write_all(sys::STDERR, report.as_slice());
-        write_last_record(&text, started);
-        crate::process::exit(ms_rt_abi::EXIT_FAULT)
+        let status = write_last_record(&text, started);
+        crate::process::exit(status)
     }
     #[cfg(test)]
     let _ = (msg, started);
@@ -2538,5 +2568,15 @@ mod tests {
             fault_of(|| msrt_fault_depth()).unwrap(),
             "stack overflow: call depth limit exceeded (recursion too deep or stack frames too large); check the recursion for a missing base case, or iterate instead"
         );
+    }
+
+    #[test]
+    fn out_of_memory_reports_the_size_and_can_report_twice() {
+        let _g = lock();
+        reset_for_tests();
+        let want = "out of memory: could not allocate 4096 bytes; hold less data at once, or process it in chunks or as a stream";
+        assert_eq!(fault_of(|| out_of_memory(4096)).unwrap(), want);
+        // The report flag is cleared when a report finishes, so a later failure is reported in full too.
+        assert_eq!(fault_of(|| out_of_memory(4096)).unwrap(), want);
     }
 }
