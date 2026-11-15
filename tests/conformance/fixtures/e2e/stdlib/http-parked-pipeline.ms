@@ -19,7 +19,7 @@ fn send(var conn: Connection, text: String) Void!:
 
 fn handle(request: HttpRequest) HttpResponse:
     if request.path == "/slow":
-        _ := sleep(nanoseconds(200000000)).wait()
+        void sleep(nanoseconds(200000000)).wait()
     return HttpResponse(200, headers(), "ok {request.path}\n".to_bytes())
 
 fn exchange(address: String) String:
@@ -27,7 +27,7 @@ fn exchange(address: String) String:
         _first := send(var conn, "GET /slow HTTP/1.1\r\nHost: t\r\n\r\n")
 
         // The slow handler is parked by now; the second request arrives while it waits.
-        _ := sleep(nanoseconds(50000000)).wait()
+        void sleep(nanoseconds(50000000)).wait()
         _second := send(
             var conn, "GET /fast HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n"
         )

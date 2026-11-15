@@ -98,4 +98,4 @@ test "path operations match the recorded corpus":
 	)
 	if checked < 9000: return fail("only {checked} cases")
 
-	return ok(unit)
+	return ok()

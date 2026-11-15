@@ -44,7 +44,7 @@ type Options:
 options := Options(count: 5)  // total defaults to 6
 ```
 
-An optional field with no explicit default is `none` when omitted. A default may use earlier fields and module declarations, but not itself or later fields. It is evaluated on each construction, so collection defaults are fresh. Any supplied value, even `unit`, `none`, or zero, skips the default. Generic arguments never come from defaults.
+An optional field with no explicit default is `none` when omitted. A default may use earlier fields and module declarations, but not itself or later fields. It is evaluated on each construction, so collection defaults are fresh. Any supplied value, even `void`, `none`, or zero, skips the default. Generic arguments never come from defaults.
 
 ## Mutation and cloning
 
@@ -136,7 +136,7 @@ type Door:
     id: Int
 
 fn var Door.close() Void!:
-    return ok(unit)
+    return ok()
 
 type Room:
     door: Door

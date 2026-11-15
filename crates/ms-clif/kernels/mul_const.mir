@@ -34,10 +34,10 @@ b0:
   %r3: int = call @times_const8 (%c)
   %r4: int = call @times_const5 (%d)
   %r5: int = call @times_const5 (%e)
-  %p1: unit = call.rt @msrt_print_int (%r1)
-  %p2: unit = call.rt @msrt_print_int (%r3)
-  %p3: unit = call.rt @msrt_print_int (%r4)
-  %p4: unit = call.rt @msrt_print_int (%r5)
+  %p1: void = call.rt @msrt_print_int (%r1)
+  %p2: void = call.rt @msrt_print_int (%r3)
+  %p3: void = call.rt @msrt_print_int (%r4)
+  %p4: void = call.rt @msrt_print_int (%r5)
   %z: int = iconst 0
   ret %z
 }

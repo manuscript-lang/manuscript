@@ -99,7 +99,7 @@ fn constructs() List[Construct]:
 		c(
 			"early_return",
 			"",
-			"x: @TY@ := @M1@\n    if flag():\n        return ok(unit)\n    see(x)",
+			"x: @TY@ := @M1@\n    if flag():\n        return ok()\n    see(x)",
 		),
 		c("try_error", "", "x: @TY@ := @M1@\n    fail()?\n    see(x)"),
 		c(
@@ -150,12 +150,12 @@ fn constructs() List[Construct]:
 		c(
 			"moved_in_one_branch_exit",
 			"",
-			"x: @TY@ := @M1@\n    for i in 0..2:\n        if i == 1:\n            pass(x)\n            return ok(unit)\n    see(x)",
+			"x: @TY@ := @M1@\n    for i in 0..2:\n        if i == 1:\n            pass(x)\n            return ok()\n    see(x)",
 		),
 		c(
 			"loop_return",
 			"",
-			"for i in 0..2:\n        x: @TY@ := @M1@\n        if flag():\n            return ok(unit)\n        see(x)",
+			"for i in 0..2:\n        x: @TY@ := @M1@\n        if flag():\n            return ok()\n        see(x)",
 		),
 		c(
 			"two_locals_try",
@@ -179,23 +179,23 @@ fn constructs() List[Construct]:
 		),
 		c(
 			"cancel_borrowed",
-			"fn hold(x: @TY@) Void!:\n    sleep(milliseconds(60000)).wait()?\n    return ok(unit)",
-			"x: @TY@ := @M1@\n    p := promise(fn: hold(x))\n    p.cancel()\n    _ := p.wait()",
+			"fn hold(x: @TY@) Void!:\n    sleep(milliseconds(60000)).wait()?\n    return ok()",
+			"x: @TY@ := @M1@\n    p := promise(fn: hold(x))\n    p.cancel()\n    void p.wait()",
 		),
 		c(
 			"cancel_owned",
-			"fn hold(x: @TY@) Void!:\n    sleep(milliseconds(60000)).wait()?\n    return ok(unit)",
-			"p := promise(fn: hold(@M1@))\n    p.cancel()\n    _ := p.wait()",
+			"fn hold(x: @TY@) Void!:\n    sleep(milliseconds(60000)).wait()?\n    return ok()",
+			"p := promise(fn: hold(@M1@))\n    p.cancel()\n    void p.wait()",
 		),
 		c(
 			"cancel_local",
-			"fn hold() Void!:\n    x: @TY@ := @M1@\n    sleep(milliseconds(60000)).wait()?\n    see(x)\n    return ok(unit)",
-			"p := promise(fn: hold())\n    p.cancel()\n    _ := p.wait()",
+			"fn hold() Void!:\n    x: @TY@ := @M1@\n    sleep(milliseconds(60000)).wait()?\n    see(x)\n    return ok()",
+			"p := promise(fn: hold())\n    p.cancel()\n    void p.wait()",
 		),
 		c(
 			"cancel_dropped",
-			"fn hold() Void!:\n    x: @TY@ := @M1@\n    sleep(milliseconds(60000)).wait()?\n    see(x)\n    return ok(unit)",
-			"_ := promise(fn: hold())",
+			"fn hold() Void!:\n    x: @TY@ := @M1@\n    sleep(milliseconds(60000)).wait()?\n    see(x)\n    return ok()",
+			"void promise(fn: hold())",
 		),
 		c("fn_value_temporary", "", "f := see\n    f(@M1@)"),
 		c("fn_value_lambda", "", "f := fn (v: @TY@): see(v)\n    f(@M1@)"),
@@ -228,12 +228,12 @@ fn constructs() List[Construct]:
 		c(
 			"generic_to_optional",
 			"fn opt_of[X](x: X) X?: return x",
-			"r := opt_of[@TY@](@M1@)\n    if r.is_some():\n        return ok(unit)",
+			"r := opt_of[@TY@](@M1@)\n    if r.is_some():\n        return ok()",
 		),
 		c(
 			"generic_to_optional_named",
 			"fn opt_of[X](x: X) X?: return x",
-			"x: @TY@ := @M1@\n    r := opt_of[@TY@](x)\n    if r.is_some():\n        return ok(unit)",
+			"x: @TY@ := @M1@\n    r := opt_of[@TY@](x)\n    if r.is_some():\n        return ok()",
 		),
 		c(
 			"generic_to_list",
@@ -243,7 +243,7 @@ fn constructs() List[Construct]:
 		c(
 			"generic_to_result",
 			"fn res_of[X](x: X) X!Error: return ok(x)",
-			"r := res_of[@TY@](@M1@)\n    fail()?\n    if r.is_ok():\n        return ok(unit)",
+			"r := res_of[@TY@](@M1@)\n    fail()?\n    if r.is_ok():\n        return ok()",
 		),
 		only(
 			"interface_param",
@@ -273,13 +273,13 @@ fn constructs() List[Construct]:
 			"match_enum_return",
 			"enum",
 			"",
-			"x: @TY@ := @M1@\n    match x:\n        Full(m): return ok(unit)\n        Empty: return ok(unit)",
+			"x: @TY@ := @M1@\n    match x:\n        Full(m): return ok()\n        Empty: return ok()",
 		),
 		only(
 			"match_enum_temporary",
 			"enum",
 			"",
-			"match @M1@:\n        Full(m): see_marker(m)\n        Empty: return ok(unit)",
+			"match @M1@:\n        Full(m): see_marker(m)\n        Empty: return ok()",
 		),
 		c("reassign", "", "var x: @TY@ = @M1@\n    x = @M2@\n    see(x)"),
 		c(
@@ -346,7 +346,7 @@ fn constructs() List[Construct]:
 		c(
 			"promise_result_dropped",
 			"fn produce() @TY@!: return ok(@M1@)",
-			"p := promise(fn: produce())\n    _ := p.wait()",
+			"p := promise(fn: produce())\n    void p.wait()",
 		),
 		only(
 			"explicit_close",
@@ -376,7 +376,7 @@ fn constructs() List[Construct]:
 			"match_optional",
 			"optional",
 			"",
-			"x: @TY@ := @M1@\n    match x:\n        m: see_marker(m)\n        none: return ok(unit)",
+			"x: @TY@ := @M1@\n    match x:\n        m: see_marker(m)\n        none: return ok()",
 		),
 		only("field_move", "record", "", "h := @M1@\n    see_marker(h.m)"),
 		only(
@@ -401,16 +401,16 @@ fn constructs() List[Construct]:
 			"result_match",
 			"result",
 			"",
-			"r: @TY@ := @M1@\n    match r:\n        ok(m): see_marker(m)\n        error(e): return ok(unit)",
+			"r: @TY@ := @M1@\n    match r:\n        ok(m): see_marker(m)\n        error(e): return ok()",
 		),
 	]
 
 // The program for `construct` applied to `shape`.
 fn program(shape: Shape, construct: Construct) String:
-	see := "fn see(x: @TY@) Void: return\n\nfn see_all(xs: List[@TY@]) Void: return\n\nfn seeok(x: @TY@) Void!: return ok(unit)\n\nfn see_marker(m: Marker) Void: return\n\nfn fail_int() Int!: return error(Error(\"x\"))\n"
+	see := "fn see(x: @TY@) Void: return\n\nfn see_all(xs: List[@TY@]) Void: return\n\nfn seeok(x: @TY@) Void!: return ok()\n\nfn see_marker(m: Marker) Void: return\n\nfn fail_int() Int!: return error(Error(\"x\"))\n"
 	m1 := shape.make.replace("@ID@", "1")
 	m2 := shape.make.replace("@ID@", "2")
-	var text = "{HEADER}\n{see}\n{construct.defs}\n\nfn body() Void!:\n    {construct.body}\n    return ok(unit)\n\nfn run() Void:\n    _ := body()\n\nexport fn main() Int:\n    run()\n    return 0\n"
+	var text = "{HEADER}\n{see}\n{construct.defs}\n\nfn body() Void!:\n    {construct.body}\n    return ok()\n\nfn run() Void:\n    void body()\n\nexport fn main() Int:\n    run()\n    return 0\n"
 	text = text.replace("@TY@", shape.ty).replace("@M1@", m1).replace("@M2@", m2)
 	return text
 

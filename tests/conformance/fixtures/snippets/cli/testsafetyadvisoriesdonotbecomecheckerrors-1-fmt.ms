@@ -5,6 +5,6 @@ fn use(value: Int?) Void:
     match value:
         _value:
             match value:
-                _value: unit
-                none: unit
-        none: unit
+                _value: void
+                none: void
+        none: void

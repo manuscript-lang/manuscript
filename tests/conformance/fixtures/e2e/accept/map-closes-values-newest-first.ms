@@ -11,7 +11,7 @@ type Item:
 	log: String
 
 fn var Item.close() Void!:
-	_ := append_file(self.log, "{self.id},").wait()
+	void append_file(self.log, "{self.id},").wait()
 
 fn logged(path: String) String:
 	read := read_file(path).wait()

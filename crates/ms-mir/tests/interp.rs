@@ -304,12 +304,12 @@ extern @msrt_print_int(int)
 entry @main
 fn @c1(%x: int) {
 b0:
-  %u: unit = call.rt @msrt_print_int (%x)
+  %u: void = call.rt @msrt_print_int (%x)
   ret
 }
 fn @c2(%x: int) {
 b0:
-  %u: unit = call.rt @msrt_print_int (%x)
+  %u: void = call.rt @msrt_print_int (%x)
   ret
 }
 fn @main() -> int {
@@ -336,7 +336,7 @@ extern @msrt_print_int(int)
 entry @main
 fn @c1(%x: int) {
 b0:
-  %u: unit = call.rt @msrt_print_int (%x)
+  %u: void = call.rt @msrt_print_int (%x)
   ret
 }
 fn @main() -> int {

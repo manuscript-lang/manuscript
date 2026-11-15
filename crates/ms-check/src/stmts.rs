@@ -386,7 +386,7 @@ impl Checker {
             self.type_error(
                 pos,
                 format!(
-                    "this statement discards {t_t}, so a failure would be lost; write a trailing '?' to propagate it, 'if value := x' or 'match' to handle it, or '_ := ...' to drop it on purpose"
+                    "this statement discards {t_t}, so a failure would be lost; write a trailing '?' to propagate it, 'if value := x' or 'match' to handle it, or 'void ...' to drop it on purpose"
                 , t_t = t.display(self.syms)),
             );
         }

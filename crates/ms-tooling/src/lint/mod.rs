@@ -227,7 +227,7 @@ pub const RULES: &[Rule] = &[
         code: "MSL128",
         family: "Final return the end of the function already makes",
         severity: Severity::Error,
-        repair: "delete the final `return ok(unit)` (`Void!`) or `return` (`Void`)",
+        repair: "delete the final `return ok()` (`Void!`) or `return` (`Void`)",
     },
 ];
 

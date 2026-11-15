@@ -18,7 +18,7 @@ fn ClosedFile.close() Void:
     return
 
 test "contract-valued cleanup":
-    opened: File := ClosedFile(unit)
+    opened: File := ClosedFile(void)
     file := opened
     read := file.read(1)
     expect_false(read.is_ok())?

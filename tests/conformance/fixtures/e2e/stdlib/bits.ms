@@ -23,11 +23,11 @@ import (
 
 fn shift_too_far() Void:
 	_value := shift_left(1, 64)
-	return unit
+	return
 
 fn shift_negative() Void:
 	_value := shift_right(1, -1)
-	return unit
+	return
 
 test "bitwise operators follow two's complement":
 	expect_equal(bit_and(12, 10), 8)?

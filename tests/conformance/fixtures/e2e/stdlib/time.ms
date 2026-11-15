@@ -62,7 +62,7 @@ test "timestamp shifts normalize raw fields and preserve wide sums":
 
 test "host clocks are usable and zero sleep completes":
 	before := monotonic()
-	_ := sleep(0.milliseconds()).wait()
+	void sleep(0.milliseconds()).wait()
 	expect_false(monotonic() < before)?
 
 	current := now()
@@ -140,7 +140,7 @@ test "sub-millisecond sleeps are not rounded up to a millisecond":
 	for attempt in 0..5:
 		start := monotonic()
 		for round in 0..500:
-			_ := sleep(microseconds(50)).wait()
+			void sleep(microseconds(50)).wait()
 
 		elapsed := monotonic().difference(start)
 		if elapsed.compare(fastest) < 0:

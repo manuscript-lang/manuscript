@@ -25,5 +25,5 @@ fn attempt() Void!:
     look_later(Door("later"), fails()?)
 
 fn main() Void:
-    _ := attempt()
+    void attempt()
     print("end")

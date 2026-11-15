@@ -337,7 +337,7 @@ fn var BytesBuilder.append_uvarint(value: UInt64) Void:
 fn var BytesBuilder.append_varint(value: Int) Void:
 	if value < 0:
 		self.append_uvarint((-(value + 1)).to_uint64().get(0) * 2 + 1)
-		return unit
+		return
 
 	self.append_uvarint(value.to_uint64().get(0) * 2)
 
@@ -401,7 +401,7 @@ fn put_uint64(var out: BytesBuilder, value: UInt64, little: Bool) Void:
 	if little:
 		put_word(var out, low, 4, true)
 		put_word(var out, high, 4, true)
-		return unit
+		return
 
 	put_word(var out, high, 4, false)
 	put_word(var out, low, 4, false)

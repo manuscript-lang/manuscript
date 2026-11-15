@@ -14,14 +14,14 @@ fn immediate(id: Int) Void:
 	complete[Int](id, ok(1))
 
 fn delayed(id: Int) Void:
-	_ := sleep(milliseconds(5000)).wait()
+	void sleep(milliseconds(5000)).wait()
 	complete[Int](id, ok(1))
 
 test "wait_first prefers an already completed input over unstarted deferred work":
 	pending := deferred[Int](immediate)
 	ready := promise(fn: ok(2))
 	while not ready.done():
-		_ := sleep(milliseconds(1)).wait()
+		void sleep(milliseconds(1)).wait()
 	expect_equal((wait_first([pending, ready])?), 2)?
 
 test "wait_first propagates a deferred promise construction limit":

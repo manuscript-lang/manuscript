@@ -98,12 +98,12 @@ fn var ConnectionSink.write(value: Bytes) Void!:
 	return msstd_net_connection_write_bytes(self.native, value, none)
 
 fn var ConnectionSink.flush() Void!:
-	return ok(unit)
+	return ok()
 
 // Half-closes the connection so the peer sees the end of the stream; the socket
 // closes once the input is closed too.
 fn var ConnectionSink.close() Void!:
-	_ := msstd_net_connection_shutdown_write(self.native)
+	void msstd_net_connection_shutdown_write(self.native)
 	msstd_net_connection_close_if_last(self.native)
 
 // What is known about a connection, available after its streams are moved elsewhere.
@@ -228,7 +228,7 @@ fn var DatagramSink.write(value: Datagram) Void!:
 	return msstd_net_datagram_send_bytes(self.native, value.data, value.address, none)
 
 fn var DatagramSink.flush() Void!:
-	return ok(unit)
+	return ok()
 
 fn var DatagramSink.close() Void!:
 	msstd_net_datagram_close_if_last(self.native)
@@ -676,7 +676,7 @@ fn var Accepting.close() Void!:
 	while not self.deals.is_empty():
 		if deal := self.deals.pop():
 			var closing = deal
-			_ := closing.close()
+			void closing.close()
 
 	for worker in self.workers:
 		worker.cancel()
@@ -711,12 +711,12 @@ fn accept_loop(listening: ServingHandle, count: Int) Void!:
 		accepted := msstd_http_serving_accept(listening.serving)
 
 		if accepted.is_error():
-			if accepted.err().kind == "EBADF": return ok(unit)
+			if accepted.err().kind == "EBADF": return ok()
 
-			sleep(50.milliseconds()).wait().get(unit)
+			void sleep(50.milliseconds()).wait()
 			continue
 
-		_ := accepting.deals[next].write(accepted.get())
+		void accepting.deals[next].write(accepted.get())
 		next = (next + 1) % count
 
 // Runs one worker on the thread the runtime placed this promise on: it adopts each

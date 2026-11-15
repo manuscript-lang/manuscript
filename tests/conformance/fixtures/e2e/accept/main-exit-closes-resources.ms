@@ -9,7 +9,7 @@ type Gate:
 
 fn var Gate.close() Void!:
     print("closed {self.id}")
-    return ok(unit)
+    return ok()
 
 type Holder:
     name: String

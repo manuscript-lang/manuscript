@@ -8,4 +8,4 @@ fn wrong_label(item: Int) String:
     return "{item}"
 
 fn callback() Void:
-    return unit
+    return

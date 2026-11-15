@@ -24,7 +24,7 @@ fn probe() Void!:
 test "typed callback helper":
     match probe():
         ok(_):
-            _completed := unit
+            _completed := void
         error(_):
             return fail(message: "Unexpected case")
 

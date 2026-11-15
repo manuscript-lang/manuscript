@@ -28,6 +28,10 @@ import (
 	gen_c60 from "./challenges/c60-issue-tracker/gen.ms",
 	gen_c61 from "./challenges/c61-dep-resolver/gen.ms",
 	gen_c63 from "./challenges/c63-inventory-returns/gen.ms",
+	gen_c64 from "./challenges/c64-assembler-extend/gen.ms",
+	gen_c65 from "./challenges/c65-make-else-if/gen.ms",
+	gen_c66 from "./challenges/c66-sql-case/gen.ms",
+	gen_c67 from "./challenges/c67-issue-blockers/gen.ms",
 )
 
 fn main() Int:
@@ -126,6 +130,22 @@ fn main() Int:
 
 	if which == "c63" or which == "all":
 		gen_c63()
+		ran += 1
+
+	if which == "c64" or which == "all":
+		gen_c64()
+		ran += 1
+
+	if which == "c65" or which == "all":
+		gen_c65()
+		ran += 1
+
+	if which == "c66" or which == "all":
+		gen_c66()
+		ran += 1
+
+	if which == "c67" or which == "all":
+		gen_c67()
 		ran += 1
 
 	if ran == 0:

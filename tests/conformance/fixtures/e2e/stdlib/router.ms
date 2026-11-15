@@ -208,7 +208,7 @@ test "a handler error comes back from call":
 
 test "a handler that sends nothing answers 204":
 	var r = Router()
-	r.get("/n", fn var exchange, params: ok(unit)).get()
+	r.get("/n", fn var exchange, params: ok()).get()
 	expect_equal((r.call(get("/n"))?).status, 204)?
 
 fn whole_response(var exchange: HttpExchange, params: RouteParams) Void!:
@@ -444,13 +444,13 @@ fn Sink.write_bytes(data: Bytes) Void!:
 	return self.write(data.decode_utf8().get(""))
 
 fn Sink.flush() Void!:
-	return ok(unit)
+	return ok()
 
 fn Sink.duplicate() Transport!:
 	return ok(Sink(self.path.clone()))
 
 fn Sink.close() Void:
-	return unit
+	return
 
 fn logged(path: String) String:
 	read := read_file(path).wait()

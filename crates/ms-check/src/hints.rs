@@ -543,7 +543,7 @@ impl Checker {
         }
         if self.syms.str(name) == "pass" {
             return format!(
-                "{message}; 'pass' is not a keyword, so write 'unit' for an empty block or match arm"
+                "{message}; 'pass' is not a keyword, so write 'void' for an empty block or match arm"
             );
         }
         match self.syms.str(name) {
