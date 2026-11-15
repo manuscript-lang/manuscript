@@ -1,0 +1,55 @@
+name: Postgres client
+
+# The Postgres client in packages/postgres is tested against a real server. This runs when the package changes
+# and every night, so the two-job pull request budget in cicd.yml is untouched.
+on:
+  pull_request:
+    paths:
+      - packages/postgres/**
+      - .github/workflows/postgres.yml
+  schedule:
+    - cron: '23 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: linux, runner: ubuntu-24.04, arch: amd64, pg_bin: /usr/lib/postgresql/16/bin}
+          - {os: darwin, runner: macos-15, arch: arm64, pg_bin: /opt/homebrew/opt/postgresql@16/bin}
+          - {os: windows, runner: windows-2025, arch: amd64, pg_bin: 'C:\Program Files\PostgreSQL\16\bin'}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+      - uses: ./.github/actions/rust-env
+        with:
+          os: ${{ matrix.os }}
+          arch: ${{ matrix.arch }}
+      - name: Install PostgreSQL
+        if: matrix.os == 'darwin'
+        shell: bash
+        run: brew install postgresql@16
+      - name: Build ms
+        shell: bash
+        run: |
+          cargo xtask runtime
+          cargo build --release --locked -p ms-cli
+      - name: Test against a real server
+        shell: bash
+        env:
+          PG_BIN: ${{ matrix.pg_bin }}
+        run: |
+          # initdb refuses to run as root; the hosted runners are not root.
+          vars=$(packages/postgres/tests/start-postgres.sh "$RUNNER_TEMP/pg")
+          export $vars
+          cd packages/postgres
+          ../../target/release/ms test tests/postgres.ms
