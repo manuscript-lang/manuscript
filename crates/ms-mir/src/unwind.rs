@@ -1656,10 +1656,6 @@ fn plan_flow(f: &Func, events: &[Vec<(usize, Vec<Value>)>], plain: &[bool]) -> F
         .iter()
         .map(|p| if *p { usize::MAX } else { 0 })
         .collect();
-    let none = || Flow {
-        entry: vec![Vec::new(); n],
-        trim: vec![0; n],
-    };
     // Each pass lowers some trim, so this ends; the bound only guards a mistake.
     for _ in 0..n * 4 + 8 {
         let mut entry: Vec<Vec<Entry>> = vec![Vec::new(); n];
@@ -1727,8 +1723,12 @@ fn plan_flow(f: &Func, events: &[Vec<(usize, Vec<Value>)>], plain: &[bool]) -> F
             return Flow { entry, trim };
         }
     }
-    debug_assert!(false, "the cleanup flow did not settle");
-    none()
+    // Each pass lowers a trim, so this cannot happen; a plan that never settled would register
+    // the wrong owners, which is a miscompile, so stop the compiler instead.
+    panic!(
+        "internal compiler error: the cleanup flow of `{}` did not settle",
+        f.name
+    )
 }
 
 /// The blocks the cleanup stack may stay open across: no scope open or close, no discard and no
