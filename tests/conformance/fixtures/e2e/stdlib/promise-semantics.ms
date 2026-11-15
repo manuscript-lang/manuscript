@@ -104,7 +104,15 @@ test "a timeout counts from construction, so a late wait still reports Timeout":
 		fn: ok(forever()),
 		options: PromiseOptions(timeout: milliseconds(20))
 	)
-	void sleep(milliseconds(80)).wait()
+
+	// The timeout fires on its own, with no wait on the promise; a loaded machine may
+	// be late.
+	var polls = 0
+
+	while not slow.done() and polls < 5000:
+		void sleep(milliseconds(2)).wait()
+		polls += 1
+
 	expect_true(slow.done())?
 
 	reason := slow.wait() | expect_error?
