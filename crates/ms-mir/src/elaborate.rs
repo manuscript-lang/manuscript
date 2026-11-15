@@ -1583,7 +1583,7 @@ impl Em<'_> {
         }
         let unit = self
             .push(at, Op::VoidConst, &[], Imm::None, Some(Ty::VOID))
-            .expect("unit");
+            .expect("void");
         Ok(self
             .push(
                 at,

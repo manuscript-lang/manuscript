@@ -71,12 +71,12 @@ fn failure_cases() List[Failure]:
 fn stats_line(label: String, values: List[Float]) String:
 	low := values.fold(values[0], fn(a: Float, v: Float) Float: if v < a: v else: a)
 	high := values.fold(values[0], fn(a: Float, v: Float) Float: if v > a: v else: a)
-	return "{label} [{low.to_fixed(3)},{high.to_fixed(3)}] {median(values).to_fixed(3)}"
+	return f"{label} [{low.to_fixed(3)},{high.to_fixed(3)}] {median(values).to_fixed(3)}"
 
 fn triple(values: List[Float]) String:
 	low := values.fold(values[0], fn(a: Float, v: Float) Float: if v < a: v else: a)
 	high := values.fold(values[0], fn(a: Float, v: Float) Float: if v > a: v else: a)
-	return "{low} {median(values)} {high}"
+	return f"{low} {median(values)} {high}"
 
 fn decode(before: String, after: String, out: String, pairs: Int) Result[Void, Error]:
 	fresh_directory(out)?
@@ -85,13 +85,13 @@ fn decode(before: String, after: String, out: String, pairs: Int) Result[Void, E
 	paths.add("before", before.clone())
 	paths.add("after", after.clone())
 	write_json(
-		"{out}/binaries.json",
+		f"{out}/binaries.json",
 		binaries_json([labeled("before", before), labeled("after", after)]),
 	)
-	write_text("{out}/samples.jsonl", "")
+	write_text(f"{out}/samples.jsonl", "")
 
 	for c in decode_cases():
-		key := "{c.size}/{c.count}/{c.rounds}"
+		key := f"{c.size}/{c.count}/{c.rounds}"
 		var samples = Map[String, List[Float]]()
 		samples.add("before", List[Float]())
 		samples.add("after", List[Float]())
@@ -104,11 +104,11 @@ fn decode(before: String, after: String, out: String, pairs: Int) Result[Void, E
 			):
 				text := run_pinned(
 					paths.get_or(name, ""),
-					["{c.size}", "{c.count}", "{c.rounds}"],
+					[f"{c.size}", f"{c.count}", f"{c.rounds}"],
 					"",
 				)?
 				parts := text.replace("\n", " ").split(" ").filter(fn p: p != "")
-				if parts.length() != 5: return invalid("invalid output {name}: {text}")
+				if parts.length() != 5: return invalid(f"invalid output {name}: {text}")
 
 				observed := all_ints(parts)?
 				if (
@@ -118,7 +118,7 @@ fn decode(before: String, after: String, out: String, pairs: Int) Result[Void, E
 					or observed[3] != c.size * c.count * c.rounds
 					or observed[4] <= 0
 				):
-					return invalid("wrong identity/checksum/timer: {observed}")
+					return invalid(f"wrong identity/checksum/timer: {observed}")
 
 				elapsed := observed[4].to_float() / c.rounds.to_float()
 				var row = Map[String, JsonValue]()
@@ -127,7 +127,7 @@ fn decode(before: String, after: String, out: String, pairs: Int) Result[Void, E
 				row.add("label", jstr(name.clone()))
 				row.add("checksum", jint(observed[3]))
 				row.add("ns_per_parse", jfloat(elapsed))
-				append_json_line("{out}/samples.jsonl", jobject(row))
+				append_json_line(f"{out}/samples.jsonl", jobject(row))
 
 				if pair >= 0:
 					var list = samples.get_or(name, [])
@@ -139,7 +139,7 @@ fn decode(before: String, after: String, out: String, pairs: Int) Result[Void, E
 		(
 			stdout()
 			.write(
-				"{key} before {triple(b)} after {triple(a)} ratio {median(a) / median(b)}\n"
+				f"{key} before {triple(b)} after {triple(a)} ratio {median(a) / median(b)}\n"
 			)
 			.get()
 		)
@@ -164,8 +164,8 @@ fn json_failure(
 		"binaries",
 		binaries_json([labeled("before", before), labeled("after", after)]),
 	)
-	write_json("{out}/manifest.json", jobject(manifest.clone()))
-	write_text("{out}/samples.jsonl", "")
+	write_json(f"{out}/manifest.json", jobject(manifest.clone()))
+	write_text(f"{out}/samples.jsonl", "")
 
 	var summary = List[String]()
 
@@ -185,22 +185,22 @@ fn json_failure(
 			):
 				text := run_pinned(
 					paths.get_or(name, ""),
-					["{c.size}", "{c.rounds}", c.shape.clone()],
+					[f"{c.size}", f"{c.rounds}", c.shape.clone()],
 					"",
 				)?
 				fields := text.replace("\n", " ").split(" ").filter(fn p: p != "")
 				if (
 					fields.length() != 6
-					or fields[0] != "{c.size}"
-					or fields[1] != "{c.rounds}"
+					or fields[0] != f"{c.size}"
+					or fields[1] != f"{c.rounds}"
 					or fields[2] != c.shape
-					or fields[3] != "{c.rounds}"
+					or fields[3] != f"{c.rounds}"
 				):
-					return invalid("invalid identity/checksum/timer: {name}: {text}")
+					return invalid(f"invalid identity/checksum/timer: {name}: {text}")
 
 				nums := all_ints(fields.slice(3, 6).get([]))?
 				if nums[1] <= 0 or nums[2] <= 0: return invalid(
-					"invalid identity/checksum/timer: {name}: {text}"
+					f"invalid identity/checksum/timer: {name}: {text}"
 				)
 
 				w := nums[1].to_float() / c.rounds.to_float()
@@ -214,7 +214,7 @@ fn json_failure(
 				row.add("checksum", jint(nums[0]))
 				row.add("wall_ns", jfloat(w))
 				row.add("cpu_ns", jfloat(u))
-				append_json_line("{out}/samples.jsonl", jobject(row))
+				append_json_line(f"{out}/samples.jsonl", jobject(row))
 
 				if repeat >= 0:
 					var wl = wall.get_or(name, [])
@@ -226,17 +226,17 @@ fn json_failure(
 					cpu.add(name.clone(), cl)
 
 		summary.append(
-			"{c.shape} {c.size} wall_ns: before {stats_line("", wall.get_or("before", []))} after {stats_line("", wall.get_or("after", []))}"
+			f"{c.shape} {c.size} wall_ns: before {stats_line("", wall.get_or("before", []))} after {stats_line("", wall.get_or("after", []))}"
 		)
 		summary.append(
-			"{c.shape} {c.size} cpu_ns: before {stats_line("", cpu.get_or("before", []))} after {stats_line("", cpu.get_or("after", []))}"
+			f"{c.shape} {c.size} cpu_ns: before {stats_line("", cpu.get_or("before", []))} after {stats_line("", cpu.get_or("after", []))}"
 		)
 
 	manifest.add("complete", jbool(true))
 	manifest.add("producer_executions", jint(cases.length() * 2 * (pairs + 1)))
-	write_json("{out}/manifest.json", jobject(manifest))
+	write_json(f"{out}/manifest.json", jobject(manifest))
 	print(summary.join("\n"))
-	return ok(unit)
+	return ok()
 
 fn main() Int:
 	args := arguments()

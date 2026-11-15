@@ -6,38 +6,38 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     l1 := [1, 2, 3].take(0)
-    say("l1 = {l1} len {l1.length()}")
+    say(f"l1 = {l1} len {l1.length()}")
 
     l2 := [20, 4, 22, (-19)]
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
-    s3 := ("{(-(-37))}:" + "brace\{s\}".lower().reverse())
-    say("s3 = [{s3}]")
+    s3 := (f"{(-(-37))}:" + "brace{s}".lower().reverse())
+    say(f"s3 = [{s3}]")
 
     i4 := (-13)
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     i5 := i4
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     i6 := 964047
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     s7 := s3.trim()
-    say("s7 = [{s7}]")
+    say(f"s7 = [{s7}]")
 
-    b8 := (("{(i6 * i6)}:" + s3).is_empty() and (not ("42" == "delta")))
-    say("b8 = {b8}")
+    b8 := ((f"{(i6 * i6)}:" + s3).is_empty() and (not ("42" == "delta")))
+    say(f"b8 = {b8}")
 
     l9 := l2.reversed()
-    say("l9 = {l9} len {l9.length()}")
+    say(f"l9 = {l9} len {l9.length()}")
 
     i10 := ((-542918682071) + ((-37) + (i4 + 12)))
-    say("i10 = {i10}")
+    say(f"i10 = {i10}")
 
     b11 := (
         ((627.048 / 792.971) * 534.622) == (
@@ -45,8 +45,8 @@ export fn main() Int:
             * (533.004 / 607.962)
         )
     )
-    say("b11 = {b11}")
+    say(f"b11 = {b11}")
 
     b12 := "a".is_empty()
-    say("b12 = {b12}")
+    say(f"b12 = {b12}")
     return 0

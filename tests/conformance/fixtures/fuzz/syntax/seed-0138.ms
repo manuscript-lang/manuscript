@@ -6,23 +6,23 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := ((-(63382 + 684073)) - (-667913))
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     b3 := ("delta".trim() + ("a" + "back\\slash")).is_empty()
-    say("b3 = {b3}")
+    say(f"b3 = {b3}")
 
     f4 := 9.5
-    say("f4 = {f4}")
+    say(f"f4 = {f4}")
 
     f5 := (
         ((403.132 * 2.5) - (857.691 - f4))
         + ((305.516 + f4) * (766.855 / 714.007))
     )
-    say("f5 = {f5}")
+    say(f"f5 = {f5}")
 
     var acc6 = 0
     var stepacc6 = 0
@@ -31,5 +31,5 @@ export fn main() Int:
         stepacc6 += 1
         acc6 += stepacc6 * stepacc6 + 3
 
-    say("acc6 = {acc6}")
+    say(f"acc6 = {acc6}")
     return 0

@@ -43,7 +43,7 @@ fn outline_cases() List[Case]:
 	var cases = List[Case]()
 	for count in [1, 16, 128, 1000]:
 		for size in [0, 1024, 100000]:
-			cases = add(cases, "symbols", count, "spaces-{size}")
+			cases = add(cases, "symbols", count, f"spaces-{size}")
 	for count in [1, 1000]:
 		for shape in ["spaces-1000000", "spaces-crlf-100000", "tail"]:
 			cases = add(cases, "symbols", count, shape)
@@ -92,7 +92,7 @@ type Run:
 
 fn run_harness(binary: String, c: Case, rounds: Int, cpu: String) Run!:
 	var program = binary.clone()
-	var args = [c.mode.clone(), "{c.count}", "{rounds}", c.shape.clone()]
+	var args = [c.mode.clone(), f"{c.count}", f"{rounds}", c.shape.clone()]
 
 	if cpu != "":
 		args = ["--cpu-list", cpu.clone(), binary.clone()].concat(args)
@@ -100,20 +100,20 @@ fn run_harness(binary: String, c: Case, rounds: Int, cpu: String) Run!:
 
 	out := sample(program, args)?
 	fields := out.trim().split(",")
-	if fields.length() != 8: return invalid("malformed harness row: {out.trim()}")
+	if fields.length() != 8: return invalid(f"malformed harness row: {out.trim()}")
 	if (
 		fields[0] != c.mode
-		or fields[1] != "{c.count}"
-		or fields[2] != "{rounds}"
+		or fields[1] != f"{c.count}"
+		or fields[2] != f"{rounds}"
 		or fields[3] != c.shape
 	):
-		return invalid("harness row does not echo its arguments: {out.trim()}")
+		return invalid(f"harness row does not echo its arguments: {out.trim()}")
 
 	var n = List[Int]()
 
 	for i in 4..8:
 		v := fields[i].parse_int()
-		if v.is_none(): return invalid("not an integer: {fields[i]}")
+		if v.is_none(): return invalid(f"not an integer: {fields[i]}")
 
 		n.append(v.get(0))
 
@@ -150,7 +150,7 @@ fn compare(
 
 			if first.checksum != expected.checksum or first.size != expected.size:
 				return invalid(
-					"{c.mode} {c.count} {c.shape}: before and after disagree"
+					f"{c.mode} {c.count} {c.shape}: before and after disagree"
 				)
 
 			want := (30000000 + first.elapsed - 1) / first.elapsed
@@ -170,13 +170,13 @@ fn compare(
 				r := rounds.get_or(name, 1)
 				got := run_harness(paths.get_or(name, ""), c, r, cpu)?
 				if got.checksum != expected.checksum or got.size != expected.size:
-					return invalid("{c.mode} {c.count} {c.shape}: output changed")
+					return invalid(f"{c.mode} {c.count} {c.shape}: output changed")
 
 				var list = observed.get_or(name, [])
 				list.append(got.elapsed.to_float() / r.to_float())
 				observed.add(name.clone(), list)
 				rows.append(
-					"{c.mode},{c.count},{c.shape},{s},{name},{r},{got.elapsed},{got.checksum},{got.size},{got.rss},{cpu}"
+					f"{c.mode},{c.count},{c.shape},{s},{name},{r},{got.elapsed},{got.checksum},{got.size},{got.rss},{cpu}"
 				)
 
 		old := median(observed.get_or("before", []))
@@ -184,13 +184,13 @@ fn compare(
 		(
 			stdout()
 			.write(
-				"{c.mode},{c.count},{c.shape},before={old.to_fixed(0)}ns,after={new.to_fixed(0)}ns,ratio={(new / old).to_fixed(3)}\n"
+				f"{c.mode},{c.count},{c.shape},before={old.to_fixed(0)}ns,after={new.to_fixed(0)}ns,ratio={(new / old).to_fixed(3)}\n"
 			)
 			.get()
 		)
 
 	write_text(out, rows.join("\n") + "\n")
-	return ok(unit)
+	return ok()
 
 fn main() Int:
 	args := arguments()
@@ -208,7 +208,7 @@ fn main() Int:
 
 	opts := parsed.get(Map[String, String]())
 	default_samples := if args[0] == "hover": 9 else: 10
-	samples := opts.get_or("samples", "{default_samples}").parse_int().get(0)
+	samples := opts.get_or("samples", f"{default_samples}").parse_int().get(0)
 	if samples < 5: return fail("--samples must be at least 5")
 
 	result := compare(

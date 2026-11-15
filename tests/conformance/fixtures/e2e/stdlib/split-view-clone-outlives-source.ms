@@ -20,7 +20,7 @@ fn identifiers(version: String) List[String]:
 fn churn() Int:
 	var total = 0
 	for i in 0..20:
-		total += "scratch-{i}-allocation-that-reuses-freed-blocks".length()
+		total += f"scratch-{i}-allocation-that-reuses-freed-blocks".length()
 	return total
 
 fn check(rounds: Int) Int!:
@@ -28,7 +28,7 @@ fn check(rounds: Int) Int!:
 
 	for i in 0..rounds:
 		found := identifiers("1.0.0-99999999999999999999.100000000000000000000")
-		_ := churn()
+		void churn()
 		if (
 			found.length() != 2
 			or found[0] != "99999999999999999999"

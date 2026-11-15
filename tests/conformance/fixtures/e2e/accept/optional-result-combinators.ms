@@ -11,7 +11,7 @@ type Counter:
 type Wrapped:
 	inner: String
 
-fn Wrapped.message() String: "wrapped {self.inner}"
+fn Wrapped.message() String: f"wrapped {self.inner}"
 
 fn tick(var counter: Counter) Int:
 	counter.calls += 1

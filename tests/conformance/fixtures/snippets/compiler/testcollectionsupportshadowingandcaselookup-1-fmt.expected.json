@@ -1,7 +1,7 @@
 {
   "format": 1,
   "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
+  "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
     "fmt": "enum Other:\n\tOutOfRange\n\nfn other() Other: Other.OutOfRange\n\nfn standard() Error: Error(\"collection: out of range\", kind: \"ERANGE\")\n\nfn recognize(value: Other) Int:\n\tmatch value:\n\t\tOutOfRange: return 1\n"

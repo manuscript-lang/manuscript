@@ -22,7 +22,7 @@ fn main() Int:
 
 	for i in 0..count:
 		if i > 0: json.append(",")
-		json.append("\"{encoded}\"")
+		json.append(f"\"{encoded}\"")
 
 	json.append("]")
 
@@ -43,5 +43,5 @@ fn main() Int:
 			checksum += value.length()
 
 	elapsed := monotonic().difference(start).to_nanoseconds()
-	print("{length} {count} {rounds} {checksum} {elapsed}")
+	print(f"{length} {count} {rounds} {checksum} {elapsed}")
 	return 0

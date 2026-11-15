@@ -1,7 +1,7 @@
 {
   "format": 1,
   "phase": "check",
-  "oracle": "Manuscript 0.1.0",
+  "oracle": "Manuscript 2026.11.0",
   "expected": {
     "exit_code": 1,
     "format": 1,
@@ -27,7 +27,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1295.ms:3:31: parse: expected ')', found '|'; close the parenthesis, separating items with commas\n   |\n 3 | fn use[ListEntry](value: ListE|) Void: unit\n   |                               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1295.ms:3:31: parse: expected ')', found '|'; close the parenthesis, separating items with commas\n   |\n 3 | fn use[ListEntry](value: ListE|) Void: void\n   |                               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

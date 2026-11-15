@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -15,45 +15,45 @@ fn fact(n: Int) Int:
     return n * fact(n - 1)
 
 export fn main() Int:
-    b1 := ("brace\{s\}" + "x".upper()).starts_with("MiXeD CaSe")
-    say("b1 = {b1}")
+    b1 := ("brace{s}" + "x".upper()).starts_with("MiXeD CaSe")
+    say(f"b1 = {b1}")
 
     l2 := [21, (-23)]
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     s3 := "alpha".reverse().reverse().trim()
-    say("s3 = [{s3}]")
+    say(f"s3 = [{s3}]")
 
     l4 := l2.sorted(fn a, b: a.compare(b))
-    say("l4 = {l4} len {l4.length()}")
+    say(f"l4 = {l4} len {l4.length()}")
 
     i5 := ((-((-8) - (-14))) + (22 / (47 + 15)))
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     f6 := ((332.238 * 0.0) / (712.866 * 287.565))
-    say("f6 = {f6}")
+    say(f"f6 = {f6}")
     say(
-        "{(((-37) + i5) * (i5 * 22))} {(26 + (i5 + 50))} {((((-37) + i5) * (i5 * 22)) < (26 + (i5 + 50)))} sum {(((-37) + i5) * (i5 * 22)) + (26 + (i5 + 50))}"
+        f"{(((-37) + i5) * (i5 * 22))} {(26 + (i5 + 50))} {((((-37) + i5) * (i5 * 22)) < (26 + (i5 + 50)))} sum {(((-37) + i5) * (i5 * 22)) + (26 + (i5 + 50))}"
     )
 
     var acc7 = 0
     for i in 0..5:
         acc7 += i * 9
-    say("acc7 = {acc7}")
-    say("fact(19) = {fact(19)}")
+    say(f"acc7 = {acc7}")
+    say(f"fact(19) = {fact(19)}")
 
     l8 := l4.sorted(fn a, b: a.compare(b))
-    say("l8 = {l8} len {l8.length()}")
+    say(f"l8 = {l8} len {l8.length()}")
 
     b9 := (
-        ("{(i5 + i5)}:" + "hello world").ends_with("42")
+        (f"{(i5 + i5)}:" + "hello world").ends_with("42")
         or ((s3 != s3) and (b1 or b1))
     )
-    say("b9 = {b9}")
+    say(f"b9 = {b9}")
 
     i10 := (((i5 * 29) * (-i5)) - ((i5 % 14) % (-19)))
-    say("i10 = {i10}")
+    say(f"i10 = {i10}")
 
     l11 := l4.sorted(fn a, b: a.compare(b))
-    say("l11 = {l11} len {l11.length()}")
+    say(f"l11 = {l11} len {l11.length()}")
     return 0

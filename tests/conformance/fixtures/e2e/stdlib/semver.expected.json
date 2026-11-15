@@ -1,7 +1,7 @@
 {
   "format": 1,
   "phase": "test",
-  "oracle": "Manuscript 0.1.0",
+  "oracle": "Manuscript 2026.11.0",
   "expected": {
     "exit_code": 0,
     "report": {
@@ -38,19 +38,24 @@
           "index": 5,
           "name": "semver.ms::semver keeps hyphens in pre-release and rejects extra plus signs",
           "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "semver.ms::semver reads and orders calendar versions",
+          "status": "passed"
         }
       ],
       "summary": {
-        "available": 6,
-        "selected": 6,
-        "passed": 6,
+        "available": 7,
+        "selected": 7,
+        "passed": 7,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN semver.ms::semver parses and formats every component\nPASS semver.ms::semver parses and formats every component\nRUN semver.ms::semver rejects malformed text\nPASS semver.ms::semver rejects malformed text\nRUN semver.ms::semver reports numbers beyond Int\nPASS semver.ms::semver reports numbers beyond Int\nRUN semver.ms::semver orders by precedence\nPASS semver.ms::semver orders by precedence\nRUN semver.ms::semver ignores build metadata and compares huge numeric identifiers\nPASS semver.ms::semver ignores build metadata and compares huge numeric identifiers\nRUN semver.ms::semver keeps hyphens in pre-release and rejects extra plus signs\nPASS semver.ms::semver keeps hyphens in pre-release and rejects extra plus signs\n6 tests, 0 failed\n",
+      "stdout": "RUN semver.ms::semver parses and formats every component\nPASS semver.ms::semver parses and formats every component\nRUN semver.ms::semver rejects malformed text\nPASS semver.ms::semver rejects malformed text\nRUN semver.ms::semver reports numbers beyond Int\nPASS semver.ms::semver reports numbers beyond Int\nRUN semver.ms::semver orders by precedence\nPASS semver.ms::semver orders by precedence\nRUN semver.ms::semver ignores build metadata and compares huge numeric identifiers\nPASS semver.ms::semver ignores build metadata and compares huge numeric identifiers\nRUN semver.ms::semver keeps hyphens in pre-release and rejects extra plus signs\nPASS semver.ms::semver keeps hyphens in pre-release and rejects extra plus signs\nRUN semver.ms::semver reads and orders calendar versions\nPASS semver.ms::semver reads and orders calendar versions\n7 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

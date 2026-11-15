@@ -114,13 +114,13 @@ fn evaluate(tokens: List[String]) String:
     if parser.div_zero:
         return "error: division by zero"
 
-    return "{value}"
+    return f"{value}"
 
 export fn main() Int:
     for line in read_lines(stdin()).get():
         if tokens := tokenize(line):
             if tokens.length() > 0:
-                stdout().write("{evaluate(tokens)}\n").get()
+                stdout().write(f"{evaluate(tokens)}\n").get()
         else:
             stdout().write("error: syntax\n").get()
 

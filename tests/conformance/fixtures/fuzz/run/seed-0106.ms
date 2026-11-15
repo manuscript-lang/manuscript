@@ -6,55 +6,55 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := (((42 + (-490526)) - (12 / 770015)) * (-712776))
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     i2 := (-((-i1) - (20 + (-9))))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     l3 := [(-3), (-15), (-18), 27, (-30)]
-    say("l3 = {l3} len {l3.length()}")
+    say(f"l3 = {l3} len {l3.length()}")
 
     b4 := (true and false)
-    say("b4 = {b4}")
+    say(f"b4 = {b4}")
 
-    s5 := ("{i2}:" + "x".lower())
-    say("s5 = [{s5}]")
+    s5 := (f"{i2}:" + "x".lower())
+    say(f"s5 = [{s5}]")
 
-    if ("{i1}:" + s5).is_empty():
+    if (f"{i1}:" + s5).is_empty():
         say(s5.lower())
     else:
         say("naïve")
 
     l6 := l3.sorted(fn a, b: a.compare(b))
-    say("l6 = {l6} len {l6.length()}")
+    say(f"l6 = {l6} len {l6.length()}")
 
     b7 := "delta".replace(s5, s5).is_empty()
-    say("b7 = {b7}")
+    say(f"b7 = {b7}")
 
     l8 := l3.reversed()
-    say("l8 = {l8} len {l8.length()}")
+    say(f"l8 = {l8} len {l8.length()}")
 
     f9 := (513.711 / (4.0e-8 + 258.842))
-    say("f9 = {f9}")
+    say(f"f9 = {f9}")
 
     var acc10 = 0
     for i in 0..1:
         acc10 += i * 2
-    say("acc10 = {acc10}")
+    say(f"acc10 = {acc10}")
 
     b11 := false
-    say("b11 = {b11}")
+    say(f"b11 = {b11}")
 
     f12 := ((581.464 * (420.789 + f9)) / 3.5)
-    say("f12 = {f12}")
+    say(f"f12 = {f12}")
 
     b13 := true
-    say("b13 = {b13}")
+    say(f"b13 = {b13}")
 
     i14 := i1
-    say("i14 = {i14}")
+    say(f"i14 = {i14}")
     return 0

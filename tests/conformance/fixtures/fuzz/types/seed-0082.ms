@@ -6,21 +6,21 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     l1 := [21, (-18)]
-    say("l1 = {l1} len {l1.length()}")
+    say(f"l1 = {l1} len {l1.length()}")
 
     f2 := (((745.783 + 1.5) * (5.5 / 303.135)) + ((686.747 + 640.673) + 935.786))
-    say("f2 = {f2}")
-    say("{4} {(-l1.get(0))} {(4 < (-l1.get(0)))} sum {4 + (-l1.get(0))}")
+    say(f"f2 = {f2}")
+    say(f"{4} {(-l1.get(0))} {(4 < (-l1.get(0)))} sum {4 + (-l1.get(0))}")
 
     i3 := (l1.get(1) + ((-(-73068759431)) + 10))
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     l4 := [16]
-    say("l4 = {l4} len {l4.length()}")
+    say(f"l4 = {l4} len {l4.length()}")
     if 1:
         say("truthy")
     return 0

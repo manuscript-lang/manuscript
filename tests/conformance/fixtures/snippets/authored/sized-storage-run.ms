@@ -27,7 +27,7 @@ fn main() Void:
         l.append((1000 - i).to_int32().get(0))
 
     sorted := l.sorted(fn a, b: a.compare(b))
-    _ := stdout().write("{sorted[0]} {sorted[999]} {l.length()}\n")
+    void stdout().write(f"{sorted[0]} {sorted[999]} {l.length()}\n")
     var m = Map[Int16, Int8]()
     for i in 0..300:
         m.add(i.to_int16().get(0), (i % 100).to_int8().get(0))
@@ -36,29 +36,29 @@ fn main() Void:
     for e in m.entries():
         tot += e.value.to_int64()
 
-    _ := stdout().write("{m.length()} {tot} {m.get(299)}\n")
+    void stdout().write(f"{m.length()} {tot} {m.get(299)}\n")
     var st = Set[Int8]()
     for i in 0..50:
         st.add((i % 7).to_int8().get(0))
 
-    _ := stdout().write("{st.length()} {st.contains(3)} {st.contains(9)}\n")
+    void stdout().write(f"{st.length()} {st.contains(3)} {st.contains(9)}\n")
     k: Int8 := -4
     f: Float32 := 1.25
     cl: fn(Int) Int := fn x: (x.to_int8().get(0) + k).to_int64()
-    _ := stdout().write("{cl(10)} {f * 2.0 + 0.5}\n")
+    void stdout().write(f"{cl(10)} {f * 2.0 + 0.5}\n")
     var cells: List[Cell] = []
     for i in 0..5:
         cells.append(Cell(a: -1, b: 100000, c: 0.5, d: true, e: -7))
 
-    _ := stdout().write(
-        "{cells[4].b} {cells[2].e} {cells[1].c} {cells[0] == cells[3]} {cells[0].d}\n"
+    void stdout().write(
+        f"{cells[4].b} {cells[2].e} {cells[1].c} {cells[0] == cells[3]} {cells[0].d}\n"
     )
-    _ := stdout().write(
-        "{kind(Num(v: 5, s: 2.5))} {kind(Word(t: "ab", k: 3))} {kind(End)}\n"
+    void stdout().write(
+        f"{kind(Num(v: 5, s: 2.5))} {kind(Word(t: "ab", k: 3))} {kind(End)}\n"
     )
     opts: List[Int8?] := [3, none, -1]
-    _ := stdout().write("{opts} {opts[0] == opts[2]}\n")
+    void stdout().write(f"{opts} {opts[0] == opts[2]}\n")
     ints: List[Int8] := [5, 3, -9, 1]
-    _ := stdout().write(
-        "{ints.sorted(fn a, b: a.compare(b))} {ints.map(fn x: x + 1)} {ints.fold(0, fn a, x: a + x.to_int64())}\n"
+    void stdout().write(
+        f"{ints.sorted(fn a, b: a.compare(b))} {ints.map(fn x: x + 1)} {ints.fold(0, fn a, x: a + x.to_int64())}\n"
     )

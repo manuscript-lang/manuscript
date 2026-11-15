@@ -5,7 +5,7 @@
 // non-ASCII text on every backend.
 fn show(text: String) Void:
     if v := text.parse_int():
-        print("{v}")
+        print(f"{v}")
     else:
         print("none")
 

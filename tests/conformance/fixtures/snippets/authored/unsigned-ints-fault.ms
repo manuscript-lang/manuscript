@@ -6,6 +6,6 @@ import stdout from "@std/io/io.ms"
 fn main() Void:
     a: UInt8 := 5
     b: UInt8 := 6
-    _ := stdout().write("before\n")
+    void stdout().write("before\n")
     c := a - b
-    _ := stdout().write("{c}\n")
+    void stdout().write(f"{c}\n")

@@ -7,8 +7,8 @@ fn echo(value: String) String:
     return value
 
 test "text source forms":
-    expect_equal(echo("\{literal\}"), "\{literal\}")?
+    expect_equal(echo("{literal}"), "{literal}")?
     expect_equal("\u{1F600}", "😀")?
-    expect_equal("value: {3}", "value: 3")?
+    expect_equal(f"value: {3}", "value: 3")?
 
-    _no_value: Void := unit
+    _no_value: Void := void

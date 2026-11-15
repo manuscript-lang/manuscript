@@ -5,7 +5,7 @@ import parse from "@std/data/toml.ms"
 fn toml_doc(count: Int) String:
     var sb = StringBuilder()
     for i in 0..count:
-        sb.append("[item{i}]\nid = {i}\nname = \"user{i}\"\ntags = [\"a\", \"b\"]\n")
+        sb.append(f"[item{i}]\nid = {i}\nname = \"user{i}\"\ntags = [\"a\", \"b\"]\n")
     return sb.build()
 
 export fn bench_toml() Void:

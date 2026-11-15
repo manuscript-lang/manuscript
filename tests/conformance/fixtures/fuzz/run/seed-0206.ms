@@ -6,44 +6,44 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := ((((-28) / 49) * (1 * (-12))) - (-1))
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     i2 := (-((i1 * 5) + i1))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     f3 := 0.0
-    say("f3 = {f3}")
+    say(f"f3 = {f3}")
 
     i4 := (763148 - i1)
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
     say(
-        "{((i1 + (-19)) * (i1 / (-12)))} {((i1 + 21) - (545825 - i4))} {(((i1 + (-19)) * (i1 / (-12))) < ((i1 + 21) - (545825 - i4)))} sum {((i1 + (-19)) * (i1 / (-12))) + ((i1 + 21) - (545825 - i4))}"
+        f"{((i1 + (-19)) * (i1 / (-12)))} {((i1 + 21) - (545825 - i4))} {(((i1 + (-19)) * (i1 / (-12))) < ((i1 + 21) - (545825 - i4)))} sum {((i1 + (-19)) * (i1 / (-12))) + ((i1 + 21) - (545825 - i4))}"
     )
 
-    s5 := (("{44}:" + "naïve") + ("MiXeD CaSe" + "42").trim())
-    say("s5 = [{s5}]")
+    s5 := ((f"{44}:" + "naïve") + ("MiXeD CaSe" + "42").trim())
+    say(f"s5 = [{s5}]")
 
     b6 := s5.reverse().is_empty()
-    say("b6 = {b6}")
+    say(f"b6 = {b6}")
 
     i7 := (-13)
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
     l8 := [(-4), 20, 22, 24]
-    say("l8 = {l8} len {l8.length()}")
+    say(f"l8 = {l8} len {l8.length()}")
 
     i9 := i2
-    say("i9 = {i9}")
+    say(f"i9 = {i9}")
 
     l10 := l8.map(fn x: x + 4).filter(fn x: x % 2 == 0)
-    say("l10 = {l10} len {l10.length()}")
+    say(f"l10 = {l10} len {l10.length()}")
 
     l11 := l8.concat(l10)
-    say("l11 = {l11} len {l11.length()}")
+    say(f"l11 = {l11} len {l11.length()}")
 
     var acc12 = 0
 
@@ -53,7 +53,7 @@ export fn main() Int:
         else:
             acc12 -= 1
 
-    say("acc12 = {acc12}")
+    say(f"acc12 = {acc12}")
 
     var acc13 = 0
     var stepacc13 = 0
@@ -62,7 +62,7 @@ export fn main() Int:
         stepacc13 += 1
         acc13 += stepacc13 * stepacc13 + 1
 
-    say("acc13 = {acc13}")
+    say(f"acc13 = {acc13}")
 
     var acc14 = 0
     var stepacc14 = 0
@@ -71,8 +71,8 @@ export fn main() Int:
         stepacc14 += 1
         acc14 += stepacc14 * stepacc14 + (-5)
 
-    say("acc14 = {acc14}")
+    say(f"acc14 = {acc14}")
 
     f15 := 0.0
-    say("f15 = {f15}")
+    say(f"f15 = {f15}")
     return 0

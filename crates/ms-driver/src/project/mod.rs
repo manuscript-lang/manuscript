@@ -20,6 +20,7 @@
 //! `ms.lock` handling and build-cache file locks belong to the build driver, not here.
 
 pub mod discovery;
+pub mod edit;
 pub mod embed;
 pub mod error;
 pub mod manifest;
@@ -28,6 +29,8 @@ pub mod packages;
 pub mod pathops;
 pub mod paths;
 pub mod quoting;
+pub mod resolve;
+pub mod semver;
 
 pub use discovery::{discover_modules, discover_modules_with_overlay, discovered_directories};
 pub use error::{Location, ManifestError, PathError, ProjectError};

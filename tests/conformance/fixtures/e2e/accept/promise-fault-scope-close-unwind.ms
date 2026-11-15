@@ -18,7 +18,7 @@ fn var Probe.read(max: Int) Int?!Error:
 	return ok(none)
 
 fn var Probe.close() Void:
-	return unit
+	return
 
 type Wrapper:
 	input: Src

@@ -15,7 +15,7 @@ export fn main() Void:
 		fields := row.split("\t")
 		if fields[0] == "0": continue
 
-		key := "{fields[2]} {fields[1]}"
+		key := f"{fields[2]} {fields[1]}"
 		value := fields[3].parse_float().get() / 1000000.0
 
 		if var values = groups[key]?:
@@ -26,5 +26,5 @@ export fn main() Void:
 	for key in groups.keys().sorted():
 		values := groups[key]
 		print(
-			"{key} n={values.length()} median_ms={median(values)} min_ms={values.min().get()} max_ms={values.max().get()}"
+			f"{key} n={values.length()} median_ms={median(values)} min_ms={values.min().get()} max_ms={values.max().get()}"
 		)

@@ -149,8 +149,8 @@ fn parse_field(text: String, lo: Int, hi: Int) List[Bool]:
 	return allowed
 
 fn pad(n: Int) String:
-	if n < 10: return "0{n}"
-	return "{n}"
+	if n < 10: return f"0{n}"
+	return f"{n}"
 
 // Up to `count` matches strictly after `st`, searching days st..st+3000.
 fn search(st: Start, count: Int, spec: Spec) List[String]:
@@ -173,7 +173,7 @@ fn search(st: Start, count: Int, spec: Spec) List[String]:
 					for mi in 0..60:
 						if spec.minutes[mi] and out.length() < count:
 							if n > 0 or h > sh or (h == sh and mi > smin):
-								out.append("{y}-{pad(m)}-{pad(d)} {pad(h)}:{pad(mi)}")
+								out.append(f"{y}-{pad(m)}-{pad(d)} {pad(h)}:{pad(mi)}")
 		n += 1
 		d += 1
 
@@ -191,36 +191,36 @@ fn search(st: Start, count: Int, spec: Spec) List[String]:
 
 fn solve(no: Int, line: String) String:
 	toks := line.split(" ")
-	if toks.length() != 7: return "line {no}: error: bad line\n"
+	if toks.length() != 7: return f"line {no}: error: bad line\n"
 
 	st := parse_start(toks[0])
-	if st.year < 0: return "line {no}: error: bad start\n"
+	if st.year < 0: return f"line {no}: error: bad start\n"
 
 	count := num_in(toks[1], 1, 20)
-	if count < 0: return "line {no}: error: bad count\n"
+	if count < 0: return f"line {no}: error: bad count\n"
 
 	mins := parse_field(toks[2], 0, 59)
-	if mins.length() == 0: return "line {no}: error: bad minute\n"
+	if mins.length() == 0: return f"line {no}: error: bad minute\n"
 
 	hrs := parse_field(toks[3], 0, 23)
-	if hrs.length() == 0: return "line {no}: error: bad hour\n"
+	if hrs.length() == 0: return f"line {no}: error: bad hour\n"
 
 	dom := parse_field(toks[4], 1, 31)
-	if dom.length() == 0: return "line {no}: error: bad day-of-month\n"
+	if dom.length() == 0: return f"line {no}: error: bad day-of-month\n"
 
 	mon := parse_field(toks[5], 1, 12)
-	if mon.length() == 0: return "line {no}: error: bad month\n"
+	if mon.length() == 0: return f"line {no}: error: bad month\n"
 
 	dow := parse_field(toks[6], 0, 6)
-	if dow.length() == 0: return "line {no}: error: bad day-of-week\n"
+	if dow.length() == 0: return f"line {no}: error: bad day-of-week\n"
 
 	spec := Spec(minutes: mins, hours: hrs, days: dom, months: mon, weekdays: dow)
 	runs := search(st, count, spec)
-	if runs.length() == 0: return "line {no}: never\n"
+	if runs.length() == 0: return f"line {no}: never\n"
 
-	var block = "line {no}: {runs.length()} runs\n"
+	var block = f"line {no}: {runs.length()} runs\n"
 	for r in runs:
-		block += "{r}\n"
+		block += f"{r}\n"
 	return block
 
 fn is_blank(line: String) Bool:

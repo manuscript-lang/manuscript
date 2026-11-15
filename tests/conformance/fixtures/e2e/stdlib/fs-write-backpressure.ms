@@ -15,11 +15,11 @@ test "more large writes than pool slots all complete":
 	data := ("x".repeat(256 * 1024) | expect_ok?).to_bytes()
 	var writers: List[Promise[Void]] = []
 	for index in 0..24:
-		writers.append(promise(write_one("{dir.path()}/f{index}", data.clone())))
+		writers.append(promise(write_one(f"{dir.path()}/f{index}", data.clone())))
 
 	done := wait_all(writers) | expect_ok?
 	done.length() | expect_equal(24)?
 
 	for index in 0..24:
-		back := read_file("{dir.path()}/f{index}").wait() | expect_ok?
+		back := read_file(f"{dir.path()}/f{index}").wait() | expect_ok?
 		back.length() | expect_equal(256 * 1024)?

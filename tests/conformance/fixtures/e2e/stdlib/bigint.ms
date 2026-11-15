@@ -30,10 +30,10 @@ test "big integer budgets exclude at most one leading sign before validation":
 
 	for text in ["+-1", "-+1", "++1", "--1"]:
 		if parse(text, 10, 1) != limited: return fail(
-			"second sign must count toward budget: {text}"
+			f"second sign must count toward budget: {text}"
 		)
 		if parse(text, 10, 2) != malformed: return fail(
-			"second sign must fail syntax validation: {text}"
+			f"second sign must fail syntax validation: {text}"
 		)
 
 	for text in ["1", "+1", "-1"]:

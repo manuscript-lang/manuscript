@@ -11,7 +11,7 @@ fn entries(count: Int) List[ArchiveEntry]:
     for i in 0..count:
         out.append(
             ArchiveEntry(
-                "dir/file{i}.txt", "contents of file {i}".to_bytes(), directory: false
+                f"dir/file{i}.txt", f"contents of file {i}".to_bytes(), directory: false
             )
         )
     return out
@@ -19,7 +19,7 @@ fn entries(count: Int) List[ArchiveEntry]:
 fn sse_stream(count: Int) Bytes:
     var parts: List[String] = []
     for i in 0..count:
-        parts.append("event: tick\nid: {i}\ndata: payload {i}\ndata: second line\n\n")
+        parts.append(f"event: tick\nid: {i}\ndata: payload {i}\ndata: second line\n\n")
     return parts.join("").to_bytes()
 
 fn bench_archive() Void:
@@ -80,7 +80,7 @@ fn var Whole.next() Bytes?!:
     return ok(self.data.clone())
 
 fn var Whole.close() Void!:
-    return ok(unit)
+    return ok()
 
 fn count_events(data: Bytes) Int:
     var events = sse_events(ReadStream[Bytes](Whole(data, false)))

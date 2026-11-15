@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -24,20 +24,20 @@ fn collatz(start: Int) Int:
 
 export fn main() Int:
     f1 := ((116.25 / (689.25 + 0.0)) + (4.0e15 + (9.0e11 + 248.652)))
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
 
     i2 := (((41 + 46) / ((-44) + 48)) + (-46))
-    say("i2 = {i2}")
-    say("collatz(2759) = {collatz(2759)}")
+    say(f"i2 = {i2}")
+    say(f"collatz(2759) = {collatz(2759)}")
 
     i3 := (-43)
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     b4 := (((-i3) - (i3 % 236627)) <= 461538)
-    say("b4 = {b4}")
+    say(f"b4 = {b4}")
 
     b6 := ((not (not true)) and (("alpha" + "line\nbreak") == "Tab\there".upper()))
-    say("b6 = {b6}")
+    say(f"b6 = {b6}")
 
     if (not ("" == "emoji 😀")):
         say("MiXeD CaSe".lower())
@@ -45,17 +45,17 @@ export fn main() Int:
         say(("gamma" + "  padded  "))
 
     b7 := (
-        ("brace\{s\}" != ("Tab\there" + "hello world"))
+        ("brace{s}" != ("Tab\there" + "hello world"))
         and "".contains("  padded  ")
     )
-    say("b7 = {b7}")
+    say(f"b7 = {b7}")
 
-    b8 := ("Tab\there" == (("hello world" + "x") + ("{(i3 - (-46))}:" + "ms")))
-    say("b8 = {b8}")
+    b8 := ("Tab\there" == (("hello world" + "x") + (f"{(i3 - (-46))}:" + "ms")))
+    say(f"b8 = {b8}")
 
     f9 := ((417.465 / (178.247 * f1)) / ((f1 * 0.0) - f1))
-    say("f9 = {f9}")
+    say(f"f9 = {f9}")
 
     l10 := [2]
-    say("l10 = {l10} len {l10.length()}")
+    say(f"l10 = {l10} len {l10.length()}")
     return 0

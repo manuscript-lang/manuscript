@@ -19,7 +19,7 @@ fn var Latch.close() Void!:
 	if self.open:
 		self.open = false
 
-		_ := append_file(self.log, "{self.id},").wait()
+		void append_file(self.log, f"{self.id},").wait()
 
 fn latch(log: String, id: Int) Latch:
 	return Latch(log, id, true)
@@ -81,13 +81,13 @@ fn fault_through_holder(log: String) Void:
 	holder := Holder(latch(log, 9), 0)
 	panic("holder fault")
 
-	_ := holder.tag
+	void holder.tag
 
 fn fault_plain(log: String) Void:
 	one := latch(log, 10)
 	panic("plain fault")
 
-	_ := one.id
+	void one.id
 
 fn destructured_record(log: String) Int:
 	holder := Holder(latch(log, 13), 3)
@@ -105,7 +105,7 @@ type Maker:
 	made: Int
 
 fn var Maker.close() Void!:
-	return ok(unit)
+	return ok()
 
 fn var Maker.make(log: String, id: Int) Latch:
 	self.made += 1
@@ -134,92 +134,92 @@ fn reassigned(log: String, swap: Bool) Int:
 
 test "an explicit close followed by the scope end closes once":
 	temporary := temporary("manuscript-close-in-place-") | expect_ok?
-	log := "{temporary.path()}/log"
+	log := f"{temporary.path()}/log"
 	expect_equal(explicit_then_scope(log.clone())?, 1)?
 	expect_equal(closed(log), "1,")?
 
 test "a holder's part closes in place at the scope end":
 	temporary := temporary("manuscript-close-in-place-") | expect_ok?
-	log := "{temporary.path()}/log"
+	log := f"{temporary.path()}/log"
 	expect_equal(holder_part(log.clone()), 0)?
 	expect_equal(closed(log), "2,")?
 
 test "an optional payload closes in place":
 	temporary := temporary("manuscript-close-in-place-") | expect_ok?
-	log := "{temporary.path()}/log"
+	log := f"{temporary.path()}/log"
 	expect_equal(optional_part(log.clone()), 1)?
 	expect_equal(closed(log), "3,")?
 
 test "list elements close in place, last first":
 	temporary := temporary("manuscript-close-in-place-") | expect_ok?
-	log := "{temporary.path()}/log"
+	log := f"{temporary.path()}/log"
 	expect_equal(list_parts(log.clone()), 2)?
 	expect_equal(closed(log), "5,4,")?
 
 test "a case field closes in place":
 	temporary := temporary("manuscript-close-in-place-") | expect_ok?
-	log := "{temporary.path()}/log"
+	log := f"{temporary.path()}/log"
 	expect_equal(case_part(log.clone()), 6)?
 	expect_equal(closed(log), "6,")?
 
 test "a closure's capture closes when the closure is dropped":
 	temporary := temporary("manuscript-close-in-place-") | expect_ok?
-	log := "{temporary.path()}/log"
+	log := f"{temporary.path()}/log"
 	expect_equal(closure_capture(log.clone()), 7)?
 	expect_equal(closed(log), "7,")?
 
 test "a part a record pattern binds closes at the scope end":
 	temporary := temporary("manuscript-close-in-place-") | expect_ok?
-	log := "{temporary.path()}/log"
+	log := f"{temporary.path()}/log"
 	expect_equal(destructured_record(log.clone()), 16)?
 	expect_equal(closed(log), "13,")?
 
 test "a list pattern closes the elements it binds and the ones it drops":
 	temporary := temporary("manuscript-close-in-place-") | expect_ok?
-	log := "{temporary.path()}/log"
+	log := f"{temporary.path()}/log"
 	expect_equal(destructured_list(log.clone()), 14)?
 	expect_equal(closed(log), "15,14,")?
 
 test "a resource a method on another resource returns closes at the scope end":
 	temporary := temporary("manuscript-close-in-place-") | expect_ok?
-	log := "{temporary.path()}/log"
+	log := f"{temporary.path()}/log"
 	expect_equal(made_by_resource(log.clone()), 17)?
 	expect_equal(closed(log), "16,")?
 
 test "a resource payload a method on another resource returns closes with its branch":
 	temporary := temporary("manuscript-close-in-place-") | expect_ok?
-	log := "{temporary.path()}/log"
+	log := f"{temporary.path()}/log"
 	expect_equal(found_by_resource(log.clone()), 17)?
 	expect_equal(closed(log), "17,")?
 
 test "map values close in place":
 	temporary := temporary("manuscript-close-in-place-") | expect_ok?
-	log := "{temporary.path()}/log"
+	log := f"{temporary.path()}/log"
 	expect_equal(map_values(log.clone()), 1)?
 	expect_equal(closed(log), "8,")?
 
 test "a fault closes a holder's part from the cleanup stack":
 	temporary := temporary("manuscript-close-in-place-") | expect_ok?
-	log := "{temporary.path()}/log"
+	log := f"{temporary.path()}/log"
 	message := expect_fault(fn: fault_through_holder(log.clone()))?
 	expect_equal(message, "holder fault")?
 	expect_equal(closed(log), "9,")?
 
 test "a fault closes a plain binding from the cleanup stack":
 	temporary := temporary("manuscript-close-in-place-") | expect_ok?
-	log := "{temporary.path()}/log"
+	log := f"{temporary.path()}/log"
 	message := expect_fault(fn: fault_plain(log.clone()))?
 	expect_equal(message, "plain fault")?
 	expect_equal(closed(log), "10,")?
 
 test "a reassigned binding closes the replaced value then the final one":
 	temporary := temporary("manuscript-close-in-place-") | expect_ok?
-	log := "{temporary.path()}/log"
+	log := f"{temporary.path()}/log"
 	expect_equal(reassigned(log.clone(), true), 12)?
 	expect_equal(closed(log), "11,12,")?
 
 test "a binding kept to the end closes once":
 	temporary := temporary("manuscript-close-in-place-") | expect_ok?
-	log := "{temporary.path()}/log"
+	log := f"{temporary.path()}/log"
 	expect_equal(reassigned(log.clone(), false), 11)?
 	expect_equal(closed(log), "11,")?

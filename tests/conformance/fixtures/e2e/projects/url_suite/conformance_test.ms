@@ -116,7 +116,7 @@ test "Go net/url tables agree with the parser except for the listed cases":
 
 		for i in 0..items.length():
 			total += 1
-			if not check(table, i, items[i]): failing.append("{table}#{i}")
+			if not check(table, i, items[i]): failing.append(f"{table}#{i}")
 
 	failing.sort()
 
@@ -130,6 +130,6 @@ test "Go net/url tables agree with the parser except for the listed cases":
 
 	expected.sort()
 	print(
-		"{total} cases, {expected.length()} not passing, {by_design} unsupported by design"
+		f"{total} cases, {expected.length()} not passing, {by_design} unsupported by design"
 	)
 	failing | expect_equal(expected)?

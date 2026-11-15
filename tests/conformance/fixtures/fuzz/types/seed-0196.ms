@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     b1 := (
@@ -15,16 +15,16 @@ export fn main() Int:
             * (3.0e6 * 0.0)
         )
     )
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
     bad := 1.5 + 2
     say(
-        "{((-39) + (28 * (-25)))} {3} {(((-39) + (28 * (-25))) < 3)} sum {((-39) + (28 * (-25))) + 3}"
+        f"{((-39) + (28 * (-25)))} {3} {(((-39) + (28 * (-25))) < 3)} sum {((-39) + (28 * (-25))) + 3}"
     )
 
     l2 := [(-2), (-10)]
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     i3 := ((((-763029) * 299781) - l2.length()) * (l2.length() + (31 / (-50))))
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
     return 0

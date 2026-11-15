@@ -6,16 +6,16 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     b1 := false
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
     b2 := ("quote\"d" == (("delta" + "back\\slash") + "beta".upper()))
-    say("b2 = {b2}")
+    say(f"b2 = {b2}")
 
     bad := not 5
     i3 := ((-45) * (-3))
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
     return 0

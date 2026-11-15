@@ -8,8 +8,8 @@ import (
 )
 
 fn say(ok: Bool, ok_text: String, missing_text: String) Bool:
-	if ok: print("OK      {ok_text}")
-	else: print("MISSING {missing_text}")
+	if ok: print(f"OK      {ok_text}")
+	else: print(f"MISSING {missing_text}")
 
 	return ok
 
@@ -38,9 +38,9 @@ fn main() Int:
 	)
 	node := capture("node", ["--version"]).trim()
 	if not say(
-		node == "v{expected_node}",
-		"Node {expected_node}",
-		"Node {expected_node} (install the version in .node-version)",
+		node == f"v{expected_node}",
+		f"Node {expected_node}",
+		f"Node {expected_node} (install the version in .node-version)",
 	): failed += 1
 	if not say(
 		works("cargo", ["--version"]),

@@ -17,7 +17,7 @@ fn faulting(var exchange: HttpExchange) Void!:
 	big := "x".repeat(1000000).get("")
 	xs: List[Int] := []
 	n := xs[big.length()]
-	if big.length() + n > 5: return ok(unit)
+	if big.length() + n > 5: return ok()
 
 test "a faulting handler releases the values its frames own":
 	server := serve(address: "127.0.0.1:0", handler: faulting) | expect_ok?
@@ -33,7 +33,7 @@ test "a faulting handler releases the values its frames own":
 
 	// Each leaked fault kept 1 MB, so 60 faults would grow the process by 60 MB.
 	grown := (memory_usage() | expect_ok?).resident - before
-	if grown > 20000000: return error(Error("resident memory grew {grown} bytes"))
+	if grown > 20000000: return error(Error(f"resident memory grew {grown} bytes"))
 
 fn hanging(var exchange: HttpExchange) Void!:
 	sleep(30.seconds()).wait()?
@@ -48,11 +48,11 @@ fn hanging_server() HttpServer!:
 
 test "a fetch cancelled by its timeout releases its read buffer":
 	server := hanging_server()?
-	url := "http://{server.address()}/"
+	url := f"http://{server.address()}/"
 
 	// Warm up the thread's buffers and the connection pool before measuring.
 	for i in 0..20:
-		_ := fetch(url).with(options: PromiseOptions(timeout: 1.milliseconds())).wait()
+		void fetch(url).with(options: PromiseOptions(timeout: 1.milliseconds())).wait()
 
 	before := (memory_usage() | expect_ok?).resident
 
@@ -65,16 +65,16 @@ test "a fetch cancelled by its timeout releases its read buffer":
 	// Each cancelled read leaked a 64 KiB buffer, so 300 fetches grew the process by
 	// about 19 MB.
 	grown := (memory_usage() | expect_ok?).resident - before
-	if grown > 8000000: return error(Error("resident memory grew {grown} bytes"))
+	if grown > 8000000: return error(Error(f"resident memory grew {grown} bytes"))
 
 test "a fetch cancelled by its timeout frees the request state its frames own":
 	server := hanging_server()?
-	url := "http://{server.address()}/"
+	url := f"http://{server.address()}/"
 
 	// One fetch waits long enough for its request to be sent; the rest cancel at once.
-	_ := fetch(url).with(options: PromiseOptions(timeout: 5.milliseconds())).wait()
+	void fetch(url).with(options: PromiseOptions(timeout: 5.milliseconds())).wait()
 	for i in 0..200:
-		_ := fetch(url).with(options: PromiseOptions(timeout: 0.milliseconds())).wait()
+		void fetch(url).with(options: PromiseOptions(timeout: 0.milliseconds())).wait()
 
 	before := (memory_usage() | expect_ok?).heap_used
 
@@ -88,16 +88,16 @@ test "a fetch cancelled by its timeout frees the request state its frames own":
 	// cancelled fetch.
 	grown := (memory_usage() | expect_ok?).heap_used - before
 	if grown > 2000 * 64: return error(
-		Error("heap grew {grown} bytes over 2000 cancelled fetches")
+		Error(f"heap grew {grown} bytes over 2000 cancelled fetches")
 	)
 
 test "a fetch cancelled while it waits for the response frees the cancellation error":
 	server := hanging_server()?
-	url := "http://{server.address()}/"
+	url := f"http://{server.address()}/"
 
 	// The first fetches warm the connection pool and the thread's buffers.
 	for i in 0..20:
-		_ := fetch(url).with(options: PromiseOptions(timeout: 5.milliseconds())).wait()
+		void fetch(url).with(options: PromiseOptions(timeout: 5.milliseconds())).wait()
 
 	before := (memory_usage() | expect_ok?).heap_used
 
@@ -111,5 +111,5 @@ test "a fetch cancelled while it waits for the response frees the cancellation e
 	// runtime's cancellation; keeping it leaked its text on every cancelled call.
 	grown := (memory_usage() | expect_ok?).heap_used - before
 	if grown > 512: return error(
-		Error("heap grew {grown} bytes over 400 fetches cancelled while reading")
+		Error(f"heap grew {grown} bytes over 400 fetches cancelled while reading")
 	)

@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -30,34 +30,34 @@ fn fact(n: Int) Int:
 
 export fn main() Int:
     b1 := "Tab\there".upper().is_empty()
-    say("b1 = {b1}")
-    say("collatz(1706) = {collatz(1706)}")
+    say(f"b1 = {b1}")
+    say(f"collatz(1706) = {collatz(1706)}")
 
     f2 := ((5.0e3 + 477.078) + ((416.077 + 0.0) + 9.5))
-    say("f2 = {f2}")
-    say("fact(0) = {fact(0)}")
+    say(f"f2 = {f2}")
+    say(f"fact(0) = {fact(0)}")
 
     l3 := [(-22), 22, 19, (-28), 4]
-    say("l3 = {l3} len {l3.length()}")
+    say(f"l3 = {l3} len {l3.length()}")
 
     s4 := "delta"
-    say("s4 = [{s4}]")
+    say(f"s4 = [{s4}]")
 
     s5 := "  padded  ".reverse()
-    say("s5 = [{s5}]")
+    say(f"s5 = [{s5}]")
 
     i6 := (-640393364026)
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     i7 := ((l3.get(3) * (-16)) * (s5.scalar_length() - (547996 % 47)))
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
     f8 := f2
-    say("f8 = {f8}")
+    say(f"f8 = {f8}")
 
     s9 := s5
-    say("s9 = [{s9}]")
+    say(f"s9 = [{s9}]")
 
     l10 := [(-26), (-1), 9, 26]
-    say("l10 = {l10} len {l10.length()}")
+    say(f"l10 = {l10} len {l10.length()}")
     return 0

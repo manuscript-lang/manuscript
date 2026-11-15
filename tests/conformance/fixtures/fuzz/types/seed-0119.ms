@@ -6,16 +6,16 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     s1 := ((("back\\slash" + "hello world") + "x".reverse()) + "x")
-    say("s1 = [{s1}]")
+    say(f"s1 = [{s1}]")
 
     i2 := (273733932161 * (((-5) * 5) * (46 * 20)))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     bad := 1 + "one"
     s3 := "x".replace(s1, s1).lower().lower()
-    say("s3 = [{s3}]")
+    say(f"s3 = [{s3}]")
     return 0

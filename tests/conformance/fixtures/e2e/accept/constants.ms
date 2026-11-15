@@ -6,7 +6,7 @@ import expect_equal, expect_false from "@std/test/test.ms"
 LIMIT := 10
 DOUBLE := LIMIT * 2
 NAMES: List[String] := ["a", "b"]
-GREETING := "limit {LIMIT}"
+GREETING := f"limit {LIMIT}"
 NOTHING: Int? := none
 from := 4
 
@@ -41,7 +41,7 @@ fn phase_name(phase: Phase) String:
         Idle:
             return "idle"
         Active(count):
-            return "active {count}"
+            return f"active {count}"
 
 test "a qualified payloadless case is a constant":
     expect_false(not (phase_name(START) == "idle" and phase_name(NEXT) == "idle"))?

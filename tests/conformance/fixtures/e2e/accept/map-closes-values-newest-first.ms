@@ -11,7 +11,7 @@ type Item:
 	log: String
 
 fn var Item.close() Void!:
-	_ := append_file(self.log, "{self.id},").wait()
+	void append_file(self.log, f"{self.id},").wait()
 
 fn logged(path: String) String:
 	read := read_file(path).wait()
@@ -29,6 +29,6 @@ fn fill(log: String) Void:
 
 test "a map of resources closes the values it holds newest entry first at scope end":
 	tmp := temporary("ms-log-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	fill(log.clone())
 	logged(log.clone()) | expect_equal("2,4,3,1,")?

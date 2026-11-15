@@ -6,30 +6,30 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := ((((-2) % (-41)) - (-21)) / ((23 % (-46)) * (15 * (-47))))
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
     say(
-        "{i1} {((31 + i1) - (13 * (-2)))} {(i1 < ((31 + i1) - (13 * (-2))))} sum {i1 + ((31 + i1) - (13 * (-2)))}"
+        f"{i1} {((31 + i1) - (13 * (-2)))} {(i1 < ((31 + i1) - (13 * (-2))))} sum {i1 + ((31 + i1) - (13 * (-2)))}"
     )
 
     i2 := (45 - (-1))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     s3 := "alpha"
-    say("s3 = [{s3}]")
+    say(f"s3 = [{s3}]")
 
     i4 := (i2 * (s3.scalar_length() - (3 + i1)))
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
     say(
-        "{((i1 % (-802159)) * s3.scalar_length())} {s3.scalar_length()} {(((i1 % (-802159)) * s3.scalar_length()) < s3.scalar_length())} sum {((i1 % (-802159)) * s3.scalar_length()) + s3.scalar_length()}"
+        f"{((i1 % (-802159)) * s3.scalar_length())} {s3.scalar_length()} {(((i1 % (-802159)) * s3.scalar_length()) < s3.scalar_length())} sum {((i1 % (-802159)) * s3.scalar_length()) + s3.scalar_length()}"
     )
 
     f5 := 288.561
-    say("f5 = {f5}")
+    say(f"f5 = {f5}")
 
     big6 := ((i2 + i4) * (i2 - (-918594))) - ((i2 + i4) * (i2 - (-918594)))
-    say("{((i2 + i4) * (i2 - (-918594))) % big6}")
+    say(f"{((i2 + i4) * (i2 - (-918594))) % big6}")
     return 0

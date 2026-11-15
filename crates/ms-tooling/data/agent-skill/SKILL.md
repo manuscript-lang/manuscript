@@ -5,7 +5,7 @@ description: Write, check, test, and revise idiomatic Manuscript programs. Use f
 
 # Write Manuscript
 
-Generated for Manuscript {{MS_VERSION}}. Compare with `ms --version`; regenerate this skill with the matching compiler when stale. Manuscript is in beta: what the stability page lists is frozen until 1.0; everything else may change.
+Generated for Manuscript {{MS_VERSION}}. Compare with `ms --version`; regenerate this skill with the matching compiler when stale. Manuscript is in beta: what the stability page lists is frozen; everything else may change.
 
 ## Core language
 
@@ -35,13 +35,12 @@ fn main() Void!:
 | --- | --- |
 | `!x`, `a ?? b`, `try f()` | `not x`, `a.get(b)`, `f()?` |
 | `x.len`, `x.length`, `x == none` | `x.length()`, `x.is_none()` |
-| `const X = 1`, `# note`, `pass` | `X := 1`, `// note`, `unit` |
+| `const X = 1`, `# note`, `pass` | `X := 1`, `// note`, `void` |
 | `a if c else b`, `-> T` | `if c: a else: b`, `fn f() T:` |
-| `out: var T`, `"\"{x}\""` | `var out: T`, plain quotes inside `{}` |
 
 ### Syntax and data
 
-- Immutable: `x := e`, or `x: T := e`. Mutable: `var x = e`; assignment and content mutation require var. Basic types: Int, Float, Bool, String, Void; literals: `true`, `false`, `unit`. Strings interpolate `"hello {name}"`.
+- Immutable: `x := e`, or `x: T := e`. Mutable: `var x = e`; assignment and content mutation require var. Basic types: Int, Float, Bool, String, Void; literals: `true`, `false`, `void`. `f"hello {name}"` interpolates; plain `"{"` keeps braces.
 - Functions declare parameter/return types: `fn f(x: Int, n: Int = 1) Int:`. Call `f(2, n: 3)`. Inline bodies return expressions; multiline bodies use `return`. Void/Void! may fall through. Main returns Void, Int status, or Void!.
 - Generics: `fn identity[T](x: T) T: x`. Callback: `fn(Int) Int`; closure: `fn x: x + 1`.
 - Control: `if`/`else if`/`else`, `while`, `for x in xs:`, `for i in 0..n:` (excludes n), `break`, `continue`; `and or not`. Prefer early exits: `if c: return x`. Expression: `if c: a else: b`.

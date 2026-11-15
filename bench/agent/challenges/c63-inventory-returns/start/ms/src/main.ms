@@ -17,7 +17,7 @@ type Warehouse:
 	price: Map[String, Int]
 	orders: Map[String, Order]
 
-fn money(c: Int) String: return "{c / 100}.{if c % 100 < 10: "0" else: ""}{c % 100}"
+fn money(c: Int) String: return f"{c / 100}.{if c % 100 < 10: "0" else: ""}{c % 100}"
 
 fn valid_sku(s: String) Bool: return (
 	not s.is_empty()
@@ -47,7 +47,7 @@ fn number(s: String, lo: Int, hi: Int) Int?:
 fn place_order(var w: Warehouse, t: List[String]) String:
 	id := t[1]
 	if not valid_oid(id): return "error: bad order id"
-	if w.orders.contains(id): return "error: order {id} already exists"
+	if w.orders.contains(id): return f"error: order {id} already exists"
 
 	var items = List[Item]()
 
@@ -57,18 +57,18 @@ fn place_order(var w: Warehouse, t: List[String]) String:
 			p.length() != 2
 			or not valid_sku(p[0])
 			or not number(p[1], 1, 100000).is_some()
-		): return "error: bad item {token}"
+		): return f"error: bad item {token}"
 
 		items.append(Item(p[0].clone(), number(p[1], 1, 100000).get()))
 
 	var seen = Set[String]()
 
 	for it in items:
-		if seen.contains(it.sku): return "error: duplicate sku {it.sku}"
+		if seen.contains(it.sku): return f"error: duplicate sku {it.sku}"
 
 		have := w.stock.get(it.sku).get(-1)
-		if have < 0: return "error: unknown sku {it.sku}"
-		if it.qty > have: return "error: insufficient stock for {it.sku} (have {have}, need {it.qty})"
+		if have < 0: return f"error: unknown sku {it.sku}"
+		if it.qty > have: return f"error: insufficient stock for {it.sku} (have {have}, need {it.qty})"
 
 		seen.add(it.sku.clone())
 
@@ -84,7 +84,7 @@ fn place_order(var w: Warehouse, t: List[String]) String:
 		)
 
 	w.orders[id.clone()] = Order(items, "placed", total)
-	return "ok {id} total={money(total)}"
+	return f"ok {id} total={money(total)}"
 
 fn report(w: Warehouse) String:
 	var reserved = Map[String, Int]()
@@ -97,10 +97,10 @@ fn report(w: Warehouse) String:
 
 	count := fn(s: String) Int: orders.count(fn o: o.status == s)
 	rows := w.stock.keys().sorted(fn a, b: a.compare(b)).map(
-		fn k: "{k} stock={w.stock.get(k).get()} price={money(w.price.get(k).get())} reserved={reserved.get_or(k, 0)}"
+		fn k: f"{k} stock={w.stock.get(k).get()} price={money(w.price.get(k).get())} reserved={reserved.get_or(k, 0)}"
 	)
 	revenue := orders.filter(fn o: o.status == "shipped").map(fn o: o.total).sum()
-	return "{rows.join("\n")}{if rows.is_empty(): "" else: "\n"}orders placed={count("placed")} shipped={count("shipped")} cancelled={count("cancelled")}\nrevenue={money(revenue)}"
+	return f"{rows.join("\n")}{if rows.is_empty(): "" else: "\n"}orders placed={count("placed")} shipped={count("shipped")} cancelled={count("cancelled")}\nrevenue={money(revenue)}"
 
 fn run_command(var w: Warehouse, line: String) String:
 	t := line.split(" ")
@@ -122,26 +122,26 @@ fn run_command(var w: Warehouse, line: String) String:
 		now := w.stock.get_or(t[1], 0) + number(t[2], 1, 100000).get()
 		w.stock[t[1].clone()] = now
 		w.price.add_default(t[1].clone(), 0)
-		return "ok {t[1]} stock={now}"
+		return f"ok {t[1]} stock={now}"
 
 	if name == "price":
 		if not number(t[2], 0, 10000000).is_some(): return "error: bad price"
-		if not w.stock.contains(t[1]): return "error: unknown sku {t[1]}"
+		if not w.stock.contains(t[1]): return f"error: unknown sku {t[1]}"
 
 		w.price[t[1].clone()] = number(t[2], 0, 10000000).get()
 		return "ok"
 
-	if not w.orders.contains(t[1]): return "error: unknown order {t[1]}"
+	if not w.orders.contains(t[1]): return f"error: unknown order {t[1]}"
 
 	var o = w.orders.get(t[1]).get().clone()
 
 	if name == "cancel":
-		if o.status != "placed": return "error: order {t[1]} already {o.status}"
+		if o.status != "placed": return f"error: order {t[1]} already {o.status}"
 
 		for it in o.items: w.stock[it.sku.clone()] = w.stock.get(it.sku).get() + it.qty
 		o.status = "cancelled"
 	else:
-		if o.status != "placed": return "error: order {t[1]} {if o.status == "shipped": "already shipped" else: "is cancelled"}"
+		if o.status != "placed": return f"error: order {t[1]} {if o.status == "shipped": "already shipped" else: "is cancelled"}"
 
 		o.status = "shipped"
 

@@ -6,36 +6,36 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := 20
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     i2 := (((i1 + i1) / 488514) * i1)
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     b3 := ((true or (false or true)) or (not (not true)))
-    say("b3 = {b3}")
+    say(f"b3 = {b3}")
 
-    s4 := ("{(i1 + 24)}:" + "日本語")
-    say("s4 = [{s4}]")
+    s4 := (f"{(i1 + 24)}:" + "日本語")
+    say(f"s4 = [{s4}]")
 
     i5 := i2
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     i6 := 47
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     i8 := i6
-    say("i8 = {i8}")
+    say(f"i8 = {i8}")
 
     l9 := [22, 9]
-    say("l9 = {l9} len {l9.length()}")
+    say(f"l9 = {l9} len {l9.length()}")
 
     if ((true or b3) and ("back\\slash" == "quote\"d")):
         say(s4.lower())
     else:
-        say("brace\{s\}")
+        say("brace{s}")
 
     return 0

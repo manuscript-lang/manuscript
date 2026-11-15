@@ -7,7 +7,7 @@ type Res:
 fn var Res.close() Void!:
 	if self.open:
 		self.open = false
-		print("close {self.id}")
+		print(f"close {self.id}")
 
 fn borrowed(values: List[Int]) Int:
 	a := values
@@ -43,7 +43,7 @@ fn main() Void:
 	count := borrowed(values)
 	var holder = Holder(values)
 	mutate(var holder)
-	print("{count} {holder.items.length()}")
+	print(f"{count} {holder.items.length()}")
 	conditional(true)
 	conditional(false)
 	conditional_move(true)

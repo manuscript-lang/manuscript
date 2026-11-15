@@ -64,7 +64,7 @@ fn level_at(value: Int) LogLevel:
 
 	return LogLevel.Silent
 
-// Milliseconds since the Unix epoch, the unit of the `time` field.
+// Milliseconds since the Unix epoch, the void of the `time` field.
 fn now_ms() Int:
 	now := now()
 	return now.unix_seconds() * 1000 + now.nanoseconds() / 1000000
@@ -191,11 +191,11 @@ fn Logger.emit(level: Int, message: String, data: String?) Void!:
 	msg := stringify(JsonValue.StringValue(message))
 	if msg.is_error(): return error(encode_error(msg.err()))
 
-	var line = "\{\"level\":{level},\"msg\":{msg.get()}"
-	if self.timestamp: line = "{line},\"time\":{now_ms()}"
-	if context := self.context: line = "{line},\"context\":{context}"
-	if text := data: line = "{line},\"data\":{text}"
-	line = "{line}\}\n"
+	var line = f"\{\"level\":{level},\"msg\":{msg.get()}"
+	if self.timestamp: line = f"{line},\"time\":{now_ms()}"
+	if context := self.context: line = f"{line},\"context\":{context}"
+	if text := data: line = f"{line},\"data\":{text}"
+	line = f"{line}\}\n"
 	if max := self.max_bytes:
 		if line.length() > max: return error(
 			Error("logging: limit exceeded", kind: "EOVERFLOW")
@@ -215,7 +215,7 @@ fn Logger.log[F: Data = Void](level: LogLevel, message: String, fields: F? = non
 	if level == LogLevel.Silent: return error(
 		Error("logging: invalid input", kind: "EINVAL")
 	)
-	if not self.enabled(level): return ok(unit)
+	if not self.enabled(level): return ok()
 
 	if value := fields:
 		text := encode_fields(value)?
@@ -374,15 +374,15 @@ fn var RotatingTransport.close() Void:
 // Shifts `path.1` to `path.2` and so on (dropping the oldest), then moves `path` to
 // `path.1`.
 fn rotate(path: String, keep: Int) Void:
-	_oldest := remove("{path}.{keep}", recursive: false)
+	_oldest := remove(f"{path}.{keep}", recursive: false)
 	var index = keep - 1
 
 	while index >= 1:
-		_shifted := rename("{path}.{index}", "{path}.{index + 1}")
+		_shifted := rename(f"{path}.{index}", f"{path}.{index + 1}")
 		index -= 1
 
 	if keep >= 1:
-		_aside := rename(path, "{path}.1")
+		_aside := rename(path, f"{path}.1")
 	else:
 		_discarded := remove(path, recursive: false)
 

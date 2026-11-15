@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -24,41 +24,41 @@ fn collatz(start: Int) Int:
 
 export fn main() Int:
     i1 := ((21 - (-6)) - ((39 * 31) - (38 + (-962380))))
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     i2 := (i1 % i1)
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     f3 := (957.220 + 0.0)
-    say("f3 = {f3}")
+    say(f"f3 = {f3}")
 
     i4 := i1
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
     say(
-        "{(-(i2 * i4))} {(i2 % (-37))} {((-(i2 * i4)) < (i2 % (-37)))} sum {(-(i2 * i4)) + (i2 % (-37))}"
+        f"{(-(i2 * i4))} {(i2 % (-37))} {((-(i2 * i4)) < (i2 % (-37)))} sum {(-(i2 * i4)) + (i2 % (-37))}"
     )
     say(
-        "{((-15) + (i2 + i2))} {i1} {(((-15) + (i2 + i2)) < i1)} sum {((-15) + (i2 + i2)) + i1}"
+        f"{((-15) + (i2 + i2))} {i1} {(((-15) + (i2 + i2)) < i1)} sum {((-15) + (i2 + i2)) + i1}"
     )
 
     b5 := ("ms" == "".lower().trim())
-    say("b5 = {b5}")
+    say(f"b5 = {b5}")
 
     l6 := [26, 12, 28, (-1)]
-    say("l6 = {l6} len {l6.length()}")
+    say(f"l6 = {l6} len {l6.length()}")
 
     s7 := "delta"
-    say("s7 = [{s7}]")
-    say("collatz(6) = {collatz(6)}")
+    say(f"s7 = [{s7}]")
+    say(f"collatz(6) = {collatz(6)}")
 
     var acc8 = 0
     for i in 0..8:
         acc8 += i * 0
-    say("acc8 = {acc8}")
+    say(f"acc8 = {acc8}")
 
     i9 := (((-11) - (i4 / i4)) * i4)
-    say("i9 = {i9}")
+    say(f"i9 = {i9}")
 
     s10 := ("42" + "MiXeD CaSe")
-    say("s10 = [{s10}]")
+    say(f"s10 = [{s10}]")
     return 0

@@ -6,25 +6,25 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := ((-582009) - (3 + ((-614345) + (-24))))
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     l2 := [6, (-13), 24]
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     f3 := (((0.0 / 5.5) * (55.25 * 573.295)) * ((150.119 * 385.204) * 90.903))
-    say("f3 = {f3}")
+    say(f"f3 = {f3}")
     return "not an int"
 
     i4 := (3 - ((-(-678725)) + (i1 / 49)))
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     s5 := (
         ("x".replace("naïve", "42") + ("a" + "42"))
         + "delta".replace("ms", "alpha")
     )
-    say("s5 = [{s5}]")
+    say(f"s5 = [{s5}]")
     return 0

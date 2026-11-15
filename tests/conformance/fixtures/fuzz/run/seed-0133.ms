@@ -6,29 +6,29 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     f1 := 8.5
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
 
     i2 := ((-438577452767) * 3)
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     f3 := (152.507 - (f1 + (f1 + 2.0e0)))
-    say("f3 = {f3}")
+    say(f"f3 = {f3}")
 
     l4 := [1, 2, 3].take(0)
-    say("l4 = {l4} len {l4.length()}")
+    say(f"l4 = {l4} len {l4.length()}")
 
     i5 := (-29)
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     i6 := i2
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     b7 := true
-    say("b7 = {b7}")
+    say(f"b7 = {b7}")
 
     if "alpha".is_empty():
         say("alpha".reverse())
@@ -36,28 +36,28 @@ export fn main() Int:
         say(("delta" + "héllo"))
 
     i8 := (379685214242 - i5)
-    say("i8 = {i8}")
+    say(f"i8 = {i8}")
 
     b9 := ("Tab\there".ends_with("42") or b7)
-    say("b9 = {b9}")
+    say(f"b9 = {b9}")
 
     i10 := ((-(i2 * 28)) + (i8 + (i2 % (-32))))
-    say("i10 = {i10}")
+    say(f"i10 = {i10}")
 
     s11 := "MiXeD CaSe".upper()
-    say("s11 = [{s11}]")
+    say(f"s11 = [{s11}]")
 
     f12 := (f3 / 6.5)
-    say("f12 = {f12}")
+    say(f"f12 = {f12}")
 
     i13 := i2
-    say("i13 = {i13}")
+    say(f"i13 = {i13}")
 
     s14 := s11.reverse()
-    say("s14 = [{s14}]")
+    say(f"s14 = [{s14}]")
 
     s15 := s11
-    say("s15 = [{s15}]")
+    say(f"s15 = [{s15}]")
 
     if ((not b9) or (not true)):
         say("x")
@@ -65,8 +65,8 @@ export fn main() Int:
         say("emoji 😀".trim())
 
     l16 := l4.take(2)
-    say("l16 = {l16} len {l16.length()}")
+    say(f"l16 = {l16} len {l16.length()}")
 
     s17 := "alpha"
-    say("s17 = [{s17}]")
+    say(f"s17 = [{s17}]")
     return 0

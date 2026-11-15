@@ -15,13 +15,13 @@ fn var Counted.next() Int?!:
 	return ok(none)
 
 fn var Counted.write(value: Int) Void!:
-	return ok(unit)
+	return ok()
 
 fn var Counted.flush() Void!:
-	return ok(unit)
+	return ok()
 
 fn var Counted.close() Void!:
-	_ := append_file(self.log, "x").wait()
+	void append_file(self.log, "x").wait()
 
 fn closes(log: String) String:
 	if bytes := read_file(log).wait(): return bytes.decode_utf8().get("")
@@ -29,16 +29,16 @@ fn closes(log: String) String:
 
 test "a read stream closes its source once":
 	dir := temporary("stream-close-") | expect_ok?
-	log := "{dir.path()}/r.log"
-	_ := append_file(log, "").wait()
+	log := f"{dir.path()}/r.log"
+	void append_file(log, "").wait()
 	var by_hand = ReadStream[Int](Counted(log.clone()))
 	by_hand.close()?
 	expect_equal(closes(log), "x")?
 
 test "a write stream closes its sink once":
 	dir := temporary("stream-close-") | expect_ok?
-	log := "{dir.path()}/w.log"
-	_ := append_file(log, "").wait()
+	log := f"{dir.path()}/w.log"
+	void append_file(log, "").wait()
 	var out = WriteStream[Int](Counted(log.clone()))
 	out.close()?
 	expect_equal(closes(log), "x")?

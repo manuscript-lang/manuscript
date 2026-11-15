@@ -377,14 +377,14 @@ fn parse_number(tok: String, whole: String) Result[Int, Fault]:
         start = 2
 
     if start == n:
-        return error(Fault(text: "invalid expression '{whole}'"))
+        return error(Fault(text: f"invalid expression '{whole}'"))
 
     var v = 0
 
     for k in start..n:
         d := digit_value(cs[k])
         if d < 0 or d >= base:
-            return error(Fault(text: "invalid expression '{whole}'"))
+            return error(Fault(text: f"invalid expression '{whole}'"))
 
         v = v * base + d
         if v > MASK32:
@@ -406,7 +406,7 @@ fn eval_token(
     if cs[0] == "'":
         v := char_value(cs)
         if v < 0:
-            return error(Fault(text: "invalid expression '{whole}'"))
+            return error(Fault(text: f"invalid expression '{whole}'"))
 
         return ok(v)
 
@@ -414,7 +414,7 @@ fn eval_token(
         if sym := syms.get(tok):
             if sym.kind == SYM_EQU:
                 if stack.contains(tok):
-                    return error(Fault(text: "circular definition of '{tok}'"))
+                    return error(Fault(text: f"circular definition of '{tok}'"))
 
                 var next = stack.clone()
                 next.append(tok)
@@ -422,12 +422,12 @@ fn eval_token(
 
             return ok(sym.value)
 
-        return error(Fault(text: "undefined symbol '{tok}'"))
+        return error(Fault(text: f"undefined symbol '{tok}'"))
 
     if is_digit(cs[0]):
         return parse_number(tok, whole)
 
-    return error(Fault(text: "invalid expression '{whole}'"))
+    return error(Fault(text: f"invalid expression '{whole}'"))
 
 // Evaluates an expression: optional leading sign, then terms joined by + or -.
 fn eval_expr(
@@ -453,7 +453,7 @@ fn eval_expr(
 
         e := term_end(cs, i)
         if e == i:
-            return error(Fault(text: "invalid expression '{whole}'"))
+            return error(Fault(text: f"invalid expression '{whole}'"))
 
         v := try eval_token(join_range(cs, i, e), whole, syms, stack)
         total = wrap32(total + sign * v)
@@ -466,7 +466,7 @@ fn eval_expr(
         else if cs[i] == "-":
             sign = -1
         else:
-            return error(Fault(text: "invalid expression '{whole}'"))
+            return error(Fault(text: f"invalid expression '{whole}'"))
 
         i += 1
 
@@ -504,7 +504,7 @@ fn parse_memory(text: String) Result[Operand, Fault]:
     cs := text.chars()
     n := cs.length()
     if n < 2 or cs[n - 1] != "]":
-        return error(Fault(text: "invalid operand '{text}'"))
+        return error(Fault(text: f"invalid operand '{text}'"))
 
     var reg = -1
     var expr = ""
@@ -514,13 +514,13 @@ fn parse_memory(text: String) Result[Operand, Fault]:
         sign := pcs[0]
         body := join_range(pcs, 1, pcs.length()).trim()
         if body == "":
-            return error(Fault(text: "invalid operand '{text}'"))
+            return error(Fault(text: f"invalid operand '{text}'"))
 
         r := reg_index(body)
 
         if r >= 0:
             if sign == "-" or reg >= 0:
-                return error(Fault(text: "invalid operand '{text}'"))
+                return error(Fault(text: f"invalid operand '{text}'"))
 
             reg = r
         else:
@@ -655,9 +655,9 @@ fn shape_ok(op: Int, ops: List[Operand]) Bool:
 
 fn add_symbol(var a: Asm, name: String, sym: Sym) Result[Unit, Fault]:
     if reg_index(name) >= 0:
-        return error(Fault(text: "reserved name '{name}'"))
+        return error(Fault(text: f"reserved name '{name}'"))
     if a.syms.contains(name):
-        return error(Fault(text: "duplicate symbol '{name}'"))
+        return error(Fault(text: f"duplicate symbol '{name}'"))
 
     a.syms.add(name, sym)
     return ok(unit)
@@ -670,7 +670,7 @@ fn pass1_instruction(var a: Asm, line: Int, head: String, rest: String) Result[
 
     op := opcode_of(head)
     if op < 0:
-        return error(Fault(text: "unknown mnemonic '{head}'"))
+        return error(Fault(text: f"unknown mnemonic '{head}'"))
 
     var operands = List[Operand]()
 
@@ -680,9 +680,9 @@ fn pass1_instruction(var a: Asm, line: Int, head: String, rest: String) Result[
             operands.append(o)
 
     if operands.length() != arity(op):
-        return error(Fault(text: "wrong number of operands for '{head}'"))
+        return error(Fault(text: f"wrong number of operands for '{head}'"))
     if not shape_ok(op, operands):
-        return error(Fault(text: "invalid operands for '{head}'"))
+        return error(Fault(text: f"invalid operands for '{head}'"))
 
     a.stmts.append(
         Stmt(
@@ -707,7 +707,7 @@ fn pass1_equ(var a: Asm, rest: String) Result[Unit, Fault]:
 
     name := parts[0]
     if not is_identifier(name):
-        return error(Fault(text: "invalid operand '{name}'"))
+        return error(Fault(text: f"invalid operand '{name}'"))
 
     return add_symbol(
         var a, name.clone(), Sym(kind: SYM_EQU, value: 0, expr: parts[1].clone())
@@ -715,7 +715,7 @@ fn pass1_equ(var a: Asm, rest: String) Result[Unit, Fault]:
 
 fn pass1_budget(var a: Asm, rest: String) Result[Unit, Fault]:
     cs := rest.chars()
-    bad := Fault(text: "invalid operand '{rest}'")
+    bad := Fault(text: f"invalid operand '{rest}'")
     if cs.length() == 0:
         return error(bad)
 
@@ -785,7 +785,7 @@ fn pass1_string(var a: Asm, line: Int, rest: String, zero_term: Bool) Result[
 
     var exprs = List[String]()
     for b in bytes:
-        exprs.append("{b}")
+        exprs.append(f"{b}")
     a.stmts.append(
         Stmt(
             line: line, kind: 1, op: 0, name: "", operands: List[Operand](),
@@ -821,7 +821,7 @@ fn pass1_space(var a: Asm, line: Int, rest: String) Result[Unit, Fault]:
 
     n := try eval_expr(parts[0], a.syms, List[String]())
     if n < 0:
-        return error(Fault(text: "invalid operand '{parts[0]}'"))
+        return error(Fault(text: f"invalid operand '{parts[0]}'"))
     if a.data_count + n > WORDS:
         return error(Fault(text: "data section too large"))
 
@@ -842,7 +842,7 @@ fn pass1_directive(var a: Asm, line: Int, head: String, rest: String) Result[
 ]:
     if head == ".text" or head == ".data":
         if rest != "":
-            return error(Fault(text: "invalid operand '{rest}'"))
+            return error(Fault(text: f"invalid operand '{rest}'"))
 
         a.in_data = head == ".data"
         return ok(unit)
@@ -862,7 +862,7 @@ fn pass1_directive(var a: Asm, line: Int, head: String, rest: String) Result[
 
         return pass1_string(var a, line, rest, head == ".asciz")
 
-    return error(Fault(text: "unknown directive '{head}'"))
+    return error(Fault(text: f"unknown directive '{head}'"))
 
 fn define_label(var a: Asm, name: String) Result[Unit, Fault]:
     if a.in_data:
@@ -961,13 +961,13 @@ fn effective(m: Machine, o: Rop) Int:
 
 fn mem_read(m: Machine, addr: Int) Result[Int, Fault]:
     if addr < 0 or addr >= WORDS:
-        return error(Fault(text: "memory access out of range: {addr}"))
+        return error(Fault(text: f"memory access out of range: {addr}"))
 
     return ok(m.mem[addr])
 
 fn mem_write(var m: Machine, addr: Int, v: Int) Result[Unit, Fault]:
     if addr < 0 or addr >= WORDS:
-        return error(Fault(text: "memory access out of range: {addr}"))
+        return error(Fault(text: f"memory access out of range: {addr}"))
 
     m.mem[addr] = v
     return ok(unit)
@@ -1096,7 +1096,7 @@ fn exec_step(var m: Machine, code: List[Instr]) Result[Unit, Fault]:
         m.in_pos += 1
     else if op == OP_OUT:
         v := try read_op(m, ins.a)
-        m.out.append("{v}\n")
+        m.out.append(f"{v}\n")
         m.has_out = true
         m.ends_nl = true
     else if op == OP_OUTC:
@@ -1119,18 +1119,18 @@ fn run_machine(var m: Machine, code: List[Instr], budget: Int) Trap:
         if m.pc < 0 or m.pc >= code.length():
             return Trap(msg: "pc out of range", pc: m.pc, line: "-")
         if m.steps == budget:
-            return Trap(msg: "budget exceeded", pc: m.pc, line: "{code[m.pc].line}")
+            return Trap(msg: "budget exceeded", pc: m.pc, line: f"{code[m.pc].line}")
 
         r := exec_step(var m, code)
         if r.is_error():
-            return Trap(msg: r.err().text.clone(), pc: m.pc, line: "{code[m.pc].line}")
+            return Trap(msg: r.err().text.clone(), pc: m.pc, line: f"{code[m.pc].line}")
 
     return Trap(msg: "", pc: 0, line: "")
 
 // ---- driver -------------------------------------------------------------
 
 fn report_asm_error(line: Int, msg: String) Int:
-    stdout().write("asm error line {line}: {msg}\n").get()
+    stdout().write(f"asm error line {line}: {msg}\n").get()
     return 0
 
 export fn main() Int:
@@ -1206,15 +1206,15 @@ export fn main() Int:
         text += "\n"
 
     if t.msg == "":
-        text += "-- halted after {m.steps} steps\n"
+        text += f"-- halted after {m.steps} steps\n"
     else:
-        text += "-- trap: {t.msg} (pc={t.pc} line={t.line}) after {m.steps} steps\n"
+        text += f"-- trap: {t.msg} (pc={t.pc} line={t.line}) after {m.steps} steps\n"
 
     z := if m.zf: 1 else: 0
 
     l := if m.lf: 1 else: 0
 
-    text += "regs: r0={m.regs[0]} r1={m.regs[1]} r2={m.regs[2]} r3={m.regs[3]} r4={m.regs[4]} r5={m.regs[5]} r6={m.regs[6]} r7={m.regs[7]} sp={m.regs[SP]} bp={m.regs[BP]}\n"
-    text += "flags: Z={z} L={l}\n"
+    text += f"regs: r0={m.regs[0]} r1={m.regs[1]} r2={m.regs[2]} r3={m.regs[3]} r4={m.regs[4]} r5={m.regs[5]} r6={m.regs[6]} r7={m.regs[7]} sp={m.regs[SP]} bp={m.regs[BP]}\n"
+    text += f"flags: Z={z} L={l}\n"
     stdout().write(text).get()
     return 0

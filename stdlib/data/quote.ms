@@ -40,6 +40,6 @@ export fn quote_text(text: String, escape_c1: Bool) String:
 	result.append("\"")
 	return result.build()
 
-// Four lowercase hex digits for a code unit, zero padded.
+// Four lowercase hex digits for a code void, zero padded.
 fn hex4(code: Int) String:
 	return code.to_string_radix(16).pad_start(4, "0")

@@ -181,6 +181,6 @@ b0:
   %zero: int = iconst 0
   %res: int = select %p, %v, %zero
   drop %r
-  %u: unit = call.rt @msrt_print_int (%res)
+  %u: void = call.rt @msrt_print_int (%res)
   ret %zero
 }

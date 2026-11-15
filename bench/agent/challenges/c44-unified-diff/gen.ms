@@ -59,7 +59,7 @@ fn script(a: List[String], b: List[String]) List[Op]:
 
 fn rng(start: Int, ln: Int) String:
 	s := start + (if ln > 0: 1 else: 0)
-	return if ln == 1: "{s}" else: "{s},{ln}"
+	return if ln == 1: f"{s}" else: f"{s},{ln}"
 
 fn solve(s: String) String:
 	var lines = s.split("\n")
@@ -89,7 +89,7 @@ fn solve(s: String) String:
 
 	groups.append(cur.clone())
 
-	var out = ["--- {head[0]}", "+++ {head[1]}"]
+	var out = [f"--- {head[0]}", f"+++ {head[1]}"]
 
 	for g in groups:
 		lo := if g[0] - c > 0: g[0] - c else: 0
@@ -100,14 +100,14 @@ fn solve(s: String) String:
 		body := ops.slice(lo, hi).get([])
 		la := body.count(fn o: o.mark != "+")
 		lb := body.count(fn o: o.mark != "-")
-		out.append("@@ -{rng(sa, la)} +{rng(sb, lb)} @@")
+		out.append(f"@@ -{rng(sa, la)} +{rng(sb, lb)} @@")
 		for o in body: out.append(o.mark + o.text)
 
 	return out.map(fn x: x + "\n").join("")
 
 fn mk(a: List[String], b: List[String], c: Int, na: String, nb: String) String:
 	return (
-		"{na} {nb} {c} {a.length()} {b.length()}\n"
+		f"{na} {nb} {c} {a.length()} {b.length()}\n"
 		+ a.concat(b).map(fn x: x + "\n").join("")
 	)
 
@@ -154,8 +154,8 @@ fn at(base: List[String], places: List[Int], values: List[String]) List[String]:
 
 export fn gen_c44() Void:
 	var rnd = seeded(44)
-	nums := (1..41).map(fn i: "line {i}")
-	base20 := (1..21).map(fn i: "l{i}")
+	nums := (1..41).map(fn i: f"line {i}")
+	base20 := (1..21).map(fn i: f"l{i}")
 	ex_a := ["one", "two", "three", "four", "five", "six"]
 	ex_b := ["one", "two", "3", "four", "five", "seven"]
 	examples := [

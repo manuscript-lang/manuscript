@@ -59,13 +59,13 @@ export fn catch_fault(operation: fn() Void) String?:
 // Fails unless actual is True. `site` names the call in the failure and defaults to the
 // caller's position.
 export fn expect_true(actual: Bool, site: String = caller_site()) Void!:
-	if actual: return ok(unit)
+	if actual: return ok()
 	return error(failure("expected true, got false", site))
 
 // Fails unless actual is False. `site` names the call in the failure and defaults to
 // the caller's position.
 export fn expect_false(actual: Bool, site: String = caller_site()) Void!:
-	if not actual: return ok(unit)
+	if not actual: return ok()
 	return error(failure("expected false, got true", site))
 
 // Compares using ordinary Equal semantics; reports expected and actual values on
@@ -75,8 +75,8 @@ export fn expect_equal[T: Equal](
 	expected: T,
 	site: String = caller_site(),
 ) Void!:
-	if actual == expected: return ok(unit)
-	return error(failure("expected {repr(expected)}, got {repr(actual)}", site))
+	if actual == expected: return ok()
+	return error(failure(f"expected {repr(expected)}, got {repr(actual)}", site))
 
 // Fails when values are equal under ordinary Equal semantics.
 export fn expect_not_equal[T: Equal](
@@ -84,8 +84,8 @@ export fn expect_not_equal[T: Equal](
 	expected: T,
 	site: String = caller_site(),
 ) Void!:
-	if actual != expected: return ok(unit)
-	return error(failure("expected different values, got {repr(actual)}", site))
+	if actual != expected: return ok()
+	return error(failure(f"expected different values, got {repr(actual)}", site))
 
 // Checks absolute difference against a finite nonnegative tolerance. NaN fails;
 // identical infinities pass.
@@ -102,16 +102,16 @@ export fn expect_close(
 				site,
 			)
 		)
-	if actual == expected: return ok(unit)
+	if actual == expected: return ok()
 
 	var spread = actual - expected
 	if spread < 0.0:
 		spread = 0.0 - spread
-	if spread <= tolerance: return ok(unit)
+	if spread <= tolerance: return ok()
 
 	return error(
 		failure(
-			"expected {repr(expected)} within {repr(tolerance)}, got {repr(actual)}",
+			f"expected {repr(expected)} within {repr(tolerance)}, got {repr(actual)}",
 			site,
 		)
 	)
@@ -122,8 +122,8 @@ export fn expect_contains(
 	expected: String,
 	site: String = caller_site(),
 ) Void!:
-	if actual.contains(expected): return ok(unit)
-	return error(failure("expected {repr(actual)} to contain {repr(expected)}", site))
+	if actual.contains(expected): return ok()
+	return error(failure(f"expected {repr(actual)} to contain {repr(expected)}", site))
 
 // Requires some and returns its original payload; fails on none.
 export fn expect_some[T](actual: T?, site: String = caller_site()) T!:
@@ -132,11 +132,13 @@ export fn expect_some[T](actual: T?, site: String = caller_site()) T!:
 
 // Requires none; fails when a payload is present.
 export fn expect_none[T](actual: T?, site: String = caller_site()) Void!:
-	if value := actual: return error(failure("expected none, got {repr(value)}", site))
+	if value := actual: return error(failure(f"expected none, got {repr(value)}", site))
 
 // Requires ok and returns its original payload; reports an unexpected error.
 export fn expect_ok[T, E](actual: T!E, site: String = caller_site()) T!:
-	if actual.is_error(): return error(failure("expected ok, got {repr(actual)}", site))
+	if actual.is_error(): return error(
+		failure(f"expected ok, got {repr(actual)}", site)
+	)
 	if value := actual: return ok(value)
 
 	return error(failure("expected ok, got an error", site))
@@ -144,7 +146,7 @@ export fn expect_ok[T, E](actual: T!E, site: String = caller_site()) T!:
 // Requires error and returns its original cause; fails on success.
 export fn expect_error[T, E: Clonable](actual: T!E, site: String = caller_site()) E!:
 	if actual.is_error(): return ok(actual.err().clone())
-	return error(failure("expected error, got {repr(actual)}", site))
+	return error(failure(f"expected error, got {repr(actual)}", site))
 
 // Calls operation once, requires a programming fault, and returns its message.
 // Cancellation propagates.

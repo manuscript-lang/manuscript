@@ -6,47 +6,47 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     s2 := "héllo".lower()
-    say("s2 = [{s2}]")
+    say(f"s2 = [{s2}]")
 
     l3 := [(-25), 13]
-    say("l3 = {l3} len {l3.length()}")
+    say(f"l3 = {l3} len {l3.length()}")
 
     i4 := ((l3.length() + ((-47) % 41)) + (((-6) % 361391) % ((-28) * 12)))
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     b5 := (true and ("x".replace("日本語", s2) != s2))
-    say("b5 = {b5}")
+    say(f"b5 = {b5}")
 
     i6 := (439466 * ((i4 / 33650) % (i4 - 36)))
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
     say(
-        "{((i4 - i6) + (-(-562804)))} {l3.get(1)} {(((i4 - i6) + (-(-562804))) < l3.get(1))} sum {((i4 - i6) + (-(-562804))) + l3.get(1)}"
+        f"{((i4 - i6) + (-(-562804)))} {l3.get(1)} {(((i4 - i6) + (-(-562804))) < l3.get(1))} sum {((i4 - i6) + (-(-562804))) + l3.get(1)}"
     )
 
     l7 := [17, (-29), 28]
-    say("l7 = {l7} len {l7.length()}")
+    say(f"l7 = {l7} len {l7.length()}")
 
     i8 := (((i4 - i6) + (-27)) - i4)
-    say("i8 = {i8}")
+    say(f"i8 = {i8}")
 
     s9 := s2.upper().upper()
-    say("s9 = [{s9}]")
+    say(f"s9 = [{s9}]")
 
     var acc10 = 0
     for i in 0..1:
         acc10 += i * (-3)
-    say("acc10 = {acc10}")
+    say(f"acc10 = {acc10}")
 
     i11 := (((i4 * i6) + l7.length()) % ((20 - i6) / (-13)))
-    say("i11 = {i11}")
+    say(f"i11 = {i11}")
     say(
-        "{(l3.length() + ((-740109) * i4))} {((i6 + i6) + (-11))} {((l3.length() + ((-740109) * i4)) < ((i6 + i6) + (-11)))} sum {(l3.length() + ((-740109) * i4)) + ((i6 + i6) + (-11))}"
+        f"{(l3.length() + ((-740109) * i4))} {((i6 + i6) + (-11))} {((l3.length() + ((-740109) * i4)) < ((i6 + i6) + (-11)))} sum {(l3.length() + ((-740109) * i4)) + ((i6 + i6) + (-11))}"
     )
 
     i12 := ((l3.get(1) + (i6 + i6)) * (((-22) + i8) + l3.length()))
-    say("i12 = {i12}")
+    say(f"i12 = {i12}")
     return 0

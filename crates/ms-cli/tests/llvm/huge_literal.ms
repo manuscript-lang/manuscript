@@ -8,4 +8,4 @@ fn main() Void:
     xs := [n + 0]
     var t = 0
     for x in xs: t += x
-    o.write("{t}\n").get()
+    o.write(f"{t}\n").get()

@@ -192,10 +192,6 @@ fn describe_kind(kind: &str) -> String {
     }
 }
 
-/// Adds the usual fix for the punctuation that is most often missing.
-/// Text interpolates by default, so Python's `f"..."` prefix is a stray name.
-const F_STRING_HINT: &str = "; there is no f-string prefix: text interpolates by default, so write \"...{value}...\" and escape literal braces as \\{ and \\}";
-
 /// The unspellable name a destructuring `for` or lambda binds before its pattern.
 const HIDDEN_ITEM: &str = "for item";
 
@@ -230,8 +226,6 @@ fn need_hint(kind: &str, found: Tok, found_text: &str) -> String {
                 "; give it a name, e.g. fn add(a: Int, b: Int) Int:".into()
             } else if found_text == "_" {
                 "; '_' is a reserved word and cannot be used as a name: loops, parameters and bindings need a real name such as item, unused or ignored".into()
-            } else if found == Tok::Ref {
-                "; 'ref' was removed: a function that returns part of a parameter returns a borrow of it, with no marker".into()
             } else if found.as_str() == found_text && found_text.starts_with(|c: char| c.is_ascii_alphabetic()) {
                 format!("; '{}' is a reserved word and cannot be used as a name", found_text)
             } else {
@@ -412,15 +406,7 @@ impl<'a> Parser<'a> {
                 ":",
             );
         }
-        let glued_f = t.kind == Tok::String
-            && self.at > 0
-            && self.text(self.previous()) == "f"
-            && self.previous().end.offset == t.pos.offset;
-        let hint = if glued_f {
-            F_STRING_HINT.to_string()
-        } else {
-            need_hint(k.as_str(), t.kind, self.text(t))
-        };
+        let hint = need_hint(k.as_str(), t.kind, self.text(t));
         let msg = format!(
             "expected {}, found {}{hint}",
             describe_kind(k.as_str()),
@@ -658,8 +644,6 @@ impl<'a> Parser<'a> {
         } else {
             ""
         };
-        let glued_text =
-            t.kind == Tok::String && self.at > 0 && self.previous().end.offset == t.pos.offset;
         let hint = match t.kind {
             _ if prev_word == "def" && t.kind == Tok::Name => {
                 "; there is no 'def': declare a function with 'fn name(a: Int) Int:'"
@@ -670,7 +654,6 @@ impl<'a> Parser<'a> {
             _ if prev_word == "elif" => {
                 "; there is no 'elif': write 'else if <condition>:' for a further branch"
             }
-            _ if prev_word == "f" && glued_text => F_STRING_HINT,
             Tok::Name if self.text(t) == "is" => {
                 "; there is no 'is' operator: write '==' to compare values, or 'match value:' to test which alternative a value is"
             }
@@ -866,7 +849,6 @@ impl<'a> Parser<'a> {
         let mut params = Vec::new();
         if !self.take(Tok::RParen) {
             loop {
-                self.no_ref()?;
                 let mutable = self.take(Tok::Var);
                 let name = self.need(Tok::Name)?;
                 let mut ty = None;
@@ -1022,7 +1004,6 @@ impl<'a> Parser<'a> {
                 "every fn declares its result type after the parameter list, e.g. fn f() Void:",
             );
         }
-        self.no_ref()?;
         self.typ()
     }
 
@@ -1651,7 +1632,6 @@ impl<'a> Parser<'a> {
             } else {
                 let fname = self.need(Tok::Name)?;
                 self.need_name_colon(fname)?;
-                self.no_ref()?;
                 let ty = self.typ()?;
                 let default = if self.take(Tok::Assign) {
                     Some(self.expression(0)?)
@@ -1794,23 +1774,6 @@ impl<'a> Parser<'a> {
         Ok(body)
     }
 
-    /// Rejects `ref`, which the language no longer has: a function that returns part of a
-    /// parameter returns a borrow of it, a field owns its value, and a binding of a place already borrows it.
-    fn no_ref(&mut self) -> PResult<()> {
-        if self.kind() == Tok::Ref {
-            let at = self.peek();
-            let message = "`ref` was removed: drop it; a function that returns part of a parameter returns a borrow of it, with no marker, and a field owns its value";
-            // The edit replaces `ref` and the word after it with that word, so no space is left behind.
-            let next = self.ahead(1);
-            if next.pos.line == at.pos.line && next.kind != Tok::Newline {
-                let replacement = self.text(next).to_string();
-                return self.fail_fix_range(at, next, message, &replacement);
-            }
-            return self.fail_fix(at, message, "");
-        }
-        Ok(())
-    }
-
     /// `let pattern = hidden`: the first statement of a `for` body or lambda whose
     /// parameter is a pattern. Checking, ownership, and lowering see an ordinary
     /// binding of the hidden name, which borrows the element.
@@ -1875,7 +1838,6 @@ impl<'a> Parser<'a> {
     /// Parses a binding: `var pattern [: Type] = value` after `var`, or an
     /// immutable `name := value`, `name: Type := value`, or `pattern := value`.
     fn binding(&mut self, mutable: bool, group: Option<Pos>, pos: Pos) -> PResult<Stmt> {
-        self.no_ref()?;
         let pattern = self.pattern()?;
         let mut ty = None;
         let named = matches!(pattern.kind, PatternKind::Name(_));
@@ -1921,6 +1883,52 @@ impl<'a> Parser<'a> {
         let t = self.peek();
         let pos = t.pos;
         let kind = match t.kind {
+            // `void call()` runs the call and drops its result on purpose; it is the `_ := call()`
+            // binding underneath, so the checker and both backends see one form. A bare `void` is
+            // the Void value.
+            Tok::Void
+                if !matches!(
+                    self.ahead(1).kind,
+                    Tok::Newline
+                        | Tok::Indent
+                        | Tok::Dedent
+                        | Tok::Eof
+                        | Tok::Comma
+                        | Tok::RParen
+                        | Tok::RBracket
+                        | Tok::RBrace
+                ) =>
+            {
+                self.at += 1;
+                let value = self.expression(0)?;
+                self.end()?;
+                let id = self.id();
+                let pattern_id = self.id();
+                return Ok(Stmt {
+                    id,
+                    pos,
+                    kind: StmtKind::Bind {
+                        mutable: false,
+                        pattern: Pattern {
+                            id: pattern_id,
+                            pos,
+                            kind: PatternKind::Name(self.names.intern("_")),
+                        },
+                        ty: None,
+                        value,
+                        group: None,
+                    },
+                });
+            }
+            Tok::Underscore if self.ahead(1).kind == Tok::ColonAssign => {
+                let eq = self.ahead(1);
+                return self.fail_fix_range(
+                    t,
+                    eq,
+                    "'_ := value' was removed; write 'void value' to run an expression and drop its result on purpose",
+                    "void",
+                );
+            }
             Tok::Name | Tok::Underscore | Tok::LBracket | Tok::LBrace if self.binding_ahead() => {
                 let s = self.binding(false, None, pos)?;
                 self.end()?;
@@ -2093,7 +2101,6 @@ impl<'a> Parser<'a> {
                     let c = self.peek();
                     return self.fail(c, "for does not take parentheses or a counter clause; write 'for item in items:' to visit a List, or 'for i in 0..n:' to count");
                 }
-                self.no_ref()?;
                 let (name, pattern) = if matches!(self.kind(), Tok::LBracket | Tok::LBrace) {
                     (self.names.intern(HIDDEN_ITEM), Some(self.pattern()?))
                 } else {
@@ -2149,7 +2156,7 @@ impl<'a> Parser<'a> {
             if !self.inline_return && !is_call && !try_call && !allow_value {
                 if let ExprKind::Name(n) = &e.kind {
                     match self.names.str(*n) {
-                        "pass" => return self.fail_fix(t, "'pass' is not a keyword; write 'unit' for an empty block or match arm", "unit"),
+                        "pass" => return self.fail_fix(t, "'pass' is not a keyword; write 'void' for an empty block or match arm", "void"),
                         "const" | "val" | "final" => {
                             return self.fail(t, format!("'{n_t}' is not a keyword; write 'name := ...' for a binding that is not reassigned, or 'var name = ...' when it changes", n_t = self.names.str(n)));
                         }
@@ -2373,7 +2380,7 @@ impl<'a> Parser<'a> {
     fn pattern_inner(&mut self) -> PResult<Pattern> {
         let t = self.peek();
         if t.kind == Tok::Void {
-            return self.fail(t, "unit is a reserved value keyword, not a binding name; choose another name such as code_unit, and use unit for the Void value");
+            return self.fail(t, "void is a reserved value keyword, not a binding name; choose another name such as code_unit, and use void for the Void value");
         }
         if self.take(Tok::Name) {
             let id = self.id();
@@ -2754,7 +2761,7 @@ impl<'a> Parser<'a> {
             }
             Tok::Void => self.mk(t.pos, ExprKind::Void),
             Tok::LParen if self.kind() == Tok::RParen => {
-                return self.fail(t, "'()' is not a value; the Void value is written 'unit'");
+                return self.fail(t, "'()' is not a value; the Void value is written 'void'");
             }
             Tok::LParen => {
                 let e = self.expression(0)?;
@@ -2782,7 +2789,6 @@ impl<'a> Parser<'a> {
                 self.mk(t.pos, ExprKind::List(items))
             }
             Tok::Match => {
-                self.no_ref()?;
                 let scrutinee = self.expression(0)?;
                 let arms = self.match_arms(t)?;
                 self.mk(
@@ -2956,7 +2962,20 @@ impl<'a> Parser<'a> {
             } else if self.take(Tok::LParen) {
                 self.link(&mut links)?;
                 let pos = e.pos;
-                let args = self.call_arguments()?;
+                let mut args = self.call_arguments()?;
+                // `ok()` is `ok(void)`: success with nothing to carry. The argument sits at the
+                // callee's position, where no source text of its own exists.
+                if args.is_empty()
+                    && matches!(&e.kind, ExprKind::Name(n) if self.names.str(*n) == "ok")
+                {
+                    let value = self.mk(pos, ExprKind::Void);
+                    args.push(Argument {
+                        pos,
+                        name: None,
+                        value,
+                        mutable: false,
+                    });
+                }
                 e = self.mk(
                     pos,
                     ExprKind::Call {
@@ -3089,32 +3108,47 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
-    /// Decodes a text token into literal and interpolated parts.
+    /// Decodes a text token into literal and interpolated parts. Only `f"..."`
+    /// and `f"""` text interpolates; braces are plain in the other forms.
     fn text_parts_of(&mut self, token: Token) -> PResult<Vec<TextPart>> {
         let full = self.text(token);
         if let Some(body) = full.strip_prefix("r\"\"\"") {
             let (content, indent, _) = multiline_body(&body[..body.len() - 3]);
             return Ok(vec![TextPart::Lit(dedent(content, indent).into())]);
         }
+        if let Some(body) = full.strip_prefix("f\"\"\"") {
+            return self.text_parts(token, &body[..body.len() - 3], 4, true);
+        }
         if full.starts_with("\"\"\"") {
-            return self.text_parts(token, &full[3..full.len() - 3], 3);
+            return self.text_parts(token, &full[3..full.len() - 3], 3, false);
         }
         if let Some(body) = full.strip_prefix("r\"") {
             return Ok(vec![TextPart::Lit(body[..body.len() - 1].into())]);
         }
+        if let Some(body) = full.strip_prefix("f\"") {
+            return self.text_parts(token, &body[..body.len() - 1], 2, true);
+        }
         let raw = &full[1..full.len() - 1];
-        if !raw.bytes().any(|b| b == b'\\' || b == b'{') {
+        if !raw.bytes().any(|b| b == b'\\') {
             return Ok(vec![TextPart::Lit(raw.into())]);
         }
-        self.text_parts(token, raw, 1)
+        self.text_parts(token, raw, 1, false)
     }
 
-    /// `quotes` is the width of the opening delimiter; `raw` excludes both
-    /// delimiters. A multi-line body drops its first and last line break and
-    /// the closing line's indentation from every line.
-    fn text_parts(&mut self, token: Token, raw: &str, quotes: usize) -> PResult<Vec<TextPart>> {
+    /// `open` is the width of the opening delimiter including any `f`; `raw`
+    /// excludes both delimiters. A multi-line body (`open` of 3 or 4) drops its
+    /// first and last line break and the closing line's indentation from every
+    /// line. Only `interpolating` text opens `{expression}` parts.
+    fn text_parts(
+        &mut self,
+        token: Token,
+        raw: &str,
+        open: usize,
+        interpolating: bool,
+    ) -> PResult<Vec<TextPart>> {
+        let quotes = open;
         let rb = raw.as_bytes();
-        let (first, end, indent) = if quotes == 3 {
+        let (first, end, indent) = if quotes >= 3 {
             let (content, indent, first) = multiline_body(raw);
             (first, first + content.len(), indent)
         } else {
@@ -3166,7 +3200,7 @@ impl<'a> Parser<'a> {
                 }
                 continue;
             }
-            if c != b'{' {
+            if !(interpolating && c == b'{') {
                 literal.push(c);
                 line_start = c == b'\n' && indent > 0;
                 continue;
@@ -3200,8 +3234,7 @@ impl<'a> Parser<'a> {
         Ok(parts)
     }
 
-    /// Lexes and parses the expression inside one `{...}` of a text literal.
-    /// Failures also state the escape for a literal brace.
+    /// Lexes and parses the expression inside one `{...}` of `f` text.
     fn interpolation(
         &mut self,
         token: Token,
@@ -3209,39 +3242,8 @@ impl<'a> Parser<'a> {
         source: &str,
         position: Pos,
     ) -> PResult<Expr> {
-        let mut d = match self.interpolation_checked(token, at, source, position) {
-            Ok(e) => return Ok(e),
-            Err(d) => d,
-        };
-        // Braces that are not a valid expression are literal text, as in JSON.
-        let escaped = source.replace('{', "\\{").replace('}', "\\}");
-        // Only content that cannot start an expression (a quote, as in JSON) is
-        // certainly literal; `{total +}` is a typo and keeps its error.
-        let json_like = source.trim_start().starts_with('"');
-        if d.fix.is_none() && json_like && position.offset > 0 && !source.contains('\n') {
-            let len = source.len() as u32;
-            d.fix = Some(DiagnosticFix {
-                pos: Pos::new(position.offset - 1, position.line, position.column - 1),
-                end: Pos::new(
-                    position.offset + len + 1,
-                    position.line,
-                    position.column + len + 1,
-                ),
-                replacement: format!("\\{{{escaped}\\}}"),
-            });
-        }
-        Err(d)
-    }
-
-    fn interpolation_checked(
-        &mut self,
-        token: Token,
-        at: usize,
-        source: &str,
-        position: Pos,
-    ) -> PResult<Expr> {
         let suffix = format!(
-            " ('{{' at column {} starts an interpolation; write \\{{ and \\}} for literal braces)",
+            " ('{{' at column {} starts an interpolation in f\"...\" text; write \\{{ and \\}} for literal braces, or drop the f)",
             position.column - 1
         );
         let origin = self.source_origin + token.lo as usize + at;
@@ -3649,7 +3651,7 @@ impl<'a> Parser<'a> {
     fn interpolation_wrapped(&mut self, token: Token, at: usize, source: &str) -> PResult<Expr> {
         let full = self.text(token);
         let suffix = format!(
-            " ('{{' at column {} starts an interpolation; write \\{{ and \\}} for literal braces)",
+            " ('{{' at column {} starts an interpolation in f\"...\" text; write \\{{ and \\}} for literal braces, or drop the f)",
             text_pos(token.pos, full, at - 1, self.boundaries).column
         );
         let wrapped = format!("({source})");

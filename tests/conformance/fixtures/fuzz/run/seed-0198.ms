@@ -6,49 +6,49 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     f1 := (((69.640 - 867.25) * 144.621) + ((507.578 + 0.5) * (231.946 / 6.0e15)))
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
 
     s2 := "emoji 😀"
-    say("s2 = [{s2}]")
+    say(f"s2 = [{s2}]")
 
     i3 := ((-9) + ((3 - 211039) / (42 + (-449310))))
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     b4 := (("  padded  " + s2) + "".reverse()).starts_with(s2)
-    say("b4 = {b4}")
+    say(f"b4 = {b4}")
 
     f5 := (((639.996 + 678.944) * (0.0 + f1)) + f1)
-    say("f5 = {f5}")
+    say(f"f5 = {f5}")
 
     l6 := [(-7), (-15), 20, 18, (-12)]
-    say("l6 = {l6} len {l6.length()}")
+    say(f"l6 = {l6} len {l6.length()}")
 
     i7 := s2.scalar_length()
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
     f8 := ((550.584 * (0.0 + f1)) / ((393.300 * 97.203) * (0.0 + f5)))
-    say("f8 = {f8}")
+    say(f"f8 = {f8}")
 
     var l9 = l6.clone()
     l9.append(27)
-    say("l9 = {l9} len {l9.length()}")
+    say(f"l9 = {l9} len {l9.length()}")
 
     i10 := ((s2.scalar_length() + ((-11) / (-570102))) - ((i3 % 49) - (-i3)))
-    say("i10 = {i10}")
+    say(f"i10 = {i10}")
 
     i11 := s2.scalar_length()
-    say("i11 = {i11}")
+    say(f"i11 = {i11}")
 
     f12 := (f1 * ((f8 * f5) / 312.113))
-    say("f12 = {f12}")
+    say(f"f12 = {f12}")
 
     b13 := (((i3 != i11) and ("日本語" == s2)) and s2.is_empty())
-    say("b13 = {b13}")
+    say(f"b13 = {b13}")
 
     i14 := (-((i7 % 66928) * (-i11)))
-    say("i14 = {i14}")
+    say(f"i14 = {i14}")
     return 0

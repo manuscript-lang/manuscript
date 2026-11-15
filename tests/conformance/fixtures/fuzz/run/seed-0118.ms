@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -26,23 +26,23 @@ export fn main() Int:
         ((508.299 / 254.218) + (197.077 / 774.188))
         * ((7.5 * 4.0e22) + (278.587 * 1.0e5))
     )
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
 
     l2 := [2, 4, 29]
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     l3 := l2.drop(4)
-    say("l3 = {l3} len {l3.length()}")
+    say(f"l3 = {l3} len {l3.length()}")
 
     i4 := (-25)
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     b5 := "  padded  ".is_empty()
-    say("b5 = {b5}")
-    say("fib(45) = {fib(45)}")
+    say(f"b5 = {b5}")
+    say(f"fib(45) = {fib(45)}")
 
     l6 := l2.concat(l2)
-    say("l6 = {l6} len {l6.length()}")
+    say(f"l6 = {l6} len {l6.length()}")
 
     var acc7 = 0
 
@@ -52,12 +52,12 @@ export fn main() Int:
         else:
             acc7 -= 1
 
-    say("acc7 = {acc7}")
+    say(f"acc7 = {acc7}")
 
     f8 := (992.987 + ((f1 + f1) + (f1 * f1)))
-    say("f8 = {f8}")
+    say(f"f8 = {f8}")
 
     f9 := (((f8 + 8.0e21) * f8) + ((f1 * 4.5) + 3.0e-4))
-    say("f9 = {f9}")
-    say("fib(44) = {fib(44)}")
+    say(f"f9 = {f9}")
+    say(f"fib(44) = {fib(44)}")
     return 0

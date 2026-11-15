@@ -4,7 +4,7 @@ type Gate:
     id: Int
 
 fn var Gate.close() Void!:
-    print("close {self.id}")
+    print(f"close {self.id}")
 
 type Holder:
     gate: Gate

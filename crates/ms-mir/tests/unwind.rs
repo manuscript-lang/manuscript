@@ -144,9 +144,9 @@ b0:
 #[test]
 fn drops_a_value_a_with_close_uses_after_that_close() {
     let body = r#"
-fn @close(%s: str) -> unit {
+fn @close(%s: str) -> void {
 b0:
-  %u: unit = unit
+  %u: void = void
   ret %u
 }
 
@@ -449,9 +449,9 @@ b3():
 #[test]
 fn ends_a_shared_window_at_a_with_open() {
     let body = r#"
-fn @close(%s: str) -> unit {
+fn @close(%s: str) -> void {
 b0:
-  %u: unit = unit
+  %u: void = void
   ret %u
 }
 
@@ -483,11 +483,11 @@ b0:
 }
 
 const SLOT_CLOSED: &str = r#"
-extern @msrt_cleanup_discard(int) -> unit leaf cleanup_discard
+extern @msrt_cleanup_discard(int) -> void leaf cleanup_discard
 
-fn @close(%p: ptr) -> unit {
+fn @close(%p: ptr) -> void {
 b0:
-  %u: unit = unit
+  %u: void = void
   ret %u
 }
 
@@ -521,7 +521,7 @@ fn rewrite_slot_closed(tail: &str) -> Module {
 fn leaves_a_slot_value_to_its_active_scope_close() {
     // A drop registered for the taken value would run before the slot's close and free the
     // receiver the close still uses; the close drops what the slot holds.
-    let m = rewrite_slot_closed("%d: unit = call.rt @msrt_cleanup_discard (%h)\n  ret %r");
+    let m = rewrite_slot_closed("%d: void = call.rt @msrt_cleanup_discard (%h)\n  ret %r");
     assert_eq!(
         count(&m, "main", Op::CleanupPush),
         1,
@@ -533,7 +533,7 @@ fn leaves_a_slot_value_to_its_active_scope_close() {
 #[test]
 fn registers_a_slot_value_again_once_its_scope_close_is_discarded() {
     let m = rewrite_slot_closed(
-        "%d: unit = call.rt @msrt_cleanup_discard (%h)\n  %u: str = take str %slot\n  %k: int = call.rt @msrt_task_sleep (%n)\n  drop %u\n  ret %k",
+        "%d: void = call.rt @msrt_cleanup_discard (%h)\n  %u: str = take str %slot\n  %k: int = call.rt @msrt_task_sleep (%n)\n  drop %u\n  ret %k",
     );
     assert_eq!(
         count(&m, "main", Op::CleanupPush),
@@ -577,14 +577,14 @@ b0:
 const PANICS_WITH_TEMPS: &str = r#"
 extern @msrt_int_to_string(int) -> str leaf int_to_string
 extern @msrt_string_concat(str, str) -> str fresh leaf string_concat
-extern @msrt_fault_string(str) -> unit noreturn leaf
+extern @msrt_fault_string(str) -> void noreturn leaf
 fn @main() -> int {
 b0:
   %0: int = iconst 64
   %1: str = str "found "
   %2: str = call.rt @msrt_int_to_string (%0)
   %3: str = call.rt @msrt_string_concat (%1, %2)
-  %4: unit = call.rt @msrt_fault_string (%3)
+  %4: void = call.rt @msrt_fault_string (%3)
   unreachable
 }
 "#;

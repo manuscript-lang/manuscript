@@ -43,9 +43,9 @@ fn parse_fixed(s: String, width: Int) Optional[Int]:
     return s.parse_int()
 
 fn pad2(n: Int) String:
-    if n < 10: return "0{n}"
+    if n < 10: return f"0{n}"
 
-    return "{n}"
+    return f"{n}"
 
 fn weekday(st: Stamp) Int:
     var days = 0
@@ -159,7 +159,7 @@ fn parse_field(text: String, lo: Int, hi: Int) Optional[Set[Int]]:
     return some(values)
 
 fn pad_stamp(st: Stamp) String:
-    return "{st.year}-{pad2(st.month)}-{pad2(st.day)} {pad2(st.hour)}:{pad2(st.minute)}"
+    return f"{st.year}-{pad2(st.month)}-{pad2(st.day)} {pad2(st.hour)}:{pad2(st.minute)}"
 
 // Finds up to `count` matching minutes strictly after `st`, searching 3000 days past its date.
 fn next_runs(
@@ -211,40 +211,40 @@ fn is_blank(line: String) Bool:
     return true
 
 fn solve(line: String, n: Int) List[String]:
-    head := "line {n}:"
+    head := f"line {n}:"
     tokens := line.split(" ")
-    if tokens.length() != 7: return ["{head} error: bad line"]
+    if tokens.length() != 7: return [f"{head} error: bad line"]
 
     start := parse_start(tokens[0])
-    if start.is_none(): return ["{head} error: bad start"]
+    if start.is_none(): return [f"{head} error: bad start"]
 
     count := parse_num(tokens[1])
     if count.is_none() or count.get() < 1 or count.get() > 20: return [
-        "{head} error: bad count"
+        f"{head} error: bad count"
     ]
 
     minutes := parse_field(tokens[2], 0, 59)
-    if minutes.is_none(): return ["{head} error: bad minute"]
+    if minutes.is_none(): return [f"{head} error: bad minute"]
 
     hours := parse_field(tokens[3], 0, 23)
-    if hours.is_none(): return ["{head} error: bad hour"]
+    if hours.is_none(): return [f"{head} error: bad hour"]
 
     doms := parse_field(tokens[4], 1, 31)
-    if doms.is_none(): return ["{head} error: bad day-of-month"]
+    if doms.is_none(): return [f"{head} error: bad day-of-month"]
 
     months := parse_field(tokens[5], 1, 12)
-    if months.is_none(): return ["{head} error: bad month"]
+    if months.is_none(): return [f"{head} error: bad month"]
 
     dows := parse_field(tokens[6], 0, 6)
-    if dows.is_none(): return ["{head} error: bad day-of-week"]
+    if dows.is_none(): return [f"{head} error: bad day-of-week"]
 
     runs := next_runs(
         start.get(), count.get(), minutes.get(), hours.get(), doms.get(), months.get(),
         dows.get()
     )
-    if runs.length() == 0: return ["{head} never"]
+    if runs.length() == 0: return [f"{head} never"]
 
-    var out = ["{head} {runs.length()} runs"]
+    var out = [f"{head} {runs.length()} runs"]
     for run in runs:
         out.append(pad_stamp(run))
     return out

@@ -33,4 +33,4 @@ fn main() Void:
 	var total = 0
 	for r in wait_all(ps).get():
 		total += r
-	print("chunks 128 checksum {total}")
+	print(f"chunks 128 checksum {total}")

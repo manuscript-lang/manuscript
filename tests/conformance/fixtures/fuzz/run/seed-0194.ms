@@ -6,17 +6,17 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := ((-50398) + (-((-13) * 683644)))
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     i2 := i1
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     i3 := (((i2 - i2) - (-26)) + ((-32) + (-i1)))
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     var acc4 = 0
     var stepacc4 = 0
@@ -25,50 +25,50 @@ export fn main() Int:
         stepacc4 += 1
         acc4 += stepacc4 * stepacc4 + 4
 
-    say("acc4 = {acc4}")
+    say(f"acc4 = {acc4}")
 
     f5 := (685.118 + 34.303)
-    say("f5 = {f5}")
+    say(f"f5 = {f5}")
 
     i6 := (-12)
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     i7 := (41 / i1)
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
     b8 := false
-    say("b8 = {b8}")
+    say(f"b8 = {b8}")
 
     s9 := "日本語"
-    say("s9 = [{s9}]")
+    say(f"s9 = [{s9}]")
 
     b10 := ((f5 - (932.082 * 2.5)) < ((8.5 + f5) + (f5 / f5)))
-    say("b10 = {b10}")
+    say(f"b10 = {b10}")
 
-    s11 := ("{(i6 + (-93889))}:" + "alpha")
-    say("s11 = [{s11}]")
+    s11 := (f"{(i6 + (-93889))}:" + "alpha")
+    say(f"s11 = [{s11}]")
     say(
-        "{i3} {((i7 - (-500460)) + 32)} {(i3 < ((i7 - (-500460)) + 32))} sum {i3 + ((i7 - (-500460)) + 32)}"
+        f"{i3} {((i7 - (-500460)) + 32)} {(i3 < ((i7 - (-500460)) + 32))} sum {i3 + ((i7 - (-500460)) + 32)}"
     )
 
     b12 := (
         ((s11 != "back\\slash") and "gamma".is_empty())
         and (("delta" + "line\nbreak") != s9.reverse())
     )
-    say("b12 = {b12}")
+    say(f"b12 = {b12}")
 
     i13 := ((i6 * (-(-165919))) - s9.scalar_length())
-    say("i13 = {i13}")
+    say(f"i13 = {i13}")
 
     i14 := i3
-    say("i14 = {i14}")
+    say(f"i14 = {i14}")
 
     i15 := (-28)
-    say("i15 = {i15}")
+    say(f"i15 = {i15}")
 
     b18 := b8
-    say("b18 = {b18}")
+    say(f"b18 = {b18}")
 
     big19 := (s9.scalar_length() % i6) - (s9.scalar_length() % i6)
-    say("{(s9.scalar_length() % i6) / big19}")
+    say(f"{(s9.scalar_length() % i6) / big19}")
     return 0

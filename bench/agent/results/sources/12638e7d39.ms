@@ -136,7 +136,7 @@ export fn main() Int:
 		else if p.divz:
 			out += "error: division by zero\n"
 		else:
-			out += "{v}\n"
+			out += f"{v}\n"
 
 	stdout().write(out).get()
 	return 0

@@ -8,8 +8,8 @@ type Gate:
     id: Int
 
 fn var Gate.close() Void!:
-    print("closed {self.id}")
-    return ok(unit)
+    print(f"closed {self.id}")
+    return ok()
 
 type Holder:
     name: String
@@ -19,8 +19,8 @@ type Holder:
 fn main() Void:
     var words = Map[String, List[String]]()
     for i in 0..1000:
-        words["key-number-{i}-padding"] = ["value-one-{i}", "value-two-{i}"]
+        words[f"key-number-{i}-padding"] = [f"value-one-{i}", f"value-two-{i}"]
     plain := ["a string long enough to live on the heap", "another one of the same kind"]
     held := Holder("holder name that is long enough to be on the heap", [Gate(2), Gate(3)], words)
     first := Gate(1)
-    print("{plain.length()} {held.gates.length()} {first.id}")
+    print(f"{plain.length()} {held.gates.length()} {first.id}")

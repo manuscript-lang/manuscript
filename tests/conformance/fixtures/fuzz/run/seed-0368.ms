@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -37,49 +37,49 @@ fn fib(n: Int) Int:
 
 export fn main() Int:
     s1 := "日本語"
-    say("s1 = [{s1}]")
+    say(f"s1 = [{s1}]")
 
     i2 := (-(33 - ((-593873) * 205739)))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     s3 := s1.clone()
-    say("s3 = [{s3}]")
+    say(f"s3 = [{s3}]")
 
     f4 := (((205.355 + 445.506) + 253.862) + 760.449)
-    say("f4 = {f4}")
+    say(f"f4 = {f4}")
 
     l5 := [1, 2, 3].take(0)
-    say("l5 = {l5} len {l5.length()}")
+    say(f"l5 = {l5} len {l5.length()}")
 
     l6 := [(-26), 29, (-12), (-19), (-1)]
-    say("l6 = {l6} len {l6.length()}")
+    say(f"l6 = {l6} len {l6.length()}")
 
     b7 := (((i2 + 658472) + i2) != i2)
-    say("b7 = {b7}")
+    say(f"b7 = {b7}")
 
     f8 := f4
-    say("f8 = {f8}")
+    say(f"f8 = {f8}")
 
     b9 := b7
-    say("b9 = {b9}")
+    say(f"b9 = {b9}")
 
     f10 := 261.034
-    say("f10 = {f10}")
+    say(f"f10 = {f10}")
 
     var l11 = l6.clone()
     l11.append(85)
-    say("l11 = {l11} len {l11.length()}")
-    say("collatz(2321) = {collatz(2321)}")
+    say(f"l11 = {l11} len {l11.length()}")
+    say(f"collatz(2321) = {collatz(2321)}")
 
     i12 := i2
-    say("i12 = {i12}")
-    say("fib(37) = {fib(37)}")
+    say(f"i12 = {i12}")
+    say(f"fib(37) = {fib(37)}")
 
     f13 := (f10 * ((597.709 - 269.388) * (f10 + f4)))
-    say("f13 = {f13}")
+    say(f"f13 = {f13}")
 
     l14 := l11.reversed()
-    say("l14 = {l14} len {l14.length()}")
+    say(f"l14 = {l14} len {l14.length()}")
 
     if b9:
         say((s3 + "back\\slash"))
@@ -87,8 +87,8 @@ export fn main() Int:
         say(s1)
 
     f15 := ((887.907 * (f4 * f13)) + (139.875 + (f13 * f13)))
-    say("f15 = {f15}")
+    say(f"f15 = {f15}")
 
     i16 := (-(-22))
-    say("i16 = {i16}")
+    say(f"i16 = {i16}")
     return 0

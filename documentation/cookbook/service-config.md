@@ -35,12 +35,12 @@ fn apply_environment(var settings: Settings) Void!:
         settings.port = value.parse_int().ok_or(Error("PORT is not a number", kind: "EINVAL"))?
     if value := env.get("LOG_LEVEL"):
         settings.level = value.clone()
-    return ok(unit)
+    return ok()
 
 fn main() Void!:
     var settings = from_file("settings.json")?
     apply_environment(var settings)?
-    print("listening on {settings.host}:{settings.port}, level {settings.level}")
+    print(f"listening on {settings.host}:{settings.port}, level {settings.level}")
 ```
 
 ```sh

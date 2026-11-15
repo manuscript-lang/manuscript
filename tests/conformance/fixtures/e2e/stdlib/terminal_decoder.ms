@@ -126,8 +126,8 @@ test "a bracketed paste is one event however the input is split":
 test "an overlong CSI sequence is dropped whole however it is split":
 	var d = terminal_decoder()
 	long := "1".repeat(300).get("")
-	expect_equal(d.decode("\u{1b}[{long}"), List[TerminalEvent]())?
-	expect_equal(d.decode("{long}mok"), [TerminalEvent.Text("ok")])?
+	expect_equal(d.decode(f"\u{1b}[{long}"), List[TerminalEvent]())?
+	expect_equal(d.decode(f"{long}mok"), [TerminalEvent.Text("ok")])?
 
 test "an unterminated paste keeps waiting":
 	var d = terminal_decoder()

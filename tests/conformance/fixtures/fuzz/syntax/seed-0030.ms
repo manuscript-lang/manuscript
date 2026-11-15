@@ -6,10 +6,10 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
-    if ("brace\{s\}".trim() != ("{(8 % 47)}:" + "brace\{s\}")):
+    if ("brace{s}".trim() != (f"{(8 % 47)}:" + "brace{s}")):
         say(("42" + "naïve"))
     else:
         say("".reverse())
@@ -20,5 +20,5 @@ export fn main() Int:
         say("quote\"d".lower())
 
     f1 := (8.0e20 * 7.5)
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
     return 0

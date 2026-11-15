@@ -1,7 +1,7 @@
 import BoxFailure, DomainFailure from "./domain.ms"
 
 fn DomainFailure.message() String:
-	return "first \{self.code\}"
+	return f"first {self.code}"
 
 export fn first_error(cause: DomainFailure) Error:
 	return cause

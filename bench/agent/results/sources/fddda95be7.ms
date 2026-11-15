@@ -144,7 +144,7 @@ fn parse_field(text: String, lo: Int, hi: Int) Optional[List[Bool]]:
     return allowed
 
 fn two(n: Int) String:
-    return "{n}".pad_start(2, "0")
+    return f"{n}".pad_start(2, "0")
 
 fn search(start: Moment, count: Int, plan: Schedule) List[String]:
     var runs = List[String]()
@@ -173,7 +173,7 @@ fn search(start: Moment, count: Int, plan: Schedule) List[String]:
 
                     if plan.minutes[minute] and runs.length() < count:
                         runs.append(
-                            "{year}-{two(month)}-{two(day)} {two(hour)}:{two(minute)}"
+                            f"{year}-{two(month)}-{two(day)} {two(hour)}:{two(minute)}"
                         )
 
         day += 1
@@ -205,9 +205,9 @@ fn describe(line_number: Int, line: String) Result[String, LineError]:
         minutes: minutes, hours: hours, days: days, months: months, weekdays: weekdays
     )
     runs := search(start, count, plan)
-    if runs.length() == 0: return ok("line {line_number}: never")
+    if runs.length() == 0: return ok(f"line {line_number}: never")
 
-    return ok("line {line_number}: {runs.length()} runs\n" + runs.join("\n"))
+    return ok(f"line {line_number}: {runs.length()} runs\n" + runs.join("\n"))
 
 export fn main() Int:
     var line_number = 0
@@ -217,7 +217,7 @@ export fn main() Int:
         if line.replace(" ", "").is_empty(): continue
 
         text := describe(line_number, line).get_or_else(
-            fn e: "line {line_number}: error: {e.message()}"
+            fn e: f"line {line_number}: error: {e.message()}"
         )
         stdout().write(text + "\n").get()
 

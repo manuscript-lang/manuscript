@@ -12,7 +12,7 @@ type Marker:
 	fail: Bool
 
 fn var Marker.close() Void!:
-	append_file(self.log, "{self.id},").wait()?
+	append_file(self.log, f"{self.id},").wait()?
 	if self.fail: return error(Error("cause close failed"))
 
 fn source(log: String) Marker?: Marker(1, log, false)
@@ -22,7 +22,7 @@ fn discard(log: String) Void:
 
 test "closing an unused cause does not lose the retained receiver on fault":
 	tmp := temporary("cause-fault-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	write_file(log, "").wait()?
 
 	_fault := expect_fault(fn: discard(log.clone()))?
@@ -35,7 +35,7 @@ fn normal_transfer(log: String) Void!:
 
 test "successful cause cleanup transfers the protected receiver exactly once":
 	tmp := temporary("cause-transfer-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	write_file(log, "").wait()?
 	normal_transfer(log.clone())?
 	expect_equal(read_file(log).wait().get().decode_utf8().get(""), "2,1,")?
@@ -51,7 +51,7 @@ fn discard_callback(log: String) Void:
 // fault.
 test "unused owning callback cleanup closes its capture without invoking the callback":
 	tmp := temporary("cause-callback-fault-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	write_file(log, "").wait()?
 	discard_callback(log.clone())
 	expect_equal(read_file(log).wait().get().decode_utf8().get(""), "2,1,")?

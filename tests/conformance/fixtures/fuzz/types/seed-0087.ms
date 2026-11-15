@@ -6,28 +6,28 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     f1 := 657.263
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
 
     var acc2 = 0
     for i in 0..1:
         acc2 += i * (-1)
-    say("acc2 = {acc2}")
+    say(f"acc2 = {acc2}")
 
     i3 := 4
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
-    s4 := (("{(-8)}:" + "delta").replace("ms", "") + "emoji 😀")
-    say("s4 = [{s4}]")
+    s4 := ((f"{(-8)}:" + "delta").replace("ms", "") + "emoji 😀")
+    say(f"s4 = [{s4}]")
     say(
-        "{((-i3) - (40 + i3))} {i3} {(((-i3) - (40 + i3)) < i3)} sum {((-i3) - (40 + i3)) + i3}"
+        f"{((-i3) - (40 + i3))} {i3} {(((-i3) - (40 + i3)) < i3)} sum {((-i3) - (40 + i3)) + i3}"
     )
 
     f5 := 197.731
-    say("f5 = {f5}")
+    say(f"f5 = {f5}")
 
     bad: Int := "text"
     return 0

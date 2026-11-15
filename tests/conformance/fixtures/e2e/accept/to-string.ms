@@ -25,13 +25,13 @@ fn stringify[T](value: T) String:
 	return value.to_string()
 
 fn interpolate[T](value: T) String:
-	return "{value}"
+	return f"{value}"
 
 fn bound_stringify[T: Named](value: T) String:
 	return value.to_string()
 
 fn check(value: String, expected: String) Void!:
-	if value != expected: return fail(message: "expected {expected}, received {value}")
+	if value != expected: return fail(message: f"expected {expected}, received {value}")
 
 fn answer() Int:
 	return 42
@@ -48,7 +48,7 @@ test "every scalar has to_string":
 	(check(value: "hello".to_string(), expected: "hello")?)
 	(check(value: true.to_string(), expected: "true")?)
 	(check(value: false.to_string(), expected: "false")?)
-	(check(value: unit.to_string(), expected: "unit")?)
+	(check(value: void.to_string(), expected: "void")?)
 	(check(value: (42).to_string(), expected: "42")?)
 	(check(value: (-7).to_string(), expected: "-7")?)
 	(check(value: (1.5).to_string(), expected: "1.5")?)
@@ -60,7 +60,7 @@ test "every scalar has to_string":
 test "records alternatives and collections convert":
 	person := Person(name: "Ada", age: 37)
 	(check(value: person.to_string(), expected: "Person(age: 37, name: Ada)")?)
-	(check(value: "{person}", expected: person.to_string())?)
+	(check(value: f"{person}", expected: person.to_string())?)
 	(
 		check(
 			value: Outcome.Ready(person).to_string(),
@@ -98,7 +98,7 @@ test "records alternatives and collections convert":
 	(check(value: bytes.to_string(), expected: "Bytes(0, 65, 255)")?)
 	(
 		check(
-			value: "{map}|{set}|{bytes}",
+			value: f"{map}|{set}|{bytes}",
 			expected: "Map(b: 2, a: 1)|Set(2, 1)|Bytes(0, 65, 255)",
 		)?
 	)
@@ -111,12 +111,12 @@ test "generics views bound methods functions and resources":
 
 	view: Named := person.clone()
 	(check(value: view.to_string(), expected: person.to_string())?)
-	(check(value: "{view}", expected: person.to_string())?)
+	(check(value: f"{view}", expected: person.to_string())?)
 
 	convert: fn() String := view.to_string
 	(check(value: convert(), expected: person.to_string())?)
 	(check(value: answer.to_string(), expected: "[function]")?)
-	(check(value: "{answer}", expected: "[function]")?)
+	(check(value: f"{answer}", expected: "[function]")?)
 
 	queue := Queue[Int](1)
 	(
@@ -130,7 +130,7 @@ test "interpolation and bound conversion evaluate each receiver once":
 	var state = Counter(value: 1)
 	(
 		check(
-			value: "{next(var state)}|{next(var state)}",
+			value: f"{next(var state)}|{next(var state)}",
 			expected: "Person(age: 1, name: Ada)|Person(age: 2, name: Ada)",
 		)?
 	)

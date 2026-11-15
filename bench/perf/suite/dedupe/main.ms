@@ -26,7 +26,7 @@ fn main() Void:
 			most = e.key.clone()
 			most_count = e.value
 
-	print("lines: {total}")
-	print("distinct lines: {lines.length()}")
-	print("distinct names: {names.length()}")
-	print("most repeated: {most} x{most_count}")
+	print(f"lines: {total}")
+	print(f"distinct lines: {lines.length()}")
+	print(f"distinct names: {names.length()}")
+	print(f"most repeated: {most} x{most_count}")

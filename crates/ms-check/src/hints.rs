@@ -376,7 +376,7 @@ pub fn number_conversion_hint(syms: ms_syntax::Names, actual: &Ty, expected: &Ty
         ("Int", "Float") => "Int does not convert to Float implicitly; write a Float literal such as 3.0, or call to_float() on an Int value".to_string(),
         ("Float", "Int") => "Float does not convert to Int implicitly; truncate_to_int() returns Int?, so unwrap it, e.g. value.truncate_to_int().get(0)".to_string(),
         ("Int" | "Float" | "Bool", "String") => format!(
-            "{actual_t} does not convert to String implicitly; interpolate it into text, e.g. \"{{value}}\""
+            "{actual_t} does not convert to String implicitly; interpolate it into text, e.g. f\"{{value}}\""
         , actual_t = actual.display(syms)),
         _ => String::new(),
     }
@@ -543,7 +543,7 @@ impl Checker {
         }
         if self.syms.str(name) == "pass" {
             return format!(
-                "{message}; 'pass' is not a keyword, so write 'unit' for an empty block or match arm"
+                "{message}; 'pass' is not a keyword, so write 'void' for an empty block or match arm"
             );
         }
         match self.syms.str(name) {
@@ -581,7 +581,7 @@ impl Checker {
             }
             "str" | "toString" | "repr" | "sprintf" => {
                 return format!(
-                    "{message}; to make text, interpolate: \"{{value}}\", or call value.to_string()"
+                    "{message}; to make text, interpolate: f\"{{value}}\", or call value.to_string()"
                 );
             }
             "int" | "parseInt" | "atoi" | "Number" | "parse_int" => {
@@ -1024,7 +1024,7 @@ impl Checker {
                 expected_t = expected.display(self.syms)
             );
         }
-        let message = format_mismatch(self.syms, actual, expected);
+        let message = format_mismatch(self.syms, &self.packages, actual, expected);
         for hint in [
             optional_use_hint(self.syms, actual, expected),
             number_conversion_hint(self.syms, actual, expected),
@@ -1111,7 +1111,7 @@ pub fn text_repeat_hint(a: &Ty, b: &Ty) -> String {
 /// Names the real conversion for a built-in type called like a constructor.
 pub fn builtin_constructor_hint(syms: ms_syntax::Names, typ: &Ty) -> String {
     match typ.display(syms).to_string().as_str() {
-        "String" => "; make text with interpolation \"{value}\" or value.to_string()".to_string(),
+        "String" => "; make text with interpolation f\"{value}\" or value.to_string()".to_string(),
         "Int" => "; parse text with text.parse_int() (Int?); Float has truncate_to_int()".to_string(),
         "Float" => "; convert an Int with value.to_float(); parse text with parse_float (import parse_float from \"@std/math/math.ms\")".to_string(),
         _ => String::new(),

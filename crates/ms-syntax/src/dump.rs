@@ -232,8 +232,8 @@ impl D {
             ),
             ExprKind::Void => self.expr_fields(
                 e,
-                "unit",
-                "unit",
+                "void",
+                "void",
                 None,
                 None,
                 &[],

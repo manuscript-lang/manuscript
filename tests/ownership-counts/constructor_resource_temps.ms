@@ -13,7 +13,7 @@ type Token:
 	id: Int
 
 fn var Token.close() Void!:
-	print("close {self.id}")
+	print(f"close {self.id}")
 
 type Wrapped:
 	first: Token?
@@ -26,7 +26,7 @@ fn check(fail: Bool) Int!:
 
 fn build(fail: Bool) Void!:
 	value := Wrapped(Token(1), ok(Token(2)), check(fail)?)
-	print("body {value.code}")
+	print(f"body {value.code}")
 
 fn main() Void:
 	print(build(false).is_error())

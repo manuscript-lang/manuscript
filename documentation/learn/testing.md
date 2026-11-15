@@ -65,7 +65,7 @@ ms test ms.toml --json
 - Tests run from the manifest's directory (or the file's, for a single file), so relative fixture paths are stable; see [build and test](getting-started.md#build-and-test).
 - Import app code with a relative path, e.g. `import add from "./src/math.ms"` ([modules](../core-language/modules/declarations.md)).
 - `--filter` matches `module::name` substrings; `--timeout` bounds each test (default 60s, `0` disables).
-- A bare `expect_equal(...)` statement is a check error, because a discarded `Result` checks nothing: write `expect_equal(...)?`, or `_ := ...` to drop a returned value.
+- A bare `expect_equal(...)` statement is a check error, because a discarded `Result` checks nothing: write `expect_equal(...)?`, or `void ...` to drop a returned value.
 - `--json` emits versioned per-test results, counts, diagnostics, and stdout; it cannot combine with `--watch` ([JSON contract](../developer-tooling/implementation.md#machine-readable-checks-and-tests)).
 
 For each standalone test example below, replace the contents of `test.ms` and run `ms test test.ms`. `expect_ok?` checks success and keeps the payload:

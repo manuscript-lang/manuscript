@@ -31,7 +31,7 @@ test "sum indexes":
     for index in 0..5:
         total += index
     if total != 10:
-        return panic("Expected 10, got {total}")
+        return panic(f"Expected 10, got {total}")
 ```
 
 `end <= start` visits nothing. Bounds are evaluated once, in order, before the first iteration. As a plain value, `(0..count)` is a `List[Int]`; over 268,435,456 items faults, so use `range_by` with `RangeOptions(max_items:)` for larger lists.
@@ -114,7 +114,7 @@ test "destructure each element":
 
     var names = ""
     for {key, value: _value} in {"x": 1, "y": 2}:
-        names = "{names}{key}"
+        names = f"{names}{key}"
     expect_equal(names, "xy")?
 ```
 

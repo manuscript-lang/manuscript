@@ -25,10 +25,10 @@ fn echo(var exchange: HttpExchange) Void!:
 			message:
 				socket.output.write(message)?
 			none:
-				return ok(unit)
+				return ok()
 
 		socket.close()?
-		return ok(unit)
+		return ok()
 
 	var fields = headers()
 	_appended := fields.append("X-Test", "stream")?
@@ -66,7 +66,7 @@ fn exercise() Void!:
 	var client = http_client(options: client_options)?
 	var response = client.request(
 		method: HttpMethod.Get,
-		url: "http://{server.address()}/",
+		url: f"http://{server.address()}/",
 		headers: headers(),
 		body: "",
 		max_response_bytes: 1024,
@@ -94,7 +94,7 @@ fn exercise() Void!:
 		compression: false,
 	)
 	var socket = web_socket(
-		url: "ws://{server.address()}/ws",
+		url: f"ws://{server.address()}/ws",
 		options: websocket_options,
 	)?
 	socket.subprotocol | expect_equal("echo")?

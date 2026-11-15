@@ -22,7 +22,7 @@ test "JSON writes sized numbers like Int and Float":
     expect_equal(
         stringify(sample()),
         ok(
-            "\{\"small\":255,\"signed\":-128,\"wide\":18446744073709551615,\"single\":0.1,\"maybe\":7,\"items\":[-1,2]\}"
+            "{\"small\":255,\"signed\":-128,\"wide\":18446744073709551615,\"single\":0.1,\"maybe\":7,\"items\":[-1,2]}"
         )
     )?
 
@@ -35,20 +35,20 @@ test "JSON reads sized numbers back":
     expect_equal(stringify(back).get(), text)?
 
 test "JSON rejects sized numbers outside their range":
-    head := "\{\"signed\":0,\"wide\":0,\"single\":0,\"items\":[]"
+    head := "{\"signed\":0,\"wide\":0,\"single\":0,\"items\":[]"
     expect_equal(
-        (expect_error(parse[Sized](head + ",\"small\":256\}"))?).kind,
+        (expect_error(parse[Sized](head + ",\"small\":256}"))?).kind,
         "EBADMSG"
     )?
     expect_equal(
-        (expect_error(parse[Sized](head + ",\"small\":-1\}"))?).kind,
+        (expect_error(parse[Sized](head + ",\"small\":-1}"))?).kind,
         "EBADMSG"
     )?
     expect_equal(
         (
             expect_error(
                 parse[Sized](
-                    "\{\"small\":0,\"signed\":-129,\"wide\":0,\"single\":0,\"items\":[]\}"
+                    "{\"small\":0,\"signed\":-129,\"wide\":0,\"single\":0,\"items\":[]}"
                 )
             )?
         ).kind,
@@ -58,7 +58,7 @@ test "JSON rejects sized numbers outside their range":
         (
             expect_error(
                 parse[Sized](
-                    "\{\"small\":0,\"signed\":0,\"wide\":18446744073709551616,\"single\":0,\"items\":[]\}"
+                    "{\"small\":0,\"signed\":0,\"wide\":18446744073709551616,\"single\":0,\"items\":[]}"
                 )
             )?
         ).kind,
@@ -68,7 +68,7 @@ test "JSON rejects sized numbers outside their range":
         (
             expect_error(
                 parse[Sized](
-                    "\{\"small\":0,\"signed\":0,\"wide\":-1,\"single\":0,\"items\":[]\}"
+                    "{\"small\":0,\"signed\":0,\"wide\":-1,\"single\":0,\"items\":[]}"
                 )
             )?
         ).kind,
@@ -78,7 +78,7 @@ test "JSON rejects sized numbers outside their range":
         (
             expect_error(
                 parse[Sized](
-                    "\{\"small\":0,\"signed\":0,\"wide\":0,\"single\":1e39,\"items\":[]\}"
+                    "{\"small\":0,\"signed\":0,\"wide\":0,\"single\":1e39,\"items\":[]}"
                 )
             )?
         ).kind,
@@ -88,7 +88,7 @@ test "JSON rejects sized numbers outside their range":
         (
             expect_error(
                 parse[Sized](
-                    "\{\"small\":0,\"signed\":0,\"wide\":0,\"single\":0,\"items\":[2147483648]\}"
+                    "{\"small\":0,\"signed\":0,\"wide\":0,\"single\":0,\"items\":[2147483648]}"
                 )
             )?
         ).kind,

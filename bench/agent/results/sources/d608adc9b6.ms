@@ -40,7 +40,7 @@ fn yes_no(flag: Bool) String:
     return "no"
 
 fn suffix(fee: Int) String:
-    if fee > 0: return " fee={fee}"
+    if fee > 0: return f" fee={fee}"
 
     return ""
 
@@ -66,7 +66,7 @@ impl Ledger:
             if limit.is_some() == false: return "error: invalid limit"
 
             id := words[1]
-            if self.accounts.contains(id): return "error: account exists {id}"
+            if self.accounts.contains(id): return f"error: account exists {id}"
 
             self.accounts.add(id, Account(limit: limit.get()))
             return "ok"
@@ -75,7 +75,7 @@ impl Ledger:
             if n != 2: return "error: bad command"
 
             id := words[1]
-            if self.accounts.contains(id) == false: return "error: unknown account {id}"
+            if self.accounts.contains(id) == false: return f"error: unknown account {id}"
 
             acct := self.accounts.get(id).get()
             self.accounts.add(
@@ -105,7 +105,7 @@ impl Ledger:
         return "error: bad command"
 
     var fn deposit(id: String, text: String) String:
-        if self.accounts.contains(id) == false: return "error: unknown account {id}"
+        if self.accounts.contains(id) == false: return f"error: unknown account {id}"
 
         amount := parse_amount(text)
 
@@ -117,7 +117,7 @@ impl Ledger:
 
         if acct.frozen:
             self.blame(id)
-            return "error: account frozen {id}"
+            return f"error: account frozen {id}"
 
         new_balance := acct.balance + amount.get()
         self.accounts.add(
@@ -127,10 +127,10 @@ impl Ledger:
                 rejected: acct.rejected, frozen: acct.frozen
             )
         )
-        return "ok {new_balance}"
+        return f"ok {new_balance}"
 
     var fn withdraw(id: String, text: String) String:
-        if self.accounts.contains(id) == false: return "error: unknown account {id}"
+        if self.accounts.contains(id) == false: return f"error: unknown account {id}"
 
         amount := parse_amount(text)
 
@@ -142,14 +142,14 @@ impl Ledger:
 
         if acct.frozen:
             self.blame(id)
-            return "error: account frozen {id}"
+            return f"error: account frozen {id}"
 
         fee := fee_for(acct.balance, acct.balance - amount.get())
         new_balance := acct.balance - amount.get() - fee
 
         if new_balance < 0 - acct.limit:
             self.blame(id)
-            return "error: overdraft limit exceeded {id}"
+            return f"error: overdraft limit exceeded {id}"
 
         self.accounts.add(
             id,
@@ -159,11 +159,11 @@ impl Ledger:
             )
         )
         self.fees += fee
-        return "ok {new_balance}{suffix(fee)}"
+        return f"ok {new_balance}{suffix(fee)}"
 
     var fn transfer(from: String, to: String, text: String) String:
-        if self.accounts.contains(from) == false: return "error: unknown account {from}"
-        if self.accounts.contains(to) == false: return "error: unknown account {to}"
+        if self.accounts.contains(from) == false: return f"error: unknown account {from}"
+        if self.accounts.contains(to) == false: return f"error: unknown account {to}"
 
         if from == to:
             self.blame(from)
@@ -179,20 +179,20 @@ impl Ledger:
 
         if src.frozen:
             self.blame(from)
-            return "error: account frozen {from}"
+            return f"error: account frozen {from}"
 
         dst := self.accounts.get(to).get()
 
         if dst.frozen:
             self.blame(to)
-            return "error: account frozen {to}"
+            return f"error: account frozen {to}"
 
         fee := fee_for(src.balance, src.balance - amount.get())
         new_src := src.balance - amount.get() - fee
 
         if new_src < 0 - src.limit:
             self.blame(from)
-            return "error: overdraft limit exceeded {from}"
+            return f"error: overdraft limit exceeded {from}"
 
         new_dst := dst.balance + amount.get()
         self.accounts.add(
@@ -210,7 +210,7 @@ impl Ledger:
             )
         )
         self.fees += fee
-        return "ok {new_src} {new_dst}{suffix(fee)}"
+        return f"ok {new_src} {new_dst}{suffix(fee)}"
 
     fn report() List[String]:
         ids := self.accounts.keys().sorted(compare_ids)
@@ -223,10 +223,10 @@ impl Ledger:
 
             frozen := yes_no(acct.frozen)
             lines.append(
-                "{id} balance={acct.balance} limit={acct.limit} ops={acct.ops} rejected={acct.rejected} frozen={frozen}"
+                f"{id} balance={acct.balance} limit={acct.limit} ops={acct.ops} rejected={acct.rejected} frozen={frozen}"
             )
 
-        lines.append("total balance={total} fees={self.fees}")
+        lines.append(f"total balance={total} fees={self.fees}")
         return lines
 
 export fn main() Int:
@@ -242,9 +242,9 @@ export fn main() Int:
                 continue
 
             for out in ledger.report():
-                stdout().write("{out}\n").get()
+                stdout().write(f"{out}\n").get()
             continue
 
-        stdout().write("{ledger.exec(words)}\n").get()
+        stdout().write(f"{ledger.exec(words)}\n").get()
 
     return 0

@@ -16,8 +16,8 @@ fn read(tree: FileTree, path: String) String:
 
 // Whether the parser agrees with the suite on one case.
 fn passes(tree: FileTree, name: String) Bool:
-	rows := parse(read(tree, "{name}.csv"))
-	want := records(read(tree, "{name}.json"))
+	rows := parse(read(tree, f"{name}.csv"))
+	want := records(read(tree, f"{name}.json"))
 	if rows.is_error() or want.is_error(): return false
 
 	table := rows.get([])

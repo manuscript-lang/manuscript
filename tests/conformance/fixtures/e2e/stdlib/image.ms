@@ -175,7 +175,7 @@ test "jpeg decodes libjpeg vectors within tolerance":
 			a := if d < 0: 0 - d else: d
 			if a > worst: worst = a
 
-		if worst > v.tolerance: fail("{v.name}: max error {worst} > {v.tolerance}")?
+		if worst > v.tolerance: fail(f"{v.name}: max error {worst} > {v.tolerance}")?
 
 test "jpeg encode round trips close to the source":
 	var img = new_image(37, 29, ColorMode.Rgb).get()
@@ -203,7 +203,7 @@ test "jpeg encode round trips close to the source":
 				a := if d < 0: 0 - d else: d
 				if a > worst: worst = a
 
-			if worst > 16: fail("worst error {worst} for interval {interval}")?
+			if worst > 16: fail(f"worst error {worst} for interval {interval}")?
 
 test "jpeg gray round trip and alpha rejection":
 	var img = new_image(9, 9, ColorMode.Gray).get()

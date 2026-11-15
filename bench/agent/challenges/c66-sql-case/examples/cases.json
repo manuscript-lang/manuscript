@@ -1,0 +1,12 @@
+[
+ {
+  "name": "ex-case",
+  "stdin": "CREATE TABLE t (a INT, b TEXT);\nINSERT INTO t VALUES (1, 'x'), (NULL, 'y'), (30, 'z');\nSELECT b, CASE WHEN a > 10 THEN 'big' WHEN a > 0 THEN 'small' ELSE 'none' END AS size FROM t ORDER BY b;\n",
+  "stdout": "ok\ninserted 3\nb|size\nx|small\ny|none\nz|big\n(3 rows)\n"
+ },
+ {
+  "name": "ex-case-aggregate",
+  "stdin": "CREATE TABLE t (g TEXT, v INT);\nINSERT INTO t VALUES ('a', 1), ('a', 5), ('b', 7);\nSELECT g, SUM(CASE WHEN v > 3 THEN v ELSE 0 END) AS big FROM t GROUP BY g ORDER BY g;\n",
+  "stdout": "ok\ninserted 3\ng|big\na|5\nb|7\n(2 rows)\n"
+ }
+]

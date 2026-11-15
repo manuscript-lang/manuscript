@@ -6,4 +6,4 @@ test "timeout":
     sleep(nanoseconds(1000000000))
 
 test "after":
-    return unit
+    return

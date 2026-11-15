@@ -67,12 +67,12 @@ fn strip_zeros(s: String) String:
 fn to_cents(amt: String) String:
 	parts := amt.split(".")
 	ip := parts[0]
-	if parts.length() == 1: return strip_zeros("{ip}00")
+	if parts.length() == 1: return strip_zeros(f"{ip}00")
 
 	fp := parts[1]
-	if fp.length() == 1: return strip_zeros("{ip}{fp}0")
+	if fp.length() == 1: return strip_zeros(f"{ip}{fp}0")
 
-	return strip_zeros("{ip}{fp}")
+	return strip_zeros(f"{ip}{fp}")
 
 // Exact addition of two non-negative digit strings.
 fn add_digits(a: String, b: String) String:
@@ -92,7 +92,7 @@ fn add_digits(a: String, b: String) String:
 			s += b.get(j).parse_int().get(0)
 			j -= 1
 
-		out = "{s % 10}{out}"
+		out = f"{s % 10}{out}"
 		carry = s / 10
 
 	return strip_zeros(out)
@@ -130,9 +130,9 @@ export fn main() Int:
 		n := padded.length()
 		ip := padded.slice(0, n - 2).get()
 		fp := padded.slice(n - 2, n).get()
-		out.write("{cat}: {ip}.{fp}\n").get()
+		out.write(f"{cat}: {ip}.{fp}\n").get()
 
 	if skipped > 0:
-		out.write("skipped: {skipped}\n").get()
+		out.write(f"skipped: {skipped}\n").get()
 	out.flush().get()
 	return 0

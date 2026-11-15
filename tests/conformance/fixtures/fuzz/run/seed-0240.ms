@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -30,26 +30,26 @@ fn fact(n: Int) Int:
 
 export fn main() Int:
     b1 := ((67.907 - 549.718) > ((922.464 + 0.0) * 0.0))
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
     s2 := (
-        "{(36 + (-41))}:"
-        + (("brace\{s\}" + "ms") + ("{(14 - 610622)}:" + "quote\"d"))
+        f"{(36 + (-41))}:"
+        + (("brace{s}" + "ms") + (f"{(14 - 610622)}:" + "quote\"d"))
     )
-    say("s2 = [{s2}]")
-    say("collatz(745) = {collatz(745)}")
+    say(f"s2 = [{s2}]")
+    say(f"collatz(745) = {collatz(745)}")
     say(
-        "{((-30125) * (-31))} {(-27)} {(((-30125) * (-31)) < (-27))} sum {((-30125) * (-31)) + (-27)}"
+        f"{((-30125) * (-31))} {(-27)} {(((-30125) * (-31)) < (-27))} sum {((-30125) * (-31)) + (-27)}"
     )
 
     l3 := [(-23), 5, (-1)]
-    say("l3 = {l3} len {l3.length()}")
+    say(f"l3 = {l3} len {l3.length()}")
 
     f4 := (
         ((940.154 / 5.5) - (886.25 + 0.5))
         * ((0.0 * 811.532) / (650.002 / 822.314))
     )
-    say("f4 = {f4}")
+    say(f"f4 = {f4}")
 
     var acc5 = 0
     var stepacc5 = 0
@@ -58,27 +58,27 @@ export fn main() Int:
         stepacc5 += 1
         acc5 += stepacc5 * stepacc5 + 4
 
-    say("acc5 = {acc5}")
+    say(f"acc5 = {acc5}")
 
     l6 := [5, (-16), (-4)]
-    say("l6 = {l6} len {l6.length()}")
+    say(f"l6 = {l6} len {l6.length()}")
 
     i7 := l3.length()
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
     if ("back\\slash" + s2).is_empty():
         say(s2)
     else:
-        say(("{(i7 + i7)}:" + "back\\slash"))
+        say((f"{(i7 + i7)}:" + "back\\slash"))
 
-    s8 := "brace\{s\}"
-    say("s8 = [{s8}]")
+    s8 := "brace{s}"
+    say(f"s8 = [{s8}]")
 
     f9 := (259.341 * (822.839 + (42.628 - f4)))
-    say("f9 = {f9}")
+    say(f"f9 = {f9}")
 
     f10 := (f4 - ((f9 + f9) * f4))
-    say("f10 = {f10}")
+    say(f"f10 = {f10}")
 
     if (not s2.is_empty()):
         say("naïve".reverse())
@@ -86,16 +86,16 @@ export fn main() Int:
         say("")
 
     i11 := (((i7 / (-36)) - (i7 * i7)) + i7)
-    say("i11 = {i11}")
-    say("fact(9) = {fact(9)}")
+    say(f"i11 = {i11}")
+    say(f"fact(9) = {fact(9)}")
 
     var l12 = l3.clone()
     l12.append(46)
-    say("l12 = {l12} len {l12.length()}")
+    say(f"l12 = {l12} len {l12.length()}")
 
     b13 := (((f10 - f9) + f9) < ((316.060 * 316.133) - f10))
-    say("b13 = {b13}")
+    say(f"b13 = {b13}")
 
     l14 := l6.map(fn x: x * 9)
-    say("l14 = {l14} len {l14.length()}")
+    say(f"l14 = {l14} len {l14.length()}")
     return 0

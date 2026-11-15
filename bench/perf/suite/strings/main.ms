@@ -11,7 +11,7 @@ fn main() Void:
 
 	for i in 0..300000:
 		x = lcg(x)
-		words.append("  Item-{x % 100000}_{x / 3 % 977} ")
+		words.append(f"  Item-{x % 100000}_{x / 3 % 977} ")
 
 	var upper_len = 0
 	var replaced = 0
@@ -43,5 +43,5 @@ fn main() Void:
 
 	parts := sb.build().split(",")
 	print(
-		"upper {upper_len} replaced {replaced} found {found} padded {padded} sorted {sorted_sample} parts {parts.length()}"
+		f"upper {upper_len} replaced {replaced} found {found} padded {padded} sorted {sorted_sample} parts {parts.length()}"
 	)

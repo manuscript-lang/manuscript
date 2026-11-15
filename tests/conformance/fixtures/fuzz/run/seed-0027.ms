@@ -6,40 +6,40 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     l1 := [23, (-15), (-9)]
-    say("l1 = {l1} len {l1.length()}")
+    say(f"l1 = {l1} len {l1.length()}")
 
     b2 := (
-        ("{(-349096)}:" + "ms").is_empty()
+        (f"{(-349096)}:" + "ms").is_empty()
         or ("  padded  ".upper() == "hello world")
     )
-    say("b2 = {b2}")
+    say(f"b2 = {b2}")
 
     l3 := l1.concat(l1)
-    say("l3 = {l3} len {l3.length()}")
+    say(f"l3 = {l3} len {l3.length()}")
 
     if (((-15570) + (-798682)) > 26):
         say("quote\"d".replace("MiXeD CaSe", "emoji 😀"))
     else:
-        say("brace\{s\}")
+        say("brace{s}")
 
     b4 := (b2 and "delta".trim().is_empty())
-    say("b4 = {b4}")
+    say(f"b4 = {b4}")
 
     i5 := 968408581873
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
-    s6 := ("{((-51057) + i5)}:" + "back\\slash".replace("42", "brace\{s\}").upper())
-    say("s6 = [{s6}]")
+    s6 := (f"{((-51057) + i5)}:" + "back\\slash".replace("42", "brace{s}").upper())
+    say(f"s6 = [{s6}]")
 
     b7 := false
-    say("b7 = {b7}")
+    say(f"b7 = {b7}")
 
     l8 := [(-15), (-12), (-12)]
-    say("l8 = {l8} len {l8.length()}")
+    say(f"l8 = {l8} len {l8.length()}")
 
     if (b4 and (b4 or false)):
         say(s6.trim())
@@ -47,23 +47,23 @@ export fn main() Int:
         say("gamma")
 
     i9 := ((i5 + (-41)) + (-25))
-    say("i9 = {i9}")
+    say(f"i9 = {i9}")
     say(
-        "{((601938 - i5) - (i5 / i9))} {((i5 % i9) + ((-34) % 29))} {(((601938 - i5) - (i5 / i9)) < ((i5 % i9) + ((-34) % 29)))} sum {((601938 - i5) - (i5 / i9)) + ((i5 % i9) + ((-34) % 29))}"
+        f"{((601938 - i5) - (i5 / i9))} {((i5 % i9) + ((-34) % 29))} {(((601938 - i5) - (i5 / i9)) < ((i5 % i9) + ((-34) % 29)))} sum {((601938 - i5) - (i5 / i9)) + ((i5 % i9) + ((-34) % 29))}"
     )
 
     i10 := (((28 + (-42)) - (i9 + 226729)) + l1.get(2))
-    say("i10 = {i10}")
+    say(f"i10 = {i10}")
 
     i11 := l3.length()
-    say("i11 = {i11}")
+    say(f"i11 = {i11}")
 
     i12 := (((-i11) + (205636 * 32)) + 2)
-    say("i12 = {i12}")
+    say(f"i12 = {i12}")
 
     i13 := l8.get(2)
-    say("i13 = {i13}")
+    say(f"i13 = {i13}")
     say(
-        "{((44 - i13) * (i10 - i11))} {((i11 + i13) / ((-17) / i13))} {(((44 - i13) * (i10 - i11)) < ((i11 + i13) / ((-17) / i13)))} sum {((44 - i13) * (i10 - i11)) + ((i11 + i13) / ((-17) / i13))}"
+        f"{((44 - i13) * (i10 - i11))} {((i11 + i13) / ((-17) / i13))} {(((44 - i13) * (i10 - i11)) < ((i11 + i13) / ((-17) / i13)))} sum {((44 - i13) * (i10 - i11)) + ((i11 + i13) / ((-17) / i13))}"
     )
     return 0

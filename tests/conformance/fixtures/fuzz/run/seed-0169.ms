@@ -6,18 +6,18 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := ((((-18998943656) * (-1)) + (-8354207918)) % (-((-13) - (-872719))))
-    say("i1 = {i1}")
-    say("{(4 / (i1 * i1))} {i1} {((4 / (i1 * i1)) < i1)} sum {(4 / (i1 * i1)) + i1}")
+    say(f"i1 = {i1}")
+    say(f"{(4 / (i1 * i1))} {i1} {((4 / (i1 * i1)) < i1)} sum {(4 / (i1 * i1)) + i1}")
 
     i2 := (((8 + 22) + 194380) / (205572 - (i1 - (-626810))))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     i3 := i2
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     if (898656333444 < (i1 - i3)):
         say("42".replace("ms", "beta"))
@@ -25,26 +25,26 @@ export fn main() Int:
         say("42".trim())
 
     i4 := i1
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     l5 := [20]
-    say("l5 = {l5} len {l5.length()}")
+    say(f"l5 = {l5} len {l5.length()}")
 
     f6 := (
         ((790.232 / 666.607) / (743.593 + 747.048))
         * ((940.25 + 668.511) - 117.25)
     )
-    say("f6 = {f6}")
+    say(f"f6 = {f6}")
 
-    s7 := ("{58284876730}:" + "quote\"d".lower().trim())
-    say("s7 = [{s7}]")
+    s7 := (f"{58284876730}:" + "quote\"d".lower().trim())
+    say(f"s7 = [{s7}]")
 
     i8 := i1
-    say("i8 = {i8}")
+    say(f"i8 = {i8}")
 
     l9 := [(-17), 6, 14, 20]
-    say("l9 = {l9} len {l9.length()}")
+    say(f"l9 = {l9} len {l9.length()}")
 
     b10 := s7.ends_with("naïve")
-    say("b10 = {b10}")
+    say(f"b10 = {b10}")
     return 0

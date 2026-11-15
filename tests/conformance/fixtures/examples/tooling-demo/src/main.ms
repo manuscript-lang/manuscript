@@ -25,7 +25,7 @@ export fn main() Int:
         return 1
 
     checksum := compute(3000000)
-    output := "{package.title}: {sum}; checksum {checksum}\n"
+    output := f"{package.title}: {sum}; checksum {checksum}\n"
     if stdout().write(output).is_error():
         return 1
 

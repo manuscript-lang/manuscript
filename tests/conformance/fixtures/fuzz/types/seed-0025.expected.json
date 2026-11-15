@@ -1,7 +1,7 @@
 {
   "format": 1,
   "phase": "check",
-  "oracle": "Manuscript 0.1.0",
+  "oracle": "Manuscript 2026.11.0",
   "expected": {
     "exit_code": 1,
     "format": 1,
@@ -14,20 +14,20 @@
           "file": "seed-0025.ms",
           "line": 38,
           "column": 5,
-          "offset": 852
+          "offset": 859
         },
         "fix": {
           "position": {
             "file": "seed-0025.ms",
             "line": 37,
             "column": 5,
-            "offset": 837
+            "offset": 844
           },
           "end": {
             "file": "seed-0025.ms",
             "line": 37,
             "column": 13,
-            "offset": 845
+            "offset": 852
           },
           "replacement": "var fixed ="
         }

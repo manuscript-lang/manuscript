@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -17,18 +17,18 @@ fn fact(n: Int) Int:
 export fn main() Int:
     b1 := (
         (
-            "{((-10) * 46)}:"
-            + ("{(5 / (-16))}:" + "héllo")
+            f"{((-10) * 46)}:"
+            + (f"{(5 / (-16))}:" + "héllo")
         ) == "  padded  ".lower().trim()
     )
-    say("b1 = {b1}")
-    say("fact(19) = {fact(19)}")
+    say(f"b1 = {b1}")
+    say(f"fact(19) = {fact(19)}")
 
     s2 := "alpha".upper()
-    say("s2 = [{s2}]")
+    say(f"s2 = [{s2}]")
 
     i3 := (-241601)
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     if "".contains("delta"):
         say("")

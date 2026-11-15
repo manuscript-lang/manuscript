@@ -9,7 +9,7 @@ import (
 )
 
 fn handle(request: HttpRequest) HttpResponse:
-	return HttpResponse(200, headers(), "hello {request.path}".to_bytes())
+	return HttpResponse(200, headers(), f"hello {request.path}".to_bytes())
 
 export fn main() Int:
 	options := HttpServerOptions(
@@ -26,7 +26,7 @@ export fn main() Int:
 		options: options,
 	):
 		server := acquired
-		if stdout().write("{server.address()}\n").is_error(): return 1
+		if stdout().write(f"{server.address()}\n").is_error(): return 1
 
 		_ignored := server.wait()
 		return 0

@@ -9,7 +9,7 @@ weight = 4
 
 ## String literals
 
-A literal is delimited by `"` and fits on one source line, interpolations included. Raw newlines and control characters U+0000 to U+001F are rejected; other Unicode appears directly. [Raw and multi-line literals](#multi-line-and-raw-literals) skip escapes or span lines. There are no single-quoted or byte literals.
+A literal is delimited by `"` and fits on one source line. Plain `"..."` text never interpolates: braces are ordinary characters, so `"{"` and `"{\"a\": 1}"` mean what they say. Text that inserts values is written `f"..."` ([interpolation](#interpolation)). Raw newlines and control characters U+0000 to U+001F are rejected; other Unicode appears directly. [Raw and multi-line literals](#multi-line-and-raw-literals) skip escapes or span lines. There are no single-quoted or byte literals.
 
 | Escape | Value |
 | --- | --- |
@@ -18,29 +18,29 @@ A literal is delimited by `"` and fits on one source line, interpolations includ
 | `\n` | LF, U+000A |
 | `\r` | CR, U+000D |
 | `\t` | Tab, U+0009 |
-| `\{`, `\}` | Literal opening/closing brace; plain `{` opens an interpolation |
+| `\{`, `\}` | Literal opening/closing brace, in `f"..."` text only; in `"..."` text braces are written plainly and `\{` is an error |
 | `\u{H}` | Unicode scalar with one to six hexadecimal digits H |
 
-Hex digits may be either case. Scalars above U+10FFFF, surrogates U+D800 to U+DFFF, unknown escapes, an unescaped closing brace, and unterminated literals are compile errors. `\u{0}` is a valid null character.
+Hex digits may be either case. Scalars above U+10FFFF, surrogates U+D800 to U+DFFF, unknown escapes, an unescaped closing brace in `f` text, and unterminated literals are compile errors. `\u{0}` is a valid null character.
 
 ```manuscript
 quote := "She said \"hello\"."
-template := "Literal braces: \{name\}"
+template := "Literal braces: {name}"
 lines := "first\nsecond"
 symbol := "\u{1F642}"
 ```
 
 ## Multi-line and raw literals
 
-`"""` opens text that spans lines. The opening quotes end their line, the closing quotes stand alone on a later line, and the closing line's indentation is removed from every line, so the text can be indented with the code around it. The line break after the opening quotes and the one before the closing line are not part of the value. A blank line may be shorter than the indentation; any other line indented less than the closing quotes is an error. Escapes and `{expression}` interpolation work as in `"..."` (an interpolated expression still stays on one line), and `"` needs no escape. The text cannot contain `"""` at all.
+`"""` opens text that spans lines. The opening quotes end their line, the closing quotes stand alone on a later line, and the closing line's indentation is removed from every line, so the text can be indented with the code around it. The line break after the opening quotes and the one before the closing line are not part of the value. A blank line may be shorter than the indentation; any other line indented less than the closing quotes is an error. Escapes work as in `"..."`, `"` needs no escape, and braces are plain. `f"""` is the same text with `{expression}` interpolation as in `f"..."` (an interpolated expression still stays on one line). The text cannot contain `"""` at all.
 
-`r"..."` is one-line raw text: every character is literal up to the first `"`, so there are no escapes and no interpolation, and it cannot contain a quote. Use it for regular expressions and Windows paths: `digits := r"\d+"`. Control characters (tabs included) are rejected as in `"..."`; use `r"""` for text with quotes.
+`r"..."` is one-line raw text: every character is literal up to the first `"`, so there are no escapes, and it cannot contain a quote. Use it for regular expressions and Windows paths: `digits := r"\d+"`. Control characters (tabs included) are rejected as in `"..."`; use `r"""` for text with quotes.
 
 `r"""` opens raw text with the same layout where every character is literal: no escapes, no interpolation, braces and backslashes included. Use it for JSON, regular expressions, and fixtures.
 
 ```manuscript
 name := "Ada"
-greeting := """
+greeting := f"""
     Hello, {name}!
       Indented line, "quoted".
     """
@@ -55,13 +55,13 @@ Strings are never normalized: `"é"` and `"e\u{301}"` are distinct values. [Equa
 
 ## Interpolation
 
-Every `"..."` literal interpolates: an unescaped `{` opens an embedded [expression](expressions.md) closed by its matching `}`, and there is no `f` prefix. Calls and nested literals are allowed. Empty expressions, format suffixes, comments, and newlines are rejected. Escape both braces for JSON-like text: `"\{\"a\": 1\}"`.
+Only `f"..."` and `f"""` text interpolates: an unescaped `{` opens an embedded [expression](expressions.md) closed by its matching `}`. Calls and nested literals are allowed; a nested literal that interpolates is itself an `f` literal. Empty expressions, format suffixes, comments, and newlines are rejected. Write `\{` and `\}` for literal braces inside `f` text. A plain `"..."` or `"""` literal never interpolates, so `"{name}"` is the six characters `{name}`; if a value is not inserted, a missing `f` is the usual cause.
 
 ```manuscript
 name := "Ada"
 count := 3
-greeting := "Welcome, {name}!"
-calculated := "Next: {count + 1}"
+greeting := f"Welcome, {name}!"
+calculated := f"Next: {count + 1}"
 ```
 
 Embedded expressions evaluate once, left to right, each formatted before the next. Propagation or a fault stops the rest. Every value is formattable using the same conversion as `to_string()`; interpolation adds no implicit conversions elsewhere.
@@ -79,7 +79,7 @@ test "string conversion":
     convert: fn() String := count.to_string
     _direct := count.to_string()
     _bound := convert()
-    _embedded := "{count}"
+    _embedded := f"{count}"
 ```
 
 Each conversion produces `"3"`. Passing an Int to a String parameter still needs `.to_string()`.
@@ -91,7 +91,7 @@ type Money:
     cents: Int
 
 fn Money.to_string() String:
-    return "{self.cents / 100}.{self.cents % 100}"
+    return f"{self.cents / 100}.{self.cents % 100}"
 ```
 
 ## Indexing and character boundaries
@@ -201,13 +201,13 @@ test "binary codecs":
 
 ## Deterministic formatting
 
-Interpolation and direct `to_string()` conversion use the forms below, independent of locale or host settings. To retain a type-specific representation with `print`, pass the converted text: `print("{value}")`. Generic `print(value)` can render types structurally.
+Interpolation and direct `to_string()` conversion use the forms below, independent of locale or host settings. To retain a type-specific representation with `print`, pass the converted text: `print(f"{value}")`. Generic `print(value)` can render types structurally.
 
 | Type | Formatting |
 | --- | --- |
 | String | Contents unchanged; inserted braces/quotes are ordinary output characters and are not parsed again |
 | Bool | `true` or `false` |
-| Void | `unit` |
+| Void | `void` |
 | Int | Base-ten digits, optional leading minus, no separators or leading zeros |
 | Float | Shortest round-trip decimal under the rule below; signed zero retains its sign |
 | Decimal | Exact numerical decimal value, normalized as below; no significance/scale padding |

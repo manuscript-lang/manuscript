@@ -5,4 +5,4 @@ export fn load(path: String) Bytes!:
     return read_file(path).wait()
 
 export fn greet(name: String) String:
-    return "hi {name}"
+    return f"hi {name}"

@@ -18,7 +18,7 @@ test "fields recognize the complete Unicode whitespace set":
 		"\u{2029}", "\u{202f}", "\u{205f}", "\u{3000}"
 	]
 	for space in spaces:
-		"{space}a{space}{space}é{space}".fields() | expect_equal(["a", "é"])?
+		f"{space}a{space}{space}é{space}".fields() | expect_equal(["a", "é"])?
 
 test "fields work as a bound method and return independent results":
 	text := " alpha é "

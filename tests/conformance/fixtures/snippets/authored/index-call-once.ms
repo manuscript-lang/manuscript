@@ -15,4 +15,4 @@ fn main() Void:
     two := xs[c.next()].clone()
     len := xs[c.next()].length()
     xs[c.next()] = "z"
-    print("{one} {two} {len} {xs} {c.n}")
+    print(f"{one} {two} {len} {xs} {c.n}")

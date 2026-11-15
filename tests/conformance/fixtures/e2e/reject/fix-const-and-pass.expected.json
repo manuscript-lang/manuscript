@@ -1,7 +1,7 @@
 {
   "format": 1,
   "phase": "check",
-  "oracle": "Manuscript 0.1.0",
+  "oracle": "Manuscript 2026.11.0",
   "expected": {
     "exit_code": 1,
     "format": 1,
@@ -73,7 +73,7 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "'pass' is not a keyword; write 'unit' for an empty block or match arm",
+        "message": "'pass' is not a keyword; write 'void' for an empty block or match arm",
         "position": {
           "file": "fix-const-and-pass.ms",
           "line": 8,
@@ -99,14 +99,14 @@
             "column": 13,
             "offset": 135
           },
-          "replacement": "unit"
+          "replacement": "void"
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/fix-const-and-pass.ms:3:1: parse: 'const' is not a Manuscript declaration keyword; write 'NAME := value' (or 'NAME: Type := value') for a module constant\n   |\n 3 | const LIMIT = 3\n   | ^^^^^^^^^^^^^\n<DIR>/fix-const-and-pass.ms:4:1: parse: 'const' is not a Manuscript declaration keyword; write 'NAME := value' (or 'NAME: Type := value') for a module constant\n   |\n 4 | const NAME: String = \"a\"\n   | ^^^^^^^^^^^^^^^^^^^^\n<DIR>/fix-const-and-pass.ms:8:9: parse: 'pass' is not a keyword; write 'unit' for an empty block or match arm\n   |\n 8 |         pass\n   |             ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/fix-const-and-pass.ms:3:1: parse: 'const' is not a Manuscript declaration keyword; write 'NAME := value' (or 'NAME: Type := value') for a module constant\n   |\n 3 | const LIMIT = 3\n   | ^^^^^^^^^^^^^\n<DIR>/fix-const-and-pass.ms:4:1: parse: 'const' is not a Manuscript declaration keyword; write 'NAME := value' (or 'NAME: Type := value') for a module constant\n   |\n 4 | const NAME: String = \"a\"\n   | ^^^^^^^^^^^^^^^^^^^^\n<DIR>/fix-const-and-pass.ms:8:9: parse: 'pass' is not a keyword; write 'void' for an empty block or match arm\n   |\n 8 |         pass\n   |             ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

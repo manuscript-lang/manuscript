@@ -16,7 +16,7 @@ fn check_equal(a: Image, b: Image) Void!:
 		or a.pixels != b.pixels
 	):
 		return error(Error("rotation differs"))
-	return ok(unit)
+	return ok()
 
 test "rotations preserve every channel and their inverse":
 	for mode in [ColorMode.Gray, ColorMode.GrayAlpha, ColorMode.Rgb, ColorMode.Rgba]:

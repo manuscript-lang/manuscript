@@ -6,14 +6,14 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
-    b1 := (not ((737.591 == 8.5) and "beta".starts_with("brace\{s\}")))
-    say("b1 = {b1}")
+    b1 := (not ((737.591 == 8.5) and "beta".starts_with("brace{s}")))
+    say(f"b1 = {b1}")
 
     l2 := [1, 2, 3].take(0)
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     bad: Int := "text"
     return 0

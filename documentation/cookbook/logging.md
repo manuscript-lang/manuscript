@@ -30,7 +30,7 @@ fn main() Void!:
     log.debug("not shown at the default level")?
     handler := log.child(Request(request: 7))?
     handler.warn("slow request", Slow(ms: 950))?
-    return ok(unit)
+    return ok()
 ```
 
 ```sh
@@ -52,7 +52,7 @@ import LoggerOptions, create, rotating_file_transport from "@std/log.ms"
 fn main() Void!:
     var log = create(rotating_file_transport("app.log", 200, 2)?, LoggerOptions(timestamp: false))?
     for i in 0..20:
-        log.info("record {i}")?
+        log.info(f"record {i}")?
     log.close()?
     print("ok")
 ```

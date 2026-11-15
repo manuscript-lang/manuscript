@@ -17,7 +17,7 @@ import (
 
 // Prints `message` and a newline to standard error.
 export fn note(message: String) Void:
-	stderr().write("{message}\n").get()
+	stderr().write(f"{message}\n").get()
 
 // Reports `message` on standard error and returns the status a driver passes back from
 // `main`.
@@ -70,7 +70,7 @@ export fn capture(
 			out.stderr.decode_utf8().get(""),
 			out.max_resident_bytes,
 		)
-	return Ran(false, 125, "", "cannot start {program}\n")
+	return Ran(false, 125, "", f"cannot start {program}\n")
 
 // Runs `program` and returns its stdout, or fails the driver by returning an empty
 // string when it does not exit zero.
@@ -128,7 +128,7 @@ export fn left(text: String, width: Int) String:
 
 // `value` with a comma between each group of three digits.
 export fn grouped(value: Int) String:
-	digits := "{if value < 0: -value else: value}"
+	digits := f"{if value < 0: -value else: value}"
 	var out = ""
 	n := digits.length()
 
@@ -146,7 +146,7 @@ export fn fixed(value: Float, digits: Int) String:
 	head := if text.starts_with("-") and whole == 0: "-0" else: grouped(whole)
 	if parts.length() == 1: return head
 
-	return "{head}.{parts[1]}"
+	return f"{head}.{parts[1]}"
 
 // Parses a positive repeat count.
 export fn repeats(text: String) Int!:
@@ -167,7 +167,7 @@ export fn run_in(dir: String, program: String, arguments: List[String]) Ran:
 // Fails with the program's stderr unless `ran` exited zero.
 export fn must(what: String, ran: Ran) String!:
 	if ran.ok and ran.code == 0: return ok(ran.stdout.clone())
-	return invalid("{what} failed ({ran.code}): {ran.stderr}")
+	return invalid(f"{what} failed ({ran.code}): {ran.stderr}")
 
 // The `ms` binary: $MS, else target/release/ms, as an absolute path.
 export fn ms_binary() String:
@@ -176,9 +176,9 @@ export fn ms_binary() String:
 // Builds the Manuscript project in `dir` to `out` (a file name inside `dir`'s parent is
 // fine; pass an absolute path).
 export fn build_ms(dir: String, out: String) Void!:
-	_stale := remove("{dir}/ms.lock")
+	_stale := remove(f"{dir}/ms.lock")
 	ran := run_in(dir, ms_binary(), ["build", "ms.toml", "-o", out])
-	_ := must("ms build {dir}", ran)?
+	void must(f"ms build {dir}", ran)?
 
 // Builds the Go module in `dir` as a static binary.
 export fn build_go(dir: String, out: String) Void!:
@@ -193,15 +193,14 @@ export fn build_go(dir: String, out: String) Void!:
 			out, "."
 		],
 	)
-	_ := must("go build {dir}", ran)?
+	void must(f"go build {dir}", ran)?
 
 // Compiles one Rust source at the usual release settings plus `flags`.
 export fn build_rust(source: String, out: String, flags: List[String]) Void!:
 	var args = ["--edition", "2021", "-C", "opt-level=3", "-C", "codegen-units=1"]
 	args = args.concat(flags)
 	args = args.concat(["-o", out.clone(), source.clone()])
-
-	_ := must("rustc {source}", capture(env("RUSTC", "rustc"), args))?
+	void must(f"rustc {source}", capture(env("RUSTC", "rustc"), args))?
 
 // Runs `exe` with `input` on standard input and returns its standard output.
 export fn sample(exe: String, arguments: List[String], input: String = "") String!:
@@ -232,14 +231,14 @@ export fn options(
 			not flag.starts_with("--")
 			or not known.contains(flag.slice(2, flag.length()).get(""))
 		):
-			return invalid("unknown argument: {flag}")
-		if i + 1 >= args.length(): return invalid("{flag} needs a value")
+			return invalid(f"unknown argument: {flag}")
+		if i + 1 >= args.length(): return invalid(f"{flag} needs a value")
 
 		found.add(flag.slice(2, flag.length()).get(""), args[i + 1].clone())
 		i += 2
 
 	for name in required:
-		if not found.contains(name): return invalid("--{name} is required")
+		if not found.contains(name): return invalid(f"--{name} is required")
 	return ok(found)
 
 // Every ordering of `items`, in lexicographic order of position.
@@ -285,7 +284,7 @@ export fn exe() String:
 // A short platform description such as `linux-amd64`.
 export fn platform() String:
 	info := system_info()
-	return "{info.os}-{info.architecture}"
+	return f"{info.os}-{info.architecture}"
 
 // All of standard input as text.
 export fn read_stdin() String:
@@ -293,7 +292,7 @@ export fn read_stdin() String:
 
 // Runs `ms bench` for the bench/perf/stdlib suite and returns its JSON document.
 export fn stdlib_bench(ms: String, samples: Int, filter: String) String!:
-	var args = ["bench", "ms.toml", "--json", "--samples", "{samples}"]
+	var args = ["bench", "ms.toml", "--json", "--samples", f"{samples}"]
 	if filter != "": args = args.concat(["--filter", filter.clone()])
 	return must("ms bench", run_in("bench/perf/stdlib", ms, args))
 
@@ -303,10 +302,10 @@ export fn jstr(text: String) JsonValue:
 	return JsonValue.StringValue(text)
 
 export fn jint(n: Int) JsonValue:
-	return JsonValue.NumberValue("{n}")
+	return JsonValue.NumberValue(f"{n}")
 
 export fn jfloat(x: Float) JsonValue:
-	return JsonValue.NumberValue("{x}")
+	return JsonValue.NumberValue(f"{x}")
 
 export fn jbool(b: Bool) JsonValue:
 	return JsonValue.BoolValue(b)
@@ -339,7 +338,7 @@ export fn run_inherit(dir: String, program: String, arguments: List[String]) Int
 		code = child.wait().get(125)
 		if code < 0 or code > 125: code = 125
 	else:
-		note("cannot start {program}")
+		note(f"cannot start {program}")
 
 	return code
 
@@ -354,7 +353,7 @@ export type RssRun:
 export fn peak_run(program: String, arguments: List[String], input: String = "") RssRun!:
 	ran := capture(program, arguments, input)
 	if not ran.ok or ran.code != 0: return invalid(
-		"{program} failed ({ran.code}): {ran.stderr}"
+		f"{program} failed ({ran.code}): {ran.stderr}"
 	)
 	if ran.max_resident_bytes <= 0: return invalid(
 		"the host reported no peak resident set"

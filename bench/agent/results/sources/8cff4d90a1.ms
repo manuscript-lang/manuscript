@@ -34,7 +34,7 @@ O_MATCH := 15
 O_HEADG := 16
 O_HEADL := 17
 O_TAIL := 18
-TABLE := " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz\{|\}~"
+TABLE := " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
 HEX := "0123456789abcdef"
 
 fn is_digit(c: Int) Bool:
@@ -1116,20 +1116,20 @@ impl Re:
 		var lines = List[String]()
 
 		for g in 0..self.ngroups + 1:
-			var label = "{g}"
+			var label = f"{g}"
 
 			if g > 0:
 				nm := self.gnames[g - 1]
 				if nm != "":
-					label = "{g} ({nm})"
+					label = f"{g} ({nm})"
 
 			s := snap[2 * g]
 			e := snap[2 * g + 1]
 
 			if s >= 0 and e >= 0:
-				lines.append("{label}: {s}..{e} ".concat(quoted(self.subj, s, e)))
+				lines.append(f"{label}: {s}..{e} ".concat(quoted(self.subj, s, e)))
 			else:
-				lines.append("{label}: unset")
+				lines.append(f"{label}: unset")
 
 		return lines
 
@@ -1172,7 +1172,7 @@ fn new_re(pat: List[Int]) Re:
 	)
 
 fn span_line(s: Int, e: Int, subj: List[Int]) String:
-	return "{s}..{e} ".concat(quoted(subj, s, e))
+	return f"{s}..{e} ".concat(quoted(subj, s, e))
 
 fn run_cmd(f: List[String]) String:
 	cmd := f[0]
@@ -1223,7 +1223,7 @@ fn run_cmd(f: List[String]) String:
 		var lines = List[String]()
 		for m in ms:
 			lines.append(span_line(m[0], m[1], re.subj))
-		lines.append("({ms.length()} matches)")
+		lines.append(f"({ms.length()} matches)")
 		return lines.join("\n")
 
 	if cmd == "split":
@@ -1237,7 +1237,7 @@ fn run_cmd(f: List[String]) String:
 				last = m[1]
 
 		pieces.append(quoted(re.subj, last, re.subj.length()))
-		pieces.append("({pieces.length()} pieces)")
+		pieces.append(f"({pieces.length()} pieces)")
 		return pieces.join("\n")
 
 	// replace

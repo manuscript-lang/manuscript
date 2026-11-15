@@ -31,7 +31,7 @@ import (
 
 // A span of elapsed time, counted in signed nanoseconds.
 export type Duration:
-	// The signed count of nanoseconds; `nanoseconds(n)` and the unit constructors build
+	// The signed count of nanoseconds; `nanoseconds(n)` and the void constructors build
 	// one.
 	nanos: Int
 
@@ -113,17 +113,17 @@ fn Duration.to_string() String:
 	sign := if total < 0: "-" else: ""
 	whole := total / 1000000000 * step
 	sub := total % 1000000000 * step
-	if whole == 0 and sub < 1000: return "{sign}{sub}ns"
+	if whole == 0 and sub < 1000: return f"{sign}{sub}ns"
 	if whole == 0 and sub < 1000000:
-		return "{sign}{duration_decimal(sub / 1000, sub % 1000, 3)}µs"
-	if whole == 0: return "{sign}{duration_decimal(sub / 1000000, sub % 1000000, 6)}ms"
+		return f"{sign}{duration_decimal(sub / 1000, sub % 1000, 3)}µs"
+	if whole == 0: return f"{sign}{duration_decimal(sub / 1000000, sub % 1000000, 6)}ms"
 
 	hours := whole / 3600
 	minutes := whole % 3600 / 60
-	clock := if hours == 0: "" else: "{hours}h"
-	minute_part := if hours == 0 and minutes == 0: "" else: "{minutes}m"
+	clock := if hours == 0: "" else: f"{hours}h"
+	minute_part := if hours == 0 and minutes == 0: "" else: f"{minutes}m"
 	seconds_part := duration_decimal(whole % 60, sub, 9)
-	return "{sign}{clock}{minute_part}{seconds_part}s"
+	return f"{sign}{clock}{minute_part}{seconds_part}s"
 
 // Converts this duration to floating-point seconds.
 fn Duration.to_seconds() Float:
@@ -358,7 +358,7 @@ export type Date:
 // Writes `whole` with the digits of a fractional part `frac` of `width` places,
 // trailing zeros dropped.
 fn duration_decimal(whole: Int, frac: Int, width: Int) String:
-	if frac == 0: return "{whole}"
+	if frac == 0: return f"{whole}"
 
 	var rest = frac
 	var places = width
@@ -370,13 +370,13 @@ fn duration_decimal(whole: Int, frac: Int, width: Int) String:
 	var digits = ""
 
 	while places > 0:
-		digits = "{rest % 10}{digits}"
+		digits = f"{rest % 10}{digits}"
 		rest /= 10
 		places -= 1
 
-	return "{whole}.{digits}"
+	return f"{whole}.{digits}"
 
-// Constructs a duration of `n` nanoseconds, the unit `Duration` counts in; `n` may be
+// Constructs a duration of `n` nanoseconds, the void `Duration` counts in; `n` may be
 // negative.
 export fn nanoseconds(n: Int) Duration:
 	return Duration(nanos: n)
@@ -617,7 +617,7 @@ fn Deadline.expired() Bool:
 // Suspends the current task until the deadline passes. Returns at once if it
 // already has.
 fn Deadline.wait() Void:
-	sleep(self.remaining()).wait().get(unit)
+	void sleep(self.remaining()).wait()
 
 // Returns a deadline `duration` from now.
 // ms: effect std.clock.read
@@ -650,7 +650,7 @@ fn var TickSource.next() Instant?!:
 	return ok(tick)
 
 fn var TickSource.close() Void!:
-	return ok(unit)
+	return ok()
 
 // Returns a ticker whose first tick comes one `period` from now. A period of zero or
 // less is a programming fault.

@@ -44,18 +44,18 @@ fn main() Int:
 		.decode_utf8()
 		.get("")
 	)
-	host_list := "tests/conformance/expect-fail.{host()}.txt"
+	host_list := f"tests/conformance/expect-fail.{host()}.txt"
 	if access(host_list, 0).is_ok():
 		text += read_file(host_list).wait().get().decode_utf8().get("")
 	write_file(allow, text, replace: true).wait().get()
 
-	conform := "target/debug/ms-conform{exe()}"
+	conform := f"target/debug/ms-conform{exe()}"
 
 	// The quick loop tests the release-profile compiler `make build` just produced,
 	// which also checks faster than the debug one; nothing rebuilds it while the tool
 	// runs.
 	fast := env("CONFORM_FAST", "") != ""
-	ms := if fast: "target/release/ms{exe()}" else: "target/debug/ms{exe()}"
+	ms := if fast: f"target/release/ms{exe()}" else: f"target/debug/ms{exe()}"
 	shard := env("CONFORM_SHARD", "0/1")
 	code = run_program(conform, ["lint"])
 	if code != 0: return code

@@ -6,31 +6,31 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     b1 := "42".ends_with("emoji 😀")
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
     b2 := (
         ((true and b1) or "quote\"d".is_empty())
         or ((not true) and "héllo".is_empty())
     )
-    say("b2 = {b2}")
+    say(f"b2 = {b2}")
 
     i3 := ((-14) % 825586)
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     i4 := i3
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     bad := [1, "two"]
     s5 := "MiXeD CaSe".lower().lower().reverse()
-    say("s5 = [{s5}]")
+    say(f"s5 = [{s5}]")
 
     b6 := s5.starts_with(s5)
-    say("b6 = {b6}")
+    say(f"b6 = {b6}")
     say(
-        "{((i4 * 35) + i3)} {(-(i4 - 36))} {(((i4 * 35) + i3) < (-(i4 - 36)))} sum {((i4 * 35) + i3) + (-(i4 - 36))}"
+        f"{((i4 * 35) + i3)} {(-(i4 - 36))} {(((i4 * 35) + i3) < (-(i4 - 36)))} sum {((i4 * 35) + i3) + (-(i4 - 36))}"
     )
     return 0

@@ -20,10 +20,10 @@ fn run(step: Step) Void!:
             double(n)
         Check(n):
             checked(n)?
-    return ok(unit)
+    return ok()
 
 export fn main() Int:
     for step in [Step.Show("shown"), Step.Count(2), Step.Check(3)]:
         r := run(step)
-        print("{r.is_ok()}")
+        print(f"{r.is_ok()}")
     return 0

@@ -89,7 +89,7 @@ fn add_digits(a: String, b: String) String:
 			d += b.get(j).parse_int().get(0)
 			j -= 1
 
-		out = "{d % 10}".concat(out)
+		out = f"{d % 10}".concat(out)
 		carry = d / 10
 
 	return out
@@ -98,7 +98,7 @@ fn add_digits(a: String, b: String) String:
 fn format_cents(cents: String) String:
 	s := cents.pad_start(3, "0")
 	cut := s.length() - 2
-	return "{s.take(cut)}.{s.drop(cut)}"
+	return f"{s.take(cut)}.{s.drop(cut)}"
 
 export fn main() Int:
 	var skipped = 0
@@ -120,8 +120,8 @@ export fn main() Int:
 
 	var out = List[String]()
 	for entry in totals.entries():
-		out.append("{entry.key}: {format_cents(entry.value)}\n")
+		out.append(f"{entry.key}: {format_cents(entry.value)}\n")
 	if skipped > 0:
-		out.append("skipped: {skipped}\n")
+		out.append(f"skipped: {skipped}\n")
 	stdout().write(out.join("")).get()
 	return 0

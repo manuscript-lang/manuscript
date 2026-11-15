@@ -220,6 +220,7 @@ pub(crate) fn interpolation_start(source: &str, offset: usize) -> Option<usize> 
     enum State {
         Code,
         Text,
+        PlainText,
         Expr,
         ExprText,
     }
@@ -242,7 +243,19 @@ pub(crate) fn interpolation_start(source: &str, offset: usize) -> Option<usize> 
         match state {
             State::Code => match b {
                 b'/' if bytes.get(at + 1) == Some(&b'/') => return None,
-                b'"' => state = State::Text,
+                b'f' if bytes.get(at + 1) == Some(&b'"')
+                    && (at == 0
+                        || !(bytes[at - 1].is_ascii_alphanumeric() || bytes[at - 1] == b'_')) =>
+                {
+                    state = State::Text;
+                    at += 1;
+                }
+                b'"' => state = State::PlainText,
+                _ => {}
+            },
+            State::PlainText => match b {
+                b'\\' => at += 1,
+                b'"' => state = State::Code,
                 _ => {}
             },
             State::ExprText => match b {
@@ -637,16 +650,16 @@ pub fn query_editor(
             let body = if current.trim().starts_with("match ") {
                 vec![
                     format!("{}_:", " ".repeat(indent + 4)),
-                    format!("{}return unit", " ".repeat(indent + 8)),
+                    format!("{}return", " ".repeat(indent + 8)),
                 ]
             } else {
-                vec![format!("{}return unit", " ".repeat(indent + 4))]
+                vec![format!("{}return", " ".repeat(indent + 4))]
             };
             for (i, row) in body.into_iter().enumerate() {
                 lines.insert(line + 1 + i, row);
             }
         } else {
-            lines[line] = format!("{}return unit", " ".repeat(indent));
+            lines[line] = format!("{}return", " ".repeat(indent));
             if lines[line] == current {
                 break;
             }
@@ -899,30 +912,30 @@ mod literal_context_tests {
     fn incomplete_multiline_context_survives_unrelated_errors() {
         for newline in ["\n", "\r\n"] {
             for (source, literal, member) in [
-                ("text := \"\"\"\n    é😀 {value.member", false, true),
+                ("text := f\"\"\"\n    é😀 {value.member", false, true),
                 (
-                    "broken := \"bad\ntext := \"\"\"\n    ok\n    \"\"\"\nother := value.member",
+                    "broken := \"bad\ntext := f\"\"\"\n    ok\n    \"\"\"\nother := value.member",
                     false,
                     true,
                 ),
                 (
-                    "broken := \"\ntext := \"\"\"\n    {value.member}\n    \"\"\"\n",
+                    "broken := \"\ntext := f\"\"\"\n    {value.member}\n    \"\"\"\n",
                     false,
                     true,
                 ),
                 (
-                    "text := \"\"\"\n    {value.member}\n    \"\"\"\nbroken := \"",
+                    "text := f\"\"\"\n    {value.member}\n    \"\"\"\nbroken := \"",
                     false,
                     true,
                 ),
                 (
-                    "broken := @\ntext := \"\"\"\n    {value.member}\n    \"\"\"\n",
+                    "broken := @\ntext := f\"\"\"\n    {value.member}\n    \"\"\"\n",
                     false,
                     true,
                 ),
                 ("text := r\"\"\"\n    {\"key\": value.member", true, false),
-                ("text := \"\"\"\n    \\{value.member", true, false),
-                ("text := \"\"\"\n    {join(\"value.member", true, false),
+                ("text := f\"\"\"\n    \\{value.member", true, false),
+                ("text := f\"\"\"\n    {join(\"value.member", true, false),
             ] {
                 let source = source.replace('\n', newline);
                 let d = Document::new("file:///incomplete.ms", &source);
@@ -943,10 +956,10 @@ mod literal_context_tests {
                 ("value {name.length()}", "name", false),
                 ("value {join(\"quoted\", name)}", "name", false),
                 ("value {join(\"quoted\", name)}", "quoted", true),
-                ("nested {\"{name.length()}\"}", "name", false),
+                ("nested {f\"{name.length()}\"}", "name", false),
                 ("unicode \\u{1F600}", "1F600", true),
             ] {
-                let source = format!("s := \"\"\"\n    {body}\n    \"\"\"\nafter := 1\n")
+                let source = format!("s := f\"\"\"\n    {body}\n    \"\"\"\nafter := 1\n")
                     .replace('\n', newline);
                 let d = Document::new("file:///contexts.ms", source.clone());
                 let offset = source.find(cursor).unwrap() + cursor.len();
@@ -982,7 +995,7 @@ mod literal_context_tests {
 
     #[test]
     fn multiline_interpolation_is_code() {
-        let source = "text := \"\"\"\n    {value.member}\n    \"\"\"\n";
+        let source = "text := f\"\"\"\n    {value.member}\n    \"\"\"\n";
         ms_syntax::parser::parse(&std::sync::Arc::from("text.ms"), source).unwrap();
         let d = Document::new("file:///text.ms", source);
         let offset = source.find("member").unwrap() + "member".len();

@@ -94,7 +94,7 @@ fn format_cents(cents: List[Int]) String:
         if i < lead:
             text += "0"
         else:
-            text += "{cents[i - lead]}"
+            text += f"{cents[i - lead]}"
 
     return text
 
@@ -114,8 +114,8 @@ export fn main() Int:
 
     var out = ""
     for category in totals.keys().sorted():
-        out += "{category}: {format_cents(totals[category])}\n"
+        out += f"{category}: {format_cents(totals[category])}\n"
     if skipped > 0:
-        out += "skipped: {skipped}\n"
+        out += f"skipped: {skipped}\n"
     stdout().write(out).get()
     return 0

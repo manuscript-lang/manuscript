@@ -57,7 +57,7 @@ fn evaluate(line: String) String:
     var p = Parser(line.scalar_values(), 0, false)
     if v := expr(var p):
         if peek(var p) != 0: return "error: syntax"
-        return if p.div_zero: "error: division by zero" else: "{v}"
+        return if p.div_zero: "error: division by zero" else: f"{v}"
     return "error: syntax"
 
 fn main() Void:

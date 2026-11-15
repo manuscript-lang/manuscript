@@ -96,14 +96,14 @@ fn type_err(h: Heap, name: String, kind: String, v: Int) Fail:
 	return rt(name + ": expected " + kind + ", got " + show(h, v, true))
 
 fn arity_msg(name: String, lo: Int, hi: Int, m: Int) String:
-	var e = "{lo}"
+	var e = f"{lo}"
 
 	if hi < 0:
-		e = "at least {lo}"
+		e = f"at least {lo}"
 	else if hi != lo:
-		e = "{lo} to {hi}"
+		e = f"{lo} to {hi}"
 
-	return "wrong number of arguments to " + name + ": expected " + e + ", got {m}"
+	return "wrong number of arguments to " + name + ": expected " + e + f", got {m}"
 
 // ---------------------------------------------------------------------------
 // Allocation
@@ -248,7 +248,7 @@ fn show(h: Heap, v: Int, w: Bool) String:
 		return "#f"
 
 	if t == T_NIL: return "()"
-	if t == T_INT: return "{h.nums[v]}"
+	if t == T_INT: return f"{h.nums[v]}"
 	if t == T_SYM: return h.symnames[h.nums[v]].clone()
 
 	if t == T_STR:
@@ -731,12 +731,12 @@ fn bind_args(var h: Heap, idx: Int, args: List[Int]) Int!Fail:
 
 	if (rest and m < n) or ((not rest) and m != n):
 		nm := if h.cl_name[idx] != NO_ID: h.symnames[h.cl_name[idx]].clone() else: "lambda"
-		var e = "{n}"
+		var e = f"{n}"
 		if rest:
-			e = "at least {n}"
+			e = f"at least {n}"
 		return error(
 			rt(
-				"wrong number of arguments to " + nm + ": expected " + e + ", got {m}"
+				"wrong number of arguments to " + nm + ": expected " + e + f", got {m}"
 			)
 		)
 
@@ -1671,7 +1671,7 @@ fn prim_str(var h: Heap, name: String, args: List[Int]) Int!Fail:
 
 	if name == "number->string":
 		n := try int_val(h, name, a0)
-		txt := "{n}"
+		txt := f"{n}"
 		return ok(mk_str(var h, txt))
 
 	if name == "string->symbol":

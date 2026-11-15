@@ -39,12 +39,12 @@ A concrete type opts in through an implementation of the standard `Closeable` in
 
 A binding is closed unless something takes the resource from it. Returning it, passing it to a moving parameter, storing it, or capturing it in a closure that outlives the scope moves it to a new owner, which closes it instead. A resource acquired in a loop closes at the end of that iteration.
 
-To close earlier than the end of the scope, declare the binding with `var` and call `close()`. Close is idempotent, so the scope-end close that follows is harmless; the later statements still see a closed resource, so do not use it afterwards. Closing a file early is a common case; handle the `Result` with `?` or `_ :=`.
+To close earlier than the end of the scope, declare the binding with `var` and call `close()`. Close is idempotent, so the scope-end close that follows is harmless; the later statements still see a closed resource, so do not use it afterwards. Closing a file early is a common case; handle the `Result` with `?` or `void`.
 
 ```manuscript
 var file = open(path)?
 head := file.read_lines(max_lines: 1)?
-_ := file.close()
+void file.close()
 slow_work(head)
 ```
 
@@ -102,7 +102,7 @@ type Tracked:
 fn var Tracked.close() Void!:
     if not self.closed:
         self.closed = true
-        print("close {self.name}")
+        print(f"close {self.name}")
 
 fn work() Void!:
     _first := Tracked("first")

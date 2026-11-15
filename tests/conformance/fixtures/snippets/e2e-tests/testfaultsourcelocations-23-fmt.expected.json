@@ -1,7 +1,7 @@
 {
   "format": 1,
   "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
+  "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
     "fmt": "interface Crash:\n\tfn run() Int\n\ntype Item:\n\tvalue: Int\n\nfn Item.run() Int:\n\treturn 1 / self.value\n\nexport fn main() Int:\n\titem := Item(0)\n\trun := item.run\n\treturn run()\n"

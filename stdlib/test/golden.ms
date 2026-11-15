@@ -27,7 +27,7 @@ fn first_difference(expected: String, actual: String) String:
 
 	while line < want.length() and line < got.length():
 		if want[line] != got[line]:
-			return """
+			return f"""
                 line {line + 1}:
                   golden: {want[line]}
                   actual: {got[line]}
@@ -35,7 +35,7 @@ fn first_difference(expected: String, actual: String) String:
 
 		line += 1
 
-	return "line {line + 1}: golden has {want.length()} lines, actual has {got.length()}"
+	return f"line {line + 1}: golden has {want.length()} lines, actual has {got.length()}"
 
 // Compares `actual` with the text in the golden file at `path`, or rewrites the file
 // under `MS_UPDATE_GOLDEN=1`. The failure names the file and the first differing line.
@@ -43,21 +43,21 @@ export fn expect_golden(path: String, actual: String) Void!:
 	if updating():
 		create_directory(dirname(path), true)?
 		write_file(path, actual, replace: true).wait()?
-		return ok(unit)
+		return ok()
 
 	stored := read_file(path).wait()
 	if stored.is_error():
 		return fail(
-			"golden file {path} is missing or unreadable; run with MS_UPDATE_GOLDEN=1 to create it"
+			f"golden file {path} is missing or unreadable; run with MS_UPDATE_GOLDEN=1 to create it"
 		)
 
 	expected := stored.get().decode_utf8()
 	if expected.is_none():
-		return fail("golden file {path} is not UTF-8; use expect_golden_bytes")
-	if expected.get() == actual: return ok(unit)
+		return fail(f"golden file {path} is not UTF-8; use expect_golden_bytes")
+	if expected.get() == actual: return ok()
 
 	return fail(
-		"{path} differs from the output at {first_difference(expected.get(), actual)}\nrun with MS_UPDATE_GOLDEN=1 to accept the output"
+		f"{path} differs from the output at {first_difference(expected.get(), actual)}\nrun with MS_UPDATE_GOLDEN=1 to accept the output"
 	)
 
 // Byte-for-byte version of `expect_golden`; the failure names the first differing
@@ -66,21 +66,21 @@ export fn expect_golden_bytes(path: String, actual: Bytes) Void!:
 	if updating():
 		create_directory(dirname(path), true)?
 		write_file(path, actual, replace: true).wait()?
-		return ok(unit)
+		return ok()
 
 	stored := read_file(path).wait()
 	if stored.is_error():
 		return fail(
-			"golden file {path} is missing or unreadable; run with MS_UPDATE_GOLDEN=1 to create it"
+			f"golden file {path} is missing or unreadable; run with MS_UPDATE_GOLDEN=1 to create it"
 		)
 
 	expected := stored.get()
-	if expected == actual: return ok(unit)
+	if expected == actual: return ok()
 
 	var offset = 0
 	shared := if expected.length() < actual.length(): expected.length() else: actual.length()
 	while offset < shared and expected.get(offset) == actual.get(offset):
 		offset += 1
 	return fail(
-		"{path} differs from the output at byte {offset} (golden {expected.length()} bytes, actual {actual.length()})\nrun with MS_UPDATE_GOLDEN=1 to accept the output"
+		f"{path} differs from the output at byte {offset} (golden {expected.length()} bytes, actual {actual.length()})\nrun with MS_UPDATE_GOLDEN=1 to accept the output"
 	)

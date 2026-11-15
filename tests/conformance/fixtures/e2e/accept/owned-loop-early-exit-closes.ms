@@ -11,7 +11,7 @@ type Door:
 	log: String
 
 fn var Door.close() Void!:
-	_ := append_file(self.log, "{self.id},").wait()
+	void append_file(self.log, f"{self.id},").wait()
 
 fn logged(path: String) String:
 	read := read_file(path).wait()
@@ -37,12 +37,12 @@ fn until_two(log: String) Int:
 
 test "return out of an owned loop closes every element once":
 	tmp := temporary("ms-log-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	first_even(log.clone()) | expect_equal(2)?
 	logged(log.clone()) | expect_equal("1,2,3,")?
 
 test "break closes the elements it never reached":
 	tmp := temporary("ms-log-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	until_two(log.clone()) | expect_equal(3)?
 	logged(log.clone()) | expect_equal("1,2,3,")?

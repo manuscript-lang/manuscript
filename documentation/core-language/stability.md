@@ -1,16 +1,17 @@
 +++
-title = "What is frozen before 1.0"
+title = "What is frozen"
 weight = 90
 +++
 
-# What is frozen before 1.0
+# What is frozen
 
-From 0.1.0, these parts of Manuscript are frozen. A change that breaks one ships in a minor release (0.2, 0.3, and so on). Patch releases (0.1.1, 0.1.2) never break them. From 1.0, a break needs a major release.
+Versions are dates: `2026.11.0` is the first release of November 2026, and `2026.11.1` is its first patch. The month has no leading zero (`2026.1.0`), so every version is also valid semver. From 2026.11.0, these parts of Manuscript are frozen.
 
 ## Frozen
 
 - Block and function syntax.
 - Bindings: `:=` and `var`.
+- Text literals: `"..."` never interpolates, `f"..."` does, and `r"..."` is raw.
 - Records and enums, and `match`.
 - Optional and Result, with `?`.
 - The one-owner rules: borrow by default, and `.clone()` as the only copy.
@@ -28,6 +29,6 @@ From 0.1.0, these parts of Manuscript are frozen. A change that breaks one ships
 
 ## When something is removed
 
-Every removal from now on leaves an error that names the replacement, and keeps it for two minor releases. When the rewrite is mechanical, it also leaves a fix that `ms check --fix` applies, kept just as long. When the replacement depends on the program, such as moving the methods of an `impl` block, there is no fix and the error shows the new form.
+Every removal from now on leaves an error that names the replacement. When the rewrite is mechanical, it also leaves a fix that `ms check --fix` applies. When the replacement depends on the program, such as moving the methods of an `impl` block, there is no fix and the error shows the new form.
 
 The list of removed spellings is in [removed spellings](removed-spellings.md).

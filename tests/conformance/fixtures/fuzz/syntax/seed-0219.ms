@@ -6,18 +6,18 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     b1 := (not ((8.5 * 1.5) > (976.698 / 663.997)))
-    say("b1 == {b1}")
+    say(f"b1 == {b1}")
 
     i2 := 570869
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     i3 := (((38 + 13) - i2) - (i2 + i2))
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     l4 := [15]
-    say("l4 = {l4} len {l4.length()}")
+    say(f"l4 = {l4} len {l4.length()}")
     return 0

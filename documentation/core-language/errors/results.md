@@ -25,7 +25,7 @@ fn show(value: Int) Void:
     if outcome.is_error():
         print(outcome.err().message)
         return
-    print("Quantity: {outcome.get()}")
+    print(f"Quantity: {outcome.get()}")
 
 fn main() Void:
     show(3)
@@ -77,7 +77,7 @@ fn find_user(id: Int) String!:
 fn describe(id: Int) String:
     outcome := find_user(id)
     if outcome.is_ok(): return outcome.get()
-    if outcome.err().kind == "ENOENT": return "missing {outcome.err().details["id"]}"
+    if outcome.err().kind == "ENOENT": return f"missing {outcome.err().details["id"]}"
     return outcome.err().message.clone()
 ```
 
@@ -112,7 +112,7 @@ This continues the declarations above:
 ```manuscript
 fn discount_message(price: Decimal, percent: Decimal) String:
     if value := discount(price, percent):
-        return "Discounted price: {value}"
+        return f"Discounted price: {value}"
     return "Discount could not be calculated."
 ```
 
@@ -155,13 +155,13 @@ To turn absence into an error, use [Optional.ok_or or ok_or_else](../types/optio
 
 ## Discarding a result
 
-A standalone call such as `discount(price: 20d, percent: 10d)` discards both outcomes, and the checker rejects it, including for `Result[Void, E]`. Handle it with `if v := x`, `?`, or return it. To ignore it deliberately, bind it to `_`:
+A standalone call such as `discount(price: 20d, percent: 10d)` discards both outcomes, and the checker rejects it, including for `Result[Void, E]`. Handle it with `if v := x`, `?`, or return it. To ignore it deliberately, put `void` in front:
 
 ```manuscript
-_ := discount(price: 20d, percent: 10d)
+void discount(price: 20d, percent: 10d)
 ```
 
-The initializer still runs and the outcome is dropped unread. Several `_ :=` may share a scope. This does not handle an error or stop a fault.
+The initializer still runs and the outcome is dropped unread. Several `void` statements may share a scope. This does not handle an error or stop a fault.
 
 ## Converting a domain error to Error
 

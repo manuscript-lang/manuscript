@@ -55,7 +55,7 @@ fn Headers.get_all(name: String) List[String]:
 fn Headers.to_text() String:
 	var out = StringBuilder()
 	for field in self.fields:
-		out.append("{field.name}: {field.value}\r\n")
+		out.append(f"{field.name}: {field.value}\r\n")
 	return out.build()
 
 // One multipart part: its headers, the decoded `name` and `filename` from
@@ -117,7 +117,7 @@ export fn media_type_for_extension(extension: String) String?:
 export fn extension_for_media_type(media_type: String) String?:
 	wanted := media_type.split(";")[0].trim().lower()
 	for entry in TYPES.entries():
-		if entry.value.split(";")[0] == wanted: return ".{entry.key}"
+		if entry.value.split(";")[0] == wanted: return f".{entry.key}"
 	return none
 
 // Parses `type/subtype; name=value; name="quoted value"`. Names and the essence are
@@ -165,7 +165,7 @@ export fn parse_media_type(text: String) MediaType!:
 export fn format_media_type(media_type: MediaType) String:
 	var out = media_type.essence.clone()
 	for entry in media_type.params.entries():
-		out = "{out}; {entry.key}={quote_value(entry.value)}"
+		out = f"{out}; {entry.key}={quote_value(entry.value)}"
 	return out
 
 // Splits on `;` outside double quotes.
@@ -221,13 +221,13 @@ fn unquote(raw: String) String?:
 
 fn is_token(value: String) Bool:
 	if value.is_empty(): return false
-	return not value.contains_any(" \t\"(),/:;<=>?@[\\]\{\}")
+	return not value.contains_any(" \t\"(),/:;<=>?@[\\]{}")
 
 fn quote_value(value: String) String:
 	if is_token(value): return value.clone()
 
 	escaped := value.replace("\\", "\\\\").replace("\"", "\\\"")
-	return "\"{escaped}\""
+	return f"\"{escaped}\""
 
 // Parses a header block (up to the first blank line). Continuation lines starting with
 // space or tab join the previous value with one space. A line without a colon, or a
@@ -247,7 +247,7 @@ export fn parse_headers(text: String) Headers!:
 			last := fields.length() - 1
 			fields[last] = HeaderField(
 				name: fields[last].name.clone(),
-				value: "{fields[last].value} {line.trim()}",
+				value: f"{fields[last].value} {line.trim()}",
 			)
 			continue
 
@@ -316,7 +316,7 @@ fn make_part(section: Bytes) Part!:
 
 	if disposition := part.headers.get("Content-Disposition"):
 		media := parse_media_type(
-			"x/x{disposition.view(disposition.index_of(";").get(disposition.length()), disposition.length())}"
+			f"x/x{disposition.view(disposition.index_of(";").get(disposition.length()), disposition.length())}"
 		)
 
 		if media.is_ok():
@@ -336,7 +336,7 @@ export fn parse_multipart(body: Bytes, boundary: String) List[Part]!:
 	)
 
 	crlf := "\r\n".to_bytes()
-	sections := crlf.concat(body).split("\r\n--{boundary}".to_bytes(), none)
+	sections := crlf.concat(body).split(f"\r\n--{boundary}".to_bytes(), none)
 	var parts = List[Part]()
 
 	for i in 1..sections.length():
@@ -361,7 +361,7 @@ type MultipartParts:
 	done: Bool
 
 fn var MultipartParts.step(value: Bytes, var out: List[Part]) Void!:
-	if self.done: return ok(unit)
+	if self.done: return ok()
 
 	self.buffer = self.buffer.concat(value)
 
@@ -438,7 +438,7 @@ fn var MultipartParts.step(value: Bytes, var out: List[Part]) Void!:
 		self.in_part = true
 
 fn var MultipartParts.finish(var out: List[Part]) Void!:
-	if self.done: return ok(unit)
+	if self.done: return ok()
 	return error(Error("MIME: invalid multipart body", kind: "EBADMSG"))
 
 /*
@@ -455,7 +455,7 @@ export fn multipart_parts(
 	return through[Bytes, Part](
 		body,
 		MultipartParts(
-			delimiter: "\r\n--{boundary}".to_bytes(),
+			delimiter: f"\r\n--{boundary}".to_bytes(),
 			max_part_bytes: max_part_bytes,
 			buffer: "\r\n".to_bytes(),
 			pending: BytesBuilder(),
@@ -471,11 +471,11 @@ export fn encode_multipart(parts: List[Part], boundary: String) Bytes:
 	var out = BytesBuilder()
 
 	for part in parts:
-		out.append_bytes("--{boundary}\r\n{part.headers.to_text()}\r\n".to_bytes())
+		out.append_bytes(f"--{boundary}\r\n{part.headers.to_text()}\r\n".to_bytes())
 		out.append_bytes(part.data)
 		out.append_bytes("\r\n".to_bytes())
 
-	out.append_bytes("--{boundary}--\r\n".to_bytes())
+	out.append_bytes(f"--{boundary}--\r\n".to_bytes())
 	return out.build()
 
 // Builds a form-data part for a field; pass `filename` to mark an upload.
@@ -485,8 +485,8 @@ export fn form_part(
 	filename: String = "",
 	content_type: String = "",
 ) Part:
-	var disposition = "form-data; name={quote_value(name)}"
-	if not filename.is_empty(): disposition = "{disposition}; filename={quote_value(filename)}"
+	var disposition = f"form-data; name={quote_value(name)}"
+	if not filename.is_empty(): disposition = f"{disposition}; filename={quote_value(filename)}"
 
 	var fields = [HeaderField(name: "Content-Disposition", value: disposition)]
 	if not content_type.is_empty(): fields.append(

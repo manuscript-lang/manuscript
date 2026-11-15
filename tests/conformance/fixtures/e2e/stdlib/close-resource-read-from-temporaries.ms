@@ -8,7 +8,7 @@ type Door:
     name: String
 
 fn var Door.close() Void!:
-    print("closed {self.name}")
+    print(f"closed {self.name}")
 
 interface Labeled:
     fn label() String
@@ -43,4 +43,4 @@ fn main() Void:
     print("--interface")
 
     shown := show(Door("converted"))
-    print("end {present} {second} {first} {shown}")
+    print(f"end {present} {second} {first} {shown}")

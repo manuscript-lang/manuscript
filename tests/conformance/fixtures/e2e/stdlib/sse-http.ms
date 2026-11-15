@@ -26,7 +26,7 @@ test "HTTP response bodies decode as SSE and close with the reader":
     server := serve("127.0.0.1:0", stream_events, HttpServerOptions())?
     client := http_client(HttpClientOptions())?
     response := client.request(
-        HttpMethod.Get, "http://{server.address()}/", headers()
+        HttpMethod.Get, f"http://{server.address()}/", headers()
     )?
     {metadata: head, body: payload} := response
     status := head.status
@@ -34,7 +34,7 @@ test "HTTP response bodies decode as SSE and close with the reader":
     first := (events.next()?).get()
     second := (events.next()?).get()
     if first.event != "greet" or first.data != "h\u{e9}!": return fail(
-        "first event {first.data}"
+        f"first event {first.data}"
     )
 
     expect_false(second.event != "message" or second.data != "second")?

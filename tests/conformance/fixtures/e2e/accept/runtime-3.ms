@@ -24,7 +24,7 @@ fn probe() Void!:
 test "typed callback helper":
     match probe():
         ok(_):
-            _completed := unit
+            _completed := void
         error(_):
             return fail(message: "Unexpected case")
 
@@ -36,7 +36,7 @@ fn describe(outcome: Int!Code) Int!Error:
         ok(value):
             return ok(value)
         error(cause):
-            return error(Error("Error {cause.number}"))
+            return error(Error(f"Error {cause.number}"))
 
 test "explicit error conversion":
     failed: Int!Code := error(Code(7))

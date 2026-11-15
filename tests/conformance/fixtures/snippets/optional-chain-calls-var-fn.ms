@@ -21,7 +21,7 @@ type H:
 
 fn show(x: Int?) Void:
     if v := x:
-        stdout().write("some {v}\n").get()
+        stdout().write(f"some {v}\n").get()
     else:
         stdout().write("none\n").get()
 

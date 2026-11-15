@@ -31,7 +31,7 @@ fn solve(data: Bytes) String:
 			row += 1
 			col = 0
 		else:
-			if not is_cell(b): return "error: bad character at {row + 1},{col + 1}"
+			if not is_cell(b): return f"error: bad character at {row + 1},{col + 1}"
 
 			col += 1
 
@@ -90,7 +90,7 @@ fn solve(data: Bytes) String:
 	while head < queue.length():
 		cur := queue.get(head)
 		head += 1
-		if cur == goal: return "{dist.get(cur)}"
+		if cur == goal: return f"{dist.get(cur)}"
 
 		r := cur / width
 		c := cur % width
@@ -110,6 +110,6 @@ fn solve(data: Bytes) String:
 
 export fn main() Int:
 	data := read_all(stdin()).get()
-	stdout().write("{solve(data)}\n").get()
+	stdout().write(f"{solve(data)}\n").get()
 	stdout().flush().get()
 	return 0

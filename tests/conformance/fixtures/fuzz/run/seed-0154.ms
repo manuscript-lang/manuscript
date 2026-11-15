@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -16,24 +16,24 @@ fn fact(n: Int) Int:
 
 export fn main() Int:
     s1 := (
-        ("brace\{s\}" + "brace\{s\}")
+        ("brace{s}" + "brace{s}")
         + "naïve".upper().replace("beta", "MiXeD CaSe")
     )
-    say("s1 = [{s1}]")
+    say(f"s1 = [{s1}]")
 
     i2 := (17 + ((-24) % ((-24) + 477523994480)))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     b3 := true
-    say("b3 = {b3}")
-    say("fact(0) = {fact(0)}")
+    say(f"b3 = {b3}")
+    say(f"fact(0) = {fact(0)}")
 
     i4 := ((((-48) + i2) + 14) + i2)
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     l5 := [10, (-28)]
-    say("l5 = {l5} len {l5.length()}")
+    say(f"l5 = {l5} len {l5.length()}")
 
     i6 := (l5.length() + ((i2 - i4) + (-(-29008966446))))
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
     return 0

@@ -6,14 +6,14 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     if ((true or false) and (true and false)):
         say("a")
     else:
-        say(("brace\{s\}" + "MiXeD CaSe"))
+        say(("brace{s}" + "MiXeD CaSe"))
 
     f1 := (((419.778 * 0.0) + 1.5) - ((324.172 + 179.710) * 0.0))
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
     return 0

@@ -5,4 +5,4 @@ fn flag() Bool:
     return true
 
 fn empty() Void:
-    return unit
+    return void

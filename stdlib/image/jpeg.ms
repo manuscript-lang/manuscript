@@ -361,7 +361,7 @@ export fn decode_jpeg(data: Bytes, max_pixels: Int?) Raster!:
 		// Find the next marker, skipping fill bytes.
 		if at >= n: return error(bad("truncated JPEG: missing EOI"))
 		if data.get(at).to_int() != 255: return error(
-			bad("expected a JPEG marker at byte {at}")
+			bad(f"expected a JPEG marker at byte {at}")
 		)
 
 		while at < n and data.get(at).to_int() == 255:
@@ -376,7 +376,7 @@ export fn decode_jpeg(data: Bytes, max_pixels: Int?) Raster!:
 		else if marker == 216:
 			return error(bad("nested JPEG start marker"))
 		else if marker == 1 or (marker >= 208 and marker <= 215) or marker == 0:
-			unit
+			void
 		else:
 			if at + 2 > n: return error(bad("truncated JPEG segment"))
 
@@ -458,7 +458,7 @@ export fn decode_jpeg(data: Bytes, max_pixels: Int?) Raster!:
 				if length < 8: return error(bad("truncated JPEG frame header"))
 				if data.get(body).to_int() != 8: return error(
 					unsupported(
-						"JPEG sample precision {data.get(body)}"
+						f"JPEG sample precision {data.get(body)}"
 					)
 				)
 
@@ -472,7 +472,7 @@ export fn decode_jpeg(data: Bytes, max_pixels: Int?) Raster!:
 				if width == 0 or (count != 1 and count != 3 and count != 4):
 					return error(
 						unsupported(
-							"JPEG with {count} components or zero width"
+							f"JPEG with {count} components or zero width"
 						)
 					)
 				if length != 8 + count * 3: return error(
@@ -545,7 +545,7 @@ export fn decode_jpeg(data: Bytes, max_pixels: Int?) Raster!:
 			):
 				return error(
 					unsupported(
-						"JPEG process (marker {marker}); arithmetic and lossless coding are not supported"
+						f"JPEG process (marker {marker}); arithmetic and lossless coding are not supported"
 					)
 				)
 			else if marker == 218:

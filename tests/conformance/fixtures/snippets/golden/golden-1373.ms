@@ -3,7 +3,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Result[Void, Error]:
-    stdout().write("{text}\n")?
+    stdout().write(f"{text}\n")?
     return stdout().flush()
 
 fn add(a: Int, b: Int) Int:

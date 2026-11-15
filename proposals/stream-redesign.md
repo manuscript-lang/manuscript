@@ -105,7 +105,7 @@ fn tail_errors(path: String, out: WriteStream[String]) Int!:
     var count = 0
     for entry in entries.wait():
         e := try entry
-        try out.write("{e.time} {e.message}\n")
+        try out.write(f"{e.time} {e.message}\n")
         count += 1
     try out.flush().wait()
     return ok(count)

@@ -6,20 +6,20 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := (27 * 12)
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     s2 := "back\\slash"
-    say("s2 = [{s2}]")
+    say(f"s2 = [{s2}]")
 
     i3 := ((i1 * s2.scalar_length()) + i1)
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     f4 := (6.0e4 + ((812.525 * 600.051) / (56.182 / 131.920)))
-    say("f4 = {f4}")
+    say(f"f4 = {f4}")
 
     fixed := 1
     fixed = 2

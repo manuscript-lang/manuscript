@@ -13,7 +13,7 @@ fn measure(start: Int) Int:
 		i += 1
 
 	elapsed := monotonic().difference(t).to_nanoseconds()
-	line := "{start} {elapsed} {hits}\n"
+	line := f"{start} {elapsed} {hits}\n"
 	ignored := stdout().write(line.to_bytes())
 	return hits
 

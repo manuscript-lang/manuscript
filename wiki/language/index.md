@@ -7,6 +7,7 @@ Syntax, types, imports, removals, language decisions.
 Note on memory model: on 2026-10-19 the owner adopted value semantics for the Rust implementation (see [compiler.md](../compiler/index.md) and [ownership notes](../../crates/ms-check/OWNERSHIP.md)). Entries below that speak of shared references, aliasing, or `.clone()` record user decisions made under reference semantics; where they conflict with the ownership notes, the notes and the frozen conformance corpus win, and the conflict is flagged in the entry.
 
 - [Keywords are names after a dot and as field labels](keywords-are-names-after-a-dot-and-as-field-labels.md)
+- [`Void` is the nothing type and the `void` keyword](void-is-the-nothing-type-and-keyword.md): `Unit` was renamed; `void expr` drops a result.
 - [Type aliases are transparent and resolved in the checker](type-aliases-are-transparent-and-resolved-in-the-checker.md): `type Name[T] = Type` is another name for a type expression, expanded in `resolve`.
 - [Enums declare tagged unions](enums-declare-tagged-unions.md): use `enum` with bare variants; records keep `type`, and legacy syntax receives clear diagnostics.
 - [An unsaved overlay cannot replace a dangling source symlink](an-unsaved-overlay-cannot-replace-a-dangling-source-symlink.md): editor overlays may create a file beneath an existing confined directory, but a dangling symlink remains a filesystem entry whose target ide…
@@ -60,3 +61,4 @@ Note on memory model: on 2026-10-19 the owner adopted value semantics for the Ru
 - [Write terse Manuscript](terse-manuscript-idioms.md): shortest existing form (`print`, `repeated`, `map`/`filter`, `if` expressions, `is_empty`, multi-line strings); conformance fixtures stay frozen.
 - [Optional chaining `?.` is for Optionals only](optional-chaining-is-for-optionals-only.md): `?.` stays an Optional operator; Results and errors use `?` and `match`.
 - [String positions are byte offsets](string-positions-are-byte-offsets.md): `length`, `slice`, `view`, `index_of`, `scalar_at` use bytes; no scalar index; `get`/`take`/`drop`/`slice_scalars` removed.
+- [Plain text never interpolates; `f"..."` text does](plain-text-never-interpolates-f-text-does.md): `"..."` keeps braces as written, `f"..."` interpolates, `r"..."` is raw; no forgotten-f warning.

@@ -1,2 +1,2 @@
 fn compare(left: Bool, right: Bool) String:
-    return "é {"value: {EXPRESSION}"}"
+    return f"é {f"value: {EXPRESSION}"}"

@@ -19,8 +19,8 @@ fn min_of(x: Int, y: Int) Int:
 
 // Formats a hunk range: the length is omitted when it is exactly 1.
 fn span(start: Int, length: Int) String:
-	if length == 1: return "{start}"
-	return "{start},{length}"
+	if length == 1: return f"{start}"
+	return f"{start},{length}"
 
 export fn main() Int:
 	lines := read_lines(stdin()).get()
@@ -134,8 +134,8 @@ export fn main() Int:
 	hunk_hi.append(min_of(last + context, total - 1))
 
 	var out = List[String]()
-	out.append("--- {name_a}")
-	out.append("+++ {name_b}")
+	out.append(f"--- {name_a}")
+	out.append(f"+++ {name_b}")
 
 	for h in 0..hunk_lo.length():
 		lo := hunk_lo[h]
@@ -144,16 +144,16 @@ export fn main() Int:
 		lb := pre_b[hi + 1] - pre_b[lo]
 		sa := if la > 0: pre_a[lo] + 1 else: pre_a[lo]
 		sb := if lb > 0: pre_b[lo] + 1 else: pre_b[lo]
-		out.append("@@ -{span(sa, la)} +{span(sb, lb)} @@")
+		out.append(f"@@ -{span(sa, la)} +{span(sb, lb)} @@")
 
 		for q in lo..hi + 1:
 			if kinds[q] == 0:
-				out.append(" {texts[q]}")
+				out.append(f" {texts[q]}")
 			else if kinds[q] == 1:
-				out.append("-{texts[q]}")
+				out.append(f"-{texts[q]}")
 			else:
-				out.append("+{texts[q]}")
+				out.append(f"+{texts[q]}")
 
 	text := out.join("\n")
-	stdout().write("{text}\n").get()
+	stdout().write(f"{text}\n").get()
 	return 0

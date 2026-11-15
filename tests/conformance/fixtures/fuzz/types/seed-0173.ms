@@ -6,11 +6,11 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     s1 := "  padded  ".upper()
-    say("s1 = [{s1}]")
+    say(f"s1 = [{s1}]")
 
     if ("beta" != "  padded  ".reverse()):
         say(("42" + s1))
@@ -18,18 +18,18 @@ export fn main() Int:
         say(s1.trim())
 
     if "ms".replace("naïve", s1).is_empty():
-        say(("{((-109631) % 4)}:" + s1))
+        say((f"{((-109631) % 4)}:" + s1))
     else:
         say("MiXeD CaSe".upper())
 
     f2 := (((259.445 - 509.254) - (4.0e-4 / 78.502)) + 931.079)
-    say("f2 = {f2}")
+    say(f"f2 = {f2}")
 
     l3 := [(-21), 23, 17, 25]
-    say("l3 = {l3} len {l3.length()}")
+    say(f"l3 = {l3} len {l3.length()}")
 
     f4 := 92.313
-    say("f4 = {f4}")
+    say(f"f4 = {f4}")
 
     bad := 1 and 2
     return 0

@@ -25,9 +25,9 @@ fn matched_paths(root: String, options: GlobOptions) List[String]!:
 test "glob keeps dot named and parent query results relative to their root":
 	directory := temporary("manuscript-glob-relative-")?
 	_restore := RestoreDirectory(working_directory()?)
-	create_directory("{directory.path()}/src/deep", recursive: true)?
+	create_directory(f"{directory.path()}/src/deep", recursive: true)?
 	for name in ["a.txt", "café.txt", "src/b.txt", "src/deep/c.txt"]:
-		write_file("{directory.path()}/{name}", "file").wait()?
+		write_file(f"{directory.path()}/{name}", "file").wait()?
 	change_directory(directory.path())?
 
 	all := GlobOptions(patterns: ["**/*.txt"])
@@ -60,9 +60,9 @@ test "glob keeps dot named and parent query results relative to their root":
 test "glob patterns ignore dot segments and never match the root":
 	directory := temporary("manuscript-glob-dots-")?
 	root := directory.path()
-	create_directory("{root}/a", recursive: true)?
+	create_directory(f"{root}/a", recursive: true)?
 	for name in ["x.ms", ".dot.ms", "a/z.ms"]:
-		write_file("{root}/{name}", "file").wait()?
+		write_file(f"{root}/{name}", "file").wait()?
 
 	expect_equal(matched_paths(root, GlobOptions(patterns: [".*"]))?, [".dot.ms"])?
 	expect_equal(matched_paths(root, GlobOptions(patterns: ["**/.*"]))?, [".dot.ms"])?

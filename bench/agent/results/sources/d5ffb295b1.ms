@@ -54,8 +54,8 @@ fn edit_script(a: List[String], b: List[String]) List[Edit]:
 	return out
 
 fn span(start: Int, length: Int) String:
-	if length == 1: return "{start}"
-	return "{start},{length}"
+	if length == 1: return f"{start}"
+	return f"{start},{length}"
 
 export fn main() Int:
 	lines := read_lines(stdin()).get()
@@ -97,8 +97,8 @@ export fn main() Int:
 			cb += 1
 
 	var out = List[String]()
-	out.append("--- {name_a}")
-	out.append("+++ {name_b}")
+	out.append(f"--- {name_a}")
+	out.append(f"+++ {name_b}")
 
 	var g = 0
 

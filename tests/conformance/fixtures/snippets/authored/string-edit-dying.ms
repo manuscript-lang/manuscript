@@ -34,7 +34,7 @@ export fn main() Int:
 	print("grow the text, a heap string past inline".replace("text", "much longer text"))
 	var total = 0
 	for i in 0..1000:
-		line := "  Hello, World number {i}  "
+		line := f"  Hello, World number {i}  "
 		total += line.trim().replace("World", "there").upper().length()
 	print(total)
 	return 0

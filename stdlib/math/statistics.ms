@@ -23,7 +23,7 @@ export type BinCounts:
 
 // The least-squares line `y = slope * x + intercept` fitted by `linear_regression`.
 export type Regression:
-	// The change in `y` per unit of `x`.
+	// The change in `y` per void of `x`.
 	slope: Float
 	// The value of `y` at `x = 0`.
 	intercept: Float

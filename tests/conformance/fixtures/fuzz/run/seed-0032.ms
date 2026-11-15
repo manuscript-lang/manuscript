@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -16,18 +16,18 @@ fn gcd(a: Int, b: Int) Int:
 
 export fn main() Int:
     i1 := ((-4) + 784987)
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     var acc2 = 0
     for i in 0..2:
         acc2 += i * 5
-    say("acc2 = {acc2}")
+    say(f"acc2 = {acc2}")
 
     i3 := (-i1)
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     i4 := ((-30) * (((-12) * (-38)) / (5 % i1)))
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     if ("delta".is_empty() and ("  padded  " == "quote\"d")):
         say("hello world")
@@ -35,43 +35,43 @@ export fn main() Int:
         say("MiXeD CaSe".trim())
 
     i5 := (-((-36) % (32 + 12)))
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     if (221.731 < (5.0e2 - 469.605)):
-        say("quote\"d".replace("gamma", "brace\{s\}"))
+        say("quote\"d".replace("gamma", "brace{s}"))
     else:
         say(("héllo" + "back\\slash"))
 
     i6 := (((42 + 43) + (i5 - i1)) + (-((-6) * i4)))
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     l7 := [1, 2, 3].take(0)
-    say("l7 = {l7} len {l7.length()}")
+    say(f"l7 = {l7} len {l7.length()}")
 
     f8 := (((1.0e8 + 634.614) - (4.5 + 121.25)) + 0.0)
-    say("f8 = {f8}")
+    say(f"f8 = {f8}")
 
     l9 := l7.map(fn x: x + 4).filter(fn x: x % 2 == 0)
-    say("l9 = {l9} len {l9.length()}")
+    say(f"l9 = {l9} len {l9.length()}")
 
     f10 := (((f8 - 600.25) - f8) + f8)
-    say("f10 = {f10}")
+    say(f"f10 = {f10}")
 
     b11 := ((f8 + (7.0e-2 * 737.25)) != ((f8 * f10) * (367.516 * f8)))
-    say("b11 = {b11}")
+    say(f"b11 = {b11}")
 
     s12 := "naïve"
-    say("s12 = [{s12}]")
+    say(f"s12 = [{s12}]")
 
     i13 := (31 + ((45 * i1) + ((-763530) % i5)))
-    say("i13 = {i13}")
-    say("gcd(4201, 302) = {gcd(4201, 302)}")
+    say(f"i13 = {i13}")
+    say(f"gcd(4201, 302) = {gcd(4201, 302)}")
 
     f14 := 8.0e24
-    say("f14 = {f14}")
+    say(f"f14 = {f14}")
 
     i15 := (1 % ((-544759) % (i5 * 44)))
-    say("i15 = {i15}")
+    say(f"i15 = {i15}")
 
     if ((81.359 + f10) != (f10 * f10)):
         say(s12)

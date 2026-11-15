@@ -6,7 +6,7 @@ import (
 	full_match from "../../lib/text.ms",
 )
 
-NUM2 := "[0-9]\{1,2\}"
+NUM2 := "[0-9]{1,2}"
 
 type Range:
 	name: String
@@ -48,14 +48,14 @@ fn days_in_month(year: Int, month: Int) Int:
 	if month == 2: return if (year % 4 == 0 and year % 100 != 0) or year % 400 == 0: 29 else: 28
 	return if month == 4 or month == 6 or month == 9 or month == 11: 30 else: 31
 
-fn pad(n: Int, width: Int) String: "{n}".pad_start(width, "0")
+fn pad(n: Int, width: Int) String: f"{n}".pad_start(width, "0")
 
 // `YYYY-MM-DD HH:MM` for a count of minutes since the epoch, with `sep` between date and time.
 fn stamp(minutes: Int, sep: String) String:
 	days := minutes / 1440
 	c := civil_from_days(days)
 	rest := minutes - days * 1440
-	return "{pad(c[0], 4)}-{pad(c[1], 2)}-{pad(c[2], 2)}{sep}{pad(rest / 60, 2)}:{pad(rest % 60, 2)}"
+	return f"{pad(c[0], 4)}-{pad(c[1], 2)}-{pad(c[2], 2)}{sep}{pad(rest / 60, 2)}:{pad(rest % 60, 2)}"
 
 // The values a field selects, or none when it is malformed or out of range.
 fn parse_field(text: String, lo: Int, hi: Int) List[Int]?:
@@ -81,7 +81,7 @@ fn parse_field(text: String, lo: Int, hi: Int) List[Int]?:
 			).get("").parse_int().get(0)
 			stepped = true
 			if step < 1: return none
-			if not (body == "*" or full_match("[0-9]\{1,2\}-[0-9]\{1,2\}", body)): return none
+			if not (body == "*" or full_match("[0-9]{1,2}-[0-9]{1,2}", body)): return none
 
 		var a = 0
 		var b = 0
@@ -95,7 +95,7 @@ fn parse_field(text: String, lo: Int, hi: Int) List[Int]?:
 			a = body.parse_int().get(0)
 			b = a
 		else:
-			if not full_match("[0-9]\{1,2\}-[0-9]\{1,2\}", body): return none
+			if not full_match("[0-9]{1,2}-[0-9]{1,2}", body): return none
 
 			ends := body.split("-")
 			a = ends[0].parse_int().get(0)
@@ -124,15 +124,15 @@ fn solve(s: String) String:
 		if l.replace(" ", "") == "": continue
 
 		t := l.split(" ")
-		pre := "line {n}:"
+		pre := f"line {n}:"
 
 		if t.length() != 7:
-			out.append("{pre} error: bad line")
+			out.append(f"{pre} error: bad line")
 			continue
 
 		var start = -1
 
-		if full_match("[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}T[0-9]\{2\}:[0-9]\{2\}", t[0]):
+		if full_match("[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}", t[0]):
 			y := t[0].slice(0, 4).get("").parse_int().get(0)
 			mo := t[0].slice(5, 7).get("").parse_int().get(0)
 			d := t[0].slice(8, 10).get("").parse_int().get(0)
@@ -153,7 +153,7 @@ fn solve(s: String) String:
 			)
 
 		if start < 0:
-			out.append("{pre} error: bad start")
+			out.append(f"{pre} error: bad start")
 			continue
 
 		if (
@@ -161,7 +161,7 @@ fn solve(s: String) String:
 			or t[1].parse_int().get(0) < 1
 			or t[1].parse_int().get(0) > 20
 		):
-			out.append("{pre} error: bad count")
+			out.append(f"{pre} error: bad count")
 			continue
 
 		count := t[1].parse_int().get(0)
@@ -179,7 +179,7 @@ fn solve(s: String) String:
 			k += 1
 
 		if bad != "":
-			out.append("{pre} error: bad {bad}")
+			out.append(f"{pre} error: bad {bad}")
 			continue
 
 		minutes := sets[0].sorted()
@@ -210,10 +210,10 @@ fn solve(s: String) String:
 			if runs.length() == count: break
 
 		if runs.is_empty():
-			out.append("{pre} never")
+			out.append(f"{pre} never")
 			continue
 
-		out.append("{pre} {runs.length()} runs")
+		out.append(f"{pre} {runs.length()} runs")
 		for r in runs: out.append(stamp(r, " "))
 
 	return out.map(fn x: x + "\n").join("")
@@ -221,12 +221,12 @@ fn solve(s: String) String:
 fn mk(name: String, s: String) GenCase: make_case(name, s, solve(s))
 
 fn rand_field(var rnd: Random, lo: Int, hi: Int) String:
-	a := "*/{rnd.randint(1, 7)}"
-	b := "{rnd.randint(lo, hi)}"
-	c := "{lo}-{rnd.randint(lo, hi)}".replace("{lo}-{lo}", "{lo}")
+	a := f"*/{rnd.randint(1, 7)}"
+	b := f"{rnd.randint(lo, hi)}"
+	c := f"{lo}-{rnd.randint(lo, hi)}".replace(f"{lo}-{lo}", f"{lo}")
 	d1 := rnd.randint(lo, hi)
 	d2 := rnd.randint(lo, hi)
-	return rnd.choice(["*", a, b, c, "{d1},{d2}"])
+	return rnd.choice(["*", a, b, c, f"{d1},{d2}"])
 
 fn rand_line(var rnd: Random) String:
 	var fields = List[String]()
@@ -245,7 +245,7 @@ fn rand_line(var rnd: Random) String:
 	)
 
 	when := stamp(rnd.randint(0, 60 * 24 * 365 * 129), "T")
-	return "{when} {rnd.randint(1, 20)} {checked.join(" ")}"
+	return f"{when} {rnd.randint(1, 20)} {checked.join(" ")}"
 
 export fn gen_c18() Void:
 	var rnd = seeded(18)

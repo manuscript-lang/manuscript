@@ -11,7 +11,7 @@ type Resource:
 	path: String
 
 fn var Resource.close() Void!:
-	append_file(self.path, "{self.id},").wait()?
+	append_file(self.path, f"{self.id},").wait()?
 
 interface Observer:
 	fn observe(value: Resource?) Bool
@@ -27,7 +27,7 @@ fn log_text(path: String) String!:
 
 test "interface reader closes intact temporary wrapper":
 	directory := temporary("iface-wrapper-")?
-	path := "{directory.path()}/log"
+	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
 
 	reader: Observer := Reader(1)

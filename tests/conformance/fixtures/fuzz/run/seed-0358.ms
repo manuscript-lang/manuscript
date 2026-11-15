@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -43,11 +43,11 @@ fn gcd(a: Int, b: Int) Int:
 
 export fn main() Int:
     l1 := [1, 14, (-12)]
-    say("l1 = {l1} len {l1.length()}")
+    say(f"l1 = {l1} len {l1.length()}")
 
     i2 := (-(40 - (33 - 22)))
-    say("i2 = {i2}")
-    say("collatz(929) = {collatz(929)}")
+    say(f"i2 = {i2}")
+    say(f"collatz(929) = {collatz(929)}")
 
     var acc3 = 0
 
@@ -57,42 +57,42 @@ export fn main() Int:
         else:
             acc3 -= 1
 
-    say("acc3 = {acc3}")
+    say(f"acc3 = {acc3}")
 
     if "".replace("héllo", "naïve").is_empty():
         say("MiXeD CaSe")
     else:
-        say(("{(-27)}:" + "日本語"))
+        say((f"{(-27)}:" + "日本語"))
 
     i4 := (-3)
-    say("i4 = {i4}")
-    say("fib(47) = {fib(47)}")
+    say(f"i4 = {i4}")
+    say(f"fib(47) = {fib(47)}")
 
     i5 := (-(-31))
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     s6 := ("42" + "  padded  ".replace("back\\slash", "gamma")).lower()
-    say("s6 = [{s6}]")
+    say(f"s6 = [{s6}]")
 
     b7 := ("naïve" == "naïve")
-    say("b7 = {b7}")
+    say(f"b7 = {b7}")
 
     i8 := l1.length()
-    say("i8 = {i8}")
+    say(f"i8 = {i8}")
 
     f9 := (((2.5 + 180.25) * 674.25) - ((800.996 + 861.569) + (152.957 - 882.665)))
-    say("f9 = {f9}")
-    say("gcd(2493, 1480) = {gcd(2493, 1480)}")
+    say(f"f9 = {f9}")
+    say(f"gcd(2493, 1480) = {gcd(2493, 1480)}")
 
     l10 := l1.concat(l1)
-    say("l10 = {l10} len {l10.length()}")
+    say(f"l10 = {l10} len {l10.length()}")
 
     i11 := i4
-    say("i11 = {i11}")
+    say(f"i11 = {i11}")
 
     s12 := (("delta" + s6) + "x".replace(s6, "gamma")).lower()
-    say("s12 = [{s12}]")
+    say(f"s12 = [{s12}]")
 
-    s13 := ("brace\{s\}" + ("{((-39) + 0)}:" + ("日本語" + s6)))
-    say("s13 = [{s13}]")
+    s13 := ("brace{s}" + (f"{((-39) + 0)}:" + ("日本語" + s6)))
+    say(f"s13 = [{s13}]")
     return 0

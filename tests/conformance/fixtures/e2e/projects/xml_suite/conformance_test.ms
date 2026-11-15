@@ -54,7 +54,7 @@ test "the W3C XML suite agrees with the parser except for the listed cases":
 
 	expected.sort()
 	print(
-		"{cases} cases, {expected.length()} not passing, {by_design} unsupported by design"
+		f"{cases} cases, {expected.length()} not passing, {by_design} unsupported by design"
 	)
 	cases | expect_equal(1216)?
 	failing | expect_equal(expected)?

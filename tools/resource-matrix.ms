@@ -26,16 +26,16 @@ type Marker:
     id: Int
 
 fn var Marker.close() Void!:
-    print("closed-\{self.id\}")
+    print("closed-{self.id}")
 
 fn saw(m: Marker) Void:
-    print("saw-\{m.id\}")
+    print("saw-{m.id}")
 
 fn saw_opt(m: Marker?) Void:
-    print("saw-\{m.is_some()\}")
+    print("saw-{m.is_some()}")
 
 fn mk(id: Int) Marker:
-    print("made-\{id\}")
+    print("made-{id}")
     return Marker(id)
 
 fn run() Void:
@@ -112,7 +112,7 @@ fn operations() List[Operation]:
 			"map",
 			"fn m: m.id",
 			"r := ",
-			"print(\"\{r.is_ok()\}\")",
+			"print(\"{r.is_ok()}\")",
 		),
 		op("map_add", map_setup(), "items", "add", "1, @V@", "", ""),
 		op(
@@ -122,7 +122,7 @@ fn operations() List[Operation]:
 			"get",
 			"1",
 			"r := ",
-			"print(\"\{r.is_some()\}\")",
+			"print(\"{r.is_some()}\")",
 		),
 		op(
 			"optional_or_else",
@@ -194,7 +194,7 @@ fn operations() List[Operation]:
 			"error",
 			"",
 			"r := ",
-			"print(\"\{r.is_some()\}\")",
+			"print(\"{r.is_some()}\")",
 		),
 		op(
 			"result_error_failed",
@@ -203,7 +203,7 @@ fn operations() List[Operation]:
 			"error",
 			"",
 			"r := ",
-			"print(\"\{r.is_some()\}\")",
+			"print(\"{r.is_some()}\")",
 		),
 	]
 
@@ -261,11 +261,11 @@ fn mentions_parameter(signature: String, names: List[String]) Bool:
 
 	for c in parts[1].chars():
 		if c == "(": depth += 1
-		if depth == 0 and c != ")": result = "{result}{c}"
-		if depth == 1 and c != "(": outside = "{outside}{c}"
+		if depth == 0 and c != ")": result = f"{result}{c}"
+		if depth == 1 and c != "(": outside = f"{outside}{c}"
 		if c == ")": depth -= 1
 
-	for word in words("{outside} {result}"):
+	for word in words(f"{outside} {result}"):
 		if names.contains(word): return true
 	return false
 
@@ -276,7 +276,7 @@ fn field(entry: JsonValue, key: String) String:
 // Every `Type.operation` of the standard type whose declaration mentions a type
 // parameter.
 fn declared_operations(ms: String, name: String) List[String]!:
-	ran := run(ms, ["search_symbol", "prelude.{name}", "--json", "--limit", "300"]).wait()?
+	ran := run(ms, ["search_symbol", f"prelude.{name}", "--json", "--limit", "300"]).wait()?
 	page := parse(ran.stdout.decode_utf8().get(""))?
 	var found = List[String]()
 	names := type_parameters(name.clone())
@@ -287,7 +287,7 @@ fn declared_operations(ms: String, name: String) List[String]!:
 			if not mentions_parameter(field(entry, "type"), names.clone()): continue
 
 			last := field(entry, "name").split(".")
-			found.append("{name}.{last[last.length() - 1]}")
+			found.append(f"{name}.{last[last.length() - 1]}")
 
 	return ok(found)
 
@@ -299,7 +299,9 @@ fn uncovered(ms: String, ops: List[Operation]) Int:
 	titles := ["List", "Map", "Set", "Optional", "Result"]
 	for o in ops:
 		for i in 0..kinds.length():
-			if o.name.starts_with("{kinds[i]}_"): known.append("{titles[i]}.{o.method}")
+			if o.name.starts_with(f"{kinds[i]}_"): known.append(
+				f"{titles[i]}.{o.method}"
+			)
 	for line in exempt(): known.append(line.split(":")[0].clone())
 
 	var missing = 0
@@ -312,7 +314,7 @@ fn uncovered(ms: String, ops: List[Operation]) Int:
 			(
 				stdout()
 				.write(
-					"coverage: could not list {title}: {listed.err().message}\n"
+					f"coverage: could not list {title}: {listed.err().message}\n"
 				)
 				.get()
 			)
@@ -325,7 +327,7 @@ fn uncovered(ms: String, ops: List[Operation]) Int:
 			(
 				stdout()
 				.write(
-					"coverage: {name} mentions a type parameter but has no row in operations() and no reason in exempt()\n"
+					f"coverage: {name} mentions a type parameter but has no row in operations() and no reason in exempt()\n"
 				)
 				.get()
 			)
@@ -350,16 +352,16 @@ fn program(o: Operation, call_form: String, arg_form: String) String:
 		argument = o.arguments.clone()
 
 	if call_form == "bound":
-		lines.append("f := {o.receiver}.{o.method}")
-		lines.append("{o.binds}f({argument})")
+		lines.append(f"f := {o.receiver}.{o.method}")
+		lines.append(f"{o.binds}f({argument})")
 	else:
-		lines.append("{o.binds}{o.receiver}.{o.method}({argument})")
+		lines.append(f"{o.binds}{o.receiver}.{o.method}({argument})")
 
 	if o.uses != "": lines.append(o.uses.clone())
 
 	var body = ""
-	for line in lines: body = "{body}    {line}\n"
-	return "{HEADER}\n{body}\n{FOOTER}\n"
+	for line in lines: body = f"{body}    {line}\n"
+	return f"{HEADER}\n{body}\n{FOOTER}\n"
 
 // How many times `prefix` + `id` appears as a line, for each id made.
 fn count(lines: List[String], prefix: String) Map[String, Int]:
@@ -387,10 +389,10 @@ fn main() Int:
 	for o in operations():
 		for call_form in ["direct", "bound"]:
 			for arg_form in ["temporary", "named"]:
-				name := "{o.name}_{call_form}_{arg_form}"
+				name := f"{o.name}_{call_form}_{arg_form}"
 				if filter != "" and not name.contains(filter): continue
 
-				file := "{scratch.path()}/{name}.ms"
+				file := f"{scratch.path()}/{name}.ms"
 				write_file(file, program(o, call_form, arg_form)).wait().get()
 
 				verdict := run(ms.clone(), ["check", file.clone()]).wait()
@@ -407,12 +409,12 @@ fn main() Int:
 						(
 							stdout()
 							.write(
-								"generated: {name} does not parse: {why}\n"
+								f"generated: {name} does not parse: {why}\n"
 							)
 							.get()
 						)
 					else if filter != "":
-						print("rejected {name}: {why}")
+						print(f"rejected {name}: {why}")
 
 					continue
 
@@ -434,7 +436,7 @@ fn main() Int:
 						(
 							stdout()
 							.write(
-								"run: {name} ({build}) could not run {ms}\n"
+								f"run: {name} ({build}) could not run {ms}\n"
 							)
 							.get()
 						)
@@ -450,7 +452,7 @@ fn main() Int:
 						(
 							stdout()
 							.write(
-								"exit: {name} ({build}) passed `ms check` but failed: {why}\n"
+								f"exit: {name} ({build}) passed `ms check` but failed: {why}\n"
 							)
 							.get()
 						)
@@ -473,7 +475,7 @@ fn main() Int:
 					var wrong = made.length() != closed.length()
 
 					for id in made:
-						want := made_counts.get_or("made-{id}", 0)
+						want := made_counts.get_or(f"made-{id}", 0)
 						var have = 0
 						for c in closed:
 							if c == id: have += 1
@@ -484,7 +486,7 @@ fn main() Int:
 						(
 							stdout()
 							.write(
-								"ownership: {name} ({build}) made {made.join(",")} and closed {closed.join(",")}; each resource must close once ({file})\n"
+								f"ownership: {name} ({build}) made {made.join(",")} and closed {closed.join(",")}; each resource must close once ({file})\n"
 							)
 							.get()
 						)
@@ -492,7 +494,7 @@ fn main() Int:
 	(
 		stdout()
 		.write(
-			"matrix: {checked} runs, {rejected} combinations rejected by the checker, {failures} failing\n"
+			f"matrix: {checked} runs, {rejected} combinations rejected by the checker, {failures} failing\n"
 		)
 		.get()
 	)

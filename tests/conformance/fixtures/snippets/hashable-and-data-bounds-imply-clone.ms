@@ -33,7 +33,7 @@ fn main() Void:
     (
         stdout()
         .write(
-            "{l.length()} {b([5, 6]).length()} {d(l)} {s.length()} {t[0]} {f([7, 8]).length()}\n"
+            f"{l.length()} {b([5, 6]).length()} {d(l)} {s.length()} {t[0]} {f([7, 8]).length()}\n"
         )
         .get()
     )

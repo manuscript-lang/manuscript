@@ -11,7 +11,7 @@ type Door:
 	log: String
 
 fn var Door.close() Void!:
-	append_file(self.log, "{self.id},").wait()?
+	append_file(self.log, f"{self.id},").wait()?
 
 fn first[T](rows: List[List[T]]) List[T]:
 	return rows.get(0)
@@ -43,13 +43,13 @@ fn use_after_return(log: String) Void!:
 
 test "break from a borrowed helper loop leaves resources with their owner":
 	tmp := temporary("ms-borrow-loop-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	break_borrowed(log.clone())?
 	logged(log.clone()) | expect_equal("2,1,")?
 
 test "return from a borrowed helper loop leaves resources with their owner":
 	tmp := temporary("ms-borrow-loop-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	use_after_return(log.clone())?
 	logged(log.clone()) | expect_equal("2,1,")?
 
@@ -75,6 +75,6 @@ fn use_after_try(log: String) Void!:
 
 test "try out of a borrowed helper loop leaves resources with their owner":
 	tmp := temporary("ms-borrow-loop-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	use_after_try(log.clone())?
 	logged(log.clone()) | expect_equal("2,1,")?

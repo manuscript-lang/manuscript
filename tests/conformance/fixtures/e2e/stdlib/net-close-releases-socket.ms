@@ -47,23 +47,23 @@ fn rebound(address: String) Int:
 
 fn cancel_accept(address: String) Void:
     work := promise(fn: ok(accept_one(address.clone())))
-    _ := work.with(options: PromiseOptions(timeout: nanoseconds(2000000))).wait()
+    void work.with(options: PromiseOptions(timeout: nanoseconds(2000000))).wait()
 
 fn cancel_read(address: String) Void:
     work := promise(fn: ok(read_one(address.clone())))
-    _ := work.with(options: PromiseOptions(timeout: nanoseconds(2000000))).wait()
+    void work.with(options: PromiseOptions(timeout: nanoseconds(2000000))).wait()
 
 fn cancel_receive(address: String) Void:
     work := promise(fn: ok(receive_one(address.clone())))
-    _ := work.with(options: PromiseOptions(timeout: nanoseconds(2000000))).wait()
+    void work.with(options: PromiseOptions(timeout: nanoseconds(2000000))).wait()
 
 fn main() Void:
     var first = listen("127.0.0.1:0").get()
     address := first.address().clone()
     first.close().get(none)
-    print("closed listener rebound: {rebound(address.clone())}")
+    print(f"closed listener rebound: {rebound(address.clone())}")
     cancel_accept(address.clone())
-    print("cancelled accept rebound: {rebound(address.clone())}")
+    print(f"cancelled accept rebound: {rebound(address.clone())}")
 
     third := listen("127.0.0.1:0").get()
     third_address := third.address().clone()
@@ -80,19 +80,19 @@ fn main() Void:
             connection.close().get(none)
 
     server.close().get(none)
-    print("cancelled reads rebound: {rebound(third_address.clone())}")
+    print(f"cancelled reads rebound: {rebound(third_address.clone())}")
 
     var udp = bind_datagram("127.0.0.1:0").get()
     udp_address := udp.address.clone()
     udp.close().get(none)
     (
         stdout().write(
-            "closed datagram socket rebound: {rebound_datagram(udp_address.clone())}\n"
+            f"closed datagram socket rebound: {rebound_datagram(udp_address.clone())}\n"
         ).get()
     )
     cancel_receive(udp_address.clone())
     (
         stdout().write(
-            "cancelled receive rebound: {rebound_datagram(udp_address.clone())}\n"
+            f"cancelled receive rebound: {rebound_datagram(udp_address.clone())}\n"
         ).get()
     )

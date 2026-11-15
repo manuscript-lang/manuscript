@@ -48,13 +48,13 @@ fn compare(left: Int, right: Int) Int:
 fn verify_json() Void!:
     limits := JsonOptions(max_bytes: 1024, max_depth: 8, max_values: 32)
     value := parse(
-        text: "\{\"large\":9007199254740993,\"ok\":true\}", options: limits
+        text: "{\"large\":9007199254740993,\"ok\":true}", options: limits
     )?
     (
         not (
             stringify(
                 value: value, options: StringifyOptions(max_bytes: 1024)
-            )? == "\{\"large\":9007199254740993,\"ok\":true\}"
+            )? == "{\"large\":9007199254740993,\"ok\":true}"
         )
     ) | expect_false?
 
@@ -114,37 +114,37 @@ fn verify_archive() Void!:
 test "expanded packages run through compiler":
     match verify_json():
         ok(_):
-            _verified := unit
+            _verified := void
         error(_):
             return fail(message: "json failed")
 
     match verify_encoding():
         ok(_):
-            _verified := unit
+            _verified := void
         error(_):
             return fail(message: "encoding failed")
 
     match verify_url():
         ok(_):
-            _verified := unit
+            _verified := void
         error(_):
             return fail(message: "url failed")
 
     match verify_binary():
         ok(_):
-            _verified := unit
+            _verified := void
         error(_):
             return fail(message: "binary failed")
 
     match verify_compression():
         ok(_):
-            _verified := unit
+            _verified := void
         error(_):
             return fail(message: "compression failed")
 
     match verify_archive():
         ok(_):
-            _verified := unit
+            _verified := void
         error(_):
             return fail(message: "archive failed")
 
@@ -175,7 +175,7 @@ test "malformed and bounded inputs return errors":
     hex_decode(text: "abcd", max_bytes: 1) | expect_equal(failure2)?
 
     limits := JsonOptions(max_bytes: 100, max_depth: 2, max_values: 10)
-    failure3 := parse(text: "\{\"a\":1,\"a\":2\}", options: limits)
+    failure3 := parse(text: "{\"a\":1,\"a\":2}", options: limits)
     (
         failure3.err().message | expect_equal(
             "JSON: invalid data: line 1, column 14: duplicate object key"

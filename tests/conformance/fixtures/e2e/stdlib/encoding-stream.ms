@@ -28,7 +28,7 @@ fn var Chunks.next() Bytes?!:
 	return ok(piece)
 
 fn var Chunks.close() Void!:
-	return ok(unit)
+	return ok()
 
 fn chunked(data: Bytes, size: Int) ReadStream[Bytes]:
 	return ReadStream[Bytes](Chunks(data, size, 0))
@@ -45,7 +45,7 @@ fn var Texts.next() String?!:
 	return ok(part)
 
 fn var Texts.close() Void!:
-	return ok(unit)
+	return ok()
 
 // Splits text into pieces of `size` characters.
 fn pieces(text: String, size: Int) List[String]:
@@ -95,7 +95,7 @@ test "base64 encoding matches the whole-value function under every chunk size":
 		for url_safe in [false, true]:
 			got := join_text(base64_encoded(chunked(data.clone(), size), url_safe))?
 			if got != base64_encode(data.clone(), url_safe): return fail(
-				"size {size} url_safe {url_safe}"
+				f"size {size} url_safe {url_safe}"
 			)
 
 test "base64 decoding matches under every text piece size":
@@ -106,7 +106,7 @@ test "base64 decoding matches under every text piece size":
 		got := join_bytes(
 			base64_decoded(ReadStream[String](Texts(pieces(text, size), 0)))
 		)?
-		if got != data: return fail("size {size}")
+		if got != data: return fail(f"size {size}")
 
 test "base64 decoding rejects malformed text and truncated groups":
 	bad := join_bytes(base64_decoded(ReadStream[String](Texts(["aGVs", "bG8*"], 0))))
@@ -175,12 +175,12 @@ test "hex steps round trip under every chunk size":
 
 	for size in 1..data.length() + 1:
 		text := join_text(hex_encoded(chunked(data.clone(), size)))?
-		if text != hex_encode(data.clone()): return fail("encode size {size}")
+		if text != hex_encode(data.clone()): return fail(f"encode size {size}")
 
 		back := join_bytes(
 			hex_decoded(ReadStream[String](Texts(pieces(text, size), 0)))
 		)?
-		if back != data: return fail("decode size {size}")
+		if back != data: return fail(f"decode size {size}")
 
 test "hex decoding rejects an odd tail":
 	outcome := join_bytes(hex_decoded(ReadStream[String](Texts(["abc"], 0))))

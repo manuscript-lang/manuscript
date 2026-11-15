@@ -8,7 +8,7 @@ fn lcg(x: Int) Int:
 
 fn report(name: String, t0: Instant, sum: Int) Void:
 	ns := monotonic().difference(t0).to_nanoseconds()
-	print("{name} {ns / 1000000} ms {sum}")
+	print(f"{name} {ns / 1000000} ms {sum}")
 
 fn main() Void:
 	n := 1000000
@@ -18,8 +18,8 @@ fn main() Void:
 
 	for i in 0..n:
 		x = lcg(x)
-		words.append("w{x % 100000}-{x / 7 % 977}")
-		longs.append("/usr/share/lib/module-{x % 100000}/file-{x / 7 % 977}.txt")
+		words.append(f"w{x % 100000}-{x / 7 % 977}")
+		longs.append(f"/usr/share/lib/module-{x % 100000}/file-{x / 7 % 977}.txt")
 
 	text := words.join(" ")
 	var t = monotonic()
@@ -134,7 +134,7 @@ fn main() Void:
 	report("concat3", t, s)
 	t = monotonic()
 	s = 0
-	for i in 0..n: s += "{words[i]}={longs[i]};".length()
+	for i in 0..n: s += f"{words[i]}={longs[i]};".length()
 	report("interp_strings", t, s)
 	t = monotonic()
 

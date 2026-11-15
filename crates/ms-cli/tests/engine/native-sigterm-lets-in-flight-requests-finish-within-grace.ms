@@ -13,7 +13,7 @@ fn handle(request: HttpRequest) HttpResponse:
     print("started")
 
     _flushed := stdout().flush()
-    _ := sleep(nanoseconds(600000000)).wait()
+    void sleep(nanoseconds(600000000)).wait()
     return HttpResponse(200, headers(), "done".to_bytes())
 
 export fn main() Int:
@@ -22,7 +22,7 @@ export fn main() Int:
         options: HttpServerOptions(grace: nanoseconds(10000000000))
     ):
         server := acquired
-        print("{server.address()}")
+        print(f"{server.address()}")
 
         _flushed := stdout().flush()
         _ignored := server.wait()

@@ -6,19 +6,19 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     s1 := "MiXeD CaSe".replace("x", "hello world")
-    say("s1 = [{s1}]")
+    say(f"s1 = [{s1}]")
 
     s2 := "42".lower().replace("emoji 😀", "MiXeD CaSe")
-    say("s2 = [{s2}]")
+    say(f"s2 = [{s2}]")
 
-    s3 := ("{((-12) - 44)}:" + (s1 + "x")).trim()
-    say("s3 = [{s3}]")
+    s3 := (f"{((-12) - 44)}:" + (s1 + "x")).trim()
+    say(f"s3 = [{s3}]")
 
     bad: Bool := 1
     b4 := s1.is_empty()
-    say("b4 = {b4}")
+    say(f"b4 = {b4}")
     return 0

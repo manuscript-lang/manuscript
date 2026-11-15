@@ -48,7 +48,7 @@ export fn main() Int:
     n := v.items.length()
     xs = [9]
     // ... allocate other lists ...
-    stdout().write("n={n} closure={fs[0]()}\n").get()
+    stdout().write(f"n={n} closure={fs[0]()}\n").get()
     return 0
 ```
 
@@ -83,7 +83,7 @@ type Res:
 
 impl Closeable for Res:
     var fn close() Unit:
-        stdout().write("close {self.id}\n").get()
+        stdout().write(f"close {self.id}\n").get()
 
 export fn main() Int:
     a := make(7).get_id()          // Res: Int field only

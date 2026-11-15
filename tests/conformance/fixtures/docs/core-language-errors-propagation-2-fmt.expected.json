@@ -1,9 +1,9 @@
 {
   "format": 1,
   "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
+  "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "\nfn prepare() Result[Void, Error]: ok(unit)\n\nfn ready_label() Result[String, Error]:\n\tprepare()?\n\treturn ok(\"ready\")\n"
+    "fmt": "\nfn prepare() Result[Void, Error]: ok()\n\nfn ready_label() Result[String, Error]:\n\tprepare()?\n\treturn ok(\"ready\")\n"
   }
 }

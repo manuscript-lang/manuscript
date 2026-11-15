@@ -6,11 +6,11 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := (-29)
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     if ((i1 / (-522019)) >= i1):
         say("  padded  ")

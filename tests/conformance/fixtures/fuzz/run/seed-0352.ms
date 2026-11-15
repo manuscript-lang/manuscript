@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -29,31 +29,31 @@ fn fib(n: Int) Int:
 
 export fn main() Int:
     l1 := [(-10), 4, 18, (-25), 28]
-    say("l1 = {l1} len {l1.length()}")
+    say(f"l1 = {l1} len {l1.length()}")
 
     b2 := (
         ((361.276 - 196.139) > (277.841 + 962.341))
         or ((0 - (-31)) <= (139960 - 44))
     )
-    say("b2 = {b2}")
+    say(f"b2 = {b2}")
 
     i3 := 0
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     s4 := "alpha"
-    say("s4 = [{s4}]")
+    say(f"s4 = [{s4}]")
 
     f5 := (((639.509 * 0.0) + 909.373) / ((996.741 * 6.0e17) + (1.5 * 4.5)))
-    say("f5 = {f5}")
+    say(f"f5 = {f5}")
 
     s6 := s4.clone()
-    say("s6 = [{s6}]")
+    say(f"s6 = [{s6}]")
 
     i7 := i3
-    say("i7 = {i7}")
-    say("gcd(1334, 1596) = {gcd(1334, 1596)}")
+    say(f"i7 = {i7}")
+    say(f"gcd(1334, 1596) = {gcd(1334, 1596)}")
 
     i8 := ((((-1) - i7) * l1.length()) - (s4.scalar_length() % s6.scalar_length()))
-    say("i8 = {i8}")
-    say("fib(10) = {fib(10)}")
+    say(f"i8 = {i8}")
+    say(f"fib(10) = {fib(10)}")
     return 0

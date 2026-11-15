@@ -72,9 +72,9 @@ fn price_cents(text: String) Optional[Int]:
 fn money(cents: Int) String:
     rest := cents % 100
     if rest < 10:
-        return "{cents / 100}.0{rest}"
+        return f"{cents / 100}.0{rest}"
 
-    return "{cents / 100}.{rest}"
+    return f"{cents / 100}.{rest}"
 
 fn label(status: Status) String:
     match status:
@@ -114,14 +114,14 @@ fn stock_cmd(var shop: Shop, sku: String, qty_text: String) String:
             current = known
         current.stock += added
         shop.skus.add(sku, current)
-        return "ok {sku} stock={current.stock}"
+        return f"ok {sku} stock={current.stock}"
 
     return "error: bad quantity"
 
 fn price_cmd(var shop: Shop, sku: String, cents_text: String) String:
     if cents := price_cents(cents_text):
         if not shop.skus.contains(sku):
-            return "error: unknown sku {sku}"
+            return f"error: unknown sku {sku}"
 
         known := shop.skus.get_or(sku, Sku(stock: 0, price: 0))
         shop.skus.add(sku, Sku(stock: known.stock, price: cents))
@@ -142,24 +142,24 @@ fn order_cmd(var shop: Shop, tokens: List[String]) String:
         if item := parse_item(token):
             items.append(item)
         else:
-            return "error: bad item {token}"
+            return f"error: bad item {token}"
 
     if shop.orders.contains(id):
-        return "error: order {id} already exists"
+        return f"error: order {id} already exists"
 
     var seen = Set[String]()
 
     for item in items:
         if seen.contains(item.sku):
-            return "error: duplicate sku {item.sku}"
+            return f"error: duplicate sku {item.sku}"
 
         seen.add(item.sku)
 
         if known := shop.skus.get(item.sku):
             if known.stock < item.qty:
-                return "error: insufficient stock for {item.sku} (have {known.stock}, need {item.qty})"
+                return f"error: insufficient stock for {item.sku} (have {known.stock}, need {item.qty})"
         else:
-            return "error: unknown sku {item.sku}"
+            return f"error: unknown sku {item.sku}"
 
     var total = 0
 
@@ -169,7 +169,7 @@ fn order_cmd(var shop: Shop, tokens: List[String]) String:
         shop.skus.add(item.sku, Sku(stock: known.stock - item.qty, price: known.price))
 
     shop.orders.add(id, Order(items: items, total: total, status: Placed))
-    return "ok {id} total={money(total)}"
+    return f"ok {id} total={money(total)}"
 
 fn cancel_cmd(var shop: Shop, id: String) String:
     if order := shop.orders.get(id).clone():
@@ -193,11 +193,11 @@ fn cancel_cmd(var shop: Shop, id: String) String:
                 )
                 return "ok"
             Shipped:
-                return "error: order {id} already shipped"
+                return f"error: order {id} already shipped"
             Cancelled:
-                return "error: order {id} already cancelled"
+                return f"error: order {id} already cancelled"
 
-    return "error: unknown order {id}"
+    return f"error: unknown order {id}"
 
 fn ship_cmd(var shop: Shop, id: String) String:
     if order := shop.orders.get(id).clone():
@@ -211,11 +211,11 @@ fn ship_cmd(var shop: Shop, id: String) String:
                 )
                 return "ok"
             Shipped:
-                return "error: order {id} already shipped"
+                return f"error: order {id} already shipped"
             Cancelled:
-                return "error: order {id} is cancelled"
+                return f"error: order {id} is cancelled"
 
-    return "error: unknown order {id}"
+    return f"error: unknown order {id}"
 
 fn report(shop: Shop) String:
     var reserved = Map[String, Int]()
@@ -245,10 +245,10 @@ fn report(shop: Shop) String:
     for sku in skus:
         if known := shop.skus.get(sku):
             lines.append(
-                "{sku} stock={known.stock} price={money(known.price)} reserved={reserved.get_or(sku, 0)}"
+                f"{sku} stock={known.stock} price={money(known.price)} reserved={reserved.get_or(sku, 0)}"
             )
-    lines.append("orders placed={placed} shipped={shipped} cancelled={cancelled}")
-    lines.append("revenue={money(revenue)}")
+    lines.append(f"orders placed={placed} shipped={shipped} cancelled={cancelled}")
+    lines.append(f"revenue={money(revenue)}")
     return lines.join("\n")
 
 fn handle(var shop: Shop, tokens: List[String]) String:
@@ -300,6 +300,6 @@ export fn main() Int:
     for line in read_lines(stdin()).get():
         if not is_blank(line):
             reply := handle(var shop, line.split(" "))
-            out.write("{reply}\n").get()
+            out.write(f"{reply}\n").get()
 
     return 0

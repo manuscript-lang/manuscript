@@ -259,7 +259,7 @@ fn insert(var routes: List[Route], route: Route) Void!:
 		if existing.method == route.method and shape_of(existing.segments) == shape:
 			return error(
 				Error(
-					"router: duplicate route {route.method} {route.pattern}",
+					f"router: duplicate route {route.method} {route.pattern}",
 					kind: "EEXIST",
 					details: {
 						"method": route.method.clone(),
@@ -297,7 +297,7 @@ fn in_order[T](var from: List[T]) List[T]:
 
 fn invalid_pattern(pattern: String) Error:
 	return Error(
-		"router: invalid pattern {pattern}",
+		f"router: invalid pattern {pattern}",
 		kind: "EINVAL",
 		details: {"pattern": pattern.clone()},
 	)
@@ -351,7 +351,7 @@ fn shape_of(segments: List[Segment]) String:
 
 fn shape_text(segment: Segment) String:
 	match segment:
-		Literal(text): return "={text}"
+		Literal(text): return f"={text}"
 		Param(_): return ":"
 		Rest(_): return "*"
 
@@ -629,7 +629,7 @@ fn var TestExchange.send(status: Int, headers: HttpHeaders, body: Bytes) Void!:
 
 	var guard = hold[TestState](self.state)
 	guard.items[0].complete = true
-	if self.request.method.text() == "HEAD" or not has_body(status): return ok(unit)
+	if self.request.method.text() == "HEAD" or not has_body(status): return ok()
 
 	guard.items[0].body.append_bytes(body)
 
@@ -654,7 +654,7 @@ fn var TestExchange.write_bytes(data: Bytes) Void!:
 	if not has_body(guard.items[0].status): return error(
 		Error("I/O: invalid input", kind: "EINVAL")
 	)
-	if self.request.method.text() == "HEAD": return ok(unit)
+	if self.request.method.text() == "HEAD": return ok()
 
 	guard.items[0].body.append_bytes(data)
 
@@ -777,7 +777,7 @@ fn with_extra(sent: HttpHeaders, extra: HttpHeaders) HttpHeaders:
 	for name in extra.names():
 		if not all.contains(name):
 			for value in extra.values(name):
-				all.append(name, value).get(unit)
+				void all.append(name, value)
 	return all
 
 // Middleware that gives every request an id: the request's own `X-Request-Id` when it

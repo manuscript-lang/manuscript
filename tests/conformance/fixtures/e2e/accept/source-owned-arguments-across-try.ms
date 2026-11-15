@@ -17,9 +17,9 @@ fn Box.consume(value: Int) Int:
 	return boxes.length() + value
 
 test "source consuming argument remains owned after later try":
-	key := "long-dynamic-map-key-{1}"
+	key := f"long-dynamic-map-key-{1}"
 	expect_equal(consume(key, successful_value(7)?), 8)?
 
 test "source consuming receiver remains owned after later try":
-	box := Box("long-dynamic-map-key-{1}")
+	box := Box(f"long-dynamic-map-key-{1}")
 	expect_equal(box.consume(successful_value(7)?), 8)?

@@ -51,7 +51,7 @@ test "uuid_v5 accepts an uppercase namespace and rejects malformed ones":
 		"6ba7b810-9dad-11d1-80b4-00c04fd430cZ"
 	]:
 		result := uuid_v5(bad, "x")
-		if _ := result: return fail("accepted {bad}")
+		if _ := result: return fail(f"accepted {bad}")
 
 test "uuid_version reads the version of valid text only":
 	uuid_version("886313e1-3b8a-5372-9b90-0c9aee199e5d") | expect_equal(5)?
@@ -64,7 +64,7 @@ test "uuid_v7 is a version-7 uuid that sorts by creation time":
 	uuid_version(first) | expect_equal(7)?
 	first.length() | expect_equal(36)?
 
-	_ := sleep(milliseconds(3)).wait()
+	void sleep(milliseconds(3)).wait()
 	second := (uuid_v7() | expect_ok?)
 	(first < second) | expect_true?
 
@@ -73,10 +73,10 @@ test "ulid has 26 Crockford characters and sorts by creation time":
 	first.length() | expect_equal(26)?
 	for ch in first.chars():
 		if not "0123456789ABCDEFGHJKMNPQRSTVWXYZ".contains(ch): return fail(
-			"bad character {ch}"
+			f"bad character {ch}"
 		)
 
-	_ := sleep(milliseconds(3)).wait()
+	void sleep(milliseconds(3)).wait()
 	second := (ulid() | expect_ok?)
 	(first < second) | expect_true?
 

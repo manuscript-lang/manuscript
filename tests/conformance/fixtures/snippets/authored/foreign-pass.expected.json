@@ -1,13 +1,13 @@
 {
   "format": 1,
   "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
+  "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "'pass' is not a keyword; write 'unit' for an empty block or match arm",
+        "message": "'pass' is not a keyword; write 'void' for an empty block or match arm",
         "position": {
           "file": "foreign-pass.ms",
           "line": 5,
@@ -33,7 +33,7 @@
             "column": 9,
             "offset": 137
           },
-          "replacement": "unit"
+          "replacement": "void"
         }
       }
     ],

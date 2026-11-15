@@ -96,9 +96,9 @@ type Logical:
 
 fn fatal(line: Int, msg: String) Fatal:
     if line > 0:
-        return Fatal(text: "Makefile:{line}: *** {msg}.  Stop.")
+        return Fatal(text: f"Makefile:{line}: *** {msg}.  Stop.")
 
-    return Fatal(text: "make: *** {msg}.  Stop.")
+    return Fatal(text: f"make: *** {msg}.  Stop.")
 
 fn silent_abort() Fatal:
     return Fatal(text: "")
@@ -216,14 +216,14 @@ fn top_colon(cs: List[String]) Int:
             k += 2
             continue
 
-        if c == "$" and k + 1 < n and (cs.get(k + 1) == "(" or cs.get(k + 1) == "\{"):
+        if c == "$" and k + 1 < n and (cs.get(k + 1) == "(" or cs.get(k + 1) == "{"):
             depth += 1
             k += 2
             continue
 
-        if depth > 0 and (c == "(" or c == "\{"):
+        if depth > 0 and (c == "(" or c == "{"):
             depth += 1
-        else if depth > 0 and (c == ")" or c == "\}"):
+        else if depth > 0 and (c == ")" or c == "}"):
             depth -= 1
         else if depth == 0 and c == ":":
             return k
@@ -400,9 +400,9 @@ fn split_args(body: String) List[String]:
     var depth = 0
 
     for c in body.chars():
-        if c == "(" or c == "\{":
+        if c == "(" or c == "{":
             depth += 1
-        if c == ")" or c == "\}":
+        if c == ")" or c == "}":
             depth -= 1
 
         if c == "," and depth == 0:
@@ -457,7 +457,7 @@ fn lookup(var st: St, sc: Scope, stack: List[String], name: String) Result[
             return error(
                 fatal(
                     sc.line,
-                    "Recursive variable '{name}' references itself (eventually)"
+                    f"Recursive variable '{name}' references itself (eventually)"
                 )
             )
 
@@ -570,7 +570,7 @@ fn call_func(var st: St, sc: Scope, stack: List[String], name: String, body: Str
 
     if name == "words":
         ws := split_words(try arg(var st, sc, stack, raw, 0))
-        return ok("{ws.length()}")
+        return ok(f"{ws.length()}")
 
     if name == "firstword" or name == "lastword":
         ws := split_words(try arg(var st, sc, stack, raw, 0))
@@ -736,9 +736,9 @@ fn subst_colon(cs: List[String]) Int:
 
             return -1
 
-        if c == "(" or c == "\{":
+        if c == "(" or c == "{":
             depth += 1
-        if c == ")" or c == "\}":
+        if c == ")" or c == "}":
             depth -= 1
         k += 1
 
@@ -772,8 +772,8 @@ fn expand(var st: St, sc: Scope, stack: List[String], text: String) Result[
             k += 2
             continue
 
-        if d == "(" or d == "\{":
-            var close = "\}"
+        if d == "(" or d == "{":
+            var close = "}"
             if d == "(":
                 close = ")"
 
@@ -822,9 +822,9 @@ fn cond_args(rest: String) Optional[Pair]:
 
     while k < n:
         c := cs.get(k)
-        if c == "(" or c == "\{":
+        if c == "(" or c == "{":
             depth += 1
-        if c == ")" or c == "\}":
+        if c == ")" or c == "}":
             depth -= 1
 
         if depth == 0:
@@ -844,9 +844,9 @@ fn cond_args(rest: String) Optional[Pair]:
 
     while j < inner.length():
         c := inner.get(j)
-        if c == "(" or c == "\{":
+        if c == "(" or c == "{":
             d2 += 1
-        if c == ")" or c == "\}":
+        if c == ")" or c == "}":
             d2 -= 1
 
         if c == "," and d2 == 0:
@@ -1051,7 +1051,7 @@ fn close_rule(var st: St, var mk: Mk) Result[Unit, Fatal]:
                         st
                         .out
                         .append(
-                            "Makefile:{r.line}: warning: overriding recipe for target '{t}'"
+                            f"Makefile:{r.line}: warning: overriding recipe for target '{t}'"
                         )
                     )
                 e.recipe = r.recipe.clone()
@@ -1243,7 +1243,7 @@ fn simulate(var st: St, cmd: String) Int:
 
     if w0 == "cp" and args.length() == 2:
         if not st.files.contains(args.get(0)):
-            st.out.append("cp: cannot stat '{args.get(0)}': No such file or directory")
+            st.out.append(f"cp: cannot stat '{args.get(0)}': No such file or directory")
             return 1
 
         st.clock += 1
@@ -1317,11 +1317,11 @@ fn run_recipe(var st: St, var mk: Mk, name: String, r: Resolved, newer: List[Str
                     st
                     .out
                     .append(
-                        "make: [Makefile:{rl.line}: {name}] Error {status} (ignored)"
+                        f"make: [Makefile:{rl.line}: {name}] Error {status} (ignored)"
                     )
                 )
             else:
-                st.out.append("make: *** [Makefile:{rl.line}: {name}] Error {status}")
+                st.out.append(f"make: *** [Makefile:{rl.line}: {name}] Error {status}")
                 return error(silent_abort())
 
     if not mk.dry and not is_phony(mk, name):
@@ -1342,7 +1342,7 @@ fn update(var st: St, var mk: Mk, name: String, needed: String) Result[Bool, Fat
     if m := mk.memo.get(name):
         return ok(m)
     if mk.stack.contains(name):
-        return error(fatal(0, "Circular dependency detected: {chain(mk.stack, name)}"))
+        return error(fatal(0, f"Circular dependency detected: {chain(mk.stack, name)}"))
 
     r := resolve(st, mk, name)
 
@@ -1356,9 +1356,9 @@ fn update(var st: St, var mk: Mk, name: String, needed: String) Result[Bool, Fat
             return ok(true)
 
         if needed == "":
-            return error(fatal(0, "No rule to make target '{name}'"))
+            return error(fatal(0, f"No rule to make target '{name}'"))
 
-        return error(fatal(0, "No rule to make target '{name}', needed by '{needed}'"))
+        return error(fatal(0, f"No rule to make target '{name}', needed by '{needed}'"))
 
     existed := st.files.contains(name)
     old := st.files.get(name).get(0)
@@ -1422,9 +1422,9 @@ fn build_req(var st: St, lines: List[String], goals_in: List[String], dry: Bool)
                 r.recipe.length() > 0
                 or (not mk.phony.contains(g) and st.files.contains(g))
             ):
-                st.out.append("make: '{g}' is up to date.")
+                st.out.append(f"make: '{g}' is up to date.")
             else:
-                st.out.append("make: Nothing to be done for '{g}'.")
+                st.out.append(f"make: Nothing to be done for '{g}'.")
 
     return ok(unit)
 
@@ -1439,7 +1439,7 @@ fn dep_walk(
         if seen.contains(c):
             continue
         if stack.contains(c):
-            return error(fatal(0, "Circular dependency detected: {chain(stack, c)}"))
+            return error(fatal(0, f"Circular dependency detected: {chain(stack, c)}"))
 
         stack.append(c)
         try dep_walk(var st, mk, c, var stack, var seen, var out)
@@ -1472,7 +1472,7 @@ fn targets_req(var st: St, lines: List[String]) Result[Unit, Fatal]:
     mk := try parse(var st, lines)
     d := default_goal(mk)
     if d != "":
-        st.out.append("default: {d}")
+        st.out.append(f"default: {d}")
     for e in mk.rules.values():
         st.out.append(rule_text(e.name, e.normal, e.order))
     for p in mk.pats:
@@ -1485,7 +1485,7 @@ fn expand_req(var st: St, lines: List[String], text: String) Result[Unit, Fatal]
     try parse_only(var st, lines)
 
     v := try expand(var st, plain(0), [], text)
-    st.out.append("[{v}]")
+    st.out.append(f"[{v}]")
     return ok(unit)
 
 // Sets the command-line variables and returns the remaining (target) arguments.
@@ -1520,7 +1520,7 @@ fn files_req(var st: St) Result[Unit, Fatal]:
     if names.length() == 0:
         st.out.append("(no files)")
     for f in names:
-        st.out.append("{f} {st.files.get(f).get(0)}")
+        st.out.append(f"{f} {st.files.get(f).get(0)}")
     return ok(unit)
 
 fn touch_req(var st: St, args: List[String]) Result[Unit, Fatal]:
@@ -1578,7 +1578,7 @@ fn dispatch(var st: St, mk_lines: List[String], line: String, words: List[String
             st.files.remove(a)
         return ok(unit)
 
-    st.out.append("unknown request: {cmd}")
+    st.out.append(f"unknown request: {cmd}")
     return ok(unit)
 
 export fn main() Int:
@@ -1616,7 +1616,7 @@ export fn main() Int:
         if t == "" or t.starts_with("#"):
             continue
 
-        st.out.append("> {ln.trim_end()}")
+        st.out.append(f"> {ln.trim_end()}")
 
         res := dispatch(var st, mk_lines, t, split_words(t))
 

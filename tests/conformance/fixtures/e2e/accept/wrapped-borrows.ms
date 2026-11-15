@@ -25,8 +25,8 @@ fn tail(result: Row!Bad, var visits: List[Int]) String!Bad:
 
 fn make(n: Int) Row:
 	return Row(
-		"row-{n}-with-a-heap-allocated-name",
-		["tag-{n}-with-a-heap-allocated-text"],
+		f"row-{n}-with-a-heap-allocated-name",
+		[f"tag-{n}-with-a-heap-allocated-text"],
 	)
 
 test "wrapped parts are references into their arguments":

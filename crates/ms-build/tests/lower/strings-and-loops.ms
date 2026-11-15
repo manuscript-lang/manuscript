@@ -9,4 +9,4 @@ fn main() Void:
     for x in [1, 2, 3]:
         total += x
 
-    _r := stdout().write("total {total}\n")
+    _r := stdout().write(f"total {total}\n")

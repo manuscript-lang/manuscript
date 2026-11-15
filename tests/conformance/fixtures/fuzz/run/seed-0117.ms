@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -30,19 +30,19 @@ fn collatz(start: Int) Int:
 
 export fn main() Int:
     i1 := ((-(-29)) - 670310)
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     f2 := (
         (235.25 / (677.25 + 947.25))
         + ((557.467 - 347.176) / (187.534 * 116.169))
     )
-    say("f2 = {f2}")
+    say(f"f2 = {f2}")
 
     i3 := ((42 * i1) - ((29 - i1) + (27 % i1)))
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     i4 := i3
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     var acc6 = 0
     var stepacc6 = 0
@@ -51,34 +51,34 @@ export fn main() Int:
         stepacc6 += 1
         acc6 += stepacc6 * stepacc6 + 7
 
-    say("acc6 = {acc6}")
+    say(f"acc6 = {acc6}")
 
     i7 := (-0)
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
     f8 := ((228.975 - (904.25 + f2)) * ((f2 + 143.25) - f2))
-    say("f8 = {f8}")
+    say(f"f8 = {f8}")
 
     f9 := ((6.0e11 + f8) * (f8 + 120.442))
-    say("f9 = {f9}")
+    say(f"f9 = {f9}")
 
     i10 := ((-i7) % i4)
-    say("i10 = {i10}")
+    say(f"i10 = {i10}")
 
     i11 := (-18)
-    say("i11 = {i11}")
+    say(f"i11 = {i11}")
 
     i12 := i11
-    say("i12 = {i12}")
-    say("fact(2) = {fact(2)}")
+    say(f"i12 = {i12}")
+    say(f"fact(2) = {fact(2)}")
 
     f13 := f8
-    say("f13 = {f13}")
-    say("collatz(2730) = {collatz(2730)}")
+    say(f"f13 = {f13}")
+    say(f"collatz(2730) = {collatz(2730)}")
 
     i14 := (i1 * ((-977642) + 32))
-    say("i14 = {i14}")
+    say(f"i14 = {i14}")
 
     b15 := (("".trim() != "alpha".upper()) or (true and false))
-    say("b15 = {b15}")
+    say(f"b15 = {b15}")
     return 0

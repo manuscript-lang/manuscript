@@ -22,7 +22,7 @@ fn ok_route(request: HttpRequest) HttpResponse:
 	return HttpResponse(status: 200, headers: headers(), body: "ok".to_bytes())
 
 fn slow_route(request: HttpRequest) HttpResponse:
-	_ := sleep(30.seconds()).wait()
+	void sleep(30.seconds()).wait()
 	return HttpResponse(status: 200, headers: headers(), body: "late".to_bytes())
 
 test "serve ends a connection that trickles its request head":
@@ -40,7 +40,7 @@ test "serve ends a connection that trickles its request head":
 	var sent = 0
 
 	while sent < 30:
-		_ := sleep(100.milliseconds()).wait()
+		void sleep(100.milliseconds()).wait()
 		written := send(var client, "a")
 		if written.is_error(): break
 
@@ -53,7 +53,7 @@ test "serve ends a connection that trickles its request head":
 	if reply := recv(var client, 3.seconds()):
 		text := reply.get(Bytes([])).decode_utf8().get("")
 		if text.starts_with("HTTP/1.1 200"): return error(
-			Error("incomplete request was served: {text}")
+			Error(f"incomplete request was served: {text}")
 		)
 
 test "close cancels a handler that outlives the grace period":
@@ -67,7 +67,7 @@ test "close cancels a handler that outlives the grace period":
 	var client = connect(server.address(), timeout: 2.seconds()).wait() | expect_ok?
 	send(var client, "GET / HTTP/1.1\r\nHost: t\r\n\r\n") | expect_ok?
 
-	_ := sleep(100.milliseconds()).wait()
+	void sleep(100.milliseconds()).wait()
 	server.close()?
 
 	// An error here is the connection ending (a reset on macOS); only a served reply
@@ -98,7 +98,7 @@ test "close cancels a handler parked on a request body and releases its stream":
 		) | expect_ok?
 	)
 
-	_ := sleep(100.milliseconds()).wait()
+	void sleep(100.milliseconds()).wait()
 	server.close()?
 
 	if reply := recv(var client, 5.seconds()):
@@ -111,7 +111,7 @@ fn expect_file_reply(var conn: Connection) Void!:
 	reply := recv(var conn, 10.seconds()) | expect_ok?
 	text := reply.get(Bytes([])).decode_utf8().get("")
 	if not text.starts_with("HTTP/1.1 200"): return error(
-		Error("file handler failed: {text}")
+		Error(f"file handler failed: {text}")
 	)
 
 test "serve answers requests while handlers read and write files":
@@ -120,14 +120,14 @@ test "serve answers requests while handlers read and write files":
 	payload := ("0123456789abcdef".repeat(262144) | expect_ok?).to_bytes()
 
 	fn io_route(request: HttpRequest) HttpResponse:
-		path := "{root}/slot{request.query}.bin"
+		path := f"{root}/slot{request.query}.bin"
 		wrote := write_file(path, payload.clone(), replace: true).wait()
 		if wrote.is_error(): return HttpResponse(500, headers(), "write".to_bytes())
 
 		read := read_file(path).wait()
 		if read.is_error(): return HttpResponse(500, headers(), "read".to_bytes())
 
-		return HttpResponse(200, headers(), "{read.get().length()}".to_bytes())
+		return HttpResponse(200, headers(), f"{read.get().length()}".to_bytes())
 
 	var server = serve(address: "127.0.0.1:0", handler: buffered(io_route)) | expect_ok?
 	var a = connect(server.address(), timeout: 2.seconds()).wait() | expect_ok?
@@ -171,7 +171,7 @@ test "serve answers 500 when a whole response exceeds max_response_bytes":
 	reply_bytes := recv(var client, 3.seconds()) | expect_ok?
 	head := reply_bytes.get(Bytes([])).decode_utf8().get("")
 	if not head.starts_with("HTTP/1.1 500"): return error(
-		Error("expected a 500 reply, got: {head}")
+		Error(f"expected a 500 reply, got: {head}")
 	)
 
 fn raw_status(address: String, request: String) String!:
@@ -185,9 +185,9 @@ fn raw_status(address: String, request: String) String!:
 test "asterisk-form target is accepted only for OPTIONS":
 	server := serve(address: "127.0.0.1:0", handler: buffered(ok_route)) | expect_ok?
 	tail := "HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n"
-	get := raw_status(server.address(), "GET * {tail}") | expect_ok?
-	options := raw_status(server.address(), "OPTIONS * {tail}") | expect_ok?
-	if get != "HTTP/1.1 400 Bad Request": return error(Error("GET * answered: {get}"))
+	get := raw_status(server.address(), f"GET * {tail}") | expect_ok?
+	options := raw_status(server.address(), f"OPTIONS * {tail}") | expect_ok?
+	if get != "HTTP/1.1 400 Bad Request": return error(Error(f"GET * answered: {get}"))
 	if options != "HTTP/1.1 200 OK": return error(
-		Error("OPTIONS * answered: {options}")
+		Error(f"OPTIONS * answered: {options}")
 	)

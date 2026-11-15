@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -16,7 +16,7 @@ fn gcd(a: Int, b: Int) Int:
 
 export fn main() Int:
     l2 := [(-23), (-22)]
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     var acc3 = 0
     var stepacc3 = 0
@@ -25,7 +25,7 @@ export fn main() Int:
         stepacc3 += 1
         acc3 += stepacc3 * stepacc3 + 4
 
-    say("acc3 = {acc3}")
+    say(f"acc3 = {acc3}")
 
     if false:
         say("naïve")
@@ -33,17 +33,17 @@ export fn main() Int:
         say("beta")
 
     i4 := ((-39) + ((-741486) - (-46)))
-    say("i4 = {i4}")
-    say("gcd(2368, 28) = {gcd(2368, 28)}")
+    say(f"i4 = {i4}")
+    say(f"gcd(2368, 28) = {gcd(2368, 28)}")
 
     b5 := (((-(-5)) - (47 % 48)) <= (-((-36) % i4)))
-    say("b5 = {b5}")
+    say(f"b5 = {b5}")
 
     l6 := l2.map(fn x: x + 2).filter(fn x: x % 2 == 0)
-    say("l6 = {l6} len {l6.length()}")
+    say(f"l6 = {l6} len {l6.length()}")
 
     s7 := "delta".upper()
-    say("s7 = [{s7}]")
+    say(f"s7 = [{s7}]")
 
     var acc8 = 0
 
@@ -53,8 +53,8 @@ export fn main() Int:
         else:
             acc8 -= 1
 
-    say("acc8 = {acc8}")
+    say(f"acc8 = {acc8}")
 
     l9 := [8, (-2)]
-    say("l9 = {l9} len {l9.length()}")
+    say(f"l9 = {l9} len {l9.length()}")
     return 0

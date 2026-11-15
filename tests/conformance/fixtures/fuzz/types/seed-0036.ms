@@ -6,18 +6,18 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := (-1)
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     s2 := "naïve"
-    say("s2 = [{s2}]")
+    say(f"s2 = [{s2}]")
 
     fixed := 1
     fixed = 2
     say(
-        "{((i1 * i1) / (6 + 36))} {((i1 - (-6)) + (i1 % i1))} {(((i1 * i1) / (6 + 36)) < ((i1 - (-6)) + (i1 % i1)))} sum {((i1 * i1) / (6 + 36)) + ((i1 - (-6)) + (i1 % i1))}"
+        f"{((i1 * i1) / (6 + 36))} {((i1 - (-6)) + (i1 % i1))} {(((i1 * i1) / (6 + 36)) < ((i1 - (-6)) + (i1 % i1)))} sum {((i1 * i1) / (6 + 36)) + ((i1 - (-6)) + (i1 % i1))}"
     )
     return 0

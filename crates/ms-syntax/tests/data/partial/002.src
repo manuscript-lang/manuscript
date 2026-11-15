@@ -32,6 +32,6 @@ test "unary plus keeps the operand":
 
 test "floating operations retain binary64 edge behavior":
     negative_zero := -0.0
-    expect_equal("\{1.0 / negative_zero\}", "-Infinity")?
+    expect_equal(f"{1.0 / negative_zero}", "-Infinity")?
     nan := 0.0 / 0.0
     expe?

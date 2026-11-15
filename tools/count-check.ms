@@ -44,7 +44,7 @@ fn main() Int:
 	for f in arguments(): files.append(f.clone())
 	if files.is_empty():
 		for f in glob("tests/ownership-counts", GlobOptions(patterns: ["*.ms"])).get([]):
-			files.append("tests/ownership-counts/{f.path}")
+			files.append(f"tests/ownership-counts/{f.path}")
 
 	ms := tool_ms(root.clone())
 	scratch := temporary("ms-counts-").get()
@@ -54,11 +54,14 @@ fn main() Int:
 	var checked = 0
 
 	for f in files:
-		source := read_file("{root}/{f}").wait().get().decode_utf8().get("")
+		source := read_file(f"{root}/{f}").wait().get().decode_utf8().get("")
 		expected_out := after(source, "// expect-stdout: ")
 
 		for build in ["debug", "release"]:
-			ran := run(ms.clone(), ["run", "{root}/{f}", "--build-type", build.clone()]).wait()
+			ran := run(
+				ms.clone(),
+				["run", f"{root}/{f}", "--build-type", build.clone()],
+			).wait()
 			checked += 1
 
 			if ran.is_error():
@@ -68,7 +71,7 @@ fn main() Int:
 				(
 					stdout()
 					.write(
-						"run: {f} ({build}) could not run {ms}: {cause}; check MS and the fixture's process/output limits\n"
+						f"run: {f} ({build}) could not run {ms}: {cause}; check MS and the fixture's process/output limits\n"
 					)
 					.get()
 				)
@@ -83,7 +86,7 @@ fn main() Int:
 				(
 					stdout()
 					.write(
-						"exit: {f} ({build}) exited {child.exit_code}; fix the fixture failure\n{err}"
+						f"exit: {f} ({build}) exited {child.exit_code}; fix the fixture failure\n{err}"
 					)
 					.get()
 				)
@@ -96,12 +99,12 @@ fn main() Int:
 				failures += 1
 
 				shown := if not live.is_empty(): live[0].clone() else: "an unreported number of"
-				print("leak: {f} ({build}) left {shown} live blocks")
+				print(f"leak: {f} ({build}) left {shown} live blocks")
 
 			var have = List[String]()
 			if not counts.is_empty(): have = counts[0].split(" ").clone()
 
-			for header in after(source, "// expect-{build}: "):
+			for header in after(source, f"// expect-{build}: "):
 				for pair in header.split(" "):
 					if pair == "": continue
 
@@ -114,7 +117,7 @@ fn main() Int:
 						(
 							stdout()
 							.write(
-								"count: {f} ({build}) wants {want}; runtime reported: {counts.join(" ")}\n"
+								f"count: {f} ({build}) wants {want}; runtime reported: {counts.join(" ")}\n"
 							)
 							.get()
 						)
@@ -124,10 +127,10 @@ fn main() Int:
 
 				if out.trim_end() != expected_out.join("\n"):
 					failures += 1
-					print("stdout: {f} ({build}) differs:\n{out}")
+					print(f"stdout: {f} ({build}) differs:\n{out}")
 
 	change_directory(root).get()
-	print("checked {checked} expectations, {failures} failing")
+	print(f"checked {checked} expectations, {failures} failing")
 
 	if checked == 0:
 		print("no expectations ran")

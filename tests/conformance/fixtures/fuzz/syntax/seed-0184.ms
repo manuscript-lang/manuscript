@@ -6,17 +6,17 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     b1 := (((857.678 + 16.786) + (1.0e-8 - 331.701)) == 495.25)
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
     l2 := [9, 28, 7, (-11)]
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     b3 := true
-    say("b3 = {b3}")
+    say(f"b3 = {b3}")
 
     l4 := l2.clone().append(38)
-    say("l4 = {l4} len {l4.length()}")
+    say(f"l4 = {l4} len {l4.length()}")

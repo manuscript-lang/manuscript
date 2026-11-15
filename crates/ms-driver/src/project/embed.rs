@@ -125,7 +125,7 @@ fn literal(text: &str) -> Result<String, ProjectError> {
     let mut out = String::from("\"");
     for c in text.chars() {
         match c {
-            '\\' | '"' | '{' | '}' => {
+            '\\' | '"' => {
                 out.push('\\');
                 out.push(c);
             }
@@ -269,7 +269,7 @@ mod tests {
 
     #[test]
     fn names_with_braces_and_quotes_are_escaped() {
-        assert_eq!(literal("a{b}\"c\\").unwrap(), "\"a\\{b\\}\\\"c\\\\\"");
+        assert_eq!(literal("a{b}\"c\\").unwrap(), "\"a{b}\\\"c\\\\\"");
         assert!(literal("tab\there").is_err());
     }
 

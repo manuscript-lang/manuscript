@@ -6,28 +6,28 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     f1 := (
         ((36.044 + 670.851) * (59.232 / 213.585))
         + ((790.516 * 242.723) * (681.659 - 576.900))
     )
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
 
     b2 := (not false)
-    say("b2 = {b2}")
+    say(f"b2 = {b2}")
 
     bad := [1, "two"]
     b3 := ("hello world" == ("quote\"d".replace("quote\"d", "日本語") + "ms"))
-    say("b3 = {b3}")
+    say(f"b3 = {b3}")
 
     f4 := f1
-    say("f4 = {f4}")
+    say(f"f4 = {f4}")
 
     l5 := [3, (-20), 2]
-    say("l5 = {l5} len {l5.length()}")
+    say(f"l5 = {l5} len {l5.length()}")
 
     b6 := (750.176 == ((533.497 / f1) * f4))
-    say("b6 = {b6}")
+    say(f"b6 = {b6}")
     return 0

@@ -12,7 +12,7 @@ type Tracked:
 	id: Int
 
 fn var Tracked.close() Void!:
-	_ := append_file(self.log, "{self.id},").wait()
+	void append_file(self.log, f"{self.id},").wait()
 
 fn track(log: String, id: Int) Tracked:
 	return Tracked(log, id)
@@ -40,7 +40,7 @@ type Wrapper:
 	inner: Tracked
 
 fn var Wrapper.close() Void!:
-	_ := append_file(self.log, "wrapper,").wait()
+	void append_file(self.log, "wrapper,").wait()
 
 fn holds_fields(log: String) Int:
 	p := Pair(track(log.clone(), 1), track(log, 2))
@@ -90,61 +90,61 @@ fn moves_on(log: String) Pair:
 
 test "a record closes its fields, last declared first":
 	temporary := temporary("manuscript-parts-") | expect_ok?
-	log := "{temporary.path()}/log"
+	log := f"{temporary.path()}/log"
 	expect_equal(holds_fields(log.clone()), 1)?
 	expect_equal(closed(log), "2,1,")?
 
 test "a list closes its elements, last first":
 	temporary := temporary("manuscript-parts-") | expect_ok?
-	log := "{temporary.path()}/log"
+	log := f"{temporary.path()}/log"
 	expect_equal(holds_list(log.clone()), 3)?
 	expect_equal(closed(log), "3,2,1,")?
 
 test "a map closes its values, last inserted first":
 	temporary := temporary("manuscript-parts-") | expect_ok?
-	log := "{temporary.path()}/log"
+	log := f"{temporary.path()}/log"
 	expect_equal(holds_map(log.clone()), 2)?
 	expect_equal(closed(log), "2,1,")?
 
 test "nested records and lists close depth first, last first":
 	temporary := temporary("manuscript-parts-") | expect_ok?
-	log := "{temporary.path()}/log"
+	log := f"{temporary.path()}/log"
 	expect_equal(holds_nested(log.clone()), 2)?
 	expect_equal(closed(log), "4,3,2,1,")?
 
 test "an optional closes the resource it holds":
 	temporary := temporary("manuscript-parts-") | expect_ok?
-	log := "{temporary.path()}/log"
+	log := f"{temporary.path()}/log"
 	expect_equal(holds_optional(log.clone(), true), 0)?
 	expect_equal(closed(log.clone()), "1,")?
 
 test "an empty optional closes nothing":
 	temporary := temporary("manuscript-parts-") | expect_ok?
-	log := "{temporary.path()}/log"
+	log := f"{temporary.path()}/log"
 	expect_equal(holds_optional(log.clone(), false), 0)?
 	expect_equal(closed(log), "")?
 
 test "an alternative closes the fields of the case it holds":
 	temporary := temporary("manuscript-parts-") | expect_ok?
-	log := "{temporary.path()}/log"
+	log := f"{temporary.path()}/log"
 	expect_equal(holds_alternative(log.clone()), 0)?
 	expect_equal(closed(log), "2,1,")?
 
 test "a type's own close runs before the resources it holds":
 	temporary := temporary("manuscript-parts-") | expect_ok?
-	log := "{temporary.path()}/log"
+	log := f"{temporary.path()}/log"
 	expect_equal(holds_wrapper(log.clone()), 1)?
 	expect_equal(closed(log), "wrapper,1,")?
 
 test "an early return closes the parts":
 	temporary := temporary("manuscript-parts-") | expect_ok?
-	log := "{temporary.path()}/log"
+	log := f"{temporary.path()}/log"
 	expect_equal(returns_early(log.clone(), true), 1)?
 	expect_equal(closed(log), "2,1,")?
 
 test "a record handed to the caller is not closed by the callee":
 	temporary := temporary("manuscript-parts-") | expect_ok?
-	log := "{temporary.path()}/log"
+	log := f"{temporary.path()}/log"
 	p := moves_on(log.clone())
 	expect_equal(closed(log), "")?
 	expect_equal(p.first.id, 1)?

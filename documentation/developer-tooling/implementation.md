@@ -278,7 +278,7 @@ Each lint rule is a **warning** or an **error**. `lint` returns 1 when a source 
 | MSL114 | error | A resource closed when its scope ends whose type has a zero-argument `flush` or `commit` returning a `Result` that nothing calls. Call the separate fallible operation, such as `x.flush()?`, before the scope ends so its result is handled. See [scopes](../core-language/cleanup/scopes.md) |
 | MSL115 | warning | A promise dropped as soon as it is made, which cancels its work. Bind it and call `wait()`, or pass it to `wait_all` |
 | MSL116 | warning | A function reaches an effect no `// ms: allow_effect` line permits. A function is pure unless a line above it, or in the file's header comment, permits what it reaches (`std.fs.read`, `std.fs.*`, `*.read`, `*`). A function's own lines can only tighten the header. `// ms: effect NAME` declares an effect and hides the body from callers. `main`, `test` and `fixture` are unrestricted. Converting a record to an interface, naming a function as a value and writing a closure charge the enclosing function. The message names the call path |
-| MSL117 | warning | An integer literal interpolated into text, such as the `{4}` of `"\\d{4}"`, which interpolates the number 4 instead of writing a regex quantifier. Write `\{4\}` or use `r"""` raw text |
+| MSL117 | warning | An integer literal interpolated into text, such as the `{4}` of `f"\\d{4}"`, which interpolates the number 4 instead of writing a regex quantifier. Drop the `f` so braces are plain, or write `\{4\}` |
 | MSL118 | error | A `length()` of a string, list, map or set compared with zero, such as `xs.length() == 0`. Write `xs.is_empty()`, or `not xs.is_empty()` for `!= 0` and `> 0` in a condition. `ms lint --fix` rewrites it |
 | MSL119 | error | A list in a name or field read with `xs.get(i)`. Write `xs[i]`. `ms lint --fix` rewrites it |
 | MSL120 | error | `map.get(key).get(default)` on a map. Write `map.get_or(key, default)`. `ms lint --fix` rewrites it |
@@ -289,7 +289,7 @@ Each lint rule is a **warning** or an **error**. `lint` returns 1 when a source 
 | MSL125 | warning | `for x in xs: out.append(x)` (or `x.clone()`). Write `out.extend(xs)` |
 | MSL126 | error | `x := e` directly followed by `return x`. Write `return e` |
 | MSL127 | error | `m[k.clone()] = m.get(k).get() - v`. Write `m[k] -= v` |
-| MSL128 | error | A final `return ok(unit)` in a `Void!` function, or `return` in a `Void` one, after other statements. The end of the body already returns it; delete the line |
+| MSL128 | error | A final `return ok()` in a `Void!` function, or `return` in a `Void` one, after other statements. The end of the body already returns it; delete the line |
 
 Whitespace warnings exclude text-literal payloads. Whitespace deletion fixes are withheld while lexical boundaries are invalid or incomplete.
 

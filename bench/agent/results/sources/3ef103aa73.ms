@@ -143,7 +143,7 @@ fn letter_index(c: String) Int:
     return UPPER_LETTERS.index_of(c.upper()).get(0) + 1
 
 fn cell_name(key: Int) String:
-    return column_name(key / 1000).concat("{key % 1000}")
+    return column_name(key / 1000).concat(f"{key % 1000}")
 
 fn order_key(key: Int) Int:
     return (key % 1000) * 100 + key / 1000
@@ -1088,7 +1088,7 @@ fn shift_address(address: Address, column_shift: Int, row_shift: Int) Optional[S
     text = text.concat(column_name(col))
     if address.row_absolute:
         text = text.concat("$")
-    return some(text.concat("{row}"))
+    return some(text.concat(f"{row}"))
 
 fn shift_reference(text: String, column_shift: Int, row_shift: Int) String:
     address := parse_address(text)
@@ -1995,7 +1995,7 @@ impl Sheet:
         else if command == "stats":
             self.stats_command()
         else:
-            emit("error: unknown command '{command}'")
+            emit(f"error: unknown command '{command}'")
 
     var fn set_command(rest: String) Unit:
         if rest.is_empty():
@@ -2006,11 +2006,11 @@ impl Sheet:
         key := cell_key(split.head)
 
         if key == 0:
-            emit("error: bad cell reference '{split.head}'")
+            emit(f"error: bad cell reference '{split.head}'")
             return
 
         self.assign(key, split.rest)
-        emit("recalc {self.recalc([key])}")
+        emit(f"recalc {self.recalc([key])}")
 
     var fn clear_command(rest: String) Unit:
         words := split_words(rest)
@@ -2022,11 +2022,11 @@ impl Sheet:
         key := cell_key(words.get(0))
 
         if key == 0:
-            emit("error: bad cell reference '{words.get(0)}'")
+            emit(f"error: bad cell reference '{words.get(0)}'")
             return
 
         self.assign(key, "")
-        emit("recalc {self.recalc([key])}")
+        emit(f"recalc {self.recalc([key])}")
 
     fn get_command(rest: String) Unit:
         words := split_words(rest)
@@ -2038,7 +2038,7 @@ impl Sheet:
         key := cell_key(words.get(0))
 
         if key == 0:
-            emit("error: bad cell reference '{words.get(0)}'")
+            emit(f"error: bad cell reference '{words.get(0)}'")
             return
 
         if self.cells.contains(key):
@@ -2056,18 +2056,18 @@ impl Sheet:
         key := cell_key(words.get(0))
 
         if key == 0:
-            emit("error: bad cell reference '{words.get(0)}'")
+            emit(f"error: bad cell reference '{words.get(0)}'")
             return
 
         name := cell_name(key)
 
         if cell := self.cells.get(key):
             if cell.is_formula:
-                emit("{name}: {cell.raw} => {self.display_at(key)}")
+                emit(f"{name}: {cell.raw} => {self.display_at(key)}")
             else:
-                emit("{name}: {cell.raw}")
+                emit(f"{name}: {cell.raw}")
         else:
-            emit("{name}: (empty)")
+            emit(f"{name}: (empty)")
 
     // Bounding rectangle of the non-empty cells; None when the sheet is empty.
     fn used_rect() Optional[Rect]:
@@ -2096,7 +2096,7 @@ impl Sheet:
             rect = range_arg(words.get(0))
 
             if rect.is_none():
-                emit("error: bad range '{words.get(0)}'")
+                emit(f"error: bad range '{words.get(0)}'")
                 return
 
         if rect.is_none():
@@ -2144,7 +2144,7 @@ impl Sheet:
             rect = range_arg(range_text)
 
             if rect.is_none():
-                emit("error: bad range '{range_text}'")
+                emit(f"error: bad range '{range_text}'")
                 return
 
         if rect.is_none():
@@ -2176,13 +2176,13 @@ impl Sheet:
         source := cell_key(words.get(0))
 
         if source == 0:
-            emit("error: bad cell reference '{words.get(0)}'")
+            emit(f"error: bad cell reference '{words.get(0)}'")
             return
 
         target := range_arg(words.get(1))
 
         if target.is_none():
-            emit("error: bad range '{words.get(1)}'")
+            emit(f"error: bad range '{words.get(1)}'")
             return
 
         area := target.get(Rect(left: 1, top: 1, right: 1, bottom: 1))
@@ -2201,7 +2201,7 @@ impl Sheet:
                 self.assign(destination, text)
                 keys.append(destination)
 
-        emit("recalc {self.recalc(keys)}")
+        emit(f"recalc {self.recalc(keys)}")
 
     var fn import_command(rest: String, block: List[String]) Unit:
         words := split_words(rest)
@@ -2213,7 +2213,7 @@ impl Sheet:
         origin := cell_key(words.get(0))
 
         if origin == 0:
-            emit("error: bad cell reference '{words.get(0)}'")
+            emit(f"error: bad cell reference '{words.get(0)}'")
             return
 
         records := parse_csv(block)
@@ -2240,7 +2240,7 @@ impl Sheet:
                 keys.append(destination)
 
         count := self.recalc(keys)
-        emit("imported {rows} rows, {columns} columns; recalc {count}")
+        emit(f"imported {rows} rows, {columns} columns; recalc {count}")
 
     fn precedents_command(rest: String) Unit:
         words := split_words(rest)
@@ -2252,7 +2252,7 @@ impl Sheet:
         key := cell_key(words.get(0))
 
         if key == 0:
-            emit("error: bad cell reference '{words.get(0)}'")
+            emit(f"error: bad cell reference '{words.get(0)}'")
             return
 
         var found: List[Int] = []
@@ -2271,7 +2271,7 @@ impl Sheet:
         key := cell_key(words.get(0))
 
         if key == 0:
-            emit("error: bad cell reference '{words.get(0)}'")
+            emit(f"error: bad cell reference '{words.get(0)}'")
             return
 
         var seen = Set[Int]()
@@ -2308,7 +2308,7 @@ impl Sheet:
         for k in self.cells.keys():
             if self.is_formula_at(k):
                 formulas += 1
-        emit("cells {self.cells.length()} formulas {formulas} evals {self.evals}")
+        emit(f"cells {self.cells.length()} formulas {formulas} evals {self.evals}")
 
 // Classifies a function argument: 0 not a range, 1 range with an invalid corner, 2 valid range.
 fn span_info(node: Node) SpanInfo:
@@ -2344,7 +2344,7 @@ export fn main() Int:
         trimmed := line.trim()
 
         if not trimmed.is_empty() and not trimmed.starts_with("#"):
-            emit("> {line.trim_end()}")
+            emit(f"> {line.trim_end()}")
 
             split := split_head(trimmed)
             var block: List[String] = []

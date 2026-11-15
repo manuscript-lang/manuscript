@@ -7,7 +7,7 @@ type Stat:
 	sum: Int
 
 fn name_of(i: Int) String:
-	return "key-{i % 300}"
+	return f"key-{i % 300}"
 
 test "a probe after a contains-guarded insert reads the entry of either path":
 	var stats: Map[String, Stat] = {}

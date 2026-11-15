@@ -22,7 +22,7 @@ fn measure(name: String, text: String, expected: Int, iterations: Int) Int:
 	if checksum != expected * iterations: return 1
 
 	_written := stdout().write(
-		"{name},{text.length()},{iterations},{elapsed},{checksum}\n"
+		f"{name},{text.length()},{iterations},{elapsed},{checksum}\n"
 	)
 	return 0
 
@@ -36,7 +36,7 @@ fn main() Int:
 	for width in [7, 8, 15, 16, 31, 32, 128, 1024, 8192, 65536]:
 		count := 1048576 / (width + 1)
 		text := ("x".repeat(width).get() + "\n").repeat(count).get()
-		if measure("lf_{width}", text, (width + 17) * count, 64) != 0: return 1
+		if measure(f"lf_{width}", text, (width + 17) * count, 64) != 0: return 1
 
 	unicode := ("é日😀".repeat(1000).get() + "\r\n").repeat(128).get()
 	if measure("unicode_crlf", unicode, (9000 + 17) * 128, 64) != 0: return 1

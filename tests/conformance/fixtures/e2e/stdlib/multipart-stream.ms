@@ -29,7 +29,7 @@ fn var Chunks.next() Bytes?!:
 	return ok(piece)
 
 fn var Chunks.close() Void!:
-	return ok(unit)
+	return ok()
 
 fn chunked(data: Bytes, size: Int) ReadStream[Bytes]:
 	return ReadStream[Bytes](Chunks(data, size, 0))
@@ -68,7 +68,7 @@ test "parts match parse_multipart under every chunk size":
 	expected := parse_multipart(body.clone(), "XyZ")?
 	for size in 1..body.length() + 1:
 		if (read_parts(body.clone(), size)?) != expected: return fail(
-			"chunk size {size}"
+			f"chunk size {size}"
 		)
 	expect_equal(expected.length(), 3)?
 	expect_equal(expected[1].filename, "a.txt")?
@@ -126,7 +126,7 @@ test "transport padded multipart delimiters survive every chunk size":
 
 test "transport padding does not bypass streaming part budget":
 	padding := " ".repeat(40).get("")
-	body := "--XyZ{padding}\r\n\r\nx\r\n--XyZ--\r\n".to_bytes()
+	body := f"--XyZ{padding}\r\n\r\nx\r\n--XyZ--\r\n".to_bytes()
 	for size in 1..body.length() + 1:
 		expect_equal(read_parts(body.clone(), size, 10).err().kind, "EOVERFLOW")?
 
@@ -153,8 +153,8 @@ fn agree(body: Bytes, size: Int) String:
 	stream := read_parts(body.clone(), size)
 
 	if whole.is_error() or stream.is_error():
-		if whole.is_error() != stream.is_error(): return "one failed: parse {whole.is_error()}, stream {stream.is_error()}"
-		if whole.err().kind != stream.err().kind: return "kinds differ: {whole.err().kind}, {stream.err().kind}"
+		if whole.is_error() != stream.is_error(): return f"one failed: parse {whole.is_error()}, stream {stream.is_error()}"
+		if whole.err().kind != stream.err().kind: return f"kinds differ: {whole.err().kind}, {stream.err().kind}"
 
 		return ""
 
@@ -178,7 +178,7 @@ test "parts and parse_multipart agree on corrupted and truncated bodies":
 	for index in 0..cases.length():
 		for size in [1, 3, 64]:
 			verdict := agree(cases[index].clone(), size)
-			if verdict != "": return fail("case {index}, chunk {size}: {verdict}")
+			if verdict != "": return fail(f"case {index}, chunk {size}: {verdict}")
 
 fn empty_chunks(data: Bytes, size: Int) List[Bytes]:
 	var chunks: List[Bytes] = []
@@ -216,12 +216,12 @@ test "fragmented multipart bodies keep binary bytes and delimiter prefixes":
 			expect_equal(first.name, "binary")?
 			expect_equal(first.data, data)?
 		else:
-			return fail("missing binary part at chunk size {size}")
+			return fail(f"missing binary part at chunk size {size}")
 
 		if second := parts.next()?:
 			expect_equal(second.data, "tail".to_bytes())?
 		else:
-			return fail("missing trailing part at chunk size {size}")
+			return fail(f"missing trailing part at chunk size {size}")
 
 		expect_equal((parts.next()?).is_none(), true)?
 

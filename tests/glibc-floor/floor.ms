@@ -22,6 +22,7 @@ fn main() Void:
 	child := run("true", []).wait().is_ok()
 	entropy := secure_int(0, max_exclusive: 10).is_ok()
 	hosts := lookup("localhost").is_ok()
-	_ := sleep(nanoseconds(1000000)).wait()
+	void sleep(nanoseconds(1000000)).wait()
+
 	math := pow(2.0, 10.0) + exp(0.0) + log(1.0) + hypot(3.0, 4.0)
-	stdout().write("{squared} {file} {child} {entropy} {hosts} {math}\n").get()
+	stdout().write(f"{squared} {file} {child} {entropy} {hosts} {math}\n").get()

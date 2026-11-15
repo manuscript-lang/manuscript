@@ -55,6 +55,8 @@ pub struct Graph {
     pub inputs: Vec<String>,
     /// Fetched packages the project reaches, with the effects each declares.
     pub packages: Vec<ms_check::PackageScope>,
+    /// Each package's module-name prefix (`@pg/`) and the cache directory holding its files.
+    pub package_roots: Vec<(String, String)>,
 }
 
 /// Diagnostics pass through import edges unchanged; plain errors and cycles
@@ -161,13 +163,14 @@ fn load_entries(
             .iter()
             .map(|p| ms_check::PackageScope {
                 prefix: format!("{}/", p.key),
-                effects: p
-                    .project
-                    .effects
-                    .split_whitespace()
-                    .map(str::to_string)
-                    .collect(),
+                spec: p.spec.clone(),
+                effects: p.project.effects.clone(),
             })
+            .collect(),
+        package_roots: config
+            .packages
+            .iter()
+            .map(|p| (format!("{}/", p.key), p.root.clone()))
             .collect(),
         ..Graph::default()
     };

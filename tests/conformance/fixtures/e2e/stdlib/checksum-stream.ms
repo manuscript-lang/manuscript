@@ -26,7 +26,7 @@ fn var Chunks.next() Bytes?!:
 	return ok(piece)
 
 fn var Chunks.close() Void!:
-	return ok(unit)
+	return ok()
 
 fn chunked(data: Bytes, size: Int) ReadStream[Bytes]:
 	return ReadStream[Bytes](Chunks(data, size, 0))
@@ -55,7 +55,7 @@ test "digest of a stream matches the hasher":
 				(
 					digest(chunked(data.clone(), size), algorithm)?
 				) != algorithm.digest(data.clone())
-			): return fail("size {size}")
+			): return fail(f"size {size}")
 
 test "an empty stream has the empty checksum":
 	expect_equal(crc32_of(chunked("".to_bytes(), 4))?, 0)?

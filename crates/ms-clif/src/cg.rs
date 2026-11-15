@@ -163,8 +163,37 @@ fn name_hash(text: &str) -> u64 {
     })
 }
 
-/// Makes symbol names unique without depending on declaration order: the `k`th use of a base
-/// name is `base#k`, so adding an unrelated item renames nothing.
+/// What tells one function from another of the same name: its declaring file (the logical
+/// module path such as `src/a.ms` or `@pg/x.ms`) and its types, which tell generic instances
+/// apart (`pick[Int]` and `pick[String]` differ in their parameters and result). A closure is
+/// also told apart by its position.
+fn identity_hash(m: &Module, f: &ms_mir::ir::Func) -> u32 {
+    use std::fmt::Write as _;
+    let ty = |t| ms_mir::print::ty_str(m, t);
+    let mut key = m
+        .files
+        .get(f.loc.file as usize)
+        .cloned()
+        .unwrap_or_default();
+    key.push('(');
+    for p in &f.params {
+        let _ = write!(key, "{},", ty(p.ty));
+    }
+    let _ = write!(key, ")->{}", ty(f.ret));
+    if let ms_mir::ir::FuncKind::Closure { captures } = &f.kind {
+        let _ = write!(key, "@{}:{}[", f.loc.line, f.loc.col);
+        for c in captures {
+            let _ = write!(key, "{},", ty(*c));
+        }
+        key.push(']');
+    }
+    name_hash(&key) as u32
+}
+
+/// Makes symbol names unique without depending on declaration order. A function's base holds
+/// its declaring file (the logical module path such as `src/a.ms` or `@pg/x.ms`), so a name is
+/// package, module and function name; only a repeat of one base (a generic instance, a lambda)
+/// takes a `.k` suffix, so adding an unrelated item renames nothing.
 #[derive(Default)]
 pub struct StableNames(HashMap<String, u32>);
 
@@ -173,7 +202,11 @@ impl StableNames {
         let n = self.0.entry(base.to_string()).or_insert(0);
         let k = *n;
         *n += 1;
-        format!("{base}#{k}")
+        if k == 0 {
+            base.to_string()
+        } else {
+            format!("{base}.{k}")
+        }
     }
 }
 
@@ -711,7 +744,11 @@ fn compile_with_isa(
                 } else if exported {
                     f.name.clone()
                 } else {
-                    g.names.unique(&sym_safe(&f.name))
+                    g.names.unique(&format!(
+                        "{}#{:08x}",
+                        sym_safe(&f.name),
+                        identity_hash(m, f)
+                    ))
                 };
                 g.func_syms.push(name.clone());
                 let id = g

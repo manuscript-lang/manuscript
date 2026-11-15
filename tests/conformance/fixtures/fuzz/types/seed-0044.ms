@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -24,23 +24,23 @@ fn collatz(start: Int) Int:
 
 export fn main() Int:
     i1 := 46
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     f2 := 8.0e5
-    say("f2 = {f2}")
+    say(f"f2 = {f2}")
 
     i3 := ((946626 % (49 * i1)) / ((9 * 1) - (-49)))
-    say("i3 = {i3}")
-    say("collatz(784) = {collatz(784)}")
+    say(f"i3 = {i3}")
+    say(f"collatz(784) = {collatz(784)}")
 
     f4 := ((864.495 / (698.854 / f2)) * ((884.382 + 518.808) * 0.0))
-    say("f4 = {f4}")
+    say(f"f4 = {f4}")
 
     i5 := (i1 + 767915)
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     i6 := i3
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     bad: Bool := 1
     return 0

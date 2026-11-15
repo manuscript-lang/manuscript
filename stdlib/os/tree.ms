@@ -52,7 +52,7 @@ fn clean(path: String) String!:
 
 fn child_path(directory: String, name: String) String:
 	if directory == "": return name.clone()
-	return "{directory}/{name}"
+	return f"{directory}/{name}"
 
 fn parent_of(path: String) String:
 	parts := path.split("/", none)
@@ -111,18 +111,18 @@ fn var MemoryTree.link(path: String) Void:
 
 	if var set = self.kids[parent]?:
 		set.add(path.clone())
-		return unit
+		return
 
 	var fresh = Set[String]()
 	fresh.add(path.clone())
 	self.kids[parent] = fresh
-	return unit
+	return
 
 // Forgets `path` as a child of its parent directory.
 fn var MemoryTree.unlink(path: String) Void:
 	if var set = self.kids[parent_of(path)]?:
 		set.remove(path)
-	return unit
+	return
 
 // True when `path` names a file or directory.
 fn MemoryTree.exists(path: String) Bool:
@@ -173,13 +173,13 @@ fn var MemoryTree.remove(path: String, recursive: Bool = false) Void!:
 	if self.files.contains(inside):
 		self.files.remove(inside.clone())
 		self.unlink(inside.clone())
-		return ok(unit)
+		return ok()
 
 	if not self.directories.contains(inside): return error(
 		Error("filesystem: file or directory not found", kind: "ENOENT")
 	)
 
-	prefix := "{inside}/"
+	prefix := f"{inside}/"
 	below_files := self.files.keys().filter(fn k: k.starts_with(prefix))
 	below_dirs := self.directories.values().filter(fn k: k.starts_with(prefix))
 	if not recursive and (below_files.length() + below_dirs.length()) > 0: return error(
@@ -319,10 +319,10 @@ fn index_child(var kids: Map[String, List[String]], path: String) Void:
 
 	if var names = kids[parent]?:
 		names.append(path.clone())
-		return unit
+		return
 
 	kids[parent] = [path.clone()]
-	return unit
+	return
 
 // One file or directory found by `walk`.
 export type WalkEntry:

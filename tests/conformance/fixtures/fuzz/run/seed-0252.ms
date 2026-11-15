@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -37,17 +37,17 @@ fn collatz(start: Int) Int:
 
 export fn main() Int:
     b1 := "42".upper().upper().is_empty()
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
     i2 := ((((-6) * 47) / (4 % 34)) - 27)
-    say("i2 = {i2}")
-    say("fib(19) = {fib(19)}")
+    say(f"i2 = {i2}")
+    say(f"fib(19) = {fib(19)}")
 
     i3 := (i2 * (((-35) + i2) * i2))
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     f4 := 910.423
-    say("f4 = {f4}")
+    say(f"f4 = {f4}")
 
     var acc5 = 0
     var stepacc5 = 0
@@ -56,20 +56,20 @@ export fn main() Int:
         stepacc5 += 1
         acc5 += stepacc5 * stepacc5 + (-1)
 
-    say("acc5 = {acc5}")
+    say(f"acc5 = {acc5}")
 
     var acc6 = 0
     for i in 0..4:
         acc6 += i * 4
-    say("acc6 = {acc6}")
+    say(f"acc6 = {acc6}")
 
     l7 := [1, 2, 3].take(0)
-    say("l7 = {l7} len {l7.length()}")
-    say("collatz(1112) = {collatz(1112)}")
+    say(f"l7 = {l7} len {l7.length()}")
+    say(f"collatz(1112) = {collatz(1112)}")
 
     f8 := (((f4 + 401.106) + (f4 + f4)) + f4)
-    say("f8 = {f8}")
+    say(f"f8 = {f8}")
 
     l9 := l7.map(fn x: x * 3)
-    say("l9 = {l9} len {l9.length()}")
+    say(f"l9 = {l9} len {l9.length()}")
     return 0

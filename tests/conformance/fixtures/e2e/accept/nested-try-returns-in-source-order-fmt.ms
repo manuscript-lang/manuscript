@@ -47,7 +47,7 @@ fn loop(var log: List[String], n: Int) Int!Error:
 
 fn joined(var log: List[String]) String!Error:
     return ok(
-        value: "{step(log: var log, name: "p", n: 1)?}-{step(log: var log, name: "q", n: -1)?}"
+        value: f"{step(log: var log, name: "p", n: 1)?}-{step(log: var log, name: "q", n: -1)?}"
     )
 
 fn text(log: List[String]) String:

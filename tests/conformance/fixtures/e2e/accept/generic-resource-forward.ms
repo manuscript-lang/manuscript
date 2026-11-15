@@ -12,7 +12,7 @@ type Token:
 	id: Int
 
 fn var Token.close() Void!:
-	append_file(self.log, "close {self.id}\n").wait()?
+	append_file(self.log, f"close {self.id}\n").wait()?
 
 type Tokens:
 	log: String
@@ -25,7 +25,7 @@ fn var Tokens.next() Token?!:
 	return ok(none)
 
 fn var Tokens.close() Void!:
-	return ok(unit)
+	return ok()
 
 type Forward[T]:
 	source: Source[T]
@@ -40,7 +40,7 @@ fn var Forward[T].next() T!?:
 fn first_body(log: String) Void!:
 	for item in Forward[Token](Tokens(log.clone())):
 		token := item?
-		append_file(log, "body {token.id}\n").wait()?
+		append_file(log, f"body {token.id}\n").wait()?
 		break
 
 fn events(log: String) String:
@@ -49,6 +49,6 @@ fn events(log: String) String:
 
 test "a generic adapter forwards a resource through Result.get once":
 	dir := temporary("generic-forward-") | expect_ok?
-	log := "{dir.path()}/events"
+	log := f"{dir.path()}/events"
 	first_body(log.clone())?
 	expect_equal(events(log), "body 1\nclose 1\n")?

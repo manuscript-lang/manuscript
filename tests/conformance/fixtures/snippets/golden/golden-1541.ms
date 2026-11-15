@@ -13,8 +13,8 @@ impl TestHooks for ApiFixture:
     fn after_all() Void:
         self.server.close()
 test "first request":
-    response := expect_ok(network().request(method: HttpMethod.Get, url: "http://{fixture.server.address()}/", headers: headers(), body: ""))?
+    response := expect_ok(network().request(method: HttpMethod.Get, url: f"http://{fixture.server.address()}/", headers: headers(), body: ""))?
     expect_equal(response.metadata().status, 200)?
 test "second request uses same server":
-    response := expect_ok(network().request(method: HttpMethod.Get, url: "http://{fixture.server.address()}/", headers: headers(), body: ""))?
+    response := expect_ok(network().request(method: HttpMethod.Get, url: f"http://{fixture.server.address()}/", headers: headers(), body: ""))?
     expect_equal(response.body, "shared".to_bytes())?

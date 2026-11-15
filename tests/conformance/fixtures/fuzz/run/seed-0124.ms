@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -16,22 +16,22 @@ fn gcd(a: Int, b: Int) Int:
 
 export fn main() Int:
     b1 := (((34 % (-5)) + (-558650)) <= (-301215850155))
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
-    b2 := ("{46}:" + "héllo".replace("line\nbreak", "Tab\there")).ends_with("ms")
-    say("b2 = {b2}")
+    b2 := (f"{46}:" + "héllo".replace("line\nbreak", "Tab\there")).ends_with("ms")
+    say(f"b2 = {b2}")
 
     i3 := ((((-28) / (-474868634950)) - 497097) * 624828)
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     f4 := (((374.959 + 1.0e18) + (811.480 + 532.905)) - (829.006 / 759.25))
-    say("f4 = {f4}")
+    say(f"f4 = {f4}")
 
-    s5 := (("line\nbreak".reverse() + "x") + ("{134093}:" + "brace\{s\}"))
-    say("s5 = [{s5}]")
+    s5 := (("line\nbreak".reverse() + "x") + (f"{134093}:" + "brace{s}"))
+    say(f"s5 = [{s5}]")
 
     i6 := (i3 % ((764079 / i3) - (i3 + i3)))
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     if ((i6 != 1) or (s5 == "alpha")):
         say(s5)
@@ -39,38 +39,38 @@ export fn main() Int:
         say((s5 + "Tab\there"))
 
     say(
-        "{((864236 - 49) % (17 * 37))} {i6} {(((864236 - 49) % (17 * 37)) < i6)} sum {((864236 - 49) % (17 * 37)) + i6}"
+        f"{((864236 - 49) % (17 * 37))} {i6} {(((864236 - 49) % (17 * 37)) < i6)} sum {((864236 - 49) % (17 * 37)) + i6}"
     )
 
     i7 := (-((-30) - (i6 / 503568)))
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
     var acc8 = 0
     for i in 0..7:
         acc8 += i * 5
-    say("acc8 = {acc8}")
+    say(f"acc8 = {acc8}")
 
     b9 := "ms".ends_with("a")
-    say("b9 = {b9}")
+    say(f"b9 = {b9}")
 
     i10 := ((((-49) + i6) - (i7 - i6)) * (i3 / (-i6)))
-    say("i10 = {i10}")
+    say(f"i10 = {i10}")
 
     l11 := [(-15), (-29)]
-    say("l11 = {l11} len {l11.length()}")
-    say("gcd(2475, 4530) = {gcd(2475, 4530)}")
+    say(f"l11 = {l11} len {l11.length()}")
+    say(f"gcd(2475, 4530) = {gcd(2475, 4530)}")
 
     f12 := (((554.25 - f4) * (f4 / 733.926)) * ((f4 - 5.5) * (201.25 - f4)))
-    say("f12 = {f12}")
+    say(f"f12 = {f12}")
 
     var acc13 = 0
     for i in 0..1:
         acc13 += i * (-5)
-    say("acc13 = {acc13}")
+    say(f"acc13 = {acc13}")
 
     s14 := (s5.upper() + ("ms" + s5)).lower()
-    say("s14 = [{s14}]")
+    say(f"s14 = [{s14}]")
 
     l15 := l11.concat(l11)
-    say("l15 = {l15} len {l15.length()}")
+    say(f"l15 = {l15} len {l15.length()}")
     return 0

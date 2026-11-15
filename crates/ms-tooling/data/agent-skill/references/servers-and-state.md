@@ -35,9 +35,9 @@ test "handlers report to one owner":
 	var gate = events.writer()
 	owner := promise(fn: tally(var hits))
 	var server = serve("127.0.0.1:0", buffered(fn request: record(events, request.path)))?
-	_ := fetch("http://{server.address()}/a").wait()?
-	_ := fetch("http://{server.address()}/a").wait()?
-	_ := fetch("http://{server.address()}/b").wait()?
+	void fetch(f"http://{server.address()}/a").wait()?
+	void fetch(f"http://{server.address()}/a").wait()?
+	void fetch(f"http://{server.address()}/b").wait()?
 	server.close()?
 	server.wait()?
 	gate.close()?

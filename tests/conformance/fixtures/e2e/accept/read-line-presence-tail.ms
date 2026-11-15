@@ -31,7 +31,7 @@ test "presence retains limits":
 
 test "presence and text reads share buffered consumption":
 	temporary := temporary("manuscript-presence-") | expect_ok?
-	path := "{temporary.path()}/lines"
+	path := f"{temporary.path()}/lines"
 	_written := write_file(path, "\nλ\r\nlast").wait() | expect_ok?
 	handle := open(path, OpenMode.Read, OpenOptions(permissions: 384)) | expect_ok?
 	var input = lines(handle.reader()?)

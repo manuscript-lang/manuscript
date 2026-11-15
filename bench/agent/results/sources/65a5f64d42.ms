@@ -4,7 +4,7 @@ import (
 )
 
 fn emit(text: String) Int:
-	stdout().write("{text}\n").get()
+	stdout().write(f"{text}\n").get()
 	return 0
 
 export fn main() Int:
@@ -25,7 +25,7 @@ export fn main() Int:
 		for c in 0..grid[r].length():
 			ch := grid[r][c]
 			if ch != "#" and ch != "." and ch != "S" and ch != "E":
-				return emit("error: bad character at {r + 1},{c + 1}")
+				return emit(f"error: bad character at {r + 1},{c + 1}")
 
 	width := grid[0].length()
 	for r in 0..rows:
@@ -93,4 +93,4 @@ export fn main() Int:
 
 	if dist[end] < 0: return emit("no path")
 
-	return emit("{dist[end]}")
+	return emit(f"{dist[end]}")

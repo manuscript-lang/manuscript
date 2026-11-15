@@ -30,7 +30,7 @@ fn invalid_at(bytes: Bytes, at: Int, reason: String) Error:
 	before := bytes.decode_utf8_range(start, at).get("")
 	column := before.scalar_length() + 1
 	return Error(
-		"CSV {line}:{column}: {reason}",
+		f"CSV {line}:{column}: {reason}",
 		kind: "EBADMSG",
 		details: {
 			"line": line.to_string(),
@@ -216,7 +216,7 @@ fn var Reader.read_record() List[String]?!:
 			if first_escape >= 0 and not multiple_escapes:
 				prefix := self.text_between(start, first_escape)
 				suffix := self.text_between(first_escape + 2, at - 1)
-				cell = "{prefix}\"{suffix}"
+				cell = f"{prefix}\"{suffix}"
 			else:
 				cell = self.text_between(start, at - 1)
 				if multiple_escapes: cell = cell.replace("\"\"", "\"")
@@ -469,7 +469,7 @@ fn replaced(text: String, old: String, new: String) String:
 fn quote_field(field: String, crlf: Bool) String:
 	var quoted = replaced(field, "\"", "\"\"")
 	if crlf: quoted = replaced(replaced(quoted, "\r\n", "\n"), "\n", "\r\n")
-	return "\"{quoted}\""
+	return f"\"{quoted}\""
 
 // A sink that encodes each row as `stringify` does and puts the bytes into `output`.
 type CsvRowsSink:

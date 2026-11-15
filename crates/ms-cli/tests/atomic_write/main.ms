@@ -25,18 +25,18 @@ fn FileHandle.sync() Void!:
 	if self.sync_error: return error(Error("sync", kind: "sync"))
 
 fn var FileHandle.close() Void!:
-	if self.closed: return ok(unit)
+	if self.closed: return ok()
 
 	self.closed = true
 	print("close")
 	if self.close_error: return error(Error("close", kind: "close"))
 
 fn remove(path: String) Void!:
-	print("remove {path}")
+	print(f"remove {path}")
 	if path == "cleanup-error": return error(Error("cleanup", kind: "cleanup"))
 
 fn rename(source: String, destination: String) Void!:
-	print("rename {source} {destination}")
+	print(f"rename {source} {destination}")
 	if destination == "rename-error": return error(Error("rename", kind: "rename"))
 
 fn report(result: Void!) Void:
@@ -51,7 +51,7 @@ fn main() Void!:
 
 	long := "ñ".repeat(40)?
 	short := "ñ".repeat(32)?
-	expect_equal(temporary_name("dir/{long}", "s"), "dir/.{short}.s.tmp")?
+	expect_equal(temporary_name(f"dir/{long}", "s"), f"dir/.{short}.s.tmp")?
 	print("names ok")
 	print("close failure")
 	report(

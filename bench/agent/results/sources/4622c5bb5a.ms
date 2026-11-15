@@ -324,7 +324,7 @@ fn norm_labels(raw: List[String]) StrList:
 	for r in raw:
 		l := r.lower()
 		if not label_ok(l):
-			return StrList(items: List[String](), err: "bad label '{l}'")
+			return StrList(items: List[String](), err: f"bad label '{l}'")
 
 		if find_str(out, l) < 0:
 			out.append(l)
@@ -401,23 +401,23 @@ fn tokenize(s: String) StrList:
 fn parse_asg(tok: String) Asg:
 	parts := tok.split("=", 2)
 	if parts.length() < 2 or parts[0] == "":
-		return Asg(field: "", value: "", err: "expected field=value, got '{tok}'")
+		return Asg(field: "", value: "", err: f"expected field=value, got '{tok}'")
 
 	return Asg(field: parts[0].clone(), value: parts[1].clone(), err: "")
 
 // "" when valid, else the error message
 fn check_assign(field: String, value: String) String:
 	if field == "state": return "use move to change state"
-	if find_str(EDIT_FIELDS, field) < 0: return "unknown field '{field}'"
+	if find_str(EDIT_FIELDS, field) < 0: return f"unknown field '{field}'"
 
 	if field == "title":
 		if value.trim() == "": return "empty title"
 	else if field == "priority":
-		if find_str(PRIORITIES, value) < 0: return "bad priority '{value}'"
+		if find_str(PRIORITIES, value) < 0: return f"bad priority '{value}'"
 	else if field == "points":
-		if value != "none" and canon_int(value) < 0: return "bad points '{value}'"
+		if value != "none" and canon_int(value) < 0: return f"bad points '{value}'"
 	else if field == "due":
-		if value != "none" and not valid_date(value): return "bad date '{value}'"
+		if value != "none" and not valid_date(value): return f"bad date '{value}'"
 	else if field == "labels":
 		if value != "none":
 			r := norm_labels(split_csv(value))
@@ -462,7 +462,7 @@ fn show_s(a: String?) String:
 	return "-"
 
 fn show_i(a: Int?) String:
-	if x := a: return "{x}"
+	if x := a: return f"{x}"
 	return "-"
 
 fn points_or_zero(a: Int?) Int:
@@ -532,22 +532,22 @@ fn with_assign(iss: Issue, field: String, value: String) Issue:
 fn diff_entries(old: Issue, nw: Issue) List[String]:
 	var out = List[String]()
 	if old.title != nw.title:
-		out.append("title: {old.title} -> {nw.title}")
+		out.append(f"title: {old.title} -> {nw.title}")
 	if old.priority != nw.priority:
-		out.append("priority: {old.priority} -> {nw.priority}")
+		out.append(f"priority: {old.priority} -> {nw.priority}")
 	if not same_s(old.assignee, nw.assignee):
-		out.append("assignee: {show_s(old.assignee)} -> {show_s(nw.assignee)}")
+		out.append(f"assignee: {show_s(old.assignee)} -> {show_s(nw.assignee)}")
 	if not same_i(old.points, nw.points):
-		out.append("points: {show_i(old.points)} -> {show_i(nw.points)}")
+		out.append(f"points: {show_i(old.points)} -> {show_i(nw.points)}")
 	if not same_s(old.due, nw.due):
-		out.append("due: {show_s(old.due)} -> {show_s(nw.due)}")
+		out.append(f"due: {show_s(old.due)} -> {show_s(nw.due)}")
 
 	ol := show_labels(old.labels)
 	nl := show_labels(nw.labels)
 	if ol != nl:
-		out.append("labels: {ol} -> {nl}")
+		out.append(f"labels: {ol} -> {nl}")
 	if not same_s(old.reporter, nw.reporter):
-		out.append("reporter: {show_s(old.reporter)} -> {show_s(nw.reporter)}")
+		out.append(f"reporter: {show_s(old.reporter)} -> {show_s(nw.reporter)}")
 	return out
 
 fn field_missing(iss: Issue, g: String) Bool:
@@ -574,10 +574,10 @@ fn find_index(t: Tracker, id: Int) Int:
 
 fn resolve(t: Tracker, arg: String) Found:
 	id := id_value(arg)
-	if id < 1: return Found(idx: -1, err: "bad issue id '{arg}'")
+	if id < 1: return Found(idx: -1, err: f"bad issue id '{arg}'")
 
 	i := find_index(t, id)
-	if i < 0: return Found(idx: -1, err: "no such issue #{id}")
+	if i < 0: return Found(idx: -1, err: f"no such issue #{id}")
 
 	return Found(idx: i, err: "")
 
@@ -588,7 +588,7 @@ fn commit_update(var t: Tracker, idx: Int, nw: Issue) String:
 	id := nw.id
 
 	if diffs.is_empty():
-		print("#{id} unchanged")
+		print(f"#{id} unchanged")
 		return ""
 
 	t.clock += 1
@@ -598,7 +598,7 @@ fn commit_update(var t: Tracker, idx: Int, nw: Issue) String:
 	t.issues[idx] = fin
 	for d in diffs:
 		t.log_add(id, d)
-	print("updated #{id}")
+	print(f"updated #{id}")
 	return ""
 
 // ---------------------------------------------------------------- workflow
@@ -627,7 +627,7 @@ fn parse_workflow(block: List[String]) Wf:
 			nm := colon[1].trim()
 
 			if not valid_state(nm):
-				err = "workflow: bad state name '{nm}'"
+				err = f"workflow: bad state name '{nm}'"
 				break
 
 			initial = nm.clone()
@@ -638,7 +638,7 @@ fn parse_workflow(block: List[String]) Wf:
 				nm := part.trim()
 
 				if not valid_state(nm):
-					err = "workflow: bad state name '{nm}'"
+					err = f"workflow: bad state name '{nm}'"
 					break
 
 				if find_str(states, nm) < 0:
@@ -652,7 +652,7 @@ fn parse_workflow(block: List[String]) Wf:
 			src := arrow[0].trim()
 
 			if not valid_state(src):
-				err = "workflow: bad state name '{src}'"
+				err = f"workflow: bad state name '{src}'"
 				break
 
 			if find_str(states, src) < 0:
@@ -669,11 +669,11 @@ fn parse_workflow(block: List[String]) Wf:
 					target = words[0].clone()
 					guard_txt = words[2].clone()
 				else:
-					err = "workflow: bad line '{s}'"
+					err = f"workflow: bad line '{s}'"
 					break
 
 				if not valid_state(target):
-					err = "workflow: bad state name '{target}'"
+					err = f"workflow: bad state name '{target}'"
 					break
 
 				if find_str(states, target) < 0:
@@ -684,7 +684,7 @@ fn parse_workflow(block: List[String]) Wf:
 				if guard_txt != "":
 					for g in guard_txt.split("+"):
 						if find_str(GUARD_FIELDS, g) < 0:
-							err = "workflow: bad guard field '{g}'"
+							err = f"workflow: bad guard field '{g}'"
 							break
 
 						guards.append(g.clone())
@@ -701,7 +701,7 @@ fn parse_workflow(block: List[String]) Wf:
 
 			if err != "": break
 		else:
-			err = "workflow: bad line '{s}'"
+			err = f"workflow: bad line '{s}'"
 			break
 
 	if err == "":
@@ -710,7 +710,7 @@ fn parse_workflow(block: List[String]) Wf:
 		else:
 			for tr in transitions:
 				if find_str(finals, tr.src) >= 0:
-					err = "workflow: '{tr.src}' is final and cannot have transitions"
+					err = f"workflow: '{tr.src}' is final and cannot have transitions"
 					break
 
 	return Wf(
@@ -733,7 +733,7 @@ fn cmd_workflow(var t: Tracker, block: List[String]) String:
 	t.initial = wf.initial.clone()
 	t.finals = wf.finals.clone()
 	t.transitions = wf.transitions.clone()
-	print("workflow ok: {nstates} states, {ntrans} transitions")
+	print(f"workflow ok: {nstates} states, {ntrans} transitions")
 	return ""
 
 // ---------------------------------------------------------------- basic commands
@@ -744,7 +744,7 @@ fn cmd_actor(var t: Tracker, rest: String) String:
 
 	nm := w[0].clone()
 	t.actor = nm.clone()
-	print("actor is {nm}")
+	print(f"actor is {nm}")
 	return ""
 
 fn cmd_today(var t: Tracker, rest: String) String:
@@ -752,10 +752,10 @@ fn cmd_today(var t: Tracker, rest: String) String:
 	if w.length() != 1: return "usage: today DATE"
 
 	d := w[0].clone()
-	if not valid_date(d): return "bad date '{d}'"
+	if not valid_date(d): return f"bad date '{d}'"
 
 	t.today = d.clone()
-	print("today is {d}")
+	print(f"today is {d}")
 	return ""
 
 fn cmd_create(var t: Tracker, rest: String) String:
@@ -791,10 +791,10 @@ fn cmd_create(var t: Tracker, rest: String) String:
 	t.issues.append(iss)
 	t.next_id += 1
 	t.ever_created = true
-	t.log_add(id, "created \"{title}\"")
+	t.log_add(id, f"created \"{title}\"")
 	for d in diffs:
 		t.log_add(id, d)
-	print("created #{id}")
+	print(f"created #{id}")
 	return ""
 
 fn edit_common(var t: Tracker, id_arg: String, asgs: List[Asg], usage: String) String:
@@ -803,7 +803,7 @@ fn edit_common(var t: Tracker, id_arg: String, asgs: List[Asg], usage: String) S
 
 	idx := f.idx
 	cur := t.issues[idx].clone()
-	if is_final(t.finals, cur.state): return "#{cur.id} is in final state '{cur.state}'"
+	if is_final(t.finals, cur.state): return f"#{cur.id} is in final state '{cur.state}'"
 	if asgs.is_empty(): return usage.clone()
 
 	var nw = cur.clone()
@@ -863,7 +863,7 @@ fn label_common(var t: Tracker, id_arg: String, ops: List[String]) String:
 			body = sub(op.chars(), 1, op.length())
 
 		l := body.lower()
-		if not label_ok(l): return "bad label '{l}'"
+		if not label_ok(l): return f"bad label '{l}'"
 
 		if add:
 			if find_str(labels, l) < 0:
@@ -876,7 +876,7 @@ fn label_common(var t: Tracker, id_arg: String, ops: List[String]) String:
 	labels.sort()
 
 	cur := t.issues[idx].clone()
-	if is_final(t.finals, cur.state): return "#{cur.id} is in final state '{cur.state}'"
+	if is_final(t.finals, cur.state): return f"#{cur.id} is in final state '{cur.state}'"
 
 	var nw = cur.clone()
 	nw.labels = labels.clone()
@@ -905,9 +905,9 @@ fn move_common(var t: Tracker, id_arg: String, dst: String, comment: String) Str
 	idx := f.idx
 	cur := t.issues[idx].clone()
 	from := cur.state.clone()
-	if is_final(t.finals, from): return "#{cur.id} is in final state '{from}'"
-	if find_str(t.states, dst) < 0: return "unknown state '{dst}'"
-	if from == dst: return "already in state '{from}'"
+	if is_final(t.finals, from): return f"#{cur.id} is in final state '{from}'"
+	if find_str(t.states, dst) < 0: return f"unknown state '{dst}'"
+	if from == dst: return f"already in state '{from}'"
 
 	var guards = List[String]()
 	var found = false
@@ -917,7 +917,7 @@ fn move_common(var t: Tracker, id_arg: String, dst: String, comment: String) Str
 			found = true
 			guards = tr.guards.clone()
 
-	if not found: return "transition '{from} -> {dst}' not allowed"
+	if not found: return f"transition '{from} -> {dst}' not allowed"
 
 	var missing = List[String]()
 	for g in guards:
@@ -926,7 +926,7 @@ fn move_common(var t: Tracker, id_arg: String, dst: String, comment: String) Str
 
 	if not missing.is_empty():
 		mtxt := join_with(missing, ", ")
-		return "cannot move #{cur.id} to {dst}: missing {mtxt}"
+		return f"cannot move #{cur.id} to {dst}: missing {mtxt}"
 
 	id := cur.id
 	t.clock += 1
@@ -945,10 +945,10 @@ fn move_common(var t: Tracker, id_arg: String, dst: String, comment: String) Str
 			)
 		)
 	t.issues[idx] = nw
-	t.log_add(id, "state: {from} -> {dst}")
+	t.log_add(id, f"state: {from} -> {dst}")
 	if has_c:
-		t.log_add(id, "comment: {comment}")
-	print("moved #{id}: {from} -> {dst}")
+		t.log_add(id, f"comment: {comment}")
+	print(f"moved #{id}: {from} -> {dst}")
 	return ""
 
 fn cmd_move(var t: Tracker, rest: String) String:
@@ -976,8 +976,8 @@ fn cmd_comment(var t: Tracker, rest: String) String:
 
 	id := nw.id
 	t.issues[idx] = nw
-	t.log_add(id, "comment: {a.rest}")
-	print("commented #{id}")
+	t.log_add(id, f"comment: {a.rest}")
+	print(f"commented #{id}")
 	return ""
 
 fn cmd_delete(var t: Tracker, rest: String) String:
@@ -1001,7 +1001,7 @@ fn cmd_delete(var t: Tracker, rest: String) String:
 		i += 1
 
 	t.issues = kept
-	print("deleted #{id}")
+	print(f"deleted #{id}")
 	return ""
 
 fn cmd_show(t: Tracker, rest: String) String:
@@ -1012,18 +1012,18 @@ fn cmd_show(t: Tracker, rest: String) String:
 	if f.err != "": return f.err.clone()
 
 	iss := t.issues[f.idx].clone()
-	print("#{iss.id} {iss.title}")
-	print("  state: {iss.state}")
-	print("  priority: {iss.priority}")
-	print("  assignee: {show_s(iss.assignee)}")
-	print("  points: {show_i(iss.points)}")
-	print("  due: {show_s(iss.due)}")
-	print("  labels: {show_labels_spaced(iss.labels)}")
-	print("  reporter: {show_s(iss.reporter)}")
-	print("  created: t={iss.created}, updated: t={iss.updated}")
-	print("  comments: {iss.comments.length()}")
+	print(f"#{iss.id} {iss.title}")
+	print(f"  state: {iss.state}")
+	print(f"  priority: {iss.priority}")
+	print(f"  assignee: {show_s(iss.assignee)}")
+	print(f"  points: {show_i(iss.points)}")
+	print(f"  due: {show_s(iss.due)}")
+	print(f"  labels: {show_labels_spaced(iss.labels)}")
+	print(f"  reporter: {show_s(iss.reporter)}")
+	print(f"  created: t={iss.created}, updated: t={iss.updated}")
+	print(f"  comments: {iss.comments.length()}")
 	for c in iss.comments:
-		print("    [t={c.t} {c.actor}] {c.text}")
+		print(f"    [t={c.t} {c.actor}] {c.text}")
 	return ""
 
 // ---------------------------------------------------------------- query language
@@ -1220,13 +1220,13 @@ fn parse_stored(stored: String, states: List[String], views: Map[String, String]
 fn make_term(tok: QTok, states: List[String], views: Map[String, String]) PE:
 	f := tok.field.clone()
 	op := tok.op.clone()
-	if find_str(QUERY_FIELDS, f) < 0: return pe_err("query: unknown field '{f}'")
+	if find_str(QUERY_FIELDS, f) < 0: return pe_err(f"query: unknown field '{f}'")
 	if not op_allowed(f, op):
-		return pe_err("query: bad operator '{op}' for field '{f}'")
+		return pe_err(f"query: bad operator '{op}' for field '{f}'")
 
 	if f == "view":
 		name := tok.value.clone()
-		if not views.contains(name): return pe_err("query: unknown view '{name}'")
+		if not views.contains(name): return pe_err(f"query: unknown view '{name}'")
 
 		stored := views.get_or(name, "")
 		inner := parse_stored(stored, states, views)
@@ -1249,7 +1249,7 @@ fn make_term(tok: QTok, states: List[String], views: Map[String, String]) PE:
 	ordered := op != ":" and op != "!=" and op != "~"
 	multi := (not tok.quoted) and tok.value.contains("|")
 	if multi and ordered:
-		return pe_err("query: bad value '{tok.value}' for field '{f}'")
+		return pe_err(f"query: bad value '{tok.value}' for field '{f}'")
 
 	var alts = List[String]()
 
@@ -1260,7 +1260,7 @@ fn make_term(tok: QTok, states: List[String], views: Map[String, String]) PE:
 
 	for a in alts:
 		if bad_value(f, op, a, states):
-			return pe_err("query: bad value '{a}' for field '{f}'")
+			return pe_err(f"query: bad value '{a}' for field '{f}'")
 	return PE(
 		e: Expr(
 			kind: "term",
@@ -1342,7 +1342,7 @@ fn parse_primary(var p: QP, states: List[String], views: Map[String, String]) PE
 		if p.pos >= p.toks.length(): return pe_err("query: unexpected end of query")
 
 		nxt := p.toks[p.pos].text.clone()
-		if p.toks[p.pos].kind != ")": return pe_err("query: unexpected token '{nxt}'")
+		if p.toks[p.pos].kind != ")": return pe_err(f"query: unexpected token '{nxt}'")
 
 		p.pos += 1
 		return inner
@@ -1351,7 +1351,7 @@ fn parse_primary(var p: QP, states: List[String], views: Map[String, String]) PE
 		p.pos += 1
 		return make_term(tok, states, views)
 
-	return pe_err("query: unexpected token '{tok.text}'")
+	return pe_err(f"query: unexpected token '{tok.text}'")
 
 fn parse_filter(text: String, states: List[String], views: Map[String, String]) PE:
 	qt := tokenize_filter(text)
@@ -1364,7 +1364,7 @@ fn parse_filter(text: String, states: List[String], views: Map[String, String]) 
 
 	if p.pos < p.toks.length():
 		tx := p.toks[p.pos].text.clone()
-		return pe_err("query: unexpected token '{tx}'")
+		return pe_err(f"query: unexpected token '{tx}'")
 
 	return r
 
@@ -1403,7 +1403,7 @@ fn split_query(text: String) QParts:
 					has_sort: false,
 					sort_text: "",
 					limit: -1,
-					err: "bad limit '{arg}'",
+					err: f"bad limit '{arg}'",
 				)
 
 			limit = v
@@ -1452,7 +1452,7 @@ fn parse_sort(text: String) SortRes:
 		if desc:
 			name = sub(p.chars(), 1, p.length())
 		if find_str(SORT_FIELDS, name) < 0:
-			return SortRes(keys: List[SortKey](), err: "bad sort field '{name}'")
+			return SortRes(keys: List[SortKey](), err: f"bad sort field '{name}'")
 
 		keys.append(SortKey(field: name.clone(), desc: desc))
 
@@ -1692,7 +1692,7 @@ fn issue_line(iss: Issue) String:
 	p := show_i(iss.points)
 	d := show_s(iss.due)
 	l := show_labels(iss.labels)
-	return "#{iss.id} | {iss.state} | {iss.priority} | {a} | {p} | {d} | {l} | {iss.title}"
+	return f"#{iss.id} | {iss.state} | {iss.priority} | {a} | {p} | {d} | {l} | {iss.title}"
 
 fn print_rows(rows: List[Issue]) Unit:
 	for r in rows:
@@ -1703,7 +1703,7 @@ fn print_rows(rows: List[Issue]) Unit:
 	if n == 1:
 		print("(1 issue)")
 	else:
-		print("({n} issues)")
+		print(f"({n} issues)")
 
 fn cmd_list(t: Tracker, rest: String) String:
 	q := split_query(rest)
@@ -1726,7 +1726,7 @@ fn view_save(var t: Tracker, rest: String) String:
 	if a.first == "": return "usage: view save NAME QUERY"
 
 	name := a.first.clone()
-	if not valid_view_name(name): return "bad view name '{name}'"
+	if not valid_view_name(name): return f"bad view name '{name}'"
 
 	q := split_query(a.rest)
 	if q.err != "": return q.err.clone()
@@ -1736,10 +1736,10 @@ fn view_save(var t: Tracker, rest: String) String:
 
 	sr := parse_sort(q.sort_text)
 	if sr.err != "": return sr.err.clone()
-	if uses_view(pe.e, name): return "view '{name}' would reference itself"
+	if uses_view(pe.e, name): return f"view '{name}' would reference itself"
 
 	t.views[name.clone()] = a.rest.trim()
-	print("saved view {name}")
+	print(f"saved view {name}")
 	return ""
 
 fn view_run(t: Tracker, rest: String) String:
@@ -1747,11 +1747,11 @@ fn view_run(t: Tracker, rest: String) String:
 	if a.first == "": return "usage: view run NAME [sort FIELDS] [limit N]"
 
 	name := a.first.clone()
-	if not t.views.contains(name): return "unknown view '{name}'"
+	if not t.views.contains(name): return f"unknown view '{name}'"
 
 	extra := split_query(a.rest)
 	if extra.err != "": return extra.err.clone()
-	if extra.filter != "": return "unexpected '{extra.filter}'"
+	if extra.filter != "": return f"unexpected '{extra.filter}'"
 
 	stored := t.views.get_or(name, "")
 	st := split_query(stored)
@@ -1784,7 +1784,7 @@ fn view_list(t: Tracker) String:
 
 	for n in names:
 		q := t.views.get_or(n, "")
-		print("{n}: {q}")
+		print(f"{n}: {q}")
 
 	return ""
 
@@ -1793,10 +1793,10 @@ fn view_show(t: Tracker, rest: String) String:
 	if a.first == "": return "usage: view show NAME"
 
 	name := a.first.clone()
-	if not t.views.contains(name): return "unknown view '{name}'"
+	if not t.views.contains(name): return f"unknown view '{name}'"
 
 	q := t.views.get_or(name, "")
-	print("{name}: {q}")
+	print(f"{name}: {q}")
 	return ""
 
 fn view_delete(var t: Tracker, rest: String) String:
@@ -1804,7 +1804,7 @@ fn view_delete(var t: Tracker, rest: String) String:
 	if a.first == "": return "usage: view delete NAME"
 
 	name := a.first.clone()
-	if not t.views.contains(name): return "unknown view '{name}'"
+	if not t.views.contains(name): return f"unknown view '{name}'"
 
 	var names = t.views.keys()
 	names.sort()
@@ -1814,10 +1814,10 @@ fn view_delete(var t: Tracker, rest: String) String:
 			stored := t.views.get_or(other, "")
 			pe := parse_stored(stored, t.states, t.views)
 			if pe.err == "" and uses_view(pe.e, name):
-				return "view '{name}' is used by '{other}'"
+				return f"view '{name}' is used by '{other}'"
 
 	t.views.remove(name.clone())
-	print("deleted view {name}")
+	print(f"deleted view {name}")
 	return ""
 
 fn cmd_view(var t: Tracker, rest: String) String:
@@ -1886,7 +1886,7 @@ fn cmd_bulk(var t: Tracker, rest: String) String:
 	else if kind == "set":
 		if n < 2: return "usage: bulk set field=value... where QUERY"
 	else:
-		return "unknown bulk action '{kind}'"
+		return f"unknown bulk action '{kind}'"
 
 	pe := parse_filter(wh.query, t.states, t.views)
 	if pe.err != "": return pe.err.clone()
@@ -1905,7 +1905,7 @@ fn cmd_bulk(var t: Tracker, rest: String) String:
 	var bad = 0
 
 	for id in ids:
-		arg := "{id}"
+		arg := f"{id}"
 		var err = ""
 
 		if kind == "move":
@@ -1926,17 +1926,17 @@ fn cmd_bulk(var t: Tracker, rest: String) String:
 			okc += 1
 		else:
 			bad += 1
-			print("#{id} error: {err}")
+			print(f"#{id} error: {err}")
 
-	print("bulk: {okc} ok, {bad} failed")
+	print(f"bulk: {okc} ok, {bad} failed")
 	return ""
 
 // ---------------------------------------------------------------- log and reports
 
 fn log_id_check(t: Tracker, arg: String) String:
 	v := id_value(arg)
-	if v < 1: return "bad issue id '{arg}'"
-	if v >= t.next_id: return "no such issue #{v}"
+	if v < 1: return f"bad issue id '{arg}'"
+	if v >= t.next_id: return f"no such issue #{v}"
 
 	return ""
 
@@ -1953,7 +1953,7 @@ fn cmd_log(t: Tracker, rest: String) String:
 		if n != 2: return usage.clone()
 
 		tail = canon_int(w[1])
-		if tail < 0: return "bad tail '{w[1]}'"
+		if tail < 0: return f"bad tail '{w[1]}'"
 	else if n == 1:
 		e := log_id_check(t, w[0])
 		if e != "": return e
@@ -1964,7 +1964,7 @@ fn cmd_log(t: Tracker, rest: String) String:
 		if e != "": return e
 
 		tail = canon_int(w[2])
-		if tail < 0: return "bad tail '{w[2]}'"
+		if tail < 0: return f"bad tail '{w[2]}'"
 
 		id = id_value(w[0])
 	else:
@@ -1973,7 +1973,7 @@ fn cmd_log(t: Tracker, rest: String) String:
 	var entries = List[String]()
 	for e in t.log:
 		if id < 0 or e.id == id:
-			entries.append("t={e.t} {e.actor} #{e.id} {e.detail}")
+			entries.append(f"t={e.t} {e.actor} #{e.id} {e.detail}")
 
 	var start = 0
 
@@ -2016,7 +2016,7 @@ fn report_summary(t: Tracker) String:
 					overdue += 1
 
 	fin := total - open
-	print("issues: {total} (open {open}, final {fin})")
+	print(f"issues: {total} (open {open}, final {fin})")
 	print("by state:")
 
 	for s in t.states:
@@ -2024,7 +2024,7 @@ fn report_summary(t: Tracker) String:
 		for iss in t.issues:
 			if iss.state == s:
 				c += 1
-		print("  {s}: {c}")
+		print(f"  {s}: {c}")
 
 	print("by priority:")
 
@@ -2033,11 +2033,11 @@ fn report_summary(t: Tracker) String:
 		for iss in t.issues:
 			if iss.priority == p:
 				c += 1
-		print("  {p}: {c}")
+		print(f"  {p}: {c}")
 
-	print("unassigned: {unassigned}")
-	print("overdue: {overdue}")
-	print("open points: {openpts}")
+	print(f"unassigned: {unassigned}")
+	print(f"overdue: {overdue}")
+	print(f"open points: {openpts}")
 	return ""
 
 fn wl_before(a: WL, b: WL) Bool:
@@ -2098,9 +2098,9 @@ fn report_workload(t: Tracker) String:
 			j += 1
 
 	for r in rows:
-		print("{r.name}: {r.count} {plural_issue(r.count)}, {r.pts} points")
+		print(f"{r.name}: {r.count} {plural_issue(r.count)}, {r.pts} points")
 	if un_count > 0:
-		print("unassigned: {un_count} {plural_issue(un_count)}, {un_pts} points")
+		print(f"unassigned: {un_count} {plural_issue(un_count)}, {un_pts} points")
 	return ""
 
 fn report_labels(t: Tracker, rest: String) String:
@@ -2142,7 +2142,7 @@ fn report_labels(t: Tracker, rest: String) String:
 			j += 1
 
 	for r in rows:
-		print("{r.name}: {r.count}")
+		print(f"{r.name}: {r.count}")
 	return ""
 
 fn report_timeline(t: Tracker, rest: String) String:
@@ -2160,11 +2160,11 @@ fn report_timeline(t: Tracker, rest: String) String:
 		if e.id == iss.id and e.detail.starts_with("state: "):
 			parts := e.detail.split(" -> ")
 			target := parts[1].clone()
-			print("{cur}: t={from}..{e.t} ({e.t - from})")
+			print(f"{cur}: t={from}..{e.t} ({e.t - from})")
 			cur = target
 			from = e.t
 
-	print("{cur}: t={from}..{t.clock} ({t.clock - from})")
+	print(f"{cur}: t={from}..{t.clock} ({t.clock - from})")
 	return ""
 
 fn cmd_report(t: Tracker, rest: String) String:
@@ -2195,7 +2195,7 @@ fn dispatch(var t: Tracker, cmd: String, rest: String) String:
 	if cmd == "log": return cmd_log(t, rest)
 	if cmd == "report": return cmd_report(t, rest)
 
-	return "unknown command '{cmd}'"
+	return f"unknown command '{cmd}'"
 
 fn read_all() List[String]!Error:
 	var out = List[String]()
@@ -2237,7 +2237,7 @@ export fn main() Int:
 		s := line.trim_start()
 		if s == "" or s.starts_with("#"): continue
 
-		print("> {line}")
+		print(f"> {line}")
 
 		sp := split_first(line)
 
@@ -2256,11 +2256,11 @@ export fn main() Int:
 
 			e := cmd_workflow(var t, block)
 			if e != "":
-				print("error: {e}")
+				print(f"error: {e}")
 			continue
 
 		e := dispatch(var t, sp.first, sp.rest)
 		if e != "":
-			print("error: {e}")
+			print(f"error: {e}")
 
 	return 0

@@ -31,15 +31,15 @@ fn cases() List[Case]:
 
 // elapsed_ns, checksum, source_bytes, output_bytes, rss
 fn run_one(binary: String, c: Case, rounds: Int, cpu: String) List[Int]!:
-	out := run_pinned(binary, ["{c.count}", "{rounds}", c.shape.clone()], cpu)?
+	out := run_pinned(binary, [f"{c.count}", f"{rounds}", c.shape.clone()], cpu)?
 	fields := out.trim().split(",")
 	if (
 		fields.length() != 8
-		or fields[0] != "{c.count}"
-		or fields[1] != "{rounds}"
+		or fields[0] != f"{c.count}"
+		or fields[1] != f"{rounds}"
 		or fields[2] != c.shape
 	):
-		return invalid("malformed harness row: {out.trim()}")
+		return invalid(f"malformed harness row: {out.trim()}")
 
 	return all_ints(fields.slice(3, 8).get([]))
 
@@ -67,7 +67,7 @@ fn compare(
 			identity := [first[1], first[2], first[3]]
 			if expected.is_empty(): expected = identity.clone()
 			if identity != expected: return invalid(
-				"{c.count} {c.shape}: outputs disagree"
+				f"{c.count} {c.shape}: outputs disagree"
 			)
 
 			rounds.add(name.clone(), rounds_for(first[0]))
@@ -81,14 +81,14 @@ fn compare(
 				r := rounds.get_or(name, 1)
 				got := run_one(paths.get_or(name, ""), c, r, cpu)?
 				if [got[1], got[2], got[3]] != expected: return invalid(
-					"{c.count} {c.shape}: output changed"
+					f"{c.count} {c.shape}: output changed"
 				)
 
 				var list = observed.get_or(name, [])
 				list.append(got[0].to_float() / r.to_float())
 				observed.add(name.clone(), list)
 				rows.append(
-					"{c.count},{c.shape},{s},{name},{r},{got[0]},{got[1]},{got[2]},{got[3]},{got[4]},{cpu}"
+					f"{c.count},{c.shape},{s},{name},{r},{got[0]},{got[1]},{got[2]},{got[3]},{got[4]},{cpu}"
 				)
 
 		old := median(observed.get_or("before", []))
@@ -96,13 +96,13 @@ fn compare(
 		(
 			stdout()
 			.write(
-				"{c.count},{c.shape},before={old.to_fixed(0)}ns,after={new.to_fixed(0)}ns,ratio={(new / old).to_fixed(3)}\n"
+				f"{c.count},{c.shape},before={old.to_fixed(0)}ns,after={new.to_fixed(0)}ns,ratio={(new / old).to_fixed(3)}\n"
 			)
 			.get()
 		)
 
 	write_text(out, rows.join("\n") + "\n")
-	return ok(unit)
+	return ok()
 
 fn main() Int:
 	args := arguments()

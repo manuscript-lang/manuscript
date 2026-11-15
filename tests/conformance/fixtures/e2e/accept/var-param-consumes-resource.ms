@@ -11,7 +11,7 @@ type Door:
 	log: String
 
 fn var Door.close() Void!:
-	_ := append_file(self.log, "{self.id},").wait()
+	void append_file(self.log, f"{self.id},").wait()
 
 type Slot:
 	door: Door
@@ -30,7 +30,7 @@ fn stash(var doors: List[Door], door: Door) Void:
 
 test "a temporary passed to a var-parameter function that keeps it closes once, later":
 	tmp := temporary("ms-log-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	var slot = Slot(Door(1, log.clone()))
 	put(var slot, Door(2, log.clone()))
 	logged(log.clone()) | expect_equal("1,")?
@@ -38,7 +38,7 @@ test "a temporary passed to a var-parameter function that keeps it closes once, 
 
 test "a list a var-parameter function appends a temporary to closes it with the list":
 	tmp := temporary("ms-log-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	var doors = List[Door]()
 	stash(var doors, Door(3, log.clone()))
 	logged(log.clone()) | expect_equal("")?

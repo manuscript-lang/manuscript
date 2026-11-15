@@ -3,4 +3,4 @@
 import expect_equal from "@std/test/test.ms"
 
 test "a discarded expectation checks nothing":
-    _ := expect_equal(1, 2)
+    void expect_equal(1, 2)

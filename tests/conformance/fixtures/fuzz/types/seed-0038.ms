@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     if "beta".upper().contains("back\\slash"):
@@ -15,10 +15,10 @@ export fn main() Int:
         say("Tab\there")
 
     f1 := ((116.719 * (4.5 / 869.492)) / 238.25)
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
 
     i2 := 36
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     bad := [1, "two"]
     return 0

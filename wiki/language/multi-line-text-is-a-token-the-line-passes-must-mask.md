@@ -2,7 +2,7 @@
 
 # Multi-line text is one token that line-based passes must mask
 
-Decision: the user chose `"""` (interpolating) plus `r"""` (raw) literals, indent stripped to the closing line, to end `\"`, `\{`, `\}` escaping in JSON fixtures (#2167). This replaced the earlier "no raw or multiline literals" rule.
+Decision: the user chose `"""` plus `r"""` (raw) literals (since the f-string decision, `"""` is plain and `f"""` interpolates, see [f-strings](plain-text-never-interpolates-f-text-does.md)), indent stripped to the closing line, to end `\"`, `\{`, `\}` escaping in JSON fixtures (#2167). This replaced the earlier "no raw or multiline literals" rule.
 
 Later: one-line `r"..."` (no escapes, ends at the first quote, so no quote inside) was added for regexes; it is a single-line token and needs no masking.
 

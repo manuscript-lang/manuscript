@@ -69,7 +69,7 @@ fn check_equality(side: String, mutation: String) Void!:
     expected_calls := if mutation == "append_write" or mutation == "overwrite": 2 else: 3
     same := left == right
     if same != expected or calls.count != expected_calls: return fail(
-        "{side}/{mutation}: equality {same}/{calls.count}, expected {expected}/{expected_calls}"
+        f"{side}/{mutation}: equality {same}/{calls.count}, expected {expected}/{expected_calls}"
     )
 
 test "element Equal mutating either List retains both captured headers":

@@ -24,7 +24,7 @@ fn var Chunks.next() Bytes?!:
 	return ok(none)
 
 fn var Chunks.close() Void!:
-	return ok(unit)
+	return ok()
 
 fn chunks(parts: List[Bytes]) ReadStream[Bytes]:
 	return ReadStream[Bytes](Chunks(parts, 0, none))
@@ -59,14 +59,14 @@ fn decode(parts: List[Bytes], limits: SseLimits = SseLimits()) List[SseEvent]!:
 
 fn summary(events: List[SseEvent]) String:
 	return events.map(
-		fn event: "{event.event}|{event.data}|{event.id.get("-")}"
+		fn event: f"{event.event}|{event.data}|{event.id.get("-")}"
 	).join(";")
 
 fn expect(source: String, want: String) Void!:
 	for parts in splits(source.to_bytes()):
 		got := summary(decode(parts)?)
 		if got != want: return fail(
-			"{source.to_bytes().values()}: want {want}, got {got}"
+			f"{source.to_bytes().values()}: want {want}, got {got}"
 		)
 
 test "LF CRLF and CR endings decode identically under every chunk split":
@@ -153,7 +153,7 @@ test "truncated streams fail and clean ends succeed":
 	for source in ["data: a\n", "data: a", "data: a\n\ndata", "id: 1\n"]:
 		outcome := decode([source.to_bytes()])
 		if outcome.is_ok() or outcome.err().kind != "EBADMSG": return fail(
-			"{source} must be truncated"
+			f"{source} must be truncated"
 		)
 
 	for source in ["", "data: a\n\n", ": keepalive\n", "data: a\r\n\r\n", "\n"]:

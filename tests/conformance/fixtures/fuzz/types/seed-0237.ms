@@ -6,24 +6,24 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     f1 := (552.713 + 1.0e-3)
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
 
     fixed := 1
     fixed = 2
     say(
-        "{((0 - (-39)) + (720177 / 1))} {((-42) + (-11))} {(((0 - (-39)) + (720177 / 1)) < ((-42) + (-11)))} sum {((0 - (-39)) + (720177 / 1)) + ((-42) + (-11))}"
+        f"{((0 - (-39)) + (720177 / 1))} {((-42) + (-11))} {(((0 - (-39)) + (720177 / 1)) < ((-42) + (-11)))} sum {((0 - (-39)) + (720177 / 1)) + ((-42) + (-11))}"
     )
 
     i2 := 751956
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     f3 := (f1 * f1)
-    say("f3 = {f3}")
+    say(f"f3 = {f3}")
 
     i4 := i2
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
     return 0

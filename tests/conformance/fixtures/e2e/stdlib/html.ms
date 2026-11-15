@@ -22,11 +22,11 @@ fn text_content(node: HtmlNode) String:
 		Text(text): return text.clone()
 		Document(items):
 			var text = ""
-			for item in items: text = "{text}{text_content(item)}"
+			for item in items: text = f"{text}{text_content(item)}"
 			return text
 		Element(_, _, _, items):
 			var text = ""
-			for item in items: text = "{text}{text_content(item)}"
+			for item in items: text = f"{text}{text_content(item)}"
 			return text
 		_: return ""
 
@@ -166,7 +166,7 @@ test "HTML depth limit stops deeply nested input without quadratic work":
 	expect_equal(parse(nested, HtmlOptions(max_depth: 100)), limited)?
 
 	elapsed := monotonic().difference(started).to_milliseconds()
-	if elapsed > 5000: return fail("depth limit took {elapsed} ms")
+	if elapsed > 5000: return fail(f"depth limit took {elapsed} ms")
 
 test "HTML parse applies default limits and none lifts them":
 	nested := "<div>".repeat(20000).get()

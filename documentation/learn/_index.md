@@ -15,6 +15,7 @@ Run a program, learn the language, then build something useful. The same `ms` co
 2. **[Read the guide](../guide/_index.md).** Small order-processing programs, chapter by chapter: values, data, errors, ownership, cleanup, concurrency, modules, tests, working with an agent.
 3. **[Test your code](testing.md).** Write tests and run the cases you want.
 4. **[Build a small tool](../cookbook/_index.md).** Start from a complete arguments, files, JSON, or HTTP recipe.
+5. **[Use a package](packages.md).** Depend on another project's source, pinned and checked.
 
 Read in order with **Next**.
 
@@ -49,4 +50,4 @@ It also lists matching fields and related functions. Search includes project sym
 
 ## Working with a coding agent?
 
-Install its writing reference with `ms skill -o .agents/skills`; this creates a self-contained `manuscript` skill with concept references and the compiler version. Use `ms verify` for type checking, formatting checks, lint, and tests together; `ms check --json` gives structured diagnostics, and `ms check --fix` applies available mechanical fixes. See [commands for agents](../developer-tooling/implementation.md#commands-for-agents).
+Install its writing reference with `ms skill -o .claude/skills -o .agents/skills`; this creates a self-contained `manuscript` skill with concept references and the compiler version. Use `ms verify` for type checking, formatting checks, lint, and tests together; `ms check --json` gives structured diagnostics, and `ms check --fix` applies available mechanical fixes. See [commands for agents](../developer-tooling/implementation.md#commands-for-agents).

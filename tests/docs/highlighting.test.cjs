@@ -64,9 +64,9 @@ test('strings end before the following code, including interpolations, nested st
 });
 
 test('current boolean spellings are constants; capitalized forms are ordinary names', () => {
-  const tokens = tokenize('true false unit True False\n');
+  const tokens = tokenize('true false void True False\n');
   assert.deepEqual(tokens.filter(token => token.kind).map(token => [token.text, token.kind]), [
-    ['true', 'kc'], ['false', 'kc'], ['unit', 'kc'], ['True', 'nc'], ['False', 'nc'],
+    ['true', 'kc'], ['false', 'kc'], ['void', 'kc'], ['True', 'nc'], ['False', 'nc'],
   ]);
 });
 
@@ -90,7 +90,7 @@ test('all compiler keywords have scopes; contextual and retired words stay ident
     .map(match => match[1]);
   assert.ok(keywords.length >= 25, 'Read the current compiler keyword inventory');
   for (const word of keywords) {
-    assertScopes(word, [[word, ['true', 'false', 'unit'].includes(word) ? 'kc' : 'k']]);
+    assertScopes(word, [[word, ['true', 'false', 'void'].includes(word) ? 'kc' : 'k']]);
   }
   assertScopes('from as async await null def lambda elif case', [
     ['from', ''], ['as', ''], ['async', ''], ['await', ''], ['null', ''],
@@ -125,16 +125,16 @@ test('all current numeric bases, separators, fractions, exponents and Decimal fo
 });
 
 test('shared nested rules scope escapes, interpolation expressions and nested strings', () => {
-  const source = String.raw`text := "Hello \{world\} \u{1F600} {format(value: {"key": "{1 + 2}"})}!"` + '\r\nreturn 0 // Ω 🐈\r\n';
+  const source = String.raw`text := f"Hello \{world\} \u{1F600} {format(value: {"key": f"{1 + 2}"})}!"` + '\r\nreturn 0 // Ω 🐈\r\n';
   assertScopes(source, [
-    ['"Hello ', 's'], [String.raw`\{`, 'se'], [String.raw`\}`, 'se'],
+    ['f"Hello ', 's'], [String.raw`\{`, 'se'], [String.raw`\}`, 'se'],
     [String.raw`\u{1F600}`, 'se'], ['format', 'nf'], ['"key"', 's'], ['2', 'mi'], ['+', 'o'],
     ['return', 'k'], ['// Ω 🐈', 'c1'],
   ]);
   const tokens = tokenize(source);
   assert.equal(tokens.filter(token => token.kind === 'si').map(token => token.text).join(''), '{{}}');
-  assertScopes(String.raw`"// True \{literal\} \" \\ \n \r \t \u{41}"`, [
-    ['// True ', 's'], [String.raw`\"`, 'se'], [String.raw`\\`, 'se'],
+  assertScopes(String.raw`f"// True \{literal\} \" \\ \n \r \t \u{41}"`, [
+    ['f"// True ', 's'], [String.raw`\"`, 'se'], [String.raw`\\`, 'se'],
     [String.raw`\n`, 'se'], [String.raw`\r`, 'se'], [String.raw`\t`, 'se'], [String.raw`\u{41}`, 'se'],
   ]);
 });
@@ -183,7 +183,7 @@ test('bare enum variants have declaration scopes and case stays an identifier', 
 });
 
 test('unindented comments do not end an enum declaration scope', () => {
-  assertScopes('enum E:\n    ready\n// comment\n    pending\n/* comment */\n    finished\n\nfn work() Void: unit\n', [
+  assertScopes('enum E:\n    ready\n// comment\n    pending\n/* comment */\n    finished\n\nfn work() Void: void\n', [
     ['enum', 'k'], ['E', 'nc'], ['ready', 'nc'], ['pending', 'nc'], ['finished', 'nc'], ['work', 'nf'],
   ]);
 });

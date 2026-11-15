@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -36,18 +36,18 @@ fn gcd(a: Int, b: Int) Int:
 
 export fn main() Int:
     say(
-        "{(((-3) - 28) * (448675 * 36))} {(-83354)} {((((-3) - 28) * (448675 * 36)) < (-83354))} sum {(((-3) - 28) * (448675 * 36)) + (-83354)}"
+        f"{(((-3) - 28) * (448675 * 36))} {(-83354)} {((((-3) - 28) * (448675 * 36)) < (-83354))} sum {(((-3) - 28) * (448675 * 36)) + (-83354)}"
     )
 
     i1 := ((-13) * 45)
-    say("i1 = {i1}")
-    say("collatz(752) = {collatz(752)}")
+    say(f"i1 = {i1}")
+    say(f"collatz(752) = {collatz(752)}")
 
-    s2 := ("{((-24) % (-489913))}:" + "hello world".upper())
-    say("s2 = [{s2}]")
+    s2 := (f"{((-24) % (-489913))}:" + "hello world".upper())
+    say(f"s2 = [{s2}]")
 
     b3 := (9.0e0 == ((354.25 - 6.5) - (460.596 * 0.0)))
-    say("b3 = {b3}")
+    say(f"b3 = {b3}")
 
     var acc4 = 0
     var stepacc4 = 0
@@ -56,37 +56,37 @@ export fn main() Int:
         stepacc4 += 1
         acc4 += stepacc4 * stepacc4 + 1
 
-    say("acc4 = {acc4}")
+    say(f"acc4 = {acc4}")
 
     b5 := b3
-    say("b5 = {b5}")
+    say(f"b5 = {b5}")
 
     f6 := (448.454 + ((790.781 * 853.791) * (767.865 + 1.5)))
-    say("f6 = {f6}")
+    say(f"f6 = {f6}")
 
     f7 := (((282.25 - 102.25) / (f6 * f6)) * ((153.563 * f6) - 2.0e13))
-    say("f7 = {f7}")
-    say("fact(9) = {fact(9)}")
+    say(f"f7 = {f7}")
+    say(f"fact(9) = {fact(9)}")
 
     l8 := [(-7), (-11)]
-    say("l8 = {l8} len {l8.length()}")
+    say(f"l8 = {l8} len {l8.length()}")
 
     l9 := l8.map(fn x: x + 4).filter(fn x: x % 2 == 0)
-    say("l9 = {l9} len {l9.length()}")
+    say(f"l9 = {l9} len {l9.length()}")
 
     l10 := [1, 2, 3].take(0)
-    say("l10 = {l10} len {l10.length()}")
+    say(f"l10 = {l10} len {l10.length()}")
 
     b11 := (("naïve".is_empty() and (b5 or b3)) and (not ("42" == "MiXeD CaSe")))
-    say("b11 = {b11}")
-    say("gcd(1061, 3561) = {gcd(1061, 3561)}")
+    say(f"b11 = {b11}")
+    say(f"gcd(1061, 3561) = {gcd(1061, 3561)}")
 
     i12 := 10
-    say("i12 = {i12}")
+    say(f"i12 = {i12}")
 
     s13 := ((s2 + s2) + s2.reverse())
-    say("s13 = [{s13}]")
+    say(f"s13 = [{s13}]")
 
     big14 := 9223372036854775807
-    say("{big14 * 6}")
+    say(f"{big14 * 6}")
     return 0

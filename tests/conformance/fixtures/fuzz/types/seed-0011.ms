@@ -6,16 +6,16 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     b1 := (16 >= (((-9223372036854775807) % (-48)) * (2 - 34)))
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
     s2 := ("Tab\there".replace("", "emoji 😀").reverse() + "emoji 😀")
-    say("s2 = [{s2}]")
+    say(f"s2 = [{s2}]")
 
     bad := say(1, 2)
-    s3 := ("{(-873515)}:" + "brace\{s\}")
-    say("s3 = [{s3}]")
+    s3 := (f"{(-873515)}:" + "brace{s}")
+    say(f"s3 = [{s3}]")
     return 0

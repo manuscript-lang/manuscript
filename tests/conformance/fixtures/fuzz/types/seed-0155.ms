@@ -6,27 +6,27 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     s1 := (
         "hello world"
-        + ("{343410165791}:" + ("{(-9223372036854775808)}:" + "héllo"))
+        + (f"{343410165791}:" + (f"{(-9223372036854775808)}:" + "héllo"))
     )
-    say("s1 = [{s1}]")
+    say(f"s1 = [{s1}]")
 
     l2 := [10]
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     b3 := (
         ((919.843 - 447.552) < (270.817 + 9.5))
         and (((-15) < (-56936)) or (false and false))
     )
-    say("b3 = {b3}")
+    say(f"b3 = {b3}")
 
     bad := 1 + "one"
     f4 := (((7.5 + 5.5) * 1.276) * 614.656)
-    say("f4 = {f4}")
+    say(f"f4 = {f4}")
 
     if ((true or false) and (not false)):
         say(("hello world" + "Tab\there"))
@@ -34,5 +34,5 @@ export fn main() Int:
         say("hello world")
 
     b5 := (l2.length() <= (-23))
-    say("b5 = {b5}")
+    say(f"b5 = {b5}")
     return 0

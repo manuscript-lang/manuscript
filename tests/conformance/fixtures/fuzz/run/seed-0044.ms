@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -18,28 +18,28 @@ export fn main() Int:
     var acc1 = 0
     for i in 0..8:
         acc1 += i * (-5)
-    say("acc1 = {acc1}")
+    say(f"acc1 = {acc1}")
 
     f2 := (((995.422 * 730.294) / (117.726 / 2.0e0)) - 958.649)
-    say("f2 = {f2}")
+    say(f"f2 = {f2}")
 
     l4 := [(-16), 27, 5, 4, (-25)]
-    say("l4 = {l4} len {l4.length()}")
+    say(f"l4 = {l4} len {l4.length()}")
 
     i5 := ((17 * (49 - 730160380730)) - l4.get(4))
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     i6 := (l4.length() % l4.length())
-    say("i6 = {i6}")
-    say("gcd(895, 147) = {gcd(895, 147)}")
+    say(f"i6 = {i6}")
+    say(f"gcd(895, 147) = {gcd(895, 147)}")
 
     f7 := ((f2 * f2) - (6.5 / (f2 - f2)))
-    say("f7 = {f7}")
+    say(f"f7 = {f7}")
 
     s8 := ("a" + "日本語")
-    say("s8 = [{s8}]")
+    say(f"s8 = [{s8}]")
 
     i9 := ((49 + (i6 * 49)) - s8.scalar_length())
-    say("i9 = {i9}")
-    say("{i9} {(i5 - (i9 + i9))} {(i9 < (i5 - (i9 + i9)))} sum {i9 + (i5 - (i9 + i9))}")
+    say(f"i9 = {i9}")
+    say(f"{i9} {(i5 - (i9 + i9))} {(i9 < (i5 - (i9 + i9)))} sum {i9 + (i5 - (i9 + i9))}")
     return 0

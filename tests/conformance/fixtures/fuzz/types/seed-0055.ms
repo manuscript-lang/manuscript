@@ -6,17 +6,17 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     f2 := (
         ((1.0e8 + 2.0e22) - (421.639 + 610.166))
         * ((8.5 + 556.896) - (5.5 - 537.979))
     )
-    say("f2 = {f2}")
+    say(f"f2 = {f2}")
     if 1:
         say("truthy")
 
     i3 := (25 + 146259)
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
     return 0

@@ -309,7 +309,7 @@ fn run_case[T](gen: Gen[T], property: fn(T) Void!, s: Source) Outcome:
 	if faulted.is_error(): return Outcome(source, none)
 
 	message := faulted.get("")
-	if message != property_failed: return Outcome(source, Error("fault: {message}"))
+	if message != property_failed: return Outcome(source, Error(f"fault: {message}"))
 
 	replayed := Source(source.choices.take(source.pos), 0, 0, false, false)
 	{value: again} := gen.make(replayed)
@@ -435,7 +435,7 @@ export fn check[T](
 		(
 			stderr()
 			.write(
-				"fuzzing property '{name}' from seed {base} (rerun with --seed {base})\n"
+				f"fuzzing property '{name}' from seed {base} (rerun with --seed {base})\n"
 			)
 			.get()
 		)
@@ -458,7 +458,7 @@ export fn check[T](
 			discarded += 1
 			if discarded > 10 * config.runs + 1000:
 				return fail(
-					"property '{name}': {discarded} generated cases were discarded by filter; loosen the filter"
+					f"property '{name}': {discarded} generated cases were discarded by filter; loosen the filter"
 				)
 
 			continue
@@ -475,7 +475,7 @@ export fn check[T](
 				executed,
 			)
 
-	return ok(unit)
+	return ok()
 
 fn report[T](
 	name: String,
@@ -494,7 +494,7 @@ fn report[T](
 
 	// The failure keeps the details of the assertion that failed, which name its source
 	// position.
-	return error(Error("""
+	return error(Error(f"""
     property '{name}' failed after {executed} cases (case seed {seed}; rerun with --seed {seed})
     counterexample: {shown}
     {reason.message}

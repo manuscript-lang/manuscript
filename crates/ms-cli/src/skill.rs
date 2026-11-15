@@ -6,10 +6,10 @@ use std::path::Path;
 use crate::backend::Io;
 
 pub fn run_skill(args: &[String], io: &mut Io) -> i32 {
-    let mut output = None;
+    let mut outputs: Vec<&String> = Vec::new();
     let mut args = args.iter();
     while let Some(arg) = args.next() {
-        if !matches!(arg.as_str(), "-o" | "--output") || output.is_some() {
+        if !matches!(arg.as_str(), "-o" | "--output") {
             return crate::util::usage_error(
                 io,
                 "ms skill takes only -o <directory>; run ms skill --help",
@@ -24,9 +24,9 @@ pub fn run_skill(args: &[String], io: &mut Io) -> i32 {
                 "ms skill -o needs a nonempty parent directory; prefix a leading dash with ./",
             );
         }
-        output = Some(directory);
+        outputs.push(directory);
     }
-    let Some(output) = output else {
+    if outputs.is_empty() {
         let text = ms_tooling::guide::skill::document(crate::VERSION);
         if let Err(error) = write!(io.stdout, "{text}")
             && error.kind() != std::io::ErrorKind::BrokenPipe
@@ -38,22 +38,24 @@ pub fn run_skill(args: &[String], io: &mut Io) -> i32 {
             return 1;
         }
         return 0;
-    };
-    let destination = Path::new(output).join("manuscript");
-    if let Err(error) = install(Path::new(output), &destination) {
+    }
+    for output in outputs {
+        let destination = Path::new(output).join("manuscript");
+        if let Err(error) = install(Path::new(output), &destination) {
+            let _ = writeln!(
+                io.stderr,
+                "ms skill: cannot write {}: {error}; existing skill files are never overwritten; choose another output directory or review and remove the existing folder before retrying",
+                destination.display()
+            );
+            return 1;
+        }
         let _ = writeln!(
-            io.stderr,
-            "ms skill: cannot write {}: {error}; existing skill files are never overwritten; choose another output directory or review and remove the existing folder before retrying",
+            io.stdout,
+            "Wrote Manuscript {} agent skill to {}",
+            crate::VERSION,
             destination.display()
         );
-        return 1;
     }
-    let _ = writeln!(
-        io.stdout,
-        "Wrote Manuscript {} agent skill to {}",
-        crate::VERSION,
-        destination.display()
-    );
     0
 }
 

@@ -19,7 +19,7 @@ fn random_registry(seed: Int, n: Int, versions: Int) String:
 
 	for i in 0..n:
 		for v in 0..versions:
-			var line = "pkg p{i} {rng.randint(0, 2)}.{v}.{rng.randint(0, 3)}"
+			var line = f"pkg p{i} {rng.randint(0, 2)}.{v}.{rng.randint(0, 3)}"
 			var used = List[Int]()
 
 			for _k in 0..rng.randint(0, 3):
@@ -31,12 +31,12 @@ fn random_registry(seed: Int, n: Int, versions: Int) String:
 				used.append(j)
 
 				op := rng.choice(ops)
-				line += " p{j}:{op}{rng.randint(0, 2)}.{rng.randint(0, versions)}.{rng.randint(0, 3)}"
+				line += f" p{j}:{op}{rng.randint(0, 2)}.{rng.randint(0, versions)}.{rng.randint(0, 3)}"
 
 			out += line + "\n"
 
-	out += "resolve p{n - 1} *\n"
-	out += "resolve p{n / 2} ^0.1.0\n"
+	out += f"resolve p{n - 1} *\n"
+	out += f"resolve p{n / 2} ^0.1.0\n"
 	out += "list p0\n"
 	return out
 

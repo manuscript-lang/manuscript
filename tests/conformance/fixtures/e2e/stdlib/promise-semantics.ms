@@ -18,7 +18,7 @@ fn report(reason: Error) String:
 
 fn forever() Int:
 	for i in 0..600:
-		_ := sleep(milliseconds(100)).wait()
+		void sleep(milliseconds(100)).wait()
 	return 0
 
 test "a fault inside a promise ends only that promise":
@@ -44,7 +44,7 @@ test "promises faulting on several threads each report their own fault":
 		for i in 0..batch.length():
 			reason := batch[i].wait() | expect_error?
 			text := report(reason)
-			expect_true(text.contains("index {round * 1000 + i + 1} out of range"))?
+			expect_true(text.contains(f"index {round * 1000 + i + 1} out of range"))?
 
 test "a timed out wait reports Timeout and cancels the work":
 	slow := promise(
@@ -74,7 +74,7 @@ test "wait_all ends at the first failure in time, not list order":
 test "wait_all keeps order when later promises finish first":
 	slow := promise(
 		fn:
-			_ := sleep(milliseconds(30)).wait()
+			void sleep(milliseconds(30)).wait()
 			return ok(1)
 	)
 
@@ -104,7 +104,7 @@ test "a timeout counts from construction, so a late wait still reports Timeout":
 		fn: ok(forever()),
 		options: PromiseOptions(timeout: milliseconds(20))
 	)
-	_ := sleep(milliseconds(80)).wait()
+	void sleep(milliseconds(80)).wait()
 	expect_true(slow.done())?
 
 	reason := slow.wait() | expect_error?
@@ -185,7 +185,7 @@ fn ignore_inner(inner: Promise[Int]) Int!:
 	return ok(1)
 
 fn nap(ms: Int) Int!:
-	sleep(milliseconds(ms)).wait().get(unit)
+	void sleep(milliseconds(ms)).wait()
 	return ok(ms)
 
 test "a promise that ends holding an unfinished promise cancels it instead of hanging":

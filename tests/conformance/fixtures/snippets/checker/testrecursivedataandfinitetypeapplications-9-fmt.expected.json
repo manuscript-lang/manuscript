@@ -1,7 +1,7 @@
 {
   "format": 1,
   "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
+  "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
     "fmt": "type Entry:\n\tname: String\n\tnickname: String?\n\ntype Person:\n\tprimary: Entry?\n"

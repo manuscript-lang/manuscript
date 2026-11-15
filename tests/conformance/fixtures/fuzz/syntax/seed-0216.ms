@@ -6,25 +6,25 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
-    s1 := (("delta" + ("{(32 - (-442393))}:" + "Tab\there")) + "line\nbreak")
-    say("s1 = [{s1}]")
+    s1 := (("delta" + (f"{(32 - (-442393))}:" + "Tab\there")) + "line\nbreak")
+    say(f"s1 = [{s1}]")
 
     b2 := (((true and false) and (not true)) and ((0.0 + 209.492) != (3.5 + 5.0e14)))
-    say("b2 = {b2}")
+    say(f"b2 = {b2}")
 
     s3 := s1
-    say("s3 = [{s3}]")
+    say(f"s3 = [{s3}]")
 
     l4 := [(-18)]
-    say("l4 ={l4} len {l4.length()}")
+    say(f"l4 ={l4} len {l4.length()}")
 
     l5 := l4.map(fn x: x * 7)
-    say("l5 = {l5} len {l5.length()}")
+    say(f"l5 = {l5} len {l5.length()}")
 
     var l6 = l4.clone()
     l6.append(97)
-    say("l6 = {l6} len {l6.length()}")
+    say(f"l6 = {l6} len {l6.length()}")
     return 0

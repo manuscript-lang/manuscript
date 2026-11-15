@@ -81,7 +81,7 @@ fn run() Result[Void, Error]:
     while true:
         line := input.next()?
         if text := line:
-            stdout().write("{text}\n")?
+            stdout().write(f"{text}\n")?
         else:
             break
     return stdout().flush()

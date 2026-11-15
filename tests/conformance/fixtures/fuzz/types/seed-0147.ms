@@ -6,16 +6,16 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := (46 - ((-17) + (-136856)))
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     b2 := ((i1 * (i1 + 213577946644)) > ((79639430961 + i1) - (-24)))
-    say("b2 = {b2}")
+    say(f"b2 = {b2}")
 
     bad := missing_function(3)
     i3 := ((-654890) - ((i1 * i1) + (-11)))
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
     return 0

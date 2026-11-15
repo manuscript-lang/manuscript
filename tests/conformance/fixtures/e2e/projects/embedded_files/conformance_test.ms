@@ -9,7 +9,7 @@ test "embedded files read back byte for byte":
 	tree := files()
 	(
 		tree.read("hello.txt", none) | expect_ok? | expect_equal(
-			"hello \{braces\} and \"quotes\"\n".to_bytes()
+			"hello {braces} and \"quotes\"\n".to_bytes()
 		)?
 	)
 	(

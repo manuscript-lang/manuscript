@@ -36,6 +36,6 @@ fn main() Void:
     if var last = xs[xs.length() - 1]?:
         last.append(4)
 
-    _ := stdout().write(
-        "{n} {cs[0].count} {cs[0].tags} {rows} {got} {m.get("a")} {xs}\n"
+    void stdout().write(
+        f"{n} {cs[0].count} {cs[0].tags} {rows} {got} {m.get("a")} {xs}\n"
     )

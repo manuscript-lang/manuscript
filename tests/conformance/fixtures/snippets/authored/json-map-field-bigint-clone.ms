@@ -13,7 +13,7 @@ test "a record with a Map[String, T] field is Data and roundtrips as a JSON obje
     scores["a"] = 1
 
     text := stringify(Report(name: "x", scores: scores))?
-    expect_equal(text, "\{\"name\":\"x\",\"scores\":\{\"a\":1\}\}")?
+    expect_equal(text, "{\"name\":\"x\",\"scores\":{\"a\":1}}")?
 
     back := parse[Report](text)?
     expect_equal(back.scores["a"], 1)?

@@ -56,11 +56,11 @@ fn run_range(
 	selected: List[Int],
 	results: String,
 ) Void:
-	if high - low <= 0: return unit
+	if high - low <= 0: return
 
 	if high - low == 1:
 		run_file(files, low, selected, results)
-		return unit
+		return
 
 	middle := (low + high) / 2
 	upper := promise(
@@ -84,9 +84,9 @@ fn run_file(
 	).wait()
 
 	if result.is_error():
-		output(results, "f{position}", msrt_test_capture_take(capture))
-		output(results, "r{position}", msrt_test_capture_fault(capture))
-		record(results, "\u{1}MSFAULT {position}\u{1}{fault_message(result.err())}\n")
+		output(results, f"f{position}", msrt_test_capture_take(capture))
+		output(results, f"r{position}", msrt_test_capture_fault(capture))
+		record(results, f"\u{1}MSFAULT {position}\u{1}{fault_message(result.err())}\n")
 
 	msrt_test_capture_free(capture)
 
@@ -100,7 +100,7 @@ fn run_captured(
 ) Void!:
 	msrt_test_capture_set(capture)
 	files[position](selected, results)
-	return ok(unit)
+	return ok()
 
 // The fault report (message and the test's frames, without the runner's) on one record
 // line: newlines become U+0002.
@@ -203,24 +203,24 @@ fn chosen(selected: List[Int], index: Int) Bool:
 	return selected.is_empty() or selected.contains(index)
 
 fn start(results: String, file: Int, index: Int) Void:
-	record(results, "\u{1}MSSTART {index} {file}\n")
+	record(results, f"\u{1}MSSTART {index} {file}\n")
 	msrt_test_deadline(true)
 
 fn report(results: String, index: Int, started: Instant, outcome: Void!) Void:
 	msrt_test_deadline(false)
-	output(results, "{index}", msrt_test_capture_take(msrt_test_capture_current()))
+	output(results, f"{index}", msrt_test_capture_take(msrt_test_capture_current()))
 
 	nanos := (monotonic() - started).nanos
 
 	if not outcome.is_error():
 		line(results, index, "pass", nanos, "", "")
-		return unit
+		return
 
 	cause := outcome.err()
 
 	if cause.kind == "ESKIP":
 		line(results, index, "skip", nanos, cause.message, "")
-		return unit
+		return
 
 	line(results, index, "fail", nanos, cause.message, cause.details.get_or("site", ""))
 
@@ -232,13 +232,13 @@ fn line(
 	message: String,
 	site: String,
 ) Void:
-	record(results, "\u{1}MSTEST {index} {status} {nanos}\u{1}{message}\u{1}{site}\n")
+	record(results, f"\u{1}MSTEST {index} {status} {nanos}\u{1}{message}\u{1}{site}\n")
 
 // Records `text` as the output of `key` (a test index, or `f` and a file number).
 fn output(results: String, key: String, text: String) Void:
-	if text.length() == 0: return unit
+	if text.length() == 0: return
 
-	record(results, "\u{1}MSOUT {key} {text.length()}\n{text}\n")
+	record(results, f"\u{1}MSOUT {key} {text.length()}\n{text}\n")
 
 fn record(results: String, text: String) Void:
 	msrt_test_record(results, text)

@@ -51,12 +51,12 @@ fn text_of_deep_and_large_values_is_capped_and_linear() {
         \x20   var l: L = Nil\n\
         \x20   for i in 0..100000:\n\
         \x20       l = Cons(i, l)\n\
-        \x20   text := \"{l}\"\n\
+        \x20   text := f\"{l}\"\n\
         \x20   var xs: List[Int] = []\n\
         \x20   for i in 0..300000:\n\
         \x20       xs.append(i)\n\
-        \x20   list_text := \"{xs}\"\n\
-        \x20   stdout().write(\"{text.length()} {list_text.length()}\\n\").get()\n\
+        \x20   list_text := f\"{xs}\"\n\
+        \x20   stdout().write(f\"{text.length()} {list_text.length()}\\n\").get()\n\
         \x20   return 0\n\
         ";
     std::fs::write(dir.join("text.ms"), source).unwrap();
@@ -77,7 +77,7 @@ fn lower_applies_final_sigma_after_titlecase_letters() {
     let source = "import stdout from \"@std/io/io.ms\"\n\
         export fn main() Int:\n\
         \x20   lowered := \"\\u{1C5}\\u{3A3}\".lower()\n\
-        \x20   stdout().write(\"{lowered.scalar_values()}\\n\").get()\n\
+        \x20   stdout().write(f\"{lowered.scalar_values()}\\n\").get()\n\
         \x20   return 0\n\
         ";
     std::fs::write(dir.join("sigma.ms"), source).unwrap();
@@ -101,7 +101,7 @@ fn build_time_for_cases(cases: usize) -> std::time::Duration {
         source.push_str(&format!("        C{i}(x): return x + {i}\n"));
     }
     source.push_str(&format!(
-        "\nexport fn main() Int:\n    stdout().write(\"{{g(C{}(1))}}\\n\").get()\n    return 0\n",
+        "\nexport fn main() Int:\n    stdout().write(f\"{{g(C{}(1))}}\\n\").get()\n    return 0\n",
         cases - 1
     ));
     std::fs::write(dir.join("cases.ms"), source).unwrap();

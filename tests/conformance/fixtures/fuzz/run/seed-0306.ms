@@ -6,38 +6,38 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     f1 := (((876.690 + 1.5) + 695.671) * 952.741)
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
 
     i2 := ((-423958) + (((-74502) - (-5)) % (764356 * (-43))))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     i3 := (((i2 - i2) + i2) - 31)
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     l4 := [(-15), (-20), (-14), 17, (-3)]
-    say("l4 = {l4} len {l4.length()}")
+    say(f"l4 = {l4} len {l4.length()}")
     say(
-        "{(39 * (i2 + 15))} {((i3 - 41) % (-(-45)))} {((39 * (i2 + 15)) < ((i3 - 41) % (-(-45))))} sum {(39 * (i2 + 15)) + ((i3 - 41) % (-(-45)))}"
+        f"{(39 * (i2 + 15))} {((i3 - 41) % (-(-45)))} {((39 * (i2 + 15)) < ((i3 - 41) % (-(-45))))} sum {(39 * (i2 + 15)) + ((i3 - 41) % (-(-45)))}"
     )
 
     i5 := (i2 - (-958263))
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     i6 := i5
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     i7 := l4.length()
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
-    s8 := ("{(469085 + i5)}:" + "line\nbreak").lower()
-    say("s8 = [{s8}]")
+    s8 := (f"{(469085 + i5)}:" + "line\nbreak").lower()
+    say(f"s8 = [{s8}]")
 
     s9 := s8.clone()
-    say("s9 = [{s9}]")
+    say(f"s9 = [{s9}]")
 
     if true:
         say("hello world")

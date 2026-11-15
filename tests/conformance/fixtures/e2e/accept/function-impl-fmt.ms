@@ -13,7 +13,7 @@ fn Box[fn(Int) T].apply(value: Int) T:
     return self.value(value)
 
 fn render(value: Int) String:
-    return "{value}"
+    return f"{value}"
 
 test "implementation variables inside function signatures":
     box := Box(render)

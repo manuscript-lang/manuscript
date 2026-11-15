@@ -114,7 +114,7 @@ fn answer(line: String) String:
 	if p.bad or p.pos != p.toks.length(): return "error: syntax"
 	if p.div0: return "error: division by zero"
 
-	return "{v}"
+	return f"{v}"
 
 export fn main() Int:
 	var out = stdout()
@@ -122,6 +122,6 @@ export fn main() Int:
 	for line in read_lines(stdin()).get():
 		s := answer(line)
 		if not s.is_empty():
-			out.write("{s}\n").get()
+			out.write(f"{s}\n").get()
 
 	return 0

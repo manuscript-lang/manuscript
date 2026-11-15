@@ -6,22 +6,22 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     l1 := [(-27), (-26), (-2), 15]
-    say("l1 = {l1} len {l1.length()}")
+    say(f"l1 = {l1} len {l1.length()}")
 
     l2 := l1.concat(l1)
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     var acc3 = 0
     for i in 0..0:
         acc3 += i * (-2)
-    say("acc3 = {acc3}")
+    say(f"acc3 = {acc3}")
 
     b4 := false
-    say("b4 = {b4}")
+    say(f"b4 = {b4}")
 
     bad: Bool := 1
     return 0

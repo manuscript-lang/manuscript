@@ -1,9 +1,9 @@
 {
   "format": 1,
   "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
+  "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn operation() Void!: ok(unit)\n\nfn f() Int!:\n\toperation()?\n\treturn ok(1)\n"
+    "fmt": "fn operation() Void!: ok()\n\nfn f() Int!:\n\toperation()?\n\treturn ok(1)\n"
   }
 }

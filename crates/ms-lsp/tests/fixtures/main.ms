@@ -45,21 +45,21 @@ fn area(shape: Shape) Int:
 
 fn describe(p: Point) String:
     n := p.norm()
-    return "norm is {n} at {p.x}"
+    return f"norm is {n} at {p.x}"
 
 export fn main() Int:
     _p := Point(x: 1, y: 2)
     values := [1, 2, 3]
     for v in values:
-        _ := say("{v}")
+        void say(f"{v}")
     for tick in Counter(n: 2):
-        _ := say("{tick}")
+        void say(f"{tick}")
 
     result := add(1, 2)
     return result
 
 fn say(text: String) Result[Void, Error]:
-    stdout().write("{text}\n")?
+    stdout().write(f"{text}\n")?
     return stdout().flush()
 
 test "addition":

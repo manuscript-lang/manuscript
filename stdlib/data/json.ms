@@ -166,7 +166,7 @@ return a decoded `Request` in a `Result` (`?` passes no expected type, so write 
 apply to the document before decoding.
 
 - A record is an object. Members may appear in any order. An absent member takes the field's default,
-  else `none` for an `Optional` field. An absent `Void` field becomes `unit`; any other absent
+  else `none` for an `Optional` field. An absent `Void` field becomes `void`; any other absent
   required field returns `EBADMSG`. A member that is not a field is ignored, unless
   `ignore_unknown_fields` is `false`, which makes it return `EBADMSG`.
 - An alternative case without payload is its name as a string; one with payload is externally tagged,
@@ -224,7 +224,7 @@ fn Event.to_json() JsonValue:
 fn tagged(kind: String, id: Int) JsonValue:
     var fields = Map[String, JsonValue]()
     fields.add("type", JsonValue.StringValue(kind))
-    fields.add("id", JsonValue.NumberValue("{id}"))
+    fields.add("id", JsonValue.NumberValue(f"{id}"))
     return JsonValue.ObjectValue(fields)
 ```
 */
@@ -407,7 +407,7 @@ fn var JsonReading[T].finish(var out: List[T]) Void!:
 	if failure := self.failure: return error(failure.clone())
 
 	self.finished = true
-	if self.mode == 0: return ok(unit)
+	if self.mode == 0: return ok()
 	if self.mode != 3: return self.fail(Error("JSON: invalid data", kind: "EBADMSG"))
 
 	completed := self.complete()
@@ -482,7 +482,7 @@ type JsonLines[T: Data]:
 
 fn var JsonLines[T].write(value: T) Void!:
 	text := stringify[T](value, StringifyOptions(max_bytes: self.max_bytes))?
-	return self.output.write("{text}\n".to_bytes())
+	return self.output.write(f"{text}\n".to_bytes())
 
 fn var JsonLines[T].flush() Void!:
 	return self.output.flush()

@@ -10,7 +10,7 @@ import (
 
 test "an unterminated carriage return remains line content":
 	temporary := temporary("manuscript-line-endings-")?
-	path := "{temporary.path()}/line.txt"
+	path := f"{temporary.path()}/line.txt"
 
 	for text in ["\r", "tail\r", "tail\r\r"]:
 		write_file(path, text, replace: true).wait()?
@@ -22,7 +22,7 @@ test "an unterminated carriage return remains line content":
 test "file and memory line readers agree on endings and byte limits":
 	limits: List[Int?] := [none, 0, 1, 2, 3, 8]
 	temporary := temporary("manuscript-line-parity-")?
-	path := "{temporary.path()}/lines.txt"
+	path := f"{temporary.path()}/lines.txt"
 
 	for text in ["", "a", "a\n", "a\r\n", "a\r", "\r", "\r\n", "a\nb\r", "é\r", "🙂\r\n"]:
 		for limit in limits:
@@ -53,7 +53,7 @@ test "lines decode in place across chunks with non-ASCII text and a final unterm
 	var expected: List[String] = []
 
 	for i in 0..3000:
-		text := "ligne {i} é日本"
+		text := f"ligne {i} é日本"
 		expected.append(text.clone())
 		source += text
 		source += if i % 2 == 0: "\r\n" else: "\n"
@@ -68,7 +68,7 @@ test "long lines cross small chunks without changing output":
 	text := "é日本".repeat(8192)?
 
 	for chunk in [1, 7, 64, 4096]:
-		source := "{text}\r\nnext\n{text}"
+		source := f"{text}\r\nnext\n{text}"
 		found := collect(lines(from_bytes(source.to_bytes(), chunk)), none)?
 		expect_equal(found, [text.clone(), "next", text.clone()])?
 

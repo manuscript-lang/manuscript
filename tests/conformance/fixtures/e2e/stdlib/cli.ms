@@ -197,10 +197,10 @@ test "float flags reject NaN and infinities":
 	for text in ["NaN", "Infinity", "-Infinity"]:
 		(
 			(ratio.parse(["--ratio", text.clone()]) | expect_error?).message
-			| expect_equal("cli: flag ratio: {text} is not a number")?
+			| expect_equal(f"cli: flag ratio: {text} is not a number")?
 		)
 
-	_ := expect_ok(ratio.parse(["--ratio", "1e5"]))?
+	void expect_ok(ratio.parse(["--ratio", "1e5"]))?
 	bad_default := Command(
 		name: "x",
 		flags: [Flag(name: "ratio", kind: FlagKind.Float, default: "NaN")],

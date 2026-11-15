@@ -6,44 +6,44 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     var acc1 = 0
     for i in 0..7:
         acc1 += i * 5
-    say("acc1 = {acc1}")
+    say(f"acc1 = {acc1}")
 
     l3 := [27, (-19), (-27), 17, (-2)]
-    say("l3 = {l3} len {l3.length()}")
+    say(f"l3 = {l3} len {l3.length()}")
 
     i4 := (-(-40))
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     f5 := ((183.944 / (635.038 + 435.274)) * ((769.864 + 124.25) + 773.001))
-    say("f5 = {f5}")
+    say(f"f5 = {f5}")
 
     b6 := ((not ("x" != "héllo")) and ("hello world" != "line\nbreak"))
-    say("b6 = {b6}")
+    say(f"b6 = {b6}")
 
     i7 := (((i4 * i4) - 182007243) * l3.length())
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
     i8 := i4
-    say("i8 = {i8}")
+    say(f"i8 = {i8}")
     say(
-        "{(37 % (4 + i7))} {((i7 / (-50)) + ((-17) % (-42)))} {((37 % (4 + i7)) < ((i7 / (-50)) + ((-17) % (-42))))} sum {(37 % (4 + i7)) + ((i7 / (-50)) + ((-17) % (-42)))}"
+        f"{(37 % (4 + i7))} {((i7 / (-50)) + ((-17) % (-42)))} {((37 % (4 + i7)) < ((i7 / (-50)) + ((-17) % (-42))))} sum {(37 % (4 + i7)) + ((i7 / (-50)) + ((-17) % (-42)))}"
     )
 
     b9 := ("emoji 😀".lower() == "beta")
-    say("b9 = {b9}")
+    say(f"b9 = {b9}")
 
     l10 := [15, 1, (-17), (-15), (-9)]
-    say("l10 = {l10} len {l10.length()}")
+    say(f"l10 = {l10} len {l10.length()}")
 
     i11 := (-((568470 % i7) * 5))
-    say("i11 = {i11}")
+    say(f"i11 = {i11}")
 
     i12 := ((i8 * (-38)) - i4)
-    say("i12 = {i12}")
+    say(f"i12 = {i12}")
     return 0

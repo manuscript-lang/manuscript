@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     if true:
@@ -15,11 +15,11 @@ export fn main() Int:
         say("héllo")
 
     i1 := (((-356910220443) * (-43)) % (((-34) % 357053546719) - (-43)))
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     l3 := [6]
-    say("l3 = {l3} len {l3.length()}")
+    say(f"l3 = {l3} len {l3.length()}")
 
     l4 := [(-30), (-22), 26, (-15)]
-    say("l4 = {l4} len {l4.length()}")
+    say(f"l4 = {l4} len {l4.length()}")
     return 0

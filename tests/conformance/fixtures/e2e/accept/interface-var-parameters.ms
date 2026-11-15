@@ -60,7 +60,7 @@ fn var Words.step(value: String, var out: List[String]) Void!:
 		out.append(word.clone())
 
 fn var Words.finish(var out: List[String]) Void!:
-	out.append("{self.count}")
+	out.append(f"{self.count}")
 
 test "a transform writes zero or more items per input and more at the end":
 	words := through[String, String](from_list(["a b", "", "c"]), Words(0))
@@ -75,7 +75,7 @@ fn var Checked.step(value: Int, var out: List[Int]) Void!:
 	if value < 0: return error(Error("negative", kind: "EBADMSG"))
 
 fn var Checked.finish(var out: List[Int]) Void!:
-	return ok(unit)
+	return ok()
 
 test "a failed step's partial output is dropped and the failure is the next item":
 	var s = through[Int, Int](from_list([1, -2, 3]), Checked())

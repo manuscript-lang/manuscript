@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     var acc1 = 0
@@ -16,13 +16,13 @@ export fn main() Int:
         stepacc1 += 1
         acc1 += stepacc1 * stepacc1 + 0
 
-    say("acc1 = {acc1}")
+    say(f"acc1 = {acc1}")
 
     l2 := [26, (-25), 1]
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     var acc3 = 0
     for i in 0..8:
         acc3 += i * 3
-    say("acc3 = {acc3}")
+    say(f"acc3 = {acc3}")
     return 0

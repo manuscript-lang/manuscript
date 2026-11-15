@@ -475,7 +475,7 @@ export opaque type TemporaryDirectory:
 // Removes the directory and everything inside it.
 // Safe to call repeatedly.
 fn var TemporaryDirectory.close() Void!:
-	_ := msstd_fs_temporary_close(self.native)
+	void msstd_fs_temporary_close(self.native)
 
 // Returns the absolute path of the directory, created under the host's temporary
 // root.
@@ -903,7 +903,7 @@ fn temporary_name(path: String, stamp: String) String:
 
 	directory := path.slice(0, split).get("")
 	name := path.view(split, path.length())
-	return "{directory}.{leading_scalars(name, 32)}.{stamp}.tmp"
+	return f"{directory}.{leading_scalars(name, 32)}.{stamp}.tmp"
 
 // The first `count` scalars of `text`.
 fn leading_scalars(text: String, count: Int) String:
@@ -930,7 +930,7 @@ fn replace_atomically(link: String, data: Bytes) Void!:
 	while attempt < 16:
 		temporary := temporary_name(
 			path,
-			"{stamp.unix_seconds()}.{stamp.nanoseconds()}.{attempt}",
+			f"{stamp.unix_seconds()}.{stamp.nanoseconds()}.{attempt}",
 		)
 		attempt += 1
 

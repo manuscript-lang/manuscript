@@ -44,10 +44,10 @@ fn main() Void:
         reader.names.append("n")
         total += 1
 
-    _ := stdout().write(
-        "{reader.entries[0].length()} {reader.entries[1].length()} {reader.names.length()} {total}\n"
+    void stdout().write(
+        f"{reader.entries[0].length()} {reader.entries[1].length()} {reader.names.length()} {total}\n"
     )
-    _ := stdout().write(
-        "{holder.reader.names.length()} {holder.reader.entries.length()} {holder.reader.entries[2].length()} {reader.entries.length()}\n"
+    void stdout().write(
+        f"{holder.reader.names.length()} {holder.reader.entries.length()} {holder.reader.entries[2].length()} {reader.entries.length()}\n"
     )
-    _ := stdout().write("{maps[1].length()} {maps[0].length()}\n")
+    void stdout().write(f"{maps[1].length()} {maps[0].length()}\n")

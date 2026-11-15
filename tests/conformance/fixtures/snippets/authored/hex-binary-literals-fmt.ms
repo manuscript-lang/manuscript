@@ -11,6 +11,6 @@ fn main() Void:
     e: Int32 := 0x7FFF_FFFF
     m := {0xFF: "x"}
     f := 3.141_592
-    _ := stdout().write(
-        "{a} {b} {c} {d} {e} {f} {0xFF} {m[255]} {-0x8000_0000_0000_0000}\n"
+    void stdout().write(
+        f"{a} {b} {c} {d} {e} {f} {0xFF} {m[255]} {-0x8000_0000_0000_0000}\n"
     )

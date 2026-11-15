@@ -51,7 +51,7 @@ impl Ledger:
 
 	var fn open_acct(id: String, limit_text: String) String:
 		if not is_digits(limit_text): return "error: invalid limit"
-		if self.balances.contains(id.clone()): return "error: account exists {id}"
+		if self.balances.contains(id.clone()): return f"error: account exists {id}"
 
 		self.limits[id.clone()] = parse_num(limit_text)
 		self.balances[id.clone()] = 0
@@ -62,30 +62,30 @@ impl Ledger:
 		return "ok"
 
 	var fn set_frozen(id: String, value: Bool) String:
-		if not self.balances.contains(id.clone()): return "error: unknown account {id}"
+		if not self.balances.contains(id.clone()): return f"error: unknown account {id}"
 
 		self.frozen[id] = value
 		return "ok"
 
 	var fn deposit(id: String, text: String) String:
-		if not self.balances.contains(id.clone()): return "error: unknown account {id}"
+		if not self.balances.contains(id.clone()): return f"error: unknown account {id}"
 		if not valid_amount(text.clone()):
 			return self.blame(id.clone(), "error: invalid amount")
 		if self.is_frozen(id.clone()):
-			return self.blame(id.clone(), "error: account frozen {id}")
+			return self.blame(id.clone(), f"error: account frozen {id}")
 
 		amt := parse_num(text)
 		nb := self.bal(id.clone()) + amt
 		self.balances[id.clone()] = nb
 		self.count_op(id)
-		return "ok {nb}"
+		return f"ok {nb}"
 
 	var fn withdraw(id: String, text: String) String:
-		if not self.balances.contains(id.clone()): return "error: unknown account {id}"
+		if not self.balances.contains(id.clone()): return f"error: unknown account {id}"
 		if not valid_amount(text.clone()):
 			return self.blame(id.clone(), "error: invalid amount")
 		if self.is_frozen(id.clone()):
-			return self.blame(id.clone(), "error: account frozen {id}")
+			return self.blame(id.clone(), f"error: account frozen {id}")
 
 		amt := parse_num(text)
 		b := self.bal(id.clone())
@@ -94,27 +94,27 @@ impl Ledger:
 		if fee:
 			nb -= 5
 		if nb < -self.lim(id.clone()):
-			return self.blame(id.clone(), "error: overdraft limit exceeded {id}")
+			return self.blame(id.clone(), f"error: overdraft limit exceeded {id}")
 
 		self.balances[id.clone()] = nb
 		if fee:
 			self.total_fees += 5
 		self.count_op(id)
-		if fee: return "ok {nb} fee=5"
+		if fee: return f"ok {nb} fee=5"
 
-		return "ok {nb}"
+		return f"ok {nb}"
 
 	var fn transfer(from: String, to: String, text: String) String:
 		if not self.balances.contains(from.clone()):
-			return "error: unknown account {from}"
-		if not self.balances.contains(to.clone()): return "error: unknown account {to}"
+			return f"error: unknown account {from}"
+		if not self.balances.contains(to.clone()): return f"error: unknown account {to}"
 		if from == to: return self.blame(from.clone(), "error: same account")
 		if not valid_amount(text.clone()):
 			return self.blame(from.clone(), "error: invalid amount")
 		if self.is_frozen(from.clone()):
-			return self.blame(from.clone(), "error: account frozen {from}")
+			return self.blame(from.clone(), f"error: account frozen {from}")
 		if self.is_frozen(to.clone()):
-			return self.blame(to.clone(), "error: account frozen {to}")
+			return self.blame(to.clone(), f"error: account frozen {to}")
 
 		amt := parse_num(text)
 		b := self.bal(from.clone())
@@ -123,7 +123,7 @@ impl Ledger:
 		if fee:
 			nb -= 5
 		if nb < -self.lim(from.clone()):
-			return self.blame(from.clone(), "error: overdraft limit exceeded {from}")
+			return self.blame(from.clone(), f"error: overdraft limit exceeded {from}")
 
 		self.balances[from.clone()] = nb
 
@@ -133,9 +133,9 @@ impl Ledger:
 			self.total_fees += 5
 		self.count_op(from)
 		self.count_op(to)
-		if fee: return "ok {nb} {nt} fee=5"
+		if fee: return f"ok {nb} {nt} fee=5"
 
-		return "ok {nb} {nt}"
+		return f"ok {nb} {nt}"
 
 	fn report() String:
 		var rows = List[String]()
@@ -148,10 +148,10 @@ impl Ledger:
 		for id in sorted_ids:
 			fz := if self.is_frozen(id.clone()): "yes" else: "no"
 			rows.append(
-				"{id} balance={self.bal(id.clone())} limit={self.lim(id.clone())} ops={self.ops.get_or(id.clone(), 0)} rejected={self.rejected.get_or(id.clone(), 0)} frozen={fz}"
+				f"{id} balance={self.bal(id.clone())} limit={self.lim(id.clone())} ops={self.ops.get_or(id.clone(), 0)} rejected={self.rejected.get_or(id.clone(), 0)} frozen={fz}"
 			)
 
-		rows.append("total balance={total} fees={self.total_fees}")
+		rows.append(f"total balance={total} fees={self.total_fees}")
 		return rows.join("\n")
 
 	var fn run_cmd(t: List[String]) String:

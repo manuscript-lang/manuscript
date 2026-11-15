@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -16,18 +16,18 @@ fn fact(n: Int) Int:
 
 export fn main() Int:
     s1 := ("ms" + "MiXeD CaSe")
-    say("s1 = [{s1}]")
+    say(f"s1 = [{s1}]")
 
     b2 := (true and (not true))
-    say("b2 = {b2}")
+    say(f"b2 = {b2}")
 
-    s3 := ("{((-21) / (-7))}:" + (s1.upper() + s1.replace("emoji 😀", "")))
-    say("s3 == [{s3}]")
-    say("fact(20) = {fact(20)}")
+    s3 := (f"{((-21) / (-7))}:" + (s1.upper() + s1.replace("emoji 😀", "")))
+    say(f"s3 == [{s3}]")
+    say(f"fact(20) = {fact(20)}")
 
     f4 := 0.0
-    say("f4 = {f4}")
+    say(f"f4 = {f4}")
 
     b5 := (not (b2 or s3.contains("日本語")))
-    say("b5 = {b5}")
+    say(f"b5 = {b5}")
     return 0

@@ -41,7 +41,7 @@ Postfix       = Primary, { ".", Name | TypeArguments | "[", Expression, "]" | Ca
 CallArguments = "(", [ Argument, { ",", Argument }, [ "," ] ], ")" ;
 Argument      = [ Name, ":" ], [ "var" ], Expression ;
 Primary       = IntLiteral | FloatLiteral | DecimalLiteral | StringLiteral
-              | "true" | "false" | "unit" | "self" | Name
+              | "true" | "false" | "void" | "self" | Name
               | "(", Expression, ")" | ListLiteral | MapLiteral | FunctionExpression | MatchExpression | IfExpression ;
 ListLiteral   = "[", [ Expression, { ",", Expression }, [ "," ] ], "]" ;
 MapLiteral    = "{", [ MapEntry, { ",", MapEntry }, [ "," ] ], "}" ;
@@ -148,7 +148,7 @@ See [compatibility](../types/compatibility.md) and [error propagation](../errors
 
 ```ms
 fn main() Void:
-    print("{__FILE__}:{__LINE__}")
+    print(f"{__FILE__}:{__LINE__}")
 ```
 
 ## Evaluation

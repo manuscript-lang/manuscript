@@ -14,10 +14,16 @@
       "include": "#raw-multiline-string"
     },
     {
+      "include": "#f-multiline-string"
+    },
+    {
       "include": "#multiline-string"
     },
     {
       "include": "#raw-string"
+    },
+    {
+      "include": "#f-string"
     },
     {
       "include": "#string"
@@ -89,11 +95,11 @@
     },
     {
       "name": "keyword.control.manuscript",
-      "match": "\\b(fn|type|enum|interface|impl|import|export|extern|ref|var|if|else|for|in|while|match|return|try|break|continue|test|fixture|and|or|not|self)\\b"
+      "match": "\\b(fn|type|enum|interface|impl|import|export|extern|var|if|else|for|in|while|match|return|try|break|continue|test|fixture|and|or|not|self)\\b"
     },
     {
       "name": "constant.language.manuscript",
-      "match": "\\b(true|false|unit)\\b"
+      "match": "\\b(true|false|void)\\b"
     },
     {
       "name": "constant.numeric.manuscript",
@@ -124,6 +130,17 @@
     "multiline-string": {
       "name": "string.quoted.triple.manuscript",
       "begin": "\"\"\"",
+      "end": "\"\"\"",
+      "patterns": [
+        {
+          "name": "constant.character.escape.manuscript",
+          "match": "\\\\(?:u\\{[0-9A-Fa-f]{1,6}\\}|[\"\\\\nrt])"
+        }
+      ]
+    },
+    "f-multiline-string": {
+      "name": "string.quoted.triple.manuscript",
+      "begin": "\\bf\"\"\"",
       "end": "\"\"\"",
       "patterns": [
         {
@@ -170,9 +187,9 @@
       "name": "string.quoted.other.raw.manuscript",
       "match": "\\br\"[^\"\\n]*\""
     },
-    "string": {
+    "f-string": {
       "name": "string.quoted.double.manuscript",
-      "begin": "\"",
+      "begin": "\\bf\"",
       "end": "\"",
       "patterns": [
         {
@@ -207,6 +224,17 @@
               "include": "$self"
             }
           ]
+        }
+      ]
+    },
+    "string": {
+      "name": "string.quoted.double.manuscript",
+      "begin": "\"",
+      "end": "\"",
+      "patterns": [
+        {
+          "name": "constant.character.escape.manuscript",
+          "match": "\\\\(?:u\\{[0-9A-Fa-f]{1,6}\\}|[\"\\\\nrt])"
         }
       ]
     }

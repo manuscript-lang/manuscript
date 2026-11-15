@@ -59,7 +59,7 @@ fn solve(s: String) String:
 		valid += 1
 		levels[e.level.clone()] = levels.get_or(e.level, 0) + 1
 
-		first := "{e.status}".view(0, 1)
+		first := f"{e.status}".view(0, 1)
 		class := if first == "2": 0 else: if first == "3": 1 else: if first == "4": 2 else: if first == "5": 3 else: 4
 		classes[class] += 1
 		lats.append(e.latency)
@@ -67,17 +67,17 @@ fn solve(s: String) String:
 		counts[e.path.clone()] = counts.get_or(e.path, 0) + 1
 		totals[e.path.clone()] = totals.get_or(e.path, 0) + e.latency
 
-	var out = ["valid: {valid}", "malformed: {bad}"]
-	for l in LEVELS: out.append("{l}: {levels.get_or(l, 0)}")
+	var out = [f"valid: {valid}", f"malformed: {bad}"]
+	for l in LEVELS: out.append(f"{l}: {levels.get_or(l, 0)}")
 	out.append(
-		"status: 2xx={classes[0]} 3xx={classes[1]} 4xx={classes[2]} 5xx={classes[3]} other={classes[4]}"
+		f"status: 2xx={classes[0]} 3xx={classes[1]} 4xx={classes[2]} 5xx={classes[3]} other={classes[4]}"
 	)
 
 	sorted_lats := lats.sorted()
 	out.append(
-		"p95: {if lats.is_empty(): 0 else: sorted_lats[(95 * lats.length() + 99) / 100 - 1]}"
+		f"p95: {if lats.is_empty(): 0 else: sorted_lats[(95 * lats.length() + 99) / 100 - 1]}"
 	)
-	if e := slow: out.append("slowest: {e.latency} {e.method} {e.path} {e.ts}")
+	if e := slow: out.append(f"slowest: {e.latency} {e.method} {e.path} {e.ts}")
 	out.append("top:")
 
 	order := counts.keys().sorted(
@@ -89,7 +89,7 @@ fn solve(s: String) String:
 	)
 	for p in order.take(3):
 		out.append(
-			"{p} {counts.get_or(p, 0)} avg={totals.get_or(p, 0) / counts.get_or(p, 0)}"
+			f"{p} {counts.get_or(p, 0)} avg={totals.get_or(p, 0) / counts.get_or(p, 0)}"
 		)
 	return out.map(fn o: o + "\n").join("")
 
@@ -107,7 +107,7 @@ fn good(var rnd: Random, i: Int) String:
 	statuses := [200, 200, 201, 301, 404, 500, 503]
 	pick := rnd.below(statuses.length())
 	lat := rnd.randint(0, 900)
-	return "2024-05-01T10:{"{i / 60 % 60}".pad_start(2, "0")}:{"{i % 60}".pad_start(2, "0")} {level} {method} {path} {statuses[pick]} {lat}"
+	return f"2024-05-01T10:{f"{i / 60 % 60}".pad_start(2, "0")}:{f"{i % 60}".pad_start(2, "0")} {level} {method} {path} {statuses[pick]} {lat}"
 
 fn mangle(var rnd: Random, l: String) String:
 	var f = l.split(" ")
@@ -155,7 +155,7 @@ export fn gen_c25() Void:
 		mk("all-malformed", "x\n\nINFO GET / 200 1\n"),
 	]
 	var p95 = ""
-	for i in 0..40: p95 += "t{i} INFO PUT /q{i % 3} 200 {(i * 37) % 101}\n"
+	for i in 0..40: p95 += f"t{i} INFO PUT /q{i % 3} 200 {(i * 37) % 101}\n"
 
 	small := rand_log(var rnd, 40, 0.1)
 	mid := rand_log(var rnd, 600, 0.2)

@@ -8,7 +8,7 @@ fn unit_value(flag: Bool) Void:
 	value: Void := match flag:
 		true:
 			_marker := 1
-		false: unit
+		false: void
 
 	return value
 

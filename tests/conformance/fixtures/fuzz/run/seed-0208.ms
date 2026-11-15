@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -16,14 +16,14 @@ fn gcd(a: Int, b: Int) Int:
 
 export fn main() Int:
     i1 := ((((-154898) % (-590149550777)) + ((-443943) - (-30))) * 44)
-    say("i1 = {i1}")
-    say("gcd(2938, 1113) = {gcd(2938, 1113)}")
+    say(f"i1 = {i1}")
+    say(f"gcd(2938, 1113) = {gcd(2938, 1113)}")
 
     l2 := [1, 2, 3].take(0)
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     l3 := l2.map(fn x: x * 4)
-    say("l3 = {l3} len {l3.length()}")
+    say(f"l3 = {l3} len {l3.length()}")
 
     if ("x" + "ms").is_empty():
         say("Tab\there")
@@ -34,12 +34,12 @@ export fn main() Int:
         ((939.623 * 3.0e17) + 60.305)
         - ((894.849 + 587.646) * (787.173 + 704.971))
     )
-    say("f4 = {f4}")
+    say(f"f4 = {f4}")
 
-    s5 := (("back\\slash" + "brace\{s\}") + "alpha")
-    say("s5 = [{s5}]")
-    say("{i1} {(-49)} {(i1 < (-49))} sum {i1 + (-49)}")
+    s5 := (("back\\slash" + "brace{s}") + "alpha")
+    say(f"s5 = [{s5}]")
+    say(f"{i1} {(-49)} {(i1 < (-49))} sum {i1 + (-49)}")
 
     f6 := f4
-    say("f6 = {f6}")
+    say(f"f6 = {f6}")
     return 0

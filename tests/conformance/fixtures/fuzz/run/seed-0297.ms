@@ -6,43 +6,43 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     f1 := 0.0
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
 
     if ((0.0 * 254.263) > (f1 / 976.25)):
-        say(("{10}:" + "Tab\there"))
+        say((f"{10}:" + "Tab\there"))
     else:
         say(("héllo" + "Tab\there"))
 
     f3 := 692.25
-    say("f3 = {f3}")
+    say(f"f3 = {f3}")
 
     b4 := false
-    say("b4 = {b4}")
+    say(f"b4 = {b4}")
 
     i5 := (-(((-6558) / 826392) / ((-248189984974) / 21)))
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     s6 := "héllo"
-    say("s6 = [{s6}]")
+    say(f"s6 = [{s6}]")
 
     s7 := "x"
-    say("s7 = [{s7}]")
+    say(f"s7 = [{s7}]")
 
     l8 := [1, 2, 3].take(0)
-    say("l8 = {l8} len {l8.length()}")
+    say(f"l8 = {l8} len {l8.length()}")
 
     i9 := (i5 - l8.length())
-    say("i9 = {i9}")
+    say(f"i9 = {i9}")
     say(
-        "{((i5 * i9) - l8.length())} {((-i5) + (8 + i9))} {(((i5 * i9) - l8.length()) < ((-i5) + (8 + i9)))} sum {((i5 * i9) - l8.length()) + ((-i5) + (8 + i9))}"
+        f"{((i5 * i9) - l8.length())} {((-i5) + (8 + i9))} {(((i5 * i9) - l8.length()) < ((-i5) + (8 + i9)))} sum {((i5 * i9) - l8.length()) + ((-i5) + (8 + i9))}"
     )
 
     b10 := false
-    say("b10 = {b10}")
+    say(f"b10 = {b10}")
 
     if false:
         say("gamma")
@@ -50,14 +50,14 @@ export fn main() Int:
         say("naïve")
 
     i11 := (i9 - l8.length())
-    say("i11 = {i11}")
+    say(f"i11 = {i11}")
 
     f12 := ((f3 * (f1 * f3)) * 12.386)
-    say("f12 = {f12}")
+    say(f"f12 = {f12}")
 
     f13 := (((f12 * f3) / (f1 * 14.823)) * ((156.143 + 0.0) * (f1 - f12)))
-    say("f13 = {f13}")
+    say(f"f13 = {f13}")
 
     f14 := ((f1 / (842.25 - f13)) * 497.892)
-    say("f14 = {f14}")
+    say(f"f14 = {f14}")
     return 0

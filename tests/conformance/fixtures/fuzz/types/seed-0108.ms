@@ -6,16 +6,16 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     b1 := (
         ((404.174 + 293.187) != (631.802 * 382.672))
         and "gamma".contains("emoji 😀")
     )
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
     _bad := say
     l2 := [1, 2, 3].take(0)
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
     return 0

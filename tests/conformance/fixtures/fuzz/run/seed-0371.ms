@@ -6,29 +6,29 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     b1 := ((511.088 * (0.0 / 550.623)) > ((811.372 - 423.632) * (448.265 - 1.942)))
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
-    s2 := ("" + ("{((-2) + 33)}:" + "naïve"))
-    say("s2 = [{s2}]")
+    s2 := ("" + (f"{((-2) + 33)}:" + "naïve"))
+    say(f"s2 = [{s2}]")
 
     f3 := (598.201 * (445.972 * (973.750 / 915.893)))
-    say("f3 = {f3}")
+    say(f"f3 = {f3}")
 
     i4 := (-40)
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     b5 := (false or ((i4 / i4) > (i4 + i4)))
-    say("b5 = {b5}")
+    say(f"b5 = {b5}")
 
     b6 := ("MiXeD CaSe".lower().contains("gamma") and (s2 + "a").is_empty())
-    say("b6 = {b6}")
+    say(f"b6 = {b6}")
 
     f7 := f3
-    say("f7 = {f7}")
+    say(f"f7 = {f7}")
 
     if ((f7 * 4.0e12) == (9.5 + 38.759)):
         say("beta")
@@ -36,10 +36,10 @@ export fn main() Int:
         say("hello world")
 
     s8 := (s2 + s2.trim())
-    say("s8 = [{s8}]")
+    say(f"s8 = [{s8}]")
 
     l9 := [(-2)]
-    say("l9 = {l9} len {l9.length()}")
+    say(f"l9 = {l9} len {l9.length()}")
 
     var acc10 = 0
     var stepacc10 = 0
@@ -48,11 +48,11 @@ export fn main() Int:
         stepacc10 += 1
         acc10 += stepacc10 * stepacc10 + 3
 
-    say("acc10 = {acc10}")
+    say(f"acc10 = {acc10}")
 
     s11 := "日本語"
-    say("s11 = [{s11}]")
+    say(f"s11 = [{s11}]")
 
     i12 := ((l9.length() * (i4 - i4)) / (((-297698864656) * i4) + (i4 + i4)))
-    say("i12 = {i12}")
+    say(f"i12 = {i12}")
     return 0

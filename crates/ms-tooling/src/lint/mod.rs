@@ -161,7 +161,7 @@ pub const RULES: &[Rule] = &[
         code: "MSL117",
         family: "Integer literal interpolated into text",
         severity: Severity::Warning,
-        repair: "write `\\{4\\}` for literal braces such as a regex quantifier, or put the pattern in `r\"...\"` raw text; delete the braces to write the number",
+        repair: "drop the `f` so braces are plain text, or write `\\{4\\}` for literal braces in `f\"...\"` text; delete the braces to write the number",
     },
     Rule {
         code: "MSL118",
@@ -227,7 +227,7 @@ pub const RULES: &[Rule] = &[
         code: "MSL128",
         family: "Final return the end of the function already makes",
         severity: Severity::Error,
-        repair: "delete the final `return ok(unit)` (`Void!`) or `return` (`Void`)",
+        repair: "delete the final `return ok()` (`Void!`) or `return` (`Void`)",
     },
 ];
 

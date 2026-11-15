@@ -10,7 +10,7 @@ type Gate:
 	fails: Bool
 
 fn var Gate.close() Void!:
-	if self.fails: return error(Error("close {self.name}"))
+	if self.fails: return error(Error(f"close {self.name}"))
 
 fn use_gate(fails: Bool) Result[Int, Error]:
 	_gate := Gate("a", fails)
@@ -74,11 +74,11 @@ fn hold(fails: Bool) Int:
 	return 2
 
 test "a function that cannot return an error faults on a failed close":
-	message := expect_fault(fn: _ := plain(true))?
+	message := expect_fault(fn: void plain(true))?
 	expect_equal(message, "a resource could not be closed: its close returned an error")?
 	expect_equal(plain(false), 1)?
 
 test "a holder closing a part faults on a failed close":
-	message := expect_fault(fn: _ := hold(true))?
+	message := expect_fault(fn: void hold(true))?
 	expect_equal(message, "a resource could not be closed: its close returned an error")?
 	expect_equal(hold(false), 2)?

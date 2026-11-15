@@ -6,11 +6,11 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     s1 := "quote\"d"
-    say("s1 = [{s1}]")
+    say(f"s1 = [{s1}]")
 
     bad := say(1, 2)
     var acc2 = 0
@@ -20,17 +20,17 @@ export fn main() Int:
         stepacc2 += 1
         acc2 += stepacc2 * stepacc2 + (-5)
 
-    say("acc2 = {acc2}")
+    say(f"acc2 = {acc2}")
 
     i3 := (
         (((-571100) + (-307960)) + 14590112962)
         / ((357453 % 51553) * ((-38) / 23))
     )
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     s4 := "line\nbreak"
-    say("s4 = [{s4}]")
+    say(f"s4 = [{s4}]")
 
     i5 := (-((i3 + (-114432)) + (5 * (-25))))
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
     return 0

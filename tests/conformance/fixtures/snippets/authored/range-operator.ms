@@ -15,6 +15,6 @@ fn main() Void:
     for i in 5..2:
         empty += 1
 
-    _ := stdout().write(
-        "{total(4)} {xs.length()} {xs[0]} {empty} {(2..2).length()}\n"
+    void stdout().write(
+        f"{total(4)} {xs.length()} {xs[0]} {empty} {(2..2).length()}\n"
     )

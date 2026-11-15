@@ -1,7 +1,7 @@
 {
   "format": 1,
   "phase": "check",
-  "oracle": "Manuscript 0.1.0",
+  "oracle": "Manuscript 2026.11.0",
   "expected": {
     "exit_code": 1,
     "format": 1,
@@ -42,7 +42,7 @@
       {
         "code": "MS3001",
         "phase": "type",
-        "message": "expected String, found Int (in argument 'cause' of error); Int does not convert to String implicitly; interpolate it into text, e.g. \"{value}\"",
+        "message": "expected String, found Int (in argument 'cause' of error); Int does not convert to String implicitly; interpolate it into text, e.g. f\"{value}\"",
         "position": {
           "file": "reportless-error-boundary.ms",
           "line": 27,
@@ -69,7 +69,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/reportless-error-boundary.ms:13:12: type: expected Result[Int, Error], found Result[Int, DomainError] (in the return value)\n    |\n 13 |     return domain_failure()\n    |               ^\n<DIR>/reportless-error-boundary.ms:16:14: type: '?' requires the same error type; this function returns Result[Int, Error] but the operand fails with DomainError, so change the return error type or translate the error with map_error\n    |\n 16 |     value := domain_failure()?\n    |                 ^\n<DIR>/reportless-error-boundary.ms:20:14: type: '?' requires the same error type; this function returns Result[Int, OtherError] but the operand fails with DomainError, so change the return error type or translate the error with map_error\n    |\n 20 |     value := domain_failure()?\n    |                 ^\n<DIR>/reportless-error-boundary.ms:27:34: type: expected String, found Int (in argument 'cause' of error); Int does not convert to String implicitly; interpolate it into text, e.g. \"{value}\"\n    |\n 27 |     return optional_result(error(7))\n    |                                     ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/reportless-error-boundary.ms:13:12: type: expected Result[Int, Error], found Result[Int, DomainError] (in the return value)\n    |\n 13 |     return domain_failure()\n    |               ^\n<DIR>/reportless-error-boundary.ms:16:14: type: '?' requires the same error type; this function returns Result[Int, Error] but the operand fails with DomainError, so change the return error type or translate the error with map_error\n    |\n 16 |     value := domain_failure()?\n    |                 ^\n<DIR>/reportless-error-boundary.ms:20:14: type: '?' requires the same error type; this function returns Result[Int, OtherError] but the operand fails with DomainError, so change the return error type or translate the error with map_error\n    |\n 20 |     value := domain_failure()?\n    |                 ^\n<DIR>/reportless-error-boundary.ms:27:34: type: expected String, found Int (in argument 'cause' of error); Int does not convert to String implicitly; interpolate it into text, e.g. f\"{value}\"\n    |\n 27 |     return optional_result(error(7))\n    |                                     ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

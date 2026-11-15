@@ -4,5 +4,5 @@
 export fn main() Int:
     wide := 29501041598734.3125
     narrow: Float32 := 3423159.25
-    print("{wide} {narrow} {1313322917213848.25}")
+    print(f"{wide} {narrow} {1313322917213848.25}")
     return 0

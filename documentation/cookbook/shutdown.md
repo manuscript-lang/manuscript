@@ -19,8 +19,8 @@ type Worker:
     name: String
 
 fn var Worker.close() Void!:
-    print("{self.name} stopped")
-    return ok(unit)
+    print(f"{self.name} stopped")
+    return ok()
 
 fn main() Void!:
     var signals = watch_signals([2, 15])?
@@ -28,7 +28,7 @@ fn main() Void!:
     print("ready")
     _signal := signals.next()?
     print("stopping")
-    return ok(unit)
+    return ok()
 ```
 
 ```sh

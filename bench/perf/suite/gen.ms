@@ -15,7 +15,7 @@ fn var Rng.next(limit: Int) Int:
 	return (self.state / 65536) % limit
 
 fn save(dir: String, name: String, text: String) Void:
-	write_file("{dir}/{name}", text, replace: true).wait().get()
+	write_file(f"{dir}/{name}", text, replace: true).wait().get()
 
 fn logs(n: Int, seed: Int) String:
 	var r = Rng(seed)
@@ -25,9 +25,9 @@ fn logs(n: Int, seed: Int) String:
 	var b = StringBuilder()
 
 	for i in 0..n:
-		path := "/api/v{1 + r.next(3)}/item/{r.next(2000)}"
+		path := f"/api/v{1 + r.next(3)}/item/{r.next(2000)}"
 		b.append(
-			"2026-11-12T{10 + r.next(10)}:{10 + r.next(50)}:{10 + r.next(50)}Z {levels[r.next(6)]} {methods[r.next(6)]} {path} {statuses[r.next(10)]} {r.next(900)}\n"
+			f"2026-11-12T{10 + r.next(10)}:{10 + r.next(50)}:{10 + r.next(50)}Z {levels[r.next(6)]} {methods[r.next(6)]} {path} {statuses[r.next(10)]} {r.next(900)}\n"
 		)
 
 	return b.build()
@@ -41,7 +41,7 @@ fn csv(n: Int) String:
 	for i in 0..n:
 		note := if r.next(10) == 0: "\"gift, wrapped \"\"fast\"\"\"" else: "plain"
 		b.append(
-			"{i},{regions[r.next(6)]},sku-{r.next(500)},{1 + r.next(9)},{100 + r.next(99900)},{note}\n"
+			f"{i},{regions[r.next(6)]},sku-{r.next(500)},{1 + r.next(9)},{100 + r.next(99900)},{note}\n"
 		)
 
 	return b.build()
@@ -59,7 +59,7 @@ fn json(n: Int) String:
 		t1 := tags[r.next(7)]
 		t2 := tags[r.next(7)]
 		b.append(
-			"\{\"id\":{i},\"user\":\"user{r.next(1000)}\",\"score\":{r.next(10000)},\"active\":{active},\"tags\":[\"{t1}\",\"{t2}\"],\"name\":\"item \\\"{r.next(100)}\\\"\"\}\n"
+			f"\{\"id\":{i},\"user\":\"user{r.next(1000)}\",\"score\":{r.next(10000)},\"active\":{active},\"tags\":[\"{t1}\",\"{t2}\"],\"name\":\"item \\\"{r.next(100)}\\\"\"\}\n"
 		)
 
 	b.append("]")
@@ -78,10 +78,10 @@ fn words(n: Int) String:
 			// A skewed vocabulary: low ids are frequent.
 			w := (k * k) / 5000
 			line.append(
-				"{if j > 0: " " else: ""}{if w % 7 == 0: "Word" else: "word"}{w}"
+				f"{if j > 0: " " else: ""}{if w % 7 == 0: "Word" else: "word"}{w}"
 			)
 
-		b.append("{line.build()}.\n")
+		b.append(f"{line.build()}.\n")
 
 	return b.build()
 
@@ -89,16 +89,16 @@ fn records(n: Int) String:
 	var r = Rng(5)
 	var b = StringBuilder()
 	for i in 0..n:
-		b.append("name{r.next(100000)} {r.next(1000000)}\n")
+		b.append(f"name{r.next(100000)} {r.next(1000000)}\n")
 	return b.build()
 
 // A tree of 20 directories with 100 log files each, 200 lines per file at scale 1.
 fn tree(dir: String, scale: Int) Void:
 	for d in 0..20:
-		sub := "{dir}/tree/d{d}"
+		sub := f"{dir}/tree/d{d}"
 		create_directory(sub, recursive: true).get()
 		for f in 0..100 * scale:
-			save(sub, "f{f}.log", logs(200, 100 + d * 1000 + f))
+			save(sub, f"f{f}.log", logs(200, 100 + d * 1000 + f))
 
 fn main() Int:
 	args := arguments()

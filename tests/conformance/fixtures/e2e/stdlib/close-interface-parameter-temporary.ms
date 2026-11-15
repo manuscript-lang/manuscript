@@ -9,7 +9,7 @@ type Door:
     name: String
 
 fn var Door.close() Void!:
-    print("closed {self.name}")
+    print(f"closed {self.name}")
 
 fn fails() Int!:
     return error(Error("later argument"))
@@ -25,5 +25,5 @@ fn attempt() Void!:
     look_later(Door("later"), fails()?)
 
 fn main() Void:
-    _ := attempt()
+    void attempt()
     print("end")

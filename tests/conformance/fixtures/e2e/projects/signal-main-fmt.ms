@@ -10,7 +10,7 @@ type Resource:
     output: WriteStream
 
 fn Resource.close() Void!:
-    _ignored := self.output.write("close {self.label}\n")
+    _ignored := self.output.write(f"close {self.label}\n")
 
 fn main() Void:
     output := stdout()

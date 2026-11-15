@@ -1,7 +1,7 @@
 {
   "format": 1,
   "phase": "run",
-  "oracle": "Manuscript 0.1.0",
+  "oracle": "Manuscript 2026.11.0",
   "expected": {
     "exit_code": 134,
     "stdout": "l1 = [30] len 1\nf2 = 950.232\ni3 = 98900\n-504695 98900 true sum -405795\nf4 = 950.232\ni5 = -98900\nfib(11) = 89\n",

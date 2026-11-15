@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -23,30 +23,30 @@ fn fib(n: Int) Int:
 
 export fn main() Int:
     b1 := ("a".ends_with("beta") and (false or false))
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
     b2 := (not (14 == (40 / 933028)))
-    say("b2 = {b2}")
+    say(f"b2 = {b2}")
     say(
-        "{27} {((16 * (-43)) + (511923140520 + 257672))} {(27 < ((16 * (-43)) + (511923140520 + 257672)))} sum {27 + ((16 * (-43)) + (511923140520 + 257672))}"
+        f"{27} {((16 * (-43)) + (511923140520 + 257672))} {(27 < ((16 * (-43)) + (511923140520 + 257672)))} sum {27 + ((16 * (-43)) + (511923140520 + 257672))}"
     )
-    say("fib(60) = {fib(60)}")
+    say(f"fib(60) = {fib(60)}")
 
     i4 := ((-19) % ((-1) - 34))
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     l5 := [3, (-11)]
-    say("l5 = {l5} len {l5.length()}")
+    say(f"l5 = {l5} len {l5.length()}")
 
     s6 := "alpha"
-    say("s6 = [{s6}]")
+    say(f"s6 = [{s6}]")
 
     l7 := l5.map(fn x: x + 3).filter(fn x: x % 2 == 0)
-    say("l7 = {l7} len {l7.length()}")
+    say(f"l7 = {l7} len {l7.length()}")
     say(
-        "{((-i4) + ((-3) * 33))} {(-98762)} {(((-i4) + ((-3) * 33)) < (-98762))} sum {((-i4) + ((-3) * 33)) + (-98762)}"
+        f"{((-i4) + ((-3) * 33))} {(-98762)} {(((-i4) + ((-3) * 33)) < (-98762))} sum {((-i4) + ((-3) * 33)) + (-98762)}"
     )
 
     i8 := s6.scalar_length()
-    say("i8 = {i8}")
+    say(f"i8 = {i8}")
     return 0

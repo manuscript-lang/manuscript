@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -16,25 +16,25 @@ fn fact(n: Int) Int:
 
 export fn main() Int:
     i1 := (-20)
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     if (48 < (1 - i1)):
-        say(("  padded  " + "brace\{s\}"))
+        say(("  padded  " + "brace{s}"))
     else:
         say("gamma")
 
-    say("fact(15) = {fact(15)}")
+    say(f"fact(15) = {fact(15)}")
 
     i2 := (-((i1 / i1) % (i1 * (-645569931752))))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     i3 := ((-13) + 27)
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     bad := (1 < 2) < 3
     s4 := ""
-    say("s4 = [{s4}]")
+    say(f"s4 = [{s4}]")
     say(
-        "{(i2 - (35 + i1))} {((i1 % i3) + (-i3))} {((i2 - (35 + i1)) < ((i1 % i3) + (-i3)))} sum {(i2 - (35 + i1)) + ((i1 % i3) + (-i3))}"
+        f"{(i2 - (35 + i1))} {((i1 % i3) + (-i3))} {((i2 - (35 + i1)) < ((i1 % i3) + (-i3)))} sum {(i2 - (35 + i1)) + ((i1 % i3) + (-i3))}"
     )
     return 0

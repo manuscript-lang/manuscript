@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     var acc1 = 0
@@ -16,22 +16,22 @@ export fn main() Int:
         stepacc1 += 1
         acc1 += stepacc1 * stepacc1 + (-4)
 
-    say("acc1 = {acc1}")
+    say(f"acc1 = {acc1}")
 
-    b2 := ("42".replace("hello world", "quote\"d") + ("{(-26)}:" + "alpha")).is_empty()
-    say("b2 = {b2}")
+    b2 := ("42".replace("hello world", "quote\"d") + (f"{(-26)}:" + "alpha")).is_empty()
+    say(f"b2 = {b2}")
 
     bad := 1.5 + 2
     say(
-        "{(((-24) * 4) * (699710 + (-13)))} {(((-14) + (-13)) + (7 % 15))} {((((-24) * 4) * (699710 + (-13))) < (((-14) + (-13)) + (7 % 15)))} sum {(((-24) * 4) * (699710 + (-13))) + (((-14) + (-13)) + (7 % 15))}"
+        f"{(((-24) * 4) * (699710 + (-13)))} {(((-14) + (-13)) + (7 % 15))} {((((-24) * 4) * (699710 + (-13))) < (((-14) + (-13)) + (7 % 15)))} sum {(((-24) * 4) * (699710 + (-13))) + (((-14) + (-13)) + (7 % 15))}"
     )
 
     s3 := "hello world"
-    say("s3 = [{s3}]")
+    say(f"s3 = [{s3}]")
 
     s4 := s3
-    say("s4 = [{s4}]")
+    say(f"s4 = [{s4}]")
 
     i5 := (((-(-730982156955)) * (786423 + (-19))) + (-421659))
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
     return 0

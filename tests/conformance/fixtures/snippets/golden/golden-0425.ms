@@ -1,8 +1,8 @@
 // conform: tags=diagnostics
 // conform: phase=check
 fn stringify(value: Int) String:
-    return "{value}"
+    return f"{value}"
 fn wrong_label(item: Int) String:
-    return "{item}"
+    return f"{item}"
 fn callback() Void:
-    return unit
+    return

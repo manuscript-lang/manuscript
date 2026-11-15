@@ -21,7 +21,7 @@ fn gen(depth: Int, var x: Int, var out: StringBuilder) Void:
 	x = lcg(x)
 
 	if depth == 0 or x % 5 == 0:
-		out.append("{x / 7 % 100}")
+		out.append(f"{x / 7 % 100}")
 		return
 
 	x = lcg(x)
@@ -29,7 +29,7 @@ fn gen(depth: Int, var x: Int, var out: StringBuilder) Void:
 	op := ["+", "-", "*", "%"][x / 3 % 4]
 	out.append("(")
 	gen(depth - 1, var x, var out)
-	out.append(" {op} ")
+	out.append(f" {op} ")
 	gen(depth - 1, var x, var out)
 	out.append(")")
 
@@ -109,4 +109,4 @@ fn main() Void:
 		var p = Parser(toks)
 		total = (total + eval(p.expr())) % 1000003
 
-	print("chars {chars} tokens {tokens} total {total}")
+	print(f"chars {chars} tokens {tokens} total {total}")

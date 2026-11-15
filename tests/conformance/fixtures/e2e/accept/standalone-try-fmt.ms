@@ -25,7 +25,7 @@ fn exact(state: State, fail: Bool) String!Failure:
     var work = State(resource.calls, resource.marker.clone())
     operation(var work, fail)?
     work.calls += 10
-    return ok("done {work.calls}")
+    return ok(f"done {work.calls}")
 
 fn widened(var state: State) Int!:
     operation(var state, fail: true).map_error(
@@ -38,14 +38,14 @@ fn closed(marker: String) Bool:
 
 test "standalone evaluates? once and continues on Void success":
     temporary := temporary("manuscript-try-") | expect_ok?
-    marker := "{temporary.path()}/marker"
+    marker := f"{temporary.path()}/marker"
     value := exact(State(0, marker.clone()), fail: false).get()
     expect_equal(value, "done 11")?
     expect_true(closed(marker))?
 
 test "standalone propagates? and cleans up before returning":
     temporary := temporary("manuscript-try-") | expect_ok?
-    marker := "{temporary.path()}/marker"
+    marker := f"{temporary.path()}/marker"
     failed := exact(State(0, marker.clone()), fail: true)
     expect_false(failed.is_ok())?
     expect_equal(failed.err().code, 42)?
@@ -65,7 +65,7 @@ test "standalone in? closure returns from that closure":
     callback := fn() Void!Failure:
         var inner = State(0, "")
         if true: operation(var inner, fail: true)?
-        return ok(unit)
+        return ok()
 
     outcome := callback()
     expect_false(outcome.is_ok())?

@@ -52,7 +52,7 @@ export fn retry[T, E: Clonable](
 	retryable: (fn(E) Bool)? = none
 ) T!E:
 	if policy.attempts < 1:
-		panic("retry: attempts must be at least 1, found {policy.attempts}")
+		panic(f"retry: attempts must be at least 1, found {policy.attempts}")
 
 	var attempt = 1
 
@@ -63,7 +63,7 @@ export fn retry[T, E: Clonable](
 		if result.is_error():
 			if accepts := retryable:
 				if not accepts(result.err()): return result
-			sleep(jittered(policy, attempt)).wait().get(unit)
+			void sleep(jittered(policy, attempt)).wait()
 			attempt += 1
 		else:
 			return result
@@ -83,7 +83,7 @@ A token bucket: holds up to `burst` tokens and gains one every `interval`. Each 
 var limiter = rate_limiter(10, burst: 20)
 for url in urls:
     limiter.acquire()
-    _ := fetch(url).wait()?
+    void fetch(url).wait()?
 ```
 */
 export type RateLimiter:
@@ -100,7 +100,7 @@ export type RateLimiter:
 fn var RateLimiter.refill() Void:
 	now := monotonic()
 	earned := now.difference(self.stamp).nanos / self.interval.nanos.max(1)
-	if earned <= 0: return unit
+	if earned <= 0: return
 
 	// Compare with remaining room before adding: a valid large burst can overflow
 	// the sum.
@@ -124,14 +124,14 @@ fn var RateLimiter.try_acquire() Bool:
 fn var RateLimiter.acquire() Void:
 	while not self.try_acquire():
 		ready := self.stamp.shift(self.interval)
-		sleep(ready.difference(monotonic()).max(Duration(nanos: 1))).wait().get(unit)
+		void sleep(ready.difference(monotonic()).max(Duration(nanos: 1))).wait()
 
 // A rate limiter that allows `count` uses per second with room for `burst` at once; it
 // starts full. `count` and `burst` must be at least 1.
 export fn rate_limiter(count: Int, burst: Int) RateLimiter:
 	if count < 1 or burst < 1:
 		panic(
-			"rate_limiter: count and burst must be at least 1, found {count} and {burst}"
+			f"rate_limiter: count and burst must be at least 1, found {count} and {burst}"
 		)
 	return RateLimiter(
 		burst: burst,
@@ -206,7 +206,7 @@ fn var CircuitBreaker.call[T: Clonable, E: Clonable](
 // ```
 export fn map_concurrent[T, U](items: List[T], limit: Int, work: fn(T) U) List[U]!:
 	if limit < 1:
-		panic("map_concurrent: limit must be at least 1, found {limit}")
+		panic(f"map_concurrent: limit must be at least 1, found {limit}")
 
 	stripes := limit.min(items.length())
 	var running: List[Promise[List[U]]] = []
@@ -267,6 +267,6 @@ fn var Throttle.wait() Void:
 	if previous := self.last:
 		remaining := self.interval.subtract(monotonic().difference(previous))
 		if remaining.nanos > 0:
-			sleep(remaining).wait().get(unit)
+			void sleep(remaining).wait()
 
 	self.last = monotonic()

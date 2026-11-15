@@ -84,6 +84,8 @@ pub struct Analysis {
     pub source_root: String,
     /// The project directory; empty for a standalone file.
     pub project_root: String,
+    /// Each fetched package's module-name prefix and the directory holding its files.
+    pub package_roots: Vec<(String, String)>,
     /// The program, absent when loading failed before checking.
     pub program: Option<Program>,
     /// The session the analysis ran in; standard declarations are read through it.
@@ -149,6 +151,14 @@ impl Analysis {
     pub fn module_path(&self, file: &str) -> String {
         if ms_driver::project::pathops::is_abs(file) {
             return file.to_string();
+        }
+        if let Some((prefix, root)) = self
+            .package_roots
+            .iter()
+            .filter(|(prefix, _)| file.starts_with(prefix.as_str()))
+            .max_by_key(|(prefix, _)| prefix.len())
+        {
+            return ms_driver::project::pathops::join(&[root, &file[prefix.len()..]]);
         }
         ms_driver::project::pathops::join(&[self.root(), file])
     }
@@ -330,6 +340,7 @@ fn check(syms: ms_syntax::Names, graph: Graph, options: &Options) -> Analysis {
     Analysis {
         source_root: checked.source_root,
         project_root: checked.project_root,
+        package_roots: checked.package_roots,
         program: checked.program,
         // A checkout's own `stdlib/` sources are checked as bundled modules at startup; read from disk
         // they cannot see the internal modules they import, so their diagnostics would be spurious.

@@ -64,7 +64,7 @@ fn quote_with(text: String, ascii_only: Bool) String:
 			or (c >= 8294 and c <= 8297)
 			or (ascii_only and c > 127)
 		):
-			out.append("\\u\{" + c.to_string_radix(16) + "\}")
+			out.append("\\u{" + c.to_string_radix(16) + "}")
 		else:
 			out.append(from_scalars([c]).get(""))
 
@@ -163,7 +163,7 @@ fn var ScalarSource.next() String?!:
 
 // Releases nothing; the bytes are owned by the source.
 fn var ScalarSource.close() Void!:
-	return ok(unit)
+	return ok()
 
 // Bytes in the scalar a lead byte starts.
 fn scalar_width(lead: Int) Int:

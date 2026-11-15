@@ -4,4 +4,4 @@
 interface Named:
     fn name() String
 
-fn f[T: Named = Int]() Void: unit
+fn f[T: Named = Int]() Void: void

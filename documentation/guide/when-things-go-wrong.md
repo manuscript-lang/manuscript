@@ -17,11 +17,11 @@ type Line:
 fn parse_line(text: String) Line!:
     parts := text.split(",")
     if parts.length() != 3:
-        return error(Error("expected name,quantity,cents: {text}", kind: "EBADMSG"))
-    quantity := parts[1].parse_int().ok_or(Error("quantity is not a number: {text}", kind: "EINVAL"))?
+        return error(Error(f"expected name,quantity,cents: {text}", kind: "EBADMSG"))
+    quantity := parts[1].parse_int().ok_or(Error(f"quantity is not a number: {text}", kind: "EINVAL"))?
     if quantity <= 0:
-        return error(Error("quantity must be positive: {text}", kind: "EINVAL"))
-    cents := parts[2].parse_int().ok_or(Error("price is not a number: {text}", kind: "EINVAL"))?
+        return error(Error(f"quantity must be positive: {text}", kind: "EINVAL"))
+    cents := parts[2].parse_int().ok_or(Error(f"price is not a number: {text}", kind: "EINVAL"))?
     return ok(Line(parts[0].clone(), quantity, cents))
 
 fn total(lines: List[String]) Int!:
@@ -33,13 +33,13 @@ fn total(lines: List[String]) Int!:
 
 fn main() Void:
     good := total(["pen,2,150", "ink,1,899"])
-    print("good: {good.get(0)}")
+    print(f"good: {good.get(0)}")
     bad := total(["pen,2,150", "ink,0,899"])
     if bad.is_error():
-        print("bad: {bad.err().message}")
+        print(f"bad: {bad.err().message}")
     broken := total(["pen,two,150"])
     if broken.is_error():
-        print("broken: {broken.err().message}")
+        print(f"broken: {broken.err().message}")
 ```
 
 ```text

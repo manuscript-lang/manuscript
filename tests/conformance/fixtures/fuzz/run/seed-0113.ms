@@ -6,17 +6,17 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     l1 := [(-1), (-28), (-24), (-17), (-13)]
-    say("l1 = {l1} len {l1.length()}")
+    say(f"l1 = {l1} len {l1.length()}")
 
     i2 := (20 / (((-50) * 954660) / 527109))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     f3 := 488.25
-    say("f3 = {f3}")
+    say(f"f3 = {f3}")
 
     if false:
         say(("beta" + "a"))
@@ -25,23 +25,23 @@ export fn main() Int:
 
     var l4 = l1.clone()
     l4.append(50)
-    say("l4 = {l4} len {l4.length()}")
+    say(f"l4 = {l4} len {l4.length()}")
 
     i5 := (-9223372036854775808)
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     i6 := l1.length()
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     s7 := "gamma"
-    say("s7 = [{s7}]")
+    say(f"s7 = [{s7}]")
 
     l8 := l4.take(2)
-    say("l8 = {l8} len {l8.length()}")
+    say(f"l8 = {l8} len {l8.length()}")
 
     l9 := l4.concat(l4)
-    say("l9 = {l9} len {l9.length()}")
+    say(f"l9 = {l9} len {l9.length()}")
 
     s10 := "MiXeD CaSe"
-    say("s10 = [{s10}]")
+    say(f"s10 = [{s10}]")
     return 0
