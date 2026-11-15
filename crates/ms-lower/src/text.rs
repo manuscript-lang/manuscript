@@ -586,6 +586,37 @@ impl<'a> FnLower<'a> {
         Ok(Val { v, own: true })
     }
 
+    /// The text a type's own `fn T.to_string() String` gives `x`, which replaces the built-in
+    /// text form; none when `t` declares no such method.
+    pub(crate) fn own_to_string(
+        &mut self,
+        t: &ms_check::api::types::Ty,
+        x: Val,
+    ) -> Result<Option<Val>, Error> {
+        if !matches!(t.kind, Kind::Type | Kind::Alternative) {
+            return Ok(None);
+        }
+        let own = self.cx.methods.iter().find(|m| {
+            m.receiver.id == t.id
+                && m.native == ms_check::api::types::Native::Source
+                && m.ty.params.is_empty()
+                && m.decl
+                    .as_ref()
+                    .is_some_and(|d| self.syms.str(d.name()) == "to_string")
+        });
+        let Some(method) = own.cloned() else {
+            return Ok(None);
+        };
+        let callable =
+            self.callable_of_decl(method.module, method.decl.as_ref().map(|d| d.id()))?;
+        let f =
+            self.cx
+                .function_for(self.b.m, &callable, &ms_check::api::types::Subst::default())?;
+        let receiver = self.borrow(x);
+        let text = self.b.call(f, &[receiver]);
+        Ok(Some(Val { v: text, own: true }))
+    }
+
     /// The text of a `Duration`: `Duration.to_string` from `@std/time.ms`.
     pub(crate) fn duration_text(&mut self, x: Val) -> Result<Val, Error> {
         let n = self.borrow(x);
@@ -659,8 +690,11 @@ impl<'a> FnLower<'a> {
                         return Ok(x);
                     }
                     let _ = Kind::Type;
-                    if self.ety(e).is(ms_check::api::types::Builtin::Duration) {
+                    let t = self.ety(e);
+                    if t.is(ms_check::api::types::Builtin::Duration) {
                         self.duration_text(x)?
+                    } else if let Some(text) = self.own_to_string(&t, x)? {
+                        text
                     } else {
                         self.format_value(x)?
                     }

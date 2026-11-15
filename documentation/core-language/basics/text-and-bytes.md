@@ -84,7 +84,15 @@ test "string conversion":
 
 Each conversion produces `"3"`. Passing an Int to a String parameter still needs `.to_string()`.
 
-The built-in method wins over any field or interface operation named `to_string` and cannot be overridden. Conversion never calls user-defined formatting or resource operations; a closed resource is still printable.
+A type or enum may declare its own `fn T.to_string() String`. It replaces the built-in text form of a value of that type wherever the conversion happens: `value.to_string()`, a bound `value.to_string`, `"{value}"`, and `print(value)`. Values nested in a list, map, set, record field or payload keep the built-in text form and do not call it. A type without its own method, and every other kind of value, uses the built-in method, which wins over any field or interface operation named `to_string`. The built-in conversion never calls user-defined formatting or resource operations; a closed resource is still printable.
+
+```manuscript
+type Money:
+    cents: Int
+
+fn Money.to_string() String:
+    return "{self.cents / 100}.{self.cents % 100}"
+```
 
 ## Indexing and character boundaries
 

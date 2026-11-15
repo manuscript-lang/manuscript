@@ -1,0 +1,34 @@
+// conform: tags=strings,interpolation,records,tier-core
+// conform: phase=run
+type Money:
+    cents: Int
+
+fn Money.to_string() String:
+    return "{self.cents / 100}.{self.cents % 100}"
+
+type Plain:
+    n: Int
+
+enum Shape:
+    Dot
+    Line(len: Int)
+
+fn Shape.to_string() String:
+    return "shape"
+
+fn show[V](v: V) String:
+    return v.to_string()
+
+fn main() Unit:
+    m := Money(1250)
+    print(m.to_string())
+    convert: fn() String := m.to_string
+    print(convert())
+    print("{m}")
+    print(m)
+    print(show(m))
+    print(Dot.to_string())
+    print("{Line(4)}")
+    print(Plain(2))
+    print("{Plain(3)}")
+    print([m])
