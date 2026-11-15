@@ -89,6 +89,8 @@ type Flow:
 	// Scalar offsets where stripped comments terminate an already-started plain leaf.
 	stops: List[Int] = []
 	next_stop: Int = 0
+	// A `!!str` or `!` tag on the next plain leaf keeps its text a string.
+	force_string: Bool = false
 
 // YAML separates tokens with only space and tab; Unicode spaces such as U+00A0 are
 // scalar content.
@@ -444,6 +446,43 @@ fn anchor_name(var flow: Flow) String!:
 
 	return ok(name)
 
+// The resolved tag at the cursor, which sits on `!`: a verbatim `!<uri>`, `!!name` of
+// the core schema, `!` alone (the non-specific tag), or a local `!name`.
+fn tag_token(var flow: Flow) String!:
+	advance(var flow)
+
+	if peek(flow) == "<":
+		advance(var flow)
+
+		var uri = ""
+		while (
+			peek(flow) != ""
+			and peek(flow) != ">"
+			and not " \t\n".contains(peek(flow))
+		):
+			uri = uri.concat(advance(var flow))
+		if peek(flow) != ">": return error(
+			flow_invalid(flow, "unterminated verbatim tag")
+		)
+
+		advance(var flow)
+		if uri == "": return error(flow_invalid(flow, "empty verbatim tag"))
+
+		return ok(uri)
+
+	var name = ""
+	while peek(flow) != "" and not " \t\n,[]\{\}".contains(peek(flow)):
+		name = name.concat(advance(var flow))
+	if name.starts_with("!"): return ok(
+		"tag:yaml.org,2002:{name.slice(1, name.length()).get("")}"
+	)
+
+	return ok("!{name}")
+
+// Whether a tag makes a scalar a string whatever its spelling.
+fn string_tag(tag: String) Bool:
+	return tag == "!" or tag == "tag:yaml.org,2002:str"
+
 fn merge(
 	line: Int,
 	column: Int,
@@ -545,12 +584,6 @@ fn flow_leaf(var flow: Flow, c: Int, key: Bool) YamlValue!:
 
 		return error(flow_invalid(flow, "unknown or recursive alias"))
 
-	if c == 33: return error(
-		yaml_unsupported(
-			line: flow_position(flow, flow.pos).line,
-			reason: "explicit tags are unsupported",
-		)
-	)
 	if c == 34 or c == 39: return ok(YamlValue.StringValue(quoted(var flow)?))
 	if c == 35: return error(
 		flow_invalid(flow, "a comment needs whitespace before its hash")
@@ -606,7 +639,7 @@ fn flow_leaf(var flow: Flow, c: Int, key: Bool) YamlValue!:
 	)
 
 	if flow.delimited: text = fold_plain(text)
-	if key: return ok(YamlValue.StringValue(text))
+	if key or flow.force_string: return ok(YamlValue.StringValue(text))
 
 	return ok(plain(text))
 
@@ -694,12 +727,20 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!:
 			child_depth := if kind == 0: depth else: level + 1
 			var written: List[String] = []
 			var is_key = child_key
+			var as_string = flow.force_string
 			child_key = false
+			flow.force_string = false
 
 			while true:
 				flow_space(var flow)
 				if not is_key:
 					count(var flow.context, child_depth)?
+
+				if cur(flow) == 33:
+					as_string = as_string or string_tag(tag_token(var flow)?)
+					flow.context.values -= 1
+					continue
+
 				if cur(flow) != 38: break
 
 				advance(var flow)
@@ -747,7 +788,10 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!:
 				phase = 2
 				continue
 
+			flow.force_string = as_string
+
 			leaf := flow_leaf(var flow, c, is_key)?
+			flow.force_string = false
 			for anchor in written.reversed():
 				define_anchor(var flow.context, anchor, leaf.clone())
 			done = leaf
@@ -1214,10 +1258,14 @@ fn structured_lead(code: Int, blank: Bool = false) Bool:
 		or code == 33
 	)
 
-fn inline_value(var context: Context, text: String, depth: Int, line: Int, column: Int) Result[
-	YamlValue,
-	Error,
-]:
+fn inline_value(
+	var context: Context,
+	text: String,
+	depth: Int,
+	line: Int,
+	column: Int,
+	as_string: Bool = false,
+) Result[YamlValue, Error]:
 	// A plain scalar needs no character scan: only its trimmed text and a count.
 	if (
 		text != ""
@@ -1234,6 +1282,8 @@ fn inline_value(var context: Context, text: String, depth: Int, line: Int, colum
 		and plain_may_start(blank_trim(text))
 	):
 		count(var context, depth)?
+		if as_string: return ok(YamlValue.StringValue(blank_trim(text).clone()))
+
 		return ok(plain(blank_trim(text).clone()))
 
 	var joined = text.clone()
@@ -1288,6 +1338,10 @@ fn inline_value(var context: Context, text: String, depth: Int, line: Int, colum
 		context: flow_context(context),
 		delimited: false,
 		stops: stops,
+		force_string: as_string and not (
+			text.starts_with("[")
+			or text.starts_with("\{")
+		),
 	)
 	result := flow_value(var flow, depth, key: false)?
 	flow_space(var flow)
@@ -1461,18 +1515,27 @@ fn block_value(
 	var remainder = blank_trim_start(text).clone()
 	var anchor = ""
 	var lead = remainder.scalar_at(0, default: 0)
+	var as_string = false
+	var tagged = false
 
-	if lead == 38:
+	// Node properties, an anchor and a tag in either order, come before the content.
+	while lead == 38 or lead == 33:
 		var flow = Flow(
 			chars: remainder.split("").clone(),
 			codes: [],
-			pos: 1,
+			pos: 0,
 			line: start_line,
 			column: origin,
 			context: flow_context(context),
 			delimited: false,
 		)
-		anchor = anchor_name(var flow)?
+
+		if lead == 38:
+			advance(var flow)
+			anchor = anchor_name(var flow)?
+		else:
+			as_string = as_string or string_tag(tag_token(var flow)?)
+			tagged = true
 
 		previous_length := remainder.scalar_length()
 		remainder = blank_trim_start(
@@ -1487,7 +1550,7 @@ fn block_value(
 			yaml_invalid(
 				line: start_line,
 				column: origin,
-				reason: "an alias cannot have an anchor",
+				reason: "an alias cannot have node properties",
 			)
 		)
 
@@ -1569,7 +1632,14 @@ fn block_value(
 
 				remainder = joined.build()
 
-		result = inline_value(var context, remainder, depth, start_line, origin)?
+		result = inline_value(
+			var context,
+			remainder,
+			depth,
+			start_line,
+			origin,
+			as_string,
+		)?
 	else:
 		skip(var context)
 
@@ -1585,6 +1655,19 @@ fn block_value(
 					and sequence(blank_trim_start(line))
 				)
 			):
+				next_content := blank_trim_start(line)
+				next_lead := next_content.scalar_at(0, default: 0)
+				if (
+					(anchor != "" or tagged)
+					and (next_lead == 38 or next_lead == 33)
+					and boundary(next_content, colon: true) < 0
+				): return error(
+					invalid(
+						context,
+						"a node cannot have properties on two lines",
+					)
+				)
+
 				result = block(
 					var context,
 					next_indent,
@@ -1593,8 +1676,10 @@ fn block_value(
 				)?
 			else:
 				count(var context, depth)?
+				if as_string: result = YamlValue.StringValue("")
 		else:
 			count(var context, depth)?
+			if as_string: result = YamlValue.StringValue("")
 
 	if anchor != "": define_anchor(var context, anchor, result.clone())
 	return ok(result)
@@ -1854,7 +1939,27 @@ fn block(var context: Context, base: Int, depth: Int, scalar_base: Int) YamlValu
 				)
 				value_column = line.scalar_length() - text.scalar_length() + 1
 
-			key_start := name.scalar_at(0, default: 0)
+			var key_start = name.scalar_at(0, default: 0)
+			var key_anchor = ""
+			var had_properties = false
+
+			// Node properties before a key: a tag is dropped, an anchor names the key.
+			while key_start == 33 or key_start == 38:
+				var word_end = 0
+
+				while word_end < name.scalar_length():
+					ch := name.scalar_at(word_end, default: 0)
+					if ch == 32 or ch == 9: break
+
+					word_end += 1
+
+				cut := byte_at_scalar(name, word_end)
+				word := name.slice(0, cut).get("")
+				if key_start == 38: key_anchor = word.slice(1, word.length()).get("")
+				name = blank_trim_start(name.slice(cut, name.length()).get("")).clone()
+				key_start = name.scalar_at(0, default: 0)
+				had_properties = true
+
 			quoted_key := key_start == 34 or key_start == 39
 
 			if quoted_key:
@@ -1876,11 +1981,9 @@ fn block(var context: Context, base: Int, depth: Int, scalar_base: Int) YamlValu
 					invalid(context, "invalid quoted key")
 				)
 			else if (
-				name == ""
+				(name == "" and not had_properties)
 				or key_start == 91
 				or key_start == 123
-				or key_start == 33
-				or key_start == 38
 				or key_start == 42
 			):
 				return error(
@@ -1911,6 +2014,11 @@ fn block(var context: Context, base: Int, depth: Int, scalar_base: Int) YamlValu
 			)
 
 			explicit.add(name.clone())
+			if key_anchor != "": define_anchor(
+				var context,
+				key_anchor,
+				YamlValue.StringValue(name.clone()),
+			)
 
 			key_line := source_line(context, context.index)
 			key_column := source_column(context, context.index, line_indent + 1)

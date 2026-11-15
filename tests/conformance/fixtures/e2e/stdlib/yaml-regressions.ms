@@ -409,7 +409,6 @@ test "YAML flow merge failures retain their source origin":
 	error_at("key: \{\n  <<: 1\n\}", 2, 8)?
 
 test "YAML unsupported flow nodes report their physical source line":
-	unsupported_at("key: [one,\n !example x]", 2)?
 	unsupported_at("key: \{\n [one]: x\}", 2)?
 	unsupported_at("key: [first,\n ? unsupported\n tail]", 2)?
 
@@ -863,3 +862,12 @@ test "indented markers and marker prefixes remain scalar content":
 			(parse("[\n{marker}]")?),
 			YamlValue.ArrayValue([YamlValue.StringValue(marker.clone())]),
 		)?
+
+test "YAML tags resolve strings and are otherwise ignored":
+	value := parse(
+		"a: !!str 12\nb: !local x\nc: !!str\n!!str d: &k e\nf: [!!str true, !x \{g: h\}]\n"
+	)?
+	want := parse("a: \"12\"\nb: x\nc: \"\"\nd: e\nf: [\"true\", \{g: h\}]\n")?
+	expect_equal(value.to_string(), want.to_string())?
+
+	_ := parse("top: &a\n  &b value\n") | expect_error?

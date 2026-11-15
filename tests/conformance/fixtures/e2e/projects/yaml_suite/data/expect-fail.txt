@@ -1,72 +1,55 @@
 # Cases of the official yaml-test-suite the parser does not pass yet, with the reason.
 # A listed case must still fail, so fixing one means deleting its line; the list only shrinks.
 26DV mapping keys must be strings
-2AUY explicit tags are unsupported
 2JQS mapping keys must be strings
 2LFX only the YAML 1.2 directive is supported
 2SXE mapping keys must be strings
-2XXW explicit tags are unsupported
-33X3 explicit tags are unsupported
-35KP explicit tags are unsupported
+2XXW tag handling gap (%TAG handles, tags on unusual nodes)
+35KP tag handling gap (%TAG handles, tags on unusual nodes)
 4FJ6 expected sequence comma
 4MUZ/00 an implicit mapping key must stay on one line
 4MUZ/01 an implicit mapping key must stay on one line
 4MUZ/02 an implicit mapping key must stay on one line
-52DL explicit tags are unsupported
-565N explicit tags are unsupported
-57H4 explicit tags are unsupported
 5MUD an implicit mapping key must stay on one line
 5TYM only the YAML 1.2 directive is supported
 5WE3 explicit mapping keys are unsupported
 6BFJ mapping keys must be strings
 6CA3 tabs cannot indent YAML
 6CK3 only the YAML 1.2 directive is supported
-6JWB explicit tags are unsupported
 6LVF only the YAML 1.2 directive is supported
 6M2F explicit mapping keys are unsupported
 6PBE explicit mapping keys are unsupported
-6WLZ explicit tags are unsupported
+6WLZ tag handling gap (%TAG handles, tags on unusual nodes)
 6XDY value differs from the suite
 6ZKB unexpected indentation or additional document
-735Y explicit tags are unsupported
-74H7 mapping keys must be strings
-7BMT mapping keys must be strings
-7FWL mapping keys must be strings
 7W2P explicit mapping keys are unsupported
 7Z25 unexpected indentation or additional document
 87E4 expected sequence comma
-8MK2 explicit tags are unsupported
 8UDB unexpected mapping colon
 9C9N accepts invalid input
 9DXL unexpected indentation or additional document
-9KAX explicit tags are unsupported
+9KAX tag handling gap (%TAG handles, tags on unusual nodes)
 9MMW unexpected mapping colon
 9SA2 an implicit mapping key must stay on one line
-9WXW explicit tags are unsupported
+9WXW tag handling gap (%TAG handles, tags on unusual nodes)
 A2M4 explicit mapping keys are unsupported
 AB8U unexpected indented collection
 BEC7 only the YAML 1.2 directive is supported
-BU8L explicit tags are unsupported
+BU8L tag handling gap (%TAG handles, tags on unusual nodes)
 C4HZ only the YAML 1.2 directive is supported
 CC74 only the YAML 1.2 directive is supported
 CFD4 unexpected mapping colon
 CN3R unexpected mapping colon
 CT4Q unexpected mapping colon
-CUP7 explicit tags are unsupported
 DFF7 explicit mapping keys are unsupported
 DK3J unexpected indentation or additional document
 DK95/00 tabs cannot indent YAML
 DK95/01 accepts invalid input
 E76Z mapping keys must be strings
-EHF6 explicit tags are unsupported
-F2C7 explicit tags are unsupported
-FH7J explicit tags are unsupported
 FP8R unexpected indentation or additional document
 FRK4 explicit mapping keys are unsupported
 GH63 explicit mapping keys are unsupported
-HMQ5 mapping keys must be strings
 HS5T tabs cannot indent YAML
-J7PZ explicit tags are unsupported
 JEF9/02 value differs from the suite
 JHB9 unexpected indentation or additional document
 JTV5 explicit mapping keys are unsupported
@@ -77,12 +60,11 @@ L24T/01 value differs from the suite
 L383 unexpected indentation or additional document
 L94M explicit mapping keys are unsupported
 L9U5 unexpected mapping colon
-LE5A explicit tags are unsupported
 LQZ7 expected sequence comma
 LX3P mapping keys must be strings
 M2N8/00 explicit mapping keys are unsupported
 M2N8/01 explicit mapping keys are unsupported
-M5C3 explicit tags are unsupported
+M5C3 tag handling gap (%TAG handles, tags on unusual nodes)
 M5DY explicit mapping keys are unsupported
 M7A3 unexpected indentation or additional document
 MUS6/02 only the YAML 1.2 directive is supported
@@ -104,23 +86,18 @@ RR7F unexpected indentation or additional document
 RZP5 unexpected indentation or additional document
 RZT7 unexpected indentation or additional document
 S3PD mapping keys must be strings
-S4JQ explicit tags are unsupported
 S9E8 explicit mapping keys are unsupported
 SBG9 complex mapping keys are unsupported
 SKE5 unexpected indentation or additional document
 SM9W/01 mapping keys must be strings
 U3C3 only the YAML 1.2 directive is supported
-U3XV mapping keys must be strings
 U9NS unexpected indentation or additional document
-UGM3 explicit tags are unsupported
 UKK6/00 mapping keys must be strings
-UKK6/02 explicit tags are unsupported
 UT92 an implicit mapping key must stay on one line
 UV7Q tabs cannot indent YAML
 V9D5 explicit mapping keys are unsupported
 VJP3/01 an implicit mapping key must stay on one line
 W4TN unexpected indentation or additional document
-WZ62 explicit tags are unsupported
 X38W mapping keys must be strings
 X8DW explicit mapping keys are unsupported
 XW4D unexpected indentation or additional document
@@ -128,7 +105,5 @@ Y79Y/000 accepts invalid input
 Y79Y/003 accepts invalid input
 Y79Y/004 accepts invalid input
 Y79Y/005 accepts invalid input
-Z67P explicit tags are unsupported
 Z9M4 only the YAML 1.2 directive is supported
-ZH7C mapping keys must be strings
 ZWK4 unexpected indentation or additional document
