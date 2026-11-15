@@ -5,7 +5,7 @@ use super::{Event, sleep_slice, valid_native};
 use crate::err::{Fail, Res};
 use crate::ops::poll_cancel;
 use crate::path;
-use crate::sys;
+use crate::sys::{self, CPath};
 use alloc::boxed::Box;
 use alloc::collections::VecDeque;
 use alloc::vec::Vec;
@@ -16,7 +16,7 @@ use std::os::windows::fs::OpenOptionsExt;
 use std::os::windows::io::AsRawHandle;
 use windows_sys::Win32::Foundation::{
     ERROR_ACCESS_DENIED, ERROR_DELETE_PENDING, ERROR_FILE_NOT_FOUND, ERROR_IO_INCOMPLETE,
-    ERROR_PATH_NOT_FOUND, GetLastError,
+    ERROR_PATH_NOT_FOUND, GetLastError, HANDLE,
 };
 use windows_sys::Win32::Storage::FileSystem::{
     FILE_FLAG_BACKUP_SEMANTICS, FILE_FLAG_OVERLAPPED, FILE_LIST_DIRECTORY,
@@ -43,9 +43,8 @@ const RENAMED_NEW: u32 = 5;
 /// The actions that mean an entry appeared, vanished or was renamed.
 const RENAMES: [u32; 4] = [ADDED, REMOVED, RENAMED_OLD, RENAMED_NEW];
 
-/// What a pending request fails with once the watched directory is deleted.
-const ROOT_GONE: [u32; 4] = [
-    ERROR_ACCESS_DENIED,
+/// What a pending request fails with once the watched directory is gone for certain.
+const ROOT_GONE: [u32; 3] = [
     ERROR_DELETE_PENDING,
     ERROR_FILE_NOT_FOUND,
     ERROR_PATH_NOT_FOUND,
@@ -55,7 +54,8 @@ const ROOT_GONE: [u32; 4] = [
 const WORDS: usize = 16 * 1024;
 
 pub struct Native {
-    dir: std::fs::File,
+    /// The watched directory's handle; `None` once it was released to let a removal finish.
+    dir: Option<std::fs::File>,
     root: Vec<u8>,
     /// The name of the single file being watched through its parent directory.
     only: Option<Vec<u8>>,
@@ -99,7 +99,7 @@ impl Native {
             .open(dir_text)
             .map_err(|e| Fail::errno(sys::code(&e), "open", &watched))?;
         let mut n = Native {
-            dir,
+            dir: Some(dir),
             root: watched,
             only,
             recursive,
@@ -117,6 +117,20 @@ impl Native {
         Ok(n)
     }
 
+    fn handle(&self) -> HANDLE {
+        self.dir
+            .as_ref()
+            .map_or(core::ptr::null_mut(), |d| d.as_raw_handle())
+    }
+
+    /// Whether the watched directory no longer exists. Our own open handle keeps a deleted
+    /// directory alive, so it is released first; the request has already failed, so nothing
+    /// is pending on it.
+    fn root_removed(&mut self) -> bool {
+        self.dir = None;
+        CPath::new(&self.root).is_some_and(|c| sys::stat(&c, false).is_err_and(sys::is_not_found))
+    }
+
     /// Starts the next request.
     fn issue(&mut self) -> Res<()> {
         // SAFETY: a zeroed `OVERLAPPED` is the documented initial state.
@@ -125,7 +139,7 @@ impl Native {
         // cancels and waits for.
         let started = unsafe {
             ReadDirectoryChangesW(
-                self.dir.as_raw_handle(),
+                self.handle(),
                 self.buffer.as_mut_ptr().cast(),
                 (WORDS * 4) as u32,
                 i32::from(self.recursive),
@@ -209,9 +223,8 @@ impl Native {
             }
             let mut got = 0u32;
             // SAFETY: the request is ours and `got` is writable; the call does not wait.
-            let done = unsafe {
-                GetOverlappedResult(self.dir.as_raw_handle(), &*self.overlapped, &mut got, 0)
-            };
+            let done =
+                unsafe { GetOverlappedResult(self.handle(), &*self.overlapped, &mut got, 0) };
             if done == 0 {
                 // SAFETY: plain query.
                 let code = unsafe { GetLastError() };
@@ -222,7 +235,10 @@ impl Native {
                 self.pending = false;
                 // A removed directory fails its pending request with one of a few codes: that is
                 // the end, not an error. Any other code is a real failure.
-                if ROOT_GONE.contains(&code) {
+                // Access denied also has unrelated causes, so it ends the stream only when the
+                // directory is confirmed gone.
+                if ROOT_GONE.contains(&code) || (code == ERROR_ACCESS_DENIED && self.root_removed())
+                {
                     // The directory's own removal is not a record in its own change list, so
                     // report it here before the stream ends.
                     let gone = self
@@ -266,8 +282,8 @@ impl Drop for Native {
             let mut got = 0u32;
             // SAFETY: the request is ours; it is cancelled and finished before the buffers go.
             unsafe {
-                CancelIoEx(self.dir.as_raw_handle(), &*self.overlapped);
-                GetOverlappedResult(self.dir.as_raw_handle(), &*self.overlapped, &mut got, 1);
+                CancelIoEx(self.handle(), &*self.overlapped);
+                GetOverlappedResult(self.handle(), &*self.overlapped, &mut got, 1);
             }
         }
     }
