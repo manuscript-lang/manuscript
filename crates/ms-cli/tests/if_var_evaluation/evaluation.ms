@@ -9,12 +9,12 @@ fn key(var count: Int) String:
     count += 1
     return "key-{count}"
 
-fn early(var entries: Map[String, List[Int]], var count: Int) Unit:
+fn early(var entries: Map[String, List[Int]], var count: Int) Void:
     if var item = entries[key(var count)]?:
         item.append(7)
         return
 
-fn main() Unit:
+fn main() Void:
     var count = 0
     var entries = Map[String, List[Int]]()
     entries.add("key-1", [1])

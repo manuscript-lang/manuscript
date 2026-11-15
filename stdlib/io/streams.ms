@@ -21,7 +21,7 @@ type Lines:
 	pending_cr: Bool
 
 // Fails with `EOVERFLOW` when a line of `size` bytes is longer than the limit.
-fn Lines.check(size: Int) Unit!:
+fn Lines.check(size: Int) Void!:
 	if limit := self.max_bytes:
 		if size > limit: return error(Error("I/O: limit exceeded", kind: "EOVERFLOW"))
 
@@ -100,7 +100,7 @@ fn var Lines.next() String?!:
 
 	return ok(none)
 
-fn var Lines.close() Unit!:
+fn var Lines.close() Void!:
 	return self.input.close()
 
 // Reads lines of text from a byte stream such as `stdin()`: splits `input` at `\n`,
@@ -118,7 +118,7 @@ type ListSource[T]:
 fn var ListSource[T].next() T?!:
 	return ok(self.items.pop())
 
-fn var ListSource[T].close() Unit!:
+fn var ListSource[T].close() Void!:
 	return ok(unit)
 
 // A stream that yields copies of the items of `items` in order and then ends; the items
@@ -145,7 +145,7 @@ fn var BytesSource.next() Bytes?!:
 	self.at = stop
 	return ok(piece)
 
-fn var BytesSource.close() Unit!:
+fn var BytesSource.close() Void!:
 	return ok(unit)
 
 // A stream that yields `data` in chunks of at most `chunk_bytes` bytes and then ends. A
@@ -163,7 +163,7 @@ fn var Mapped[T, U].next() U?!:
 
 	return ok(none)
 
-fn var Mapped[T, U].close() Unit!:
+fn var Mapped[T, U].close() Void!:
 	return self.input.close()
 
 // A stream of `f` applied to each item of `input`; closing it closes `input`.
@@ -185,7 +185,7 @@ fn var Filtered[T].next() T?!:
 
 	return ok(none)
 
-fn var Filtered[T].close() Unit!:
+fn var Filtered[T].close() Void!:
 	return self.input.close()
 
 // A stream of the items of `input` for which `keep` is true, in order; closing it
@@ -205,7 +205,7 @@ fn var Taker[T].next() T?!:
 	self.left -= 1
 	return ok(item)
 
-fn var Taker[T].close() Unit!:
+fn var Taker[T].close() Void!:
 	return self.input.close()
 
 // A stream of at most the first `count` items of `input`, then the end: later items are

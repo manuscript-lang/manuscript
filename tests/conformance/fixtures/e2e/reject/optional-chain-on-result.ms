@@ -3,6 +3,6 @@
 fn load() Int!:
     return ok(1)
 
-fn main() Unit:
+fn main() Void:
     n := load()?.abs()
     print(n)

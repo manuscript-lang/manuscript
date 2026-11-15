@@ -13,7 +13,7 @@ fn unpacked_length(data: Bytes) Int:
 	return 0
 
 bench "bigint.factorial_1000":
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		var acc = from_int(1)
 		for i in 1..1001:
 			acc = acc.multiply(from_int(i))
@@ -22,7 +22,7 @@ bench "bigint.factorial_1000":
 	measure(1000, work)?
 
 bench "bigint.multiply_100_digits":
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		base := from_int(7).pow(118).get(from_int(0))
 		var acc = from_int(0)
 		for i in 0..20000:
@@ -34,7 +34,7 @@ bench "bigint.multiply_100_digits":
 bench "decimal.add_round":
 	rate: Decimal := 1.12345d
 
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		var n = 0
 		for i in 0..20000:
 			if d := (i.to_decimal() + rate).round(2):
@@ -52,7 +52,7 @@ bench "compress.gzip":
 	)
 	size := blob.length()
 
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		if b := compress(blob, CompressionFormat.Gzip): return keep(b.length())
 		return keep(0)
 
@@ -67,14 +67,14 @@ bench "compress.roundtrip":
 	)
 	size := blob.length()
 
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		if b := compress(blob, CompressionFormat.Gzip): return keep(unpacked_length(b))
 		return keep(0)
 
 	measure(size, work)?
 
 bench "time.parse_timestamp":
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		var n = 0
 		for i in 0..20000:
 			if t := parse_timestamp("2026-03-01T12:30:45.123Z"):
@@ -84,7 +84,7 @@ bench "time.parse_timestamp":
 	measure(20000, work)?
 
 bench "time.parse_timestamp_maximum_width":
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		var n = 0
 
 		for i in 0..20000:
@@ -98,7 +98,7 @@ bench "time.parse_timestamp_maximum_width":
 bench "time.parse_timestamp_oversized_fraction":
 	text := "2026-03-01T12:30:45." + "0".repeat(65536).get() + "Z"
 
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		var n = 0
 
 		for i in 0..1000:
@@ -113,7 +113,7 @@ bench "time.parse_timestamp_oversized_fraction":
 	measure(1000, work)?
 
 bench "queue.enqueue_dequeue":
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		var q = Queue[Int]()
 		for i in 0..100000:
 			q.enqueue(i)
@@ -126,7 +126,7 @@ bench "queue.enqueue_dequeue":
 	measure(200000, work)?
 
 bench "priority_queue.enqueue_dequeue":
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		var q = PriorityQueue[Int]()
 		for i in 0..50000:
 			q.enqueue((i * 7919) % 10007)

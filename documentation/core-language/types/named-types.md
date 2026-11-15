@@ -58,7 +58,7 @@ type Customer:
     name: String
     email: String?
 
-fn main() Unit:
+fn main() Void:
     original := Customer("Ada")
     var updated = original.clone()
     updated.name = "Grace"
@@ -75,12 +75,12 @@ Methods are receiver methods, `fn Type.name(...)` ([methods](contracts.md#method
 
 ```manuscript
 interface Counter:
-    var fn increment() Unit
+    var fn increment() Void
 
 type Val:
     val: Int
 
-fn var Val.increment() Unit:
+fn var Val.increment() Void:
     self.val = self.val + 1
 ```
 
@@ -102,7 +102,7 @@ type Report:
     title: String
     rows: List[Int]
 
-fn main() Unit:
+fn main() Void:
     report := Report("scores", [3, 4])
     batches := [report.rows]
     print(report.title)
@@ -135,7 +135,7 @@ import Closeable from "@std/core.ms"
 type Door:
     id: Int
 
-fn var Door.close() Unit!:
+fn var Door.close() Void!:
     return ok(unit)
 
 type Room:

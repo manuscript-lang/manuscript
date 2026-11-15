@@ -7,7 +7,7 @@ fn one(value: Int) Int:
 fn two(left: Int, right: Int) Int:
     return left - right
 
-fn zero() Unit:
+fn zero() Void:
     return
 
 fn identity[T](value: T) T:

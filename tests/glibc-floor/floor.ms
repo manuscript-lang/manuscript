@@ -16,7 +16,7 @@ import (
 fn square(n: Int) Int:
 	return n * n
 
-fn main() Unit:
+fn main() Void:
 	squared := promise(fn: ok(square(12))).wait().get(-1)
 	file := stat("/etc/hosts", follow_links: true).is_ok()
 	child := run("true", []).wait().is_ok()

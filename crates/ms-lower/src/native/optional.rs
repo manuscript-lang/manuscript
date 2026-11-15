@@ -8,7 +8,7 @@ impl<'a> FnLower<'a> {
         let ext = self.b.m.add_extern(ms_mir::ir::ExternDef {
             name: sym.to_string(),
             params: Vec::new(),
-            ret: MTy::UNIT,
+            ret: MTy::VOID,
             noreturn: true,
             pure_: false,
             fresh: false,
@@ -57,7 +57,7 @@ impl<'a> FnLower<'a> {
                 ty: MTy::STR,
                 mode: ms_mir::ir::Mode::Borrow,
             }],
-            ret: MTy::UNIT,
+            ret: MTy::VOID,
             noreturn: true,
             pure_: false,
             fresh: false,

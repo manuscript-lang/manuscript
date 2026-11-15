@@ -13,7 +13,7 @@ Save this program as `count.ms`:
 
 <!-- manuscript-example: {"mode":"run","stdout":"3\n"} -->
 ```manuscript
-fn main() Unit:
+fn main() Void:
     var count = 2
     count += 1
     print(count)

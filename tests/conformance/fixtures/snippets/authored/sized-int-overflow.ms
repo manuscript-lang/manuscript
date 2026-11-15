@@ -3,7 +3,7 @@
 // conform: origin=sized numeric types stage 1
 import stdout from "@std/io/io.ms"
 
-fn main() Unit:
+fn main() Void:
     a: Int8 := 100
     _ := stdout().write("before\n")
     b := a + a

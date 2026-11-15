@@ -10,17 +10,17 @@ type Hooks:
 fn make_fixture() Hooks:
     return Hooks(runs: 0)
 
-fn var Hooks.before_all() Unit!:
+fn var Hooks.before_all() Void!:
     stdout().write("before_all\n").get()
 
-fn var Hooks.before_each() Unit!:
+fn var Hooks.before_each() Void!:
     self.runs += 1
     stdout().write("before_each {self.runs}\n").get()
 
-fn var Hooks.after_each() Unit!:
+fn var Hooks.after_each() Void!:
     stdout().write("after_each {self.runs}\n").get()
 
-fn var Hooks.after_all() Unit!:
+fn var Hooks.after_all() Void!:
     stdout().write("after_all\n").get()
 
 test "a skipped test still tears down":

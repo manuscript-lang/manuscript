@@ -12,17 +12,17 @@ fn var C.bump() Int:
 
 fn C.get() Int: self.n
 
-fn show(x: Int?) Unit:
+fn show(x: Int?) Void:
     stdout().write("{x.get(-1)}\n").get()
 
-fn clos() Unit:
+fn clos() Void:
     var c: C? = C(1)
     f := fn: c?.bump()
     show(f())
     show(f())
     show(c?.get())
 
-fn twice() Unit:
+fn twice() Void:
     var c: C? = C(1)
     show(c?.bump())
     show(c?.bump())
@@ -35,14 +35,14 @@ fn twice() Unit:
     show(xs[1]?.bump())
     show(xs[0]?.get())
 
-fn args() Unit:
+fn args() Void:
     var c: C? = C(1)
     show(c?.bump())
 
     var d: C? = C(5)
     show(d?.get())
 
-fn main() Unit:
+fn main() Void:
     clos()
     twice()
     args()

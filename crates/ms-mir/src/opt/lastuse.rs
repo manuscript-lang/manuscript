@@ -45,7 +45,7 @@ pub fn run_where(m: &mut Module, select: impl Fn(&Func) -> bool) -> bool {
 /// other finding ends the whole walk. So each type is classified once, however many paths reach it.
 fn plain(m: &Module, t: crate::types::Ty, seen: &mut HashSet<crate::types::Ty>) -> bool {
     match m.types.kind(t) {
-        TyKind::Unit
+        TyKind::Void
         | TyKind::Bool
         | TyKind::Int
         | TyKind::Int8
@@ -318,7 +318,7 @@ fn function(m: &Module, f: &mut Func) -> bool {
 }
 
 fn is_scalar(m: &Module, t: crate::types::Ty) -> bool {
-    matches!(m.types.kind(t), TyKind::Unit) || m.types.is_scalar(t)
+    matches!(m.types.kind(t), TyKind::Void) || m.types.is_scalar(t)
 }
 
 /// Grows the family of `v` (everything that may point into it) to a fixed point over the
@@ -736,7 +736,7 @@ mod tests {
 
     #[test]
     fn pending_drop_positions_preserve_anchor_order() {
-        let f = Func::new("pending", Vec::new(), crate::types::Ty::UNIT);
+        let f = Func::new("pending", Vec::new(), crate::types::Ty::VOID);
         let mut ix = Index::new(&f);
         ix.add_block();
         // Interleave block-start and instruction anchors; inserting before or after an

@@ -7,5 +7,5 @@ fn fail() Result[Int, Error]: return error(Error("no"))
 
 fn get(value: Int = fail()?) Result[Int, Error]: return ok(value)
 
-fn main() Unit:
+fn main() Void:
     _r := stdout().write("{get(2).is_ok()} {get().is_ok()}\n")

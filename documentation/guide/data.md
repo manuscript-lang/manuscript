@@ -29,7 +29,7 @@ fn label(status: Status) String:
         Cancelled(reason):
             return "cancelled: {reason}"
 
-fn main() Unit:
+fn main() Void:
     var orders = [
         Order(1, "Sam", 1250),
         Order(2, "Ada", 4000, status: Status.Shipped("ZX81")),

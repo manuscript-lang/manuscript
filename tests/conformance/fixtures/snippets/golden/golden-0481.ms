@@ -21,4 +21,4 @@ type Failure:
     detail: String
 impl Error for Failure:
     fn message() String: self.detail
-fn consume(value: Int?) Unit: return
+fn consume(value: Int?) Void: return

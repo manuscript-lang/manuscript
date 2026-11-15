@@ -126,7 +126,7 @@ fn word(var rnd: Random, n: Int, alpha: List[String]) String:
 	for _i in 0..n: out += rnd.choice(alpha)
 	return out
 
-export fn gen_c14() Unit:
+export fn gen_c14() Void:
 	var rnd = seeded(14)
 	acgt := ["a", "c", "g", "t"]
 	ab := ["a", "b"]

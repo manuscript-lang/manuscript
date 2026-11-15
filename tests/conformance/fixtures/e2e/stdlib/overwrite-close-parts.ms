@@ -11,7 +11,7 @@ type Tracked:
 	log: String
 	id: Int
 
-fn var Tracked.close() Unit!:
+fn var Tracked.close() Void!:
 	_ := append_file(self.log, "{self.id},").wait()
 
 fn track(log: String, id: Int) Tracked:

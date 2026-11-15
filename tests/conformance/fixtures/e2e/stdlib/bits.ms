@@ -21,11 +21,11 @@ import (
 	expect_equal, expect_fault from "@std/test/test.ms",
 )
 
-fn shift_too_far() Unit:
+fn shift_too_far() Void:
 	_value := shift_left(1, 64)
 	return unit
 
-fn shift_negative() Unit:
+fn shift_negative() Void:
 	_value := shift_right(1, -1)
 	return unit
 

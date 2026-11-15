@@ -10,7 +10,7 @@ type Resource:
 	id: Int
 	path: String
 
-fn var Resource.close() Unit!:
+fn var Resource.close() Void!:
 	append_file(self.path, "{self.id},").wait()?
 	if self.id == 98: return error(Error("failed close"))
 
@@ -18,11 +18,11 @@ fn var Resource.close() Unit!:
 
 interface Observer:
 	fn observe(first: Resource?, second: Resource?, tail: Int? = none) Bool
-	fn reject(value: Resource?) Unit!
-	fn broken(value: Resource?) Unit
+	fn reject(value: Resource?) Void!
+	fn broken(value: Resource?) Void
 	fn create(value: Resource?, path: String) Resource
-	fn change(var value: Resource) Unit
-	fn fault_with_var(var value: Resource) Unit
+	fn change(var value: Resource) Void
+	fn fault_with_var(var value: Resource) Void
 	fn result(value: Result[Resource, String]) Bool
 
 type Reader:
@@ -31,20 +31,20 @@ type Reader:
 fn Reader.observe(first: Resource?, second: Resource?, tail: Int? = none) Bool:
 	return first.is_some() or second.is_some() or tail.get(0) > 0
 
-fn Reader.reject(value: Resource?) Unit!:
+fn Reader.reject(value: Resource?) Void!:
 	if value.is_some(): return error(Error("expected"))
 
-fn Reader.broken(value: Resource?) Unit:
+fn Reader.broken(value: Resource?) Void:
 	if value.is_some(): _bad := [1].get(3)
 
 fn Reader.create(value: Resource?, path: String) Resource:
 	if value.is_some(): return Resource(50, path.clone())
 	return Resource(51, path.clone())
 
-fn Reader.change(var value: Resource) Unit:
+fn Reader.change(var value: Resource) Void:
 	value.id += 1
 
-fn Reader.fault_with_var(var value: Resource) Unit:
+fn Reader.fault_with_var(var value: Resource) Void:
 	_bad := [value.id].get(3)
 
 fn Reader.result(value: Result[Resource, String]) Bool: value.is_ok()
@@ -61,20 +61,20 @@ fn accepted() Int!: ok(1)
 
 fn faulted() Int: [1].get(3)
 
-fn later_error(reader: Observer, path: String) Unit!:
+fn later_error(reader: Observer, path: String) Void!:
 	_used := reader.observe(present(path, 10), present(path, 11), rejected()?)
 
-fn later_success(reader: Observer, path: String) Unit!:
+fn later_success(reader: Observer, path: String) Void!:
 	_used := reader.observe(present(path, 12), present(path, 13), accepted()?)
 
-fn later_fault(reader: Observer, path: String) Unit:
+fn later_fault(reader: Observer, path: String) Void:
 	_used := reader.observe(present(path, 14), present(path, 15), faulted())
 
-fn new_owner_fault(reader: Observer, path: String) Unit:
+fn new_owner_fault(reader: Observer, path: String) Void:
 	owner := reader.create(present(path, 49), path)
 	_used := owner.id + faulted()
 
-fn failed_close(reader: Observer, path: String) Unit:
+fn failed_close(reader: Observer, path: String) Void:
 	owner := Resource(99, path.clone())
 	_used := reader.observe(present(path, 98), none)
 	_id := owner.id
@@ -142,7 +142,7 @@ test "interface failed temporary close leaves older owner registered":
 	_fault := expect_fault(fn: failed_close(reader, path))?
 	expect_equal(log_text(path)?, "98,99,")?
 
-fn named_var_fault(reader: Observer, path: String) Unit:
+fn named_var_fault(reader: Observer, path: String) Void:
 	var value = Resource(60, path.clone())
 	reader.fault_with_var(var value)
 

@@ -28,12 +28,12 @@ type Box[T]:
     value: T
     copy: T = value
 
-fn unit_default(var calls: List[Int]) Unit:
+fn unit_default(var calls: List[Int]) Void:
     calls.append(1)
 
 type Explicit:
     calls: List[Int]
-    nothing: Unit = unit_default(calls)
+    nothing: Void = unit_default(calls)
     option: Int? = 9
 
 test "record defaults and explicit overrides":
@@ -89,7 +89,7 @@ fn Reader.get(fallback: Int?) Int:
 
 type Marker: ...
 
-fn no_op() Unit: ...
+fn no_op() Void: ...
 
 test "ordinary empty declarations and interface omission":
     no_op()

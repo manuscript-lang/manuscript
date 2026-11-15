@@ -49,7 +49,7 @@ fn skill_complete_examples_check() {
             examples += 1;
         }
     }
-    assert_eq!(examples, 9, "retain all complete skill examples");
+    assert_eq!(examples, 10, "retain all complete skill examples");
 }
 
 #[test]
@@ -77,4 +77,30 @@ fn skill_root_is_short_and_references_are_substantive() {
             "reference needs a real example: {path}"
         );
     }
+}
+
+/// The server-state example is also a conformance fixture, which runs it.
+#[test]
+fn skill_server_state_example_is_the_tested_fixture() {
+    let page = FILES
+        .iter()
+        .find(|(path, _)| *path == "references/servers-and-state.md")
+        .unwrap()
+        .1;
+    let shown = page
+        .split_once("<!-- complete: server-state.ms -->\n```manuscript\n")
+        .expect("example")
+        .1
+        .split_once("```")
+        .unwrap()
+        .0;
+    let fixture =
+        include_str!("../../../tests/conformance/fixtures/e2e/stdlib/serve-state-owner.ms");
+    assert_eq!(
+        shown,
+        fixture
+            .strip_prefix("// conform: tags=testing,tier-io\n// conform: phase=test\n")
+            .expect("fixture header"),
+        "keep the skill example equal to its fixture"
+    );
 }

@@ -38,7 +38,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1298.ms:3:31: parse: expected ')', found '|'; close the parenthesis, separating items with commas\n   |\n 3 | fn use[ListEntry](value: ListE|) Unit: unit\n   |                               ^\n<DIR>/golden-1298.ms:5:1: parse: unterminated delimiter '(' opened at line 4:10; add the matching ')' before the end of the file\n   |\n 5 | \n   | ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1298.ms:3:31: parse: expected ')', found '|'; close the parenthesis, separating items with commas\n   |\n 3 | fn use[ListEntry](value: ListE|) Void: unit\n   |                               ^\n<DIR>/golden-1298.ms:5:1: parse: unterminated delimiter '(' opened at line 4:10; add the matching ')' before the end of the file\n   |\n 5 | \n   | ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -263,6 +263,10 @@ jobs:
     if: always()
     needs: [due, rust, llvm, budget]
     runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      issues: write
     steps:
       - name: Require every platform leg
         env:
@@ -276,6 +280,49 @@ jobs:
           test "$LLVM_RESULT" != failure || exit 1
           test "$LLVM_RESULT" != cancelled || exit 1
           test "$RESULT" = success || test "$DUE" = false
+      # A red scheduled run on main is reported once: one open issue names the failing legs and tests and the pull
+      # requests merged since the last green scheduled run; later red runs comment on it, a green run closes it.
+      - name: Report the scheduled main run
+        if: ${{ always() && github.event_name == 'schedule' && needs.due.outputs.run == 'true' && needs.rust.result != 'cancelled' && needs.rust.result != 'skipped' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESULT: ${{ needs.rust.result }}
+          LLVM_RESULT: ${{ needs.llvm.result }}
+        run: |
+          repo="$GITHUB_REPOSITORY"
+          run_url="$GITHUB_SERVER_URL/$repo/actions/runs/$GITHUB_RUN_ID"
+          open=$(gh issue list --repo "$repo" --state open --search '"Main is red" in:title' --json number,title \
+            --jq '[.[] | select(.title | startswith("Main is red"))][0].number // empty')
+          if [ "$RESULT" = success ] && [ "$LLVM_RESULT" != failure ]; then
+            if [ -n "$open" ]; then
+              gh issue close "$open" --repo "$repo" --comment "Green again: $run_url ($GITHUB_SHA)."
+            fi
+            exit 0
+          fi
+          last_green=$(gh api "repos/$repo/actions/workflows/cicd.yml/runs?event=schedule&status=success&branch=main&per_page=1" \
+            --jq '.workflow_runs[0].head_sha // empty')
+          if [ -n "$last_green" ]; then
+            range="$last_green...$GITHUB_SHA"
+            merged=$(gh api "repos/$repo/compare/$range" --jq '.commits[] | "- \(.sha[0:9]) \(.commit.message | split("\n")[0])"')
+          else
+            range="(no earlier green scheduled run)"
+            merged="- $GITHUB_SHA"
+          fi
+          legs=""
+          while IFS=$'\t' read -r id name; do
+            tests=$(gh api "repos/$repo/actions/jobs/$id/logs" 2>/dev/null \
+              | grep -oE 'Z +FAIL .*' | sed -E 's/^Z +//' | sort -u | head -20 || true)
+            legs="$legs"$'\n'"- $name ($GITHUB_SERVER_URL/$repo/actions/runs/$GITHUB_RUN_ID/job/$id)"
+            if [ -n "$tests" ]; then legs="$legs"$'\n'"$(printf '%s\n' "$tests" | sed 's/^/    - /')"; fi
+          done < <(gh api "repos/$repo/actions/runs/$GITHUB_RUN_ID/jobs" --paginate \
+            --jq '.jobs[] | select(.conclusion == "failure" and .name != "Platform checks") | "\(.id)\t\(.name)"')
+          body=$(printf 'Scheduled run: %s\nCommit range since the last green scheduled run: %s\n\nFailing legs and tests:%s\n\nMerged since the last green run:\n%s\n' \
+            "$run_url" "$range" "$legs" "$merged")
+          if [ -n "$open" ]; then
+            gh issue comment "$open" --repo "$repo" --body "$body"
+          else
+            gh issue create --repo "$repo" --title "Main is red" --body "$body"
+          fi
 
   pages:
     name: Publish Pages docs

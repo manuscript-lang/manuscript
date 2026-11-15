@@ -33,7 +33,7 @@ fn open_io_then_read(path: String) Int:
 
     return -1
 
-fn main() Unit:
+fn main() Void:
     path := arguments()[0].clone()
     first := path.clone()
     second := path.clone()

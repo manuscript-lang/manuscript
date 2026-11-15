@@ -1,5 +1,5 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn f() Unit:
+fn f() Void:
     if true: return
         return

@@ -3,5 +3,5 @@
 // conform: origin=pkg/compiler/optional_test.go:37 TestOptionalArgumentBoundaries
 fn f(value: Int) Int: return value
 
-fn call() Unit:
+fn call() Void:
     callback: fn(Int?) Int := f

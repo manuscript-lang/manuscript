@@ -3,7 +3,7 @@ import basename, join, normalize from "@std/os/path.ms"
 import parse, encode_component from "@std/net/url.ms"
 import sqrt, sin from "@std/math/math.ms"
 
-export fn bench_path_url_math() Unit:
+export fn bench_path_url_math() Void:
     bench(
         "path.join_normalize",
         50000,

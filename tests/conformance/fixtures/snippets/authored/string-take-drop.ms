@@ -3,7 +3,7 @@
 // conform: origin=agent token study: String.take and String.drop
 import stdout from "@std/io/io.ms"
 
-fn main() Unit:
+fn main() Void:
     var out = stdout()
     s := "héllo"
     out.write(

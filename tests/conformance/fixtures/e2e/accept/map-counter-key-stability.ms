@@ -129,7 +129,7 @@ fn successful_value(value: Int) Int!:
 fn failed_value() Int!:
 	return error(Error("expected map value failure"))
 
-fn add_failed_value(var values: Map[String, Int], key: String) Unit!:
+fn add_failed_value(var values: Map[String, Int], key: String) Void!:
 	values.add(key.clone(), failed_value()?)
 
 test "an owned native argument transfers after a later try succeeds":

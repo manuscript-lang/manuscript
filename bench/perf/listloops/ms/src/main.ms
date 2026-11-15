@@ -3,22 +3,22 @@ import (
 	monotonic from "@std/time.ms",
 )
 
-fn say(text: String) Unit:
+fn say(text: String) Void:
 	_ignored := stdout().write(text)
 
-fn k_fma(a: List[Float32], b: List[Float32], var out: List[Float32], n: Int) Unit:
+fn k_fma(a: List[Float32], b: List[Float32], var out: List[Float32], n: Int) Void:
 	for i in 0..n:
 		out[i] = a[i] * b[i] + 1.5
 
-fn k_scale64(a: List[Float], var out: List[Float], n: Int) Unit:
+fn k_scale64(a: List[Float], var out: List[Float], n: Int) Void:
 	for i in 0..n:
 		out[i] = a[i] * 2.0
 
-fn k_intadd(a: List[Int], b: List[Int], var out: List[Int], n: Int) Unit:
+fn k_intadd(a: List[Int], b: List[Int], var out: List[Int], n: Int) Void:
 	for i in 0..n:
 		out[i] = a[i] + b[i]
 
-fn k_stencil(a: List[Float32], var out: List[Float32], n: Int) Unit:
+fn k_stencil(a: List[Float32], var out: List[Float32], n: Int) Void:
 	for i in 0..n - 1:
 		out[i] = a[i] + a[i + 1]
 
@@ -28,16 +28,16 @@ fn k_base(
 	var out: List[Float32],
 	base: Int,
 	n: Int,
-) Unit:
+) Void:
 	for i in 0..n:
 		out[i] = w[base + i] * x[i]
 
-fn k_clamp(a: List[Float32], var out: List[Float32], n: Int) Unit:
+fn k_clamp(a: List[Float32], var out: List[Float32], n: Int) Void:
 	for i in 0..n:
 		v := a[i]
 		out[i] = if v < 0.0: 0.0 else: (if v > 1.0: 1.0 else: v)
 
-fn k_conv(a: List[Int], var out: List[Float], n: Int) Unit:
+fn k_conv(a: List[Int], var out: List[Float], n: Int) Void:
 	for i in 0..n:
 		out[i] = a[i].to_float() * 0.5
 
@@ -47,10 +47,10 @@ fn k_dot(a: List[Float32], b: List[Float32], n: Int) Float32:
 		acc += a[i] * b[i]
 	return acc
 
-fn report(name: String, flops: Int, reps: Int, t: Int) Unit:
+fn report(name: String, flops: Int, reps: Int, t: Int) Void:
 	say("{name} {(flops * reps).to_float() / t.to_float()}\n")
 
-fn main() Unit:
+fn main() Void:
 	n := 4096
 	var f1 = List[Float32]()
 	var f2 = List[Float32]()

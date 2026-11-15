@@ -256,10 +256,10 @@ export fn values(data: Bytes) List[UInt8]:
 export extern type BytesBuilder
 
 // Appends one byte to the end of the builder.
-fn var BytesBuilder.append(value: UInt8) Unit: ...
+fn var BytesBuilder.append(value: UInt8) Void: ...
 
 // Appends all supplied bytes in order; the input is unchanged.
-fn var BytesBuilder.append_bytes(values: Bytes) Unit: ...
+fn var BytesBuilder.append_bytes(values: Bytes) Void: ...
 
 // Consumes the builder and returns its bytes; the builder cannot be used
 // afterwards.
@@ -270,60 +270,60 @@ fn BytesBuilder.build() Bytes: ...
 fn var BytesBuilder.drain() Bytes: ...
 
 // Appends one signed byte.
-fn var BytesBuilder.append_int8(value: Int8) Unit:
+fn var BytesBuilder.append_int8(value: Int8) Void:
 	put_word(var self, value.to_int(), 1, true)
 
 // Appends a signed 16-bit little-endian integer.
-fn var BytesBuilder.append_int16_le(value: Int16) Unit:
+fn var BytesBuilder.append_int16_le(value: Int16) Void:
 	put_word(var self, value.to_int(), 2, true)
 
 // Appends an unsigned 16-bit little-endian integer.
-fn var BytesBuilder.append_uint16_le(value: UInt16) Unit:
+fn var BytesBuilder.append_uint16_le(value: UInt16) Void:
 	put_word(var self, value.to_int(), 2, true)
 
 // Appends a signed 16-bit big-endian integer.
-fn var BytesBuilder.append_int16_be(value: Int16) Unit:
+fn var BytesBuilder.append_int16_be(value: Int16) Void:
 	put_word(var self, value.to_int(), 2, false)
 
 // Appends an unsigned 16-bit big-endian integer.
-fn var BytesBuilder.append_uint16_be(value: UInt16) Unit:
+fn var BytesBuilder.append_uint16_be(value: UInt16) Void:
 	put_word(var self, value.to_int(), 2, false)
 
 // Appends a signed 32-bit little-endian integer.
-fn var BytesBuilder.append_int32_le(value: Int32) Unit:
+fn var BytesBuilder.append_int32_le(value: Int32) Void:
 	put_word(var self, value.to_int(), 4, true)
 
 // Appends an unsigned 32-bit little-endian integer.
-fn var BytesBuilder.append_uint32_le(value: UInt32) Unit:
+fn var BytesBuilder.append_uint32_le(value: UInt32) Void:
 	put_word(var self, value.to_int(), 4, true)
 
 // Appends a signed 32-bit big-endian integer.
-fn var BytesBuilder.append_int32_be(value: Int32) Unit:
+fn var BytesBuilder.append_int32_be(value: Int32) Void:
 	put_word(var self, value.to_int(), 4, false)
 
 // Appends an unsigned 32-bit big-endian integer.
-fn var BytesBuilder.append_uint32_be(value: UInt32) Unit:
+fn var BytesBuilder.append_uint32_be(value: UInt32) Void:
 	put_word(var self, value.to_int(), 4, false)
 
 // Appends a signed 64-bit little-endian integer.
-fn var BytesBuilder.append_int64_le(value: Int) Unit:
+fn var BytesBuilder.append_int64_le(value: Int) Void:
 	put_word(var self, value, 8, true)
 
 // Appends a signed 64-bit big-endian integer.
-fn var BytesBuilder.append_int64_be(value: Int) Unit:
+fn var BytesBuilder.append_int64_be(value: Int) Void:
 	put_word(var self, value, 8, false)
 
 // Appends an unsigned 64-bit little-endian integer, including the full UInt64
 // range.
-fn var BytesBuilder.append_uint64_le(value: UInt64) Unit:
+fn var BytesBuilder.append_uint64_le(value: UInt64) Void:
 	put_uint64(var self, value, true)
 
 // Appends an unsigned 64-bit big-endian integer, including the full UInt64 range.
-fn var BytesBuilder.append_uint64_be(value: UInt64) Unit:
+fn var BytesBuilder.append_uint64_be(value: UInt64) Void:
 	put_uint64(var self, value, false)
 
 // Appends the shortest unsigned base-128 encoding, from one through ten bytes.
-fn var BytesBuilder.append_uvarint(value: UInt64) Unit:
+fn var BytesBuilder.append_uvarint(value: UInt64) Void:
 	var remaining = value
 
 	while remaining >= 128:
@@ -334,7 +334,7 @@ fn var BytesBuilder.append_uvarint(value: UInt64) Unit:
 
 // Appends the shortest signed 64-bit zigzag encoding; even the most negative Int
 // fits in ten bytes.
-fn var BytesBuilder.append_varint(value: Int) Unit:
+fn var BytesBuilder.append_varint(value: Int) Void:
 	if value < 0:
 		self.append_uvarint((-(value + 1)).to_uint64().get(0) * 2 + 1)
 		return unit
@@ -342,19 +342,19 @@ fn var BytesBuilder.append_varint(value: Int) Unit:
 	self.append_uvarint(value.to_uint64().get(0) * 2)
 
 // Appends an IEEE 754 binary32 little-endian float.
-fn var BytesBuilder.append_float32_le(value: Float32) Unit:
+fn var BytesBuilder.append_float32_le(value: Float32) Void:
 	put_word(var self, msrt_float32_to_bits(value.to_float()), 4, true)
 
 // Appends an IEEE 754 binary32 big-endian float.
-fn var BytesBuilder.append_float32_be(value: Float32) Unit:
+fn var BytesBuilder.append_float32_be(value: Float32) Void:
 	put_word(var self, msrt_float32_to_bits(value.to_float()), 4, false)
 
 // Appends an IEEE 754 binary64 little-endian float.
-fn var BytesBuilder.append_float64_le(value: Float) Unit:
+fn var BytesBuilder.append_float64_le(value: Float) Void:
 	put_word(var self, msrt_float_to_bits(value), 8, true)
 
 // Appends an IEEE 754 binary64 big-endian float.
-fn var BytesBuilder.append_float64_be(value: Float) Unit:
+fn var BytesBuilder.append_float64_be(value: Float) Void:
 	put_word(var self, msrt_float_to_bits(value), 8, false)
 
 // A decoded variable-length integer and the absolute offset of the next byte.
@@ -367,7 +367,7 @@ export type VarintRead[T]:
 	next_offset: Int
 
 // Appends the low `width` bytes of `value` in the requested byte order.
-fn put_word(var out: BytesBuilder, value: Int, width: Int, little: Bool) Unit:
+fn put_word(var out: BytesBuilder, value: Int, width: Int, little: Bool) Void:
 	for i in 0..width:
 		place := if little: i else: width - 1 - i
 		out.append(
@@ -394,7 +394,7 @@ fn read_uint64(data: Bytes, at: Int, little: Bool) UInt64!:
 		return error(Error("binary: out of range", kind: "ERANGE"))
 	return ok(unsigned_word(msrt_bytes_read_word(data, at, 8, little)?))
 
-fn put_uint64(var out: BytesBuilder, value: UInt64, little: Bool) Unit:
+fn put_uint64(var out: BytesBuilder, value: UInt64, little: Bool) Void:
 	high := (value / 4294967296).to_int().get(0)
 	low := (value % 4294967296).to_int().get(0)
 

@@ -36,7 +36,7 @@ export type Crc32:
 	state: UInt32 = 0
 
 // Appends these bytes to the checksum; an empty chunk leaves it unchanged.
-fn var Crc32.update(data: Bytes) Unit:
+fn var Crc32.update(data: Bytes) Void:
 	self.state = msstd_checksum_crc32_update(self.state.to_int(), data).to_uint32().get()
 
 // Returns the current checksum without resetting or otherwise changing it.
@@ -53,7 +53,7 @@ export type Adler32:
 	state: UInt32 = 1
 
 // Appends these bytes to the checksum; an empty chunk leaves it unchanged.
-fn var Adler32.update(data: Bytes) Unit:
+fn var Adler32.update(data: Bytes) Void:
 	self.state = msstd_checksum_adler32_update(self.state.to_int(), data).to_uint32().get()
 
 // Returns the current checksum without resetting or otherwise changing it.

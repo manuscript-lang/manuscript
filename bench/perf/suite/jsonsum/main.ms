@@ -12,7 +12,7 @@ type Rec:
 	tags: List[String]
 	name: String
 
-fn main() Unit:
+fn main() Void:
 	data := read_all(stdin(), none).get().decode_utf8().get("")
 	recs := parse[List[Rec]](data).get()
 	var scores = Map[String, Int]()

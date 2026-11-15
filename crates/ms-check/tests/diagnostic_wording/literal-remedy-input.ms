@@ -1,2 +1,2 @@
-fn f() Unit:
+fn f() Void:
     print(0)

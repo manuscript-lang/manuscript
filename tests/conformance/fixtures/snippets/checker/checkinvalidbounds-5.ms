@@ -4,4 +4,4 @@
 type Data:
     value: Int
 
-fn record[T: Data](value: T) Unit: return
+fn record[T: Data](value: T) Void: return

@@ -3,6 +3,6 @@ import (
 	make from "./two.ms",
 )
 
-fn main() Unit:
+fn main() Void:
 	x: T := make()
 	print(x.n)

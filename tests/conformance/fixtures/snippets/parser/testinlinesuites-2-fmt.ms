@@ -1,6 +1,6 @@
 // conform: tags=formatter,parser,tier-core
 // conform: phase=parse
 // conform: origin=pkg/parser/parser_test.go:199 TestInlineSuites
-fn f() Unit: return
+fn f() Void: return
 
-fn g() Unit: return
+fn g() Void: return

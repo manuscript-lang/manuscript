@@ -8,11 +8,11 @@ import Closeable from "@std/core.ms"
 type Door:
     name: String
 
-fn var Door.close() Unit!:
+fn var Door.close() Void!:
     print("closed {self.name}")
 
 fn opt[T](v: T) T?: v
 
-fn main() Unit:
+fn main() Void:
     _a := opt(Door("temp"))
     print("end")

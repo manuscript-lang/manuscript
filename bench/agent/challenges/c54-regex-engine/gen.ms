@@ -30,7 +30,7 @@ fn R(pat: String, subj: String, repl: String) String:
 fn S(pat: String, subj: String) String:
 	return line("split", pat, subj)
 
-export fn gen_c54() Unit:
+export fn gen_c54() Void:
 	var cs = Cases(build_oracle("c54-regex-engine"))
 	cs.push(
 		"literals",

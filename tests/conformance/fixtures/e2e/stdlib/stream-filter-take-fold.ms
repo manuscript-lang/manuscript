@@ -16,7 +16,7 @@ fn var Counting.next() Int?!:
 	self.next_value += 1
 	return ok(self.next_value)
 
-fn var Counting.close() Unit!:
+fn var Counting.close() Void!:
 	return ok(unit)
 
 test "filter keeps matching items in order":
@@ -57,7 +57,7 @@ fn var Intermittent.next() Int?!:
 
 	return ok(self.calls)
 
-fn var Intermittent.close() Unit!:
+fn var Intermittent.close() Void!:
 	return ok(unit)
 
 test "take does not spend its last item on a failed read":

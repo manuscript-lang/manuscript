@@ -122,7 +122,7 @@ export fn summarize(text: String, swap: Bool = false, cpu: Bool = false) String!
 
 	return ok(report)
 
-export fn main() Unit!:
+export fn main() Void!:
 	args := arguments()
 	if args.length() < 1 or args.length() > 3: return invalid(
 		"expected FILE [forward|swap] [wall|cpu]"

@@ -26,11 +26,11 @@ fn twice(n: Int) Result[Int, Error]:
     v := pick(n)?
     return ok(v * 2)
 
-fn show(n: Int) Result[Unit, Error]:
+fn show(n: Int) Result[Void, Error]:
     stdout().write("{n}\n")?
     stdout().flush()?
 
-fn main() Unit:
+fn main() Void:
     show(total(Sq(s: 4))).get()
     show(twice(3).get()).get()
 

@@ -6,7 +6,7 @@ import HttpMethod, headers from "@std/net/http.ms"
 import RequestOptions, request from "@std/net/net.ms"
 import stdout from "@std/io/io.ms"
 
-fn run() Result[Unit, Error]:
+fn run() Result[Void, Error]:
     url := arguments().first().ok_or(
         Error("HTTP: invalid input", kind: "EINVAL")
     )?
@@ -23,5 +23,5 @@ fn run() Result[Unit, Error]:
     stdout().write(text)?
     return stdout().flush()
 
-fn main() Unit!:
+fn main() Void!:
     run()?

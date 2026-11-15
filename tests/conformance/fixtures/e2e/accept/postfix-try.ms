@@ -15,7 +15,7 @@ fn label(text: String) String!:
 fn stringify(value: Int) String:
 	return "n={value}"
 
-fn check_positive(value: Int) Unit!:
+fn check_positive(value: Int) Void!:
 	if value < 0: return error(Error("negative"))
 
 fn both(text: String) Int!:

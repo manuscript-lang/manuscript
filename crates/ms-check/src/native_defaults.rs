@@ -47,7 +47,7 @@ impl Checker {
         let closed = extended.iter().all(|e| {
             matches!(
                 e.kind,
-                ExprKind::Bool(_) | ExprKind::Number(_) | ExprKind::Unit
+                ExprKind::Bool(_) | ExprKind::Number(_) | ExprKind::Void
             )
         });
         if !variables.is_empty() && !closed {
@@ -84,7 +84,7 @@ impl Checker {
 
     fn closed_interface_default(&self, e: &Expr) -> bool {
         match &e.kind {
-            ExprKind::Bool(_) | ExprKind::Number(_) | ExprKind::Unit => true,
+            ExprKind::Bool(_) | ExprKind::Number(_) | ExprKind::Void => true,
             ExprKind::Name(_) => self.m().default_form(self.syms, e) == DefaultForm::None,
             ExprKind::Text(parts) => parts.iter().all(|p| matches!(p, TextPart::Lit(_))),
             ExprKind::Call { callee, args } => {

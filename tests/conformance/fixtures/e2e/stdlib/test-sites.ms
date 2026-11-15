@@ -27,7 +27,7 @@ fn bad() Int!:
 fn nothing() String?:
 	return none
 
-fn wrapped(actual: Bool, site: String = caller_site()) Unit!:
+fn wrapped(actual: Bool, site: String = caller_site()) Void!:
 	return expect_true(actual, site)
 
 test "a failed expectation names the line of its call":

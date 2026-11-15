@@ -3,7 +3,7 @@ import Closeable from "@std/core.ms"
 type Door:
     id: Int
 
-fn var Door.close() Unit!:
+fn var Door.close() Void!:
     return ok(unit)
 
 type Room:
@@ -13,7 +13,7 @@ type Room:
 type Guard:
     door: Door
 
-fn var Guard.close() Unit!:
+fn var Guard.close() Void!:
     return ok(unit)
 
 fn keep(d: Door) List[Door]:

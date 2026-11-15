@@ -21,7 +21,7 @@ export type BitSet:
 	words: List[Int] = []
 
 // Adds an index; faults when it is negative or above 1073741823.
-fn var BitSet.add(index: Int) Unit:
+fn var BitSet.add(index: Int) Void:
 	if index < 0 or index > 1073741823:
 		panic("BitSet: index must be between 0 and 1073741823, found {index}")
 
@@ -31,7 +31,7 @@ fn var BitSet.add(index: Int) Unit:
 	self.words.set(word, bit_or(self.words[word], shift_left(1, index % 64)))
 
 // Removes an index; absent and out-of-range indexes change nothing.
-fn var BitSet.remove(index: Int) Unit:
+fn var BitSet.remove(index: Int) Void:
 	if index < 0 or index / 64 >= self.words.length(): return
 
 	word := index / 64
@@ -54,7 +54,7 @@ fn BitSet.is_empty() Bool:
 	return not self.words.any(fn word: word != 0)
 
 // Removes every member and releases the bitmap.
-fn var BitSet.clear() Unit:
+fn var BitSet.clear() Void:
 	self.words = []
 
 // Returns the smallest member that is at least `from`, or `none` when there is

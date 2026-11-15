@@ -3,7 +3,7 @@
 // conform: origin=Map and Bytes indexing
 import stdout from "@std/io/io.ms"
 
-fn main() Unit:
+fn main() Void:
     scores := {"ann": 1, "bob": 2}
     _ := stdout().write("{scores["ann"]}\n")
     _ := stdout().write("{scores["eve"]}\n")

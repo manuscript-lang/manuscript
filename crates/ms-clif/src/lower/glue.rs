@@ -24,7 +24,7 @@ impl<'a, 'm> Lower<'a, 'm> {
     /// Registers the release of closure object `obj` from capture `k` on while a guarded task
     /// unwinds; returns the cleanup handle, 0 when no guard is open (its discard is a no-op).
     fn register_closure_tail(&mut self, f: u32, k: u32, obj: Value) -> Value {
-        let tail = self.g.glue(Glue::ClosureDropFrom(f, k), Ty::UNIT);
+        let tail = self.g.glue(Glue::ClosureDropFrom(f, k), Ty::VOID);
         let hdr = self.task_hdr();
         let guarded = self
             .b
@@ -166,7 +166,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                     let word = self.b.ins().load(types::I64, flags(), src, at);
                     self.b.ins().store(flags(), word, obj, at);
                 }
-                let drop = self.g.glue(Glue::ClosureDrop(f), Ty::UNIT);
+                let drop = self.g.glue(Glue::ClosureDrop(f), Ty::VOID);
                 let dr = self.fref(drop);
                 let da = self.b.ins().func_addr(types::I64, dr);
                 self.b.ins().store(flags(), da, obj, 8);

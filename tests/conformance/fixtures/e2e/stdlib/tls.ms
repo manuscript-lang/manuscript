@@ -28,7 +28,7 @@ import (
 	http_result, list_headers, text_headers from "./support/http.ms",
 )
 
-fn hello(var exchange: HttpExchange) Unit!:
+fn hello(var exchange: HttpExchange) Void!:
 	_started := exchange.send_headers(
 		status: 200,
 		headers: (list_headers(Map[String, List[String]]())?),
@@ -55,7 +55,7 @@ test "TLS certificate parsing verification hostname and expiration":
 			now: now,
 		) | expect_ok?
 	)
-	failed: Unit! := error(Error("TLS: authentication failed", kind: "EAUTH"))
+	failed: Void! := error(Error("TLS: authentication failed", kind: "EAUTH"))
 	expect_false(
 		(
 			verify_certificates(
@@ -147,7 +147,7 @@ test "HTTPS trusts only the explicitly supplied local test root":
 		)
 	)?
 
-fn report_protocol(var exchange: HttpExchange) Unit!:
+fn report_protocol(var exchange: HttpExchange) Void!:
 	_started := exchange.send_headers(
 		status: 200,
 		headers: (list_headers(Map[String, List[String]]())?),

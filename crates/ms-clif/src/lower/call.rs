@@ -35,7 +35,7 @@ impl<'a, 'm> Lower<'a, 'm> {
         } else {
             self.alloc(total)
         };
-        let clone = self.g.glue(Glue::ClosureClone(c.0), Ty::UNIT);
+        let clone = self.g.glue(Glue::ClosureClone(c.0), Ty::VOID);
         let cr = self.fref(clone);
         let ca = self.b.ins().func_addr(types::I64, cr);
         self.b.ins().store(flags(), ca, obj, 0);
@@ -45,7 +45,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             } else {
                 Glue::ClosureDrop(c.0)
             },
-            Ty::UNIT,
+            Ty::VOID,
         );
         let dr = self.fref(drop);
         let da = self.b.ins().func_addr(types::I64, dr);
@@ -241,7 +241,7 @@ impl<'a, 'm> Lower<'a, 'm> {
 
     pub(super) fn passes_directly(lay: &crate::layout::Layouts, t: Ty) -> bool {
         match lay.m.types.kind(t) {
-            TyKind::Unit
+            TyKind::Void
             | TyKind::Bool
             | TyKind::Int
             | TyKind::Int8

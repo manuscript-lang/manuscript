@@ -13,7 +13,7 @@ type P:
 fn lcg(x: Int) Int:
 	return (x * 1103515245 + 12345) % 2147483648
 
-fn stop(name: String, t0: Int, chk: Int) Unit:
+fn stop(name: String, t0: Int, chk: Int) Void:
 	now := monotonic().tick
 	print("{name} {(now - t0) / 1000} {chk}")
 
@@ -149,7 +149,7 @@ fn list_ops() Int:
 		if xs.contains(999 + i): t += 1
 	return d.length() + r[0] + s.length() + t
 
-fn main() Unit:
+fn main() Void:
 	t_big_int_map := monotonic().tick
 	stop("big_int_map", t_big_int_map, big_int_map())
 

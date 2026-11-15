@@ -21,7 +21,7 @@ import bench_string from "./strings.ms"
 import bench_map_set from "./maps.ms"
 import bench_regex from "./regexbench.ms"
 import bench_host from "./hostbench.ms"
-fn main() Unit:
+fn main() Void:
     let name = arguments().get(0, "")
     if name.starts_with("string."): bench_string()
     if name.starts_with("map."): bench_map_set()

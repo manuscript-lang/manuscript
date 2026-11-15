@@ -32,7 +32,7 @@ fn var Capture.run(
 fn Capture.spawn(program: String, arguments: List[String]) Result[Subprocess, Error]:
     return error(Error("process: service unavailable", kind: "EAGAIN"))
 
-fn main() Unit:
+fn main() Void:
     var capture = Capture(0)
     _bound := capture.run
     _r := capture.run("x", [], "".to_bytes())

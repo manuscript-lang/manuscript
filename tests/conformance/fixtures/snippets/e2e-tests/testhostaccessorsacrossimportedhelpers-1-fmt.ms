@@ -8,5 +8,5 @@ import Instant from "@std/time.ms"
 export fn now() Instant:
     return monotonic()
 
-export fn close_output() Unit:
+export fn close_output() Void:
     _ := stdout().close()

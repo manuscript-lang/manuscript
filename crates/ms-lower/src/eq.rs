@@ -71,7 +71,7 @@ pub(crate) fn element_eq(
     if b.m.types.is_float(t) {
         return Ok(b.fcmp(Cc::Eq, x, y));
     }
-    if t == MTy::UNIT {
+    if t == MTy::VOID {
         return Ok(b.bconst(true));
     }
     if t == MTy::STR {

@@ -57,7 +57,7 @@ fn SortedMap[K, V].lower_bound(c: Int, key: K) Int:
 	return low
 
 // Records the last key of chunk `c` after the chunk changed.
-fn var SortedMap[K, V].refresh(c: Int) Unit:
+fn var SortedMap[K, V].refresh(c: Int) Void:
 	self.maxes.set(c, self.key_chunks[c].get(self.key_chunks[c].length() - 1).clone())
 
 // Returns the number of entries.
@@ -99,7 +99,7 @@ fn SortedMap[K, V].get_or(key: K, fallback: V) V:
 
 // Inserts a key or replaces the value of an equal key, which keeps its original
 // key.
-fn var SortedMap[K, V].add(key: K, value: V) Unit:
+fn var SortedMap[K, V].add(key: K, value: V) Void:
 	if self.size == 0:
 		self.key_chunks = [[key.clone()]]
 		self.value_chunks = [[value]]
@@ -126,7 +126,7 @@ fn var SortedMap[K, V].add(key: K, value: V) Unit:
 		self.split(c)
 
 // Splits chunk `c` into two halves.
-fn var SortedMap[K, V].split(c: Int) Unit:
+fn var SortedMap[K, V].split(c: Int) Void:
 	length := self.key_chunks[c].length()
 	half := length / 2
 	tail_keys := self.key_chunks[c].slice(half, length).get().clone()
@@ -138,7 +138,7 @@ fn var SortedMap[K, V].split(c: Int) Unit:
 	self.maxes.insert(c, self.key_chunks[c].get(half - 1).clone())
 
 // Removes an equal key; an absent key changes nothing.
-fn var SortedMap[K, V].remove(key: K) Unit:
+fn var SortedMap[K, V].remove(key: K) Void:
 	if self.size == 0: return
 
 	c := self.chunk_for(key)
@@ -153,7 +153,7 @@ fn var SortedMap[K, V].remove(key: K) Unit:
 
 // Removes the entry at chunk `c`, position `at`, dropping the chunk when it
 // empties.
-fn var SortedMap[K, V].remove_at(c: Int, at: Int) Unit:
+fn var SortedMap[K, V].remove_at(c: Int, at: Int) Void:
 	self.key_chunks[c].remove(at)
 	self.value_chunks[c].remove(at)
 	self.size -= 1
@@ -166,7 +166,7 @@ fn var SortedMap[K, V].remove_at(c: Int, at: Int) Unit:
 		self.refresh(c)
 
 // Removes every entry and releases the storage; the map is empty afterwards.
-fn var SortedMap[K, V].clear() Unit:
+fn var SortedMap[K, V].clear() Void:
 	self.key_chunks = []
 	self.value_chunks = []
 	self.maxes = []
@@ -301,7 +301,7 @@ fn SortedMap[K, V].entries() List[SortedEntry[K, V]]:
 
 // Calls operation(key:, value:) in ascending key order over a snapshot of the
 // entries.
-fn SortedMap[K, V].for_each(operation: fn(K, V) Unit) Unit:
+fn SortedMap[K, V].for_each(operation: fn(K, V) Void) Void:
 	for entry in self.entries():
 		operation(entry.key, entry.value)
 
@@ -325,16 +325,16 @@ fn SortedSet[T].contains(value: T) Bool:
 	return self.members.contains(value)
 
 // Adds a member; an equal member already present is kept.
-fn var SortedSet[T].add(value: T) Unit:
+fn var SortedSet[T].add(value: T) Void:
 	if not self.members.contains(value):
 		self.members.add(value, true)
 
 // Removes an equal member; an absent value changes nothing.
-fn var SortedSet[T].remove(value: T) Unit:
+fn var SortedSet[T].remove(value: T) Void:
 	self.members.remove(value)
 
 // Removes every member and releases the storage; the set is empty afterwards.
-fn var SortedSet[T].clear() Unit:
+fn var SortedSet[T].clear() Void:
 	self.members.clear()
 
 // Returns the smallest member, or none when empty.

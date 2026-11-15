@@ -33,11 +33,11 @@ fn table(var rng: Rng, depth: Int) TomlValue:
 		entries.add(text(var rng), generated(var rng, depth))
 	return TomlValue.TableValue(entries)
 
-fn check_round_trip(seed: Int, original: TomlValue) Unit!:
+fn check_round_trip(seed: Int, original: TomlValue) Void!:
 	rendered := stringify(original)?
 	if (parse(rendered)?) != original: return fail("seed {seed}: changed\n{rendered}")
 
-fn check_stable(seed: Int, mutated: String, first: TomlValue) Unit!:
+fn check_stable(seed: Int, mutated: String, first: TomlValue) Void!:
 	again := stringify(first)?
 	if (parse(again)?) != first: return fail(
 		"seed {seed}: reparsed value changed\n{mutated}\n---\n{again}"

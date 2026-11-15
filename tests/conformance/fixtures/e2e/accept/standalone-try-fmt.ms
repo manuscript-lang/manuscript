@@ -13,10 +13,10 @@ type Failure:
     code: Int
 
 // Cleanup runs on a moved copy, so the marker file is the only way to observe it.
-fn var State.close() Unit!:
+fn var State.close() Void!:
     _written := write_file(self.marker, "closed", true).wait()
 
-fn operation(var state: State, fail: Bool) Unit!Failure:
+fn operation(var state: State, fail: Bool) Void!Failure:
     state.calls += 1
     if fail: return error(Failure(42))
 
@@ -36,7 +36,7 @@ fn widened(var state: State) Int!:
 fn closed(marker: String) Bool:
     return read_file(marker).wait().is_ok()
 
-test "standalone evaluates? once and continues on Unit success":
+test "standalone evaluates? once and continues on Void success":
     temporary := temporary("manuscript-try-") | expect_ok?
     marker := "{temporary.path()}/marker"
     value := exact(State(0, marker.clone()), fail: false).get()
@@ -62,7 +62,7 @@ test "standalone converts? errors explicitly at Error boundaries":
     expect_equal(state.calls, 1)?
 
 test "standalone in? closure returns from that closure":
-    callback := fn() Unit!Failure:
+    callback := fn() Void!Failure:
         var inner = State(0, "")
         if true: operation(var inner, fail: true)?
         return ok(unit)

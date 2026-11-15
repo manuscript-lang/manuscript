@@ -575,8 +575,8 @@ export fn local_zone() String:
 // pause the current task for at least that long. The timer has no task of its own, and
 // dropping the promise cancels it.
 // ms: effect std.clock.sleep
-export fn sleep(duration: Duration) Promise[Unit]:
-	return adopt[Unit](msrt_promise_sleep(duration.nanos))
+export fn sleep(duration: Duration) Promise[Void]:
+	return adopt[Void](msrt_promise_sleep(duration.nanos))
 
 // Constructs a timestamp from Unix seconds and a nanosecond adjustment.
 export fn timestamp(seconds: Int, nanoseconds: Int) Timestamp!:
@@ -616,7 +616,7 @@ fn Deadline.expired() Bool:
 
 // Suspends the current task until the deadline passes. Returns at once if it
 // already has.
-fn Deadline.wait() Unit:
+fn Deadline.wait() Void:
 	sleep(self.remaining()).wait().get(unit)
 
 // Returns a deadline `duration` from now.
@@ -649,7 +649,7 @@ fn var TickSource.next() Instant?!:
 	self.due = current.shift(nanoseconds(period - elapsed % period))
 	return ok(tick)
 
-fn var TickSource.close() Unit!:
+fn var TickSource.close() Void!:
 	return ok(unit)
 
 // Returns a ticker whose first tick comes one `period` from now. A period of zero or

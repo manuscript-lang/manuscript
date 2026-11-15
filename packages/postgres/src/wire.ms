@@ -87,7 +87,7 @@ fn framed(code: UInt8, body: Bytes) Bytes!:
 	out.append_bytes(body)
 	return ok(out.build())
 
-fn cstring(var out: BytesBuilder, text: String) Unit:
+fn cstring(var out: BytesBuilder, text: String) Void:
 	out.append_bytes(text.to_bytes())
 	out.append(0)
 

@@ -65,5 +65,5 @@ fn main_run() Int:
 
     return sum
 
-fn main() Unit:
+fn main() Void:
     _w := stdout().write("{main_run()}\n")

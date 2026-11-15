@@ -46,14 +46,14 @@ fn elaborate_and_run_text(body: &str) -> (i64, String, String) {
     let mut it = Interp::new(&m);
     it.register("msrt_cleanup_discard", |out, _| {
         out.push_str("~\n");
-        Ok(ms_mir::interp::Val::Unit)
+        Ok(ms_mir::interp::Val::Void)
     });
     it.register("msrt_cleanup_cancel", |out, _| {
         out.push_str("x\n");
-        Ok(ms_mir::interp::Val::Unit)
+        Ok(ms_mir::interp::Val::Void)
     });
     for name in ["msrt_shield_enter", "msrt_shield_exit"] {
-        it.register(name, |_, _| Ok(ms_mir::interp::Val::Unit));
+        it.register(name, |_, _| Ok(ms_mir::interp::Val::Void));
     }
     let r = it.run_entry().unwrap_or_else(|f| panic!("{f}"));
     (r, it.stdout().to_string(), text)
@@ -819,9 +819,9 @@ fn a_fallible_slot_close_returns_its_error_through_the_close_exit() {
             panic!("{e:?}\n{text}");
         }
         let mut it = Interp::new(&m);
-        it.register("msrt_cleanup_discard", |_, _| Ok(ms_mir::interp::Val::Unit));
+        it.register("msrt_cleanup_discard", |_, _| Ok(ms_mir::interp::Val::Void));
         for name in ["msrt_shield_enter", "msrt_shield_exit"] {
-            it.register(name, |_, _| Ok(ms_mir::interp::Val::Unit));
+            it.register(name, |_, _| Ok(ms_mir::interp::Val::Void));
         }
         it.run_entry().unwrap_or_else(|f| panic!("{f}"));
         let want = format!("{code}\n{tag}\n");

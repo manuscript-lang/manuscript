@@ -19,21 +19,21 @@ Parameters and return types are explicit; local annotations are optional.
 ## Declarations and resolution
 
 - Named functions are module declarations or receiver methods. A `fn` inside a function body declares a local function: sugar for binding a `fn` to the name (`f := fn ...`). It cannot call itself; module-level functions recurse.
-- Parameter names are unique and every parameter and result type is explicit, including `Unit`.
+- Parameter names are unique and every parameter and result type is explicit, including `Void`.
 - Signatures are collected before bodies are checked, so functions may call later declarations and recurse, including mutually.
 - Duplicate module names and overloads are rejected. Generics follow [generics](../types/generics.md).
 - Parameters live in the body's scope; a local cannot reuse a parameter name there. Branches, arms, loop bodies, and closures open nested scopes, which cannot reuse an enclosing local or parameter name.
 
 ## The program entry
 
-An entry file declares a nongeneric `fn main()` with no parameters; `export` is optional. Its result is `Unit`, `Unit!`, `Int?!`, or `Int`. `Unit` exits 0. `Unit!` exits 0 on `ok` and, on an error, prints `error: <message>` to standard error and exits 1. `Int?!` does the same for an error, and otherwise exits with the `Int` in `ok(n)`, or 0 for `ok(none)`. `Int` is the exit status.
+An entry file declares a nongeneric `fn main()` with no parameters; `export` is optional. Its result is `Void`, `Void!`, `Int?!`, or `Int`. `Void` exits 0. `Void!` exits 0 on `ok` and, on an error, prints `error: <message>` to standard error and exits 1. `Int?!` does the same for an error, and otherwise exits with the `Int` in `ok(n)`, or 0 for `ok(none)`. `Int` is the exit status.
 
 <!-- manuscript-example: {"mode":"run","stdout":"checking\n"} -->
 ```manuscript
-fn check() Unit!:
+fn check() Void!:
     print("checking")
 
-fn main() Unit!:
+fn main() Void!:
     return check()
 ```
 
@@ -120,14 +120,14 @@ Evaluation follows source order; named arguments never reorder it.
 
 A failed or nonreturning argument prevents later arguments and the call. Constructor fields follow the same rule.
 
-## Unit and Never
+## Void and Never
 
-`unit` is the single value of `Unit`. A `Unit` function may `return`, `return unit`, or fall off the end. A function returning `Unit!` (or `Unit!E`) may fall off the end too, or write a bare `return`; both return `ok(unit)`. Other functions must return a compatible value on every reachable exit; bare `return` and reachable fallthrough are errors. Multiline bodies need explicit `return`.
+`Void` is a value type with exactly one value, written `unit`; it is not an uninhabited type (that is `Never`). A `Void` function may `return`, `return unit`, or fall off the end. A function returning `Void!` (or `Void!E`) may fall off the end too, or write a bare `return`; both return `ok(unit)`. Other functions must return a compatible value on every reachable exit; bare `return` and reachable fallthrough are errors. Multiline bodies need explicit `return`.
 
 ```manuscript
 import panic from "@std/core.ms"
 
-fn check_positive(value: Int) Unit:
+fn check_positive(value: Int) Void:
     if not (value > 0):
         return panic(message: "check failed")
 

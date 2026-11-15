@@ -129,7 +129,7 @@ fn components(n: Int, m: Int) Int:
 
 	return count
 
-fn main() Unit:
+fn main() Void:
 	n := 200000
 	adj := build(n, 800000)
 	print("bfs {bfs(adj, 0)}")

@@ -117,7 +117,7 @@ export fn utf16_encode(text: String, little_endian: Bool = true) Bytes:
 
 	return out.build()
 
-fn append_unit(var out: BytesBuilder, code: Int, little_endian: Bool) Unit:
+fn append_unit(var out: BytesBuilder, code: Int, little_endian: Bool) Void:
 	if little_endian:
 		out.append(byte_of(code % 256))
 		out.append(byte_of(code / 256))

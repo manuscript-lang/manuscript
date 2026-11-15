@@ -10,7 +10,7 @@ type Resource:
 	id: Int
 	path: String
 
-fn var Resource.close() Unit!:
+fn var Resource.close() Void!:
 	append_file(self.path, "{self.id},").wait()?
 
 fn accepted() Int!: ok(1)

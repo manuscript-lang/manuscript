@@ -2,7 +2,7 @@ import bench from "./harness.ms"
 import FileSystem, list, read_file, stat, temporary from "@std/os/fs.ms"
 import create, file_transport, Transport, Logger from "@std/log.ms"
 
-fn run(fs: FileSystem, root: String) Unit:
+fn run(fs: FileSystem, root: String) Void:
     data := "0123456789abcdef".repeat(4096).get("").to_bytes()
 
     bench(
@@ -54,15 +54,15 @@ fn run(fs: FileSystem, root: String) Unit:
             return 0
     )
 
-fn log_run(path: String) Unit:
+fn log_run(path: String) Void:
     if transport := file_transport(path):
         log_with(transport)
 
-fn log_with(transport: Transport) Unit:
+fn log_with(transport: Transport) Void:
     if logger := create(transport, timestamp: false):
         log_many(logger)
 
-fn log_many(logger: Logger) Unit:
+fn log_many(logger: Logger) Void:
     bench(
         "log.info",
         20000,
@@ -74,7 +74,7 @@ fn log_many(logger: Logger) Unit:
             return n
     )
 
-export fn bench_fs() Unit:
+export fn bench_fs() Void:
     if var dir = temporary("ms-bench-"):
         run(fs, dir.path())
         log_run("{dir.path()}/log.txt")

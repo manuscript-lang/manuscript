@@ -21,7 +21,7 @@ fn Deque[T].is_empty() Bool:
 // Doubles the ring buffer. The full buffer holds the values from `start` to the end,
 // then those before `start`; moving the first run to the end of the larger buffer keeps
 // that order and moves each value once.
-fn var Deque[T].grow() Unit:
+fn var Deque[T].grow() Void:
 	capacity := self.slots.length()
 	var next = capacity * 2
 	if next == 0:
@@ -52,14 +52,14 @@ fn Deque[T].slot_of(offset: Int) Int:
 	return at
 
 // Adds a value after the last one.
-fn var Deque[T].push_back(value: T) Unit:
+fn var Deque[T].push_back(value: T) Void:
 	if self.size == self.slots.length():
 		self.grow()
 	self.slots.set(self.slot_of(self.size), value)
 	self.size += 1
 
 // Adds a value before the first one.
-fn var Deque[T].push_front(value: T) Unit:
+fn var Deque[T].push_front(value: T) Void:
 	if self.size == self.slots.length():
 		self.grow()
 	if self.start == 0:
@@ -99,7 +99,7 @@ fn Deque[T].back() T?:
 	return self.slots.get(self.slot_of(self.size - 1))
 
 // Removes every value and releases the storage.
-fn var Deque[T].clear() Unit:
+fn var Deque[T].clear() Void:
 	self.slots = []
 	self.start = 0
 	self.size = 0
@@ -110,7 +110,7 @@ Moves `count` values from the front to the back, one at a time, so the value `co
 a negative `count` moves values from the back to the front. Any magnitude is reduced modulo the length, and an empty deque is unchanged.
 Example: with 1, 2, 3, 4 queued, `rotate(1)` leaves 2, 3, 4, 1.
 */
-fn var Deque[T].rotate(count: Int) Unit:
+fn var Deque[T].rotate(count: Int) Void:
 	if self.size < 2: return
 
 	var steps = count % self.size

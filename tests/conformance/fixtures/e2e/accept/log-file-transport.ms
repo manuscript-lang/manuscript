@@ -49,10 +49,10 @@ test "limits, invalid levels, and closed transports are errors":
     )?
     logger.info("x")?
 
-    limited: Unit! := error(Error("logging: limit exceeded", kind: "EOVERFLOW"))
+    limited: Void! := error(Error("logging: limit exceeded", kind: "EOVERFLOW"))
     expect_equal(logger.info("xx"), limited)?
 
-    invalid: Unit! := error(Error("logging: invalid input", kind: "EINVAL"))
+    invalid: Void! := error(Error("logging: invalid input", kind: "EINVAL"))
     expect_equal(logger.log(LogLevel.Silent, "bad"), invalid)?
     expect_equal(
         expect_error(
@@ -63,7 +63,7 @@ test "limits, invalid levels, and closed transports are errors":
     logger.close()?
     logger.close()?
 
-    closed: Unit! := error(Error("logging: resource is closed", kind: "EBADF"))
+    closed: Void! := error(Error("logging: resource is closed", kind: "EBADF"))
     expect_equal(logger.info("x"), closed)?
     expect_equal(logger.flush(), closed)?
     expect_equal(lines(path)?, line)?

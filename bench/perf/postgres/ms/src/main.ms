@@ -42,7 +42,7 @@ fn worker(id: Int, queries: Int) Int!:
 	return ok(sum)
 
 // Creates the table the lookups read: 10000 rows of (id, name, score).
-fn setup(cfg: Config) Unit!:
+fn setup(cfg: Config) Void!:
 	var conn = open(cfg)?
 	_ := conn.simple("drop table if exists items")?
 	_ := conn.simple(
@@ -55,7 +55,7 @@ fn setup(cfg: Config) Unit!:
 	conn.close()?
 	return ok(unit)
 
-fn main() Unit!:
+fn main() Void!:
 	args := environment()?
 	workers := args.get_or("WORKERS", "4").parse_int().ok_or(Error("bad WORKERS"))?
 	queries := args.get_or("QUERIES", "20000").parse_int().ok_or(Error("bad QUERIES"))?

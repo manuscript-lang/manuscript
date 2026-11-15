@@ -6,23 +6,23 @@ import Closeable from "@std/core.ms"
 type R:
     name: String
 
-fn var R.close() Unit!:
+fn var R.close() Void!:
     print("close {self.name}")
 
-fn replace(var r: R) Unit:
+fn replace(var r: R) Void:
     r = R("new")
 
-fn replace_local() Unit:
+fn replace_local() Void:
     var _r = R("local-old")
     _r = R("local-new")
 
-fn replace_field(var w: W) Unit:
+fn replace_field(var w: W) Void:
     w.r = R("field-new")
 
 type W:
     r: R
 
-fn main() Unit:
+fn main() Void:
     var v = R("old")
     replace(var v)
     print("after replace")

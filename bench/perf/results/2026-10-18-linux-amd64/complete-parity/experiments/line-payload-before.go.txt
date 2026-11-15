@@ -112,7 +112,7 @@ func newHostStream(file *os.File, owned bool) *hostStream {
 
 func (s *hostStream) lineBuffer() (*sync.Mutex, *readAhead) { return &s.mu, &s.pending }
 
-func (s *hostStream) Close(*Execution) Unit {
+func (s *hostStream) Close(*Execution) Void {
 	s.mu.Lock()
 	if s.closed {
 		released := s.released
@@ -121,7 +121,7 @@ func (s *hostStream) Close(*Execution) Unit {
 		if s.releaseFault != nil {
 			Raise(s.releaseFault.Error())
 		}
-		return Unit{}
+		return Void{}
 	}
 	s.closed = true
 	close(s.closing)
@@ -139,7 +139,7 @@ func (s *hostStream) Close(*Execution) Unit {
 	if s.releaseFault != nil {
 		Raise(s.releaseFault.Error())
 	}
-	return Unit{}
+	return Void{}
 }
 
 // admit waits for the read or write gate and registers the call. It returns
@@ -272,14 +272,14 @@ func (s *hostStream) readFile(ctx *Execution, data []byte) (int, error) {
 	return n, read.err
 }
 
-func (s *hostStream) Write(ctx *Execution, data string) Result[Unit, IoError] {
+func (s *hostStream) Write(ctx *Execution, data string) Result[Void, IoError] {
 	return s.WriteBytes(ctx, NewBytes([]byte(data)))
 }
 
-func (s *hostStream) WriteBytes(ctx *Execution, data *Bytes) Result[Unit, IoError] {
+func (s *hostStream) WriteBytes(ctx *Execution, data *Bytes) Result[Void, IoError] {
 	release, ok := s.admit(ctx, true)
 	if !ok {
-		return ioFailure[Unit](IoError_Closed{})
+		return ioFailure[Void](IoError_Closed{})
 	}
 	defer release()
 	CheckCancelled(ctx)
@@ -290,26 +290,26 @@ func (s *hostStream) WriteBytes(ctx *Execution, data *Bytes) Result[Unit, IoErro
 		CheckCancelled(ctx)
 		if err != nil {
 			if s.isClosed() {
-				return ioFailure[Unit](IoError_Closed{})
+				return ioFailure[Void](IoError_Closed{})
 			}
-			return ioFailure[Unit](IoError_Failed{Message: err.Error()})
+			return ioFailure[Void](IoError_Failed{Message: err.Error()})
 		}
 		if n == 0 {
-			return ioFailure[Unit](IoError_Failed{Message: "short write"})
+			return ioFailure[Void](IoError_Failed{Message: "short write"})
 		}
 		rest = rest[n:]
 	}
-	return Ok[Unit, IoError](Unit{})
+	return Ok[Void, IoError](Void{})
 }
 
-func (s *hostStream) Flush(ctx *Execution) Result[Unit, IoError] {
+func (s *hostStream) Flush(ctx *Execution) Result[Void, IoError] {
 	release, ok := s.admit(ctx, true)
 	if !ok {
-		return ioFailure[Unit](IoError_Closed{})
+		return ioFailure[Void](IoError_Closed{})
 	}
 	defer release()
 	CheckCancelled(ctx)
-	return Ok[Unit, IoError](Unit{})
+	return Ok[Void, IoError](Void{})
 }
 
 // osFiles opens read-only file resources.

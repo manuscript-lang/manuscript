@@ -41,19 +41,19 @@ export interface Source[T]:
 	// error when the source fails.
 	var fn next() T?!
 	// Releases what the source owns; the stream calls it once, when it closes.
-	var fn close() Unit!
+	var fn close() Void!
 
 // Receives written values and defines their buffering, flush condition, and cleanup.
 export interface Sink[T]:
 	// Accepts `value` and returns any write failure. Waits while the sink is full, so a
 	// writer cannot outrun it.
-	var fn write(value: T) Unit!
+	var fn write(value: T) Void!
 	// Returns once everything written has drained: descriptor sinks drain pending
 	// bytes; a pipe waits until its queue is at most capacity or its reader closes.
-	var fn flush() Unit!
+	var fn flush() Void!
 	// Called when the stream closes to release what the sink owns. The sink defines how
 	// buffered work finishes and may wait.
-	var fn close() Unit!
+	var fn close() Void!
 
 // A stream of items: `for item in stream:` walks it, and a failed read returns its
 // error from the enclosing function as `?` would. `next` waits inside the source, so a
@@ -78,7 +78,7 @@ fn var ReadStream[T].next(timeout: Duration? = none) T?!:
 
 // Closes the source and drops it, so a socket or file it held is released now;
 // later calls do nothing.
-fn var ReadStream[T].close() Unit!:
+fn var ReadStream[T].close() Void!:
 	if self.closed: return ok(unit)
 
 	self.closed = true
@@ -108,7 +108,7 @@ type EndedSource[T]:
 fn var EndedSource[T].next() T?!:
 	return ok(none)
 
-fn var EndedSource[T].close() Unit!:
+fn var EndedSource[T].close() Void!:
 	return ok(unit)
 
 // Values go out with `write`; `flush` waits for the destination's flush condition. Make
@@ -120,17 +120,17 @@ export type WriteStream[T]:
 
 // Sends `value` to the sink, which may wait; returns sink errors, including `EBADF`
 // for a closed pipe reader.
-fn var WriteStream[T].write(value: T) Unit!:
+fn var WriteStream[T].write(value: T) Void!:
 	return self.sink.write(value)
 
 // Returns once the sink has drained what was written; a pipe may still hold up to
 // its capacity of unread values.
-fn var WriteStream[T].flush() Unit!:
+fn var WriteStream[T].flush() Void!:
 	return self.sink.flush()
 
 // Closes the sink and drops it; later calls do nothing and later writes fail with
 // `EBADF`. A custom sink may wait while closing.
-fn var WriteStream[T].close() Unit!:
+fn var WriteStream[T].close() Void!:
 	result := self.sink.close()
 	self.sink = ClosedSink[T]()
 	return result
@@ -139,13 +139,13 @@ fn var WriteStream[T].close() Unit!:
 type ClosedSink[T]:
 	done: Bool = true
 
-fn var ClosedSink[T].write(value: T) Unit!:
+fn var ClosedSink[T].write(value: T) Void!:
 	return error(Error("I/O: resource is closed", kind: "EBADF"))
 
-fn var ClosedSink[T].flush() Unit!:
+fn var ClosedSink[T].flush() Void!:
 	return ok(unit)
 
-fn var ClosedSink[T].close() Unit!:
+fn var ClosedSink[T].close() Void!:
 	return ok(unit)
 
 // ---- Descriptors and standard input --------------------------------------------------------------------------------
@@ -179,7 +179,7 @@ fn var DescriptorSource.next() Bytes?!:
 	return ok(none)
 
 // Releases the descriptor without waiting.
-fn var DescriptorSource.close() Unit!:
+fn var DescriptorSource.close() Void!:
 	if self.closed: return ok(unit)
 
 	self.closed = true
@@ -202,7 +202,7 @@ export type DescriptorSink:
 // `HIGH_WATER` bytes queued waits until the descriptor has taken them, so a slow reader slows the writer.
 // An OS write failure returns `EIO`; later writes and flushes retain it until the
 // descriptor closes.
-fn var DescriptorSink.write(value: Bytes) Unit!:
+fn var DescriptorSink.write(value: Bytes) Void!:
 	if msrt_streams_write(self.id, value) != 0:
 		return error(Error("stream: closed", kind: "EBADF"))
 
@@ -211,13 +211,13 @@ fn var DescriptorSink.write(value: Bytes) Unit!:
 
 // Waits until the queued bytes have been handed to the descriptor; an OS write
 // failure returns `EIO`.
-fn var DescriptorSink.flush() Unit!:
+fn var DescriptorSink.flush() Void!:
 	return flush_descriptor(self.id)
 
 // Waits until the queued bytes have been handed to the descriptor, then releases
 // it. The descriptor is released even when the wait fails or is cancelled, and that
 // failure is returned.
-fn var DescriptorSink.close() Unit!:
+fn var DescriptorSink.close() Void!:
 	if self.closed: return ok(unit)
 
 	self.closed = true
@@ -228,14 +228,14 @@ fn var DescriptorSink.close() Unit!:
 
 // An OS write failure is terminal: bytes may have been partly written, so later drains
 // must not hide it.
-fn descriptor_write_result(id: Int) Unit!:
+fn descriptor_write_result(id: Int) Void!:
 	message := msrt_streams_error(id)
 	if message.length() > 0: return error(Error(message, kind: "EIO"))
 
 	return ok(unit)
 
-fn flush_descriptor(id: Int) Unit!:
-	adopt[Unit](msrt_streams_flush(id)).wait()?
+fn flush_descriptor(id: Int) Void!:
+	adopt[Void](msrt_streams_flush(id)).wait()?
 	return descriptor_write_result(id)
 
 // Returns the process standard-input stream.
@@ -255,52 +255,52 @@ export fn stdin() ReadStream[Bytes]:
 type StdoutText:
 	unused: Bool = false
 
-fn var StdoutText.write(value: String) Unit!:
+fn var StdoutText.write(value: String) Void!:
 	msrt_io_write_stdout(value)
 	return msstd_io_stdout_status(false)
 
-fn var StdoutText.flush() Unit!:
+fn var StdoutText.flush() Void!:
 	return msstd_io_stdout_status(true)
 
-fn var StdoutText.close() Unit!:
+fn var StdoutText.close() Void!:
 	return ok(unit)
 
 type StdoutBytes:
 	unused: Bool = false
 
-fn var StdoutBytes.write(value: Bytes) Unit!:
+fn var StdoutBytes.write(value: Bytes) Void!:
 	msrt_io_write_bytes_stdout(value)
 	return msstd_io_stdout_status(false)
 
-fn var StdoutBytes.flush() Unit!:
+fn var StdoutBytes.flush() Void!:
 	return msstd_io_stdout_status(true)
 
-fn var StdoutBytes.close() Unit!:
+fn var StdoutBytes.close() Void!:
 	return ok(unit)
 
 // Standard error, as text or bytes.
 type StderrText:
 	unused: Bool = false
 
-fn var StderrText.write(value: String) Unit!:
+fn var StderrText.write(value: String) Void!:
 	msrt_io_write_stderr(value)
 
-fn var StderrText.flush() Unit!:
+fn var StderrText.flush() Void!:
 	return ok(unit)
 
-fn var StderrText.close() Unit!:
+fn var StderrText.close() Void!:
 	return ok(unit)
 
 type StderrBytes:
 	unused: Bool = false
 
-fn var StderrBytes.write(value: Bytes) Unit!:
+fn var StderrBytes.write(value: Bytes) Void!:
 	msrt_io_write_bytes_stderr(value)
 
-fn var StderrBytes.flush() Unit!:
+fn var StderrBytes.flush() Void!:
 	return ok(unit)
 
-fn var StderrBytes.close() Unit!:
+fn var StderrBytes.close() Void!:
 	return ok(unit)
 
 // Standard output as text.
@@ -349,7 +349,7 @@ type PipeSource[T]:
 fn var PipeSource[T].next() T?!:
 	return pipe_next[T](self.id)
 
-fn var PipeSource[T].close() Unit!:
+fn var PipeSource[T].close() Void!:
 	msrt_pipe_close_reader(self.id)
 	self.id = 0
 
@@ -358,18 +358,18 @@ type PipeSink[T: Clonable]:
 	id: Int
 	capacity: Int
 
-fn var PipeSink[T].write(value: T) Unit!:
+fn var PipeSink[T].write(value: T) Void!:
 	status := msrt_pipe_write[T](self.id, value)
 	if status == 1: return error(Error("pipe: the reader is gone", kind: "EBADF"))
 
 	// Back pressure: status 2 says the pipe is above its capacity; the writer waits
 	// for the reader to take it back down.
-	if status == 2: return adopt[Unit](msrt_pipe_flush(self.id)).wait()
+	if status == 2: return adopt[Void](msrt_pipe_flush(self.id)).wait()
 
-fn var PipeSink[T].flush() Unit!:
-	return adopt[Unit](msrt_pipe_flush(self.id)).wait()
+fn var PipeSink[T].flush() Void!:
+	return adopt[Void](msrt_pipe_flush(self.id)).wait()
 
-fn var PipeSink[T].close() Unit!:
+fn var PipeSink[T].close() Void!:
 	// Closing again releases nothing: an owner that closed the writer by hand is
 	// closed again at scope end.
 	msrt_pipe_close_writer(self.id)
@@ -411,7 +411,7 @@ fn Pipe[T].receive() T?!:
 	return pipe_next[T](self.id)
 
 // Releases the reading end if no one took it.
-fn var Pipe[T].close() Unit!:
+fn var Pipe[T].close() Void!:
 	if not self.taken:
 		msrt_pipe_close_reader(self.id)
 
@@ -432,9 +432,9 @@ export fn pipe[T: Clonable](capacity: Int) Pipe[T]:
 export interface Transform[A, B]:
 	// Takes one input item and appends the output items it completes, possibly none, to
 	// `out`.
-	var fn step(value: A, var out: List[B]) Unit!
+	var fn step(value: A, var out: List[B]) Void!
 	// Called once at the end of the input; appends the items held back to `out`.
-	var fn finish(var out: List[B]) Unit!
+	var fn finish(var out: List[B]) Void!
 
 // A transform over a stream: its output collects in `out`, reversed after each step so
 // `pop` moves the next one out.
@@ -450,7 +450,7 @@ fn var Through[A, B].next() B?!:
 		if self.finished: return ok(none)
 
 		step := self.input.next()?
-		var wrote: Unit! = ok(unit)
+		var wrote: Void! = ok(unit)
 
 		if value := step:
 			wrote = self.transform.step(value, var self.out)
@@ -468,7 +468,7 @@ fn var Through[A, B].next() B?!:
 
 	return ok(none)
 
-fn var Through[A, B].close() Unit!:
+fn var Through[A, B].close() Void!:
 	return self.input.close()
 
 // A stream of `transform`'s output over `input`; closing it closes `input`.
@@ -488,7 +488,7 @@ export enum StdStream:
 // descriptor itself, so it also affects children started afterwards that inherit it.
 // Buffered standard output is written first. The change cannot be undone.
 // ms: effect std.console.write
-export fn redirect_to_null(stream: StdStream) Unit!:
+export fn redirect_to_null(stream: StdStream) Void!:
 	var which = 2
 
 	match stream:

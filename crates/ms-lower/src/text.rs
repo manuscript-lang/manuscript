@@ -62,7 +62,7 @@ pub(crate) fn scalar_text(
             return Some((b.call_rt(ext, &[v]), true));
         }
         return Some((v, false));
-    } else if t == MTy::UNIT {
+    } else if t == MTy::VOID {
         let s = b.str_lit("unit");
         return Some((s, false));
     } else {
@@ -145,7 +145,7 @@ impl Cx {
 /// Appends `piece` to the string builder held by `acc`.
 fn append(b: &mut FuncBuilder<'_>, acc: Var, piece: Value, piece_owned: bool) {
     let buf = b.use_var(acc);
-    let ext = runtime_fn(b.m, "msrt_strbuf_push", &[MTy::PTR, MTy::STR], MTy::UNIT);
+    let ext = runtime_fn(b.m, "msrt_strbuf_push", &[MTy::PTR, MTy::STR], MTy::VOID);
     b.call_rt(ext, &[buf, piece]);
     if piece_owned {
         b.emit(Op::Drop, &[piece], Imm::None, None);

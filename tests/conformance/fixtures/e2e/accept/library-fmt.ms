@@ -41,7 +41,7 @@ fn compare(left: Int, right: Int) Int:
 
     return 0
 
-fn verify_json() Unit!:
+fn verify_json() Void!:
     limits := JsonOptions(max_bytes: 1024, max_depth: 8, max_values: 32)
     value := parse(
         text: "\{\"large\":9007199254740993,\"ok\":true\}", limits: limits
@@ -54,7 +54,7 @@ fn verify_json() Unit!:
         )
     ) | expect_false?
 
-fn verify_encoding() Unit!:
+fn verify_encoding() Void!:
     bytes := hex_decode(text: "00ff42", max_bytes: 3)?
     hex_encode(data: bytes) | expect_equal("00ff42")?
     (
@@ -65,17 +65,17 @@ fn verify_encoding() Unit!:
         )
     ) | expect_false?
 
-fn verify_url() Unit!:
+fn verify_url() Void!:
     query := parse_query(text: "a=1&a=2&space=hello+world", max_entries: 3)?
     query.length() | expect_equal(3)?
     format_query(entries: query) | expect_equal("a=1&a=2&space=hello+world")?
 
-fn verify_binary() Unit!:
+fn verify_binary() Void!:
     var out = BytesBuilder()
     out.append_int16_be(-32768)
     (out.build().int16_be(0)?).to_int() | expect_equal(-32768)?
 
-fn verify_compression() Unit!:
+fn verify_compression() Void!:
     compressed := compress(
         data: "hello hello hello".to_bytes(), format: "gzip", level: 6, max_bytes: 256
     )?
@@ -87,7 +87,7 @@ fn verify_compression() Unit!:
         )
     ) | expect_false?
 
-fn verify_archive() Unit!:
+fn verify_archive() Void!:
     entries := [
         ArchiveEntry(
             path: "hello.txt", data: "hello".to_bytes(), directory: false

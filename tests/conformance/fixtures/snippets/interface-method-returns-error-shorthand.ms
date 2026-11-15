@@ -27,7 +27,7 @@ type Cb:
 fn apply(c: Cb, x: Int) Int!:
     return c.f(x)
 
-fn main() Unit:
+fn main() Void:
     p := IntP()
     r := run[Int](p, "42")
     stdout().write("{r.get(0)}\n").get()

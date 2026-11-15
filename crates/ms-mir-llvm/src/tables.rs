@@ -3,7 +3,7 @@
 //! caller reads each function's size and line ranges from the compiled objects and then asks for
 //! this module.
 
-use crate::llvm_ir::Unit;
+use crate::llvm_ir::Void;
 use crate::{ENTRY_SYMBOL, TEXT_ANCHOR};
 use ms_mir::fault_tables::{self, FuncTable};
 use ms_mir::ir::{Module, Scope};
@@ -35,7 +35,7 @@ pub fn tables_unit(
     scopes: &[Scope],
     anchored: bool,
     triple: &str,
-) -> Option<Unit> {
+) -> Option<Void> {
     m.entry?;
     let table: Vec<FuncTable> = funcs
         .iter()
@@ -110,7 +110,7 @@ pub fn tables_unit(
          ret i32 %c\n}}\n\
          attributes #0 = {{ \"frame-pointer\"=\"all\" nounwind }}"
     );
-    Some(Unit {
+    Some(Void {
         ir,
         unoptimized: false,
     })

@@ -7,8 +7,8 @@ type Key:
 fn Key.equals(other: Key) Bool:
     return true
 
-fn accepts(value: Equal) Unit:
+fn accepts(value: Equal) Void:
     return
 
-fn use_view() Unit:
+fn use_view() Void:
     accepts(Key(1))

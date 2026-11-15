@@ -10,10 +10,10 @@ import (
 	Instant, monotonic from "@std/time.ms",
 )
 
-fn say(text: String) Unit:
+fn say(text: String) Void:
 	_ignored := stdout().write(text)
 
-fn report(name: String, started: Instant) Unit:
+fn report(name: String, started: Instant) Void:
 	say("{name} {monotonic().difference(started).to_nanoseconds()}\n")
 
 fn next(x: Int) Int:

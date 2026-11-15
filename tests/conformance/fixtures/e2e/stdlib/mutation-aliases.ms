@@ -45,13 +45,13 @@ test "Map remove evaluates its key after choosing the receiver and keeps convers
     expect_false(not first.is_empty())?
 
 interface MapRemoval:
-    var fn remove(key: Int) Unit
+    var fn remove(key: Int) Void
     fn keys() List[Int]
 
 type MapAdapter:
     values: Map[Int, String]
 
-fn var MapAdapter.remove(key: Int) Unit:
+fn var MapAdapter.remove(key: Int) Void:
     self.values.remove(key)
 
 fn MapAdapter.keys() List[Int]: self.values.keys().clone()
@@ -111,13 +111,13 @@ test "List splice moves replacement elements and handles Optional elements":
     expect_equal(optional[0], 2)?
 
 interface ListSplicing:
-    var fn splice(start: Int, delete_count: Int, replacement: List[Int]) Unit
+    var fn splice(start: Int, delete_count: Int, replacement: List[Int]) Void
     fn contents() List[Int]
 
 type ListAdapter:
     values: List[Int]
 
-fn var ListAdapter.splice(start: Int, delete_count: Int, replacement: List[Int]) Unit:
+fn var ListAdapter.splice(start: Int, delete_count: Int, replacement: List[Int]) Void:
     self.values.splice(start, delete_count, replacement)
 
 fn ListAdapter.contents() List[Int]: self.values.clone()

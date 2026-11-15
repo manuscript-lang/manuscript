@@ -5,7 +5,7 @@ import stringify, StringifyOptions from "@std/data/json.ms"
 
 type Handler:
     name: String
-    done: Unit
+    done: Void
     note: String?
 
 type Plain:
@@ -14,7 +14,7 @@ type Plain:
     tags: List[Int?]
 
 type Holder:
-    items: List[Unit]
+    items: List[Void]
 
 test "JSON stringify omits values without a JSON form unless strict":
     handler := Handler("h", unit, none)

@@ -18,7 +18,7 @@ fn defaulted(value: Int = 17) Int:
 fn required(amount: Int) Int:
 	return amount + 2
 
-fn main() Unit:
+fn main() Void:
 	a := Pair(7, "a string that lives on the heap")
 	b := Pair("another string that lives on the heap", 9)
 	c := Choice[Pair[Int, String]].Value(Pair(13, "payload"))

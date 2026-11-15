@@ -11,7 +11,7 @@ type Counter:
 
 fn Counter.value() Int: self.n
 
-fn var Counter.add(n: Int) Unit:
+fn var Counter.add(n: Int) Void:
 	self.n += n
 
 fn main() Int:
@@ -20,7 +20,7 @@ fn main() Int:
 	return counter.value() - 42
 ```
 
-Inline functions return their expression; multiline value-returning functions use `return`. Unit/Unit! may fall through. Main returns Unit (status 0), Int (exit status), or Unit! (error prints and exits 1).
+Inline functions return their expression; multiline value-returning functions use `return`. Void/Void! may fall through. Main returns Void (status 0), Int (exit status), or Void! (error prints and exits 1).
 
 Import exported names with `import a, b from "./other.ms"`; standard paths start `@std/`. `export fn`/`export type` share declarations. Names are case-sensitive; signatures resolve before bodies.
 

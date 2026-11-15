@@ -60,7 +60,7 @@ const RECURSION_ERROR: &str = "recursive generic applications must preserve thei
 fn changing_cycle_keeps_ancestor_sensitive_diagnostics_and_order() {
     // A specialization-only memo can incorrectly reuse b[Int] from root's first call
     // while checking its second call under a different active a specialization.
-    let source = "fn root[T](n: Int) Unit:\n    b[Int](n)\n    a[List[T]](n)\n\nfn a[T](n: Int) Unit:\n    b[Int](n)\n\nfn b[T](n: Int) Unit:\n    a[Int](n)\n";
+    let source = "fn root[T](n: Int) Void:\n    b[Int](n)\n    a[List[T]](n)\n\nfn a[T](n: Int) Void:\n    b[Int](n)\n\nfn b[T](n: Int) Void:\n    a[Int](n)\n";
     assert_eq!(
         diagnostics(&[("ancestors.ms", source)]),
         vec![
@@ -72,7 +72,7 @@ fn changing_cycle_keeps_ancestor_sensitive_diagnostics_and_order() {
 
 #[test]
 fn acyclic_tail_does_not_hide_a_changing_cycle() {
-    let source = "fn tail[T](n: Int) Unit:\n    return\n\nfn a[T](n: Int) Unit:\n    tail[T](n)\n    a[List[T]](n)\n";
+    let source = "fn tail[T](n: Int) Void:\n    return\n\nfn a[T](n: Int) Void:\n    tail[T](n)\n    a[List[T]](n)\n";
     assert_eq!(
         diagnostics(&[("tail.ms", source)]),
         vec![("tail.ms".into(), 6, 5, RECURSION_ERROR.into())]
@@ -81,8 +81,8 @@ fn acyclic_tail_does_not_hide_a_changing_cycle() {
 
 #[test]
 fn same_spelling_in_other_modules_does_not_change_recursive_identity() {
-    let recursive = "fn same[T](n: Int) Unit:\n    same[List[T]](n)\n";
-    let finite = "fn same[T](n: Int) Unit:\n    return\n";
+    let recursive = "fn same[T](n: Int) Void:\n    same[List[T]](n)\n";
+    let finite = "fn same[T](n: Int) Void:\n    return\n";
     assert_eq!(
         diagnostics(&[("recursive.ms", recursive), ("finite.ms", finite)]),
         vec![("recursive.ms".into(), 2, 5, RECURSION_ERROR.into())]

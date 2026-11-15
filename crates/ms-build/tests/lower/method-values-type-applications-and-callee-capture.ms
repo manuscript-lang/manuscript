@@ -7,7 +7,7 @@ fn identity[T](value: T) T: value
 
 fn run(f: fn(Int) Int) Int: f(1)
 
-fn main() Unit:
+fn main() Void:
     items := [4, 5]
     count := items.count
     lookup := items.get

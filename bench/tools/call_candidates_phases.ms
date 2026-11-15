@@ -5,7 +5,7 @@ import (
 	median, read_text from "./lib.ms",
 )
 
-export fn main() Unit:
+export fn main() Void:
 	args := arguments()
 	var groups = Map[String, List[Float]]()
 	var walls = Map[String, Float]()

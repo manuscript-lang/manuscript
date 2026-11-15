@@ -170,11 +170,21 @@ fn run_one(
 		create_directory("{root()}/results/ice", recursive: true).get()
 		bash(
 			"cp -r \"{ws}\" \"{saved}\" && rm -rf \"{saved}/target\" \"{saved}/node_modules\" \"{saved}/.git\"",
-			base,
+			".",
 			120,
 			"",
 		)
 		print("  internal compiler error; workspace saved: {saved}")
+
+	if stat("{ws}/.bench/first-build.out").is_ok():
+		first := "{root()}/results/first-builds/{run_id}"
+		create_directory("{root()}/results/first-builds", recursive: true).get()
+		bash(
+			"mkdir -p \"{first}\" && cp \"{ws}/.bench/first-build.out\" \"{first}/error.txt\" && cp -r \"{ws}/.bench/first-src\" \"{first}/src\"",
+			".",
+			120,
+			"",
+		)
 
 	if keep:
 		print("  workspace kept: {ws}")

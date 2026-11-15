@@ -41,7 +41,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let ty = f.ty(inst.args[0]);
                 let leaves = self.g.lay.leaves(ty);
                 let v = self.a(inst, 0);
-                let thunk = self.g.glue(Glue::CleanupThunk(c.0), Ty::UNIT);
+                let thunk = self.g.glue(Glue::CleanupThunk(c.0), Ty::VOID);
                 if !self.g.m.funcs[c.index()].unwind_only {
                     let slot = self.spill(&v, &leaves);
                     let r = self.fref(thunk);

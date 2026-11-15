@@ -310,7 +310,7 @@ impl<'a> FnLower<'a> {
                     .b
                     .emit(Op::Slot, &[], Imm::Ty(MTy::BYTES), Some(MTy::PTR))
                     .expect("slot");
-                self.call_runtime("msrt_bytes_view", &[r, start, end, slot], MTy::UNIT)?;
+                self.call_runtime("msrt_bytes_view", &[r, start, end, slot], MTy::VOID)?;
                 // Loading the header from the slot gives a value the MIR does not own.
                 let v = self
                     .b
@@ -331,7 +331,7 @@ impl<'a> FnLower<'a> {
                     .b
                     .emit(Op::Slot, &[], Imm::Ty(MTy::STR), Some(MTy::PTR))
                     .expect("slot");
-                self.call_runtime("msrt_string_view", &[r, start, end, slot], MTy::UNIT)?;
+                self.call_runtime("msrt_string_view", &[r, start, end, slot], MTy::VOID)?;
                 let v = self
                     .b
                     .emit(Op::Load, &[slot], Imm::Ty(MTy::STR), Some(MTy::STR))

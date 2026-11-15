@@ -11,7 +11,7 @@ fn var C.bump() Int:
     self.n += 1
     return self.n
 
-fn var C.note(s: String) Unit:
+fn var C.note(s: String) Void:
     self.log.append(s)
 
 fn C.get() Int: self.n
@@ -19,7 +19,7 @@ fn C.get() Int: self.n
 type H:
     c: C?
 
-fn show(x: Int?) Unit:
+fn show(x: Int?) Void:
     if v := x:
         stdout().write("some {v}\n").get()
     else:
@@ -28,7 +28,7 @@ fn show(x: Int?) Unit:
 fn tick(var c: C?) Int?:
     return c?.bump()
 
-fn main() Unit:
+fn main() Void:
     var c: C? = C(1, List[String]())
     var none_c: C? = none
     show(c?.bump())

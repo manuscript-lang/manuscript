@@ -5,10 +5,10 @@ import (
 
 // ns per interface call. One line per case: `name ns checksum`.
 
-fn say(text: String) Unit:
+fn say(text: String) Void:
 	_ignored := stdout().write(text)
 
-fn report(name: String, n: Int, start: Instant, sum: Int) Unit:
+fn report(name: String, n: Int, start: Instant, sum: Int) Void:
 	ns := monotonic().difference(start).to_nanoseconds()
 	say("{name} {ns.to_float() / n.to_float()} {sum}\n")
 
@@ -45,7 +45,7 @@ fn run_direct_add(n: Int) Int:
 		total += i + 1
 	return total
 
-fn main() Unit:
+fn main() Void:
 	n := 50000000
 	var start = monotonic()
 	a := run_direct_add(n)

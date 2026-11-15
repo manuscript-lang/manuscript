@@ -18,11 +18,11 @@ import watch_signals from "@std/os/process.ms"
 type Worker:
     name: String
 
-fn var Worker.close() Unit!:
+fn var Worker.close() Void!:
     print("{self.name} stopped")
     return ok(unit)
 
-fn main() Unit!:
+fn main() Void!:
     var signals = watch_signals([2, 15])?
     _worker := Worker(name: "worker")
     print("ready")

@@ -7,5 +7,5 @@ import (
 fn Approved.extra() Int:
 	return 1
 
-fn main() Unit:
+fn main() Void:
 	return

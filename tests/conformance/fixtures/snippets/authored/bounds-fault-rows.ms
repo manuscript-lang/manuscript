@@ -9,5 +9,5 @@ fn rows(g: List[List[Int]]) Int:
         t = t + g[1][j]
     return t
 
-fn main() Unit:
+fn main() Void:
     _ := stdout().write("{rows([[1, 2, 3], [4]])}\n")

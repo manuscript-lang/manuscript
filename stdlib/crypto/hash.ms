@@ -78,7 +78,7 @@ export type Crc64:
 	state: Int = 0
 
 // Appends these bytes to the checksum; an empty chunk leaves it unchanged.
-fn var Crc64.update(data: Bytes) Unit:
+fn var Crc64.update(data: Bytes) Void:
 	poly := self.polynomial.reflected()
 	var crc = bit_xor(self.state, -1)
 

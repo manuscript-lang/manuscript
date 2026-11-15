@@ -73,25 +73,25 @@ extern fn abi_noisy() String!ParseError
 
 extern fn abi_lazy() String!ParseError
 
-extern fn abi_bad_status() Unit!ParseError
+extern fn abi_bad_status() Void!ParseError
 
-extern fn abi_fault() Unit
+extern fn abi_fault() Void
 
 extern fn abi_twice(f: fn(Int) Int, x: Int) Int
 
 extern fn abi_describe(f: fn(String, Int8, Bool, Float32, Bytes) String) String
 
-extern fn abi_keep(f: fn(Counter) Unit) Unit
+extern fn abi_keep(f: fn(Counter) Void) Void
 
-extern fn abi_fire(counter: Counter) Unit
+extern fn abi_fire(counter: Counter) Void
 
-extern fn abi_forget() Unit
+extern fn abi_forget() Void
 
-extern fn abi_call_wrong(f: fn(Int) Unit) Unit
+extern fn abi_call_wrong(f: fn(Int) Void) Void
 
-extern fn abi_call_plain(f: fn() Unit) Unit
+extern fn abi_call_plain(f: fn() Void) Void
 
-extern fn abi_arm_stop() Unit
+extern fn abi_arm_stop() Void
 
 extern fn abi_wait_for_stop() Int
 
@@ -101,7 +101,7 @@ fn describe(result: Counter!ParseError) String:
 
     return "error {text(result.err())}"
 
-fn callbacks() Unit:
+fn callbacks() Void:
     var out = stdout()
     step := 5
     _ := out.write("{abi_twice(fn(x: Int) Int: x * 2 + step, 1)}\n")
@@ -113,7 +113,7 @@ fn callbacks() Unit:
     )
     label := "fired"
     abi_keep(
-        fn(c: Counter) Unit:
+        fn(c: Counter) Void:
             _ := stdout().write("{label} {abi_counter_bump(c)}\n")
     )
 
@@ -122,7 +122,7 @@ fn callbacks() Unit:
     abi_fire(c)
     abi_forget()
 
-fn counters() Unit:
+fn counters() Void:
     a := abi_counter(1)
     b := a
     _ := abi_counter_bump(b)
@@ -165,11 +165,11 @@ export fn main() Int:
         return 0
 
     if mode == "callkind":
-        abi_call_wrong(fn(x: Int) Unit: return)
+        abi_call_wrong(fn(x: Int) Void: return)
         return 0
 
     if mode == "callfault":
-        abi_call_plain(fn() Unit: abi_fault())
+        abi_call_plain(fn() Void: abi_fault())
         return 0
 
     if mode == "stop":

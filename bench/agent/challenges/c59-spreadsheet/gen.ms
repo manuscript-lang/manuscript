@@ -3,7 +3,7 @@
 // Deterministic; run: ms run bench/agent/gen.ms -- c59
 import Cases, build_oracle, write_cases from "../../lib/gen.ms"
 
-fn add(var cs: Cases, name: String, script: String) Unit:
+fn add(var cs: Cases, name: String, script: String) Void:
 	cs.push(name, strip_nl(script))
 
 fn strip_nl(text: String) String:
@@ -27,7 +27,7 @@ fn sets(pairs: List[String]) String:
 
 	return out
 
-export fn gen_c59() Unit:
+export fn gen_c59() Void:
 	var cs = Cases(build_oracle("c59-spreadsheet"))
 	add(
 		var cs,

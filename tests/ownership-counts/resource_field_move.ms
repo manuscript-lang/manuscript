@@ -38,7 +38,7 @@ import (
 type Door:
 	name: String
 
-fn var Door.close() Unit!:
+fn var Door.close() Void!:
 	stdout().write("close {self.name}\n").get()
 
 type Room:
@@ -50,7 +50,7 @@ type Wrap:
 	room: Room
 	extra: Door
 
-fn say(s: String) Unit:
+fn say(s: String) Void:
 	stdout().write("{s}\n").get()
 
 fn both(r: Room) List[Door]:
@@ -93,7 +93,7 @@ fn looped(r: Room, n: Int) List[Door]:
 	say("looped: end")
 	return xs
 
-fn local() Unit:
+fn local() Void:
 	r := Room(Door("l1"), Door("l2"), "t")
 	var xs: List[Door] = []
 	xs.append(r.first)

@@ -30,7 +30,7 @@ fn interpolate[T](value: T) String:
 fn bound_stringify[T: Named](value: T) String:
 	return value.to_string()
 
-fn check(value: String, expected: String) Unit!:
+fn check(value: String, expected: String) Void!:
 	if value != expected: return fail(message: "expected {expected}, received {value}")
 
 fn answer() Int:

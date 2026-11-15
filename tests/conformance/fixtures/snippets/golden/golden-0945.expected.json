@@ -27,7 +27,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0945.ms:3:14: parse: inline bodies require one simple statement; put 'if' on its own line in an indented block\n   |\n 3 | fn f() Unit: if true: return\n   |              ^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0945.ms:3:14: parse: inline bodies require one simple statement; put 'if' on its own line in an indented block\n   |\n 3 | fn f() Void: if true: return\n   |              ^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

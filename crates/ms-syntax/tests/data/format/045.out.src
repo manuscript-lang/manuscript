@@ -1,4 +1,4 @@
-fn f(words: List[Int], word: Int, index: Int) Unit:
+fn f(words: List[Int], word: Int, index: Int) Void:
 	words.set(
 		word,
 		bit_and(words.get(word), bit_not(shift_left(1, index % 64))),

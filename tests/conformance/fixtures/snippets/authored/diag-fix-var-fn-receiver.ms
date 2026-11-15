@@ -3,5 +3,5 @@
 type Counter:
     count: Int
 
-fn Counter.bump() Unit:
+fn Counter.bump() Void:
     self.count += 1

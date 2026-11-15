@@ -12,5 +12,5 @@ export fn insertion_sort(numbers: List[Int]) List[Int]:
 
     return sorted
 
-fn main() Unit:
+fn main() Void:
     stdout().write("{insertion_sort([3, 1, 2]).join(",")}\n").get()
