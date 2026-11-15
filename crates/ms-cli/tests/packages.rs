@@ -48,6 +48,17 @@ fn package(dir: &Path, manifest_extra: &str, source: &str) -> String {
     format!("file://{slash}{path}#v1.0.0")
 }
 
+/// A dependency table, `{ url = "...", tag = "..." }`, for the `url#reference` spec a fixture returns.
+fn table(spec: &str) -> String {
+    let (url, reference) = spec.split_once('#').unwrap();
+    let field = if reference.len() == 40 && reference.bytes().all(|b| b.is_ascii_hexdigit()) {
+        "sha"
+    } else {
+        "tag"
+    };
+    format!("{{ url = \"{url}\", {field} = \"{reference}\" }}")
+}
+
 fn app(dir: &Path, dependencies: &str) {
     std::fs::create_dir_all(dir.join("src")).unwrap();
     std::fs::write(
@@ -76,7 +87,8 @@ fn fetch_pins_a_package_and_checks_work_offline() {
     app(
         &project,
         &format!(
-            "[dependencies]\n\"@lib\" = \"{spec}\"\n\n[effects]\n\"@lib\" = [\"std.net.*\"]\n"
+            "[dependencies]\n\"@lib\" = {}\n\n[effects]\n\"@lib\" = [\"std.net.*\"]\n",
+            table(&spec)
         ),
     );
 
@@ -154,7 +166,7 @@ fn a_package_needs_the_importer_to_allow_its_effects() {
     );
     app(
         &project,
-        &format!("[dependencies]\n\"@lib\" = \"{spec}\"\n"),
+        &format!("[dependencies]\n\"@lib\" = {}\n", table(&spec)),
     );
     let fetched = ms(&project, &cache, &["fetch"]);
     assert!(fetched.status.success(), "{}", stderr(&fetched));
@@ -179,7 +191,7 @@ fn checked_with(name: &str, manifest_extra: &str, source: &str, allowed: &str) -
     };
     app(
         &project,
-        &format!("[dependencies]\n\"@lib\" = \"{spec}\"\n{effects}"),
+        &format!("[dependencies]\n\"@lib\" = {}\n{effects}", table(&spec)),
     );
     // A manifest `ms fetch` refuses is the result: there is nothing to check.
     let fetched = ms(&project, &cache, &["fetch"]);
@@ -247,7 +259,7 @@ fn a_tampered_lock_never_reaches_git_and_nested_packages_must_use_https() {
     let spec = package(&lib, "", include_str!("packages/greet.ms"));
     app(
         &project,
-        &format!("[dependencies]\n\"@lib\" = \"{spec}\"\n"),
+        &format!("[dependencies]\n\"@lib\" = {}\n", table(&spec)),
     );
     let hash = "0".repeat(64);
     let lock = format!("\"@lib\" = \"{spec} --upload-pack=touch_pwned sha256:{hash}\"\n");
@@ -259,11 +271,11 @@ fn a_tampered_lock_never_reaches_git_and_nested_packages_must_use_https() {
 
     // A package's own dependencies may not read the local machine.
     let (outer, nested_app) = (root.join("outer"), root.join("nested-app"));
-    let nested = format!("[dependencies]\n\"@inner\" = \"{spec}\"\n");
+    let nested = format!("[dependencies]\n\"@inner\" = {}\n", table(&spec));
     let outer_spec = package(&outer, &nested, include_str!("packages/greet.ms"));
     app(
         &nested_app,
-        &format!("[dependencies]\n\"@lib\" = \"{outer_spec}\"\n"),
+        &format!("[dependencies]\n\"@lib\" = {}\n", table(&outer_spec)),
     );
     let fetched = ms(&nested_app, &cache, &["fetch"]);
     assert!(!fetched.status.success());
@@ -287,7 +299,11 @@ fn two_versions_of_one_package_are_named_when_their_types_meet() {
     let project = dir.join("app");
     app(
         &project,
-        &format!("[dependencies]\n\"@old\" = \"{old}\"\n\"@new\" = \"{new}\"\n"),
+        &format!(
+            "[dependencies]\n\"@old\" = {}\n\"@new\" = {}\n",
+            table(&old),
+            table(&new)
+        ),
     );
     std::fs::write(
         project.join("src/main.ms"),
@@ -392,7 +408,10 @@ fn the_editor_follows_imports_into_a_package() {
     let cache = dir.join("cache");
     let url = package(&dir.join("lib"), "", include_str!("packages/greet.ms"));
     let project = dir.join("app");
-    app(&project, &format!("[dependencies]\n\"@lib\" = \"{url}\"\n"));
+    app(
+        &project,
+        &format!("[dependencies]\n\"@lib\" = {}\n", table(&url)),
+    );
     let fetch = ms(&project, &cache, &["fetch"]);
     assert!(fetch.status.success(), "{}", stderr(&fetch));
     let main = project.join("src/main.ms");

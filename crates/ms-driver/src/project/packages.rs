@@ -493,7 +493,7 @@ mod tests {
         let header = "[project]\nname = \"p\"\nsource = \"src\"\n";
         let inner = stored(&cache, &format!("{header}effects = [\"std.net.*\"]\n"));
         let outer_manifest = format!(
-            "{header}\n[dependencies]\n\"@inner\" = \"https://h/x.git#v1\"\n\n[effects]\n\"@inner\" = [\"std.net.*\"]\n"
+            "{header}\n[dependencies]\n\"@inner\" = {{ url = \"https://h/x.git\", tag = \"v1\" }}\n\n[effects]\n\"@inner\" = [\"std.net.*\"]\n"
         );
         let outer = stored(&cache, &outer_manifest);
         let lock = BTreeMap::from([
@@ -503,7 +503,7 @@ mod tests {
         std::fs::write(project_dir.join("ms.lock"), lock_text(&lock)).unwrap();
         std::fs::write(
             project_dir.join("ms.toml"),
-            "[project]\nname = \"a\"\nsource = \"src\"\n\n[dependencies]\n\"@outer\" = \"https://h/x.git#v1\"\n\n[effects]\n\"@outer\" = [\"std.net.*\"]\n",
+            "[project]\nname = \"a\"\nsource = \"src\"\n\n[dependencies]\n\"@outer\" = { url = \"https://h/x.git\", tag = \"v1\" }\n\n[effects]\n\"@outer\" = [\"std.net.*\"]\n",
         )
         .unwrap();
         let mut project = Project::default();

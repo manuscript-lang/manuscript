@@ -166,7 +166,7 @@ fn project_aliases_and_discovered_tests() {
     write(
         &dir,
         "ms.toml",
-        "[project]\nname = \"p\"\nsource = \"src\"\nentry = \"src/main.ms\"\n\n[aliases]\n@lib = \"src/lib\"\n",
+        "[project]\nname = \"p\"\nsource = \"src\"\nentry = \"src/main.ms\"\n\n[aliases]\n\"@lib\" = \"src/lib\"\n",
     );
     write(
         &dir,
