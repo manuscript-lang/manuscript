@@ -4,7 +4,7 @@
 
 - Problem: a project is one `ms.toml` at one root; code cannot be split into packages inside one repository, and every `ms build` redoes all codegen after any edit.
 - Change: a root `ms.toml` with `[workspace] members`, path dependencies between members, one `ms.lock`; then a per-package object cache so an unchanged package is not recompiled.
-- Decision requested: approve the manifest shape (user-visible) and the staging; stage 3 (cache) goes ahead only if its spike meets the gate below.
+- Decision requested: approve the manifest shape (user-visible) and the staging; the object cache (stage 4) goes ahead only if its spike meets the gate below.
 
 ## Status
 
@@ -53,15 +53,14 @@ entry = "./src/main.ms"
 
 **Effects.** Same rule as fetched packages: a member declares `effects` in `[project]`; an importing member must allow it under `[effects]`. One mechanism, no workspace exemption (open question 1).
 
-**Compile unit and cache key (stage 3).** The package is the unit of codegen caching, not of separate checking. The front end still loads, checks and lowers the whole workspace (measured floor above); what is cached is the object file.
+**Compile unit and cache key (stage 4, gated).** The package is the candidate unit of an object cache, not of separate checking; the front end still checks and lowers the whole workspace.
 
-- Each package yields one object with its non-generic functions plus the instances it needs, emitted as local symbols (duplicated per package; no weak symbols or COMDAT, so ELF, Mach-O and COFF behave the same).
-- Key = SHA-256 of: the package's lowered MIR text (after optimize and unwind), the interface fingerprint of each package it uses, the `ms` version, ISA flags and `BuildOptions`. The interface fingerprint covers public signatures, type layouts and the bodies of anything the optimizer may inline or monomorphize into a dependent. A body-only edit to a non-inlinable function changes the package's object but not its dependents'.
-- Cross-package symbols are content-stable names (module path, name, signature hash), replacing `name#{index}` and queue-ordered glue names in `crates/ms-clif/src/cg.rs`. This is the prerequisite from `incremental-builds.md` and also makes objects deterministic.
-- Objects live in `.ms-cache/obj/<hash>`, written by atomic rename; a corrupt entry is a miss; `MS_CACHE=off|verify` already exist and apply.
-- The whole-build mtime cache stays as the first check.
+- Key = SHA-256 of exactly what the object is a function of: the package's final MIR (after inlining and monomorphization), the layouts and symbol names it references, the `ms` version and `BuildOptions`. No interface fingerprint: it would be a second description of what leaks across packages. If final MIR lacks an input, the spike lists it.
+- Duplicated instances, descriptors and tables per package are safe only if nothing compares their addresses (type identity, interface dispatch, closures, statics in generics); the spike states what was checked.
+- Spike also reports module-level granularity (hit rate, object count, link time), then picks package or module as the unit, and measures the cost of printing and hashing the MIR.
+- Objects in `.ms-cache/obj/<hash>`, atomic rename; a corrupt entry is a miss; `MS_CACHE=off|verify` apply.
 
-**Summary files.** None in stages 1 and 2. Real projects re-check in 7 to 48 ms (parked in `incremental-builds.md`); a per-package checking summary is added only if a workspace's check time exceeds 100 ms after stage 3, and then follows that proposal.
+**Summary files.** None in stages 1 to 3. Real projects re-check in 7 to 48 ms (parked in `incremental-builds.md`); a per-package checking summary is added only if a workspace's check time exceeds 100 ms after stage 4, and then follows that proposal.
 
 ## Components touched
 
@@ -71,30 +70,30 @@ entry = "./src/main.ms"
 | `crates/ms-driver/src/load.rs`, `paths.rs` | confine to the workspace root; member packages in `Project::packages` | unit + conformance fixture with two members |
 | `crates/ms-cli` | `-p`, `--workspace`, workspace discovery from a member | `crates/ms-cli/tests/workspace.rs` on a temp workspace, all platforms |
 | `crates/ms-check/src/effects.rs` | none beyond treating members as packages | existing package effect cases plus one member case |
-| `crates/ms-clif`, `ms-build` (stage 3) | stable names, per-package objects, cache | warm-cache objects link and run identically; fault trace fixture |
+| `crates/ms-clif`, `ms-build` (stages 3, 4) | stable names; per-package objects, cache | warm-cache objects link and run identically; fault trace fixture |
 | `documentation/`, `wiki/` | workspaces page; cache layout | `make docs-check` |
 
 ## Alternatives
 
-- Do nothing: no way to split a repository into packages, 4.7 s Debug rebuilds at 122k lines.
-- Workspace without the cache (stages 1 and 2 only): useful for organization; not the speed goal.
-- Separate compilation with interface files for checking: floor is already low (1.7 s at 122k lines), and monomorphized generics and inlining need dependent bodies anyway.
+- Do nothing: no way to split a repository into packages. The speed case alone is weak (a stale object is a miscompile), which is why the cache is gated.
+- Parallel codegen as the speed fix: already done.
+- - Separate compilation with interface files for checking: floor is already low (1.7 s at 122k lines), and monomorphized generics and inlining need dependent bodies anyway.
 - Per-function cache: dropped by Chinmay on 2026-10-31 ("keep the cache simple").
 - Cargo-style `[workspace.dependencies]` and `exclude`: later if needed.
 
 ## Stages
 
-1. Workspace manifest, members, path dependencies, shared lock, commands; after the packages TOML PR and `ms add/install/remove` merge. Gate: temp-workspace test on Linux, macOS, Windows CI.
+1. Workspace manifest, members, path dependencies, shared lock, commands; after the packages TOML PR and `ms add/install/remove` merge, with the resolver interface (a set of root manifests) agreed in writing with the packages thread. Gate: temp-workspace test on Linux, macOS, Windows CI.
 2. Docs, `ms init --workspace`, search_symbol, lint, diagram and LSP across members.
-3. Spike, then build, the object cache on Cranelift. Gate (measured on the workload above, one-function edit in a leaf package): Debug rebuild at most 3.0 s (from 4.7 s), i.e. codegen under 0.3 s of the 2.1 s; and identical executable output. If not met, drop and record.
-4. Not decided here: per-package LLVM partitions for Release (37.7 s); costs cross-package inlining and needs a `bench/perf` regression run.
+3. Content-stable symbol names and deterministic objects (own PR, reproducible builds): two builds of one source give identical objects.
+4. Object cache spike, built only if it passes: leaf-edit Debug rebuild at most 2.6 s on the workload, cold build and link at most 2% slower, byte-identical executable with the cache on, off and verify, and `MS_CACHE=verify` over the corpus in the nightly safety run, not on pull requests.
+5. Release (37.7 s) is the larger pain; not started here.
 
 ## Expected win
 
-- Debug rebuild after a leaf edit: about 4.7 s to 2.6 s (codegen 2.1 s becomes under 0.2 s; check 1.7 s and lowering 0.5 s remain). Estimate, not measured; the spike measures it.
-- The floor is then the front end. For projects in the 10k-line range checking is about 10 to 50 ms, so the cache matters most for large workspaces.
+- Cranelift codegen is already parallel (`cg.rs`). Measured, Debug, same workload: codegen 5.9 s on 1 core, 2.7 s on 4 cores. More threads will not remove the rest, so a cache is the only further lever for codegen.
+- Leaf edit with a cache: about 4.7 s to 2.6 s (estimate; check 1.7 s and lowering 0.5 s remain). Real projects check in 7 to 48 ms, so the cache matters only for very large workspaces; this is why stage 4 is gated and optional.
 
 ## Open questions
 
-1. Should members trust each other without an `[effects]` entry? Recommendation: no, keep one rule; revisit if it is noisy in a real monorepo.
-2. Should a root manifest with `[workspace]` also allow `[project]` (a root package, as in Cargo)? Recommendation: yes, no extra rule.
+Decided in review: members need the same `[effects]` entry as packages (one rule), and a root with `[workspace]` may also hold `[project]`. Chinmay sees both before merge.
