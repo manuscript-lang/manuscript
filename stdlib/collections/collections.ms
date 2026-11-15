@@ -742,6 +742,7 @@ export fn flatten[T: Clonable](lists: List[List[T]]) List[T]:
 	var total = 0
 	for inner in lists:
 		total += inner.length()
+
 	var out = List[T](reserve: total)
 	for inner in lists:
 		out.extend(inner)
@@ -761,8 +762,7 @@ import (
 	panic from "@std/core.ms",
 	StringBuilder from "@std/string_builder.ms",
 
-	msrt_list_distinct,
-	msrt_list_range_by from "@std/internal/collections.ms",
+	msrt_list_distinct, msrt_list_range_by from "@std/internal/collections.ms",
 )
 
 // The built-in integer and float types: the element types `sum` adds.
