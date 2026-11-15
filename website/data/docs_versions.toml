@@ -1,5 +1,6 @@
 # Published archives, newest first. The current version comes from .msversion.
-# Add an entry only after its documentation is published at the given URL:
+# A release's book is built by release.yml and attached to the release as manuscript-docs-<version>.tar.gz;
+# cicd.yml unpacks it at the given URL under the site. Add an entry when a newer release replaces that book:
 # [[archives]]
 # version = "0.1.0"
 # url = "versions/v0.1.0/"

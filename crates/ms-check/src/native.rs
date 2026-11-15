@@ -31,7 +31,7 @@ impl Checker {
             return Some(Info::of(invalid()));
         }
         if rt.kind == Kind::Type
-            && self.syms.str(name) != "to_string"
+            && self.replaceable_contract(*name).is_none()
             && fields(&rt).iter().any(|f| f.name == *name)
         {
             return None;

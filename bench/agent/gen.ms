@@ -26,6 +26,8 @@ import (
 	gen_c58 from "./challenges/c58-mini-vcs/gen.ms",
 	gen_c59 from "./challenges/c59-spreadsheet/gen.ms",
 	gen_c60 from "./challenges/c60-issue-tracker/gen.ms",
+	gen_c61 from "./challenges/c61-dep-resolver/gen.ms",
+	gen_c63 from "./challenges/c63-inventory-returns/gen.ms",
 )
 
 fn main() Int:
@@ -116,6 +118,14 @@ fn main() Int:
 
 	if which == "c60" or which == "all":
 		gen_c60()
+		ran += 1
+
+	if which == "c61" or which == "all":
+		gen_c61()
+		ran += 1
+
+	if which == "c63" or which == "all":
+		gen_c63()
 		ran += 1
 
 	if ran == 0:

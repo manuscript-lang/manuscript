@@ -186,9 +186,6 @@ struct Meta {
     in_lambda: bool,
 }
 
-/// The module that declares `Promise`.
-const PROMISE_MODULE: &str = "@std/concurrency/promise.ms";
-
 /// The `why` of a borrow a promise holds on what its entry function captures. Unlike other borrows it
 /// lasts until its holder's scope ends, because dropping the promise is what ends the work.
 const PROMISE_WHY: &str = "promise capture";
@@ -977,11 +974,11 @@ fn role_text(role: Role, perm: Perm) -> &'static str {
 }
 
 /// Whether `t` is, or holds as a type argument, a `Promise`.
-fn ty_holds_promise(syms: ms_syntax::Names, t: &Ty) -> bool {
-    t.is_source_type(syms, PROMISE_MODULE, "Promise")
+fn ty_holds_promise(_syms: ms_syntax::Names, t: &Ty) -> bool {
+    t.is(Builtin::Promise)
         || t.args
             .iter()
-            .any(|a| type_any::<false>(a, |t| t.is_source_type(syms, PROMISE_MODULE, "Promise")))
+            .any(|a| type_any::<false>(a, |t| t.is(Builtin::Promise)))
 }
 
 /// Whether `part` is exactly one of the type arguments of `src`, at any depth.
@@ -1041,6 +1038,7 @@ mod type_query_tests {
             decl: None,
         });
         let mut t = Type::new(syms, sym.name, sym.id, Kind::Type);
+        t.builtin = Builtin::source(module, "Promise");
         t.def = Some(Definition::new(&sym, Kind::Type));
         (Rc::new(t), sym)
     }
@@ -1052,7 +1050,7 @@ mod type_query_tests {
         assert!(!ty_holds_promise(syms, &negative));
         let (foreign, _foreign_symbol) = promise(syms, "application.ms");
         assert!(!ty_holds_promise(syms, &foreign));
-        let (promise, _promise_symbol) = promise(syms, PROMISE_MODULE);
+        let (promise, _promise_symbol) = promise(syms, "@std/concurrency/promise.ms");
         assert!(ty_holds_promise(syms, &promise));
         assert!(ty_holds_promise(syms, &pair(syms, negative, promise)));
     }
@@ -1060,7 +1058,7 @@ mod type_query_tests {
     #[test]
     fn promise_search_keeps_argument_only_edges() {
         let syms = ms_syntax::Names::global();
-        let (promise, _symbol) = promise(syms, PROMISE_MODULE);
+        let (promise, _symbol) = promise(syms, "@std/concurrency/promise.ms");
         let mut function = Type::new(syms, n("fn"), n("fn"), Kind::Function);
         function
             .params

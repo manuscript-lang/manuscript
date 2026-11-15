@@ -6,6 +6,7 @@
 use crate::cx::Cx;
 use ms_check::api::hir::Callable;
 use ms_check::api::types as ct;
+use ms_check::api::types::Builtin;
 use std::rc::Rc;
 
 impl Cx {
@@ -19,7 +20,9 @@ impl Cx {
             .methods
             .iter()
             .find(|m| {
-                m.contract.as_ref().is_some_and(|c| c.is_test_hooks(syms))
+                m.contract
+                    .as_ref()
+                    .is_some_and(|c| c.is(Builtin::TestHooks))
                     && tys.shape(&m.receiver) == key
                     && named(m)
             })

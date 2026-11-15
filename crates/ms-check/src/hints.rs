@@ -8,6 +8,7 @@ use crate::fxmap::HashSet;
 use crate::stdlib;
 use crate::types::*;
 use ms_syntax::ast::Import;
+use ms_syntax::{DiagnosticFix, Pos};
 use std::rc::Rc;
 
 /// Returns the candidate most similar to `name`, or "" when none is near
@@ -181,7 +182,46 @@ fn import_hint_for(session: &Rc<crate::stdlib::Session>, name: &str, types_only:
     String::new()
 }
 
+/// Standard modules that were renamed, with the module that replaces each.
+const RENAMED_MODULES: &[(&str, &str)] =
+    &[("@std/concurrency/flow.ms", "@std/concurrency/resilience.ms")];
+
+/// The module that replaces the renamed standard module `path`.
+pub fn renamed_module(path: &str) -> Option<&'static str> {
+    RENAMED_MODULES
+        .iter()
+        .find(|(old, _)| *old == path)
+        .map(|(_, new)| *new)
+}
+
+/// Rewrites the quoted module path `old` that the import clause starting at `from` names, in
+/// place, to `new`. `None` unless the quoted path is on the clause's first line.
+pub(crate) fn rename_module_path(
+    source: &str,
+    from: Pos,
+    old: &str,
+    new: &str,
+) -> Option<DiagnosticFix> {
+    let start = from.offset as usize;
+    let rest = source.get(start..)?;
+    let line_len = rest.find('\n').unwrap_or(rest.len());
+    let quoted = format!("\"{old}\"");
+    let at = rest[..line_len].find(&quoted)?;
+    let offset = (start + at) as u32;
+    let column = from.column + at as u32;
+    Some(DiagnosticFix {
+        pos: Pos::new(offset, from.line, column),
+        end: Pos::new(
+            offset + quoted.len() as u32,
+            from.line,
+            column + quoted.len() as u32,
+        ),
+        replacement: format!("\"{new}\""),
+    })
+}
+
 const MEMBER_SYNONYMS: &[(&str, &[&str])] = &[
+    ("byte_length", &["length"]),
     ("len", &["length", "scalar_length"]),
     ("size", &["length", "scalar_length"]),
     ("count", &["length", "scalar_length"]),
@@ -319,9 +359,8 @@ pub fn promise_use_hint(syms: ms_syntax::Names, actual: &Ty, expected: &Ty) -> S
         return "a call that waits returns a Promise; call wait() on it to get the result"
             .to_string();
     }
-    let is_promise = actual.is_source_type(syms, crate::suggestions::PROMISE_MODULE, "Promise")
-        && actual.args.len() == 1;
-    if !is_promise || expected.is_source_type(syms, crate::suggestions::PROMISE_MODULE, "Promise") {
+    let is_promise = actual.is(Builtin::Promise) && actual.args.len() == 1;
+    if !is_promise || expected.is(Builtin::Promise) {
         return String::new();
     }
     format!(
@@ -901,6 +940,11 @@ impl Checker {
             if !self.session.is_native_module(pn)
                 && self.session.standard_source_module(pn).is_none()
             {
+                if let Some(new) = renamed_module(path) {
+                    return format!(
+                        "unknown standard module {path}; it was renamed: import '{new}'"
+                    );
+                }
                 let stem = |p: &str| stdlib::module_stem(p).to_string();
                 let names = self.session.standard_module_names();
                 let stems: Vec<String> = names.iter().map(|s| stem(s)).collect();
@@ -1043,9 +1087,9 @@ impl Checker {
 }
 
 /// Names the conversion when an arithmetic or comparison mixes Int and Float.
-pub fn int_float_mix_hint(syms: ms_syntax::Names, a: &Ty, b: &Ty) -> String {
-    let (i, f) = (a.display(syms).to_string(), b.display(syms).to_string());
-    let mixed = (i == "Int" && f == "Float") || (i == "Float" && f == "Int");
+pub fn int_float_mix_hint(a: &Ty, b: &Ty) -> String {
+    let mixed = (a.is(Builtin::Int) && b.is(Builtin::Float))
+        || (a.is(Builtin::Float) && b.is(Builtin::Int));
     if mixed {
         "convert the Int with value.to_float(), or the Float with value.truncate_to_int() (returns Int?)".to_string()
     } else {
@@ -1054,9 +1098,10 @@ pub fn int_float_mix_hint(syms: ms_syntax::Names, a: &Ty, b: &Ty) -> String {
 }
 
 /// Names the method that repeats text when `*` joins a String and an Int.
-pub fn text_repeat_hint(syms: ms_syntax::Names, a: &Ty, b: &Ty) -> String {
-    let (a, b) = (a.display(syms).to_string(), b.display(syms).to_string());
-    if (a == "String" && b == "Int") || (a == "Int" && b == "String") {
+pub fn text_repeat_hint(a: &Ty, b: &Ty) -> String {
+    if (a.is(Builtin::String) && b.is(Builtin::Int))
+        || (a.is(Builtin::Int) && b.is(Builtin::String))
+    {
         "to repeat text write text.repeat(count), which returns a Result (append '?' to propagate it)".to_string()
     } else {
         String::new()

@@ -488,6 +488,7 @@ fn trait_fact(receiver: &Ty, contract: Option<Ty>, clone_decl: bool) -> MethodRe
         variables: vec![],
         decl,
         native: crate::types::Native::Source,
+        copies_elements: false,
     })
 }
 

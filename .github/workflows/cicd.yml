@@ -71,7 +71,17 @@ jobs:
       pull-requests: read
     outputs:
       run: ${{ steps.due.outputs.run }}
+      llvm: ${{ steps.scope.outputs.llvm || 'false' }}
     steps:
+      # A pull request says here whether it touches LLVM-related code, so the `llvm` jobs below do not start
+      # (and take no runner slot) on one that does not.
+      - uses: actions/checkout@v7
+        if: github.event_name == 'pull_request'
+        with:
+          ref: ${{ github.sha }}
+      - id: scope
+        if: github.event_name == 'pull_request'
+        uses: ./.github/actions/rust-scope
       - id: due
         env:
           GH_TOKEN: ${{ github.token }}
@@ -142,6 +152,19 @@ jobs:
         if: matrix.leg.docs && matrix.part != 'a'
       - uses: ./.github/actions/book-checks
         if: matrix.leg.docs && matrix.part != 'a'
+      # Older releases keep their own book: each version listed in website/data/docs_versions.toml
+      # has a manuscript-docs archive on its release (built by release.yml), unpacked here.
+      - name: Add the archived books of older releases
+        if: matrix.leg.docs && matrix.part == 'b' && env.PR != 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          for version in $(sed -n 's/^version = "\(.*\)"$/\1/p' website/data/docs_versions.toml); do
+            mkdir -p ".artifacts/book/versions/v${version}"
+            gh release download "v${version}" --repo "$GITHUB_REPOSITORY" --pattern "manuscript-docs-${version}.tar.gz" --output - | tar -xz -C ".artifacts/book/versions/v${version}"
+          done
       - uses: actions/upload-pages-artifact@v5
         if: matrix.leg.docs && matrix.part == 'b' && env.PR != 'true'
         with:
@@ -168,11 +191,11 @@ jobs:
 
   # A pull request that touches LLVM-related code (rust-scope) also runs the LLVM suite, in jobs of its own so
   # that no job passes ten minutes: the LLVM corpus in two shards, and the LLVM backend tests with the release
-  # gates. Other pull requests start these jobs and skip their steps, in a few seconds. Main runs the suite
-  # inside `rust`.
+  # gates. Only a pull request that touches LLVM-related code starts them (`due` decides from the scope). Main
+  # runs the suite inside `rust`.
   llvm:
     needs: due
-    if: needs.due.outputs.run == 'true' && github.event_name == 'pull_request'
+    if: needs.due.outputs.run == 'true' && github.event_name == 'pull_request' && needs.due.outputs.llvm == 'true'
     name: llvm-${{ matrix.leg.arch }}-${{ matrix.leg.job }}${{ matrix.leg.shard && format('-{0}', matrix.leg.index) || '' }}
     runs-on: ${{ matrix.leg.runner }}
     timeout-minutes: 30
@@ -189,21 +212,16 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
-      - id: scope
-        uses: ./.github/actions/rust-scope
       - id: sccache
-        if: steps.scope.outputs.llvm == 'true'
         uses: ./.github/actions/sccache
         with:
           prefix: cargo-sccache-linux-${{ matrix.leg.arch }}-
       - uses: ./.github/actions/rust-env
-        if: steps.scope.outputs.llvm == 'true'
         with:
           os: linux
           arch: ${{ matrix.leg.arch }}
           llvm-consumers: ${{ matrix.leg.job == 'gates' && 'true' || 'false' }}
       - uses: ./.github/actions/rust-checks
-        if: steps.scope.outputs.llvm == 'true'
         with:
           os: linux
           arch: ${{ matrix.leg.arch }}
@@ -218,7 +236,7 @@ jobs:
   budget:
     name: Time budget
     needs: [rust, llvm]
-    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.rust.result == 'success' && needs.llvm.result == 'success' }}
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.rust.result == 'success' && (needs.llvm.result == 'success' || needs.llvm.result == 'skipped') }}
     runs-on: ubuntu-latest
     permissions:
       actions: read

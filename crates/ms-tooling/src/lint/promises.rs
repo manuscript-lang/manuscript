@@ -5,6 +5,7 @@
 use super::{Finding, finding, module_file};
 use crate::walk::walk_module;
 use ms_check::ModuleData;
+use ms_check::api::types::Builtin;
 use ms_syntax::ast::*;
 use ms_syntax::visit::Visitor;
 use ms_syntax::{DiagnosticFix, Pos};
@@ -29,12 +30,12 @@ struct Scan<'a> {
 
 impl Scan<'_> {
     /// Whether `e` has type `Promise[..]` of `@std/concurrency/promise.ms`.
-    fn is_promise(&self, syms: ms_syntax::Names, e: &Expr) -> bool {
+    fn is_promise(&self, e: &Expr) -> bool {
         self.module
             .facts()
             .info(e.id)
             .and_then(|i| i.ty.as_ref())
-            .is_some_and(|t| t.is_source_type(syms, "@std/concurrency/promise.ms", "Promise"))
+            .is_some_and(|t| t.is(Builtin::Promise))
     }
 
     fn report(&mut self, e: &Expr, statement_start: Option<Pos>, allow_fix: bool) {
@@ -74,11 +75,11 @@ impl Visitor for Scan<'_> {
     fn stmt(&mut self, stmt: &Stmt) {
         let syms = self.syms;
         match &stmt.kind {
-            StmtKind::Call(e) if self.is_promise(syms, e) => self.report(e, Some(stmt.pos), true),
+            StmtKind::Call(e) if self.is_promise(e) => self.report(e, Some(stmt.pos), true),
             StmtKind::Bind {
                 pattern, value, ty, ..
             } if matches!(&pattern.kind, PatternKind::Name(n) if syms.str(n) == "_")
-                && self.is_promise(syms, value) =>
+                && self.is_promise(value) =>
             {
                 // Waiting changes Promise to Result; retain an explicit annotation.
                 self.report(value, None, ty.is_none());

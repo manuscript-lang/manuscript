@@ -1344,6 +1344,35 @@ fn call_changing_receiver(
     r
 }
 
+/// Lowers the body of a queued function: a lowerer over `hir` and `subst` starts from the
+/// prototype's signature and flags, and `body` emits the code (given the prototype and the file).
+fn build_queued(
+    syms: ms_check::api::Names,
+    cx: &mut Cx,
+    m: &mut Module,
+    func: FuncId,
+    hir: Rc<ms_check::api::hir::ModuleHir>,
+    subst: ct::Subst,
+    body: impl FnOnce(&mut FnLower<'_>, &ms_mir::ir::Func, u32) -> Result<(), Error>,
+) -> Result<(), Error> {
+    let proto = m.funcs[func.index()].clone();
+    let file = m.add_file(syms.str(hir.data.file));
+    let mut b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
+    let f = b.func_mut();
+    f.kind = proto.kind.clone();
+    f.capture_closers = proto.capture_closers.clone();
+    f.linkage = proto.linkage;
+    f.scoped = proto.scoped;
+    f.keeps_scoped = proto.keeps_scoped;
+    let mut fl = FnLower::new(cx, b, hir, subst, file, proto.ret);
+    let result = body(&mut fl, &proto, file);
+    let mut f = fl.b.into_func();
+    result?;
+    f.compact_blocks();
+    m.funcs[func.index()] = f;
+    Ok(())
+}
+
 /// Lowers a thunk that fills the defaults of the parameters a function value takes as optionals.
 pub(crate) fn build_default_thunk(
     syms: ms_check::api::Names,
@@ -1352,19 +1381,10 @@ pub(crate) fn build_default_thunk(
     func: FuncId,
     job: &crate::cx::DefaultThunkJob,
 ) -> Result<(), Error> {
-    let proto = m.funcs[func.index()].clone();
     let hir = cx.module(job.callable.module.file)?;
-    let file = m.add_file(syms.str(job.callable.module.file));
-    let mut b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
-    b.func_mut().kind = proto.kind.clone();
-    b.func_mut().capture_closers = proto.capture_closers.clone();
-    let mut fl = FnLower::new(cx, b, hir, job.subst.clone(), file, proto.ret);
-    let result = lower_default_thunk(&mut fl, job);
-    let mut f = fl.b.into_func();
-    result?;
-    f.compact_blocks();
-    m.funcs[func.index()] = f;
-    Ok(())
+    build_queued(syms, cx, m, func, hir, job.subst.clone(), |fl, _, _| {
+        lower_default_thunk(fl, job)
+    })
 }
 
 fn lower_default_thunk(
@@ -1467,24 +1487,10 @@ pub(crate) fn build_iface_thunk(
     func: FuncId,
     job: &crate::cx::IfaceThunkJob,
 ) -> Result<(), Error> {
-    let proto = m.funcs[func.index()].clone();
-    let file = m.add_file(syms.str(job.hir.data.file));
-    let mut b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
-    b.func_mut().kind = proto.kind.clone();
-    let mut fl = FnLower::new(
-        cx,
-        b,
-        job.hir.clone(),
-        ct::Subst::default(),
-        file,
-        proto.ret,
-    );
-    let result = lower_iface_thunk(&mut fl, job, job.recv);
-    let mut f = fl.b.into_func();
-    result?;
-    f.compact_blocks();
-    m.funcs[func.index()] = f;
-    Ok(())
+    let hir = job.hir.clone();
+    build_queued(syms, cx, m, func, hir, ct::Subst::default(), |fl, _, _| {
+        lower_iface_thunk(fl, job, job.recv)
+    })
 }
 
 fn lower_iface_thunk(
@@ -1521,24 +1527,10 @@ pub(crate) fn build_native_thunk(
     func: FuncId,
     job: &NativeThunkJob,
 ) -> Result<(), Error> {
-    let proto = m.funcs[func.index()].clone();
-    let file = m.add_file(syms.str(job.hir.data.file));
-    let mut b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
-    b.func_mut().kind = proto.kind.clone();
-    let mut fl = FnLower::new(
-        cx,
-        b,
-        job.hir.clone(),
-        ct::Subst::default(),
-        file,
-        proto.ret,
-    );
-    let result = lower_native_thunk(syms, &mut fl, job);
-    let mut f = fl.b.into_func();
-    result?;
-    f.compact_blocks();
-    m.funcs[func.index()] = f;
-    Ok(())
+    let hir = job.hir.clone();
+    build_queued(syms, cx, m, func, hir, ct::Subst::default(), |fl, _, _| {
+        lower_native_thunk(syms, fl, job)
+    })
 }
 
 fn lower_native_thunk(
@@ -1683,33 +1675,26 @@ pub(crate) fn build_bound_native(
     func: FuncId,
     job: &BoundNativeJob,
 ) -> Result<(), Error> {
-    let proto = m.funcs[func.index()].clone();
-    let FuncKind::Closure { captures } = proto.kind.clone() else {
-        return Err(Error::new("bound method without closure kind"));
-    };
-    let file = m.add_file(syms.str(job.hir.data.file));
-    let mut b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
-    b.func_mut().kind = proto.kind.clone();
-    b.func_mut().capture_closers = proto.capture_closers.clone();
-    let mut fl = FnLower::new(
+    let hir = job.hir.clone();
+    build_queued(
+        syms,
         cx,
-        b,
-        job.hir.clone(),
+        m,
+        func,
+        hir,
         ct::Subst::default(),
-        file,
-        proto.ret,
-    );
-    fl.scope_override = Some(job.scope);
-    let recv_ty = match job.held {
-        Held::Value => captures[0],
-        Held::Shared(t) | Held::Borrowed(t) => t,
-    };
-    let result = lower_bound_native(&mut fl, job, recv_ty);
-    let mut f = fl.b.into_func();
-    result?;
-    f.compact_blocks();
-    m.funcs[func.index()] = f;
-    Ok(())
+        |fl, proto, _| {
+            let FuncKind::Closure { captures } = &proto.kind else {
+                return Err(Error::new("bound method without closure kind"));
+            };
+            fl.scope_override = Some(job.scope);
+            let recv_ty = match job.held {
+                Held::Value => captures[0],
+                Held::Shared(t) | Held::Borrowed(t) => t,
+            };
+            lower_bound_native(fl, job, recv_ty)
+        },
+    )
 }
 
 /// Lowers the body of a native method behind an interface table entry.
@@ -1720,26 +1705,11 @@ pub(crate) fn build_iface_native(
     func: FuncId,
     job: &IfaceNativeJob,
 ) -> Result<(), Error> {
-    let proto = m.funcs[func.index()].clone();
-    let file = m.add_file(syms.str(job.hir.data.file));
-    let mut b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
-    b.func_mut().kind = proto.kind.clone();
-    b.func_mut().linkage = proto.linkage;
-    let mut fl = FnLower::new(
-        cx,
-        b,
-        job.hir.clone(),
-        ct::Subst::default(),
-        file,
-        proto.ret,
-    );
-    fl.scope_override = Some(job.scope);
-    let result = lower_iface_native(syms, &mut fl, job);
-    let mut f = fl.b.into_func();
-    result?;
-    f.compact_blocks();
-    m.funcs[func.index()] = f;
-    Ok(())
+    let hir = job.hir.clone();
+    build_queued(syms, cx, m, func, hir, ct::Subst::default(), |fl, _, _| {
+        fl.scope_override = Some(job.scope);
+        lower_iface_native(syms, fl, job)
+    })
 }
 
 fn lower_iface_native(
@@ -1818,26 +1788,26 @@ pub(crate) fn build_lambda(
     func: FuncId,
     job: &LambdaJob,
 ) -> Result<(), Error> {
-    let proto = m.funcs[func.index()].clone();
-    let FuncKind::Closure { captures } = proto.kind.clone() else {
-        return Err(Error::new("lambda function without closure kind"));
-    };
-    let file = m.add_file(syms.str(job.hir.data.file));
-    let mut b = FuncBuilder::new(m, "<anonymous>", proto.params.clone(), proto.ret);
-    b.func_mut().kind = proto.kind.clone();
-    b.func_mut().scoped = proto.scoped;
-    b.func_mut().keeps_scoped = proto.keeps_scoped;
-    b.func_mut().capture_closers = proto.capture_closers.clone();
-    let mut fl = FnLower::new(cx, b, job.hir.clone(), job.subst.clone(), file, proto.ret);
-    fl.variant = job.variant;
-    let result = lower_lambda_body(syms, &mut fl, job, &captures);
-    let mut f = fl.b.into_func();
-    result?;
-    // Frames of callees inlined into the closure return to this file, not the callee's.
-    f.loc = ms_mir::ir::Loc::new(file, job.expr.pos.line, job.expr.pos.column);
-    f.compact_blocks();
-    m.funcs[func.index()] = f;
-    Ok(())
+    let hir = job.hir.clone();
+    build_queued(
+        syms,
+        cx,
+        m,
+        func,
+        hir,
+        job.subst.clone(),
+        |fl, proto, file| {
+            let FuncKind::Closure { captures } = &proto.kind else {
+                return Err(Error::new("lambda function without closure kind"));
+            };
+            fl.variant = job.variant;
+            lower_lambda_body(syms, fl, job, captures)?;
+            // Frames of callees inlined into the closure return to this file, not the callee's.
+            fl.b.func_mut().loc =
+                ms_mir::ir::Loc::new(file, job.expr.pos.line, job.expr.pos.column);
+            Ok(())
+        },
+    )
 }
 
 pub(crate) fn restore_alias_capture(
@@ -2340,24 +2310,10 @@ pub(crate) fn build_fn_adapter(
     func: FuncId,
     job: &crate::cx::FnAdaptJob,
 ) -> Result<(), Error> {
-    let proto = m.funcs[func.index()].clone();
-    let file = m.add_file(syms.str(job.hir.data.file));
-    let mut b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
-    b.func_mut().kind = proto.kind.clone();
-    let mut fl = FnLower::new(
-        cx,
-        b,
-        job.hir.clone(),
-        ct::Subst::default(),
-        file,
-        proto.ret,
-    );
-    let result = lower_fn_adapter(&mut fl, job.have, job.scoped, &job.reads);
-    let mut f = fl.b.into_func();
-    result?;
-    f.compact_blocks();
-    m.funcs[func.index()] = f;
-    Ok(())
+    let hir = job.hir.clone();
+    build_queued(syms, cx, m, func, hir, ct::Subst::default(), |fl, _, _| {
+        lower_fn_adapter(fl, job.have, job.scoped, &job.reads)
+    })
 }
 
 fn lower_fn_adapter(

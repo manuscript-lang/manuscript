@@ -1,0 +1,7 @@
+[project]
+name = "postgres-bench"
+source = "./src"
+entry = "./src/main.ms"
+
+[aliases]
+"@pg" = "./pg"

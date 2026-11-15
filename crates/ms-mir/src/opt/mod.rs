@@ -26,7 +26,6 @@ pub mod optparam;
 pub mod range;
 pub mod reserve;
 pub mod simplify;
-pub mod slotfuse;
 pub mod sortgen;
 pub mod strfuse;
 
@@ -109,6 +108,7 @@ pub fn optimize(m: &mut Module, level: Level, verify: bool) {
     if level == Level::None {
         // A copy whose source dies right after it is a move; keeping the copies makes rebuilding a
         // value from itself, or unwrapping a nested `try` result, quadratic in the depth.
+        inline::run_small(m);
         simplify::run_phis(m);
         strfuse::run_append(m);
         copyelim::run(m);
@@ -157,8 +157,6 @@ pub fn optimize(m: &mut Module, level: Level, verify: bool) {
     check(m, "inline");
     strfuse::run(m);
     check(m, "strfuse");
-    slotfuse::run(m);
-    check(m, "slotfuse");
     loopslot::run(m);
     check(m, "loopslot");
     // These passes read the module but rewrite only their own function, so each function runs
