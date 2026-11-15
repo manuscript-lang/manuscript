@@ -648,6 +648,11 @@ mod tests {
     use crate::ops;
     use alloc::string::String;
 
+    /// Whether `path` ends with the `/`-separated `tail`, on either separator.
+    fn ends_with_path(path: &str, tail: &str) -> bool {
+        path.replace('\\', "/").ends_with(&format!("/{tail}"))
+    }
+
     fn names(v: Vec<Event>) -> Vec<(String, bool)> {
         v.into_iter()
             .map(|e| (String::from_utf8(e.path).unwrap(), e.rename))
@@ -741,14 +746,14 @@ mod tests {
         while !appeared {
             appeared = names(w.wait().unwrap())
                 .iter()
-                .any(|(p, r)| p.ends_with("/d/f") && *r);
+                .any(|(p, r)| ends_with_path(p, "d/f") && *r);
         }
         ops::append_file(&file, b"y").unwrap();
         let mut changed = false;
         while !changed {
             changed = names(w.wait().unwrap())
                 .iter()
-                .any(|(p, r)| p.ends_with("/d/f") && !*r);
+                .any(|(p, r)| ends_with_path(p, "d/f") && !*r);
         }
         w.close();
         ops::remove(&root, true).unwrap();

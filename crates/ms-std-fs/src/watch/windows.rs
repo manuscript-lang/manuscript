@@ -223,7 +223,18 @@ impl Native {
                 // A removed directory fails its pending request with one of a few codes: that is
                 // the end, not an error. Any other code is a real failure.
                 if ROOT_GONE.contains(&code) {
-                    return Err(Fail::status(STATUS_NONE));
+                    // The directory's own removal is not a record in its own change list, so
+                    // report it here before the stream ends.
+                    let gone = self
+                        .only
+                        .as_ref()
+                        .map_or_else(|| self.root.clone(), |n| path::join(&self.root, n));
+                    self.push(Event {
+                        path: gone,
+                        rename: true,
+                    });
+                    self.ended = true;
+                    continue;
                 }
                 return Err(Fail::raw(sys::errno()));
             }
