@@ -316,6 +316,9 @@ fn drain_io(io: &dyn Io, st: &mut ConnSt) -> Drain {
             st.outbuf.clear();
             st.out_pos = 0;
             st.flush_pending = false;
+            if let Some(h2) = st.h2.as_mut() {
+                h2.core.output_drained();
+            }
             Drain::Empty
         }
         Step::WantRead | Step::WantWrite => {

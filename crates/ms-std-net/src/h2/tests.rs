@@ -1383,3 +1383,35 @@ fn full_exchange_with_bodies_and_trailers_both_ways() {
     assert_eq!(c.open_streams(), 0);
     assert_eq!(s.open_streams(), 0);
 }
+
+#[test]
+fn unread_control_acks_are_capped() {
+    for ack_ping in [true, false] {
+        let mut s = raw_server();
+        s.take_output();
+        let mut input = Vec::new();
+        for _ in 0..10_001 {
+            if ack_ping {
+                write_ping(&mut input, false, [0; 8]);
+            } else {
+                write_settings(&mut input, &[]);
+            }
+        }
+        let err = s.feed(&input).unwrap_err();
+        assert_eq!(err.code, error_code::ENHANCE_YOUR_CALM);
+    }
+}
+
+#[test]
+fn drained_output_resets_the_control_ack_count() {
+    let mut s = raw_server();
+    for _ in 0..3 {
+        let mut input = Vec::new();
+        for _ in 0..9_000 {
+            write_ping(&mut input, false, [0; 8]);
+        }
+        s.feed(&input).unwrap();
+        s.take_output();
+        s.output_drained();
+    }
+}
