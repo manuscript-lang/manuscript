@@ -40,6 +40,9 @@ struct Scan<'a> {
     conversions: &'a HashMap<(Name, Name), Vec<Name>>,
     /// Interface-implementing method ids per concrete type id.
     by_receiver: &'a HashMap<Name, Vec<Name>>,
+    /// Own or declared `equals`, `hash` and `compare` method ids per concrete type id: what an
+    /// operator or a collection operation runs.
+    comparison_ops: &'a HashMap<Name, Vec<(Builtin, Name)>>,
     /// A type's own methods as (operation name, id): converting to an interface hands out the
     /// ones its operations name, with no impl to say so.
     own_methods: &'a HashMap<Name, Vec<(Name, Name)>>,
@@ -50,6 +53,87 @@ impl Scan<'_> {
     fn edge(&mut self, id: Name, pos: Pos) {
         if self.edges.insert(id) {
             self.edge_pos.push((id, pos));
+        }
+    }
+
+    /// A concrete type reaches the methods `ids` lists for it: charge them here.
+    fn charge_type(&mut self, ty: &Ty, pos: Pos, ids: &HashMap<Name, Vec<Name>>) {
+        if matches!(ty.kind, Kind::Type | Kind::Alternative)
+            && let Some(ids) = ids.get(&ty.id)
+        {
+            for id in ids.clone() {
+                if self.ids.contains(&id) {
+                    self.edge(id, pos);
+                }
+            }
+        }
+    }
+
+    /// The properties a method needs of each type argument of its receiver, by position: the
+    /// bounds its declaration writes on the receiver (`fn List[T: Equal].contains`), and for a
+    /// `Set` or `Map` the key's equality and hash once an argument can be a key.
+    fn receiver_requirements(&self, method: &Method) -> Vec<(usize, Vec<Builtin>)> {
+        let mut found: Vec<(usize, Vec<Builtin>)> = Vec::new();
+        let Some(decl) = &method.decl else {
+            return found;
+        };
+        if let DeclKind::Impl(imp) = &decl.decl.decl().kind
+            && let TypeKind::Named { args, .. } = &imp.receiver.kind
+        {
+            for bound_param in &imp.bounds {
+                let Some(arg) = args
+                    .iter()
+                    .position(|a| a.name(self.syms) == self.syms.str(bound_param.name))
+                else {
+                    continue;
+                };
+                for bound in &bound_param.bounds {
+                    let property = match bound.name(self.syms) {
+                        "Equal" => &[Builtin::Equal][..],
+                        "Hashable" => &[Builtin::Equal, Builtin::Hashable],
+                        "Comparable" => &[Builtin::Comparable],
+                        _ => continue,
+                    };
+                    found.push((arg, property.to_vec()));
+                }
+            }
+        }
+        let keyed = method.receiver.is(Builtin::Set) || method.receiver.is(Builtin::Map);
+        let takes_value = method.ty.params.iter().any(|p| p.ty.kind != Kind::Function);
+        if keyed && takes_value {
+            found.push((0, vec![Builtin::Equal, Builtin::Hashable]));
+        }
+        found
+    }
+
+    /// Charges the `equals`, `hash` or `compare` methods of `ty` and its type arguments that
+    /// serve one of `properties`.
+    fn charge_operations(&mut self, ty: &Ty, pos: Pos, properties: &[Builtin]) {
+        let mut ids: HashMap<Name, Vec<Name>> = HashMap::default();
+        self.collect_operations(ty, properties, &mut ids);
+        let mut types = Vec::new();
+        collect_types(ty, &mut types);
+        for t in types {
+            self.charge_type(&t, pos, &ids);
+        }
+    }
+
+    fn collect_operations(
+        &self,
+        ty: &Ty,
+        properties: &[Builtin],
+        out: &mut HashMap<Name, Vec<Name>>,
+    ) {
+        if let Some(found) = self.comparison_ops.get(&ty.id) {
+            let ids: Vec<Name> = found
+                .iter()
+                .filter(|(b, _)| properties.contains(b))
+                .map(|(_, id)| *id)
+                .collect();
+            out.entry(ty.id).or_default().extend(ids);
+        }
+        for arg in &ty.args {
+            self.collect_operations(arg, properties, out);
         }
     }
 
@@ -94,6 +178,12 @@ impl Scan<'_> {
     /// Adds the effects of a method call: an edge for source methods, or the
     /// known effects of the native receiver.
     fn scan_method_call(&mut self, method: &Method, pos: Pos) {
+        // `contains`, `Set.add` and the like run the argument types' own operations.
+        for (arg, properties) in self.receiver_requirements(method) {
+            if let Some(ty) = method.receiver.args.get(arg) {
+                self.charge_operations(ty, pos, &properties);
+            }
+        }
         if !self.syms.str(method.id).is_empty() {
             self.edge(method.id, pos);
             return;
@@ -165,15 +255,7 @@ impl Visitor for Scan<'_> {
         // A generic call instantiated at a concrete type hands out that type's interface methods.
         if let Some(info) = self.info(e) {
             for arg in info.type_args.iter().flatten() {
-                if matches!(arg.kind, Kind::Type | Kind::Alternative)
-                    && let Some(ids) = self.by_receiver.get(&arg.id)
-                {
-                    for id in ids.clone() {
-                        if self.ids.contains(&id) {
-                            self.edge(id, e.pos);
-                        }
-                    }
-                }
+                self.charge_type(arg, e.pos, self.by_receiver);
             }
         }
         // A constant is a nullary function here: each use is a call to it.
@@ -201,6 +283,16 @@ impl Visitor for Scan<'_> {
                 self.effects.insert("unknown");
             }
             ExprKind::Call { .. } => self.scan_call(e),
+            // `==` runs the operand type's own `equals`; ordering operators take no user type.
+            ExprKind::Binary {
+                op: BinaryOp::Eq | BinaryOp::Ne,
+                left,
+                ..
+            } => {
+                if let Some(ty) = self.info(left).and_then(|i| i.ty) {
+                    self.charge_operations(&ty, e.pos, &[Builtin::Equal]);
+                }
+            }
             // A function named as a value, or called by name: authority is charged where it is referenced.
             ExprKind::Name(_) => {
                 let reference = self
@@ -213,6 +305,14 @@ impl Visitor for Scan<'_> {
             }
             _ => {}
         }
+    }
+}
+
+/// `ty` and every type argument nested in it.
+fn collect_types(ty: &Ty, out: &mut Vec<Ty>) {
+    out.push(ty.clone());
+    for arg in &ty.args {
+        collect_types(arg, out);
     }
 }
 
@@ -236,6 +336,7 @@ struct State {
     ids: HashSet<Name>,
     conversions: HashMap<(Name, Name), Vec<Name>>,
     by_receiver: HashMap<Name, Vec<Name>>,
+    comparison_ops: HashMap<Name, Vec<(Builtin, Name)>>,
     own_methods: HashMap<Name, Vec<(Name, Name)>>,
 }
 
@@ -292,6 +393,7 @@ impl EffectScan {
         let ids: HashSet<Name> = nodes.keys().copied().collect();
         let mut conversions: HashMap<(Name, Name), Vec<Name>> = HashMap::default();
         let mut by_receiver: HashMap<Name, Vec<Name>> = HashMap::default();
+        let mut comparison_ops: HashMap<Name, Vec<(Builtin, Name)>> = HashMap::default();
         let mut own_methods: HashMap<Name, Vec<(Name, Name)>> = HashMap::default();
         for m in methods {
             if let Some(contract) = &m.contract
@@ -310,6 +412,15 @@ impl EffectScan {
                     .or_default()
                     .push(m.id);
                 by_receiver.entry(m.receiver.id).or_default().push(m.id);
+                let syms = ms_syntax::Names::global();
+                for b in [Builtin::Equal, Builtin::Hashable, Builtin::Comparable] {
+                    if contract.is(b) || m.overrides(syms, b) {
+                        comparison_ops
+                            .entry(m.receiver.id)
+                            .or_default()
+                            .push((b, m.id));
+                    }
+                }
             }
         }
         EffectScan {
@@ -320,6 +431,7 @@ impl EffectScan {
                 ids,
                 conversions,
                 by_receiver,
+                comparison_ops,
                 own_methods,
             }),
             ..EffectScan::default()
@@ -351,6 +463,7 @@ impl EffectScan {
                     edge_pos: Vec::new(),
                     conversions: &st.conversions,
                     by_receiver: &st.by_receiver,
+                    comparison_ops: &st.comparison_ops,
                     own_methods: &st.own_methods,
                 };
                 match &node.target {
