@@ -7,7 +7,7 @@ type Bag:
 	keys: List[String]
 	total: Int = 0
 
-fn var Bag.set(key: String, value: Int) Unit:
+fn var Bag.set(key: String, value: Int) Void:
 	self.total += value
 	self.keys.append(key)
 
