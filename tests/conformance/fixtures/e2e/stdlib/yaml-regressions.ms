@@ -36,8 +36,8 @@ test "YAML a question mark followed by a letter is a plain block key":
 	values.add("?key", YamlValue.StringValue("value"))
 	(parse("?key: value") | expect_ok? | expect_equal(YamlValue.ObjectValue(values))?)
 
-test "YAML explicit and complex mapping keys remain unsupported":
-	for source in ["? key\n: value", "[key]: value"]:
+test "YAML collection mapping keys remain unsupported":
+	for source in ["? - key\n: value", "[key]: value"]:
 		cause := parse(source) | expect_error?
 		if cause.kind != "ENOTSUP":
 			return fail("expected unsupported mapping key, got {cause}")
@@ -395,7 +395,6 @@ test "YAML inline document content retains its source row":
 test "YAML compact tab rewrites retain original scalar columns":
 	error_at("-\t\tkey: [one", 1, 13)?
 	error_at("- \t key: [one", 1, 14)?
-	error_at("-\t\t-\t\tkey: [one", 1, 16)?
 	error_at("-\t\tkey: ok\n- key: [one", 2, 12)?
 
 fn unsupported_at(text: String, line: Int) Unit!Error:
@@ -429,11 +428,9 @@ test "YAML source projection preserves compact document values":
 	expected := YamlValue.ArrayValue([YamlValue.ObjectValue(values)])
 	(parse("-\t\tkey: value") | expect_ok? | expect_equal(expected)?)
 	(parse("---\n-\t\tkey: value") | expect_ok? | expect_equal(expected)?)
-	(
-		parse("-\t\t-\t\tkey: value") | expect_ok? | expect_equal(
-			YamlValue.ArrayValue([expected.clone()])
-		)?
-	)
+
+	// A tab cannot indent a nested sequence.
+	_ := parse("-\t\t-\t\tkey: value") | expect_error?
 
 test "YAML block header origins distinguish identical quoted key text":
 	error_at("\"|bad\": |bad\n  x", 1, 10)?
@@ -459,7 +456,7 @@ test "YAML plain implicit keys cannot span physical lines":
 test "YAML quoted implicit keys cannot span physical lines":
 	for source in [
 		"\{'key\n next': value\}", "\{\"key\n next\": value\}",
-		"\{\"key\\\n next\": value\}", "\{\"key\"\n: value\}"
+		"\{\"key\\\n next\": value\}"
 	]:
 		invalid_key_line(source)?
 
@@ -726,8 +723,12 @@ test "YAML automatic indentation and plain continuations stay unchanged":
 	field("value:\n  |\n    one\n", "one\n")?
 
 test "YAML block content must exceed its containing indentation":
-	for source in ["|\na\n", "value:\n  |\na\n", "-\n  |\na\n"]:
+	for source in ["value:\n  |\na\n", "-\n  |\na\n"]:
 		expect_equal(parse(source).is_error(), true)?
+
+	// A root block scalar may start at column zero.
+	text("|\na\n", "a\n")?
+	text("--- >\nline1\nline2\n", "line1 line2\n")?
 
 test "YAML implicit indentation rejects overindented leading empty lines":
 	for style in ["|", ">", "|-", ">+"]:
@@ -909,3 +910,30 @@ test "YAML streams read one value per document":
 	_ := parse_all("---\n&a x\n---\n*a\n") | expect_error?
 	_ := parse_all("a: 1\n%YAML 1.2\n---\nb: 2\n") | expect_error?
 	_ := parse("one\n---\ntwo\n") | expect_error?
+
+test "YAML continuation lines are indented past their parent and tabs only separate":
+	// The common layout closes a bracket at the parent's column; content may not.
+	_ := parse("key: [\n  a,\n  b\n]\n")?
+	_ := parse("key: [\n  a,\nb]\n") | expect_error?
+	_ := parse("quoted: \"a\nb\"\n") | expect_error?
+	_ := parse("-\t- x\n") | expect_error?
+	_ := parse("a:\n\tb: 1\n") | expect_error?
+	_ := parse("a:\n \tword\n")?
+	_ := parse("\t[x]\n")?
+
+test "YAML flow sequences hold single-pair entries and flow keys may precede their colon line":
+	value := parse("[a: b, \"k\":v, : e, c, x: [1, 2]]")?
+	want := parse("[\{a: b\}, \{k: v\}, \{\"\": e\}, c, \{x: [1, 2]\}]")?
+	expect_equal(value.to_string(), want.to_string())?
+
+	_ := parse("\{\"key\"\n: value\}")?
+	unsupported_at("[[a]: b]", 1)?
+
+	_ := parse("[a: b: c]") | expect_error?
+
+test "YAML explicit keys read scalar keys with optional values":
+	value := parse("? a\n: 1\n? b\n? |\n  block\n: - x\n  - y\nc: d\n")?
+	want := parse("a: 1\nb: null\n\"block\\n\":\n  - x\n  - y\nc: d\n")?
+	expect_equal(value.to_string(), want.to_string())?
+
+	_ := parse("? a\n: 1\n? a\n: 2\n") | expect_error?
