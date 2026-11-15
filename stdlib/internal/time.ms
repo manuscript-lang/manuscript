@@ -34,15 +34,6 @@ export extern fn msstd_time_instant_compare(value: Instant, other: Instant) Int
 
 export extern fn msstd_time_timestamp_to_string(value: Timestamp) String
 
-export extern fn msstd_time_timestamp_shift(value: Timestamp, duration: Int) Timestamp!
-
-export extern fn msstd_time_timestamp_difference(
-	value: Timestamp,
-	other: Timestamp,
-) Int!
-
-export extern fn msstd_time_timestamp_compare(value: Timestamp, other: Timestamp) Int
-
 export extern fn msstd_time_timestamp_calendar(value: Timestamp, zone: String) Date!
 
 export extern fn msstd_time_timestamp_format(
@@ -63,8 +54,6 @@ export extern fn msstd_time_from_calendar(
 	nanosecond: Int,
 	zone: String,
 ) Timestamp!
-
-export extern fn msstd_time_timestamp(seconds: Int, nanoseconds: Int) Timestamp!
 
 export extern fn msstd_time_clock_now() Instant
 
