@@ -1,361 +1,362 @@
 # Cases of the W3C XML suite the parser does not pass, with the reason.
 # A listed case must still fail, so fixing one means deleting its line; the list only shrinks.
-# A reason starting `by design:` is a permanent decision, counted separately in the test output.
-ibm/not-wf/P29/ibm29n03.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P29/ibm29n07.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P45/ibm45n01.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P45/ibm45n02.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P45/ibm45n03.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P45/ibm45n04.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P45/ibm45n05.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P45/ibm45n06.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P45/ibm45n08.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P45/ibm45n09.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P46/ibm46n01.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P46/ibm46n02.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P46/ibm46n03.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P46/ibm46n04.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P46/ibm46n05.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P47/ibm47n01.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P47/ibm47n02.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P47/ibm47n03.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P47/ibm47n04.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P47/ibm47n05.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P47/ibm47n06.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P48/ibm48n01.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P48/ibm48n02.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P48/ibm48n03.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P48/ibm48n04.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P48/ibm48n05.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P48/ibm48n06.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P48/ibm48n07.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P49/ibm49n01.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P49/ibm49n02.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P49/ibm49n03.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P49/ibm49n04.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P49/ibm49n05.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P49/ibm49n06.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P50/ibm50n01.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P50/ibm50n02.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P50/ibm50n03.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P50/ibm50n04.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P50/ibm50n05.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P50/ibm50n06.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P50/ibm50n07.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P51/ibm51n01.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P51/ibm51n02.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P51/ibm51n03.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P51/ibm51n04.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P51/ibm51n05.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P51/ibm51n06.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P51/ibm51n07.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P52/ibm52n01.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P52/ibm52n02.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P52/ibm52n03.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P52/ibm52n04.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P52/ibm52n05.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P53/ibm53n01.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P53/ibm53n02.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P53/ibm53n03.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P53/ibm53n04.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P53/ibm53n05.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P53/ibm53n06.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P53/ibm53n07.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P53/ibm53n08.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P54/ibm54n01.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P54/ibm54n02.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P55/ibm55n01.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P55/ibm55n02.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P55/ibm55n03.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P56/ibm56n01.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P56/ibm56n02.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P56/ibm56n03.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P56/ibm56n04.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P56/ibm56n05.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P56/ibm56n06.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P56/ibm56n07.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P57/ibm57n01.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P58/ibm58n01.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P58/ibm58n02.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P58/ibm58n03.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P58/ibm58n04.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P58/ibm58n05.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P58/ibm58n06.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P58/ibm58n07.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P58/ibm58n08.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P59/ibm59n01.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P59/ibm59n02.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P59/ibm59n03.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P59/ibm59n04.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P59/ibm59n05.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P59/ibm59n06.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P60/ibm60n01.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P60/ibm60n02.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P60/ibm60n03.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P60/ibm60n04.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P60/ibm60n05.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P60/ibm60n06.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P60/ibm60n08.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P66/ibm66n01.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P66/ibm66n03.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P66/ibm66n05.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P66/ibm66n07.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P66/ibm66n09.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P66/ibm66n11.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P68/ibm68n07.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P69/ibm69n01.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P69/ibm69n03.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P69/ibm69n04.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P69/ibm69n06.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P69/ibm69n07.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P72/ibm72n01.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P72/ibm72n02.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P72/ibm72n03.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P72/ibm72n04.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P72/ibm72n05.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P72/ibm72n06.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P72/ibm72n07.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P72/ibm72n09.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P73/ibm73n01.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P73/ibm73n03.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P74/ibm74n01.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P75/ibm75n01.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P75/ibm75n05.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P75/ibm75n06.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P75/ibm75n12.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P76/ibm76n01.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P76/ibm76n02.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P76/ibm76n03.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P76/ibm76n04.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P76/ibm76n05.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P76/ibm76n06.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P76/ibm76n07.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P82/ibm82n01.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P82/ibm82n02.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P82/ibm82n03.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P82/ibm82n04.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P82/ibm82n05.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P82/ibm82n06.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P82/ibm82n08.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P83/ibm83n01.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P83/ibm83n03.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P83/ibm83n04.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P83/ibm83n05.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/not-wf/P83/ibm83n06.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/valid/P09/ibm09v01.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/valid/P09/ibm09v02.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/valid/P09/ibm09v04.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/valid/P10/ibm10v01.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/valid/P10/ibm10v02.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/valid/P10/ibm10v03.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/valid/P10/ibm10v04.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/valid/P10/ibm10v05.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/valid/P10/ibm10v06.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/valid/P10/ibm10v07.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/valid/P10/ibm10v08.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/valid/P29/ibm29v01.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/valid/P43/ibm43v01.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-ibm/valid/P67/ibm67v01.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p09fail3.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p12fail1.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p12fail2.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p12fail3.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p12fail4.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p12fail5.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p12fail6.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p12fail7.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p29fail1.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p43pass1.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p45fail1.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p45fail2.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p45fail3.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p45fail4.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p46fail1.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p46fail2.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p46fail3.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p46fail4.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p46fail5.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p46fail6.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p47fail1.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p47fail2.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p47fail3.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p47fail4.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p48fail1.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p48fail2.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p51fail1.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p51fail2.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p51fail3.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p51fail4.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p51fail5.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p51fail6.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p51fail7.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p52fail1.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p52fail2.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p53fail1.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p53fail2.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p53fail3.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p53fail4.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p53fail5.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p54fail1.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p55fail1.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p56fail1.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p56fail2.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p56fail3.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p56fail4.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p56fail5.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p57fail1.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p58fail1.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p58fail2.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p58fail3.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p58fail4.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p58fail5.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p58fail6.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p58fail7.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p58fail8.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p59fail1.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p59fail2.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p59fail3.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p60fail1.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p60fail2.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p60fail3.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p60fail4.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p60fail5.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p68pass1.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p69fail2.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p69fail3.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p70fail1.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p71fail1.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p71fail2.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p71fail3.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p71fail4.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p72fail1.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p72fail2.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p72fail3.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p72fail4.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p73fail1.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p73fail2.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p73fail3.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p73fail4.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p73fail5.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p74fail1.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p74fail2.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p74fail3.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p75fail1.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p75fail2.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p75fail3.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p75fail4.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p75fail5.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p75fail6.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p76fail1.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p76fail2.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p76fail3.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-oasis/p76fail4.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-sun/invalid/empty.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-sun/invalid/utf16b.xml by design: the parser reads a String, so UTF-16 input is out of scope
-sun/invalid/utf16l.xml by design: the parser reads a String, so UTF-16 input is out of scope
-sun/not-wf/attlist01.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-sun/not-wf/attlist02.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-sun/not-wf/attlist03.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-sun/not-wf/attlist04.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-sun/not-wf/attlist05.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-sun/not-wf/attlist06.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-sun/not-wf/attlist07.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-sun/not-wf/attlist08.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-sun/not-wf/attlist09.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-sun/not-wf/content01.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-sun/not-wf/content02.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-sun/not-wf/content03.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-sun/not-wf/dtd00.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-sun/not-wf/dtd01.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-sun/not-wf/dtd02.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-sun/not-wf/dtd03.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-sun/not-wf/dtd04.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-sun/not-wf/dtd05.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-sun/not-wf/pubid01.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-sun/not-wf/pubid02.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-sun/not-wf/pubid03.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-sun/not-wf/pubid04.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-sun/not-wf/pubid05.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-sun/not-wf/sgml04.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-sun/not-wf/sgml05.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-sun/not-wf/sgml06.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-sun/not-wf/sgml07.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-sun/not-wf/sgml08.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-sun/not-wf/sgml09.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-sun/not-wf/sgml10.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-sun/not-wf/sgml11.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-sun/not-wf/sgml12.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-sun/not-wf/sgml13.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-sun/valid/pe03.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-sun/valid/sa02.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/054.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/057.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/058.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/059.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/060.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/061.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/062.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/063.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/064.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/065.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/066.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/067.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/068.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/069.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/078.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/079.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/080.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/084.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/086.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/087.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/089.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/091.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/107.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/113.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/114.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/121.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/122.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/123.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/124.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/125.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/126.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/127.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/128.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/129.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/130.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/131.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/132.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/133.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/134.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/135.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/136.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/137.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/138.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/139.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/158.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/160.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/161.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/162.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/165.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/180.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/183.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/not-wf/sa/184.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/valid/sa/023.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/valid/sa/024.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/valid/sa/049.xml by design: the parser reads a String, so UTF-16 input is out of scope
-xmltest/valid/sa/050.xml by design: the parser reads a String, so UTF-16 input is out of scope
-xmltest/valid/sa/051.xml by design: the parser reads a String, so UTF-16 input is out of scope
-xmltest/valid/sa/053.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/valid/sa/066.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/valid/sa/068.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/valid/sa/085.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/valid/sa/086.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/valid/sa/087.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/valid/sa/088.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/valid/sa/089.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/valid/sa/108.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/valid/sa/110.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/valid/sa/114.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/valid/sa/115.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/valid/sa/117.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
-xmltest/valid/sa/118.xml by design: a DOCTYPE is skipped without checking or expanding its declarations (no DTD processing)
+# Every case is `by design:` (counted separately in the test output). Each was checked: with the DOCTYPE
+# removed (and DTD-defined entity references replaced), the document parses, so the DTD is the only cause.
+ibm/not-wf/P29/ibm29n03.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P29/ibm29n07.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P45/ibm45n01.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P45/ibm45n02.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P45/ibm45n03.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P45/ibm45n04.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P45/ibm45n05.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P45/ibm45n06.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P45/ibm45n08.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P45/ibm45n09.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P46/ibm46n01.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P46/ibm46n02.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P46/ibm46n03.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P46/ibm46n04.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P46/ibm46n05.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P47/ibm47n01.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P47/ibm47n02.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P47/ibm47n03.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P47/ibm47n04.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P47/ibm47n05.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P47/ibm47n06.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P48/ibm48n01.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P48/ibm48n02.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P48/ibm48n03.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P48/ibm48n04.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P48/ibm48n05.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P48/ibm48n06.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P48/ibm48n07.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P49/ibm49n01.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P49/ibm49n02.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P49/ibm49n03.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P49/ibm49n04.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P49/ibm49n05.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P49/ibm49n06.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P50/ibm50n01.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P50/ibm50n02.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P50/ibm50n03.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P50/ibm50n04.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P50/ibm50n05.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P50/ibm50n06.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P50/ibm50n07.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P51/ibm51n01.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P51/ibm51n02.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P51/ibm51n03.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P51/ibm51n04.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P51/ibm51n05.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P51/ibm51n06.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P51/ibm51n07.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P52/ibm52n01.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P52/ibm52n02.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P52/ibm52n03.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P52/ibm52n04.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P52/ibm52n05.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P53/ibm53n01.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P53/ibm53n02.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P53/ibm53n03.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P53/ibm53n04.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P53/ibm53n05.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P53/ibm53n06.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P53/ibm53n07.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P53/ibm53n08.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P54/ibm54n01.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P54/ibm54n02.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P55/ibm55n01.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P55/ibm55n02.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P55/ibm55n03.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P56/ibm56n01.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P56/ibm56n02.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P56/ibm56n03.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P56/ibm56n04.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P56/ibm56n05.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P56/ibm56n06.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P56/ibm56n07.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P57/ibm57n01.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P58/ibm58n01.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P58/ibm58n02.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P58/ibm58n03.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P58/ibm58n04.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P58/ibm58n05.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P58/ibm58n06.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P58/ibm58n07.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P58/ibm58n08.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P59/ibm59n01.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P59/ibm59n02.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P59/ibm59n03.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P59/ibm59n04.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P59/ibm59n05.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P59/ibm59n06.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P60/ibm60n01.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P60/ibm60n02.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P60/ibm60n03.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P60/ibm60n04.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P60/ibm60n05.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P60/ibm60n06.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P60/ibm60n08.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P66/ibm66n01.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P66/ibm66n03.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P66/ibm66n05.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P66/ibm66n07.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P66/ibm66n09.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P66/ibm66n11.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P68/ibm68n07.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P69/ibm69n01.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P69/ibm69n03.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P69/ibm69n04.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P69/ibm69n06.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P69/ibm69n07.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P72/ibm72n01.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P72/ibm72n02.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P72/ibm72n03.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P72/ibm72n04.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P72/ibm72n05.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P72/ibm72n06.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P72/ibm72n07.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P72/ibm72n09.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P73/ibm73n01.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P73/ibm73n03.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P74/ibm74n01.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P75/ibm75n01.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P75/ibm75n05.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P75/ibm75n06.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P75/ibm75n12.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P76/ibm76n01.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P76/ibm76n02.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P76/ibm76n03.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P76/ibm76n04.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P76/ibm76n05.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P76/ibm76n06.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P76/ibm76n07.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P82/ibm82n01.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P82/ibm82n02.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P82/ibm82n03.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P82/ibm82n04.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P82/ibm82n05.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P82/ibm82n06.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P82/ibm82n08.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P83/ibm83n01.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P83/ibm83n03.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P83/ibm83n04.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P83/ibm83n05.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/not-wf/P83/ibm83n06.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+ibm/valid/P09/ibm09v01.xml by design: uses an entity or default the DTD defines, and DTDs are never applied
+ibm/valid/P09/ibm09v02.xml by design: uses an entity or default the DTD defines, and DTDs are never applied
+ibm/valid/P09/ibm09v04.xml by design: uses an entity or default the DTD defines, and DTDs are never applied
+ibm/valid/P10/ibm10v01.xml by design: uses an entity or default the DTD defines, and DTDs are never applied
+ibm/valid/P10/ibm10v02.xml by design: uses an entity or default the DTD defines, and DTDs are never applied
+ibm/valid/P10/ibm10v03.xml by design: uses an entity or default the DTD defines, and DTDs are never applied
+ibm/valid/P10/ibm10v04.xml by design: uses an entity or default the DTD defines, and DTDs are never applied
+ibm/valid/P10/ibm10v05.xml by design: uses an entity or default the DTD defines, and DTDs are never applied
+ibm/valid/P10/ibm10v06.xml by design: uses an entity or default the DTD defines, and DTDs are never applied
+ibm/valid/P10/ibm10v07.xml by design: uses an entity or default the DTD defines, and DTDs are never applied
+ibm/valid/P10/ibm10v08.xml by design: uses an entity or default the DTD defines, and DTDs are never applied
+ibm/valid/P29/ibm29v01.xml by design: uses an entity or default the DTD defines, and DTDs are never applied
+ibm/valid/P43/ibm43v01.xml by design: uses an entity or default the DTD defines, and DTDs are never applied
+ibm/valid/P67/ibm67v01.xml by design: uses an entity or default the DTD defines, and DTDs are never applied
+oasis/p09fail3.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p12fail1.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p12fail2.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p12fail3.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p12fail4.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p12fail5.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p12fail6.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p12fail7.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p29fail1.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p43pass1.xml by design: uses an entity or default the DTD defines, and DTDs are never applied
+oasis/p45fail1.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p45fail2.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p45fail3.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p45fail4.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p46fail1.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p46fail2.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p46fail3.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p46fail4.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p46fail5.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p46fail6.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p47fail1.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p47fail2.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p47fail3.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p47fail4.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p48fail1.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p48fail2.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p51fail1.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p51fail2.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p51fail3.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p51fail4.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p51fail5.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p51fail6.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p51fail7.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p52fail1.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p52fail2.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p53fail1.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p53fail2.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p53fail3.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p53fail4.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p53fail5.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p54fail1.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p55fail1.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p56fail1.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p56fail2.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p56fail3.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p56fail4.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p56fail5.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p57fail1.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p58fail1.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p58fail2.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p58fail3.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p58fail4.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p58fail5.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p58fail6.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p58fail7.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p58fail8.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p59fail1.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p59fail2.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p59fail3.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p60fail1.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p60fail2.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p60fail3.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p60fail4.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p60fail5.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p68pass1.xml by design: uses an entity or default the DTD defines, and DTDs are never applied
+oasis/p69fail2.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p69fail3.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p70fail1.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p71fail1.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p71fail2.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p71fail3.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p71fail4.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p72fail1.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p72fail2.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p72fail3.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p72fail4.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p73fail1.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p73fail2.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p73fail3.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p73fail4.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p73fail5.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p74fail1.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p74fail2.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p74fail3.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p75fail1.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p75fail2.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p75fail3.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p75fail4.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p75fail5.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p75fail6.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p76fail1.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p76fail2.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p76fail3.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+oasis/p76fail4.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+sun/invalid/empty.xml by design: uses an entity or default the DTD defines, and DTDs are never applied
+sun/invalid/utf16b.xml by design: UTF-16 input is the caller's to decode, since parse takes text
+sun/invalid/utf16l.xml by design: UTF-16 input is the caller's to decode, since parse takes text
+sun/not-wf/attlist01.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+sun/not-wf/attlist02.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+sun/not-wf/attlist03.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+sun/not-wf/attlist04.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+sun/not-wf/attlist05.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+sun/not-wf/attlist06.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+sun/not-wf/attlist07.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+sun/not-wf/attlist08.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+sun/not-wf/attlist09.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+sun/not-wf/content01.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+sun/not-wf/content02.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+sun/not-wf/content03.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+sun/not-wf/dtd00.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+sun/not-wf/dtd01.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+sun/not-wf/dtd02.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+sun/not-wf/dtd03.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+sun/not-wf/dtd04.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+sun/not-wf/dtd05.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+sun/not-wf/pubid01.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+sun/not-wf/pubid02.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+sun/not-wf/pubid03.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+sun/not-wf/pubid04.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+sun/not-wf/pubid05.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+sun/not-wf/sgml04.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+sun/not-wf/sgml05.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+sun/not-wf/sgml06.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+sun/not-wf/sgml07.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+sun/not-wf/sgml08.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+sun/not-wf/sgml09.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+sun/not-wf/sgml10.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+sun/not-wf/sgml11.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+sun/not-wf/sgml12.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+sun/not-wf/sgml13.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+sun/valid/pe03.xml by design: uses an entity or default the DTD defines, and DTDs are never applied
+sun/valid/sa02.xml by design: uses an entity or default the DTD defines, and DTDs are never applied
+xmltest/not-wf/sa/054.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/057.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/058.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/059.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/060.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/061.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/062.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/063.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/064.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/065.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/066.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/067.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/068.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/069.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/078.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/079.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/080.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/084.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/086.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/087.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/089.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/091.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/107.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/113.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/114.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/121.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/122.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/123.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/124.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/125.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/126.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/127.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/128.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/129.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/130.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/131.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/132.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/133.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/134.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/135.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/136.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/137.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/138.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/139.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/158.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/160.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/161.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/162.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/165.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/180.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/183.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/not-wf/sa/184.xml by design: the DTD itself is malformed, and DOCTYPE declarations are not checked
+xmltest/valid/sa/023.xml by design: uses an entity or default the DTD defines, and DTDs are never applied
+xmltest/valid/sa/024.xml by design: uses an entity or default the DTD defines, and DTDs are never applied
+xmltest/valid/sa/049.xml by design: UTF-16 input is the caller's to decode, since parse takes text
+xmltest/valid/sa/050.xml by design: UTF-16 input is the caller's to decode, since parse takes text
+xmltest/valid/sa/051.xml by design: UTF-16 input is the caller's to decode, since parse takes text
+xmltest/valid/sa/053.xml by design: uses an entity or default the DTD defines, and DTDs are never applied
+xmltest/valid/sa/066.xml by design: uses an entity or default the DTD defines, and DTDs are never applied
+xmltest/valid/sa/068.xml by design: uses an entity or default the DTD defines, and DTDs are never applied
+xmltest/valid/sa/085.xml by design: uses an entity or default the DTD defines, and DTDs are never applied
+xmltest/valid/sa/086.xml by design: uses an entity or default the DTD defines, and DTDs are never applied
+xmltest/valid/sa/087.xml by design: uses an entity or default the DTD defines, and DTDs are never applied
+xmltest/valid/sa/088.xml by design: uses an entity or default the DTD defines, and DTDs are never applied
+xmltest/valid/sa/089.xml by design: uses an entity or default the DTD defines, and DTDs are never applied
+xmltest/valid/sa/108.xml by design: uses an entity or default the DTD defines, and DTDs are never applied
+xmltest/valid/sa/110.xml by design: uses an entity or default the DTD defines, and DTDs are never applied
+xmltest/valid/sa/114.xml by design: uses an entity or default the DTD defines, and DTDs are never applied
+xmltest/valid/sa/115.xml by design: uses an entity or default the DTD defines, and DTDs are never applied
+xmltest/valid/sa/117.xml by design: uses an entity or default the DTD defines, and DTDs are never applied
+xmltest/valid/sa/118.xml by design: uses an entity or default the DTD defines, and DTDs are never applied
