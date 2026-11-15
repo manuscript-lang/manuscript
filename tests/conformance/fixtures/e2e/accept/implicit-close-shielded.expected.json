@@ -46,16 +46,16 @@
         }
       ],
       "summary": {
-        "available": 6,
-        "selected": 6,
-        "passed": 6,
+        "available": 7,
+        "selected": 7,
+        "passed": 7,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN implicit-close-shielded.ms::cancellation closes the binding\nPASS implicit-close-shielded.ms::cancellation closes the binding\nRUN implicit-close-shielded.ms::cancellation does not interrupt a close that suspends\nPASS implicit-close-shielded.ms::cancellation does not interrupt a close that suspends\nRUN implicit-close-shielded.ms::a fault unwinding the scope closes the binding\nPASS implicit-close-shielded.ms::a fault unwinding the scope closes the binding\nRUN implicit-close-shielded.ms::a faulted promise closes its binding before wait reports\nPASS implicit-close-shielded.ms::a faulted promise closes its binding before wait reports\nRUN implicit-close-shielded.ms::a fault in close on a normal return is the fault\nPASS implicit-close-shielded.ms::a fault in close on a normal return is the fault\nRUN implicit-close-shielded.ms::a fault in close does not replace a pending fault\nPASS implicit-close-shielded.ms::a fault in close does not replace a pending fault\n6 tests, 0 failed\n",
+      "stdout": "RUN implicit-close-shielded.ms::cancellation closes the binding\nPASS implicit-close-shielded.ms::cancellation closes the binding\nRUN implicit-close-shielded.ms::cancellation does not interrupt a close that suspends\nPASS implicit-close-shielded.ms::cancellation does not interrupt a close that suspends\nRUN implicit-close-shielded.ms::a fault unwinding the scope closes the binding\nPASS implicit-close-shielded.ms::a fault unwinding the scope closes the binding\nRUN implicit-close-shielded.ms::a faulted promise closes its binding before wait reports\nPASS implicit-close-shielded.ms::a faulted promise closes its binding before wait reports\nRUN implicit-close-shielded.ms::a fault in close on a normal return is the fault\nPASS implicit-close-shielded.ms::a fault in close on a normal return is the fault\nRUN implicit-close-shielded.ms::a fault in close does not replace a pending fault\nPASS implicit-close-shielded.ms::a fault in close does not replace a pending fault\nRUN implicit-close-shielded.ms::cancellation does not interrupt the close of a discarded result\nPASS implicit-close-shielded.ms::cancellation does not interrupt the close of a discarded result\n7 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [
