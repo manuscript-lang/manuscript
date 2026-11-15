@@ -55,7 +55,7 @@ Strings are never normalized: `"é"` and `"e\u{301}"` are distinct values. [Equa
 
 ## Interpolation
 
-Every `"..."` literal interpolates: an unescaped `{` opens an embedded [expression](expressions.md) closed by its matching `}`, and there is no `f` prefix. Calls and nested literals are allowed. Empty expressions, format suffixes, comments, and newlines are rejected. Escape both braces for JSON-like text: `"\{\"a\": 1\}"`.
+Every `"..."` literal interpolates: an unescaped `{` opens an embedded [expression](expressions.md) closed by its matching `}`, and there is no `f` prefix. Calls and nested literals are allowed. Empty expressions, format suffixes, comments, and newlines are rejected. Text with literal braces and nothing to interpolate (JSON, templates, a lone `"{"`) is written raw: `r"{"` or `r"""` for a quote inside. Escape both braces (`"\{\"a\": 1\}"`) only when the same text also interpolates. The compiler does not rewrite a stray brace for you; it names `r"..."` first and `\{` second.
 
 ```manuscript
 name := "Ada"
