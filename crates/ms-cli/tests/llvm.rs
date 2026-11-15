@@ -601,7 +601,8 @@ fn cranelift_locates_parameters_for_a_debugger() {
         .unwrap();
     assert!(
         built.status.success(),
-        "{}{}",
+        "{}: {}{}",
+        built.status,
         String::from_utf8_lossy(&built.stdout),
         String::from_utf8_lossy(&built.stderr)
     );

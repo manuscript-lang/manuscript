@@ -367,7 +367,15 @@ fn write_file(path_nul: &[u8], data: &[u8]) {
             0o644,
         );
         if fd >= 0 {
-            sys::write_all(fd, data);
+            // `sys::write_all` writes a standard stream on Windows, not a file descriptor.
+            let mut rest = data;
+            while !rest.is_empty() {
+                let n = sys::write(fd, rest.as_ptr().cast(), rest.len());
+                if n <= 0 {
+                    break;
+                }
+                rest = &rest[n as usize..];
+            }
             sys::close(fd);
         }
     }
