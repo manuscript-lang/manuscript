@@ -37,7 +37,9 @@ runs:
       if: steps.runtime.outputs.cache-matched-key == ''
       shell: bash
       run: cargo xtask runtime ${{ github.event_name != 'pull_request' && '--alloc-profile' || '' }}
+    # Also after a build: a restore-key hit restores main's archives (cache-matched-key is empty then, so the
+    # build runs), and the build skips the allocation-profiling archive on pull requests, leaving the
+    # restored one older than the runtime sources.
     - name: Mark the restored runtime as fresh
-      if: steps.runtime.outputs.cache-matched-key != ''
       shell: bash
       run: touch target/ms-native/*.a target/ms-native/*.ll
