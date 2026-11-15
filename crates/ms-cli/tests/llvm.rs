@@ -598,7 +598,8 @@ fn cranelift_locates_parameters_for_a_debugger() {
         .unwrap();
     assert!(
         built.status.success(),
-        "{}",
+        "{}{}",
+        String::from_utf8_lossy(&built.stdout),
         String::from_utf8_lossy(&built.stderr)
     );
     let dwarfdump = std::env::var("LLVM_DWARFDUMP").unwrap_or_else(|_| "llvm-dwarfdump".into());
