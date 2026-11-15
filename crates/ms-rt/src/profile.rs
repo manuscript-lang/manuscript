@@ -458,6 +458,7 @@ fn write_folded(path: &[u8], folded: &BTreeMap<Vec<u8>, u64>, trailer: &[(&[u8],
 
 /// The allocation profiler's sample for an allocation of `size` bytes on the runtime thread
 /// (`alloc::sample_alloc`): stores the stack and size, and returns the allocations until the next.
+#[cfg(feature = "alloc-profile")]
 pub fn alloc_sample(size: usize) -> i64 {
     let period = ALLOC_PERIOD.load(Ordering::Relaxed);
     if period == 0 {
@@ -482,6 +483,7 @@ pub fn alloc_sample(size: usize) -> i64 {
 }
 
 /// The frame pointer of the calling function.
+#[cfg(feature = "alloc-profile")]
 #[inline(always)]
 fn frame_pointer() -> usize {
     let fp: usize;

@@ -132,3 +132,43 @@ fn allocations_are_opt_in_and_name_the_allocating_function() {
     );
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// With the allocation-profiling runtime (release builds, the scheduled run) a real program's
+/// allocations are attributed to the Manuscript function that makes them (`words` is inlined into `main`); without it `--allocs` says why.
+#[cfg(target_os = "linux")]
+#[test]
+fn allocs_with_the_real_runtime() {
+    let dir = std::env::temp_dir().join(format!("ms-profile-real-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let source = dir.join("main.ms");
+    std::fs::write(&source, include_str!("profile/words.ms")).unwrap();
+    let out = dir.join("capture");
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_ms"))
+        .args([
+            "profile",
+            source.to_str().unwrap(),
+            "--allocs",
+            "--out-dir",
+            out.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    if cfg!(ms_allocs_runtime) {
+        let report = std::fs::read_to_string(out.join("allocs.txt")).unwrap_or_default();
+        assert!(
+            output.status.success()
+                && report
+                    .lines()
+                    .any(|l| l.ends_with("main") && l.contains("100.00%")),
+            "{stderr}\n{report}"
+        );
+    } else {
+        assert!(
+            stderr.contains("without the allocation-profiling runtime"),
+            "{stderr}"
+        );
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}

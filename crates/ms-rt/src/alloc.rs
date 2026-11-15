@@ -248,8 +248,8 @@ struct State {
     grow_committed: usize,
     #[cfg(any(test, feature = "stats"))]
     live: isize,
-    /// Allocations left before the allocation profiler takes its next sample; `i64::MAX` when
-    /// it is off, so the check in [`alloc`] never fires.
+    /// Allocations left before the allocation profiler takes its next sample.
+    #[cfg(feature = "alloc-profile")]
     sample_left: i64,
     /// Allocations requested and bytes asked for since start (`stats` builds).
     #[cfg(feature = "stats")]
@@ -268,6 +268,7 @@ impl State {
             large_cached: 0,
             grow_chunk: usize::MAX,
             grow_committed: 0,
+            #[cfg(feature = "alloc-profile")]
             sample_left: i64::MAX,
             #[cfg(any(test, feature = "stats"))]
             live: 0,
@@ -510,9 +511,12 @@ pub fn alloc(size: usize) -> *mut u8 {
         s.requested[0] += 1;
         s.requested[1] += size as u64;
     }
-    s.sample_left -= 1;
-    if s.sample_left <= 0 {
-        sample_alloc(s, size);
+    #[cfg(feature = "alloc-profile")]
+    {
+        s.sample_left -= 1;
+        if s.sample_left <= 0 {
+            sample_alloc(s, size);
+        }
     }
     if size <= MAX_SMALL {
         let class = class_of(size.max(1));
@@ -532,6 +536,7 @@ pub fn alloc(size: usize) -> *mut u8 {
 }
 
 /// Hands the allocation profiler one sample and arms the next. `s` is the calling thread's state.
+#[cfg(feature = "alloc-profile")]
 #[cold]
 #[inline(never)]
 fn sample_alloc(s: &mut State, size: usize) {
@@ -539,9 +544,16 @@ fn sample_alloc(s: &mut State, size: usize) {
 }
 
 /// Starts allocation sampling on the calling thread: every `period`th allocation is a sample.
+///
+/// A runtime built without the `alloc-profile` feature takes no samples.
 pub fn sample_every(period: i64) {
+    #[cfg(feature = "alloc-profile")]
     // SAFETY: this thread's allocator state.
-    unsafe { (*STATE.ptr()).sample_left = period };
+    unsafe {
+        (*STATE.ptr()).sample_left = period
+    };
+    #[cfg(not(feature = "alloc-profile"))]
+    let _ = period;
 }
 
 #[inline(never)]
