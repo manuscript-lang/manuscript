@@ -1,4 +1,4 @@
-//! Packages: `ms fetch` pins a git dependency, and every other command then works offline.
+//! Packages: `ms install` pins a git dependency, and every other command then works offline.
 
 use crate::common::scratch;
 use std::path::Path;
@@ -95,12 +95,12 @@ fn fetch_pins_a_package_and_checks_work_offline() {
     let unlocked = ms(&project, &cache, &["check", "ms.toml"]);
     assert!(!unlocked.status.success());
     assert!(
-        stderr(&unlocked).contains("run `ms fetch`"),
+        stderr(&unlocked).contains("run `ms install`"),
         "{}",
         stderr(&unlocked)
     );
 
-    let fetched = ms(&project, &cache, &["fetch"]);
+    let fetched = ms(&project, &cache, &["install"]);
     assert!(fetched.status.success(), "{}", stderr(&fetched));
     let lock = std::fs::read_to_string(project.join("ms.lock")).unwrap();
     assert!(
@@ -168,7 +168,7 @@ fn a_package_needs_the_importer_to_allow_its_effects() {
         &project,
         &format!("[dependencies]\n\"@lib\" = {}\n", table(&spec)),
     );
-    let fetched = ms(&project, &cache, &["fetch"]);
+    let fetched = ms(&project, &cache, &["install"]);
     assert!(fetched.status.success(), "{}", stderr(&fetched));
     let checked = ms(&project, &cache, &["check", "ms.toml"]);
     assert!(!checked.status.success());
@@ -193,8 +193,8 @@ fn checked_with(name: &str, manifest_extra: &str, source: &str, allowed: &str) -
         &project,
         &format!("[dependencies]\n\"@lib\" = {}\n{effects}", table(&spec)),
     );
-    // A manifest `ms fetch` refuses is the result: there is nothing to check.
-    let fetched = ms(&project, &cache, &["fetch"]);
+    // A manifest `ms install` refuses is the result: there is nothing to check.
+    let fetched = ms(&project, &cache, &["install"]);
     if !fetched.status.success() {
         return fetched;
     }
@@ -264,7 +264,7 @@ fn a_tampered_lock_never_reaches_git_and_nested_packages_must_use_https() {
     let hash = "0".repeat(64);
     let lock = format!("\"@lib\" = \"{spec} --upload-pack=touch_pwned sha256:{hash}\"\n");
     std::fs::write(project.join("ms.lock"), lock).unwrap();
-    let fetched = ms(&project, &cache, &["fetch"]);
+    let fetched = ms(&project, &cache, &["install"]);
     assert!(!fetched.status.success());
     assert!(stderr(&fetched).contains("ms.lock"), "{}", stderr(&fetched));
     assert!(!project.join("touch_pwned").exists() && !root.join("touch_pwned").exists());
@@ -277,7 +277,7 @@ fn a_tampered_lock_never_reaches_git_and_nested_packages_must_use_https() {
         &nested_app,
         &format!("[dependencies]\n\"@lib\" = {}\n", table(&outer_spec)),
     );
-    let fetched = ms(&nested_app, &cache, &["fetch"]);
+    let fetched = ms(&nested_app, &cache, &["install"]);
     assert!(!fetched.status.success());
     assert!(
         stderr(&fetched).contains("https://"),
@@ -310,7 +310,7 @@ fn two_versions_of_one_package_are_named_when_their_types_meet() {
         include_str!("packages/two_versions.ms"),
     )
     .unwrap();
-    let fetch = ms(&project, &cache, &["fetch"]);
+    let fetch = ms(&project, &cache, &["install"]);
     assert!(fetch.status.success(), "{}", stderr(&fetch));
     let check = ms(&project, &cache, &["check", "ms.toml"]);
     assert!(!check.status.success());
@@ -412,7 +412,7 @@ fn the_editor_follows_imports_into_a_package() {
         &project,
         &format!("[dependencies]\n\"@lib\" = {}\n", table(&url)),
     );
-    let fetch = ms(&project, &cache, &["fetch"]);
+    let fetch = ms(&project, &cache, &["install"]);
     assert!(fetch.status.success(), "{}", stderr(&fetch));
     let main = project.join("src/main.ms");
     let text = include_str!("packages/main.ms");
@@ -468,4 +468,80 @@ fn the_editor_follows_imports_into_a_package() {
         &[(2, "textDocument/completion", at(0, 7))],
     );
     assert!(symbols[0].contains("\"greet\""), "{}", symbols[0]);
+}
+
+#[test]
+fn add_and_remove_edit_the_manifest_and_the_lock() {
+    let dir = scratch("packages-add");
+    let cache = dir.join("cache");
+    let spec = package(
+        &dir.join("lib"),
+        "effects = [\"std.net.*\"]\n",
+        include_str!("packages/greet_net.ms"),
+    );
+    let url = spec.trim_end_matches("#v1.0.0");
+    let project = dir.join("app");
+    app(&project, "");
+    let manifest = |project: &Path| std::fs::read_to_string(project.join("ms.toml")).unwrap();
+
+    // A tag that does not exist leaves the manifest as it was.
+    let before = manifest(&project);
+    let missing = ms(&project, &cache, &["add", url, "--tag", "v9.9.9"]);
+    assert!(!missing.status.success());
+    assert_eq!(manifest(&project), before);
+
+    // Added without --allow: the package's effects are printed and the build refuses them.
+    let added = ms(&project, &cache, &["add", url, "--tag", "v1.0.0"]);
+    assert!(added.status.success(), "{}", stderr(&added));
+    assert!(String::from_utf8_lossy(&added.stdout).contains("declares effects"));
+    assert!(
+        manifest(&project).contains("\"@lib\" = { url = "),
+        "{}",
+        manifest(&project)
+    );
+    assert!(project.join("ms.lock").is_file());
+    assert!(!ms(&project, &cache, &["check", "ms.toml"]).status.success());
+    let twice = ms(&project, &cache, &["add", url, "--tag", "v1.0.0"]);
+    assert!(
+        stderr(&twice).contains("already in [dependencies]"),
+        "{}",
+        stderr(&twice)
+    );
+
+    // Removing drops the dependency, and the lock with it.
+    let removed = ms(&project, &cache, &["remove", "@lib"]);
+    assert!(removed.status.success(), "{}", stderr(&removed));
+    assert_eq!(manifest(&project).trim_end(), before.trim_end());
+    assert!(!project.join("ms.lock").exists());
+    let unknown = ms(&project, &cache, &["remove", "@lib"]);
+    assert!(
+        stderr(&unknown).contains("not in [dependencies]"),
+        "{}",
+        stderr(&unknown)
+    );
+
+    // --allow writes the effects, so the project builds.
+    let allowed = ms(
+        &project,
+        &cache,
+        &["add", url, "--sha", &sha_of(&dir.join("lib")), "--allow"],
+    );
+    assert!(allowed.status.success(), "{}", stderr(&allowed));
+    assert!(
+        manifest(&project).contains("\"@lib\" = [\"std.net.*\"]"),
+        "{}",
+        manifest(&project)
+    );
+    let checked = ms(&project, &cache, &["check", "ms.toml"]);
+    assert!(checked.status.success(), "{}", stderr(&checked));
+}
+
+/// The commit `HEAD` names in the repository at `dir`.
+fn sha_of(dir: &Path) -> String {
+    let output = Command::new("git")
+        .args(["rev-parse", "HEAD"])
+        .current_dir(dir)
+        .output()
+        .unwrap();
+    String::from_utf8(output.stdout).unwrap().trim().to_string()
 }

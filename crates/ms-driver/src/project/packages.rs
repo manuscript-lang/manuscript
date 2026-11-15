@@ -1,6 +1,6 @@
 //! Package dependencies: the lock file, the read-only package cache and the content hash.
 //!
-//! `ms fetch` (in `ms-cli`) is the only code that uses the network. Everything here reads the
+//! `ms install` (in `ms-cli`) is the only code that uses the network. Everything here reads the
 //! lock and the cache, so a locked project builds offline.
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -41,7 +41,7 @@ pub fn is_hex(text: &str, len: usize) -> bool {
 
 /// A dependency value is `url#tag`: an `https://` or `file://` URL, never one that starts with
 /// `-` or names another git transport, and a tag or commit that is not an option or a path.
-/// Nested packages may use `https://` only; `ms fetch` checks that where the depth is known.
+/// Nested packages may use `https://` only; `ms install` checks that where the depth is known.
 pub fn check_spec(spec: &str) -> Result<(), String> {
     let bad = || {
         format!(
@@ -122,7 +122,7 @@ pub fn read_lock(root: &str) -> Result<BTreeMap<String, LockEntry>, ProjectError
         }
         let bad = || {
             ProjectError::msg(format!(
-                "ms.lock line {} is not `\"@name\" = \"url#tag revision sha256:hash\"`; run ms fetch to rewrite it",
+                "ms.lock line {} is not `\"@name\" = \"url#tag revision sha256:hash\"`; run ms install to rewrite it",
                 index + 1
             ))
         };
@@ -139,7 +139,7 @@ pub fn read_lock(root: &str) -> Result<BTreeMap<String, LockEntry>, ProjectError
         let hash = hash.strip_prefix("sha256:").ok_or_else(bad)?;
         if !is_hex(revision, 40) || !is_hex(hash, 64) {
             return Err(ProjectError::msg(format!(
-                "ms.lock line {} must hold a 40-digit commit and a 64-digit sha256, both lowercase hexadecimal; run ms fetch to rewrite it",
+                "ms.lock line {} must hold a 40-digit commit and a 64-digit sha256, both lowercase hexadecimal; run ms install to rewrite it",
                 index + 1
             )));
         }
@@ -160,7 +160,7 @@ pub fn read_lock(root: &str) -> Result<BTreeMap<String, LockEntry>, ProjectError
 /// The text of `ms.lock` for `entries`, in key order.
 pub fn lock_text(entries: &BTreeMap<String, LockEntry>) -> String {
     let mut text = String::from(
-        "# Written by `ms fetch`. Commit it: it pins each package to a commit and a content hash.\n",
+        "# Written by `ms install`. Commit it: it pins each package to a commit and a content hash.\n",
     );
     for (key, e) in entries {
         text.push_str(&format!(
@@ -217,11 +217,11 @@ pub fn verify_file(package: &Package, relative: &str, bytes: &[u8]) -> Result<()
     match package.files.get(relative) {
         Some(expected) if *expected == sha256::hex(bytes) => Ok(()),
         Some(_) => Err(ProjectError::msg(format!(
-            "{}/{relative} in the cache does not match ms.lock; delete {} and run `ms fetch`",
+            "{}/{relative} in the cache does not match ms.lock; delete {} and run `ms install`",
             package.key, package.root
         ))),
         None => Err(ProjectError::msg(format!(
-            "{}/{relative} is not in the locked package; delete {} and run `ms fetch`",
+            "{}/{relative} is not in the locked package; delete {} and run `ms install`",
             package.key, package.root
         ))),
     }
@@ -326,13 +326,13 @@ fn resolve(
         let key = format!("{prefix}{alias}");
         let entry = lock.get(&key).filter(|e| e.spec == spec).ok_or_else(|| {
             ProjectError::msg(format!(
-                "ms.lock has no entry for {key} = {spec:?}; run `ms fetch` to resolve and pin it"
+                "ms.lock has no entry for {key} = {spec:?}; run `ms install` to resolve and pin it"
             ))
         })?;
         let directory = cache.join(&entry.sha256);
         if !directory.is_dir() {
             return Err(ProjectError::msg(format!(
-                "package {key} ({}) is not in the cache {}; run `ms fetch` to download it",
+                "package {key} ({}) is not in the cache {}; run `ms install` to download it",
                 entry.spec,
                 directory.display()
             )));
@@ -413,7 +413,7 @@ fn read_index(
         .map_err(|e| ProjectError::path("open", &path.to_string_lossy(), &e))?;
     if hash_index(&text) != hash {
         return Err(ProjectError::msg(format!(
-            "the index of package {key} does not match ms.lock; delete {} and {} and run `ms fetch`",
+            "the index of package {key} does not match ms.lock; delete {} and {} and run `ms install`",
             directory.display(),
             path.display()
         )));

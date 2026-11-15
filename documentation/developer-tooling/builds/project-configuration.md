@@ -122,15 +122,15 @@ A package is a library project in a git repository. Name it under `[dependencies
 "@pg" = ["std.net.*", "std.clock.read", "std.random.read"]
 ```
 
-Run `ms fetch` once. It downloads each package with `git`, records the commit and a content hash in `ms.lock`, and prints what each package may reach. Commit `ms.lock`.
+`ms add <url> --tag <tag>` (or `--sha <commit>`) writes the dependency into `ms.toml` and installs it; `ms remove @name` takes it out again. `ms install` downloads what `ms.toml` names. Installing downloads each package with `git`, records the commit and a content hash in `ms.lock`, and prints what each package may reach. Commit `ms.lock`.
 
 ```manuscript
 import Config, open from "@pg/conn.ms"
 ```
 
 - `@name/path.ms` resolves under the package's `source` directory, as a directory alias does.
-- `check`, `build`, `run`, `test` and `lint` never use the network. A missing lock entry or missing cache entry is an error that says to run `ms fetch`. A locked build works offline.
-- `ms fetch --update @pg` resolves the tag again and rewrites that entry. A tag that moved, or changed content, fails against the lock until you update it.
+- `check`, `build`, `run`, `test` and `lint` never use the network. A missing lock entry or missing cache entry is an error that says to run `ms install`. A locked build works offline.
+- `ms install --update @pg` resolves the tag again and rewrites that entry. A tag that moved, or changed content, fails against the lock until you update it.
 - Packages are cached read-only outside the project, in a directory named by the content hash: `$XDG_CACHE_HOME/ms/packages` (or `$HOME/.cache/ms/packages`, `%LOCALAPPDATA%\ms\packages` on Windows). `MS_PACKAGE_CACHE` overrides it.
 - The hash is the SHA-256 of an index listing each file's path and own SHA-256, stored beside the package. A build checks the index once and each file as it is read, so a cached file changed after the fetch is an error. Symbolic links and non-UTF-8 names are errors.
 - A package's own dependencies are private to it: importing `@name` there does not give the project that name. Two tags of one repository are two packages with different types; when they meet in one expression the error names both paths and both tags.

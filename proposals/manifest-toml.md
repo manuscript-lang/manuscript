@@ -8,7 +8,7 @@
 
 ## Status
 
-Built, 2026-11-15. Direction from Chinmay: accept the whole TOML spec, not only strings; the representation follows the need. Parser chosen by Chinmay: the `toml_edit` crate (`parse` and `display` features; four more crates: `toml_parser`, `toml_datetime`, `toml_writer`, `winnow`), not an in-tree parser.
+Built, 2026-11-15. Direction from Chinmay: accept the whole TOML spec, not only strings; the representation follows the need. Parser: Chinmay chose "use the toml crate"; the crate is `toml_edit`, which reads positions (needed for diagnostics) and, without the `serde` feature, brings no serde. It is the `toml_edit` crate (`parse` and `display` features; four more crates: `toml_parser`, `toml_datetime`, `toml_writer`, `winnow`), not an in-tree parser.
 
 ## Problem
 
