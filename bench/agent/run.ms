@@ -105,7 +105,8 @@ fn run_one(
 		).get()
 		if size.is_some(): copy(src, "{ws}/{lang.solution}", CopyOptions(replace: true)).get()
 	else:
-		agent = run_agent(h, prompt, model, ws, timeout_s, transcript)
+		limit := if ch.agent_timeout_s > timeout_s: ch.agent_timeout_s else: timeout_s
+		agent = run_agent(h, prompt, model, ws, limit, transcript)
 
 	log := read_log(ws)
 

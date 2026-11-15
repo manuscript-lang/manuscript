@@ -1,7 +1,7 @@
 // Build an agent workspace and score a finished one against hidden tests.
 import (
 	parse from "@std/data/json.ms",
-	CopyOptions, chmod, copy, create_directory from "@std/os/fs.ms",
+	CopyOptions, access, chmod, copy, create_directory from "@std/os/fs.ms",
 
 	bash, norm, read_text, write_text from "../lib/text.ms",
 	count_workspace from "./codetokens.ms",
@@ -50,6 +50,11 @@ export fn make_workspace(ch: Challenge, lang: Lang, dest: String) String:
 		CopyOptions(recursive: true, replace: true),
 	).get()
 
+	// An edit challenge ships the program to change in `start/<language>/`.
+	start := "{ch.dir}/start/{lang.template}"
+	is_edit := access(start, 0).is_ok()
+	if is_edit: copy(start, dest, CopyOptions(recursive: true, replace: true)).get()
+
 	var n = 0
 
 	for c in ch.cases("examples"):
@@ -78,8 +83,12 @@ export fn make_workspace(ch: Challenge, lang: Lang, dest: String) String:
 				"{dest}/docs",
 				CopyOptions(recursive: true, replace: true),
 			).get()
+
+	task := (
+		if is_edit: "{lang.solution} already holds a working {lang.name} program; change it as TASK.md describes, keeping every behavior TASK.md does not change. " else: "Implement the program described in TASK.md in {lang.name}. "
+	)
 	return (
-		"Implement the program described in TASK.md in {lang.name}. "
+		task
 		+ "Edit {lang.solution}; it reads stdin and writes stdout. "
 		+ "Run ./check.sh to build and test against the examples in examples/. "
 		+ "The final grading uses additional hidden cases of the same format, so handle the edge cases the spec describes. "
