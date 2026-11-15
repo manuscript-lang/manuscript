@@ -40,6 +40,7 @@ type RunRecord:
 	timed_out: Bool
 	builds: Int
 	first_build_ok: Bool
+	first_build_fixed_ok: Bool
 	checks: Int
 	examples_pass: Bool
 	build_codes: List[String]
@@ -140,6 +141,7 @@ fn run_one(
 		agent.timed_out,
 		log.builds,
 		log.first_build_ok,
+		log.first_build_fixed_ok,
 		log.checks,
 		log.examples_pass,
 		log.build_codes.clone(),

@@ -19,6 +19,7 @@ type LogRow:
 	ok: Bool
 	codes: String = ""
 	msg: String = ""
+	fixed: String = ""
 
 type Detail:
 	built: Bool
@@ -44,7 +45,7 @@ fn main() Unit:
 
 	var rows = List[LogRow]()
 	for line in nonblank_lines(read_text("{app}/.bench/log.jsonl")):
-		rows.append(parse[LogRow](line).get(LogRow("", false, "", "")))
+		rows.append(parse[LogRow](line).get(LogRow("", false, "", "", "")))
 
 	builds := rows.filter(fn r: r.phase == "build")
 	var tokens: Int? = none

@@ -23,6 +23,8 @@ export type Grade:
 export type BuildLog:
 	builds: Int
 	first_build_ok: Bool
+	// The first build passed, or would have after the language's machine fixes (`ms check --fix`).
+	first_build_fixed_ok: Bool
 	checks: Int
 	examples_pass: Bool
 	// Diagnostic codes seen in the agent's failed builds, one entry per occurrence.
@@ -35,6 +37,7 @@ type LogRow:
 	ok: Bool
 	codes: String = ""
 	msg: String = ""
+	fixed: String = ""
 
 // Creates `dest` with the language template, spec, examples and `check.sh`. Returns the
 // agent prompt.
@@ -61,7 +64,7 @@ export fn make_workspace(ch: Challenge, lang: Lang, dest: String) String:
 	check := read_text("{root()}/check.sh.tmpl").replace(
 		"\{build\}",
 		lang.build,
-	).replace("\{run\}", lang.run).replace("\{codes\}", lang.codes)
+	).replace("\{run\}", lang.run).replace("\{codes\}", lang.codes).replace("\{fix\}", lang.fix)
 	write_text("{dest}/check.sh", check)
 	chmod("{dest}/check.sh", 493).get()
 	for ctx in lang.context:
@@ -86,12 +89,15 @@ export fn read_log(ws: String) BuildLog:
 	for line in read_text("{ws}/.bench/log.jsonl").split("\n"):
 		if line.trim().is_empty(): continue
 
-		rows.append(parse[LogRow](line).get(LogRow("", false, "", "")))
+		rows.append(parse[LogRow](line).get(LogRow("", false, "", "", "")))
 
 	builds := rows.filter(fn r: r.phase == "build")
 	checks := rows.filter(fn r: r.phase == "check")
 	var first_ok = false
 	if first := builds.first(): first_ok = first.ok
+
+	var fixed_ok = first_ok
+	if first := builds.first(): fixed_ok = first.ok or first.fixed == "true"
 
 	var last_ok = false
 	if last := checks.last(): last_ok = last.ok
@@ -104,7 +110,7 @@ export fn read_log(ws: String) BuildLog:
 		for code in failed.codes.split(" "):
 			if not code.is_empty(): codes.append(code.clone())
 
-	return BuildLog(builds.length(), first_ok, checks.length(), last_ok, codes, errors)
+	return BuildLog(builds.length(), first_ok, fixed_ok, checks.length(), last_ok, codes, errors)
 
 // Builds the workspace's solution and runs the hidden cases.
 export fn grade(ch: Challenge, lang: Lang, ws: String) Grade:

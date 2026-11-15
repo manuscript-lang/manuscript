@@ -36,6 +36,7 @@ type Run:
 	timed_out: Bool = false
 	builds: Int = 0
 	first_build_ok: Bool
+	first_build_fixed_ok: Bool = false
 	build_codes: List[String] = []
 	build_errors: List[String] = []
 	pass: Bool
@@ -59,15 +60,16 @@ fn tokens_of(r: Run) Float:
 
 fn table(runs: List[Run], title: String, key: fn(Run) String) String:
 	var out = "\n### {title}\n\n"
-	out += "| group | runs | pass (95% CI) | first build ok (95% CI) | tokens (in+out+cache) | turns | wall s | cost $ |\n"
-	out += "|---|---:|---:|---:|---:|---:|---:|---:|\n"
+	out += "| group | runs | pass (95% CI) | first build ok (95% CI) | first build after `--fix` (95% CI) | tokens (in+out+cache) | turns | wall s | cost $ |\n"
+	out += "|---|---:|---:|---:|---:|---:|---:|---:|---:|\n"
 
 	for k in runs.map(key).distinct().sorted():
 		rs := runs.filter(fn r: key(r) == k)
 		ok := rs.filter(fn r: r.pass)
 		n := rs.length()
 		first_ok := rs.filter(fn r: r.first_build_ok).length()
-		out += "| {k} | {n} | {rate(ok.length(), n)} | {rate(first_ok, n)} "
+		fixed_ok := rs.filter(fn r: r.first_build_ok or r.first_build_fixed_ok).length()
+		out += "| {k} | {n} | {rate(ok.length(), n)} | {rate(first_ok, n)} | {rate(fixed_ok, n)} "
 		out += "| {mean_text(ok.map(tokens_of), 3)} | {mean_text(ok.map(fn r: r.usage.turns.to_float()), 3)} "
 		out += "| {mean_text(ok.map(fn r: r.wall_s), 3)} | {mean_text(ok.map(fn r: r.usage.cost_usd), 3)} |\n"
 
