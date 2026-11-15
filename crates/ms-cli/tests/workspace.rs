@@ -42,11 +42,7 @@ fn workspace(root: &Path, app_dependencies: &str) {
             "[project]\nname = \"app\"\nsource = \"src\"\nentry = \"src/main.ms\"\n\n[dependencies]\n{app_dependencies}"
         ),
     );
-    file(
-        root,
-        "app/src/main.ms",
-        "import greet from \"@util/greet.ms\"\n\nfn main() Void:\n    print(greet(\"workspace\"))\n",
-    );
+    file(root, "app/src/main.ms", include_str!("workspace/main.ms"));
     file(
         root,
         "libs/util/ms.toml",
@@ -55,7 +51,7 @@ fn workspace(root: &Path, app_dependencies: &str) {
     file(
         root,
         "libs/util/src/greet.ms",
-        "export fn greet(name: String) String:\n    return \"hello {name}\"\n",
+        include_str!("workspace/greet.ms"),
     );
 }
 
@@ -102,7 +98,7 @@ fn a_path_dependency_must_name_a_listed_member() {
     file(
         &root,
         "libs/other/src/x.ms",
-        "export fn x() Int:\n    return 1\n",
+        include_str!("workspace/one.ms"),
     );
     file(
         &root,
@@ -198,7 +194,7 @@ fn members_share_one_lock_keyed_by_member() {
         "ms.toml",
         "[project]\nname = \"lib\"\nsource = \"src\"\n",
     );
-    file(&lib, "src/lib.ms", "export fn one() Int:\n    return 1\n");
+    file(&lib, "src/lib.ms", include_str!("workspace/one.ms"));
     for args in [
         &["init", "-q", "."][..],
         &["add", "."],
