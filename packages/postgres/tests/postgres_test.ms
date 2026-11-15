@@ -195,3 +195,20 @@ test "a server that skips the SCRAM proof is rejected":
 	expect_equal(failure.kind, "EACCES")?
 	accepting.wait()?
 	listener.close()?
+
+test "transaction commits on success and rolls back on error":
+	var conn = open(config()?)?
+	_ := conn.simple("create temp table tx (n int)")?
+	added := conn.transaction(
+		fn(var c: Conn): c.query("insert into tx values (1)", [])
+	)?
+	expect_equal(added.command, "INSERT 0 1")?
+
+	_ := expect_error(
+		conn.transaction(
+			fn(var c: Conn): c.query("insert into tx values (1/0)", [])
+		)
+	)?
+	count := conn.query("select count(*) from tx", [])?
+	expect_equal(count.rows[0][0], Value.Int(1))?
+	conn.close()?

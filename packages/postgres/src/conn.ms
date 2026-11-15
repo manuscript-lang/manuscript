@@ -349,3 +349,17 @@ fn var Conn.run(statement: Prepared, params: List[Value]) Rows!:
 	out.append_bytes(sync()?)
 	self.send(out.build())?
 	return self.collect(statement.columns)
+
+// Runs `body` in a transaction: commits when it returns a value, rolls back when it
+// returns an error (the body's error is returned, whatever the rollback reports).
+fn var Conn.transaction[T](body: fn(var Conn) T!) T!:
+	self.begin()?
+
+	result := body(var self)
+
+	if result.is_error():
+		_ := self.rollback()
+		return result
+
+	self.commit()?
+	return result
