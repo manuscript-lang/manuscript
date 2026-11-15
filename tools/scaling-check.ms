@@ -68,8 +68,8 @@ fn generate(shape: String, n: Int) String:
 				"    xs{i}: List[Int] := [{i}, 2]\n    run(fn(): sink(xs{i}.length()))\n    if opaque({i}) > 1000000:\n        sink(1)\n"
 			)
 	else if shape == "release_loopfree":
-		// A long loop-free function built with LLVM: its instruction selection must stay
-		// off the cubic path (#3928).
+		// A long loop-free function built with LLVM: its instruction selection must
+		// stay off the cubic path (#3928).
 		out.append(
 			"fn id[T](x: T) T:\n    return x\n\nfn opaque_text(a: Int) String:\n    if a > 1000000: return opaque_text(a - 1)\n    return \"x\"\n\nexport fn main() Int:\n    var t = 0\n"
 		)
@@ -87,23 +87,24 @@ fn generate(shape: String, n: Int) String:
 
 // The program every test shape starts with.
 TEST_PRELUDE := "fn sink(n: Int) Unit:\n    if n > 1000000: sink(n - 1)\n\nfn opaque(a: Int) Int:\n    if a > 1000000: return opaque(a - 1)\n    return a % 7\n\nfn run(g: fn() Unit) Unit:\n    g()\n\ntest \"scaling\":\n"
-
 // Extra measurements of a shape whose ratio is over the bound.
 RETRIES := 2
 SHAPES := [
 	"long_function", "many_locals", "long_interpolation", "many_impls",
-	"many_functions", "many_branches", "big_literal", "test_owners",
-	"test_branches", "release_loopfree"
+	"many_functions", "many_branches", "big_literal", "test_owners", "test_branches",
+	"release_loopfree"
 ]
 
-// The input sizes of a shape: three that grow by 10, or fewer and smaller for a shape that builds
-// with LLVM, which is costly per unit. The Release shape stays above the size where a loop-free
-// function skips optimization (about 700 statements), so its time is one regime. A test shape has one size and only has to pass: its test holds
-// hundreds of owners live across calls and branches, which overflowed the test's task stack when
-// every block registered every live owner (#3979), and linear code fits.
+// The input sizes of a shape: three that grow by 10, or fewer and smaller for a shape
+// that builds with LLVM, which is costly per unit. The Release shape stays above the
+// size where a loop-free function skips optimization (about 700 statements), so its
+// time is one regime. A test shape has one size and only has to pass: its test holds
+// hundreds of owners live across calls and branches, which overflowed the test's task
+// stack when every block registered every live owner (#3979), and linear code fits.
 fn sizes(shape: String) List[Int]:
 	if shape == "test_owners" or shape == "test_branches": return [400]
 	if shape == "release_loopfree": return [800, 1600, 6400]
+
 	return [1000, 10000, 100000]
 
 // The commands that measure a shape, each with its arguments after the file.
@@ -122,6 +123,7 @@ fn measure(
 	limit: Int,
 ) Float:
 	var args = [command.clone(), file.clone()]
+
 	for e in extra:
 		if e == "OUT":
 			args.append("{file}.out")
@@ -129,10 +131,7 @@ fn measure(
 			args.append(e.clone())
 
 	// No build cache, so a repeat measures the build again.
-	options := RunOptions(
-		timeout: seconds(limit),
-		env: {"MS_CACHE": "off"},
-	)
+	options := RunOptions(timeout: seconds(limit), env: {"MS_CACHE": "off"})
 	started := monotonic()
 	ran := run(ms.clone(), args, options).wait()
 	took := (monotonic().difference(started).to_nanoseconds().to_float() / 1000000000.0)
@@ -172,8 +171,8 @@ fn main() Int:
 
 	for shape in shapes:
 		var files = List[String]()
-
 		sizes_of := sizes(shape.clone())
+
 		for n in sizes_of:
 			file := "{scratch.path()}/{shape}_{n}.ms"
 			write_file(file, generate(shape, n)).wait().get()
@@ -182,6 +181,7 @@ fn main() Int:
 		if sizes_of.length() == 1:
 			took := measure(ms.clone(), "test", files[0].clone(), [], limit)
 			checked += 1
+
 			if took < 0.0:
 				failures += 1
 				say(
@@ -195,14 +195,40 @@ fn main() Int:
 		for spec in commands(shape.clone()):
 			command := spec[0].clone()
 			extra: List[String] := spec.slice(1, spec.length()).get([])
-			// The smallest input is the fixed cost, and its first run pays for starting the
-			// tools a build uses: take the faster of two.
-			first := measure(ms.clone(), command.clone(), files[0].clone(), extra.clone(), limit)
-			again := measure(ms.clone(), command.clone(), files[0].clone(), extra.clone(), limit)
+
+			// The smallest input is the fixed cost, and its first run pays for starting
+			// the tools a build uses: take the faster of two.
+			first := measure(
+				ms.clone(),
+				command.clone(),
+				files[0].clone(),
+				extra.clone(),
+				limit,
+			)
+			again := measure(
+				ms.clone(),
+				command.clone(),
+				files[0].clone(),
+				extra.clone(),
+				limit,
+			)
 			var small = first
 			if again >= 0.0 and (again < first or first < 0.0): small = again
-			mid := measure(ms.clone(), command.clone(), files[1].clone(), extra.clone(), limit)
-			big := measure(ms.clone(), command.clone(), files[2].clone(), extra.clone(), limit)
+
+			mid := measure(
+				ms.clone(),
+				command.clone(),
+				files[1].clone(),
+				extra.clone(),
+				limit,
+			)
+			big := measure(
+				ms.clone(),
+				command.clone(),
+				files[2].clone(),
+				extra.clone(),
+				limit,
+			)
 			checked += 1
 
 			if small < 0.0 or mid < 0.0 or big < 0.0:
@@ -212,9 +238,13 @@ fn main() Int:
 				)
 				continue
 
-			// Linear work gives (big - small) / (mid - small) of the sizes' growth, about 11 for
-			// 1k, 10k and 100k, where the bound is 30; the bound follows the sizes.
-			growth_of_sizes := (sizes_of[2] - sizes_of[0]).to_float() / (sizes_of[1] - sizes_of[0]).to_float()
+			// Linear work gives (big - small) / (mid - small) of the sizes' growth,
+			// about 11 for 1k, 10k and 100k, where the bound is 30; the bound follows
+			// the sizes.
+			growth_of_sizes := (
+				(sizes_of[2] - sizes_of[0]).to_float()
+				/ (sizes_of[1] - sizes_of[0]).to_float()
+			)
 			shape_bound := bound * growth_of_sizes / 11.0
 			var ratio = growth(small, mid, big, 0.05)
 
@@ -224,9 +254,27 @@ fn main() Int:
 			for attempt in 0..RETRIES:
 				if ratio <= shape_bound: break
 
-				s2 := measure(ms.clone(), command.clone(), files[0].clone(), extra.clone(), limit)
-				m2 := measure(ms.clone(), command.clone(), files[1].clone(), extra.clone(), limit)
-				b2 := measure(ms.clone(), command.clone(), files[2].clone(), extra.clone(), limit)
+				s2 := measure(
+					ms.clone(),
+					command.clone(),
+					files[0].clone(),
+					extra.clone(),
+					limit,
+				)
+				m2 := measure(
+					ms.clone(),
+					command.clone(),
+					files[1].clone(),
+					extra.clone(),
+					limit,
+				)
+				b2 := measure(
+					ms.clone(),
+					command.clone(),
+					files[2].clone(),
+					extra.clone(),
+					limit,
+				)
 				if s2 < 0.0 or m2 < 0.0 or b2 < 0.0: continue
 
 				retry := growth(s2, m2, b2, 0.05)
