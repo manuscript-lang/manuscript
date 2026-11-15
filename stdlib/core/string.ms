@@ -5,6 +5,7 @@ import (
 
 	msrt_string_fields,
 	msrt_string_from_scalars,
+	msrt_string_index_any,
 	msrt_string_trim_chars from "@std/internal/string.ms",
 	msstd_unicode_display_width,
 	msstd_unicode_is_alphanumeric from "@std/internal/unicode.ms",
@@ -147,7 +148,7 @@ fn String.contains_any(set: String) Bool:
 
 // Byte offset of the first scalar that occurs in set, or none.
 fn String.index_any(set: String) Int?:
-	return self.find_char(fn c: set.contains(c))
+	return msrt_string_index_any(self, set)
 
 // Splits after each separator, keeping it at the end of each piece; an empty
 // separator splits into scalars.
@@ -257,43 +258,64 @@ fn String.find_char(predicate: fn(String) Bool) Int?:
 // order, whose key matches wins and its replacement is not rescanned; empty keys
 // are ignored.
 fn String.replace_each(pairs: Map[String, String]) String:
-	if pairs.is_empty(): return self.clone()
+	var keys = List[String]()
+	var news = List[String]()
+	var leads = List[Int]()
+	var firsts = StringBuilder()
+	values := pairs.values()
+	var at = 0
 
-	var out = StringBuilder()
-	news := pairs.values()
-	var needles = List[List[String]]()
 	for key in pairs.keys():
-		needles.append(key.chars().clone())
+		if not key.is_empty():
+			lead := key.scalar_at(0)
+			keys.append(key.clone())
+			news.append(values[at].clone())
+			leads.append(lead)
+			firsts.append(key.view(0, scalar_width(lead)))
 
-	cs := self.chars()
-	n := cs.length()
-	var i = 0
+		at += 1
 
-	while i < n:
+	if keys.is_empty(): return self.clone()
+
+	// Only positions that start some key can match, so jump between them.
+	starts := firsts.build()
+	n := self.length()
+	var out = StringBuilder()
+	var copied = 0
+	var from = 0
+	var changed = false
+
+	while from < n:
+		found := self.view(from, n).index_any(starts)
+		if found.is_none(): break
+
+		here := from + found.get()
+		lead := self.scalar_at(here)
 		var hit = -1
 
-		for j in 0..needles.length():
-			if chars_start_at(cs, i, needles[j]):
+		for j in 0..keys.length():
+			if leads[j] != lead: continue
+
+			end := here + keys[j].length()
+
+			if end <= n and self.view(here, end) == keys[j]:
 				hit = j
 				break
 
 		if hit < 0:
-			out.append(cs[i])
-			i += 1
+			from = here + scalar_width(lead)
 			continue
 
+		out.append(self.view(copied, here))
 		out.append(news[hit])
-		i += needles[hit].length()
+		copied = here + keys[hit].length()
+		from = copied
+		changed = true
 
+	if not changed: return self.clone()
+
+	out.append(self.view(copied, n))
 	return out.build()
-
-// Tests whether the non-empty scalar list `needle` occurs in `cs` at index `at`.
-fn chars_start_at(cs: List[String], at: Int, needle: List[String]) Bool:
-	if needle.is_empty() or at + needle.length() > cs.length(): return false
-
-	for t in 0..needle.length():
-		if cs[at + t] != needle[t]: return false
-	return true
 
 fn is_word_scalar(c: String) Bool:
 	return msstd_unicode_is_alphanumeric(c.scalar_at(0, -1)) or c == "'"

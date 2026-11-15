@@ -324,6 +324,7 @@ msrt_string_split_view(s: *const StrVal, sep: *const StrVal, has_max: HasRaw, ma
 msrt_string_starts_with(a: *const StrVal, v: *const StrVal) -> u8 @domain=string @leaf @pure
 msrt_string_to_bytes(s: *const StrVal, out: *mut VecVal) @domain=string @leaf
 msrt_string_trim(s: *const StrVal, out: *mut StrVal) @domain=string @fresh @leaf @takes_self
+msrt_string_index_any(s: *const StrVal, set: *const StrVal, out: *mut i64) -> u8 @domain=string @leaf @pure
 msrt_string_trim_chars(s: *const StrVal, set: *const StrVal, from_start: u8, from_end: u8, out: *mut StrVal) @domain=string @leaf
 msrt_string_trim_end(s: *const StrVal, out: *mut StrVal) @domain=string @fresh @leaf @takes_self
 msrt_string_trim_end_take(s: *mut StrVal, out: *mut StrVal) @domain=string @leaf
