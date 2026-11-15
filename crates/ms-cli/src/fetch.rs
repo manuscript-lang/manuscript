@@ -3,12 +3,12 @@
 //! package cache.
 
 use std::collections::{BTreeMap, BTreeSet};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::Command;
 
 use ms_driver::project::manifest::{Project, read_manifest};
 use ms_driver::project::packages::{
-    LockEntry, cache_dir, hash_tree, lock_text, read_lock, uncovered,
+    LockEntry, cache_dir, hash_index, index_path, index_tree, lock_text, read_lock,
 };
 use ms_driver::project::pathops;
 
@@ -81,6 +81,12 @@ fn walk(run: &mut Run<'_, '_>, scope: &Project, prefix: &str, depth: usize) -> R
     }
     for (alias, spec) in &scope.dependencies {
         let key = format!("{prefix}{alias}");
+        if depth > 0 && !spec.starts_with("https://") {
+            return Err(format!(
+                "package {} depends on {key} = {spec:?}; a package's own dependencies must use https:// URLs, because file:// reads the machine running ms fetch",
+                prefix.trim_end_matches('/')
+            ));
+        }
         let locked = run
             .old
             .get(&key)
@@ -91,12 +97,12 @@ fn walk(run: &mut Run<'_, '_>, scope: &Project, prefix: &str, depth: usize) -> R
         let entry = match locked {
             Some(entry) => {
                 let directory = cache_dir().join(&entry.sha256);
-                if !directory.is_dir() {
-                    download(&key, spec, Some(&entry))?;
+                if !directory.is_dir() || !index_path(&cache_dir(), &entry.sha256).is_file() {
+                    download(&key, spec, Some(&entry), depth > 0)?;
                 }
                 entry
             }
-            None => download(&key, spec, None)?,
+            None => download(&key, spec, None, depth > 0)?,
         };
         let directory = cache_dir().join(&entry.sha256);
         let mut package = Project::default();
@@ -121,8 +127,13 @@ fn walk(run: &mut Run<'_, '_>, scope: &Project, prefix: &str, depth: usize) -> R
     Ok(())
 }
 
-fn git(directory: Option<&Path>, args: &[&str]) -> Result<String, String> {
+/// Run git without prompts and with only the transports a package may use: `https` always, and
+/// `file` for the project's own dependencies.
+fn git(directory: Option<&Path>, protocols: &str, args: &[&str]) -> Result<String, String> {
     let mut command = Command::new("git");
+    command
+        .env("GIT_TERMINAL_PROMPT", "0")
+        .env("GIT_ALLOW_PROTOCOL", protocols);
     command.args([
         "-c",
         "core.autocrlf=false",
@@ -150,12 +161,18 @@ fn git(directory: Option<&Path>, args: &[&str]) -> Result<String, String> {
 }
 
 fn is_commit(text: &str) -> bool {
-    text.len() == 40 && text.bytes().all(|b| b.is_ascii_hexdigit())
+    ms_driver::project::packages::is_hex(text, 40)
 }
 
 /// Download `spec` into the cache. With a lock entry it fetches exactly that revision and checks
 /// its hash; otherwise it resolves the tag.
-fn download(key: &str, spec: &str, locked: Option<&LockEntry>) -> Result<LockEntry, String> {
+fn download(
+    key: &str,
+    spec: &str,
+    locked: Option<&LockEntry>,
+    nested: bool,
+) -> Result<LockEntry, String> {
+    let protocols = if nested { "https" } else { "https:file" };
     let (url, reference) = spec.split_once('#').ok_or("dependency needs url#tag")?;
     let root = cache_dir();
     std::fs::create_dir_all(&root).map_err(|e| format!("create {}: {e}", root.display()))?;
@@ -163,7 +180,7 @@ fn download(key: &str, spec: &str, locked: Option<&LockEntry>) -> Result<LockEnt
     let _ = remove_all(&temporary);
     std::fs::create_dir_all(&temporary)
         .map_err(|e| format!("create {}: {e}", temporary.display()))?;
-    let result = download_into(key, url, reference, locked, &temporary, &root);
+    let result = download_into(key, url, reference, locked, &temporary, &root, protocols);
     let _ = remove_all(&temporary);
     result.map(|mut entry| {
         entry.spec = spec.to_string();
@@ -178,17 +195,24 @@ fn download_into(
     locked: Option<&LockEntry>,
     temporary: &Path,
     root: &Path,
+    protocols: &str,
 ) -> Result<LockEntry, String> {
-    git(Some(temporary), &["init", "--quiet"])?;
-    git(Some(temporary), &["remote", "add", "origin", url])?;
+    git(Some(temporary), protocols, &["init", "--quiet"])?;
+    git(
+        Some(temporary),
+        protocols,
+        &["remote", "add", "--", "origin", url],
+    )?;
     if let Some(entry) = locked {
         git(
             Some(temporary),
+            protocols,
             &[
                 "fetch",
                 "--quiet",
                 "--depth",
                 "1",
+                "--",
                 "origin",
                 &entry.revision,
             ],
@@ -197,18 +221,23 @@ fn download_into(
     } else if is_commit(reference) {
         git(
             Some(temporary),
-            &["fetch", "--quiet", "--depth", "1", "origin", reference],
+            protocols,
+            &[
+                "fetch", "--quiet", "--depth", "1", "--", "origin", reference,
+            ],
         )
         .map_err(|e| format!("package {key}: {e}"))?;
     } else {
         let tag = format!("refs/tags/{reference}");
         git(
             Some(temporary),
+            protocols,
             &[
                 "fetch",
                 "--quiet",
                 "--depth",
                 "1",
+                "--",
                 "origin",
                 &format!("{tag}:{tag}"),
             ],
@@ -220,15 +249,21 @@ fn download_into(
     } else {
         format!("refs/tags/{reference}^{{commit}}")
     };
-    let commit = git(Some(temporary), &["rev-parse", "--verify", &revision])?
-        .trim()
-        .to_string();
+    let commit = git(
+        Some(temporary),
+        protocols,
+        &["rev-parse", "--verify", &revision],
+    )?
+    .trim()
+    .to_string();
     git(
         Some(temporary),
-        &["checkout", "--quiet", "--force", &commit],
+        protocols,
+        &["checkout", "--quiet", "--force", &commit, "--"],
     )?;
     remove_all(&temporary.join(".git"))?;
-    let hash = hash_tree(temporary).map_err(|e| format!("package {key}: {e}"))?;
+    let index = index_tree(temporary).map_err(|e| format!("package {key}: {e}"))?;
+    let hash = hash_index(&index);
     if let Some(entry) = locked
         && entry.sha256 != hash
     {
@@ -244,6 +279,11 @@ fn download_into(
             .map_err(|e| format!("store {}: {e}", destination.display()))?;
         read_only(&destination);
     }
+    let index_file = index_path(root, &hash);
+    if !index_file.is_file() {
+        std::fs::write(&index_file, &index)
+            .map_err(|e| format!("write {}: {e}", index_file.display()))?;
+    }
     Ok(LockEntry {
         spec: String::new(),
         revision: commit,
@@ -251,8 +291,9 @@ fn download_into(
     })
 }
 
-/// A package holds source only: a library manifest, no native declarations, and no effect
-/// permission beyond what the manifest declares.
+/// A package is a library with a manifest, no entry, no embedded files and no top-level `@`
+/// directory (which would look like a nested package in diagnostics). The checker enforces
+/// everything about its source: no native declarations, and no effect beyond `effects`.
 fn validate(key: &str, dir: &Path) -> Result<(), String> {
     let manifest = dir.join("ms.toml");
     if !manifest.is_file() {
@@ -271,44 +312,16 @@ fn validate(key: &str, dir: &Path) -> Result<(), String> {
             "package {key} declares [embed]; a package holds source only"
         ));
     }
-    let mut files = Vec::new();
-    ms_files(dir, &mut files);
-    for file in files {
-        let text = std::fs::read_to_string(&file).unwrap_or_default();
-        for line in text.lines() {
-            let line = line.trim();
-            if line.starts_with("extern ") || line.starts_with("export extern ") {
-                return Err(format!(
-                    "package {key}: {} declares an extern; packages cannot contain native declarations",
-                    file.display()
-                ));
-            }
-            if let Some(effect) = line.strip_prefix("// ms: allow_effect") {
-                let effect = effect.trim();
-                if uncovered(&package.effects, effect).is_some() {
-                    return Err(format!(
-                        "package {key}: {} permits {effect}, which its ms.toml does not declare; add it to effects under [project]",
-                        file.display()
-                    ));
-                }
-            }
+    let entries = std::fs::read_dir(dir).map_err(|e| format!("read {}: {e}", dir.display()))?;
+    for entry in entries.flatten() {
+        if entry.file_name().to_string_lossy().starts_with('@') {
+            return Err(format!(
+                "package {key} has a top-level {:?}; rename it, names starting with @ are reserved for packages",
+                entry.file_name()
+            ));
         }
     }
     Ok(())
-}
-
-fn ms_files(dir: &Path, out: &mut Vec<PathBuf>) {
-    let Ok(entries) = std::fs::read_dir(dir) else {
-        return;
-    };
-    for entry in entries.flatten() {
-        let path = entry.path();
-        if path.is_dir() {
-            ms_files(&path, out);
-        } else if path.extension().is_some_and(|e| e == "ms") {
-            out.push(path);
-        }
-    }
 }
 
 fn read_only(dir: &Path) {

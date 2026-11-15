@@ -8,7 +8,7 @@ Why: copying source with an alias had no pin, origin or check.
 
 Apply when: changing manifest parsing, import resolution, the loader's path confinement or logical file names, or `ms fetch`.
 
-Verified: package files live outside the project root, so confinement and the logical name (`@name/path` instead of a path from the root) come from `Project::confinement_root` and `Project::logical`; code that does `rel(project.root, file)` on a package file gets a `..` path. A package's imports resolve through its own manifest, so its dependency names stay private. Hash input excludes `.git` and `git` runs with `core.autocrlf=false`, or Windows hashes differ.
+Verified: package files live outside the project root, so confinement and the logical name (`@name/path` instead of a path from the root) come from `Project::confinement_root` and `Project::logical`; code that does `rel(project.root, file)` on a package file gets a `..` path. A package's imports resolve through its own manifest, so its dependency names stay private. Hash input (an index of per-file hashes, checked per file as the loader reads) excludes `.git`, and `git` runs with `core.autocrlf=false`, or Windows hashes differ.
 
 Evidence: [proposal](../../proposals/packages.md), [packages.rs](../../crates/ms-driver/src/project/packages.rs), [fetch.rs](../../crates/ms-cli/src/fetch.rs), [test](../../crates/ms-cli/tests/packages.rs).
 Verify: `cargo test -p ms-cli --test it packages`.

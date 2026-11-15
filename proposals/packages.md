@@ -50,7 +50,7 @@ import connect from "@pg/client.ms"
 "@pg/@wire" = "https://github.com/manuscript-lang/wire.git 77b0…(40 hex) sha256:e4d2…(64 hex)"
 ```
 
-- The hash covers the files of the checked-out tree except `.git`: for each path in byte order, the path, a zero byte, the length, a zero byte, the bytes. Fetch passes `core.autocrlf=false` so Windows hashes match.
+- The hash is the SHA-256 of an index: one line per file in path order, holding the `/` path and the file's own SHA-256. `ms fetch` stores the index beside the package. A build checks the index against the lock once, then checks each file against its line as the loader reads it, so cost follows the files imported. Measured (release, 3 packages of 320 KB, none imported, 150 interleaved runs): whole-tree rehash added 12 ms to a 46 ms `ms check`; the index adds under 4 ms (median), minimums equal. Fetch passes `core.autocrlf=false` so Windows hashes match.
 - Symbolic links and non-UTF-8 names in a package are errors, as in `[embed]`.
 
 **Commands.**
@@ -60,16 +60,23 @@ import connect from "@pg/client.ms"
 - `check`, `build`, `run`, `test`, `lint` never use the network. A missing or stale lock, or a package missing from the cache, is an error that says to run `ms fetch`. A cached package is rehashed on first use in a build.
 - A `file://` URL works, so tests and offline mirrors need no server.
 
-**Effects.** A package declares what it may reach; the importer must allow it.
+**Effects.** A package declares what it may reach; the importer must allow it; the checker enforces both.
 
-- Package `ms.toml`: `[project]` gains `effects = "std.net.* std.fs.read"`, space-separated, same patterns as `// ms: allow_effect`. No key means pure. Package files may not permit more than this.
-- Consumer `ms.toml`: a new `[effects]` table gives, per dependency, what the project allows: `"@pg" = "std.net.*"`. A package whose declared effects are not covered by that line is an error naming the missing effect. A new effect in an updated package therefore fails the build until the consumer edits the manifest.
-- `ms fetch` prints each package's declared effects. Consumer `ms lint` follows calls into packages as into any module. (Hypothesis: verify the call-graph walk crosses package modules.)
-- No build scripts: a package is source only; nothing runs at fetch or build.
+- Package `ms.toml`: `[project]` gains `effects = "std.net.* std.fs.read"`, space-separated, same patterns as `// ms: allow_effect`. No key means pure. The declaration is also the default permit for every function in the package, so its files need no `allow_effect` lines; a line can only narrow it.
+- Consumer `ms.toml`: a new `[effects]` table gives, per dependency, what the project allows: `"@pg" = "std.net.*"`. A package whose declared effects are not covered is an error naming the missing effect. A package that adds an effect in a later tag fails the build until the consumer edits the manifest.
+- Enforcement: the checker computes the effects each package function reaches, through its dependencies too, and `ms check` and `ms build` fail when one is outside the package's declaration. A package cannot hand a dependency effects it does not declare itself: the dependency's declaration must be inside the package's, and inside what the package's own `[effects]` allows.
+- `ms fetch` prints each package's declared effects. No build scripts: a package is source only; nothing runs at fetch or build.
+
+**Safety.**
+
+- `ms.lock` is untrusted input: a revision must be 40 lowercase hex digits and a hash 64, a key must be `@name` segments, and a URL must pass the same check as the manifest (`https://` or `file://`, not starting with `-`, a plain tag).
+- Every git call sets `GIT_TERMINAL_PROMPT=0` and `GIT_ALLOW_PROTOCOL` (`https`, plus `file` for the project's own dependencies), and puts `--` before positional arguments.
+- A package's own dependencies must use `https://`: `file://` would read the machine that runs `ms fetch`.
+- The checker rejects `extern fn` and `extern type` in any module of a package.
 
 **Tooling.** `ms search_symbol` indexes fetched packages; modules show as `@pg/client.ms`, with the tag. `ms diagram` draws each package as one node labelled `@pg v0.1.0` in the module view. The LSP resolves `@pg/...` through the lock.
 
-**Checked.** The manifest, `ms fetch`, the import and the offline check run against a `file://` repository in `crates/ms-cli/tests/packages.rs`. Native declarations and extra permissions in a package are rejected at `ms fetch`; the hash then pins that content.
+**Checked.** The manifest, `ms fetch`, the import and the offline check run against a `file://` repository in `crates/ms-cli/tests/packages.rs`. The checker rejects natives and undeclared effects in a package; the lock reader and the git calls are covered by unit tests and an end-to-end test with a tampered lock.
 
 ## Components touched
 
@@ -78,7 +85,7 @@ import connect from "@pg/client.ms"
 | `crates/ms-driver/src/project/manifest.rs` | parse `[dependencies]`, lock reader and writer | unit: duplicate key, branch rejected, alias collision |
 | `crates/ms-driver/src/imports.rs`, `load.rs` | resolve `@name/` per package; private names | conformance: two versions, private name |
 | `crates/ms-cli` | `ms fetch`, hashing (reuse `ms-tooling` `sha256.rs`), cache | e2e on a `file://` repo, all platforms |
-| `crates/ms-check` | reject `extern fn` and effect lines beyond `effects` in packages; `[effects]` check | conformance reject cases |
+| `crates/ms-check` | package scope: reject `extern`, cap reachable effects at the declaration | `crates/ms-cli/tests/packages.rs` |
 | `packages/postgres` | first package: Postgres client over `@std/net` TCP and TLS | e2e against a database |
 | `crates/ms-tooling`, `ms-lsp` | search_symbol, diagram, lint across packages | existing suites plus one case each |
 | `documentation/` | replace "copied dependencies" with packages | doc example tests |

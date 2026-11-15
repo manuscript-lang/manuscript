@@ -483,7 +483,7 @@ fn read_into(filename: &str, p: &mut Project) -> Result<(), ProjectError> {
     Ok(())
 }
 
-fn valid_alias(key: &str) -> bool {
+pub(crate) fn valid_alias(key: &str) -> bool {
     let Some(rest) = key.strip_prefix('@') else {
         return false;
     };

@@ -53,6 +53,8 @@ pub struct Graph {
     /// Paths besides the modules that the load depended on: symbolic links an import passed
     /// through, and embedded directories and files. A change to one is a source change.
     pub inputs: Vec<String>,
+    /// Fetched packages the project reaches, with the effects each declares.
+    pub packages: Vec<ms_check::PackageScope>,
 }
 
 /// Diagnostics pass through import edges unchanged; plain errors and cycles
@@ -154,6 +156,19 @@ fn load_entries(
     let mut graph = Graph {
         source_root: config.root.clone(),
         inputs: seen,
+        packages: config
+            .packages
+            .iter()
+            .map(|p| ms_check::PackageScope {
+                prefix: format!("{}/", p.key),
+                effects: p
+                    .project
+                    .effects
+                    .split_whitespace()
+                    .map(str::to_string)
+                    .collect(),
+            })
+            .collect(),
         ..Graph::default()
     };
     if manifest {
@@ -532,8 +547,15 @@ impl Loader<'_> {
             }
             generated.map_err(Failure::Error)?.into_bytes()
         } else {
-            std::fs::read(canonical)
-                .map_err(|e| Failure::Error(ProjectError::path("open", canonical, &e)))?
+            let bytes = std::fs::read(canonical)
+                .map_err(|e| Failure::Error(ProjectError::path("open", canonical, &e)))?;
+            // A package file is checked against the locked index as it is read.
+            if let Some(package) = self.config.package_of(canonical) {
+                let relative = pathops::rel(&package.root, canonical).map_err(Failure::Error)?;
+                crate::project::packages::verify_file(package, &relative, &bytes)
+                    .map_err(Failure::Error)?;
+            }
+            bytes
         };
         let text = String::from_utf8(bytes).map_err(|_| {
             Failure::diagnostic(Box::new(Diagnostic::parse(

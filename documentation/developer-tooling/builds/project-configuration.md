@@ -132,10 +132,11 @@ import connect from "@pg/client.ms"
 - `check`, `build`, `run`, `test` and `lint` never use the network. A missing lock entry or missing cache entry is an error that says to run `ms fetch`. A locked build works offline.
 - `ms fetch --update @pg` resolves the tag again and rewrites that entry. A tag that moved, or changed content, fails against the lock until you update it.
 - Packages are cached read-only outside the project, in a directory named by the content hash: `$XDG_CACHE_HOME/ms/packages` (or `$HOME/.cache/ms/packages`, `%LOCALAPPDATA%\ms\packages` on Windows). `MS_PACKAGE_CACHE` overrides it.
-- The hash covers every file except `.git`: each path, length and bytes in path order. Symbolic links and non-UTF-8 names are errors.
+- The hash is the SHA-256 of an index listing each file's path and own SHA-256, stored beside the package. A build checks the index once and each file as it is read, so a cached file changed after the fetch is an error. Symbolic links and non-UTF-8 names are errors.
 - A package's own dependencies are private to it: importing `@name` there does not give the project that name. Two tags of one repository are two packages with different types.
-- A package declares what it may reach with `effects = "std.net.*"` under `[project]`, using the patterns of [`allow_effect`](../../core-language/functions/effects.md). Without the key it is pure. The project must allow each declared effect under `[effects]`, or the package is rejected and the error names the effect. A package may not contain `// ms: allow_effect` lines beyond its declaration.
-- Packages hold source only: no `entry`, no `[embed]`, no `extern` declarations, no build scripts. Nothing runs when a package is fetched.
+- A package declares what it may reach with `effects = "std.net.*"` under `[project]`, using the patterns of [`allow_effect`](../../core-language/functions/effects.md). Without the key it is pure. The project must allow each declared effect under `[effects]`, or the package is rejected and the error names the effect. The checker holds the package to its declaration: if any function in it, or in a dependency it calls, reaches an effect it did not declare, `check` and `build` fail. The declaration is the default permit for the package's functions; an `allow_effect` line there can only narrow it. A package cannot give a dependency effects it does not declare itself.
+- Packages hold source only: no `entry`, no `[embed]`, no `extern` declarations (the checker rejects them), no build scripts. Nothing runs when a package is fetched.
+- A dependency is `https://` or, for the project's own dependencies only, `file://`. A package's own dependencies must use `https://`. `ms.lock` is validated as untrusted input: 40-digit commits, 64-digit hashes, and the same URL rules.
 
 ## Resolving an import
 
