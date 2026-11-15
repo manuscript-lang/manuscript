@@ -90,7 +90,9 @@ handle_newtype! {
     /// An `HttpHeaders` handle; `HttpHeaders.clone` copies the headers.
     HeadersH(Bound<crate::http::headers::Shared>): clone;
     /// The settings every connection of one `serve` call shares.
-    ServingH(std::rc::Rc<crate::ffi::http_server::Serving>);
+    ServingH(crate::ffi::http_server::Serving);
+    /// What one `serve` worker reads of the serving.
+    SpecH(std::sync::Arc<crate::ffi::http_server::Shared>);
     /// The server of one `serve` worker thread.
     WorkerH(Bound<std::rc::Rc<crate::http::server::Server>>);
     /// An `HttpClient` handle.

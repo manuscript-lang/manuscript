@@ -275,7 +275,7 @@ impl Checker {
     /// A package holds source only: its native declarations are errors.
     fn reject_package_natives(&mut self, module: &ModRef) {
         let file = self.syms.str(module.file);
-        let Some(package) = self.package_of(file) else {
+        let Some(package) = self.package_of(file).filter(|p| !p.member) else {
             return;
         };
         let name = package.prefix.trim_end_matches('/').to_string();

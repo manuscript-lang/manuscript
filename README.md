@@ -23,11 +23,11 @@ import buffered, headers, HttpRequest, HttpResponse from "@std/net/http.ms"
 import serve from "@std/net/net.ms"
 
 fn handle(request: HttpRequest) HttpResponse:
-    return HttpResponse(200, headers(), "hello {request.path}".to_bytes())
+    return HttpResponse(200, headers(), f"hello {request.path}".to_bytes())
 
 fn main() Void!:
     server := serve("127.0.0.1:0", buffered(handle))?
-    print("{server.address()}")
+    print(f"{server.address()}")
     server.wait()?
 ```
 
@@ -76,7 +76,7 @@ fn save(order: String) Void!:
     return write_file("orders.log", order).wait()
 
 fn audit(total: Int) Void!:
-    return save("audit {total}")
+    return save(f"audit {total}")
 ```
 
 Declare an effect once, and `ms lint` flags every caller that did not allow it, naming the call chain that brings it in. Effects are comments, so the language gains no extra syntax.

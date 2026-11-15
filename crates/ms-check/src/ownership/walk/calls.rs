@@ -354,26 +354,32 @@ impl Walker<'_> {
             }
             operands.push((Operand::Argument(&a.value), held, Vec::new()));
         }
-        // A promise handed to a local container (`tasks.append(promise(fn: ...))`) is kept by that
-        // local: it reads its captures until the container's scope ends.
+        // A promise handed to a container (`tasks.append(promise(fn: ...))`, or a list inside a
+        // record, `acc.tasks.append(...)`) is kept by the local that owns the container: it reads
+        // its captures until that local's scope ends.
         if let Some(r) = receiver_expr
-            && let ExprKind::Name(_) = &r.kind
-            && let Resolution::Local(holder) = self.cx.m.resolution(r)
+            && let Some(holder) = self.container_root(r)
         {
             self.take_carried(holder.uid, holder.name);
             for a in args {
-                if !self.entry_call(&a.value) {
-                    continue;
-                }
-                let origins = self.entry_places(&a.value);
-                if !origins.is_empty() {
-                    self.active.push(Borrow {
-                        holder: holder.uid,
-                        holder_name: holder.name,
-                        origins: origins.into_iter().map(|p| (p, false)).collect(),
-                        pos: a.value.pos,
-                        why: PROMISE_WHY.to_string(),
-                    });
+                let mut parts = Vec::new();
+                collect_parts(
+                    &a.value,
+                    &|c| matches!(self.cx.m.resolution(c), Resolution::Constructor { .. }),
+                    &mut parts,
+                );
+                let starts: Vec<&Expr> = parts.into_iter().filter(|p| self.entry_call(p)).collect();
+                for part in starts {
+                    let origins = self.entry_places(part);
+                    if !origins.is_empty() {
+                        self.active.push(Borrow {
+                            holder: holder.uid,
+                            holder_name: holder.name,
+                            origins: origins.into_iter().map(|p| (p, false)).collect(),
+                            pos: part.pos,
+                            why: PROMISE_WHY.to_string(),
+                        });
+                    }
                 }
             }
         }

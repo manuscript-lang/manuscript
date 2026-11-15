@@ -790,8 +790,19 @@ impl Walker<'_> {
         };
         let saved = self.self_assign;
         self.self_assign = refilled.map(|b| b.uid);
+        // A promise started in the assigned value is kept by the target, which may outlive this
+        // block, so its lambda owns what it captures, as for a returned promise.
+        self.returned_promises_own_captures(value);
         self.expr(value, Demand::Move);
         self.self_assign = saved;
+        // A promise moved in from a local keeps its borrows with the target.
+        let holder = match target {
+            AssignTarget::Name(_) => self.cx.m.assigned(value),
+            AssignTarget::Member(t) => self.container_root(t),
+        };
+        if let Some(h) = holder {
+            self.take_carried(h.uid, h.name);
+        }
         match target {
             AssignTarget::Name(name) => {
                 let Some(b) = self.cx.m.assigned(value) else {

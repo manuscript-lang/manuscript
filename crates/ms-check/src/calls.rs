@@ -367,8 +367,23 @@ impl Checker {
             i.arguments = slots(&resolved);
             let alt = self.instantiate(&alt, &cs.fields, &resolved, expected, e.pos);
             let cs = case_of(&alt, cs.name).unwrap_or(cs);
-            i.no_return =
-                self.arguments_for(self.syms.str(cs.name), e.pos, &resolved, &cs.fields, &None);
+            // `ok()` of a `Void!` result omits its Void payload; the call resolved to the
+            // prelude constructor, so a local named `ok` never reaches here.
+            let void_payload = args.is_empty()
+                && alt.is(Builtin::Result)
+                && matches!(cs.fields.as_slice(), [f] if f.ty.is(Builtin::Void));
+            let defaults: Defaults = void_payload.then(|| {
+                std::rc::Rc::new(ParameterDefaults::new(
+                    cs.fields.iter().map(|f| f.name).collect(),
+                ))
+            });
+            i.no_return = self.arguments_for(
+                self.syms.str(cs.name),
+                e.pos,
+                &resolved,
+                &cs.fields,
+                &defaults,
+            );
             i.ty = Some(alt.clone());
             i.constructor = Some(alt);
             i.case = Some(cs.name);

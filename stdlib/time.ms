@@ -249,12 +249,22 @@ fn Timestamp.shift(duration: Duration) Timestamp!:
 	if self.seconds > 300000000000 or self.seconds < -300000000000:
 		return error(out_of_range())
 
-	left := floor_split(self.nanos)
-	right := floor_split(duration.nanos)
-	var carry = left.whole + right.whole
-	var nanos = left.rest + right.rest
+	// Fields built by this module are already normalized; only raw ones need a split.
+	var carry = duration.nanos / 1000000000
+	var nanos = self.nanos
 
-	if nanos >= 1000000000:
+	if nanos < 0 or nanos >= 1000000000:
+		left := floor_split(nanos)
+		carry += left.whole
+		nanos = left.rest
+
+	nanos += duration.nanos % 1000000000
+
+	// The remainders sum to between -999999999 and 1999999998.
+	if nanos < 0:
+		nanos += 1000000000
+		carry -= 1
+	else if nanos >= 1000000000:
 		nanos -= 1000000000
 		carry += 1
 
@@ -265,6 +275,28 @@ fn Timestamp.shift(duration: Duration) Timestamp!:
 
 // Returns `self - right` as a duration.
 fn Timestamp.difference(other: Timestamp) Duration!:
+	// Normalized fields of nearby timestamps: the subtraction and product cannot
+	// overflow.
+	if (
+		self.nanos >= 0
+		and self.nanos < 1000000000
+		and other.nanos >= 0
+		and other.nanos < 1000000000
+	):
+		if (
+			self.seconds < 4000000000000
+			and self.seconds > -4000000000000
+			and other.seconds < 4000000000000
+			and other.seconds > -4000000000000
+		):
+			close := self.seconds - other.seconds
+			if close > -9000000000 and close < 9000000000:
+				return ok(
+					Duration(
+						nanos: close * 1000000000 + self.nanos - other.nanos
+					)
+				)
+
 	// Seconds of opposite sign can overflow when subtracted; the result would be far
 	// outside a Duration anyway.
 	if (

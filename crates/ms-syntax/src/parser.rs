@@ -2962,20 +2962,7 @@ impl<'a> Parser<'a> {
             } else if self.take(Tok::LParen) {
                 self.link(&mut links)?;
                 let pos = e.pos;
-                let mut args = self.call_arguments()?;
-                // `ok()` is `ok(void)`: success with nothing to carry. The argument sits at the
-                // callee's position, where no source text of its own exists.
-                if args.is_empty()
-                    && matches!(&e.kind, ExprKind::Name(n) if self.names.str(*n) == "ok")
-                {
-                    let value = self.mk(pos, ExprKind::Void);
-                    args.push(Argument {
-                        pos,
-                        name: None,
-                        value,
-                        mutable: false,
-                    });
-                }
+                let args = self.call_arguments()?;
                 e = self.mk(
                     pos,
                     ExprKind::Call {

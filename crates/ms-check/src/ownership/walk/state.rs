@@ -393,6 +393,25 @@ impl Walker<'_> {
         Step::Element
     }
 
+    /// The local that owns the container `e` names: `tasks`, or `acc` for `acc.tasks` and
+    /// `acc.groups[0].tasks`. Nothing is evaluated.
+    pub(super) fn container_root(&self, e: &Expr) -> Option<BindingRef> {
+        match &e.kind {
+            ExprKind::Name(_) => match self.cx.m.resolution(e) {
+                Resolution::Local(b) => Some(b.clone()),
+                _ => None,
+            },
+            ExprKind::Member { left, .. }
+            | ExprKind::Index { left, .. }
+            | ExprKind::Apply {
+                left,
+                value: Some(_),
+                ..
+            } => self.container_root(left),
+            _ => None,
+        }
+    }
+
     /// Evaluates the index expressions of a place chain and returns the place.
     pub(super) fn place(&mut self, e: &Expr) -> Option<(PlaceInfo, Place)> {
         match &e.kind {
