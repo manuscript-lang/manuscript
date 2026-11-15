@@ -6,3 +6,5 @@ tests/conformance/** text eol=lf
 # Everything else is text with LF too: tests compare byte offsets and sizes of fixtures,
 # recorded corpora and guide text, and git detects binary files on its own.
 * text=auto eol=lf
+# Vendored published-suite data keeps its exact bytes, including CR line endings.
+tests/conformance/fixtures/e2e/projects/*_suite/data/** -text
