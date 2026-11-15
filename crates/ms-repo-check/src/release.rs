@@ -22,6 +22,37 @@ pub fn extension_version() -> Vec<String> {
     )]
 }
 
+/// `.msversion` is a calendar version, `YYYY.M.PATCH`: a year, a month 1 to 12 and a patch, with no leading
+/// zeros, so it is also valid semver (the VS Code extension, tags and installers rely on that).
+pub fn calendar_version() -> Vec<String> {
+    let Ok(text) = std::fs::read_to_string(".msversion") else {
+        return vec!["cannot read .msversion".into()];
+    };
+    match calendar_error(text.trim()) {
+        Some(why) => vec![format!(".msversion {:?}: {why}", text.trim())],
+        None => Vec::new(),
+    }
+}
+
+fn calendar_error(version: &str) -> Option<&'static str> {
+    let parts: Vec<&str> = version.split('.').collect();
+    let [year, month, patch] = parts.as_slice() else {
+        return Some("write YYYY.M.PATCH, for example 2026.11.0");
+    };
+    let plain = |part: &str| {
+        !part.is_empty()
+            && part.bytes().all(|b| b.is_ascii_digit())
+            && (part == "0" || !part.starts_with('0'))
+    };
+    if !(plain(year) && plain(month) && plain(patch)) {
+        return Some("each part is digits with no leading zero, so the version is valid semver");
+    }
+    match (year.parse::<u32>(), month.parse::<u32>()) {
+        (Ok(2000..=9999), Ok(1..=12)) => None,
+        _ => Some("the year has four digits and the month is 1 to 12"),
+    }
+}
+
 /// The CI workflow must run on every PR, whatever files it changes, and on the merge queue's combined
 /// commit: the ruleset on `main` requires its `Platform checks` job.
 pub fn workflow_triggers() -> Vec<String> {
@@ -74,9 +105,28 @@ fn triggers(text: &str) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::triggers;
+    use super::{calendar_error, triggers};
 
     const GOOD: &str = "name: x\n\non:\n  push:\n    branches: [main]\n  pull_request:\n  merge_group:\n    types: [checks_requested]\n\njobs:\n  a:\n    paths: x\n";
+
+    #[test]
+    fn calendar_versions_are_year_month_patch_without_leading_zeros() {
+        for good in ["2026.11.0", "2027.1.3", "2026.12.10"] {
+            assert_eq!(calendar_error(good), None, "{good}");
+        }
+        for bad in [
+            "0.1.0",
+            "2026.01.0",
+            "2026.13.0",
+            "2026.11",
+            "2026.11.0.1",
+            "v2026.11.0",
+            "2026.11.01",
+            "26.11.0",
+        ] {
+            assert!(calendar_error(bad).is_some(), "{bad}");
+        }
+    }
 
     #[test]
     fn accepts_required_triggers() {

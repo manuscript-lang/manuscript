@@ -116,7 +116,7 @@ A package is a library project in a git repository. Name it under `[dependencies
 
 ```toml
 [dependencies]
-"@pg" = "https://github.com/manuscript-lang/manuscript.git#v0.1.0"
+"@pg" = "https://github.com/manuscript-lang/manuscript.git#v2026.11.0"
 
 [effects]
 "@pg" = "std.net.*"
