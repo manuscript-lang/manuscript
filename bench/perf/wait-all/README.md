@@ -100,3 +100,23 @@ gave 40000 wait_all at 1 thread 1.027x (IQR 14 ms on 41 ms), 1-promise ordered 1
 four threads the ordered case is dominated by cross-thread scheduling, not this scan.
 The change adds one id comparison for a promise that is not at the front. Machine:
 shared Linux x86-64 VM; wall-clock, not instruction counts.
+
+## 2026-11-15: a failing member ends an earlier promise's inline run (#4030, #4032)
+
+`wait_all` lends its id list to the runtime so a member that fails while the waiter runs an
+earlier promise inline ends that run at its next wait. The no-failure case now does a little
+more work per promise. Instructions under `callgrind` (`MS_THREADS=1`, `immediate` mode, one
+run each; instruction counts are deterministic), release (LLVM) `ms` built from `main`
+(`bcef9d7ac`) and from the change:
+
+| Case (`count immediate`) | Backend | Before | After | Change |
+| --- | --- | ---: | ---: | ---: |
+| 40000 | LLVM (release) | 186,189,073 | 188,789,700 | +1.40% |
+| 100000 | LLVM (release) | 458,499,849 | 465,000,480 | +1.42% |
+| 40000 | Cranelift (debug) | 195,549,775 | 200,470,269 | +2.52% |
+| 100000 | Cranelift (debug) | 481,900,567 | 494,201,078 | +2.55% |
+
+This is over the 1% line for a perf-affecting change. Chinmay accepted the cost on
+2026-11-15 in exchange for fail-fast `wait_all`. The four programs behind
+`bench/perf/counts.txt` do not call `wait_all`, so that baseline is unchanged.
+Machine: shared Linux x86-64 VM.

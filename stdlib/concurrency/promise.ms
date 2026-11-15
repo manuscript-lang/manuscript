@@ -6,10 +6,11 @@ import (
 	msrt_cancel_fired,
 	msrt_cancel_free,
 	msrt_cancel_new,
-	msrt_group_add,
 	msrt_group_free,
+	msrt_group_join,
 	msrt_group_new,
 	msrt_group_next,
+	msrt_group_poll,
 	msrt_promise_cancel,
 	msrt_promise_defer,
 	msrt_promise_done,
@@ -19,7 +20,7 @@ import (
 	msrt_promise_new,
 	msrt_promise_on_cancel,
 	msrt_promise_put,
-	msrt_promise_run_unstarted,
+	msrt_promise_run_watched,
 	msrt_promise_start,
 	msrt_promise_start_here,
 	msrt_promise_start_spread,
@@ -245,6 +246,37 @@ opaque type WaitSet:
 fn var WaitSet.close() Unit!:
 	msrt_group_free(self.id)
 
+// The error `wait_all` reports when the run of the promise at `head` was ended by a
+// failure: that of the first promise of the set to fail.
+fn first_failure[T](
+	set: Int,
+	pending: List[Promise[T]],
+	taken: List[Bool],
+	head: Int,
+) Error:
+	var at = msrt_group_poll(set)
+
+	while at >= 0:
+		if not taken[at] and at != head:
+			result := pending[at].wait()
+
+			match result:
+				ok(_): at = msrt_group_poll(set)
+				error(cause): return cause.clone()
+		else:
+			at = msrt_group_poll(set)
+
+	return Error("promise: cancelled")
+
+// Results of `msrt_promise_run_watched`: nothing ran, a promise ran, a failure ended
+// the run.
+fn ran_nothing(result: Int) Bool: result == 0
+
+fn run_interrupted(result: Int) Bool: result == 2
+
+// Result of `msrt_group_join`: some promises belong to another thread and are polled.
+fn joined_partly(result: Int) Bool: result == 2
+
 // Waits for every promise and returns the results in order. The first promise to fail,
 // in time rather than list order, ends the wait: the promises still running are
 // cancelled and waited for before `wait_all` returns its error.
@@ -253,20 +285,23 @@ export fn wait_all[T](promises: List[Promise[T]]) List[T]!:
 	count := pending.length()
 	var slots: List[T!] = []
 	var taken: List[Bool] = []
+	var members: List[Int] = []
 	set := WaitSet(id: msrt_group_new())
 
 	for at in 0..count:
 		slots.append(error(Error("promise: not finished")))
 		taken.append(false)
+		members.append(pending[at].id)
 
-	// In list order, take what is finished. When the next one is not, block until
-	// anything finishes and take it, so a failure behind a slow promise ends the wait
-	// without waiting for the slow one. The set reports each finished promise once; a
-	// promise that cannot join it (another thread's) is polled with `wait_any` instead.
+	// In list order, take what is finished. A promise that has not started runs here,
+	// and when it first waits the rest join the set (`mode` 1; 2 when one cannot join
+	// and is polled with `wait_any` instead), so a failure behind a slow promise ends
+	// that run and the wait without waiting for the slow one. A run that never waits
+	// costs nothing for watching. When the next promise is not finished, block until
+	// anything finishes and take it. The set reports each finished promise once.
 	var head = 0
 	var tried = -1
-	var watching = false
-	var polling = false
+	var mode = 0
 
 	while head < count:
 		if taken[head]:
@@ -278,22 +313,22 @@ export fn wait_all[T](promises: List[Promise[T]]) List[T]!:
 		fresh := head != tried
 		tried = head
 
-		if (
-			(fresh and msrt_promise_run_unstarted(pending[head].id))
-			or pending[head].done()
-		):
+		var ran = 0
+		if fresh:
+			ran = msrt_promise_run_watched(pending[head].id, set.id, members, head)
+		if run_interrupted(ran): return error(
+			first_failure(set.id, pending, taken, head)
+		)
+
+		if not ran_nothing(ran) or pending[head].done():
 			value := pending[head].wait()?
 			slots[head] = ok(value)
 			taken[head] = true
 			head += 1
-		else if not polling:
-			if not watching:
-				watching = true
-				for at in head..count:
-					if not taken[at] and not msrt_group_add(set.id, pending[at].id, at):
-						polling = true
+		else if not joined_partly(mode):
+			mode = msrt_group_join(set.id, members, head)
 
-			if not polling:
+			if not joined_partly(mode):
 				at := msrt_group_next(set.id)
 
 				if at >= 0 and not taken[at]:
