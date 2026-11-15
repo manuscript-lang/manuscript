@@ -1641,6 +1641,8 @@ pub struct PackageScope {
     pub spec: String,
     /// The package's declared effect patterns; empty means pure.
     pub effects: Vec<String>,
+    /// A workspace member: the project's own code, so it may declare natives.
+    pub member: bool,
 }
 
 /// The package holding the module file `file`, by the longest matching prefix.

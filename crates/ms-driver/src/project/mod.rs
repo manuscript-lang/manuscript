@@ -29,6 +29,7 @@ pub mod packages;
 pub mod pathops;
 pub mod paths;
 pub mod quoting;
+pub mod workspace;
 
 pub use discovery::{discover_modules, discover_modules_with_overlay, discovered_directories};
 pub use error::{Location, ManifestError, PathError, ProjectError};

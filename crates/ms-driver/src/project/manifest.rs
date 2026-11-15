@@ -32,6 +32,11 @@ pub struct Project {
     pub embed: BTreeMap<String, String>,
     /// `[dependencies]`: package names mapped to `url#tag`.
     pub dependencies: BTreeMap<String, String>,
+    /// `[dependencies]` written `{ path = "../util" }`: names mapped to the canonical directory
+    /// of another workspace member. Never locked.
+    pub path_dependencies: BTreeMap<String, String>,
+    /// `[workspace] members`, as written; `Some` only in a workspace root.
+    pub members: Option<Vec<String>>,
     /// `[effects]`: for each dependency, the effects this project allows it.
     pub allowed_effects: BTreeMap<String, Vec<String>>,
     /// `[project] effects`: the effects this project, as a package, may use.
@@ -196,13 +201,14 @@ fn read_into(filename: &str, p: &mut Project) -> Result<(), ProjectError> {
             "embed" => "embed",
             "dependencies" => "dependencies",
             "effects" => "effects",
+            "workspace" => "workspace",
             _ => {
                 let advice = if name == "package" {
                     "rename it to [project] with name, source, and entry"
                 } else {
                     "ms.toml has no other tables"
                 };
-                return Err(fail.at(&location, format!("unsupported manifest table [{name}]; ms.toml supports only [project], [aliases], [embed], [dependencies] and [effects]: {advice}")));
+                return Err(fail.at(&location, format!("unsupported manifest table [{name}]; ms.toml supports only [project], [workspace], [aliases], [embed], [dependencies] and [effects]: {advice}")));
             }
         };
         if section == "project" {
@@ -230,11 +236,38 @@ fn read_into(filename: &str, p: &mut Project) -> Result<(), ProjectError> {
                     check_package_name(&fail, &key, &key_location)?;
                     p.allowed_effects.insert(key, list);
                 }
+                "workspace" => {
+                    if key != "members" {
+                        return Err(fail.at(
+                            &key_location,
+                            format!("unknown workspace key {key}; [workspace] accepts members"),
+                        ));
+                    }
+                    let list = string_list(value)
+                        .map_err(|e| fail.at(&location, format!("members: {e}")))?;
+                    p.members = Some(list);
+                }
                 "dependencies" => {
                     check_package_name(&fail, &key, &key_location)?;
-                    let spec = dependency(value)
-                        .map_err(|e| fail.at(&location, format!("dependency {key}: {e}")))?;
-                    p.dependencies.insert(key, spec);
+                    match dependency(value)
+                        .map_err(|e| fail.at(&location, format!("dependency {key}: {e}")))?
+                    {
+                        Dependency::Git(spec) => {
+                            p.dependencies.insert(key, spec);
+                        }
+                        Dependency::Path(path) => {
+                            let target = pathops::join(&[&root, &path]);
+                            let target = pathops::eval_symlinks(&target).map_err(|e| {
+                                fail.at(
+                                    &location,
+                                    format!(
+                                        "dependency {key}: path {path:?} cannot be resolved: {e}"
+                                    ),
+                                )
+                            })?;
+                            p.path_dependencies.insert(key, target);
+                        }
+                    }
                 }
                 "project" if key == "effects" => {
                     p.effects = string_list(value)
@@ -284,6 +317,17 @@ fn read_into(filename: &str, p: &mut Project) -> Result<(), ProjectError> {
         }
     }
     location = p.location.clone();
+    // A root that only lists members has no source of its own.
+    if p.members.is_some() && !p.assignments.keys().any(|k| k.starts_with("project.")) {
+        if let Some(extra) = p.assignments.keys().find(|k| !k.starts_with("workspace.")) {
+            let table = extra.split('.').next().unwrap_or(extra);
+            return Err(fail.at(
+                &p.assignments[extra].key.clone(),
+                format!("a workspace root without [project] holds only [workspace]; move [{table}] into a member or add a [project] table"),
+            ));
+        }
+        return Ok(());
+    }
     if p.name.is_empty() || p.source.is_empty() {
         let mut missing = Vec::new();
         if p.name.is_empty() {
@@ -351,7 +395,7 @@ fn read_into(filename: &str, p: &mut Project) -> Result<(), ProjectError> {
             }
         }
     }
-    for key in p.dependencies.keys() {
+    for key in p.dependencies.keys().chain(p.path_dependencies.keys()) {
         if p.aliases.contains_key(key) || p.embed.contains_key(key) {
             return Err(fail.at(
                 &p.assignments[&format!("dependencies.{key}")].key.clone(),
@@ -359,8 +403,16 @@ fn read_into(filename: &str, p: &mut Project) -> Result<(), ProjectError> {
             ));
         }
     }
+    for key in p.path_dependencies.keys() {
+        if p.dependencies.contains_key(key) {
+            return Err(fail.at(
+                &p.assignments[&format!("dependencies.{key}")].key.clone(),
+                format!("{key} is declared twice in [dependencies]; keep one"),
+            ));
+        }
+    }
     for key in p.allowed_effects.keys() {
-        if !p.dependencies.contains_key(key) {
+        if !p.dependencies.contains_key(key) && !p.path_dependencies.contains_key(key) {
             return Err(fail.at(
                 &p.assignments[&format!("effects.{key}")].key.clone(),
                 format!("[effects] names {key}, which is not under [dependencies]; remove it or add the dependency"),
@@ -484,14 +536,22 @@ fn check_package_name(fail: &Failure, key: &str, at: &Location) -> Result<(), Pr
     ))
 }
 
-/// A dependency is a table, `{ url = "https://...", tag = "v1" }` or `{ url = "...", sha = "<40 hex>" }`.
-/// Returns the `url#reference` form the lock file records.
-fn dependency(item: &toml_edit::Item) -> Result<String, String> {
+/// A dependency read from `[dependencies]`.
+enum Dependency {
+    /// The `url#reference` form the lock file records.
+    Git(String),
+    /// A path to another workspace member, as written.
+    Path(String),
+}
+
+/// A dependency is a table, `{ url = "https://...", tag = "v1" }`, `{ url = "...", sha = "<40 hex>" }`
+/// or `{ path = "../util" }` (another workspace member).
+fn dependency(item: &toml_edit::Item) -> Result<Dependency, String> {
     let shape = "write { url = \"https://github.com/acme/pg.git\", tag = \"v1.0.0\" }, or sha = \"<40-digit commit>\" in place of tag";
     let table = item
         .as_table_like()
         .ok_or_else(|| format!("a dependency is a table; {shape}"))?;
-    let (mut url, mut tag, mut sha) = (None, None, None);
+    let (mut url, mut tag, mut sha, mut path) = (None, None, None, None);
     for (field, value) in table.iter() {
         let text = value
             .as_str()
@@ -500,12 +560,19 @@ fn dependency(item: &toml_edit::Item) -> Result<String, String> {
             "url" => url = Some(text),
             "tag" => tag = Some(text),
             "sha" => sha = Some(text),
+            "path" => path = Some(text),
             _ => {
                 return Err(format!(
-                    "unknown field {field}; a dependency has url and one of tag or sha"
+                    "unknown field {field}; a dependency has url and one of tag or sha, or only path"
                 ));
             }
         }
+    }
+    if let Some(path) = path {
+        if url.is_some() || tag.is_some() || sha.is_some() || path.is_empty() {
+            return Err("a path dependency has only path = \"../member\"".to_string());
+        }
+        return Ok(Dependency::Path(path.to_string()));
     }
     let url = url.ok_or_else(|| format!("url is missing; {shape}"))?;
     let reference = match (tag, sha) {
@@ -520,5 +587,5 @@ fn dependency(item: &toml_edit::Item) -> Result<String, String> {
     };
     let spec = format!("{url}#{reference}");
     crate::project::packages::check_spec(&spec)?;
-    Ok(spec)
+    Ok(Dependency::Git(spec))
 }

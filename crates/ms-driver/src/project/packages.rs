@@ -29,6 +29,17 @@ pub struct Package {
     pub project: Project,
     /// The expected SHA-256 of each file by `/` path, from the verified index.
     pub files: BTreeMap<String, String>,
+    /// A workspace member: its files are the project's own, so they are not hashed or locked
+    /// and may declare natives.
+    pub member: bool,
+}
+
+/// A workspace member name as the first part of a lock key: ASCII letters, digits, `_`, `-`.
+fn is_member_name(text: &str) -> bool {
+    !text.is_empty()
+        && text
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-')
 }
 
 /// Whether `text` is `len` lowercase hexadecimal digits.
@@ -128,7 +139,11 @@ pub fn read_lock(root: &str) -> Result<BTreeMap<String, LockEntry>, ProjectError
         };
         let (key, value) = line.split_once('=').ok_or_else(bad)?;
         let key = key.trim().trim_matches('"');
-        if key.is_empty() || !key.split('/').all(crate::project::manifest::valid_alias) {
+        if key.is_empty()
+            || !key.split('/').enumerate().all(|(i, part)| {
+                crate::project::manifest::valid_alias(part) || (i == 0 && is_member_name(part))
+            })
+        {
             return Err(bad());
         }
         let value = value.trim().trim_matches('"');
@@ -214,6 +229,9 @@ fn parse_index(text: &str) -> BTreeMap<String, String> {
 
 /// Whether `bytes`, read from `relative` in this package, are what the lock pinned.
 pub fn verify_file(package: &Package, relative: &str, bytes: &[u8]) -> Result<(), ProjectError> {
+    if package.member {
+        return Ok(());
+    }
     match package.files.get(relative) {
         Some(expected) if *expected == sha256::hex(bytes) => Ok(()),
         Some(_) => Err(ProjectError::msg(format!(
@@ -289,28 +307,158 @@ pub fn attach(project: &mut Project) -> Result<(), ProjectError> {
 }
 
 fn attach_in(project: &mut Project, cache: &Path) -> Result<(), ProjectError> {
-    if project.dependencies.is_empty() {
+    if project.dependencies.is_empty() && project.path_dependencies.is_empty() {
         return Ok(());
     }
+    let workspace = crate::project::workspace::find(&pathops::join(&[&project.root, "ms.toml"]))?;
     // Package files are named `@name/...`; a project path with that spelling would be mistaken
     // for package code.
-    for alias in project.dependencies.keys() {
+    for alias in project
+        .dependencies
+        .keys()
+        .chain(project.path_dependencies.keys())
+    {
         if Path::new(&project.root).join(alias).exists() {
             return Err(ProjectError::msg(format!(
                 "the project has a file or directory named {alias}, which is also a dependency name; rename it, names starting with @ are reserved for packages"
             )));
         }
     }
-    let lock = read_lock(&project.root)?;
+    // A workspace shares the lock at its root, and its keys start with the member name so two
+    // members may use the same alias for different packages.
+    let lock = read_lock(workspace.as_ref().map_or(&project.root, |w| &w.root))?;
+    let lock_prefix = workspace
+        .as_ref()
+        .map_or(String::new(), |_| format!("{}/", project.name));
     let mut packages = Vec::new();
-    resolve(project, "", &lock, cache, &mut packages, &mut Vec::new())?;
+    let mut resolver = Resolver {
+        workspace: workspace.as_ref(),
+        lock: &lock,
+        cache,
+        packages: &mut packages,
+        chain: Vec::new(),
+        members: vec![project.root.clone()],
+    };
+    resolver.resolve(project, "", &lock_prefix)?;
     project.packages = packages;
+    Ok(())
+}
+
+struct Resolver<'a> {
+    workspace: Option<&'a crate::project::workspace::Workspace>,
+    lock: &'a BTreeMap<String, LockEntry>,
+    cache: &'a Path,
+    packages: &'a mut Vec<Package>,
+    chain: Vec<String>,
+    /// The workspace members on the path from the project, to catch cycles.
+    members: Vec<String>,
+}
+
+impl Resolver<'_> {
+    /// Resolves the path dependencies of `scope`, then its git dependencies.
+    fn resolve(
+        &mut self,
+        scope: &mut Project,
+        prefix: &str,
+        lock_prefix: &str,
+    ) -> Result<(), ProjectError> {
+        self.members_of(scope, prefix)?;
+        resolve(
+            scope,
+            prefix,
+            lock_prefix,
+            self.lock,
+            self.cache,
+            self.packages,
+            &mut self.chain,
+        )
+    }
+
+    fn members_of(&mut self, scope: &mut Project, prefix: &str) -> Result<(), ProjectError> {
+        let dependencies = scope.path_dependencies.clone();
+        for (alias, dir) in dependencies {
+            let key = format!("{prefix}{alias}");
+            let Some(workspace) = self.workspace else {
+                return Err(ProjectError::msg(format!(
+                    "{key} is a path dependency, but no ancestor ms.toml has [workspace] members listing this project; add a workspace root or use a url dependency"
+                )));
+            };
+            let Some(member) = workspace.member_at(&dir) else {
+                return Err(ProjectError::msg(format!(
+                    "{key} points at {dir}, which is not a workspace member; list it under [workspace] members in {}/ms.toml",
+                    workspace.root
+                )));
+            };
+            if self.members.contains(&member.root) {
+                return Err(ProjectError::msg(format!(
+                    "workspace member {} depends on itself through {key}; members cannot form a cycle",
+                    member.name
+                )));
+            }
+            let mut package = Project::default();
+            crate::project::manifest::read_manifest(
+                &crate::project::workspace::Workspace::manifest(member),
+                &mut package,
+            )
+            .map_err(|e| ProjectError::msg(format!("package {key}: {e}")))?;
+            check_effects(scope, &alias, &key, prefix, &package)?;
+            scope.deps.insert(alias.clone(), package.source.clone());
+            self.members.push(member.root.clone());
+            let result = self.resolve(
+                &mut package,
+                &format!("{key}/"),
+                &format!("{}/", member.name),
+            );
+            self.members.pop();
+            result?;
+            self.packages.push(Package {
+                key,
+                spec: format!("workspace member {}", member.name),
+                root: member.root.clone(),
+                project: package,
+                files: BTreeMap::new(),
+                member: true,
+            });
+        }
+        Ok(())
+    }
+}
+
+/// What a project allows a dependency, and what a package may hand on.
+fn check_effects(
+    scope: &Project,
+    alias: &str,
+    key: &str,
+    prefix: &str,
+    package: &Project,
+) -> Result<(), ProjectError> {
+    if let Some(missing) = uncovered(
+        scope
+            .allowed_effects
+            .get(alias)
+            .map_or(&[][..], Vec::as_slice),
+        &package.effects,
+    ) {
+        return Err(ProjectError::msg(format!(
+            "package {key} may use {missing}, which this project does not allow; add `{alias} = [\"{missing}\"]` under [effects] in ms.toml if you trust it"
+        )));
+    }
+    if !prefix.is_empty()
+        && let Some(missing) = uncovered(&scope.effects, &package.effects)
+    {
+        return Err(ProjectError::msg(format!(
+            "package {key} may use {missing}, but {} declares only {:?}; a package cannot hand a dependency effects it does not have itself",
+            prefix.trim_end_matches('/'),
+            scope.effects
+        )));
+    }
     Ok(())
 }
 
 fn resolve(
     scope: &mut Project,
     prefix: &str,
+    lock_prefix: &str,
     lock: &BTreeMap<String, LockEntry>,
     cache: &Path,
     packages: &mut Vec<Package>,
@@ -324,9 +472,10 @@ fn resolve(
     let dependencies = scope.dependencies.clone();
     for (alias, spec) in dependencies {
         let key = format!("{prefix}{alias}");
-        let entry = lock.get(&key).filter(|e| e.spec == spec).ok_or_else(|| {
+        let lock_key = format!("{lock_prefix}{alias}");
+        let entry = lock.get(&lock_key).filter(|e| e.spec == spec).ok_or_else(|| {
             ProjectError::msg(format!(
-                "ms.lock has no entry for {key} = {spec:?}; run `ms install` to resolve and pin it"
+                "ms.lock has no entry for {lock_key} = {spec:?}; run `ms install` to resolve and pin it"
             ))
         })?;
         let directory = cache.join(&entry.sha256);
@@ -357,26 +506,12 @@ fn resolve(
                 "package {key} declares [embed]; a package holds source only"
             )));
         }
-        if let Some(missing) = uncovered(
-            scope
-                .allowed_effects
-                .get(&alias)
-                .map_or(&[][..], Vec::as_slice),
-            &package.effects,
-        ) {
+        if !package.path_dependencies.is_empty() || package.members.is_some() {
             return Err(ProjectError::msg(format!(
-                "package {key} may use {missing}, which this project does not allow; add `{alias} = [\"{missing}\"]` under [effects] in ms.toml if you trust it"
+                "package {key} uses a path dependency or [workspace]; only a project's own workspace members can, a fetched package depends on url packages"
             )));
         }
-        if !prefix.is_empty()
-            && let Some(missing) = uncovered(&scope.effects, &package.effects)
-        {
-            return Err(ProjectError::msg(format!(
-                "package {key} may use {missing}, but {} declares only {:?}; a package cannot hand a dependency effects it does not have itself",
-                prefix.trim_end_matches('/'),
-                scope.effects
-            )));
-        }
+        check_effects(scope, &alias, &key, prefix, &package)?;
         scope.deps.insert(alias.clone(), package.source.clone());
         let sub = format!("{key}/");
         let nested = package.dependencies.clone();
@@ -387,7 +522,15 @@ fn resolve(
                     "package {key} depends on itself"
                 )));
             }
-            resolve(&mut package, &sub, lock, cache, packages, chain)?;
+            resolve(
+                &mut package,
+                &sub,
+                &format!("{lock_key}/"),
+                lock,
+                cache,
+                packages,
+                chain,
+            )?;
         }
         chain.pop();
         packages.push(Package {
@@ -396,6 +539,7 @@ fn resolve(
             root,
             project: package,
             files,
+            member: false,
         });
     }
     Ok(())
