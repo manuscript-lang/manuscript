@@ -6,6 +6,10 @@ import (
 	msrt_cancel_fired,
 	msrt_cancel_free,
 	msrt_cancel_new,
+	msrt_group_add,
+	msrt_group_free,
+	msrt_group_new,
+	msrt_group_next,
 	msrt_promise_cancel,
 	msrt_promise_defer,
 	msrt_promise_done,
@@ -233,6 +237,14 @@ export fn promise[U](
 	limit(id, options)
 	return Promise[U](id: id)
 
+// Promises of this thread watched together: `next` answers which finished, each once.
+opaque type WaitSet:
+	// The runtime group.
+	id: Int
+
+fn var WaitSet.close() Unit!:
+	msrt_group_free(self.id)
+
 // Waits for every promise and returns the results in order. The first promise to fail,
 // in time rather than list order, ends the wait: the promises still running are
 // cancelled and waited for before `wait_all` returns its error.
@@ -241,24 +253,53 @@ export fn wait_all[T](promises: List[Promise[T]]) List[T]!:
 	count := pending.length()
 	var slots: List[T!] = []
 	var taken: List[Bool] = []
+	set := WaitSet(id: msrt_group_new())
 
 	for at in 0..count:
 		slots.append(error(Error("promise: not finished")))
 		taken.append(false)
 
 	// In list order, take what is finished. When the next one is not, block until
-	// anything finishes and take everything that has, so a failure behind a slow
-	// promise ends the wait without waiting for the slow one.
+	// anything finishes and take it, so a failure behind a slow promise ends the wait
+	// without waiting for the slow one. The set reports each finished promise once; a
+	// promise that cannot join it (another thread's) is polled with `wait_any` instead.
 	var head = 0
+	var tried = -1
+	var watching = false
+	var polling = false
 
 	while head < count:
 		if taken[head]:
 			head += 1
-		else if msrt_promise_run_unstarted(pending[head].id) or pending[head].done():
+			continue
+
+		// Running an unstarted promise looks through the queue, so ask once per head: a
+		// promise that was not there the first time never returns to it.
+		fresh := head != tried
+		tried = head
+
+		if (
+			(fresh and msrt_promise_run_unstarted(pending[head].id))
+			or pending[head].done()
+		):
 			value := pending[head].wait()?
 			slots[head] = ok(value)
 			taken[head] = true
 			head += 1
+		else if not polling:
+			if not watching:
+				watching = true
+				for at in head..count:
+					if not taken[at] and not msrt_group_add(set.id, pending[at].id, at):
+						polling = true
+
+			if not polling:
+				at := msrt_group_next(set.id)
+
+				if at >= 0 and not taken[at]:
+					value := pending[at].wait()?
+					slots[at] = ok(value)
+					taken[at] = true
 		else:
 			var ids: List[Int] = []
 			for at in head..count:

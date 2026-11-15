@@ -102,6 +102,8 @@ struct Table {
     thread: Vec<u8>,
     /// The handle of the task running the work on that thread, else 0.
     task: Vec<u64>,
+    /// Its number in this thread's queue of unstarted promises (`sched::remove_pending`), or 0.
+    queued: Vec<u64>,
     /// The task that started the work, whose frame the work reads its captures from, lent
     /// (`task::lend_current`) until the work's task has ended; else 0.
     creator: Vec<u64>,
@@ -128,7 +130,26 @@ struct Table {
     limits: BinaryHeap<Reverse<(i64, i64)>>,
     /// (slot, token) of waiters on other threads, posted when the slot's promise changes.
     watchers: Vec<(usize, u64)>,
+    /// The wait group the promise reports to (`msrt_group_add`) and the tag it reports, or 0.
+    group: Vec<u32>,
+    group_tag: Vec<u32>,
+    groups: Vec<Group>,
+    free_groups: Vec<usize>,
     free: Vec<usize>,
+}
+
+/// Promises of this thread watched together, so a waiter learns which finished without looking at
+/// all of them again: each finished promise appends its tag to `done`.
+#[derive(Default)]
+struct Group {
+    /// Tags of the promises that finished and were not yet taken, in finishing order.
+    done: VecDeque<u32>,
+    /// Promises added that have not finished.
+    pending: usize,
+    /// The waiter's token while it is parked in `msrt_group_next`, or 0.
+    token: u64,
+    /// Slots of the promises added, to detach them when the group is freed.
+    members: Vec<u32>,
 }
 
 impl Table {
@@ -141,6 +162,7 @@ impl Table {
             closure: Vec::new(),
             thread: Vec::new(),
             task: Vec::new(),
+            queued: Vec::new(),
             creator: Vec::new(),
             flags: Vec::new(),
             report: Vec::new(),
@@ -154,6 +176,10 @@ impl Table {
             timers: BinaryHeap::new(),
             limits: BinaryHeap::new(),
             watchers: Vec::new(),
+            group: Vec::new(),
+            group_tag: Vec::new(),
+            groups: Vec::new(),
+            free_groups: Vec::new(),
             free: Vec::new(),
         }
     }
@@ -400,10 +426,13 @@ pub extern "C-unwind" fn msrt_promise_new() -> i64 {
             t.state.push(State::Free);
             t.generation.push(0);
             t.token.push(0);
+            t.group.push(0);
+            t.group_tag.push(0);
             t.result.push(NO_RESULT);
             t.closure.push(0);
             t.thread.push(NOT_STARTED);
             t.task.push(0);
+            t.queued.push(0);
             t.creator.push(0);
             t.flags.push(0);
             t.report.push(Vec::new());
@@ -423,8 +452,10 @@ pub extern "C-unwind" fn msrt_promise_new() -> i64 {
     }
     t.state[i] = State::Pending;
     t.token[i] = 0;
+    t.group[i] = 0;
     t.result[i] = NO_RESULT;
     t.closure[i] = 0;
+    t.queued[i] = 0;
     t.thread[i] = NOT_STARTED;
     t.task[i] = 0;
     t.creator[i] = 0;
@@ -701,7 +732,7 @@ fn request_cancel(id: i64) {
         }
         return;
     }
-    if let Some(closure) = sched::remove_pending(id) {
+    if let Some(closure) = sched::remove_pending(id, t.queued[i]) {
         // Never started: nothing runs, so it ends here.
         debug_assert_eq!(closure, t.closure[i]);
         apply(Event::Ended {
@@ -760,6 +791,16 @@ pub(crate) fn task_ended(id: i64, status: u8, msg: &ms_rt_abi::StrVal, started: 
 
 /// Wakes the task waiting on slot `i`, if any.
 fn wake(t: &mut Table, i: usize) {
+    if t.state[i] != State::Pending && t.group[i] != 0 {
+        let g = &mut t.groups[t.group[i] as usize - 1];
+        t.group[i] = 0;
+        g.done.push_back(t.group_tag[i]);
+        g.pending -= 1;
+        let token = core::mem::take(&mut g.token);
+        if token != 0 {
+            task::msrt_token_post_remote(token, 1);
+        }
+    }
     let token = core::mem::take(&mut t.token[i]);
     if token != 0 {
         // SAFETY: the waiter owns the token until it is woken or leaves.
@@ -1338,6 +1379,7 @@ unsafe fn start_on(id: i64, work: *mut ms_rt_abi::Closure, mode: Mode) {
         at: crate::sys::monotonic_ns(),
         capture: task::capture(),
         stolen_at: 0,
+        seq: 0,
     };
     // A spread promise is placed on purpose, so a stream pinned to this thread does not hold it here.
     if mode == Mode::Here
@@ -1350,7 +1392,7 @@ unsafe fn start_on(id: i64, work: *mut ms_rt_abi::Closure, mode: Mode) {
             execute(start);
         }
     } else {
-        sched::submit(start);
+        t.queued[i] = sched::submit(start);
     }
 }
 
@@ -1381,7 +1423,7 @@ fn run_unstarted(id: i64) {
     if t.closure[i] == 0 || t.thread[i] != NOT_STARTED || t.flags[i] & WANT_CANCEL != 0 {
         return;
     }
-    let Some(closure) = sched::remove_pending(id) else {
+    let Some(closure) = sched::remove_pending(id, t.queued[i]) else {
         return;
     };
     let mut msg = crate::string::NO_STR;
@@ -1592,6 +1634,91 @@ pub extern "C-unwind" fn msrt_promise_wait(id: i64, timeout_ns: i64) -> i64 {
             return TIMEOUT;
         }
     }
+}
+
+/// A new wait group: promises added to it report when they finish, so a waiter on many promises
+/// takes each as it finishes instead of rescanning them all after every wake.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_group_new() -> i64 {
+    let t = table();
+    let g = t.free_groups.pop().unwrap_or_else(|| {
+        t.groups.push(Group::default());
+        t.groups.len() - 1
+    });
+    g as i64 + 1
+}
+
+/// Adds promise `id` to `group`, reporting `tag` when it finishes (at once if it already has).
+/// Answers 0 when the promise cannot join: it belongs to another thread or to another group.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_group_add(group: i64, id: i64, tag: i64) -> u8 {
+    if is_foreign(id) {
+        return 0;
+    }
+    let t = table();
+    let g = group as usize - 1;
+    match index(t, id) {
+        Some(i) if t.state[i] == State::Pending => {
+            if t.group[i] != 0 {
+                return 0;
+            }
+            t.group[i] = group as u32;
+            t.group_tag[i] = tag as u32;
+            t.groups[g].members.push(i as u32);
+            t.groups[g].pending += 1;
+        }
+        _ => t.groups[g].done.push_back(tag as u32),
+    }
+    1
+}
+
+/// Waits until a promise of `group` has finished and answers its tag; -1 when none is left to
+/// wait for. The promise keeps its result for `msrt_promise_wait`.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_group_next(group: i64) -> i64 {
+    let g = group as usize - 1;
+    loop {
+        let grp = &mut table().groups[g];
+        if let Some(tag) = grp.done.pop_front() {
+            return i64::from(tag);
+        }
+        if grp.pending == 0 {
+            return -1;
+        }
+        // SAFETY: single scheduler per isolate; the token is ours until freed.
+        let woke = unsafe {
+            let token = task::msrt_token_new(task::TOKEN_REMOTE);
+            grp.token = token;
+            let mut value = 0;
+            let woke = task::msrt_token_park(token, -1, &mut value);
+            table().groups[g].token = 0;
+            task::msrt_token_free(token);
+            woke
+        };
+        if woke == task::WAIT_CANCELLED {
+            fault::msrt_cancelled();
+        }
+    }
+}
+
+/// Frees `group`; its promises keep running and are no longer reported.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_group_free(group: i64) {
+    let t = table();
+    let g = group as usize - 1;
+    let members = core::mem::take(&mut t.groups[g].members);
+    for &slot in &members {
+        if t.group[slot as usize] == group as u32 {
+            t.group[slot as usize] = 0;
+        }
+    }
+    let grp = &mut t.groups[g];
+    grp.done.clear();
+    grp.pending = 0;
+    grp.token = 0;
+    grp.members = members;
+    grp.members.clear();
+    t.free_groups.push(g);
 }
 
 /// Waits until one of the promises in `ids` (a list of ids) has finished or `timeout_ns` passes
@@ -1896,6 +2023,7 @@ pub extern "C-unwind" fn msrt_promise_drop(id: i64) {
     let Some(i) = index(t, id) else { return };
     release_result(t, i);
     t.watchers.retain(|&(slot, _)| slot != i);
+    t.group[i] = 0;
     t.state[i] = State::Free;
     t.free.push(i);
 }

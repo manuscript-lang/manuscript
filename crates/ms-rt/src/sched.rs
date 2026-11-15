@@ -107,6 +107,9 @@ pub(crate) struct Start {
     pub capture: u64,
     /// When another thread took it from its creator's queue (monotonic ns); 0 if it did not.
     pub stolen_at: i64,
+    /// Its place in the queue it waits in: later starts get larger numbers, so the queue is sorted
+    /// by it. Set by the queue; 0 for a start that is not queued.
+    pub seq: u64,
 }
 
 /// How long a start waits in its creator's queue before another thread may take it. Most forks
@@ -148,6 +151,20 @@ pub(crate) enum Event {
 
 struct Mail {
     pending: VecDeque<Start>,
+    /// The `seq` the next start queued here gets.
+    next_seq: u64,
+}
+
+impl Mail {
+    /// Queues `start` behind the others and answers its `seq`.
+    fn push(&mut self, start: Start) -> u64 {
+        self.next_seq += 1;
+        self.pending.push_back(Start {
+            seq: self.next_seq,
+            ..start
+        });
+        self.next_seq
+    }
 }
 
 /// Events other threads post to a thread, on a cache line of their own: they arrive while the
@@ -196,6 +213,7 @@ impl Slot {
             root: AtomicU64::new(0),
             mail: Mutex::new(Mail {
                 pending: VecDeque::new(),
+                next_seq: 0,
             }),
             posted: Posted {
                 signalled: AtomicU32::new(0),
@@ -326,16 +344,17 @@ pub(crate) fn warm(n: usize) {
 /// nobody takes is run by its waiter (`promise::run_unstarted`), which costs about a call. An idle
 /// thread takes the oldest queued start; when none is idle and the limit allows, one more thread is
 /// started so there is someone to take it.
-pub(crate) fn submit(start: Start) {
+pub(crate) fn submit(start: Start) -> u64 {
     let me = current();
     if me == NONE {
         unreachable!("submit is for scheduler threads");
     }
     let first;
+    let seq;
     {
         let mut mail = lock(&SLOTS[me].mail);
         first = mail.pending.is_empty();
-        mail.pending.push_back(start);
+        seq = mail.push(start);
         // Only the count changes for a queue that was not empty: its oldest start is the same, so
         // `front_at` stays untouched and idle threads polling it keep the cache line.
         if first {
@@ -354,6 +373,7 @@ pub(crate) fn submit(start: Start) {
             ensure_started(next);
         }
     }
+    seq
 }
 
 /// Places `start` on the least loaded thread instead of queueing it here to age: for long-lived
@@ -386,7 +406,7 @@ pub(crate) fn submit_spread(start: Start) -> Option<Start> {
     {
         let mut mail = lock(&SLOTS[target].mail);
         // Already aged, so any idle thread may take it if the target is busy.
-        mail.pending.push_back(Start {
+        mail.push(Start {
             at: crate::sys::monotonic_ns() - BEAT_NS,
             ..start
         });
@@ -396,23 +416,27 @@ pub(crate) fn submit_spread(start: Start) -> Option<Start> {
     None
 }
 
-/// Removes the promise `id` if it has not started; answers whether it did. A promise is only
-/// ever queued on its creator's thread, and only its creator asks, so only that queue is looked
-/// at. A waiter usually wants either the one it just made (newest) or, waiting in creation order,
-/// the oldest; both ends are tried before the scan from the newest end.
-pub(crate) fn remove_pending(id: i64) -> Option<usize> {
+/// Removes the promise `id`, queued here as number `seq`, if it has not started; answers whether
+/// it did. A promise is only ever queued on its creator's thread, and only its creator asks, so
+/// only that queue is looked at. The queue is sorted by `seq`, so a promise that left it (another
+/// thread took it) is found absent without a scan.
+pub(crate) fn remove_pending(id: i64, seq: u64) -> Option<usize> {
     let me = current();
-    if me == NONE || SLOTS[me].pending.load(Ordering::SeqCst) == 0 {
+    if me == NONE || seq == 0 || SLOTS[me].pending.load(Ordering::SeqCst) == 0 {
         return None;
     }
     let slot = &SLOTS[me];
     let mut mail = lock(&slot.mail);
-    let start = if mail.pending.front().is_some_and(|s| s.id == id) {
-        mail.pending.pop_front().expect("front exists")
+    // A waiter in creation order asks for the oldest, so look there first.
+    let at = if mail.pending.front().is_some_and(|s| s.seq == seq) {
+        0
     } else {
-        let at = mail.pending.iter().rposition(|s| s.id == id)?;
-        mail.pending.remove(at).expect("position is in range")
+        mail.pending.binary_search_by_key(&seq, |s| s.seq).ok()?
     };
+    if mail.pending[at].id != id {
+        return None;
+    }
+    let start = mail.pending.remove(at).expect("position is in range");
     publish(slot, &mail);
     Some(start.closure)
 }
