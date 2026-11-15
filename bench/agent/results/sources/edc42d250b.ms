@@ -270,7 +270,7 @@ fn parse_line(num: Int, raw: String) Pl:
 		if k > 0 and k < rc.length() and rc[k] == ":":
 			name := join_range(rc, 0, k)
 			if reg_of(name) >= 0 and lerr == "":
-				lerr = "reserved name '{name}'"
+				lerr = f"reserved name '{name}'"
 			labels.append(name)
 			rest = join_range(rc, k + 1, rc.length()).trim()
 		else:
@@ -417,11 +417,11 @@ fn eval_term(
 		if v := labels.get(name): return Val(v: v, err: "")
 
 		if d := equs.get(name):
-			if stack.contains("|{name}|"):
-				return Val(v: 0, err: "circular definition of '{name}'")
-			return eval_expr(d.expr, labels, equs, "{stack}|{name}|")
+			if stack.contains(f"|{name}|"):
+				return Val(v: 0, err: f"circular definition of '{name}'")
+			return eval_expr(d.expr, labels, equs, f"{stack}|{name}|")
 
-		return Val(v: 0, err: "undefined symbol '{name}'")
+		return Val(v: 0, err: f"undefined symbol '{name}'")
 
 	return Val(v: 0, err: "INVALID")
 
@@ -436,7 +436,7 @@ fn eval_expr(
 
 	for tm in split_terms(t):
 		r := eval_term(tm.text, labels, equs, stack)
-		if r.err == "INVALID": return Val(v: 0, err: "invalid expression '{t}'")
+		if r.err == "INVALID": return Val(v: 0, err: f"invalid expression '{t}'")
 		if r.err != "": return r
 
 		acc = w32(acc + tm.sign * r.v)
@@ -453,7 +453,7 @@ fn check_operand(o: String) String:
 	if reg_of(o) >= 0: return ""
 	if o.get(0) != "[": return ""
 
-	bad := "invalid operand '{o}'"
+	bad := f"invalid operand '{o}'"
 	cs := o.chars()
 	if cs.length() < 2 or cs[cs.length() - 1] != "]": return bad
 
@@ -572,10 +572,10 @@ fn pass1(
 		if pl.lerr != "": return perr(pl.lerr.clone(), num)
 
 		for lab in pl.labels:
-			if _p := labels.get(lab): return perr("duplicate symbol '{lab}'", num)
+			if _p := labels.get(lab): return perr(f"duplicate symbol '{lab}'", num)
 
 			if d := equs.get(lab):
-				if d.line < num: return perr("duplicate symbol '{lab}'", num)
+				if d.line < num: return perr(f"duplicate symbol '{lab}'", num)
 
 			val := if sec == 0: ninstr else: daddr
 			labels[lab.clone()] = val
@@ -590,7 +590,7 @@ fn pass1(
 
 		if word.get(0) == ".":
 			if word == ".text" or word == ".data":
-				if argtext != "": return perr("invalid operand '{argtext}'", num)
+				if argtext != "": return perr(f"invalid operand '{argtext}'", num)
 
 				if word == ".text":
 					sec = 0
@@ -599,7 +599,7 @@ fn pass1(
 			else if word == ".budget":
 				bv := decimal_value(argtext)
 				if bv < 1 or bv > 10000000:
-					return perr("invalid operand '{argtext}'", num)
+					return perr(f"invalid operand '{argtext}'", num)
 
 				budget = bv
 			else if word == ".equ":
@@ -608,12 +608,12 @@ fn pass1(
 					return perr("wrong number of operands for '.equ'", num)
 
 				name := a[0]
-				if not is_ident(name): return perr("invalid operand '{name}'", num)
-				if reg_of(name) >= 0: return perr("reserved name '{name}'", num)
-				if _q := labels.get(name): return perr("duplicate symbol '{name}'", num)
+				if not is_ident(name): return perr(f"invalid operand '{name}'", num)
+				if reg_of(name) >= 0: return perr(f"reserved name '{name}'", num)
+				if _q := labels.get(name): return perr(f"duplicate symbol '{name}'", num)
 
 				if d := equs.get(name):
-					if d.line < num: return perr("duplicate symbol '{name}'", num)
+					if d.line < num: return perr(f"duplicate symbol '{name}'", num)
 			else if (
 				word == ".word"
 				or word == ".ascii"
@@ -652,7 +652,7 @@ fn pass1(
 
 					nv := eval_expr(a[0], labels, equs, "")
 					if nv.err != "": return perr(nv.err, num)
-					if nv.v < 0: return perr("invalid operand '{a[0]}'", num)
+					if nv.v < 0: return perr(f"invalid operand '{a[0]}'", num)
 					if daddr + nv.v > 4096: return perr("data section too large", num)
 
 					daddr += nv.v
@@ -692,12 +692,12 @@ fn pass1(
 						)
 					)
 			else:
-				return perr("unknown directive '{word}'", num)
+				return perr(f"unknown directive '{word}'", num)
 		else:
 			if sec == 1: return perr("instruction in data section", num)
 
 			op := opcode_of(word)
-			if op < 0: return perr("unknown mnemonic '{word}'", num)
+			if op < 0: return perr(f"unknown mnemonic '{word}'", num)
 
 			var args = List[String]()
 			if argtext != "":
@@ -712,9 +712,9 @@ fn pass1(
 				cls.append(opclass(a))
 
 			if args.length() != arity(op):
-				return perr("wrong number of operands for '{word}'", num)
+				return perr(f"wrong number of operands for '{word}'", num)
 			if not valid_classes(op, cls):
-				return perr("invalid operands for '{word}'", num)
+				return perr(f"invalid operands for '{word}'", num)
 
 			stmts.append(
 				Stmt(
@@ -930,7 +930,7 @@ fn run(
 				a := ea(sbase, sval, regs)
 
 				if a < 0 or a >= 4096:
-					trap = "memory access out of range: {a}"
+					trap = f"memory access out of range: {a}"
 					break
 
 				sv = mem[a]
@@ -940,7 +940,7 @@ fn run(
 				a := ea(ins.ab, ins.av, regs)
 
 				if a < 0 or a >= 4096:
-					trap = "memory access out of range: {a}"
+					trap = f"memory access out of range: {a}"
 					break
 
 				mem[a] = sv
@@ -1014,7 +1014,7 @@ fn run(
 			a := regs[8]
 
 			if a < 0 or a >= 4096:
-				trap = "memory access out of range: {a}"
+				trap = f"memory access out of range: {a}"
 				break
 
 			mem[a] = sv
@@ -1026,7 +1026,7 @@ fn run(
 			a := regs[8]
 
 			if a < 0 or a >= 4096:
-				trap = "memory access out of range: {a}"
+				trap = f"memory access out of range: {a}"
 				break
 
 			v := mem[a]
@@ -1062,7 +1062,7 @@ fn run(
 			a := regs[8]
 
 			if a < 0 or a >= 4096:
-				trap = "memory access out of range: {a}"
+				trap = f"memory access out of range: {a}"
 				break
 
 			mem[a] = pc + 1
@@ -1075,7 +1075,7 @@ fn run(
 			a := regs[8]
 
 			if a < 0 or a >= 4096:
-				trap = "memory access out of range: {a}"
+				trap = f"memory access out of range: {a}"
 				break
 
 			v := mem[a]
@@ -1089,7 +1089,7 @@ fn run(
 			regs[ins.av] = input[inpos]
 			inpos += 1
 		else if op == 30:
-			outs.append("{sv}\n")
+			outs.append(f"{sv}\n")
 			last_nl = true
 		else if op == 31:
 			if sv < 0 or sv > 127:
@@ -1111,14 +1111,14 @@ fn run(
 		result += "\n"
 
 	if halted:
-		result += "-- halted after {steps} steps\n"
+		result += f"-- halted after {steps} steps\n"
 	else:
-		where := if pc >= 0 and pc < n: "{code[pc].line}" else: "-"
-		result += "-- trap: {trap} (pc={pc} line={where}) after {steps} steps\n"
+		where := if pc >= 0 and pc < n: f"{code[pc].line}" else: "-"
+		result += f"-- trap: {trap} (pc={pc} line={where}) after {steps} steps\n"
 
 	result = (
 		result
-		+ "regs: r0={regs[0]} r1={regs[1]} r2={regs[2]} r3={regs[3]} r4={regs[4]} r5={regs[5]} r6={regs[6]} r7={regs[7]} sp={regs[8]} bp={regs[9]}\n"
+		+ f"regs: r0={regs[0]} r1={regs[1]} r2={regs[2]} r3={regs[3]} r4={regs[4]} r5={regs[5]} r6={regs[6]} r7={regs[7]} sp={regs[8]} bp={regs[9]}\n"
 	)
 
 	var zb = 0
@@ -1127,7 +1127,7 @@ fn run(
 		zb = 1
 	if l:
 		lb = 1
-	result += "flags: Z={zb} L={lb}\n"
+	result += f"flags: Z={zb} L={lb}\n"
 	return result
 
 export fn main() Int:
@@ -1160,7 +1160,7 @@ export fn main() Int:
 	p1 := pass1(lines, equs, var labels, var stmts)
 
 	if p1.err != "":
-		stdout().write("asm error line {p1.line}: {p1.err}\n").get()
+		stdout().write(f"asm error line {p1.line}: {p1.err}\n").get()
 		return 0
 
 	var code = List[Ins]()
@@ -1168,7 +1168,7 @@ export fn main() Int:
 	p2 := pass2(stmts, labels, equs, p1.ninstr, var code, var data)
 
 	if p2.err != "":
-		stdout().write("asm error line {p2.line}: {p2.err}\n").get()
+		stdout().write(f"asm error line {p2.line}: {p2.err}\n").get()
 		return 0
 
 	var input = List[Int]()

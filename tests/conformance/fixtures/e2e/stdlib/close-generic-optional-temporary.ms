@@ -9,7 +9,7 @@ type Door:
     name: String
 
 fn var Door.close() Void!:
-    print("closed {self.name}")
+    print(f"closed {self.name}")
 
 fn opt[T](v: T) T?: v
 

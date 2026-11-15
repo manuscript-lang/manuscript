@@ -95,7 +95,7 @@ fn add_digits(a: String, b: String) String:
             sum += b.scalar_at(j) - 48
             j -= 1
 
-        out = "{sum % 10}" + out
+        out = f"{sum % 10}" + out
         carry = sum / 10
 
     return strip_zeros(out)
@@ -134,8 +134,8 @@ export fn main() Int:
 
     var out = ""
     for category in totals.keys():
-        out += "{category}: {format_total(totals.get(category).get("0"))}\n"
+        out += f"{category}: {format_total(totals.get(category).get("0"))}\n"
     if skipped > 0:
-        out += "skipped: {skipped}\n"
+        out += f"skipped: {skipped}\n"
     stdout().write(out).get()
     return 0

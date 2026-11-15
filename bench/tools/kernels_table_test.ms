@@ -12,8 +12,8 @@ import (
 
 fn trial(version: String, suite: String, micros: Int) List[String]:
 	names := suite_names(suite).filter(fn n: not omitted(version).contains(n))
-	var lines = names.map(fn name: "{version} {name} {micros} 1")
-	lines.append("{version} # end")
+	var lines = names.map(fn name: f"{version} {name} {micros} 1")
+	lines.append(f"{version} # end")
 	return lines
 
 fn trials(versions: List[String], suite: String, micros: Int) List[String]:
@@ -35,7 +35,7 @@ test "complete rotating trials preserve minimum and columns":
 		report := expect_ok(summarize(lines, suite, 2, versions))?
 		expect_contains(report, "Minimum of 2 rotating runs")?
 		expect_contains(report, "| ms / rust | ms / rust-checked |")?
-		expect_contains(report, "| {suite_names(suite)[0]} | 50 | 50 | 1.00x")?
+		expect_contains(report, f"| {suite_names(suite)[0]} | 50 | 50 | 1.00x")?
 
 test "ablation versions and folded times":
 	versions := kernel_versions().concat(ablations())

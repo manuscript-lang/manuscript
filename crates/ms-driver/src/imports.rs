@@ -167,7 +167,7 @@ pub fn import_statement(name: &str, path: &str) -> String {
     let mut literal = String::from("\"");
     for c in path.chars() {
         match c {
-            '\\' | '"' | '{' | '}' => {
+            '\\' | '"' => {
                 literal.push('\\');
                 literal.push(c);
             }

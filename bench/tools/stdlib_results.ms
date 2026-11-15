@@ -50,19 +50,19 @@ export fn read_cases(output: String) List[Bench]!:
 	var seen = Set[String]()
 
 	for bench in doc.benches:
-		if seen.contains(bench.name): return invalid("duplicate case: {bench.name}")
+		if seen.contains(bench.name): return invalid(f"duplicate case: {bench.name}")
 
 		seen.add(bench.name.clone())
 		if bench.status != "passed": return invalid(
-			"{bench.name}: {bench.status}: {bench.failure.get("")}"
+			f"{bench.name}: {bench.status}: {bench.failure.get("")}"
 		)
 
 		stats := bench.stats.get(Stats(0, none, none, -1.0, none, none, none, none))
-		if stats.operations <= 0: return invalid("invalid operations: {bench.name}")
+		if stats.operations <= 0: return invalid(f"invalid operations: {bench.name}")
 		if (stats.iterations.get(1) <= 0) or (stats.samples.get(1) <= 0):
-			return invalid("invalid iterations or samples: {bench.name}")
+			return invalid(f"invalid iterations or samples: {bench.name}")
 		if not finite(stats.median_ns): return invalid(
-			"invalid median_ns: {bench.name}"
+			f"invalid median_ns: {bench.name}"
 		)
 		if not (
 			valid_optional(stats.min_ns)
@@ -70,14 +70,14 @@ export fn read_cases(output: String) List[Bench]!:
 			and valid_optional(stats.mean_ns)
 			and valid_optional(stats.stddev_ns)
 		):
-			return invalid("invalid timing: {bench.name}")
+			return invalid(f"invalid timing: {bench.name}")
 
 		if stats.min_ns.is_some() and stats.max_ns.is_some():
 			if not (
 				stats.min_ns.get(0.0) <= stats.median_ns
 				and stats.median_ns <= stats.max_ns.get(0.0)
 			):
-				return invalid("inconsistent timing range: {bench.name}")
+				return invalid(f"inconsistent timing range: {bench.name}")
 
 	if doc.benches.is_empty(): return invalid("no cases were measured")
 

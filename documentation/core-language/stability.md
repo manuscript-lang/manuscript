@@ -11,6 +11,7 @@ Versions are dates: `2026.11.0` is the first release of November 2026, and `2026
 
 - Block and function syntax.
 - Bindings: `:=` and `var`.
+- Text literals: `"..."` never interpolates, `f"..."` does, and `r"..."` is raw.
 - Records and enums, and `match`.
 - Optional and Result, with `?`.
 - The one-owner rules: borrow by default, and `.clone()` as the only copy.

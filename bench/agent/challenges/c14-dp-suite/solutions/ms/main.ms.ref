@@ -35,7 +35,7 @@ fn knap(t: List[String]) String:
         w := p[0].parse_int().get()
         v := p[1].parse_int().get()
         for c in (w..cap.get() + 1).reversed(): best[c] = best[c].max(best[c - w] + v)
-    return "{best[cap.get()]}"
+    return f"{best[cap.get()]}"
 
 fn coins(t: List[String]) String:
     if t.length() < 3: return "error: bad command"
@@ -45,13 +45,13 @@ fn coins(t: List[String]) String:
     inf := 1000000000
     var best = [0]
     for a in 1..amount.get() + 1: best.append(cs.filter(fn c: c <= a).map(fn c: best[a - c] + 1).fold(inf, fn m, x: m.min(x)))
-    return if best[amount.get()] >= inf: "impossible" else: "{best[amount.get()]}"
+    return if best[amount.get()] >= inf: "impossible" else: f"{best[amount.get()]}"
 
 fn solve_line(line: String) String:
     t := line.split(" ")
     if t[0] == "lcs" or t[0] == "edit":
         if t.length() != 3 or t[1].is_empty() or t[2].is_empty(): return "error: bad command"
-        return "{if t[0] == "lcs": lcs(t[1], t[2]) else: edit(t[1], t[2])}"
+        return f"{if t[0] == "lcs": lcs(t[1], t[2]) else: edit(t[1], t[2])}"
     if t[0] == "knap": return knap(t)
     return if t[0] == "coins": coins(t) else: "error: bad command"
 

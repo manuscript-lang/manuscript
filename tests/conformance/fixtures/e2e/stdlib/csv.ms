@@ -10,33 +10,33 @@ test "CSV retains single empty fields and distinguishes empty rows":
 		for delimiter in [",", ";", "\t"]:
 			options := CsvOptions(delimiter.clone(), ending.clone())
 			rows := [["a"], [""], ["b"], [""], [""]]
-			expected := "a{ending}\"\"{ending}b{ending}\"\"{ending}\"\"{ending}"
+			expected := f"a{ending}\"\"{ending}b{ending}\"\"{ending}\"\"{ending}"
 			text := stringify(rows, options)?
 			expect_equal(text, expected)?
 			expect_equal((parse(text, options)?), rows)?
 
 			empty_rows: List[List[String]] := [[], []]
-			expect_equal((stringify(empty_rows, options)?), "{ending}{ending}")?
+			expect_equal((stringify(empty_rows, options)?), f"{ending}{ending}")?
 
 			no_rows: List[List[String]] := []
-			expect_equal((parse("{ending}{ending}", options)?), no_rows)?
+			expect_equal((parse(f"{ending}{ending}", options)?), no_rows)?
 			expect_false(
 				(
 					(
 						parse(
-							"{ending}\"\"{ending}{ending}\"\"",
+							f"{ending}\"\"{ending}{ending}\"\"",
 							options,
 						)?
 					) != [[""], [""]]
 				)
 			)?
-			expect_equal((stringify([["", ""]], options)?), "{delimiter}{ending}")?
+			expect_equal((stringify([["", ""]], options)?), f"{delimiter}{ending}")?
 
 test "CSV quoted empty fields respect exact row cell and byte budgets":
 	for ending in ["\n", "\r\n"]:
 		options := CsvOptions(",", ending.clone())
 		rows := [[""], ["a"], [""]]
-		text := "\"\"{ending}a{ending}\"\"{ending}"
+		text := f"\"\"{ending}a{ending}\"\"{ending}"
 		bytes := text.length()
 		expect_equal((stringify(rows, options, bytes)?), text)?
 
@@ -82,7 +82,7 @@ test "CSV quotes delimiters multiline cells and line endings":
 fn malformed(line: Int, column: Int, reason: String) List[List[String]]!:
 	return error(
 		Error(
-			"CSV {line}:{column}: {reason}",
+			f"CSV {line}:{column}: {reason}",
 			kind: "EBADMSG",
 			details: {
 				"line": line.to_string(),
@@ -135,7 +135,7 @@ test "CSV rejects malformed records invalid options and limits":
 
 test "CSV quoted fields preserve zero one and many escaped quotes":
 	for value in ["", "plain", "\"", "a\"b", "\"\"", "é\"日\"fin", "a\r\nb\"c\"d"]:
-		encoded := "\"{value.replace("\"", "\"\"")}\""
+		encoded := f"\"{value.replace("\"", "\"\"")}\""
 		expected := [[value.replace("\r\n", "\n"), "tail"]]
 
 		for delimiter in [",", ";", "\t"]:
@@ -144,7 +144,7 @@ test "CSV quoted fields preserve zero one and many escaped quotes":
 				expect_equal(
 					(
 						parse(
-							"{encoded}{delimiter}tail{ending}",
+							f"{encoded}{delimiter}tail{ending}",
 							options,
 						)?
 					),
@@ -152,7 +152,7 @@ test "CSV quoted fields preserve zero one and many escaped quotes":
 				)?
 
 	value := "a\"日".repeat(8000)?
-	encoded := "\"{value.replace("\"", "\"\"")}\"\n"
+	encoded := f"\"{value.replace("\"", "\"\"")}\"\n"
 	expect_equal((parse(encoded)?), [[value]])?
 
 test "CSV escaped fields preserve malformed closing quote locations":
@@ -169,18 +169,18 @@ test "CSV escaped fields preserve malformed closing quote locations":
 
 test "CSV quote scanning preserves Unicode and exact backslash dot":
 	for field in ["é日😀", "x\\.", "\\.x", "\\", ".", "a b", "x "]:
-		expect_equal((stringify([[field.clone(), "tail"]])?), "{field},tail\n")?
+		expect_equal((stringify([[field.clone(), "tail"]])?), f"{field},tail\n")?
 	for field in ["\\.", " x", " x", "\tx", " x", "a,b", "a\"b"]:
 		expect_equal(
 			(stringify([[field.clone(), "tail"]])?),
-			"\"{field.replace("\"", "\"\"")}\",tail\n",
+			f"\"{field.replace("\"", "\"\"")}\",tail\n",
 		)?
 
 	for delimiter in [";", "\t", "|", "\\", "."]:
 		for ending in ["\n", "\r\n"]:
 			options := CsvOptions(delimiter.clone(), ending.clone())
-			field := "a{delimiter}日"
-			text := "\"{field}\"{delimiter}tail{ending}"
+			field := f"a{delimiter}日"
+			text := f"\"{field}\"{delimiter}tail{ending}"
 			expect_equal(
 				(
 					stringify(

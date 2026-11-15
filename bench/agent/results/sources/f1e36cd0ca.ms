@@ -939,7 +939,7 @@ fn val_text(v: Val) String:
         VNull:
             return "NULL"
         VInt(n):
-            return "{n}"
+            return f"{n}"
         VText(s):
             c := s.clone()
             return c
@@ -954,9 +954,9 @@ fn val_enc(v: Val) String:
         VNull:
             return "N;"
         VInt(n):
-            return "I{n};"
+            return f"I{n};"
         VText(s):
-            return "T{s.byte_length()};{s}"
+            return f"T{s.byte_length()};{s}"
         VBool(b):
             if b:
                 return "B1;"
@@ -1204,14 +1204,14 @@ fn disp(qual: String, name: String) String:
     if qual == "":
         return name
 
-    return "{qual}.{name}"
+    return f"{qual}.{name}"
 
 fn resolve_col(sc: List[Scol], qual: String, name: String) Result[Int, SqlErr]:
     n := count_col(sc, qual, name)
     if n == 0:
-        return error(SqlErr(msg: "no such column: {disp(qual, name)}"))
+        return error(SqlErr(msg: f"no such column: {disp(qual, name)}"))
     if n > 1:
-        return error(SqlErr(msg: "ambiguous column: {name}"))
+        return error(SqlErr(msg: f"ambiguous column: {name}"))
 
     return ok(find_col(sc, qual, name))
 
@@ -1579,7 +1579,7 @@ fn resolve(
                 if not gidx.contains(idx):
                     return error(
                         SqlErr(
-                            msg: "column {disp(qual, name)} must appear in GROUP BY"
+                            msg: f"column {disp(qual, name)} must appear in GROUP BY"
                         )
                     )
             return ok(unit)
@@ -1614,18 +1614,18 @@ fn resolve(
 
                 if star:
                     if distinct:
-                        return error(SqlErr(msg: "wrong number of arguments to {name}"))
+                        return error(SqlErr(msg: f"wrong number of arguments to {name}"))
 
                     return ok(unit)
 
                 if args.length() != 1:
-                    return error(SqlErr(msg: "wrong number of arguments to {name}"))
+                    return error(SqlErr(msg: f"wrong number of arguments to {name}"))
 
                 try resolve(args[0].clone(), sc, allow_agg, need_group, gidx, true)
                 return ok(unit)
 
             if not is_scalar_name(name):
-                return error(SqlErr(msg: "no such function: {name}"))
+                return error(SqlErr(msg: f"no such function: {name}"))
 
             n := args.length()
             var arity_ok = n == 1
@@ -1634,7 +1634,7 @@ fn resolve(
             if name == "COALESCE":
                 arity_ok = n >= 1
             if not arity_ok:
-                return error(SqlErr(msg: "wrong number of arguments to {name}"))
+                return error(SqlErr(msg: f"wrong number of arguments to {name}"))
 
             for k in 0..n:
                 try resolve(args[k].clone(), sc, allow_agg, need_group, gidx, inside)
@@ -1682,13 +1682,13 @@ fn check_row(cols: List[ColDef], row: List[Val]) Result[Unit, SqlErr]:
 
         if k == 0:
             if cols[j].notnull:
-                return error(SqlErr(msg: "NOT NULL constraint failed: {cols[j].name}"))
+                return error(SqlErr(msg: f"NOT NULL constraint failed: {cols[j].name}"))
         else if cols[j].is_int:
             if k != 2:
-                return error(SqlErr(msg: "type mismatch in column {cols[j].name}"))
+                return error(SqlErr(msg: f"type mismatch in column {cols[j].name}"))
         else:
             if k != 3:
-                return error(SqlErr(msg: "type mismatch in column {cols[j].name}"))
+                return error(SqlErr(msg: f"type mismatch in column {cols[j].name}"))
 
     return ok(unit)
 
@@ -1705,7 +1705,7 @@ fn check_pk(cols: List[ColDef], rows: List[List[Val]]) Result[Unit, SqlErr]:
     for r in 0..rows.length():
         key := val_enc(rows[r][pk])
         if seen.contains(key):
-            return error(SqlErr(msg: "duplicate primary key: {val_text(rows[r][pk])}"))
+            return error(SqlErr(msg: f"duplicate primary key: {val_text(rows[r][pk])}"))
 
         seen.add(key)
 
@@ -1715,14 +1715,14 @@ fn check_pk(cols: List[ColDef], rows: List[List[Val]]) Result[Unit, SqlErr]:
 
 fn exec_create(var db: Db, name: String, cols: List[ColDef]) Result[String, SqlErr]:
     if find_table(db, name) >= 0:
-        return error(SqlErr(msg: "table {name} already exists"))
+        return error(SqlErr(msg: f"table {name} already exists"))
 
     var npk = 0
 
     for j in 0..cols.length():
         for i in 0..j:
             if cols[i].name == cols[j].name:
-                return error(SqlErr(msg: "duplicate column: {cols[j].name}"))
+                return error(SqlErr(msg: f"duplicate column: {cols[j].name}"))
         if cols[j].pk:
             npk += 1
 
@@ -1746,7 +1746,7 @@ fn exec_create(var db: Db, name: String, cols: List[ColDef]) Result[String, SqlE
 fn exec_drop(var db: Db, name: String) Result[String, SqlErr]:
     ti := find_table(db, name)
     if ti < 0:
-        return error(SqlErr(msg: "no such table: {name}"))
+        return error(SqlErr(msg: f"no such table: {name}"))
 
     db.tables.remove(ti)
     return ok("ok\n")
@@ -1756,7 +1756,7 @@ fn exec_insert(
 ) Result[String, SqlErr]:
     ti := find_table(db, name)
     if ti < 0:
-        return error(SqlErr(msg: "no such table: {name}"))
+        return error(SqlErr(msg: f"no such table: {name}"))
 
     nt := db.tables[ti].cols.length()
     var colmap = List[Int]()
@@ -1771,9 +1771,9 @@ fn exec_insert(
         for k in 0..cols.length():
             c := find_coldef(db.tables[ti].cols, cols[k])
             if c < 0:
-                return error(SqlErr(msg: "no such column: {cols[k]}"))
+                return error(SqlErr(msg: f"no such column: {cols[k]}"))
             if colmap[c] >= 0:
-                return error(SqlErr(msg: "duplicate column: {cols[k]}"))
+                return error(SqlErr(msg: f"duplicate column: {cols[k]}"))
 
             colmap[c] = k
     else:
@@ -1817,7 +1817,7 @@ fn exec_insert(
 
     try check_pk(db.tables[ti].cols, combined)
     db.tables[ti].rows = combined
-    return ok("inserted {added}\n")
+    return ok(f"inserted {added}\n")
 
 fn exec_update(
     var db: Db, name: String, set_cols: List[String], set_exprs: List[Expr], wh: Expr,
@@ -1825,7 +1825,7 @@ fn exec_update(
 ) Result[String, SqlErr]:
     ti := find_table(db, name)
     if ti < 0:
-        return error(SqlErr(msg: "no such table: {name}"))
+        return error(SqlErr(msg: f"no such table: {name}"))
 
     sc := tab_scope(db.tables[ti].cols, name)
     var setidx = List[Int]()
@@ -1833,7 +1833,7 @@ fn exec_update(
     for k in 0..set_cols.length():
         c := find_col(sc, "", set_cols[k])
         if c < 0:
-            return error(SqlErr(msg: "no such column: {set_cols[k]}"))
+            return error(SqlErr(msg: f"no such column: {set_cols[k]}"))
 
         setidx.append(c)
 
@@ -1876,12 +1876,12 @@ fn exec_update(
 
     try check_pk(db.tables[ti].cols, newrows)
     db.tables[ti].rows = newrows
-    return ok("updated {count}\n")
+    return ok(f"updated {count}\n")
 
 fn exec_delete(var db: Db, name: String, wh: Expr, has_wh: Bool) Result[String, SqlErr]:
     ti := find_table(db, name)
     if ti < 0:
-        return error(SqlErr(msg: "no such table: {name}"))
+        return error(SqlErr(msg: f"no such table: {name}"))
 
     sc := tab_scope(db.tables[ti].cols, name)
     if has_wh:
@@ -1906,7 +1906,7 @@ fn exec_delete(var db: Db, name: String, wh: Expr, has_wh: Bool) Result[String, 
             newrows.append(clone_row(db.tables[ti].rows[r]))
 
     db.tables[ti].rows = newrows
-    return ok("deleted {count}\n")
+    return ok(f"deleted {count}\n")
 
 fn name_pos(names: List[String], nm: String) Int:
     for i in 0..names.length():
@@ -1973,11 +1973,11 @@ fn exec_select(db: Db, q: SelQ) Result[String, SqlErr]:
     // 1. tables exist and aliases are unique
     for k in 0..nt:
         if find_table(db, q.tables[k].name) < 0:
-            return error(SqlErr(msg: "no such table: {q.tables[k].name}"))
+            return error(SqlErr(msg: f"no such table: {q.tables[k].name}"))
 
         for j in 0..k:
             if q.tables[j].al == q.tables[k].al:
-                return error(SqlErr(msg: "duplicate alias: {q.tables[k].al}"))
+                return error(SqlErr(msg: f"duplicate alias: {q.tables[k].al}"))
 
     // 2. join conditions, stars, GROUP BY, WHERE, items, HAVING, ORDER BY
     for k in 1..nt:
@@ -1994,7 +1994,7 @@ fn exec_select(db: Db, q: SelQ) Result[String, SqlErr]:
                     if q.tables[j].al == al:
                         found = true
                 if not found:
-                    return error(SqlErr(msg: "no such table: {al}"))
+                    return error(SqlErr(msg: f"no such table: {al}"))
             Item(_e, _al):
                 continue
 
@@ -2026,7 +2026,7 @@ fn exec_select(db: Db, q: SelQ) Result[String, SqlErr]:
                     if is_agg and not gidx.contains(c):
                         return error(
                             SqlErr(
-                                msg: "column {sc[c].name} must appear in GROUP BY"
+                                msg: f"column {sc[c].name} must appear in GROUP BY"
                             )
                         )
             TStar(al):
@@ -2034,7 +2034,7 @@ fn exec_select(db: Db, q: SelQ) Result[String, SqlErr]:
                     if sc[c].qual == al and is_agg and not gidx.contains(c):
                         return error(
                             SqlErr(
-                                msg: "column {sc[c].name} must appear in GROUP BY"
+                                msg: f"column {sc[c].name} must appear in GROUP BY"
                             )
                         )
             Item(e, _al):
@@ -2254,7 +2254,7 @@ fn exec_select(db: Db, q: SelQ) Result[String, SqlErr]:
             cells.append(val_text(dist_outs[o][c]))
         out = out + cells.join("|") + "\n"
 
-    out = out + "({stop - start} rows)\n"
+    out = out + f"({stop - start} rows)\n"
     return ok(out)
 
 fn exec(var db: Db, st: Stmt) Result[String, SqlErr]:
@@ -2293,7 +2293,7 @@ export fn main() Int:
         r := run_stmt(var db, src, spans[k].s, spans[k].e)
 
         if r.is_error():
-            stdout().write("error: {r.err().msg}\n").get()
+            stdout().write(f"error: {r.err().msg}\n").get()
         else:
             stdout().write(r.get()).get()
 

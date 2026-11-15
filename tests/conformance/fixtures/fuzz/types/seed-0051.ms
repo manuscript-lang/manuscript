@@ -6,27 +6,27 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     s1 := "x"
-    say("s1 = [{s1}]")
+    say(f"s1 = [{s1}]")
 
     i2 := (s1.scalar_length() % s1.scalar_length())
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     bad := missing_function(3)
     l3 := [16]
-    say("l3 = {l3} len {l3.length()}")
+    say(f"l3 = {l3} len {l3.length()}")
     say(
-        "{i2} {((i2 + i2) * 56437)} {(i2 < ((i2 + i2) * 56437))} sum {i2 + ((i2 + i2) * 56437)}"
+        f"{i2} {((i2 + i2) * 56437)} {(i2 < ((i2 + i2) * 56437))} sum {i2 + ((i2 + i2) * 56437)}"
     )
 
     i4 := (-213307076733)
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     i5 := l3.length()
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     if ((90.902 + 239.519) < 0.0):
         say(s1)

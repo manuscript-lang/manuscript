@@ -6,14 +6,14 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     s1 := "gamma"
-    say("s1 = [{s1}]")
+    say(f"s1 = [{s1}]")
 
     f2 := 8.0e22
-    say("f2 = {f2}")
+    say(f"f2 = {f2}")
 
     fixed := 1
     fixed = 2
@@ -24,5 +24,5 @@ export fn main() Int:
         say("hello world")
 
     b3 := (s1.reverse().starts_with(s1) or ((false and false) or (false and false)))
-    say("b3 = {b3}")
+    say(f"b3 = {b3}")
     return 0

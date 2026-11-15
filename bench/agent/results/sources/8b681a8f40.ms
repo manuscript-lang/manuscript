@@ -53,7 +53,7 @@ fn fmt_val(v: Value) String:
 			if b: return "true"
 			return "false"
 		VInt(x):
-			return "{x}"
+			return f"{x}"
 		VText(s):
 			return s.clone()
 
@@ -1666,7 +1666,7 @@ fn run_select(tables: List[TableDef], s: Sel) List[String]!String:
 		cnt += 1
 		j += 1
 
-	lines.append("({cnt} rows)")
+	lines.append(f"({cnt} rows)")
 	return ok(lines)
 
 type SortRow:
@@ -1813,7 +1813,7 @@ fn do_insert(
 		tables[ti].rows.append(nr)
 
 	var out = List[String]()
-	out.append("inserted {n}")
+	out.append(f"inserted {n}")
 	return ok(out)
 
 fn do_update(
@@ -1873,7 +1873,7 @@ fn do_update(
 	tables[ti] = t
 
 	var out = List[String]()
-	out.append("updated {cnt}")
+	out.append(f"updated {cnt}")
 	return ok(out)
 
 fn do_delete(var tables: List[TableDef], name: String, where_e: Expr?) List[String]!String:
@@ -1903,7 +1903,7 @@ fn do_delete(var tables: List[TableDef], name: String, where_e: Expr?) List[Stri
 	tables[ti] = t
 
 	var out = List[String]()
-	out.append("deleted {cnt}")
+	out.append(f"deleted {cnt}")
 	return ok(out)
 
 fn run_stmt(var tables: List[TableDef], st: Stmt) List[String]!String:

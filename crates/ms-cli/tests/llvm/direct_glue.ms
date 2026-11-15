@@ -16,16 +16,16 @@ type Bag:
     raw: List[Int]
 
 fn say(text: String) Void:
-    void stdout().write("{text}\n")
+    void stdout().write(f"{text}\n")
 
 fn build(k: Int) Bag:
     var items: List[Item] = []
     var grid: List[List[String]] = []
     var raw: List[Int] = []
     for i in 0..k:
-        note: String? := "a long note that does not fit inline {i}"
-        items.append(Item(label: "label {i}", note: note, count: i))
-        grid.append(["x{i}", "a long cell that does not fit inline {i}"])
+        note: String? := f"a long note that does not fit inline {i}"
+        items.append(Item(label: f"label {i}", note: note, count: i))
+        grid.append([f"x{i}", f"a long cell that does not fit inline {i}"])
         raw.append(i * 3)
     return Bag(items: items, grid: grid, raw: raw)
 
@@ -42,5 +42,5 @@ export fn main() Int:
             total += 1
     for row in d.grid:
         total += row.length()
-    say("{total} {d.raw.length()} {m.v} {m.name}")
+    say(f"{total} {d.raw.length()} {m.v} {m.name}")
     return 0

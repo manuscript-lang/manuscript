@@ -51,40 +51,44 @@ fn main() Int:
 
 		// Both compilers build the same directory, so no path differs between the
 		// outputs.
-		void remove("{w}/p", recursive: true)
-		copy(dir, "{w}/p", CopyOptions(recursive: true, replace: true)).get()
-		void remove("{w}/p/ms.lock")
+		void remove(f"{w}/p", recursive: true)
+		copy(dir, f"{w}/p", CopyOptions(recursive: true, replace: true)).get()
+		void remove(f"{w}/p/ms.lock")
 
 		lowers := (
-			ok_status(base, ["emit", "ms.toml", "-o", "{w}/a.mir"], "{w}/p")
+			ok_status(
+				base,
+				["emit", "ms.toml", "-o", f"{w}/a.mir"],
+				f"{w}/p",
+			)
 			and ok_status(
 				head,
-				["emit", "ms.toml", "-o", "{w}/b.mir"],
-				"{w}/p",
+				["emit", "ms.toml", "-o", f"{w}/b.mir"],
+				f"{w}/p",
 			)
 		)
 
 		if not lowers:
-			print("skip   {name} (does not lower)")
+			print(f"skip   {name} (does not lower)")
 			skipped += 1
 			continue
 
-		void remove("{w}/p/ms.lock")
+		void remove(f"{w}/p/ms.lock")
 
-		_a := ok_status(base, ["build", "ms.toml", "-o", "{w}/a.bin"], "{w}/p")
-		void remove("{w}/p/ms.lock")
+		_a := ok_status(base, ["build", "ms.toml", "-o", f"{w}/a.bin"], f"{w}/p")
+		void remove(f"{w}/p/ms.lock")
 
-		_b := ok_status(head, ["build", "ms.toml", "-o", "{w}/b.bin"], "{w}/p")
+		_b := ok_status(head, ["build", "ms.toml", "-o", f"{w}/b.bin"], f"{w}/p")
 
 		if (
-			same_bytes("{w}/a.mir", "{w}/b.mir")
-			and same_bytes("{w}/a.bin", "{w}/b.bin")
+			same_bytes(f"{w}/a.mir", f"{w}/b.mir")
+			and same_bytes(f"{w}/a.bin", f"{w}/b.bin")
 		):
-			print("same   {name}")
+			print(f"same   {name}")
 			same += 1
 		else:
-			print("DIFFER {name}")
+			print(f"DIFFER {name}")
 			differ += 1
 
-	print("{same} identical, {differ} different, {skipped} skipped")
+	print(f"{same} identical, {differ} different, {skipped} skipped")
 	return if differ == 0: 0 else: 1

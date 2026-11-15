@@ -24,32 +24,32 @@ import (
 fn build_c(source: String, out: String, flags: List[String]) Result[Void, Error]:
 	var args = ["-O2", "-std=c11", "-ffp-contract=off"].concat(flags)
 	args = args.concat([source.clone(), "-o", out.clone()])
-	void must("cc {source}", capture(env("CC", "cc"), args))?
+	void must(f"cc {source}", capture(env("CC", "cc"), args))?
 
 fn run(suite: String, n: Int, work: String) Result[String, Error]:
-	here := "bench/perf/{suite}"
+	here := f"bench/perf/{suite}"
 	for dir in ["go", "ms", "rust"]:
 		copy(
-			"{here}/{dir}",
-			"{work}/{dir}",
+			f"{here}/{dir}",
+			f"{work}/{dir}",
 			CopyOptions(recursive: true, replace: true),
 		)?
 	for dir in ["rust-checked", "c", "c-ms"]:
-		create_directory("{work}/{dir}")?
-	build_go("{work}/go", "{work}/go/bench")?
-	build_rust("{work}/rust/main.rs", "{work}/rust/bench", [])?
+		create_directory(f"{work}/{dir}")?
+	build_go(f"{work}/go", f"{work}/go/bench")?
+	build_rust(f"{work}/rust/main.rs", f"{work}/rust/bench", [])?
 	build_rust(
-		"{work}/rust/main.rs",
-		"{work}/rust-checked/bench",
+		f"{work}/rust/main.rs",
+		f"{work}/rust-checked/bench",
 		["-C", "overflow-checks=on"],
 	)?
-	build_ms("{work}/ms", "{work}/ms/bench")?
+	build_ms(f"{work}/ms", f"{work}/ms/bench")?
 
 	var versions = base_versions()
 
 	if suite == "kernels":
-		build_c("{here}/c/plain.c", "{work}/c/bench", [])?
-		build_c("{here}/c/ms.c", "{work}/c-ms/bench", [])?
+		build_c(f"{here}/c/plain.c", f"{work}/c/bench", [])?
+		build_c(f"{here}/c/ms.c", f"{work}/c-ms/bench", [])?
 		versions = versions.concat(c_versions())
 
 		if env("ABLATE", "0") == "1":
@@ -63,8 +63,12 @@ fn run(suite: String, n: Int, work: String) Result[String, Error]:
 			]
 
 			for entry in flags:
-				create_directory("{work}/{entry[0]}")?
-				build_c("{here}/c/ms.c", "{work}/{entry[0]}/bench", entry[1].split(" "))?
+				create_directory(f"{work}/{entry[0]}")?
+				build_c(
+					f"{here}/c/ms.c",
+					f"{work}/{entry[0]}/bench",
+					entry[1].split(" "),
+				)?
 
 			versions = versions.concat(ablations())
 
@@ -73,10 +77,10 @@ fn run(suite: String, n: Int, work: String) Result[String, Error]:
 	for i in 0..n:
 		// Rotate the order each round so no version always runs first.
 		for v in rotate(versions, i):
-			out := sample("{work}/{v}/bench", [])?
+			out := sample(f"{work}/{v}/bench", [])?
 			for line in out.split("\n"):
-				if line != "": raw.append("{v} {line}")
-			raw.append("{v} # end")
+				if line != "": raw.append(f"{v} {line}")
+			raw.append(f"{v} # end")
 
 	return summarize(raw, suite, n, versions)
 
@@ -93,5 +97,5 @@ fn main() Int:
 		else:
 			return fail("repeats must be a positive integer")
 
-	tmp := temporary("{args[0]}-").get()
+	tmp := temporary(f"{args[0]}-").get()
 	return finish(run(args[0], n, tmp.path()))

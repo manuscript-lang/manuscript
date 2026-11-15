@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -22,22 +22,22 @@ fn fact(n: Int) Int:
 
 export fn main() Int:
     i1 := (((-49) + ((-273932) - 4)) + (-(37 + (-65028264159))))
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     i2 := ((-8) + (75215269266 + ((-8) + 21)))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     b3 := "line\nbreak".starts_with("日本語")
-    say("b3 = {b3}")
+    say(f"b3 = {b3}")
 
     i5 := ((((-931747490942) - i2) / (-943855)) + ((-413033) + (-20)))
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     f6 := ((625.125 * (1.0e-2 + 212.25)) + ((61.25 * 674.255) * (2.5 * 113.674)))
-    say("f6 = {f6}")
-    say("gcd(4086, 4753) = {gcd(4086, 4753)}")
-    say("fact(13) = {fact(13)}")
+    say(f"f6 = {f6}")
+    say(f"gcd(4086, 4753) = {gcd(4086, 4753)}")
+    say(f"fact(13) = {fact(13)}")
 
     s7 := (("42" + "42") + "")
-    say("s7 = [{s7}]")
+    say(f"s7 = [{s7}]")
     return 0

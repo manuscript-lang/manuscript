@@ -6,14 +6,14 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     l1 := [(-14), (-9), 1, (-13)]
-    say("l1 = {l1} len {l1.length()}")
+    say(f"l1 = {l1} len {l1.length()}")
 
     f2 := (793.543 / ((841.152 + 8.5) - 0.0))
-    say("f2 = {f2}")
+    say(f"f2 = {f2}")
 
     if "hello world".contains("ms"):
         say(("beta" + "日本語"))
@@ -21,7 +21,7 @@ export fn main() Int:
         say("Tab\there".replace("line\nbreak", "quote\"d"))
 
     i3 := 40
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     if ((662.602 * f2) > (f2 - 845.801)):
         say("a")
@@ -29,7 +29,7 @@ export fn main() Int:
         say("a")
 
     f4 := (((f2 - 507.008) * (8.0e25 * 0.0)) / (f2 + (f2 * f2)))
-    say("f4 = {f4}")
+    say(f"f4 = {f4}")
 
     if ("42" == ("ms" + "delta")):
         say(("" + "Tab\there"))
@@ -37,7 +37,7 @@ export fn main() Int:
         say("delta")
 
     s5 := "a"
-    say("s5 = [{s5}]")
+    say(f"s5 = [{s5}]")
 
     var acc6 = 0
     var stepacc6 = 0
@@ -46,23 +46,23 @@ export fn main() Int:
         stepacc6 += 1
         acc6 += stepacc6 * stepacc6 + 8
 
-    say("acc6 = {acc6}")
+    say(f"acc6 = {acc6}")
 
     b7 := true
-    say("b7 = {b7}")
+    say(f"b7 = {b7}")
 
     i8 := i3
-    say("i8 = {i8}")
+    say(f"i8 = {i8}")
 
     i9 := l1.length()
-    say("i9 = {i9}")
+    say(f"i9 = {i9}")
 
     s10 := ("日本語" + "Tab\there").trim()
-    say("s10 = [{s10}]")
+    say(f"s10 = [{s10}]")
 
     i11 := ((-357998) + i3)
-    say("i11 = {i11}")
+    say(f"i11 = {i11}")
 
     f12 := f2
-    say("f12 = {f12}")
+    say(f"f12 = {f12}")
     return 0

@@ -6,17 +6,17 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     l1 := [(-12), (-15), (-2), (-27)]
-    say("l1 = {l1} len {l1.length()}")
+    say(f"l1 = {l1} len {l1.length()}")
 
     i2 := 19
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     l3 := [1, 2, 3].take(0)
-    say("l3 = {l3} len {l3.length()}")
+    say(f"l3 = {l3} len {l3.length()}")
 
     if ("quote\"d".is_empty() or (true or true)):
         say("42")
@@ -24,8 +24,8 @@ export fn main() Int:
         say("ms")
 
     i4 := (((31 - 1) / i2) % 38)
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     i5 := (l1.length() / ((-44) - ((-5) + i2)))
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
     return 0

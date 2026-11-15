@@ -6,21 +6,21 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     say(
-        "{((24 % 888875) + (8 + (-3)))} {(((-7) / (-909870)) * ((-28) + 25))} {(((24 % 888875) + (8 + (-3))) < (((-7) / (-909870)) * ((-28) + 25)))} sum {((24 % 888875) + (8 + (-3))) + (((-7) / (-909870)) * ((-28) + 25))}"
+        f"{((24 % 888875) + (8 + (-3)))} {(((-7) / (-909870)) * ((-28) + 25))} {(((24 % 888875) + (8 + (-3))) < (((-7) / (-909870)) * ((-28) + 25)))} sum {((24 % 888875) + (8 + (-3))) + (((-7) / (-909870)) * ((-28) + 25))}"
     )
 
     f1 := (483.25 * (395.986 - 0.0))
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
 
     s2 := "42"
-    say("s2 = [{s2}]")
+    say(f"s2 = [{s2}]")
 
     b3 := "42".replace("MiXeD CaSe", s2).is_empty()
-    say("b3 = {b3}")
+    say(f"b3 = {b3}")
 
     var acc4 = 0
     var stepacc4 = 0
@@ -29,32 +29,32 @@ export fn main() Int:
         stepacc4 += 1
         acc4 += stepacc4 * stepacc4 + 3
 
-    say("acc4 = {acc4}")
+    say(f"acc4 = {acc4}")
     say(
-        "{(((-13) * (-32)) / s2.scalar_length())} {(-32)} {((((-13) * (-32)) / s2.scalar_length()) < (-32))} sum {(((-13) * (-32)) / s2.scalar_length()) + (-32)}"
+        f"{(((-13) * (-32)) / s2.scalar_length())} {(-32)} {((((-13) * (-32)) / s2.scalar_length()) < (-32))} sum {(((-13) * (-32)) / s2.scalar_length()) + (-32)}"
     )
 
     f5 := f1
-    say("f5 = {f5}")
+    say(f"f5 = {f5}")
 
     i6 := (
         (((-30) * 263193305825) + ((-846042) + (-38)))
         * ((29 + (-32)) + (19 + 18))
     )
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     i8 := (s2.scalar_length() + s2.scalar_length())
-    say("i8 = {i8}")
+    say(f"i8 = {i8}")
 
     s9 := "alpha"
-    say("s9 = [{s9}]")
+    say(f"s9 = [{s9}]")
 
     f10 := (((f5 / 2.5) + (17.935 + 658.684)) - f5)
-    say("f10 = {f10}")
+    say(f"f10 = {f10}")
 
     i11 := ((((-110998) - i6) + (i8 - i8)) * ((i8 + 9) / 44))
-    say("i11 = {i11}")
+    say(f"i11 = {i11}")
 
     i12 := ((i8 - s9.scalar_length()) + ((9 + 16) - s9.scalar_length()))
-    say("i12 = {i12}")
+    say(f"i12 = {i12}")
     return 0

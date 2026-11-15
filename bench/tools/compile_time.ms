@@ -21,7 +21,7 @@ import (
 )
 
 fn q(text: String) String:
-	return text.replace("‹", "\{").replace("›", "\}")
+	return text.replace("‹", "{").replace("›", "}")
 
 // Whether the next draw picks a nearby dependency (70% of draws).
 fn chance(var rng: SeededRandom) Bool:
@@ -51,20 +51,20 @@ fn call_of(prefix: String, d: List[Dep], k: Int, own: Int, qualified: Bool) Stri
 	if d.is_empty(): return "0"
 
 	dep := d[k % d.length()]
-	pk := if qualified and dep.pkg != own: "p{dep.pkg}." else: ""
-	return "{pk}{prefix}_{dep.pkg}_{dep.file}_0(acc % 1000)"
+	pk := if qualified and dep.pkg != own: f"p{dep.pkg}." else: ""
+	return f"{pk}{prefix}_{dep.pkg}_{dep.file}_0(acc % 1000)"
 
 fn ms_fn(p: Int, f: Int, k: Int, d: List[Dep]) String:
 	call := call_of("w", d, k, p, false)
 	shape := k % 4
-	var b = ["export fn w_{p}_{f}_{k}(x: Int) Int:"]
+	var b = [f"export fn w_{p}_{f}_{k}(x: Int) Int:"]
 
 	if shape == 0:
 		b = b.concat(
 			[
 				"    var acc = x", "    for i in 0..10:", "        if i % 2 == 0:",
 				"            acc += i * 3", "        else:", "            acc -= 1",
-				"    return acc % 100000 + {call}"
+				f"    return acc % 100000 + {call}"
 			]
 		)
 	else if shape == 1:
@@ -73,17 +73,17 @@ fn ms_fn(p: Int, f: Int, k: Int, d: List[Dep]) String:
 				"    var xs = List[Int]()", "    for i in 0..8:",
 				"        xs.append(i + x)", "    var t = 0", "    for v in xs:",
 				"        t += v % 7", "    acc := t + xs.length()",
-				"    return acc + {call}"
+				f"    return acc + {call}"
 			]
 		)
 	else if shape == 2:
 		b = b.concat(
 			[
-				q("    r := R_{p}_{f}(x, \"n‹x›\", [x, 1, 2])"),
+				q(f"    r := R_{p}_{f}(x, \"n‹x›\", [x, 1, 2])"),
 				"    var acc = r.score()",
 				"    while acc > 1000:",
 				"        acc = acc / 2",
-				"    return acc + {call}",
+				f"    return acc + {call}",
 			]
 		)
 	else:
@@ -97,7 +97,7 @@ fn ms_fn(p: Int, f: Int, k: Int, d: List[Dep]) String:
 				"        acc += x * 2",
 				"    else:",
 				"        acc += 1",
-				"    return acc + {call}",
+				f"    return acc + {call}",
 			]
 		)
 
@@ -106,7 +106,7 @@ fn ms_fn(p: Int, f: Int, k: Int, d: List[Dep]) String:
 fn go_fn(p: Int, f: Int, k: Int, d: List[Dep]) String:
 	call := call_of("W", d, k, p, true)
 	shape := k % 4
-	var b = [q("func W_{p}_{f}_{k}(x int) int ‹")]
+	var b = [q(f"func W_{p}_{f}_{k}(x int) int ‹")]
 
 	if shape == 0:
 		b = b.concat(
@@ -119,7 +119,7 @@ fn go_fn(p: Int, f: Int, k: Int, d: List[Dep]) String:
 				"\t\t\tacc -= 1",
 				"\t\t›",
 				"\t›",
-				"\treturn acc%100000 + {call}",
+				f"\treturn acc%100000 + {call}",
 			]
 		)
 	else if shape == 1:
@@ -134,20 +134,20 @@ fn go_fn(p: Int, f: Int, k: Int, d: List[Dep]) String:
 				"\t\tt += v % 7",
 				"\t›",
 				"\tacc := t + len(xs)",
-				"\treturn acc + {call}",
+				f"\treturn acc + {call}",
 			]
 		)
 	else if shape == 2:
 		b = b.concat(
 			[
 				q(
-					"\tr := R_{p}_{f}‹x, fmt.Sprintf(\"n%d\", x), []int‹x, 1, 2››"
+					f"\tr := R_{p}_{f}‹x, fmt.Sprintf(\"n%d\", x), []int‹x, 1, 2››"
 				),
 				"\tacc := r.Score()",
 				q("\tfor acc > 1000 ‹"),
 				"\t\tacc = acc / 2",
 				"\t›",
-				"\treturn acc + {call}",
+				f"\treturn acc + {call}",
 			]
 		)
 	else:
@@ -162,7 +162,7 @@ fn go_fn(p: Int, f: Int, k: Int, d: List[Dep]) String:
 				q("\t› else ‹"),
 				"\t\tacc += 1",
 				"\t›",
-				"\treturn acc + {call}",
+				f"\treturn acc + {call}",
 			]
 		)
 
@@ -173,12 +173,12 @@ fn rs_call(d: List[Dep], k: Int) String:
 	if d.is_empty(): return "0"
 
 	dep := d[k % d.length()]
-	return "crate::p{dep.pkg}::f{dep.file}::w_{dep.pkg}_{dep.file}_0(acc % 1000)"
+	return f"crate::p{dep.pkg}::f{dep.file}::w_{dep.pkg}_{dep.file}_0(acc % 1000)"
 
 fn rs_fn(p: Int, f: Int, k: Int, d: List[Dep]) String:
 	call := rs_call(d, k)
 	shape := k % 4
-	var b = [q("pub fn w_{p}_{f}_{k}(x: i64) -> i64 ‹")]
+	var b = [q(f"pub fn w_{p}_{f}_{k}(x: i64) -> i64 ‹")]
 
 	if shape == 0:
 		b = b.concat(
@@ -191,7 +191,7 @@ fn rs_fn(p: Int, f: Int, k: Int, d: List[Dep]) String:
 				"            acc -= 1;",
 				"        ›",
 				"    ›",
-				"    acc % 100000 + {call}",
+				f"    acc % 100000 + {call}",
 			]
 		)
 	else if shape == 1:
@@ -206,20 +206,20 @@ fn rs_fn(p: Int, f: Int, k: Int, d: List[Dep]) String:
 				"        t += v % 7;",
 				"    ›",
 				"    acc := t + xs.len() as i64;",
-				"    acc + {call}",
+				f"    acc + {call}",
 			]
 		)
 	else if shape == 2:
 		b = b.concat(
 			[
 				q(
-					"    r := R_{p}_{f} ‹ a: x, b: format!(\"n‹›\", x), c: vec![x, 1, 2] ›;"
+					f"    r := R_{p}_{f} ‹ a: x, b: format!(\"n‹›\", x), c: vec![x, 1, 2] ›;"
 				),
 				"    let mut acc = r.score();",
 				q("    while acc > 1000 ‹"),
 				"        acc = acc / 2;",
 				"    ›",
-				"    acc + {call}",
+				f"    acc + {call}",
 			]
 		)
 	else:
@@ -234,7 +234,7 @@ fn rs_fn(p: Int, f: Int, k: Int, d: List[Dep]) String:
 				q("    › else ‹"),
 				"        acc += 1;",
 				"    ›",
-				"    acc + {call}",
+				f"    acc + {call}",
 			]
 		)
 
@@ -243,15 +243,15 @@ fn rs_fn(p: Int, f: Int, k: Int, d: List[Dep]) String:
 
 fn generate(out: String, packages: Int, files: Int, fns: Int) Void:
 	var rng = seeded(1)
-	create_directory("{out}/ms/src", recursive: true).get()
-	create_directory("{out}/go", recursive: true).get()
-	create_directory("{out}/rs/src", recursive: true).get()
-	write_text("{out}/go/go.mod", "module bigprog\n\ngo 1.21\n")
+	create_directory(f"{out}/ms/src", recursive: true).get()
+	create_directory(f"{out}/go", recursive: true).get()
+	create_directory(f"{out}/rs/src", recursive: true).get()
+	write_text(f"{out}/go/go.mod", "module bigprog\n\ngo 1.21\n")
 
 	for p in 0..packages:
-		create_directory("{out}/ms/src/pkg{p}", recursive: true).get()
-		create_directory("{out}/go/p{p}", recursive: true).get()
-		create_directory("{out}/rs/src/p{p}", recursive: true).get()
+		create_directory(f"{out}/ms/src/pkg{p}", recursive: true).get()
+		create_directory(f"{out}/go/p{p}", recursive: true).get()
+		create_directory(f"{out}/rs/src/p{p}", recursive: true).get()
 
 		var modrs = List[String]()
 
@@ -260,92 +260,92 @@ fn generate(out: String, packages: Int, files: Int, fns: Int) Void:
 			var m = List[String]()
 
 			for dep in d:
-				path := if dep.pkg == p: "./f{dep.file}.ms" else: "../pkg{dep.pkg}/f{dep.file}.ms"
-				m.append("import w_{dep.pkg}_{dep.file}_0 from \"{path}\"\n")
+				path := if dep.pkg == p: f"./f{dep.file}.ms" else: f"../pkg{dep.pkg}/f{dep.file}.ms"
+				m.append(f"import w_{dep.pkg}_{dep.file}_0 from \"{path}\"\n")
 
 			m.append(
-				"\nexport type R_{p}_{f}:\n    a: Int\n    b: String\n    c: List[Int]\n\nfn R_{p}_{f}.score() Int:\n    var t = self.a + self.b.length()\n    for v in self.c:\n        t += v\n    return t\n\n"
+				f"\nexport type R_{p}_{f}:\n    a: Int\n    b: String\n    c: List[Int]\n\nfn R_{p}_{f}.score() Int:\n    var t = self.a + self.b.length()\n    for v in self.c:\n        t += v\n    return t\n\n"
 			)
 			for k in 0..fns:
 				m.append(ms_fn(p, f, k, d) + "\n")
-			m.append("export fn all_{p}_{f}(x: Int) Int:\n    var t = 0\n")
+			m.append(f"export fn all_{p}_{f}(x: Int) Int:\n    var t = 0\n")
 			for k in 0..fns:
-				m.append("    t += w_{p}_{f}_{k}(x)\n")
+				m.append(f"    t += w_{p}_{f}_{k}(x)\n")
 			m.append("    return t % 100000\n")
-			write_text("{out}/ms/src/pkg{p}/f{f}.ms", m.join(""))
+			write_text(f"{out}/ms/src/pkg{p}/f{f}.ms", m.join(""))
 
-			var g = ["package p{p}\n\nimport \"fmt\"\n"]
+			var g = [f"package p{p}\n\nimport \"fmt\"\n"]
 			var other = Set[Int]()
 			for dep in d:
 				if dep.pkg != p: other.add(dep.pkg)
 			for dpk in other.values().sorted():
-				g.append("import \"bigprog/p{dpk}\"\n")
+				g.append(f"import \"bigprog/p{dpk}\"\n")
 			g.append(
 				q(
-					"\nvar _ = fmt.Sprint\n\ntype R_{p}_{f} struct ‹\n\tA int\n\tB string\n\tC []int\n›\n\nfunc (r R_{p}_{f}) Score() int ‹\n\tt := r.A + len(r.B)\n\tfor _, v := range r.C ‹\n\t\tt += v\n\t›\n\treturn t\n›\n\n"
+					f"\nvar _ = fmt.Sprint\n\ntype R_{p}_{f} struct ‹\n\tA int\n\tB string\n\tC []int\n›\n\nfunc (r R_{p}_{f}) Score() int ‹\n\tt := r.A + len(r.B)\n\tfor _, v := range r.C ‹\n\t\tt += v\n\t›\n\treturn t\n›\n\n"
 				)
 			)
 			for k in 0..fns:
 				g.append(go_fn(p, f, k, d) + "\n")
-			g.append(q("func All_{p}_{f}(x int) int ‹\n\tt := 0\n"))
+			g.append(q(f"func All_{p}_{f}(x int) int ‹\n\tt := 0\n"))
 			for k in 0..fns:
-				g.append("\tt += W_{p}_{f}_{k}(x)\n")
+				g.append(f"\tt += W_{p}_{f}_{k}(x)\n")
 			g.append(q("\treturn t % 100000\n›\n"))
-			write_text("{out}/go/p{p}/f{f}.go", g.join(""))
+			write_text(f"{out}/go/p{p}/f{f}.go", g.join(""))
 
 			var r = ["#![allow(warnings)]\n\n"]
 			r.append(
 				q(
-					"pub struct R_{p}_{f} ‹\n    pub a: i64,\n    pub b: String,\n    pub c: Vec<i64>,\n›\n\nimpl R_{p}_{f} ‹\n    pub fn score(&self) -> i64 ‹\n        let mut t = self.a + self.b.len() as i64;\n        for v in &self.c ‹\n            t += v;\n        ›\n        t\n    ›\n›\n\n"
+					f"pub struct R_{p}_{f} ‹\n    pub a: i64,\n    pub b: String,\n    pub c: Vec<i64>,\n›\n\nimpl R_{p}_{f} ‹\n    pub fn score(&self) -> i64 ‹\n        let mut t = self.a + self.b.len() as i64;\n        for v in &self.c ‹\n            t += v;\n        ›\n        t\n    ›\n›\n\n"
 				)
 			)
 			for k in 0..fns:
 				r.append(rs_fn(p, f, k, d) + "\n")
-			r.append(q("pub fn all_{p}_{f}(x: i64) -> i64 ‹\n    let mut t = 0;\n"))
+			r.append(q(f"pub fn all_{p}_{f}(x: i64) -> i64 ‹\n    let mut t = 0;\n"))
 			for k in 0..fns:
-				r.append("    t += w_{p}_{f}_{k}(x);\n")
+				r.append(f"    t += w_{p}_{f}_{k}(x);\n")
 			r.append(q("    t % 100000\n›\n"))
-			write_text("{out}/rs/src/p{p}/f{f}.rs", r.join(""))
-			modrs.append("pub mod f{f};\n")
+			write_text(f"{out}/rs/src/p{p}/f{f}.rs", r.join(""))
+			modrs.append(f"pub mod f{f};\n")
 
-		write_text("{out}/rs/src/p{p}/mod.rs", modrs.join(""))
+		write_text(f"{out}/rs/src/p{p}/mod.rs", modrs.join(""))
 
 	var ms = ["import stdout from \"@std/io/io.ms\"\n"]
 	for p in 0..packages:
 		for f in 0..files:
-			ms.append("import all_{p}_{f} from \"./pkg{p}/f{f}.ms\"\n")
+			ms.append(f"import all_{p}_{f} from \"./pkg{p}/f{f}.ms\"\n")
 	ms.append("\nexport fn main() Int:\n    var t = 0\n")
 	for p in 0..packages:
 		for f in 0..files:
-			ms.append("    t += all_{p}_{f}(7)\n")
+			ms.append(f"    t += all_{p}_{f}(7)\n")
 	ms.append(q("    stdout().write(\"‹t›\\n\").get()\n    return 0\n"))
-	write_text("{out}/ms/src/main.ms", ms.join(""))
+	write_text(f"{out}/ms/src/main.ms", ms.join(""))
 	write_text(
-		"{out}/ms/ms.toml",
+		f"{out}/ms/ms.toml",
 		"[project]\nname = \"big\"\nsource = \"./src\"\nentry = \"./src/main.ms\"\n",
 	)
 
 	var go = ["package main\n\nimport \"fmt\"\n"]
 	for p in 0..packages:
-		go.append("import \"bigprog/p{p}\"\n")
+		go.append(f"import \"bigprog/p{p}\"\n")
 	go.append(q("\nfunc main() ‹\n\tt := 0\n"))
 	for p in 0..packages:
 		for f in 0..files:
-			go.append("\tt += p{p}.All_{p}_{f}(7)\n")
+			go.append(f"\tt += p{p}.All_{p}_{f}(7)\n")
 	go.append("\tfmt.Println(t)\n" + q("›\n"))
-	write_text("{out}/go/main.go", go.join(""))
+	write_text(f"{out}/go/main.go", go.join(""))
 
 	var rs = List[String]()
 	for p in 0..packages:
-		rs.append("mod p{p};\n")
+		rs.append(f"mod p{p};\n")
 	rs.append(q("\nfn main() ‹\n    let mut t: i64 = 0;\n"))
 	for p in 0..packages:
 		for f in 0..files:
-			rs.append("    t += p{p}::f{f}::all_{p}_{f}(7);\n")
+			rs.append(f"    t += p{p}::f{f}::all_{p}_{f}(7);\n")
 	rs.append(q("    println!(\"‹›\", t);\n›\n"))
-	write_text("{out}/rs/src/main.rs", rs.join(""))
+	write_text(f"{out}/rs/src/main.rs", rs.join(""))
 	write_text(
-		"{out}/rs/Cargo.toml",
+		f"{out}/rs/Cargo.toml",
 		"[package]\nname = \"big\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
 	)
 
@@ -360,36 +360,36 @@ fn timed(
 	void must(label, run_in(dir, program, args))?
 
 	seconds := (now_ns() - start).to_float() / 1000000000.0
-	print("{label} {seconds.to_fixed(2)} s")
+	print(f"{label} {seconds.to_fixed(2)} s")
 	return ok()
 
 fn drop_cache(dir: String) Void:
-	void remove("{dir}/.ms-cache", recursive: true)
+	void remove(f"{dir}/.ms-cache", recursive: true)
 
 fn run(out: String, p: Int, f: Int, k: Int) Result[Void, Error]:
 	generate(out, p, f, k)
 
 	ms := ms_binary()
 	go := env("GO", "go")
-	void must("go clean", run_in("{out}/go", go, ["clean", "-cache"]))?
-	timed("go cold:  ", "{out}/go", go, ["build", "-o", "../gobin", "."])?
-	timed("ms check: ", "{out}/ms", ms, ["check", "ms.toml"])?
-	timed("ms emit:  ", "{out}/ms", ms, ["emit", "ms.toml"])?
-	drop_cache("{out}/ms")
+	void must("go clean", run_in(f"{out}/go", go, ["clean", "-cache"]))?
+	timed("go cold:  ", f"{out}/go", go, ["build", "-o", "../gobin", "."])?
+	timed("ms check: ", f"{out}/ms", ms, ["check", "ms.toml"])?
+	timed("ms emit:  ", f"{out}/ms", ms, ["emit", "ms.toml"])?
+	drop_cache(f"{out}/ms")
 	timed(
 		"ms debug: ",
-		"{out}/ms",
+		f"{out}/ms",
 		ms,
 		["build", "ms.toml", "-o", "../msbin_d", "--build-type", "Debug"],
 	)?
-	drop_cache("{out}/ms")
+	drop_cache(f"{out}/ms")
 	set_environment("MS_BACKEND", "cranelift").get()
-	timed("ms clif:  ", "{out}/ms", ms, ["build", "ms.toml", "-o", "../msbin_c"])?
+	timed("ms clif:  ", f"{out}/ms", ms, ["build", "ms.toml", "-o", "../msbin_c"])?
 	set_environment("MS_BACKEND", none).get()
 
 	if env("SKIP_LLVM", "") == "":
-		drop_cache("{out}/ms")
-		timed("ms release:", "{out}/ms", ms, ["build", "ms.toml", "-o", "../msbin"])?
+		drop_cache(f"{out}/ms")
+		timed("ms release:", f"{out}/ms", ms, ["build", "ms.toml", "-o", "../msbin"])?
 
 	if env("SKIP_RUST", "") == "":
 		cargo := env("CARGO", "cargo")
@@ -404,8 +404,8 @@ fn rust_timed(
 	cargo: String,
 	args: List[String],
 ) Result[Void, Error]:
-	void remove("{out}/rs/target", recursive: true)
-	return timed(label, "{out}/rs", cargo, args)
+	void remove(f"{out}/rs/target", recursive: true)
+	return timed(label, f"{out}/rs", cargo, args)
 
 fn main() Int:
 	args := arguments()

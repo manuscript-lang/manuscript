@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -29,49 +29,49 @@ fn gcd(a: Int, b: Int) Int:
 
 export fn main() Int:
     i1 := 41
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     f2 := 619.657
-    say("f2 = {f2}")
+    say(f"f2 = {f2}")
 
     b3 := "naïve".reverse().trim().is_empty()
-    say("b3 = {b3}")
+    say(f"b3 = {b3}")
 
     b4 := (
-        ("gamma".replace("quote\"d", "hello world") != ("{(i1 * (-16))}:" + ""))
+        ("gamma".replace("quote\"d", "hello world") != (f"{(i1 * (-16))}:" + ""))
         and "alpha".is_empty()
     )
-    say("b4 = {b4}")
+    say(f"b4 = {b4}")
 
     b5 := (
         (((-187611486816) != i1) and "MiXeD CaSe".contains("42"))
         and ((384.598 != 299.369) and (false and b4))
     )
-    say("b5 = {b5}")
+    say(f"b5 = {b5}")
 
     f6 := (((f2 - 0.0) / (801.266 / f2)) * (94.184 * 429.25))
-    say("f6 = {f6}")
+    say(f"f6 = {f6}")
 
     i8 := (((-27) - 67428) + ((i1 % i1) * (i1 + 26)))
-    say("i8 = {i8}")
+    say(f"i8 = {i8}")
 
     s9 := ("" + "42").replace("Tab\there", "  padded  ").trim()
-    say("s9 = [{s9}]")
+    say(f"s9 = [{s9}]")
 
     i10 := i1
-    say("i10 = {i10}")
-    say("fib(38) = {fib(38)}")
+    say(f"i10 = {i10}")
+    say(f"fib(38) = {fib(38)}")
 
     i11 := i8
-    say("i11 = {i11}")
+    say(f"i11 = {i11}")
 
     i12 := ((-(i11 + i11)) * (((-4) - 13) / (i11 + (-1))))
-    say("i12 = {i12}")
-    say("gcd(4156, 450) = {gcd(4156, 450)}")
+    say(f"i12 = {i12}")
+    say(f"gcd(4156, 450) = {gcd(4156, 450)}")
 
     i13 := ((i12 + (27 + 31)) / ((i11 % 64242) + (i11 * (-7))))
-    say("i13 = {i13}")
+    say(f"i13 = {i13}")
 
     big14 := (((-40) - 17) + (i1 + 17)) - (((-40) - 17) + (i1 + 17))
-    say("{(((-40) - 17) + (i1 + 17)) % big14}")
+    say(f"{(((-40) - 17) + (i1 + 17)) % big14}")
     return 0

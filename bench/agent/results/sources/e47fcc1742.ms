@@ -3,7 +3,7 @@ import read_lines from "@std/streams.ms"
 
 // Hard-break marker placed before a line break in paragraph text (two trailing spaces).
 SENT := "\u{1}"
-PUNCT := "!\"#$%&'()*+,-./:;<=>?@[\\]^_`\{|\}~"
+PUNCT := "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~"
 DIGITS := "0123456789"
 
 type Blk:
@@ -557,7 +557,7 @@ fn parse_at(lines: List[String], i: Int) Chunk:
     if level > 0:
         body := inline(atx_text(line, level))
         return Chunk(
-            Blk(false, "<h{level}>" + body + "</h{level}>\n", "", false), i + 1
+            Blk(false, f"<h{level}>" + body + f"</h{level}>\n", "", false), i + 1
         )
 
     if is_thematic(line):

@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -15,17 +15,17 @@ fn gcd(a: Int, b: Int) Int:
     return gcd(b, a % b)
 
 export fn main() Int:
-    s1 := (("gamma" + "brace\{s\}") + "emoji 😀".trim()).lower()
-    say("s1 = [{s1}]")
+    s1 := (("gamma" + "brace{s}") + "emoji 😀".trim()).lower()
+    say(f"s1 = [{s1}]")
 
     l2 := [19, 8, (-12), 30]
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     bad: String := 5
-    say("gcd(4299, 4413) = {gcd(4299, 4413)}")
+    say(f"gcd(4299, 4413) = {gcd(4299, 4413)}")
 
     i3 := ((-((-23) - (-46))) + (-15))
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     var acc4 = 0
 
@@ -35,5 +35,5 @@ export fn main() Int:
         else:
             acc4 -= 1
 
-    say("acc4 = {acc4}")
+    say(f"acc4 = {acc4}")
     return 0

@@ -6,32 +6,32 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     if (true and true):
-        say("brace\{s\}".replace("brace\{s\}", "delta"))
+        say("brace{s}".replace("brace{s}", "delta"))
     else:
         say("a")
 
     b1 := false
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
     i2 := (-40)
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     l3 := [1, 2, 3].take(0)
-    say("l3 = {l3} len {l3.length()}")
+    say(f"l3 = {l3} len {l3.length()}")
 
     b4 := (not (not "quote\"d".ends_with("beta")))
-    say("b4 = {b4}")
+    say(f"b4 = {b4}")
 
     i5 := ((-(i2 + i2)) * (i2 + i2))
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     i6 := (l3.length() + 3)
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     big7 := -9223372036854775808
-    say("{big7 - 2}")
+    say(f"{big7 - 2}")
     return 0

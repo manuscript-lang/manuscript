@@ -10,5 +10,5 @@ test "an empty string inside a container shows as quotes":
 test "an empty string on its own and in other values":
 	m := Map[String, String]()
 	expect_equal("".to_string(), "")?
-	expect_equal("{["", "x"]}", "[\"\", x]")?
+	expect_equal(f"{["", "x"]}", "[\"\", x]")?
 	expect_equal(m.to_string(), "Map()")?

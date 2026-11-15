@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -16,49 +16,49 @@ fn fact(n: Int) Int:
 
 export fn main() Int:
     say(
-        "{(4 * 25)} {((393870 + 29) / (39 * (-19)))} {((4 * 25) < ((393870 + 29) / (39 * (-19))))} sum {(4 * 25) + ((393870 + 29) / (39 * (-19)))}"
+        f"{(4 * 25)} {((393870 + 29) / (39 * (-19)))} {((4 * 25) < ((393870 + 29) / (39 * (-19))))} sum {(4 * 25) + ((393870 + 29) / (39 * (-19)))}"
     )
 
-    s1 := (("delta" + "line\nbreak") + "brace\{s\}").lower()
-    say("s1 = [{s1}]")
+    s1 := (("delta" + "line\nbreak") + "brace{s}").lower()
+    say(f"s1 = [{s1}]")
 
     i2 := ((s1.scalar_length() + (10 * (-4))) + 16)
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     f4 := (445.25 + 0.0)
-    say("f4 = {f4}")
+    say(f"f4 = {f4}")
 
     s5 := "42".reverse()
-    say("s5 = [{s5}]")
-    say("fact(12) = {fact(12)}")
+    say(f"s5 = [{s5}]")
+    say(f"fact(12) = {fact(12)}")
 
     s6 := ("back\\slash" + s5)
-    say("s6 = [{s6}]")
+    say(f"s6 = [{s6}]")
 
     s7 := s5.clone()
-    say("s7 = [{s7}]")
+    say(f"s7 = [{s7}]")
 
     s8 := ("Tab\there" + s5)
-    say("s8 = [{s8}]")
+    say(f"s8 = [{s8}]")
     say(
-        "{(i2 % 32)} {(-(i2 + i2))} {((i2 % 32) < (-(i2 + i2)))} sum {(i2 % 32) + (-(i2 + i2))}"
+        f"{(i2 % 32)} {(-(i2 + i2))} {((i2 % 32) < (-(i2 + i2)))} sum {(i2 % 32) + (-(i2 + i2))}"
     )
 
     i9 := (-(31 - (985520 + i2)))
-    say("i9 = {i9}")
+    say(f"i9 = {i9}")
 
     b10 := (((i2 + 2) - ((-941685) - i9)) <= i2)
-    say("b10 = {b10}")
+    say(f"b10 = {b10}")
 
     b11 := false
-    say("b11 = {b11}")
+    say(f"b11 = {b11}")
 
     i12 := i2
-    say("i12 = {i12}")
+    say(f"i12 = {i12}")
 
     b13 := ((s8 + "42").contains("back\\slash") or ((b11 and b10) and b11))
-    say("b13 = {b13}")
+    say(f"b13 = {b13}")
 
     i14 := ((15 * i2) - ((38 + (-17)) - ((-67434243032) * (-18))))
-    say("i14 = {i14}")
+    say(f"i14 = {i14}")
     return 0

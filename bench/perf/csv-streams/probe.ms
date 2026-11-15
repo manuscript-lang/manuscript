@@ -63,23 +63,23 @@ fn measure(item: Case) Void!:
 		if checksum != length * item.operations: return error(Error("wrong checksum"))
 
 		print(
-			"{item.name},{item.chunk},{item.data.length()},{item.operations},{sample},{ns},{checksum}"
+			f"{item.name},{item.chunk},{item.data.length()},{item.operations},{sample},{ns},{checksum}"
 		)
 
 fn main() Void:
 	for chunk in [1, 64, 1000000]:
 		for length in [4096, 8192, 16384, 32768, 65536]:
 			expected := "x".repeat(length).get()
-			measure(Case("plain", "{expected}\n".to_bytes(), chunk, expected)).get()
+			measure(Case("plain", f"{expected}\n".to_bytes(), chunk, expected)).get()
 
 	quoted := "é\"日\n".repeat(2048).get()
-	encoded := "\"{quoted.replace("\"", "\"\"")}\"\r\n".to_bytes()
+	encoded := f"\"{quoted.replace("\"", "\"\"")}\"\r\n".to_bytes()
 	for chunk in [1, 64, 1000000]:
 		measure(Case("quoted", encoded.clone(), chunk, quoted.clone())).get()
 
 	for chunk in [1, 4, 1000000]:
 		for field in ["x", "a,b", "é\"日\n"]:
-			data := "\"{field.replace("\"", "\"\"")}\"\r\n".to_bytes()
+			data := f"\"{field.replace("\"", "\"\"")}\"\r\n".to_bytes()
 			measure(Case("small-quoted", data, chunk, field.clone(), operations: 20000)).get()
 
 		measure(Case("small-plain", "x\n".to_bytes(), chunk, "x", operations: 20000)).get()

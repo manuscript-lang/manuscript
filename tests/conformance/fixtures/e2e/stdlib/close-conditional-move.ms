@@ -7,7 +7,7 @@ type Door:
     name: String
 
 fn var Door.close() Void!:
-    print("closed {self.name}")
+    print(f"closed {self.name}")
 
 fn Door.id() Int:
     return 1
@@ -49,7 +49,7 @@ fn in_loop(n: Int) Int:
     var total = 0
 
     for i in 0..n:
-        h := open_handle("loop-{i}")
+        h := open_handle(f"loop-{i}")
         if i % 2 == 0:
             total += consume(h)
 

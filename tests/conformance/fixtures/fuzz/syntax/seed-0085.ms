@@ -6,12 +6,12 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     l1 := [(-1), (-9), (-22), (-2)]
-    say("l1 = {l1} len {l1.length()}")
+    say(f"l1 = {l1} len {l1.length()}")
 
     f2 := (761.129 / (608.782 * (5.5 - 683.081)))
-    say("f2 = {f2}")
+    say(f"f2 = {f2}")
     return 0

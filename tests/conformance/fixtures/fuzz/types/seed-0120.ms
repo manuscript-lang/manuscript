@@ -6,14 +6,14 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     l1 := [(-27), 8, 30, 30, 19]
-    say("l1 = {l1} len {l1.length()}")
+    say(f"l1 = {l1} len {l1.length()}")
     if 1:
         say("truthy")
 
     b2 := false
-    say("b2 = {b2}")
+    say(f"b2 = {b2}")
     return 0

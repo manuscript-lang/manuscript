@@ -14,7 +14,7 @@ type Cart:
     items: List[String]
 
 fn summary(cart: Cart) String:
-    return "{cart.owner} has {cart.items.length()} items"
+    return f"{cart.owner} has {cart.items.length()} items"
 
 fn add_gift(var cart: Cart) Void:
     cart.items.append("gift card")
@@ -31,7 +31,7 @@ fn main() Void:
     var history = List[Cart]()
     archive(cart.clone(), var history)
     cart.items.append("notebook")
-    print("{summary(cart)}; archived: {history[0].items.length()}")
+    print(f"{summary(cart)}; archived: {history[0].items.length()}")
 ```
 
 ```text

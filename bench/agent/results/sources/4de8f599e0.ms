@@ -10,7 +10,7 @@ fn is_cell(ch: String) Bool: ch == "#" or ch == "." or ch == "S" or ch == "E"
 fn validate(grid: List[List[String]]) String:
 	for r in range(0, grid.length()):
 		for c in range(0, grid[r].length()):
-			if not is_cell(grid[r][c]): return "error: bad character at {r + 1},{c + 1}"
+			if not is_cell(grid[r][c]): return f"error: bad character at {r + 1},{c + 1}"
 
 	width := (if grid.is_empty(): 0 else: grid[0].length())
 	for row in grid:
@@ -61,7 +61,7 @@ fn solve(text: String) String:
 	while head < queue.length():
 		cur := queue[head]
 		head += 1
-		if cur == goal: return "{dist[cur]}"
+		if cur == goal: return f"{dist[cur]}"
 
 		r := cur / width
 		c := cur % width
@@ -92,5 +92,5 @@ fn visit(
 export fn main() Int:
 	bytes := read_all(stdin()).or_else(fn(cause) Bytes: "".to_bytes())
 	text := bytes.decode_utf8().get("")
-	stdout().write("{solve(text)}\n").get()
+	stdout().write(f"{solve(text)}\n").get()
 	return 0

@@ -6,29 +6,29 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := ((-30) * (-26))
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     l2 := [1, (-7), (-20)]
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     s3 := "MiXeD CaSe"
-    say("s3 = [{s3}]")
+    say(f"s3 = [{s3}]")
 
     f4 := (((0.0 + 0.0) / 8.5) / ((478.493 / 200.835) + (979.382 / 610.142)))
-    say("f4 = {f4}")
+    say(f"f4 = {f4}")
 
     i5 := (l2.get(0) / ((i1 - i1) + 379210))
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     if ((true and false) and (not false)):
-        say(("Tab\there" + "brace\{s\}"))
+        say(("Tab\there" + "brace{s}"))
     else:
         say("a")
 
     s6 := ("42" + s3)
-    say("s6 = [{s6}]")
+    say(f"s6 = [{s6}]")
     return 0

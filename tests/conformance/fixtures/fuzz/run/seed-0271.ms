@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -34,43 +34,43 @@ fn fib(n: Int) Int:
     return a
 
 export fn main() Int:
-    say("gcd(2994, 4542) = {gcd(2994, 4542)}")
-    say("fact(6) = {fact(6)}")
+    say(f"gcd(2994, 4542) = {gcd(2994, 4542)}")
+    say(f"fact(6) = {fact(6)}")
 
     f1 := (((3.5 / 933.377) * (9.5 * 490.538)) + (857.25 + (3.0e22 / 7.5)))
-    say("f1 = {f1}")
-    say("fib(18) = {fib(18)}")
+    say(f"f1 = {f1}")
+    say(f"fib(18) = {fib(18)}")
 
     b2 := ("42".replace("beta", "quote\"d") + "42".replace("gamma", "日本語")).is_empty()
-    say("b2 = {b2}")
-    say("gcd(4840, 3324) = {gcd(4840, 3324)}")
+    say(f"b2 = {b2}")
+    say(f"gcd(4840, 3324) = {gcd(4840, 3324)}")
 
     i3 := 43
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     i4 := (-27)
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     l5 := [(-19)]
-    say("l5 = {l5} len {l5.length()}")
+    say(f"l5 = {l5} len {l5.length()}")
 
     f6 := (f1 * (f1 + 241.478))
-    say("f6 = {f6}")
+    say(f"f6 = {f6}")
 
     s7 := "ms"
-    say("s7 = [{s7}]")
+    say(f"s7 = [{s7}]")
 
     s8 := ((s7.trim() + "back\\slash".trim()) + "gamma".reverse())
-    say("s8 = [{s8}]")
+    say(f"s8 = [{s8}]")
 
     var acc9 = 0
     for i in 0..0:
         acc9 += i * (-1)
-    say("acc9 = {acc9}")
+    say(f"acc9 = {acc9}")
 
     f10 := (f6 / ((f1 / f6) * 793.810))
-    say("f10 = {f10}")
+    say(f"f10 = {f10}")
 
     big11 := -9223372036854775808
-    say("{big11 - 3}")
+    say(f"{big11 - 3}")
     return 0

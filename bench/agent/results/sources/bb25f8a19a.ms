@@ -113,7 +113,7 @@ fn letter_of(col: Int) String:
 	return "ABCDEFGHIJKLMNOPQRSTUVWXYZ".slice(col, col + 1).get()
 
 fn name_of(k: Int) String:
-	return letter_of(key_col(k)) + "{key_row(k)}"
+	return letter_of(key_col(k)) + f"{key_row(k)}"
 
 fn names_of(keys: List[Int]) String:
 	var parts = List[String]()
@@ -286,7 +286,7 @@ fn big_text(x: Float) String:
 
 	var out = ""
 	for i in 0..digits.length():
-		out = "{digits[i]}" + out
+		out = f"{digits[i]}" + out
 	if x < 0.0:
 		out = "-" + out
 	return out
@@ -548,7 +548,7 @@ fn moved_ref(r: CellRef, dc: Int, dr: Int) String:
 
 	cabs := if r.col_abs: "$" else: ""
 	rabs := if r.row_abs: "$" else: ""
-	return cabs + letter_of(col) + rabs + "{row}"
+	return cabs + letter_of(col) + rabs + f"{row}"
 
 fn shift_token(text: String, dc: Int, dr: Int) String:
 	parts := text.split(":")
@@ -1597,14 +1597,14 @@ impl Sheet:
 		r := parse_cell(c.word)
 
 		if not r.ok:
-			emit("error: bad cell reference '{c.word}'")
+			emit(f"error: bad cell reference '{c.word}'")
 			return
 
 		k := key_of(r.c1, r.r1)
 		self.put(k, c.rest.trim().clone())
 
 		n := self.recalc([k])
-		emit("recalc {n}")
+		emit(f"recalc {n}")
 
 	var fn cmd_clear(rest: String) Unit:
 		args := words(rest)
@@ -1616,14 +1616,14 @@ impl Sheet:
 		r := parse_cell(args[0])
 
 		if not r.ok:
-			emit("error: bad cell reference '{args[0]}'")
+			emit(f"error: bad cell reference '{args[0]}'")
 			return
 
 		k := key_of(r.c1, r.r1)
 		self.put(k, "")
 
 		n := self.recalc([k])
-		emit("recalc {n}")
+		emit(f"recalc {n}")
 
 	var fn cmd_copy(rest: String) Unit:
 		args := words(rest)
@@ -1635,13 +1635,13 @@ impl Sheet:
 		s := parse_cell(args[0])
 
 		if not s.ok:
-			emit("error: bad cell reference '{args[0]}'")
+			emit(f"error: bad cell reference '{args[0]}'")
 			return
 
 		d := parse_range(args[1])
 
 		if not d.ok:
-			emit("error: bad range '{args[1]}'")
+			emit(f"error: bad range '{args[1]}'")
 			return
 
 		raw := self.raws.get_or(key_of(s.c1, s.r1), "")
@@ -1660,7 +1660,7 @@ impl Sheet:
 				changed.append(k)
 
 		n := self.recalc(changed)
-		emit("recalc {n}")
+		emit(f"recalc {n}")
 
 	var fn cmd_import(rest: String, block: List[String]) Unit:
 		args := words(rest)
@@ -1672,7 +1672,7 @@ impl Sheet:
 		r := parse_cell(args[0])
 
 		if not r.ok:
-			emit("error: bad cell reference '{args[0]}'")
+			emit(f"error: bad cell reference '{args[0]}'")
 			return
 
 		recs := csv_records(block.join("\n"))
@@ -1697,7 +1697,7 @@ impl Sheet:
 				changed.append(k)
 
 		n := self.recalc(changed)
-		emit("imported {nrows} rows, {cols} columns; recalc {n}")
+		emit(f"imported {nrows} rows, {cols} columns; recalc {n}")
 
 	fn cmd_print(rest: String) Unit:
 		args := words(rest)
@@ -1718,7 +1718,7 @@ impl Sheet:
 			rect = parse_range(args[0])
 
 			if not rect.ok:
-				emit("error: bad range '{args[0]}'")
+				emit(f"error: bad range '{args[0]}'")
 				return
 
 		for r in rect.r1..rect.r2 + 1:
@@ -1756,7 +1756,7 @@ impl Sheet:
 			rect = parse_range(range_arg)
 
 			if not rect.ok:
-				emit("error: bad range '{range_arg}'")
+				emit(f"error: bad range '{range_arg}'")
 				return
 		else if self.raws.length() == 0:
 			emit("(empty sheet)")
@@ -1790,19 +1790,19 @@ impl Sheet:
 		r := parse_cell(args[0])
 
 		if not r.ok:
-			emit("error: bad cell reference '{args[0]}'")
+			emit(f"error: bad cell reference '{args[0]}'")
 			return
 
 		k := key_of(r.c1, r.r1)
 
 		if not self.raws.contains(k):
-			emit("{name_of(k)}: (empty)")
+			emit(f"{name_of(k)}: (empty)")
 		else if self.forms.contains(k):
 			emit(
-				"{name_of(k)}: {self.raws.get_or(k, "")} => {display(self.vals.get_or(k, Val()))}"
+				f"{name_of(k)}: {self.raws.get_or(k, "")} => {display(self.vals.get_or(k, Val()))}"
 			)
 		else:
-			emit("{name_of(k)}: {self.raws.get_or(k, "")}")
+			emit(f"{name_of(k)}: {self.raws.get_or(k, "")}")
 
 	fn cmd_get(rest: String) Unit:
 		args := words(rest)
@@ -1814,7 +1814,7 @@ impl Sheet:
 		r := parse_cell(args[0])
 
 		if not r.ok:
-			emit("error: bad cell reference '{args[0]}'")
+			emit(f"error: bad cell reference '{args[0]}'")
 			return
 
 		k := key_of(r.c1, r.r1)
@@ -1828,13 +1828,13 @@ impl Sheet:
 		args := words(rest)
 
 		if args.length() != 1:
-			emit("error: usage: {which} CELL")
+			emit(f"error: usage: {which} CELL")
 			return
 
 		r := parse_cell(args[0])
 
 		if not r.ok:
-			emit("error: bad cell reference '{args[0]}'")
+			emit(f"error: bad cell reference '{args[0]}'")
 			return
 
 		k := key_of(r.c1, r.r1)
@@ -1852,7 +1852,7 @@ impl Sheet:
 
 	fn cmd_stats() Unit:
 		emit(
-			"cells {self.raws.length()} formulas {self.forms.length()} evals {self.evals}"
+			f"cells {self.raws.length()} formulas {self.forms.length()} evals {self.evals}"
 		)
 
 	var fn command(cmd: String, rest: String) Unit:
@@ -1875,7 +1875,7 @@ impl Sheet:
 		else if cmd == "stats":
 			self.cmd_stats()
 		else:
-			emit("error: unknown command '{cmd}'")
+			emit(f"error: unknown command '{cmd}'")
 
 fn new_sheet() Sheet:
 	return Sheet(

@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -29,44 +29,44 @@ fn gcd(a: Int, b: Int) Int:
 
 export fn main() Int:
     say(
-        "{(254479 * 0)} {((11 * 198962485691) * (-(-7)))} {((254479 * 0) < ((11 * 198962485691) * (-(-7))))} sum {(254479 * 0) + ((11 * 198962485691) * (-(-7)))}"
+        f"{(254479 * 0)} {((11 * 198962485691) * (-(-7)))} {((254479 * 0) < ((11 * 198962485691) * (-(-7))))} sum {(254479 * 0) + ((11 * 198962485691) * (-(-7)))}"
     )
 
     b1 := false
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
     i2 := (((39 - 567034) - 20) - ((812287999387 - (-105088025967)) - (43 + 32)))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     b3 := b1
-    say("b3 = {b3}")
+    say(f"b3 = {b3}")
 
     s4 := "emoji 😀"
-    say("s4 = [{s4}]")
+    say(f"s4 = [{s4}]")
 
     i5 := (-50)
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     s6 := ("日本語" + "日本語").trim()
-    say("s6 = [{s6}]")
+    say(f"s6 = [{s6}]")
 
     l7 := [(-19), (-24), 17, (-8)]
-    say("l7 = {l7} len {l7.length()}")
+    say(f"l7 = {l7} len {l7.length()}")
 
     i8 := (46 * (-41))
-    say("i8 = {i8}")
+    say(f"i8 = {i8}")
 
     f9 := 3.0e-1
-    say("f9 = {f9}")
-    say("fib(31) = {fib(31)}")
+    say(f"f9 = {f9}")
+    say(f"fib(31) = {fib(31)}")
 
     b10 := b1
-    say("b10 = {b10}")
-    say("gcd(925, 2241) = {gcd(925, 2241)}")
+    say(f"b10 = {b10}")
+    say(f"gcd(925, 2241) = {gcd(925, 2241)}")
 
     l11 := [8]
-    say("l11 = {l11} len {l11.length()}")
+    say(f"l11 = {l11} len {l11.length()}")
 
     l12 := l11.sorted(fn a, b: a.compare(b))
-    say("l12 = {l12} len {l12.length()}")
+    say(f"l12 = {l12} len {l12.length()}")
     return 0

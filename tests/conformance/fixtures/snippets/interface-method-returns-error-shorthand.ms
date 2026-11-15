@@ -30,13 +30,13 @@ fn apply(c: Cb, x: Int) Int!:
 fn main() Void:
     p := IntP()
     r := run[Int](p, "42")
-    stdout().write("{r.get(0)}\n").get()
+    stdout().write(f"{r.get(0)}\n").get()
 
     l := all[Int](p, ["1", "2", "x"])
-    stdout().write("{l.is_ok()}\n").get()
+    stdout().write(f"{l.is_ok()}\n").get()
 
     l2 := all[Int](p, ["1", "2"])
-    stdout().write("{l2.get([]).length()}\n").get()
+    stdout().write(f"{l2.get([]).length()}\n").get()
 
     c := Cb(fn x: ok(x + 1))
-    stdout().write("{apply(c, 1).get(0)}\n").get()
+    stdout().write(f"{apply(c, 1).get(0)}\n").get()

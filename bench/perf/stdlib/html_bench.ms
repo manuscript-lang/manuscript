@@ -10,7 +10,7 @@ fn html_doc(count: Int) String:
 	var sb = StringBuilder()
 	sb.append("<div>")
 	for i in 0..count:
-		sb.append("<p class=\"row\" id=\"r{i}\">item <b>{i}</b> &amp; more</p>")
+		sb.append(f"<p class=\"row\" id=\"r{i}\">item <b>{i}</b> &amp; more</p>")
 	sb.append("</div>")
 	return sb.build()
 

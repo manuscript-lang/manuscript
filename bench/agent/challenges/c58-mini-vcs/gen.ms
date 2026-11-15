@@ -10,12 +10,12 @@ import (
 // The `{cN}` placeholders stand for the short id of the N-th commit; a dry run with a
 // dummy id finds them.
 fn resolve_hashes(oracle: String, script: String) String:
-	if not script.contains("\{c"): return script.clone()
+	if not script.contains("{c"): return script.clone()
 
-	marker := compile("\\\{c[0-9]+\\\}").to_optional()
+	marker := compile("\\{c[0-9]+\\}").to_optional()
 	probe := marker.get().replace_all(script, "0000000").get("")
 	out := solve_with(oracle, probe)
-	found := compile("(?m)^\\[[^\\]]* ([0-9a-f]\{7\})\\] ").to_optional()
+	found := compile("(?m)^\\[[^\\]]* ([0-9a-f]{7})\\] ").to_optional()
 	var shorts = List[String]()
 	for groups in found.get().captures_all(out, 1000).get([]):
 		shorts.append(groups[1].clone())
@@ -24,7 +24,7 @@ fn resolve_hashes(oracle: String, script: String) String:
 	var n = 1
 
 	while n <= shorts.length():
-		resolved = resolved.replace("\{c{n}\}", shorts[n - 1].clone())
+		resolved = resolved.replace(f"\{c{n}\}", shorts[n - 1].clone())
 		n += 1
 
 	return resolved
@@ -43,8 +43,8 @@ fn strip_nl(text: String) String:
 	return chars.slice(start, end).get([]).join("") + "\n"
 
 fn W(name: String, lines: List[String] = []) String:
-	if lines.is_empty(): return "write {name}\n.\n"
-	return "write {name}\n" + lines.join("\n") + "\n.\n"
+	if lines.is_empty(): return f"write {name}\n.\n"
+	return f"write {name}\n" + lines.join("\n") + "\n.\n"
 
 export fn gen_c58() Void:
 	var cs = Cases(build_oracle("c58-mini-vcs"))
@@ -116,13 +116,13 @@ export fn gen_c58() Void:
 		var cs,
 		"show-and-refs",
 		W("a", ["1", "2"])
-		+ "add a\ncommit c1\nwrite a\n1\n2\n3\n.\nwrite b\nbb\n.\nadd .\ncommit c2\nwrite a\nz\n.\nadd a\ncommit c3\nshow HEAD\nshow HEAD~1\nshow HEAD~2\nshow HEAD~3\nshow HEAD~x\nshow nope\nshow \{c1\}\nshow zz\nshow abc\ntag v1 HEAD~1\ntag v2\ntag v1\ntag bad name\ntag\nshow v1\nshow v1~1\nshow main~2\nshow main\nshow\nshow a b",
+		+ "add a\ncommit c1\nwrite a\n1\n2\n3\n.\nwrite b\nbb\n.\nadd .\ncommit c2\nwrite a\nz\n.\nadd a\ncommit c3\nshow HEAD\nshow HEAD~1\nshow HEAD~2\nshow HEAD~3\nshow HEAD~x\nshow nope\nshow {c1}\nshow zz\nshow abc\ntag v1 HEAD~1\ntag v2\ntag v1\ntag bad name\ntag\nshow v1\nshow v1~1\nshow main~2\nshow main\nshow\nshow a b",
 	)
 	add(
 		var cs,
 		"ref-prefix-ambiguity",
 		W("a", ["1"])
-		+ "add a\ncommit one\nwrite a\n2\n.\nadd a\ncommit two\nshow 0000\nshow ffff\nshow \{c2\}\nlog -n 1",
+		+ "add a\ncommit one\nwrite a\n2\n.\nadd a\ncommit two\nshow 0000\nshow ffff\nshow {c2}\nlog -n 1",
 	)
 	add(
 		var cs,
@@ -196,7 +196,7 @@ export fn gen_c58() Void:
 		var cs,
 		"detached-head",
 		W("a", ["1"])
-		+ "add a\ncommit c1\nwrite a\n2\n.\nadd a\ncommit c2\nwrite a\n3\n.\nadd a\ncommit c3\ncheckout HEAD~2\nstatus\ncat a\nbranch\nwrite a\nd\n.\nadd a\ncommit on detached\nlog\nbranch saved\nbranch\ncheckout main\nlog\ncheckout saved\nlog -n 2\ncheckout \{c1\}\ncheckout main",
+		+ "add a\ncommit c1\nwrite a\n2\n.\nadd a\ncommit c2\nwrite a\n3\n.\nadd a\ncommit c3\ncheckout HEAD~2\nstatus\ncat a\nbranch\nwrite a\nd\n.\nadd a\ncommit on detached\nlog\nbranch saved\nbranch\ncheckout main\nlog\ncheckout saved\nlog -n 2\ncheckout {c1}\ncheckout main",
 	)
 	add(
 		var cs,
@@ -392,7 +392,7 @@ export fn gen_c58() Void:
 	add(
 		var cs,
 		"long-workflow",
-		"\nwrite README\n# project\n.\nwrite src/main.c\nint main() \{ return 0; \}\n.\nadd .\ncommit initial import\ncheckout -b feature/login\nwrite src/login.c\nvoid login() \{\}\n.\nwrite README\n# project\nlogin support\n.\nadd .\ncommit add login\ncheckout main\nwrite src/main.c\nint main() \{ return 1; \}\n.\nadd src/main.c\ncommit fix exit code\ncheckout -b feature/docs\nwrite docs/guide.md\nguide\n.\nadd docs/guide.md\ncommit docs\ncheckout main\nmerge feature/login\nmerge feature/docs\nlog\nls\ntag v1.0\ncheckout feature/login\nwrite src/login.c\nvoid login() \{ auth(); \}\n.\nadd .\ncommit auth\ncheckout main\nmerge feature/login\ndiff v1.0 HEAD\nbranch -d feature/login\nbranch -d feature/docs\nbranch\nstatus\n",
+		"\nwrite README\n# project\n.\nwrite src/main.c\nint main() { return 0; }\n.\nadd .\ncommit initial import\ncheckout -b feature/login\nwrite src/login.c\nvoid login() {}\n.\nwrite README\n# project\nlogin support\n.\nadd .\ncommit add login\ncheckout main\nwrite src/main.c\nint main() { return 1; }\n.\nadd src/main.c\ncommit fix exit code\ncheckout -b feature/docs\nwrite docs/guide.md\nguide\n.\nadd docs/guide.md\ncommit docs\ncheckout main\nmerge feature/login\nmerge feature/docs\nlog\nls\ntag v1.0\ncheckout feature/login\nwrite src/login.c\nvoid login() { auth(); }\n.\nadd .\ncommit auth\ncheckout main\nmerge feature/login\ndiff v1.0 HEAD\nbranch -d feature/login\nbranch -d feature/docs\nbranch\nstatus\n",
 	)
 	add(
 		var cs,

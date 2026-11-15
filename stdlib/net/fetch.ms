@@ -115,7 +115,7 @@ fn FetchResponse.check_status() Void!:
 	if self.ok(): return ok()
 	return error(
 		Error(
-			"fetch: unexpected status {self.head.status}",
+			f"fetch: unexpected status {self.head.status}",
 			kind: "EIO",
 			details: {"status": self.head.status.to_string()},
 		)

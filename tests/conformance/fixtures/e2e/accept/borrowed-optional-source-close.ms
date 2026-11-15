@@ -25,7 +25,7 @@ fn use_named(path: String) Void!:
 // it once.
 test "borrowing through an Optional does not close the named owner":
 	directory := temporary("optional-borrow-")?
-	path := "{directory.path()}/log"
+	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
 	use_named(path.clone())?
 

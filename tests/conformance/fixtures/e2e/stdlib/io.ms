@@ -14,7 +14,7 @@ test "stream compositions preserve line endings and EOF":
 	expect_equal(found, ["one", "two", "last"])?
 
 	directory := temporary("manuscript-io-")?
-	path := "{directory.path()}/copy.bin"
+	path := f"{directory.path()}/copy.bin"
 	file := open(path, OpenMode.Write, OpenOptions(permissions: 420))?
 	moved := copy(from_bytes("é🙂".to_bytes()), file.writer()?)?
 	expect_equal(moved > 0, true)?
@@ -29,7 +29,7 @@ test "streams enforce byte limits and preserve original errors":
 
 test "a reader keeps the shared file open after the handle closes":
 	directory := temporary("manuscript-closed-lines-")?
-	path := "{directory.path()}/lines.txt"
+	path := f"{directory.path()}/lines.txt"
 	write_file(path, "first\nsecond\nlast").wait()?
 
 	var handle = open(path, OpenMode.Read, OpenOptions(permissions: 384))?

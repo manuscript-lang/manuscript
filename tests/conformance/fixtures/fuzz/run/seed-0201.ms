@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -23,36 +23,36 @@ fn fib(n: Int) Int:
 
 export fn main() Int:
     s1 := "delta".replace("back\\slash", "").lower()
-    say("s1 = [{s1}]")
+    say(f"s1 = [{s1}]")
 
     i2 := (-32)
-    say("i2 = {i2}")
-    say("fib(54) = {fib(54)}")
+    say(f"i2 = {i2}")
+    say(f"fib(54) = {fib(54)}")
 
     l3 := [1, (-29), 11]
-    say("l3 = {l3} len {l3.length()}")
+    say(f"l3 = {l3} len {l3.length()}")
 
     f4 := 634.249
-    say("f4 = {f4}")
+    say(f"f4 = {f4}")
 
     i5 := ((354159 - l3.length()) + (l3.get(0) + (118571 % i2)))
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     i6 := (i5 / (((-188767737437) / i2) + (i2 + i5)))
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     s7 := ("naïve" + s1).trim()
-    say("s7 = [{s7}]")
+    say(f"s7 = [{s7}]")
 
     f8 := (((3.0e-7 + f4) + (738.031 + f4)) / ((f4 / 131.176) * 596.373))
-    say("f8 = {f8}")
+    say(f"f8 = {f8}")
 
     i9 := l3.get(0)
-    say("i9 = {i9}")
+    say(f"i9 = {i9}")
 
     l10 := [(-13)]
-    say("l10 = {l10} len {l10.length()}")
+    say(f"l10 = {l10} len {l10.length()}")
 
     i11 := (i5 % ((i2 + i2) - i5))
-    say("i11 = {i11}")
+    say(f"i11 = {i11}")
     return 0

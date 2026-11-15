@@ -6,52 +6,52 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := 49
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     i2 := (i1 / (-246949))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     l3 := [(-30), (-15)]
-    say("l3 = {l3} len {l3.length()}")
+    say(f"l3 = {l3} len {l3.length()}")
 
     i4 := (((i2 * 43) * (47 + i1)) % i1)
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     i5 := i1
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     f6 := 158.617
-    say("f6 = {f6}")
+    say(f"f6 = {f6}")
 
-    s7 := (("{(i4 % 685710672835)}:" + "beta") + "beta".reverse())
-    say("s7 = [{s7}]")
+    s7 := ((f"{(i4 % 685710672835)}:" + "beta") + "beta".reverse())
+    say(f"s7 = [{s7}]")
 
-    s8 := ("{(-32)}:" + s7)
-    say("s8 = [{s8}]")
+    s8 := (f"{(-32)}:" + s7)
+    say(f"s8 = [{s8}]")
 
     var acc9 = 0
     for i in 0..2:
         acc9 += i * 3
-    say("acc9 = {acc9}")
+    say(f"acc9 = {acc9}")
     say(
-        "{((i5 * i5) % (0 + i1))} {l3.get(1)} {(((i5 * i5) % (0 + i1)) < l3.get(1))} sum {((i5 * i5) % (0 + i1)) + l3.get(1)}"
+        f"{((i5 * i5) % (0 + i1))} {l3.get(1)} {(((i5 * i5) % (0 + i1)) < l3.get(1))} sum {((i5 * i5) % (0 + i1)) + l3.get(1)}"
     )
 
     i10 := ((l3.length() * i5) * (l3.get(1) / ((-29) - i5)))
-    say("i10 = {i10}")
+    say(f"i10 = {i10}")
 
     f11 := (((f6 - f6) + (f6 - f6)) / 195.787)
-    say("f11 = {f11}")
+    say(f"f11 = {f11}")
 
     i12 := (-((35 * i1) * i2))
-    say("i12 = {i12}")
+    say(f"i12 = {i12}")
 
     if s7.contains(s8):
-        say(("{(i4 - 23)}:" + s7))
+        say((f"{(i4 - 23)}:" + s7))
     else:
         say("Tab\there".trim())
 
@@ -61,5 +61,5 @@ export fn main() Int:
         say(("alpha" + s7))
 
     big13 := -9223372036854775808
-    say("{-big13}")
+    say(f"{-big13}")
     return 0

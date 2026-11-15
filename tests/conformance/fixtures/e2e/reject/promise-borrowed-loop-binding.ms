@@ -24,5 +24,5 @@ fn main() Int:
 		)
 
 	for r in running:
-		print("{r.wait().get(-1)}")
+		print(f"{r.wait().get(-1)}")
 	return 0

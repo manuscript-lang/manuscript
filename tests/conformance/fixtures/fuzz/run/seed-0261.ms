@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -23,16 +23,16 @@ fn fib(n: Int) Int:
 
 export fn main() Int:
     i1 := (-686429)
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     l2 := [16, (-7)]
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     b3 := (
         ((false and false) and false)
         or "42".reverse().starts_with("back\\slash")
     )
-    say("b3 = {b3}")
+    say(f"b3 = {b3}")
 
     if "a".trim().ends_with("line\nbreak"):
         say("emoji 😀".upper())
@@ -40,7 +40,7 @@ export fn main() Int:
         say(("beta" + "a"))
 
     b4 := "  padded  ".is_empty()
-    say("b4 = {b4}")
+    say(f"b4 = {b4}")
 
     var acc5 = 0
 
@@ -50,15 +50,15 @@ export fn main() Int:
         else:
             acc5 -= 1
 
-    say("acc5 = {acc5}")
+    say(f"acc5 = {acc5}")
 
     i6 := (i1 * (l2.get(1) + (-(-8))))
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     i7 := (((i1 * i1) + (i1 % (-20))) + i1)
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
     b8 := true
-    say("b8 = {b8}")
-    say("fib(7) = {fib(7)}")
+    say(f"b8 = {b8}")
+    say(f"fib(7) = {fib(7)}")
     return 0

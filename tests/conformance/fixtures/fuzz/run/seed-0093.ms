@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -34,17 +34,17 @@ fn fact(n: Int) Int:
     return n * fact(n - 1)
 
 export fn main() Int:
-    say("fib(35) = {fib(35)}")
+    say(f"fib(35) = {fib(35)}")
 
     i1 := ((-584624) * ((-30) * (4 + (-38))))
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     l2 := [(-13)]
-    say("l2 = {l2} len {l2.length()}")
-    say("gcd(3599, 4160) = {gcd(3599, 4160)}")
+    say(f"l2 = {l2} len {l2.length()}")
+    say(f"gcd(3599, 4160) = {gcd(3599, 4160)}")
 
     i3 := (((i1 + (-8)) - i1) + 36)
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     var acc4 = 0
 
@@ -54,34 +54,34 @@ export fn main() Int:
         else:
             acc4 -= 1
 
-    say("acc4 = {acc4}")
+    say(f"acc4 = {acc4}")
 
     i5 := (((i3 + i1) + l2.get(0)) * (((-407524050310) / i3) % (i1 * i3)))
-    say("i5 = {i5}")
-    say("gcd(4724, 5000) = {gcd(4724, 5000)}")
+    say(f"i5 = {i5}")
+    say(f"gcd(4724, 5000) = {gcd(4724, 5000)}")
 
     b6 := ((l2.length() <= ((-48) + (-1012183069))) or ("日本語" + "42").is_empty())
-    say("b6 = {b6}")
-    say("fact(20) = {fact(20)}")
+    say(f"b6 = {b6}")
+    say(f"fact(20) = {fact(20)}")
 
-    s7 := ("{i3}:" + "line\nbreak").replace("  padded  ", "42")
-    say("s7 = [{s7}]")
+    s7 := (f"{i3}:" + "line\nbreak").replace("  padded  ", "42")
+    say(f"s7 = [{s7}]")
 
     l8 := [6]
-    say("l8 = {l8} len {l8.length()}")
+    say(f"l8 = {l8} len {l8.length()}")
 
     f9 := ((7.5 + (245.839 * 0.0)) * 985.200)
-    say("f9 = {f9}")
+    say(f"f9 = {f9}")
 
-    s10 := (("{(i3 + i1)}:" + s7) + ("" + "")).reverse()
-    say("s10 = [{s10}]")
+    s10 := ((f"{(i3 + i1)}:" + s7) + ("" + "")).reverse()
+    say(f"s10 = [{s10}]")
 
     i11 := ((i3 + (707018 + i3)) + (-13))
-    say("i11 = {i11}")
+    say(f"i11 = {i11}")
 
     b12 := (
         ((b6 and b6) and (285.267 < f9))
         and ((252.723 > 7.0e12) or s7.is_empty())
     )
-    say("b12 = {b12}")
+    say(f"b12 = {b12}")
     return 0

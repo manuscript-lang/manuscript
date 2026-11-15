@@ -37,7 +37,7 @@ Every fallible call needs a keyword before it, and a call inside a call needs tw
 fn label(s: String) String!:
     n := parse(s)?
     check(n)?
-    return ok("n={n}")
+    return ok(f"n={n}")
 
 expect_equal(collect(from_list([1, 2]) | take(5), none)?, [1, 2])?
 check(n)?

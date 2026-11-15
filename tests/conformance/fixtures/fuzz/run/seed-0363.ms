@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -23,32 +23,32 @@ fn fib(n: Int) Int:
 
 export fn main() Int:
     i1 := (14 * 691615)
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     b2 := ((not (not false)) or ((34 * (-24)) >= (-i1)))
-    say("b2 = {b2}")
+    say(f"b2 = {b2}")
 
     b3 := ("beta" + "delta".upper()).is_empty()
-    say("b3 = {b3}")
+    say(f"b3 = {b3}")
 
-    if "brace\{s\}".starts_with("back\\slash"):
+    if "brace{s}".starts_with("back\\slash"):
         say(("line\nbreak" + "héllo"))
     else:
         say("ms".replace("alpha", "42"))
 
-    say("fib(37) = {fib(37)}")
+    say(f"fib(37) = {fib(37)}")
 
-    s4 := ("{i1}:" + ("{i1}:" + "x")).replace("line\nbreak", "ms")
-    say("s4 = [{s4}]")
+    s4 := (f"{i1}:" + (f"{i1}:" + "x")).replace("line\nbreak", "ms")
+    say(f"s4 = [{s4}]")
 
     var acc5 = 0
     for i in 0..2:
         acc5 += i * 3
-    say("acc5 = {acc5}")
+    say(f"acc5 = {acc5}")
 
     f7 := (
         ((230.000 * 825.25) * (643.463 + 6.0e9))
         * ((16.712 + 8.5) * (621.944 * 0.0))
     )
-    say("f7 = {f7}")
+    say(f"f7 = {f7}")
     return 0

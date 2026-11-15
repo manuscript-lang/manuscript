@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -16,18 +16,18 @@ fn fact(n: Int) Int:
 
 export fn main() Int:
     i1 := ((-280380) % (14 + ((-44) + (-992268039643))))
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
-    s2 := (("naïve" + "brace\{s\}") + "alpha").reverse()
-    say("s2 = [{s2}]")
+    s2 := (("naïve" + "brace{s}") + "alpha").reverse()
+    say(f"s2 = [{s2}]")
 
     f3 := 0.0
-    say("f3 = {f3}")
+    say(f"f3 = {f3}")
 
     i4 := s2.scalar_length()
-    say("i4 = {i4}")
-    say("fact(8) = {fact(8)}")
+    say(f"i4 = {i4}")
+    say(f"fact(8) = {fact(8)}")
 
-    b5 := not ("{(i4 % i1)}:" + "line\nbreak").contains("gamma")
-    say("b5 = {b5}")
+    b5 := not (f"{(i4 % i1)}:" + "line\nbreak").contains("gamma")
+    say(f"b5 = {b5}")
     return 0

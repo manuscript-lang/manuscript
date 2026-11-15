@@ -6,32 +6,32 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     b1 := ((-40) < (253230 + (-3)))
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
     i2 := (((19 + 15) + (-44)) / ((33 + 145903) + (-46)))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     s3 := "a"
-    say("s3 = [{s3}]")
+    say(f"s3 = [{s3}]")
 
     b4 := s3.is_empty()
-    say("b4 = {b4}")
+    say(f"b4 = {b4}")
 
     s5 := ((s3 + "quote\"d").lower() + ((s3 + "MiXeD CaSe") + "x"))
-    say("s5 = [{s5}]")
+    say(f"s5 = [{s5}]")
 
     i6 := i2
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     f7 := 520.433
-    say("f7 = {f7}")
+    say(f"f7 = {f7}")
 
     f8 := (((f7 / f7) - (143.394 + 404.459)) + (f7 - (f7 * 41.25)))
-    say("f8 = {f8}")
+    say(f"f8 = {f8}")
 
     var acc9 = 0
     var stepacc9 = 0
@@ -40,14 +40,14 @@ export fn main() Int:
         stepacc9 += 1
         acc9 += stepacc9 * stepacc9 + 9
 
-    say("acc9 = {acc9}")
+    say(f"acc9 = {acc9}")
 
     i10 := (((i2 - i6) * (i6 + i6)) + ((12 * i2) * (-36)))
-    say("i10 = {i10}")
+    say(f"i10 = {i10}")
 
     f11 := 169.928
-    say("f11 = {f11}")
+    say(f"f11 = {f11}")
 
     f12 := (((f8 + 305.314) + (f11 + 0.0)) * ((9.5 + f8) - (956.25 * 75.376)))
-    say("f12 = {f12}")
+    say(f"f12 = {f12}")
     return 0

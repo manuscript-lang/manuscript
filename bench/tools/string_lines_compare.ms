@@ -41,7 +41,7 @@ export fn builtin_identities() Map[String, Identity]:
 	for width in [7, 8, 15, 16, 31, 32, 128, 1024, 8192, 65536]:
 		count := 1048576 / (width + 1)
 		rows.add(
-			"lf_{width}",
+			f"lf_{width}",
 			Identity((width + 1) * count, 64, (width + 17) * count * 64),
 		)
 
@@ -62,18 +62,18 @@ export fn run_rows(
 		lines.is_empty()
 		or lines[0].trim() != "case,input_bytes,iterations,elapsed_ns,checksum"
 	):
-		return invalid("invalid header from {executable}")
+		return invalid(f"invalid header from {executable}")
 
 	var seen = Set[String]()
 	var rows = List[Row]()
 
 	for line in lines.slice(1, lines.length()).get([]):
 		f := line.trim().split(",")
-		if f.length() != 5: return invalid("malformed row: {line}")
+		if f.length() != 5: return invalid(f"malformed row: {line}")
 
 		name := f[0].clone()
 		if seen.contains(name) or not expected.contains(name): return invalid(
-			"duplicate or unknown case: {name}"
+			f"duplicate or unknown case: {name}"
 		)
 
 		nums := all_ints(f.slice(1, 5).get([]))?
@@ -84,7 +84,7 @@ export fn run_rows(
 			or nums[3] != want.checksum
 			or nums[2] <= 0
 		):
-			return invalid("invalid sample: {line}")
+			return invalid(f"invalid sample: {line}")
 
 		seen.add(name.clone())
 		rows.append(Row(name.clone(), nums[1], nums[2], line.trim()))
@@ -147,9 +147,9 @@ fn compare(
 	for pair in 0..pairs:
 		for variant in (if pair % 2 == 0: ["before", "after"] else: ["after", "before"]):
 			for row in run_rows(paths.get_or(variant, ""), expected, "")?:
-				csv.append("{pair},{variant},{row.line}")
+				csv.append(f"{pair},{variant},{row.line}")
 
-				key := "{row.name} {variant}"
+				key := f"{row.name} {variant}"
 				var list = per.get_or(key, [])
 				list.append(row.elapsed_ns.to_float() / row.iterations.to_float())
 				per.add(key.clone(), list)
@@ -161,12 +161,12 @@ fn compare(
 	]
 
 	for name in expected.keys():
-		b := per.get_or("{name} before", [])
-		a := per.get_or("{name} after", [])
+		b := per.get_or(f"{name} before", [])
+		a := per.get_or(f"{name} after", [])
 		bs := b.sorted()
 		as := a.sorted()
 		out.append(
-			"{name},{median(b).to_fixed(1)},{median(a).to_fixed(1)},{bs[0].to_fixed(1)},{bs[bs.length() - 1].to_fixed(1)},{as[0].to_fixed(1)},{as[as.length() - 1].to_fixed(1)},{(median(b) / median(a)).to_fixed(3)}"
+			f"{name},{median(b).to_fixed(1)},{median(a).to_fixed(1)},{bs[0].to_fixed(1)},{bs[bs.length() - 1].to_fixed(1)},{as[0].to_fixed(1)},{as[as.length() - 1].to_fixed(1)},{(median(b) / median(a)).to_fixed(3)}"
 		)
 
 	return ok(out.join("\n"))

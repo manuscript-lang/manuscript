@@ -9,4 +9,4 @@ fn main() Void:
 	for line in data.split("\n"):
 		if line.contains(" POST /api/v2/item/17") and line.contains(" 500 "):
 			hits += 1
-	print("hits: {hits}")
+	print(f"hits: {hits}")

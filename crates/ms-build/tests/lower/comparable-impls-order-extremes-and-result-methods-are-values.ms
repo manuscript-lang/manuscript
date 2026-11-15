@@ -15,4 +15,4 @@ fn main() Void:
     b := Version(2)
     c: Result[Int, Error] := ok(1)
     e := c.is_ok
-    _r := stdout().write("{max(a, b).major} {e}\n")
+    _r := stdout().write(f"{max(a, b).major} {e}\n")

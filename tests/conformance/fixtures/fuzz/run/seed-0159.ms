@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -22,24 +22,24 @@ fn fib(n: Int) Int:
     return a
 
 export fn main() Int:
-    s1 := "brace\{s\}".replace("gamma", "a").reverse().lower()
-    say("s1 = [{s1}]")
+    s1 := "brace{s}".replace("gamma", "a").reverse().lower()
+    say(f"s1 = [{s1}]")
 
     l2 := [28, 14, (-4), 9]
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     s3 := ("" + s1).lower().replace(s1, "x")
-    say("s3 = [{s3}]")
+    say(f"s3 = [{s3}]")
 
     i4 := (((99587 / 909334710051) / 592453) * (((-21) / 38) + (757980046587 % 43)))
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     s5 := ("ms" + s1.lower().replace(s1, s1))
-    say("s5 = [{s5}]")
-    say("fib(48) = {fib(48)}")
+    say(f"s5 = [{s5}]")
+    say(f"fib(48) = {fib(48)}")
 
     var acc6 = 0
     for i in 0..1:
         acc6 += i * 4
-    say("acc6 = {acc6}")
+    say(f"acc6 = {acc6}")
     return 0

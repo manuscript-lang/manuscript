@@ -40,7 +40,7 @@ type Door:
 	name: String
 
 fn var Door.close() Void!:
-	stdout().write("close {self.name}\n").get()
+	stdout().write(f"close {self.name}\n").get()
 
 type Room:
 	first: Door
@@ -50,7 +50,7 @@ type Oops:
 	why: String
 
 fn say(s: String) Void:
-	stdout().write("{s}\n").get()
+	stdout().write(f"{s}\n").get()
 
 fn check(fail: Bool) Int!Oops:
 	if fail: return error(Oops("no"))

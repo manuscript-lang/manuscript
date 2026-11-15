@@ -10,7 +10,7 @@ type Gate:
 	fails: Bool
 
 fn var Gate.close() Void!:
-	if self.fails: return error(Error("close {self.name}"))
+	if self.fails: return error(Error(f"close {self.name}"))
 
 fn use_gate(fails: Bool) Result[Int, Error]:
 	_gate := Gate("a", fails)

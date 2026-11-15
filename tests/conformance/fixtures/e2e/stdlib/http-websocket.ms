@@ -81,7 +81,7 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
 			options: options,
 		) | expect_ok?
 	)
-	url := "http://{server.address()}/"
+	url := f"http://{server.address()}/"
 	response := (
 		request(
 			method: HttpMethod.Get,
@@ -156,7 +156,7 @@ test "WebSocket negotiates a protocol and echoes a text frame":
 	)
 	var socket = (
 		web_socket(
-			url: "ws://{server.address()}/ws",
+			url: f"ws://{server.address()}/ws",
 			options: client_options,
 		) | expect_ok?
 	)
@@ -183,8 +183,8 @@ fn upgrade_status(address: String, version: String, extra: String) String!:
 	var client = connect(address, timeout: 2.seconds()).wait()?
 	key := "dGhlIHNhbXBsZSBub25jZQ=="
 	request := (
-		"GET /ws {version}\r\nHost: x\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
-		+ "Sec-WebSocket-Version: 13\r\nSec-WebSocket-Key: {key}\r\n{extra}\r\n"
+		f"GET /ws {version}\r\nHost: x\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
+		+ f"Sec-WebSocket-Version: 13\r\nSec-WebSocket-Key: {key}\r\n{extra}\r\n"
 	)
 	send(var client, request)?
 
@@ -237,7 +237,7 @@ test "HTTP streaming handlers see the Host request header":
 	response := (
 		request(
 			method: HttpMethod.Get,
-			url: "http://{server.address()}/",
+			url: f"http://{server.address()}/",
 			options: RequestOptions(
 				headers: (text_headers(Map[String, String]())?),
 				timeout: 2.seconds(),
@@ -274,13 +274,13 @@ fn silent(var exchange: HttpExchange) Void!:
 
 test "a WebSocket read cancelled by its timeout leaves the socket closable":
 	server := serve(address: "127.0.0.1:0", handler: silent) | expect_ok?
-	var socket = web_socket("ws://{server.address()}/") | expect_ok?
+	var socket = web_socket(f"ws://{server.address()}/") | expect_ok?
 	expect_true(within(var socket.input, 50.milliseconds()).is_error())?
 	socket.close() | expect_ok?
 
 test "a promise cancelled while it owns a WebSocket closes it without ending the program":
 	server := serve(address: "127.0.0.1:0", handler: silent) | expect_ok?
-	var socket = web_socket("ws://{server.address()}/") | expect_ok?
+	var socket = web_socket(f"ws://{server.address()}/") | expect_ok?
 
 	// The closure takes the socket; its close at the end of the cancelled task parks,
 	// which a cancel still pending on that task used to turn into a process exit.
@@ -302,7 +302,7 @@ fn direct(var exchange: HttpExchange) Void!:
 
 test "HttpExchange.upgrade returns a WebSocket":
 	server := serve(address: "127.0.0.1:0", handler: direct) | expect_ok?
-	var socket = web_socket("ws://{server.address()}/") | expect_ok?
+	var socket = web_socket(f"ws://{server.address()}/") | expect_ok?
 	_sent := (
 		socket.output.write(
 			WebSocketMessage(

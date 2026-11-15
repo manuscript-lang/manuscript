@@ -151,7 +151,7 @@ export fn main() Int:
 				else if calc.divz:
 					print("error: division by zero")
 				else:
-					print("{v}")
+					print(f"{v}")
 			else:
 				print("error: syntax")
 		else:

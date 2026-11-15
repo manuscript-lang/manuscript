@@ -54,13 +54,16 @@ fn fetch_corpora() Void!:
 	_dir := create_directory(DATA, recursive: true)
 
 	for f in ["twitter", "canada", "citm_catalog"]:
-		if exists("{DATA}/{f}.json"): continue
+		if exists(f"{DATA}/{f}.json"): continue
 
-		url := "https://raw.githubusercontent.com/miloyip/nativejson-benchmark/master/data/{f}.json"
-		void must("curl {f}", capture("curl", ["-sSfL", "-o", "{DATA}/{f}.json", url]))?
+		url := f"https://raw.githubusercontent.com/miloyip/nativejson-benchmark/master/data/{f}.json"
+		void must(
+			f"curl {f}",
+			capture("curl", ["-sSfL", "-o", f"{DATA}/{f}.json", url]),
+		)?
 
 	// Small messages: the shape worker threads and RPC exchange.
-	if not exists("{DATA}/small.json"): write_text("{DATA}/small.json", small())
+	if not exists(f"{DATA}/small.json"): write_text(f"{DATA}/small.json", small())
 
 type Rate:
 	nanos: Int
@@ -75,7 +78,7 @@ fn load(text: String) Map[String, Rate]:
 		if f.length() != 4: continue
 
 		rows.add(
-			"{f[0]}\t{f[1]}",
+			f"{f[0]}\t{f[1]}",
 			Rate(f[2].parse_int().get(1), f[3].parse_int().get(0)),
 		)
 
@@ -109,7 +112,7 @@ fn run(names: List[String]) Result[String, Error]:
 	revision := output_of("git", ["rev-parse", "--short", "HEAD"]).trim()
 	host := output_of("uname", ["-sm"]).trim()
 	var rows = [
-		"node {output_of("node", ["--version"]).trim()}, {revision}, {host}",
+		f"node {output_of("node", ["--version"]).trim()}, {revision}, {host}",
 		left("doc", 14) + left("op", 11) + right("node MB/s", 10) + right(
 			"serde MB/s",
 			11,

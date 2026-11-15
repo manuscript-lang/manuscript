@@ -27,7 +27,7 @@ fn closes(log: String) String:
 
 test "read stream closes through the one close":
 	dir := temporary("shape-") | expect_ok?
-	log := "{dir.path()}/r.log"
+	log := f"{dir.path()}/r.log"
 	void append_file(log, "").wait()
 	var by_hand = ReadStream[Int](Counted(log.clone()))
 	by_hand.close()?
@@ -35,7 +35,7 @@ test "read stream closes through the one close":
 
 test "write stream closes through the one close":
 	dir := temporary("shape-") | expect_ok?
-	log := "{dir.path()}/w.log"
+	log := f"{dir.path()}/w.log"
 	void append_file(log, "").wait()
 	var out = WriteStream[Int](Counted(log.clone()))
 	out.close()?
@@ -43,7 +43,7 @@ test "write stream closes through the one close":
 
 test "a scope closes the value once":
 	dir := temporary("shape-") | expect_ok?
-	log := "{dir.path()}/s.log"
+	log := f"{dir.path()}/s.log"
 	void append_file(log, "").wait()
 
 	if true:

@@ -7,7 +7,7 @@ type Door:
     name: String
 
 fn var Door.close() Void!:
-    print("closed {self.name}")
+    print(f"closed {self.name}")
 
 fn Door.id() Int:
     return 1

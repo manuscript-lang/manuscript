@@ -129,11 +129,11 @@ fn render(cents: List[Int]) String:
 			i -= 1
 			continue
 
-		text = "{text}{d[i]}"
+		text = f"{text}{d[i]}"
 		i -= 1
 
 	if text.is_empty(): text = "0"
-	return "{text}.{d[1]}{d[0]}"
+	return f"{text}.{d[1]}{d[0]}"
 
 // ms: allow_effect std.console.read
 // ms: allow_effect std.console.write
@@ -161,10 +161,10 @@ fn run() Int!:
 
 	for name in order:
 		idx := index.get_or(name, 0)
-		print("{name}: {render(totals[idx])}")
+		print(f"{name}: {render(totals[idx])}")
 
 	if skipped > 0:
-		print("skipped: {skipped}")
+		print(f"skipped: {skipped}")
 	return ok(0)
 
 export fn main() Int:

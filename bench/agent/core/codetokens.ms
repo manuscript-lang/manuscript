@@ -30,12 +30,12 @@ export fn count_text(text: String) Int:
 export fn count_workspace(root: String, suffix: String) Int:
 	var total = 0
 
-	for entry in glob(root, GlobOptions(patterns: ["**/*{suffix}"])).get([]):
+	for entry in glob(root, GlobOptions(patterns: [f"**/*{suffix}"])).get([]):
 		path := entry.path.clone()
 		parts := path.split("/")
 		dirs := parts.take(parts.length() - 1)
 		if dirs.any(fn d: SKIP_DIRS.contains(d)): continue
 
-		total += count_text(read_text("{root}/{path}"))
+		total += count_text(read_text(f"{root}/{path}"))
 
 	return total

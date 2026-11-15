@@ -37,7 +37,7 @@ export fn main() Int:
 			if ch != "#" and ch != "." and ch != "S" and ch != "E":
 				row_no := r + 1
 				col_no := c + 1
-				print("error: bad character at {row_no},{col_no}")
+				print(f"error: bad character at {row_no},{col_no}")
 				return 0
 
 	// 2. Ragged rows.

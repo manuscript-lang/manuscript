@@ -20,8 +20,8 @@ fn main() Int:
 	rs585617.append(Rec("a,b,c", 1, [], none))
 	sorted585617 := rs585617.sorted(cmp_rec)
 	for q in sorted585617:
-		print("{q.name}:{q.score}")
+		print(f"{q.name}:{q.score}")
 	f585617 := find_first(rs585617, -2)
 	if hit := f585617:
-		print("hit {hit.name}")
+		print(f"hit {hit.name}")
 	return 0

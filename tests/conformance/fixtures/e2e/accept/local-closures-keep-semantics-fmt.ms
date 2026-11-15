@@ -42,7 +42,7 @@ fn parse(text: String) Int!Error:
     return Result[Int, Error].ok(checked + 1)
 
 fn labels(prefix: String) String:
-    join := fn(left: String, right: String) String: "{prefix}{left}-{right}"
+    join := fn(left: String, right: String) String: f"{prefix}{left}-{right}"
     return join(left: "a", right: "b")
 
 fn reordered() Int:

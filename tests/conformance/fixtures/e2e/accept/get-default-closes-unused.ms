@@ -11,7 +11,7 @@ type Door:
 	log: String
 
 fn var Door.close() Void!:
-	void append_file(self.log, "{self.id},").wait()
+	void append_file(self.log, f"{self.id},").wait()
 
 fn logged(path: String) String:
 	read := read_file(path).wait()
@@ -37,18 +37,18 @@ fn named(log: String) Int:
 
 test "an unused temporary default closes at once":
 	tmp := temporary("ms-log-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	expect_equal(present(log.clone()), 1)?
 	logged(log.clone()) | expect_equal("2,1,")?
 
 test "a used default closes with its binding":
 	tmp := temporary("ms-log-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	expect_equal(absent(log.clone()), 3)?
 	logged(log.clone()) | expect_equal("3,")?
 
 test "a named default moves into get and closes with the call":
 	tmp := temporary("ms-log-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	expect_equal(named(log.clone()), 12)?
 	logged(log.clone()) | expect_equal("5,4,")?

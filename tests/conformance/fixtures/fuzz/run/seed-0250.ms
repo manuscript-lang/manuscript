@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -36,18 +36,18 @@ fn collatz(start: Int) Int:
 
 export fn main() Int:
     i1 := (((208871 + (-687414)) + (828064 * 27)) - (-39))
-    say("i1 = {i1}")
-    say("gcd(636, 1285) = {gcd(636, 1285)}")
+    say(f"i1 = {i1}")
+    say(f"gcd(636, 1285) = {gcd(636, 1285)}")
 
     f2 := 662.533
-    say("f2 = {f2}")
+    say(f"f2 = {f2}")
 
     f3 := f2
-    say("f3 = {f3}")
+    say(f"f3 = {f3}")
 
     l4 := [(-22), 22, (-6), (-29), 26]
-    say("l4 = {l4} len {l4.length()}")
-    say("fact(3) = {fact(3)}")
+    say(f"l4 = {l4} len {l4.length()}")
+    say(f"fact(3) = {fact(3)}")
 
     b5 := (
         (
@@ -56,23 +56,23 @@ export fn main() Int:
         )
         and (("ms" == "gamma") or false)
     )
-    say("b5 = {b5}")
+    say(f"b5 = {b5}")
 
     if (not (true and b5)):
-        say(("{(i1 + i1)}:" + "emoji 😀"))
+        say((f"{(i1 + i1)}:" + "emoji 😀"))
     else:
         say("quote\"d")
 
     f6 := (666.414 / ((85.993 * f2) + 832.032))
-    say("f6 = {f6}")
+    say(f"f6 = {f6}")
 
     i7 := (35 * i1)
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
     f8 := (f2 + 970.081)
-    say("f8 = {f8}")
-    say("collatz(1127) = {collatz(1127)}")
-    say("gcd(3895, 1044) = {gcd(3895, 1044)}")
+    say(f"f8 = {f8}")
+    say(f"collatz(1127) = {collatz(1127)}")
+    say(f"gcd(3895, 1044) = {gcd(3895, 1044)}")
 
     if (not (i1 <= i7)):
         say("  padded  ")
@@ -80,8 +80,8 @@ export fn main() Int:
         say("MiXeD CaSe".replace("héllo", "alpha"))
 
     i9 := i1
-    say("i9 = {i9}")
+    say(f"i9 = {i9}")
 
     s10 := "naïve"
-    say("s10 = [{s10}]")
+    say(f"s10 = [{s10}]")
     return 0

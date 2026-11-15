@@ -32,9 +32,9 @@
     "build": "ms build ms.toml -o prog",
     "run": "./prog",
     "version": "ms --version",
-    "setup": "ms skill -o .claude/skills",
+    "setup": "ms skill -o .claude/skills -o .agents/skills",
     "fix": "ms check ms.toml --fix",
-    "notes": "The Manuscript agent skill is installed in .claude/skills/manuscript (`ms skill` prints it as one document). Read it before writing code, and use `ms search_symbol <name or words>` to look up standard-library APIs before reading files. `ms explain <code>` explains a diagnostic. `ms help` lists commands.",
+    "notes": "The Manuscript agent skill is installed in .claude/skills/manuscript and .agents/skills/manuscript: SKILL.md with references/ beside it. Load it before writing code and open the reference its table of contents points to, and use `ms search_symbol <name or words>` to look up standard-library APIs before reading files. `ms explain <code>` explains a diagnostic. `ms help` lists commands.",
     "codes": "ms check ms.toml --json 2>/dev/null | grep -oE '\"code\": \"[A-Z]+[0-9]+\"' | grep -oE '[A-Z]+[0-9]+'"
   }
 }

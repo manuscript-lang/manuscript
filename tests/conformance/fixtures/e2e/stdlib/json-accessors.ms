@@ -6,7 +6,7 @@ import (
 )
 
 fn doc() JsonValue:
-	text := "\{\"user\":\{\"name\":\"ada\",\"age\":36,\"score\":1.5,\"big\":1e3,\"admin\":true,\"tags\":[\"a\",\"b\",\"c\"]\},\"none\":null\}"
+	text := "{\"user\":{\"name\":\"ada\",\"age\":36,\"score\":1.5,\"big\":1e3,\"admin\":true,\"tags\":[\"a\",\"b\",\"c\"]},\"none\":null}"
 	return parse(text).get()
 
 fn user_field(d: JsonValue, key: String) JsonValue?:

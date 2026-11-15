@@ -8,4 +8,4 @@ fn main() Void:
     m.add_default_from("a", fn(key: String): 5)
 
     items := [4, 5]
-    _r := stdout().write("{items.keys()} {items.entries().length()}\n")
+    _r := stdout().write(f"{items.keys()} {items.entries().length()}\n")

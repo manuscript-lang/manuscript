@@ -15,7 +15,7 @@ type Door:
 fn var Door.close() Void!:
 	if not self.closed:
 		self.closed = true
-		append_file(self.log, "{self.id},").wait()?
+		append_file(self.log, f"{self.id},").wait()?
 		if self.fail: return error(Error("close failed"))
 
 fn replace(log: String) Void:
@@ -24,7 +24,7 @@ fn replace(log: String) Void:
 
 test "replacement stays owned while the discarded entry closes":
 	tmp := temporary("replacement-close-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	message := expect_fault(fn: replace(log.clone()))?
 	expect_contains(message, "a resource could not be closed")?
 
@@ -38,7 +38,7 @@ fn replace_in_map(log: String) Void:
 
 test "map replacement keeps the incoming entry owned while the old one closes":
 	tmp := temporary("replacement-close-map-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	message := expect_fault(fn: replace_in_map(log.clone()))?
 	expect_contains(message, "a resource could not be closed")?
 

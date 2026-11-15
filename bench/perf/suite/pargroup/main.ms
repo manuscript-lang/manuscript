@@ -16,7 +16,7 @@ fn files_under(dir: String) List[String]:
 	var out = List[String]()
 
 	for entry in list(dir).get():
-		path := "{dir}/{entry.name}"
+		path := f"{dir}/{entry.name}"
 
 		if entry.directory:
 			out.extend(files_under(path))
@@ -63,7 +63,7 @@ fn main() Void:
 		t.c4 += p.c4
 		t.c5 += p.c5
 
-	print("files: {files.length()}")
-	print("lines: {t.lines}")
-	print("status: 2xx={t.c2} 3xx={t.c3} 4xx={t.c4} 5xx={t.c5}")
-	print("latency: {t.latency}")
+	print(f"files: {files.length()}")
+	print(f"lines: {t.lines}")
+	print(f"status: 2xx={t.c2} 3xx={t.c3} 4xx={t.c4} 5xx={t.c5}")
+	print(f"latency: {t.latency}")

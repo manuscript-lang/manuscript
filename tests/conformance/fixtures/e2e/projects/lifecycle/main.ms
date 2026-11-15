@@ -15,14 +15,14 @@ fn var Resource.close() Void!:
 	if self.done: return ok()
 
 	self.done = true
-	void self.output.write(value: "close {self.label}\n")
+	void self.output.write(value: f"close {self.label}\n")
 
 type Pair:
 	first: Int
 	second: Int
 
 fn report(var output: WriteStream[String], label: String, value: Int) Int:
-	void output.write(value: "{label}\n")
+	void output.write(value: f"{label}\n")
 	return value
 
 fn combine(first: Int, second: Int) Int:
@@ -104,5 +104,5 @@ export fn main() Int:
 	match exercise():
 		ok(status): return status
 		error(cause):
-			_written := stderr().write("{cause.message}\n")
+			_written := stderr().write(f"{cause.message}\n")
 			return 1

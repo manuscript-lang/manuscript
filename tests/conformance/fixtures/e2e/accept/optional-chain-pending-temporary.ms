@@ -11,9 +11,9 @@ fn make() Link:
 
 test "two chains through record payloads share one interpolation":
 	head := make()
-	text := "{head.next?.value} {head.next?.value} {head.next?.next?.value}"
+	text := f"{head.next?.value} {head.next?.value} {head.next?.next?.value}"
 	expect_equal(text, "some(2) some(2) some(3)")?
 
 test "a chain on a call result keeps its temporary until the statement ends":
-	text := "{make().next?.value} {make().next?.next?.value}"
+	text := f"{make().next?.value} {make().next?.next?.value}"
 	expect_equal(text, "some(2) some(3)")?

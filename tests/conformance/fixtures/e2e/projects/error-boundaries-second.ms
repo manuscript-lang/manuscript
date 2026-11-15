@@ -4,7 +4,7 @@
 import DomainFailure from "./domain.ms"
 
 export fn second_error(cause: DomainFailure) Error:
-    return Error("second {cause.code}")
+    return Error(f"second {cause.code}")
 
 export fn relay(cause: Error) Void!:
     return error(cause)

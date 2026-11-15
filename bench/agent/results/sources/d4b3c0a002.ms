@@ -153,12 +153,12 @@ fn parse_field(text: String, low: Int, high: Int) List[Bool]:
 
 fn two(n: Int) String:
     if n < 10:
-        return "0{n}"
+        return f"0{n}"
 
-    return "{n}"
+    return f"{n}"
 
 fn stamp(year: Int, month: Int, day: Int, hour: Int, minute: Int) String:
-    return "{year}-{two(month)}-{two(day)} {two(hour)}:{two(minute)}"
+    return f"{year}-{two(month)}-{two(day)} {two(hour)}:{two(minute)}"
 
 fn runs(schedule: Schedule, start: Moment, count: Int) List[String]:
     var found: List[String] = []
@@ -199,48 +199,48 @@ fn runs(schedule: Schedule, start: Moment, count: Int) List[String]:
     return found
 
 fn describe(line_no: Int, text: String) List[String]:
-    head := "line {line_no}"
+    head := f"line {line_no}"
     fields := text.split(" ")
     if fields.length() != 7:
-        return ["{head}: error: bad line"]
+        return [f"{head}: error: bad line"]
 
     start := parse_start(fields[0])
     if not start.is_some():
-        return ["{head}: error: bad start"]
+        return [f"{head}: error: bad start"]
 
     count := number(fields[1], 1, 2)
     if count < 1 or count > 20:
-        return ["{head}: error: bad count"]
+        return [f"{head}: error: bad count"]
 
     minutes := parse_field(fields[2], 0, 59)
     if minutes.length() == 0:
-        return ["{head}: error: bad minute"]
+        return [f"{head}: error: bad minute"]
 
     hours := parse_field(fields[3], 0, 23)
     if hours.length() == 0:
-        return ["{head}: error: bad hour"]
+        return [f"{head}: error: bad hour"]
 
     days := parse_field(fields[4], 1, 31)
     if days.length() == 0:
-        return ["{head}: error: bad day-of-month"]
+        return [f"{head}: error: bad day-of-month"]
 
     months := parse_field(fields[5], 1, 12)
     if months.length() == 0:
-        return ["{head}: error: bad month"]
+        return [f"{head}: error: bad month"]
 
     weekdays := parse_field(fields[6], 0, 6)
     if weekdays.length() == 0:
-        return ["{head}: error: bad day-of-week"]
+        return [f"{head}: error: bad day-of-week"]
 
     schedule := Schedule(
         minutes: minutes, hours: hours, days: days, months: months, weekdays: weekdays
     )
     found := runs(schedule, start.get(), count)
     if found.length() == 0:
-        return ["{head}: never"]
+        return [f"{head}: never"]
 
     total := found.length()
-    var out = ["{head}: {total} runs"]
+    var out = [f"{head}: {total} runs"]
     for run in found:
         out.append(run)
     return out

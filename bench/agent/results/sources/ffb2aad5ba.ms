@@ -34,7 +34,7 @@ fn overdraft_fee(balance: Int, amount: Int) Int:
 
 fn fee_suffix(fee: Int) String:
     if fee > 0:
-        return " fee={fee}"
+        return f" fee={fee}"
 
     return ""
 
@@ -55,7 +55,7 @@ impl Ledger:
         if cap.is_none():
             return "error: invalid limit"
         if self.accounts.contains(id):
-            return "error: account exists {id}"
+            return f"error: account exists {id}"
 
         self.accounts.add(
             id,
@@ -67,7 +67,7 @@ impl Ledger:
 
     var fn set_frozen(id: String, frozen: Bool) String:
         if not self.accounts.contains(id):
-            return "error: unknown account {id}"
+            return f"error: unknown account {id}"
 
         var acc = self.account(id)
         acc.frozen = frozen
@@ -76,7 +76,7 @@ impl Ledger:
 
     var fn deposit(id: String, text: String) String:
         if not self.accounts.contains(id):
-            return "error: unknown account {id}"
+            return f"error: unknown account {id}"
 
         amount := amount_of(text)
 
@@ -88,16 +88,16 @@ impl Ledger:
 
         if acc.frozen:
             self.blame(id.clone())
-            return "error: account frozen {id}"
+            return f"error: account frozen {id}"
 
         acc.balance += amount.get(0)
         acc.ops += 1
         self.accounts.add(id, acc)
-        return "ok {acc.balance}"
+        return f"ok {acc.balance}"
 
     var fn withdraw(id: String, text: String) String:
         if not self.accounts.contains(id):
-            return "error: unknown account {id}"
+            return f"error: unknown account {id}"
 
         amount := amount_of(text)
 
@@ -109,26 +109,26 @@ impl Ledger:
 
         if acc.frozen:
             self.blame(id.clone())
-            return "error: account frozen {id}"
+            return f"error: account frozen {id}"
 
         fee := overdraft_fee(acc.balance, amount.get(0))
         next := acc.balance - amount.get(0) - fee
 
         if next < -acc.limit:
             self.blame(id.clone())
-            return "error: overdraft limit exceeded {id}"
+            return f"error: overdraft limit exceeded {id}"
 
         acc.balance = next
         acc.ops += 1
         self.accounts.add(id, acc)
         self.fees += fee
-        return "ok {next}{fee_suffix(fee)}"
+        return f"ok {next}{fee_suffix(fee)}"
 
     var fn transfer(from: String, to: String, text: String) String:
         if not self.accounts.contains(from):
-            return "error: unknown account {from}"
+            return f"error: unknown account {from}"
         if not self.accounts.contains(to):
-            return "error: unknown account {to}"
+            return f"error: unknown account {to}"
 
         if from == to:
             self.blame(from.clone())
@@ -144,20 +144,20 @@ impl Ledger:
 
         if src.frozen:
             self.blame(from.clone())
-            return "error: account frozen {from}"
+            return f"error: account frozen {from}"
 
         var dst = self.account(to)
 
         if dst.frozen:
             self.blame(to.clone())
-            return "error: account frozen {to}"
+            return f"error: account frozen {to}"
 
         fee := overdraft_fee(src.balance, amount.get(0))
         next := src.balance - amount.get(0) - fee
 
         if next < -src.limit:
             self.blame(from.clone())
-            return "error: overdraft limit exceeded {from}"
+            return f"error: overdraft limit exceeded {from}"
 
         src.balance = next
         src.ops += 1
@@ -166,7 +166,7 @@ impl Ledger:
         self.accounts.add(from, src)
         self.accounts.add(to, dst)
         self.fees += fee
-        return "ok {next} {dst.balance}{fee_suffix(fee)}"
+        return f"ok {next} {dst.balance}{fee_suffix(fee)}"
 
     fn report() String:
         var lines = List[String]()
@@ -179,10 +179,10 @@ impl Ledger:
             frozen := if acc.frozen: "yes" else: "no"
 
             lines.append(
-                "{id} balance={acc.balance} limit={acc.limit} ops={acc.ops} rejected={acc.rejected} frozen={frozen}"
+                f"{id} balance={acc.balance} limit={acc.limit} ops={acc.ops} rejected={acc.rejected} frozen={frozen}"
             )
 
-        lines.append("total balance={total} fees={self.fees}")
+        lines.append(f"total balance={total} fees={self.fees}")
         return lines.join("\n")
 
     var fn run(tokens: List[String]) String:
@@ -217,8 +217,8 @@ export fn main() Int:
             continue
 
         if tokens.length() == 1 and tokens[0] == "report":
-            out.write("{ledger.report()}\n").get()
+            out.write(f"{ledger.report()}\n").get()
         else:
-            out.write("{ledger.run(tokens)}\n").get()
+            out.write(f"{ledger.run(tokens)}\n").get()
 
     return 0

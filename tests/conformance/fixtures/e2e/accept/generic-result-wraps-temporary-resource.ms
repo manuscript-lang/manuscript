@@ -11,7 +11,7 @@ type Resource:
 	path: String
 
 fn var Resource.close() Void!:
-	append_file(self.path, "{self.id},").wait()?
+	append_file(self.path, f"{self.id},").wait()?
 
 fn wrapped[T](value: T) Result[T, String]:
 	return ok(value)
@@ -41,21 +41,21 @@ fn use_named(path: String) Void!:
 
 test "a Result built around a temporary resource owns it and closes it once":
 	directory := temporary("wrapped-ok-")?
-	path := "{directory.path()}/log"
+	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
 	use_temporary(path.clone())?
 	expect_equal(log_text(path)?, "1,")?
 
 test "an error case around a temporary resource closes it once":
 	directory := temporary("wrapped-error-")?
-	path := "{directory.path()}/log"
+	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
 	use_error_case(path.clone())?
 	expect_equal(log_text(path)?, "2,")?
 
 test "a named resource wrapped by the helper is closed only by its owner":
 	directory := temporary("wrapped-named-")?
-	path := "{directory.path()}/log"
+	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
 	use_named(path.clone())?
 	expect_equal(log_text(path)?, "3,")?

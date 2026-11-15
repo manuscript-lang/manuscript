@@ -6,21 +6,21 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     l1 := [1, 2, 3].take(0)
-    say("l1 = {l1} len {l1.length()}")
+    say(f"l1 = {l1} len {l1.length()}")
 
     if (("日本語" + "emoji 😀") != "  padded  ".replace("日本語", "naïve")):
         say("emoji 😀")
     else:
-        say("brace\{s\}".reverse())
+        say("brace{s}".reverse())
 
     bad: String := 5
     i2 := 36
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     s3 := ("42" + "a".trim().lower())
-    say("s3 = [{s3}]")
+    say(f"s3 = [{s3}]")
     return 0

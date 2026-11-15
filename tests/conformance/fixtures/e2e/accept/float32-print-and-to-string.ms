@@ -8,7 +8,7 @@ fn shown[T](value: T) String:
 test "a Float32 prints with its own shortest digits":
 	a: Float32 := 0.1
 	expect_equal(a.to_string(), "0.1")?
-	expect_equal("{a}", "0.1")?
+	expect_equal(f"{a}", "0.1")?
 	expect_equal(shown(a), "0.1")?
 	expect_equal([a].to_string(), "[0.1]")?
 

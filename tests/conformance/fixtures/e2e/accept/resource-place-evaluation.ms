@@ -16,7 +16,7 @@ type Door:
 fn var Door.close() Void!:
 	if not self.closed:
 		self.closed = true
-		append_file(self.log, "{self.id},").wait()?
+		append_file(self.log, f"{self.id},").wait()?
 		if self.fail: return error(Error("close failed"))
 
 fn logged(path: String) String:
@@ -44,7 +44,7 @@ fn replace(log: String, var calls: Int) Void:
 
 test "resource replacement closes and changes the same selected owner":
 	tmp := temporary("resource-place-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	var calls = 0
 	replace(log.clone(), var calls)
 	expect_equal(calls, 1)?
@@ -56,7 +56,7 @@ fn ordered(log: String, var events: List[Int]) Void:
 
 test "a resource receiver is selected before its replacement argument":
 	tmp := temporary("resource-place-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	var events: List[Int] = []
 	ordered(log.clone(), var events)
 	expect_equal(events, [1, 2])?
@@ -68,7 +68,7 @@ fn clear_map(log: String, var calls: Int) Void:
 
 test "resource map clear retains its selection across entry cleanup":
 	tmp := temporary("resource-place-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	var calls = 0
 	clear_map(log.clone(), var calls)
 	expect_equal(calls, 1)?
@@ -81,7 +81,7 @@ fn remove_and_splice(log: String, var calls: Int) Void:
 
 test "resource remove and splice each select the owner once":
 	tmp := temporary("resource-place-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	var calls = 0
 	remove_and_splice(log.clone(), var calls)
 	expect_equal(calls, 2)?
@@ -94,7 +94,7 @@ fn add_and_remove(log: String, var calls: Int) Void:
 
 test "resource map add and remove each select the owner once":
 	tmp := temporary("resource-place-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	var calls = 0
 	add_and_remove(log.clone(), var calls)
 	expect_equal(calls, 2)?
@@ -110,7 +110,7 @@ fn propagate(log: String, var events: List[Int]) Void!:
 
 test "a propagated resource argument preserves receiver effects and cleanup":
 	tmp := temporary("resource-place-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	var events: List[Int] = []
 	expect_equal(propagate(log.clone(), var events).is_error(), true)?
 	expect_equal(events, [1, 2])?
@@ -125,7 +125,7 @@ fn failing_remove(log: String, var calls: Int) Void:
 
 test "a failed entry close preserves its owner and closes the remaining siblings":
 	tmp := temporary("resource-place-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	var calls = 0
 	message := expect_fault(fn: failing_remove(log.clone(), var calls))?
 	expect_contains(message, "a resource could not be closed")?

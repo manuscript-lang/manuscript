@@ -26,7 +26,7 @@ fn rejected_multibyte_text_characters_start_at_a_utf8_boundary() {
 }
 
 fn check_text_error(file: &Arc<str>, text: &str, character: char, message: &str) {
-    for literal in [format!("\"{text}\""), format!("\"{{\"{text}\"}}\"")] {
+    for literal in [format!("\"{text}\""), format!("f\"{{\"{text}\"}}\"")] {
         for ending in ["\n", "\r\n"] {
             let source = format!(
                 "fn head() Int: 1{ending}fn text() String: {literal}{ending}fn tail() Int: 2{ending}"

@@ -13,8 +13,8 @@ fn entries(count: Int) List[ArchiveEntry]:
 	for i in 0..count:
 		out.append(
 			ArchiveEntry(
-				"dir/file{i}.txt",
-				"contents of file {i}".to_bytes(),
+				f"dir/file{i}.txt",
+				f"contents of file {i}".to_bytes(),
 				directory: false,
 			)
 		)
@@ -23,7 +23,7 @@ fn entries(count: Int) List[ArchiveEntry]:
 fn sse_stream(count: Int) Bytes:
 	var parts: List[String] = []
 	for i in 0..count:
-		parts.append("event: tick\nid: {i}\ndata: payload {i}\ndata: second line\n\n")
+		parts.append(f"event: tick\nid: {i}\ndata: payload {i}\ndata: second line\n\n")
 	return parts.join("").to_bytes()
 
 // Hands out its bytes as one chunk.

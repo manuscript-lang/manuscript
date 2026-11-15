@@ -6,7 +6,7 @@ import (
 )
 
 fn banner(name: String, count: Int) String:
-	return """
+	return f"""
         Hello, {name}!
           {count} items, "quoted"\t\{literal\}
         """
@@ -17,7 +17,7 @@ fn payload() String:
         """
 
 test "indentation of the closing line is removed":
-	expect_equal(banner("Ada", 3), "Hello, Ada!\n  3 items, \"quoted\"\t\{literal\}")?
+	expect_equal(banner("Ada", 3), "Hello, Ada!\n  3 items, \"quoted\"\t{literal}")?
 
 test "blank lines and a trailing newline survive":
 	text := """
@@ -31,7 +31,7 @@ test "blank lines and a trailing newline survive":
 test "raw text keeps braces quotes and backslashes":
 	expect_equal(
 		payload(),
-		"\{\"name\": \"ada\", \"tags\": [\"a\", \"b\"], \"path\": \"C:\\dir\", \"n\": 1\}",
+		"{\"name\": \"ada\", \"tags\": [\"a\", \"b\"], \"path\": \"C:\\dir\", \"n\": 1}",
 	)?
 
 type Person:

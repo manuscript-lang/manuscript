@@ -116,7 +116,7 @@ export fn check_reader(make: fn() ReadStream[Bytes], expected: Bytes) Void!:
 	if all.is_error(): return fail("check_reader: reading everything failed")
 	if all.get() != expected:
 		return fail(
-			"check_reader: read {all.get().length()} bytes, expected {expected.length()}; content differs"
+			f"check_reader: read {all.get().length()} bytes, expected {expected.length()}; content differs"
 		)
 
 	slow := read_all(one_byte(make()))
@@ -141,5 +141,5 @@ export fn check_reader(make: fn() ReadStream[Bytes], expected: Bytes) Void!:
 		return fail("check_reader: a read after end of input must return none again")
 	if total != expected.length():
 		return fail(
-			"check_reader: chunked reads returned {total} bytes, expected {expected.length()}"
+			f"check_reader: chunked reads returned {total} bytes, expected {expected.length()}"
 		)

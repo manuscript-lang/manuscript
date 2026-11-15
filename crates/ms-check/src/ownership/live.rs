@@ -168,12 +168,24 @@ fn field_chain<'a>(m: &ModuleHir, e: &'a Expr) -> Option<(&'a Expr, BindingRef, 
     }
 }
 
-/// Whether the call is an index assignment `place[key] = value`, which the
-/// parser writes as `place.[]=(key, value)`.
+/// Whether the call is an index assignment `place[key] = value` whose key is a variable or
+/// a field path of one, which the parser writes as `place.[]=(key, value)`. Such a key is
+/// consumed at the store, after the value ran. Any other key expression runs before the
+/// value, in source order, like an argument.
 pub(super) fn is_index_store(callee: &Expr, args: &[ms_syntax::ast::Argument]) -> bool {
     args.len() == 2
         && matches!(&callee.kind, ExprKind::Member { name, .. }
             if ms_syntax::Names::global().str(*name) == ms_syntax::parser::INDEX_SET)
+        && is_place(&args[0].value)
+}
+
+/// A name or a chain of member reads on one.
+fn is_place(e: &Expr) -> bool {
+    let mut at = e;
+    while let ExprKind::Member { left, .. } = &at.kind {
+        at = left;
+    }
+    matches!(at.kind, ExprKind::Name(_))
 }
 
 fn join(into: &mut Live, from: &Live) {

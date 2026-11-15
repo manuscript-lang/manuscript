@@ -186,7 +186,7 @@ fn weekday(s: Stamp) Int:
     return (days + 4) % 7
 
 fn two(n: Int) String:
-    return "{n}".pad_start(2, "0")
+    return f"{n}".pad_start(2, "0")
 
 fn find_runs(job: Job) List[String]:
     var runs = List[String]()
@@ -215,7 +215,7 @@ fn find_runs(job: Job) List[String]:
                         and job.cron.minutes[minute]
                     ):
                         runs.append(
-                            "{year}-{two(month)}-{two(day)} {two(hour)}:{two(minute)}"
+                            f"{year}-{two(month)}-{two(day)} {two(hour)}:{two(minute)}"
                         )
 
         day += 1
@@ -234,14 +234,14 @@ fn find_runs(job: Job) List[String]:
     return runs
 
 fn solve(line_no: Int, line: String) List[String]:
-    head := "line {line_no}"
+    head := f"line {line_no}"
     job := parse_job(line.split(" "))
-    if job.is_error(): return ["{head}: error: {job.err().message()}"]
+    if job.is_error(): return [f"{head}: error: {job.err().message()}"]
 
     runs := find_runs(job.get())
-    if runs.length() == 0: return ["{head}: never"]
+    if runs.length() == 0: return [f"{head}: never"]
 
-    var out = ["{head}: {runs.length()} runs"]
+    var out = [f"{head}: {runs.length()} runs"]
     for run in runs:
         out.append(run)
     return out

@@ -23,7 +23,7 @@ test "HTML unescape recognizes named numeric and multi-scalar references":
     ]
     for entity in cases:
         if unescape(entity.encoded) != entity.decoded: return fail(
-            "HTML reference: {entity.encoded}"
+            f"HTML reference: {entity.encoded}"
         )
 
 test "HTML unescape applies text rules with a single decoding pass":

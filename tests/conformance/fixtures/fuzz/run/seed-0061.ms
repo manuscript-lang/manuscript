@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -31,64 +31,64 @@ export fn main() Int:
     var acc1 = 0
     for i in 0..4:
         acc1 += i * 6
-    say("acc1 = {acc1}")
+    say(f"acc1 = {acc1}")
 
     i2 := ((-28) * (-36))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     b3 := ((741.844 * 944.379) != ((791.811 + 6.0e14) + 622.795))
-    say("b3 = {b3}")
+    say(f"b3 = {b3}")
 
     l4 := [(-26)]
-    say("l4 = {l4} len {l4.length()}")
+    say(f"l4 = {l4} len {l4.length()}")
 
     b5 := b3
-    say("b5 = {b5}")
+    say(f"b5 = {b5}")
 
     b6 := (((938.517 > 2.5) or true) and b3)
-    say("b6 = {b6}")
-    say("fact(20) = {fact(20)}")
+    say(f"b6 = {b6}")
+    say(f"fact(20) = {fact(20)}")
     say(
-        "{i2} {(((-37) + (-46)) + i2)} {(i2 < (((-37) + (-46)) + i2))} sum {i2 + (((-37) + (-46)) + i2)}"
+        f"{i2} {(((-37) + (-46)) + i2)} {(i2 < (((-37) + (-46)) + i2))} sum {i2 + (((-37) + (-46)) + i2)}"
     )
 
     i7 := (-15)
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
     b8 := (
         "gamma".replace("x", "  padded  ") == (
-            "{(i2 + 168631)}:"
+            f"{(i2 + 168631)}:"
             + ("delta" + "naïve")
         )
     )
-    say("b8 = {b8}")
+    say(f"b8 = {b8}")
 
     i9 := ((i2 / i2) % ((i2 * i7) - (i2 % i2)))
-    say("i9 = {i9}")
+    say(f"i9 = {i9}")
 
     s10 := "hello world"
-    say("s10 = [{s10}]")
+    say(f"s10 = [{s10}]")
 
     if b5:
-        say(("{(i9 + 15)}:" + s10))
+        say((f"{(i9 + 15)}:" + s10))
     else:
         say(("MiXeD CaSe" + "emoji 😀"))
 
-    say("fib(30) = {fib(30)}")
+    say(f"fib(30) = {fib(30)}")
 
     l11 := l4.sorted(fn a, b: a.compare(b))
-    say("l11 = {l11} len {l11.length()}")
+    say(f"l11 = {l11} len {l11.length()}")
 
     s12 := s10
-    say("s12 = [{s12}]")
-    say("fib(32) = {fib(32)}")
+    say(f"s12 = [{s12}]")
+    say(f"fib(32) = {fib(32)}")
 
     s13 := "delta"
-    say("s13 = [{s13}]")
+    say(f"s13 = [{s13}]")
 
     l14 := [(-15), 6, 19, 24]
-    say("l14 = {l14} len {l14.length()}")
+    say(f"l14 = {l14} len {l14.length()}")
 
     big15 := -9223372036854775808
-    say("{-big15}")
+    say(f"{-big15}")
     return 0

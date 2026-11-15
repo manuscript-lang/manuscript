@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -16,39 +16,39 @@ fn gcd(a: Int, b: Int) Int:
 
 export fn main() Int:
     l1 := [1, 2, 3].take(0)
-    say("l1 = {l1} len {l1.length()}")
+    say(f"l1 = {l1} len {l1.length()}")
 
     i2 := 21
-    say("i2 = {i2}")
-    say("gcd(4844, 2932) = {gcd(4844, 2932)}")
+    say(f"i2 = {i2}")
+    say(f"gcd(4844, 2932) = {gcd(4844, 2932)}")
 
     i3 := (i2 + l1.length())
-    say("i3 = {i3}")
-    say("gcd(2487, 4064) = {gcd(2487, 4064)}")
+    say(f"i3 = {i3}")
+    say(f"gcd(2487, 4064) = {gcd(2487, 4064)}")
 
     s4 := "beta".replace("x", "")
-    say("s4 = [{s4}]")
+    say(f"s4 = [{s4}]")
 
     i5 := ((-44) + (((-46117) * i3) + (-i3)))
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
     say(
-        "{(i2 * (i2 + (-40)))} {((-110128413456) + (502623789706 + (-28)))} {((i2 * (i2 + (-40))) < ((-110128413456) + (502623789706 + (-28))))} sum {(i2 * (i2 + (-40))) + ((-110128413456) + (502623789706 + (-28)))}"
+        f"{(i2 * (i2 + (-40)))} {((-110128413456) + (502623789706 + (-28)))} {((i2 * (i2 + (-40))) < ((-110128413456) + (502623789706 + (-28))))} sum {(i2 * (i2 + (-40))) + ((-110128413456) + (502623789706 + (-28)))}"
     )
 
     f6 := ((993.25 * (641.433 + 1.5)) / 607.316)
-    say("f6 = {f6}")
+    say(f"f6 = {f6}")
 
     b7 := s4.trim().is_empty()
-    say("b7 = {b7}")
+    say(f"b7 = {b7}")
 
     i8 := (5 % ((i2 - i5) % (-19)))
-    say("i8 = {i8}")
+    say(f"i8 = {i8}")
 
     i9 := l1.length()
-    say("i9 = {i9}")
+    say(f"i9 = {i9}")
 
     s10 := "hello world"
-    say("s10 = [{s10}]")
+    say(f"s10 = [{s10}]")
 
     if ("héllo".ends_with("  padded  ") or ("héllo" != s10)):
         say((s4 + s4))

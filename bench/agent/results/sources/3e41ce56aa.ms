@@ -61,9 +61,9 @@ fn edit_script(a: List[String], b: List[String]) List[Step]:
 
 fn range_text(before: Int, len: Int) String:
 	start := if len > 0: before + 1 else: before
-	if len == 1: return "{start}"
+	if len == 1: return f"{start}"
 
-	return "{start},{len}"
+	return f"{start},{len}"
 
 fn write_hunk(
 	var out: StringBuilder,
@@ -86,18 +86,18 @@ fn write_hunk(
 			lb += 1
 
 	out.append(
-		"@@ -{range_text(steps[s].a_before, la)} +{range_text(steps[s].b_before, lb)} @@\n"
+		f"@@ -{range_text(steps[s].a_before, la)} +{range_text(steps[s].b_before, lb)} @@\n"
 	)
 
 	for k in s..(e + 1):
 		step := steps[k]
 
 		if step.kind == SAME:
-			out.append(" {a[step.a_before]}\n")
+			out.append(f" {a[step.a_before]}\n")
 		else if step.kind == DELETE:
-			out.append("-{a[step.a_before]}\n")
+			out.append(f"-{a[step.a_before]}\n")
 		else:
-			out.append("+{b[step.b_before]}\n")
+			out.append(f"+{b[step.b_before]}\n")
 
 export fn main() Int:
 	lines := read_lines(stdin()).get()
@@ -120,8 +120,8 @@ export fn main() Int:
 	if changes.length() == 0: return 0
 
 	var out = StringBuilder()
-	out.append("--- {head[0]}\n")
-	out.append("+++ {head[1]}\n")
+	out.append(f"--- {head[0]}\n")
+	out.append(f"+++ {head[1]}\n")
 
 	var first = 0
 	var last = 0

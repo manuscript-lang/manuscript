@@ -29,35 +29,35 @@ fn run(work: String, n: Int) Result[String, Error]:
 	here := "bench/perf/programs"
 	for dir in ["go", "ms", "rust"]:
 		copy(
-			"{here}/{dir}",
-			"{work}/{dir}",
+			f"{here}/{dir}",
+			f"{work}/{dir}",
 			CopyOptions(recursive: true, replace: true),
 		)?
-	create_directory("{work}/rust-checked")?
+	create_directory(f"{work}/rust-checked")?
 
 	var input = List[String]()
 	for i in 0..200000:
-		input.append("2026-03-01T00:00:00Z 10.1.2.3 GET /api/users/{i} 200\n")
+		input.append(f"2026-03-01T00:00:00Z 10.1.2.3 GET /api/users/{i} 200\n")
 
 	lines := input.join("")
-	write_file("{work}/lines.txt", lines, replace: true).wait()?
-	build_go("{work}/go", "{work}/go/bench")?
-	build_rust("{work}/rust/main.rs", "{work}/rust/bench", [])?
+	write_file(f"{work}/lines.txt", lines, replace: true).wait()?
+	build_go(f"{work}/go", f"{work}/go/bench")?
+	build_rust(f"{work}/rust/main.rs", f"{work}/rust/bench", [])?
 	build_rust(
-		"{work}/rust/main.rs",
-		"{work}/rust-checked/bench",
+		f"{work}/rust/main.rs",
+		f"{work}/rust-checked/bench",
 		["-C", "overflow-checks=on"],
 	)?
-	build_ms("{work}/ms", "{work}/ms/bench")?
+	build_ms(f"{work}/ms", f"{work}/ms/bench")?
 
 	var raw = List[String]()
 	rotations := orders()
 
 	for i in 0..n:
 		for v in rotations[i % 4]:
-			out := sample("{work}/{v}/bench", [], lines)?
+			out := sample(f"{work}/{v}/bench", [], lines)?
 			for line in out.split("\n"):
-				if line != "": raw.append("{v} {line}")
+				if line != "": raw.append(f"{v} {line}")
 
 	return summarize(raw, n)
 

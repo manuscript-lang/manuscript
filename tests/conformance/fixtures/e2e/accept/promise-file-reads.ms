@@ -12,7 +12,7 @@ fn size(path: String) Int!:
 
 test "blocking file reads work from promises on any thread":
 	dir := temporary("manuscript-promise-") | expect_ok?
-	path := "{dir.path()}/data"
+	path := f"{dir.path()}/data"
 	write_file(path, "0123456789").wait()?
 
 	all := wait_all(

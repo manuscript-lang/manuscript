@@ -14,7 +14,7 @@ test "primitive list loops":
         ints.append(value: i)
         floats.append(value: 0.5)
         bools.append(value: i % 2 == 0)
-        words.append(value: "w{i}")
+        words.append(value: f"w{i}")
         i = i + 1
 
     var sum = 0

@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -29,31 +29,31 @@ fn fib(n: Int) Int:
 
 export fn main() Int:
     s1 := "alpha".upper().lower().lower()
-    say("s1 = [{s1}]")
+    say(f"s1 = [{s1}]")
 
     b2 := (56.191 < 3.5)
-    say("b2 = {b2}")
+    say(f"b2 = {b2}")
 
     i3 := s1.scalar_length()
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
     say(
-        "{(21 - (i3 / i3))} {(-((-884288) + (-43)))} {((21 - (i3 / i3)) < (-((-884288) + (-43))))} sum {(21 - (i3 / i3)) + (-((-884288) + (-43)))}"
+        f"{(21 - (i3 / i3))} {(-((-884288) + (-43)))} {((21 - (i3 / i3)) < (-((-884288) + (-43))))} sum {(21 - (i3 / i3)) + (-((-884288) + (-43)))}"
     )
 
     s4 := (s1.replace("back\\slash", s1).reverse() + "42".lower())
-    say("s4 = [{s4}]")
+    say(f"s4 = [{s4}]")
 
-    b5 := "brace\{s\}".contains("back\\slash")
-    say("b5 = {b5}")
+    b5 := "brace{s}".contains("back\\slash")
+    say(f"b5 = {b5}")
 
     f6 := (5.5 / 896.126)
-    say("f6 = {f6}")
+    say(f"f6 = {f6}")
 
     f7 := (((f6 + f6) + 0.0) + (0.0 + (582.599 + f6)))
-    say("f7 = {f7}")
+    say(f"f7 = {f7}")
 
     f8 := (((f6 * 564.389) - (f6 - f6)) * (f6 * 959.287))
-    say("f8 = {f8}")
+    say(f"f8 = {f8}")
 
     var acc9 = 0
     var stepacc9 = 0
@@ -62,13 +62,13 @@ export fn main() Int:
         stepacc9 += 1
         acc9 += stepacc9 * stepacc9 + (-3)
 
-    say("acc9 = {acc9}")
-    say("gcd(3028, 2461) = {gcd(3028, 2461)}")
-    say("fib(7) = {fib(7)}")
+    say(f"acc9 = {acc9}")
+    say(f"gcd(3028, 2461) = {gcd(3028, 2461)}")
+    say(f"fib(7) = {fib(7)}")
 
     b10 := not "42".replace(s4, s1).is_empty()
-    say("b10 = {b10}")
+    say(f"b10 = {b10}")
 
     b11 := (not ((not true) and (not b2)))
-    say("b11 = {b11}")
+    say(f"b11 = {b11}")
     return 0

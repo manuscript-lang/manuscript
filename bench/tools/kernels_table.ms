@@ -56,7 +56,7 @@ export fn summarize(
 			base_versions().concat(c_versions()).concat(ablations()),
 		]
 	if not allowed.any(fn a: same(a, versions)):
-		return invalid("unexpected versions for {suite}: {versions.join(" ")}")
+		return invalid(f"unexpected versions for {suite}: {versions.join(" ")}")
 
 	names := suite_names(suite)
 	var samples = Map[String, List[Float]]()
@@ -71,12 +71,12 @@ export fn summarize(
 	for line in lines:
 		parts := line.trim().split(" ").filter(fn p: p != "")
 		if parts.length() < 2 or not versions.contains(parts[0]):
-			return invalid("invalid sample: {line.trim()}")
+			return invalid(f"invalid sample: {line.trim()}")
 
 		version := parts[0].clone()
 		name := parts[1].clone()
 		if active != "" and version != active: return invalid(
-			"unterminated {active} trial"
+			f"unterminated {active} trial"
 		)
 
 		active = version.clone()
@@ -87,7 +87,7 @@ export fn summarize(
 				pending.length() != expected.length()
 				or not expected.all(fn n: pending.contains(n))
 			):
-				return invalid("incomplete {version} trial")
+				return invalid(f"incomplete {version} trial")
 
 			trials.add(version.clone(), trials.get_or(version, 0) + 1)
 			pending = Set[String]()
@@ -100,16 +100,16 @@ export fn summarize(
 			or omitted(version).contains(name)
 			or pending.contains(name)
 		):
-			return invalid("invalid kernel: {line.trim()}")
+			return invalid(f"invalid kernel: {line.trim()}")
 
 		micros := parts[2].parse_int()
 		check := parts[3].parse_int()
 		if micros.is_none() or check.is_none(): return invalid(
-			"invalid sample: {line.trim()}"
+			f"invalid sample: {line.trim()}"
 		)
-		if micros.get(0) < 0: return invalid("negative timing: {line.trim()}")
+		if micros.get(0) < 0: return invalid(f"negative timing: {line.trim()}")
 
-		key := "{name} {version}"
+		key := f"{name} {version}"
 		var list = samples.get_or(key, List[Float]())
 		list.append(micros.get(0).to_float())
 		samples.add(key.clone(), list)
@@ -120,18 +120,18 @@ export fn summarize(
 		pending.add(name.clone())
 
 	if active != "" or versions.any(fn v: trials.get_or(v, 0) != repeats):
-		return invalid("expected {repeats} complete trials of every version")
+		return invalid(f"expected {repeats} complete trials of every version")
 
 	for name in names:
 		if checks.get_or(name, Set[Int]()).length() != 1:
-			return invalid("{name}: checksums differ between runs or versions")
+			return invalid(f"{name}: checksums differ between runs or versions")
 
 	others := versions.filter(fn v: v != "go")
 	extra := others.filter(fn v: v.starts_with("rust")).map(fn v: "ms / " + v)
-	var head = others.map(fn v: "{v} us | {v} / go").join(" | ")
+	var head = others.map(fn v: f"{v} us | {v} / go").join(" | ")
 	var rule = others.map(fn _v: "---:|---:|").join("")
 	var rows = [
-		"Minimum of {repeats} rotating runs; microseconds. Complete trials and checksums verified.\n",
+		f"Minimum of {repeats} rotating runs; microseconds. Complete trials and checksums verified.\n",
 		"| kernel | go us | " + head + " | " + extra.join(" | ") + " |",
 		"|---|---:|" + rule + extra.map(fn _e: "---:|").join(""),
 	]
@@ -140,17 +140,17 @@ export fn summarize(
 		var times = Map[String, Float]()
 		for v in versions:
 			if not omitted(v).contains(name):
-				times.add(v.clone(), minimum(samples.get_or("{name} {v}", [])))
+				times.add(v.clone(), minimum(samples.get_or(f"{name} {v}", [])))
 
 		go := times.get_or("go", 0.0)
 		var cells = others.map(
 			fn v: if omitted(v).contains(
 				name
-			): "n/a | n/a" else: "{times.get_or(v, 0.0).to_fixed(0)} | {ratio(times.get_or(v, 0.0), go)}"
+			): "n/a | n/a" else: f"{times.get_or(v, 0.0).to_fixed(0)} | {ratio(times.get_or(v, 0.0), go)}"
 		)
 		ms := times.get_or("ms", 0.0)
 		for v in others:
 			if v.starts_with("rust"): cells.append(ratio(ms, times.get_or(v, 0.0)))
-		rows.append("| {name} | {go.to_fixed(0)} | " + cells.join(" | ") + " |")
+		rows.append(f"| {name} | {go.to_fixed(0)} | " + cells.join(" | ") + " |")
 
 	return ok(rows.join("\n"))

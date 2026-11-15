@@ -6,19 +6,19 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     l2 := [22, 27]
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     i3 := (-34)
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     i4 := (i3 * l2.get(0))
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     bad := (1 < 2) < 3
-    b5 := ("{(-i4)}:" + "alpha").is_empty()
-    say("b5 = {b5}")
+    b5 := (f"{(-i4)}:" + "alpha").is_empty()
+    say(f"b5 = {b5}")
     return 0

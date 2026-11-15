@@ -81,7 +81,7 @@ fn show(v: Value) String:
         VNull:
             return "NULL"
         VInt(n):
-            return "{n}"
+            return f"{n}"
         VText(s):
             return s.clone()
         VBool(b):
@@ -96,9 +96,9 @@ fn enc(v: Value) String:
         VNull:
             return "N"
         VInt(n):
-            return "I{n};"
+            return f"I{n};"
         VText(s):
-            return "T{s.byte_length()}:{s}"
+            return f"T{s.byte_length()}:{s}"
         VBool(b):
             if b:
                 return "B1"
@@ -1051,7 +1051,7 @@ fn written(table: String, name: String) String:
     if table == "":
         return name.clone()
 
-    return "{table}.{name}"
+    return f"{table}.{name}"
 
 fn find_col(slots: List[Slot], table: String, name: String) Result[Int, Fail]:
     var found = -1
@@ -1064,9 +1064,9 @@ fn find_col(slots: List[Slot], table: String, name: String) Result[Int, Fail]:
             count += 1
 
     if count == 0:
-        return error(Fail("no such column: {written(table, name)}"))
+        return error(Fail(f"no such column: {written(table, name)}"))
     if table == "" and count > 1:
-        return error(Fail("ambiguous column: {name}"))
+        return error(Fail(f"ambiguous column: {name}"))
 
     return ok(found)
 
@@ -1125,9 +1125,9 @@ fn check_call_shape(
     star: Bool
 ) Result[Unit, Fail]:
     if not FUNCS.contains(name):
-        return error(Fail("no such function: {name}"))
+        return error(Fail(f"no such function: {name}"))
 
-    wrong := Fail("wrong number of arguments to {name}")
+    wrong := Fail(f"wrong number of arguments to {name}")
 
     if star:
         if name != "COUNT" or distinct:
@@ -1156,7 +1156,7 @@ fn check_expr(e: Expr, slots: List[Slot], cx: Check, in_agg: Bool) Result[Unit, 
         Col(t, n):
             i := try find_col(slots, t, n)
             if cx.grouped and not in_agg and not cx.groups.contains(i):
-                return error(Fail("column {written(t, n)} must appear in GROUP BY"))
+                return error(Fail(f"column {written(t, n)} must appear in GROUP BY"))
 
             return ok(unit)
         Unary(_, x):
@@ -1505,7 +1505,7 @@ fn run_select(db: List[Table], sel: Select) Result[String, Fail]:
     for r in refs:
         ti := find_table(db, r.table)
         if ti < 0:
-            return error(Fail("no such table: {r.table}"))
+            return error(Fail(f"no such table: {r.table}"))
 
         tabs.append(ti)
 
@@ -1516,7 +1516,7 @@ fn run_select(db: List[Table], sel: Select) Result[String, Fail]:
     for k in 0..refs.length():
         alias := refs[k].alias.clone()
         if aliases.contains(alias):
-            return error(Fail("duplicate alias: {alias}"))
+            return error(Fail(f"duplicate alias: {alias}"))
 
         aliases.append(alias.clone())
         for c in db[tabs[k]].cols:
@@ -1532,7 +1532,7 @@ fn run_select(db: List[Table], sel: Select) Result[String, Fail]:
         match it:
             AllCols(t):
                 if t != "" and not aliases.contains(t):
-                    return error(Fail("no such table: {t}"))
+                    return error(Fail(f"no such table: {t}"))
             ExprItem(_, _):
                 unit
 
@@ -1747,7 +1747,7 @@ fn run_select(db: List[Table], sel: Select) Result[String, Fail]:
         lines.append(render_row(uniq[i].outs))
         emitted += 1
 
-    lines.append("({emitted} rows)")
+    lines.append(f"({emitted} rows)")
     return ok(lines.join("\n") + "\n")
 
 // ---------- DDL and DML ----------
@@ -1765,11 +1765,11 @@ fn check_row(cols: List[ColDef], row: List[Value]) Result[Unit, Fail]:
 
         if is_null(v):
             if c.notnull:
-                return error(Fail("NOT NULL constraint failed: {c.name}"))
+                return error(Fail(f"NOT NULL constraint failed: {c.name}"))
         else if c.ty == "INT" and rank(v) != 2:
-            return error(Fail("type mismatch in column {c.name}"))
+            return error(Fail(f"type mismatch in column {c.name}"))
         else if c.ty == "TEXT" and rank(v) != 3:
-            return error(Fail("type mismatch in column {c.name}"))
+            return error(Fail(f"type mismatch in column {c.name}"))
 
     return ok(unit)
 
@@ -1793,7 +1793,7 @@ fn check_pk(
     for r in added:
         k := show(r[pk])
         if seen.contains(k):
-            return error(Fail("duplicate primary key: {k}"))
+            return error(Fail(f"duplicate primary key: {k}"))
 
         seen.add(k)
 
@@ -1803,14 +1803,14 @@ fn create_table(var db: List[Table], name: String, defs: List[ColDef]) Result[
     String, Fail
 ]:
     if find_table(db, name) >= 0:
-        return error(Fail("table {name} already exists"))
+        return error(Fail(f"table {name} already exists"))
 
     var cols = List[ColDef]()
     var has_pk = false
 
     for c in defs:
         if column_index(cols, c.name) >= 0:
-            return error(Fail("duplicate column: {c.name}"))
+            return error(Fail(f"duplicate column: {c.name}"))
 
         if c.pk:
             if has_pk:
@@ -1826,7 +1826,7 @@ fn create_table(var db: List[Table], name: String, defs: List[ColDef]) Result[
 fn drop_table(var db: List[Table], name: String) Result[String, Fail]:
     ti := find_table(db, name)
     if ti < 0:
-        return error(Fail("no such table: {name}"))
+        return error(Fail(f"no such table: {name}"))
 
     db.remove(ti)
     return ok("ok\n")
@@ -1837,7 +1837,7 @@ fn insert_rows(
 ) Result[String, Fail]:
     ti := find_table(db, name)
     if ti < 0:
-        return error(Fail("no such table: {name}"))
+        return error(Fail(f"no such table: {name}"))
 
     var targets = List[Int]()
 
@@ -1845,9 +1845,9 @@ fn insert_rows(
         for c in cols:
             idx := column_index(db[ti].cols, c)
             if idx < 0:
-                return error(Fail("no such column: {c}"))
+                return error(Fail(f"no such column: {c}"))
             if targets.contains(idx):
-                return error(Fail("duplicate column: {c}"))
+                return error(Fail(f"duplicate column: {c}"))
 
             targets.append(idx)
     else:
@@ -1885,14 +1885,14 @@ fn insert_rows(
     count := new_rows.length()
     for r in new_rows:
         db[ti].rows.append(r.clone())
-    return ok("inserted {count}\n")
+    return ok(f"inserted {count}\n")
 
 fn update_rows(var db: List[Table], name: String, sets: List[Assign], cond: Expr) Result[
     String, Fail
 ]:
     ti := find_table(db, name)
     if ti < 0:
-        return error(Fail("no such table: {name}"))
+        return error(Fail(f"no such table: {name}"))
 
     slots := prefix_slots(table_slots(db[ti], name), db[ti].cols.length())
     var idxs = List[Int]()
@@ -1900,7 +1900,7 @@ fn update_rows(var db: List[Table], name: String, sets: List[Assign], cond: Expr
     for a in sets:
         idx := column_index(db[ti].cols, a.col)
         if idx < 0:
-            return error(Fail("no such column: {a.col}"))
+            return error(Fail(f"no such column: {a.col}"))
 
         idxs.append(idx)
 
@@ -1930,7 +1930,7 @@ fn update_rows(var db: List[Table], name: String, sets: List[Assign], cond: Expr
 
     try check_pk(db[ti].cols, List[List[Value]](), new_rows)
     db[ti].rows = new_rows
-    return ok("updated {count}\n")
+    return ok(f"updated {count}\n")
 
 fn table_slots(t: Table, alias: String) List[Slot]:
     var out = List[Slot]()
@@ -1941,7 +1941,7 @@ fn table_slots(t: Table, alias: String) List[Slot]:
 fn delete_rows(var db: List[Table], name: String, cond: Expr) Result[String, Fail]:
     ti := find_table(db, name)
     if ti < 0:
-        return error(Fail("no such table: {name}"))
+        return error(Fail(f"no such table: {name}"))
 
     slots := table_slots(db[ti], name)
     try check_expr(cond, slots, plain_check(), false)
@@ -1959,7 +1959,7 @@ fn delete_rows(var db: List[Table], name: String, cond: Expr) Result[String, Fai
             kept.append(r.clone())
 
     db[ti].rows = kept
-    return ok("deleted {count}\n")
+    return ok(f"deleted {count}\n")
 
 fn execute(var db: List[Table], st: Stmt) Result[String, Fail]:
     match st:

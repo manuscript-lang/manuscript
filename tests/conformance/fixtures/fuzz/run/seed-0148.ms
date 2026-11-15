@@ -6,11 +6,11 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     l1 := [(-1), (-27), (-12), (-14)]
-    say("l1 = {l1} len {l1.length()}")
+    say(f"l1 = {l1} len {l1.length()}")
 
     if (7 == (39 + 815212)):
         say(("gamma" + "ms"))
@@ -18,26 +18,26 @@ export fn main() Int:
         say("Tab\there")
 
     i2 := (-(-((-821232) * 40)))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     s3 := "42"
-    say("s3 = [{s3}]")
+    say(f"s3 = [{s3}]")
 
     s4 := (s3.replace("back\\slash", "emoji 😀") + "MiXeD CaSe".reverse())
-    say("s4 = [{s4}]")
+    say(f"s4 = [{s4}]")
 
     var l5 = l1.clone()
     l5.append(91)
-    say("l5 = {l5} len {l5.length()}")
+    say(f"l5 = {l5} len {l5.length()}")
 
     i6 := 159876752502
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     s7 := "delta"
-    say("s7 = [{s7}]")
+    say(f"s7 = [{s7}]")
 
     l8 := l1.map(fn x: x + 4).filter(fn x: x % 2 == 0)
-    say("l8 = {l8} len {l8.length()}")
+    say(f"l8 = {l8} len {l8.length()}")
 
     if true:
         say("line\nbreak")
@@ -45,14 +45,14 @@ export fn main() Int:
         say(s3.replace(s7, "héllo"))
 
     i9 := (((32 % (-24)) + (672668 * 607267600457)) % ((-24) % ((-48) + 2)))
-    say("i9 = {i9}")
+    say(f"i9 = {i9}")
 
     s10 := (s3.lower().upper() + "gamma".reverse().lower())
-    say("s10 = [{s10}]")
+    say(f"s10 = [{s10}]")
 
     b11 := ((921.764 / (8.5 / 9.0e20)) < ((363.051 + 834.709) + (65.010 + 571.714)))
-    say("b11 = {b11}")
+    say(f"b11 = {b11}")
 
     i12 := (((-i9) * (i9 * (-98701))) + (-9))
-    say("i12 = {i12}")
+    say(f"i12 = {i12}")
     return 0

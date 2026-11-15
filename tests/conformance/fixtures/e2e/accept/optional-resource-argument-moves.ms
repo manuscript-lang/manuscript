@@ -11,7 +11,7 @@ type Marker:
 	path: String
 
 fn var Marker.close() Void!:
-	append_file(self.path, "{self.id},").wait()?
+	append_file(self.path, f"{self.id},").wait()?
 	self.path = "closed"
 
 type Held:
@@ -20,7 +20,7 @@ type Held:
 	label: String
 
 fn var Held.close() Void!:
-	append_file(self.path, "{self.id},").wait()?
+	append_file(self.path, f"{self.id},").wait()?
 	self.path = "closed"
 
 fn log_text(path: String) String!:
@@ -53,7 +53,7 @@ fn default_resource(path: String) Int:
 
 test "a resource passed to ok_or or get moves into the result and closes once":
 	directory := temporary("optional-argument-")?
-	path := "{directory.path()}/log"
+	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
 	expect_equal(absent_cause(path), true)?
 	expect_equal(present_cause(path), true)?

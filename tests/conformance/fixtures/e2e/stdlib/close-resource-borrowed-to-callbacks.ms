@@ -8,10 +8,10 @@ type Door:
     name: String
 
 fn var Door.close() Void!:
-    print("closed {self.name}")
+    print(f"closed {self.name}")
 
 fn say(s: String) Void:
-    print("{s}")
+    print(f"{s}")
 
 fn maybe(n: String) Door?:
     return Door(n)
@@ -30,4 +30,4 @@ fn main() Void:
 
     failed: Door!Error := error(Error("no"))
     fallback := failed.get_or_else(fn cause: Door("fallback"))
-    say("end {doors.length()} {name.get()} {size.get()} {fallback.name}")
+    say(f"end {doors.length()} {name.get()} {size.get()} {fallback.name}")

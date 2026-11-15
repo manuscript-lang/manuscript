@@ -6,30 +6,30 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := (
         ((41 + (-866710345838)) - 29)
         + (((-230799) / (-16329071327)) + (597670 + (-248960950542)))
     )
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     s2 := "  padded  "
-    say("s2 = [{s2}]")
+    say(f"s2 = [{s2}]")
 
     l4 := [4, 1, (-29), (-8)]
-    say("l4 = {l4} len {l4.length()}")
+    say(f"l4 = {l4} len {l4.length()}")
 
     l5 := l4.sorted(fn a, b: a.compare(b))
-    say("l5 = {l5} len {l5.length()}")
+    say(f"l5 = {l5} len {l5.length()}")
 
     i6 := i1
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     bad := 1 and 2
     var acc7 = 0
     for i in 0..6:
         acc7 += i * 2
-    say("acc7 = {acc7}")
+    say(f"acc7 = {acc7}")
     return 0

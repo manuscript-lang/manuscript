@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -37,29 +37,29 @@ fn collatz(start: Int) Int:
 
 export fn main() Int:
     i1 := (-902866)
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     s2 := "42"
-    say("s2 = [{s2}]")
+    say(f"s2 = [{s2}]")
 
     s3 := s2
-    say("s3 = [{s3}]")
+    say(f"s3 = [{s3}]")
 
     l4 := [(-10)]
-    say("l4 = {l4} len {l4.length()}")
+    say(f"l4 = {l4} len {l4.length()}")
 
     b5 := ((s3 + "gamma") + ("line\nbreak" + "back\\slash")).contains("beta")
-    say("b5 = {b5}")
-    say("fib(53) = {fib(53)}")
+    say(f"b5 = {b5}")
+    say(f"fib(53) = {fib(53)}")
 
     l6 := l4.sorted(fn a, b: a.compare(b))
-    say("l6 = {l6} len {l6.length()}")
-    say("{i1} {i1} {(i1 < i1)} sum {i1 + i1}")
+    say(f"l6 = {l6} len {l6.length()}")
+    say(f"{i1} {i1} {(i1 < i1)} sum {i1 + i1}")
 
     i7 := i1
-    say("i7 = {i7}")
-    say("collatz(2469) = {collatz(2469)}")
+    say(f"i7 = {i7}")
+    say(f"collatz(2469) = {collatz(2469)}")
 
     i8 := (-528791)
-    say("i8 = {i8}")
+    say(f"i8 = {i8}")
     return 0

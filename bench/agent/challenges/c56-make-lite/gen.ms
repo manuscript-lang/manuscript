@@ -332,7 +332,7 @@ export fn gen_c56() Void:
 	add(
 		var cs,
 		"var-braces-single",
-		"X = hello\nY = $\{X\} world\nall:\n<T>echo $\{Y\} $(Y) $X $(X)x $$X",
+		"X = hello\nY = ${X} world\nall:\n<T>echo ${Y} $(Y) $X $(X)x $$X",
 		[],
 		["build"],
 	)
@@ -504,7 +504,7 @@ export fn gen_c56() Void:
 		[],
 		[
 			"expand $(A)|$(B)|$$|$(words $(B))", "expand   padded   text  ",
-			"expand $(UNDEF)", "expand $(firstword $(A) $(B)) $\{B\}"
+			"expand $(UNDEF)", "expand $(firstword $(A) $(B)) ${B}"
 		],
 	)
 	add(

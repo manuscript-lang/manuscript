@@ -6,47 +6,47 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     s1 := "hello world"
-    say("s1 = [{s1}]")
+    say(f"s1 = [{s1}]")
     say(
-        "{((-8) - 1)} {s1.scalar_length()} {(((-8) - 1) < s1.scalar_length())} sum {((-8) - 1) + s1.scalar_length()}"
+        f"{((-8) - 1)} {s1.scalar_length()} {(((-8) - 1) < s1.scalar_length())} sum {((-8) - 1) + s1.scalar_length()}"
     )
 
     i2 := ((-27) + 10)
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     i3 := (((i2 * i2) - (730576 * i2)) + (6 + (i2 - i2)))
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     b4 := false
-    say("b4 = {b4}")
+    say(f"b4 = {b4}")
 
-    s5 := ("{(-15)}:" + "quote\"d").lower().reverse()
-    say("s5 = [{s5}]")
+    s5 := (f"{(-15)}:" + "quote\"d").lower().reverse()
+    say(f"s5 = [{s5}]")
     say(
-        "{(3 * i2)} {((i3 - i2) % (942040 * i2))} {((3 * i2) < ((i3 - i2) % (942040 * i2)))} sum {(3 * i2) + ((i3 - i2) % (942040 * i2))}"
+        f"{(3 * i2)} {((i3 - i2) % (942040 * i2))} {((3 * i2) < ((i3 - i2) % (942040 * i2)))} sum {(3 * i2) + ((i3 - i2) % (942040 * i2))}"
     )
 
     s6 := (s5 + ("  padded  ".reverse() + s5.reverse()))
-    say("s6 = [{s6}]")
+    say(f"s6 = [{s6}]")
 
     i7 := i2
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
     l8 := [23, 0, 18]
-    say("l8 = {l8} len {l8.length()}")
+    say(f"l8 = {l8} len {l8.length()}")
 
     f9 := 164.012
-    say("f9 = {f9}")
+    say(f"f9 = {f9}")
 
-    s10 := ("{(41 % 221446200376)}:" + "delta".upper().lower())
-    say("s10 = [{s10}]")
+    s10 := (f"{(41 % 221446200376)}:" + "delta".upper().lower())
+    say(f"s10 = [{s10}]")
 
     i11 := 609910002488
-    say("i11 = {i11}")
+    say(f"i11 = {i11}")
 
     var acc12 = 0
     var stepacc12 = 0
@@ -55,14 +55,14 @@ export fn main() Int:
         stepacc12 += 1
         acc12 += stepacc12 * stepacc12 + (-3)
 
-    say("acc12 = {acc12}")
+    say(f"acc12 = {acc12}")
 
     l13 := [29, (-4), (-3), 5, 23]
-    say("l13 = {l13} len {l13.length()}")
+    say(f"l13 = {l13} len {l13.length()}")
 
     i14 := i2
-    say("i14 = {i14}")
+    say(f"i14 = {i14}")
 
     big15 := ((i11 - i11) * i3) - ((i11 - i11) * i3)
-    say("{((i11 - i11) * i3) % big15}")
+    say(f"{((i11 - i11) * i3) % big15}")
     return 0

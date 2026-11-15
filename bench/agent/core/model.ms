@@ -41,7 +41,7 @@ export type Challenge:
 	dir: String
 
 fn Challenge.spec() String: (
-	read_file("{self.dir}/spec.md")
+	read_file(f"{self.dir}/spec.md")
 	.wait()
 	.get()
 	.decode_utf8()
@@ -51,7 +51,7 @@ fn Challenge.spec() String: (
 // `which` is `examples` (visible to the agent) or `hidden`.
 fn Challenge.cases(which: String) List[Case]:
 	text := (
-		read_file("{self.dir}/{which}/cases.json")
+		read_file(f"{self.dir}/{which}/cases.json")
 		.wait()
 		.get()
 		.decode_utf8()
@@ -59,7 +59,7 @@ fn Challenge.cases(which: String) List[Case]:
 	)
 	return parse[List[Case]](text).get([])
 
-fn Challenge.solution(lang: String) String: "{self.dir}/solutions/{lang}"
+fn Challenge.solution(lang: String) String: f"{self.dir}/solutions/{lang}"
 
 // A language the benchmark can be solved in, as `languages.json` describes it.
 export type Lang:
@@ -87,7 +87,7 @@ fn Lang.suffix() String:
 	return ""
 
 // The file name of the reference solution, such as `main.ms.ref`.
-fn Lang.reference() String: "{self.solution.split("/").last().get("")}.ref"
+fn Lang.reference() String: f"{self.solution.split("/").last().get("")}.ref"
 
 fn text_of(file: String) String:
 	return read_file(file).wait().get().decode_utf8().get("")
@@ -101,12 +101,12 @@ fn field(doc: JsonValue, key: String) String:
 export fn load_challenges(ids: List[String]) List[Challenge]:
 	var out = List[Challenge]()
 	var names = List[String]()
-	for entry in list("{root()}/challenges").get([]):
+	for entry in list(f"{root()}/challenges").get([]):
 		names.append(entry.name.clone())
 
 	for name in names.sorted():
-		dir := "{root()}/challenges/{name}"
-		meta_text := read_file("{dir}/challenge.json").wait()
+		dir := f"{root()}/challenges/{name}"
+		meta_text := read_file(f"{dir}/challenge.json").wait()
 		if not meta_text.is_ok(): continue
 
 		m := parse[Meta](meta_text.get().decode_utf8().get("")).get(
@@ -114,7 +114,7 @@ export fn load_challenges(ids: List[String]) List[Challenge]:
 		)
 		wanted := (
 			ids.is_empty()
-			or ids.any(fn i: (name == i or name.starts_with("{i}-")))
+			or ids.any(fn i: (name == i or name.starts_with(f"{i}-")))
 		)
 		if wanted: out.append(
 			Challenge(
@@ -133,7 +133,7 @@ export fn load_challenges(ids: List[String]) List[Challenge]:
 // Languages named in `ids` (all when empty), in file order; an unknown id stops the
 // program.
 export fn load_languages(ids: List[String]) List[Lang]:
-	doc := parse(text_of("{root()}/languages.json")).get(JsonValue.Null)
+	doc := parse(text_of(f"{root()}/languages.json")).get(JsonValue.Null)
 	var out = List[Lang]()
 	var known = List[String]()
 
@@ -166,7 +166,7 @@ export fn load_languages(ids: List[String]) List[Lang]:
 		)
 
 	unknown := ids.filter(fn i: not known.contains(i))
-	if not unknown.is_empty(): panic("unknown languages: {unknown.join(", ")}")
+	if not unknown.is_empty(): panic(f"unknown languages: {unknown.join(", ")}")
 	return out
 
 // Estimated USD from `pricing.json`; `tokens_in` excludes cached tokens.
@@ -176,7 +176,7 @@ export fn cost_from_tokens(
 	tokens_out: Int,
 	model: String,
 ) Float:
-	table := parse(text_of("{root()}/pricing.json")).get(JsonValue.Null)
+	table := parse(text_of(f"{root()}/pricing.json")).get(JsonValue.Null)
 	var p = table.get("default").get(JsonValue.Null)
 	if own := table.get(model): p = own.clone()
 

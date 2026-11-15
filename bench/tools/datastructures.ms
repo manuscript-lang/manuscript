@@ -20,22 +20,22 @@ fn run(work: String, n: Int) Result[String, Error]:
 	here := "bench/perf/datastructures"
 	for dir in ["go", "ms"]:
 		copy(
-			"{here}/{dir}",
-			"{work}/{dir}",
+			f"{here}/{dir}",
+			f"{work}/{dir}",
 			CopyOptions(recursive: true, replace: true),
 		)?
-	build_ms("{work}/ms", "{work}/ms/bench")?
-	build_go("{work}/go", "{work}/go/bench")?
-	build_rust("{here}/rust/main.rs", "{work}/rs", [])?
+	build_ms(f"{work}/ms", f"{work}/ms/bench")?
+	build_go(f"{work}/go", f"{work}/go/bench")?
+	build_rust(f"{here}/rust/main.rs", f"{work}/rs", [])?
 
 	var raw = List[String]()
 
 	for i in 0..n:
 		for v in rotate(["ms", "go", "rs"], i):
-			exe := if v == "rs": "{work}/rs" else: "{work}/{v}/bench"
+			exe := if v == "rs": f"{work}/rs" else: f"{work}/{v}/bench"
 			for line in (sample(exe, [])?).split("\n"):
-				if line != "": raw.append("{v} {line}")
-			raw.append("{v} # end")
+				if line != "": raw.append(f"{v} {line}")
+			raw.append(f"{v} # end")
 
 	return summarize(raw, n)
 

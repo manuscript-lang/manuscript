@@ -61,7 +61,7 @@ fn lang_name(id: String) String:
 fn today() String:
 	return now().format("YYYY-MM-DD", "Local").get("")
 
-fn trials_file() String: "{root()}/results/trials-{today()}.jsonl"
+fn trials_file() String: f"{root()}/results/trials-{today()}.jsonl"
 
 fn text_at(doc: JsonValue, key: String) String:
 	return doc.get(key).get(JsonValue.Null).as_string().get("")
@@ -141,9 +141,9 @@ fn breakdown(steps: List[JsonValue]) List[Float]:
 	return out
 
 fn read_trial(dir: String) Trial?:
-	if not access("{dir}/result.json", 0).is_ok(): return none
+	if not access(f"{dir}/result.json", 0).is_ok(): return none
 
-	r := parse(must_read("{dir}/result.json")).get(JsonValue.Null)
+	r := parse(must_read(f"{dir}/result.json")).get(JsonValue.Null)
 	task := r.get("task_name")
 	if task.is_none(): return none
 
@@ -151,7 +151,7 @@ fn read_trial(dir: String) Trial?:
 	cut := name.last_index_of("-").get(0)
 	cid := name.slice(0, cut).get("")
 	lang := name.slice(cut + 1, name.length()).get("")
-	meta_file := "{root()}/challenges/{cid}/challenge.json"
+	meta_file := f"{root()}/challenges/{cid}/challenge.json"
 	if not access(meta_file, 0).is_ok(): return none
 
 	meta := parse(must_read(meta_file)).get(JsonValue.Null)
@@ -160,15 +160,15 @@ fn read_trial(dir: String) Trial?:
 		JsonValue.Null
 	).get("reward")
 	var detail = JsonValue.Null
-	if access("{dir}/verifier/detail.json", 0).is_ok(): detail = parse(
-		must_read("{dir}/verifier/detail.json")
+	if access(f"{dir}/verifier/detail.json", 0).is_ok(): detail = parse(
+		must_read(f"{dir}/verifier/detail.json")
 	).get(JsonValue.Null)
 
 	var turns = 0
 	var sources = Map[String, JsonValue]()
 
-	if access("{dir}/agent/trajectory.json", 0).is_ok():
-		steps := parse(must_read("{dir}/agent/trajectory.json")).get(
+	if access(f"{dir}/agent/trajectory.json", 0).is_ok():
+		steps := parse(must_read(f"{dir}/agent/trajectory.json")).get(
 			JsonValue.Null
 		).get("steps").get(JsonValue.Null).as_list().get([])
 		turns = steps.count(fn s: text_at(s, "source") == "agent")
@@ -179,7 +179,7 @@ fn read_trial(dir: String) Trial?:
 			sources.add(
 				cats[n].clone(),
 				JsonValue.NumberValue(
-					"{round(split[n]).truncate_to_int().get(0)}"
+					f"{round(split[n]).truncate_to_int().get(0)}"
 				),
 			)
 
@@ -231,7 +231,7 @@ fn collect(dirs: List[String]) Int:
 	for jobs in dirs:
 		for entry in glob(jobs, GlobOptions(patterns: ["**/*__*"])).get([]):
 			path := entry.path.clone()
-			dir := "{jobs}/{path}"
+			dir := f"{jobs}/{path}"
 			leaf := path.split("/").last().get("")
 			is_dir := stat(dir).to_optional().map(fn s: s.is_directory()).get(false)
 
@@ -257,7 +257,7 @@ fn collect(dirs: List[String]) Int:
 
 	kept := latest.sorted(fn a, b: a.trial.compare(b.trial))
 	write_text(trials_file(), kept.map(fn t: dumps_data(t, 0) + "\n").join(""))
-	print("{kept.length()} trials in {trials_file()}")
+	print(f"{kept.length()} trials in {trials_file()}")
 	return 0
 
 // Aggregates of one group of trials; passing trials only for the averages.
@@ -311,9 +311,9 @@ type Row:
 	stats: Agg
 
 fn table(title: String, rs: List[Trial], key: fn(Trial) String, label: String) String:
-	var lines = ["### {title}", ""]
+	var lines = [f"### {title}", ""]
 	lines.append(
-		"| rank | {label} | trials | pass | first build ok | agent tokens | solution size (tokens) | turns | wall s | cost |"
+		f"| rank | {label} | trials | pass | first build ok | agent tokens | solution size (tokens) | turns | wall s | cost |"
 	)
 	lines.append("|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|")
 
@@ -328,7 +328,7 @@ fn table(title: String, rs: List[Trial], key: fn(Trial) String, label: String) S
 		a := rows[i].stats
 		prov := if a.n < MIN_RUNS * 5: " (provisional)" else: ""
 		lines.append(
-			"| {i + 1} | {rows[i].key}{prov} | {a.n} | {fmt(a.pass, "pct")} | {fmt(a.fb, "pct")} | {fmt(a.tokens, "tok")} | {fmt(a.code, "n0")} | {fmt(a.turns, "n")} | {fmt(a.wall, "n")} | {fmt(a.cost, "usd")} |"
+			f"| {i + 1} | {rows[i].key}{prov} | {a.n} | {fmt(a.pass, "pct")} | {fmt(a.fb, "pct")} | {fmt(a.tokens, "tok")} | {fmt(a.code, "n0")} | {fmt(a.turns, "n")} | {fmt(a.wall, "n")} | {fmt(a.cost, "usd")} |"
 		)
 
 	return lines.join("\n") + "\n"
@@ -357,7 +357,7 @@ fn source_table(rows: List[Trial]) String:
 		"`reads` is other file and command output; `build` is check/build/run output (compile-error retries); `writes` is edited code echoed back; `model output` is the agent's own text and tool calls."
 	)
 	lines.append("")
-	lines.append("| language | input | output | {CATEGORIES.join(" | ")} |")
+	lines.append(f"| language | input | output | {CATEGORIES.join(" | ")} |")
 	lines.append("|---|---:|---:|" + CATEGORIES.map(fn _c: "---:|").join(""))
 
 	for lang in ["ts", "go", "rust", "ms"]:
@@ -386,7 +386,7 @@ fn source_table(rows: List[Trial]) String:
 			)
 		)
 		lines.append(
-			"| {lang_name(lang)} | {fixed(mean_in / 1000.0, 0)}k | {fixed(out / 1000.0, 1)}k | {cells.join(" | ")} |"
+			f"| {lang_name(lang)} | {fixed(mean_in / 1000.0, 0)}k | {fixed(out / 1000.0, 1)}k | {cells.join(" | ")} |"
 		)
 
 	return lines.join("\n") + "\n"
@@ -395,18 +395,18 @@ fn render(src_arg: String?) Int:
 	var src = src_arg.get("")
 
 	if src == "":
-		found := glob("{root()}/results", GlobOptions(patterns: ["trials-*.jsonl"])).get(
+		found := glob(f"{root()}/results", GlobOptions(patterns: ["trials-*.jsonl"])).get(
 			[]
 		)
 		names := found.map(fn e: e.path.clone())
-		src = "{root()}/results/{names.sorted().last().get("")}"
+		src = f"{root()}/results/{names.sorted().last().get("")}"
 
 	board := src.replace("trials-", "leaderboard-").replace(".jsonl", ".md")
 	trials := read_trials(src)
 	clean := trials.filter(fn t: not t.errored)
 	var out = ["# agent-bench leaderboard", ""]
 	out.append(
-		"{trials.length()} trials ({trials.length() - clean.length()} errored and excluded). Pass rate counts all scored trials; tokens, turns, wall time and cost average over passing trials only. `agent tokens` is what the agent consumed (input including cache reads, plus output). `solution size (tokens)` is the number of lexical tokens (identifiers, literals, punctuation; comments excluded) in the final source it wrote, mean over passing trials; `n/a` means the run predates the measurement. Ranked by pass rate, then cost."
+		f"{trials.length()} trials ({trials.length() - clean.length()} errored and excluded). Pass rate counts all scored trials; tokens, turns, wall time and cost average over passing trials only. `agent tokens` is what the agent consumed (input including cache reads, plus output). `solution size (tokens)` is the number of lexical tokens (identifiers, literals, punctuation; comments excluded) in the final source it wrote, mean over passing trials; `n/a` means the run predates the measurement. Ranked by pass rate, then cost."
 	)
 	out.append("")
 	out.append(
@@ -421,7 +421,7 @@ fn render(src_arg: String?) Int:
 		table(
 			"Models (all languages)",
 			clean,
-			fn t: "{t.agent.get("None")} / {t.model.get("None")}",
+			fn t: f"{t.agent.get("None")} / {t.model.get("None")}",
 			"agent / model"
 		)
 	)
@@ -429,7 +429,7 @@ fn render(src_arg: String?) Int:
 		table(
 			"Model x language",
 			clean,
-			fn t: "{t.model.get("None")} / {lang_name(t.language)}",
+			fn t: f"{t.model.get("None")} / {lang_name(t.language)}",
 			"model / language"
 		)
 	)
@@ -437,7 +437,7 @@ fn render(src_arg: String?) Int:
 	for cat in clean.map(fn t: t.category.clone()).distinct().sorted():
 		out.append(
 			table(
-				"Category: {cat}",
+				f"Category: {cat}",
 				clean.filter(fn t: t.category == cat),
 				fn t: lang_name(t.language),
 				"language"
@@ -446,14 +446,14 @@ fn render(src_arg: String?) Int:
 	for tier in clean.map(fn t: t.tier).distinct().sorted():
 		out.append(
 			table(
-				"Tier {tier}",
+				f"Tier {tier}",
 				clean.filter(fn t: t.tier == tier),
 				fn t: lang_name(t.language),
 				"language"
 			)
 		)
 	write_text(board, out.join("\n"))
-	print("wrote {board}")
+	print(f"wrote {board}")
 	return 0
 
 fn main() Int:

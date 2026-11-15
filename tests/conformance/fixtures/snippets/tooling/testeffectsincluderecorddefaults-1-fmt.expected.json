@@ -1,7 +1,7 @@
 {
   "format": 1,
   "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
+  "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
     "fmt": "type State:\n\tcount: Int\n\nfn increment(var state: State) Int:\n\tstate.count += 1\n\treturn state.count\n\ntype Options:\n\tstate: State\n\tcount: Int = increment(state)\n\nfn construct(state: State) Options:\n\treturn Options(state: state)\n"

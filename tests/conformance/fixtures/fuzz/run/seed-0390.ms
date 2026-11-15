@@ -6,20 +6,20 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := 427026424055
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     b2 := true
-    say("b2 = {b2}")
+    say(f"b2 = {b2}")
     say(
-        "{((i1 - (-26)) + (i1 + (-2)))} {((i1 - i1) / i1)} {(((i1 - (-26)) + (i1 + (-2))) < ((i1 - i1) / i1))} sum {((i1 - (-26)) + (i1 + (-2))) + ((i1 - i1) / i1)}"
+        f"{((i1 - (-26)) + (i1 + (-2)))} {((i1 - i1) / i1)} {(((i1 - (-26)) + (i1 + (-2))) < ((i1 - i1) / i1))} sum {((i1 - (-26)) + (i1 + (-2))) + ((i1 - i1) / i1)}"
     )
 
     f3 := ((805.595 * (970.598 / 9.0e20)) * (947.003 + 0.0))
-    say("f3 = {f3}")
+    say(f"f3 = {f3}")
 
     if true:
         say("beta")
@@ -29,11 +29,11 @@ export fn main() Int:
     var acc4 = 0
     for i in 0..2:
         acc4 += i * 5
-    say("acc4 = {acc4}")
+    say(f"acc4 = {acc4}")
 
     b5 := (not false)
-    say("b5 = {b5}")
+    say(f"b5 = {b5}")
 
     l6 := [26, 10, 15, 3]
-    say("l6 = {l6} len {l6.length()}")
+    say(f"l6 = {l6} len {l6.length()}")
     return 0

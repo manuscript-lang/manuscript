@@ -165,18 +165,18 @@ fn joinSep(a: String, b: String) String:
 	return a + " " + b
 
 fn mkFail(msg: String) Fail:
-	return Fail(msg: "make: *** {msg}.  Stop.")
+	return Fail(msg: f"make: *** {msg}.  Stop.")
 
 fn lfail(line: Int, msg: String) Fail:
-	if line > 0: return Fail(msg: "Makefile:{line}: *** {msg}.  Stop.")
-	return Fail(msg: "make: *** {msg}.  Stop.")
+	if line > 0: return Fail(msg: f"Makefile:{line}: *** {msg}.  Stop.")
+	return Fail(msg: f"make: *** {msg}.  Stop.")
 
 // Index of the matching closer for the opener at `open`, or -1.
 fn findClose(cs: List[String], open: Int) Int:
 	o := cs[open].clone()
 	var c = ")"
-	if o == "\{":
-		c = "\}"
+	if o == "{":
+		c = "}"
 
 	var depth = 0
 	var k = open
@@ -203,9 +203,9 @@ fn findTop(cs: List[String], target: String, from: Int) Int:
 		c := cs[k]
 		if depth == 0 and c == target: return k
 
-		if c == "(" or c == "\{":
+		if c == "(" or c == "{":
 			depth += 1
-		else if (c == ")" or c == "\}") and depth > 0:
+		else if (c == ")" or c == "}") and depth > 0:
 			depth -= 1
 
 		k += 1
@@ -221,7 +221,7 @@ fn findColon(cs: List[String]) Int:
 		c := cs[k]
 		if c == ";": return -1
 
-		if c == "$" and k + 1 < n and (cs[k + 1] == "(" or cs[k + 1] == "\{"):
+		if c == "$" and k + 1 < n and (cs[k + 1] == "(" or cs[k + 1] == "{"):
 			close := findClose(cs, k + 1)
 			if close < 0: return -1
 
@@ -240,10 +240,10 @@ fn splitArgs(s: String) List[String]:
 	var depth = 0
 
 	for c in s.chars():
-		if c == "(" or c == "\{":
+		if c == "(" or c == "{":
 			depth += 1
 			cur += c
-		else if (c == ")" or c == "\}") and depth > 0:
+		else if (c == ")" or c == "}") and depth > 0:
 			depth -= 1
 			cur += c
 		else if c == "," and depth == 0:
@@ -407,7 +407,7 @@ fn recur(var st: St, name: String, value: String) String!Fail:
 		return error(
 			lfail(
 				st.line,
-				"Recursive variable '{name}' references itself (eventually)",
+				f"Recursive variable '{name}' references itself (eventually)",
 			)
 		)
 
@@ -574,7 +574,7 @@ fn callFn(var st: St, name: String, argtext: String) String!Fail:
 	if name == "words":
 		x := try expand(var st, argAt(raw, 0))
 		c := wordsOf(x).length()
-		return ok("{c}")
+		return ok(f"{c}")
 
 	if name == "firstword" or name == "lastword":
 		x := try expand(var st, argAt(raw, 0))
@@ -659,7 +659,7 @@ fn expand(var st: St, text: String) String!Fail:
 		else if cs[i + 1] == "$":
 			out += "$"
 			i += 2
-		else if cs[i + 1] == "(" or cs[i + 1] == "\{":
+		else if cs[i + 1] == "(" or cs[i + 1] == "{":
 			close := findClose(cs, i + 1)
 			if close < 0:
 				return error(lfail(st.line, "unterminated variable reference"))
@@ -769,7 +769,7 @@ fn closeRule(var st: St) Unit:
 						st
 						.out
 						.append(
-							"Makefile:{st.rLine}: warning: overriding recipe for target '{t}'"
+							f"Makefile:{st.rLine}: warning: overriding recipe for target '{t}'"
 						)
 					)
 				st.rules[k].recipe = st.rRecipe.clone()
@@ -1115,7 +1115,7 @@ fn simulate(var st: St, cmd: String) Int:
 	if name == "cp":
 		if n == 3:
 			if not st.files.contains(ws[1]):
-				st.out.append("cp: cannot stat '{ws[1]}': No such file or directory")
+				st.out.append(f"cp: cannot stat '{ws[1]}': No such file or directory")
 				return 1
 
 			st.clock += 1
@@ -1188,13 +1188,13 @@ fn runRecipe(var st: St, t: String, r: Res, pre: List[String], qlist: List[Strin
 						st
 						.out
 						.append(
-							"make: [Makefile:{rl.line}: {t}] Error {status} (ignored)"
+							f"make: [Makefile:{rl.line}: {t}] Error {status} (ignored)"
 						)
 					)
 				else:
 					return error(
 						Fail(
-							msg: "make: *** [Makefile:{rl.line}: {t}] Error {status}"
+							msg: f"make: *** [Makefile:{rl.line}: {t}] Error {status}"
 						)
 					)
 
@@ -1231,9 +1231,9 @@ fn bupdate(var st: St, t: String, needed: String) Bool!Fail:
 			st.memo.add(t.clone(), true)
 			return ok(true)
 
-		if needed == "": return error(mkFail("No rule to make target '{t}'"))
+		if needed == "": return error(mkFail(f"No rule to make target '{t}'"))
 
-		return error(mkFail("No rule to make target '{t}', needed by '{needed}'"))
+		return error(mkFail(f"No rule to make target '{t}', needed by '{needed}'"))
 
 	st.bstack.append(t.clone())
 
@@ -1292,9 +1292,9 @@ fn doBuild(var st: St, goals: List[String], dry: Bool) Unit!Fail:
 			r := resolveRule(st, g)
 
 			if r.hasRecipe or (st.files.contains(g) and not st.phony.contains(g)):
-				st.out.append("make: '{g}' is up to date.")
+				st.out.append(f"make: '{g}' is up to date.")
 			else:
-				st.out.append("make: Nothing to be done for '{g}'.")
+				st.out.append(f"make: Nothing to be done for '{g}'.")
 
 // ---------- deps / targets ----------
 
@@ -1440,7 +1440,7 @@ fn doRequest(var st: St, req: String) Unit!Fail:
 
 		for nm in names:
 			mt := st.files.get_or(nm, 0)
-			st.out.append("{nm} {mt}")
+			st.out.append(f"{nm} {mt}")
 
 		return ok(unit)
 

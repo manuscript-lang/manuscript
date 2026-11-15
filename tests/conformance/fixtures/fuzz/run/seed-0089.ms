@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -24,17 +24,17 @@ fn collatz(start: Int) Int:
 
 export fn main() Int:
     i1 := (-18)
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     f2 := 915.619
-    say("f2 = {f2}")
+    say(f"f2 = {f2}")
 
     s3 := "  padded  "
-    say("s3 = [{s3}]")
-    say("collatz(2256) = {collatz(2256)}")
+    say(f"s3 = [{s3}]")
+    say(f"collatz(2256) = {collatz(2256)}")
 
     f4 := (2.0e-3 - ((f2 + 579.208) + (f2 + 335.651)))
-    say("f4 = {f4}")
+    say(f"f4 = {f4}")
 
     if (("alpha" + "42") == "Tab\there".lower()):
         say("héllo".lower())
@@ -47,10 +47,10 @@ export fn main() Int:
         say(s3.trim())
 
     i5 := (((i1 + i1) * (-i1)) - i1)
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     b6 := ("gamma" + "42".upper()).starts_with("delta")
-    say("b6 = {b6}")
+    say(f"b6 = {b6}")
 
     if (s3.trim() != ("gamma" + "MiXeD CaSe")):
         say(s3)
@@ -58,13 +58,13 @@ export fn main() Int:
         say(s3.replace("emoji 😀", "back\\slash"))
 
     say(
-        "{(((-46) % i1) % (i5 - i1))} {s3.scalar_length()} {((((-46) % i1) % (i5 - i1)) < s3.scalar_length())} sum {(((-46) % i1) % (i5 - i1)) + s3.scalar_length()}"
+        f"{(((-46) % i1) % (i5 - i1))} {s3.scalar_length()} {((((-46) % i1) % (i5 - i1)) < s3.scalar_length())} sum {(((-46) % i1) % (i5 - i1)) + s3.scalar_length()}"
     )
 
     f7 := (131.631 * ((152.238 + f4) * (f2 * f4)))
-    say("f7 = {f7}")
+    say(f"f7 = {f7}")
 
-    b8 := ("{i1}:" + "x".lower()).starts_with("naïve")
-    say("b8 = {b8}")
-    say("collatz(2335) = {collatz(2335)}")
+    b8 := (f"{i1}:" + "x".lower()).starts_with("naïve")
+    say(f"b8 = {b8}")
+    say(f"collatz(2335) = {collatz(2335)}")
     return 0

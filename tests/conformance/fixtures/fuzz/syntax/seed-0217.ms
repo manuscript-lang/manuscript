@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -19,19 +19,19 @@ export fn main() Int:
         ((607.575 * 938.144) + (5.0e10 * 856.25))
         / ((2.0e14 * 372.997) + 482.888)
     )
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
 
     l2 := [(-28), (-29), 18]
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     var acc3 = 0
     for i in 0..0:
         acc3 += i * 3
-    say("acc3 = {acc3}")
+    say(f"acc3 = {acc3}")
 
     i4 := (-(-28))
-    say("i4 = {i4}")
-    say("fact(11) = {fact(11)}")
+    say(f"i4 = {i4}")
+    say(f"fact(11) = {fact(11)}")
 
     i5 := ((i4 - (i4 - i4)) + ((i4 * i4) + (27 + 20)))
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")

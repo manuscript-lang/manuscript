@@ -1,7 +1,7 @@
 {
   "format": 1,
   "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
+  "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
     "fmt": "interface Read[T]:\n\tfn get() T\n\ntype Box[T: Clonable]:\n\titem: T\n\nfn Box[T].get() T: self.item.clone()\n\nfn read() Read[Int]: Box(1)\n"

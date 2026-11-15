@@ -6,26 +6,26 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     f1 := (0.5 * ((487.728 * 8.5) / (408.790 * 299.024)))
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
 
     i2 := ((16 % (248792 * 9)) + (319934 * ((-223218) % (-44))))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
-    if ("{448025998971}:" + "héllo").is_empty():
-        say(("{i2}:" + "42"))
+    if (f"{448025998971}:" + "héllo").is_empty():
+        say((f"{i2}:" + "42"))
     else:
         say("alpha")
 
     i3 := (49 / ((i2 - i2) - (-10)))
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     i4 := i3
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     f5 := f1
-    say("f5 = {f5}")
+    say(f"f5 = {f5}")
     return 0

@@ -12,11 +12,11 @@ fn collect(fallback: Int = choose(1)) String:
             else:
                 return choose(4)
     ]
-    _text := "{choose(5)}"
+    _text := f"{choose(5)}"
 
     match fallback:
         _:
-            return "{choose(6)}"
+            return f"{choose(6)}"
 
 interface Read:
     fn read(value: Int) Int

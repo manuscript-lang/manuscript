@@ -148,7 +148,7 @@ See [compatibility](../types/compatibility.md) and [error propagation](../errors
 
 ```ms
 fn main() Void:
-    print("{__FILE__}:{__LINE__}")
+    print(f"{__FILE__}:{__LINE__}")
 ```
 
 ## Evaluation

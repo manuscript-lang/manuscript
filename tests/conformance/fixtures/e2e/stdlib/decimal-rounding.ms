@@ -13,7 +13,7 @@ test "decimal cents stay exact and fixed places retain zeros":
 	expect_equal(((total + tax).to_fixed(2)?), "64.92")?
 	expect_equal((25.50d.to_fixed(2)?), "25.50")?
 	expect_equal((9007199254740993.125d.to_fixed(2)?), "9007199254740993.12")?
-	expect_equal("{25.50d}", "25.5")?
+	expect_equal(f"{25.50d}", "25.5")?
 	expect_equal(1d / 3d, 0.3333333333333333333333333333333333d)?
 
 test "decimal rounding modes include signed ties and coarse scales":

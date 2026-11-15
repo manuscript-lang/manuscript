@@ -16,7 +16,7 @@ import (
 	arguments, working_directory from "@std/os/env.ms",
 	temporary, write_file from "@std/os/fs.ms",
 	run from "@std/os/process.ms",
-	metrics from "@std/os/system.ms",
+	system_info from "@std/os/system.ms",
 
 	tool_ms from "./lib.ms",
 )
@@ -33,7 +33,7 @@ type Marker:
 fn var Marker.close() Void!:
     if self.open:
         self.open = false
-        print("closed-\{self.id\}")
+        print("closed-{self.id}")
 
 type Holder:
     m: Marker
@@ -52,7 +52,7 @@ fn mk_map(id: Int) Map[Int, Marker]:
     return m
 
 fn mk(id: Int) Marker:
-    print("made-\{id\}")
+    print("made-{id}")
     return Marker(id, true)
 
 fn flag() Bool: return true
@@ -267,7 +267,7 @@ fn constructs() List[Construct]:
 			"destructure",
 			"record",
 			"",
-			"\{m\} := @M1@\n    fail()?\n    see_marker(m)",
+			"{m} := @M1@\n    fail()?\n    see_marker(m)",
 		),
 		only(
 			"match_enum_return",
@@ -410,7 +410,7 @@ fn program(shape: Shape, construct: Construct) String:
 	see := "fn see(x: @TY@) Void: return\n\nfn see_all(xs: List[@TY@]) Void: return\n\nfn seeok(x: @TY@) Void!: return ok()\n\nfn see_marker(m: Marker) Void: return\n\nfn fail_int() Int!: return error(Error(\"x\"))\n"
 	m1 := shape.make.replace("@ID@", "1")
 	m2 := shape.make.replace("@ID@", "2")
-	var text = "{HEADER}\n{see}\n{construct.defs}\n\nfn body() Void!:\n    {construct.body}\n    return ok()\n\nfn run() Void:\n    void body()\n\nexport fn main() Int:\n    run()\n    return 0\n"
+	var text = f"{HEADER}\n{see}\n{construct.defs}\n\nfn body() Void!:\n    {construct.body}\n    return ok()\n\nfn run() Void:\n    void body()\n\nexport fn main() Int:\n    run()\n    return 0\n"
 	text = text.replace("@TY@", shape.ty).replace("@M1@", m1).replace("@M2@", m2)
 	return text
 
@@ -444,7 +444,7 @@ type Tally:
 fn verify(ms: String, scratch: String, cell: Cell, show: Bool, filter: String) Tally:
 	var tally = Tally(0, 0, 0, [])
 	name := cell.name.clone()
-	file := "{scratch}/{name}.ms"
+	file := f"{scratch}/{name}.ms"
 	write_file(file, program(cell.shape.clone(), cell.construct.clone())).wait().get()
 
 	verdict := run(ms.clone(), ["check", file.clone()]).wait()
@@ -456,9 +456,9 @@ fn verify(ms: String, scratch: String, cell: Cell, show: Bool, filter: String) T
 
 		if why.contains(": parse:"):
 			tally.failures += 1
-			tally.lines.append("generated: {name} does not parse: {why}\n")
+			tally.lines.append(f"generated: {name} does not parse: {why}\n")
 		else if show or filter != "":
-			tally.lines.append("rejected {name}: {why.split("\n")[0]}\n")
+			tally.lines.append(f"rejected {name}: {why.split("\n")[0]}\n")
 
 		return tally
 
@@ -469,7 +469,7 @@ fn verify(ms: String, scratch: String, cell: Cell, show: Bool, filter: String) T
 
 		if ran.is_error():
 			tally.failures += 1
-			tally.lines.append("run: {name} ({build}) could not run {ms}\n")
+			tally.lines.append(f"run: {name} ({build}) could not run {ms}\n")
 			continue
 
 		child := ran.get()
@@ -481,7 +481,7 @@ fn verify(ms: String, scratch: String, cell: Cell, show: Bool, filter: String) T
 			why := child.stderr.decode_utf8().get("")
 			(
 				tally.lines.append(
-					"exit: {name} ({build}) passed `ms check` but failed: {why}\n"
+					f"exit: {name} ({build}) passed `ms check` but failed: {why}\n"
 				)
 			)
 			continue
@@ -492,7 +492,7 @@ fn verify(ms: String, scratch: String, cell: Cell, show: Bool, filter: String) T
 
 		for key in made.keys():
 			id := key.slice(5, key.length()).get("")
-			if made.get_or(key.clone(), 0) != closed.get_or("closed-{id}", 0): wrong = true
+			if made.get_or(key.clone(), 0) != closed.get_or(f"closed-{id}", 0): wrong = true
 
 		if closed.length() != made.length(): wrong = true
 
@@ -502,7 +502,7 @@ fn verify(ms: String, scratch: String, cell: Cell, show: Bool, filter: String) T
 				tally
 				.lines
 				.append(
-					"ownership: {name} ({build}) made {made.length()} ids and closed {closed.length()}; each resource must close once ({file})\n"
+					f"ownership: {name} ({build}) made {made.length()} ids and closed {closed.length()}; each resource must close once ({file})\n"
 				)
 			)
 
@@ -525,7 +525,7 @@ fn main() Int:
 		for construct in constructs():
 			if construct.only != "" and construct.only != shape.name: continue
 
-			name := "{construct.name}_{shape.name}"
+			name := f"{construct.name}_{shape.name}"
 			if filter != "" and not name.contains(filter): continue
 
 			cells.append(Cell(shape.clone(), construct.clone(), name))
@@ -536,7 +536,7 @@ fn main() Int:
 	scratch_path := scratch.path()
 	tallies := map_concurrent(
 		cells,
-		metrics().get().available_parallelism,
+		system_info().cpu_count,
 		fn cell: verify(
 			ms.clone(),
 			scratch_path.clone(),
@@ -559,7 +559,7 @@ fn main() Int:
 	(
 		stdout()
 		.write(
-			"close-matrix: {checked} runs, {rejected} combinations rejected by the checker, {failures} failing\n"
+			f"close-matrix: {checked} runs, {rejected} combinations rejected by the checker, {failures} failing\n"
 		)
 		.get()
 	)

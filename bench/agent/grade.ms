@@ -44,7 +44,7 @@ fn main() Void:
 	create_directory(out_dir, recursive: true).get()
 
 	var rows = List[LogRow]()
-	for line in nonblank_lines(read_text("{app}/.bench/log.jsonl")):
+	for line in nonblank_lines(read_text(f"{app}/.bench/log.jsonl")):
 		rows.append(parse[LogRow](line).get(LogRow("", false, "", "", "")))
 
 	builds := rows.filter(fn r: r.phase == "build")
@@ -83,7 +83,7 @@ fn main() Void:
 			built.err.length(),
 		).get("")
 
-	write_file("{out_dir}/detail.json", stringify(detail).get(""), replace: true).wait().get()
+	write_file(f"{out_dir}/detail.json", stringify(detail).get(""), replace: true).wait().get()
 
 	reward := if detail.built and detail.passed == detail.total: "1" else: "0"
-	write_file("{out_dir}/reward.txt", reward, replace: true).wait().get()
+	write_file(f"{out_dir}/reward.txt", reward, replace: true).wait().get()

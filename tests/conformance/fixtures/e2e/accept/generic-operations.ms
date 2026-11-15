@@ -38,7 +38,7 @@ fn pick_with[B: Picker[Int]](bag: B) Int?:
 test "an interface operation takes type parameters of its own":
 	bag := Bag(items: [3, 1, 2])
 	bag.pick(fn(x: Int) Int: x) | expect_equal(3)?
-	bag.pick(fn(x: Int) String: "\{x\}") | expect_equal(3)?
+	bag.pick(fn(x: Int) String: "{x}") | expect_equal(3)?
 	bag.mapped(fn(x: Int) String: "n") | expect_equal(["n", "n", "n"])?
 
 test "a bounded type parameter calls a generic operation":

@@ -72,4 +72,4 @@ fn main() Void:
 
 	var sum = 0
 	for x in 0..n: sum += (a[x] + 1) * (x + 1)
-	print("{sum}")
+	print(f"{sum}")

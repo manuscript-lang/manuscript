@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -15,43 +15,43 @@ fn gcd(a: Int, b: Int) Int:
     return gcd(b, a % b)
 
 export fn main() Int:
-    say("gcd(2604, 2996) = {gcd(2604, 2996)}")
+    say(f"gcd(2604, 2996) = {gcd(2604, 2996)}")
 
     i1 := (((764569 % (-21)) + 33) * (((-13) * (-584834)) % (6 + (-17))))
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     i2 := i1
-    say("i2 = {i2}")
-    say("{(-27)} {i1} {((-27) < i1)} sum {(-27) + i1}")
+    say(f"i2 = {i2}")
+    say(f"{(-27)} {i1} {((-27) < i1)} sum {(-27) + i1}")
 
     s3 := "delta"
-    say("s3 = [{s3}]")
+    say(f"s3 = [{s3}]")
 
     b4 := false
-    say("b4 = {b4}")
+    say(f"b4 = {b4}")
 
     l5 := [4, (-26)]
-    say("l5 = {l5} len {l5.length()}")
+    say(f"l5 = {l5} len {l5.length()}")
 
     i6 := s3.scalar_length()
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     s7 := "x".lower()
-    say("s7 = [{s7}]")
+    say(f"s7 = [{s7}]")
 
     i8 := (-6)
-    say("i8 = {i8}")
+    say(f"i8 = {i8}")
 
     l9 := [1, 2, 3].take(0)
-    say("l9 = {l9} len {l9.length()}")
+    say(f"l9 = {l9} len {l9.length()}")
 
     i10 := ((-(18 * i8)) * ((i8 + i6) - (i2 - i8)))
-    say("i10 = {i10}")
+    say(f"i10 = {i10}")
 
     b11 := ((((-1) - i6) - (-(-45))) > (((-35) / 230790) * (i8 + i10)))
-    say("b11 = {b11}")
-    say("gcd(4349, 1756) = {gcd(4349, 1756)}")
+    say(f"b11 = {b11}")
+    say(f"gcd(4349, 1756) = {gcd(4349, 1756)}")
     say(
-        "{(((-116625079892) % i8) - (i10 - (-40)))} {((i2 - (-45)) - i2)} {((((-116625079892) % i8) - (i10 - (-40))) < ((i2 - (-45)) - i2))} sum {(((-116625079892) % i8) - (i10 - (-40))) + ((i2 - (-45)) - i2)}"
+        f"{(((-116625079892) % i8) - (i10 - (-40)))} {((i2 - (-45)) - i2)} {((((-116625079892) % i8) - (i10 - (-40))) < ((i2 - (-45)) - i2))} sum {(((-116625079892) % i8) - (i10 - (-40))) + ((i2 - (-45)) - i2)}"
     )
     return 0

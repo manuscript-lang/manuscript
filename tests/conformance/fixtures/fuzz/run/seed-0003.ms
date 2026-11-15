@@ -6,14 +6,14 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     l1 := [(-3), (-16)]
-    say("l1 = {l1} len {l1.length()}")
+    say(f"l1 = {l1} len {l1.length()}")
 
-    s2 := ("{208107077528}:" + "ms")
-    say("s2 = [{s2}]")
+    s2 := (f"{208107077528}:" + "ms")
+    say(f"s2 = [{s2}]")
 
     if (s2 == "MiXeD CaSe"):
         say("a".lower())
@@ -21,22 +21,22 @@ export fn main() Int:
         say("gamma".lower())
 
     s3 := s2
-    say("s3 = [{s3}]")
+    say(f"s3 = [{s3}]")
 
     i4 := (-17)
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     i5 := (((i4 * (-217896)) / i4) / (((-45) + i4) % (i4 + i4)))
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     i6 := (-(-12))
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     i7 := (-((i6 * i5) * (i5 + i6)))
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
     l8 := [6, (-12), 15, (-17), (-29)]
-    say("l8 = {l8} len {l8.length()}")
+    say(f"l8 = {l8} len {l8.length()}")
 
     var acc9 = 0
     var stepacc9 = 0
@@ -45,5 +45,5 @@ export fn main() Int:
         stepacc9 += 1
         acc9 += stepacc9 * stepacc9 + 1
 
-    say("acc9 = {acc9}")
+    say(f"acc9 = {acc9}")
     return 0

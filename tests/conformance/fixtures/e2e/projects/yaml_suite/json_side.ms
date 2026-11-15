@@ -68,16 +68,16 @@ fn canon(value: JsonValue) String:
 	match value:
 		Null: return "n"
 		BoolValue(flag): return if flag: "t" else: "f"
-		NumberValue(text): return "N{text.parse_float().get(0.0)}"
-		StringValue(text): return "s{text.length()}:{text}"
+		NumberValue(text): return f"N{text.parse_float().get(0.0)}"
+		StringValue(text): return f"s{text.length()}:{text}"
 		ArrayValue(items):
 			var parts: List[String] = []
 			for item in items:
 				parts.append(canon(item))
-			return "[{parts.join(",")}]"
+			return f"[{parts.join(",")}]"
 		ObjectValue(members):
 			var parts: List[String] = []
 			for entry in members.entries():
-				parts.append("{entry.key.length()}:{entry.key}={canon(entry.value)}")
+				parts.append(f"{entry.key.length()}:{entry.key}={canon(entry.value)}")
 			parts.sort()
-			return "\{{parts.join(",")}\}"
+			return f"\{{parts.join(",")}\}"

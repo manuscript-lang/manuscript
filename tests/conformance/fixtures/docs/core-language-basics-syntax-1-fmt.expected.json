@@ -1,9 +1,9 @@
 {
   "format": 1,
   "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
+  "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "export type Customer:\n\tname: String\n\tactive: Bool\n\nexport fn welcome(customer: Customer) String:\n\tif customer.active: return \"Welcome, {customer.name}!\"\n\treturn \"Your account is inactive.\"\n"
+    "fmt": "export type Customer:\n\tname: String\n\tactive: Bool\n\nexport fn welcome(customer: Customer) String:\n\tif customer.active: return f\"Welcome, {customer.name}!\"\n\treturn \"Your account is inactive.\"\n"
   }
 }

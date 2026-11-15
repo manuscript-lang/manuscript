@@ -5,4 +5,4 @@ fn add(value: Int) Int:
     return value
 
 fn render() String:
-    return "héllo { add(value: 2) }"
+    return f"héllo { add(value: 2) }"

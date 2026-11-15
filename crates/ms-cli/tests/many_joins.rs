@@ -20,7 +20,7 @@ fn many_joins_in_one_function() {
         writeln!(source, "    t += v{i} % 11 + (if v{i} > 10: v{j} else: 0)").unwrap();
         expected += value(i) % 11 + if value(i) > 10 { value(j) } else { 0 };
     }
-    source.push_str("    stdout().write(\"{t}\\n\").get()\n    return 0\n");
+    source.push_str("    stdout().write(f\"{t}\\n\").get()\n    return 0\n");
     let dir = std::env::temp_dir().join(format!("ms-many-joins-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("main.ms");

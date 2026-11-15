@@ -72,7 +72,7 @@ fn has_tests(source: String) Bool:
 fn test_run(ms: String, file: String, filter: String, cancel_at: Int) List[Counted]:
 	var settings = Map[String, String]()
 	settings["MS_PARK_COUNT"] = "1"
-	if cancel_at > 0: settings["MS_CANCEL_AT_PARK"] = "{cancel_at}"
+	if cancel_at > 0: settings["MS_CANCEL_AT_PARK"] = f"{cancel_at}"
 
 	var arguments = ["test", file.clone()]
 	if filter != "": arguments = arguments.concat(["--test", filter.clone()])
@@ -104,7 +104,7 @@ fn sweep(ms: String, root: String, files: List[String], most: Int) List[String]:
 	var lines = List[String]()
 
 	for f in files:
-		file := "{root}/{f}"
+		file := f"{root}/{f}"
 
 		// A file's tests share one process, so each test is counted in a run of its
 		// own.
@@ -164,10 +164,10 @@ fn sweep(ms: String, root: String, files: List[String], most: Int) List[String]:
 						if not ran: break
 
 					if bad_live: lines.append(
-						"leak: {f} \"{hit.name}\" cancelled at park {k} of {base.parks} left {live} live blocks (uncancelled run: {reference.live})"
+						f"leak: {f} \"{hit.name}\" cancelled at park {k} of {base.parks} left {live} live blocks (uncancelled run: {reference.live})"
 					)
 					else if bad_heap: lines.append(
-						"heap: {f} \"{hit.name}\" cancelled at park {k} of {base.parks} ended with {heap} Rust heap blocks (uncancelled runs: at most {ceiling})"
+						f"heap: {f} \"{hit.name}\" cancelled at park {k} of {base.parks} ended with {heap} Rust heap blocks (uncancelled runs: at most {ceiling})"
 					)
 
 	return lines
@@ -185,7 +185,7 @@ fn main() Int:
 			"tests/conformance/fixtures/e2e/stdlib",
 			GlobOptions(patterns: ["*.ms"]),
 		).get([]):
-			path := "tests/conformance/fixtures/e2e/stdlib/{f.path}"
+			path := f"tests/conformance/fixtures/e2e/stdlib/{f.path}"
 			if has_tests(read_file(path.clone()).wait().get().decode_utf8().get("")): files.append(
 				path.clone()
 			)
@@ -235,13 +235,13 @@ fn main() Int:
 				if line.starts_with("heap: "): heaps += 1
 				else: leaks += 1
 
-				print("{line}")
+				print(f"{line}")
 
 	change_directory(root).get()
 	(
 		stdout()
 		.write(
-			"cancel-sweep: {swept} cancelled runs, {leaks} leaking, {heaps} with extra Rust heap\n"
+			f"cancel-sweep: {swept} cancelled runs, {leaks} leaking, {heaps} with extra Rust heap\n"
 		)
 		.get()
 	)

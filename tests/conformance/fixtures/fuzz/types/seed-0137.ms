@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -24,19 +24,19 @@ fn collatz(start: Int) Int:
 
 export fn main() Int:
     i1 := (((-408141852959) + (-24)) * 18)
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     b2 := "a".trim().contains("")
-    say("b2 = {b2}")
-    say("collatz(1065) = {collatz(1065)}")
+    say(f"b2 = {b2}")
+    say(f"collatz(1065) = {collatz(1065)}")
 
     bad := [1, "two"]
     s3 := (
         ("back\\slash".replace("42", "Tab\there") + "Tab\there")
         + ("alpha" + "Tab\there")
     )
-    say("s3 = [{s3}]")
+    say(f"s3 = [{s3}]")
 
-    s4 := ("brace\{s\}" + s3).upper()
-    say("s4 = [{s4}]")
+    s4 := ("brace{s}" + s3).upper()
+    say(f"s4 = [{s4}]")
     return 0

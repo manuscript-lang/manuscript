@@ -6,18 +6,18 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     b1 := "gamma".upper().starts_with("日本語")
-    say("b1 = {b1}")
-    say("{24} {(165985 - 38)} {(24 < (165985 - 38))} sum {24 + (165985 - 38)}")
+    say(f"b1 = {b1}")
+    say(f"{24} {(165985 - 38)} {(24 < (165985 - 38))} sum {24 + (165985 - 38)}")
 
     i2 := (((-14) * (21 + 10)) - 22)
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     i3 := i2
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     if true:
         say("a")
@@ -25,12 +25,12 @@ export fn main() Int:
         say(("a" + "naïve"))
 
     say(
-        "{((11 * i3) - ((-26) * i2))} {i3} {(((11 * i3) - ((-26) * i2)) < i3)} sum {((11 * i3) - ((-26) * i2)) + i3}"
+        f"{((11 * i3) - ((-26) * i2))} {i3} {(((11 * i3) - ((-26) * i2)) < i3)} sum {((11 * i3) - ((-26) * i2)) + i3}"
     )
 
     i4 := (((636296 % i3) + i2) - i2)
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     big5 := [1, 2, 3]
-    say("{big5.get(4)}")
+    say(f"{big5.get(4)}")
     return 0

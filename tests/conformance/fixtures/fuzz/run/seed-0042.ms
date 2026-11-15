@@ -6,35 +6,35 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := ((38 + ((-263811381939) * 23)) + ((2 - (-30)) + 28))
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     b2 := ((i1 / 324396) >= (21 / (-12)))
-    say("b2 = {b2}")
+    say(f"b2 = {b2}")
 
     f3 := (((973.012 + 9.5) / 210.588) / (438.312 / 0.0))
-    say("f3 = {f3}")
+    say(f"f3 = {f3}")
     say(
-        "{((i1 / i1) / (6 % i1))} {((14 + 184245) / i1)} {(((i1 / i1) / (6 % i1)) < ((14 + 184245) / i1))} sum {((i1 / i1) / (6 % i1)) + ((14 + 184245) / i1)}"
+        f"{((i1 / i1) / (6 % i1))} {((14 + 184245) / i1)} {(((i1 / i1) / (6 % i1)) < ((14 + 184245) / i1))} sum {((i1 / i1) / (6 % i1)) + ((14 + 184245) / i1)}"
     )
 
     f4 := 305.993
-    say("f4 = {f4}")
+    say(f"f4 = {f4}")
 
     l5 := [(-21), (-21), 22, (-14), (-12)]
-    say("l5 = {l5} len {l5.length()}")
+    say(f"l5 = {l5} len {l5.length()}")
 
     l6 := [22, 10, (-24), (-20)]
-    say("l6 = {l6} len {l6.length()}")
+    say(f"l6 = {l6} len {l6.length()}")
 
     l7 := [13, (-25), (-2), 17]
-    say("l7 = {l7} len {l7.length()}")
+    say(f"l7 = {l7} len {l7.length()}")
 
     l8 := l7.drop(4)
-    say("l8 = {l8} len {l8.length()}")
+    say(f"l8 = {l8} len {l8.length()}")
 
     var acc9 = 0
 
@@ -44,13 +44,13 @@ export fn main() Int:
         else:
             acc9 -= 1
 
-    say("acc9 = {acc9}")
+    say(f"acc9 = {acc9}")
 
     i10 := (-(i1 % 985047736459))
-    say("i10 = {i10}")
+    say(f"i10 = {i10}")
 
     l11 := [(-14), (-15), (-8)]
-    say("l11 = {l11} len {l11.length()}")
+    say(f"l11 = {l11} len {l11.length()}")
 
     var acc12 = 0
 
@@ -60,14 +60,14 @@ export fn main() Int:
         else:
             acc12 -= 1
 
-    say("acc12 = {acc12}")
+    say(f"acc12 = {acc12}")
 
     b13 := (f4 > 99.182)
-    say("b13 = {b13}")
+    say(f"b13 = {b13}")
 
     i14 := i10
-    say("i14 = {i14}")
+    say(f"i14 = {i14}")
 
     i15 := (-21)
-    say("i15 = {i15}")
+    say(f"i15 = {i15}")
     return 0

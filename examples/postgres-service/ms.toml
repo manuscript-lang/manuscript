@@ -1,0 +1,10 @@
+[project]
+name = "postgres-service"
+source = "./src"
+entry = "./src/main.ms"
+
+[dependencies]
+"@pg" = { url = "https://github.com/manuscript-lang/ms-pg.git", sha = "0a92a0239bb7cdfc6207b6a8be0c8d7d09f60195" }
+
+[effects]
+"@pg" = ["std.net.*", "std.clock.read", "std.random.read"]

@@ -6,14 +6,14 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     l1 := [(-2), 6]
-    say("l1 = {l1} len {l1.length()}")
+    say(f"l1 = {l1} len {l1.length()}")
 
     b2 := ("naïve".contains("delta") and true)
-    say("b2 = {b2}")
+    say(f"b2 = {b2}")
 
     b3 := (
         ((0.0 + 990.121) * (716.818 + 1.5)) < (
@@ -21,31 +21,31 @@ export fn main() Int:
             / (37.660 * 4.5)
         )
     )
-    say("b3 = {b3}")
+    say(f"b3 = {b3}")
 
     i4 := ((l1.get(0) * l1.get(0)) + ((-172713) + (-4)))
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     s5 := (("naïve" + "delta".trim()) + "x")
-    say("s5 = [{s5}]")
+    say(f"s5 = [{s5}]")
 
     i6 := l1.length()
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
     say(
-        "{i6} {(((-1) - 30) / (i4 + i4))} {(i6 < (((-1) - 30) / (i4 + i4)))} sum {i6 + (((-1) - 30) / (i4 + i4))}"
+        f"{i6} {(((-1) - 30) / (i4 + i4))} {(i6 < (((-1) - 30) / (i4 + i4)))} sum {i6 + (((-1) - 30) / (i4 + i4))}"
     )
 
     l7 := [(-6), (-20), 3, (-3)]
-    say("l7 = {l7} len {l7.length()}")
+    say(f"l7 = {l7} len {l7.length()}")
 
     f8 := 598.25
-    say("f8 = {f8}")
+    say(f"f8 = {f8}")
 
     s9 := s5.clone()
-    say("s9 = [{s9}]")
+    say(f"s9 = [{s9}]")
 
-    s10 := (("gamma" + "x".replace("brace\{s\}", s5)) + s5)
-    say("s10 = [{s10}]")
+    s10 := (("gamma" + "x".replace("brace{s}", s5)) + s5)
+    say(f"s10 = [{s10}]")
 
     if ((true and true) or (b2 or true)):
         say("delta".upper())
@@ -53,8 +53,8 @@ export fn main() Int:
         say(s9)
 
     i11 := (-28)
-    say("i11 = {i11}")
+    say(f"i11 = {i11}")
 
     i12 := (-992384)
-    say("i12 = {i12}")
+    say(f"i12 = {i12}")
     return 0

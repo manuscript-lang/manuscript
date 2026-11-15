@@ -6,37 +6,37 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := (-((-(-6)) - ((-758206) - (-43))))
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     i2 := ((-35) + ((-i1) - (i1 * i1)))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     i3 := ((-(39 + i1)) + ((i2 % i2) - ((-26) % i2)))
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     f4 := (((875.881 * 0.0) + 234.614) - 389.608)
-    say("f4 = {f4}")
+    say(f"f4 = {f4}")
 
     l5 := [18, (-13), (-21), 10]
-    say("l5 = {l5} len {l5.length()}")
+    say(f"l5 = {l5} len {l5.length()}")
 
     var acc6 = 0
     for i in 0..6:
         acc6 += i * 3
-    say("acc6 = {acc6}")
+    say(f"acc6 = {acc6}")
 
     i7 := (i2 + i1)
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
     f8 := (((f4 * 118.997) + (f4 * f4)) * ((f4 * f4) * (522.736 / f4)))
-    say("f8 = {f8}")
+    say(f"f8 = {f8}")
 
     s9 := "ms"
-    say("s9 = [{s9}]")
+    say(f"s9 = [{s9}]")
 
     var acc10 = 0
 
@@ -46,10 +46,10 @@ export fn main() Int:
         else:
             acc10 -= 1
 
-    say("acc10 = {acc10}")
+    say(f"acc10 = {acc10}")
 
     i11 := (i1 * (-(i3 + (-10))))
-    say("i11 = {i11}")
+    say(f"i11 = {i11}")
 
     var acc12 = 0
 
@@ -59,23 +59,23 @@ export fn main() Int:
         else:
             acc12 -= 1
 
-    say("acc12 = {acc12}")
+    say(f"acc12 = {acc12}")
 
     i13 := ((35 + i3) / ((13 + (-5)) - 44))
-    say("i13 = {i13}")
+    say(f"i13 = {i13}")
 
     l14 := l5.filter(fn x: x > 2)
-    say("l14 = {l14} len {l14.length()}")
+    say(f"l14 = {l14} len {l14.length()}")
 
     i15 := s9.scalar_length()
-    say("i15 = {i15}")
+    say(f"i15 = {i15}")
 
     b16 := (
         ("alpha" == "Tab\there".upper())
         and ((false and false) and (false and false))
     )
-    say("b16 = {b16}")
+    say(f"b16 = {b16}")
 
     big17 := -9223372036854775808
-    say("{big17 - 4}")
+    say(f"{big17 - 4}")
     return 0

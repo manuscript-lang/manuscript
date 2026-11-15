@@ -39,7 +39,7 @@ type Door:
 	name: String
 
 fn var Door.close() Void!:
-	stdout().write("close {self.name}\n").get()
+	stdout().write(f"close {self.name}\n").get()
 
 type Room:
 	first: Door
@@ -51,7 +51,7 @@ type Wrap:
 	extra: Door
 
 fn say(s: String) Void:
-	stdout().write("{s}\n").get()
+	stdout().write(f"{s}\n").get()
 
 fn both(r: Room) List[Door]:
 	var xs: List[Door] = []

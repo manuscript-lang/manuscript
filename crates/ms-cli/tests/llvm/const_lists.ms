@@ -27,4 +27,4 @@ fn main() Void:
     var tf = 0
     for x in f:
         if x: tf += 1
-    o.write("{ti} {tb} {tc} {td} {te} {tf} {a[99]} {b[1]} {f[99]}\n").get()
+    o.write(f"{ti} {tb} {tc} {td} {te} {tf} {a[99]} {b[1]} {f[99]}\n").get()

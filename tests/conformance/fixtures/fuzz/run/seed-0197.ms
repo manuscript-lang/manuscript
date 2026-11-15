@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -16,30 +16,30 @@ fn gcd(a: Int, b: Int) Int:
 
 export fn main() Int:
     i1 := (((-19) * (-34)) * 194479)
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     i2 := ((84469 % (18 % (-36))) + ((-40) + (i1 - 11)))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
     say(
-        "{((-42) * (i2 % (-35)))} {(100721 % (i2 + 3))} {(((-42) * (i2 % (-35))) < (100721 % (i2 + 3)))} sum {((-42) * (i2 % (-35))) + (100721 % (i2 + 3))}"
+        f"{((-42) * (i2 % (-35)))} {(100721 % (i2 + 3))} {(((-42) * (i2 % (-35))) < (100721 % (i2 + 3)))} sum {((-42) * (i2 % (-35))) + (100721 % (i2 + 3))}"
     )
-    say("{(-(-i1))} {i2} {((-(-i1)) < i2)} sum {(-(-i1)) + i2}")
+    say(f"{(-(-i1))} {i2} {((-(-i1)) < i2)} sum {(-(-i1)) + i2}")
 
     i3 := i1
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     l4 := [8, (-6), 10, (-24), 5]
-    say("l4 = {l4} len {l4.length()}")
+    say(f"l4 = {l4} len {l4.length()}")
 
     b5 := false
-    say("b5 = {b5}")
-    say("gcd(4763, 2727) = {gcd(4763, 2727)}")
+    say(f"b5 = {b5}")
+    say(f"gcd(4763, 2727) = {gcd(4763, 2727)}")
 
     f6 := (
         ((9.0e9 + 455.027) - (956.922 / 968.25))
         / ((987.743 * 69.080) * (749.218 - 0.0))
     )
-    say("f6 = {f6}")
+    say(f"f6 = {f6}")
 
     var acc7 = 0
     var stepacc7 = 0
@@ -48,9 +48,9 @@ export fn main() Int:
         stepacc7 += 1
         acc7 += stepacc7 * stepacc7 + 5
 
-    say("acc7 = {acc7}")
+    say(f"acc7 = {acc7}")
 
     f8 := (f6 - 494.834)
-    say("f8 = {f8}")
-    say("{l4.get(10)}")
+    say(f"f8 = {f8}")
+    say(f"{l4.get(10)}")
     return 0

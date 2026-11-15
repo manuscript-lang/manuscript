@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -23,55 +23,55 @@ fn fib(n: Int) Int:
 
 export fn main() Int:
     f1 := (((792.618 + 613.303) * (537.25 / 0.0)) - (9.5 - (406.25 / 632.25)))
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
 
     i2 := 17
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     i3 := (((-i2) - (-i2)) + ((i2 * (-4)) * (i2 + (-39))))
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     f4 := 289.473
-    say("f4 = {f4}")
+    say(f"f4 = {f4}")
 
     l5 := [8]
-    say("l5 = {l5} len {l5.length()}")
+    say(f"l5 = {l5} len {l5.length()}")
 
     s6 := ("alpha".replace("a", "ms") + "ms").replace("hello world", "hello world")
-    say("s6 = [{s6}]")
+    say(f"s6 = [{s6}]")
 
     l7 := l5.concat(l5)
-    say("l7 = {l7} len {l7.length()}")
+    say(f"l7 = {l7} len {l7.length()}")
 
     i8 := ((4 * (39 % 886010)) * (35 - (i3 * i3)))
-    say("i8 = {i8}")
-    say("fib(0) = {fib(0)}")
+    say(f"i8 = {i8}")
+    say(f"fib(0) = {fib(0)}")
 
     s9 := "gamma"
-    say("s9 = [{s9}]")
+    say(f"s9 = [{s9}]")
 
     i10 := (((i8 + (-17)) + (i3 + i3)) + l7.length())
-    say("i10 = {i10}")
+    say(f"i10 = {i10}")
 
     s11 := ("line\nbreak".lower().reverse() + "naïve")
-    say("s11 = [{s11}]")
+    say(f"s11 = [{s11}]")
 
     b12 := s9.reverse().reverse().ends_with("日本語")
-    say("b12 = {b12}")
+    say(f"b12 = {b12}")
     say(
-        "{(l7.length() - 3)} {((-i10) - (i2 - 867614800542))} {((l7.length() - 3) < ((-i10) - (i2 - 867614800542)))} sum {(l7.length() - 3) + ((-i10) - (i2 - 867614800542))}"
+        f"{(l7.length() - 3)} {((-i10) - (i2 - 867614800542))} {((l7.length() - 3) < ((-i10) - (i2 - 867614800542)))} sum {(l7.length() - 3) + ((-i10) - (i2 - 867614800542))}"
     )
 
     f13 := (685.146 / 1.0e8)
-    say("f13 = {f13}")
+    say(f"f13 = {f13}")
 
     l14 := l7.reversed()
-    say("l14 = {l14} len {l14.length()}")
+    say(f"l14 = {l14} len {l14.length()}")
     say(
-        "{(2 + ((-37) * i8))} {s11.scalar_length()} {((2 + ((-37) * i8)) < s11.scalar_length())} sum {(2 + ((-37) * i8)) + s11.scalar_length()}"
+        f"{(2 + ((-37) * i8))} {s11.scalar_length()} {((2 + ((-37) * i8)) < s11.scalar_length())} sum {(2 + ((-37) * i8)) + s11.scalar_length()}"
     )
 
     f15 := (((0.0 + 0.0) / (37.659 - f4)) * (f4 + f1))
-    say("f15 = {f15}")
-    say("{l5.get(2)}")
+    say(f"f15 = {f15}")
+    say(f"{l5.get(2)}")
     return 0

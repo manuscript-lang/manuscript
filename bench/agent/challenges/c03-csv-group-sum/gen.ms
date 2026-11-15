@@ -23,7 +23,10 @@ fn cents(amt: String) Int?:
 			or not fraction.chars().all(fn c: "0123456789".contains(c))
 		): return none
 
-	return whole.parse_int().get(0) * 100 + "{fraction}00".view(0, 2).parse_int().get(0)
+	return (
+		whole.parse_int().get(0) * 100
+		+ f"{fraction}00".view(0, 2).parse_int().get(0)
+	)
 
 type Row:
 	category: String
@@ -73,9 +76,9 @@ fn solve(s: String) String:
 
 	for k in order.sorted():
 		v := totals.get_or(k, 0)
-		out += "{k}: {v / 100}.{"{v % 100}".pad_start(2, "0")}\n"
+		out += f"{k}: {v / 100}.{f"{v % 100}".pad_start(2, "0")}\n"
 
-	if bad > 0: out += "skipped: {bad}\n"
+	if bad > 0: out += f"skipped: {bad}\n"
 	return out
 
 fn mk(name: String, s: String) GenCase: make_case(name, s, solve(s))
@@ -91,11 +94,11 @@ export fn gen_c03() Void:
 
 		if rnd.random() < 0.7:
 			whole := rnd.randint(0, 999)
-			a = "{whole}.{"{rnd.randint(0, 99)}".pad_start(2, "0")}"
+			a = f"{whole}.{f"{rnd.randint(0, 99)}".pad_start(2, "0")}"
 		else:
-			a = "{rnd.randint(0, 50)}"
+			a = f"{rnd.randint(0, 50)}"
 
-		lines.append((if c.contains(","): "\"{c}\"" else: c.clone()) + "," + a)
+		lines.append((if c.contains(","): f"\"{c}\"" else: c.clone()) + "," + a)
 
 	big := lines.join("\n") + "\n"
 	examples := [mk("basic", "fruit,1.50\n\"a,b\",2\nfruit,0.5\noops\nveg,x\n")]

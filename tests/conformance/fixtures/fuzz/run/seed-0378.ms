@@ -6,26 +6,26 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := (-964182)
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
-    s2 := "brace\{s\}"
-    say("s2 = [{s2}]")
+    s2 := "brace{s}"
+    say(f"s2 = [{s2}]")
 
     f3 := (((370.25 * 119.702) * 451.25) * ((247.539 * 5.5) + (533.917 * 397.098)))
-    say("f3 = {f3}")
+    say(f"f3 = {f3}")
     say(
-        "{(21 * (i1 + i1))} {(s2.scalar_length() + (43 + i1))} {((21 * (i1 + i1)) < (s2.scalar_length() + (43 + i1)))} sum {(21 * (i1 + i1)) + (s2.scalar_length() + (43 + i1))}"
+        f"{(21 * (i1 + i1))} {(s2.scalar_length() + (43 + i1))} {((21 * (i1 + i1)) < (s2.scalar_length() + (43 + i1)))} sum {(21 * (i1 + i1)) + (s2.scalar_length() + (43 + i1))}"
     )
 
     if false:
         say(("naïve" + "back\\slash"))
     else:
-        say("brace\{s\}")
+        say("brace{s}")
 
     l4 := [1]
-    say("l4 = {l4} len {l4.length()}")
+    say(f"l4 = {l4} len {l4.length()}")
     return 0

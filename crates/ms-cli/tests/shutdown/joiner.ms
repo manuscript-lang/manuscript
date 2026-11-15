@@ -13,4 +13,4 @@ fn main() Void:
 
     _flushed := stdout().flush()
     outcome := w.wait()
-    print("joined {outcome.is_ok()}")
+    print(f"joined {outcome.is_ok()}")

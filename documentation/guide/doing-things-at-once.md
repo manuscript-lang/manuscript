@@ -26,7 +26,7 @@ fn run(paths: List[String]) Int!:
 
 fn main() Void!:
     rows := run(["a.csv", "b.csv"])?
-    print("{rows} rows from 2 files")
+    print(f"{rows} rows from 2 files")
 ```
 
 ```text

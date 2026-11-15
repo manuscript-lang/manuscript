@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -23,19 +23,19 @@ fn fib(n: Int) Int:
 
 export fn main() Int:
     f1 := (((72.762 + 753.500) + (5.5 + 503.997)) * 509.604)
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
 
     f2 := (((f1 / f1) + (f1 - f1)) - ((7.5 * 0.0) + (f1 - 315.874)))
-    say("f2 = {f2}")
+    say(f"f2 = {f2}")
 
     s3 := (
         ("héllo" + "beta").replace("alpha", "alpha")
-        + (("{(3255 * (-24))}:" + "MiXeD CaSe") + ("back\\slash" + "quote\"d"))
+        + ((f"{(3255 * (-24))}:" + "MiXeD CaSe") + ("back\\slash" + "quote\"d"))
     )
-    say("s3 = [{s3}]")
+    say(f"s3 = [{s3}]")
 
     f4 := 894.618
-    say("f4 = {f4}")
+    say(f"f4 = {f4}")
 
     var acc5 = 0
     var stepacc5 = 0
@@ -44,10 +44,10 @@ export fn main() Int:
         stepacc5 += 1
         acc5 += stepacc5 * stepacc5 + 9
 
-    say("acc5 = {acc5}")
+    say(f"acc5 = {acc5}")
 
     l6 := [1, 2, 3].take(0)
-    say("l6 = {l6} len {l6.length()}")
+    say(f"l6 = {l6} len {l6.length()}")
 
     var acc7 = 0
     var stepacc7 = 0
@@ -56,28 +56,28 @@ export fn main() Int:
         stepacc7 += 1
         acc7 += stepacc7 * stepacc7 + 5
 
-    say("acc7 = {acc7}")
+    say(f"acc7 = {acc7}")
 
     i8 := ((-175257091772) + (l6.length() * (41 % (-8))))
-    say("i8 = {i8}")
-    say("fib(5) = {fib(5)}")
+    say(f"i8 = {i8}")
+    say(f"fib(5) = {fib(5)}")
 
     s9 := ("gamma".reverse().lower() + s3)
-    say("s9 = [{s9}]")
+    say(f"s9 = [{s9}]")
     say(
-        "{(l6.length() * (487549 * 783386))} {i8} {((l6.length() * (487549 * 783386)) < i8)} sum {(l6.length() * (487549 * 783386)) + i8}"
+        f"{(l6.length() * (487549 * 783386))} {i8} {((l6.length() * (487549 * 783386)) < i8)} sum {(l6.length() * (487549 * 783386)) + i8}"
     )
 
     if (s9.is_empty() or (236.25 == 960.079)):
         say("MiXeD CaSe")
     else:
-        say(("{26}:" + "hello world"))
+        say((f"{26}:" + "hello world"))
 
-    say("fib(10) = {fib(10)}")
+    say(f"fib(10) = {fib(10)}")
 
     l10 := [17, (-12), 6, (-5), (-20)]
-    say("l10 = {l10} len {l10.length()}")
+    say(f"l10 = {l10} len {l10.length()}")
 
     b11 := (f2 > (940.008 * (f2 * 228.084)))
-    say("b11 = {b11}")
+    say(f"b11 = {b11}")
     return 0

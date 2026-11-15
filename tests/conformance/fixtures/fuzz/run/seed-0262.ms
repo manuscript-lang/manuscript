@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -16,14 +16,14 @@ fn gcd(a: Int, b: Int) Int:
 
 export fn main() Int:
     say(
-        "{((-15) + ((-50) % (-6607)))} {((1 + (-39)) * (929365 * 49))} {(((-15) + ((-50) % (-6607))) < ((1 + (-39)) * (929365 * 49)))} sum {((-15) + ((-50) % (-6607))) + ((1 + (-39)) * (929365 * 49))}"
+        f"{((-15) + ((-50) % (-6607)))} {((1 + (-39)) * (929365 * 49))} {(((-15) + ((-50) % (-6607))) < ((1 + (-39)) * (929365 * 49)))} sum {((-15) + ((-50) % (-6607))) + ((1 + (-39)) * (929365 * 49))}"
     )
 
     b1 := (("emoji 😀".ends_with("hello world") and (false and true)) or false)
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
     l2 := [1, 2, 3].take(0)
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     var acc3 = 0
     var stepacc3 = 0
@@ -32,16 +32,16 @@ export fn main() Int:
         stepacc3 += 1
         acc3 += stepacc3 * stepacc3 + 2
 
-    say("acc3 = {acc3}")
+    say(f"acc3 = {acc3}")
 
     l4 := [26, (-8), (-7)]
-    say("l4 = {l4} len {l4.length()}")
+    say(f"l4 = {l4} len {l4.length()}")
 
     f5 := (((0.0 - 8.5) * (968.25 + 502.935)) + ((651.709 * 7.0e-3) + 60.369))
-    say("f5 = {f5}")
+    say(f"f5 = {f5}")
 
     if "hello world".starts_with("日本語"):
-        say(("MiXeD CaSe" + "brace\{s\}"))
+        say(("MiXeD CaSe" + "brace{s}"))
     else:
         say("naïve".replace("back\\slash", "gamma"))
 
@@ -53,22 +53,22 @@ export fn main() Int:
     var acc6 = 0
     for i in 0..5:
         acc6 += i * (-3)
-    say("acc6 = {acc6}")
+    say(f"acc6 = {acc6}")
 
     i7 := ((((-28) % (-12)) * 718158) - (8 + 46))
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
     f8 := (f5 * 848.578)
-    say("f8 = {f8}")
+    say(f"f8 = {f8}")
 
     if true:
         say("42".lower())
     else:
-        say(("{(-i7)}:" + "beta"))
+        say((f"{(-i7)}:" + "beta"))
 
-    s9 := ("{(i7 * 433100)}:" + "x".reverse())
-    say("s9 = [{s9}]")
-    say("gcd(1974, 2356) = {gcd(1974, 2356)}")
+    s9 := (f"{(i7 * 433100)}:" + "x".reverse())
+    say(f"s9 = [{s9}]")
+    say(f"gcd(1974, 2356) = {gcd(1974, 2356)}")
 
     if ("héllo" != "hello world".trim()):
         say(("  padded  " + s9))
@@ -76,8 +76,8 @@ export fn main() Int:
         say("naïve")
 
     f10 := f5
-    say("f10 = {f10}")
+    say(f"f10 = {f10}")
 
     l11 := [1, 2, 3].take(0)
-    say("l11 = {l11} len {l11.length()}")
+    say(f"l11 = {l11} len {l11.length()}")
     return 0

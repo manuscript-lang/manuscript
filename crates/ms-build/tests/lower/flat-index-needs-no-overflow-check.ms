@@ -9,4 +9,4 @@ fn main() Void:
 
 	for i in 0..n:
 		for j in 0..n: c[i * n + j] = i
-	print("{c[0]}")
+	print(f"{c[0]}")

@@ -126,18 +126,18 @@ fn solve(parts: List[String]) String:
     cmd := parts[0]
     n := parts.length()
     if cmd == "lcs" and n == 3 and parts[1].length() > 0 and parts[2].length() > 0:
-        return "{lcs(parts[1].to_bytes(), parts[2].to_bytes())}"
+        return f"{lcs(parts[1].to_bytes(), parts[2].to_bytes())}"
     if cmd == "edit" and n == 3 and parts[1].length() > 0 and parts[2].length() > 0:
-        return "{edit(parts[1].to_bytes(), parts[2].to_bytes())}"
+        return f"{edit(parts[1].to_bytes(), parts[2].to_bytes())}"
 
     if cmd == "knap" and n >= 2:
         best := knap_cmd(parts)
-        if best >= 0: return "{best}"
+        if best >= 0: return f"{best}"
 
     if cmd == "coins" and n >= 3:
         fewest := coins_cmd(parts)
         if fewest == -1: return "impossible"
-        if fewest >= 0: return "{fewest}"
+        if fewest >= 0: return f"{fewest}"
 
     return "error: bad command"
 
@@ -153,6 +153,6 @@ export fn main() Int:
     for line in read_lines(stdin()).get():
         parts := line.split(" ")
         if not is_blank(parts):
-            out.write("{solve(parts)}\n").get()
+            out.write(f"{solve(parts)}\n").get()
 
     return 0

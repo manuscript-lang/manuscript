@@ -68,7 +68,7 @@ fn value_text(v: Value) Bytes:
         VNull:
             return "NULL".to_bytes()
         VInt(i):
-            return "{i}".to_bytes()
+            return f"{i}".to_bytes()
         VBool(b):
             if b:
                 return "true".to_bytes()
@@ -80,7 +80,7 @@ fn value_text(v: Value) Bytes:
 fn value_string(v: Value) String:
     match v:
         VInt(i):
-            return "{i}"
+            return f"{i}"
         VText(t):
             if s := t.decode_utf8():
                 return s
@@ -104,7 +104,7 @@ fn value_key(v: Value) String:
         VNull:
             return "N;"
         VInt(i):
-            return "I{i};"
+            return f"I{i};"
         VBool(b):
             if b:
                 return "B1;"
@@ -1031,7 +1031,7 @@ fn table_index(tables: List[Table], name: String) Result[Int, SqlErr]:
     if k := find_table(tables, name):
         return ok(k)
 
-    return error(sql_error("no such table: {name}"))
+    return error(sql_error(f"no such table: {name}"))
 
 fn column_index(t: Table, name: String) Optional[Int]:
     for k in 0..t.cols.length():
@@ -1077,7 +1077,7 @@ fn check_row(t: Table, row: List[Value]) Result[Unit, SqlErr]:
 
         if is_null(v):
             if col.not_null:
-                return error(sql_error("NOT NULL constraint failed: {col.name}"))
+                return error(sql_error(f"NOT NULL constraint failed: {col.name}"))
         else:
             var good = false
 
@@ -1087,7 +1087,7 @@ fn check_row(t: Table, row: List[Value]) Result[Unit, SqlErr]:
                 good = is_text_value(v)
 
             if not good:
-                return error(sql_error("type mismatch in column {col.name}"))
+                return error(sql_error(f"type mismatch in column {col.name}"))
 
     return ok(unit)
 
@@ -1101,7 +1101,7 @@ fn check_pk(t: Table, rows: List[List[Value]]) Result[Unit, SqlErr]:
     for row in rows:
         k := value_key(row[pk])
         if seen.contains(k):
-            return error(sql_error("duplicate primary key: {value_string(row[pk])}"))
+            return error(sql_error(f"duplicate primary key: {value_string(row[pk])}"))
 
         seen.add(k, true)
 
@@ -1113,7 +1113,7 @@ fn qualified(t: String, n: String) String:
     if t == "":
         return n.clone()
 
-    return "{t}.{n}"
+    return f"{t}.{n}"
 
 fn lookup(scope: List[ScopeCol], t: String, n: String) Result[Int, SqlErr]:
     var found = -1
@@ -1125,9 +1125,9 @@ fn lookup(scope: List[ScopeCol], t: String, n: String) Result[Int, SqlErr]:
             count += 1
 
     if count == 0:
-        return error(sql_error("no such column: {qualified(t, n)}"))
+        return error(sql_error(f"no such column: {qualified(t, n)}"))
     if count > 1:
-        return error(sql_error("ambiguous column: {n}"))
+        return error(sql_error(f"ambiguous column: {n}"))
 
     return ok(found)
 
@@ -1146,7 +1146,7 @@ fn scalar_arity(name: String) Int:
     return -1
 
 fn wrong_args(name: String) SqlErr:
-    return sql_error("wrong number of arguments to {name}")
+    return sql_error(f"wrong number of arguments to {name}")
 
 // mode 0: row context, no aggregates. mode 1: grouped context, aggregates allowed and
 // bare columns must be GROUP BY columns. mode 2: inside an aggregate argument.
@@ -1166,7 +1166,7 @@ fn resolve(
             if mode == 1 and not group.contains(at):
                 return error(
                     sql_error(
-                        "column {qualified(t, n)} must appear in GROUP BY"
+                        f"column {qualified(t, n)} must appear in GROUP BY"
                     )
                 )
 
@@ -1234,7 +1234,7 @@ fn resolve_call(
 
     arity := scalar_arity(name)
     if arity == -1:
-        return error(sql_error("no such function: {name}"))
+        return error(sql_error(f"no such function: {name}"))
     if star or (distinct and args.length() != 1):
         return error(wrong_args(name))
 
@@ -1731,7 +1731,7 @@ fn exec_select(tables: List[Table], sel: Select) Result[Bytes, SqlErr]:
     for tr in all:
         ti := try table_index(tables, tr.name)
         if aliases.contains(tr.alias):
-            return error(sql_error("duplicate alias: {tr.alias}"))
+            return error(sql_error(f"duplicate alias: {tr.alias}"))
 
         aliases.append(tr.alias.clone())
         tids.append(ti)
@@ -1782,7 +1782,7 @@ fn exec_select(tables: List[Table], sel: Select) Result[Bytes, SqlErr]:
                         )
 
                 if not found:
-                    return error(sql_error("no such table: {t}"))
+                    return error(sql_error(f"no such table: {t}"))
             ExprItem(e, alias):
                 var nm = default_name(e)
                 if alias != "":
@@ -1948,7 +1948,7 @@ fn exec_select(tables: List[Table], sel: Select) Result[Bytes, SqlErr]:
         sb.append_bytes("\n".to_bytes())
         i += 1
 
-    sb.append_bytes("({last - first} rows)\n".to_bytes())
+    sb.append_bytes(f"({last - first} rows)\n".to_bytes())
     return ok(sb.build())
 
 // ---------------------------------------------------------------- other statements
@@ -1957,14 +1957,14 @@ fn exec_create(var tables: List[Table], name: String, cols: List[ColDef]) Result
     Bytes, SqlErr
 ]:
     if not find_table(tables, name).is_none():
-        return error(sql_error("table {name} already exists"))
+        return error(sql_error(f"table {name} already exists"))
 
     var primaries = 0
 
     for c in 0..cols.length():
         for p in 0..c:
             if cols[p].name == cols[c].name:
-                return error(sql_error("duplicate column: {cols[c].name}"))
+                return error(sql_error(f"duplicate column: {cols[c].name}"))
         if cols[c].primary:
             primaries += 1
 
@@ -2002,11 +2002,11 @@ fn exec_insert(
         for cn in cols:
             if k := column_index(t, cn):
                 if targets.contains(k):
-                    return error(sql_error("duplicate column: {cn}"))
+                    return error(sql_error(f"duplicate column: {cn}"))
 
                 targets.append(k)
             else:
-                return error(sql_error("no such column: {cn}"))
+                return error(sql_error(f"no such column: {cn}"))
 
     var added = List[List[Value]]()
 
@@ -2031,7 +2031,7 @@ fn exec_insert(
         combined.append(r.clone())
     try check_pk(t, combined)
     tables[ti].rows = combined
-    return ok("inserted {added.length()}\n".to_bytes())
+    return ok(f"inserted {added.length()}\n".to_bytes())
 
 fn exec_update(
     var tables: List[Table], name: String, names: List[String], vals: List[Expr],
@@ -2046,7 +2046,7 @@ fn exec_update(
         if k := column_index(t, cn):
             setidx.append(k)
         else:
-            return error(sql_error("no such column: {cn}"))
+            return error(sql_error(f"no such column: {cn}"))
 
     var setexprs = List[Expr]()
 
@@ -2085,7 +2085,7 @@ fn exec_update(
 
     try check_pk(t, newrows)
     tables[ti].rows = newrows
-    return ok("updated {updated}\n".to_bytes())
+    return ok(f"updated {updated}\n".to_bytes())
 
 fn exec_delete(var tables: List[Table], name: String, where_expr: Optional[Expr]) Result[
     Bytes, SqlErr
@@ -2111,7 +2111,7 @@ fn exec_delete(var tables: List[Table], name: String, where_expr: Optional[Expr]
             kept.append(row.clone())
 
     tables[ti].rows = kept
-    return ok("deleted {deleted}\n".to_bytes())
+    return ok(f"deleted {deleted}\n".to_bytes())
 
 fn run_statement(var tables: List[Table], text: Bytes) Result[Bytes, SqlErr]:
     toks := try lex(text)
@@ -2147,7 +2147,7 @@ export fn main() Int:
 
         if r.is_error():
             e := r.err()
-            out.append_bytes("error: {e.msg}\n".to_bytes())
+            out.append_bytes(f"error: {e.msg}\n".to_bytes())
         else:
             out.append_bytes(r.get())
 

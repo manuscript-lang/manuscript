@@ -140,8 +140,8 @@ fn find_from(cs: List[String], sep: String, start: Int) Int:
 fn match_close(cs: List[String], open: Int) Int:
     o := cs[open]
     var c = ")"
-    if o == "\{":
-        c = "\}"
+    if o == "{":
+        c = "}"
 
     var depth = 0
     var k = open
@@ -167,7 +167,7 @@ fn find_colon(cs: List[String]) Int:
         else if (
             cs[k] == "$"
             and k + 1 < cs.length()
-            and (cs[k + 1] == "(" or cs[k + 1] == "\{")
+            and (cs[k + 1] == "(" or cs[k + 1] == "{")
         ):
             j := match_close(cs, k + 1)
             if j < 0:
@@ -190,9 +190,9 @@ fn split_top(s: String) List[String]:
     var depth = 0
 
     for c in s.chars():
-        if c == "(" or c == "\{":
+        if c == "(" or c == "{":
             depth += 1
-        else if c == ")" or c == "\}":
+        else if c == ")" or c == "}":
             depth -= 1
 
         if c == "," and depth == 0:
@@ -241,7 +241,7 @@ fn circular(stack: List[String], pos: Int, t: String) Stop:
         k += 1
 
     parts.append(t.clone())
-    return Stop("make: *** Circular dependency detected: {parts.join(" -> ")}.  Stop.")
+    return Stop(f"make: *** Circular dependency detected: {parts.join(" -> ")}.  Stop.")
 
 fn join_sep(a: String, b: String) String:
     if a == "" or b == "":
@@ -469,9 +469,9 @@ impl Make:
 
     fn fail(at: Int, msg: String) Stop:
         if at > 0:
-            return Stop("Makefile:{at}: *** {msg}.  Stop.")
+            return Stop(f"Makefile:{at}: *** {msg}.  Stop.")
 
-        return Stop("make: *** {msg}.  Stop.")
+        return Stop(f"make: *** {msg}.  Stop.")
 
     fn fatal(msg: String) Stop:
         return self.fail(self.line, msg)
@@ -509,7 +509,7 @@ impl Make:
             else if cs[i + 1] == "$":
                 out += "$"
                 i += 2
-            else if cs[i + 1] == "(" or cs[i + 1] == "\{":
+            else if cs[i + 1] == "(" or cs[i + 1] == "{":
                 j := match_close(cs, i + 1)
                 if j < 0:
                     return error(self.fatal("unterminated variable reference"))
@@ -560,7 +560,7 @@ impl Make:
             if self.expanding.contains(name):
                 return error(
                     self.fatal(
-                        "Recursive variable '{name}' references itself (eventually)"
+                        f"Recursive variable '{name}' references itself (eventually)"
                     )
                 )
 
@@ -654,7 +654,7 @@ impl Make:
 
         if name == "words":
             ws := words(try self.expand(arg(raw, 0)))
-            return ok("{ws.length()}")
+            return ok(f"{ws.length()}")
 
         if name == "firstword" or name == "lastword":
             ws := words(try self.expand(arg(raw, 0)))
@@ -1013,7 +1013,7 @@ impl Make:
 
         if rule.recipe.length() > 0:
             if cur.recipe.length() > 0:
-                emit("Makefile:{line}: warning: overriding recipe for target '{t}'\n")
+                emit(f"Makefile:{line}: warning: overriding recipe for target '{t}'\n")
             cur.recipe = rule.recipe.clone()
 
         self.explicit.add(t.clone(), cur)
@@ -1133,11 +1133,11 @@ impl Make:
             else if self.phony.contains(t):
                 result = true
             else if needed_by == "":
-                return error(Stop("make: *** No rule to make target '{t}'.  Stop."))
+                return error(Stop(f"make: *** No rule to make target '{t}'.  Stop."))
             else:
                 return error(
                     Stop(
-                        "make: *** No rule to make target '{t}', needed by '{needed_by}'.  Stop."
+                        f"make: *** No rule to make target '{t}', needed by '{needed_by}'.  Stop."
                     )
                 )
 
@@ -1246,12 +1246,12 @@ impl Make:
                 if status != 0:
                     if ignore:
                         emit(
-                            "make: [Makefile:{ln.number}: {t}] Error {status} (ignored)\n"
+                            f"make: [Makefile:{ln.number}: {t}] Error {status} (ignored)\n"
                         )
                     else:
                         return error(
                             Stop(
-                                "make: *** [Makefile:{ln.number}: {t}] Error {status}"
+                                f"make: *** [Makefile:{ln.number}: {t}] Error {status}"
                             )
                         )
 
@@ -1296,7 +1296,7 @@ impl Make:
             src := w[1].clone()
 
             if not self.files.contains(src):
-                emit("cp: cannot stat '{src}': No such file or directory\n")
+                emit(f"cp: cannot stat '{src}': No such file or directory\n")
                 return 1
 
             self.clock += 1
@@ -1396,9 +1396,9 @@ fn build_request(var m: Make, mk: List[String], args: List[String], dry: Bool) U
 
         if m.ran == before:
             if m.goal_uptodate(g):
-                emit("make: '{g}' is up to date.\n")
+                emit(f"make: '{g}' is up to date.\n")
             else:
-                emit("make: Nothing to be done for '{g}'.\n")
+                emit(f"make: Nothing to be done for '{g}'.\n")
 
 fn deps_request(var m: Make, mk: List[String], args: List[String]) Unit:
     m.begin()
@@ -1432,14 +1432,14 @@ fn targets_request(var m: Make, mk: List[String], args: List[String]) Unit:
 
     d := m.default_goal()
     if d != "":
-        emit("default: {d}\n")
+        emit(f"default: {d}\n")
 
     for name in m.explicit_names:
         rule := m.explicit.get_or(name, empty_rule())
         emit(name + rule_text(rule.prereqs, rule.order) + "\n")
 
     for p in m.patterns:
-        emit("pattern {p.pat}" + rule_text(p.rule.prereqs, p.rule.order) + "\n")
+        emit(f"pattern {p.pat}" + rule_text(p.rule.prereqs, p.rule.order) + "\n")
     if m.phony.length() > 0:
         emit("phony: " + m.phony.join(" ") + "\n")
 
@@ -1466,7 +1466,7 @@ fn files_request(var m: Make) Unit:
 
     for n in names:
         t := m.files.get_or(n, 0)
-        emit("{n} {t}\n")
+        emit(f"{n} {t}\n")
 
 fn touch_request(var m: Make, w: List[String]) Unit:
     if w.length() == 2:
@@ -1509,7 +1509,7 @@ fn request(var m: Make, mk: List[String], line: String) Unit:
     else if cmd == "rm":
         rm_request(var m, w)
     else:
-        emit("unknown request: {cmd}\n")
+        emit(f"unknown request: {cmd}\n")
 
 export fn main() Int:
     lines := read_lines(stdin()).get()

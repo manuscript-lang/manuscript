@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -22,7 +22,7 @@ fn fib(n: Int) Int:
     return a
 
 export fn main() Int:
-    say("fib(37) = {fib(37)}")
+    say(f"fib(37) = {fib(37)}")
 
     if ((11 * 827271) > (-740776192594)):
         say("quote\"d".upper())
@@ -30,31 +30,31 @@ export fn main() Int:
         say(("Tab\there" + "quote\"d"))
 
     s1 := "héllo"
-    say("s1 = [{s1}]")
+    say(f"s1 = [{s1}]")
 
     l2 := [(-21), (-9), 10, 0, 17]
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     s3 := "héllo".reverse()
-    say("s3 = [{s3}]")
+    say(f"s3 = [{s3}]")
 
     i4 := ((-2) % l2.get(2))
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     s5 := (s1 + "x").trim().replace("quote\"d", s1)
-    say("s5 = [{s5}]")
+    say(f"s5 = [{s5}]")
 
     f6 := (
         (1.0e25 - (238.574 * 614.272))
         - ((547.25 - 715.296) * (745.541 - 19.324))
     )
-    say("f6 = {f6}")
+    say(f"f6 = {f6}")
 
     if ((f6 + f6) != (f6 + 646.957)):
         say("x")
     else:
         say(s1.lower())
 
-    s7 := ("{i4}:" + s1)
-    say("s7 = [{s7}]")
+    s7 := (f"{i4}:" + s1)
+    say(f"s7 = [{s7}]")
     return 0

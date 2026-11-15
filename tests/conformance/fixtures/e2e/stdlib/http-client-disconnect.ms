@@ -16,7 +16,7 @@ type Reporter:
     name: String
 
 fn var Reporter.close() Void!:
-    _line := stdout().write("{self.name} cleanup ran\n")
+    _line := stdout().write(f"{self.name} cleanup ran\n")
 
 fn handle(request: HttpRequest) HttpResponse:
     var _reporter = Reporter("handler")

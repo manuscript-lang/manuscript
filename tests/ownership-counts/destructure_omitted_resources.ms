@@ -23,7 +23,7 @@ type Token:
 	id: Int
 
 fn var Token.close() Void!:
-	return stdout().write("close {self.id}\n")
+	return stdout().write(f"close {self.id}\n")
 
 type Triple:
 	first: Token
@@ -39,7 +39,7 @@ type NamedToken:
 	name: String
 
 fn var NamedToken.close() Void!:
-	return stdout().write("close {self.id}\n")
+	return stdout().write(f"close {self.id}\n")
 
 type NamedTriple:
 	first: NamedToken

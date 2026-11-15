@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -23,10 +23,10 @@ fn collatz(start: Int) Int:
     return steps
 
 export fn main() Int:
-    say("collatz(373) = {collatz(373)}")
+    say(f"collatz(373) = {collatz(373)}")
 
     l1 := [(-6), 21, (-22), 19]
-    say("l1 = {l1} len {l1.length()}")
+    say(f"l1 = {l1} len {l1.length()}")
 
     var acc2 = 0
 
@@ -36,42 +36,42 @@ export fn main() Int:
         else:
             acc2 -= 1
 
-    say("acc2 = {acc2}")
+    say(f"acc2 = {acc2}")
 
     l3 := [(-10), 13, (-25), 13]
-    say("l3 = {l3} len {l3.length()}")
+    say(f"l3 = {l3} len {l3.length()}")
 
     b4 := false
-    say("b4 = {b4}")
-    say("collatz(1467) = {collatz(1467)}")
+    say(f"b4 = {b4}")
+    say(f"collatz(1467) = {collatz(1467)}")
 
     i5 := 33
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     s6 := (
         ("héllo" + ("back\\slash" + "delta"))
         + ("".lower() + ("a" + "  padded  "))
     )
-    say("s6 = [{s6}]")
+    say(f"s6 = [{s6}]")
 
     s7 := (s6 + s6.upper()).replace("ms", "alpha")
-    say("s7 = [{s7}]")
+    say(f"s7 = [{s7}]")
     say(
-        "{i5} {(i5 * (i5 - (-42)))} {(i5 < (i5 * (i5 - (-42))))} sum {i5 + (i5 * (i5 - (-42)))}"
+        f"{i5} {(i5 * (i5 - (-42)))} {(i5 < (i5 * (i5 - (-42))))} sum {i5 + (i5 * (i5 - (-42)))}"
     )
 
     i8 := ((l3.length() * s6.scalar_length()) + (-25))
-    say("i8 = {i8}")
+    say(f"i8 = {i8}")
 
     i9 := i5
-    say("i9 = {i9}")
+    say(f"i9 = {i9}")
 
     f10 := 1.5
-    say("f10 = {f10}")
+    say(f"f10 = {f10}")
 
     l11 := [1, 2, 3].take(0)
-    say("l11 = {l11} len {l11.length()}")
+    say(f"l11 = {l11} len {l11.length()}")
 
     big12 := 9223372036854775807
-    say("{big12 * 6}")
+    say(f"{big12 * 6}")
     return 0

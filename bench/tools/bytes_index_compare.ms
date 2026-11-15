@@ -71,7 +71,10 @@ fn identities() Map[String, Identity]:
 			iterations := if by_work < 256: 256 else: (
 				if by_work > 1000000: 1000000 else: by_work
 			)
-			rows.add("{kind}_{size}", Identity(size, iterations, expected * iterations))
+			rows.add(
+				f"{kind}_{size}",
+				Identity(size, iterations, expected * iterations),
+			)
 
 	return rows
 
@@ -88,19 +91,19 @@ fn run(paths: Map[String, String], out: String, cpu: String) Result[Void, Error]
 
 	for name in names:
 		_warm := run_rows(paths.get_or(name, ""), expected, cpu)?
-		validated.append(jstr("warmup {name}"))
+		validated.append(jstr(f"warmup {name}"))
 
 	for pair in 0..orders.length():
 		for variant in orders[pair]:
 			for row in run_rows(paths.get_or(variant, ""), expected, cpu)?:
-				csv.append("{pair},{variant},{row.line}")
+				csv.append(f"{pair},{variant},{row.line}")
 
-				key := "{row.name} {variant}"
+				key := f"{row.name} {variant}"
 				var list = per.get_or(key, [])
 				list.append(row.elapsed_ns.to_float() / row.iterations.to_float())
 				per.add(key.clone(), list)
 
-			validated.append(jstr("{pair} {variant}"))
+			validated.append(jstr(f"{pair} {variant}"))
 
 	complete = true
 
@@ -114,8 +117,8 @@ fn run(paths: Map[String, String], out: String, cpu: String) Result[Void, Error]
 		binaries_json(names.map(fn n: labeled(n.clone(), paths.get_or(n, "")))),
 	)
 	record.add("validated_producers", jlist(validated))
-	write_json("{out}/record.json", jobject(record))
-	write_text("{out}/samples.csv", csv.join("\n") + "\n")
+	write_json(f"{out}/record.json", jobject(record))
+	write_text(f"{out}/samples.csv", csv.join("\n") + "\n")
 
 	var rows = [
 		"case,before_median_ns,before_min_ns,before_max_ns,after_median_ns,after_min_ns,after_max_ns,rust_median_ns,rust_min_ns,rust_max_ns,paired_delta_median_ns,pairs_slower"
@@ -125,16 +128,16 @@ fn run(paths: Map[String, String], out: String, cpu: String) Result[Void, Error]
 		var cells = List[String]()
 
 		for variant in names:
-			s := per.get_or("{name} {variant}", [])
+			s := per.get_or(f"{name} {variant}", [])
 			sorted := s.sorted()
 			cells = cells.concat(
 				[
-					"{median(s)}", "{sorted[0]}", "{sorted[sorted.length() - 1]}"
+					f"{median(s)}", f"{sorted[0]}", f"{sorted[sorted.length() - 1]}"
 				]
 			)
 
-		b := per.get_or("{name} before", [])
-		a := per.get_or("{name} after", [])
+		b := per.get_or(f"{name} before", [])
+		a := per.get_or(f"{name} after", [])
 		var deltas = List[Float]()
 		var slower = 0
 
@@ -142,12 +145,12 @@ fn run(paths: Map[String, String], out: String, cpu: String) Result[Void, Error]
 			deltas.append(a[i] - b[i])
 			if a[i] - b[i] > 0.0: slower += 1
 
-		rows.append("{name},{cells.join(",")},{median(deltas)},{slower}")
+		rows.append(f"{name},{cells.join(",")},{median(deltas)},{slower}")
 
-	write_text("{out}/summary.csv", rows.join("\n") + "\n")
+	write_text(f"{out}/summary.csv", rows.join("\n") + "\n")
 	(
 		stdout().write(
-			"{expected.length()} cases, {orders.length()} orders, {out}/summary.csv\n"
+			f"{expected.length()} cases, {orders.length()} orders, {out}/summary.csv\n"
 		).get()
 	)
 

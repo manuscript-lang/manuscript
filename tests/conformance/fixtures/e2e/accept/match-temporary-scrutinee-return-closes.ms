@@ -11,7 +11,7 @@ type Door:
 	log: String
 
 fn var Door.close() Void!:
-	void append_file(self.log, "{self.id},").wait()
+	void append_file(self.log, f"{self.id},").wait()
 
 fn logged(path: String) String:
 	read := read_file(path).wait()
@@ -44,7 +44,7 @@ fn hand_on(log: String) Door?:
 
 test "a payload moved out of the arm is not closed by the match":
 	tmp := temporary("ms-log-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	kept := hand_on(log.clone())
 	logged(log.clone()) | expect_equal("")?
 	if kept.is_some():
@@ -52,12 +52,12 @@ test "a payload moved out of the arm is not closed by the match":
 
 test "return from an arm closes the temporary scrutinee once":
 	tmp := temporary("ms-log-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	early(log.clone()) | expect_equal(10)?
 	logged(log.clone()) | expect_equal("1,")?
 
 test "falling out of the match closes it once":
 	tmp := temporary("ms-log-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	late(log.clone()) | expect_equal(2)?
 	logged(log.clone()) | expect_equal("2,")?

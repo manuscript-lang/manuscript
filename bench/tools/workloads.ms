@@ -41,7 +41,7 @@ type Case:
 
 fn largest_input(path: String) String!:
 	cases := parse[List[Case]](read_text(path))
-	if cases.is_error(): return invalid("cannot read {path}")
+	if cases.is_error(): return invalid(f"cannot read {path}")
 
 	var best = ""
 	for c in cases.get([]):
@@ -63,7 +63,7 @@ fn evidence(dir: String, name: String, n: Int, input: String, measured: Measured
 
 	var binaries = Map[String, JsonValue]()
 	for v in versions():
-		binaries.add(v.clone(), jstr(file_sha256("{dir}/{v}/app")))
+		binaries.add(v.clone(), jstr(file_sha256(f"{dir}/{v}/app")))
 
 	var doc = Map[String, JsonValue]()
 	doc.add("name", jstr(name.clone()))
@@ -72,7 +72,7 @@ fn evidence(dir: String, name: String, n: Int, input: String, measured: Measured
 	doc.add("input_sha256", jstr(hex_encode(sha256(input.to_bytes()))))
 	doc.add("output_sha256", jstr(hex_encode(sha256(measured.expected.to_bytes()))))
 	doc.add("binaries_sha256", jobject(binaries))
-	write_text("{dir}/samples.json", dump(jobject(doc)))
+	write_text(f"{dir}/samples.json", dump(jobject(doc)))
 
 fn run(work: String, n: Int) Result[String, Error]:
 	var rows = [header()]
@@ -85,23 +85,23 @@ fn run(work: String, n: Int) Result[String, Error]:
 		): continue
 
 		name := entry.name.clone()
-		dir := "{work}/{name}"
-		source := "{root}/{name}"
+		dir := f"{work}/{name}"
+		source := f"{root}/{name}"
 		for sub in ["ms/src", "go", "rs"]:
-			create_directory("{dir}/{sub}", recursive: true)?
-		copy("bench/agent/templates/ms/ms.toml", "{dir}/ms/ms.toml")?
-		copy("{source}/solutions/ms/main.ms.ref", "{dir}/ms/src/main.ms")?
-		copy("{source}/solutions/go/main.go.ref", "{dir}/go/main.go")?
-		copy("{source}/solutions/rust/main.rs.ref", "{dir}/rs/main.rs")?
+			create_directory(f"{dir}/{sub}", recursive: true)?
+		copy("bench/agent/templates/ms/ms.toml", f"{dir}/ms/ms.toml")?
+		copy(f"{source}/solutions/ms/main.ms.ref", f"{dir}/ms/src/main.ms")?
+		copy(f"{source}/solutions/go/main.go.ref", f"{dir}/go/main.go")?
+		copy(f"{source}/solutions/rust/main.rs.ref", f"{dir}/rs/main.rs")?
 
 		_mod := must(
 			"go mod init",
-			run_in("{dir}/go", env("GO", "go"), ["mod", "init", "x"]),
+			run_in(f"{dir}/go", env("GO", "go"), ["mod", "init", "x"]),
 		)?
 		_go := must(
 			"go build",
 			run_in(
-				"{dir}/go",
+				f"{dir}/go",
 				env("GO", "go"),
 				["build", "-buildvcs=false", "-o", "app", "."],
 			),
@@ -110,24 +110,24 @@ fn run(work: String, n: Int) Result[String, Error]:
 			"rustc",
 			capture(
 				env("RUSTC", "rustc"),
-				["-O", "-o", "{dir}/rs/app", "{dir}/rs/main.rs"],
+				["-O", "-o", f"{dir}/rs/app", f"{dir}/rs/main.rs"],
 			),
 		)?
 		_ms := must(
 			"ms build",
 			run_in(
-				"{dir}/ms",
+				f"{dir}/ms",
 				ms_binary(),
 				["build", "ms.toml", "-o", "app"],
 			),
 		)?
-		input := largest_input("{source}/hidden/cases.json")?
-		measured := measure(n, name, fn v: sample("{dir}/{v}/app", [], input))?
+		input := largest_input(f"{source}/hidden/cases.json")?
+		measured := measure(n, name, fn v: sample(f"{dir}/{v}/app", [], input))?
 		evidence(dir, name.clone(), n, input, measured)
 		rows.append(row(name, measured.samples))
 
 	// The table appears only once every workload has passed.
-	write_text("{work}/table.txt", rows.join("\n") + "\n")
+	write_text(f"{work}/table.txt", rows.join("\n") + "\n")
 	return ok(rows.join("\n"))
 
 fn main() Int:

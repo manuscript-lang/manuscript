@@ -18,7 +18,7 @@ fn choose(value: Choice) String:
         One:
             return "one"
         Other(number):
-            return "value {number}"
+            return f"value {number}"
 
 fn count() Int:
     return apply(
@@ -28,7 +28,7 @@ fn count() Int:
 test "compact formatting preserves behavior":
     values := [1, 2, 2, 4, 3, 6]  // Keep this list compact.
     nested := [[1, 2], [3, 4]]
-    invalid := ["", "[1,", "\{\"a\" 1\}", "tru", "[1] x", "\"abc"]
+    invalid := ["", "[1,", "{\"a\" 1}", "tru", "[1] x", "\"abc"]
     mapped := [1, 2, 3, 4, 5, 6].map(
         transform: fn(value: Int) Int: return (value + 1)
     )

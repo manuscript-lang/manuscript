@@ -113,6 +113,6 @@ export fn bench_string() Void:
 		fn() Int:
 			var n = 0
 			for i in 0..100000:
-				n += "item {i} of {n}".length()
+				n += f"item {i} of {n}".length()
 			return n
 	)

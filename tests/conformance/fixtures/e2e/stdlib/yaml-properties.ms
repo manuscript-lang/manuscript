@@ -14,7 +14,7 @@ fn generated(var rng: Rng, depth: Int) YamlValue:
 	kind := next(var rng, choices)
 	if kind == 0: return YamlValue.Null
 	if kind == 1: return YamlValue.BoolValue(next(var rng, 2) == 0)
-	if kind == 2: return YamlValue.NumberValue("{next(var rng, 2000) - 1000}")
+	if kind == 2: return YamlValue.NumberValue(f"{next(var rng, 2000) - 1000}")
 	if kind == 3: return YamlValue.StringValue(text(var rng))
 
 	if kind == 4:
@@ -30,12 +30,12 @@ fn generated(var rng: Rng, depth: Int) YamlValue:
 
 fn check_round_trip(seed: Int, original: YamlValue) Void!:
 	rendered := stringify(original)?
-	if (parse(rendered)?) != original: return fail("seed {seed}: changed\n{rendered}")
+	if (parse(rendered)?) != original: return fail(f"seed {seed}: changed\n{rendered}")
 
 fn check_stable(seed: Int, mutated: String, first: YamlValue) Void!:
 	again := stringify(first)?
 	if (parse(again)?) != first: return fail(
-		"seed {seed}: reparsed value changed\n{mutated}\n---\n{again}"
+		f"seed {seed}: reparsed value changed\n{mutated}\n---\n{again}"
 	)
 
 test "YAML stringify then parse preserves generated documents":

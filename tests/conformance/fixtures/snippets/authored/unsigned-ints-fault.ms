@@ -8,4 +8,4 @@ fn main() Void:
     b: UInt8 := 6
     void stdout().write("before\n")
     c := a - b
-    void stdout().write("{c}\n")
+    void stdout().write(f"{c}\n")

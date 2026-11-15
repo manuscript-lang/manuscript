@@ -7,7 +7,7 @@ fn churn(n: Int) Int:
     var total = 0
 
     for i in 0..n:
-        junk := "junk-{i}-junk-{i}-junk-{i}"
+        junk := f"junk-{i}-junk-{i}-junk-{i}"
         total += junk.length()
 
     return total

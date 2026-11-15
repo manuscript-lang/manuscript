@@ -4,7 +4,7 @@ type Res:
     id: Int
 
 fn var Res.close() Void!:
-    print("close {self.id}")
+    print(f"close {self.id}")
 
 type Job:
     input: Res
@@ -27,5 +27,5 @@ export fn main() Int:
     var b = [Job(Res(2)), Job(Res(3))]
     var c: List[Res] = []
     print(moved(var b, var c))
-    print("{b.length()} {c.length()}")
+    print(f"{b.length()} {c.length()}")
     return 0

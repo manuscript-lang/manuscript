@@ -20,7 +20,7 @@ fn identifiers(version: String) List[String]:
 fn churn() Int:
 	var total = 0
 	for i in 0..20:
-		total += "scratch-{i}-allocation-that-reuses-freed-blocks".length()
+		total += f"scratch-{i}-allocation-that-reuses-freed-blocks".length()
 	return total
 
 fn check(rounds: Int) Int!:

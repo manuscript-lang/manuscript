@@ -2,10 +2,10 @@
 // conform: phase=parse
 // conform: origin=pkg/compiler/builtin_parity_test.go:9 TestNativeMethodConstraints
 fn stringify(value: Int) String:
-    return "{value}"
+    return f"{value}"
 
 fn wrong_label(item: Int) String:
-    return "{item}"
+    return f"{item}"
 
 fn callback() Void:
     return

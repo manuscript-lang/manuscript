@@ -16,12 +16,12 @@ fn count_orders(path: String) Int!:
     file := open(path)?
     rows := collect(file.reader()? | lines)?
     if rows.is_empty():
-        return error(Error("{path} is empty", kind: "EBADMSG"))
+        return error(Error(f"{path} is empty", kind: "EBADMSG"))
     return ok(rows.length() - 1)
 
 fn main() Void!:
     count := count_orders("orders.csv")?
-    print("{count} orders")
+    print(f"{count} orders")
 ```
 
 ```text

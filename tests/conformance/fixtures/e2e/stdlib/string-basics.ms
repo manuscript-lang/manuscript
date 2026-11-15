@@ -4,11 +4,11 @@ import expect_equal, expect_false, fail from "@std/test/test.ms"
 
 test "Unicode lowercase sigma ignores combining marks and format characters":
 	for mark in ["\u{1ab0}", "\u{5bf}", "\u{2060}", "\u{fe0f}"]:
-		expect_equal("A{mark}Σ".lower(), "a{mark}ς")?
-		expect_equal("AΣ{mark}A".lower(), "aσ{mark}a")?
+		expect_equal(f"A{mark}Σ".lower(), f"a{mark}ς")?
+		expect_equal(f"AΣ{mark}A".lower(), f"aσ{mark}a")?
 
-		lower := "AΣ{mark}A".lower
-		expect_equal(lower(), "aσ{mark}a")?
+		lower := f"AΣ{mark}A".lower
+		expect_equal(lower(), f"aσ{mark}a")?
 
 test "String basic counterparts are callable":
 	expect_equal("é🙂".scalar_length(), 2)?
@@ -85,7 +85,7 @@ test "lines preserve interior empties and recognize LF and CRLF only":
 	]
 	for line_case in cases:
 		if line_case.text.lines() != line_case.expected: return fail(
-			"line boundary: {line_case.text.to_string()}"
+			f"line boundary: {line_case.text.to_string()}"
 		)
 
 test "String basic bound methods capture immutable receiver values":

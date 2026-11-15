@@ -229,8 +229,8 @@ fn fmt_rule(name: String, normal: List[String], order_only: List[String]) String
 fn find_close(cs: List[String], at: Int) Int:
     opener := cs[at]
     var closer = ")"
-    if opener == "\{":
-        closer = "\}"
+    if opener == "{":
+        closer = "}"
 
     var depth = 0
     var j = at
@@ -260,7 +260,7 @@ fn top_colon(cs: List[String]) Int:
         if c == "$" and i + 1 < cs.length():
             nx := cs[i + 1]
 
-            if nx == "(" or nx == "\{":
+            if nx == "(" or nx == "{":
                 close := find_close(cs, i + 1)
                 if close < 0:
                     return -1
@@ -286,9 +286,9 @@ fn split_args(t: String) List[String]:
     while i < cs.length():
         c := cs[i]
 
-        if c == "(" or c == "\{":
+        if c == "(" or c == "{":
             depth += 1
-        else if c == ")" or c == "\}":
+        else if c == ")" or c == "}":
             depth -= 1
         else if c == "," and depth == 0:
             out.append(join_range(cs, start, i).trim())
@@ -466,10 +466,10 @@ fn say(var s: Sim, text: String) Unit:
     s.out.append(text)
 
 fn make_fail(msg: String) Fail:
-    return Fail(text: "make: *** {msg}.  Stop.")
+    return Fail(text: f"make: *** {msg}.  Stop.")
 
 fn fail_line(num: Int, msg: String) Fail:
-    return Fail(text: "Makefile:{num}: *** {msg}.  Stop.")
+    return Fail(text: f"Makefile:{num}: *** {msg}.  Stop.")
 
 fn fail_at(s: Sim, msg: String) Fail:
     if s.line > 0:
@@ -497,7 +497,7 @@ fn expand_var(var s: Sim, name: String, value: String) Result[String, Fail]:
     if s.expanding.contains(name):
         return error(
             fail_at(
-                s, "Recursive variable '{name}' references itself (eventually)"
+                s, f"Recursive variable '{name}' references itself (eventually)"
             )
         )
 
@@ -549,7 +549,7 @@ fn expand(var s: Sim, text: String) Result[String, Fail]:
         else if cs[i + 1] == "$":
             out += "$"
             i += 2
-        else if cs[i + 1] == "(" or cs[i + 1] == "\{":
+        else if cs[i + 1] == "(" or cs[i + 1] == "{":
             close := find_close(cs, i + 1)
             if close < 0:
                 return error(fail_at(s, "unterminated variable reference"))
@@ -661,7 +661,7 @@ fn call_func(var s: Sim, name: String, raw: String) Result[String, Fail]:
 
     if name == "words":
         text := try expand(var s, arg_at(args, 0))
-        return ok("{split_ws(text).length()}")
+        return ok(f"{split_ws(text).length()}")
 
     if name == "firstword" or name == "lastword":
         text := try expand(var s, arg_at(args, 0))
@@ -877,7 +877,7 @@ fn add_explicit(var s: Sim, t: String, op: Open) Unit:
             if s.rules[idx].recipe.length() > 0:
                 say(
                     var s,
-                    "Makefile:{op.line}: warning: overriding recipe for target '{t}'"
+                    f"Makefile:{op.line}: warning: overriding recipe for target '{t}'"
                 )
             s.rules[idx].recipe = op.recipe.clone()
 
@@ -1193,7 +1193,7 @@ fn run_command(var s: Sim, cmd: String) Int:
             src := ws[1]
 
             if not s.files.contains(src):
-                say(var s, "cp: cannot stat '{src}': No such file or directory")
+                say(var s, f"cp: cannot stat '{src}': No such file or directory")
                 return 1
 
             s.clock += 1
@@ -1276,11 +1276,11 @@ fn run_recipe(var s: Sim, t: String, plan: Plan, was_in: Bool, old: Int) Result[
 
         if status != 0:
             if ignore_err:
-                say(var s, "make: [Makefile:{ln.num}: {t}] Error {status} (ignored)")
+                say(var s, f"make: [Makefile:{ln.num}: {t}] Error {status} (ignored)")
             else:
                 return error(
                     Fail(
-                        text: "make: *** [Makefile:{ln.num}: {t}] Error {status}"
+                        text: f"make: *** [Makefile:{ln.num}: {t}] Error {status}"
                     )
                 )
 
@@ -1310,11 +1310,11 @@ fn build_target(var s: Sim, t: String, parent: String) Result[Bool, Fail]:
     if not plan.found:
         if not s.files.contains(t) and not s.phony.contains(t):
             if parent.length() == 0:
-                return error(make_fail("No rule to make target '{t}'"))
+                return error(make_fail(f"No rule to make target '{t}'"))
 
             return error(
                 make_fail(
-                    "No rule to make target '{t}', needed by '{parent}'"
+                    f"No rule to make target '{t}', needed by '{parent}'"
                 )
             )
 
@@ -1365,9 +1365,9 @@ fn build_goals(var s: Sim, goals: List[String]) Result[Bool, Fail]:
                 plan.recipe.length() > 0
                 or (not s.phony.contains(g) and s.files.contains(g))
             ):
-                say(var s, "make: '{g}' is up to date.")
+                say(var s, f"make: '{g}' is up to date.")
             else:
-                say(var s, "make: Nothing to be done for '{g}'.")
+                say(var s, f"make: Nothing to be done for '{g}'.")
 
     return ok(true)
 
@@ -1447,7 +1447,7 @@ fn run_targets(var s: Sim) Result[Bool, Fail]:
 fn run_expand(var s: Sim, text: String) Result[Bool, Fail]:
     _parsed := try parse_makefile(var s)
     v := try expand(var s, text)
-    say(var s, "[{v}]")
+    say(var s, f"[{v}]")
     return ok(true)
 
 // ---------------------------------------------------------------- requests
@@ -1486,7 +1486,7 @@ fn list_files(var s: Sim) Unit:
 
     for n in names:
         m := s.files.get(n).get(0)
-        say(var s, "{n} {m}")
+        say(var s, f"{n} {m}")
 
 fn touch_request(var s: Sim, args: List[String]) Unit:
     if args.length() == 1:

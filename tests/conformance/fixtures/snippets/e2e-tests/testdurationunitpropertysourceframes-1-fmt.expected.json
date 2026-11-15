@@ -1,7 +1,7 @@
 {
   "format": 1,
   "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
+  "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
     "fmt": "test \"positive unit overflow\":\n\t_impossible := (153722868).minutes()\n\ntest \"negative unit overflow\":\n\t_impossible := (-153722868).minutes()\n\ntest \"receiver fault comes first\":\n\t_impossible := (1 / \"\".length()).minutes()\n\ntest \"continues with valid units\":\n\t_valid := (1).seconds()\n"

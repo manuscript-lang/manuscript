@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -29,17 +29,17 @@ fn fib(n: Int) Int:
 
 export fn main() Int:
     i1 := ((-917213) / 17)
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     l2 := [11, (-19), (-11), 8, 21]
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     i3 := ((-16) % (i1 + ((-7) * 379025897152)))
-    say("i3 = {i3}")
-    say("fact(19) = {fact(19)}")
+    say(f"i3 = {i3}")
+    say(f"fact(19) = {fact(19)}")
 
     i4 := (((23 * i1) + 45) * i1)
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     var acc5 = 0
     var stepacc5 = 0
@@ -48,21 +48,21 @@ export fn main() Int:
         stepacc5 += 1
         acc5 += stepacc5 * stepacc5 + 6
 
-    say("acc5 = {acc5}")
+    say(f"acc5 = {acc5}")
 
-    s6 := ("emoji 😀" + "brace\{s\}".upper()).trim()
-    say("s6 = [{s6}]")
+    s6 := ("emoji 😀" + "brace{s}".upper()).trim()
+    say(f"s6 = [{s6}]")
 
     s7 := "  padded  ".upper()
-    say("s7 = [{s7}]")
+    say(f"s7 = [{s7}]")
 
     s8 := ("x" + "日本語").reverse().reverse()
-    say("s8 = [{s8}]")
-    say("fib(58) = {fib(58)}")
+    say(f"s8 = [{s8}]")
+    say(f"fib(58) = {fib(58)}")
 
     i9 := (48 + i3)
-    say("i9 = {i9}")
+    say(f"i9 = {i9}")
 
     big10 := l2.length() - l2.length()
-    say("{l2.length() / big10}")
+    say(f"{l2.length() / big10}")
     return 0

@@ -6,17 +6,17 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     s1 := "a".lower().replace("gamma", "  padded  ")
-    say("s1 = [{s1}]")
+    say(f"s1 = [{s1}]")
 
     l2 := [(-19)]
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     i3 := ((41 + 903562) / (((-22) % (-40)) - (-703417)))
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     if ("Tab\there" + "a").starts_with(s1):
         say(s1.trim())
@@ -24,25 +24,25 @@ export fn main() Int:
         say("back\\slash".reverse())
 
     i4 := (((1 + (-42)) - ((-916429) + i3)) + (-43))
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     i5 := (-130923822418)
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     if ((0.0 + 739.916) == (5.5 + 417.584)):
         say(("delta" + "quote\"d"))
     else:
-        say(("{(-464805)}:" + s1))
+        say((f"{(-464805)}:" + s1))
 
-    s6 := ("{(791653 * 29)}:" + ("Tab\there" + (s1 + s1)))
-    say("s6 = [{s6}]")
+    s6 := (f"{(791653 * 29)}:" + ("Tab\there" + (s1 + s1)))
+    say(f"s6 = [{s6}]")
 
     i7 := l2.length()
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
     big8 := (
         (((-314550) + i7) / ((-752991) / i7))
         - (((-314550) + i7) / ((-752991) / i7))
     )
-    say("{(((-314550) + i7) / ((-752991) / i7)) % big8}")
+    say(f"{(((-314550) + i7) / ((-752991) / i7)) % big8}")
     return 0

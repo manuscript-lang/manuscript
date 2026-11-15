@@ -16,7 +16,7 @@ fn add(var cs: Cases, name: String, script: String) Void:
 // The `stdin` of every hidden case of c13-inventory-orders, by case name.
 fn c13_inputs() List[JsonValue]:
 	doc := parse(
-		read_text("{root()}/challenges/c13-inventory-orders/hidden/cases.json")
+		read_text(f"{root()}/challenges/c13-inventory-orders/hidden/cases.json")
 	).get(JsonValue.Null)
 	return doc.as_list().get([])
 
@@ -26,7 +26,7 @@ export fn gen_c63() Void:
 	for entry in c13_inputs():
 		name := entry.get("name").get(JsonValue.Null).as_string().get("")
 		stdin := entry.get("stdin").get(JsonValue.Null).as_string().get("")
-		add(var cs, "kept-{name}", stdin)
+		add(var cs, f"kept-{name}", stdin)
 
 	setup := "stock A 100\nstock B 50\nprice A 250\nprice B 1999\n"
 	add(

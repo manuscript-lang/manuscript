@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -28,12 +28,12 @@ fn fact(n: Int) Int:
     return n * fact(n - 1)
 
 export fn main() Int:
-    say("fib(21) = {fib(21)}")
-    say("fact(5) = {fact(5)}")
+    say(f"fib(21) = {fib(21)}")
+    say(f"fact(5) = {fact(5)}")
 
     i1 := (((-46) + (23616605801 + 29)) % ((41 + 34) * ((-633962340002) - (-39))))
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     i2 := i1
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
     return 0

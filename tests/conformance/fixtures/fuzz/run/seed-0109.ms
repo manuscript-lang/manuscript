@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -23,39 +23,39 @@ fn fib(n: Int) Int:
 
 export fn main() Int:
     f1 := (0.0 + ((234.25 * 297.250) + 137.373))
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
 
-    s2 := ("{((-17) - (-654055170819))}:" + "delta")
-    say("s2 = [{s2}]")
-    say("{(-50)} {66343} {((-50) < 66343)} sum {(-50) + 66343}")
+    s2 := (f"{((-17) - (-654055170819))}:" + "delta")
+    say(f"s2 = [{s2}]")
+    say(f"{(-50)} {66343} {((-50) < 66343)} sum {(-50) + 66343}")
 
     i3 := 35
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     f4 := f1
-    say("f4 = {f4}")
+    say(f"f4 = {f4}")
 
     if (("beta" != "gamma") and (f1 == 959.651)):
         say("naïve".lower())
     else:
-        say("brace\{s\}".reverse())
+        say("brace{s}".reverse())
 
     f5 := (((2.0e-6 * 5.0e18) + (628.25 + f1)) + ((f4 + 914.385) + f1))
-    say("f5 = {f5}")
+    say(f"f5 = {f5}")
 
     i6 := ((((-37) + i3) * ((-33) + 34)) / ((i3 + i3) - ((-481945) + 6)))
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     f7 := (659.446 + ((f1 + f5) * f4))
-    say("f7 = {f7}")
-    say("fib(27) = {fib(27)}")
+    say(f"f7 = {f7}")
+    say(f"fib(27) = {fib(27)}")
 
     l8 := [1, 2, 3].take(0)
-    say("l8 = {l8} len {l8.length()}")
+    say(f"l8 = {l8} len {l8.length()}")
 
     l9 := l8.take(3)
-    say("l9 = {l9} len {l9.length()}")
+    say(f"l9 = {l9} len {l9.length()}")
 
     i10 := (-36)
-    say("i10 = {i10}")
+    say(f"i10 = {i10}")
     return 0

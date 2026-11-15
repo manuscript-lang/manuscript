@@ -7,6 +7,6 @@ export type Customer:
 
 export fn welcome(customer: Customer) String:
     if customer.active:
-        return "Welcome, {customer.name}!"
+        return f"Welcome, {customer.name}!"
 
     return "Your account is inactive."

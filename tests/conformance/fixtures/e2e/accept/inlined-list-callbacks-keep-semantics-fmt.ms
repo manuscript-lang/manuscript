@@ -18,7 +18,7 @@ test "inlined callbacks":
     shifted := items.map(fn(v: Int) Int: v + offset)
     expect_true((shifted.length() == 5 and shifted.get(index: 4) == 14))?
 
-    labels := items.map(fn(v: Int) String: "n{v}")
+    labels := items.map(fn(v: Int) String: f"n{v}")
     expect_true((labels.get(index: 2) == "n2"))?
 
     floats := items.map(fn(v: Int) Float: 0.5)
@@ -34,7 +34,7 @@ test "inlined callbacks":
     expect_true(
         (
             items.fold(
-                initial: "", step: fn(a: String, v: Int) String: (a + "{v}")
+                initial: "", step: fn(a: String, v: Int) String: (a + f"{v}")
             ) == "01234"
         )
     )?

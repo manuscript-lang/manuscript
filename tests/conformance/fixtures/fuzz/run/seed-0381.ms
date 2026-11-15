@@ -6,29 +6,29 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     f1 := ((0.0 * (671.408 / 710.25)) * (92.410 * (758.881 + 287.25)))
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
 
     f2 := (f1 + f1)
-    say("f2 = {f2}")
+    say(f"f2 = {f2}")
     say(
-        "{((947528 + 671423825111) / (-212144782433))} {(-3)} {(((947528 + 671423825111) / (-212144782433)) < (-3))} sum {((947528 + 671423825111) / (-212144782433)) + (-3)}"
+        f"{((947528 + 671423825111) / (-212144782433))} {(-3)} {(((947528 + 671423825111) / (-212144782433)) < (-3))} sum {((947528 + 671423825111) / (-212144782433)) + (-3)}"
     )
 
     i3 := ((-40) * (((-4) + 4) + (-(-427155895121))))
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     b4 := (not ("alpha".is_empty() and true))
-    say("b4 = {b4}")
+    say(f"b4 = {b4}")
 
     b5 := (not (b4 or (b4 and false)))
-    say("b5 = {b5}")
+    say(f"b5 = {b5}")
 
     l6 := [24, 10, (-21), 24]
-    say("l6 = {l6} len {l6.length()}")
+    say(f"l6 = {l6} len {l6.length()}")
 
     var acc7 = 0
 
@@ -38,22 +38,22 @@ export fn main() Int:
         else:
             acc7 -= 1
 
-    say("acc7 = {acc7}")
+    say(f"acc7 = {acc7}")
 
     i8 := l6.get(0)
-    say("i8 = {i8}")
+    say(f"i8 = {i8}")
 
-    s9 := ("{i8}:" + "delta".lower()).lower()
-    say("s9 = [{s9}]")
+    s9 := (f"{i8}:" + "delta".lower()).lower()
+    say(f"s9 = [{s9}]")
 
     i10 := i8
-    say("i10 = {i10}")
+    say(f"i10 = {i10}")
     say(
-        "{i3} {((-50) - ((-25) % i10))} {(i3 < ((-50) - ((-25) % i10)))} sum {i3 + ((-50) - ((-25) % i10))}"
+        f"{i3} {((-50) - ((-25) % i10))} {(i3 < ((-50) - ((-25) % i10)))} sum {i3 + ((-50) - ((-25) % i10))}"
     )
 
     i11 := ((-((-756609) * 904633)) * l6.get(1))
-    say("i11 = {i11}")
+    say(f"i11 = {i11}")
 
     var acc12 = 0
     var stepacc12 = 0
@@ -62,8 +62,8 @@ export fn main() Int:
         stepacc12 += 1
         acc12 += stepacc12 * stepacc12 + 4
 
-    say("acc12 = {acc12}")
+    say(f"acc12 = {acc12}")
 
     l13 := l6.map(fn x: x + 3).filter(fn x: x % 2 == 0)
-    say("l13 = {l13} len {l13.length()}")
+    say(f"l13 = {l13} len {l13.length()}")
     return 0

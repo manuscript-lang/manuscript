@@ -31,16 +31,16 @@ fn main() Void:
         lats.append(lat)
         if lat > slowest:
             slowest = lat
-            slow = "{lat} {f[2]} {f[3]} {f[0]}"
+            slow = f"{lat} {f[2]} {f[3]} {f[0]}"
         old := stats.get_or(f[3], Stat(0, 0))
         stats[f[3].clone()] = Stat(old.count + 1, old.total + lat)
     lats = lats.sorted(fn a, b: a - b)
-    print("valid: {valid}\nmalformed: {bad}")
-    for l in ["DEBUG", "INFO", "WARN", "ERROR"]: print("{l}: {levels.get_or(l, 0)}")
-    print("status: 2xx={classes[0]} 3xx={classes[1]} 4xx={classes[2]} 5xx={classes[3]} other={classes[4]}")
-    print("p95: {if lats.is_empty(): 0 else: lats[(95 * lats.length() + 99) / 100 - 1]}")
-    if slowest >= 0: print("slowest: {slow}")
+    print(f"valid: {valid}\nmalformed: {bad}")
+    for l in ["DEBUG", "INFO", "WARN", "ERROR"]: print(f"{l}: {levels.get_or(l, 0)}")
+    print(f"status: 2xx={classes[0]} 3xx={classes[1]} 4xx={classes[2]} 5xx={classes[3]} other={classes[4]}")
+    print(f"p95: {if lats.is_empty(): 0 else: lats[(95 * lats.length() + 99) / 100 - 1]}")
+    if slowest >= 0: print(f"slowest: {slow}")
     print("top:")
     ranked := stats.entries().sorted(fn a, b: if a.value.count != b.value.count: b.value.count - a.value.count else: a.key.compare(b.key))
     for e in ranked.slice(0, ranked.length().min(3)).get():
-        print("{e.key} {e.value.count} avg={e.value.total / e.value.count}")
+        print(f"{e.key} {e.value.count} avg={e.value.total / e.value.count}")

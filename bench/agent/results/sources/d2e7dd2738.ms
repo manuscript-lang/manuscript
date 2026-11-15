@@ -36,7 +36,7 @@ type Repo:
 	merge_branch: String
 
 fn say(s: String) Unit:
-	stdout().write("{s}\n").get()
+	stdout().write(f"{s}\n").get()
 
 fn fnv(text: String) Int:
 	var h = -3750763034362895579
@@ -63,15 +63,15 @@ fn tree_hash(tree: Map[String, String]) String:
 
 	for name in tree.keys().sorted():
 		h := hex16(fnv(tree.get_or(name, "")))
-		text = text.concat("{name} {h}\n")
+		text = text.concat(f"{name} {h}\n")
 
 	return hex16(fnv(text))
 
 fn commit_id(tree_h: String, parent_ids: List[String], message: String) String:
-	var text = "tree {tree_h}\n"
+	var text = f"tree {tree_h}\n"
 	for p in parent_ids:
-		text = text.concat("parent {p}\n")
-	text = text.concat("\n{message}\n")
+		text = text.concat(f"parent {p}\n")
+	text = text.concat(f"\n{message}\n")
 	return hex16(fnv(text))
 
 fn lines_of(content: String) List[String]:
@@ -87,7 +87,7 @@ fn lines_of(content: String) List[String]:
 fn content_of(lines: List[String]) String:
 	var s = ""
 	for l in lines:
-		s = s.concat("{l}\n")
+		s = s.concat(f"{l}\n")
 	return s
 
 fn sub(lines: List[String], from: Int, to: Int) List[String]:
@@ -201,7 +201,7 @@ fn chunk_merge(
 	if tc == bc: return Merged(text: oc, clean: true)
 	if oc == tc: return Merged(text: oc, clean: true)
 
-	text := "<<<<<<< HEAD\n{oc}=======\n{tc}>>>>>>> {branch}\n"
+	text := f"<<<<<<< HEAD\n{oc}=======\n{tc}>>>>>>> {branch}\n"
 	return Merged(text: text, clean: false)
 
 fn merge_lines(
@@ -231,7 +231,7 @@ fn merge_lines(
 			text = text.concat(mid.text)
 			if not mid.clean:
 				clean = false
-			text = text.concat("{base[s]}\n")
+			text = text.concat(f"{base[s]}\n")
 			pb = s + 1
 			po = so + 1
 			pt = st + 1
@@ -258,23 +258,23 @@ fn print_line_diff(a: List[String], b: List[String]) Unit:
 
 		if y >= 0:
 			for k in pi..x:
-				say("- {a[k]}")
+				say(f"- {a[k]}")
 			for k in pj..y:
-				say("+ {b[k]}")
-			say("  {a[x]}")
+				say(f"+ {b[k]}")
+			say(f"  {a[x]}")
 			pi = x + 1
 			pj = y + 1
 
 	for k in pi..a.length():
-		say("- {a[k]}")
+		say(f"- {a[k]}")
 	for k in pj..b.length():
-		say("+ {b[k]}")
+		say(f"+ {b[k]}")
 
 fn print_section(title: String, items: List[String]) Unit:
 	if items.length() > 0:
 		say(title)
 		for it in items:
-			say("  {it}")
+			say(f"  {it}")
 
 impl Repo:
 	fn cur_seq() Int:
@@ -364,7 +364,7 @@ impl Repo:
 				or not all_in(parts[1], DIGITS)
 				or parts[1].length() == 0
 			):
-				say("error: unknown revision '{refname}'")
+				say(f"error: unknown revision '{refname}'")
 				return 0
 
 			base = parts[0].clone()
@@ -372,7 +372,7 @@ impl Repo:
 			if n := parts[1].parse_int():
 				steps = n
 			else:
-				say("error: unknown revision '{refname}'")
+				say(f"error: unknown revision '{refname}'")
 				return 0
 
 		var s = 0
@@ -393,20 +393,20 @@ impl Repo:
 					count += 1
 
 			if count > 1:
-				say("error: ambiguous revision '{refname}'")
+				say(f"error: ambiguous revision '{refname}'")
 				return 0
 
 			s = found
 
 		if s == 0:
-			say("error: unknown revision '{refname}'")
+			say(f"error: unknown revision '{refname}'")
 			return 0
 
 		var k = 0
 
 		while k < steps:
 			if self.clist[s - 1].parents.length() == 0:
-				say("error: unknown revision '{refname}'")
+				say(f"error: unknown revision '{refname}'")
 				return 0
 
 			s = self.clist[s - 1].parents[0]
@@ -429,7 +429,7 @@ impl Repo:
 	fn untracked(names: List[String]) Bool:
 		for name in names.sorted():
 			if self.files.contains(name) and not self.index.contains(name):
-				say("error: untracked file would be overwritten: {name}")
+				say(f"error: untracked file would be overwritten: {name}")
 				return true
 
 		return false
@@ -466,7 +466,7 @@ impl Repo:
 
 		for name in args:
 			if not self.files.contains(name):
-				say("error: no such file: {name}")
+				say(f"error: no such file: {name}")
 				return
 
 			self.files.remove(name)
@@ -480,7 +480,7 @@ impl Repo:
 		nw := args[1].clone()
 
 		if not self.files.contains(old):
-			say("error: no such file: {old}")
+			say(f"error: no such file: {old}")
 			return
 
 		if old == nw: return
@@ -497,7 +497,7 @@ impl Repo:
 		name := args[0].clone()
 
 		if not self.files.contains(name):
-			say("error: no such file: {name}")
+			say(f"error: no such file: {name}")
 			return
 
 		for l in lines_of(self.files.get_or(name, "")):
@@ -541,17 +541,17 @@ impl Repo:
 			else if self.conflicts.contains(p):
 				self.conflicts.remove(p)
 			else:
-				say("error: pathspec '{p}' did not match any files")
+				say(f"error: pathspec '{p}' did not match any files")
 				return
 
 	fn cmd_status() Unit:
 		if self.head_branch.length() > 0:
-			say("On branch {self.head_branch}")
+			say(f"On branch {self.head_branch}")
 		else:
-			say("HEAD detached at {self.short_of(self.head_seq)}")
+			say(f"HEAD detached at {self.short_of(self.head_seq)}")
 
 		if self.merging:
-			say("merging: {self.merge_branch}")
+			say(f"merging: {self.merge_branch}")
 
 		ht := self.tree_of(self.cur_seq())
 		var names = ht.keys()
@@ -569,11 +569,11 @@ impl Repo:
 			in_i := self.index.contains(name)
 
 			if in_i and not in_h:
-				staged.append("new file: {name}")
+				staged.append(f"new file: {name}")
 			else if in_h and not in_i:
-				staged.append("deleted: {name}")
+				staged.append(f"deleted: {name}")
 			else if ht.get_or(name, "") != self.index.get_or(name, ""):
-				staged.append("modified: {name}")
+				staged.append(f"modified: {name}")
 
 		var unstaged = List[String]()
 
@@ -581,13 +581,13 @@ impl Repo:
 			if self.conflicts.contains(name): continue
 
 			if not self.files.contains(name):
-				unstaged.append("deleted: {name}")
+				unstaged.append(f"deleted: {name}")
 			else if self.files.get_or(name, "") != self.index.get_or(name, ""):
-				unstaged.append("modified: {name}")
+				unstaged.append(f"modified: {name}")
 
 		var unmerged = List[String]()
 		for name in self.conflicts.values().sorted():
-			unmerged.append("unmerged: {name}")
+			unmerged.append(f"unmerged: {name}")
 
 		var untracked = List[String]()
 		for name in self.files.keys().sorted():
@@ -648,7 +648,7 @@ impl Repo:
 			if lp == rp and lv == rv: continue
 
 			any = true
-			say("diff {name}")
+			say(f"diff {name}")
 			if not lp:
 				say("new file")
 			if not rp:
@@ -691,12 +691,12 @@ impl Repo:
 		while k >= 0 and (limit < 0 or printed < limit):
 			s := seqs[k]
 			c := self.clist[s - 1].parents.length()
-			var line = "{self.short_of(s)} {self.msg_of(s)}"
+			var line = f"{self.short_of(s)} {self.msg_of(s)}"
 
 			if c == 2:
 				p1 := self.short_of(self.clist[s - 1].parents[0])
 				p2 := self.short_of(self.clist[s - 1].parents[1])
-				line = "{line} (merge {p1} {p2})"
+				line = f"{line} (merge {p1} {p2})"
 
 			say(line)
 			printed += 1
@@ -705,13 +705,13 @@ impl Repo:
 	var fn cmd_branch(args: List[String]) Unit:
 		if args.length() == 0:
 			if self.head_branch.length() == 0:
-				say("* (HEAD detached at {self.short_of(self.head_seq)})")
+				say(f"* (HEAD detached at {self.short_of(self.head_seq)})")
 
 			for name in self.branches.keys().sorted():
 				if self.head_branch == name:
-					say("* {name}")
+					say(f"* {name}")
 				else:
-					say("  {name}")
+					say(f"  {name}")
 
 			return
 
@@ -719,11 +719,11 @@ impl Repo:
 			name := args[0].clone()
 
 			if not valid_name(name):
-				say("error: invalid branch name '{name}'")
+				say(f"error: invalid branch name '{name}'")
 				return
 
 			if self.branches.contains(name):
-				say("error: branch '{name}' already exists")
+				say(f"error: branch '{name}' already exists")
 				return
 
 			cur := self.cur_seq()
@@ -739,21 +739,21 @@ impl Repo:
 			name := args[1].clone()
 
 			if not self.branches.contains(name):
-				say("error: branch '{name}' not found")
+				say(f"error: branch '{name}' not found")
 				return
 
 			if self.head_branch == name:
-				say("error: cannot delete the current branch '{name}'")
+				say(f"error: cannot delete the current branch '{name}'")
 				return
 
 			bs := self.branches.get_or(name, 0)
 			anc := self.ancestors(self.cur_seq())
 
 			if bs == 0 or not anc.contains(bs):
-				say("error: branch '{name}' is not fully merged")
+				say(f"error: branch '{name}' is not fully merged")
 				return
 
-			say("Deleted branch {name} (was {self.short_of(bs)}).")
+			say(f"Deleted branch {name} (was {self.short_of(bs)}).")
 			self.branches.remove(name)
 			return
 
@@ -772,11 +772,11 @@ impl Repo:
 		name := args[0].clone()
 
 		if not valid_name(name):
-			say("error: invalid tag name '{name}'")
+			say(f"error: invalid tag name '{name}'")
 			return
 
 		if self.tags.contains(name):
-			say("error: tag '{name}' already exists")
+			say(f"error: tag '{name}' already exists")
 			return
 
 		var refname = "HEAD"
@@ -801,27 +801,27 @@ impl Repo:
 		if s == 0: return
 
 		c := self.clist[s - 1].clone()
-		say("commit {c.id}")
-		say("tree {tree_hash(c.tree)}")
+		say(f"commit {c.id}")
+		say(f"tree {tree_hash(c.tree)}")
 		for p in c.parents:
-			say("parent {self.id_of(p)}")
-		say("message: {c.message}")
+			say(f"parent {self.id_of(p)}")
+		say(f"message: {c.message}")
 		say("files:")
 
 		for name in c.tree.keys().sorted():
 			h := hex16(fnv(c.tree.get_or(name, "")))
-			say("  {name} {h.take(7)}")
+			say(f"  {name} {h.take(7)}")
 
 	var fn cmd_checkout(args: List[String]) Unit:
 		if args.length() == 2 and args[0] == "-b":
 			name := args[1].clone()
 
 			if not valid_name(name):
-				say("error: invalid branch name '{name}'")
+				say(f"error: invalid branch name '{name}'")
 				return
 
 			if self.branches.contains(name):
-				say("error: branch '{name}' already exists")
+				say(f"error: branch '{name}' already exists")
 				return
 
 			cur := self.cur_seq()
@@ -832,7 +832,7 @@ impl Repo:
 
 			self.branches.add(name.clone(), cur)
 			self.head_branch = name.clone()
-			say("Switched to a new branch '{name}'")
+			say(f"Switched to a new branch '{name}'")
 			return
 
 		if args.length() != 1:
@@ -847,7 +847,7 @@ impl Repo:
 
 		if self.branches.contains(tgt):
 			if self.head_branch == tgt:
-				say("Already on '{tgt}'")
+				say(f"Already on '{tgt}'")
 				return
 
 			tree := self.tree_of(self.branches.get_or(tgt, 0))
@@ -860,7 +860,7 @@ impl Repo:
 
 			self.apply_tree(tree)
 			self.head_branch = tgt.clone()
-			say("Switched to branch '{tgt}'")
+			say(f"Switched to branch '{tgt}'")
 			return
 
 		s := self.resolve(tgt)
@@ -877,7 +877,7 @@ impl Repo:
 		self.apply_tree(tree)
 		self.head_branch = ""
 		self.head_seq = s
-		say("HEAD is now at {self.short_of(s)} {self.msg_of(s)}")
+		say(f"HEAD is now at {self.short_of(s)} {self.msg_of(s)}")
 
 	var fn cmd_reset(args: List[String]) Unit:
 		if args.length() == 0 or args[0] != "--hard" or args.length() > 2:
@@ -897,7 +897,7 @@ impl Repo:
 			if s == 0: return
 
 		self.reset_to(s)
-		say("HEAD is now at {self.short_of(s)} {self.msg_of(s)}")
+		say(f"HEAD is now at {self.short_of(s)} {self.msg_of(s)}")
 
 	var fn merge_core(name: String, other: Int) Unit:
 		cur := self.cur_seq()
@@ -994,10 +994,10 @@ impl Repo:
 		self.index = result.clone()
 
 		if conflict_names.is_empty():
-			s := self.make_commit(result, [cur, other], "Merge branch '{name}'")
+			s := self.make_commit(result, [cur, other], f"Merge branch '{name}'")
 			self.move_head(s)
 			say("Merge made by the 'three-way' strategy.")
-			say("[{self.label()} {self.short_of(s)}] Merge branch '{name}'")
+			say(f"[{self.label()} {self.short_of(s)}] Merge branch '{name}'")
 			return
 
 		self.merging = true
@@ -1010,9 +1010,9 @@ impl Repo:
 			kind := kinds.get_or(path, "")
 
 			if kind == "modify/delete":
-				say("CONFLICT (modify/delete): {path}")
+				say(f"CONFLICT (modify/delete): {path}")
 			else:
-				say("CONFLICT ({kind}): Merge conflict in {path}")
+				say(f"CONFLICT ({kind}): Merge conflict in {path}")
 
 		say("Automatic merge failed; fix conflicts and then commit the result.")
 
@@ -1041,7 +1041,7 @@ impl Repo:
 		name := args[0].clone()
 
 		if not self.branches.contains(name) or self.branches.get_or(name, 0) == 0:
-			say("error: unknown branch '{name}'")
+			say(f"error: unknown branch '{name}'")
 			return
 
 		if self.dirty():
@@ -1059,7 +1059,7 @@ impl Repo:
 
 		if self.conflicts.length() > 0:
 			say(
-				"error: unresolved conflicts: {self.conflicts.values().sorted().join(" ")}"
+				f"error: unresolved conflicts: {self.conflicts.values().sorted().join(" ")}"
 			)
 			return
 
@@ -1077,7 +1077,7 @@ impl Repo:
 			self.conflicts.clear()
 			self.kinds.clear()
 			self.move_head(s)
-			say("[{self.label()} {self.short_of(s)}] {msg}")
+			say(f"[{self.label()} {self.short_of(s)}] {msg}")
 			return
 
 		if maps_equal(self.index, self.tree_of(cur)):
@@ -1092,9 +1092,9 @@ impl Repo:
 		self.move_head(s)
 
 		if cur == 0:
-			say("[{self.label()} (root-commit) {self.short_of(s)}] {msg}")
+			say(f"[{self.label()} (root-commit) {self.short_of(s)}] {msg}")
 		else:
-			say("[{self.label()} {self.short_of(s)}] {msg}")
+			say(f"[{self.label()} {self.short_of(s)}] {msg}")
 
 export fn main() Int:
 	lines := read_lines(stdin()).get()
@@ -1126,7 +1126,7 @@ export fn main() Int:
 		t := line.trim_start()
 		if t.length() == 0 or t.starts_with("#"): continue
 
-		say("> {line}")
+		say(f"> {line}")
 
 		toks := tokenize(t)
 		cmd := toks[0].clone()
@@ -1134,7 +1134,7 @@ export fn main() Int:
 
 		if cmd == "write" or cmd == "append":
 			if args.length() != 1:
-				say("usage: {cmd} FILE")
+				say(f"usage: {cmd} FILE")
 				continue
 
 			name := args[0].clone()
@@ -1142,7 +1142,7 @@ export fn main() Int:
 
 			while i < n and lines[i] != ".":
 				bl := lines[i].clone()
-				body = body.concat("{bl}\n")
+				body = body.concat(f"{bl}\n")
 				i += 1
 
 			if i < n:
@@ -1184,7 +1184,7 @@ export fn main() Int:
 		else if cmd == "merge":
 			repo.cmd_merge(args)
 		else:
-			say("error: unknown command '{cmd}'")
+			say(f"error: unknown command '{cmd}'")
 
 	stdout().flush().get()
 	return 0

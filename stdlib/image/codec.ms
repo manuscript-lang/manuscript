@@ -23,15 +23,15 @@ HARD_MAX_PIXELS := 1073741824
 
 // Builds an `EBADMSG` error for malformed image data.
 export fn bad(message: String) Error:
-	return Error("image: {message}", kind: "EBADMSG")
+	return Error(f"image: {message}", kind: "EBADMSG")
 
 // Builds an `ENOTSUP` error for a valid but unsupported image feature.
 export fn unsupported(message: String) Error:
-	return Error("image: {message}", kind: "ENOTSUP")
+	return Error(f"image: {message}", kind: "ENOTSUP")
 
 // Builds an `EOVERFLOW` error for dimensions past a limit.
 export fn too_big(message: String) Error:
-	return Error("image: {message}", kind: "EOVERFLOW")
+	return Error(f"image: {message}", kind: "EOVERFLOW")
 
 // Clamps `value` to 0 through 255 as a byte.
 export fn byte(value: Int) UInt8:
@@ -45,13 +45,13 @@ export fn byte(value: Int) UInt8:
 export fn pixel_count(width: Int, height: Int, max_pixels: Int?) Int!:
 	if width < 1 or height < 1: return error(bad("dimensions must be positive"))
 	if width > HARD_MAX_PIXELS / height: return error(
-		too_big("{width}x{height} is too large")
+		too_big(f"{width}x{height} is too large")
 	)
 
 	count := width * height
 	if limit := max_pixels:
 		if count > limit: return error(
-			too_big("{width}x{height} exceeds {limit} pixels")
+			too_big(f"{width}x{height} exceeds {limit} pixels")
 		)
 	return ok(count)
 

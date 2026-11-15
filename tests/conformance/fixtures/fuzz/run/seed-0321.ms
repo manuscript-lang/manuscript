@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     var acc1 = 0
@@ -16,31 +16,31 @@ export fn main() Int:
         stepacc1 += 1
         acc1 += stepacc1 * stepacc1 + 1
 
-    say("acc1 = {acc1}")
+    say(f"acc1 = {acc1}")
 
     i2 := (((-41) * (17 * 298094)) + ((28 * 49) / (-663377)))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     s3 := ("héllo".upper() + "  padded  ")
-    say("s3 = [{s3}]")
+    say(f"s3 = [{s3}]")
 
     b4 := (s3.contains(s3) and false)
-    say("b4 = {b4}")
+    say(f"b4 = {b4}")
 
     s5 := (s3 + ("beta".trim() + s3.upper()))
-    say("s5 = [{s5}]")
+    say(f"s5 = [{s5}]")
 
     b6 := (0.0 > ((811.25 * 905.500) / 190.583))
-    say("b6 = {b6}")
+    say(f"b6 = {b6}")
 
     i7 := (-254195)
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
-    b8 := ("brace\{s\}".upper().starts_with(s3) and ("日本語" != s5))
-    say("b8 = {b8}")
+    b8 := ("brace{s}".upper().starts_with(s3) and ("日本語" != s5))
+    say(f"b8 = {b8}")
 
     var acc9 = 0
     for i in 0..6:
         acc9 += i * 3
-    say("acc9 = {acc9}")
+    say(f"acc9 = {acc9}")
     return 0

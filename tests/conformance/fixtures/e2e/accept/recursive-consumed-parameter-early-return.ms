@@ -13,7 +13,7 @@ enum Expr:
 fn eval(e: Expr) Int!:
 	match e:
 		Num(n): return ok(n)
-		Var(name): return error(Error("unbound {name}"))
+		Var(name): return error(Error(f"unbound {name}"))
 		Keep(name):
 			xs := [name]
 			return ok(xs.length())

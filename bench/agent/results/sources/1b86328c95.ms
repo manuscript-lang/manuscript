@@ -255,9 +255,9 @@ fn halt(var st: Sim, line: String) Unit:
 // A fatal error from the Makefile, or from make itself when no line is current.
 fn fail(var st: Sim, msg: String) Unit:
     if st.line > 0:
-        halt(var st, "Makefile:{st.line}: *** {msg}.  Stop.")
+        halt(var st, f"Makefile:{st.line}: *** {msg}.  Stop.")
     else:
-        halt(var st, "make: *** {msg}.  Stop.")
+        halt(var st, f"make: *** {msg}.  Stop.")
 
 // ---------- pattern helpers ----------
 
@@ -386,8 +386,8 @@ fn expand_range(var st: Sim, cs: List[String], a: Int, b: Int) String:
             i += 2
             continue
 
-        if nx == "(" or nx == "\{":
-            close := if nx == "(": ")" else: "\}"
+        if nx == "(" or nx == "{":
+            close := if nx == "(": ")" else: "}"
 
             k := match_close(cs, i + 2, b, nx, close)
 
@@ -461,7 +461,7 @@ fn var_value(var st: Sim, name: String) String:
 
 fn recursive_value(var st: Sim, name: String, from_cmd: Bool) String:
     if st.expanding.contains(name):
-        fail(var st, "Recursive variable '{name}' references itself (eventually)")
+        fail(var st, f"Recursive variable '{name}' references itself (eventually)")
         return ""
 
     raw := if from_cmd: st.cmd.get(name).get("") else: st.vals.get(name).get("")
@@ -479,10 +479,10 @@ fn split_args(rest: String) List[String]:
     var depth = 0
 
     for c in rest.chars():
-        if c == "(" or c == "\{":
+        if c == "(" or c == "{":
             depth += 1
             cur = cur + c
-        else if c == ")" or c == "\}":
+        else if c == ")" or c == "}":
             depth -= 1
             cur = cur + c
         else if c == "," and depth == 0:
@@ -596,7 +596,7 @@ fn call_fn(var st: Sim, name: String, raw: List[String]) String:
 
     if name == "words":
         count := split_ws(arg(var st, raw, 0)).length()
-        return "{count}"
+        return f"{count}"
 
     if name == "firstword":
         ws := split_ws(arg(var st, raw, 0))
@@ -799,9 +799,9 @@ fn ifeq_args(var st: Sim, rest: String) Pair:
     while k < ic.length():
         c := ic[k]
 
-        if c == "(" or c == "\{":
+        if c == "(" or c == "{":
             depth += 1
-        else if c == ")" or c == "\}":
+        else if c == ")" or c == "}":
             depth -= 1
         else if c == "," and depth == 0:
             commas += 1
@@ -903,8 +903,8 @@ fn top_colon(cs: List[String]) Int:
             return -1
 
         if c == "$":
-            if i + 1 < n and (cs[i + 1] == "(" or cs[i + 1] == "\{"):
-                close := if cs[i + 1] == "(": ")" else: "\}"
+            if i + 1 < n and (cs[i + 1] == "(" or cs[i + 1] == "{"):
+                close := if cs[i + 1] == "(": ")" else: "}"
 
                 k := match_close(cs, i + 2, n, cs[i + 1], close)
                 if k < 0:
@@ -949,7 +949,7 @@ fn close_rule(var st: Sim) Unit:
                 if old.recipe.length() > 0:
                     say(
                         var st,
-                        "Makefile:{r.line}: warning: overriding recipe for target '{name}'"
+                        f"Makefile:{r.line}: warning: overriding recipe for target '{name}'"
                     )
                 recipe = r.recipe.clone()
 
@@ -1250,7 +1250,7 @@ fn cycle_error(var st: Sim, name: String) Unit:
     parts.append(name.clone())
 
     path := parts.join(" -> ")
-    halt(var st, "make: *** Circular dependency detected: {path}.  Stop.")
+    halt(var st, f"make: *** Circular dependency detected: {path}.  Stop.")
 
 // Removes the quote characters from a word.
 fn strip_quotes(w: String) String:
@@ -1296,7 +1296,7 @@ fn simulate(var st: Sim, command: String) Int:
     if w0 == "cp":
         if ws.length() == 3:
             if not st.files.contains(ws[1].clone()):
-                say(var st, "cp: cannot stat '{ws[1]}': No such file or directory")
+                say(var st, f"cp: cannot stat '{ws[1]}': No such file or directory")
                 return 1
 
             st.clock += 1
@@ -1385,10 +1385,10 @@ fn run_recipe(var st: Sim, name: String, r: Res, existed: Bool, old: Int) Unit:
             if ign:
                 say(
                     var st,
-                    "make: [Makefile:{rl.line}: {name}] Error {status} (ignored)"
+                    f"make: [Makefile:{rl.line}: {name}] Error {status} (ignored)"
                 )
             else:
-                halt(var st, "make: *** [Makefile:{rl.line}: {name}] Error {status}")
+                halt(var st, f"make: *** [Makefile:{rl.line}: {name}] Error {status}")
                 break
 
     st.line = 0
@@ -1423,11 +1423,11 @@ fn update(var st: Sim, name: String, needed_by: String) Bool:
             return true
 
         if needed_by == "":
-            halt(var st, "make: *** No rule to make target '{name}'.  Stop.")
+            halt(var st, f"make: *** No rule to make target '{name}'.  Stop.")
         else:
             halt(
                 var st,
-                "make: *** No rule to make target '{name}', needed by '{needed_by}'.  Stop."
+                f"make: *** No rule to make target '{name}', needed by '{needed_by}'.  Stop."
             )
 
         return false
@@ -1550,9 +1550,9 @@ fn do_build(var st: Sim, ws: List[String], dry: Bool) Unit:
             file := not st.phony.contains(g.clone()) and st.files.contains(g.clone())
 
             if r.recipe.length() > 0 or file:
-                say(var st, "make: '{g}' is up to date.")
+                say(var st, f"make: '{g}' is up to date.")
             else:
-                say(var st, "make: Nothing to be done for '{g}'.")
+                say(var st, f"make: Nothing to be done for '{g}'.")
 
 fn do_deps(var st: Sim, ws: List[String]) Unit:
     args := parse_args(ws)
@@ -1594,7 +1594,7 @@ fn do_targets(var st: Sim, ws: List[String]) Unit:
         return
 
     if dg := default_goal(st):
-        say(var st, "default: {dg}")
+        say(var st, f"default: {dg}")
     for t in st.ts.clone():
         say(var st, fmt_rule(t.name, t.pre, t.oo))
     for p in st.pats.clone():
@@ -1637,7 +1637,7 @@ fn do_files(var st: Sim) Unit:
 
     for k in keys:
         m := st.files.get(k.clone()).get(0)
-        say(var st, "{k} {m}")
+        say(var st, f"{k} {m}")
 
 fn handle_request(var st: Sim, line: String) Unit:
     shown := rtrimws(line)
@@ -1670,7 +1670,7 @@ fn handle_request(var st: Sim, line: String) Unit:
         for k in 1..ws.length():
             st.files.remove(ws[k].clone())
     else:
-        say(var st, "unknown request: {w}")
+        say(var st, f"unknown request: {w}")
 
 export fn main() Int:
     raw := read_lines(stdin()).get(List[String]())

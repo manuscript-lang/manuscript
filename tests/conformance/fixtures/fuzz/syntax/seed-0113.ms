@@ -6,22 +6,22 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     l1 := [(-4)]
-    say("l1 = {l1} len {l1.length()}")
+    say(f"l1 = {l1} len {l1.length()}")
 
     b2 := true
-    say("b2 = {b2}")
+    say(f"b2 = {b2}")
 
     b3 := (
         "emoji 😀".reverse().reverse() == (
-            ("{(9 * (-30))}:" + "naïve")
+            (f"{(9 * (-30))}:" + "naïve")
             + ("héllo" + "quote\"d")
         )
     )
-    say("b3 = {b3}")
+    say(f"b3 = {b3}")
 
     var acc4 = 0
 
@@ -31,13 +31,13 @@ export fn main() Int:
         else:
             acc4 -= 1
 
-    say("acc4 = {acc4}")
+    say(f"acc4 = {acc4}")
 
     f5 := ((9.5 / 4.0e-5) * 294.074)
-    say("f5 = {f5}")
+    say(f"f5 = {f5}")
 
     var acc6 = 0
     for i in 0..6:
         acc6 += i * 4
-    say("acc6 = {acc6}")
+    say(f"acc6 = {acc6}")
     return 0

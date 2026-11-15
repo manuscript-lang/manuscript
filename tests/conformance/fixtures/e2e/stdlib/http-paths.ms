@@ -34,7 +34,7 @@ fn route(request: HttpRequest) HttpResponse:
 	return HttpResponse(
 		status: 200,
 		headers: fields,
-		body: "{request.path}|{request.query}".to_bytes(),
+		body: f"{request.path}|{request.query}".to_bytes(),
 	)
 
 fn stream_route(var exchange: HttpExchange) Void!:
@@ -42,7 +42,7 @@ fn stream_route(var exchange: HttpExchange) Void!:
 	chain_1.add(key: "Set-Cookie", value: ["a=1", "b=2"])
 
 	_sent := exchange.send_headers(status: 200, headers: (list_headers(chain_1)?))?
-	_written := (http_result(exchange.write("{exchange.path()}|{exchange.query()}"))?)
+	_written := (http_result(exchange.write(f"{exchange.path()}|{exchange.query()}"))?)
 
 fn check_route(url: String, expected: String) Void!:
 	response := (
@@ -78,17 +78,17 @@ fn check_rejected(url: String) Void!:
 	)
 
 fn check_paths(base: String) Void!:
-	(check_route(url: "{base}/a%20b", expected: "/a b|")?)
-	(check_route(url: "{base}/%2e%2e/x?y=%2F", expected: "/x|y=%2F")?)
-	(check_route(url: "{base}/a/../b/", expected: "/b/|")?)
-	(check_route(url: "{base}/a%252Fb?x=%2500", expected: "/a%2Fb|x=%2500")?)
-	(check_rejected("{base}/a%2Fb")?)
-	(check_rejected("{base}/a%00b")?)
-	(check_rejected("{base}/bad%ff/../x")?)
+	(check_route(url: f"{base}/a%20b", expected: "/a b|")?)
+	(check_route(url: f"{base}/%2e%2e/x?y=%2F", expected: "/x|y=%2F")?)
+	(check_route(url: f"{base}/a/../b/", expected: "/b/|")?)
+	(check_route(url: f"{base}/a%252Fb?x=%2500", expected: "/a%2Fb|x=%2500")?)
+	(check_rejected(f"{base}/a%2Fb")?)
+	(check_rejected(f"{base}/a%00b")?)
+	(check_rejected(f"{base}/bad%ff/../x")?)
 
 test "buffered routes validate original input and decode once":
 	server := serve(address: "127.0.0.1:0", handler: buffered(route)) | expect_ok?
-	(check_paths("http://{server.address()}")?)
+	(check_paths(f"http://{server.address()}")?)
 
 test "streaming routes validate original input and decode once":
 	server := (
@@ -98,7 +98,7 @@ test "streaming routes validate original input and decode once":
 			options: HttpServerOptions(tls: none),
 		) | expect_ok?
 	)
-	(check_paths("http://{server.address()}")?)
+	(check_paths(f"http://{server.address()}")?)
 
 fn expect_http_error[T](outcome: T!) Void!:
 	match outcome:

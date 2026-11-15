@@ -6,38 +6,38 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     b1 := (((false and true) and ("hello world" == "emoji 😀")) or (not true))
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
     b2 := ((((-44) * 39) + 18) <= ((46 * (-34)) - ((-42) * (-19))))
-    say("b2 = {b2}")
+    say(f"b2 = {b2}")
 
     l3 := [20, (-25), 28, 28]
-    say("l3 = {l3} len {l3.length()}")
+    say(f"l3 = {l3} len {l3.length()}")
 
     i4 := (147168 * ((22 / (-37)) + 28))
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     f5 := 3.5
-    say("f5 = {f5}")
+    say(f"f5 = {f5}")
 
     s6 := ("emoji 😀" + "gamma").trim().replace("delta", "42")
-    say("s6 = [{s6}]")
+    say(f"s6 = [{s6}]")
 
     i7 := ((((-37) * (-27)) + ((-38) - (-42))) + l3.length())
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
     f8 := ((f5 + (3.5 / 849.052)) - f5)
-    say("f8 = {f8}")
+    say(f"f8 = {f8}")
 
     i9 := i7
-    say("i9 = {i9}")
+    say(f"i9 = {i9}")
 
     l10 := l3.filter(fn x: x > 3)
-    say("l10 = {l10} len {l10.length()}")
+    say(f"l10 = {l10} len {l10.length()}")
 
     if ((-i4) >= (-i7)):
         say(s6)
@@ -45,17 +45,17 @@ export fn main() Int:
         say(s6.trim())
 
     b11 := (("a" + s6) == "emoji 😀".upper())
-    say("b11 = {b11}")
+    say(f"b11 = {b11}")
 
     l12 := [(-10), 5, (-13)]
-    say("l12 = {l12} len {l12.length()}")
+    say(f"l12 = {l12} len {l12.length()}")
 
-    s13 := (("{(23 / i9)}:" + "line\nbreak") + s6.lower()).trim()
-    say("s13 = [{s13}]")
+    s13 := ((f"{(23 / i9)}:" + "line\nbreak") + s6.lower()).trim()
+    say(f"s13 = [{s13}]")
 
-    s14 := ("{(i9 / i7)}:" + ("{((-800235) + i4)}:" + s13)).reverse()
-    say("s14 = [{s14}]")
+    s14 := (f"{(i9 / i7)}:" + (f"{((-800235) + i4)}:" + s13)).reverse()
+    say(f"s14 = [{s14}]")
 
     i15 := ((i9 / i4) * ((i9 + i4) % (-(-22))))
-    say("i15 = {i15}")
+    say(f"i15 = {i15}")
     return 0

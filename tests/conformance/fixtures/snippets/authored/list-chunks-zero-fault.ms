@@ -4,4 +4,4 @@
 import stdout from "@std/io/io.ms"
 
 fn main() Void:
-    void stdout().write("{[1, 2, 3].chunks(0).length()}\n")
+    void stdout().write(f"{[1, 2, 3].chunks(0).length()}\n")

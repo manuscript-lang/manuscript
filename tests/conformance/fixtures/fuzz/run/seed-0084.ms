@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -22,13 +22,13 @@ fn fib(n: Int) Int:
     return a
 
 export fn main() Int:
-    say("fib(29) = {fib(29)}")
+    say(f"fib(29) = {fib(29)}")
     say(
-        "{(((-10) - (-793311500759)) + 46)} {(-((-41) * (-11)))} {((((-10) - (-793311500759)) + 46) < (-((-41) * (-11))))} sum {(((-10) - (-793311500759)) + 46) + (-((-41) * (-11)))}"
+        f"{(((-10) - (-793311500759)) + 46)} {(-((-41) * (-11)))} {((((-10) - (-793311500759)) + 46) < (-((-41) * (-11))))} sum {(((-10) - (-793311500759)) + 46) + (-((-41) * (-11)))}"
     )
 
     b1 := "a".is_empty()
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
     var acc2 = 0
     var stepacc2 = 0
@@ -37,17 +37,17 @@ export fn main() Int:
         stepacc2 += 1
         acc2 += stepacc2 * stepacc2 + (-3)
 
-    say("acc2 = {acc2}")
+    say(f"acc2 = {acc2}")
 
     l3 := [3, (-15)]
-    say("l3 = {l3} len {l3.length()}")
+    say(f"l3 = {l3} len {l3.length()}")
 
     b4 := ((319.398 / (727.988 - 190.109)) < 3.0e6)
-    say("b4 = {b4}")
+    say(f"b4 = {b4}")
 
-    s5 := ("{47}:" + "back\\slash".upper())
-    say("s5 = [{s5}]")
+    s5 := (f"{47}:" + "back\\slash".upper())
+    say(f"s5 = [{s5}]")
 
     big6 := 9223372036854775807
-    say("{big6 + 1}")
+    say(f"{big6 + 1}")
     return 0

@@ -6,14 +6,14 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := ((((-241775290038) - (-17)) * ((-901857) + 3)) / 50)
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     i2 := (i1 / i1)
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     bad: Bool := 1
     return 0

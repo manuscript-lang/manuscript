@@ -19,7 +19,7 @@ type WorkerCleanup:
     label: String
 
 fn var WorkerCleanup.close() Void!:
-    say("{self.label} stopped\n")
+    say(f"{self.label} stopped\n")
     return ok()
 
 type Server:
@@ -41,7 +41,7 @@ fn var Server.close() Void!:
         farewell = drained
 
     if farewell.is_error():
-        say("farewell failed: {farewell.err().message}\n")
+        say(f"farewell failed: {farewell.err().message}\n")
     else:
         say("farewell sent\n")
 
@@ -51,7 +51,7 @@ fn var Server.close() Void!:
 fn serve() Result[Void, Error]:
     var signals = watch_signals([2, 15])?
     listener := listen("127.0.0.1:0")?
-    say("{listener.address()}\n")
+    say(f"{listener.address()}\n")
 
     client := listener.accept().wait()?
     _server := Server(listener: listener, client: client)
@@ -65,7 +65,7 @@ export fn main() Int:
     served := serve()
 
     if served.is_error():
-        say("{served.err().message}\n")
+        say(f"{served.err().message}\n")
         return 1
 
     return 0

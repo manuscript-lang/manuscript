@@ -25,6 +25,6 @@ export fn main() Int:
 	print(text + "!" + text)
 	var total = 0
 	for i in 0..1000:
-		total += "row {i} with enough text to leave the inline form".to_bytes().decode_utf8().get("").length()
+		total += f"row {i} with enough text to leave the inline form".to_bytes().decode_utf8().get("").length()
 	print(total)
 	return 0

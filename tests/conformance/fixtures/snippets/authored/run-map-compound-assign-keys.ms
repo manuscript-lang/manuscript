@@ -21,5 +21,5 @@ export fn main() Int:
     slot := 1
     counts[slot] += 4
     counts[slot] -= 1
-    print("{stock.levels["a"]} {stock.levels["b"]} {counts[1]} {key}")
+    print(f"{stock.levels["a"]} {stock.levels["b"]} {counts[1]} {key}")
     return 0

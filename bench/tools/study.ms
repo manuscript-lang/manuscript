@@ -31,7 +31,7 @@ export fn labeled(label: String, path: String) Labeled:
 // Creates `path` and fails when it already exists (a study never overwrites earlier
 // evidence).
 export fn fresh_directory(path: String) Void!:
-	if exists(path): return invalid("{path} already exists")
+	if exists(path): return invalid(f"{path} already exists")
 
 	create_directory(path, recursive: true).get()
 
@@ -55,7 +55,7 @@ export fn run_ints(path: String, args: List[String]) List[Int]!:
 
 	for part in parts:
 		n := part.parse_int()
-		if n.is_none(): return invalid("not an integer: {part}")
+		if n.is_none(): return invalid(f"not an integer: {part}")
 
 		out.append(n.get(0))
 
@@ -108,7 +108,7 @@ export fn binaries_json(items: List[Labeled]) JsonValue:
 // The parsed JSON file at `path`.
 export fn read_json(path: String) JsonValue!:
 	doc := parse[JsonValue](read_text(path))
-	if doc.is_error(): return invalid("{path} is not valid JSON")
+	if doc.is_error(): return invalid(f"{path} is not valid JSON")
 
 	return ok(doc.get(JsonValue.Null))
 
@@ -127,7 +127,7 @@ export fn before_median(summary: JsonValue, name: String, operation: String) Flo
 			if v := row.get_in(["distributions", "before", "median_ns"]):
 				return ok(v.as_float().get(0.0))
 
-	return invalid("no summary row for {name}")
+	return invalid(f"no summary row for {name}")
 
 export fn platform_name() String:
 	return platform()
@@ -144,7 +144,7 @@ export fn all_ints(values: List[String]) List[Int]!:
 
 	for v in values:
 		n := v.trim().parse_int()
-		if n.is_none(): return invalid("not an integer: {v}")
+		if n.is_none(): return invalid(f"not an integer: {v}")
 
 		out.append(n.get(0))
 

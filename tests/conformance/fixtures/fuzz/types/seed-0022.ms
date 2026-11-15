@@ -6,26 +6,26 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     if (not (true and false)):
-        say(("brace\{s\}" + "emoji 😀"))
+        say(("brace{s}" + "emoji 😀"))
     else:
         say("  padded  ".reverse())
 
     b1 := (not ("42".upper() != "ms"))
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
     bad := missing_function(3)
     f2 := 280.25
-    say("f2 = {f2}")
+    say(f"f2 = {f2}")
 
     s3 := "alpha"
-    say("s3 = [{s3}]")
+    say(f"s3 = [{s3}]")
 
     b4 := ("emoji 😀".contains(s3) and "héllo".trim().is_empty())
-    say("b4 = {b4}")
+    say(f"b4 = {b4}")
 
     if (s3.is_empty() and (false and false)):
         say("alpha".trim())

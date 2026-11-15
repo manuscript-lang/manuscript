@@ -7,7 +7,7 @@ import (
 // with source text.
 HARD := "\u{E000}"
 DIGITS := "0123456789"
-PUNCT := "!\"#$%&'()*+,-./:;<=>?@[\\]^_`\{|\}~"
+PUNCT := "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~"
 
 // kind: 0 ready HTML in text, 1 paragraph (text is the paragraph text), 2 list, 3 list item.
 // next_line is the index of the first line after the block.
@@ -359,7 +359,7 @@ fn parse_block(lines: List[String], i: Int) Block:
 
 	h := atx_of(s)
 	if h.level > 0:
-		return html_block("<h{h.level}>" + inline(h.text) + "</h{h.level}>\n", i + 1)
+		return html_block(f"<h{h.level}>" + inline(h.text) + f"</h{h.level}>\n", i + 1)
 	if is_hr(s): return html_block("<hr />\n", i + 1)
 	if is_quote(s): return parse_quote(lines, i)
 	if marker_of(s).ok: return parse_list(lines, i)
@@ -565,7 +565,7 @@ fn render_list(b: Block) String:
 	if b.ordered:
 		html = "<ol>\n"
 		if b.start != 1:
-			html = "<ol start=\"{b.start}\">\n"
+			html = f"<ol start=\"{b.start}\">\n"
 
 	for item in b.children:
 		html += "<li>" + render_body(item.children, not b.loose) + "</li>\n"

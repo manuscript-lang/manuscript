@@ -3,7 +3,7 @@ import lines, collect from "@std/io/streams.ms"
 
 fn range_text(start: Int, len: Int) String:
     s := if len > 0: start + 1 else: start
-    return if len == 1: "{s}" else: "{s},{len}"
+    return if len == 1: f"{s}" else: f"{s},{len}"
 
 // Counts script lines in lo..hi that are not marked `skip`.
 fn count(script: List[String], lo: Int, hi: Int, skip: String) Int:
@@ -27,24 +27,24 @@ export fn main() Int:
     var j = 0
     while i < n or j < m:
         if i < n and j < m and a[i] == b[j]:
-            script.append(" {a[i]}")
+            script.append(f" {a[i]}")
             i += 1
             j += 1
         else if j == m or (i < n and table[(i + 1) * w + j] >= table[i * w + j + 1]):
-            script.append("-{a[i]}")
+            script.append(f"-{a[i]}")
             i += 1
         else:
-            script.append("+{b[j]}")
+            script.append(f"+{b[j]}")
             j += 1
     changes := (0..script.length()).filter(fn k: not script[k].starts_with(" "))
     if changes.is_empty(): return 0
-    print("--- {name_a}\n+++ {name_b}")
+    print(f"--- {name_a}\n+++ {name_b}")
     var first = changes[0]
     for k in 1..changes.length() + 1:
         if k < changes.length() and changes[k] - changes[k - 1] - 1 <= 2 * ctx: continue
         lo := (first - ctx).max(0)
         hi := (changes[k - 1] + 1 + ctx).min(script.length())
-        print("@@ -{range_text(count(script, 0, lo, "+"), count(script, lo, hi, "+"))} +{range_text(count(script, 0, lo, "-"), count(script, lo, hi, "-"))} @@")
+        print(f"@@ -{range_text(count(script, 0, lo, "+"), count(script, lo, hi, "+"))} +{range_text(count(script, 0, lo, "-"), count(script, lo, hi, "-"))} @@")
         for l in script.slice(lo, hi).get(): print(l)
         if k < changes.length(): first = changes[k]
     return 0

@@ -1,0 +1,75 @@
+name: Packages
+
+# Fetches a package from GitHub over https, builds a service that depends on it, and runs the service against
+# a real PostgreSQL on Linux, macOS and Windows. Nightly and on dispatch only: it needs the network and a
+# database, and the pull request jobs stay offline.
+on:
+  schedule:
+    - cron: '41 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  service:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: linux, runner: ubuntu-24.04, arch: amd64}
+          - {os: darwin, runner: macos-15, arch: arm64}
+          - {os: windows, runner: windows-2025, arch: amd64}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+      - uses: ./.github/actions/rust-env
+        with:
+          os: ${{ matrix.os }}
+          arch: ${{ matrix.arch }}
+      - name: Install PostgreSQL
+        if: matrix.os == 'darwin'
+        shell: bash
+        run: brew install postgresql@16
+      - name: Build ms
+        shell: bash
+        run: |
+          cargo xtask runtime
+          cargo build --release --locked -p ms-cli
+      - name: Fetch the package and run the service
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = Windows ] && ! ls -d "/c/Program Files/PostgreSQL/"*/bin > /dev/null 2>&1; then
+            choco install postgresql16 --params '/Password:unused' -y --no-progress
+          fi
+          case "$RUNNER_OS" in
+            Windows) PG_BIN=$(ls -d "/c/Program Files/PostgreSQL/"*/bin | sort -V | tail -1) ;;
+            Linux) PG_BIN=$(ls -d /usr/lib/postgresql/*/bin | sort -V | tail -1) ;;
+            macOS) PG_BIN="$(brew --prefix postgresql@16)/bin" ;;
+          esac
+          export PG_BIN
+          ms="$PWD/target/release/ms"
+          export MS_PACKAGE_CACHE="$RUNNER_TEMP/packages"
+          cd examples/postgres-service
+          # With ms.lock committed, install downloads exactly the locked commit and checks its hash.
+          "$ms" install
+          # The package ships the script that starts a throwaway server.
+          hash=$(sed -n 's/.*sha256:\([0-9a-f]*\).*/\1/p' ms.lock | head -1)
+          vars=$(bash "$MS_PACKAGE_CACHE/$hash/tests/start-postgres.sh" "$RUNNER_TEMP/pg")
+          export $vars
+          "$ms" build ms.toml -o "$RUNNER_TEMP/service"
+          "$RUNNER_TEMP/service" &
+          service=$!
+          for _ in $(seq 30); do
+            curl -fsS http://127.0.0.1:8080/hello && break
+            sleep 1
+          done
+          first=$(curl -fsS http://127.0.0.1:8080/hello)
+          second=$(curl -fsS http://127.0.0.1:8080/hello)
+          kill "$service" || true
+          echo "$first / $second"
+          [ "$second" = "visit $(( ${first#visit } + 1 ))" ]

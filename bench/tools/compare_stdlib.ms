@@ -82,7 +82,7 @@ fn run(opts: Map[String, String], repeats: Int, samples: Int) Result[String, Err
 	want := expected.get(Map[String, Int]())
 	labels := case_labels(names)
 	var table = [
-		"Median of {repeats} alternating runs of {samples} samples; all {want.length()} cases and operation counts verified.",
+		f"Median of {repeats} alternating runs of {samples} samples; all {want.length()} cases and operation counts verified.",
 		"", "| operation | ops | before ns/op | after ns/op | after/before |",
 		"|---|---:|---:|---:|---:|"
 	]
@@ -119,13 +119,13 @@ fn run(opts: Map[String, String], repeats: Int, samples: Int) Result[String, Err
 		var shown = "—"
 		if r := ratio: shown = r.to_fixed(3) + "x"
 		table.append(
-			"| {label} | {ops} | {before.to_precision(4)} | {after.to_precision(4)} | {shown} |"
+			f"| {label} | {ops} | {before.to_precision(4)} | {after.to_precision(4)} | {shown} |"
 		)
 
 	out := opts.get_or("output", "")
 	ensure_directory(out)
 	for version in ["before", "after"]:
-		write_text("{out}/stdlib-{version}.jsonl", raw.get_or(version, []).join(""))
+		write_text(f"{out}/stdlib-{version}.jsonl", raw.get_or(version, []).join(""))
 
 	var shas = Map[String, JsonValue]()
 
@@ -140,11 +140,11 @@ fn run(opts: Map[String, String], repeats: Int, samples: Int) Result[String, Err
 	environment.add("repeats", jint(repeats))
 	environment.add("samples", jint(samples))
 	environment.add("binaries", jobject(shas))
-	write_text("{out}/environment.json", dump(jobject(environment)))
-	write_text("{out}/summary.json", dump(jobject(summary)))
+	write_text(f"{out}/environment.json", dump(jobject(environment)))
+	write_text(f"{out}/summary.json", dump(jobject(summary)))
 
 	rendered := table.join("\n") + "\n"
-	write_text("{out}/results.md", rendered)
+	write_text(f"{out}/results.md", rendered)
 	return ok(rendered)
 
 fn main() Int:

@@ -126,9 +126,9 @@ fn solve(line: String) String:
 
 	if cmd == "lcs" or cmd == "edit":
 		if n != 3 or toks[1].is_empty() or toks[2].is_empty(): return BAD
-		if cmd == "lcs": return "{lcs_len(toks[1].as_bytes(), toks[2].as_bytes())}"
+		if cmd == "lcs": return f"{lcs_len(toks[1].as_bytes(), toks[2].as_bytes())}"
 
-		return "{edit_dist(toks[1].as_bytes(), toks[2].as_bytes())}"
+		return f"{edit_dist(toks[1].as_bytes(), toks[2].as_bytes())}"
 
 	if cmd == "knap":
 		if n < 2: return BAD
@@ -150,7 +150,7 @@ fn solve(line: String) String:
 			ws.append(w)
 			vs.append(v)
 
-		return "{knap(cap, ws, vs)}"
+		return f"{knap(cap, ws, vs)}"
 
 	if cmd == "coins":
 		if n < 3: return BAD
@@ -169,7 +169,7 @@ fn solve(line: String) String:
 		r := coin_count(amount, cs)
 		if r < 0: return "impossible"
 
-		return "{r}"
+		return f"{r}"
 
 	return BAD
 

@@ -71,7 +71,7 @@ test "host clocks are usable and zero sleep completes":
 test "parse_timestamp reports offsets that leave years 1 through 9999 as out of range":
 	out_of_range: Timestamp! := error(Error("time: value out of range", kind: "ERANGE"))
 	for text in ["0001-01-01T00:00:00+00:01", "9999-12-31T23:59:59-00:01"]:
-		if parse_timestamp(text) != out_of_range: return fail("range {text}")
+		if parse_timestamp(text) != out_of_range: return fail(f"range {text}")
 
 test "calendar fields follow the requested zone":
 	moment := parse_timestamp("2024-03-10T12:30:15.250Z")?

@@ -6,23 +6,23 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     say(
-        "{((43 - 34) + ((-43) * 4))} {4} {(((43 - 34) + ((-43) * 4)) < 4)} sum {((43 - 34) + ((-43) * 4)) + 4}"
+        f"{((43 - 34) + ((-43) * 4))} {4} {(((43 - 34) + ((-43) * 4)) < 4)} sum {((43 - 34) + ((-43) * 4)) + 4}"
     )
 
     i1 := ((((-11) % 42) + (-39)) * (((-36989) * (-1)) + (497842 * 45)))
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     bad := Map[Int, Int]().get(1, 2, 3)
     b2 := ((i1 * i1) == i1)
-    say("b2 = {b2}")
+    say(f"b2 = {b2}")
 
     i3 := (-((-(-266861)) + (-33)))
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     i4 := i3
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
     return 0

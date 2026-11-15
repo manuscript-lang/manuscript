@@ -1,7 +1,7 @@
 {
   "format": 1,
   "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
+  "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
     "fmt": "import panic from \"@std/core.ms\"\n\ntest \"five iterations\":\n\tvar index = 0\n\tvar total = 0\n\n\twhile index < 5:\n\t\ttotal += index\n\t\tindex += 1\n\n\tif index != 5 or total != 10: return panic(\"Expected five iterations and total 10\")\n"

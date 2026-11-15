@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -28,28 +28,28 @@ export fn main() Int:
         say("emoji 😀".replace("MiXeD CaSe", "Tab\there"))
 
     b1 := false
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
-    s2 := ("{((-17) - 865442)}:" + "gamma")
-    say("s2 = [{s2}]")
+    s2 := (f"{((-17) - 865442)}:" + "gamma")
+    say(f"s2 = [{s2}]")
 
     f3 := ((306.528 + (915.282 * 603.25)) + (617.039 - (639.395 / 273.346)))
-    say("f3 = {f3}")
-    say("fib(39) = {fib(39)}")
+    say(f"f3 = {f3}")
+    say(f"fib(39) = {fib(39)}")
 
     b4 := (
         ((932.25 - 860.714) < (f3 - 158.178))
         and ((b1 and b1) and ((-986354) <= (-203685)))
     )
-    say("b4 = {b4}")
+    say(f"b4 = {b4}")
 
     var acc5 = 0
     for i in 0..3:
         acc5 += i * 2
-    say("acc5 = {acc5}")
+    say(f"acc5 = {acc5}")
 
     f6 := (((f3 / 0.0) - 552.068) - f3)
-    say("f6 = {f6}")
+    say(f"f6 = {f6}")
 
     b7 := (
         (s2 + (s2 + s2)) != (
@@ -57,11 +57,11 @@ export fn main() Int:
             + "beta".replace("x", "héllo")
         )
     )
-    say("b7 = {b7}")
+    say(f"b7 = {b7}")
 
     l8 := [1, 2, 3].take(0)
-    say("l8 = {l8} len {l8.length()}")
+    say(f"l8 = {l8} len {l8.length()}")
 
     f9 := 226.760
-    say("f9 = {f9}")
+    say(f"f9 = {f9}")
     return 0

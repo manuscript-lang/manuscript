@@ -17,7 +17,7 @@ import RetryPolicy, retry from "@std/concurrency/resilience.ms"
 import milliseconds from "@std/time.ms"
 
 fn flaky(attempt: Int) Int!:
-    print("attempt {attempt}")
+    print(f"attempt {attempt}")
     if attempt < 3:
         return error(Error("temporarily unavailable", kind: "EAGAIN"))
     return ok(attempt)
@@ -25,7 +25,7 @@ fn flaky(attempt: Int) Int!:
 fn main() Void!:
     policy := RetryPolicy(attempts: 5, delay: milliseconds(10), jitter: false)
     attempts := retry(policy, flaky)?
-    print("succeeded after {attempts} attempts")
+    print(f"succeeded after {attempts} attempts")
 ```
 
 ```sh
@@ -53,6 +53,6 @@ fn main() Void:
     for round in 0..3:
         result := breaker.call(down)
         match result.err():
-            Failed(cause): print("failed: {cause.message}")
+            Failed(cause): print(f"failed: {cause.message}")
             Open: print("open: call skipped")
 ```

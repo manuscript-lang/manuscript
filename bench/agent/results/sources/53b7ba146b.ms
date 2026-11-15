@@ -194,13 +194,13 @@ fn brace_len(ps: Parser) Int:
     d1 := digits_end(ps.pat, ps.at + 1)
     if d1 == ps.at + 1:
         return 0
-    if byte_at(ps.pat, d1) == ch("\}"):
+    if byte_at(ps.pat, d1) == ch("}"):
         return d1 + 1 - ps.at
     if byte_at(ps.pat, d1) != ch(","):
         return 0
 
     d2 := digits_end(ps.pat, d1 + 1)
-    if byte_at(ps.pat, d2) == ch("\}"):
+    if byte_at(ps.pat, d2) == ch("}"):
         return d2 + 1 - ps.at
 
     return 0
@@ -300,7 +300,7 @@ fn parse_seq(var ps: Parser) Result[Node, PErr]:
             c == ch("*")
             or c == ch("+")
             or c == ch("?")
-            or (c == ch("\{") and last != 0 and brace_len(ps) > 0)
+            or (c == ch("{") and last != 0 and brace_len(ps) > 0)
         ):
             if last != 1:
                 return error(PErr(msg: "nothing to repeat"))
@@ -326,11 +326,11 @@ fn parse_quant(var ps: Parser, body: Node) Result[Node, PErr]:
     var low = 0
     var high = -1
 
-    if c == ch("\{"):
+    if c == ch("{"):
         d1 := digits_end(ps.pat, ps.at + 1)
         low = digits_value(ps.pat, ps.at + 1, d1)
 
-        if byte_at(ps.pat, d1) == ch("\}"):
+        if byte_at(ps.pat, d1) == ch("}"):
             high = low
             ps.at = d1 + 1
         else:
@@ -952,16 +952,16 @@ fn emit_quoted(var out: BytesBuilder, src: Bytes, from: Int, to: Int) Unit:
     put(var out, 34)
 
 fn emit_span(var out: BytesBuilder, start: Int, end: Int, subject: Bytes) Unit:
-    emit_text(var out, "{start}..{end} ")
+    emit_text(var out, f"{start}..{end} ")
     emit_quoted(var out, subject, start, end)
 
 fn emit_group(
     var out: BytesBuilder, names: List[String], caps: List[Int], subject: Bytes, g: Int
 ) Unit:
-    var label = "{g}"
+    var label = f"{g}"
     if g > 0 and names[g] != "":
-        label = "{g} ({names[g]})"
-    emit_text(var out, "{label}: ")
+        label = f"{g} ({names[g]})"
+    emit_text(var out, f"{label}: ")
 
     s := caps[2 * g]
     e := caps[2 * g + 1]
@@ -1001,9 +1001,9 @@ fn expand(
         else if nxt == ch("$"):
             out.append(tmpl.get(i + 1))
             i += 2
-        else if nxt == ch("\{"):
+        else if nxt == ch("{"):
             var close = i + 2
-            while close < tmpl.length() and tmpl.get(close).to_int() != ch("\}"):
+            while close < tmpl.length() and tmpl.get(close).to_int() != ch("}"):
                 close += 1
             if close >= tmpl.length():
                 return error(PErr(msg: "bad replacement"))
@@ -1052,7 +1052,7 @@ fn run_command(
             emit_span(var out, snap[0], snap[1], subject)
             emit_text(var out, "\n")
 
-        emit_text(var out, "({matches.length()} matches)\n")
+        emit_text(var out, f"({matches.length()} matches)\n")
         return ok(unit)
 
     if cmd == "split":
@@ -1067,7 +1067,7 @@ fn run_command(
                 prev = snap[1]
 
         emit_quoted(var out, subject, prev, subject.length())
-        emit_text(var out, "\n({kept + 1} pieces)\n")
+        emit_text(var out, f"\n({kept + 1} pieces)\n")
         return ok(unit)
 
     var result = BytesBuilder()
@@ -1143,7 +1143,7 @@ fn process_line(var out: BytesBuilder, line: String) Unit:
         if repl := unescape(repl_text.to_bytes()):
             result := run_command(var out, cmd, fields[1].clone(), subject, repl)
             if result.is_error():
-                emit_text(var out, "error: {result.err().message()}\n")
+                emit_text(var out, f"error: {result.err().message()}\n")
             return
 
     emit_text(var out, "error: bad command\n")

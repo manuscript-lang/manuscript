@@ -84,7 +84,7 @@ fn show(v: Value) String:
     if v.kind == V_NULL:
         return "NULL"
     if v.kind == V_INT:
-        return "{v.num}"
+        return f"{v.num}"
 
     if v.kind == V_BOOL:
         if v.flag:
@@ -952,7 +952,7 @@ fn qualified(table: String, name: String) String:
     if table == "":
         return name.clone()
 
-    return "{table}.{name}"
+    return f"{table}.{name}"
 
 fn lookup(scope: List[ScopeCol], table: String, name: String) Result[Int, SqlError]:
     var found = -1
@@ -1826,7 +1826,7 @@ fn run_select(db: List[Table], sel: Select) Result[String, SqlError]:
             cells.append(show(v))
         lines.append(cells.join("|"))
 
-    lines.append("({count} rows)")
+    lines.append(f"({count} rows)")
     return ok(lines.join("\n"))
 
 // ---------------------------------------------------------------- other statements
@@ -1894,7 +1894,7 @@ fn exec_insert(var db: List[Table], st: InsertStmt) Result[String, SqlError]:
     try check_unique(db[ti].rows, fresh, pk_index(cols))
     for r in fresh:
         db[ti].rows.append(r.clone())
-    return ok("inserted {fresh.length()}")
+    return ok(f"inserted {fresh.length()}")
 
 fn exec_update(var db: List[Table], st: UpdateStmt) Result[String, SqlError]:
     ti := try resolve_table(db, st.name)
@@ -1945,7 +1945,7 @@ fn exec_update(var db: List[Table], st: UpdateStmt) Result[String, SqlError]:
     no_existing: List[List[Value]] = []
     try check_unique(no_existing, newrows, pk_index(cols))
     db[ti].rows = newrows
-    return ok("updated {count}")
+    return ok(f"updated {count}")
 
 fn exec_delete(var db: List[Table], st: DeleteStmt) Result[String, SqlError]:
     ti := try resolve_table(db, st.name)
@@ -1974,7 +1974,7 @@ fn exec_delete(var db: List[Table], st: DeleteStmt) Result[String, SqlError]:
             kept.append(r.clone())
 
     db[ti].rows = kept
-    return ok("deleted {count}")
+    return ok(f"deleted {count}")
 
 // Runs one statement. Parsing (including the whole syntax check) happens before anything executes.
 fn execute(var db: List[Table], toks: List[Token]) Result[String, SqlError]:

@@ -6,15 +6,15 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     say(
-        "{47} {((1 + (-34)) + (725262575028 * 500917))} {(47 < ((1 + (-34)) + (725262575028 * 500917)))} sum {47 + ((1 + (-34)) + (725262575028 * 500917))}"
+        f"{47} {((1 + (-34)) + (725262575028 * 500917))} {(47 < ((1 + (-34)) + (725262575028 * 500917)))} sum {47 + ((1 + (-34)) + (725262575028 * 500917))}"
     )
 
     i1 := (-257538)
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     var acc2 = 0
     var stepacc2 = 0
@@ -23,19 +23,19 @@ export fn main() Int:
         stepacc2 += 1
         acc2 += stepacc2 * stepacc2 + 0
 
-    say("acc2 = {acc2}")
+    say(f"acc2 = {acc2}")
 
     b3 := (((7.0e16 + 5.5) * 3.755) == (159.294 * 11.386))
-    say("b3 = {b3}")
+    say(f"b3 = {b3}")
 
     b4 := (not ((b3 and b3) and b3))
-    say("b4 = {b4}")
+    say(f"b4 = {b4}")
 
     i5 := (i1 / (-606975382680))
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     l6 := [(-8), 13, (-5), 16]
-    say("l6 = {l6} len {l6.length()}")
+    say(f"l6 = {l6} len {l6.length()}")
 
     var acc7 = 0
     var stepacc7 = 0
@@ -44,7 +44,7 @@ export fn main() Int:
         stepacc7 += 1
         acc7 += stepacc7 * stepacc7 + (-2)
 
-    say("acc7 = {acc7}")
+    say(f"acc7 = {acc7}")
 
     if b3:
         say("MiXeD CaSe".lower())
@@ -52,16 +52,16 @@ export fn main() Int:
         say("MiXeD CaSe".trim())
 
     l8 := [16, (-3), (-13)]
-    say("l8 = {l8} len {l8.length()}")
+    say(f"l8 = {l8} len {l8.length()}")
 
     if ((not b3) and (true or false)):
-        say(("{((-41) / 154601)}:" + "a"))
+        say((f"{((-41) / 154601)}:" + "a"))
     else:
         say("delta")
 
     b9 := not ("gamma" + "Tab\there").starts_with("ms")
-    say("b9 = {b9}")
+    say(f"b9 = {b9}")
 
     i10 := (l6.length() + (i1 + l8.get(0)))
-    say("i10 = {i10}")
+    say(f"i10 = {i10}")
     return 0

@@ -143,7 +143,7 @@ impl Checker {
             r.context_dependent = true;
             let msg = format!(
                 "callback returns require the same type: {}; make every return in the callback produce one type",
-                format_mismatch(self.syms, typ, &previous)
+                format_mismatch(self.syms, &self.packages, typ, &previous)
             );
             self.type_error(pos, msg);
         }

@@ -31,11 +31,11 @@ test "typed operands retain evaluation order and generic boundaries":
 
 test "floating operations retain binary64 edge behavior":
     negative_zero := -0.0
-    expect_equal("{1.0 / negative_zero}", "-Infinity")?
+    expect_equal(f"{1.0 / negative_zero}", "-Infinity")?
     nan := 0.0 / 0.0
     expect_false((nan <= 0.0 or nan >= 0.0 or nan < 0.0 or nan > 0.0))?
     expect_false(5e-324 <= 0.0 or 5e-324 / 2.0 != 0.0)?
-    expect_equal("{1.7976931348623157e308 * 2.0}", "Infinity")?
+    expect_equal(f"{1.7976931348623157e308 * 2.0}", "Infinity")?
     a := 1.0000000074505806
     b := 0.9999999925494194
     expect_equal(a * b - 1.0, 0.0)?

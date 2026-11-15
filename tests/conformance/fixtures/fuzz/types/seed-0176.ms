@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -23,20 +23,20 @@ fn fib(n: Int) Int:
 
 export fn main() Int:
     l1 := [27]
-    say("l1 = {l1} len {l1.length()}")
+    say(f"l1 = {l1} len {l1.length()}")
 
     b2 := true
-    say("b2 = {b2}")
+    say(f"b2 = {b2}")
 
     if b2:
         say("hello world")
     else:
         say("ms".upper())
 
-    say("fib(45) = {fib(45)}")
+    say(f"fib(45) = {fib(45)}")
 
     l3 := [1, 2, 3].take(0)
-    say("l3 = {l3} len {l3.length()}")
+    say(f"l3 = {l3} len {l3.length()}")
 
     bad := [1, "two"]
     return 0

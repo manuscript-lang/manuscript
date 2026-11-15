@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     var acc1 = 0
@@ -16,8 +16,8 @@ export fn main() Int:
         stepacc1 += 1
         acc1 += stepacc1 * stepacc1 + (-2)
 
-    say("acc1 = {acc1}")
+    say(f"acc1 = {acc1}")
 
     s2 := "emoji 😀"
-    say("s2 = [{s2}]")
+    say(f"s2 = [{s2}]")
     return 0

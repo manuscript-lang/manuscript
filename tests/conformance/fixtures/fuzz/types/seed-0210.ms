@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     var acc1 = 0
@@ -16,7 +16,7 @@ export fn main() Int:
         stepacc1 += 1
         acc1 += stepacc1 * stepacc1 + 7
 
-    say("acc1 = {acc1}")
+    say(f"acc1 = {acc1}")
 
     bad := (1 < 2) < 3
 

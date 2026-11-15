@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -16,7 +16,7 @@ fn gcd(a: Int, b: Int) Int:
 
 export fn main() Int:
     i1 := (-40)
-    say("i1 = {i1}")
-    say("gcd(4782, 2951) = {gcd(4782, 2951)}")
-    say("gcd(165, 4348) = {gcd(165, 4348)}")
+    say(f"i1 = {i1}")
+    say(f"gcd(4782, 2951) = {gcd(4782, 2951)}")
+    say(f"gcd(165, 4348) = {gcd(165, 4348)}")
     return 0

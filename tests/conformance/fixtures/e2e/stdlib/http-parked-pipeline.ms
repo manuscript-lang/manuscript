@@ -20,7 +20,7 @@ fn send(var conn: Connection, text: String) Void!:
 fn handle(request: HttpRequest) HttpResponse:
     if request.path == "/slow":
         void sleep(nanoseconds(200000000)).wait()
-    return HttpResponse(200, headers(), "ok {request.path}\n".to_bytes())
+    return HttpResponse(200, headers(), f"ok {request.path}\n".to_bytes())
 
 fn exchange(address: String) String:
     if var conn = connect(address).wait():
@@ -36,7 +36,7 @@ fn exchange(address: String) String:
         while true:
             if chunk := within(var conn.input, nanoseconds(5000000000)):
                 if data := chunk:
-                    text = "{text}{data.decode_utf8().get("?")}"
+                    text = f"{text}{data.decode_utf8().get("?")}"
                     continue
 
             break
@@ -53,12 +53,12 @@ export fn main() Int:
         text := exchange(server.address())
         elapsed_ms := monotonic().difference(start).to_milliseconds()
         _count := stdout().write(
-            "responses: {text.split("HTTP/1.1 200 OK").length() - 1}\n"
+            f"responses: {text.split("HTTP/1.1 200 OK").length() - 1}\n"
         )
         _order := stdout().write(
-            "slow first: {text.index_of("ok /slow").get(-1) < text.index_of("ok /fast").get(-1)}\n"
+            f"slow first: {text.index_of("ok /slow").get(-1) < text.index_of("ok /fast").get(-1)}\n"
         )
-        _prompt := stdout().write("prompt: {elapsed_ms < 2000}\n")
+        _prompt := stdout().write(f"prompt: {elapsed_ms < 2000}\n")
         server.close().get(none)
         return 0
 

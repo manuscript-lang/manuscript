@@ -103,10 +103,10 @@ fn split_args(s: String) List[String]:
 	var depth = 0
 
 	for c in s.chars():
-		if c == "(" or c == "\{":
+		if c == "(" or c == "{":
 			depth += 1
 			cur += c
-		else if c == ")" or c == "\}":
+		else if c == ")" or c == "}":
 			depth -= 1
 			cur += c
 		else if c == "," and depth <= 0:
@@ -227,8 +227,8 @@ fn find_top(cs: List[String], ch: String, stop_semi: Bool, from: Int) Int:
 
 			nx := cs[i + 1]
 
-			if nx == "(" or nx == "\{":
-				close := if nx == "(": ")" else: "\}"
+			if nx == "(" or nx == "{":
+				close := if nx == "(": ")" else: "}"
 				var depth = 1
 				var j = i + 2
 
@@ -266,8 +266,8 @@ fn sub(cs: List[String], a: Int, b: Int) String:
 fn join_sp(xs: List[String]) String: xs.join(" ")
 
 fn Ctx.fatal(msg: String) Error:
-	if self.line > 0: return Error("Makefile:{self.line}: *** {msg}.  Stop.")
-	return Error("make: *** {msg}.  Stop.")
+	if self.line > 0: return Error(f"Makefile:{self.line}: *** {msg}.  Stop.")
+	return Error(f"make: *** {msg}.  Stop.")
 
 fn var Ctx.tick() Int:
 	self.clock += 1
@@ -290,7 +290,7 @@ fn var Ctx.lookup(name: String) String!:
 	if self.expanding.contains(name):
 		return error(
 			self.fatal(
-				"Recursive variable '{name}' references itself (eventually)"
+				f"Recursive variable '{name}' references itself (eventually)"
 			)
 		)
 
@@ -327,8 +327,8 @@ fn var Ctx.expand(text: String) String!:
 			i += 2
 			continue
 
-		if nx == "(" or nx == "\{":
-			close := if nx == "(": ")" else: "\}"
+		if nx == "(" or nx == "{":
+			close := if nx == "(": ")" else: "}"
 			var depth = 1
 			var j = i + 2
 			var found = -1
@@ -468,7 +468,7 @@ fn var Ctx.call_func(fname: String, rest: String) String!:
 
 	if fname == "words":
 		t := words(self.arg(args, 0)?)
-		return ok("{t.length()}")
+		return ok(f"{t.length()}")
 
 	if fname == "firstword":
 		t := words(self.arg(args, 0)?)
@@ -611,7 +611,7 @@ fn var Ctx.close_rule() Void:
 				self
 				.out
 				.append(
-					"Makefile:{self.r_line}: warning: overriding recipe for target '{t}'"
+					f"Makefile:{self.r_line}: warning: overriding recipe for target '{t}'"
 				)
 			)
 
@@ -637,10 +637,10 @@ fn split_cond(s: String) List[String]?:
 	var depth = 0
 
 	for c in inner.chars():
-		if c == "(" or c == "\{":
+		if c == "(" or c == "{":
 			depth += 1
 			cur += c
-		else if c == ")" or c == "\}":
+		else if c == ")" or c == "}":
 			depth -= 1
 			cur += c
 		else if c == "," and depth == 0:
@@ -986,7 +986,7 @@ fn var Ctx.simulate(cmd: String) Int:
 	if first == "cp":
 		if ws.length() == 3:
 			if not self.files.contains(ws[1]):
-				self.out.append("cp: cannot stat '{ws[1]}': No such file or directory")
+				self.out.append(f"cp: cannot stat '{ws[1]}': No such file or directory")
 				return 1
 
 			tv := self.tick()
@@ -1060,10 +1060,16 @@ fn var Ctx.run_recipe(
 
 		if st != 0:
 			if ignore:
-				self.out.append("make: [Makefile:{cmd.line}: {t}] Error {st} (ignored)")
+				(
+					self
+					.out
+					.append(
+						f"make: [Makefile:{cmd.line}: {t}] Error {st} (ignored)"
+					)
+				)
 			else:
 				self.auto = Map[String, String]()
-				return error(Error("make: *** [Makefile:{cmd.line}: {t}] Error {st}"))
+				return error(Error(f"make: *** [Makefile:{cmd.line}: {t}] Error {st}"))
 
 	self.auto = Map[String, String]()
 	self.line = 0
@@ -1088,7 +1094,7 @@ fn var Ctx.update(t: String, needed: String) Bool!:
 		path.append(t.clone())
 		return error(
 			Error(
-				"make: *** Circular dependency detected: {path.join(" -> ")}.  Stop."
+				f"make: *** Circular dependency detected: {path.join(" -> ")}.  Stop."
 			)
 		)
 
@@ -1106,11 +1112,11 @@ fn var Ctx.update(t: String, needed: String) Bool!:
 		if needed.length() > 0:
 			return error(
 				Error(
-					"make: *** No rule to make target '{t}', needed by '{needed}'.  Stop."
+					f"make: *** No rule to make target '{t}', needed by '{needed}'.  Stop."
 				)
 			)
 
-		return error(Error("make: *** No rule to make target '{t}'.  Stop."))
+		return error(Error(f"make: *** No rule to make target '{t}'.  Stop."))
 
 	self.bstack.append(t.clone())
 
@@ -1168,9 +1174,9 @@ fn var Ctx.do_build(goals_in: List[String]) Void!:
 					and not self.phony.contains(g)
 				)
 			):
-				self.out.append("make: '{g}' is up to date.")
+				self.out.append(f"make: '{g}' is up to date.")
 			else:
-				self.out.append("make: Nothing to be done for '{g}'.")
+				self.out.append(f"make: Nothing to be done for '{g}'.")
 
 	return ok()
 
@@ -1194,7 +1200,7 @@ fn var Ctx.deps_visit(t: String, path: List[String]) Void!:
 			cyc.append(p.clone())
 			return error(
 				Error(
-					"make: *** Circular dependency detected: {cyc.join(" -> ")}.  Stop."
+					f"make: *** Circular dependency detected: {cyc.join(" -> ")}.  Stop."
 				)
 			)
 
@@ -1330,7 +1336,7 @@ fn main() Void!:
 			r := ctx.expand(rr)
 
 			if v := r:
-				ctx.out.append("[{v}]")
+				ctx.out.append(f"[{v}]")
 			else:
 				ctx.out.append(r.err().message)
 		else if cmd == "files":
@@ -1338,7 +1344,7 @@ fn main() Void!:
 			if names.length() == 0:
 				ctx.out.append("(no files)")
 			for nm in names:
-				ctx.out.append("{nm} {ctx.files.get_or(nm, 0)}")
+				ctx.out.append(f"{nm} {ctx.files.get_or(nm, 0)}")
 		else if cmd == "touch":
 			if rest.length() == 1:
 				tv := ctx.tick()
@@ -1354,7 +1360,7 @@ fn main() Void!:
 		else if cmd == "rm":
 			for f in rest: ctx.files.remove(f)
 		else:
-			ctx.out.append("unknown request: {cmd}")
+			ctx.out.append(f"unknown request: {cmd}")
 
 	for o in ctx.out:
 		print(o)

@@ -38,7 +38,7 @@ import stdout from "@std/io/io.ms"
 
 fn run() Result[Void, Error]:
     for name in arguments():
-        stdout().write("Hello, {name}!\n")?
+        stdout().write(f"Hello, {name}!\n")?
     return stdout().flush()
 
 fn main() Void!:
@@ -70,7 +70,7 @@ type Greeting:
 
 fn greet(options: Greeting) Result[Int, Error]:
     for round in 0..options.times:
-        stdout().write("Hello, {options.name}!\n")?
+        stdout().write(f"Hello, {options.name}!\n")?
     stdout().flush()?
     return ok(0)
 

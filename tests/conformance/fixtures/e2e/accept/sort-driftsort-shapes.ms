@@ -64,7 +64,7 @@ fn entries(shape: Int, count: Int) List[Entry]:
 			Entry(
 				key: key,
 				id: out.length(),
-				name: "entry-name-longer-than-inline-{key}",
+				name: f"entry-name-longer-than-inline-{key}",
 			)
 		)
 	return out
@@ -96,7 +96,7 @@ fn entry_ok(list: List[Entry], count: Int) Bool:
 	for i in 0..count:
 		e := list[i]
 		seen += e.id
-		if e.name != "entry-name-longer-than-inline-{e.key}": return false
+		if e.name != f"entry-name-longer-than-inline-{e.key}": return false
 
 		if i > 0:
 			before := list[i - 1]
@@ -159,7 +159,7 @@ test "a comparator that faults mid-sort leaves the original list whole":
 
 	for e in original:
 		ids += e.id
-		if e.name != "entry-name-longer-than-inline-{e.key}":
+		if e.name != f"entry-name-longer-than-inline-{e.key}":
 			ids = -1
 
 	expect_equal(ids, 5000 * 4999 / 2)?

@@ -52,7 +52,7 @@ export type Ran:
 export fn bash(command: String, cwd: String, timeout_s: Int, input: String) Ran:
 	return run_in(
 		"bash",
-		["-c", "cd \"$0\" && {command}", cwd.clone()],
+		["-c", f"cd \"$0\" && {command}", cwd.clone()],
 		timeout_s,
 		input,
 	)
@@ -80,7 +80,7 @@ export fn run_in(
 		)
 	if result.err().kind == "ETIMEDOUT": return Ran(124, "", "timeout", elapsed)
 
-	return Ran(127, "", "cannot start {program}", elapsed)
+	return Ran(127, "", f"cannot start {program}", elapsed)
 
 // `text.split(separator, maxsplit)` as Python defines it: at most `splits` splits, the rest stays in the last piece.
 export fn split_max(text: String, separator: String, splits: Int) List[String]:
@@ -108,7 +108,7 @@ export fn strip_spaces(text: String) String:
 // Whether the regular expression `pattern` matches all of `text`, as Python's
 // `re.fullmatch`.
 export fn full_match(pattern: String, text: String) Bool:
-	if re := compile("^(?:{pattern})$").to_optional(): return re.matches(text)
+	if re := compile(f"^(?:{pattern})$").to_optional(): return re.matches(text)
 	return false
 
 // `text.split()`: the words between runs of whitespace.

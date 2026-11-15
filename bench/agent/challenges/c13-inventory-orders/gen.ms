@@ -8,9 +8,9 @@ import (
 
 SKU := "[A-Z0-9-]+"
 OID := "[a-z0-9-]+"
-NUM := "[0-9]\{1,7\}"
+NUM := "[0-9]{1,7}"
 
-fn money(c: Int) String: "{c / 100}.{"{c % 100}".pad_start(2, "0")}"
+fn money(c: Int) String: f"{c / 100}.{f"{c % 100}".pad_start(2, "0")}"
 
 fn qty_ok(s: String) Bool: (
 	full_match(NUM, s)
@@ -73,14 +73,14 @@ fn solve(s: String) String:
 				price[t[1].clone()] = 0
 
 			stock[t[1].clone()] = stock.get_or(t[1], 0) + t[2].parse_int().get(0)
-			out.append("ok {t[1]} stock={stock.get_or(t[1], 0)}")
+			out.append(f"ok {t[1]} stock={stock.get_or(t[1], 0)}")
 		else if c == "price":
 			if not (full_match(NUM, t[2]) and t[2].parse_int().get(0) <= 10000000):
 				out.append("error: bad price")
 				continue
 
 			if not stock.contains(t[1]):
-				out.append("error: unknown sku {t[1]}")
+				out.append(f"error: unknown sku {t[1]}")
 				continue
 
 			price[t[1].clone()] = t[2].parse_int().get(0)
@@ -93,7 +93,7 @@ fn solve(s: String) String:
 				continue
 
 			if order_status.contains(oid):
-				out.append("error: order {oid} already exists")
+				out.append(f"error: order {oid} already exists")
 				continue
 
 			var items = List[Item]()
@@ -109,7 +109,7 @@ fn solve(s: String) String:
 				items.append(Item(p[0].clone(), p[1].parse_int().get(0)))
 
 			if bad != "":
-				out.append("error: bad item {bad}")
+				out.append(f"error: bad item {bad}")
 				continue
 
 			var err = ""
@@ -117,11 +117,11 @@ fn solve(s: String) String:
 
 			for item in items:
 				if seen.contains(item.sku):
-					err = "error: duplicate sku {item.sku}"
+					err = f"error: duplicate sku {item.sku}"
 				else if not stock.contains(item.sku):
-					err = "error: unknown sku {item.sku}"
+					err = f"error: unknown sku {item.sku}"
 				else if item.qty > stock.get_or(item.sku, 0):
-					err = "error: insufficient stock for {item.sku} (have {stock.get_or(item.sku, 0)}, need {item.qty})"
+					err = f"error: insufficient stock for {item.sku} (have {stock.get_or(item.sku, 0)}, need {item.qty})"
 
 				if err != "": break
 
@@ -148,10 +148,10 @@ fn solve(s: String) String:
 			order_items[oid.clone()] = items.clone()
 			order_status[oid.clone()] = "placed"
 			order_total[oid.clone()] = total
-			out.append("ok {oid} total={money(total)}")
+			out.append(f"ok {oid} total={money(total)}")
 		else if c == "cancel" or c == "ship":
 			if not order_status.contains(t[1]):
-				out.append("error: unknown order {t[1]}")
+				out.append(f"error: unknown order {t[1]}")
 				continue
 
 			st := order_status.get_or(t[1], "")
@@ -163,14 +163,14 @@ fn solve(s: String) String:
 					order_status[t[1].clone()] = "cancelled"
 					out.append("ok")
 				else:
-					out.append("error: order {t[1]} already {st}")
+					out.append(f"error: order {t[1]} already {st}")
 			else if st == "placed":
 				order_status[t[1].clone()] = "shipped"
 				out.append("ok")
 			else if st == "shipped":
-				out.append("error: order {t[1]} already shipped")
+				out.append(f"error: order {t[1]} already shipped")
 			else:
-				out.append("error: order {t[1]} is cancelled")
+				out.append(f"error: order {t[1]} is cancelled")
 		else:
 			var reserved = Map[String, Int]()
 			for oid in order_ids:
@@ -182,7 +182,7 @@ fn solve(s: String) String:
 						)
 			for sku in skus.sorted():
 				out.append(
-					"{sku} stock={stock.get_or(sku, 0)} price={money(price.get_or(sku, 0))} reserved={reserved.get_or(sku, 0)}"
+					f"{sku} stock={stock.get_or(sku, 0)} price={money(price.get_or(sku, 0))} reserved={reserved.get_or(sku, 0)}"
 				)
 
 			placed := order_ids.count(fn o: order_status.get_or(o, "") == "placed")
@@ -190,12 +190,14 @@ fn solve(s: String) String:
 			cancelled := order_ids.count(
 				fn o: (order_status.get_or(o, "") == "cancelled")
 			)
-			out.append("orders placed={placed} shipped={shipped} cancelled={cancelled}")
+			out.append(
+				f"orders placed={placed} shipped={shipped} cancelled={cancelled}"
+			)
 
 			revenue := order_ids.filter(
 				fn o: order_status.get_or(o, "") == "shipped"
 			).map(fn o: order_total.get_or(o, 0)).sum()
-			out.append("revenue={money(revenue)}")
+			out.append(f"revenue={money(revenue)}")
 
 	return out.map(fn x: x + "\n").join("")
 
@@ -205,8 +207,8 @@ export fn gen_c13() Void:
 	var rnd = seeded(13)
 	skus := ["A1", "B-2", "WIDGET", "GADGET-2", "Z9", "KNOB", "BOLT-10", "NUT"]
 	var big = List[String]()
-	for k in skus: big.append("stock {k} {rnd.randint(50, 400)}")
-	for k in skus: big.append("price {k} {rnd.randint(1, 5000)}")
+	for k in skus: big.append(f"stock {k} {rnd.randint(50, 400)}")
+	for k in skus: big.append(f"price {k} {rnd.randint(1, 5000)}")
 
 	var n = 0
 
@@ -219,19 +221,19 @@ export fn gen_c13() Void:
 			count := rnd.randint(1, 3)
 			var parts = List[String]()
 			for k in rnd.sample(skus, count): parts.append(
-				"{k}:{["1", "2", "3", "5", "9", "10", "12", "25"].get(rnd.below(8))}"
+				f"{k}:{["1", "2", "3", "5", "9", "10", "12", "25"].get(rnd.below(8))}"
 			)
-			big.append("order o{n} {parts.join(" ")}")
+			big.append(f"order o{n} {parts.join(" ")}")
 		else if r < 0.6:
-			big.append("cancel o{rnd.randint(1, if n > 1: n else: 1)}")
+			big.append(f"cancel o{rnd.randint(1, if n > 1: n else: 1)}")
 		else if r < 0.8:
-			big.append("ship o{rnd.randint(1, if n > 1: n else: 1)}")
+			big.append(f"ship o{rnd.randint(1, if n > 1: n else: 1)}")
 		else if r < 0.9:
 			k := rnd.choice(skus)
-			big.append("stock {k} {rnd.randint(1, 100)}")
+			big.append(f"stock {k} {rnd.randint(1, 100)}")
 		else if r < 0.95:
 			k := rnd.choice(skus)
-			big.append("price {k} {rnd.randint(1, 5000)}")
+			big.append(f"price {k} {rnd.randint(1, 5000)}")
 		else:
 			big.append("report")
 
