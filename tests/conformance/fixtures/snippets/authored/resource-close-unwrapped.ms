@@ -6,7 +6,7 @@ import Closeable from "@std/core.ms"
 type Res:
     name: String
 
-fn var Res.close() Unit!:
+fn var Res.close() Void!:
     print("close {self.name}")
 
 fn make(name: String) Res!Error:
@@ -15,25 +15,25 @@ fn make(name: String) Res!Error:
 fn keep(r: Res) Res:
     return r
 
-fn via_try() Unit!Error:
+fn via_try() Void!Error:
     r := make("try")?
     print("body {r.name}")
 
-fn via_get() Unit:
+fn via_get() Void:
     r := make("get").get()
     print("body {r.name}")
 
-fn via_optional_get() Unit:
+fn via_optional_get() Void:
     o: Res? := Res("optional")
     r := o.get(Res("default"))
     print("body {r.name}")
 
-fn via_passthrough() Unit:
+fn via_passthrough() Void:
     r := keep(Res("keep"))
     print("body {r.name}")
 
-fn main() Unit:
-    _ := via_try()
+fn main() Void:
+    void via_try()
     via_get()
     via_optional_get()
     via_passthrough()

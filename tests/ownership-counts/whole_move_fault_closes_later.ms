@@ -12,10 +12,10 @@ import (
 type Door:
 	name: String
 
-fn var Door.close() Unit!:
+fn var Door.close() Void!:
 	stdout().write("close {self.name}\n").get()
 
-fn faulting() Unit:
+fn faulting() Void:
 	var xs: List[Door] = []
 	a := Door("a")
 	b := Door("b")
@@ -24,7 +24,7 @@ fn faulting() Unit:
 	_n := b.name.length()
 	panic("fault after the move")
 
-fn main() Unit:
+fn main() Void:
 	work := promise(fn: ok(faulting()))
 	waited := work.wait()
 	stdout().write("waited: {waited.is_error()}\n").get()

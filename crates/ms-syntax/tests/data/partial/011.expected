@@ -1,4 +1,4 @@
-diag parse 5:23:109 end=5:24:110 fix=- "'()' is not a value; the Unit value is written 'unit'"
+diag parse 5:23:109 end=5:24:110 fix=- "'()' is not a value; the Void value is written 'void'"
 diag parse 6:10:120 end=6:11:121 fix=- "unexpected source character '$'; this character is not part of Manuscript's syntax outside text"
 diag parse 11:5:222 end=- fix=- "unmatched closing delimiter ')'; remove it or add the matching opener before it"
 diag parse 18:14:329 end=18:17:332 fix=- "'try' was replaced by a postfix '?': write f(x)? instead of try f(x), and x | step? instead of x | try step"

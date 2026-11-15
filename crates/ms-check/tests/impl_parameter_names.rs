@@ -19,7 +19,7 @@ fn diagnostics(source: &str) -> Vec<String> {
     .collect()
 }
 
-const SHAPE: &str = "interface Shape:\n    fn scaled(factor: Int) Int\ntype S:\n    n: Int\nfn use_shape(s: Shape) Unit:\n    return\nfn run(s: S) Unit:\n    use_shape(s)\n";
+const SHAPE: &str = "interface Shape:\n    fn scaled(factor: Int) Int\ntype S:\n    n: Int\nfn use_shape(s: Shape) Void:\n    return\nfn run(s: S) Void:\n    use_shape(s)\n";
 
 #[test]
 fn renamed_parameter_is_rejected() {

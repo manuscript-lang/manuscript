@@ -380,14 +380,14 @@ fn fits(flag: Flag, value: String) Bool:
 		_: return true
 
 // Checks one flag name or short against names already seen.
-fn claim(var seen: List[String], key: String, label: String) Unit!:
+fn claim(var seen: List[String], key: String, label: String) Void!:
 	if seen.contains(key): return error(cli_invalid_schema("duplicate {label}"))
 
 	seen.append(key)
 
 // Validates a node and everything below it; `inherited` holds ancestors' persistent
 // flags.
-fn check_schema(node: Command, inherited: List[Flag], path: List[String]) Unit!:
+fn check_schema(node: Command, inherited: List[Flag], path: List[String]) Void!:
 	where := path.join(" ")
 	var names: List[String] = []
 	var shorts: List[String] = []
@@ -467,7 +467,7 @@ fn find_flag(flags: List[Flag], key: String, long: Bool) Flag?:
 
 // Stores one flag occurrence after checking it against the kind.
 fn store(var values: Map[String, List[String]], flag: Flag, value: String) Result[
-	Unit,
+	Void,
 	Error,
 ]:
 	if not fits(flag, value):
@@ -477,10 +477,10 @@ fn store(var values: Map[String, List[String]], flag: Flag, value: String) Resul
 		var items = values.get_or(flag.name, [])
 		items.append(value)
 		values[flag.name.clone()] = items
-		return ok(unit)
+		return ok()
 
 	values[flag.name.clone()] = [value]
-	return ok(unit)
+	return ok()
 
 // Resolves subcommands, flags and positionals from `argv`.
 fn walk(root: Command, argv: List[String]) Parsed!:
@@ -603,7 +603,7 @@ fn bind(
 	words: List[String],
 	var values: Map[String, List[String]],
 	path: List[String],
-) Unit!:
+) Void!:
 	var next = 0
 
 	for arg in node.args:
@@ -630,23 +630,23 @@ fn bind(
 			return error(cli_unknown_command(words[next].clone(), path.join(" ")))
 		return error(cli_too_many_arguments(words[next].clone()))
 
-	return ok(unit)
+	return ok()
 
 // Applies the default of an absent flag or reports a missing required one.
-fn fill(var values: Map[String, List[String]], flag: Flag) Unit!:
-	if values.contains(flag.name): return ok(unit)
+fn fill(var values: Map[String, List[String]], flag: Flag) Void!:
+	if values.contains(flag.name): return ok()
 
 	if text := flag.default:
 		values[flag.name.clone()] = [text.clone()]
-		return ok(unit)
+		return ok()
 
 	if is_bool(flag.kind):
 		values[flag.name.clone()] = ["false"]
-		return ok(unit)
+		return ok()
 
 	if is_list(flag.kind):
 		values[flag.name.clone()] = []
-		return ok(unit)
+		return ok()
 
 	if flag.required: return error(cli_missing_required("--{flag.name}"))
 
@@ -709,7 +709,7 @@ fn flag_section(title: String, flags: List[Flag]) String:
 
 // Adds a help row. Help text is single-line: tabs and line breaks become spaces; a row
 // with other controls is omitted.
-fn help_row(var table: Table, row: List[String]) Unit:
+fn help_row(var table: Table, row: List[String]) Void:
 	var cells = row.map(fn cell: cell.replace_each({"\n": " ", "\t": " ", "\r": " "}))
 	if table.add(cells).is_error(): return
 

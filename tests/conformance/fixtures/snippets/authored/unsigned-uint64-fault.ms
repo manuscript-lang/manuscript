@@ -3,9 +3,9 @@
 // conform: origin=unsigned integer types stage 2
 import stdout from "@std/io/io.ms"
 
-fn main() Unit:
+fn main() Void:
     top: UInt64 := 18446744073709551615
     one: UInt64 := 1
-    _ := stdout().write("before\n")
+    void stdout().write("before\n")
     c := top + one
-    _ := stdout().write("{c}\n")
+    void stdout().write("{c}\n")

@@ -4,7 +4,7 @@ import Closeable from "@std/cleanup.ms"
 type AggregateResource:
     visits: List[Int]
 impl Closeable for AggregateResource:
-    fn close() Unit:
+    fn close() Void:
         self.visits.append(1)
 interface AggregateCounter:
     fn bump(by: Int) Int

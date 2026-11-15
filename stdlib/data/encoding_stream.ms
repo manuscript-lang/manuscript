@@ -13,16 +13,16 @@ type Base64Encoding:
 	url_safe: Bool
 	tail: Bytes
 
-fn var Base64Encoding.step(value: Bytes, var out: List[String]) Unit!:
+fn var Base64Encoding.step(value: Bytes, var out: List[String]) Void!:
 	data := self.tail.concat(value)
 	whole := data.length() - data.length() % 3
 	self.tail = data.slice(whole, data.length())?
-	if whole == 0: return ok(unit)
+	if whole == 0: return ok()
 
 	out.append(base64_encode(data.slice(0, whole)?, self.url_safe))
 
-fn var Base64Encoding.finish(var out: List[String]) Unit!:
-	if self.tail.is_empty(): return ok(unit)
+fn var Base64Encoding.finish(var out: List[String]) Void!:
+	if self.tail.is_empty(): return ok()
 
 	last := self.tail.clone()
 	self.tail = join([])
@@ -47,7 +47,7 @@ type Base64Decoding:
 	tail: String
 	ended: Bool = false
 
-fn var Base64Decoding.step(value: String, var out: List[Bytes]) Unit!:
+fn var Base64Decoding.step(value: String, var out: List[Bytes]) Void!:
 	if self.ended and not value.is_empty(): return error(
 		Error("encoding: invalid data", kind: "EBADMSG")
 	)
@@ -55,7 +55,7 @@ fn var Base64Decoding.step(value: String, var out: List[Bytes]) Unit!:
 	text := self.tail.concat(value)
 	whole := text.length() - text.length() % 4
 	self.tail = text.slice(whole, text.length()).get("")
-	if whole == 0: return ok(unit)
+	if whole == 0: return ok()
 
 	part := text.slice(0, whole).get("")
 	decoded := base64_decode(part, self.url_safe)?
@@ -71,10 +71,10 @@ fn var Base64Decoding.step(value: String, var out: List[Bytes]) Unit!:
 
 	out.append(decoded)
 
-fn var Base64Decoding.finish(var out: List[Bytes]) Unit!:
+fn var Base64Decoding.finish(var out: List[Bytes]) Void!:
 	last := self.tail.clone()
 	self.tail = ""
-	if last == "": return ok(unit)
+	if last == "": return ok()
 
 	out.append(base64_decode(last, self.url_safe)?)
 
@@ -90,11 +90,11 @@ export fn base64_decoded(
 type HexEncoding:
 	unused: Int
 
-fn var HexEncoding.step(value: Bytes, var out: List[String]) Unit!:
+fn var HexEncoding.step(value: Bytes, var out: List[String]) Void!:
 	out.append(hex_encode(value))
 
-fn var HexEncoding.finish(var out: List[String]) Unit!:
-	return ok(unit)
+fn var HexEncoding.finish(var out: List[String]) Void!:
+	return ok()
 
 // Encodes a byte stream as lowercase hexadecimal text chunks. Closing the result closes
 // `input`.
@@ -105,18 +105,18 @@ export fn hex_encoded(input: ReadStream[Bytes]) ReadStream[String]:
 type HexDecoding:
 	tail: String
 
-fn var HexDecoding.step(value: String, var out: List[Bytes]) Unit!:
+fn var HexDecoding.step(value: String, var out: List[Bytes]) Void!:
 	text := self.tail.concat(value)
 	whole := text.length() - text.length() % 2
 	self.tail = text.slice(whole, text.length()).get("")
-	if whole == 0: return ok(unit)
+	if whole == 0: return ok()
 
 	out.append(hex_decode(text.slice(0, whole).get(""))?)
 
-fn var HexDecoding.finish(var out: List[Bytes]) Unit!:
+fn var HexDecoding.finish(var out: List[Bytes]) Void!:
 	last := self.tail.clone()
 	self.tail = ""
-	if last == "": return ok(unit)
+	if last == "": return ok()
 
 	out.append(hex_decode(last)?)
 

@@ -1,5 +1,5 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn work() Unit:
+fn work() Void:
     // Que|
-    unit
+    void

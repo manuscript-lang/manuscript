@@ -25,7 +25,7 @@ type Document:
 fn Document.text() String:
 	return self.value
 
-fn var Document.replace(value: String) Unit:
+fn var Document.replace(value: String) Void:
 	self.value = value
 
 export fn identity[T](value: T) T:
@@ -92,7 +92,7 @@ fn syntax(var items: List[Int], doc: Document, state: State) Int:
 test "fixture and unit":
 	fixture.setup()
 
-	empty := unit
+	empty := void
 	check(empty)
 
-fn runtime_bound() Unit: ...
+fn runtime_bound() Void: ...

@@ -18,7 +18,7 @@ import arguments from "@std/os/env.ms"
 fn count_words(text: String) Int:
     return text.split(" ").length()
 
-fn main() Unit:
+fn main() Void:
     repeats := arguments().get(0, default: "1000000").parse_int().get(1000000)
     var total = 0
     for index in 0..repeats:

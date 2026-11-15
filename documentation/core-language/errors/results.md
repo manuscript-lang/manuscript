@@ -20,14 +20,14 @@ fn quantity(value: Int) Result[Int, Error]:
         return error(Error("Quantity must be positive", kind: "EINVAL"))
     return ok(value)
 
-fn show(value: Int) Unit:
+fn show(value: Int) Void:
     outcome := quantity(value)
     if outcome.is_error():
         print(outcome.err().message)
         return
     print("Quantity: {outcome.get()}")
 
-fn main() Unit:
+fn main() Void:
     show(3)
     show(0)
 ```
@@ -122,7 +122,7 @@ This caller discards the cause. To use it, call `err()` after `is_error()`, or [
 
 | Method | Behavior |
 | --- | --- |
-| `is_ok()`, `is_error()` | Test the case, including successful zero, false, or Unit values |
+| `is_ok()`, `is_error()` | Test the case, including successful zero, false, or Void values |
 | `get(default: T?) T` | Return the successful payload, or `default` on an error; without a default, [fault](faults.md) on an error |
 | `err() E` | Return the error payload; fault on success |
 | `get_or_else(create: fn(E) T) T` | Return the successful payload, or call `create` once with the original error on failure |
@@ -155,13 +155,13 @@ To turn absence into an error, use [Optional.ok_or or ok_or_else](../types/optio
 
 ## Discarding a result
 
-A standalone call such as `discount(price: 20d, percent: 10d)` discards both outcomes, and the checker rejects it, including for `Result[Unit, E]`. Handle it with `if v := x`, `?`, or return it. To ignore it deliberately, bind it to `_`:
+A standalone call such as `discount(price: 20d, percent: 10d)` discards both outcomes, and the checker rejects it, including for `Result[Void, E]`. Handle it with `if v := x`, `?`, or return it. To ignore it deliberately, put `void` in front:
 
 ```manuscript
-_ := discount(price: 20d, percent: 10d)
+void discount(price: 20d, percent: 10d)
 ```
 
-The initializer still runs and the outcome is dropped unread. Several `_ :=` may share a scope. This does not handle an error or stop a fault.
+The initializer still runs and the outcome is dropped unread. Several `void` statements may share a scope. This does not handle an error or stop a fault.
 
 ## Converting a domain error to Error
 

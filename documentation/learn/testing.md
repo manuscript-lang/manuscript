@@ -65,7 +65,7 @@ ms test ms.toml --json
 - Tests run from the manifest's directory (or the file's, for a single file), so relative fixture paths are stable; see [build and test](getting-started.md#build-and-test).
 - Import app code with a relative path, e.g. `import add from "./src/math.ms"` ([modules](../core-language/modules/declarations.md)).
 - `--filter` matches `module::name` substrings; `--timeout` bounds each test (default 60s, `0` disables).
-- A bare `expect_equal(...)` statement is a check error, because a discarded `Result` checks nothing: write `expect_equal(...)?`, or `_ := ...` to drop a returned value.
+- A bare `expect_equal(...)` statement is a check error, because a discarded `Result` checks nothing: write `expect_equal(...)?`, or `void ...` to drop a returned value.
 - `--json` emits versioned per-test results, counts, diagnostics, and stdout; it cannot combine with `--watch` ([JSON contract](../developer-tooling/implementation.md#machine-readable-checks-and-tests)).
 
 For each standalone test example below, replace the contents of `test.ms` and run `ms test test.ms`. `expect_ok?` checks success and keeps the payload:
@@ -234,7 +234,7 @@ type Counter:
 fn make_fixture() Counter:
     return Counter(0)
 
-fn var Counter.before_each() Unit!:
+fn var Counter.before_each() Void!:
     self.count = 0
 
 test "increments":
@@ -258,7 +258,7 @@ PASS test.ms::starts fresh
 A file's tests share one fixture: `make_fixture` and `before_all` run once before the file's first test, `before_each` and `after_each` around each test, and `after_all` after the last, so `before_each` above resets the `Counter` that the second test reads. Each `--repeat` round runs the file again on a new fixture.
 
 - One instance per file and run; a fault in a test still runs `after_each` and `after_all`, and the file's later tests are reported not run.
-- Optional hooks (use `self`, no arguments, return `Unit!`): `before_all`, `before_each`, `after_each`, `after_all`. A hook's error fails the tests it guards; `skip(reason)?` skips them.
+- Optional hooks (use `self`, no arguments, return `Void!`): `before_all`, `before_each`, `after_each`, `after_all`. A hook's error fails the tests it guards; `skip(reason)?` skips them.
 - Build in `make_fixture`, reset in `before_each`, release in `after_all`.
 
 ## Run tests only on some platforms
@@ -289,7 +289,7 @@ type WindowsOnly:
 fn make_fixture() WindowsOnly:
     return WindowsOnly(os() == Os.Windows)
 
-fn var WindowsOnly.before_all() Unit!:
+fn var WindowsOnly.before_all() Void!:
     if not self.ok:
         skip("Windows only")?
 ```

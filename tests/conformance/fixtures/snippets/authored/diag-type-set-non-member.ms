@@ -9,5 +9,5 @@ fn total[T: Number](values: List[T]) T:
         sum += v
     return sum
 
-fn main() Unit:
+fn main() Void:
     print(total(["a"]))

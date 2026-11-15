@@ -334,7 +334,7 @@ fn type_alias(name: &str) -> Option<&'static str> {
         "double" | "Double" | "f64" | "float64" => "Float",
         "str" | "Str" | "string" | "char" | "Char" | "Text" => "String",
         "boolean" | "Boolean" | "bool" => "Bool",
-        "void" | "Void" | "None" | "NoneType" => "Unit",
+        "void" | "None" | "NoneType" => "Void",
         "Vec" | "Vector" | "Array" | "ArrayList" | "array" => "List",
         "Dict" | "Dictionary" | "HashMap" | "dict" | "TreeMap" => "Map",
         "HashSet" | "TreeSet" => "Set",
@@ -543,7 +543,7 @@ impl Checker {
         }
         if self.syms.str(name) == "pass" {
             return format!(
-                "{message}; 'pass' is not a keyword, so write 'unit' for an empty block or match arm"
+                "{message}; 'pass' is not a keyword, so write 'void' for an empty block or match arm"
             );
         }
         match self.syms.str(name) {

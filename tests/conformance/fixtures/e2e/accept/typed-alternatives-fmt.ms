@@ -44,9 +44,9 @@ fn word(n: Int) String!Error:
 fn ratio(n: Int) Float!Error:
     return ok(1.5)
 
-fn nothing(flag: Bool) Unit!Error:
+fn nothing(flag: Bool) Void!Error:
     if flag:
-        return ok(unit)
+        return ok()
 
     return error(Error("no"))
 

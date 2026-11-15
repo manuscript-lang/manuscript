@@ -205,11 +205,11 @@ export fn decode_bmp(data: Bytes, max_pixels: Int?) Raster!:
 			pixels[i * 4 + 3] = byte(255)
 	return ok(Raster(width, height, m, pixels))
 
-fn put16(var out: BytesBuilder, value: Int) Unit:
+fn put16(var out: BytesBuilder, value: Int) Void:
 	out.append(byte(bit_and(value, 255)))
 	out.append(byte(bit_and(shift_right_unsigned(value, 8), 255)))
 
-fn put32(var out: BytesBuilder, value: Int) Unit:
+fn put32(var out: BytesBuilder, value: Int) Void:
 	put16(var out, bit_and(value, 65535))
 	put16(var out, bit_and(shift_right_unsigned(value, 16), 65535))
 

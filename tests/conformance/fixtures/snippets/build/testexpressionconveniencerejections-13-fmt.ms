@@ -4,9 +4,9 @@
 fn p() Int!:
     return ok(1)
 
-fn f(x: Int?) Unit!:
+fn f(x: Int?) Void!:
     match x:
         n:
             p()?
-            return ok(unit)
-        none: return ok(unit)
+            return ok()
+        none: return ok()

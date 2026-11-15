@@ -1,6 +1,6 @@
 // conform: tags=formatter,optional,parser,tier-core
 // conform: phase=parse
 // conform: origin=pkg/compiler/optional_test.go:31 TestOptionalArgumentBoundaries
-fn f(value: Int) Unit: return
+fn f(value: Int) Void: return
 
-fn call() Unit: f(4)
+fn call() Void: f(4)

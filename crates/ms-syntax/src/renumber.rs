@@ -129,7 +129,7 @@ impl Renumber<'_> {
     fn expr(&mut self, e: &mut Expr) {
         self.id(&mut e.id);
         match &mut e.kind {
-            ExprKind::Number(_) | ExprKind::Bool(_) | ExprKind::Unit | ExprKind::Name(_) => {}
+            ExprKind::Number(_) | ExprKind::Bool(_) | ExprKind::Void | ExprKind::Name(_) => {}
             ExprKind::Text(parts) => {
                 for p in parts {
                     if let TextPart::Interp(x) = p {

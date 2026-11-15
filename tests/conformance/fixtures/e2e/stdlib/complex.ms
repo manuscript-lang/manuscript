@@ -9,7 +9,7 @@ import (
 fn near(left: Complex, right: Complex) Bool:
 	return left.subtract(right).abs() < 1e-12
 
-fn component_close(actual: Float, expected: Float) Unit!:
+fn component_close(actual: Float, expected: Float) Void!:
 	if expected.is_finite(): return expect_true((actual / expected - 1.0).abs() < 1e-12)
 	return expect_equal(actual, expected)
 

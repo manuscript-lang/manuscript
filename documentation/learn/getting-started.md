@@ -22,7 +22,7 @@ On Windows, in PowerShell:
 irm https://manuscript-lang.github.io/manuscript/install.ps1 | iex
 ```
 
-The script downloads the archive for your system, checks its SHA-256, and puts `ms` in `~/.local/bin` (`%USERPROFILE%\.ms\bin` on Windows, which it adds to your user PATH). `MS_VERSION=0.1.0` picks a release and `MS_INSTALL_DIR` picks the directory. You can also extract a [release archive](https://github.com/manuscript-lang/manuscript/releases) yourself, or [build from source](https://github.com/manuscript-lang/manuscript/blob/main/documentation/contributing/rust-toolchain.md#build-and-run) with `make build` for the latest development version.
+The script downloads the archive for your system, checks its SHA-256, and puts `ms` in `~/.local/bin` (`%USERPROFILE%\.ms\bin` on Windows, which it adds to your user PATH). `MS_VERSION=2026.11.0` picks a release and `MS_INSTALL_DIR` picks the directory. You can also extract a [release archive](https://github.com/manuscript-lang/manuscript/releases) yourself, or [build from source](https://github.com/manuscript-lang/manuscript/blob/main/documentation/contributing/rust-toolchain.md#build-and-run) with `make build` for the latest development version.
 
 If `ms` is not found afterwards, add its directory to your `PATH` (for a manual archive or a source build, the extracted directory or the checkout's `target/release`; use the full path so it works from any directory). On Windows, the compiler is `ms.exe`. Open a new terminal if your PATH settings require it, then confirm:
 
@@ -54,12 +54,12 @@ Open `src/main.ms`:
 ```manuscript {filename="src/main.ms"}
 import arguments from "@std/os/env.ms"
 
-fn main() Unit:
+fn main() Void:
     print("Arguments: {arguments().length()}")
 ```
 
 - `import … from "…"` selects the APIs the file uses.
-- `main` starts the program. It returns `Unit`, `Unit!` (an error prints `error: <message>` and exits 1), `Int?!` (also an exit status), or `Int`; `export` is optional.
+- `main` starts the program. It returns `Void`, `Void!` (an error prints `error: <message>` and exits 1), `Int?!` (also an exit status), or `Int`; `export` is optional.
 - `print` writes a line and needs no import; `{...}` interpolates into strings.
 - One tab (or four spaces) opens a block; statements need no terminator.
 
@@ -129,7 +129,7 @@ The command succeeds silently and writes `code-map.html`. Open it in a browser t
 
 ## Compiler versions and setup
 
-Manuscript is in alpha. These guides follow `main`; for a published release, use the documentation in its source tag. [Build current source](https://github.com/manuscript-lang/manuscript/blob/main/documentation/contributing/rust-toolchain.md#build-and-run) to try the latest features. For a preconfigured or disconnected build environment, see [build tools and local setup](../developer-tooling/how-it-works.md#build-tools-and-local-setup).
+Manuscript is in beta. These guides follow `main`; for a published release, use the documentation in its source tag. [Build current source](https://github.com/manuscript-lang/manuscript/blob/main/documentation/contributing/rust-toolchain.md#build-and-run) to try the latest features. For a preconfigured or disconnected build environment, see [build tools and local setup](../developer-tooling/how-it-works.md#build-tools-and-local-setup).
 
 ## Keep going
 

@@ -10,16 +10,16 @@ type Counter:
 	calls: Int
 
 interface Defaults:
-	var fn add_default(key: String, value: Int) Unit
-	var fn add_default_from(key: String, create: fn(String) Int) Unit
+	var fn add_default(key: String, value: Int) Void
+	var fn add_default_from(key: String, create: fn(String) Int) Void
 
 type DefaultAdapter:
 	values: Map[String, Int]
 
-fn var DefaultAdapter.add_default(key: String, value: Int) Unit:
+fn var DefaultAdapter.add_default(key: String, value: Int) Void:
 	self.values.add_default(key, value)
 
-fn var DefaultAdapter.add_default_from(key: String, create: fn(String) Int) Unit:
+fn var DefaultAdapter.add_default_from(key: String, create: fn(String) Int) Void:
 	self.values.add_default_from(key, create)
 
 fn eager(var counter: Counter) Int:
@@ -38,7 +38,7 @@ test "default insertion keeps eager and lazy calls and receiver identity":
 	values.add("b", 2)
 	expect_equal(values.keys(), ["a", "b"])?
 
-	lazy: fn(String, fn(String) Int) Unit := values.add_default_from
+	lazy: fn(String, fn(String) Int) Void := values.add_default_from
 	lazy("a", key_length)
 	lazy("ccc", key_length)
 	values.add_default("d", 4)
@@ -53,23 +53,23 @@ test "default insertion keeps eager and lazy calls and receiver identity":
 	expect_false(values.contains("copy") or not copy.contains("copy"))?
 	expect_equal(values.keys(), ["a", "b", "ccc", "d"])?
 
-	legacy: fn(String, Int) Unit := values.add_default
+	legacy: fn(String, Int) Void := values.add_default
 	legacy("a", 100)
 	values.add_default_from("ff", key_length)
 	expect_false(counter.calls != 1 or values.get("a") != 1)?
 	expect_equal(values.keys(), ["a", "b", "ccc", "d", "ff"])?
 
-test "text and byte builders keep Unit mutation function types":
+test "text and byte builders keep Void mutation function types":
 	var bytes = BytesBuilder()
-	append_byte: fn(UInt8) Unit := bytes.append
+	append_byte: fn(UInt8) Void := bytes.append
 	append_byte(65)
 
-	concat_bytes: fn(Bytes) Unit := bytes.append_bytes
+	concat_bytes: fn(Bytes) Void := bytes.append_bytes
 	concat_bytes("B".to_bytes())
 	expect_false(bytes.build() != "AB".to_bytes())?
 
 	var text = StringBuilder()
-	append_text: fn(String) Unit := text.append
+	append_text: fn(String) Void := text.append
 	append_text("ab")
 	expect_false(text.build() != "ab")?
 

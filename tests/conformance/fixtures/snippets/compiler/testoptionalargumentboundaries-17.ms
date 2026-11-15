@@ -5,6 +5,6 @@ enum Optional[T]:
     T
     none
 
-fn f(value: Int?) Unit: return
+fn f(value: Int?) Void: return
 
-fn call() Unit: f(4)
+fn call() Void: f(4)

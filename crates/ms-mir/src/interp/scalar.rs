@@ -34,7 +34,7 @@ impl Interp<'_> {
             Op::IConst => ops.set(Val::Int(imm_int(inst.imm))),
             Op::FConst => ops.set(Val::Float(inst.imm.float())),
             Op::BConst => ops.set(Val::Bool(matches!(inst.imm, Imm::Bool(true)))),
-            Op::UnitConst => ops.set(Val::Unit),
+            Op::VoidConst => ops.set(Val::Void),
             Op::StrLit => {
                 let Imm::Str(s) = inst.imm else {
                     return Err(Raw::internal("str without literal"));

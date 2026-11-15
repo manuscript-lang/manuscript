@@ -37,7 +37,7 @@ A bench body that needs setup outside the timed region builds its data first and
       measure(1, fn: keep(data.sorted().length()))?
 Everything the body does before `measure` runs once, untimed.
 */
-export fn measure(operations: Int, work: fn() Unit!) Unit!:
+export fn measure(operations: Int, work: fn() Void!) Void!:
 	body := work
 	config := settings()
 	var count = max(config.iterations, 1)
@@ -73,18 +73,18 @@ measured_flag := "MS_BENCH_MEASURED"
 // The entry `ms bench` builds calls this with each block's body; programs do not. The
 // body runs once first (the warmup); a body that called `measure` has reported already,
 // and any other body is one iteration to repeat and time.
-export fn run_bench_block(body: fn() Unit!, operations: Int) Unit!:
+export fn run_bench_block(body: fn() Void!, operations: Int) Void!:
 	body()?
 
 	environment := environment().get(Map[String, String]())
-	if environment.get_or(measured_flag, "") == "1": return ok(unit)
+	if environment.get_or(measured_flag, "") == "1": return ok()
 
 	return measure(operations, body)
 
 // Checks a bench's Int result so the work that computed it stays observable. Apply
 // `keep(value)?` in the body. The smallest Int returns an error; choose a different
 // checksum if that value is a valid result of your workload.
-export fn keep(checksum: Int) Unit!:
+export fn keep(checksum: Int) Void!:
 	if checksum == -9223372036854775807 - 1:
 		return fail(
 			"bench result is the smallest Int; the workload is probably degenerate"
@@ -103,7 +103,7 @@ fn settings() Settings:
 
 // Runs `body` `count` times and returns the elapsed nanoseconds; the first failure
 // stops the run and is returned.
-fn time_batch(body: fn() Unit!, count: Int) Int!:
+fn time_batch(body: fn() Void!, count: Int) Int!:
 	started := monotonic()
 	for unused in 0..count:
 		body()?

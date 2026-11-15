@@ -20,12 +20,12 @@ import (
 )
 
 // The child of the pipe round trip: echoes every chunk it reads.
-ECHO := "import stdin, stdout_bytes from \"@std/io/io.ms\"\n\nfn main() Unit:\n\tvar input = stdin()\n\tvar output = stdout_bytes()\n\twhile true:\n\t\tchunk := input.next().get()\n\t\tif data := chunk:\n\t\t\toutput.write(data).get()\n\t\telse:\n\t\t\treturn\n"
+ECHO := "import stdin, stdout_bytes from \"@std/io/io.ms\"\n\nfn main() Void:\n\tvar input = stdin()\n\tvar output = stdout_bytes()\n\twhile true:\n\t\tchunk := input.next().get()\n\t\tif data := chunk:\n\t\t\toutput.write(data).get()\n\t\telse:\n\t\t\treturn\n"
 
-fn report(name: String, best_ns: Int, ops: Int) Unit:
+fn report(name: String, best_ns: Int, ops: Int) Void:
 	print("{host()} {name} {best_ns / ops} ns/op ({ops} ops)")
 
-fn write_files(dir: String, n: Int) Unit!:
+fn write_files(dir: String, n: Int) Void!:
 	for i in 0..n:
 		write_file("{dir}/f{i}.txt", "file {i}\n", true).wait()?
 
@@ -38,7 +38,7 @@ fn read_files(dir: String, n: Int) Int!:
 
 	return ok(total)
 
-fn rename_files(dir: String, n: Int) Unit!:
+fn rename_files(dir: String, n: Int) Void!:
 	for i in 0..n:
 		rename("{dir}/f{i}.txt", "{dir}/g{i}.txt")?
 
@@ -52,7 +52,7 @@ fn walk(dir: String) Int!:
 
 	return ok(found)
 
-fn files(n: Int) Unit!:
+fn files(n: Int) Void!:
 	root := temporary_directory("platform-io")?
 	var best_write = 1000000000000
 	var best_read = best_write
@@ -68,7 +68,7 @@ fn files(n: Int) Unit!:
 		best_write = min(best_write, now_ns() - start)
 
 		start2 := now_ns()
-		_ := read_files(dir, n)?
+		void read_files(dir, n)?
 		best_read = min(best_read, now_ns() - start2)
 
 		start3 := now_ns()
@@ -76,7 +76,7 @@ fn files(n: Int) Unit!:
 		best_rename = min(best_rename, now_ns() - start3)
 
 		start4 := now_ns()
-		_ := walk(root)?
+		void walk(root)?
 		best_walk = min(best_walk, now_ns() - start4)
 
 	report("write_file", best_write, n)
@@ -85,7 +85,7 @@ fn files(n: Int) Unit!:
 	report("walk entry", best_walk, n)
 	remove(root, true)?
 
-fn spawns(program: String, n: Int) Unit!:
+fn spawns(program: String, n: Int) Void!:
 	var best = 1000000000000
 
 	for round in 0..3:
@@ -97,7 +97,7 @@ fn spawns(program: String, n: Int) Unit!:
 	report("spawn and wait", best, n)
 
 // One request and reply over a child's stdin and stdout, `n` times.
-fn round_trips(program: String, n: Int) Unit!:
+fn round_trips(program: String, n: Int) Void!:
 	var child = spawn(program, [], SpawnOptions())?
 	var input = child.stdin()
 	var output = child.stdout()
@@ -122,10 +122,9 @@ fn round_trips(program: String, n: Int) Unit!:
 
 	report("pipe round trip", best, n)
 	child.kill()
+	void child.wait()
 
-	_ := child.wait()
-
-fn run_all(n: Int) Unit!:
+fn run_all(n: Int) Void!:
 	files(n)?
 	spawns(ms_binary(), 30)?
 

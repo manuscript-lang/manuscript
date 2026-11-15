@@ -589,7 +589,7 @@ fn project_review_counts_discovered_test_files() {
         "export fn main() Int:\n    return 0\n",
     )
     .unwrap();
-    std::fs::write(dir.join("test.ms"), "test \"t\":\n    return unit\n").unwrap();
+    std::fs::write(dir.join("test.ms"), "test \"t\":\n    return\n").unwrap();
     let output = ms(&dir, &["review", "ms.toml"]);
     assert!(output.status.success());
     let text = String::from_utf8_lossy(&output.stdout);
@@ -960,7 +960,7 @@ fn ownership_labels_follow_checked_value_classes_and_return_borrows() {
                 "f: Float  copy",
                 "g: Int  copy",
                 "h: Bool  copy",
-                "i: Unit  copy",
+                "i: Void  copy",
                 "j: Flag  copy",
                 "k: Number  copy",
                 "item: Item  borrow",
@@ -1333,7 +1333,7 @@ fn ownership_view_shows_receiver_modes_and_interface_operations() {
         ("Counter.bump", "self  var (exclusive borrow)"),
         ("Counter.read", "self  borrow"),
         ("Shape", "area() Int  self borrow"),
-        ("Shape", "grow(by: Int) Unit  self var (exclusive borrow)"),
+        ("Shape", "grow(by: Int) Void  self var (exclusive borrow)"),
     ] {
         let doc = json(&ms(
             &dir,

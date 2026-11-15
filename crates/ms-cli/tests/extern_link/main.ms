@@ -13,7 +13,7 @@ extern fn greet_divide(left: Int, right: Int) Result[Int, DivideError]
 
 extern fn greet_shout(name: String) Result[String, DivideError]
 
-extern fn greet_check(value: Int) Result[Unit, DivideError]
+extern fn greet_check(value: Int) Result[Void, DivideError]
 
 extern fn greet_double(value: Int) Int
 
@@ -35,21 +35,21 @@ fn shout(result: Result[String, DivideError]) String:
 
     return "error {text(result.err())}"
 
-fn main() Unit:
+fn main() Void:
     var out = stdout()
-    _ := out.write(greet_double(21).to_string() + "\n")
-    _ := out.write(greet_scale(1.5, 4.0).to_string() + "\n")
-    _ := out.write(
+    void out.write(greet_double(21).to_string() + "\n")
+    void out.write(greet_scale(1.5, 4.0).to_string() + "\n")
+    void out.write(
         greet_is_long("short", 10).to_string() + " " + greet_is_long(
             "a much longer name than that", 10
         ).to_string() + "\n"
     )
-    _ := out.write(greet_hello("world") + "\n")
-    _ := out.write(greet_hello("a considerably longer visitor name") + "\n")
-    _ := out.write(
+    void out.write(greet_hello("world") + "\n")
+    void out.write(greet_hello("a considerably longer visitor name") + "\n")
+    void out.write(
         describe(greet_divide(7, 2)) + " " + describe(greet_divide(1, 0)) + "\n"
     )
-    _ := out.write(
+    void out.write(
         shout(greet_shout("quiet")) + "|" + shout(
             greet_shout("")
         ) + "|" + shout(
@@ -58,7 +58,7 @@ fn main() Unit:
             )
         ) + "\n"
     )
-    _ := out.write(
+    void out.write(
         greet_check(3).is_ok().to_string() + " " + greet_check(
             -3
         ).is_error().to_string() + "\n"

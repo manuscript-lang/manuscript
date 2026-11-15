@@ -111,8 +111,8 @@ fn FetchResponse.json[T: Data](ignore_unknown_fields: Bool = true) T!:
 
 // Succeeds when the status is 200 through 299 and otherwise returns `Status`, so
 // `response.check_status()?` rejects error responses.
-fn FetchResponse.check_status() Unit!:
-	if self.ok(): return ok(unit)
+fn FetchResponse.check_status() Void!:
+	if self.ok(): return ok()
 	return error(
 		Error(
 			"fetch: unexpected status {self.head.status}",
@@ -160,7 +160,7 @@ fn Fetcher.stream(
 
 // Cancels in-flight requests and drops pooled connections; later calls return
 // `EBADF`.
-fn var Fetcher.close() Unit!:
+fn var Fetcher.close() Void!:
 	return self.client.close()
 
 // Reads the body to its end within the options' size limit, then closes it.

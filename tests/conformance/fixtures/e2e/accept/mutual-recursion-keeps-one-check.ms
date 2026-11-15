@@ -19,5 +19,5 @@ fn is_odd(n: Int) Bool:
         return false
     return is_even(n - 1)
 
-fn main() Unit:
+fn main() Void:
     print("{count(20)} {is_even(10)} {is_even(7)} {is_odd(7)}")

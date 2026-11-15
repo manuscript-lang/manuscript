@@ -1,7 +1,7 @@
 // conform: tags=aliasing,diagnostics,lists,mutation,tier-core
 // conform: phase=check
 // conform: origin=pkg/lower/list_items_test.go:22 TestListItemsCacheOnlyLoopsThatCannotReplaceItems
-fn grow(values: List[Int]) Unit:
+fn grow(values: List[Int]) Void:
     values.append(0)
 
 fn work(other: List[Int]) Int:

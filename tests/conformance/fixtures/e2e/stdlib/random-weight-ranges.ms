@@ -10,7 +10,7 @@ import (
 	expect_some from "@std/test/test.ms",
 )
 
-fn compare_draws(weights: List[Float], ordinary: List[Float]) Unit!:
+fn compare_draws(weights: List[Float], ordinary: List[Float]) Void!:
 	var scaled = seeded(1)
 	var reference = seeded(1)
 	var draws = seeded(1)
@@ -51,7 +51,7 @@ test "ordinary weighted choices keep direct draws":
 			expected := if point < weights[0]: 0 else: 1
 			expect_equal(rng.weighted_choice([0, 1], weights), expected)?
 
-	// The largest unit draw rounds to the minimum-normal total; keep the last positive
+	// The largest void draw rounds to the minimum-normal total; keep the last positive
 	// slot.
 	var edge = seeded(3558559446808474027)
 	expect_equal(
@@ -108,7 +108,7 @@ test "weighted choices retain zero exclusions and caller values":
 	expect_equal(values, [[1], [2]])?
 	expect_equal(weights, [max_float, max_float])?
 
-fn invalid_seeded(weights: List[Float]) Unit:
+fn invalid_seeded(weights: List[Float]) Void:
 	var rng = seeded(1)
 	_picked := rng.weighted_choice([0, 1], weights)
 

@@ -7,10 +7,10 @@ type Lists:
 type Counter:
     count: Int
 
-fn var Counter.bump(amount: Int = 1) Unit:
+fn var Counter.bump(amount: Int = 1) Void:
     self.count += amount
 
-fn var Counter.around(action: fn() Unit) Unit:
+fn var Counter.around(action: fn() Void) Void:
     self.count += 1
     action()
     self.count += 1
@@ -32,7 +32,7 @@ fn key(var calls: Int) String:
     calls += 1
     return "key-{calls}"
 
-fn main() Unit:
+fn main() Void:
     var calls = 0
     var rows = [[1], [2]]
     var first = rows[next(var calls)]
@@ -40,7 +40,7 @@ fn main() Unit:
     append(9)
     append(10)
 
-    _ := stdout().write("{calls} {rows}\n")
+    void stdout().write("{calls} {rows}\n")
     var lists = Lists(left: [1], right: [2])
     var left = lists.left
     var right = lists.right
@@ -49,21 +49,21 @@ fn main() Unit:
     add_right(4)
     add_left(3)
 
-    _ := stdout().write("{lists}\n")
+    void stdout().write("{lists}\n")
     var counts = [Counter(count: 5)]
     var count = counts[0]
     bump := count.bump
     bump()
     bump(3)
 
-    _ := stdout().write("{counts}\n")
+    void stdout().write("{counts}\n")
     var pair = Counters(left: Counter(count: 1), right: Counter(count: 2))
     var first_count = pair.left
     var second_count = pair.right
     around := first_count.around
     around(fn: second_count.count += 10)
 
-    _ := stdout().write("{pair}\n")
+    void stdout().write("{pair}\n")
     var entries = Map[String, List[Int]]()
     entries.add("key-1", [7])
     calls = 0
@@ -73,13 +73,13 @@ fn main() Unit:
         add(8)
         add(9)
 
-    _ := stdout().write("{calls} {entries}\n")
+    void stdout().write("{calls} {entries}\n")
     var texts = [["first", "second"]]
     var text = texts[0]
     pop := text.pop
     popped := pop()
-    _ := stdout().write("{popped} {texts}\n")
+    void stdout().write("{popped} {texts}\n")
     var final_count = counts[0]
     label := final_count.label
     labeled := label()
-    _ := stdout().write("{labeled} {counts}\n")
+    void stdout().write("{labeled} {counts}\n")

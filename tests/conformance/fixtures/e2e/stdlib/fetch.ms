@@ -43,7 +43,7 @@ fn route(request: HttpRequest) HttpResponse:
 		return HttpResponse(status: 307, headers: moved, body: "".to_bytes())
 
 	if request.path == "/slow":
-		_ := sleep(milliseconds(1500)).wait()
+		void sleep(milliseconds(1500)).wait()
 		return HttpResponse(status: 200, headers: headers(), body: "late".to_bytes())
 
 	if request.path == "/big":
@@ -62,7 +62,7 @@ fn route(request: HttpRequest) HttpResponse:
 		),
 	)
 
-fn try_append(var fields: HttpHeaders, name: String, value: String) Unit:
+fn try_append(var fields: HttpHeaders, name: String, value: String) Void:
 	_ignored := fields.append(name, value)
 
 test "fetch returns a buffered text response":

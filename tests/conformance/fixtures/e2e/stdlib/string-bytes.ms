@@ -8,7 +8,7 @@ import (
 )
 
 // Fails unless `result` is an error of `kind` whose message starts with `prefix`.
-fn expect_failure(result: String!, kind: String, prefix: String) Unit!:
+fn expect_failure(result: String!, kind: String, prefix: String) Void!:
 	if value := result: return error(Error("expected {kind}, got ok({value})"))
 
 	cause := result.err()

@@ -4,7 +4,7 @@ import spawn, process_info from "@std/os/process.ms"
 import stdin from "@std/io/io.ms"
 import read_all from "@std/io/streams.ms"
 
-fn check_failed_writer(size: Int) Unit!:
+fn check_failed_writer(size: Int) Void!:
     executable := (process_info()?).executable
     child := spawn(executable, ["exit"])?
     expect_equal((child.wait()?), 0)?
@@ -34,9 +34,9 @@ fn check_failed_writer(size: Int) Unit!:
 
     after_close := writer.write("closed".to_bytes()) | expect_error?
     expect_equal(after_close.kind, "EBADF")?
-    return ok(unit)
+    return ok()
 
-fn check_healthy_writer() Unit!:
+fn check_healthy_writer() Void!:
     executable := (process_info()?).executable
     child := spawn(executable, ["echo"])?
     var writer = child.stdin()
@@ -51,9 +51,9 @@ fn check_healthy_writer() Unit!:
     draining_writer.flush() | expect_ok?
     draining_writer.close() | expect_ok?
     expect_equal((draining_child.wait()?), 0)?
-    return ok(unit)
+    return ok()
 
-fn check_failed_close() Unit!:
+fn check_failed_close() Void!:
     executable := (process_info()?).executable
     child := spawn(executable, ["exit"])?
     expect_equal((child.wait()?), 0)?
@@ -64,14 +64,14 @@ fn check_failed_close() Unit!:
     closed := writer.close() | expect_error?
     expect_equal(closed.kind, "EIO")?
     writer.close() | expect_ok?
-    return ok(unit)
+    return ok()
 
-fn check_writers() Unit!:
+fn check_writers() Void!:
     for size in [1, 65535, 65536, 1048576, 1048577]:
         check_failed_writer(size)?
     check_healthy_writer()?
     check_failed_close()?
-    return ok(unit)
+    return ok()
 
 export fn main() Int:
     args := arguments()

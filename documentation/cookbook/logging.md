@@ -24,13 +24,13 @@ type Slow:
 type Request:
     request: Int
 
-fn main() Unit!:
+fn main() Void!:
     log := create(stdout_transport(), LoggerOptions(timestamp: false))?
     log.info("started", Started(port: 8080))?
     log.debug("not shown at the default level")?
     handler := log.child(Request(request: 7))?
     handler.warn("slow request", Slow(ms: 950))?
-    return ok(unit)
+    return ok()
 ```
 
 ```sh
@@ -49,7 +49,7 @@ Save as `rotate.ms`. `rotating_file_transport(path, max_bytes, keep)` moves the 
 ```manuscript
 import LoggerOptions, create, rotating_file_transport from "@std/log.ms"
 
-fn main() Unit!:
+fn main() Void!:
     var log = create(rotating_file_transport("app.log", 200, 2)?, LoggerOptions(timestamp: false))?
     for i in 0..20:
         log.info("record {i}")?

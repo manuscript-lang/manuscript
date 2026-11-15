@@ -5,7 +5,7 @@ import arguments from "@std/os/env.ms"
 import read_file from "@std/os/fs.ms"
 import stdout from "@std/io/io.ms"
 
-fn run() Result[Unit, Error]:
+fn run() Result[Void, Error]:
     path := arguments().first().ok_or(
         Error("filesystem: invalid input", kind: "EINVAL")
     )?
@@ -15,5 +15,5 @@ fn run() Result[Unit, Error]:
     stdout().write(text)?
     return stdout().flush()
 
-fn main() Unit!:
+fn main() Void!:
     run()?

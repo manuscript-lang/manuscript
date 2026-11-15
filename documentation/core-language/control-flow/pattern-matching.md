@@ -25,7 +25,7 @@ fn describe(payment: Payment) String:
         Pending(reference):
             return "Pending: {reference}"
 
-fn main() Unit:
+fn main() Void:
     print(describe(Payment.Paid("receipt-42")))
 ```
 
@@ -60,7 +60,7 @@ Computed values, interpolated text, ranges, and `Float` scrutinees are not liter
 
 ## Arm values
 
-An arm may hold statements then a final expression, which is its value; ending in a statement gives `Unit`. Value-producing arms must share a compatible type, taken from the annotation or expected type, or else from the arms themselves. Arms that exit via `return`, `break`, `continue`, or `Never` contribute no value.
+An arm may hold statements then a final expression, which is its value; ending in a statement gives `Void`. Value-producing arms must share a compatible type, taken from the annotation or expected type, or else from the arms themselves. Arms that exit via `return`, `break`, `continue`, or `Never` contribute no value.
 
 ```manuscript
 enum Cents:
@@ -78,7 +78,7 @@ fn total(cents: Cents) Result[Int, Error]:
 
 `return` exits the enclosing function even from inside another expression, running cleanup; `break` and `continue` target the enclosing loop; an anonymous function has its own return boundary.
 
-Short arms put the value after the colon (`none: 0`). End an effect-only arm with `unit` if its last call returns something else. A standalone match discards its result, so arms need not agree; a used result needs every arm to produce it. An empty arm or block is `unit`; there is no `pass`.
+Short arms put the value after the colon (`none: 0`). End an effect-only arm with `void` if its last call returns something else. A standalone match discards its result, so arms need not agree; a used result needs every arm to produce it. An empty arm or block is `void`; there is no `pass`.
 
 ## Payload patterns
 
@@ -119,7 +119,7 @@ fn paid(payment: Payment) Bool:
             return false
 ```
 
-Adding a case breaks matches without a wildcard; a wildcard absorbs it. Return completeness follows the [function return rules](../functions/declarations-and-calls.md#unit-and-never).
+Adding a case breaks matches without a wildcard; a wildcard absorbs it. Return completeness follows the [function return rules](../functions/declarations-and-calls.md#void-and-never).
 
 ## Optional and result values
 

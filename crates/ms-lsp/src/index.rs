@@ -217,7 +217,7 @@ pub fn expr_text(syms: ms_syntax::Names, e: &Expr) -> Option<&'static str> {
         ExprKind::Member { name, .. } => Some(syms.str(name)),
         ExprKind::Bool(true) => Some("true"),
         ExprKind::Bool(false) => Some("false"),
-        ExprKind::Unit => Some("unit"),
+        ExprKind::Void => Some("void"),
         ExprKind::List(_) => Some("["),
         ExprKind::Map(_) => Some("{"),
         ExprKind::Match { .. } => Some("match"),

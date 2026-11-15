@@ -16,8 +16,8 @@ fn var Counting.next() Int?!:
 	self.next_value += 1
 	return ok(self.next_value)
 
-fn var Counting.close() Unit!:
-	return ok(unit)
+fn var Counting.close() Void!:
+	return ok()
 
 test "filter keeps matching items in order":
 	kept := collect(from_list([1, 2, 3, 4, 5, 6]) | filter(fn x: x % 2 == 0), none)?
@@ -57,8 +57,8 @@ fn var Intermittent.next() Int?!:
 
 	return ok(self.calls)
 
-fn var Intermittent.close() Unit!:
-	return ok(unit)
+fn var Intermittent.close() Void!:
+	return ok()
 
 test "take does not spend its last item on a failed read":
 	var source = ReadStream[Int](Intermittent()) | take(1)

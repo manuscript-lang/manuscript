@@ -2,14 +2,14 @@
 // conform: phase=check
 // conform: origin=pkg/tooling/capture_lint_test.go:79 TestConcurrentCaptureLintDoesNotGuessMethodNames
 interface Starter:
-    fn start(operation: fn() Unit) Unit
+    fn start(operation: fn() Void) Void
 
 type Sequential: ...
 
-fn Sequential.start(operation: fn() Unit) Unit:
+fn Sequential.start(operation: fn() Void) Void:
     operation()
 
-fn run() Unit:
+fn run() Void:
     var values = [0]
     Sequential().start(
         fn:

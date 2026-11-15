@@ -22,7 +22,7 @@ import (
 type Token:
 	id: Int
 
-fn var Token.close() Unit!:
+fn var Token.close() Void!:
 	return stdout().write("close {self.id}\n")
 
 type Triple:
@@ -38,7 +38,7 @@ type NamedToken:
 	id: Int
 	name: String
 
-fn var NamedToken.close() Unit!:
+fn var NamedToken.close() Void!:
 	return stdout().write("close {self.id}\n")
 
 type NamedTriple:
@@ -46,30 +46,30 @@ type NamedTriple:
 	second: NamedToken
 	third: NamedToken
 
-fn local() Unit:
+fn local() Void:
 	tokens := Triple(Token(1), Token(2), Token(3))
 	{first: kept} := tokens
-	_ := kept.id
+	void kept.id
 
-fn temporary() Unit:
+fn temporary() Void:
 	{first: kept} := Triple(Token(4), Token(5), Token(6))
-	_ := kept.id
+	void kept.id
 
-fn nested() Unit:
+fn nested() Void:
 	tokens := Nested(Token(7), Triple(Token(8), Token(9), Token(10)))
 	{kept: kept} := tokens
-	_ := kept.id
+	void kept.id
 
-fn with_storage() Unit:
+fn with_storage() Void:
 	tokens := NamedTriple(
 		NamedToken(11, "first-heap-allocated-name"),
 		NamedToken(12, "second-heap-allocated-name"),
 		NamedToken(13, "third-heap-allocated-name"),
 	)
 	{first: kept} := tokens
-	_ := kept.name.length()
+	void kept.name.length()
 
-fn main() Unit:
+fn main() Void:
 	local()
 	temporary()
 	nested()

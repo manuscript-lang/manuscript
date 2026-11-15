@@ -14,7 +14,7 @@ type Token:
 	log: String
 	closed: Bool = false
 
-fn var Token.close() Unit!:
+fn var Token.close() Void!:
 	if not self.closed:
 		self.closed = true
 		append_file(self.log, "close {self.id}\n").wait()?
@@ -31,19 +31,19 @@ fn var Tokens.next() Token?!:
 
 	return ok(none)
 
-fn var Tokens.close() Unit!:
-	return ok(unit)
+fn var Tokens.close() Void!:
+	return ok()
 
 fn events(log: String) String:
 	if bytes := read_file(log).wait(): return bytes.decode_utf8().get("")
 	return ""
 
-fn read_one(input: ReadStream[Token]) Unit!:
+fn read_one(input: ReadStream[Token]) Void!:
 	var owned = input
 	if token := owned.next()?:
 		use_token(token)?
 
-fn wait_one(input: ReadStream[Token]) Unit!:
+fn wait_one(input: ReadStream[Token]) Void!:
 	var owned = input
 
 	for item in owned:
@@ -66,17 +66,17 @@ test "iterator keeps resource open through the body and closes once":
 // A body uses the external log as well as the value's state: a duplicated resource can
 // have `closed == false` while another copy already released the same external
 // resource.
-fn use_token(token: Token) Unit!:
+fn use_token(token: Token) Void!:
 	expect_equal(token.closed, false)?
 	expect_equal(events(token.log).contains("close {token.id}\n"), false)?
 	append_file(token.log, "body {token.id}\n").wait()?
 
-fn close_item(input: Token) Unit!:
+fn close_item(input: Token) Void!:
 	var token = input
 	use_token(token)?
 	return token.close()
 
-fn walk(log: String, action: Int) Unit!:
+fn walk(log: String, action: Int) Void!:
 	var input = ReadStream[Token](Tokens(log.clone()))
 
 	for item in input:
@@ -87,7 +87,7 @@ fn walk(log: String, action: Int) Unit!:
 		token := item
 		use_token(token)?
 		if action == 1: break
-		if action == 2: return ok(unit)
+		if action == 2: return ok()
 		if action == 3: return error(Error("body failed", kind: "EBODY"))
 		if action == 4: continue
 
@@ -122,7 +122,7 @@ test "explicit item close and stream close preserve each item owner":
 	walk(stream_closed, 6)?
 	expect_equal(events(stream_closed), "body 1\nclose 1\n")?
 
-fn source_error(log: String, fail_at: Int) Unit!:
+fn source_error(log: String, fail_at: Int) Void!:
 	var input = ReadStream[Token](Tokens(log.clone(), fail_at: fail_at))
 
 	for item in input:
@@ -141,7 +141,7 @@ test "a source error relays through try after closing earlier items":
 	expect_equal(later_reason.kind, "EIO")?
 	expect_equal(events(later), "body 1\nclose 1\n")?
 
-fn direct_next(log: String) Unit!:
+fn direct_next(log: String) Void!:
 	var input = ReadStream[Token](Tokens(log.clone()))
 
 	if item := input.next()?:
@@ -164,7 +164,7 @@ fn var PlainTokens.next() Token?:
 
 	return none
 
-fn plain(log: String) Unit!:
+fn plain(log: String) Void!:
 	for token in PlainTokens(log.clone()):
 		use_token(token)?
 
@@ -185,10 +185,10 @@ fn var OptionalTokens.next() Token??!:
 	inner: Token? := Token(1, self.log.clone())
 	return ok(inner)
 
-fn var OptionalTokens.close() Unit!:
-	return ok(unit)
+fn var OptionalTokens.close() Void!:
+	return ok()
 
-fn optional_payload(log: String) Unit!:
+fn optional_payload(log: String) Void!:
 	var input = ReadStream[Token?](OptionalTokens(log.clone()))
 
 	for item in input:
@@ -213,10 +213,10 @@ fn var ResultTokens.next() Result[Result[Token, Error]?, Error]:
 	inner: Token! := ok(Token(1, self.log.clone()))
 	return ok(inner)
 
-fn var ResultTokens.close() Unit!:
-	return ok(unit)
+fn var ResultTokens.close() Void!:
+	return ok()
 
-fn result_payload(log: String) Unit!:
+fn result_payload(log: String) Void!:
 	var input = ReadStream[Token!](ResultTokens(log.clone()))
 
 	for item in input:
@@ -231,22 +231,22 @@ test "a nested result payload transfers its resource":
 
 // Wait for the exact acquisition/body event before cancelling; the deadline bounds a
 // failed handshake.
-fn wait_for_event(log: String, expected: String) Unit!:
+fn wait_for_event(log: String, expected: String) Void!:
 	for attempt in 0..1000:
-		if events(log).contains(expected): return ok(unit)
+		if events(log).contains(expected): return ok()
 
-		_ := sleep(milliseconds(10)).wait()
+		void sleep(milliseconds(10)).wait()
 
 	return error(Error("resource handshake timed out", kind: "ETIMEDOUT"))
 
-fn wait_cancelled(log: String) Unit!:
+fn wait_cancelled(log: String) Void!:
 	var input = ReadStream[Token](Tokens(log.clone()))
 
 	for item in input:
 		token := item
 		use_token(token)?
 
-		_ := sleep(milliseconds(60000)).wait()
+		void sleep(milliseconds(60000)).wait()
 
 test "cancelling an active body closes the delivered item once":
 	dir := temporary("resource-body-cancel-") | expect_ok?
@@ -266,13 +266,13 @@ fn var PendingTokens.next() Token?!:
 	token := Token(1, self.log.clone())
 	append_file(self.log, "ready\n").wait()?
 
-	_ := sleep(milliseconds(60000)).wait()
+	void sleep(milliseconds(60000)).wait()
 	return ok(token)
 
-fn var PendingTokens.close() Unit!:
-	return ok(unit)
+fn var PendingTokens.close() Void!:
+	return ok()
 
-fn next_cancelled(log: String) Unit!:
+fn next_cancelled(log: String) Void!:
 	var input = ReadStream[Token](PendingTokens(log.clone()))
 
 	for item in input:
@@ -290,7 +290,7 @@ test "cancelling a source step closes its undelivered item once":
 	expect_equal(reason.kind, "ECANCELED")?
 	expect_equal(events(log), "ready\nclose 1\n")?
 
-fn resume_after_break(log: String) Unit!:
+fn resume_after_break(log: String) Void!:
 	var input = ReadStream[Token](Tokens(log.clone()))
 
 	for item in input:

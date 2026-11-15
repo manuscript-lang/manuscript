@@ -25,6 +25,6 @@ fn ints_draw(s: Source) Drawn[Int]:
     {value, source} := draw(middle)
     return Drawn(value + sign, source)
 
-fn main() Unit:
+fn main() Void:
     c := ints().make(Source([0, 3, 0, 7], 0))
-    _ := stdout().write("{c.value} {c.source.choices}\n")
+    void stdout().write("{c.value} {c.source.choices}\n")

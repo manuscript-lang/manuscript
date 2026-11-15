@@ -93,7 +93,7 @@ fn new_table(var reader: Reader, explicit: Bool, dotted: Bool) Int:
 fn flags(reader: Reader, id: Int) Table:
 	return reader.tables[id]
 
-fn store_flags(var reader: Reader, id: Int, flags: Table) Unit:
+fn store_flags(var reader: Reader, id: Int, flags: Table) Void:
 	reader.tables.set(id, flags)
 
 fn lookup(reader: Reader, id: Int, key: String) Node?:
@@ -103,10 +103,10 @@ fn contains_key(reader: Reader, id: Int, key: String) Bool:
 	return reader.entries[id].contains(key)
 
 // Adds an entry to the table's map in place.
-fn put(var reader: Reader, id: Int, key: String, node: Node) Unit:
+fn put(var reader: Reader, id: Int, key: String, node: Node) Void:
 	reader.entries[id].add(key, node)
 
-fn put_array(var reader: Reader, id: Int, key: String, first: Int) Unit:
+fn put_array(var reader: Reader, id: Int, key: String, first: Int) Void:
 	reader.arrays.append([first])
 	put(var reader, id, key, Node.TableArray(reader.arrays.length() - 1))
 
@@ -183,7 +183,7 @@ fn invalid(reader: Reader, reason: String) Error:
 fn slice_text(reader: Reader, start: Int, end: Int) String:
 	return reader.data.slice(start, end).get().decode_utf8().get("")
 
-fn space(var reader: Reader, multiline: Bool) Unit:
+fn space(var reader: Reader, multiline: Bool) Void:
 	var pos = cursor(reader)
 
 	while true:
@@ -204,13 +204,13 @@ fn within(value: Int, limit: Int?) Bool:
 	if maximum := limit: return value <= maximum
 	return true
 
-fn allocate(var reader: Reader) Unit!:
+fn allocate(var reader: Reader) Void!:
 	reader.values += 1
 	if not within(reader.values, reader.options.max_values): return error(
 		Error("TOML limit exceeded", kind: "EOVERFLOW")
 	)
 
-fn budget(reader: Reader, depth: Int) Unit!:
+fn budget(reader: Reader, depth: Int) Void!:
 	if not within(depth, reader.options.max_depth): return error(
 		Error("TOML limit exceeded", kind: "EOVERFLOW")
 	)
@@ -419,7 +419,7 @@ fn child(var reader: Reader, parent: Int, key: String, dotted: Bool) Result[Int,
 		_: return error(invalid(reader, "key is already a value"))
 
 fn append_table(var reader: Reader, parent: Int, key: String, next: Int) Result[
-	Unit,
+	Void,
 	Error,
 ]:
 	existing := lookup(reader, parent, key).clone()
@@ -427,18 +427,18 @@ fn append_table(var reader: Reader, parent: Int, key: String, next: Int) Result[
 	if existing.is_none():
 		allocate(var reader)?
 		put_array(var reader, parent, key, next)
-		return ok(unit)
+		return ok()
 
 	node := existing.get()
 
 	match node:
 		TableArray(slot):
 			reader.arrays[slot].append(next)
-			return ok(unit)
+			return ok()
 		_: return error(invalid(reader, "table array conflicts with value"))
 
 fn assign(var reader: Reader, parent: Int, keys: List[String], value: Node) Result[
-	Unit,
+	Void,
 	Error,
 ]:
 	var current = parent
@@ -462,7 +462,7 @@ fn assign(var reader: Reader, parent: Int, keys: List[String], value: Node) Resu
 
 // Adds a key that must not exist yet to an open table.
 fn assign_one(var reader: Reader, parent: Int, key: String, value: Node) Result[
-	Unit,
+	Void,
 	Error,
 ]:
 	if flags(reader, parent).sealed: return error(
@@ -475,7 +475,7 @@ fn assign_one(var reader: Reader, parent: Int, key: String, value: Node) Result[
 		invalid(reader, "duplicate or closed key")
 	)
 
-	return ok(unit)
+	return ok()
 
 // Reads `key =` when the key is one plain bare word; otherwise leaves the cursor where
 // it was.
@@ -500,7 +500,7 @@ fn simple_key(var reader: Reader) String?:
 	return slice_text(reader, start, end)
 
 // Reads `keys = value` into the table, where `depth` is the nesting depth of the table.
-fn key_value(var reader: Reader, table: Int, depth: Int) Unit!:
+fn key_value(var reader: Reader, table: Int, depth: Int) Void!:
 	if key := simple_key(var reader):
 		value := read_value(var reader, depth + 1)?
 		return assign_one(reader: var reader, parent: table, key: key, value: value)
@@ -511,11 +511,11 @@ fn key_value(var reader: Reader, table: Int, depth: Int) Unit!:
 	value := read_value(var reader, depth + keys.length())?
 	return assign(reader: var reader, parent: table, keys: keys, value: value)
 
-fn seal(var reader: Reader, value: Node) Unit:
+fn seal(var reader: Reader, value: Node) Void:
 	match value:
 		TableNode(id):
 			var state = flags(reader, id).clone()
-			if state.sealed: return unit
+			if state.sealed: return
 
 			state.sealed = true
 			store_flags(var reader, id, state)
@@ -525,7 +525,7 @@ fn seal(var reader: Reader, value: Node) Unit:
 			)
 		ArrayNode(values):
 			for item in values: seal(var reader, item)
-		_: return unit
+		_: return
 
 fn digits(text: String, alphabet: String) Bool:
 	if text == "": return false
@@ -1108,7 +1108,7 @@ fn dotted(path: List[String]) String:
 	for key in path: parts.append(format_key(key))
 	return parts.join(".")
 
-fn emit_header(var writer: Writer, header: String) Unit:
+fn emit_header(var writer: Writer, header: String) Void:
 	if writer.started: writer.out.append("\n")
 	writer.out.append(header)
 	writer.out.append("\n")
@@ -1117,7 +1117,7 @@ fn emit_header(var writer: Writer, header: String) Unit:
 fn all_tables(values: List[TomlValue]) Bool:
 	for item in values:
 		match item:
-			TableValue(_): unit
+			TableValue(_): void
 			_: return false
 
 	return true
@@ -1135,7 +1135,7 @@ fn emit_one(
 	path: List[String],
 	brackets: String,
 	table: Map[String, TomlValue],
-) Unit:
+) Void:
 	if brackets == "[[": emit_header(
 		var writer,
 		"[[".concat(dotted(path.clone())).concat("]]"),
@@ -1144,7 +1144,7 @@ fn emit_one(
 
 	emit_table(var writer, path, table)
 
-fn emit_table(var writer: Writer, path: List[String], values: Map[String, TomlValue]) Unit:
+fn emit_table(var writer: Writer, path: List[String], values: Map[String, TomlValue]) Void:
 	for entry in values.entries():
 		if section_kind(entry.value.clone()) == 0: writer.out.append(
 			(
@@ -1174,7 +1174,7 @@ fn emit_table(var writer: Writer, path: List[String], values: Map[String, TomlVa
 						brackets: "[[",
 						table: table,
 					)
-			_: unit
+			_: void
 
 fn datetimes_valid(value: TomlValue) Bool:
 	match value:

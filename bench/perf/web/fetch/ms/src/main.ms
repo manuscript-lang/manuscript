@@ -22,7 +22,7 @@ fn worker(url: String, nanos: Int) Int:
 	return n
 
 // Runs `conns` fetching promises; the runtime spreads them over its threads.
-fn main() Unit:
+fn main() Void:
 	args := arguments()
 	url := args.get(0)
 	conns := args.get(1).parse_int().get()
@@ -33,5 +33,4 @@ fn main() Unit:
 		running.append(promise(fn: ok(worker(url.clone(), secs * 1000000000))))
 	for r in wait_all(running).get():
 		total += r
-
-	_ := stdout().write("req/s {total / secs}\n")
+	void stdout().write("req/s {total / secs}\n")

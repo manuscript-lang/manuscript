@@ -15,27 +15,27 @@ type Holder:
 	label: String
 	breaks: Bool
 
-fn var Holder.close() Unit!:
-	_ := sleep(nanoseconds(1000)).wait()
+fn var Holder.close() Void!:
+	void sleep(nanoseconds(1000)).wait()
 	if self.breaks:
 		panic("close fault")
 
-fn hold_then_break(label: String) Unit:
+fn hold_then_break(label: String) Void:
 	holder := Holder(label, true)
-	_ := holder.breaks
+	void holder.breaks
 
-fn hold_fault_and_break(label: String) Unit:
+fn hold_fault_and_break(label: String) Void:
 	holder := Holder(label, true)
 	panic("body fault")
 
-	_ := holder.breaks
+	void holder.breaks
 
 type Door:
 	label: String
 	fail: Bool
 
-fn var Door.close() Unit!:
-	_ := sleep(nanoseconds(1000)).wait()
+fn var Door.close() Void!:
+	void sleep(nanoseconds(1000)).wait()
 	if self.fail: panic("capture close panic")
 
 fn captured(label: String) fn() Int:
@@ -46,15 +46,15 @@ type Envelope:
 	label: String
 	callback: fn() Int
 
-fn replace_old_capture(label: String) Unit:
+fn replace_old_capture(label: String) Void:
 	var items = [Envelope(label.clone(), captured(label.clone()))]
 	items.set(0, Envelope(label, fn: 4))
 
-fn drop_capture(label: String) Unit:
+fn drop_capture(label: String) Void:
 	action := captured(label)
-	_ := action()
+	void action()
 
-fn temporary_list(label: String) Unit:
+fn temporary_list(label: String) Void:
 	_old := [Door(label.clone(), false)].replace(0, Door(label, true))
 
 type Shelf:
@@ -64,21 +64,21 @@ enum Choice:
 	Held(door: Holder, note: String)
 	Empty
 
-fn shelf_close(label: String) Unit:
+fn shelf_close(label: String) Void:
 	shelf := Shelf(Holder(label, true))
-	_ := shelf.slot
+	void shelf.slot
 
-fn choice_close(label: String) Unit:
+fn choice_close(label: String) Void:
 	choice := Choice.Held(Holder(label.clone(), true), "{label} and a note")
-	_ := choice
+	void choice
 
-fn optional_close_during_fault(label: String) Unit:
+fn optional_close_during_fault(label: String) Void:
 	var held: Holder? = Holder(label, true)
 	panic("body fault")
 
-	_ := held
+	void held
 
-fn faults(work: fn() Unit) Bool:
+fn faults(work: fn() Void) Bool:
 	return promise(fn: ok(work()), options: PromiseOptions(placement: Placement.Here)).wait().is_error()
 
 test "a fault in close on a normal return releases the value":

@@ -82,7 +82,7 @@ test "levels filter methods and function values":
 	expect_equal((written(path)?), "")?
 	logger.warn("warn")?
 
-	error_log := logger.error[Unit]
+	error_log := logger.error[Void]
 	error_log("error")?
 	logger.fatal("fatal")?
 	logger.set_level(LogLevel.Trace)
@@ -100,7 +100,7 @@ test "levels filter methods and function values":
 	logger.fatal("filtered")?
 	expect_equal((written(path)?), before)?
 
-	invalid: Unit! := error(Error("logging: invalid input", kind: "EINVAL"))
+	invalid: Void! := error(Error("logging: invalid input", kind: "EINVAL"))
 	expect_equal(logger.log(LogLevel.Silent, "invalid"), invalid)?
 
 type Service:
@@ -136,7 +136,7 @@ test "limits and unencodable values reject before writing":
 	expect_equal((written(path)?), line)?
 
 	before := written(path)?
-	limited: Unit! := error(Error("logging: limit exceeded", kind: "EOVERFLOW"))
+	limited: Void! := error(Error("logging: limit exceeded", kind: "EOVERFLOW"))
 	expect_equal(logger.info("xx"), limited)?
 
 	zero := create(
@@ -159,7 +159,7 @@ test "limits and unencodable values reject before writing":
 
 	unlimited := create(file_transport(path.clone())?, LoggerOptions(timestamp: false))?
 	bad := JsonValue.NumberValue("NaN")
-	invalid_data: Unit! := error(Error("logging: invalid data", kind: "EBADMSG"))
+	invalid_data: Void! := error(Error("logging: invalid data", kind: "EBADMSG"))
 	expect_equal(unlimited.info("bad", bad), invalid_data)?
 	expect_equal((written(path)?), before)?
 
@@ -169,7 +169,7 @@ test "closing a logger twice keeps reporting Closed":
 	logger.close()?
 	logger.close()?
 
-	closed: Unit! := error(Error("logging: resource is closed", kind: "EBADF"))
+	closed: Void! := error(Error("logging: resource is closed", kind: "EBADF"))
 	expect_equal(logger.info("closed"), closed)?
 	expect_equal(logger.flush(), closed)?
 
@@ -206,19 +206,19 @@ type CaptureTransport:
 	path: String
 	suffix: String
 
-fn CaptureTransport.write(data: String) Unit!:
+fn CaptureTransport.write(data: String) Void!:
 	return self.write_bytes(data.to_bytes())
 
-fn CaptureTransport.write_bytes(data: Bytes) Unit!:
+fn CaptureTransport.write_bytes(data: Bytes) Void!:
 	if read_file("{self.path}{self.suffix}").wait().is_ok(): return error(
 		Error("logging: resource is closed", kind: "EBADF")
 	)
 
 	match append_file(self.path, data).wait():
-		ok(_): return ok(unit)
+		ok(_): return ok()
 		error(cause): return error(cause)
 
-fn CaptureTransport.flush() Unit!:
+fn CaptureTransport.flush() Void!:
 	if read_file("{self.path}{self.suffix}").wait().is_ok(): return error(
 		Error("logging: resource is closed", kind: "EBADF")
 	)
@@ -226,7 +226,7 @@ fn CaptureTransport.flush() Unit!:
 fn CaptureTransport.duplicate() Transport!:
 	return ok(CaptureTransport(self.path.clone(), "{self.suffix}.child"))
 
-fn CaptureTransport.close() Unit:
+fn CaptureTransport.close() Void:
 	_marked := write_file("{self.path}{self.suffix}", "closed", true).wait()
 
 test "source transports receive complete records and close through their contract":
@@ -245,11 +245,11 @@ test "source transports receive complete records and close through their contrac
 	logger.close()?
 	expect_true(read_file("{path}.closed").wait().is_ok())?
 
-fn log_from_child(logger: Logger) Unit!:
+fn log_from_child(logger: Logger) Void!:
 	child := logger.child("worker")?
 	return child.info("from child")
 
-fn log_in_scope(path: String) Unit!:
+fn log_in_scope(path: String) Void!:
 	logger := create(
 		CaptureTransport(path.clone(), ".closed"),
 		LoggerOptions(timestamp: false),
@@ -269,7 +269,7 @@ test "unencodable fields are rejected and fields keep their shape under data":
 	path := "{directory.path()}/out.ndjson"
 	file := open(path, OpenMode.Write, OpenOptions(permissions: 420))?
 	logger := create(handle_transport(file), LoggerOptions(timestamp: false))?
-	invalid: Unit! := error(Error("logging: invalid data", kind: "EBADMSG"))
+	invalid: Void! := error(Error("logging: invalid data", kind: "EBADMSG"))
 	nan := JsonValue.NumberValue("NaN")
 	expect_equal(logger.info("m", nan), invalid)?
 	expect_false(logger.child(nan).is_ok())?
@@ -280,7 +280,7 @@ test "unencodable fields are rejected and fields keep their shape under data":
 	expected := "\{\"level\":30,\"msg\":\"m\",\"data\":\{\"service\":\"a\"\}\}\n\{\"level\":30,\"msg\":\"m\",\"data\":[1]\}\n"
 	expect_equal((written(path)?), expected)?
 
-fn chatter(logger: Logger, name: String) Unit!:
+fn chatter(logger: Logger, name: String) Void!:
 	for n in 0..3:
 		logger.info("m", name)?
 
@@ -308,20 +308,20 @@ test "loggers on several threads never interleave a record":
 type Memory:
 	path: String
 
-fn Memory.write(data: String) Unit!:
+fn Memory.write(data: String) Void!:
 	return append_file(self.path, data).wait()
 
-fn Memory.write_bytes(data: Bytes) Unit!:
+fn Memory.write_bytes(data: Bytes) Void!:
 	return self.write(data.decode_utf8().get(""))
 
-fn Memory.flush() Unit!:
-	return ok(unit)
+fn Memory.flush() Void!:
+	return ok()
 
 fn Memory.duplicate() Transport!:
 	return ok(Memory(self.path.clone()))
 
-fn Memory.close() Unit:
-	return unit
+fn Memory.close() Void:
+	return
 
 fn recorded(path: String) String:
 	return written(path).get(none).get("")
@@ -382,7 +382,7 @@ test "the time field is a millisecond count and the size limit counts the newlin
 			max_bytes: plain.to_bytes().length() - 1,
 		),
 	)?
-	limited: Unit! := error(Error("logging: limit exceeded", kind: "EOVERFLOW"))
+	limited: Void! := error(Error("logging: limit exceeded", kind: "EOVERFLOW"))
 	expect_equal(tight.info("ab"), limited)?
 	expect_equal(recorded(quiet.clone()), plain)?
 

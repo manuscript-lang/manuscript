@@ -59,7 +59,7 @@ One decoded terminal input event. `Text` carries printable characters typed
 together. `Key` names a non-printing or modified key: `enter`, `tab`,
 `backspace`, `escape`, `space`, `up`, `down`, `left`, `right`, `home`, `end`,
 `insert`, `delete`, `page_up`, `page_down`, `f1` to `f12`, or a letter with
-`ctrl` or `alt` set. `Paste` carries text pasted as one unit, line breaks as `\n`. `Resize`
+`ctrl` or `alt` set. `Paste` carries text pasted as one void, line breaks as `\n`. `Resize`
 carries the new size.
 */
 export enum TerminalEvent:
@@ -503,8 +503,8 @@ fn var TerminalEvents.next() TerminalEvent?!:
 
 	return ok(none)
 
-fn var TerminalEvents.close() Unit!:
-	return ok(unit)
+fn var TerminalEvents.close() Void!:
+	return ok()
 
 esc := "\u{1b}"
 // Cursor positions beyond this are refused: older terminals cannot take larger numbers.
@@ -524,7 +524,7 @@ export type RawTerminal:
 	handle: RawHandle
 
 // Restores the terminal; closing again does nothing.
-fn var RawTerminal.close() Unit!:
+fn var RawTerminal.close() Void!:
 	msstd_terminal_raw_terminal_close(self.handle.native)
 
 // Input events as a stream: keys, text and resizes, one per read. Waits honor
@@ -556,48 +556,48 @@ fn RawTerminal.size() TerminalSize!:
 
 // Writes text or escape sequences to the terminal, after any buffered program
 // output. Fails with `EBADF` after close.
-fn RawTerminal.write(text: String) Unit!:
+fn RawTerminal.write(text: String) Void!:
 	return msstd_terminal_raw_terminal_write(self.handle.native, text)
 
 // Moves the cursor to a zero-based row and column; negative or very large values
 // return `EINVAL`.
-fn RawTerminal.move_cursor(row: Int, column: Int) Unit!:
+fn RawTerminal.move_cursor(row: Int, column: Int) Void!:
 	if row < 0 or column < 0 or row > max_position or column > max_position:
 		return error(Error("terminal: position out of range", kind: "EINVAL"))
 	return self.write("{esc}[{row + 1};{column + 1}H")
 
 // Moves the cursor down by `rows` and right by `columns`; negative values move up
 // and left. The cursor stops at the screen edge.
-fn RawTerminal.move_by(rows: Int, columns: Int) Unit!:
+fn RawTerminal.move_by(rows: Int, columns: Int) Void!:
 	var out = ""
 	if rows < 0: out = "{out}{esc}[{0 - rows}A"
 	if rows > 0: out = "{out}{esc}[{rows}B"
 	if columns > 0: out = "{out}{esc}[{columns}C"
 	if columns < 0: out = "{out}{esc}[{0 - columns}D"
-	if out.is_empty(): return ok(unit)
+	if out.is_empty(): return ok()
 
 	return self.write(out)
 
 // Moves the cursor to a zero-based column of its current row.
-fn RawTerminal.move_to_column(column: Int) Unit!:
+fn RawTerminal.move_to_column(column: Int) Void!:
 	if column < 0 or column > max_position:
 		return error(Error("terminal: position out of range", kind: "EINVAL"))
 	return self.write("{esc}[{column + 1}G")
 
 // Remembers the cursor position for `restore_cursor`.
-fn RawTerminal.save_cursor() Unit!:
+fn RawTerminal.save_cursor() Void!:
 	return self.write("{esc}7")
 
 // Returns to the position remembered by `save_cursor`.
-fn RawTerminal.restore_cursor() Unit!:
+fn RawTerminal.restore_cursor() Void!:
 	return self.write("{esc}8")
 
 // Shows or hides the cursor until the terminal is restored on close.
-fn RawTerminal.show_cursor(visible: Bool) Unit!:
+fn RawTerminal.show_cursor(visible: Bool) Void!:
 	return self.write(if visible: "{esc}[?25h" else: "{esc}[?25l")
 
 // Erases the selected screen region without moving the cursor.
-fn RawTerminal.erase(region: EraseRegion) Unit!:
+fn RawTerminal.erase(region: EraseRegion) Void!:
 	match region:
 		Screen: return self.write("{esc}[2J")
 		Line: return self.write("{esc}[2K")
@@ -608,11 +608,11 @@ fn RawTerminal.erase(region: EraseRegion) Unit!:
 		Scrollback: return self.write("{esc}[3J")
 
 // Erases the screen and moves the cursor to the top left.
-fn RawTerminal.clear() Unit!:
+fn RawTerminal.clear() Void!:
 	return self.write("{esc}[2J{esc}[H")
 
 // Sets the window title; control characters are removed first.
-fn RawTerminal.set_title(title: String) Unit!:
+fn RawTerminal.set_title(title: String) Void!:
 	clean := title.replace("\u{7}", "").replace(esc, "").replace("\u{9c}", "")
 	return self.write("{esc}]2;{clean}\u{7}")
 

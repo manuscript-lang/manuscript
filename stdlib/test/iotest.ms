@@ -32,7 +32,7 @@ fn var OneByte.next() Bytes?!:
 	self.held = data.slice(1, data.length())?
 	return ok(data.slice(0, 1)?)
 
-fn var OneByte.close() Unit!:
+fn var OneByte.close() Void!:
 	return self.input.close()
 
 // Returns `input` limited to one byte per read, which exposes code that assumes a read
@@ -60,7 +60,7 @@ fn var FailAfter.next() Bytes?!:
 
 	return ok(chunk)
 
-fn var FailAfter.close() Unit!:
+fn var FailAfter.close() Void!:
 	return self.input.close()
 
 // Returns `input` that delivers `after` bytes and then fails every read with `cause`,
@@ -78,7 +78,7 @@ type FailingSink:
 	remaining: Int
 	cause: Error
 
-fn var FailingSink.write(value: Bytes) Unit!:
+fn var FailingSink.write(value: Bytes) Void!:
 	size := value.length()
 
 	if size <= self.remaining:
@@ -92,10 +92,10 @@ fn var FailingSink.write(value: Bytes) Unit!:
 		self.output.write(value.slice(0, prefix)?)?
 	return error(self.cause.clone())
 
-fn var FailingSink.flush() Unit!:
+fn var FailingSink.flush() Void!:
 	return self.output.flush()
 
-fn var FailingSink.close() Unit!:
+fn var FailingSink.close() Void!:
 	return self.output.close()
 
 // Returns a writer that passes `after` bytes through to `output`, writes the prefix of
@@ -111,7 +111,7 @@ export fn fail_writer_after(
 // Checks that `make` builds a well-behaved `ReadStream[Bytes]` over exactly `expected`:
 // whole reads, one-byte reads, and an end of input that stays ended. `make` is called
 // once per check so each starts from the beginning.
-export fn check_reader(make: fn() ReadStream[Bytes], expected: Bytes) Unit!:
+export fn check_reader(make: fn() ReadStream[Bytes], expected: Bytes) Void!:
 	all := read_all(make())
 	if all.is_error(): return fail("check_reader: reading everything failed")
 	if all.get() != expected:

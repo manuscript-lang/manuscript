@@ -50,11 +50,11 @@ export fn panic(message: String) Never: ...
 
 // The process-wide output buffer; standard output is flushed at exit
 // (crates/ms-rt/src/io.rs).
-extern fn msrt_io_write_stdout_line(text: String, end: String) Unit
+extern fn msrt_io_write_stdout_line(text: String, end: String) Void
 
 /*
 Writes `value` as text and `end` (a newline unless given) to standard output; `print(chunk, end: "")` streams text without a newline. A type that declares its own `to_string()` prints that text, also when nested in a list or map; other records print structurally.
-It returns `Unit`. Output to a terminal is flushed at each newline and output to a pipe or file is flushed when the program blocks or exits, so a line printed before a wait is visible while it waits. Use `stdout()` from `@std/io/io.ms` for text without an appended newline, or `stdout_bytes()` for bytes.
+It returns `Void`. Output to a terminal is flushed at each newline and output to a pipe or file is flushed when the program blocks or exits, so a line printed before a wait is visible while it waits. Use `stdout()` from `@std/io/io.ms` for text without an appended newline, or `stdout_bytes()` for bytes.
 
 <!-- manuscript-example: {"mode":"fragment"} -->
 ```manuscript
@@ -63,7 +63,7 @@ print(order)
 ```
 */
 // ms: effect std.console.write
-export fn print[T](value: T, end: String = "\n") Unit:
+export fn print[T](value: T, end: String = "\n") Void:
 	msrt_io_write_stdout_line(value.to_string(), end)
 
 /*
@@ -87,9 +87,9 @@ export interface Closeable:
 	/*
     Releases the implementation's resource state; with calls this on every scope exit.
     Cleanup runs during return, expected errors, faults, and cancellation too. A type whose release cannot
-    fail returns `ok(unit)`.
+    fail returns `ok()`.
     */
-	var fn close() Unit!
+	var fn close() Void!
 
 /*
 A source of items that `for` walks: each `next` returns the following item, or `none` once exhausted.

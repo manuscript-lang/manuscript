@@ -5,9 +5,9 @@ import expect_true from "@std/test/test.ms"
 
 fn byLength(left: String, right: String) Int: left.length() - right.length()
 
-fn record(var into: List[Int], value: Int) Unit:
+fn record(var into: List[Int], value: Int) Void:
     into.append(value: value)
-    return unit
+    return
 
 test "map callbacks":
     m := {"a": 1, "bb": 2, "ccc": 3}
@@ -41,7 +41,7 @@ test "map callbacks":
 
     var visited = List[Int]()
     m.for_each(
-        fn(key: String, value: Int) Unit: record(
+        fn(key: String, value: Int) Void: record(
             into: var visited, value: value
         )
     )

@@ -12,14 +12,14 @@ type Counted:
 fn var Counted.next() Int?!:
 	return ok(none)
 
-fn var Counted.write(value: Int) Unit!:
-	return ok(unit)
+fn var Counted.write(value: Int) Void!:
+	return ok()
 
-fn var Counted.flush() Unit!:
-	return ok(unit)
+fn var Counted.flush() Void!:
+	return ok()
 
-fn var Counted.close() Unit!:
-	_ := append_file(self.log, "x").wait()
+fn var Counted.close() Void!:
+	void append_file(self.log, "x").wait()
 
 fn closes(log: String) String:
 	if bytes := read_file(log).wait(): return bytes.decode_utf8().get("")
@@ -28,7 +28,7 @@ fn closes(log: String) String:
 test "read stream closes through the one close":
 	dir := temporary("shape-") | expect_ok?
 	log := "{dir.path()}/r.log"
-	_ := append_file(log, "").wait()
+	void append_file(log, "").wait()
 	var by_hand = ReadStream[Int](Counted(log.clone()))
 	by_hand.close()?
 	expect_equal(closes(log), "x")?
@@ -36,7 +36,7 @@ test "read stream closes through the one close":
 test "write stream closes through the one close":
 	dir := temporary("shape-") | expect_ok?
 	log := "{dir.path()}/w.log"
-	_ := append_file(log, "").wait()
+	void append_file(log, "").wait()
 	var out = WriteStream[Int](Counted(log.clone()))
 	out.close()?
 	expect_equal(closes(log), "x")?
@@ -44,7 +44,7 @@ test "write stream closes through the one close":
 test "a scope closes the value once":
 	dir := temporary("shape-") | expect_ok?
 	log := "{dir.path()}/s.log"
-	_ := append_file(log, "").wait()
+	void append_file(log, "").wait()
 
 	if true:
 		c := Counted(log.clone())

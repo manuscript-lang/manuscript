@@ -103,7 +103,7 @@ fn XmlNode.find_all(name: String) List[XmlNode]:
 
 	return found
 
-fn collect_text(node: XmlNode, var out: StringBuilder) Unit:
+fn collect_text(node: XmlNode, var out: StringBuilder) Void:
 	match node:
 		XmlText(text): out.append(text)
 		XmlElement(_, _, children):
@@ -155,12 +155,12 @@ fn Reader.done() Bool:
 fn Reader.invalid(reason: String) Error:
 	return invalid_at(self.chars, self.at, reason)
 
-fn var Reader.skip_space() Unit:
+fn var Reader.skip_space() Void:
 	while not self.done() and is_space(self.peek()):
 		self.at += 1
 
 // Consumes `literal` or fails.
-fn var Reader.expect(literal: String) Unit!:
+fn var Reader.expect(literal: String) Void!:
 	if not self.looking_at(literal): return error(self.invalid("expected `{literal}`"))
 
 	self.at += literal.chars().length()
@@ -222,7 +222,7 @@ fn var Reader.name() String!:
 
 // The reserved target `xml` belongs to a declaration, never a processing
 // instruction.
-fn var Reader.instruction() Unit!:
+fn var Reader.instruction() Void!:
 	start := self.at
 	self.expect("<?")?
 
@@ -253,7 +253,7 @@ fn var Reader.declaration_attribute() XmlAttribute!:
 
 // XMLDecl: mandatory version, optional encoding, optional standalone, in that
 // order.
-fn var Reader.declaration() Unit!:
+fn var Reader.declaration() Void!:
 	self.expect("<?xml")?
 	if not is_space(self.peek()): return error(
 		self.invalid("expected whitespace after `<?xml`")
@@ -280,7 +280,7 @@ fn var Reader.declaration() Unit!:
 
 		if self.looking_at("?>"):
 			self.at += 2
-			return ok(unit)
+			return ok()
 
 		if self.at == before: return error(self.invalid("expected whitespace or `?>`"))
 
@@ -317,7 +317,7 @@ fn var Reader.declaration() Unit!:
 			)
 
 // Skips a quoted literal; its contents never delimit markup.
-fn var Reader.quoted(public_id: Bool = false) Unit!:
+fn var Reader.quoted(public_id: Bool = false) Void!:
 	quote := self.peek()
 	if quote != "\"" and quote != "'": return error(
 		self.invalid("expected a quoted literal")
@@ -346,7 +346,7 @@ fn var Reader.quoted(public_id: Bool = false) Unit!:
 				)
 
 // Requires at least one whitespace scalar.
-fn var Reader.require_space() Unit!:
+fn var Reader.require_space() Void!:
 	before := self.at
 	self.skip_space()
 	if self.at == before: return error(self.invalid("expected whitespace"))
@@ -354,13 +354,13 @@ fn var Reader.require_space() Unit!:
 // XML 1.0 section 2.8 `intSubset`: declarations, comments, instructions and
 // parameter references, with quoted spans skipped so `]` and `>` inside them are
 // plain text.
-fn var Reader.internal_subset() Unit!:
+fn var Reader.internal_subset() Void!:
 	while true:
 		self.skip_space()
 
 		if self.looking_at("]"):
 			self.at += 1
-			return ok(unit)
+			return ok()
 
 		if self.looking_at("<!--"):
 			_comment := self.comment()?
@@ -393,7 +393,7 @@ fn var Reader.internal_subset() Unit!:
 
 // XML 1.0 section 2.8 `doctypedecl`: name, optional external identifier, optional
 // internal subset.
-fn var Reader.doctype() Unit!:
+fn var Reader.doctype() Void!:
 	self.expect("<!DOCTYPE")?
 	self.require_space()?
 
@@ -425,7 +425,7 @@ fn var Reader.doctype() Unit!:
 fn var Reader.skip_misc(
 	declaration_allowed: Bool = false,
 	doctype_allowed: Bool = false,
-) Unit!:
+) Void!:
 	start := self.at
 	var doctype_open = doctype_allowed
 
@@ -450,7 +450,7 @@ fn var Reader.skip_misc(
 		else:
 			break
 
-	return ok(unit)
+	return ok()
 
 fn var Reader.element(depth: Int) XmlNode!:
 	if depth > self.max_depth: return error(
@@ -828,7 +828,7 @@ export fn stringify(node: XmlNode, indent: String = "") String:
 	write(node, indent, 0, var out)
 	return out.build()
 
-fn write(node: XmlNode, indent: String, level: Int, var out: StringBuilder) Unit:
+fn write(node: XmlNode, indent: String, level: Int, var out: StringBuilder) Void:
 	pad := if indent.is_empty(): "" else: indent.repeat(level).get("")
 	newline := if indent.is_empty(): "" else: "\n"
 

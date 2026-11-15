@@ -12,7 +12,7 @@ import (
 	Duration from "@std/time.ms",
 )
 
-export extern fn msstd_http_client_close(handle: NativeHttpClient) Unit
+export extern fn msstd_http_client_close(handle: NativeHttpClient) Void
 
 export extern fn msstd_http_client_share(handle: NativeHttpClient) NativeHttpClient
 
@@ -29,7 +29,7 @@ export extern fn msstd_http_client_request_bytes(
 export extern fn msstd_http_serving_new(
 	address: String,
 	options: HttpServerOptions,
-	handler: fn(var HttpExchange) Unit!
+	handler: fn(var HttpExchange) Void!
 ) NativeServing!
 
 // Another handle on the same serving, for a connection promise to own.
@@ -43,14 +43,14 @@ export extern fn msstd_http_serving_accept(serving: NativeServing) Int!
 // poller.
 export extern fn msstd_http_serving_worker(serving: NativeServing) NativeWorker!
 
-export extern fn msstd_http_worker_adopt(worker: NativeWorker, connection: Int) Unit
+export extern fn msstd_http_worker_adopt(worker: NativeWorker, connection: Int) Void
 
 // Drains the worker's connections and ends it.
-export extern fn msstd_http_worker_close(worker: NativeWorker) Unit
+export extern fn msstd_http_worker_close(worker: NativeWorker) Void
 
-export extern fn msstd_http_serving_release(serving: NativeServing) Unit
+export extern fn msstd_http_serving_release(serving: NativeServing) Void
 
-export extern fn msstd_http_body_close(handle: NativeResponseBody) Unit
+export extern fn msstd_http_body_close(handle: NativeResponseBody) Void
 
 export extern fn msstd_http_body_metadata(
 	handle: NativeResponseBody
@@ -67,7 +67,7 @@ export extern fn msstd_http_headers_append(
 	headers: HttpHeaders,
 	name: String,
 	value: Bytes,
-) Unit!
+) Void!
 
 export extern fn msstd_http_headers_values(
 	value: HttpHeaders,
@@ -83,6 +83,6 @@ export extern fn msstd_http_headers_clone(value: HttpHeaders) HttpHeaders
 export extern fn msstd_http_headers_new() HttpHeaders
 
 // Limits the scheduler threads the runtime starts to `n` (at least 1).
-export extern fn msrt_runtime_set_threads(n: Int) Unit
+export extern fn msrt_runtime_set_threads(n: Int) Void
 
 export extern fn msrt_runtime_limit() Int

@@ -13,11 +13,11 @@ import (
 	recv, send from "./support/conn.ms",
 )
 
-fn faulting(var exchange: HttpExchange) Unit!:
+fn faulting(var exchange: HttpExchange) Void!:
 	big := "x".repeat(1000000).get("")
 	xs: List[Int] := []
 	n := xs[big.length()]
-	if big.length() + n > 5: return ok(unit)
+	if big.length() + n > 5: return ok()
 
 test "a faulting handler releases the values its frames own":
 	server := serve(address: "127.0.0.1:0", handler: faulting) | expect_ok?
@@ -35,7 +35,7 @@ test "a faulting handler releases the values its frames own":
 	grown := (memory_usage() | expect_ok?).resident - before
 	if grown > 20000000: return error(Error("resident memory grew {grown} bytes"))
 
-fn hanging(var exchange: HttpExchange) Unit!:
+fn hanging(var exchange: HttpExchange) Void!:
 	sleep(30.seconds()).wait()?
 
 // Closing cancels the hanging handlers at once rather than waiting out their sleep.
@@ -52,7 +52,7 @@ test "a fetch cancelled by its timeout releases its read buffer":
 
 	// Warm up the thread's buffers and the connection pool before measuring.
 	for i in 0..20:
-		_ := fetch(url).with(options: PromiseOptions(timeout: 1.milliseconds())).wait()
+		void fetch(url).with(options: PromiseOptions(timeout: 1.milliseconds())).wait()
 
 	before := (memory_usage() | expect_ok?).resident
 
@@ -72,9 +72,9 @@ test "a fetch cancelled by its timeout frees the request state its frames own":
 	url := "http://{server.address()}/"
 
 	// One fetch waits long enough for its request to be sent; the rest cancel at once.
-	_ := fetch(url).with(options: PromiseOptions(timeout: 5.milliseconds())).wait()
+	void fetch(url).with(options: PromiseOptions(timeout: 5.milliseconds())).wait()
 	for i in 0..200:
-		_ := fetch(url).with(options: PromiseOptions(timeout: 0.milliseconds())).wait()
+		void fetch(url).with(options: PromiseOptions(timeout: 0.milliseconds())).wait()
 
 	before := (memory_usage() | expect_ok?).heap_used
 
@@ -97,7 +97,7 @@ test "a fetch cancelled while it waits for the response frees the cancellation e
 
 	// The first fetches warm the connection pool and the thread's buffers.
 	for i in 0..20:
-		_ := fetch(url).with(options: PromiseOptions(timeout: 5.milliseconds())).wait()
+		void fetch(url).with(options: PromiseOptions(timeout: 5.milliseconds())).wait()
 
 	before := (memory_usage() | expect_ok?).heap_used
 

@@ -10,8 +10,8 @@ type Door:
 	id: Int
 	log: String
 
-fn var Door.close() Unit!:
-	_ := append_file(self.log, "{self.id},").wait()
+fn var Door.close() Void!:
+	void append_file(self.log, "{self.id},").wait()
 
 fn logged(path: String) String:
 	read := read_file(path).wait()

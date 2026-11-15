@@ -4,7 +4,7 @@
 import arguments from "@std/os/env.ms"
 import stdout from "@std/io/io.ms"
 
-fn show(number: Int) Result[Unit, Error]:
+fn show(number: Int) Result[Void, Error]:
     stdout().write("{number}\n")?
     return stdout().flush()
 

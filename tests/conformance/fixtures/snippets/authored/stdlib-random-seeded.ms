@@ -36,7 +36,7 @@ test "shuffle keeps the items and choice picks one":
     expect_equal(rng.choice(List[Int]()), none)?
     expect_equal(seeded(2).choice([7]), 7)?
 
-fn draw_from_empty_range() Unit:
+fn draw_from_empty_range() Void:
     var rng = seeded(1)
     rng.int(3, 3)
 

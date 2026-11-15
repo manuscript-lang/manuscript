@@ -9,5 +9,5 @@ fn next_sum(a: List[Int]) Int:
         t = t + a[i + 1]
     return t
 
-fn main() Unit:
-    _ := stdout().write("{next_sum([1, 2, 3])}\n")
+fn main() Void:
+    void stdout().write("{next_sum([1, 2, 3])}\n")

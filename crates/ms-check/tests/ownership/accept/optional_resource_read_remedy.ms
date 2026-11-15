@@ -3,8 +3,8 @@ import Closeable from "@std/core.ms"
 type Item:
     id: Int
 
-fn var Item.close() Unit!:
-    return ok(unit)
+fn var Item.close() Void!:
+    return ok()
 
 fn read(items: List[Item]) Int:
     if value := items.first():

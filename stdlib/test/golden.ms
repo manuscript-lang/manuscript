@@ -39,11 +39,11 @@ fn first_difference(expected: String, actual: String) String:
 
 // Compares `actual` with the text in the golden file at `path`, or rewrites the file
 // under `MS_UPDATE_GOLDEN=1`. The failure names the file and the first differing line.
-export fn expect_golden(path: String, actual: String) Unit!:
+export fn expect_golden(path: String, actual: String) Void!:
 	if updating():
 		create_directory(dirname(path), true)?
 		write_file(path, actual, replace: true).wait()?
-		return ok(unit)
+		return ok()
 
 	stored := read_file(path).wait()
 	if stored.is_error():
@@ -54,7 +54,7 @@ export fn expect_golden(path: String, actual: String) Unit!:
 	expected := stored.get().decode_utf8()
 	if expected.is_none():
 		return fail("golden file {path} is not UTF-8; use expect_golden_bytes")
-	if expected.get() == actual: return ok(unit)
+	if expected.get() == actual: return ok()
 
 	return fail(
 		"{path} differs from the output at {first_difference(expected.get(), actual)}\nrun with MS_UPDATE_GOLDEN=1 to accept the output"
@@ -62,11 +62,11 @@ export fn expect_golden(path: String, actual: String) Unit!:
 
 // Byte-for-byte version of `expect_golden`; the failure names the first differing
 // offset.
-export fn expect_golden_bytes(path: String, actual: Bytes) Unit!:
+export fn expect_golden_bytes(path: String, actual: Bytes) Void!:
 	if updating():
 		create_directory(dirname(path), true)?
 		write_file(path, actual, replace: true).wait()?
-		return ok(unit)
+		return ok()
 
 	stored := read_file(path).wait()
 	if stored.is_error():
@@ -75,7 +75,7 @@ export fn expect_golden_bytes(path: String, actual: Bytes) Unit!:
 		)
 
 	expected := stored.get()
-	if expected == actual: return ok(unit)
+	if expected == actual: return ok()
 
 	var offset = 0
 	shared := if expected.length() < actual.length(): expected.length() else: actual.length()

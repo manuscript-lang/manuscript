@@ -997,7 +997,7 @@ mod argument_tests {
                                     id: NodeId(index),
                                     pos: Pos::default(),
                                     end: Pos::default(),
-                                    kind: ExprKind::Unit,
+                                    kind: ExprKind::Void,
                                 },
                             }
                         })
@@ -1063,7 +1063,7 @@ mod argument_tests {
     #[test]
     fn generic_source_method_value_needs_type_arguments() {
         let syms = ms_syntax::Names::global();
-        let source = "type Out:\n    n: Int\nfn Out.put[F](value: F) Int:\n    return 1\nfn bare(o: Out) Unit:\n    g := o.put\nfn fixed(o: Out) Unit:\n    g := o.put[Int]\n    n := o.put(1)\n";
+        let source = "type Out:\n    n: Int\nfn Out.put[F](value: F) Int:\n    return 1\nfn bare(o: Out) Void:\n    g := o.put\nfn fixed(o: Out) Void:\n    g := o.put[Int]\n    n := o.put(1)\n";
         let p = check(syms, source);
         let messages: Vec<_> = p.diagnostics.iter().map(|d| d.message.as_str()).collect();
         assert_eq!(messages.len(), 1, "{messages:?}");

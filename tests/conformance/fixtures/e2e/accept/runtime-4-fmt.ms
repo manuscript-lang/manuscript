@@ -6,19 +6,19 @@ import Bytes from "@std/bytes.ms"
 
 interface File:
     fn read(max_bytes: Int?) Bytes?!
-    fn close() Unit
+    fn close() Void
 
 type ClosedFile:
-    marker: Unit
+    marker: Void
 
 fn ClosedFile.read(max_bytes: Int?) Bytes?!:
     return error(Error("I/O: resource is closed", kind: "EBADF"))
 
-fn ClosedFile.close() Unit:
+fn ClosedFile.close() Void:
     return
 
 test "contract-valued cleanup":
-    opened: File := ClosedFile(unit)
+    opened: File := ClosedFile(void)
     file := opened
     read := file.read(1)
     expect_false(read.is_ok())?

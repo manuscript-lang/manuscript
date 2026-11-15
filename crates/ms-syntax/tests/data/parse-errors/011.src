@@ -23,21 +23,21 @@ fn generated(rng: Rng, depth: Int) YamlValue:
         entries.add(text(rng), generated(rng, depth + 1))
     return YamlValue.ObjectValue(entries)
 
-fn check_round_trip(seed: Int, original: YamlValue) Result[Unit, Error]:
+fn check_round_trip(seed: Int, original: YamlValue) Result[Void, Error]:
     rendered := stringify(original)?
     if (parse(rendered)?) != original: return fail(
         "seed \{seed\}: changed\n\{rendered\}"
     )
 
-    return ok(unit)
+    return ok()
 
-fn check_stable(seed: Int, mutated: String, first: YamlValue) Result[Unit, Error]:
+fn check_stable(seed: Int, mutated: String, first: YamlValue) Result[Void, Error]:
     again := stringify(first)?
     if (parse(again)?) != first: return fail(
         "seed \{seed\}: reparsed value changed\n\{mutated\}\n---\n\{again\}"
     )
 
-    return ok(unit)
+    return ok()
 
 test "YAML stringify then parse preserves generated documents":
     for seed in range(1, 301):

@@ -1,14 +1,14 @@
-fn discarded(flag: Bool) Unit:
+fn discarded(flag: Bool) Void:
 	match flag:
 		true:
 			_marker := 1
 		false: 2
 
-fn unit_value(flag: Bool) Unit:
-	value: Unit := match flag:
+fn unit_value(flag: Bool) Void:
+	value: Void := match flag:
 		true:
 			_marker := 1
-		false: unit
+		false: void
 
 	return value
 

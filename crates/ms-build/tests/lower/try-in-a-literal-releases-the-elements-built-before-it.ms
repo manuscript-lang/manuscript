@@ -19,7 +19,7 @@ fn map_key() Result[Int, Error]:
     m := {"a": "x", (bad()?): "y"}
     return ok(m.length())
 
-fn main() Unit:
+fn main() Void:
     _a := list()
     _b := nested()
     _c := map_value()

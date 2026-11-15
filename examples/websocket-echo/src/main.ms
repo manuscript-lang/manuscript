@@ -4,7 +4,7 @@ import (
 )
 
 // Echoes every message back until the peer closes the connection.
-fn echo(var exchange: HttpExchange) Unit!:
+fn echo(var exchange: HttpExchange) Void!:
 	var socket = exchange.upgrade(
 		allowed_origins: [],
 		subprotocols: [],
@@ -20,9 +20,9 @@ fn echo(var exchange: HttpExchange) Unit!:
 			break
 
 	socket.close()?
-	return ok(unit)
+	return ok()
 
-fn main() Unit!:
+fn main() Void!:
 	server := serve(address: "127.0.0.1:8080", handler: echo)?
 	print("websocket echo on ws://{server.address()}/")
 	server.wait()?

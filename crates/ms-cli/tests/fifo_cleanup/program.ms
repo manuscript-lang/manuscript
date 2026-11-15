@@ -23,7 +23,7 @@ fn open_on(path: String) Int:
         if read_symlink("/proc/self/fd/{entry.name}").get("") == path: count += 1
     return count
 
-fn main() Unit:
+fn main() Void:
     path := arguments()[0].clone()
     var cancelled = 0
     for i in 0..10:

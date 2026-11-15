@@ -2,7 +2,7 @@
 // reads a slot, overwrites it, then returns the read, which once handed back a freed string.
 import Deque from "@std/collections/deque.ms"
 
-fn main() Unit:
+fn main() Void:
     var dq = Deque[String]()
     for i in [1, 2, 3, 4, 5, 6]:
         dq.push_back("a-longer-string-number-{i}")

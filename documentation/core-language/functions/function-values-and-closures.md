@@ -26,7 +26,7 @@ fn main() Int:
 2
 ```
 
-Function types name no parameters; `fn(var List[Int]) Unit` marks one the function changes in place ([changing parameters](#changing-parameters)). Calls through function values are positional (a label on such a call is an error) and share the suspension and evaluation of declared functions. A named or anonymous `fn` inside a function is a local binding of a function value. Inferred immutable copies keep [default arguments](declarations-and-calls.md#default-arguments); explicit function types require all parameters.
+Function types name no parameters; `fn(var List[Int]) Void` marks one the function changes in place ([changing parameters](#changing-parameters)). Calls through function values are positional (a label on such a call is an error) and share the suspension and evaluation of declared functions. A named or anonymous `fn` inside a function is a local binding of a function value. Inferred immutable copies keep [default arguments](declarations-and-calls.md#default-arguments); explicit function types require all parameters.
 
 ## Function type compatibility
 
@@ -36,7 +36,7 @@ Parameter types in order, their `var` markers, and the result type are function-
 fn subtract_one(amount: Int) Int:
     return amount - 1
 
-fn adapt() Unit:
+fn adapt() Void:
     ok: fn(Int) Int := subtract_one
     // Rejected: the result type differs.
     invalid: fn(Int) String := subtract_one
@@ -45,7 +45,7 @@ fn adapt() Unit:
 
 An anonymous function may omit parameter types when context supplies them (argument, annotation, field, collection element, or return type). Parameters match by position: `increment: fn(Int) Int = fn item: item + 1` is called as `increment(3)`.
 
-- An omitted result type comes from context or the body: returns must share one exact type, fallthrough adds `Unit`, `Never` adds nothing.
+- An omitted result type comes from context or the body: returns must share one exact type, fallthrough adds `Void`, `Never` adds nothing.
 - Without context, callbacks need parameter annotations.
 - A generic function must be instantiated to be a value: `identity[Int]`, not bare `identity`.
 - A bound method value has the operation's function type with the receiver bound. It borrows the receiver while it stays local, as a closure capturing it would, and takes the receiver when it is stored, returned or passed to a moving parameter: `find := re.find_all` keeps `re` readable, `holders.append(re.find_all)` moves `re` at its last use.
@@ -53,15 +53,15 @@ An anonymous function may omit parameter types when context supplies them (argum
 
 ## Changing parameters
 
-A function that changes its caller's variable declares the parameter `var`, and its function type says so: `fn push_one(var values: List[Int]) Unit` has type `fn(var List[Int]) Unit`. A call through the value marks the argument `var`, exactly as a direct call does, and the argument must be a variable or a field of one. An anonymous function declares a `var` parameter the same way. `fn(List[Int]) Unit` and `fn(var List[Int]) Unit` are different types, but a function that only reads a parameter may be used where one that may change it is expected: `apply(fn(xs: List[Int]): unit, var values)` is accepted, and the callee's `var` argument is passed to it as a plain read. The other direction is an error: a function that changes its parameter cannot stand in for one that only reads it.
+A function that changes its caller's variable declares the parameter `var`, and its function type says so: `fn push_one(var values: List[Int]) Void` has type `fn(var List[Int]) Void`. A call through the value marks the argument `var`, exactly as a direct call does, and the argument must be a variable or a field of one. An anonymous function declares a `var` parameter the same way. `fn(List[Int]) Void` and `fn(var List[Int]) Void` are different types, but a function that only reads a parameter may be used where one that may change it is expected: `apply(fn(xs: List[Int]): void, var values)` is accepted, and the callee's `var` argument is passed to it as a plain read. The other direction is an error: a function that changes its parameter cannot stand in for one that only reads it.
 
 `List.for_each` and `Map.for_each` take a callback whose element (a map's value) is `var`, so the callback can change elements in place: `scores.for_each(fn var s: s = s + 1)`. A callback that changes the parameter makes `scores` a changed receiver, so it must be a `var` and the callback must not touch it; a callback that only reads works on a `:=` list. The rule is general: any method whose callback type has a `var` position of one of the receiver's type arguments behaves this way. Such a method cannot be taken as a value from a variable (`each := scores.for_each`); call it, or write a closure.
 
 ```manuscript
-fn push_one(var values: List[Int]) Unit:
+fn push_one(var values: List[Int]) Void:
     values.append(1)
 
-fn apply(change: fn(var List[Int]) Unit, var values: List[Int]) Unit:
+fn apply(change: fn(var List[Int]) Void, var values: List[Int]) Void:
     change(var values)
 
 fn changed() List[Int]:

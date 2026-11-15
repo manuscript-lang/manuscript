@@ -64,7 +64,7 @@ test "uuid_v7 is a version-7 uuid that sorts by creation time":
 	uuid_version(first) | expect_equal(7)?
 	first.length() | expect_equal(36)?
 
-	_ := sleep(milliseconds(3)).wait()
+	void sleep(milliseconds(3)).wait()
 	second := (uuid_v7() | expect_ok?)
 	(first < second) | expect_true?
 
@@ -76,7 +76,7 @@ test "ulid has 26 Crockford characters and sorts by creation time":
 			"bad character {ch}"
 		)
 
-	_ := sleep(milliseconds(3)).wait()
+	void sleep(milliseconds(3)).wait()
 	second := (ulid() | expect_ok?)
 	(first < second) | expect_true?
 

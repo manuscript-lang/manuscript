@@ -26,11 +26,11 @@ fn table(rng: Rng, depth: Int) TomlValue:
         entries.add(text(rng), generated(rng, depth))
     return TomlValue.TableValue(entries)
 
-fn check_round_trip(seed: Int, original: TomlValue) Result[Unit, Error]:
+fn check_round_trip(seed: Int, original: TomlValue) Result[Void, Error]:
     rendered := stringify(original)?
     if (parse(rendered)?) != original: return fail(
         "seed {seed}: changed\n{rendered}"
     )
 
-fn check_stable(seed: Int, mutated: String, first: TomlValue) Result[Unit, Error]:
+fn check_stable(seed: Int, mutated: String, first: TomlValue) Result[Void, Error]:
     again := str?

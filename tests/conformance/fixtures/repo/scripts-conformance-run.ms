@@ -41,7 +41,7 @@ type Report:
     summary: Summary
     fixture_errors: List[FixtureError] = []
 
-fn validate(report: Report) Result[Unit, Error]:
+fn validate(report: Report) Result[Void, Error]:
     report.format | expect_equal(expected: 1)?
     report.completed | expect_true?
     report.exit_code | expect_equal(expected: 0)?
@@ -105,7 +105,7 @@ fn inventory(suite: String) Result[List[String], Error]:
 fn selected(index: Int, shard: Int, count: Int) Bool:
     return index % count == shard
 
-fn run_conformance(args: List[String]) Result[Unit, Error]:
+fn run_conformance(args: List[String]) Result[Void, Error]:
     if args.length() != 4:
         return fail(
             "usage: conformance <ms executable> <all|core|stdlib> <shard> <count>"
@@ -142,7 +142,7 @@ fn run_conformance(args: List[String]) Result[Unit, Error]:
     emit("{ran} files, {failed} failed")?
     failed | expect_equal(expected: 0)?
 
-fn run_file(ms: String, file: String) Result[Unit, Error]:
+fn run_file(ms: String, file: String) Result[Void, Error]:
     output := run(
         ms, ["test", file, "--json", "--timeout=30s"],
         RunOptions(timeout: 3.minutes(), max_output_bytes: 16000000)
@@ -151,12 +151,12 @@ fn run_file(ms: String, file: String) Result[Unit, Error]:
     stderr := output.stderr.decode_utf8() | expect_some?
 
     match check_output(output.exit_code, text):
-        ok(_): return ok(unit)
+        ok(_): return ok()
         error(cause):
             emit("{text}\n{stderr}")?
             return error(cause)
 
-fn check_output(status: Int, text: String) Result[Unit, Error]:
+fn check_output(status: Int, text: String) Result[Void, Error]:
     status | expect_equal(expected: 0)?
 
     report := parse[Report](text)?
@@ -202,7 +202,7 @@ test "shards cover every inventory entry exactly once":
             hits | expect_equal(expected: 1)?
             index = index + 1
 
-fn emit(text: String) Result[Unit, Error]:
+fn emit(text: String) Result[Void, Error]:
     stdout().write("{text}\n")?
 
 test "invalid suite and shard arguments fail before running children":

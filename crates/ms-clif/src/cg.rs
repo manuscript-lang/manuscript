@@ -39,7 +39,7 @@ pub enum Glue {
     Drop,
     /// Clones a value (takes and returns the value's leaves).
     Clone,
-    /// Closure object destructor `fn(obj)`; the `Ty` is unused (`Ty::UNIT`) and the key carries the function id.
+    /// Closure object destructor `fn(obj)`; the `Ty` is unused (`Ty::VOID`) and the key carries the function id.
     ClosureDrop(u32),
     /// Like `ClosureDrop` for an object in a stack frame: drops the captures, frees nothing.
     ClosureDropFramed(u32),
@@ -155,8 +155,67 @@ fn sym_safe(name: &str) -> String {
         .collect()
 }
 
+/// A 64-bit FNV-1a hash: fixed by definition, so symbol names do not change between builds,
+/// platforms or Rust versions.
+fn name_hash(text: &str) -> u64 {
+    text.bytes().fold(0xcbf2_9ce4_8422_2325, |h, b| {
+        (h ^ u64::from(b)).wrapping_mul(0x0100_0000_01b3)
+    })
+}
+
+/// What tells one function from another of the same name: its declaring file (the logical
+/// module path such as `src/a.ms` or `@pg/x.ms`) and its types, which tell generic instances
+/// apart (`pick[Int]` and `pick[String]` differ in their parameters and result). A closure is
+/// also told apart by its position.
+fn identity_hash(m: &Module, f: &ms_mir::ir::Func) -> u32 {
+    use std::fmt::Write as _;
+    let ty = |t| ms_mir::print::ty_str(m, t);
+    let mut key = m
+        .files
+        .get(f.loc.file as usize)
+        .cloned()
+        .unwrap_or_default();
+    key.push('(');
+    for p in &f.params {
+        let _ = write!(key, "{},", ty(p.ty));
+    }
+    let _ = write!(key, ")->{}", ty(f.ret));
+    if let ms_mir::ir::FuncKind::Closure { captures } = &f.kind {
+        let _ = write!(key, "@{}:{}[", f.loc.line, f.loc.col);
+        for c in captures {
+            let _ = write!(key, "{},", ty(*c));
+        }
+        key.push(']');
+    }
+    name_hash(&key) as u32
+}
+
+/// Makes symbol names unique without depending on declaration order. A function's base holds
+/// its declaring file (the logical module path such as `src/a.ms` or `@pg/x.ms`), so a name is
+/// package, module and function name; only a repeat of one base (a generic instance, a lambda)
+/// takes a `.k` suffix, so adding an unrelated item renames nothing.
+#[derive(Default)]
+pub struct StableNames(HashMap<String, u32>);
+
+impl StableNames {
+    pub fn unique(&mut self, base: &str) -> String {
+        let n = self.0.entry(base.to_string()).or_insert(0);
+        let k = *n;
+        *n += 1;
+        if k == 0 {
+            base.to_string()
+        } else {
+            format!("{base}.{k}")
+        }
+    }
+}
+
 pub struct Gen<'m> {
     pub m: &'m Module,
+    /// Unique symbol names for functions, globals, vtables, strings, glue and descriptors.
+    pub names: StableNames,
+    /// The symbol of each function, by function index.
+    pub func_syms: Vec<String>,
     pub lay: Layouts<'m>,
     pub module: ObjectModule,
     pub opts: Options,
@@ -376,9 +435,18 @@ impl<'m> Gen<'m> {
             | Glue::SlotDrop => self.sig(&[Leaf::I64], &[]),
             Glue::SlotCopy => self.sig(&[Leaf::I64, Leaf::I64], &[]),
         };
-        let name = format!(
-            "{GLUE_PREFIX}{}.{}",
-            self.glue.len(),
+        let func_sym = |f: u32| self.func_syms.get(f as usize).cloned().unwrap_or_default();
+        let owner = match kind {
+            Glue::ClosureDrop(f)
+            | Glue::ClosureDropFramed(f)
+            | Glue::ClosureClone(f)
+            | Glue::CleanupThunk(f)
+            | Glue::GrowShim(f) => func_sym(f),
+            Glue::ClosureDropFrom(f, k) => format!("{}.{k}", func_sym(f)),
+            _ => format!("{:016x}", name_hash(&ms_mir::print::ty_str(self.m, ty))),
+        };
+        let base = format!(
+            "{GLUE_PREFIX}{}.{owner}",
             match kind {
                 Glue::Drop => "drop",
                 Glue::Clone => "clone",
@@ -394,6 +462,7 @@ impl<'m> Gen<'m> {
                 Glue::SlotCopy => "slot_copy",
             }
         );
+        let name = self.names.unique(&base);
         let id = self
             .module
             .declare_function(&name, self.func_linkage(false), &sig)
@@ -431,7 +500,10 @@ impl<'m> Gen<'m> {
             self.desc_ids.insert(key, id);
             return id;
         }
-        let name = format!("ms.desc.{}", self.desc_ids.len());
+        let sig = ms_mir::print::ty_str(m, key);
+        let name = self
+            .names
+            .unique(&format!("ms.desc.{:016x}", name_hash(&sig)));
         let id = self
             .module
             .declare_data(&name, self.private(), false, false)
@@ -578,9 +650,10 @@ impl<'m> Gen<'m> {
         let s = &self.m.strings[i as usize];
         let mut bytes = s.as_bytes().to_vec();
         bytes.push(0);
+        let name = self.names.unique(&format!("ms.str.{:016x}", name_hash(s)));
         let id = self
             .module
-            .declare_data(&format!("ms.str.{i}"), self.private(), true, false)
+            .declare_data(&name, self.private(), true, false)
             .expect("declare string");
         let mut d = DataDescription::new();
         d.define(bytes.into_boxed_slice());
@@ -671,6 +744,8 @@ fn compile_with_isa(
         lay: Layouts::new(m),
         module,
         opts: opts.clone(),
+        names: StableNames::default(),
+        func_syms: Vec::new(),
         funcs: Vec::new(),
         rt: HashMap::new(),
         rt_data: HashMap::new(),
@@ -707,20 +782,25 @@ fn compile_with_isa(
                 } else if exported {
                     f.name.clone()
                 } else {
-                    format!("{}#{i}", sym_safe(&f.name))
+                    g.names.unique(&format!(
+                        "{}#{:08x}",
+                        sym_safe(&f.name),
+                        identity_hash(m, f)
+                    ))
                 };
+                g.func_syms.push(name.clone());
                 let id = g
                     .module
                     .declare_function(&name, g.func_linkage(exported), &sig)
                     .map_err(|e| e.to_string())?;
                 g.funcs.push(id);
             }
-            for (i, gl) in m.globals.iter().enumerate() {
+            for gl in &m.globals {
                 let mem = g.lay.mem(gl.ty);
                 let id = g
                     .module
                     .declare_data(
-                        &format!("ms.global.{i}.{}", sym_safe(&gl.name)),
+                        &g.names.unique(&format!("ms.global.{}", sym_safe(&gl.name))),
                         g.private(),
                         true,
                         false,
@@ -734,11 +814,11 @@ fn compile_with_isa(
             }
             // Vtables are defined after functions are declared: slot 0 is the payload block destructor,
             // the methods follow, then the payload block copier.
-            for (i, vt) in m.vtables.iter().enumerate() {
+            for vt in &m.vtables {
                 let id = g
                     .module
                     .declare_data(
-                        &format!("ms.vtable.{i}.{}", sym_safe(&vt.name)),
+                        &g.names.unique(&format!("ms.vtable.{}", sym_safe(&vt.name))),
                         g.private(),
                         false,
                         false,

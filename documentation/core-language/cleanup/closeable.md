@@ -9,15 +9,15 @@ Implement `Closeable` when your type owns a resource that must be released at sc
 
 ```manuscript
 interface Closeable:
-    var fn close() Unit!
+    var fn close() Void!
 ```
 
 For a type that satisfies `Closeable`, cleanup calls its declared operation:
 
-- A concrete value whose type has an own `fn var close() Unit!` ([shape](../types/contracts.md#satisfying-an-interface)); the compiler registers that `close` when the binding is created.
+- A concrete value whose type has an own `fn var close() Void!` ([shape](../types/contracts.md#satisfying-an-interface)); the compiler registers that `close` when the binding is created.
 - A generic parameter bounded by `Closeable`; `close` dispatches directly.
 
-A value typed as the standard `Closeable` interface owns its concrete value and closes it automatically. An unrelated interface merely declaring `var fn close() Unit!` does not opt into cleanup; retain a concrete owner or call its `close()` explicitly.
+A value typed as the standard `Closeable` interface owns its concrete value and closes it automatically. An unrelated interface merely declaring `var fn close() Void!` does not opt into cleanup; retain a concrete owner or call its `close()` explicitly.
 
 The standard handles a caller owns are nominal types with that method, such as `FileHandle`, so a binding of one is checked and closed like your own. `ReadStream[T]` and `WriteStream[T]` are types with that `close`, so a binding of one closes at scope end. Built-in descriptor streams hand queued writes to the runtime on close; they do not wait for delivery. A custom stream calls its source or sink’s `close`, which may wait. Use [`flush()`](scopes.md#close-a-resource-explicitly) to observe the destination’s backpressure or drain result before closing.
 
@@ -43,13 +43,13 @@ A `Map` iterates in insertion order, so its close order is the reverse of the or
 
 A holder of values that are not resources adds no code, because a `List[Int]` or a type whose fields are strings is not a resource. A part may already have closed itself, for example in a hand-written `close` that forwards to its fields; closing again is harmless because `close()` is idempotent. A generic holder such as `List[T]` also closes its resource parts: lowering selects cleanup for each concrete instance, and an instance holding only plain data adds no close calls. Overwriting a field, `set` or `remove` on a list, and `add` over an existing key, `remove` or `clear` on a map close the old part first, then store the new one; `xs.pop()` returns the element to a binding, which closes it. `splice` closes the elements it deletes. `fill`, `copy_within`, `merge`, and methods that return a collection or element built from the receiver's (`concat`, `take`, `slice`, `reversed`, `filter`, `find`) would make second owners of resources, so the checker rejects them on a holder of resources; move a list element out with `pop`. `remove` closes the removed element. A `Set` cannot hold resources because its elements must be `Hashable`.
 
-A similarly named method whose signature is not `fn var close() Unit!` does not opt a concrete type into cleanup.
+A similarly named method whose signature is not `fn var close() Void!` does not opt a concrete type into cleanup.
 
 `close()` is idempotent, may suspend, and finishes the object's release before returning. Repeated or concurrent calls release the handle once. Implementations coordinate ongoing access with closure and report closed state afterward.
 
 ## A close returns a Result
 
-`close()` returns `Unit!`, which is `Result[Unit, Error]`: releasing a resource can fail, and the failure is a value. A type whose release cannot fail returns `ok(unit)`.
+`close()` returns `Void!`, which is `Result[Void, Error]`: releasing a resource can fail, and the failure is a value. A type whose release cannot fail returns `ok()`.
 
 ```manuscript
 import Closeable from "@std/core.ms"
@@ -57,12 +57,12 @@ import Closeable from "@std/core.ms"
 type Gate:
     fails: Bool
 
-fn var Gate.close() Unit!:
+fn var Gate.close() Void!:
     if self.fails:
         self.fails = false
         return error(Error("gate stuck"))
 
-fn use_gate(fails: Bool) Unit!:
+fn use_gate(fails: Bool) Void!:
     _gate := Gate(fails)
 ```
 
@@ -71,7 +71,7 @@ This example reports the release failure once; a later close succeeds without re
 The scope-end close behaves like `gate.close()?`: a failed close becomes the function's error, after the other bindings of the scopes it leaves have closed. This holds for every exit, including `break`, `continue` and `return`.
 
 - If the scope is already returning an error, that error is kept and a close error after it is dropped.
-- Call `close()` yourself to handle the failure; the scope end then closes the binding once more, which `close()` being idempotent makes harmless, and drops that second result, so a failure you handled is not returned again. Like any `Result`, the call needs `?`, `if v := x` or `_ :=`.
+- Call `close()` yourself to handle the failure; the scope end then closes the binding once more, which `close()` being idempotent makes harmless, and drops that second result, so a failure you handled is not returned again. Like any `Result`, the call needs `?`, `if v := x` or `void`.
 - A close with nowhere to return its error is a fault, never silently ignored: a function that does not return `Result[_, Error]`, a part of a holder, a replaced or temporary value.
 - A fault or cancellation runs each close and discards its result; the failure being reported takes precedence.
 

@@ -10,9 +10,9 @@ fn positive(value: Int) Int:
     else:
         panic(message: "positive value required")
 
-fn discard(value: Int) Unit:
+fn discard(value: Int) Void:
     return
 
 test "return contracts":
     positive(value: 3) | expect_equal(expected: 3)?
-    discard(value: 1) | expect_equal(expected: unit)?
+    discard(value: 1) | expect_equal(expected: void)?

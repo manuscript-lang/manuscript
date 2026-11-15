@@ -8,7 +8,7 @@ import (
 type Cell:
 	value: Int
 
-fn var Cell.bump() Unit:
+fn var Cell.bump() Void:
 	self.value += 1
 
 // Faults with its own message, so a test tells which fault came first.
@@ -16,26 +16,26 @@ fn later() Int:
 	empty: List[Int] := []
 	return empty[3]
 
-fn bump_int(var x: Int) Unit:
+fn bump_int(var x: Int) Void:
 	x += 1
 
 fn index(var calls: Int) Int:
 	calls += 1
 	return 0
 
-fn argument_place() Unit:
+fn argument_place() Void:
 	var grid: List[List[Int]] = []
 	bump_int(var grid[0][later()])
 
-fn assigned_place() Unit:
+fn assigned_place() Void:
 	var grid: List[List[Int]] = []
 	grid[0][later()] = 1
 
-fn map_place() Unit:
+fn map_place() Void:
 	var table: Map[String, List[Int]] = Map()
 	table["row"][later()] = 1
 
-fn field_place() Unit:
+fn field_place() Void:
 	var grid: List[List[Cell]] = []
 	grid[0][later()].value = 1
 
@@ -68,8 +68,8 @@ test "a changing source receiver selects its element once":
 type Door:
 	id: Int
 
-fn var Door.close() Unit!:
-	return ok(unit)
+fn var Door.close() Void!:
+	return ok()
 
 fn at(var events: List[Int]) Int:
 	events.append(1)

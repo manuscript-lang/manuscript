@@ -16,7 +16,7 @@ fn total(items: List[Int?]) Int:
             sum = sum + value
     return sum
 
-fn check(value: Bool, message: String) Unit!:
+fn check(value: Bool, message: String) Void!:
     (value) | expect_true?
 
 test "if let unwraps a present optional":

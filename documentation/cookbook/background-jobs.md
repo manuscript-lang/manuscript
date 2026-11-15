@@ -18,7 +18,7 @@ import map_concurrent from "@std/concurrency/resilience.ms"
 fn square(n: Int) Int:
     return n * n
 
-fn main() Unit!:
+fn main() Void!:
     squares := map_concurrent([1, 2, 3, 4, 5, 6], 3, square)?
     print("{squares}")
 ```
@@ -43,7 +43,7 @@ fn work(var jobs: ReadStream[Int]) Summary!:
         summary.total += job
     return ok(summary)
 
-fn main() Unit!:
+fn main() Void!:
     var queue = pipe[Int](capacity: 8)
     var jobs = queue.writer()
     var reader = queue.reader()
@@ -68,13 +68,13 @@ Save as `tick.ms`. A promise can loop and `sleep` between rounds. `sleep` return
 import promise from "@std/concurrency/promise.ms"
 import milliseconds, sleep from "@std/time.ms"
 
-fn ticker(rounds: Int) Unit!:
+fn ticker(rounds: Int) Void!:
     for n in 1..rounds + 1:
         print("tick {n}")
         sleep(milliseconds(20)).wait()?
-    return ok(unit)
+    return ok()
 
-fn main() Unit!:
+fn main() Void!:
     background := promise(fn: ticker(3))
     return background.wait()
 ```

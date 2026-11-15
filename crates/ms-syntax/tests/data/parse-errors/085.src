@@ -1,2 +1,2 @@
-fn grow(cells: var List[Int]) Unit:
+fn grow(cells: var List[Int]) Void:
     cells.append(1)

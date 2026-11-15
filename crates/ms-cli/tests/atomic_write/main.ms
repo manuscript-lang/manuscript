@@ -12,38 +12,38 @@ type FileHandle:
 	close_error: Bool = false
 	closed: Bool = false
 
-fn FileHandle.write(data: Bytes) Unit!:
+fn FileHandle.write(data: Bytes) Void!:
 	print("write")
 	if self.write_error: return error(Error("write", kind: "write"))
 
-fn FileHandle.chmod(mode: Int) Unit!:
+fn FileHandle.chmod(mode: Int) Void!:
 	print("chmod")
 	if self.chmod_error: return error(Error("chmod", kind: "chmod"))
 
-fn FileHandle.sync() Unit!:
+fn FileHandle.sync() Void!:
 	print("sync")
 	if self.sync_error: return error(Error("sync", kind: "sync"))
 
-fn var FileHandle.close() Unit!:
-	if self.closed: return ok(unit)
+fn var FileHandle.close() Void!:
+	if self.closed: return ok()
 
 	self.closed = true
 	print("close")
 	if self.close_error: return error(Error("close", kind: "close"))
 
-fn remove(path: String) Unit!:
+fn remove(path: String) Void!:
 	print("remove {path}")
 	if path == "cleanup-error": return error(Error("cleanup", kind: "cleanup"))
 
-fn rename(source: String, destination: String) Unit!:
+fn rename(source: String, destination: String) Void!:
 	print("rename {source} {destination}")
 	if destination == "rename-error": return error(Error("rename", kind: "rename"))
 
-fn report(result: Unit!) Unit:
+fn report(result: Void!) Void:
 	if result.is_error(): print(result.err().kind.get())
 	else: print("ok")
 
-fn main() Unit!:
+fn main() Void!:
 	expect_equal(temporary_name("config.json", "s"), ".config.json.s.tmp")?
 	expect_equal(temporary_name("資料/config.json", "s"), "資料/.config.json.s.tmp")?
 	expect_equal(temporary_name("dir/設定.json", "s"), "dir/.設定.json.s.tmp")?

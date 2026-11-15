@@ -147,25 +147,25 @@ fn tree_size(value: YamlValue) Int:
 			for item in values: total += tree_size(item)
 		ObjectValue(values):
 			for entry in values: total += tree_size(entry.value.clone())
-		_: unit
+		_: void
 
 	return total
 
 // Records an anchor and the size of its value so aliases can be charged before they are
 // copied.
-fn define_anchor(var context: Context, name: String, value: YamlValue) Unit:
+fn define_anchor(var context: Context, name: String, value: YamlValue) Void:
 	context.anchors.add(name.clone(), value.clone())
 	context.sizes.add(name, tree_size(value))
 
 // Counts an alias expansion against the value budget before the aliased value is
 // copied, so nested aliases cannot grow exponentially ahead of the limit.
-fn charge(var context: Context, size: Int) Unit!:
+fn charge(var context: Context, size: Int) Void!:
 	context.values += size
 	if not within(context.values, context.max_values): return error(
 		Error("YAML limit exceeded", kind: "EOVERFLOW")
 	)
 
-fn count(var context: Context, depth: Int) Unit!:
+fn count(var context: Context, depth: Int) Void!:
 	if not within(depth, context.max_depth): return error(
 		Error("YAML limit exceeded", kind: "EOVERFLOW")
 	)
@@ -230,7 +230,7 @@ fn step(var flow: Flow) Int:
 	if code != 0: flow.pos += 1
 	return code
 
-fn flow_space(var flow: Flow) Unit:
+fn flow_space(var flow: Flow) Void:
 	while true:
 		code := cur(flow)
 		if code != 32 and code != 9 and code != 10: break
@@ -527,7 +527,7 @@ fn merge(
 	column: Int,
 	var target: Map[String, YamlValue],
 	value: YamlValue,
-) Unit!:
+) Void!:
 	values := match value:
 		ObjectValue(entries):
 			for entry in entries:
@@ -535,7 +535,7 @@ fn merge(
 					entry.key.clone(),
 					entry.value.clone(),
 				)
-			return ok(unit)
+			return ok()
 		ArrayValue(values): values
 		_: return error(
 			yaml_invalid(
@@ -561,7 +561,7 @@ fn merge(
 				)
 			)
 
-	return ok(unit)
+	return ok()
 
 // A plain scalar continued across lines folds each break into one space; blank lines
 // stay breaks.
@@ -730,7 +730,7 @@ fn flow_entry(
 	var entries: Map[String, YamlValue],
 	var explicit: Set[String],
 	value: YamlValue,
-) Unit!:
+) Void!:
 	if explicit.contains(name): return error(
 		flow_invalid(flow, "duplicate mapping key")
 	)
@@ -744,7 +744,7 @@ fn flow_entry(
 			target: var entries,
 			value: value,
 		):
-			ok(_): return ok(unit)
+			ok(_): return ok()
 			error(cause): cause
 
 		if cause.kind != "EBADMSG": return error(cause)
@@ -766,7 +766,7 @@ fn flow_entry(
 	else:
 		entries.add(name.clone(), value)
 
-	return ok(unit)
+	return ok()
 
 // A flow container suspended while its child is read.
 type FlowFrame:
@@ -1368,7 +1368,7 @@ fn indentation(context: Context, text: String) Int!:
 
 // Fills the per-line facts for `context.lines` from the bytes of the document they were
 // split from.
-fn classify(var context: Context, data: Bytes) Unit:
+fn classify(var context: Context, data: Bytes) Void:
 	context.simple = []
 	context.blank = []
 	context.dash = []
@@ -1435,7 +1435,7 @@ fn classify(var context: Context, data: Bytes) Unit:
 		context.col.append(colon)
 		pos = end + 1
 
-fn skip(var context: Context) Unit:
+fn skip(var context: Context) Void:
 	while context.index < context.lines.length():
 		if context.blank[context.index]:
 			context.index += 1
@@ -1986,7 +1986,7 @@ fn sequence_items(
 	var values: List[YamlValue],
 	base: Int,
 	depth: Int,
-) Unit!:
+) Void!:
 	while context.index < context.lines.length():
 		skip(var context)
 		if context.index >= context.lines.length(): break
@@ -2137,7 +2137,7 @@ fn sequence_items(
 				)?
 			)
 
-	return ok(unit)
+	return ok()
 
 // Whether `text` starts with the indicator `code` followed by a blank or the end.
 fn indicator(text: String, code: Int) Bool:
@@ -2473,7 +2473,7 @@ fn block(
 // Reads the directive lines before a document. `%YAML` accepts any 1.x version (the
 // spec asks a 1.2 parser to read it with a warning), `%TAG` declares a tag handle
 // prefix, and an unknown directive is ignored.
-fn directives(var context: Context) Unit!:
+fn directives(var context: Context) Void!:
 	var seen_version = false
 
 	while (
@@ -2552,7 +2552,7 @@ fn flow_context(context: Context) Context:
 		tag_handles: context.tag_handles.clone(),
 	)
 
-fn validate(var context: Context, value: YamlValue, depth: Int) Unit!:
+fn validate(var context: Context, value: YamlValue, depth: Int) Void!:
 	count(var context, depth)?
 
 	match value:
@@ -2560,7 +2560,7 @@ fn validate(var context: Context, value: YamlValue, depth: Int) Unit!:
 			for item in values: validate(var context, item, (depth + 1))?
 		ObjectValue(values):
 			for entry in values: validate(var context, entry.value, (depth + 1))?
-		_: unit
+		_: void
 
 fn open_stream(text: String, options: YamlOptions) Context!:
 	for limit in [options.max_bytes, options.max_depth, options.max_values]:
@@ -2807,7 +2807,7 @@ fn is_block(value: YamlValue) Bool:
 		_: return false
 
 fn emit_block(var out: StringBuilder, value: YamlValue, indent: String) Result[
-	Unit,
+	Void,
 	Error,
 ]:
 	match value:
@@ -2824,7 +2824,7 @@ fn emit_block(var out: StringBuilder, value: YamlValue, indent: String) Result[
 					out.append(text)
 					out.append("\n")
 
-			return ok(unit)
+			return ok()
 		ObjectValue(values):
 			for entry in values.entries():
 				out.append(indent)
@@ -2839,8 +2839,8 @@ fn emit_block(var out: StringBuilder, value: YamlValue, indent: String) Result[
 					out.append(text)
 					out.append("\n")
 
-			return ok(unit)
-		_: return ok(unit)
+			return ok()
+		_: return ok()
 
 // Serializes a YAML value in block style with double-quoted strings.
 export fn stringify(value: YamlValue, max_bytes: Int? = none) String!:

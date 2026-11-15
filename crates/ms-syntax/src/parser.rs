@@ -15,6 +15,9 @@ pub const MAX_NESTING: usize = 1000;
 pub const MAX_CHAIN: usize = 10000;
 
 const IMPL_REMOVED: &str = "'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it";
+/// Binding power of the operand of a prefix `not` or `try`: comparisons and
+/// everything tighter bind into it, `and` and `or` do not.
+const PREFIX_OPERAND: u8 = 3;
 const TRY_REMOVED: &str = "'try' was replaced by a postfix '?': write f(x)? instead of try f(x), and x | step? instead of x | try step";
 
 /// Parses `source` strictly. The first error aborts the parse.
@@ -468,29 +471,29 @@ impl<'a> Parser<'a> {
     fn fail_try<T>(&mut self, t: Token) -> PResult<T> {
         self.at += 1;
         let start = self.peek();
-        let operand = self.expression(3);
+        let operand = self.expression(PREFIX_OPERAND);
         let mut d = Diagnostic::parse(self.file, t.pos, TRY_REMOVED);
         d.end = Some(t.end);
         let end = self.previous();
-        if operand.is_ok() && end.end.line > 0 && start.lo < end.hi {
+        // Only a name, call, member or index chain takes a postfix `?` unchanged.
+        let chain = operand.is_ok_and(|e| {
+            matches!(
+                e.kind,
+                ExprKind::Name(_)
+                    | ExprKind::Member { .. }
+                    | ExprKind::Call { .. }
+                    | ExprKind::Index { .. }
+                    | ExprKind::Apply { .. }
+            )
+        });
+        if chain && end.end.line > 0 && start.lo < end.hi {
             let text = &self.src[start.lo as usize..end.hi as usize];
-            let mut depth = 0i32;
-            let flat = text.chars().all(|c| {
-                match c {
-                    '(' | '[' | '{' => depth += 1,
-                    ')' | ']' | '}' => depth -= 1,
-                    _ => {}
-                }
-                depth > 0 || !(c.is_whitespace() || "+-*/%<>=&|".contains(c))
+            d.end = Some(end.end);
+            d.fix = Some(DiagnosticFix {
+                pos: t.pos,
+                end: end.end,
+                replacement: format!("{text}?"),
             });
-            if flat {
-                d.end = Some(end.end);
-                d.fix = Some(DiagnosticFix {
-                    pos: t.pos,
-                    end: end.end,
-                    replacement: format!("{text}?"),
-                });
-            }
         }
         Err(Box::new(d))
     }
@@ -1000,14 +1003,14 @@ impl<'a> Parser<'a> {
         if t.kind == Tok::Arrow {
             return self.fail_fix(
                 t,
-                "result types follow the parameter list without an arrow; remove '->', e.g. fn f() Unit:",
+                "result types follow the parameter list without an arrow; remove '->', e.g. fn f() Void:",
                 "",
             );
         }
         if t.kind == Tok::LBrace {
             return self.fail(
                 t,
-                "blocks are not braced and every fn declares its result type: write the result type, then ':' and an indented body, e.g. fn f() Unit: (Unit when it returns nothing), and remove the closing '}'",
+                "blocks are not braced and every fn declares its result type: write the result type, then ':' and an indented body, e.g. fn f() Void: (Void when it returns nothing), and remove the closing '}'",
             );
         }
         if t.kind == Tok::Colon || t.kind == Tok::Newline {
@@ -1016,7 +1019,7 @@ impl<'a> Parser<'a> {
             }
             return self.fail(
                 t,
-                "every fn declares its result type after the parameter list, e.g. fn f() Unit:",
+                "every fn declares its result type after the parameter list, e.g. fn f() Void:",
             );
         }
         self.no_ref()?;
@@ -1078,7 +1081,7 @@ impl<'a> Parser<'a> {
             let mut params = Vec::new();
             if !self.take(Tok::RParen) {
                 loop {
-                    // `fn(var List[Int]) Unit`: a parameter the function changes in place.
+                    // `fn(var List[Int]) Void`: a parameter the function changes in place.
                     let mutable = self.take(Tok::Var);
                     let ty = self.typ()?;
                     let id = self.id();
@@ -1918,6 +1921,52 @@ impl<'a> Parser<'a> {
         let t = self.peek();
         let pos = t.pos;
         let kind = match t.kind {
+            // `void call()` runs the call and drops its result on purpose; it is the `_ := call()`
+            // binding underneath, so the checker and both backends see one form. A bare `void` is
+            // the Void value.
+            Tok::Void
+                if !matches!(
+                    self.ahead(1).kind,
+                    Tok::Newline
+                        | Tok::Indent
+                        | Tok::Dedent
+                        | Tok::Eof
+                        | Tok::Comma
+                        | Tok::RParen
+                        | Tok::RBracket
+                        | Tok::RBrace
+                ) =>
+            {
+                self.at += 1;
+                let value = self.expression(0)?;
+                self.end()?;
+                let id = self.id();
+                let pattern_id = self.id();
+                return Ok(Stmt {
+                    id,
+                    pos,
+                    kind: StmtKind::Bind {
+                        mutable: false,
+                        pattern: Pattern {
+                            id: pattern_id,
+                            pos,
+                            kind: PatternKind::Name(self.names.intern("_")),
+                        },
+                        ty: None,
+                        value,
+                        group: None,
+                    },
+                });
+            }
+            Tok::Underscore if self.ahead(1).kind == Tok::ColonAssign => {
+                let eq = self.ahead(1);
+                return self.fail_fix_range(
+                    t,
+                    eq,
+                    "'_ := value' was removed; write 'void value' to run an expression and drop its result on purpose",
+                    "void",
+                );
+            }
             Tok::Name | Tok::Underscore | Tok::LBracket | Tok::LBrace if self.binding_ahead() => {
                 let s = self.binding(false, None, pos)?;
                 self.end()?;
@@ -2141,12 +2190,12 @@ impl<'a> Parser<'a> {
             let try_call = matches!(&e.kind, ExprKind::Unary { op: UnaryOp::Try, operand } if matches!(operand.kind, ExprKind::Call { .. }));
             let is_call = matches!(
                 e.kind,
-                ExprKind::Call { .. } | ExprKind::Match { .. } | ExprKind::Unit
+                ExprKind::Call { .. } | ExprKind::Match { .. } | ExprKind::Void
             );
             if !self.inline_return && !is_call && !try_call && !allow_value {
                 if let ExprKind::Name(n) = &e.kind {
                     match self.names.str(*n) {
-                        "pass" => return self.fail_fix(t, "'pass' is not a keyword; write 'unit' for an empty block or match arm", "unit"),
+                        "pass" => return self.fail_fix(t, "'pass' is not a keyword; write 'void' for an empty block or match arm", "void"),
                         "const" | "val" | "final" => {
                             return self.fail(t, format!("'{n_t}' is not a keyword; write 'name := ...' for a binding that is not reassigned, or 'var name = ...' when it changes", n_t = self.names.str(n)));
                         }
@@ -2369,8 +2418,8 @@ impl<'a> Parser<'a> {
 
     fn pattern_inner(&mut self) -> PResult<Pattern> {
         let t = self.peek();
-        if t.kind == Tok::Unit {
-            return self.fail(t, "unit is a reserved value keyword, not a binding name; choose another name such as code_unit, and use unit for the Unit value");
+        if t.kind == Tok::Void {
+            return self.fail(t, "void is a reserved value keyword, not a binding name; choose another name such as code_unit, and use void for the Void value");
         }
         if self.take(Tok::Name) {
             let id = self.id();
@@ -2477,7 +2526,7 @@ impl<'a> Parser<'a> {
         }
         let mut e;
         if self.take(Tok::Not) {
-            let operand = self.expression(3)?;
+            let operand = self.expression(PREFIX_OPERAND)?;
             e = self.mk(
                 t.pos,
                 ExprKind::Unary {
@@ -2749,9 +2798,9 @@ impl<'a> Parser<'a> {
                 let parts = self.text_parts_of(t)?;
                 self.mk(t.pos, ExprKind::Text(parts))
             }
-            Tok::Unit => self.mk(t.pos, ExprKind::Unit),
+            Tok::Void => self.mk(t.pos, ExprKind::Void),
             Tok::LParen if self.kind() == Tok::RParen => {
-                return self.fail(t, "'()' is not a value; the Unit value is written 'unit'");
+                return self.fail(t, "'()' is not a value; the Void value is written 'void'");
             }
             Tok::LParen => {
                 let e = self.expression(0)?;
@@ -2953,7 +3002,20 @@ impl<'a> Parser<'a> {
             } else if self.take(Tok::LParen) {
                 self.link(&mut links)?;
                 let pos = e.pos;
-                let args = self.call_arguments()?;
+                let mut args = self.call_arguments()?;
+                // `ok()` is `ok(void)`: success with nothing to carry. The argument sits at the
+                // callee's position, where no source text of its own exists.
+                if args.is_empty()
+                    && matches!(&e.kind, ExprKind::Name(n) if self.names.str(*n) == "ok")
+                {
+                    let value = self.mk(pos, ExprKind::Void);
+                    args.push(Argument {
+                        pos,
+                        name: None,
+                        value,
+                        mutable: false,
+                    });
+                }
                 e = self.mk(
                     pos,
                     ExprKind::Call {
@@ -3440,7 +3502,7 @@ impl<'a> Parser<'a> {
         Ok(arms)
     }
 
-    /// An arm's final expression supplies its value; a statement-only arm yields Unit.
+    /// An arm's final expression supplies its value; a statement-only arm yields Void.
     fn value_arm(&mut self, a: &mut Arm) -> PResult<()> {
         let (outer, outer_return) = (self.inline_statement, self.inline_return);
         let r = self.value_arm_inner(a);

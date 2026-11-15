@@ -41,7 +41,7 @@ Postfix       = Primary, { ".", Name | TypeArguments | "[", Expression, "]" | Ca
 CallArguments = "(", [ Argument, { ",", Argument }, [ "," ] ], ")" ;
 Argument      = [ Name, ":" ], [ "var" ], Expression ;
 Primary       = IntLiteral | FloatLiteral | DecimalLiteral | StringLiteral
-              | "true" | "false" | "unit" | "self" | Name
+              | "true" | "false" | "void" | "self" | Name
               | "(", Expression, ")" | ListLiteral | MapLiteral | FunctionExpression | MatchExpression | IfExpression ;
 ListLiteral   = "[", [ Expression, { ",", Expression }, [ "," ] ], "]" ;
 MapLiteral    = "{", [ MapEntry, { ",", MapEntry }, [ "," ] ], "}" ;
@@ -147,7 +147,7 @@ See [compatibility](../types/compatibility.md) and [error propagation](../errors
 `__LINE__` is the `Int` line number of the token and `__FILE__` is the `String` name of the file being compiled; both are constants filled in at the use site, so inside a function they name where it is written, not where it is called. A local binding or declaration with either name shadows the constant. To report a caller's position, use a parameter default of `caller_site()` from `@std/test/test.ms` instead.
 
 ```ms
-fn main() Unit:
+fn main() Void:
     print("{__FILE__}:{__LINE__}")
 ```
 

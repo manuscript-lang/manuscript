@@ -61,6 +61,7 @@ fn run(syms: ms_syntax::Names) -> ExitCode {
     issues.extend(nested::check(&files));
     issues.extend(format_drift(&files));
     issues.extend(release::extension_version());
+    issues.extend(release::calendar_version());
     issues.extend(release::workflow_triggers());
     issues.extend(unsafe_boundary::check(&files));
     issues.extend(inline_source::check(&files));

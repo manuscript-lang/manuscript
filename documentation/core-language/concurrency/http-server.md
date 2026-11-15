@@ -34,7 +34,7 @@ PASS server_test.ms::serve a greeting
 
 ## Keep an application server running
 
-In a function returning `Unit!`, keep the server alive with `wait()`:
+In a function returning `Void!`, keep the server alive with `wait()`:
 
 ```manuscript
 server := serve("127.0.0.1:8080", handler)?

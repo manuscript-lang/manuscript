@@ -51,7 +51,7 @@ test "map lookup":
         v:
             return fail("unexpected {v}")
         none:
-            unit
+            void
 
     var points = Map[Point, String]()
     points.add(key: Point(x: 1, y: 2), value: "a")

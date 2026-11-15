@@ -5,7 +5,7 @@ let (
     B: Int = A + 1
 )
 
-fn main() Unit:
+fn main() Void:
     var (
         a = 10
         b = fn(x: Int) Int:

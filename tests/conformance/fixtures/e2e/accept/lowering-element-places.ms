@@ -11,13 +11,13 @@ type Row:
     cells: List[Int]
     pt: Pt
 
-fn shift(var p: Pt, dx: Int) Unit:
+fn shift(var p: Pt, dx: Int) Void:
     p.x += dx
 
-fn shift_at(var pts: List[Pt], i: Int, dx: Int) Unit:
+fn shift_at(var pts: List[Pt], i: Int, dx: Int) Void:
     shift(var pts[i], dx)
 
-fn grow(var rows: List[Row], i: Int, j: Int) Unit:
+fn grow(var rows: List[Row], i: Int, j: Int) Void:
     rows[i].cells.append(j)
     rows[i].pt.y = j
 

@@ -3,29 +3,29 @@ import Closeable from "@std/core.ms"
 type Marker:
     id: Int
 
-fn var Marker.close() Unit!: ok(unit)
+fn var Marker.close() Void!: ok()
 
-fn transfer_ok_or() Unit:
+fn transfer_ok_or() Void:
     value: Marker? := Marker(1)
     _kept := value.ok_or("failure")
 
-fn transfer_ok_or_else() Unit:
+fn transfer_ok_or_else() Void:
     value: Marker? := Marker(1)
     _kept := value.ok_or_else(fn: "failure")
 
-fn transfer_map_error() Unit:
+fn transfer_map_error() Void:
     value: Marker!Int := ok(Marker(1))
     _kept := value.map_error(fn cause: cause + 1)
 
-fn transfer_to_optional() Unit:
+fn transfer_to_optional() Void:
     value: Marker!Int := ok(Marker(1))
     _kept := value.to_optional()
 
-fn transfer_map() Unit:
+fn transfer_map() Void:
     value: Int!Marker := error(Marker(1))
     _kept := value.map(fn item: item + 1)
 
-fn transfer_and_then() Unit:
+fn transfer_and_then() Void:
     value: Int!Marker := error(Marker(1))
     _kept := value.and_then(fn item: ok(item + 1))
 

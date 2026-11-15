@@ -370,3 +370,25 @@ fn options_before_separator_preserve_positional_source_paths() {
     }
     std::fs::remove_dir_all(dir).unwrap();
 }
+
+#[test]
+fn init_lib_writes_a_library_with_no_entry_that_tests() {
+    let dir = std::env::temp_dir().join(format!("ms-cli-init-lib-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let run = |args: &[&str]| {
+        std::process::Command::new(env!("CARGO_BIN_EXE_ms"))
+            .args(args)
+            .current_dir(&dir)
+            .output()
+            .unwrap()
+    };
+    let out = run(&["init", "--lib", "greeter"]);
+    assert!(out.status.success(), "{out:?}");
+    assert!(String::from_utf8_lossy(&out.stdout).contains("Next: ms test greeter/ms.toml"));
+    let manifest = std::fs::read_to_string(dir.join("greeter/ms.toml")).unwrap();
+    assert!(!manifest.contains("entry"), "{manifest}");
+    let tested = run(&["test", "greeter/ms.toml"]);
+    assert!(tested.status.success(), "{tested:?}");
+    let _ = std::fs::remove_dir_all(&dir);
+}

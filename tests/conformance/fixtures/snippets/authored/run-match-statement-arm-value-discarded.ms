@@ -12,7 +12,7 @@ fn double(n: Int) Int:
 fn checked(n: Int) Int!:
     return ok(n + 1)
 
-fn run(step: Step) Unit!:
+fn run(step: Step) Void!:
     match step:
         Show(text):
             print(text)
@@ -20,7 +20,7 @@ fn run(step: Step) Unit!:
             double(n)
         Check(n):
             checked(n)?
-    return ok(unit)
+    return ok()
 
 export fn main() Int:
     for step in [Step.Show("shown"), Step.Count(2), Step.Check(3)]:

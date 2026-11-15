@@ -10,8 +10,8 @@ type Door:
 	id: Int
 	log: String
 
-fn var Door.close() Unit!:
-	_ := append_file(self.log, "{self.id},").wait()
+fn var Door.close() Void!:
+	void append_file(self.log, "{self.id},").wait()
 
 fn logged(path: String) String:
 	read := read_file(path).wait()
@@ -25,7 +25,7 @@ test "a list moved on one path closes on the path that keeps it":
 	block(log.clone(), 1)
 	logged(log.clone()) | expect_equal("1,")?
 
-fn block(log: String, id: Int) Unit:
+fn block(log: String, id: Int) Void:
 	doors := [Door(id, log.clone())]
 	var moved: List[Door]? = none
 	if doors.is_empty():
@@ -38,14 +38,14 @@ test "an optional resource reassigned after a conditional move closes the new va
 	reassign(log.clone())
 	logged(log.clone()) | expect_equal("1,2,")?
 
-fn reassign(log: String) Unit:
+fn reassign(log: String) Void:
 	var held: Door? = Door(1, log.clone())
 	if var door = held:
 		door.id = 1
 	held = Door(2, log.clone())
 	if held.is_none(): return
 
-fn walk(log: String, stop: Int) Unit:
+fn walk(log: String, stop: Int) Void:
 	doors := [Door(1, log.clone()), Door(2, log.clone()), Door(3, log.clone())]
 	var kept = List[Door]()
 
@@ -78,7 +78,7 @@ test "a binding built from a call that consumes a resource closes it":
 	block_wrap(log.clone())
 	logged(log.clone()) | expect_equal("1,9,")?
 
-fn block_wrap(log: String) Unit:
+fn block_wrap(log: String) Void:
 	made := wrap(Door(1, log.clone()), log.clone())
 	if made.is_empty(): return
 

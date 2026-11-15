@@ -12,7 +12,7 @@ import (
 	expect_equal, expect_false, expect_true, fail from "@std/test/test.ms",
 )
 
-fn echo(var exchange: HttpExchange) Unit!:
+fn echo(var exchange: HttpExchange) Void!:
 	if exchange.path() == "/ws":
 		var socket = upgrade(
 			var exchange,
@@ -25,17 +25,17 @@ fn echo(var exchange: HttpExchange) Unit!:
 			message:
 				socket.output.write(message)?
 			none:
-				return ok(unit)
+				return ok()
 
 		socket.close()?
-		return ok(unit)
+		return ok()
 
 	var fields = headers()
 	_appended := fields.append("X-Test", "stream")?
 	exchange.send_headers(200, fields)?
 	return exchange.write_bytes("hello from streaming Manuscript".to_bytes())
 
-fn exercise() Unit!:
+fn exercise() Void!:
 	tls := TlsOptions(
 		server_name: "",
 		roots_pem: "",

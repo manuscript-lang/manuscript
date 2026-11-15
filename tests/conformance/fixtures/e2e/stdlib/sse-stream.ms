@@ -23,8 +23,8 @@ fn var Chunks.next() Bytes?!:
 
 	return ok(none)
 
-fn var Chunks.close() Unit!:
-	return ok(unit)
+fn var Chunks.close() Void!:
+	return ok()
 
 fn chunks(parts: List[Bytes]) ReadStream[Bytes]:
 	return ReadStream[Bytes](Chunks(parts, 0, none))
@@ -62,7 +62,7 @@ fn summary(events: List[SseEvent]) String:
 		fn event: "{event.event}|{event.data}|{event.id.get("-")}"
 	).join(";")
 
-fn expect(source: String, want: String) Unit!:
+fn expect(source: String, want: String) Void!:
 	for parts in splits(source.to_bytes()):
 		got := summary(decode(parts)?)
 		if got != want: return fail(

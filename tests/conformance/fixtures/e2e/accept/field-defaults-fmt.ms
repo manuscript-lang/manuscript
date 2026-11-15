@@ -28,12 +28,12 @@ type Box[T]:
     value: T
     copy: T = value
 
-fn unit_default(var calls: List[Int]) Unit:
+fn unit_default(var calls: List[Int]) Void:
     calls.append(1)
 
 type Explicit:
     calls: List[Int]
-    nothing: Unit = unit_default(calls)
+    nothing: Void = unit_default(calls)
     option: Int? = 9
 
 test "record defaults and explicit overrides":
@@ -44,7 +44,7 @@ test "record defaults and explicit overrides":
     ((changed.number != 0 or changed.values.get(0) != 0 or changed.callback() != 0)) | expect_false?
 
     calls: List[Int] := []
-    explicit := Explicit(calls: calls.clone(), nothing: unit, option: none)
+    explicit := Explicit(calls: calls.clone(), nothing: void, option: none)
     calls.is_empty() | expect_true?
     (explicit.option.is_none()) | expect_true?
 
@@ -89,7 +89,7 @@ fn Reader.get(fallback: Int?) Int:
 
 type Marker: ...
 
-fn no_op() Unit: ...
+fn no_op() Void: ...
 
 test "ordinary empty declarations and interface omission":
     no_op()

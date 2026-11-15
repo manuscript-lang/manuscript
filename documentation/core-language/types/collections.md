@@ -74,7 +74,7 @@ Save as `pairs.ms` and run `ms run pairs.ms`:
 
 <!-- manuscript-example: {"mode":"run","stdout":"ann: 90\nbo: 72\n2\n2\n1\n"} -->
 ```manuscript
-fn main() Unit:
+fn main() Void:
     names := ["ann", "bo", "cy"]
     scores := [90, 72]
     for pair in names.zip(scores):
@@ -93,7 +93,7 @@ bo: 72
 
 ## Mutation and copies
 
-Mutators update the receiver in place and return Unit; a `:=` binding cannot be mutated, so declare the collection with `var`.
+Mutators update the receiver in place and return Void; a `:=` binding cannot be mutated, so declare the collection with `var`.
 
 - List: `append`, `prepend`, `insert`, `set`, `replace`, `swap`, `remove`, `splice`, `fill`, `copy_within`, `reverse`.
 - Map: `add`, `remove`, `add_default`, `add_default_from`, `merge`, `clear`. Removing an absent key is a no-op.
@@ -129,7 +129,7 @@ Use `Queue` from `@std/collections/queue.ms` for first-in, first-out work (`enqu
 
 Map `add_default` evaluates its argument and inserts only when absent; `add_default_from` calls `create(key:)` once, only when absent. Neither replaces an existing value or position. For an independent map, bind `var copy = map.clone()` and call `copy.add_default(...)`.
 
-Builder mutations return Unit; `build` returns the sealed result. `StringBuilder` and `BytesBuilder` are owned values like `List`: declare them with `var`, pass them with `var`, and `build` takes ownership of them, so using one after `build` is a move error. `drain` returns the content so far and leaves the builder empty, for a builder held in a field, where `build` cannot move it out.
+Builder mutations return Void; `build` returns the sealed result. `StringBuilder` and `BytesBuilder` are owned values like `List`: declare them with `var`, pass them with `var`, and `build` takes ownership of them, so using one after `build` is a move error. `drain` returns the content so far and leaves the builder empty, for a builder held in a field, where `build` cannot move it out.
 
 ## Other collections
 
@@ -157,9 +157,9 @@ A List keeps its identity and backing kind through generics, types, Optional, Re
 | `List[T]()` | Empty `List[T]` |
 | `List[T](reserve: Int?)` | Empty `List[T]` with room for `reserve` items |
 | `List[T]` | `length() Int`; `get(index: Int, default: T?) T`; `[index] T` |
-| `List[T]` | `append(value: T) Unit`; `concat(values: List[T]) List[T]` |
-| `List[T]` | `set(index: Int, value: T) Unit` (also `xs[index] = value`); `remove(index: Int) Unit` |
-| `List[T]` | `insert(index: Int, value: T) Unit`; `pop() T?` |
+| `List[T]` | `append(value: T) Void`; `concat(values: List[T]) List[T]` |
+| `List[T]` | `set(index: Int, value: T) Void` (also `xs[index] = value`); `remove(index: Int) Void` |
+| `List[T]` | `insert(index: Int, value: T) Void`; `pop() T?` |
 | `Map[K, V]()` | Empty `Map[K, V]` |
 | `Map[K, V]` | `length() Int`; `get(key: K) V?`; `contains(key: K) Bool`; `[key] V` faults with `map key not found: <key>` when absent |
 | `Map[K, V]` | `is_empty() Bool`; `get_or(key: K, fallback: V) V` |
@@ -171,14 +171,14 @@ A List keeps its identity and backing kind through generics, types, Optional, Re
 | `Map[K, V]` | `find(predicate: fn(K, V) Bool) MapEntry[K, V]?` |
 | `Map[K, V]` | `find_last` uses the same predicate and entry result, searching from the end |
 | `Map[K, V]` | `any(predicate: fn(K, V) Bool) Bool`; `all` uses the same predicate |
-| `Map[K, V]` | `add(key: K, value: V) Unit`; `remove(key: K) Unit`; `m[key] = value` is `m.add(key, value)` and needs `var m` |
-| `Map[K, V]` | `update(key: K, initial: V, change: fn(V) V) Unit` stores `change` applied to the stored value, or to `initial` when absent, with one lookup (`counts.update(word, 0, fn n: n + 1)`); needs `var m` and a cloneable key. A `change` that reads or changes `m` is rejected |
+| `Map[K, V]` | `add(key: K, value: V) Void`; `remove(key: K) Void`; `m[key] = value` is `m.add(key, value)` and needs `var m` |
+| `Map[K, V]` | `update(key: K, initial: V, change: fn(V) V) Void` stores `change` applied to the stored value, or to `initial` when absent, with one lookup (`counts.update(word, 0, fn n: n + 1)`); needs `var m` and a cloneable key. A `change` that reads or changes `m` is rejected |
 | `Set[T]()` | Empty `Set[T]` |
 | `Set[T](values)` | `Set[T]` of the distinct elements of the `List[T]` in first-seen order; `Set([1, 2])` infers `T` |
 | `Set[T]` | `length() Int`; `contains(value: T) Bool` |
 | `Set[T]` | `is_empty() Bool`; `filter(predicate: fn(T) Bool) Set[T]` |
 | `Set[T]` | `map[U: Hashable](transform: fn(T) U) Set[U]` |
-| `Set[T]` | `add(value: T) Unit`; `remove(value: T) Unit` |
+| `Set[T]` | `add(value: T) Void`; `remove(value: T) Void` |
 | `Set[T]` | `fold[A](initial: A, step: fn(A, T) A) A` |
 | `Set[T]` | `fold_right[A]` uses the same step in reverse insertion order |
 | `Set[T]` | `find(predicate: fn(T) Bool) T?` |
@@ -187,7 +187,7 @@ A List keeps its identity and backing kind through generics, types, Optional, Re
 
 An empty constructor needs explicit type arguments or a complete expected application, and creates fresh storage. `values[index]` equals `values.get(index)`: the element at an index, where negative indexes count from the end. An index out of range faults. Pass a default to avoid the fault: `values.get(0, default: 0)` needs no length check. Bytes and String `get` work the same way, and a String element is a one-scalar String. A size above the maximum `Int` faults.
 
-`Map.add(key, value)` inserts or replaces and returns Unit. Replacing an equal map key keeps its original key and position; adding an existing set element changes nothing. Remove then add moves the entry to the end. Equality ignores insertion order. Use builders for construction with a sealed result.
+`Map.add(key, value)` inserts or replaces and returns Void. Replacing an equal map key keeps its original key and position; adding an existing set element changes nothing. Remove then add moves the entry to the end. Equality ignores insertion order. Use builders for construction with a sealed result.
 
 Map `get`, `contains`, and `add` and Set `contains` and `add` are hash lookups (constant time on average). Map and Set `remove` keep order by shifting later entries, costing a fast copy proportional to size. List `contains` and `index_of` scan. A key mutated while stored becomes unreachable; remove it first or store a `.clone()` ([key consistency](equality-and-hashing.md#key-consistency)).
 
@@ -208,8 +208,8 @@ Map `get`, `contains`, and `add` and Set `contains` and `add` are hash lookups (
 | Map `keys()`, `values()` | Lists in insertion order that borrow the Map: use them in place or `.clone()` to keep them. |
 | Map `entries()` | A new list in insertion order of `MapEntry[K, V]` types with `key` and `value`. |
 | Set `values()` | A new list in insertion order. |
-| List/Set `for_each(operation:)` | Calls `operation(value:)` sequentially for each value; returns Unit. |
-| Map `for_each(operation:)` | Calls `operation(key:, value:)` sequentially for each entry; returns Unit. |
+| List/Set `for_each(operation:)` | Calls `operation(value:)` sequentially for each value; returns Void. |
+| Map `for_each(operation:)` | Calls `operation(key:, value:)` sequentially for each entry; returns Void. |
 
 Enumeration returns owned results. Callbacks borrow the receiver for the traversal; they cannot mutate it.
 

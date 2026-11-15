@@ -14,7 +14,7 @@ fn var Rng.next(limit: Int) Int:
 	self.state = (self.state * 1103515245 + 12345) % 2147483648
 	return (self.state / 65536) % limit
 
-fn save(dir: String, name: String, text: String) Unit:
+fn save(dir: String, name: String, text: String) Void:
 	write_file("{dir}/{name}", text, replace: true).wait().get()
 
 fn logs(n: Int, seed: Int) String:
@@ -93,7 +93,7 @@ fn records(n: Int) String:
 	return b.build()
 
 // A tree of 20 directories with 100 log files each, 200 lines per file at scale 1.
-fn tree(dir: String, scale: Int) Unit:
+fn tree(dir: String, scale: Int) Void:
 	for d in 0..20:
 		sub := "{dir}/tree/d{d}"
 		create_directory(sub, recursive: true).get()

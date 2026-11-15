@@ -1,26 +1,26 @@
-fn show(n: Int) Unit!:
+fn show(n: Int) Void!:
     print("{n}")
-    return ok(unit)
+    return ok()
 
-fn only() Unit!:
-    return ok(unit)
+fn only() Void!:
+    return ok()
 
-fn quiet(n: Int) Unit:
+fn quiet(n: Int) Void:
     print("{n}")
     return
 
-fn early(n: Int) Unit!:
+fn early(n: Int) Void!:
     if n > 1:
-        return ok(unit)
+        return ok()
     print("{n}")
 
 fn count() Int!:
     print("count")
     return ok(1)
 
-fn main() Unit:
-    _ := show(1)
-    _ := only()
+fn main() Void:
+    void show(1)
+    void only()
     quiet(2)
-    _ := early(3)
-    _ := count()
+    void early(3)
+    void count()

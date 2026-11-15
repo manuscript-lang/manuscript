@@ -63,7 +63,7 @@ fn catch_in_task() Int:
 
 	return depth(10000)
 
-fn faulting_depth(n: Int) Unit:
+fn faulting_depth(n: Int) Void:
 	if n == 0:
 		empty: List[Int] := []
 		print(empty[1])
@@ -73,7 +73,7 @@ fn faulting_depth(n: Int) Unit:
 
 fn parked_depth(n: Int) Int:
 	if n == 0:
-		sleep(microseconds(10)).wait().get(unit)
+		void sleep(microseconds(10)).wait()
 		return 0
 
 	return parked_depth(n - 1) + 1

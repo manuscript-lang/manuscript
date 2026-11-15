@@ -12,8 +12,8 @@ fn tally(words: List[String]) Map[String, Int]:
 
     return m
 
-fn main() Unit:
+fn main() Void:
     m := tally(["a", "b", "a", "c", "a", "b"])
-    _ := stdout().write(
+    void stdout().write(
         "{m.length()} {m.get_or("a", 0)} {m.get_or("b", 0)} {m.get_or("c", 0)}\n"
     )

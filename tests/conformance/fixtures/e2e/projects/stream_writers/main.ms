@@ -14,19 +14,19 @@ type Point:
 type Echo:
 	out: WriteStream[String]
 
-fn var Echo.write(value: Bytes) Unit!:
+fn var Echo.write(value: Bytes) Void!:
 	return self.out.write(value.decode_utf8().get(""))
 
-fn var Echo.flush() Unit!:
+fn var Echo.flush() Void!:
 	return self.out.flush()
 
-fn var Echo.close() Unit!:
-	return ok(unit)
+fn var Echo.close() Void!:
+	return ok()
 
 fn echo() WriteStream[Bytes]:
 	return WriteStream[Bytes](Echo(stdout()))
 
-fn run() Unit!:
+fn run() Void!:
 	var points = json_writer[Point](echo())
 	points.write(Point(1, "a \"quoted\" label"))?
 	points.write(Point(2, "é😀"))?

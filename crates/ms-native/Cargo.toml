@@ -38,6 +38,8 @@ ms-std-url = { path = "../ms-std-url" }
 entry = []
 # The runtime with allocation sampling, for `ms profile --allocs` (`cargo xtask runtime --alloc-profile`).
 alloc-profile = ["ms-rt/alloc-profile"]
+# The runtime with the scheduler stress mode, for `make stress-sched` (`cargo xtask runtime --sched-stress`).
+sched-stress = ["ms-rt/sched-stress"]
 
 [dev-dependencies]
 ms-rt-abi = { path = "../ms-rt-abi" }

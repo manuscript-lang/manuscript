@@ -740,7 +740,7 @@ fn random_program(seed: u64) -> String {
         g.rng.below(2001) as i64 - 1000,
     );
     src.push_str(&format!(
-        "fn @main() -> int {{\nb0:\n  %x: int = iconst {x}\n  %y: int = iconst {y}\n  %r: int = call @f(%x, %y)\n  %u: unit = call.rt @msrt_print_int (%r)\n  %z: int = iconst 0\n  ret %z\n}}\n"
+        "fn @main() -> int {{\nb0:\n  %x: int = iconst {x}\n  %y: int = iconst {y}\n  %r: int = call @f(%x, %y)\n  %u: void = call.rt @msrt_print_int (%r)\n  %z: int = iconst 0\n  ret %z\n}}\n"
     ));
     src
 }
@@ -806,7 +806,7 @@ extern @msrt_print_int(int)
 entry @main
 fn @close(%x: int) {{
 b0:
-  %u: unit = call.rt @msrt_print_int(%x)
+  %u: void = call.rt @msrt_print_int(%x)
   ret
 }}
 fn @choose(%x: int, %y: int, %c: bool) -> int !0:2:1 {{
@@ -832,7 +832,7 @@ b0:
   %h1: int = cleanup.push @close %one
   %h2: int = cleanup.push @close %two
   %r: int = call @choose(%x, %y, %c) !0:41:1
-  %u: unit = call.rt @msrt_print_int(%r)
+  %u: void = call.rt @msrt_print_int(%r)
   cleanup.run %h1
   %z: int = iconst 0
   ret %z
@@ -1022,4 +1022,48 @@ fn readonly_type_copies_keep_payloads_alive_after_the_owner_is_dropped() {
 fn optional_integer_conversion_handles_the_full_signed_range() {
     let src = include_str!("../../ms-mir/tests/fixtures/optional_int64.mir");
     assert_eq!(same(src, "optional_integer_full_range").code, 0);
+}
+
+/// A function's symbol does not depend on what is declared before it, so an object keeps the
+/// names an unrelated edit did not touch.
+#[test]
+fn symbols_do_not_shift_when_a_function_is_added() {
+    let body = r#"fn @sum(%n: int) -> int {
+b0:
+  %z: int = iconst 0
+  br b1(%z, %z)
+b1(%i: int, %acc: int):
+  %c: bool = icmp.lt %i, %n
+  br_if %c, b2(), b3()
+b2:
+  %a: int = iadd.chk %acc, %i
+  %one: int = iconst 1
+  %j: int = iadd %i, %one
+  br b1(%j, %a)
+b3:
+  ret %acc
+}
+"#;
+    let main = r#"fn @main() -> int {
+b0:
+  %n: int = iconst 10
+  %r: int = call @sum(%n)
+  ret %r
+}
+"#;
+    let extra = body.replace("@sum", "@other");
+    let build = |src: String| {
+        let m = module(&src);
+        compile(&m, &Options::default()).expect("compile")
+    };
+    let has = |object: &[u8], name: &str| object.windows(name.len()).any(|w| w == name.as_bytes());
+    let before = build(format!("module \"a\"\nentry @main\n{body}{main}"));
+    let after = build(format!("module \"a\"\nentry @main\n{extra}{body}{main}"));
+    assert!(has(&before, "sum#") && has(&after, "sum#") && has(&after, "other#"));
+    // Both objects name `sum` the same way; adding `other` before it changes nothing.
+    let name = |object: &[u8]| {
+        let at = object.windows(4).position(|w| w == b"sum#").unwrap();
+        object[at..at + 12].to_vec()
+    };
+    assert_eq!(name(&before), name(&after));
 }

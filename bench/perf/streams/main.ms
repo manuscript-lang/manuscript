@@ -15,10 +15,10 @@ import (
 // ns per item for stream pipelines against the loops they replace. One line per case:
 // `name ns checksum`.
 
-fn say(text: String) Unit:
+fn say(text: String) Void:
 	_ignored := stdout().write(text)
 
-fn report(name: String, n: Int, start: Instant, sum: Int) Unit:
+fn report(name: String, n: Int, start: Instant, sum: Int) Void:
 	ns := monotonic().difference(start).to_nanoseconds()
 	say("{name} {ns.to_float() / n.to_float()} {sum}\n")
 
@@ -34,8 +34,8 @@ fn var ListSource.next() Int?!:
 	self.at += 1
 	return ok(v)
 
-fn var ListSource.close() Unit!:
-	return ok(unit)
+fn var ListSource.close() Void!:
+	return ok()
 
 // `f` over another `Source`, called through the interface.
 type MapSource:
@@ -48,7 +48,7 @@ fn var MapSource.next() Int?!:
 
 	return ok(none)
 
-fn var MapSource.close() Unit!:
+fn var MapSource.close() Void!:
 	return self.up.close()
 
 fn plain(xs: List[Int]) Int:
@@ -149,7 +149,7 @@ fn stdlib_lines(data: Bytes) Int!:
 		count += line.length()
 	return ok(count)
 
-fn main() Unit:
+fn main() Void:
 	n := 5000000
 	var xs = List[Int]()
 	for i in 0..n:

@@ -8,7 +8,7 @@ fn handle(request: HttpRequest) HttpResponse:
         print("started")
 
         _flushed := stdout().flush()
-        _ := sleep(nanoseconds(500000000)).wait()
+        void sleep(nanoseconds(500000000)).wait()
 
     return HttpResponse(200, headers(), request.path.to_bytes())
 

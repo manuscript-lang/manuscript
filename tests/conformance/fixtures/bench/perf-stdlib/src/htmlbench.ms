@@ -10,7 +10,7 @@ fn html_doc(count: Int) String:
     sb.append("</div>")
     return sb.build()
 
-export fn bench_html() Unit:
+export fn bench_html() Void:
     html := html_doc(2000)
 
     bench(

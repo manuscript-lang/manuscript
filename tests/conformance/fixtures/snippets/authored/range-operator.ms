@@ -9,12 +9,12 @@ fn total(n: Int) Int:
         sum += i
     return sum
 
-fn main() Unit:
+fn main() Void:
     xs := 1..4
     var empty = 0
     for i in 5..2:
         empty += 1
 
-    _ := stdout().write(
+    void stdout().write(
         "{total(4)} {xs.length()} {xs[0]} {empty} {(2..2).length()}\n"
     )

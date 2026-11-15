@@ -6,31 +6,31 @@ import Closeable from "@std/core.ms"
 type Gate:
     closes: Int
 
-fn var Gate.close() Unit!:
+fn var Gate.close() Void!:
     self.closes += 1
     return error(Error("gate stuck"))
 
-fn handled() Unit!:
+fn handled() Void!:
     var g = Gate(0)
     r := g.close()
     if _ok := r:
         return error(Error("close should have failed"))
 
-fn branchy(explicit: Bool) Unit!:
+fn branchy(explicit: Bool) Void!:
     var g = Gate(0)
     if explicit:
-        _ := g.close()
+        void g.close()
 
-fn relocked(second_fails: Bool) Unit!:
+fn relocked(second_fails: Bool) Void!:
     var g = Gate(0)
-    _ := g.close()
+    void g.close()
     g = Gate(0)
     if second_fails:
-        return ok(unit)
+        return ok()
 
-    _ := g.close()
+    void g.close()
 
-fn ok_of(r: Unit!) Bool:
+fn ok_of(r: Void!) Bool:
     if _ok := r:
         return true
 

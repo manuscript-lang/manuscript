@@ -1972,7 +1972,7 @@ fn lower_lambda_body(
     }
     fl.stmts(&lam.body)?;
     if !fl.dead {
-        if fl.ret_ty != MTy::UNIT {
+        if fl.ret_ty != MTy::VOID {
             return Err(Error::new("lambda can fall off its end"));
         }
         let u = fl.b.unit();

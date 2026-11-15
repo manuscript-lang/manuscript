@@ -44,7 +44,7 @@ b0:
   %n: int = iconst 30000
   %c: Chain = call @build (%n)
   %r: int = call @len (%c)
-  %p: unit = call.rt @msrt_print_int (%r)
+  %p: void = call.rt @msrt_print_int (%r)
   drop %c
   %z: int = iconst 0
   ret %z

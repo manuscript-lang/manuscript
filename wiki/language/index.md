@@ -7,6 +7,7 @@ Syntax, types, imports, removals, language decisions.
 Note on memory model: on 2026-10-19 the owner adopted value semantics for the Rust implementation (see [compiler.md](../compiler/index.md) and [ownership notes](../../crates/ms-check/OWNERSHIP.md)). Entries below that speak of shared references, aliasing, or `.clone()` record user decisions made under reference semantics; where they conflict with the ownership notes, the notes and the frozen conformance corpus win, and the conflict is flagged in the entry.
 
 - [Keywords are names after a dot and as field labels](keywords-are-names-after-a-dot-and-as-field-labels.md)
+- [`Void` is the nothing type and the `void` keyword](void-is-the-nothing-type-and-keyword.md): `Unit` was renamed; `void expr` drops a result.
 - [Type aliases are transparent and resolved in the checker](type-aliases-are-transparent-and-resolved-in-the-checker.md): `type Name[T] = Type` is another name for a type expression, expanded in `resolve`.
 - [Enums declare tagged unions](enums-declare-tagged-unions.md): use `enum` with bare variants; records keep `type`, and legacy syntax receives clear diagnostics.
 - [An unsaved overlay cannot replace a dangling source symlink](an-unsaved-overlay-cannot-replace-a-dangling-source-symlink.md): editor overlays may create a file beneath an existing confined directory, but a dangling symlink remains a filesystem entry whose target ide…
@@ -25,7 +26,7 @@ Note on memory model: on 2026-10-19 the owner adopted value semantics for the Ru
 - [Keep short bodies available without a second function kind](keep-short-bodies-available-without-a-second-function-kind.md): the user requested a terse language with single-line functions and conditions.
 - [Local implementations must remain selected across module boundaries](local-implementations-must-remain-selected-across-module-bou.md): accepting an implementation for an imported source type requires more than relaxing receiver ownership.
 - [Match is uniformly a value expression; indexing returns the element](match-is-uniformly-a-value-expression-indexing-returns-the-e.md): when addressing familiar-language friction, the user explicitly chose a single `match` expression form rather than retaining a separate statement form.
-- [Function types carry `var` parameters](function-types-carry-var-parameters.md): `fn(var List[Int]) Unit` is a distinct type; a named function with `var` parameters is a value of it, lambdas declare `var` parameters, and calls through the value mark the argument `var`.
+- [Function types carry `var` parameters](function-types-carry-var-parameters.md): `fn(var List[Int]) Void` is a distinct type; a named function with `var` parameters is a value of it, lambdas declare `var` parameters, and calls through the value mark the argument `var`.
 - [Method values borrow their receiver](method-values-borrow-their-receiver.md): a method value is a closure over its receiver: local, it borrows the receiver's place; escaping, it takes the receiver, moving it at its last use.
 - [Methods before free functions](methods-before-free-functions.md): do not add "random" free functions to the standard library or examples; put the operation on the type it acts on.
 - [Types stay next to their methods](types-stay-next-to-their-impls.md): a type's receiver methods directly follow its declaration.

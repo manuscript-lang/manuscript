@@ -87,17 +87,15 @@ test "a prepared statement runs repeatedly with typed results":
 
 test "transactions commit and roll back":
 	var conn = open(config()?)?
-	_ := conn.simple("create temp table t (n int)")?
+	void conn.simple("create temp table t (n int)")?
 	conn.begin()?
-
-	_ := conn.query("insert into t values ($1)", [Value.Int(1)])?
+	void conn.query("insert into t values ($1)", [Value.Int(1)])?
 	conn.rollback()?
 
 	none_left := conn.query("select count(*) from t", [])?
 	expect_equal(none_left.rows[0][0], Value.Int(0))?
 	conn.begin()?
-
-	_ := conn.query("insert into t values ($1)", [Value.Int(1)])?
+	void conn.query("insert into t values ($1)", [Value.Int(1)])?
 	conn.commit()?
 
 	one_left := conn.query("select count(*) from t", [])?
@@ -165,14 +163,14 @@ test "a cleartext password is refused without TLS":
 	failure := expect_error(login("clearuser", "clearpass", true))?
 	expect_equal(failure.kind, "EACCES")?
 
-fn impostor_accept(accepted: Promise[Connection]) Unit!:
+fn impostor_accept(accepted: Promise[Connection]) Void!:
 	var client = accepted.wait()?
 	return impostor(var client)
 
 // A server that offers SCRAM and then says "authenticated" without ever proving it
 // knows the password.
-fn impostor(var client: Connection) Unit!:
-	_ := client.input.next()?
+fn impostor(var client: Connection) Void!:
+	void client.input.next()?
 
 	// R, length 23, method 10, "SCRAM-SHA-256", two NULs
 	offer := Bytes(
@@ -182,11 +180,10 @@ fn impostor(var client: Connection) Unit!:
 		]
 	)
 	client.output.write(offer)?
-
-	_ := client.input.next()?
+	void client.input.next()?
 	client.output.write(Bytes([82, 0, 0, 0, 8, 0, 0, 0, 0]))?
 	client.close()?
-	return ok(unit)
+	return ok()
 
 test "a server that skips the SCRAM proof is rejected":
 	var listener = listen("127.0.0.1:0")?
@@ -200,17 +197,18 @@ test "a server that skips the SCRAM proof is rejected":
 
 test "transaction commits on success and rolls back on error":
 	var conn = open(config()?)?
-	_ := conn.simple("create temp table tx (n int)")?
+	void conn.simple("create temp table tx (n int)")?
+
 	added := conn.transaction(
 		fn(var c: Conn): c.query("insert into tx values (1)", [])
 	)?
 	expect_equal(added.command, "INSERT 0 1")?
-
-	_ := expect_error(
+	void expect_error(
 		conn.transaction(
 			fn(var c: Conn): c.query("insert into tx values (1/0)", [])
 		)
 	)?
+
 	count := conn.query("select count(*) from tx", [])?
 	expect_equal(count.rows[0][0], Value.Int(1))?
 	conn.close()?
@@ -235,13 +233,13 @@ test "TLS login upgrades the socket after an SSLRequest":
 	conn.close()?
 
 // A server that answers the SSL request with `N`: no TLS here.
-fn refuser(var client: Connection) Unit!:
-	_ := client.input.next()?
+fn refuser(var client: Connection) Void!:
+	void client.input.next()?
 	client.output.write(Bytes([78]))?
 	client.close()?
-	return ok(unit)
+	return ok()
 
-fn refuser_accept(accepted: Promise[Connection]) Unit!:
+fn refuser_accept(accepted: Promise[Connection]) Void!:
 	var client = accepted.wait()?
 	return refuser(var client)
 

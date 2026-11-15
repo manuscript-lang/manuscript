@@ -6,12 +6,12 @@ import (
 	words from "./src/harness.ms",
 )
 
-fn captures_bench(count: Int) Result[Unit, Error]:
+fn captures_bench(count: Int) Result[Void, Error]:
 	re := compile("(word)([0-9]+)")?
 	text := "word123 ".repeat(count)?
 	expected_row := ["word123", "word", "123"]
 
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		rows := re.captures_all(text)?
 		var checksum = 0
 
@@ -25,12 +25,12 @@ fn captures_bench(count: Int) Result[Unit, Error]:
 
 	return measure(1, work)
 
-fn template_bench(count: Int) Result[Unit, Error]:
+fn template_bench(count: Int) Result[Void, Error]:
 	re := compile("(?P<word>word)([0-9]+)")?
 	text := "word123 ".repeat(count)?
 	expected := "123:word$ ".repeat(count)?
 
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		out := re.replace_template(text, "$2:$\{word\}$$")?
 		expect_equal(out, expected)?
 		return keep(out.length())
@@ -70,19 +70,19 @@ bench "regex.replace_template.mixed_long_short.2000":
 	expected_rest := " aa".repeat(1999)?
 	expected := expected_first + expected_rest
 
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		out := re.replace_template(text, "$1$1")?
 		expect_equal(out, expected)?
 		return keep(out.length())
 
 	measure(1, work)?
 
-fn literal_template_bench(count: Int) Result[Unit, Error]:
+fn literal_template_bench(count: Int) Result[Void, Error]:
 	re := compile("(word)([0-9]+)")?
 	text := "word123 ".repeat(count)?
 	expected := "fixed ".repeat(count)?
 
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		out := re.replace_template(text, "fixed")?
 		expect_equal(out, expected)?
 		return keep(out.length())
@@ -99,14 +99,14 @@ bench "regex.replace_template.unused_large":
 	re := compile("x")?
 	template := "a".repeat(2000000)?
 
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		out := re.replace_template("z", template, 1)?
 		expect_equal(out, "z")?
 		return keep(out.length())
 
 	measure(1, work)?
 
-fn named_bench(count: Int) Result[Unit, Error]:
+fn named_bench(count: Int) Result[Void, Error]:
 	pattern := if count == 1: "(?P<a>a)" else: "(?P<a>a)(?P<b>b)(?P<c>c)(?P<d>d)(?P<e>e)(?P<f>f)(?P<g>g)(?P<h>h)"
 	re := compile(pattern)?
 	names := ["a", "b", "c", "d", "e", "f", "g", "h"]
@@ -114,7 +114,7 @@ fn named_bench(count: Int) Result[Unit, Error]:
 	for i in 0..count:
 		expected.add(names[i].clone(), names[i].clone())
 
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		out := re.named_captures("abcdefgh")
 		expect_equal(out, expected)?
 		return keep(out.length())
@@ -131,7 +131,7 @@ bench "regex.find_all":
 	text := words(2000).join(" ")
 	re := compile("word[0-9]+")?
 
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		found := re.find_all(text)?
 		expect_equal(found.length(), 2000)?
 		return keep(found.length())
@@ -141,7 +141,7 @@ bench "regex.find_all":
 bench "regex.matches":
 	re := compile("word[0-9]+")?
 
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		var n = 0
 		for i in 0..10000:
 			if re.matches("xx word123 yy"): n += 1
@@ -155,7 +155,7 @@ bench "regex.replace_all":
 	re := compile("word[0-9]+")?
 	expected := ("w ".repeat(1999)?) + "w"
 
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		out := re.replace_all(text, "w")?
 		expect_equal(out, expected)?
 		return keep(out.length())

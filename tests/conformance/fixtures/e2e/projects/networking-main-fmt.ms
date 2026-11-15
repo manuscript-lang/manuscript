@@ -10,7 +10,7 @@ import HttpClientOptions from "@std/net/http.ms"
 import TlsOptions from "@std/net/tls.ms"
 import WebSocketOptions from "@std/net/websocket.ms"
 
-fn echo(var exchange: HttpExchange) Unit!:
+fn echo(var exchange: HttpExchange) Void!:
     if exchange.path() == "/ws":
         var socket = exchange.upgrade(
             allowed_origins: [], subprotocols: ["echo"], max_message_bytes: 1024
@@ -22,10 +22,10 @@ fn echo(var exchange: HttpExchange) Unit!:
                     data: message.data, text: message.text
                 )?
             none:
-                return ok(unit)
+                return ok()
 
         socket.close()?
-        return ok(unit)
+        return ok()
 
     var fields = headers()
     _appended := fields.append("X-Test", "stream")?
@@ -33,11 +33,11 @@ fn echo(var exchange: HttpExchange) Unit!:
 
     match exchange.write("hello from streaming Manuscript"):
         ok(_):
-            return ok(unit)
+            return ok()
         error(_):
             return error(Error("write failed", kind: "EIO"))
 
-fn exercise() Unit!:
+fn exercise() Void!:
     tls := TlsOptions(
         server_name: "", roots_pem: "", certificate_pem: "", private_key_pem: "",
         alpn: [], require_client_certificate: false

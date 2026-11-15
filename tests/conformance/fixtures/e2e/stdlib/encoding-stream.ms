@@ -27,8 +27,8 @@ fn var Chunks.next() Bytes?!:
 	self.at = end
 	return ok(piece)
 
-fn var Chunks.close() Unit!:
-	return ok(unit)
+fn var Chunks.close() Void!:
+	return ok()
 
 fn chunked(data: Bytes, size: Int) ReadStream[Bytes]:
 	return ReadStream[Bytes](Chunks(data, size, 0))
@@ -44,8 +44,8 @@ fn var Texts.next() String?!:
 	self.at += 1
 	return ok(part)
 
-fn var Texts.close() Unit!:
-	return ok(unit)
+fn var Texts.close() Void!:
+	return ok()
 
 // Splits text into pieces of `size` characters.
 fn pieces(text: String, size: Int) List[String]:

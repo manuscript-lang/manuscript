@@ -9,7 +9,7 @@ fn total(values: List[Int8]) Int8:
         sum = sum + v
     return sum
 
-fn main() Unit:
+fn main() Void:
     low: Int8 := -128
     high: Int8 := 127
     wide: Int32 := 2000000000
@@ -19,7 +19,7 @@ fn main() Unit:
     other: Float32 := 0.2
     exact: Float64 := 0.1
     exact_other: Float64 := 0.2
-    _ := stdout().write("{low} {high} {wide} {mid} {same}\n")
-    _ := stdout().write("{half + other} {exact + exact_other}\n")
-    _ := stdout().write("{total([100, 20, 7])} {low / 2} {high % 10} {-high}\n")
-    _ := stdout().write("{low < high} {wide == wide} {half == half}\n")
+    void stdout().write("{low} {high} {wide} {mid} {same}\n")
+    void stdout().write("{half + other} {exact + exact_other}\n")
+    void stdout().write("{total([100, 20, 7])} {low / 2} {high % 10} {-high}\n")
+    void stdout().write("{low < high} {wide == wide} {half == half}\n")

@@ -113,7 +113,7 @@ fn primitive_documentation(id: &str) -> &'static str {
         "String" => {
             "UTF-8 text addressed by byte offsets; length is bytes, scalar_length counts Unicode scalars, and chars() walks scalars."
         }
-        "Unit" => "The single value unit, used when an operation returns no useful payload.",
+        "Void" => "The single value void, used when an operation returns no useful payload.",
         "Never" => "The return type of computations that cannot return a value, such as panic.",
         _ => "",
     }

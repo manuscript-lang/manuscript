@@ -30,7 +30,7 @@ A test's standard output comes before its result as `\u{1}MSOUT <index> <bytes>`
 the output and a newline; a faulted file's last output as `\u{1}MSOUT f<file> <bytes>` and
 its fault record (`ms_rt_abi::record`) as `\u{1}MSOUT r<file> <bytes>`.
 */
-export fn run_test_files(files: List[fn(List[Int], String) Unit]) Int:
+export fn run_test_files(files: List[fn(List[Int], String) Void]) Int:
 	environment := msstd_process_environment_map().get(Map[String, String]())
 	results := environment.get_or("MS_TEST_RESULTS", "")
 	var selected = List[Int]()
@@ -50,17 +50,17 @@ export fn run_test_files(files: List[fn(List[Int], String) Unit]) Int:
 // promise reads its captures in place, and every one ends before the frame that made
 // it.
 fn run_range(
-	files: List[fn(List[Int], String) Unit],
+	files: List[fn(List[Int], String) Void],
 	low: Int,
 	high: Int,
 	selected: List[Int],
 	results: String,
-) Unit:
-	if high - low <= 0: return unit
+) Void:
+	if high - low <= 0: return
 
 	if high - low == 1:
 		run_file(files, low, selected, results)
-		return unit
+		return
 
 	middle := (low + high) / 2
 	upper := promise(
@@ -72,11 +72,11 @@ fn run_range(
 
 // Runs one file's tests in a promise, so a fault ends only that file.
 fn run_file(
-	files: List[fn(List[Int], String) Unit],
+	files: List[fn(List[Int], String) Void],
 	position: Int,
 	selected: List[Int],
 	results: String,
-) Unit:
+) Void:
 	capture := msrt_test_capture_new()
 	result := promise(
 		fn: run_captured(files, position, selected, results, capture),
@@ -92,15 +92,15 @@ fn run_file(
 
 // Runs file `position` with its standard output, and its promises', going to `capture`.
 fn run_captured(
-	files: List[fn(List[Int], String) Unit],
+	files: List[fn(List[Int], String) Void],
 	position: Int,
 	selected: List[Int],
 	results: String,
 	capture: Int,
-) Unit!:
+) Void!:
 	msrt_test_capture_set(capture)
 	files[position](selected, results)
-	return ok(unit)
+	return ok()
 
 // The fault report (message and the test's frames, without the runner's) on one record
 // line: newlines become U+0002.
@@ -118,11 +118,11 @@ fn fault_message(cause: Error) String:
 // Runs a file's tests without a fixture.
 export fn run_plain_file(
 	file: Int,
-	tests: List[fn() Unit!],
+	tests: List[fn() Void!],
 	indices: List[Int],
 	selected: List[Int],
 	results: String,
-) Unit:
+) Void:
 	for position in 0..tests.length():
 		index := indices[position]
 		if not chosen(selected, index): continue
@@ -137,11 +137,11 @@ export fn run_plain_file(
 // `after_all`, so a fault in a test still tears the fixture down.
 type FixtureScope[F]:
 	fixture: F
-	after_each: fn(var F) Unit!
-	after_all: fn(var F) Unit!
+	after_each: fn(var F) Void!
+	after_all: fn(var F) Void!
 	in_test: Bool
 
-fn var FixtureScope[F].close() Unit!:
+fn var FixtureScope[F].close() Void!:
 	if self.in_test:
 		self.in_test = false
 		self.after_each(var self.fixture)?
@@ -154,15 +154,15 @@ fn var FixtureScope[F].close() Unit!:
 export fn run_fixture_file[F](
 	file: Int,
 	make: fn() F,
-	before_all: fn(var F) Unit!,
-	before_each: fn(var F) Unit!,
-	after_each: fn(var F) Unit!,
-	after_all: fn(var F) Unit!,
-	tests: List[fn(var F) Unit!],
+	before_all: fn(var F) Void!,
+	before_each: fn(var F) Void!,
+	after_each: fn(var F) Void!,
+	after_all: fn(var F) Void!,
+	tests: List[fn(var F) Void!],
 	indices: List[Int],
 	selected: List[Int],
 	results: String
-) Unit:
+) Void:
 	var scope = FixtureScope[F](
 		fixture: make(),
 		after_each: after_each,
@@ -202,11 +202,11 @@ export fn run_fixture_file[F](
 fn chosen(selected: List[Int], index: Int) Bool:
 	return selected.is_empty() or selected.contains(index)
 
-fn start(results: String, file: Int, index: Int) Unit:
+fn start(results: String, file: Int, index: Int) Void:
 	record(results, "\u{1}MSSTART {index} {file}\n")
 	msrt_test_deadline(true)
 
-fn report(results: String, index: Int, started: Instant, outcome: Unit!) Unit:
+fn report(results: String, index: Int, started: Instant, outcome: Void!) Void:
 	msrt_test_deadline(false)
 	output(results, "{index}", msrt_test_capture_take(msrt_test_capture_current()))
 
@@ -214,13 +214,13 @@ fn report(results: String, index: Int, started: Instant, outcome: Unit!) Unit:
 
 	if not outcome.is_error():
 		line(results, index, "pass", nanos, "", "")
-		return unit
+		return
 
 	cause := outcome.err()
 
 	if cause.kind == "ESKIP":
 		line(results, index, "skip", nanos, cause.message, "")
-		return unit
+		return
 
 	line(results, index, "fail", nanos, cause.message, cause.details.get_or("site", ""))
 
@@ -231,14 +231,14 @@ fn line(
 	nanos: Int,
 	message: String,
 	site: String,
-) Unit:
+) Void:
 	record(results, "\u{1}MSTEST {index} {status} {nanos}\u{1}{message}\u{1}{site}\n")
 
 // Records `text` as the output of `key` (a test index, or `f` and a file number).
-fn output(results: String, key: String, text: String) Unit:
-	if text.length() == 0: return unit
+fn output(results: String, key: String, text: String) Void:
+	if text.length() == 0: return
 
 	record(results, "\u{1}MSOUT {key} {text.length()}\n{text}\n")
 
-fn record(results: String, text: String) Unit:
+fn record(results: String, text: String) Void:
 	msrt_test_record(results, text)

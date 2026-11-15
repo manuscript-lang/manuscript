@@ -8,22 +8,22 @@ import Closeable from "@std/core.ms"
 type Door:
     name: String
 
-fn var Door.close() Unit!:
+fn var Door.close() Void!:
     print("closed {self.name}")
 
 fn fails() Int!:
     return error(Error("later argument"))
 
-fn look(c: Closeable) Unit:
+fn look(c: Closeable) Void:
     return
 
-fn look_later(c: Closeable, n: Int) Unit:
+fn look_later(c: Closeable, n: Int) Void:
     return
 
-fn attempt() Unit!:
+fn attempt() Void!:
     look(Door("direct"))
     look_later(Door("later"), fails()?)
 
-fn main() Unit:
-    _ := attempt()
+fn main() Void:
+    void attempt()
     print("end")

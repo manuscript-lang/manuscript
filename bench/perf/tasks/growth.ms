@@ -17,7 +17,7 @@ fn loop_depth(n: Int, rounds: Int) Int:
 		total += depth(n)
 	return total
 
-fn status(label: String) Unit:
+fn status(label: String) Void:
 	text := read_file("/proc/self/status", none).wait().get().decode_utf8().get()
 	for line in text.lines():
 		if line.contains("VmRSS") or line.contains("VmPTE"):

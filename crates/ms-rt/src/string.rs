@@ -3033,6 +3033,28 @@ pub unsafe extern "C-unwind" fn msrt_string_to_bytes(s: *const StrVal, out: *mut
     }
 }
 
+/// `String.view_bytes()`: the UTF-8 bytes of the text borrowed from the receiver, nothing copied
+/// (`cap == 0` marks a view, which is never freed). Valid while the receiver is neither changed nor
+/// dropped (the borrow check guarantees that). A text of up to [`STR_INLINE_MAX`] bytes may live in
+/// a spill slot that does not outlive the call, as in [`view_of`], so it is copied; the result is
+/// always owned and releasing a view is a no-op.
+#[unsafe(no_mangle)]
+// ms: leaf pure domain=string
+pub unsafe extern "C-unwind" fn msrt_string_view_bytes(s: *const StrVal, out: *mut VecVal) {
+    // SAFETY: caller passes a live string and a writable out.
+    unsafe {
+        let text = bytes(s);
+        if text.len() <= STR_INLINE_MAX {
+            return msrt_string_to_bytes(s, out);
+        }
+        *out = VecVal {
+            ptr: text.as_ptr() as *mut u8,
+            len: text.len(),
+            cap: 0,
+        };
+    }
+}
+
 /// `String.parse_float()`: present flag, value through `out`; the `Result` form is `math.parse_float`.
 #[unsafe(no_mangle)]
 // ms: leaf
@@ -3408,6 +3430,10 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(
+        miri,
+        ignore = "an exhaustive sweep that takes over 200 s interpreted; native CI runs it"
+    )]
     fn needle_find_matches_a_naive_search_near_the_window_edge() {
         let mut seed = 0x9e37_79b9_7f4a_7c15u64;
         let mut next = || {
@@ -3685,6 +3711,10 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(
+        miri,
+        ignore = "an exhaustive sweep that takes over 200 s interpreted; native CI runs it"
+    )]
     fn find_matches_naive_search() {
         let mut seed = 0x2545_f491_4f6c_dd1du64;
         let mut next = || {
@@ -3707,6 +3737,10 @@ mod tests {
         }
     }
     #[test]
+    #[cfg_attr(
+        miri,
+        ignore = "an exhaustive sweep that takes over 200 s interpreted; native CI runs it"
+    )]
     fn substring_search_matches_exhaustive_byte_model() {
         // Include NUL and invalid UTF-8; these helpers also implement Bytes search.
         fn words(max_len: usize) -> Vec<Vec<u8>> {
@@ -3748,6 +3782,10 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(
+        miri,
+        ignore = "an exhaustive sweep that takes over 200 s interpreted; native CI runs it"
+    )]
     fn substring_search_repetitive_near_matches() {
         for n in [4096, 65_536, 262_144] {
             let mut hay = vec![b'a'; n];
@@ -3989,6 +4027,10 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(
+        miri,
+        ignore = "an exhaustive sweep that takes over 200 s interpreted; native CI runs it"
+    )]
     fn fields_match_the_standard_whitespace_split() {
         let _g = testutil::lock();
         let atoms = [
@@ -4036,6 +4078,10 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(
+        miri,
+        ignore = "an exhaustive sweep that takes over 200 s interpreted; native CI runs it"
+    )]
     fn trim_chars_match_the_standard_trim_matches() {
         let _g = testutil::lock();
         let atoms = [
@@ -4081,6 +4127,10 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(
+        miri,
+        ignore = "an exhaustive sweep that takes over 200 s interpreted; native CI runs it"
+    )]
     fn case_mapping_and_reverse_of_long_non_ascii_text_match_str() {
         let _g = testutil::lock();
         let atoms = [

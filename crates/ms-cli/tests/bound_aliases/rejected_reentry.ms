@@ -1,7 +1,7 @@
 type Counter:
     count: Int
 
-fn var Counter.around(action: fn() Unit) Unit:
+fn var Counter.around(action: fn() Void) Void:
     action()
 
 export fn main() Int:

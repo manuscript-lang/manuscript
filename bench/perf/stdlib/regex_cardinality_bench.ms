@@ -4,14 +4,14 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-fn rows_bench(count: Int, grouped: Bool) Result[Unit, Error]:
+fn rows_bench(count: Int, grouped: Bool) Result[Void, Error]:
 	pattern := if grouped: "(word)([0-9]+)" else: "word[0-9]+"
 	re := compile(pattern)?
 	text := "word123 ".repeat(count)?
 	expected := if grouped: ["word123", "word", "123"] else: ["word123"]
 	width := if grouped: 14 else: 7
 
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		rows := re.captures_all(text)?
 		expect_equal(rows.length(), count)?
 
@@ -50,7 +50,7 @@ bench "regex.cardinality.whole.long":
 	text := "a".repeat(65536)?
 	expected := [[text.clone()]]
 
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		rows := re.captures_all(text, 1)?
 		expect_equal(rows, expected)?
 		return keep(rows[0][0].length())
@@ -60,7 +60,7 @@ bench "regex.cardinality.whole.long":
 bench "regex.cardinality.whole.empty_matches":
 	re := compile("a*")?
 
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		rows := re.captures_all("a🙂🙂a", 3)?
 		expect_equal(rows, [["a"], [""], ["a"]])?
 		return keep(rows.length())
@@ -71,7 +71,7 @@ bench "regex.cardinality.whole.over_limit":
 	re := compile("word[0-9]+")?
 	text := "word123 ".repeat(2000)?
 
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		out := re.captures_all(text, 1)
 		expected: Result[List[List[String]], Error] := error(
 			Error("regular expression: limit exceeded", kind: "EOVERFLOW")
@@ -81,13 +81,13 @@ bench "regex.cardinality.whole.over_limit":
 
 	measure(1, work)?
 
-fn first_bench(grouped: Bool, found: Bool) Result[Unit, Error]:
+fn first_bench(grouped: Bool, found: Bool) Result[Void, Error]:
 	re := compile(if grouped: "(word)([0-9]+)" else: "word[0-9]+")?
 	text := if found: "word123" else: "none"
 	hit := if grouped: ["word123", "word", "123"] else: ["word123"]
 	expected := if found: hit else: []
 
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		out := re.captures(text)
 		expect_equal(out, expected)?
 		return keep(out.length())
@@ -108,21 +108,21 @@ bench "regex.cardinality.first.whole.long":
 	text := "a".repeat(65536)?
 	expected := [text.clone()]
 
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		out := re.captures(text)
 		expect_equal(out, expected)?
 		return keep(out[0].length())
 
 	measure(1, work)?
 
-fn names_bench(named: Bool, long_miss: Bool) Result[Unit, Error]:
+fn names_bench(named: Bool, long_miss: Bool) Result[Void, Error]:
 	re := compile(if named: "word(?P<id>[0-9]+)" else: "word[0-9]+")?
 	text := if long_miss: ("z".repeat(65536)?) else: "word123"
 	var expected = Map[String, String]()
 	if named and not long_miss:
 		expected.add("id", "123")
 
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		out := re.named_captures(text)
 		expect_equal(out, expected)?
 		return keep(out.length())
@@ -138,12 +138,12 @@ bench "regex.cardinality.named.whole.long_miss":
 bench "regex.cardinality.named.named.hit":
 	names_bench(true, false)?
 
-fn anonymous_names_bench(long_miss: Bool) Result[Unit, Error]:
+fn anonymous_names_bench(long_miss: Bool) Result[Void, Error]:
 	re := compile("(word)([0-9]+)")?
 	text := if long_miss: ("z".repeat(65536)?) else: "word123"
 	expected := Map[String, String]()
 
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		out := re.named_captures(text)
 		expect_equal(out, expected)?
 		return keep(out.length())
@@ -156,7 +156,7 @@ bench "regex.cardinality.named.anonymous.hit":
 bench "regex.cardinality.named.anonymous.long_miss":
 	anonymous_names_bench(true)?
 
-fn late_names_bench(found: Bool) Result[Unit, Error]:
+fn late_names_bench(found: Bool) Result[Void, Error]:
 	prefix := "(a?)".repeat(128)?
 	re := compile(prefix + "(?P<last>x)")?
 	text := if found: "x" else: "z"
@@ -164,7 +164,7 @@ fn late_names_bench(found: Bool) Result[Unit, Error]:
 	if found:
 		expected.add("last", "x")
 
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		out := re.named_captures(text)
 		expect_equal(out, expected)?
 		return keep(out.length())

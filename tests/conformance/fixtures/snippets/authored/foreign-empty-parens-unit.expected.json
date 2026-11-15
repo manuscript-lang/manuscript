@@ -7,7 +7,7 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "'()' is not a value; the Unit value is written 'unit'",
+        "message": "'()' is not a value; the Void value is written 'void'",
         "position": {
           "file": "foreign-empty-parens-unit.ms",
           "line": 5,

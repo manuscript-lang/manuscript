@@ -12,13 +12,13 @@ type Door:
 	closed: Bool = false
 	fail: Bool = false
 
-fn var Door.close() Unit!:
+fn var Door.close() Void!:
 	if not self.closed:
 		self.closed = true
 		append_file(self.log, "{self.id},").wait()?
 		if self.fail: return error(Error("close failed"))
 
-fn replace(log: String) Unit:
+fn replace(log: String) Void:
 	var doors = [Door(1, log.clone(), fail: true)]
 	doors.set(0, Door(9, log))
 
@@ -31,7 +31,7 @@ test "replacement stays owned while the discarded entry closes":
 	events := read_file(log).wait().get().decode_utf8().get("")
 	expect_equal(events, "1,9,")?
 
-fn replace_in_map(log: String) Unit:
+fn replace_in_map(log: String) Void:
 	var doors: Map[Int, Door] = {}
 	doors.add(0, Door(1, log.clone(), fail: true))
 	doors.add(0, Door(9, log))

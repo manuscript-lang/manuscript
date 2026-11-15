@@ -50,14 +50,14 @@ fn small() String:
 	doc.add("user", jobject(user))
 	return stringify(jobject(doc)).get("") + "\n"
 
-fn fetch_corpora() Unit!:
+fn fetch_corpora() Void!:
 	_dir := create_directory(DATA, recursive: true)
 
 	for f in ["twitter", "canada", "citm_catalog"]:
 		if exists("{DATA}/{f}.json"): continue
 
 		url := "https://raw.githubusercontent.com/miloyip/nativejson-benchmark/master/data/{f}.json"
-		_ := must("curl {f}", capture("curl", ["-sSfL", "-o", "{DATA}/{f}.json", url]))?
+		void must("curl {f}", capture("curl", ["-sSfL", "-o", "{DATA}/{f}.json", url]))?
 
 	// Small messages: the shape worker threads and RPC exchange.
 	if not exists("{DATA}/small.json"): write_text("{DATA}/small.json", small())

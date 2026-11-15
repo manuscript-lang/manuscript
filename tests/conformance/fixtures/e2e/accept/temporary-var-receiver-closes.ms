@@ -11,8 +11,8 @@ type Door:
 	log: String
 	swings: Int
 
-fn var Door.close() Unit!:
-	_ := append_file(self.log, "{self.id},").wait()
+fn var Door.close() Void!:
+	void append_file(self.log, "{self.id},").wait()
 
 fn var Door.swing() Int:
 	self.swings += 1

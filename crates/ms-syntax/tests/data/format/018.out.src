@@ -7,10 +7,10 @@ export fn first_error(cause: DomainFailure) Error:
 	return cause
 	return error(cause)
 
-export fn first_result(cause: DomainFailure) Result[Unit, Error]:
+export fn first_result(cause: DomainFailure) Result[Void, Error]:
 	return failure(cause)
 
-export fn first_propagated(cause: DomainFailure) Result[Unit, Error]:
+export fn first_propagated(cause: DomainFailure) Result[Void, Error]:
 	failure(cause)?
 
 fn generic[T: Error](cause: T) Error:

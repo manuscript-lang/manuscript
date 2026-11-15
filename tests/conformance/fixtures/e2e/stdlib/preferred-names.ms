@@ -7,42 +7,42 @@ import (
 )
 
 interface ListMutation:
-	var fn reverse() Unit
+	var fn reverse() Void
 	fn reversed() List[Int]
-	var fn set(index: Int, value: Int) Unit
-	var fn remove(index: Int) Unit
-	var fn append(value: Int) Unit
+	var fn set(index: Int, value: Int) Void
+	var fn remove(index: Int) Void
+	var fn append(value: Int) Void
 
 type ListAdapter:
 	items: List[Int]
 
-fn var ListAdapter.reverse() Unit:
+fn var ListAdapter.reverse() Void:
 	self.items.reverse()
 
 fn ListAdapter.reversed() List[Int]:
 	return self.items.reversed()
 
-fn var ListAdapter.set(index: Int, value: Int) Unit:
+fn var ListAdapter.set(index: Int, value: Int) Void:
 	self.items.set(index, value)
 
-fn var ListAdapter.remove(index: Int) Unit:
+fn var ListAdapter.remove(index: Int) Void:
 	self.items.remove(index)
 
-fn var ListAdapter.append(value: Int) Unit:
+fn var ListAdapter.append(value: Int) Void:
 	self.items.append(value)
 
 interface SetMutation:
-	var fn add(value: Int) Unit
-	var fn remove(value: Int) Unit
+	var fn add(value: Int) Void
+	var fn remove(value: Int) Void
 	fn values() List[Int]
 
 type SetAdapter:
 	items: Set[Int]
 
-fn var SetAdapter.add(value: Int) Unit:
+fn var SetAdapter.add(value: Int) Void:
 	self.items.add(value)
 
-fn var SetAdapter.remove(value: Int) Unit:
+fn var SetAdapter.remove(value: Int) Void:
 	self.items.remove(value)
 
 fn SetAdapter.values() List[Int]:
@@ -57,10 +57,10 @@ type RegexAdapter:
 fn RegexAdapter.replace_all(text: String, replacement: String, max_bytes: Int?) String!:
 	return self.pattern.replace_all(text, replacement, max_bytes)
 
-fn add_generic[T: Hashable](var items: Set[T], value: T) Unit:
+fn add_generic[T: Hashable](var items: Set[T], value: T) Void:
 	items.add(value)
 
-fn remove_generic[T: Hashable](var items: Set[T], value: T) Unit:
+fn remove_generic[T: Hashable](var items: Set[T], value: T) Void:
 	items.remove(value)
 
 test "list names mutate in place and retain shallow copies":

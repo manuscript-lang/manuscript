@@ -88,22 +88,22 @@ fn var ConnectionSource.next() Bytes?!:
 	return msstd_net_connection_read(self.native, none, none)
 
 // Closes the socket when the output end is already closed.
-fn var ConnectionSource.close() Unit!:
+fn var ConnectionSource.close() Void!:
 	msstd_net_connection_close_if_last(self.native)
 
 type ConnectionSink:
 	native: NativeConnection
 
-fn var ConnectionSink.write(value: Bytes) Unit!:
+fn var ConnectionSink.write(value: Bytes) Void!:
 	return msstd_net_connection_write_bytes(self.native, value, none)
 
-fn var ConnectionSink.flush() Unit!:
-	return ok(unit)
+fn var ConnectionSink.flush() Void!:
+	return ok()
 
 // Half-closes the connection so the peer sees the end of the stream; the socket
 // closes once the input is closed too.
-fn var ConnectionSink.close() Unit!:
-	_ := msstd_net_connection_shutdown_write(self.native)
+fn var ConnectionSink.close() Void!:
+	void msstd_net_connection_shutdown_write(self.native)
 	msstd_net_connection_close_if_last(self.native)
 
 // What is known about a connection, available after its streams are moved elsewhere.
@@ -139,7 +139,7 @@ export type Connection:
 	native: NativeConnection
 
 // Closes both streams, and with them the socket.
-fn var Connection.close() Unit!:
+fn var Connection.close() Void!:
 	self.input.close()?
 	return self.output.close()
 
@@ -216,7 +216,7 @@ type DatagramSource:
 fn var DatagramSource.next() Datagram?!:
 	return ok(msstd_net_datagram_receive(self.native, none, none)?)
 
-fn var DatagramSource.close() Unit!:
+fn var DatagramSource.close() Void!:
 	msstd_net_datagram_close_if_last(self.native)
 
 type DatagramSink:
@@ -224,13 +224,13 @@ type DatagramSink:
 
 // Sends `value.data` as one datagram to `value.address`, resolving a host name with
 // the network's resolver.
-fn var DatagramSink.write(value: Datagram) Unit!:
+fn var DatagramSink.write(value: Datagram) Void!:
 	return msstd_net_datagram_send_bytes(self.native, value.data, value.address, none)
 
-fn var DatagramSink.flush() Unit!:
-	return ok(unit)
+fn var DatagramSink.flush() Void!:
+	return ok()
 
-fn var DatagramSink.close() Unit!:
+fn var DatagramSink.close() Void!:
 	msstd_net_datagram_close_if_last(self.native)
 
 // A connectionless socket for sending and receiving datagrams. Closing it closes both
@@ -245,7 +245,7 @@ export type DatagramSocket:
 	address: String
 
 // Closes both streams, and with them the socket.
-fn var DatagramSocket.close() Unit!:
+fn var DatagramSocket.close() Void!:
 	self.input.close()?
 	return self.output.close()
 
@@ -270,7 +270,7 @@ export opaque type Listener:
 
 // Stops accepting, interrupts a pending `accept`, and waits for it to stop.
 // Safe to call repeatedly; connections already accepted stay open.
-fn var Listener.close() Unit!:
+fn var Listener.close() Void!:
 	msstd_net_listener_close(self.native)
 
 // Starts waiting for the next incoming connection and returns its promise. A
@@ -312,7 +312,7 @@ fn Network.bind_datagram(address: String) DatagramSocket!:
 // client, and server this network opened, including those of derived networks. Safe
 // to call repeatedly. A request handler of a server on this network cannot close it
 // and faults.
-fn Network.close() Unit:
+fn Network.close() Void:
 	msstd_net_network_close(self.native)
 
 // Resolves `address` (`host:port`) and opens a TCP connection to the first
@@ -625,7 +625,7 @@ export fn restrict(
 // ms: effect std.net.listen
 export fn serve(
 	address: String,
-	handler: fn(var HttpExchange) Unit!,
+	handler: fn(var HttpExchange) Void!,
 	options: HttpServerOptions = HttpServerOptions()
 ) HttpServer!:
 	if cores := options.cores:
@@ -653,7 +653,7 @@ type ServingHandle:
 	serving: NativeServing
 	listener: Bool
 
-fn var ServingHandle.close() Unit!:
+fn var ServingHandle.close() Void!:
 	if self.listener:
 		msstd_http_serving_release(self.serving)
 
@@ -662,7 +662,7 @@ fn var ServingHandle.close() Unit!:
 type WorkerHandle:
 	worker: NativeWorker
 
-fn var WorkerHandle.close() Unit!:
+fn var WorkerHandle.close() Void!:
 	msstd_http_worker_close(self.worker)
 
 // The accept loop's pipes and workers. Its close, which runs when the loop returns, is
@@ -670,13 +670,13 @@ fn var WorkerHandle.close() Unit!:
 // them.
 type Accepting:
 	deals: List[WriteStream[Int]]
-	workers: List[Promise[Unit]]
+	workers: List[Promise[Void]]
 
-fn var Accepting.close() Unit!:
+fn var Accepting.close() Void!:
 	while not self.deals.is_empty():
 		if deal := self.deals.pop():
 			var closing = deal
-			_ := closing.close()
+			void closing.close()
 
 	for worker in self.workers:
 		worker.cancel()
@@ -685,7 +685,7 @@ fn var Accepting.close() Unit!:
 // Accepts until the listener fails, dealing each connection to the next worker. An
 // accept that fails for lack of descriptors or memory pauses briefly instead of ending
 // the server.
-fn accept_loop(listening: ServingHandle, count: Int) Unit!:
+fn accept_loop(listening: ServingHandle, count: Int) Void!:
 	var accepting = Accepting(deals: [], workers: [])
 	var i = 0
 
@@ -711,17 +711,17 @@ fn accept_loop(listening: ServingHandle, count: Int) Unit!:
 		accepted := msstd_http_serving_accept(listening.serving)
 
 		if accepted.is_error():
-			if accepted.err().kind == "EBADF": return ok(unit)
+			if accepted.err().kind == "EBADF": return ok()
 
-			sleep(50.milliseconds()).wait().get(unit)
+			void sleep(50.milliseconds()).wait()
 			continue
 
-		_ := accepting.deals[next].write(accepted.get())
+		void accepting.deals[next].write(accepted.get())
 		next = (next + 1) % count
 
 // Runs one worker on the thread the runtime placed this promise on: it adopts each
 // connection it is dealt, and the poller drives them from there.
-fn serve_worker(handle: ServingHandle, input: Pipe[Int]) Unit!:
+fn serve_worker(handle: ServingHandle, input: Pipe[Int]) Void!:
 	engine := WorkerHandle(worker: msstd_http_serving_worker(handle.serving)?)
 
 	while true:

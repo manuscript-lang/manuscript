@@ -1,2 +1,2 @@
-fn roundtrip(value: Printed) Unit:
-    return unit
+fn roundtrip(value: Printed) Void:
+    return

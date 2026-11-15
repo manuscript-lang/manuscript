@@ -1,4 +1,4 @@
 // conform: tags=diagnostics
 // conform: phase=check
 "
-fn use() Unit: unit
+fn use() Void: void

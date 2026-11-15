@@ -11,7 +11,7 @@ import (
 	monotonic, seconds, sleep from "@std/time.ms",
 )
 
-fn status(label: String) Unit:
+fn status(label: String) Void:
 	text := read_file("/proc/self/status", none).wait().get().decode_utf8().get()
 	for line in text.lines():
 		if line.contains("VmRSS") or line.contains("VmHWM") or line.contains("VmPTE"):
@@ -38,7 +38,7 @@ fn park_read(a: Int) Int!:
 	sleep(seconds(1000)).wait()?
 	return ok(data.length() + a)
 
-fn main() Unit:
+fn main() Void:
 	args := arguments()
 	n := args[0].parse_int().get()
 	mode := args[1].clone()

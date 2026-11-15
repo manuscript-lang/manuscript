@@ -2,7 +2,7 @@
 // conform: phase=test
 import expect_false from "@std/test/test.ms"
 
-fn replace[T](var values: List[T], value: T) Unit:
+fn replace[T](var values: List[T], value: T) Void:
 	values.set(1, value)
 
 test "range iterates a snapshot while the live list changes":

@@ -1,5 +1,5 @@
 import mk from "./gate.ms"
 
-fn main() Unit:
+fn main() Void:
     t := mk()
     n := t.

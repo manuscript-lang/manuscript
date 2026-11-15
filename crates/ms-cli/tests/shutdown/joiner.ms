@@ -4,10 +4,10 @@ import promise from "@std/concurrency/promise.ms"
 
 fn long() Int:
     for i in 0..600:
-        _ := sleep(nanoseconds(100000000)).wait()
+        void sleep(nanoseconds(100000000)).wait()
     return 0
 
-fn main() Unit:
+fn main() Void:
     w := promise(fn: ok(long()))
     print("joining")
 

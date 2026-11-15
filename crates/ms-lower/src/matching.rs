@@ -85,7 +85,7 @@ impl FnLower<'_> {
         self.push_scope();
         let Some((sv, hidden)) = self.hold(scrutinee)? else {
             self.pop_scope();
-            return Ok(self.dummy(MTy::UNIT));
+            return Ok(self.dummy(MTy::VOID));
         };
         let scrut_declared = std::mem::take(&mut self.hold_declared);
         let sty = self.b.var_ty(sv);
@@ -333,10 +333,10 @@ impl FnLower<'_> {
                     Some(v) => Some(self.expr(v)?),
                     None => None,
                 };
-                // A match used as a statement is typed Unit while an arm may end in a call that
+                // A match used as a statement is typed Void while an arm may end in a call that
                 // returns something: the arm's value is discarded.
                 let x = match x {
-                    Some(x) if rty == MTy::UNIT && self.ty_of(x.v) != MTy::UNIT => {
+                    Some(x) if rty == MTy::VOID && self.ty_of(x.v) != MTy::VOID => {
                         if x.own
                             && let Some(value) = &arm.value
                         {
@@ -529,7 +529,7 @@ impl FnLower<'_> {
     /// `try x`: the `ok` payload, or an early return of the `error` payload.
     pub fn try_expr(&mut self, e: &Expr, operand: &Expr) -> Result<Val, Error> {
         let Some((rv, hidden)) = self.hold(operand)? else {
-            return Ok(self.dummy(MTy::UNIT));
+            return Ok(self.dummy(MTy::VOID));
         };
         // `try r` at the last use of a closing binding hands its payload on: the binding no
         // longer closes it.

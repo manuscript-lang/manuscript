@@ -78,7 +78,7 @@ fn triple(values: List[Float]) String:
 	high := values.fold(values[0], fn(a: Float, v: Float) Float: if v > a: v else: a)
 	return "{low} {median(values)} {high}"
 
-fn decode(before: String, after: String, out: String, pairs: Int) Result[Unit, Error]:
+fn decode(before: String, after: String, out: String, pairs: Int) Result[Void, Error]:
 	fresh_directory(out)?
 
 	var paths = Map[String, String]()
@@ -149,7 +149,7 @@ fn json_failure(
 	after: String,
 	out: String,
 	pairs: Int,
-) Result[Unit, Error]:
+) Result[Void, Error]:
 	fresh_directory(out)?
 
 	var paths = Map[String, String]()
@@ -236,7 +236,7 @@ fn json_failure(
 	manifest.add("producer_executions", jint(cases.length() * 2 * (pairs + 1)))
 	write_json("{out}/manifest.json", jobject(manifest))
 	print(summary.join("\n"))
-	return ok(unit)
+	return ok()
 
 fn main() Int:
 	args := arguments()

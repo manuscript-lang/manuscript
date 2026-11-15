@@ -82,7 +82,7 @@ export fn environment() Map[String, String]!:
 // `value` is none. An empty name, or a name or value with `=` or NUL, returns EINVAL.
 // The change is visible to child processes started afterwards.
 // ms: effect std.env.write
-export fn set_environment(name: String, value: String?) Unit!:
+export fn set_environment(name: String, value: String?) Void!:
 	return msstd_process_set_environment(name, value)
 
 // Reads `KEY=value` lines from the file at `path` and sets each variable that is not
@@ -94,7 +94,7 @@ export fn set_environment(name: String, value: String?) Unit!:
 // returns EOVERFLOW, and a directory returns EINVAL, as for `read_file`.
 // ms: effect std.env.write
 // ms: effect std.fs.read
-export fn load_environment(path: String, max_bytes: Int? = none) Unit!:
+export fn load_environment(path: String, max_bytes: Int? = none) Void!:
 	data := msstd_fs_read_file(path, max_bytes)?
 	text := data.decode_utf8()
 	if text.is_none(): return error(Error("environment: invalid data", kind: "EBADMSG"))
@@ -115,7 +115,7 @@ export fn working_directory() String!:
 // everywhere. A missing path returns ENOENT, a path containing NUL returns EINVAL, and
 // a denied path returns EACCES.
 // ms: effect std.env.write
-export fn change_directory(path: String) Unit!:
+export fn change_directory(path: String) Void!:
 	return msstd_process_change_directory(path)
 
 // Returns the current user's home directory path, from the host's environment or

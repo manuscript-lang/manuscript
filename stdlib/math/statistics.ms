@@ -23,7 +23,7 @@ export type BinCounts:
 
 // The least-squares line `y = slope * x + intercept` fitted by `linear_regression`.
 export type Regression:
-	// The change in `y` per unit of `x`.
+	// The change in `y` per void of `x`.
 	slope: Float
 	// The value of `y` at `x = 0`.
 	intercept: Float
@@ -254,7 +254,7 @@ type DeviationSum:
 	total: Float = 0.0
 	correction: Float = 0.0
 
-fn var DeviationSum.add(value: Float) Unit:
+fn var DeviationSum.add(value: Float) Void:
 	next := self.total + value
 
 	if self.total.abs() >= value.abs():

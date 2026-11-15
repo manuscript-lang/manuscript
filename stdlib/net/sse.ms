@@ -57,7 +57,7 @@ type Decoder:
 	// Internal: True after `finish`.
 	closed: Bool
 
-fn var Decoder.step(value: Bytes, var out: List[SseEvent]) Unit!:
+fn var Decoder.step(value: Bytes, var out: List[SseEvent]) Void!:
 	var events = List[SseEvent]()
 	if failure := self.failure: return error(failure.clone())
 	if self.closed: return error(Error("SSE invalid input", kind: "EINVAL"))
@@ -102,7 +102,7 @@ fn var Decoder.step(value: Bytes, var out: List[SseEvent]) Unit!:
 
 	for event in events: out.append(event)
 
-fn var Decoder.finish(var out: List[SseEvent]) Unit!:
+fn var Decoder.finish(var out: List[SseEvent]) Void!:
 	if failure := self.failure: return error(failure.clone())
 	if self.closed: return error(Error("SSE invalid input", kind: "EINVAL"))
 
@@ -113,7 +113,7 @@ fn var Decoder.finish(var out: List[SseEvent]) Unit!:
 		return error(Error("SSE stream ended inside an event", kind: "EBADMSG"))
 
 // Buffers the unterminated tail of a chunk as part of the line being assembled.
-fn var Decoder.hold(segment: Bytes) Unit!:
+fn var Decoder.hold(segment: Bytes) Void!:
 	self.line_bytes += segment.length()
 	if exceeds(self.line_bytes, self.limits.max_line_bytes): return error(
 		Error("SSE limit exceeded", kind: "EOVERFLOW")
@@ -121,7 +121,7 @@ fn var Decoder.hold(segment: Bytes) Unit!:
 
 	self.line.append_bytes(segment)
 
-fn var Decoder.apply(line: String) Unit:
+fn var Decoder.apply(line: String) Void:
 	if line.starts_with("data:"):
 		self.data.append(value_after(line, 5, line.starts_with("data: ")))
 	else if line.starts_with("event:"):
@@ -133,8 +133,8 @@ fn var Decoder.apply(line: String) Unit:
 	else: self.apply_other(line)
 
 // Lines without a colon name a field with an empty value; other names are ignored.
-fn var Decoder.apply_other(line: String) Unit:
-	if line.index_of(":").is_some(): return unit
+fn var Decoder.apply_other(line: String) Void:
+	if line.index_of(":").is_some(): return
 
 	if line == "data": self.data.append("")
 	else if line == "event": self.event_type = ""
@@ -142,14 +142,14 @@ fn var Decoder.apply_other(line: String) Unit:
 	else if line == "retry": self.reconnect("")
 
 // An ID containing NUL is ignored, so it neither replaces nor clears the last ID.
-fn var Decoder.identify(value: String) Unit:
-	if value.to_bytes().contains("\u{0}".to_bytes()): return unit
+fn var Decoder.identify(value: String) Void:
+	if value.to_bytes().contains("\u{0}".to_bytes()): return
 
 	self.last_id = value
 
 // Only ASCII digits form a retry time; overflow and signs are ignored.
-fn var Decoder.reconnect(value: String) Unit:
-	if (value.is_empty() or value.starts_with("-") or value.starts_with("+")): return unit
+fn var Decoder.reconnect(value: String) Void:
+	if (value.is_empty() or value.starts_with("-") or value.starts_with("+")): return
 
 	milliseconds := value.parse_int()
 	if milliseconds.is_some(): self.retry_ms = milliseconds
@@ -205,7 +205,7 @@ fn complete(
 	start: Int,
 	end: Int,
 	var events: List[SseEvent],
-) Unit!:
+) Void!:
 	if decoder.line_bytes == 0:
 		if exceeds(end - start, decoder.limits.max_line_bytes): return error(
 			Error("SSE limit exceeded", kind: "EOVERFLOW")
@@ -224,7 +224,7 @@ fn end_line(
 	start: Int,
 	end: Int,
 	var events: List[SseEvent],
-) Unit!:
+) Void!:
 	var from = start
 
 	if not decoder.started:
@@ -233,13 +233,13 @@ fn end_line(
 
 	if from == end:
 		dispatch(var decoder, var events)
-		return ok(unit)
+		return ok()
 
 	line := bytes.decode_utf8_range(
 		from,
 		end,
 	).ok_or(Error("SSE line is not valid UTF-8", kind: "EBADMSG"))?
-	if line.starts_with(":"): return ok(unit)
+	if line.starts_with(":"): return ok()
 
 	decoder.event_bytes += end - from
 	if exceeds(decoder.event_bytes, decoder.limits.max_event_bytes): return error(
@@ -248,14 +248,14 @@ fn end_line(
 
 	decoder.open_block = true
 	decoder.apply(line)
-	return ok(unit)
+	return ok()
 
 // The value after the colon, skipping one leading space when `spaced`.
 fn value_after(line: String, colon_end: Int, spaced: Bool) String:
 	if spaced: return line.slice(colon_end + 1, line.length()).get()
 	return line.slice(colon_end, line.length()).get()
 
-fn dispatch(var decoder: Decoder, var events: List[SseEvent]) Unit:
+fn dispatch(var decoder: Decoder, var events: List[SseEvent]) Void:
 	if not decoder.data.is_empty():
 		var name = decoder.event_type.clone()
 		if name == "": name = "message"

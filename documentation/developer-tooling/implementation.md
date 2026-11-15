@@ -289,7 +289,7 @@ Each lint rule is a **warning** or an **error**. `lint` returns 1 when a source 
 | MSL125 | warning | `for x in xs: out.append(x)` (or `x.clone()`). Write `out.extend(xs)` |
 | MSL126 | error | `x := e` directly followed by `return x`. Write `return e` |
 | MSL127 | error | `m[k.clone()] = m.get(k).get() - v`. Write `m[k] -= v` |
-| MSL128 | error | A final `return ok(unit)` in a `Unit!` function, or `return` in a `Unit` one, after other statements. The end of the body already returns it; delete the line |
+| MSL128 | error | A final `return ok()` in a `Void!` function, or `return` in a `Void` one, after other statements. The end of the body already returns it; delete the line |
 
 Whitespace warnings exclude text-literal payloads. Whitespace deletion fixes are withheld while lexical boundaries are invalid or incomplete.
 

@@ -2,10 +2,10 @@
 // here once shared an identity with a plain `let` in `@std/collections/deque.ms` and failed to lower there.
 import Deque from "@std/collections/deque.ms"
 
-fn say(s: String) Unit:
+fn say(s: String) Void:
     print("{s}")
 
-fn main() Unit:
+fn main() Void:
     var a = "hello"
     var b = a.clone()
     var m = Map[String, String]()

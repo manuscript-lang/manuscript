@@ -55,7 +55,7 @@ fn runtime(m: &mut Module, name: &str, params: &[Ty], role: ExternRole) -> ExtId
                 mode: Mode::Borrow,
             })
             .collect(),
-        ret: Ty::UNIT,
+        ret: Ty::VOID,
         noreturn: false,
         pure_: false,
         fresh: false,
@@ -778,7 +778,7 @@ impl Em<'_> {
 
     fn discard(&mut self, at: usize, v: Value) {
         if let (Some(h), Some(d)) = (self.handles.get(&v).copied(), self.cx.discard) {
-            self.push(at, Op::CallRt, &[h], Imm::Ext(d), Some(Ty::UNIT));
+            self.push(at, Op::CallRt, &[h], Imm::Ext(d), Some(Ty::VOID));
         }
     }
 
@@ -792,7 +792,7 @@ impl Em<'_> {
             .or_else(|| self.handles.get(&v))
             .copied();
         if let (Some(h), Some(c)) = (live, self.cx.cancel) {
-            self.push(at, Op::CallRt, &[h], Imm::Ext(c), Some(Ty::UNIT));
+            self.push(at, Op::CallRt, &[h], Imm::Ext(c), Some(Ty::VOID));
         }
         if self.flagged.contains(&v) {
             let off = self.bconst(at, false);
@@ -1050,9 +1050,9 @@ impl Em<'_> {
             .cx
             .shield
             .ok_or("a closing owner needs the shield calls")?;
-        self.push(at, Op::CallRt, &[], Imm::Ext(enter), Some(Ty::UNIT));
-        self.push(at, Op::Call, &[v], Imm::Func(close), Some(Ty::UNIT));
-        self.push(at, Op::CallRt, &[], Imm::Ext(exit), Some(Ty::UNIT));
+        self.push(at, Op::CallRt, &[], Imm::Ext(enter), Some(Ty::VOID));
+        self.push(at, Op::Call, &[v], Imm::Func(close), Some(Ty::VOID));
+        self.push(at, Op::CallRt, &[], Imm::Ext(exit), Some(Ty::VOID));
         if let Some(ty) = self.m.funcs[close.index()].slot_close {
             let left = self
                 .push(at, Op::Take, &[v], Imm::Ty(ty), Some(ty))
@@ -1558,11 +1558,11 @@ impl Em<'_> {
             .shield
             .ok_or("a closing owner needs the shield calls")?;
         let rty = self.m.funcs[rc.index()].ret;
-        self.push(at, Op::CallRt, &[], Imm::Ext(enter), Some(Ty::UNIT));
+        self.push(at, Op::CallRt, &[], Imm::Ext(enter), Some(Ty::VOID));
         let r = self
             .push(at, Op::Call, &[v], Imm::Func(rc), Some(rty))
             .expect("close result");
-        self.push(at, Op::CallRt, &[], Imm::Ext(exit), Some(Ty::UNIT));
+        self.push(at, Op::CallRt, &[], Imm::Ext(exit), Some(Ty::VOID));
         let close = self.closer(v)?;
         if let Some(ty) = self.m.funcs[close.index()].slot_close {
             let left = self
@@ -1578,12 +1578,12 @@ impl Em<'_> {
         let TyKind::Alt(a) = self.m.types.kind(rty).clone() else {
             return Err("a fallible close returns a Result".into());
         };
-        if self.m.alts[a.index()].cases[Std::OK].fields[0].1 != Ty::UNIT {
+        if self.m.alts[a.index()].cases[Std::OK].fields[0].1 != Ty::VOID {
             return Err("a moved slot owner whose close succeeds with a value".into());
         }
         let unit = self
-            .push(at, Op::UnitConst, &[], Imm::None, Some(Ty::UNIT))
-            .expect("unit");
+            .push(at, Op::VoidConst, &[], Imm::None, Some(Ty::VOID))
+            .expect("void");
         Ok(self
             .push(
                 at,
@@ -1636,9 +1636,9 @@ impl Em<'_> {
             .shield
             .ok_or("a closing owner needs the shield calls")?;
         self.discard(at, v);
-        self.push(at, Op::CallRt, &[], Imm::Ext(enter), Some(Ty::UNIT));
-        self.push(at, Op::Call, &[v], Imm::Func(close), Some(Ty::UNIT));
-        self.push(at, Op::CallRt, &[], Imm::Ext(exit), Some(Ty::UNIT));
+        self.push(at, Op::CallRt, &[], Imm::Ext(enter), Some(Ty::VOID));
+        self.push(at, Op::Call, &[v], Imm::Func(close), Some(Ty::VOID));
+        self.push(at, Op::CallRt, &[], Imm::Ext(exit), Some(Ty::VOID));
         Ok(())
     }
 

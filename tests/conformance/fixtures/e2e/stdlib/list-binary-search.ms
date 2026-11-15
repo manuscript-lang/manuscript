@@ -13,7 +13,7 @@ fn linear_search[T: Comparable](values: List[T], target: T) SearchResult:
 
 	return SearchResult(values.length(), false)
 
-fn check_search[T: Comparable](values: List[T], target: T) Unit!:
+fn check_search[T: Comparable](values: List[T], target: T) Void!:
 	expected := linear_search(values, target)
 	actual := values.binary_search(target)
 	expect_equal(actual.index, expected.index)?
@@ -32,7 +32,7 @@ type Counted:
 	comparisons: String
 
 fn Counted.compare(other: Counted) Int:
-	_ := append_file(self.comparisons, "x").wait()
+	void append_file(self.comparisons, "x").wait()
 	return self.value.compare(other.value)
 
 test "binary search reports the first duplicate or insertion position":

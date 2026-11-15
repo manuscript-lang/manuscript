@@ -30,17 +30,17 @@ export interface Transport:
 	// Accepts encoded record bytes and may return the original I/O cause. Errors can
 	// follow a partial external write, without rollback. Loggers on several threads
 	// each own a transport (see `duplicate`), so an implementation needs no locking.
-	fn write(data: String) Unit!
+	fn write(data: String) Void!
 	// Accepts encoded record bytes with the same rules as write.
-	fn write_bytes(data: Bytes) Unit!
+	fn write_bytes(data: Bytes) Void!
 	// Delegates flush to the destination; persistence and buffering depend on that
 	// destination.
-	fn flush() Unit!
+	fn flush() Void!
 	// A new transport onto the same destination with its own handle; child loggers
 	// write through one each.
 	fn duplicate() Transport!
 	// Releases owned resources. Later writes return `EBADF`.
-	var fn close() Unit
+	var fn close() Void
 
 // The number a level writes into the record's `level` field. Silent is a threshold that
 // no record reaches.
@@ -64,7 +64,7 @@ fn level_at(value: Int) LogLevel:
 
 	return LogLevel.Silent
 
-// Milliseconds since the Unix epoch, the unit of the `time` field.
+// Milliseconds since the Unix epoch, the void of the `time` field.
 fn now_ms() Int:
 	now := now()
 	return now.unix_seconds() * 1000 + now.nanoseconds() / 1000000
@@ -115,14 +115,14 @@ type FileTransport:
 	file: FileHandle
 	closed: Bool
 
-fn FileTransport.write(data: String) Unit!:
+fn FileTransport.write(data: String) Void!:
 	return self.write_bytes(data.to_bytes())
 
-fn FileTransport.write_bytes(data: Bytes) Unit!:
+fn FileTransport.write_bytes(data: Bytes) Void!:
 	if self.closed: return error(log_closed())
 	return self.file.write(data)
 
-fn FileTransport.flush() Unit!:
+fn FileTransport.flush() Void!:
 	if self.closed: return error(log_closed())
 	return self.file.sync()
 
@@ -130,7 +130,7 @@ fn FileTransport.duplicate() Transport!:
 	if self.closed: return error(log_closed())
 	return ok(FileTransport(file: self.file.clone()?, closed: false))
 
-fn var FileTransport.close() Unit:
+fn var FileTransport.close() Void:
 	if self.closed: return
 
 	self.closed = true
@@ -141,19 +141,19 @@ fn var FileTransport.close() Unit:
 type StdoutTransport:
 	closed: Bool
 
-fn StdoutTransport.write(data: String) Unit!:
+fn StdoutTransport.write(data: String) Void!:
 	if self.closed: return error(log_closed())
 
 	var out = stdout()
 	return out.write(data)
 
-fn StdoutTransport.write_bytes(data: Bytes) Unit!:
+fn StdoutTransport.write_bytes(data: Bytes) Void!:
 	if self.closed: return error(log_closed())
 
 	var out = stdout_bytes()
 	return out.write(data)
 
-fn StdoutTransport.flush() Unit!:
+fn StdoutTransport.flush() Void!:
 	if self.closed: return error(log_closed())
 
 	var out = stdout()
@@ -163,7 +163,7 @@ fn StdoutTransport.duplicate() Transport!:
 	if self.closed: return error(log_closed())
 	return ok(StdoutTransport(closed: false))
 
-fn var StdoutTransport.close() Unit:
+fn var StdoutTransport.close() Void:
 	self.closed = true
 
 // A structured logger: level filtering, bound fields, and a pluggable `Transport`. The
@@ -187,7 +187,7 @@ export type Logger:
 
 // Internal: writes one record at a level number. `data` is JSON text attached as
 // is.
-fn Logger.emit(level: Int, message: String, data: String?) Unit!:
+fn Logger.emit(level: Int, message: String, data: String?) Void!:
 	msg := stringify(JsonValue.StringValue(message))
 	if msg.is_error(): return error(encode_error(msg.err()))
 
@@ -211,11 +211,11 @@ such as a cyclic one, returns `EBADMSG`; encoding happens only when the level is
 The fields of `child` loggers are written under `context`. `Silent` is a threshold, not a
 record level, and returns `EINVAL`.
 */
-fn Logger.log[F: Data = Unit](level: LogLevel, message: String, fields: F? = none) Unit!:
+fn Logger.log[F: Data = Void](level: LogLevel, message: String, fields: F? = none) Void!:
 	if level == LogLevel.Silent: return error(
 		Error("logging: invalid input", kind: "EINVAL")
 	)
-	if not self.enabled(level): return ok(unit)
+	if not self.enabled(level): return ok()
 
 	if value := fields:
 		text := encode_fields(value)?
@@ -225,32 +225,32 @@ fn Logger.log[F: Data = Unit](level: LogLevel, message: String, fields: F? = non
 
 // Logs at Trace when enabled. Most detailed records; a filtered call returns ok
 // without encoding or transport access. Fields are encoded as in `log`.
-fn Logger.trace[F: Data = Unit](message: String, fields: F? = none) Unit!:
+fn Logger.trace[F: Data = Void](message: String, fields: F? = none) Void!:
 	return self.log(LogLevel.Trace, message, fields)
 
 // Logs at Debug when enabled. Development diagnostics, including the logger's
 // `context`. Fields are encoded as in `log`.
-fn Logger.debug[F: Data = Unit](message: String, fields: F? = none) Unit!:
+fn Logger.debug[F: Data = Void](message: String, fields: F? = none) Void!:
 	return self.log(LogLevel.Debug, message, fields)
 
 // Logs at Info when enabled. Ordinary operational records. Fields are encoded as in
 // `log`.
-fn Logger.info[F: Data = Unit](message: String, fields: F? = none) Unit!:
+fn Logger.info[F: Data = Void](message: String, fields: F? = none) Void!:
 	return self.log(LogLevel.Info, message, fields)
 
 // Logs at Warn when enabled. Warning records, returning encoding, size-budget, or
 // transport errors unchanged. Fields are encoded as in `log`.
-fn Logger.warn[F: Data = Unit](message: String, fields: F? = none) Unit!:
+fn Logger.warn[F: Data = Void](message: String, fields: F? = none) Void!:
 	return self.log(LogLevel.Warn, message, fields)
 
 // Logs at Error when enabled. Failure records: an expected diagnostic rather than a
 // fault. Fields are encoded as in `log`.
-fn Logger.error[F: Data = Unit](message: String, fields: F? = none) Unit!:
+fn Logger.error[F: Data = Void](message: String, fields: F? = none) Void!:
 	return self.log(LogLevel.Error, message, fields)
 
 // Logs at Fatal when enabled. Critical records; the caller remains responsible for
 // process termination. Fields are encoded as in `log`.
-fn Logger.fatal[F: Data = Unit](message: String, fields: F? = none) Unit!:
+fn Logger.fatal[F: Data = Void](message: String, fields: F? = none) Void!:
 	return self.log(LogLevel.Fatal, message, fields)
 
 /*
@@ -275,16 +275,16 @@ fn Logger.level() LogLevel:
 
 // Changes only this logger's threshold; existing child loggers retain their copied
 // threshold.
-fn var Logger.set_level(level: LogLevel) Unit:
+fn var Logger.set_level(level: LogLevel) Void:
 	self.threshold = level_value(level)
 
 // Flushes the logger's transport.
-fn Logger.flush() Unit!:
+fn Logger.flush() Void!:
 	return self.transport.flush()
 
 // Closes this logger's transport, which consumes the logger; a scope that owns one
 // closes it on every exit. Children and the parent are not affected.
-fn var Logger.close() Unit!:
+fn var Logger.close() Void!:
 	self.transport.close()
 
 // Settings for `create`: the minimum level (default Info), whether records carry a
@@ -338,10 +338,10 @@ type RotatingTransport:
 	keep: Int
 	closed: Bool
 
-fn RotatingTransport.write(data: String) Unit!:
+fn RotatingTransport.write(data: String) Void!:
 	return self.write_bytes(data.to_bytes())
 
-fn RotatingTransport.write_bytes(data: Bytes) Unit!:
+fn RotatingTransport.write_bytes(data: Bytes) Void!:
 	if self.closed: return error(log_closed())
 
 	var size = 0
@@ -354,7 +354,7 @@ fn RotatingTransport.write_bytes(data: Bytes) Unit!:
 	file.close().get(none)
 	return written
 
-fn RotatingTransport.flush() Unit!:
+fn RotatingTransport.flush() Void!:
 	if self.closed: return error(log_closed())
 
 fn RotatingTransport.duplicate() Transport!:
@@ -368,12 +368,12 @@ fn RotatingTransport.duplicate() Transport!:
 		)
 	)
 
-fn var RotatingTransport.close() Unit:
+fn var RotatingTransport.close() Void:
 	self.closed = true
 
 // Shifts `path.1` to `path.2` and so on (dropping the oldest), then moves `path` to
 // `path.1`.
-fn rotate(path: String, keep: Int) Unit:
+fn rotate(path: String, keep: Int) Void:
 	_oldest := remove("{path}.{keep}", recursive: false)
 	var index = keep - 1
 

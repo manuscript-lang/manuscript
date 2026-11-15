@@ -7,16 +7,16 @@ import Closeable from "@std/core.ms"
 type Gate:
     id: Int
 
-fn var Gate.close() Unit!:
+fn var Gate.close() Void!:
     print("closed {self.id}")
-    return ok(unit)
+    return ok()
 
 type Holder:
     name: String
     gates: List[Gate]
     words: Map[String, List[String]]
 
-fn main() Unit:
+fn main() Void:
     var words = Map[String, List[String]]()
     for i in 0..1000:
         words["key-number-{i}-padding"] = ["value-one-{i}", "value-two-{i}"]

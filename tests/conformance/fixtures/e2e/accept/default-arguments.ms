@@ -22,10 +22,10 @@ fn ordered(
 ) Int:
 	return second * 10 + 5 + third
 
-fn unit_default() Unit:
-	return unit
+fn unit_default() Void:
+	return
 
-fn unit_value(value: Unit = unit_default()) Unit:
+fn unit_value(value: Void = unit_default()) Void:
 	return value
 
 fn optional(value: Int? = 3) Int?:
@@ -65,8 +65,8 @@ test "omitted and explicit defaults":
 		| expect_false?
 	)
 	(identity(value: 9) != 9 or identity(value: 9, fallback: 4) != 4) | expect_false?
-	unit_value(unit) | expect_equal(unit)?
-	unit_value() | expect_equal(unit)?
+	unit_value(void) | expect_equal(void)?
+	unit_value() | expect_equal(void)?
 	(optional(value: none).is_some() or optional() != 3) | expect_false?
 	(
 		(

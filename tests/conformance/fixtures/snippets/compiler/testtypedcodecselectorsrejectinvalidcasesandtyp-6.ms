@@ -3,8 +3,8 @@
 // conform: origin=pkg/compiler/codec_selectors_test.go:32 TestTypedCodecSelectorsRejectInvalidCasesAndTypes
 import HashAlgorithm from "@std/crypto/crypto.ms"
 
-fn choose(algorithm: HashAlgorithm) Unit:
-    return unit
+fn choose(algorithm: HashAlgorithm) Void:
+    return
 
-fn wrong() Unit:
+fn wrong() Void:
     choose("sha256")

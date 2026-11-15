@@ -3,8 +3,8 @@ import Closeable from "@std/core.ms"
 type Res:
     id: Int
 
-fn var Res.close() Unit!:
-    return ok(unit)
+fn var Res.close() Void!:
+    return ok()
 
 // An unconstrained element may be a resource, so a copy could be closed twice.
 fn copy[T](items: List[T]) List[T]:

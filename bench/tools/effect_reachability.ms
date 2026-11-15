@@ -39,7 +39,7 @@ type Sample:
 	trial: Int
 	wall_ns: Int
 
-fn report(out: String, name: String) Unit!:
+fn report(out: String, name: String) Void!:
 	rows := parse[List[Sample]](read_text("{out}/{name}-samples.json"))?
 	var baseline = Map[Int, Float]()
 	var candidate = Map[Int, Float]()
@@ -147,7 +147,7 @@ fn measure(
 	input: String,
 	action: String,
 	wanted: Int,
-) Unit!:
+) Void!:
 	var samples = List[JsonValue]()
 	var expected_stdout = ""
 	var expected_stderr = ""

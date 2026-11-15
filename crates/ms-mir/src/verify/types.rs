@@ -62,7 +62,7 @@ impl InstCheck<'_, '_> {
 
     fn run(&self) -> Result<(), String> {
         match self.inst.op {
-            Op::IConst | Op::FConst | Op::BConst | Op::UnitConst | Op::StrLit | Op::BytesLit => {
+            Op::IConst | Op::FConst | Op::BConst | Op::VoidConst | Op::StrLit | Op::BytesLit => {
                 self.constants()
             }
             Op::IAdd
@@ -224,9 +224,9 @@ impl InstCheck<'_, '_> {
                     "bconst yields bool",
                 )
             }
-            Op::UnitConst => {
+            Op::VoidConst => {
                 self.arity(0)?;
-                self.want(self.res == Some(Ty::UNIT), "unit yields unit")
+                self.want(self.res == Some(Ty::VOID), "void yields void")
             }
             Op::StrLit => {
                 self.arity(0)?;

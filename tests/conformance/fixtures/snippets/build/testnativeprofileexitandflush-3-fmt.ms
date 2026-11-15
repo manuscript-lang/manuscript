@@ -4,6 +4,6 @@
 import nanoseconds, sleep from "@std/time.ms"
 import stdout from "@std/io/io.ms"
 
-fn main() Unit:
-    _ := stdout().write("ready\n")
+fn main() Void:
+    void stdout().write("ready\n")
     sleep(nanoseconds(60000000000)).wait()

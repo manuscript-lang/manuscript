@@ -49,7 +49,7 @@ bench "ascii.invalid.first.1":
 	expected: String! := error(Error("encoding: invalid data", kind: "EBADMSG"))
 	expect_equal(ascii_decode(data), expected)?
 
-	fn work() Unit!:
+	fn work() Void!:
 		actual := ascii_decode(data)
 		expect_equal(actual, expected)?
 		return keep(data.length())
@@ -65,7 +65,7 @@ bench "ascii.invalid.last.1":
 	expected: String! := error(Error("encoding: invalid data", kind: "EBADMSG"))
 	expect_equal(ascii_decode(data), expected)?
 
-	fn work() Unit!:
+	fn work() Void!:
 		actual := ascii_decode(data)
 		expect_equal(actual, expected)?
 		return keep(data.length())
@@ -81,7 +81,7 @@ bench "ascii.invalid.first.57":
 	expected: String! := error(Error("encoding: invalid data", kind: "EBADMSG"))
 	expect_equal(ascii_decode(data), expected)?
 
-	fn work() Unit!:
+	fn work() Void!:
 		actual := ascii_decode(data)
 		expect_equal(actual, expected)?
 		return keep(data.length())
@@ -97,7 +97,7 @@ bench "ascii.invalid.last.57":
 	expected: String! := error(Error("encoding: invalid data", kind: "EBADMSG"))
 	expect_equal(ascii_decode(data), expected)?
 
-	fn work() Unit!:
+	fn work() Void!:
 		actual := ascii_decode(data)
 		expect_equal(actual, expected)?
 		return keep(data.length())
@@ -113,7 +113,7 @@ bench "ascii.invalid.first.4096":
 	expected: String! := error(Error("encoding: invalid data", kind: "EBADMSG"))
 	expect_equal(ascii_decode(data), expected)?
 
-	fn work() Unit!:
+	fn work() Void!:
 		actual := ascii_decode(data)
 		expect_equal(actual, expected)?
 		return keep(data.length())
@@ -129,7 +129,7 @@ bench "ascii.invalid.last.4096":
 	expected: String! := error(Error("encoding: invalid data", kind: "EBADMSG"))
 	expect_equal(ascii_decode(data), expected)?
 
-	fn work() Unit!:
+	fn work() Void!:
 		actual := ascii_decode(data)
 		expect_equal(actual, expected)?
 		return keep(data.length())
@@ -145,7 +145,7 @@ bench "ascii.invalid.first.1048580":
 	expected: String! := error(Error("encoding: invalid data", kind: "EBADMSG"))
 	expect_equal(ascii_decode(data), expected)?
 
-	fn work() Unit!:
+	fn work() Void!:
 		actual := ascii_decode(data)
 		expect_equal(actual, expected)?
 		return keep(data.length())
@@ -161,7 +161,7 @@ bench "ascii.invalid.last.1048580":
 	expected: String! := error(Error("encoding: invalid data", kind: "EBADMSG"))
 	expect_equal(ascii_decode(data), expected)?
 
-	fn work() Unit!:
+	fn work() Void!:
 		actual := ascii_decode(data)
 		expect_equal(actual, expected)?
 		return keep(data.length())
@@ -173,7 +173,7 @@ bench "ascii.unicode.accent.1":
 	expected: String! := error(Error("encoding: invalid data", kind: "EBADMSG"))
 	expect_equal(ascii_decode(data), expected)?
 
-	fn work() Unit!:
+	fn work() Void!:
 		expect_equal(ascii_decode(data), expected)?
 		return keep(data.length())
 
@@ -184,7 +184,7 @@ bench "ascii.unicode.emoji.1":
 	expected: String! := error(Error("encoding: invalid data", kind: "EBADMSG"))
 	expect_equal(ascii_decode(data), expected)?
 
-	fn work() Unit!:
+	fn work() Void!:
 		expect_equal(ascii_decode(data), expected)?
 		return keep(data.length())
 
@@ -195,7 +195,7 @@ bench "ascii.unicode.accent.2048":
 	expected: String! := error(Error("encoding: invalid data", kind: "EBADMSG"))
 	expect_equal(ascii_decode(data), expected)?
 
-	fn work() Unit!:
+	fn work() Void!:
 		expect_equal(ascii_decode(data), expected)?
 		return keep(data.length())
 
@@ -206,7 +206,7 @@ bench "ascii.unicode.emoji.2048":
 	expected: String! := error(Error("encoding: invalid data", kind: "EBADMSG"))
 	expect_equal(ascii_decode(data), expected)?
 
-	fn work() Unit!:
+	fn work() Void!:
 		expect_equal(ascii_decode(data), expected)?
 		return keep(data.length())
 
@@ -217,7 +217,7 @@ bench "ascii.unicode.accent.524288":
 	expected: String! := error(Error("encoding: invalid data", kind: "EBADMSG"))
 	expect_equal(ascii_decode(data), expected)?
 
-	fn work() Unit!:
+	fn work() Void!:
 		expect_equal(ascii_decode(data), expected)?
 		return keep(data.length())
 
@@ -228,7 +228,7 @@ bench "ascii.unicode.emoji.524288":
 	expected: String! := error(Error("encoding: invalid data", kind: "EBADMSG"))
 	expect_equal(ascii_decode(data), expected)?
 
-	fn work() Unit!:
+	fn work() Void!:
 		expect_equal(ascii_decode(data), expected)?
 		return keep(data.length())
 
@@ -242,7 +242,7 @@ bench "ascii.unicode.first.8":
 	expected: String! := error(Error("encoding: invalid data", kind: "EBADMSG"))
 	expect_equal(ascii_decode(data), expected)?
 
-	fn work() Unit!:
+	fn work() Void!:
 		expect_equal(ascii_decode(data), expected)?
 		return keep(data.length())
 
@@ -256,7 +256,7 @@ bench "ascii.unicode.last.8":
 	expected: String! := error(Error("encoding: invalid data", kind: "EBADMSG"))
 	expect_equal(ascii_decode(data), expected)?
 
-	fn work() Unit!:
+	fn work() Void!:
 		expect_equal(ascii_decode(data), expected)?
 		return keep(data.length())
 
@@ -270,7 +270,7 @@ bench "ascii.unicode.first.524288":
 	expected: String! := error(Error("encoding: invalid data", kind: "EBADMSG"))
 	expect_equal(ascii_decode(data), expected)?
 
-	fn work() Unit!:
+	fn work() Void!:
 		expect_equal(ascii_decode(data), expected)?
 		return keep(data.length())
 
@@ -284,7 +284,7 @@ bench "ascii.unicode.last.524288":
 	expected: String! := error(Error("encoding: invalid data", kind: "EBADMSG"))
 	expect_equal(ascii_decode(data), expected)?
 
-	fn work() Unit!:
+	fn work() Void!:
 		expect_equal(ascii_decode(data), expected)?
 		return keep(data.length())
 

@@ -18,9 +18,7 @@
 use crate::isolate;
 use std::collections::VecDeque;
 use std::sync::Mutex;
-use std::sync::atomic::{
-    AtomicBool, AtomicI64, AtomicU8, AtomicU32, AtomicU64, AtomicUsize, Ordering,
-};
+use std::sync::atomic::{AtomicBool, AtomicI64, AtomicU32, AtomicU64, AtomicUsize, Ordering};
 
 /// Most scheduler threads. The thread index lives in six bits of a promise id.
 pub const MAX_THREADS: usize = 63;
@@ -280,8 +278,17 @@ pub(crate) fn started() -> usize {
 
 /// Whether the stress mode is on (`MS_SCHED_STRESS` set to anything but empty or `0`). It exists to
 /// expose one-in-N timing bugs deterministically: a promise never starts on its creator, and the
-/// first idle thread takes it (see `submit_stress`). The environment is read once.
+/// first idle thread takes it (see `submit_stress`). The environment is read once. Only a runtime
+/// built with the `sched-stress` feature has the mode; the shipped runtime never reads the variable.
+#[cfg(not(feature = "sched-stress"))]
+#[inline(always)]
+pub(crate) const fn stress() -> bool {
+    false
+}
+
+#[cfg(feature = "sched-stress")]
 pub(crate) fn stress() -> bool {
+    use core::sync::atomic::AtomicU8;
     static STRESS: AtomicU8 = AtomicU8::new(0);
     match STRESS.load(Ordering::Relaxed) {
         0 => {
@@ -372,6 +379,7 @@ pub(crate) fn submit(start: Start) -> u64 {
     if me == NONE {
         unreachable!("submit is for scheduler threads");
     }
+    #[cfg(feature = "sched-stress")]
     if stress() {
         return submit_stress(me, start);
     }
@@ -391,9 +399,9 @@ pub(crate) fn submit(start: Start) -> u64 {
                 .store(mail.pending.len() as u32, Ordering::Release);
         }
     }
-    if first && IDLE.load(Ordering::Acquire) & !(1u64 << me) != 0 {
-        wake_idle(me);
-    } else {
+    // Each start wakes an idle thread of its own, so a burst reaches every idle thread; with none
+    // left to wake, one more thread is started when the limit allows.
+    if !wake_idle(me) {
         let next = STARTED.load(Ordering::Acquire);
         if next < limit() {
             ensure_started(next);
@@ -406,6 +414,7 @@ pub(crate) fn submit(start: Start) -> u64 {
 /// index), else the next thread after it in turn, already aged so any idle thread may take it.
 /// It is never queued on the creator, so `remove_pending` finds nothing and the waiter parks until
 /// the work runs elsewhere. Answers 0: the start has no place in the creator's queue.
+#[cfg(feature = "sched-stress")]
 fn submit_stress(me: usize, start: Start) -> u64 {
     let mut started = STARTED.load(Ordering::Acquire);
     if started < 2 {
@@ -529,11 +538,20 @@ fn wake(thread: usize) {
     }
 }
 
-/// Wakes one idle thread other than `except`, so it can take an unstarted promise.
-fn wake_idle(except: usize) {
-    let idle = IDLE.load(Ordering::Acquire) & !(1u64 << except);
-    if idle != 0 {
-        wake(idle.trailing_zeros() as usize);
+/// Wakes an idle thread other than `except`, so it can take an unstarted promise, and answers
+/// whether there was one. The waker clears the thread's idle bit, so the next start wakes another
+/// thread instead of the same one; the thread sets the bit again when it next idles.
+fn wake_idle(except: usize) -> bool {
+    loop {
+        let idle = IDLE.load(Ordering::Acquire) & !(1u64 << except);
+        if idle == 0 {
+            return false;
+        }
+        let thread = idle.trailing_zeros() as usize;
+        if IDLE.fetch_and(!(1u64 << thread), Ordering::AcqRel) & (1u64 << thread) != 0 {
+            wake(thread);
+            return true;
+        }
     }
 }
 
@@ -559,7 +577,7 @@ pub(crate) fn next_pending() -> Option<Start> {
     if me == NONE {
         return None;
     }
-    if SLOTS[me].pending.load(Ordering::SeqCst) != 0 {
+    if SLOTS[me].pending.load(Ordering::SeqCst) != 0 && own_ready(me, crate::sys::monotonic_ns()) {
         let mut mail = lock(&SLOTS[me].mail);
         let start = mail.pending.pop_front();
         publish(&SLOTS[me], &mail);
@@ -598,6 +616,37 @@ pub(crate) fn next_pending() -> Option<Start> {
     })
 }
 
+/// How long a thread leaves its own queued promises to other threads before starting them itself.
+/// A started promise never moves, so starting one on a thread that already runs another gives up
+/// the parallelism a helper was about to provide; the bound keeps a stalled helper from holding the
+/// creator back.
+const OWN_HOLD_NS: i64 = 1_000_000;
+
+/// How many other threads could take a queued start of `me` now: started, running no promise,
+/// not pausing its steals, and (for thread 0, which runs the program) idle.
+fn helpers(me: usize, now: i64) -> usize {
+    let idle = IDLE.load(Ordering::Acquire);
+    (0..STARTED.load(Ordering::Acquire))
+        .filter(|&t| {
+            t != me
+                && SLOTS[t].live.load(Ordering::SeqCst) == 0
+                && (t != 0 || idle & 1 != 0)
+                && now >= SLOTS[t].steal_off_until.load(Ordering::Relaxed)
+        })
+        .count()
+}
+
+/// Whether the calling thread may start its own oldest queued promise: when more are queued than
+/// other threads could take, or the oldest has waited out `OWN_HOLD_NS`.
+fn own_ready(me: usize, now: i64) -> bool {
+    if STARTED.load(Ordering::Acquire) <= 1 {
+        return true;
+    }
+    let queued = SLOTS[me].pending.load(Ordering::SeqCst) as usize;
+    let at = SLOTS[me].front_at.load(Ordering::SeqCst);
+    queued > helpers(me, now) || at == 0 || now - at >= OWN_HOLD_NS
+}
+
 /// A stolen promise that was started at `at` has ended. One that ran for less than a steal costs
 /// (a task and three events) made the work slower, so this thread stops stealing for a pause that
 /// doubles each time that repeats; a promise worth moving resets it.
@@ -633,21 +682,35 @@ fn aged(thread: usize, now: i64) -> bool {
 /// 0 when one can be now, negative when none is queued.
 pub(crate) fn steal_wait_ns() -> i64 {
     let me = current();
-    if me == NONE || SLOTS[me].live.load(Ordering::SeqCst) != 0 {
+    if me == NONE {
         return -1;
+    }
+    let mut now = 0;
+    // Own starts held back for other threads: come back when the hold ends.
+    let mut wait = -1;
+    if SLOTS[me].pending.load(Ordering::SeqCst) != 0 {
+        now = crate::sys::monotonic_ns();
+        if !own_ready(me, now) {
+            let at = SLOTS[me].front_at.load(Ordering::SeqCst);
+            wait = (at + OWN_HOLD_NS - now).max(0);
+        }
+    }
+    if SLOTS[me].live.load(Ordering::SeqCst) != 0 {
+        return wait;
     }
     // The clock is read only once a queued start exists: an idle thread polls this in a spin.
     let off = SLOTS[me].steal_off_until.load(Ordering::Relaxed);
-    let mut now = 0;
     if off != 0 {
         // Paused: wake when the pause ends without reading the queues of the threads that are
         // still queueing, whose cache lines this would keep bouncing.
-        now = crate::sys::monotonic_ns();
+        if now == 0 {
+            now = crate::sys::monotonic_ns();
+        }
         if now < off {
-            return off - now;
+            let w = off - now;
+            return if wait < 0 { w } else { wait.min(w) };
         }
     }
-    let mut wait = -1;
     for thread in (0..STARTED.load(Ordering::Acquire)).filter(|&t| t != me) {
         let at = SLOTS[thread].front_at.load(Ordering::SeqCst);
         if at != 0 {
@@ -667,7 +730,7 @@ pub(crate) fn work_available() -> bool {
     if me == NONE {
         return false;
     }
-    if SLOTS[me].pending.load(Ordering::SeqCst) != 0 {
+    if SLOTS[me].pending.load(Ordering::SeqCst) != 0 && own_ready(me, crate::sys::monotonic_ns()) {
         return true;
     }
     steal_wait_ns() == 0

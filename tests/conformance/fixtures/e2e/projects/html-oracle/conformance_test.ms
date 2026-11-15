@@ -29,7 +29,7 @@ fn limit(token: String) Int?:
 	if token == "-": return none
 	return token.parse_int()
 
-fn dump(node: HtmlNode, var out: StringBuilder) Unit:
+fn dump(node: HtmlNode, var out: StringBuilder) Void:
 	match node:
 		Document(children):
 			out.append("D[")

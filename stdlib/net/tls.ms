@@ -78,5 +78,5 @@ export fn verify_certificates(
 	roots_pem: String,
 	server_name: String,
 	now: Timestamp,
-) Unit!:
+) Void!:
 	return msstd_tls_verify_certificates(chain_pem, roots_pem, server_name, now)

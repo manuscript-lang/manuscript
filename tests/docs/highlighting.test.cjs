@@ -64,9 +64,9 @@ test('strings end before the following code, including interpolations, nested st
 });
 
 test('current boolean spellings are constants; capitalized forms are ordinary names', () => {
-  const tokens = tokenize('true false unit True False\n');
+  const tokens = tokenize('true false void True False\n');
   assert.deepEqual(tokens.filter(token => token.kind).map(token => [token.text, token.kind]), [
-    ['true', 'kc'], ['false', 'kc'], ['unit', 'kc'], ['True', 'nc'], ['False', 'nc'],
+    ['true', 'kc'], ['false', 'kc'], ['void', 'kc'], ['True', 'nc'], ['False', 'nc'],
   ]);
 });
 
@@ -90,7 +90,7 @@ test('all compiler keywords have scopes; contextual and retired words stay ident
     .map(match => match[1]);
   assert.ok(keywords.length >= 25, 'Read the current compiler keyword inventory');
   for (const word of keywords) {
-    assertScopes(word, [[word, ['true', 'false', 'unit'].includes(word) ? 'kc' : 'k']]);
+    assertScopes(word, [[word, ['true', 'false', 'void'].includes(word) ? 'kc' : 'k']]);
   }
   assertScopes('from as async await null def lambda elif case', [
     ['from', ''], ['as', ''], ['async', ''], ['await', ''], ['null', ''],
@@ -178,12 +178,12 @@ test('bare enum variants have declaration scopes and case stays an identifier', 
   assertScopes('enum response[T]:\n    pending\n    found(value: T)\n\nfn case(value: Int) Int: value\n', [
     ['enum', 'k'], ['response', 'nc'], ['pending', 'nc'], ['found', 'nc'], ['case', 'nf'],
   ]);
-  const tokens = tokenize('enum E:\n    case(value: Int)\nfn check() Unit:\n    case := 1\n');
+  const tokens = tokenize('enum E:\n    case(value: Int)\nfn check() Void:\n    case := 1\n');
   assert.ok(!tokens.some(token => token.kind === 'k' && token.text.includes('case')));
 });
 
 test('unindented comments do not end an enum declaration scope', () => {
-  assertScopes('enum E:\n    ready\n// comment\n    pending\n/* comment */\n    finished\n\nfn work() Unit: unit\n', [
+  assertScopes('enum E:\n    ready\n// comment\n    pending\n/* comment */\n    finished\n\nfn work() Void: void\n', [
     ['enum', 'k'], ['E', 'nc'], ['ready', 'nc'], ['pending', 'nc'], ['finished', 'nc'], ['work', 'nf'],
   ]);
 });
@@ -197,7 +197,7 @@ const {prepareTokenizer} = exportsForTest.exports;
 
 test('prepared grammar preserves tokens without carrying lexical state between fences', () => {
   const prepared = prepareTokenizer(grammar);
-  const inputs = ['"unterminated', 'fn main() Unit:\n    print("{1}")\n', 'é😀\r\n', '', '/* open', 'enum E:\n    item(value: Int)\n', 'x := 1\n'];
+  const inputs = ['"unterminated', 'fn main() Void:\n    print("{1}")\n', 'é😀\r\n', '', '/* open', 'enum E:\n    item(value: Int)\n', 'x := 1\n'];
   for (const input of [...inputs, ...inputs.toReversed()]) {
     const actual = prepared(input);
     assert.deepEqual(actual, tokenize(input));

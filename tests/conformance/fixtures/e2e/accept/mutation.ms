@@ -3,19 +3,19 @@
 import expect_equal, expect_false, expect_not_equal, fail from "@std/test/test.ms"
 
 interface Counter:
-	var fn increment() Unit
+	var fn increment() Void
 
 type Val:
 	val: Int
 
-fn var Val.increment() Unit:
+fn var Val.increment() Void:
 	self.val += 1
 
 type Box[T]:
 	value: T
 	child: Val
 
-fn replace[T](var box: Box[T], value: T) Unit:
+fn replace[T](var box: Box[T], value: T) Void:
 	box.value = value
 
 fn receiver(var log: List[Int], value: Val) Val:
@@ -26,7 +26,7 @@ fn replacement(var log: List[Int]) Int:
 	log.append(2)
 	return 7
 
-fn bump(var value: Val) Unit:
+fn bump(var value: Val) Void:
 	value.val += 1
 
 test "record fields mutate through methods views and var parameters":

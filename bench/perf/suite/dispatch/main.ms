@@ -66,7 +66,7 @@ fn closures(n: Int) Int:
 type Stack[T]:
 	items: List[T] = []
 
-fn var Stack[T].push(v: T) Unit:
+fn var Stack[T].push(v: T) Void:
 	self.items.append(v)
 
 fn var Stack[T].pop() T?:
@@ -91,7 +91,7 @@ fn generics(n: Int) Int:
 
 	return t + fold_with(s.items, 0, fn(a: Int, x: Int) Int: return a + x * 2)
 
-fn main() Unit:
+fn main() Void:
 	print("shapes {shapes(1000000)}")
 	print("closures {closures(15000000)}")
 	print("generics {generics(20000000)}")

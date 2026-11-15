@@ -1,4 +1,4 @@
-fn apply(f: fn() Unit, g: fn() Unit) Unit:
+fn apply(f: fn() Void, g: fn() Void) Void:
     f()
     g()
 

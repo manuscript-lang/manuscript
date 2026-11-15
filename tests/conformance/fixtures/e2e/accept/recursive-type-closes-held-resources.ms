@@ -4,7 +4,7 @@
 type Res:
 	id: Int
 
-fn var Res.close() Unit!:
+fn var Res.close() Void!:
 	print("close {self.id}")
 
 type Node:

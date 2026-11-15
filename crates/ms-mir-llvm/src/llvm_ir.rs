@@ -128,7 +128,7 @@ const _: () = assert!(LARGE_FUNCTION_LINES < HUGE_FUNCTION_LINES);
 const LOOPFREE_HUGE_FUNCTION_LINES: usize = 8_000;
 
 /// One LLVM module of the program.
-pub struct Unit {
+pub struct Void {
     /// The module's IR text.
     pub ir: String,
     /// Every function in it is `optnone`. Code generation then runs at `-O0`: the optimizing
@@ -657,10 +657,10 @@ impl LlvmModule {
         pinned: &HashSet<String>,
         anchored: bool,
         units: usize,
-    ) -> Vec<Unit> {
+    ) -> Vec<Void> {
         let deep = self.deep_glue();
         // Functions compiled without optimization go to a unit of their own, which `llc` runs at
-        // `-O0` (see `Unit::unoptimized`); the rest are cut into `units` of similar size.
+        // `-O0` (see `Void::unoptimized`); the rest are cut into `units` of similar size.
         let (plain, bare): (Vec<&Def>, Vec<&Def>) = self
             .defs
             .iter()
@@ -888,7 +888,7 @@ impl LlvmModule {
                 String::new()
             };
             s.push_str(&tail.replace(RETAINED_TYPES, &retained));
-            out.push(Unit {
+            out.push(Void {
                 ir: s,
                 unoptimized: *unoptimized,
             });
@@ -1185,7 +1185,7 @@ mod tests {
         let flags: Vec<bool> = units.iter().map(|u| u.unoptimized).collect();
         assert_eq!(flags, [false, true]);
         let defines =
-            |u: &Unit, name: &str| u.ir.contains(&format!("define hidden void @\"{name}\""));
+            |u: &Void, name: &str| u.ir.contains(&format!("define hidden void @\"{name}\""));
         assert!(defines(&units[0], "small_a") && defines(&units[0], "small_b"));
         assert!(!units[0].ir.contains("define hidden void @\"huge\""));
         assert!(defines(&units[1], "huge"));
@@ -1217,7 +1217,7 @@ mod tests {
         let units = module.finish_units("x86_64-unknown-linux-gnu", &HashSet::new(), false, 2);
         assert_eq!(units.len(), 2);
         let defines =
-            |u: &Unit, name: &str| u.ir.contains(&format!("hidden void @\"{name}\"() #0 {{"));
+            |u: &Void, name: &str| u.ir.contains(&format!("hidden void @\"{name}\"() #0 {{"));
         let calls_chain = &units[0];
         assert!(defines(calls_chain, "a2"), "a callee follows its caller");
         assert!(!defines(calls_chain, "b2") || !defines(&units[1], "a2"));

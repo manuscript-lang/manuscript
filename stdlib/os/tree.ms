@@ -106,23 +106,23 @@ export type MemoryTree:
 	kids: Map[String, Set[String]] = Map[String, Set[String]]()
 
 // Records `path` as a child of its parent directory.
-fn var MemoryTree.link(path: String) Unit:
+fn var MemoryTree.link(path: String) Void:
 	parent := parent_of(path)
 
 	if var set = self.kids[parent]?:
 		set.add(path.clone())
-		return unit
+		return
 
 	var fresh = Set[String]()
 	fresh.add(path.clone())
 	self.kids[parent] = fresh
-	return unit
+	return
 
 // Forgets `path` as a child of its parent directory.
-fn var MemoryTree.unlink(path: String) Unit:
+fn var MemoryTree.unlink(path: String) Void:
 	if var set = self.kids[parent_of(path)]?:
 		set.remove(path)
-	return unit
+	return
 
 // True when `path` names a file or directory.
 fn MemoryTree.exists(path: String) Bool:
@@ -134,7 +134,7 @@ fn MemoryTree.exists(path: String) Bool:
 
 // Creates `path` and any missing parent directories. An existing directory is fine;
 // an existing file is `EEXIST`.
-fn var MemoryTree.create_directory(path: String) Unit!:
+fn var MemoryTree.create_directory(path: String) Void!:
 	inside := clean(path)?
 	if self.files.contains(inside): return error(
 		Error("filesystem: already exists", kind: "EEXIST")
@@ -150,7 +150,7 @@ fn var MemoryTree.create_directory(path: String) Unit!:
 // Writes a file, replacing any earlier content and creating missing parent
 // directories. A path that is a directory, or whose parent is a file, is `EINVAL`;
 // the root cannot be written.
-fn var MemoryTree.write_file(path: String, data: Bytes) Unit!:
+fn var MemoryTree.write_file(path: String, data: Bytes) Void!:
 	inside := clean(path)?
 	if inside == "" or self.directories.contains(inside): return error(
 		fs_invalid_input()
@@ -166,14 +166,14 @@ fn var MemoryTree.write_file(path: String, data: Bytes) Unit!:
 // Removes a file or an empty directory; `recursive` removes a directory with
 // everything under it. A missing path is `ENOENT`, a non-empty directory without
 // `recursive` is `ENOTEMPTY`, and the root cannot be removed.
-fn var MemoryTree.remove(path: String, recursive: Bool = false) Unit!:
+fn var MemoryTree.remove(path: String, recursive: Bool = false) Void!:
 	inside := clean(path)?
 	if inside == "": return error(fs_invalid_input())
 
 	if self.files.contains(inside):
 		self.files.remove(inside.clone())
 		self.unlink(inside.clone())
-		return ok(unit)
+		return ok()
 
 	if not self.directories.contains(inside): return error(
 		Error("filesystem: file or directory not found", kind: "ENOENT")
@@ -314,15 +314,15 @@ export fn embedded_tree(
 		if key != "": index_child(var kids, key)
 	return EmbeddedTree(indexes, directories, kids, load)
 
-fn index_child(var kids: Map[String, List[String]], path: String) Unit:
+fn index_child(var kids: Map[String, List[String]], path: String) Void:
 	parent := parent_of(path)
 
 	if var names = kids[parent]?:
 		names.append(path.clone())
-		return unit
+		return
 
 	kids[parent] = [path.clone()]
-	return unit
+	return
 
 // One file or directory found by `walk`.
 export type WalkEntry:
@@ -362,7 +362,7 @@ export fn walk(
 
 // Lists `directory` and pushes its children onto `pending` in reverse, so popping
 // yields them in name order.
-fn push_children(tree: FileTree, directory: String, var pending: List[WalkEntry]) Unit!:
+fn push_children(tree: FileTree, directory: String, var pending: List[WalkEntry]) Void!:
 	children := tree.children(directory, none)?
 	var i = children.length()
 

@@ -148,7 +148,7 @@ fn run_command(var w: Warehouse, line: String) String:
 	w.orders[t[1].clone()] = o
 	return "ok"
 
-fn main() Unit:
+fn main() Void:
 	var w = Warehouse(Map[String, Int](), Map[String, Int](), Map[String, Order]())
 	if ls := stdin() | lines | collect(none):
 		for l in ls.filter(fn l: not l.replace(" ", "").is_empty()): print(

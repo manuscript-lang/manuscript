@@ -11,7 +11,7 @@ import borrow_body, reader, next_event from "@std/net/sse.ms"
 import network from "@std/net/net.ms"
 
 // Writes a CRLF stream whose chunks split a line ending and a multi-byte scalar.
-fn stream_events(exchange: HttpExchange) Result[Unit, HttpError]:
+fn stream_events(exchange: HttpExchange) Result[Void, HttpError]:
     sent := headers()
     sent.append("Content-Type", "text/event-stream".to_bytes())?
     exchange.send_headers(200, sent)?
@@ -19,7 +19,7 @@ fn stream_events(exchange: HttpExchange) Result[Unit, HttpError]:
     exchange.write_bytes("é".to_bytes().slice(0, 1).get()).get()
     exchange.write_bytes("\u{e9}!\r".to_bytes().slice(1, 4).get()).get()
     exchange.write("\n\r\n: keepalive\n\ndata: second\n\n").get()
-    return ok(unit)
+    return ok()
 
 test "HTTP response bodies decode as SSE without being closed by the reader":
     with server = try network().serve_stream(

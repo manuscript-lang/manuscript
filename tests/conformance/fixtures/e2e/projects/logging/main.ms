@@ -10,14 +10,14 @@ import (
 type Service:
 	service: String
 
-fn exercise(mode: String, path: String) Unit!:
+fn exercise(mode: String, path: String) Void!:
 	if (mode == "file" or mode == "missing"):
 		var root = create(file_transport(path)?, LoggerOptions(timestamp: false))?
 		logger := root.child(Service("api"))?
 		emit(logger)?
 		logger.flush()?
 		root.close()?
-		return ok(unit)
+		return ok()
 
 	if mode == "limit":
 		logger := create(stdout_transport(), LoggerOptions(max_bytes: 1))?

@@ -5,7 +5,7 @@ import stringify, StringifyOptions from "@std/data/json.ms"
 
 type Handler:
     name: String
-    done: Unit
+    done: Void
     note: String?
 
 type Plain:
@@ -14,17 +14,17 @@ type Plain:
     tags: List[Int?]
 
 type Holder:
-    items: List[Unit]
+    items: List[Void]
 
 test "JSON stringify omits values without a JSON form unless strict":
-    handler := Handler("h", unit, none)
+    handler := Handler("h", void, none)
     expect_equal(stringify(handler), ok("\{\"name\":\"h\"\}"))?
 
     invalid: String! := error(Error("JSON: invalid data", kind: "EBADMSG"))
     expect_equal(stringify(handler, StringifyOptions(strict: true)), invalid)?
 
 test "JSON strict stringify rejects no-form list elements":
-    holder := Holder([unit])
+    holder := Holder([void])
     expect_equal(stringify(holder), ok("\{\"items\":[null]\}"))?
 
     invalid: String! := error(Error("JSON: invalid data", kind: "EBADMSG"))

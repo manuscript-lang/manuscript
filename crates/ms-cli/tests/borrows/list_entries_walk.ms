@@ -7,7 +7,7 @@ type Row:
 fn show(e: ListEntry[String]) String:
     return "{e.index}={e.value}"
 
-fn main() Unit:
+fn main() Void:
     names := ["a", "bb", "ccc"]
     rows := [Row(name: "x", n: 1), Row(name: "y", n: 2)]
     var out = ""
@@ -25,4 +25,4 @@ fn main() Unit:
         for f in names.entries():
             out += "{e.value + f.index} "
     fns := names.entries().map(fn e: e.index + e.value.length())
-    _ := stdout().write("{out}{fns}\n")
+    void stdout().write("{out}{fns}\n")

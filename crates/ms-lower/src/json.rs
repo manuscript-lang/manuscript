@@ -221,7 +221,7 @@ impl FnLower<'_> {
             let t = self.b.str_lit(&text);
             let args = [doc, id, c, t];
             // Cold path: the error message reads it back (`msstd_json_mismatch_text`).
-            self.call_runtime("msstd_json_mismatch", &args, MTy::UNIT)
+            self.call_runtime("msstd_json_mismatch", &args, MTy::VOID)
                 .expect("mismatch call");
         }
         let n = self.none_owned(self.ret_ty);
@@ -663,7 +663,7 @@ impl FnLower<'_> {
         let slot = self.put_slot(m);
         let (kd, vd) = self.map_descs(mt)?;
         let vd = vd.ok_or_else(|| Error::new("a map has a value descriptor"))?;
-        self.call_runtime("msrt_map_reserve", &[slot, kd, vd, n], MTy::UNIT)?;
+        self.call_runtime("msrt_map_reserve", &[slot, kd, vd, n], MTy::VOID)?;
         Ok(self.take_slot(slot, mt))
     }
 
@@ -854,8 +854,8 @@ impl FnLower<'_> {
         mt: MTy,
         earlier: &[(ct::Name, Value)],
     ) -> Result<Option<Value>, Error> {
-        if ty.is(Builtin::Unit) {
-            // `Unit` has no JSON form: encoding omits the member and decoding restores it.
+        if ty.is(Builtin::Void) {
+            // `Void` has no JSON form: encoding omits the member and decoding restores it.
             return Ok(Some(self.b.unit()));
         }
         if case.is_some() {
@@ -1028,7 +1028,7 @@ impl FnLower<'_> {
 
     /// A writer call without a result.
     fn jw(&mut self, sym: &str, args: &[Value]) -> Result<(), Error> {
-        self.call_runtime(sym, args, MTy::UNIT)?;
+        self.call_runtime(sym, args, MTy::VOID)?;
         Ok(())
     }
 
@@ -1088,7 +1088,7 @@ impl FnLower<'_> {
                 self.jw("msstd_json_w_string", &[w, value])?;
                 return Ok(self.jwritten());
             }
-            Some(Builtin::Unit | Builtin::Never) => return self.jno_form(w),
+            Some(Builtin::Void | Builtin::Never) => return self.jno_form(w),
             _ => {}
         }
         if t.is(Builtin::Optional) {
@@ -1762,7 +1762,7 @@ impl FnLower<'_> {
             let ext = self.b.m.add_extern(ms_mir::ir::ExternDef {
                 name: sym.to_string(),
                 params,
-                ret: MTy::UNIT,
+                ret: MTy::VOID,
                 noreturn: false,
                 pure_: false,
                 fresh: crate::rtcall::fresh_result(sym),
@@ -1776,7 +1776,7 @@ impl FnLower<'_> {
             self.b.m,
             "json_tree_view",
             vec![borrowed(MTy::PTR), borrowed(MTy::PTR), borrowed(MTy::PTR)],
-            MTy::UNIT,
+            MTy::VOID,
         );
         tb.func_mut().linkage = ms_mir::ir::Linkage::Internal;
         let args = tb.params();

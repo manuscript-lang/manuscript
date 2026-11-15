@@ -8,9 +8,9 @@ import (
 
 // Regressions: block key.
 
-fn invalid_block_key(source: String) Unit!:
+fn invalid_block_key(source: String) Void!:
 	cause := parse(source) | expect_error?
-	if cause.kind == "EBADMSG": return ok(unit)
+	if cause.kind == "EBADMSG": return ok()
 
 	return fail("expected malformed YAML, got {cause}")
 
@@ -95,7 +95,7 @@ test "YAML flow colon separators retain quoted and empty values":
 	)
 	parse("\{a:]\}").is_error() | expect_true?
 
-fn invalid_colon(source: String) Unit!:
+fn invalid_colon(source: String) Void!:
 	cause := parse(source) | expect_error?
 	if cause.kind != "EBADMSG": return fail("expected malformed YAML, got {cause}")
 
@@ -131,7 +131,7 @@ test "YAML block scalar rejects a separator before a folded paragraph break":
 
 // Regressions: comment continuation.
 
-fn rejects_continuation(text: String) Unit!Error:
+fn rejects_continuation(text: String) Void!Error:
 	cause := parse(text) | expect_error?
 	if cause.kind != "EBADMSG": return fail("expected InvalidData, got {cause}")
 
@@ -231,7 +231,7 @@ test "YAML quoted and flow hashes retain their scalar behavior":
 		)?
 	)
 
-fn rejects_flow_continuation(text: String, reason: String) Unit!Error:
+fn rejects_flow_continuation(text: String, reason: String) Void!Error:
 	cause := parse(text) | expect_error?
 	if cause.kind != "EBADMSG": return fail("expected InvalidData, got {cause}")
 
@@ -355,7 +355,7 @@ test "YAML flow mappings retain existing empty-key forms":
 
 // Regressions: error location.
 
-fn error_at(text: String, line: Int, column: Int) Unit!Error:
+fn error_at(text: String, line: Int, column: Int) Void!Error:
 	cause := parse(text) | expect_error?
 	if cause.kind != "EBADMSG": return fail("expected InvalidData, got {cause}")
 
@@ -397,7 +397,7 @@ test "YAML compact tab rewrites retain original scalar columns":
 	error_at("- \t key: [one", 1, 14)?
 	error_at("-\t\tkey: ok\n- key: [one", 2, 12)?
 
-fn unsupported_at(text: String, line: Int) Unit!Error:
+fn unsupported_at(text: String, line: Int) Void!Error:
 	cause := parse(text) | expect_error?
 	if cause.kind != "ENOTSUP": return fail("expected UnsupportedFeature, got {cause}")
 
@@ -430,7 +430,7 @@ test "YAML source projection preserves compact document values":
 	(parse("---\n-\t\tkey: value") | expect_ok? | expect_equal(expected)?)
 
 	// A tab cannot indent a nested sequence.
-	_ := parse("-\t\t-\t\tkey: value") | expect_error?
+	void parse("-\t\t-\t\tkey: value") | expect_error?
 
 test "YAML block header origins distinguish identical quoted key text":
 	error_at("\"|bad\": |bad\n  x", 1, 10)?
@@ -442,7 +442,7 @@ test "YAML flow mapping keys may span physical lines":
 	for source in [
 		"\{key\n next: value\}", "\{'key\n next': value\}", "\{key\n: value\}"
 	]:
-		_ := parse(source) | expect_ok?
+		void parse(source) | expect_ok?
 
 test "YAML quoted implicit keys may contain escaped newline text":
 	var values = Map[String, YamlValue]()
@@ -654,10 +654,10 @@ test "YAML flow comment offsets remain scalar based":
 
 // Regressions: block indentation.
 
-fn text(source: String, expected: String) Unit!:
+fn text(source: String, expected: String) Void!:
 	expect_equal((parse(source)?), YamlValue.StringValue(expected))?
 
-fn field(source: String, expected: String) Unit!:
+fn field(source: String, expected: String) Void!:
 	want := YamlValue.ObjectValue({"value": YamlValue.StringValue(expected)})
 	expect_equal((parse(source)?), want)?
 
@@ -862,20 +862,20 @@ test "YAML tags resolve strings and are otherwise ignored":
 	want := parse("a: \"12\"\nb: x\nc: \"\"\nd: e\nf: [\"true\", \{g: h\}]\n")?
 	expect_equal(value.to_string(), want.to_string())?
 
-	_ := parse("top: &a\n  &b value\n") | expect_error?
+	void parse("top: &a\n  &b value\n") | expect_error?
 
 test "YAML scalar keys become their text and collection keys are rejected":
-	_ := parse("&k x: e\n*k : f\n") | expect_error?
+	void parse("&k x: e\n*k : f\n") | expect_error?
 	keys := parse("1: a\ntrue: b\nnull: c\n: d\n&k x: e\n")?
 	want := parse("\"1\": a\n\"true\": b\n\"null\": c\n\"\": d\nx: e\n")?
 	expect_equal(keys.to_string(), want.to_string())?
 
-	_ := parse("1: a\n\"1\": b\n") | expect_error?
+	void parse("1: a\n\"1\": b\n") | expect_error?
 	unsupported_at("[a]: 1", 1)?
 	unsupported_at("\{[a]: 1\}", 1)?
 	unsupported_at("a: 1\n\{b: c\}: d", 2)?
 
-fn count(text: String, want: Int) Unit!:
+fn count(text: String, want: Int) Void!:
 	docs := parse_all(text)?
 	expect_equal(docs.length(), want)?
 
@@ -891,36 +891,36 @@ test "YAML streams read one value per document":
 
 	// Anchors end with their document, and a directive needs the previous document
 	// closed.
-	_ := parse_all("---\n&a x\n---\n*a\n") | expect_error?
-	_ := parse_all("a: 1\n%YAML 1.2\n---\nb: 2\n") | expect_error?
-	_ := parse("one\n---\ntwo\n") | expect_error?
+	void parse_all("---\n&a x\n---\n*a\n") | expect_error?
+	void parse_all("a: 1\n%YAML 1.2\n---\nb: 2\n") | expect_error?
+	void parse("one\n---\ntwo\n") | expect_error?
 
 test "YAML continuation lines are indented past their parent and tabs only separate":
 	// The common layout closes a bracket at the parent's column; content may not.
-	_ := parse("key: [\n  a,\n  b\n]\n")?
-	_ := parse("key: [\n  a,\nb]\n") | expect_error?
-	_ := parse("quoted: \"a\nb\"\n") | expect_error?
-	_ := parse("-\t- x\n") | expect_error?
-	_ := parse("a:\n\tb: 1\n") | expect_error?
-	_ := parse("a:\n \tword\n")?
-	_ := parse("\t[x]\n")?
+	void parse("key: [\n  a,\n  b\n]\n")?
+	void parse("key: [\n  a,\nb]\n") | expect_error?
+	void parse("quoted: \"a\nb\"\n") | expect_error?
+	void parse("-\t- x\n") | expect_error?
+	void parse("a:\n\tb: 1\n") | expect_error?
+	void parse("a:\n \tword\n")?
+	void parse("\t[x]\n")?
 
 test "YAML flow sequences hold single-pair entries and flow keys may precede their colon line":
 	value := parse("[a: b, \"k\":v, : e, c, x: [1, 2]]")?
 	want := parse("[\{a: b\}, \{k: v\}, \{\"\": e\}, c, \{x: [1, 2]\}]")?
 	expect_equal(value.to_string(), want.to_string())?
 
-	_ := parse("\{\"key\"\n: value\}")?
+	void parse("\{\"key\"\n: value\}")?
 	unsupported_at("[[a]: b]", 1)?
 
-	_ := parse("[a: b: c]") | expect_error?
+	void parse("[a: b: c]") | expect_error?
 
 test "YAML explicit keys read scalar keys with optional values":
 	value := parse("? a\n: 1\n? b\n? |\n  block\n: - x\n  - y\nc: d\n")?
 	want := parse("a: 1\nb: null\n\"block\\n\":\n  - x\n  - y\nc: d\n")?
 	expect_equal(value.to_string(), want.to_string())?
 
-	_ := parse("? a\n: 1\n? a\n: 2\n") | expect_error?
+	void parse("? a\n: 1\n? a\n: 2\n") | expect_error?
 
 test "YAML flow collections hold explicit keys and anchored keys":
 	var one = Map[String, YamlValue]()
@@ -944,7 +944,7 @@ test "YAML flow collections hold explicit keys and anchored keys":
 	)
 	(parse("\{? a : b, ?\}") | expect_ok? | expect_equal(YamlValue.ObjectValue(flow))?)
 
-	_ := parse("\{ &e e: f \}") | expect_ok?
+	void parse("\{ &e e: f \}") | expect_ok?
 
 test "YAML plain continuation lines may start with a sequence dash":
 	var values = Map[String, YamlValue]()
@@ -990,7 +990,7 @@ test "YAML block scalars keep the break of an unterminated blank last line and r
 		| expect_equal(YamlValue.ArrayValue([YamlValue.StringValue("\n")]))?
 	)
 
-	_ := parse("foo: |\n\t\nbar: 1") | expect_error?
+	void parse("foo: |\n\t\nbar: 1") | expect_error?
 
 test "YAML empty documents and commented explicit keys":
 	docs := parse_all("---\n---\n") | expect_ok?

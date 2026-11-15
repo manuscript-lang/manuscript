@@ -1,7 +1,7 @@
 // conform: tags=numbers,types,diagnostics,tier-core
 // conform: phase=check
 // conform: origin=sized numeric types stage 2
-fn main() Unit:
+fn main() Void:
     a: Int8 := 1
     b: Int32 := a
     c: Int8 := b.to_int8()

@@ -22,10 +22,10 @@ fn Box[T].added(item: T) Self:
 fn Box[T].pair(other: Self) List[Self]:
     return [self.clone(), other.clone()]
 
-fn main() Unit:
+fn main() Void:
     p := Point(x: 1, y: 2).with_x(5)
     b := Box[Int](items: [1]).added(2)
-    _ := stdout().write(
+    void stdout().write(
         p.x.to_string() + " " + b.items.length().to_string() + " " + b.pair(
             b
         ).length().to_string() + "\n"

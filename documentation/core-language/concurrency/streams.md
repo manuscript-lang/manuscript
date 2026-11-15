@@ -42,7 +42,7 @@ fn count_errors(input: ReadStream[Bytes]) Int!:
 ```manuscript
 import WriteStream from "@std/io/io.ms"
 
-fn dump(rows: List[String], var out: WriteStream[String]) Unit!:
+fn dump(rows: List[String], var out: WriteStream[String]) Void!:
     for row in rows:
         out.write("{row}\n")?
     return out.flush()
@@ -95,7 +95,7 @@ import pipe, WriteStream from "@std/io/io.ms"
 import promise from "@std/concurrency/promise.ms"
 import expect_equal from "@std/test/test.ms"
 
-fn send_numbers(var out: WriteStream[Int]) Unit!:
+fn send_numbers(var out: WriteStream[Int]) Void!:
     for n in [1, 2, 3]:
         out.write(n)?
     return out.close()

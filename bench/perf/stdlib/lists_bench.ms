@@ -38,7 +38,7 @@ bench "list.callable_key":
 		points.append(Point(x: i, y: (i * 7919) % 10007))
 
 	scale := 3
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		return keep(best_index(points, fn(p: Point) Int: p.y * scale))
 	measure(100000, work)?
 
@@ -51,7 +51,7 @@ bench "list.callable_key_loop":
 	measure(100000, fn: keep(best_index_loop(points, scale)))?
 
 bench "list.append":
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		var xs: List[Int] = []
 		for i in 0..200000:
 			xs.append(i)
@@ -62,7 +62,7 @@ bench "list.append":
 bench "list.at":
 	data := ints(100000)
 
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		var n = 0
 		for i in 0..200000:
 			n += data.get(i % 100000, default: 0)
@@ -73,7 +73,7 @@ bench "list.at":
 bench "list.for_in":
 	data := ints(100000)
 
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		var n = 0
 		for x in data:
 			n += x
@@ -83,13 +83,13 @@ bench "list.for_in":
 
 bench "list.map":
 	data := ints(100000)
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		return keep(data.map(fn(x: Int) Int: x * 2).length())
 	measure(100000, work)?
 
 bench "list.filter":
 	data := ints(100000)
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		return keep(data.filter(fn(x: Int) Bool: x % 2 == 0).length())
 	measure(100000, work)?
 
@@ -107,20 +107,20 @@ bench "list.windows":
 
 bench "list.partition":
 	data := ints(100000)
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		return keep(data.partition(fn(x: Int) Bool: x % 2 == 0).matching.length())
 	measure(100000, work)?
 
 bench "list.fold":
 	data := ints(100000)
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		return keep(data.fold(0, fn(acc: Int, x: Int) Int: acc + x))
 	measure(100000, work)?
 
 bench "list.sorted":
 	data := ints(100000)
 
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		sorted := data.sorted(fn(left: Int, right: Int) Int: left - right)
 		return keep(sorted.length())
 
@@ -141,7 +141,7 @@ bench "list.max":
 bench "list.contains":
 	data := ints(100000)
 
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		var n = 0
 		for i in 0..100:
 			if data.contains(-1): n += 1
@@ -160,7 +160,7 @@ bench "list.concat_reverse":
 bench "list.any_early_exit":
 	data := ints(100000)
 
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		var n = 0
 		for i in 0..100000:
 			if data.any(fn(x: Int) Bool: x == 0): n += 1
@@ -172,7 +172,7 @@ bench "list.max_by":
 	data := ints(100000)
 	small_points := data.map(fn(x: Int) Point: Point(x, (x * 7) % 1000))
 
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		var n = 0
 		for i in 0..100:
 			if best := small_points.max_by(fn(p: Point) Int: p.y): n += best.x
@@ -184,7 +184,7 @@ bench "list.max_by_loop":
 	data := ints(100000)
 	small_points := data.map(fn(x: Int) Point: Point(x, (x * 7) % 1000))
 
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		var n = 0
 
 		for i in 0..100:
@@ -200,7 +200,7 @@ bench "list.max_by_loop":
 bench "list.records_map":
 	data := ints(100000)
 
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		mapped := data.map(fn(x: Int) Point: Point(x, x + 1))
 		return keep(mapped.fold(0, fn(acc: Int, p: Point) Int: acc + p.y))
 
@@ -208,12 +208,12 @@ bench "list.records_map":
 
 bench "list.repeated empty":
 	values: List[Int] := []
-	fn work() Unit!:
+	fn work() Void!:
 		return keep(values.repeated(1000000).length())
 	measure(1, work)?
 
 bench "list.repeated small":
 	values := [1, 2, 3, 4]
-	fn work() Unit!:
+	fn work() Void!:
 		return keep(values.repeated(2).length())
 	measure(1, work)?

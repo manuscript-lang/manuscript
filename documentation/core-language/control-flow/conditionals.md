@@ -17,7 +17,7 @@ fn status(active: Bool) String:
     else:
         return "Inactive"
 
-fn main() Unit:
+fn main() Void:
     print(status(true))
     print(status(false))
 ```
@@ -65,7 +65,7 @@ fn sign(value: Int) Int:
     return if value < 0: -1 else if value == 0: 0 else: 1
 ```
 
-The branches are one-line expressions on the same line. For statements in a branch, use an `if` statement or a `match` arm. The [return rules](../functions/declarations-and-calls.md#unit-and-never) still require every reachable path of a function to return.
+The branches are one-line expressions on the same line. For statements in a branch, use an `if` statement or a `match` arm. The [return rules](../functions/declarations-and-calls.md#void-and-never) still require every reachable path of a function to return.
 
 ## Unwrapping an Optional or Result
 

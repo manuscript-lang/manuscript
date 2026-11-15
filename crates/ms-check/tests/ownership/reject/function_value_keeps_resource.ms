@@ -3,8 +3,8 @@ import Closeable from "@std/core.ms"
 type Door:
     n: Int
 
-fn var Door.close() Unit!:
-    return ok(unit)
+fn var Door.close() Void!:
+    return ok()
 
 fn wrap(d: Door) Door?:
     return d

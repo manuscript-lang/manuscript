@@ -3,8 +3,8 @@ import Closeable from "@std/core.ms"
 type Res:
     name: String
 
-fn var Res.close() Unit!:
-    return ok(unit)
+fn var Res.close() Void!:
+    return ok()
 
 type Holder:
     items: List[Res]

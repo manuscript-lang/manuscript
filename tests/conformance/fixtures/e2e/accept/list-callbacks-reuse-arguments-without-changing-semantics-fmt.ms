@@ -3,9 +3,9 @@
 // conform: origin=tests/e2e/testdata/accept/list-callbacks-reuse-arguments-without-changing-semantics.ms
 import expect_true from "@std/test/test.ms"
 
-fn keep(var list: List[fn() Int], value: Int) Unit:
+fn keep(var list: List[fn() Int], value: Int) Void:
     list.append(value: fn() Int: value)
-    return unit
+    return
 
 fn grow(var list: List[Int], value: Int) Int:
     list.append(value: value)

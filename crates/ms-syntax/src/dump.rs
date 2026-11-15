@@ -230,10 +230,10 @@ impl D {
                 &[],
                 &[],
             ),
-            ExprKind::Unit => self.expr_fields(
+            ExprKind::Void => self.expr_fields(
                 e,
-                "unit",
-                "unit",
+                "void",
+                "void",
                 None,
                 None,
                 &[],
@@ -963,7 +963,7 @@ impl D {
                     id: NodeId(0),
                     pos: d.pos,
                     kind: TypeKind::Named {
-                        name: Names::global().intern("Unit"),
+                        name: Names::global().intern("Void"),
                         args: Vec::new(),
                     },
                 };

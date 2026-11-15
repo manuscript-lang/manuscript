@@ -55,7 +55,7 @@ fn @main() -> int {
 b0:
   %n: int = iconst 5000000
   %r: int = call @sieve (%n)
-  %u: unit = call.rt @msrt_print_int (%r)
+  %u: void = call.rt @msrt_print_int (%r)
   %z: int = iconst 0
   ret %z
 }

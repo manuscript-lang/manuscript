@@ -28,7 +28,7 @@ use ms_rt_abi::{
 
 /// The trailing outputs of one call.
 struct Outputs {
-    /// The value's slot and type, unless the value is `Unit`.
+    /// The value's slot and type, unless the value is `Void`.
     out: Option<(Value, MTy)>,
     /// The `int64_t *code_out` slot.
     code: Option<Value>,
@@ -47,7 +47,7 @@ impl FnLower<'_> {
     ) -> Result<Val, Error> {
         let args = self.native_args(view)?;
         if self.dead {
-            return Ok(self.dummy(MTy::UNIT));
+            return Ok(self.dummy(MTy::VOID));
         }
         let result = self.emty(e)?;
         self.b.m.c_externs.insert(symbol.to_string());
@@ -61,8 +61,8 @@ impl FnLower<'_> {
         if let TyKind::Alt(a) = self.b.m.types.kind(result).clone() {
             return self.extern_result(symbol, a, result, &mut vals, &fns);
         }
-        if result == MTy::UNIT {
-            self.call_shim(symbol, &vals, MTy::UNIT, &fns)?;
+        if result == MTy::VOID {
+            self.call_shim(symbol, &vals, MTy::VOID, &fns)?;
             return Ok(Val {
                 v: self.b.unit(),
                 own: false,
@@ -82,7 +82,7 @@ impl FnLower<'_> {
         }
         let slot = self.empty_slot(result);
         self.push_output(slot, result, &mut vals);
-        self.call_shim(symbol, &vals, MTy::UNIT, &fns)?;
+        self.call_shim(symbol, &vals, MTy::VOID, &fns)?;
         let v = self.move_out(slot, result);
         Ok(Val { v, own: true })
     }
@@ -98,7 +98,7 @@ impl FnLower<'_> {
     ) -> Result<Value, Error> {
         let r = self.call_runtime(symbol, vals, ret)?;
         for f in fns {
-            self.call_runtime("msrt_obj_drop", &[*f], MTy::UNIT)?;
+            self.call_runtime("msrt_obj_drop", &[*f], MTy::VOID)?;
         }
         Ok(r)
     }
@@ -295,7 +295,7 @@ impl FnLower<'_> {
             has(ct::EXTERN_ERROR_CODE, self),
             has(ct::EXTERN_ERROR_MESSAGE, self),
         );
-        let out = (payload != MTy::UNIT).then(|| {
+        let out = (payload != MTy::VOID).then(|| {
             let slot = self.empty_slot(payload);
             self.push_output(slot, payload, vals);
             (slot, payload)
@@ -351,7 +351,7 @@ impl FnLower<'_> {
                 .b
                 .emit(Op::Load, &[slot], Imm::Ty(MTy::PTR), Some(MTy::PTR))
                 .expect("load");
-            self.call_runtime("msrt_obj_drop", &[p], MTy::UNIT)?;
+            self.call_runtime("msrt_obj_drop", &[p], MTy::VOID)?;
         } else if self.needs_drop(t) {
             let v = self.move_out(slot, t);
             self.drop_value(v);
@@ -430,7 +430,7 @@ impl FnLower<'_> {
             ));
         }
         let code = |s: &Self, t: MTy| -> Result<u64, Error> {
-            if t == MTy::UNIT {
+            if t == MTy::VOID {
                 return Ok(0);
             }
             let elem = s.elem_code(t)?;
@@ -443,7 +443,7 @@ impl FnLower<'_> {
         sig |= code(self, ret)? << 56;
         let thunk = self.invoke_thunk(fty, &ps, ret);
         let held = self.clone_value(f);
-        let wty = self.b.m.types.func(vec![MTy::PTR], MTy::UNIT);
+        let wty = self.b.m.types.func(vec![MTy::PTR], MTy::VOID);
         let wrapper = self
             .b
             .emit(Op::ClosureNew, &[held], Imm::Func(thunk), Some(wty))
@@ -492,7 +492,7 @@ impl FnLower<'_> {
                 mode: Mode::Borrow,
             },
         ];
-        let mut b = FuncBuilder::new(self.b.m, "ms_fn_invoke", params, MTy::UNIT);
+        let mut b = FuncBuilder::new(self.b.m, "ms_fn_invoke", params, MTy::VOID);
         b.func_mut().kind = FuncKind::Closure {
             captures: vec![fty],
         };
@@ -519,7 +519,7 @@ impl FnLower<'_> {
                 b.emit(Op::Drop, &[*a], Imm::None, None);
             }
         }
-        if ret != MTy::UNIT {
+        if ret != MTy::VOID {
             let at = b
                 .emit(
                     Op::PtrField,

@@ -13,7 +13,7 @@ import remove, stat, temporary_directory, write_file from "@std/os/fs.ms"
 fn within(var input: ReadStream[Bytes], timeout: Duration) Bytes?!:
     return promise(fn: input.next()).with(options: PromiseOptions(timeout: timeout)).wait()
 
-fn send(var conn: Connection, text: String) Unit!:
+fn send(var conn: Connection, text: String) Void!:
     conn.output.write(text.to_bytes())?
     return conn.output.flush()
 
@@ -22,7 +22,7 @@ fn handle(request: HttpRequest) HttpResponse:
     for dir in request.headers.values("x-marker-dir"):
         _announced := write_file("{dir}/started", "started".to_bytes()).wait()
 
-    _ := sleep(nanoseconds(300000000)).wait()
+    void sleep(nanoseconds(300000000)).wait()
     return HttpResponse(200, headers(), "done\n".to_bytes())
 
 export fn main() Int:
@@ -36,7 +36,7 @@ export fn main() Int:
             // Wait until the handler has started.
             var tries = 0
             while tries < 1000 and stat("{dir}/started").is_error():
-                _ := sleep(nanoseconds(10000000)).wait()
+                void sleep(nanoseconds(10000000)).wait()
                 tries = tries + 1
 
             start := monotonic()

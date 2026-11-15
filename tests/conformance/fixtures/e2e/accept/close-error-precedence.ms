@@ -13,7 +13,7 @@ type Failing:
 	closed: Bool = false
 	fail: Bool = true
 
-fn var Failing.close() Unit!:
+fn var Failing.close() Void!:
 	if not self.closed:
 		self.closed = true
 		append_file(self.log, "close {self.id}\n").wait()?
@@ -58,7 +58,7 @@ fn borrowed(log: String, cause: Error) Int!:
 
 fn handled(log: String) Int!:
 	var first = Failing(log.clone(), 1)
-	_ := first.close()
+	void first.close()
 	return ok(77)
 
 fn nested_success(log: String) Result[Int!, Error]:
@@ -345,8 +345,8 @@ test "overlapping borrowed errors normalize without copying borrowed success":
 type OwnHolder:
 	resource: Failing
 
-fn var OwnHolder.close() Unit!:
-	return ok(unit)
+fn var OwnHolder.close() Void!:
+	return ok()
 
 fn own_holder_result[T](log: String, source: T!) T!:
 	_holder := OwnHolder(Failing(log.clone(), 1, fail: false))
@@ -390,13 +390,13 @@ fn moved_holder_result[T](log: String, source: T!) T!:
 
 fn handled_result[T](log: String, source: T!) T!:
 	var resource = Failing(log.clone(), 1)
-	_ := resource.close()
+	void resource.close()
 	return source
 
 fn nested_closure_result[T](log: String, source: T!) T!:
 	_unused := fn:
 		_resource := Failing(log.clone(), 1)
-		return unit
+		return
 
 	return source
 
@@ -437,12 +437,12 @@ fn replaced_handled_result[T](log: String, source: T!) T!:
 	var resource = Failing(log.clone(), 1, fail: false)
 	resource = Failing(log.clone(), 2)
 
-	_ := resource.close()
+	void resource.close()
 	return source
 
 fn replaced_unhandled_result(log: String, source: Int!) Int!:
 	var resource = Failing(log.clone(), 1, fail: false)
-	_ := resource.close()
+	void resource.close()
 	resource = Failing(log.clone(), 2)
 	return source
 
@@ -453,7 +453,7 @@ fn replacement_exit(log: String) Int!:
 	var resource = Failing(log.clone(), 1)
 	resource = failing_replacement()?
 
-	_ := resource.close()
+	void resource.close()
 	return ok(7)
 
 fn captured_result[T](log: String, source: T!) T!:

@@ -112,7 +112,7 @@ fn fix_renames_misspellings_and_adds_imports() {
         \x20   return sumn\n\
         \n\
         fn main() Int:\n\
-        \x20   _ := stdout().write(\"hi\\n\")\n\
+        \x20   void stdout().write(\"hi\\n\")\n\
         \x20   return total(itemz: [1])\n\
         ";
     std::fs::write(dir.join("a.ms"), source).unwrap();
@@ -197,8 +197,8 @@ fn fix_wraps_expressions_to_convert_types() {
     let dir = std::env::temp_dir().join(format!("ms-cli-fix-wrap-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
-    let source = "fn say(text: String) Unit:\n\
-        \x20   return unit\n\
+    let source = "fn say(text: String) Void:\n\
+        \x20   return\n\
         \n\
         export fn main() Int:\n\
         \x20   n := 3\n\

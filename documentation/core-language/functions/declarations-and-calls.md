@@ -19,21 +19,21 @@ Parameters and return types are explicit; local annotations are optional.
 ## Declarations and resolution
 
 - Named functions are module declarations or receiver methods. A `fn` inside a function body declares a local function: sugar for binding a `fn` to the name (`f := fn ...`). It cannot call itself; module-level functions recurse.
-- Parameter names are unique and every parameter and result type is explicit, including `Unit`.
+- Parameter names are unique and every parameter and result type is explicit, including `Void`.
 - Signatures are collected before bodies are checked, so functions may call later declarations and recurse, including mutually.
 - Duplicate module names and overloads are rejected. Generics follow [generics](../types/generics.md).
 - Parameters live in the body's scope; a local cannot reuse a parameter name there. Branches, arms, loop bodies, and closures open nested scopes, which cannot reuse an enclosing local or parameter name.
 
 ## The program entry
 
-An entry file declares a nongeneric `fn main()` with no parameters; `export` is optional. Its result is `Unit`, `Unit!`, `Int?!`, or `Int`. `Unit` exits 0. `Unit!` exits 0 on `ok` and, on an error, prints `error: <message>` to standard error and exits 1. `Int?!` does the same for an error, and otherwise exits with the `Int` in `ok(n)`, or 0 for `ok(none)`. `Int` is the exit status.
+An entry file declares a nongeneric `fn main()` with no parameters; `export` is optional. Its result is `Void`, `Void!`, `Int?!`, or `Int`. `Void` exits 0. `Void!` exits 0 on `ok` and, on an error, prints `error: <message>` to standard error and exits 1. `Int?!` does the same for an error, and otherwise exits with the `Int` in `ok(n)`, or 0 for `ok(none)`. `Int` is the exit status.
 
 <!-- manuscript-example: {"mode":"run","stdout":"checking\n"} -->
 ```manuscript
-fn check() Unit!:
+fn check() Void!:
     print("checking")
 
-fn main() Unit!:
+fn main() Void!:
     return check()
 ```
 
@@ -85,7 +85,7 @@ fn example() Int:
 
 - Defaults may precede required parameters; skip one by labeling a later argument. `fn choose(first: Int = 1, second: Int) Int: second` accepts `choose(second: 2)`, while `choose(2)` supplies `first` and misses `second`.
 - A default is checked against its parameter type in the function's scope. It may use imports, module declarations, earlier parameters, and `self`; current and later parameters are not in scope. Anonymous functions may use captures.
-- Evaluation: the callable and supplied arguments run first in written order, then omitted defaults run once each in declaration order, before the body. Defaults run afresh per call. `none`, `unit`, `false`, and zero are supplied values.
+- Evaluation: the callable and supplied arguments run first in written order, then omitted defaults run once each in declaration order, before the body. Defaults run afresh per call. `none`, `void`, `false`, and zero are supplied values.
 - A failing default stops later defaults and the body. `?` in a default propagates under the function's result type.
 - Named functions, closures, and methods may declare defaults; function types and enum payloads cannot. Interface signatures permit only `= none` on Optional parameters. A concrete default wins; an interface view uses the interface's.
 - Fields have their own [defaults](../types/named-types.md#construction). Omitted arguments give no generic type evidence.
@@ -120,14 +120,14 @@ Evaluation follows source order; named arguments never reorder it.
 
 A failed or nonreturning argument prevents later arguments and the call. Constructor fields follow the same rule.
 
-## Unit and Never
+## Void and Never
 
-`unit` is the single value of `Unit`. A `Unit` function may `return`, `return unit`, or fall off the end. A function returning `Unit!` (or `Unit!E`) may fall off the end too, or write a bare `return`; both return `ok(unit)`. Other functions must return a compatible value on every reachable exit; bare `return` and reachable fallthrough are errors. Multiline bodies need explicit `return`.
+`Void` is a value type with exactly one value, written `void`; it is not an uninhabited type (that is `Never`). A `Void` function may `return`, `return`, or fall off the end. A function returning `Void!` (or `Void!E`) may fall off the end too, or write a bare `return`; both return `ok()`, which can also be written `ok()`. Other functions must return a compatible value on every reachable exit; bare `return` and reachable fallthrough are errors. Multiline bodies need explicit `return`.
 
 ```manuscript
 import panic from "@std/core.ms"
 
-fn check_positive(value: Int) Unit:
+fn check_positive(value: Int) Void:
     if not (value > 0):
         return panic(message: "check failed")
 

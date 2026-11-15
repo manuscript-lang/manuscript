@@ -2096,13 +2096,13 @@ impl<'a> FnLower<'a> {
                 }
                 self.stmts(stmts)?;
                 if !self.dead {
-                    // Falling off the end returns Unit.
+                    // Falling off the end returns Void.
                     let u = self.b.unit();
                     let ret = self.ret_ty;
                     if let TyKind::Alt(a) = self.b.m.types.kind(ret).clone() {
-                        // A test, or a `Unit!` function, that finishes returns `ok(unit)`.
+                        // A test, or a `Void!` function, that finishes returns `ok(unit)`.
                         let ok = self.b.m.alts[a.index()].ok_case().ok_or_else(|| {
-                            Error::new("a test or Unit! function must return a Result")
+                            Error::new("a test or Void! function must return a Result")
                         })?;
                         let v = self.b.alt_new(a, ok as u32, &[u]);
                         self.emit_return(Some(Val { v, own: true }));
@@ -2111,7 +2111,7 @@ impl<'a> FnLower<'a> {
                     if c.kind == CallableKind::Test {
                         return Err(Error::new("a test must return a Result"));
                     }
-                    if ret != MTy::UNIT {
+                    if ret != MTy::VOID {
                         return Err(Error::new(format!(
                             "function {} can fall off its end",
                             self.syms.str(c.name)

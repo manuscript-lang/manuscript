@@ -1,4 +1,4 @@
-fn grow(var rows: List[List[Int]], extra: List[Int]) Unit:
+fn grow(var rows: List[List[Int]], extra: List[Int]) Void:
     rows.append(extra.clone())
 
 fn f() Int:

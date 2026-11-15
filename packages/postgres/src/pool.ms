@@ -26,7 +26,7 @@ fn drain(
 	cause: Error,
 	var requests: ReadStream[Statement],
 	var replies: WriteStream[Reply],
-) Unit!:
+) Void!:
 	for _request in requests: replies.write(failed(cause.clone()))?
 	return replies.close()
 
@@ -35,7 +35,7 @@ fn serve(
 	var conn: Conn,
 	var requests: ReadStream[Statement],
 	var replies: WriteStream[Reply],
-) Unit!:
+) Void!:
 	for request in requests:
 		result := conn.query(request.sql, request.params)
 
@@ -53,7 +53,7 @@ fn worker(
 	var settings: ReadStream[Config],
 	var requests: ReadStream[Statement],
 	var replies: WriteStream[Reply],
-) Unit!:
+) Void!:
 	config := settings.next()?
 	if config.is_none(): return replies.close()
 
@@ -66,7 +66,7 @@ fn worker(
 export type Slot:
 	requests: WriteStream[Statement]
 	replies: ReadStream[Reply]
-	task: Promise[Unit]
+	task: Promise[Void]
 
 // A fixed-size pool; owned by one task. Statements go to workers in turn.
 export opaque type Pool:
@@ -147,10 +147,10 @@ fn var Pool.query_all(statements: List[Statement]) List[Rows]!:
 	return ok(results)
 
 // Ends the workers and closes their connections. Closing twice is harmless.
-fn var Pool.close() Unit!:
+fn var Pool.close() Void!:
 	for i in 0..self.slots.length():
 		self.slots[i].requests.close()?
 	for i in 0..self.slots.length():
 		self.slots[i].task.wait()?
 	self.slots = []
-	return ok(unit)
+	return ok()

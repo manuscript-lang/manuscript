@@ -44,7 +44,7 @@ type Options:
 options := Options(count: 5)  // total defaults to 6
 ```
 
-An optional field with no explicit default is `none` when omitted. A default may use earlier fields and module declarations, but not itself or later fields. It is evaluated on each construction, so collection defaults are fresh. Any supplied value, even `unit`, `none`, or zero, skips the default. Generic arguments never come from defaults.
+An optional field with no explicit default is `none` when omitted. A default may use earlier fields and module declarations, but not itself or later fields. It is evaluated on each construction, so collection defaults are fresh. Any supplied value, even `void`, `none`, or zero, skips the default. Generic arguments never come from defaults.
 
 ## Mutation and cloning
 
@@ -58,7 +58,7 @@ type Customer:
     name: String
     email: String?
 
-fn main() Unit:
+fn main() Void:
     original := Customer("Ada")
     var updated = original.clone()
     updated.name = "Grace"
@@ -75,12 +75,12 @@ Methods are receiver methods, `fn Type.name(...)` ([methods](contracts.md#method
 
 ```manuscript
 interface Counter:
-    var fn increment() Unit
+    var fn increment() Void
 
 type Val:
     val: Int
 
-fn var Val.increment() Unit:
+fn var Val.increment() Void:
     self.val = self.val + 1
 ```
 
@@ -102,7 +102,7 @@ type Report:
     title: String
     rows: List[Int]
 
-fn main() Unit:
+fn main() Void:
     report := Report("scores", [3, 4])
     batches := [report.rows]
     print(report.title)
@@ -135,8 +135,8 @@ import Closeable from "@std/core.ms"
 type Door:
     id: Int
 
-fn var Door.close() Unit!:
-    return ok(unit)
+fn var Door.close() Void!:
+    return ok()
 
 type Room:
     door: Door

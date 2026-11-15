@@ -8,19 +8,19 @@ import stdout from "@std/io/io.ms"
 import Connection, connect, serve from "@std/net/net.ms"
 import nanoseconds, sleep from "@std/time.ms"
 
-fn send(var conn: Connection, text: String) Unit!:
+fn send(var conn: Connection, text: String) Void!:
     conn.output.write(text.to_bytes())?
     return conn.output.flush()
 
 type Reporter:
     name: String
 
-fn var Reporter.close() Unit!:
+fn var Reporter.close() Void!:
     _line := stdout().write("{self.name} cleanup ran\n")
 
 fn handle(request: HttpRequest) HttpResponse:
     var _reporter = Reporter("handler")
-    _ := sleep(nanoseconds(30000000000)).wait()
+    void sleep(nanoseconds(30000000000)).wait()
     _reporter.close().get(none)
     return HttpResponse(200, headers(), "late\n".to_bytes())
 
@@ -32,9 +32,9 @@ export fn main() Int:
             _sent := send(var conn, "GET /slow HTTP/1.1\r\nHost: t\r\n\r\n")
 
             // Let the handler start, then leave without waiting for the response.
-            _ := sleep(nanoseconds(100000000)).wait()
+            void sleep(nanoseconds(100000000)).wait()
             conn.close().get(none)
-            _ := sleep(nanoseconds(500000000)).wait()
+            void sleep(nanoseconds(500000000)).wait()
 
             _done := stdout().write("done\n")
             server.close().get(none)

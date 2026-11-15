@@ -124,14 +124,14 @@ type Compressing:
 	encoder: NativeEncoder?
 	failure: Error?
 
-fn var Compressing.step(value: Bytes, var out: List[Bytes]) Unit!:
+fn var Compressing.step(value: Bytes, var out: List[Bytes]) Void!:
 	if failure := self.failure: return error(failure.clone())
 
 	if encoder := self.encoder:
 		packed := msstd_compress_encoder_push(encoder, value)
 		if not packed.is_empty(): out.append(packed)
 
-fn var Compressing.finish(var out: List[Bytes]) Unit!:
+fn var Compressing.finish(var out: List[Bytes]) Void!:
 	if failure := self.failure: return error(failure.clone())
 
 	if encoder := self.encoder:
@@ -160,14 +160,14 @@ type Decompressing:
 	decoder: NativeDecoder?
 	failure: Error?
 
-fn var Decompressing.step(value: Bytes, var out: List[Bytes]) Unit!:
+fn var Decompressing.step(value: Bytes, var out: List[Bytes]) Void!:
 	if failure := self.failure: return error(failure.clone())
 
 	if decoder := self.decoder:
 		plain := msstd_compress_decoder_push(decoder, value)?
 		if not plain.is_empty(): out.append(plain)
 
-fn var Decompressing.finish(var out: List[Bytes]) Unit!:
+fn var Decompressing.finish(var out: List[Bytes]) Void!:
 	if failure := self.failure: return error(failure.clone())
 
 	if decoder := self.decoder:
@@ -287,8 +287,8 @@ type TarEntries:
 
 // Fails with `EOVERFLOW` when a member of `size` data bytes exceeds
 // `max_entry_bytes` or would take the archive past `max_bytes`.
-fn TarEntries.check_size(size: Int) Unit!:
-	over: Unit! := error(Error("archive: limit exceeded", kind: "EOVERFLOW"))
+fn TarEntries.check_size(size: Int) Void!:
+	over: Void! := error(Error("archive: limit exceeded", kind: "EOVERFLOW"))
 	if most := self.options.max_entry_bytes:
 		if size > most: return over
 	if most := self.options.max_bytes:
@@ -353,8 +353,8 @@ fn TarEntries.member_length(ended: Bool) Int!:
 
 // Applies `unpack`'s whole-archive path rules across members: no duplicate path, no
 // file that is also a directory, and no entry below a file.
-fn var TarEntries.admit(path: String, directory: Bool) Unit!:
-	invalid: Unit! := error(Error("archive: invalid archive", kind: "EBADMSG"))
+fn var TarEntries.admit(path: String, directory: Bool) Void!:
+	invalid: Void! := error(Error("archive: invalid archive", kind: "EBADMSG"))
 	if self.names.contains(path.clone()): return invalid
 	if not directory and self.parents.contains(path.clone()): return invalid
 
@@ -374,7 +374,7 @@ fn var TarEntries.admit(path: String, directory: Bool) Unit!:
 
 // Emits the members the buffer holds completely; `ended` says no more input will
 // come.
-fn var TarEntries.drain(var out: List[ArchiveEntry], ended: Bool) Unit!:
+fn var TarEntries.drain(var out: List[ArchiveEntry], ended: Bool) Void!:
 	while true:
 		if (self.buffer.length() >= 512 and tar_is_zero(self.buffer.slice(0, 512)?)):
 			self.done = true
@@ -409,17 +409,17 @@ fn var TarEntries.drain(var out: List[ArchiveEntry], ended: Bool) Unit!:
 				Error("archive: limit exceeded", kind: "EOVERFLOW")
 			)
 
-fn var TarEntries.step(value: Bytes, var out: List[ArchiveEntry]) Unit!:
-	if self.done: return ok(unit)
+fn var TarEntries.step(value: Bytes, var out: List[ArchiveEntry]) Void!:
+	if self.done: return ok()
 
 	self.buffer = self.buffer.concat(value)
 	return self.drain(var out, false)
 
-fn var TarEntries.finish(var out: List[ArchiveEntry]) Unit!:
-	if self.done: return ok(unit)
+fn var TarEntries.finish(var out: List[ArchiveEntry]) Void!:
+	if self.done: return ok()
 
 	self.drain(var out, true)?
-	if self.done or self.buffer.is_empty(): return ok(unit)
+	if self.done or self.buffer.is_empty(): return ok()
 
 	return error(Error("archive: truncated tar", kind: "EBADMSG"))
 

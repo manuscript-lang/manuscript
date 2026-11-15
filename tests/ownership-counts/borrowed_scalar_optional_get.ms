@@ -8,14 +8,14 @@ import Closeable, print from "@std/core.ms"
 type Marker:
 	id: Int
 
-fn var Marker.close() Unit!:
+fn var Marker.close() Void!:
 	print("close {self.id}")
 
-fn inspect(value: Marker?) Unit:
+fn inspect(value: Marker?) Void:
 	print("value {value.get().id}")
 	print("still present {value.is_some()}")
 
-fn main() Unit:
+fn main() Void:
 	value: Marker? := Marker(5)
 	inspect(value)
 	print("after inspect")

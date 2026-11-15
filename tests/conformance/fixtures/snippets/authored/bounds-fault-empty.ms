@@ -9,5 +9,5 @@ fn last_after_loop(a: List[Int]) Int:
         t = t + a[i]
     return t + a[a.length() - 1]
 
-fn main() Unit:
-    _ := stdout().write("{last_after_loop([])}\n")
+fn main() Void:
+    void stdout().write("{last_after_loop([])}\n")

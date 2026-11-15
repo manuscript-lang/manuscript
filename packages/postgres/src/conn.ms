@@ -83,8 +83,8 @@ fn protocol(what: String) Error:
 
 // Makes at least `count` unread bytes available, joining chunks once so a large message
 // costs linear time.
-fn var Conn.need(count: Int) Unit!:
-	if self.buffer.length() - self.pos >= count: return ok(unit)
+fn var Conn.need(count: Int) Void!:
+	if self.buffer.length() - self.pos >= count: return ok()
 
 	var joined = BytesBuilder()
 	joined.append_bytes(self.buffer.slice(self.pos, self.buffer.length())?)
@@ -106,7 +106,7 @@ fn var Conn.need(count: Int) Unit!:
 
 	self.buffer = joined.build()
 	self.pos = 0
-	return ok(unit)
+	return ok()
 
 // Reads the next message, skipping notices, parameter changes and ignorable messages. A
 // server error arrives as `ErrorResponse`, since the server keeps the stream in step
@@ -136,7 +136,7 @@ fn var Conn.read() Backend!:
 
 	return error(protocol("unreachable"))
 
-fn var Conn.send(data: Bytes) Unit!:
+fn var Conn.send(data: Bytes) Void!:
 	self.net.output.write(data)?
 
 // Asks for TLS on the plain connection (SSLRequest), then upgrades the same socket. The
@@ -179,7 +179,7 @@ export fn open(config: Config) Conn!:
 	conn.authenticate(config)?
 	return ok(conn)
 
-fn var Conn.authenticate(config: Config) Unit!:
+fn var Conn.authenticate(config: Config) Void!:
 	var scram = scram_start(config.password.clone())?
 	var in_scram = false
 	var server_verified = false
@@ -245,11 +245,11 @@ fn var Conn.authenticate(config: Config) Unit!:
 				self.secret = secret
 			Backend.ReadyForQuery(status):
 				self.status = status
-				return ok(unit)
+				return ok()
 			Backend.ErrorResponse(fields): return error(server_error(fields))
 			_: continue
 
-	return ok(unit)
+	return ok()
 
 // Reads messages up to ReadyForQuery, collecting rows. A server error or a value that
 // cannot be decoded is remembered, and the first one is returned once the server has
@@ -313,20 +313,20 @@ fn var Conn.query(sql: String, params: List[Value]) Rows!:
 	self.send(out.build())?
 	return self.collect([])
 
-fn var Conn.begin() Unit!:
-	_ := self.simple("BEGIN")?
-	return ok(unit)
+fn var Conn.begin() Void!:
+	void self.simple("BEGIN")?
+	return ok()
 
-fn var Conn.commit() Unit!:
-	_ := self.simple("COMMIT")?
-	return ok(unit)
+fn var Conn.commit() Void!:
+	void self.simple("COMMIT")?
+	return ok()
 
-fn var Conn.rollback() Unit!:
-	_ := self.simple("ROLLBACK")?
-	return ok(unit)
+fn var Conn.rollback() Void!:
+	void self.simple("ROLLBACK")?
+	return ok()
 
-fn var Conn.close() Unit!:
-	_ := self.send(terminate()?)
+fn var Conn.close() Void!:
+	void self.send(terminate()?)
 	return self.net.close()
 
 // A statement parsed once on the server and run many times.
@@ -380,7 +380,7 @@ fn var Conn.transaction[T](body: fn(var Conn) T!) T!:
 	result := body(var self)
 
 	if result.is_error():
-		_ := self.rollback()
+		void self.rollback()
 		return result
 
 	self.commit()?

@@ -10,12 +10,12 @@ fn bump(var cs: List[Counter]) Int:
     c.tags.append("x")
     return cs[0].count
 
-fn grow(var rows: List[List[Int]]) Unit:
+fn grow(var rows: List[List[Int]]) Void:
     var head = rows[0]
     head.append(5)
     rows.append([9])
 
-fn main() Unit:
+fn main() Void:
     var cs = [Counter(count: 1, tags: [])]
     n := bump(var cs)
     var rows = [[1], [2]]
@@ -36,6 +36,6 @@ fn main() Unit:
     if var last = xs[xs.length() - 1]?:
         last.append(4)
 
-    _ := stdout().write(
+    void stdout().write(
         "{n} {cs[0].count} {cs[0].tags} {rows} {got} {m.get("a")} {xs}\n"
     )

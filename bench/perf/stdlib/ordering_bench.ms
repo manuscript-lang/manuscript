@@ -2,7 +2,7 @@ import keep, measure from "@std/test/bench.ms"
 
 // `a.min(b)` and `a.clamp(low, high)` against the same comparison written with `if`; both should cost the same.
 bench "ordering.min_method":
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		var total = 0
 		for i in 0..1000000:
 			total += ((i * 7919) % 10007).min(5000)
@@ -11,7 +11,7 @@ bench "ordering.min_method":
 	measure(1000000, work)?
 
 bench "ordering.min_if":
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		var total = 0
 
 		for i in 0..1000000:
@@ -27,7 +27,7 @@ bench "ordering.min_if":
 	measure(1000000, work)?
 
 bench "ordering.clamp_method":
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		var total = 0
 		for i in 0..1000000:
 			total += ((i * 7919) % 10007).clamp(2000, 8000)
@@ -36,7 +36,7 @@ bench "ordering.clamp_method":
 	measure(1000000, work)?
 
 bench "ordering.clamp_if":
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		var total = 0
 
 		for i in 0..1000000:

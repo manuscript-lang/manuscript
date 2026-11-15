@@ -63,7 +63,7 @@ export fn retry[T, E: Clonable](
 		if result.is_error():
 			if accepts := retryable:
 				if not accepts(result.err()): return result
-			sleep(jittered(policy, attempt)).wait().get(unit)
+			void sleep(jittered(policy, attempt)).wait()
 			attempt += 1
 		else:
 			return result
@@ -83,7 +83,7 @@ A token bucket: holds up to `burst` tokens and gains one every `interval`. Each 
 var limiter = rate_limiter(10, burst: 20)
 for url in urls:
     limiter.acquire()
-    _ := fetch(url).wait()?
+    void fetch(url).wait()?
 ```
 */
 export type RateLimiter:
@@ -97,10 +97,10 @@ export type RateLimiter:
 	stamp: Instant
 
 // Adds the tokens earned since the last refill.
-fn var RateLimiter.refill() Unit:
+fn var RateLimiter.refill() Void:
 	now := monotonic()
 	earned := now.difference(self.stamp).nanos / self.interval.nanos.max(1)
-	if earned <= 0: return unit
+	if earned <= 0: return
 
 	// Compare with remaining room before adding: a valid large burst can overflow
 	// the sum.
@@ -121,10 +121,10 @@ fn var RateLimiter.try_acquire() Bool:
 
 // Waits until a token is available, then takes it. The wait ends when the task is
 // cancelled.
-fn var RateLimiter.acquire() Unit:
+fn var RateLimiter.acquire() Void:
 	while not self.try_acquire():
 		ready := self.stamp.shift(self.interval)
-		sleep(ready.difference(monotonic()).max(Duration(nanos: 1))).wait().get(unit)
+		void sleep(ready.difference(monotonic()).max(Duration(nanos: 1))).wait()
 
 // A rate limiter that allows `count` uses per second with room for `burst` at once; it
 // starts full. `count` and `burst` must be at least 1.
@@ -263,10 +263,10 @@ fn var Throttle.allow() Bool:
 
 // Waits until an action may happen, then counts it. The wait ends when the task is
 // cancelled.
-fn var Throttle.wait() Unit:
+fn var Throttle.wait() Void:
 	if previous := self.last:
 		remaining := self.interval.subtract(monotonic().difference(previous))
 		if remaining.nanos > 0:
-			sleep(remaining).wait().get(unit)
+			void sleep(remaining).wait()
 
 	self.last = monotonic()

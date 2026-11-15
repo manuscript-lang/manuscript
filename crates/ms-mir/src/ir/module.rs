@@ -243,7 +243,7 @@ impl Module {
 
     fn needs_drop_in(&self, ty: Ty, seen: &mut Vec<Ty>) -> bool {
         match self.types.kind(ty) {
-            TyKind::Unit
+            TyKind::Void
             | TyKind::Bool
             | TyKind::Int
             | TyKind::Int8

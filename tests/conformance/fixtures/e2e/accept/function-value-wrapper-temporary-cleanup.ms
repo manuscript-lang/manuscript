@@ -10,7 +10,7 @@ type Resource:
 	id: Int
 	path: String
 
-fn var Resource.close() Unit!:
+fn var Resource.close() Void!:
 	append_file(self.path, "{self.id},").wait()?
 	if self.id == 98: return error(Error("failed close"))
 
@@ -33,16 +33,16 @@ fn accepted() Int!: ok(1)
 
 fn faulted() Int: [1].get(3)
 
-fn later_error(reader: fn(Resource?, Resource?, Int) Bool, path: String) Unit!:
+fn later_error(reader: fn(Resource?, Resource?, Int) Bool, path: String) Void!:
 	_used := reader(present(path, 10), present(path, 11), rejected()?)
 
-fn later_success(reader: fn(Resource?, Resource?, Int) Bool, path: String) Unit!:
+fn later_success(reader: fn(Resource?, Resource?, Int) Bool, path: String) Void!:
 	_used := reader(present(path, 12), present(path, 13), accepted()?)
 
-fn later_fault(reader: fn(Resource?, Resource?, Int) Bool, path: String) Unit:
+fn later_fault(reader: fn(Resource?, Resource?, Int) Bool, path: String) Void:
 	_used := reader(present(path, 14), present(path, 15), faulted())
 
-fn new_owner_fault(path: String) Unit:
+fn new_owner_fault(path: String) Void:
 	create := fn(value: Resource?, target: String) Resource:
 		if value.is_some(): return Resource(50, target.clone())
 		return Resource(51, target.clone())
@@ -50,7 +50,7 @@ fn new_owner_fault(path: String) Unit:
 	owner := create(present(path, 49), path)
 	_used := owner.id + faulted()
 
-fn failed_close(path: String) Unit:
+fn failed_close(path: String) Void:
 	owner := Resource(99, path.clone())
 	reader := fn(value: Resource?) Bool: value.is_some()
 	_used := reader(present(path, 98))
@@ -91,11 +91,11 @@ test "function dispatch errors and faults retain temporary cleanup":
 	path := "{directory.path()}/log"
 	write_file(path, "").wait()?
 
-	reject := fn(value: Resource?) Unit!:
+	reject := fn(value: Resource?) Void!:
 		if value.is_some(): return error(Error("expected"))
-		return ok(unit)
+		return ok()
 
-	broken := fn(value: Resource?) Unit:
+	broken := fn(value: Resource?) Void:
 		if value.is_some(): _bad := [1].get(3)
 	expect_equal(reject(present(path, 20)).is_error(), true)?
 
@@ -147,7 +147,7 @@ test "function Result and loop condition temporaries close each time":
 
 	expect_equal(log_text(path)?, "70,80,80,80,")?
 
-fn named_conversion_calls(path: String) Unit!:
+fn named_conversion_calls(path: String) Void!:
 	named := Resource(110, path.clone())
 	lambda := fn(value: Resource?) Bool: value.is_some()
 	source := observed_default

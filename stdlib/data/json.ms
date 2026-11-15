@@ -166,7 +166,7 @@ return a decoded `Request` in a `Result` (`?` passes no expected type, so write 
 apply to the document before decoding.
 
 - A record is an object. Members may appear in any order. An absent member takes the field's default,
-  else `none` for an `Optional` field. An absent `Unit` field becomes `unit`; any other absent
+  else `none` for an `Optional` field. An absent `Void` field becomes `void`; any other absent
   required field returns `EBADMSG`. A member that is not a field is ignored, unless
   `ignore_unknown_fields` is `false`, which makes it return `EBADMSG`.
 - An alternative case without payload is its name as a string; one with payload is externally tagged,
@@ -236,7 +236,7 @@ export interface JsonEncode:
 Encodes a `Data` value as JSON text; a type that is not `Data` is rejected at compile time.
 
 - Record fields appear in declaration order. A field holding `none` is omitted; so is a field
-  holding a value with no JSON form (`Unit`).
+  holding a value with no JSON form (`Void`).
 - `none` elsewhere (a list element, the root) is `null`, as is a no-form list element.
   `T??` is allowed: a present `none` is `null` and an absent value is omitted.
 - A root value with no JSON form returns `EBADMSG`.
@@ -258,7 +258,7 @@ Encodes a `Data` value as JSON text; a type that is not `Data` is rejected at co
   prevents cyclic values; each contained value is encoded where it appears.
 
 `strict` makes any value without a JSON form, anywhere in the document, return `EBADMSG` instead
-of being omitted or written as `null`. This covers `Unit`; functions, resources and interface values
+of being omitted or written as `null`. This covers `Void`; functions, resources and interface values
 fail the `Data` bound at compile time. A field holding `none` is still omitted.
 
 `indent` pretty-prints with that many spaces per level, at most 10; none or 0 is compact. Empty
@@ -308,7 +308,7 @@ type JsonReading[T: Data]:
 	finished: Bool
 	failure: Error?
 
-fn var JsonReading[T].reset() Unit:
+fn var JsonReading[T].reset() Void:
 	self.pending = BytesBuilder()
 	self.size = 0
 	self.depth = 0
@@ -316,7 +316,7 @@ fn var JsonReading[T].reset() Unit:
 	self.in_string = false
 	self.escaped = false
 
-fn var JsonReading[T].fail(cause: Error) Unit!:
+fn var JsonReading[T].fail(cause: Error) Void!:
 	// Dropping the partial value releases its buffered bytes.
 	self.reset()
 	self.failure = cause.clone()
@@ -392,7 +392,7 @@ fn var JsonReading[T].advance(byte: UInt8) T?!:
 	value := self.complete()?
 	return ok(value)
 
-fn var JsonReading[T].step(value: Bytes, var out: List[T]) Unit!:
+fn var JsonReading[T].step(value: Bytes, var out: List[T]) Void!:
 	if self.finished: return error(Error("JSON: invalid input", kind: "EINVAL"))
 	if failure := self.failure: return error(failure.clone())
 
@@ -402,12 +402,12 @@ fn var JsonReading[T].step(value: Bytes, var out: List[T]) Unit!:
 
 		if found := stepped.get(none): out.append(found)
 
-fn var JsonReading[T].finish(var out: List[T]) Unit!:
+fn var JsonReading[T].finish(var out: List[T]) Void!:
 	if self.finished: return error(Error("JSON: invalid input", kind: "EINVAL"))
 	if failure := self.failure: return error(failure.clone())
 
 	self.finished = true
-	if self.mode == 0: return ok(unit)
+	if self.mode == 0: return ok()
 	if self.mode != 3: return self.fail(Error("JSON: invalid data", kind: "EBADMSG"))
 
 	completed := self.complete()
@@ -480,14 +480,14 @@ type JsonLines[T: Data]:
 	output: WriteStream[Bytes]
 	max_bytes: Int?
 
-fn var JsonLines[T].write(value: T) Unit!:
+fn var JsonLines[T].write(value: T) Void!:
 	text := stringify[T](value, StringifyOptions(max_bytes: self.max_bytes))?
 	return self.output.write("{text}\n".to_bytes())
 
-fn var JsonLines[T].flush() Unit!:
+fn var JsonLines[T].flush() Void!:
 	return self.output.flush()
 
-fn var JsonLines[T].close() Unit!:
+fn var JsonLines[T].close() Void!:
 	return self.output.close()
 
 /*

@@ -3,8 +3,8 @@ import Closeable from "@std/core.ms"
 type Res:
     name: String
 
-fn var Res.close() Unit!:
-    return ok(unit)
+fn var Res.close() Void!:
+    return ok()
 
 // Methods that return an owned collection or element built from the receiver's elements copy them.
 fn main() Int:

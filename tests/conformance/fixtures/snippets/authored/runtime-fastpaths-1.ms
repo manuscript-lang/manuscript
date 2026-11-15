@@ -11,10 +11,10 @@ fn compare(left: Int, right: Int) Int:
 
     return 0
 
-fn say(text: String) Unit:
+fn say(text: String) Void:
     _ignored := stdout().write(text)
 
-fn main() Unit:
+fn main() Void:
     var b = StringBuilder()
     var i = -3
 

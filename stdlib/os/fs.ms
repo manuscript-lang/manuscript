@@ -220,7 +220,7 @@ interface FileSystem:
 		destination: String,
 		options: NativeCopyOptions,
 		filter: (fn(String, String) Bool)?,
-	) Unit!
+	) Void!
 
 // The runtime handle behind a `FileHandle`.
 export extern type NativeFile
@@ -234,7 +234,7 @@ export opaque type FileHandle:
 
 // Closes the file, interrupts calls in progress, and waits for them to stop.
 // Safe to call repeatedly; later operations return EBADF.
-fn var FileHandle.close() Unit!:
+fn var FileHandle.close() Void!:
 	return msstd_io_close(self.native)
 
 /*
@@ -251,7 +251,7 @@ fn FileHandle.reader() ReadStream[Bytes]!:
 	own := self.clone()?
 	return ok(ReadStream[Bytes](FileSource(own)))
 
-// Adapts complete writes to `Error`/Unit; flush synchronizes the file.
+// Adapts complete writes to `Error`/Void; flush synchronizes the file.
 fn FileHandle.writer() WriteStream[Bytes]!:
 	own := self.clone()?
 	return ok(WriteStream[Bytes](FileSink(own)))
@@ -264,7 +264,7 @@ fn FileHandle.read(max_bytes: Int?) Bytes?!:
 // Writes all of `data` (text as UTF-8) at the current position; errors can leave a
 // prefix. Does not truncate or reposition this handle. Writes at the end only when
 // the handle was opened in an append mode.
-fn FileHandle.write(data: Writable) Unit!:
+fn FileHandle.write(data: Writable) Void!:
 	return msstd_io_write_bytes(self.native, data.as_bytes())
 
 // Reads at a nonnegative byte offset without moving the position; short/empty Bytes
@@ -275,7 +275,7 @@ fn FileHandle.read_at(offset: Int, max_bytes: Int?) Bytes!:
 // Writes all of `data` (text as UTF-8) at a nonnegative offset without moving the
 // position; a handle opened for append returns EINVAL because the host would ignore
 // the offset; errors can leave a prefix.
-fn FileHandle.write_at(offset: Int, data: Writable) Unit!:
+fn FileHandle.write_at(offset: Int, data: Writable) Void!:
 	return msstd_fs_file_write_at(self.native, offset, data.as_bytes())
 
 // Reads remaining bytes from the current position; EOF returns empty Bytes.
@@ -290,7 +290,7 @@ fn FileHandle.read_vectors(sizes: List[Int], offset: Int) List[Bytes]!:
 
 // Writes every buffer; offset -1 uses the current position. A nonnegative offset on
 // a handle opened for append returns EINVAL.
-fn FileHandle.write_vectors(buffers: List[Bytes], offset: Int) Unit!:
+fn FileHandle.write_vectors(buffers: List[Bytes], offset: Int) Void!:
 	return msstd_fs_file_write_vectors(self.native, buffers, offset)
 
 // Moves the position to `offset` bytes from `origin` and returns the new position;
@@ -304,17 +304,17 @@ fn FileHandle.stat() FileInfo!:
 
 // Sets the file length to `size` bytes, discarding the excess or extending with
 // zero bytes. The current position is not moved. A negative size returns EINVAL.
-fn FileHandle.truncate(size: Int) Unit!:
+fn FileHandle.truncate(size: Int) Void!:
 	return msstd_fs_file_truncate(self.native, size)
 
 // Flushes the file's data and metadata to stable storage.
-fn FileHandle.sync() Unit!:
+fn FileHandle.sync() Void!:
 	return msstd_fs_file_sync(self.native)
 
 // Flushes the file's data to stable storage, skipping metadata that is not needed
 // to read it back where the host allows. Hosts without a separate data sync perform
 // a full sync.
-fn FileHandle.data_sync() Unit!:
+fn FileHandle.data_sync() Void!:
 	return msstd_fs_file_data_sync(self.native)
 
 /*
@@ -343,21 +343,21 @@ fn FileHandle.lock(exclusive: Bool, timeout: Duration?) Bool!:
 
 // Releases the advisory lock this handle holds; releasing when none is held
 // succeeds.
-fn FileHandle.unlock() Unit!:
+fn FileHandle.unlock() Void!:
 	return msstd_fs_file_unlock(self.native)
 
 // Sets the permission bits of the open file to `mode` (0 through 4095).
-fn FileHandle.chmod(mode: Int) Unit!:
+fn FileHandle.chmod(mode: Int) Void!:
 	return msstd_fs_file_chmod(self.native, mode)
 
 // Sets the owner and group of the open file by numeric id; -1 leaves that id
 // unchanged. Usually needs privilege.
-fn FileHandle.chown(uid: Int, gid: Int) Unit!:
+fn FileHandle.chown(uid: Int, gid: Int) Void!:
 	return msstd_fs_file_chown(self.native, uid, gid)
 
 // Sets the access and modification times of the open file. Returns ENOTSUP on hosts
 // without descriptor timestamps.
-fn FileHandle.set_times(accessed: Timestamp, modified: Timestamp) Unit!:
+fn FileHandle.set_times(accessed: Timestamp, modified: Timestamp) Void!:
 	return msstd_fs_file_set_times(self.native, accessed, modified)
 
 // Reads from the current position to the end and returns the lines with their `\n`
@@ -374,20 +374,20 @@ type FileSource:
 fn var FileSource.next() Bytes?!:
 	return self.file.read(none)
 
-fn var FileSource.close() Unit!:
+fn var FileSource.close() Void!:
 	return self.file.close()
 
 // Complete writes to a file; `flush` synchronizes it.
 type FileSink:
 	file: FileHandle
 
-fn var FileSink.write(value: Bytes) Unit!:
+fn var FileSink.write(value: Bytes) Void!:
 	return self.file.write(value)
 
-fn var FileSink.flush() Unit!:
+fn var FileSink.flush() Void!:
 	return self.file.sync()
 
-fn var FileSink.close() Unit!:
+fn var FileSink.close() Void!:
 	return self.file.close()
 
 fn seek_origin(origin: Seek) Int:
@@ -407,7 +407,7 @@ export opaque type Directory:
 
 // Releases the directory handle. Safe to call repeatedly; further reads fail with a
 // closed error.
-fn var Directory.close() Unit!:
+fn var Directory.close() Void!:
 	msstd_fs_directory_close(self.native)
 
 // Returns the path this cursor was opened with.
@@ -457,7 +457,7 @@ fn var WatchSource.next() FileEvent?!:
 	return ok(none)
 
 // Stops the watcher and waits for its worker to stop.
-fn var WatchSource.close() Unit!:
+fn var WatchSource.close() Void!:
 	msstd_fs_watch_close(self.watcher.native)
 
 fn watch_stream(watcher: RawWatcher) ReadStream[FileEvent]:
@@ -474,8 +474,8 @@ export opaque type TemporaryDirectory:
 
 // Removes the directory and everything inside it.
 // Safe to call repeatedly.
-fn var TemporaryDirectory.close() Unit!:
-	_ := msstd_fs_temporary_close(self.native)
+fn var TemporaryDirectory.close() Void!:
+	void msstd_fs_temporary_close(self.native)
 
 // Returns the absolute path of the directory, created under the host's temporary
 // root.
@@ -651,7 +651,7 @@ export fn copy(
 	source: String,
 	destination: String,
 	options: CopyOptions = CopyOptions(),
-) Unit!:
+) Void!:
 	native := NativeCopyOptions(
 		recursive: options.recursive,
 		replace: options.replace,
@@ -672,12 +672,12 @@ export fn canonicalize(path: String) String!:
 
 // Creates one directory; recursive defaults to False, requiring its parent to exist.
 // ms: effect std.fs.write
-export fn create_directory(path: String, recursive: Bool = false) Unit!:
+export fn create_directory(path: String, recursive: Bool = false) Void!:
 	return msstd_fs_create_directory(path, recursive)
 
 // Creates a symbolic link at `path` pointing to `target`.
 // ms: effect std.fs.write
-export fn create_symlink(path: String, target: String) Unit!:
+export fn create_symlink(path: String, target: String) Void!:
 	return msstd_fs_create_link(path, target)
 
 // Lists a directory, optionally limiting the number of returned entries. A name that is
@@ -693,7 +693,7 @@ export fn list(path: String, max_entries: Int? = none) List[DirectoryEntry]!:
 type WritePermit:
 	held: Bool
 
-fn var WritePermit.close() Unit!:
+fn var WritePermit.close() Void!:
 	if self.held:
 		self.held = false
 		msstd_fs_release()
@@ -724,7 +724,7 @@ export fn read_symlink(path: String) String!:
 // trees. A missing path returns ENOENT, except that a recursive removal of a missing
 // path succeeds.
 // ms: effect std.fs.delete
-export fn remove(path: String, recursive: Bool = false) Unit!:
+export fn remove(path: String, recursive: Bool = false) Void!:
 	return msstd_fs_remove(path, recursive)
 
 // Moves `source` to `destination` using the operating system's rename, applying its
@@ -732,7 +732,7 @@ export fn remove(path: String, recursive: Bool = false) Unit!:
 // move across devices returns an error.
 // ms: effect std.fs.write
 // ms: effect std.fs.delete
-export fn rename(source: String, destination: String) Unit!:
+export fn rename(source: String, destination: String) Void!:
 	return msstd_fs_rename(source, destination)
 
 // Returns metadata for `path`. `follow_links` True (the default) describes the link
@@ -758,7 +758,7 @@ export fn temporary_directory(prefix: String) String!:
 // False, retaining an existing file.
 // `data` is text (written as UTF-8) or `Bytes`.
 // ms: effect std.fs.write
-export fn write_file(path: String, data: Writable, replace: Bool = false) Promise[Unit]:
+export fn write_file(path: String, data: Writable, replace: Bool = false) Promise[Void]:
 	payload := data.as_bytes()
 	held := msstd_fs_admit(payload.length())
 	owned := path.clone()
@@ -770,21 +770,21 @@ export fn write_file(path: String, data: Writable, replace: Bool = false) Promis
 // The work of `write_file`. The task runs at once, so the slot frees the moment the
 // write ends, not when the promise is dropped: `permit` is a local that closes at the
 // end of the call.
-fn write_held(path: String, data: Bytes, replace: Bool, held: Bool) Unit!:
+fn write_held(path: String, data: Bytes, replace: Bool, held: Bool) Void!:
 	permit := WritePermit(held: held)
 	return msstd_fs_write_file(path, data, replace)
 
 // Checks access with mode 0..7: existence 0, read 4, write 2, execute 1, or combined
 // bits. Native permissions and Windows access policy still apply.
 // ms: effect std.fs.read
-export fn access(path: String, mode: Int) Unit!:
+export fn access(path: String, mode: Int) Void!:
 	return msstd_fs_access(path, mode)
 
 // Starts appending `data` (text or `Bytes`) to the end of the file and returns its
 // promise, creating the file with mode 0600 when absent. Writes every byte or fails,
 // possibly leaving a partial append.
 // ms: effect std.fs.write
-export fn append_file(path: String, data: Writable) Promise[Unit]:
+export fn append_file(path: String, data: Writable) Promise[Void]:
 	payload := data.as_bytes()
 	held := msstd_fs_admit(payload.length())
 	owned := path.clone()
@@ -793,7 +793,7 @@ export fn append_file(path: String, data: Writable) Promise[Unit]:
 		options: PromiseOptions(placement: Placement.Here)
 	)
 
-fn append_held(path: String, data: Bytes, held: Bool) Unit!:
+fn append_held(path: String, data: Bytes, held: Bool) Void!:
 	permit := WritePermit(held: held)
 	return msstd_fs_append_file(path, data)
 
@@ -801,19 +801,19 @@ fn append_held(path: String, data: Bytes, held: Bool) Unit!:
 // follows a final symbolic link; False changes the link itself, which returns ENOTSUP
 // on hosts lacking this operation.
 // ms: effect std.fs.write
-export fn chmod(path: String, mode: Int, follow_links: Bool = true) Unit!:
+export fn chmod(path: String, mode: Int, follow_links: Bool = true) Void!:
 	return msstd_fs_chmod(path, mode, follow: follow_links)
 
 // Sets the owning user and group of `path` by numeric id; -1 leaves that id unchanged.
 // `follow_links` True (the default) follows a final symbolic link; False changes the link itself, with ENOTSUP on hosts lacking this operation.
 // Usually needs privilege, and Windows returns ENOTSUP.
 // ms: effect std.fs.write
-export fn chown(path: String, uid: Int, gid: Int, follow_links: Bool = true) Unit!:
+export fn chown(path: String, uid: Int, gid: Int, follow_links: Bool = true) Void!:
 	return msstd_fs_chown(path, uid, gid, follow: follow_links)
 
 // Sets the target size in bytes; follows a final symbolic link.
 // ms: effect std.fs.write
-export fn truncate(path: String, size: Int) Unit!:
+export fn truncate(path: String, size: Int) Void!:
 	return msstd_fs_truncate(path, size)
 
 // Sets the access and modification times of `path`. `follow_links` True (the default)
@@ -825,13 +825,13 @@ export fn set_times(
 	accessed: Timestamp,
 	modified: Timestamp,
 	follow_links: Bool = true,
-) Unit!:
+) Void!:
 	return msstd_fs_set_times(path, accessed, modified, follow: follow_links)
 
 // Creates `destination` as another name for the file at `source`. An existing
 // destination returns EEXIST; it must be on the same filesystem as `source`.
 // ms: effect std.fs.write
-export fn create_hard_link(source: String, destination: String) Unit!:
+export fn create_hard_link(source: String, destination: String) Void!:
 	return msstd_fs_hard_link(source, destination)
 
 // The runtime's mode text: `x` after the first letter makes creation exclusive.
@@ -876,7 +876,7 @@ The data goes to a new file beside `path`, is synced to stable storage, and then
 Example: `write_atomic("config.json", text).wait()`.
 */
 // ms: effect std.fs.write
-export fn write_atomic(path: String, data: Writable) Promise[Unit]:
+export fn write_atomic(path: String, data: Writable) Promise[Void]:
 	payload := data.as_bytes()
 	owned := path.clone()
 	return promise(
@@ -918,7 +918,7 @@ fn leading_scalars(text: String, count: Int) String:
 
 	return text.view(0, end).clone()
 
-fn replace_atomically(link: String, data: Bytes) Unit!:
+fn replace_atomically(link: String, data: Bytes) Void!:
 	path := through_links(link)
 	existing := stat(path)
 	var mode = 420
@@ -960,7 +960,7 @@ fn finish_atomic(
 	path: String,
 	data: Bytes,
 	mode: Int?,
-) Unit!:
+) Void!:
 	var out = file
 	var prepared = out.write(data)
 	if prepared.is_ok():
@@ -989,7 +989,7 @@ fn finish_atomic(
 // exists is not replaced by the copy fallback and returns EEXIST.
 // ms: effect std.fs.write
 // ms: effect std.fs.delete
-export fn move(source: String, destination: String) Unit!:
+export fn move(source: String, destination: String) Void!:
 	renamed := rename(source, destination)
 	if renamed.is_ok(): return renamed
 
@@ -998,7 +998,7 @@ export fn move(source: String, destination: String) Unit!:
 
 	return error(cause)
 
-fn move_by_copy(source: String, destination: String, cause: Error) Unit!:
+fn move_by_copy(source: String, destination: String, cause: Error) Void!:
 	info := stat(source, follow_links: false)
 	if info.is_error(): return error(cause)
 	if stat(destination, follow_links: false).is_ok(): return error(already_exists())

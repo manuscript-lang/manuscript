@@ -8,7 +8,7 @@ fn sample(width: Int, height: Int, mode: ColorMode) Image:
 		image.pixels[i] = ((i * 73 + i / 7) % 256).to_uint8().get()
 	return image
 
-fn check_equal(a: Image, b: Image) Unit!:
+fn check_equal(a: Image, b: Image) Void!:
 	if (
 		a.width != b.width
 		or a.height != b.height
@@ -16,7 +16,7 @@ fn check_equal(a: Image, b: Image) Unit!:
 		or a.pixels != b.pixels
 	):
 		return error(Error("rotation differs"))
-	return ok(unit)
+	return ok()
 
 test "rotations preserve every channel and their inverse":
 	for mode in [ColorMode.Gray, ColorMode.GrayAlpha, ColorMode.Rgb, ColorMode.Rgba]:

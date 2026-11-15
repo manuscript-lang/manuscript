@@ -2,5 +2,5 @@
 // conform: phase=check
 type Outcome:
     value: Int
-fn caller() Unit:
+fn caller() Void:
     Outcome(1)

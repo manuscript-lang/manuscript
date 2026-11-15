@@ -19,18 +19,18 @@ fn sample(length: Int, zero: Bool = false) Bytes:
 
 	return out.build()
 
-fn unpadded(length: Int, url: Bool) Unit!:
+fn unpadded(length: Int, url: Bool) Void!:
 	data := sample(length)
 	expected := base64_encode(data, url).replace("=", "")
 
-	fn work() Unit!:
+	fn work() Void!:
 		actual := base64_encode(data, url, false)
 		expect_equal(actual, expected)?
 		return keep(actual.length())
 
 	measure(1, work)?
 
-fn base32(length: Int, hex: Bool, padded: Bool) Unit!:
+fn base32(length: Int, hex: Bool, padded: Bool) Void!:
 	data := sample(length)
 	expected := base32_encode(data, Base32Options(hex_alphabet: hex, padded: padded))
 	expect_equal(
@@ -41,14 +41,14 @@ fn base32(length: Int, hex: Bool, padded: Bool) Unit!:
 		data,
 	)?
 
-	fn work() Unit!:
+	fn work() Void!:
 		actual := base32_encode(data, Base32Options(hex_alphabet: hex, padded: padded))
 		expect_equal(actual, expected)?
 		return keep(actual.length())
 
 	measure(1, work)?
 
-fn decode32(length: Int, hex: Bool, padded: Bool, mode: Int) Unit!:
+fn decode32(length: Int, hex: Bool, padded: Bool, mode: Int) Void!:
 	data := sample(length)
 	var text = base32_encode(data, Base32Options(hex_alphabet: hex, padded: padded))
 	if mode == 1 or mode == 7: text = "!" + ("A".repeat(text.length() - 1)?)
@@ -67,7 +67,7 @@ fn decode32(length: Int, hex: Bool, padded: Bool, mode: Int) Unit!:
 	if mode == 3: expected = error(Error("encoding: limit exceeded", kind: "EOVERFLOW"))
 	if mode == 4: expected = error(Error("encoding: invalid input", kind: "EINVAL"))
 
-	fn work() Unit!:
+	fn work() Void!:
 		actual := base32_decode(
 			text,
 			Base32Options(hex_alphabet: hex, padded: padded),
@@ -78,12 +78,12 @@ fn decode32(length: Int, hex: Bool, padded: Bool, mode: Int) Unit!:
 
 	measure(1, work)?
 
-fn encode85(length: Int) Unit!:
+fn encode85(length: Int) Void!:
 	data := sample(length)
 	expected := ascii85_encode(data)
 	expect_equal(ascii85_decode(expected)?, data)?
 
-	fn work() Unit!:
+	fn work() Void!:
 		actual := ascii85_encode(data)
 		expect_equal(actual, expected)?
 		return keep(actual.length())
@@ -96,7 +96,7 @@ fn decode85(
 	under: Bool,
 	zero: Bool = false,
 	bad: Int = 0,
-) Unit!:
+) Void!:
 	data := sample(length, zero)
 	var text = ascii85_encode(data)
 	if bad == 1: text = "v" + text
@@ -109,30 +109,30 @@ fn decode85(
 	if under: expected = error(Error("encoding: limit exceeded", kind: "EOVERFLOW"))
 	if bad != 0: expected = error(Error("encoding: invalid data", kind: "EBADMSG"))
 
-	fn work() Unit!:
+	fn work() Void!:
 		actual := ascii85_decode(text, limit)
 		expect_equal(actual, expected)?
 		return keep(if actual.is_ok(): data.length() else: 1)
 
 	measure(1, work)?
-	return ok(unit)
+	return ok()
 
-fn zero_budget85() Unit!:
+fn zero_budget85() Void!:
 	text := ascii85_encode(sample(4096))
 	expected: Bytes! := error(Error("encoding: limit exceeded", kind: "EOVERFLOW"))
 
-	fn work() Unit!:
+	fn work() Void!:
 		expect_equal(ascii85_decode(text, 0), expected)?
 		return keep(1)
 
 	measure(1, work)?
 
-fn whitespace85(bounded: Bool) Unit!:
+fn whitespace85(bounded: Bool) Void!:
 	text := " \t\r\n".repeat(16384)?
 	limit: Int? := if bounded: 0 else: none
 	expected: Bytes! := ok(Bytes([]))
 
-	fn work() Unit!:
+	fn work() Void!:
 		expect_equal(ascii85_decode(text, limit), expected)?
 		return keep(1)
 

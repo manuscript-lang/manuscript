@@ -7,7 +7,7 @@ import Closeable from "@std/core.ms"
 type Door:
     name: String
 
-fn var Door.close() Unit!:
+fn var Door.close() Void!:
     print("closed {self.name}")
 
 type Wrap[T]:
@@ -21,7 +21,7 @@ fn keep_optional[T](v: T) Int:
     _o: T? := v
     return 1
 
-fn main() Unit:
+fn main() Void:
     a := keep(Door("wrapped"))
     b := keep_optional(Door("optional"))
     c := keep(5)

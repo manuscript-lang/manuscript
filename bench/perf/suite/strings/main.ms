@@ -5,7 +5,7 @@ import StringBuilder from "@std/string_builder.ms"
 fn lcg(x: Int) Int:
 	return (x * 1103515245 + 12345) % 2147483648
 
-fn main() Unit:
+fn main() Void:
 	var x = 21
 	var words: List[String] = []
 

@@ -23,7 +23,7 @@ fn median_ns(body: fn() Int, budget: Int, runs: Int) Int:
 	sorted := samples.sorted(fn(a: Int, b: Int) Int: a.compare(b))
 	return sorted.get(sorted.length() / 2)
 
-fn say(text: String) Unit:
+fn say(text: String) Void:
 	_ignored := stdout().write(text)
 
 // The typed case: a list of records, written without building a `JsonValue` first. The
@@ -54,13 +54,13 @@ fn records_body(rows: List[Row]) fn() Int:
 		if out := stringify(rows): return out.length()
 		return 0
 
-fn bench_records(budget: Int, runs: Int) Unit:
+fn bench_records(budget: Int, runs: Int) Void:
 	rows := row_list()
 	size := records_body(rows.clone())()
 	s := median_ns(records_body(rows), budget, runs)
 	say("records\tstringify\t{s}\t{size}\n")
 
-fn bench_one(name: String, op: String, budget: Int, runs: Int) Unit:
+fn bench_one(name: String, op: String, budget: Int, runs: Int) Void:
 	if name == "records":
 		bench_records(budget, runs)
 		return
@@ -82,7 +82,7 @@ fn bench_text(
 	size: Int,
 	budget: Int,
 	runs: Int,
-) Unit:
+) Void:
 	if tree := parse(text):
 		if op == "doc":
 			d := median_ns(doc_body(text.clone()), budget, runs)
@@ -120,7 +120,7 @@ fn stringify_body(tree: JsonValue) fn() Int:
 
 // Arguments are `name` or `name:op` (op is parse or stringify); a leading `quick` makes
 // it 5 runs, no time floor.
-fn main() Unit:
+fn main() Void:
 	var budget = 1000000000
 	var runs = 5
 

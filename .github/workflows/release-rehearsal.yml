@@ -120,8 +120,9 @@ jobs:
           rm -rf site && mkdir -p "site/versions/$tag"
           tar -xzf "$archive" -C "site/versions/$tag"
           test -f "site/versions/$tag/index.html"
-          # Every absolute link in the archived book stays under its own versions/ path.
-          if grep -rhoE 'https://manuscript-lang.github.io/manuscript/[^"]*' "site/versions/$tag" --include=index.html | grep -v "/versions/$tag/" | grep -v '\.\(css\|js\|png\|svg\|ico\|json\|txt\|md\)'; then
+          # Every absolute link in the archived book stays under its own versions/ path, except the
+          # installer commands, which always name the live site root.
+          if grep -rhoE 'https://manuscript-lang.github.io/manuscript/[^"]*' "site/versions/$tag" --include=index.html | grep -v "/versions/$tag/" | grep -vE '/install\.(sh|ps1)' | grep -v '\.\(css\|js\|png\|svg\|ico\|json\|txt\|md\)'; then
             echo "the archived book links outside its own path"; exit 1
           fi
       - uses: actions/upload-artifact@v7

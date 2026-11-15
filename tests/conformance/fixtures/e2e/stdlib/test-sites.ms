@@ -27,7 +27,7 @@ fn bad() Int!:
 fn nothing() String?:
 	return none
 
-fn wrapped(actual: Bool, site: String = caller_site()) Unit!:
+fn wrapped(actual: Bool, site: String = caller_site()) Void!:
 	return expect_true(actual, site)
 
 test "a failed expectation names the line of its call":
@@ -59,7 +59,7 @@ test "repr quotes strings and spells out collections":
 test "catch_fault returns a fault message and none for a normal return":
 	message := expect_some(catch_fault(fn: panic("boom")))?
 	expect_equal(message, "boom")?
-	expect_none(catch_fault(fn: unit))?
+	expect_none(catch_fault(fn: void))?
 	expect_equal(expect_fault(fn: panic("again"))?, "again")?
 
 test "fail builds an error with a site":

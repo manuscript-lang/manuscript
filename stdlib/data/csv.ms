@@ -92,7 +92,7 @@ fn budget(limit: Int?) Int:
 	return 9223372036854775807
 
 // Delimiter: one ASCII scalar other than quote, CR, LF or NUL. Line ending: LF or CRLF.
-fn check_options(options: CsvOptions) Unit!:
+fn check_options(options: CsvOptions) Void!:
 	scalars := options.delimiter.scalar_values()
 	if scalars.length() != 1: return error(Error("CSV: invalid input", kind: "EINVAL"))
 
@@ -317,11 +317,11 @@ fn var CsvRows.boundary(data: Bytes) Int:
 
 	return cut
 
-fn CsvRows.check_size(size: Int) Unit!:
+fn CsvRows.check_size(size: Int) Void!:
 	if limit := self.max_record_bytes:
 		if size > limit: return error(Error("CSV: limit exceeded", kind: "EOVERFLOW"))
 
-fn var CsvRows.step(value: Bytes, var out: List[List[String]]) Unit!:
+fn var CsvRows.step(value: Bytes, var out: List[List[String]]) Void!:
 	cut := self.boundary(value)
 	rest := value.length() - cut
 	size := if cut == 0: self.pending_size + rest else: rest
@@ -352,7 +352,7 @@ fn var CsvRows.step(value: Bytes, var out: List[List[String]]) Unit!:
 	text := decoded.get("")
 	return write_rows(parse(text, self.options)?, var out)
 
-fn var CsvRows.finish(var out: List[List[String]]) Unit!:
+fn var CsvRows.finish(var out: List[List[String]]) Void!:
 	data := join(self.pending)
 	self.pending = []
 	self.pending_size = 0
@@ -366,10 +366,10 @@ fn var CsvRows.finish(var out: List[List[String]]) Unit!:
 	text := decoded.get("")
 	return write_rows(parse(text, self.options)?, var out)
 
-fn invalid_text() Unit!:
+fn invalid_text() Void!:
 	return error(Error("CSV: invalid UTF-8", kind: "EBADMSG"))
 
-fn write_rows(rows: List[List[String]], var out: List[List[String]]) Unit!:
+fn write_rows(rows: List[List[String]], var out: List[List[String]]) Void!:
 	for row in rows: out.append(row)
 
 /*
@@ -476,14 +476,14 @@ type CsvRowsSink:
 	output: WriteStream[Bytes]
 	options: CsvOptions
 
-fn var CsvRowsSink.write(value: List[String]) Unit!:
+fn var CsvRowsSink.write(value: List[String]) Void!:
 	text := stringify([value], self.options)?
 	return self.output.write(text.to_bytes())
 
-fn var CsvRowsSink.flush() Unit!:
+fn var CsvRowsSink.flush() Void!:
 	return self.output.flush()
 
-fn var CsvRowsSink.close() Unit!:
+fn var CsvRowsSink.close() Void!:
 	return self.output.close()
 
 /*

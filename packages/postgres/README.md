@@ -24,12 +24,12 @@ version that supports TLS.
 import Config, open from "@pg/conn.ms"
 import Value from "@pg/value.ms"
 
-fn main() Unit!:
+fn main() Void!:
     var conn = open(Config(password: "secret"))?
     rows := conn.query("select $1::int8 + 1", [Value.Int(41)])?
     print("{rows.rows[0][0]}")
     conn.close()?
-    return ok(unit)
+    return ok()
 ```
 
 `Pool` (`@pg/pool.ms`) runs statements on worker tasks that each own one connection. A connection cannot move

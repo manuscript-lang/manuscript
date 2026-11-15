@@ -40,10 +40,12 @@ runs:
         fi
         # Pull requests build programs with Cranelift (the Debug backend). Only code that is specific to the
         # LLVM release path also runs the LLVM corpus and the release gates, as main does: the LLVM backend
-        # and its glue, the LLVM driver in ms-build, the LLVM tests, and the pinned LLVM and lld tools.
+        # and its glue, the LLVM driver in ms-build, the LLVM tests, the pinned LLVM and lld tools
+        # (toolchain/lld.lock), and the glibc floor check, which only the release gates run. The rest of
+        # toolchain/ (the glibc link stubs, llvm-mingw) is not LLVM-specific.
         # Shared code (front end, runtime, build driver, CI files) is covered by main within 30 minutes.
         llvm=false
-        if git diff --name-only "$BASE" "$GITHUB_SHA" | grep -qE '^(crates/ms-mir-llvm/|crates/ms-build/src/llvm|crates/ms-clif/tests/llvm_|crates/ms-cli/tests/llvm|toolchain/)'; then
+        if git diff --name-only "$BASE" "$GITHUB_SHA" | grep -qE '^(crates/ms-mir-llvm/|crates/ms-build/src/llvm|crates/ms-clif/tests/llvm_|crates/ms-cli/tests/llvm|toolchain/(lld\.lock|check-glibc-floor\.sh))'; then
           llvm=true
         fi
         # The tutorial and stdlib examples are tested only when the files that hold them change; main runs them

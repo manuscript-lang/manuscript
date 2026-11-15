@@ -1,7 +1,7 @@
 // conform: tags=diagnostics
 // conform: phase=check
 import compress, CompressionFormat from "@std/compress.ms"
-fn explicit() Unit:
+fn explicit() Void:
     data := "".to_bytes()
     compress(data, "gzip", 6)
     compress(data, "zlib", 0, max_bytes: none)

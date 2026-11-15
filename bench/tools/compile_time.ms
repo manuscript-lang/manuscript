@@ -241,7 +241,7 @@ fn rs_fn(p: Int, f: Int, k: Int, d: List[Dep]) String:
 	b.append("›")
 	return q(b.join("\n")) + "\n"
 
-fn generate(out: String, packages: Int, files: Int, fns: Int) Unit:
+fn generate(out: String, packages: Int, files: Int, fns: Int) Void:
 	var rng = seeded(1)
 	create_directory("{out}/ms/src", recursive: true).get()
 	create_directory("{out}/go", recursive: true).get()
@@ -355,22 +355,23 @@ fn timed(
 	dir: String,
 	program: String,
 	args: List[String],
-) Result[Unit, Error]:
+) Result[Void, Error]:
 	start := now_ns()
-	_ := must(label, run_in(dir, program, args))?
+	void must(label, run_in(dir, program, args))?
+
 	seconds := (now_ns() - start).to_float() / 1000000000.0
 	print("{label} {seconds.to_fixed(2)} s")
-	return ok(unit)
+	return ok()
 
-fn drop_cache(dir: String) Unit:
-	remove("{dir}/.ms-cache", recursive: true).get(unit)
+fn drop_cache(dir: String) Void:
+	void remove("{dir}/.ms-cache", recursive: true)
 
-fn run(out: String, p: Int, f: Int, k: Int) Result[Unit, Error]:
+fn run(out: String, p: Int, f: Int, k: Int) Result[Void, Error]:
 	generate(out, p, f, k)
 
 	ms := ms_binary()
 	go := env("GO", "go")
-	_ := must("go clean", run_in("{out}/go", go, ["clean", "-cache"]))?
+	void must("go clean", run_in("{out}/go", go, ["clean", "-cache"]))?
 	timed("go cold:  ", "{out}/go", go, ["build", "-o", "../gobin", "."])?
 	timed("ms check: ", "{out}/ms", ms, ["check", "ms.toml"])?
 	timed("ms emit:  ", "{out}/ms", ms, ["emit", "ms.toml"])?
@@ -402,8 +403,8 @@ fn rust_timed(
 	out: String,
 	cargo: String,
 	args: List[String],
-) Result[Unit, Error]:
-	remove("{out}/rs/target", recursive: true).get(unit)
+) Result[Void, Error]:
+	void remove("{out}/rs/target", recursive: true)
 	return timed(label, "{out}/rs", cargo, args)
 
 fn main() Int:
@@ -422,7 +423,7 @@ fn main() Int:
 
 	if keep != "":
 		out = absolute(keep)
-		remove(out, recursive: true).get(unit)
+		void remove(out, recursive: true)
 	else:
 		out = temporary("compile-time-").get().path()
 

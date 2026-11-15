@@ -1,4 +1,4 @@
 import serve from "@std/net/http.ms"
 
-fn main() Unit:
+fn main() Void:
     return

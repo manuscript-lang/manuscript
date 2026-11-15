@@ -1,4 +1,4 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn f(value: Float?) Unit: return
-fn call() Unit: f(4)
+fn f(value: Float?) Void: return
+fn call() Void: f(4)

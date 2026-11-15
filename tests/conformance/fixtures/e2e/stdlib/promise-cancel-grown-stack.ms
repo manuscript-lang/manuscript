@@ -15,8 +15,8 @@ fn descend(n: Int) Int!:
     below := descend(n - 1)?
     return ok(below + parts.length())
 
-fn main() Unit:
+fn main() Void:
     deep := promise(fn: descend(20000))
-    _ := sleep(milliseconds(200)).wait()
+    void sleep(milliseconds(200)).wait()
     deep.cancel()
     print("{deep.wait().is_error()}")

@@ -3,8 +3,8 @@ import Closeable from "@std/core.ms"
 type Marker:
     id: Int
 
-fn var Marker.close() Unit!: ok(unit)
+fn var Marker.close() Void!: ok()
 
-fn bad() Unit:
+fn bad() Void:
     value: Marker? := Marker(1)
     operation := value.ok_or[String]

@@ -9,5 +9,5 @@ fn stride(a: List[Int]) Int:
         t = t + a[i * 3 + 2]
     return t
 
-fn main() Unit:
-    _ := stdout().write("{stride([1, 2, 3, 4, 5, 6, 7])}\n")
+fn main() Void:
+    void stdout().write("{stride([1, 2, 3, 4, 5, 6, 7])}\n")

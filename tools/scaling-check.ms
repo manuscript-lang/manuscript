@@ -86,7 +86,7 @@ fn generate(shape: String, n: Int) String:
 	return out.build()
 
 // The program every test shape starts with.
-TEST_PRELUDE := "fn sink(n: Int) Unit:\n    if n > 1000000: sink(n - 1)\n\nfn opaque(a: Int) Int:\n    if a > 1000000: return opaque(a - 1)\n    return a % 7\n\nfn run(g: fn() Unit) Unit:\n    g()\n\ntest \"scaling\":\n"
+TEST_PRELUDE := "fn sink(n: Int) Void:\n    if n > 1000000: sink(n - 1)\n\nfn opaque(a: Int) Int:\n    if a > 1000000: return opaque(a - 1)\n    return a % 7\n\nfn run(g: fn() Void) Void:\n    g()\n\ntest \"scaling\":\n"
 // Extra measurements of a shape whose ratio is over the bound.
 RETRIES := 2
 SHAPES := [
@@ -96,7 +96,7 @@ SHAPES := [
 ]
 
 // The input sizes of a shape: three that grow by 10, or fewer and smaller for a shape
-// that builds with LLVM, which is costly per unit. The Release shape stays above the
+// that builds with LLVM, which is costly per void. The Release shape stays above the
 // size where a loop-free function skips optimization (about 700 statements), so its
 // time is one regime. A test shape has one size and only has to pass: its test holds
 // hundreds of owners live across calls and branches, which overflowed the test's task
@@ -147,7 +147,7 @@ fn growth(base: Float, mid: Float, big: Float, floor: Float) Float:
 	if denominator < floor: denominator = floor
 	return (big - base) / denominator
 
-fn say(text: String) Unit:
+fn say(text: String) Void:
 	stdout().write(text).get()
 
 fn show(ratio: Float) String:

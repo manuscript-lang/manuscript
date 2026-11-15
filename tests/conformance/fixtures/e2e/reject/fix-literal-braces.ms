@@ -1,4 +1,4 @@
 // conform: tags=diagnostics,tier-core
 // conform: phase=check
-fn show() Unit:
+fn show() Void:
 	print("{ \"a\": 1 }")

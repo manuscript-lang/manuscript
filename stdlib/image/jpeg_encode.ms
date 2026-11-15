@@ -81,7 +81,7 @@ type JpegWriter:
 	acc: Int
 	count: Int
 
-fn var JpegWriter.put(code: Int, size: Int) Unit:
+fn var JpegWriter.put(code: Int, size: Int) Void:
 	self.acc = bit_or(shift_left(self.acc, size), code)
 	self.count += size
 
@@ -94,7 +94,7 @@ fn var JpegWriter.put(code: Int, size: Int) Unit:
 	self.acc = bit_and(self.acc, shift_left(1, self.count) - 1)
 
 // Pads the partial byte with 1-bits, as the format requires before a marker.
-fn var JpegWriter.align() Unit:
+fn var JpegWriter.align() Void:
 	if self.count > 0: self.put(shift_left(1, 8 - self.count) - 1, 8 - self.count)
 
 fn bit_length(value: Int) Int:
@@ -151,7 +151,7 @@ fn jpeg_emit(
 	previous: Int,
 	dc: JpegCodes,
 	ac: JpegCodes,
-) Unit:
+) Void:
 	diff := levels[0] - previous
 	size := bit_length(diff)
 	w.put(dc.code[size], dc.size[size])
@@ -177,17 +177,17 @@ fn jpeg_emit(
 
 	if run > 0: w.put(ac.code[0], ac.size[0])
 
-fn put16_be(var out: BytesBuilder, value: Int) Unit:
+fn put16_be(var out: BytesBuilder, value: Int) Void:
 	out.append(byte(bit_and(shift_right_unsigned(value, 8), 255)))
 	out.append(byte(bit_and(value, 255)))
 
-fn jpeg_marker(var out: BytesBuilder, marker: Int, body: Bytes) Unit:
+fn jpeg_marker(var out: BytesBuilder, marker: Int, body: Bytes) Void:
 	out.append(byte(255))
 	out.append(byte(marker))
 	put16_be(var out, body.length() + 2)
 	out.append_bytes(body)
 
-fn jpeg_dht(var out: BytesBuilder, class_id: Int, counts: List[Int], values: List[Int]) Unit:
+fn jpeg_dht(var out: BytesBuilder, class_id: Int, counts: List[Int], values: List[Int]) Void:
 	var body = BytesBuilder()
 	body.append(byte(class_id))
 	for c in counts:

@@ -52,7 +52,7 @@ export extern fn msstd_system_home_directory() String!
 
 export extern fn msstd_system_get_priority(pid: Int) Int!
 
-export extern fn msstd_system_set_priority(pid: Int, priority: Int) Unit!
+export extern fn msstd_system_set_priority(pid: Int, priority: Int) Void!
 
 export extern fn msstd_process_available_memory() Int!
 
