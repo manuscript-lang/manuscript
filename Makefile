@@ -156,6 +156,7 @@ agent-bench-check: build
 
 # Type-checks every benchmark project and standalone bench source so the suites cannot rot unnoticed.
 bench-check: build
+	@rm -rf bench/perf/postgres/ms/pg && cp -R packages/postgres/src bench/perf/postgres/ms/pg
 	@for t in $$(find bench/perf -name ms.toml | sort); do \
 		(cd $$(dirname $$t) && "$(RELEASE_MS)" check ms.toml) || exit 1; \
 	done
