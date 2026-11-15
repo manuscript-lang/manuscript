@@ -1,17 +1,18 @@
-name: Postgres client
+name: Packages
 
-# The Postgres client in packages/postgres is tested against a real server. It runs every night and on
-# dispatch only, not on pull requests, until the owner grants an exception to the PR time budget.
+# Fetches a package from GitHub over https, builds a service that depends on it, and runs the service against
+# a real PostgreSQL on Linux, macOS and Windows. Nightly and on dispatch only: it needs the network and a
+# database, and the pull request jobs stay offline.
 on:
   schedule:
-    - cron: '23 3 * * *'
+    - cron: '41 3 * * *'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  test:
+  service:
     name: ${{ matrix.os }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 45
@@ -39,10 +40,9 @@ jobs:
         run: |
           cargo xtask runtime
           cargo build --release --locked -p ms-cli
-      - name: Test against a real server
+      - name: Fetch the package and run the service
         shell: bash
         run: |
-          # Each runner image ships PostgreSQL somewhere different; take the newest installed.
           if [ "$RUNNER_OS" = Windows ] && ! ls -d "/c/Program Files/PostgreSQL/"*/bin > /dev/null 2>&1; then
             choco install postgresql16 --params '/Password:unused' -y --no-progress
           fi
@@ -52,11 +52,24 @@ jobs:
             macOS) PG_BIN="$(brew --prefix postgresql@16)/bin" ;;
           esac
           export PG_BIN
-          "$PG_BIN/postgres" --version
-          # initdb refuses to run as root; the hosted runners are not root.
-          vars=$(packages/postgres/tests/start-postgres.sh "$RUNNER_TEMP/pg")
+          ms="$PWD/target/release/ms"
+          export MS_PACKAGE_CACHE="$RUNNER_TEMP/packages"
+          cd examples/postgres-service
+          # With ms.lock committed, fetch downloads exactly the locked commit and checks its hash.
+          "$ms" fetch
+          # The package ships the script that starts a throwaway server.
+          hash=$(sed -n 's/.*sha256:\([0-9a-f]*\).*/\1/p' ms.lock | head -1)
+          vars=$(bash "$MS_PACKAGE_CACHE/$hash/tests/start-postgres.sh" "$RUNNER_TEMP/pg")
           export $vars
-          cd packages/postgres
-          ../../target/release/ms test
-          # The package also works as a git dependency of another project.
-          MS=../../target/release/ms bash tests/consumer/run.sh
+          "$ms" build ms.toml -o "$RUNNER_TEMP/service"
+          "$RUNNER_TEMP/service" &
+          service=$!
+          for _ in $(seq 30); do
+            curl -fsS http://127.0.0.1:8080/hello && break
+            sleep 1
+          done
+          first=$(curl -fsS http://127.0.0.1:8080/hello)
+          second=$(curl -fsS http://127.0.0.1:8080/hello)
+          kill "$service" || true
+          echo "$first / $second"
+          [ "$second" = "visit $(( ${first#visit } + 1 ))" ]
