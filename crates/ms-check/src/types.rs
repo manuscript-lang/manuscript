@@ -1616,7 +1616,34 @@ pub fn format_mismatch(syms: ms_syntax::Names, actual: &Ty, expected: &Ty) -> St
         message.push_str("; ");
         message.push_str(&hint);
     }
+    if let Some(note) = same_name_note(syms, actual, expected) {
+        message.push_str("; ");
+        message.push_str(&note);
+    }
     message
+}
+
+/// Explains a mismatch whose two sides print alike: distinct types that share a name because
+/// they are declared in different modules.
+fn same_name_note(syms: ms_syntax::Names, actual: &Ty, expected: &Ty) -> Option<String> {
+    if expected.display(syms).to_string() != actual.display(syms).to_string() {
+        return None;
+    }
+    let expected_module = declaring_module(syms, expected)?;
+    let actual_module = declaring_module(syms, actual)?;
+    Some(format!(
+        "these are different types with one name: the expected one is declared in {expected_module} and the found one in {actual_module}; import only one of them or rename one"
+    ))
+}
+
+/// The file that declares the first source-declared type inside `ty`, by file name.
+fn declaring_module(syms: ms_syntax::Names, ty: &Ty) -> Option<String> {
+    if let Some(symbol) = ty.def.as_ref().and_then(|def| def.symbol()) {
+        let file = syms.str(symbol.module);
+        let name = std::path::Path::new(file).file_name()?.to_string_lossy();
+        return Some(name.into_owned());
+    }
+    ty.args.iter().find_map(|arg| declaring_module(syms, arg))
 }
 
 /// Minimum positional arity: only a fully defaulted trailing suffix may be omitted.
