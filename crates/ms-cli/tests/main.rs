@@ -11,6 +11,7 @@ mod check_fix;
 mod cli_errors;
 mod closure_aliases;
 mod common;
+mod debugger_helpers;
 mod deep_input;
 mod default_frames;
 mod descriptor_errors;

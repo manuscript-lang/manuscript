@@ -8,33 +8,19 @@ as the language shows it. Layout rules: `ms_rt_abi::StrVal` (strings), `ms_mir::
 import gdb
 import gdb.printing
 
-STR_BORROWED = 1 << 63
-STR_INLINE = 1 << 62
-LEN_MASK = (1 << 61) - 1
-MAX_SHOWN = 200
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import manuscript_values as values  # noqa: E402
 
 
 def _u(value):
     return int(value) & 0xFFFFFFFFFFFFFFFF
 
 
-def _quote(raw):
-    text = raw.decode("utf-8", "replace")
-    escaped = text.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
-    return '"' + escaped + '"'
-
-
-def string_bytes(ptr_word, tagged):
-    """The bytes of a String value given its two words."""
-    if tagged >> 62 == 1:
-        length = (tagged >> 56) & 15
-        bits = ptr_word | ((tagged & ((1 << 56) - 1)) << 64)
-        return bits.to_bytes(16, "little")[:length]
-    length = tagged & LEN_MASK
-    if ptr_word == 0 or length == 0:
-        return b""
-    inferior = gdb.selected_inferior()
-    return bytes(inferior.read_memory(ptr_word, min(length, 1 << 20)))
+def _read(address, count):
+    return gdb.selected_inferior().read_memory(address, count)
 
 
 class StringPrinter:
@@ -43,11 +29,8 @@ class StringPrinter:
 
     def to_string(self):
         ptr, tagged = _u(self.value["ptr"]), _u(self.value["tagged"])
-        # `String?`: none is a null pointer with the static tag and length zero.
         optional = (self.value.type.strip_typedefs().tag or "").endswith("?")
-        if optional and ptr == 0 and tagged & STR_BORROWED:
-            return "none"
-        return _quote(string_bytes(ptr, tagged))
+        return values.string_text(ptr, tagged, _read, optional)
 
 
 class ListPrinter:
@@ -55,10 +38,10 @@ class ListPrinter:
         self.value = value
 
     def to_string(self):
-        return "%s of length %d" % (self.value.type.strip_typedefs().tag, _u(self.value["len"]))
+        return values.list_summary(self.value.type.strip_typedefs().tag, _u(self.value["len"]))
 
     def children(self):
-        count = min(_u(self.value["len"]), MAX_SHOWN)
+        count = values.shown(_u(self.value["len"]))
         data = self.value["ptr"]
         for i in range(count):
             yield "[%d]" % i, data[i]
@@ -73,8 +56,9 @@ class BytesPrinter:
 
     def to_string(self):
         length = _u(self.value["len"])
-        raw = bytes(gdb.selected_inferior().read_memory(_u(self.value["ptr"]), min(length, MAX_SHOWN))) if length else b""
-        return "b%s%s" % (_quote(raw), "..." if length > MAX_SHOWN else "")
+        count = values.shown(length)
+        raw = bytes(_read(_u(self.value["ptr"]), count)) if count else b""
+        return "b%s%s" % (values.quote(raw), "..." if length > count else "")
 
 
 class OptionalPrinter:
@@ -99,7 +83,8 @@ class EnumPrinter:
         self.case = cases[tag] if tag < len(cases) else None
 
     def to_string(self):
-        return self.case.name if self.case else "<bad tag %d>" % _u(self.value["tag"])
+        names = [f.name for f in self.value["payload"].type.strip_typedefs().fields()]
+        return values.enum_case(_u(self.value["tag"]), names)
 
     def children(self):
         if self.case is None:

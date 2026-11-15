@@ -20,7 +20,7 @@ Verified in `crates/ms-clif/src/dwarf.rs` and `crates/ms-mir-llvm/src/llvm_ir.rs
 2. **Two renderers**: gimli DIEs in Cranelift; `DIBasicType`/`DICompositeType`/`DIDerivedType` listed in the compile unit's `retainedTypes` in the first LLVM unit only.
 3. **Display helper** `tools/debugger/manuscript_gdb.py`: decodes the string tag bits, list length, optional and enum case from the struct names and shapes above.
 
-Stage 2 (variables): lowering records a name per MIR value and parameter; the inliner and optimizer keep it; Cranelift value labels and LLVM `dbg.value` give locations per leaf, joined with `DW_OP_piece`. Stage 3: lldb formatters and a Windows (natvis) equivalent, same shapes.
+Stage 2 (variables): lowering records a name per MIR value and parameter; the inliner and optimizer keep it; Cranelift value labels and LLVM `dbg.value` give locations per leaf, joined with `DW_OP_piece`. Stage 3 (done with stage 1's follow-up): lldb formatters on the same decoding module; no natvis, since no PDB is emitted and Windows gdb and lldb read the DWARF.
 
 ## Evidence
 
