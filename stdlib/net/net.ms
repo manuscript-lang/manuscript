@@ -713,7 +713,7 @@ fn accept_loop(listening: ServingHandle, count: Int) Void!:
 		if accepted.is_error():
 			if accepted.err().kind == "EBADF": return ok(void)
 
-			sleep(50.milliseconds()).wait().get(void)
+			void sleep(50.milliseconds()).wait()
 			continue
 
 		void accepting.deals[next].write(accepted.get())

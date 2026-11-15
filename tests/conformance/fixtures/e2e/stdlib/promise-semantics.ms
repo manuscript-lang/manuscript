@@ -185,7 +185,7 @@ fn ignore_inner(inner: Promise[Int]) Int!:
 	return ok(1)
 
 fn nap(ms: Int) Int!:
-	sleep(milliseconds(ms)).wait().get(void)
+	void sleep(milliseconds(ms)).wait()
 	return ok(ms)
 
 test "a promise that ends holding an unfinished promise cancels it instead of hanging":

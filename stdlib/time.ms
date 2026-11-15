@@ -617,7 +617,7 @@ fn Deadline.expired() Bool:
 // Suspends the current task until the deadline passes. Returns at once if it
 // already has.
 fn Deadline.wait() Void:
-	sleep(self.remaining()).wait().get(void)
+	void sleep(self.remaining()).wait()
 
 // Returns a deadline `duration` from now.
 // ms: effect std.clock.read

@@ -777,7 +777,7 @@ fn with_extra(sent: HttpHeaders, extra: HttpHeaders) HttpHeaders:
 	for name in extra.names():
 		if not all.contains(name):
 			for value in extra.values(name):
-				all.append(name, value).get(void)
+				void all.append(name, value)
 	return all
 
 // Middleware that gives every request an id: the request's own `X-Request-Id` when it

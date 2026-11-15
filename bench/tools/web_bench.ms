@@ -131,7 +131,7 @@ fn measure_server(
 	var server = background(argv, "/dev/null")?
 
 	if not wait_started(p, port):
-		server.close().get(void)
+		void server.close()
 		return invalid("{name} did not start")
 
 	pid := first_pid("^{p.w}/{name}/server")
@@ -146,7 +146,7 @@ fn measure_server(
 
 	if name == "c":
 		say("{name} threads {threads(pid.clone())} rss_kb {rss_kb(pid.clone())}")
-		server.close().get(void)
+		void server.close()
 		return ok(void)
 
 	if name != "rust":
@@ -162,7 +162,7 @@ fn measure_server(
 		say("{name} health-during-io {load(p, port, ["32", "{during}", "/health"])}")
 		mixed.wait().get(0)
 		say("{name} io-during-health {tail(read_text("{p.w}/mixed"))}")
-		mixed.close().get(void)
+		void mixed.close()
 
 	say("{name} threads {threads(pid.clone())} rss_kb {rss_kb(pid.clone())}")
 
@@ -191,7 +191,7 @@ fn measure_server(
 			* 2
 		)
 		busy.wait().get(0)
-		busy.close().get(void)
+		void busy.close()
 
 		var total = 0
 		for line in read_text("{p.w}/busy").split("\n"):
@@ -222,8 +222,8 @@ fn measure_server(
 		"{name} idle_connections {tail(read_text("{p.w}/idle.out"))} rss_kb {rss_kb(pid.clone())}"
 	)
 	say("{name} /health-with-10k-idle {load(p, port, ["64", "{seconds}", "/health"])}")
-	idle.close().get(void)
-	server.close().get(void)
+	void idle.close()
+	void server.close()
 	return ok(void)
 
 fn prepare_run(here: String, w: String) List[String]!:
@@ -273,7 +273,7 @@ fn run_all(here: String, seconds: Int) Void!:
 		measure_server(p, name, port, seconds, env("MS_THREADS", "2"))?
 		port += 1
 
-	tmp.close().get(void)
+	void tmp.close()
 
 fn cell(p: Plan, argv: List[String]) String:
 	return tail(raised(pinned(p.load_cpus.clone(), argv)).stdout)
@@ -372,8 +372,8 @@ fn fetch_all(here: String, seconds: Int) Void!:
 		say("{path} connections=1 go {go}")
 		say("{path} connections=1 ms {ms}")
 
-	server.close().get(void)
-	tmp.close().get(void)
+	void server.close()
+	void tmp.close()
 
 fn main() Int:
 	args := arguments()

@@ -363,7 +363,7 @@ fn timed(
 	return ok(void)
 
 fn drop_cache(dir: String) Void:
-	remove("{dir}/.ms-cache", recursive: true).get(void)
+	void remove("{dir}/.ms-cache", recursive: true)
 
 fn run(out: String, p: Int, f: Int, k: Int) Result[Void, Error]:
 	generate(out, p, f, k)
@@ -403,7 +403,7 @@ fn rust_timed(
 	cargo: String,
 	args: List[String],
 ) Result[Void, Error]:
-	remove("{out}/rs/target", recursive: true).get(void)
+	void remove("{out}/rs/target", recursive: true)
 	return timed(label, "{out}/rs", cargo, args)
 
 fn main() Int:
@@ -422,7 +422,7 @@ fn main() Int:
 
 	if keep != "":
 		out = absolute(keep)
-		remove(out, recursive: true).get(void)
+		void remove(out, recursive: true)
 	else:
 		out = temporary("compile-time-").get().path()
 

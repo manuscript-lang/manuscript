@@ -63,7 +63,7 @@ export fn retry[T, E: Clonable](
 		if result.is_error():
 			if accepts := retryable:
 				if not accepts(result.err()): return result
-			sleep(jittered(policy, attempt)).wait().get(void)
+			void sleep(jittered(policy, attempt)).wait()
 			attempt += 1
 		else:
 			return result
@@ -124,7 +124,7 @@ fn var RateLimiter.try_acquire() Bool:
 fn var RateLimiter.acquire() Void:
 	while not self.try_acquire():
 		ready := self.stamp.shift(self.interval)
-		sleep(ready.difference(monotonic()).max(Duration(nanos: 1))).wait().get(void)
+		void sleep(ready.difference(monotonic()).max(Duration(nanos: 1))).wait()
 
 // A rate limiter that allows `count` uses per second with room for `burst` at once; it
 // starts full. `count` and `burst` must be at least 1.
@@ -267,6 +267,6 @@ fn var Throttle.wait() Void:
 	if previous := self.last:
 		remaining := self.interval.subtract(monotonic().difference(previous))
 		if remaining.nanos > 0:
-			sleep(remaining).wait().get(void)
+			void sleep(remaining).wait()
 
 	self.last = monotonic()
