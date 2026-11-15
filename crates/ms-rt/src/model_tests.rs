@@ -431,7 +431,14 @@ fn string_list_matches_vec_model(seed: u64) {
                         cap: 0,
                     };
                     assert_eq!(
-                        msrt_list_slice(&v, d, a as i64, b as i64, &mut out),
+                        msrt_list_slice(
+                            &v,
+                            d,
+                            a as i64,
+                            b as i64,
+                            &mut out,
+                            ms_rt_abi::ErrSlot(core::ptr::null_mut())
+                        ),
                         STATUS_OK
                     );
                     assert_eq!(strings(&out), model[a..b]);
@@ -513,7 +520,13 @@ fn string_ops_match_char_model(seed: u64) {
                 let b = a + r.below(n + 1 - a);
                 let mut out = NO_STR;
                 assert_eq!(
-                    string::msrt_string_slice(s, starts[a] as i64, starts[b] as i64, &mut out),
+                    string::msrt_string_slice(
+                        s,
+                        starts[a] as i64,
+                        starts[b] as i64,
+                        &mut out,
+                        ms_rt_abi::ErrSlot(core::ptr::null_mut())
+                    ),
                     STATUS_OK
                 );
                 assert_eq!(

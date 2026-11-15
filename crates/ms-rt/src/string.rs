@@ -12,9 +12,33 @@ use crate::obj;
 use crate::utf8;
 use core::ptr::null_mut;
 use ms_rt_abi::{
-    HasRaw, Obj, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED, STATUS_OK, STATUS_OUT_OF_RANGE,
-    STR_INLINE_MAX, STR_LEN_MASK, StrVal, VecVal,
+    ErrSlot, HasRaw, Obj, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED, STATUS_OK,
+    STATUS_OUT_OF_RANGE, STR_INLINE_MAX, STR_LEN_MASK, StrVal, VecVal,
 };
+
+/// Starts the caller's `err` slot (null when it wants no text) as the empty string, which owns
+/// no allocation, so any status leaves it valid.
+///
+/// # Safety
+/// `err` is null or writable memory for one string.
+pub(crate) unsafe fn init_err(err: ErrSlot) {
+    if !err.0.is_null() {
+        // SAFETY: the caller passes writable memory for one string.
+        unsafe { err.0.write(empty()) }
+    }
+}
+
+/// Stores `msg` in the `err` slot started by [`init_err`]; the status words come first in the
+/// error the program sees, then this detail.
+///
+/// # Safety
+/// As [`init_err`].
+pub(crate) unsafe fn store_err(err: ErrSlot, msg: &str) {
+    if !err.0.is_null() {
+        // SAFETY: the caller passes writable memory for one string; the empty start owns nothing.
+        unsafe { err.0.write(from_bytes(msg.as_bytes())) }
+    }
+}
 
 /// Bytes of a string.
 ///
@@ -1613,11 +1637,21 @@ pub unsafe extern "C-unwind" fn msrt_string_repeat(
     has_max: HasRaw,
     max: i64,
     out: *mut StrVal,
+    err: ErrSlot,
 ) -> u8 {
-    // SAFETY: caller passes a live string and a writable out.
+    // SAFETY: caller passes a live string, a writable out and a null or writable err.
     unsafe {
+        init_err(err);
         let limit = if has_max.is_set() { max } else { i64::MAX };
         if count < 0 || limit < 0 {
+            store_err(
+                err,
+                &if count < 0 {
+                    std::format!("repeat count must not be negative, found {count}")
+                } else {
+                    std::format!("repeat max must not be negative, found {limit}")
+                },
+            );
             return STATUS_INVALID_INPUT;
         }
         let text = bytes(s);
@@ -1627,6 +1661,13 @@ pub unsafe extern "C-unwind" fn msrt_string_repeat(
         }
         let limit = (limit as usize).min(MAX_BYTES);
         if count as usize > limit / text.len() {
+            store_err(
+                err,
+                &std::format!(
+                    "repeating {} bytes {count} times exceeds the limit of {limit} bytes",
+                    text.len()
+                ),
+            );
             return STATUS_LIMIT_EXCEEDED;
         }
         let total = text.len() * count as usize;
@@ -2113,10 +2154,19 @@ pub unsafe extern "C-unwind" fn msrt_string_slice(
     start: i64,
     end: i64,
     out: *mut StrVal,
+    err: ErrSlot,
 ) -> u8 {
-    // SAFETY: caller passes a live string and a writable out.
+    // SAFETY: caller passes a live string, a writable out and a null or writable err.
     unsafe {
+        init_err(err);
         let Some((a, b)) = byte_range(s, start, end) else {
+            store_err(
+                err,
+                &std::format!(
+                    "slice({start}, {end}) of a string with {} bytes: bounds must satisfy 0 <= start <= end <= length (negative bounds count from the end) and fall on character boundaries",
+                    (*s).len()
+                ),
+            );
             return STATUS_OUT_OF_RANGE;
         };
         *out = sub_bytes(s, a, b);
@@ -3149,6 +3199,7 @@ pub fn count_copy(kind: usize, bytes: usize) {
 
 #[cfg(test)]
 mod tests {
+    const NO_ERR: ms_rt_abi::ErrSlot = ms_rt_abi::ErrSlot(core::ptr::null_mut());
     use super::*;
 
     #[test]
@@ -3230,7 +3281,7 @@ mod tests {
             ] {
                 let s = from_bytes(text.as_bytes());
                 let mut out = empty();
-                let status = msrt_string_slice(&s, a, b, &mut out);
+                let status = msrt_string_slice(&s, a, b, &mut out, NO_ERR);
                 match want {
                     Some(w) => {
                         assert_eq!(status, STATUS_OK, "{text:?}[{a}..{b}]");
@@ -3716,7 +3767,7 @@ mod tests {
                 for j in i..n + 2 {
                     let mut o = NO_STR;
                     // SAFETY: `st` creates live strings and `o` is writable.
-                    let got = unsafe { msrt_string_slice(st(text), i, j, &mut o) };
+                    let got = unsafe { msrt_string_slice(st(text), i, j, &mut o, NO_ERR) };
                     let want = text.get(i as usize..j as usize).filter(|_| j <= n);
                     match want {
                         Some(w) => {
@@ -4017,10 +4068,13 @@ mod tests {
             );
             assert_eq!(ret(|o| msrt_string_pad_end(st("7"), -2, st("ab"), o)), "7");
             assert_eq!(ret(|o| msrt_string_pad_end(st("7"), 4, st(""), o)), "7");
-            assert_eq!(msrt_string_slice(st("héllo"), 1, -1, &mut o), STATUS_OK);
+            assert_eq!(
+                msrt_string_slice(st("héllo"), 1, -1, &mut o, NO_ERR),
+                STATUS_OK
+            );
             assert_eq!(txt(&o), "éll");
             assert_eq!(
-                msrt_string_slice(st("abc"), 2, 1, &mut o),
+                msrt_string_slice(st("abc"), 2, 1, &mut o, NO_ERR),
                 STATUS_OUT_OF_RANGE
             );
             assert_eq!(ret(|o| msrt_string_reverse(st("aé"), o)), "éa");
@@ -4035,7 +4089,7 @@ mod tests {
                 for count in [0, 1, 2, 3, 5, 9, 17, 257] {
                     let mut out = NO_STR;
                     assert_eq!(
-                        msrt_string_repeat(st(pattern), count, HasRaw(0), 0, &mut out),
+                        msrt_string_repeat(st(pattern), count, HasRaw(0), 0, &mut out, NO_ERR),
                         STATUS_OK
                     );
                     assert_eq!(txt(&out), pattern.repeat(count as usize));
@@ -4056,15 +4110,15 @@ mod tests {
             );
             let mut out = NO_STR;
             assert_eq!(
-                msrt_string_repeat(st("ab"), -1, HasRaw(0), 0, &mut out),
+                msrt_string_repeat(st("ab"), -1, HasRaw(0), 0, &mut out, NO_ERR),
                 STATUS_INVALID_INPUT
             );
             assert_eq!(
-                msrt_string_repeat(st("ab"), 3, HasRaw(1), 5, &mut out),
+                msrt_string_repeat(st("ab"), 3, HasRaw(1), 5, &mut out, NO_ERR),
                 STATUS_LIMIT_EXCEEDED
             );
             assert_eq!(
-                msrt_string_repeat(st(""), 3, HasRaw(1), 0, &mut out),
+                msrt_string_repeat(st(""), 3, HasRaw(1), 0, &mut out, NO_ERR),
                 STATUS_OK
             );
             assert_eq!(txt(&out), "");

@@ -781,6 +781,13 @@ pub unsafe extern "C-unwind" fn msrt_list_copy_within(
 
 // ---- derived lists ----
 
+/// The detail of a failed list `slice`: the bounds asked for and the length they missed.
+fn slice_bounds_message(start: i64, end: i64, len: usize) -> std::string::String {
+    std::format!(
+        "slice({start}, {end}) of a list with {len} items: bounds must satisfy 0 <= start <= end <= length (negative bounds count from the end)"
+    )
+}
+
 /// `slice(start, end)`: status protocol.
 #[unsafe(no_mangle)]
 // ms: leaf
@@ -790,12 +797,15 @@ pub unsafe extern "C-unwind" fn msrt_list_slice(
     start: i64,
     end: i64,
     out: *mut VecVal,
+    err: ErrSlot,
 ) -> u8 {
     // SAFETY: caller contract.
     unsafe {
+        string::init_err(err);
         let n = (*v).len;
         let (s, e) = (relative(n, start), relative(n, end));
         if s < 0 || e < s || e > n as i64 {
+            string::store_err(err, &slice_bounds_message(start, end, n));
             return STATUS_OUT_OF_RANGE;
         }
         let view = VecVal {
@@ -819,12 +829,15 @@ pub unsafe extern "C-unwind" fn msrt_list_slice_view(
     start: i64,
     end: i64,
     out: *mut VecVal,
+    err: ErrSlot,
 ) -> u8 {
     // SAFETY: caller contract; the result borrows `v`.
     unsafe {
+        string::init_err(err);
         let n = (*v).len;
         let (s, e) = (relative(n, start), relative(n, end));
         if s < 0 || e < s || e > n as i64 {
+            string::store_err(err, &slice_bounds_message(start, end, n));
             return STATUS_OUT_OF_RANGE;
         }
         *out = if s == e {
@@ -2588,9 +2601,15 @@ mod tests {
             msrt_list_sort_in_place(&mut v, d, by_value, core::ptr::null_mut());
             assert_eq!(ints(&v), [1, 3, 9, 10]);
             let mut s = EMPTY;
-            assert_eq!(msrt_list_slice(&v, d, 1, -1, &mut s), STATUS_OK);
+            assert_eq!(
+                msrt_list_slice(&v, d, 1, -1, &mut s, ErrSlot(core::ptr::null_mut())),
+                STATUS_OK
+            );
             assert_eq!(ints(&s), [3, 9]);
-            assert_eq!(msrt_list_slice(&v, d, 3, 1, &mut s), STATUS_OUT_OF_RANGE);
+            assert_eq!(
+                msrt_list_slice(&v, d, 3, 1, &mut s, ErrSlot(core::ptr::null_mut())),
+                STATUS_OUT_OF_RANGE
+            );
             testutil::assert_fault(
                 "index 9 out of range for length 4; pass a default: get(index:, default: ...)",
                 || msrt_list_at(&v, d, 9, core::ptr::null()),

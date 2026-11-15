@@ -7,6 +7,14 @@ import (
 	expect_equal, expect_false from "@std/test/test.ms",
 )
 
+// Fails unless `result` is an error of `kind` whose message starts with `prefix`.
+fn expect_failure(result: String!, kind: String, prefix: String) Unit!:
+	if value := result: return error(Error("expected {kind}, got ok({value})"))
+
+	cause := result.err()
+	expect_equal(cause.kind, kind)?
+	expect_equal(cause.message.starts_with(prefix), true)?
+
 test "Unicode scalar offsets differ from scalar count":
 	text := "aé🙂"
 	expect_false(text.length() != 7 or text.scalar_length() != 3)?
@@ -22,12 +30,18 @@ test "strings honor omitted none zero and explicit output limits":
 	expect_equal(("ab".repeat(2)?), "abab")?
 	expect_equal(("ab".repeat(2)?), "abab")?
 	expect_equal(("ab".repeat(0, 0)?), "")?
-
-	limited: String! := error(Error("string: limit exceeded", kind: "EOVERFLOW"))
-	expect_equal("é".repeat(2, 3), limited)?
+	expect_failure(
+		"é".repeat(2, 3),
+		"EOVERFLOW",
+		"string: limit exceeded: repeating 2 bytes 2 times",
+	)?
 	expect_equal("x".pad_start(3, "ab"), "abx")?
 	expect_equal("x".pad_end(3, "ab"), "xab")?
-	expect_equal("ab".repeat(4611686018427387904), limited)?
+	expect_failure(
+		"ab".repeat(4611686018427387904),
+		"EOVERFLOW",
+		"string: limit exceeded: repeating 2 bytes",
+	)?
 	expect_equal("aa".replace("a", "xy"), "xyxy")?
 	expect_equal("a,,b".split(",", 2), ["a", ""])?
 	expect_equal(" \té \n".trim(), "é")?
@@ -80,17 +94,16 @@ test "Bytes values direct bound and free calls return independent lists":
 
 test "String slice uses byte offsets with relative bounds and OutOfRange errors":
 	text := "aé🙂z"
-	out_of_range: String! := error(Error("string: value out of range", kind: "ERANGE"))
 	expect_equal((text.slice(-5, 8)?), "🙂z")?
 	expect_equal((text.slice(0, -1)?), "aé🙂")?
 	expect_equal((text.slice(8, 8)?), "")?
-	expect_equal(text.slice(-5, 10), out_of_range)?
-	expect_equal(text.slice(-100, 8), out_of_range)?
-	expect_equal(text.slice(3, 1), out_of_range)?
+	expect_failure(text.slice(-5, 10), "ERANGE", "string: value out of range: slice(")?
+	expect_failure(text.slice(-100, 8), "ERANGE", "string: value out of range: slice(")?
+	expect_failure(text.slice(3, 1), "ERANGE", "string: value out of range: slice(")?
 	expect_false(text.index_of("🙂") != 3 or text.last_index_of("") != 8)?
-	expect_equal(text.slice(2, 8), out_of_range)?
-	expect_equal(text.slice(1, 5), out_of_range)?
-	expect_equal(text.slice(0, 4), out_of_range)?
+	expect_failure(text.slice(2, 8), "ERANGE", "string: value out of range: slice(")?
+	expect_failure(text.slice(1, 5), "ERANGE", "string: value out of range: slice(")?
+	expect_failure(text.slice(0, 4), "ERANGE", "string: value out of range: slice(")?
 	expect_equal((text.slice(1, 3)?), "é")?
 
 test "string and bytes builders freeze":
@@ -166,10 +179,12 @@ test "offsets and slicing in long mixed-width text agree with the scalar walk":
 	expect_equal((text.slice(0, 10)?), block)?
 	expect_equal((text.slice(6, 6)?), "")?
 	expect_equal((text.slice(5996, 6000)?), "🙂")?
-
-	out_of_range: String! := error(Error("string: value out of range", kind: "ERANGE"))
-	expect_equal(text.slice(6000, 6001), out_of_range)?
-	expect_equal(text.slice(7, 8), out_of_range)?
+	expect_failure(
+		text.slice(6000, 6001),
+		"ERANGE",
+		"string: value out of range: slice(",
+	)?
+	expect_failure(text.slice(7, 8), "ERANGE", "string: value out of range: slice(")?
 
 test "builder appends literals of every short length across growth":
 	var sb = StringBuilder()
@@ -228,3 +243,25 @@ test "count matches split for nonempty parts and counts scalars plus one for an 
 	expect_equal("".count(""), 1)?
 	expect_equal("🙂x🙂".count("🙂"), 2)?
 	expect_equal("abc".count("abcd"), 0)?
+
+test "slice and repeat errors name the values that failed":
+	expect_failure(
+		"hello".slice(2, 10),
+		"ERANGE",
+		"string: value out of range: slice(2, 10) of a string with 5 bytes",
+	)?
+	expect_failure(
+		"ab".repeat(-3),
+		"EINVAL",
+		"string: invalid input: repeat count must not be negative, found -3",
+	)?
+
+	items := [1, 2, 3]
+	r := items.slice(1, 10)
+	cause := r.err()
+	expect_equal(
+		cause.message.starts_with(
+			"collection: value out of range: slice(1, 10) of a list with 3 items"
+		),
+		true,
+	)?
