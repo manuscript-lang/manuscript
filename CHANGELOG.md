@@ -2,7 +2,7 @@
 
 Each release lists what changed for people who write Manuscript. Before 1.0, a change that breaks existing programs ships in a minor release and names its migration; patch releases stay compatible. See [what is frozen before 1.0](documentation/core-language/stability.md).
 
-## 0.1.0 (first public release)
+## 0.1.0 (first public release, beta)
 
 The first release. It ships one binary, `ms`, for Linux, macOS and Windows on amd64 and arm64.
 
