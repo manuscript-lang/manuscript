@@ -254,3 +254,57 @@ fn members_share_one_lock_and_one_copy() {
     assert!(!add.status.success());
     assert!(err(&add).contains("workspace root"), "{}", err(&add));
 }
+
+#[test]
+fn fmt_and_test_at_the_root_run_on_every_member() {
+    let root = scratch("workspace-fmt-test");
+    let cache = root.join("cache");
+    workspace(&root, "\"@util\" = { path = \"../libs/util\" }\n");
+    file(
+        &root,
+        "app/src/a_test.ms",
+        "test \"one\":\n\tif 1 != 1: return\n",
+    );
+    file(
+        &root,
+        "libs/util/src/b_test.ms",
+        "test \"two\":\n\tif 2 != 2: return\n",
+    );
+    file(
+        &root,
+        "libs/util/src/messy.ms",
+        "fn  messy()  Void:\n\tprint(\"x\")\n",
+    );
+
+    // fmt names the member file that needs formatting instead of failing on the root.
+    let check = ms(&root, &cache, &["fmt", "--check", "ms.toml"]);
+    assert!(!check.status.success(), "{}", err(&check));
+    let text = err(&check);
+    assert!(
+        text.contains("messy.ms") && !text.contains("file not found"),
+        "{text}"
+    );
+    let fmt = ms(&root, &cache, &["fmt", "ms.toml"]);
+    assert!(fmt.status.success(), "{}", err(&fmt));
+    let again = ms(&root, &cache, &["fmt", "--check", "ms.toml"]);
+    assert!(again.status.success(), "{}", err(&again));
+
+    // test runs each member as its own program: both tests run and pass.
+    let test = ms(&root, &cache, &["test", "ms.toml"]);
+    assert!(test.status.success(), "{}{}", out(&test), err(&test));
+    let text = out(&test);
+    assert!(text.contains("::one") && text.contains("::two"), "{text}");
+
+    // verify covers every step at the root.
+    let verify = ms(&root, &cache, &["verify", "ms.toml"]);
+    assert!(verify.status.success(), "{}{}", out(&verify), err(&verify));
+
+    // A failing member fails the run.
+    file(
+        &root,
+        "libs/util/src/b_test.ms",
+        "import panic from \"@std/core.ms\"\n\ntest \"two\":\n\treturn panic(message: \"no\")\n",
+    );
+    let failed = ms(&root, &cache, &["test", "ms.toml"]);
+    assert!(!failed.status.success(), "{}", out(&failed));
+}
