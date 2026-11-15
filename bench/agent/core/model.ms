@@ -28,6 +28,8 @@ type Meta:
 	category: String
 	tier: Int
 	timeout_s: Int = 5
+	// Agent wall-clock limit for this challenge when longer than the run's; 0 for none.
+	agent_timeout_s: Int = 0
 
 export type Challenge:
 	id: String
@@ -35,6 +37,7 @@ export type Challenge:
 	category: String
 	tier: Int
 	timeout_s: Int
+	agent_timeout_s: Int
 	dir: String
 
 fn Challenge.spec() String: (
@@ -106,7 +109,9 @@ export fn load_challenges(ids: List[String]) List[Challenge]:
 		meta_text := read_file("{dir}/challenge.json").wait()
 		if not meta_text.is_ok(): continue
 
-		m := parse[Meta](meta_text.get().decode_utf8().get("")).get(Meta("", "", 0, 5))
+		m := parse[Meta](meta_text.get().decode_utf8().get("")).get(
+			Meta("", "", 0, 5, 0)
+		)
 		wanted := (
 			ids.is_empty()
 			or ids.any(fn i: (name == i or name.starts_with("{i}-")))
@@ -118,6 +123,7 @@ export fn load_challenges(ids: List[String]) List[Challenge]:
 				m.category.clone(),
 				m.tier,
 				m.timeout_s,
+				m.agent_timeout_s,
 				dir,
 			)
 		)

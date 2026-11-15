@@ -230,6 +230,18 @@ runs:
         MS_BACKEND: cranelift
       shell: bash
       run: target/debug/ms run tools/conform.ms
+    # The dev profile turns Cranelift's own debug assertions off for speed (Cargo.toml). Main and LLVM pull
+    # requests build `ms` once more with them on and replay the Cranelift run and test phases, so an assertion
+    # that fires on the IR we generate is still caught.
+    - name: Conformance corpus (Cranelift with its debug assertions on)
+      if: env.CRANELIFT == 'true' && env.LLVM == 'true' && runner.os == 'Linux'
+      env:
+        MS_BACKEND: cranelift
+      shell: bash
+      run: |
+        cargo build --profile checked --locked -p ms-cli
+        target/debug/ms-conform run --ms target/checked/ms --phase run,test --exclude-tag aliasing \
+          --expect-fail tests/conformance/expect-fail.txt --strict --quiet
     - name: LLVM backend size, build time and kernel times against Cranelift
       if: env.GATES == 'true'
       shell: bash
@@ -240,6 +252,12 @@ runs:
       run: |
         MS=target/debug/ms target/debug/ms run tools/count-check.ms
         MS=target/debug/ms target/debug/ms run tools/count-check-selftest.ms
+    # Runs with the Cranelift corpus: on pull requests that is linux-amd64, which has room in the
+    # 10 minute budget (linux-arm64 does not), and on main it covers every platform that runs it.
+    - name: Removed spellings name their replacement
+      if: env.CRANELIFT == 'true'
+      shell: bash
+      run: MS=target/debug/ms target/debug/ms run tools/removed-check.ms
     - name: Every accepted resource operation closes each resource once
       if: env.GATES == 'true'
       shell: bash

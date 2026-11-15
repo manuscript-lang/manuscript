@@ -761,7 +761,7 @@ impl Checker {
         }
         if methods.len() != 1 {
             let mut msg = self.unknown_member(&rt, name);
-            if rt.is_source_type(self.syms, suggestions::PROMISE_MODULE, "Promise") {
+            if rt.is(Builtin::Promise) {
                 // A call that used to wait now returns a promise: `read(p).length()` is `read(p).wait().length()`.
                 msg.push_str("; a Promise has `wait()` and `done()`: call `wait()` first");
                 let fix = suggestions::append_call(&self.m().source, left, "wait()");
@@ -1088,7 +1088,7 @@ impl Checker {
     fn check_try(&mut self, e: &Expr, operand: &Info, i: &mut Info) {
         let result = operand.t();
         if !result.is(Builtin::Result) || result.args.len() != 2 {
-            if result.is_source_type(self.syms, suggestions::PROMISE_MODULE, "Promise")
+            if result.is(Builtin::Promise)
                 && let ExprKind::Unary { operand: inner, .. } = &e.kind
             {
                 // A call that used to wait now returns a promise: `try read(p)` is `try read(p).wait()`.
@@ -1244,10 +1244,10 @@ impl Checker {
                 hint = result_use_hint(&bt, &at);
             }
             if hint.is_empty() {
-                hint = int_float_mix_hint(self.syms, &at, &bt);
+                hint = int_float_mix_hint(&at, &bt);
             }
             if hint.is_empty() && matches!(op, BinaryOp::Mul) {
-                hint = text_repeat_hint(self.syms, &at, &bt);
+                hint = text_repeat_hint(&at, &bt);
             }
             if hint.is_empty() {
                 hint = "convert one side so both have one type (e.g. interpolate into text with \"{value}\", or convert between Int and Float)".to_string();

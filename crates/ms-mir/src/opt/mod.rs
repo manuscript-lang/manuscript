@@ -26,7 +26,6 @@ pub mod optparam;
 pub mod range;
 pub mod reserve;
 pub mod simplify;
-pub mod slotfuse;
 pub mod sortgen;
 pub mod strfuse;
 
@@ -157,8 +156,6 @@ pub fn optimize(m: &mut Module, level: Level, verify: bool) {
     check(m, "inline");
     strfuse::run(m);
     check(m, "strfuse");
-    slotfuse::run(m);
-    check(m, "slotfuse");
     loopslot::run(m);
     check(m, "loopslot");
     // These passes read the module but rewrite only their own function, so each function runs

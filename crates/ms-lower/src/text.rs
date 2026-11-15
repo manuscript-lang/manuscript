@@ -96,16 +96,18 @@ impl Cx {
         concrete: &ms_check::api::types::Ty,
     ) -> Result<Option<FuncId>, Error> {
         use ms_check::api::types as ct;
-        if !matches!(concrete.kind, Kind::Type | Kind::Alternative) {
+        if !matches!(concrete.kind, Kind::Type | Kind::Alternative | Kind::Native) {
             return Ok(None);
         }
-        for at in self
-            .method_index
-            .candidates(concrete.id, ct::n("to_string"))
-        {
+        // The interface names the operation and its signature; nothing here spells it.
+        let Some(op) = self.session.sole_operation("@std/core.ms", "Stringable") else {
+            return Ok(None);
+        };
+        let stringable = self.session.standard("Stringable", Vec::new());
+        for at in self.method_index.candidates(concrete.id, op) {
             let c = &self.methods[at];
             let Some(decl) = &c.decl else { continue };
-            if c.native != ct::Native::Source || !c.ty.params.is_empty() {
+            if c.native != ct::Native::Source || !c.supplies(self.syms, &stringable) {
                 continue;
             }
             let mut subst = ct::Subst::default();
@@ -321,12 +323,6 @@ pub(crate) fn build_format(
     b.emit(Op::DepthEnter, &[], Imm::None, None);
     let x = b.params()[0];
     let depth = b.params()[1];
-    let declared_text = match crate::nativetype::native_type(b.m, t) {
-        Some(r) if crate::nativetype::has_declared_text(r) => {
-            cx.native_method(b.m, r, crate::nativetype::NativeOp::ToString)?
-        }
-        _ => None,
-    };
     let own_text = match cx.source_tys.get(t.0 as usize).cloned() {
         Some(concrete) => cx.own_text_fn(b.m, &concrete)?,
         None => None,
@@ -335,12 +331,6 @@ pub(crate) fn build_format(
         TyKind::Type(_) | TyKind::Alt(_) if own_text.is_some() => {
             // The type's own `to_string`, declared next to it.
             let f = own_text.expect("checked");
-            let text = b.call(f, &[x]);
-            b.ret(Some(text));
-        }
-        TyKind::Type(_) if declared_text.is_some() => {
-            // The type's own `to_string`, declared in its `.ms` file.
-            let f = declared_text.expect("checked");
             let text = b.call(f, &[x]);
             b.ret(Some(text));
         }

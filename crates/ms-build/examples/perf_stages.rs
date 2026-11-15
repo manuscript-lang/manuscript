@@ -91,7 +91,6 @@ fn mir_passes(m: &mut ms_mir::ir::Module) {
     stage("mir_copyelim_initial", || copyelim::run(m));
     stage("mir_inline", || inline::run(m));
     stage("mir_strfuse", || strfuse::run(m));
-    stage("mir_slotfuse", || slotfuse::run(m));
     for round in 0..3 {
         let mut changed = stage(&format!("mir_optparam_{round}"), || optparam::run(m));
         changed |= stage(&format!("mir_simplify_{round}"), || simplify::run(m));

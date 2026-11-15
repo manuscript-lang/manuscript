@@ -19,11 +19,6 @@ pub(crate) fn native_type(m: &Module, t: MTy) -> Option<NativeType> {
     m.type_defs[rid.index()].native
 }
 
-/// Whether the type's text is the `to_string` its declaration defines rather than its fields.
-pub(crate) fn has_declared_text(r: NativeType) -> bool {
-    matches!(r, NativeType::Timestamp | NativeType::Decimal)
-}
-
 /// Whether the type orders itself through the `compare` its declaration defines.
 pub(crate) fn has_declared_order(r: NativeType) -> bool {
     matches!(
@@ -32,29 +27,20 @@ pub(crate) fn has_declared_order(r: NativeType) -> bool {
     )
 }
 
-/// The operations of a native type that lowering calls through its `.ms` declaration.
-#[derive(Clone, Copy)]
-pub(crate) enum NativeOp {
-    Compare,
-    ToString,
-}
-
 const NATIVE_RECS: usize = 4;
-const NATIVE_OPS: usize = 2;
 
-fn slot(r: NativeType, op: NativeOp) -> usize {
-    let tval = match r {
+fn slot(r: NativeType) -> usize {
+    match r {
         NativeType::Timestamp => 0,
         NativeType::Instant => 1,
         NativeType::Decimal => 2,
         NativeType::Duration => 3,
-    };
-    tval * NATIVE_OPS + op as usize
+    }
 }
 
-/// A flat table of the declared `compare` and `to_string` methods, indexed by type and operation.
+/// A flat table of the methods that supply `Comparable` for each native type.
 pub struct NativeOps {
-    table: [Option<Rc<Callable>>; NATIVE_RECS * NATIVE_OPS],
+    table: [Option<Rc<Callable>>; NATIVE_RECS],
 }
 
 impl NativeOps {
@@ -63,16 +49,15 @@ impl NativeOps {
         program: &Program,
         callables: &HashMap<(Name, NodeId), Rc<Callable>>,
     ) -> NativeOps {
-        let mut table: [Option<Rc<Callable>>; NATIVE_RECS * NATIVE_OPS] = Default::default();
+        let mut table: [Option<Rc<Callable>>; NATIVE_RECS] = Default::default();
+        let comparable = program.session.standard("Comparable", Vec::new());
         for method in &program.methods {
             let Some(decl) = method.decl.as_ref() else {
                 continue;
             };
-            let op = match syms.str(decl.name()) {
-                "compare" => NativeOp::Compare,
-                "to_string" => NativeOp::ToString,
-                _ => continue,
-            };
+            if !method.supplies(syms, &comparable) {
+                continue;
+            }
             let r = &method.receiver;
             let tval = if r.is(ms_check::api::types::Builtin::Timestamp) {
                 NativeType::Timestamp
@@ -85,7 +70,7 @@ impl NativeOps {
             } else {
                 continue;
             };
-            let entry = &mut table[slot(tval, op)];
+            let entry = &mut table[slot(tval)];
             if entry.is_none() {
                 *entry = callables.get(&(method.module, decl.id())).cloned();
             }
@@ -95,14 +80,13 @@ impl NativeOps {
 }
 
 impl Cx {
-    /// The function of the declared `op` of native type `r`, if its `.ms` declaration has one.
+    /// The function of the `Comparable` method of native type `r`, if its `.ms` declaration has one.
     pub(crate) fn native_method(
         &mut self,
         m: &mut Module,
         r: NativeType,
-        op: NativeOp,
     ) -> Result<Option<FuncId>, crate::Error> {
-        let Some(callable) = self.native_ops.table[slot(r, op)].clone() else {
+        let Some(callable) = self.native_ops.table[slot(r)].clone() else {
             return Ok(None);
         };
         Ok(Some(self.function_for(
@@ -125,7 +109,7 @@ impl crate::func::FnLower<'_> {
         let Some(tval) = native_type(self.b.m, t).filter(|r| has_declared_order(*r)) else {
             return Ok(None);
         };
-        let Some(f) = self.cx.native_method(self.b.m, tval, NativeOp::Compare)? else {
+        let Some(f) = self.cx.native_method(self.b.m, tval)? else {
             return Ok(None);
         };
         Ok(Some(self.b.call(f, &[a, b])))

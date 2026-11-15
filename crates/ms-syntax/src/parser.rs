@@ -842,6 +842,7 @@ impl<'a> Parser<'a> {
         let mut params = Vec::new();
         if !self.take(Tok::RParen) {
             loop {
+                self.no_ref()?;
                 let mutable = self.take(Tok::Var);
                 let name = self.need(Tok::Name)?;
                 let mut ty = None;
@@ -1766,11 +1767,14 @@ impl<'a> Parser<'a> {
     fn no_ref(&mut self) -> PResult<()> {
         if self.kind() == Tok::Ref {
             let at = self.peek();
-            return self.fail_fix(
-                at,
-                "`ref` was removed: drop it; a function that returns part of a parameter returns a borrow of it, with no marker, and a field owns its value",
-                "",
-            );
+            let message = "`ref` was removed: drop it; a function that returns part of a parameter returns a borrow of it, with no marker, and a field owns its value";
+            // The edit replaces `ref` and the word after it with that word, so no space is left behind.
+            let next = self.ahead(1);
+            if next.pos.line == at.pos.line && next.kind != Tok::Newline {
+                let replacement = self.text(next).to_string();
+                return self.fail_fix_range(at, next, message, &replacement);
+            }
+            return self.fail_fix(at, message, "");
         }
         Ok(())
     }
@@ -1897,7 +1901,14 @@ impl<'a> Parser<'a> {
                         Tok::Name | Tok::Underscore | Tok::LBracket | Tok::LBrace
                     ) =>
             {
-                return self.fail(t, "'let' was removed; bind with 'x := value' (or 'x: Type := value'), destructure with '[a, b] := value', and use 'var x = value' for a mutable binding");
+                let message = "'let' was removed; bind with 'x := value' (or 'x: Type := value'), destructure with '[a, b] := value', and use 'var x = value' for a mutable binding";
+                // `let x = v` becomes `x := v`; other shapes name the rewrite and get no edit.
+                let (name, eq) = (self.ahead(1), self.ahead(2));
+                if name.kind == Tok::Name && eq.kind == Tok::Assign {
+                    let replacement = format!("{} :=", self.text(name));
+                    return self.fail_fix_range(t, eq, message, &replacement);
+                }
+                return self.fail(t, message);
             }
             Tok::Var => {
                 self.at += 1;
@@ -1981,10 +1992,21 @@ impl<'a> Parser<'a> {
                 let mut mutable = false;
                 if self.kind() == Tok::Name
                     && self.text(self.peek()) == "let"
-                    && self.ahead(1).kind == Tok::Name
+                    && matches!(
+                        self.ahead(1).kind,
+                        Tok::Name | Tok::Underscore | Tok::LBracket | Tok::LBrace
+                    )
                 {
                     let l = self.peek();
-                    return self.fail(l, "'if let' was removed; write 'if value := optional:' (or 'if var value = optional:' for a mutable binding)");
+                    let message = "'if let' was removed; write 'if value := optional:' (or 'if var value = optional:' for a mutable binding)";
+                    // `if let v = o:` becomes `if v := o:`. A pattern after `let` has no single
+                    // mechanical rewrite, so it gets the message alone.
+                    let (name, eq) = (self.ahead(1), self.ahead(2));
+                    if name.kind == Tok::Name && eq.kind == Tok::Assign {
+                        let replacement = format!("{} :=", self.text(name));
+                        return self.fail_fix_range(l, eq, message, &replacement);
+                    }
+                    return self.fail(l, message);
                 }
                 if self.kind() == Tok::Var
                     || (matches!(self.kind(), Tok::Name | Tok::Underscore)

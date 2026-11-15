@@ -1,4 +1,4 @@
-diag parse 40:5:845 end=40:8:848 fix=- "'let' was removed; bind with 'x := value' (or 'x: Type := value'), destructure with '[a, b] := value', and use 'var x = value' for a mutable binding"
+diag parse 40:5:845 end=40:18:858 fix=40:5:845>40:18:858="_readers :=" "'let' was removed; bind with 'x := value' (or 'x: Type := value'), destructure with '[a, b] := value', and use 'var x = value' for a mutable binding"
 import 1:1:0 1:8:7 "expect_equal" "@std/test/test.ms"
 (decl 3:1:46 interface "ReadValue" false false 0:0:0 false [(tp 3:21:66 "T" [] nil) ] [] [] [(decl 4:8:77 fn "get" false false 0:0:0 false [] [] [] [] [] (type 4:14:83 "T" [] [] nil) nil nil []) ] [] nil nil nil [])
 (decl 6:1:86 type "Box" false false 0:0:0 false [(tp 6:10:95 "T" [] nil) ] [(param 7:5:103 "value" (type 7:12:110 "T" [] [] nil) nil) ] [] [] [] nil nil nil [])

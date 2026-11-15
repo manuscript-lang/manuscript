@@ -142,6 +142,19 @@ jobs:
         if: matrix.leg.docs && matrix.part != 'a'
       - uses: ./.github/actions/book-checks
         if: matrix.leg.docs && matrix.part != 'a'
+      # Older releases keep their own book: each version listed in website/data/docs_versions.toml
+      # has a manuscript-docs archive on its release (built by release.yml), unpacked here.
+      - name: Add the archived books of older releases
+        if: matrix.leg.docs && matrix.part == 'b' && env.PR != 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          for version in $(sed -n 's/^version = "\(.*\)"$/\1/p' website/data/docs_versions.toml); do
+            mkdir -p ".artifacts/book/versions/v${version}"
+            gh release download "v${version}" --repo "$GITHUB_REPOSITORY" --pattern "manuscript-docs-${version}.tar.gz" --output - | tar -xz -C ".artifacts/book/versions/v${version}"
+          done
       - uses: actions/upload-pages-artifact@v5
         if: matrix.leg.docs && matrix.part == 'b' && env.PR != 'true'
         with:

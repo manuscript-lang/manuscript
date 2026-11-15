@@ -1,1 +1,1 @@
-{"title": "jq-lite", "category": "applications", "tier": 5, "timeout_s": 60}
+{"title": "jq-lite", "category": "applications", "tier": 5, "timeout_s": 60, "agent_timeout_s": 3600}
