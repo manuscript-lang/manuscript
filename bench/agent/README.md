@@ -5,7 +5,7 @@ Not the performance benchmark: for compiler/runtime speed against hand-written G
 Agent benchmark: measures how effectively coding agents solve the same programming challenges in TypeScript, Go, Rust and
 Manuscript. Per run it records pass/fail against hidden tests, tokens, turns, wall time and cost.
 
-Status: 20 challenges: 10 small programs (c03-c44, with reference solutions in all four languages) and 10 large applications of roughly 3-5k lines (c51-c60), which have no reference solutions and are validated only through the Go oracle in each challenge's `oracle/` directory (see its `gen.py`, which derives the expected outputs deterministically). One trial per challenge and language. Runs through Harbor (preferred) or the built-in runner.
+Status: 20 challenges: 10 small programs (c03-c44, with reference solutions in all four languages) and 10 large applications of roughly 3-5k lines (c51-c60), which have no reference solutions and are validated only through the Go oracle in each challenge's `oracle/` directory (see its `gen.py`, which derives the expected outputs deterministically). Run each cell at least three times (`--repeat 3`); the report gives 95% confidence intervals, and a cell with one trial proves nothing. Runs through Harbor (preferred) or the built-in runner.
 
 Report source size as LLM tokens (`llm_tokens` in each run, from `pip install tiktoken`; final sources are saved under `results/sources/`), never lexical tokens (`code_tokens`). `ms run bench/agent/tokens.ms` compares the reference solutions per language.
 
@@ -13,10 +13,10 @@ Report source size as LLM tokens (`llm_tokens` in each run, from `pip install ti
 
 1. A fresh workspace is created outside the repo: language template, `TASK.md` (the spec), a few visible
    examples in `examples/`, and `check.sh`. For Manuscript the tutorials and standard declarations are copied
-   to `docs/` when a language lists `context` in `languages.json`; Manuscript lists none and points the agent at `ms skill` and `ms search_symbol`.
+   to `docs/` when a language lists `context` in `languages.json`; Manuscript lists none. Its `setup` command installs the Manuscript agent skill that ships with the compiler (`ms skill -o .claude/skills`) into the workspace, so the agent sees what a user's agent sees; `ms search_symbol` finds standard-library APIs.
 2. The harness runs the agent non-interactively in that workspace. The agent is told to use `./check.sh`,
    which builds and runs the examples and logs each attempt to `.bench/log.jsonl`. That log gives
-   harness-independent build counts and a first-build-success flag.
+   harness-independent build counts, a first-build-success flag, and the diagnostic codes of each failed build (the language's `codes` command in `languages.json`; Go has none and reports its error class, TypeScript has no build step so it never fails a first build).
 3. After the agent exits, the runner builds the workspace and runs the **hidden cases** (`challenges/*/hidden/`),
    which are never copied into the workspace. Output is compared exactly, ignoring trailing whitespace.
 4. One JSON line is appended to `results/runs.jsonl`; the raw transcript goes to `results/transcripts/` (gitignored).
@@ -32,7 +32,7 @@ ms run bench/agent/run.ms -- list
 ms run bench/agent/run.ms -- oracle                     # reference solutions vs hidden cases; validates the suite
 ms run bench/agent/run.ms -- run --harness claude_code --model <model> \
     --challenges c03,c05 --languages ms,go --repeat 3 --jobs 4 --tag baseline
-ms run bench/agent/report.ms --                         # Markdown tables from results/runs.jsonl
+ms run bench/agent/report.ms -- results/trials-*.jsonl   # Markdown tables with 95% CIs, per-challenge matrix, diagnostic-code ranking
 ms test bench/agent/core_test.ms
 ```
 
@@ -62,7 +62,7 @@ cases and first-build success. Harbor records tokens and cost per trial. Use `-a
 
 | path | purpose |
 | --- | --- |
-| `languages.json` | per-language build/run commands, solution file, extra context |
+| `languages.json` | per-language build/run commands, solution file, `setup` (skill install), `codes` (diagnostic extraction), extra context |
 | `templates/<lang>/` | starting workspace per language |
 | `challenges/<id>/` | `challenge.json`, `spec.md`, `examples/`, `hidden/`, `solutions/<lang>/<file>.ref` (reference), `gen.ms` (derives cases from the reference solutions or, for c51-c60, the Go oracle) |
 | `harnesses/` | one adapter per agent CLI |

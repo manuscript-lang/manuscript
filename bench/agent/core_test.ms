@@ -16,6 +16,7 @@ import (
 	fixed, fmt_g, pct0 from "./lib/pyfmt.ms",
 	dumps from "./lib/pyjson.ms",
 	seeded from "./lib/pyrandom.ms",
+	mean_ci, wilson from "./lib/stats.ms",
 	norm from "./lib/text.ms",
 )
 
@@ -104,3 +105,17 @@ test "number formats match CPython":
 	expect_equal(fmt_g(981756.0, 3), "9.82e+05")?
 	expect_equal(fmt_g(0.026123, 3), "0.0261")?
 	expect_equal(pct0(0.125), "12%")?
+
+test "wilson interval":
+	w := wilson(5, 10)
+	expect_close(w.low, 0.2366, 0.001)?
+	expect_close(w.high, 0.7634, 0.001)?
+
+	all := wilson(10, 10)
+	expect_close(all.high, 1.0, 0.0000001)?
+	expect_true(all.low > 0.69 and all.low < 0.73)?
+
+test "mean interval":
+	m := mean_ci([1.0, 2.0, 3.0, 4.0])
+	expect_close(m.mid, 2.5, 0.0000001)?
+	expect_close(m.high - m.mid, 1.96 * 1.2909944 / 2.0, 0.0001)?

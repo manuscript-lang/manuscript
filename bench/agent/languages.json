@@ -5,7 +5,8 @@
     "build": "true",
     "run": "node --experimental-strip-types --no-warnings main.ts",
     "version": "node --version",
-    "notes": "Node 22 with type stripping; no npm packages."
+    "notes": "Node 22 with type stripping; no npm packages.",
+    "codes": "grep -ohE '\\b(E[0-9]{4}|TS[0-9]{4})\\b' .bench/build.out"
   },
   "go": {
     "name": "Go",
@@ -13,7 +14,8 @@
     "build": "go build -o prog .",
     "run": "./prog",
     "version": "go version",
-    "notes": "Standard library only."
+    "notes": "Standard library only.",
+    "codes": "grep -ohE '^[^ ]+:[0-9]+:[0-9]+: [a-z]+' .bench/build.out | cut -d' ' -f2 | sed 's/^/go:/'"
   },
   "rust": {
     "name": "Rust",
@@ -21,7 +23,8 @@
     "build": "cargo build --release --offline --quiet",
     "run": "./target/release/prog",
     "version": "rustc --version",
-    "notes": "Standard library only; no crates."
+    "notes": "Standard library only; no crates.",
+    "codes": "grep -ohE '\\b(E[0-9]{4}|TS[0-9]{4})\\b' .bench/build.out"
   },
   "ms": {
     "name": "Manuscript",
@@ -29,6 +32,8 @@
     "build": "ms build ms.toml -o prog",
     "run": "./prog",
     "version": "ms --version",
-    "notes": "Run `ms skill` for the self-contained agent skill and `ms search_symbol <name or words>` to look up standard-library APIs before reading files. `ms help` lists commands."
+    "setup": "ms skill -o .claude/skills",
+    "notes": "The Manuscript agent skill is installed in .claude/skills/manuscript (`ms skill` prints it as one document). Read it before writing code, and use `ms search_symbol <name or words>` to look up standard-library APIs before reading files. `ms explain <code>` explains a diagnostic. `ms help` lists commands.",
+    "codes": "ms check ms.toml --json 2>/dev/null | grep -oE '\"code\": \"[A-Z]+[0-9]+\"' | grep -oE '[A-Z]+[0-9]+'"
   }
 }

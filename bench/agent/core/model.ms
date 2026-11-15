@@ -68,6 +68,10 @@ export type Lang:
 	notes: String
 	template: String
 	context: List[String]
+	// Shell command run in the new workspace, such as installing the agent skill.
+	setup: String
+	// Shell command that prints the diagnostic codes of the last build, one per line.
+	codes: String
 
 // The extension of the solution file, such as `.ms`.
 fn Lang.suffix() String:
@@ -146,6 +150,8 @@ export fn load_languages(ids: List[String]) List[Lang]:
 				field(d, "notes"),
 				template,
 				context,
+				field(d, "setup"),
+				field(d, "codes"),
 			)
 		)
 

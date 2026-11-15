@@ -12,7 +12,7 @@ import (
 )
 
 SKIP_DIRS := [
-	"target", "node_modules", ".bench", "docs", "examples", ".git", "vendor",
+	"target", "node_modules", ".bench", ".claude", "docs", "examples", ".git", "vendor",
 	".ms-cache"
 ]
 
