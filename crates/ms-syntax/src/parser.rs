@@ -495,6 +495,27 @@ impl<'a> Parser<'a> {
         Err(Box::new(d))
     }
 
+    /// `const NAME = v` or `const NAME: T = v` on one line: the range from the
+    /// word through `=` and its replacement `NAME :=` (`NAME: T :=`).
+    fn constant_fix(&self, word: Token) -> Option<(Token, Token, String)> {
+        let name = self.ahead(1);
+        if name.kind != Tok::Name || name.pos.line != word.pos.line {
+            return None;
+        }
+        let mut n = 2;
+        loop {
+            let t = self.ahead(n);
+            if t.pos.line != word.pos.line || matches!(t.kind, Tok::Newline | Tok::Eof) {
+                return None;
+            }
+            if t.kind == Tok::Assign {
+                let head = self.src.get(name.lo as usize..t.lo as usize)?.trim_end();
+                return Some((word, t, format!("{head} :=")));
+            }
+            n += 1;
+        }
+    }
+
     /// Fails on `t` with a machine-applicable replacement of exactly its range.
     fn fail_fix<T>(&self, t: Token, message: impl Into<String>, replacement: &str) -> PResult<T> {
         self.fail_fix_range(t, t, message, replacement)
@@ -854,7 +875,8 @@ impl<'a> Parser<'a> {
                             "'var' goes before the parameter name, not its type; write var {}: Type",
                             self.text(name)
                         );
-                        return self.fail(t, msg);
+                        let replacement = format!("var {}:", self.text(name));
+                        return self.fail_fix_range(name, t, msg, &replacement);
                     }
                     ty = Some(self.typ()?);
                 } else if !inferred || self.kind() == Tok::Name {
@@ -1404,6 +1426,13 @@ impl<'a> Parser<'a> {
             }
             _ => {
                 if let Some((msg, replacement)) = foreign_declaration(token, self.text(token)) {
+                    if replacement.is_none()
+                        && matches!(self.text(token), "const" | "val" | "final")
+                        && let Some(fix) = self.constant_fix(token)
+                    {
+                        let (first, last, text) = fix;
+                        return self.fail_fix_range(first, last, msg, &text);
+                    }
                     return match replacement {
                         Some(r) => self.fail_fix(token, msg, r),
                         None => self.fail(token, msg),
@@ -2117,7 +2146,7 @@ impl<'a> Parser<'a> {
             if !self.inline_return && !is_call && !try_call && !allow_value {
                 if let ExprKind::Name(n) = &e.kind {
                     match self.names.str(*n) {
-                        "pass" => return self.fail(t, "'pass' is not a keyword; write 'unit' for an empty block or match arm"),
+                        "pass" => return self.fail_fix(t, "'pass' is not a keyword; write 'unit' for an empty block or match arm", "unit"),
                         "const" | "val" | "final" => {
                             return self.fail(t, format!("'{n_t}' is not a keyword; write 'name := ...' for a binding that is not reassigned, or 'var name = ...' when it changes", n_t = self.names.str(n)));
                         }
