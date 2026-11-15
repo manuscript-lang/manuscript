@@ -367,10 +367,13 @@ pub fn emit(
                     )
                 }
                 RelocationTarget::Symbol(i) => (symbols[i], RelocationKind::Absolute, r.addend),
-                // clang writes a reference from one debug section to another as a plain offset on
-                // Darwin, and dsymutil reads loclist and range offsets as such (a section
-                // relocation would add the section's address to them, past the end of the data).
-                RelocationTarget::Section(_) if product.object.format() == BinaryFormat::MachO => {
+                // dsymutil reads a location list offset as it stands: a section relocation would
+                // add the section's address to it, past the end of the list data. (Offsets into
+                // the other debug sections are rebased by dsymutil, so they keep theirs.)
+                RelocationTarget::Section(id)
+                    if product.object.format() == BinaryFormat::MachO
+                        && id.name() == ".debug_loc" =>
+                {
                     return Ok(());
                 }
                 RelocationTarget::Section(id) => {
