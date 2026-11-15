@@ -7,7 +7,7 @@
 //! skip and compaction reclaims once more than half the slots are holes.
 //! ms: domain map
 use crate::alloc;
-use crate::desc::{needs_no_drop, slot_copy, slot_drop, slot_eq, slot_hash};
+use crate::desc::{is_plain, needs_no_drop, slot_copy, slot_drop, slot_eq, slot_hash};
 use crate::fault;
 use crate::string::{self, equal, hash_int};
 use ms_rt_abi::record::FaultKind;
@@ -1015,23 +1015,37 @@ pub unsafe fn copy_map(src: *const MapVal, kd: &TypeDesc, vd: Option<&TypeDesc>,
         if s.len > 0 {
             m.slots = alloc::alloc(s.len.next_power_of_two().max(8) * l.stride);
             m.cap = s.len.next_power_of_two().max(8);
-            for i in 0..s.used {
-                let p = slot(s, &l, i);
-                let h = slot_hash_of(p);
-                if h & LIVE == 0 {
-                    continue;
+            let plain = is_plain(kd) && vd.is_none_or(is_plain);
+            if s.used == s.len && plain {
+                // No holes and nothing owned: the slots are the same bytes in the same places.
+                core::ptr::copy_nonoverlapping(s.slots, m.slots, s.used * l.stride);
+                m.used = s.used;
+            } else {
+                for i in 0..s.used {
+                    let p = slot(s, &l, i);
+                    let h = slot_hash_of(p);
+                    if h & LIVE == 0 {
+                        continue;
+                    }
+                    let q = slot(&m, &l, m.used);
+                    *(q as *mut u64) = h;
+                    slot_copy(kd, p.add(l.koff), q.add(l.koff));
+                    if let Some(vd) = vd {
+                        slot_copy(vd, p.add(l.voff), q.add(l.voff));
+                    }
+                    m.used += 1;
                 }
-                let q = slot(&m, &l, m.used);
-                *(q as *mut u64) = h;
-                slot_copy(kd, p.add(l.koff), q.add(l.koff));
-                if let Some(vd) = vd {
-                    slot_copy(vd, p.add(l.voff), q.add(l.voff));
-                }
-                m.used += 1;
             }
             m.len = m.used;
             let isz = m.cap * 2;
-            rebuild_index(&mut m, &l, isz);
+            if s.used == s.len && s.mask + 1 == isz {
+                // Slot positions are unchanged, so the source index is valid as is.
+                m.index = alloc::alloc(isz * 8) as *mut u32;
+                m.mask = s.mask;
+                core::ptr::copy_nonoverlapping(s.index as *const u8, m.index as *mut u8, isz * 8);
+            } else {
+                rebuild_index(&mut m, &l, isz);
+            }
         }
         *out = m;
     }
@@ -2746,6 +2760,61 @@ mod tests {
             }
         }
         assert_eq!(alloc::live_blocks(), before);
+    }
+
+    #[test]
+    fn copy_of_plain_map_matches_the_source_with_and_without_holes() {
+        let _g = testutil::lock();
+        // SAFETY: the descriptor is static and every slot holds a live i64.
+        unsafe {
+            let before = crate::alloc::live_blocks();
+            let d = &msrt_desc_int;
+            for (n, removed) in [(100i64, false), (100, true), (5, false), (1000, false)] {
+                let mut m = empty();
+                for i in 0..n {
+                    let (mut k, mut v) = (i, i * 3);
+                    msrt_map_add(
+                        &mut m,
+                        d,
+                        d,
+                        &mut k as *mut i64 as *mut u8,
+                        &mut v as *mut i64 as *mut u8,
+                    );
+                }
+                if removed {
+                    for i in (0..n).step_by(3) {
+                        let mut k = i;
+                        msrt_map_remove(&mut m, d, d, &mut k as *mut i64 as *mut u8);
+                    }
+                }
+                let mut c = empty();
+                copy_map(&m, d, Some(d), &mut c);
+                assert_eq!(c.len, m.len);
+                for i in 0..n {
+                    let mut k = i;
+                    let kp = &mut k as *mut i64 as *mut u8;
+                    let want = msrt_map_get_ptr(&m, d, d, kp);
+                    let got = msrt_map_get_ptr(&c, d, d, kp);
+                    assert_eq!(want.is_null(), got.is_null());
+                    if !want.is_null() {
+                        assert_eq!(*(want as *const i64), *(got as *const i64));
+                    }
+                }
+                // The copy is independent: changing it leaves the source alone.
+                let (mut k, mut v) = (n + 7, 1i64);
+                msrt_map_add(
+                    &mut c,
+                    d,
+                    d,
+                    &mut k as *mut i64 as *mut u8,
+                    &mut v as *mut i64 as *mut u8,
+                );
+                assert_eq!(c.len, m.len + 1);
+                drop_map(&mut m, d, Some(d));
+                drop_map(&mut c, d, Some(d));
+            }
+            assert_eq!(alloc::live_blocks(), before);
+        }
     }
 
     #[test]
