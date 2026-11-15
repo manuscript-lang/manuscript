@@ -3161,7 +3161,10 @@ impl<'a> Parser<'a> {
         };
         // Braces that are not a valid expression are literal text, as in JSON.
         let escaped = source.replace('{', "\\{").replace('}', "\\}");
-        if d.fix.is_none() && position.offset > 0 && !source.contains('\n') {
+        // Only content that cannot start an expression (a quote, as in JSON) is
+        // certainly literal; `{total +}` is a typo and keeps its error.
+        let json_like = source.trim_start().starts_with('"');
+        if d.fix.is_none() && json_like && position.offset > 0 && !source.contains('\n') {
             let len = source.len() as u32;
             d.fix = Some(DiagnosticFix {
                 pos: Pos::new(position.offset - 1, position.line, position.column - 1),

@@ -1440,6 +1440,10 @@ impl Scanner<'_> {
             return None;
         }
         let inner = self.text.get(body..at)?;
+        // A broken expression such as `{a \ b}` is a typo, not literal text.
+        if !inner.trim_start().starts_with(['"', '\\']) {
+            return None;
+        }
         let escaped = inner.replace('{', "\\{").replace('}', "\\}");
         let len = (at + 1 - body + 1) as u32;
         let mut end = open;
