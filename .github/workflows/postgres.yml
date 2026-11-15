@@ -1,0 +1,62 @@
+name: Postgres client
+
+# The Postgres client in packages/postgres is tested against a real server. It runs every night and on
+# dispatch only, not on pull requests, until the owner grants an exception to the PR time budget.
+on:
+  schedule:
+    - cron: '23 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: linux, runner: ubuntu-24.04, arch: amd64}
+          - {os: darwin, runner: macos-15, arch: arm64}
+          - {os: windows, runner: windows-2025, arch: amd64}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+      - uses: ./.github/actions/rust-env
+        with:
+          os: ${{ matrix.os }}
+          arch: ${{ matrix.arch }}
+      - name: Install PostgreSQL
+        if: matrix.os == 'darwin'
+        shell: bash
+        run: brew install postgresql@16
+      - name: Build ms
+        shell: bash
+        run: |
+          cargo xtask runtime
+          cargo build --release --locked -p ms-cli
+      - name: Test against a real server
+        shell: bash
+        run: |
+          # Each runner image ships PostgreSQL somewhere different; take the newest installed.
+          if [ "$RUNNER_OS" = Windows ] && ! ls -d "/c/Program Files/PostgreSQL/"*/bin > /dev/null 2>&1; then
+            choco install postgresql16 --params '/Password:unused' -y --no-progress
+          fi
+          case "$RUNNER_OS" in
+            Windows) PG_BIN=$(ls -d "/c/Program Files/PostgreSQL/"*/bin | sort -V | tail -1) ;;
+            Linux) PG_BIN=$(ls -d /usr/lib/postgresql/*/bin | sort -V | tail -1) ;;
+            macOS) PG_BIN="$(brew --prefix postgresql@16)/bin" ;;
+          esac
+          export PG_BIN
+          "$PG_BIN/postgres" --version
+          # initdb refuses to run as root; the hosted runners are not root.
+          vars=$(packages/postgres/tests/start-postgres.sh "$RUNNER_TEMP/pg")
+          export $vars
+          cd packages/postgres
+          ../../target/release/ms test
+          # The package also works as a git dependency of another project.
+          MS=../../target/release/ms bash tests/consumer/run.sh
