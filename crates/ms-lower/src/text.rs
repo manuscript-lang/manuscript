@@ -87,6 +87,42 @@ fn format_params(t: MTy) -> Vec<Param> {
 }
 
 impl Cx {
+    /// The function of the `fn T.to_string() String` a record or enum declares for `concrete`
+    /// (specialized for a generic type's arguments): its text form wherever a value of that type
+    /// is shown, nested in a container too.
+    pub(crate) fn own_text_fn(
+        &mut self,
+        m: &mut Module,
+        concrete: &ms_check::api::types::Ty,
+    ) -> Result<Option<FuncId>, Error> {
+        use ms_check::api::types as ct;
+        if !matches!(concrete.kind, Kind::Type | Kind::Alternative) {
+            return Ok(None);
+        }
+        for at in self
+            .method_index
+            .candidates(concrete.id, ct::n("to_string"))
+        {
+            let c = &self.methods[at];
+            let Some(decl) = &c.decl else { continue };
+            if c.native != ct::Native::Source || !c.ty.params.is_empty() {
+                continue;
+            }
+            let mut subst = ct::Subst::default();
+            let vars = ct::variable_set(&c.variables);
+            if !ct::unify(&c.receiver, concrete, &vars, &mut subst) {
+                continue;
+            }
+            let callable = self
+                .callables
+                .get(&(c.module, decl.id()))
+                .cloned()
+                .ok_or_else(|| Error::new("to_string not found"))?;
+            return Ok(Some(self.function_for(m, &callable, &subst)?));
+        }
+        Ok(None)
+    }
+
     /// The function formatting a value of `t` (reserved on first use); `repr` is the quoted form.
     pub(crate) fn format_fn(&mut self, m: &mut Module, t: MTy, repr: bool) -> FuncId {
         let key = HelperKey::Fmt(t, repr);
@@ -291,7 +327,17 @@ pub(crate) fn build_format(
         }
         _ => None,
     };
+    let own_text = match cx.source_tys.get(t.0 as usize).cloned() {
+        Some(concrete) => cx.own_text_fn(b.m, &concrete)?,
+        None => None,
+    };
     match b.m.types.kind(t).clone() {
+        TyKind::Type(_) | TyKind::Alt(_) if own_text.is_some() => {
+            // The type's own `to_string`, declared next to it.
+            let f = own_text.expect("checked");
+            let text = b.call(f, &[x]);
+            b.ret(Some(text));
+        }
         TyKind::Type(_) if declared_text.is_some() => {
             // The type's own `to_string`, declared in its `.ms` file.
             let f = declared_text.expect("checked");
@@ -586,6 +632,24 @@ impl<'a> FnLower<'a> {
         Ok(Val { v, own: true })
     }
 
+    /// The text a type's own `fn T.to_string() String` gives `x`, which replaces the built-in
+    /// text form; none when `t` declares no such method.
+    pub(crate) fn own_to_string(
+        &mut self,
+        t: &ms_check::api::types::Ty,
+        x: Val,
+    ) -> Result<Option<Val>, Error> {
+        if !matches!(t.kind, Kind::Type | Kind::Alternative) {
+            return Ok(None);
+        }
+        let Some(f) = self.cx.own_text_fn(self.b.m, t)? else {
+            return Ok(None);
+        };
+        let receiver = self.borrow(x);
+        let text = self.b.call(f, &[receiver]);
+        Ok(Some(Val { v: text, own: true }))
+    }
+
     /// The text of a `Duration`: `Duration.to_string` from `@std/time.ms`.
     pub(crate) fn duration_text(&mut self, x: Val) -> Result<Val, Error> {
         let n = self.borrow(x);
@@ -659,8 +723,11 @@ impl<'a> FnLower<'a> {
                         return Ok(x);
                     }
                     let _ = Kind::Type;
-                    if self.ety(e).is(ms_check::api::types::Builtin::Duration) {
+                    let t = self.ety(e);
+                    if t.is(ms_check::api::types::Builtin::Duration) {
                         self.duration_text(x)?
+                    } else if let Some(text) = self.own_to_string(&t, x)? {
+                        text
                     } else {
                         self.format_value(x)?
                     }
