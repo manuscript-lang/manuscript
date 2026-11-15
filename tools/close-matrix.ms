@@ -16,7 +16,7 @@ import (
 	arguments, working_directory from "@std/os/env.ms",
 	temporary, write_file from "@std/os/fs.ms",
 	run from "@std/os/process.ms",
-	metrics from "@std/os/system.ms",
+	system_info from "@std/os/system.ms",
 
 	tool_ms from "./lib.ms",
 )
@@ -536,7 +536,7 @@ fn main() Int:
 	scratch_path := scratch.path()
 	tallies := map_concurrent(
 		cells,
-		metrics().get().available_parallelism,
+		system_info().cpu_count,
 		fn cell: verify(
 			ms.clone(),
 			scratch_path.clone(),
