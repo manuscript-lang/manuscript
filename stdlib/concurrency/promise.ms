@@ -265,6 +265,7 @@ export fn wait_all[T](promises: List[Promise[T]]) List[T]!:
 	// promise that cannot join it (another thread's) is polled with `wait_any` instead.
 	var head = 0
 	var tried = -1
+	var left = count
 	var watching = false
 	var polling = false
 
@@ -274,9 +275,10 @@ export fn wait_all[T](promises: List[Promise[T]]) List[T]!:
 			continue
 
 		// Running an unstarted promise looks through the queue, so ask once per head: a
-		// promise that was not there the first time never returns to it.
-		fresh := head != tried
-		tried = head
+		// promise that was not there the first time never returns to it. Only the last
+		// one runs here: the waiter cannot see another promise fail while it runs one.
+		fresh := head != tried and left == 1
+		if fresh: tried = head
 
 		if (
 			(fresh and msrt_promise_run_unstarted(pending[head].id))
@@ -285,6 +287,7 @@ export fn wait_all[T](promises: List[Promise[T]]) List[T]!:
 			value := pending[head].wait()?
 			slots[head] = ok(value)
 			taken[head] = true
+			left -= 1
 			head += 1
 		else if not polling:
 			if not watching:
@@ -300,6 +303,7 @@ export fn wait_all[T](promises: List[Promise[T]]) List[T]!:
 					value := pending[at].wait()?
 					slots[at] = ok(value)
 					taken[at] = true
+					left -= 1
 		else:
 			var ids: List[Int] = []
 			for at in head..count:
@@ -312,6 +316,7 @@ export fn wait_all[T](promises: List[Promise[T]]) List[T]!:
 					value := pending[at].wait()?
 					slots[at] = ok(value)
 					taken[at] = true
+					left -= 1
 
 	var reversed: List[T] = []
 	for at in 0..count:
