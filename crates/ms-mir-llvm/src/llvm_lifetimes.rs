@@ -28,10 +28,11 @@ const RETAINS: [&str; 4] = [
 const DERIVES: [&str; 5] = ["getelementptr", "ptrtoint", "inttoptr", "add", "sub"];
 
 /// `body` (the text after the allocas) with markers for the slots `allocas` declares.
-pub fn mark(allocas: &str, body: &str) -> String {
+pub fn mark(allocas: &str, pinned: &HashSet<String>, body: &str) -> String {
     let slots: Vec<&str> = allocas
         .lines()
         .filter_map(|l| l.trim_start().split_once(" = alloca").map(|(name, _)| name))
+        .filter(|name| !pinned.contains(*name))
         .collect();
     if slots.is_empty() {
         return body.to_string();
@@ -276,7 +277,7 @@ mod tests {
     #[test]
     fn a_temporary_confined_to_a_block_gets_markers() {
         let body = "  %v3 = getelementptr inbounds i8, ptr %v1, i64 8, !dbg !4\n  store i64 1, ptr %v3, align 8, !dbg !4\n  call void @f(ptr %v1), !dbg !4\n  ret void, !dbg !4\n";
-        let out = mark(ALLOCAS, body);
+        let out = mark(ALLOCAS, &HashSet::new(), body);
         let start = out.find("lifetime.start.p0(ptr %v1), !dbg !4").expect(&out);
         let gep = out.find("%v3 = getelementptr").unwrap();
         let end = out.find("lifetime.end.p0(ptr %v1), !dbg !4").expect(&out);
@@ -289,39 +290,47 @@ mod tests {
     }
 
     #[test]
+    fn a_pinned_slot_gets_no_markers() {
+        let body = "  store i64 1, ptr %v1, align 8\n  call void @f(ptr %v1)\n  ret void\n";
+        assert!(mark(ALLOCAS, &HashSet::new(), body).contains("lifetime.start.p0(ptr %v1)"));
+        let pinned = HashSet::from(["%v1".to_string()]);
+        assert!(!mark(ALLOCAS, &pinned, body).contains("lifetime"));
+    }
+
+    #[test]
     fn a_slot_used_in_two_blocks_keeps_no_marker() {
         let body = "  store i64 1, ptr %v1, align 8\n  br label %b1\nb1:\n  %v3 = load i64, ptr %v1, align 8\n  ret void\n";
-        assert!(!mark(ALLOCAS, body).contains("lifetime"));
+        assert!(!mark(ALLOCAS, &HashSet::new(), body).contains("lifetime"));
     }
 
     #[test]
     fn a_slot_read_first_or_with_an_escaping_address_keeps_no_marker() {
         let read = "  %v3 = load i64, ptr %v1, align 8\n  ret void\n";
-        assert!(!mark(ALLOCAS, read).contains("lifetime"));
+        assert!(!mark(ALLOCAS, &HashSet::new(), read).contains("lifetime"));
         let readonly = "  call void @f(ptr readonly %v1)\n  ret void\n";
-        assert!(!mark(ALLOCAS, readonly).contains("lifetime"));
+        assert!(!mark(ALLOCAS, &HashSet::new(), readonly).contains("lifetime"));
         let escape = "  store ptr %v1, ptr %v2, align 8\n  ret void\n";
-        assert!(!mark(ALLOCAS, escape).contains("(ptr %v1)"));
+        assert!(!mark(ALLOCAS, &HashSet::new(), escape).contains("(ptr %v1)"));
         let phi = "  br label %b1\nb1:\n  %v3 = phi ptr [ %v1, %b0 ]\n  ret void\n";
-        assert!(!mark(ALLOCAS, phi).contains("lifetime"));
+        assert!(!mark(ALLOCAS, &HashSet::new(), phi).contains("lifetime"));
     }
 
     #[test]
     fn a_slot_the_runtime_keeps_a_pointer_to_gets_no_marker() {
         let body = "  store i64 1, ptr %v1, align 8\n  %v3 = ptrtoint ptr %v1 to i64\n  %v4 = call i64 @\"msrt_cleanup_push\"(i64 7, i64 %v3)\n  ret void\n";
-        assert!(!mark(ALLOCAS, body).contains("(ptr %v1)"));
+        assert!(!mark(ALLOCAS, &HashSet::new(), body).contains("(ptr %v1)"));
     }
 
     #[test]
     fn an_integer_address_reaching_another_block_blocks_the_marker() {
         let body = "  %v3 = ptrtoint ptr %v1 to i64\n  store i64 1, ptr %v1, align 8\n  br label %b1\nb1:\n  call void @f(i64 %v3)\n  ret void\n";
-        assert!(!mark(ALLOCAS, body).contains("lifetime"));
+        assert!(!mark(ALLOCAS, &HashSet::new(), body).contains("lifetime"));
     }
 
     #[test]
     fn a_block_ending_in_unreachable_has_no_end_marker() {
         let body = "  call void @f(ptr %v1)\n  unreachable\n";
-        let out = mark(ALLOCAS, body);
+        let out = mark(ALLOCAS, &HashSet::new(), body);
         assert!(
             out.contains("lifetime.start") && !out.contains("lifetime.end"),
             "{out}"

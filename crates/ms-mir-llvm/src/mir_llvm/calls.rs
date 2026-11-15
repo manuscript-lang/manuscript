@@ -421,7 +421,11 @@ fn call_rt(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder
                 args.push((v, if c_abi { native_attr(r, at) } else { at }));
             }
         } else {
-            let slot = types::spill(b, lay, p.ty, vals, *a);
+            let slot = if def.role == ExternRole::BorrowsArgument {
+                types::spill_pinned(b, lay, p.ty, vals, *a)
+            } else {
+                types::spill(b, lay, p.ty, vals, *a)
+            };
             args.push((slot, if p.mode == Mode::Borrow { BORROWED } else { "" }));
         }
     }

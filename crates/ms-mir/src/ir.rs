@@ -920,6 +920,10 @@ pub enum ExternRole {
     /// No special treatment.
     #[default]
     None,
+    /// A call whose result may point into the storage of an argument passed by value, such as
+    /// the bytes of an inline `String`: the backends give that argument a slot that lives for the
+    /// whole function instead of one shared with other statements' temporaries.
+    BorrowsArgument,
     /// `strbuilder.append(builder, string)`.
     StrBuilderAppend,
     /// `strbuilder.append_int(builder, int)`.

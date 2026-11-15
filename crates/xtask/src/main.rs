@@ -227,11 +227,11 @@ fn rust_files(dir: &Path, out: &mut Vec<PathBuf>) {
 
 /// The `// ms: flag ..` comments of `source`: each names the flags of the runtime function whose
 /// name is the first `msrt_*`/`msstd_*` identifier on the next code line. The flags are the
-/// declared ABI facts lowering and the optimizer read (`leaf`, `pure`, `fresh`, `keeps:<param>`
+/// declared ABI facts lowering and the optimizer read (`leaf`, `pure`, `fresh`, `borrows`, `keeps:<param>`
 /// for a function value the runtime stores and drops itself, `takes:<param>` for a value
 /// argument the runtime takes ownership of, `domain=<word>` for how its failures
 /// name their domain when it differs from the file's `//! ms: domain`, `spawns` for a function that starts a
-/// task running code of the program, `takes_self` for a function with a `<name>_take` twin that reuses its first argument when it dies at the call, and `op=<mnemonic>` for a function
+/// task running code of the program, `borrows` for a function whose result may point into the storage of an argument passed by value (the bytes of an inline `String`), so the backends keep that argument's slot for the whole function, `takes_self` for a function with a `<name>_take` twin that reuses its first argument when it dies at the call, and `op=<mnemonic>` for a function
 /// that is exactly one MIR instruction on its arguments); an unknown flag or a
 /// marker with no function after it is an error.
 fn scan_flags(source: &str) -> Result<Vec<(String, Vec<String>)>, String> {
@@ -242,7 +242,7 @@ fn scan_flags(source: &str) -> Result<Vec<(String, Vec<String>)>, String> {
         if let Some(list) = t.strip_prefix("// ms:") {
             let list: Vec<String> = list.split_whitespace().map(str::to_string).collect();
             if let Some(bad) = list.iter().find(|f| {
-                !["leaf", "pure", "fresh", "spawns", "takes_self"].contains(&f.as_str())
+                !["leaf", "pure", "fresh", "borrows", "spawns", "takes_self"].contains(&f.as_str())
                     && !f.starts_with("keeps:")
                     && !f.starts_with("takes:")
                     && !f.starts_with("op=")

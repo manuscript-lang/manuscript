@@ -197,7 +197,12 @@ impl<'a, 'm> Lower<'a, 'm> {
                 args.push(h.addr);
             } else {
                 let leaves = self.g.lay.leaves(p.ty);
-                args.push(self.spill_temp(&v, &leaves));
+                // A result that points into the argument needs the slot after the call too.
+                args.push(if def.role == ExternRole::BorrowsArgument {
+                    self.spill(&v, &leaves)
+                } else {
+                    self.spill_temp(&v, &leaves)
+                });
             }
         }
         let ret_ty = def.ret;
