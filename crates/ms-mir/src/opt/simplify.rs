@@ -92,6 +92,10 @@ fn apply_subst(f: &mut Func, subst: &ValueMap<Value>) {
         }
         b.term.for_each_use_mut(|v| *v = resolve(subst, *v));
     }
+    // A debugger name follows its value to what replaced it.
+    for n in &mut f.names {
+        n.value = resolve(subst, n.value);
+    }
 }
 
 /// Folds operations on an alternative built in the same function by `alt.new` with a case

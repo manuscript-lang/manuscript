@@ -11,6 +11,7 @@ use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext, Switch};
 use cranelift_module::{DataId, FuncId, Module as _};
 use ms_mir::ir::{Cc, ExternRole, FaultKind, Func, Imm, Inst, Op, Target, Term};
 use ms_mir::types::{Ty, TyKind};
+use ms_mir::vmap::ValueMap;
 use ms_rt_abi::symbols::{
     DEEP_DROP_HEADROOM, ISOLATE_HDR_CANCEL, ISOLATE_HDR_GUARDED, STACK_LIMIT_CELL, STACK_REGION,
 };
@@ -49,6 +50,8 @@ struct Home {
 pub struct Lower<'a, 'm> {
     /// Named values that a debugger can show; see [`LocalVar`].
     pub vars: Vec<LocalVar>,
+    /// The indices into the function's `names` of each named value, by value index.
+    named: ValueMap<Vec<usize>>,
     g: &'a mut Gen<'m>,
     b: FunctionBuilder<'a>,
     frefs: HashMap<FuncId, FuncRef>,
@@ -125,6 +128,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             unsupported: None,
             temps: Vec::new(),
             vars: Vec::new(),
+            named: ValueMap::new(),
         }
     }
 
@@ -717,30 +721,55 @@ impl<'a, 'm> Lower<'a, 'm> {
 
     /// Labels the register leaves of `v` with its source name, so Cranelift tracks where they live.
     fn name_value(&mut self, f: &Func, v: ms_mir::ir::Value) {
-        let Some((_, name)) = f.names.iter().find(|(n, _)| *n == v) else {
+        let Some(indices) = self.named.get(&v).cloned() else {
             return;
         };
         let ty = f.ty(v);
         let offsets = self.g.lay.mem(ty).offsets;
         let leaves = self.g.lay.leaves(ty);
-        let first: usize = self.vars.iter().map(|x| x.pieces.len()).sum();
-        let mut pieces = Vec::new();
-        for ((leaf, &value), offset) in leaves.iter().zip(&self.vals[v.index()]).zip(offsets) {
-            let label = ir::ValueLabel::from_u32((first + pieces.len()) as u32);
-            self.b.set_val_label(value, label);
-            pieces.push((offset, leaf.size(), label));
+        // A value kept in memory until it is used has no register to label yet.
+        if leaves.is_empty() || self.vals[v.index()].len() != leaves.len() {
+            return;
         }
-        self.vars.push(LocalVar {
-            name: name.clone(),
-            ty,
-            pieces,
-        });
+        // One value can carry several names: its own, and a parameter of each callee it is the
+        // argument of once those are inlined.
+        for i in indices {
+            let named = &f.names[i];
+            let first: usize = self.vars.iter().map(|x| x.pieces.len()).sum();
+            let mut pieces = Vec::new();
+            for ((leaf, &value), &offset) in leaves.iter().zip(&self.vals[v.index()]).zip(&offsets)
+            {
+                let label = ir::ValueLabel::from_u32((first + pieces.len()) as u32);
+                self.b.set_val_label(value, label);
+                pieces.push((offset, leaf.size(), label));
+            }
+            self.vars.push(LocalVar {
+                name: named.name.clone(),
+                param: named.param,
+                scope: if named.scope == 0 {
+                    0
+                } else {
+                    self.g.scope_base + named.scope
+                },
+                ty,
+                pieces,
+            });
+        }
     }
 
     pub fn lower_func(&mut self, fi: usize, f: &Func) {
         self.fid = fi as u32;
         self.b.func.dfg.collect_debug_info();
         self.vars.clear();
+        self.named = ValueMap::new();
+        for (i, n) in f.names.iter().enumerate() {
+            match self.named.get_mut(&n.value) {
+                Some(list) => list.push(i),
+                None => {
+                    self.named.insert(n.value, vec![i]);
+                }
+            }
+        }
         let rpo = f.rpo();
         self.g.add_scopes(f);
         self.blocks = vec![None; f.blocks.len()];
@@ -796,9 +825,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let w = self.g.lay.width(ty);
                 self.vals[p.value.index()] = params[at..at + w].to_vec();
                 at += w;
-                if b.index() == 0 {
-                    self.name_value(f, p.value);
-                }
+                self.name_value(f, p.value);
                 if b.index() == 0 && self.is_wide(ty) {
                     let leaves = self.g.lay.leaves(ty);
                     let size = self.g.lay.mem(ty).size;
@@ -818,6 +845,9 @@ impl<'a, 'm> Lower<'a, 'm> {
                 self.set_loc(inst.loc);
                 self.refresh(f, inst.args.iter().copied());
                 self.lower_inst(f, inst);
+                if let Some(r) = inst.res {
+                    self.name_value(f, r);
+                }
                 for a in &inst.args {
                     self.used[a.index()] = true;
                 }

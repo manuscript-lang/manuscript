@@ -72,6 +72,18 @@ pub struct Loc {
     pub scope: u32,
 }
 
+/// A value a debugger shows under its source name.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct NamedValue {
+    pub value: Value,
+    pub name: String,
+    /// A parameter of the function whose body holds it, not a local.
+    pub param: bool,
+    /// The [`Loc::scope`] of the body that declares it: 0 for the function itself, else an
+    /// inlined callee whose frame the debugger shows it in.
+    pub scope: u32,
+}
+
 /// A callee body inlined into a function: fault traces and profiles show it as its
 /// own frame, called from `call_line` of the enclosing scope.
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -734,7 +746,7 @@ pub struct Func {
     /// pass that moves or removes parameters leaves the others named; an entry whose value no
     /// longer exists is ignored. Not part of the text format, and no pass reads it: the code
     /// generators show the value under its name while it is alive.
-    pub names: Vec<(Value, String)>,
+    pub names: Vec<NamedValue>,
 }
 
 impl Func {

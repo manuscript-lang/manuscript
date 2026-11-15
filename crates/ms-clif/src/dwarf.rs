@@ -1,6 +1,6 @@
 //! Minimal DWARF4: source attribution, and a DIE for every Manuscript type (`debug_types`) so a
-//! debugger can print a `String`, list, map, record, enum or optional at an address, and a
-//! parameter DIE per named function parameter with a location list. No inline frame DIEs.
+//! debugger can print a `String`, list, map, record, enum or optional at an address, a DIE per
+//! named parameter and local with a location list, and a frame DIE per inlined callee.
 //! The runtime's independent fault/profile tables remain unchanged.
 
 use crate::Error;
@@ -16,8 +16,8 @@ use gimli::write::{
     RelocationTarget, Sections,
 };
 use gimli::{Encoding, Format, LineEncoding, RunTimeEndian};
-use ms_mir::ir::Module;
-use std::collections::HashMap;
+use ms_mir::ir::{Module, Scope};
+use std::collections::{BTreeMap, HashMap};
 
 #[derive(Clone)]
 struct Section {
@@ -110,13 +110,94 @@ fn emit_types(
     of_ty.into_iter().map(|i| ids[i]).collect()
 }
 
-/// Describes the named values of `f` as parameter DIEs, each located by a list over the function.
+/// Describes each inlined callee of `f` as a frame nested in the one that called it, located by
+/// the code ranges its lines occupy. Returns the frame DIE of each scope that kept code.
+fn emit_inlined(
+    dwarf: &mut DwarfUnit,
+    subprogram: gimli::write::UnitEntryId,
+    symbol: usize,
+    f: &FuncDbg,
+    scopes: &[Scope],
+    files: &[Option<gimli::write::FileId>],
+    origins: &mut HashMap<String, gimli::write::UnitEntryId>,
+) -> HashMap<u32, gimli::write::UnitEntryId> {
+    // A span of a scope is also a span of every scope that called it.
+    let mut spans: BTreeMap<u32, Vec<(u32, u32)>> = BTreeMap::new();
+    for &(start, stop, _, _, scope) in &f.dwarf_ranges {
+        let mut s = scope;
+        while s != 0 {
+            let list = spans.entry(s).or_default();
+            match list.last_mut() {
+                Some(last) if last.1 == start => last.1 = stop,
+                _ => list.push((start, stop)),
+            }
+            s = scopes[s as usize - 1].parent;
+        }
+    }
+    let at = |offset: u32| Address::Symbol {
+        symbol,
+        addend: i64::from(offset),
+    };
+    let mut frames: HashMap<u32, gimli::write::UnitEntryId> = HashMap::new();
+    // A caller's scope number is lower than its callee's, so it already has its frame.
+    for (&s, list) in &spans {
+        let scope = &scopes[s as usize - 1];
+        let (parent, call_file) = match frames.get(&scope.parent) {
+            Some(&p) => (p, scopes[scope.parent as usize - 1].file),
+            None => (subprogram, f.file),
+        };
+        let origin = *origins.entry(scope.name.clone()).or_insert_with(|| {
+            let root = dwarf.unit.root();
+            let id = dwarf.unit.add(root, gimli::DW_TAG_subprogram);
+            let die = dwarf.unit.get_mut(id);
+            die.set(
+                gimli::DW_AT_name,
+                AttributeValue::String(scope.name.clone().into_bytes()),
+            );
+            die.set(
+                gimli::DW_AT_inline,
+                AttributeValue::Inline(gimli::DW_INL_inlined),
+            );
+            id
+        });
+        let ranges = dwarf.unit.ranges.add(RangeList(
+            list.iter()
+                .map(|&(begin, end)| Range::StartEnd {
+                    begin: at(begin),
+                    end: at(end),
+                })
+                .collect(),
+        ));
+        let id = dwarf.unit.add(parent, gimli::DW_TAG_inlined_subroutine);
+        let die = dwarf.unit.get_mut(id);
+        die.set(
+            gimli::DW_AT_abstract_origin,
+            AttributeValue::UnitRef(origin),
+        );
+        die.set(gimli::DW_AT_ranges, AttributeValue::RangeListRef(ranges));
+        if let Some(Some(file)) = files.get(call_file as usize) {
+            die.set(
+                gimli::DW_AT_call_file,
+                AttributeValue::FileIndex(Some(*file)),
+            );
+        }
+        die.set(
+            gimli::DW_AT_call_line,
+            AttributeValue::Udata(u64::from(scope.call_line)),
+        );
+        frames.insert(s, id);
+    }
+    frames
+}
+
+/// Describes the named values of `f` as parameter and variable DIEs, each located by a list over the function.
 fn emit_vars(
     dwarf: &mut DwarfUnit,
     subprogram: gimli::write::UnitEntryId,
     symbol: usize,
     size: u32,
     vars: &[VarDbg],
+    frames: &HashMap<u32, gimli::write::UnitEntryId>,
     type_dies: &[gimli::write::UnitEntryId],
 ) {
     let mut frame = Expression::new();
@@ -130,6 +211,14 @@ fn emit_vars(
         addend: i64::from(offset),
     };
     for v in vars {
+        // A value of an inlined callee belongs to that callee's frame, when the code kept one.
+        let parent = if v.scope == 0 {
+            subprogram
+        } else if let Some(&frame) = frames.get(&v.scope) {
+            frame
+        } else {
+            continue;
+        };
         // Split the code at every point where any leaf changes place, so each segment's
         // expression names one place per leaf.
         let mut cuts: Vec<u32> = v
@@ -140,39 +229,65 @@ fn emit_vars(
             .collect();
         cuts.sort_unstable();
         cuts.dedup();
-        let mut list = Vec::new();
+        // Each leaf's ranges are in code order, so one cursor per leaf finds its place in a
+        // segment without searching. A cut another leaf made does not change this one, so equal
+        // neighbouring segments join before any expression is built.
+        let mut cursor = vec![0usize; v.pieces.len()];
+        let mut segments: Vec<(u32, u32, Vec<Option<VarLoc>>)> = Vec::new();
         for w in cuts.windows(2) {
             let (begin, end) = (w[0], w[1]);
-            let mut expr = Expression::new();
-            let mut known = false;
-            let mut next = 0;
-            for p in &v.pieces {
-                if p.offset > next {
-                    expr.op_piece(u64::from(p.offset - next));
-                }
-                match p.ranges.iter().find(|r| r.0 <= begin && end <= r.1) {
-                    Some((_, _, VarLoc::Reg(r))) => {
-                        expr.op_reg(gimli::Register(*r));
-                        known = true;
+            let places: Vec<Option<VarLoc>> = v
+                .pieces
+                .iter()
+                .zip(&mut cursor)
+                .map(|(p, at_range)| {
+                    while p.ranges.get(*at_range).is_some_and(|r| r.1 <= begin) {
+                        *at_range += 1;
                     }
-                    Some((_, _, VarLoc::Cfa(o))) => {
-                        expr.op_fbreg(*o);
-                        known = true;
-                    }
-                    None => {}
-                }
-                expr.op_piece(u64::from(p.size));
-                next = p.offset + p.size;
+                    p.ranges
+                        .get(*at_range)
+                        .filter(|r| r.0 <= begin && end <= r.1)
+                        .map(|r| r.2)
+                })
+                .collect();
+            if places.iter().all(Option::is_none) {
+                continue;
             }
-            if known {
-                list.push(Location::StartEnd {
+            match segments.last_mut() {
+                Some(last) if last.1 == begin && last.2 == places => last.1 = end,
+                _ => segments.push((begin, end, places)),
+            }
+        }
+        let list: Vec<Location> = segments
+            .into_iter()
+            .map(|(begin, end, places)| {
+                let mut expr = Expression::new();
+                let mut next = 0;
+                for (p, place) in v.pieces.iter().zip(places) {
+                    if p.offset > next {
+                        expr.op_piece(u64::from(p.offset - next));
+                    }
+                    match place {
+                        Some(VarLoc::Reg(r)) => expr.op_reg(gimli::Register(r)),
+                        Some(VarLoc::Cfa(o)) => expr.op_fbreg(o),
+                        None => {}
+                    }
+                    expr.op_piece(u64::from(p.size));
+                    next = p.offset + p.size;
+                }
+                Location::StartEnd {
                     begin: at(begin),
                     end: at(end),
                     data: expr,
-                });
-            }
-        }
-        let param_id = dwarf.unit.add(subprogram, gimli::DW_TAG_formal_parameter);
+                }
+            })
+            .collect();
+        let tag = if v.param {
+            gimli::DW_TAG_formal_parameter
+        } else {
+            gimli::DW_TAG_variable
+        };
+        let param_id = dwarf.unit.add(parent, tag);
         let param = dwarf.unit.get_mut(param_id);
         param.set(
             gimli::DW_AT_name,
@@ -197,6 +312,7 @@ pub fn emit(
     product: &mut ObjectProduct,
     m: &Module,
     funcs: &[FuncDbg],
+    scopes: &[Scope],
     endian: cranelift_codegen::ir::Endianness,
 ) -> Result<(), Error> {
     let valid_path = |s: &str| !s.is_empty() && !s.contains('\0');
@@ -252,6 +368,7 @@ pub fn emit(
         AttributeValue::String(b"Manuscript Cranelift".to_vec()),
     );
     let type_dies = emit_types(&mut dwarf, root, m);
+    let mut origins = HashMap::new();
     for f in funcs {
         if f.dwarf_ranges.is_empty() {
             continue;
@@ -276,9 +393,12 @@ pub fn emit(
             gimli::DW_AT_high_pc,
             AttributeValue::Udata(u64::from(f.size)),
         );
-        emit_vars(&mut dwarf, entry, symbol, f.size, &f.vars, &type_dies);
+        let frames = emit_inlined(&mut dwarf, entry, symbol, f, scopes, &files, &mut origins);
+        emit_vars(
+            &mut dwarf, entry, symbol, f.size, &f.vars, &frames, &type_dies,
+        );
         let mut end = None;
-        for &(start, stop, file, line) in &f.dwarf_ranges {
+        for &(start, stop, file, line, _) in &f.dwarf_ranges {
             let Some(Some(file)) = files.get(file as usize) else {
                 continue;
             };

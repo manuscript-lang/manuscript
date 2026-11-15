@@ -8,7 +8,7 @@
 
 ## Status
 
-Stage 1 implemented 2026-11-15. Stage 2 slice 1 (parameters in Cranelift debug builds: `Func.names`, value labels, `DW_TAG_formal_parameter` location lists) implemented 2026-11-15; locals remain. LLVM release builds describe types only: variables there cost about 4% of compile time and 0.4% of size for no change in the generated code ([measurement](../bench/perf/debug-variables-2026-11-15.md)), over the 1% line, so they stay out of release builds. Stage 3 is done.
+Stage 1 implemented 2026-11-15. Stage 2 (parameters, locals and inlined frames in Cranelift debug builds: `Func.names`, value labels, `DW_TAG_formal_parameter` and `DW_TAG_variable` location lists, `DW_TAG_inlined_subroutine` frames) implemented 2026-11-15; a reassigned local stays undescribed. LLVM release builds describe types only: variables there cost about 4% of compile time and 0.4% of size for no change in the generated code ([measurement](../bench/perf/debug-variables-2026-11-15.md)), over the 1% line, so they stay out of release builds. Stage 3 is done.
 
 ## Problem
 
