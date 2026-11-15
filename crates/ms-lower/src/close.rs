@@ -492,7 +492,7 @@ impl FnLower<'_> {
         let Some(kind) = self.temp_closer(mt) else {
             return v;
         };
-        close_owned(&mut self.b, &kind, v, mt)
+        self.close_discarded_kind(&kind, v)
     }
 
     /// Whether the temporary `v` closes before it drops.
@@ -654,11 +654,11 @@ impl FnLower<'_> {
     }
 
     /// Drops a discarded statement result, closing it first when it holds a resource nothing
-    /// took: unlike a pending temporary it may be a wrapper (`xs.pop()` is an `Optional`).
+    /// took, shielded like any implicit close: unlike a pending temporary it may be a wrapper
+    /// (`xs.pop()` is an `Optional`).
     pub(crate) fn drop_unused(&mut self, v: Value, ty: &ct::Ty) {
-        let mt = self.b.ty(v);
         let v = match self.part_closer(ty) {
-            Ok(Some(kind)) => close_owned(&mut self.b, &kind, v, mt),
+            Ok(Some(kind)) => self.close_discarded_kind(&kind, v),
             _ => v,
         };
         self.drop_value(v);

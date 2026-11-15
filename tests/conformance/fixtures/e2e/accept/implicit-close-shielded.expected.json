@@ -38,6 +38,11 @@
           "index": 5,
           "name": "implicit-close-shielded.ms::a fault in close does not replace a pending fault",
           "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "implicit-close-shielded.ms::cancellation does not interrupt the close of a discarded result",
+          "status": "passed"
         }
       ],
       "summary": {
