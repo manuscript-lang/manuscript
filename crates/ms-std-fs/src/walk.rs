@@ -173,10 +173,13 @@ struct Copier<'a, 'b> {
     o: CopyOptions,
     filter: Option<Filter<'b>>,
     ancestors: Vec<Vec<u8>>,
+    /// The destination root with its existing ancestors resolved through links.
+    destination: Vec<u8>,
     _marker: core::marker::PhantomData<&'a ()>,
 }
 
-fn copy_check_destination(source: &[u8], dest: &[u8], follow: bool) -> Res<()> {
+/// Rejects a destination inside the source and returns the destination with links resolved.
+fn copy_check_destination(source: &[u8], dest: &[u8], follow: bool) -> Res<Vec<u8>> {
     let mut canonical = ops::eval_symlinks(source).map_err(|e| Fail::errno(e, "lstat", source));
     if !follow
         && let Ok(info) = lstat(source)
@@ -191,7 +194,7 @@ fn copy_check_destination(source: &[u8], dest: &[u8], follow: bool) -> Res<()> {
     if within_path(&canonical, &canonical_dest) {
         return Err(Fail::invalid());
     }
-    Ok(())
+    Ok(canonical_dest)
 }
 
 fn chtimes(dest: &[u8], info: &sys::Stat) -> Res<()> {
@@ -298,7 +301,9 @@ impl Copier<'_, '_> {
             return Err(Fail::status(STATUS_ALREADY_EXISTS));
         }
         let canonical = ops::eval_symlinks(source).map_err(|e| Fail::errno(e, "lstat", source))?;
-        if self.ancestors.contains(&canonical) {
+        // A followed link can lead to a directory that holds the destination; copying it would
+        // read the tree being written and never end.
+        if self.ancestors.contains(&canonical) || within_path(&canonical, &self.destination) {
             return Err(Fail::invalid());
         }
         self.ancestors.push(canonical);
@@ -398,11 +403,12 @@ pub fn copy(
     options: CopyOptions,
     filter: Option<Filter<'_>>,
 ) -> Res<()> {
-    copy_check_destination(source, destination, options.dereference)?;
+    let destination_root = copy_check_destination(source, destination, options.dereference)?;
     let mut c = Copier {
         o: options,
         filter,
         ancestors: Vec::new(),
+        destination: destination_root,
         _marker: core::marker::PhantomData,
     };
     c.copy(source, destination)
@@ -1018,6 +1024,25 @@ mod tests {
             entries: UNLIMITED,
             bytes: UNLIMITED,
         }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn copy_dereferencing_a_link_to_an_ancestor_of_the_destination_fails() {
+        let root = ops::temporary_directory(b"msfs-copy-loop-").unwrap();
+        let source = path::join(&root, b"real");
+        ops::create_directory(&source, false).unwrap();
+        ops::create_link(&path::join(&source, b"up"), &root).unwrap();
+        let dest = path::join(&root, b"c3");
+        let copy_options = CopyOptions {
+            dereference: true,
+            ..options()
+        };
+        assert_eq!(
+            copy(&source, &dest, copy_options, None).unwrap_err().status,
+            STATUS_INVALID_INPUT
+        );
+        ops::remove(&root, true).unwrap();
     }
 
     #[test]
