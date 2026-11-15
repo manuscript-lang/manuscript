@@ -218,6 +218,10 @@ struct PendingHeaders {
     end_stream: bool,
 }
 
+/// Most PING and SETTINGS acknowledgements a peer may leave queued and unread, as in Go's
+/// `maxQueuedControlFrames`.
+const MAX_CONTROL_ACKS: u32 = 10_000;
+
 /// One endpoint of an HTTP/2 connection.
 #[derive(Debug)]
 pub struct Connection {
@@ -231,6 +235,8 @@ pub struct Connection {
     preface_done: bool,
     got_settings: bool,
     settings_unacked: u32,
+    /// PING and SETTINGS acknowledgements queued since the transport last drained all output.
+    control_acks: u32,
     /// Stream receive window the peer is using for us right now (65535 until
     /// it acknowledges our SETTINGS).
     recv_initial: i64,
@@ -278,6 +284,7 @@ impl Connection {
             preface_done: role == Role::Client,
             got_settings: false,
             settings_unacked: 1,
+            control_acks: 0,
             recv_initial: DEFAULT_WINDOW,
             streams: HashMap::new(),
             local_open: 0,
@@ -326,6 +333,25 @@ impl Connection {
             write_window_update(&mut self.out, 0, extra as u32);
             self.conn_recv_window += extra;
         }
+    }
+
+    /// Tells the connection the transport has written everything it took, so queued
+    /// acknowledgements no longer count toward `MAX_CONTROL_ACKS`.
+    pub fn output_drained(&mut self) {
+        self.control_acks = 0;
+    }
+
+    /// Counts one acknowledgement the peer provoked; a peer that provokes
+    /// `MAX_CONTROL_ACKS` without reading any of them is flooding (CVE-2019-9512, 9515).
+    fn count_control_ack(&mut self) -> Result<(), H2Error> {
+        self.control_acks += 1;
+        if self.control_acks > MAX_CONTROL_ACKS {
+            return Err(H2Error::connection(
+                ENHANCE_YOUR_CALM,
+                "too many unread control frame acknowledgements",
+            ));
+        }
+        Ok(())
     }
 
     /// Bytes queued for the transport. Call after every `feed` and send.
@@ -825,6 +851,7 @@ impl Connection {
         if ack {
             ev.push(Event::PingAck { data });
         } else {
+            self.count_control_ack()?;
             write_ping(&mut self.out, true, data);
         }
         Ok(())
@@ -921,6 +948,7 @@ impl Connection {
         for &(key, value) in params {
             self.apply_peer_setting(key, value, ev)?;
         }
+        self.count_control_ack()?;
         write_settings_ack(&mut self.out);
         Ok(())
     }

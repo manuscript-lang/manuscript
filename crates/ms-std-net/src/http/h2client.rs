@@ -292,8 +292,14 @@ impl Session {
 
     /// The core's output after what is still pending.
     fn output(&self) -> Vec<u8> {
-        let fresh = self.state.borrow_mut().core.take_output();
         let mut out = std::mem::take(&mut *self.pending.borrow_mut());
+        let mut state = self.state.borrow_mut();
+        // Nothing left over means the transport wrote everything it was given before.
+        if out.is_empty() {
+            state.core.output_drained();
+        }
+        let fresh = state.core.take_output();
+        drop(state);
         out.extend(fresh);
         out
     }

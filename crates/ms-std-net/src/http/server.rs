@@ -1420,6 +1420,14 @@ impl Server {
         if hosts > 1 {
             return Err((400, "too many Host headers"));
         }
+        let host_valid = head
+            .fields
+            .iter()
+            .filter(|(n, _)| n.eq_ignore_ascii_case("Host"))
+            .all(|(_, v)| std::str::from_utf8(v).is_ok_and(target::valid_authority));
+        if !host_valid {
+            return Err((400, "invalid Host header"));
+        }
         let framing = h1::request_framing(&head).map_err(|b| (b.status, b.reason))?;
         let target = target::parse(&head.target).map_err(|e| (400, e.0))?;
         if target.path == "*" && head.method != "OPTIONS" {
@@ -1815,6 +1823,18 @@ pub(crate) mod tests {
         assert!(text.contains("Connection: close\r\n"));
         assert!(text.contains("Date: "));
         assert!(text.ends_with("\r\n\r\nGET|/hello|x=1|HTTP/1.1"), "{text}");
+    }
+
+    #[test]
+    fn invalid_host_fields_answer_400() {
+        let (_net, server) = start(opts(Limits::default()));
+        let addr = server.address().to_string();
+        for host in ["a b", "u@a", "a/b", "a?b"] {
+            let request = format!("GET / HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n\r\n");
+            let addr = addr.clone();
+            let text = with_client(move || exchange(&addr, request.as_bytes()));
+            assert!(text.starts_with("HTTP/1.1 400 "), "{host}: {text}");
+        }
     }
 
     #[test]

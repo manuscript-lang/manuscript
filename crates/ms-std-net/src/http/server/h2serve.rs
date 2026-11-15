@@ -316,6 +316,9 @@ fn drain_io(io: &dyn Io, st: &mut ConnSt) -> Drain {
             st.outbuf.clear();
             st.out_pos = 0;
             st.flush_pending = false;
+            if let Some(h2) = st.h2.as_mut() {
+                h2.core.output_drained();
+            }
             Drain::Empty
         }
         Step::WantRead | Step::WantWrite => {
@@ -544,7 +547,11 @@ impl Server {
             return Err((400, "Bad Request"));
         };
         let target = target::parse(&path).map_err(|e| (400, e.0))?;
-        if let Some(host) = target.host.or(authority).or(host) {
+        let host = target.host.or(authority).or(host);
+        if host.as_deref().is_some_and(|h| !target::valid_authority(h)) {
+            return Err((400, "invalid Host header"));
+        }
+        if let Some(host) = host {
             fields.push(("Host".into(), host.into_bytes()));
         }
         if !Headers::from_received(fields.iter().cloned()).is_text() {
