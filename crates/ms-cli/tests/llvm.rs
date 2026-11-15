@@ -527,6 +527,17 @@ fn llvm_direct_grow_shim_for_a_leaf_convention_function() {
     assert_eq!(String::from_utf8_lossy(&out.stdout), "3000007\n");
 }
 
+/// The file holding a linked program's DWARF: the dSYM image on macOS, the program elsewhere.
+fn debug_image(program: &std::path::Path) -> std::path::PathBuf {
+    let Some(bundle) = ms_clif::link::debug_companion_path(program).filter(|p| p.exists()) else {
+        return program.to_owned();
+    };
+    let mut images = std::fs::read_dir(bundle.join("Contents/Resources/DWARF"))
+        .unwrap()
+        .map(|e| e.unwrap().path());
+    images.next().expect("a linked DWARF image")
+}
+
 /// Both backends describe Manuscript types to a debugger, once per program: with several LLVM
 /// units only the first carries them.
 #[test]
@@ -556,7 +567,7 @@ fn both_backends_describe_value_types_once() {
         );
         let info = Command::new(&dwarfdump)
             .arg("--debug-info")
-            .arg(&out)
+            .arg(debug_image(&out))
             .output()
             .unwrap();
         let info = String::from_utf8_lossy(&info.stdout);
