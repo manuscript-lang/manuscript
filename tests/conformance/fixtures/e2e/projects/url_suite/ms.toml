@@ -1,0 +1,6 @@
+[project]
+name = "url_suite"
+source = "."
+
+[embed]
+"@suite" = "./data"

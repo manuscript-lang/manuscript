@@ -11,6 +11,7 @@ fn main() {
     let version = std::fs::read_to_string(&path).unwrap_or_else(|_| "0.0.0".to_string());
     println!("cargo:rustc-env=MS_VERSION={}", version.trim());
     embed_native(&manifest.join(".."), "libms_native.a", "MS_NATIVE");
+    embed_allocs(&manifest.join(".."));
     // Linux also embeds the musl runtime that `ms build --static` links.
     if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("linux") {
         embed_native(
@@ -19,6 +20,29 @@ fn main() {
             "MS_NATIVE_MUSL",
         );
     }
+}
+
+/// Embeds `libms_native_allocs.a`, the runtime with allocation sampling for `ms profile --allocs`,
+/// when `cargo xtask runtime --alloc-profile` built it (release packaging does; pull request CI does
+/// not, so a build without it carries an empty entry and `--allocs` says so).
+fn embed_allocs(crates: &Path) {
+    let file = "libms_native_allocs.a";
+    let archive = match std::env::var_os("MS_NATIVE_ALLOCS_LIB") {
+        Some(prebuilt) => PathBuf::from(prebuilt),
+        None => crates.join("../target/ms-native").join(file),
+    };
+    println!("cargo:rerun-if-env-changed=MS_NATIVE_ALLOCS_LIB");
+    println!("cargo:rerun-if-changed={}", archive.display());
+    println!("cargo:rustc-check-cfg=cfg(ms_allocs_runtime)");
+    if archive.exists() {
+        println!("cargo:rustc-cfg=ms_allocs_runtime");
+        embed_native(crates, file, "MS_NATIVE_ALLOCS");
+        return;
+    }
+    let out = PathBuf::from(std::env::var_os("OUT_DIR").expect("OUT_DIR"));
+    std::fs::write(out.join(format!("{file}.gz")), b"").expect("write the empty entry");
+    println!("cargo:rustc-env=MS_NATIVE_ALLOCS_LEN=0");
+    println!("cargo:rustc-env=MS_NATIVE_ALLOCS_ID=absent");
 }
 
 /// Embed the `ms-native` archive `file`: the environment variable `var` names one, else

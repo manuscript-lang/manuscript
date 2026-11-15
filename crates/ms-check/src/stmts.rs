@@ -314,11 +314,27 @@ impl Checker {
             None => {
                 let result = self.result_ty();
                 if !result.is(Builtin::Unit) && !in_test {
-                    self.type_error(
+                    let unit_ok = result.is(Builtin::Result)
+                        && result.args.first().is_some_and(|a| a.is(Builtin::Unit));
+                    let example = if unit_ok {
+                        "'return ok(unit)'"
+                    } else if result.is(Builtin::Result) {
+                        "'return ok(value)' for success or 'return error(e)' for failure"
+                    } else {
+                        "'return <value>'"
+                    };
+                    let fix = unit_ok.then(|| ms_syntax::DiagnosticFix {
+                        pos: s.pos,
+                        end: ms_syntax::Pos::new(s.pos.offset + 6, s.pos.line, s.pos.column + 6),
+                        replacement: "return ok(unit)".to_string(),
+                    });
+                    self.type_error_with_fix(
                         s.pos,
+                        Cause::Other,
                         format!(
-                            "bare return requires Unit; this function returns {result_t}, so write 'return <value>'"
+                            "bare return requires Unit; this function returns {result_t}, so write {example}"
                         , result_t = result.display(self.syms)),
+                        fix,
                     );
                 }
             }
@@ -926,12 +942,28 @@ impl Checker {
             } else {
                 "write `.` to read a member of a value that is always present"
             };
-            self.type_error(
+            let mut repair = None;
+            if t.is(Builtin::Result) {
+                let source = self.m().source.clone();
+                let (start, end) = (value.start(), value.end);
+                if let Some(text) = source.get(start.offset as usize..end.offset as usize)
+                    && source[end.offset as usize..].starts_with("?.")
+                {
+                    repair = Some(ms_syntax::DiagnosticFix {
+                        pos: start,
+                        end: ms_syntax::Pos::new(end.offset + 2, end.line, end.column + 2),
+                        replacement: format!("({text}?)."),
+                    });
+                }
+            }
+            self.type_error_with_fix(
                 value.pos,
+                Cause::Other,
                 format!(
                     "`?.` needs an optional receiver, found {t_t}; {fix}",
                     t_t = t.display(self.syms)
                 ),
+                repair,
             );
             return (true, false);
         }

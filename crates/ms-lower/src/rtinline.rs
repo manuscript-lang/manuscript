@@ -409,6 +409,10 @@ impl FnLower<'_> {
             let f = self.view_fn();
             return Some(self.b.call(f, args));
         }
+        if sym == "msrt_bytes_view" && args.len() == 4 {
+            let f = self.bytes_view_fn(self.ty_of(args[0]));
+            return Some(self.b.call(f, args));
+        }
         let (shape, result) = probe_of(sym)?;
         let f = self.probe_fn(shape, result);
         let map = args[0];
@@ -495,6 +499,38 @@ impl FnLower<'_> {
 
 /// `String.view(start, end)` on the text at `s` (a slot holding the string): a flagged-ASCII text
 /// with `0 <= start <= end <= len` continues in a fresh block; anything else branches to `slow`.
+fn inline_view_guard(
+    b: &mut FuncBuilder<'_>,
+    s: Value,
+    w1: Value,
+    start: Value,
+    end: Value,
+    slow: Block,
+) {
+    let len = int(b, Op::Ushr, w1, 56);
+    let len = int(b, Op::And, len, 15);
+    let zero = b.iconst(0);
+    let (a, c, d) = (
+        b.icmp(Cc::Ge, start, zero),
+        b.icmp(Cc::Le, start, end),
+        b.icmp(Cc::Le, end, len),
+    );
+    // Every byte below 0x80: no scalar boundary to test.
+    let lo = load(b, s, 0, MTy::INT);
+    let hi = int(b, Op::And, w1, (1 << 56) - 1);
+    let any = b.binop(Op::Or, lo, hi);
+    let high = int(b, Op::And, any, 0x8080_8080_8080_8080_u64 as i64);
+    let ascii = b.icmp(Cc::Eq, high, zero);
+    let mut ok = b.binop(Op::And, a, c);
+    for cond in [d, ascii] {
+        ok = b.binop(Op::And, ok, cond);
+    }
+    let fast = b.new_block();
+    b.br_if(ok, fast, &[], slow, &[]);
+    b.seal_block(fast);
+    b.switch_to(fast);
+}
+
 fn view_guard(b: &mut FuncBuilder<'_>, s: Value, start: Value, end: Value, slow: Block) {
     let w1 = load(b, s, 8, MTy::INT);
     let tag = int(b, Op::Ushr, w1, 62);
@@ -509,18 +545,120 @@ fn view_guard(b: &mut FuncBuilder<'_>, s: Value, start: Value, end: Value, slow:
         b.icmp(Cc::Le, start, end),
         b.icmp(Cc::Le, end, len),
     );
-    let mut ok = b.binop(Op::And, flat, flagged);
+    let mut ok = flat;
     for cond in [a, c, d] {
         ok = b.binop(Op::And, ok, cond);
     }
-    let fast = b.new_block();
-    b.br_if(ok, fast, &[], slow, &[]);
+    let (fast, bounded, scan) = (b.new_block(), b.new_block(), b.new_block());
+    b.br_if(ok, bounded, &[], slow, &[]);
+    b.seal_block(bounded);
+    b.switch_to(bounded);
+    b.br_if(flagged, fast, &[], scan, &[]);
+    b.seal_block(scan);
+    // Text not flagged ASCII (a literal, or a producer that does not scan): both ends must start
+    // a scalar. Every string is followed by a NUL, so the byte at `end` is readable and a boundary
+    // at the very end.
+    b.switch_to(scan);
+    let w0 = load(b, s, 0, MTy::PTR);
+    let boundary = |b: &mut FuncBuilder<'_>, at: Value| {
+        let p = b
+            .emit(Op::PtrAdd, &[w0, at], Imm::None, Some(MTy::PTR))
+            .expect("ptr.add");
+        let byte = b
+            .emit(Op::PtrLoadU, &[p], Imm::Int(1), Some(MTy::INT))
+            .expect("ptr.loadu");
+        let cont = int(b, Op::And, byte, 0xC0);
+        let cm = b.iconst(0x80);
+        b.icmp(Cc::Ne, cont, cm)
+    };
+    let first = boundary(b, start);
+    let last = boundary(b, end);
+    let both = b.binop(Op::And, first, last);
+    b.br_if(both, fast, &[], slow, &[]);
     b.seal_block(fast);
     b.switch_to(fast);
 }
 
 impl FnLower<'_> {
     /// The generated `String.view`: parameters the string, `start` and `end`.
+    /// `Bytes.view(start, end)` with `0 < end - start` and `0 <= start <= end <= len`: a view
+    /// `{ptr + start, end - start, 0}` stored to `out` with no call; an empty range, a negative
+    /// bound or a fault continues in the runtime.
+    fn bytes_view_fn(&mut self, bytes_ty: MTy) -> FuncId {
+        let key = HelperKey::BytesView(bytes_ty);
+        if let Some(f) = self.cx.helpers.get(&key) {
+            return *f;
+        }
+        let param = |ty| Param {
+            ty,
+            mode: Mode::Borrow,
+        };
+        let params = vec![
+            param(bytes_ty),
+            param(MTy::INT),
+            param(MTy::INT),
+            param(MTy::PTR),
+        ];
+        let ext = runtime_fn(
+            self.b.m,
+            "msrt_bytes_view",
+            &[bytes_ty, MTy::INT, MTy::INT, MTy::PTR],
+            MTy::UNIT,
+        );
+        let mut b = FuncBuilder::new(self.b.m, "bytes_view", params, MTy::UNIT);
+        b.func_mut().linkage = Linkage::Internal;
+        b.func_mut().inline = InlineHint::Always;
+        let ps = b.params();
+        let (bytes, start, end, out) = (ps[0], ps[1], ps[2], ps[3]);
+        let (fast, slow, join) = (b.new_block(), b.new_block(), b.new_block());
+        // A `Bytes` held in memory arrives as its address; a value is stored to a slot to be
+        // read through its memory form.
+        let s = if bytes_ty == MTy::PTR {
+            bytes
+        } else {
+            let slot = b
+                .emit(Op::Slot, &[], Imm::Ty(bytes_ty), Some(MTy::PTR))
+                .expect("slot");
+            b.emit(Op::Store, &[slot, bytes], Imm::None, None);
+            slot
+        };
+        let len = load(&mut b, s, 8, MTy::INT);
+        let zero = b.iconst(0);
+        let (a, c, d) = (
+            b.icmp(Cc::Ge, start, zero),
+            b.icmp(Cc::Lt, start, end),
+            b.icmp(Cc::Le, end, len),
+        );
+        let mut ok = b.binop(Op::And, a, c);
+        ok = b.binop(Op::And, ok, d);
+        b.br_if(ok, fast, &[], slow, &[]);
+        b.seal_block(fast);
+        b.seal_block(slow);
+        b.switch_to(fast);
+        let data = load(&mut b, s, 0, MTy::PTR);
+        let p = b
+            .emit(Op::PtrAdd, &[data, start], Imm::None, Some(MTy::PTR))
+            .expect("ptr.add");
+        let n = b.binop(Op::ISub, end, start);
+        b.emit(Op::Store, &[out, p], Imm::None, None);
+        let out8 = add(&mut b, out, 8);
+        b.emit(Op::Store, &[out8, n], Imm::None, None);
+        let out16 = add(&mut b, out, 16);
+        b.emit(Op::Store, &[out16, zero], Imm::None, None);
+        b.br(join, &[]);
+        b.switch_to(slow);
+        b.call_rt(ext, &[bytes, start, end, out]);
+        b.br(join, &[]);
+        b.seal_block(join);
+        b.switch_to(join);
+        let unit = b.unit();
+        b.ret(Some(unit));
+        let func = b.into_func();
+        let fid = self.b.m.add_func(func);
+        self.cx.helpers.insert(key, fid);
+        fid
+    }
+
     fn view_fn(&mut self) -> FuncId {
         let key = HelperKey::StringView;
         if let Some(f) = self.cx.helpers.get(&key) {
@@ -547,21 +685,41 @@ impl FnLower<'_> {
         b.func_mut().inline = InlineHint::Always;
         let ps = b.params();
         let (text, start, end, out) = (ps[0], ps[1], ps[2], ps[3]);
-        let (slow, join) = (b.new_block(), b.new_block());
+        let (slow, join, flat_block, inl) =
+            (b.new_block(), b.new_block(), b.new_block(), b.new_block());
         let s = b
             .emit(Op::Slot, &[], Imm::Ty(MTy::STR), Some(MTy::PTR))
             .expect("slot");
         b.emit(Op::Store, &[s, text], Imm::None, None);
+        let w1 = load(&mut b, s, 8, MTy::INT);
+        let tag = int(&mut b, Op::Ushr, w1, 62);
+        let one = b.iconst(1);
+        let is_inline = b.icmp(Cc::Eq, tag, one);
+        b.br_if(is_inline, inl, &[], flat_block, &[]);
+        b.seal_block(inl);
+        b.seal_block(flat_block);
+        let (short, long) = (b.new_block(), b.new_block());
+        let sp = b.add_block_param(short, MTy::PTR, Mode::Borrow);
+        let sn = b.add_block_param(short, MTy::INT, Mode::Borrow);
+        // An inline text: its bytes sit in the slot, so an ASCII range of it is packed straight
+        // from there, with no call.
+        b.switch_to(inl);
+        inline_view_guard(&mut b, s, w1, start, end, slow);
+        let p = b
+            .emit(Op::PtrAdd, &[s, start], Imm::None, Some(MTy::PTR))
+            .expect("ptr.add");
+        let n = b.binop(Op::ISub, end, start);
+        b.br(short, &[p, n]);
+        b.switch_to(flat_block);
         view_guard(&mut b, s, start, end, slow);
         let w0 = load(&mut b, s, 0, MTy::PTR);
         let p = b
             .emit(Op::PtrAdd, &[w0, start], Imm::None, Some(MTy::PTR))
             .expect("ptr.add");
         let n = b.binop(Op::ISub, end, start);
-        let (short, long) = (b.new_block(), b.new_block());
         let c15 = b.iconst(15);
         let fits = b.icmp(Cc::Le, n, c15);
-        b.br_if(fits, short, &[], long, &[]);
+        b.br_if(fits, short, &[p, n], long, &[]);
         b.seal_block(short);
         b.seal_block(long);
         // Longer text: a view over the bytes.
@@ -573,8 +731,8 @@ impl FnLower<'_> {
         b.br(join, &[]);
         // A piece of up to fifteen bytes is copied into the two words of an inline string.
         b.switch_to(short);
-        let (lo, hi) = pack_short(&mut b, p, n);
-        let len_bits = int(&mut b, Op::Shl, n, 56);
+        let (lo, hi) = pack_short(&mut b, sp, sn);
+        let len_bits = int(&mut b, Op::Shl, sn, 56);
         let tagged = int(&mut b, Op::Or, len_bits, 1 << 62);
         let tagged = b.binop(Op::Or, tagged, hi);
         b.emit(Op::Store, &[out, lo], Imm::None, None);

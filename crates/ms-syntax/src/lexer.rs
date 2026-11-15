@@ -1365,13 +1365,15 @@ impl Scanner<'_> {
                 return self.fail_at(open, format!("newlines and comments are not allowed inside interpolation; keep the expression on one line, or bind it to a name first and interpolate the name ({})", BRACE_HINT));
             }
             if b == b'\\' {
-                return self.fail_at(
+                let mut d = self.err(
                     open,
                     format!(
                         "{}; a backslash cannot appear in the interpolated expression",
                         BRACE_HINT
                     ),
                 );
+                d.fix = self.literal_braces_fix(open, start);
+                return Err(d);
             }
             if b == b'"' {
                 self.scan_string()?;
@@ -1412,6 +1414,65 @@ impl Scanner<'_> {
         )
     }
 
+    /// Rewrites `{ ... }` holding a backslash: `\"` inside an expression
+    /// becomes `"`, and JSON-like content becomes literal braces, escaping the
+    /// braces inside and around it. None when the matching `}` is not
+    /// found before the end of the line or the closing quote.
+    fn literal_braces_fix(&self, open: Pos, body: usize) -> Option<DiagnosticFix> {
+        let bytes = self.src;
+        let mut at = body;
+        let mut depth = 1;
+        while at < bytes.len() {
+            match bytes[at] {
+                b'\\' => at += 1,
+                b'"' | b'\n' | b'\r' => return None,
+                b'{' => depth += 1,
+                b'}' => {
+                    depth -= 1;
+                    if depth == 0 {
+                        break;
+                    }
+                }
+                _ => {}
+            }
+            at += 1;
+        }
+        if at >= bytes.len() {
+            return None;
+        }
+        let inner = self.text.get(body..at)?;
+        if !inner.trim_start().starts_with(['"', '\\']) {
+            // `{xs.join(\", \")}`: a quote cannot be escaped inside an
+            // expression, so `\"` means `"`. Any other backslash is a typo.
+            let escaped_quotes = inner.matches("\\\"").count();
+            if escaped_quotes == 0 || inner.matches('\\').count() != escaped_quotes {
+                return None;
+            }
+            let len = inner.len() as u32;
+            let mut start = open;
+            start.offset += 1;
+            start.column += 1;
+            let mut end = start;
+            end.offset += len;
+            end.column += len;
+            return Some(DiagnosticFix {
+                pos: start,
+                end,
+                replacement: inner.replace("\\\"", "\""),
+            });
+        }
+        let escaped = inner.replace('{', "\\{").replace('}', "\\}");
+        let len = (at + 1 - body + 1) as u32;
+        let mut end = open;
+        end.offset += len;
+        end.column += len;
+        Some(DiagnosticFix {
+            pos: open,
+            end,
+            replacement: format!("\\{{{escaped}\\}}"),
+        })
+    }
+
     /// A block header on the previous line that lacks its closing ':' when an
     /// indented line follows it, with the fix that inserts the ':'.
     fn missing_colon(&self) -> Option<Box<Diagnostic>> {
@@ -1444,6 +1505,17 @@ impl Scanner<'_> {
             )
         {
             return None;
+        }
+        // A ':' outside brackets already opened an inline body (`if x: return`), so an indented
+        // line after it is over-indented, not a missing ':'.
+        let mut depth = 0i32;
+        for t in self.tokens.iter().filter(|t| t.pos.line == first.pos.line) {
+            match t.kind {
+                Tok::LParen | Tok::LBracket | Tok::LBrace => depth += 1,
+                Tok::RParen | Tok::RBracket | Tok::RBrace => depth -= 1,
+                Tok::Colon if depth == 0 => return None,
+                _ => {}
+            }
         }
         let mut d = self.err(
             last.end,

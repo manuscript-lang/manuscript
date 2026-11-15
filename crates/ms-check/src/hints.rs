@@ -405,7 +405,7 @@ pub fn uncalled_function_hint(syms: ms_syntax::Names, actual: &Ty, expected: &Ty
         return String::new();
     }
     format!(
-        "this is a function; call it with parentheses to get its {expected_t} result",
+        "this is a method, not a property; call it with parentheses to get its {expected_t} result, as in `xs.length()`",
         expected_t = expected.display(syms)
     )
 }

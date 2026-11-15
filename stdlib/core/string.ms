@@ -5,6 +5,7 @@ import (
 
 	msrt_string_fields,
 	msrt_string_from_scalars,
+	msrt_string_index_any,
 	msrt_string_trim_chars from "@std/internal/string.ms",
 	msstd_unicode_display_width,
 	msstd_unicode_is_alphanumeric from "@std/internal/unicode.ms",
@@ -147,7 +148,7 @@ fn String.contains_any(set: String) Bool:
 
 // Byte offset of the first scalar that occurs in set, or none.
 fn String.index_any(set: String) Int?:
-	return self.find_char(fn c: set.contains(c))
+	return msrt_string_index_any(self, set)
 
 // Splits after each separator, keeping it at the end of each piece; an empty
 // separator splits into scalars.
@@ -255,45 +256,66 @@ fn String.find_char(predicate: fn(String) Bool) Int?:
 
 // Replaces many patterns in one pass. At each position the first pair, in map
 // order, whose key matches wins and its replacement is not rescanned; empty keys
-// are ignored.
+// are ignored. The scan is over bytes: a valid UTF-8 key matches only at scalar
+// boundaries, and each key's first byte is found by a byte search, so positions
+// that cannot start a match cost nothing in this loop.
 fn String.replace_each(pairs: Map[String, String]) String:
 	if pairs.is_empty(): return self.clone()
 
-	var out = StringBuilder()
+	keys := pairs.keys().map(fn key: key.as_bytes())
 	news := pairs.values()
-	var needles = List[List[String]]()
-	for key in pairs.keys():
-		needles.append(key.chars().clone())
+	bytes := self.as_bytes()
+	n := bytes.length()
+	var nexts = List[Int](reserve: keys.length())
 
-	cs := self.chars()
-	n := cs.length()
+	// -1 marks a key whose first byte is not located yet; an empty key never is.
+	for key in keys:
+		nexts.append(if key.is_empty(): n else: -1)
+
+	var out = StringBuilder()
+	var copied = 0
 	var i = 0
+	count := keys.length()
 
 	while i < n:
+		var at = n
+		var first = 0
+
+		for j in 0..count:
+			if nexts[j] < i:
+				nexts[j] = bytes.index_of_byte(keys[j].get(0), i).get(n)
+
+			if nexts[j] < at:
+				at = nexts[j]
+				first = j
+
+		if at >= n: break
+
+		i = at
+
+		// The earliest key in map order whose first byte is here goes first.
 		var hit = -1
 
-		for j in 0..needles.length():
-			if chars_start_at(cs, i, needles[j]):
+		for j in first..count:
+			if nexts[j] != i: continue
+
+			end := i + keys[j].length()
+
+			if end <= n and bytes.view(i, end) == keys[j]:
 				hit = j
 				break
 
 		if hit < 0:
-			out.append(cs[i])
 			i += 1
 			continue
 
+		out.append(self.view(copied, i))
 		out.append(news[hit])
-		i += needles[hit].length()
+		i += keys[hit].length()
+		copied = i
 
+	out.append(self.view(copied, n))
 	return out.build()
-
-// Tests whether the non-empty scalar list `needle` occurs in `cs` at index `at`.
-fn chars_start_at(cs: List[String], at: Int, needle: List[String]) Bool:
-	if needle.is_empty() or at + needle.length() > cs.length(): return false
-
-	for t in 0..needle.length():
-		if cs[at + t] != needle[t]: return false
-	return true
 
 fn is_word_scalar(c: String) Bool:
 	return msstd_unicode_is_alphanumeric(c.scalar_at(0, -1)) or c == "'"

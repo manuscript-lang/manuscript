@@ -18,7 +18,9 @@
 use crate::isolate;
 use std::collections::VecDeque;
 use std::sync::Mutex;
-use std::sync::atomic::{AtomicBool, AtomicI64, AtomicU32, AtomicU64, AtomicUsize, Ordering};
+use std::sync::atomic::{
+    AtomicBool, AtomicI64, AtomicU8, AtomicU32, AtomicU64, AtomicUsize, Ordering,
+};
 
 /// Most scheduler threads. The thread index lives in six bits of a promise id.
 pub const MAX_THREADS: usize = 63;
@@ -276,8 +278,29 @@ pub(crate) fn started() -> usize {
     STARTED.load(Ordering::Acquire)
 }
 
-/// The most scheduler threads the program may run.
+/// Whether the stress mode is on (`MS_SCHED_STRESS` set to anything but empty or `0`). It exists to
+/// expose one-in-N timing bugs deterministically: a promise never starts on its creator, and the
+/// first idle thread takes it (see `submit_stress`). The environment is read once.
+pub(crate) fn stress() -> bool {
+    static STRESS: AtomicU8 = AtomicU8::new(0);
+    match STRESS.load(Ordering::Relaxed) {
+        0 => {
+            let on = std::env::var("MS_SCHED_STRESS").is_ok_and(|v| !v.is_empty() && v != "0");
+            STRESS.store(1 + u8::from(on), Ordering::Relaxed);
+            on
+        }
+        v => v == 2,
+    }
+}
+
+/// The most scheduler threads the program may run. Stress mode runs at least two, so a promise
+/// always has another thread to go to.
 pub(crate) fn limit() -> usize {
+    let n = base_limit();
+    if stress() { n.max(2) } else { n }
+}
+
+fn base_limit() -> usize {
     let n = LIMIT.load(Ordering::SeqCst);
     if n != 0 {
         return n;
@@ -349,6 +372,9 @@ pub(crate) fn submit(start: Start) -> u64 {
     if me == NONE {
         unreachable!("submit is for scheduler threads");
     }
+    if stress() {
+        return submit_stress(me, start);
+    }
     let first;
     let seq;
     {
@@ -374,6 +400,34 @@ pub(crate) fn submit(start: Start) -> u64 {
         }
     }
     seq
+}
+
+/// Stress mode placement: the start goes to the first idle thread other than the creator (lowest
+/// index), else the next thread after it in turn, already aged so any idle thread may take it.
+/// It is never queued on the creator, so `remove_pending` finds nothing and the waiter parks until
+/// the work runs elsewhere. Answers 0: the start has no place in the creator's queue.
+fn submit_stress(me: usize, start: Start) -> u64 {
+    let mut started = STARTED.load(Ordering::Acquire);
+    if started < 2 {
+        ensure_started(1);
+        started = STARTED.load(Ordering::Acquire);
+    }
+    let idle = IDLE.load(Ordering::Acquire) & !(1u64 << me);
+    let target = if idle != 0 {
+        idle.trailing_zeros() as usize
+    } else {
+        (me + 1) % started
+    };
+    {
+        let mut mail = lock(&SLOTS[target].mail);
+        mail.push(Start {
+            at: crate::sys::monotonic_ns() - BEAT_NS,
+            ..start
+        });
+        publish(&SLOTS[target], &mail);
+    }
+    wake(target);
+    0
 }
 
 /// Places `start` on the least loaded thread instead of queueing it here to age: for long-lived

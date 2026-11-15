@@ -672,10 +672,18 @@ fn apply(event: Event) {
             }
             t.thread[i] = NOT_STARTED;
             if t.state[i] == State::Pending && t.flags[i] & HELD != 0 {
-                t.state[i] = if t.flags[i] & HELD_ERROR != 0 {
-                    State::Error
-                } else {
+                // A promise whose limit passed or that was cancelled while pending reports that,
+                // not the error its work returned on the way out (a wait inside the work that
+                // finds its child cancelled returns `ECANCELED` as a value before the work's own
+                // cancellation is seen, so the outcome would depend on timing).
+                let interrupted = t.flags[i] & (TIMED_OUT | STOPPED) != 0;
+                t.state[i] = if t.flags[i] & HELD_ERROR == 0 {
                     State::Ok
+                } else if interrupted {
+                    release_result(t, i);
+                    State::Cancelled
+                } else {
+                    State::Error
                 };
                 t.flags[i] &= !(HELD | HELD_ERROR);
             } else if t.state[i] == State::Pending {
@@ -919,8 +927,8 @@ fn complete_unit(t: &mut Table, i: usize) {
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_promise_sleep(ns: i64) -> i64 {
     let id = msrt_promise_new();
-    let t = table();
     let i = find(id);
+    let t = table();
     let deadline = crate::sys::monotonic_ns().saturating_add(ns.max(0));
     t.deadline[i] = deadline;
     t.timers.push(Reverse((deadline, id)));
@@ -937,8 +945,8 @@ pub extern "C-unwind" fn msrt_promise_ready(fd: i64, events: i64, timeout_ns: i6
     let id = msrt_promise_new();
     // SAFETY: single scheduler per isolate.
     let ready = unsafe { task::watch_fd_for_promise(fd, events, id) };
-    let t = table();
     let i = find(id);
+    let t = table();
     match ready {
         None => {
             msrt_promise_drop(id);
@@ -1608,8 +1616,9 @@ pub extern "C-unwind" fn msrt_promise_wait(id: i64, timeout_ns: i64) -> i64 {
     }
     run_deferred(id, deadline);
     loop {
-        let t = table();
+        // `find` makes its own reference to the table; take `t` after it, not before.
         let i = find(id);
+        let t = table();
         if let Some(code) = outcome(t, i) {
             return code;
         }
@@ -2056,13 +2065,27 @@ mod tests {
     }
 
     fn start(id: i64, code: unsafe extern "C-unwind" fn(*mut Closure)) {
+        start_with(id, code, msrt_promise_start);
+    }
+
+    /// Starts the work on this thread: work that reads this thread's promise table must not be
+    /// stolen by another scheduler thread, whose table has no such promise.
+    fn start_here(id: i64, code: unsafe extern "C-unwind" fn(*mut Closure)) {
+        start_with(id, code, msrt_promise_start_here);
+    }
+
+    fn start_with(
+        id: i64,
+        code: unsafe extern "C-unwind" fn(*mut Closure),
+        begin: unsafe extern "C-unwind" fn(i64, *mut Closure),
+    ) {
         // SAFETY: the capture-free closure is handed to the promise, which drops it when the task ends.
         unsafe {
             *ID.ptr() = id;
             let closure =
                 crate::obj::new_obj(size_of::<Closure>(), None, drop_closure).cast::<Closure>();
             (*closure).code = code as *const u8;
-            msrt_promise_start(id, closure);
+            begin(id, closure);
         }
     }
 
@@ -2102,6 +2125,31 @@ mod tests {
         for id in ids {
             msrt_promise_drop(id);
         }
+        task::teardown();
+    }
+
+    // The work's limit passes while it runs, then it returns an error (what a wait on a cancelled
+    // child does on the way out): the promise reports the limit, not that error.
+    unsafe extern "C-unwind" fn fails_after_its_limit(_: *mut Closure) {
+        // SAFETY: stores a stack Int the callee takes.
+        unsafe {
+            let id = *ID.ptr();
+            let t = table();
+            let i = index(t, id).expect("live promise");
+            t.flags[i] |= TIMED_OUT;
+            let mut v = 7i64;
+            msrt_promise_put(id, (&raw mut v).cast(), &msrt_desc_int, 1);
+        }
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn an_error_returned_after_the_limit_passed_reports_the_timeout() {
+        let _g = lock();
+        let id = msrt_promise_new();
+        start_here(id, fails_after_its_limit);
+        assert_eq!(msrt_promise_wait(id, -1), TIMEOUT);
+        msrt_promise_drop(id);
         task::teardown();
     }
 

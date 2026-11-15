@@ -11,11 +11,11 @@ fn main() Int:
 	counts["total"] = total
 	if var n = counts["total"]?:
 		n += 1
-	if counts.get_or("total", 0) == 15: return 0
+	if counts.get_or("total", 0) == 15 and values.length() == 4: return 0
 	return 1
 ```
 
-Map `.get(key)` returns Optional; `.get_or(key, default)` supplies a fallback. Iterate `.entries()` and read `.key`/`.value`. List `.slice(start, end)` returns Result; `.get(index, default)` supplies a fallback.
+`values.length()` counts a List, Map, Set or String; always call it with parentheses. Map `.get(key)` returns Optional; `.get_or(key, default)` supplies a fallback. Iterate `.entries()` and read `.key`/`.value`. List `.slice(start, end)` returns Result; `.get(index, default)` supplies a fallback.
 
 `x | f(a: 1)` passes x first; `x | .m()` calls a method; `x | f?` propagates f's Result. Thus `x | f(a: 1) | g? | .m()` means `(g(f(x, a: 1))?).m()`.
 

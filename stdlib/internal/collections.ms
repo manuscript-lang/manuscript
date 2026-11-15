@@ -2,8 +2,6 @@
 // hashable; the compiler lowers this call from the element type.
 export extern fn msrt_list_distinct[T: Equal & Clonable](values: List[T]) List[T]
 
-export extern fn msrt_list_flatten[T: Clonable](lists: List[List[T]]) List[T]
-
 export extern fn msrt_list_range_by(
 	start: Int,
 	end: Int,

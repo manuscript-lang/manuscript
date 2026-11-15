@@ -20,14 +20,14 @@
           "position": {
             "file": "testeffectsincludetransitivecallsandimplicitclea-1.ms",
             "line": 10,
-            "column": 10,
-            "offset": 390
+            "column": 4,
+            "offset": 384
           },
           "end": {
             "file": "testeffectsincludetransitivecallsandimplicitclea-1.ms",
             "line": 10,
-            "column": 10,
-            "offset": 390
+            "column": 4,
+            "offset": 384
           },
           "replacement": "var "
         }

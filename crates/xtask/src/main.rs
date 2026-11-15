@@ -2,22 +2,26 @@
 //!
 //! `runtime` builds `ms-native` (the runtime plus every `ms-std-*` crate) once and leaves the stripped
 //! archive at `target/ms-native/libms_native.a`, where `ms-cli`'s build script embeds it.
+//! `runtime --alloc-profile` also builds `libms_native_allocs.a`, the same runtime with allocation
+//! sampling for `ms profile --allocs`; release packaging asks for it, pull request CI does not.
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
 
 fn main() -> ExitCode {
     match std::env::args().nth(1).as_deref() {
-        Some("runtime") => match runtime() {
-            Ok(archive) => {
-                println!("{}", archive.display());
-                ExitCode::SUCCESS
+        Some("runtime") => {
+            match runtime(std::env::args().nth(2).as_deref() == Some("--alloc-profile")) {
+                Ok(archive) => {
+                    println!("{}", archive.display());
+                    ExitCode::SUCCESS
+                }
+                Err(message) => {
+                    eprintln!("xtask runtime: {message}");
+                    ExitCode::FAILURE
+                }
             }
-            Err(message) => {
-                eprintln!("xtask runtime: {message}");
-                ExitCode::FAILURE
-            }
-        },
+        }
         Some("symbols") => {
             let check = std::env::args().nth(2).as_deref() == Some("--check");
             match symbols(check) {
@@ -32,7 +36,9 @@ fn main() -> ExitCode {
             }
         }
         _ => {
-            eprintln!("usage: cargo xtask runtime | cargo xtask symbols [--check]");
+            eprintln!(
+                "usage: cargo xtask runtime [--alloc-profile] | cargo xtask symbols [--check]"
+            );
             ExitCode::from(2)
         }
     }
@@ -394,7 +400,7 @@ fn strip_paths(ty: &str) -> String {
 
 /// Builds `ms-native` in release mode, whatever the profile of `ms` itself, and returns the archive.
 /// On Linux it also leaves `libms_native_musl.a` beside it, the runtime of `ms build --static`.
-fn runtime() -> Result<PathBuf, String> {
+fn runtime(alloc_profile: bool) -> Result<PathBuf, String> {
     // Cargo can reuse this executable from another checkout when target directories are shared.
     // Its runtime environment names the active package; the compiled path may name the old one.
     let manifest = std::env::var_os("CARGO_MANIFEST_DIR")
@@ -413,10 +419,36 @@ fn runtime() -> Result<PathBuf, String> {
         "windows" => Some(format!("{arch}-pc-windows-gnullvm")),
         _ => None,
     };
-    let archive = build_archive(&root, &out, &target, triple.as_deref(), "libms_native.a")?;
+    let archive = build_archive(
+        &root,
+        &out,
+        &target,
+        triple.as_deref(),
+        "libms_native.a",
+        "entry",
+    )?;
+    if alloc_profile {
+        // Its own target directory: the feature changes the runtime, and sharing one would rebuild it
+        // every time the two archives alternate.
+        build_archive(
+            &root,
+            &out,
+            &out.join("build-allocs"),
+            triple.as_deref(),
+            "libms_native_allocs.a",
+            "entry,alloc-profile",
+        )?;
+    }
     if std::env::consts::OS == "linux" {
         let musl = format!("{arch}-unknown-linux-musl");
-        build_archive(&root, &out, &target, Some(&musl), "libms_native_musl.a")?;
+        build_archive(
+            &root,
+            &out,
+            &target,
+            Some(&musl),
+            "libms_native_musl.a",
+            "entry",
+        )?;
     }
     Ok(archive)
 }
@@ -428,6 +460,7 @@ fn build_archive(
     target: &Path,
     triple: Option<&str>,
     name: &str,
+    features: &str,
 ) -> Result<PathBuf, String> {
     let arch = std::env::consts::ARCH;
     let cargo = std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
@@ -440,7 +473,7 @@ fn build_archive(
             "-p",
             "ms-native",
             "--features",
-            "entry",
+            features,
             "--manifest-path",
         ])
         .arg(root.join("Cargo.toml"))

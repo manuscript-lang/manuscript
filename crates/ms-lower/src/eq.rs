@@ -84,7 +84,11 @@ pub(crate) fn element_eq(
             let zero = b.iconst(0);
             Ok(b.icmp(Cc::Eq, c, zero))
         }
-        TyKind::Bytes | TyKind::Obj(..) => {
+        TyKind::Bytes => {
+            let ext = runtime_fn(b.m, "msrt_bytes_eq", &[t, t], MTy::BOOL);
+            Ok(b.call_rt(ext, &[x, y]))
+        }
+        TyKind::Obj(..) => {
             let d = b
                 .emit(Op::TypeDesc, &[], Imm::Ty(t), Some(MTy::PTR))
                 .expect("typedesc");

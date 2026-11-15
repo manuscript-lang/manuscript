@@ -104,6 +104,7 @@ pub extern "C" fn msrt_exit_frees() -> u8 {
 /// See [`main_task`].
 unsafe fn run_main() {
     crate::alloc::claim_heap();
+    crate::profile::attach_alloc_sampling();
     crate::isolate::set_main();
     fault::set_main_hdr();
     // SAFETY: this thread is the runtime thread; the root flow waits shielded so a stop request

@@ -3,8 +3,24 @@
 import (
 	XmlAttribute, XmlNode, escape_text, parse, stringify from "@std/data/xml.ms",
 	from_scalars from "@std/string.ms",
-	expect_equal, expect_true from "@std/test/test.ms",
+	expect_equal, expect_error, expect_true from "@std/test/test.ms",
 )
+
+// A malformed document is EBADMSG with a position and a reason.
+fn expect_malformed(result: XmlNode!) Unit!:
+	cause := result | expect_error?
+	expect_equal(cause.kind, "EBADMSG")?
+	expect_true(cause.details.contains("line") and cause.details.contains("column"))?
+	expect_true(cause.details.contains("reason"))?
+
+// A malformed document fails at this line and column with this reason.
+fn expect_error_at(text: String, line: Int, column: Int, reason: String) Unit!:
+	cause := parse(text) | expect_error?
+	expect_equal(cause.kind, "EBADMSG")?
+	expect_equal(cause.details["line"], line.to_string())?
+	expect_equal(cause.details["column"], column.to_string())?
+	expect_equal(cause.details["reason"], reason)?
+	expect_equal(cause.message, "XML {line}:{column}: {reason}")?
 
 test "parse reads elements attributes and text":
 	doc := parse(
@@ -82,15 +98,13 @@ test "depth limit":
 	expect_equal(parse("<a><b/></a>", max_depth: 2).get().tag(), "a")?
 
 test "processing instructions require a name and whitespace before data":
-	malformed: XmlNode! := error(Error("XML: invalid data", kind: "EBADMSG"))
-
 	for instruction in [
 		"<??>", "<? ?>", "<?1bad?>", "<?@?>", "<?p!data?>", "<?p/data?>", "<?p=data?>",
 		"<?p\u{a0}data?>", "<?p", "<?p data"
 	]:
-		expect_equal(parse("{instruction}<a/>"), malformed)?
-		expect_equal(parse("<a>{instruction}</a>"), malformed)?
-		expect_equal(parse("<a/>{instruction}"), malformed)?
+		expect_malformed(parse("{instruction}<a/>"))?
+		expect_malformed(parse("<a>{instruction}</a>"))?
+		expect_malformed(parse("<a/>{instruction}"))?
 
 	for instruction in [
 		"<?p?>", "<?p ?>", "<?p\tdata?>", "<?p\r\ndata?>",
@@ -101,22 +115,20 @@ test "processing instructions require a name and whitespace before data":
 		expect_equal((parse("<a>x{instruction}y</a>")?).text(), "xy")?
 
 test "XML declarations occur only at the document start":
-	malformed: XmlNode! := error(Error("XML: invalid data", kind: "EBADMSG"))
 	declaration := "<?xml version='1.0'?>"
 
 	for target in ["xml", "XML", "Xml", "xMl", "xmL", "XMl", "xML", "XmL"]:
-		expect_equal(parse("<a><?{target} version='1.0'?></a>"), malformed)?
-		expect_equal(parse("<a/><?{target} version='1.0'?>"), malformed)?
+		expect_malformed(parse("<a><?{target} version='1.0'?></a>"))?
+		expect_malformed(parse("<a/><?{target} version='1.0'?>"))?
 		if target != "xml":
-			expect_equal(parse("<?{target} version='1.0'?><a/>"), malformed)?
+			expect_malformed(parse("<?{target} version='1.0'?><a/>"))?
 
 	for prefix in [" ", "\n", "<!--c-->", "<?p?>", declaration.clone()]:
-		expect_equal(parse("{prefix}{declaration}<a/>"), malformed)?
+		expect_malformed(parse("{prefix}{declaration}<a/>"))?
 	expect_equal((parse("{declaration}<a/>")?).tag(), "a")?
 	expect_equal((parse("\u{feff}{declaration}<a/>")?).tag(), "a")?
 
 test "XML declarations validate ordered literal pseudo attributes":
-	malformed: XmlNode! := error(Error("XML: invalid data", kind: "EBADMSG"))
 	for declaration in [
 		"<?xml?>", "<?xml ?>", "<?xml encoding='UTF-8'?>", "<?xml version=1.0?>",
 		"<?xml version='1.0?>", "<?xml version='2.0'?>", "<?xml version='1.'?>",
@@ -132,7 +144,7 @@ test "XML declarations validate ordered literal pseudo attributes":
 		"<?xml version='1.0' standalone='yes' standalone='no'?>",
 		"<?xml version='1.0' standalone='yes' encoding='UTF-8'?>"
 	]:
-		expect_equal(parse("{declaration}<a/>"), malformed)?
+		expect_malformed(parse("{declaration}<a/>"))?
 	for declaration in [
 		"<?xml version='1.0'?>", "<?xml version = \"1.0\" ?>",
 		"<?xml\tversion\n=\r'1.0'\nencoding = 'UTF-8'\tstandalone='yes' ?>",
@@ -154,14 +166,12 @@ test "entity decoding is linear in the text":
 	expect_equal(big.text().scalar_length(), 100000)?
 
 test "malformed comments fail inside before and after the root":
-	malformed: XmlNode! := error(Error("XML: invalid data", kind: "EBADMSG"))
-
 	for comment in [
 		"<!--a--b-->", "<!--a--->", "<!--a\n--b-->", "<!--a---->", "<!--open"
 	]:
-		expect_equal(parse("<a>{comment}</a>"), malformed)?
-		expect_equal(parse("{comment}<a/>"), malformed)?
-		expect_equal(parse("<a/>{comment}"), malformed)?
+		expect_malformed(parse("<a>{comment}</a>"))?
+		expect_malformed(parse("{comment}<a/>"))?
+		expect_malformed(parse("<a/>{comment}"))?
 
 test "valid comments preserve text and leave other delimited constructs alone":
 	for contents in ["", "a-b", "-a", "a\n-b", "é - 😀", "&amp; &#65;"]:
@@ -177,21 +187,19 @@ test "valid comments preserve text and leave other delimited constructs alone":
 	expect_equal(node.text(), "x--y")?
 
 test "literal XML characters obey the same ranges as character references":
-	malformed: XmlNode! := error(Error("XML: invalid data", kind: "EBADMSG"))
-
 	for invalid in [
 		"\u{0}", "\u{1}", "\u{8}", "\u{b}", "\u{c}", "\u{e}", "\u{1f}", "\u{fffe}",
 		"\u{ffff}"
 	]:
-		expect_equal(parse("<a>{invalid}</a>"), malformed)?
-		expect_equal(parse("<a v='{invalid}'/>"), malformed)?
-		expect_equal(parse("<a><![CDATA[{invalid}]]></a>"), malformed)?
-		expect_equal(parse("<!--{invalid}--><a/>"), malformed)?
-		expect_equal(parse("<a/><?p {invalid}?>"), malformed)?
-		expect_equal(parse("<!DOCTYPE a [<!ENTITY x '{invalid}'>]><a/>"), malformed)?
+		expect_malformed(parse("<a>{invalid}</a>"))?
+		expect_malformed(parse("<a v='{invalid}'/>"))?
+		expect_malformed(parse("<a><![CDATA[{invalid}]]></a>"))?
+		expect_malformed(parse("<!--{invalid}--><a/>"))?
+		expect_malformed(parse("<a/><?p {invalid}?>"))?
+		expect_malformed(parse("<!DOCTYPE a [<!ENTITY x '{invalid}'>]><a/>"))?
 
 		code := invalid.scalar_values()[0]
-		expect_equal(parse("<a>&#{code};</a>"), malformed)?
+		expect_malformed(parse("<a>&#{code};</a>"))?
 
 	for valid in [
 		"\t", "\n", "\r", " ", "\u{7f}", "\u{85}", "\u{9f}", "\u{d7ff}", "\u{e000}",
@@ -210,11 +218,9 @@ test "literal XML characters obey the same ranges as character references":
 	expect_true(parse("\u{feff}<a/>").is_ok())?
 
 test "CDATA terminators are forbidden only in literal character data":
-	malformed: XmlNode! := error(Error("XML: invalid data", kind: "EBADMSG"))
-
 	for text in ["]]>right", "left]]>", "left]]>right", "]]]>", "]]>"]:
-		expect_equal(parse("<a>{text}</a>"), malformed)?
-		expect_equal(parse("<a><b/>{text}</a>"), malformed)?
+		expect_malformed(parse("<a>{text}</a>"))?
+		expect_malformed(parse("<a><b/>{text}</a>"))?
 
 	for text in ["]]&gt;", "&#93;]>", "]&#93;>", "]]<b/>>", "]<!--c-->]>"]:
 		expect_equal((parse("<a>{text}</a>")?).text(), "]]>")?
@@ -241,20 +247,16 @@ test "XML name starts follow every XML 1.0 range boundary":
 			expect_equal(attribute.attribute(name).get(""), "value")?
 
 test "XML continuation-only scalars cannot start a name":
-	malformed: XmlNode! := error(Error("XML: invalid data", kind: "EBADMSG"))
-
 	for code in [0x2d, 0x2e, 0x30, 0x39, 0xb7, 0x300, 0x36f, 0x203f, 0x2040]:
 		scalar := from_scalars([code])?
-		expect_equal(parse("<{scalar}/>"), malformed)?
-		expect_equal(parse("<a {scalar}='value'/>"), malformed)?
+		expect_malformed(parse("<{scalar}/>"))?
+		expect_malformed(parse("<a {scalar}='value'/>"))?
 
 		name := "a{scalar}"
 		expect_equal((parse("<{name}></{name}>")?).tag(), name)?
 		expect_equal((parse("<a {name}='value'/>")?).attribute(name).get(""), "value")?
 
 test "XML names reject punctuation and excluded Unicode gaps":
-	malformed: XmlNode! := error(Error("XML: invalid data", kind: "EBADMSG"))
-
 	for code in [
 		0x23, 0x24, 0x25, 0x2b, 0x40, 0x5b, 0x5c, 0x5d, 0x5e, 0x60, 0x7b, 0x7c, 0x7d,
 		0x7e, 0x7f, 0xb6, 0xb8, 0xbf, 0xd7, 0xf7, 0x37e, 0x2000, 0x200b, 0x200e, 0x203e,
@@ -264,8 +266,8 @@ test "XML names reject punctuation and excluded Unicode gaps":
 		scalar := from_scalars([code])?
 
 		for name in [scalar.clone(), "a{scalar}"]:
-			expect_equal(parse("<{name}/>"), malformed)?
-			expect_equal(parse("<a {name}='value'/>"), malformed)?
+			expect_malformed(parse("<{name}/>"))?
+			expect_malformed(parse("<a {name}='value'/>"))?
 
 test "line ends normalize to newline and attribute whitespace to spaces":
 	doc := parse("<a k=\"x\ny\tz\r\nw\">t\r\nu\rv<![CDATA[c\r\nd]]></a>").get()
@@ -304,15 +306,13 @@ test "DOCTYPE skipping honors quoted spans and prolog placement":
 		expect_true(parse(rejected).is_error())?
 
 test "DOCTYPE public identifiers accept only XML PubidChar scalars":
-	malformed: XmlNode! := error(Error("XML: invalid data", kind: "EBADMSG"))
-
 	for quote in ["\"", "'"]:
 		for invalid in ["[", "]", "<", ">", "&", "\t", "é", "😀", "\"", "\\", "\{", "\}"]:
 			expect_equal(invalid.scalar_length(), 1)?
 			if invalid == quote: continue
 
 			source := "<!DOCTYPE a PUBLIC {quote}{invalid}{quote} 'unused'><a/>"
-			expect_equal(parse(source), malformed)?
+			expect_malformed(parse(source))?
 
 		for valid in [
 			"", "azAZ09", " \r\n-()+,./:=?;!*#@$_%", "-//W3C//DTD XHTML 1.0 Strict//EN"
@@ -357,3 +357,16 @@ test "delimiter scans preserve empty spans Unicode and partial terminators":
 	expect_equal(attribute.attribute("k").get(), text)?
 	for source in ["<a><!--x--", "<a><![CDATA[]]", "<a k='x", "<?p x?"]:
 		expect_equal(parse(source).err().kind, "EBADMSG")?
+
+test "XML errors carry a line, a column and a reason":
+	expect_error_at("<a>\n  <b></c>\n</a>", 2, 8, "closing tag `c` does not match `b`")?
+	expect_error_at("<a><b/>", 1, 8, "the element `a` is never closed")?
+	expect_error_at("<a x=\"1\" x=\"2\"/>", 1, 10, "duplicate attribute `x`")?
+	expect_error_at("<a>&bogus;</a>", 1, 4, "unknown entity `&bogus;`")?
+	expect_error_at("<a>\n&#0;</a>", 2, 1, "invalid character reference")?
+	expect_error_at("<a/><b/>", 1, 5, "unexpected content after the root element")?
+	expect_error_at("", 1, 1, "expected the root element")?
+	expect_error_at("<a><!-- x", 1, 4, "unterminated comment")?
+	expect_error_at("<a b=\"<\"/>", 1, 7, "`<` is not allowed in an attribute value")?
+	expect_error_at("<a>\u{1}</a>", 1, 4, "invalid character U+0001")?
+	expect_error_at("\u{feff}<a>\r\n</b>", 2, 3, "closing tag `b` does not match `a`")?

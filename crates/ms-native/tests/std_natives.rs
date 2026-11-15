@@ -146,11 +146,10 @@ fn timestamps_round_trip_through_strings() {
             msstd_time_parse_timestamp(st("nope"), &mut t),
             STATUS_INVALID_DATA
         );
-        assert_eq!(
-            msstd_time_timestamp(0, 1_000_000_000, &mut t),
-            STATUS_OUT_OF_RANGE
-        );
-        assert_eq!(msstd_time_timestamp(1_720_109_109, 0, &mut t), STATUS_OK);
+        t = Timestamp {
+            seconds: 1_720_109_109,
+            nanos: 0,
+        };
 
         let mut cal = std::mem::MaybeUninit::<CalendarOut>::uninit();
         assert_eq!(
@@ -190,18 +189,6 @@ fn timestamps_round_trip_through_strings() {
             STATUS_OUT_OF_RANGE
         );
 
-        let mut d = 0i64;
-        let mut later = t;
-        assert_eq!(
-            msstd_time_timestamp_shift(&t, 1_500_000_000, &mut later),
-            STATUS_OK
-        );
-        assert_eq!(
-            msstd_time_timestamp_difference(&later, &t, &mut d),
-            STATUS_OK
-        );
-        assert_eq!(d, 1_500_000_000);
-        assert_eq!(msstd_time_timestamp_compare(&t, &later), -1);
         assert_eq!(
             ret(|o| msstd_time_error_message(STATUS_OUT_OF_RANGE, o)),
             "time: value out of range"

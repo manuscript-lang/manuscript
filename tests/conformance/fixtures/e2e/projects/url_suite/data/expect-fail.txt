@@ -1,0 +1,39 @@
+# Cases of Go's net/url tables the parser does not pass, with the reason.
+# A listed case must still fail, so fixing one means deleting its line; the list only shrinks.
+# `by design:` is a permanent decision, counted separately in the test output; `known gap` names its issue.
+parse#15 by design: `parse` reads an absolute URL, so a reference with no scheme is rejected (`resolve` takes the reference)
+parse#16 by design: `parse` reads an absolute URL, so a reference with no scheme is rejected (`resolve` takes the reference)
+parse#18 by design: `parse` reads an absolute URL, so a reference with no scheme is rejected (`resolve` takes the reference)
+parse#25 by design: the fragment is stored decoded and written back with minimal escaping, so `%26` formats as `&` (the same URL)
+parse#29 by design: `parse` reads an absolute URL, so a reference with no scheme is rejected (`resolve` takes the reference)
+parse#3 by design: the fragment is stored decoded and written back with minimal escaping, so `%26` formats as `&` (the same URL)
+parse#45 by design: `Url` cannot tell an empty port (`host:`) from no port, so the colon is dropped (the same URL)
+parse#46 by design: an unbracketed IPv6 address is not an RFC 3986 host, so it is rejected where Go splits off a port
+parse#47 by design: an unbracketed IPv6 address is not an RFC 3986 host, so it is rejected where Go splits off a port
+parse#49 by design: `Url` cannot tell an empty port (`host:`) from no port, so the colon is dropped (the same URL)
+parse#54 by design: `format` refuses host characters that need escaping (`<` `>` `"`), which `parse` accepts as Go does
+parse#6 by design: `Url` cannot tell an empty query (`?`) from no query, so a lone `?` is dropped
+parse_errors#26 by design: `parse` reads an absolute URL, so a reference with no scheme is rejected (`resolve` takes the reference)
+query#10 by design: a semicolon is ordinary query text and is never a separator, where Go reports an error (the recorded oracle pins this)
+query#11 by design: a semicolon is ordinary query text and is never a separator, where Go reports an error (the recorded oracle pins this)
+query#12 by design: a semicolon is ordinary query text and is never a separator, where Go reports an error (the recorded oracle pins this)
+query#13 by design: a semicolon is ordinary query text and is never a separator, where Go reports an error (the recorded oracle pins this)
+query#14 by design: a semicolon is ordinary query text and is never a separator, where Go reports an error (the recorded oracle pins this)
+query#15 by design: a semicolon is ordinary query text and is never a separator, where Go reports an error (the recorded oracle pins this)
+query#16 by design: a semicolon is ordinary query text and is never a separator, where Go reports an error (the recorded oracle pins this)
+query#4 by design: a semicolon is ordinary query text and is never a separator, where Go reports an error (the recorded oracle pins this)
+query#5 by design: a semicolon is ordinary query text and is never a separator, where Go reports an error (the recorded oracle pins this)
+query#8 by design: a semicolon is ordinary query text and is never a separator, where Go reports an error (the recorded oracle pins this)
+query#9 by design: a semicolon is ordinary query text and is never a separator, where Go reports an error (the recorded oracle pins this)
+resolve#2 by design: `Url` cannot tell an empty query (`?`) from no query, so a lone `?` is dropped
+resolve#3 by design: an opaque URL (`mailto:x`, `g:h`, `http:opaque`) has no hierarchical parts and is rejected, as the `Url` documentation says
+resolve#40 by design: an opaque URL (`mailto:x`, `g:h`, `http:opaque`) has no hierarchical parts and is rejected, as the `Url` documentation says
+resolve#6 by design: `Url` cannot tell an empty query (`?`) from no query, so a lone `?` is dropped
+resolve#86 by design: `Url` cannot tell an empty query (`?`) from no query, so a lone `?` is dropped
+resolve#87 by design: an opaque URL (`mailto:x`, `g:h`, `http:opaque`) has no hierarchical parts and is rejected, as the `Url` documentation says
+resolve#88 by design: an opaque URL (`mailto:x`, `g:h`, `http:opaque`) has no hierarchical parts and is rejected, as the `Url` documentation says
+resolve#89 by design: an opaque URL (`mailto:x`, `g:h`, `http:opaque`) has no hierarchical parts and is rejected, as the `Url` documentation says
+resolve#90 by design: an opaque URL (`mailto:x`, `g:h`, `http:opaque`) has no hierarchical parts and is rejected, as the `Url` documentation says
+resolve#91 by design: an opaque URL (`mailto:x`, `g:h`, `http:opaque`) has no hierarchical parts and is rejected, as the `Url` documentation says
+resolve#92 by design: an opaque URL (`mailto:x`, `g:h`, `http:opaque`) has no hierarchical parts and is rejected, as the `Url` documentation says
+unescape#11 by design: `decode_component` is path-style decoding, so `+` stays `+` (query decoding turns it into a space)

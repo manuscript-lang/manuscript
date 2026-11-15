@@ -57,7 +57,7 @@ mod type_substitution_tests;
 #[cfg(test)]
 mod tytable_tests;
 
-pub use checker::{CheckOptions, ImportMap, Program, TestFixture, self_variable};
+pub use checker::{CheckOptions, ImportMap, PackageScope, Program, TestFixture, self_variable};
 pub use stdlib::Session;
 pub use syntax::{ModRef, ModuleData};
 
