@@ -25,10 +25,3 @@ fn wrapped() Int!:
         xs := [1, 2, 3]
         accs.append(Acc(promise(fn: ok(xs[0] + i))))  // error: this promise reads `xs`, which ends before `accs` does
     return ok(0)
-
-fn from_lambda() Int!:
-    ps := [0, 1].map(fn i:
-        xs := [1, 2, 3]
-        return promise(fn: ok(xs[0] + i))  // error: this promise reads `xs`, which ends with this closure
-    )
-    return ok(ps.length())

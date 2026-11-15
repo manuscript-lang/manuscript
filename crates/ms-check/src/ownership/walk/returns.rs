@@ -6,38 +6,9 @@ impl Walker<'_> {
     /// Evaluates a value handed back to the caller.
     pub(super) fn returned(&mut self, e: &Expr) {
         if !self.captured.is_empty() {
-            // A lambda never returns_borrow: an escaping closure owns its captures. A promise it
-            // returns reads what it captures in place, so it may read the outer function's values
-            // (the holder of the result keeps their borrows) but not the lambda's own locals.
-            let mut parts = Vec::new();
-            collect_parts(
-                e,
-                &|c| matches!(self.cx.m.resolution(c), Resolution::Constructor { .. }),
-                &mut parts,
-            );
-            let mut local: Vec<Name> = Vec::new();
-            for part in parts.into_iter().filter(|p| self.entry_call(p)) {
-                for b in self.entry_captures(part) {
-                    let outer = self.captured.iter().any(|c| c.contains(&b.uid));
-                    let owned = self
-                        .meta
-                        .get(&b.uid)
-                        .is_some_and(|m| m.class != Class::Move);
-                    if !outer && !owned && !local.contains(&b.name) {
-                        local.push(b.name);
-                    }
-                }
-            }
-            if !local.is_empty() {
-                let names: Vec<&str> = local.iter().map(|n| self.syms.str(*n)).collect();
-                self.error(
-                    e.pos,
-                    format!(
-                        "this promise reads `{}`, which ends with this closure; wait for the promise before returning, or start it from values that outlive the closure",
-                        names.join("`, `")
-                    ),
-                );
-            }
+            // A lambda never returns_borrow: an escaping closure owns its captures, and so does a
+            // promise it starts and returns, outer values included (`.clone()` keeps one).
+            self.returned_promises_own_captures(e);
             self.expr(e, Demand::Move);
             return;
         }
