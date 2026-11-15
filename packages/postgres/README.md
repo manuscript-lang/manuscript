@@ -13,10 +13,10 @@ unless `Config.allow_md5` is true.
 
 ## TLS
 
-TLS needs PostgreSQL 17 or later. The stdlib can only start TLS on a fresh connection, so the client uses direct TLS
-(ALPN `postgresql`) and not the SSLRequest upgrade that older servers need. Older servers work once the stdlib can
-upgrade an open connection ([#4011](https://github.com/manuscript-lang/manuscript/issues/4011)). Direct TLS has not
-been run against a server here; no PostgreSQL 17 was available.
+Set `Config.tls` to `TlsOptions(server_name: ..., roots_pem: ...)`. The client sends an SSLRequest, accepts only a single
+`S` byte as the answer, then upgrades the same socket with `start_tls` and verifies the server certificate. A server
+that answers `N` is an error, never a plaintext fallback. `server_name` defaults to `host`. Works with every server
+version that supports TLS.
 
 ## Use
 

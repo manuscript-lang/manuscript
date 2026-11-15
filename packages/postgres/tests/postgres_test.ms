@@ -2,7 +2,9 @@ import (
 	Bytes from "@std/bytes.ms",
 	Promise, promise from "@std/concurrency/promise.ms",
 	Connection, listen from "@std/net/net.ms",
+	TlsOptions from "@std/net/tls.ms",
 	environment from "@std/os/env.ms",
+	read_file from "@std/os/fs.ms",
 	expect_equal, expect_error, expect_true from "@std/test/test.ms",
 
 	md5_password from "@pg/auth.ms",
@@ -212,3 +214,45 @@ test "transaction commits on success and rolls back on error":
 	count := conn.query("select count(*) from tx", [])?
 	expect_equal(count.rows[0][0], Value.Int(1))?
 	conn.close()?
+
+test "TLS login upgrades the socket after an SSLRequest":
+	env := environment()?
+	roots := (read_file(env.get_or("PGSSLROOTCERT", "")).wait()?).decode_utf8().ok_or(
+		Error("bad certificate")
+	)?
+	cfg := config()?
+	var conn = open(
+		Config(
+			host: cfg.host.clone(),
+			port: cfg.port,
+			user: cfg.user.clone(),
+			password: cfg.password.clone(),
+			tls: TlsOptions(server_name: "localhost", roots_pem: roots),
+		)
+	)?
+	rows := conn.query("select ssl from pg_stat_ssl where pid = pg_backend_pid()", [])?
+	expect_equal(rows.rows[0][0], Value.Bool(true))?
+	conn.close()?
+
+// A server that answers the SSL request with `N`: no TLS here.
+fn refuser(var client: Connection) Unit!:
+	_ := client.input.next()?
+	client.output.write(Bytes([78]))?
+	client.close()?
+	return ok(unit)
+
+fn refuser_accept(accepted: Promise[Connection]) Unit!:
+	var client = accepted.wait()?
+	return refuser(var client)
+
+test "a server that refuses TLS is an error and not a plaintext fallback":
+	var listener = listen("127.0.0.1:0")?
+	accepted := listener.accept()
+	port := listener.address().split(":")[1].parse_int().ok_or(Error("bad address"))?
+	accepting := promise(fn: refuser_accept(accepted))
+	failure := expect_error(
+		open(Config(port: port, tls: TlsOptions(server_name: "localhost")))
+	)?
+	expect_equal(failure.kind, "ENOTSUP")?
+	accepting.wait()?
+	listener.close()?

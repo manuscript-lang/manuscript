@@ -1,7 +1,7 @@
 // One PostgreSQL connection: startup, authentication, queries and transactions.
 import (
 	Bytes, BytesBuilder from "@std/bytes.ms",
-	Connection, connect from "@std/net/net.ms",
+	Connection, connect, start_tls from "@std/net/net.ms",
 	TlsOptions from "@std/net/tls.ms",
 	Duration from "@std/time.ms",
 
@@ -22,6 +22,7 @@ import (
 	query,
 	sasl_initial,
 	sasl_response,
+	ssl_request,
 	startup,
 	sync,
 	terminate from "@pg/wire.ms",
@@ -138,22 +139,43 @@ fn var Conn.read() Backend!:
 fn var Conn.send(data: Bytes) Unit!:
 	self.net.output.write(data)?
 
-fn tls_with_alpn(tls: TlsOptions?) TlsOptions?:
-	if options := tls:
-		var copy = options.clone()
-		copy.alpn = ["postgresql"]
-		return copy
+// Asks for TLS on the plain connection (SSLRequest), then upgrades the same socket. The
+// server must answer with the single byte `S`; anything more would be plaintext
+// injected before the handshake.
+fn negotiate_tls(var net: Connection, tls: TlsOptions, host: String, timeout: Duration?) Connection!:
+	net.output.write(ssl_request())?
 
-	return none
+	reply := net.input.next()?
+	if reply.is_none(): return error(
+		Error("postgres: connection closed by server", kind: "ECONNRESET")
+	)
+
+	answer := reply.get(Bytes([]))
+	if answer.length() != 1: return error(
+		protocol("unexpected bytes after the SSL request")
+	)
+	if answer.get(0) == 78: return error(
+		Error("postgres: server does not support TLS", kind: "ENOTSUP")
+	)
+	if answer.get(0) != 83: return error(
+		protocol("unexpected answer to the SSL request")
+	)
+
+	var options = tls.clone()
+	if options.server_name.is_empty(): options.server_name = host.clone()
+	return start_tls(var net, options, timeout)
 
 // Connects, authenticates, and returns a connection ready for queries.
 export fn open(config: Config) Conn!:
 	address := "{config.host}:{config.port}"
-	net := connect(address, tls_with_alpn(config.tls), config.timeout.clone()).wait()?
+	var net = connect(address, none, config.timeout.clone()).wait()?
+	if options := config.tls:
+		net = negotiate_tls(var net, options, config.host, config.timeout.clone())?
+
 	var conn = Conn(net, Bytes([]), 0, Map[String, String](), 0, 0, STATUS_IDLE)
-	var options = Map[String, String]()
-	options.add("application_name", config.application_name.clone())
-	conn.send(startup(config.user, config.database, options)?)?
+	var parameters = Map[String, String]()
+	parameters.add("application_name", config.application_name.clone())
+	conn.send(startup(config.user, config.database, parameters)?)?
 	conn.authenticate(config)?
 	return ok(conn)
 
