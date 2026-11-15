@@ -9,6 +9,7 @@ use crate::project::manifest::valid_alias;
 pub enum Pin<'a> {
     Tag(&'a str),
     Sha(&'a str),
+    Version(&'a str),
 }
 
 /// The package name `ms add` gives a repository URL: its last path segment without `.git` and
@@ -34,7 +35,7 @@ fn table<'a>(document: &'a mut DocumentMut, name: &str) -> Result<&'a mut Table,
         .ok_or_else(|| format!("[{name}] in ms.toml is not a table"))
 }
 
-/// `text` with `name = { url = ..., tag | sha = ... }` under `[dependencies]`.
+/// `text` with `name = { url = ..., version | tag | sha = ... }` under `[dependencies]`.
 pub fn add_dependency(text: &str, name: &str, url: &str, pin: &Pin<'_>) -> Result<String, String> {
     let mut document = edit(text)?;
     let dependencies = table(&mut document, "dependencies")?;
@@ -48,6 +49,7 @@ pub fn add_dependency(text: &str, name: &str, url: &str, pin: &Pin<'_>) -> Resul
     match pin {
         Pin::Tag(tag) => entry.insert("tag", (*tag).into()),
         Pin::Sha(sha) => entry.insert("sha", (*sha).into()),
+        Pin::Version(version) => entry.insert("version", (*version).into()),
     };
     dependencies.insert(name, value(entry));
     Ok(document.to_string())

@@ -50,7 +50,7 @@ fn malformed_manifests() {
         ),
         (
             "unknown key",
-            format!("{m}version = \"1\"\n"),
+            format!("{m}license = \"MIT\"\n"),
             "unknown project key",
         ),
         (
@@ -393,4 +393,31 @@ fn manifest_unicode_escapes_keep_their_exact_paths() {
         );
         assert_eq!(&read_project(&manifest).unwrap().entry, expected);
     }
+}
+
+#[test]
+fn a_project_version_is_optional_and_must_be_semver() {
+    let header = "[project]\nname = \"p\"\nsource = \".\"\n";
+    let read = |extra: &str| {
+        let dir = TempDir::new();
+        let manifest = write(dir.path(), "ms.toml", &format!("{header}{extra}"));
+        read_project(&manifest).map_err(|e| e.to_string())
+    };
+    assert!(read("").unwrap().version.is_none());
+    for good in ["1.2.3", "2026.11.0", "1.0.0-rc.1"] {
+        let version = read(&format!("version = \"{good}\"\n"))
+            .unwrap()
+            .version
+            .unwrap();
+        assert_eq!(version.to_string(), good);
+    }
+    for bad in ["v1.2.3", "1.2", "latest"] {
+        let error = read(&format!("version = \"{bad}\"\n")).unwrap_err();
+        assert!(error.contains("is not a version"), "{bad}: {error}");
+    }
+    let error = read("version = 3\n").unwrap_err();
+    assert!(
+        error.contains("must be quoted") || error.contains("string"),
+        "{error}"
+    );
 }
