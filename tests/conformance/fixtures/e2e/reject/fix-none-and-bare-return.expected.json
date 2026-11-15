@@ -31,64 +31,12 @@
           },
           "replacement": "find().is_some()"
         }
-      },
-      {
-        "code": "MS3000",
-        "phase": "type",
-        "message": "bare return requires Unit; this function returns Result[Unit, Error], so write 'return ok(unit)'",
-        "position": {
-          "file": "fix-none-and-bare-return.ms",
-          "line": 8,
-          "column": 9,
-          "offset": 131
-        },
-        "fix": {
-          "position": {
-            "file": "fix-none-and-bare-return.ms",
-            "line": 8,
-            "column": 9,
-            "offset": 131
-          },
-          "end": {
-            "file": "fix-none-and-bare-return.ms",
-            "line": 8,
-            "column": 15,
-            "offset": 137
-          },
-          "replacement": "return ok(unit)"
-        }
-      },
-      {
-        "code": "MS3000",
-        "phase": "type",
-        "message": "bare return requires Unit; this function returns Result[Unit, Error], so write 'return ok(unit)'",
-        "position": {
-          "file": "fix-none-and-bare-return.ms",
-          "line": 9,
-          "column": 5,
-          "offset": 139
-        },
-        "fix": {
-          "position": {
-            "file": "fix-none-and-bare-return.ms",
-            "line": 9,
-            "column": 5,
-            "offset": 139
-          },
-          "end": {
-            "file": "fix-none-and-bare-return.ms",
-            "line": 9,
-            "column": 11,
-            "offset": 145
-          },
-          "replacement": "return ok(unit)"
-        }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/fix-none-and-bare-return.ms:7:15: type: none has no type of its own here; test absence with `x.is_none()` or `x.is_some()` (`x != none` is `x.is_some()`), or compare with the plain value, e.g. x == 3\n   |\n 7 |     if find() != none:\n   |                  ^\n<DIR>/fix-none-and-bare-return.ms:8:9: type: bare return requires Unit; this function returns Result[Unit, Error], so write 'return ok(unit)'\n   |\n 8 |         return\n   |               ^\n<DIR>/fix-none-and-bare-return.ms:9:5: type: bare return requires Unit; this function returns Result[Unit, Error], so write 'return ok(unit)'\n   |\n 9 |     return\n   |        ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/fix-none-and-bare-return.ms:7:15: type: none has no type of its own here; test absence with `x.is_none()` or `x.is_some()` (`x != none` is `x.is_some()`), or compare with the plain value, e.g. x == 3\n   |\n 7 |     if find() != none:\n   |                  ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }
