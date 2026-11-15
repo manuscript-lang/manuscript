@@ -612,7 +612,7 @@ fn separates_colon(next: Int, delimited: Bool) Bool:
 	)
 
 // A scalar, alias or quoted string at the cursor, whose first code is `c`.
-fn flow_leaf(var flow: Flow, c: Int, key: Bool) YamlValue!:
+fn flow_leaf(var flow: Flow, c: Int, key: Bool, pair: Bool = false) YamlValue!:
 	if c == 42:
 		advance(var flow)
 
@@ -654,7 +654,7 @@ fn flow_leaf(var flow: Flow, c: Int, key: Bool) YamlValue!:
 				flow.delimited or key,
 			)
 		):
-			if key: break
+			if key or pair: break
 			return error(flow_invalid(flow, "unexpected mapping colon"))
 
 		flow.pos += 1
@@ -745,6 +745,7 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!:
 	var explicit_stack: List[Set[String]] = []
 	var name_stack: List[String] = []
 	var quoted_stack: List[Bool] = []
+	var single_stack: List[Bool] = []
 
 	// kind 0 is the request itself, before any container opens.
 	var kind = 0
@@ -755,6 +756,11 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!:
 	var explicit = Set[String]()
 	var name = ""
 	var quoted_key = false
+
+	// A mapping opened by `key: value` inside a sequence holds that one entry.
+	var single = false
+	var empty_key = false
+	var leaf_start = 0
 	var phase = 0
 	var done = YamlValue.Null
 	var child_key = key
@@ -816,6 +822,8 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!:
 				explicit_stack.append(explicit)
 				name_stack.append(name)
 				quoted_stack.append(quoted_key)
+				single_stack.append(single)
+				single = false
 				kind = if c == 91: 1 else: 2
 				level = child_depth
 				anchors = written
@@ -828,8 +836,10 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!:
 				continue
 
 			flow.force_string = as_string
+			leaf_start = flow.pos
 
-			leaf := flow_leaf(var flow, c, is_key)?
+			leaf := flow_leaf(var flow, c, is_key, pair: kind == 1)?
+			empty_key = c == 58
 			flow.force_string = false
 			for anchor in written.reversed():
 				define_anchor(var flow.context, anchor, leaf.clone())
@@ -841,9 +851,65 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!:
 			if kind == 0: return ok(done)
 
 			if kind == 1:
+				flow_space(var flow)
+
+				// `key: value` inside a sequence is a one-entry mapping.
+				if cur(flow) == 58:
+					var row = leaf_start
+
+					while row < flow.pos:
+						if flow.codes[row] == 10: return error(
+							flow_invalid(
+								flow,
+								"an implicit mapping key must stay on one line",
+							)
+						)
+
+						row += 1
+
+					var pair_key = ""
+
+					if not empty_key:
+						scalar := key_text(done)
+						if scalar.is_none(): return error(
+							yaml_unsupported(
+								line: flow_position(
+									flow,
+									flow.pos,
+								).line,
+								reason: "mapping keys must be scalars, not a collection",
+							)
+						)
+
+						pair_key = scalar.get("")
+
+					empty_key = false
+					advance(var flow)
+					flow_space(var flow)
+					count(var flow.context, level + 1)?
+					kinds.append(kind)
+					depths.append(level)
+					anchor_stack.append(anchors)
+					item_stack.append(items)
+					entry_stack.append(entries)
+					explicit_stack.append(explicit)
+					name_stack.append(name)
+					quoted_stack.append(quoted_key)
+					single_stack.append(single)
+					kind = 2
+					level += 1
+					anchors = []
+					items = []
+					entries = Map[String, YamlValue]()
+					explicit = Set[String]()
+					name = pair_key
+					quoted_key = false
+					single = true
+					phase = 0
+					continue
+
 				items.append(done)
 				done = YamlValue.Null
-				flow_space(var flow)
 
 				if cur(flow) != 93:
 					if step(var flow) != 44: return error(
@@ -859,6 +925,20 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!:
 			else:
 				flow_entry(var flow, name, quoted_key, var entries, var explicit, done)?
 				done = YamlValue.Null
+
+				if single:
+					done = YamlValue.ObjectValue(entries)
+					kind = kinds.pop().get(0)
+					level = depths.pop().get(0)
+					anchors = anchor_stack.pop().get([])
+					items = item_stack.pop().get([])
+					entries = entry_stack.pop().get(Map[String, YamlValue]())
+					explicit = explicit_stack.pop().get(Set[String]())
+					name = name_stack.pop().get("")
+					quoted_key = quoted_stack.pop().get(false)
+					single = single_stack.pop().get(false)
+					continue
+
 				flow_space(var flow)
 
 				if cur(flow) != 125:
@@ -899,6 +979,7 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!:
 
 				key_start := flow.pos
 				parsed_key := flow_value(var flow, level, key: true)?
+				key_end := flow.pos
 				flow_key := key_text(parsed_key)
 				if flow_key.is_none(): return error(
 					yaml_unsupported(
@@ -928,7 +1009,7 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!:
 				// not decoded text, which may legitimately contain an escaped newline.
 				var key_at = key_start
 
-				while key_at < flow.pos:
+				while key_at < key_end:
 					if flow.codes[key_at] == 10: return error(
 						flow_invalid(
 							flow,
@@ -957,6 +1038,8 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!:
 		explicit = explicit_stack.pop().get(Set[String]())
 		name = name_stack.pop().get("")
 		quoted_key = quoted_stack.pop().get(false)
+		single = single_stack.pop().get(false)
+		empty_key = false
 		phase = 1
 
 // A plain scalar cannot start with a reserved indicator, nor with `-` or `?` followed

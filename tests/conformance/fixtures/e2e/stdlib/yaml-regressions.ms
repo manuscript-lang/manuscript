@@ -456,7 +456,7 @@ test "YAML plain implicit keys cannot span physical lines":
 test "YAML quoted implicit keys cannot span physical lines":
 	for source in [
 		"\{'key\n next': value\}", "\{\"key\n next\": value\}",
-		"\{\"key\\\n next\": value\}", "\{\"key\"\n: value\}"
+		"\{\"key\\\n next\": value\}"
 	]:
 		invalid_key_line(source)?
 
@@ -916,3 +916,13 @@ test "YAML continuation lines are indented past their parent and tabs only separ
 	_ := parse("a:\n\tb: 1\n") | expect_error?
 	_ := parse("a:\n \tword\n")?
 	_ := parse("\t[x]\n")?
+
+test "YAML flow sequences hold single-pair entries and flow keys may precede their colon line":
+	value := parse("[a: b, \"k\":v, : e, c, x: [1, 2]]")?
+	want := parse("[\{a: b\}, \{k: v\}, \{\"\": e\}, c, \{x: [1, 2]\}]")?
+	expect_equal(value.to_string(), want.to_string())?
+
+	_ := parse("\{\"key\"\n: value\}")?
+	unsupported_at("[[a]: b]", 1)?
+
+	_ := parse("[a: b: c]") | expect_error?
