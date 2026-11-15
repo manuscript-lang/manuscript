@@ -85,3 +85,36 @@ test "semver keeps hyphens in pre-release and rejects extra plus signs":
 		(failure(parse(text: "1.2.3+a+b"))?)
 		| expect_equal(Error("semver: invalid data", kind: "EBADMSG"))?
 	)
+
+test "semver reads and orders calendar versions":
+	version := (parse(text: "2027.1.3") | expect_ok?)
+	version.major | expect_equal(2027)?
+	version.minor | expect_equal(1)?
+	version.patch | expect_equal(3)?
+	version.format() | expect_equal("2027.1.3")?
+
+	// The month has no leading zero, so a calendar version stays valid semver.
+	(
+		(failure(parse(text: "2026.01.0"))?)
+		| expect_equal(Error("semver: invalid data", kind: "EBADMSG"))?
+	)
+
+	// Numeric order, not text order: month 9 before 11, patch 1 before 10.
+	ordered := [
+		"2026.9.0", "2026.11.0", "2026.11.1", "2026.11.10", "2026.12.0", "2027.1.0",
+		"2027.1.3", "2027.10.0"
+	]
+	var i = 1
+
+	while i < ordered.length():
+		earlier := (parse(text: ordered[i - 1]) | expect_ok?)
+		later := (parse(text: ordered[i]) | expect_ok?)
+		if earlier.compare(later) != -1: return fail(
+			"{ordered[i - 1]} before {ordered[i]}"
+		)
+		if later.compare(earlier) != 1: return fail(
+			"{ordered[i]} after {ordered[i - 1]}"
+		)
+		if later.compare(later) != 0: return fail("{ordered[i]} equals itself")
+
+		i += 1

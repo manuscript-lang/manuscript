@@ -389,7 +389,8 @@ fn snapshot_line(message: &Json) -> String {
     if text.len() > 4096 {
         return "#large".to_string();
     }
-    text
+    // The server reports the release version, which changes every release.
+    text.replace(include_str!("../../../.msversion").trim(), "$VERSION")
 }
 
 /// Runs the script and compares every message with the snapshot

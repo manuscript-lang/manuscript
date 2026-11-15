@@ -5,7 +5,7 @@ description: Write, check, test, and revise idiomatic Manuscript programs. Use f
 
 # Write Manuscript
 
-Generated for Manuscript {{MS_VERSION}}. Compare with `ms --version`; regenerate this skill with the matching compiler when stale. Manuscript is in beta: what the stability page lists is frozen until 1.0; everything else may change.
+Generated for Manuscript {{MS_VERSION}}. Compare with `ms --version`; regenerate this skill with the matching compiler when stale. Manuscript is in beta: what the stability page lists is frozen; everything else may change.
 
 ## Core language
 
