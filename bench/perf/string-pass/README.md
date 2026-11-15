@@ -50,3 +50,11 @@ Positions in `String` are byte offsets (`proposals/byte-offset-strings.md`). Sam
 | `chars_scan_utf8` | 14 | 14 | 8 | unchanged |
 
 `length()` is now a field read (it counted scalars before: O(n) on text that was not flagged ASCII). `utf8_case_reverse` (150 vs 89) is unchanged by this change and still open.
+
+## 2026-11-15: inline scalar decode
+
+`scalar_at` decodes two-, three- and four-byte scalars in the generated MIR (a string is valid UTF-8, so the lead byte fixes the length and the continuation bytes are in bounds); only a continuation byte or an offset outside the text calls the runtime. Same VM and method, min of 5, milliseconds.
+
+| operation | before | after | rust | change |
+|---|---:|---:|---:|---|
+| `utf8_offset_walk` | 19 | 12 | 11 | no runtime call per non-ASCII scalar |

@@ -1,4 +1,4 @@
-fn divide(value: Int = 1 / "".byte_length()) Int:
+fn divide(value: Int = 1 / "".length()) Int:
     return value
 
 fn outer(value: Int = divide()) Int:

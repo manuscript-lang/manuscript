@@ -105,7 +105,7 @@ export fn verify_token[T: Data = JsonValue](
 	key: Bytes,
 	check: JwtCheck = JwtCheck(),
 ) T!:
-	if token.byte_length() > check.max_bytes: return error(
+	if token.length() > check.max_bytes: return error(
 		Error("jwt: malformed token", kind: "EBADMSG")
 	)
 

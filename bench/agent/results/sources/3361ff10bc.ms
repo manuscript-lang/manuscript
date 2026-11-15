@@ -26,7 +26,7 @@ fn amount(text: String) Int:
     return digits(text).get(0)
 
 fn tokenize(line: String) List[String]:
-    return line.replace("\t", " ").split(" ").filter(fn t: t.byte_length() > 0)
+    return line.replace("\t", " ").split(" ").filter(fn t: t.length() > 0)
 
 fn emit(text: String) Unit:
     stdout().write(text + "\n").get()

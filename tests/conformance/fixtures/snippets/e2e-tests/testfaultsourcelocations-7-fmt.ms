@@ -2,7 +2,7 @@
 // conform: phase=parse
 // conform: origin=tests/e2e/fault_locations_test.go:80 TestFaultSourceLocations
 fn crash() Int:
-    return 1 / "".byte_length()
+    return 1 / "".length()
 
 export fn main() Int:
     var values = Map[Int, Int]()

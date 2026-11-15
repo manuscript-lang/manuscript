@@ -312,7 +312,7 @@ extern @msrt_list_new() -> bytes list_new
 extern @msrt_fault_string(str) -> unit noreturn
 extern @msrt_strbuilder_append(ptr, str) -> unit strbuilder_append
 extern @msrt_strbuilder_freeze(ptr) -> str
-extern @msrt_string_byte_length(str) -> int
+extern @msrt_string_scalar_length(str) -> int
 entry @main
 
 fn @main() -> int export {
@@ -360,7 +360,7 @@ b5():
   %29: ptr = slot bytes
   put %29, %28
   %30: str = call.rt @msrt_strbuilder_freeze (%29)
-  %31: int = call.rt @msrt_string_byte_length (%30)
+  %31: int = call.rt @msrt_string_scalar_length (%30)
   drop %30
   depth.leave
   ret %31

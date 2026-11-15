@@ -17,7 +17,7 @@ extern const void *msrt_map_get_ptr(const MapVal *, const void *, const void *, 
 extern void msrt_map_drop(MapVal *, const void *, const void *);
 extern void msrt_string_concat(const ms_str *, const ms_str *, ms_str *);
 extern void msrt_string_free(const ms_str *);
-extern int64_t msrt_string_length(const ms_str *);
+extern int64_t msrt_string_scalar_length(const ms_str *);
 
 static double now(void) { struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t); return t.tv_sec * 1e9 + t.tv_nsec; }
 static void report(const char *n, double t0, long ops) { printf("%s %.1f\n", n, (now() - t0) / ops); }
@@ -47,7 +47,7 @@ static int64_t entry(void) {
     t = now();
     ms_str s;
     msrt_string_from_bytes((const uint8_t *)"ab", 2, &s);
-    for (int i = 0; i < N / 10; i++) { ms_str c; msrt_string_concat(&s, &s, &c); hits += msrt_string_length(&c); msrt_string_free(&c); }
+    for (int i = 0; i < N / 10; i++) { ms_str c; msrt_string_concat(&s, &s, &c); hits += msrt_string_scalar_length(&c); msrt_string_free(&c); }
     report("string_concat_len", t, N / 10);
     msrt_string_free(&s);
     return hits != N / 2 + 4 * (N / 10);

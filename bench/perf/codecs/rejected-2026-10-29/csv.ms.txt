@@ -55,7 +55,7 @@ fn main() Int:
         actual := result.get()
         if actual != wanted: return 3
 
-        checksum += actual.byte_length()
+        checksum += actual.length()
 
     elapsed := clk.now().difference(start).to_nanoseconds()
     stdout().write("{size} {count} {rounds} {shape} {checksum} {elapsed}\n").get()

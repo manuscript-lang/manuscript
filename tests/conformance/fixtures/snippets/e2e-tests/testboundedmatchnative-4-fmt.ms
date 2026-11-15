@@ -2,7 +2,7 @@
 // conform: phase=parse
 // conform: origin=tests/e2e/match_bounds_test.go:73 TestBoundedMatchNative
 fn fail() Int:
-    return 1 / "".byte_length()
+    return 1 / "".length()
 
 export fn main() Int:
     shapes := [Shape.Circle(2)]

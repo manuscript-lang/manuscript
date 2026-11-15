@@ -1,5 +1,5 @@
-//! String fast paths as inlinable MIR: `parse_int`, a one-byte `contains` and `scalar_at` of
-//! ASCII text held inline.
+//! String fast paths as inlinable MIR: `parse_int`, a one-byte `contains`, `scalar_at` and
+//! the affix tests.
 //!
 //! The runtime functions of the same names stay as fallbacks. Each helper is an `inline(always)`
 //! generated function, so both backends see the loop in the caller. A string is two words: an
@@ -328,8 +328,10 @@ fn contains_byte(b: &mut FuncBuilder<'_>) {
     b.ret(Some(r));
 }
 
-/// `String.scalar_at(offset, default)`: an offset inside the text whose byte is ASCII is that
-/// byte (it is its own scalar); every other case calls the runtime.
+/// `String.scalar_at(offset, default)`: an offset inside the text decodes in place. A string is
+/// valid UTF-8, so the lead byte gives the sequence length and every continuation byte is in
+/// bounds; a continuation byte at the offset, or an offset outside the text, calls the runtime
+/// for the default or the fault.
 fn scalar_at(b: &mut FuncBuilder<'_>) {
     let ps = b.params();
     let (text, offset, has, default) = (ps[0], ps[1], ps[2], ps[3]);
@@ -339,7 +341,16 @@ fn scalar_at(b: &mut FuncBuilder<'_>) {
         &[MTy::STR, MTy::INT, MTy::BOOL, MTy::INT],
         MTy::INT,
     );
-    let (slow, read, fast) = (b.new_block(), b.new_block(), b.new_block());
+    let (slow, read, ascii, multi, two, wide, three, four) = (
+        b.new_block(),
+        b.new_block(),
+        b.new_block(),
+        b.new_block(),
+        b.new_block(),
+        b.new_block(),
+        b.new_block(),
+        b.new_block(),
+    );
     let n = b.str_bytes(text);
     let zero = b.iconst(0);
     let ge0 = b.icmp(Cc::Ge, offset, zero);
@@ -349,16 +360,72 @@ fn scalar_at(b: &mut FuncBuilder<'_>) {
     b.br_if(inside, read, &[], slow, &[]);
     b.seal_block(read);
     b.switch_to(read);
-    let byte = b
-        .emit(Op::StrByte, &[text, offset], Imm::None, Some(MTy::INT))
-        .expect("byte");
+    let byte_at = |b: &mut FuncBuilder<'_>, k: i64| {
+        let at = int(b, Op::IAdd, offset, k);
+        b.emit(Op::StrByte, &[text, at], Imm::None, Some(MTy::INT))
+            .expect("byte")
+    };
+    let b0 = byte_at(b, 0);
     let limit = b.iconst(128);
-    let ascii = b.icmp(Cc::Lt, byte, limit);
-    b.br_if(ascii, fast, &[], slow, &[]);
-    b.seal_block(fast);
+    let is_ascii = b.icmp(Cc::Lt, b0, limit);
+    b.br_if(is_ascii, ascii, &[], multi, &[]);
+    b.seal_block(ascii);
+    b.switch_to(ascii);
+    b.ret(Some(b0));
+    b.seal_block(multi);
+    b.switch_to(multi);
+    // 0x80..0xBF is a continuation byte: the offset is inside a scalar.
+    let c0 = b.iconst(0xC0);
+    let lead = b.icmp(Cc::Ge, b0, c0);
+    let two_or_more = b.new_block();
+    b.br_if(lead, two_or_more, &[], slow, &[]);
+    b.seal_block(two_or_more);
     b.seal_block(slow);
-    b.switch_to(fast);
-    b.ret(Some(byte));
+    b.switch_to(two_or_more);
+    let e0 = b.iconst(0xE0);
+    let is_two = b.icmp(Cc::Lt, b0, e0);
+    b.br_if(is_two, two, &[], wide, &[]);
+    b.seal_block(two);
+    b.seal_block(wide);
+    b.switch_to(two);
+    let b1 = byte_at(b, 1);
+    let hi = int(b, Op::And, b0, 0x1F);
+    let hi = int(b, Op::Shl, hi, 6);
+    let lo = int(b, Op::And, b1, 0x3F);
+    let r = b.binop(Op::Or, hi, lo);
+    b.ret(Some(r));
+    b.switch_to(wide);
+    let f0 = b.iconst(0xF0);
+    let is_three = b.icmp(Cc::Lt, b0, f0);
+    b.br_if(is_three, three, &[], four, &[]);
+    b.seal_block(three);
+    b.seal_block(four);
+    b.switch_to(three);
+    let b1 = byte_at(b, 1);
+    let b2 = byte_at(b, 2);
+    let x = int(b, Op::And, b0, 0x0F);
+    let x = int(b, Op::Shl, x, 12);
+    let y = int(b, Op::And, b1, 0x3F);
+    let y = int(b, Op::Shl, y, 6);
+    let z = int(b, Op::And, b2, 0x3F);
+    let r = b.binop(Op::Or, x, y);
+    let r = b.binop(Op::Or, r, z);
+    b.ret(Some(r));
+    b.switch_to(four);
+    let b1 = byte_at(b, 1);
+    let b2 = byte_at(b, 2);
+    let b3 = byte_at(b, 3);
+    let w = int(b, Op::And, b0, 0x07);
+    let w = int(b, Op::Shl, w, 18);
+    let x = int(b, Op::And, b1, 0x3F);
+    let x = int(b, Op::Shl, x, 12);
+    let y = int(b, Op::And, b2, 0x3F);
+    let y = int(b, Op::Shl, y, 6);
+    let z = int(b, Op::And, b3, 0x3F);
+    let r = b.binop(Op::Or, w, x);
+    let r = b.binop(Op::Or, r, y);
+    let r = b.binop(Op::Or, r, z);
+    b.ret(Some(r));
     b.switch_to(slow);
     let r = b.call_rt(ext, &[text, offset, has, default]);
     b.ret(Some(r));

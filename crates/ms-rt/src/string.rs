@@ -615,15 +615,6 @@ pub unsafe extern "C-unwind" fn msrt_string_eq(a: *const StrVal, b: *const StrVa
     unsafe { equal(a, b) as u8 }
 }
 
-/// C view: `msrt_string_length(s: *const StrVal) -> i64`
-/// `byte_length()` for a bound method value; direct calls read the length inline (`str.bytes`).
-#[unsafe(no_mangle)]
-// ms: leaf pure domain=string
-pub unsafe extern "C-unwind" fn msrt_string_byte_length(s: *const StrVal) -> i64 {
-    // SAFETY: caller passes a live string.
-    unsafe { (*s).len() as i64 }
-}
-
 /// `is_empty()` for a bound method value; direct calls read the length inline (`str.bytes`).
 #[unsafe(no_mangle)]
 // ms: leaf pure domain=string
@@ -632,9 +623,18 @@ pub unsafe extern "C-unwind" fn msrt_string_is_empty(s: *const StrVal) -> u8 {
     unsafe { (*s).is_empty() as u8 }
 }
 
+/// `length()` for a bound method value: the byte length. Direct calls read it inline (`str.bytes`).
 #[unsafe(no_mangle)]
 // ms: leaf pure domain=string
 pub unsafe extern "C-unwind" fn msrt_string_length(s: *const StrVal) -> i64 {
+    // SAFETY: caller passes a live string.
+    unsafe { (*s).len() as i64 }
+}
+
+/// `scalar_length()`: the scalar count, also the `str.len` operation and bound method values.
+#[unsafe(no_mangle)]
+// ms: leaf pure domain=string
+pub unsafe extern "C-unwind" fn msrt_string_scalar_length(s: *const StrVal) -> i64 {
     // SAFETY: caller passes a live string.
     unsafe { scalar_count(s) as i64 }
 }
@@ -3671,11 +3671,12 @@ mod tests {
     }
 
     #[test]
-    fn length_counts_scalars_and_scalar_at_takes_byte_offsets() {
+    fn scalar_length_counts_scalars_and_scalar_at_takes_byte_offsets() {
         let _g = testutil::lock();
         unsafe {
             let s = st("héllo");
-            assert_eq!(msrt_string_length(s), 5);
+            assert_eq!(msrt_string_scalar_length(s), 5);
+            assert_eq!(msrt_string_length(s), 6);
             assert_eq!((*s).len() as i64, 6);
             assert_eq!(msrt_string_scalar_at(s, 1, HasRaw(0), 0), 0xE9);
             assert_eq!(msrt_string_scalar_at(s, 3, HasRaw(0), 0), 'l' as i64);

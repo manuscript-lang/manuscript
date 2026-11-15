@@ -264,18 +264,18 @@ fn compare_op(op: String, a: Value, b: Value) Result[Value, SqlError]:
     return ok(VBool(truth: c >= 0))
 
 fn like_at(s: String, i: Int, p: String, j: Int) Bool:
-    if j == p.byte_length():
-        return i == s.byte_length()
+    if j == p.length():
+        return i == s.length()
 
     pc := p.to_bytes().get(j)
 
     if pc == 37:
-        for k in range(i, s.byte_length() + 1):
+        for k in range(i, s.length() + 1):
             if like_at(s, k, p, j + 1):
                 return true
         return false
 
-    if i >= s.byte_length():
+    if i >= s.length():
         return false
     if pc == 95 or pc == s.to_bytes().get(i):
         return like_at(s, i + 1, p, j + 1)
@@ -362,7 +362,7 @@ fn scalar_call(name: String, vals: List[Value]) Result[Value, SqlError]:
 
     if name == "LENGTH":
         s := try text_arg(vals[0])
-        return ok(VInt(n: s.byte_length()))
+        return ok(VInt(n: s.length()))
 
     if name == "ABS":
         n := try int_arg(vals[0])
@@ -967,7 +967,7 @@ fn lex(src: List[Int], start: Int, stop: Int) Result[List[Token], SqlError]:
                 return error(syntax_error())
 
             toks.append(Token(kind: "op", text: op, num: 0, data: ""))
-            i += op.byte_length()
+            i += op.length()
 
     return ok(toks)
 

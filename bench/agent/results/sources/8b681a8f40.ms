@@ -1154,7 +1154,7 @@ fn scalar_call(
 
 	if name == "LENGTH":
 		if vkind(vals[0]) != 3: return error("type error")
-		return ok(VInt(v: as_text(vals[0]).byte_length()))
+		return ok(VInt(v: as_text(vals[0]).length()))
 
 	if name == "ABS":
 		if vkind(vals[0]) != 2: return error("type error")

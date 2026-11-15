@@ -98,7 +98,7 @@ fn enc(v: Value) String:
         VInt(n):
             return "I{n};"
         VText(s):
-            return "T{s.byte_length()}:{s}"
+            return "T{s.length()}:{s}"
         VBool(b):
             if b:
                 return "B1"
@@ -1383,7 +1383,7 @@ fn scalar_call(name: String, vals: List[Value]) Result[Value, Fail]:
 
     if name == "LENGTH":
         s := try as_text(vals[0])
-        return ok(VInt(s.byte_length()))
+        return ok(VInt(s.length()))
 
     if name == "ABS":
         k := try as_int(vals[0])

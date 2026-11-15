@@ -8,7 +8,7 @@ test "negative unit overflow":
     _impossible := (-153722868).minutes()
 
 test "receiver fault comes first":
-    _impossible := (1 / "".byte_length()).minutes()
+    _impossible := (1 / "".length()).minutes()
 
 test "continues with valid units":
     _valid := (1).seconds()

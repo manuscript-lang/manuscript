@@ -633,7 +633,7 @@ fn ascii_upper(s: String) String:
     var out = List[String]()
 
     for ch in s.chars():
-        if ch.byte_length() == 1:
+        if ch.length() == 1:
             out.append(ch.upper())
         else:
             out.append(ch)
@@ -644,7 +644,7 @@ fn ascii_lower(s: String) String:
     var out = List[String]()
 
     for ch in s.chars():
-        if ch.byte_length() == 1:
+        if ch.length() == 1:
             out.append(ch.lower())
         else:
             out.append(ch)

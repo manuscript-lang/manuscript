@@ -4,7 +4,7 @@ import (
 )
 
 test "explicit byte conversion":
-	expect_equal("é".byte_length(), 2)?
+	expect_equal("é".length(), 2)?
 	expect_equal("é".to_bytes().decode_utf8(), "é")?
 
 	invalid: String? := none

@@ -51,7 +51,7 @@ Keep public crate APIs small and documented with rustdoc; cross-crate changes mu
 
 Release builds optimize the program with LLVM, which sees the runtime only as opaque calls into `libms_native.a`; there is no helper IR linked into programs (the `ms-rt-hot` crate was retired, `proposals/retire-ms-rt-hot.md`). A fast path that must inline is emitted by the compiler as a MIR operation that both backends translate, and the runtime function stays as the slow case:
 
-- `str.ascii_len`, `str.eq_lit`, `str.bytes` (string length, short-literal equality, byte length) and the `msrt_string_eq` call (both backends decide it from the two string words, calling the runtime only for two distinct blocks of one length) read the string words inline, with `msrt_string_length` and the like as the slow case.
+- `str.ascii_len`, `str.eq_lit`, `str.bytes` (string length, short-literal equality, byte length) and the `msrt_string_eq` call (both backends decide it from the two string words, calling the runtime only for two distinct blocks of one length) read the string words inline, with `msrt_string_scalar_length` and the like as the slow case.
 - Everything else (map probes, `String.view`, `StringBuilder.append`, `Bytes` word reads, string compare, hash, search) is an ordinary `ms-rt` function, so each is a call. A new fast path goes in `.ms` stdlib if a body can express it, else a MIR operation, else a runtime function; measure instruction counts with `valgrind --tool=callgrind` before and after.
 - Stateful code (allocation, faults, I/O, tasks, startup) stays in `ms-rt` as before.
 

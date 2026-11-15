@@ -10,35 +10,35 @@ bench "ascii.valid.0":
 	data := expected.to_bytes()
 	expect_equal(data.length(), 0)?
 	expect_equal(ascii_decode(data)?, expected)?
-	measure(1, fn: keep((ascii_decode(data)?).byte_length()))?
+	measure(1, fn: keep((ascii_decode(data)?).length()))?
 
 bench "ascii.valid.7":
 	expected := "Az09 \n\u{0}".repeat(1)?
 	data := expected.to_bytes()
 	expect_equal(data.length(), 7)?
 	expect_equal(ascii_decode(data)?, expected)?
-	measure(1, fn: keep((ascii_decode(data)?).byte_length()))?
+	measure(1, fn: keep((ascii_decode(data)?).length()))?
 
 bench "ascii.valid.56":
 	expected := "Az09 \n\u{0}".repeat(8)?
 	data := expected.to_bytes()
 	expect_equal(data.length(), 56)?
 	expect_equal(ascii_decode(data)?, expected)?
-	measure(1, fn: keep((ascii_decode(data)?).byte_length()))?
+	measure(1, fn: keep((ascii_decode(data)?).length()))?
 
 bench "ascii.valid.4095":
 	expected := "Az09 \n\u{0}".repeat(585)?
 	data := expected.to_bytes()
 	expect_equal(data.length(), 4095)?
 	expect_equal(ascii_decode(data)?, expected)?
-	measure(1, fn: keep((ascii_decode(data)?).byte_length()))?
+	measure(1, fn: keep((ascii_decode(data)?).length()))?
 
 bench "ascii.valid.1048579":
 	expected := "Az09 \n\u{0}".repeat(149797)?
 	data := expected.to_bytes()
 	expect_equal(data.length(), 1048579)?
 	expect_equal(ascii_decode(data)?, expected)?
-	measure(1, fn: keep((ascii_decode(data)?).byte_length()))?
+	measure(1, fn: keep((ascii_decode(data)?).length()))?
 
 bench "ascii.invalid.first.1":
 	good := ("Az09 \n\u{0}".repeat(0)?).to_bytes()

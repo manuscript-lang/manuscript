@@ -24,7 +24,7 @@ extern void msrt_io_write_stdout(const ms_str *s);
 extern void msrt_string_free(const ms_str *s);
 extern void msrt_fault(const char *p, size_t n) __attribute__((noreturn));
 extern size_t msrt_cleanup_push(void (*f)(void *), void *arg);
-extern int64_t msrt_string_length(const ms_str *s);
+extern int64_t msrt_string_scalar_length(const ms_str *s);
 extern uintptr_t *msrt_isolate_hdr(void);
 extern void msrt_fault_depth(void) __attribute__((noreturn));
 extern void msrt_args(VecVal *out);
@@ -95,7 +95,7 @@ static int64_t guard_mode(void) {
         ms_str msg;
         uint8_t r = msrt_guard_call(faulting_request, &n, &msg);
         if (r != 1 || n != 1 || no_message(&msg)) return 10;
-        if (msrt_string_length(&msg) < 4) return 11;
+        if (msrt_string_scalar_length(&msg) < 4) return 11;
         msrt_io_write_stdout(&msg);
         msrt_string_free(&msg);
         n = 0;
@@ -238,7 +238,7 @@ static int64_t entry(void) {
     if (!strcmp(mode, "ok")) {
         ms_str s;
         msrt_string_from_bytes((const uint8_t *)"héllo\n", 7, &s);
-        if (msrt_string_length(&s) != 6) return 10;
+        if (msrt_string_scalar_length(&s) != 6) return 10;
         msrt_io_write_stdout(&s);
         msrt_string_free(&s);
         return 3;
@@ -247,7 +247,7 @@ static int64_t entry(void) {
         static const char text[] = "héllo from the native C driver\n";
         ms_str s;
         msrt_string_from_bytes((const uint8_t *)text, sizeof text - 1, &s);
-        if (msrt_string_length(&s) != sizeof text - 2) return 10;
+        if (msrt_string_scalar_length(&s) != sizeof text - 2) return 10;
         msrt_io_write_stdout(&s);
         msrt_string_free(&s);
         return 0;

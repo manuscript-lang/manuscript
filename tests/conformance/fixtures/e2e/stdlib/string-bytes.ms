@@ -204,7 +204,7 @@ test "builder appends variable text of every length across growth":
 			want += n
 
 	built := sb.build()
-	expect_equal(built.byte_length(), want)?
+	expect_equal(built.length(), want)?
 	expect_equal((built.slice(0, 10)?), "0010120123")?
 
 test "search indexes are byte offsets for ascii, inline and unicode text":

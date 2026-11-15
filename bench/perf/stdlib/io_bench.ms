@@ -74,6 +74,6 @@ bench "io.lines long fragmented":
 		var input = lines(from_bytes(data.clone(), 64))
 		result := input.next()?
 		input.close()?
-		return keep(result.get("").byte_length())
+		return keep(result.get("").length())
 
 	measure(1, work)?

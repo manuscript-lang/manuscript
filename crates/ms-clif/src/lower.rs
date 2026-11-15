@@ -1103,7 +1103,6 @@ impl<'a, 'm> Lower<'a, 'm> {
             | Op::OptAddr => self.optionals(f, inst),
             Op::StrByte
             | Op::StrAscii
-            | Op::StrAsciiAt
             | Op::StrAsciiLen
             | Op::StrEqLit
             | Op::StrBytes

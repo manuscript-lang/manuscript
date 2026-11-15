@@ -97,7 +97,7 @@ test "parse trees keep their size and checksum for the recorded large documents"
 		if body.is_none(): return fail("parse failed: {got}")
 
 		tree := body.get("")
-		summary := "ok {tree.byte_length()} {checksum_hex(tree)}"
+		summary := "ok {tree.length()} {checksum_hex(tree)}"
 		if summary != f[f.length() - 1]: return fail("{summary} != {f[f.length() - 1]}")
 
 		cases += 1

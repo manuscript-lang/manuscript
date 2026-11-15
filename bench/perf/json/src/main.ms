@@ -51,7 +51,7 @@ fn row_list() List[Row]:
 
 fn records_body(rows: List[Row]) fn() Int:
 	return fn() Int:
-		if out := stringify(rows): return out.byte_length()
+		if out := stringify(rows): return out.length()
 		return 0
 
 fn bench_records(budget: Int, runs: Int) Unit:
@@ -115,7 +115,7 @@ fn parse_body(text: String) fn() Int:
 
 fn stringify_body(tree: JsonValue) fn() Int:
 	return fn() Int:
-		if out := stringify(tree): return out.byte_length()
+		if out := stringify(tree): return out.length()
 		return 0
 
 // Arguments are `name` or `name:op` (op is parse or stringify); a leading `quick` makes

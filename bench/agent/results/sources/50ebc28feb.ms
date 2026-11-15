@@ -310,7 +310,7 @@ fn split_words(line: String) List[String]:
 // ---- expressions --------------------------------------------------------
 
 fn byte_of(c: String) Int:
-    if c.byte_length() != 1:
+    if c.length() != 1:
         return -1
 
     return c.to_bytes().get(0).to_int()

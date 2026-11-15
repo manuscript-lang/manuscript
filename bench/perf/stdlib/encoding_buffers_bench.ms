@@ -26,7 +26,7 @@ fn unpadded(length: Int, url: Bool) Unit!:
 	fn work() Unit!:
 		actual := base64_encode(data, url, false)
 		expect_equal(actual, expected)?
-		return keep(actual.byte_length())
+		return keep(actual.length())
 
 	measure(1, work)?
 
@@ -44,15 +44,15 @@ fn base32(length: Int, hex: Bool, padded: Bool) Unit!:
 	fn work() Unit!:
 		actual := base32_encode(data, Base32Options(hex_alphabet: hex, padded: padded))
 		expect_equal(actual, expected)?
-		return keep(actual.byte_length())
+		return keep(actual.length())
 
 	measure(1, work)?
 
 fn decode32(length: Int, hex: Bool, padded: Bool, mode: Int) Unit!:
 	data := sample(length)
 	var text = base32_encode(data, Base32Options(hex_alphabet: hex, padded: padded))
-	if mode == 1 or mode == 7: text = "!" + ("A".repeat(text.byte_length() - 1)?)
-	if mode == 2: text = ("A".repeat(text.byte_length() - 1)?) + "!"
+	if mode == 1 or mode == 7: text = "!" + ("A".repeat(text.length() - 1)?)
+	if mode == 2: text = ("A".repeat(text.length() - 1)?) + "!"
 
 	var limit: Int? = none
 	if mode == 3: limit = 0
@@ -86,7 +86,7 @@ fn encode85(length: Int) Unit!:
 	fn work() Unit!:
 		actual := ascii85_encode(data)
 		expect_equal(actual, expected)?
-		return keep(actual.byte_length())
+		return keep(actual.length())
 
 	measure(1, work)?
 

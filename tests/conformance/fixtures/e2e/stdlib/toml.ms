@@ -304,8 +304,8 @@ test "TOML stringify round trips scalars tables and arrays of tables":
 		value := parse(control)?
 		encoded := stringify(value)?
 		expect_equal(parse(encoded)?, value)?
-		expect_equal(stringify(value, encoded.byte_length())?, encoded)?
-		expect_true(stringify(value, encoded.byte_length() - 1).is_error())?
+		expect_equal(stringify(value, encoded.length())?, encoded)?
+		expect_true(stringify(value, encoded.length() - 1).is_error())?
 
 	expect_equal(stringify(parse("empty = []")?)?, "empty = []\n")?
 	expect_equal(stringify(parse("late = [\{x=2\},1]")?)?, "late = [\{ x = 2 \}, 1]\n")?

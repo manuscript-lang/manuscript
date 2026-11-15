@@ -117,7 +117,7 @@ b0:
     check("direct_list_fault", src, 67, &["pick"]);
 }
 
-/// `byte` of `text` at `index`: a program that returns the byte (or the `str.ascii_at` result).
+/// `byte` of `text` at `index`: a program that returns the byte.
 fn string_program(op: &str, text: &str, index: i64) -> String {
     format!(
         r#"module "d"
@@ -230,14 +230,6 @@ fn string_bytes() {
         "direct_byte_heap",
         &string_program("str.byte", long, 20),
         117,
-        &["get"],
-    );
-    // `str.ascii_at` needs the ASCII flag, which a literal lacks, so it returns -1: an exit code
-    // out of range, 67.
-    check(
-        "direct_ascii_none",
-        &string_program("str.ascii_at", long, 9),
-        67,
         &["get"],
     );
     // `str.ascii_len` answers -1 (exit code 67) for a long literal, which is neither inline nor

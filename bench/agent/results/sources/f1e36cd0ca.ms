@@ -956,7 +956,7 @@ fn val_enc(v: Val) String:
         VInt(n):
             return "I{n};"
         VText(s):
-            return "T{s.byte_length()};{s}"
+            return "T{s.length()};{s}"
         VBool(b):
             if b:
                 return "B1;"
@@ -1179,7 +1179,7 @@ fn eval_scalar(name: String, vals: List[Val]) Result[Val, SqlErr]:
     if k != 3:
         return error(SqlErr(msg: "type error"))
     if name == "LENGTH":
-        return ok(VInt(v: as_text(vals[0]).byte_length()))
+        return ok(VInt(v: as_text(vals[0]).length()))
     if name == "UPPER":
         return ok(VText(s: ascii_case(as_text(vals[0]), true)))
 

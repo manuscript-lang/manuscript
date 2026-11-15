@@ -732,7 +732,7 @@ fn Parser.raw_text_tag() Int:
 
 // Whether `length` bytes at `start` equal the lower-case `word` ignoring ASCII case.
 fn Parser.name_is(start: Int, length: Int, word: String) Bool:
-	if length != word.byte_length(): return false
+	if length != word.length(): return false
 	return bytes_equal_fold(self.src, start, word.to_bytes())
 
 fn var Parser.read_start_tag() Int:
@@ -1676,7 +1676,7 @@ fn var Parser.add_leading_whitespace() Bool:
 	if cut > 0:
 		ws := d.view(0, cut).clone()
 		self.add_text(ws)
-		if cut == d.byte_length(): return true
+		if cut == d.length(): return true
 
 		self.tok_data = d.view(cut, d.length()).clone()
 
@@ -3429,7 +3429,7 @@ fn atom_of_range(src: Bytes, start: Int, end: Int) Int:
 	if candidate == 0: return 0
 	if (
 		bytes_equal_fold(src, start, atom_name(candidate).to_bytes())
-		and length == atom_name(candidate).byte_length()
+		and length == atom_name(candidate).length()
 	):
 		return candidate
 
@@ -3484,7 +3484,7 @@ fn strip_leading_newline(text: String) String:
 
 // Whether the text has no scalar other than HTML whitespace.
 fn is_blank(text: String) Bool:
-	return trim_left_len(text) == text.byte_length()
+	return trim_left_len(text) == text.length()
 
 fn is_foreign_attribute(key: String) Bool:
 	match key:
@@ -4985,7 +4985,7 @@ export fn parse(text: String, options: HtmlOptions = HtmlOptions()) HtmlNode!:
 	max_bytes := budget(options.max_bytes)?
 	max_depth := budget(options.max_depth)?
 	max_nodes := budget(options.max_nodes)?
-	if text.byte_length() > max_bytes: return error(limit_error())
+	if text.length() > max_bytes: return error(limit_error())
 
 	var max_open = max_depth
 	if max_depth < 9000000000000000000: max_open = max_depth + 64

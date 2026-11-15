@@ -1299,7 +1299,7 @@ fn scalar_call(name: String, vals: List[Value]) Result[Value, SqlError]:
         if vals[0].kind != V_TEXT:
             return error(type_error())
 
-        return ok(int_value(vals[0].text.byte_length()))
+        return ok(int_value(vals[0].text.length()))
 
     if name == "ABS":
         if vals[0].kind != V_INT:

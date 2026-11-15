@@ -178,7 +178,7 @@ impl<'a> FnLower<'a> {
             let n = self.scalar_len(r)?;
             return Ok(Val { v: n, own: false });
         }
-        if str_recv && matches!(native, "length" | "byte_length" | "is_empty") {
+        if str_recv && matches!(native, "length" | "is_empty") {
             let r = self.borrow(recv);
             let n = self.b.str_bytes(r);
             if native != "is_empty" {

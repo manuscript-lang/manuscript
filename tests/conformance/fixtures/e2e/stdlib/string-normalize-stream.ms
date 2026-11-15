@@ -34,7 +34,7 @@ test "normalization keeps exact exceeded zero negative and invalid form budgets"
 		BudgetCase("NFKC", "ﬁ①", "fi1"),
 		BudgetCase("NFKD", "ﬁ①", "fi1"),
 	]:
-		size := normalization.expected.byte_length()
+		size := normalization.expected.length()
 		expect_equal(
 			normalization.text.normalize(normalization.form, size).get(),
 			normalization.expected.clone(),

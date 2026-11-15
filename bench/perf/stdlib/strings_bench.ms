@@ -10,7 +10,7 @@ bench "string.append_builder":
 		var sb = StringBuilder()
 		for i in 0..100000:
 			sb.append("x")
-		return keep(sb.build().byte_length())
+		return keep(sb.build().length())
 
 	measure(100000, work)?
 
