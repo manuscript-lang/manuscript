@@ -52,6 +52,11 @@ fn main() Int:
 		"cargo-nextest",
 		"cargo-nextest (cargo install cargo-nextest --locked)",
 	): failed += 1
+	if not say(
+		works("python3", ["--version"]) or works("python", ["--version"]),
+		"Python 3 (debugger helper tests)",
+		"Python 3 (needed by the debugger helper tests in tools/debugger)",
+	): failed += 1
 
 	hugo := env("HUGO", "hugo")
 	hugo_output := capture(hugo, ["version"])
