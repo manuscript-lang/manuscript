@@ -23,8 +23,9 @@ fn config() Config!:
 // Records one visit to `path` and returns how many visits the table holds.
 fn record_visit(path: String) Int!:
 	var conn = open(config()?)?
-	_ := conn.simple("create table if not exists visits (path text not null)")?
-	_ := conn.query("insert into visits (path) values ($1)", [Value.Text(path)])?
+	void conn.simple("create table if not exists visits (path text not null)")?
+	void conn.query("insert into visits (path) values ($1)", [Value.Text(path)])?
+
 	rows := conn.query("select count(*) from visits", [])?
 	conn.close()?
 
