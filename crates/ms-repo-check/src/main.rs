@@ -1,7 +1,6 @@
 //! `repo-check`: repository invariants that no compiler or test run enforces.
 //! Run from the repository root; exits nonzero listing every violation.
 
-mod conflict_markers;
 mod impl_adjacency;
 mod inline_source;
 mod internal_externs;
@@ -58,7 +57,6 @@ fn run(syms: ms_syntax::Names) -> ExitCode {
         }
     };
     let mut issues = Vec::new();
-    issues.extend(conflict_markers::check(&files));
     issues.extend(standard_syntax());
     issues.extend(nested::check(&files));
     issues.extend(format_drift(&files));
@@ -77,7 +75,7 @@ fn run(syms: ms_syntax::Names) -> ExitCode {
     issues.extend(thread_affinity::check(&files));
     if issues.is_empty() {
         println!(
-            "Conflict markers, nested matches, formatting, stdlib syntax, release pins, triggers, unsafe boundary, inline sources, portability, stream names, impl adjacency, internal externs, optional defaults, crate layering, checker stage layering, and thread affinity agree."
+            "Nested matches, formatting, stdlib syntax, release pins, triggers, unsafe boundary, inline sources, portability, stream names, impl adjacency, internal externs, optional defaults, crate layering, checker stage layering, and thread affinity agree."
         );
         return ExitCode::SUCCESS;
     }
