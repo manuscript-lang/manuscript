@@ -143,3 +143,57 @@ fn skill_module_map_matches_the_declarations() {
     );
     assert!(rendered.contains("`@std/data/json.ms`: "), "{rendered}");
 }
+
+/// Every `ms.toml` the projects page shows parses with the real manifest reader, so the page
+/// cannot teach a table or key the compiler rejects.
+#[test]
+fn skill_manifest_examples_parse() {
+    use ms_driver::project::manifest::read_manifest;
+    let page = FILES
+        .iter()
+        .find(|(path, _)| *path == "references/projects-and-packages.md")
+        .unwrap()
+        .1;
+    let mut parsed = 0;
+    for after in page.split("<!-- manifest: ").skip(1) {
+        let (name, rest) = after.split_once(" -->\n").expect("manifest marker");
+        let text = rest
+            .strip_prefix("```toml\n")
+            .expect("toml fence")
+            .split_once("```")
+            .expect("closed fence")
+            .0;
+        let dir =
+            std::env::temp_dir().join(format!("ms-skill-manifest-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        for sub in ["src/domain", "assets", "app/src", "libs/util/src"] {
+            std::fs::create_dir_all(dir.join(sub)).unwrap();
+        }
+        for file in ["src/main.ms", "app/src/main.ms", "libs/util/src/greet.ms"] {
+            std::fs::write(dir.join(file), "fn main() Void:\n\tvoid\n").unwrap();
+        }
+        std::fs::write(
+            dir.join("libs/util/ms.toml"),
+            "[project]\nname = \"util\"\nsource = \"src\"\n",
+        )
+        .unwrap();
+        std::fs::write(
+            dir.join("src/domain/customers.ms"),
+            "export type Customer:\n\tid: Int\n",
+        )
+        .unwrap();
+        let (manifest, base) = if name == "member" {
+            (dir.join("app/ms.toml"), dir.join("app"))
+        } else {
+            (dir.join("ms.toml"), dir.clone())
+        };
+        let _ = base;
+        std::fs::write(&manifest, text).unwrap();
+        let mut project = ms_driver::project::manifest::Project::default();
+        read_manifest(manifest.to_str().unwrap(), &mut project)
+            .unwrap_or_else(|e| panic!("manifest {name}: {e:?}"));
+        let _ = std::fs::remove_dir_all(&dir);
+        parsed += 1;
+    }
+    assert_eq!(parsed, 6, "retain every manifest example");
+}
