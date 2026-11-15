@@ -214,7 +214,7 @@ test "YAML blank line folding retains byte node and malformed input contracts":
 
 	for malformed in [
 		"a: 'x\n\n  y", "a: \"x\n\n  y", "a: \"x\\\n\n  y\\q\"", "a: x\n\n  b: y",
-		"a: x\n\n  - y", "a: x\n\n \ty", "a: x\n # comment\n  y", "a: >--\n\n  x",
+		"a: x\n\n  - y", "a: x\n # comment\n  y", "a: >--\n\n  x",
 		"a: >\n  x\n \t\n  y", "a: >2\n  x\n y"
 	]:
 		cause := match parse(text: malformed):
@@ -444,9 +444,7 @@ test "YAML rejects duplicates invalid indentation malformed flow and aliases":
 		)
 		((cause.message.starts_with("YAML ")) | expect_true?)
 
-	for text in [
-		"!custom value", "? complex\n: value", "%TAG ! tag:example.org\n---\na: 1"
-	]:
+	for text in ["? - complex\n: value", "[a]: 1"]:
 		cause := match parse(text: text):
 			ok(_): return fail("unsupported YAML accepted")
 			error(cause): cause

@@ -1,0 +1,4 @@
+Test data from the W3C XML Conformance Test Suites (xmlts20130923, https://www.w3.org/XML/Test/).
+The files keep their original authors (Sun Microsystems, James Clark, OASIS/NIST, IBM) and are used under the W3C Software and Document License:
+https://www.w3.org/copyright/software-license/
+Only cases for XML 1.0 (fifth edition rules) without external entities are included; the selection is cases.txt.

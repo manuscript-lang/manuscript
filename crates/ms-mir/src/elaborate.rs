@@ -134,8 +134,15 @@ enum St {
 }
 
 /// The owners in scope, in definition order. Untagged values are tracked while live only.
+///
+/// The tables are shared between copies until one is changed, so a block that changes no owner
+/// hands its state on without copying it, and a join of two such copies finds them the same
+/// by pointer: a function of N blocks and N owners does not copy N owners per block.
 #[derive(Clone, Default)]
-struct State {
+struct State(std::rc::Rc<Owners>);
+
+#[derive(Clone, Default)]
+struct Owners {
     seq: std::collections::BTreeMap<u32, (Value, St)>,
     at: HashMap<Value, u32>,
     next: u32,
@@ -143,35 +150,43 @@ struct State {
 
 impl PartialEq for State {
     fn eq(&self, other: &State) -> bool {
-        self.seq.len() == other.seq.len() && self.iter().eq(other.iter())
+        std::rc::Rc::ptr_eq(&self.0, &other.0)
+            || (self.0.seq.len() == other.0.seq.len() && self.iter().eq(other.iter()))
     }
 }
 
 impl State {
     fn push(&mut self, v: Value, s: St) {
-        self.at.insert(v, self.next);
-        self.seq.insert(self.next, (v, s));
-        self.next += 1;
+        let o = std::rc::Rc::make_mut(&mut self.0);
+        o.at.insert(v, o.next);
+        o.seq.insert(o.next, (v, s));
+        o.next += 1;
     }
 
     fn get(&self, v: Value) -> Option<St> {
-        self.at.get(&v).map(|n| self.seq[n].1)
+        self.0.at.get(&v).map(|n| self.0.seq[n].1)
     }
 
     fn set(&mut self, v: Value, s: St) {
-        if let Some(n) = self.at.get(&v) {
-            self.seq.get_mut(n).expect("owner").1 = s;
+        if self.0.at.contains_key(&v) && self.get(v) != Some(s) {
+            let o = std::rc::Rc::make_mut(&mut self.0);
+            let n = o.at[&v];
+            o.seq.get_mut(&n).expect("owner").1 = s;
         }
     }
 
     fn remove(&mut self, v: Value) {
-        if let Some(n) = self.at.remove(&v) {
-            self.seq.remove(&n);
+        if self.0.at.contains_key(&v) {
+            let o = std::rc::Rc::make_mut(&mut self.0);
+            if let Some(n) = o.at.remove(&v) {
+                o.seq.remove(&n);
+            }
         }
     }
 
     fn retain(&mut self, mut keep: impl FnMut(&(Value, St)) -> bool) {
         let gone: Vec<Value> = self
+            .0
             .seq
             .values()
             .filter(|e| !keep(e))
@@ -184,7 +199,12 @@ impl State {
 
     /// Definition order.
     fn iter(&self) -> impl DoubleEndedIterator<Item = &(Value, St)> {
-        self.seq.values()
+        self.0.seq.values()
+    }
+
+    /// Where the owner `v` was defined among the owners.
+    fn position(&self, v: Value) -> u32 {
+        self.0.at[&v]
     }
 }
 
@@ -247,13 +267,28 @@ fn own_params(m: &Module, f: &Func, b: usize) -> Vec<Value> {
         .collect()
 }
 
+/// The owner `v` left the scope's hands on this path. A slot owner or a disowned owner stays
+/// tracked as moved: its cleanup entry or the exits after it still act on it. Any other owner
+/// needs nothing from here on (a scope end drops nothing for a moved owner, and a join that
+/// meets it moved on one path and held on the other makes it maybe-moved either way), so its entry
+/// goes: keeping one per moved temporary made every block's state grow with the function.
+fn finish(cx: &Ctx, st: &mut State, v: Value) {
+    let tracked = cx
+        .tags
+        .get(&v)
+        .is_some_and(|t| t.1 >= 2 || cx.disown_moves.contains(&v));
+    match tracked {
+        true => st.set(v, St::Moved),
+        false => st.remove(v),
+    }
+}
+
 fn consume_value(cx: &Ctx, st: &mut State, v: Value) -> Result<(), String> {
     let Some(state) = st.get(v) else {
         return Ok(());
     };
     match state {
-        St::Live if cx.tags.contains_key(&v) => st.set(v, St::Moved),
-        St::Live => st.remove(v),
+        St::Live => finish(cx, st, v),
         // Disowned, then consumed by the op that takes it.
         St::Moved if cx.disown_moves.contains(&v) => {}
         St::Moved => return Err(format!("%{} is consumed after it was moved", v.0)),
@@ -356,10 +391,7 @@ fn apply(m: &Module, f: &Func, cx: &Ctx, st: &mut State, inst: &Inst) -> Result<
     if inst.op == Op::AltRelease
         && let Some(St::Part(..)) = st.get(inst.args[0])
     {
-        match cx.tags.contains_key(&inst.args[0]) {
-            true => st.set(inst.args[0], St::Moved),
-            false => st.remove(inst.args[0]),
-        }
+        finish(cx, st, inst.args[0]);
         return Ok(());
     }
     consume_args(m, f, cx, st, &inst.args, &arg_modes(m, inst))?;
@@ -402,6 +434,9 @@ fn edge_state(m: &Module, f: &Func, cx: &Ctx, st: &State, t: &Target) -> Result<
 }
 
 fn merge(old: &State, new: &State) -> Result<State, String> {
+    if std::rc::Rc::ptr_eq(&old.0, &new.0) {
+        return Ok(old.clone());
+    }
     let mut out = State::default();
     for (v, a) in old.iter() {
         let Some(b) = new.get(*v) else {
@@ -1623,7 +1658,7 @@ impl Em<'_> {
             .flatten()
             .filter_map(|v| st.get(*v).map(|s| (*v, s)))
             .collect();
-        owners.sort_by_key(|(v, _)| std::cmp::Reverse(st.at[v]));
+        owners.sort_by_key(|(v, _)| std::cmp::Reverse(st.position(*v)));
         for (v, s) in owners {
             st.remove(v);
             if s == St::Moved && !self.flagged.contains(&v) {

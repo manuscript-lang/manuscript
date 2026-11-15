@@ -9,8 +9,12 @@ ATTRIBUTE_SCAN_LIMIT := 16
 
 /*
 XML documents as a tree of elements, text and comments, parsed and written in Manuscript.
-`parse` accepts well-formed XML 1.0 without DTD processing (a DOCTYPE is skipped, entities beyond
-the five predefined and numeric references are rejected). Names keep their prefix as written
+`parse` accepts well-formed XML 1.0 without DTD processing. A DOCTYPE is read only far enough to
+find its end (its name, external identifier and the extent of an internal subset) and is then
+dropped: its declarations are neither checked nor applied, an external subset is never fetched, and
+no entity a DTD defines is ever expanded. Only the five predefined entities and numeric character
+references resolve, so any other `&name;` is an error. The input is text: UTF-16 and other
+encodings are the caller's to decode before parsing. Names keep their prefix as written
 (`svg:rect`); namespaces are not resolved. `stringify` writes a tree back with escaping.
 
     import parse from "@std/data/xml.ms"

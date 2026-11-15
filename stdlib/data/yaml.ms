@@ -1,4 +1,11 @@
 // Configuration-oriented YAML 1.2 parser implemented in Manuscript.
+//
+// Mapping keys are strings. A scalar key (a number, boolean or null spelling, a quoted
+// string, an empty key, or an alias to a scalar) becomes the text of that scalar, so
+// `1` and
+// `"1"` in one mapping are a duplicate key, which is an error. A sequence or mapping used as
+// a key is rejected with an error that names its position. Tags other than `!` and
+// `!!str` are read and ignored; those two make the node a string.
 import (
 	Bytes from "@std/bytes.ms",
 	quote_text from "@std/data/quote.ms",
@@ -70,6 +77,13 @@ type Context:
 	ind: List[Int]
 	col: List[Int]
 	// Diagnostic projection for virtual lines; parsing continues to use the same bases.
+	// Prefixes declared by %TAG directives, keyed by handle (`!`, `!!`, `!name!`).
+	tag_handles: Map[String, String] = Map[String, String]()
+	// Whether the document just read ended with an explicit `...` marker.
+	explicit_end: Bool = false
+	// Whether the document just read had no `---` marker and no content: no document at
+	// all.
+	absent_document: Bool = false
 	split_line: Int = -1
 	shift_row: Int = -1
 	shift_column: Int = 0
@@ -89,6 +103,8 @@ type Flow:
 	// Scalar offsets where stripped comments terminate an already-started plain leaf.
 	stops: List[Int] = []
 	next_stop: Int = 0
+	// A `!!str` or `!` tag on the next plain leaf keeps its text a string.
+	force_string: Bool = false
 
 // YAML separates tokens with only space and tab; Unicode spaces such as U+00A0 are
 // scalar content.
@@ -444,6 +460,68 @@ fn anchor_name(var flow: Flow) String!:
 
 	return ok(name)
 
+// The resolved tag at the cursor, which sits on `!`: a verbatim `!<uri>`, `!!name` of
+// the core schema, `!` alone (the non-specific tag), or a local `!name`.
+fn tag_token(var flow: Flow) String!:
+	advance(var flow)
+
+	if peek(flow) == "<":
+		advance(var flow)
+
+		var uri = ""
+		while (
+			peek(flow) != ""
+			and peek(flow) != ">"
+			and not " \t\n".contains(peek(flow))
+		):
+			uri = uri.concat(advance(var flow))
+		if peek(flow) != ">": return error(
+			flow_invalid(flow, "unterminated verbatim tag")
+		)
+
+		advance(var flow)
+		if uri == "": return error(flow_invalid(flow, "empty verbatim tag"))
+
+		return ok(uri)
+
+	var name = ""
+	while peek(flow) != "" and not " \t\n,[]\{\}".contains(peek(flow)):
+		name = name.concat(advance(var flow))
+
+	handles := flow.context.tag_handles
+
+	// `!!name` and `!handle!name` expand through the declared prefixes.
+	if name.starts_with("!"):
+		var prefix = "tag:yaml.org,2002:"
+		if declared := handles.get("!!"): prefix = declared.clone()
+		return ok("{prefix}{name.slice(1, name.length()).get("")}")
+
+	if bang := name.index_of("!"):
+		handle := "!{name.slice(0, bang + 1).get("")}"
+		if prefix := handles.get(handle):
+			return ok("{prefix}{name.slice(bang + 1, name.length()).get("")}")
+
+		return error(flow_invalid(flow, "undeclared tag handle"))
+
+	if name != "":
+		if prefix := handles.get("!"): return ok("{prefix}{name}")
+	return ok("!{name}")
+
+// The mapping key a scalar node stands for: its text. A collection cannot be a key.
+fn key_text(value: YamlValue) String?:
+	match value:
+		StringValue(text): return text.clone()
+		NumberValue(text): return text.clone()
+		BoolValue(flag):
+			if flag: return "true"
+			return "false"
+		Null: return "null"
+		_: return none
+
+// Whether a tag makes a scalar a string whatever its spelling.
+fn string_tag(tag: String) Bool:
+	return tag == "!" or tag == "tag:yaml.org,2002:str"
+
 fn merge(
 	line: Int,
 	column: Int,
@@ -534,7 +612,7 @@ fn separates_colon(next: Int, delimited: Bool) Bool:
 	)
 
 // A scalar, alias or quoted string at the cursor, whose first code is `c`.
-fn flow_leaf(var flow: Flow, c: Int, key: Bool) YamlValue!:
+fn flow_leaf(var flow: Flow, c: Int, key: Bool, pair: Bool = false) YamlValue!:
 	if c == 42:
 		advance(var flow)
 
@@ -545,12 +623,6 @@ fn flow_leaf(var flow: Flow, c: Int, key: Bool) YamlValue!:
 
 		return error(flow_invalid(flow, "unknown or recursive alias"))
 
-	if c == 33: return error(
-		yaml_unsupported(
-			line: flow_position(flow, flow.pos).line,
-			reason: "explicit tags are unsupported",
-		)
-	)
 	if c == 34 or c == 39: return ok(YamlValue.StringValue(quoted(var flow)?))
 	if c == 35: return error(
 		flow_invalid(flow, "a comment needs whitespace before its hash")
@@ -582,7 +654,7 @@ fn flow_leaf(var flow: Flow, c: Int, key: Bool) YamlValue!:
 				flow.delimited or key,
 			)
 		):
-			if key: break
+			if key or pair: break
 			return error(flow_invalid(flow, "unexpected mapping colon"))
 
 		flow.pos += 1
@@ -606,7 +678,7 @@ fn flow_leaf(var flow: Flow, c: Int, key: Bool) YamlValue!:
 	)
 
 	if flow.delimited: text = fold_plain(text)
-	if key: return ok(YamlValue.StringValue(text))
+	if key or flow.force_string: return ok(YamlValue.StringValue(text))
 
 	return ok(plain(text))
 
@@ -673,6 +745,7 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!:
 	var explicit_stack: List[Set[String]] = []
 	var name_stack: List[String] = []
 	var quoted_stack: List[Bool] = []
+	var single_stack: List[Bool] = []
 
 	// kind 0 is the request itself, before any container opens.
 	var kind = 0
@@ -683,6 +756,11 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!:
 	var explicit = Set[String]()
 	var name = ""
 	var quoted_key = false
+
+	// A mapping opened by `key: value` inside a sequence holds that one entry.
+	var single = false
+	var empty_key = false
+	var leaf_start = 0
 	var phase = 0
 	var done = YamlValue.Null
 	var child_key = key
@@ -694,12 +772,20 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!:
 			child_depth := if kind == 0: depth else: level + 1
 			var written: List[String] = []
 			var is_key = child_key
+			var as_string = flow.force_string
 			child_key = false
+			flow.force_string = false
 
 			while true:
 				flow_space(var flow)
 				if not is_key:
 					count(var flow.context, child_depth)?
+
+				if cur(flow) == 33:
+					as_string = as_string or string_tag(tag_token(var flow)?)
+					flow.context.values -= 1
+					continue
+
 				if cur(flow) != 38: break
 
 				advance(var flow)
@@ -722,7 +808,7 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!:
 							flow,
 							flow.pos,
 						).line,
-						reason: "complex mapping keys are unsupported",
+						reason: "mapping keys must be scalars, not a collection",
 					)
 				)
 
@@ -736,6 +822,8 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!:
 				explicit_stack.append(explicit)
 				name_stack.append(name)
 				quoted_stack.append(quoted_key)
+				single_stack.append(single)
+				single = false
 				kind = if c == 91: 1 else: 2
 				level = child_depth
 				anchors = written
@@ -747,7 +835,12 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!:
 				phase = 2
 				continue
 
-			leaf := flow_leaf(var flow, c, is_key)?
+			flow.force_string = as_string
+			leaf_start = flow.pos
+
+			leaf := flow_leaf(var flow, c, is_key, pair: kind == 1)?
+			empty_key = c == 58
+			flow.force_string = false
 			for anchor in written.reversed():
 				define_anchor(var flow.context, anchor, leaf.clone())
 			done = leaf
@@ -758,9 +851,65 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!:
 			if kind == 0: return ok(done)
 
 			if kind == 1:
+				flow_space(var flow)
+
+				// `key: value` inside a sequence is a one-entry mapping.
+				if cur(flow) == 58:
+					var row = leaf_start
+
+					while row < flow.pos:
+						if flow.codes[row] == 10: return error(
+							flow_invalid(
+								flow,
+								"an implicit mapping key must stay on one line",
+							)
+						)
+
+						row += 1
+
+					var pair_key = ""
+
+					if not empty_key:
+						scalar := key_text(done)
+						if scalar.is_none(): return error(
+							yaml_unsupported(
+								line: flow_position(
+									flow,
+									flow.pos,
+								).line,
+								reason: "mapping keys must be scalars, not a collection",
+							)
+						)
+
+						pair_key = scalar.get("")
+
+					empty_key = false
+					advance(var flow)
+					flow_space(var flow)
+					count(var flow.context, level + 1)?
+					kinds.append(kind)
+					depths.append(level)
+					anchor_stack.append(anchors)
+					item_stack.append(items)
+					entry_stack.append(entries)
+					explicit_stack.append(explicit)
+					name_stack.append(name)
+					quoted_stack.append(quoted_key)
+					single_stack.append(single)
+					kind = 2
+					level += 1
+					anchors = []
+					items = []
+					entries = Map[String, YamlValue]()
+					explicit = Set[String]()
+					name = pair_key
+					quoted_key = false
+					single = true
+					phase = 0
+					continue
+
 				items.append(done)
 				done = YamlValue.Null
-				flow_space(var flow)
 
 				if cur(flow) != 93:
 					if step(var flow) != 44: return error(
@@ -776,6 +925,20 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!:
 			else:
 				flow_entry(var flow, name, quoted_key, var entries, var explicit, done)?
 				done = YamlValue.Null
+
+				if single:
+					done = YamlValue.ObjectValue(entries)
+					kind = kinds.pop().get(0)
+					level = depths.pop().get(0)
+					anchors = anchor_stack.pop().get([])
+					items = item_stack.pop().get([])
+					entries = entry_stack.pop().get(Map[String, YamlValue]())
+					explicit = explicit_stack.pop().get(Set[String]())
+					name = name_stack.pop().get("")
+					quoted_key = quoted_stack.pop().get(false)
+					single = single_stack.pop().get(false)
+					continue
+
 				flow_space(var flow)
 
 				if cur(flow) != 125:
@@ -816,19 +979,19 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!:
 
 				key_start := flow.pos
 				parsed_key := flow_value(var flow, level, key: true)?
-
-				match parsed_key:
-					StringValue(text): name = text
-					_: return error(
-						yaml_unsupported(
-							line: flow_position(
-								flow,
-								key_start,
-							).line,
-							reason: "mapping keys must be strings",
-						)
+				key_end := flow.pos
+				flow_key := key_text(parsed_key)
+				if flow_key.is_none(): return error(
+					yaml_unsupported(
+						line: flow_position(
+							flow,
+							key_start,
+						).line,
+						reason: "mapping keys must be scalars, not a collection",
 					)
+				)
 
+				name = flow_key.get("")
 				flow_space(var flow)
 
 				// A key with no colon, as in `{a, b: 1}`, maps to null.
@@ -846,7 +1009,7 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!:
 				// not decoded text, which may legitimately contain an escaped newline.
 				var key_at = key_start
 
-				while key_at < flow.pos:
+				while key_at < key_end:
 					if flow.codes[key_at] == 10: return error(
 						flow_invalid(
 							flow,
@@ -875,6 +1038,8 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!:
 		explicit = explicit_stack.pop().get(Set[String]())
 		name = name_stack.pop().get("")
 		quoted_key = quoted_stack.pop().get(false)
+		single = single_stack.pop().get(false)
+		empty_key = false
 		phase = 1
 
 // A plain scalar cannot start with a reserved indicator, nor with `-` or `?` followed
@@ -1097,9 +1262,19 @@ fn indent(text: String) Int:
 
 fn indentation(context: Context, text: String) Int!:
 	spaces := indent(text)
-	if text.scalar_at(spaces, -1) == 9: return error(
-		invalid(context, "tabs cannot indent YAML")
-	)
+
+	// Indentation is spaces only. A tab after it is separation, allowed before a scalar
+	// or a flow collection but not before a block sequence entry, key or explicit key.
+	if text.scalar_at(spaces, -1) == 9:
+		rest := blank_trim_start(text)
+		if (
+			rest != ""
+			and (
+				sequence(rest)
+				or rest.starts_with("?")
+				or boundary(rest, colon: true) >= 0
+			)
+		): return error(invalid(context, "tabs cannot indent YAML"))
 
 	return ok(spaces)
 
@@ -1214,10 +1389,15 @@ fn structured_lead(code: Int, blank: Bool = false) Bool:
 		or code == 33
 	)
 
-fn inline_value(var context: Context, text: String, depth: Int, line: Int, column: Int) Result[
-	YamlValue,
-	Error,
-]:
+fn inline_value(
+	var context: Context,
+	text: String,
+	depth: Int,
+	line: Int,
+	column: Int,
+	as_string: Bool = false,
+	parent: Int = -1,
+) Result[YamlValue, Error]:
 	// A plain scalar needs no character scan: only its trimmed text and a count.
 	if (
 		text != ""
@@ -1234,6 +1414,8 @@ fn inline_value(var context: Context, text: String, depth: Int, line: Int, colum
 		and plain_may_start(blank_trim(text))
 	):
 		count(var context, depth)?
+		if as_string: return ok(YamlValue.StringValue(blank_trim(text).clone()))
+
 		return ok(plain(blank_trim(text).clone()))
 
 	var joined = text.clone()
@@ -1264,6 +1446,29 @@ fn inline_value(var context: Context, text: String, depth: Int, line: Int, colum
 			invalid(context, "unexpected document marker in flow node")
 		)
 
+		// A continuation line of a node inside a collection is indented past that
+		// collection; the common `key: [` layout may still close the bracket at the
+		// parent's column.
+		if (
+			parent >= 0
+			and blank_trim(context.lines[context.index]) != ""
+			and not (
+				state.quote == 0
+				and blank_trim_start(
+					context.lines[context.index]
+				).starts_with("#")
+			)
+		):
+			row := context.lines[context.index]
+			lead := blank_trim_start(row).scalar_at(0, default: 0)
+			closes := state.quote == 0 and (lead == 93 or lead == 125)
+			if indent(row) <= parent and not closes: return error(
+				invalid(
+					context,
+					"a continuation line must be indented past its parent",
+				)
+			)
+
 		next := "\n".concat(context.lines[context.index])
 		scan := scan_structure_part(next, "#", var state)
 
@@ -1288,6 +1493,10 @@ fn inline_value(var context: Context, text: String, depth: Int, line: Int, colum
 		context: flow_context(context),
 		delimited: false,
 		stops: stops,
+		force_string: as_string and not (
+			text.starts_with("[")
+			or text.starts_with("\{")
+		),
 	)
 	result := flow_value(var flow, depth, key: false)?
 	flow_space(var flow)
@@ -1326,7 +1535,12 @@ fn block_string(
 			)
 		)
 
-	var content_indent = base + explicit
+	// A root block scalar may start at column zero; an indentation indicator still
+	// counts from column zero.
+	var content_indent = explicit
+	if explicit > 0 and base >= 0: content_indent = base + explicit
+	if explicit == 0: content_indent = base + explicit
+
 	scan_start := context.index
 	var probe = scan_start
 
@@ -1370,6 +1584,7 @@ fn block_string(
 		spaces := indent(line)
 		if (line.slice(spaces, line.length()).get("") != "" and spaces < content_indent):
 			break
+		if spaces == 0 and document_marker(line): break
 
 		parts.append(line.slice(content_indent, line.length()).get(""))
 		context.index += 1
@@ -1461,18 +1676,27 @@ fn block_value(
 	var remainder = blank_trim_start(text).clone()
 	var anchor = ""
 	var lead = remainder.scalar_at(0, default: 0)
+	var as_string = false
+	var tagged = false
 
-	if lead == 38:
+	// Node properties, an anchor and a tag in either order, come before the content.
+	while lead == 38 or lead == 33:
 		var flow = Flow(
 			chars: remainder.split("").clone(),
 			codes: [],
-			pos: 1,
+			pos: 0,
 			line: start_line,
 			column: origin,
 			context: flow_context(context),
 			delimited: false,
 		)
-		anchor = anchor_name(var flow)?
+
+		if lead == 38:
+			advance(var flow)
+			anchor = anchor_name(var flow)?
+		else:
+			as_string = as_string or string_tag(tag_token(var flow)?)
+			tagged = true
 
 		previous_length := remainder.scalar_length()
 		remainder = blank_trim_start(
@@ -1487,7 +1711,7 @@ fn block_value(
 			yaml_invalid(
 				line: start_line,
 				column: origin,
-				reason: "an alias cannot have an anchor",
+				reason: "an alias cannot have node properties",
 			)
 		)
 
@@ -1569,7 +1793,15 @@ fn block_value(
 
 				remainder = joined.build()
 
-		result = inline_value(var context, remainder, depth, start_line, origin)?
+		result = inline_value(
+			var context,
+			remainder,
+			depth,
+			start_line,
+			origin,
+			as_string,
+			parent: base,
+		)?
 	else:
 		skip(var context)
 
@@ -1585,6 +1817,21 @@ fn block_value(
 					and sequence(blank_trim_start(line))
 				)
 			):
+				next_content := blank_trim_start(line)
+				next_lead := next_content.scalar_at(0, default: 0)
+				if (
+					(
+						(anchor != "" and next_lead == 38)
+						or (tagged and next_lead == 33)
+					)
+					and boundary(next_content, colon: true) < 0
+				): return error(
+					invalid(
+						context,
+						"a node cannot have properties on two lines",
+					)
+				)
+
 				result = block(
 					var context,
 					next_indent,
@@ -1593,8 +1840,10 @@ fn block_value(
 				)?
 			else:
 				count(var context, depth)?
+				if as_string: result = YamlValue.StringValue("")
 		else:
 			count(var context, depth)?
+			if as_string: result = YamlValue.StringValue("")
 
 	if anchor != "": define_anchor(var context, anchor, result.clone())
 	return ok(result)
@@ -1657,6 +1906,19 @@ fn sequence_items(
 				).get("")
 			)
 			compact = sequence(item) or boundary(item, colon: true) >= 0
+
+			// A tab cannot indent a nested sequence: `-<tab>- x` is invalid.
+			after := blank_trim_start(line).slice(
+				1,
+				blank_trim_start(line).length(),
+			).get("")
+			gap := after.slice(0, after.length() - item.length()).get("")
+			if gap.contains("\t") and sequence(item): return error(
+				invalid(
+					context,
+					"a tab cannot indent a nested sequence",
+				)
+			)
 
 		var chain: List[Int] = []
 		if item.starts_with("-"): chain = nested_columns(line, base)
@@ -1766,6 +2028,89 @@ fn sequence_items(
 
 	return ok(unit)
 
+// Whether `text` starts with the indicator `code` followed by a blank or the end.
+fn indicator(text: String, code: Int) Bool:
+	if text.scalar_at(0, default: 0) != code: return false
+
+	second := text.scalar_at(1, default: 0)
+	return second == 0 or second == 32 or second == 9
+
+type ExplicitEntry:
+	name: String
+	value: YamlValue
+
+// One `? key` and `: value` pair of a block mapping, either part optional. The key must
+// be a scalar; a missing value is null and a missing key is the empty string.
+fn explicit_entry(var context: Context, base: Int, depth: Int) ExplicitEntry!:
+	var name = ""
+	var value = YamlValue.Null
+	start := context.lines[context.index].clone()
+	lead := blank_trim_start(start).clone()
+
+	if lead.scalar_at(0, default: 0) == 63:
+		var rest = blank_trim_start(lead.slice(1, lead.length()).get(""))
+		column := start.scalar_length() - rest.scalar_length() + 1
+		if rest.starts_with("#"): rest = ""
+		if sequence(rest) or (rest != "" and boundary(rest, colon: true) >= 0): return error(
+			yaml_unsupported(
+				line: source_line(context, context.index),
+				reason: "mapping keys must be scalars, not a collection",
+			)
+		)
+
+		context.index += 1
+
+		node := block_value(
+			context: var context,
+			text: rest,
+			base: base,
+			depth: (depth + 1),
+			indentless: false,
+			column: column,
+		)?
+		scalar := key_text(node)
+		if scalar.is_none(): return error(
+			yaml_unsupported(
+				line: source_line(context, context.index - 1),
+				reason: "mapping keys must be scalars, not a collection",
+			)
+		)
+
+		if rest != "" or node != YamlValue.Null: name = scalar.get("")
+		skip(var context)
+
+	if context.index >= context.lines.length(): return ok(
+		ExplicitEntry(name: name, value: value)
+	)
+
+	row := context.lines[context.index].clone()
+	value_lead := blank_trim_start(row).clone()
+	if indent(row) != base or not indicator(value_lead, 58): return ok(
+		ExplicitEntry(name: name, value: value)
+	)
+
+	var text = blank_trim_start(value_lead.slice(1, value_lead.length()).get(""))
+	column := row.scalar_length() - text.scalar_length() + 1
+	if text.starts_with("#"): text = ""
+
+	// A collection may start on the indicator's line, as in `: - one`.
+	if sequence(text) or (text != "" and boundary(text, colon: true) >= 0):
+		context.simple.set(context.index, false)
+		context.lines.set(context.index, pad(base + 2).concat(text))
+		value = block(var context, base + 2, depth + 1, scalar_base: base)?
+	else:
+		context.index += 1
+		value = block_value(
+			context: var context,
+			text: text,
+			base: base,
+			depth: (depth + 1),
+			indentless: true,
+			column: column,
+		)?
+
+	return ok(ExplicitEntry(name: name, value: value))
+
 fn block(var context: Context, base: Int, depth: Int, scalar_base: Int) YamlValue!:
 	skip(var context)
 
@@ -1778,15 +2123,11 @@ fn block(var context: Context, base: Int, depth: Int, scalar_base: Int) YamlValu
 		has_colon = not is_sequence and context.col[context.index] >= 0
 	else:
 		first = blank_trim_start(uncomment(context.lines[context.index]))
-		if first.starts_with("?") and not plain_may_start(first): return error(
-			yaml_unsupported(
-				line: source_line(context, context.index),
-				reason: "explicit mapping keys are unsupported",
-			)
-		)
-
 		is_sequence = sequence(first)
-		has_colon = not is_sequence and boundary(first, colon: true) >= 0
+		has_colon = (
+			not is_sequence
+			and (boundary(first, colon: true) >= 0 or indicator(first, 63))
+		)
 
 	if (
 		context.split_line >= 0
@@ -1821,6 +2162,22 @@ fn block(var context: Context, base: Int, depth: Int, scalar_base: Int) YamlValu
 			skip(var context)
 			if context.index >= context.lines.length(): break
 
+			marker_row := context.lines[context.index].clone()
+			marker := blank_trim_start(marker_row).clone()
+
+			if (
+				indent(marker_row) == base
+				and (indicator(marker, 63) or indicator(marker, 58))
+			):
+				entry := explicit_entry(var context, base, depth)?
+				if explicit.contains(entry.name): return error(
+					invalid(context, "duplicate mapping key")
+				)
+
+				explicit.add(entry.name.clone())
+				values.add(entry.name.clone(), entry.value.clone())
+				continue
+
 			var line_indent = 0
 			var name = ""
 			var text = ""
@@ -1854,8 +2211,29 @@ fn block(var context: Context, base: Int, depth: Int, scalar_base: Int) YamlValu
 				)
 				value_column = line.scalar_length() - text.scalar_length() + 1
 
-			key_start := name.scalar_at(0, default: 0)
+			var key_start = name.scalar_at(0, default: 0)
+			var key_anchor = ""
+			var had_properties = false
+
+			// Node properties before a key: a tag is dropped, an anchor names the key.
+			while key_start == 33 or key_start == 38:
+				var word_end = 0
+
+				while word_end < name.scalar_length():
+					ch := name.scalar_at(word_end, default: 0)
+					if ch == 32 or ch == 9: break
+
+					word_end += 1
+
+				cut := byte_at_scalar(name, word_end)
+				word := name.slice(0, cut).get("")
+				if key_start == 38: key_anchor = word.slice(1, word.length()).get("")
+				name = blank_trim_start(name.slice(cut, name.length()).get("")).clone()
+				key_start = name.scalar_at(0, default: 0)
+				had_properties = true
+
 			quoted_key := key_start == 34 or key_start == 39
+			var plain_key = name != ""
 
 			if quoted_key:
 				var flow = Flow(
@@ -1875,26 +2253,46 @@ fn block(var context: Context, base: Int, depth: Int, scalar_base: Int) YamlValu
 				if flow.pos != flow.chars.length(): return error(
 					invalid(context, "invalid quoted key")
 				)
-			else if (
-				name == ""
-				or key_start == 91
-				or key_start == 123
-				or key_start == 33
-				or key_start == 38
-				or key_start == 42
-			):
+			else if key_start == 91 or key_start == 123:
 				return error(
 					yaml_unsupported(
 						line: source_line(
 							context,
 							context.index,
 						),
-						reason: "mapping keys must be strings",
+						reason: "mapping keys must be scalars, not a collection",
+					)
+				)
+			else if key_start == 42:
+				// An alias key stands for the scalar it names.
+				if had_properties: return error(
+					invalid(
+						context,
+						"an alias cannot have node properties",
 					)
 				)
 
+				alias_name := name.slice(1, name.length()).get("")
+				aliased := context.anchors.get(alias_name)
+				if aliased.is_none(): return error(invalid(context, "unknown anchor"))
+
+				alias_text := key_text(aliased.get(YamlValue.Null))
+				if alias_text.is_none(): return error(
+					yaml_unsupported(
+						line: source_line(
+							context,
+							context.index,
+						),
+						reason: "mapping keys must be scalars, not a collection",
+					)
+				)
+
+				name = alias_text.get("")
+				plain_key = false
+
 			if (
 				not quoted_key
+				and plain_key
 				and (
 					not plain_may_start(name)
 					or key_start == 124
@@ -1911,6 +2309,11 @@ fn block(var context: Context, base: Int, depth: Int, scalar_base: Int) YamlValu
 			)
 
 			explicit.add(name.clone())
+			if key_anchor != "": define_anchor(
+				var context,
+				key_anchor,
+				YamlValue.StringValue(name.clone()),
+			)
 
 			key_line := source_line(context, context.index)
 			key_column := source_column(context, context.index, line_indent + 1)
@@ -1950,6 +2353,67 @@ fn block(var context: Context, base: Int, depth: Int, scalar_base: Int) YamlValu
 		block_base: scalar_base
 	)
 
+// Reads the directive lines before a document. `%YAML` accepts any 1.x version (the
+// spec asks a 1.2 parser to read it with a warning), `%TAG` declares a tag handle
+// prefix, and an unknown directive is ignored.
+fn directives(var context: Context) Unit!:
+	var seen_version = false
+
+	while (
+		context.index < context.lines.length()
+		and context.lines[context.index].starts_with("%")
+	):
+		var words: List[String] = []
+		for word in uncomment(context.lines[context.index]).replace(
+			"\t",
+			" ",
+		).split(" "):
+			if word != "": words.append(word.clone())
+
+		line := source_line(context, context.index)
+
+		if words[0] == "%YAML":
+			if seen_version: return error(invalid(context, "duplicate %YAML directive"))
+
+			seen_version = true
+
+			var parts: List[String] = []
+			if words.length() == 2: parts = words[1].split(".").clone()
+			if (
+				parts.length() != 2
+				or parts[0].parse_int().is_none()
+				or parts[1].parse_int().is_none()
+			): return error(invalid(context, "invalid %YAML directive"))
+			if parts[0] != "1": return error(
+				yaml_unsupported(
+					line: line,
+					reason: "only YAML 1.x documents are supported",
+				)
+			)
+		else if words[0] == "%TAG":
+			if words.length() != 3: return error(
+				invalid(context, "invalid %TAG directive")
+			)
+
+			handle := words[1]
+			if not (
+				handle == "!"
+				or handle == "!!"
+				or (
+					handle.length() > 2
+					and handle.starts_with("!")
+					and handle.ends_with("!")
+				)
+			): return error(invalid(context, "invalid %TAG handle"))
+			if context.tag_handles.contains(handle): return error(
+				invalid(context, "duplicate %TAG directive")
+			)
+
+			context.tag_handles.add(handle.clone(), words[2].clone())
+
+		context.index += 1
+		skip(var context)
+
 // A flow value needs only the limits, counters and anchors, so it gets a context
 // without the document lines and per-line facts (copying them for every value made
 // parsing quadratic).
@@ -1968,6 +2432,7 @@ fn flow_context(context: Context) Context:
 		dash: [],
 		ind: [],
 		col: [],
+		tag_handles: context.tag_handles.clone(),
 	)
 
 fn validate(var context: Context, value: YamlValue, depth: Int) Unit!:
@@ -1980,9 +2445,7 @@ fn validate(var context: Context, value: YamlValue, depth: Int) Unit!:
 			for entry in values: validate(var context, entry.value, (depth + 1))?
 		_: unit
 
-// Parses a YAML document. Unsupported YAML features and invalid input include source
-// locations.
-export fn parse(text: String, options: YamlOptions = YamlOptions()) YamlValue!:
+fn open_stream(text: String, options: YamlOptions) Context!:
 	for limit in [options.max_bytes, options.max_depth, options.max_values]:
 		if value := limit:
 			if value < 0: return error(Error("invalid YAML input", kind: "EINVAL"))
@@ -2037,20 +2500,25 @@ export fn parse(text: String, options: YamlOptions = YamlOptions()) YamlValue!:
 	if normalized.ends_with("\n"): context.lines.remove(context.lines.length() - 1)
 	classify(var context, normalized.to_bytes())
 	skip(var context)
+	return ok(context)
+
+// Reads one document, from its directives and `---` marker to its body and optional
+// `...` marker. Anchors, tag handles and the value budget belong to a single document.
+fn document(var context: Context, options: YamlOptions) YamlValue!:
+	context.anchors = Map[String, YamlValue]()
+	context.sizes = Map[String, Int]()
+	context.tag_handles = Map[String, String]()
+	context.values = 0
+	context.explicit_end = false
+	context.absent_document = false
+
+	var marked = false
 
 	if (
 		context.index < context.lines.length()
 		and context.lines[context.index].starts_with("%")
 	):
-		if uncomment(context.lines[context.index]) != "%YAML 1.2": return error(
-			yaml_unsupported(
-				line: source_line(context, context.index),
-				reason: "only the YAML 1.2 directive is supported",
-			)
-		)
-
-		context.index += 1
-		skip(var context)
+		directives(var context)?
 		if (
 			context.index >= context.lines.length()
 			or (
@@ -2077,31 +2545,35 @@ export fn parse(text: String, options: YamlOptions = YamlOptions()) YamlValue!:
 		and uncomment((context.lines[context.index])) == "---"
 	):
 		context.index += 1
+		marked = true
 		skip(var context)
 
 	var result = YamlValue.Null
+	var has_body = false
+
 	if (
 		context.index < context.lines.length()
 		and uncomment((context.lines[context.index])) != "..."
 	):
+		has_body = true
 		result = block(
 			var context,
 			indentation(context, (context.lines[context.index]))?,
 			1,
-			scalar_base: 0,
+			scalar_base: -1,
 		)?
+
 	skip(var context)
+	context.absent_document = not marked and not has_body
 
 	if (
 		context.index < context.lines.length()
 		and uncomment((context.lines[context.index])) == "..."
 	):
 		context.index += 1
+		context.explicit_end = true
 		skip(var context)
 
-	if context.index != context.lines.length(): return error(
-		invalid(context, "unexpected indentation or additional document")
-	)
 	if options.max_depth.is_none() and options.max_values.is_none(): return ok(result)
 
 	// Without aliases, parsing already counted every container and leaf at its depth.
@@ -2110,6 +2582,45 @@ export fn parse(text: String, options: YamlOptions = YamlOptions()) YamlValue!:
 	context.values = 0
 	validate(var context, result, 1)?
 	return ok(result)
+
+// Parses a single YAML document; a stream of several is an error, so use `parse_all`
+// for it. Unsupported YAML features and invalid input include source locations.
+export fn parse(text: String, options: YamlOptions = YamlOptions()) YamlValue!:
+	var context = open_stream(text, options)?
+	result := document(var context, options)?
+	if context.index != context.lines.length(): return error(
+		invalid(context, "unexpected indentation or additional document")
+	)
+
+	return ok(result)
+
+// Parses a stream of YAML documents separated by `---` or ended by `...`, returning one
+// value per document in order. A document with no content is null; input with no
+// document at all is an empty list. Anchors, tag handles and limits apply to each
+// document on its own.
+export fn parse_all(text: String, options: YamlOptions = YamlOptions()) List[YamlValue]!:
+	var context = open_stream(text, options)?
+	var documents: List[YamlValue] = []
+
+	while context.index < context.lines.length():
+		value := document(var context, options)?
+		if not context.absent_document: documents.append(value)
+		if context.index >= context.lines.length(): break
+
+		line := uncomment(context.lines[context.index])
+		starts := (
+			context.explicit_end
+			or line == "---"
+			or inline_start(context.lines[context.index])
+		)
+		if not starts: return error(
+			invalid(
+				context,
+				"unexpected indentation or additional document",
+			)
+		)
+
+	return ok(documents)
 
 fn format_key(key: String) String:
 	var plain = key != ""

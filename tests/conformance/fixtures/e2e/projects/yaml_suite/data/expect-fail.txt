@@ -1,0 +1,43 @@
+# Cases of the official yaml-test-suite the parser does not pass yet, with the reason.
+# A reason starting `by design:` is a permanent decision, counted separately in the test output.
+# A listed case must still fail, so fixing one means deleting its line; the list only shrinks.
+2JQS by design: a repeated mapping key is an error, so two null keys cannot coexist
+2SXE known gap: an anchor on an empty key (`&a: key`)
+4FJ6 by design: a collection cannot be a mapping key (keys are scalars, kept as their text)
+4MUZ/02 known gap: a flow key and its colon on separate lines inside a nested flow mapping
+5WE3 known gap: an explicit block scalar key followed by a compact sequence value
+6BFJ by design: a collection cannot be a mapping key (keys are scalars, kept as their text)
+6PBE by design: a collection cannot be a mapping key (keys are scalars, kept as their text)
+6XDY known gap: a stream of empty documents reads as one
+9MMW by design: a collection cannot be a mapping key (keys are scalars, kept as their text)
+9SA2 known gap: a flow key and its colon on separate lines
+AB8U known gap: a plain multi-line scalar followed by an indented `- ` line
+CN3R known gap: an anchor on a key inside a flow mapping (`{ &e e: f }`)
+CT4Q known gap: explicit `?` keys inside flow collections
+DFF7 known gap: explicit `?` keys inside flow collections
+FRK4 known gap: explicit `?` keys inside flow collections
+JEF9/02 known divergence: a final unterminated whitespace-only line (PyYAML agrees with this parser)
+KK5P by design: a collection cannot be a mapping key (keys are scalars, kept as their text)
+L24T/01 known divergence: a final unterminated whitespace-only line (PyYAML agrees with this parser)
+LX3P by design: a collection cannot be a mapping key (keys are scalars, kept as their text)
+M2N8/00 by design: a collection cannot be a mapping key (keys are scalars, kept as their text)
+M2N8/01 by design: a collection cannot be a mapping key (keys are scalars, kept as their text)
+M5C3 known gap: a tag on a block scalar header line below its key
+M5DY by design: a collection cannot be a mapping key (keys are scalars, kept as their text)
+NJ66 known gap: a flow key and its colon on separate lines
+Q9WF by design: a collection cannot be a mapping key (keys are scalars, kept as their text)
+RZP5 by design: a collection cannot be a mapping key (keys are scalars, kept as their text)
+SBG9 by design: a collection cannot be a mapping key (keys are scalars, kept as their text)
+SKE5 known gap: an anchor on its own line before an unindented sequence
+UT92 known gap: a flow key and its colon on separate lines
+V9D5 by design: a collection cannot be a mapping key (keys are scalars, kept as their text)
+VJP3/01 known gap: a flow key and its colon on separate lines
+X38W by design: a collection cannot be a mapping key (keys are scalars, kept as their text)
+XW4D by design: a collection cannot be a mapping key (keys are scalars, kept as their text)
+Y79Y/000 known gap: a tab-only line inside a block scalar is accepted, the suite rejects it
+
+
+
+
+
+

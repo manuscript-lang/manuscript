@@ -9,7 +9,7 @@ use crate::sys::{self, CPath};
 use alloc::collections::{BTreeMap, VecDeque};
 use alloc::vec::Vec;
 use core::sync::atomic::{AtomicBool, Ordering};
-use ms_rt_abi::{STATUS_CLOSED, STATUS_LIMIT_EXCEEDED, STATUS_NOT_FOUND};
+use ms_rt_abi::{STATUS_CLOSED, STATUS_LIMIT_EXCEEDED, STATUS_NONE, STATUS_NOT_FOUND};
 
 const FFLAGS: u32 = (libc::NOTE_WRITE
     | libc::NOTE_DELETE
@@ -29,6 +29,8 @@ pub struct Native {
     /// The descriptor registered for each tracked path.
     fds: BTreeMap<Vec<u8>, i32>,
     queue: VecDeque<Event>,
+    /// The root disappeared and its removal was queued: the stream ends after the queue drains.
+    ended: bool,
 }
 
 impl Native {
@@ -57,6 +59,7 @@ impl Native {
             before: BTreeMap::new(),
             fds: BTreeMap::new(),
             queue: VecDeque::new(),
+            ended: false,
         };
         n.before = snapshot(root, recursive, i64::MAX)?;
         n.register()?;
@@ -147,7 +150,10 @@ impl Native {
     fn refresh(&mut self) -> Res<()> {
         let now = match snapshot(&self.root, self.recursive, i64::MAX) {
             Ok(s) => s,
-            Err(f) if f.status == STATUS_NOT_FOUND => BTreeMap::new(),
+            Err(f) if f.status == STATUS_NOT_FOUND => {
+                self.ended = true;
+                BTreeMap::new()
+            }
             Err(f) => return Err(f),
         };
         let mut events = diff(&self.before, &now);
@@ -179,6 +185,9 @@ impl Native {
         loop {
             if let Some(e) = self.queue.pop_front() {
                 return Ok(alloc::vec![e]);
+            }
+            if self.ended {
+                return Err(Fail::status(STATUS_NONE));
             }
             poll_cancel()?;
             if closed.load(Ordering::Relaxed) {

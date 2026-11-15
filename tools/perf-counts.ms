@@ -1,0 +1,118 @@
+// Instruction-count gate (`make perf-counts`): builds four small suite programs, runs
+// each under callgrind and compares the instructions it executed with the committed
+// numbers in bench/perf/counts.txt. Instruction counts do not depend on machine load,
+// so a few percent is a real change, unlike a wall-clock time on a shared runner. A
+// count more than BOUND percent above the committed one fails (default 3); a count that
+// fell by more than BOUND percent is reported so the file can be refreshed.
+// `-- --update` rewrites the file with the measured counts. MS names the ms to measure
+// (default target/release/ms); PERF_COUNTS_BOUND overrides the bound. Needs valgrind on
+// the PATH. Usage: ms run tools/perf-counts.ms [-- --update]
+import (
+	stdout from "@std/io/io.ms",
+	arguments, working_directory from "@std/os/env.ms",
+	read_file, temporary, write_file from "@std/os/fs.ms",
+	RunOptions, run from "@std/os/process.ms",
+	seconds from "@std/time.ms",
+
+	env, tool_ms from "./lib.ms",
+)
+
+// Programs of bench/perf/suite measured, one per area that a change to generated code,
+// the runtime or the strings library would move.
+PROGRAMS := ["interp", "strings", "lz", "graph"]
+COUNTS := "bench/perf/counts.txt"
+
+fn say(text: String) Unit:
+	stdout().write(text).get()
+
+// Instructions `program` executed under callgrind, or -1 when it did not run.
+fn count(program: String, out_file: String) Int:
+	if out := run(
+		"valgrind",
+		[
+			"--tool=callgrind",
+			"--callgrind-out-file={out_file}",
+			program.clone(),
+		],
+		RunOptions(timeout: seconds(600)),
+	).wait():
+		for line in out.stderr.decode_utf8().get("").split("\n"):
+			if at := line.index_of("Collected : "):
+				digits := line.slice(at + 12, line.length()).get("").trim()
+				return digits.parse_int().get(-1)
+
+	return -1
+
+// The committed counts: one `name instructions` pair per line.
+fn committed(path: String) Map[String, Int]:
+	var known = Map[String, Int]()
+	text := read_file(path).wait().get("".to_bytes()).decode_utf8().get("")
+
+	for line in text.split("\n"):
+		parts := line.trim().split(" ")
+		if parts.length() != 2 or parts[0].starts_with("#"): continue
+
+		known[parts[0].clone()] = parts[1].parse_int().get(0)
+
+	return known
+
+fn main() Int:
+	root := working_directory().get()
+	ms := tool_ms(root.clone())
+	bound := env("PERF_COUNTS_BOUND", "3").parse_int().get(3)
+	update := arguments().contains("--update")
+	path := "{root}/{COUNTS}"
+	known := committed(path.clone())
+	scratch := temporary("ms-perf-counts-").get()
+	var failures = 0
+	var report = "# Instructions executed under callgrind by `make perf-counts`; refresh with `ms run tools/perf-counts.ms -- --update`.\n"
+
+	for name in PROGRAMS:
+		binary := "{scratch.path()}/{name}"
+		source := "{root}/bench/perf/suite/{name}/main.ms"
+		built := run(
+			ms.clone(),
+			["build", source, "-o", binary.clone()],
+			RunOptions(timeout: seconds(600)),
+		).wait()
+
+		if built.is_error():
+			say("fail: {name} did not build\n")
+			failures += 1
+			continue
+
+		now := count(binary.clone(), "{scratch.path()}/{name}.out")
+
+		if now < 0:
+			say("fail: {name} did not run under valgrind\n")
+			failures += 1
+			continue
+
+		report += "{name} {now}\n"
+
+		before := known.get(name).get(0)
+
+		if before == 0:
+			say("{name}: {now} (no committed count)\n")
+			if not update: failures += 1
+			continue
+
+		tenths := (now - before) * 1000 / before
+		say("{name}: {now} against {before} ({tenths / 10}.{tenths.abs() % 10}%)\n")
+
+		if tenths > bound * 10:
+			failures += 1
+			say(
+				"fail: {name} executes more than {bound}% more instructions than the committed count; find the change that made it slower, or refresh {COUNTS} when the cost is deliberate\n"
+			)
+		else if tenths < -bound * 10:
+			say("note: {name} got faster; refresh {COUNTS} with --update\n")
+
+	if update:
+		write_file(path, report, true).wait().get()
+		say("wrote {COUNTS}\n")
+		return 0
+
+	if failures > 0: return 1
+
+	return 0

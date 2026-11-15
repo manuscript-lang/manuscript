@@ -9,7 +9,7 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "'?' requires a Result, found Unit; apply '?' only to a call returning Result[T, E], and use '?.', 'if value := x', or '.get(default)' for an Optional",
+        "message": "'?' requires a Result, found Unit; apply '?' only to a call returning Result[T, E]",
         "position": {
           "file": "golden-0766.ms",
           "line": 5,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0766.ms:5:5: type: '?' requires a Result, found Unit; apply '?' only to a call returning Result[T, E], and use '?.', 'if value := x', or '.get(default)' for an Optional\n   |\n 5 |     operation()?\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0766.ms:5:5: type: '?' requires a Result, found Unit; apply '?' only to a call returning Result[T, E]\n   |\n 5 |     operation()?\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

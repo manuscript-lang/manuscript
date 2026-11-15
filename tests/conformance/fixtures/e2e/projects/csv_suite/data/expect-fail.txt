@@ -1,0 +1,4 @@
+# Cases of csv-spectrum the parser does not pass, with the reason.
+# A listed case must still fail, so fixing one means deleting its line; the list only shrinks.
+location_coordinates the suite file is Latin-1, not UTF-8, and its JSON describes different rows; a String cannot hold it
+newlines_crlf a CRLF inside a quoted cell reads as LF on purpose, so cells hold one newline spelling (documented on parse)

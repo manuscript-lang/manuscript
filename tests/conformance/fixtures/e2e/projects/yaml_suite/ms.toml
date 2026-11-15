@@ -1,0 +1,6 @@
+[project]
+name = "yaml_suite"
+source = "."
+
+[embed]
+"@suite" = "./data"

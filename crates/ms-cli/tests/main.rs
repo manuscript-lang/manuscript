@@ -28,6 +28,7 @@ mod lsp;
 mod many_joins;
 mod min_size_rel;
 mod opaque;
+mod packages;
 mod profile;
 mod record_literal_args;
 mod replace_exec;

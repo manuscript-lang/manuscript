@@ -9,6 +9,7 @@ import (
 	parse from "@std/data/json.ms",
 	stderr, stdout from "@std/io/io.ms",
 	arguments from "@std/os/env.ms",
+	compile from "@std/regex.ms",
 
 	root from "./core/model.ms",
 	fmt_g, mean_scaled, pct0 from "./lib/pyfmt.ms",
@@ -35,7 +36,9 @@ type Run:
 	timed_out: Bool = false
 	builds: Int = 0
 	first_build_ok: Bool
+	first_build_fixed_ok: Bool = false
 	build_codes: List[String] = []
+	build_errors: List[String] = []
 	pass: Bool
 
 type CodeStat:
@@ -57,15 +60,16 @@ fn tokens_of(r: Run) Float:
 
 fn table(runs: List[Run], title: String, key: fn(Run) String) String:
 	var out = "\n### {title}\n\n"
-	out += "| group | runs | pass (95% CI) | first build ok (95% CI) | tokens (in+out+cache) | turns | wall s | cost $ |\n"
-	out += "|---|---:|---:|---:|---:|---:|---:|---:|\n"
+	out += "| group | runs | pass (95% CI) | first build ok (95% CI) | first build after `--fix` (95% CI) | tokens (in+out+cache) | turns | wall s | cost $ |\n"
+	out += "|---|---:|---:|---:|---:|---:|---:|---:|---:|\n"
 
 	for k in runs.map(key).distinct().sorted():
 		rs := runs.filter(fn r: key(r) == k)
 		ok := rs.filter(fn r: r.pass)
 		n := rs.length()
 		first_ok := rs.filter(fn r: r.first_build_ok).length()
-		out += "| {k} | {n} | {rate(ok.length(), n)} | {rate(first_ok, n)} "
+		fixed_ok := rs.filter(fn r: r.first_build_ok or r.first_build_fixed_ok).length()
+		out += "| {k} | {n} | {rate(ok.length(), n)} | {rate(first_ok, n)} | {rate(fixed_ok, n)} "
 		out += "| {mean_text(ok.map(tokens_of), 3)} | {mean_text(ok.map(fn r: r.usage.turns.to_float()), 3)} "
 		out += "| {mean_text(ok.map(fn r: r.wall_s), 3)} | {mean_text(ok.map(fn r: r.usage.cost_usd), 3)} |\n"
 
@@ -113,6 +117,32 @@ fn codes_table(runs: List[Run], lang: String) String:
 
 	return out
 
+// The first diagnostic line of failed builds with the location and quoted names
+// removed, so equal mistakes group together, most frequent first.
+fn cut(text: String, limit: Int) String:
+	if text.length() <= limit: return text.clone()
+	return text.slice(0, limit).get("")
+
+fn errors_table(runs: List[Run], lang: String) String:
+	place := compile("^\\S+:\\d+:\\d+: ").get()
+	quoted := compile("'[^']*'").get()
+	mine := runs.filter(fn r: r.language == lang)
+	all := mine.flat_map(
+		fn r: r.build_errors.map(
+			fn e: quoted.replace_all(
+				place.replace_all(e, "", none).get(e),
+				"'X'",
+				none,
+			).get(e)
+		)
+	)
+	stats := all.distinct().map(fn m: CodeStat(m.clone(), all.count(fn x: x == m)))
+	var out = "\n### {lang}: most common first error line of failed builds\n\n"
+	out += "| message | occurrences |\n|---|---:|\n"
+	for entry in stats.sorted_by_key(fn s: 0 - s.count).take(15):
+		out += "| {cut(entry.code, 110)} | {entry.count} |\n"
+	return out
+
 fn main() Int:
 	args := arguments()
 	paths := if args.is_empty(): ["{root()}/results/runs.jsonl"] else: args
@@ -134,8 +164,12 @@ fn main() Int:
 	text += table(runs, "By language and category", fn r: "{r.language} / {r.category}")
 	text += table(runs, "By language and tier", fn r: "{r.language} / tier {r.tier}")
 	text += matrix(runs)
+
 	for lang in runs.map(fn r: r.language.clone()).distinct().sorted():
 		if runs.any(fn r: r.language == lang and not r.build_codes.is_empty()):
 			text += codes_table(runs, lang)
+		if runs.any(fn r: r.language == lang and not r.build_errors.is_empty()):
+			text += errors_table(runs, lang)
+
 	stdout().write(text).get()
 	return 0

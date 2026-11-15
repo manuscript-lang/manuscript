@@ -9,11 +9,13 @@ import (
 	HttpServerOptions from "@std/net/http.ms",
 	Connection,
 	Listener,
+	accept_tls,
 	connect,
 	http_client,
 	listen,
 	listen_tls,
-	serve from "@std/net/net.ms",
+	serve,
+	start_tls from "@std/net/net.ms",
 	CertificateInfo,
 	TlsOptions,
 	parse_certificates,
@@ -325,3 +327,69 @@ test "raw TLS client that writes a large payload and closes at once loses no byt
 	// No read first: the server's post-handshake bytes must not reset the connection.
 	client.close()?
 	expect_equal((wait_all([served])?)[0], 20000000)?
+
+fn starttls_server(listener: Listener, options: TlsOptions) Int:
+	var plain = listener.accept(3.seconds()).wait().get()
+	hello := recv(var plain, 3.seconds())
+	if hello.is_error(): return 0
+	if hello.get().get(Bytes([])) != "STARTTLS".to_bytes(): return 0
+	if send(var plain, "OK").is_error(): return 0
+
+	upgraded := accept_tls(var plain, options, 3.seconds())
+	if upgraded.is_error(): return 0
+
+	var secure = upgraded.get()
+	return answer_ping(var secure)
+
+test "start_tls upgrades a plain connection in place on both sides":
+	server_tls := TlsOptions(
+		certificate_pem: certificate(),
+		private_key_pem: private_key(),
+	)
+	client_tls := TlsOptions(server_name: "stdlib.test", roots_pem: certificate())
+	listener := listen("127.0.0.1:0")?
+	address := listener.address()
+	served := promise(fn: ok(starttls_server(listener, server_tls)))
+	var plain = connect(address.clone(), timeout: 3.seconds()).wait()?
+	expect_false(plain.info.tls_info().is_ok())?
+	send(var plain, "STARTTLS")?
+	expect_equal((recv(var plain, 3.seconds())?).get(), "OK".to_bytes())?
+
+	var client = start_tls(var plain, client_tls, 3.seconds())?
+	expect_equal(client.info.peer_address, address)?
+
+	info := client.info.tls_info()?
+	expect_false(info.version < 771)?
+	expect_false(not info.verified)?
+	send(var client, "ping")?
+	expect_equal((recv(var client, 3.seconds())?).get(), "pong".to_bytes())?
+
+	// The plain value was consumed.
+	_late := expect_error(plain.output.write("late".to_bytes()))?
+
+	// A TLS connection cannot be upgraded again.
+	_again := expect_error(start_tls(var client, client_tls, 3.seconds()))?
+	client.close()?
+	expect_equal((wait_all([served])?)[0], 1)?
+
+test "start_tls rejects an untrusted server and an empty server name":
+	server_tls := TlsOptions(
+		certificate_pem: certificate(),
+		private_key_pem: private_key(),
+	)
+	listener := listen("127.0.0.1:0")?
+	address := listener.address()
+	served := promise(fn: ok(starttls_server(listener, server_tls)))
+	var plain = connect(address.clone(), timeout: 3.seconds()).wait()?
+	_unnamed := expect_error(start_tls(var plain, TlsOptions(), 3.seconds()))?
+	send(var plain, "STARTTLS")?
+	expect_equal((recv(var plain, 3.seconds())?).get(), "OK".to_bytes())?
+
+	_untrusted := expect_error(
+		start_tls(
+			var plain,
+			TlsOptions(server_name: "stdlib.test"),
+			3.seconds(),
+		)
+	)?
+	_served := wait_all([served])?
