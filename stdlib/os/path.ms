@@ -193,7 +193,7 @@ fn root_of(windows: Bool, text: String) String:
 				or rest == "."
 				or rest.starts_with("../")
 				or rest == ".."
-			): return (text.view(0, 4).clone())
+			): return text.view(0, 4).clone()
 
 		if text.starts_with("//"):
 			unc := unc_root(text)
