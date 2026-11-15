@@ -169,7 +169,10 @@ pub fn root_members(manifest: &str) -> Result<Option<Workspace>, ProjectError> {
         return Ok(None);
     }
     let mut root = Project::default();
-    crate::project::manifest::read_manifest(manifest, &mut root)?;
+    // A manifest that does not parse is reported by the command itself, in its own format.
+    if crate::project::manifest::read_manifest(manifest, &mut root).is_err() {
+        return Ok(None);
+    }
     if root.members.is_none() || !root.name.is_empty() {
         return Ok(None);
     }
