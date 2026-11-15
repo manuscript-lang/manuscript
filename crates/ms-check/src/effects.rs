@@ -522,12 +522,8 @@ impl EffectScan {
                 }
                 _ => name.to_string(),
             };
-            let cap = self
-                .packages
-                .iter()
-                .filter(|p| file.starts_with(&p.prefix))
-                .max_by_key(|p| p.prefix.len())
-                .map(|p| p.effects.clone());
+            let cap =
+                crate::checker::package_holding(&self.packages, file).map(|p| p.effects.clone());
             let header = lines.header().allow;
             reach.push(ReachNode {
                 id: *id,
