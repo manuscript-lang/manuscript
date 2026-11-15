@@ -31,6 +31,7 @@ pub enum FaultKind {
     IndexOutOfRange = 6,
     /// A test expectation failed (not a fault: the test returned an error).
     TestFailure = 7,
+    OutOfMemory = 8,
 }
 
 impl FaultKind {
@@ -43,6 +44,7 @@ impl FaultKind {
             5 => FaultKind::Overflow,
             6 => FaultKind::IndexOutOfRange,
             7 => FaultKind::TestFailure,
+            8 => FaultKind::OutOfMemory,
             _ => FaultKind::Fault,
         }
     }
@@ -58,6 +60,7 @@ impl FaultKind {
             FaultKind::Overflow => "overflow",
             FaultKind::IndexOutOfRange => "index_out_of_range",
             FaultKind::TestFailure => "test_failure",
+            FaultKind::OutOfMemory => "out_of_memory",
         }
     }
 }
