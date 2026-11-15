@@ -397,6 +397,9 @@ pub struct FnBuilder<'t> {
     next: u32,
     /// Allocas, written at the top of the entry block.
     allocas: String,
+    /// The slots of `allocas` that keep their place for the whole function (see
+    /// [`FnBuilder::alloca_pinned`]).
+    pinned: std::collections::HashSet<String>,
     /// The running task's header pointer, loaded once after the allocas: it depends only on the
     /// frame's address, so every use in the function shares one load. Written by [`FnBuilder::task_hdr`].
     hdr: Option<Val>,
@@ -414,6 +417,7 @@ impl<'t> FnBuilder<'t> {
             out: String::new(),
             next: 0,
             allocas: String::new(),
+            pinned: std::collections::HashSet::new(),
             hdr: None,
             prologue: String::new(),
             dbg,
@@ -760,11 +764,8 @@ impl<'t> FnBuilder<'t> {
     /// A stack slot that keeps its place for the whole function: it gets no lifetime markers, so
     /// a pointer into it that a call returned stays valid after the statement.
     pub fn alloca_pinned(&mut self, ty: &Ty) -> Val {
-        let v = self.reserve(Ty::Ptr);
-        self.alloca_as(&v, ty);
-        if let Some(line) = self.allocas.strip_suffix('\n') {
-            self.allocas = format!("{line}{}\n", crate::llvm_lifetimes::PINNED);
-        }
+        let v = self.alloca(ty);
+        self.pinned.insert(v.text.clone());
         v
     }
 
@@ -1047,7 +1048,7 @@ impl<'t> FnBuilder<'t> {
             .out
             .split_once('\n')
             .expect("a body starts with a label");
-        let rest = crate::llvm_lifetimes::mark(&self.allocas, rest);
+        let rest = crate::llvm_lifetimes::mark(&self.allocas, &self.pinned, rest);
         format!("{first}\n{}{}{rest}}}\n\n", self.allocas, self.prologue)
     }
 }
