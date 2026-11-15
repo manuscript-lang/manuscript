@@ -515,7 +515,7 @@ pub fn fatal_kind(kind: FaultKind, msg: &[u8]) -> ! {
         sys::write_all(sys::STDERR, b"\n");
         write_record(&Record::new(kind, msg));
         // SAFETY: terminating the process.
-        unsafe { sys::_exit(ms_rt_abi::EXIT_FAULT) }
+        unsafe { sys::_exit(kind.exit_status()) }
     }
 }
 
@@ -1129,7 +1129,7 @@ fn run_one_cleanup() -> bool {
     }
 }
 
-/// The full fault path: trace, cleanups LIFO, report, exit 67.
+/// The full fault path: trace, cleanups LIFO, report, exit with the kind's status.
 #[cold]
 #[inline(never)]
 pub fn fault(msg: &[u8]) -> ! {
@@ -1194,7 +1194,7 @@ pub fn take_record(msg: &ms_rt_abi::StrVal) -> Option<Record> {
 /// Writes the last fault's record for the report `text` just printed. A record that does not
 /// describe `text` (an earlier recovered fault) is replaced by one holding only the text.
 #[cfg(not(test))]
-fn write_last_record(text: &[u8], started: Frames) {
+fn write_last_record(text: &[u8], started: Frames) -> i32 {
     let taken = LAST_RECORD.lock().ok().and_then(|mut r| r.take());
     let mut record = match taken {
         Some(r) if text.starts_with(&r.message) => r,
@@ -1202,6 +1202,7 @@ fn write_last_record(text: &[u8], started: Frames) {
     };
     record.frames.extend(started.list);
     write_record(&record);
+    record.kind.exit_status()
 }
 
 /// [`fault`] with the message already in an owned buffer, which becomes the report: a guarded
@@ -1282,8 +1283,8 @@ fn finish_report(primary: Option<Vec<u8>>) -> ! {
         report.push(b'\n');
         crate::io::flush_stdout();
         sys::write_all(sys::STDERR, report.as_slice());
-        write_last_record(&report, Frames::default());
-        crate::process::exit(ms_rt_abi::EXIT_FAULT)
+        let status = write_last_record(&report, Frames::default());
+        crate::process::exit(status)
     }
 }
 
@@ -1324,8 +1325,8 @@ pub fn exit_with_report(msg: &ms_rt_abi::StrVal, started: &[usize]) {
         report.push(b'\n');
         crate::io::flush_stdout();
         sys::write_all(sys::STDERR, report.as_slice());
-        write_last_record(&text, started);
-        crate::process::exit(ms_rt_abi::EXIT_FAULT)
+        let status = write_last_record(&text, started);
+        crate::process::exit(status)
     }
     #[cfg(test)]
     let _ = (msg, started);

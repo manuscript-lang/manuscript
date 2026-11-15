@@ -42,7 +42,7 @@ fn stop_requested(sig: i32) {
         );
 
         // SAFETY: ends the process without cleanup.
-        unsafe { sys::_exit(ms_rt_abi::EXIT_FAULT) }
+        unsafe { sys::_exit(FaultKind::IncompleteCleanup.exit_status()) }
     }
     fault::raise_main_cancel(sig as u8);
     crate::cabi::run_stop_hooks();
@@ -62,7 +62,7 @@ fn grace_expired() -> ! {
         b"incomplete cleanup: cleanup did not finish within 30s of the stop request",
     );
     // SAFETY: ends the process without cleanup.
-    unsafe { sys::_exit(ms_rt_abi::EXIT_FAULT) }
+    unsafe { sys::_exit(FaultKind::IncompleteCleanup.exit_status()) }
 }
 
 /// The body of the main task: runs the program's `main` and records its result.

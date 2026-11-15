@@ -6,5 +6,7 @@ Decision: a fault or failed test is reported to the CLI as a structured `Record`
 
 A failed `expect_*`/`fail` carries its `file:line:column` in `Error.details["site"]`, so wrappers that rebuild an error (a property check) pass `details` on instead of the runtime matching messages. The test runner reports through `msrt_test_failure(message, details)`.
 
+Exit status (2026-11, Chinmay's request "change 67 to the one C uses"): a fault exits as a C program does, through `FaultKind::exit_status` in `ms-rt-abi`: 134 (shell status of `abort`; 3 on Windows), 139 for `StackOverflow` and `OutOfMemory` (SIGSEGV; the NT codes on Windows). The process still calls `_exit`, never raises the signal, so there is no core dump, no macOS crash report and no Windows error dialog. The CLI recognises a fault by `FaultKind::is_fault_status` plus the record, and `main` returns at most 125, so no program status collides. Never hard-code a fault status in a test: use `ms_rt_abi::EXIT_ABORT`. The C test runtime in `ms-clif/tests/rt/testrt.c` is a separate double and keeps its own 67.
+
 Apply when: adding a fault, changing the fault report, or touching `ms test` result handling. Keep `MS_FAULT_RECORD` unset for nothing else; a nested program inherits it, which is why the CLI ignores a record whose pid is not the child's.
 Evidence: [record](../../crates/ms-rt-abi/src/record.rs), [runtime writer](../../crates/ms-rt/src/fault.rs) (`fault_kind`, `write_record`), [CLI reader](../../crates/ms-cli/src/fault.rs), [test failure site](../../crates/ms-lower/src/testing.rs).

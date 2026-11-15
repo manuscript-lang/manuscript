@@ -109,7 +109,7 @@ pub const WAIT_KEEP: u32 = 32;
 
 /// `msrt_task_spawn` flag: nobody joins the task; a fault in it ends the process.
 pub const SPAWN_DETACHED: u32 = 1;
-/// `msrt_task_spawn` flag: a fault in the task ends the process (exit 67) as for a detached
+/// `msrt_task_spawn` flag: a fault in the task ends the process (exit 134) as for a detached
 /// task, but the task can still be joined and cancelled.
 pub const SPAWN_FATAL: u32 = 2;
 

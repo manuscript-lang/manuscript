@@ -36,7 +36,7 @@ fn bundled_extension_method_fault_names_the_bundled_file() {
             .args(["run", &fixture, "--build-type", build_type])
             .output()
             .unwrap();
-        assert_eq!(out.status.code(), Some(67));
+        assert_eq!(out.status.code(), Some(ms_rt_abi::EXIT_ABORT));
         let stderr = String::from_utf8_lossy(&out.stderr);
         let frames: Vec<&str> = stderr.lines().filter(|l| l.starts_with("  at ")).collect();
         assert_eq!(frames.len(), 3, "{stderr}");
@@ -59,7 +59,7 @@ fn check_frames(file: &str, frames: &str) {
             .args(["run", &fixture, "--build-type", build_type])
             .output()
             .unwrap();
-        assert_eq!(out.status.code(), Some(67));
+        assert_eq!(out.status.code(), Some(ms_rt_abi::EXIT_ABORT));
         assert_eq!(
             String::from_utf8_lossy(&out.stderr),
             format!("division by zero; right must be nonzero, found 0\n{frames}")

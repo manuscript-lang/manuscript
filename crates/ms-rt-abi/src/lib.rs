@@ -641,7 +641,23 @@ pub const MAX_CALL_DEPTH: i64 = 200_000;
 /// Fault frames shown before "... outer frames omitted".
 pub const MAX_FAULT_FRAMES: usize = 32;
 /// Exit statuses.
-pub const EXIT_FAULT: i32 = 67;
+/// A fault ends the process the way a C program ends: as `abort` does (status 134, the shell's
+/// 128 + SIGABRT; the C runtime's 3 on Windows), or, for a stack overflow or an allocation the
+/// system refused, as a segmentation fault does (139, or the matching NT status on Windows). The
+/// process still exits normally after reporting, so no core dump or crash dialog appears.
+pub const EXIT_ABORT: i32 = if cfg!(windows) { 3 } else { 134 };
+/// The status of a stack overflow; see [`EXIT_ABORT`].
+pub const EXIT_STACK_OVERFLOW: i32 = if cfg!(windows) {
+    0xC000_00FD_u32 as i32
+} else {
+    139
+};
+/// The status of an allocation the system refused; see [`EXIT_ABORT`].
+pub const EXIT_NO_MEMORY: i32 = if cfg!(windows) {
+    0xC000_0017_u32 as i32
+} else {
+    139
+};
 pub const EXIT_INTERRUPT: i32 = 130;
 pub const EXIT_TERMINATE: i32 = 143;
 /// Largest `main` return value.

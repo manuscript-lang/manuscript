@@ -123,7 +123,11 @@ fn every_signature_type_round_trips_on_both_backends() {
             ("callfault", "the shim gave up"),
         ] {
             let (code, out) = run_abi(&object, build_type, mode);
-            assert_eq!(code, Some(67), "{build_type} {mode}: {out}");
+            assert_eq!(
+                code,
+                Some(ms_rt_abi::EXIT_ABORT),
+                "{build_type} {mode}: {out}"
+            );
             assert!(out.contains(fault), "{build_type} {mode}: {out}");
         }
     }

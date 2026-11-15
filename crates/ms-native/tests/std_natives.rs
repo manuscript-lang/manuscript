@@ -19,7 +19,7 @@ fn lock() -> MutexGuard<'static, ()> {
 /// The env var that tells a re-executed test binary which `assert_fault` call to run.
 const FAULT_CALL: &str = "MS_ASSERT_FAULT_CALL";
 /// The process exit status of a runtime fault.
-const EXIT_FAULT: i32 = 67;
+const EXIT_FAULT: i32 = ms_rt_abi::EXIT_ABORT;
 thread_local! {
     /// Calls to `assert_fault` so far in this test (each test runs on its own thread).
     static FAULT_CALLS: Cell<usize> = const { Cell::new(0) };

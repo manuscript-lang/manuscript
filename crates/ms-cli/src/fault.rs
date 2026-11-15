@@ -11,8 +11,10 @@ use ms_rt_abi::record::{self, FaultKind, Record};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU32, Ordering};
 
-/// The exit status of a program that ended in a runtime fault.
-pub use ms_rt_abi::EXIT_FAULT;
+/// Whether `status` is how a program that ended in a runtime fault exits.
+pub fn is_fault_status(status: i32) -> bool {
+    FaultKind::is_fault_status(status)
+}
 
 /// The file a child process reports its fault or test failure in; removed when dropped.
 pub struct RecordFile {
@@ -62,6 +64,8 @@ pub struct Frame {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Fault {
     pub kind: &'static str,
+    /// The status the program exited with.
+    pub exit_code: i32,
     pub message: String,
     pub trace: Vec<Frame>,
     pub trace_truncated: bool,
@@ -74,6 +78,7 @@ impl Fault {
         let text = |bytes: Vec<u8>| String::from_utf8_lossy(&bytes).into_owned();
         Fault {
             kind: record.kind.name(),
+            exit_code: record.kind.exit_status(),
             message: text(record.message),
             trace: record
                 .frames
@@ -95,6 +100,7 @@ impl Fault {
         let text = text.trim_end_matches('\n');
         (!text.is_empty()).then(|| Fault {
             kind: FaultKind::Fault.name(),
+            exit_code: FaultKind::Fault.exit_status(),
             message: text.to_string(),
             trace: Vec::new(),
             trace_truncated: false,
@@ -132,7 +138,7 @@ impl Fault {
                 "cleanup_faults",
                 Json::Arr(self.cleanup_faults.iter().map(Json::str).collect()),
             )
-            .with("exit_code", Json::int(i64::from(EXIT_FAULT)))
+            .with("exit_code", Json::int(i64::from(self.exit_code)))
     }
 }
 

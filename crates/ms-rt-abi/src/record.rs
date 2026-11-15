@@ -2,7 +2,7 @@
 //! tells the CLI on a side channel, so the CLI never parses the human text on standard error.
 //!
 //! The CLI names a file in `MS_FAULT_RECORD` for the child; the runtime writes one [`Record`]
-//! there just before it exits (`EXIT_FAULT` for a fault, 1 for a failed test) and still prints
+//! there just before it exits ([`FaultKind::exit_status`] for a fault, 1 for a failed test) and still prints
 //! the human text to standard error. The encoding is little endian: the magic, a version byte,
 //! the kind code, a flags byte, then length-prefixed byte strings and counts.
 
@@ -47,6 +47,23 @@ impl FaultKind {
             8 => FaultKind::OutOfMemory,
             _ => FaultKind::Fault,
         }
+    }
+
+    /// The status a process exits with after this kind of fault: 1 for a failed test.
+    pub fn exit_status(self) -> i32 {
+        match self {
+            FaultKind::TestFailure => 1,
+            FaultKind::StackOverflow => crate::EXIT_STACK_OVERFLOW,
+            FaultKind::OutOfMemory => crate::EXIT_NO_MEMORY,
+            _ => crate::EXIT_ABORT,
+        }
+    }
+
+    /// Whether `status` is what some fault kind exits with.
+    pub fn is_fault_status(status: i32) -> bool {
+        status == crate::EXIT_ABORT
+            || status == crate::EXIT_STACK_OVERFLOW
+            || status == crate::EXIT_NO_MEMORY
     }
 
     /// The stable name the JSON reports use.

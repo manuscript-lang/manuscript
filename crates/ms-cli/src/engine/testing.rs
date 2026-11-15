@@ -35,7 +35,7 @@ use ms_driver::project::pathops;
 use super::{Engine, Target, TempDir, compile_target};
 use crate::backend::{BackendResult, Io, TestRequest};
 use crate::diagnostic::{CommandDiagnostic, Position};
-use crate::fault::{EXIT_FAULT, Fault, RecordFile};
+use crate::fault::{Fault, RecordFile, is_fault_status};
 use crate::json::Json;
 use crate::process::{Stops, wait_supervised};
 use crate::profile::base64;
@@ -908,7 +908,7 @@ impl Runner<'_> {
             return Ran::Passed;
         }
         let text = errors.trim_end_matches('\n');
-        if waited.status.code() == Some(EXIT_FAULT)
+        if waited.status.code().is_some_and(is_fault_status)
             && let Some(fault) = written
                 .map(Fault::from_record)
                 .or_else(|| Fault::from_text(text))
