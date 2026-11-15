@@ -163,6 +163,30 @@ pub(crate) fn self_binding(syms: ms_syntax::Names, contract: &Ty, implementor: &
     s
 }
 
+impl Method {
+    /// Whether the method supplies the sole operation of the interface `contract`: it implements
+    /// the interface, or it is a type's own method with that operation's name and exact
+    /// signature, `Self` being the receiver. The interface declares the name and the types.
+    pub fn supplies(&self, syms: ms_syntax::Names, contract: &Ty) -> bool {
+        if self.contract.as_ref().is_some_and(|c| c.id == contract.id) {
+            return true;
+        }
+        let Some(def) = &contract.def else {
+            return false;
+        };
+        let ops = def.operations.borrow();
+        let [op] = ops.as_slice() else {
+            return false;
+        };
+        self.is_inherent(syms)
+            && self.name() == Some(op.name)
+            && same(
+                &sub(&op.ty, &self_binding(syms, contract, &self.receiver)),
+                &self.ty,
+            )
+    }
+}
+
 /// Fixes receiver-dependent bounds and defaults while keeping method variables open.
 fn instantiate_operation_variables(variables: &[Ty], bindings: &Subst) -> Vec<Ty> {
     if bindings.is_empty() {
