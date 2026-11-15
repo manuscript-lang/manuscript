@@ -1234,6 +1234,9 @@ impl Checker {
             if hint.is_empty() {
                 hint = int_float_mix_hint(self.syms, &at, &bt);
             }
+            if hint.is_empty() && matches!(op, BinaryOp::Mul) {
+                hint = text_repeat_hint(self.syms, &at, &bt);
+            }
             if hint.is_empty() {
                 hint = "convert one side so both have one type (e.g. interpolate into text with \"{value}\", or convert between Int and Float)".to_string();
             }

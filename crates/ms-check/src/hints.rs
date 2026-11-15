@@ -1053,6 +1053,16 @@ pub fn int_float_mix_hint(syms: ms_syntax::Names, a: &Ty, b: &Ty) -> String {
     }
 }
 
+/// Names the method that repeats text when `*` joins a String and an Int.
+pub fn text_repeat_hint(syms: ms_syntax::Names, a: &Ty, b: &Ty) -> String {
+    let (a, b) = (a.display(syms).to_string(), b.display(syms).to_string());
+    if (a == "String" && b == "Int") || (a == "Int" && b == "String") {
+        "to repeat text write text.repeat(count), which returns a Result (append '?' to propagate it)".to_string()
+    } else {
+        String::new()
+    }
+}
+
 /// Names the real conversion for a built-in type called like a constructor.
 pub fn builtin_constructor_hint(syms: ms_syntax::Names, typ: &Ty) -> String {
     match typ.display(syms).to_string().as_str() {
