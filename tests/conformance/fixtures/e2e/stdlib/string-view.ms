@@ -35,3 +35,19 @@ test "a kept view is a copy made with clone":
 test "view of a temporary is owned":
 	tail := "hello".upper().view(1, 5)
 	expect_equal(tail, "ELLO")?
+
+test "view of a short text agrees with slice for ASCII and non-ASCII":
+	for source in ["abcdefghijklmno", "aé🙂z", "héllo", "", "x"]:
+		text := source.upper().lower()
+		var a = 0
+
+		while a <= text.length():
+			var b = a
+
+			while b <= text.length():
+				want := text.slice(a, b)
+				if want.is_ok():
+					expect_equal(text.view(a, b).clone(), want.get())?
+				b += 1
+
+			a += 1
