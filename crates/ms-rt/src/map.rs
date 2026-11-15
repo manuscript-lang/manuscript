@@ -4,7 +4,8 @@
 //! spaced `stride` bytes apart; `index` is an open-addressing table of `u64` entries: the
 //! high word is the hash's high word (a tag, so probes skip non-matching slots without touching
 //! them) and the low word is the slot number (`0` empty, `u32::MAX` removed, otherwise slot + 1). Removal leaves a hole that scans
-//! skip and compaction reclaims once more than half the slots are holes.
+//! skip and compaction reclaims once more than half the slots are holes. A map of at most eight
+//! slots has no index: a lookup scans the slots' hash words.
 //! ms: domain map
 use crate::alloc;
 use crate::desc::{needs_no_drop, slot_copy, slot_drop, slot_eq, slot_hash};
@@ -17,6 +18,31 @@ const REMOVED: u64 = u32::MAX as u64;
 
 /// Top bit of a slot's hash word: set for a live entry, clear for a removed one.
 pub const LIVE: u64 = 1 << 63;
+
+/// A map of at most this many slots has no index: a lookup scans the slots' hash words, which is
+/// fewer instructions than a probe and saves the index allocation, its zeroing and its release.
+/// Invariant: a null `index` means `cap <= SMALL`.
+const SMALL: usize = 8;
+
+/// Records slot `i` (hash `h`) in the index; a small map has none.
+#[inline(always)]
+unsafe fn index_add(m: &mut MapVal, h: u64, i: usize) {
+    if m.index.is_null() {
+        return;
+    }
+    // SAFETY: the index has a free entry because it has twice the slots' capacity.
+    unsafe {
+        let mut pos = (h as usize ^ (h >> 32) as usize) & m.mask;
+        loop {
+            let e = *index_of(m).add(pos);
+            if e == 0 || e == REMOVED {
+                break;
+            }
+            pos = (pos + 1) & m.mask;
+        }
+        *index_of(m).add(pos) = entry(h, i);
+    }
+}
 
 #[inline(always)]
 fn index_of(m: &MapVal) -> *mut u64 {
@@ -40,6 +66,15 @@ pub unsafe fn find_w8(m: &MapVal, key: *const u8) -> *const u8 {
     unsafe {
         let k = *(key as *const u64);
         let h = hash_int(k) | LIVE;
+        if m.index.is_null() {
+            for i in 0..m.used {
+                let p = m.slots.add(i * 24);
+                if slot_hash_of(p) == h && *(p.add(8) as *const u64) == k {
+                    return p;
+                }
+            }
+            return core::ptr::null();
+        }
         let index = index_of(m);
         let mut pos = (h as usize ^ (h >> 32) as usize) & m.mask;
         loop {
@@ -74,6 +109,15 @@ pub unsafe fn find_sw8(m: &MapVal, key: *const u8) -> *const u8 {
     unsafe {
         let k = key as *const StrVal;
         let h = string::hash_str(k) | LIVE;
+        if m.index.is_null() {
+            for i in 0..m.used {
+                let p = m.slots.add(i * SW8_STRIDE);
+                if slot_hash_of(p) == h && equal(p.add(8) as *const StrVal, k) {
+                    return p;
+                }
+            }
+            return core::ptr::null();
+        }
         let index = index_of(m);
         let mut pos = (h as usize ^ (h >> 32) as usize) & m.mask;
         loop {
@@ -192,6 +236,15 @@ pub unsafe fn find_set_w(m: &MapVal, key: *const u8) -> *const u8 {
     unsafe {
         let k = *(key as *const u64);
         let h = hash_int(k) | LIVE;
+        if m.index.is_null() {
+            for i in 0..m.used {
+                let p = m.slots.add(i * 16);
+                if slot_hash_of(p) == h && *(p.add(8) as *const u64) == k {
+                    return p;
+                }
+            }
+            return core::ptr::null();
+        }
         let index = index_of(m);
         let mut pos = (h as usize ^ (h >> 32) as usize) & m.mask;
         loop {
@@ -595,6 +648,15 @@ unsafe fn find<K: KeyOps>(
     }
     // SAFETY: index and slots are consistent for a non-empty map.
     unsafe {
+        if m.index.is_null() {
+            for i in 0..m.used {
+                let p = slot(m, l, i);
+                if slot_hash_of(p) == h && K::eq(kd, p.add(l.koff), key) {
+                    return Some(i);
+                }
+            }
+            return None;
+        }
         let index = index_of(m);
         let mut pos = (h as usize ^ (h >> 32) as usize) & m.mask;
         loop {
@@ -652,6 +714,11 @@ unsafe fn rebuild_index(m: &mut MapVal, l: &Layout, index_size: usize) {
     unsafe {
         if !m.index.is_null() {
             alloc::free(m.index as *mut u8);
+        }
+        if m.cap <= SMALL {
+            m.index = core::ptr::null_mut();
+            m.mask = 0;
+            return;
         }
         m.index = alloc::alloc_zeroed(index_size * 8) as *mut u32;
         m.mask = index_size - 1;
@@ -804,15 +871,7 @@ unsafe fn upsert_k<K: KeyOps>(
         if vd.is_some() {
             copy_slot(val, p.add(l.voff), l.vsize);
         }
-        let mut pos = (h as usize ^ (h >> 32) as usize) & m.mask;
-        loop {
-            let e = *index_of(m).add(pos);
-            if e == 0 || e == REMOVED {
-                break;
-            }
-            pos = (pos + 1) & m.mask;
-        }
-        *index_of(m).add(pos) = entry(h, m.used);
+        index_add(m, h, m.used);
         m.used += 1;
         m.len += 1;
         (p.add(l.voff), true)
@@ -926,11 +985,13 @@ unsafe fn remove_k<K: KeyOps>(
         };
         let p = slot(m, &l, i);
         // Mark the index entry removed.
-        let mut pos = (h as usize ^ (h >> 32) as usize) & m.mask;
-        while *index_of(m).add(pos) != entry(h, i) {
-            pos = (pos + 1) & m.mask;
+        if !m.index.is_null() {
+            let mut pos = (h as usize ^ (h >> 32) as usize) & m.mask;
+            while *index_of(m).add(pos) != entry(h, i) {
+                pos = (pos + 1) & m.mask;
+            }
+            *index_of(m).add(pos) = REMOVED;
         }
-        *index_of(m).add(pos) = REMOVED;
         slot_drop(kd, p.add(l.koff));
         if let Some(vd) = vd {
             slot_drop(vd, p.add(l.voff));
@@ -1199,15 +1260,7 @@ unsafe fn insert_word<K: KeyOps>(m: &mut MapVal, key: *mut u8, val: *mut u8, ksi
         *(p as *mut u64) = h;
         copy_slot(key, p.add(8), ksize);
         copy_slot(val, p.add(l.voff), 8);
-        let mut pos = (h as usize ^ (h >> 32) as usize) & m.mask;
-        loop {
-            let e = *index_of(m).add(pos);
-            if e == 0 || e == REMOVED {
-                break;
-            }
-            pos = (pos + 1) & m.mask;
-        }
-        *index_of(m).add(pos) = entry(h, m.used);
+        index_add(m, h, m.used);
         m.used += 1;
         m.len += 1;
     }
@@ -1836,15 +1889,7 @@ pub unsafe extern "C-unwind" fn msrt_set_add_copy_w(m: *mut MapVal, kd: KeyDesc,
         let p = slot(m, &l, m.used);
         *(p as *mut u64) = h;
         copy_slot(key, p.add(8), 8);
-        let mut pos = (h as usize ^ (h >> 32) as usize) & m.mask;
-        loop {
-            let e = *index_of(m).add(pos);
-            if e == 0 || e == REMOVED {
-                break;
-            }
-            pos = (pos + 1) & m.mask;
-        }
-        *index_of(m).add(pos) = entry(h, m.used);
+        index_add(m, h, m.used);
         m.used += 1;
         m.len += 1;
     }
@@ -2634,6 +2679,40 @@ mod tests {
             }
             assert_eq!(m.len, 62 + 4096);
             assert!((4096 - 62..8192).all(|i| has(&m, i)));
+            drop_map(&mut m, kd, None);
+        }
+    }
+
+    #[test]
+    fn a_small_map_has_no_index_until_it_outgrows_eight_slots() {
+        let _g = testutil::lock();
+        // SAFETY: all set slots hold live i64 values of the static descriptor.
+        unsafe {
+            let kd = &COUNTED_KEY;
+            let mut m = empty();
+            let put = |m: &mut MapVal, i: i64| {
+                let mut k = i;
+                insert(
+                    m,
+                    kd,
+                    None,
+                    (&mut k as *mut i64).cast(),
+                    core::ptr::null_mut(),
+                )
+            };
+            let has = |m: &MapVal, i: i64| contains_key(m, kd, None, (&i as *const i64).cast());
+            for i in 0..8 {
+                assert!(put(&mut m, i));
+            }
+            assert!(m.index.is_null() && m.cap == 8);
+            assert!(!put(&mut m, 3), "a repeated key is not new");
+            let k = 5i64;
+            assert!(remove(&mut m, kd, None, (&k as *const i64).cast()));
+            assert!(!has(&m, 5) && has(&m, 4) && has(&m, 7));
+            assert!(put(&mut m, 5), "a removed key can be added again");
+            assert!(put(&mut m, 8));
+            assert!(!m.index.is_null() && m.cap == 16);
+            assert!((0..9).all(|i| has(&m, i)) && !has(&m, 9));
             drop_map(&mut m, kd, None);
         }
     }

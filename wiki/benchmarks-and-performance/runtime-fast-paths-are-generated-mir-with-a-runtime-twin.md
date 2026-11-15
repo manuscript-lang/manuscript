@@ -19,3 +19,4 @@ Verified (2026-11-14, `bench/perf/rt-hot-retired/README.md`): `ms-rt-hot` is del
 
 
 - A String-valued `Map` releases its values without descriptor dispatch, like its keys, and `StrBuilder.freeze` keeps a small block whose size class already fits (`alloc::trim`) instead of calling `realloc` (2026-11-15, issue #4021).
+- A `Map` or `Set` of at most eight slots has no index (`index` null, `mask` 0): lookups scan the slots' hash words, which saves the index allocation, its zeroing and release; the invariant is null `index` implies `cap <= SMALL`. Building and dropping a 3-entry `Map[String, String]` went from 1319 to 1287 instructions (2026-11-15, issue #4021); most of the rest is the generic insert (about 178 instructions: layout, two size jump tables, hashing).
