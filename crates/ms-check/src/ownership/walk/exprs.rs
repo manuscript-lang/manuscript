@@ -570,7 +570,7 @@ impl Walker<'_> {
             } else {
                 self.error(
                     e.pos,
-                    format!("cannot move `{name_t}` out: it is borrowed, not owned ({}); borrow it in place or restructure to avoid the copy, and use `{name_t}.{CLONE}()` only if a second owner is needed", role_text(role, perm), name_t = self.syms.str(name)),
+                    format!("cannot move `{name_t}` out: it is borrowed, not owned ({}); this position keeps its own copy, so write `{name_t}.{CLONE}()`; to avoid the copy, use `{name_t}` only where it is read", role_text(role, perm), name_t = self.syms.str(name)),
                 );
             }
             self.record(e.id, b, Access::Move);
@@ -704,7 +704,7 @@ impl Walker<'_> {
                 )
             } else {
                 format!(
-                    "cannot move `{0}` out of `{1}`: only a whole variable can move; borrow it in place or restructure to avoid the copy, and use `{0}.{CLONE}()` only if a second owner is needed",
+                    "cannot move `{0}` out of `{1}`: only a whole variable can move; this position keeps its own copy, so write `{0}.{CLONE}()`; to avoid the copy, use `{0}` only where it is read",
                     info.text,
                     self.syms.str(info.root.name)
                 )

@@ -72,7 +72,7 @@ impl Walker<'_> {
                     "cannot {what} `{text}`: this method does not change its receiver; declare it `var fn` to allow that"
                 );
                 match self.cx.c.func.method() {
-                    Some(m) => self.error_fix(pos, message, insert_at(back(m.pos, 3), "var ")),
+                    Some(m) => self.error_fix(pos, message, insert_at(m.var_at, "var ")),
                     None => self.error(pos, message),
                 }
             }

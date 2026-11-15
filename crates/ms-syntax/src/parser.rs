@@ -463,6 +463,38 @@ impl<'a> Parser<'a> {
         Some(prefix)
     }
 
+    /// Rejects prefix `try`. When the operand is one call or access chain, the
+    /// fix rewrites `try f(x)` to `f(x)?`.
+    fn fail_try<T>(&mut self, t: Token) -> PResult<T> {
+        self.at += 1;
+        let start = self.peek();
+        let operand = self.expression(3);
+        let mut d = Diagnostic::parse(self.file, t.pos, TRY_REMOVED);
+        d.end = Some(t.end);
+        let end = self.previous();
+        if operand.is_ok() && end.end.line > 0 && start.lo < end.hi {
+            let text = &self.src[start.lo as usize..end.hi as usize];
+            let mut depth = 0i32;
+            let flat = text.chars().all(|c| {
+                match c {
+                    '(' | '[' | '{' => depth += 1,
+                    ')' | ']' | '}' => depth -= 1,
+                    _ => {}
+                }
+                depth > 0 || !(c.is_whitespace() || "+-*/%<>=&|".contains(c))
+            });
+            if flat {
+                d.end = Some(end.end);
+                d.fix = Some(DiagnosticFix {
+                    pos: t.pos,
+                    end: end.end,
+                    replacement: format!("{text}?"),
+                });
+            }
+        }
+        Err(Box::new(d))
+    }
+
     /// Fails on `t` with a machine-applicable replacement of exactly its range.
     fn fail_fix<T>(&self, t: Token, message: impl Into<String>, replacement: &str) -> PResult<T> {
         self.fail_fix_range(t, t, message, replacement)
@@ -571,7 +603,7 @@ impl<'a> Parser<'a> {
             }
             let t = self.peek();
             let msg = format!(
-                "expected end of inline statement, found {}; an inline body holds one simple statement, so move more statements to an indented block",
+                "expected end of inline statement, found {}; an inline body holds one simple statement; for more statements or an `else`, put the body on indented lines and start `else:` on its own line at the `if`'s indentation",
                 describe(self.src, t)
             );
             return self.fail(t, msg);
@@ -1154,6 +1186,7 @@ impl<'a> Parser<'a> {
         generics: bool,
         body: bool,
         mutating: bool,
+        var_at: Pos,
     ) -> PResult<Method> {
         let type_params = if generics {
             self.type_params()?
@@ -1171,6 +1204,7 @@ impl<'a> Parser<'a> {
         Ok(Method {
             id,
             pos: name.pos,
+            var_at,
             func: Func {
                 name: self.sym(name),
                 type_params,
@@ -1272,7 +1306,8 @@ impl<'a> Parser<'a> {
                 };
                 self.need(Tok::Dot)?;
                 let name = self.need(Tok::Name)?;
-                let method = self.method_signature(name, true, true, mutating)?;
+                let method =
+                    self.method_signature(name, true, true, mutating, receiver_name.pos)?;
                 DeclKind::Impl(ImplDecl {
                     contract: None,
                     receiver,
@@ -1570,14 +1605,14 @@ impl<'a> Parser<'a> {
                 || (self.kind() == Tok::Var && self.ahead(1).kind == Tok::Fn)
             {
                 let mutating = self.take(Tok::Var);
-                self.need(Tok::Fn)?;
+                let fn_pos = self.need(Tok::Fn)?.pos;
                 if token.kind == Tok::Type {
                     let t = self.previous();
                     let names = type_param_names(self.names, &type_params);
                     return self.fail(t, format!("a type declares only fields; write its methods after it as 'fn {name_t}{names}.name(...)'", name_t = self.names.str(name)));
                 }
                 let mname = self.need(Tok::Name)?;
-                let m = self.method_signature(mname, true, false, mutating)?;
+                let m = self.method_signature(mname, true, false, mutating, fn_pos)?;
                 self.end()?;
                 methods.push(m);
             } else {
@@ -2400,7 +2435,7 @@ impl<'a> Parser<'a> {
                 },
             );
         } else if t.kind == Tok::Try {
-            return self.fail(t, TRY_REMOVED);
+            return self.fail_try(t);
         } else if matches!(t.kind, Tok::Plus | Tok::Minus) {
             self.at += 1;
             let op = match t.kind {
@@ -3114,6 +3149,34 @@ impl<'a> Parser<'a> {
     /// Lexes and parses the expression inside one `{...}` of a text literal.
     /// Failures also state the escape for a literal brace.
     fn interpolation(
+        &mut self,
+        token: Token,
+        at: usize,
+        source: &str,
+        position: Pos,
+    ) -> PResult<Expr> {
+        let mut d = match self.interpolation_checked(token, at, source, position) {
+            Ok(e) => return Ok(e),
+            Err(d) => d,
+        };
+        // Braces that are not a valid expression are literal text, as in JSON.
+        let escaped = source.replace('{', "\\{").replace('}', "\\}");
+        if d.fix.is_none() && position.offset > 0 && !source.contains('\n') {
+            let len = source.len() as u32;
+            d.fix = Some(DiagnosticFix {
+                pos: Pos::new(position.offset - 1, position.line, position.column - 1),
+                end: Pos::new(
+                    position.offset + len + 1,
+                    position.line,
+                    position.column + len + 1,
+                ),
+                replacement: format!("\\{{{escaped}\\}}"),
+            });
+        }
+        Err(d)
+    }
+
+    fn interpolation_checked(
         &mut self,
         token: Token,
         at: usize,

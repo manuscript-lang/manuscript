@@ -13,6 +13,7 @@ workspace = true
 ms-json = { path = "../ms-json" }
 ms-syntax = { path = "../ms-syntax" }
 ms-check = { path = "../ms-check" }
+ms-driver = { path = "../ms-driver" }
 
 [[bin]]
 name = "ms-tooling-dev"
