@@ -49,7 +49,7 @@ fn skill_complete_examples_check() {
             examples += 1;
         }
     }
-    assert_eq!(examples, 10, "retain all complete skill examples");
+    assert_eq!(examples, 11, "retain all complete skill examples");
 }
 
 #[test]
@@ -59,7 +59,7 @@ fn skill_root_is_short_and_references_are_substantive() {
         .find(|(path, _)| *path == "SKILL.md")
         .unwrap()
         .1;
-    assert!(root.len() <= 5400, "entry skill should remain concise");
+    assert!(root.len() <= 8200, "entry skill should remain concise");
     assert!(root.starts_with("---\nname: manuscript\n"));
     assert!(root.contains("{{MS_VERSION}}"));
     assert!(root.contains("Use tabs for indentation"));
@@ -103,4 +103,24 @@ fn skill_server_state_example_is_the_tested_fixture() {
             .expect("fixture header"),
         "keep the skill example equal to its fixture"
     );
+}
+
+/// The call tables of the entry page are rendered from the committed counts and the standard
+/// library's declarations, so a renamed or removed call fails here instead of going stale.
+#[test]
+fn skill_call_tables_match_the_declarations() {
+    use ms_tooling::guide::skill_calls::{Counts, block_of, render};
+    let root = FILES
+        .iter()
+        .find(|(path, _)| *path == "SKILL.md")
+        .unwrap()
+        .1;
+    let counts = Counts::parse(include_str!("../data/agent-skill/call-counts.tsv"));
+    let rendered = render(&counts);
+    assert_eq!(
+        block_of(root).expect("calls markers"),
+        rendered,
+        "run `cargo run -p ms-tooling --bin ms-tooling-dev -- skill-calls update`"
+    );
+    assert!(rendered.contains("- String: length() Int;"), "{rendered}");
 }

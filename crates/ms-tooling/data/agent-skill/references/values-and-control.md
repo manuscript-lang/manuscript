@@ -1,6 +1,6 @@
 # Values and control
 
-Immutable: `x := value`, or `x: Int := value`. Mutable: `var x = value`; assignments require var. Prefix deliberately unused names with `_`.
+Immutable: `x := value`, or `x: Int := value`. Mutable: `var x = value`; assignments require var. Name a deliberately unused binding with a leading `_`, such as `_i`; a bare `_` is not a name, so `for _ in xs` fails.
 
 Types: Int, Float, Bool, String, Void. Literals: `true`, `false`, `unit`. Numeric conversions are explicit. `"hello {name}"` interpolates; `\{`/`\}` escape braces. Raw `r"\d+"` keeps backslashes literal, including before a quote.
 

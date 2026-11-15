@@ -31,13 +31,23 @@ fn main() Void!:
 
 ### Not Manuscript
 
+Every row is a shape agents wrote that fails; the right column compiles.
+
 | Not | Write |
 | --- | --- |
-| `!x`, `a ?? b`, `try f()` | `not x`, `a.get(b)`, `f()?` |
+| `!x`, `a ?? b`, `try f()`, `x or return y` | `not x`, `a.get(b)`, `f()?`, `if v := x:` then use `v` |
 | `x.len`, `x.length`, `x == none` | `x.length()`, `x.is_none()` |
 | `const X = 1`, `# note`, `pass` | `X := 1`, `// note`, `unit` |
 | `a if c else b`, `-> T` | `if c: a else: b`, `fn f() T:` |
-| `out: var T`, `"\"{x}\""` | `var out: T`, plain quotes inside `{}` |
+| `if c: f() else: g()` as a statement | `if c:` and `else:` on their own lines, bodies indented |
+| `fn f(out: var T)`, `x: T = e` | `fn f(var out: T)`, `x: T := e` |
+| `"\"{x}\""`, `"{"`, `"\x01"` | plain quotes inside `{}`, `"\{"`, `"\u{1}"` |
+| `for _ in xs`, `unit := e` | `for _i in xs`; `unit` is a literal, never a name |
+| `(String, Int)`, `[A, B]` tuples | a record: `type Pair:` with fields |
+| `f(x)?` as a statement on a non-Void result | `_ := f(x)?` |
+| `r?.abs()` on a Result | `(r?).abs()`; `?.` is for Optionals only |
+| `m.contains_key(k)`, `xs.remove_last()` | `m.contains(k)`, `xs.pop()` |
+| `set.insert(x)`, `r.is_err()`, `s.find(t)` | `set.add(x)`, `r.is_error()`, `s.index_of(t)` |
 
 ### Syntax and data
 
@@ -53,8 +63,30 @@ fn main() Void!:
 
 - `T?` is Optional: values convert, `none` is absent. Extract with `if x := optional:` or `.get(default)`. `a?.field` chains absence; postfix `?` is for Results only.
 - `T!` is Result[T, Error]. Return `ok(value)`/`error(Error("message"))`; `r?` extracts success or returns the error from a compatible Result-returning function. Otherwise `if x := r:` handles success; in else, `r.err()` yields the error directly (`.message` reads its text). Never call it on success or accidentally drop a Result.
-- Int/Float/Bool copy. Owned values can be borrowed by reads and moved into storage. Clone only for an independent owner, e.g. `names.append(user.name.clone())`. `fn add(var xs: List[Int]) Void` is called `add(var xs)`; return parts of parameters by borrow without a marker. Closeable cleans up at scope end unless moved; no GC.
+- Int/Float/Bool copy. Owned values can be borrowed by reads and moved into storage. Clone only for an independent owner, e.g. `names.append(user.name.clone())`. `fn add(var xs: List[Int]) Void` is called `add(var xs)`; return parts of parameters by borrow without a marker. A binding made from part of `xs` (`it := xs.get(0, d)`, `for x in xs`) borrows `xs`: do not change `xs` while it lives, or end the initializer with `.clone()`. A function returns a part of its argument by borrow; otherwise build a new value with `.clone()`. Closeable cleans up at scope end unless moved; no GC.
 - `p.wait()` on Promise[T] returns T! once; no async/await keywords. Keep mutable state with one owner. Effects use narrow directives above functions, as shown; directives do not execute effects.
+
+### Standard calls
+
+<!-- calls:start -->
+Exact calls, most used first (from the declarations; `ms search_symbol <name>` shows the rest):
+
+- String: length() Int; parse_int() Int?; split(String, Int?) List[String]; chars() List[String]; contains(String) Bool; slice(Int, Int) Result[String, Error]; starts_with(String) Bool; trim() String; fields() List[String]; index_of(String) Int?; trim_end() String; replace(String, String) String; ends_with(String) Bool; lines() List[String]
+- List: get(Int, T?) T; length() Int; append(T) Void; clone() List[T]; contains(T) Bool; slice(Int, Int) Result[List[T], Error]; join(String) String; sort() Void; entries() List[ListEntry[T]]; remove(Int) Void; index_of(T) Int?; keys() List[Int]; sorted() List[T]; replace(Int, T) T
+- Map: get(T) U?; length() Int; clone() Map[T, U]; contains(T) Bool; get_or(T, U) U; add(T, U) Void; entries() List[MapEntry[T, U]]; remove(T) Void; keys() List[T]
+- Set: length() Int; clone() Set[T]; contains(T) Bool; add(T) Void; remove(T) Void
+- Optional: get(T?) T; is_none() Bool; is_some() Bool; ok_or(E?) Result[T, E]; map(fn(T) U) U?
+- Result: get(T?) T; err() E; map(fn(T) U) Result[U, E]; is_ok() Bool; is_error() Bool
+- Int: to_int() Int; compare(Int) Int; abs() Int; to_float() Float
+- Float: compare(Float) Int; abs() Float; to_string() String
+
+Imports (a name must be imported unless it is in the prelude):
+
+- `import stdin, stdout from "@std/io/io.ms"`
+- `import collect, lines, read_all from "@std/io/streams.ms"`
+- `import bit_and, bit_not, bit_or, bit_xor, floor, pow, shift_right, shift_right_unsigned, wrapping_add, wrapping_multiply from "@std/math/math.ms"`
+- `import Bytes from "@std/bytes.ms"`
+<!-- calls:end -->
 
 ## Deep dives
 
