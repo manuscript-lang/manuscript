@@ -2,37 +2,37 @@
 
 ## 2026-11-15, regression check on `71487c98`
 
-Release `ms` from `make build` on `71487c98` (main after #3996), same 4 vCPU VM, min of 5, Manuscript column only (process start and I/O included, compile excluded). Compared with the 2026-11-14 tables below (`d4006e73` and `81a9844b`). The VM varies 10 to 20% between runs, so only moves beyond that count.
+Same-machine A/B: release `ms` built from `d4006e73` (2026-11-13 22:42 -0800, the commit of the 2026-11-14 baseline below) and from `71487c98` (main after #3996), both built and run in one session on this 4 vCPU Xeon 2.1 GHz VM, Manuscript column only, min of 5 (process start and I/O included, compile excluded). The 2026-11-14 tables below came from another session, so their absolute times are not compared; the speedups below are within this one session. `pargroup` did not build on `d4006e73` in this harness (it imports `resilience.ms`, renamed from `flow.ms` in #3959), so it has no base time.
 
-| program | 2026-11-14 | now |
+| program | `d4006e73` | `71487c98` |
 |---|---:|---:|
-| interp | 215 | 134 |
-| graph | 221 | 234 |
-| objgraph | 261 | 227 |
-| sim | 187 | 146 |
-| dispatch | 256 | 202 |
-| hashing | 143 | 140 |
-| lz | 186 | 159 |
-| exprparse | 793 | 488 |
-| regex | 342 | 293 |
-| jsonrt | 554 | 535 |
-| strings | 227 | 143 |
-| concat | 483 | 9 |
-| workers | 944 | 38 |
-| logstats | 63 | 66 |
-| csvgroup | 173 | 134 |
-| wordfreq | 267 | 209 |
-| sortrecords | 281 | 188 |
-| grep | 35 | 36 |
-| treegrep | 93 | 32 |
-| pargroup | 47 | 21 |
-| jsonsum | 185 | 144 |
-| dedupe | 299 | 253 |
-| report | 167 | 122 |
+| interp | 190 | 134 |
+| graph | 239 | 234 |
+| objgraph | 256 | 227 |
+| sim | 130 | 146 |
+| dispatch | 249 | 202 |
+| hashing | 138 | 140 |
+| lz | 187 | 159 |
+| exprparse | 644 | 488 |
+| logstats | 67 | 66 |
+| csvgroup | 131 | 134 |
+| wordfreq | 209 | 209 |
+| sortrecords | 289 | 188 |
+| grep | 39 | 36 |
+| treegrep | 116 | 32 |
+| pargroup | - | 21 |
+| jsonsum | 192 | 144 |
+| dedupe | 290 | 253 |
+| report | 194 | 122 |
+| jsonrt | 540 | 535 |
+| regex | 321 | 293 |
+| workers | 55 | 38 |
+| strings | 230 | 143 |
+| concat | 428 | 9 |
 
-No program is slower beyond noise (`graph` +6%, `logstats` +5%, `grep` +3%). `concat` and `workers` changed workload or fixed their gap since the baseline, so their large drops are not comparable.
+No program is slower beyond noise. The two largest apparent slowdowns were checked with callgrind, which does not vary with machine load: `graph` +0.1% instructions (634.4M against 635.2M), `sim` +0.8% (936.9M against 944.5M); 9 alternating wall-clock runs of `sim` overlap (131 to 184 ms against 137 to 210 ms). The gains are not bisected; likely sources from the day's merge titles: `treegrep` -72% (inline file reads for local promises, #3932 and the scheduler changes), `strings` -38% and `report` -37% (string work, #3955, #3956, #3957), `sortrecords` -35%, `concat` -98% (in-place string append). Wait-group promise changes (#3972) account for `workers` -31%, and `interp` -29% and `exprparse` -24% come from the compiler changes of the day (#3910, #3927, #3949).
 
-Instruction counts (callgrind, deterministic, 3 to 14 s each under valgrind) for the candidate PR perf check: interp 2,983.6M, strings 1,757.3M, lz 618.3M, graph 635.2M.
+Instruction counts for the nightly gate (`make perf-counts`, `bench/perf/counts.txt`): interp 2,983.6M, strings 1,757.3M, lz 618.3M, graph 635.2M.
 
 ## 2026-11-14, Go and Node for the text, data and file programs
 
