@@ -68,6 +68,21 @@ fn last_segment_patterns_permit_reads_only() {
 }
 
 #[test]
+fn comparison_operators_and_collections_charge_the_types_own_operations() {
+    let got = flagged(include_str!("lint_effects/comparison.ms"));
+    assert_eq!(
+        got,
+        vec![
+            "by_operator",
+            "by_collection",
+            "by_set",
+            "by_nested",
+            "by_order"
+        ]
+    );
+}
+
+#[test]
 fn generic_calls_charge_the_concrete_type_argument() {
     let got = flagged(include_str!("lint_effects/generic.ms"));
     assert_eq!(got, vec!["Out.put", "caller"]);
