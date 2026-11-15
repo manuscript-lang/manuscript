@@ -43,6 +43,7 @@ type RunRecord:
 	checks: Int
 	examples_pass: Bool
 	build_codes: List[String]
+	build_errors: List[String]
 	suspect_peek: Bool
 	grade: Grade
 	pass: Bool
@@ -142,6 +143,7 @@ fn run_one(
 		log.checks,
 		log.examples_pass,
 		log.build_codes.clone(),
+		log.build_errors.clone(),
 		peeked,
 		g.clone(),
 		g.pass,
