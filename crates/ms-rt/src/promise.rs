@@ -2813,28 +2813,29 @@ mod tests {
         task::teardown();
     }
 
-    /// Notes its thread, then waits as a promise does that blocks on a reply, until every promise of
-    /// the round has started on a thread of its own, and answers how many threads that took.
+    /// Notes its thread, then stays on it until every promise of the round has started, and answers
+    /// how many threads that took.
     unsafe extern "C-unwind" fn answer_after_wait(closure: *mut Closure) {
         // SAFETY: called from a running task with the closure `start_with_id` made.
         unsafe {
             SEEN.fetch_or(1 << sched::current(), std::sync::atomic::Ordering::SeqCst);
             let end = crate::sys::monotonic_ns() + 10_000_000_000;
-            // Asleep, not busy: a sleeping task frees its thread for the next unstarted promise.
+            // Busy, not asleep: a sleeping task frees its thread for the next unstarted promise, and
+            // two of them could then share one.
             while SEEN.load(std::sync::atomic::Ordering::SeqCst).count_ones() < 4
                 && crate::sys::monotonic_ns() < end
             {
-                task::msrt_task_sleep(1_000_000);
+                std::hint::spin_loop();
             }
             let mut v = i64::from(SEEN.load(std::sync::atomic::Ordering::SeqCst).count_ones());
             msrt_promise_put(id_of(closure), (&raw mut v).cast(), &msrt_desc_int, 0);
         }
     }
 
-    /// Promises that wait must each get a thread while there are threads to give: their creator,
-    /// parked on the first, does not start the others itself, and every idle thread is woken. Each
-    /// promise stays until all four have started, so how long the operating system takes to schedule
-    /// a thread cannot change the outcome; only a promise left without a thread can.
+    /// Promises must each get a thread while there are threads to give: their creator, parked on the
+    /// first, does not start the others itself, and every idle thread is woken. Each promise holds its
+    /// thread until all four have started, so how long the operating system takes to schedule a thread
+    /// cannot change the outcome; only a promise left without a thread can.
     #[test]
     #[cfg_attr(miri, ignore = "context switches use inline assembly")]
     fn waiting_promises_each_get_a_thread() {
