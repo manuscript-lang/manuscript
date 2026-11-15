@@ -1,0 +1,102 @@
+# Packages: depend on another project's source by name and version
+
+## Summary
+
+- Problem: a project cannot use another project's source except by copying it, with nothing pinned or verified.
+- Change: `[dependencies]` in `ms.toml` names git repositories at a tag; `ms fetch` pins them in `ms.lock` with a content hash; imports reach them as `@name/...`.
+- Decision requested: approve the manifest, lock file, `ms fetch` command and import form below (user-visible).
+
+## Status
+
+Proposal, 2026-11-15, stage 1 built and checked against main at `7d4b8c2f`. Direction from Chinmay: packages before C interop; git URLs first, no registry; no third-party crates. Design calls settled by the prime-time lead for Chinmay: effects declared by the package and allowed by the importer, in-repo Postgres package, read-only cache, no build scripts, no registry.
+
+## Problem
+
+`documentation/developer-tooling/builds/project-configuration.md` says `ms` does not fetch third-party packages and copied code "is not pinned". Today the only way to share a library is:
+
+```toml
+[aliases]
+"@pg" = "vendor/pg/src"
+```
+
+The copy can change silently, has no recorded origin, and a library's own dependencies must be copied by hand.
+
+## Design
+
+**Manifest.** A new `[dependencies]` table. Key is `@` plus one identifier, written like an alias. Value is a quoted string: a git URL, `#`, then a tag or a full 40-character commit.
+
+```toml
+[dependencies]
+"@pg" = "https://github.com/manuscript-lang/postgres.git#v0.1.0"
+```
+
+- A branch name is rejected: it is not reproducible. A key cannot also be an alias, an `[embed]` name or `@std`.
+- A package is an ordinary library project: it has an `ms.toml` with `source` and no `entry`.
+
+**Imports.** `@name/path.ms` resolves under the package's `source` directory, exactly like a directory alias.
+
+```manuscript
+import connect from "@pg/client.ms"
+```
+
+- A package's own `[dependencies]` names are private to it. The consumer cannot import them, and two packages may use the same name for different packages.
+- A package cannot import its consumer, and cannot declare `extern fn` (no C in packages).
+- Different tags of one repository are different modules with different types. There is no version solver and no ranges; the consumer picks the tags.
+
+**Lock file.** `ms.lock` beside `ms.toml`, committed. One line per package, in sorted order. A transitive package is keyed by its path from the project.
+
+```text
+"@pg" = "https://github.com/manuscript-lang/postgres.git 3f2a…(40 hex) sha256:9c1e…(64 hex)"
+"@pg/@wire" = "https://github.com/manuscript-lang/wire.git 77b0…(40 hex) sha256:e4d2…(64 hex)"
+```
+
+- The hash covers the files of the checked-out tree except `.git`: for each path in byte order, the path, a zero byte, the length, a zero byte, the bytes. Fetch passes `core.autocrlf=false` so Windows hashes match.
+- Symbolic links and non-UTF-8 names in a package are errors, as in `[embed]`.
+
+**Commands.**
+
+- `ms fetch`: resolves each dependency, shallow-clones with the `git` program on `PATH` (no library, no new crate), verifies, stores it read-only at `<cache>/ms/packages/<sha256>/` (outside the project), and writes the lock. With a lock present it fetches exactly the locked revisions and fails on a hash mismatch (a moved tag). It prints each package, its revision, and the effects its files permit.
+- `ms fetch --update @name` re-resolves one tag and rewrites its lock line.
+- `check`, `build`, `run`, `test`, `lint` never use the network. A missing or stale lock, or a package missing from the cache, is an error that says to run `ms fetch`. A cached package is rehashed on first use in a build.
+- A `file://` URL works, so tests and offline mirrors need no server.
+
+**Effects.** A package declares what it may reach; the importer must allow it.
+
+- Package `ms.toml`: `[project]` gains `effects = "std.net.* std.fs.read"`, space-separated, same patterns as `// ms: allow_effect`. No key means pure. Package files may not permit more than this.
+- Consumer `ms.toml`: a new `[effects]` table gives, per dependency, what the project allows: `"@pg" = "std.net.*"`. A package whose declared effects are not covered by that line is an error naming the missing effect. A new effect in an updated package therefore fails the build until the consumer edits the manifest.
+- `ms fetch` prints each package's declared effects. Consumer `ms lint` follows calls into packages as into any module. (Hypothesis: verify the call-graph walk crosses package modules.)
+- No build scripts: a package is source only; nothing runs at fetch or build.
+
+**Tooling.** `ms search_symbol` indexes fetched packages; modules show as `@pg/client.ms`, with the tag. `ms diagram` draws each package as one node labelled `@pg v0.1.0` in the module view. The LSP resolves `@pg/...` through the lock.
+
+**Checked.** The manifest, `ms fetch`, the import and the offline check run against a `file://` repository in `crates/ms-cli/tests/packages.rs`. Native declarations and extra permissions in a package are rejected at `ms fetch`; the hash then pins that content.
+
+## Components touched
+
+| Component | Change | Test |
+| --- | --- | --- |
+| `crates/ms-driver/src/project/manifest.rs` | parse `[dependencies]`, lock reader and writer | unit: duplicate key, branch rejected, alias collision |
+| `crates/ms-driver/src/imports.rs`, `load.rs` | resolve `@name/` per package; private names | conformance: two versions, private name |
+| `crates/ms-cli` | `ms fetch`, hashing (reuse `ms-tooling` `sha256.rs`), cache | e2e on a `file://` repo, all platforms |
+| `crates/ms-check` | reject `extern fn` and effect lines beyond `effects` in packages; `[effects]` check | conformance reject cases |
+| `packages/postgres` | first package: Postgres client over `@std/net` TCP and TLS | e2e against a database |
+| `crates/ms-tooling`, `ms-lsp` | search_symbol, diagram, lint across packages | existing suites plus one case each |
+| `documentation/` | replace "copied dependencies" with packages | doc example tests |
+
+## Alternatives
+
+- Do nothing: copy plus alias. No pin, no hash, no origin; it is the problem.
+- Go-style URL in the import: ties every source file to a host and breaks "import by name".
+- Version ranges with a solver: needs an algorithm and is not reproducible; distinct versions side by side give the same reach with no solver.
+- Registry: later. A git URL and tag map onto a registry entry without changing imports.
+- Vendoring only (`ms fetch` into the project): the cache plus hash already gives the same bytes; a copy can be added later.
+
+## Stages
+
+1. Manifest, lock, `ms fetch`, resolution, `extern` rule; green on a `file://` fixture on Linux, macOS, Windows.
+2. search_symbol, diagram, lint, LSP.
+3. Docs, wiki, and a sample service depending on a package; dispatch macOS and Windows CI.
+
+## Open questions
+
+- None. Decided: the Postgres client is the first package, in this repository under `packages/postgres`, not in the standard library.

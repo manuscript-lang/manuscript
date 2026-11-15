@@ -485,7 +485,7 @@ impl Loader<'_> {
     /// Accepts an already resolved canonical path. Resolution happens at the
     /// graph's edges, never again during traversal or checking.
     fn visit(&mut self, syms: ms_syntax::Names, canonical: &str) -> Result<Name, Failure> {
-        let logical = pathops::rel(&self.config.root, canonical).map_err(Failure::Error)?;
+        let logical = self.config.logical(canonical).map_err(Failure::Error)?;
         let file: Arc<str> = Arc::from(logical.as_str());
         if self.active.contains(canonical) {
             return Err(Failure::Cycle(format!(
@@ -605,10 +605,14 @@ impl Loader<'_> {
             Target::Generated(module) => return Ok(module),
             Target::Path(target) => target,
         };
-        for link in crate::project::link_components(&self.config.root, &target) {
+        let root = self
+            .config
+            .confinement_root(importer, path, &target)
+            .to_string();
+        for link in crate::project::link_components(&root, &target) {
             self.add_input(link);
         }
-        crate::project::source_path(&self.config.root, &target, self.overlay)
+        crate::project::source_path(&root, &target, self.overlay)
     }
 
     fn import_module(

@@ -31,9 +31,59 @@ pub struct Project {
     pub aliases: BTreeMap<String, String>,
     /// `[embed]` names mapped to canonical directories whose files are baked into the program.
     pub embed: BTreeMap<String, String>,
+    /// `[dependencies]`: package names mapped to `url#tag`.
+    pub dependencies: BTreeMap<String, String>,
+    /// `[effects]`: for each dependency, the effects this project allows it.
+    pub allowed_effects: BTreeMap<String, String>,
+    /// `[project] effects`: the effects this project, as a package, may use.
+    pub effects: String,
+    /// Dependency names mapped to the source directory of the fetched package.
+    pub deps: BTreeMap<String, String>,
+    /// Every fetched package this project reaches, directly or not. Empty in a package.
+    pub packages: Vec<crate::project::packages::Package>,
     /// The `[project]` table header (or 1:1 when the table is absent).
     pub location: Location,
     pub assignments: BTreeMap<String, Assignment>,
+}
+
+impl Project {
+    /// The fetched package that holds `path`, if any (the longest matching root).
+    pub fn package_of(&self, path: &str) -> Option<&crate::project::packages::Package> {
+        let path = std::path::Path::new(path);
+        self.packages
+            .iter()
+            .filter(|p| path.starts_with(&p.root))
+            .max_by_key(|p| p.root.len())
+    }
+
+    /// The manifest whose aliases and dependencies apply to imports written in `importer`.
+    pub fn scope(&self, importer: &str) -> &Project {
+        self.package_of(importer).map_or(self, |p| &p.project)
+    }
+
+    /// The directory imports from `importer` that name `target` may not leave: the package
+    /// holding `target` for an `@` import, otherwise the importer's own project or package.
+    pub fn confinement_root(&self, importer: &str, path: &str, target: &str) -> &str {
+        let own = self
+            .package_of(importer)
+            .map_or(self.root.as_str(), |p| p.root.as_str());
+        if !path.starts_with('@') {
+            return own;
+        }
+        self.package_of(target).map_or(own, |p| p.root.as_str())
+    }
+
+    /// The name diagnostics and metadata use for a canonical file: its path from the project
+    /// root, or `@package/path` for a fetched package.
+    pub fn logical(&self, canonical: &str) -> Result<String, ProjectError> {
+        match self.package_of(canonical) {
+            Some(package) => {
+                let rel = pathops::rel(&package.root, canonical)?;
+                Ok(format!("{}/{}", package.key, rel))
+            }
+            None => pathops::rel(&self.root, canonical),
+        }
+    }
 }
 
 /// The nearest containing manifest, even if it is invalid. A nested project's
@@ -66,7 +116,9 @@ pub fn read_project(filename: &str) -> Result<Project, ProjectError> {
 /// (Go returns the partial `Project` next to the error).
 pub fn read_project_partial(filename: &str) -> (Project, Option<ProjectError>) {
     let mut project = Project::default();
-    let error = read_into(filename, &mut project).err();
+    let error = read_manifest(filename, &mut project)
+        .and_then(|()| crate::project::packages::attach(&mut project))
+        .err();
     (project, error)
 }
 
@@ -76,6 +128,11 @@ impl Failure {
     fn at(&self, location: &Location, message: impl Into<String>) -> ProjectError {
         ProjectError::manifest(location.clone(), ProjectError::msg(message))
     }
+}
+
+/// Read and validate one manifest without resolving its dependencies.
+pub fn read_manifest(filename: &str, p: &mut Project) -> Result<(), ProjectError> {
+    read_into(filename, p)
 }
 
 fn read_into(filename: &str, p: &mut Project) -> Result<(), ProjectError> {
@@ -148,6 +205,8 @@ fn read_into(filename: &str, p: &mut Project) -> Result<(), ProjectError> {
                 "[project]" => "project",
                 "[aliases]" => "aliases",
                 "[embed]" => "embed",
+                "[dependencies]" => "dependencies",
+                "[effects]" => "effects",
                 _ => {
                     let advice = if !line.ends_with(']') {
                         "close the header with ']'"
@@ -155,12 +214,10 @@ fn read_into(filename: &str, p: &mut Project) -> Result<(), ProjectError> {
                         "array tables are not supported"
                     } else if line == "[package]" {
                         "rename it to [project] with name, source, and entry"
-                    } else if line == "[dependencies]" {
-                        "there are no dependency tables, so copy the sources into the project and map them with [aliases]"
                     } else {
                         "ms.toml has no other tables"
                     };
-                    return Err(fail.at(&location, format!("unsupported manifest table {line}; ms.toml supports only [project], [aliases] and [embed]: {advice}")));
+                    return Err(fail.at(&location, format!("unsupported manifest table {line}; ms.toml supports only [project], [aliases], [embed], [dependencies] and [effects]: {advice}")));
                 }
             };
             if !tables.insert(table) {
@@ -251,14 +308,39 @@ fn read_into(filename: &str, p: &mut Project) -> Result<(), ProjectError> {
                 "name" => p.name = value,
                 "source" => p.source = value,
                 "entry" => p.entry = value,
+                "effects" => p.effects = value,
                 _ => {
                     return Err(fail.at(
                         &key_location,
                         format!(
-                            "unknown project key {key}; [project] accepts name, source, and entry"
+                            "unknown project key {key}; [project] accepts name, source, entry, and effects"
                         ),
                     ));
                 }
+            }
+        } else if section == "dependencies" || section == "effects" {
+            if !valid_alias(&key) || key == "@std" {
+                return Err(fail.at(
+                    &key_location,
+                    format!("invalid or reserved package name {key}; names look like @pg (start with @, letters/digits/underscore) and cannot be @std"),
+                ));
+            }
+            if section == "effects" {
+                p.allowed_effects.insert(key, value);
+            } else {
+                match value.split_once('#') {
+                    Some((url, tag))
+                        if !url.is_empty()
+                            && !tag.is_empty()
+                            && !value.contains(char::is_whitespace) => {}
+                    _ => {
+                        return Err(fail.at(
+                            &location,
+                            format!("invalid dependency {value:?}; write \"<git url>#<tag or commit>\", for example \"https://github.com/acme/pg.git#v1.0.0\""),
+                        ));
+                    }
+                }
+                p.dependencies.insert(key, value);
             }
         } else if section == "embed" {
             if !valid_alias(&key) || key == "@std" {
@@ -350,6 +432,22 @@ fn read_into(filename: &str, p: &mut Project) -> Result<(), ProjectError> {
                     format!("alias {key} target cannot be resolved: {error}; external Manuscript dependency projects are unsupported, so copy the sources inside this project root and point the alias at that copy"),
                 ));
             }
+        }
+    }
+    for key in p.dependencies.keys() {
+        if p.aliases.contains_key(key) || p.embed.contains_key(key) {
+            return Err(fail.at(
+                &p.assignments[&format!("dependencies.{key}")].key.clone(),
+                format!("{key} is declared in [dependencies] and also as an alias or embed; rename one so an import names a single thing"),
+            ));
+        }
+    }
+    for key in p.allowed_effects.keys() {
+        if !p.dependencies.contains_key(key) {
+            return Err(fail.at(
+                &p.assignments[&format!("effects.{key}")].key.clone(),
+                format!("[effects] names {key}, which is not under [dependencies]; remove it or add the dependency"),
+            ));
         }
     }
     let keys: Vec<String> = p.embed.keys().cloned().collect();
