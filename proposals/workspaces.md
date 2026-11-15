@@ -48,7 +48,7 @@ entry = "./src/main.ms"
 - `members` are directories below the root; a trailing `/*` means every child directory holding an `ms.toml`. Nothing else (no `exclude`, no nested workspaces).
 - `path` is the fourth dependency form beside `tag`, `sha` and `version`: it must name a member, is never written to `ms.lock`, and is imported like any package (`@util/x.ms`). Confinement stays: a member's files and path targets lie inside the workspace root.
 - A member's own dependency names are private to it, as for fetched packages. Cycles between members are an error naming the cycle.
-- One `ms.lock` at the workspace root pins every git dependency of every member. Until the semver resolver (packages thread) lands, keys start with the member name (`"app/@pg"`) so members may reuse an alias; the resolver then takes all member manifests as roots and keys by resolved copy, so members that share a dependency share one copy.
+- One `ms.lock` at the workspace root pins every git dependency of every member. The resolver takes all member manifests as roots and keys by resolved copy, so members that share a dependency share one copy.
 - Commands find the workspace by walking up from the member (or from `ms.toml` argument). `ms build|run|check|test|lint` inside a member act on it; at a root with no `[project]` they need `-p <name>` or `--workspace` (build each executable member, check/test/lint all). No default member.
 
 **Effects.** Same rule as fetched packages: a member declares `effects` in `[project]`; an importing member must allow it under `[effects]`. One mechanism, no workspace exemption (open question 1).

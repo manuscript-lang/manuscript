@@ -174,7 +174,7 @@ entry = "src/main.ms"
 - Each member is a directory with its own `ms.toml` and a unique `[project] name`. `"libs/*"` means every child directory of `libs` that holds an `ms.toml`. Members stay inside the workspace root; there are no nested workspaces.
 - A `{ path = "..." }` dependency names another member and is imported like a package: `import greet from "@util/greet.ms"`. It is never written to `ms.lock`, a member's own dependency names are private to it, and a cycle between members is an error. A member may declare `extern`, since it is your own code.
 - A member follows the same effect rule as a fetched package: it declares `effects` under `[project]`, and the importing member allows them under `[effects]`.
-- One `ms.lock` beside the root `ms.toml` pins every url dependency of every member. Its keys start with the member name, such as `"app/@pg"`, so two members may use one name for different packages. `ms install` installs every member; `ms add` and `ms remove` act on the member whose directory you are in.
+- One `ms.lock` beside the root `ms.toml` pins every url dependency of every member. Members that name the same repository and version share one copy; two members may use one name for different packages. `ms install` installs every member; `ms add` and `ms remove` act on the member whose directory you are in.
 - Run `ms run`, `ms build` and the other commands from a member, or pass its `ms.toml`. At a root with no `[project]`, `ms check`, `ms lint`, `ms fmt`, `ms verify` and `ms test` run on every member; a command that makes one program asks you to name a member. A root may also hold its own `[project]`, and then it is a member too.
 
 ## Resolving an import

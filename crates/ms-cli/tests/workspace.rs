@@ -185,7 +185,7 @@ fn a_member_holds_the_same_effect_rule_as_a_package() {
 }
 
 #[test]
-fn members_share_one_lock_keyed_by_member() {
+fn members_share_one_lock_and_one_copy() {
     let root = scratch("workspace-lock");
     let (cache, lib) = (root.join("cache"), root.join("repo"));
     // A git package both members use.
@@ -234,10 +234,9 @@ fn members_share_one_lock_keyed_by_member() {
     let install = ms(&root.join("app"), &cache, &["install"]);
     assert!(install.status.success(), "{}", err(&install));
     let lock = std::fs::read_to_string(root.join("ms.lock")).unwrap();
-    assert!(
-        lock.contains("\"app/@lib\"") && lock.contains("\"util/@lib\""),
-        "{lock}"
-    );
+    // Both members name one repository at one tag, so the lock holds a single shared copy.
+    let entries = lock.lines().filter(|l| l.contains("sha256:")).count();
+    assert_eq!(entries, 1, "{lock}");
     assert!(!root.join("app/ms.lock").exists());
 
     // Offline, the workspace builds from the shared lock; the root checks every member.
