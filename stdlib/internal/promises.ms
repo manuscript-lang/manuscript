@@ -54,6 +54,19 @@ export extern fn msrt_cancel_free(id: Int) Unit
 // limit); -1 on timeout.
 export extern fn msrt_promise_wait_any(ids: List[Int], timeout_ns: Int) Int
 
+// A wait group watches promises of this thread and reports each as it finishes, so
+// waiting for many costs one step per promise instead of a rescan after every wake.
+// `add` answers false when the promise cannot join (it lives on another thread); `next`
+// waits for a finished promise and answers the tag it was added with, or -1 when none
+// is left.
+export extern fn msrt_group_new() Int
+
+export extern fn msrt_group_add(group: Int, id: Int, tag: Int) Bool
+
+export extern fn msrt_group_next(group: Int) Int
+
+export extern fn msrt_group_free(group: Int) Unit
+
 export extern fn msrt_promise_fault_report(id: Int) String
 
 export extern fn msrt_promise_drop(id: Int) Unit

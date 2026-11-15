@@ -223,3 +223,42 @@ test "waiting in creation, reverse and interleaved order returns every promise's
 			| expect_ok?
 			| expect_equal(i * 3)?
 		)
+
+fn nap_for(ms: Int) Int!:
+	sleep(milliseconds(ms)).wait()?
+	return ok(ms)
+
+test "wait_all over thousands of promises finishing at different times keeps list order":
+	var made: List[Promise[Int]] = []
+	for i in 0..3000:
+		made.append(promise(fn: nap_for(1 + (i * 7) % 23)))
+
+	values := wait_all(made) | expect_ok?
+	for i in 0..3000:
+		expect_equal(values[i], 1 + (i * 7) % 23)?
+
+fn nap_all(count: Int, ms: Int) List[Int]!:
+	var made: List[Promise[Int]] = []
+	for i in 0..count:
+		made.append(promise(fn: nap_for(ms)))
+	return wait_all(made)
+
+// A wait cut short while it waits for a set of promises must release that set: the
+// rounds reuse it, and the last wait_all still finishes.
+test "a wait_all cancelled by a timeout leaves later wait_all calls working":
+	for round in 0..50:
+		outer := promise(
+			fn: nap_all(20, 1000),
+			options: PromiseOptions(timeout: milliseconds(5))
+		)
+		reason := outer.wait() | expect_error?
+		expect_equal(reason.kind, "ETIMEDOUT")?
+
+	var quick: List[Promise[Int]] = []
+	for i in 0..20:
+		quick.append(promise(fn: nap_for(1)))
+	(
+		wait_all(quick) | expect_ok? | expect_equal(
+			[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+		)?
+	)
