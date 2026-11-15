@@ -42,7 +42,7 @@ Every row is a shape agents wrote that fails; the right column compiles.
 | `if c: f() else: g()` as a statement | `if c:` and `else:` on their own lines, bodies indented |
 | `fn f(out: var T)`, `x: T = e` | `fn f(var out: T)`, `x: T := e` |
 | `c == "{"`, JSON or a template in `"..."` | `c == r"{"`; JSON and templates in `r"..."` or `r"""`. A string with literal braces and nothing to interpolate is written raw; use `\{` and `\}` only when the same string also interpolates |
-| `"total {n}"` (plain text never interpolates) | `f"total {n}"`; quotes inside `{}` are plain: `f"{xs.join(", ")}"` |
+| `"total {n}"` (plain text never interpolates) | `f"total {n}"` |
 | `for _ in xs` | `for _i in xs`; a bare `_` is not a name |
 | `(String, Int)`, `[A, B]` tuples | a record: `type Pair:` with fields |
 | `f(x)?` as a statement on a non-Void result | `_done := f(x)?` (a leading `_` marks it unused) |
