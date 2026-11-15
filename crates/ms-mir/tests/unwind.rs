@@ -733,7 +733,6 @@ fn registrations_grow_linearly_with_the_owners_a_function_holds() {
         count(&m, "main", Op::CleanupPush)
     );
 }
-<<<<<<< HEAD
 
 /// Owners that stay live across branches are registered once, where they are born: a block does
 /// not register them again, and a branch that makes a value of its own discards only that.
@@ -764,5 +763,3 @@ fn registrations_cross_branches_instead_of_repeating_per_block() {
         count(&m, "main", Op::CleanupPush)
     );
 }
-=======
->>>>>>> origin/main
