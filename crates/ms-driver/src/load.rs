@@ -164,12 +164,7 @@ fn load_entries(
             .map(|p| ms_check::PackageScope {
                 prefix: format!("{}/", p.key),
                 spec: p.spec.clone(),
-                effects: p
-                    .project
-                    .effects
-                    .split_whitespace()
-                    .map(str::to_string)
-                    .collect(),
+                effects: p.project.effects.clone(),
             })
             .collect(),
         package_roots: config

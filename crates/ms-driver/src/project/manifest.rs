@@ -34,9 +34,9 @@ pub struct Project {
     /// `[dependencies]`: package names mapped to `url#tag`.
     pub dependencies: BTreeMap<String, String>,
     /// `[effects]`: for each dependency, the effects this project allows it.
-    pub allowed_effects: BTreeMap<String, String>,
+    pub allowed_effects: BTreeMap<String, Vec<String>>,
     /// `[project] effects`: the effects this project, as a package, may use.
-    pub effects: String,
+    pub effects: Vec<String>,
     /// Dependency names mapped to the source directory of the fetched package.
     pub deps: BTreeMap<String, String>,
     /// Every fetched package this project reaches, directly or not. Empty in a package.
@@ -267,6 +267,57 @@ fn read_into(filename: &str, p: &mut Project) -> Result<(), ProjectError> {
         let value_start = line.len() - value.len();
         location.column += value_start;
         location.offset += value_start;
+        if section == "effects" || (section == "project" && key == "effects") {
+            let mut text = value.to_string();
+            if !text.starts_with('[') {
+                return Err(fail.at(
+                    &location,
+                    format!("effects are a list of strings; write {key} = [\"std.net.*\", \"std.fs.read\"]"),
+                ));
+            }
+            while !array_closed(&text) {
+                if offset >= configuration.len() {
+                    return Err(fail.at(&location, "unterminated effects list; close it with ']'"));
+                }
+                let end = configuration[offset..]
+                    .find('\n')
+                    .map_or(configuration.len(), |i| offset + i);
+                let more = configuration[offset..end]
+                    .strip_suffix('\r')
+                    .unwrap_or(&configuration[offset..end]);
+                text.push(' ');
+                text.push_str(manifest_line(more).trim());
+                offset = (end + 1).min(configuration.len());
+                line_number += 1;
+            }
+            let list = parse_list(&text).map_err(|e| fail.at(&location, e))?;
+            let id = format!("{section}.{key}");
+            if !seen.insert(id.clone()) {
+                return Err(fail.at(
+                    &key_location,
+                    format!("duplicate manifest key {id}; each key may be set once"),
+                ));
+            }
+            p.assignments.insert(
+                id,
+                Assignment {
+                    key: key_location.clone(),
+                    value: location.clone(),
+                },
+            );
+            if section == "project" {
+                p.effects = list;
+            } else {
+                if !valid_alias(&key) || key == "@std" {
+                    return Err(fail.at(
+                        &key_location,
+                        format!("invalid or reserved package name {key}; names look like @pg (start with @, letters/digits/underscore) and cannot be @std"),
+                    ));
+                }
+                p.allowed_effects.insert(key, list);
+            }
+            continue;
+        }
         if value.len() < 2 || !value.starts_with('"') || !value.ends_with('"') {
             return Err(fail.at(
                 &location,
@@ -308,7 +359,7 @@ fn read_into(filename: &str, p: &mut Project) -> Result<(), ProjectError> {
                 "name" => p.name = value,
                 "source" => p.source = value,
                 "entry" => p.entry = value,
-                "effects" => p.effects = value,
+                "effects" => unreachable!("handled above"),
                 _ => {
                     return Err(fail.at(
                         &key_location,
@@ -325,9 +376,7 @@ fn read_into(filename: &str, p: &mut Project) -> Result<(), ProjectError> {
                     format!("invalid or reserved package name {key}; names look like @pg (start with @, letters/digits/underscore) and cannot be @std"),
                 ));
             }
-            if section == "effects" {
-                p.allowed_effects.insert(key, value);
-            } else {
+            {
                 match value.split_once('#') {
                     Some((url, tag))
                         if !url.is_empty()
@@ -515,6 +564,56 @@ fn manifest_line(line: &str) -> &str {
         }
     }
     line
+}
+
+/// Whether the `[` that starts `text` has its closing `]` outside the strings.
+fn array_closed(text: &str) -> bool {
+    let (mut quoted, mut escaped) = (false, false);
+    for c in text.chars() {
+        if escaped {
+            escaped = false;
+        } else if quoted && c == '\\' {
+            escaped = true;
+        } else if c == '"' {
+            quoted = !quoted;
+        } else if c == ']' && !quoted {
+            return true;
+        }
+    }
+    false
+}
+
+/// The strings of `["a", "b"]`: double-quoted, comma-separated, a trailing comma allowed.
+fn parse_list(text: &str) -> Result<Vec<String>, String> {
+    let bad = "an effects list is [\"std.net.*\", \"std.fs.read\"]: double-quoted strings separated by commas";
+    let inner = text
+        .trim()
+        .strip_prefix('[')
+        .and_then(|t| t.strip_suffix(']'))
+        .ok_or_else(|| format!("invalid list; {bad}"))?;
+    let mut rest = inner.trim();
+    let mut items = Vec::new();
+    while !rest.is_empty() {
+        let (quoted, after) = quoted_prefix(rest).ok_or_else(|| format!("invalid list; {bad}"))?;
+        let item = quoting::unquote(quoted)
+            .ok_or_else(|| format!("invalid string {quoted} in the list; {bad}"))?;
+        if item.is_empty() || item.chars().any(|c| c.is_whitespace() || c.is_control()) {
+            return Err(format!(
+                "invalid effect {item:?}; write one pattern per string, such as \"std.net.*\""
+            ));
+        }
+        if items.contains(&item) {
+            return Err(format!("effect {item} is listed twice; remove one"));
+        }
+        items.push(item);
+        rest = after.trim();
+        match rest.strip_prefix(',') {
+            Some(more) => rest = more.trim(),
+            None if rest.is_empty() => {}
+            None => return Err(format!("invalid list; {bad}")),
+        }
+    }
+    Ok(items)
 }
 
 /// Split a leading double-quoted string, honoring backslash escapes.

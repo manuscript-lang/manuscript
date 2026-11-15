@@ -114,7 +114,7 @@ fn walk(run: &mut Run<'_, '_>, scope: &Project, prefix: &str, depth: usize) -> R
         let effects = if package.effects.is_empty() {
             "none".to_string()
         } else {
-            package.effects.clone()
+            package.effects.join(" ")
         };
         let _ = writeln!(
             run.io.stdout,

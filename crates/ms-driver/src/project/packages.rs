@@ -276,10 +276,11 @@ pub fn pattern_covers(allowed: &str, declared: &str) -> bool {
 }
 
 /// An effect in `declared` that no pattern in `allowed` covers.
-pub fn uncovered<'a>(allowed: &str, declared: &'a str) -> Option<&'a str> {
+pub fn uncovered<'a>(allowed: &[String], declared: &'a [String]) -> Option<&'a str> {
     declared
-        .split_whitespace()
-        .find(|d| !allowed.split_whitespace().any(|a| pattern_covers(a, d)))
+        .iter()
+        .find(|d| !allowed.iter().any(|a| pattern_covers(a, d)))
+        .map(String::as_str)
 }
 
 /// Resolve every dependency of `project` through its lock and the cache, recursively.
@@ -357,11 +358,14 @@ fn resolve(
             )));
         }
         if let Some(missing) = uncovered(
-            scope.allowed_effects.get(&alias).map_or("", String::as_str),
+            scope
+                .allowed_effects
+                .get(&alias)
+                .map_or(&[][..], Vec::as_slice),
             &package.effects,
         ) {
             return Err(ProjectError::msg(format!(
-                "package {key} may use {missing}, which this project does not allow; add `{alias} = \"{missing}\"` under [effects] in ms.toml if you trust it"
+                "package {key} may use {missing}, which this project does not allow; add `{alias} = [\"{missing}\"]` under [effects] in ms.toml if you trust it"
             )));
         }
         if !prefix.is_empty()
@@ -487,9 +491,9 @@ mod tests {
         std::fs::create_dir_all(&cache).unwrap();
         std::fs::create_dir_all(project_dir.join("src")).unwrap();
         let header = "[project]\nname = \"p\"\nsource = \"src\"\n";
-        let inner = stored(&cache, &format!("{header}effects = \"std.net.*\"\n"));
+        let inner = stored(&cache, &format!("{header}effects = [\"std.net.*\"]\n"));
         let outer_manifest = format!(
-            "{header}\n[dependencies]\n\"@inner\" = \"https://h/x.git#v1\"\n\n[effects]\n\"@inner\" = \"std.net.*\"\n"
+            "{header}\n[dependencies]\n\"@inner\" = \"https://h/x.git#v1\"\n\n[effects]\n\"@inner\" = [\"std.net.*\"]\n"
         );
         let outer = stored(&cache, &outer_manifest);
         let lock = BTreeMap::from([
@@ -499,7 +503,7 @@ mod tests {
         std::fs::write(project_dir.join("ms.lock"), lock_text(&lock)).unwrap();
         std::fs::write(
             project_dir.join("ms.toml"),
-            "[project]\nname = \"a\"\nsource = \"src\"\n\n[dependencies]\n\"@outer\" = \"https://h/x.git#v1\"\n\n[effects]\n\"@outer\" = \"std.net.*\"\n",
+            "[project]\nname = \"a\"\nsource = \"src\"\n\n[dependencies]\n\"@outer\" = \"https://h/x.git#v1\"\n\n[effects]\n\"@outer\" = [\"std.net.*\"]\n",
         )
         .unwrap();
         let mut project = Project::default();

@@ -70,12 +70,14 @@ fn fetch_pins_a_package_and_checks_work_offline() {
     let (cache, lib, project) = (root.join("cache"), root.join("lib"), root.join("app"));
     let spec = package(
         &lib,
-        "effects = \"std.net.*\"\n",
+        "effects = [\"std.net.*\"]\n",
         include_str!("packages/greet_net.ms"),
     );
     app(
         &project,
-        &format!("[dependencies]\n\"@lib\" = \"{spec}\"\n\n[effects]\n\"@lib\" = \"std.net.*\"\n"),
+        &format!(
+            "[dependencies]\n\"@lib\" = \"{spec}\"\n\n[effects]\n\"@lib\" = [\"std.net.*\"]\n"
+        ),
     );
 
     let unlocked = ms(&project, &cache, &["check", "ms.toml"]);
@@ -147,7 +149,7 @@ fn a_package_needs_the_importer_to_allow_its_effects() {
     let (cache, lib, project) = (root.join("cache"), root.join("lib"), root.join("app"));
     let spec = package(
         &lib,
-        "effects = \"std.net.*\"\n",
+        "effects = [\"std.net.*\"]\n",
         include_str!("packages/greet.ms"),
     );
     app(
@@ -173,14 +175,17 @@ fn checked_with(name: &str, manifest_extra: &str, source: &str, allowed: &str) -
     let effects = if allowed.is_empty() {
         String::new()
     } else {
-        format!("\n[effects]\n\"@lib\" = \"{allowed}\"\n")
+        format!("\n[effects]\n\"@lib\" = [{allowed}]\n")
     };
     app(
         &project,
         &format!("[dependencies]\n\"@lib\" = \"{spec}\"\n{effects}"),
     );
+    // A manifest `ms fetch` refuses is the result: there is nothing to check.
     let fetched = ms(&project, &cache, &["fetch"]);
-    assert!(fetched.status.success(), "{}", stderr(&fetched));
+    if !fetched.status.success() {
+        return fetched;
+    }
     ms(&project, &cache, &["check", "ms.toml"])
 }
 
@@ -202,7 +207,7 @@ fn the_checker_holds_a_package_to_the_effects_it_declares() {
         "package-undeclared",
         "",
         include_str!("packages/reads.ms"),
-        "*",
+        "\"*\"",
     );
     assert!(!pure.status.success());
     assert!(stderr(&pure).contains("std.fs.read"), "{}", stderr(&pure));
@@ -214,11 +219,24 @@ fn the_checker_holds_a_package_to_the_effects_it_declares() {
     // Declared and allowed: accepted. The package needs no `allow_effect` line of its own.
     let declared = checked_with(
         "package-declared",
-        "effects = \"std.fs.read\"\n",
+        "effects = [\n    \"std.fs.read\", # a list may span lines\n]\n",
         include_str!("packages/reads.ms"),
-        "std.fs.read",
+        "\"std.fs.read\"",
     );
     assert!(declared.status.success(), "{}", stderr(&declared));
+    // A space-separated string is no longer a list of effects.
+    let string = checked_with(
+        "package-string-effects",
+        "effects = \"std.fs.read\"\n",
+        include_str!("packages/reads.ms"),
+        "\"std.fs.read\"",
+    );
+    assert!(!string.status.success());
+    assert!(
+        stderr(&string).contains("effects are a list of strings"),
+        "{}",
+        stderr(&string)
+    );
 }
 
 #[test]

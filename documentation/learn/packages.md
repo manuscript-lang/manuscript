@@ -21,10 +21,10 @@ entry = "src/main.ms"
 "@pg" = "https://github.com/manuscript-lang/ms-pg.git#<40-character commit>"
 
 [effects]
-"@pg" = "std.net.* std.clock.read std.random.read"
+"@pg" = ["std.net.*", "std.clock.read", "std.random.read"]
 ```
 
-`[effects]` is what you allow the package to reach. The package declares its own list; if it asks for more than you allow, `ms` rejects it and names the extra effect. A package that adds an effect in a later version fails your build until you edit this line.
+`[effects]` is what you allow the package to reach, a list of effect patterns. The package declares its own list; if it asks for more than you allow, `ms` rejects it and names the extra effect. A package that adds an effect in a later version fails your build until you edit this line.
 
 ## Fetch and lock
 

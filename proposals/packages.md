@@ -62,8 +62,8 @@ import connect from "@pg/client.ms"
 
 **Effects.** A package declares what it may reach; the importer must allow it; the checker enforces both.
 
-- Package `ms.toml`: `[project]` gains `effects = "std.net.* std.fs.read"`, space-separated, same patterns as `// ms: allow_effect`. No key means pure. The declaration is also the default permit for every function in the package, so its files need no `allow_effect` lines; a line can only narrow it.
-- Consumer `ms.toml`: a new `[effects]` table gives, per dependency, what the project allows: `"@pg" = "std.net.*"`. A package whose declared effects are not covered is an error naming the missing effect. A package that adds an effect in a later tag fails the build until the consumer edits the manifest.
+- Package `ms.toml`: `[project]` gains `effects = ["std.net.*", "std.fs.read"]`, a TOML list of the same patterns as `// ms: allow_effect`. No key means pure. The declaration is also the default permit for every function in the package, so its files need no `allow_effect` lines; a line can only narrow it.
+- Consumer `ms.toml`: a new `[effects]` table gives, per dependency, what the project allows: `"@pg" = ["std.net.*"]`. A package whose declared effects are not covered is an error naming the missing effect. A package that adds an effect in a later tag fails the build until the consumer edits the manifest.
 - Enforcement: the checker computes the effects each package function reaches, through its dependencies too, and `ms check` and `ms build` fail when one is outside the package's declaration. A package cannot hand a dependency effects it does not declare itself: the dependency's declaration must be inside the package's, and inside what the package's own `[effects]` allows.
 - `ms fetch` prints each package's declared effects. No build scripts: a package is source only; nothing runs at fetch or build.
 
