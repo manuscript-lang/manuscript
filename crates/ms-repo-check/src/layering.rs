@@ -4,7 +4,7 @@
 //!
 //! ```text
 //! ms-syntax  ->  ms-check  ->  ms-lower  ->  ms-clif / ms-mir-llvm / ms-build
-//!                    \->  ms-driver, ms-tooling  ->  ms-lsp  ->  ms-cli
+//!                    \->  ms-driver  ->  ms-tooling  ->  ms-lsp  ->  ms-cli
 //! ```
 //!
 //! The runtime (`ms-rt-abi`, `ms-rt`, `ms-std-*`, `ms-native`) is a
@@ -39,7 +39,10 @@ const COMPILER_AND_TOOLS: &[(&str, &[&str])] = &[
         &["ms-check", "ms-clif", "ms-lower", "ms-mir", "ms-mir-llvm"],
     ),
     ("ms-driver", &["ms-check", "ms-syntax"]),
-    ("ms-tooling", &["ms-check", "ms-json", "ms-syntax"]),
+    (
+        "ms-tooling",
+        &["ms-check", "ms-driver", "ms-json", "ms-syntax"],
+    ),
     (
         "ms-lsp",
         &[

@@ -10,11 +10,14 @@ use alloc::boxed::Box;
 use alloc::collections::VecDeque;
 use alloc::vec::Vec;
 use core::sync::atomic::{AtomicBool, Ordering};
-use ms_rt_abi::{STATUS_CLOSED, STATUS_LIMIT_EXCEEDED, STATUS_UNSUPPORTED};
+use ms_rt_abi::{STATUS_CLOSED, STATUS_LIMIT_EXCEEDED, STATUS_NONE, STATUS_UNSUPPORTED};
 use std::fs::OpenOptions;
 use std::os::windows::fs::OpenOptionsExt;
 use std::os::windows::io::AsRawHandle;
-use windows_sys::Win32::Foundation::{ERROR_IO_INCOMPLETE, GetLastError};
+use windows_sys::Win32::Foundation::{
+    ERROR_ACCESS_DENIED, ERROR_DELETE_PENDING, ERROR_FILE_NOT_FOUND, ERROR_IO_INCOMPLETE,
+    ERROR_PATH_NOT_FOUND, GetLastError,
+};
 use windows_sys::Win32::Storage::FileSystem::{
     FILE_FLAG_BACKUP_SEMANTICS, FILE_FLAG_OVERLAPPED, FILE_LIST_DIRECTORY,
     FILE_NOTIFY_CHANGE_ATTRIBUTES, FILE_NOTIFY_CHANGE_CREATION, FILE_NOTIFY_CHANGE_DIR_NAME,
@@ -30,8 +33,23 @@ const WATCH: u32 = FILE_NOTIFY_CHANGE_FILE_NAME
     | FILE_NOTIFY_CHANGE_LAST_WRITE
     | FILE_NOTIFY_CHANGE_CREATION;
 
-/// `FILE_ACTION_*` values that mean an entry appeared, vanished or was renamed.
-const RENAMES: [u32; 4] = [1, 2, 4, 5];
+/// `FILE_ACTION_ADDED`, `FILE_ACTION_REMOVED`, `FILE_ACTION_RENAMED_OLD_NAME` and
+/// `FILE_ACTION_RENAMED_NEW_NAME`.
+const ADDED: u32 = 1;
+const REMOVED: u32 = 2;
+const RENAMED_OLD: u32 = 4;
+const RENAMED_NEW: u32 = 5;
+
+/// The actions that mean an entry appeared, vanished or was renamed.
+const RENAMES: [u32; 4] = [ADDED, REMOVED, RENAMED_OLD, RENAMED_NEW];
+
+/// What a pending request fails with once the watched directory is deleted.
+const ROOT_GONE: [u32; 4] = [
+    ERROR_ACCESS_DENIED,
+    ERROR_DELETE_PENDING,
+    ERROR_FILE_NOT_FOUND,
+    ERROR_PATH_NOT_FOUND,
+];
 
 /// The request buffer, in `u32`s so the records inside it are aligned.
 const WORDS: usize = 16 * 1024;
@@ -49,6 +67,8 @@ pub struct Native {
     pending: bool,
     queue: VecDeque<Event>,
     terminal: Option<Fail>,
+    /// The watched file or directory is gone: the stream ends after the queue drains.
+    ended: bool,
 }
 
 impl Native {
@@ -91,6 +111,7 @@ impl Native {
             pending: false,
             queue: VecDeque::new(),
             terminal: None,
+            ended: false,
         };
         n.issue()?;
         Ok(n)
@@ -155,6 +176,10 @@ impl Native {
                 } else {
                     path::join(&self.root, name.as_bytes())
                 };
+                // Watching one file through its parent: its removal or rename ends the stream.
+                if self.only.is_some() && (action == REMOVED || action == RENAMED_OLD) {
+                    self.ended = true;
+                }
                 self.push(Event {
                     path: full,
                     rename: RENAMES.contains(&action),
@@ -175,6 +200,9 @@ impl Native {
             if let Some(e) = self.queue.pop_front() {
                 return Ok(alloc::vec![e]);
             }
+            if self.ended {
+                return Err(Fail::status(STATUS_NONE));
+            }
             poll_cancel()?;
             if closed.load(Ordering::Relaxed) {
                 return Err(Fail::status(STATUS_CLOSED));
@@ -186,11 +214,28 @@ impl Native {
             };
             if done == 0 {
                 // SAFETY: plain query.
-                if unsafe { GetLastError() } == ERROR_IO_INCOMPLETE {
+                let code = unsafe { GetLastError() };
+                if code == ERROR_IO_INCOMPLETE {
                     sleep_slice();
                     continue;
                 }
                 self.pending = false;
+                // A removed directory fails its pending request with one of a few codes: that is
+                // the end, not an error. Any other code is a real failure.
+                if ROOT_GONE.contains(&code) {
+                    // The directory's own removal is not a record in its own change list, so
+                    // report it here before the stream ends.
+                    let gone = self
+                        .only
+                        .as_ref()
+                        .map_or_else(|| self.root.clone(), |n| path::join(&self.root, n));
+                    self.push(Event {
+                        path: gone,
+                        rename: true,
+                    });
+                    self.ended = true;
+                    continue;
+                }
                 return Err(Fail::raw(sys::errno()));
             }
             self.pending = false;

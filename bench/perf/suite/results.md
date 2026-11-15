@@ -1,5 +1,39 @@
 # Suite results
 
+## 2026-11-15, regression check on `71487c98`
+
+Same-machine A/B: release `ms` built from `d4006e73` (2026-11-13 22:42 -0800, the commit of the 2026-11-14 baseline below) and from `71487c98` (main after #3996), both built and run in one session on this 4 vCPU Xeon 2.1 GHz VM, Manuscript column only, min of 5 (process start and I/O included, compile excluded). The 2026-11-14 tables below came from another session, so their absolute times are not compared; the speedups below are within this one session. `pargroup` did not build on `d4006e73` in this harness (it imports `resilience.ms`, renamed from `flow.ms` in #3959), so it has no base time.
+
+| program | `d4006e73` | `71487c98` |
+|---|---:|---:|
+| interp | 190 | 134 |
+| graph | 239 | 234 |
+| objgraph | 256 | 227 |
+| sim | 130 | 146 |
+| dispatch | 249 | 202 |
+| hashing | 138 | 140 |
+| lz | 187 | 159 |
+| exprparse | 644 | 488 |
+| logstats | 67 | 66 |
+| csvgroup | 131 | 134 |
+| wordfreq | 209 | 209 |
+| sortrecords | 289 | 188 |
+| grep | 39 | 36 |
+| treegrep | 116 | 32 |
+| pargroup | - | 21 |
+| jsonsum | 192 | 144 |
+| dedupe | 290 | 253 |
+| report | 194 | 122 |
+| jsonrt | 540 | 535 |
+| regex | 321 | 293 |
+| workers | 55 | 38 |
+| strings | 230 | 143 |
+| concat | 428 | 9 |
+
+No program is slower beyond noise. The two largest apparent slowdowns were checked with callgrind, which does not vary with machine load: `graph` +0.1% instructions (634.4M against 635.2M), `sim` +0.8% (936.9M against 944.5M); 9 alternating wall-clock runs of `sim` overlap (131 to 184 ms against 137 to 210 ms). The gains are not bisected; likely sources from the day's merge titles: `treegrep` -72% (inline file reads for local promises, #3932 and the scheduler changes), `strings` -38% and `report` -37% (string work, #3955, #3956, #3957), `sortrecords` -35%, `concat` -98% (in-place string append). Wait-group promise changes (#3972) account for `workers` -31%, and `interp` -29% and `exprparse` -24% come from the compiler changes of the day (#3910, #3927, #3949).
+
+Instruction counts for the nightly gate (`make perf-counts`, `bench/perf/counts.txt`): interp 2,983.6M, strings 1,757.3M, lz 618.3M, graph 635.2M.
+
 ## 2026-11-14, Go and Node for the text, data and file programs
 
 `81a9844b`, same machine and method (min of 2). The ten programs that moved in from `engineering/` now have Go and Node versions; every output matches the C and Rust output. Go and Node use their standard libraries (`encoding/json`, `JSON.parse`, `strings`, `Map`), so `jsonsum` compares Manuscript's typed parse against their generic parse.
