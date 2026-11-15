@@ -256,63 +256,63 @@ fn String.find_char(predicate: fn(String) Bool) Int?:
 
 // Replaces many patterns in one pass. At each position the first pair, in map
 // order, whose key matches wins and its replacement is not rescanned; empty keys
-// are ignored.
+// are ignored. The scan is over bytes: a valid UTF-8 key matches only at scalar
+// boundaries, and each key's first byte is found by a byte search, so positions
+// that cannot start a match cost nothing in this loop.
 fn String.replace_each(pairs: Map[String, String]) String:
-	var keys = List[String]()
-	var news = List[String]()
-	var leads = List[Int]()
-	var firsts = StringBuilder()
-	values := pairs.values()
-	var at = 0
+	if pairs.is_empty(): return self.clone()
 
-	for key in pairs.keys():
-		if not key.is_empty():
-			lead := key.scalar_at(0)
-			keys.append(key.clone())
-			news.append(values[at].clone())
-			leads.append(lead)
-			firsts.append(key.view(0, scalar_width(lead)))
+	keys := pairs.keys().map(fn key: key.as_bytes())
+	news := pairs.values()
+	bytes := self.as_bytes()
+	n := bytes.length()
+	var nexts = List[Int](reserve: keys.length())
 
-		at += 1
+	// -1 marks a key whose first byte is not located yet; an empty key never is.
+	for key in keys:
+		nexts.append(if key.is_empty(): n else: -1)
 
-	if keys.is_empty(): return self.clone()
-
-	// Only positions that start some key can match, so jump between them.
-	starts := firsts.build()
-	n := self.length()
 	var out = StringBuilder()
 	var copied = 0
-	var from = 0
-	var changed = false
+	var i = 0
+	count := keys.length()
 
-	while from < n:
-		found := self.view(from, n).index_any(starts)
-		if found.is_none(): break
+	while i < n:
+		var at = n
+		var first = 0
 
-		here := from + found.get()
-		lead := self.scalar_at(here)
+		for j in 0..count:
+			if nexts[j] < i:
+				nexts[j] = bytes.index_of_byte(keys[j].get(0), i).get(n)
+
+			if nexts[j] < at:
+				at = nexts[j]
+				first = j
+
+		if at >= n: break
+
+		i = at
+
+		// The earliest key in map order whose first byte is here goes first.
 		var hit = -1
 
-		for j in 0..keys.length():
-			if leads[j] != lead: continue
+		for j in first..count:
+			if nexts[j] != i: continue
 
-			end := here + keys[j].length()
+			end := i + keys[j].length()
 
-			if end <= n and self.view(here, end) == keys[j]:
+			if end <= n and bytes.view(i, end) == keys[j]:
 				hit = j
 				break
 
 		if hit < 0:
-			from = here + scalar_width(lead)
+			i += 1
 			continue
 
-		out.append(self.view(copied, here))
+		out.append(self.view(copied, i))
 		out.append(news[hit])
-		copied = here + keys[hit].length()
-		from = copied
-		changed = true
-
-	if not changed: return self.clone()
+		i += keys[hit].length()
+		copied = i
 
 	out.append(self.view(copied, n))
 	return out.build()
