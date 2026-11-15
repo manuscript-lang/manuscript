@@ -112,6 +112,40 @@ fn inlining_is_idempotent() {
 }
 
 #[test]
+fn all_fixtures_behave_the_same_after_the_unoptimized_pipeline() {
+    for (path, src) in fixture_sources() {
+        let before = module(&src);
+        let mut after = module(&src);
+        opt::optimize(&mut after, Level::None, true);
+        assert_eq!(outcome(&before), outcome(&after), "{path}");
+    }
+}
+
+#[test]
+fn unoptimized_builds_inline_only_small_callees() {
+    let mut m = module(include_str!("fixtures-opt/simple.mir"));
+    assert!(opt::inline::run_small(&mut m));
+    verify_module(&m).unwrap_or_else(|e| panic!("{e:?}\n{}", print_module(&m)));
+    assert_eq!(calls_to(&m, "add1"), 0);
+    assert_eq!(outcome(&m), (Ok(43), "42\n".to_string()));
+    for f in &m.funcs {
+        let size = opt::instruction_count(f);
+        let called = m.funcs.iter().any(|g| {
+            g.blocks.iter().flat_map(|b| b.insts.iter()).any(|i| {
+                i.op == Op::Call
+                    && m.func_by_name(&f.name)
+                        .is_some_and(|id| i.imm == Imm::Func(id))
+            })
+        });
+        assert!(
+            !called || size > opt::inline::DEBUG_THRESHOLD || f.name == "main",
+            "{} ({size} instructions) is still called",
+            f.name
+        );
+    }
+}
+
+#[test]
 fn simple_calls_are_inlined_and_callees_removed() {
     let m = inlined(include_str!("fixtures-opt/simple.mir"));
     assert_eq!(calls_to(&m, "add1"), 0);
