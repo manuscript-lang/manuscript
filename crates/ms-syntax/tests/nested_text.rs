@@ -85,7 +85,7 @@ fn nested_interpolation_errors_keep_their_original_positions_and_hints() {
         assert_eq!(error.end.unwrap().offset, 13);
         assert_eq!(
             error.message,
-            "expected an expression, found end of line; write a value, name, call, or literal here ('{' at column 9 starts an interpolation; write \\{ and \\} for literal braces) ('{' at column 7 starts an interpolation; write \\{ and \\} for literal braces)"
+            "expected an expression, found end of line; write a value, name, call, or literal here ('{' at column 9 starts an interpolation; for literal braces write the text raw, r\"...\", or escape them as \\{ and \\} when the text also interpolates) ('{' at column 7 starts an interpolation; for literal braces write the text raw, r\"...\", or escape them as \\{ and \\} when the text also interpolates)"
         );
     }
     let error = ms_syntax::parser::parse(&file, "x := \"{1)}\"\n").unwrap_err();

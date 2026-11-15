@@ -8,6 +8,7 @@ use crate::project::overlay::Overlay;
 use crate::project::pathops;
 use crate::project::paths::source_path;
 use crate::project::quoting;
+use crate::project::semver::{Requirement, Version};
 
 /// The longest manifest line `bufio.Scanner` accepts (`MaxScanTokenSize - 1`).
 const MAX_LINE: usize = 65535;
@@ -30,8 +31,10 @@ pub struct Project {
     pub aliases: BTreeMap<String, String>,
     /// `[embed]` names mapped to canonical directories whose files are baked into the program.
     pub embed: BTreeMap<String, String>,
-    /// `[dependencies]`: package names mapped to `url#tag`.
-    pub dependencies: BTreeMap<String, String>,
+    /// `[dependencies]`: package names mapped to where each comes from.
+    pub dependencies: BTreeMap<String, Dependency>,
+    /// `[project] version`: the version a package declares, if it does.
+    pub version: Option<Version>,
     /// `[effects]`: for each dependency, the effects this project allows it.
     pub allowed_effects: BTreeMap<String, Vec<String>>,
     /// `[project] effects`: the effects this project, as a package, may use.
@@ -232,9 +235,9 @@ fn read_into(filename: &str, p: &mut Project) -> Result<(), ProjectError> {
                 }
                 "dependencies" => {
                     check_package_name(&fail, &key, &key_location)?;
-                    let spec = dependency(value)
+                    let found = dependency(value)
                         .map_err(|e| fail.at(&location, format!("dependency {key}: {e}")))?;
-                    p.dependencies.insert(key, spec);
+                    p.dependencies.insert(key, found);
                 }
                 "project" if key == "effects" => {
                     p.effects = string_list(value)
@@ -247,10 +250,16 @@ fn read_into(filename: &str, p: &mut Project) -> Result<(), ProjectError> {
                             "name" => p.name = value,
                             "source" => p.source = value,
                             "entry" => p.entry = value,
+                            "version" => {
+                                p.version =
+                                    Some(Version::parse(&value).map_err(|e| {
+                                        fail.at(&location, format!("version: {e}"))
+                                    })?);
+                            }
                             _ => {
                                 return Err(fail.at(
                                     &key_location,
-                                    format!("unknown project key {key}; [project] accepts name, source, entry, and effects"),
+                                    format!("unknown project key {key}; [project] accepts name, source, entry, version, and effects"),
                                 ));
                             }
                         },
@@ -484,14 +493,47 @@ fn check_package_name(fail: &Failure, key: &str, at: &Location) -> Result<(), Pr
     ))
 }
 
-/// A dependency is a table, `{ url = "https://...", tag = "v1" }` or `{ url = "...", sha = "<40 hex>" }`.
-/// Returns the `url#reference` form the lock file records.
-fn dependency(item: &toml_edit::Item) -> Result<String, String> {
-    let shape = "write { url = \"https://github.com/acme/pg.git\", tag = \"v1.0.0\" }, or sha = \"<40-digit commit>\" in place of tag";
+/// Where a dependency comes from: a tag, a commit, or a semver requirement on the repository's tags.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Source {
+    Tag(String),
+    Sha(String),
+    Version(Requirement),
+}
+
+/// One entry of `[dependencies]`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Dependency {
+    pub url: String,
+    pub source: Source,
+}
+
+impl Dependency {
+    /// The `url#reference` a lock line records for a tag or a commit; a requirement has none
+    /// until it is resolved to a tag.
+    pub fn spec(&self) -> Option<String> {
+        match &self.source {
+            Source::Tag(r) | Source::Sha(r) => Some(format!("{}#{r}", self.url)),
+            Source::Version(_) => None,
+        }
+    }
+
+    /// The source as a person would write it: `v1.0.0`, a commit, or `^1.2`.
+    pub fn describe(&self) -> String {
+        match &self.source {
+            Source::Tag(r) | Source::Sha(r) => r.clone(),
+            Source::Version(r) => r.to_string(),
+        }
+    }
+}
+
+/// A dependency is a table with `url` and exactly one of `tag`, `sha` and `version`.
+fn dependency(item: &toml_edit::Item) -> Result<Dependency, String> {
+    let shape = "write { url = \"https://github.com/acme/pg.git\", version = \"1.0\" }, or tag = \"v1.0.0\" or sha = \"<40-digit commit>\" in place of version";
     let table = item
         .as_table_like()
         .ok_or_else(|| format!("a dependency is a table; {shape}"))?;
-    let (mut url, mut tag, mut sha) = (None, None, None);
+    let (mut url, mut tag, mut sha, mut version) = (None, None, None, None);
     for (field, value) in table.iter() {
         let text = value
             .as_str()
@@ -500,25 +542,37 @@ fn dependency(item: &toml_edit::Item) -> Result<String, String> {
             "url" => url = Some(text),
             "tag" => tag = Some(text),
             "sha" => sha = Some(text),
+            "version" => version = Some(text),
             _ => {
                 return Err(format!(
-                    "unknown field {field}; a dependency has url and one of tag or sha"
+                    "unknown field {field}; a dependency has url and one of version, tag or sha"
                 ));
             }
         }
     }
     let url = url.ok_or_else(|| format!("url is missing; {shape}"))?;
-    let reference = match (tag, sha) {
-        (Some(tag), None) => tag,
-        (None, Some(sha)) => {
+    let source = match (version, tag, sha) {
+        (Some(version), None, None) => Source::Version(Requirement::parse(version)?),
+        (None, Some(tag), None) => Source::Tag(tag.to_string()),
+        (None, None, Some(sha)) => {
             if !crate::project::packages::is_hex(sha, 40) {
                 return Err("sha must be the full 40-digit lowercase commit".to_string());
             }
-            sha
+            Source::Sha(sha.to_string())
         }
-        _ => return Err(format!("name exactly one of tag and sha; {shape}")),
+        _ => {
+            return Err(format!("name exactly one of version, tag and sha; {shape}"));
+        }
     };
-    let spec = format!("{url}#{reference}");
-    crate::project::packages::check_spec(&spec)?;
-    Ok(spec)
+    let found = Dependency {
+        url: url.to_string(),
+        source,
+    };
+    // A requirement has no tag to check yet; a url is checked the same way as a pinned spec.
+    let reference = match &found.source {
+        Source::Tag(r) | Source::Sha(r) => r.clone(),
+        Source::Version(_) => "v0.0.0".to_string(),
+    };
+    crate::project::packages::check_spec(&format!("{url}#{reference}"))?;
+    Ok(found)
 }

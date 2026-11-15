@@ -1,1 +1,1 @@
-error parse 2:5:19 "only a call, a call followed by '?', or match can be a standalone expression statement; use 'name := ...' to keep the value, 'return' to return it, or call a function"
+error parse 2:5:19 "'let' was removed; bind with 'x := value' (or 'x: Type := value'), destructure with '[a, b] := value', and use 'var x = value' for a mutable binding"

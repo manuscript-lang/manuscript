@@ -89,7 +89,6 @@ fn skill_help_and_bad_options_do_not_install() {
         vec!["skill", "-o", "--bad"],
         vec!["skill", "--unknown"],
         vec!["skill", "directory"],
-        vec!["skill", "-o", "one", "--output", "two"],
     ] {
         assert_eq!(ms(&dir, &args).status.code(), Some(2), "{args:?}");
     }
@@ -180,4 +179,27 @@ fn guide_command_is_removed_and_explain_retains_diagnostic_lookup() {
     assert_eq!(ms(&dir, &["explain", "--json"]).status.code(), Some(2));
     assert_eq!(ms(&dir, &["explain", "MS9999"]).status.code(), Some(1));
     let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn skill_installs_in_every_repeated_output_folder() {
+    let dir = directory("repeat");
+    let out = ms(
+        &dir,
+        &["skill", "-o", ".claude/skills", "-o", ".agents/skills"],
+    );
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    for parent in [".claude/skills", ".agents/skills"] {
+        for (name, text) in ms_tooling::guide::skill::FILES {
+            assert_eq!(
+                std::fs::read_to_string(dir.join(parent).join("manuscript").join(name)).unwrap(),
+                text.replace("{{MS_VERSION}}", ms_cli::VERSION),
+                "{parent}/{name}"
+            );
+        }
+    }
 }

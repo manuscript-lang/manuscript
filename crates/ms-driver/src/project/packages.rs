@@ -7,8 +7,9 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
 use crate::project::error::ProjectError;
-use crate::project::manifest::Project;
+use crate::project::manifest::{Dependency, Project, Source};
 use crate::project::pathops;
+use crate::project::resolve::{copy_id, entry_version, repo_key};
 use crate::sha256;
 
 /// The most nested packages one project may pull in a chain.
@@ -19,7 +20,7 @@ const MAX_BYTES: u64 = 64 << 20;
 /// A fetched package a project can import from.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Package {
-    /// The path from the project in the lock file, such as `@pg` or `@pg/@wire`.
+    /// The name diagnostics use for the copy: `@` and its id, such as `@github.com/acme/wire@v1.4.2`.
     pub key: String,
     /// The manifest value the lock pinned, `url#tag`.
     pub spec: String,
@@ -128,7 +129,7 @@ pub fn read_lock(root: &str) -> Result<BTreeMap<String, LockEntry>, ProjectError
         };
         let (key, value) = line.split_once('=').ok_or_else(bad)?;
         let key = key.trim().trim_matches('"');
-        if key.is_empty() || !key.split('/').all(crate::project::manifest::valid_alias) {
+        if key.is_empty() || key.chars().any(|c| c.is_whitespace() || c.is_control()) {
             return Err(bad());
         }
         let value = value.trim().trim_matches('"');
@@ -145,6 +146,12 @@ pub fn read_lock(root: &str) -> Result<BTreeMap<String, LockEntry>, ProjectError
         }
         check_spec(spec)
             .map_err(|why| ProjectError::msg(format!("ms.lock line {}: {why}", index + 1)))?;
+        if crate::project::resolve::id_of_spec(spec).as_deref() != Some(key) {
+            return Err(ProjectError::msg(format!(
+                "ms.lock line {} is keyed {key}, but its source is {spec}; run ms install to rewrite it",
+                index + 1
+            )));
+        }
         entries.insert(
             key.to_string(),
             LockEntry {
@@ -283,7 +290,8 @@ pub fn uncovered<'a>(allowed: &[String], declared: &'a [String]) -> Option<&'a s
         .map(String::as_str)
 }
 
-/// Resolve every dependency of `project` through its lock and the cache, recursively.
+/// Resolve every dependency of `project` through its lock and the cache, recursively. Each
+/// copy of a repository is loaded once, however many names reach it.
 pub fn attach(project: &mut Project) -> Result<(), ProjectError> {
     attach_in(project, &cache_dir())
 }
@@ -302,103 +310,144 @@ fn attach_in(project: &mut Project, cache: &Path) -> Result<(), ProjectError> {
         }
     }
     let lock = read_lock(&project.root)?;
-    let mut packages = Vec::new();
-    resolve(project, "", &lock, cache, &mut packages, &mut Vec::new())?;
-    project.packages = packages;
+    let mut loaded = BTreeMap::new();
+    wire(project, "", &lock, cache, &mut loaded, &mut Vec::new())?;
+    project.packages = loaded.into_values().collect();
     Ok(())
 }
 
-fn resolve(
+/// The lock entry a dependency of `asker` names: the copy of its repository with that pin, or
+/// the one whose compatibility range holds the requirement.
+fn locked<'a>(
+    alias: &str,
+    dep: &Dependency,
+    lock: &'a BTreeMap<String, LockEntry>,
+) -> Result<(&'a String, &'a LockEntry), ProjectError> {
+    let repo = repo_key(&dep.url);
+    let found = match &dep.source {
+        Source::Tag(r) | Source::Sha(r) => lock.get_key_value(&copy_id(&dep.url, r)),
+        Source::Version(req) => lock.iter().find(|(id, entry)| {
+            id.starts_with(&format!("{repo}@"))
+                && entry_version(entry)
+                    .is_some_and(|v| v.bucket() == req.bucket() && req.matches(&v))
+        }),
+    };
+    found.ok_or_else(|| {
+        ProjectError::msg(format!(
+            "ms.lock has no copy of {repo} for {alias} = {}; run `ms install` to resolve and pin it",
+            dep.describe()
+        ))
+    })
+}
+
+fn wire(
     scope: &mut Project,
-    prefix: &str,
+    asker: &str,
     lock: &BTreeMap<String, LockEntry>,
     cache: &Path,
-    packages: &mut Vec<Package>,
+    loaded: &mut BTreeMap<String, Package>,
     chain: &mut Vec<String>,
 ) -> Result<(), ProjectError> {
     if chain.len() >= MAX_DEPTH {
         return Err(ProjectError::msg(format!(
-            "packages nest more than {MAX_DEPTH} deep at {prefix}"
+            "packages nest more than {MAX_DEPTH} deep at {asker}"
         )));
     }
-    let dependencies = scope.dependencies.clone();
-    for (alias, spec) in dependencies {
-        let key = format!("{prefix}{alias}");
-        let entry = lock.get(&key).filter(|e| e.spec == spec).ok_or_else(|| {
-            ProjectError::msg(format!(
-                "ms.lock has no entry for {key} = {spec:?}; run `ms install` to resolve and pin it"
-            ))
-        })?;
-        let directory = cache.join(&entry.sha256);
-        if !directory.is_dir() {
-            return Err(ProjectError::msg(format!(
-                "package {key} ({}) is not in the cache {}; run `ms install` to download it",
-                entry.spec,
-                directory.display()
-            )));
+    for (alias, dep) in scope.dependencies.clone() {
+        let (id, entry) = locked(&alias, &dep, lock)?;
+        if chain.contains(id) {
+            return Err(ProjectError::msg(format!("package {id} depends on itself")));
         }
-        let files = read_index(cache, &directory, &entry.sha256, &key)?;
-        let root = pathops::eval_symlinks(&directory.to_string_lossy())?;
-        let manifest = pathops::join(&[&root, "ms.toml"]);
-        let manifest_text =
-            std::fs::read(&manifest).map_err(|e| ProjectError::path("open", &manifest, &e))?;
-        let package_check = Package {
-            key: key.clone(),
-            root: root.clone(),
-            files: files.clone(),
-            ..Package::default()
-        };
-        verify_file(&package_check, "ms.toml", &manifest_text)?;
-        let mut package = Project::default();
-        crate::project::manifest::read_manifest(&manifest, &mut package)
-            .map_err(|e| ProjectError::msg(format!("package {key}: {e}")))?;
-        if !package.embed.is_empty() {
-            return Err(ProjectError::msg(format!(
-                "package {key} declares [embed]; a package holds source only"
-            )));
+        if !loaded.contains_key(id) {
+            let package = load_copy(id, entry, cache, lock, loaded, chain)?;
+            loaded.insert(id.clone(), package);
         }
+        let package = &loaded[id];
         if let Some(missing) = uncovered(
             scope
                 .allowed_effects
                 .get(&alias)
                 .map_or(&[][..], Vec::as_slice),
-            &package.effects,
+            &package.project.effects,
         ) {
-            return Err(ProjectError::msg(format!(
-                "package {key} may use {missing}, which this project does not allow; add `{alias} = [\"{missing}\"]` under [effects] in ms.toml if you trust it"
-            )));
+            return Err(ProjectError::msg(if asker.is_empty() {
+                format!(
+                    "package {id} may use {missing}, which this project does not allow; add `{alias} = [\"{missing}\"]` under [effects] in ms.toml if you trust it"
+                )
+            } else {
+                format!(
+                    "package {id} may use {missing}, which {asker} does not allow for {alias}; {asker} would have to allow it under [effects], so ask its author, or require a version of {id} that does not use {missing}"
+                )
+            }));
         }
-        if !prefix.is_empty()
-            && let Some(missing) = uncovered(&scope.effects, &package.effects)
+        if !asker.is_empty()
+            && let Some(missing) = uncovered(&scope.effects, &package.project.effects)
         {
             return Err(ProjectError::msg(format!(
-                "package {key} may use {missing}, but {} declares only {:?}; a package cannot hand a dependency effects it does not have itself",
-                prefix.trim_end_matches('/'),
+                "package {id} may use {missing}, but {asker} declares only {:?}; a package cannot hand a dependency effects it does not have itself",
                 scope.effects
             )));
         }
-        scope.deps.insert(alias.clone(), package.source.clone());
-        let sub = format!("{key}/");
-        let nested = package.dependencies.clone();
-        chain.push(entry.sha256.clone());
-        if !nested.is_empty() {
-            if chain[..chain.len() - 1].contains(&entry.sha256) {
-                return Err(ProjectError::msg(format!(
-                    "package {key} depends on itself"
-                )));
-            }
-            resolve(&mut package, &sub, lock, cache, packages, chain)?;
-        }
-        chain.pop();
-        packages.push(Package {
-            key,
-            spec: entry.spec.clone(),
-            root,
-            project: package,
-            files,
-        });
+        scope
+            .deps
+            .insert(alias.clone(), package.project.source.clone());
     }
     Ok(())
+}
+
+/// Read and check one locked copy, and wire its own dependencies.
+fn load_copy(
+    id: &str,
+    entry: &LockEntry,
+    cache: &Path,
+    lock: &BTreeMap<String, LockEntry>,
+    loaded: &mut BTreeMap<String, Package>,
+    chain: &mut Vec<String>,
+) -> Result<Package, ProjectError> {
+    let key = format!("@{id}");
+    let directory = cache.join(&entry.sha256);
+    if !directory.is_dir() {
+        return Err(ProjectError::msg(format!(
+            "package {id} ({}) is not in the cache {}; run `ms install` to download it",
+            entry.spec,
+            directory.display()
+        )));
+    }
+    let files = read_index(cache, &directory, &entry.sha256, id)?;
+    let root = pathops::eval_symlinks(&directory.to_string_lossy())?;
+    let manifest = pathops::join(&[&root, "ms.toml"]);
+    let manifest_text =
+        std::fs::read(&manifest).map_err(|e| ProjectError::path("open", &manifest, &e))?;
+    let check = Package {
+        key: key.clone(),
+        root: root.clone(),
+        files: files.clone(),
+        ..Package::default()
+    };
+    verify_file(&check, "ms.toml", &manifest_text)?;
+    let mut package = Project::default();
+    crate::project::manifest::read_manifest(&manifest, &mut package)
+        .map_err(|e| ProjectError::msg(format!("package {id}: {e}")))?;
+    if !package.embed.is_empty() {
+        return Err(ProjectError::msg(format!(
+            "package {id} declares [embed]; a package holds source only"
+        )));
+    }
+    if let Some((url, reference)) = entry.spec.split_once('#') {
+        crate::project::resolve::check_version_agrees("package", url, reference, &package)
+            .map_err(ProjectError::msg)?;
+    }
+    chain.push(id.to_string());
+    let wired = wire(&mut package, id, lock, cache, loaded, chain);
+    chain.pop();
+    wired?;
+    Ok(Package {
+        key,
+        spec: entry.spec.clone(),
+        root,
+        project: package,
+        files,
+    })
 }
 
 /// Reads the stored index and checks it is the one the lock names, then checks the manifest.
@@ -438,16 +487,19 @@ mod tests {
 
     #[test]
     fn a_calendar_version_tag_round_trips_through_the_lock() {
-        let text = format!("\"@pg\" = \"https://h/x.git#v2026.11.0 {COMMIT} sha256:{HASH}\"\n");
+        let text =
+            format!("\"h/x@v2026.11.0\" = \"https://h/x.git#v2026.11.0 {COMMIT} sha256:{HASH}\"\n");
         let entries = lock(&text).expect("lock");
-        assert_eq!(entries["@pg"].spec, "https://h/x.git#v2026.11.0");
+        assert_eq!(entries["h/x@v2026.11.0"].spec, "https://h/x.git#v2026.11.0");
         assert!(lock_text(&entries).ends_with(&text));
     }
 
     #[test]
     fn a_well_formed_lock_line_is_read() {
-        let text = format!("\"@pg/@wire\" = \"https://h/x.git#v1 {COMMIT} sha256:{HASH}\"\n");
-        assert_eq!(lock(&text).unwrap()["@pg/@wire"].revision, COMMIT);
+        let text = format!("\"h/x@v1\" = \"https://h/x.git#v1 {COMMIT} sha256:{HASH}\"\n");
+        assert_eq!(lock(&text).unwrap()["h/x@v1"].revision, COMMIT);
+        let wrong = format!("\"h/y@v1\" = \"https://h/x.git#v1 {COMMIT} sha256:{HASH}\"\n");
+        assert!(lock(&wrong).unwrap_err().to_string().contains("keyed"));
     }
 
     #[test]
@@ -475,7 +527,7 @@ mod tests {
     }
 
     /// Stores a package with `manifest` and returns its lock entry.
-    fn stored(cache: &Path, manifest: &str) -> LockEntry {
+    fn stored(cache: &Path, manifest: &str, spec: &str) -> LockEntry {
         let scratch = cache.join("scratch");
         let _ = std::fs::remove_dir_all(&scratch);
         std::fs::create_dir_all(scratch.join("src")).unwrap();
@@ -485,7 +537,7 @@ mod tests {
         std::fs::write(index_path(cache, &sha256), index).unwrap();
         std::fs::rename(&scratch, cache.join(&sha256)).unwrap();
         LockEntry {
-            spec: "https://h/x.git#v1".into(),
+            spec: spec.into(),
             revision: COMMIT.into(),
             sha256,
         }
@@ -499,19 +551,23 @@ mod tests {
         std::fs::create_dir_all(&cache).unwrap();
         std::fs::create_dir_all(project_dir.join("src")).unwrap();
         let header = "[project]\nname = \"p\"\nsource = \"src\"\n";
-        let inner = stored(&cache, &format!("{header}effects = [\"std.net.*\"]\n"));
-        let outer_manifest = format!(
-            "{header}\n[dependencies]\n\"@inner\" = {{ url = \"https://h/x.git\", tag = \"v1\" }}\n\n[effects]\n\"@inner\" = [\"std.net.*\"]\n"
+        let inner = stored(
+            &cache,
+            &format!("{header}effects = [\"std.net.*\"]\n"),
+            "https://h/inner.git#v1",
         );
-        let outer = stored(&cache, &outer_manifest);
+        let outer_manifest = format!(
+            "{header}\n[dependencies]\n\"@inner\" = {{ url = \"https://h/inner.git\", tag = \"v1\" }}\n\n[effects]\n\"@inner\" = [\"std.net.*\"]\n"
+        );
+        let outer = stored(&cache, &outer_manifest, "https://h/outer.git#v1");
         let lock = BTreeMap::from([
-            ("@outer".to_string(), outer),
-            ("@outer/@inner".to_string(), inner),
+            ("h/outer@v1".to_string(), outer),
+            ("h/inner@v1".to_string(), inner),
         ]);
         std::fs::write(project_dir.join("ms.lock"), lock_text(&lock)).unwrap();
         std::fs::write(
             project_dir.join("ms.toml"),
-            "[project]\nname = \"a\"\nsource = \"src\"\n\n[dependencies]\n\"@outer\" = { url = \"https://h/x.git\", tag = \"v1\" }\n\n[effects]\n\"@outer\" = [\"std.net.*\"]\n",
+            "[project]\nname = \"a\"\nsource = \"src\"\n\n[dependencies]\n\"@outer\" = { url = \"https://h/outer.git\", tag = \"v1\" }\n\n[effects]\n\"@outer\" = [\"std.net.*\"]\n",
         )
         .unwrap();
         let mut project = Project::default();

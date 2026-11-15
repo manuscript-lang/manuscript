@@ -55,8 +55,8 @@ jobs:
           ms="$PWD/target/release/ms"
           export MS_PACKAGE_CACHE="$RUNNER_TEMP/packages"
           cd examples/postgres-service
-          # With ms.lock committed, fetch downloads exactly the locked commit and checks its hash.
-          "$ms" fetch
+          # With ms.lock committed, install downloads exactly the locked commit and checks its hash.
+          "$ms" install
           # The package ships the script that starts a throwaway server.
           hash=$(sed -n 's/.*sha256:\([0-9a-f]*\).*/\1/p' ms.lock | head -1)
           vars=$(bash "$MS_PACKAGE_CACHE/$hash/tests/start-postgres.sh" "$RUNNER_TEMP/pg")

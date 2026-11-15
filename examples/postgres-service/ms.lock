@@ -1,2 +1,2 @@
 # Written by `ms install`. Commit it: it pins each package to a commit and a content hash.
-"@pg" = "https://github.com/manuscript-lang/ms-pg.git#709e53aff56bc116a9744b8247177e68b0249224 709e53aff56bc116a9744b8247177e68b0249224 sha256:b25718efead6068b951eb9e9501c1c702e9c8690aa6a6344e4db56c1c0e94075"
+"github.com/manuscript-lang/ms-pg@0a92a0239bb7cdfc6207b6a8be0c8d7d09f60195" = "https://github.com/manuscript-lang/ms-pg.git#0a92a0239bb7cdfc6207b6a8be0c8d7d09f60195 0a92a0239bb7cdfc6207b6a8be0c8d7d09f60195 sha256:c3a6d8eead85947713e8b6bb1dcc251a251fe59caf2b0f90f8ae202b92baeb99"

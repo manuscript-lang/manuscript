@@ -96,7 +96,7 @@ struct Scanner<'a> {
 
 const BIDI_COMMENT: &str = "bidirectional text controls (U+202A..U+202E, U+2066..U+2069) are not allowed in comments because they can make source display differently from how it is read; remove the character";
 const BIDI_TEXT: &str = "bidirectional text controls (U+202A..U+202E, U+2066..U+2069) are not allowed in text because they can make source display differently from how it is read; write the escape instead, e.g. \\u{202E}";
-const BRACE_HINT: &str = "'{' starts an interpolation; write \\{ and \\} for literal braces";
+pub(crate) const BRACE_HINT: &str = "'{' starts an interpolation; for literal braces write the text raw, r\"...\", or escape them as \\{ and \\} when the text also interpolates";
 const MAX_INTERPOLATION_DEPTH: usize = 1000;
 
 /// Lexes `source`. `source` must be valid UTF-8 (use [`lex_bytes`] otherwise).
@@ -1176,7 +1176,7 @@ impl Scanner<'_> {
             } else if b == b'{' {
                 self.scan_interpolation()?;
             } else if b == b'}' {
-                return self.fail("an unmatched closing brace must be escaped; write \\} for a literal brace (and \\{ for the opening brace), or open an interpolation with {expression}");
+                return self.fail("an unmatched closing brace; for literal braces write the text raw, r\"...\", or escape them as \\{ and \\} when the text also interpolates; or open an interpolation with {expression}");
             }
         }
         self.fail_at(
@@ -1268,7 +1268,7 @@ impl Scanner<'_> {
             } else if b == b'{' {
                 self.scan_interpolation()?;
             } else if b == b'}' {
-                return self.fail("an unmatched closing brace must be escaped; write \\} for a literal brace (and \\{ for the opening brace), or open an interpolation with {expression}");
+                return self.fail("an unmatched closing brace; for literal braces write the text raw, r\"...\", or escape them as \\{ and \\} when the text also interpolates; or open an interpolation with {expression}");
             }
         }
         self.fail_at(
@@ -1367,15 +1367,13 @@ impl Scanner<'_> {
                 return self.fail_at(open, format!("newlines and comments are not allowed inside interpolation; keep the expression on one line, or bind it to a name first and interpolate the name ({})", BRACE_HINT));
             }
             if b == b'\\' {
-                let mut d = self.err(
+                return self.fail_at(
                     open,
                     format!(
-                        "{}; a backslash cannot appear in the interpolated expression",
+                        "a backslash cannot appear in the interpolated expression ({})",
                         BRACE_HINT
                     ),
                 );
-                d.fix = self.literal_braces_fix(open, start);
-                return Err(d);
             }
             if b == b'"' {
                 self.scan_string()?;
@@ -1414,65 +1412,6 @@ impl Scanner<'_> {
                 BRACE_HINT
             ),
         )
-    }
-
-    /// Rewrites `{ ... }` holding a backslash: `\"` inside an expression
-    /// becomes `"`, and JSON-like content becomes literal braces, escaping the
-    /// braces inside and around it. None when the matching `}` is not
-    /// found before the end of the line or the closing quote.
-    fn literal_braces_fix(&self, open: Pos, body: usize) -> Option<DiagnosticFix> {
-        let bytes = self.src;
-        let mut at = body;
-        let mut depth = 1;
-        while at < bytes.len() {
-            match bytes[at] {
-                b'\\' => at += 1,
-                b'"' | b'\n' | b'\r' => return None,
-                b'{' => depth += 1,
-                b'}' => {
-                    depth -= 1;
-                    if depth == 0 {
-                        break;
-                    }
-                }
-                _ => {}
-            }
-            at += 1;
-        }
-        if at >= bytes.len() {
-            return None;
-        }
-        let inner = self.text.get(body..at)?;
-        if !inner.trim_start().starts_with(['"', '\\']) {
-            // `{xs.join(\", \")}`: a quote cannot be escaped inside an
-            // expression, so `\"` means `"`. Any other backslash is a typo.
-            let escaped_quotes = inner.matches("\\\"").count();
-            if escaped_quotes == 0 || inner.matches('\\').count() != escaped_quotes {
-                return None;
-            }
-            let len = inner.len() as u32;
-            let mut start = open;
-            start.offset += 1;
-            start.column += 1;
-            let mut end = start;
-            end.offset += len;
-            end.column += len;
-            return Some(DiagnosticFix {
-                pos: start,
-                end,
-                replacement: inner.replace("\\\"", "\""),
-            });
-        }
-        let escaped = inner.replace('{', "\\{").replace('}', "\\}");
-        let len = (at + 1 - body + 1) as u32;
-        let mut end = open;
-        end.offset += len;
-        end.column += len;
-        Some(DiagnosticFix {
-            pos: open,
-            end,
-            replacement: format!("\\{{{escaped}\\}}"),
-        })
     }
 
     /// A block header on the previous line that lacks its closing ':' when an

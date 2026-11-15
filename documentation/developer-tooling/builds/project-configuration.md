@@ -112,17 +112,30 @@ Share library code as a [package](#packages).
 
 ## Packages
 
-A package is a library project in a git repository. Name it under `[dependencies]` with a table holding the repository `url` and either a `tag` or a full `sha`. The name is written like an alias.
+A package is a library project in a git repository. Name it under `[dependencies]` with a table holding the repository `url` and exactly one of `version`, `tag` and `sha`. The name is written like an alias.
 
 ```toml
 [dependencies]
-"@pg" = { url = "https://github.com/manuscript-lang/ms-pg.git", sha = "<40-character commit>" }
+"@pg" = { url = "https://github.com/manuscript-lang/ms-pg.git", version = "1.2" }
 
 [effects]
 "@pg" = ["std.net.*", "std.clock.read", "std.random.read"]
 ```
 
-`ms add <url> --tag <tag>` (or `--sha <commit>`) writes the dependency into `ms.toml` and installs it; `ms remove @name` takes it out again. `ms install` downloads what `ms.toml` names. Installing downloads each package with `git`, records the commit and a content hash in `ms.lock`, and prints what each package may reach. Commit `ms.lock`.
+- `version` is a semver requirement on the repository's tags, as in Cargo: `1.2` and `^1.2` mean at least 1.2.0 and below 2.0.0; `~1.2.3` means 1.2.3 up to 1.3.0; `=1.2.3` means that version. For `0.x` the minor is the boundary (`^0.4.1` stays below 0.5.0) and `^0.0.3` is that one version. `0` and `0.0` alone are rejected because they span incompatible releases, and `>=`, `<` and comma ranges are not supported. A tag names a version with or without a leading `v`. A pre-release is chosen only when the requirement names one.
+- `tag` is exactly that tag and `sha` is exactly that 40-digit commit. A repository is either pinned or required by version across the whole dependency graph, not both.
+
+`ms add <url> --version 1.2` (or `--tag <tag>`, or `--sha <commit>`) writes the dependency into `ms.toml` and installs it; `ms remove @name` takes it out again. `ms install` resolves everything `ms.toml` names, downloads each package with `git`, records the commit and a content hash in `ms.lock`, and prints what each package may reach. Commit `ms.lock`.
+
+### Package version
+
+`[project]` takes an optional `version = "1.2.3"`: three numbers and an optional `-pre` suffix, no leading `v`. A calendar version such as `2026.11.0` is a valid version and is read as semver, with the year as the major. An application leaves it out. A package that is used as a dependency declares it. The tag is what selects a release; the manifest `version` is a check. At a tagged commit it must be the same version as the tag, or the build fails and the error says to ask the author to fix the tag or to require an earlier version. A tag that does not look like a version cannot be chosen by `version`, and a pinned one is not checked.
+
+### Resolution
+
+Packages can depend on packages. The resolver follows Cargo: it reads the requirements of the project and of every package it picks, and builds one copy of each repository for each compatible range. Two packages that ask for `^1.2` and `^1.4` of one repository share one copy, the highest tag that satisfies both. A requirement on the next major (`^2`) is another copy, and `0.4.x` and `0.5.x` are separate copies. The types of two copies are different, and the checker names both versions when they meet. If no tag satisfies the requirements in a range, `ms install` names the packages that asked.
+
+`ms.lock` has one line per copy, keyed by the repository and version, such as `github.com/acme/wire@v1.4.2`. A lock that still satisfies the requirements is kept, so a new upstream tag changes nothing until `ms install --update @name`. A resolved copy that declares more effects than a package allows is an error on every build, and the message names the package and the effect.
 
 ```manuscript
 import Config, open from "@pg/conn.ms"
@@ -130,10 +143,10 @@ import Config, open from "@pg/conn.ms"
 
 - `@name/path.ms` resolves under the package's `source` directory, as a directory alias does.
 - `check`, `build`, `run`, `test` and `lint` never use the network. A missing lock entry or missing cache entry is an error that says to run `ms install`. A locked build works offline.
-- `ms install --update @pg` resolves the tag again and rewrites that entry. A tag that moved, or changed content, fails against the lock until you update it.
+- `ms install --update @pg` picks the version again and rewrites that entry. A tag that moved, or changed content, fails against the lock until you update it.
 - Packages are cached read-only outside the project, in a directory named by the content hash: `$XDG_CACHE_HOME/ms/packages` (or `$HOME/.cache/ms/packages`, `%LOCALAPPDATA%\ms\packages` on Windows). `MS_PACKAGE_CACHE` overrides it.
 - The hash is the SHA-256 of an index listing each file's path and own SHA-256, stored beside the package. A build checks the index once and each file as it is read, so a cached file changed after the fetch is an error. Symbolic links and non-UTF-8 names are errors.
-- A package's own dependencies are private to it: importing `@name` there does not give the project that name. Two tags of one repository are two packages with different types; when they meet in one expression the error names both paths and both tags.
+- A package's own dependencies are private to it: importing `@name` there does not give the project that name. Diagnostics name a package's files `@github.com/acme/wire@v1.4.2/lib.ms`.
 - A package declares what it may reach with `effects = ["std.net.*"]` under `[project]`, using the patterns of [`allow_effect`](../../core-language/functions/effects.md). Without the key it is pure. The project must allow each declared effect under `[effects]`, or the package is rejected and the error names the effect. The checker holds the package to its declaration: if any function in it, or in a dependency it calls, reaches an effect it did not declare, `check` and `build` fail. The declaration is the default permit for the package's functions; an `allow_effect` line there can only narrow it. A package cannot give a dependency effects it does not declare itself.
 - Packages hold source only: no `entry`, no `[embed]`, no `extern` declarations (the checker rejects them), no build scripts. Nothing runs when a package is fetched.
 - A dependency is `https://` or, for the project's own dependencies only, `file://`. A package's own dependencies must use `https://`. `ms.lock` is validated as untrusted input: 40-digit commits, 64-digit hashes, and the same URL rules.

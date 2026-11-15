@@ -23,7 +23,7 @@ The copy can change silently, has no recorded origin, and a library's own depend
 
 ## Design
 
-**Manifest.** A new `[dependencies]` table. Key is `@` plus one identifier, written like an alias. Value is a table: the git `url`, and a `tag` or a full 40-character `sha`.
+**Manifest.** A new `[dependencies]` table. Key is `@` plus one identifier, written like an alias. Value is a table: the git `url`, and one of `tag`, a full 40-character `sha`, or (see [package-resolution](package-resolution.md)) a semver `version` requirement.
 
 ```toml
 [dependencies]

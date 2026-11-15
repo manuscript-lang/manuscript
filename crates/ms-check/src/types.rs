@@ -1635,7 +1635,7 @@ pub fn result_use_hint(actual: &Ty, expected: &Ty) -> String {
 /// A fetched package the checker holds to its manifest.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct PackageScope {
-    /// The module-name prefix of its files, such as `@pg/`.
+    /// The module-name prefix of its files: `@` and the copy's id, such as `@github.com/acme/wire@1.4.2/`.
     pub prefix: String,
     /// What the lock pinned: the git URL, `#`, and the tag or commit.
     pub spec: String,
@@ -1702,7 +1702,7 @@ fn same_name_note(
     ))
 }
 
-/// The message for one package that reaches the program twice, under two paths.
+/// The message for two copies of one repository, or two repositories, whose types share a name.
 fn two_copies(expected: &PackageScope, found: &PackageScope) -> String {
     let split = |spec: &str| match spec.rsplit_once('#') {
         Some((url, tag)) => (url.to_string(), tag.to_string()),
@@ -1714,14 +1714,9 @@ fn two_copies(expected: &PackageScope, found: &PackageScope) -> String {
         expected.prefix.trim_end_matches('/'),
         found.prefix.trim_end_matches('/'),
     );
-    if expected_url == found_url && expected_tag == found_tag {
-        return format!(
-            "these are different types: the package {expected_url} at {expected_tag} is in the tree twice, as {expected_path} and as {found_path}, and each copy has its own types; have every dependent reach it through one path"
-        );
-    }
     if expected_url == found_url {
         return format!(
-            "these are different types: two versions of the package {expected_url} are in the tree, {expected_path} at {expected_tag} and {found_path} at {found_tag}, and each version has its own types; depend on one tag"
+            "these are different types: two versions of the package {expected_url} are in the tree, {expected_path} at {expected_tag} and {found_path} at {found_tag}, and each version has its own types; a new major version is a separate copy, so make the dependents use one major version, or convert at the boundary"
         );
     }
     format!(

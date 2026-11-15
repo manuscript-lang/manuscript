@@ -26,7 +26,7 @@ Every diagnostic reads `<cause>; <fix>`, so a message states what is wrong and w
 
 An agent does not need the whole manual in its context.
 
-- `ms skill -o ./agents/skills` writes `agents/skills/manuscript/SKILL.md` and focused concept references, bundled with the compiler. Add that skill to the agent’s context before it writes code. The generated version can be compared with `ms --version`; existing skill directories are never overwritten.
+- `ms skill -o .claude/skills -o .agents/skills` writes `manuscript/SKILL.md` and its concept references into each folder, bundled with the compiler. Claude Code loads `.claude/skills`; Codex and other agents load `.agents/skills`. Install it before the agent writes code so it loads natively. The generated version can be compared with `ms --version`; existing skill directories are never overwritten.
 - `ms search_symbol read file` finds a project or standard-library API and prints its signature in bounded output.
 - `ms verify` runs the checker, the formatter check, lint and tests, and returns one exit code. The agent loops until it is zero.
 
