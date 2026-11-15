@@ -180,7 +180,8 @@ fn allocs_with_the_real_runtime() {
                 && report
                     .lines()
                     .any(|l| l.ends_with("main") && l.contains("100.00%")),
-            "{stderr}\n{report}"
+            "{stderr}\n{report}\n{}",
+            std::fs::read_to_string(out.join("allocs.folded")).unwrap_or_default()
         );
     } else {
         assert!(
