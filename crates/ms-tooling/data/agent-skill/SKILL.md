@@ -64,7 +64,8 @@ fn main() Unit!:
 - [Errors and optionals](references/errors-and-optionals.md): absence versus failure, propagation, nested results.
 - [Ownership and cleanup](references/ownership-and-cleanup.md): borrows, moves, clones, mutation, cleanup, borrow errors.
 - [Collections and pipelines](references/collections-and-pipelines.md): construction, lookup, mutation, method and function pipelines.
-- [Effects and concurrency](references/effects-and-concurrency.md): effects, promises, streams, waiting, capture.
+- [Effects and concurrency](references/effects-and-concurrency.md): effects, promises, streams, capture.
+- [Servers and state](references/servers-and-state.md): `serve` handlers cannot share mutable state; one owner promise and a pipe.
 - [Validation](references/validation.md): checks, tests, diagnostics, habits from other languages.
 
 ## Verify

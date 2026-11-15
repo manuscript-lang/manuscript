@@ -1,4 +1,4 @@
-//! `ms init [directory]`: create a runnable project. Fully implemented here;
+//! `ms init [--lib] [directory]`: create a runnable project. Fully implemented here;
 //! it needs no engine.
 
 use ms_driver::project::pathops;
@@ -7,16 +7,23 @@ use crate::backend::Io;
 
 const MAIN: &str = "import arguments from \"@std/os/env.ms\"\n\nfn main() Unit:\n\tprint(\"Arguments: {arguments().length()}\")\n";
 const TEST: &str = "import panic from \"@std/core.ms\"\n\ntest \"arithmetic\":\n\tif not (2 + 3 == 5): return panic(message: \"arithmetic failed\")\n";
+const LIB: &str = "export fn greeting(name: String) String: \"Hello, {name}\"\n";
+const LIB_TEST: &str = "import expect_equal from \"@std/test/test.ms\"\nimport greeting from \"./src/lib.ms\"\n\ntest \"greeting\":\n\texpect_equal(greeting(\"ms\"), \"Hello, ms\")?\n";
 const IGNORE: &str = ".ms-cache/\n";
 
 pub fn run_init(args: &[String], io: &mut Io) -> i32 {
     let mut directory = ".".to_string();
     let mut given = false;
+    let mut library = false;
     for arg in args {
+        if arg == "--lib" && !library {
+            library = true;
+            continue;
+        }
         if arg.starts_with('-') || given {
             let _ = writeln!(
                 io.stderr,
-                "unexpected init argument: {arg}; ms init takes at most one directory, e.g. ms init hello"
+                "unexpected init argument: {arg}; ms init takes --lib and at most one directory, e.g. ms init --lib greeter"
             );
             return 2;
         }
@@ -34,14 +41,19 @@ pub fn run_init(args: &[String], io: &mut Io) -> i32 {
         Ok(path) => path,
         Err(error) => return fail_plain(io, &error.to_string()),
     };
+    let (entry, source_name, source, test) = if library {
+        ("", "lib.ms", LIB, LIB_TEST)
+    } else {
+        ("entry = \"./src/main.ms\"\n", "main.ms", MAIN, TEST)
+    };
     let manifest = format!(
-        "[project]\nname = {}\nsource = \"./src\"\nentry = \"./src/main.ms\"\n",
+        "[project]\nname = {}\nsource = \"./src\"\n{entry}",
         ms_driver::project::quoting::quote(&project_name(&absolute))
     );
     let files = [
         ("ms.toml".to_string(), manifest),
-        (pathops::join(&["src", "main.ms"]), MAIN.to_string()),
-        ("test.ms".to_string(), TEST.to_string()),
+        (pathops::join(&["src", source_name]), source.to_string()),
+        ("test.ms".to_string(), test.to_string()),
     ];
     for (name, _) in &files {
         if std::fs::symlink_metadata(pathops::join(&[&absolute, name])).is_ok() {
@@ -69,11 +81,13 @@ pub fn run_init(args: &[String], io: &mut Io) -> i32 {
         return 1;
     }
     let _ = writeln!(io.stdout, "Created project in {directory}");
-    let _ = writeln!(
-        io.stdout,
-        "Next: ms run {} -- first second",
-        shell_quote(&operand(&pathops::join(&[&directory, "ms.toml"])))
-    );
+    let manifest = shell_quote(&operand(&pathops::join(&[&directory, "ms.toml"])));
+    let next = if library {
+        format!("ms test {manifest}")
+    } else {
+        format!("ms run {manifest} -- first second")
+    };
+    let _ = writeln!(io.stdout, "Next: {next}");
     0
 }
 
